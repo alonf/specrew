@@ -1,0 +1,53 @@
+{
+  "agents": {
+    "picard": {
+      "persistent_name": "Picard",
+      "universe": "user-assigned",
+      "created_at": "2026-04-17T17:18:18.979Z",
+      "legacy_named": false,
+      "status": "active"
+    },
+    "data": {
+      "persistent_name": "Data",
+      "universe": "user-assigned",
+      "created_at": "2026-04-17T17:18:18.979Z",
+      "legacy_named": false,
+      "status": "active"
+    },
+    "laforge": {
+      "persistent_name": "La Forge",
+      "universe": "user-assigned",
+      "created_at": "2026-04-17T17:18:18.979Z",
+      "legacy_named": false,
+      "status": "active"
+    },
+    "worf": {
+      "persistent_name": "Worf",
+      "universe": "user-assigned",
+      "created_at": "2026-04-17T17:18:18.979Z",
+      "legacy_named": false,
+      "status": "active"
+    },
+    "troi": {
+      "persistent_name": "Troi",
+      "universe": "user-assigned",
+      "created_at": "2026-04-17T17:18:18.979Z",
+      "legacy_named": false,
+      "status": "active"
+    },
+    "scribe": {
+      "persistent_name": "Scribe",
+      "universe": "reserved",
+      "created_at": "2026-04-17T17:18:18.979Z",
+      "legacy_named": false,
+      "status": "active"
+    },
+    "ralph": {
+      "persistent_name": "Ralph",
+      "universe": "reserved",
+      "created_at": "2026-04-17T17:18:18.979Z",
+      "legacy_named": false,
+      "status": "active"
+    }
+  }
+}
