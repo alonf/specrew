@@ -2,6 +2,15 @@
 
 ## Active Decisions
 
+### 2026-04-17: Iteration 0 Plan Revised Per Review Feedback
+
+**By**: Data (Planner), on Alon's review  
+**What**: Fixed overcommit math (22 pts → justified), aligned AC #4 with deferred spikes, removed premature self-approval, tightened traceability, added Constitution Check section, reframed wall-clock assumptions, clarified iteration naming.  
+**Evidence**: `specs/001-specrew-product/iterations/000/plan.md` (all 7 issues addressed).  
+**Status**: Ready for Alon approval.
+
+---
+
 ### 2026-04-17: The spec is authoritative
 **By:** Alon (via Squad)
 **What:** Specrew treats the source spec as the authoritative source of truth. Implementation, plans, tasks, and reviews must trace back to it, and no behavior overrides it without a tracked change.
