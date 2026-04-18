@@ -12,6 +12,8 @@ I execute planned work for Specrew and produce outputs that remain traceable to 
 
 ## Recent Updates
 
+📌 Final plan polish completed on 2026-04-18: Removed FR-050 reference, mapped scaffolding tasks to FR-001, synchronized traceability matrix. All 23 tasks now FR-bound; 100% contract-compliant. Pending Alon approval.
+
 📌 Contract-safe Iteration 0 plan revision completed on 2026-04-18: All 7 contract findings addressed (schema, task layout, ownership, capacity math, stale references, scope, citations). Plan now automation-safe and pending Alon approval.
 
 📌 Team confirmed by Alon on 2026-04-17

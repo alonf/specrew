@@ -2,6 +2,21 @@
 
 ## Active Decisions
 
+### 2026-04-18: Final Contract Polish on Iteration 0 Plan
+
+**By**: La Forge (Implementer)  
+**Date**: 2026-04-18  
+**What**: Removed final contract-violating references and normalized requirement traceability:
+  - Removed nonexistent `FR-050` clarification citation; corrected to reference Spec Kit `commands/` folder deferral in spec.md
+  - Mapped all scaffolding tasks (T-006–T-012) to FR-001 (Two-package architecture) as foundational infrastructure
+  - Updated traceability matrix row to bind infrastructure tasks to FR-001 and US-1 with supporting rationale
+  - Verified all 23 tasks now have valid FR mappings (zero em-dash entries)
+
+**Evidence**: `.squad/decisions/inbox/laforge-final-plan-polish.md` (full technical analysis)  
+**Status**: Complete. Plan is now 100% contract-safe and ready for Alon approval.
+
+---
+
 ### 2026-04-17: Contract-Safe Iteration 0 Plan Revision
 
 **By**: La Forge (Implementer)  
@@ -16,7 +31,7 @@
   - Replaced fabricated citations with real spec.md references
 
 **Evidence**: `specs/001-specrew-product/iterations/000/plan.md` (all 7 issues addressed).  
-**Status**: Automation-safe, pending Alon approval.
+**Status**: Superseded by final polish (2026-04-18).
 
 ---
 
