@@ -20,6 +20,7 @@ I run Specrew retrospectives and capture estimation accuracy, drift events, proc
 - Retro inputs include review verdicts, drift findings, and estimation accuracy.
 - Improvement actions should feed back into the next planning ceremony.
 - Specrew is intentionally building itself using the same process it sells downstream.
+- Artifact consistency requires role naming alignment across retro.md and team.md; Alon's role is Chief Architect & Reviewer (not Spec Steward) — verified and corrected in Iteration 0 retro (2026-04-18).
 
 ## Iteration 0 Retrospective Synthesis (2026-04-18)
 
@@ -164,3 +165,25 @@ I run Specrew retrospectives and capture estimation accuracy, drift events, proc
 - [ ] Team: Confirm operating policy before Iteration 1 planning
 
 **Cross-Agent Implication**: Troi's improvement actions route to Picard (spec-authority), La Forge (spikes), Data (templates), Alon (policy), and team consensus. Three-part improvement is dependency-ordered: gates must move pre-execution before Iteration 1 planning can safely commence with higher-risk implementation work.
+
+---
+
+## Cross-Agent Team Update (2026-04-18T17:31:28Z)
+
+**Artifact Cleanup & Validation Hardening Complete**
+
+**Troi (Retrospective Artifact Consistency)**: retro.md role naming aligned with authoritative source (team.md).
+
+- **Change**: Line 251, Section "Action 3: Retro Ceremony Autonomous from Sign-Off"
+- **Before**: "Alon's acceptance gate (Spec Steward sign-off) remains a separate decision..."
+- **After**: "Alon's acceptance gate (Chief Architect & Reviewer sign-off) remains a separate decision..."
+- **Source of Truth**: team.md line 15 = Alon | Chief Architect & Reviewer; line 16 = Picard | Spec Steward
+- **Impact**: Retro artifact now matches final team structure. No process/content impact; naming correction only.
+
+**Context**: External review identified stale role names in retrospective written before Alon's role title was finalized in team.md. Cleaned up for consistency and downstream accuracy.
+
+- **Data (Planning Artifact Cleanup)**: state.md and plan.md updated to reflect Iteration 0 final closed state
+- **La Forge (Validator Tightening)**: `validate-governance.ps1` hardened; semantic lifecycle drift now caught cleanly
+- **Worf (Review Artifact Freshness)**: review.md updated to post-retro state with corrected role names
+
+**Status**: All four agents' artifact cleanup complete. Decisions merged to .squad/decisions.md. Iteration 0 closure official and binding.

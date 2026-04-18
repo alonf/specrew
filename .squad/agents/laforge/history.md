@@ -29,6 +29,8 @@ I execute planned work for Specrew and produce outputs that remain traceable to 
 - **Stale references corrupt traceability**: Old task IDs and fabricated citations must be replaced with real spec citations to maintain audit trail.
 - **Scope clarity prevents drift**: Iteration 0 scope is *enabling work only* (platform validation, extension scaffolds). All MVP delivery and bootstrap implementation deferred to Iteration 1.
 - **Governance becomes real when templates and validators agree**: The operating method must live in runtime-facing ceremony/directive/skill templates, and lifecycle checks must fail automatically when artifacts are incomplete or phases are skipped.
+- **Validator tightening needs context-aware matching**: stale "awaiting sign-off" language belongs in lifecycle checks, while role-name validation should only inspect actual approval/closure lines instead of owner or action annotations.
+- **Cross-artifact evidence is the reliable stale-state detector**: once review/retro artifacts exist, validator checks should treat lingering "pending" lifecycle claims and non-terminal governance gate verdicts as semantic failures, not documentation drift.
 
 ---
 
@@ -48,3 +50,25 @@ I execute planned work for Specrew and produce outputs that remain traceable to 
 - Validator integration with agent charters and ceremony templates
 
 **Terminal state**: Governance enforcement package complete; validator script live; Squad-native surfaces deployed. Ready for operator (Picard) ceremony integration.
+
+---
+
+## Cross-Agent Team Update (2026-04-18T17:31:28Z)
+
+**Artifact Cleanup & Validation Hardening Complete**
+
+**La Forge (Validator Tightening)**: `validate-governance.ps1` hardened post-review to distinguish real lifecycle drift from incidental prose patterns. 
+
+- Status-line stale-language patterns now caught as semantic mismatch (e.g., "awaiting sign-off" marked COMPLETE)
+- Role-name validation scoped to approval/closure statements only; no longer triggers on owner/action annotations
+- Iteration 0 review copy normalized to terminal-state language; validator reran successfully (PASS)
+
+**Context**: External review flagged overly broad validator patterns creating false positives. Refined scope to catch real governance issues without tripping on incidental prose.
+
+**Impact**: Validator now ready for Iteration 1 phase gate enforcement. Governance enforcement package (protocol + validator + Squad-native surfaces) fully hardened and integrated.
+
+- **Data (Planning Artifact Cleanup)**: state.md and plan.md updated to reflect Iteration 0 final closed state post-retrospective
+- **Troi (Retrospective Consistency)**: retro.md role naming aligned with team.md
+- **Worf (Review Artifact Freshness)**: review.md updated to post-retro state with corrected role names
+
+**Status**: All four agents' artifact cleanup complete. Decisions merged to .squad/decisions.md. Iteration 0 closure official and binding. Validation hardening complete.

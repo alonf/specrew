@@ -110,3 +110,29 @@ This is a planning sequencing gate, not a blocker — but it must remain explici
 **Implication for Iteration 1 Planning**: Iteration 1 planning gates on Iteration 0 retrospective completion. Data (Planner) will use retrospective findings (estimation accuracy, drift summary, process improvements) as calibration data for Iteration 1 capacity, templates, and ceremony structure.
 
 **Next Action (Data's Role)**: Await Troi retro.md completion. Then review retrospective findings with Troi and route improvement actions to affected roles (Picard: spec-authority gate; La Forge: spikes pre-planning; Alon: policy confirmation).
+
+### 2026-04-18T14-22-00Z: Iteration 0 Artifact Cleanup — Stale Wording Removed
+
+**Context**: External review identified stale wording in Iteration 0 state and plan artifacts that didn't reflect actual closure state. state.md still said "Awaiting retrospective analysis" even though retro.md was complete. plan.md marked Extension Surfaces as IN PROGRESS despite all spikes passing.
+
+**Actions**:
+- ✅ state.md line 15: Updated "Awaiting retrospective analysis" → "Retrospective complete (retro.md, 2026-04-18)"
+- ✅ plan.md line 55 (Governance Consistency Check): Updated Extension Surfaces gate from "✅ IN PROGRESS | Spikes 1–5, 8–11 validate documented surfaces..." → "✅ COMPLETE | Spikes 1–5, 8–11 all PASS; documented surfaces validated. Platform readiness confirmed."
+
+**Key Insight**: Iteration artifact updates must flow in sequence: execution completes → review closes → retrospective writes findings → planning artifacts reflect final terminal state. When retrospective completes post-execution, planning artifacts must be backfilled with final closure signals to maintain state consistency across all four lifecycle phases.
+
+**Status**: Artifact cleanup complete. All iteration 0 artifacts now consistent with actual closed state.
+
+---
+
+## Cross-Agent Team Update (2026-04-18T17:31:28Z)
+
+**Artifact Cleanup & Validation Hardening Complete**
+
+- **La Forge (Validator Tightening)**: `validate-governance.ps1` hardened to distinguish real lifecycle drift from incidental prose. Status-line stale-language patterns now caught; role-name validation scoped to approval/closure statements only (no false positives on owner/action annotations). Iteration 0 review copy normalized; validator PASS confirmed.
+
+- **Troi (Retrospective Artifact Consistency)**: retro.md role naming aligned with team.md. Changed "Spec Steward" → "Chief Architect & Reviewer" (line 251). Source of truth: team.md lines 15–16. Consistency verified; no downstream impact.
+
+- **Worf (Review Artifact Freshness)**: review.md updated to reflect post-retro state. Forward-looking language removed ("proceeding to retrospective" → retrospective complete); role names corrected to match team.md. Team guidance: all review-phase closures require final freshness check (temporal accuracy, role names, gate dependencies).
+
+**Status**: All four agents' artifact cleanup complete. Decisions merged to .squad/decisions.md. Inbox decisions deleted (deduplication complete). Governance authority artifacts now hardened and consistent. Iteration 0 closure official and binding. Ready for Iteration 1 planning prerequisites validation.

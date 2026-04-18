@@ -70,3 +70,44 @@ I evaluate each task output against the source requirement and produce explicit 
 5. ⏳ Alon final sign-off on governance enforcement + Iteration 1 platform readiness
 
 **Terminal state**: Iteration 0 closure gate PASSED. Awaiting Alon sign-off and retrospective completion before Iteration 1 execution begins.
+
+---
+
+## Learnings
+
+### 2026-04-18 Artifact Cleanup (Review Stale Wording)
+
+**Issue**: External review flagged stale wording in review.md indicating next steps that had already been completed.
+
+**Corrections Applied**:
+1. **Line 16** — Updated status from "Ready for Alon sign-off and Iteration 1 planning" to "Review complete. Retrospective closed. Ready for Alon sign-off." (reflects actual post-retro state)
+2. **Line 199** — Updated next phase from "Ready for Alon sign-off and Iteration 1 planning" to "Awaiting Alon sign-off" (acknowledges retrospective already complete)
+3. **Line 207** — Fixed role name from "Alon (Spec Steward)" to "Alon (Chief Architect & Reviewer)" (matches actual team.md designation)
+
+**Learning**: Review artifacts must be refreshed after each phase closure to reflect current iteration state. Stale wording masks phase progression and confuses gate dependencies. Include a "Artifact Freshness Check" step in the review closure ceremony to verify temporal accuracy before final publication.
+
+---
+
+## Cross-Agent Team Update (2026-04-18T17:31:28Z)
+
+**Artifact Cleanup & Validation Hardening Complete**
+
+**Worf (Review Artifact Freshness)**: review.md updated to reflect final post-retro state.
+
+- **Issue**: Forward-looking language ("proceeding to retrospective") and stale role names after all phases completed
+- **Solutions Applied**:
+  1. Status statement now indicates retro is closed (not planned)
+  2. Next phase shows awaiting sign-off, not planning
+  3. Role name corrected to match team.md (Chief Architect & Reviewer, not Spec Steward)
+- **Team Guidance**: All review-phase closure artifacts require final freshness check:
+  - Verify temporal accuracy (past tense for completed phases)
+  - Confirm role names match current team.md
+  - Validate gate dependencies reflect current state, not planned transitions
+
+**Context**: External review identified stale review.md wording post-retrospective closure. Low-friction quality gate added to review-phase ceremony closeout.
+
+- **Data (Planning Artifact Cleanup)**: state.md and plan.md synchronized to Iteration 0 final state
+- **La Forge (Validator Tightening)**: `validate-governance.ps1` hardened for semantic drift detection
+- **Troi (Retrospective Consistency)**: retro.md role names aligned with team.md
+
+**Status**: All four agents' artifact cleanup complete. Governance authority artifacts hardened and consistent. Iteration 0 closure official and binding. Validation ready for Iteration 1 phase gates.

@@ -452,6 +452,145 @@ Alon sign-off can proceed. Iteration 1 planning prerequisites:
 
 **Status**: ✅ Worf closure verdict recorded; governance hardening gate PASSED.
 
+---
+
+### 2026-04-18: Iteration 0 Artifact Cleanup — Stale Wording
+
+**By**: Data (Planner)  
+**Date**: 2026-04-18  
+**Status**: ✅ IMPLEMENTED  
+**What**: Updated planning/state artifacts to reflect actual final closed state post-retrospective.
+
+#### Problem Statement
+
+External review flagged stale wording in Iteration 0 planning/state artifacts:
+
+1. **state.md (line 15)**: Marked iteration terminal state as "Awaiting retrospective analysis" despite retrospective being complete (retro.md exists, status: CLOSED per line 308).
+2. **plan.md (line 55, Governance Consistency Check)**: Extension Surfaces gate marked "✅ IN PROGRESS" despite all platform validation spikes (T-013–T-021) passing with terminal PASS verdicts documented in retro.md.
+
+#### Root Cause
+
+Iteration lifecycle creates four sequential phases (Planning → Execution → Review → Retrospective). When retrospective completes **after** execution/review close, planning artifacts do not automatically reflect final terminal state. This creates documentation lag where planning view is stale but retrospective view has truth.
+
+#### Decision
+
+Update planning/state artifacts to reflect actual final closed state:
+
+1. state.md terminal state line: Change "Awaiting retrospective analysis" to "Retrospective complete (retro.md, 2026-04-18)"
+2. plan.md governance check line: Change Extension Surfaces gate from "IN PROGRESS" to "COMPLETE" with notes reflecting all spike verdicts
+
+These are **no-risk updates** — only change signal/status metadata, not task content or scope.
+
+#### Implementation
+
+- ✅ state.md updated
+- ✅ plan.md updated
+- ✅ Both artifacts now reflect actual Iteration 0 closure state
+
+#### Learning for Future Iterations
+
+**Artifact Update Protocol**: When retrospective phase completes, planning artifacts should be backfilled with final closure signals to maintain consistency across all four phases. Suggested template improvement: Add explicit field to plan.md metadata for "Retrospective Date" and "Retrospective Status" (PENDING | CLOSED).
+
+---
+
+### 2026-04-18: Governance Validator Tightening
+
+**By**: La Forge (Implementer)  
+**Date**: 2026-04-18  
+**Status**: ✅ IMPLEMENTED  
+**What**: Hardened validate-governance.ps1 to distinguish real lifecycle drift from incidental prose patterns.
+
+#### Problem Statement
+
+Governance validator contained overly broad pattern matching:
+- Complete artifacts could advertise pending sign-off in status fields
+- Broad sign-off matching created false positives on improvement-action owner lines
+
+#### Decision
+
+Treat stale "awaiting/pending/ready for sign-off" language in lifecycle status lines as governance mismatch once iteration is complete, but scope role-name validation to actual approval/closure lines rather than owner/action annotations.
+
+#### Implementation
+
+- ✅ `validate-governance.ps1` now catches stale completion/sign-off language in status metadata lines
+- ✅ Sign-off role-name checks now validate approval/closure statements without tripping on owner/action notes
+- ✅ Iteration 000 review copy normalized to terminal-state language; validator passes cleanly
+
+#### Impact
+
+Validator now catches semantic lifecycle/status/role mismatches without false positives on incidental prose. Ready for Iteration 1 phase gate enforcement.
+
+---
+
+### 2026-04-18: Iteration 0 Retrospective Artifact Cleanup — Role Naming Alignment
+
+**By**: Troi (Retro Facilitator)  
+**Date**: 2026-04-18  
+**Status**: ✅ CLOSED  
+**What**: Updated retro.md to align role naming with authoritative source (team.md).
+
+#### Problem Statement
+
+External review identified stale wording in retrospective artifact. The retro was written before Alon's final role title was confirmed.
+
+**Change**: Line 251, Section "Action 3: Retro Ceremony Autonomous from Sign-Off"
+
+**Before**: "Alon's acceptance gate (Spec Steward sign-off) remains a separate decision..."  
+**After**: "Alon's acceptance gate (Chief Architect & Reviewer sign-off) remains a separate decision..."
+
+#### Source of Truth
+
+- **team.md, line 15**: Alon | Chief Architect & Reviewer
+- **team.md, line 16**: Picard | Spec Steward
+
+#### Impact
+
+- ✅ Retro artifact now matches final team structure
+- ✅ Clarity: distinguishes Alon's role (reviewer/decision authority) from Picard's role (spec governance)
+- ✅ No process or content impact; naming correction only
+- ✅ Consistency: ensures downstream references use correct role identifier
+
+**No action required.** Cleanup is artifact-only; team charters and role assignments unchanged.
+
+---
+
+### 2026-04-18: Iteration 0 Review Artifact Freshness Cleanup
+
+**By**: Worf (Reviewer)  
+**Date**: 2026-04-18  
+**Status**: ✅ IMPLEMENTED  
+**What**: Updated review.md to reflect final post-retro state and corrected stale role names.
+
+#### Problem Statement
+
+Review artifact contained forward-looking language and outdated role names after all phases had completed:
+- "proceeding to...retrospective" even though retro was already complete
+- "Spec Steward" when actual team.md role is "Chief Architect & Reviewer"
+
+#### Decision
+
+Update review artifact to reflect final post-retro state:
+1. Status statement now indicates retro is closed
+2. Next phase clearly shows awaiting sign-off (not planning)
+3. Role name corrected to match team.md
+
+#### Implementation
+
+- ✅ review.md updated to terminal post-retro state
+- ✅ Role names corrected
+- ✅ Forward-looking language removed
+
+#### Team Guidance
+
+All review-phase closure artifacts should include final freshness check:
+- Verify temporal accuracy (past tense for completed phases)
+- Confirm role names match current team.md
+- Validate gate dependencies reflect current state, not planned transitions
+
+This is a low-friction, high-value quality gate for ceremony closeout.
+
+---
+
 ## Governance
 
 - Decisions in this file are the shared team memory.

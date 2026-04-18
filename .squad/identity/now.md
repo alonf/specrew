@@ -1,5 +1,5 @@
 ---
-updated_at: 2026-04-18T16-50-48Z
+updated_at: 2026-04-18T17-31-28Z
 focus_area: Awaiting Alon Sign-Off & Iteration 1 Planning Readiness
 active_issues: [Alon final governance sign-off, Team consensus on operating policy (6 rules + 3 tier-1 improvements), Retrospective ceremony completion (Troi, fixed schedule), Iteration 1 planning ceremony prerequisites]
 ---
@@ -18,16 +18,16 @@ active_issues: [Alon final governance sign-off, Team consensus on operating poli
 - All 9 platform validation spikes PASS — Squad 0.9.1 + Spec Kit 0.7.3 compatibility confirmed
 - Review verdict: ACCEPTED (Worf, 2026-04-18)
 
-### Iteration 0 Governance: ✅ HARDENED & ENFORCED (FINAL GATE PASSED)
+### Iteration 0 Governance: ✅ HARDENED, ENFORCED & VALIDATED (FINAL GATE PASSED)
 - **Authority**: All normative contracts in place and binding (spec.md, contracts/iteration-artifacts.md, .squad/protocol.md)
 - **Dogfooding**: Binding obligation documented and active (Specrew uses Specrew's lifecycle)
-- **Validation**: Governance validator script deployed (`validate-governance.ps1`) — CI-wired and PASS
+- **Validation**: Governance validator script deployed (`validate-governance.ps1`) — ✅ HARDENED (semantic drift detection + scope-limited pattern matching), CI-wired and PASS
 - **Enforcement**: Squad-native ceremony/directive/skill templates active (planning gate, drift reporting, retro autonomy)
-- **Closure artifacts**: ✅ plan.md metadata updated, ✅ state.md verified, ✅ drift-log.md created (0 events)
-- **Status**: Execution + Review phase complete; Retrospective phase ⏳ pending Troi autonomous ceremony (fixed schedule)
-- **Verdict**: 🟢 **GOVERNANCE HARDENING GATE PASSED** (2026-04-18T16-50-48Z)
+- **Closure artifacts**: ✅ plan.md metadata updated & synchronized, ✅ state.md synchronized to final state, ✅ review.md post-retro freshness check complete, ✅ retro.md role-naming aligned with team.md, ✅ drift-log.md created (0 events)
+- **Status**: All four phases COMPLETE; Retrospective closed (Troi autonomous ceremony, 2026-04-18)
+- **Verdict**: 🟢 **GOVERNANCE HARDENING & ARTIFACT ALIGNMENT COMPLETE** (2026-04-18T17-31-28Z)
 
-**Remaining Blockers**: Alon sign-off + team consensus on operating policy + Troi retrospective completion (autonomous, fixed schedule). No governance authority gaps remain.
+**Remaining Blockers**: Alon final sign-off + team consensus on operating policy. No governance authority gaps remain. All artifacts aligned and validator hardened.
 
 ---
 
@@ -40,14 +40,14 @@ active_issues: [Alon final governance sign-off, Team consensus on operating poli
 3. ✅ **.squad/protocol.md** — Single coordinator protocol (6 roles, decision workflows, iteration coordination, 6 operating rules, escalation paths)
 4. ✅ **Dogfooding Binding** — Specrew follows its own four-phase lifecycle for its own development; no exceptions without tracked change
 
-### Governance Enforcement Package (2026-04-18)
+### Governance Enforcement Package (2026-04-18T17-31-28Z)
 
-1. ✅ **validate-governance.ps1** — Functional validator script; CI-gated and PASS
+1. ✅ **validate-governance.ps1** — Hardened validator script; semantic lifecycle/status/role mismatch detection with scope-limited pattern matching (no false positives on incidental prose)
 2. ✅ **CI integration** — Squad-ci.yml wired for phase transition validation
 3. ✅ **Squad-native surfaces** — Ceremonies (planning gate, retro autonomy), directives (drift reporting), skills (governance-check) deployed
 4. ✅ **Retrospective ceremony template** — Squad-native template for lifecycle closure
 
-**Status**: All governance enforcement tools live and operational. Zero additional work required to gate Iteration 1.
+**Status**: All governance enforcement tools live, hardened, and operational. Zero additional work required to gate Iteration 1.
 
 ### Operating Policy (6 Core Rules — Troi)
 
