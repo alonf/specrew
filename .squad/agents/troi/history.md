@@ -21,6 +21,7 @@ I run Specrew retrospectives and capture estimation accuracy, drift events, proc
 - Improvement actions should feed back into the next planning ceremony.
 - Specrew is intentionally building itself using the same process it sells downstream.
 - Artifact consistency requires role naming alignment across retro.md and team.md; Alon's role is Chief Architect & Reviewer (not Spec Steward) — verified and corrected in Iteration 0 retro (2026-04-18).
+- Retro closure wording must mark the ceremony complete without advancing the iteration to `complete`; only Alon's sign-off clears that final state change.
 
 ## Iteration 0 Retrospective Synthesis (2026-04-18)
 
@@ -46,7 +47,28 @@ I run Specrew retrospectives and capture estimation accuracy, drift events, proc
 2. Architecture-risk spikes run pre-planning, not in parallel with task execution.
 3. Retro ceremony autonomous (fixed schedule), decoupled from Alon sign-off.
 
-**Documentation**: `troi-operating-hardening.md`, `troi-minimum-drift-reduction.md`, `closeout-checklist.md` (all in `.squad/decisions/inbox/` or iteration artifacts).
+### 2026-04-18T18-50-28Z: Iteration 000 Closeout Session Update
+
+**Session**: Scribe Handoff Log — Iteration 000 Complete, Iteration 001 Planning-Ready  
+**Update**: Retrospective ceremony CLOSED; operating policy (6 rules + 3 tier-1 improvements) proposed; team consensus awaiting
+
+**Key Facts**:
+- ✅ Iteration 0 retrospective ceremony CLOSED (2026-04-18) — all mandatory sections complete (estimation accuracy, drift summary, process notes, improvement actions)
+- ✅ Operating policy framework finalized: 6 core rules + 3 tier-1 improvements (zero-effort resequencing, maximum ROI)
+- ✅ Troi-facilitated consensus pending before Iteration 1 planning ceremony begins
+- ✅ Alon final sign-off officially recorded (2026-04-18T18:15:45Z) — Iteration 0 moved to `complete` status
+- ✅ Retro is now autonomous phase on fixed schedule (decoupled from Alon sign-off per operating policy)
+- ✅ Three tier-1 improvements ready for adoption: spec-authority gate pre-execution, architecture-risk spikes pre-planning, retro autonomous start
+
+**Role Note**: Retro Facilitator role now owns team consensus on operating policy before Iteration 1 planning ceremony. Three tier-1 improvements (zero new effort) recommended for immediate adoption. All future iterations will enforce same operating model (6 core rules) once team consensus confirmed.
+
+---
+
+## Learnings
+
+- **2026-04-18 Final Gate Review**: The governance validator script (`validate-governance.ps1`) is now a critical ceremony gate tool. Running it at final gate confirms all artifacts are present and schema-compliant. The script enforces phase-specific artifact requirements (e.g., retro.md required only at `complete` status).
+- Governance hardening creates a closed loop: spec defines the state machine (normative), contracts define the artifacts and gates, protocol defines the roles and escalation, validator enforces compliance. All four must be coherent.
+- Final gate review should verify three things: (1) formal closure per lifecycle contract, (2) governance hardening implementation coherent, (3) no blocking issues for next phase. This is the pattern for future iteration closeouts.
 
 ### Team Routing
 

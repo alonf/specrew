@@ -43,6 +43,23 @@ I evaluate each task output against the source requirement and produce explicit 
 
 ---
 
+### 2026-04-18T18-50-28Z: Iteration 000 Closeout Session Update
+
+**Session**: Scribe Handoff Log — Iteration 000 Complete, Iteration 001 Planning-Ready  
+**Update**: Iteration 0 closure verdict FINAL PASS; Iteration 1 review checklist ready; gate enforcement operational
+
+**Key Facts**:
+- ✅ Iteration 0 final gate review PASSED (2026-04-18T16:50:48Z) — all three review criteria satisfied
+- ✅ Closure artifacts all present and schema-compliant (plan.md, state.md, review.md, retro.md, drift-log.md)
+- ✅ Governance validator: PASS — artifact compliance verified
+- ✅ Alon final sign-off officially recorded (2026-04-18T18:15:45Z) — Iteration 0 moved to `complete` status
+- ✅ No blocking issues remain for Iteration 1 planning
+- ✅ Governance hardening now BINDING — future iterations will have same automated phase gate validation
+
+**Role Note**: Reviewer role now has CI-integrated validator support. Future iterations will run governance validator at final gate automatically. Review verdicts feed directly into retrospective; retro is autonomous phase on fixed schedule (decoupled from sign-off per Troi's operating policy).
+
+---
+
 ## Learnings
 
 - **2026-04-18 Final Gate Review**: The governance validator script (`validate-governance.ps1`) is now a critical ceremony gate tool. Running it at final gate confirms all artifacts are present and schema-compliant. The script enforces phase-specific artifact requirements (e.g., retro.md required only at `complete` status).
@@ -111,3 +128,11 @@ I evaluate each task output against the source requirement and produce explicit 
 - **Troi (Retrospective Consistency)**: retro.md role names aligned with team.md
 
 **Status**: All four agents' artifact cleanup complete. Governance authority artifacts hardened and consistent. Iteration 0 closure official and binding. Validation ready for Iteration 1 phase gates.
+
+---
+
+## Learnings
+
+- **2026-04-18 Review Closure Rule**: Review-pass is not iteration completion. Worf can clear review gates and confirm closure readiness, but Iteration 0 remains incomplete until Alon signs off. Review artifacts must separate "work accepted in review" from "iteration complete."
+- **2026-04-18 Board Governance Review**: Governance review must reject any Specrew self-development artifact that still describes GitHub Issues or Projects V2 as optional. A real automation/configuration blocker (such as missing project token scope) is acceptable only when recorded explicitly as a capability gap; it does not relax the normal rule that Squad owns board creation, population, and maintenance.
+- **2026-04-18 Board Re-Review**: Once `plan.md`, `spec.md`, `protocol.md`, and board docs all agree that Specrew self-development MUST use GitHub Projects V2 and local artifacts remain authoritative, the correct verdict is PASS even if unattended sync is still blocked by external secret configuration. That remaining gap must be named as external configuration (`SPECREW_PROJECT_TOKEN`), not implementation drift.

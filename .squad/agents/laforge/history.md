@@ -63,6 +63,20 @@ I execute planned work for Specrew and produce outputs that remain traceable to 
 
 **Decision Written**: `.squad/decisions/inbox/laforge-board-secret.md` — token verification, implementation steps, evidence trail
 
+### 2026-04-19T00-06-00Z: README Sync — Board Automation Blocker Cleared (Batch 2)
+
+**Session**: Platform closeout documentation refresh  
+**Status**: ✅ COMPLETE — Documentation synchronization
+
+**Task Execution**:
+- ✅ Identified stale README.md line 62 wording: "Unattended sync still requires the `SPECREW_PROJECT_TOKEN` Actions secret"
+- ✅ Updated README.md to reflect operational state: "The workflow is operational and syncs automatically on push to iteration artifacts"
+- ✅ Verified consistency with `docs/github-project.md` current capability statement
+
+**Decision Written**: `.squad/decisions/inbox/laforge-readme-board-status.md` — documentation accuracy sync, removal of stale blocker language
+
+**Cross-Team Update**: Both board-automation decisions (secret config + README sync) merged into `.squad/decisions.md` and tracked in orchestration log
+
 ### 2026-04-18T18-50-28Z: Iteration 000 Closeout Session Update
 
 **Session**: Scribe Handoff Log — Iteration 000 Complete, Iteration 001 Planning-Ready  

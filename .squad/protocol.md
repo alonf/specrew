@@ -147,7 +147,7 @@ This protocol applies to:
 - ✅ Reviews and approves iteration plans and retrospectives before they are finalized
 - ✅ Handles tie-breaks and policy-level conflicts
 - ✅ Approves abandoned iterations and exception-to-rule cases
-- ✅ Final sign-off on iteration completion before next iteration begins
+- ✅ Final sign-off that moves an iteration from `retro` to `complete` before next iteration begins
 - ✅ Accepts or rejects deliverables based on strategic fit (Worf provides verdicts; Alon provides acceptance)
 - ❌ Does NOT do implementation work (that is La Forge)
 - ❌ Does NOT do backlog triage (that is Picard)
@@ -161,7 +161,7 @@ This protocol applies to:
 **Gates Alon Operates**:
 1. **Iteration Startup Gate**: Architecture-risk spike decisions; pre-planning prerequisites
 2. **Plan Approval Gate** (optional): May review plan before execution if complexity warrants
-3. **Iteration Closure Gate**: Final sign-off after retro completes; approval to start next iteration
+3. **Iteration Closure Gate**: Final sign-off after `retro.md` exists; moves iteration from `retro` to `complete` and approves the next iteration
 
 ---
 
@@ -271,13 +271,14 @@ This protocol applies to:
 2. **Retro Review** (Alon, optional):
    - Alon may review retro for process health signals
 3. **Iteration Closure** (Alon):
-   - Alon reviews all phase artifacts
-   - Alon may request changes or approve
-   - Status: retro → complete
-   - Plan metadata updated: Status = complete, Completed = timestamp
+    - Alon reviews all phase artifacts
+    - Alon may request changes or approve
+    - `retro.md` completion does NOT by itself close the iteration
+    - Status: retro → complete only after Alon records final sign-off
+    - Plan metadata updated: Status = complete, Completed = timestamp only after sign-off
 4. **Next Iteration Readiness** (Rule 4: Retro and next planning are decoupled):
    - While retro finishes, pre-planning spikes for next iteration can run in parallel
-   - After retro complete + Alon sign-off, planning ceremony begins
+   - After `retro.md` exists and Alon sign-off is recorded, planning ceremony begins
 
 ---
 
@@ -402,7 +403,7 @@ Every iteration's status is recorded in `plan.md` metadata:
 **Status**: planning | executing | reviewing | retro | complete | abandoned
 **Capacity**: {used}/{total}
 **Started**: YYYY-MM-DD
-**Completed**: YYYY-MM-DD (or blank)
+**Completed**: YYYY-MM-DD (only after Alon final sign-off; otherwise blank)
 ```
 
 Status is updated by the phase owner as iteration progresses.
@@ -429,7 +430,7 @@ Before moving to the next phase, these checks MUST pass:
 | planning | executing | plan.md exists, traceability check passed, Picard approved |
 | executing | reviewing | state.md final, drift-log complete, all tasks in terminal state |
 | reviewing | retro | review.md exists, all verdicts recorded, iteration verdict recorded |
-| retro | complete | retro.md exists, all mandatory fields populated, Alon approved |
+| retro | complete | retro.md exists, all mandatory fields populated, Alon approved; iterations awaiting sign-off stay in `retro` |
 
 ---
 
@@ -446,6 +447,73 @@ Before moving to the next phase, these checks MUST pass:
 
 ---
 
+## GitHub Projects V2 Board Synchronization & Maintenance (Specrew Self-Development)
+
+This section formalizes board sync and maintenance as part of Specrew's dogfooding operating method. The GitHub Projects V2 board is a derived operational mirror of authoritative local task artifacts (plan.md, task lists, iteration state); board sync is Squad's responsibility.
+
+### Normative Rule: Source of Truth
+
+1. **Authoritative Artifacts** (source of truth for Specrew self-development):
+   - `specs/001-specrew-product/iterations/NNN/plan.md` — Iteration task list, effort estimates, traceability, phase status
+   - `specs/001-specrew-product/iterations/NNN/state.md` — Current iteration phase, task execution state
+   - Iteration artifact files (review.md, retro.md, drift-log.md) — Phase closure evidence
+
+2. **Derived Operational Mirrors**:
+   - GitHub Issues (one per task, created from authoritative plan)
+   - GitHub Projects V2 board items (same issues, organized by column per phase)
+   - Board column state (reflecting iteration phase transitions: planning → executing → reviewing → retro → complete)
+
+3. **Governance Rule**:
+   - GitHub Issues and board state follow task status from authoritative artifacts
+   - Manual board updates are fallback-only if Squad automation fails
+   - Automation failures MUST be recorded as capability gaps/blockers in decisions.md
+   - Manual board management is never the normal operating rule
+
+### Squad Automation Responsibilities
+
+For Specrew self-development, Squad automation MUST handle:
+
+| Phase | Automation | Issue/Board Action | Responsibility |
+|-------|-----------|-------------------|-----------------|
+| Planning | Plan generation | Create GitHub Issues from plan.md tasks; add to board "Backlog" column | Squad automation at planning-ceremony start |
+| Executing | Task execution | Move issues to "In Progress" column as tasks start | La Forge (Implementer) after task assignment |
+| Executing | Task completion | Move issues to "Done" column when task verdicts recorded | Worf (Reviewer) during review phase |
+| Reviewing | Review phase | Move iteration marker to "In Review" column | Squad automation at review-ceremony start |
+| Retro | Retrospective phase | Move iteration marker to "Retrospective" column | Squad automation at retro-ceremony start |
+| Complete | Iteration closure | Archive completed issues OR move to "Closed" column; mark iteration status `complete` | Squad automation after Alon sign-off |
+
+### Acceptance Criteria for Board Sync
+
+Specrew considers board sync operational only when ALL criteria are met:
+
+1. ✅ **Issue Creation**: New tasks in plan.md automatically create GitHub Issues within 2 minutes
+2. ✅ **Board Placement**: Issues are added to the board under Squad's default layout (no custom columns) within 2 minutes
+3. ✅ **Phase Tracking**: Column state transitions reflect iteration phase changes (planning → executing → reviewing → retro → complete)
+4. ✅ **Status Maintenance**: Issue status (open/closed/archived) matches task verdict and iteration phase
+5. ✅ **Closure Reflection**: When Alon records final sign-off and iteration moves to `complete`, board reflects completed state
+6. ✅ **Failure Recording**: If any automation step fails, a capability gap is recorded in `.squad/decisions/inbox/` within the same iteration
+
+### Fallback Procedure (If Automation Fails)
+
+If Squad automation cannot populate or maintain the board:
+
+1. **Discovery Phase**: Document exact failure (which step, error message, timestamp)
+2. **Recording**: Create decision inbox note `.squad/decisions/inbox/picard-board-sync-gap-ITERATION.md` with:
+   - What automation was expected vs. what actually happened
+   - Impact on iteration execution (blocking? observational only?)
+   - Recommendation (defer to next iteration? escalate for investigation?)
+3. **Escalation**: Route to Alon for decision on whether to pause iteration or continue with manual fallback
+4. **Resolution**: Do NOT silently downgrade to manual board management without recording the gap
+
+### Downstream Projects
+
+Downstream projects MAY choose whether to use a GitHub Projects V2 board. If they do:
+- The same board sync and maintenance responsibilities apply (Squad or equivalent automation)
+- Downstream projects are not required to use Specrew's board configuration
+- The authoritative source of truth may differ (downstream may choose GitHub Issues as primary, not local artifacts)
+
+---
+
 ## Implementation Notes
 
 ### For Specrew's Own Development
@@ -454,11 +522,37 @@ Before moving to the next phase, these checks MUST pass:
 - Iteration 0 closure artifacts (state.md, drift-log.md, retro.md) MUST be created to close the phase.
 - All future Specrew iterations follow this protocol explicitly.
 
+#### Acceptance Criteria for Specrew Self-Development
+
+Specrew iteration execution is considered complete only when ALL of these criteria are met:
+
+**AC-001: Issue Creation from Authoritative Artifacts**
+- ✅ All tasks in plan.md have corresponding GitHub Issues created before executing phase starts
+- ✅ Each issue links back to source requirement (FR-NNN) and task description
+- ✅ Issues are created from plan.md, not manually; automation failure is recorded as a gap
+
+**AC-002: Board Population & Status Maintenance**
+- ✅ All created issues appear on the GitHub Projects V2 board in the correct column (reflecting current iteration phase)
+- ✅ Board state transitions as iteration moves through phases (planning → executing → reviewing → retro → complete)
+- ✅ Column state matches task verdict and phase status throughout execution
+- ✅ No manual "board cleanup" operations occur; if cleanup is needed, automation failure is recorded
+
+**AC-003: Closure Reflection on Board**
+- ✅ When Alon records final sign-off and iteration moves to `complete`, the board reflects this state (issues closed/archived or marked as complete)
+- ✅ Closure state is durable and does not require manual intervention
+- ✅ Next iteration's new issues appear on a fresh board without stale items from prior iterations
+
+**AC-004: Automation Failure Recording**
+- ✅ If Squad automation fails at any step (issue creation, board placement, status maintenance, closure), this is recorded as a decision inbox note within the same iteration
+- ✅ Failure notes include what was expected, what happened, and whether iteration can continue
+- ✅ Do NOT silently degrade to manual board management without this recording
+
 ### For Downstream Projects Using Specrew
 
 - Downstream projects inherit this protocol as a reference model.
 - The role names and escalation paths remain the same, but team members may differ.
 - Downstream projects should customize where appropriate but maintain the four-phase structure.
+- Downstream projects MAY choose a different authoritative source of truth (e.g., GitHub Issues primary, local tasks secondary) and MUST document this choice in their own protocol.
 
 ---
 
@@ -467,4 +561,5 @@ Before moving to the next phase, these checks MUST pass:
 | Date | Author | Change |
 |------|--------|--------|
 | 2026-04-18 | Picard | v1.0 — Initial governance protocol |
+| 2026-04-18 | Picard | Added GitHub Projects V2 board sync section (source-of-truth correction) + acceptance criteria for issue/board/closure automation |
 

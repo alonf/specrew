@@ -1,113 +1,75 @@
 ---
-updated_at: 2026-04-18T17-31-28Z
-focus_area: Awaiting Alon Sign-Off & Iteration 1 Planning Readiness
-active_issues: [Alon final governance sign-off, Team consensus on operating policy (6 rules + 3 tier-1 improvements), Retrospective ceremony completion (Troi, fixed schedule), Iteration 1 planning ceremony prerequisites]
+updated_at: 2026-04-18T18-50-28Z
+focus_area: Iteration 000 Complete, Iteration 001 Planning-Ready, Operating Policy Consensus Pending
+active_issues: [Team consensus on operating policy 6 rules before planning ceremony, Iteration 1 planning ceremony charter finalization, Alon approval of Iteration 001 plan]
 ---
 
 # What We're Focused On
 
-**Phase**: Governance Hardening Complete → Iteration 1 Planning Readiness  
-**Urgency**: TIER 0 — All governance authority now normative and binding; final sign-off + team consensus required before Iteration 1 execution begins.
+**Phase**: Iteration 000 `complete` with final sign-off recorded (2026-04-18T18:15:45Z); Iteration 001 planning authorization gates CLEAR  
+**Urgency**: TIER 0 — Iteration 1 planning ceremony ready to schedule pending team consensus on operating policy
 
 ---
 
 ## Current Status
 
-### Iteration 0 Execution: ✅ COMPLETE
+### Iteration 000 Execution: ✅ COMPLETE (Final Sign-Off Recorded)
 - All 23 tasks delivered (20.5/20.5 story points, zero variance)
 - All 9 platform validation spikes PASS — Squad 0.9.1 + Spec Kit 0.7.3 compatibility confirmed
 - Review verdict: ACCEPTED (Worf, 2026-04-18)
+- Retrospective verdict: CLOSED (Troi, 2026-04-18)
+- **Alon final sign-off: RECORDED (2026-04-18T18:15:45Z)** ✅
 
-### Iteration 0 Governance: ✅ HARDENED, ENFORCED & VALIDATED (FINAL GATE PASSED)
-- **Authority**: All normative contracts in place and binding (spec.md, contracts/iteration-artifacts.md, .squad/protocol.md)
-- **Dogfooding**: Binding obligation documented and active (Specrew uses Specrew's lifecycle)
-- **Validation**: Governance validator script deployed (`validate-governance.ps1`) — ✅ HARDENED (semantic drift detection + scope-limited pattern matching), CI-wired and PASS
-- **Enforcement**: Squad-native ceremony/directive/skill templates active (planning gate, drift reporting, retro autonomy)
-- **Closure artifacts**: ✅ plan.md metadata updated & synchronized, ✅ state.md synchronized to final state, ✅ review.md post-retro freshness check complete, ✅ retro.md role-naming aligned with team.md, ✅ drift-log.md created (0 events)
-- **Status**: All four phases COMPLETE; Retrospective closed (Troi autonomous ceremony, 2026-04-18)
-- **Verdict**: 🟢 **GOVERNANCE HARDENING & ARTIFACT ALIGNMENT COMPLETE** (2026-04-18T17-31-28Z)
+### Iteration 000 Governance: ✅ COMPLETE & BINDING
+- **Authority**: All normative contracts in place and binding (spec.md, contracts/iteration-artifacts.md, .squad/protocol.md) — ENFORCED by Alon sign-off
+- **Dogfooding**: Binding obligation active (Specrew uses Specrew's lifecycle)
+- **Validation**: Governance validator script deployed (`validate-governance.ps1`)
+- **Enforcement**: Squad-native ceremony/directive/skill templates active
+- **Closure artifacts**: All four phase artifacts (plan, state, review, retro) complete with metadata synchronized
+- **Status**: Iteration 0 transition to `complete` finalized; all closure readiness gates passed
+- **Verdict**: 🟢 **ITERATION 000 CLOSED — FINAL SIGN-OFF RECORDED** (2026-04-18T18:15:45Z)
 
-**Remaining Blockers**: Alon final sign-off + team consensus on operating policy. No governance authority gaps remain. All artifacts aligned and validator hardened.
-
----
-
-## Governance Hardening Status (TIER 0 COMPLETE)
-
-### Four Authority Artifacts (2026-04-18)
-
-1. ✅ **spec.md** — Iteration Lifecycle Contract (normative phase state machine) + Dogfooding Obligation (Specrew uses Specrew)
-2. ✅ **contracts/iteration-artifacts.md** — Phase rules, artifact gates, state machine validation (normative)
-3. ✅ **.squad/protocol.md** — Single coordinator protocol (6 roles, decision workflows, iteration coordination, 6 operating rules, escalation paths)
-4. ✅ **Dogfooding Binding** — Specrew follows its own four-phase lifecycle for its own development; no exceptions without tracked change
-
-### Governance Enforcement Package (2026-04-18T17-31-28Z)
-
-1. ✅ **validate-governance.ps1** — Hardened validator script; semantic lifecycle/status/role mismatch detection with scope-limited pattern matching (no false positives on incidental prose)
-2. ✅ **CI integration** — Squad-ci.yml wired for phase transition validation
-3. ✅ **Squad-native surfaces** — Ceremonies (planning gate, retro autonomy), directives (drift reporting), skills (governance-check) deployed
-4. ✅ **Retrospective ceremony template** — Squad-native template for lifecycle closure
-
-**Status**: All governance enforcement tools live, hardened, and operational. Zero additional work required to gate Iteration 1.
-
-### Operating Policy (6 Core Rules — Troi)
-
-1. **Spec-Authority Gate Pre-Task Assignment** (planning ceremony gate)
-2. **Architecture-Risk Spikes Pre-Planning** (planning prerequisite)
-3. **Traceability Check Pre-Task Assignment** (planning ceremony gate)
-4. **Retrospective Autonomous from Sign-Off** (fixed schedule, separate phase)
-5. **Drift-Reporting Directive Deployed at Bootstrap** (all agent charters)
-6. **Phase-Level Estimation Tracking** (plan + retro templates)
-
-**Three Tier-1 Improvements** (zero effort, maximum ROI): Move spec-authority gate pre-execution, run spikes pre-planning, decouple retro from sign-off. Estimated 80%+ drift-detection latency reduction.
-
-**Status**: Proposed & ready for team consensus (Iteration 1 adoption required)
-
-### Deferred to Iteration 1
-
-- Governance-validator skill (FR-008) — enforces state machine at phase gates
-- `.specrew/methodology.yml` — runtime config encoding phases and rules
+**Removed Blockers**: Stale "pending sign-off" language cleared from closure artifacts (2026-04-18T18:30:00Z). Validator now passes cleanly. No governance authority gaps remain.
 
 ---
 
-## Immediate Actions (Before Iteration 1 Planning)
+## Iteration 001 Planning Prerequisites
 
-### Authority Implementation ✅ COMPLETE
-1. ✅ spec.md normative sections written (lifecycle contract + dogfooding)
-2. ✅ contracts/iteration-artifacts.md phase rules explicit (gates, artifacts, state machine)
-3. ✅ .squad/protocol.md single coordinator created (6 roles, decisions, coordination)
-4. ✅ Governance decisions merged to decisions.md (4 decisions finalized)
+### Ready to Proceed ✅
+1. ✅ Foundation work complete (Iteration 000)
+2. ✅ Platform validation confirmed (Spec Kit 0.7.3, Squad 0.9.1)
+3. ✅ Governance contracts binding and enforced
+4. ✅ Alon final sign-off recorded
+5. ✅ Execution-ready plan present (specs/001-specrew-product/iterations/001/plan.md)
 
-### Governance Enforcement ✅ COMPLETE
-1. ✅ validate-governance.ps1 script deployed
-2. ✅ CI gates wired (squad-ci.yml)
-3. ✅ Squad-native surfaces deployed (ceremonies, directives, templates)
-4. ✅ Orchestration logs recorded (3 agents: La Forge, Worf, Coordinator)
+### Before Iteration 001 Planning Ceremony
+⏳ **Team consensus on operating policy** (6 core rules + 3 tier-1 improvements) — Troi to facilitate  
+⏳ **Pre-ceremony architecture-risk spikes identification** (Picard + La Forge) — prevent unblocking delays  
+✅ **Planning ceremony charter prepared** with spec-authority gate embedded  
 
-### Closure Artifacts ✅ COMPLETE
-1. ✅ **state.md** — Terminal state verified (La Forge)
-2. ✅ **drift-log.md** — Created (0 events, schema compliant)
-3. ✅ **plan.md metadata** — Status: `complete`, Capacity: `20.5/20.5`, Completed: `2026-04-18`
-4. ⏳ **retro.md** — Pending Troi autonomous ceremony (next business day fixed schedule)
-
-### Team Consensus Required (Before Iteration 1 Execution)
-1. ⏳ **Picard**: Confirm spec-authority gate logic in planning ceremony charter (Rule 1)
-2. ⏳ **La Forge**: Identify architecture-risk spikes for Iteration 1 (Rule 2)
-3. ⏳ **Data**: Confirm phase-level estimation tracking in plan/retro templates (Rule 6)
-4. ⏳ **Alon**: Confirm retro autonomous schedule (Rule 4, decoupled from sign-off)
-5. ⏳ **Team**: Consensus vote on six core operating rules + three tier-1 improvements
-
-### Final Sign-Off
-⏳ **Alon**: Final governance authority sign-off + Iteration 1 platform readiness confirmation
+**Then**: Iteration 1 planning ceremony can begin under binding four-phase state machine with automated validator enforcement.
 
 ---
 
-## Next Gate: Iteration 1 Planning Prerequisites
+## Operating Policy Status
 
-✅ Governance hardening authority finalized (normative contracts, dogfooding binding, protocol live)  
-✅ Governance enforcement deployed (validator script, CI gates, Squad-native surfaces)  
-✅ Closure artifacts created (state, drift, plan metadata, review)  
-⏳ Iteration 0 retrospective complete (Troi autonomous ceremony, fixed schedule)  
-⏳ Team consensus on operating policy (6 rules + 3 tier-1 improvements)  
-⏳ Alon final sign-off on governance enforcement + Iteration 1 platform readiness
+**Proposed** (Troi, 2026-04-18):
+1. **Spec-Authority Gate Runs BEFORE Task Assignment** (Planning Ceremony)
+2. **Architecture-Risk Spikes Run Pre-Planning** (Planning Prerequisite)
+3. **Traceability Check Runs BEFORE Task Assignment** (Planning Ceremony)
+4. **Review Verdict and Retrospective Start Are Decoupled** (Autonomous retro start)
+5. **Drift-Reporting Directive Deployed at Bootstrap** (All agent charters)
+6. **Estimation Tracking Includes Phase-Level Variance** (Plan + Retro templates)
 
-**Then**: Iteration 1 planning can begin (pre-planning spikes identified, planning ceremony with spec-authority gate embedded, team execution under binding phase state machine with automated validator enforcement)
+**Benefit**: Zero new effort; 80%+ drift-detection latency reduction via resequencing only.
+
+**Status**: **AWAITING TEAM CONSENSUS** before adoption in Iteration 1
+
+---
+
+## Next Milestone
+
+✅ Iteration 000 → **COMPLETE**  
+⏳ Team Consensus on Operating Policy → **IN PROGRESS** (Troi facilitation)  
+⏳ Iteration 001 Planning Ceremony → **READY TO SCHEDULE** (pending policy consensus + Alon plan approval)
+

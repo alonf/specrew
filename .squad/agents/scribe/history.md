@@ -20,3 +20,4 @@ I maintain the squad's shared memory and merge team-relevant decisions into the 
 - The spec is authoritative and tracked changes are explicit.
 - Drift detection findings belong in decisions, logs, and affected histories.
 - Alon is the human Chief Architect and final reviewer.
+- Post-retro closure needs two separate memory signals: artifact completion can be true while iteration status must stay `retro` until Alon sign-off lands.

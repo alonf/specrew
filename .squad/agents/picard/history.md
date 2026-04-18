@@ -24,6 +24,46 @@ I am the spec alignment gate for Specrew. My job is to keep every plan, task, de
 - Dogfooding is binding: Specrew must follow its own iteration lifecycle for its own development.
 - Single coordinator protocol (`.squad/protocol.md`) centralizes all role responsibilities and decision routing.
 - Phase gates prevent drift: spec-authority gate (pre-execute), traceability gate (pre-execute), drift-check (per-task), review gate (end-execute).
+- Completion semantics must stay single-purpose: `retro.md` closes the retrospective artifact, but iteration status remains `retro` until Alon records final sign-off and only then becomes `complete`.
+
+### 2026-04-18T18-30-00Z: Closure Artifact Signoff Drift Remediation
+
+**Task**: La Forge readiness pass found blocker — review.md and state.md contained stale "pending sign-off" language even though Iteration 000 status was already `complete` in plan.md with Alon's final sign-off recorded.
+
+**Root Cause**: Artifacts were finalized before Alon's sign-off was formally recorded in all closure documents. Language like "pending Alon sign-off" contradicted the actual iteration state when validator checked consistency.
+
+**Fix Applied** (7 edits across 3 artifacts):
+1. **review.md line 16**: Changed "Final iteration completion pending Alon sign-off" → "Alon final sign-off recorded (2026-04-18)"
+2. **review.md line 233**: Updated closure evidence table to reflect actual plan.md status = `complete` (not `retro`)
+3. **review.md line 237**: Changed "final completion still awaits Alon sign-off" → "Alon final sign-off recorded (2026-04-18)"
+4. **review.md line 256**: Changed "Final iteration completion remains pending Alon sign-off" → "Alon final sign-off recorded (2026-04-18)"
+5. **state.md line 18**: Changed "Iteration closure remains pending Alon sign-off" → "Iteration closure complete with Alon final sign-off recorded (2026-04-18)"
+6. **retro.md line 149**: Removed blocking sense; restated as fact: "Retrospective completed same-day; Alon's final sign-off was recorded (2026-04-18)"
+7. **retro.md line 330**: Changed section header from "Remaining External Dependency" (future tense) to "Closure Gate" with ✅ verdict
+
+**Validator Result**: ✅ **PASS** — `validate-governance.ps1` confirms no stale post-signoff language remains; all closure evidence aligns with plan.md state=`complete`.
+
+**Pattern Insight**: Closure artifacts containing *evidence tables* (validation gates claiming to verify metadata) become stale if written before final sign-off is recorded everywhere. Must regenerate closure evidence at sign-off time, not copy from draft versions. Recommend template guidance for future iterations: "Closure evidence MUST be regenerated from current artifacts when final sign-off is recorded, not carried forward from drafts."
+
+**Traceability**: Fix ensures iteration-artifacts.md § Complete phase gate is satisfied: "Alon MUST record final sign-off" ✅ Done and reflected across all closure documents.
+
+### 2026-04-18T18-50-28Z: Iteration 000 Closeout Session Update
+
+**Session**: Scribe Handoff Log — Iteration 000 Complete, Iteration 001 Planning-Ready  
+**Update**: Final sign-off recorded, governance hardening authority BINDING, Iteration 1 prerequisites clear
+
+**Key Facts**:
+- ✅ Alon final sign-off officially recorded (2026-04-18T18:15:45Z) — plan.md Status transitioned from `retro` → `complete`
+- ✅ Post-signoff drift cleared (2026-04-18T18:30:00Z) — all closure language updated to past-tense confirmation
+- ✅ Validator passes cleanly — no blocking issues remain
+- ✅ Governance hardening authority now BINDING and enforced at CI gates
+- ✅ Four authority artifacts live: spec.md, contracts/iteration-artifacts.md, .squad/protocol.md, validate-governance.ps1
+- ✅ Iteration 001 planning-ready state confirmed — execution-ready plan present (Data created specs/001-specrew-product/iterations/001/plan.md)
+- ⏳ Next gate: Alon approval of Iteration 001 plan + team consensus on operating policy (6 rules + 3 tier-1 improvements) before planning ceremony
+
+**Role Note**: Spec Steward remains the authority for phase-contract enforcement and traceability validation. All Iteration 1+ work will follow binding four-phase state machine with automatic phase gate validation.
+
+---
 
 ### 2026-04-18: Iteration 0 Completion & Governance Hardening Analysis
 
@@ -127,3 +167,147 @@ I am the spec alignment gate for Specrew. My job is to keep every plan, task, de
 - Architecture-risk spikes must be identified and run pre-planning (Rule 2); Picard + La Forge partnership required before each planning ceremony
 
 **Cross-Agent Update**: Team consensus on 6 core operating rules must be confirmed by Troi + Alon before Iteration 1 planning. Picard participates in confirm-or-escalate pattern (spec authority is non-delegable).
+
+---
+
+## Learnings
+
+### 2026-04-18: Review Evidence Correctness & Closure Semantics
+
+**Task**: Fix stale closure evidence in review.md (Iteration 0 review incorrectly claimed plan.md status=complete and Completed=2026-04-18 when actual state was status=retro, Completed=blank).
+
+**Discovery**: Review artifact had snapshot-stale closure evidence. Contract gate (iteration-artifacts.md § Artifact Validation Gates) specifies that "before completing" requires Alon sign-off to transition from `retro` to `complete`. Review.md contained False evidence contradicting the actual plan.md semantics.
+
+**Fix Applied**:
+- Updated line 230: Changed false claim "Line 4 currently reads Status: complete" to accurate "Line 5 currently reads Status: retro"
+- Updated line 231: Changed false claim "Completed: 2026-04-18" to accurate "Completed: (blank, recorded after Alon sign-off)"
+
+**Key Insight**: Review artifacts that contain *evidence tables* (verification gates that claim to validate metadata) can become stale if they were written before execution completed. Must regenerate closure readiness verification after all phase artifacts are finalized, not copy from earlier review drafts. 
+
+**Pattern**: Closure evidence (artifact validation table) must be regenerated at **Final Gate Validation** phase, not carried forward. Recommend template guidance for review.md authors: "Closure readiness table MUST be regenerated from current artifacts at review-complete time, not copied from draft versions."
+
+**Implication for Iteration 1**: Review ceremony must include step to validate that all closure evidence references match actual artifact state. Picard to flag during review ceremony if evidence contradicts actual metadata.
+
+### 2026-04-18T18-00-00Z: Orchestration Complete — Closure Evidence Fix
+
+**Session**: Reviewer-Drift Cleanup Batch  
+**Status**: ✅ COMPLETE  
+
+Stale closure evidence discovered and corrected in review.md. False claims about plan.md metadata prevented through evidence-table regeneration at final gate time. Pattern documented for Iteration 1 review ceremony template improvement.
+
+**Decision**: picard-closure-evidence-fix (merged to .squad/decisions.md)  
+**Impact**: Critical — prevents false sign-off signals  
+**Next**: Closure-evidence regeneration checkpoint added to Iteration 1 review ceremony template
+
+### 2026-04-18T18-15-45Z: Alon Final Sign-Off Recorded — Iteration 0 Closure Complete
+
+**Action**: Record Alon's final governance authority sign-off in all iteration closure artifacts.
+
+**Artifacts Updated**:
+1. ✅ **plan.md**: Status transitioned from `retro` → `complete`; Completed date recorded (2026-04-18)
+2. ✅ **state.md**: Current Phase transitioned to `complete`; Final Sign-Off recorded with explicit attribution (Alon, 2026-04-18)
+3. ✅ **review.md**: Verdict Summary updated to reflect `complete` status; Sign-Off Checklist appended with Alon final sign-off; removed pending language
+4. ✅ **retro.md**: Sign-Off section updated to record Alon's final governance authority approval
+5. ✅ **.squad/identity/now.md**: Focus area updated to reflect Iteration 0 complete; active issues shifted to Iteration 1 prerequisites
+
+**Closure Semantics Verified**:
+- Spec contract (iteration-artifacts.md) gate logic: "Before completing: `retro.md` MUST exist with all mandatory fields, and Alon MUST record final sign-off"
+- ✅ retro.md exists and is complete
+- ✅ Alon final sign-off recorded across all artifacts
+- ✅ Iteration 0 moved to terminal `complete` state
+- ✅ All four phase artifacts (plan, state, review, retro) are consistent and terminal
+
+**Wording Precision**:
+- Used "final governance authority sign-off" (not "pending" or "provisional")
+- Recorded explicit date stamp (2026-04-18) for accountability
+- Noted Chief Architect & Reviewer role for clarity on authority
+
+**Traceability**:
+- Iteration 0 closure ties to spec requirement: "Completion gate = Alon must record final sign-off" (contracts/iteration-artifacts.md § Complete phase)
+- Dogfooding obligation satisfied: Specrew used its own governance lifecycle for Iteration 0 (binding proof for Iteration 1+)
+
+**Key Insight**: Closure semantics require precision about *what* is being signed off: governance authority approval (Alon records this), not just task completion verdicts (Worf records these). Sign-off is a separate, deliberate act that gates the state-machine transition to `complete`. Capturing the distinction in artifacts prevents ambiguity in future iterations.
+
+**Implication for Iteration 1**:
+- Sign-off is now a normative part of iteration closure (not optional)
+- Review and retro are separate phases that close independently; sign-off is a third gate
+- Iteration 1 planning ceremony charter must embed the understanding that *any iteration* cannot move to `complete` without Alon's final recorded sign-off
+
+### 2026-04-18: GitHub Projects V2 Source-of-Truth Governance — Specrew Self-Development
+
+**Task**: Encode Alon's authoritative source-of-truth correction for GitHub Projects V2 board management into spec.md, protocol.md, and decision records.
+
+**Problem Addressed**: Previous design decisions left board synchronization ambiguous — manual management accepted as sufficient, automation left deferred, downstream projects left unclassified.
+
+**Correction Implemented**:
+
+1. **Normative Rule for Specrew**: GitHub Projects V2 board MUST be used for self-development
+   - Local task artifacts (plan.md, iteration state) are authoritative source of truth
+   - GitHub Issues and Project board items are derived operational mirrors
+   - Squad is responsible for board sync and maintenance (automation primary, manual fallback-only)
+   - If automation fails, capability gap MUST be recorded (not silently downgraded)
+
+2. **Downstream Projects**: MAY choose whether to use GitHub Projects V2 (no mandate)
+   - Choice of authoritative source is up to downstream project
+   - If board is used, follow Squad automation model as reference
+
+3. **Artifacts Updated**:
+   - **spec.md** Clarifications (Q&A 38): Changed from "optional choice" to "normative requirement"
+   - **spec.md** Clarifications (Q&A 43): Squad automation is primary, manual mgmt fallback-only
+   - **spec.md** Design Decisions: Updated GitHub Projects board paragraphs with explicit rules
+   - **spec.md** Design Decisions: Updated source-of-truth paragraph (local artifacts authoritative, GitHub Issues derived)
+   - **.squad/protocol.md** New Section: "GitHub Projects V2 Board Synchronization & Maintenance" with:
+     - Source-of-truth rule (authoritative vs. derived)
+     - Squad automation responsibilities (phase-by-phase action table)
+     - Acceptance criteria (6 criteria for board sync)
+     - Fallback procedure (automation failure recording)
+   - **.squad/protocol.md** Implementation Notes: Added AC-001 through AC-004 for Specrew acceptance criteria
+   - **.squad/decisions/inbox/picard-board-sot.md**: Decision record documenting all changes
+
+**Implications for Iteration 1**:
+- Before Iteration 1 planning can approve plan: Squad automation for issue creation must be designed/validated (Spike 10 or equivalent)
+- Board column mapping must be confirmed (planning ↔ Backlog, executing ↔ In Progress, reviewing ↔ In Review, retro ↔ Retrospective, complete ↔ Closed)
+- Fallback procedure must be accessible and documented
+- Iteration 1 cannot move to `complete` without all AC-001–AC-004 verified
+- If automation fails, capability gap recorded in decisions inbox with resolution path
+
+**Pattern Insight**: Ambiguous downstream rules leak into self-development discipline. By encoding the corrected source-of-truth as normative (not optional) for Specrew self-development, while explicitly MAY-ing it for downstream, we model clarity. The board is a derived operational mirror, not a primary source — this distinction protects against task drift hidden in board-only updates.
+
+**Traceability**: Decision recorded in `.squad/decisions/inbox/picard-board-sot.md` for Alon review before Iteration 1 planning.
+
+### 2026-04-18: Plan.md Board-Usage Drift Remediation (Worf Review Fix)
+
+**Task**: Worf issued NEEDS-WORK on `specs\001-specrew-product\plan.md` because Section 9 and Iteration 0 deliverables table still stated board/issue usage as "optional" for Specrew, contradicting the corrected spec and protocol.
+
+**Root Cause**: Plan.md was authored before the normative source-of-truth correction (board MUST be used, not MAY be used, for Specrew self-development). The phrase "Issue tracking (optional)" and "Project board (optional)" remained in the plan even after spec.md and protocol.md were corrected.
+
+**Drift Evidence** (from Worf review):
+- Section 9 line: "Issue tracking (optional): GitHub Issues are *optionally* created..."
+- Section 9 line: "Project board (optional): GitHub Projects V2 may be used for visibility if the team chooses"
+- Iteration 0 deliverables table: "GitHub Project board (optional)"
+
+All three contradicted the corrected rule: **Specrew self-development MUST use GitHub Projects V2 as a derived operational mirror maintained by Squad.**
+
+**Fix Applied** (2 edits to plan.md):
+
+1. **Section 9 (GitHub Workflow for Specrew Development)** — Lines 360–376:
+   - Removed "(optional)" labels and discretionary framing
+   - Restated board usage as REQUIRED for Specrew: "GitHub Issues are created from plan tasks and synchronized to GitHub Projects V2 board"
+   - Clarified Squad responsibility: "Squad is responsible for creating, populating, and maintaining the board as a derived operational mirror from local artifacts"
+   - Clarified distinction: "Manual board management is fallback-only if automation fails; capability gaps or blockers must be recorded, not silently downgraded to manual management"
+   - Added explicit downstream carve-out: "Downstream projects MAY opt in or out of GitHub Projects board usage. Downstream projects retain choice of authority model..."
+
+2. **Iteration 0 Deliverables Table** — Line 521:
+   - Changed "GitHub Project board (optional)" to "GitHub Project board"
+   - Changed description from "If used for visibility..." to normative: "GitHub Projects V2 board created and synced from iteration artifacts via automation"
+
+**Validator Result**: ✅ **PASS** — Plan.md no longer contradicts spec.md or protocol.md. Board usage is now clearly marked as REQUIRED for Specrew self-development, with explicit MAY carve-out for downstream projects.
+
+**Key Insight**: Governance drift at the planning artifact level surfaces when upstream (spec) corrects a rule but downstream (plan, tasks) is not automatically refreshed. Plan.md was correct in intent (local artifacts are authoritative) but incorrect in scope (saying board was optional when it was actually required). Remediation required explicit re-alignment with the source spec, not just cascade-down automation. Future reviews should verify that all three layers (spec, plan, tasks) use the same language for governance rules (MUST vs. MAY).
+
+**Traceability**: Fix aligns `plan.md` with:
+- `spec.md` § Clarifications (GitHub Projects V2): "Specrew's own development MUST use GitHub Projects V2"
+- `.squad/protocol.md` § Iteration Coordination: "board is a derived operational mirror, manual board management is never normal"
+- `docs/github-project.md` § Overview: "GitHub Issues and Project items are synchronized from local artifacts for visibility, but they are not the authoritative source"
+
+**Decision**: No team-relevant decision required. This is a straightforward drift remediation (one agent fixing drift from another agent's prior work). Documented in this history entry for audit trail.
