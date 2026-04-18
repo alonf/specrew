@@ -2,6 +2,74 @@
 
 ## Active Decisions
 
+### 2026-04-18T12:49:27Z: User Directive - Governance Hardening & Iteration 0 Closure
+
+**By**: Alon Fliess (via Copilot CLI)  
+**Date**: 2026-04-18T12:49:27Z  
+**What**: Specrew must harden its own governance so future work is artifact- and gate-driven:
+- Make iteration contracts normative (enforce phase state machine)
+- Require dogfooding of full lifecycle unless explicitly excepted
+- Add a governance validator to enforce contracts
+- Deploy operating prompts into runtime surfaces (agent charters)
+- Introduce a single coordinator protocol document
+- Close Iteration 0 correctly before any Iteration 1 planning begins
+
+**Why**: User request. Specrew is being built with the same spec-governed method it is meant to enable downstream. Governance must be enforced, not implicit.
+
+**Evidence**: User directive captured in session (copilot-directive-2026-04-18T12-49-27Z.md), manifested in Picard/Worf/Troi spawn outcomes.
+
+**Impact**: Immediate adoption priority before Iteration 1. Affects planning ceremony (gates), execution (drift directives), review (artifact validation), and retrospective (autonomous start).
+
+**Status**: Active. Three agent teams (Picard, Worf, Troi) delivered frameworks for governance hardening and Iteration 0 closure audit.
+
+---
+
+### 2026-04-18: Operating Policy - Specrew v1 Self-Governance
+
+**By**: Troi (Retro Facilitator)  
+**Date**: 2026-04-18  
+**What**: Six core operating rules for iteration governance:
+1. **Spec-Authority Gate Runs BEFORE Task Assignment** (Planning Ceremony)
+2. **Architecture-Risk Spikes Run Pre-Planning** (Planning Prerequisite)
+3. **Traceability Check Runs BEFORE Task Assignment** (Planning Ceremony)
+4. **Review Verdict and Retrospective Start Are Decoupled** (Autonomous retro start)
+5. **Drift-Reporting Directive Deployed at Bootstrap** (All agent charters)
+6. **Estimation Tracking Includes Phase-Level Variance** (Plan + Retro templates)
+
+**Why**: Iteration 0 shipped clean (100%, zero drift) but had **implicit gates that cascaded late fixes**. Plan revised 4 times *after* execution started. Moving gates earlier (pre-execution) reduces drift 80%+ via resequencing only (zero new effort).
+
+**Evidence**: troi-minimum-drift-reduction.md (ROI analysis), troi-operating-hardening.md (implementation checklist with immediate adoption steps).
+
+**Impact**: 
+- Iteration 0: 4 plan revisions → Iteration 1+: ≤1 (gate prevents pre-execution)
+- Mid-execution spikes → Pre-planning discovery (prevents unblocking delays)
+- Retro blocked 1 day → Retro autonomous same-day
+
+**Status**: Proposed. Awaiting Picard + Alon confirmation before enforcement in Iteration 1.
+
+---
+
+### 2026-04-18: Iteration 0 Closure Audit - Missing Artifacts & Stale Metadata
+
+**By**: Worf (Reviewer)  
+**Date**: 2026-04-18  
+**What**: Iteration 0 is **artifact-incomplete** against explicit lifecycle contract:
+- **Execution Phase**: ✅ COMPLETE (all 23 tasks, 20.5/20.5 pts, review ACCEPTED)
+- **Retrospective Phase**: ❌ BLOCKED (missing state.md, drift-log.md, retro.md)
+- **Plan Metadata**: ⚠️ STALE (Status: in_progress [should: complete], Capacity: 0/20 [should: 20.5/20.5])
+
+**Why**: Iteration artifacts contract (contracts/iteration-artifacts.md) requires all four phases (planning → execution → review/demo → retrospective) in sequence. Retrospective cannot start without required artifacts.
+
+**Evidence**: worf-iteration-closure-audit.md (comprehensive audit with artifact completeness matrix, phase sequencing, closure artifact status, sign-off sequencing issues).
+
+**Blocking**: Cannot declare Iteration 0 closed or start Iteration 1 planning until retrospective phase completes.
+
+**Recommendation**: Option 1 (strict closure) — block Iteration 1 planning until retro completes (~1 hour). Rationale: Foundation iteration must close cleanly; skipping retro compounds estimation errors into Iteration 1.
+
+**Status**: Active. Awaiting artifact creation and Alon decision on sequencing.
+
+---
+
 ### 2026-04-18: Squad Native Surfaces for Specrew v1
 
 **By**: Alon Fliess (Chief Architect)  
