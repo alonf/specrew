@@ -90,6 +90,60 @@ I evaluate each task output against the source requirement and produce explicit 
 
 ---
 
+### 2026-04-19: Reviewer Drift Assessment — Protocol Alignment Complete
+
+**Task**: Re-review live repo state against all reviewer comments to assess which feedback is outdated vs still-live.
+
+**Artifacts Reviewed**:
+- `.squad/protocol.md` (board-sync section)
+- `specs/001-specrew-product/spec.md`, `plan.md`
+- `docs/github-project.md`
+- `.github/scripts/sync-specrew-board.ps1` and `.github/workflows/specrew-project-sync.yml`
+- Live GitHub repo (issues, workflows, remote branches)
+
+**Findings**:
+
+1. **Protocol Drift (Custom Columns vs Status Field)** — ✅ **RESOLVED**
+   - All five governing artifacts now agree on default Status field usage (`Todo` / `In Progress` / `Done`)
+   - No residual custom-column language in any artifact
+   - Picard's protocol sync corrected the final drift point
+   - **Verdict**: Outdated reviewer comment. Protocol drift eliminated.
+
+2. **Unattended Sync Blocker (Missing Secret)** — ✅ **RESOLVED**
+   - `SPECREW_PROJECT_TOKEN` secret now configured with repo + project scopes
+   - Manual sync executed successfully; 23 synced issues visible on remote repo
+   - **Verdict**: Outdated reviewer comment. Secret blocker cleared.
+
+3. **Workflow Deployment** — ⚠️ **LIVE (Minor)**
+   - `.github/scripts/sync-specrew-board.ps1` and `.github/workflows/specrew-project-sync.yml` exist locally but not yet pushed to remote
+   - GitHub Actions shows 0 registered workflows
+   - **Fix**: Requires `git push` to deploy; not an artifact change
+   - **Severity**: Minor, non-blocking (not a protocol drift issue)
+
+4. **Template Variable Expansion** — ⚠️ **LIVE (Minor)**
+   - PowerShell backtick-escaping in sync script prevents variable expansion
+   - Issue bodies show literal `$PlanPath`, `$FeatureSlug` instead of resolved values
+   - **Fix**: Use subexpression syntax `$($PlanPath)` in backtick-formatted text
+   - **Severity**: Cosmetic (does not affect board Status sync or governance compliance)
+
+**Re-Review Verdict**: 
+
+✅ **PASS** — Live repo state is coherent against protocol and governance documents. 
+
+**Summary**:
+- Original protocol drift (custom columns) is fully resolved
+- Secret blocker is cleared; manual sync confirmed working
+- Two remaining items are deployment/cosmetic issues, not governance violations
+- No implementation-governance mismatch remains
+
+**Follow-Up Items** (for implementer, non-blocking):
+1. Push `001-specrew-product` branch to activate unattended GitHub Actions sync
+2. Fix PowerShell backtick escaping in sync script (`New-TaskBody`, `New-LifecycleBody`)
+
+**Decision Recorded**: `.squad/decisions/inbox/worf-reviewer-drift-rereview.md` (merged to decisions.md by Scribe)
+
+---
+
 ## Learnings
 
 ### 2026-04-18 Artifact Cleanup (Review Stale Wording)
@@ -136,3 +190,5 @@ I evaluate each task output against the source requirement and produce explicit 
 - **2026-04-18 Review Closure Rule**: Review-pass is not iteration completion. Worf can clear review gates and confirm closure readiness, but Iteration 0 remains incomplete until Alon signs off. Review artifacts must separate "work accepted in review" from "iteration complete."
 - **2026-04-18 Board Governance Review**: Governance review must reject any Specrew self-development artifact that still describes GitHub Issues or Projects V2 as optional. A real automation/configuration blocker (such as missing project token scope) is acceptable only when recorded explicitly as a capability gap; it does not relax the normal rule that Squad owns board creation, population, and maintenance.
 - **2026-04-18 Board Re-Review**: Once `plan.md`, `spec.md`, `protocol.md`, and board docs all agree that Specrew self-development MUST use GitHub Projects V2 and local artifacts remain authoritative, the correct verdict is PASS even if unattended sync is still blocked by external secret configuration. That remaining gap must be named as external configuration (`SPECREW_PROJECT_TOKEN`), not implementation drift.
+- **2026-04-18 Drift Re-Review (Final)**: Protocol drift from the corrected GitHub Projects rule set is fully eliminated — all five governance artifacts agree on default Status field, no custom columns, local-first authority. The `SPECREW_PROJECT_TOKEN` blocker is cleared (23 synced issues prove project-scope access works). Two minor live findings: (1) workflow/script commits not yet pushed to origin — GitHub Actions can't trigger unattended sync until pushed; (2) PowerShell backtick escaping bug in `New-TaskBody`/`New-LifecycleBody` causes issue bodies to show literal `$PlanPath` instead of resolved values. Neither is protocol drift. Verdict: PASS.
+- **Pattern: Here-string variable escaping in PowerShell.** In expandable here-strings (`@"..."@`), markdown backtick formatting (`` ` ``) before `$variable` prevents variable expansion because PowerShell treats backtick as escape character. Fix: use `$($variable)` subexpression syntax to force expansion regardless of surrounding backticks.

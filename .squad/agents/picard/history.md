@@ -218,6 +218,7 @@ Stale closure evidence discovered and corrected in review.md. False claims about
 **Closure Semantics Verified**:
 - Spec contract (iteration-artifacts.md) gate logic: "Before completing: `retro.md` MUST exist with all mandatory fields, and Alon MUST record final sign-off"
 - ✅ retro.md exists and is complete
+
 - ✅ Alon final sign-off recorded across all artifacts
 - ✅ Iteration 0 moved to terminal `complete` state
 - ✅ All four phase artifacts (plan, state, review, retro) are consistent and terminal
@@ -241,6 +242,59 @@ Stale closure evidence discovered and corrected in review.md. False claims about
 ### 2026-04-18: GitHub Projects V2 Source-of-Truth Governance — Specrew Self-Development
 
 **Task**: Encode Alon's authoritative source-of-truth correction for GitHub Projects V2 board management into spec.md, protocol.md, and decision records.
+
+---
+
+### 2026-04-19: Board Protocol Sync — Protocol Drift Resolution
+
+**Task**: Correct `.squad/protocol.md` GitHub Projects V2 board-sync section to align with authoritative default Status-field rule set.
+
+**Findings**:
+- `.squad/protocol.md` still described custom board columns (`Backlog`, `In Review`, `Retrospective`, `Closed`)
+- But all authoritative artifacts (spec.md, plan.md, docs/github-project.md, sync script) already standardized on default **Status** field
+- Reviewer correctly identified this drift
+
+**Corrections Applied**:
+1. Updated protocol.md board-sync section (lines 450–565) to use default Status field nomenclature only
+2. Mapped iteration phases to Status values:
+   - `planning` → `Todo`
+   - `executing` / `reviewing` / `retro` → `In Progress`
+   - `complete` / `abandoned` → `Done`
+3. Removed all custom-column language
+4. Added changelog entry documenting the correction
+
+**Decision Recorded**: `.squad/decisions/inbox/picard-board-protocol-sync.md` (merged to decisions.md by Scribe)
+
+**Outcome**: Protocol drift between governance documents and implementation is now eliminated. All five governing artifacts (spec.md, plan.md, protocol.md, docs/github-project.md, sync script) are coherent on GitHub Projects V2 semantics.
+
+---
+
+### 2026-04-19: Decision Inbox Merge & Cross-Agent History Update
+
+**Task**: Scribe orchestration — merge inbox decisions into decisions.md and propagate team updates to affected agent histories.
+
+**Work Performed** (by Scribe):
+1. ✅ Created orchestration-log entries for Picard (board-protocol-sync) and Worf (reviewer-drift-pass)
+2. ✅ Created session-log entry (reviewer-drift-assessment)
+3. ✅ Merged 12 inbox decision files into decisions.md
+4. ✅ Deleted inbox files post-merge
+5. ✅ Appended team updates to Picard and Worf histories
+
+**Inbox Items Merged**:
+- picard-board-protocol-sync.md (protocol drift resolved)
+- picard-board-sot.md (source-of-truth governance)
+- picard-clear-signoff-drift.md (post-signoff language drift)
+- picard-iter0-final-signoff.md (Alon final sign-off recorded)
+- picard-review-evidence.md (review evidence correctness)
+- worf-board-review.md (initial review NEEDS-WORK verdict)
+- worf-board-rereview.md (post-correction PASS verdict)
+- worf-reviewer-drift-rereview.md (drift assessment complete)
+- data-board-docs.md (documentation corrections)
+- laforge-board-automation.md (automation model)
+- laforge-next-readiness.md (pre-Iter 1 readiness)
+- copilot-directive-2026-04-18T15-51-40Z.md (user directive recorded)
+
+**Status**: All team context unified and recorded for Iteration 1 planning.
 
 **Problem Addressed**: Previous design decisions left board synchronization ambiguous — manual management accepted as sufficient, automation left deferred, downstream projects left unclassified.
 
@@ -316,3 +370,27 @@ All three contradicted the corrected rule: **Specrew self-development MUST use G
 - `docs/github-project.md` § Overview: "GitHub Issues and Project items are synchronized from local artifacts for visibility, but they are not the authoritative source"
 
 **Decision**: No team-relevant decision required. This is a straightforward drift remediation (one agent fixing drift from another agent's prior work). Documented in this history entry for audit trail.
+
+### 2026-04-18T19-05-00Z: Board Protocol Status-Field Realignment
+
+**Task**: Remove live drift in `.squad/protocol.md` where the board-sync section still described custom columns instead of the authoritative GitHub Projects V2 default **Status** field.
+
+**Authority Set Checked**:
+- `specs/001-specrew-product/spec.md`
+- `specs/001-specrew-product/plan.md`
+- `docs/github-project.md`
+- `.github/scripts/sync-specrew-board.ps1`
+
+**Fix Applied**:
+- Replaced stale custom-column references (`Backlog`, `In Review`, `Retrospective`, `Closed`) with default **Status** language
+- Aligned protocol mapping to automation: `planning` → `Todo`; `executing` / `reviewing` / `retro` → `In Progress`; `complete` / `abandoned` → `Done`
+- Clarified that board items use **Status** while mirrored issues close only when authoritative completion warrants it
+
+**Decision Record**: `.squad/decisions/inbox/picard-board-protocol-sync.md`
+
+**Reusable Pattern**: When board behavior is questioned, compare protocol wording directly against the authority quartet (spec, plan, operational doc, sync script) and normalize everything to GitHub Projects' default **Status** field before considering broader edits.
+
+**Key Paths**:
+- `.squad/protocol.md`
+- `docs/github-project.md`
+- `.github/scripts/sync-specrew-board.ps1`

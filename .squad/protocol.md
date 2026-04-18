@@ -460,8 +460,8 @@ This section formalizes board sync and maintenance as part of Specrew's dogfoodi
 
 2. **Derived Operational Mirrors**:
    - GitHub Issues (one per task, created from authoritative plan)
-   - GitHub Projects V2 board items (same issues, organized by column per phase)
-   - Board column state (reflecting iteration phase transitions: planning → executing → reviewing → retro → complete)
+   - GitHub Projects V2 board items (same issues, shown through Squad's default board layout)
+   - Board **Status** field state (default values `Todo`, `In Progress`, `Done`) reflecting authoritative iteration and task progress
 
 3. **Governance Rule**:
    - GitHub Issues and board state follow task status from authoritative artifacts
@@ -475,12 +475,11 @@ For Specrew self-development, Squad automation MUST handle:
 
 | Phase | Automation | Issue/Board Action | Responsibility |
 |-------|-----------|-------------------|-----------------|
-| Planning | Plan generation | Create GitHub Issues from plan.md tasks; add to board "Backlog" column | Squad automation at planning-ceremony start |
-| Executing | Task execution | Move issues to "In Progress" column as tasks start | La Forge (Implementer) after task assignment |
-| Executing | Task completion | Move issues to "Done" column when task verdicts recorded | Worf (Reviewer) during review phase |
-| Reviewing | Review phase | Move iteration marker to "In Review" column | Squad automation at review-ceremony start |
-| Retro | Retrospective phase | Move iteration marker to "Retrospective" column | Squad automation at retro-ceremony start |
-| Complete | Iteration closure | Archive completed issues OR move to "Closed" column; mark iteration status `complete` | Squad automation after Alon sign-off |
+| Planning | Plan generation | Create GitHub Issues from plan.md tasks; add them to the board with **Status = Todo** | Squad automation at planning-ceremony start |
+| Executing | Task execution | Keep active task issues and executing lifecycle items at **Status = In Progress** as local work starts | Squad automation from authoritative task/state artifacts |
+| Reviewing | Review phase | Keep lifecycle and review-active task items at **Status = In Progress** while verdicts are being recorded | Squad automation at review-ceremony start |
+| Retro | Retrospective phase | Keep lifecycle item at **Status = In Progress** while retrospective artifacts are completed | Squad automation at retro-ceremony start |
+| Complete | Iteration closure | Set lifecycle items to **Status = Done** and close mirrored issues when local artifacts reach terminal completion | Squad automation after Alon sign-off |
 
 ### Acceptance Criteria for Board Sync
 
@@ -488,8 +487,8 @@ Specrew considers board sync operational only when ALL criteria are met:
 
 1. ✅ **Issue Creation**: New tasks in plan.md automatically create GitHub Issues within 2 minutes
 2. ✅ **Board Placement**: Issues are added to the board under Squad's default layout (no custom columns) within 2 minutes
-3. ✅ **Phase Tracking**: Column state transitions reflect iteration phase changes (planning → executing → reviewing → retro → complete)
-4. ✅ **Status Maintenance**: Issue status (open/closed/archived) matches task verdict and iteration phase
+3. ✅ **Phase Tracking**: Board **Status** transitions reflect iteration phase changes using the default mapping (`planning` → `Todo`; `executing` / `reviewing` / `retro` → `In Progress`; `complete` / `abandoned` → `Done`)
+4. ✅ **Status Maintenance**: Board **Status** and mirrored issue open/closed state match authoritative task verdicts and iteration phase
 5. ✅ **Closure Reflection**: When Alon records final sign-off and iteration moves to `complete`, board reflects completed state
 6. ✅ **Failure Recording**: If any automation step fails, a capability gap is recorded in `.squad/decisions/inbox/` within the same iteration
 
@@ -532,13 +531,13 @@ Specrew iteration execution is considered complete only when ALL of these criter
 - ✅ Issues are created from plan.md, not manually; automation failure is recorded as a gap
 
 **AC-002: Board Population & Status Maintenance**
-- ✅ All created issues appear on the GitHub Projects V2 board in the correct column (reflecting current iteration phase)
-- ✅ Board state transitions as iteration moves through phases (planning → executing → reviewing → retro → complete)
-- ✅ Column state matches task verdict and phase status throughout execution
+- ✅ All created issues appear on the GitHub Projects V2 board with the correct default **Status** value for the current authoritative phase
+- ✅ Board **Status** transitions as iteration moves through phases (planning → executing → reviewing → retro → complete)
+- ✅ Board **Status** matches task verdict and phase status throughout execution
 - ✅ No manual "board cleanup" operations occur; if cleanup is needed, automation failure is recorded
 
 **AC-003: Closure Reflection on Board**
-- ✅ When Alon records final sign-off and iteration moves to `complete`, the board reflects this state (issues closed/archived or marked as complete)
+- ✅ When Alon records final sign-off and iteration moves to `complete`, the board reflects this state (`Status = Done`; mirrored issues closed when appropriate)
 - ✅ Closure state is durable and does not require manual intervention
 - ✅ Next iteration's new issues appear on a fresh board without stale items from prior iterations
 
@@ -562,4 +561,5 @@ Specrew iteration execution is considered complete only when ALL of these criter
 |------|--------|--------|
 | 2026-04-18 | Picard | v1.0 — Initial governance protocol |
 | 2026-04-18 | Picard | Added GitHub Projects V2 board sync section (source-of-truth correction) + acceptance criteria for issue/board/closure automation |
+| 2026-04-18 | Picard | Replaced stale custom-column language with default Projects V2 Status-field mapping (`Todo` / `In Progress` / `Done`) to match spec, plan, docs, and sync automation |
 

@@ -730,6 +730,30 @@ This decision records factual completion of contractual gates. All stakeholders 
 
 ---
 
+### 2026-04-18: Worf Board Review — Initial Assessment (NEEDS-WORK)
+
+**Date**: 2026-04-18  
+**Author**: Worf (Reviewer)  
+**Verdict**: NEEDS-WORK  
+**Status**: SUPERSEDED (rework completed)
+
+#### Issue Identified
+
+`specs\001-specrew-product\plan.md` Section 9 treated Specrew board usage as optional, directly conflicting with Alon's authoritative rule that **Specrew self-development must use GitHub Projects V2** with Squad responsible for board sync.
+
+#### Resolution Required
+
+Plan.md needed rework to state plainly:
+- Specrew's own development **must** use GitHub Projects V2
+- Squad is responsible for creating, populating, and maintaining the board as derived operational mirror
+- Downstream projects may opt in or out (no mandate)
+
+#### Outcome
+
+✅ Plan.md Section 9 corrected; decision recorded in subsequent Picard update. Board governance now coherent across all artifacts.
+
+---
+
 ### 2026-04-18T18:30:00Z: Clear Post-Signoff Language Drift from Closure Artifacts
 
 **Date**: 2026-04-18T18:30:00Z  
@@ -1117,3 +1141,296 @@ Board sync: `.github/workflows/specrew-project-sync.yml` mirrors iteration artif
 - Decisions in this file are the shared team memory.
 - Agents propose decisions through `.squad/decisions/inbox/`; Scribe merges them here.
 - Keep history focused on work, and keep decisions focused on direction.
+
+---
+
+### 2026-04-18: La Forge Pre-Iteration 1 Readiness Assessment
+
+**Date**: 2026-04-18T19:00:00Z  
+**Author**: La Forge (Implementer)  
+**Status**: CRITICAL BLOCKER IDENTIFIED (subsequently resolved)  
+**Readiness Verdict**: 🟡 ARTIFACT ALIGNMENT REQUIRED
+
+#### Key Finding
+
+Iteration 0 closure artifacts contained stale embedded evidence contradicting current plan.md status:
+- plan.md: Status = complete
+- eview.md & state.md: Still described completion as "pending Alon sign-off"
+
+#### Blocker Resolution
+
+This blocker was identified and fixed by Picard (see "Clear Post-Signoff Language Drift" decision). Validator now PASSES.
+
+#### Platform Validation
+
+All Iteration 0 platform validation spikes confirmed operational:
+- ✅ Spec Kit >= 0.7.3 installed and operational
+- ✅ Squad >= 0.9.1 installed and operational
+- ✅ Squad-native surfaces ready for deployment
+- ✅ Governance validator script deployed and functional
+- ✅ CI/CD pipeline configured and wired
+- ✅ GitHub Project board created and configured
+
+#### Readiness Decision
+
+**UNBLOCKED**: Iteration 0 closure artifacts alignment resolved. Repository ready for Iteration 1 planning after team consensus on 6 core operating rules.
+
+---
+
+### 2026-04-18: Board Documentation Correction — Local Authority, Optional GitHub (Data)
+
+**Date**: 2026-04-18 (merged into decisions from data-board-docs.md)  
+**Author**: Data (Planner)  
+**Status**: Implemented  
+**What**: Corrected Specrew's documentation to establish clear source-of-truth hierarchy
+
+#### Documentation Corrections Made
+
+1. **docs/github-project.md** — Completely Rewritten
+   - Established explicit 3-level authority hierarchy
+   - Clarified GitHub Projects V2 is optional operational convenience, not authoritative
+   - Documented all procedures as conditional ("if used")
+
+2. **specs/001-specrew-product/plan.md** — Section 9 GitHub Workflow
+   - Explicit statement: Local task artifacts in iterations/ are authoritative source of truth
+   - All GitHub mechanisms marked as "optional"
+   - Added reference to github-project.md for operational procedures
+
+3. **plan.md** — Iteration 0 Compatibility Spike
+   - Removed GitHub Projects V2 API validation (not required if board optional)
+   - Simplified spike to 10 platform validation items
+
+#### Source-of-Truth Hierarchy (Binding)
+
+1. **Authoritative (Required)**: Iteration plan, state, drift log, review, and retro artifacts
+2. **Derived Mirror (Optional)**: GitHub Issues created from plan tasks
+3. **Visibility (Optional)**: GitHub Projects V2 board (if used, must reflect artifact state)
+
+#### Governance Impact
+
+- No spec changes required; aligns with existing clarification
+- No process changes; Specrew already operated using local artifacts as authoritative
+- No compliance violations
+
+---
+
+### 2026-04-18: Board Automation Decision (La Forge)
+
+**Date**: 2026-04-18  
+**Author**: La Forge (Implementer)  
+**Topic**: Specrew self-development board automation
+
+#### Automation Model
+
+Use local iteration artifacts as only authority and mirror them to GitHub with:
+
+1. One lifecycle issue per active iteration
+2. One task issue per task row in plan.md
+3. Default Projects V2 Status values only (Todo, In Progress, Done)
+4. Phase labels for lifecycle detail (phase:planning, phase:executing, phase:reviewing, phase:retro, phase:complete, phase:abandoned)
+
+#### Rationale
+
+- Keeps traceability anchored in repo artifacts
+- Satisfies "minimum automation now" requirement without inventing new project-management surface
+- Preserves Squad's default board layout
+
+#### Status
+
+**BLOCKER**: Unattended GitHub Actions maintenance blocked until SPECREW_PROJECT_TOKEN configured with epo and project scopes for user-owned Project V2 board.
+
+**UPDATE (2026-04-18)**: Secret configured; manual sync executed successfully. Unattended workflow not yet deployed (commits not pushed to remote).
+
+---
+
+### 2026-04-18: GitHub Projects V2 Source-of-Truth Governance (Picard)
+
+**Date**: 2026-04-18  
+**Author**: Picard (Spec Steward)  
+**Requested By**: Alon (Chief Architect)  
+**Status**: Decided & Documented  
+**Impact**: Governance, Board Operating Model, Iteration Execution
+
+#### Alon's Authoritative Clarification
+
+1. **Specrew's own development MUST use GitHub Projects V2**
+2. **Downstream projects MAY choose whether to use GitHub Project board** (no mandate)
+3. **Squad responsible** for creating, populating, and maintaining the board
+4. **Local artifacts remain source of truth**; GitHub Issues/Project items are derived operational mirrors
+5. **Manual board management is fallback-only** if automation fails (not the normal rule)
+6. **Record capability gaps/blockers** instead of silently downgrading requirements
+
+#### Changes Implemented
+
+**spec.md Updates**:
+- Clarifications Q&A 38: "Normative Rule" — Specrew MUST use GitHub Projects V2; Squad automation responsible; local artifacts authoritative; board is derived mirror; manual fallback-only
+- Clarifications Q&A 43: Squad's built-in workflow is primary; board sync/maintenance part of dogfooding; manual management is fallback-only with failures recorded as capability gaps
+
+**.squad/protocol.md Updates**:
+- New section: "GitHub Projects V2 Board Synchronization & Maintenance"
+- Formalized source-of-truth rule and Squad automation responsibilities
+- Specified 6 acceptance criteria for board sync
+- Documented fallback procedure: record capability gap instead of silent downgrade
+- Acceptance Criteria for Specrew Self-Development:
+  - AC-001: Issue creation from authoritative artifacts
+  - AC-002: Board population and status maintenance
+  - AC-003: Closure reflection on board
+  - AC-004: Automation failure recording
+
+#### Implications for Iteration 1+
+
+- All acceptance criteria AC-001 through AC-004 must be verified before iteration completion
+- Board state must reflect final iteration status after Alon sign-off
+- If automation fails at any point, capability gap must be recorded in decisions inbox with resolution path
+
+#### Downstream Impact
+
+Downstream projects:
+- Are NOT required to use GitHub Projects V2
+- May use Jira, Azure DevOps, GitHub Issues/Projects, or local tasks.md as authoritative
+- MUST make their choice explicit in their own operating protocol
+
+---
+
+### 2026-04-18T15:51:40Z: User Directive — Specrew Self-Development Board Requirements
+
+**By**: Alon Fliess (via Copilot)  
+**Date**: 2026-04-18  
+**What**: Authoritative correction on Specrew self-development board requirements
+
+#### Directive
+
+Specrew self-development MUST use GitHub Projects V2; downstream projects MAY choose board usage; Squad must create, populate, and maintain the board for Specrew; local task artifacts remain the source of truth; manual board management is fallback-only; if Squad cannot populate/manage the board, record a capability gap instead of silently downgrading the requirement.
+
+#### Authority
+
+This is an authoritative source-of-truth correction from the user (Alon, Chief Architect & Reviewer).
+
+#### Governance Binding
+
+This directive binds all Specrew iterations (Iteration 1+) to the recorded rules on GitHub Projects V2 usage, Squad automation responsibilities, and capability gap recording.
+
+---
+
+### 2026-04-18: Picard Board Protocol Sync — Protocol Alignment
+
+**Date**: 2026-04-18  
+**Author**: Picard (Spec Steward)  
+**Topic**: .squad/protocol.md GitHub Projects wording aligned to authoritative default Status-field model
+
+#### Context
+
+Reviewer feedback identified live drift in .squad/protocol.md: the board-sync section described custom board columns (Backlog, In Review, Retrospective, Closed) even though the authoritative rule set already standardized on GitHub Projects V2's default **Status** field.
+
+#### Decision
+
+Standardize board semantics across all governance documents:
+- Default Status field: Todo / In Progress / Done
+- No custom columns
+- Local artifacts remain source of truth
+- GitHub Issues mirrored via Squad automation
+
+#### Status Mapping
+
+- planning → Todo
+- xecuting / eviewing / etro → In Progress
+- complete / bandoned → Done
+
+#### Why
+
+- Prevents protocol drift against the authoritative board rule set
+- Matches the implemented sync script behavior exactly
+- Avoids re-opening already-cleared blockers about manual/custom board design
+
+#### Outcome
+
+.squad/protocol.md now describes the same board semantics as spec, plan, docs, and automation. Protocol drift is resolved.
+
+---
+
+### 2026-04-18T00-06-27Z: Worf Board Re-Review — Reviewer Drift Assessment Complete
+
+**Date**: 2026-04-18  
+**Author**: Worf (Reviewer)  
+**Verdict**: PASS  
+**Status**: Signed off
+
+#### Review Scope
+
+Assessed all reviewer comments against live repo state to determine which feedback is outdated vs still-live.
+
+#### Key Findings
+
+**Resolved (Outdated Feedback)**:
+
+1. **Protocol drift (custom columns)**: .squad/protocol.md now aligns with spec.md, plan.md, docs, and sync script — all use default Status field (Todo / In Progress / Done)
+
+2. **Unattended sync blocker (missing secret)**: SPECREW_PROJECT_TOKEN is configured; manual sync confirmed working; 23 synced issues exist on remote repo
+
+**Live (Minor, Non-Drift)**:
+
+1. **Deployment gap**: .github/scripts/sync-specrew-board.ps1 and .github/workflows/specrew-project-sync.yml not yet pushed to remote; GitHub Actions shows 0 registered workflows
+
+2. **Template variable bug**: PowerShell backtick-escaping in sync script causes literal $PlanPath, $FeatureSlug, etc. in issue bodies (cosmetic; does not affect board Status sync)
+
+#### Outdated vs Live Summary
+
+| Previous Comment | Status | Rationale |
+|---|---|---|
+| Protocol uses custom columns instead of default Status field | **OUTDATED** | Corrected in protocol.md; changelog records fix |
+| Unattended sync blocked by missing SPECREW_PROJECT_TOKEN | **OUTDATED** | Secret configured; manual sync confirmed working |
+| Unattended GitHub Actions sync not yet operational | **LIVE (minor)** | Workflow YAML not pushed to remote; 0 runs recorded |
+| Template variables not expanding in issue bodies | **LIVE (new, minor)** | PowerShell backtick/here-string conflict in sync script |
+
+#### Verdict Rationale
+
+The protocol drift that triggered the original review is **fully resolved**. All governance artifacts, automation, and documentation are coherent on GitHub Projects V2 rules: default Status field, no custom columns, local artifacts authoritative, Squad automation responsible.
+
+The two remaining items are:
+- A **deployment gap** (unpushed commits) — resolved by a git push, not by artifact changes
+- A **cosmetic script bug** (template variables) — does not affect board Status sync or governance compliance
+
+Neither constitutes protocol drift, governance misalignment, or a quality-bar failure against the originating requirement.
+
+#### Follow-Up Items (Non-Blocking)
+
+1. Push the  01-specrew-product branch to activate unattended GitHub Actions sync
+2. Fix the PowerShell here-string escaping in sync-specrew-board.ps1 (New-TaskBody and New-LifecycleBody) so issue bodies show resolved paths instead of literal variable names
+
+---
+
+### 2026-04-18: Review Evidence Correctness & Closure Semantics (Picard)
+
+**Date**: 2026-04-18  
+**Author**: Picard (Spec Steward)  
+**Status**: Implemented
+
+#### Problem
+
+Review.md (Iteration 0) contained false evidence claiming plan.md was in complete state with resolved metadata, but actual plan.md showed Status: retro with blank Completed field. Violation of closure semantics defined in contracts/iteration-artifacts.md.
+
+#### Root Cause
+
+Review.md's closure verification evidence table was not regenerated to match actual final artifact state before publication; stale language carried forward from draft versions.
+
+#### Resolution Applied
+
+**Corrected Evidence**:
+- Line 230: Changed "Status: complete" to "Status: retro"
+- Line 231: Changed "Completed: 2026-04-18" to "Completed: (blank, recorded after Alon sign-off)"
+
+**Verification**:
+- ✅ review.md closure evidence now matches plan.md actual state
+- ✅ Narrative consistency: all "pending sign-off" language consistent
+- ✅ Iteration status correctly remains etro (not prematurely complete)
+
+#### Team Guidance
+
+**For Review Ceremony (Iteration 1+)**: Add pre-publication gate requiring all evidence tables to be regenerated from current artifacts (not copied from previous versions). Each evidence cell must cite current artifact line/content as proof.
+
+**For Contract Hardening (Iteration 1 Backlog)**: Consider JSON schema validators for plan.md and eview.md to auto-check closure evidence references match actual metadata fields (deferred to Iteration 2).
+
+#### Status
+
+✅ Review evidence corrected; validator now PASSES.
+
