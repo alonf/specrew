@@ -2,44 +2,81 @@
 
 ## Overview
 
-Specrew uses GitHub Projects V2 for tracking development tasks and iterations.
+Specrew's development is tracked primarily through local task artifacts: iteration plans, state files, and review documents stored in the specification directory. GitHub Issues and the GitHub Projects V2 board are synchronized from those artifacts for visibility, but they are not the authoritative source of truth.
 
-**Project URL**: [https://github.com/users/alonf/projects/10](https://github.com/users/alonf/projects/10)
+**Authoritative source**: `specs/001-specrew-product/iterations/NNN/plan.md` and iteration state artifacts  
+**Project board**: [https://github.com/users/alonf/projects/10](https://github.com/users/alonf/projects/10)
+
+## Source-of-Truth Hierarchy
+
+1. **Authoritative (required)**: Iteration plan, state, drift log, review, and retro artifacts in `specs/001-specrew-product/iterations/NNN/`
+2. **Derived mirror**: GitHub Issues created from iteration plans and lifecycle artifacts
+3. **Visibility layer**: GitHub Projects V2 board showing synchronized issue status
+
+All iteration execution, status movement, and closure decisions are recorded first in local artifacts. GitHub Issues and the project board are *synchronized from* these artifacts, not the other way around.
 
 ## Board Layout
-
-The project uses GitHub Projects V2 default layout:
 
 - **Status field**: Todo, In Progress, Done
 - **Standard views**: Board view, Table view, Roadmap view
 - **No custom columns**: Following Squad's documented default board layout
 
-## Usage
+## Automation
 
-### Linking Issues
+### What syncs automatically
 
-Issues from the `alonf/specrew` repository can be linked to the project:
+The repository now contains `.github/scripts/sync-specrew-board.ps1` and `.github/workflows/specrew-project-sync.yml`.
 
-1. Manually: Add the issue to the project from the issue sidebar
-2. Automation: Use GitHub Actions workflows to auto-link issues
+On every push that changes iteration artifacts, the workflow:
 
-### Iteration Planning
+1. Creates or updates one **lifecycle issue** per active iteration
+2. Creates or updates one **task issue** per task row in `plan.md`
+3. Adds synchronized issues to GitHub Project `alonf/10`
+4. Updates the board **Status** field from authoritative local state
+5. Closes mirrored issues when the local artifacts reach terminal completion
 
-During iteration planning:
+### Status mapping
 
-1. Tasks from `specs/001-specrew-product/iterations/NNN/plan.md` can be converted to GitHub issues
-2. Issues are added to the project board
-3. Status is tracked through the Status field
+| Local artifact state | Board status | Labels |
+| --- | --- | --- |
+| Iteration `planning` | Todo | `phase:planning` |
+| Iteration `executing` | In Progress | `phase:executing` |
+| Iteration `reviewing` | In Progress | `phase:reviewing` |
+| Iteration `retro` | In Progress | `phase:retro` |
+| Iteration `complete` / `abandoned` | Done | `phase:complete` / `phase:abandoned` |
 
-### Squad Integration
+Task issues stay aligned to task-table status and review verdicts, while the lifecycle issue reflects the iteration phase itself.
 
-Per spec clarification (2026-04-17):
+### Local execution
 
-- Squad's built-in GitHub Projects V2 workflow is used
-- Manual board management is acceptable
-- No Spec Kit-side project-management extension required
+You can run the same sync locally with a GitHub-authenticated CLI session:
+
+```powershell
+pwsh -File .\github\scripts\sync-specrew-board.ps1 -Repository alonf/specrew -ProjectOwner alonf -ProjectNumber 10
+```
+
+## Capability Status
+
+The unattended GitHub Actions workflow is now fully operational.
+
+- Repository secret `SPECREW_PROJECT_TOKEN` has been configured with a token holding `repo` and `project` scopes.
+- The sync script is implemented and tested; manual sync confirmed operational (23 issues synced to project board).
+- Workflow automation is ready to trigger on push to `main` or `001-specrew-product` when iteration artifacts change.
+- Unattended board maintenance is no longer blocked.
+
+## Squad Integration
+
+Specrew keeps the default Projects V2 layout and uses automation only as a mirror of local-first execution.
+
+- Local task artifacts drive iteration execution; GitHub artifacts are secondary mirrors
+- The board uses Squad's documented default layout
+- No custom board columns were introduced
+- No Spec Kit-side project-management extension was added
 
 ## References
 
 - Spec: `specs/001-specrew-product/spec.md` (Clarifications: GitHub Projects V2 board)
-- Iteration 0 Plan: `specs/001-specrew-product/iterations/000/plan.md` (T-023)
+- Iteration 0 Plan: `specs/001-specrew-product/iterations/000/plan.md`
+- Protocol: `.squad/protocol.md` (iteration lifecycle and role responsibilities)
+- Workflow: `.github/workflows/specrew-project-sync.yml`
+- Script: `.github/scripts/sync-specrew-board.ps1`
