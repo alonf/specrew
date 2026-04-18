@@ -28,3 +28,23 @@ I execute planned work for Specrew and produce outputs that remain traceable to 
 - **Capacity math must be internally consistent**: All overcommit narratives and effort totals must agree. If a plan exceeds capacity, every statement (summary, effort table, capacity line) must align.
 - **Stale references corrupt traceability**: Old task IDs and fabricated citations must be replaced with real spec citations to maintain audit trail.
 - **Scope clarity prevents drift**: Iteration 0 scope is *enabling work only* (platform validation, extension scaffolds). All MVP delivery and bootstrap implementation deferred to Iteration 1.
+- **Governance becomes real when templates and validators agree**: The operating method must live in runtime-facing ceremony/directive/skill templates, and lifecycle checks must fail automatically when artifacts are incomplete or phases are skipped.
+
+---
+
+## Cross-Agent Team Update (2026-04-18T16:50:48Z)
+
+**La Forge governance enforcement milestone**:
+
+- **Worf (Final Gate Review)**: Iteration 0 closure audit passed. All four phases complete; governance validator script confirms artifact compliance. No blocking issues identified. Iteration 0 closure official and binding.
+
+- **Coordinator (Governance Todos)**: All tier-0 governance enforcement tasks marked complete. Operating policy (6 rules + 3 tier-1 improvements) documented. Team consensus required before Iteration 1 execution. Iteration 1 planning prerequisites finalized.
+
+- **User Directive**: Governance hardening authority now normative and binding. Specrew uses Specrew's own lifecycle. Iteration 1 work will run under binding phase state machine with automated validator gates.
+
+**La Forge role in Iteration 1**: 
+- Governance-validator skill (FR-008) deferred to Iteration 1 execution
+- Identify architecture-risk spikes pre-planning (operating rule 2)
+- Validator integration with agent charters and ceremony templates
+
+**Terminal state**: Governance enforcement package complete; validator script live; Squad-native surfaces deployed. Ready for operator (Picard) ceremony integration.

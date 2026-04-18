@@ -344,6 +344,114 @@ Update `plan.md` and `retro.md` templates to track effort per phase (planning, e
 **Evidence**: `specs/001-specrew-product/iterations/000/plan.md`  
 **Status**: Pending Alon (Chief Architect) approval.
 
+---
+
+### 2026-04-18: La Forge - Governance Enforcement Package
+
+**By**: La Forge (Implementer)  
+**Date**: 2026-04-18  
+**Scope**: Specrew governance enforcement implementation  
+
+#### Decision
+
+Implement the minimum practical enforcement package in the Spec Kit extension by:
+
+1. adding `extensions\specrew-speckit\scripts\validate-governance.ps1`
+2. wiring the validator into CI
+3. replacing ceremony and governance stubs in `extensions\specrew-speckit\squad-templates\` with actual operating method
+4. adding a retrospective ceremony template for lifecycle closure on the Squad-native surface
+
+#### Why
+
+The authority layer is now explicit in contracts and protocol documents, but enforcement was still mostly social. The validator turns lifecycle rules into a failing check, and the Squad-native templates now carry the real method that downstream users will actually run.
+
+#### Impact
+
+- invalid iteration artifact transitions fail fast
+- planning, drift, review, and retro behavior are discoverable in runtime-facing templates
+- CI now exercises the governance contract instead of relying on documentation alone
+
+**Status**: ✅ Implemented; authority changes binding and normative.
+
+---
+
+### 2026-04-18: Worf - Iteration 0 Final Gate Review — PASS
+
+**By**: Worf (Reviewer)  
+**Date**: 2026-04-18  
+**Status**: Final
+
+#### Summary
+
+Iteration 0 final gate review completed. All three review criteria passed:
+
+1. **Iteration 0 is formally complete** under the normative lifecycle contract
+2. **Governance hardening implementation is acceptable and coherent**
+3. **No blocking issues remain** for Alon sign-off or Iteration 1 planning
+
+#### Final Verdict: ✅ PASS
+
+##### Criterion 1: Formal Closure
+
+Iteration 0 has completed all four phases of the lifecycle state machine:
+
+| Phase | Status | Evidence |
+|-------|--------|----------|
+| Planning | ✅ Complete | plan.md approved, all tasks traced to FR-001/FR-013 |
+| Executing | ✅ Complete | 23/23 tasks done, 20.5/20.5 pts delivered, zero variance |
+| Reviewing | ✅ Complete | review.md ACCEPTED, all 23 task verdicts pass |
+| Retrospective | ✅ Complete | retro.md produced with all mandatory sections |
+
+All phase-terminal artifacts exist:
+- `plan.md` (Status = complete, Completed = 2026-04-18)
+- `state.md` (Last Completed Task = T-023, Tasks Remaining = none)
+- `drift-log.md` (0 drift events)
+- `review.md` (Overall Verdict = ACCEPTED)
+- `retro.md` (Estimation Accuracy, Drift Summary, Improvement Actions, Process Notes)
+
+**Governance validator**: `validate-governance.ps1 -IterationPath .\specs\001-specrew-product\iterations\000` → PASS (exit 0)
+
+##### Criterion 2: Governance Hardening
+
+Four governance artifacts make the iteration lifecycle normative and binding:
+
+1. **spec.md** — Iteration Lifecycle Contract section defines four-phase state machine with enforcement rules; Dogfooding Obligation section binds Specrew to its own governance model
+2. **contracts/iteration-artifacts.md** — State machine made explicit; Phase Rules table defines entry/exit conditions and blocking artifacts; Artifact Validation Gates define phase transition requirements
+3. **.squad/protocol.md** — Single coordinator protocol (v1.0) with 6 roles, decision workflows, iteration coordination, 6 operating rules, and escalation paths
+4. **validate-governance.ps1** — Functional script validates iteration artifact compliance at CI and ceremony gates
+
+Deferred items (appropriately scoped to Iteration 1):
+- Governance-validator skill (FR-008) — automation at phase transitions
+- `.specrew/methodology.yml` — runtime config encoding phases and rules
+
+##### Criterion 3: Blocking Issues
+
+**None identified.**
+
+- All artifacts exist and are schema-compliant
+- All phase transitions are valid
+- All task verdicts recorded
+- Governance validator passes
+- Operating policy (6 rules + 3 tier-1 improvements) proposed and ready for team consensus
+
+#### Recommendation
+
+Alon sign-off can proceed. Iteration 1 planning prerequisites:
+
+1. ✅ Governance hardening authority finalized
+2. ✅ Closure artifacts complete
+3. ✅ Retrospective complete (Troi)
+4. ⏳ Team consensus on operating policy (before Iteration 1 planning ceremony)
+5. ⏳ Alon final sign-off
+
+#### Impact
+
+- Iteration 0 closure is official and binding
+- Governance model is now normative for all future iterations
+- Iteration 1 planning can begin after Alon sign-off
+
+**Status**: ✅ Worf closure verdict recorded; governance hardening gate PASSED.
+
 ## Governance
 
 - Decisions in this file are the shared team memory.
