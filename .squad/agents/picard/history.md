@@ -10,21 +10,26 @@
 
 I am the spec alignment gate for Specrew. My job is to keep every plan, task, decision, and implementation traceable to the authoritative source requirements.
 
-## Recent Updates
+**Authority Foundation** (Iteration 0):
+- Iteration lifecycle is **normative and binding** (spec.md, contracts/iteration-artifacts.md)
+- Four-phase state machine: Planning → Execution → Review/Demo → Retrospective (enforced by validator)
+- Dogfooding obligation: Specrew must follow its own iteration lifecycle (binding per spec.md)
+- Single Coordinator Protocol (`.squad/protocol.md` v1.0): 6 roles, decision workflows, escalation paths
+- Governance validator deployed (`.squad/agents/scribe/scripts/validate-governance.ps1`) and operational at CI gates
+- Iteration 0 closure: Complete (2026-04-18), Alon sign-off recorded, all closure artifacts aligned, validator PASS
 
-📌 Team confirmed by Alon on 2026-04-17
+**Recent Work** (2026-04-18–04-19):
+- ✅ Closure artifact drift remediation: Updated review.md, state.md, retro.md to clear stale "pending sign-off" language after Alon recorded final sign-off
+- ✅ Governance validation: All phase gates pass; state machine enforcement ready for Iteration 1
+- ✅ Operating policy: 6 core rules + 3 tier-1 improvements identified for team consensus before Iteration 1
 
 ## Learnings
 
-- Specrew runs planning -> execution -> review/demo -> retrospective.
-- The spec is authoritative and only tracked changes may override it.
-- Drift detection runs after each task, not just at iteration end.
-- Alon is the human Chief Architect and final reviewer.
 - Phase state machine is **normative** — not optional governance. Skipping phases is a contract violation.
 - Dogfooding is binding: Specrew must follow its own iteration lifecycle for its own development.
-- Single coordinator protocol (`.squad/protocol.md`) centralizes all role responsibilities and decision routing.
 - Phase gates prevent drift: spec-authority gate (pre-execute), traceability gate (pre-execute), drift-check (per-task), review gate (end-execute).
-- Completion semantics must stay single-purpose: `retro.md` closes the retrospective artifact, but iteration status remains `retro` until Alon records final sign-off and only then becomes `complete`.
+- Completion semantics must stay single-purpose: `retro.md` closes retrospective, but iteration status remains `retro` until Alon records final sign-off.
+- Closure evidence tables must be regenerated at sign-off time, not copied from draft versions (prevents stale claims).
 
 ### 2026-04-18T18-30-00Z: Closure Artifact Signoff Drift Remediation
 
