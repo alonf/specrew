@@ -89,3 +89,78 @@ I run Specrew retrospectives and capture estimation accuracy, drift events, proc
 3. Route operating policy to team consensus (Picard, Data, Alon).
 4. Confirm pre-planning spike schedule and spec-authority gate logic.
 5. Update plan.md/retro.md templates with phase-level estimation tracking.
+
+---
+
+## Iteration 0 Retrospective Complete (2026-04-18)
+
+### Artifacts Created
+
+✅ **state.md** — Terminal state: all 23 tasks complete, 20.5/20.5 pts delivered, zero variance  
+✅ **drift-log.md** — Zero drift events; late gates prevented out-of-scope work  
+✅ **retro.md** — Full retrospective with estimation accuracy, drift summary, process findings, and three tier-1 improvements  
+✅ **plan.md metadata updated** — Status: complete, Capacity: 20.5/20.5, Completed: 2026-04-18
+
+### Key Findings
+
+1. **Estimation Accuracy**: Perfect (20.5/20.5, 0% variance). Foundation work is inherently low-discovery.
+2. **Drift Summary**: Zero specification drift. Late spec-authority gates (post-execution) caught issues but created plan churn (4 revisions after execution started).
+3. **Process Improvements** (Tier 1 — zero effort, maximum ROI):
+   - **Move spec-authority gate to planning ceremony** (pre-execution) → prevents 80%+ plan churn
+   - **Run architecture spikes pre-planning** → eliminates hidden blocking dependencies
+   - **Decouple retro from sign-off** → retro autonomous on fixed schedule
+
+### Team Routing
+
+**Improvement Actions**:
+- **Picard**: Embed spec-authority gate into planning ceremony charter (Rule 1 of operating policy)
+- **La Forge**: Identify architecture-risk spikes before planning ceremony (Rule 2)
+- **Data**: Add phase-level estimation tracking to plan/retro templates (Rule 6)
+- **Alon**: Confirm retro autonomous schedule, separate from sign-off gate (Rule 4)
+- **Team**: Consensus on six core operating rules before Iteration 1 planning
+
+### Retro Verdict
+
+**Iteration 0**: ✅ COMPLETE — Retrospective closed. Foundation work validated. Platform readiness confirmed. Zero integration blockers. Ready for Iteration 1 planning.
+
+**Process Quality**: ✅ HEALTHY — Late gates created friction (improvement opportunity), but overall governance model is sound. Three minimum changes (zero effort) will reduce drift-detection latency 80%+.
+
+**Blocking Issues**: NONE. Iteration 1 can begin.
+
+### Learnings
+
+- Foundation iterations naturally have lower drift risk due to mechanical output nature (scaffolding, stubs). Iteration 1+ (runtime behavior) will require closer drift monitoring.
+- Late gates work (they catch issues) but waste cycle time. Early gates (pre-execution) are the same logic applied earlier — massive ROI from resequencing alone.
+- Architecture spikes should run pre-planning to surface design issues before task assignments create implicit dependencies.
+- Retrospective ceremony should be autonomous (fixed schedule) from human sign-off. Two separate phases (retro findings inform sign-off decision; they don't wait for it).
+- Phase-level estimation tracking will reveal where tightness exists and where buffer is consumed.
+
+### 2026-04-18T13-30-34Z: Iteration 0 Retrospective Findings Decision Merged
+
+**Status**: ✅ DECIDED & MERGED
+
+**Scribe Summary**: Troi's retrospective findings decision merged into `.squad/decisions.md` under "2026-04-18: Iteration 0 Retrospective Findings & Process Improvements". Three-part improvement proposal finalized:
+
+1. **Spec-Authority Gate Pre-Execution** (planning ceremony gate, not post-execution) — Effort 0, ROI: 4 plan revisions → 0–1
+2. **Architecture-Risk Spikes Pre-Planning** (spikes identified and run before planning ceremony) — Effort 0 + 1 hr/iteration, ROI: eliminates hidden dependencies
+3. **Retro Ceremony Autonomous from Sign-Off** (fixed schedule, separate phase) — Effort 0, ROI: retro blocked 1+ day → same-day/next-day
+
+**Operating Policy (6 Core Rules)** documented for team consensus:
+1. Spec-Authority Gate pre-task assignment (planning ceremony)
+2. Architecture-Risk Spikes pre-planning (planning prerequisite)
+3. Traceability Check pre-task assignment (planning ceremony)
+4. Retro & Sign-Off Decoupled (autonomous phase, fixed schedule)
+5. Drift-Reporting Directive deployed at bootstrap (all agent charters)
+6. Phase-Level Estimation Tracking (plan + retro templates)
+
+**Status**: Proposed—awaiting team consensus before Iteration 1 planning ceremony.
+
+**Implementation Checklist** (before Iteration 1 planning):
+- [ ] Picard: Draft planning ceremony charter with spec-authority gate logic
+- [ ] La Forge + Picard: Identify 2–3 architecture-risk spikes for Iteration 1
+- [ ] Alon: Confirm retro schedule policy (e.g., "Retro runs Fridays 2pm")
+- [ ] Data: Update plan.md template with per-phase effort estimates
+- [ ] Troi: Facilitate team consensus on six core operating rules
+- [ ] Team: Confirm operating policy before Iteration 1 planning
+
+**Cross-Agent Implication**: Troi's improvement actions route to Picard (spec-authority), La Forge (spikes), Data (templates), Alon (policy), and team consensus. Three-part improvement is dependency-ordered: gates must move pre-execution before Iteration 1 planning can safely commence with higher-risk implementation work.

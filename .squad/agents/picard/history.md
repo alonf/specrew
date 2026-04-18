@@ -20,6 +20,10 @@ I am the spec alignment gate for Specrew. My job is to keep every plan, task, de
 - The spec is authoritative and only tracked changes may override it.
 - Drift detection runs after each task, not just at iteration end.
 - Alon is the human Chief Architect and final reviewer.
+- Phase state machine is **normative** — not optional governance. Skipping phases is a contract violation.
+- Dogfooding is binding: Specrew must follow its own iteration lifecycle for its own development.
+- Single coordinator protocol (`.squad/protocol.md`) centralizes all role responsibilities and decision routing.
+- Phase gates prevent drift: spec-authority gate (pre-execute), traceability gate (pre-execute), drift-check (per-task), review gate (end-execute).
 
 ### 2026-04-18: Iteration 0 Completion & Governance Hardening Analysis
 
@@ -68,7 +72,29 @@ I am the spec alignment gate for Specrew. My job is to keep every plan, task, de
 4. Integrate traceability-check skill into planning ceremony gate sequence
 5. Confirm Rules 1, 2, 3 (spec-authority, architecture spikes, traceability) are team consensus before Iteration 1 planning starts
 
-### 2026-04-17: First Iteration Plan (Iteration 0 — Foundation) [MERGED TO DECISIONS.MD]
+### 2026-04-18: Governance Hardening Implementation - Phase 1 (Authoritative Artifacts)
+
+**Status**: ✅ COMPLETE
+
+**Four Governance Artifacts Updated/Created**:
+1. **spec.md** — Added normative "Iteration Lifecycle Contract" section (phase state machine binding) + "Dogfooding Obligation" (Specrew must use Specrew)
+2. **contracts/iteration-artifacts.md** — Made phase state machine explicit with validation gates per phase; artifact production table; abandoned iteration rule
+3. **Created `.squad/protocol.md`** — Single coordinator protocol: role responsibilities (6 roles), decision-making workflow (routine/tracked/escalation), iteration coordination (4-phase sequence), 6 operating rules, conflict resolution, escalation summary
+4. **`.squad/decisions/inbox/picard-governance-hardening-implementation.md`** — Decision record documenting all changes and alignment with architecture
+
+**Scope Addressed**:
+- ✅ Lifecycle contract is now normative (binding, not guidance)
+- ✅ Phase state machine restated as operating rule (in spec + protocol)
+- ✅ Dogfooding obligations clarified (Specrew follows Specrew)
+- ✅ Single coordinator protocol document created
+
+**Deferred to Iteration 1**:
+- Governance-validator skill (enforces state machine at gates)
+- `.specrew/methodology.yml` (runtime config)
+
+**Key Insight**: Authority now precedes validation. The binding rules (spec.md) and coordination protocol (.squad/protocol.md) are in place. The validator skill will enforce these rules automatically in Iteration 1. Iteration 0 closure artifacts can now be created using the normative contracts.
+
+---
 
 - **Spec scope from TG-003**: Iteration 0 = FR-001 (two-package architecture) + FR-013 (extension surfaces only). MVP (Iteration 1) = FR-002–FR-006, FR-008–FR-011, FR-018. Deferred iterations 2–3 per phased plan § 14.
 - **Key insight**: Iteration 0 is precondition-critical. Must be completed and de-risked before MVP can begin. All feature implementation (bootstrap, ceremonies, skills) deferred to Iter 1.
@@ -79,3 +105,25 @@ I am the spec alignment gate for Specrew. My job is to keep every plan, task, de
 - **Decision routing**: Decisions that affect downstream specs (Iter 1 plan, FR refinements) are routed to Alon via tracked change process rather than auto-resolved.
 - **File paths**: Iteration 0 plan stored at `specs/001-specrew-product/iterations/000/plan.md` (zero-indexed, not `001/`). Decision merged to decisions.md on 2026-04-17T19:00:43Z.
 - **Pattern**: This first iteration plan establishes the ceremony structure: Planning phase produces task list + effort estimates + traceability. Review/demo gate verifies completion. Retro captures learnings (esp. spike results driving Iter 1 changes).
+
+### 2026-04-18T13-30-34Z: Governance Hardening Implementation Merged to Decisions
+
+**Status**: ✅ DECIDED & MERGED
+
+**Scribe Summary**: Picard's governance hardening implementation decision merged into `.squad/decisions.md` under "2026-04-18: Governance Hardening Implementation". Three-part implementation completed:
+
+1. **spec.md**: Normative lifecycle contract + dogfooding obligation (binding rules for all iterations)
+2. **contracts/iteration-artifacts.md**: Explicit state machine, phase rules, artifact gates
+3. **.squad/protocol.md**: Single source of truth for roles (6 roles), decision workflows, iteration coordination (4-phase sequence), 6 operating rules, escalation paths
+
+**Governance Scope vs. Implementation Roadmap**:
+- ✅ **Iter 0 (Completed)**: Artifact contracts, state machine normative, dogfooding binding, coordinator protocol
+- ⏳ **Iter 1 (Deferred)**: Governance-validator skill (FR-008), methodology.yml runtime config
+
+**Implications for Iteration 1**:
+- Phase state machine now has binding authority (not optional guidance); Iteration 1 plan cannot skip phases
+- Dogfooding obligation means Iteration 1 tasks must be traceable to FRs (same discipline as downstream customers)
+- .squad/protocol.md defines Picard's embedding in planning ceremony for spec-authority pre-gate (Rule 1)
+- Architecture-risk spikes must be identified and run pre-planning (Rule 2); Picard + La Forge partnership required before each planning ceremony
+
+**Cross-Agent Update**: Team consensus on 6 core operating rules must be confirmed by Troi + Alon before Iteration 1 planning. Picard participates in confirm-or-escalate pattern (spec authority is non-delegable).

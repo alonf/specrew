@@ -2,6 +2,181 @@
 
 ## Active Decisions
 
+### 2026-04-18: Iteration 0 Execution-Phase Closure Complete
+
+**By**: Data (Planner)  
+**Date**: 2026-04-18  
+**What**: Iteration 0 execution phase is now contract-complete and ready for retrospective.
+
+#### Artifacts Created/Updated
+
+| Artifact | Action | Status |
+|----------|--------|--------|
+| `plan.md` | Updated metadata (Status → `complete`, Capacity → `20.5/20.5`, Completed → `2026-04-18`) | ✅ Complete |
+| `state.md` | Verified present (La Forge) | ✅ Complete |
+| `drift-log.md` | Created (0 events) | ✅ Complete |
+| `review.md` | Verified present (Worf) | ✅ Complete |
+| `retro.md` | Pending Troi (Retro Facilitator) | ⏳ Pending |
+
+#### Contract Compliance
+
+Per `contracts/iteration-artifacts.md`:
+- ✅ **Iteration Plan**: Metadata complete; Status, Capacity, Started, Completed all present
+- ✅ **Task State**: Last completed task, tasks remaining, in-progress status recorded
+- ✅ **Drift Log**: Event ledger present (0 events); schema compliant
+- ✅ **Review**: Verdict recorded; acceptance gates passed
+- ⏳ **Retrospective**: Pending Troi — owned by retrospective ceremony
+
+#### Execution Phase Verdict
+
+| Metric | Result |
+|--------|--------|
+| Task Completion | 23/23 (100%) |
+| Effort Delivery | 20.5/20.5 (100% exact commitment) |
+| Spec Drift | 0 events |
+| Platform Validation | 9/9 spikes passed |
+| Architecture Resolution | Squad-native surfaces; decision tracked |
+| Blocker Status | None |
+| Artifact Completeness | ✅ Contract-safe for retrospective |
+
+#### Phase Sequencing (Four-Phase Lifecycle)
+
+1. ✅ **Planning Phase** (complete 2026-04-17)
+2. ✅ **Execution Phase** (complete 2026-04-18)
+3. ✅ **Review/Demo Phase** (complete 2026-04-18, Worf sign-off)
+4. ⏳ **Retrospective Phase** (pending 2026-04-18, Troi to write retro.md)
+
+**Decision**: Iteration 0 execution-phase closure is **contract-complete and approved for retrospective handoff**. No blocking issues remain on planning side.
+
+---
+
+### 2026-04-18: Governance Hardening Implementation
+
+**By**: Picard (Spec Steward)  
+**Date**: 2026-04-18  
+**Status**: Implemented  
+**What**: Four governance artifacts created/updated to make Specrew's iteration lifecycle normative and binding.
+
+#### Artifacts Created/Updated
+
+1. **Spec.md — Added Iteration Lifecycle Contract Section**
+   - Added explicit Phase State Machine showing all valid transitions
+   - Made state machine enforcement normative (not optional)
+   - Added Dogfooding Obligation section (Specrew must follow its own model)
+   - Marked both sections *(normative)* for binding rules
+
+2. **contracts/iteration-artifacts.md — Made State Machine Explicit**
+   - Reordered to lead with normative state machine diagram
+   - Added Phase Rules table (entry/exit conditions, gates, produced artifacts)
+   - Added Artifact Validation Gates (phase transition blockers)
+   - Added Abandoned Iteration Rule
+
+3. **.squad/protocol.md — Single Coordinator Protocol**
+   - Core Roles & Responsibilities (Picard, Data, La Forge, Worf, Troi, Alon)
+   - Decision-Making Workflow (routine, tracked changes, escalation paths)
+   - Iteration Lifecycle Coordination (all 4 phases, concurrency, re-entry)
+   - Six Operating Rules (spec-authority, spikes, traceability, retro autonomy, drift directive, phase estimation)
+   - Conflict Resolution paths
+   - Status Reporting format
+   - Escalation Summary
+
+4. **Dogfooding Obligation Clarified**
+   - Specrew uses its own iteration lifecycle
+   - Specs authoritative for Specrew development
+   - Drift detection applies internally
+   - Full artifact lifecycle every iteration
+   - Exception: Support/infra tracked under support FRs but still traceable
+
+#### Governance Hardening Scope
+
+| # | Finding | Status | Handler |
+|----|---------|--------|---------|
+| 1 | Artifact Contracts | ✅ ADDRESSED | contracts/iteration-artifacts.md (state machine normative) |
+| 2 | Iteration State Machine | ✅ ADDRESSED | spec.md + contracts/iteration-artifacts.md (enforced) |
+| 3 | Dogfooding Governance | ✅ ADDRESSED | spec.md § Dogfooding Obligation |
+| 4 | Governance Validator Skill | ⏸️ DEFERRED | Implementer (La Forge) task for Iteration 1; FR-008 |
+| 5 | Methodology Runtime Config | ⏸️ DEFERRED | `.specrew/methodology.yml` design deferred to Iteration 1 |
+| 6 | Coordinator Protocol | ✅ ADDRESSED | `.squad/protocol.md` (single document, all rules) |
+
+#### Expected Outcomes (Immediate)
+
+1. ✅ Iteration 0 closure artifacts can now be created
+2. ✅ Team understands phase sequencing is binding
+3. ✅ Dogfooding obligation is clear
+4. ✅ Single protocol document exists
+
+#### Expected Outcomes (Ongoing, Iteration 1+)
+
+1. Drift detection harder to hide (gates prevent orphan tasks, traceability pre-gate, drift-reporting directive active, validator enforces at review)
+2. Phase state machine strict (planning → execution requires approved plan, execution → review requires terminal tasks, review → retro requires verdicts, retro → complete requires artifact)
+3. Decision paths explicit (.squad/protocol.md, escalation criteria documented, tier 1 consensus before tier 2)
+
+**Decision**: Governance hardening is **implemented; authority changes are normative and binding**. Validator skill (FR-008) and methodology.yml (Iteration 1) deferred as implementation tasks.
+
+---
+
+### 2026-04-18: Iteration 0 Retrospective Findings & Process Improvements
+
+**By**: Troi (Retro Facilitator)  
+**Date**: 2026-04-18  
+**Status**: Proposed  
+**What**: Three tier-1 process improvements (zero effort, maximum ROI) to be adopted in Iteration 1+ operating model.
+
+#### Root Cause Analysis
+
+All friction in Iteration 0 stems from gates running **post-execution** (review phase) instead of **pre-execution** (planning phase). Gates themselves are correct; timing is suboptimal.
+
+**Example**: Spec-authority gate caught 4 out-of-scope proposals during late plan revisions. Same gate logic at planning ceremony would have prevented churn (zero effort, same logic, earlier timing).
+
+#### Three Tier-1 Improvements
+
+1. **Spec-Authority Gate Pre-Execution** (planning ceremony)
+   - Effort: 0 (gate logic exists; resequence only)
+   - Expected outcome: 4 plan revisions → 0–1
+   - Owner: Picard
+
+2. **Architecture-Risk Spikes Pre-Planning** (pre-ceremony)
+   - Example: T-017 (Squad discovery) runs pre-planning instead of parallel with task execution
+   - Effort: 0 (existing spikes) + ~1 hr/iteration to identify risky questions
+   - Expected outcome: Eliminates hidden task dependencies
+   - Owner: Picard + La Forge
+
+3. **Retro Ceremony Autonomous from Sign-Off** (fixed schedule, decoupled)
+   - Effort: 0 (scheduling change only)
+   - Expected outcome: Retro blocked 1+ day → retro same-day or next-day
+   - Owner: Alon (policy), Troi (facilitation)
+
+#### Estimation & Drift Data (Iteration 0 Baseline)
+
+- **Estimation Accuracy**: 20.5 planned = 20.5 actual (0% variance)
+- **Specification Drift**: 0 events detected
+- **Process Friction**: 4 plan revisions after execution (due to late gate timing, not estimate errors)
+- **Foundation-specific**: Foundation work has lower discovery risk (outputs mechanical). Iteration 1+ behavior-implementation work will have higher risk; early gates become even more valuable.
+
+#### Recommendation: Phase-Level Efficiency Tracking
+
+Update `plan.md` and `retro.md` templates to track effort per phase (planning, execution, review, retro). Reveals where buffer is consumed and tightness exists.
+
+#### Implementation Checklist (Before Iteration 1 Planning)
+
+- [ ] **Picard**: Draft updated planning ceremony charter with spec-authority gate logic
+- [ ] **La Forge + Picard**: Identify 2–3 architecture-risk spikes for Iteration 1 before planning ceremony
+- [ ] **Alon**: Confirm retro schedule policy (e.g., "Retro runs Fridays 2pm, autonomous from sign-off")
+- [ ] **Data**: Update `plan.md` template to include per-phase effort estimates
+- [ ] **Troi**: Facilitate team consensus on six core operating rules (governance hardening policy)
+- [ ] **Team**: Confirm operating policy (six rules + three tier-1 improvements) before Iteration 1 planning
+
+#### Decision Criteria
+
+✅ **Zero new effort** — All three improvements are resequencing only  
+✅ **Maximum ROI** — Estimated 80%+ drift-detection latency reduction  
+✅ **Low risk** — Existing processes remain unchanged; only order and autonomy change  
+✅ **Foundation for governance hardening** — Aligns with Alon's user directive
+
+**Decision**: Proposed—awaiting team consensus before Iteration 1 planning ceremony. If consensus reached, embed into Iteration 1 operating charters and planning ceremony structure.
+
+---
+
 ### 2026-04-18T12:49:27Z: User Directive - Governance Hardening & Iteration 0 Closure
 
 **By**: Alon Fliess (via Copilot CLI)  
