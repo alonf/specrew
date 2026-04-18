@@ -2,12 +2,30 @@
 
 ## Active Decisions
 
-### 2026-04-17: Iteration 0 Plan Revised Per Review Feedback
+### 2026-04-17: Contract-Safe Iteration 0 Plan Revision
+
+**By**: La Forge (Implementer)  
+**Date**: 2026-04-17  
+**What**: Revised `specs/001-specrew-product/iterations/000/plan.md` to conform to the iteration artifact contract and data model, addressing seven findings from Alon's review:
+  - Added required metadata fields (Capacity, Started, Completed) per contract
+  - Replaced phase-by-phase task lists with unified `## Tasks` table (23 tasks, T-001–T-023)
+  - Replaced cast member names with role names (Implementer, Planner)
+  - Fixed capacity math: 20 pts at 20 pt capacity (was internally inconsistent)
+  - Removed stale references: TG-003, FR-050, old spike task IDs
+  - Clarified scope: Iteration 0 = platform validation + enabling infrastructure only
+  - Replaced fabricated citations with real spec.md references
+
+**Evidence**: `specs/001-specrew-product/iterations/000/plan.md` (all 7 issues addressed).  
+**Status**: Automation-safe, pending Alon approval.
+
+---
+
+### 2026-04-17: Iteration 0 Plan Revised Per Review Feedback (Data Initial)
 
 **By**: Data (Planner), on Alon's review  
 **What**: Fixed overcommit math (22 pts → justified), aligned AC #4 with deferred spikes, removed premature self-approval, tightened traceability, added Constitution Check section, reframed wall-clock assumptions, clarified iteration naming.  
-**Evidence**: `specs/001-specrew-product/iterations/000/plan.md` (all 7 issues addressed).  
-**Status**: Ready for Alon approval.
+**Evidence**: `specs/001-specrew-product/iterations/000/plan.md` (foundational revisions).  
+**Status**: Superseded by La Forge contract-safe revision (2026-04-17).
 
 ---
 

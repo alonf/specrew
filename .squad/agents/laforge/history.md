@@ -12,6 +12,8 @@ I execute planned work for Specrew and produce outputs that remain traceable to 
 
 ## Recent Updates
 
+📌 Contract-safe Iteration 0 plan revision completed on 2026-04-18: All 7 contract findings addressed (schema, task layout, ownership, capacity math, stale references, scope, citations). Plan now automation-safe and pending Alon approval.
+
 📌 Team confirmed by Alon on 2026-04-17
 
 ## Learnings
@@ -20,3 +22,7 @@ I execute planned work for Specrew and produce outputs that remain traceable to 
 - Deliverables must stay requirement-traceable; undocumented deviation counts as drift.
 - Specrew v1 uses Markdown, YAML, and PowerShell assets in a monorepo.
 - The downstream product method and Specrew's own development method are intentionally the same.
+- **Artifact contracts must be respected**: Iteration plans must conform to machine-readable schemas (metadata fields, unified task tables, role names instead of cast names).
+- **Capacity math must be internally consistent**: All overcommit narratives and effort totals must agree. If a plan exceeds capacity, every statement (summary, effort table, capacity line) must align.
+- **Stale references corrupt traceability**: Old task IDs and fabricated citations must be replaced with real spec citations to maintain audit trail.
+- **Scope clarity prevents drift**: Iteration 0 scope is *enabling work only* (platform validation, extension scaffolds). All MVP delivery and bootstrap implementation deferred to Iteration 1.
