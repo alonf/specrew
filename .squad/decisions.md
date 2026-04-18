@@ -2,6 +2,29 @@
 
 ## Active Decisions
 
+### 2026-04-18: Squad Native Surfaces for Specrew v1
+
+**By**: Alon Fliess (Chief Architect)  
+**Date**: 2026-04-18T00:24:57Z  
+**What**: Specrew v1 will use Squad native surfaces: `.copilot/skills/` for skills and `.squad/` runtime surfaces (ceremonies, directives, routing) rather than a packaged `extensions/specrew-squad/` plugin layout.  
+**Why**: Iteration 0 spike results showed Squad's local plugin architecture is marketplace-only and does not support the planned bundled `extensions/specrew-squad/` structure. The original plan assumed Squad could load extensions from a local `extensions/` directory, but Squad only loads from its marketplace or `.copilot/skills/` for user skills.  
+**Evidence**: `specs/001-specrew-product/iterations/000/spikes.md` (Squad architecture mismatch finding), `.squad/decisions/inbox/copilot-squad-native-surfaces-2026-04-18T00-24-57Z.md`  
+**Impact**: Squad extension scaffolding tasks (T-006–T-012) remain valid but now target native surfaces instead of plugin package structure. No change to Spec Kit extension scope.  
+**Status**: Active. Execution continuing under corrected architecture.
+
+---
+
+### 2026-04-18: Iteration 0 Approved for Execution
+
+**By**: Alon Fliess (Chief Architect)  
+**Date**: 2026-04-18T00:12:28Z  
+**What**: Approved `specs/001-specrew-product/iterations/000/plan.md` for execution. Foundation work (repository structure, extension skeletons, platform validation spikes, CI setup) can proceed. GitHub remote confirmed at `https://github.com/alonf/specrew.git`.  
+**Why**: Iteration 0 plan is contract-safe, scope is limited to precondition-critical infrastructure, and all traceability/governance gates pass. Platform validation must complete before Iteration 1 MVP work begins.  
+**Evidence**: `.squad/decisions/inbox/copilot-iteration-approval-2026-04-18T00-12-28Z.md`  
+**Status**: Active. La Forge (Implementer) is cleared to begin execution.
+
+---
+
 ### 2026-04-18: Final Contract Polish on Iteration 0 Plan
 
 **By**: La Forge (Implementer)  

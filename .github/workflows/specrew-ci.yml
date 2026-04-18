@@ -1,0 +1,87 @@
+name: Specrew CI
+
+on:
+  push:
+    branches: [ main, 001-specrew-product ]
+  pull_request:
+    branches: [ main, 001-specrew-product ]
+
+jobs:
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install markdownlint-cli
+        run: npm install -g markdownlint-cli
+
+      - name: Lint Markdown files
+        run: markdownlint '**/*.md' --ignore node_modules --ignore .squad --ignore .specify
+
+      - name: Setup PowerShell
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y powershell
+
+      - name: Install PSScriptAnalyzer
+        shell: pwsh
+        run: Install-Module -Name PSScriptAnalyzer -Force -Scope CurrentUser
+
+      - name: Lint PowerShell scripts
+        shell: pwsh
+        run: |
+          $scriptFiles = Get-ChildItem -Path . -Filter *.ps1 -Recurse -File | 
+                         Where-Object { $_.FullName -notmatch '[\\/]\.(git|squad|specify)[\\/]' }
+          if ($scriptFiles.Count -gt 0) {
+            $results = $scriptFiles | ForEach-Object { 
+              Invoke-ScriptAnalyzer -Path $_.FullName -Settings PSGallery 
+            }
+            if ($results) {
+              $results | Format-Table -AutoSize
+              exit 1
+            }
+          } else {
+            Write-Host "No PowerShell scripts found to lint"
+          }
+
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    needs: lint
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Check for test scripts
+        id: check_tests
+        run: |
+          if [ -d "tests" ] && [ "$(ls -A tests)" ]; then
+            echo "tests_exist=true" >> $GITHUB_OUTPUT
+          else
+            echo "tests_exist=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Run tests
+        if: steps.check_tests.outputs.tests_exist == 'true'
+        run: |
+          # Placeholder for test execution
+          # Tests will be added as functionality is implemented
+          echo "Test directory exists but no test runner configured yet"
+          echo "Tests will be added in future iterations"
+
+      - name: No tests yet
+        if: steps.check_tests.outputs.tests_exist == 'false'
+        run: echo "No tests directory or tests found - skipping test execution"

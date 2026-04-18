@@ -125,18 +125,18 @@ Tasks for one iteration, mapped to spec requirements.
 
 Each task entry:
 
-| Field | Type | Description |
-| ----- | ---- | ----------- |
-| task_id | string | e.g., "T-001" |
-| title | string | Brief task description |
-| requirement_ref | string | e.g., "FR-003" |
-| user_story_ref | string | e.g., "US-2" |
-| effort | number | Estimated effort in configured unit |
-| owner | string | Assigned role name |
-| status | enum: planned, in-progress, done, needs-rework, deferred | Task state |
-| agent | string? | Which agent executed (recorded on completion) |
-| actual_effort | number? | Actual effort (recorded on completion) |
-| verdict | enum: pass, needs-work, blocked? | Review verdict (recorded at review) |
+| Field | Type | Required | Description |
+| ----- | ---- | -------- | ----------- |
+| task_id | string | Yes | e.g., "T-001" |
+| title | string | Yes | Brief task description |
+| requirement_ref | string | Yes | e.g., "FR-003" |
+| user_story_ref | string | Yes | e.g., "US-2" |
+| effort | number | Yes | Estimated effort in configured unit |
+| owner | string | Yes | Assigned role name |
+| status | enum: planned, in-progress, done, needs-rework, deferred | Yes | Task state |
+| agent | string? | No | Which agent executed (recorded on completion) |
+| actual_effort | number? | No | Actual effort (recorded on completion) |
+| verdict | enum: pass, needs-work, blocked? | No | Review verdict (recorded at review) |
 
 **Relationships**: Tasks trace to spec requirements (FR-018). Plan references Iteration Config for capacity.
 
@@ -148,12 +148,12 @@ Persistent execution state enabling resume after failure.
 
 **Location**: `specs/NNN-feature/iterations/NNN/state.md`
 
-| Field | Type | Description |
-| ----- | ---- | ----------- |
-| last_completed_task | string? | task_id of last successfully completed task |
-| tasks_remaining | string[] | task_ids not yet started |
-| tasks_in_progress | string? | task_id currently executing (null if between tasks) |
-| updated | ISO datetime | Last state update |
+| Field | Type | Required | Description |
+| ----- | ---- | -------- | ----------- |
+| last_completed_task | string? | Yes | task_id of last successfully completed task |
+| tasks_remaining | string[] | Yes | task_ids not yet started |
+| tasks_in_progress | string? | Yes | task_id currently executing (null if between tasks) |
+| updated | ISO datetime | Yes | Last state update |
 
 **Relationships**: References Iteration Plan tasks. Updated after each task completes (FR-019).
 
@@ -167,15 +167,15 @@ A recorded divergence between implementation and spec.
 
 Each event:
 
-| Field | Type | Description |
-| ----- | ---- | ----------- |
-| drift_id | string | e.g., "DR-001" |
-| detected_at | ISO datetime | When detected |
-| task_ref | string | Which task triggered detection |
-| requirement_ref | string | Which requirement was violated |
-| description | string | What the deviation is |
-| resolution | enum: spec-updated, implementation-reverted, deferred, human-decision | Chosen resolution |
-| resolution_detail | string | Explanation of what was done |
+| Field | Type | Required | Description |
+| ----- | ---- | -------- | ----------- |
+| drift_id | string | Yes | e.g., "DR-001" |
+| detected_at | ISO datetime | Yes | When detected |
+| task_ref | string | Yes | Which task triggered detection |
+| requirement_ref | string | Yes | Which requirement was violated |
+| description | string | Yes | What the deviation is |
+| resolution | enum: spec-updated, implementation-reverted, deferred, human-decision | Yes | Chosen resolution |
+| resolution_detail | string | No | Explanation of what was done |
 
 **Relationships**: References task and requirement. Recorded during execution (FR-008).
 
@@ -187,16 +187,16 @@ Review/demo verdicts for an iteration.
 
 **Location**: `specs/NNN-feature/iterations/NNN/review.md`
 
-| Field | Type | Description |
-| ----- | ---- | ----------- |
-| iteration_ref | number | Which iteration |
-| reviewed_at | ISO datetime | When review ran |
-| tasks[] | array | Per-task verdicts |
-| tasks[].task_id | string | Task reference |
-| tasks[].requirement_ref | string | Requirement reference |
-| tasks[].verdict | enum: pass, needs-work, blocked | Per-task verdict |
-| tasks[].notes | string | Reviewer notes |
-| overall_verdict | enum: accepted, needs-rework, blocked | Iteration-level verdict |
+| Field | Type | Required | Description |
+| ----- | ---- | -------- | ----------- |
+| iteration_ref | number | Yes | Which iteration |
+| reviewed_at | ISO datetime | Yes | When review ran |
+| tasks[] | array | Yes | Per-task verdicts |
+| tasks[].task_id | string | Yes | Task reference |
+| tasks[].requirement_ref | string | Yes | Requirement reference |
+| tasks[].verdict | enum: pass, needs-work, blocked | Yes | Per-task verdict |
+| tasks[].notes | string | No | Reviewer notes |
+| overall_verdict | enum: accepted, needs-rework, blocked | Yes | Iteration-level verdict |
 
 **Relationships**: References Iteration Plan tasks and spec requirements (FR-009).
 
@@ -208,14 +208,14 @@ Captures iteration learnings.
 
 **Location**: `specs/NNN-feature/iterations/NNN/retro.md`
 
-| Field | Type | Description |
-| ----- | ---- | ----------- |
-| iteration_ref | number | Which iteration |
-| estimation_accuracy | object | Planned vs. actual effort summary |
-| drift_summary | object | Count and severity of drift events |
-| process_notes | string | What went well, what didn't |
-| improvement_actions[] | string[] | Concrete actions for next iteration |
-| calibration_suggestion | object? | Suggested capacity/effort adjustments |
+| Field | Type | Required | Description |
+| ----- | ---- | -------- | ----------- |
+| iteration_ref | number | Yes | Which iteration |
+| estimation_accuracy | object | Yes | Planned vs. actual effort summary |
+| drift_summary | object | Yes | Count and severity of drift events |
+| process_notes | string | Yes | What went well, what didn't |
+| improvement_actions[] | string[] | Yes | Concrete actions for next iteration |
+| calibration_suggestion | object? | No | Suggested capacity/effort adjustments |
 
 **Relationships**: References Iteration Plan, Drift Events, Review (FR-010).
 
@@ -227,15 +227,15 @@ Output of the evaluation harness.
 
 **Location**: `specs/NNN-feature/evaluation/report.md`
 
-| Field | Type | Description |
-| ----- | ---- | ----------- |
-| evaluated_at | ISO datetime | When harness ran |
-| spec_ref | path | Reference spec used |
-| iterations_completed | number | How many iterations ran |
-| process_score | object | Ceremony adherence, drift detection rate, traceability coverage |
-| outcome_score | object | Requirement coverage, acceptance pass rate, artifact consistency |
-| overall | enum: PASS, FAIL | Summary verdict |
-| details[] | array | Per-iteration breakdown |
+| Field | Type | Required | Description |
+| ----- | ---- | -------- | ----------- |
+| evaluated_at | ISO datetime | Yes | When harness ran |
+| spec_ref | path | Yes | Reference spec used |
+| iterations_completed | number | Yes | How many iterations ran |
+| process_score | object | Yes | Ceremony adherence, drift detection rate, traceability coverage |
+| outcome_score | object | No | Requirement coverage, acceptance pass rate, artifact consistency |
+| overall | enum: PASS, FAIL | Yes | Summary verdict |
+| details[] | array | Yes | Per-iteration breakdown |
 
 **Relationships**: Aggregates data from all iterations (FR-015).
 

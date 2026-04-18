@@ -9,6 +9,7 @@
 ```markdown
 # Iteration Plan: NNN
 
+**Schema**: v1
 **Spec**: [spec.md](../../spec.md)
 **Status**: planning | executing | reviewing | retro | complete | abandoned
 **Capacity**: {used}/{total} {effort_unit}
@@ -32,6 +33,7 @@
 ```markdown
 # Iteration State: NNN
 
+**Schema**: v1
 **Last Completed Task**: T-001
 **Tasks Remaining**: T-002, T-003
 **In Progress**: (none)
@@ -42,6 +44,8 @@
 
 ```markdown
 # Drift Log: Iteration NNN
+
+**Schema**: v1
 
 ## Events
 
@@ -59,6 +63,7 @@
 ```markdown
 # Review: Iteration NNN
 
+**Schema**: v1
 **Reviewed**: YYYY-MM-DD
 **Overall Verdict**: accepted | needs-rework | blocked
 
@@ -75,6 +80,7 @@
 ```markdown
 # Retrospective: Iteration NNN
 
+**Schema**: v1
 **Date**: YYYY-MM-DD
 
 ## Estimation Accuracy
@@ -117,6 +123,7 @@
 ```markdown
 # Evaluation Report
 
+**Schema**: v1
 **Evaluated**: YYYY-MM-DD
 **Reference Spec**: {path}
 **Iterations Completed**: N

@@ -1,0 +1,30 @@
+# Specrew Spec Kit Extension
+# Schema version for Spec Kit extensions
+schema_version: "1.0"
+
+# Extension metadata
+name: "specrew-speckit"
+version: "0.1.0-dev"
+description: "Spec Kit extension providing governance artifacts, templates, and validation for Specrew"
+
+# Minimum platform versions required
+requires:
+  speckit: ">=0.7.3"
+
+# Extension type
+type: "governance"
+
+# Hooks directory (relative to this file)
+hooks_dir: "hooks"
+
+# Templates directory
+templates_dir: "templates"
+
+# Scripts directory
+scripts_dir: "scripts"
+
+# Feature flags and configuration
+# (To be populated by Planner in T-005)
+config:
+  # Placeholder for downstream configuration
+  governance_mode: "standard"

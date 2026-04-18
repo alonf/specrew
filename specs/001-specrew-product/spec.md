@@ -22,7 +22,7 @@ No existing product bridges these two layers. Users are forced to manually trans
 
 Specrew lets users run an AI crew from the spec. It connects Spec Kit (the specification and governance layer) with Squad (the persistent multi-agent runtime layer) so that a single source of truth — the spec — governs what the crew builds, how it plans, how it executes, and how it is evaluated.
 
-Specrew is built as two companion extensions: a Spec Kit extension (governing spec lifecycle, governance artifacts, and drift detection) and a Squad extension with SDK-defined team configuration (governing crew composition, iteration delivery, roles, and ceremonies). Together they create a structured operating model where every iteration is planned from the spec, every task is traceable to a requirement, and every review checks alignment between implementation and intent.
+Specrew is built as a Spec Kit extension plus Squad-native configuration surfaces. The Spec Kit extension (`specrew-speckit`) governs spec lifecycle, governance artifacts, and drift detection. Squad integration uses Squad's native runtime surfaces: skills deployed to `.copilot/skills/specrew-*/`, ceremonies and directives registered in `.squad/` config files, and team roles merged into `.squad/team.md`. In v1, all Squad integration is Markdown-based (skills, ceremony definitions, directive references); SDK-defined team configuration (`squad.config.ts`) is deferred to post-MVP. Together they create a structured operating model where every iteration is planned from the spec, every task is traceable to a requirement, and every review checks alignment between implementation and intent.
 
 Specrew currently targets GitHub Copilot because Squad currently supports that path, but it is architected for future compatibility if Squad later supports other coding-agent runtimes.
 
@@ -43,6 +43,15 @@ Specrew currently targets GitHub Copilot because Squad currently supports that p
 - Q: Should Specrew assume Squad's built-in GitHub Projects V2 workflow suffices for board management, or should a Spec Kit-side project-management extension be considered? → A: Squad's built-in workflow plus manual board management is sufficient. No Spec Kit-side project-management extension is needed for MVP or planned as a dependency.
 - Q: Is `specrew init` a Spec Kit extension command or a standalone CLI? → A: Standalone CLI/script at the repo root. It must work before Spec Kit or Squad are installed. It orchestrates `specify init` and `squad init` as sub-steps, then installs/configures the Specrew extensions. Spec Kit extension behavior begins only after `.specify/` exists; Squad extension behavior begins only after `.squad/` exists. `specrew init` is the orchestration layer above both.
 - Q: Should Specrew's GitHub Projects V2 board use custom columns (like a "Review" column) or Squad's documented default board layout? → A: Use Squad's documented default board layout without customization. Any custom columns are not a Specrew requirement.
+- Q: What is the correct iteration-to-FR mapping? (TG-003 vs plan Section 14 conflict) → A: Adopt plan's mapping. Iteration 0 (Foundation): FR-001, FR-013. MVP (Iteration 1): FR-002–FR-006, FR-008–FR-011, FR-018. Iteration 2: FR-007, FR-017, FR-019, FR-020. Iteration 3: FR-012, FR-014–FR-016. Brownfield (FR-020) is post-MVP; drift/review/retro (FR-008–FR-010) are essential for MVP's iteration loop.
+- Q: If the Squad post-task hook is unavailable after Iteration 0 validation, what is the canonical fallback for drift detection? → A: Drift-check skill runs as an automated step within the Review/Demo ceremony (batch per-iteration). Drift is still caught within the same iteration — at review time rather than per-task. This uses only documented extension surfaces (skills + ceremonies) with no SDK dependency.
+- Q: What is the Retro Facilitator's responsibility if Squad's built-in Retrospective ceremony is reused? → A: Squad's retro ceremony provides the infrastructure (scheduling, flow). The Retro Facilitator provides Specrew-specific governance content: prompting for estimation accuracy, drift summary, process adherence review, and improvement actions. It also owns generating the `retro.md` artifact.
+- Q: Should the evaluation harness be delivered all at once in Iteration 3 or staged incrementally? → A: Staged. Process-quality scorer (artifact existence, ceremony adherence, drift detection verification) in Iteration 2. Outcome-quality scorer (requirement coverage, acceptance pass rate) + full end-to-end harness in Iteration 3. This matches the risk mitigation strategy and avoids building on unstable foundations.
+- Q: Should the Spec Kit extension include an empty `commands/` folder in its Iteration 0 skeleton? → A: No. Remove `commands/` from the Iteration 0 skeleton and MVP scope. Specrew v1 defines no Spec Kit extension commands. Add commands/ only if/when a concrete command is designed in a future iteration.
+- Q: Should iteration artifacts have versioned machine-readable schemas or remain pure prose Markdown? → A: Markdown-native versioning. Each artifact type includes a `**Schema**: v1` metadata line (consistent with R4's bold key-value convention). Mandatory vs. optional fields are marked in data-model.md. No YAML frontmatter or secondary format introduced.
+- Q: What is the brownfield rollback strategy if `specrew init` fails mid-execution? → A: Resume-safe idempotency. Since all writes are additive-only (never overwrite existing files), a partial run leaves the workspace in a valid but incomplete state. Re-running `specrew init` completes remaining steps and skips already-done ones. No backup directory or rollback mechanism needed for MVP.
+- Q: Which collision classes does `specrew init` check at bootstrap (MVP) vs. the full Iter 3 detector? → A: Bootstrap checks hook name and role name collisions only (these cause immediate breakage if undetected). Command name, artifact path, and ceremony name collisions are deferred to the full collision detector in Iteration 3 (FR-012).
+- Q: What is the downstream user interaction model after `specrew init`? → A: Direct dual-surface. Users work with Spec Kit slash commands for specification authoring (`/speckit.specify`, `/speckit.plan`, `/speckit.tasks`), then Squad ceremonies for iteration execution (planning, review/demo, retrospective). Specrew hooks fire automatically during Spec Kit workflows to enforce governance. No wrapper commands needed.
 
 ## Personas
 
@@ -195,21 +204,21 @@ A user has other Spec Kit or Squad extensions installed alongside Specrew. Specr
 
 ### Functional Requirements
 
-- **FR-001**: System MUST install as two separate packages: a Spec Kit extension (built from the official Spec Kit extension starter template) and a Squad extension (built using Squad’s documented extension structure: skills/, ceremonies/, directives/, README.md), each independently versioned. Specrew MUST NOT depend on third-party scaffolding tools for its runtime architecture.
-- **FR-002**: System MUST provide a standalone `specrew init` CLI/script (not a Spec Kit extension command) that works before Spec Kit or Squad are installed. It MUST own the full dependency lifecycle: detect existing Spec Kit and Squad installations, install missing dependencies at pinned compatible versions (Spec Kit >= 0.7.3, Squad >= 0.9.1), run `specify init` and `squad init` as needed to create `.specify/` and `.squad/` directories, validate version compatibility of existing installations, then install/configure the Specrew Spec Kit extension and Specrew Squad extension, scaffold governance artifacts (downstream constitution placeholder, iteration configuration, role assignments), and configure the Squad team with five predefined baseline roles: Spec Steward, Planner, Implementer, Reviewer, and Retro Facilitator. Each downstream project MUST be able to add additional domain-specific team members via Squad configuration without modifying the baseline.
+- **FR-001**: System MUST provide a Spec Kit extension (built from the official Spec Kit extension starter template) and Squad-native configuration surfaces. Squad integration MUST use Squad's native runtime layout: skills deployed to `.copilot/skills/specrew-*/SKILL.md`, ceremonies registered in `.squad/ceremonies.md`, and directives referenced via agent charters in `.squad/agents/*/charter.md`. Specrew MUST NOT create a separate `extensions/specrew-squad/` package or rely on Squad's marketplace plugin system for bundled distribution. Specrew MUST NOT depend on third-party scaffolding tools for its runtime architecture.
+- **FR-002**: System MUST provide a standalone `specrew init` CLI/script (not a Spec Kit extension command) that works before Spec Kit or Squad are installed. It MUST own the full dependency lifecycle: detect existing Spec Kit and Squad installations, install missing dependencies at pinned compatible versions (Spec Kit >= 0.7.3, Squad >= 0.9.1), run `specify init` and `squad init` as needed to create `.specify/` and `.squad/` directories, validate version compatibility of existing installations, then install/configure the Specrew Spec Kit extension, deploy Squad skills to `.copilot/skills/specrew-*/`, register ceremonies in `.squad/ceremonies.md`, scaffold governance artifacts (downstream constitution placeholder, iteration configuration, role assignments), and configure the Squad team with five predefined baseline roles: Spec Steward, Planner, Implementer, Reviewer, and Retro Facilitator. Each downstream project MUST be able to add additional domain-specific team members via Squad configuration without modifying the baseline.
 - **FR-003**: The spec MUST be the authoritative source of truth. Agent memory, team decisions, and implementation artifacts MUST NOT silently replace or contradict the spec without going through a tracked change process.
 - **FR-004**: System MUST define and assign a Spec Steward role responsible for keeping spec, plan, tasks, decisions, and implementation aligned.
-- **FR-005**: System MUST support an iteration lifecycle with four phases: planning, execution, review/demo, and retrospective. Planning and Review/Demo are Specrew-defined ceremonies. Retrospective leverages Squad’s built-in Retrospective ceremony mechanism. All four phases use Squad’s ceremony infrastructure but Specrew defines the governance semantics.
+- **FR-005**: System MUST support an iteration lifecycle with four phases: planning, execution, review/demo, and retrospective. Planning and Review/Demo are Specrew-defined ceremonies. Retrospective leverages Squad's built-in Retrospective ceremony mechanism. Execution is a phase but not a ceremony — it is routed work dispatched to agents. The three ceremony phases use Squad's ceremony infrastructure; execution uses Squad's task routing and skill invocation.
 - **FR-006**: During planning, the system MUST generate an iteration plan with tasks mapped to spec requirements, each task having an effort estimate, an assigned owner, and traceability to its source requirement.
 - **FR-007**: System MUST support configurable effort measurement with a defined effort unit and iteration capacity limit. *(Specrew v1 default: story points. This is a Specrew design choice, not a platform-level concept.)*
-- **FR-008**: During execution, the Spec Steward MUST actively monitor for drift after each task completes (intended implementation: a Squad post-task hook — exact hook shape to be validated against Squad’s SDK surface during implementation), surfacing detected drift with a specific citation of the requirement and the deviation before subsequent tasks execute.
+- **FR-008**: During execution, the Spec Steward MUST actively monitor for drift after each task completes (intended implementation: a Squad post-task hook — exact hook shape to be validated against Squad's SDK surface during Iteration 0). If the post-task hook surface is unavailable, the canonical fallback is: the drift-check skill runs as an automated step within the Review/Demo ceremony, checking all tasks in batch. Drift is still caught within the same iteration. Surfaced drift MUST include a specific citation of the requirement and the deviation.
 - **FR-009**: During review/demo, the system MUST evaluate each delivered task against its source requirement and produce a per-task verdict (pass / needs-work / blocked).
 - **FR-010**: During retrospective, the system MUST capture estimation accuracy, drift events, process adherence, and improvement actions.
 - **FR-011**: System MUST distinguish between Specrew's own project governance and the governance artifacts it generates for downstream projects. It MUST NOT use its own constitution as the default for downstream projects.
 - **FR-012**: System MUST detect hard-stop collisions with other Spec Kit or Squad extensions and inform the user with a clear explanation of the conflict and resolution options. It MUST NOT silently override other extensions.
 - **FR-013**: System MUST integrate exclusively through Spec Kit extension capabilities and Squad extension/config/SDK capabilities — not through Copilot-specific or VS Code-specific APIs.
 - **FR-014**: System MUST be architecturally separable from GitHub Copilot so that if Squad later supports other coding-agent runtimes, Specrew can adapt without a rewrite.
-- **FR-015**: System MUST include an evaluation harness that can bootstrap a fresh project, run multiple iterations against a reference spec, and produce a structured report covering process quality and outcome quality.
+- **FR-015**: System MUST include an evaluation harness that can bootstrap a fresh project, run multiple iterations against a reference spec, and produce a structured report covering process quality and outcome quality. The harness is staged: the process-quality scorer (artifact checks, ceremony adherence, drift detection verification) is delivered in Iteration 2; the outcome-quality scorer (requirement coverage, acceptance scenario pass rate) and full end-to-end harness are delivered in Iteration 3.
 - **FR-016**: System MUST preserve user customizations (downstream constitution, iteration config, role assignments) across Specrew upgrades.
 - **FR-017**: When an iteration plan exceeds configured capacity, the system MUST flag the overcommitment and suggest task deferral based on requirement priority.
 - **FR-018**: Each completed task MUST record the requirement it traces to, the agent that executed it, the effort spent, and the review verdict.
@@ -234,9 +243,10 @@ A user has other Spec Kit or Squad extensions installed alongside Specrew. Specr
   - FR-012–FR-014: Extension integration layer
   - FR-015: Evaluation harness
 - **TG-003**: Each requirement MUST identify intended iteration or delivery window.
-  - Iteration 1 (MVP): FR-001, FR-002, FR-003, FR-004, FR-005, FR-006, FR-011, FR-013, FR-020
-  - Iteration 2: FR-007, FR-008, FR-009, FR-010, FR-017, FR-018, FR-019
-  - Iteration 3: FR-012, FR-014, FR-015, FR-016
+  - Iteration 0 (Foundation): FR-001, FR-013
+  - Iteration 1 (MVP): FR-002, FR-003, FR-004, FR-005, FR-006, FR-008, FR-009, FR-010, FR-011, FR-018
+  - Iteration 2: FR-007, FR-015 (process scorer), FR-017, FR-019, FR-020
+  - Iteration 3: FR-012, FR-014, FR-015 (outcome scorer + full harness), FR-016
 - **TG-004**: Any known spec/implementation conflict MUST include an explicit reconciliation path. None identified at this time.
 
 ### Non-Goals
@@ -248,6 +258,41 @@ A user has other Spec Kit or Squad extensions installed alongside Specrew. Specr
 - **NG-005**: Specrew does NOT enforce a specific programming language, framework, or project type for downstream projects.
 - **NG-006**: Specrew does NOT manage CI/CD pipelines. It may produce artifacts that CI/CD consumes, but pipeline configuration is out of scope.
 - **NG-007**: Specrew does NOT attempt to resolve all drift automatically. It surfaces drift and proposes options; the human decides.
+
+### Downstream User Flow
+
+After `specrew init`, the user interacts with two existing surfaces — Spec Kit and Squad — with Specrew hooks providing automatic governance. No Specrew-specific wrapper commands exist.
+
+| Step | Surface | Action | Specrew Governance |
+| ---- | ------- | ------ | ------------------ |
+| 1 | CLI | `specrew init` | Bootstrap: scaffold config, install extensions, assign roles |
+| 2 | Spec Kit | `/speckit.specify` | Write feature spec |
+| 3 | Spec Kit | `/speckit.plan` | Create implementation plan. `before_plan` hook validates spec has requirements |
+| 4 | Spec Kit | `/speckit.tasks` | Generate tasks. `after_tasks` hook verifies traceability |
+| 5 | Squad | Planning ceremony | Crew generates iteration plan from spec + tasks |
+| 6 | Squad | Task execution | Crew executes tasks. Drift-check skill runs per-task (if post-task hook available) or at review |
+| 7 | Squad | Review/Demo ceremony | Per-task verdicts. Drift-check skill runs as batch fallback if not per-task |
+| 8 | Squad | Retrospective ceremony | Retro Facilitator generates `retro.md` artifact |
+| 9 | — | Repeat from step 5 | Next iteration cycle |
+
+### User-Visible Command Inventory (MVP)
+
+**Standalone CLI**:
+
+- `specrew init` — Bootstrap command (flags: `--dry-run`, `--force`, `--help`)
+
+**Spec Kit Extension**:
+
+- No Specrew-specific commands in v1. Governance is delivered entirely via hooks:
+  - `before_plan` — Validates spec contains requirements before planning proceeds
+  - `after_tasks` — Verifies task-to-requirement traceability after task generation
+  - `before_implement` — Pre-implementation governance check
+
+**Squad Extension**:
+
+- Ceremonies: Planning, Review/Demo (reuses Squad built-in with Specrew governance content)
+- Skills: `drift-check`, `capacity-planning`, `traceability-check`, `iteration-resume`
+- Directives: `spec-authority`, `traceability`, `drift-reporting`
 
 ### Key Entities
 
@@ -261,7 +306,7 @@ All iteration artifacts are stored as Markdown files within the spec feature dir
 - **Drift Event**: A recorded instance where implementation or agent behavior diverges from the spec. Includes the specific requirement, the deviation, and the resolution path chosen.
 - **Evaluation Report**: The output of the evaluation harness. Contains separate assessments for process quality and outcome quality across one or more iterations.
 - **Collision Record**: A detected conflict between Specrew and another extension, including the conflicting resource, the involved extensions, and the resolution options presented to the user.
-- **Crew Composition**: The set of agent roles active in a project. The baseline consists of five predefined roles (Spec Steward, Planner, Implementer, Reviewer, Retro Facilitator). Each project can extend this with domain-specific team members (e.g., Security Analyst, UX Designer, DBA) configured through Squad team configuration. Baseline roles cannot be removed, only supplemented.
+- **Crew Composition**: The set of agent roles active in a project. The baseline consists of five predefined roles (Spec Steward, Planner, Implementer, Reviewer, Retro Facilitator). The Retro Facilitator provides Specrew-specific governance prompts (estimation accuracy, drift summary, process adherence, improvement actions) and owns `retro.md` generation — Squad's built-in Retrospective ceremony provides the infrastructure. Each project can extend this with domain-specific team members (e.g., Security Analyst, UX Designer, DBA) configured through Squad team configuration. Baseline roles cannot be removed, only supplemented.
 
 ## Success Criteria *(mandatory)*
 
@@ -308,7 +353,7 @@ The following are **Specrew v1 design decisions** that build on those platforms 
 - Local tasks.md is the authoritative source of truth for Specrew planning. GitHub Issues are created for visibility/tracking via `speckit.taskstoissues` but do not drive implementation order or status. *(A project-development workflow choice. Downstream projects may use any tracking system.)*
 - Human review of Specrew is handled through standard GitHub PR review. No formal "Human Reviewer" crew role is assigned. *(Keeps the crew model agent-focused; human oversight occurs through normal PR and iteration approval gates.)*
 - Specrew's GitHub Projects V2 board is managed through Squad's built-in workflow plus manual board management. No Spec Kit-side project-management extension is needed. *(If a Spec Kit project-management extension emerges later, it can be adopted opportunistically but is not a dependency.)*
-- `specrew init` is a standalone CLI/script at the monorepo root — not a Spec Kit extension command. It must work before `.specify/` or `.squad/` exist. It calls `specify init` and `squad init` as sub-steps, then installs Specrew's extensions. *(The Spec Kit extension activates only after `.specify/` exists; the Squad extension activates only after `.squad/` exists. `specrew init` is the orchestration layer above both.)*
+- `specrew init` is a standalone CLI/script at the monorepo root — not a Spec Kit extension command. It must work before `.specify/` or `.squad/` exist. It calls `specify init` and `squad init` as sub-steps, then installs the Specrew Spec Kit extension and deploys Squad skills/ceremonies/directives into Squad's native runtime locations. *(The Spec Kit extension activates only after `.specify/` exists; Squad skills/ceremonies activate only after `.squad/` exists. `specrew init` is the orchestration layer above both.)*
 - Specrew's GitHub Projects V2 board uses Squad's documented default board layout without custom columns. *(No custom "Review" column or other board customizations are required.)*
 
 ## Governance Alignment *(mandatory)*

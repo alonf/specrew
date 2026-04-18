@@ -1,0 +1,18 @@
+# Specrew Code Owners
+# Lines starting with '#' are comments.
+# Each line is a file pattern followed by one or more owners.
+
+# Default owners for everything in the repo
+* @alonf
+
+# Spec Kit extension
+/extensions/specrew-speckit/ @alonf
+
+# Squad extension
+/extensions/specrew-squad/ @alonf
+
+# Specifications and iteration artifacts
+/specs/ @alonf
+
+# CI/CD workflows
+/.github/workflows/ @alonf
