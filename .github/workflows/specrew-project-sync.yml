@@ -1,0 +1,44 @@
+name: Specrew Project Sync
+
+on:
+  push:
+    branches: [ main, 001-specrew-product ]
+    paths:
+      - '.github/scripts/sync-specrew-board.ps1'
+      - '.github/workflows/specrew-project-sync.yml'
+      - 'specs/**/iterations/**/plan.md'
+      - 'specs/**/iterations/**/state.md'
+      - 'specs/**/iterations/**/review.md'
+      - 'specs/**/iterations/**/retro.md'
+      - 'docs/github-project.md'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+  repository-projects: write
+
+jobs:
+  sync-board:
+    runs-on: ubuntu-latest
+    env:
+      GITHUB_TOKEN: ${{ github.token }}
+      SPECREW_PROJECT_TOKEN: ${{ secrets.SPECREW_PROJECT_TOKEN }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Sync GitHub Issues and Project board
+        shell: pwsh
+        run: |
+          if ($env:SPECREW_PROJECT_TOKEN) {
+            $env:GH_TOKEN = $env:SPECREW_PROJECT_TOKEN
+          }
+          else {
+            $env:GH_TOKEN = $env:GITHUB_TOKEN
+          }
+
+          .\.github\scripts\sync-specrew-board.ps1 `
+            -Repository "${{ github.repository }}" `
+            -ProjectOwner "alonf" `
+            -ProjectNumber 10

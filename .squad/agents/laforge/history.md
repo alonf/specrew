@@ -31,6 +31,7 @@ I execute planned work for Specrew and produce outputs that remain traceable to 
 - **Governance becomes real when templates and validators agree**: The operating method must live in runtime-facing ceremony/directive/skill templates, and lifecycle checks must fail automatically when artifacts are incomplete or phases are skipped.
 - **Validator tightening needs context-aware matching**: stale "awaiting sign-off" language belongs in lifecycle checks, while role-name validation should only inspect actual approval/closure lines instead of owner or action annotations.
 - **Cross-artifact evidence is the reliable stale-state detector**: once review/retro artifacts exist, validator checks should treat lingering "pending" lifecycle claims and non-terminal governance gate verdicts as semantic failures, not documentation drift.
+- **Required artifacts need actual git tracking**: if governance or iteration assets are declared complete, make sure the files are added to version control and remove backup/handoff leftovers that only create untracked noise.
 
 ---
 

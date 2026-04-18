@@ -5,3 +5,6 @@
 .squad/sessions/
 # Squad: SubSquad activation file (local to this machine)
 .squad-workstream
+
+# Local backup leftovers should not be version-controlled
+*.backup
