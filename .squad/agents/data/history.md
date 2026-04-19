@@ -20,41 +20,32 @@ I turn Specrew's requirements into iteration plans, task maps, and explicit depe
 - Plans must map tasks back to requirements, with owners and effort estimates.
 - v1 is Markdown-first and centered on extension assets rather than runtime code.
 - Alon provides final architectural direction when requirements need interpretation.
+- Overcommit math: Must justify deferred work and track rationale for capacity overages
+- Iteration lifecycle clarity: Execution-complete and retrospective-complete are distinct states with separate gates
+- Capacity calibration: Iteration 0 baseline (20.5 pts, 0% variance) establishes velocity for Iteration 1 planning
 
-### 2026-04-17: Plan Revision (Iteration 0)
+## Iteration 0 Closure & Iteration 1 Planning (Archived Details)
 
-- **Overcommit math**: Effort totals must be verified bi-directionally (sum of tasks = total). When overcommit occurs, defer lowest-priority work (not base requirements). Foundation iterations may exceed capacity for precondition-critical de-risking, but must be justified and tracked.
-- **Acceptance criteria consistency**: AC gates must align with deferred work. If spikes are deferred, call them out explicitly in the AC. No ambiguity about what "complete" means.
-- **Self-approval antipattern**: Roles should not pre-approve work outside their ownership. Spec Steward validates spec authority; Chief Architect gates approval. Sequence matters.
-- **Traceability with enabling tasks**: Direct tasks (those that deliver a FR) differ from supporting tasks (those that enable a direct task). Both must be traceable, but the distinction clarifies dependencies. Use "Enabling Support" column to document which support tasks unblock which FRs.
-- **Constitution checks are plan gates**: Specrew's own governance model (spec authority, traceability, ownership, capacity, drift, verification) must be applied to Specrew's own plans. This is not post-hoc validation — it's part of plan design.
-- **Avoid calendrical assumptions**: AI crew estimates use story points, not wall-clock hours/days. Parallelization is noted; actual elapsed time depends on crew latency and verification feedback. Do not promise "3 days" for effort-estimated work.
-- **Iteration naming is a convention, not a code change**: Clarify it in metadata rather than inventing new directory structures. Zero-indexing is the pattern; document it once in the design spec, then reference in plans.
-- **Deferred work is not removed scope**: When spikes are moved to Iter 1 async, track them as deferred (not cancelled). They're still project work — just sequenced differently.
+**2026-04-18 Planning Work Summary**:
+- ✅ Iteration 0 execution-phase closure: Created drift-log.md, updated plan.md metadata; all 4 artifacts (plan, state, drift, review) contract-complete
+- ✅ Iteration 0 capacity baseline established: 20.5/20.5 pts with 0% variance; estimation accuracy 100%; platform validation 9/9 spikes passed
+- ✅ Artifact cleanup normalized: Updated state.md and plan.md to reflect terminal closed state (post-retro freshness); clarified phase gates
+- ✅ Closure metadata aligned: Established that iteration remains `retro` status until Alon records final sign-off; `complete` is final state (transition gates)
 
-### 2026-04-17: Iteration 0 Plan Revision Complete
+**Iteration 1 MVP Planning**:
+- ✅ Created execution-ready plan: 22 tasks, 20.5 pts (matched Iter 0 proven capacity); MVP-focused scope (bootstrap, governance, ceremonies, support)
+- ✅ Scope validation: 100% task-to-FR mapping; deferred work explicitly marked (FR-007, FR-012, FR-016, FR-020 to Iter 2+)
+- ✅ Spec authority gates verified: All requirements trace to FRs; no orphan tasks; capacity math exact
+- ✅ Board documentation clarified: Established source-of-truth hierarchy (local artifacts authoritative → GitHub Issues derived → board optional visibility)
 
-- All seven review findings resolved and integrated.
-- Plan returned to "pending approval" state; Alon (Chief Architect) gate next.
-- Decision merged to decisions.md; inbox file deleted.
-- Orchestration log and session log written.
+**Pre-Execution Readiness Assessment** (2026-04-19):
+- ✅ Pivot Question 1 — Resume (shallow vs deep): Keep shallow (MVP); defer programmatic resume to Iter 2; update AC wording only
+- ✅ Pivot Question 2 — Board-sync carryover: Add 0.5-pt task for workflow deployment (Iter 0 async completion); new capacity 21/20.5 pts (justified)
+- ✅ Pivot Question 3 — Execution start condition: Recommend gated 2-hour pre-execution window (plan update → board sync → final approval)
 
-## Learnings
+**Status**: Iteration 1 is execution-ready pending Alon confirmation of pre-execution corrections and governance hardening rationale
 
-### 2026-04-18T18-50-28Z: Iteration 001 Plan & Iteration 000 Closeout Session Update
-
-**Session**: Scribe Handoff Log — Iteration 000 Complete, Iteration 001 Planning-Ready  
-**Update**: Iteration 001 execution-ready plan created; team handoff complete; governance hardening authority BINDING
-
-**Key Facts**:
-- ✅ Iteration 001 plan created (specs/001-specrew-product/iterations/001/plan.md) — execution-ready and awaiting Alon approval
-- ✅ Iteration 000 final sign-off officially recorded (2026-04-18T18:15:45Z) — Alon's final approval now canonical
-- ✅ All closure artifacts verified terminal and consistent (plan.md, state.md, review.md, retro.md)
-- ✅ Governance hardening BINDING — four-phase state machine now enforced at CI gates for all future iterations
-- ✅ Operating policy (6 rules + 3 tier-1 improvements) proposed awaiting team consensus
-- ✅ Planning ceremony charter ready to finalize (pending Picard pre-ceremony spike identification)
-
-**Role Note**: Planner role remains authorization point for capacity math, effort estimation, and task traceability. Iteration 001 planning ceremony will enforce pre-execution gates (spec-authority, traceability check) before task assignment.
+**Detailed work tracked in .squad/decisions.md (Iteration Closure & Planning sections) and orchestration logs**
 
 ---
 

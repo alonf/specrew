@@ -31,6 +31,29 @@ I am the spec alignment gate for Specrew. My job is to keep every plan, task, de
 - Completion semantics must stay single-purpose: `retro.md` closes retrospective, but iteration status remains `retro` until Alon records final sign-off.
 - Closure evidence tables must be regenerated at sign-off time, not copied from draft versions (prevents stale claims).
 
+## Iteration 0 Closure & Governance Hardening (Archived Details)
+
+**2026-04-18 Work Summary**:
+- ✅ Closure artifact drift remediation: Cleared stale "pending sign-off" language from review.md, state.md, retro.md after Alon recorded final sign-off (7 edits, validator PASS)
+- ✅ Governance hardening implementation complete: Added normative lifecycle contract to spec.md, explicit state machine to contracts/iteration-artifacts.md, single coordinator protocol to .squad/protocol.md (3 artifacts updated)
+- ✅ Iteration 0 closure audit: All four phases complete; platform validation passed (9/9 spikes); all closure artifacts aligned and terminal
+- ✅ Review evidence correctness: Fixed false evidence claims in review.md (stale snapshot data); regenerated closure validation tables to match actual plan.md state
+- ✅ Alon final sign-off: Recorded across all artifacts (plan.md, state.md, review.md, retro.md); transition from `retro` → `complete` official (2026-04-18T18:15:45Z)
+- ✅ Closure evidence validation: All closure-readiness tables regenerated at final gate time; validator passes cleanly
+
+**Board Sync & GitHub Projects**: 
+- ✅ Resolved board-automation governance (Iteration 0 async completion blocker cleared; SPECREW_PROJECT_TOKEN configured)
+- ✅ Clarified source-of-truth hierarchy: Local artifacts authoritative, GitHub Issues derived, board optional visibility
+- ✅ Board automation decision recorded: Default Status field (Todo/In Progress/Done), no custom columns, Phase labels for lifecycle tracking
+
+**Iteration 1 Planning Prerequisites**:
+- ✅ Identified three tier-1 governance improvements for Iteration 1 adoption (spec-authority gate pre-execute, spikes pre-planning, retro autonomous)
+- ✅ Operating policy (6 rules) recorded; awaiting team consensus before planning ceremony
+- ✅ Spec Steward role embedded in planning ceremony (Rule 1: pre-execution gate before task assignment)
+- ⏳ Next: Update .squad/protocol.md with three tier-1 improvements; Picard + Alon confirm policy before Iteration 1 planning
+
+**Detailed work tracked in .squad/decisions.md (Iteration 0 Governance Hardening section) and orchestration logs**
+
 ### 2026-04-18T18-30-00Z: Closure Artifact Signoff Drift Remediation
 
 **Task**: La Forge readiness pass found blocker — review.md and state.md contained stale "pending sign-off" language even though Iteration 000 status was already `complete` in plan.md with Alon's final sign-off recorded.
