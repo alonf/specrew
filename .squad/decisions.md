@@ -600,6 +600,56 @@ $ceremonyFiles = @(
 
 **Fix 2: Exclude Deferred `iteration-resume` Skill**
 
+---
+
+### 2026-04-20: FR-022 Agent Detection Slice — Accepted
+
+**Date**: 2026-04-20T02:23:06Z  
+**Scope**: FR-022 (Agent Detection & Consent-Gated Opt-In), V-R7-1 spike + T-011 implementation  
+**Owner**: Picard (Spec Steward), La Forge (Implementer), Data (Platform Specialist), Worf (Reviewer)
+
+#### Decision Path
+
+1. **Picard** (2026-04-19): Delivered scope guardrails defining authoritative requirement boundaries, graceful degradation scenarios, out-of-scope boundaries, and V-R7-1 spike requirements. **Decision**: APPROVED.
+
+2. **La Forge** (2026-04-19): Implemented V-R7-1 spike findings and T-011 (Copilot runtime detection, GitHub auth context probe, delegated-agent metadata enumeration, interactive consent flow, persistence to `iteration-config.yml`). **Status**: Initial implementation complete.
+
+3. **Worf** (2026-04-20 00:xx:xx): Initial quality gate review. **Verdict**: NEEDS-WORK. Flagged three defects:
+   - CLI contract mismatch: GNU-style flags not binding on live PowerShell invocation
+   - Missing `gh api /user` auth-context probe (non-fatal)
+   - Interactive consent prompt incomplete (availability not displayed)
+
+4. **Picard** (2026-04-20 01:xx:xx): Narrow revision addressing missing auth probe and availability display. **Status**: Ready for re-review.
+
+5. **Worf** (2026-04-20 01:xx:xx): Re-review. **Verdict**: NEEDS-WORK. Auth probe and availability now fixed; CLI binding defect remains open and blocks acceptance.
+
+6. **Data** (2026-04-20 02:xx:xx): GNU-style CLI binding correction. Added hyphenated PowerShell parameter aliases (`--project-path`, `--dry-run`, `--speckit-version`, `--squad-version`, `--no-agents`) to bind correctly on native PowerShell `-File` execution and direct invocation. Retained existing GNU-style fallback parser for `--flag=value` forms and cross-shell resilience. **Status**: Implementation complete; smoke tests passed.
+
+7. **Worf** (2026-04-20 02:xx:xx): Final re-review. **Verdict**: PASS. All three defects closed.
+   - ✅ Direct PowerShell invocation now binds `--dry-run --force --project-path` correctly
+   - ✅ `-File` execution path honors GNU arguments
+   - ✅ Dry-run remains non-writing; no unexpected writes on smoke
+
+#### Decisions Merged
+
+- picard-fr022-guardrails.md (scope definition, APPROVED)
+- laforge-fr022-implementation.md (V-R7-1 + T-011 design)
+- worf-fr022-review.md (initial review, NEEDS-WORK)
+- picard-fr022-revision.md (narrow revision on auth + display)
+- worf-fr022-rereview.md (re-review, still NEEDS-WORK)
+- data-fr022-cli-revision.md (CLI binding fix)
+- worf-fr022-final-rereview.md (final review, PASS)
+
+#### Guardrails Preserved
+
+✅ No billing/cost logic introduced  
+✅ No cross-agent routing or orchestration logic  
+✅ No resume/state recovery beyond `iteration-config.yml` persistence  
+✅ Graceful degradation: all probe failures non-fatal  
+✅ Contract compliance: all acceptance criteria met
+
+**Decision**: FR-022 detection slice **ACCEPTED**. All defects closed; quality gate passed. Ready for closure and transition to next iteration phase.
+
 File: `extensions/specrew-speckit/scripts/deploy-squad-runtime.ps1` (Line 315)
 
 ```powershell

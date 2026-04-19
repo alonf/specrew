@@ -64,6 +64,8 @@ I execute planned work for Specrew and produce outputs that remain traceable to 
 - **Reviewer-lockout fixes should stay artifact-local**: when Worf cites a single README/runtime mismatch, correct only the named source file (`extensions\specrew-speckit\squad-templates\ceremonies\README.md`) plus required team memory updates; do not reopen adjacent ceremony sources that already match runtime behavior.
 - **Bootstrap version gates need inventory fallbacks**: `extensions\specrew-speckit\scripts\validate-versions.ps1` should accept parseable version text from `specify --version` when available, but recover from shim-specific failures like `Failed to canonicalize script path` by reading `uv tool list` for `specify-cli` instead of aborting bootstrap.
 - **Capability probes must hit the real subcommand surface without polluting the target workspace**: `scripts\specrew-init.ps1` should test `squad init --help` from a disposable repo-local probe directory, then clean that directory immediately so `--non-interactive` detection stays accurate even when help has side effects.
+- **Copilot runtime detection in this environment comes from the standalone CLI, not `gh copilot`**: `scripts\specrew-init.ps1` should treat `copilot --version` plus active-session env markers (`COPILOT_CLI`, `COPILOT_AGENT_SESSION_ID`, `COPILOT_CLI_BINARY_VERSION`) as the real runtime probe, and use `copilot help config` to infer Claude/Codex delegated-agent exposure without making live model requests.
+- **Persist agent consent as a managed block inside `.specrew\iteration-config.yml`**: append/update a bounded `agents:` block so re-running bootstrap can refresh consent and availability for FR-022 without overwriting the rest of the iteration settings file.
 
 ---
 

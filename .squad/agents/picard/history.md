@@ -28,6 +28,10 @@ I am the spec alignment gate for Specrew. My job is to keep every plan, task, de
 
 ## Learnings
 
+- **FR-022 narrow revision pattern**: For contract-facing PowerShell CLIs, disable positional binding and parse GNU-style `--flag` arguments from `ValueFromRemainingArguments` so the documented standalone surface cannot silently misbind into typed parameters.
+- **Bootstrap probe order**: `scripts\specrew-init.ps1` must run `copilot --version`, then non-fatal `gh api /user`, then delegated metadata parsing from `copilot help config`; missing auth context is warning-only, not a bootstrap blocker.
+- **Consent display requirement**: FR-022 interactive consent is only aligned when the prompt shows agent name, raw access path, and availability before the yes/no question.
+
 - Phase state machine is **normative** — not optional governance. Skipping phases is a contract violation.
 - Dogfooding is binding: Specrew must follow its own iteration lifecycle for its own development.
 - Phase gates prevent drift: spec-authority gate (pre-execute), traceability gate (pre-execute), drift-check (per-task), review gate (end-execute).
@@ -39,6 +43,28 @@ I am the spec alignment gate for Specrew. My job is to keep every plan, task, de
 - **Source-of-truth alignment**: When runtime surfaces diverge from documentation, correct the docs if they conflict with authoritative spec.md. Document divergence rationale (e.g., FR-019 deferred) to prevent future misalignment.
 - **Reviewer lockout ensures quality**: Requiring a different author for rejection corrections prevents same-author confirmation bias and surfaces fresh perspectives on the same defect.
 - **Carryover representation is mandatory**: Iteration plans must represent every named carryover as an explicit, traceable task. Narrative-only acknowledgment is drift. If capacity math differs from baseline, document the buffer/slice explicitly.
+
+### 2026-04-19: V-R7-1 + T-011 Scope Guardrails Defined
+
+**Task**: Picard defines authoritative scope boundaries for agent-detection slice (V-R7-1 spike + T-011 implementation).
+
+**Scope Decision Delivered**:
+- Authoritative requirement boundaries confirmed from spec.md FR-022 and specrew-init.md contract
+- Three detection probes specified (Copilot runtime, auth context, Agent HQ enumeration) with non-fatal failure semantics
+- Interactive consent prompt format finalized (per-agent display, Copilot non-disableable, optional delegates)
+- Non-interactive flag set complete (`--agents=copilot|claude|codex|all`, `--no-agents`, `--force`)
+- Persistence schema locked (enabled, access_path, availability, detected_at fields in iteration-config.yml)
+- Graceful degradation patterns approved: all probe failures are recoverable; no blocking errors
+- Out-of-scope boundaries clarified: billing/cost out, routing orchestration out (FR-021 deferred), resume behavior out, collision detection out (FR-012 deferred)
+- V-R7-1 spike research deliverables defined: detection API endpoint, response schema, error cases, edge cases, backwards compatibility
+
+**Artifacts**:
+- `.squad/decisions/inbox/picard-fr022-guardrails.md` created (7 sections: boundaries, degradation, out-of-scope, V-R7-1 research, acceptance criteria, decision recording)
+- Decision forwarded to Alon (Coordinator) for team merge
+
+**Pattern Insight**: Agent-detection consent must be orthogonal to execution routing. T-011 writes configuration; T-011 does not use it. This preserves separation of concerns: detection is v1-slice, routing is v2-future (FR-021). Consent gate is strict ("no billing data shown") but graceful degradation is permissive ("iteration proceeds spec-only if agents unavailable").
+
+**Traceability**: All guardrails trace back to FR-022 source requirement or explicit iteration-2+ deferral. No undocumented scope.
 
 ## Historical Archive (Iteration 0 & Early Iteration 1)
 

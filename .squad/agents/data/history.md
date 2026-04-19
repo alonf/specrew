@@ -49,6 +49,7 @@ I turn Specrew's requirements into iteration plans, task maps, and explicit depe
 - **Contract compliance is structural, not decorative**: The iteration-artifacts.md contract specifies exact sections (Phase Baseline, task table with requirement references) that are *required* for retrospective analysis. Missing sections are not documentation gaps; they are audit failures that prevent proper retrospective operation.
 - **Carryover capacity honesty**: When missing carryover tasks are restored, update the plan header, total effort, capacity-revision narrative, staged deferral language, and phase-baseline notes together. If Iter 1a is intentionally held below baseline, call the gap an explicit buffer rather than implying the total plan shrank.
 - **Key file paths**: Iteration 1 capacity math lives in `specs\001-specrew-product\iterations\001\plan.md`; team-visible planning decisions belong in `.squad\decisions\inbox\`; reusable reconciliation guidance lives in `.squad\skills\carryover-plan-reconciliation\SKILL.md`.
+- **PowerShell GNU flag binding**: In `scripts\specrew-init.ps1`, keep the explicit `ValueFromRemainingArguments` parser for `--flag=value` forms, but add hyphenated parameter aliases (`project-path`, `dry-run`, `no-agents`, version switches) so Windows PowerShell `-File` invocations also bind `--flag value` correctly without falling back to repo-root defaults or interactive prompts.
 
 ## Iteration 0 Closure & Iteration 1 Planning (Archived Details)
 
