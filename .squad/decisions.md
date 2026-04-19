@@ -431,18 +431,100 @@ Deployment scope is narrow, gates explicit, and implementation aligned. Slice ma
 
 ---
 
+### 2026-04-19: Runtime-Surface Drift Reconciliation
+
+**By**: Picard (Spec Steward)  
+**Date**: 2026-04-19  
+**Scope**: Reconcile Squad runtime deployment behavior against authoritative sources  
+**Outcome**: ACCEPTED  
+
+Corrected contract/template documentation and ceremonies README to align Specrew source-of-truth with Squad runtime behavior:
+
+#### Finding 1: `iteration-resume` mismatch
+- **Disposition**: Correct source-of-truth docs, not runtime
+- **Reasoning**: `spec.md` places FR-019 in Iteration 2; `deploy-squad-runtime.ps1` correctly excludes it
+- **Accepted**: Mark `specrew-iteration-resume` as deferred source stub until FR-019 enters scope
+
+#### Finding 2: Retrospective deployment drift
+- **Disposition**: Source-of-truth clarification; implementation follow-up for La Forge
+- **Reasoning**: `spec.md` FR-005 already authoritative; retrospective uses Squad built-in
+- **Accepted**: Recast `squad-templates\ceremonies\retro.md` as built-in retrospective guidance only
+- **Follow-up**: `deploy-squad-runtime.ps1` must stop appending `retro.md` into `.squad/ceremonies.md`
+
+#### Finding 3: Hardcoded `Chief Architect`
+- **Disposition**: Correct source templates now
+- **Reasoning**: Downstream baseline roles are five neutral roles (FR-002); `Chief Architect` is project-specific
+- **Accepted**: Replace with `Project Owner (optional)` in planning/review/retro source templates
+
+**Decision**: All source-of-truth corrections accepted. No FR-019 scope creep. No unrelated expansions.
+
+---
+
+### 2026-04-19: Ceremonies README Runtime Alignment
+
+**By**: La Forge (Implementer)  
+**Date**: 2026-04-19  
+**Scope**: Narrow correction of ceremonies README mismatch  
+**Outcome**: ACCEPTED + RE-REVIEW PASS  
+
+**Problem**: Worf's rejection identified ceremonies README as the only remaining documentation/runtime mismatch. README documents retrospective as appended ceremony, but contract + runtime state it is Squad built-in guidance only.
+
+**Resolution**:
+- Fixed `extensions\specrew-speckit\squad-templates\ceremonies\README.md` (line 5)
+- Stated only `planning.md` and `review-demo.md` are appended ceremonies
+- Moved retrospective documentation to guidance section (lines 26-32)
+- Removed erroneous `Specrew: Retrospective` ceremony claim
+
+**Re-Review Verdict (Worf)**: PASS — Prior rejection reason closed; README now aligns with contract + runtime.
+
+**Decision**: Ceremonies README now matches live deployment behavior without reintroducing duplicate retrospective surface.
+
+---
+
+### 2026-04-19: Runtime-Surface Drift Review Verdict
+
+**By**: Worf (Reviewer)  
+**Date**: 2026-04-19  
+**Scope**: Initial review of Squad runtime drift corrections  
+**Verdict**: NEEDS-WORK → Re-Review PASS  
+
+#### Initial Review Findings
+
+| Acceptance Point | Status | Evidence |
+|---|---|---|
+| `iteration-resume` deferred | ✅ PASS | Deploy script excludes; source docs mark as Iteration 2 stub |
+| Retrospective remains Squad built-in | ❌ FAIL | README still documents `Specrew: Retrospective` appended ceremony |
+| Baseline role language compatible | ✅ PASS | `Project Owner (optional)` replaces `Chief Architect` |
+| No scope creep | ✅ PASS | No FR-019 implementation; no unrelated expansions |
+
+**Required Correction**: Fix `extensions\specrew-speckit\squad-templates\ceremonies\README.md` to match runtime model.
+
+#### Re-Review Findings
+
+After La Forge's narrow revision:
+- ✅ `README.md` line 5 states only planning.md and review-demo.md appended
+- ✅ Lines 26-32 describe retrospective as built-in guidance, not appended ceremony
+- ✅ Prior rejection reason closed
+
+**Final Verdict**: PASS — Ceremonies README now aligns with contract and runtime without duplicate retrospective surface.
+
+**Decision**: Runtime-surface drift correction complete. All source docs and ceremonies README traceable to authoritative spec.md + deploy script behavior.
+
+---
+
 ## Inbox Decisions Merged
 
-**Merge Date**: 2026-04-19T20:24:18Z  
-**Inbox Files Deleted**: 3 decision files merged
+**Merge Date**: 2026-04-19T20:40:24Z  
+**Inbox Files Deleted**: 4 decision files merged
 
-1. `laforge-deploy-runtime-surfaces.md` → Complete `specrew init` Deployment Slice
-2. `picard-deploy-guardrails.md` → Deployment Guardrails — Iteration 1, Slice 2
-3. `worf-bootstrap-slice-review.md` → Worf Review: Bootstrap Slice 2
+1. `picard-drift-reconcile.md` → Runtime-Surface Drift Reconciliation
+2. `laforge-ceremonies-readme-fix.md` → Ceremonies README Runtime Alignment
+3. `worf-runtime-drift-review.md` → Runtime-Surface Drift Review Verdict
+4. `worf-ceremonies-readme-rereview.md` → Re-review verdict (consolidated into review decision)
 
-**Prior Merges**: 2026-04-19T02:08:48Z (2 files); 2026-04-19T07:43:21Z (1 file); 2026-04-19T195521Z (2 files)
+**Prior Merges**: 2026-04-19T02:08:48Z (2 files); 2026-04-19T07:43:21Z (1 file); 2026-04-19T195521Z (2 files); 2026-04-19T20:24:18Z (3 files)
 
-**Total Inbox Merges (Current)**: 3 files merged this session → Inbox now empty
+**Total Inbox Merges (Current)**: 4 files merged this session → Inbox now empty
 
 **Deduplication**: No duplicates. All decisions indexed chronologically in main ledger.
 

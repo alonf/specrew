@@ -32,6 +32,14 @@ I execute planned work for Specrew and produce outputs that remain traceable to 
   - Pre-execution risks decision recorded and archived
   - 6 inbox decisions consolidated into decisions.md
 
+📌 **Ceremonies README Runtime Alignment — COMPLETE (2026-04-19T20:40:24Z)**:
+  - ✅ Fixed `extensions\specrew-speckit\squad-templates\ceremonies\README.md` (line 5)
+  - ✅ Stated only `planning.md` and `review-demo.md` are appended ceremonies
+  - ✅ Moved retrospective documentation to guidance section (lines 26-32)
+  - ✅ Removed erroneous `Specrew: Retrospective` appended ceremony claim
+  - ✅ Worf re-review PASS verdict: Prior rejection reason closed
+  - **Status**: Narrow revision under reviewer lockout complete; source-of-truth aligned to runtime
+
 ## Learnings
 
 - Implementation is the execution phase between planning and review/demo.
@@ -52,6 +60,8 @@ I execute planned work for Specrew and produce outputs that remain traceable to 
 - **Strict-mode validators must normalize collection outputs before using `.Count`**: `Get-Content`, table-parsing helpers, and target-resolution pipelines should return arrays even when empty or single-item, otherwise planning iterations with missing optional artifacts can crash the governance gate instead of reporting real findings.
 - **Governance gate health means "no validator crash," not "force a pass"**: fix the collector logic in `extensions/specrew-speckit/scripts/validate-governance.ps1`, keep the existing checks intact, and let legitimate iteration issues surface (for example Iteration 001 still flags blank `Started` metadata and task `T-022` missing a Story reference).
 - **Key validation path remains stable**: CI already invokes `./extensions/specrew-speckit/scripts/validate-governance.ps1 -ProjectPath .` from `.github/workflows/specrew-ci.yml`; only change CI if that path or invocation drifts.
+- **Runtime deployment must distinguish source guidance from live ceremony surfaces**: keep `extensions\specrew-speckit\scripts\deploy-squad-runtime.ps1` aligned to `specs\001-specrew-product\contracts\squad-extension.md` by appending only `planning.md` and `review-demo.md` into downstream `.squad\ceremonies.md`; `extensions\specrew-speckit\squad-templates\ceremonies\retro.md` stays source guidance for Squad's built-in retrospective, and `extensions\specrew-speckit\squad-templates\skills\iteration-resume.md` remains excluded until FR-019 / Iteration 2.
+- **Reviewer-lockout fixes should stay artifact-local**: when Worf cites a single README/runtime mismatch, correct only the named source file (`extensions\specrew-speckit\squad-templates\ceremonies\README.md`) plus required team memory updates; do not reopen adjacent ceremony sources that already match runtime behavior.
 
 ---
 

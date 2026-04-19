@@ -33,6 +33,13 @@ I evaluate each task output against the source requirement and produce explicit 
   - Iteration 1 execution-ready: Governance gate clear
   - picard-iteration1-plan-revision.md and worf-iteration1-final-gate.md merged to decisions.md; inbox cleaned
 
+📌 **Runtime-Surface Drift Review Cycle — COMPLETE (2026-04-19T20:40:24Z)**:
+  - ✅ Initial review: 4 acceptance points evaluated (iter-resume, retro built-in, role language, scope boundaries)
+  - ✅ Initial verdict: NEEDS-WORK (ceremonies README still documents retrospective as appended ceremony)
+  - ✅ Required correction: Fix `extensions\specrew-speckit\squad-templates\ceremonies\README.md`
+  - ✅ Re-review after La Forge narrow revision: PASS (lines 5, 26-32 corrected; prior rejection reason closed)
+  - **Status**: Source-of-truth fully traceable to authoritative spec.md + deploy-squad-runtime.ps1 behavior
+
 ## Learnings
 
 - Review/demo is a formal ceremony in the Specrew lifecycle.
@@ -253,3 +260,11 @@ I evaluate each task output against the source requirement and produce explicit 
 - **Verdict**: PASS. Approved deployment slice now meets reviewer standard and is execution-ready.
 
 **Decisions Merged**: 3 inbox files consolidated into decisions.md (worf-deployment-slice-review, picard-deployment-slice-revision, worf-deployment-slice-rereview)
+
+---
+
+## Learnings
+
+- **2026-04-19 Runtime Drift Review**: Live review must follow the current runtime surfaces, not earlier PASS notes. In this cycle, `extensions\specrew-speckit\scripts\deploy-squad-runtime.ps1`, `specs\001-specrew-product\contracts\squad-extension.md`, `extensions\specrew-speckit\squad-templates\README.md`, `extensions\specrew-speckit\squad-templates\skills\README.md`, and the ceremony source files all correctly defer `iteration-resume` and keep retrospective as Squad built-in behavior, but `extensions\specrew-speckit\squad-templates\ceremonies\README.md` still advertises `Specrew: Retrospective` as an appended ceremony. Reviewer verdict must follow the live file set.
+- **Pattern:** Runtime-surface drift often survives in adjacent README files after script/template corrections. When shipped skills or ceremonies change, review the deploy script, contract, top-level template README, and directory-level README together before issuing PASS.
+- **2026-04-19 Ceremonies README Re-Review**: The corrected `extensions\specrew-speckit\squad-templates\ceremonies\README.md` now matches the authoritative contract in `specs\001-specrew-product\contracts\squad-extension.md` and the broader template overview in `extensions\specrew-speckit\squad-templates\README.md`: only `planning.md` and `review-demo.md` are described as appended downstream, while `retro.md` is explicitly guidance for Squad's built-in retrospective. For narrow rejection follow-up reviews, the acceptance test is whether the live README labels only deployable runtime surfaces as appended.

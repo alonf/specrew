@@ -45,6 +45,15 @@ I am the spec alignment gate for Specrew. My job is to keep every plan, task, de
    - ✅ Worf Review: Slice 2 PASS verdict (gates explicit, scope narrow, implementation aligned)
    - **Status**: Both decisions merged to ledger; inbox cleaned; Slice 2 cleared for execution
 
+📌 **Runtime-Surface Drift Correction — COMPLETE (2026-04-19T20:40:24Z)**:
+   - ✅ Drift reconciliation: Corrected contract/template docs and ceremonies README to align source-of-truth with Squad runtime
+   - ✅ Finding 1 — `iteration-resume` mismatch: Source docs marked as deferred (FR-019, Iteration 2)
+   - ✅ Finding 2 — Retrospective deployment: Source docs clarified; retrospective is Squad built-in guidance only
+   - ✅ Finding 3 — `Chief Architect` hardcoding: Replaced with role-neutral `Project Owner (optional)` in source templates
+   - ✅ La Forge execution: Ceremonies README narrow fix (lines 5, 26-32 corrected)
+   - ✅ Worf review cycle: Initial NEEDS-WORK verdict → Re-review PASS after La Forge revision
+   - **Status**: 4 inbox decisions merged; inbox cleaned; source-of-truth fully traceable to spec + runtime
+
 ## Learnings
 
 - Phase state machine is **normative** — not optional governance. Skipping phases is a contract violation.
@@ -55,6 +64,8 @@ I am the spec alignment gate for Specrew. My job is to keep every plan, task, de
 - **Artifact contract enforcement is precise**: Metadata fields (Started, Completed) require `YYYY-MM-DD` format; task table columns (Story) require non-null values. Governance validator treats these as hard failures, not warnings.
 - **Story reference mapping**: User stories should align with task narrative scope. Validation/testing tasks map to the user story for the capability they enable, not to the user story for the immediate feature under test (e.g., CI pipeline validation maps to US-2 "Run iteration end-to-end", not just the individual feature story).
 - **Narrow revision protocol**: When fixing governance defects, change only the identified fields. Do not expand scope to "while I'm here" improvements. Picard's charter: "I do not let the fix drift wider than necessary."
+- **Source-of-truth alignment**: When runtime surfaces diverge from documentation, correct the docs if they conflict with authoritative spec.md. Document divergence rationale (e.g., FR-019 deferred) to prevent future misalignment.
+- **Reviewer lockout ensures quality**: Requiring a different author for rejection corrections prevents same-author confirmation bias and surfaces fresh perspectives on the same defect.
 
 ## Iteration 0 Closure & Governance Hardening (Archived Details)
 
@@ -516,3 +527,9 @@ All three contradicted the corrected rule: **Specrew self-development MUST use G
 - `picard-deployment-slice-revision.md` (correction cycle details)
 - `worf-deployment-slice-rereview.md` (PASS verdict)
 - Total: 3 inbox files consolidated into decisions.md
+
+## Learnings
+
+- Runtime-surface docs must distinguish **deployed MVP surfaces** from **source stubs for deferred FRs**; otherwise contract text drifts even when implementation is correctly scoped.
+- For FR-005, Specrew owns planning/review ceremony definitions but only **guides** Squad's built-in retrospective. Source file: `extensions\specrew-speckit\squad-templates\ceremonies\retro.md`; implementation file to keep aligned: `extensions\specrew-speckit\scripts\deploy-squad-runtime.ps1`.
+- Downstream baseline templates must stay role-neutral. Project-specific titles like `Chief Architect` do not belong in `planning.md`, `review-demo.md`, or retrospective guidance.
