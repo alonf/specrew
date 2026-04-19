@@ -251,12 +251,26 @@ PASS C:\Dev\Specrew\specs\001-specrew-product\iterations\001
 
 ---
 
+### 2026-04-19: Iteration 1 Git Tracking (Finalized)
+
+**By**: La Forge (Implementer)  
+**Date**: 2026-04-19  
+**Scope**: Plan artifact git tracking  
+**Outcome**: Complete
+
+Staged `specs/001-specrew-product/iterations/001/plan.md` to git index for audit traceability. Plan was present in worktree but untracked. No `.gitignore` rule adjustment required. Minimum git-state correction applied.
+
+**Decision**: Plan now tracked and execution-ready state is git-auditable.
+
+---
+
 ## Inbox Decisions Merged
 
-**Merge Date**: 2026-04-19T02:08:48Z  
-**Inbox Files Deleted**: 2 decision files merged
+**Merge Date**: 2026-04-19T07:43:21Z  
+**Inbox Files Deleted**: 1 decision file merged
 
-1. `picard-iteration1-plan-revision.md` → 2026-04-19 Plan Revision
-2. `worf-iteration1-final-gate.md` → 2026-04-19 Final Gate
+1. `laforge-iteration1-git-tracking.md` → 2026-04-19 Git Tracking
 
-**Deduplication**: No duplicates. Both decisions now in main ledger.
+**Prior Merges**: 2026-04-19T02:08:48Z (2 files); 2026-04-19T07:43:21Z (1 file)
+
+**Deduplication**: No duplicates. All decisions now in main ledger.

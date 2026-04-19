@@ -179,3 +179,8 @@ Extended `validate-governance.ps1` to detect stale embedded plan-evidence claims
 **Impact**: Critical — Governance enforcement gate now ready for Iteration 1 phase-gate automation  
 **Unblocked**: FR-008 governance-validator skill implementation can proceed with proven pattern  
 **CI Status**: squad-ci.yml gate enforcement verified and ready for Iteration 1 execution
+
+📌 **Iteration 1 git tracking finalized (2026-04-19T07:43:21Z)**:
+   - Staged specs/001-specrew-product/iterations/001/plan.md to index
+   - Plan now auditable and execution-ready
+   - Status: Merged to decisions.md, inbox cleared
