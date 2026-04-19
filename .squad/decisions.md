@@ -445,3 +445,164 @@ Deployment scope is narrow, gates explicit, and implementation aligned. Slice ma
 **Total Inbox Merges (Current)**: 3 files merged this session → Inbox now empty
 
 **Deduplication**: No duplicates. All decisions indexed chronologically in main ledger.
+
+---
+
+### 2026-04-19: Deployment Slice Review — `specrew init` Runtime Surfaces
+
+**By**: Worf (Reviewer)  
+**Date**: 2026-04-19  
+**Requested by**: Alon Fliess  
+**Scope reviewed**: Approved deployment slice only (Spec Kit extension deployment, Squad runtime surfaces, baseline role merge)  
+**Verdict**: NEEDS-WORK
+
+#### Judgment
+
+This increment is **not yet acceptable as the approved bootstrap deployment slice**.
+
+The mechanics are real: I verified a fresh dry-run and a live smoke bootstrap, and the bootstrap does deploy the Spec Kit extension, baseline role charters, directives, and `.squad/team.md` entries. That effort does not clear the review gate because the deployed slice misses part of the approved runtime-surface payload and also ships a deferred surface not authorized by this slice.
+
+#### Evidence — Rejection
+
+1. **Retro ceremony runtime surface is not deployed**
+   - `extensions\specrew-speckit\squad-templates\ceremonies\retro.md` exists as a source template.
+   - `extensions\specrew-speckit\scripts\deploy-squad-runtime.ps1` only deploys `planning.md` and `review-demo.md` (lines 323-329).
+   - Result: the live smoke workspace `.squad/ceremonies.md` contains Specrew Planning and Review/Demo blocks, but no Specrew Retro block.
+   - Review judgment: the deployment slice is incomplete against the approved runtime-surface payload.
+
+2. **The slice ships deferred resume surface**
+   - `deploy-squad-runtime.ps1` copies every markdown file from `squad-templates\skills\` into `.copilot/skills\specrew-*` (lines 315-320).
+   - Live smoke output includes `.copilot/skills/specrew-iteration-resume/SKILL.md`.
+   - Iteration plan explicitly defers **FR-019 programmatic task resume** to Iteration 2 (`specs\001-specrew-product\iterations\001\plan.md`, lines 138 and 208).
+   - Review judgment: this slice adds unauthorized scope instead of staying inside the approved deployment boundary.
+
+**Verdict**: **NEEDS-WORK**. Corrections required: deploy all three ceremonies and exclude deferred skill.
+
+---
+
+### 2026-04-19: Deployment Slice Revision — `specrew init` Runtime Surfaces
+
+**By**: Picard (Spec Steward)  
+**Date**: 2026-04-19  
+**Revision Cycle**: Addressing Worf's NEEDS-WORK verdict  
+**Scope**: Narrow defect correction only  
+
+#### Problem Statement
+
+Worf's review identified two defects in the deployment slice (Iteration 1, T-005–T-008):
+
+1. **Missing retro ceremony surface**: The approved slice requires deployment of Planning, Review/Demo, AND Retrospective ceremony templates into `.squad/ceremonies.md`. Current implementation deployed only Planning and Review/Demo.
+
+2. **Unauthorized deferred scope shipped**: The slice included `specrew-iteration-resume` skill deployment, but FR-019 (programmatic task resume) is explicitly deferred to Iteration 2. This exceeds the approved scope.
+
+#### Corrections Applied
+
+**Fix 1: Add Retro Ceremony to Deployment**
+
+File: `extensions/specrew-speckit/scripts/deploy-squad-runtime.ps1` (Lines 323–327)
+
+```powershell
+# Before
+$ceremonyFiles = @(
+    'planning.md'
+    'review-demo.md'
+) | ForEach-Object { Get-Item -LiteralPath (Join-Path $templateRoot ('ceremonies\{0}' -f $_)) }
+
+# After
+$ceremonyFiles = @(
+    'planning.md'
+    'review-demo.md'
+    'retro.md'
+) | ForEach-Object { Get-Item -LiteralPath (Join-Path $templateRoot ('ceremonies\{0}' -f $_)) }
+```
+
+**Fix 2: Exclude Deferred `iteration-resume` Skill**
+
+File: `extensions/specrew-speckit/scripts/deploy-squad-runtime.ps1` (Line 315)
+
+```powershell
+# Before
+$skillFiles = @(Get-ChildItem -LiteralPath (Join-Path $templateRoot 'skills') -Filter '*.md' | Where-Object { $_.Name -ne 'README.md' } | Sort-Object Name)
+
+# After
+$skillFiles = @(Get-ChildItem -LiteralPath (Join-Path $templateRoot 'skills') -Filter '*.md' | Where-Object { $_.Name -ne 'README.md' -and $_.Name -ne 'iteration-resume.md' } | Sort-Object Name)
+```
+
+#### Validation Results
+
+**Dry-Run Output**:
+- ✅ Retro ceremony deployed: `squad-runtime updated: ...\.squad\ceremonies.md [ceremony:retro]`
+- ✅ Iteration-resume skill excluded: Only 3 skills deployed (capacity-planning, drift-check, traceability-check)
+
+**Governance Validator**:
+- `PASS C:\Dev\Specrew\specs\001-specrew-product\iterations\000`
+- `PASS C:\Dev\Specrew\specs\001-specrew-product\iterations\001`
+
+**PSScriptAnalyzer**: 0 new errors introduced
+
+#### Non-Blocking Note
+
+`extensions\specrew-speckit\squad-templates\README.md` still describes ceremony deployment as planning + review/demo only. This is documentation lag, not a runtime defect. Correction deferred but does not justify rejection.
+
+**Decision**: This revision is **ready for Worf's acceptance review**. Deployed slice now complies with approved guardrail scope and iteration plan deferred boundaries.
+
+---
+
+### 2026-04-19: Deployment Slice Re-Review — `specrew init` Runtime Surfaces
+
+**By**: Worf (Reviewer)  
+**Date**: 2026-04-19  
+**Requested by**: Alon Fliess  
+**Scope reviewed**: Approved deployment slice only  
+**Prior verdict**: NEEDS-WORK  
+**Verdict**: PASS
+
+#### Judgment
+
+The corrected slice now clears the gate. I re-checked the exact rejection reasons against the live implementation and against the approved slice boundary. Both cited defects are closed, and the slice now stays inside the authorized Iteration 1 deployment surface.
+
+#### Evidence
+
+**Prior rejection reason 1 — missing retro ceremony surface**
+
+**Resolved.**
+- `deploy-squad-runtime.ps1` now deploys all three approved ceremony templates: `planning.md`, `review-demo.md`, and `retro.md`.
+- Fresh dry-run shows: `updated: ...\.squad\ceremonies.md [ceremony:retro]`
+- Fresh live smoke bootstrap also completed successfully and recorded `updated: ...\.squad\ceremonies.md [ceremony:retro]`.
+
+**Prior rejection reason 2 — deferred `specrew-iteration-resume` skill shipped**
+
+**Resolved.**
+- `deploy-squad-runtime.ps1` now filters out `iteration-resume.md` from deployed skills.
+- Dry-run shows only: capacity-planning, drift-check, traceability-check
+- Live smoke bootstrap confirms `ResumeSkillPresent : False`
+
+**Scope and gate confirmation**
+- Approved slice payload fully present
+- Fresh smoke bootstrap successful
+- Governance validator passes on both iterations: `PASS iterations/000` and `PASS iterations/001`
+
+#### Non-Blocking Note
+
+`extensions\specrew-speckit\squad-templates\README.md` still describes ceremony deployment as planning + review/demo only. That is documentation lag, not a runtime-surface defect. It should be corrected, but it does not justify another rejection because the deployed behavior is now correct.
+
+**Verdict**: **PASS**
+
+The approved deployment slice now meets reviewer standard. The missing retro surface is deployed, the deferred resume surface is no longer shipped, and the slice is execution-ready on its corrected scope.
+
+---
+
+## Current Inbox Merge Status
+
+**Merge Date**: 2026-04-19T20:40:24Z  
+**Merged Decisions**: 3 new decisions added
+
+1. Worf's initial NEEDS-WORK review
+2. Picard's correcting revision  
+3. Worf's acceptance PASS
+
+**Inbox Files Deleted**: `worf-deployment-slice-review.md`, `picard-deployment-slice-revision.md`, `worf-deployment-slice-rereview.md`
+
+**Deduplication**: No duplicates detected. All chronologically indexed.
+
+**Overall Ledger Status**: ✅ Current. Inbox empty.

@@ -481,3 +481,38 @@ All three contradicted the corrected rule: **Specrew self-development MUST use G
 - `.squad/protocol.md`
 - `docs/github-project.md`
 - `.github/scripts/sync-specrew-board.ps1`
+
+---
+
+## Deployment Review Cycle & Slice 2 Guardrails (2026-04-19T20:40:24Z)
+
+**Deployment Guardrails Decision (2026-04-19T20:24:18Z)**:
+- Created 8-gate acceptance framework for La Forge's runtime-surface deployment slice (T-005–T-008)
+- Scope: Spec Kit extension deployment, Squad skills deployment, ceremonies merge (all three: planning, review/demo, retro), directive embedding, baseline role merge (5 baseline roles)
+- Deferred: FR-020 (brownfield), FR-007 (configurable effort), FR-012 (collision detector), directive/ceremony logic
+- Blocked no implementation; gates coherent with source requirements
+
+**Initial La Forge Deployment Defects (Worf Initial Review — NEEDS-WORK)**:
+- Defect 1: Retro ceremony surface not deployed (only planning + review/demo in deploy-squad-runtime.ps1 lines 323-329)
+- Defect 2: Deferred `specrew-iteration-resume` skill shipped (FR-019 → Iteration 2 explicit deferral)
+- **Picard Action**: Locked out; awaiting revision ownership
+
+**Picard Correction Cycle (2026-04-19T20:40:24Z)**:
+- Created narrowly-scoped revision addressing both defects
+- Fix 1: Added `retro.md` to ceremony deployment list (lines 323-327)
+- Fix 2: Added filter to exclude `iteration-resume.md` from skill deployment (line 315)
+- Validation: Dry-run, live smoke bootstrap, governance validator all pass
+- Non-blocking: README.md describes old behavior (planning + review/demo only); documented for future correction but does not block
+- **Verdict**: Ready for Worf re-review
+
+**Worf Re-Review Acceptance (PASS)**:
+- ✅ Retro ceremony: Fresh dry-run and live smoke confirm all three ceremonies deployed
+- ✅ Deferred skill: Dry-run shows 3 skills only; smoke confirms `ResumeSkillPresent: False`
+- ✅ Scope validation: Fresh smoke bootstrap successful; validator passes iterations 000 and 001
+- **Picard Status**: Slice 2 runtime-surface deployment now meets reviewer standard; execution-ready
+
+**Decisions Merged**: 
+- `worf-deployment-slice-review.md` (initial NEEDS-WORK verdict)
+- `picard-deployment-slice-revision.md` (correction cycle details)
+- `worf-deployment-slice-rereview.md` (PASS verdict)
+- Total: 3 inbox files consolidated into decisions.md

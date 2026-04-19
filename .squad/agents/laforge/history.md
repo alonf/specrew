@@ -194,3 +194,33 @@ Extended `validate-governance.ps1` to detect stale embedded plan-evidence claims
    - ✅ Validation: Dry-run + smoke test + PSScriptAnalyzer all PASS
    - **Next**: Slice 2 deployment gates (Picard's 8-gate framework) trigger Worf review
    - **Status**: Decision merged to ledger; inbox cleaned; deployment ready for execution gate
+
+---
+
+## Deployment Review Cycle (2026-04-19T20:40:24Z)
+
+**La Forge Delivery Status**: 
+- Delivered runtime-surface deployment slice (T-005–T-008)
+- Includes: Spec Kit extension deployment, Squad skills deployment, ceremonies merge, baseline role merge, directive embedding
+- **Status**: Locked out pending Worf re-review completion
+
+**Worf Initial Review Defects (NEEDS-WORK)**:
+1. **Missing retro ceremony surface**: Only planning + review/demo deployed; retro.md not included
+2. **Deferred skill shipped**: `specrew-iteration-resume` (FR-019, deferred to Iteration 2) included in deployment
+
+**Picard Correction Cycle**: 
+- Addressed both defects with narrowly scoped fixes
+- Fix 1: Added `retro.md` to ceremony deployment list
+- Fix 2: Added filter to exclude `iteration-resume.md`
+- Validation passed; runtime behavior corrected
+
+**Worf Re-Review Acceptance (PASS)**:
+- ✅ Retro ceremony deployed (fresh dry-run + live smoke confirmed)
+- ✅ Deferred skill excluded (3 skills deployed; resume not present)
+- ✅ Slice scope validation passed
+- **La Forge Status**: Deployment slice now execution-ready; lockout lifted
+
+**Decisions Merged**: 3 inbox files consolidated into decisions.md
+- `worf-deployment-slice-review.md` (initial NEEDS-WORK)
+- `picard-deployment-slice-revision.md` (correction details)
+- `worf-deployment-slice-rereview.md` (PASS verdict)

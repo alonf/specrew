@@ -228,3 +228,28 @@ I evaluate each task output against the source requirement and produce explicit 
    - ✅ Worf verdict: PASS on Slice 2 guardrails and implementation
    - **Status**: Both decisions merged to ledger; Slice 2 cleared for execution gate
    - **Next**: La Forge executes T-005–T-008 under Picard's 8-gate framework
+
+---
+
+## Deployment Review Cycle (2026-04-19T20:40:24Z)
+
+**La Forge Delivery**: Runtime-surface deployment slice (Spec Kit extension, Squad ceremonies, baseline role merge)
+
+**Worf Initial Review (NEEDS-WORK)**:
+- Defect 1: Retro ceremony surface not deployed (only planning + review/demo)
+- Defect 2: Deferred `specrew-iteration-resume` skill shipped (FR-019 → Iteration 2)
+- **Verdict**: Slice incomplete; unauthorized scope present
+
+**Picard Correction Cycle**:
+- Fixed 1: Added `retro.md` to ceremony deployment list (deploy-squad-runtime.ps1 line 323-327)
+- Fixed 2: Added filter to exclude `iteration-resume.md` from skill deployment (line 315)
+- Validation: Dry-run + live smoke bootstrap + governance validator all pass
+- Non-blocking: README.md lag (describes planning+review/demo only) documented for future correction
+
+**Worf Re-Review (PASS)**:
+- ✅ Retro ceremony: Dry-run and live smoke confirm deployment of all three ceremonies
+- ✅ Deferred skill: Dry-run shows 3 skills only (capacity-planning, drift-check, traceability-check); smoke confirms `ResumeSkillPresent: False`
+- ✅ Scope validation: Fresh smoke bootstrap successful; governance validator passes iterations 000 and 001
+- **Verdict**: PASS. Approved deployment slice now meets reviewer standard and is execution-ready.
+
+**Decisions Merged**: 3 inbox files consolidated into decisions.md (worf-deployment-slice-review, picard-deployment-slice-revision, worf-deployment-slice-rereview)
