@@ -14,11 +14,23 @@ I execute planned work for Specrew and produce outputs that remain traceable to 
 
 📌 Board sync automation blocker cleared on 2026-04-19: Repository secret `SPECREW_PROJECT_TOKEN` configured; sync script validated against live board (23 issues synced). Unattended GitHub Actions workflow now operational.
 
-📌 Final plan polish completed on 2026-04-18: Removed FR-050 reference, mapped scaffolding tasks to FR-001, synchronized traceability matrix. All 23 tasks now FR-bound; 100% contract-compliant. Pending Alon approval.
+📌 **Governance validator strict-mode fix complete (2026-04-19)**:
+  - Fixed collection-handling in validate-governance.ps1 under Set-StrictMode
+  - Normalized all array-producing operations to concrete arrays
+  - Result: Validator now exposes real artifact defects instead of runtime crashes
+  - Iteration 000 passes; Iteration 001 now fails for real contract violations (not exceptions)
+  - Status: ACCEPTED by Worf (reviewer)
 
-📌 Contract-safe Iteration 0 plan revision completed on 2026-04-18: All 7 contract findings addressed (schema, task layout, ownership, capacity math, stale references, scope, citations). Plan now automation-safe and pending Alon approval.
+📌 **Pre-execution risk assessment complete (2026-04-19)**:
+  - 3 HIGH-priority architecture spikes identified (Directive Mapping, Ceremony Schema, Deployment Safety)
+  - La Forge owns 2 spikes: Directive reference implementation, Extension deployment checklist
+  - Spikes target completion pre-planning ceremony
+  - Status: Scheduled pending Alon approval
 
-📌 Team confirmed by Alon on 2026-04-17
+📌 **Decision inbox merged (2026-04-19T02:06:00Z)**:
+  - Validator fix decision recorded and archived
+  - Pre-execution risks decision recorded and archived
+  - 6 inbox decisions consolidated into decisions.md
 
 ## Learnings
 
@@ -37,6 +49,9 @@ I execute planned work for Specrew and produce outputs that remain traceable to 
 - **Closure evidence must cite live plan metadata**: review/retro artifacts can drift even after status lines are fixed, so validator checks should compare any `plan.md` status/completed evidence snippets or "Completed date present" claims against the current plan metadata instead of trusting closure prose.
 - **GitHub board automation should mirror, not lead, the artifacts**: lifecycle and task issues can be synced cleanly from `plan.md`/`state.md`/`review.md`/`retro.md`, but unattended Project V2 maintenance still needs an Actions token with `repo` + `project` scope for user-owned boards.
 - **Repository secrets for automation must be explicitly set**: `gh secret set` stores API tokens in Actions secrets; once set, workflows can access them via `${{ secrets.VARIABLE_NAME }}` and will fail silently if the secret is missing—test with manual script execution first to diagnose auth failures.
+- **Strict-mode validators must normalize collection outputs before using `.Count`**: `Get-Content`, table-parsing helpers, and target-resolution pipelines should return arrays even when empty or single-item, otherwise planning iterations with missing optional artifacts can crash the governance gate instead of reporting real findings.
+- **Governance gate health means "no validator crash," not "force a pass"**: fix the collector logic in `extensions/specrew-speckit/scripts/validate-governance.ps1`, keep the existing checks intact, and let legitimate iteration issues surface (for example Iteration 001 still flags blank `Started` metadata and task `T-022` missing a Story reference).
+- **Key validation path remains stable**: CI already invokes `./extensions/specrew-speckit/scripts/validate-governance.ps1 -ProjectPath .` from `.github/workflows/specrew-ci.yml`; only change CI if that path or invocation drifts.
 
 ---
 

@@ -14,6 +14,23 @@ I turn Specrew's requirements into iteration plans, task maps, and explicit depe
 
 📌 Team confirmed by Alon on 2026-04-17
 
+📌 **Iteration 1 plan traceability corrections complete (2026-04-19)**:
+  - Test tasks (T-020, T-021, T-022) mapped to FRs they validate
+  - Phase Baseline section added (Planning 2, Impl 16, Review 1, Rework 1.5)
+  - Target FRs expanded to include FR-013
+  - Governance wording tightened for test task mappings
+  - Status: Ready for validator check
+
+📌 **Plan governance validation outcome (Worf, 2026-04-19)**:
+  - Verdict: NEEDS-WORK
+  - Blocker: Missing `Started` metadata (plan line 7), blank `Story` in T-022
+  - Next owner: Picard (Data locked out from next revision)
+  - Action: Picard corrects metadata/story, resubmits for validation
+
+📌 **Decision inbox merged (2026-04-19T02:06:00Z)**:
+  - Traceability Fix decision recorded and archived
+  - 6 inbox decisions consolidated into decisions.md
+
 ## Learnings
 
 - Planning is the first ceremony in the Specrew lifecycle.
@@ -27,6 +44,9 @@ I turn Specrew's requirements into iteration plans, task maps, and explicit depe
 - **Narrow corrections vs scope creep**: When correcting plan ambiguities, distinguish between clarifying existing scope vs. adding new tasks. Iteration 1 board sync is already operational (Iter 0 completion); don't reopen it as new carryover work.
 - **Estimation re-calibration**: After zero-variance delivery (Iter 0: 20.5/20.5), align next iteration to baseline unless evidence justifies upward adjustment. Removes artificial "higher estimate" narratives and grounds planning in team velocity.
 - **Deferred work table clarity**: Explicit "Reason" column for each deferred requirement prevents implicit task creep and makes deferral rationale auditable by future planners.
+- **Test task traceability**: Testing tasks (integration, scenario, CI validation) are acceptance-level deliverables and must link to the FRs they validate, not remain orphaned. This maintains 100% traceability and makes test coverage auditable.
+- **Phase Baseline structure**: Planning ceremony output must include phase-level effort estimates (planning, discovery, implementation, review, rework) in addition to task-level estimates. This enables retrospective variance analysis and makes phase-level calibration possible.
+- **Contract compliance is structural, not decorative**: The iteration-artifacts.md contract specifies exact sections (Phase Baseline, task table with requirement references) that are *required* for retrospective analysis. Missing sections are not documentation gaps; they are audit failures that prevent proper retrospective operation.
 
 ## Iteration 0 Closure & Iteration 1 Planning (Archived Details)
 

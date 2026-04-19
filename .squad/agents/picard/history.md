@@ -23,6 +23,21 @@ I am the spec alignment gate for Specrew. My job is to keep every plan, task, de
 - ✅ Governance validation: All phase gates pass; state machine enforcement ready for Iteration 1
 - ✅ Operating policy: 6 core rules + 3 tier-1 improvements identified for team consensus before Iteration 1
 
+**Governance Fix Cycle (2026-04-19T02:06:00Z)**:
+- 📌 **Iteration 1 plan.md governance validation**: Validator now correctly enforces contract (La Forge repair for strict-mode collections)
+- 📌 **Plan rejection verdict (Worf)**: plan.md fails validator (missing `Started` metadata, blank T-022 `Story`)
+- 📌 **Next owner assigned**: Picard locked to correct plan.md and resubmit for validation
+- 📌 **Data lockout applied**: Data blocked from next plan revision cycle (reviewer lockout per protocol.md)
+- 📌 **Pre-execution risk assessment complete**: 3 HIGH-priority spikes identified (Directive Mapping, Ceremony Schema, Extension Deployment)
+- 📌 **Operating policy consensus confirmed**: 6 core rules sound; 3 implementation tasks pending before planning ceremony
+- 📌 **Decision inbox merged**: 6 decisions consolidated into decisions.md; inbox cleaned
+
+**Final Gate Pass (2026-04-19T02:08:48Z)**:
+- ✅ **Picard's plan revision**: Narrowly scoped fixes applied (Started: 2026-04-19, T-022: US-2)
+- ✅ **Worf's gate review**: Both prior defects verified corrected; validator PASS on iterations 000 and 001
+- ✅ **Iteration 1 execution-ready**: Governance gate clear; no contract blockers remain
+- ✅ **Decision merged to ledger**: picard-iteration1-plan-revision.md and worf-iteration1-final-gate.md consolidated; inbox cleaned
+
 ## Learnings
 
 - Phase state machine is **normative** — not optional governance. Skipping phases is a contract violation.
@@ -30,6 +45,9 @@ I am the spec alignment gate for Specrew. My job is to keep every plan, task, de
 - Phase gates prevent drift: spec-authority gate (pre-execute), traceability gate (pre-execute), drift-check (per-task), review gate (end-execute).
 - Completion semantics must stay single-purpose: `retro.md` closes retrospective, but iteration status remains `retro` until Alon records final sign-off.
 - Closure evidence tables must be regenerated at sign-off time, not copied from draft versions (prevents stale claims).
+- **Artifact contract enforcement is precise**: Metadata fields (Started, Completed) require `YYYY-MM-DD` format; task table columns (Story) require non-null values. Governance validator treats these as hard failures, not warnings.
+- **Story reference mapping**: User stories should align with task narrative scope. Validation/testing tasks map to the user story for the capability they enable, not to the user story for the immediate feature under test (e.g., CI pipeline validation maps to US-2 "Run iteration end-to-end", not just the individual feature story).
+- **Narrow revision protocol**: When fixing governance defects, change only the identified fields. Do not expand scope to "while I'm here" improvements. Picard's charter: "I do not let the fix drift wider than necessary."
 
 ## Iteration 0 Closure & Governance Hardening (Archived Details)
 

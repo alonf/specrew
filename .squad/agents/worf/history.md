@@ -14,6 +14,25 @@ I evaluate each task output against the source requirement and produce explicit 
 
 📌 Team confirmed by Alon on 2026-04-17
 
+📌 **Governance fix cycle review verdict (2026-04-19)**:
+  - Iteration 1 plan.md validator status: NEEDS-WORK (real contract failures detected)
+  - Missing `Started` metadata in plan.md (line 7)
+  - Task T-022 missing `Story` reference
+  - Validator repair accepted (La Forge fixed strict-mode collections)
+  - Validator now correctly exposes artifact defects instead of runtime crashing
+  - Next plan owner: Picard (Data locked out from this revision)
+  - Execution status: BLOCKED until metadata populated and story assigned
+
+📌 **Decision inbox merged (2026-04-19T02:06:00Z)**:
+  - Iteration 1 Governance Re-Review decision recorded and archived
+  - 6 inbox decisions consolidated into decisions.md
+
+📌 **Final gate pass (2026-04-19T02:08:48Z)**:
+  - Picard's plan revision verified: Started and T-022 story fields corrected
+  - Worf's gate re-review: Both prior defects confirmed fixed; validator PASS
+  - Iteration 1 execution-ready: Governance gate clear
+  - picard-iteration1-plan-revision.md and worf-iteration1-final-gate.md merged to decisions.md; inbox cleaned
+
 ## Learnings
 
 - Review/demo is a formal ceremony in the Specrew lifecycle.
@@ -194,8 +213,12 @@ I evaluate each task output against the source requirement and produce explicit 
 - **Pattern: Here-string variable escaping in PowerShell.** In expandable here-strings (`@"..."@`), markdown backtick formatting (`` ` ``) before `$variable` prevents variable expansion because PowerShell treats backtick as escape character. Fix: use `$($variable)` subexpression syntax to force expansion regardless of surrounding backticks.
 - **2026-04-19 Iteration 1 Plan Review (Post-Correction)**: Reviewed plan.md after Data's three corrections landed. All corrections verified on disk: (1) resume wording no longer overclaims — AC-3 says "manual continuity review" not "resume"; FR-019 explicitly deferred. (2) Board sync acknowledged as Iteration 0 operational deliverable, not carryover. (3) Effort calibration rationale now matches task table at 20.5 pts (previously contradicted at ~33 pts with false "22 pts" claim). Verdict: PASS. Decision recorded: `.squad/decisions/inbox/worf-iter1-plan-review.md`.
 - **Pattern: Review corrections against source file, not decision docs.** Data's decision doc claimed corrections were "Applied" but status was "recommended." Always verify the actual file on disk matches the claimed corrections — decision documents describe intent, the artifact is the evidence. In this case, corrections were genuinely applied.
+- **2026-04-19 Iteration 1 Governance Re-Review**: A plan is not execution-ready while the live validator still fails. Iteration 001 currently fails on two contract checks in `specs/001-specrew-product/iterations/001/plan.md`: blank `Started` metadata and missing `Story` for `T-022`. La Forge's validator repair is acceptable because `extensions\specrew-speckit\scripts\validate-governance.ps1` now surfaces those real failures instead of crashing, and `.github\workflows\specrew-ci.yml` already enforces the script in CI.
+- **Pattern: Execution-ready means artifact-clean plus validator-clean.** Decision notes can explain why a fix was made, but readiness is judged from the live artifact and the live gate result. For Specrew iteration planning reviews, require both `plan.md` contract compliance and a clean `validate-governance.ps1` run before issuing PASS.
 
 **Cross-Agent Team Update** (2026-04-19):
 - **Data (Planner)**: Applied Iteration 1 plan narrow corrections — resume wording, board sync state, effort calibration. Status: recommended. Corrections verified on disk.
 - **Scribe**: Orchestration logged; session documented; decisions merged into decisions.md. Both Data and Worf entries recorded in orchestration-log/; session log written to log/.
+
+- **2026-04-19 Iteration 1 Final Gate**: Re-review against prior rejection reasons must close the loop on the exact cited defects in the live artifact, then confirm the live validator is clean. `specs/001-specrew-product/iterations/001/plan.md` now contains `Started: 2026-04-19`, task `T-022` now maps to `US-2`, and `extensions/specrew-speckit/scripts/validate-governance.ps1` passes for Iteration 001. Verdict: PASS. Broader coordination prerequisites (for example Alon approval or operating-policy consensus) remain separate from artifact-readiness unless they were part of the rejection basis.
 

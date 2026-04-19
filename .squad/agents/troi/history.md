@@ -14,6 +14,19 @@ I run Specrew retrospectives and capture estimation accuracy, drift events, proc
 
 📌 Team confirmed by Alon on 2026-04-17
 
+📌 **Iteration 1 operating policy consensus confirmed (2026-04-19)**:
+  - 6 core operating rules assessed and consensus verified
+  - No objections to rules' intent or logic from any team member
+  - 3 implementation tasks pending before planning ceremony:
+    * Spike schedule confirmation (Picard + La Forge)
+    * Retro schedule policy confirmation (Alon)
+    * Template updates for per-phase tracking (Data)
+  - Status: Ready for Alon approval; team consensus-sound
+
+📌 **Decision inbox merged (2026-04-19T02:06:00Z)**:
+  - Operating consensus check decision recorded and archived
+  - 6 inbox decisions consolidated into decisions.md
+
 ## Learnings
 
 - The retrospective is the fourth phase in every Specrew iteration.
