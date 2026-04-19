@@ -180,6 +180,79 @@ Iteration 0 closure artifacts documentation normalized to match authoritative Sq
 
 ---
 
+## 2026-04-19: Pre-Execution Planning Assessment — Three Pivot Questions Resolved
+
+**Session**: Data pre-execution readiness checkpoint (spawned via Copilot CLI)  
+**Status**: ✅ DECISION RECORDED (routing to Alon for confirmation)
+
+#### Three Questions Resolved
+
+**Question 1: Execution-Model Gap as Carryover Task?**
+- Issue: Current plan defers FR-019 (task resume) to Iteration 2 but commits to "resumable iteration state" in AC line 48
+- Ambiguity: Does "resume" mean MVP (state.md is a log; user manually reads) or Deep (programmatic resume CLI command)?
+- **Recommendation**: ✅ Keep shallow (MVP), add AC clarification only
+- Wording change: "state.md documents completed tasks for manual resumption" (no new task)
+- Rationale: MVP scope intact; defer programmatic resume to Iter 2 as planned
+
+**Question 2: Board-Management Carryover — Drop, Narrow, or Keep?**
+- Issue: Plan lists 22 tasks; none explicitly address GitHub Projects V2 board sync deployment
+- Current state: Workflow exists, tested, but NOT deployed; SPECREW_PROJECT_TOKEN now configured (blocker cleared)
+- Options: (1) Drop — risk silent non-operation; (2) Narrow — add 0.5-pt task; (3) Keep deferred — leave as async
+- **Recommendation**: ✅ Narrow to single 0.5-pt task (T-0X): "Deploy board-sync workflow to GitHub Actions"
+- Rationale: Non-optional governance rule; Iteration 0 async work; 0.5-pt overcommit well within tolerance
+- Result: New plan capacity = 21/20.5 pts (justified as governance-critical precondition)
+
+**Question 3: Iteration 1 Execution Start Condition**
+- Question: Immediate after Alon approval, or gated 2-hour pre-execution window?
+- **Recommendation**: ✅ Gated two-hour pre-execution window
+- Sequence:
+  1. Alon approves plan
+  2. Data updates plan: AC clarification (shallow resume) + board-sync task addition
+  3. Data syncs updated plan to GitHub board via sync script
+  4. Alon re-confirms no scope changes; final green light
+  5. Execution begins with corrected plan + synced board
+- Rationale: These are corrections (not scope changes); synchronized board prevents mid-iteration drift; two-hour window keeps momentum
+
+#### New Plan State (Post-Correction)
+
+| Metric | Value |
+|--------|-------|
+| Capacity | 21/20.5 story_points |
+| Scope | 23 tasks (22 current + 1 board-sync completion) |
+| Justification | Iter 0 async completion + governance hardening |
+| Status | Ready pending Alon approval of corrections |
+
+#### Decision Summary
+
+✅ **All three questions resolved with zero new-feature scope** — only clarifications + governance closure  
+✅ **Plan remains discipline-compliant** — deferred work stays deferred, overcommit justified  
+✅ **Execution start sequence** — gated pre-execution window ensures board sync before iteration runs  
+✅ **Routing**: Alon for confirmation; Data ready to execute corrections upon approval
+
+**Status**: DECISION RECORDED  
+**Blocking**: None; awaiting Alon confirmation  
+**Pre-Condition**: Alon approval of corrections + governance hardening rationale
+
+---
+
+## 2026-04-19: Iteration 1 Readiness Assessment Complete
+
+**Summary**: Iteration 1 is execution-ready pending three lightweight corrections (AC clarification, board-sync task addition, pre-execution board sync):
+
+1. ✅ Spec authority gates verified (all 23 tasks trace to FRs or governance requirements)
+2. ✅ Traceability validated (no orphan tasks; deferred work explicitly marked)
+3. ✅ Capacity math verified (21 pts committed; 0.5 overcommit justified)
+4. ✅ Board automation deployment path cleared (SPECREW_PROJECT_TOKEN configured; script tested)
+5. ✅ Governance hardening prerequisites identified (three tier-1 improvements + operating policy consensus required before planning ceremony)
+
+**Next Actions**:
+- Alon confirms plan corrections + governance hardening rationale → Data updates plan → Data syncs board → execution begins
+- Before planning ceremony: Picard finalizes protocol.md with three tier-1 improvements; team reaches consensus on 6 operating rules
+
+**Status**: Ready for Alon confirmation and pre-execution corrections
+
+---
+
 ## 2026-04-18T20-30-00Z: Iteration 1 MVP Planning — Capacity Calibration & Scope Slicing
 
 **Session**: Iteration 1 Planning Ceremony

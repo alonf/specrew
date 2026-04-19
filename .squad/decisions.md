@@ -1136,6 +1136,111 @@ Board sync: `.github/workflows/specrew-project-sync.yml` mirrors iteration artif
 
 ---
 
+### 2026-04-19: Picard Next Move Decision — Alignment & Readiness Assessment
+
+**By**: Picard (Spec Steward)  
+**Date**: 2026-04-19  
+**Status**: Active  
+**Topic**: Governance alignment checkpoint before Iteration 1 execution
+
+#### Analysis Summary
+
+Current repo state reviewed across three governance surfaces:
+
+1. **Board-Management Gap** — ✅ **RESOLVED**
+   - Workflow `.github/workflows/specrew-project-sync.yml` deployed and operational
+   - 23 issues synced to board at Iteration 0 closure
+   - Automation is live; no gap remains
+
+2. **Execution-Model Gap (Worktree + PR-per-task)** — ❌ **NOT A SPEC REQUIREMENT**
+   - Zero references in spec.md, plan.md, or decision history
+   - If this is a candidate feature, propose as new FR via tracked-change process
+   - Out-of-scope for current iterations
+
+3. **Iteration 0 Retrospective Amendments** — 🚫 **SHOULD NOT AMEND**
+   - Retrospective is terminal and closed (retro.md complete, signed off by Alon)
+   - Three tier-1 improvements already recorded as **Iteration 1 adoption requirements** (per retro.md)
+   - These improvements are not amendments; they are operationalization tasks
+
+#### Recommended Next Move
+
+**Single Best Governance Action**: Formalize three tier-1 improvements in Iteration 1 planning charter and `.squad/protocol.md` before execution begins.
+
+1. **Spec-Authority Gate Pre-Execution** (planning ceremony) — prevents 80%+ late-stage plan churn
+2. **Architecture-Risk Spikes Pre-Planning** (pre-ceremony) — eliminates hidden blocking dependencies
+3. **Retro Ceremony Autonomous from Sign-Off** (fixed schedule, decoupled) — improve process learning velocity
+
+**Effort**: Zero (resequencing only, no new work)  
+**ROI**: High (friction reduction, earlier drift detection, faster learning loops)  
+**Owner**: Picard (Spec Steward) + Alon (for policy approval)  
+**Target**: Formalize before Iteration 1 planning ceremony
+
+#### Decision Record
+
+- ✅ **Board automation is live**: No gap
+- ✅ **No worktree/PR-per-task gap exists**: Not in spec; propose as future FR if desired
+- ✅ **Retro should remain closed**: All improvements already documented; operationalize in protocol
+- 🎯 **Highest-value move**: Update `.squad/protocol.md` with three tier-1 improvements
+- ⏳ **Routing**: Alon for policy approval of updated protocol
+
+**Status**: DECISION RECORDED  
+**Authority**: Picard (Spec Steward)  
+**Routing**: Alon for policy approval
+
+---
+
+### 2026-04-19: Data Pre-Execution Planning Decision — Iteration 1 Readiness Pivot Questions
+
+**Date**: 2026-04-19  
+**By**: Data (Planner)  
+**Status**: DECISION (awaiting Alon confirmation)  
+**Requestor**: Alon Fliess
+
+#### Three Pivot Questions Resolved
+
+| Question | Recommendation | Action | Effort | Rationale |
+|----------|---|---|---|---|
+| **1. Execution-Model Gap as Task** | ✅ Keep shallow | Amend AC line 48 wording | 0 pts | MVP scope intact; resume convenience, not blocker |
+| **2. Board-Management Carryover** | ✅ Narrow to 1 task | Add T-0X (0.5 pts): Deploy board-sync workflow | +0.5 pts | Iteration 0 async completion; non-optional governance rule |
+| **3. Execution Start Condition** | ✅ Gated 2-hr window | Plan update → board sync → final approval | 2 hrs | Ensures governance closure before execution |
+
+#### Key Decisions
+
+**Question 1 — Resume AC Clarification** (Shallow vs Deep):
+- Current plan defers programmatic resume (FR-019) to Iteration 2
+- Acceptance criteria (line 48): state.md documents completed tasks for *manual* resumption
+- No new task needed; only wording clarification required
+
+**Question 2 — Board-Sync Task Completion**:
+- Iteration 0 left board workflow deployment as async work
+- Current state: `.github/workflows/specrew-project-sync.yml` exists but not deployed; SPECREW_PROJECT_TOKEN now configured
+- Recommendation: Add single 0.5-pt task (T-0X) to deploy and validate workflow
+- Rationale: Non-optional governance rule; blocks automated governance enforcement
+
+**Question 3 — Pre-Execution Gate Sequence** (after Alon plan approval):
+1. Data updates Iteration 1 plan: AC clarification (shallow resume) + board-sync task addition
+2. Plan now reads 21 pts with explicit justification (Iter 0 async + governance hardening)
+3. Data syncs updated plan to GitHub board via sync script
+4. Alon re-confirms no scope changes; gives final green light
+5. Execution begins with corrected plan + synced board
+
+#### New Plan State (Post-Correction)
+
+- **Capacity**: 21/20.5 story_points (acceptable 0.5 overcommit per Iter 0 policy)
+- **Scope**: 23 tasks (22 current + 1 board-sync completion)
+- **Gate**: Board-sync task unblocks automated governance; plan corrected for AC precision
+- **Ready**: Yes, pending Alon approval of corrections + governance hardening rationale
+
+#### Decision
+
+**Merge to squad/decisions.md upon Alon confirmation.** No scope objections expected; these are clarifications + governance closure, not new feature work.
+
+**Status**: DECISION RECORDED  
+**Blocking**: None; awaiting Alon confirmation  
+**Pre-Condition**: Alon approval of corrections + governance hardening rationale
+
+---
+
 ## Governance
 
 - Decisions in this file are the shared team memory.

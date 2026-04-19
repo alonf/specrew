@@ -204,6 +204,45 @@ Stale closure evidence discovered and corrected in review.md. False claims about
 **Impact**: Critical — prevents false sign-off signals  
 **Next**: Closure-evidence regeneration checkpoint added to Iteration 1 review ceremony template
 
+### 2026-04-19: Pre-Iteration 1 Alignment & Readiness Assessment
+
+**Session**: Picard pre-execution checkpoint (spawned via Copilot CLI)  
+**Status**: ✅ DECISION RECORDED (routing to Alon for policy approval)
+
+#### Analysis & Recommendations
+
+Picard reviewed three governance surfaces ahead of Iteration 1 execution:
+
+1. **Board-Management Gap** → ✅ **RESOLVED**
+   - Workflow `.github/workflows/specrew-project-sync.yml` deployed; 23 issues synced to board at Iter 0 closure
+   - No gap remains; board automation operational
+
+2. **Execution-Model Gap (Worktree + PR-per-task)** → ❌ **NOT A SPEC REQUIREMENT**
+   - Zero references in spec, plan, or decision history
+   - Recommend as future FR if desired; out-of-scope for current iterations
+
+3. **Iteration 0 Retrospective Amendments** → 🚫 **SHOULD NOT AMEND**
+   - Retrospective is terminal and closed (Alon sign-off recorded 2026-04-18)
+   - Three tier-1 improvements already recorded as Iteration 1 adoption requirements (retro.md)
+   - These are operationalization tasks, not amendments
+
+#### Recommended Next Move
+
+**Single Best Governance Action**: Formalize three tier-1 improvements in Iteration 1 planning charter + `.squad/protocol.md` before execution begins.
+
+**Three Tier-1 Improvements** (zero effort, high ROI):
+1. **Spec-Authority Gate Pre-Execution** (planning ceremony) — prevents 80%+ late-stage plan churn
+2. **Architecture-Risk Spikes Pre-Planning** (pre-ceremony) — eliminates hidden blocking dependencies
+3. **Retro Ceremony Autonomous from Sign-Off** (fixed schedule) — improve learning velocity
+
+**Owner**: Picard (implementation) + Alon (policy approval)  
+**Target**: Before Iteration 1 planning ceremony  
+**Status**: DECISION RECORDED → awaiting Alon policy approval
+
+**Traceability**: All three improvements already documented in retro.md (lines 208–250) as Iteration 1 adoption requirements. This is pure operationalization, not new work or amendments.
+
+---
+
 ### 2026-04-18T18-15-45Z: Alon Final Sign-Off Recorded — Iteration 0 Closure Complete
 
 **Action**: Record Alon's final governance authority sign-off in all iteration closure artifacts.
