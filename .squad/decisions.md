@@ -1397,6 +1397,109 @@ Downstream projects:
 
 ---
 
+### 2026-04-19: Iteration 1 Plan Narrow Corrections
+
+**By**: Data (Planner)  
+**Date**: 2026-04-19  
+**Status**: Recommended  
+**What**: Applied three narrow, execution-focused corrections to `specs/001-specrew-product/iterations/001/plan.md`
+
+#### Corrections Applied
+
+1. **Clarified resume wording** — No programmatic resume feature in Iteration 1
+2. **Reflected board-sync operational state** — GitHub Project automation deployed in Iteration 0, no carryover work
+3. **Re-calibrated effort to Iteration 0 baseline** — 20.5 pts matches proven zero-variance delivery model
+
+#### Problem & Rationale
+
+Plan contained misleading language ("state.md template for resume"; "team can resume from last completed work") that implied a programmatic resume command exists in Iteration 1. FR-019 (Programmatic task resume) is explicitly deferred to Iteration 2.
+
+**Correction**: Revised wording to clarify Iteration 1 delivers state.md *task tracking* only, not automation:
+- AC-3: "state.md tracks completed tasks; provides snapshot for manual continuity review"
+- Governance Check: "state.md template for task tracking" (removed "resume" language)
+- Deferred Work table: Added explicit row for "FR-019 (Programmatic task resume)" with target Iteration 2
+
+Plan did not acknowledge that GitHub Project board synchronization is already operational from Iteration 0. Added clarification to "What's In Scope" section:
+- New line: "**Board synchronization**: GitHub Project board automation deployed and operational from Iteration 0; continues mirroring iteration state without new work"
+
+Original plan rationale stated "Estimates are higher (22 pts vs. 20.5)" suggesting 22 pts commitment, but task table showed 20.5 pts (math inconsistency). Iteration 0 demonstrated zero-variance delivery at 20.5 pts; no recalibration upward is justified. Aligned all effort estimates to baseline (20.5 pts) and removed false "higher estimate" narrative.
+
+#### Impact on Execution
+
+- **No scope change**: All 22 tasks remain in plan; none added or removed
+- **No timeline change**: 20.5 pt capacity maintained; same planning velocity expected
+- **Clarity gain**: Resume, board, and effort expectations now match reality
+- **No rework needed**: Corrections are clarifications, not strategy reversals
+
+#### Status
+
+✅ **ACCEPTED** — Corrections recommended by Data; reviewed and passed by Worf (2026-04-19). Plan cleared for planning ceremony upon Alon approval.
+
+---
+
+### 2026-04-19: Iteration 1 Plan Review — Post-Correction Verdict (Worf)
+
+**By**: Worf (Reviewer)  
+**Date**: 2026-04-19  
+**Status**: Accepted  
+**What**: Post-correction review of Iteration 1 plan
+
+#### Verdict: ✅ PASS
+
+| Check | Result | Evidence |
+|-------|--------|----------|
+| Resume overclaim eliminated | ✅ PASS | AC-3 reworded; FR-019 explicitly deferred |
+| Board carryover eliminated | ✅ PASS | Line 117 confirms operational state |
+| Effort calibration consistent | ✅ PASS | All three sources agree at 20.5 pts |
+| Spec authority maintained | ✅ PASS | All tasks trace to spec FRs; deferred work called out |
+| Plan ready for planning ceremony | ✅ PASS | No blocking issues remain |
+
+#### Review Scope
+
+Reviewed `specs/001-specrew-product/iterations/001/plan.md` (on-disk state, untracked) against Data's correction decision (data-iter1-plan-correction.md) and three specific criteria.
+
+#### Criterion 1: Resume Wording — No Longer Overclaims
+
+**Status: PASS**
+
+Data's correction is applied and verified on three lines:
+
+| Location | Before (Overclaim) | After (Corrected) |
+|----------|--------------------|--------------------|
+| AC-3 (line 48) | "team can resume from last completed work" | "provides snapshot for manual continuity review" |
+| Governance Check (line 72) | "state.md template for resume" | "state.md template for task tracking" |
+| Deferred Work (line 126) | "Task resume (FR-019)" | "**Programmatic task resume** (FR-019): Automated resume command from last completed task → Iter 2" |
+
+The plan no longer implies Iteration 1 delivers a programmatic resume feature. FR-019 is explicitly deferred to Iteration 2 with clear language distinguishing manual continuity review (Iter 1) from automated resume (Iter 2).
+
+#### Criterion 2: Board-Management Carryover — Eliminated
+
+**Status: PASS**
+
+Data added line 117 to the "What's In Scope" section:
+
+> **Board synchronization**: GitHub Project board automation deployed and operational from Iteration 0; continues mirroring iteration state without new work
+
+This closes the ambiguity. Board sync is acknowledged as operational (Iteration 0 deliverable), not implied as Iteration 1 carryover work. Consistent with `docs/github-project.md` operational status.
+
+#### Criterion 3: Effort Calibration — Aligned
+
+**Status: PASS**
+
+Data's third correction resolved the Effort Calibration section inconsistency:
+
+- Rationale estimates (lines 157–173) now match the task table (lines 78–101) at **20.5 story points**
+- Removed false "22 pts" claim from estimation philosophy (line 175)
+- Capacity row (line 70) now reads "matches Iteration 0 baseline, zero-variance proven capacity"
+
+All three data sources (task table, calibration rationale, capacity metadata) are internally consistent.
+
+#### Status
+
+✅ **COMPLETE** — Plan is cleared for the Iteration 1 planning ceremony, pending Alon's final approval and team consensus on operating policy (per `.squad/identity/now.md`).
+
+---
+
 ### 2026-04-18T15:51:40Z: User Directive — Specrew Self-Development Board Requirements
 
 **By**: Alon Fliess (via Copilot)  

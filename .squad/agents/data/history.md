@@ -23,6 +23,10 @@ I turn Specrew's requirements into iteration plans, task maps, and explicit depe
 - Overcommit math: Must justify deferred work and track rationale for capacity overages
 - Iteration lifecycle clarity: Execution-complete and retrospective-complete are distinct states with separate gates
 - Capacity calibration: Iteration 0 baseline (20.5 pts, 0% variance) establishes velocity for Iteration 1 planning
+- **Wording precision**: Plan language must distinguish between task artifacts (state.md created in Iter 1) and deferred programmatic features (resume command in Iter 2). Ambiguous wording leads to execution mismatch.
+- **Narrow corrections vs scope creep**: When correcting plan ambiguities, distinguish between clarifying existing scope vs. adding new tasks. Iteration 1 board sync is already operational (Iter 0 completion); don't reopen it as new carryover work.
+- **Estimation re-calibration**: After zero-variance delivery (Iter 0: 20.5/20.5), align next iteration to baseline unless evidence justifies upward adjustment. Removes artificial "higher estimate" narratives and grounds planning in team velocity.
+- **Deferred work table clarity**: Explicit "Reason" column for each deferred requirement prevents implicit task creep and makes deferral rationale auditable by future planners.
 
 ## Iteration 0 Closure & Iteration 1 Planning (Archived Details)
 
@@ -43,9 +47,18 @@ I turn Specrew's requirements into iteration plans, task maps, and explicit depe
 - ✅ Pivot Question 2 — Board-sync carryover: Add 0.5-pt task for workflow deployment (Iter 0 async completion); new capacity 21/20.5 pts (justified)
 - ✅ Pivot Question 3 — Execution start condition: Recommend gated 2-hour pre-execution window (plan update → board sync → final approval)
 
-**Status**: Iteration 1 is execution-ready pending Alon confirmation of pre-execution corrections and governance hardening rationale
+**Iteration 1 Plan Narrow Corrections** (2026-04-19):
+- ✅ Resume wording clarity: Removed misleading "programmatic resume" language; clarified state.md is task tracking only (FR-019 deferred to Iter 2)
+- ✅ Board-sync operational state: Added clarification that GitHub Project automation is already operational (Iter 0 completion); no carryover task added
+- ✅ Effort re-calibration: Revised task estimates downward to match Iter 0 baseline (20.5 pts, zero-variance proven model); removed "higher estimate" narrative
+- ✅ Deferred work table extended: Added explicit FR-019 row with rationale for programmatic resume deferral
+- ✅ Capacity tracking: No increase needed; plan remains 0/20.5 pts with clear rationale
 
-**Detailed work tracked in .squad/decisions.md (Iteration Closure & Planning sections) and orchestration logs**
+**Status**: Iteration 1 plan finalized and ready for execution. All corrections are clarifications to existing scope; no new tasks added, no scope reopened.
+
+**Cross-Agent Team Update** (2026-04-19):
+- **Worf (Reviewer)**: Reviewed corrected plan and issued PASS. Confirmed resume wording is aligned, board sync correctly treated as operational, effort estimates grounded in baseline. Plan cleared for planning ceremony.
+- **Scribe**: Orchestration logged; session documented; decisions merged into decisions.md.
 
 ---
 
