@@ -317,14 +317,131 @@ These remain the next bootstrap slice to align with Iteration 1 task sequencing.
 
 ---
 
+### 2026-04-19: Complete `specrew init` Deployment Slice
+
+**By**: La Forge (Implementer)  
+**Date**: 2026-04-19  
+**Scope**: Iteration 1 bootstrap deployment phase
+
+Implemented the remaining greenfield deployment path needed for `specrew init` to become materially useful:
+
+1. **Spec Kit Extension Deployment**
+   - Added `deploy-speckit-extension.ps1`
+   - Copies bundled `specrew-speckit` assets into `.specify/extensions/specrew-speckit/`
+   - Registers `specrew-speckit` additively in `.specify/extensions.yml`
+
+2. **Squad Runtime-Surface Deployment**
+   - Added `deploy-squad-runtime.ps1`
+   - Deploys Specrew skills into `.copilot/skills/specrew-*/SKILL.md`
+   - Appends Specrew ceremony blocks to `.squad/ceremonies.md`
+   - Seeds baseline role charters under `.squad/agents/`
+   - Merges directive blocks into relevant role charters
+
+3. **Baseline Role Merge**
+   - Merges five baseline roles into `.squad/team.md`
+   - Uses additive-only writes; preserves existing team entries
+
+4. **Bootstrap Hardening**
+   - Fixed native-command exit-code handling under strict mode
+   - Missing or wrapped CLIs do not crash version detection or bootstrap orchestration
+
+**Execution Boundary**: Stays on approved greenfield path. Brownfield conflict negotiation remains deferred (FR-020).
+
+**Validation**: 
+- `specrew-init.ps1` dry-run against fresh workspace ✅
+- Live smoke bootstrap against fresh workspace ✅
+- PSScriptAnalyzer on bootstrap scripts ✅
+
+**Decision**: ✅ **DEPLOYMENT SLICE 2 COMPLETE**. `specrew init` now carries full bootstrap from dependency validation through governance scaffolding without replacing approved spine.
+
+---
+
+### 2026-04-19: Deployment Guardrails — Iteration 1, Slice 2: Runtime Surface Deployment
+
+**By**: Picard (Spec Steward)  
+**Date**: 2026-04-19  
+**Scope**: Guard La Forge's deployment slice (extension deployment + role merge) against spec drift  
+**Status**: Alignment gates READY
+
+#### What IS In Scope (Slice 2)
+
+1. **Spec Kit Extension Installation** (T-005): Per contract, copy extension files + manual register in `.specify/extensions.yml`; never overwrite existing file
+2. **Squad Skills Deployment** (T-006): Copy Specrew skills to `.copilot/skills/specrew-*/` per Squad native layout
+3. **Squad Ceremonies Merge** (T-007): Merge Specrew ceremonies into `.squad/ceremonies.md`; preserve existing entries
+4. **Directive Embedding**: Merge Specrew directives into `.squad/agents/*/charter.md`; additive-only
+5. **Baseline Role Merge** (T-008): Merge 5 baseline roles (Spec Steward, Planner, Implementer, Reviewer, Retro Facilitator) into `.squad/team.md`
+
+#### What is DEFERRED
+
+- **FR-020** (Brownfield bootstrap) → Iteration 2
+- **FR-007** (Configurable effort model) → Iteration 2
+- **FR-012** (Five-class collision detector) → Iteration 3
+- **Directive logic** (T-012–T-014) — Text merge only in this slice
+- **Ceremony logic** (T-015–T-017) — Definitions only in this slice
+
+#### Acceptance Gates (8 gates)
+
+1. ✅ Greenfield path only — Additive merges, never delete/overwrite
+2. ✅ Extension registration surfaces documented
+3. ✅ Squad native layout — No packaged plugin
+4. ✅ Five baseline roles present and correctly named
+5. ✅ Collision handling — Prompt on role-name conflicts
+6. ✅ Protected paths honored — Never touch user constitution or templates
+7. ✅ FR-011 governance artifact compliance
+8. ✅ Acceptance testing — Fresh greenfield smoke test passes
+
+**Blockers**: None identified. Source requirements coherent.
+
+**Decision**: ✅ **READY FOR DEPLOYMENT SLICE 2 IMPLEMENTATION**. Scope narrow, boundaries clear, requirements coherent. Proceed with T-005–T-008.
+
+---
+
+### 2026-04-19: Worf Review: Bootstrap Slice 2
+
+**By**: Worf (Reviewer)  
+**Date**: 2026-04-19  
+**Requested by**: La Forge / Picard  
+**Verdict**: PASS  
+**Iteration 1 Increment Valid**: Yes
+
+#### Scope Reviewed
+
+Deployment slice 2 as scoped by Picard:
+
+1. Spec Kit extension deployment to `.specify/extensions/specrew-speckit/`
+2. Squad skills deployment to `.copilot/skills/specrew-*/`
+3. Squad ceremonies merge into `.squad/ceremonies.md`
+4. Directive embedding into `.squad/agents/*/charter.md`
+5. Baseline role merge into `.squad/team.md`
+
+#### Evidence
+
+✅ All 5 baseline roles present in deployment scripts  
+✅ Extension registration logic uses documented Spec Kit surfaces  
+✅ Squad native layout respected (no packaged plugin)  
+✅ Protected paths honored (additive-only merges)  
+✅ Collision handling implemented (prompts on conflicts)  
+✅ Smoke test on fresh bootstrap passes  
+
+#### Review Judgment
+
+Deployment scope is narrow, gates explicit, and implementation aligned. Slice materials qualify for execution under eight-gate acceptance framework.
+
+**Determination**: **PASS.** Slice 2 is deployment-ready. Proceed with T-005–T-008 execution.
+
+---
+
 ## Inbox Decisions Merged
 
-**Merge Date**: 2026-04-19T195521Z  
-**Inbox Files Deleted**: 2 decision files merged
+**Merge Date**: 2026-04-19T20:24:18Z  
+**Inbox Files Deleted**: 3 decision files merged
 
-1. `picard-bootstrap-guardrails.md` → Bootstrap Guardrails — Iteration 1, Slice 1
-2. `laforge-bootstrap-spine.md` → Bootstrap Spine Slice — `specrew init` Implementation Complete
+1. `laforge-deploy-runtime-surfaces.md` → Complete `specrew init` Deployment Slice
+2. `picard-deploy-guardrails.md` → Deployment Guardrails — Iteration 1, Slice 2
+3. `worf-bootstrap-slice-review.md` → Worf Review: Bootstrap Slice 2
 
-**Prior Merges**: 2026-04-19T02:08:48Z (2 files); 2026-04-19T07:43:21Z (1 file)
+**Prior Merges**: 2026-04-19T02:08:48Z (2 files); 2026-04-19T07:43:21Z (1 file); 2026-04-19T195521Z (2 files)
 
-**Deduplication**: No duplicates. All decisions now in main ledger.
+**Total Inbox Merges (Current)**: 3 files merged this session → Inbox now empty
+
+**Deduplication**: No duplicates. All decisions indexed chronologically in main ledger.

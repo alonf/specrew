@@ -184,3 +184,13 @@ Extended `validate-governance.ps1` to detect stale embedded plan-evidence claims
    - Staged specs/001-specrew-product/iterations/001/plan.md to index
    - Plan now auditable and execution-ready
    - Status: Merged to decisions.md, inbox cleared
+
+📌 **Deployment Slice 2: Runtime Surface Deployment — COMPLETE (2026-04-19T20:24:18Z)**:
+   - ✅ Complete `specrew init` deployment slice implemented
+   - Spec Kit extension deployment: `deploy-speckit-extension.ps1` added
+   - Squad runtime-surface deployment: `deploy-squad-runtime.ps1` added
+   - Baseline role merge: Five roles merged into `.squad/team.md` (additive-only)
+   - Bootstrap hardening: Fixed strict-mode native-command exit-code handling
+   - ✅ Validation: Dry-run + smoke test + PSScriptAnalyzer all PASS
+   - **Next**: Slice 2 deployment gates (Picard's 8-gate framework) trigger Worf review
+   - **Status**: Decision merged to ledger; inbox cleaned; deployment ready for execution gate

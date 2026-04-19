@@ -38,6 +38,13 @@ I am the spec alignment gate for Specrew. My job is to keep every plan, task, de
 - ✅ **Iteration 1 execution-ready**: Governance gate clear; no contract blockers remain
 - ✅ **Decision merged to ledger**: picard-iteration1-plan-revision.md and worf-iteration1-final-gate.md consolidated; inbox cleaned
 
+📌 **Deployment Slice 2: Guardrails & Review — COMPLETE (2026-04-19T20:24:18Z)**:
+   - ✅ Deployment Guardrails established: 8-gate acceptance framework for La Forge's runtime-surface slice
+   - Scope: Spec Kit extension deployment, Squad skills deployment, ceremonies merge, directive embedding, baseline role merge
+   - Deferred: FR-020 (brownfield), FR-007 (configurable effort), FR-012 (collision detector), directive/ceremony logic
+   - ✅ Worf Review: Slice 2 PASS verdict (gates explicit, scope narrow, implementation aligned)
+   - **Status**: Both decisions merged to ledger; inbox cleaned; Slice 2 cleared for execution
+
 ## Learnings
 
 - Phase state machine is **normative** — not optional governance. Skipping phases is a contract violation.
