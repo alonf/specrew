@@ -264,12 +264,66 @@ Staged `specs/001-specrew-product/iterations/001/plan.md` to git index for audit
 
 ---
 
+### 2026-04-19: Bootstrap Guardrails — Iteration 1, Slice 1: `specrew init`
+
+**By**: Picard (Spec Steward)  
+**Date**: 2026-04-19  
+**Scope**: Guard La Forge's bootstrap CLI implementation against spec drift  
+**Status**: Alignment gates READY
+
+Bootstrap guardrail document establishes approved scope for `specrew init`, explicit deferred boundaries, and drift markers that would violate FR-001, FR-002, FR-011, FR-013.
+
+**Key Constraints**:
+- ✅ Greenfield initialization only (Iteration 1); brownfield deferred to Iteration 2
+- ✅ NO `extensions/specrew-squad/` package; use native Squad layout
+- ✅ Extension registration through documented surfaces only
+- ✅ Protected paths never overwritten; additive merges only
+- ✅ Five baseline roles: Spec Steward, Planner, Implementer, Reviewer, Retro Facilitator
+- ✅ Downstream governance as template, not Specrew's own
+
+**Acceptance Gates**: 8 gates defined (greenfield path, version validation, collision detection, brownfield graceful defer, no undocumented APIs, FR-011 compliance, no scope creep, acceptance testing).
+
+**Decision**: ✅ READY FOR BOOTSTRAP IMPLEMENTATION.
+
+---
+
+### 2026-04-19: Bootstrap Spine Slice — `specrew init` Implementation Complete
+
+**By**: La Forge (Implementer)  
+**Date**: 2026-04-19  
+**Scope**: Iteration 1 bootstrap execution slice
+
+Implemented the first working `specrew init` spine as a standalone root script plus supporting scripts:
+
+**Deliverables**:
+1. ✅ **Dependency and version gate**: `validate-versions.ps1` detects Spec Kit and Squad from CLIs; installs missing; blocks incompatible versions
+2. ✅ **Greenfield platform init**: `specrew-init.ps1` orchestrates dependency validation, `specify init`, `squad init`, governance scaffolding
+3. ✅ **Governance separation**: Writes `.specrew/config.yml`, `.specrew/constitution.md`, `.specrew/iteration-config.yml`, `.specrew/role-assignments.yml`
+
+**Explicit Scope Boundary / Pending Gap**:
+
+This slice intentionally stops **before**:
+- Spec Kit extension deployment into `.specify/extensions/specrew-speckit/`
+- Squad runtime surface deployment into `.copilot/skills/` and `.squad/`
+- Baseline role merge into `.squad/team.md`
+
+These remain the next bootstrap slice to align with Iteration 1 task sequencing.
+
+**Evidence**: 
+- Dry-run succeeds for the new root bootstrap script
+- Smoke bootstrap against fresh local workspace succeeded end-to-end for dependency validation, `specify init`, `squad init`, `.specrew/*` governance artifact creation
+
+**Decision**: Bootstrap spine implementation slice COMPLETE and READY for next slice (extension deployment).
+
+---
+
 ## Inbox Decisions Merged
 
-**Merge Date**: 2026-04-19T07:43:21Z  
-**Inbox Files Deleted**: 1 decision file merged
+**Merge Date**: 2026-04-19T195521Z  
+**Inbox Files Deleted**: 2 decision files merged
 
-1. `laforge-iteration1-git-tracking.md` → 2026-04-19 Git Tracking
+1. `picard-bootstrap-guardrails.md` → Bootstrap Guardrails — Iteration 1, Slice 1
+2. `laforge-bootstrap-spine.md` → Bootstrap Spine Slice — `specrew init` Implementation Complete
 
 **Prior Merges**: 2026-04-19T02:08:48Z (2 files); 2026-04-19T07:43:21Z (1 file)
 
