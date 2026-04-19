@@ -688,3 +688,69 @@ The approved deployment slice now meets reviewer standard. The missing retro sur
 **Deduplication**: No duplicates detected. All chronologically indexed.
 
 **Overall Ledger Status**: ✅ Current. Inbox empty.
+
+---
+
+### 2026-04-19: Bootstrap Gate Fix
+
+**Date**: 2026-04-19  
+**Owner**: La Forge (Implementer)  
+**Scope**: `scripts\specrew-init.ps1`, `extensions\specrew-speckit\scripts\validate-versions.ps1`
+
+#### What Changed
+
+1. `validate-versions.ps1` now prefers parseable version lines and, for Spec Kit, falls back to `uv tool list` when `specify --version` returns non-version shim errors such as `Failed to canonicalize script path`.
+2. `specrew-init.ps1` now probes `squad init --help` from a disposable repo-local directory and removes that probe directory immediately after inspection before deciding whether to add `--non-interactive`.
+
+#### Why
+
+- Bootstrap should fail only on real missing/incompatible dependencies, not on transient or shim-specific `specify --version` output.
+- The `--non-interactive` decision must inspect the `squad init` surface itself, not top-level `squad --help`, while avoiding accidental writes into the downstream project.
+
+#### Validation
+
+- `Invoke-ScriptAnalyzer` PASS on both changed scripts
+- Focused smoke: simulated `specify --version` canonicalization failure still resolves Spec Kit version from `uv tool list`
+- Focused smoke: `specrew-init.ps1 -DryRun` probes `squad init --help`, emits `squad init --non-interactive` when supported, and leaves no probe directories behind
+
+**Decision**: Bootstrap gate fix complete and validated.
+
+---
+
+### 2026-04-19: Bootstrap Gate Review Verdict
+
+**Date**: 2026-04-19  
+**Owner**: Worf (Reviewer)  
+**Scope**: `extensions\specrew-speckit\scripts\validate-versions.ps1`, `scripts\specrew-init.ps1`
+
+#### Verdict
+
+PASS
+
+#### Evidence
+
+1. `validate-versions.ps1 -PassThru` succeeds in the live environment and a native-shim smoke where `specify --version` returns `Failed to canonicalize script path` with exit code 1 still resolves Spec Kit from `uv tool list` and reports compatibility instead of aborting.
+2. `specrew-init.ps1 -DryRun` now decides the Squad flag from `squad init --help`. In this environment, that probe omits `--non-interactive`, so the dry-run emits `squad init` only. Probe directories are cleaned up afterward.
+3. Top-level `squad --help` is not a safe substitute here: it triggers workspace-init behavior. Using the subcommand help surface is therefore the correct narrow fix, not behavior drift.
+
+#### Reviewer Notes
+
+- The change remains narrow to the stated gate logic: version-line parsing/fallback in `validate-versions.ps1` and subcommand-capability probing in `specrew-init.ps1`.
+- No unrelated acceptance defect was found against the requested review points.
+
+**Decision**: Bootstrap gate fix approved. PASS.
+
+---
+
+## Inbox Merge Status (2026-04-19T21-49-33Z)
+
+**Merged Decisions**: 2 new decisions added from inbox
+
+1. La Forge bootstrap gate fix decision
+2. Worf bootstrap gate review verdict
+
+**Inbox Files Deleted**: `laforge-bootstrap-gate-fix.md`, `worf-bootstrap-gate-review.md`
+
+**Deduplication**: No duplicates. Chronologically indexed after prior decisions.
+
+**Overall Ledger Status**: ✅ Current. Inbox now empty.

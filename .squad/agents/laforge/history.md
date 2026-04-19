@@ -62,6 +62,8 @@ I execute planned work for Specrew and produce outputs that remain traceable to 
 - **Key validation path remains stable**: CI already invokes `./extensions/specrew-speckit/scripts/validate-governance.ps1 -ProjectPath .` from `.github/workflows/specrew-ci.yml`; only change CI if that path or invocation drifts.
 - **Runtime deployment must distinguish source guidance from live ceremony surfaces**: keep `extensions\specrew-speckit\scripts\deploy-squad-runtime.ps1` aligned to `specs\001-specrew-product\contracts\squad-extension.md` by appending only `planning.md` and `review-demo.md` into downstream `.squad\ceremonies.md`; `extensions\specrew-speckit\squad-templates\ceremonies\retro.md` stays source guidance for Squad's built-in retrospective, and `extensions\specrew-speckit\squad-templates\skills\iteration-resume.md` remains excluded until FR-019 / Iteration 2.
 - **Reviewer-lockout fixes should stay artifact-local**: when Worf cites a single README/runtime mismatch, correct only the named source file (`extensions\specrew-speckit\squad-templates\ceremonies\README.md`) plus required team memory updates; do not reopen adjacent ceremony sources that already match runtime behavior.
+- **Bootstrap version gates need inventory fallbacks**: `extensions\specrew-speckit\scripts\validate-versions.ps1` should accept parseable version text from `specify --version` when available, but recover from shim-specific failures like `Failed to canonicalize script path` by reading `uv tool list` for `specify-cli` instead of aborting bootstrap.
+- **Capability probes must hit the real subcommand surface without polluting the target workspace**: `scripts\specrew-init.ps1` should test `squad init --help` from a disposable repo-local probe directory, then clean that directory immediately so `--non-interactive` detection stays accurate even when help has side effects.
 
 ---
 
@@ -234,3 +236,10 @@ Extended `validate-governance.ps1` to detect stale embedded plan-evidence claims
 - `worf-deployment-slice-review.md` (initial NEEDS-WORK)
 - `picard-deployment-slice-revision.md` (correction details)
 - `worf-deployment-slice-rereview.md` (PASS verdict)
+
+📌 **Bootstrap Gate Fix Complete (2026-04-19T21-49-33Z)**:
+   - Fixed validate-versions.ps1 to tolerate specify --version shim failure, fallback to uv tool list
+   - Fixed specrew-init.ps1 to probe squad init --help from disposable directory
+   - All smoke tests and PSScriptAnalyzer validations passed
+   - Worf review verdict: PASS
+   - **Status**: ACCEPTED. Ready for next bootstrap gate action
