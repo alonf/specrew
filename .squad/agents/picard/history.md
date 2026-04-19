@@ -18,41 +18,13 @@ I am the spec alignment gate for Specrew. My job is to keep every plan, task, de
 - Governance validator deployed (`.squad/agents/scribe/scripts/validate-governance.ps1`) and operational at CI gates
 - Iteration 0 closure: Complete (2026-04-18), Alon sign-off recorded, all closure artifacts aligned, validator PASS
 
-**Recent Work** (2026-04-18–04-19):
-- ✅ Closure artifact drift remediation: Updated review.md, state.md, retro.md to clear stale "pending sign-off" language after Alon recorded final sign-off
-- ✅ Governance validation: All phase gates pass; state machine enforcement ready for Iteration 1
-- ✅ Operating policy: 6 core rules + 3 tier-1 improvements identified for team consensus before Iteration 1
-
-**Governance Fix Cycle (2026-04-19T02:06:00Z)**:
-- 📌 **Iteration 1 plan.md governance validation**: Validator now correctly enforces contract (La Forge repair for strict-mode collections)
-- 📌 **Plan rejection verdict (Worf)**: plan.md fails validator (missing `Started` metadata, blank T-022 `Story`)
-- 📌 **Next owner assigned**: Picard locked to correct plan.md and resubmit for validation
-- 📌 **Data lockout applied**: Data blocked from next plan revision cycle (reviewer lockout per protocol.md)
-- 📌 **Pre-execution risk assessment complete**: 3 HIGH-priority spikes identified (Directive Mapping, Ceremony Schema, Extension Deployment)
-- 📌 **Operating policy consensus confirmed**: 6 core rules sound; 3 implementation tasks pending before planning ceremony
-- 📌 **Decision inbox merged**: 6 decisions consolidated into decisions.md; inbox cleaned
-
-**Final Gate Pass (2026-04-19T02:08:48Z)**:
-- ✅ **Picard's plan revision**: Narrowly scoped fixes applied (Started: 2026-04-19, T-022: US-2)
-- ✅ **Worf's gate review**: Both prior defects verified corrected; validator PASS on iterations 000 and 001
-- ✅ **Iteration 1 execution-ready**: Governance gate clear; no contract blockers remain
-- ✅ **Decision merged to ledger**: picard-iteration1-plan-revision.md and worf-iteration1-final-gate.md consolidated; inbox cleaned
-
-📌 **Deployment Slice 2: Guardrails & Review — COMPLETE (2026-04-19T20:24:18Z)**:
-   - ✅ Deployment Guardrails established: 8-gate acceptance framework for La Forge's runtime-surface slice
-   - Scope: Spec Kit extension deployment, Squad skills deployment, ceremonies merge, directive embedding, baseline role merge
-   - Deferred: FR-020 (brownfield), FR-007 (configurable effort), FR-012 (collision detector), directive/ceremony logic
-   - ✅ Worf Review: Slice 2 PASS verdict (gates explicit, scope narrow, implementation aligned)
-   - **Status**: Both decisions merged to ledger; inbox cleaned; Slice 2 cleared for execution
-
-📌 **Runtime-Surface Drift Correction — COMPLETE (2026-04-19T20:40:24Z)**:
-   - ✅ Drift reconciliation: Corrected contract/template docs and ceremonies README to align source-of-truth with Squad runtime
-   - ✅ Finding 1 — `iteration-resume` mismatch: Source docs marked as deferred (FR-019, Iteration 2)
-   - ✅ Finding 2 — Retrospective deployment: Source docs clarified; retrospective is Squad built-in guidance only
-   - ✅ Finding 3 — `Chief Architect` hardcoding: Replaced with role-neutral `Project Owner (optional)` in source templates
-   - ✅ La Forge execution: Ceremonies README narrow fix (lines 5, 26-32 corrected)
-   - ✅ Worf review cycle: Initial NEEDS-WORK verdict → Re-review PASS after La Forge revision
-   - **Status**: 4 inbox decisions merged; inbox cleaned; source-of-truth fully traceable to spec + runtime
+**Active Work Track** (2026-04-19 Carryover Plan Correction):
+- ✅ Filed board-management gap carryover (T-024): `speckit.taskstoissues` + Squad GitHub Project wiring
+- ✅ Filed worktree execution-model carryover (T-025): Squad worktree + branch + PR-per-task execution flow
+- ✅ Repaired Iteration 1 plan.md: Added T-024, T-025 to task table; normalized narrative + capacity math
+- ✅ Data capacity revision: Explicit distinction between total (23.5 pts) and committed slice (Iter 1a: 20.0 pts, Iter 1b: 3.5 pts)
+- ✅ Worf carryover review: PASS verdict on corrected plan with all carryovers traceable + capacity coherent
+- **Status**: Carryover correction set complete; ready for decision merge and session close
 
 ## Learnings
 
@@ -66,6 +38,9 @@ I am the spec alignment gate for Specrew. My job is to keep every plan, task, de
 - **Narrow revision protocol**: When fixing governance defects, change only the identified fields. Do not expand scope to "while I'm here" improvements. Picard's charter: "I do not let the fix drift wider than necessary."
 - **Source-of-truth alignment**: When runtime surfaces diverge from documentation, correct the docs if they conflict with authoritative spec.md. Document divergence rationale (e.g., FR-019 deferred) to prevent future misalignment.
 - **Reviewer lockout ensures quality**: Requiring a different author for rejection corrections prevents same-author confirmation bias and surfaces fresh perspectives on the same defect.
+- **Carryover representation is mandatory**: Iteration plans must represent every named carryover as an explicit, traceable task. Narrative-only acknowledgment is drift. If capacity math differs from baseline, document the buffer/slice explicitly.
+
+## Historical Archive (Iteration 0 & Early Iteration 1)
 
 ## Iteration 0 Closure & Governance Hardening (Archived Details)
 
@@ -533,3 +508,5 @@ All three contradicted the corrected rule: **Specrew self-development MUST use G
 - Runtime-surface docs must distinguish **deployed MVP surfaces** from **source stubs for deferred FRs**; otherwise contract text drifts even when implementation is correctly scoped.
 - For FR-005, Specrew owns planning/review ceremony definitions but only **guides** Squad's built-in retrospective. Source file: `extensions\specrew-speckit\squad-templates\ceremonies\retro.md`; implementation file to keep aligned: `extensions\specrew-speckit\scripts\deploy-squad-runtime.ps1`.
 - Downstream baseline templates must stay role-neutral. Project-specific titles like `Chief Architect` do not belong in `planning.md`, `review-demo.md`, or retrospective guidance.
+- Carryover claims in an iteration plan are drift until each named item appears in the live task table, traceability rows, and capacity math. Key file: `specs\001-specrew-product\iterations\001\plan.md`.
+- When a correction depends on `spec.md` governance decisions rather than a formal FR, record those exact spec anchors in the task plan and inbox note instead of inventing a new requirement. Key files: `specs\001-specrew-product\spec.md`, `.squad\decisions\inbox\picard-carryover-correction.md`.

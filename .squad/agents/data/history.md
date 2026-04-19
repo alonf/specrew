@@ -47,6 +47,8 @@ I turn Specrew's requirements into iteration plans, task maps, and explicit depe
 - **Test task traceability**: Testing tasks (integration, scenario, CI validation) are acceptance-level deliverables and must link to the FRs they validate, not remain orphaned. This maintains 100% traceability and makes test coverage auditable.
 - **Phase Baseline structure**: Planning ceremony output must include phase-level effort estimates (planning, discovery, implementation, review, rework) in addition to task-level estimates. This enables retrospective variance analysis and makes phase-level calibration possible.
 - **Contract compliance is structural, not decorative**: The iteration-artifacts.md contract specifies exact sections (Phase Baseline, task table with requirement references) that are *required* for retrospective analysis. Missing sections are not documentation gaps; they are audit failures that prevent proper retrospective operation.
+- **Carryover capacity honesty**: When missing carryover tasks are restored, update the plan header, total effort, capacity-revision narrative, staged deferral language, and phase-baseline notes together. If Iter 1a is intentionally held below baseline, call the gap an explicit buffer rather than implying the total plan shrank.
+- **Key file paths**: Iteration 1 capacity math lives in `specs\001-specrew-product\iterations\001\plan.md`; team-visible planning decisions belong in `.squad\decisions\inbox\`; reusable reconciliation guidance lives in `.squad\skills\carryover-plan-reconciliation\SKILL.md`.
 
 ## Iteration 0 Closure & Iteration 1 Planning (Archived Details)
 

@@ -754,3 +754,154 @@ PASS
 **Deduplication**: No duplicates. Chronologically indexed after prior decisions.
 
 **Overall Ledger Status**: ✅ Current. Inbox now empty.
+
+---
+
+## Inbox Merge Status (2026-04-19T22:06:27Z)
+
+**Merged Decisions**: 5 new decisions added from carryover plan correction session
+
+1. Data Carryover Capacity Revision Normalized
+2. Picard Board-Management Gap Carryover Reopened
+3. Picard Iteration 1 Carryover Correction Set
+4. Picard Worktree Execution-Model Carryover Recorded
+5. Worf Carryover Plan Review Verdict
+
+**Inbox Files Deleted**: 5 files removed
+- `data-carryover-capacity-revision.md`
+- `picard-board-management-gap.md`
+- `picard-carryover-correction.md`
+- `picard-worktree-execution-gap.md`
+- `worf-carryover-plan-review.md`
+
+**Deduplication**: No duplicates. All decisions indexed chronologically after prior session merge (2026-04-19T21-49-33Z).
+
+---
+
+### 2026-04-19: Iteration 1 Carryover Capacity Revision Normalized
+
+**By**: Data (Planner)  
+**Date**: 2026-04-19  
+**Scope**: Iteration 1 capacity accounting after restored carryover tasks  
+**Outcome**: RECORDED
+
+**Decision**:
+
+Iteration plans must keep two numbers explicit when carryovers are restored:
+
+1. The **fully enumerated total** from the live task table, and
+2. The **committed execution slice** if the work is staged across an internal 1a/1b split.
+
+The committed slice may sit below baseline as an intentional buffer, but that buffer must be named directly rather than described as if total scope returned to baseline.
+
+**Applied Here**:
+
+- `specs\001-specrew-product\iterations\001\plan.md` remains **23.5 pts total** because T-011, T-024, and T-025 are all explicit.
+- The plan openly stages **T-020–T-023 (3.5 pts)** into Iter 1b, leaving **Iter 1a at 20.0 pts**.
+- The resulting **0.5-pt gap versus the 20.5-pt baseline** is treated as execution buffer, not hidden scope removal.
+
+**Rationale**: If the header, task total, phase baseline, and capacity narrative describe different totals, future planners cannot tell whether work was deferred, dropped, or silently re-estimated. The live task table stays authoritative for total effort; staging notes only explain sequencing.
+
+---
+
+### 2026-04-19: Board-Management Gap Carryover Reopened
+
+**By**: Picard (Spec Steward)  
+**Date**: 2026-04-19  
+**Scope**: Iteration 1 carryover correction for board-management work  
+**Outcome**: RECORDED
+
+**Problem**: Iteration 1 plan narrative claimed the board-management carryover had already been folded into the task set, but no task existed for that work. That left the plan misaligned with the source requirement that Specrew self-development uses Squad-managed GitHub Issues/Projects as a derived operational mirror from authoritative local task artifacts.
+
+**Tracked Change**:
+
+- Add an explicit Iteration 1 carryover task for `speckit.taskstoissues` + Squad GitHub Project wiring.
+- Trace the work to `spec.md` Q43/Q46/Q48/Q50 and Governance Alignment bullets DD-366, DD-369, DD-371, DD-373.
+- Treat this as operational wiring of an existing normative rule, not as a new product FR.
+
+**Decision**: Board-management carryover remains open until the Iteration 1 task table explicitly contains the wiring work. Narrative-only acknowledgment is drift.
+
+**Assumptions Kept Explicit**:
+
+- Existing Iteration 0 automation artifacts do not, by themselves, justify removing the Iteration 1 wiring task from the plan.
+- Local plan/task artifacts remain authoritative; GitHub Issues and Project items remain derived mirrors only.
+
+---
+
+### 2026-04-19: Iteration 1 Carryover Correction Set
+
+**By**: Picard (Spec Steward)  
+**Date**: 2026-04-19  
+**Scope**: Repair Iteration 1 carryover drift between narrative, task table, and traceability  
+**Outcome**: RECORDED
+
+**Correction Set**:
+
+1. Filed the missing tracked-change records for the board-management gap and the worktree execution-model gap.
+2. Added two explicit carryover tasks to `specs\001-specrew-product\iterations\001\plan.md`:
+   - `speckit.taskstoissues` + Squad GitHub Project wiring
+   - Squad worktree + branch + PR-per-task execution model
+3. Repaired directly coupled Iteration 1 sections so the task table, carryover table, phase sequencing, effort notes, and task counts now agree.
+
+**Assumptions Kept Explicit**:
+
+- Board-management carryover is traced to the existing `spec.md` governance decisions that require Specrew self-development to use Squad-managed GitHub Issues/Projects as derived mirrors.
+- Worktree/PR execution-model carryover is traced to the existing `spec.md` decisions on authoritative local task artifacts plus standard GitHub PR review; this pass does not promote it into a new FR.
+- No Iteration 2 change is required unless Data later chooses to reflect the Iteration 1 correction in a broader capacity pass.
+
+**Decision**: Iteration 1 planning must represent every named carryover as an explicit, traceable task. If the narrative says a carryover is folded in, the task table, sequencing, and capacity math must all show it.
+
+---
+
+### 2026-04-19: Worktree Execution-Model Carryover Recorded
+
+**By**: Picard (Spec Steward)  
+**Date**: 2026-04-19  
+**Scope**: Iteration 1 carryover correction for Squad worktree/branch/PR execution flow  
+**Outcome**: RECORDED
+
+**Problem**: Iteration 1 plan narrative referenced a worktree/PR-per-task carryover, but the task table contained no such task. That made the carryover claim untraceable even though Specrew's source requirements already bind execution to authoritative local task artifacts and standard GitHub PR review.
+
+**Tracked Change**:
+
+- Add an explicit Iteration 1 carryover task for the Squad worktree + branch + PR-per-task execution model.
+- Trace the work to `spec.md` Q46/Q47 and Governance Alignment bullets DD-369, DD-370.
+- Record the work as operationalization of existing GitHub review/task-authority rules rather than promoting it to a new FR inside this correction pass.
+
+**Decision**: The execution-model carryover must be represented explicitly in Iteration 1 planning if the narrative says it is in scope. Until that task exists, the plan is drifting.
+
+**Assumptions Kept Explicit**:
+
+- This correction does not invent a new product requirement; it anchors the carryover to already-approved governance decisions in `spec.md`.
+- Human review remains standard GitHub PR review; no new crew role is introduced.
+
+---
+
+### 2026-04-20: Carryover Plan Review Verdict
+
+**By**: Worf (Reviewer)  
+**Date**: 2026-04-20  
+**Scope**: Re-review of Iteration 1 carryover correction artifacts against explicit reviewer criteria  
+**Outcome**: PASS
+
+**Evidence**:
+
+1. `specs\001-specrew-product\iterations\001\plan.md` now includes both previously missing carryover tasks in the live Iteration 1 task table:
+   - **T-024** — authoritative task-to-issue sync + GitHub Project board wiring
+   - **T-025** — Squad worktree + branch + PR-per-task execution model
+2. The corresponding tracked-change records exist in:
+   - `.squad\decisions\inbox\picard-board-management-gap.md`
+   - `.squad\decisions\inbox\picard-worktree-execution-gap.md`
+3. The Iteration 1 summary, acceptance language, capacity revision, scope notes, and sequencing sections now describe only carryovers that are actually represented in the task table.
+4. Capacity math is internally consistent in the live plan:
+   - 25 tasks total
+   - 23.5 pts fully enumerated
+   - Iter 1a = 20.0 pts
+   - Iter 1b = 3.5 pts
+5. No unrelated tracked planning drift was found in the reviewed correction set; the tracked diff is confined to `specs\001-specrew-product\iterations\001\plan.md`, and the changed sections are directly coupled to restoring the missing carryovers and normalizing the effort narrative.
+
+**Decision**: Verdict is **PASS**. The correction set now clears the reviewer's five stated checks without unsupported assumptions.
+
+---
+
+**Overall Ledger Status**: ✅ Current. Inbox empty.
