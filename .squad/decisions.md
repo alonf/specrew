@@ -954,4 +954,148 @@ The committed slice may sit below baseline as an intentional buffer, but that bu
 
 ---
 
+### 2026-04-20: Iteration 001 Early Completion Closure (V-R7-1 + T-011)
+
+**By**: Picard (Spec Steward)  
+**Date**: 2026-04-19  
+**Type**: Alignment correction + artifact closure  
+**Status**: Complete
+
+#### Summary
+
+Iteration 001 required closure artifacts to be created and updated to truthfully reflect completed work that was not previously recorded in iteration plan/state documents. Two tasks were completed and delivered (V-R7-1 spike + T-011 implementation) but were still marked "planned" with empty Agent/Actual/Verdict fields. This correction set brings iteration artifacts into contract compliance.
+
+#### Completed Work (Iter 1a Slice)
+
+| Task | Title | Requirement | Status | Effort | Agent | Verdict |
+| ---- | ----- | ----------- | ------ | ------ | ----- | ------- |
+| V-R7-1 | Spike: Validate Copilot / Agent HQ detection API shape | FR-022 | ✅ done | 0.5 | copilot-agent | pass |
+| T-011 | `specrew init`: Detect agents + interactive consent | FR-022 | ✅ done | 1.5 | copilot-agent | pass |
+
+**Iter 1a Capacity**: 20.5 pts committed baseline. V-R7-1 + T-011 represent the first 2.0 pts completed, unblocking downstream bootstrap and directive tasks (T-001–T-010, T-012–T-025).
+
+#### Closure Corrections Applied
+
+1. **Updated `specs/001-specrew-product/iterations/001/plan.md`**
+   - Status: planning → executing
+   - Capacity: 0/24.0 → 20.5/24.0 story_points
+   - Task V-R7-1: planned → done | copilot-agent | 0.5 | pass
+   - Task T-011: planned → done | copilot-agent | 1.5 | pass
+
+2. **Created `specs/001-specrew-product/iterations/001/state.md`** (schema v1)
+   - Last Completed Task: T-011
+   - Tasks Remaining: T-001–T-010, T-012–T-025
+   - Execution summary showing V-R7-1 + T-011 unblock downstream work
+
+3. **Created `specs/001-specrew-product/iterations/001/spikes.md`** (schema v1)
+   - Objective: Validate detection API shape before T-011 implementation
+   - Findings: Copilot CLI detection, delegated-agent enumeration surface, graceful degradation patterns
+   - Acceptance Criteria: All 6 criteria ✅ met
+   - Design Decisions for T-011: Probe sequence, consent prompt format, non-interactive flags, config persistence
+   - Unresolved Questions: FR-021 routing (Iter 2), cost/billing (Iter 2+)
+
+4. **Updated `README.md`**
+   - Current Phase: Foundation (Iteration 0) → MVP Development (Iteration 1 - 1a Execution)
+   - Bootstrap instructions updated to reflect Iteration 1a phase state
+
+#### Traceability Validation
+
+All corrections trace back to source requirements:
+- V-R7-1 + T-011 completion: Enabled by research.md R7 findings (FR-022 requirement validation)
+- state.md creation: Required by iteration-artifacts.md contract (Executing phase gate)
+- spikes.md creation: Required by plan.md Capacity Revision section
+- README update: Required for accuracy (Status field must reflect executing phase)
+
+**Traceability Coverage**: 100%
+
+#### Contract Compliance Checklist
+
+| Artifact | Gate | Status |
+| -------- | ---- | ------ |
+| plan.md | Executing Phase Entry | ✅ PASS |
+| state.md | Executing Phase Entry | ✅ PASS (created) |
+| spikes.md | Iter 1a Completion | ✅ PASS (created) |
+| README.md | Project Status | ✅ PASS |
+
+#### Acceptance Gates
+
+- ✅ V-R7-1 findings documented and referenced by T-011
+- ✅ T-011 unblocks downstream bootstrap/directive tasks
+- ✅ Iteration plan reflects truthful capacity allocation
+- ✅ Phase state machine transitioned from planning → executing
+- ✅ All closure artifacts are contract-compliant
+
+**Decision**: Iteration 001 early-completion closure correction set approved and recorded.
+
+---
+
+### 2026-04-20: FR-022 Closeout Review
+
+**By**: Worf (Reviewer)  
+**Date**: 2026-04-20  
+**Scope**: Closeout review of Iteration 001 artifacts for V-R7-1 and T-011  
+**Verdict**: NEEDS-WORK
+
+#### What Passes
+
+1. ✅ Accepted implementation scripts are now git-tracked
+2. ✅ `specs\001-specrew-product\iterations\001\plan.md` records V-R7-1 and T-011 as completed
+3. ✅ `specs\001-specrew-product\iterations\001\state.md` exists and matches the iteration-state contract shape
+4. ✅ `specs\001-specrew-product\iterations\001\spikes.md` exists as an iteration-scoped V-R7-1 deliverable
+5. ✅ README lag closed; ceremonies README correctly describes retrospective as built-in guidance
+
+#### Defect Blocking Acceptance
+
+- `specs\001-specrew-product\iterations\001\state.md` is still untracked
+- `specs\001-specrew-product\iterations\001\spikes.md` is still untracked
+
+Untracked files do not provide durable, auditable proof that Iteration 1 state and the V-R7-1 spike deliverable are part of the accepted implementation record.
+
+#### Required Next Move
+
+- A different revision author must submit the next revision. **Picard is locked out for this revision cycle.**
+- The next revision must stage and preserve:
+  - `specs\001-specrew-product\iterations\001\state.md`
+  - `specs\001-specrew-product\iterations\001\spikes.md`
+
+**Verdict**: Scripts are tracked and artifact content is substantively acceptable, but the closure set is not PASS-worthy until the two proof artifacts are versioned with the rest of the accepted work.
+
+---
+
+### 2026-04-20: FR-022 Closeout Re-Review
+
+**By**: Worf (Reviewer)  
+**Date**: 2026-04-20  
+**Scope**: Narrow re-review of the prior closeout rejection reason for Iteration 001 evidence durability  
+**Verdict**: PASS
+
+#### Evidence
+
+- `specs\001-specrew-product\iterations\001\state.md` is now git-tracked
+- `specs\001-specrew-product\iterations\001\spikes.md` is now git-tracked
+- The prior rejection reason named only those two files as the remaining closeout defect
+
+#### Reviewer Judgment
+
+The cited defect is closed. The Iteration 001 closeout evidence is now durable and auditable on the exact basis requested for re-review.
+
+**Decision**: FR-022 Closeout re-review **PASS**. Iteration 001 evidence artifacts are now git-tracked and contract-compliant.
+
+---
+
+## Inbox Merge Status (2026-04-20T00:27:10Z)
+
+**Merged Decisions**: 3 new decisions added from FR-022 closeout session
+
+1. Picard: Iteration 001 Early Completion Closure (V-R7-1 + T-011)
+2. Worf: FR-022 Closeout Review (NEEDS-WORK)
+3. Worf: FR-022 Closeout Re-Review (PASS)
+
+**Inbox Files Deleted**: 3 files removed
+- `picard-fr022-closeout.md`
+- `worf-fr022-closeout-review.md`
+- `worf-fr022-closeout-rereview.md`
+
+**Deduplication**: No duplicates. All decisions indexed chronologically.
+
 **Overall Ledger Status**: ✅ Current. Inbox empty.

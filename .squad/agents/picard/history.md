@@ -43,6 +43,7 @@ I am the spec alignment gate for Specrew. My job is to keep every plan, task, de
 - **Source-of-truth alignment**: When runtime surfaces diverge from documentation, correct the docs if they conflict with authoritative spec.md. Document divergence rationale (e.g., FR-019 deferred) to prevent future misalignment.
 - **Reviewer lockout ensures quality**: Requiring a different author for rejection corrections prevents same-author confirmation bias and surfaces fresh perspectives on the same defect.
 - **Carryover representation is mandatory**: Iteration plans must represent every named carryover as an explicit, traceable task. Narrative-only acknowledgment is drift. If capacity math differs from baseline, document the buffer/slice explicitly.
+- **Iteration-scoped spike artifacts are independent**: Spike results files (`spikes.md`) capture iteration-specific validation outcomes without claiming the spike existed before. Iteration-scoped spikes are orthogonal to research.md general findings; iteration artifacts record *when findings are validated against real blockers*.
 
 ### 2026-04-19: V-R7-1 + T-011 Scope Guardrails Defined
 
@@ -65,6 +66,38 @@ I am the spec alignment gate for Specrew. My job is to keep every plan, task, de
 **Pattern Insight**: Agent-detection consent must be orthogonal to execution routing. T-011 writes configuration; T-011 does not use it. This preserves separation of concerns: detection is v1-slice, routing is v2-future (FR-021). Consent gate is strict ("no billing data shown") but graceful degradation is permissive ("iteration proceeds spec-only if agents unavailable").
 
 **Traceability**: All guardrails trace back to FR-022 source requirement or explicit iteration-2+ deferral. No undocumented scope.
+
+### 2026-04-19: Iteration 001 Early Completion Closure (V-R7-1 + T-011)
+
+**Task**: Picard records completed work from Iteration 1a agent-detection slice and brings iteration artifacts into contract compliance.
+
+**Completed Work**:
+- ✅ V-R7-1 (0.5 pts): Detection API research spike complete. Validated Copilot runtime detection surface, Agent HQ enumeration, graceful-degradation patterns.
+- ✅ T-011 (1.5 pts): Agent detection + consent implementation complete. Interactive prompt, per-agent flags, config persistence, non-interactive defaults.
+
+**Closure Corrections** (4 artifacts):
+1. **plan.md**: Status planning → executing; Capacity 0/24.0 → 20.5/24.0 (Iter 1a baseline); V-R7-1 + T-011 rows: planned → done with Agent/Actual/Verdict filled
+2. **state.md** (created): Contract-compliant execution state. Last Completed Task: T-011; Tasks Remaining: T-001–T-010, T-012–T-025; Phase tracking table
+3. **spikes.md** (created): Iteration 001-scoped spike results for V-R7-1. Objective, findings (runtime/auth/delegated-agent probes), acceptance criteria ✅ 6/6, design decisions for T-011, unresolved questions (FR-021/cost deferred)
+4. **README.md**: Current Phase "Foundation (Iteration 0)" → "MVP Development (Iteration 1 - 1a Execution)"; Bootstrap instructions updated to reference Iter 1a gate + Iter 1b tests
+
+**Traceability**: All corrections map to spec.md requirements or contracts/iteration-artifacts.md gates. Contract compliance checklist ✅ all pass.
+
+**Pattern Insight**: Iteration-scoped spike artifacts are independent records of *when findings are validated against real blockers* — they are not backdated claims. Spikes.md links research.md findings to iteration-specific acceptance and unblocking conditions.
+
+### 2026-04-20: FR-022 Closeout Decision Recorded
+
+**Task**: Picard records FR-022 (V-R7-1 + T-011) early-completion closure decision after Worf re-review pass.
+
+**Closure Status**: ✅ COMPLETE
+- Iteration 001 state.md and spikes.md are git-tracked (Worf re-review PASS)
+- Closure decision merged to .squad/decisions.md (2026-04-20T00:27:10Z)
+- Three review verdicts consolidated: Initial NEEDS-WORK, lockout-compliant re-revision, re-review PASS
+
+**Learnings**:
+- Reviewer lockout ensures fresh perspectives on rejection reasons; different author breaking the same defect provides confidence
+- Untracked proof artifacts block acceptance even when narrative content is correct — durability matters
+- Iteration-early-completion pattern: Record work truthfully, trace to requirements, validate contract compliance before closure
 
 ## Historical Archive (Iteration 0 & Early Iteration 1)
 

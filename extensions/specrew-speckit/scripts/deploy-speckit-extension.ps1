@@ -1,0 +1,239 @@
+[CmdletBinding()]
+param(
+    [Parameter(Mandatory = $true)]
+    [string]$ProjectPath,
+
+    [switch]$DryRun,
+    [switch]$PassThru
+)
+
+Set-StrictMode -Version Latest
+$ErrorActionPreference = 'Stop'
+
+function Add-DeploymentAction {
+    param(
+        [AllowEmptyCollection()]
+        [Parameter(Mandatory = $true)]
+        [System.Collections.ArrayList]$Actions,
+
+        [Parameter(Mandatory = $true)]
+        [string]$Action,
+
+        [Parameter(Mandatory = $true)]
+        [string]$Path
+    )
+
+    $null = $Actions.Add([pscustomobject]@{
+            Action = $Action
+            Path   = $Path
+        })
+}
+
+function Ensure-Directory {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Path,
+
+        [AllowEmptyCollection()]
+        [Parameter(Mandatory = $true)]
+        [System.Collections.ArrayList]$Actions
+    )
+
+    if (Test-Path -LiteralPath $Path) {
+        Add-DeploymentAction -Actions $Actions -Action 'preserved-directory' -Path $Path
+        return
+    }
+
+    Add-DeploymentAction -Actions $Actions -Action 'created-directory' -Path $Path
+    if (-not $DryRun) {
+        New-Item -ItemType Directory -Path $Path -Force | Out-Null
+    }
+}
+
+function Copy-MissingItem {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$SourcePath,
+
+        [Parameter(Mandatory = $true)]
+        [string]$TargetPath,
+
+        [AllowEmptyCollection()]
+        [Parameter(Mandatory = $true)]
+        [System.Collections.ArrayList]$Actions
+    )
+
+    $sourceItem = Get-Item -LiteralPath $SourcePath
+    if ($sourceItem.PSIsContainer) {
+        Ensure-Directory -Path $TargetPath -Actions $Actions
+        $children = @(Get-ChildItem -LiteralPath $SourcePath -Force)
+        foreach ($child in $children) {
+            Copy-MissingItem -SourcePath $child.FullName -TargetPath (Join-Path $TargetPath $child.Name) -Actions $Actions
+        }
+
+        return
+    }
+
+    if (Test-Path -LiteralPath $TargetPath) {
+        Add-DeploymentAction -Actions $Actions -Action 'preserved' -Path $TargetPath
+        return
+    }
+
+    Add-DeploymentAction -Actions $Actions -Action 'created' -Path $TargetPath
+    if (-not $DryRun) {
+        $parent = Split-Path -Parent $TargetPath
+        if (-not (Test-Path -LiteralPath $parent)) {
+            New-Item -ItemType Directory -Path $parent -Force | Out-Null
+        }
+
+        Copy-Item -LiteralPath $SourcePath -Destination $TargetPath -Force
+    }
+}
+
+function Get-ExtensionVersion {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$ManifestPath
+    )
+
+    $manifestContent = Get-Content -LiteralPath $ManifestPath -Raw
+    $versionMatch = [regex]::Match($manifestContent, '(?m)^version:\s*"?(?<version>[^"\r\n]+)')
+    if (-not $versionMatch.Success) {
+        throw "Could not determine Specrew extension version from '$ManifestPath'."
+    }
+
+    return $versionMatch.Groups['version'].Value.Trim()
+}
+
+function Ensure-ExtensionRegistration {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$ManifestPath,
+
+        [Parameter(Mandatory = $true)]
+        [string]$ExtensionName,
+
+        [Parameter(Mandatory = $true)]
+        [string]$ExtensionVersion,
+
+        [AllowEmptyCollection()]
+        [Parameter(Mandatory = $true)]
+        [System.Collections.ArrayList]$Actions
+    )
+
+    $entryLines = @(
+        ('  - name: {0}' -f $ExtensionName),
+        ('    version: {0}' -f $ExtensionVersion),
+        '    enabled: true'
+    )
+
+    if (-not (Test-Path -LiteralPath $ManifestPath)) {
+        Add-DeploymentAction -Actions $Actions -Action 'created' -Path $ManifestPath
+        if (-not $DryRun) {
+            $newContent = @(
+                'installed:'
+                $entryLines
+                'settings:'
+                '  auto_execute_hooks: true'
+                'hooks: {}'
+                ''
+            ) -join [Environment]::NewLine
+            [System.IO.File]::WriteAllText($ManifestPath, $newContent, [System.Text.UTF8Encoding]::new($false))
+        }
+
+        return
+    }
+
+    $lines = [System.Collections.Generic.List[string]]::new()
+    $lines.AddRange([string[]](Get-Content -LiteralPath $ManifestPath))
+
+    if ($lines -match '^\s*-\s*name:\s*"?specrew-speckit"?\s*$') {
+        Add-DeploymentAction -Actions $Actions -Action 'preserved-registration' -Path $ManifestPath
+        return
+    }
+
+    $installedIndex = -1
+    for ($index = 0; $index -lt $lines.Count; $index++) {
+        if ($lines[$index] -match '^\s*installed:\s*(\[\s*\])?\s*$') {
+            $installedIndex = $index
+            break
+        }
+    }
+
+    if ($installedIndex -lt 0) {
+        $newLines = [System.Collections.Generic.List[string]]::new()
+        $newLines.Add('installed:')
+        foreach ($entryLine in $entryLines) {
+            $newLines.Add($entryLine)
+        }
+
+        if ($lines.Count -gt 0 -and -not [string]::IsNullOrWhiteSpace($lines[0])) {
+            $newLines.Add('')
+        }
+
+        $newLines.AddRange($lines)
+        $lines = $newLines
+    }
+    else {
+        if ($lines[$installedIndex] -match '^\s*installed:\s*\[\s*\]\s*$') {
+            $lines[$installedIndex] = 'installed:'
+            $insertIndex = $installedIndex + 1
+        }
+        else {
+            $insertIndex = $installedIndex + 1
+            while ($insertIndex -lt $lines.Count -and ($lines[$insertIndex] -match '^\s+' -or [string]::IsNullOrWhiteSpace($lines[$insertIndex]))) {
+                $insertIndex++
+            }
+        }
+
+        for ($offset = 0; $offset -lt $entryLines.Count; $offset++) {
+            $lines.Insert($insertIndex + $offset, $entryLines[$offset])
+        }
+    }
+
+    Add-DeploymentAction -Actions $Actions -Action 'updated-registration' -Path $ManifestPath
+    if (-not $DryRun) {
+        $content = ($lines -join [Environment]::NewLine)
+        if (-not $content.EndsWith([Environment]::NewLine)) {
+            $content += [Environment]::NewLine
+        }
+
+        [System.IO.File]::WriteAllText($ManifestPath, $content, [System.Text.UTF8Encoding]::new($false))
+    }
+}
+
+$resolvedProjectPath = [System.IO.Path]::GetFullPath($ProjectPath)
+$extensionRoot = Split-Path -Parent $PSScriptRoot
+$targetSpecifyRoot = Join-Path $resolvedProjectPath '.specify'
+$targetExtensionRoot = Join-Path $targetSpecifyRoot 'extensions\specrew-speckit'
+$targetExtensionsManifest = Join-Path $targetSpecifyRoot 'extensions.yml'
+$actions = [System.Collections.ArrayList]::new()
+
+if (-not (Test-Path -LiteralPath $targetSpecifyRoot) -and -not $DryRun) {
+    throw "Spec Kit must be initialized before deploying the Specrew extension. Missing '$targetSpecifyRoot'."
+}
+
+$extensionVersion = Get-ExtensionVersion -ManifestPath (Join-Path $extensionRoot 'extension.yml')
+
+if ($DryRun -and -not (Test-Path -LiteralPath $targetSpecifyRoot)) {
+    Add-DeploymentAction -Actions $actions -Action 'would-create-directory' -Path $targetSpecifyRoot
+}
+
+Ensure-Directory -Path (Join-Path $targetSpecifyRoot 'extensions') -Actions $actions
+Ensure-Directory -Path $targetExtensionRoot -Actions $actions
+
+$itemsToCopy = @('extension.yml', 'README.md', 'hooks', 'scripts', 'templates', 'squad-templates')
+foreach ($item in $itemsToCopy) {
+    Copy-MissingItem -SourcePath (Join-Path $extensionRoot $item) -TargetPath (Join-Path $targetExtensionRoot $item) -Actions $actions
+}
+
+Ensure-ExtensionRegistration -ManifestPath $targetExtensionsManifest -ExtensionName 'specrew-speckit' -ExtensionVersion $extensionVersion -Actions $actions
+
+if ($PassThru) {
+    $actions
+    return
+}
+
+$actions | Select-Object Action, Path | Format-Table -AutoSize
+Write-Host ("Spec Kit extension deployment {0} for {1}" -f ($(if ($DryRun) { 'previewed' } else { 'completed' }), $resolvedProjectPath)) -ForegroundColor Green
+exit 0
