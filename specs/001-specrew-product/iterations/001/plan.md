@@ -82,7 +82,7 @@ Validation that this plan respects Specrew's own governance model.
 
 | Task | Title | Requirement | Story | Effort | Owner | Status | Agent | Actual | Verdict |
 | ---- | ----- | ----------- | ----- | ------ | ----- | ------ | ----- | ------ | ------- |
-| T-001 | `specrew init`: Detect and validate dependencies | FR-002, FR-013 | US-1 | 1 | Implementer | planned | | | |
+| T-001 | `specrew init`: Detect and validate dependencies | FR-002, FR-013 | US-1 | 1 | Implementer | done | copilot-agent | 1 | pass |
 | T-002 | `specrew init`: Install missing Spec Kit/Squad | FR-002 | US-1 | 1 | Implementer | planned | | | |
 | T-003 | `specrew init`: Run specify init (greenfield) | FR-002, FR-011 | US-1 | 0.5 | Implementer | planned | | | |
 | T-004 | `specrew init`: Run squad init (greenfield) | FR-002 | US-1 | 0.5 | Implementer | planned | | | |
@@ -91,7 +91,7 @@ Validation that this plan respects Specrew's own governance model.
 | T-007 | `specrew init`: Deploy Squad ceremonies | FR-002, FR-001 | US-1 | 1 | Implementer | planned | | | |
 | T-008 | `specrew init`: Merge 5 baseline roles | FR-002, FR-004 | US-1 | 1 | Planner | planned | | | |
 | T-009 | `specrew init`: Scaffold governance artifacts (downstream constitution, config, role assignments) | FR-002, FR-011 | US-1 | 1 | Planner | planned | | | |
-| T-010 | `specrew init`: Version validation + error reporting | FR-002, FR-013 | US-1 | 0.5 | Implementer | planned | | | |
+| T-010 | `specrew init`: Version validation + error reporting | FR-002, FR-013 | US-1 | 0.5 | Implementer | done | copilot-agent | 0.5 | pass |
 | V-R7-1 | Spike: Validate Copilot / Agent HQ detection API shape (research.md R7) — blocks T-011 | FR-022 | US-1 | 0.5 | Implementer | done | copilot-agent | 0.5 | pass |
 | T-011 | `specrew init`: Detect agents + interactive consent (FR-022) | FR-022 | US-1 | 1.5 | Implementer | done | copilot-agent | 1.5 | pass |
 | T-012 | Implement drift-check skill | FR-008, FR-018 | US-3 | 1.5 | Planner | planned | | | |
