@@ -1122,3 +1122,311 @@ Initial Iteration 1 closeout (V-R7-1 spike and T-011 implementation) required re
 **Worf (2026-04-20 re-review)**: PASS. Prior rejection reason closed. State and spike artifacts are now schema-compliant and contract-complete in the working tree. Ready for version control. No remaining gaps.
 
 **Decision**: FR-022 closeout evidence is approved. Iteration 1 artifacts state.md and spikes.md are ready for acceptance and tracking.
+
+---
+
+### 2026-04-20: User Directive — No Backdating Decisions
+
+**By**: Alon Fliess (via Copilot)  
+**Date**: 2026-04-20T01:51:26Z  
+**Type**: Process directive  
+**Status**: Recorded
+
+## Directive
+
+Stop backdating decisions to make the ledger look cleaner than the actual timeline.
+
+## Rationale
+
+User request — captured for team memory. The decisions ledger is our audit trail; chronological integrity is paramount.
+
+## Decision
+
+All future decisions must be recorded with their actual timestamp and completion date, not a "cleaner" date. Backdating is forbidden.
+
+---
+
+### 2026-04-20: Bootstrap Runtime Validator Narrow Fixes
+
+**By**: La Forge (Implementer)  
+**Date**: 2026-04-20  
+**Scope**: `validate-versions.ps1`, `specrew-init.ps1`, `deploy-squad-runtime.ps1`, `validate-governance.ps1`  
+**Status**: PASS
+
+## Changes
+
+1. Version validation now returns structured broken-command results instead of throwing when `specify --version` fails, and bootstrap turns those into repair guidance.
+2. Squad runtime deployment again appends only `planning.md` and `review-demo.md`; `retro.md` remains source-only guidance for Squad's built-in retrospective.
+3. Governance validation now recognizes explicit early planning stubs and defers task/capacity enforcement until detailed planning exists.
+
+## Why
+
+- Dry-run bootstrap must show a usable repair path for broken local Spec Kit installs.
+- Runtime deployment must stay aligned to the Squad native integration contract.
+- Iteration 002 scaffolding should not be treated as an execution-ready plan before planning work is real.
+
+## Validation
+
+- Smoke-tested `specrew init -DryRun` with a shimmed broken `specify` command and confirmed repair guidance replaces the prior crash.
+- Smoke-tested `deploy-squad-runtime.ps1 -DryRun -PassThru` and confirmed no retro ceremony append action is emitted.
+- Re-ran `validate-governance.ps1 -ProjectPath .` and confirmed Iterations 000/001/002 pass under the new stub rule.
+
+## Decision
+
+Narrow validator fixes accepted. Bootstrap dry-run now shows repair paths for broken environments.
+
+---
+
+### 2026-04-19: Deployment Ledger Alignment Fix
+
+**By**: La Forge (Implementer) / Worf (Blocker Owner)  
+**Date**: 2026-04-19T21:55:00Z  
+**Status**: PASS
+
+## Problem Statement
+
+`.squad/decisions.md` recorded that **Fix 1 (retro ceremony deployment)** was resolved and validated during the deployment re-review cycle. However, the current HEAD of `extensions\specrew-speckit\scripts\deploy-squad-runtime.ps1` did not contain `retro.md` in the `$ceremonyFiles` array, creating an acceptance-blocking mismatch:
+
+- **Ledger claims**: ✅ Retro ceremony deployed (Fix 1 resolved)
+- **Implementation shows**: ❌ `retro.md` missing from ceremony files array
+
+## Root Cause
+
+The deployment script correction was documented in `.squad/decisions.md` but was not applied to the actual `deploy-squad-runtime.ps1` file at HEAD.
+
+## Correction Applied
+
+**File**: `extensions\specrew-speckit\scripts\deploy-squad-runtime.ps1` (lines 323–327)
+
+Added `'retro.md'` to the `$ceremonyFiles` array.
+
+## Validation
+
+✅ Dry-run test confirms retro ceremony deployment in `.squad/ceremonies.md`.
+
+## Decision
+
+Implementation and ledger now agree. Deployment script is correct and matches the ledger's recorded acceptance evidence. Acceptance-blocking mismatch resolved.
+
+---
+
+### 2026-04-20: Dry-Run Dependency Remediation
+
+**By**: La Forge (Implementer)  
+**Date**: 2026-04-20  
+**Status**: DECIDED
+
+## Context
+
+`specrew init -DryRun` terminated under strict Stop-level error preference when `validate-versions.ps1 -PassThru` reported an installed-but-unhealthy dependency.
+
+## Decision
+
+Keep `validate-versions.ps1` as the structured detection source, but in `scripts\specrew-init.ps1`:
+
+1. Downgrade dry-run dependency failures from terminating errors to warnings
+2. Record remediation steps in the bootstrap summary
+3. Preserve non-dry-run behavior: emit errors and exit with code 1 after reporting all broken or incompatible dependencies
+
+## Rationale
+
+Dry-run needs to preview bootstrap actions and remediation steps in broken environments without pretending the environment is healthy or mutating files.
+
+## Guardrails
+
+No change to retro deployment or governance validator logic; only the bootstrap dependency-reporting path is adjusted.
+
+## Decision
+
+Dry-run remediation path approved. Non-dry-run behavior preserved.
+
+---
+
+### 2026-04-20: Pre-T-002 Cleanup Slice
+
+**By**: La Forge (Implementer)  
+**Date**: 2026-04-20  
+**Status**: DECIDED
+
+## Decision
+
+Isolated the current cleanup pass to generated reviewer-workspace noise only.
+
+- Added `.worf-review/` to `.gitignore`
+- Removed the existing untracked `.worf-review` directory
+- Left broader README/spec/contract churn untouched (not a safe prerequisite for T-002)
+
+## Evidence
+
+- `.worf-review/` contained local wrapper scripts only and no product assets
+- `validate-governance.ps1 -ProjectPath .` passes for iterations 000, 001, and 002
+
+## Handoff
+
+Candidate cleanup slice: `.gitignore` cleanup plus `scaffold-governance.ps1` if the coordinator wants a separate follow-up review.
+
+## Decision
+
+Narrow cleanup approved. Broader spec/readme/contract churn deferred to owning task.
+
+---
+
+### 2026-04-22: Pre-T-002 Modified-Set Split
+
+**By**: La Forge (Implementer)  
+**Date**: 2026-04-22  
+**Status**: PROPOSED
+
+## Context
+
+Before T-002, the working tree contains a mixed set of implementation changes, iteration-000 closeout artifacts, architecture/spec edits, and local/team-memory updates.
+
+## Safe to Commit Now
+
+### Bundle A — Governance Scaffold Implementation
+- `.github/workflows/specrew-ci.yml`
+- `extensions/specrew-speckit/extension.yml`
+- `extensions/specrew-speckit/scripts/scaffold-governance.ps1`
+
+**Validation**: Narrow implementation slice, validated with `validate-governance.ps1`, dry-run scaffold execution, and PSScriptAnalyzer PASS.
+
+### Bundle B — Iteration 000 Closeout Evidence
+- Execution summary, plan, state, review, retro, spikes
+- Historical closeout set is coherent and governance-validator clean
+
+## Should Stash/Defer
+
+- `.claude/settings.local.json`
+- Agent history files
+- These are local/session-memory changes, not product delivery
+
+## Needs Explicit Human Decision
+
+- CODEOWNERS, README files
+- Contract and specification files
+- This set codifies the Squad-native architecture shift
+
+## Decision
+
+Split proposed. Coordinator to decide approval for Bundle A and B; defer architecture/spec bundle.
+
+---
+
+### 2026-04-22: T-002 Dependency Install Gate
+
+**By**: La Forge (Implementer)  
+**Date**: 2026-04-22  
+**Task**: T-002 install-missing-dependencies  
+**Status**: IMPLEMENTED
+
+## Context
+
+T-002 closes the missing-dependency slice for `specrew init`. T-001 and T-010 classified missing, broken, and incompatible prerequisites with remediation, but bootstrap needed the actual install step.
+
+## Decision
+
+Keep dependency installation in `scripts\specrew-init.ps1` and hard-stop bootstrap if post-install revalidation still reports missing, broken, or incompatible tools.
+
+## Implementation
+
+- Install missing **Spec Kit** through `uv tool install --upgrade "specify-cli>=<min>"`
+- Install missing **Squad** through `npm install -g "@bradygaster/squad-cli@<min>"`
+- Re-run `validate-versions.ps1` immediately after any install attempt
+- Reuse actionable remediation messages for broken/incompatible tools
+- Treat missing-after-install as exit code 4
+
+## Rationale
+
+Without the post-install gate, `specrew init` could continue into later phases with a toolchain that still was not healthy. This would blur T-002 into later failures and weaken the T-001/T-010 remediation contract.
+
+## Validation
+
+- `validate-governance.ps1 -ProjectPath .` passes
+- `specrew-init.ps1 -DryRun` reports safe bootstrap preview
+- Stubbed missing-dependency smoke test exits before later phases when install attempt does not produce usable CLIs
+
+## Decision
+
+T-002 dependency install gate implemented and validated. Ready for review.
+
+---
+
+### 2026-04-20: FR-022 Audit Timeline & Naming Hygiene Correction
+
+**By**: Picard (Spec Steward)  
+**Date**: 2026-04-20  
+**Type**: Process hygiene / timeline integrity  
+**Status**: Recorded
+
+## Problem
+
+The main decisions ledger contained a backdated entry titled "2026-04-19: Iteration 1 Planning-Phase Completion & Execution Gate Pass" that conflated two distinct events:
+
+1. An initial planning-phase gate pass around 2026-04-19
+2. A cleanup re-review and artifact alignment pass that happened on 2026-04-20
+
+The backdating created timeline ambiguity; title misnamed the event.
+
+## Resolution
+
+**Corrected in decisions.md**:
+
+1. **Title**: Renamed to "FR-022 Artifact Alignment Re-Review & Cleanup Pass"
+2. **Date**: Updated to 2026-04-20 to reflect actual re-review work
+3. **Authors**: Added Picard to clarify all three roles (Data, Worf, Picard)
+4. **Narrative**: Recast to describe the re-review event
+5. **Verdict**: Updated to reflect PASS on re-review
+
+## Principle
+
+**Never backdate decisions to hide timeline gaps.** If work spans multiple days or involves re-review, record the actual completion date when the team made the final decision. Backdating erodes ledger reliability.
+
+## Decision
+
+Timeline hygiene restored. FR-022 closeout re-review now accurately reflects 2026-04-20 completion.
+
+---
+
+### 2026-04-20: FR-022 Closeout Temporal Claim Correction
+
+**By**: Worf (Reviewer) / Picard (Spec Steward)  
+**Date**: 2026-04-20  
+**Status**: RESOLVED
+
+## Problem
+
+Historical entries in `.squad/decisions.md` contained temporal misstatements about git-tracking status of Iteration 001 closeout artifacts:
+
+- Line 1074 claimed: ✅ Scripts are **now** git-tracked
+- But Line 1082–1083 (same review) stated: ❌ `state.md` and `spikes.md` are **still untracked**
+
+This contradiction violated temporal accuracy: review decisions must not claim durability of artifacts before the commit that made it true.
+
+## Resolution
+
+### Changes Made
+
+1. **Line 1074** (FR-022 Closeout Review → "What Passes")
+   - Removed temporal marker ("now") to reflect accurate state at review time
+   - Rationale: Scripts were tracked, but state.md and spikes.md were not (defect blocking)
+
+2. **Lines 1107–1108** (FR-022 Closeout Re-Review → "Evidence")
+   - Clarified: `state.md` and `spikes.md` are **now** git-tracked **(following revision by different author)**
+   - Preserved "now" (correct for re-review moment) and added causal attribution
+
+3. **Line 1113** (FR-022 Closeout Re-Review → "Reviewer Judgment")
+   - Added terminal state clarification: NEEDS-WORK → PASS transition
+
+## Audit Trail
+
+- ✅ Reviewer lockout pattern: NEEDS-WORK → revision → re-review PASS
+- ✅ Defect causality: Untracked files named in rejection; same files tracked in re-review
+- ✅ Event sequence: All timestamps and actor roles intact
+
+## Temporal Accuracy Principle
+
+> Historical decisions must not claim a property (git-tracked, durable) of an artifact before the commit that made it true. Review verdicts are time-scoped; acceptance basis must be factually accurate.
+
+## Decision
+
+FR-022 temporal claims corrected. Reviewer lockout trail and decision payloads intact. Ledger temporally durable as source of truth.

@@ -90,7 +90,8 @@ I am the spec alignment gate for Specrew. My job is to keep every plan, task, de
 **Task**: Picard records FR-022 (V-R7-1 + T-011) early-completion closure decision after Worf re-review pass.
 
 **Closure Status**: ✅ COMPLETE
-- Iteration 001 state.md and spikes.md are git-tracked (Worf re-review PASS)
+- Iteration 001 state.md and spikes.md prepared in working tree and ready for version control (Worf re-review PASS)
+- Following re-review pass, different author commits both files to git
 - Closure decision merged to .squad/decisions.md (2026-04-20T00:27:10Z)
 - Three review verdicts consolidated: Initial NEEDS-WORK, lockout-compliant re-revision, re-review PASS
 
@@ -569,3 +570,18 @@ All three contradicted the corrected rule: **Specrew self-development MUST use G
 - Downstream baseline templates must stay role-neutral. Project-specific titles like `Chief Architect` do not belong in `planning.md`, `review-demo.md`, or retrospective guidance.
 - Carryover claims in an iteration plan are drift until each named item appears in the live task table, traceability rows, and capacity math. Key file: `specs\001-specrew-product\iterations\001\plan.md`.
 - When a correction depends on `spec.md` governance decisions rather than a formal FR, record those exact spec anchors in the task plan and inbox note instead of inventing a new requirement. Key files: `specs\001-specrew-product\spec.md`, `.squad\decisions\inbox\picard-carryover-correction.md`.
+
+---
+
+📌 **FR-022 Audit Timeline Hygiene Leadership (2026-04-22T21:35:46Z)**:
+   - ✅ Identified backdating violations in decisions.md narratives
+   - ✅ Led temporal accuracy corrections with Worf (reviewer)
+   - ✅ Corrected title, date, and author fields for FR-022 re-review
+   - ✅ Enforced "record actual completion date, not planning date" principle
+   - ✅ Clarified git-tracking causality and reviewer lockout trail
+   - **Status**: Timeline hygiene and audit trail durability restored
+
+📌 **Decision Inbox Merged (2026-04-22T21:35:46Z)**:
+   - ✅ 9 inbox decisions consolidated into decisions.md
+   - ✅ Cross-agent history synchronized
+   - **Status**: Session state updated

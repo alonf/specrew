@@ -248,3 +248,23 @@ Extended `validate-governance.ps1` to detect stale embedded plan-evidence claims
    - All smoke tests and PSScriptAnalyzer validations passed
    - Worf review verdict: PASS
    - **Status**: ACCEPTED. Ready for next bootstrap gate action
+
+---
+
+📌 **T-002 Implementation Complete & Reviewed (2026-04-22T21:35:46Z)**:
+   - ✅ Implemented missing-dependency installation path in scripts/specrew-init.ps1
+   - ✅ Preserved validation/dry-run behavior across all code paths
+   - ✅ Install flow: missing Spec Kit via uv tool install --upgrade "specify-cli>=<min>"
+   - ✅ Install flow: missing Squad via npm install -g "@bradygaster/squad-cli@<min>"
+   - ✅ Post-install re-validation with hard-stop on remaining failures (exit code 4)
+   - ✅ Governance validator (validate-governance.ps1) passes
+   - ✅ Dry-run bootstrap preview functional and accurate
+   - ✅ Worf review verdict: PASS
+   - **Status**: T-002 implementation complete and validated
+
+📌 **Decision Inbox Merged (2026-04-22T21:35:46Z)**:
+   - ✅ 9 inbox decisions consolidated into decisions.md
+   - ✅ Includes: Bootstrap fixes, deployment ledger alignment, pre-T-002 cleanup, FR-022 temporal corrections
+   - ✅ Inbox cleaned; all files deleted
+   - ✅ Cross-agent history updates (La Forge, Worf, Picard)
+   - **Status**: Session state synchronized; ready for git commit
