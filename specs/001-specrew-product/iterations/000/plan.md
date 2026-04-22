@@ -2,14 +2,14 @@
 
 **Schema**: v1
 **Spec**: [../../spec.md](../../spec.md)
-**Status**: in_progress
-**Capacity**: 0/20 story_points
+**Status**: complete
+**Capacity**: 20.5/20.5 story_points
 **Started**: 2026-04-18
-**Completed**: (in progress)
+**Completed**: 2026-04-18
 
 ## Summary
 
-Iteration 0 establishes the repository structure, scaffolds both the Spec Kit extension and Squad extension, performs platform validation, and runs compatibility spikes to confirm the upstream platforms support Specrew's architectural requirements. This iteration is **precondition-critical**: no downstream work (Iterations 1+) can proceed until Foundation is complete and validated.
+Iteration 0 establishes the repository structure, scaffolds the Spec Kit extension with Squad-native template sources, performs platform validation, and runs compatibility spikes to confirm the upstream platforms support Specrew's architectural requirements. This iteration is **precondition-critical**: no downstream work (Iterations 1+) can proceed until Foundation is complete and validated.
 
 **Target FRs**: FR-001 (Spec Kit extension + Squad-native surfaces), FR-013 (extension-only integration)  
 **Target User Stories**: US-1 (Bootstrap), US-7 (Coexistence)
@@ -52,7 +52,7 @@ Validation that this plan respects Specrew's own governance model and contract t
 | **Ownership** | ✅ PASS | All tasks assigned to role names (Implementer, Planner). |
 | **Capacity** | ✅ PASS | 20.5 pts committed (0.5 pt overcommit approved for precondition-critical Foundation iteration). Deferred Spikes 6–7 to Iteration 1 async. |
 | **Artifact Consistency** | ✅ PASS | Task table matches traceability matrix. Capacity math verified. Stale references removed. |
-| **Extension Surfaces** | ✅ IN PROGRESS | Spikes 1–5, 8–11 validate documented surfaces. Results gate platform readiness. |
+| **Extension Surfaces** | ✅ COMPLETE | Spikes 1–5, 8–11 all PASS; documented surfaces validated. Platform readiness confirmed. |
 
 ---
 
@@ -64,25 +64,25 @@ Validation that this plan respects Specrew's own governance model and contract t
 | T-002 | Configure Git | FR-001 | US-1 | 1 | Implementer | done | La Forge | 1 | PASS |
 | T-003 | Clone Spec Kit extension template | FR-001 | US-1 | 1 | Implementer | done | La Forge | 1 | PASS |
 | T-004 | Scaffold Spec Kit directories | FR-001 | US-1 | 1 | Implementer | done | La Forge | 1 | PASS |
-| T-005 | Create extension config.yml stub | FR-013 | US-7 | 1 | Planner | blocked | | | Awaits Planner |
-| T-006 | Create template stubs | FR-001 | US-1 | 1 | Planner | blocked | | | Awaits Planner |
+| T-005 | Create extension config.yml stub | FR-013 | US-7 | 1 | Planner | done | Data | 1 | PASS |
+| T-006 | Create template stubs | FR-001 | US-1 | 1 | Planner | done | Data | 1 | PASS |
 | T-007 | Create script stubs | FR-001 | US-1 | 0.5 | Implementer | done | La Forge | 0.5 | PASS |
 | T-008 | Create Squad template source structure | FR-001 | US-7 | 1 | Implementer | done | La Forge | 1 | PASS |
-| T-009 | Create skill template stubs | FR-001 | US-7 | 0.5 | Planner | planned | | | |
-| T-010 | Create ceremony template stubs | FR-001 | US-7 | 1 | Planner | planned | | | |
-| T-011 | Create directive template stubs | FR-001 | US-7 | 0.5 | Planner | planned | | | |
+| T-009 | Create skill template stubs | FR-001 | US-7 | 0.5 | Planner | done | Data | 0.5 | PASS |
+| T-010 | Create ceremony template stubs | FR-001 | US-7 | 1 | Planner | done | Data | 1 | PASS |
+| T-011 | Create directive template stubs | FR-001 | US-7 | 0.5 | Planner | done | Data | 0.5 | PASS |
 | T-012 | Document Squad-native integration | FR-001 | US-7 | 0.5 | Implementer | done | La Forge | 0.5 | PASS |
 | T-013 | Spike 1: Spec Kit install/update >= 0.7.3 | FR-013 | US-7 | 1 | Implementer | done | La Forge | 1 | PASS |
 | T-014 | Spike 2: Squad install/update >= 0.9.1 | FR-013 | US-7 | 1 | Implementer | done | La Forge | 1 | PASS |
-| T-015 | Spike 3: Spec Kit hook availability audit | FR-013 | US-7 | 1 | Planner | planned | | | |
-| T-016 | Spike 4: Squad HookPipeline surface audit | FR-013 | US-7 | 1 | Planner | planned | | | |
+| T-015 | Spike 3: Spec Kit hook availability audit | FR-013 | US-7 | 1 | Planner | done | Data | 1 | PASS |
+| T-016 | Spike 4: Squad HookPipeline surface audit | FR-013 | US-7 | 1 | Planner | done | Data | 1 | PASS |
 | T-017 | Spike 5: Squad native surface validation | FR-013 | US-7 | 1 | Implementer | done | La Forge | 1 | PASS - Architecture clarified |
 | T-018 | Spike 8: Squad non-interactive init | FR-013 | US-7 | 1 | Implementer | done | La Forge | 1 | PASS |
-| T-019 | Spike 9: Spec Kit extension install mechanism | FR-013 | US-7 | 0.5 | Planner | planned | | | |
+| T-019 | Spike 9: Spec Kit extension install mechanism | FR-013 | US-7 | 0.5 | Planner | done | Data | 0.5 | PASS |
 | T-020 | Spike 10: Squad native deployment validation | FR-013 | US-7 | 0.5 | Implementer | done | La Forge | 0.5 | PASS - Confirmed no plugin marketplace needed |
-| T-021 | Spike 11: Spec Kit prompt file placement | FR-013 | US-7 | 0.5 | Planner | planned | | | |
+| T-021 | Spike 11: Spec Kit prompt file placement | FR-013 | US-7 | 0.5 | Planner | done | Data | 0.5 | PASS |
 | T-022 | Set up CI pipeline (GitHub Actions) | FR-001 | US-1 | 1 | Implementer | done | La Forge | 1 | PASS |
-| T-023 | Create GitHub Project board (V2) | FR-001 | US-1 | 1 | Implementer | planned | | | |
+| T-023 | Create GitHub Project board (V2) | FR-001 | US-1 | 1 | Implementer | done | La Forge | 1 | PASS |
 
 ---
 

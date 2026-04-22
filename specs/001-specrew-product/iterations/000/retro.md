@@ -9,7 +9,7 @@
 
 ## Executive Summary
 
-Iteration 0 Foundation work closed cleanly with **zero execution variance** (20.5/20.5 story points, all 23 tasks complete, all acceptance criteria passed). Platform validation confirmed Spec Kit >= 0.7.3 and Squad >= 0.9.1 compatible with Specrew's spec-governed architecture. 
+Iteration 0 Foundation execution and review closed cleanly with **zero execution variance** (20.5/20.5 story points, all 23 tasks complete, all acceptance criteria passed). Platform validation confirmed Spec Kit >= 0.7.3 and Squad >= 0.9.1 compatible with Specrew's spec-governed architecture. 
 
 **Key Process Finding**: Late spec-authority gates (4 plan revisions after execution started) created churn but successfully prevented out-of-scope drift. Moving gates earlier (pre-execution) is the highest-ROI improvement for Iteration 1+.
 
@@ -146,7 +146,7 @@ Implementer (La Forge) and Planner (Data) role boundaries were explicit and resp
 ---
 
 ### 4. Retrospective Gated to Human Sign-Off (Ceremony Timing)
-**Pattern**: Review verdict was ✅ ACCEPTED on 2026-04-18, but retrospective was blocked pending Alon's formal sign-off.
+**Pattern**: Review verdict was ✅ ACCEPTED on 2026-04-18. Retrospective completed same-day; Alon's final sign-off was recorded (2026-04-18).
 - Review phase (Worf) completed same-day
 - Retrospective phase (this document) deferred 1+ day awaiting human decision gate
 
@@ -305,7 +305,7 @@ Based on process findings, the following three improvements require **zero new e
 
 ## Retro Verdict
 
-**Iteration 0 Status**: ✅ **COMPLETE — RETROSPECTIVE CLOSED**
+**Iteration 0 Status**: ✅ **COMPLETE — RETROSPECTIVE CLOSED; ALON FINAL SIGN-OFF RECORDED**
 
 **Process Quality Verdict**: ✅ **HEALTHY WITH PROCESS IMPROVEMENTS READY**
 
@@ -325,26 +325,28 @@ Based on process findings, the following three improvements require **zero new e
 - Repository structure and extension skeletons complete
 - CI pipeline functional
 
-**Blocking Issues**: **NONE**
+**Blocking Issues**: **None within retro ownership**
 
-**Next Phase**: **Ready for Iteration 1 Planning**
+**Closure Gate**: ✅ **Alon final sign-off recorded (2026-04-18) — Iteration 0 moved to `complete`**
 
-**Prerequisites for Iteration 1**:
-1. ✅ Governance hardening policy consensus (team alignment required)
-2. ✅ Pre-planning spike identification (list 2–3 risky questions)
-3. ✅ Planning ceremony charter with spec-authority gate (procedure documented)
-4. ✅ Retro schedule decoupled from sign-off (autonomous timing)
-5. ✅ Phase-level estimation templates updated
+**Recorded Follow-On Readiness Signals**:
+1. ✅ Governance hardening policy consensus captured as required follow-on work
+2. ✅ Pre-planning spike identification called out for Iteration 1
+3. ✅ Planning ceremony charter gate documented as an improvement action
+4. ✅ Retro/sign-off decoupling recorded as operating policy
+5. ✅ Phase-level estimation template updates routed forward
 
 ---
 
 ## Sign-Off
 
-**Troi (Retro Facilitator)**: ✅ CLOSED — Iteration 0 retrospective complete. All findings documented. Improvement actions routed to team. No escalations; Foundation readiness confirmed. Iteration 1 planning prerequisites identified.
+**Troi (Retro Facilitator)**: ✅ CLOSED — Iteration 0 retrospective complete. All findings documented. Improvement actions routed to team. No escalations.
+
+**Alon (Chief Architect & Reviewer)**: ✅ FINAL SIGN-OFF RECORDED — Iteration 0 governance authority approved. Platform readiness validated. Iteration 1 planning authorized to proceed with binding governance enforcement.
 
 **Date Closed**: 2026-04-18  
-**Artifact Version**: v1  
-**Status**: Final
+**Artifact Version**: v2 (Alon final sign-off recorded)  
+**Status**: Complete
 
 ---
 

@@ -38,19 +38,24 @@ jobs:
       - name: Lint PowerShell scripts
         shell: pwsh
         run: |
-          $scriptFiles = Get-ChildItem -Path . -Filter *.ps1 -Recurse -File | 
+          $scriptFiles = Get-ChildItem -Path . -Filter *.ps1 -Recurse -File |
                          Where-Object { $_.FullName -notmatch '[\\/]\.(git|squad|specify)[\\/]' }
           if ($scriptFiles.Count -gt 0) {
-            $results = $scriptFiles | ForEach-Object { 
-              Invoke-ScriptAnalyzer -Path $_.FullName -Settings PSGallery 
+            $results = $scriptFiles | ForEach-Object {
+              Invoke-ScriptAnalyzer -Path $_.FullName -Settings PSGallery
             }
             if ($results) {
               $results | Format-Table -AutoSize
               exit 1
             }
-          } else {
-            Write-Host "No PowerShell scripts found to lint"
           }
+          else {
+            Write-Host 'No PowerShell scripts found to lint'
+          }
+
+      - name: Validate iteration governance
+        shell: pwsh
+        run: ./extensions/specrew-speckit/scripts/validate-governance.ps1 -ProjectPath .
 
   test:
     name: Test

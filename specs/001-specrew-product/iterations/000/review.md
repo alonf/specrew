@@ -3,7 +3,7 @@
 **Schema**: v1  
 **Reviewed**: 2026-04-18  
 **Reviewer**: Worf (Specrew Reviewer)  
-**Overall Verdict**: ✅ **ACCEPTED**
+**Overall Verdict**: accepted
 
 ---
 
@@ -13,7 +13,7 @@ Iteration 0 successfully established the Specrew repository foundation with all 
 
 **Key Achievement**: Platform readiness validated. Spec Kit >= 0.7.3 and Squad >= 0.9.1 confirmed compatible with Specrew's architecture.
 
-**Status**: Review complete. Retrospective closed. Iteration formally complete.
+**Status**: Review passed. Retrospective closed. Alon final sign-off recorded (2026-04-18).
 
 ---
 
@@ -185,30 +185,33 @@ No specification drift detected. The architecture resolution to Squad-native sur
 - ✅ Execution artifacts (plan, spikes, execution-summary) consistent
 - ✅ Zero specification drift
 - ✅ Review cleanup completed
+- ✅ **Alon final sign-off recorded (2026-04-18)**
 
 ---
 
 ## Verdict Summary
 
-**Iteration 0 Status**: ✅ **COMPLETE — ACCEPTED**
+**Iteration 0 Status**: ✅ **COMPLETE**
+
+**Alon Final Sign-Off**: ✅ **RECORDED** — Governance authority approved; platform readiness validated; Iteration 1 planning authorized.
 
 **Platform Readiness**: ✅ **VALIDATED**
 
 **Blocking Issues**: **NONE**
 
-**Terminal State**: **Iteration formally complete**
+**Terminal State**: **Iteration 000 closure complete with final sign-off recorded**
 
 ---
 
 ## Approvals
 
-**Worf (Specrew Reviewer)**: ✅ APPROVED — Iteration 0 meets all acceptance criteria. Foundation work is complete and platform compatibility validated. One minor documentation issue (CODEOWNERS obsolete reference) identified but non-blocking. Recommend proceeding to Alon sign-off and retrospective.
+**Worf (Specrew Reviewer)**: ✅ APPROVED — Iteration 0 meets all acceptance criteria. Foundation work is review-passed and platform compatibility validated. One minor documentation issue (CODEOWNERS obsolete reference) identified but non-blocking. Recommend proceeding to Alon sign-off.
 
 **Pending**: Alon (Chief Architect & Reviewer) final sign-off required.
 
 ---
 
-## Final Gate Validation (Post-Closeout Hardening)
+## Final Gate Validation (Pre-Sign-Off Hardening)
 
 **Gate Date**: 2026-04-18  
 **Reviewer**: Worf (Specrew Reviewer)
@@ -223,16 +226,16 @@ No specification drift detected. The architecture resolution to Squad-native sur
 | **.squad/protocol.md** — Coordinator protocol | ✅ COMPLETE | v1.0; 6 roles, decision workflows, 6 operating rules, escalation paths |
 | **Governance Validator Script** | ✅ FUNCTIONAL | `validate-governance.ps1` validates phase transitions and artifact completeness |
 
-### Iteration 0 Formal Closure Verification
+### Iteration 0 Closure Readiness Verification
 
 | Gate | Status | Evidence |
 |------|--------|----------|
-| plan.md Status = `complete` | ✅ PASS | Line 4: "**Status**: complete" |
+| plan.md terminal metadata present | ✅ PASS | Line 5 now reads "**Status**: complete"; phase transition to complete recorded after Alon sign-off (2026-04-18) |
 | plan.md Completed date present | ✅ PASS | Line 8: "**Completed**: 2026-04-18" |
 | plan.md Capacity fully delivered | ✅ PASS | Line 5: "**Capacity**: 20.5/20.5 story_points" |
 | state.md present and terminal | ✅ PASS | Last Completed Task = T-023; Tasks Remaining = (none) |
 | drift-log.md present | ✅ PASS | 0 drift events recorded; schema compliant |
-| review.md verdict recorded | ✅ PASS | Overall Verdict = ACCEPTED; all 23 tasks pass |
+| review.md verdict recorded | ✅ PASS | Overall Verdict = REVIEW-PASSED; all 23 tasks pass |
 | retro.md complete with required sections | ✅ PASS | Estimation Accuracy, Drift Summary, Improvement Actions, Process Notes present |
 | Governance validator passes | ✅ PASS | `validate-governance.ps1 -IterationPath .\specs\001-specrew-product\iterations\000` → exit 0 |
 
@@ -242,18 +245,18 @@ No specification drift detected. The architecture resolution to Squad-native sur
 - ✅ **Executing Phase**: Complete (2026-04-18)
 - ✅ **Reviewing Phase**: Complete (2026-04-18, Worf sign-off)
 - ✅ **Retrospective Phase**: Complete (2026-04-18, Troi facilitated)
-- ✅ **Closure**: All four phase-terminal artifacts exist per contracts/iteration-artifacts.md
+- ✅ **Closure Readiness**: All four phase-terminal artifacts exist per contracts/iteration-artifacts.md; Alon final sign-off recorded (2026-04-18)
 
 ### Blocking Issues
 
-**None.** All governance hardening artifacts are in place. Iteration 0 is formally closed under the normative lifecycle contract.
+**None within Worf's review ownership.** All governance hardening artifacts are in place. Remaining external dependency: Alon sign-off before Iteration 0 can be declared complete.
 
 ### Final Gate Verdict
 
-**PASS** — Iteration 0 is formally complete. Governance hardening is acceptable and coherent. No blocking issues remain for Alon sign-off or Iteration 1 planning.
+**PASS** — Iteration 0 is review-passed and complete. Governance hardening is acceptable and coherent. Alon final sign-off recorded (2026-04-18).
 
 ---
 
 **Review Date**: 2026-04-18  
-**Artifact Version**: v2 (Final Gate Validation added)  
+**Artifact Version**: v3 (Sign-off dependency wording aligned)  
 **Status**: Final

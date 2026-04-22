@@ -24,7 +24,29 @@ templates_dir: "templates"
 scripts_dir: "scripts"
 
 # Feature flags and configuration
-# (To be populated by Planner in T-005)
 config:
-  # Placeholder for downstream configuration
+  # Governance mode (standard = default Specrew workflow)
   governance_mode: "standard"
+  
+  # Drift detection configuration
+  drift_detection:
+    enabled: true
+    # batch = run at Review/Demo ceremony; realtime = post-task hook (when available)
+    mode: "batch"
+  
+  # Capacity and effort defaults
+  capacity:
+    default_unit: "story_points"
+    default_per_iteration: 20
+    overcommit_threshold: 1.0
+  
+  # Traceability enforcement
+  traceability:
+    require_fr_mapping: true
+    require_us_mapping: true
+    orphan_tasks_allowed: false
+  
+  # Version constraints
+  versions:
+    min_speckit: "0.7.3"
+    min_squad: "0.9.1"
