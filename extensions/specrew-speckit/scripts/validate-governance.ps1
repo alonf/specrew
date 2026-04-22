@@ -18,7 +18,7 @@ function Resolve-IterationTarget {
     )
 
     if ($ExplicitIterationPaths -and $ExplicitIterationPaths.Count -gt 0) {
-        return $ExplicitIterationPaths | ForEach-Object { (Resolve-Path -Path $_).Path }
+        return @($ExplicitIterationPaths | ForEach-Object { (Resolve-Path -Path $_).Path })
     }
 
     $specsPath = Join-Path -Path $ResolvedProjectPath -ChildPath 'specs'
@@ -35,13 +35,13 @@ function Resolve-IterationTarget {
         throw "No iteration directories with plan.md found under $specsPath"
     }
 
-    return $targets
+    return @($targets)
 }
 
 function Get-MarkdownContent {
     param([string]$Path)
 
-    return Get-Content -Path $Path -Encoding UTF8
+    return @(Get-Content -Path $Path -Encoding UTF8)
 }
 
 function Get-MarkdownMetadataValue {
@@ -162,7 +162,7 @@ function Get-MarkdownSectionTable {
         $rows.Add([pscustomobject]$row)
     }
 
-    return $rows
+    return $rows.ToArray()
 }
 
 function Get-TeamRoleMap {
@@ -245,6 +245,8 @@ function Test-LifecycleNarrative {
 
     $pendingPattern = '\b(?:await(?:ing)?|pending|blocked|remaining|ready\s+for|not(?:\s+yet)?\s+started|next|to\s+be\s+completed|to\s+begin)\b'
     $pendingSignOffPattern = '\b(?:await(?:ing)?|pending|ready\s+for)\b.*\bsign[\s-]?off\b'
+    $reviewSatisfiedPattern = '\b(?:accepted|pass(?:ed)?|complete|closed|done|recorded)\b'
+    $retroSatisfiedPattern = '\b(?:complete|closed|done|recorded)\b'
 
     foreach ($artifactName in $ArtifactContents.Keys) {
         $lines = @(Get-LifecycleStatusLine -Lines $ArtifactContents[$artifactName])
@@ -254,14 +256,14 @@ function Test-LifecycleNarrative {
 
             if ($HasReviewArtifact -and (
                     ($isNextPhaseLine -and $lowerLine -match '\breview(?:ing)?\b') -or
-                    (($lowerLine -match '\breview(?:ing)?\b') -and ($lowerLine -match $pendingPattern))
+                    (($lowerLine -match '\breview(?:ing)?\b') -and ($lowerLine -match $pendingPattern) -and ($lowerLine -notmatch $reviewSatisfiedPattern))
                 )) {
                 $Errors.Add("$artifactName still describes review as pending even though review.md exists")
             }
 
             if ($HasRetroArtifact -and (
                     ($isNextPhaseLine -and $lowerLine -match '\b(?:retro|retrospective)\b') -or
-                    (($lowerLine -match '\b(?:retro|retrospective)\b') -and ($lowerLine -match $pendingPattern))
+                    (($lowerLine -match '\b(?:retro|retrospective)\b') -and ($lowerLine -match $pendingPattern) -and ($lowerLine -notmatch $retroSatisfiedPattern))
                 )) {
                 $Errors.Add("$artifactName still describes retrospective as pending even though retro.md exists")
             }
@@ -302,6 +304,55 @@ function Test-GovernanceGateConsistency {
         if ($normalizedVerdict -match '\b(?:pending|tbd|todo|open|blocked|fail(?:ed)?|needs[- ]rework|partial|incomplete|not(?:\s+yet)?\s+started)\b') {
             $gateName = if (Test-IsNullish $row.Gate) { '(unnamed gate)' } else { $row.Gate.Trim() }
             $Errors.Add("plan.md governance gate '$gateName' still reports non-terminal verdict '$verdict' despite later completion evidence")
+        }
+    }
+}
+
+function Test-PlanMetadataEvidenceDrift {
+    param(
+        [hashtable]$ArtifactContents,
+        [string]$PlanStatus,
+        [AllowNull()][string]$PlanCompleted,
+        [System.Collections.Generic.List[string]]$Errors
+    )
+
+    $actualCompletedDate = [regex]::Match([string]$PlanCompleted, '\b\d{4}-\d{2}-\d{2}\b').Value
+
+    foreach ($artifactName in $ArtifactContents.Keys) {
+        foreach ($line in $ArtifactContents[$artifactName]) {
+            if ($line -notmatch '\bplan\.md\b') {
+                continue
+            }
+
+            $lowerLine = $line.ToLowerInvariant()
+
+            $statusMatch = [regex]::Match($line, '\*\*Status\*\*:\s*([^|`.;]+)')
+            if ($statusMatch.Success) {
+                $claimedStatus = Get-NormalizedKeyword $statusMatch.Groups[1].Value
+                if ($claimedStatus -and $claimedStatus -ne $PlanStatus) {
+                    $Errors.Add("$artifactName contains stale plan.md status evidence ('$claimedStatus') that contradicts current plan.md status '$PlanStatus'")
+                }
+            }
+
+            $completedMatch = [regex]::Match($line, '\*\*Completed\*\*:\s*([^|`]+)')
+            if ($completedMatch.Success) {
+                $claimedCompletedDate = [regex]::Match($completedMatch.Groups[1].Value, '\b\d{4}-\d{2}-\d{2}\b').Value
+                if ((Test-IsNullish $PlanCompleted) -and $claimedCompletedDate) {
+                    $Errors.Add("$artifactName contains stale plan.md completion evidence ('$claimedCompletedDate') even though plan.md Completed is blank")
+                }
+                elseif (-not (Test-IsNullish $PlanCompleted) -and $actualCompletedDate -and $claimedCompletedDate -and $claimedCompletedDate -ne $actualCompletedDate) {
+                    $Errors.Add("$artifactName contains stale plan.md completion evidence ('$claimedCompletedDate') that contradicts current plan.md Completed '$actualCompletedDate'")
+                }
+            }
+
+            if ((Test-IsNullish $PlanCompleted) -and
+                $lowerLine -match '\bplan\.md\b' -and
+                $lowerLine -match '\bcompleted date\b' -and
+                $lowerLine -match '\b(?:present|recorded|set|filled|available)\b' -and
+                $lowerLine -notmatch '\bblank\b' -and
+                $lowerLine -notmatch '\b(?:after|pending|await(?:ing)?)\b.{0,24}\bsign[\s-]?off\b') {
+                $Errors.Add("$artifactName still claims plan.md has a recorded Completed date even though plan.md Completed is blank")
+            }
         }
     }
 }
@@ -383,7 +434,7 @@ function Test-ReviewArtifact {
         $Errors.Add("Complete iterations require review.md overall verdict 'accepted' (found '$overallVerdict')")
     }
 
-    $taskVerdicts = Get-MarkdownSectionTable -Lines $reviewLines -Heading 'Task Verdicts'
+    $taskVerdicts = @(Get-MarkdownSectionTable -Lines $reviewLines -Heading 'Task Verdicts')
     if ($taskVerdicts.Count -eq 0) {
         $Errors.Add('review.md must contain a populated Task Verdicts table')
         return
@@ -479,6 +530,25 @@ function Test-PlanTaskSet {
     }
 }
 
+function Test-IsEarlyPlanningStub {
+    param(
+        [string[]]$PlanLines,
+        [string]$Status,
+        [object[]]$Tasks
+    )
+
+    if ($Status -ne 'planning' -or $Tasks.Count -gt 0) {
+        return $false
+    }
+
+    $titleLine = $PlanLines | Select-Object -First 1
+    $planText = ($PlanLines -join "`n").ToLowerInvariant()
+
+    return ($titleLine -match '\(stub\)\s*$') -or
+        ($planText -match 'pending detailed planning') -or
+        ($planText -match 'stub captures the planned scope')
+}
+
 function Test-IterationGovernance {
     param(
         [string]$IterationDirectory,
@@ -508,18 +578,22 @@ function Test-IterationGovernance {
         $errors.Add("plan.md has invalid iteration status '$status'")
     }
 
-    $capacity = Get-MarkdownMetadataValue -Lines $planLines -Label 'Capacity'
-    if (-not (Test-IsNullish $capacity) -and $capacity -notmatch '^\d+(?:\.\d+)?/\d+(?:\.\d+)?\s+\S+$') {
-        $errors.Add("plan.md has invalid Capacity format '$capacity' (expected '<used>/<total> <unit>')")
-    }
-
     $completed = Get-MarkdownMetadataValue -Lines $planLines -Label 'Completed'
     if ($status -eq 'complete' -and (Test-IsNullish $completed)) {
         $errors.Add('Complete iterations must record a Completed date in plan.md')
     }
 
     $tasks = @(Get-MarkdownSectionTable -Lines $planLines -Heading 'Tasks')
-    Test-PlanTaskSet -Tasks $tasks -Errors $errors
+    $isEarlyPlanningStub = Test-IsEarlyPlanningStub -PlanLines $planLines -Status $status -Tasks $tasks
+
+    $capacity = Get-MarkdownMetadataValue -Lines $planLines -Label 'Capacity'
+    if (-not $isEarlyPlanningStub -and -not (Test-IsNullish $capacity) -and $capacity -notmatch '^\d+(?:\.\d+)?/\d+(?:\.\d+)?\s+\S+$') {
+        $errors.Add("plan.md has invalid Capacity format '$capacity' (expected '<used>/<total> <unit>')")
+    }
+
+    if (-not $isEarlyPlanningStub) {
+        Test-PlanTaskSet -Tasks $tasks -Errors $errors
+    }
 
     $taskStatuses = $tasks | ForEach-Object { $_.Status.Trim().ToLowerInvariant() }
     $hasNonTerminalTasks = [bool]($taskStatuses | Where-Object { $_ -notin $terminalTaskStatuses } | Select-Object -First 1)
@@ -528,9 +602,9 @@ function Test-IterationGovernance {
     $reviewPath = Join-Path -Path $IterationDirectory -ChildPath 'review.md'
     $retroPath = Join-Path -Path $IterationDirectory -ChildPath 'retro.md'
     $statePath = Join-Path -Path $IterationDirectory -ChildPath 'state.md'
-    $stateLines = if (Test-Path -Path $statePath -PathType Leaf) { @(Get-MarkdownContent -Path $statePath) } else { @() }
-    $reviewLines = if (Test-Path -Path $reviewPath -PathType Leaf) { @(Get-MarkdownContent -Path $reviewPath) } else { @() }
-    $retroLines = if (Test-Path -Path $retroPath -PathType Leaf) { @(Get-MarkdownContent -Path $retroPath) } else { @() }
+    $stateLines = @(if (Test-Path -Path $statePath -PathType Leaf) { Get-MarkdownContent -Path $statePath } else { @() })
+    $reviewLines = @(if (Test-Path -Path $reviewPath -PathType Leaf) { Get-MarkdownContent -Path $reviewPath } else { @() })
+    $retroLines = @(if (Test-Path -Path $retroPath -PathType Leaf) { Get-MarkdownContent -Path $retroPath } else { @() })
     $reviewOverallVerdict = if ($reviewLines.Count -gt 0) {
         Get-NormalizedKeyword (Get-MarkdownMetadataValue -Lines $reviewLines -Label 'Overall Verdict')
     }
@@ -540,9 +614,18 @@ function Test-IterationGovernance {
     $hasAcceptedReview = $reviewOverallVerdict -eq 'accepted'
     $hasReviewArtifact = $reviewLines.Count -gt 0
     $hasRetroArtifact = $retroLines.Count -gt 0
-    $hasCompleteEvidence = ($status -eq 'complete') -or $hasRetroArtifact
+    $hasCompleteEvidence = $status -eq 'complete'
 
     Test-GovernanceGateConsistency -PlanLines $planLines -HasCompletionEvidence ($hasAcceptedReview -or $hasCompleteEvidence) -Errors $errors
+
+    $closureEvidenceArtifacts = @{}
+    if ($hasReviewArtifact) {
+        $closureEvidenceArtifacts['review.md'] = $reviewLines
+    }
+    if ($hasRetroArtifact) {
+        $closureEvidenceArtifacts['retro.md'] = $retroLines
+    }
+    Test-PlanMetadataEvidenceDrift -ArtifactContents $closureEvidenceArtifacts -PlanStatus $status -PlanCompleted $completed -Errors $errors
 
     $lifecycleArtifacts = @{
         'plan.md' = $planLines
@@ -628,8 +711,8 @@ function Test-IterationGovernance {
 
 $resolvedProjectPath = (Resolve-Path -Path $ProjectPath).Path
 $teamRoles = Get-TeamRoleMap -ResolvedProjectPath $resolvedProjectPath
-$targets = Resolve-IterationTarget -ResolvedProjectPath $resolvedProjectPath -ExplicitIterationPaths $IterationPath
-$results = $targets | ForEach-Object { Test-IterationGovernance -IterationDirectory $_ -TeamRoles $teamRoles }
+$targets = @(Resolve-IterationTarget -ResolvedProjectPath $resolvedProjectPath -ExplicitIterationPaths $IterationPath)
+$results = @($targets | ForEach-Object { Test-IterationGovernance -IterationDirectory $_ -TeamRoles $teamRoles })
 $hasFailures = $false
 
 foreach ($result in $results) {

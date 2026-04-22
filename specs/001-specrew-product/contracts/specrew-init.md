@@ -32,8 +32,12 @@ Step 4a — Spec Kit Extension Install:
     Copy extension files into .specify/extensions/specrew-speckit/.
     Register in .specify/extensions.yml manually.
 
-Step 4b — Squad Extension Install:
-  Run `squad plugin install ./extensions/specrew-squad` (local path — validated by spike item 10).
+Step 4b — Squad Runtime Surface Deployment:
+  DO NOT install a packaged Squad plugin.
+  Copy Specrew skills into `.copilot/skills/specrew-*/`.
+  Merge Specrew ceremonies into `.squad/ceremonies.md`.
+  Merge Specrew directives into `.squad/agents/*/charter.md`.
+  This follows Squad's native runtime layout and does NOT use a local `extensions/specrew-squad` package.
 ```
 
 ## Command Interface
@@ -46,6 +50,8 @@ Options:
   --force           Skip confirmation prompts (still respects collision safety)
   --speckit-version Minimum Spec Kit version (default: 0.7.3)
   --squad-version   Minimum Squad version (default: 0.9.1)
+  --agents          Agent selection: copilot | comma-separated list | all (default: copilot)
+  --no-agents       Disable all agents
   --help            Show usage
 ```
 
@@ -66,7 +72,7 @@ Options:
 | Spec Kit installation | System | Spec Kit >= 0.7.3 installed if missing |
 | Squad installation | System | Squad >= 0.9.1 installed if missing |
 | Spec Kit init | `.specify/` | Created by `specify init` only if .specify/ does not already exist |
-| Squad init | `.squad/` | Created by `squad init` (idempotent, no flags needed) only if .squad/ does not already exist |
+| Squad init | `.squad/` | Created by `squad init --non-interactive` when available, otherwise by direct documented scaffolding, only if `.squad/` does not already exist |
 | Specrew config | `.specrew/config.yml` | Bootstrap configuration |
 | Downstream constitution | `.specrew/constitution.md` | Project-specific template (NOT Specrew's own) |
 | Iteration config | `.specrew/iteration-config.yml` | Default effort + capacity settings |
@@ -77,6 +83,8 @@ Options:
 | Squad directives | `.squad/agents/*/charter.md` | Specrew directives merged into agent charters |
 | Spec Kit extension | `.specify/extensions/specrew-speckit/` | Specrew Spec Kit extension installed |
 | Report | stdout | Summary of what was created |
+
+**Explicit non-output**: `specrew init` does **not** install a packaged Squad extension under `extensions/specrew-squad/` or via `squad plugin install`.
 
 ### Outputs (Brownfield)
 
@@ -136,3 +144,52 @@ All `specrew init` writes are additive-only — existing files are never overwri
 4. Only remaining uncompleted steps execute
 
 No backup directory (`.specrew-backup/`) or transaction log is needed. The `--dry-run` flag can be used to preview what a re-run would do before executing.
+
+---
+
+## Agent Detection & Consent (FR-022)
+
+### Detection Probes (all run in order, non-fatal on failure)
+
+- **Copilot runtime**: `copilot --version` when the standalone Copilot CLI is installed, plus current-session runtime markers when `specrew init` is invoked from inside Copilot CLI (`COPILOT_CLI`, `COPILOT_AGENT_SESSION_ID`, `COPILOT_CLI_BINARY_VERSION`).
+- **Copilot auth/subscription context**: `gh api /user`
+- **Agent HQ delegated-agent availability**: parse the documented `copilot help config` model metadata section to infer whether Claude-family or Codex-family delegated agents are exposed through the current Copilot client surface. If that metadata section is unavailable, delegated-agent detection degrades to `unavailable` without failing bootstrap. Billing/cost context is not collected — consent is the only gate Specrew applies.
+
+### Interactive Prompt
+
+For each detected agent, display:
+
+- Agent name
+- Access path (Copilot default | Copilot Agent HQ delegate)
+- Ask: "Enable <agent> for Specrew-managed delegation? (y/N)"
+
+Cost/billing context is intentionally not shown. Any billing implications of enabling a delegated agent are between the user and GitHub; Specrew's responsibility is limited to obtaining explicit consent.
+
+### Non-Interactive Flags
+
+- `--agents=copilot` (default): enable Copilot only
+- `--agents=copilot,claude` or `--agents=copilot,codex`: explicit opt-in list
+- `--agents=all`: enable all detected agents
+- `--no-agents`: disable all (Specrew operates spec-only, no crew execution)
+
+### Persisted Output (iteration-config.yml)
+
+```yaml
+agents:
+  copilot:
+    enabled: true
+    access_path: copilot_default
+    availability: available
+  claude:
+    enabled: <bool>
+    access_path: copilot_agent_hq
+    availability: available | unavailable
+  codex:
+    enabled: <bool>
+    access_path: copilot_agent_hq
+    availability: available | unavailable
+```
+
+**Default on non-interactive run**: `copilot: enabled`, all other detected delegated agents disabled.
+
+**Interactive behavior**: User sees all detected agents and chooses which to enable. Detected-but-not-enabled agents remain available for later opt-in via re-run of `specrew init`.

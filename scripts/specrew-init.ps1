@@ -192,6 +192,27 @@ function Install-MissingDependency {
     }
 }
 
+function Invoke-VersionValidation {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$ScriptPath,
+
+        [Parameter(Mandatory = $true)]
+        [string]$MinimumSpecKitVersion,
+
+        [Parameter(Mandatory = $true)]
+        [string]$MinimumSquadVersion
+    )
+
+    try {
+        return @(& $ScriptPath -MinimumSpecKitVersion $MinimumSpecKitVersion -MinimumSquadVersion $MinimumSquadVersion -PassThru)
+    }
+    catch {
+        Write-Error ("Dependency validation failed unexpectedly. Re-run '{0}' directly for details. {1}" -f $ScriptPath, $_.Exception.Message)
+        exit 4
+    }
+}
+
 function Test-SquadInitSupportsNonInteractive {
     param(
         [Parameter(Mandatory = $true)]
@@ -763,16 +784,46 @@ if ($existingEntries.Count -gt 0 -and -not $Force -and -not $hadSpecify -and -no
 }
 
 Write-Step 'Validating platform dependencies'
-$versionResults = @(& $validateVersionsScript -MinimumSpecKitVersion $SpecKitVersion -MinimumSquadVersion $SquadVersion -PassThru)
+$versionResults = @(Invoke-VersionValidation -ScriptPath $validateVersionsScript -MinimumSpecKitVersion $SpecKitVersion -MinimumSquadVersion $SquadVersion)
 $missingDependencies = @($versionResults | Where-Object { -not $_.IsInstalled })
+$brokenDependencies = @($versionResults | Where-Object { $_.IsInstalled -and -not $_.IsOperational })
 $incompatibleDependencies = @($versionResults | Where-Object { $_.IsInstalled -and -not $_.IsCompatible })
+
+if ($brokenDependencies.Count -gt 0) {
+    foreach ($dependency in $brokenDependencies) {
+        $failureDetail = if ($dependency.ProbeError) { $dependency.ProbeError } elseif ($dependency.ValidationError) { $dependency.ValidationError } else { 'the command did not complete successfully' }
+        $message = "{0} is installed but the '{1}' command is not healthy ({2}). Run '{3}' to repair it, then re-run specrew init." -f $dependency.Platform, $dependency.CommandName, $failureDetail, $dependency.SuggestedRepair
+
+        if ($DryRun) {
+            Write-Warning ("[dry-run] {0}" -f $message)
+            Add-Action -Actions $actions -Step 'dependency' -Outcome ("{0}: requires repair ({1})" -f $dependency.Platform, $dependency.SuggestedRepair)
+            continue
+        }
+
+        Write-Error $message -ErrorAction Continue
+    }
+
+    if (-not $DryRun) {
+        exit 1
+    }
+}
 
 if ($incompatibleDependencies.Count -gt 0) {
     foreach ($dependency in $incompatibleDependencies) {
-        Write-Error ("Specrew requires {0} >= {1} but found {2}. Run '{3}' to upgrade." -f $dependency.Platform, $dependency.MinimumVersion, $dependency.Version, $dependency.SuggestedUpgrade)
+        $message = "Specrew requires {0} >= {1} but found {2}. Run '{3}' to upgrade." -f $dependency.Platform, $dependency.MinimumVersion, $dependency.Version, $dependency.SuggestedUpgrade
+
+        if ($DryRun) {
+            Write-Warning ("[dry-run] {0}" -f $message)
+            Add-Action -Actions $actions -Step 'dependency' -Outcome ("{0}: requires upgrade ({1})" -f $dependency.Platform, $dependency.SuggestedUpgrade)
+            continue
+        }
+
+        Write-Error $message -ErrorAction Continue
     }
 
-    exit 1
+    if (-not $DryRun) {
+        exit 1
+    }
 }
 
 foreach ($dependency in $missingDependencies) {
@@ -788,7 +839,7 @@ foreach ($dependency in $missingDependencies) {
 }
 
 if ($missingDependencies.Count -gt 0 -and -not $DryRun) {
-    $versionResults = @(& $validateVersionsScript -MinimumSpecKitVersion $SpecKitVersion -MinimumSquadVersion $SquadVersion -PassThru)
+    $versionResults = @(Invoke-VersionValidation -ScriptPath $validateVersionsScript -MinimumSpecKitVersion $SpecKitVersion -MinimumSquadVersion $SquadVersion)
 }
 
 $specKitDetectedVersion = ($versionResults | Where-Object Platform -EQ 'Spec Kit' | Select-Object -First 1).Version

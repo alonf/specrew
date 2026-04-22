@@ -28,14 +28,15 @@
 
 | Phase | Started | In-Progress | Complete | Verdict |
 | ----- | ------- | ----------- | -------- | ------- |
-| Planning | ✅ 2026-04-19 | — | — | (awaiting retro) |
-| Execution | ✅ 2026-04-19 | V-R7-1, T-011 done; T-001–T-010, T-012–T-025 pending | (in progress) | (monitoring for drift) |
-| Reviewing | — | — | — | (pending completion) |
-| Retrospective | — | — | — | (pending completion) |
+| Planning | ✅ 2026-04-19 | — | ✅ plan.md | complete |
+| Executing | ✅ 2026-04-19 | T-001–T-010, T-012–T-025 | ✅ V-R7-1, T-011 | in progress |
+| Reviewing | — | — | — | pending completion |
+| Retrospective | — | — | — | pending completion |
 
 ## Notes
 
-- Status is **executing** because Iter 1a is in active execution with first tasks complete and remainder in queue.
+- Status is **executing** (Execution phase in-progress) because Iter 1a planning is complete and implementation tasks T-001–T-010, T-012–T-025 remain in queue.
+- Planning phase complete: V-R7-1 (detection spike) and T-011 (agent detection + consent) delivered 2.0 pts.
 - Task table in plan.md has V-R7-1, T-011 marked `done` with Agent/Actual/Verdict filled per contract.
-- Iteration remains on 20.5 pt Iter 1a baseline (2.0 pts delivered; 18.5 pts to go; 3.5 pts Iter 1b deferred post-gate).
+- Iteration remains on 20.5 pt Iter 1a baseline (2.0 pts delivered; 18.5 pts execution to go; 3.5 pts Iter 1b deferred post-gate).
 - No drift events detected in completed work. Drift-log.md will be created when drift occurs or at review gate.

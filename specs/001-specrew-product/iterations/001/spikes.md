@@ -67,36 +67,46 @@ Validate the shape and availability of Copilot / Agent HQ detection APIs before 
 
 ### Consent Prompt Format (Interactive)
 
+For each detected agent that is available, `specrew init` prompts the user individually:
+
 ```
-Specrew detected the following agents:
-
-  [✓] Copilot      - Always available
-  [ ] Claude       - Not available (check your subscription)
-  [✓] Codex        - Available
-
-Enable each agent for this iteration? (Enter comma-separated list: copilot,claude,codex or 'all')
+---
+Agent Name: Copilot
+Access Path: copilot_default
+Availability: available
+---
+Enable copilot for Specrew-managed delegation? (y/N)
 ```
 
 ### Non-Interactive Defaults
 
 - **`--agents=copilot`** (default): Enable Copilot only
-- **`--agents=copilot,claude,codex`** (explicit): Enable all detected agents
-- **`--no-agents`**: Run iteration with no agent detection (spec-only mode, no routing available)
-- **`--force`**: Accept auto-detected agents without prompting
+- **`--agents=copilot,claude`** or **`--agents=copilot,codex`** (explicit): Enable specified agents
+- **`--agents=all`**: Enable all detected agents
+- **`--no-agents`**: Disable all agents (spec-only mode, no delegation available)
+- **`--force`**: Accept requested agents without prompting
 
 ### Config Persistence Schema
 
-**File**: `iteration-config.yml` (per-iteration, in `.iterations/001/` directory)
+**File**: `.specrew/iteration-config.yml` (created at bootstrap in project root)
 
 ```yaml
+# >>> specrew-managed agents >>>
+# Specrew-managed agent consent and detection state (FR-022).
 agents:
-  enabled:
-    - copilot
-    - claude
-  disabled:
-    - codex
-  detected_at: 2026-04-19T10:30:00Z
-  consent_mode: interactive
+  copilot:
+    enabled: true
+    access_path: copilot_default
+    availability: available
+  claude:
+    enabled: false
+    access_path: copilot_agent_hq
+    availability: available
+  codex:
+    enabled: false
+    access_path: copilot_agent_hq
+    availability: unavailable
+# <<< specrew-managed agents <<<
 ```
 
 ### Graceful Degradation
