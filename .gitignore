@@ -8,3 +8,6 @@
 
 # Local backup leftovers should not be version-controlled
 *.backup
+
+# Reviewer-local validation workspace
+.worf-review/
