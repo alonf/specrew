@@ -299,3 +299,11 @@ I evaluate each task output against the source requirement and produce explicit 
    - ✅ Cross-agent history synchronized
    - **Status**: Session state updated
 
+
+📌 **T-005 Spec Kit Extension Deployment — ACCEPTED (2026-04-23)**:
+   - **Task**: T-005 revision completes MVP extension-deployment path
+   - **Review Verdict**: PASS (extension deployment script fully implements decision binding)
+   - **Decision Binding**: Three requirements recorded in decisions.md (prefer CLI API, fallback metadata, isolation flag)
+   - **Contract Compliance**: Task table marked done with 1.0 pts actual; no undocumented hooks (FR-013 verified)
+   - **Continuity**: T-005 closes successfully; T-006 (Squad runtime deployment) now unblocked
+   - **Iteration Progress**: 6.5/20.5 pts delivered; acceptance gate clear for T-006+ execution

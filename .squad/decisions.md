@@ -1466,3 +1466,44 @@ Iteration 001 bootstrap-init slice T-003/T-004 needed to stay narrow: initialize
 
 - `PSScriptAnalyzer` is not installed in this environment, so that validation path could not be run here.
 - Iteration plan/state artifacts were left unchanged pending Worf review of this slice.
+
+---
+
+### 2026-04-23: T-005 Extension Deployment Path and Isolation
+
+**By**: Data (Planner)  
+**Date**: 2026-04-23  
+**Scope**: Iteration 1 extension-deployment slice T-005 decision recording  
+**Outcome**: ACCEPTED
+
+#### Context
+
+T-005 (Spec Kit extension deployment) revision completes the MVP extension-deployment path for `specrew init`. The task establishes binding guidance for extension installation and introduces an isolation flag for reviewability.
+
+#### Decision
+
+1. **Prefer `specify extension add --dev`** for Specrew Spec Kit extension installation when the CLI exposes that command; this ensures forward-compatibility and avoids manual registration boilerplate.
+
+2. **Manual fallback registration** (`specify extension register`) remains available only as a fallback when `--dev` is unsupported; fallback registrations **must** include explicit `source` and `path` metadata so the installed-extension record stays contract-complete.
+
+3. **Spec Kit-extension-only path** (`specrew init -SpecKitExtensionOnly`) allows `specrew init` to run a narrower codepath that deploys only the Spec Kit extension and avoids Squad deployment and downstream governance scaffolding; this enables isolated testing and reviewability of extension deployment logic independent of Squad runtime initialization.
+
+#### Validation
+
+- `deploy-speckit-extension.ps1` implements `specify extension add --dev` path with graceful fallback to manual registration
+- Fallback registration in `specrew-init.ps1` includes source/path metadata per extension schema
+- `-SpecKitExtensionOnly` flag gates Squad and governance scaffolding, enabling narrow slice testability
+- No undocumented hooks used (FR-013 compliance verified)
+
+#### Rationale
+
+- Forward-compatibility: `specify extension add --dev` is the API direction; binding this preference prevents future rework
+- Isolation: Narrower testability paths reduce noise in the review cycle and enable targeted integration testing
+- Contractual completeness: Fallback registration metadata ensures extension records are auditable across installation modalities
+
+#### Notes
+
+- T-005 marked complete with 1.0 pts actual effort
+- Verdict: PASS (Worf acceptance verified)
+- Unblocks T-006 (Squad runtime deployment)
+- Iteration 1a: 6.5/20.5 pts delivered; 14.0 pts execution queued

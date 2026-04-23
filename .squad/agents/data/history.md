@@ -79,6 +79,16 @@ I turn Specrew's requirements into iteration plans, task maps, and explicit depe
 
 **Status**: Iteration 1 plan finalized and ready for execution. All corrections are clarifications to existing scope; no new tasks added, no scope reopened.
 
+📌 **T-005 Spec Kit Extension Deployment — ACCEPTED (2026-04-23)**:
+   - **Task**: T-005 revision completes MVP extension-deployment path
+   - **Decision**: Three binding requirements recorded in decisions.md
+     1. Prefer `specify extension add --dev` when CLI supports it
+     2. Manual fallback registration requires source/path metadata
+     3. `-SpecKitExtensionOnly` isolation flag enables narrow slice reviewability
+   - **Verdict**: PASS (Worf acceptance confirmed)
+   - **Continuity**: Unblocks T-006 (Squad runtime deployment)
+   - **Status**: Iteration 1a progress — 6.5/20.5 pts delivered; 14.0 pts execution queued
+
 **Cross-Agent Team Update** (2026-04-19):
 - **Worf (Reviewer)**: Reviewed corrected plan and issued PASS. Confirmed resume wording is aligned, board sync correctly treated as operational, effort estimates grounded in baseline. Plan cleared for planning ceremony.
 - **Scribe**: Orchestration logged; session documented; decisions merged into decisions.md.
