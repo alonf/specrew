@@ -10,6 +10,28 @@
 
 I evaluate each task output against the source requirement and produce explicit pass, needs-work, or blocked verdicts before work can advance.
 
+### Historical Summary (2026-04-17 – 2026-04-19)
+
+**Iteration 0 Lifecycle** (Apr 17-18):
+- Planning: 9 architecture spikes completed; spec-first discipline established
+- Execution: 23/23 tasks completed (20.5/20.5 pts exact); 0 drift events
+- Review: Governance validator implemented; closure audit identified artifact contract as binding enforcement mechanism
+- Retrospective: Autonomous phase on fixed schedule (decoupled from sign-off)
+- **Outcome**: Full lifecycle closure; iteration-artifacts.md contract now foundational for all future iterations
+
+**Iteration 1 Governance Gate** (Apr 18-19):
+- Initial review found plan.md contract violations; rejected until corrected
+- Picard fixed violations (Started metadata + T-022 Story reference)
+- Re-review confirmed fixes; PASS verdict recorded
+- Decision: All governance gates now automated + CI-integrated for future iterations
+
+**Governance Hardening Outcomes**:
+- Spec defines state machine (normative)
+- Contracts define artifacts and gates
+- Protocol defines roles and escalation
+- Validator enforces compliance at ceremony gates
+- Pattern now replicated for all future iterations
+
 ## Recent Updates
 
 📌 Team confirmed by Alon on 2026-04-17
@@ -46,56 +68,9 @@ I evaluate each task output against the source requirement and produce explicit 
    - Key result: T-024 locally ready pending commit/push
    - Note: drift-log.md must be included in the commit
 
-## Learnings
-
-- Review/demo is a formal ceremony in the Specrew lifecycle.
-- Reviewer rejection triggers strict lockout for the original author on that artifact revision.
-- Drift findings feed directly into the retrospective.
-- Alon is the human final reviewer when escalation is needed.
-- **2026-04-18 Iteration 0 Closure Audit**: The contract (iteration-artifacts.md) requires four phase-terminal artifacts to exist before iteration closure. Iteration 0 passed review (execution + review complete) but cannot close without state.md, drift-log.md, and retro.md. The artifact contract is not optional—it enforces phase sequencing in the governance model itself. Skipping retro phase would break Specrew's own spec-first discipline on the flagship iteration.
-- Plan metadata (Status, Capacity) must track phase progression; stale metadata masks phase incompleteness and gates.
-- **FR-022 Closeout Lesson**: Reviewer rejection triggers lockout for original author; different agent fixing the same defect provides confidence. Untracked proof artifacts block acceptance even when narrative content is correct.
-
 ---
 
-## Cross-Agent Team Update (2026-04-18T15:54:58Z)
-
-**Worf receives inputs from team**:
-
-- **Picard (Spec Steward)**: Governance hardening includes artifact contract enforcement. Worf's closure audit (critical blocker findings) demonstrates that artifact-completeness validation must run at ceremony gates, not post-facto. Picard is embedding contract validation into planning ceremony as spec-authority gate.
-
-- **Troi (Retro Facilitator)**: Operating hardening policy confirms Worf's finding that review verdict ≠ retro gate. Retro ceremony is autonomous phase on fixed schedule. Worf's role is limited to review verdict (task pass/needs-work/blocked); Troi starts retro on schedule regardless of Alon's acceptance decision.
-
-- **User Directive**: Iteration 0 must close correctly before Iteration 1 planning. Worf's audit is the gating artifact. Three missing closure artifacts (state.md, drift-log.md, retro.md) must be created; plan metadata must be updated.
-
-**Worf action items from team**:
-1. Artifact creation is assigned to La Forge or Picard (any non-Worf agent)
-2. Confirm with team that closure is Option 1 (strict: block Iter 1 planning) or Option 2 (pipelined: parallel retro + pre-planning)
-3. Alon makes final gate decision on sequencing
-4. Once artifacts created, Worf can validate closure completeness and sign off phase transition to Iteration 1 planning
-
----
-
-### 2026-04-18T18-50-28Z: Iteration 000 Closeout Session Update
-
-**Session**: Scribe Handoff Log — Iteration 000 Complete, Iteration 001 Planning-Ready  
-**Update**: Iteration 0 closure verdict FINAL PASS; Iteration 1 review checklist ready; gate enforcement operational
-
-**Key Facts**:
-- ✅ Iteration 0 final gate review PASSED (2026-04-18T16:50:48Z) — all three review criteria satisfied
-- ✅ Closure artifacts all present and schema-compliant (plan.md, state.md, review.md, retro.md, drift-log.md)
-- ✅ Governance validator: PASS — artifact compliance verified
-- ✅ Alon final sign-off officially recorded (2026-04-18T18:15:45Z) — Iteration 0 moved to `complete` status
-- ✅ No blocking issues remain for Iteration 1 planning
-- ✅ Governance hardening now BINDING — future iterations will have same automated phase gate validation
-
-**Role Note**: Reviewer role now has CI-integrated validator support. Future iterations will run governance validator at final gate automatically. Review verdicts feed directly into retrospective; retro is autonomous phase on fixed schedule (decoupled from sign-off per Troi's operating policy).
-
----
-
-## Learnings
-
-- **2026-04-18 Final Gate Review**: The governance validator script (`validate-governance.ps1`) is now a critical ceremony gate tool. Running it at final gate confirms all artifacts are present and schema-compliant. The script enforces phase-specific artifact requirements (e.g., retro.md required only at `complete` status).
+## Operational Notes
 - Governance hardening creates a closed loop: spec defines the state machine (normative), contracts define the artifacts and gates, protocol defines the roles and escalation, validator enforces compliance. All four must be coherent.
 - Final gate review should verify three things: (1) formal closure per lifecycle contract, (2) governance hardening implementation coherent, (3) no blocking issues for next phase. This is the pattern for future iteration closeouts.
 - Iteration 0 closure is the reference implementation of the lifecycle. Future iterations are measured against this baseline.
