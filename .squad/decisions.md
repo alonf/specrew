@@ -1430,3 +1430,39 @@ This contradiction violated temporal accuracy: review decisions must not claim d
 ## Decision
 
 FR-022 temporal claims corrected. Reviewer lockout trail and decision payloads intact. Ledger temporally durable as source of truth.
+
+---
+
+### 2026-04-19: Bootstrap Init — Greenfield Spec Adherence (T-003/T-004)
+
+**By**: La Forge (Implementer)  
+**Date**: 2026-04-19  
+**Scope**: Iteration 1 bootstrap-init slice T-003/T-004 narrowing  
+**Outcome**: RECORDED
+
+#### Context
+
+Iteration 001 bootstrap-init slice T-003/T-004 needed to stay narrow: initialize Spec Kit and Squad only on true greenfield bootstrap, preserve prior dry-run/dependency/agent-consent behavior, and keep brownfield workspaces safe.
+
+#### Decision
+
+1. `scripts\specrew-init.ps1` now treats `specify init` and `squad init` as greenfield-only steps.
+2. When `squad init --non-interactive` is unavailable, bootstrap uses a direct `.squad` scaffold fallback instead of invoking the interactive `squad init` flow in the target workspace.
+3. Brownfield workspaces with only one platform surface present skip the missing platform init and also skip downstream Spec Kit deployment when `.specify` is absent.
+
+#### Rationale
+
+- This matches the bootstrap contract: no re-init on brownfield, and no interactive Squad mutation when the CLI lacks a non-interactive flag.
+- Skipping Spec Kit deployment when `.specify` is absent in brownfield prevents the narrower T-003/T-004 fix from turning into a failure later in the bootstrap.
+
+#### Validation
+
+- `powershell -NoProfile -ExecutionPolicy Bypass -File .\extensions\specrew-speckit\scripts\validate-governance.ps1 -ProjectPath .` → PASS for iterations 000/001/002
+- `powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\specrew-init.ps1 --dry-run --force --no-agents --project-path <fresh-dir>` → dry-run shows `specify init` plus `.squad` fallback scaffold
+- `powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\specrew-init.ps1 --force --no-agents --project-path <fresh-dir>` → live smoke completed with `initialized .specify` and `initialized .squad via fallback scaffold`
+- `powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\specrew-init.ps1 --dry-run --force --no-agents --project-path <brownfield-dir-with-.squad-only>` → skips missing `.specify` init and preserves existing `.squad`
+
+#### Notes
+
+- `PSScriptAnalyzer` is not installed in this environment, so that validation path could not be run here.
+- Iteration plan/state artifacts were left unchanged pending Worf review of this slice.
