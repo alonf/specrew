@@ -31,9 +31,10 @@ On every push that changes iteration artifacts, the workflow:
 
 1. Creates or updates one **lifecycle issue** per active iteration
 2. Creates or updates one **task issue** per task row in `plan.md`
-3. Adds synchronized issues to GitHub Project `alonf/10`
-4. Updates the board **Status** field from authoritative local state
-5. Closes mirrored issues when the local artifacts reach terminal completion
+3. Re-runs when `drift-log.md` changes so lifecycle mirrors stay aligned to authoritative drift evidence
+4. Adds synchronized issues to GitHub Project `alonf/10`
+5. Updates the board **Status** field from authoritative local state
+6. Closes mirrored issues when the local artifacts reach terminal completion
 
 ### Status mapping
 
@@ -52,7 +53,7 @@ Task issues stay aligned to task-table status and review verdicts, while the lif
 You can run the same sync locally with a GitHub-authenticated CLI session:
 
 ```powershell
-pwsh -File .\github\scripts\sync-specrew-board.ps1 -Repository alonf/specrew -ProjectOwner alonf -ProjectNumber 10
+pwsh -File .\.github\scripts\sync-specrew-board.ps1 -Repository alonf/specrew -ProjectOwner alonf -ProjectNumber 10
 ```
 
 ## Capability Status

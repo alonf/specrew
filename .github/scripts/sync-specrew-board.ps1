@@ -129,6 +129,62 @@ function Normalize-Token {
     return $Value.Trim().ToLowerInvariant()
 }
 
+function Get-RelativeDisplayPath {
+    param(
+        [string]$RootPath,
+        [string]$Path
+    )
+
+    if ([string]::IsNullOrWhiteSpace($Path)) {
+        return ''
+    }
+
+    return ([System.IO.Path]::GetRelativePath($RootPath, $Path) -replace '[\\/]+', '/')
+}
+
+function Get-PathSegments {
+    param([string]$Path)
+
+    if ([string]::IsNullOrWhiteSpace($Path)) {
+        return @()
+    }
+
+    return @(
+        ($Path -split '[\\/]+') |
+            Where-Object { -not [string]::IsNullOrWhiteSpace($_) }
+    )
+}
+
+function Format-InlineCode {
+    param([string]$Value)
+
+    if ([string]::IsNullOrWhiteSpace($Value)) {
+        return 'not found'
+    }
+
+    $backtick = [string][char]96
+    return "$backtick$Value$backtick"
+}
+
+function Get-StateInProgressTasks {
+    param([hashtable]$StateMetadata)
+
+    $inProgress = @{}
+    $value = $StateMetadata['In Progress']
+    if ([string]::IsNullOrWhiteSpace($value)) {
+        return $inProgress
+    }
+
+    foreach ($token in ($value -split '[,;]')) {
+        $normalized = Normalize-Token $token
+        if ($normalized -and $normalized -notin @('(none)', 'none', '-', 'n/a')) {
+            $inProgress[$normalized] = $true
+        }
+    }
+
+    return $inProgress
+}
+
 function Get-IterationProjectStatus {
     param([string]$Phase)
 
@@ -332,6 +388,7 @@ function New-LifecycleBody {
         [string]$FeatureSlug,
         [string]$IterationId,
         [string]$PlanPath,
+        [string]$DriftLogPath,
         [hashtable]$PlanMetadata,
         [string]$StatePath,
         [hashtable]$StateMetadata,
@@ -341,9 +398,11 @@ function New-LifecycleBody {
         [hashtable]$RetroMetadata
     )
 
-    $stateDisplay = if ($StatePath) { '`' + $StatePath + '`' } else { 'not found' }
-    $reviewDisplay = if ($ReviewPath) { '`' + $ReviewPath + '`' } else { 'not found' }
-    $retroDisplay = if ($RetroPath) { '`' + $RetroPath + '`' } else { 'not found' }
+    $planDisplay = Format-InlineCode -Value $PlanPath
+    $driftLogDisplay = Format-InlineCode -Value $DriftLogPath
+    $stateDisplay = Format-InlineCode -Value $StatePath
+    $reviewDisplay = Format-InlineCode -Value $ReviewPath
+    $retroDisplay = Format-InlineCode -Value $RetroPath
 
     @"
 <!-- specrew-sync:key=$IdentityKey -->
@@ -351,7 +410,8 @@ function New-LifecycleBody {
 
 ## Source Artifacts
 
-- Plan: `$PlanPath`
+- Plan: $planDisplay
+- Drift Log: $driftLogDisplay
 - State: $stateDisplay
 - Review: $reviewDisplay
 - Retro: $retroDisplay
@@ -385,16 +445,21 @@ function New-TaskBody {
         [string]$ReviewVerdict
     )
 
+    $planDisplay = Format-InlineCode -Value $PlanPath
+    $featureDisplay = Format-InlineCode -Value $FeatureSlug
+    $iterationDisplay = Format-InlineCode -Value $IterationId
+    $phaseDisplay = Format-InlineCode -Value $PlanPhase
+
     @"
 <!-- specrew-sync:key=$IdentityKey -->
 > This issue is synchronized from local iteration artifacts. Update the source files, not this issue, to change authoritative state.
 
 ## Source
 
-- Plan: `$PlanPath`
-- Feature: `$FeatureSlug`
-- Iteration: `$IterationId`
-- Iteration phase: `$PlanPhase`
+- Plan: $planDisplay
+- Feature: $featureDisplay
+- Iteration: $iterationDisplay
+- Iteration phase: $phaseDisplay
 
 ## Task Summary
 
@@ -515,13 +580,16 @@ query($login: String!, $number: Int!) {
     }
 
     $planFiles = Get-ChildItem -Path (Join-Path $resolvedRoot 'specs') -Filter 'plan.md' -Recurse -File |
-        Where-Object { $_.FullName -match [regex]::Escape('\iterations\') }
+        Where-Object { $_.FullName -match '[\\/]iterations[\\/]' }
 
     $syncedCount = 0
 
     foreach ($planFile in $planFiles | Sort-Object FullName) {
-        $relativePlanPath = $planFile.FullName.Substring($resolvedRoot.Length).TrimStart('\')
-        $segments = $relativePlanPath -split '\\'
+        $relativePlanPath = Get-RelativeDisplayPath -RootPath $resolvedRoot -Path $planFile.FullName
+        $segments = @(Get-PathSegments -Path $relativePlanPath)
+        if ($segments.Count -lt 5) {
+            throw "Unexpected iteration plan path layout: $relativePlanPath"
+        }
         $featureSlug = $segments[1]
         $iterationId = $segments[3]
 
@@ -536,6 +604,7 @@ query($login: String!, $number: Int!) {
         }
 
         $statePath = Join-Path $planFile.Directory.FullName 'state.md'
+        $driftLogPath = Join-Path $planFile.Directory.FullName 'drift-log.md'
         $reviewPath = Join-Path $planFile.Directory.FullName 'review.md'
         $retroPath = Join-Path $planFile.Directory.FullName 'retro.md'
 
@@ -558,12 +627,13 @@ query($login: String!, $number: Int!) {
             -FeatureSlug $featureSlug `
             -IterationId $iterationId `
             -PlanPath $relativePlanPath `
+            -DriftLogPath $(if (Test-Path $driftLogPath) { Get-RelativeDisplayPath -RootPath $resolvedRoot -Path $driftLogPath } else { '' }) `
             -PlanMetadata $planMetadata `
-            -StatePath $(if (Test-Path $statePath) { $statePath.Substring($resolvedRoot.Length).TrimStart('\') } else { '' }) `
+            -StatePath $(if (Test-Path $statePath) { Get-RelativeDisplayPath -RootPath $resolvedRoot -Path $statePath } else { '' }) `
             -StateMetadata $stateMetadata `
-            -ReviewPath $(if (Test-Path $reviewPath) { $reviewPath.Substring($resolvedRoot.Length).TrimStart('\') } else { '' }) `
+            -ReviewPath $(if (Test-Path $reviewPath) { Get-RelativeDisplayPath -RootPath $resolvedRoot -Path $reviewPath } else { '' }) `
             -ReviewMetadata $reviewMetadata `
-            -RetroPath $(if (Test-Path $retroPath) { $retroPath.Substring($resolvedRoot.Length).TrimStart('\') } else { '' }) `
+            -RetroPath $(if (Test-Path $retroPath) { Get-RelativeDisplayPath -RootPath $resolvedRoot -Path $retroPath } else { '' }) `
             -RetroMetadata $retroMetadata
 
         $lifecycleProjectStatus = Get-IterationProjectStatus -Phase $planPhase
@@ -580,6 +650,7 @@ query($login: String!, $number: Int!) {
         $syncedCount++
 
         $taskRows = Get-MarkdownTableRows -Lines $planLines -RequiredHeaders @('Task', 'Title', 'Requirement', 'Story', 'Effort', 'Owner', 'Status', 'Agent', 'Actual', 'Verdict')
+        $inProgressTasks = Get-StateInProgressTasks -StateMetadata $stateMetadata
         $reviewRows = @()
         if (Test-Path $reviewPath) {
             $reviewRows = Get-MarkdownTableRows -Lines (Get-Content -Path $reviewPath) -RequiredHeaders @('Task', 'Requirement', 'Verdict', 'Notes')
@@ -593,7 +664,8 @@ query($login: String!, $number: Int!) {
         foreach ($task in $taskRows) {
             $taskKey = "${featureSlug}:${iterationId}:task:$($task.Task)"
             $reviewVerdict = if ($reviewVerdictsByTask.ContainsKey($task.Task)) { $reviewVerdictsByTask[$task.Task] } else { '' }
-            $taskProjectStatus = Get-TaskProjectStatus -TaskStatus $task.Status -PlanPhase $planPhase -Verdict $reviewVerdict
+            $effectiveTaskStatus = if ($inProgressTasks.ContainsKey((Normalize-Token $task.Task))) { 'in progress' } else { $task.Status }
+            $taskProjectStatus = Get-TaskProjectStatus -TaskStatus $effectiveTaskStatus -PlanPhase $planPhase -Verdict $reviewVerdict
             $taskDesiredState = Get-IssueState -ProjectStatus $taskProjectStatus -CloseWhenDone:($taskProjectStatus -eq 'Done')
             $taskTitle = "[$featureSlug][Iteration $iterationId][$($task.Task)] $($task.Title)"
             $taskBody = New-TaskBody -IdentityKey $taskKey `

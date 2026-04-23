@@ -8,6 +8,7 @@ on:
       - '.github/workflows/specrew-project-sync.yml'
       - 'specs/**/iterations/**/plan.md'
       - 'specs/**/iterations/**/state.md'
+      - 'specs/**/iterations/**/drift-log.md'
       - 'specs/**/iterations/**/review.md'
       - 'specs/**/iterations/**/retro.md'
       - 'docs/github-project.md'
