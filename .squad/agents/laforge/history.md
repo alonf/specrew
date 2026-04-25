@@ -268,3 +268,14 @@ Extended `validate-governance.ps1` to detect stale embedded plan-evidence claims
    - ✅ Inbox cleaned; all files deleted
    - ✅ Cross-agent history updates (La Forge, Worf, Picard)
    - **Status**: Session state synchronized; ready for git commit
+
+📌 **T-006 Squad Skill Deployment — ACCEPTED (2026-04-25T11:52:30Z)**:
+    - **Task**: T-006 completion closes Squad skill deployment path in `specrew init`
+    - **Implementation**: `specrew-init.ps1` and `deploy-squad-runtime.ps1` updated
+    - **Scope**: Only active Specrew skills deployed to `.copilot\skills\specrew-*\SKILL.md`
+    - **Deferral**: `iteration-resume` stub preserved (deferred to future iteration)
+    - **No Bleed**: Ceremonies, role merge, governance scaffolding deferred to T-007–T-009
+    - **Review Verdict**: PASS (Worf accepted; all acceptance criteria met)
+    - **Impact**: Unblocks T-007 (Squad ceremonies) and T-012–T-019 (directives + ceremonies + artifact storage)
+    - **Iteration Progress**: 7.5/20.5 pts delivered; MVP slice cohesion verified
+    - **Next**: T-007 Squad ceremonies implementation
