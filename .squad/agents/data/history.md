@@ -357,3 +357,12 @@ Created execution-ready iteration plan for Iteration 001 at `specs/001-specrew-p
    - ✅ Phase status: Planning → complete; Executing → in_progress; explicit task queue snapshot
    - ✅ Worf re-review: state.md + spikes.md against contract baseline (iteration-artifacts.md pattern)
    - ✅ Verdict: PASS — all state artifacts schema-compliant; no contract gaps; execution continuity traceable
+
+---
+
+📌 **Plan Corrections Validated in Remediation Review (2026-04-25T17:10:13Z)**:
+   - ✅ Carryover representation complete (T-024, T-025 explicitly added)
+   - ✅ Capacity math validated (total 23.5 pts, Iter 1a 20.0 pts, Iter 1b 3.5 pts)
+   - ✅ Task table normalized to contract-aligned format
+   - ✅ State.md artifact aligned with closure evidence tables
+   - **Status**: Plan corrections accepted; remediation audit PASS

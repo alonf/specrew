@@ -585,3 +585,12 @@ All three contradicted the corrected rule: **Specrew self-development MUST use G
    - ✅ 9 inbox decisions consolidated into decisions.md
    - ✅ Cross-agent history synchronized
    - **Status**: Session state updated
+
+---
+
+📌 **Remediation Acceptance Review Complete (2026-04-25T17:10:13Z)**:
+   - ✅ T-006 Squad skills deployment implementation reviewed and accepted
+   - ✅ Iteration 1 plan corrections verified (carryover representation, capacity math, task normalization)
+   - ✅ All remediation defects closed (T-007, T-008, T-009 remain recorded done)
+   - ✅ Preferred agent scope discussion deferred to Iteration 2
+   - **Status**: Remediation accepted; ready for delivery

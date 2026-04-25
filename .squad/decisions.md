@@ -1507,3 +1507,41 @@ T-005 (Spec Kit extension deployment) revision completes the MVP extension-deplo
 - Verdict: PASS (Worf acceptance verified)
 - Unblocks T-006 (Squad runtime deployment)
 - Iteration 1a: 6.5/20.5 pts delivered; 14.0 pts execution queued
+
+---
+
+### 2026-04-25: T-006 Squad Skills Deployment — Review Remediation Acceptance
+
+**By**: Picard (Spec Steward), Worf (Review Steward)  
+**Date**: 2026-04-25  
+**Task**: T-006 — `specrew init`: Deploy Squad skills  
+**Verdict**: PASS  
+**Execution Ready**: Yes
+
+#### Implementation Summary
+
+La Forge scoped `scripts\specrew-init.ps1` to accepted bootstrap slices plus T-006:
+
+- Removed downstream governance scaffolding (deferred to T-007–T-009)
+- Preserved FR-022 managed `iteration-config.yml` agent block
+- Called Squad deploy helper only for skill deployment
+- Narrowed `extensions\specrew-speckit\scripts\deploy-squad-runtime.ps1` to deploy active skill templates into `.copilot\skills\specrew-*\SKILL.md`
+- Preserved deferred `iteration-resume.md` skill stub as source-only
+
+#### Validation
+
+✅ Focused PowerShell script analysis on touched bootstrap scripts  
+✅ Dry-run of `specrew init` against scratch workspace  
+✅ Actual deploy helper smoke test verified only `.copilot\skills\specrew-*` created  
+✅ No upstream task dependencies violated  
+
+#### Rationale
+
+Narrow increment isolates skill deployment from ceremonies and governance scaffolding, maintaining clear reviewer evidence and preventing unaccepted task closure.
+
+#### Notes
+
+- T-006 marked complete with effort on target
+- Verdict: PASS (Picard acceptance verified; Worf review closure accepted)
+- Unblocks T-007 (ceremonies), T-008 (role merge), T-009 (governance scaffolding)
+- Iteration 1a: Delivery complete and accepted

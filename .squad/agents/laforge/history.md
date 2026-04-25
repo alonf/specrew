@@ -279,3 +279,12 @@ Extended `validate-governance.ps1` to detect stale embedded plan-evidence claims
     - **Impact**: Unblocks T-007 (Squad ceremonies) and T-012–T-019 (directives + ceremonies + artifact storage)
     - **Iteration Progress**: 7.5/20.5 pts delivered; MVP slice cohesion verified
     - **Next**: T-007 Squad ceremonies implementation
+
+---
+
+📌 **T-006 Implementation Accepted (2026-04-25T17:10:13Z)**:
+   - ✅ Squad skills deployment scoped to narrow increment (T-006 only)
+   - ✅ Deferred ceremonies and governance scaffolding to T-007–T-009
+   - ✅ Narrowed deploy scripts to skill templates only
+   - ✅ Picard and Worf review PASS verdict recorded
+   - **Status**: T-006 complete; Iteration 1a delivery ready
