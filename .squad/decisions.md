@@ -1696,3 +1696,50 @@ Narrow increment isolates skill deployment from ceremonies and governance scaffo
 - Verdict: PASS (Picard acceptance verified; Worf review closure accepted)
 - Unblocks T-007 (ceremonies), T-008 (role merge), T-009 (governance scaffolding)
 - Iteration 1a: Delivery complete and accepted
+
+---
+
+### 2026-05-03: FR-020 Brownfield Bootstrap Safety Review — NEEDS-WORK
+
+**By**: Worf (Reviewer)  
+**Date**: 2026-05-03  
+**Scope**: T-205 / T-206 against FR-020 brownfield bootstrap safety  
+**Verdict**: NEEDS-WORK  
+**Revision Author**: Data (next)  
+**Lockout**: La Forge locked out for this revision cycle
+
+#### Rejected Artifacts
+
+1. `scripts\specrew-init.ps1`
+2. `extensions\specrew-speckit\scripts\brownfield-merge.ps1`
+3. `extensions\specrew-speckit\scripts\deploy-squad-runtime.ps1`
+4. `docs\user-guide.md`
+
+#### Rejection Rationale
+
+**1. Conflicts are detected but not enforced**
+
+`scripts\specrew-init.ps1` prints brownfield conflicts at lines 1239-1245, records a summary action, and then continues into dependency validation and runtime deployment instead of forcing a conflict decision path. Fails FR-020 / US-1 requirement to identify the collision and ask the user how to proceed before mutating a brownfield workspace.
+
+**2. Existing user charters can still be silently modified after a reported conflict**
+
+`extensions\specrew-speckit\scripts\deploy-squad-runtime.ps1` appends a Specrew-managed block whenever a target file lacks one (247-257) and applies that behavior to every baseline charter (371-382). Because `specrew-init.ps1` does not stop on conflicts, a brownfield project with an existing `Implementer` or `Reviewer` charter can still be mutated automatically after the conflict is merely printed.
+
+**3. Dry-run is not reviewable enough**
+
+Picard's guardrails for T-206 require a `.specrew/bootstrap-dry-run-{timestamp}.md` safety report. The current implementation ends dry-run with a console summary only (`scripts\specrew-init.ps1:1455-1460`), and no persistent dry-run artifact path exists in the reviewed scripts. That leaves no durable evidence file for review/demo or handoff.
+
+**4. Tests do not cover the blocking behavior that matters**
+
+`tests\integration\brownfield-merge.ps1` validates `brownfield-merge.ps1` in isolation and confirms detection status, but never exercises the full `specrew-init.ps1` path where conflicts must block or prompt. Current CI/test docs do not include this integration script in the standard run list.
+
+#### Constraints for Next Revision Author
+
+- The next revision author must be someone other than La Forge
+- Keep the fix narrow to FR-020 / T-205 / T-206. Do not expand into FR-012, FR-016, or unrelated bootstrap work
+- Add a mandatory conflict-resolution gate in `specrew-init.ps1`: conflict paths must block or explicitly prompt before any runtime/governance write step. `-Force` may skip consent/confirmation, but it must not suppress conflict handling
+- Ensure the deployment path respects the conflict decision. A reported role/charter conflict must not flow into automatic charter mutation
+- Produce a persistent dry-run artifact under `.specrew\bootstrap-dry-run-{timestamp}.md` that captures preserved items, mergeable items, conflicts, warnings, and planned actions
+- Update user-facing documentation and automated coverage so the accepted behavior is both described and exercised through the full bootstrap entrypoint
+
+**Decision**: Rejection is binding. Next revision author (Data) must address all four blockers within narrow scope. Orchestration log and handoff recorded.

@@ -12,6 +12,15 @@ I turn Specrew's requirements into iteration plans, task maps, and explicit depe
 
 ## Recent Updates
 
+📌 **FR-020 Brownfield Bootstrap Review — NEEDS-WORK (2026-05-03)**:
+   - Verdict: NEEDS-WORK (Worf); rejection binding
+   - Rejected artifacts: `scripts\specrew-init.ps1`, `extensions\specrew-speckit\scripts\brownfield-merge.ps1`, `extensions\specrew-speckit\scripts\deploy-squad-runtime.ps1`, `docs\user-guide.md`
+   - Blockers: Conflicts detected but not enforced; charter mutations silent; dry-run not reviewable; test coverage gap
+   - **Data reassigned as revision author** for narrow FR-020 rework
+   - Constraint: La Forge locked out for this revision cycle
+   - Actions: Add conflict-resolution gate; protect charter mutation; produce persistent dry-run artifact; expand test coverage
+   - Status: Orchestration logged; handoff complete
+
 📌 Team confirmed by Alon on 2026-04-17
 
 📌 **Iteration 1 plan traceability corrections complete (2026-04-19)**:

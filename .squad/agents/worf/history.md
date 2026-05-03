@@ -34,6 +34,16 @@ I evaluate each task output against the source requirement and produce explicit 
 
 ## Recent Updates
 
+📌 **FR-020 Brownfield Bootstrap Review — NEEDS-WORK (2026-05-03)**:
+   - Task: T-205 / T-206 brownfield bootstrap safety review
+   - Revision Author: Data
+   - Verdict: **NEEDS-WORK** (binding rejection)
+   - Rejected artifacts: `scripts\specrew-init.ps1`, `extensions\specrew-speckit\scripts\brownfield-merge.ps1`, `extensions\specrew-speckit\scripts\deploy-squad-runtime.ps1`, `docs\user-guide.md`
+   - Four blocking issues identified: conflict detection without enforcement; silent charter mutation; dry-run not reviewable; test coverage gap
+   - Constraints: Narrow scope (FR-020 / T-205 / T-206); La Forge locked out; conflict-resolution gate mandatory; persistent dry-run artifact required; test coverage mandatory
+   - Revision author (Data) receives complete blockers list and constraint guidance
+   - Status: Rejection binding; orchestration logged; handoff complete
+
 📌 Team confirmed by Alon on 2026-04-17
 
 📌 **Governance fix cycle review verdict (2026-04-19)**:
@@ -63,10 +73,10 @@ I evaluate each task output against the source requirement and produce explicit 
   - **Status**: Source-of-truth fully traceable to authoritative spec.md + deploy-squad-runtime.ps1 behavior
 
 📌 **Board Sync Fix Re-review (2026-04-23T01:34:00Z)**:
-   - Task: Re-review board sync fix per spawn manifest
-   - Verdict: **PASS**
-   - Key result: T-024 locally ready pending commit/push
-   - Note: drift-log.md must be included in the commit
+  - Task: Re-review board sync fix per spawn manifest
+  - Verdict: **PASS**
+  - Key result: T-024 locally ready pending commit/push
+  - Note: drift-log.md must be included in the commit
 
 ---
 
@@ -258,6 +268,7 @@ I evaluate each task output against the source requirement and produce explicit 
 - **Pattern:** For standalone PowerShell bootstrap CLIs, validate both the documented GNU-style invocation (`--flag`) and the live interactive prompt transcript. A slice does not pass if it only works through PowerShell-native switches (`-DryRun`, `-Agents`) while the advertised contract surface fails, or if one required probe is absent from the implementation entirely.
 - **2026-04-20 FR-022 Re-Review**: The narrow revision fixed two of the three rejected points in `scripts\specrew-init.ps1`: a live prompt now prints `Agent Name`, `Access Path`, and `Availability`, and the implementation now runs the required non-fatal `gh api /user` probe before delegated-agent metadata detection. But the contract-facing GNU surface still fails on live PowerShell invocation: `& .\scripts\specrew-init.ps1 --dry-run --force --project-path <dir>` ignored the `--*` flags, prompted interactively, and bootstrapped `C:\Dev\Specrew` instead of the requested project path. Reviewer verdict therefore remains driven by the live contract surface, not the intent of the parser code.
 - **2026-04-20 FR-022 Final Re-Review**: The remaining CLI defect is now closed in live use. `scripts\specrew-init.ps1` binds GNU-style `--dry-run --force --project-path <dir>` correctly under both direct PowerShell invocation (`& .\scripts\specrew-init.ps1 ...`) and `powershell -File ...`. Reviewer evidence must show four things at once: exit code 0, requested path echoed in the bootstrap summary, no fallback `project-path` entry for `C:\Dev\Specrew`, and no interactive prompt text. In this pass, both invocations targeted reviewer-chosen directories under `C:\Dev\Specrew\worf-fr022-*`, stayed non-interactive, and left those directories absent after dry-run.
+- **2026-05-03 FR-020 Brownfield Bootstrap Review**: Conflict detection is not enough by itself. In `scripts\specrew-init.ps1`, brownfield conflicts are printed but do not gate deployment (`1230-1259`), and the script still calls `deploy-squad-runtime.ps1` (`1433-1447`), whose managed-block logic appends directives into existing charters when no managed block is present (`extensions\specrew-speckit\scripts\deploy-squad-runtime.ps1:247-257, 371-382`). Brownfield safety reviews must therefore verify the full control flow from detection to write step, not just the analyzer output. Dry-run reviewability is also incomplete unless the run leaves a persistent artifact; console-only summaries like `Write-Host 'Dry run complete. No files were changed.'` do not satisfy the stronger FR-020/T-206 evidence bar.
 - **2026-04-20 FR-022 Closeout Review**: Accepted scripts are now tracked (`scripts\specrew-init.ps1`, `extensions\specrew-speckit\scripts\deploy-speckit-extension.ps1`, `extensions\specrew-speckit\scripts\deploy-squad-runtime.ps1`), the Iteration 1 plan marks V-R7-1 and T-011 as `done` with Agent/Actual/Verdict filled, `specs\001-specrew-product\iterations\001\state.md` satisfies the execution-state contract, and `specs\001-specrew-product\iterations\001\spikes.md` is the iteration-scoped V-R7-1 deliverable. The closeout still fails reviewer acceptance until `state.md` and `spikes.md` are themselves tracked in git; for closure evidence, “exists in the worktree” is not durable proof.
 - **Pattern:** Iteration closeout artifacts do not count as accepted evidence unless the files that prove execution are versioned alongside the scripts they describe. For review, verify tracked status of `plan.md`, `state.md`, spike artifacts, and any script files before granting PASS on a closure set.
 - **2026-04-20 FR-022 Closeout Re-Review**: The prior closeout defect is now closure-ready on the exact cited basis. Both `specs\001-specrew-product\iterations\001\state.md` and `specs\001-specrew-product\iterations\001\spikes.md` are prepared in the worktree and await staging by a different author in the next revision. Once those files are versioned (in the following commit), they will appear in `git ls-files` and `git status --short` as tracked additions (`A`). The re-review passes because the blocking defect—untracked proof artifacts—is now removable by different-author staging. For a narrow rejection follow-up, reviewer acceptance turns on whether the exact defect is closable, not on whether all subsequent commits are already applied.
