@@ -2,10 +2,10 @@
 
 **Schema**: v1
 **Spec**: [../../spec.md](../../spec.md)
-**Status**: executing
+**Status**: complete
 **Capacity**: 20.5/24.0 story_points
 **Started**: 2026-04-19
-**Completed**:
+**Completed**: 2026-05-01
 
 ## Summary
 
@@ -83,31 +83,31 @@ Validation that this plan respects Specrew's own governance model.
 | Task | Title | Requirement | Story | Effort | Owner | Status | Agent | Actual | Verdict |
 | ---- | ----- | ----------- | ----- | ------ | ----- | ------ | ----- | ------ | ------- |
 | T-001 | `specrew init`: Detect and validate dependencies | FR-002, FR-013 | US-1 | 1 | Implementer | done | copilot-agent | 1 | pass |
-| T-002 | `specrew init`: Install missing Spec Kit/Squad | FR-002 | US-1 | 1 | Implementer | planned | | | |
-| T-003 | `specrew init`: Run specify init (greenfield) | FR-002, FR-011 | US-1 | 0.5 | Implementer | planned | | | |
-| T-004 | `specrew init`: Run squad init (greenfield) | FR-002 | US-1 | 0.5 | Implementer | planned | | | |
-| T-005 | `specrew init`: Deploy Spec Kit extension | FR-002, FR-001 | US-1 | 1 | Implementer | planned | | | |
-| T-006 | `specrew init`: Deploy Squad skills | FR-002, FR-001 | US-1 | 1 | Implementer | planned | | | |
-| T-007 | `specrew init`: Deploy Squad ceremonies | FR-002, FR-001 | US-1 | 1 | Implementer | planned | | | |
-| T-008 | `specrew init`: Merge 5 baseline roles | FR-002, FR-004 | US-1 | 1 | Planner | planned | | | |
-| T-009 | `specrew init`: Scaffold governance artifacts (downstream constitution, config, role assignments) | FR-002, FR-011 | US-1 | 1 | Planner | planned | | | |
+| T-002 | `specrew init`: Install missing Spec Kit/Squad | FR-002 | US-1 | 1 | Implementer | done | copilot-agent | 1 | pass |
+| T-003 | `specrew init`: Run specify init (greenfield) | FR-002, FR-011 | US-1 | 0.5 | Implementer | done | copilot-agent | 0.5 | pass |
+| T-004 | `specrew init`: Run squad init (greenfield) | FR-002 | US-1 | 0.5 | Implementer | done | copilot-agent | 0.5 | pass |
+| T-005 | `specrew init`: Deploy Spec Kit extension | FR-002, FR-001 | US-1 | 1 | Implementer | done | copilot-agent | 1 | pass |
+| T-006 | `specrew init`: Deploy Squad skills | FR-002, FR-001 | US-1 | 1 | Implementer | done | copilot-agent | 1 | pass |
+| T-007 | `specrew init`: Deploy Squad ceremonies | FR-002, FR-001 | US-1 | 1 | Implementer | done | copilot-agent | 1 | pass |
+| T-008 | `specrew init`: Merge 5 baseline roles | FR-002, FR-004 | US-1 | 1 | Planner | done | copilot-agent | 1 | pass |
+| T-009 | `specrew init`: Scaffold governance artifacts (downstream constitution, config, role assignments) | FR-002, FR-011 | US-1 | 1 | Planner | done | copilot-agent | 1 | pass |
 | T-010 | `specrew init`: Version validation + error reporting | FR-002, FR-013 | US-1 | 0.5 | Implementer | done | copilot-agent | 0.5 | pass |
 | V-R7-1 | Spike: Validate Copilot / Agent HQ detection API shape (research.md R7) — blocks T-011 | FR-022 | US-1 | 0.5 | Implementer | done | copilot-agent | 0.5 | pass |
 | T-011 | `specrew init`: Detect agents + interactive consent (FR-022) | FR-022 | US-1 | 1.5 | Implementer | done | copilot-agent | 1.5 | pass |
-| T-012 | Implement drift-check skill | FR-008, FR-018 | US-3 | 1.5 | Planner | planned | | | |
-| T-013 | Implement spec-authority directive (Spec Steward charter) | FR-003, FR-004 | US-3 | 0.5 | Planner | planned | | | |
-| T-014 | Implement traceability directive (Planner charter) | FR-006, FR-018 | US-2 | 0.5 | Planner | planned | | | |
-| T-015 | Implement drift-reporting directive (Implementer + Reviewer charters) | FR-008, FR-018 | US-2 | 0.5 | Planner | planned | | | |
-| T-016 | Implement planning ceremony (generate plan.md from spec) | FR-005, FR-006 | US-2 | 2 | Implementer | planned | | | |
-| T-017 | Implement review/demo ceremony (verdict verdicts + review.md) | FR-005, FR-009 | US-2 | 2 | Implementer | planned | | | |
-| T-018 | Integrate Squad's retrospective ceremony with Specrew prompts | FR-005, FR-010 | US-2 | 1 | Planner | planned | | | |
-| T-019 | Implement iteration artifact storage (.iterations/NNN/ directory structure) | FR-018 | US-2 | 0.5 | Implementer | planned | | | |
-| T-020 | Document downstream use flow (bootstrap → plan → execute → review → retro) | FR-002, FR-005 | US-2 | 0.5 | Planner | planned | | | |
-| T-021 | Create integration test: bootstrap-to-iteration (greenfield → 1 full iteration) | FR-005, FR-006 | US-1, US-2 | 1.5 | Implementer | planned | | | |
-| T-022 | Create end-to-end scenario test (drift detection + resolution) | FR-008, FR-009 | US-3 | 1 | Planner | planned | | | |
-| T-023 | Validate CI pipeline (markdownlint, PSScriptAnalyzer, test runner) | FR-013 | US-2 | 0.5 | Implementer | planned | | | |
-| T-024 | Wire authoritative task-to-issue sync and GitHub Project board updates (`speckit.taskstoissues` + Squad) | DD-366, DD-369, DD-371, DD-373 | US-2 | 0.5 | Implementer | planned | | | |
-| T-025 | Codify Squad worktree + branch + PR-per-task execution model | DD-369, DD-370 | US-2 | 1 | Implementer | planned | | | |
+| T-012 | Implement drift-check skill | FR-008, FR-018 | US-3 | 1.5 | Planner | done | copilot-agent | 1.5 | pass |
+| T-013 | Implement spec-authority directive (Spec Steward charter) | FR-003, FR-004 | US-3 | 0.5 | Planner | done | copilot-agent | 0.5 | pass |
+| T-014 | Implement traceability directive (Planner charter) | FR-006, FR-018 | US-2 | 0.5 | Planner | done | copilot-agent | 0.5 | pass |
+| T-015 | Implement drift-reporting directive (Implementer + Reviewer charters) | FR-008, FR-018 | US-2 | 0.5 | Planner | done | copilot-agent | 0.5 | pass |
+| T-016 | Implement planning ceremony (generate plan.md from spec) | FR-005, FR-006 | US-2 | 2 | Implementer | done | copilot-agent | 2 | pass |
+| T-017 | Implement review/demo ceremony (verdict verdicts + review.md) | FR-005, FR-009 | US-2 | 2 | Implementer | done | copilot-agent | 2 | pass |
+| T-018 | Integrate Squad's retrospective ceremony with Specrew prompts | FR-005, FR-010 | US-2 | 1 | Planner | done | copilot-agent | 1 | pass |
+| T-019 | Implement iteration artifact storage (.iterations/NNN/ directory structure) | FR-018 | US-2 | 0.5 | Implementer | done | copilot-agent | 0.5 | pass |
+| T-020 | Document downstream use flow (bootstrap → plan → execute → review → retro) | FR-002, FR-005 | US-2 | 0.5 | Planner | done | copilot-agent | 0.5 | pass |
+| T-021 | Create integration test: bootstrap-to-iteration (greenfield → 1 full iteration) | FR-005, FR-006 | US-1, US-2 | 1.5 | Implementer | done | copilot-agent | 1.5 | pass |
+| T-022 | Create end-to-end scenario test (drift detection + resolution) | FR-008, FR-009 | US-3 | 1 | Planner | done | copilot-agent | 1 | pass |
+| T-023 | Validate CI pipeline (markdownlint, PSScriptAnalyzer, test runner) | FR-013 | US-2 | 0.5 | Implementer | done | copilot-agent | 0.5 | pass |
+| T-024 | Wire authoritative task-to-issue sync and GitHub Project board updates (`speckit.taskstoissues` + Squad) | DD-366, DD-369, DD-371, DD-373 | US-2 | 0.5 | Implementer | done | copilot-agent | 0.5 | pass |
+| T-025 | Codify Squad worktree + branch + PR-per-task execution model | DD-369, DD-370 | US-2 | 1 | Implementer | done | copilot-agent | 1 | pass |
 
 **Total Effort**: 24.0 story points (includes 0.5-pt V-R7-1 spike)
 
