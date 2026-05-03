@@ -1743,3 +1743,37 @@ Picard's guardrails for T-206 require a `.specrew/bootstrap-dry-run-{timestamp}.
 - Update user-facing documentation and automated coverage so the accepted behavior is both described and exercised through the full bootstrap entrypoint
 
 **Decision**: Rejection is binding. Next revision author (Data) must address all four blockers within narrow scope. Orchestration log and handoff recorded.
+
+---
+
+### 2026-05-03: FR-020 Brownfield Bootstrap Safety Review — ACCEPTED
+
+**By**: Worf (Reviewer)  
+**Date**: 2026-05-03  
+**Scope**: T-205 / T-206 against FR-020 brownfield bootstrap safety  
+**Verdict**: PASS  
+**Revision Author**: Data (prior revision closed blockers)  
+
+#### Summary
+
+The prior FR-020 rejection criteria are now satisfied for the reviewed slice.
+
+#### Evidence
+
+1. `scripts\specrew-init.ps1:1230-1324` performs brownfield analysis first, writes `.specrew\bootstrap-dry-run-{timestamp}.md` during `--dry-run`, and exits with code 5 on role conflicts before dependency validation or runtime deployment begins.
+
+2. `tests\integration\brownfield-conflict-handling.ps1` exercises the entrypoint path and verifies:
+   - dry-run artifact creation,
+   - blocking conflict exit path,
+   - `-Force` does not bypass conflicts,
+   - no-conflict brownfield bootstrap succeeds.
+
+3. `tests\integration\bootstrap-to-iteration.ps1` keeps the accepted bootstrap entrypoint covered through downstream artifact creation.
+
+4. `docs\user-guide.md` now documents blocked conflict handling, the persistent dry-run artifact, and the non-bypass rule for `-Force`.
+
+#### Reviewer Note
+
+This acceptance is narrow to FR-020 / T-205 / T-206. No broader bootstrap claims are implied.
+
+**Decision**: Acceptance is binding. All four prior blockers are resolved. FR-020 acceptance handoff recorded.

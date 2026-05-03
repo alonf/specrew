@@ -59,6 +59,17 @@ I turn Specrew's requirements into iteration plans, task maps, and explicit depe
    - Actions: Add conflict-resolution gate; protect charter mutation; produce persistent dry-run artifact; expand test coverage
    - Status: Orchestration logged; handoff complete
 
+📌 **FR-020 Brownfield Bootstrap Acceptance Re-Review (2026-05-03)**:
+   - Verdict: **PASS** (Acceptance binding)
+   - Revision complete: All four prior blockers resolved
+   - Evidence verified:
+     - Conflict detection with enforcement: `scripts\specrew-init.ps1:1230-1324` exits with code 5 before deployment touches brownfield surfaces
+     - Persistent dry-run artifact: `.specrew\bootstrap-dry-run-{timestamp}.md` generated with full brownfield analysis
+     - `-Force` no-bypass rule: Conflict checks mandatory regardless of flags
+     - Full entrypoint test coverage: `tests\integration\brownfield-conflict-handling.ps1` validates all four scenarios
+   - Scope maintained: Narrow to T-205/T-206 brownfield bootstrap safety only
+   - Status: Acceptance handoff complete; orchestration logged
+
 📌 Team confirmed by Alon on 2026-04-17
 
 📌 **Iteration 1 plan traceability corrections complete (2026-04-19)**:

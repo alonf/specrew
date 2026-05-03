@@ -47,6 +47,13 @@ I evaluate each task output against the source requirement and produce explicit 
    - Revision author (Data) receives complete blockers list and constraint guidance
    - Status: Rejection binding; orchestration logged; handoff complete
 
+📌 **FR-020 Brownfield Bootstrap Acceptance Re-Review (2026-05-03)**:
+   - Verdict: **PASS** (Acceptance binding)
+   - Revision complete: All four prior blockers resolved by Data
+   - Evidence verified: Conflict detection with enforcement (exit code 5); persistent dry-run artifact; -Force no-bypass rule; full entrypoint test coverage
+   - Scope maintained: Narrow to T-205/T-206 brownfield bootstrap safety only
+   - Status: Acceptance handoff complete; orchestration logged; team histories updated
+
 📌 Team confirmed by Alon on 2026-04-17
 
 📌 **Governance fix cycle review verdict (2026-04-19)**:
@@ -348,3 +355,7 @@ I evaluate each task output against the source requirement and produce explicit 
     - **Review Scope:** T-205/T-206 collision detection (roles/ceremonies/charter) + dry-run safety hardening + conflict resolution prompts
     - **Blocking Issues:** 7 spec-drift findings; 3 decision questions for Alon escalation
     - **Gate Verdict:** PENDING (awaiting collision detection + dry-run safety verification)
+
+## Learnings
+
+- **2026-05-03 FR-020 Brownfield Bootstrap Re-Review**: The acceptance bar for brownfield bootstrap safety is the full `specrew init` entrypoint, not the merge analyzer in isolation. In the accepted path, `scripts\specrew-init.ps1:1230-1324` now writes `.specrew\bootstrap-dry-run-{timestamp}.md` during brownfield dry-run and exits with code 5 before any deployment step when role conflicts are present, while `tests\integration\brownfield-conflict-handling.ps1` proves four required behaviors through the entrypoint itself: dry-run artifact creation, blocking conflict path, `-Force` non-bypass, and successful no-conflict brownfield bootstrap. For future reviews of bootstrap safety slices, treat `scripts\specrew-init.ps1`, `tests\integration\brownfield-conflict-handling.ps1`, `tests\integration\bootstrap-to-iteration.ps1`, and `docs\user-guide.md` as the minimum evidence set.
