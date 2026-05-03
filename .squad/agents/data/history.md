@@ -10,7 +10,45 @@
 
 I turn Specrew's requirements into iteration plans, task maps, and explicit dependencies while preserving traceability back to the source spec.
 
+### Iteration 0 → Iteration 1 Transition (2026-04-17 to 2026-04-25)
+
+**Iteration 0 Closure (Apr 17-18)**:
+- Execution: 23/23 tasks completed; 20.5/20.5 pts exact (0% variance); zero drift
+- Artifacts: Contract-complete (plan.md, state.md, drift-log.md, review.md verified)
+- Capacity baseline: 100% estimation accuracy established; baseline for all future iterations
+- Retrospective: Autonomous phase on fixed schedule (decoupled from sign-off)
+
+**Iteration 1 Planning (Apr 18-19)**:
+- Created 22-task, 20.5-pt execution plan; 100% FR-to-task mapping; MVP scope
+- Pre-execution readiness: Three pivot questions resolved (resume depth, board-sync ops, execution window)
+- Plan contract violations corrected: Picard fixed Started metadata and T-022 story reference
+- Governance gate: PASS (Worf final review confirmed; execution-ready)
+- Key learning: Plan language must distinguish task artifacts vs. deferred programmatic features
+
+**Iteration 1a Execution (Apr 19-25)**:
+- T-005 extension deployment: PASS (binding requirements for specify CLI + fallback registration + isolation flag)
+- T-006 squad skills: PASS (narrow increment isolates skill deployment from ceremonies; unblocks T-007–T-009)
+- Capacity: 6.5/20.5 pts delivered; 14.0 pts execution queued
+- Status: Plan traceable; contract-safe; execution on baseline velocity
+
 ## Recent Updates
+
+📌 **FR-020 Brownfield Bootstrap Revision Complete (2026-05-03)**:
+   - Initial verdict: NEEDS-WORK (Worf); rejection binding
+   - Rejected artifacts: `scripts\specrew-init.ps1`, brownfield merge logic, user docs
+   - Blockers resolved:
+     1. Conflicts now force decision path: `scripts\specrew-init.ps1` exits with code 5 before deployment touches any brownfield surfaces
+     2. `-Force` does not bypass conflict checks: Conflict resolution mandatory regardless of flags
+     3. Dry-run creates reviewable artifact: `.specrew\bootstrap-dry-run-{timestamp}.md` generated with full brownfield analysis report
+     4. Full entrypoint coverage added: `tests\integration\brownfield-conflict-handling.ps1` validates all four scenarios (dry-run artifact, conflict blocking, -Force bypass prevention, no-conflict success)
+   - Revisions:
+     - Modified `scripts\specrew-init.ps1` lines 1230-1330: Added conflict detection gate before deployment, dry-run artifact generation, exit code 5 enforcement
+     - Created `tests\integration\brownfield-conflict-handling.ps1`: Comprehensive brownfield conflict handling test suite
+     - Updated `tests\README.md`: Added new test to integration check list
+     - Updated `docs\user-guide.md`: Documented dry-run artifact behavior and -Force conflict enforcement
+   - Validation: All integration tests pass (brownfield-merge.ps1, brownfield-conflict-handling.ps1, bootstrap-to-iteration.ps1)
+   - Iteration tracking: Updated `specs\001-specrew-product\iterations\002\plan.md` to reflect T-205/T-206 rework status
+   - Status: Ready for Worf re-review
 
 📌 **FR-020 Brownfield Bootstrap Review — NEEDS-WORK (2026-05-03)**:
    - Verdict: NEEDS-WORK (Worf); rejection binding
@@ -59,6 +97,9 @@ I turn Specrew's requirements into iteration plans, task maps, and explicit depe
 - **Carryover capacity honesty**: When missing carryover tasks are restored, update the plan header, total effort, capacity-revision narrative, staged deferral language, and phase-baseline notes together. If Iter 1a is intentionally held below baseline, call the gap an explicit buffer rather than implying the total plan shrank.
 - **Key file paths**: Iteration 1 capacity math lives in `specs\001-specrew-product\iterations\001\plan.md`; team-visible planning decisions belong in `.squad\decisions\inbox\`; reusable reconciliation guidance lives in `.squad\skills\carryover-plan-reconciliation\SKILL.md`.
 - **PowerShell GNU flag binding**: In `scripts\specrew-init.ps1`, keep the explicit `ValueFromRemainingArguments` parser for `--flag=value` forms, but add hyphenated parameter aliases (`project-path`, `dry-run`, `no-agents`, version switches) so Windows PowerShell `-File` invocations also bind `--flag value` correctly without falling back to repo-root defaults or interactive prompts.
+- **Brownfield conflict enforcement**: Conflicts must block deployment before touching brownfield surfaces. Exit code 5 signals conflict resolution required. `-Force` must NOT bypass conflict checks; it only skips interactive prompts for non-blocking decisions.
+- **Dry-run artifact persistence**: Console-only output is not reviewable. Brownfield dry-run must create timestamped `.specrew\bootstrap-dry-run-{timestamp}.md` with full analysis (conflicts, warnings, planned actions) for team review before committing to changes.
+- **Test coverage for safety gates**: Brownfield conflict handling requires comprehensive entrypoint tests covering: (1) dry-run artifact creation, (2) actual-run conflict blocking with exit code 5, (3) -Force bypass prevention, (4) no-conflict success path. Integration test suite validates all four scenarios.
 
 ## Iteration 0 Closure & Iteration 1 Planning (Archived Details)
 

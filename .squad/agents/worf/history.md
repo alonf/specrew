@@ -10,27 +10,30 @@
 
 I evaluate each task output against the source requirement and produce explicit pass, needs-work, or blocked verdicts before work can advance.
 
-### Historical Summary (2026-04-17 – 2026-04-19)
+### Iteration 0 → Iteration 1 Review Cycle (2026-04-17 to 2026-04-25)
 
-**Iteration 0 Lifecycle** (Apr 17-18):
-- Planning: 9 architecture spikes completed; spec-first discipline established
-- Execution: 23/23 tasks completed (20.5/20.5 pts exact); 0 drift events
-- Review: Governance validator implemented; closure audit identified artifact contract as binding enforcement mechanism
-- Retrospective: Autonomous phase on fixed schedule (decoupled from sign-off)
-- **Outcome**: Full lifecycle closure; iteration-artifacts.md contract now foundational for all future iterations
+**Iteration 0 Closure Review (Apr 17-18)**:
+- Governance validator implemented; artifact contract identified as binding enforcement mechanism
+- Review closure verified: 23/23 tasks completed; 20.5/20.5 pts exact; zero drift
+- Artifact cleanup: state.md and plan.md refreshed to reflect post-retro closure
+- Key pattern: Review-phase closure requires artifact freshness check (temporal accuracy, role names, gate dependencies updated to final state)
 
-**Iteration 1 Governance Gate** (Apr 18-19):
-- Initial review found plan.md contract violations; rejected until corrected
-- Picard fixed violations (Started metadata + T-022 Story reference)
-- Re-review confirmed fixes; PASS verdict recorded
-- Decision: All governance gates now automated + CI-integrated for future iterations
+**Iteration 1 Governance Gate (Apr 18-19)**:
+- Initial review: NEEDS-WORK (plan.md violations: blank `Started` metadata, missing T-022 `Story`)
+- Picard correction: Both defects fixed on disk
+- Re-review: PASS confirmed (validator clean, contract-safe, execution-ready)
+- Key pattern: Execution-ready means artifact-clean + validator-clean; decisions describe intent but readiness judged from live artifacts
 
-**Governance Hardening Outcomes**:
-- Spec defines state machine (normative)
-- Contracts define artifacts and gates
-- Protocol defines roles and escalation
-- Validator enforces compliance at ceremony gates
-- Pattern now replicated for all future iterations
+**Iteration 1a Deployment Slices (Apr 19-25)**:
+- **Slice 1** (T-005): Extension deployment — PASS (prefer `specify extension add --dev`; fallback registration with source/path metadata; isolation flag for narrow testability)
+- **Slice 2** (T-006): Squad runtime deployment — NEEDS-WORK → PASS (added retro ceremony; excluded deferred skill; dry-run + smoke tests verified)
+- **Status**: Both slices accepted; 6.5/20.5 pts delivered
+
+**FR-020 Brownfield Bootstrap Review (2026-05-03)**:
+- Verdict: **NEEDS-WORK** (binding rejection)
+- Blockers: Conflict detection without enforcement; silent charter mutation; dry-run non-reviewable; test coverage gap
+- Constraints: Narrow scope (T-205/T-206 only); La Forge locked out; Data assigned as revision author
+- Handoff: Orchestration logged; rejection constraints documented
 
 ## Recent Updates
 
