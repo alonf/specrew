@@ -227,6 +227,9 @@ This protocol applies to:
 **Sequence**:
 1. **Task Dispatch** (La Forge):
    - Agent picks up next task from plan
+   - If the task has a mirrored GitHub issue, execution uses the mirrored issue only as routing context; local iteration artifacts remain authoritative
+   - Task work proceeds on `squad/{issue-number}-{slug}` and may use a dedicated worktree when parallel issue execution is active
+   - The PR target is the active integration branch for the iteration (for current self-development, `001-specrew-product`)
    - Status: planned → in-progress
 2. **Task Completion** (La Forge + Picard per-task):
    - La Forge: Completes task, records actual effort
@@ -235,7 +238,8 @@ This protocol applies to:
    - Status: in-progress → done (or needs-rework if drift)
 3. **State Update** (La Forge):
    - `state.md` updated: last_completed_task, tasks_remaining, timestamp
-   - (Enables resume if crew crashes)
+   - Any mirrored GitHub issue / Project state is synchronized **after** the local artifact update, never before it
+    - (Enables resume if crew crashes)
 4. **Repeat** for each task
 
 **Concurrent Work**:
@@ -256,7 +260,12 @@ This protocol applies to:
 3. **Verdict Recording** (Worf):
    - All tasks MUST have verdicts
    - Overall iteration verdict MUST be recorded
-   - If needs-work: Affected tasks re-enter executing phase (Rule 4: retro and execution can be pipelined)
+    - If needs-work: Affected tasks re-enter executing phase (Rule 4: retro and execution can be pipelined)
+
+**GitHub review path**:
+- GitHub Issues and the Project board are derived mirrors for routing and visibility only.
+- Standard GitHub PR review remains the human review path for code changes.
+- Local iteration artifacts remain the closure authority even when a PR is open or merged.
 
 ### Phase 4: Retrospective
 

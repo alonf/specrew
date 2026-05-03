@@ -1006,6 +1006,157 @@ All corrections trace back to source requirements:
 - ✅ V-R7-1 findings documented and referenced by T-011
 - ✅ T-011 unblocks downstream bootstrap/directive tasks
 - ✅ Iteration plan reflects truthful capacity allocation
+
+---
+
+### 2026-05-03: Brownfield Merge Strategy for Specrew Bootstrap
+
+**Status**: Accepted  
+**Date**: 2026-05-03  
+**Decision-makers**: La Forge (Implementer)  
+**Context**: FR-020 brownfield bootstrap safety implementation
+
+#### Problem
+
+When running `specrew init` on a project that already has Spec Kit specs, Squad configuration, or governance artifacts, the bootstrap process could silently overwrite user data. Needed a safe merge strategy that:
+
+1. Detects existing artifacts before making changes
+2. Reports conflicts when Specrew's baseline roles/ceremonies collide with existing definitions
+3. Preserves user data while merging Specrew baseline configuration
+4. Provides dry-run preview of merge operations
+
+#### Decision
+
+Implemented a two-phase approach:
+
+**Phase 1: Detection & Analysis** (brownfield-merge.ps1)
+- Detects existing Spec Kit (`.specify/`, `specs/`), Squad (`.squad/`), and governance (`.specrew/`) artifacts
+- Parses existing roles from `.squad/team.md` markdown table
+- Parses existing ceremonies from `.squad/ceremonies.md` H2 headings
+- Identifies conflicts when baseline roles/ceremonies collide with existing definitions
+- Reports status: `ready`, `warnings-present`, or `conflicts-detected`
+- Supports `--dry-run` and `-PassThru` modes for reviewable analysis
+
+**Phase 2: Merge Execution** (existing deployment scripts)
+- `deploy-squad-runtime.ps1` uses `Write-MissingFile` to skip existing files
+- `deploy-squad-runtime.ps1` uses `Set-ManagedBlock` to incrementally update shared files like `team.md` and `ceremonies.md`
+- Managed blocks use HTML comment markers: `<!-- >>> specrew-managed {name} >>>`
+- Files that exist are preserved; new files are created
+
+**Conflict Handling**:
+- Conflicts are informational, not fatal
+- Bootstrap continues with preservation strategy
+- User is guided to manually merge conflicting definitions
+- Examples: If `Implementer` role exists in user's `team.md`, Specrew's baseline definition is skipped
+
+#### Alternatives Considered
+
+1. **Hard fail on conflicts**: Would block brownfield bootstrap entirely; rejected as too strict
+2. **Auto-rename conflicts**: Would create `Implementer-2` or similar; rejected as confusing
+3. **Force overwrite with backup**: Would lose user intent; rejected as destructive
+
+#### Consequences
+
+**Positive**:
+- Safe brownfield bootstrap with no data loss
+- Clear visibility into merge conflicts before changes are made
+- Incremental adoption path for existing Spec Kit/Squad projects
+- Managed blocks enable future updates without re-writing entire files
+
+**Negative**:
+- Manual merge required when conflicts are detected
+- Users must understand managed block markers to edit shared files safely
+- Brownfield merge script adds ~300 lines of code and test surface area
+
+---
+
+### 2026-05-03: FR-020 Brownfield Merge — Spec-Drift Guardrails & Reviewer Gates
+
+**Spec Steward**: Picard  
+**Date**: 2026-05-03  
+**Audit Scope**: Iteration 002 (T-205/T-206) — Brownfield bootstrap safety  
+**Status**: PRE-REVIEW GUARDRAILS DOCUMENTED
+
+#### Executive Summary
+
+Audit of T-205/T-206 (FR-020 brownfield merge) reveals **7 specification-drift traps** where the current `specrew init` bootstrap logic deviates from the normative FR-020 requirement: "detect existing... config... and merge... without overwriting user data."
+
+**Critical findings**:
+- No role-name collision detection before merging baseline roles
+- No ceremony-name collision detection before appending ceremonies
+- No charter conflict detection before appending directives
+- `--dry-run` does not surface conflicts (claims safety but doesn't prove it)
+- `-Force` flag bypasses conflict resolution prompts
+- Non-empty directories fail bootstrap unless -Force used (contradicts "merge into existing")
+- Config version staleness risk (v0.1 config persists when v0.2 specrew runs)
+
+**Boundary Clarity Needed**: FR-020 says "ask user how to proceed" on conflicts, but code has zero interactive conflict-resolution logic.
+
+**Reviewer Gate Status**: T-205/T-206 cannot PASS review until collision detection and conflict prompts are implemented AND `--dry-run` safety is hardened.
+
+#### Key Findings (Abbreviated for Ledger)
+
+1. **No Role-Name Collision Detection** (BLOCKER)
+   - Location: `deploy-squad-runtime.ps1` lines 371-383
+   - Risk: User's custom role definition corrupted by merge
+   - Fix: Parse `.squad/team.md` before appending; report conflicts
+
+2. **No Ceremony-Name Collision Detection** (BLOCKER)
+   - Location: `deploy-squad-runtime.ps1` lines 349-357
+   - Risk: Duplicate ceremony definitions
+   - Fix: Check existing ceremony titles before appending
+
+3. **No Agent Charter Conflict Detection** (CRITICAL)
+   - Location: `deploy-squad-runtime.ps1` lines 375-382
+   - Risk: User sees two directive sections (confusing)
+   - Fix: Check for existing directive sections before appending
+
+4. **Dry-Run Does Not Surface Conflicts** (BLOCKER)
+   - Location: `specrew-init.ps1` `--dry-run` flag
+   - Risk: False safety — conflicts not shown = false safety
+   - Fix: Create `.specrew/bootstrap-dry-run-{timestamp}.md` with full collision list
+
+5. **-Force Flag Skips Conflict Resolution Prompts** (CRITICAL)
+   - Location: `specrew-init.ps1` lines 1289+
+   - Risk: CI automation bypasses conflict decisions
+   - Fix: Conflict prompts ALWAYS run (even with -Force); -Force only skips consent
+
+6. **Empty Directory Check Contradicts "Merge Into Existing"** (CRITICAL)
+   - Location: `specrew-init.ps1` lines 1225-1228
+   - Risk: UX contradiction; users cannot discover dry-run safety without -Force
+   - Decision: Should brownfield merge succeed into non-empty directory if no collisions? (Recommended: YES)
+
+7. **Config Version Staleness Risk** (WARNING)
+   - Location: `scaffold-governance.ps1` lines 82-108
+   - Risk: v0.1 config persists when v0.2 specrew runs
+   - Decision: Should v0.1 config be upgraded to v0.2 schema? (Deferred to v1.0 hardening)
+
+#### Acceptance Criteria — Reviewer Gates for La Forge
+
+**T-205: Brownfield Merge Rules (MUST PASS)**
+- ✅ Managed-block pattern correctly preserves user customizations (ALREADY WORKING)
+- ✅ Governance files created additively (ALREADY WORKING)
+- ❌ **MISSING**: Role-name collision detection
+- ❌ **MISSING**: Ceremony-name collision detection
+- ❌ **MISSING**: Agent charter conflict detection
+- ⚠️ **CLARIFY**: Non-empty directory behavior (Alon decision needed)
+
+**T-206: Brownfield Dry-Run and Conflict Prompt Hardening (MUST PASS)**
+- ❌ **MISSING**: Dry-run conflict detection and safety reporting
+- ❌ **MISSING**: Interactive conflict-resolution prompts
+
+**Blocker**: T-205/T-206 cannot PASS without implementation of collision detection + dry-run safety.
+
+#### Decision Questions for Alon (Coordinator)
+
+1. **Non-Empty Directory**: Should brownfield merge succeed into non-empty directory (e.g., existing README.md, .git) if no collisions detected?
+   - **Recommendation**: YES, succeed if no collisions; -Force only needed if collisions require override
+
+2. **Conflict Resolution Strategy**: Should bootstrap default to (a) merge conflicts, (b) skip conflicting items, or (c) abort with error?
+   - **Recommendation**: (c) Abort with clear error + prompt user to choose merge/skip/rename; non-interactive CI defaults to (b) skip
+
+3. **Config Staleness**: Should v0.1 config.yml be upgraded to v0.2 schema during bootstrap?
+   - **Recommendation**: Yes, merge missing config fields; document in CHANGELOG; warn user
 - ✅ Phase state machine transitioned from planning → executing
 - ✅ All closure artifacts are contract-compliant
 

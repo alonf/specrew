@@ -98,6 +98,49 @@ I am the spec alignment gate for Specrew. My job is to keep every plan, task, de
 **Learnings**:
 - Reviewer lockout ensures fresh perspectives on rejection reasons; different author breaking the same defect provides confidence
 - Untracked proof artifacts block acceptance even when narrative content is correct — durability matters
+
+### 2026-04-20: FR-020 Brownfield Merge Audit (Iteration 002 T-205/T-206)
+
+**Task**: Picard audits Iteration 002 scope (T-205/T-206, FR-020) to identify concrete acceptance boundaries, spec-drift traps in bootstrap scripts, and reviewer-gate constraints for La Forge before implementation.
+
+**Audit Scope**: Brownfield merge behavior in `specrew init` and `deploy-squad-runtime.ps1`; dry-run safety hardening.
+
+**Core Spec Requirements (FR-020)**:
+- Detect existing Spec Kit specs, governance artifacts, Squad team config, installed extensions
+- Merge Specrew baseline roles/config into existing setup WITHOUT overwriting user data
+- Report conflicts when versions incompatible; suggest upgrade path without proceeding
+
+**Critical Findings** (7 spec-drift traps):
+1. **Role-name collision detection missing** — code appends baseline roles without checking for pre-existing "Spec Steward", "Planner", etc. roles
+2. **Ceremony-name collision detection missing** — appends ceremonies.md block without checking for existing `Specrew: Planning` titles
+3. **Agent charter conflict detection missing** — doesn't warn if charter already has `## Directives` section outside managed block
+4. **Dry-run does not surface conflicts** — claims safety but skips collision detection during --dry-run
+5. **-Force bypasses conflict resolution prompts** — FR-020 says "asks user"; code has zero interactive conflict prompts
+6. **Non-empty directory rejection contradicts merge intent** — rejects bootstrap into repos with existing .git/.README unless -Force (vs. spec's "merge into existing")
+7. **Config version staleness risk** — .specrew/config.yml from v0.1 bootstrap persists when v0.2 Specrew runs; silent staleness
+
+**Acceptance Criteria (Reviewer Gates for La Forge)**:
+
+T-205 MUST:
+- ✅ Preserve user customizations outside managed blocks (already working)
+- ✅ Create governance files additively (already working)
+- ❌ Implement role-name collision detection + reporting
+- ❌ Implement ceremony-name collision detection + reporting
+- ❌ Implement agent charter conflict detection + warning
+- ⚠️ Clarify non-empty directory behavior (decision needed from Alon)
+
+T-206 MUST:
+- ❌ Create `.specrew/bootstrap-dry-run-{timestamp}.md` safety report during --dry-run
+- ❌ Implement interactive conflict-resolution prompts (ALWAYS surface conflicts, even with -Force)
+- ❌ Enforce conflict prompts are mandatory; -Force only skips consent/confirmation, not conflict resolution
+
+**Traceability**: All 7 findings map directly to FR-020 requirement text or implied contract boundaries (Iteration-artifacts.md dry-run validation).
+
+**Decision-Inbox**: Created `.squad/decisions/inbox/picard-fr020-brownfield-guardrails.md` with full audit report, 3 decision questions for Alon, and phase-wise resolution path.
+
+**Reviewer Gate Status**: ❌ NOT READY — T-205/T-206 cannot pass review without collision detection code and dry-run safety hardening. Blocks implementation until findings resolved.
+
+**Pattern Insight**: Brownfield merge is different from greenfield bootstrap; it requires TWO safety gates that greenfield skips: (1) collision detection (what data exists?), (2) conflict resolution (what should we do about it?). Current code implements merge (additive-only blocks) but skips both safety gates. This is why the spec says "asks user" — merging without asking is silent data corruption risk.
 - Iteration-early-completion pattern: Record work truthfully, trace to requirements, validate contract compliance before closure
 
 ## Historical Archive (Iteration 0 & Early Iteration 1)
@@ -594,3 +637,11 @@ All three contradicted the corrected rule: **Specrew self-development MUST use G
    - ✅ All remediation defects closed (T-007, T-008, T-009 remain recorded done)
    - ✅ Preferred agent scope discussion deferred to Iteration 2
    - **Status**: Remediation accepted; ready for delivery
+
+📌 **Session Log — FR-020 Brownfield Bootstrap Handoff (2026-05-03)**:
+    - **Session:** Brownfield bootstrap implementation → pre-review → reviewer gate
+    - **Handoff:** La Forge completed brownfield merge implementation; Picard completed pre-review audit; Worf launched as reviewer gate
+    - **Key Deliverables:** Brownfield merge strategy (two-phase detection + execution), pre-review spec-drift guardrails audit with 7 findings
+    - **Blocker Status:** T-205/T-206 require collision detection (roles/ceremonies/charter) + dry-run safety hardening + conflict resolution prompts
+    - **Decision Forward:** 3 clarification questions for Alon on non-empty directory behavior, conflict resolution defaults, config staleness handling
+    - **Gate Status:** PENDING (Worf review of collision detection + dry-run safety)

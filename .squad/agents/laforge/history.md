@@ -40,6 +40,42 @@ I execute planned work for Specrew and produce outputs that remain traceable to 
   - ✅ Worf re-review PASS verdict: Prior rejection reason closed
   - **Status**: Narrow revision under reviewer lockout complete; source-of-truth aligned to runtime
 
+## 2025-01-17: FR-020 Brownfield Bootstrap Safety (T-205, T-206)
+
+**Context**: Implemented brownfield merge analysis to prevent silent overwrites of existing Spec Kit and Squad configuration during `specrew init`.
+
+**What I Built**:
+- Rewrote `extensions/specrew-speckit/scripts/brownfield-merge.ps1` from 40-line placeholder to 300-line implementation
+- Added `Get-BrownfieldState` function to detect existing artifacts (Spec Kit specs, Squad roles/ceremonies, governance files)
+- Added conflict detection functions: `Test-HasRoleConflict` and `Test-HasCeremonyConflict`
+- Added `Get-MergeReport` to generate structured analysis with status, conflicts, warnings, and resolution guidance
+- Integrated brownfield analysis into `scripts/specrew-init.ps1` at bootstrap detection point
+- Created integration test `tests/integration/brownfield-merge.ps1` with 3 scenarios (greenfield, conflict detection, existing specs)
+- Updated `docs/user-guide.md` with brownfield bootstrap section and conflict resolution guidance
+
+**Technical Gotchas**:
+1. **PowerShell parameter binding**: Empty arrays require `[AllowEmptyCollection()]` attribute to prevent binding errors
+2. **PowerShell object serialization**: Scripts that return PSCustomObjects must use `ConvertTo-Json` / `ConvertFrom-Json` for clean pass-through to callers, as PowerShell auto-formats objects to strings when calling scripts
+3. **Brownfield detection criteria**: Must check for `.specify/` OR `.squad/` to trigger brownfield mode
+4. **Regex patterns**: Used `(?m)^\|\s*([^|]+)\s*\|` for markdown table role parsing and `(?m)^##\s+(.+?)(?:\s*\{[^}]*\})?\s*$` for ceremony heading extraction
+
+**Merge Strategy**:
+- Two-phase approach: Detection happens in `brownfield-merge.ps1`, actual merge happens in existing deployment scripts
+- Preservation via `Write-MissingFile` and `Set-ManagedBlock` functions that check existence before writing
+- Conflicts are informational only - Specrew preserves existing definitions and guides manual merge rather than failing bootstrap
+- Baseline roles preserved: Spec Steward, Planner, Implementer, Reviewer, Retro Facilitator
+- Specrew ceremonies preserved: "Specrew: Planning", "Specrew: Review/Demo"
+
+**Validation**:
+- All 4 integration tests pass (bootstrap-to-iteration, brownfield-merge, drift-scenario, iteration-resume)
+- Brownfield merge test validates 3 scenarios: greenfield detection, conflict identification, spec preservation
+
+**Learnings**:
+- PowerShell parameter validation is strict - always use `[AllowEmptyCollection()]` for array parameters that might be empty
+- When scripts need to return structured data, use JSON serialization to avoid auto-formatting issues
+- For brownfield scenarios, informational conflicts are better than hard failures - guide the user to merge manually
+- Managed blocks with HTML comment markers (`<!-- >>> specrew-managed {name} >>>`) allow safe incremental updates to shared files
+
 ## Learnings
 
 - Implementation is the execution phase between planning and review/demo.
