@@ -45,6 +45,10 @@ I am the spec alignment gate for Specrew. My job is to keep every plan, task, de
 - **Carryover representation is mandatory**: Iteration plans must represent every named carryover as an explicit, traceable task. Narrative-only acknowledgment is drift. If capacity math differs from baseline, document the buffer/slice explicitly.
 - **Iteration-scoped spike artifacts are independent**: Spike results files (`spikes.md`) capture iteration-specific validation outcomes without claiming the spike existed before. Iteration-scoped spikes are orthogonal to research.md general findings; iteration artifacts record *when findings are validated against real blockers*.
 
+- **Clone-vs-Package Documentation Drift** (2026-04-19): User-facing documentation must explicitly distinguish between interim clone-based paths and future package-based paths. Hardcoded repository paths (e.g., `C:\Dev\Specrew\scripts\specrew-init.ps1`) create brittle product truth that breaks when distribution model changes. Requirement: Label each instruction block with deployment context ("Clone-Based Path (Current)", "Package-Based Path (Planned)"). Relative paths in clone examples are preferred over absolute paths for clarity. Missing dual-form labeling is HIGH-risk drift when product supports multiple installation forms.
+
+- **PATH Convenience is Not a Contract Violation** (2026-04-18): When specs define **what** (command-driven interface) but are silent on **how** (distribution model, PATH management), documentation may present optional convenience guidance without violating the contract. The minimal-truth-sufficient pattern: if implementation delivers contract requirements (commands exist and work), and documentation shows **working invocation first** (clone-based full path) with convenience notes second (PATH addition optional), no spec clarification is needed. Clone-based invocation is v1's normative distribution model (binding per FR-002 "standalone CLI/script at the repo root"). Package-based global CLI is planned future work, not current contract. Spec does not prohibit PATH guidance; documentation truthfully presents both required method and optional enhancement.
+
 ### 2026-04-19: V-R7-1 + T-011 Scope Guardrails Defined
 
 **Task**: Picard defines authoritative scope boundaries for agent-detection slice (V-R7-1 spike + T-011 implementation).
@@ -95,6 +99,39 @@ I am the spec alignment gate for Specrew. My job is to keep every plan, task, de
 - Closure decision merged to .squad/decisions.md (2026-04-20T00:27:10Z)
 - Three review verdicts consolidated: Initial NEEDS-WORK, lockout-compliant re-revision, re-review PASS
 
+**Pattern Insight**: Multiple-verdict consolidation pattern. When Worf issues initial NEEDS-WORK, then lockout-compliant correction (different author fixes), then re-review PASS, all three verdicts are tracked. Closure decision records the verdict sequence to preserve full review history.
+
+**Traceability**: Closure decision includes full review sequence (Worf → Picard fix → Worf re-review), maps to contract-required lockout protocol, confirms no same-author confirmation bias.
+
+### 2026-04-21: Bootstrap Next-Step Handoff & Configured Team State Requirements
+
+**Task**: Picard updates spec.md to require terminal-based next-step handoff after bootstrap and ensure downstream repos are treated as configured Squad teams.
+
+**User Requirement** (Alon):
+- After Specrew initialization, developers should not need to read README/getting-started just to know what to do next
+- Bootstrap should state the next command to run and explain the usage/development flow directly in the terminal
+- Freshly bootstrapped downstream repos should be treated as already-configured Squad teams, not unconfigured scaffolds
+
+**Spec Updates**:
+1. **FR-002**: Added two new mandates:
+   - "Upon successful completion, `specrew init` MUST output explicit next-step guidance directly in the terminal: (1) the next command(s) to run (e.g., starting spec authoring with Spec Kit workflows), (2) concise flow orientation (baseline crew → specify features → plan iteration → execute), and (3) references to team extension commands without requiring the developer to leave the terminal for baseline orientation or read separate getting-started documentation."
+   - "The bootstrapped downstream repository MUST be left in a state recognizable by the Squad coordinator as a configured, operation-ready team (not an unconfigured scaffold requiring fresh team creation)."
+
+2. **US-1 (Bootstrap User Story)**: Updated narrative and acceptance criteria (AC-1, AC-4) to require:
+   - Terminal-based next-step guidance (next command, workflow summary, team extension instructions)
+   - No requirement to leave terminal or read docs for baseline orientation
+   - Downstream repo left in Squad-coordinator-recognizable configured team state
+
+**Implementation Impact**:
+- `scripts/specrew-init.ps1`: Update `Write-PostBootstrapGuidance` function to output next-step commands and workflow summary
+- Validation: Test that Squad coordinator recognizes bootstrapped repos as configured teams (no additional initialization prompts)
+
+**Decision Artifact**: `.squad/decisions/inbox/picard-bootstrap-next-step-spec.md`
+
+**Pattern Insight**: Bootstrap UX must eliminate documentation dependency for baseline orientation. Terminal output should provide sufficient context for the user to proceed with the next command and understand the basic workflow. Documentation serves as reference/depth, not first-line orientation.
+
+**Traceability**: User input → FR-002 requirement update → US-1 acceptance criteria refinement → implementation guidance. All changes map to explicit user requirement without scope drift.
+
 **Learnings**:
 - Reviewer lockout ensures fresh perspectives on rejection reasons; different author breaking the same defect provides confidence
 - Untracked proof artifacts block acceptance even when narrative content is correct — durability matters
@@ -141,7 +178,104 @@ T-206 MUST:
 **Reviewer Gate Status**: ❌ NOT READY — T-205/T-206 cannot pass review without collision detection code and dry-run safety hardening. Blocks implementation until findings resolved.
 
 **Pattern Insight**: Brownfield merge is different from greenfield bootstrap; it requires TWO safety gates that greenfield skips: (1) collision detection (what data exists?), (2) conflict resolution (what should we do about it?). Current code implements merge (additive-only blocks) but skips both safety gates. This is why the spec says "asks user" — merging without asking is silent data corruption risk.
+
+### 2026-05-03: Iteration 002 Remaining-Scope Alignment Review (T-204 + Sequencing)
+
+**Task**: Picard performs spec-drift guard review for Iteration 2 remaining scope while T-204 is completing. Verifies T-204 (FR-019) alignment, identifies sequencing constraints for six remaining tasks, and produces reviewer/spec note for Coordinator.
+
+**T-204 (FR-019) Findings**:
+- ✅ **Functionally Aligned**: resume-iteration.ps1 script covers all FR-019 requirement text (persist state, provide resume command, handle interruptions)
+- ✅ **Tests Passing**: Integration test validates 4/4 scenarios (continue, repair-metadata, blocked, abort)
+- ❌ **Delivery Surface Incomplete**: Script exists but missing Squad skill wrapper (.copilot/skills/specrew-iteration-resume/SKILL.md) required by contracts/squad-extension.md
+- ❌ **User-Facing Docs Missing**: No "Resume" section in docs/user-guide.md; integration point with iteration workflow undocumented
+
+**Verdict**: Core logic is production-ready and tested. Recommend **NEEDS-WORK** for review acceptance until Squad skill wrapper and user documentation are in place. Estimated +0.5 pts to complete deliverable surface.
+
+**Remaining Tasks Sequencing** (V-R7-2, T-201, T-202, T-203, T-207, T-208):
+- ✅ **No blocking interdependencies** prevent parallel start on most tasks
+- **Explicit sequential**: T-201 → T-203 (effort model schema must exist before wiring), T-207 → T-208 (scorer impl before output)
+- **Implicit integration**: T-202 overcommit logic should feed into T-203 planning output (soft coupling, but natural integration)
+- **Independent validation**: V-R7-2 validates routing surface for future FR-021; no blocker for current iteration work
+
+**Capacity Check**: Remaining 9 pts + accepted 7 pts (T-204/205/206 estimated) = 16 pts planned. ✅ Balanced.
+
+**Traceability**: All 6 remaining tasks + T-204 mapped to FR (100% coverage). No orphans.
+
+**Deliverable**: `.squad/decisions/inbox/picard-iteration-002-alignment-review.md` — comprehensive reviewer/spec note with task dependency graph, sequencing recommendations, and Coordinator handoff actions.
+
+**Pattern Insight**: Incomplete delivery surface (logic correct, contractual wrapping missing) is a distinct drift class from incorrect logic. Squad-skill wrapper pattern must be validated during implementation-readiness gate, not at final review. Consider adding "Contract Readiness Checklist" to planning phase for skills/ceremonies/directives deliverables.
+
+**Traceability**: All findings trace to spec.md FR-019/FR-007/FR-015/FR-017/FR-021 requirements and contracts/squad-extension.md skill/ceremony delivery surfaces. No undocumented scope.
+
 - Iteration-early-completion pattern: Record work truthfully, trace to requirements, validate contract compliance before closure
+
+### 2026-04-23: Specrew Command Truth Audit (`specrew team` Post-Bootstrap Availability)
+
+**Task**: Audit alignment between FR-023 contract, user documentation, implementation, and post-bootstrap runtime truth for `specrew team` commands.
+
+**Audit Scope**: Four user-facing truth surfaces (README.md, getting-started.md, user-guide.md, specrew-init.ps1 bootstrap output) vs. FR-023 specification vs. scripts/specrew-team.ps1 implementation.
+
+**Verdict**: ✅ **ALIGNED** — no changes required to spec, docs, or implementation.
+
+**What Proves Alignment**:
+1. **Implementation**: `scripts\specrew-team.ps1` exists with all 4 commands (`add`, `update`, `remove`, `list`), atomic operations, baseline protection, edge-case handling
+2. **Spec (FR-023)**: Requires "command-driven team management commands" — satisfied by PowerShell script with subcommands (does NOT require packaged CLI distribution)
+3. **Documentation Pattern**: All four docs show aspirational short form (`specrew team add`) followed by explicit invocation guidance (`.\scripts\specrew-team.ps1` or PATH setup)
+4. **Bootstrap Output**: Shows short form (valid for PATH-configured users); docs clarify invocation for all contexts
+5. **No Overclaiming**: Docs never claim globally-available CLI or packaged distribution (interim clone-based model is documented in getting-started.md with "Future: Packaged Installation" section)
+
+**Truth Pattern Confirmed**: Contract-aligned truth = show aspirational form + explicit invocation guidance + PATH alternative. This pattern lets users see future convenience while documenting current reality.
+
+**Traceability**: All alignment claims trace to FR-023 requirement text, implementation code, and documented invocation patterns.
+
+**Decision Artifact**: `.squad/decisions/inbox/picard-specrew-command-truth.md` with full audit report, proof surfaces, and no-change rationale.
+
+**Pattern Insight**: "Command-driven interface" is implementation-agnostic. PowerShell scripts with subcommands satisfy the requirement if atomic operations and protection logic are delivered. Distribution model (clone vs. package) is orthogonal to interface contract. Documenting both invocation forms (short + PATH, long + relative) prevents overclaiming while preserving aspirational UX.
+
+### 2026-04-20: Team-Member CRUD Command-Gap Analysis
+
+**Task**: Analyze whether Specrew's documented team-extension workflow is command-driven or requires manual multi-file editing, and determine spec changes needed for alignment.
+
+**Key Findings**:
+- **Current documented workflow**: 3-file manual editing (team.md row + charter.md + history.md) per getting-started.md lines 109-112 and user-guide.md lines 114-117
+- **Spec assumption**: FR-002 references "Squad's standard team configuration workflows" without validating whether Squad provides command-driven CRUD
+- **Squad CLI surface**: `squad hire` command exists but returns "full implementation pending" (v0.9.1); no working CRUD surface for team members
+- **Gap classification**: Documented workflow is accurate to current Squad capability, but spec language implies non-manual workflows that don't exist yet
+
+**Spec Delta Required**:
+1. **FR-002 Amendment**: Clarify that "Squad's standard team configuration workflows" currently means manual file editing until Squad completes `squad hire`
+2. **New FR-023**: Contingent wrapper command (`specrew team add/remove`) if Squad doesn't deliver native CRUD by Iteration 2
+3. **Documentation precision**: Add "Known Limitation" notes acknowledging Squad's incomplete command surface and Specrew's planned response path
+
+**Decision Artifact**: `.squad/decisions/inbox/picard-team-command-gap.md` with three-option recommendation (Status Quo + Clarity / Specrew Wrapper / Documented Gap), spec amendment text, traceability mapping
+
+**Pattern Insight**: When documenting user-facing workflows, distinguish between *working as designed* (current manual path is accurate to Squad v0.9.1 capability) and *spec assumption drift* (spec language implies command-driven path that doesn't exist). FR-002's "standard team configuration workflows" is an *upstream dependency assumption* rather than a product defect, but documentation must make the interim manual path explicit rather than burying it in implicit "after bootstrap" guidance.
+
+**Recommendation**: Hybrid Option A+C — Document current state accurately, record as known limitation, defer Specrew wrapper until Iteration 2-3 contingent on Squad roadmap.
+
+### 2026-04-19: Baseline Validation Scope Verification (Alon Request)
+
+**Task**: Verify spec alignment with command-driven team management, protected baseline roles, and validator scope behavior.
+
+**Requirement Verified**: Validator must require mandatory baseline members (Spec Steward, Planner, Implementer, Reviewer, Retro Facilitator) but NOT constrain custom team members added via `specrew team add`.
+
+**Analysis Performed**:
+1. FR-023 language review: Command interface, protected baseline roles, atomic operations
+2. Validator scope review: `Get-TeamRoleMap` reads full roster, only validates sign-off role naming
+3. Bootstrap script guidance review: Post-bootstrap command documentation
+4. User documentation review: README, getting-started, user-guide consistency
+
+**Verdict**: **ALIGNED**
+
+Proof surfaces:
+- Spec FR-023 (line 238): "All operations MUST validate that baseline roles are not modified or removed"
+- Clarifications Q&A (lines 41, 63): "Baseline roles are protected (cannot be removed), but downstream projects can freely add supplemental team members"
+- Validator behavior: Reads all members from team.md, only checks role naming consistency in sign-offs — no team size or membership constraints
+- Documentation: All three user-facing surfaces (README, getting-started, user-guide) consistently describe command-driven extension with baseline preservation
+
+**Learning**: Validator scope is intentionally permissive — it requires baseline roles (via governance sign-off sections) but does not constrain custom members. This is correct by design: bootstrap installs five protected roles, commands prevent their removal, validator checks role naming consistency, but custom members are unrestricted. The contract is: "baseline mandatory, extras unconstrained."
+
+**Decision Artifact**: `.squad/decisions/inbox/picard-baseline-validation-scope.md` (ready for merge)
 
 ## Historical Archive (Iteration 0 & Early Iteration 1)
 
@@ -510,6 +644,33 @@ Picard reviewed three governance surfaces ahead of Iteration 1 execution:
 
 **Traceability**: Decision recorded in `.squad/decisions/inbox/picard-board-sot.md` for Alon review before Iteration 1 planning.
 
+---
+
+## 2026-04-18: Spec Kit Validator Fix Alignment Review
+
+**Task**: Verify validator fix for Spec Kit health checks against three contract boundaries.
+
+**Three Critical Boundaries Verified** ✅:
+
+1. **Accepts Healthy Current Spec Kit Install**: `validate-versions.ps1` probes both `specify --version` and `specify version` (FR-002 compliance). Test confirms: healthy Spec Kit with only `version` subcommand support validates as `IsOperational=true` (validate-versions-cli-behavior.ps1:117-132).
+
+2. **Surfaces Real Dependency Failures**: Validator correctly distinguishes `IsOperational` (healthy command) from `IsCompatible` (version check). Broken commands fail validation even when uv inventory shows compatible version. Exit code 1 for operational failures (validate-versions.ps1:382). Test confirms: broken Spec Kit exits with failure (validate-versions-cli-behavior.ps1:175-195).
+
+3. **Does NOT Overstate Bootstrap Success**: Pre-install and post-install dependency validation failures both exit with code 1 or 4 (specrew-init.ps1:1346-1371). Downstream failures (agent detection, auth context) log warnings but do NOT exit — correct per spec R4-Q20 clarification. Exit 0 only reached if no exceptions thrown (specrew-init.ps1:1543). Test confirms: bootstrap-to-iteration.ps1 correctly SKIPs assertions when tooling unavailable, exiting 0 (correct for CI environments).
+
+**Exit Code Contract** ✅:
+- **BLOCKING** (stop bootstrap): 1 (unhealthy), 4 (missing), 3 (argument error)
+- **NON-BLOCKING** (continue with warning): Copilot detection, GitHub auth, delegated metadata
+
+**Documentation Alignment** ✅:
+- `getting-started.md` (Lines 142-154) correctly instructs users to check `specify version` manually
+- Matches current validator behavior
+- Provides troubleshooting path for Spec Kit health issues
+
+**Result**: All three contract requirements satisfied. No drift detected. Validator fix is spec-compliant.
+
+**Artifact Recorded**: `.squad/agents/picard/alignment-review-validator-fix.md` with detailed contract verification matrix.
+
 ### 2026-04-18: Plan.md Board-Usage Drift Remediation (Worf Review Fix)
 
 **Task**: Worf issued NEEDS-WORK on `specs\001-specrew-product\plan.md` because Section 9 and Iteration 0 deliverables table still stated board/issue usage as "optional" for Specrew, contradicting the corrected spec and protocol.
@@ -645,3 +806,169 @@ All three contradicted the corrected rule: **Specrew self-development MUST use G
     - **Blocker Status:** T-205/T-206 require collision detection (roles/ceremonies/charter) + dry-run safety hardening + conflict resolution prompts
     - **Decision Forward:** 3 clarification questions for Alon on non-empty directory behavior, conflict resolution defaults, config staleness handling
     - **Gate Status:** PENDING (Worf review of collision detection + dry-run safety)
+
+### 2026-05-03: Iteration 002 Planning Artifact Correction
+
+**Context**: External review identified artifact drift — Iteration 002 plan.md claimed Status: planning yet showed tasks with execution outcomes (done/rework status, Agent/Actual/Verdict fields populated) without required lifecycle artifacts (state.md, drift-log.md, review.md).
+
+**Issue**: 
+- Tasks T-201 through T-204 incorrectly marked done with execution evidence (agent names, actual effort, verdicts)
+- Tasks T-205 and T-206 used invalid status ework (contract requires 
+eeds-rework)
+- Governance validator failed on Iteration 002
+
+**Resolution**: Reverted all tasks to planned status, cleared execution columns (Agent, Actual, Verdict), removed execution-claim narrative from Notes section, and replaced with planning-phase language. Validator now passes cleanly.
+
+**Learning**: Planning-phase plans MUST NOT contain execution claims. The phase state machine is normative — execution evidence requires the iteration to transition to xecuting phase with required lifecycle artifacts in place. Premature execution claims create contract violations that block validator compliance.
+
+**Decision Reference**: See .squad/decisions/inbox/picard-iter-002-planning-revert.md for full rationale.
+
+### 2026-05-XX: Bootstrap Guard Spec Drift Audit
+
+**Context**: Alon requested a drift check on the bootstrap guard fix, specifically whether allowing a folder with only `.git` is consistent with the greenfield bootstrap contract, and whether real brownfield/populated repos stay on the additive review-first path.
+
+**Audit Scope**:
+- Spec authority (spec.md line 42: greenfield vs brownfield contract)
+- Docs contract (getting-started.md line 56: ".git-only counts as fresh")
+- Implementation (specrew-init.ps1 lines 1217–1229: guard logic)
+- Test validation (bootstrap-to-iteration.ps1 lines 120–130, brownfield-conflict-handling.ps1 lines 54–65)
+- Brownfield execution path (specrew-init.ps1 lines 1231–1260: merge analysis + review artifact)
+
+**Findings**:
+
+1. **Spec Authority – Greenfield Definition** (spec.md:42):
+   - Greenfield = no .specify, no .squad → must install both
+   - Brownfield = existing .specify OR .squad → merge and preserve existing config
+   - Determinant is .specify/.squad presence, NOT directory emptiness
+
+2. **Docs Contract** (getting-started.md:56):
+   - Explicit statement: "A repo that only contains Git metadata (`.git`) still counts as fresh, so this flow does not require `-Force`"
+   - This is the greenfield bootstrap contract for .git-only repos
+
+3. **Implementation Analysis**:
+   - Line 1217: `.git` is explicitly excluded from blocking entries: `$blockingEntries = @($existingEntries | Where-Object { $_.Name -ne '.git' })`
+   - Line 1220: Greenfield/brownfield determination: `$bootstrapMode = if ($hadSpecify -or $hadSquad) { 'brownfield' } else { 'greenfield' }`
+   - Line 1226: Guard condition: `if ($blockingEntries.Count -gt 0 -and -not $Force -and -not $hadSpecify -and -not $hadSquad)`
+   - **Result**: A .git-only repo has blockingEntries = 0 → guard does NOT trigger → succeeds as greenfield without -Force ✓
+
+4. **Test Validation**:
+   - bootstrap-to-iteration.ps1:120–130: Explicitly tests .git-only repo → expects success without -Force → passes ✓
+   - brownfield-conflict-handling.ps1:54–65: Tests populated directory (README.md + others) → expects error without -Force → passes ✓
+   - Exit code contract: Error exits with code 3 (matches test assertion on line 120)
+
+5. **Brownfield Execution Path** (specrew-init.ps1:1231–1260):
+   - Brownfield repos trigger merge analysis via brownfield-merge.ps1
+   - If -DryRun: Creates a review artifact (bootstrap-dry-run-*.md) with preservation report
+   - Docs (line 94): Confirms flow is "additive and review-first" ✓
+   - Post-merge execution is idempotent — safe for re-runs (spec.md:57)
+
+6. **Scenario Matrix Verification**:
+   - .git-only, no -Force → blockingEntries=0 → greenfield, no error ✓
+   - .git + README, no -Force, no .specify/.squad → error (exit 3) ✓
+   - .git + README + .squad → brownfield merge (additive, review-first) ✓
+   - .git + README + -Force → allowed (greenfield or brownfield path per .specify/.squad status) ✓
+
+**Conclusion**: NO SPEC DRIFT DETECTED. The bootstrap guard implementation, spec, docs, and tests are fully aligned. The guard correctly:
+- Allows .git-only repos to proceed as greenfield without -Force (satisfies greenfield contract)
+- Blocks populated greenfield repos without -Force, requiring explicit `-Force` flag (guards against accidental overwrites)
+- Routes populated repos with .specify/.squad to additive brownfield merge (preserves existing governance)
+- Outputs review artifacts for brownfield dry-runs (enables review-first workflow)
+
+All three decision points (greenfield contract, brownfield additive flow, guard semantics) are consistent and traceable to spec authority.
+
+## Learnings
+
+### 2026-05-04 00:02:58 - Bootstrap Flag Mismatch Fix
+
+**Context**: Worf rejected the validator-fix slice because docs/getting-started.md implied full end-to-end bootstrap success, but there was a separate bootstrap blocker after dependency validation: a specify init flag mismatch involving --integration.
+
+**Root Cause**: scripts/specrew-init.ps1 used --integration copilot and --offline flags, but the actual Spec Kit CLI (0.7.3) accepts --ai copilot and does not support --offline.
+
+**Fix Applied**:
+1. Corrected scripts/specrew-init.ps1 line 1405: --integration copilot → --ai copilot
+2. Removed unsupported --offline flag
+3. Updated docs/getting-started.md with truthful Known Limitations section explaining:
+   - Bootstrap correctly validates dependencies and attempts initialization
+   - Spec Kit CLI has a Unicode encoding issue in some Windows environments
+   - Workaround: use Windows Terminal or VS Code terminal with UTF-8 support
+   - Documented what works (validator, corrected flags) vs. what's environment-dependent (CLI banner rendering)
+
+**Validator Fix Preservation**: Verified 	ests/integration/validate-versions-cli-behavior.ps1 still passes (both healthy and broken Spec Kit scenarios).
+
+**Alignment**: The fix addresses Worf's rejection criteria:
+- Bootstrap flag mismatch is resolved
+- Documentation no longer overclaims full end-to-end success
+- Truthfully describes the remaining limitation (upstream CLI encoding issue)
+- Preserves the validator fix from the previous slice
+
+**Key Files**:
+- scripts/specrew-init.ps1 (line 1401, 1405): flag correction
+- docs/getting-started.md: Known Limitations section
+- 	ests/integration/validate-versions-cli-behavior.ps1: validator test coverage
+
+**Decision**: Document environment-specific issues honestly rather than promise success that depends on factors outside Specrew's control (upstream CLI rendering bugs, terminal encoding support).
+
+
+### 2026-04-21: Bootstrap Non-Blocking Requirement Clarification
+
+**Context**: Alon directed update to spec to reflect product decision on deterministic bootstrap with protected baseline roles, bypassing Squad's team-member casting interview.
+
+**Decision**: Updated spec.md clarification (Session 2026-04-21), FR-002, User Story 1, acceptance criteria, and Key Entities to reflect:
+- `specrew init` MUST use `squad init --non-interactive` to deploy five protected baseline roles without blocking
+- Bootstrap completes deterministically without user interaction on team composition
+- Post-bootstrap guidance explicitly directs users to extend team via Squad configuration
+- Baseline roles (Spec Steward, Planner, Implementer, Reviewer, Retro Facilitator) are protected; supplemental members freely addable
+
+**Key File Paths**:
+- `specs/001-specrew-product/spec.md` (lines 41, 213, 83, 91, 94, 325, 362)
+- `scripts/specrew-init.ps1` (squad init invocation at lines 1600-1610)
+
+**Pattern**: Bootstrap must be deterministic and non-blocking for downstream adoption. Interactive casting/interviewing flows belong post-bootstrap, not as gates during initialization.
+
+**Traceability**: This aligns with FR-002 (bootstrap ownership), User Story 1 (bootstrap flow), and Acceptance Scenario 1 & 4 (team configuration without blocking).
+
+
+## 2026-04-17: Command-Driven Team Management Requirement
+
+**Context**: User directive mandated that team member management must be command-driven; users should not have to edit multiple .squad files manually.
+
+**Action Taken**:
+1. Updated spec.md to replace all references to "Squad's standard team configuration workflows" with "command-driven team management interface"
+2. Added new FR-023 requiring specrew team add/update/remove/list commands with atomicity, validation, and error handling
+3. Updated clarifications (lines 41, 63), user scenarios (line 87), acceptance scenarios (lines 95, 98), FR-002 (line 217), crew composition definition (line 329), command inventory (added team commands), and platform facts (line 371)
+4. Updated traceability: TG-001 (US-1 now includes FR-023), TG-002 (FR-023 owned by maintainers), TG-003 (FR-023 assigned to Iteration 1 MVP)
+5. Replaced manual file-editing instructions in getting-started.md, user-guide.md, and README.md with command examples
+6. Created decision record at .squad/decisions/inbox/picard-team-command-requirement.md
+
+**Contract Change**: The spec now treats manual multi-file editing as a non-standard path. The normal user path is command-driven. This eliminates error-prone workflows where users must remember to consistently edit .squad/team.md, charter.md, and history.md.
+
+**Alignment Check**: All updated contract language is traceable to FR-023. The requirement explicitly states: "add command MUST atomically create (1) a new row in .squad/team.md outside the Specrew-managed baseline block, (2) .squad/agents/<member>/charter.md with the provided role definition, and (3) .squad/agents/<member>/history.md as an empty initialized file." Acceptance criteria include validation that baseline roles remain protected, clear success/failure feedback, and graceful edge-case handling.
+
+**Key Learning**: When a user directive changes the product contract, the spec must be updated holistically — not just the functional requirement, but also clarifications, acceptance scenarios, traceability, command inventory, and all downstream documentation. Partial updates create misalignment between spec and docs.
+
+**Implementation Note**: FR-023 requires scripts/specrew-team.ps1 implementation with add/update/remove/list subcommands. This is now a blocking requirement for Iteration 1 MVP closeout.
+
+### 2026-04-21: Unix-Style Flag Staging Truth Gap (FR-023 Restage)
+
+**Task**: Picard performs mechanical resubmission after reviewer rejection for staging truth gap — working tree contains correct Unix-style flag support but staged artifact did not.
+
+**Problem**: Worf rejected previous submission because the staged artifact under review did not include the Unix-style flag support (`--role`, `--charter`) required by FR-023. The implementation existed in the working tree (lines 20-62 of specrew-team.ps1: UnboundArguments handler to convert `--role` to `-Role`, `--charter` to `-Charter`) and was validated by tests (team-management.ps1:127-130, 183-186), but Troi failed to stage these changes before Worf's review. Result: staged artifact jumped from param block directly to `Set-StrictMode` without the argument conversion logic.
+
+**Root Cause**: Staging truth gap — working tree correct, staged artifact incomplete. Not a logic defect.
+
+**Solution**: Re-stage both files (`scripts/specrew-team.ps1`, `tests/integration/team-management.ps1`) to include the Unix-style flag handler. No code changes required; this is a mechanical staging operation.
+
+**Validation**:
+- ✅ Unix-style flag handler present in staged artifact (lines 20-62)
+- ✅ Tests validate `--role` and `--charter` syntax (8/8 integration test scenarios pass)
+- ✅ Documentation alignment confirmed (README.md:70-72, getting-started.md:111-113, user-guide.md:116-118 all show Unix-style flags)
+- ✅ Spec contract fulfilled (FR-023, spec.md:238, 296-298 explicitly require `--role` and `--charter` flags)
+
+**Key Learning**: When reviewer rejects for "missing feature X in artifact", first verify if X exists in working tree but is unstaged. Use `git diff --cached` to compare staged vs. working tree. Staging truth gaps are mechanical fixes, not logic rework. This is distinct from:
+- **Logic drift** (implementation deviates from spec)
+- **Contract drift** (spec requires feature not implemented)
+- **Documentation drift** (docs contradict implementation)
+
+**Pattern**: Staging truth gaps occur when working-tree fixes are not staged before review. The artifact under review (staged index) must match the intended deliverable. Reviewer lockout protocol applies: Troi authored previous revision, Picard performs restage to provide fresh perspective.
+
+**Decision Artifact**: `.squad/decisions/inbox/picard-team-command-restage.md` with context, problem analysis, validation checklist, and traceability to FR-023.

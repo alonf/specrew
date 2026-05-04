@@ -87,9 +87,24 @@ if (Test-Path -Path $scratchRoot) {
 
 $null = New-Item -Path $projectRoot -ItemType Directory -Force
 
+$gitInitOutput = @(& git -C $projectRoot init --quiet 2>&1)
+if ($LASTEXITCODE -ne 0) {
+    foreach ($line in $gitInitOutput) {
+        Write-Host $line
+    }
+
+    Write-Fail "Failed to initialize git repository in scratch project: $projectRoot"
+    exit 1
+}
+
+if (-not (Test-Path -LiteralPath (Join-Path -Path $projectRoot -ChildPath '.git'))) {
+    Write-Fail "Scratch project is missing .git after git init: $projectRoot"
+    exit 1
+}
+
 Push-Location $repoRoot
 try {
-    $initResult = & pwsh -NoProfile -File $initScript -ProjectPath $projectRoot -Force -Agents 'copilot' 2>&1
+    $initResult = & pwsh -NoProfile -File $initScript -ProjectPath $projectRoot -Agents 'copilot' 2>&1
     if ($initResult) {
         $initResult | ForEach-Object { Write-Host $_ }
     }
@@ -102,10 +117,32 @@ finally {
     Pop-Location
 }
 
+if ($LASTEXITCODE -eq 3) {
+    Write-Fail 'Git-only repo was rejected as non-empty; bootstrap should not require -Force when only .git exists'
+    exit 1
+}
+
 if ($LASTEXITCODE -ne 0) {
     Write-Skip ("Bootstrap command returned non-zero exit code ({0}); skipping artifact assertions because bootstrap tooling is unavailable in this environment" -f $LASTEXITCODE)
     exit 0
 }
+
+$initTranscript = ($initResult | ForEach-Object { [string]$_ }) -join [Environment]::NewLine
+$bootstrapOutputValid = $true
+$bootstrapOutputChecks = @(
+    @{ Pattern = 'Baseline Specrew crew installed:\s*Spec Steward,\s*Planner,\s*Implementer,\s*Reviewer,\s*Retro Facilitator\.'; Failure = 'Bootstrap output did not explain the installed baseline Specrew crew.' },
+    @{ Pattern = 'specrew start'; Failure = 'Bootstrap output did not guide the user to specrew start.' },
+    @{ Pattern = 'Add extra Squad members after bootstrap'; Failure = 'Bootstrap output did not explain how to extend the Squad team after bootstrap.' },
+    @{ Pattern = 'Keep the Specrew-managed baseline block intact'; Failure = 'Bootstrap output did not protect the managed baseline roles from removal.' }
+)
+
+foreach ($check in $bootstrapOutputChecks) {
+    if (-not (Assert-ContentPattern -Content $initTranscript -Pattern $check.Pattern -FailureMessage $check.Failure)) {
+        $bootstrapOutputValid = $false
+    }
+}
+
+Write-Pass 'Greenfield bootstrap succeeds without -Force when the repo only contains .git'
 
 $requiredBootstrapPaths = @(
     '.specify',
@@ -145,8 +182,9 @@ $planScript = Join-Path -Path $installedScriptsRoot -ChildPath 'scaffold-iterati
 $artifactScript = Join-Path -Path $installedScriptsRoot -ChildPath 'scaffold-iteration-artifacts.ps1'
 $reviewScript = Join-Path -Path $installedScriptsRoot -ChildPath 'scaffold-review-artifact.ps1'
 $retroScript = Join-Path -Path $installedScriptsRoot -ChildPath 'scaffold-retro-artifact.ps1'
+$resumeScript = Join-Path -Path $installedScriptsRoot -ChildPath 'resume-iteration.ps1'
 
-foreach ($scriptPath in @($planScript, $artifactScript, $reviewScript, $retroScript)) {
+foreach ($scriptPath in @($planScript, $artifactScript, $reviewScript, $retroScript, $resumeScript)) {
     if (-not (Test-Path -LiteralPath $scriptPath -PathType Leaf)) {
         Write-Fail "Missing installed downstream helper: $scriptPath"
         exit 1
@@ -161,8 +199,41 @@ $driftPath = Join-Path -Path $iterationDirectory -ChildPath 'drift-log.md'
 $reviewPath = Join-Path -Path $iterationDirectory -ChildPath 'review.md'
 $retroPath = Join-Path -Path $iterationDirectory -ChildPath 'retro.md'
 $specPath = Join-Path -Path $specDirectory -ChildPath 'spec.md'
+$resumeSkillPath = Join-Path -Path $projectRoot -ChildPath '.copilot\skills\specrew-iteration-resume\SKILL.md'
+$implementerCharterPath = Join-Path -Path $projectRoot -ChildPath '.squad\agents\implementer\charter.md'
+$reviewerCharterPath = Join-Path -Path $projectRoot -ChildPath '.squad\agents\reviewer\charter.md'
+$coordinatorPromptPath = Join-Path -Path $projectRoot -ChildPath '.github\agents\squad.agent.md'
 
 $null = New-Item -Path $specDirectory -ItemType Directory -Force
+
+foreach ($runtimePath in @($resumeSkillPath, $implementerCharterPath, $reviewerCharterPath, $coordinatorPromptPath)) {
+    if (-not (Test-Path -LiteralPath $runtimePath -PathType Leaf)) {
+        Write-Fail "Missing runtime resume surface: $runtimePath"
+        exit 1
+    }
+}
+
+$implementerCharter = Get-Content -LiteralPath $implementerCharterPath -Raw -Encoding UTF8
+$reviewerCharter = Get-Content -LiteralPath $reviewerCharterPath -Raw -Encoding UTF8
+$coordinatorPrompt = Get-Content -LiteralPath $coordinatorPromptPath -Raw -Encoding UTF8
+if (-not (Assert-ContentPattern -Content $implementerCharter -Pattern 'update `iterations/NNN/state\.md`|update `state\.md`' -FailureMessage 'Implementer charter is missing the FR-019 state persistence directive.')) {
+    exit 1
+}
+
+if (-not (Assert-ContentPattern -Content $reviewerCharter -Pattern 'update `iterations/NNN/state\.md`|update `state\.md`' -FailureMessage 'Reviewer charter is missing the FR-019 state persistence directive.')) {
+    exit 1
+}
+
+$coordinatorPromptChecks = @(
+    @{ Pattern = 'Formal Spec-Kit \+ Specrew Lifecycle'; Failure = 'Coordinator prompt is missing the Specrew lifecycle override.' },
+    @{ Pattern = 'do not describe the run as Spec-Kit/Specrew compliant'; Failure = 'Coordinator prompt is missing process-claim discipline for bypassed runs.' }
+)
+
+foreach ($check in $coordinatorPromptChecks) {
+    if (-not (Assert-ContentPattern -Content $coordinatorPrompt -Pattern $check.Pattern -FailureMessage $check.Failure)) {
+        exit 1
+    }
+}
 
 $specContent = @'
 # Feature Spec: 001 Sample
@@ -316,7 +387,7 @@ foreach ($check in $retroChecks) {
     }
 }
 
-if (-not ($planValid -and $retroValid)) {
+if (-not ($bootstrapOutputValid -and $planValid -and $retroValid)) {
     exit 1
 }
 

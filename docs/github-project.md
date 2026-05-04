@@ -56,12 +56,24 @@ You can run the same sync locally with a GitHub-authenticated CLI session:
 pwsh -File .\.github\scripts\sync-specrew-board.ps1 -Repository alonf/specrew -ProjectOwner alonf -ProjectNumber 10
 ```
 
+## Local Execution Path
+
+Specrew self-development uses GitHub as a **review and visibility path**, not as the system of record.
+
+1. Update the authoritative local artifacts first: `plan.md`, `state.md`, `drift-log.md`, `review.md`, and `retro.md`.
+2. Run the sync path so the mirrored lifecycle/task issues and Project board reflect that local state.
+3. Execute task work from a Squad issue branch named `squad/{issue-number}-{slug}`.
+4. When parallel issue work is needed, prefer a dedicated `git worktree` per mirrored task issue; otherwise use the same branch naming convention in the main checkout.
+5. Open a standard GitHub PR back to the active integration branch after the local artifacts and task implementation are both updated.
+
+For Iteration 001 self-development, the active integration branch is `001-specrew-product`; per-task issue branches and optional worktrees should target that branch instead of making GitHub Issues or the board authoritative.
+
 ## Capability Status
 
 The unattended GitHub Actions workflow is now fully operational.
 
 - Repository secret `SPECREW_PROJECT_TOKEN` has been configured with a token holding `repo` and `project` scopes.
-- The sync script is implemented and tested; manual sync confirmed operational (23 issues synced to project board).
+- The sync script is implemented and tested; manual sync is operational and updates the mirrored issues/project board from local iteration artifacts.
 - Workflow automation is ready to trigger on push to `main` or `001-specrew-product` when iteration artifacts change.
 - Unattended board maintenance is no longer blocked.
 

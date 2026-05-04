@@ -5,9 +5,9 @@
 
 ## Summary
 
-Specrew bridges Spec Kit (specification/governance) and Squad (multi-agent runtime) into a unified spec-governed operating model for AI crews. The technical approach is to build a Spec Kit extension for governance lifecycle plus Squad-native configuration surfaces for crew execution, sharing a monorepo, with all iteration artifacts stored as Markdown in the spec feature directory.
+Specrew bridges Spec Kit (specification/governance) and Squad (multi-agent runtime) into a unified spec-governed operating model for AI crews. The technical approach is to build a Spec Kit extension for governance lifecycle plus Squad-native configuration surfaces for crew execution, sharing a monorepo, with all iteration artifacts stored as Markdown in the spec feature directory. The downstream entrypoint after bootstrap becomes a new `specrew start` command that launches or hands off to Squad and has Squad drive the full Spec Kit lifecycle on the user's behalf, including intake for new work and continuation of active work.
 
-**Interaction model**: Direct dual-surface — users work with Spec Kit slash commands for spec authoring and Squad ceremonies for iteration execution. Specrew hooks bridge the two automatically. See spec.md § Downstream User Flow and § User-Visible Command Inventory for the full step-by-step and MVP command surface.
+**Interaction model**: Guided wrapper over Spec Kit + Squad — users bootstrap with `specrew init`, manage supplemental members with `specrew team`, and start feature delivery with `specrew start`. The start flow hands work to Squad, which first inspects active artifacts to resume in-progress work when possible, otherwise gathers the next fix/feature intake, optionally considers whether extra specialists are needed, and then drives `specify`, `clarify` when needed, `plan`, `tasks`, and `implement` while only escalating unresolved questions to the human developer. To reduce Copilot CLI blocking during launch, Specrew starts Copilot from the target project directory and defaults automated handoff sessions to non-blocking approvals unless the user explicitly opts back into prompt-based approvals.
 
 ## Technical Context
 
@@ -15,8 +15,8 @@ Specrew bridges Spec Kit (specification/governance) and Squad (multi-agent runti
 **Primary Dependencies**: Spec Kit >= 0.7.3 (extension starter template), Squad >= 0.9.1 (extension structure: skills/ceremonies/directives)
 **Storage**: Markdown files in spec feature directories (git-tracked, human-readable)
 **Testing**: PowerShell-based validation scripts (Spec Kit side), Squad CLI for ceremony/skill testing. Custom evaluation harness for end-to-end.
-**Target Platform**: GitHub Copilot via Squad (v1). Architecture must be runtime-portable.
-**Project Type**: Extension pair (Spec Kit extension + Squad plugin) in a monorepo
+**Target Platform**: GitHub Copilot via Squad (v1), with optional Copilot Agent HQ delegated agents for review roles. Architecture must remain future-runtime-portable.
+**Project Type**: Spec Kit extension + Squad-native runtime-surface deployment in a monorepo
 **Performance Goals**: Bootstrap in <10 min user effort. Iteration planning/review add <5 min overhead per iteration.
 **Constraints**: Must integrate through supported extension surfaces only (Constitution III). No Copilot/VS Code direct hacks.
 **Scale/Scope**: Single-project governance scope per bootstrap. Evaluation harness runs 2–3 iterations against a reference spec.
@@ -25,15 +25,15 @@ Specrew bridges Spec Kit (specification/governance) and Squad (multi-agent runti
 
 *GATE: Must pass before Phase 0 research. Re-check after Phase 1 design.*
 
-- **Spec Authority Gate**: PASS — Plan scope maps directly to spec.md FR-001 through FR-020 and US-1 through US-7. No plan item exists without a spec reference.
+- **Spec Authority Gate**: PASS — Plan scope maps directly to spec.md FR-001 through FR-024 and US-1 through US-7. No plan item exists without a spec reference.
 - **Layering Gate**: PASS — Every component is classified below:
-  - Standalone CLI: `specrew init` (orchestration layer above both platforms)
+  - Standalone CLI: `specrew init`, `specrew start` (orchestration layer above both platforms)
   - Spec Kit layer: governance scaffold, drift detection, extension collision detection, downstream constitution generation
   - Squad layer: baseline crew roles, iteration ceremonies (Planning, Review/Demo), skills, directives, post-task drift hook
   - Shared: iteration artifact storage format (Markdown in spec dir), evaluation harness
 - **Traceability Gate**: PASS — Phased delivery plan below maps each deliverable to FR/US references.
 - **Ownership Gate**: PASS — Workstreams assigned (by implementation component; see spec.md TG-002 for owner-subsystem grouping):
-  - Standalone CLI (`specrew init`): Specrew maintainers (FR-002, FR-020)
+  - Standalone CLI (`specrew init`, `specrew start`): Specrew maintainers (FR-002, FR-020, FR-024)
   - Spec Kit extension: Specrew maintainers (FR-001, FR-011, FR-013, FR-016)
   - Squad extension: Specrew maintainers (FR-004, FR-005, FR-006, FR-008, FR-009, FR-010)
   - Iteration engine (cross-cutting, implemented via Squad skills): Specrew maintainers (FR-007, FR-017, FR-018, FR-019)
@@ -114,11 +114,13 @@ Specrew bridges Spec Kit (specification/governance) and Squad (multi-agent runti
 
 | Component | Layer | Responsibilities | Spec References |
 | --------- | ----- | ---------------- | --------------- |
-| `specrew init` | Standalone CLI | Dependency detection/install, `specify init`/`squad init` orchestration, version validation, governance scaffold, brownfield merge, extension installation | FR-002, FR-020 |
+| `specrew init` | Standalone CLI | Dependency detection/install, `specify init`/`squad init` orchestration, version validation, governance scaffold, brownfield merge, extension installation, Copilot / Agent HQ delegated-agent detection + consent | FR-002, FR-020, FR-022 |
+| `specrew start` | Standalone CLI | Validate downstream bootstrap, resolve intake/resume/new-feature context, launch or hand off to Squad, continue active work when present, optionally surface team-specialist needs, launch Copilot from the target project directory with non-blocking approvals by default, and drive the Spec Kit lifecycle through `specify`, `clarify`, `plan`, `tasks`, and `implement` | FR-024 |
 | Governance Scaffold | Spec Kit ext | Generate downstream constitution placeholder, iteration config template, role assignment file | FR-011, FR-016 |
 | Drift Detection | Spec Kit ext + Squad ext | Spec Kit side: diff logic comparing task output to requirement. Squad side: post-task hook invoking drift check. | FR-003, FR-008 |
 | Collision Detector | Spec Kit ext | Scan installed extensions for hook/artifact conflicts, report clearly | FR-012 |
 | Baseline Crew | Squad ext | Define 5 roles as Squad team members. Project-specific roles added via Squad config. | FR-002, FR-004 |
+| Delegated Agent Router | Squad ext | Routes roles to preferred delegated agents per `role-assignments.yml` (FR-021). Enables independent-perspective review while keeping Copilot as the default workhorse. | FR-021 |
 | Iteration Ceremonies | Squad ext | Planning, Review/Demo (Specrew-defined), Retrospective (Squad built-in) | FR-005, FR-009, FR-010 |
 | Iteration Engine | Squad ext + skills | Task mapping to requirements, effort estimation, capacity checking, task state persistence, resume | FR-007, FR-017, FR-018, FR-019 |
 | Evaluation Harness | Shared (scripts) | Bootstrap fresh project, run N iterations, produce process + outcome report | FR-015 |
@@ -312,7 +314,7 @@ Each file follows a consistent Markdown structure for parseability by the drift-
 4. Spec Kit is already initialized (`.specify/` exists at repo root)
 5. Squad is configured via Squad-native deployment: skills in `.copilot/skills/specrew-*/`, ceremonies in `.squad/ceremonies.md`, directives in agent charters
 
-### For Downstream Projects (`specrew init`)
+### For Downstream Projects (`specrew init` + `specrew start`)
 
 `specrew init` is a standalone script (`scripts/specrew-init.ps1`) that runs before `.specify/` or `.squad/` exist:
 
@@ -355,17 +357,22 @@ specrew init
   └─ 7. Report: what was installed, what was preserved, what needs user action
 ```
 
-**Implementation boundary**: The Spec Kit extension activates only after `.specify/` exists. The Squad extension activates only after `.squad/` exists. `specrew init` is the orchestration layer above both.
+After bootstrap, `specrew start` becomes the downstream orchestration command. It validates the bootstrapped surfaces, defaults to intake/resume mode when no feature request is supplied, resolves whether the user is resuming active work or beginning a new fix/feature, and then launches or hands off to Squad with an exact prompt telling Squad to continue in-progress work when possible, gather only the missing intake details when necessary, ask about extra specialists only when the current roster appears insufficient, run the full Spec Kit lifecycle in order, and escalate only unresolved questions. The launcher starts Copilot from the target project directory and defaults to `--allow-all` for automated handoff sessions so trust/tool approval prompts are less likely to stall startup; users can opt back into interactive approvals explicitly.
+
+**Implementation boundary**: The Spec Kit extension activates only after `.specify/` exists. The Squad extension activates only after `.squad/` exists. `specrew init` and `specrew start` are the orchestration layer above both.
 
 ## 9. GitHub Workflow for Specrew Development
 
-*(Specrew project-development choice only. Not imposed on downstream projects.)*
+**Iteration Execution Model** (per .squad/protocol.md):
+
+Specrew uses a local-first iteration model where Markdown artifacts in `specs/001-specrew-product/iterations/NNN/` are the authoritative source of truth. The iteration lifecycle follows four phases — Planning, Execution, Review/Demo, Retrospective — with all task state, status, and closure decisions recorded in local artifact files first.
 
 - **Repository**: Private GitHub repo, public once testable by others
-- **Issue tracking**: GitHub Issues with templates (bug, feature, task). Issues are created for visibility/tracking via `speckit.taskstoissues`, but local tasks.md remains the authoritative source of truth for implementation order and status.
-- **Project board**: GitHub Projects V2 using Squad's documented default board layout (no custom columns)
-- **Branching**: Feature branches per Spec Kit convention (`NNN-feature-name`)
-- **PR model**: All changes via PR. CI must pass. Human review via standard GitHub PR review — no formal "Human Reviewer" crew role.
+- **Task artifact authority**: All task planning, execution tracking, status updates, and closure decisions are recorded in local artifacts (plan.md, state.md, drift-log.md, review.md, retro.md) first. Local iteration artifacts are the authoritative source; GitHub artifacts are derived mirrors.
+- **GitHub Issues and Projects (Specrew self-development)**: REQUIRED. GitHub Issues are created from plan tasks and synchronized to GitHub Projects V2 board. Squad is responsible for creating, populating, and maintaining the board as a derived operational mirror from local artifacts. The board follows Squad's documented default layout (no custom columns). Board status movements reflect actual task state in local artifacts, never precede it. See `docs/github-project.md` for operational procedures. Manual board management is fallback-only if automation fails; capability gaps or blockers must be recorded, not silently downgraded to manual management.
+- **GitHub Projects (downstream projects)**: Downstream projects MAY opt in or out of GitHub Projects board usage. Downstream projects retain choice of authority model and may use Jira, Azure DevOps, GitHub Projects, or local task artifacts as appropriate.
+- **Branching**: Specrew self-development keeps an iteration integration branch per Spec Kit convention (current MVP branch: `001-specrew-product`), then routes mirrored task issues through Squad issue branches named `squad/{issue-number}-{slug}`. When parallel issue work is active, each issue branch may use its own git worktree rooted from the current integration branch.
+- **PR model**: All changes via PR. CI must pass. Human review uses the standard GitHub PR path, and per-task PRs target the active integration branch after local iteration artifacts are updated. GitHub review does not replace local artifact authority.
 - **CI pipeline**: Lint (markdownlint, PSScriptAnalyzer) + unit tests + integration tests on every PR
 - **Release**: Semantic versioning. Tag-triggered workflow packages both extensions.
 - **Dogfooding**: Squad is used to develop Specrew from Iteration 0. The Specrew crew (5 baseline roles) operates on its own spec from the start.
@@ -510,12 +517,12 @@ evaluation/harness.ps1
 | Deliverable | FR | Description |
 | ----------- | -- | ----------- |
 | Monorepo scaffold | FR-001 | Create repo layout per Section 6. Set up `.github/`, `extensions/`, `tests/`, `evaluation/`, `docs/` |
-| Spec Kit extension skeleton | FR-001, FR-013 | Use official Spec Kit extension starter template. Create `specrew-speckit/` with hooks/, templates/, scripts/ (no commands/ — none defined for v1) |
+| Spec Kit extension skeleton | FR-001, FR-013 | Use official Spec Kit extension starter template. Create `specrew-speckit/` with hooks/, templates/, scripts/. No user-facing Specrew commands are defined for v1; if hook wiring requires internal manifest-backed command prompt files, those remain implementation detail only. |
 | Squad template source | FR-001, FR-013 | Create `extensions/specrew-speckit/squad-templates/` with skills/, ceremonies/, directives/ Markdown sources |
 | Platform validation | — | Verify Spec Kit extension loads. Verify Squad-native configuration can be deployed. Document hook availability. |
-| Compatibility spike | — | Explicit validation checklist: (1) Spec Kit install/update to >= 0.7.3, (2) Squad install/update to >= 0.9.1, (3) Spec Kit hook availability audit (which `before_*`/`after_*` hooks fire), (4) Squad HookPipeline surface audit (PreToolUseHook/PostToolUseHook availability), (5) Squad extension discovery test (skills/ceremonies/directives found by `squad status`), (6) GitHub Projects V2 API access validation, (7) Local extension development test mechanics (edit → reload → verify cycle), (8) Squad non-interactive init: verify whether `squad init` supports a `--non-interactive` flag or equivalent; if not, document the `.squad/` file layout for direct creation, (9) Spec Kit extension install mechanism: verify whether `specify extension add` exists in 0.7.3; if not, document manual file-copy + `extensions.yml` registration as the sanctioned path, (10) Squad `plugin install` local path: verify `squad plugin install ./local-path` works (vs registry-only), (11) Spec Kit prompt file placement: verify whether prompt files belong in `.github/prompts/` (plan Section 6) or `.specify/templates/commands/` (Spec Kit convention) |
+| Compatibility spike | — | Explicit validation checklist: (1) Spec Kit install/update to >= 0.7.3, (2) Squad install/update to >= 0.9.1, (3) Spec Kit hook availability audit (which `before_*`/`after_*` hooks fire), (4) Squad HookPipeline surface audit (PreToolUseHook/PostToolUseHook availability), (5) Squad extension discovery test (skills/ceremonies/directives found by `squad status`), (6) Local extension development test mechanics (edit → reload → verify cycle), (7) Squad non-interactive init: verify whether `squad init` supports a `--non-interactive` flag or equivalent; if not, document the `.squad/` file layout for direct creation, (8) Spec Kit extension install mechanism: verify whether `specify extension add` exists in 0.7.3; if not, document manual file-copy + `extensions.yml` registration as the sanctioned path, (9) Squad `plugin install` local path: verify `squad plugin install ./local-path` works (vs registry-only), (10) Spec Kit prompt file placement: verify whether prompt files belong in `.github/prompts/` (plan Section 6) or `.specify/templates/commands/` (Spec Kit convention) |
 | CI pipeline | — | GitHub Actions: markdownlint, PSScriptAnalyzer, test runner |
-| GitHub Project board | — | Create V2 board using Squad's documented default layout |
+| GitHub Project board | — | GitHub Projects V2 board created and synced from iteration artifacts via automation. Board follows Squad's documented default layout (no custom columns). See `docs/github-project.md` for operational procedures. Local iteration artifacts remain authoritative; GitHub Issues/board are derived mirrors. |
 
 ### MVP (Iteration 1)
 

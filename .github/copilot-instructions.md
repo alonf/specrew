@@ -4,7 +4,7 @@ Auto-generated from all feature plans. Last updated: 2026-04-17
 
 ## Active Technologies
 
-- Markdown, YAML, PowerShell (Spec Kit extension assets). + Spec Kit >= 0.7.3 (extension starter template), Squad >= 0.9.1 (extension structure: skills/ceremonies/directives) (001-specrew-product)
+- Markdown, YAML, PowerShell (Spec Kit extension assets). + Spec Kit >= 0.8.4 (extension starter template), Squad >= 0.9.1 (extension structure: skills/ceremonies/directives) (001-specrew-product)
 
 ## Project Structure
 
@@ -23,7 +23,7 @@ Markdown, YAML, PowerShell (Spec Kit extension assets).: Follow standard convent
 
 ## Recent Changes
 
-- 001-specrew-product: Added Markdown, YAML, PowerShell (Spec Kit extension assets). + Spec Kit >= 0.7.3 (extension starter template), Squad >= 0.9.1 (extension structure: skills/ceremonies/directives)
+- 001-specrew-product: Added Markdown, YAML, PowerShell (Spec Kit extension assets). + Spec Kit >= 0.8.4 (extension starter template), Squad >= 0.9.1 (extension structure: skills/ceremonies/directives)
 
 <!-- MANUAL ADDITIONS START -->
 <!-- MANUAL ADDITIONS END -->

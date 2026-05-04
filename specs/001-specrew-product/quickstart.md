@@ -22,29 +22,41 @@ specrew init
 ```
 
 This will:
-- Detect/install Spec Kit (>= 0.7.3) and Squad (>= 0.9.1)
+- Detect/install Spec Kit (>= 0.8.4) and Squad (>= 0.9.1)
 - Create `.specrew/` with governance artifacts
 - Configure 5 baseline roles in your Squad team
 - Report what was created
 
-## 3. Write a Spec
+## 3. Start a Feature Run
 
-Use Spec Kit's normal workflow:
+Use Specrew's guided entrypoint:
 
 ```bash
-# Create a feature spec
-/speckit.specify "Build a REST API for user management"
+# Start Squad in guided intake/resume mode
+specrew start
+
+# Optional shorthand: start a new feature from a plain-language request
+specrew start "Build a REST API for user management"
 ```
 
-## 4. Start an Iteration
+This should:
 
-With your spec written, start an iteration:
+- Hand off to Squad as the active coordinator
+- Have Squad drive the Spec Kit lifecycle: `specify`, `clarify` when needed, `plan`, `tasks`, `implement`
+- Ask you only the questions Squad cannot safely resolve from repo context and existing artifacts
+- Continue through implementation once the spec/design is clear enough
+- Launch Copilot from the project root and default to non-blocking approvals unless you explicitly opt into prompt-based approvals
 
-1. The **Planner** reads your spec requirements and generates an iteration plan
-2. You review and approve the plan
-3. The crew executes tasks, with drift-check running after each task
-4. The **Reviewer** runs the Review/Demo ceremony with per-task verdicts
-5. The **Retro Facilitator** runs the Retrospective
+## 4. Let Squad Drive the Lifecycle
+
+With `specrew start`, the intended lifecycle is:
+
+1. The **Spec Steward / Squad** continues any in-progress feature when one already exists, or gathers the next feature/fix intake when none is active
+2. Squad runs clarification only when needed, answering what it can itself
+3. The **Planner** produces the implementation plan and task set
+4. The **Implementer** executes the work
+5. The **Reviewer** runs the Review/Demo ceremony with per-task verdicts
+6. The **Retro Facilitator** runs the Retrospective
 
 ## 5. Check Iteration Artifacts
 
@@ -59,7 +71,11 @@ specs/001-your-feature/iterations/001/
 └── retro.md       # Estimation accuracy, learnings, actions
 ```
 
-## 6. Resume After Interruption
+## 6. Start the Next Feature
+
+When you want another feature, run `specrew start` again. You can provide the next plain-language request immediately or let Squad gather it interactively. The same Spec Kit lifecycle begins again for the new feature or fix.
+
+## 7. Resume After Interruption
 
 If the crew stops mid-iteration:
 

@@ -2,7 +2,7 @@
 
 **Date**: 2026-04-18 (Revised from 2026-04-17 following Iteration 0 architecture decision)
 **Spec**: [spec.md](../spec.md)  
-**Requirements**: FR-001, FR-004, FR-005, FR-008, FR-013  
+**Requirements**: FR-001, FR-004, FR-005, FR-008, FR-010, FR-013, FR-019
 **Decision**: `.squad\decisions\inbox\copilot-squad-native-surfaces-2026-04-18T00-24-57Z.md`
 
 ## Architecture Rationale
@@ -29,11 +29,13 @@ Specrew v1 therefore uses **Squad-native surfaces directly** rather than creatin
       │   └─ SKILL.md
       ├─ specrew-traceability-check/
       │   └─ SKILL.md
-      └─ specrew-iteration-resume/
-          └─ SKILL.md
+      ├─ specrew-iteration-resume/
+      │   └─ SKILL.md
 ```
 
-All Specrew skills use `specrew-*` prefix to avoid namespace collisions.
+All deployed Specrew skills use `specrew-*` prefix to avoid namespace collisions.
+
+`specrew-iteration-resume` is deployed from `extensions\specrew-speckit\squad-templates\skills\iteration-resume.md` in Iteration 2 and uses `resume-iteration.ps1` to turn `state.md` plus `plan.md` into a resumable next-step report.
 
 ### Ceremonies Registration
 
@@ -61,6 +63,8 @@ Ceremonies are registered in `.squad/ceremonies.md` (appended by `specrew init`)
 ... (ceremony prompt content) ...
 ```
 
+Only Specrew-defined ceremonies are appended. Retrospective is **not** redefined in `.squad/ceremonies.md`; Specrew relies on Squad's built-in Retrospective ceremony and keeps `extensions\specrew-speckit\squad-templates\ceremonies\retro.md` as source guidance for the built-in flow.
+
 ### Directives
 
 Directives are governance rules included in agent charters. When `specrew init` creates/updates agents in `.squad/agents/`, it adds Specrew directives to their charter files:
@@ -78,42 +82,44 @@ Every task must record which requirement it traces to, who owns it, and the effo
 
 ### Drift Reporting
 
-After completing any task, invoke the `specrew-drift-check` skill. Report drift immediately. Do not normalize or suppress deviations.
+After completing any task, update `state.md`, then invoke the `specrew-drift-check` skill. Report drift immediately. Do not normalize or suppress deviations.
 ```
 
 ## Skill Contracts
 
 ### specrew-drift-check
 
-**When to use**: After each task is completed during an iteration.  
-**Invoked by**: Reviewer role (triggered by drift-reporting directive) or Review/Demo ceremony (batch fallback).  
-**Inputs**: Task output, source requirement text, spec path.  
-**Outputs**: PASS (no drift) or DRIFT (with requirement ref, deviation description).  
-**Side effects**: Appends to `drift-log.md` if drift detected.
+**When to use**: After each task is completed during an iteration.
+**Invoked by**: Reviewer role (triggered by drift-reporting directive) or Review/Demo ceremony (batch fallback).
+**Inputs**: Task ID, task output, requirement ref/text, authoritative spec path, and optional drift-log path / reviewer notes.
+**Outputs**: PASS with explicit evidence summary, or DRIFT with contract-aligned drift event data (`drift_id`, `task_ref`, `requirement_ref`, `description`, `resolution`, `resolution_detail`) plus a Markdown-ready snippet for `drift-log.md`.
+**Side effects**: Prepares or appends `drift-log.md` entries and updates the zero-drift placeholder summary when the first real drift event is recorded.
 
 ### specrew-capacity-planning
 
-**When to use**: During the Planning ceremony.  
-**Invoked by**: Planner role.  
+**When to use**: During the Planning ceremony.
+**Invoked by**: Planner role.
 **Inputs**: Spec requirements, iteration config (effort unit, capacity limit).  
-**Outputs**: Task list with effort estimates. Warning if total exceeds capacity.  
+**Outputs**: Task list with effort estimates. Warning plus explicit lowest-priority deferral guidance if total exceeds capacity.  
 **Side effects**: None (produces plan content).
 
 ### specrew-traceability-check
 
-**When to use**: Before review, or on demand.  
-**Invoked by**: Spec Steward role.  
+**When to use**: Before review, or on demand.
+**Invoked by**: Spec Steward role.
 **Inputs**: Iteration plan tasks, spec requirements.  
 **Outputs**: Coverage report (which requirements have tasks, which don't).  
 **Side effects**: None.
 
 ### specrew-iteration-resume
 
-**When to use**: When an iteration was interrupted and needs to continue.  
-**Invoked by**: Any agent, on user request.  
-**Inputs**: `state.md` from the interrupted iteration.  
-**Outputs**: List of remaining tasks, suggested next task.  
-**Side effects**: Updates `state.md` status.
+**When to use**: When an iteration was interrupted and needs to continue.
+**Invoked by**: Any agent, on user request.
+**Inputs**: Iteration directory containing the interrupted iteration's `state.md` and `plan.md`.  
+**Outputs**: List of remaining tasks, suggested next task, blockers, and salvageable tasks when aborting.  
+**Side effects**: Updates `state.md` with a managed resume report when the iteration is resumable or intentionally being re-planned.
+
+**Delivery window**: FR-019 / Iteration 2. Implemented through the downstream `resume-iteration.ps1` helper plus the deployed recovery skill.
 
 ## Ceremony Contracts
 
@@ -123,7 +129,7 @@ After completing any task, invoke the `specrew-drift-check` skill. Report drift 
 **Inputs**: Spec requirements, iteration config, role assignments.  
 **Outputs**: `iterations/NNN/plan.md` with task table.  
 **Verdicts**: N/A (planning produces a plan, not a verdict).  
-**Escalation**: If capacity exceeded, flag and suggest deferral.
+**Escalation**: If capacity is exceeded, flag it and suggest deferral from the lowest-priority requirement slices first.
 
 ### Review/Demo (Specrew-defined)
 
@@ -133,15 +139,24 @@ After completing any task, invoke the `specrew-drift-check` skill. Report drift 
 **Verdicts**: pass | needs-work | blocked (per task). accepted | needs-rework | blocked (iteration).  
 **Escalation**: needs-work tasks re-enter backlog. blocked tasks escalate to human.
 
+### Retrospective *(Squad built-in)*
+
+**Decision gate**: Retrospective runs through Squad's built-in ceremony infrastructure after review/demo completes.
+**Inputs**: `plan.md`, `state.md`, `drift-log.md`, `review.md`, plus Specrew retro guidance.
+**Outputs**: `iterations/NNN/retro.md` with estimation accuracy, drift summary, process adherence, and improvement actions.
+**Escalation**: Improvement actions route through the project owner / team governance path; Specrew does not append a separate retrospective ceremony definition.
+
 ## Installation
 
 `specrew init` handles all Squad-native configuration:
 
 1. Creates skill directories under `.copilot/skills/specrew-*/`
-2. Copies `SKILL.md` files into each skill directory
-3. Appends ceremony definitions to `.squad/ceremonies.md`
+2. Copies the active Specrew `SKILL.md` files into each skill directory (`specrew-drift-check`, `specrew-capacity-planning`, `specrew-traceability-check`, `specrew-iteration-resume`)
+3. Appends only the Specrew-defined ceremony definitions (`Planning`, `Review/Demo`) to `.squad/ceremonies.md`
 4. Merges directive text into agent charters in `.squad/agents/*/charter.md`
 5. Adds 5 baseline roles to `.squad/team.md`
+
+Retrospective guidance remains source-only because the live retrospective ceremony is provided by Squad itself.
 
 No `squad plugin install` command is used (marketplace-only, not applicable to bundled distribution).
 
@@ -161,7 +176,7 @@ When Specrew releases a new version:
 ## Collision Avoidance
 
 - **Skill namespace**: All Specrew skills prefixed with `specrew-*`
-- **Ceremony names**: `Specrew: Planning`, `Specrew: Review/Demo` (explicit prefix)
+- **Ceremony names**: `Specrew: Planning`, `Specrew: Review/Demo` (explicit prefix). Retrospective keeps Squad's built-in ceremony name.
 - **Directive names**: Embedded in agent charters (no global namespace collision)
 - **Role names**: Checked at bootstrap (FR-012: collision detector, Iteration 3)
 
@@ -169,9 +184,10 @@ When Specrew releases a new version:
 
 Specrew's Squad integration is **additive-only**:
 
-- Appends to `.squad/ceremonies.md` (never overwrites existing ceremonies)
+- Appends only Specrew-defined ceremonies to `.squad/ceremonies.md` (never overwrites existing ceremonies)
 - Merges roles into `.squad/team.md` (never replaces existing team)
 - Adds directives to agent charters (preserves user-added directives)
 - Deploys skills to dedicated `specrew-*` subdirectories (no file conflicts)
+- Leverages Squad's built-in Retrospective ceremony instead of shadowing it with a Specrew-defined duplicate
 
 This ensures Specrew coexists with other Squad configurations and user customizations.

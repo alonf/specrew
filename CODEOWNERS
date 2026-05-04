@@ -8,9 +8,6 @@
 # Spec Kit extension
 /extensions/specrew-speckit/ @alonf
 
-# Squad extension
-/extensions/specrew-squad/ @alonf
-
 # Specifications and iteration artifacts
 /specs/ @alonf
 

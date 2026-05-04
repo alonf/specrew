@@ -60,7 +60,8 @@ Controls effort measurement and iteration behavior.
 | time_limit_hours | number? | null | If time-bounded, max hours |
 | overcommit_threshold | float | 1.0 | Ratio above which overcommit warning fires |
 | calibration_enabled | boolean | true | Whether retro suggests calibration adjustments |
-
+| defer_strategy | enum: manual, lowest_priority | "manual" | How planning chooses deferrals when the iteration is over capacity |
+ 
 **Relationships**: Used by Planning ceremony and Capacity Planning skill.
 
 ---
@@ -77,6 +78,7 @@ Maps Specrew roles to agents or humans.
 | roles[].name | string | Role name (e.g., "Spec Steward") |
 | roles[].type | enum: baseline, project | Whether this is a baseline or project-added role |
 | roles[].assigned_to | string | Agent name, human name, or "unassigned" |
+| roles[].preferred_agent | string? | Preferred Copilot-accessible agent family for this role (e.g., `copilot`, `claude`, `codex`) |
 | roles[].responsibilities | string | Brief description of role's responsibilities |
 
 **Baseline roles** (cannot be removed):
@@ -86,7 +88,7 @@ Maps Specrew roles to agents or humans.
 4. Reviewer — Review/demo verdicts, quality checks
 5. Retro Facilitator — Retrospective ceremony, improvement actions
 
-**Relationships**: Referenced by Specrew Configuration. Used by Squad team config.
+**Relationships**: Referenced by Specrew Configuration. Used by Squad team config and by FR-021 routing logic to derive Squad model overrides.
 
 ---
 
@@ -123,6 +125,19 @@ Tasks for one iteration, mapped to spec requirements.
 
 **Location**: `specs/NNN-feature/iterations/NNN/plan.md`
 
+Plan-level snapshot fields:
+
+| Field | Type | Required | Description |
+| ----- | ---- | -------- | ----------- |
+| capacity | string | Yes | `{used}/{total} {effort_unit}` summary shown in plan metadata |
+| effort_model.effort_unit | string | Yes | Snapshot of `.specrew/iteration-config.yml` |
+| effort_model.capacity_per_iteration | number | Yes | Max effort for the iteration |
+| effort_model.iteration_bounding | enum: scope, time | Yes | Scope vs. time-bounded planning mode |
+| effort_model.time_limit_hours | number\|`n/a` | Yes | Displayed as `n/a` when not time-bounded |
+| effort_model.overcommit_threshold | float | Yes | Threshold used by planning validation |
+| effort_model.defer_strategy | enum: manual, lowest_priority | Yes | Deferral strategy snapshot |
+| effort_model.calibration_enabled | boolean | Yes | Whether retro should suggest calibration |
+
 Each task entry:
 
 | Field | Type | Required | Description |
@@ -138,7 +153,7 @@ Each task entry:
 | actual_effort | number? | No | Actual effort (recorded on completion) |
 | verdict | enum: pass, needs-work, blocked? | No | Review verdict (recorded at review) |
 
-**Relationships**: Tasks trace to spec requirements (FR-018). Plan references Iteration Config for capacity.
+**Relationships**: Tasks trace to spec requirements (FR-018). Plan snapshots Iteration Config so generated artifacts and validators can confirm capacity/effort settings stayed aligned.
 
 ---
 
@@ -225,7 +240,7 @@ Captures iteration learnings.
 
 Output of the evaluation harness.
 
-**Location**: `specs/NNN-feature/evaluation/report.md`
+**Location**: `evaluation/report.md`
 
 | Field | Type | Required | Description |
 | ----- | ---- | -------- | ----------- |
@@ -257,3 +272,22 @@ A detected extension conflict.
 | user_choice | string? | What the user chose (if interactive) |
 
 **Relationships**: May block `specrew init` or iteration start (FR-012).
+
+---
+
+### Delegated Agent
+
+A Copilot-accessible agent option available to Specrew.
+
+**Scope**: Detected, configured, and referenced during `specrew init` and throughout iteration execution.
+
+| Field | Type | Description |
+| ----- | ---- | ----------- |
+| name | enum: Copilot, Claude, Codex | Agent identifier as exposed through Copilot / Agent HQ |
+| access_path | enum: copilot_default, copilot_agent_hq, unavailable | How Specrew reaches this agent option |
+| availability | enum: available, unavailable | Whether this agent is currently selectable in the user's Copilot environment |
+| enabled | boolean | Whether user has opted in to use this agent |
+
+**Cost/billing**: Not modeled. Consent is the only gate Specrew applies; any cost implications are between the user and GitHub.
+
+**Relationships**: Configured in `iteration-config.yml` by `specrew init` (FR-022). Scope: per-project, per-iteration.

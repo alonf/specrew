@@ -6,7 +6,11 @@
       "Bash(gh search *)",
       "Bash(git branch *)",
       "Bash(git push *)",
-      "Bash(python -c ' *)"
+      "Bash(python -c ' *)",
+      "WebSearch",
+      "Bash(awk '/2026-04-20/,/^---$/' .squad/decisions.md)",
+      "Bash(gh project *)",
+      "Bash(gh issue *)"
     ]
   }
 }

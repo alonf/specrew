@@ -34,6 +34,13 @@ hooks:
     prompt: Commit outstanding changes before planning?
     description: Auto-commit before implementation planning
     condition: null
+  - extension: specrew-speckit
+    command: speckit.specrew-speckit.before-plan
+    enabled: true
+    optional: false
+    prompt: Execute speckit.specrew-speckit.before-plan?
+    description: Validate spec readiness before planning
+    condition: null
   before_tasks:
   - extension: git
     command: speckit.git.commit
@@ -49,6 +56,13 @@ hooks:
     optional: true
     prompt: Commit outstanding changes before implementation?
     description: Auto-commit before implementation
+    condition: null
+  - extension: specrew-speckit
+    command: speckit.specrew-speckit.before-implement
+    enabled: true
+    optional: false
+    prompt: Execute speckit.specrew-speckit.before-implement?
+    description: Validate execution readiness before implementation
     condition: null
   before_checklist:
   - extension: git
@@ -113,6 +127,13 @@ hooks:
     optional: true
     prompt: Commit task changes?
     description: Auto-commit after task generation
+    condition: null
+  - extension: specrew-speckit
+    command: speckit.specrew-speckit.after-tasks
+    enabled: true
+    optional: false
+    prompt: Execute speckit.specrew-speckit.after-tasks?
+    description: Verify task traceability after task generation
     condition: null
   after_implement:
   - extension: git

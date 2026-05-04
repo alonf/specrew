@@ -11,3 +11,5 @@
 
 # Reviewer-local validation workspace
 .worf-review/
+# Squad: ignore runtime state (logs, inbox, sessions)
+.squad/.scratch/

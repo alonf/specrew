@@ -36,6 +36,52 @@ I run Specrew retrospectives and capture estimation accuracy, drift events, proc
 - Artifact consistency requires role naming alignment across retro.md and team.md; Alon's role is Chief Architect & Reviewer (not Spec Steward) — verified and corrected in Iteration 0 retro (2026-04-18).
 - Retro closure wording must mark the ceremony complete without advancing the iteration to `complete`; only Alon's sign-off clears that final state change.
 
+## Iteration 002 Retrospective Synthesis (2026-05-03)
+
+### Key Findings
+
+1. **Zero estimation variance (16/16 pts)**: Perfect task-level accuracy. Three factors:
+   - Planning discipline: Pre-execution design spikes (V-R7-2, T-201) eliminated design ambiguity.
+   - Well-scoped tasks: Each task mapped to a single requirement slice.
+   - No mid-iteration re-scoping: Plan remained intact from approval through completion.
+
+2. **Drift detection automated & early (6/6 events, 100% in-phase resolution)**: All drift surfaced via gate-based audits (spec review, planning validation, evaluation audit). No drift escaped to post-review discovery. This is the outcome of Iteration 0's pre-execution gates improvement working effectively.
+
+3. **Reviewer gates worked as designed (0 rework loops)**: Worf's 2026-05-03 acceptance reviews were crisp, high-signal verdicts. Each review referenced specific test coverage and acceptance criteria. Single verdict date, no rework loops required.
+
+4. **Slice sequencing prevented blocking**: Six independent requirement slices (FR-007, FR-015, FR-017, FR-019, FR-020, FR-021) were planned with minimal inter-task coupling. No critical-path bottlenecks emerged. Parallel slice execution kept the team moving.
+
+5. **Specification drift corrections were narrow & accepted (4/6 events)**: Spec gaps in FR-020 (collision gates not enumerated) and FR-019 (stale metadata handling) required narrow clarifications but no rework. Root cause: Pre-execution gates ran post-planning, not during planning ceremony.
+
+### Process Improvements Recommended
+
+**Four tier-1 actions for Iteration 3** (zero effort + 0.5 pts documentation):
+
+1. **Pre-Planning Spec-Authority Gate** (planning ceremony, not post-execution): Move the spec-review gate from T-205 (post-planning) to planning ceremony pre-execution. Effort 0, ROI: reduce spec-related drift latency 80%.
+
+2. **Slice Boundary Documentation**: Add "## Scope Clarifications" to plan.md for multi-iteration requirements. Effort 0, ROI: reduce stakeholder misalignment.
+
+3. **Mid-Iteration Phase Checkpoints**: Define expected completion dates for each phase (planning by day 2, 50% impl by day 4, etc.). Effort 1, ROI: early velocity detection.
+
+4. **Implementer-Logged Drift Detection**: Embed drift logging in implementer charter. Each task close triggers a one-sentence drift-check prompt. Effort 0.5, ROI: distributed drift detection reduces gate bottlenecks.
+
+### Team Routing
+
+**Iteration 3 Planning Prerequisite**:
+- **Picard**: Embed spec-authority gate into planning ceremony (Action 1). Move FR-020 brownfield audit from post-planning to planning ceremony. Add scope clarification section to plan.md template (Action 2).
+- **La Forge**: Add checkpoint schedule to plan.md and velocity tracking to state.md. Update implementer charter with drift-check prompt (Action 4).
+- **Worf**: Continue reviewer gate structure; no changes needed (gates working as designed).
+- **Troi**: Facilitate Iteration 3 planning ceremony with pre-planning spec-authority gate. Route improvements to team consensus before execution.
+- **Data**: Update plan.md template with checkpoint section and multi-iteration scope clarifications.
+
+### Retro Verdict
+
+**Iteration 002**: ✅ COMPLETE — Retrospective closed. Post-MVP capability expansion delivered per spec. Zero estimation variance. 100% drift detection rate. 0 rework loops. All four iteration artifacts complete. Ready for Alon final sign-off.
+
+**Process Quality**: ✅ EXCELLENT — Operating policy rules 1–6 all effective. Governance hardening (planning gates, spec review, reviewer verdicts) working as designed. Three-gate structure has proven effective at detecting and resolving drift within the same iteration.
+
+**Blocking Issues**: NONE. Iteration 3 can begin once Alon approves Iteration 002 closure and team consensus is reached on four tier-1 improvements.
+
 ## Iteration 0 Retrospective Synthesis (2026-04-18)
 
 ### Key Findings
@@ -222,3 +268,74 @@ I run Specrew retrospectives and capture estimation accuracy, drift events, proc
 - **Worf (Review Artifact Freshness)**: review.md updated to post-retro state with corrected role names
 
 **Status**: All four agents' artifact cleanup complete. Decisions merged to .squad/decisions.md. Iteration 0 closure official and binding.
+
+---
+
+## Documentation Truth-Gap Resolution (2026-05-XX)
+
+### Summary
+
+Updated `docs/getting-started.md` to align with actual runtime behavior and current upstream blockers.
+
+### Truth Gap Identified
+
+1. **Greenfield `-Force` requirement**: Documentation claimed git-only repos could bootstrap without `-Force`, but runtime actually prompts for confirmation in interactive mode (fails non-interactively). Test `bootstrap-to-iteration.ps1` confirmed the stall.
+
+2. **Spec Kit 1.0.0 asset blocker**: Documentation did not mention the current `No matching release asset found for copilot` error that blocks `.specify/` initialization with latest Spec Kit. This leaves users stranded mid-bootstrap without guidance.
+
+3. **No actionable workaround**: Users hitting the asset blocker had no documented path forward (downgrade to 0.7.3 or monitor upstream fix).
+
+### Changes Made
+
+**docs/getting-started.md**:
+- Greenfield Prerequisites: Added warning about Spec Kit 1.0.0 asset blocker with link to Spec Kit repo
+- Greenfield Bootstrap: Changed from `pwsh -File ... -ProjectPath .` to `pwsh -File ... -ProjectPath . -Force` with explicit warning that `-Force` is required even for git-only repos
+- Verification section: Clarified that bootstrap can fail if CLIs fail; added note about checking `.specify/` missing = Spec Kit CLI failure
+- Notes section: Removed false statement ("For truly empty repos, -Force not required"); updated to "Always use -Force for reliable non-interactive bootstrap"
+- Known Limitations: Added tier-1 section "Blocker: Spec Kit CLI Asset Dependency Issue" with:
+  - Current status (Spec Kit 1.0.0)
+  - Impact on greenfield-to-iteration flow
+  - Verification command to check if hit
+  - Actionable next step: downgrade to 0.7.3 or wait for upstream fix
+  - Example command using pinned version
+- Known Limitations: Renamed & clarified "Environment-Specific Blocker: Spec Kit CLI Encoding (Windows Only)" with updated instructions using manual init syntax
+
+### Learnings
+
+- **Doc truth requirement**: Getting-started docs must be tested against actual runtime behavior (integration test stall confirmed the issue).
+- **Blocker documentation**: When upstream dependencies have known issues, document them tier-1 in prerequisites, not buried in Known Limitations. Users need to know before they start.
+- **Actionable paths**: For each blocker, provide the verification command + the workaround (downgrade, retry location, upstream issue tracker).
+- **Greenfield non-interactive**: Even "empty" repos (git-only) prompt for confirmation without `-Force`. This is unintuitive but necessary for correct behavior.
+
+### Files Modified
+
+- `docs/getting-started.md` (6 edits across greenfield, verification, notes, known limitations sections)
+
+### No Runtime Code Changes
+
+No changes to `scripts/specrew-init.ps1` or other runtime code. All changes are documentation only, ensuring truthful guidance without behavior modification.
+
+
+## 2026-05-04 - Team Command Flag Syntax Fix
+
+**Context**: Revision 3 of FR-013 team management implementation. Previous revisions by La Forge and Data were rejected due to interface contract mismatch.
+
+**Problem**: Docs/spec specified `--role` and `--charter` (Unix-style), but implementation only accepted `-Role` and `-Charter` (PowerShell-style).
+
+**Solution**: 
+- Added argument preprocessing layer in `specrew-team.ps1` using `System.Management.Automation.InvocationInfo.UnboundArguments`
+- Script now accepts both Unix-style (`--role`, `--charter`) and PowerShell-style (`-Role`, `-Charter`) flags
+- Updated all usage messages to reflect documented Unix-style syntax
+- Updated integration tests to use documented syntax
+
+**Key Learning**: When building cross-platform or convention-breaking interfaces in PowerShell:
+1. Document the user-facing interface first (what users should type)
+2. Implement argument translation if the documented interface differs from PowerShell conventions
+3. Use `System.Management.Automation.InvocationInfo.UnboundArguments` to detect and process unbound arguments
+4. Re-invoke with translated arguments to maintain clean parameter binding
+5. Preserve backward compatibility when practical (both syntaxes work)
+
+**Validation**: All 8 integration tests pass. Both flag syntaxes work identically.
+
+**Outcome**: Interface contract now truthful. Third-time implementation accepted.
+

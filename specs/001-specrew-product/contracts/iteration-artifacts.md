@@ -2,7 +2,7 @@
 
 **Date**: 2026-04-17 (Updated 2026-04-18: State machine made normative)
 **Spec**: [spec.md](../spec.md)
-**Requirements**: FR-005, FR-006, FR-008, FR-009, FR-010, FR-018, FR-019
+**Requirements**: FR-005, FR-006, FR-007, FR-008, FR-009, FR-010, FR-017, FR-018, FR-019
 
 ## Iteration State Machine (Normative)
 
@@ -66,6 +66,18 @@ If an iteration is abandoned at any phase:
 | T-001 | ... | FR-003 | US-2 | 3 | Implementer | done | copilot-agent-1 | 4 | pass |
 | T-002 | ... | FR-008 | US-3 | 5 | Implementer | planned | | | |
 
+## Effort Model
+
+| Setting | Value | Notes |
+| ------- | ----- | ----- |
+| Effort Unit | story_points | Unit used in task effort, capacity, and retro variance. |
+| Capacity per Iteration | 20 | Maximum planned effort before overcommit guidance applies. |
+| Iteration Bounding | scope | `scope` keeps requirements fixed; `time` enforces a time ceiling. |
+| Time Limit (hours) | n/a | Only applies when iteration bounding is `time`. |
+| Overcommit Threshold | 1.0 | Warn planners when total estimated effort exceeds the configured threshold. |
+| Defer Strategy | manual | How planning should choose deferrals when the iteration is over capacity. |
+| Calibration Enabled | true | When true, retrospectives should suggest future capacity adjustments. |
+
 ## Phase Baseline
 
 | Phase | Estimated Effort | Notes |
@@ -81,7 +93,11 @@ If an iteration is abandoned at any phase:
 - Free-form planning notes
 ```
 
-Planning artifacts MUST include both task-level estimates and a phase-level baseline so retrospective analysis can compare where variance occurred.
+Planning artifacts MUST include:
+
+1. task-level estimates
+2. an effort-model snapshot copied from `.specrew/iteration-config.yml`
+3. a phase-level baseline so retrospective analysis can compare where variance occurred
 
 ## Task State (`iterations/NNN/state.md`)
 
@@ -222,3 +238,5 @@ Retrospectives MUST capture both task-level and phase-level variance. At minimum
 ### Iteration 2
 - ...
 ```
+
+For the Iteration 2 process-only slice of FR-015, the report MAY populate only the process section plus a deferred placeholder in `## Outcome Quality`. At minimum, the process section must truthfully report artifact adherence and phase adherence from the current scorer output.

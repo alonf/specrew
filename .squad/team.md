@@ -13,11 +13,6 @@
 | Name | Role | Charter | Status |
 |------|------|---------|--------|
 | Alon | Chief Architect & Reviewer | — | 👤 Human |
-| Picard | Spec Steward | `.squad/agents/picard/charter.md` | ✅ Active |
-| Data | Planner | `.squad/agents/data/charter.md` | ✅ Active |
-| La Forge | Implementer | `.squad/agents/laforge/charter.md` | ✅ Active |
-| Worf | Reviewer | `.squad/agents/worf/charter.md` | ✅ Active |
-| Troi | Retro Facilitator | `.squad/agents/troi/charter.md` | ✅ Active |
 | Scribe | Session Logger | `.squad/agents/scribe/charter.md` | 📋 Silent |
 | Ralph | Work Monitor | `.squad/agents/ralph/charter.md` | 🔄 Monitor |
 
@@ -29,3 +24,15 @@
 - **Description:** Specrew runs a spec-governed iteration lifecycle across planning, execution, review/demo, and retrospective phases.
 - **Source of truth:** The spec is authoritative; behavior changes require a tracked change to the source requirements.
 - **Created:** 2026-04-17
+
+<!-- >>> specrew-managed baseline-roles >>> -->
+## Specrew Baseline Roles
+
+| Role | Charter | Status |
+| ---- | ------- | ------ |
+| Spec Steward | `.squad/agents/spec-steward/charter.md` | baseline |
+| Planner | `.squad/agents/planner/charter.md` | baseline |
+| Implementer | `.squad/agents/implementer/charter.md` | baseline |
+| Reviewer | `.squad/agents/reviewer/charter.md` | baseline |
+| Retro Facilitator | `.squad/agents/retro-facilitator/charter.md` | baseline |
+<!-- <<< specrew-managed baseline-roles <<< -->

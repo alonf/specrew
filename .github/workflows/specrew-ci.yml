@@ -1,5 +1,9 @@
 name: Specrew CI
 
+env:
+  SPEC_KIT_VERSION: '0.8.4'
+  SQUAD_VERSION: '0.9.1'
+
 on:
   push:
     branches: [ main, 001-specrew-product ]
@@ -70,23 +74,51 @@ jobs:
         with:
           node-version: '20'
 
-      - name: Check for test scripts
-        id: check_tests
-        run: |
-          if [ -d "tests" ] && [ "$(ls -A tests)" ]; then
-            echo "tests_exist=true" >> $GITHUB_OUTPUT
-          else
-            echo "tests_exist=false" >> $GITHUB_OUTPUT
-          fi
+      - name: Setup uv
+        uses: astral-sh/setup-uv@v5
 
-      - name: Run tests
-        if: steps.check_tests.outputs.tests_exist == 'true'
-        run: |
-          # Placeholder for test execution
-          # Tests will be added as functionality is implemented
-          echo "Test directory exists but no test runner configured yet"
-          echo "Tests will be added in future iterations"
+      - name: Install specify CLI
+        run: uv tool install --force specify-cli --from "git+https://github.com/github/spec-kit.git@v${SPEC_KIT_VERSION}"
 
-      - name: No tests yet
-        if: steps.check_tests.outputs.tests_exist == 'false'
-        run: echo "No tests directory or tests found - skipping test execution"
+      - name: Install squad CLI
+        run: npm install -g "@bradygaster/squad-cli@${SQUAD_VERSION}"
+
+      - name: Integration - bootstrap to iteration
+        shell: pwsh
+        run: ./tests/integration/bootstrap-to-iteration.ps1
+
+      - name: Integration - bootstrap asset blocker recovery
+        shell: pwsh
+        run: ./tests/integration/bootstrap-asset-blocker-recovery.ps1
+
+      - name: Integration - brownfield conflict handling
+        shell: pwsh
+        run: ./tests/integration/brownfield-conflict-handling.ps1
+
+      - name: Integration - validate versions cli behavior
+        shell: pwsh
+        run: ./tests/integration/validate-versions-cli-behavior.ps1
+
+      - name: Integration - drift scenario
+        shell: pwsh
+        run: ./tests/integration/drift-scenario.ps1
+
+      - name: Integration - iteration resume
+        shell: pwsh
+        run: ./tests/integration/iteration-resume.ps1
+
+      - name: Integration - planning effort model
+        shell: pwsh
+        run: ./tests/integration/planning-effort-model.ps1
+
+      - name: Integration - planning overcommit
+        shell: pwsh
+        run: ./tests/integration/planning-overcommit.ps1
+
+      - name: Integration - process quality report
+        shell: pwsh
+        run: ./tests/integration/process-quality-report.ps1
+
+      - name: Integration - process quality scorer
+        shell: pwsh
+        run: ./tests/integration/process-quality-scorer.ps1
