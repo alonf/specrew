@@ -169,8 +169,18 @@ Persistent execution state enabling resume after failure.
 | tasks_remaining | string[] | Yes | task_ids not yet started |
 | tasks_in_progress | string? | Yes | task_id currently executing (null if between tasks) |
 | updated | ISO datetime | Yes | Last state update |
+| repair_escalation.status | enum: inactive, active | Yes | Whether a governance-repair escalation is currently in effect |
+| repair_escalation.artifact | string? | No | Artifact currently under repair (for example `tasks.md`) |
+| repair_escalation.gate | string? | No | Gate that is failing (for example `after-tasks`) |
+| repair_escalation.failure_count | number | Yes | Count of consecutive failures for the active artifact/gate |
+| repair_escalation.current_tier | enum: efficiency, balanced, deep | Yes | Current reasoning tier override for the repair cycle |
+| repair_escalation.current_owner | string? | No | Agent currently assigned to the escalated repair |
+| repair_escalation.locked_out_agents | string[] | Yes | Agents locked out of the next revision for this artifact |
+| repair_escalation.last_escalated | ISO datetime? | No | Last time the escalation tier/owner changed |
+| repair_escalation.resolved_at | ISO datetime? | No | When the active escalation was cleared after success |
+| repair_escalation.notes | string? | No | Short explanation of the current escalation state |
 
-**Relationships**: References Iteration Plan tasks. Updated after each task completes (FR-019).
+**Relationships**: References Iteration Plan tasks and the current governance repair cycle. Updated after each task completes (FR-019) and after each escalation change (FR-027).
 
 ---
 

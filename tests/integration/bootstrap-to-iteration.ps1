@@ -183,8 +183,9 @@ $artifactScript = Join-Path -Path $installedScriptsRoot -ChildPath 'scaffold-ite
 $reviewScript = Join-Path -Path $installedScriptsRoot -ChildPath 'scaffold-review-artifact.ps1'
 $retroScript = Join-Path -Path $installedScriptsRoot -ChildPath 'scaffold-retro-artifact.ps1'
 $resumeScript = Join-Path -Path $installedScriptsRoot -ChildPath 'resume-iteration.ps1'
+$syncModelOverrideScript = Join-Path -Path $installedScriptsRoot -ChildPath 'sync-squad-model-overrides.ps1'
 
-foreach ($scriptPath in @($planScript, $artifactScript, $reviewScript, $retroScript, $resumeScript)) {
+foreach ($scriptPath in @($planScript, $artifactScript, $reviewScript, $retroScript, $resumeScript, $syncModelOverrideScript)) {
     if (-not (Test-Path -LiteralPath $scriptPath -PathType Leaf)) {
         Write-Fail "Missing installed downstream helper: $scriptPath"
         exit 1
@@ -226,7 +227,9 @@ if (-not (Assert-ContentPattern -Content $reviewerCharter -Pattern 'update `iter
 
 $coordinatorPromptChecks = @(
     @{ Pattern = 'Formal Spec-Kit \+ Specrew Lifecycle'; Failure = 'Coordinator prompt is missing the Specrew lifecycle override.' },
-    @{ Pattern = 'do not describe the run as Spec-Kit/Specrew compliant'; Failure = 'Coordinator prompt is missing process-claim discipline for bypassed runs.' }
+    @{ Pattern = 'do not describe the run as Spec-Kit/Specrew compliant'; Failure = 'Coordinator prompt is missing process-claim discipline for bypassed runs.' },
+    @{ Pattern = 'After `speckit\.specify`, either run `speckit\.clarify` or record a concrete skip rationale before planning'; Failure = 'Coordinator prompt is missing the explicit clarify gate.' },
+    @{ Pattern = 'sync-squad-model-overrides\.ps1 -IterationDirectory'; Failure = 'Coordinator prompt is missing the live model-override sync helper for escalation.' }
 )
 
 foreach ($check in $coordinatorPromptChecks) {

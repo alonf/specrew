@@ -1,8 +1,8 @@
 # Contract: Iteration Artifact Formats
 
-**Date**: 2026-04-17 (Updated 2026-04-18: State machine made normative)
+**Date**: 2026-04-17 (Updated 2026-04-18: State machine made normative; Updated 2026-05-05: Repair escalation state made normative)
 **Spec**: [spec.md](../spec.md)
-**Requirements**: FR-005, FR-006, FR-007, FR-008, FR-009, FR-010, FR-017, FR-018, FR-019
+**Requirements**: FR-005, FR-006, FR-007, FR-008, FR-009, FR-010, FR-017, FR-018, FR-019, FR-027
 
 ## Iteration State Machine (Normative)
 
@@ -109,7 +109,29 @@ Planning artifacts MUST include:
 **Tasks Remaining**: T-002, T-003
 **In Progress**: (none)
 **Updated**: YYYY-MM-DDTHH:MM:SS
+
+<!-- >>> specrew-managed escalation-state >>> -->
+## Repair Escalation
+
+- **Status**: inactive | active
+- **Artifact**: tasks.md | plan.md | review.md | (none)
+- **Gate**: after-tasks | before-implement | review | (none)
+- **Failure Count**: 0..N
+- **Current Tier**: efficiency | balanced | deep
+- **Current Owner**: Planner | Reviewer | Spec Steward | (none)
+- **Locked Out Agents**: Agent A, Agent B | (none)
+- **Last Escalated**: YYYY-MM-DDTHH:MM:SSZ | (none)
+- **Resolved At**: YYYY-MM-DDTHH:MM:SSZ | (none)
+- **Notes**: free-form summary | (none)
+<!-- <<< specrew-managed escalation-state <<< -->
 ```
+
+`state.md` now has two normative responsibilities:
+
+1. persist resumable task-execution metadata
+2. persist the active repair-escalation cycle for any artifact that is currently failing governance gates
+
+When `Status` is `active`, resume tooling MUST prioritize the escalation cycle before suggesting normal task execution. Activation and resolution of that block MUST also synchronize `.squad/config.json` so the temporary model override for the current repair owner matches `Current Tier` in real time. When the gate passes, the escalation block MUST be reset to `inactive`, clear the temporary owner override, and restore the default `efficiency` tier for future work.
 
 ## Drift Log (`iterations/NNN/drift-log.md`)
 

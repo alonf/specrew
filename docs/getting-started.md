@@ -170,12 +170,13 @@ pwsh -File C:\Dev\Specrew\scripts\specrew.ps1 start "Build a REST API for user m
 `specrew start` should launch or hand off to Squad and have Squad drive the full Spec Kit lifecycle for you:
 
 - `speckit.specify`
-- `speckit.clarify` when needed
+- `speckit.clarify` by default for new-feature and brownfield-new work, or a recorded skip rationale before planning
+- `specrew start` reuses the current terminal by default; pass `--new-window` only when you explicitly want Copilot opened in a separate shell
 - `speckit.plan`
 - `speckit.tasks`
 - `speckit.implement`
 
-The human developer should mainly answer only the unresolved questions Squad cannot safely answer from repo context or existing artifacts. If you start without a request, Squad should inspect current work, continue any in-progress feature, or ask whether you want a fix or a new feature.
+The human developer should mainly answer only the unresolved questions Squad cannot safely answer from repo context or existing artifacts. If you start without a request, Squad should inspect current work, continue any in-progress feature, or ask whether you want a fix or a new feature. In a new brownfield repo, Squad should first mine existing code, manifests, docs, and recent git history to seed the starting spec and propose concrete specialist additions when the current team lacks obvious stack/domain expertise.
 
 To reduce Copilot CLI blocking on tool prompts, Specrew launches Copilot from the target project directory and defaults to `--allow-all`. Copilot may still ask you to trust the project directory on first launch. If you prefer Copilot's interactive approval prompts, use:
 

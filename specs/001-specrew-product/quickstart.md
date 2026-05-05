@@ -42,7 +42,8 @@ specrew start "Build a REST API for user management"
 This should:
 
 - Hand off to Squad as the active coordinator
-- Have Squad drive the Spec Kit lifecycle: `specify`, `clarify` when needed, `plan`, `tasks`, `implement`
+- Have Squad drive the Spec Kit lifecycle: `specify`, then `clarify` or a recorded skip rationale, then `plan`, `tasks`, `implement`
+- `specrew start` uses the current terminal by default; add `--new-window` only when you want a detached Copilot window
 - Ask you only the questions Squad cannot safely resolve from repo context and existing artifacts
 - Continue through implementation once the spec/design is clear enough
 - Launch Copilot from the project root and default to non-blocking approvals unless you explicitly opt into prompt-based approvals

@@ -103,15 +103,15 @@ function Write-PostBootstrapGuidance {
     Write-Host ''
     Write-Host '=== Usage Flow ===' -ForegroundColor Cyan
     Write-Host ''
-    Write-Host 'Baseline crew → specrew start → Squad drives specify/clarify/plan/tasks/implement → review → retro' -ForegroundColor Yellow
+    Write-Host 'Baseline crew → specrew start → Squad drives specify → clarify-or-skip decision → plan → tasks → implement → review → retro' -ForegroundColor Yellow
     Write-Host ''
     Write-Host '=== Next Steps ===' -ForegroundColor Cyan
     Write-Host ''
     Write-Host '1. Start spec authoring (Spec Kit workflows):' -ForegroundColor Yellow
     Write-Host '   - Run specrew start from the project root (optionally add a short feature request)' -ForegroundColor White
-    Write-Host '   - Specrew launches Copilot from the project directory and defaults to non-blocking approvals; use --prompt-approvals to keep prompts' -ForegroundColor White
+    Write-Host '   - Specrew launches Copilot from the project directory in the current terminal by default, uses non-blocking approvals, and supports --new-window or --prompt-approvals when you want them' -ForegroundColor White
     Write-Host '   - Specrew will launch or hand off to the Squad agent with lifecycle context' -ForegroundColor White
-    Write-Host '   - Squad should drive specify -> clarify (when needed) -> plan -> tasks -> implement' -ForegroundColor White
+    Write-Host '   - Squad should drive specify -> clarify (or record a skip rationale) -> plan -> tasks -> implement' -ForegroundColor White
     Write-Host ''
     Write-Host '2. Run the iteration lifecycle:' -ForegroundColor Yellow
     Write-Host '   - Materialize iteration artifacts under specs/<feature>/iterations/<NNN>/' -ForegroundColor White
