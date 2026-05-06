@@ -1,0 +1,52 @@
+# Iteration Configuration
+# Schema: v1
+# Controls effort measurement and iteration behavior for Specrew
+
+# Effort measurement unit
+# Specrew v1 uses story points; future versions may support other units
+effort_unit: "story_points"
+
+# Maximum effort units per iteration (capacity)
+# Default: 20 story points
+# Adjust based on team velocity and calibration data
+capacity_per_iteration: 20
+
+# Iteration bounding strategy
+# - scope: Iteration completes when planned tasks are done (time varies)
+# - time: Iteration has fixed time limit (scope varies)
+iteration_bounding: "scope"
+
+# Time limit (hours) if iteration_bounding = "time"
+# null for scope-bounded iterations
+time_limit_hours: null
+
+# Overcommit threshold (ratio)
+# Warns if planned effort exceeds capacity * threshold
+# 1.0 = no overcommit allowed, 1.1 = 10% overcommit tolerated
+overcommit_threshold: 1.0
+
+# Calibration tracking
+# If true, retrospectives include velocity analysis and capacity suggestions
+calibration_enabled: true
+
+# Defer strategy for overcommitted iterations
+# - manual: Planner must manually select tasks to defer
+# - lowest_priority: Automatically defer lowest-priority tasks
+defer_strategy: "manual"
+
+# >>> specrew-managed agents >>>
+# Specrew-managed agent consent and detection state (FR-022).
+agents:
+  copilot:
+    enabled: false
+    access_path: copilot_default
+    availability: available
+  claude:
+    enabled: false
+    access_path: copilot_agent_hq
+    availability: available
+  codex:
+    enabled: false
+    access_path: copilot_agent_hq
+    availability: available
+# <<< specrew-managed agents <<<
