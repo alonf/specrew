@@ -11,7 +11,7 @@
 | T-601 | FR-048 | pass | `security-surface.md` now derives trigger state from plan/team context and records trust boundaries, sensitive touchpoints, specialist presence, and vulnerability highlights. |
 | T-602 | FR-053 | pass | `review-diagrams.md` now emits Mermaid structure/flow diagrams when thresholds are met and records omissions when they are not. |
 | T-603 | FR-054 | pass | Reviewer index now distinguishes immutable iteration artifacts from the mutable `current-architecture.md` companion surface. |
-| T-604 | FR-048, FR-053, FR-054 | pass | Reviewer artifact regression coverage now exercises security-trigger, diagram, and current-view behavior end to end. |
+| T-604 | FR-048, FR-053, FR-054 | pass | Reviewer artifact regression coverage now exercises both generate and omission paths for advanced reviewer surfaces, plus current-view updates, end to end. |
 
 ## Main Achievements
 
