@@ -879,13 +879,25 @@ function Get-DiffArtifacts {
     }
 
     $result.BaselineResolved = $true
-    $numstatLines = @(& git -C $ProjectRoot diff --numstat $BaselineRef -- 2>$null)
+    $baselineObject = [string]$revParseOutput[0]
+    $diffTarget = if (
+        $result.HeadResolved -and
+        -not [string]::IsNullOrWhiteSpace($result.HeadRef) -and
+        -not ($baselineObject.Equals($result.HeadRef, [System.StringComparison]::OrdinalIgnoreCase))
+    ) {
+        '{0}..{1}' -f $BaselineRef, $result.HeadRef
+    }
+    else {
+        $BaselineRef
+    }
+
+    $numstatLines = @(& git -C $ProjectRoot diff --numstat $diffTarget -- 2>$null)
     if ($LASTEXITCODE -ne 0) {
         return [pscustomobject]$result
     }
 
     $nameStatusLookup = @{}
-    foreach ($line in @(& git -C $ProjectRoot diff --name-status $BaselineRef -- 2>$null)) {
+    foreach ($line in @(& git -C $ProjectRoot diff --name-status $diffTarget -- 2>$null)) {
         $match = [regex]::Match([string]$line, '^(?<status>[A-Z][0-9]?)\s+(?<path>.+)$')
         if ($match.Success) {
             $nameStatusLookup[$match.Groups['path'].Value.Trim()] = $match.Groups['status'].Value.Trim()
@@ -922,7 +934,21 @@ function Get-DiffPatchLines {
         return @()
     }
 
-    return @(& git -C $ProjectRoot diff --unified=0 $BaselineRef -- $Path 2>$null)
+    $headRef = @(& git -C $ProjectRoot rev-parse HEAD 2>$null)
+    $resolvedBaseline = @(& git -C $ProjectRoot rev-parse --verify $BaselineRef 2>$null)
+    $diffTarget = if (
+        $LASTEXITCODE -eq 0 -and
+        $headRef.Count -gt 0 -and
+        $resolvedBaseline.Count -gt 0 -and
+        -not ([string]$resolvedBaseline[0]).Equals([string]$headRef[0], [System.StringComparison]::OrdinalIgnoreCase)
+    ) {
+        '{0}..{1}' -f $BaselineRef, [string]$headRef[0]
+    }
+    else {
+        $BaselineRef
+    }
+
+    return @(& git -C $ProjectRoot diff --unified=0 $diffTarget -- $Path 2>$null)
 }
 
 function Get-FileTextAtBaseline {
