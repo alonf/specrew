@@ -2,7 +2,7 @@
 
 **Date**: 2026-04-17 (Updated 2026-04-18: State machine made normative; Updated 2026-05-05: Repair escalation state made normative)
 **Spec**: [spec.md](../spec.md)
-**Requirements**: FR-005, FR-006, FR-007, FR-008, FR-009, FR-010, FR-017, FR-018, FR-019, FR-027, FR-038, FR-039, FR-040, FR-041
+**Requirements**: FR-005, FR-006, FR-007, FR-008, FR-009, FR-010, FR-017, FR-018, FR-019, FR-027, FR-038, FR-039, FR-040, FR-041, FR-046, FR-047, FR-049, FR-052, FR-053
 
 ## Iteration State Machine (Normative)
 
@@ -110,6 +110,24 @@ Planning artifacts MUST include:
 3. a phase-level baseline so retrospective analysis can compare where variance occurred
 4. a `## Concurrency Rationale` section before any Junior/Senior same-specialty expansion is planned
 5. explicit `Owner File Globs` (or an equivalent ownership-boundary field) for tasks that are allowed to run in parallel inside the same specialty; otherwise the rationale MUST keep the work serial
+
+## Reviewer Closeout Packet (`iterations/NNN/*.md`)
+
+When an iteration touches code or tests relative to `state.md` `Baseline Ref`, reviewer closeout MUST exist before the iteration can close in `retro` or `complete`.
+
+Required artifacts for code-touching iterations:
+
+1. `code-map.md`
+2. `coverage-evidence.md`
+3. `reviewer-index.md`
+4. `review-diagrams.md` (may contain explicit omissions instead of invented diagrams)
+
+Conditional reviewer artifacts:
+
+1. `dependency-report.md` MUST exist when dependency manifests changed relative to `Baseline Ref`.
+2. `current-architecture.md` is a mutable spec-level current view and lives outside the iteration directory when generated.
+
+These artifacts are produced by `scaffold-reviewer-artifacts.ps1`. Closing a code-touching iteration without the required reviewer packet is a governance failure even if `review.md` and `retro.md` already exist.
 
 ## Task State (`iterations/NNN/state.md`)
 

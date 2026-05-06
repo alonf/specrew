@@ -299,6 +299,19 @@ function Get-MarkdownSectionTable {
     return $rows.ToArray()
 }
 
+function Test-IsManifestPath {
+    param([string]$Path)
+
+    return $Path -match '(?:^|\\)(package\.json|package-lock\.json|pnpm-lock\.yaml|yarn\.lock|requirements(?:-dev)?\.txt|pyproject\.toml|Cargo\.toml|Cargo\.lock|go\.mod|go\.sum|pom\.xml|packages\.lock\.json|global\.json|.*\.csproj)$'
+}
+
+function Test-IsReviewerSourcePath {
+    param([string]$Path)
+
+    $extension = [System.IO.Path]::GetExtension([string]$Path).ToLowerInvariant()
+    return $extension -in @('.ps1', '.psm1', '.js', '.jsx', '.ts', '.tsx', '.py', '.go', '.cs', '.java', '.rb', '.php', '.rs', '.kt', '.swift', '.c', '.cc', '.cpp', '.h', '.hpp')
+}
+
 function Get-MarkdownSectionLines {
     param(
         [string[]]$Lines,
@@ -723,6 +736,92 @@ function Test-RetroArtifact {
 
     if (-not $hasProcessNotes) {
         $Errors.Add("retro.md must capture process notes via 'Process Notes' or both 'What Went Well' and 'What Didn't Go Well'")
+    }
+}
+
+function Get-ReviewerCloseoutDiffArtifacts {
+    param(
+        [string]$ProjectRoot,
+        [AllowNull()][string]$BaselineRef
+    )
+
+    $result = [ordered]@{
+        BaselineResolved = $false
+        Files            = @()
+    }
+
+    if ([string]::IsNullOrWhiteSpace($BaselineRef)) {
+        return [pscustomobject]$result
+    }
+
+    $gitCommand = Get-Command -Name 'git' -ErrorAction SilentlyContinue
+    if ($null -eq $gitCommand) {
+        return [pscustomobject]$result
+    }
+
+    $revParseOutput = @(& git -C $ProjectRoot rev-parse --verify $BaselineRef 2>$null)
+    if ($LASTEXITCODE -ne 0) {
+        return [pscustomobject]$result
+    }
+
+    $result.BaselineResolved = $true
+    foreach ($line in @(& git -C $ProjectRoot diff --name-only $BaselineRef -- 2>$null)) {
+        $path = ([string]$line).Trim()
+        if ([string]::IsNullOrWhiteSpace($path)) {
+            continue
+        }
+
+        $result.Files += [pscustomobject]@{
+            Path       = $path
+            IsManifest = Test-IsManifestPath -Path $path
+            IsSource    = Test-IsReviewerSourcePath -Path $path
+        }
+    }
+
+    return [pscustomobject]$result
+}
+
+function Test-ReviewerCloseoutArtifacts {
+    param(
+        [string]$IterationDirectory,
+        [string]$ProjectRoot,
+        [string[]]$StateLines,
+        [bool]$EnforceReviewerCloseout,
+        [System.Collections.Generic.List[string]]$Errors
+    )
+
+    if (-not $EnforceReviewerCloseout) {
+        return
+    }
+
+    $baselineRef = Get-MarkdownMetadataValue -Lines $StateLines -Label 'Baseline Ref'
+    $diffArtifacts = Get-ReviewerCloseoutDiffArtifacts -ProjectRoot $ProjectRoot -BaselineRef $baselineRef
+    if (-not $diffArtifacts.BaselineResolved) {
+        $Errors.Add('Reviewer closeout enforcement requires state.md Baseline Ref to resolve to a valid git revision')
+        return
+    }
+
+    $codeTouched = @($diffArtifacts.Files | Where-Object { $_.IsSource }).Count -gt 0
+    $manifestTouched = @($diffArtifacts.Files | Where-Object { $_.IsManifest }).Count -gt 0
+    if (-not $codeTouched -and -not $manifestTouched) {
+        return
+    }
+
+    $requiredArtifacts = New-Object System.Collections.Generic.List[string]
+    if ($codeTouched) {
+        foreach ($artifactName in @('code-map.md', 'coverage-evidence.md', 'reviewer-index.md', 'review-diagrams.md')) {
+            $null = $requiredArtifacts.Add($artifactName)
+        }
+    }
+    if ($manifestTouched) {
+        $null = $requiredArtifacts.Add('dependency-report.md')
+    }
+
+    foreach ($artifactName in ($requiredArtifacts | Select-Object -Unique)) {
+        $artifactPath = Join-Path $IterationDirectory $artifactName
+        if (-not (Test-Path -LiteralPath $artifactPath -PathType Leaf)) {
+            $Errors.Add(("Missing required reviewer closeout artifact: {0}. Run scaffold-reviewer-artifacts.ps1 before closing a code-touching iteration." -f $artifactName))
+        }
     }
 }
 
@@ -1271,7 +1370,8 @@ function Test-IsEarlyPlanningStub {
 function Test-IterationGovernance {
     param(
         [string]$IterationDirectory,
-        [hashtable]$TeamRoles
+        [hashtable]$TeamRoles,
+        [bool]$EnforceReviewerCloseout = $false
     )
 
     $errors = New-Object System.Collections.Generic.List[string]
@@ -1409,6 +1509,7 @@ function Test-IterationGovernance {
                 $errors.Add('Retro iterations require all tasks to be in terminal states')
             }
             Test-ReviewArtifact -ReviewPath $reviewPath -ProjectRoot $ResolvedProjectPath -IterationDirectory $IterationDirectory -IterationStatus $status -PlanTasks $tasks -Errors $errors -RequireAcceptedVerdict
+            Test-ReviewerCloseoutArtifacts -IterationDirectory $IterationDirectory -ProjectRoot $ResolvedProjectPath -StateLines $stateLines -EnforceReviewerCloseout $EnforceReviewerCloseout -Errors $errors
         }
         'complete' {
             Test-StateArtifact -IterationDirectory $IterationDirectory -Errors $errors
@@ -1420,6 +1521,7 @@ function Test-IterationGovernance {
             }
             Test-ReviewArtifact -ReviewPath $reviewPath -ProjectRoot $ResolvedProjectPath -IterationDirectory $IterationDirectory -IterationStatus $status -PlanTasks $tasks -Errors $errors -RequireAcceptedVerdict
             Test-RetroArtifact -RetroPath $retroPath -Errors $errors
+            Test-ReviewerCloseoutArtifacts -IterationDirectory $IterationDirectory -ProjectRoot $ResolvedProjectPath -StateLines $stateLines -EnforceReviewerCloseout $EnforceReviewerCloseout -Errors $errors
         }
         'abandoned' {
             Test-StateArtifact -IterationDirectory $IterationDirectory -Errors $errors
@@ -1442,6 +1544,48 @@ function Test-IterationGovernance {
     }
 }
 
+function Get-ReviewerCloseoutEnforcementMap {
+    param(
+        [string[]]$Targets,
+        [bool]$ExplicitTargetsProvided
+    )
+
+    $enforcementMap = @{}
+    if (@($Targets).Count -eq 0) {
+        return $enforcementMap
+    }
+
+    if ($ExplicitTargetsProvided) {
+        foreach ($target in $Targets) {
+            $enforcementMap[$target] = $true
+        }
+
+        return $enforcementMap
+    }
+
+    $groupedTargets = @{}
+    foreach ($target in $Targets) {
+        $featureDirectory = Split-Path -Parent (Split-Path -Parent $target)
+        if (-not $groupedTargets.ContainsKey($featureDirectory)) {
+            $groupedTargets[$featureDirectory] = New-Object System.Collections.Generic.List[string]
+        }
+
+        $null = $groupedTargets[$featureDirectory].Add($target)
+    }
+
+    foreach ($featureDirectory in $groupedTargets.Keys) {
+        $latestTarget = $groupedTargets[$featureDirectory] |
+            Sort-Object { [System.IO.Path]::GetFileName($_) } -Descending |
+            Select-Object -First 1
+
+        if (-not [string]::IsNullOrWhiteSpace($latestTarget)) {
+            $enforcementMap[$latestTarget] = $true
+        }
+    }
+
+    return $enforcementMap
+}
+
 $resolvedProjectPath = (Resolve-Path -Path $ProjectPath).Path
 $teamRoles = Get-TeamRoleMap -ResolvedProjectPath $resolvedProjectPath
 
@@ -1456,8 +1600,14 @@ if ($teamValidationErrors.Count -gt 0) {
     exit 1
 }
 
+$explicitIterationPathsProvided = ($null -ne $IterationPath) -and @(
+    $IterationPath | Where-Object { -not [string]::IsNullOrWhiteSpace([string]$_) }
+).Count -gt 0
 $targets = @(Resolve-IterationTarget -ResolvedProjectPath $resolvedProjectPath -ExplicitIterationPaths $IterationPath)
-$results = @($targets | ForEach-Object { Test-IterationGovernance -IterationDirectory $_ -TeamRoles $teamRoles })
+$reviewerCloseoutEnforcement = Get-ReviewerCloseoutEnforcementMap -Targets $targets -ExplicitTargetsProvided $explicitIterationPathsProvided
+$results = @($targets | ForEach-Object {
+        Test-IterationGovernance -IterationDirectory $_ -TeamRoles $teamRoles -EnforceReviewerCloseout $reviewerCloseoutEnforcement.ContainsKey($_)
+    })
 $hasFailures = $false
 
 foreach ($result in $results) {

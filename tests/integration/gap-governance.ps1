@@ -324,6 +324,15 @@ Add-StructuredDecisionsLedgerEntry -ProjectRoot $projectRoot -Title 'Routing evi
     "- **Routing Evidence**: Reviewer | requested=codex | actual=claude | model=claude-sonnet-4.5 | status=fell-back | fallback=preferred agent 'codex' is not enabled"
 ) | Out-Null
 
+$reviewerRun = @(& pwsh -NoProfile -ExecutionPolicy Bypass -File $reviewerScript -IterationDirectory $iterationDirectory 2>&1)
+if ($LASTEXITCODE -ne 0) {
+    Write-Fail 'Reviewer artifact scaffolding failed for the gap-governance test.'
+    foreach ($line in $reviewerRun) {
+        Write-Host $line
+    }
+    exit 1
+}
+
 $validatorPass = @(& pwsh -NoProfile -ExecutionPolicy Bypass -File $validateScript -ProjectPath $projectRoot 2>&1)
 if ($LASTEXITCODE -ne 0) {
     Write-Fail 'Governance validation should accept the deferred gap once canonical approval is recorded.'
@@ -334,15 +343,6 @@ if ($LASTEXITCODE -ne 0) {
 }
 
 Write-Pass 'Validator enforces canonical defer evidence for accepted deferred gaps'
-
-$reviewerRun = @(& pwsh -NoProfile -ExecutionPolicy Bypass -File $reviewerScript -IterationDirectory $iterationDirectory 2>&1)
-if ($LASTEXITCODE -ne 0) {
-    Write-Fail 'Reviewer artifact scaffolding failed for the gap-governance test.'
-    foreach ($line in $reviewerRun) {
-        Write-Host $line
-    }
-    exit 1
-}
 
 $reviewerIndexPath = Join-Path $iterationDirectory 'reviewer-index.md'
 $reviewerIndexContent = Get-Content -LiteralPath $reviewerIndexPath -Raw -Encoding UTF8
