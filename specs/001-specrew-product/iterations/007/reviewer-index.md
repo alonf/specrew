@@ -6,10 +6,10 @@
 
 ## Summary
 
-- Header: feature=001-specrew-product | iteration=007 | branch=002-fix-team-help | commit_range=598eb92b795676e3d8787ffc67a2623ce56e4db9..598eb92b795676e3d8787ffc67a2623ce56e4db9
+- Header: feature=001-specrew-product | iteration=007 | branch=002-fix-team-help | commit_range=598eb92b795676e3d8787ffc67a2623ce56e4db9..851a68748fe143af27d3a895a38d702dbd7495a2
 - Verdict: accepted
 - Requirements: covered=FR-043, FR-044, FR-045 | not_covered=(none)
-- Code Surface: files=6 | hotspots=0 | test_to_code=2:4
+- Code Surface: files=18 | hotspots=1 | test_to_code=2:5
 - Dependencies: changed=0 | new_to_project=0 | vulnerability=unscanned
 - Coverage: kind=qualitative | signal=not_executed
 - Operational Signals: escalations=0 | routing_fallbacks=0
@@ -43,9 +43,10 @@
 
 ## Triage Hints
 
+- Hotspot: tests/integration/gap-governance.ps1 (361 changed lines)
 - Vulnerability scan: unscanned (No manifest files changed in this iteration.)
 - Coverage execution: not_executed
 
 ## Replay Digest
 
-SPECREW_REVIEW schema=v1 iter=007 feature=001-specrew-product verdict=accepted tasks=4/4 reqs=4 files=6 new_deps=0 vuln=unscanned cov=not_executed escalations=0 drift=0/0 index=specs\001-specrew-product\iterations\007\reviewer-index.md
+SPECREW_REVIEW schema=v1 iter=007 feature=001-specrew-product verdict=accepted tasks=4/4 reqs=4 files=18 new_deps=0 vuln=unscanned cov=not_executed escalations=0 drift=0/0 index=specs\001-specrew-product\iterations\007\reviewer-index.md

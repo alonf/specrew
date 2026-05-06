@@ -26,6 +26,6 @@ ot_executed explicitly and keep the signal visible in closeout output.
 
 | Requirement | Test Files / Commands |
 | ----------- | --------------------- |
-| FR-043 | scripts/specrew-start.ps1, specs/001-specrew-product/current-architecture.md |
-| FR-044 | scripts/specrew-start.ps1, specs/001-specrew-product/current-architecture.md |
-| FR-045 | scripts/specrew-start.ps1, specs/001-specrew-product/current-architecture.md |
+| FR-043 | tests/integration/gap-governance.ps1, tests/integration/reviewer-artifacts.ps1 |
+| FR-044 | tests/integration/gap-governance.ps1, tests/integration/reviewer-artifacts.ps1 |
+| FR-045 | tests/integration/gap-governance.ps1, tests/integration/reviewer-artifacts.ps1 |

@@ -9,12 +9,14 @@ _omitted_
 
 ## Flow Diagram
 
-_omitted_
+```mermaid
+flowchart TD
+  scripts_specrew_start["scripts/specrew-start"]
+```
 
 ## Omissions
 
 - Structure diagram omitted: inter-module edges (0) below threshold (2).
-- Flow diagram omitted: entrypoints changed (0) below threshold (1).
 
 ## Local View Hints
 
