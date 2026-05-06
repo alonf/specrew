@@ -2,7 +2,7 @@
 
 **Date**: 2026-04-17 (Updated 2026-04-18: State machine made normative; Updated 2026-05-05: Repair escalation state made normative)
 **Spec**: [spec.md](../spec.md)
-**Requirements**: FR-005, FR-006, FR-007, FR-008, FR-009, FR-010, FR-017, FR-018, FR-019, FR-027
+**Requirements**: FR-005, FR-006, FR-007, FR-008, FR-009, FR-010, FR-017, FR-018, FR-019, FR-027, FR-038, FR-039, FR-040, FR-041
 
 ## Iteration State Machine (Normative)
 
@@ -61,10 +61,11 @@ If an iteration is abandoned at any phase:
 
 ## Tasks
 
-| Task | Title | Requirement | Story | Effort | Owner | Status | Agent | Actual | Verdict |
-| ---- | ----- | ----------- | ----- | ------ | ----- | ------ | ----- | ------ | ------- |
-| T-001 | ... | FR-003 | US-2 | 3 | Implementer | done | copilot-agent-1 | 4 | pass |
-| T-002 | ... | FR-008 | US-3 | 5 | Implementer | planned | | | |
+| Task | Title | Requirement | Story | Effort | Owner | Owner File Globs | Status | Agent | Actual | Verdict |
+| ---- | ----- | ----------- | ----- | ------ | ----- | ---------------- | ------ | ----- | ------ | ------- |
+| T-001 | ... | FR-003 | US-2 | 3 | Implementer | — | done | copilot-agent-1 | 4 | pass |
+| T-002 | ... | FR-008 | US-3 | 5 | Junior Frontend Developer | client/src/dashboard/** | planned | | | |
+| T-003 | ... | FR-040 | US-3 | 5 | Senior Frontend Developer | client/src/exports/** | planned | | | |
 
 ## Effort Model
 
@@ -77,6 +78,15 @@ If an iteration is abandoned at any phase:
 | Overcommit Threshold | 1.0 | Warn planners when total estimated effort exceeds the configured threshold. |
 | Defer Strategy | manual | How planning should choose deferrals when the iteration is over capacity. |
 | Calibration Enabled | true | When true, retrospectives should suggest future capacity adjustments. |
+
+## Concurrency Rationale
+
+- Current roster snapshot: Spec Steward, Planner, Implementer, Reviewer, Retro Facilitator
+- Technology and scope signals: frontend-oriented signals dominate the scoped requirements.
+- Task dependency graph: explicit ownership boundaries are only recorded once the task table is populated.
+- Workstream separability: same-specialty expansion is only justified when the plan shows independent slices that can move in parallel safely.
+- Shared-surface conflict risk: if tasks still overlap on a shared high-conflict surface, keep the work serial until ownership boundaries are explicit.
+- Recommendation: if a Junior/Senior same-specialty pair is proposed, either record `Owner File Globs` (or an equivalent serialized ownership-boundary field) for the parallel tasks or state clearly that the work remains serial.
 
 ## Phase Baseline
 
@@ -98,6 +108,8 @@ Planning artifacts MUST include:
 1. task-level estimates
 2. an effort-model snapshot copied from `.specrew/iteration-config.yml`
 3. a phase-level baseline so retrospective analysis can compare where variance occurred
+4. a `## Concurrency Rationale` section before any Junior/Senior same-specialty expansion is planned
+5. explicit `Owner File Globs` (or an equivalent ownership-boundary field) for tasks that are allowed to run in parallel inside the same specialty; otherwise the rationale MUST keep the work serial
 
 ## Task State (`iterations/NNN/state.md`)
 

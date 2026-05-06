@@ -22,6 +22,7 @@ $iterationRoot = Join-Path -Path $projectRoot -ChildPath 'specs\001-capacity-fea
 $specPath = Join-Path -Path $projectRoot -ChildPath 'specs\001-capacity-feature\spec.md'
 $planPath = Join-Path -Path $iterationRoot -ChildPath 'plan.md'
 $configPath = Join-Path -Path $projectRoot -ChildPath '.specrew\iteration-config.yml'
+$teamPath = Join-Path -Path $projectRoot -ChildPath '.squad\team.md'
 
 if (Test-Path -LiteralPath $scratchRoot) {
     Remove-Item -LiteralPath $scratchRoot -Recurse -Force
@@ -29,6 +30,21 @@ if (Test-Path -LiteralPath $scratchRoot) {
 
 $null = New-Item -Path $iterationRoot -ItemType Directory -Force
 $null = New-Item -Path (Split-Path -Parent $configPath) -ItemType Directory -Force
+$null = New-Item -Path (Split-Path -Parent $teamPath) -ItemType Directory -Force
+
+[System.IO.File]::WriteAllText($teamPath, @'
+# Team
+
+## Specrew Baseline Roles
+
+| Role | Purpose |
+| ---- | ------- |
+| Spec Steward | Own spec quality |
+| Planner | Shape plans |
+| Implementer | Deliver code |
+| Reviewer | Review slices |
+| Retro Facilitator | Lead retros |
+'@, [System.Text.UTF8Encoding]::new($false))
 
 [System.IO.File]::WriteAllText($specPath, @'
 # Feature Spec: 001 Capacity Sample

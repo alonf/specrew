@@ -767,6 +767,110 @@ function Test-PlanTaskSet {
     }
 }
 
+function Get-TaskOwnerFileGlobs {
+    param([object]$Task)
+
+    if ($null -eq $Task) {
+        return $null
+    }
+
+    foreach ($propertyName in @('Owner File Globs', 'owner_file_globs', 'OwnerFileGlobs')) {
+        $property = $Task.PSObject.Properties[$propertyName]
+        if ($null -ne $property) {
+            return [string]$property.Value
+        }
+    }
+
+    return $null
+}
+
+function Get-SameSpecialtyPairGroups {
+    param([object[]]$Tasks)
+
+    $groupMap = @{}
+    foreach ($task in $Tasks) {
+        $owner = [string]$task.Owner
+        $match = [regex]::Match($owner, '^(?<tier>Junior|Senior)\s+(?<specialty>.+?)\s+Developer$')
+        if (-not $match.Success) {
+            continue
+        }
+
+        $specialtyKey = $match.Groups['specialty'].Value.Trim().ToLowerInvariant()
+        if (-not $groupMap.ContainsKey($specialtyKey)) {
+            $groupMap[$specialtyKey] = [ordered]@{
+                Specialty = $match.Groups['specialty'].Value.Trim()
+                Junior    = New-Object System.Collections.Generic.List[object]
+                Senior    = New-Object System.Collections.Generic.List[object]
+            }
+        }
+
+        $targetList = $groupMap[$specialtyKey][$match.Groups['tier'].Value]
+        $null = $targetList.Add($task)
+    }
+
+    return @($groupMap.Values | Where-Object { $_.Junior.Count -gt 0 -and $_.Senior.Count -gt 0 })
+}
+
+function Test-ConcurrencyPlanningPolicy {
+    param(
+        [string[]]$PlanLines,
+        [object[]]$Tasks,
+        [System.Collections.Generic.List[string]]$Errors
+    )
+
+    $pairGroups = @(Get-SameSpecialtyPairGroups -Tasks $Tasks)
+    if ($pairGroups.Count -eq 0) {
+        return
+    }
+
+    if (-not (Test-HeadingPresent -Lines $PlanLines -Heading 'Concurrency Rationale')) {
+        $Errors.Add('plan.md must contain a Concurrency Rationale section before same-specialty Junior/Senior pair work is planned')
+        return
+    }
+
+    $concurrencyLines = @(Get-MarkdownSectionLines -Lines $PlanLines -Heading 'Concurrency Rationale')
+    $concurrencyText = ($concurrencyLines -join "`n").ToLowerInvariant()
+    $serialFallbackDeclared = $concurrencyText -match '\bserial\b'
+
+    foreach ($group in $pairGroups) {
+        $pairTasks = @($group.Junior + $group.Senior | Where-Object {
+                $normalizedStatus = ([string]$_.Status).Trim().ToLowerInvariant()
+                $normalizedStatus -notin @('blocked', 'deferred')
+            })
+
+        if ($pairTasks.Count -lt 2) {
+            continue
+        }
+
+        $missingBoundaryTasks = @($pairTasks | Where-Object { Test-IsNullish (Get-TaskOwnerFileGlobs -Task $_) })
+        if ($missingBoundaryTasks.Count -gt 0 -and -not $serialFallbackDeclared) {
+            $taskLabels = $missingBoundaryTasks | ForEach-Object { [string]$_.Task }
+            $Errors.Add(("plan.md schedules Junior/Senior {0} work without explicit Owner File Globs for task(s) {1}. Add ownership boundaries or state in Concurrency Rationale that the work must remain serial." -f $group.Specialty, ($taskLabels -join ', ')))
+            continue
+        }
+
+        if ($missingBoundaryTasks.Count -gt 0) {
+            continue
+        }
+
+        $normalizedBoundaryMap = @{}
+        foreach ($task in $pairTasks) {
+            $normalizedBoundaries = ((Get-TaskOwnerFileGlobs -Task $task) -split ',' | ForEach-Object { $_.Trim().ToLowerInvariant() } | Where-Object { -not [string]::IsNullOrWhiteSpace($_) } | Select-Object -Unique)
+            $boundaryKey = $normalizedBoundaries -join ';'
+            if ([string]::IsNullOrWhiteSpace($boundaryKey)) {
+                continue
+            }
+
+            if ($normalizedBoundaryMap.ContainsKey($boundaryKey)) {
+                $Errors.Add(("plan.md assigns overlapping Owner File Globs '{0}' to same-specialty Junior/Senior {1} tasks '{2}' and '{3}'. Keep the work serial or partition ownership more explicitly." -f $boundaryKey, $group.Specialty, $normalizedBoundaryMap[$boundaryKey], $task.Task))
+                break
+            }
+
+            $normalizedBoundaryMap[$boundaryKey] = [string]$task.Task
+        }
+    }
+}
+
 function Get-IterationConfigForValidation {
     param([string]$IterationDirectory)
 
@@ -1208,6 +1312,7 @@ function Test-IterationGovernance {
 
     if (-not $isEarlyPlanningStub) {
         Test-PlanTaskSet -Tasks $tasks -Errors $errors
+        Test-ConcurrencyPlanningPolicy -PlanLines $planLines -Tasks $tasks -Errors $errors
     }
 
     $iterationConfig = Get-IterationConfigForValidation -IterationDirectory $IterationDirectory

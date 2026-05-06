@@ -194,6 +194,152 @@ function Get-IterationConfig {
     return $config
 }
 
+function Get-MarkdownSectionLines {
+    param(
+        [AllowEmptyString()]
+        [string[]]$Lines,
+        [string]$Heading
+    )
+
+    $headingPattern = '^##\s+' + [regex]::Escape($Heading) + '\b'
+    $startIndex = -1
+    for ($index = 0; $index -lt $Lines.Count; $index++) {
+        if ($Lines[$index] -match $headingPattern) {
+            $startIndex = $index
+            break
+        }
+    }
+
+    if ($startIndex -lt 0) {
+        return @()
+    }
+
+    $sectionLines = New-Object System.Collections.Generic.List[string]
+    for ($index = $startIndex + 1; $index -lt $Lines.Count; $index++) {
+        $currentLine = $Lines[$index]
+        if ($currentLine -match '^##\s+') {
+            break
+        }
+
+        $null = $sectionLines.Add($currentLine)
+    }
+
+    return $sectionLines.ToArray()
+}
+
+function Get-TeamRoleSnapshot {
+    param([string]$ProjectRoot)
+
+    $teamPath = Join-Path $ProjectRoot '.squad\team.md'
+    if (-not (Test-Path -LiteralPath $teamPath -PathType Leaf)) {
+        return @()
+    }
+
+    $roles = New-Object System.Collections.Generic.List[string]
+    foreach ($line in Get-MarkdownContent -Path $teamPath) {
+        if ($line -match '^\|\s*([^|]+?)\s*\|\s*`?\.squad/agents/.+?\|\s*([^|]+?)\s*\|?$') {
+            $roleCandidate = $Matches[1].Trim()
+            if (-not [string]::IsNullOrWhiteSpace($roleCandidate) -and
+                $roleCandidate -notin @('Role', 'Name', '----')) {
+                if (-not $roles.Contains($roleCandidate)) {
+                    $null = $roles.Add($roleCandidate)
+                }
+            }
+        }
+    }
+
+    return $roles.ToArray()
+}
+
+function Get-LatestReviewerHotspots {
+    param([string]$SpecDirectory)
+
+    $iterationsRoot = Join-Path $SpecDirectory 'iterations'
+    if (-not (Test-Path -LiteralPath $iterationsRoot -PathType Container)) {
+        return @()
+    }
+
+    $latestCodeMap = Get-ChildItem -Path $iterationsRoot -Directory |
+        Sort-Object Name -Descending |
+        ForEach-Object { Join-Path $_.FullName 'code-map.md' } |
+        Where-Object { Test-Path -LiteralPath $_ -PathType Leaf } |
+        Select-Object -First 1
+
+    if ([string]::IsNullOrWhiteSpace($latestCodeMap)) {
+        return @()
+    }
+
+    $hotspots = New-Object System.Collections.Generic.List[string]
+    $hotspotLines = @(Get-MarkdownSectionLines -Lines (Get-MarkdownContent -Path $latestCodeMap) -Heading 'Module Hotspots')
+    foreach ($line in $hotspotLines) {
+        $trimmed = $line.Trim()
+        if ($trimmed -match '^- ' -and $trimmed -notmatch '^- none$' -and $trimmed -notmatch '^- Threshold:') {
+            $null = $hotspots.Add(($trimmed -replace '^- ', '').Trim())
+        }
+    }
+
+    return $hotspots.ToArray()
+}
+
+function Get-ConcurrencyRationaleLines {
+    param(
+        [string]$ProjectRoot,
+        [string]$SpecDirectory,
+        [string[]]$ScopedRequirements,
+        [System.Collections.IDictionary]$RequirementSummaries
+    )
+
+    $scopeText = (($ScopedRequirements | ForEach-Object { [string]$RequirementSummaries[$_] }) -join ' ').ToLowerInvariant()
+    $rosterRoles = @(Get-TeamRoleSnapshot -ProjectRoot $ProjectRoot)
+    $hotspots = @(Get-LatestReviewerHotspots -SpecDirectory $SpecDirectory)
+
+    $frontendSignals = @([regex]::Matches($scopeText, '\b(ui|ux|frontend|dashboard|page|form|react|next|vue|angular|svelte|report|reporting)\b')).Count
+    $backendSignals = @([regex]::Matches($scopeText, '\b(api|backend|service|worker|webhook|queue|sync|integration|export|import|database|persist)\b')).Count
+    $conflictSignals = @([regex]::Matches($scopeText, '\b(shared|global state|migration|rewrite|cross-cutting|ambiguous|concurrency|lock|conflict)\b')).Count
+
+    $technologySummary = if ($frontendSignals -gt 0 -and $backendSignals -gt 0) {
+        'Mixed frontend and backend/service signals are present in the scoped requirements.'
+    }
+    elseif ($frontendSignals -gt 0) {
+        'Frontend-oriented signals dominate the scoped requirements.'
+    }
+    elseif ($backendSignals -gt 0) {
+        'Backend/service-oriented signals dominate the scoped requirements.'
+    }
+    else {
+        'No single specialty dominates yet; treat the slice as general product work until task decomposition adds sharper evidence.'
+    }
+
+    $separabilitySummary = if (($frontendSignals -ge 3 -or $backendSignals -ge 3) -and $conflictSignals -eq 0) {
+        'The scoped requirements suggest multiple potentially separable workstreams, so same-specialty expansion may be justified after task decomposition.'
+    }
+    elseif ($conflictSignals -gt 0) {
+        'Conflict-heavy signals are present, so keep same-specialty work serial unless ownership boundaries become explicit.'
+    }
+    else {
+        'Current scope does not yet prove enough safe parallelism for same-specialty expansion; default to a smaller serial team until tasks are clearer.'
+    }
+
+    $hotspotSummary = if ($hotspots.Count -gt 0) {
+        'Latest reviewer hotspots: ' + ($hotspots -join '; ')
+    }
+    else {
+        'No prior reviewer hotspot signals were found for this feature.'
+    }
+
+    return @(
+        '## Concurrency Rationale'
+        ''
+        ('- Current roster snapshot: {0}' -f $(if ($rosterRoles.Count -gt 0) { $rosterRoles -join ', ' } else { '(team roster unavailable)' }))
+        ('- Technology and scope signals: {0}' -f $technologySummary)
+        '- Task dependency graph: detailed dependencies are still pending task decomposition in this stub; revisit once the task table is populated.'
+        ('- Workstream separability: {0}' -f $separabilitySummary)
+        ('- Shared-surface conflict risk: {0}' -f $(if ($conflictSignals -gt 0) { 'elevated due to shared-state / cross-cutting cues in scope text.' } else { 'no elevated shared-surface warning inferred yet.' }))
+        ('- Prior reviewer ownership/hotspot evidence: {0}' -f $hotspotSummary)
+        '- Recommendation: do not propose Junior/Senior same-specialty expansion until the task table and ownership boundaries make safe parallelism explicit. If a same-specialty pair is approved later, record `Owner File Globs` for the parallel tasks or keep the work serial.'
+    )
+}
+
 $resolvedSpecPath = [System.IO.Path]::GetFullPath($SpecPath)
 if (-not (Test-Path -LiteralPath $resolvedSpecPath)) {
     throw "Spec file '$resolvedSpecPath' does not exist."
@@ -310,12 +456,14 @@ $($scopeRows -join [Environment]::NewLine)
 
 ## Tasks
 
-| Task | Title | Requirement | Story | Effort | Owner | Status | Agent | Actual | Verdict |
-| ---- | ----- | ----------- | ----- | ------ | ----- | ------ | ----- | ------ | ------- |
+| Task | Title | Requirement | Story | Effort | Owner | Owner File Globs | Status | Agent | Actual | Verdict |
+| ---- | ----- | ----------- | ----- | ------ | ----- | ---------------- | ------ | ----- | ------ | ------- |
 
 ## Effort Model
 
 $($effortModelRows -join [Environment]::NewLine)
+
+$((Get-ConcurrencyRationaleLines -ProjectRoot $projectRoot -SpecDirectory $specDirectory -ScopedRequirements $scopeList -RequirementSummaries $requirementSummaries) -join [Environment]::NewLine)
 
 ## Phase Baseline
 
