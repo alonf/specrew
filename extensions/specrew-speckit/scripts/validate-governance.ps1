@@ -492,7 +492,7 @@ function Test-StateArtifact {
     }
 
     $stateLines = Get-MarkdownContent -Path $statePath
-    foreach ($label in @('Last Completed Task', 'Tasks Remaining', 'In Progress', 'Updated')) {
+    foreach ($label in @('Last Completed Task', 'Tasks Remaining', 'In Progress', 'Baseline Ref', 'Updated')) {
         $value = Get-MarkdownMetadataValue -Lines $stateLines -Label $label
         if ($null -eq $value) {
             $Errors.Add("state.md is missing required metadata: $label")

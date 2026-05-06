@@ -28,15 +28,20 @@ function Invoke-TestScript {
     )
 
     $output = @(& pwsh -NoProfile -ExecutionPolicy Bypass -File $ScriptPath @ArgumentList 2>&1)
-    if ($LASTEXITCODE -ne 0) {
-        foreach ($line in $output) {
+    $exitCode = $LASTEXITCODE
+    $stringOutput = @($output | ForEach-Object { [string]$_ })
+    if ($exitCode -ne 0) {
+        foreach ($line in $stringOutput) {
             Write-Host $line
         }
 
         throw ("Script failed: {0}" -f $ScriptPath)
     }
 
-    return @($output | ForEach-Object { [string]$_ })
+    return [pscustomobject]@{
+        ExitCode = $exitCode
+        Output   = $stringOutput
+    }
 }
 
 function Assert-ContentPattern {
@@ -199,11 +204,12 @@ $installedScriptsRoot = Join-Path -Path $projectRoot -ChildPath '.specify\extens
 $planScript = Join-Path -Path $installedScriptsRoot -ChildPath 'scaffold-iteration-plan.ps1'
 $artifactScript = Join-Path -Path $installedScriptsRoot -ChildPath 'scaffold-iteration-artifacts.ps1'
 $reviewScript = Join-Path -Path $installedScriptsRoot -ChildPath 'scaffold-review-artifact.ps1'
+$reviewerArtifactsScript = Join-Path -Path $installedScriptsRoot -ChildPath 'scaffold-reviewer-artifacts.ps1'
 $retroScript = Join-Path -Path $installedScriptsRoot -ChildPath 'scaffold-retro-artifact.ps1'
 $resumeScript = Join-Path -Path $installedScriptsRoot -ChildPath 'resume-iteration.ps1'
 $syncModelOverrideScript = Join-Path -Path $installedScriptsRoot -ChildPath 'sync-squad-model-overrides.ps1'
 
-foreach ($scriptPath in @($planScript, $artifactScript, $reviewScript, $retroScript, $resumeScript, $syncModelOverrideScript)) {
+foreach ($scriptPath in @($planScript, $artifactScript, $reviewScript, $reviewerArtifactsScript, $retroScript, $resumeScript, $syncModelOverrideScript)) {
     if (-not (Test-Path -LiteralPath $scriptPath -PathType Leaf)) {
         Write-Fail "Missing installed downstream helper: $scriptPath"
         exit 1
@@ -216,6 +222,10 @@ $planPath = Join-Path -Path $iterationDirectory -ChildPath 'plan.md'
 $statePath = Join-Path -Path $iterationDirectory -ChildPath 'state.md'
 $driftPath = Join-Path -Path $iterationDirectory -ChildPath 'drift-log.md'
 $reviewPath = Join-Path -Path $iterationDirectory -ChildPath 'review.md'
+$codeMapPath = Join-Path -Path $iterationDirectory -ChildPath 'code-map.md'
+$dependencyReportPath = Join-Path -Path $iterationDirectory -ChildPath 'dependency-report.md'
+$coverageEvidencePath = Join-Path -Path $iterationDirectory -ChildPath 'coverage-evidence.md'
+$reviewerIndexPath = Join-Path -Path $iterationDirectory -ChildPath 'reviewer-index.md'
 $retroPath = Join-Path -Path $iterationDirectory -ChildPath 'retro.md'
 $specPath = Join-Path -Path $specDirectory -ChildPath 'spec.md'
 $resumeSkillPath = Join-Path -Path $projectRoot -ChildPath '.copilot\skills\specrew-iteration-resume\SKILL.md'
@@ -377,6 +387,7 @@ $stateContent = @'
 **Last Completed Task**: T-003
 **Tasks Remaining**: (none)
 **In Progress**: (none)
+**Baseline Ref**: iteration-baseline
 **Updated**: 2026-05-01T00:00:00Z
 
 ## Execution Summary
@@ -408,9 +419,17 @@ $completedReviewContent = @'
 '@
 
 [System.IO.File]::WriteAllText($reviewPath, $completedReviewContent, [System.Text.UTF8Encoding]::new($false))
-Invoke-TestScript -ScriptPath $retroScript -ArgumentList @('-IterationDirectory', $iterationDirectory) | Out-Null
+$retroResult = Invoke-TestScript -ScriptPath $retroScript -ArgumentList @('-IterationDirectory', $iterationDirectory)
+if ($retroResult.ExitCode -ne 0) {
+    foreach ($line in $retroResult.Output) {
+        Write-Host $line
+    }
 
-foreach ($requiredArtifact in @($statePath, $driftPath, $reviewPath, $retroPath)) {
+    Write-Fail 'Retro scaffolder failed for the sample closeout'
+    exit 1
+}
+
+foreach ($requiredArtifact in @($statePath, $driftPath, $reviewPath, $codeMapPath, $dependencyReportPath, $coverageEvidencePath, $reviewerIndexPath, $retroPath)) {
     if (-not (Test-Path -LiteralPath $requiredArtifact -PathType Leaf)) {
         Write-Fail "Missing expected iteration artifact: $requiredArtifact"
         exit 1
@@ -431,7 +450,60 @@ foreach ($check in $retroChecks) {
     }
 }
 
-if (-not ($bootstrapOutputValid -and $planValid -and $retroValid)) {
+$reviewerIndexContent = Get-Content -LiteralPath $reviewerIndexPath -Raw -Encoding UTF8
+$reviewerIndexValid = $true
+foreach ($check in @(
+        @{ Pattern = 'Header:\s+feature=001-sample-feature\s+\|\s+iteration=001'; Failure = 'Reviewer index is missing the summary header.' },
+        @{ Pattern = '\[code-map\.md\]\(code-map\.md\)'; Failure = 'Reviewer index is missing the code-map link.' },
+        @{ Pattern = 'SPECREW_REVIEW schema=v1 iter=001 feature=001-sample-feature verdict=accepted tasks=3/3 reqs=3 files=0 new_deps=0 vuln=unscanned cov=not_executed escalations=0 drift=0/0 index=specs\\001-sample-feature\\iterations\\001\\reviewer-index\.md'; Failure = 'Reviewer index did not persist the FR-051 digest format.' }
+    )) {
+    if (-not (Assert-ContentPattern -Content $reviewerIndexContent -Pattern $check.Pattern -FailureMessage $check.Failure)) {
+        $reviewerIndexValid = $false
+    }
+}
+
+$coverageContent = Get-Content -LiteralPath $coverageEvidencePath -Raw -Encoding UTF8
+foreach ($check in @(
+        @{ Pattern = '## Test Strategy'; Failure = 'Coverage evidence is missing the Test Strategy section.' },
+        @{ Pattern = '## Tests Run'; Failure = 'Coverage evidence is missing the Tests Run section.' },
+        @{ Pattern = '## Coverage Estimate'; Failure = 'Coverage evidence is missing the Coverage Estimate section.' },
+        @{ Pattern = 'Kind:\s+qualitative'; Failure = 'Coverage evidence did not mark the estimate kind as qualitative.' },
+        @{ Pattern = 'not_executed'; Failure = 'Coverage evidence did not record the mandated not_executed token.' }
+    )) {
+    if (-not (Assert-ContentPattern -Content $coverageContent -Pattern $check.Pattern -FailureMessage $check.Failure)) {
+        $reviewerIndexValid = $false
+    }
+}
+
+$codeMapContent = Get-Content -LiteralPath $codeMapPath -Raw -Encoding UTF8
+foreach ($check in @(
+        @{ Pattern = '\| Path \| Lines Added \| Lines Removed \| Owning Task ID\(s\) \| Owning Role \|'; Failure = 'Code map is missing the FR-046 Files Touched header.' },
+        @{ Pattern = '## Public-API Delta'; Failure = 'Code map is missing the Public-API Delta section.' },
+        @{ Pattern = '## Module Hotspots'; Failure = 'Code map is missing the Module Hotspots section.' },
+        @{ Pattern = 'Test-to-Code Ratio'; Failure = 'Code map is missing the Test-to-Code Ratio line.' }
+    )) {
+    if (-not (Assert-ContentPattern -Content $codeMapContent -Pattern $check.Pattern -FailureMessage $check.Failure)) {
+        $reviewerIndexValid = $false
+    }
+}
+
+$dependencyContent = Get-Content -LiteralPath $dependencyReportPath -Raw -Encoding UTF8
+foreach ($check in @(
+        @{ Pattern = '## Vulnerability Scan'; Failure = 'Dependency report is missing the Vulnerability Scan section.' },
+        @{ Pattern = 'status:\s+unscanned'; Failure = 'Dependency report did not explicitly label the scan as unscanned.' },
+        @{ Pattern = '## Transitive Surface'; Failure = 'Dependency report is missing the Transitive Surface note.' }
+    )) {
+    if (-not (Assert-ContentPattern -Content $dependencyContent -Pattern $check.Pattern -FailureMessage $check.Failure)) {
+        $reviewerIndexValid = $false
+    }
+}
+
+$retroOutput = $retroResult.Output -join "`n"
+if (-not (Assert-ContentPattern -Content $retroOutput -Pattern 'SPECREW_REVIEW schema=v1 iter=001 feature=001-sample-feature verdict=accepted tasks=3/3 reqs=3 files=0 new_deps=0 vuln=unscanned cov=not_executed escalations=0 drift=0/0 index=specs\\001-sample-feature\\iterations\\001\\reviewer-index\.md' -FailureMessage 'Closeout output did not emit the FR-051 digest.')) {
+    $reviewerIndexValid = $false
+}
+
+if (-not ($bootstrapOutputValid -and $planValid -and $retroValid -and $reviewerIndexValid)) {
     exit 1
 }
 

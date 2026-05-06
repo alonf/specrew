@@ -4,6 +4,7 @@
 **Last Completed Task**: T-023
 **Tasks Remaining**: (none)
 **In Progress**: (none)
+**Baseline Ref**: legacy-pre-reviewer-baseline
 **Updated**: 2026-05-01T20:11:19Z
 **Current Phase**: complete
 **Final Sign-Off**: Alon (Chief Architect & Reviewer) - final governance authority sign-off recorded 2026-05-01

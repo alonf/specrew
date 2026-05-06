@@ -350,6 +350,7 @@ $statePath = Join-Path $resolvedIterationDirectory 'state.md'
 $driftLogPath = Join-Path $resolvedIterationDirectory 'drift-log.md'
 $reviewPath = Join-Path $resolvedIterationDirectory 'review.md'
 $retroPath = Join-Path $resolvedIterationDirectory 'retro.md'
+$reviewerArtifactScriptPath = Join-Path $PSScriptRoot 'scaffold-reviewer-artifacts.ps1'
 $actions = [System.Collections.ArrayList]::new()
 
 foreach ($requiredPath in @($planPath, $statePath, $driftLogPath, $reviewPath)) {
@@ -375,6 +376,10 @@ if ($phaseRows.Count -eq 0) {
 $iterationLabel = Get-IterationLabel -PlanLines $planLines -Fallback (Split-Path -Leaf $resolvedIterationDirectory)
 $reviewOverallVerdict = Assert-ReviewArtifactReadyForRetro -ReviewLines $reviewLines
 $driftSummary = Get-DriftSummary -DriftLines $driftLines
+
+if (-not (Test-Path -LiteralPath $reviewerArtifactScriptPath -PathType Leaf)) {
+    throw "Reviewer artifact helper '$reviewerArtifactScriptPath' does not exist."
+}
 
 $taskVarianceRows = @(
     '| Task | Estimated | Actual | Delta |'
@@ -485,6 +490,21 @@ $($phaseVarianceRows -join [Environment]::NewLine)
 
 Write-MissingFile -TargetPath $retroPath -Content $retroContent -Actions $actions
 
+$reviewerArtifactActions = @(
+    & $reviewerArtifactScriptPath `
+        -IterationDirectory $resolvedIterationDirectory `
+        -PassThru `
+        -DryRun:$DryRun
+)
+
+foreach ($action in $reviewerArtifactActions) {
+    if ($null -eq $action) {
+        continue
+    }
+
+    Add-ScaffoldAction -Actions $actions -Action ([string]$action.Action) -Path ([string]$action.Path)
+}
+
 if ($PassThru) {
     $actions
     return
@@ -492,4 +512,8 @@ if ($PassThru) {
 
 $actions | Select-Object Action, Path | Format-Table -AutoSize
 Write-Host ("Retro artifact scaffold {0} for {1}" -f ($(if ($DryRun) { 'previewed' } else { 'completed' }), $retroPath)) -ForegroundColor Green
+& $reviewerArtifactScriptPath `
+    -IterationDirectory $resolvedIterationDirectory `
+    -SummaryOnly `
+    -DryRun:$DryRun
 exit 0

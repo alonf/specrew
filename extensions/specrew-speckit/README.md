@@ -61,6 +61,7 @@ This extension also ships focused scaffolding helpers:
 - `scaffold-iteration-plan.ps1` creates a planning-stub `iterations\NNN\plan.md` from a spec and requirement scope
 - `scaffold-iteration-artifacts.ps1` creates `iterations\NNN\state.md` and `iterations\NNN\drift-log.md` without overwriting existing iteration work
 - `scaffold-review-artifact.ps1` creates `iterations\NNN\review.md` from the iteration plan for the Review/Demo ceremony
+- `scaffold-reviewer-artifacts.ps1` creates `code-map.md`, `dependency-report.md`, `coverage-evidence.md`, and `reviewer-index.md` for the persisted closeout packet
 - `scaffold-retro-artifact.ps1` creates `iterations\NNN\retro.md` from the iteration plan, review artifact, and drift log for Squad's built-in Retrospective ceremony
 - `resume-iteration.ps1` analyzes `state.md` plus the task table in `plan.md`, then records a resume report and next suggested task for FR-019 recovery flows
 

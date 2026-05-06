@@ -184,6 +184,38 @@ function Get-PlanTaskIds {
     return $taskIds.ToArray()
 }
 
+function Get-BaselineRef {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$SpecDirectory
+    )
+
+    $projectRoot = Split-Path -Parent $SpecDirectory
+    $defaultBaselineRef = 'iteration-baseline'
+    $configPath = Join-Path $projectRoot '.specrew\iteration-config.yml'
+
+    if (Test-Path -LiteralPath $configPath -PathType Leaf) {
+        foreach ($line in Get-Content -LiteralPath $configPath -Encoding UTF8) {
+            if ($line -match '^\s{2}baseline_ref:\s*"?([^"#]+?)"?\s*$') {
+                $defaultBaselineRef = $Matches[1].Trim()
+                break
+            }
+        }
+    }
+
+    $gitCommand = Get-Command -Name 'git' -ErrorAction SilentlyContinue
+    if ($null -eq $gitCommand) {
+        return $defaultBaselineRef
+    }
+
+    $headRef = @(& git -C $projectRoot rev-parse HEAD 2>$null)
+    if ($LASTEXITCODE -eq 0 -and $headRef.Count -gt 0 -and -not [string]::IsNullOrWhiteSpace($headRef[0])) {
+        return [string]$headRef[0]
+    }
+
+    return $defaultBaselineRef
+}
+
 $resolvedSpecDirectory = [System.IO.Path]::GetFullPath($SpecDirectory)
 $iterationsRoot = Join-Path $resolvedSpecDirectory 'iterations'
 $iterationDirectory = Join-Path $iterationsRoot $IterationNumber
@@ -202,6 +234,7 @@ Ensure-Directory -Path $iterationDirectory -Actions $actions
 
 $taskIds = @(Get-PlanTaskIds -PlanPath $planPath)
 $tasksRemaining = if ($taskIds.Count -gt 0) { $taskIds -join ', ' } else { '(populate from plan.md)' }
+$baselineRef = Get-BaselineRef -SpecDirectory $resolvedSpecDirectory
 
 $stateContent = @"
 # Iteration State: $IterationNumber
@@ -210,6 +243,7 @@ $stateContent = @"
 **Last Completed Task**: (none)
 **Tasks Remaining**: $tasksRemaining
 **In Progress**: (none)
+**Baseline Ref**: $baselineRef
 **Updated**: $timestamp
 
 ## Execution Summary

@@ -32,12 +32,14 @@ specrew - Spec-governed AI crew operating model
 Usage:
   specrew init [options]           Bootstrap Specrew in the current or target project
   specrew start [args]             Start or resume the Squad-driven Spec Kit lifecycle
+  specrew review [options]         Replay the persisted reviewer closeout packet
   specrew update [options]         Refresh Specrew assets or upgrade managed platforms
   specrew team <command> [args]    Manage Squad team members
 
 Commands:
   init     Initialize Specrew (Spec Kit + Squad + governance)
   start    Start or resume feature delivery through Squad + Spec Kit
+  review   Show reviewer summary for a completed iteration
   update   Refresh Specrew or upgrade Spec Kit / Squad in an existing project
   team     Manage team members (add, update, remove, list)
   help     Show this help message
@@ -46,6 +48,7 @@ Examples:
   specrew init --project-path .
   specrew start
   specrew start "Build a REST API for user management"
+  specrew review --project-path .
   specrew update
   specrew update --info
   specrew update --all
@@ -57,6 +60,7 @@ Examples:
 For detailed command help:
   specrew init --help
   specrew start --help
+  specrew review --help
   specrew update --help
   specrew team --help (shows usage when no subcommand provided)
 '@ | Write-Host
@@ -116,6 +120,17 @@ switch ($Command) {
         }
 
         & $startScript -CliArgs $Arguments
+        exit $LASTEXITCODE
+    }
+
+    'review' {
+        $reviewScript = Join-Path $scriptRoot 'specrew-review.ps1'
+        if (-not (Test-Path -LiteralPath $reviewScript)) {
+            Write-Host "ERROR: specrew-review.ps1 not found at $reviewScript" -ForegroundColor Red
+            exit 1
+        }
+
+        & pwsh -NoProfile -ExecutionPolicy Bypass -File $reviewScript @Arguments
         exit $LASTEXITCODE
     }
 

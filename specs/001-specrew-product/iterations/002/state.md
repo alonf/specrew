@@ -4,6 +4,7 @@
 **Last Completed Task**: T-208
 **Tasks Remaining**: (none)
 **In Progress**: (none)
+**Baseline Ref**: legacy-pre-reviewer-baseline
 **Updated**: 2026-05-03T19:10:00Z
 
 ## Execution Phase Tracking
