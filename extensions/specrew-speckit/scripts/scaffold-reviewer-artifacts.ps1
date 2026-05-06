@@ -270,6 +270,7 @@ function Get-ReviewerConfig {
             test_commands               = @()
             skip_test_execution_at_close = $false
             baseline_ref                = 'iteration-baseline'
+            diagram_format              = 'mermaid'
             coverage                    = [ordered]@{
                 tool = ''
                 kind = 'qualitative'
@@ -282,6 +283,16 @@ function Get-ReviewerConfig {
             hotspot_thresholds          = [ordered]@{
                 file_changed_lines     = 250
                 function_changed_lines = 100
+            }
+            diagram_thresholds          = [ordered]@{
+                structure = [ordered]@{
+                    min_modules_touched   = 3
+                    min_inter_module_edges = 2
+                }
+                flow      = [ordered]@{
+                    min_entrypoints_changed = 1
+                    min_modules_in_flow     = 2
+                }
             }
         }
     }
@@ -313,6 +324,21 @@ function Get-ReviewerConfig {
         }
         if ($line -match '^\s{2}hotspot_thresholds:\s*$') {
             $context = 'reviewer.hotspot_thresholds'
+            $listTarget = $null
+            continue
+        }
+        if ($line -match '^\s{2}diagram_thresholds:\s*$') {
+            $context = 'reviewer.diagram_thresholds'
+            $listTarget = $null
+            continue
+        }
+        if ($line -match '^\s{4}structure:\s*$') {
+            $context = 'reviewer.diagram_thresholds.structure'
+            $listTarget = $null
+            continue
+        }
+        if ($line -match '^\s{4}flow:\s*$') {
+            $context = 'reviewer.diagram_thresholds.flow'
             $listTarget = $null
             continue
         }
@@ -355,6 +381,10 @@ function Get-ReviewerConfig {
                 $config.reviewer.baseline_ref = $Matches[1].Trim()
                 continue
             }
+            '^\s{2}diagram_format:\s*"?([^"#]+?)"?\s*$' {
+                $config.reviewer.diagram_format = $Matches[1].Trim()
+                continue
+            }
             '^\s{4}tool:\s*"?([^"#]*)"?\s*$' {
                 if ($context -eq 'reviewer.coverage') {
                     $config.reviewer.coverage.tool = $Matches[1].Trim()
@@ -391,6 +421,30 @@ function Get-ReviewerConfig {
                 }
                 continue
             }
+            '^\s{6}min_modules_touched:\s*(\d+)\s*$' {
+                if ($context -eq 'reviewer.diagram_thresholds.structure') {
+                    $config.reviewer.diagram_thresholds.structure.min_modules_touched = [int]$Matches[1]
+                }
+                continue
+            }
+            '^\s{6}min_inter_module_edges:\s*(\d+)\s*$' {
+                if ($context -eq 'reviewer.diagram_thresholds.structure') {
+                    $config.reviewer.diagram_thresholds.structure.min_inter_module_edges = [int]$Matches[1]
+                }
+                continue
+            }
+            '^\s{6}min_entrypoints_changed:\s*(\d+)\s*$' {
+                if ($context -eq 'reviewer.diagram_thresholds.flow') {
+                    $config.reviewer.diagram_thresholds.flow.min_entrypoints_changed = [int]$Matches[1]
+                }
+                continue
+            }
+            '^\s{6}min_modules_in_flow:\s*(\d+)\s*$' {
+                if ($context -eq 'reviewer.diagram_thresholds.flow') {
+                    $config.reviewer.diagram_thresholds.flow.min_modules_in_flow = [int]$Matches[1]
+                }
+                continue
+            }
         }
     }
 
@@ -422,6 +476,319 @@ function Test-IsTestPath {
     }
 
     return $false
+}
+
+function Convert-WildcardToRegex {
+    param([string]$Pattern)
+
+    return '^' + ([regex]::Escape($Pattern).Replace('\*', '.*').Replace('\?', '.')) + '$'
+}
+
+function Get-ChangedCodeFiles {
+    param(
+        [object[]]$ChangedFiles,
+        [string[]]$TestPathGlobs
+    )
+
+    return @($ChangedFiles | Where-Object {
+            $path = [string]$_.Path
+            $extension = [System.IO.Path]::GetExtension($path).ToLowerInvariant()
+            (-not $_.IsManifest) -and
+            (-not (Test-IsTestPath -Path $path -TestPathGlobs $TestPathGlobs)) -and
+            ($extension -in @('.ps1', '.psm1', '.js', '.jsx', '.ts', '.tsx', '.py', '.go', '.cs', '.java', '.rb', '.php', '.rs', '.kt', '.swift', '.c', '.cc', '.cpp', '.h', '.hpp'))
+        })
+}
+
+function Get-ModuleIdFromPath {
+    param([string]$Path)
+
+    $normalized = ($Path -replace '/', '\').Trim()
+    $withoutExtension = [System.IO.Path]::ChangeExtension($normalized, $null)
+    if ([string]::IsNullOrWhiteSpace($withoutExtension)) {
+        return $normalized.Replace('\', '/')
+    }
+
+    return $withoutExtension.TrimEnd('.').Replace('\', '/')
+}
+
+function Get-ModuleLabel {
+    param([string]$ModuleId)
+
+    return ($ModuleId -replace '[^A-Za-z0-9_]', '_')
+}
+
+function Resolve-ModuleReference {
+    param(
+        [string]$FromPath,
+        [string]$Target,
+        [hashtable]$ModuleLookup
+    )
+
+    if ([string]::IsNullOrWhiteSpace($Target)) {
+        return $null
+    }
+
+    $baseDirectory = Split-Path -Parent ($FromPath -replace '/', '\')
+    $combinedPath = if ([string]::IsNullOrWhiteSpace($baseDirectory)) {
+        $Target
+    }
+    else {
+        Join-Path $baseDirectory $Target
+    }
+
+    $candidatePath = [System.IO.Path]::GetFullPath((Join-Path 'C:\' $combinedPath)).Substring(3)
+    $candidateKey = $candidatePath.Replace('/', '\')
+    $candidateModuleId = Get-ModuleIdFromPath -Path $candidateKey
+
+    if ($ModuleLookup.ContainsKey($candidateModuleId)) {
+        return $ModuleLookup[$candidateModuleId]
+    }
+
+    foreach ($extension in @('.ps1', '.psm1', '.js', '.ts', '.tsx', '.jsx', '.py', '.go', '.cs')) {
+        $withExtension = Get-ModuleIdFromPath -Path ($candidateKey + $extension)
+        if ($ModuleLookup.ContainsKey($withExtension)) {
+            return $ModuleLookup[$withExtension]
+        }
+    }
+
+    return $null
+}
+
+function Get-ModuleGraphEvidence {
+    param(
+        [string]$ProjectRoot,
+        [object[]]$ChangedFiles,
+        [string[]]$TestPathGlobs
+    )
+
+    $codeFiles = @(Get-ChangedCodeFiles -ChangedFiles $ChangedFiles -TestPathGlobs $TestPathGlobs)
+    $modules = New-Object System.Collections.Generic.List[object]
+    $moduleLookup = @{}
+
+    foreach ($file in $codeFiles) {
+        $moduleId = Get-ModuleIdFromPath -Path ([string]$file.Path)
+        $module = [pscustomobject]@{
+            ModuleId = $moduleId
+            Label    = Get-ModuleLabel -ModuleId $moduleId
+            Path     = [string]$file.Path
+        }
+        $null = $modules.Add($module)
+        $moduleLookup[$moduleId] = $module
+    }
+
+    $edges = New-Object System.Collections.Generic.List[object]
+    $edgeKeys = New-Object System.Collections.Generic.HashSet[string] ([System.StringComparer]::OrdinalIgnoreCase)
+    $entrypoints = New-Object System.Collections.Generic.List[object]
+
+    foreach ($module in $modules) {
+        $leafName = [System.IO.Path]::GetFileNameWithoutExtension($module.Path)
+        if ($leafName -match '(?i)(api|app|main|index|start|cli|command|handler|controller|route)') {
+            $null = $entrypoints.Add($module)
+        }
+
+        $absolutePath = Join-Path $ProjectRoot $module.Path
+        if (-not (Test-Path -LiteralPath $absolutePath -PathType Leaf)) {
+            continue
+        }
+
+        $text = Get-Content -LiteralPath $absolutePath -Raw -Encoding UTF8
+        foreach ($pattern in @(
+                '(?im)^\s*import\s+.+?\s+from\s+["''](?<target>\.[^"'']+)["'']'
+                '(?im)require\(\s*["''](?<target>\.[^"'']+)["'']\s*\)'
+                '(?im)^\s*(?:using\s+module|Import-Module)\s+["'']?(?<target>\.[^"'']+)'
+                '(?im)^\s*\.\s+["'']?(?<target>\.[^"'']+)'
+            )) {
+            foreach ($match in [regex]::Matches($text, $pattern)) {
+                $targetModule = Resolve-ModuleReference -FromPath $module.Path -Target $match.Groups['target'].Value -ModuleLookup $moduleLookup
+                if ($null -eq $targetModule -or $targetModule.ModuleId -eq $module.ModuleId) {
+                    continue
+                }
+
+                $edgeKey = '{0}->{1}' -f $module.ModuleId, $targetModule.ModuleId
+                if ($edgeKeys.Add($edgeKey)) {
+                    $null = $edges.Add([pscustomobject]@{
+                            From = $module
+                            To   = $targetModule
+                        })
+                }
+            }
+        }
+    }
+
+    return [pscustomobject]@{
+        Modules    = $modules.ToArray()
+        Edges      = $edges.ToArray()
+        Entrypoints = $entrypoints.ToArray()
+    }
+}
+
+function Get-SecurityRoles {
+    param([string]$ProjectRoot)
+
+    $teamPath = Join-Path $ProjectRoot '.squad\team.md'
+    if (-not (Test-Path -LiteralPath $teamPath -PathType Leaf)) {
+        return @()
+    }
+
+    $roles = New-Object System.Collections.Generic.List[string]
+    foreach ($line in Get-Content -LiteralPath $teamPath -Encoding UTF8) {
+        if ($line -match '^\|[^|]+\|\s*([^|]*security[^|]*)\|') {
+            $role = $Matches[1].Trim()
+            if (-not [string]::IsNullOrWhiteSpace($role) -and -not $roles.Contains($role)) {
+                $null = $roles.Add($role)
+            }
+        }
+        elseif ($line -match '^\|\s*(Security[^|]*)\|') {
+            $role = $Matches[1].Trim()
+            if (-not [string]::IsNullOrWhiteSpace($role) -and -not $roles.Contains($role)) {
+                $null = $roles.Add($role)
+            }
+        }
+    }
+
+    return $roles.ToArray()
+}
+
+function Get-SecurityTriggerContext {
+    param(
+        [string]$ProjectRoot,
+        [string[]]$PlanLines
+    )
+
+    $securityRoles = @(Get-SecurityRoles -ProjectRoot $ProjectRoot)
+    $planTaskRows = @(Get-MarkdownSectionTable -Lines $PlanLines -Heading 'Tasks')
+    $taskTriggered = @($planTaskRows | Where-Object { ([string]$_.Requirement) -match '\bFR-048\b' -or ([string]$_.Title) -match '(?i)\bsecurity\b' }).Count -gt 0
+
+    return [pscustomobject]@{
+        Enabled       = ($securityRoles.Count -gt 0) -or $taskTriggered
+        Reason        = if ($securityRoles.Count -gt 0) { 'Security-focused team role present.' } elseif ($taskTriggered) { 'Iteration plan scopes security work.' } else { 'No security-focused role and no FR-048/security-scoped plan task were found.' }
+        SecurityRoles = $securityRoles
+    }
+}
+
+function Get-SensitiveTouchpoints {
+    param(
+        [string]$ProjectRoot,
+        [object[]]$ChangedFiles,
+        [string[]]$Patterns
+    )
+
+    $touchpoints = New-Object System.Collections.Generic.List[string]
+    foreach ($file in $ChangedFiles) {
+        if ($file.IsManifest) {
+            continue
+        }
+
+        $matches = New-Object System.Collections.Generic.List[string]
+        $pathText = ([string]$file.Path).ToLowerInvariant()
+        $contentText = ''
+        $absolutePath = Join-Path $ProjectRoot $file.Path
+        if (Test-Path -LiteralPath $absolutePath -PathType Leaf) {
+            $contentText = (Get-Content -LiteralPath $absolutePath -Raw -Encoding UTF8).ToLowerInvariant()
+        }
+
+        foreach ($pattern in $Patterns) {
+            $regex = Convert-WildcardToRegex -Pattern $pattern.ToLowerInvariant()
+            if ($pathText -match $regex -or $contentText -match $regex) {
+                if (-not $matches.Contains($pattern)) {
+                    $null = $matches.Add($pattern)
+                }
+            }
+        }
+
+        if ($matches.Count -gt 0) {
+            $null = $touchpoints.Add(('{0} (matched: {1})' -f $file.Path, ($matches -join ', ')))
+        }
+    }
+
+    return $touchpoints.ToArray()
+}
+
+function Get-VulnerabilityHighlights {
+    param([object]$VulnerabilityScan)
+
+    if ($VulnerabilityScan.Status -ne 'scanned') {
+        return @('- none | ' + $VulnerabilityScan.Reason)
+    }
+
+    $highlights = New-Object System.Collections.Generic.List[string]
+    foreach ($line in $VulnerabilityScan.Output) {
+        $lineText = [string]$line
+        if ($lineText -match '\b(HIGH|CRITICAL)\b') {
+            $null = $highlights.Add($lineText.Trim())
+        }
+    }
+
+    if ($highlights.Count -eq 0) {
+        $null = $highlights.Add('- none | No HIGH/CRITICAL findings were reported.')
+    }
+
+    return $highlights.ToArray()
+}
+
+function Get-DiagramEvidence {
+    param(
+        [string]$ProjectRoot,
+        [object[]]$ChangedFiles,
+        [object]$ReviewerConfig
+    )
+
+    $graph = Get-ModuleGraphEvidence -ProjectRoot $ProjectRoot -ChangedFiles $ChangedFiles -TestPathGlobs $ReviewerConfig.test_path_globs
+    $omissions = New-Object System.Collections.Generic.List[string]
+    $structureDiagram = $null
+    $flowDiagram = $null
+
+    if ($graph.Modules.Count -lt [int]$ReviewerConfig.diagram_thresholds.structure.min_modules_touched) {
+        $null = $omissions.Add(('Structure diagram omitted: modules touched ({0}) below threshold ({1}).' -f $graph.Modules.Count, $ReviewerConfig.diagram_thresholds.structure.min_modules_touched))
+    }
+    elseif ($graph.Edges.Count -lt [int]$ReviewerConfig.diagram_thresholds.structure.min_inter_module_edges) {
+        $null = $omissions.Add(('Structure diagram omitted: inter-module edges ({0}) below threshold ({1}).' -f $graph.Edges.Count, $ReviewerConfig.diagram_thresholds.structure.min_inter_module_edges))
+    }
+    else {
+        $structureLines = New-Object System.Collections.Generic.List[string]
+        $null = $structureLines.Add('```mermaid')
+        $null = $structureLines.Add('flowchart LR')
+        foreach ($module in $graph.Modules) {
+            $null = $structureLines.Add(('  {0}["{1}"]' -f $module.Label, $module.ModuleId))
+        }
+        foreach ($edge in $graph.Edges) {
+            $null = $structureLines.Add(('  {0} --> {1}' -f $edge.From.Label, $edge.To.Label))
+        }
+        $null = $structureLines.Add('```')
+        $structureDiagram = $structureLines -join [Environment]::NewLine
+    }
+
+    if ($graph.Entrypoints.Count -lt [int]$ReviewerConfig.diagram_thresholds.flow.min_entrypoints_changed) {
+        $null = $omissions.Add(('Flow diagram omitted: entrypoints changed ({0}) below threshold ({1}).' -f $graph.Entrypoints.Count, $ReviewerConfig.diagram_thresholds.flow.min_entrypoints_changed))
+    }
+    elseif ($graph.Modules.Count -lt [int]$ReviewerConfig.diagram_thresholds.flow.min_modules_in_flow) {
+        $null = $omissions.Add(('Flow diagram omitted: modules in flow ({0}) below threshold ({1}).' -f $graph.Modules.Count, $ReviewerConfig.diagram_thresholds.flow.min_modules_in_flow))
+    }
+    else {
+        $flowLines = New-Object System.Collections.Generic.List[string]
+        $null = $flowLines.Add('```mermaid')
+        $null = $flowLines.Add('flowchart TD')
+        foreach ($entrypoint in $graph.Entrypoints) {
+            $null = $flowLines.Add(('  {0}["{1}"]' -f $entrypoint.Label, $entrypoint.ModuleId))
+            $outgoing = @($graph.Edges | Where-Object { $_.From.ModuleId -eq $entrypoint.ModuleId })
+            if ($outgoing.Count -eq 0) {
+                continue
+            }
+
+            foreach ($edge in $outgoing) {
+                $null = $flowLines.Add(('  {0} --> {1}' -f $edge.From.Label, $edge.To.Label))
+            }
+        }
+        $null = $flowLines.Add('```')
+        $flowDiagram = $flowLines -join [Environment]::NewLine
+    }
+
+    return [pscustomobject]@{
+        Graph           = $graph
+        StructureDiagram = $structureDiagram
+        FlowDiagram     = $flowDiagram
+        Omissions       = $omissions.ToArray()
+    }
 }
 
 function Get-DiffArtifacts {
@@ -1046,7 +1413,9 @@ $driftPath = Join-Path $resolvedIterationDirectory 'drift-log.md'
 $codeMapPath = Join-Path $resolvedIterationDirectory 'code-map.md'
 $dependencyReportPath = Join-Path $resolvedIterationDirectory 'dependency-report.md'
 $coverageEvidencePath = Join-Path $resolvedIterationDirectory 'coverage-evidence.md'
+$securitySurfacePath = Join-Path $resolvedIterationDirectory 'security-surface.md'
 $reviewerIndexPath = Join-Path $resolvedIterationDirectory 'reviewer-index.md'
+$reviewDiagramsPath = Join-Path $resolvedIterationDirectory 'review-diagrams.md'
 $actions = [System.Collections.ArrayList]::new()
 
 foreach ($requiredPath in @($planPath, $reviewPath, $statePath, $driftPath)) {
@@ -1073,12 +1442,14 @@ $driftSummary = Get-DriftSummary -Lines $driftLines
 $specDirectory = Split-Path -Parent (Split-Path -Parent $resolvedIterationDirectory)
 $projectRoot = Split-Path -Parent (Split-Path -Parent $specDirectory)
 $featureId = Split-Path -Leaf $specDirectory
+$currentArchitecturePath = Join-Path $specDirectory 'current-architecture.md'
 $reviewerConfig = (Get-ReviewerConfig -ProjectRoot $projectRoot).reviewer
 $diffArtifacts = Get-DiffArtifacts -ProjectRoot $projectRoot -BaselineRef $baselineRef
 $implementationBriefingPath = Get-ImplementationBriefingPath -IterationDirectory $resolvedIterationDirectory
 $implementationBriefingRelative = if ($implementationBriefingPath) { Get-RelativePath -FromDirectory $projectRoot -ToPath $implementationBriefingPath } else { '(unavailable)' }
 $decisionsPath = Join-Path $projectRoot '.squad\decisions.md'
 $decisionsRelativePath = '.squad\decisions.md'
+$securityContext = Get-SecurityTriggerContext -ProjectRoot $projectRoot -PlanLines $planLines
 
 $verdictByTask = @{}
 foreach ($reviewTask in $reviewTasks) {
@@ -1104,6 +1475,7 @@ $requirementsNotCovered = '(none)'
 
 $changedFiles = @($diffArtifacts.Files)
 $manifestFiles = @($changedFiles | Where-Object { $_.IsManifest })
+$changedCodeFiles = @(Get-ChangedCodeFiles -ChangedFiles $changedFiles -TestPathGlobs $reviewerConfig.test_path_globs)
 $publicApiDelta = Get-PublicApiDelta -ProjectRoot $projectRoot -BaselineRef $baselineRef -Files $changedFiles
 $dependencyAnalysis = Get-ManifestDiffRows -ProjectRoot $projectRoot -BaselineRef $baselineRef -ManifestFiles $manifestFiles -PlanTasks $planTasks
 $vulnerabilityScan = Get-VulnerabilityScanResult -ProjectRoot $projectRoot -ReviewerConfig $reviewerConfig -ManifestChanged:($manifestFiles.Count -gt 0)
@@ -1111,6 +1483,8 @@ $testExecutionRows = @(Get-TestExecutionRows -ProjectRoot $projectRoot -Reviewer
 $coverageRows = @(Get-RequirementCoverageRows -RequirementRefs $requirementRefs.ToArray() -ChangedFiles $changedFiles -TestPathGlobs $reviewerConfig.test_path_globs -TestExecutionRows $testExecutionRows)
 $escalationCount = Get-EscalationCount -StateLines $stateLines
 $routingFallbackCount = 0
+$sensitiveTouchpoints = @(Get-SensitiveTouchpoints -ProjectRoot $projectRoot -ChangedFiles $changedFiles -Patterns $reviewerConfig.sensitive_data_patterns)
+$diagramEvidence = Get-DiagramEvidence -ProjectRoot $projectRoot -ChangedFiles $changedFiles -ReviewerConfig $reviewerConfig
 
 $codeMapRows = @(
     '| Path | Lines Added | Lines Removed | Owning Task ID(s) | Owning Role |'
@@ -1313,16 +1687,85 @@ $($coverageEstimateSection -join [Environment]::NewLine)
 $($coverageMapRows -join [Environment]::NewLine)
 "@
 
+$indexRelativePath = Get-RelativePath -FromDirectory $projectRoot -ToPath $reviewerIndexPath
+$securitySurfaceReason = $securityContext.Reason
+$securitySurfaceRelative = Get-RelativePath -FromDirectory $projectRoot -ToPath $securitySurfacePath
+$reviewDiagramsRelative = Get-RelativePath -FromDirectory $projectRoot -ToPath $reviewDiagramsPath
+$currentArchitectureRelative = Get-RelativePath -FromDirectory $projectRoot -ToPath $currentArchitecturePath
+$currentArchitectureFromIterationRelative = Get-RelativePath -FromDirectory $resolvedIterationDirectory -ToPath $currentArchitecturePath
+$currentArchitectureDiagramRelative = Get-RelativePath -FromDirectory (Split-Path -Parent $currentArchitecturePath) -ToPath $reviewDiagramsPath
+
+$securitySurfaceContent = @"
+# Security Surface: Iteration $iterationLabel
+
+**Schema**: v1
+**Reviewed**: $reviewedDate
+
+## Trust Boundaries Touched
+
+$(if ($changedCodeFiles.Count -gt 0) { ($changedCodeFiles | ForEach-Object { '- ' + $_.Path }) -join [Environment]::NewLine } else { '- none' })
+
+## Sensitive Data Touchpoints
+
+$(if ($sensitiveTouchpoints.Count -gt 0) { ($sensitiveTouchpoints | ForEach-Object { '- ' + $_ }) -join [Environment]::NewLine } else { '- none | No changed files matched reviewer.sensitive_data_patterns.' })
+
+## Security Specialist Findings
+
+$(if ($securityContext.SecurityRoles.Count -gt 0) { '- Roles present: ' + ($securityContext.SecurityRoles -join ', ') + [Environment]::NewLine + '- No explicit specialist findings were recorded in review artifacts for this iteration.' } else { '- No security specialist was present for this iteration.' })
+
+## Vulnerability Highlights
+
+$(Get-VulnerabilityHighlights -VulnerabilityScan $vulnerabilityScan -join [Environment]::NewLine)
+"@
+
+$reviewDiagramsContent = @"
+# Review Diagrams: Iteration $iterationLabel
+
+**Schema**: v1
+**Diagram Format**: $($reviewerConfig.diagram_format)
+
+## Structure Diagram
+
+$(if ($diagramEvidence.StructureDiagram) { $diagramEvidence.StructureDiagram } else { '_omitted_' })
+
+## Flow Diagram
+
+$(if ($diagramEvidence.FlowDiagram) { $diagramEvidence.FlowDiagram } else { '_omitted_' })
+
+## Omissions
+
+$(if ($diagramEvidence.Omissions.Count -gt 0) { ($diagramEvidence.Omissions | ForEach-Object { '- ' + $_ }) -join [Environment]::NewLine } else { '- none' })
+
+## Local View Hints
+
+- $reviewDiagramsRelative
+"@
+
+$currentArchitectureContent = @"
+# Current Architecture: $featureId
+
+**Source Iteration Ref**: $iterationLabel
+**Last Updated**: $(Get-Date -Format 'yyyy-MM-ddTHH:mm:ssK')
+
+## Summary
+
+- Latest reviewer snapshot: `iterations/$iterationLabel/`
+- Current reviewer index: $indexRelativePath
+- Security surface: $(if ($securityContext.Enabled) { $securitySurfaceRelative } else { 'not generated for this iteration (' + $securitySurfaceReason + ')' })
+- Review diagrams: $reviewDiagramsRelative
+
+## Linked Current Diagrams
+
+- $currentArchitectureDiagramRelative
+"@
+
 $branchName = @(& git -C $projectRoot branch --show-current 2>$null)
 $branchName = if ($LASTEXITCODE -eq 0 -and $branchName.Count -gt 0 -and -not [string]::IsNullOrWhiteSpace($branchName[0])) { [string]$branchName[0] } else { '(unknown)' }
 $commitRange = if ($diffArtifacts.BaselineResolved -and $diffArtifacts.HeadResolved) { "$baselineRef..$($diffArtifacts.HeadRef)" } elseif ($diffArtifacts.BaselineResolved) { "$baselineRef..working-tree" } else { 'unknown' }
-$indexRelativePath = Get-RelativePath -FromDirectory $projectRoot -ToPath $reviewerIndexPath
 $localOpenHints = New-Object System.Collections.Generic.List[string]
 $null = $localOpenHints.Add($indexRelativePath)
-$reviewDiagramsPath = Join-Path $resolvedIterationDirectory 'review-diagrams.md'
-if (Test-Path -LiteralPath $reviewDiagramsPath -PathType Leaf) {
-    $null = $localOpenHints.Add((Get-RelativePath -FromDirectory $projectRoot -ToPath $reviewDiagramsPath))
-}
+$null = $localOpenHints.Add($reviewDiagramsRelative)
+$null = $localOpenHints.Add($currentArchitectureRelative)
 
 $summaryObject = [pscustomobject]@{
     Feature                 = $featureId
@@ -1370,7 +1813,10 @@ $(($summaryLines | ForEach-Object { "- $_" }) -join [Environment]::NewLine)
 2. [code-map.md](code-map.md)
 3. [dependency-report.md](dependency-report.md)
 4. [coverage-evidence.md](coverage-evidence.md)
-5. $(if ($implementationBriefingPath) { '[' + (Split-Path -Leaf $implementationBriefingPath) + '](' + (Split-Path -Leaf $implementationBriefingPath) + ')' } else { 'Implementation briefing unavailable for this iteration' })
+5. $(if ($securityContext.Enabled) { '[security-surface.md](security-surface.md)' } else { 'security-surface.md omitted: ' + $securitySurfaceReason })
+6. [review-diagrams.md](review-diagrams.md)
+7. [$currentArchitectureFromIterationRelative]($currentArchitectureFromIterationRelative)
+8. $(if ($implementationBriefingPath) { '[' + (Split-Path -Leaf $implementationBriefingPath) + '](' + (Split-Path -Leaf $implementationBriefingPath) + ')' } else { 'Implementation briefing unavailable for this iteration' })
 
 ## Artifact Links
 
@@ -1378,9 +1824,11 @@ $(($summaryLines | ForEach-Object { "- $_" }) -join [Environment]::NewLine)
 - [code-map.md](code-map.md)
 - [dependency-report.md](dependency-report.md)
 - [coverage-evidence.md](coverage-evidence.md)
+- $(if ($securityContext.Enabled) { '[security-surface.md](security-surface.md)' } else { 'security-surface.md omitted: ' + $securitySurfaceReason })
+- [review-diagrams.md](review-diagrams.md)
+- [$currentArchitectureFromIterationRelative]($currentArchitectureFromIterationRelative) *(mutable current view)*
 - $(if ($implementationBriefingPath) { '[' + (Split-Path -Leaf $implementationBriefingPath) + '](' + (Split-Path -Leaf $implementationBriefingPath) + ')' } else { 'Implementation briefing unavailable' })
 - $(if (Test-Path -LiteralPath $decisionsPath -PathType Leaf) { '[' + $decisionsRelativePath + '](' + $decisionsRelativePath + ')' } else { $decisionsRelativePath + ' (unavailable)' })
-- $(if (Test-Path -LiteralPath $reviewDiagramsPath -PathType Leaf) { '[' + (Get-RelativePath -FromDirectory $resolvedIterationDirectory -ToPath $reviewDiagramsPath) + '](' + (Get-RelativePath -FromDirectory $resolvedIterationDirectory -ToPath $reviewDiagramsPath) + ')' } else { 'review-diagrams.md omitted for this iteration' })
 
 ## Triage Hints
 
@@ -1395,7 +1843,12 @@ if (-not $SummaryOnly) {
     Write-ScaffoldFile -TargetPath $codeMapPath -Content $codeMapContent -Actions $actions
     Write-ScaffoldFile -TargetPath $dependencyReportPath -Content $dependencyReportContent -Actions $actions
     Write-ScaffoldFile -TargetPath $coverageEvidencePath -Content $coverageEvidenceContent -Actions $actions
+    if ($securityContext.Enabled) {
+        Write-ScaffoldFile -TargetPath $securitySurfacePath -Content $securitySurfaceContent -Actions $actions
+    }
     Write-ScaffoldFile -TargetPath $reviewerIndexPath -Content $reviewerIndexContent -Actions $actions
+    Write-ScaffoldFile -TargetPath $reviewDiagramsPath -Content $reviewDiagramsContent -Actions $actions
+    Write-ScaffoldFile -TargetPath $currentArchitecturePath -Content $currentArchitectureContent -Actions $actions
 }
 
 if ($PassThru) {

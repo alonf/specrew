@@ -46,6 +46,7 @@ if (Test-Path -LiteralPath $scratchRoot) {
 
 $null = New-Item -ItemType Directory -Path $iterationDirectory -Force
 $null = New-Item -ItemType Directory -Path (Join-Path $projectRoot '.specrew') -Force
+$null = New-Item -ItemType Directory -Path (Join-Path $projectRoot '.squad') -Force
 $null = New-Item -ItemType Directory -Path (Join-Path $projectRoot 'src') -Force
 $null = New-Item -ItemType Directory -Path (Join-Path $projectRoot 'tests\integration') -Force
 
@@ -67,6 +68,9 @@ reviewer:
   test_path_globs:
     - "**/tests/**"
     - "**/*test*.*"
+  sensitive_data_patterns:
+    - "auth*"
+    - "token*"
   test_commands: []
   coverage:
     tool: ""
@@ -78,9 +82,28 @@ reviewer:
     candidates:
       - "npm audit --json"
   baseline_ref: "iteration-baseline"
+  diagram_format: "mermaid"
   hotspot_thresholds:
     file_changed_lines: 5
     function_changed_lines: 2
+  diagram_thresholds:
+    structure:
+      min_modules_touched: 2
+      min_inter_module_edges: 1
+    flow:
+      min_entrypoints_changed: 1
+      min_modules_in_flow: 2
+'@, [System.Text.UTF8Encoding]::new($false))
+
+[System.IO.File]::WriteAllText((Join-Path $projectRoot '.squad\team.md'), @'
+# Squad Team
+
+## Members
+
+| Name | Role | Charter | Status |
+| ---- | ---- | ------- | ------ |
+| reviewer | Reviewer | `.squad/agents/reviewer/charter.md` | baseline |
+| security-analyst | Security Analyst | `.squad/agents/security-analyst/charter.md` | active |
 '@, [System.Text.UTF8Encoding]::new($false))
 
 [System.IO.File]::WriteAllText((Join-Path $projectRoot 'package.json'), @'
@@ -92,8 +115,17 @@ reviewer:
   }
 }
 '@, [System.Text.UTF8Encoding]::new($false))
-[System.IO.File]::WriteAllText((Join-Path $projectRoot 'src\api.ps1'), "function Get-OldValue { return 'old' }`n", [System.Text.UTF8Encoding]::new($false))
-[System.IO.File]::WriteAllText((Join-Path $projectRoot 'tests\integration\api.test.ps1'), "Describe 'api' { It 'works' { \$true | Should -Be \$true } }`n", [System.Text.UTF8Encoding]::new($false))
+[System.IO.File]::WriteAllText((Join-Path $projectRoot 'src\api.js'), @'
+export function getOldValue() {
+  return "old";
+}
+'@, [System.Text.UTF8Encoding]::new($false))
+[System.IO.File]::WriteAllText((Join-Path $projectRoot 'src\auth.js'), @'
+export function maskToken(token) {
+  return token;
+}
+'@, [System.Text.UTF8Encoding]::new($false))
+[System.IO.File]::WriteAllText((Join-Path $projectRoot 'tests\integration\api.test.js'), "describe('api', () => { it('works', () => expect(true).toBe(true)); });`n", [System.Text.UTF8Encoding]::new($false))
 
 @(& git -C $projectRoot add . 2>&1) | Out-Null
 $commitOutput = @(& git -C $projectRoot -c user.name=Copilot -c user.email=copilot@example.com commit -m "baseline" --quiet 2>&1)
@@ -113,21 +145,28 @@ $baselineRef = (@(& git -C $projectRoot rev-parse HEAD 2>&1))[0]
   }
 }
 '@, [System.Text.UTF8Encoding]::new($false))
-[System.IO.File]::WriteAllText((Join-Path $projectRoot 'src\api.ps1'), @'
-function Get-OldValue {
-    return 'old'
+[System.IO.File]::WriteAllText((Join-Path $projectRoot 'src\api.js'), @'
+import { maskToken } from "./auth.js";
+
+export function getOldValue() {
+  return "old";
 }
 
-function Get-NewValue {
-    return 'new'
+export function getNewValue(token) {
+  return maskToken(token);
 }
 '@, [System.Text.UTF8Encoding]::new($false))
-[System.IO.File]::WriteAllText((Join-Path $projectRoot 'tests\integration\api.test.ps1'), @'
-Describe 'api' {
-    It 'returns the new value' {
-        Get-NewValue | Should -Be 'new'
-    }
+[System.IO.File]::WriteAllText((Join-Path $projectRoot 'src\auth.js'), @'
+export function maskToken(token) {
+  return token.replace(/./g, "*");
 }
+'@, [System.Text.UTF8Encoding]::new($false))
+[System.IO.File]::WriteAllText((Join-Path $projectRoot 'tests\integration\api.test.js'), @'
+describe("api", () => {
+  it("returns the masked value", () => {
+    expect(true).toBe(true);
+  });
+});
 '@, [System.Text.UTF8Encoding]::new($false))
 
 [System.IO.File]::WriteAllText((Join-Path $iterationDirectory 'plan.md'), @'
@@ -221,12 +260,15 @@ $output = $result -join "`n"
 $codeMapContent = Get-Content -LiteralPath (Join-Path $iterationDirectory 'code-map.md') -Raw -Encoding UTF8
 $dependencyContent = Get-Content -LiteralPath (Join-Path $iterationDirectory 'dependency-report.md') -Raw -Encoding UTF8
 $coverageContent = Get-Content -LiteralPath (Join-Path $iterationDirectory 'coverage-evidence.md') -Raw -Encoding UTF8
+$securityContent = Get-Content -LiteralPath (Join-Path $iterationDirectory 'security-surface.md') -Raw -Encoding UTF8
+$diagramContent = Get-Content -LiteralPath (Join-Path $iterationDirectory 'review-diagrams.md') -Raw -Encoding UTF8
 $indexContent = Get-Content -LiteralPath (Join-Path $iterationDirectory 'reviewer-index.md') -Raw -Encoding UTF8
+$currentArchitectureContent = Get-Content -LiteralPath (Join-Path $projectRoot 'specs\001-sample\current-architecture.md') -Raw -Encoding UTF8
 
 foreach ($check in @(
         @{ Content = $codeMapContent; Pattern = '\| Path \| Lines Added \| Lines Removed \| Owning Task ID\(s\) \| Owning Role \|'; Failure = 'Code map is missing Files Touched columns.' },
         @{ Content = $codeMapContent; Pattern = '## Public-API Delta'; Failure = 'Code map is missing Public-API Delta.' },
-        @{ Content = $codeMapContent; Pattern = 'Get-NewValue'; Failure = 'Code map did not report the added public API symbol.' },
+        @{ Content = $codeMapContent; Pattern = 'getNewValue'; Failure = 'Code map did not report the added public API symbol.' },
         @{ Content = $codeMapContent; Pattern = '## Module Hotspots'; Failure = 'Code map is missing Module Hotspots.' },
         @{ Content = $dependencyContent; Pattern = '\| npm \| chalk \| none \| \^5\.3\.0 \| added \| unknown \|'; Failure = 'Dependency report did not record the new package row.' },
         @{ Content = $dependencyContent; Pattern = '## New-to-Project'; Failure = 'Dependency report is missing New-to-Project.' },
@@ -235,10 +277,19 @@ foreach ($check in @(
         @{ Content = $coverageContent; Pattern = '## Tests Run'; Failure = 'Coverage evidence is missing Tests Run.' },
         @{ Content = $coverageContent; Pattern = 'not_executed'; Failure = 'Coverage evidence did not record not_executed.' },
         @{ Content = $coverageContent; Pattern = 'Kind:\s+qualitative'; Failure = 'Coverage evidence did not record qualitative coverage kind.' },
+        @{ Content = $securityContent; Pattern = '## Trust Boundaries Touched'; Failure = 'Security surface is missing trust boundaries.' },
+        @{ Content = $securityContent; Pattern = '## Sensitive Data Touchpoints'; Failure = 'Security surface is missing sensitive touchpoints.' },
+        @{ Content = $securityContent; Pattern = 'Security Analyst'; Failure = 'Security surface did not record the security-focused role.' },
+        @{ Content = $diagramContent; Pattern = '## Structure Diagram'; Failure = 'Review diagrams are missing the structure section.' },
+        @{ Content = $diagramContent; Pattern = '```mermaid'; Failure = 'Review diagrams did not emit Mermaid output.' },
+        @{ Content = $currentArchitectureContent; Pattern = '\*\*Source Iteration Ref\*\*: 005'; Failure = 'Current architecture view did not record the source iteration.' },
         @{ Content = $indexContent; Pattern = '## Triage Hints'; Failure = 'Reviewer index is missing triage hints.' },
         @{ Content = $indexContent; Pattern = '\.squad\\decisions\.md'; Failure = 'Reviewer index is missing the decisions-ledger link.' },
-        @{ Content = $indexContent; Pattern = 'SPECREW_REVIEW schema=v1 iter=005 feature=001-sample verdict=accepted tasks=3/3 reqs=3 files=3 new_deps=1 vuln=unscanned cov=not_executed escalations=0 drift=1/1 index=specs\\001-sample\\iterations\\005\\reviewer-index\.md'; Failure = 'Reviewer index digest does not match FR-051.' },
-        @{ Content = $output; Pattern = 'SPECREW_REVIEW schema=v1 iter=005 feature=001-sample verdict=accepted tasks=3/3 reqs=3 files=3 new_deps=1 vuln=unscanned cov=not_executed escalations=0 drift=1/1 index=specs\\001-sample\\iterations\\005\\reviewer-index\.md'; Failure = 'Closeout output did not emit the FR-051 digest.' }
+        @{ Content = $indexContent; Pattern = 'security-surface\.md'; Failure = 'Reviewer index is missing the security surface link.' },
+        @{ Content = $indexContent; Pattern = 'review-diagrams\.md'; Failure = 'Reviewer index is missing the review diagrams link.' },
+        @{ Content = $indexContent; Pattern = 'current-architecture\.md'; Failure = 'Reviewer index is missing the current architecture link.' },
+        @{ Content = $indexContent; Pattern = 'SPECREW_REVIEW schema=v1 iter=005 feature=001-sample verdict=accepted tasks=3/3 reqs=3 files=4 new_deps=1 vuln=unscanned cov=not_executed escalations=0 drift=1/1 index=specs\\001-sample\\iterations\\005\\reviewer-index\.md'; Failure = 'Reviewer index digest does not match FR-051.' },
+        @{ Content = $output; Pattern = 'SPECREW_REVIEW schema=v1 iter=005 feature=001-sample verdict=accepted tasks=3/3 reqs=3 files=4 new_deps=1 vuln=unscanned cov=not_executed escalations=0 drift=1/1 index=specs\\001-sample\\iterations\\005\\reviewer-index\.md'; Failure = 'Closeout output did not emit the FR-051 digest.' }
     )) {
     if (-not (Assert-Contains -Content $check.Content -Pattern $check.Pattern -FailureMessage $check.Failure)) {
         exit 1
