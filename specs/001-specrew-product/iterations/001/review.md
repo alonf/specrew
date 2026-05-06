@@ -35,6 +35,10 @@
 | T-024 | DD-366, DD-369, DD-371, DD-373 | pass | `.github/scripts/sync-specrew-board.ps1`, `.github/workflows/specrew-project-sync.yml`, and `docs/github-project.md` now codify the GitHub mirror as a derivative of local authoritative iteration artifacts. |
 | T-025 | DD-369, DD-370 | pass | `.squad/protocol.md` and `docs/github-project.md` now codify the `squad/{issue-number}-{slug}` branch, optional worktree, and standard PR review path while keeping local artifacts authoritative. |
 
+## Gap Ledger
+
+No known gaps remain.
+
 ## Notes
 
 - Review completed against the live tracked repo state on 2026-05-01.

@@ -3,7 +3,7 @@
 **Schema**: v1
 **Spec**: [../../spec.md](../../spec.md)
 **Status**: retro
-**Capacity**: 16/16 story_points
+**Capacity**: 16/20 story_points
 **Started**: 2026-04-20
 **Completed**:
 
@@ -72,6 +72,20 @@ Execution commenced 2026-04-20 following Iteration 001 closure and Picard's FR-0
 
 ---
 
+## Effort Model
+
+| Setting | Value | Notes |
+| ------- | ----- | ----- |
+| Effort Unit | story_points | Unit used in task effort, capacity, and retro variance. |
+| Capacity per Iteration | 20 | Maximum planned effort before overcommit guidance applies. |
+| Iteration Bounding | scope | `scope` keeps requirements fixed; `time` enforces a time ceiling. |
+| Time Limit (hours) | n/a | Only applies when iteration bounding is `time`. |
+| Overcommit Threshold | 1.0 | Warn planners when total estimated effort exceeds 20 story_points (capacity 20 x threshold 1.0). |
+| Defer Strategy | manual | How planning should choose deferrals when the iteration is over capacity. |
+| Calibration Enabled | true | When true, retrospectives should suggest future capacity adjustments. |
+
+---
+
 ## Phase Baseline
 
 | Phase | Estimated Effort | Notes |
@@ -97,7 +111,7 @@ Execution commenced 2026-04-20 following Iteration 001 closure and Picard's FR-0
 - Iteration 002 execution began 2026-04-20 following Iteration 001 closeout (Alon sign-off 2026-04-18) and Picard's FR-020 brownfield audit which identified acceptance criteria for T-205/T-206.
 - T-205/T-206 are complete with binding PASS recorded in `.squad/decisions.md` (2026-05-03 FR-020 Brownfield Bootstrap Safety Review — ACCEPTED); accepted evidence covers conflict blocking, dry-run artifact persistence, `-Force` non-bypass, and entrypoint validation.
 - T-204 is implementation-complete and reviewer-ready: `resume-iteration.ps1` now repairs stale `state.md` task metadata from the authoritative task table, the downstream runtime continues to deploy the recovery skill and helper script, and `tests\integration\iteration-resume.ps1` covers the stale-state repair path.
-- Capacity now reflects 16/16 delivered story_points inside the execution batch (4 accepted for FR-020, 3 completed for FR-019 awaiting review, 4 completed for FR-007/FR-017 planning-artifact wiring, 2 completed for FR-017 acceptance work, and 3 completed for the FR-015 process-scorer/report slice).
+- Capacity now reflects 16/20 configured story_points with 16 delivered inside the execution batch (4 accepted for FR-020, 3 completed for FR-019 awaiting review, 4 completed for FR-007/FR-017 planning-artifact wiring, 2 completed for FR-017 acceptance work, and 3 completed for the FR-015 process-scorer/report slice).
 - State.md and drift-log.md created at execution start to track execution state and alignment drift per iteration-artifacts.md contract.
 - T-202 is reviewer-accepted for FR-017: overcommitted planning artifacts now fail with explicit lowest-priority deferral guidance, backed by `tests\integration\planning-overcommit.ps1`.
 - T-203 completes FR-007/FR-017 planning-artifact wiring: `scaffold-iteration-plan.ps1` remains the source of the effort-model snapshot, `validate-governance.ps1` now validates the `## Effort Model` section plus capacity/config alignment, and `tests\integration\planning-effort-model.ps1` covers custom-unit generation plus mismatch rejection.

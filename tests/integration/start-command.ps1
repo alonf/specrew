@@ -34,6 +34,16 @@ function Invoke-TestScript {
     }
 }
 
+function Invoke-TestCommand {
+    param([string]$Command)
+
+    $output = @(& pwsh -NoProfile -ExecutionPolicy Bypass -Command $Command 2>&1)
+    return @{
+        Output = @($output | ForEach-Object { [string]$_ })
+        ExitCode = $LASTEXITCODE
+    }
+}
+
 function Assert-Contains {
     param(
         [string]$Content,
@@ -127,6 +137,15 @@ if (-not (Assert-Contains -Content $helpOutput -Pattern 'same-window' -FailureMe
 }
 Write-Pass "Help output includes specrew start"
 
+Write-Host "`nTest 1b: entry wrapper preserves the same terminal for start"
+$entryScriptContent = Get-Content -LiteralPath $entryScript -Raw -Encoding UTF8
+$nestedStartDispatchPattern = [regex]::Escape('& pwsh -NoProfile -ExecutionPolicy Bypass -File $startScript')
+if ($entryScriptContent -match $nestedStartDispatchPattern) {
+    Write-Fail "specrew.ps1 still shells out to a nested pwsh process for start, which breaks interactive Copilot attachment."
+    exit 1
+}
+Write-Pass "Entry wrapper dispatches start in-process"
+
 Write-Host "`nTest 2: start command enters intake-or-resume mode on a fresh repo"
 $freshStartResult = Invoke-TestScript -ScriptPath $entryScript -ArgumentList @(
     'start',
@@ -144,6 +163,7 @@ if ($freshStartResult.ExitCode -ne 0) {
 
 $freshPromptPath = Join-Path -Path $projectRoot -ChildPath '.specrew\last-start-prompt.md'
 $freshContextPath = Join-Path -Path $projectRoot -ChildPath '.specrew\start-context.json'
+$freshSummaryPath = Join-Path -Path $projectRoot -ChildPath '.specrew\start-summary.md'
 if (-not (Test-Path -LiteralPath $freshPromptPath -PathType Leaf)) {
     Write-Fail "Fresh repo start did not create a prompt artifact"
     exit 1
@@ -152,17 +172,27 @@ if (-not (Test-Path -LiteralPath $freshContextPath -PathType Leaf)) {
     Write-Fail "Fresh repo start did not create a context artifact"
     exit 1
 }
+if (-not (Test-Path -LiteralPath $freshSummaryPath -PathType Leaf)) {
+    Write-Fail "Fresh repo start did not create a human-readable summary artifact"
+    exit 1
+}
 
 $freshPromptContent = Get-Content -LiteralPath $freshPromptPath -Raw -Encoding UTF8
 $freshContext = Get-Content -LiteralPath $freshContextPath -Raw -Encoding UTF8 | ConvertFrom-Json
 $freshOutput = $freshStartResult.Output -join "`n"
 $freshStartChecks = @(
     @{ Pattern = 'Mode: intake-or-resume'; Failure = 'Fresh repo prompt did not enter intake-or-resume mode.' },
-    @{ Pattern = 'Finalize the team first'; Failure = 'Fresh repo prompt did not tell Squad to finalize the team first.' },
+    @{ Pattern = 'Preserve the roster snapshot first'; Failure = 'Fresh repo prompt did not tell Squad to preserve the roster before intake.' },
     @{ Pattern = 'Classify the repository using the project-state snapshot above'; Failure = 'Fresh repo prompt did not tell Squad to classify the repository before asking for spec details.' },
-    @{ Pattern = 'ask for the next feature/fix spec request only after team finalization and state classification are complete'; Failure = 'Fresh repo prompt did not tell Squad to gather missing feature direction after the required sequencing.' },
-    @{ Pattern = 'only ask about team additions when the work clearly needs specialists'; Failure = 'Fresh repo prompt did not tell Squad when to ask about extra specialists.' },
-    @{ Pattern = 'After speckit\.specify, explicitly decide whether to run speckit\.clarify before speckit\.plan'; Failure = 'Fresh repo prompt did not require an explicit clarify decision before planning.' }
+    @{ Pattern = 'What do you want to build\?'; Failure = 'Fresh repo prompt did not require an explicit greenfield intake question.' },
+    @{ Pattern = 'wait for the human developer''s answer before invoking any .* lifecycle agent or command'; Failure = 'Fresh repo prompt did not require human intake before lifecycle execution.' },
+    @{ Pattern = 'continue with one targeted follow-up question at a time'; Failure = 'Fresh repo prompt did not require iterative greenfield intake.' },
+    @{ Pattern = 'defer specialist additions until the spec and clarify outcome are grounded'; Failure = 'Fresh repo prompt did not defer specialist team additions until after spec clarity.' },
+    @{ Pattern = 'only propose Junior/Senior same-specialty pairs when the clarified work can be partitioned safely enough for meaningful parallel execution'; Failure = 'Fresh repo prompt did not constrain Junior/Senior same-specialty expansion.' },
+    @{ Pattern = 'run speckit\.clarify for every newly generated spec before speckit\.plan'; Failure = 'Fresh repo prompt did not require clarify for newly generated specs.' },
+    @{ Pattern = 'Do not invoke speckit\.implement until the human approves'; Failure = 'Fresh repo prompt did not require explicit implementation approval.' },
+    @{ Pattern = 'no-gap policy'; Failure = 'Fresh repo prompt did not require the no-gap policy.' },
+    @{ Pattern = 'implemented, enforced, observable, and documented'; Failure = 'Fresh repo prompt did not require critical review dimensions.' }
 )
 
 foreach ($check in $freshStartChecks) {
@@ -174,8 +204,20 @@ if ($freshContext.approval_mode -ne 'allow-all') {
     Write-Fail "Fresh repo start did not default to allow-all approval mode."
     exit 1
 }
+if ($freshContext.copilot_autopilot) {
+    Write-Fail "Fresh repo start should keep Copilot out of autopilot while intake is unresolved."
+    exit 1
+}
 if ($freshContext.launch_mode -ne 'none') {
     Write-Fail "Fresh repo no-launch flow did not record the expected launch mode."
+    exit 1
+}
+if ($null -eq $freshContext.delivery_guidance -or @($freshContext.delivery_guidance.quality_attributes).Count -eq 0) {
+    Write-Fail 'Fresh repo start did not serialize delivery guidance with quality attributes.'
+    exit 1
+}
+if (@($freshContext.delivery_guidance.same_specialty_pair_hints).Count -ne 0) {
+    Write-Fail 'Fresh repo start should not infer Junior/Senior same-specialty pairs before a grounded feature request exists.'
     exit 1
 }
 if ($freshContext.project_state.state -ne 'greenfield-new') {
@@ -185,13 +227,81 @@ if ($freshContext.project_state.state -ne 'greenfield-new') {
 if (-not (Assert-Contains -Content $freshOutput -Pattern 'Manual launch command' -FailureMessage 'Fresh repo no-launch flow did not print an exact manual launch command.')) {
     exit 1
 }
-if (-not (Assert-Contains -Content $freshOutput -Pattern "copilot --agent 'Squad' --autopilot" -FailureMessage 'Fresh repo no-launch flow did not show the Copilot + Squad handoff command.')) {
+if (-not (Assert-Contains -Content $freshOutput -Pattern "copilot --agent 'Squad'" -FailureMessage 'Fresh repo no-launch flow did not show the Copilot + Squad handoff command.')) {
+    exit 1
+}
+if ($freshOutput -match '--autopilot') {
+    Write-Fail 'Fresh repo no-launch flow should not use autopilot before intake is grounded.'
     exit 1
 }
 if (-not (Assert-Contains -Content $freshOutput -Pattern '--allow-all' -FailureMessage 'Fresh repo no-launch flow did not preserve allow-all in the manual handoff command.')) {
     exit 1
 }
+if (-not (Assert-Contains -Content $freshOutput -Pattern 'last-start-prompt\.md' -FailureMessage 'Fresh repo no-launch flow did not bootstrap from the saved prompt file.')) {
+    exit 1
+}
+if (-not (Assert-Contains -Content $freshOutput -Pattern 'start-context\.json' -FailureMessage 'Fresh repo no-launch flow did not bootstrap from the saved context file.')) {
+    exit 1
+}
+if (-not (Assert-Contains -Content $freshOutput -Pattern 'start-summary\.md' -FailureMessage 'Fresh repo no-launch flow did not print the summary artifact path.')) {
+    exit 1
+}
 Write-Pass "Fresh repo start enters intake-or-resume mode"
+
+Write-Host "`nTest 2b: default launch reuses the current terminal and passes the bootstrap handoff"
+$fakeBinRoot = Join-Path -Path $scratchRoot -ChildPath 'fake-bin'
+$null = New-Item -Path $fakeBinRoot -ItemType Directory -Force
+$fakeCopilotLog = Join-Path -Path $scratchRoot -ChildPath 'fake-copilot.log'
+$fakeCopilotPath = Join-Path -Path $fakeBinRoot -ChildPath 'copilot.cmd'
+$fakeCopilotScript = @"
+@echo off
+setlocal
+echo %*>>"$fakeCopilotLog"
+powershell -NoProfile -ExecutionPolicy Bypass -Command "Start-Sleep -Seconds 2"
+exit /b 0
+"@
+[System.IO.File]::WriteAllText($fakeCopilotPath, $fakeCopilotScript, [System.Text.UTF8Encoding]::new($false))
+
+$launchCommand = @'
+$sw = [System.Diagnostics.Stopwatch]::StartNew()
+$env:PATH = "{0};" + $env:PATH
+& "{1}" start "Launch a tiny clipboard utility" --project-path "{2}"
+$sw.Stop()
+Write-Output ("__ELAPSED__=" + [math]::Round($sw.Elapsed.TotalSeconds, 2))
+'@ -f $fakeBinRoot, $entryScript, $projectRoot
+$liveLaunchResult = Invoke-TestCommand -Command $launchCommand
+if ($liveLaunchResult.ExitCode -ne 0) {
+    Write-Fail 'specrew start failed while testing same-window launch behavior'
+    foreach ($line in $liveLaunchResult.Output) {
+        Write-Host $line
+    }
+    exit 1
+}
+
+$elapsedLine = @($liveLaunchResult.Output | Where-Object { $_ -like '__ELAPSED__=*' } | Select-Object -Last 1)
+if ($elapsedLine.Count -eq 0) {
+    Write-Fail 'Same-window launch test did not emit elapsed-time telemetry.'
+    exit 1
+}
+$elapsedSeconds = [double]($elapsedLine[0] -replace '^__ELAPSED__=', '')
+if ($elapsedSeconds -lt 1.5) {
+    Write-Fail 'Default launch returned too quickly; Copilot was likely detached into a new window instead of reusing the current terminal.'
+    exit 1
+}
+if (-not (Test-Path -LiteralPath $fakeCopilotLog -PathType Leaf)) {
+    Write-Fail 'Fake Copilot did not record any launch arguments.'
+    exit 1
+}
+$fakeCopilotArgs = Get-Content -LiteralPath $fakeCopilotLog -Raw -Encoding UTF8
+if ($fakeCopilotArgs -notmatch 'last-start-prompt\.md' -or $fakeCopilotArgs -notmatch 'start-context\.json') {
+    Write-Fail 'Live launch did not pass the bootstrap handoff file references to Copilot.'
+    exit 1
+}
+if ($fakeCopilotArgs -match 'You are Squad running inside a Specrew-bootstrapped repository') {
+    Write-Fail 'Live launch still injected the full Squad handoff prompt into Copilot input.'
+    exit 1
+}
+Write-Pass "Default launch reuses the current terminal"
 
 Write-Host "`nTest 3: start command writes prompt artifacts for a new feature"
 $request = 'Build a sample reporting dashboard with export support'
@@ -212,7 +322,8 @@ if ($startResult.ExitCode -ne 0) {
 
 $promptPath = Join-Path -Path $projectRoot -ChildPath '.specrew\last-start-prompt.md'
 $contextPath = Join-Path -Path $projectRoot -ChildPath '.specrew\start-context.json'
-foreach ($artifactPath in @($promptPath, $contextPath)) {
+$summaryPath = Join-Path -Path $projectRoot -ChildPath '.specrew\start-summary.md'
+foreach ($artifactPath in @($promptPath, $contextPath, $summaryPath)) {
     if (-not (Test-Path -LiteralPath $artifactPath -PathType Leaf)) {
         Write-Fail "Start command did not create expected artifact: $artifactPath"
         exit 1
@@ -221,15 +332,32 @@ foreach ($artifactPath in @($promptPath, $contextPath)) {
 
 $promptContent = Get-Content -LiteralPath $promptPath -Raw -Encoding UTF8
 $startContext = Get-Content -LiteralPath $contextPath -Raw -Encoding UTF8 | ConvertFrom-Json
+$summaryContent = Get-Content -LiteralPath $summaryPath -Raw -Encoding UTF8
 $promptChecks = @(
     @{ Pattern = 'speckit\.specify'; Failure = 'Prompt is missing specify lifecycle step.' },
     @{ Pattern = 'speckit\.clarify'; Failure = 'Prompt is missing clarify lifecycle step.' },
     @{ Pattern = 'speckit\.plan'; Failure = 'Prompt is missing plan lifecycle step.' },
     @{ Pattern = 'speckit\.tasks'; Failure = 'Prompt is missing tasks lifecycle step.' },
     @{ Pattern = 'speckit\.implement'; Failure = 'Prompt is missing implement lifecycle step.' },
-    @{ Pattern = 'explicitly decide whether to run speckit\.clarify before speckit\.plan'; Failure = 'Prompt does not require an explicit clarify decision before planning.' },
-    @{ Pattern = 'default to speckit\.clarify'; Failure = 'Prompt does not default new feature work to speckit.clarify.' },
+    @{ Pattern = 'speckit\.specrew-speckit\.before-plan'; Failure = 'Prompt is missing the before-plan lifecycle gate.' },
+    @{ Pattern = 'speckit\.specrew-speckit\.after-tasks'; Failure = 'Prompt is missing the after-tasks lifecycle gate.' },
+    @{ Pattern = 'speckit\.specrew-speckit\.before-implement'; Failure = 'Prompt is missing the before-implement lifecycle gate.' },
+    @{ Pattern = 'dedicated Speckit agents or commands \(not generic skills\)'; Failure = 'Prompt does not describe how Speckit lifecycle invocations should be executed.' },
+    @{ Pattern = 'run speckit\.clarify for every newly generated spec before speckit\.plan'; Failure = 'Prompt does not require clarify for newly generated specs.' },
     @{ Pattern = 'record a concrete dated skip rationale in \.squad\\decisions\.md before speckit\.plan'; Failure = 'Prompt does not require a recorded skip rationale when clarify is skipped.' },
+    @{ Pattern = 'ground any missing intake first, and only then invoke'; Failure = 'Prompt does not stop specify from running before intake is grounded.' },
+    @{ Pattern = 'present the resulting team composition clearly before implementation'; Failure = 'Prompt does not require post-spec team presentation before implementation.' },
+    @{ Pattern = 'route bounded, lower-risk, well-scoped work to the Junior role'; Failure = 'Prompt does not describe Junior/Senior routing behavior.' },
+    @{ Pattern = 'careful, responsible, knowledgeable, and review-ready'; Failure = 'Prompt does not set the higher Junior quality bar.' },
+    @{ Pattern = 'deep technical judgment across architecture, systems thinking, computer science depth, tradeoff analysis, and long-range software engineering consequences'; Failure = 'Prompt does not set the deeper Senior technical bar.' },
+    @{ Pattern = 'Derive the quality bar from the current feature and project context'; Failure = 'Prompt does not require requirement-driven quality governance.' },
+    @{ Pattern = 'If any lifecycle agent reports a file-write or tool-contract failure'; Failure = 'Prompt does not fail fast on artifact-generation errors.' },
+    @{ Pattern = 'Planning/problem-solving work should prefer Planner or Spec Steward delegated routing'; Failure = 'Prompt does not require delegated routing for problem-solving-heavy work.' },
+    @{ Pattern = 'concrete model ID'; Failure = 'Prompt does not require visible delegated runtime evidence.' },
+    @{ Pattern = 'Do not invoke speckit\.implement until the human approves'; Failure = 'Prompt does not require explicit approval before implementation.' },
+    @{ Pattern = 'developer-facing implementation briefing'; Failure = 'Prompt does not require the end-of-feature implementation briefing.' },
+    @{ Pattern = 'implemented, enforced, observable, and documented'; Failure = 'Prompt does not require critical evidence-driven review dimensions.' },
+    @{ Pattern = 'If review finds an ambiguity, contradiction, or missing decision in the governing spec'; Failure = 'Prompt does not require spec clarification when review finds unknowns.' },
     @{ Pattern = [regex]::Escape($request); Failure = 'Prompt is missing the requested feature text.' }
 )
 
@@ -242,7 +370,59 @@ if ($startContext.approval_mode -ne 'allow-all') {
     Write-Fail "New feature flow did not record allow-all approval mode."
     exit 1
 }
+if (-not $startContext.copilot_autopilot) {
+    Write-Fail "New feature flow should keep Copilot in autopilot once the request is grounded."
+    exit 1
+}
+if ($null -eq $startContext.delivery_guidance -or @($startContext.delivery_guidance.quality_attributes).Count -eq 0) {
+    Write-Fail 'New feature flow did not serialize delivery guidance.'
+    exit 1
+}
+$pairHints = @($startContext.delivery_guidance.same_specialty_pair_hints)
+if ($pairHints.Count -eq 0) {
+    Write-Fail 'New feature flow did not infer any Junior/Senior same-specialty pair hints for a multi-slice feature request.'
+    exit 1
+}
+$pairRoles = @($pairHints | ForEach-Object { $_.junior_role })
+if ($pairRoles -notcontains 'Junior Frontend Developer') {
+    Write-Fail 'New feature flow did not infer the expected Junior Frontend Developer pair hint.'
+    exit 1
+}
+if (@($startContext.delivery_guidance.routing_guardrails).Count -eq 0) {
+    Write-Fail 'New feature flow did not serialize Junior/Senior routing guardrails.'
+    exit 1
+}
+if ($summaryContent -notmatch 'Review/closure use a no-gap policy' -or
+    $summaryContent -notmatch 'Delegated Routing' -or
+    $summaryContent -notmatch 'allow-all reduces tool-approval blocking after the request is grounded') {
+    Write-Fail 'Start summary is missing the expected launch/no-gap/delegated-routing guidance.'
+    exit 1
+}
 Write-Pass "Start command wrote prompt artifacts for new feature flow"
+
+Write-Host "`nTest 3b: start command suppresses same-specialty pairs for conflict-heavy requests"
+$conflictRequest = 'Build a reporting dashboard with export workflows, global state migration, and a shared-state rewrite'
+$conflictResult = Invoke-TestScript -ScriptPath $entryScript -ArgumentList @(
+    'start',
+    $conflictRequest,
+    '--project-path', $projectRoot,
+    '--no-launch'
+)
+
+if ($conflictResult.ExitCode -ne 0) {
+    Write-Fail "specrew start failed for conflict-heavy feature request"
+    foreach ($line in $conflictResult.Output) {
+        Write-Host $line
+    }
+    exit 1
+}
+
+$conflictContext = Get-Content -LiteralPath $contextPath -Raw -Encoding UTF8 | ConvertFrom-Json
+if (@($conflictContext.delivery_guidance.same_specialty_pair_hints).Count -ne 0) {
+    Write-Fail 'Conflict-heavy feature flow should suppress Junior/Senior same-specialty pair hints.'
+    exit 1
+}
+Write-Pass "Conflict-heavy requests suppress same-specialty pair hints"
 
 Write-Host "`nTest 4: prompt-approvals mode is preserved in start context"
 $promptApprovalResult = Invoke-TestScript -ScriptPath $entryScript -ArgumentList @(
@@ -357,8 +537,15 @@ if ($brownfieldContext.project_state.state -ne 'brownfield-new') {
     Write-Fail 'Brownfield project was not classified as brownfield-new.'
     exit 1
 }
+if ($brownfieldContext.copilot_autopilot) {
+    Write-Fail 'Brownfield intake should keep Copilot out of autopilot until the requested change is grounded.'
+    exit 1
+}
 $brownfieldPromptContent = Get-Content -LiteralPath $promptPath -Raw -Encoding UTF8
 if (-not (Assert-Contains -Content $brownfieldPromptContent -Pattern 'perform brownfield discovery before asking the human broad intake questions' -FailureMessage 'Brownfield prompt did not instruct Squad to perform brownfield discovery first.')) {
+    exit 1
+}
+if (-not (Assert-Contains -Content $brownfieldPromptContent -Pattern 'Continue negotiating brownfield scope until the requested change is concrete enough for speckit\.specify' -FailureMessage 'Brownfield prompt did not require targeted follow-up intake after discovery.')) {
     exit 1
 }
 if (-not (Assert-Contains -Content $brownfieldPromptContent -Pattern 'Brownfield discovery snapshot:' -FailureMessage 'Brownfield prompt did not include the serialized discovery snapshot.')) {
@@ -387,7 +574,65 @@ if (@($brownfieldContext.brownfield_discovery.recent_commits).Count -eq 0) {
     Write-Fail 'Brownfield discovery did not capture recent git history.'
     exit 1
 }
+if ($null -eq $brownfieldContext.delivery_guidance) {
+    Write-Fail 'Brownfield start did not serialize delivery guidance into start-context.json.'
+    exit 1
+}
+if (@($brownfieldContext.delivery_guidance.same_specialty_pair_hints).Count -ne 0) {
+    Write-Fail 'Brownfield discovery alone should not infer Junior/Senior same-specialty pairs before a grounded feature request exists.'
+    exit 1
+}
+$brownfieldQualityAttributes = @($brownfieldContext.delivery_guidance.quality_attributes | ForEach-Object { $_.name })
+if ($brownfieldQualityAttributes -notcontains 'Reliability & Idempotency' -or $brownfieldQualityAttributes -notcontains 'Brownfield Compatibility') {
+    Write-Fail 'Brownfield delivery guidance did not capture the expected quality priorities.'
+    exit 1
+}
+$brownfieldWatchouts = @($brownfieldContext.delivery_guidance.semantics_watchouts)
+if ($brownfieldWatchouts.Count -eq 0) {
+    Write-Fail 'Brownfield delivery guidance did not capture any semantic watchouts.'
+    exit 1
+}
 Write-Pass "Brownfield project classification is captured before spec intake"
+
+Write-Host "`nTest 5c: brownfield frontend-only repos do not force backend specialists"
+$frontendOnlyPackageJson = @'
+{
+  "name": "clipboard-dashboard",
+  "dependencies": {
+    "react": "^18.2.0",
+    "typescript": "^5.5.0",
+    "vite": "^5.4.0"
+  }
+}
+'@
+[System.IO.File]::WriteAllText((Join-Path -Path $projectRoot -ChildPath 'package.json'), $frontendOnlyPackageJson, [System.Text.UTF8Encoding]::new($false))
+[System.IO.File]::WriteAllText((Join-Path -Path $projectRoot -ChildPath 'README.md'), "# Clipboard Dashboard`n`nA React dashboard for clipboard analytics and export workflows.", [System.Text.UTF8Encoding]::new($false))
+
+$frontendOnlyResult = Invoke-TestScript -ScriptPath $entryScript -ArgumentList @(
+    'start',
+    '--project-path', $projectRoot,
+    '--no-launch'
+)
+
+if ($frontendOnlyResult.ExitCode -ne 0) {
+    Write-Fail "specrew start failed for frontend-only brownfield flow"
+    foreach ($line in $frontendOnlyResult.Output) {
+        Write-Host $line
+    }
+    exit 1
+}
+
+$frontendOnlyContext = Get-Content -LiteralPath $contextPath -Raw -Encoding UTF8 | ConvertFrom-Json
+$frontendOnlyRoles = @($frontendOnlyContext.delivery_guidance.specialist_hints | ForEach-Object { $_.role })
+if ($frontendOnlyRoles -contains 'Backend API Specialist') {
+    Write-Fail 'Frontend-only brownfield flow should not force a Backend API Specialist recommendation.'
+    exit 1
+}
+if ($frontendOnlyRoles -notcontains 'Frontend Experience Specialist') {
+    Write-Fail 'Frontend-only brownfield flow did not retain a frontend-oriented specialist recommendation.'
+    exit 1
+}
+Write-Pass "Brownfield frontend-only repos avoid forced backend specialists"
 
 Write-Host "`nTest 6: start command preserves the existing Specrew roster and serializes delegated routing"
 $teamAddResult = Invoke-TestScript -ScriptPath $entryScript -ArgumentList @(
@@ -493,6 +738,7 @@ if ($delegatedStartResult.ExitCode -ne 0) {
 $delegatedPromptContent = Get-Content -LiteralPath $promptPath -Raw -Encoding UTF8
 $delegatedContext = Get-Content -LiteralPath $contextPath -Raw -Encoding UTF8 | ConvertFrom-Json
 $squadConfigPath = Join-Path -Path $projectRoot -ChildPath '.squad\config.json'
+$decisionsPath = Join-Path -Path $projectRoot -ChildPath '.squad\decisions.md'
 $squadConfig = Get-Content -LiteralPath $squadConfigPath -Raw -Encoding UTF8 | ConvertFrom-Json
 
 if (-not (Assert-Contains -Content $delegatedPromptContent -Pattern 'Do NOT enter generic Squad team-setup mode or recast the roster' -FailureMessage 'Prompt did not explicitly preserve the existing Specrew-managed roster.')) {
@@ -530,6 +776,13 @@ if ($delegatedContext.squad_model_overrides.'Spec Steward' -ne 'gpt-5.2-codex') 
     exit 1
 }
 
+if ($null -eq $delegatedContext.delegated_routing_evidence -or
+    $delegatedContext.delegated_routing_evidence.ledger_path -ne '.squad\decisions.md' -or
+    @($delegatedContext.delegated_routing_evidence.required_fields) -notcontains 'model_id') {
+    Write-Fail 'Start context did not expose the delegated runtime evidence contract.'
+    exit 1
+}
+
 if ($squadConfig.agentModelOverrides.Reviewer -ne 'claude-sonnet-4.5' -or $squadConfig.agentModelOverrides.'Spec Steward' -ne 'gpt-5.2-codex') {
     Write-Fail 'specrew start did not persist delegated model overrides into .squad\config.json.'
     exit 1
@@ -545,6 +798,23 @@ if ($squadConfig.specrewManagedModelRouting.baselineAgentModelOverrides.Reviewer
     $squadConfig.specrewManagedModelRouting.roleAgentFamilies.Planner -ne 'copilot') {
     Write-Fail 'specrew start did not persist the baseline override map and role agent families needed for live escalation.'
     exit 1
+}
+
+if (-not (Test-Path -LiteralPath $decisionsPath -PathType Leaf)) {
+    Write-Fail 'specrew start did not create delegated routing evidence in .squad\decisions.md.'
+    exit 1
+}
+
+$delegatedDecisions = Get-Content -LiteralPath $decisionsPath -Raw -Encoding UTF8
+foreach ($pattern in @(
+        'Delegated routing plan',
+        'Reviewer \| requested=claude \| actual=claude \| model=claude-sonnet-4\.5 \| status=honored',
+        'Spec Steward \| requested=codex \| actual=codex \| model=gpt-5\.2-codex \| status=honored'
+    )) {
+    if ($delegatedDecisions -notmatch $pattern) {
+        Write-Fail "Delegated routing ledger is missing expected content matching: $pattern"
+        exit 1
+    }
 }
 
 Write-Pass "Start command preserves the Specrew roster and serializes delegated routing"
@@ -606,6 +876,12 @@ $fallbackEvents = @($fallbackContext.delegated_routing.fallback_events)
 $specStewardFallback = @($fallbackEvents | Where-Object { $_.role -eq 'Spec Steward' })
 if ($specStewardFallback.Count -eq 0 -or $specStewardFallback[0].reason -notmatch "preferred agent 'codex' is not enabled") {
     Write-Fail 'Delegated routing fallback reason was not recorded for Spec Steward.'
+    exit 1
+}
+
+$fallbackDecisions = Get-Content -LiteralPath $decisionsPath -Raw -Encoding UTF8
+if ($fallbackDecisions -notmatch "Spec Steward \| requested=codex \| actual=claude \| model=claude-sonnet-4\.5 \| status=fell-back \| fallback=preferred agent 'codex' is not enabled") {
+    Write-Fail 'Delegated routing fallback was not written to the decisions ledger.'
     exit 1
 }
 

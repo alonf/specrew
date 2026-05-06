@@ -3,7 +3,7 @@
 **Schema**: v1
 **Spec**: [../../spec.md](../../spec.md)
 **Status**: complete
-**Capacity**: 20.5/24.0 story_points
+**Capacity**: 20.5/20 story_points
 **Started**: 2026-04-19
 **Completed**: 2026-05-01
 
@@ -141,7 +141,19 @@ Three carryover tasks have been added to Iteration 1 from earlier planning sessi
 
 This keeps the iteration cohesive (single feature delivery) without pretending the extra 3.5 pts disappeared: the total remains 24.0 pts, while the first execution slice is intentionally held to 20.5 pts before the stabilization pass.
 
-**Approval required**: Spec Steward (Picard) and Alon sign off on the 1a/1b split before execution begins.
+**Approval required**: Spec Steward and Alon sign off on the 1a/1b split before execution begins.
+
+## Effort Model
+
+| Setting | Value | Notes |
+| ------- | ----- | ----- |
+| Effort Unit | story_points | Unit used in task effort, capacity, and retro variance. |
+| Capacity per Iteration | 20 | Maximum planned effort before overcommit guidance applies. |
+| Iteration Bounding | scope | `scope` keeps requirements fixed; `time` enforces a time ceiling. |
+| Time Limit (hours) | n/a | Only applies when iteration bounding is `time`. |
+| Overcommit Threshold | 1.0 | Warn planners when total estimated effort exceeds 20 story_points (capacity 20 x threshold 1.0). |
+| Defer Strategy | manual | How planning should choose deferrals when the iteration is over capacity. |
+| Calibration Enabled | true | When true, retrospectives should suggest future capacity adjustments. |
 
 ## Phase Baseline
 

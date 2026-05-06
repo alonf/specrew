@@ -69,8 +69,8 @@ Options:
                          Minimum Spec Kit version (default: 0.8.4)
   -SquadVersion | --squad-version
                          Minimum Squad version (default: 0.9.1)
-  -Agents | --agents      Agent selection: copilot | comma list | all (default: copilot)
-  -NoAgents | --no-agents Disable all agents
+  -Agents | --agents      Optional delegated agents: claude | codex | comma list | all (Copilot host stays enabled)
+  -NoAgents | --no-agents Disable optional delegated agents (Copilot host stays enabled)
   -Help | --help          Show usage
 '@ | Write-Host
 }
@@ -103,15 +103,15 @@ function Write-PostBootstrapGuidance {
     Write-Host ''
     Write-Host '=== Usage Flow ===' -ForegroundColor Cyan
     Write-Host ''
-    Write-Host 'Baseline crew → specrew start → Squad drives specify → clarify-or-skip decision → plan → tasks → implement → review → retro' -ForegroundColor Yellow
+    Write-Host 'Baseline crew → specrew start → Squad drives specify → clarify for new specs (or recorded skip on resumed clarified work) → plan → tasks → implement → review → retro' -ForegroundColor Yellow
     Write-Host ''
     Write-Host '=== Next Steps ===' -ForegroundColor Cyan
     Write-Host ''
     Write-Host '1. Start spec authoring (Spec Kit workflows):' -ForegroundColor Yellow
     Write-Host '   - Run specrew start from the project root (optionally add a short feature request)' -ForegroundColor White
-    Write-Host '   - Specrew launches Copilot from the project directory in the current terminal by default, uses non-blocking approvals, and supports --new-window or --prompt-approvals when you want them' -ForegroundColor White
+    Write-Host '   - Specrew launches Copilot from the project directory in the current terminal by default, stays out of autopilot until intake is grounded, and supports --new-window or --prompt-approvals when you want them' -ForegroundColor White
     Write-Host '   - Specrew will launch or hand off to the Squad agent with lifecycle context' -ForegroundColor White
-    Write-Host '   - Squad should drive specify -> clarify (or record a skip rationale) -> plan -> tasks -> implement' -ForegroundColor White
+    Write-Host '   - Squad should drive specify -> clarify -> plan -> tasks -> implement (skip clarify only for resumed clarified work with a recorded rationale)' -ForegroundColor White
     Write-Host ''
     Write-Host '2. Run the iteration lifecycle:' -ForegroundColor Yellow
     Write-Host '   - Materialize iteration artifacts under specs/<feature>/iterations/<NNN>/' -ForegroundColor White
@@ -1190,7 +1190,7 @@ function Resolve-AgentConsent {
                 Name            = $agent.Name
                 AccessPath      = $agent.AccessPath
                 Availability    = $agent.Availability
-                Enabled         = $false
+                Enabled         = ($agent.Name -eq 'copilot')
                 Detected        = $agent.Detected
                 DetectionSource = $agent.DetectionSource
             }
@@ -1202,7 +1202,7 @@ function Resolve-AgentConsent {
     }
 
     if ($PromptUser) {
-        foreach ($agent in $resolvedAgents | Where-Object { $_.Detected -and $_.Availability -eq 'available' }) {
+        foreach ($agent in $resolvedAgents | Where-Object { $_.Name -ne 'copilot' -and $_.Detected -and $_.Availability -eq 'available' }) {
             $agent.Enabled = Read-AgentConsent -Agent $agent
         }
 
@@ -1220,7 +1220,9 @@ function Resolve-AgentConsent {
         }
         'list' {
             foreach ($name in $selection.Names) {
-                $lookup[$name].Enabled = $true
+                if ($name -ne 'copilot') {
+                    $lookup[$name].Enabled = $true
+                }
             }
         }
     }
@@ -1607,7 +1609,7 @@ if ($missingDependencies.Count -gt 0 -and -not $DryRun) {
 
 $resolvedAgents = @()
 if (-not $SpecKitExtensionOnly) {
-    Write-Step 'Detecting Copilot runtime and delegated agents'
+Write-Step 'Detecting Copilot runtime and delegated agents'
     $agentDetection = Get-AgentDetection -WorkingDirectory $repoRoot
     $shouldPromptForAgents = (-not $explicitAgentsValueSpecified) -and (-not $explicitNoAgentsSpecified) -and (Test-CanPrompt)
     try {

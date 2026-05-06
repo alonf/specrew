@@ -1,14 +1,29 @@
-[CmdletBinding(PositionalBinding = $false)]
 param(
     [Parameter(Mandatory = $false, Position = 0)]
     [string]$Command,
-    
+
+    [Alias('help')]
+    [switch]$HelpRequested,
+
+    [Alias('info')]
+    [switch]$InfoRequested,
+
     [Parameter(ValueFromRemainingArguments = $true)]
     [string[]]$Arguments
 )
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
+
+$Arguments = @($Arguments | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
+
+if ($HelpRequested.IsPresent) {
+    $Arguments = @($Arguments) + '--help'
+}
+
+if ($InfoRequested.IsPresent) {
+    $Arguments = @($Arguments) + '--info'
+}
 
 function Show-Usage {
     @'
@@ -17,11 +32,13 @@ specrew - Spec-governed AI crew operating model
 Usage:
   specrew init [options]           Bootstrap Specrew in the current or target project
   specrew start [args]             Start or resume the Squad-driven Spec Kit lifecycle
+  specrew update [options]         Refresh Specrew assets or upgrade managed platforms
   specrew team <command> [args]    Manage Squad team members
 
 Commands:
   init     Initialize Specrew (Spec Kit + Squad + governance)
   start    Start or resume feature delivery through Squad + Spec Kit
+  update   Refresh Specrew or upgrade Spec Kit / Squad in an existing project
   team     Manage team members (add, update, remove, list)
   help     Show this help message
 
@@ -29,6 +46,9 @@ Examples:
   specrew init --project-path .
   specrew start
   specrew start "Build a REST API for user management"
+  specrew update
+  specrew update --info
+  specrew update --all
   specrew team list
   specrew team add security-analyst --role "Security Analyst" --charter "Review security"
   specrew team update security-analyst --charter "Updated charter"
@@ -37,6 +57,7 @@ Examples:
 For detailed command help:
   specrew init --help
   specrew start --help
+  specrew update --help
   specrew team --help (shows usage when no subcommand provided)
 '@ | Write-Host
 }
@@ -94,7 +115,18 @@ switch ($Command) {
             exit 1
         }
 
-        & pwsh -NoProfile -ExecutionPolicy Bypass -File $startScript @Arguments
+        & $startScript -CliArgs $Arguments
+        exit $LASTEXITCODE
+    }
+
+    'update' {
+        $updateScript = Join-Path $scriptRoot 'specrew-update.ps1'
+        if (-not (Test-Path -LiteralPath $updateScript)) {
+            Write-Host "ERROR: specrew-update.ps1 not found at $updateScript" -ForegroundColor Red
+            exit 1
+        }
+
+        & pwsh -NoProfile -ExecutionPolicy Bypass -File $updateScript @Arguments
         exit $LASTEXITCODE
     }
     

@@ -24,6 +24,10 @@
 - Brownfield bootstrap is now safe to trial on existing downstream repos, resume/recovery can continue from persisted iteration state, planning now enforces effort-model alignment plus requirement-priority deferral guidance, and process-quality scoring/report generation is available under `evaluation\`.
 - Review evidence rerun in this closeout: `validate-governance.ps1`, `tests\integration\iteration-resume.ps1`, `tests\integration\planning-effort-model.ps1`, `tests\integration\planning-overcommit.ps1`, `tests\integration\process-quality-scorer.ps1`, `tests\integration\process-quality-report.ps1`, `tests\integration\brownfield-conflict-handling.ps1`, and `evaluation\scorers\process-scorer.ps1 -WriteReport`.
 
+## Gap Ledger
+
+No known gaps remain.
+
 ## Remaining Notes
 
 - No implementation blocker remains in Iteration 002.

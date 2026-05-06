@@ -23,6 +23,7 @@ Specrew v1 integrates with Squad using **Squad's native runtime surfaces**, not 
 - **Ceremonies**: Planning and Review/Demo templates in `squad-templates/ceremonies/` are appended to `.squad/ceremonies.md`
 - **Role charters**: Templates in `squad-templates/agents/` seed the five baseline Specrew roles under `.squad/agents/`
 - **Directives**: Templates in `squad-templates/directives/` are merged into `.squad/agents/*/charter.md`
+- **Coordinator prompt overlay**: `deploy-squad-runtime.ps1` appends Specrew governance rules into `.github/agents/squad.agent.md` so Squad routes work through the canonical Spec-Kit + Specrew artifact flow instead of treating governance as advisory
 
 The `specrew init` command handles this deployment. All Specrew skills use the `specrew-*` prefix for namespace safety.
 
@@ -49,6 +50,8 @@ The validator scans iteration artifacts and fails when lifecycle prerequisites a
 - missing `state.md`, `drift-log.md`, `review.md`, or `retro.md` for the current phase
 - non-terminal tasks entering review or retro
 - missing review verdicts or required retro sections
+
+The downstream Squad coordinator is also patched to enforce the same lifecycle contract, so it must create or use the canonical Spec-Kit and Specrew artifacts before it can honestly claim end-to-end process compliance.
 
 The operating method for planning, drift detection, review/demo, and retrospective now lives in `squad-templates\` so downstream deployment surfaces receive the real workflow instead of placeholders.
 

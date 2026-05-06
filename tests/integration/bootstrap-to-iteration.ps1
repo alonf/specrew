@@ -177,6 +177,24 @@ if ($missingPaths.Count -gt 0) {
     exit 1
 }
 
+$iterationConfigPath = Join-Path -Path $projectRoot -ChildPath '.specrew\iteration-config.yml'
+$roleAssignmentsPath = Join-Path -Path $projectRoot -ChildPath '.specrew\role-assignments.yml'
+$iterationConfigContent = Get-Content -LiteralPath $iterationConfigPath -Raw -Encoding UTF8
+$roleAssignmentsContent = Get-Content -LiteralPath $roleAssignmentsPath -Raw -Encoding UTF8
+
+if (-not (Assert-ContentPattern -Content $iterationConfigContent -Pattern 'copilot:\s*\r?\n\s+enabled:\s*true' -FailureMessage 'Bootstrap should always keep Copilot enabled as the host runtime.')) {
+    exit 1
+}
+if (-not (Assert-ContentPattern -Content $roleAssignmentsContent -Pattern 'Spec Steward"[\s\S]*?preferred_agent:\s*"codex"' -FailureMessage 'Bootstrap role assignments should prefer Codex for Spec Steward by default.')) {
+    exit 1
+}
+if (-not (Assert-ContentPattern -Content $roleAssignmentsContent -Pattern 'Planner"[\s\S]*?preferred_agent:\s*"claude"' -FailureMessage 'Bootstrap role assignments should prefer Claude for Planner by default.')) {
+    exit 1
+}
+if (-not (Assert-ContentPattern -Content $roleAssignmentsContent -Pattern 'Reviewer"[\s\S]*?preferred_agent:\s*"claude"' -FailureMessage 'Bootstrap role assignments should prefer Claude for Reviewer by default.')) {
+    exit 1
+}
+
 $installedScriptsRoot = Join-Path -Path $projectRoot -ChildPath '.specify\extensions\specrew-speckit\scripts'
 $planScript = Join-Path -Path $installedScriptsRoot -ChildPath 'scaffold-iteration-plan.ps1'
 $artifactScript = Join-Path -Path $installedScriptsRoot -ChildPath 'scaffold-iteration-artifacts.ps1'
@@ -224,12 +242,35 @@ if (-not (Assert-ContentPattern -Content $implementerCharter -Pattern 'update `i
 if (-not (Assert-ContentPattern -Content $reviewerCharter -Pattern 'update `iterations/NNN/state\.md`|update `state\.md`' -FailureMessage 'Reviewer charter is missing the FR-019 state persistence directive.')) {
     exit 1
 }
+if (-not (Assert-ContentPattern -Content $reviewerCharter -Pattern 'implemented, enforced, observable, and documented' -FailureMessage 'Reviewer charter is missing the critical review dimensions.')) {
+    exit 1
+}
+if (-not (Assert-ContentPattern -Content $reviewerCharter -Pattern 'Emit a gap ledger' -FailureMessage 'Reviewer charter is missing the gap-ledger directive.')) {
+    exit 1
+}
 
 $coordinatorPromptChecks = @(
     @{ Pattern = 'Formal Spec-Kit \+ Specrew Lifecycle'; Failure = 'Coordinator prompt is missing the Specrew lifecycle override.' },
     @{ Pattern = 'do not describe the run as Spec-Kit/Specrew compliant'; Failure = 'Coordinator prompt is missing process-claim discipline for bypassed runs.' },
-    @{ Pattern = 'After `speckit\.specify`, either run `speckit\.clarify` or record a concrete skip rationale before planning'; Failure = 'Coordinator prompt is missing the explicit clarify gate.' },
-    @{ Pattern = 'sync-squad-model-overrides\.ps1 -IterationDirectory'; Failure = 'Coordinator prompt is missing the live model-override sync helper for escalation.' }
+    @{ Pattern = 'After `speckit\.specify`, run `speckit\.clarify` for every newly generated spec before planning'; Failure = 'Coordinator prompt is missing the required clarify gate for new specs.' },
+    @{ Pattern = 'sync-squad-model-overrides\.ps1 -IterationDirectory'; Failure = 'Coordinator prompt is missing the live model-override sync helper for escalation.' },
+    @{ Pattern = 'What do you want to build\?'; Failure = 'Coordinator prompt is missing explicit greenfield intake guidance.' },
+    @{ Pattern = 'wait for the human developer''s answer'; Failure = 'Coordinator prompt is missing the explicit wait-for-human intake rule.' },
+    @{ Pattern = 'not generic skills'; Failure = 'Coordinator prompt is missing the dedicated Speckit invocation rule.' },
+    @{ Pattern = 'Do not ask about specialist team additions before `speckit\.specify` and the clarify outcome'; Failure = 'Coordinator prompt is missing the post-spec team-shaping rule.' },
+    @{ Pattern = 'Only propose Junior/Senior same-specialty pairs when the work can be partitioned cleanly enough to avoid conflicting execution'; Failure = 'Coordinator prompt is missing the Junior/Senior same-specialty guardrail.' },
+    @{ Pattern = 'Route bounded, lower-risk, well-scoped work to Junior roles'; Failure = 'Coordinator prompt is missing the Junior/Senior routing policy.' },
+    @{ Pattern = 'careful, responsible, knowledgeable, and review-ready'; Failure = 'Coordinator prompt does not set the higher Junior quality bar.' },
+    @{ Pattern = 'deep technical judgment across architecture, systems thinking, computer science depth, tradeoff analysis, and long-range software engineering consequences'; Failure = 'Coordinator prompt does not set the deeper Senior technical bar.' },
+    @{ Pattern = 'file-write or tool-contract failure'; Failure = 'Coordinator prompt is missing the fail-fast artifact generation rule.' },
+    @{ Pattern = 'Do not invoke `speckit\.implement` until that approval is given'; Failure = 'Coordinator prompt is missing the explicit implementation approval gate.' },
+    @{ Pattern = 'Treat revisions, idempotency keys, retries, conflict detection, locks, and telemetry as incomplete'; Failure = 'Coordinator prompt is missing the quality/semantic integrity rule.' },
+    @{ Pattern = 'developer-facing briefing'; Failure = 'Coordinator prompt is missing the implementation briefing handoff.' }
+    @{ Pattern = 'review-heavy and problem-solving-heavy work as delegated-routing candidates'; Failure = 'Coordinator prompt is missing the delegated routing policy for review/problem-solving work.' },
+    @{ Pattern = 'concrete model ID'; Failure = 'Coordinator prompt is missing the delegated runtime evidence requirement.' },
+    @{ Pattern = 'no-gap policy'; Failure = 'Coordinator prompt is missing the no-gap closure policy.' },
+    @{ Pattern = 'implemented, enforced, observable, and documented'; Failure = 'Coordinator prompt is missing the critical review dimensions.' },
+    @{ Pattern = 'If review finds an ambiguity, contradiction, or missing decision in the governing spec'; Failure = 'Coordinator prompt is missing the spec-repair clarification loop.' }
 )
 
 foreach ($check in $coordinatorPromptChecks) {

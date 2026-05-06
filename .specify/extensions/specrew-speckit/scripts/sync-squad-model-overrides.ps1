@@ -9,12 +9,6 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
-$sharedGovernancePath = Join-Path $PSScriptRoot 'shared-governance.ps1'
-if (-not (Test-Path -LiteralPath $sharedGovernancePath -PathType Leaf)) {
-    throw "Missing shared governance helper '$sharedGovernancePath'."
-}
-. $sharedGovernancePath
-
 function Resolve-ProjectRoot {
     param([string]$StartPath)
 
@@ -165,77 +159,51 @@ if (-not (Test-Path -LiteralPath $manageEscalationPath -PathType Leaf)) {
 }
 
 $escalation = & $manageEscalationPath -IterationDirectory $resolvedIterationDirectory -Mode get -PassThru
-$configPath = Get-SquadConfigPath -Root $projectRoot
-$appliedModel = $null
-$roleName = $null
-$effectiveOverrides = [ordered]@{}
-$syncTimestamp = (Get-Date).ToUniversalTime().ToString('yyyy-MM-ddTHH:mm:ssZ')
-
-$null = Update-LockedFileContent -Path $configPath -Transform {
-    param([string]$CurrentContent)
-
-    $config = if ([string]::IsNullOrWhiteSpace($CurrentContent)) {
-        [ordered]@{ version = 1 }
-    }
-    else {
-        $parsed = $CurrentContent | ConvertFrom-Json -AsHashtable
-        if ($null -eq $parsed) { [ordered]@{ version = 1 } } else { $parsed }
-    }
-
-    if (-not (Test-MapKey -Map $config -Key 'version')) {
-        $config['version'] = 1
-    }
-
-    $managedRouting = Get-ManagedRoutingMetadata -Config $config
-    $baselineOverrides = Get-BaselineOverrides -Config $config -ManagedRouting $managedRouting
-    $roleAgentFamilies = Get-RoleAgentFamilies -ManagedRouting $managedRouting
-    $script:effectiveOverrides = [ordered]@{}
-    foreach ($key in $baselineOverrides.Keys) {
-        $script:effectiveOverrides[$key] = $baselineOverrides[$key]
-    }
-
-    $script:appliedModel = $null
-    $script:roleName = $null
-    if ($escalation.status -eq 'active' -and -not [string]::IsNullOrWhiteSpace($escalation.current_owner)) {
-        $script:roleName = $escalation.current_owner.Trim()
-        $agentFamily = if (Test-MapKey -Map $roleAgentFamilies -Key $script:roleName) { [string]$roleAgentFamilies[$script:roleName] } else { 'copilot' }
-        $script:appliedModel = Get-ModelForEscalation -AgentFamily $agentFamily -Tier $escalation.current_tier
-        $script:effectiveOverrides[$script:roleName] = $script:appliedModel
-    }
-
-    if ($script:effectiveOverrides.Count -gt 0) {
-        $config['agentModelOverrides'] = $script:effectiveOverrides
-    }
-    elseif (Test-MapKey -Map $config -Key 'agentModelOverrides') {
-        $config.Remove('agentModelOverrides')
-    }
-
-    $managedRouting['baselineAgentModelOverrides'] = $baselineOverrides
-    $managedRouting['roleAgentFamilies'] = $roleAgentFamilies
-    $managedRouting['activeEscalation'] = [ordered]@{
-        status          = $escalation.status
-        role            = $script:roleName
-        tier            = $escalation.current_tier
-        sourceIteration = $resolvedIterationDirectory
-        sourceArtifact  = $escalation.artifact
-        sourceGate      = $escalation.gate
-        updatedAt       = $syncTimestamp
-    }
-    $config['specrewManagedModelRouting'] = $managedRouting
-
-    return (($config | ConvertTo-Json -Depth 10) + [Environment]::NewLine)
+$config = Get-SquadConfig -Root $projectRoot
+if (-not (Test-MapKey -Map $config -Key 'version')) {
+    $config['version'] = 1
 }
 
-Add-DecisionsLedgerEntry -ProjectRoot $projectRoot -Title 'Repair escalation routing sync' -Lines @(
-    "- **Iteration**: $resolvedIterationDirectory"
-    "- **Escalation Status**: $($escalation.status)"
-    "- **Escalation Artifact**: $(if ([string]::IsNullOrWhiteSpace($escalation.artifact)) { '(none)' } else { $escalation.artifact })"
-    "- **Escalation Gate**: $(if ([string]::IsNullOrWhiteSpace($escalation.gate)) { '(none)' } else { $escalation.gate })"
-    "- **Role**: $(if ([string]::IsNullOrWhiteSpace($roleName)) { '(none)' } else { $roleName })"
-    "- **Tier**: $($escalation.current_tier)"
-    "- **Applied Model**: $(if ([string]::IsNullOrWhiteSpace($appliedModel)) { '(none)' } else { $appliedModel })"
-    "- **Override Count**: $($effectiveOverrides.Count)"
-) | Out-Null
+$managedRouting = Get-ManagedRoutingMetadata -Config $config
+$baselineOverrides = Get-BaselineOverrides -Config $config -ManagedRouting $managedRouting
+$roleAgentFamilies = Get-RoleAgentFamilies -ManagedRouting $managedRouting
+$effectiveOverrides = [ordered]@{}
+foreach ($key in $baselineOverrides.Keys) {
+    $effectiveOverrides[$key] = $baselineOverrides[$key]
+}
+
+$appliedModel = $null
+$roleName = $null
+if ($escalation.status -eq 'active' -and -not [string]::IsNullOrWhiteSpace($escalation.current_owner)) {
+    $roleName = $escalation.current_owner.Trim()
+    $agentFamily = if (Test-MapKey -Map $roleAgentFamilies -Key $roleName) { [string]$roleAgentFamilies[$roleName] } else { 'copilot' }
+    $appliedModel = Get-ModelForEscalation -AgentFamily $agentFamily -Tier $escalation.current_tier
+    $effectiveOverrides[$roleName] = $appliedModel
+}
+
+if ($effectiveOverrides.Count -gt 0) {
+    $config['agentModelOverrides'] = $effectiveOverrides
+}
+elseif (Test-MapKey -Map $config -Key 'agentModelOverrides') {
+    $config.Remove('agentModelOverrides')
+}
+
+$managedRouting['baselineAgentModelOverrides'] = $baselineOverrides
+$managedRouting['roleAgentFamilies'] = $roleAgentFamilies
+$managedRouting['activeEscalation'] = [ordered]@{
+    status          = $escalation.status
+    role            = $roleName
+    tier            = $escalation.current_tier
+    sourceIteration = $resolvedIterationDirectory
+    sourceArtifact  = $escalation.artifact
+    sourceGate      = $escalation.gate
+    updatedAt       = (Get-Date).ToUniversalTime().ToString('yyyy-MM-ddTHH:mm:ssZ')
+}
+$config['specrewManagedModelRouting'] = $managedRouting
+
+$configPath = Get-SquadConfigPath -Root $projectRoot
+$json = $config | ConvertTo-Json -Depth 10
+[System.IO.File]::WriteAllText($configPath, $json + [Environment]::NewLine, [System.Text.UTF8Encoding]::new($false))
 
 $result = [pscustomobject]@{
     project_root          = $projectRoot

@@ -3,7 +3,7 @@
 **Schema**: v1
 **Spec**: [../../spec.md](../../spec.md)
 **Status**: complete
-**Capacity**: 20.5/20.5 story_points
+**Capacity**: 20.5/20 story_points
 **Started**: 2026-04-18
 **Completed**: 2026-04-18
 
@@ -83,6 +83,20 @@ Validation that this plan respects Specrew's own governance model and contract t
 | T-021 | Spike 11: Spec Kit prompt file placement | FR-013 | US-7 | 0.5 | Planner | done | Data | 0.5 | PASS |
 | T-022 | Set up CI pipeline (GitHub Actions) | FR-001 | US-1 | 1 | Implementer | done | La Forge | 1 | PASS |
 | T-023 | Create GitHub Project board (V2) | FR-001 | US-1 | 1 | Implementer | done | La Forge | 1 | PASS |
+
+---
+
+## Effort Model
+
+| Setting | Value | Notes |
+| ------- | ----- | ----- |
+| Effort Unit | story_points | Unit used in task effort, capacity, and retro variance. |
+| Capacity per Iteration | 20 | Maximum planned effort before overcommit guidance applies. |
+| Iteration Bounding | scope | `scope` keeps requirements fixed; `time` enforces a time ceiling. |
+| Time Limit (hours) | n/a | Only applies when iteration bounding is `time`. |
+| Overcommit Threshold | 1.0 | Warn planners when total estimated effort exceeds 20 story_points (capacity 20 x threshold 1.0). |
+| Defer Strategy | manual | How planning should choose deferrals when the iteration is over capacity. |
+| Calibration Enabled | true | When true, retrospectives should suggest future capacity adjustments. |
 
 ---
 

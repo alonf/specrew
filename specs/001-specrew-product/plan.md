@@ -7,7 +7,7 @@
 
 Specrew bridges Spec Kit (specification/governance) and Squad (multi-agent runtime) into a unified spec-governed operating model for AI crews. The technical approach is to build a Spec Kit extension for governance lifecycle plus Squad-native configuration surfaces for crew execution, sharing a monorepo, with all iteration artifacts stored as Markdown in the spec feature directory. The downstream entrypoint after bootstrap becomes a new `specrew start` command that launches or hands off to Squad and has Squad drive the full Spec Kit lifecycle on the user's behalf, including intake for new work, continuation of active work, preservation of the existing Specrew-managed roster, brownfield repo discovery/spec seeding, an explicit `specify -> clarify decision -> plan` gate, real delegated-agent routing, and escalation-aware repair handling.
 
-**Interaction model**: Guided wrapper over Spec Kit + Squad — users bootstrap with `specrew init`, manage supplemental members with `specrew team`, and start feature delivery with `specrew start`. The start flow hands work to Squad, which first detects whether a Specrew-managed roster already exists, preserves that roster for routing, inspects active artifacts to resume in-progress work when possible, and for new brownfield work mines repo evidence (code/manifests/docs/git history) to seed the starting spec and propose stack-aware specialists before broad intake. It then gathers only the remaining fix/feature intent, optionally materializes approved specialists, and drives `specify`, an explicit clarify-or-skip decision, `plan`, `tasks`, and `implement` while only escalating unresolved questions to the human developer. `new-feature` and `brownfield-new` runs default that gate to `speckit.clarify` unless Squad can record why the generated spec is already materially complete for planning. To reduce Copilot CLI blocking during launch, Specrew starts Copilot from the target project directory, defaults automated handoff sessions to the current terminal plus non-blocking approvals, and allows an explicit detached-window option when the user wants a separate shell. When governance gates fail repeatedly, the repair workflow escalates both reasoning tier and ownership rather than repeating the same low-reasoning repair loop.
+**Interaction model**: Guided wrapper over Spec Kit + Squad — users bootstrap with `specrew init`, manage supplemental members with `specrew team`, and start feature delivery with `specrew start`. The start flow hands work to Squad, which first detects whether a Specrew-managed roster already exists, preserves that roster for routing, inspects active artifacts to resume in-progress work when possible, and for new brownfield work mines repo evidence (code/manifests/docs/git history) to seed the starting spec and propose stack-aware specialists before broad intake. It then gathers only the remaining fix/feature intent, optionally materializes approved specialists, and drives `specify`, an explicit clarify-or-skip decision, `plan`, `tasks`, and `implement` while only escalating unresolved questions to the human developer. `new-feature` and `brownfield-new` runs default that gate to `speckit.clarify` unless Squad can record why the generated spec is already materially complete for planning. Copilot remains the mandatory host runtime in v1, while optional delegated agents such as Claude and Codex are consented separately and used for review-heavy or problem-solving-heavy lifecycle work according to role policy. To reduce Copilot CLI blocking during launch, Specrew starts Copilot from the target project directory, defaults automated handoff sessions to the current terminal plus non-blocking approvals, and allows an explicit detached-window option when the user wants a separate shell. When governance gates fail repeatedly, the repair workflow escalates both reasoning tier and ownership rather than repeating the same low-reasoning repair loop, and delegated runtime evidence records the requested/effective agent family plus concrete model used. Review and closure operate under a no-gap policy: known alignment gaps must be fixed in-iteration or explicitly deferred with human approval, and critical review emits a gap ledger plus spec-repair loop whenever ambiguities or missing decisions are discovered. For code-touching iterations, Specrew also generates reviewer-facing closeout artifacts (code map, dependency report, coverage evidence, conditional security surface, reviewer index) and emits a stable reviewer summary or digest so human reviewers can triage the iteration without reconstructing those signals from raw diffs.
 
 ## Technical Context
 
@@ -25,15 +25,15 @@ Specrew bridges Spec Kit (specification/governance) and Squad (multi-agent runti
 
 *GATE: Must pass before Phase 0 research. Re-check after Phase 1 design.*
 
-- **Spec Authority Gate**: PASS — Plan scope maps directly to spec.md FR-001 through FR-027 and US-1 through US-7. No plan item exists without a spec reference.
+- **Spec Authority Gate**: PASS — Plan scope maps directly to spec.md FR-001 through FR-054 and US-1 through US-9. No plan item exists without a spec reference.
 - **Layering Gate**: PASS — Every component is classified below:
-  - Standalone CLI: `specrew init`, `specrew start` (orchestration layer above both platforms)
+  - Standalone CLI: `specrew init`, `specrew start`, `specrew update` (orchestration/maintenance layer above both platforms)
   - Spec Kit layer: governance scaffold, drift detection, extension collision detection, downstream constitution generation
   - Squad layer: baseline crew roles, iteration ceremonies (Planning, Review/Demo), skills, directives, post-task drift hook
   - Shared: iteration artifact storage format (Markdown in spec dir), evaluation harness
 - **Traceability Gate**: PASS — Phased delivery plan below maps each deliverable to FR/US references.
 - **Ownership Gate**: PASS — Workstreams assigned (by implementation component; see spec.md TG-002 for owner-subsystem grouping):
-  - Standalone CLI (`specrew init`, `specrew start`): Specrew maintainers (FR-002, FR-020, FR-024)
+  - Standalone CLI (`specrew init`, `specrew start`, `specrew update`): Specrew maintainers (FR-002, FR-020, FR-024, FR-035, FR-036, FR-037)
   - Spec Kit extension: Specrew maintainers (FR-001, FR-011, FR-013, FR-016)
   - Squad extension: Specrew maintainers (FR-004, FR-005, FR-006, FR-008, FR-009, FR-010)
   - Iteration engine (cross-cutting, implemented via Squad skills): Specrew maintainers (FR-007, FR-017, FR-018, FR-019)
@@ -116,13 +116,17 @@ Specrew bridges Spec Kit (specification/governance) and Squad (multi-agent runti
 | --------- | ----- | ---------------- | --------------- |
 | `specrew init` | Standalone CLI | Dependency detection/install, `specify init`/`squad init` orchestration, version validation, governance scaffold, brownfield merge, extension installation, Copilot / Agent HQ delegated-agent detection + consent | FR-002, FR-020, FR-022 |
 | `specrew start` | Standalone CLI | Validate downstream bootstrap, detect/preserve the Specrew-managed roster, resolve intake/resume/new-feature context, run brownfield repo discovery/spec seeding when needed, launch or hand off to Squad, continue active work when present, surface stack-aware specialist recommendations, launch Copilot from the target project directory in the current terminal by default with non-blocking approvals, allow an explicit detached window option, and drive the Spec Kit lifecycle through `specify`, an explicit clarify gate (`clarify` or recorded skip rationale), `plan`, `tasks`, and `implement` | FR-024, FR-025, FR-028 |
+| `specrew update` | Standalone CLI | Report installed/latest versions, upgrade Specrew-managed runtime surfaces, scope platform updates, preserve downstream artifacts, and surface per-platform compatibility results | FR-035, FR-036, FR-037 |
 | Governance Scaffold | Spec Kit ext | Generate downstream constitution placeholder, iteration config template, role assignment file | FR-011, FR-016 |
 | Drift Detection | Spec Kit ext + Squad ext | Spec Kit side: diff logic comparing task output to requirement. Squad side: post-task hook invoking drift check. | FR-003, FR-008 |
 | Collision Detector | Spec Kit ext | Scan installed extensions for hook/artifact conflicts, report clearly | FR-012 |
 | Baseline Crew | Squad ext | Define 5 roles as Squad team members. Project-specific roles added via Squad config. | FR-002, FR-004 |
-| Delegated Agent Router | Squad ext | Routes roles and eligible repair/gate work to preferred delegated agents per `role-assignments.yml`, surfaces explicit fallback reasons when routing cannot be honored, and enables independent-perspective oversight while keeping Copilot as the default workhorse. | FR-021, FR-026 |
+| Delegated Agent Router | Squad ext | Routes roles and eligible repair/gate work to preferred delegated agents per `role-assignments.yml`, defaults review/problem-solving roles toward Claude/Codex when enabled, surfaces explicit fallback reasons when routing cannot be honored, and records runtime evidence for requested/effective agent family plus concrete model while keeping Copilot as the mandatory host workhorse. | FR-021, FR-026, FR-043 |
+| Concurrency Analyzer | Standalone CLI + Squad ext | Analyzes plan dependency graphs, hotspot/code-ownership signals, and conflict risk to justify same-specialty pairing and record auditable concurrency rationale before parallel work is proposed | FR-038, FR-039, FR-040, FR-041 |
 | Iteration Ceremonies | Squad ext | Planning, Review/Demo (Specrew-defined), Retrospective (Squad built-in) | FR-005, FR-009, FR-010 |
-| Iteration Engine | Squad ext + skills | Task mapping to requirements, effort estimation, capacity checking, task state persistence, resume, repeated-gate failure tracking, and reasoning-tier escalation with independent reassignment for repair loops | FR-007, FR-017, FR-018, FR-019, FR-027 |
+| Iteration Engine | Squad ext + skills | Task mapping to requirements, effort estimation, capacity checking, task state persistence, resume, repeated-gate failure tracking, reasoning-tier escalation with independent reassignment for repair loops, and no-gap closure checks with defer recording | FR-007, FR-017, FR-018, FR-019, FR-027, FR-044 |
+| Critical Review Loop | Squad ext + review artifacts | Classifies hardened governance/lifecycle requirements as implemented / enforced / observable / documented, emits a gap ledger, and drives spec clarification plus artifact reconciliation when review finds unknowns or contradictions | FR-045 |
+| Reviewer Visibility Subsystem | Standalone CLI + Spec Kit ext | Generates reviewer-facing closeout artifacts, executes configured test/coverage evidence at review time, records dependency/security evidence, renders interactive/non-interactive reviewer summaries, generates Mermaid-first reviewer diagrams when grounded, exposes local-open review flows, and preserves immutable iteration snapshots alongside optional mutable current-view surfaces | FR-046, FR-047, FR-048, FR-049, FR-050, FR-051, FR-052, FR-053, FR-054 |
 | Evaluation Harness | Shared (scripts) | Bootstrap fresh project, run N iterations, produce process + outcome report | FR-015 |
 
 ## 3. What Belongs in the Spec Kit Extension
@@ -543,7 +547,7 @@ evaluation/harness.ps1
 | Iteration artifact storage | — | Create `iterations/NNN/` structure with plan.md, drift-log.md, review.md, retro.md |
 | Unit + integration tests | — | Tests per Section 10a–10d |
 
-### Post-MVP (Iterations 2–3)
+### Post-MVP (Iterations 2–9)
 
 | Deliverable | FR | Iteration |
 | ----------- | -- | --------- |
@@ -558,6 +562,21 @@ evaluation/harness.ps1
 | Outcome scorer + full eval harness | FR-015 | 3 |
 | Upgrade preservation | FR-016 | 3 |
 | Extension author documentation | — | 3 |
+| Update CLI/version info + scoped upgrades | FR-035, FR-036, FR-037 | 4 |
+| Reviewer code map | FR-046 | 5 |
+| Reviewer dependency report + external vulnerability scan surface | FR-047 | 5 |
+| Coverage and test evidence artifact | FR-049 | 5 |
+| Interactive reviewer summary + non-interactive digest | FR-050, FR-051 | 5 |
+| Reviewer index artifact + `specrew review` replay command | FR-052 | 5 |
+| Conditional security surface | FR-048 | 6 |
+| Mermaid-first reviewer diagrams + local-open viewing | FR-053 | 6 |
+| Immutable iteration snapshots + separate current-architecture surface | FR-054 | 6 |
+| Delegated runtime evidence for requested/effective agent + model | FR-043 | 7 |
+| No-gap iteration closure + explicit defer recording | FR-044 | 7 |
+| Critical reviewer gap ledger + spec-repair reconciliation | FR-045 | 7 |
+| Concurrency-aware sizing + paired specialist proposals | FR-038, FR-039 | 8 |
+| Parallel ownership boundaries + escalation rules | FR-040, FR-041 | 8 |
+| Multi-lane validation strategy (deterministic gate + artifact/contract lane + live smoke confidence lane) | FR-042 | 9 |
 
 ## Complexity Tracking
 

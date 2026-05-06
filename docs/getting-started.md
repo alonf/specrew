@@ -45,6 +45,7 @@ The complete greenfield bootstrap-to-iteration flow requires:
 
 - **Spec Kit CLI access via `uv`**: Specrew installs or repairs the official GitHub-hosted Spec Kit release when needed. The tested baseline is **Spec Kit 0.8.4**.
 - **Squad CLI** (installed via `npm`): Must be available
+- **Copilot CLI**: Required as Specrew's host runtime for Squad handoff and optional delegated-agent routing
 - **UTF-8 environment support**: Some Windows PowerShell environments may encounter Unicode encoding issues (detailed in Known Limitations below)
 
 ### Greenfield Bootstrap Steps
@@ -153,6 +154,8 @@ specrew team add my-specialist --role "Role" --charter "Charter text"
 
 The `add` command atomically creates all required Squad artifacts: (1) a new row in `.squad\team.md`, (2) `.squad\agents\<member>\charter.md`, and (3) `.squad\agents\<member>\history.md`. The `update` and `remove` commands modify or delete these artifacts consistently. Baseline roles are protected and cannot be removed through these commands.
 
+When Copilot CLI is available, Specrew treats it as the mandatory host runtime rather than an optional delegated choice. During bootstrap, consent questions should only cover optional delegated agent families such as Claude and Codex. By default, Specrew's baseline delegated preferences treat Implementer as Copilot-first, Planner and Reviewer as Claude-first, and Spec Steward as Codex-first (with fallback to Claude when Codex is unavailable) so review and problem-solving work can use delegated agents when they are enabled.
+
 1. (Only if `.specify/` exists) Start your first feature run.
 
 If the bootstrap created `.specify/` successfully, the canonical next step is:
@@ -170,15 +173,18 @@ pwsh -File C:\Dev\Specrew\scripts\specrew.ps1 start "Build a REST API for user m
 `specrew start` should launch or hand off to Squad and have Squad drive the full Spec Kit lifecycle for you:
 
 - `speckit.specify`
-- `speckit.clarify` by default for new-feature and brownfield-new work, or a recorded skip rationale before planning
+- `speckit.clarify` for every newly generated spec before planning, or a recorded skip rationale only when resuming an already-clarified feature
+- post-clarify team shaping and team presentation before implementation
+- explicit human go-ahead before `speckit.implement`
 - `specrew start` reuses the current terminal by default; pass `--new-window` only when you explicitly want Copilot opened in a separate shell
 - `speckit.plan`
 - `speckit.tasks`
 - `speckit.implement`
+- developer-facing implementation briefing plus no-gap review before closure
 
-The human developer should mainly answer only the unresolved questions Squad cannot safely answer from repo context or existing artifacts. If you start without a request, Squad should inspect current work, continue any in-progress feature, or ask whether you want a fix or a new feature. In a new brownfield repo, Squad should first mine existing code, manifests, docs, and recent git history to seed the starting spec and propose concrete specialist additions when the current team lacks obvious stack/domain expertise.
+The human developer should mainly answer only the unresolved questions Squad cannot safely answer from repo context or existing artifacts. If you start without a request, Squad should inspect current work, continue any in-progress feature, or ask the next intake question and wait for your answer before invoking `speckit.specify`. In a new brownfield repo, Squad should first mine existing code, manifests, docs, and recent git history to seed the starting spec and propose concrete specialist additions when the current team lacks obvious stack/domain expertise. Review and closure now also operate under a **no-gap policy**: if Specrew finds a known gap across spec, implementation, tests, docs, or observability, it should fix it in the current iteration or explicitly defer it with your approval and recorded evidence before claiming the run is complete.
 
-To reduce Copilot CLI blocking on tool prompts, Specrew launches Copilot from the target project directory and defaults to `--allow-all`. Copilot may still ask you to trust the project directory on first launch. If you prefer Copilot's interactive approval prompts, use:
+To reduce Copilot CLI blocking on tool prompts, Specrew launches Copilot from the target project directory, reuses the current terminal by default, and hands Copilot a compact bootstrap message that points it at `.specrew\last-start-prompt.md` and `.specrew\start-context.json` instead of pasting the full handoff prompt into the terminal. Intake-first runs stay out of autopilot until the request is grounded; once scope is grounded, Specrew can continue with `--allow-all` by default. Copilot may still ask you to trust the project directory on first launch. If you prefer Copilot's interactive approval prompts, use:
 
 ```powershell
 pwsh -File C:\Dev\Specrew\scripts\specrew.ps1 start --prompt-approvals
@@ -254,8 +260,8 @@ Notes:
 - `-ProjectPath <path>`: target repo
 - `-DryRun`: preview only
 - `-Force`: non-interactive defaults
-- `-Agents copilot|all|copilot,claude|copilot,codex`
-- `-NoAgents`: disable all agents
+- `-Agents claude|codex|claude,codex|all`: enable optional delegated agents for review-heavy and problem-solving-heavy routing while Copilot remains the mandatory host runtime
+- `-NoAgents`: disable optional delegated agents only; Copilot host runtime stays enabled
 - `-SpecKitExtensionOnly`: deploy Spec Kit extension slice only
 
 ## Troubleshooting

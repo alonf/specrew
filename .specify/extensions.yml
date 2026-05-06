@@ -1,4 +1,9 @@
-installed: []
+installed:
+  - name: specrew-speckit
+    version: 0.1.0-dev
+    enabled: true
+    source: local
+    path: .specify/extensions/specrew-speckit
 settings:
   auto_execute_hooks: true
 hooks:

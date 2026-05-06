@@ -4,6 +4,7 @@ param(
     [string]$ProjectPath,
 
     [switch]$DryRun,
+    [switch]$RefreshExisting,
     [switch]$PassThru
 )
 
@@ -75,7 +76,27 @@ function Copy-MissingItem {
     }
 
     if (Test-Path -LiteralPath $TargetPath) {
-        Add-DeploymentAction -Actions $Actions -Action 'preserved' -Path $TargetPath
+        if (-not $RefreshExisting) {
+            Add-DeploymentAction -Actions $Actions -Action 'preserved' -Path $TargetPath
+            return
+        }
+
+        $sourceContent = Get-Content -LiteralPath $SourcePath -Raw
+        $targetContent = Get-Content -LiteralPath $TargetPath -Raw
+        if ($sourceContent -eq $targetContent) {
+            Add-DeploymentAction -Actions $Actions -Action 'preserved' -Path $TargetPath
+            return
+        }
+
+        Add-DeploymentAction -Actions $Actions -Action $(if ($DryRun) { 'would-update' } else { 'updated' }) -Path $TargetPath
+        if (-not $DryRun) {
+            $parent = Split-Path -Parent $TargetPath
+            if (-not (Test-Path -LiteralPath $parent)) {
+                New-Item -ItemType Directory -Path $parent -Force | Out-Null
+            }
+
+            Copy-Item -LiteralPath $SourcePath -Destination $TargetPath -Force
+        }
         return
     }
 

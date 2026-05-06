@@ -197,6 +197,21 @@ function Set-ManagedBlock {
     return $Content.TrimEnd() + [Environment]::NewLine + [Environment]::NewLine + $managedBlock + [Environment]::NewLine
 }
 
+function Get-DefaultEscalationState {
+    return [pscustomobject]@{
+        status            = 'inactive'
+        artifact          = $null
+        gate              = $null
+        failure_count     = 0
+        current_tier      = 'efficiency'
+        current_owner     = $null
+        locked_out_agents = @()
+        last_escalated    = $null
+        resolved_at       = $null
+        notes             = $null
+    }
+}
+
 $resolvedIterationDirectory = [System.IO.Path]::GetFullPath($IterationDirectory)
 $planPath = Join-Path $resolvedIterationDirectory 'plan.md'
 $statePath = Join-Path $resolvedIterationDirectory 'state.md'
@@ -213,6 +228,11 @@ if ($planTasks.Count -eq 0) {
 
 $stateExists = Test-Path -LiteralPath $statePath -PathType Leaf
 $stateLines = @(if ($stateExists) { Get-MarkdownContent -Path $statePath } else { @() })
+$repairEscalation = Get-DefaultEscalationState
+$escalationHelperPath = Join-Path -Path $PSScriptRoot -ChildPath 'manage-escalation-state.ps1'
+if ($stateExists -and (Test-Path -LiteralPath $escalationHelperPath -PathType Leaf)) {
+    $repairEscalation = & $escalationHelperPath -IterationDirectory $resolvedIterationDirectory -Mode get -PassThru
+}
 
 $lastCompletedTask = if ($stateExists) { Get-MarkdownMetadataValue -Lines $stateLines -Label 'Last Completed Task' } else { '(none)' }
 $tasksRemainingValue = if ($stateExists) { Get-MarkdownMetadataValue -Lines $stateLines -Label 'Tasks Remaining' } else { $null }
@@ -305,11 +325,16 @@ foreach ($taskId in $blockedPlanTasks) {
 $status = 'ready'
 $nextSuggestedTask = $null
 $salvageableTasks = $null
+$nextRecoveryAction = $null
+$hasActiveEscalation = $repairEscalation.status -eq 'active'
 
 switch ($ResumeMode) {
     'continue' {
         if ($blockers.Count -gt 0) {
             $status = 'blocked'
+        }
+        elseif ($hasActiveEscalation) {
+            $nextRecoveryAction = 'Resume active escalation for {0} at gate {1} using {2} on the {3} tier.' -f $repairEscalation.artifact, $repairEscalation.gate, $repairEscalation.current_owner, $repairEscalation.current_tier
         }
         elseif ($inProgressTasks.Count -gt 0) {
             $nextSuggestedTask = $inProgressTasks[0]
@@ -351,15 +376,21 @@ $result | Add-Member -NotePropertyName 'last_completed_task' -NotePropertyValue 
 $result | Add-Member -NotePropertyName 'in_progress_tasks' -NotePropertyValue @($inProgressTasks)
 $result | Add-Member -NotePropertyName 'remaining_tasks' -NotePropertyValue @($remainingTasks)
 $result | Add-Member -NotePropertyName 'next_suggested_task' -NotePropertyValue $nextSuggestedTask
+$result | Add-Member -NotePropertyName 'next_recovery_action' -NotePropertyValue $nextRecoveryAction
 $result | Add-Member -NotePropertyName 'blockers' -NotePropertyValue $blockerItems
 $result | Add-Member -NotePropertyName 'salvageable_tasks' -NotePropertyValue $normalizedSalvageableTasks
+$result | Add-Member -NotePropertyName 'repair_escalation' -NotePropertyValue $repairEscalation
 
 if ($status -ne 'blocked' -and $stateExists) {
     $updatedStateLines = @($stateLines)
     $updatedInProgressTasks = @()
     $updatedRemainingTasks = @($remainingTasks)
 
-    if ($ResumeMode -eq 'continue' -and -not [string]::IsNullOrWhiteSpace($nextSuggestedTask)) {
+    if ($ResumeMode -eq 'continue' -and $hasActiveEscalation) {
+        $updatedInProgressTasks = @($inProgressTasks)
+        $updatedRemainingTasks = @($remainingTasks)
+    }
+    elseif ($ResumeMode -eq 'continue' -and -not [string]::IsNullOrWhiteSpace($nextSuggestedTask)) {
         if ($inProgressTasks.Count -gt 0) {
             $updatedInProgressTasks = @($inProgressTasks)
         }
@@ -385,8 +416,10 @@ if ($status -ne 'blocked' -and $stateExists) {
         ('- **Status**: {0}' -f $status)
         ('- **Last Completed Task**: {0}' -f $(if (Test-IsNullish $lastCompletedTask) { '(none)' } else { $lastCompletedTask }))
         ('- **Next Suggested Task**: {0}' -f $(if ([string]::IsNullOrWhiteSpace($nextSuggestedTask)) { '(none)' } else { $nextSuggestedTask }))
+        ('- **Next Recovery Action**: {0}' -f $(if ([string]::IsNullOrWhiteSpace($nextRecoveryAction)) { '(none)' } else { $nextRecoveryAction }))
         ('- **In-Progress Tasks**: {0}' -f $(if ($inProgressTasks.Count -gt 0) { $inProgressTasks -join ', ' } else { '(none)' }))
         ('- **Remaining Tasks**: {0}' -f $(if ($remainingTasks.Count -gt 0) { $remainingTasks -join ', ' } else { '(none)' }))
+        ('- **Repair Escalation**: {0}' -f $(if ($hasActiveEscalation) { '{0} | owner={1} | tier={2} | failures={3} | locked_out={4}' -f $repairEscalation.artifact, $repairEscalation.current_owner, $repairEscalation.current_tier, $repairEscalation.failure_count, $(if ($repairEscalation.locked_out_agents.Count -gt 0) { $repairEscalation.locked_out_agents -join ', ' } else { '(none)' }) } else { 'inactive' }))
         ('- **Blockers**: {0}' -f $(if ($blockers.Count -gt 0) { ($blockers | ForEach-Object { $_.description }) -join ' | ' } else { '(none)' }))
         ('- **Salvageable Tasks**: {0}' -f $(if ($null -ne $salvageableTasks -and $salvageableTasks.Count -gt 0) { $salvageableTasks -join ', ' } elseif ($null -ne $salvageableTasks) { '(none)' } else { 'n/a' }))
     )

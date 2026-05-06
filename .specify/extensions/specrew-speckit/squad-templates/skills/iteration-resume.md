@@ -6,7 +6,7 @@
 
 ## Purpose
 
-Resumes interrupted iterations by analyzing `state.md` plus the authoritative task table in `plan.md`, then suggests the next execution step.
+Resumes interrupted iterations by analyzing `state.md` plus the authoritative task table in `plan.md`, then suggests the next execution step or active repair escalation.
 
 ## When to Use
 
@@ -27,15 +27,16 @@ Resumes interrupted iterations by analyzing `state.md` plus the authoritative ta
     - Last completed task
     - In-progress tasks (started but not done)
     - Remaining tasks (not yet started)
+    - Active repair escalation state, if one is recorded
 2. Parse `plan.md` to read the authoritative task table and current task statuses.
 3. Reconcile stale or partial `state.md` metadata against the task table:
    - Repair missing `Tasks Remaining`, `In Progress`, and `Updated` metadata when possible
    - Treat `planned` tasks as remaining work and `in-progress` / `needs-rework` tasks as active work
    - Surface blockers when `state.md` references unknown tasks or plan-blocked tasks
 4. Determine resumption strategy based on `resume_mode`:
-   - **continue**: Resume the current in-progress task or suggest the next incomplete task
-   - **replan**: Suggest re-planning remaining tasks
-   - **abort**: Mark iteration as abandoned, list salvageable tasks
+    - **continue**: Resume the current repair escalation first; after activating or resolving escalation, sync `.squad/config.json` with `sync-squad-model-overrides.ps1`, otherwise resume the current in-progress task or suggest the next incomplete task
+    - **replan**: Suggest re-planning remaining tasks
+    - **abort**: Mark iteration as abandoned, list salvageable tasks
 5. Generate resume report
 6. Write the report back into `state.md` when the iteration is resumable or intentionally being re-planned/aborted
 
@@ -48,6 +49,8 @@ Resumes interrupted iterations by analyzing `state.md` plus the authoritative ta
 | in_progress_tasks[] | array | Tasks that were started but not finished |
 | remaining_tasks[] | array | Tasks not yet started |
 | next_suggested_task | string? | Task ID to execute next (null if blocked) |
+| next_recovery_action | string? | Escalation step to resume before normal task work |
+| repair_escalation | object | Persisted escalation state from `state.md` |
 | blockers[] | array | Issues preventing resumption |
 | blockers[].type | enum: dependency, role, resource | Type of blocker |
 | blockers[].description | string | What is blocking progress |
@@ -55,7 +58,7 @@ Resumes interrupted iterations by analyzing `state.md` plus the authoritative ta
 
 ## Side Effects
 
-- Updates `state.md` with repaired execution metadata, resume timestamp, suggested next task, and resume report
+- Updates `state.md` with repaired execution metadata, resume timestamp, escalation summary, suggested next task, and resume report
 - No file writes if status is "blocked"
 
 ## Error Handling

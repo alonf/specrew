@@ -1,20 +1,21 @@
 # Specrew Documentation
 
-This directory contains user-facing documentation for Specrew.
+This directory contains the main user-facing documentation for Specrew.
 
 ## Documentation Structure
 
-- `getting-started.md` - Practical quickstart including clone-based setup and greenfield/brownfield bootstrap
-- `user-guide.md` - Lifecycle guide for planning, execution, review/demo, retro, and drift handling
-- `github-project.md` - Specrew self-development board and sync operating model
+- `getting-started.md` - practical bootstrap and quickstart guidance for greenfield and brownfield repos
+- `user-guide.md` - lifecycle guide for planning, execution, review, retrospective, and drift handling
+- `github-project.md` - Specrew self-development board and project operating model
 
-## Current Status
+## Recommended Reading Order
 
-**Phase**: Iteration 1 closeout (1a complete, 1b in progress)  
-**Status**: Core docs now available for bootstrap and lifecycle usage; deeper reference docs are still planned
+1. Start with `getting-started.md` if you are bootstrapping or adopting Specrew in a repo.
+2. Use `user-guide.md` for day-to-day downstream lifecycle work after bootstrap.
+3. Use `github-project.md` only when working on Specrew's own project-management flow.
 
 ## Planned Additions
 
-- `architecture.md` - Technical architecture and design decisions (planned)
-- `api-reference.md` - Extension surfaces and integration points (planned)
-- `extension-authoring.md` - Building extensions on top of Specrew (planned)
+- `architecture.md` - technical architecture and design decisions
+- `api-reference.md` - extension surfaces and integration points
+- `extension-authoring.md` - building extensions on top of Specrew

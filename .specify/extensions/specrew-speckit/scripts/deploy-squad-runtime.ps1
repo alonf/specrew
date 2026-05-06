@@ -269,6 +269,54 @@ function Set-ManagedBlock {
     }
 }
 
+function Set-ManagedTableRows {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$TargetPath,
+
+        [Parameter(Mandatory = $true)]
+        [string]$TableSectionHeader,
+
+        [Parameter(Mandatory = $true)]
+        [string[]]$Rows,
+
+        [AllowEmptyCollection()]
+        [Parameter(Mandatory = $true)]
+        [System.Collections.ArrayList]$Actions
+    )
+
+    if (-not (Test-Path -LiteralPath $TargetPath)) {
+        return
+    }
+
+    $existingContent = Get-Content -LiteralPath $TargetPath -Raw
+    
+    # Find the markdown table separator line (like |------|------|) after the section header
+    # and insert rows immediately after it
+    $escapedHeader = [regex]::Escape($TableSectionHeader)
+    # Match: section header, followed by anything, then a table header row, then a separator row
+    # Capture group 1: everything up to and including the separator line
+    $tablePattern = "($escapedHeader[^\r\n]*\r?\n(?:.*?\r?\n)*?\|[^\r\n]+\|\r?\n\|[\s\-|]+\|\r?\n)"
+    
+    if ($existingContent -match $tablePattern) {
+        $rowsContent = ($Rows | ForEach-Object { $_ + [Environment]::NewLine }) -join ''
+        $updatedContent = $existingContent -replace $tablePattern, ('${1}' + $rowsContent)
+        
+        if ($updatedContent -ne $existingContent) {
+            Add-DeploymentAction -Actions $Actions -Action $(if ($DryRun) { 'would-update' } else { 'updated' }) -Path $TargetPath
+            if (-not $DryRun) {
+                [System.IO.File]::WriteAllText($TargetPath, $updatedContent, [System.Text.UTF8Encoding]::new($false))
+            }
+        }
+        else {
+            Add-DeploymentAction -Actions $Actions -Action 'preserved' -Path $TargetPath
+        }
+    }
+    else {
+        Add-DeploymentAction -Actions $Actions -Action 'preserved' -Path $TargetPath
+    }
+}
+
 function Get-DirectiveDeployment {
     param(
         [Parameter(Mandatory = $true)]
@@ -323,6 +371,7 @@ $templateRoot = Join-Path $extensionRoot 'squad-templates'
 $copilotSkillsRoot = Join-Path $resolvedProjectPath '.copilot\skills'
 $squadRoot = Join-Path $resolvedProjectPath '.squad'
 $squadAgentsRoot = Join-Path $squadRoot 'agents'
+$coordinatorPromptPath = Join-Path $resolvedProjectPath '.github\agents\squad.agent.md'
 $ceremoniesPath = Join-Path $squadRoot 'ceremonies.md'
 $teamPath = Join-Path $squadRoot 'team.md'
 $actions = [System.Collections.ArrayList]::new()
@@ -337,6 +386,7 @@ if ($DryRun -and -not (Test-Path -LiteralPath $squadRoot)) {
 
 Ensure-Directory -Path $copilotSkillsRoot -Actions $actions
 Ensure-Directory -Path $squadAgentsRoot -Actions $actions
+Ensure-Directory -Path (Join-Path $squadRoot 'casting') -Actions $actions
 
 $skillFiles = @(Get-ChildItem -LiteralPath (Join-Path $templateRoot 'skills') -Filter '*.md' | Where-Object { $_.Name -ne 'README.md' } | Sort-Object Name)
 foreach ($skillFile in $skillFiles) {
@@ -344,6 +394,19 @@ foreach ($skillFile in $skillFiles) {
     $skillDir = Join-Path $copilotSkillsRoot $skillName
     Ensure-Directory -Path $skillDir -Actions $actions
     Set-ManagedFile -TargetPath (Join-Path $skillDir 'SKILL.md') -Content (Get-Content -LiteralPath $skillFile.FullName -Raw) -Actions $actions
+}
+
+$coordinatorGovernancePath = Join-Path $templateRoot 'coordinator\specrew-governance.md'
+if (-not (Test-Path -LiteralPath $coordinatorGovernancePath -PathType Leaf)) {
+    throw "Missing coordinator governance template: $coordinatorGovernancePath"
+}
+
+if (Test-Path -LiteralPath $coordinatorPromptPath -PathType Leaf) {
+    $coordinatorGovernanceContent = Get-Content -LiteralPath $coordinatorGovernancePath -Raw
+    Set-ManagedBlock -TargetPath $coordinatorPromptPath -BlockName 'specrew-governance' -ManagedContent $coordinatorGovernanceContent -Actions $actions
+}
+else {
+    Add-DeploymentAction -Actions $actions -Action 'skipped' -Path $coordinatorPromptPath
 }
 
 $ceremonyContent = (@(
@@ -357,6 +420,25 @@ $ceremonyContent = (@(
 Set-ManagedBlock -TargetPath $ceremoniesPath -BlockName 'ceremonies' -ManagedContent $ceremonyContent -BaseContentIfMissing '# Ceremonies' -Actions $actions
 
 $baselineRoles = @(Get-BaselineRoleDefinitions)
+
+# Add explicit team status metadata to signal Squad readiness
+$teamStatusBlock = @"
+**Team Status**: configured  
+**Baseline Roles**: Spec Steward, Planner, Implementer, Reviewer, Retro Facilitator  
+**Configuration**: Specrew-managed baseline
+"@
+Set-ManagedBlock -TargetPath $teamPath -BlockName 'team-status' -ManagedContent $teamStatusBlock -BaseContentIfMissing '# Squad Team' -Actions $actions
+
+# Update team.md Members table with baseline roles
+$membersTableRows = @()
+foreach ($baselineRole in $baselineRoles) {
+    $membersTableRows += ('| {0} | {1} | `.squad/agents/{2}/charter.md` | baseline |' -f $baselineRole.AgentDirectory, $baselineRole.Name, $baselineRole.AgentDirectory)
+}
+if ($membersTableRows.Count -gt 0) {
+    Set-ManagedTableRows -TargetPath $teamPath -TableSectionHeader '## Members' -Rows $membersTableRows -Actions $actions
+}
+
+# Also maintain the Specrew Baseline Roles section for documentation
 $teamContentLines = @(
     '## Specrew Baseline Roles'
     ''
@@ -367,6 +449,33 @@ foreach ($baselineRole in $baselineRoles) {
     $teamContentLines += ('| {0} | `.squad/agents/{1}/charter.md` | baseline |' -f $baselineRole.Name, $baselineRole.AgentDirectory)
 }
 Set-ManagedBlock -TargetPath $teamPath -BlockName 'baseline-roles' -ManagedContent ($teamContentLines -join [Environment]::NewLine) -BaseContentIfMissing '# Squad Team' -Actions $actions
+
+# Update routing.md with baseline role routing
+$routingPath = Join-Path $squadRoot 'routing.md'
+$routingTableRows = @(
+    '| Specification governance | spec-steward | Spec authoring, requirement authority, drift detection |'
+    '| Planning & traceability | planner | Iteration planning, task breakdown, requirement tracing |'
+    '| Implementation | implementer | Code changes, feature delivery, execution follow-through |'
+    '| Code review | reviewer | PR review, quality checks, acceptance validation |'
+    '| Retrospectives | retro-facilitator | Iteration retrospectives, process improvements |'
+)
+Set-ManagedTableRows -TargetPath $routingPath -TableSectionHeader '## Routing Table' -Rows $routingTableRows -Actions $actions
+
+# Update casting/registry.json with baseline role entries
+$registryPath = Join-Path $squadRoot 'casting\registry.json'
+$registryAgents = [ordered]@{}
+foreach ($baselineRole in $baselineRoles) {
+    $registryAgents[$baselineRole.AgentDirectory] = @{
+        name = $baselineRole.Name
+        role = $baselineRole.Name
+        status = 'baseline'
+        charter = ".squad/agents/$($baselineRole.AgentDirectory)/charter.md"
+    }
+}
+$registryContent = @{
+    agents = $registryAgents
+} | ConvertTo-Json -Depth 10
+Set-ManagedFile -TargetPath $registryPath -Content $registryContent -Actions $actions
 
 foreach ($baselineRole in $baselineRoles) {
     $agentDirectory = Join-Path $squadAgentsRoot $baselineRole.AgentDirectory
@@ -380,6 +489,19 @@ foreach ($baselineRole in $baselineRoles) {
     ) -join ([Environment]::NewLine + [Environment]::NewLine)
 
     Set-ManagedBlock -TargetPath (Join-Path $agentDirectory 'charter.md') -BlockName 'directives' -ManagedContent $directiveContent -BaseContentIfMissing $charterTemplate -Actions $actions
+
+    # Create history.md for each baseline role
+    $historyPath = Join-Path $agentDirectory 'history.md'
+    $historyContent = @"
+# $($baselineRole.Name) History
+
+Project-specific learnings and patterns discovered during work.
+
+## Patterns
+
+<!-- Append entries below. Format: **Pattern:** description. **Context:** when it applies. -->
+"@
+    Write-MissingFile -TargetPath $historyPath -Content $historyContent -Actions $actions
 }
 
 if ($PassThru) {

@@ -147,16 +147,98 @@ if ($startResult.ExitCode -ne 0) {
 
 $promptPath = Join-Path -Path $resolvedProjectPath -ChildPath '.specrew\last-start-prompt.md'
 $contextPath = Join-Path -Path $resolvedProjectPath -ChildPath '.specrew\start-context.json'
+$summaryPath = Join-Path -Path $resolvedProjectPath -ChildPath '.specrew\start-summary.md'
 Assert-Path -Path $promptPath -FailureMessage 'Smoke harness start did not create the handoff prompt.'
 Assert-Path -Path $contextPath -FailureMessage 'Smoke harness start did not create start-context.json.'
+Assert-Path -Path $summaryPath -FailureMessage 'Smoke harness start did not create start-summary.md.'
 Write-Pass 'Specrew start produced handoff artifacts'
 
 $startOutput = $startResult.Output -join [Environment]::NewLine
 $startContext = Get-Content -LiteralPath $contextPath -Raw -Encoding UTF8 | ConvertFrom-Json
+$promptContent = Get-Content -LiteralPath $promptPath -Raw -Encoding UTF8
+
+if ($promptContent -notmatch 'Do not invoke speckit\.implement until the human approves') {
+    Write-Fail 'Smoke harness prompt is missing the explicit implementation-approval gate.'
+    exit 1
+}
+
+if ($promptContent -notmatch 'developer-facing implementation briefing') {
+    Write-Fail 'Smoke harness prompt is missing the final implementation briefing instruction.'
+    exit 1
+}
+
+if ($promptContent -notmatch 'run speckit\.clarify for every newly generated spec before speckit\.plan') {
+    Write-Fail 'Smoke harness prompt is missing the mandatory clarify rule for newly generated specs.'
+    exit 1
+}
+
+if ($promptContent -notmatch 'route bounded, lower-risk, well-scoped work to the Junior role') {
+    Write-Fail 'Smoke harness prompt is missing Junior/Senior routing guidance.'
+    exit 1
+}
+
+if ($promptContent -notmatch 'careful, responsible, knowledgeable, and review-ready') {
+    Write-Fail 'Smoke harness prompt is missing the higher Junior quality bar.'
+    exit 1
+}
+
+if ($promptContent -notmatch 'deep technical judgment across architecture, systems thinking, computer science depth, tradeoff analysis, and long-range software engineering consequences') {
+    Write-Fail 'Smoke harness prompt is missing the deeper Senior technical bar.'
+    exit 1
+}
+
+if ($promptContent -notmatch 'Planning/problem-solving work should prefer Planner or Spec Steward delegated routing') {
+    Write-Fail 'Smoke harness prompt is missing the delegated routing policy for problem-solving-heavy work.'
+    exit 1
+}
+
+if ($promptContent -notmatch 'concrete model ID') {
+    Write-Fail 'Smoke harness prompt is missing the delegated runtime evidence requirement.'
+    exit 1
+}
+
+if ($promptContent -notmatch 'no-gap policy' -or
+    $promptContent -notmatch 'implemented, enforced, observable, and documented') {
+    Write-Fail 'Smoke harness prompt is missing the no-gap / critical-review policy.'
+    exit 1
+}
+
+if ($null -eq $startContext.delivery_guidance -or @($startContext.delivery_guidance.quality_attributes).Count -eq 0) {
+    Write-Fail 'Smoke harness context is missing delivery guidance quality attributes.'
+    exit 1
+}
+
+if ($null -eq $startContext.delivery_guidance.same_specialty_pair_hints) {
+    Write-Fail 'Smoke harness context is missing the Junior/Senior same-specialty pair hints field.'
+    exit 1
+}
+
+if ($null -eq $startContext.delegated_routing_evidence -or
+    $startContext.delegated_routing_evidence.ledger_path -ne '.squad\decisions.md' -or
+    @($startContext.delegated_routing_evidence.required_fields) -notcontains 'model_id') {
+    Write-Fail 'Smoke harness context is missing the delegated runtime evidence contract.'
+    exit 1
+}
+
+$summaryContent = Get-Content -LiteralPath $summaryPath -Raw -Encoding UTF8
+if ($summaryContent -notmatch 'Review/closure use a no-gap policy' -or
+    $summaryContent -notmatch 'Delegated Routing') {
+    Write-Fail 'Smoke harness summary is missing the no-gap or delegated-routing overview.'
+    exit 1
+}
+
+if (-not $startContext.copilot_autopilot) {
+    Write-Fail 'Smoke harness context should record autopilot mode for grounded feature requests.'
+    exit 1
+}
 
 if (-not $LaunchCopilot) {
     if ($startOutput -notmatch 'Manual launch command') {
         Write-Fail 'Smoke harness expected specrew start --no-launch to print an exact manual launch command.'
+        exit 1
+    }
+    if ($startOutput -notmatch 'last-start-prompt\.md' -or $startOutput -notmatch 'start-context\.json') {
+        Write-Fail 'Smoke harness manual command did not reference the saved handoff files.'
         exit 1
     }
 
@@ -164,6 +246,7 @@ if (-not $LaunchCopilot) {
     Write-Info ("Project: {0}" -f $resolvedProjectPath)
     Write-Info ("Prompt:  {0}" -f $promptPath)
     Write-Info ("Context: {0}" -f $contextPath)
+    Write-Info ("Summary: {0}" -f $summaryPath)
     exit 0
 }
 
@@ -178,4 +261,5 @@ else {
 Write-Info ("Project: {0}" -f $resolvedProjectPath)
 Write-Info ("Prompt:  {0}" -f $promptPath)
 Write-Info ("Context: {0}" -f $contextPath)
+Write-Info ("Summary: {0}" -f $summaryPath)
 exit 0

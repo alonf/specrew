@@ -90,6 +90,7 @@ $projectRoot = Split-Path -Parent (Split-Path -Parent (Split-Path -Parent $itera
 $null = New-Item -Path (Join-Path $projectRoot '.specrew') -ItemType Directory -Force
 $null = New-Item -Path (Join-Path $projectRoot '.squad') -ItemType Directory -Force
 $squadConfigPath = Join-Path $projectRoot '.squad\config.json'
+$decisionsPath = Join-Path $projectRoot '.squad\decisions.md'
 
 $planContent = @'
 # Iteration Plan: 001
@@ -352,6 +353,25 @@ if ($resolvedConfig.agentModelOverrides.PSObject.Properties.Name -contains 'Plan
 if ($resolvedConfig.agentModelOverrides.Reviewer -ne 'claude-sonnet-4.5' -or $resolvedConfig.specrewManagedModelRouting.activeEscalation.status -ne 'inactive') {
     Write-Fail 'Resolved sync should restore baseline delegated overrides and mark escalation inactive.'
     exit 1
+}
+
+if (-not (Test-Path -LiteralPath $decisionsPath -PathType Leaf)) {
+    Write-Fail 'Escalation flow should write audit entries into .squad\decisions.md.'
+    exit 1
+}
+
+$decisionsContent = Get-Content -LiteralPath $decisionsPath -Raw -Encoding UTF8
+foreach ($pattern in @(
+        'Repair escalation activated',
+        'Repair escalation resolved',
+        'Repair escalation routing sync',
+        '\*\*Artifact\*\*:\s*tasks\.md',
+        '\*\*Applied Model\*\*:\s*gpt-5\.4'
+    )) {
+    if ($decisionsContent -notmatch $pattern) {
+        Write-Fail "Escalation audit trail is missing expected ledger content matching: $pattern"
+        exit 1
+    }
 }
 
 Write-Pass 'Escalation state persists across resume and de-escalates after success'

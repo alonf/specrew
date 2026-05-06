@@ -105,7 +105,8 @@ function Test-ReviewContainsScaffoldReminder {
 
     foreach ($line in $ReviewLines) {
         $trimmed = $line.Trim()
-        if ($trimmed -eq '- Replace default verdicts with the actual per-task review outcome before closing the review phase.') {
+        if ($trimmed -eq '- Replace default verdicts with the actual per-task review outcome before closing the review phase.' -or
+            $trimmed -eq '- Replace this reminder with either: (a) `No known gaps remain.` or (b) explicit gap entries covering the affected requirement/artifact, whether the gap is fixed now or deferred with approval, and any required spec/plan/tasks updates.') {
             return $true
         }
     }
@@ -525,6 +526,10 @@ function Test-ReviewArtifact {
     if ($taskVerdicts.Count -eq 0) {
         $Errors.Add('review.md must contain a populated Task Verdicts table')
         return
+    }
+
+    if (-not (Test-HeadingPresent -Lines $reviewLines -Heading 'Gap Ledger')) {
+        $Errors.Add('review.md must contain a Gap Ledger section for no-gap closure tracking')
     }
 
     if (Test-ReviewContainsScaffoldReminder -ReviewLines $reviewLines) {

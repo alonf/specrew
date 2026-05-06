@@ -1,143 +1,32 @@
-# Specrew — Spec-Governed AI Crew Operating Model
+# Specrew
 
-Specrew is a spec-governed operating model for AI crews that combines [Spec Kit](https://github.com/microsoft/copilot-specify) as the specification/governance layer with [Squad](https://github.com/microsoft/copilot-squad) as the persistent multi-agent runtime layer.
+Specrew bootstraps and runs a **Squad + Spec Kit** delivery flow with stronger lifecycle governance, delegated-agent routing, and iteration artifact discipline for feature work.
 
-## Status
+## What Specrew does
 
-**Current Phase**: MVP Closeout (Iteration 1a complete, Iteration 1b in progress)  
-**Branch**: `001-specrew-product`  
-**Version**: Pre-MVP Development
+- bootstraps a repository for **Spec Kit**, **Squad**, and **Specrew** governance
+- provides `specrew init`, `specrew start`, and team-management scripts
+- uses `specrew start` as the canonical downstream entrypoint
+- expects Squad to drive `speckit.specify -> speckit.clarify -> speckit.plan -> speckit.tasks -> speckit.implement`
+- keeps **Copilot CLI** as the mandatory host runtime and supports optional delegated agents such as **Claude** and **Codex**
+- records governance and delegated-routing expectations for planning, implementation, review, and retrospective work
 
-## What is Specrew?
+## Recommended flow
 
-Specrew ensures AI agent teams build what was specified by:
+1. Bootstrap a repository with `scripts\specrew-init.ps1`.
+2. Start feature work with `scripts\specrew.ps1 start`.
+3. Let Squad gather missing information, run the Spec Kit lifecycle, and implement from the generated artifacts.
+4. Keep iteration artifacts current under `specs\<feature>\iterations\<NNN>\`.
 
-- Making the **spec** the authoritative source of truth
-- Providing **structured iteration delivery** with planning, execution, review/demo, and retrospective ceremonies
-- Detecting and surfacing **drift** when implementation diverges from specification
-- Enabling **traceability** from requirements to tasks to implementation
-- Supporting **governance** through roles, capacity planning, and retrospectives
+## Key documents
 
-## Architecture
+- `docs\getting-started.md` - bootstrap and quickstart guidance
+- `docs\user-guide.md` - day-to-day lifecycle usage
+- `docs\github-project.md` - Specrew self-development board guidance
+- `tests\README.md` - integration and smoke test entrypoints
 
-Specrew integrates with Spec Kit and Squad using their native extension surfaces:
+## Notes
 
-1. **Spec Kit Extension** (`extensions/specrew-speckit/`) — Governance artifacts, templates, validation scripts, and Squad-native template sources
-2. **Squad Integration** — Skills deployed to `.copilot/skills/specrew-*/`, ceremonies registered in `.squad/ceremonies.md`, directives merged into agent charters, and a coordinator prompt overlay that forces Squad to route formal work through the Spec-Kit + Specrew artifact lifecycle
-
-Specrew v1 uses **Squad-native surfaces** rather than a packaged plugin. The `specrew init` command deploys Squad templates from `extensions/specrew-speckit/squad-templates/` to the appropriate Squad runtime locations.
-
-The repository also includes a governance validator that enforces the iteration lifecycle contract against Markdown artifacts:
-
-```powershell
-pwsh -File .\extensions\specrew-speckit\scripts\validate-governance.ps1 -ProjectPath .
-```
-
-This validator is intended to fail invalid iteration transitions such as entering review without a drift log or marking an iteration complete without a retrospective artifact.
-
-## Repository Structure
-
-```text
-extensions/
-  └─ specrew-speckit/      # Spec Kit extension
-      ├─ hooks/            # Spec Kit lifecycle hooks
-      ├─ templates/        # Governance artifact templates
-      ├─ scripts/          # Validation and scaffolding scripts
-      └─ squad-templates/  # Squad-native template sources
-          ├─ skills/       # Skill templates (deployed to .copilot/skills/specrew-*/)
-          ├─ ceremonies/   # Ceremony templates (appended to .squad/ceremonies.md)
-          └─ directives/   # Directive templates (merged into agent charters)
-specs/                     # Feature specifications and iteration plans
-tests/                     # Test suites
-evaluation/                # Evaluation harness and scorers
-docs/                      # Documentation
-.github/                   # GitHub workflows and templates
-```
-
-## Getting Started
-
-Specrew is currently under active development.
-
-Practical docs for current workflows:
-
-- `docs/getting-started.md` (greenfield + brownfield bootstrap)
-- `docs/user-guide.md` (planning, execution, review/demo, retro, drift handling)
-
-`specrew init` installs a deterministic baseline Squad crew — Spec Steward, Planner, Implementer, Reviewer, and Retro Facilitator. Add any extra domain-specific members afterward using Specrew's team management commands:
-
-```powershell
-# Add a new domain-specific member
-pwsh -File C:\Dev\Specrew\scripts\specrew.ps1 team add security-analyst `
-  --role "Security Analyst" `
-  --charter "Review code for security vulnerabilities, ensure secure coding practices."
-
-# List all team members
-pwsh -File C:\Dev\Specrew\scripts\specrew.ps1 team list
-
-# Update a member's charter
-pwsh -File C:\Dev\Specrew\scripts\specrew.ps1 team update security-analyst `
-  --charter "Updated charter text..."
-
-# Remove a domain-specific member
-pwsh -File C:\Dev\Specrew\scripts\specrew.ps1 team remove security-analyst
-```
-
-Replace `C:\Dev\Specrew` with the actual path where you cloned the Specrew repository.
-
-After bootstrap, the canonical downstream entrypoint is:
-
-```powershell
-pwsh -File C:\Dev\Specrew\scripts\specrew.ps1 start "Build a REST API for user management"
-```
-
-`specrew start` prepares the Squad handoff, launches Copilot CLI when available, and tells Squad to run the full Spec Kit lifecycle with an explicit clarify gate: `specify`, then either `clarify` or a recorded skip rationale, then `plan`, `tasks`, and `implement`. New-feature and new brownfield runs default to `clarify` unless the generated spec is already materially complete for planning. The human developer should mainly answer only unresolved questions. You can pass a short plain-language feature request, or run `specrew start` with no arguments and let Squad inspect current progress, continue in-flight work, or ask what feature/fix to take next. On new brownfield projects, the handoff now includes a repo-discovery snapshot from existing code, docs, manifests, and recent git history so Squad can seed the spec and suggest stack-aware supplemental specialists before broad intake. To reduce Copilot CLI blocking on approval prompts, Specrew launches from the target project directory, defaults to `--allow-all`, and reuses the current terminal by default; use `--prompt-approvals` for interactive approvals or `--new-window` if you explicitly want a detached PowerShell window. Copilot may still ask you to trust the project directory on first launch.
-
-### Optional: Adding Specrew to PATH
-
-For convenience, you can add the Specrew scripts directory to your PATH to use short commands like `specrew team list` instead of typing the full path each time.
-
-**Current Session Only** (temporary, lost when shell closes):
-```powershell
-$env:PATH = "$env:PATH;C:\Dev\Specrew\scripts"
-```
-
-**Persistent** (all future sessions):
-```powershell
-$currentPath = [Environment]::GetEnvironmentVariable("PATH", "User")
-$pathEntries = $currentPath -split ";"
-if ($pathEntries -notcontains "C:\Dev\Specrew\scripts") {
-    [Environment]::SetEnvironmentVariable("PATH", "$currentPath;C:\Dev\Specrew\scripts", "User")
-    Write-Host "Added Specrew scripts to user PATH. Restart your shell to apply." -ForegroundColor Green
-}
-```
-
-After adding to PATH persistently, restart your PowerShell session, then use the short form:
-```powershell
-specrew start
-specrew start "Build a REST API for user management"
-specrew team list
-specrew team add my-specialist --role "Role" --charter "Charter text"
-```
-
-The commands atomically create all required Squad artifacts (team.md entry, charter.md, history.md) while protecting baseline roles.
-
-**GitHub Project Board**: [Specrew Project](https://github.com/users/alonf/projects/10)  
-**Board sync**: `.github/workflows/specrew-project-sync.yml` mirrors iteration artifacts to issues and board status. The workflow is operational and syncs automatically on push to iteration artifacts.
-
-Iteration 1a core MVP work is complete; Iteration 1b closeout is focused on documentation and validation follow-through.
-
-## Development
-
-This project uses:
-
-- **Spec Kit** >= 0.8.4 for specification governance
-- **Squad** >= 0.9.1 for multi-agent orchestration
-- Markdown, YAML, and PowerShell for extension assets
-
-## License
-
-TBD
-
-## Contributing
-
-Contribution guidelines will be established post-MVP.
+- `specrew start` reuses the current terminal by default; use `--new-window` only when you explicitly want a detached shell.
+- Newly generated specs should go through **clarify** before planning unless the work is a true resumed, already-clarified feature with a recorded skip rationale.
+- Delegated lifecycle runs should leave visible runtime evidence in `.squad\decisions.md`, including requested agent, actual agent, concrete model ID, and fallback reason when applicable.
