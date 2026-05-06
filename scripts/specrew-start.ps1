@@ -1975,6 +1975,20 @@ function Write-DelegatedRoutingLedgerEntries {
     ) + (Get-DelegatedRoutingSummaryLines -RoutingPlan $RoutingPlan -SquadModelOverrides $SquadModelOverrides)
 
     Add-DecisionsLedgerEntry -ProjectRoot $ResolvedProjectPath -Title 'Delegated routing plan' -Lines $ledgerLines | Out-Null
+
+    foreach ($roleEntry in $RoutingPlan.roles.GetEnumerator()) {
+        if (-not $roleEntry.Value.delegated -and [string]::IsNullOrWhiteSpace($roleEntry.Value.fallback_reason)) {
+            continue
+        }
+
+        $modelId = if ($SquadModelOverrides.Contains($roleEntry.Key)) { [string]$SquadModelOverrides[$roleEntry.Key] } else { '(platform default)' }
+        $status = if ([string]::IsNullOrWhiteSpace($roleEntry.Value.fallback_reason)) { 'honored' } else { 'fell-back' }
+        $fallbackReason = if ([string]::IsNullOrWhiteSpace($roleEntry.Value.fallback_reason)) { '(none)' } else { $roleEntry.Value.fallback_reason }
+
+        Add-StructuredDecisionsLedgerEntry -ProjectRoot $ResolvedProjectPath -Title ("Routing evidence: {0}" -f $roleEntry.Value.role) -Type 'routing-evidence' -AffectedRequirement 'FR-043' -NextAction 'none' -Rationale ("Delegated lifecycle routing was applied for role '{0}'." -f $roleEntry.Value.role) -DetailLines @(
+            ('- **Routing Evidence**: {0} | requested={1} | actual={2} | model={3} | status={4} | fallback={5}' -f $roleEntry.Value.role, $roleEntry.Value.requested_agent, $roleEntry.Value.effective_agent, $modelId, $status, $fallbackReason)
+        ) | Out-Null
+    }
 }
 
 function Get-StartSummaryContent {

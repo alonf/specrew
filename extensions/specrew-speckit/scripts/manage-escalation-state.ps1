@@ -346,7 +346,8 @@ if (-not $DryRun -and $Mode -ne 'get') {
 
     $lockedOutDisplay = if ($nextState.locked_out_agents.Count -gt 0) { $nextState.locked_out_agents -join ', ' } else { '(none)' }
     $notesDisplay = if (Test-IsNullish $nextState.notes) { '(none)' } else { $nextState.notes }
-    Add-DecisionsLedgerEntry -ProjectRoot $projectRoot -Title $entryTitle -Lines @(
+    $relativeIterationDirectory = [System.IO.Path]::GetRelativePath($projectRoot, $resolvedIterationDirectory) -replace '/', '\'
+    Add-StructuredDecisionsLedgerEntry -ProjectRoot $projectRoot -Title $entryTitle -Type 'escalation' -AffectedRequirement 'FR-027' -AffectedIteration $relativeIterationDirectory -NextAction 'none' -Rationale ("Repair escalation state changed to '{0}' for artifact '{1}'." -f $nextState.status, $(if (Test-IsNullish $nextState.artifact) { '(none)' } else { $nextState.artifact })) -DetailLines @(
         "- **Iteration**: $resolvedIterationDirectory"
         "- **Artifact**: $(if (Test-IsNullish $nextState.artifact) { '(none)' } else { $nextState.artifact })"
         "- **Gate**: $(if (Test-IsNullish $nextState.gate) { '(none)' } else { $nextState.gate })"

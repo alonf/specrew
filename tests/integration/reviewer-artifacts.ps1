@@ -270,6 +270,7 @@ foreach ($check in @(
         @{ Content = $codeMapContent; Pattern = '## Public-API Delta'; Failure = 'Code map is missing Public-API Delta.' },
         @{ Content = $codeMapContent; Pattern = 'getNewValue'; Failure = 'Code map did not report the added public API symbol.' },
         @{ Content = $codeMapContent; Pattern = '## Module Hotspots'; Failure = 'Code map is missing Module Hotspots.' },
+        @{ Content = $codeMapContent; Pattern = '\*\*Test-to-Code Ratio\*\*: 1:2'; Failure = 'Code map did not compute the expected test-to-code ratio.' },
         @{ Content = $dependencyContent; Pattern = '\| npm \| chalk \| none \| \^5\.3\.0 \| added \| unknown \|'; Failure = 'Dependency report did not record the new package row.' },
         @{ Content = $dependencyContent; Pattern = '## New-to-Project'; Failure = 'Dependency report is missing New-to-Project.' },
         @{ Content = $dependencyContent; Pattern = 'status:\s+unscanned'; Failure = 'Dependency report did not record unscanned vulnerability status.' },
@@ -277,6 +278,8 @@ foreach ($check in @(
         @{ Content = $coverageContent; Pattern = '## Tests Run'; Failure = 'Coverage evidence is missing Tests Run.' },
         @{ Content = $coverageContent; Pattern = 'not_executed'; Failure = 'Coverage evidence did not record not_executed.' },
         @{ Content = $coverageContent; Pattern = 'Kind:\s+qualitative'; Failure = 'Coverage evidence did not record qualitative coverage kind.' },
+        @{ Content = $coverageContent; Pattern = 'tests/integration/api\.test\.js'; Failure = 'Coverage evidence did not attribute coverage to the changed test file.' },
+        @{ Content = $coverageContent; Pattern = 'scripts/specrew-start\.ps1'; Failure = 'Coverage evidence misclassified a non-test file as test evidence.' ; Negative = $true },
         @{ Content = $securityContent; Pattern = '## Trust Boundaries Touched'; Failure = 'Security surface is missing trust boundaries.' },
         @{ Content = $securityContent; Pattern = '## Sensitive Data Touchpoints'; Failure = 'Security surface is missing sensitive touchpoints.' },
         @{ Content = $securityContent; Pattern = 'Security Analyst'; Failure = 'Security surface did not record the security-focused role.' },
@@ -291,7 +294,10 @@ foreach ($check in @(
         @{ Content = $indexContent; Pattern = 'SPECREW_REVIEW schema=v1 iter=005 feature=001-sample verdict=accepted tasks=3/3 reqs=3 files=4 new_deps=1 vuln=unscanned cov=not_executed escalations=0 drift=1/1 index=specs\\001-sample\\iterations\\005\\reviewer-index\.md'; Failure = 'Reviewer index digest does not match FR-051.' },
         @{ Content = $output; Pattern = 'SPECREW_REVIEW schema=v1 iter=005 feature=001-sample verdict=accepted tasks=3/3 reqs=3 files=4 new_deps=1 vuln=unscanned cov=not_executed escalations=0 drift=1/1 index=specs\\001-sample\\iterations\\005\\reviewer-index\.md'; Failure = 'Closeout output did not emit the FR-051 digest.' }
     )) {
-    if (-not (Assert-Contains -Content $check.Content -Pattern $check.Pattern -FailureMessage $check.Failure)) {
+    $isNegative = $check.ContainsKey('Negative') -and [bool]$check.Negative
+    $matches = $check.Content -match $check.Pattern
+    if ((-not $isNegative -and -not $matches) -or ($isNegative -and $matches)) {
+        Write-Fail $check.Failure
         exit 1
     }
 }

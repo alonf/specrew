@@ -7,6 +7,12 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
+$sharedGovernancePath = Join-Path $PSScriptRoot 'shared-governance.ps1'
+if (-not (Test-Path -LiteralPath $sharedGovernancePath -PathType Leaf)) {
+    throw "Missing shared governance helper '$sharedGovernancePath'."
+}
+. $sharedGovernancePath
+
 $allowedIterationStatuses = @('planning', 'executing', 'reviewing', 'retro', 'complete', 'abandoned')
 $allowedTaskStatuses = @('planned', 'in-progress', 'done', 'needs-rework', 'deferred', 'blocked')
 $terminalTaskStatuses = @('done', 'needs-rework', 'deferred', 'blocked')
@@ -147,6 +153,86 @@ function Test-HeadingPresent {
     return [bool]($Lines | Where-Object { $_ -match $pattern } | Select-Object -First 1)
 }
 
+function Get-ActiveGapLedgerLines {
+    param([string[]]$ReviewLines)
+
+    $gapLedgerLines = @(Get-MarkdownSectionLines -Lines $ReviewLines -Heading 'Gap Ledger')
+    $activeLines = New-Object System.Collections.Generic.List[string]
+    foreach ($line in $gapLedgerLines) {
+        $trimmed = $line.Trim()
+        if ([string]::IsNullOrWhiteSpace($trimmed) -or $trimmed -eq 'No known gaps remain.' -or $trimmed -eq '---') {
+            continue
+        }
+
+        $null = $activeLines.Add($trimmed)
+    }
+
+    return $activeLines.ToArray()
+}
+
+function Test-NoGapClosurePolicy {
+    param(
+        [string[]]$ReviewLines,
+        [string]$ProjectRoot,
+        [string]$IterationDirectory,
+        [string]$OverallVerdict,
+        [string]$IterationStatus,
+        [System.Collections.Generic.List[string]]$Errors
+    )
+
+    $activeGapLines = @(Get-ActiveGapLedgerLines -ReviewLines $ReviewLines)
+    if ($activeGapLines.Count -eq 0) {
+        return
+    }
+
+    if ($OverallVerdict -ne 'accepted' -and $IterationStatus -notin @('retro', 'complete')) {
+        return
+    }
+
+    $relativeIteration = ([System.IO.Path]::GetRelativePath($ProjectRoot, $IterationDirectory)) -replace '/', '\'
+    $reviewText = $ReviewLines -join "`n"
+    $deferEntries = @(
+        Get-DecisionsLedgerEntries -ProjectRoot $ProjectRoot |
+            Where-Object {
+                $_.Type -eq 'defer' -and
+                $_.AffectedIteration -eq $relativeIteration -and
+                -not (Test-IsNullish $_.ApprovingHuman)
+            }
+    )
+
+    foreach ($gapLine in $activeGapLines) {
+        $normalizedGap = $gapLine.ToLowerInvariant()
+        $isDeferred = $normalizedGap -match '\bdefer(?:red)?\b'
+        $isFixedNow = $normalizedGap -match '\b(?:fixed[- ]now|resolved[- ]now|repaired[- ]now|fixed this iteration|resolved this iteration)\b'
+
+        if (-not $isDeferred -and -not $isFixedNow) {
+            $Errors.Add("review.md Gap Ledger entry must classify the concern as fixed-now or deferred before closure: $gapLine")
+            continue
+        }
+
+        if (-not $isDeferred) {
+            continue
+        }
+
+        if ($reviewText -notmatch '\.squad\\decisions\.md') {
+            $Errors.Add('Deferred gap entries must link review.md back to .squad\decisions.md')
+        }
+
+        if ($deferEntries.Count -eq 0) {
+            $Errors.Add("Deferred gap entries require a canonical defer entry with approving human in .squad\\decisions.md for $relativeIteration")
+            continue
+        }
+
+        $requirementMatch = [regex]::Match($gapLine, '(FR-\d+)')
+        if ($requirementMatch.Success) {
+            $matchingRequirement = @($deferEntries | Where-Object { [string]$_.AffectedRequirement -eq $requirementMatch.Groups[1].Value })
+            if ($matchingRequirement.Count -eq 0) {
+                $Errors.Add("Deferred gap for $($requirementMatch.Groups[1].Value) is missing a matching defer entry in .squad\\decisions.md")
+            }
+        }
+    }
+}
+
 function Get-MarkdownSectionTable {
     param(
         [string[]]$Lines,
@@ -211,6 +297,39 @@ function Get-MarkdownSectionTable {
     }
 
     return $rows.ToArray()
+}
+
+function Get-MarkdownSectionLines {
+    param(
+        [string[]]$Lines,
+        [string]$Heading
+    )
+
+    $headingPattern = '^##\s+' + [regex]::Escape($Heading) + '\b'
+    $startIndex = -1
+
+    for ($index = 0; $index -lt $Lines.Count; $index++) {
+        if ($Lines[$index] -match $headingPattern) {
+            $startIndex = $index
+            break
+        }
+    }
+
+    if ($startIndex -lt 0) {
+        return @()
+    }
+
+    $sectionLines = New-Object System.Collections.Generic.List[string]
+    for ($index = $startIndex + 1; $index -lt $Lines.Count; $index++) {
+        $currentLine = $Lines[$index]
+        if ($currentLine -match '^##\s+') {
+            break
+        }
+
+        $null = $sectionLines.Add($currentLine)
+    }
+
+    return $sectionLines.ToArray()
 }
 
 function Get-TeamRoleMap {
@@ -503,6 +622,9 @@ function Test-StateArtifact {
 function Test-ReviewArtifact {
     param(
         [string]$ReviewPath,
+        [string]$ProjectRoot,
+        [string]$IterationDirectory,
+        [string]$IterationStatus,
         [object[]]$PlanTasks,
         [System.Collections.Generic.List[string]]$Errors,
         [switch]$RequireAcceptedVerdict
@@ -572,6 +694,8 @@ function Test-ReviewArtifact {
     if ($overallVerdict -eq 'accepted' -and $nonPassingVerdictTaskIds.Count -gt 0) {
         $Errors.Add(("review.md cannot record overall verdict 'accepted' while tasks remain non-passing: {0}" -f ($nonPassingVerdictTaskIds -join ', ')))
     }
+
+    Test-NoGapClosurePolicy -ReviewLines $reviewLines -ProjectRoot $ProjectRoot -IterationDirectory $IterationDirectory -OverallVerdict $overallVerdict -IterationStatus $IterationStatus -Errors $Errors
 }
 
 function Test-RetroArtifact {
@@ -1169,7 +1293,7 @@ function Test-IterationGovernance {
             if ($hasNonTerminalTasks) {
                 $errors.Add('Reviewing iterations require all tasks to be in terminal states')
             }
-            Test-ReviewArtifact -ReviewPath $reviewPath -PlanTasks $tasks -Errors $errors
+            Test-ReviewArtifact -ReviewPath $reviewPath -ProjectRoot $ResolvedProjectPath -IterationDirectory $IterationDirectory -IterationStatus $status -PlanTasks $tasks -Errors $errors
         }
         'retro' {
             Test-StateArtifact -IterationDirectory $IterationDirectory -Errors $errors
@@ -1179,7 +1303,7 @@ function Test-IterationGovernance {
             if ($hasNonTerminalTasks) {
                 $errors.Add('Retro iterations require all tasks to be in terminal states')
             }
-            Test-ReviewArtifact -ReviewPath $reviewPath -PlanTasks $tasks -Errors $errors -RequireAcceptedVerdict
+            Test-ReviewArtifact -ReviewPath $reviewPath -ProjectRoot $ResolvedProjectPath -IterationDirectory $IterationDirectory -IterationStatus $status -PlanTasks $tasks -Errors $errors -RequireAcceptedVerdict
         }
         'complete' {
             Test-StateArtifact -IterationDirectory $IterationDirectory -Errors $errors
@@ -1189,7 +1313,7 @@ function Test-IterationGovernance {
             if ($hasNonTerminalTasks) {
                 $errors.Add('Complete iterations require all tasks to be in terminal states')
             }
-            Test-ReviewArtifact -ReviewPath $reviewPath -PlanTasks $tasks -Errors $errors -RequireAcceptedVerdict
+            Test-ReviewArtifact -ReviewPath $reviewPath -ProjectRoot $ResolvedProjectPath -IterationDirectory $IterationDirectory -IterationStatus $status -PlanTasks $tasks -Errors $errors -RequireAcceptedVerdict
             Test-RetroArtifact -RetroPath $retroPath -Errors $errors
         }
         'abandoned' {

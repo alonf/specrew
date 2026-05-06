@@ -11,6 +11,12 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
+$sharedGovernancePath = Join-Path $PSScriptRoot 'shared-governance.ps1'
+if (-not (Test-Path -LiteralPath $sharedGovernancePath -PathType Leaf)) {
+    throw "Missing shared governance helper '$sharedGovernancePath'."
+}
+. $sharedGovernancePath
+
 function Add-ScaffoldAction {
     param(
         [AllowEmptyCollection()]
@@ -163,6 +169,53 @@ function Get-MarkdownSectionLines {
     }
 
     return $sectionLines.ToArray()
+}
+
+function Get-ActiveGapLedgerConcerns {
+    param([string[]]$ReviewLines)
+
+    $gapLedgerLines = @(Get-MarkdownSectionLines -Lines $ReviewLines -Heading 'Gap Ledger')
+    $concerns = New-Object System.Collections.Generic.List[string]
+    foreach ($line in $gapLedgerLines) {
+        $trimmed = $line.Trim()
+        if ([string]::IsNullOrWhiteSpace($trimmed) -or $trimmed -eq 'No known gaps remain.' -or $trimmed -eq '---') {
+            continue
+        }
+
+        if ($trimmed -match '^-+\s*') {
+            $trimmed = ($trimmed -replace '^-+\s*', '').Trim()
+        }
+
+        if (-not [string]::IsNullOrWhiteSpace($trimmed)) {
+            $null = $concerns.Add($trimmed)
+        }
+    }
+
+    return $concerns.ToArray()
+}
+
+function Get-RoutingFallbackCount {
+    param(
+        [string]$ProjectRoot,
+        [string]$IterationRelativePath
+    )
+
+    $entries = @(Get-DecisionsLedgerEntries -ProjectRoot $ProjectRoot)
+    if ($entries.Count -eq 0) {
+        return 0
+    }
+
+    return @(
+        $entries |
+            Where-Object {
+                $_.Type -eq 'routing-evidence' -and
+                $_.RoutingStatus -eq 'fell-back' -and
+                (
+                    [string]::IsNullOrWhiteSpace($IterationRelativePath) -or
+                    [string]$_.AffectedIteration -eq $IterationRelativePath
+                )
+            }
+    ).Count
 }
 
 function Get-IterationLabel {
@@ -464,7 +517,8 @@ function Test-IsTestPath {
     )
 
     $normalized = $Path.Replace('/', '\').ToLowerInvariant()
-    if ($normalized -match '(?:^|\\)(tests?|specs?)\\' -or $normalized -match '(?:^|\\)[^\\]*(?:test|spec)[^\\]*\.[^\\]+$') {
+    $fileName = [System.IO.Path]::GetFileNameWithoutExtension($normalized)
+    if ($normalized -match '(?:^|\\)tests?\\' -or $fileName -match '(?:^|[._-])(test|spec)(?:$|[._-])') {
         return $true
     }
 
@@ -1329,6 +1383,7 @@ function Get-RequirementCoverageRows {
 function Get-ReviewerGapHints {
     param(
         [string[]]$ReviewLines,
+        [string[]]$GapConcerns,
         [string[]]$Hotspots,
         [string[]]$UnknownLicenses,
         [object]$VulnerabilityScan,
@@ -1361,10 +1416,8 @@ function Get-ReviewerGapHints {
         $null = $hints.Add("Unresolved drift remains: $($DriftSummary.Total - $DriftSummary.Resolved)")
     }
 
-    $gapLedgerLines = @(Get-MarkdownSectionLines -Lines $ReviewLines -Heading 'Gap Ledger')
-    $meaningfulGapLedger = @($gapLedgerLines | Where-Object { -not [string]::IsNullOrWhiteSpace($_) -and $_ -notmatch 'No known gaps remain\.' })
-    if ($meaningfulGapLedger.Count -gt 0) {
-        $null = $hints.Add('Gap Ledger contains active concerns; review review.md before sign-off.')
+    foreach ($concern in $GapConcerns) {
+        $null = $hints.Add("Gap concern: $concern")
     }
 
     if ($hints.Count -eq 0) {
@@ -1449,6 +1502,7 @@ $implementationBriefingPath = Get-ImplementationBriefingPath -IterationDirectory
 $implementationBriefingRelative = if ($implementationBriefingPath) { Get-RelativePath -FromDirectory $projectRoot -ToPath $implementationBriefingPath } else { '(unavailable)' }
 $decisionsPath = Join-Path $projectRoot '.squad\decisions.md'
 $decisionsRelativePath = '.squad\decisions.md'
+$iterationRelativePath = ([System.IO.Path]::GetRelativePath($projectRoot, $resolvedIterationDirectory)) -replace '/', '\'
 $securityContext = Get-SecurityTriggerContext -ProjectRoot $projectRoot -PlanLines $planLines
 
 $verdictByTask = @{}
@@ -1482,17 +1536,18 @@ $vulnerabilityScan = Get-VulnerabilityScanResult -ProjectRoot $projectRoot -Revi
 $testExecutionRows = @(Get-TestExecutionRows -ProjectRoot $projectRoot -ReviewerConfig $reviewerConfig)
 $coverageRows = @(Get-RequirementCoverageRows -RequirementRefs $requirementRefs.ToArray() -ChangedFiles $changedFiles -TestPathGlobs $reviewerConfig.test_path_globs -TestExecutionRows $testExecutionRows)
 $escalationCount = Get-EscalationCount -StateLines $stateLines
-$routingFallbackCount = 0
+$routingFallbackCount = Get-RoutingFallbackCount -ProjectRoot $projectRoot -IterationRelativePath $iterationRelativePath
 $sensitiveTouchpoints = @(Get-SensitiveTouchpoints -ProjectRoot $projectRoot -ChangedFiles $changedFiles -Patterns $reviewerConfig.sensitive_data_patterns)
 $diagramEvidence = Get-DiagramEvidence -ProjectRoot $projectRoot -ChangedFiles $changedFiles -ReviewerConfig $reviewerConfig
+$gapConcerns = @(Get-ActiveGapLedgerConcerns -ReviewLines $reviewLines)
 
 $codeMapRows = @(
     '| Path | Lines Added | Lines Removed | Owning Task ID(s) | Owning Role |'
     '| ---- | ----------- | ------------- | ----------------- | ----------- |'
 )
 $hotspots = New-Object System.Collections.Generic.List[string]
-$testFileCount = 0
-$codeFileCount = 0
+$testFileCount = @($changedFiles | Where-Object { Test-IsTestPath -Path ([string]$_.Path) -TestPathGlobs $reviewerConfig.test_path_globs } | Select-Object -ExpandProperty Path -Unique).Count
+$codeFileCount = @($changedCodeFiles | Select-Object -ExpandProperty Path -Unique).Count
 foreach ($file in $changedFiles) {
     $ownership = Get-OwningTaskInfo -Path ([string]$file.Path) -PlanTasks $planTasks -TestPathGlobs $reviewerConfig.test_path_globs
     $codeMapRows += ('| {0} | {1} | {2} | {3} | {4} |' -f $file.Path, $file.Added, $file.Removed, $ownership.TaskIds, $ownership.Role)
@@ -1502,13 +1557,6 @@ foreach ($file in $changedFiles) {
     if ($file.Removed -match '^\d+$') { $deltaTotal += [int]$file.Removed }
     if ($deltaTotal -ge [int]$reviewerConfig.hotspot_thresholds.file_changed_lines) {
         $null = $hotspots.Add(('{0} ({1} changed lines)' -f $file.Path, $deltaTotal))
-    }
-
-    if (Test-IsTestPath -Path ([string]$file.Path) -TestPathGlobs $reviewerConfig.test_path_globs) {
-        $testFileCount++
-    }
-    elseif (-not $file.IsManifest) {
-        $codeFileCount++
     }
 }
 if ($changedFiles.Count -eq 0) {
@@ -1794,7 +1842,7 @@ $summaryObject = [pscustomobject]@{
 
 $summaryLines = Format-ReviewerSummaryLines -Summary $summaryObject
 $digestLine = ('SPECREW_REVIEW schema=v1 iter={0} feature={1} verdict={2} tasks={3}/{4} reqs={5} files={6} new_deps={7} vuln={8} cov={9} escalations={10} drift={11}/{12} index={13}' -f $iterationLabel, $featureId, $overallVerdict, $passCount, $taskTotal, $reviewTasks.Count, $changedFiles.Count, $dependencyAnalysis.NewToProject.Count, $vulnerabilityScan.Count, $coverageSignal, $escalationCount, $driftSummary.Total, $driftSummary.Resolved, $indexRelativePath)
-$triageHints = Get-ReviewerGapHints -ReviewLines $reviewLines -Hotspots $hotspots.ToArray() -UnknownLicenses $dependencyAnalysis.UnknownLicenses -VulnerabilityScan $vulnerabilityScan -CoverageSignal $coverageSignal -Escalations $escalationCount -RoutingFallbacks $routingFallbackCount -DriftSummary $driftSummary
+$triageHints = Get-ReviewerGapHints -ReviewLines $reviewLines -GapConcerns $gapConcerns -Hotspots $hotspots.ToArray() -UnknownLicenses $dependencyAnalysis.UnknownLicenses -VulnerabilityScan $vulnerabilityScan -CoverageSignal $coverageSignal -Escalations $escalationCount -RoutingFallbacks $routingFallbackCount -DriftSummary $driftSummary
 
 $reviewerIndexContent = @"
 # Reviewer Index: Iteration $iterationLabel
