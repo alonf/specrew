@@ -37,6 +37,12 @@ specrew start
 
 # Optional shorthand: start a new feature from a plain-language request
 specrew start "Build a REST API for user management"
+
+# Optional: open Copilot in a detached terminal window
+specrew start --new-window
+
+# Optional: keep interactive approval prompts instead of non-blocking approvals
+specrew start --prompt-approvals
 ```
 
 This should:

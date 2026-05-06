@@ -25,6 +25,12 @@ Represents the bootstrap-generated state tying both extensions together.
 
 **Relationships**: References Downstream Constitution, Iteration Config, Role Assignments.
 
+**Validation**:
+- YAML MUST contain the listed top-level scalar fields plus a `governance` mapping.
+- `bootstrap_mode` MUST be either `greenfield` or `brownfield`.
+- `bootstrap_date` MUST be an ISO date recorded at bootstrap time.
+- `governance.*_path` values MUST be relative project paths that point to tracked downstream governance files under `.specrew/`.
+
 ---
 
 ### Downstream Constitution
@@ -245,6 +251,34 @@ Review/demo verdicts for an iteration.
 | gap_ledger | markdown section | Yes | Canonical `## Gap Ledger` section for unresolved or deferred alignment gaps |
 
 **Relationships**: References Iteration Plan tasks and spec requirements (FR-009).
+
+---
+
+### Decisions Ledger
+
+Canonical shared ledger for team-binding governance and lifecycle decisions.
+
+**Location**: `.squad/decisions.md`
+
+| Field | Type | Required | Description |
+| ----- | ---- | -------- | ----------- |
+| schema | string | Yes | Ledger schema marker, currently `v1` |
+| entries[] | array | Yes | Ordered append-only decision entries |
+| entries[].decision_id | string | Yes | Unique decision identifier |
+| entries[].type | enum: decision, defer, escalation, routing-evidence, clarify-skip, review-gap | Yes | Decision/event category |
+| entries[].affected_requirement | string? | No | FR/TG/user-story reference when applicable |
+| entries[].affected_iteration | string? | No | Iteration or feature reference when applicable |
+| entries[].rationale | markdown section | Yes | Why the decision or event was recorded |
+| entries[].approving_human | string? | No | Human approver when explicit approval is required |
+| entries[].recorded_at | ISO datetime | Yes | When the entry was recorded |
+| entries[].next_action | string? | No | Required follow-up action or explicit `none` |
+
+**Append Policy**:
+- `.squad/decisions.md` is the canonical shared ledger and MUST remain append-only in normal operation.
+- Specrew-owned scripts MUST write runtime-routing evidence, escalation changes, and approved defers directly to this ledger when those events occur.
+- Agent-authored team decisions MAY stage through `.squad/decisions/inbox/`, but only merged entries in `.squad/decisions.md` are canonical shared truth.
+
+**Relationships**: Referenced by FR-027, FR-043, FR-044, FR-045, FR-055, and FR-056 as the shared governance ledger.
 
 ---
 
