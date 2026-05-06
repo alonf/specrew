@@ -434,9 +434,9 @@ After the feature spec and clarify pass are grounded, a user wants Specrew to de
   - Iteration 6: FR-048, FR-053, FR-054
   - Iteration 7: FR-043, FR-044, FR-045
   - Iteration 8: FR-038, FR-039, FR-040, FR-041
-  - Iteration 9: FR-042
-  - Iteration 10: FR-055
-  - Iteration 11: FR-056
+  - Iteration 10: FR-042
+  - Iteration 11: FR-055
+  - Iteration 12: FR-056
 - **TG-004**: Any known spec/implementation conflict MUST include an explicit reconciliation path. None identified at this time.
 
 ### Non-Goals

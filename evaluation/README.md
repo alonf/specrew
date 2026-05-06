@@ -10,8 +10,8 @@ This directory contains the evaluation harness and scorers for assessing Specrew
 
 ## Current Status
 
-**Phase**: Iteration 2  
-**Status**: Process-quality scorer implemented for artifact and phase adherence, with Markdown report output now available. Outcome scoring and the full end-to-end harness remain deferred.
+**Phase**: Iteration 10  
+**Status**: Deterministic governance/integration checks remain the primary PR gate, a contract lane now validates prompts/review replay/structured lifecycle traces without live agents, and a scheduled confidence lane wraps the Copilot/Squad smoke harness with persisted JSON traces. Outcome scoring and the full end-to-end harness remain deferred.
 
 ## Available Commands
 

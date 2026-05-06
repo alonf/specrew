@@ -61,8 +61,8 @@ jobs:
         shell: pwsh
         run: ./extensions/specrew-speckit/scripts/validate-governance.ps1 -ProjectPath .
 
-  test:
-    name: Test
+  deterministic-gate:
+    name: Deterministic gate
     runs-on: ubuntu-latest
     needs: lint
     steps:
@@ -122,3 +122,29 @@ jobs:
       - name: Integration - process quality scorer
         shell: pwsh
         run: ./tests/integration/process-quality-scorer.ps1
+
+  contract-lane:
+    name: Contract lane
+    runs-on: ubuntu-latest
+    needs: deterministic-gate
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Setup uv
+        uses: astral-sh/setup-uv@v5
+
+      - name: Install specify CLI
+        run: uv tool install --force specify-cli --from "git+https://github.com/github/spec-kit.git@v${SPEC_KIT_VERSION}"
+
+      - name: Install squad CLI
+        run: npm install -g "@bradygaster/squad-cli@${SQUAD_VERSION}"
+
+      - name: Validation contract lane
+        shell: pwsh
+        run: ./tests/integration/validation-contract-lane.ps1

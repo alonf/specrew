@@ -576,9 +576,9 @@ evaluation/harness.ps1
 | Critical reviewer gap ledger + spec-repair reconciliation | FR-045 | 7 |
 | Concurrency-aware sizing + paired specialist proposals | FR-038, FR-039 | 8 |
 | Parallel ownership boundaries + escalation rules | FR-040, FR-041 | 8 |
-| Multi-lane validation strategy (deterministic gate + artifact/contract lane + live smoke confidence lane) | FR-042 | 9 |
-| Downstream repo hygiene contract (`.gitignore`, `docs/repo-hygiene.md`, local agent-history policy) | FR-055 | 10 |
-| User-approved commit offers at iteration boundaries | FR-056 | 11 |
+| Multi-lane validation strategy (deterministic gate + artifact/contract lane + live smoke confidence lane) | FR-042 | 10 |
+| Downstream repo hygiene contract (`.gitignore`, `docs/repo-hygiene.md`, local agent-history policy) | FR-055 | 11 |
+| User-approved commit offers at iteration boundaries | FR-056 | 12 |
 
 ## Complexity Tracking
 

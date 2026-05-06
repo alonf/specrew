@@ -498,7 +498,9 @@ $null = New-Item -Path $brownfieldRoot -ItemType Directory -Force
 [System.IO.File]::WriteAllText((Join-Path -Path $projectRoot -ChildPath 'README.md'), "# Clipboard Sync`n`nA React dashboard for clipboard sync, analytics, and export workflows.", [System.Text.UTF8Encoding]::new($false))
 [System.IO.File]::WriteAllText((Join-Path -Path $projectRoot -ChildPath 'package.json'), "{`n  `"name`": `"clipboard-sync`",`n  `"dependencies`": {`n    `"react`": `"^18.2.0`",`n    `"typescript`": `"^5.5.0`",`n    `"express`": `"^4.19.0`",`n    `"pg`": `"^8.11.0`"`n  }`n}", [System.Text.UTF8Encoding]::new($false))
 [System.IO.File]::WriteAllText((Join-Path -Path $brownfieldRoot -ChildPath 'app.tsx'), 'export const App = () => null;', [System.Text.UTF8Encoding]::new($false))
-Remove-Item -LiteralPath $featureJsonPath -Force
+if (Test-Path -LiteralPath $featureJsonPath -PathType Leaf) {
+    Remove-Item -LiteralPath $featureJsonPath -Force
+}
 
 $gitAddOutput = @(& git -C $projectRoot add README.md package.json src 2>&1)
 if ($LASTEXITCODE -ne 0) {

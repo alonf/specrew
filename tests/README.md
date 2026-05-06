@@ -26,6 +26,9 @@ pwsh -NoProfile -Command "if (Get-Command Invoke-ScriptAnalyzer -ErrorAction Sil
 ```powershell
 pwsh -NoProfile -File tests/integration/bootstrap-to-iteration.ps1
 pwsh -NoProfile -File tests/integration/start-command.ps1
+pwsh -NoProfile -File tests/integration/review-command.ps1
+pwsh -NoProfile -File tests/integration/lifecycle-trace-contract.ps1
+pwsh -NoProfile -File tests/integration/validation-contract-lane.ps1
 pwsh -NoProfile -File tests/integration/bootstrap-asset-blocker-recovery.ps1
 pwsh -NoProfile -File tests/integration/brownfield-conflict-handling.ps1
 pwsh -NoProfile -File tests/integration/validate-versions-cli-behavior.ps1
@@ -40,8 +43,8 @@ pwsh -NoProfile -File tests/integration/process-quality-scorer.ps1
 ### CI workflow parity
 
 ```powershell
+# Deterministic gate
 pwsh -NoProfile -File tests/integration/bootstrap-to-iteration.ps1
-pwsh -NoProfile -File tests/integration/start-command.ps1
 pwsh -NoProfile -File tests/integration/bootstrap-asset-blocker-recovery.ps1
 pwsh -NoProfile -File tests/integration/brownfield-conflict-handling.ps1
 pwsh -NoProfile -File tests/integration/validate-versions-cli-behavior.ps1
@@ -51,9 +54,12 @@ pwsh -NoProfile -File tests/integration/planning-effort-model.ps1
 pwsh -NoProfile -File tests/integration/planning-overcommit.ps1
 pwsh -NoProfile -File tests/integration/process-quality-report.ps1
 pwsh -NoProfile -File tests/integration/process-quality-scorer.ps1
+
+# Contract lane
+pwsh -NoProfile -File tests/integration/validation-contract-lane.ps1
 ```
 
-GitHub Actions runs `.github/workflows/specrew-ci.yml`, which performs markdown lint, PowerShell lint, governance validation, and the integration scripts.
+GitHub Actions runs `.github/workflows/specrew-ci.yml`, which performs markdown lint, PowerShell lint, governance validation, the deterministic gate, and the contract lane.
 
 ### Manual Copilot/Squad smoke harness
 
@@ -63,6 +69,8 @@ Use this when you want a real mission-completion check beyond CI-safe integratio
 pwsh -NoProfile -File tests/manual/copilot-squad-smoke.ps1
 pwsh -NoProfile -File tests/manual/copilot-squad-smoke.ps1 -LaunchCopilot
 pwsh -NoProfile -File tests/manual/copilot-squad-smoke.ps1 -LaunchCopilot -NewWindow
+pwsh -NoProfile -File tests/manual/copilot-squad-confidence-lane.ps1
+pwsh -NoProfile -File tests/manual/copilot-squad-confidence-lane.ps1 -LaunchCopilot
 ```
 
 What it does:
@@ -75,6 +83,17 @@ What it does:
 - when `-LaunchCopilot` is used, the harness defaults to **same-window** so an operator can monitor the live session; use `-NewWindow` only when you intentionally want detached observation
 
 This harness is intentionally **not** part of CI because the final Copilot/Squad execution step is environment-dependent and may require trust prompts or live operator observation.
+
+### Confidence lane traces
+
+`tests/manual/copilot-squad-confidence-lane.ps1` wraps the smoke harness and persists a structured JSON trace with:
+
+- lane name and execution mode
+- replay input paths (`last-start-prompt.md`, `start-context.json`, `start-summary.md`)
+- captured output lines
+- policy evidence copied from `start-context.json`
+
+The scheduled confidence workflow uploads these traces as build artifacts so live/smoke failures can be replayed later as deterministic fixtures.
 
 ## Exit behavior
 
