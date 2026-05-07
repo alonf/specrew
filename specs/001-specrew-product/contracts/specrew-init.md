@@ -2,7 +2,7 @@
 
 **Date**: 2026-04-17
 **Spec**: [spec.md](../spec.md)
-**Requirements**: FR-002, FR-011, FR-013, FR-020
+**Requirements**: FR-002, FR-011, FR-013, FR-020, FR-022
 
 **Architectural position**: Standalone script (`scripts/specrew-init.ps1`) at monorepo root. NOT a Spec Kit extension command. Must work before `.specify/` or `.squad/` exist.
 
@@ -50,8 +50,8 @@ Options:
   --force           Skip confirmation prompts (still respects collision safety)
   --speckit-version Minimum Spec Kit version (default: 0.8.4)
   --squad-version   Minimum Squad version (default: 0.9.1)
-  --agents          Agent selection: copilot | comma-separated list | all (default: copilot)
-  --no-agents       Disable all agents
+  --agents          Agent selection: copilot | claude | codex | comma-separated list | all (default: copilot)
+  --no-agents       Disable optional delegated agents (Copilot host remains enabled)
   --help            Show usage
 ```
 
@@ -147,30 +147,28 @@ No backup directory (`.specrew-backup/`) or transaction log is needed. The `--dr
 
 ---
 
-## Agent Detection & Consent (FR-022)
+## Agent Detection & Opt-In (FR-022)
 
 ### Detection Probes (all run in order, non-fatal on failure)
 
 - **Copilot runtime**: `copilot --version` when the standalone Copilot CLI is installed, plus current-session runtime markers when `specrew init` is invoked from inside Copilot CLI (`COPILOT_CLI`, `COPILOT_AGENT_SESSION_ID`, `COPILOT_CLI_BINARY_VERSION`).
 - **Copilot auth/subscription context**: `gh api /user`
-- **Agent HQ delegated-agent availability**: parse the documented `copilot help config` model metadata section to infer whether Claude-family or Codex-family delegated agents are exposed through the current Copilot client surface. If that metadata section is unavailable, delegated-agent detection degrades to `unavailable` without failing bootstrap. Billing/cost context is not collected — consent is the only gate Specrew applies.
+- **Agent HQ delegated-agent availability**: parse the documented `copilot help config` model metadata section to infer whether Claude-family or Codex-family delegated agents are exposed through the current Copilot client surface. If that metadata section is unavailable, delegated-agent detection degrades to `unavailable` without failing bootstrap. Billing/cost context is not collected — explicit opt-in is the only gate Specrew applies.
 
-### Interactive Prompt
+### Bootstrap Selection Model
 
-For each detected agent, display:
+- Copilot is the mandatory host runtime and remains enabled whenever Copilot CLI is available.
+- Optional delegated agents such as Claude and Codex remain disabled unless the user explicitly opts in with `--agents`.
+- `specrew init` does not ask an interactive delegated-agent bootstrap question.
 
-- Agent name
-- Access path (Copilot default | Copilot Agent HQ delegate)
-- Ask: "Enable <agent> for Specrew-managed delegation? (y/N)"
+Cost/billing context is intentionally not shown. Any billing implications of enabling a delegated agent are between the user and GitHub; Specrew's responsibility is limited to preserving the explicit opt-in state.
 
-Cost/billing context is intentionally not shown. Any billing implications of enabling a delegated agent are between the user and GitHub; Specrew's responsibility is limited to obtaining explicit consent.
-
-### Non-Interactive Flags
+### Flag-Driven Opt-In
 
 - `--agents=copilot` (default): enable Copilot only
-- `--agents=copilot,claude` or `--agents=copilot,codex`: explicit opt-in list
+- `--agents=claude`, `--agents=codex`, or `--agents=claude,codex`: explicitly enable optional delegated agents while keeping Copilot enabled
 - `--agents=all`: enable all detected agents
-- `--no-agents`: disable all (Specrew operates spec-only, no crew execution)
+- `--no-agents`: disable optional delegated agents only; Copilot stays enabled as the host runtime
 
 ### Persisted Output (iteration-config.yml)
 

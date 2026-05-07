@@ -20,7 +20,8 @@ $reviewerScript = Join-Path -Path $repoRoot -ChildPath 'extensions\specrew-speck
 $scratchRoot = Join-Path -Path $repoRoot -ChildPath '.scratch\reviewer-closeout-governance'
 $projectRoot = Join-Path -Path $scratchRoot -ChildPath 'project'
 $specRoot = Join-Path -Path $projectRoot -ChildPath 'specs\001-reviewer-closeout'
-$iterationDirectory = Join-Path -Path $specRoot -ChildPath 'iterations\008'
+$iterationDirectory = Join-Path -Path $specRoot -ChildPath 'iterations\009'
+$legacyIterationDirectory = Join-Path -Path $specRoot -ChildPath 'iterations\005'
 $specPath = Join-Path -Path $specRoot -ChildPath 'spec.md'
 $teamPath = Join-Path -Path $projectRoot -ChildPath '.squad\team.md'
 $configPath = Join-Path -Path $projectRoot -ChildPath '.specrew\iteration-config.yml'
@@ -30,6 +31,7 @@ if (Test-Path -LiteralPath $scratchRoot) {
 }
 
 $null = New-Item -Path $iterationDirectory -ItemType Directory -Force
+$null = New-Item -Path $legacyIterationDirectory -ItemType Directory -Force
 $null = New-Item -Path (Join-Path -Path $projectRoot -ChildPath '.squad') -ItemType Directory -Force
 $null = New-Item -Path (Join-Path -Path $projectRoot -ChildPath '.specrew') -ItemType Directory -Force
 $null = New-Item -Path (Join-Path -Path $projectRoot -ChildPath 'src') -ItemType Directory -Force
@@ -58,6 +60,7 @@ overcommit_threshold: 1.0
 calibration_enabled: true
 defer_strategy: "manual"
 reviewer:
+  closeout_packet_required_since_iteration: "009"
   test_path_globs:
     - "**/tests/**"
     - "**/*test*.*"
@@ -146,7 +149,7 @@ console.log(loadMessage(), loadAdminMessage());
 '@, [System.Text.UTF8Encoding]::new($false))
 
 [System.IO.File]::WriteAllText((Join-Path -Path $iterationDirectory -ChildPath 'plan.md'), @'
-# Iteration Plan: 008
+# Iteration Plan: 009
 
 **Schema**: v1
 **Spec**: [../../spec.md](../../spec.md)
@@ -159,7 +162,7 @@ console.log(loadMessage(), loadAdminMessage());
 
 | Task | Title | Requirement | Story | Effort | Owner | Status | Agent | Actual | Verdict |
 | ---- | ----- | ----------- | ----- | ------ | ----- | ------ | ----- | ------ | ------- |
-| T-801 | Generate reviewer closeout | FR-046, FR-049, FR-052, FR-053 | US-2 | 4 | Reviewer | done | copilot-agent | 4 | pass |
+| T-901 | Generate reviewer closeout | FR-046, FR-049, FR-052, FR-053 | US-2 | 4 | Reviewer | done | copilot-agent | 4 | pass |
 
 ## Effort Model
 
@@ -185,10 +188,10 @@ console.log(loadMessage(), loadAdminMessage());
 '@, [System.Text.UTF8Encoding]::new($false))
 
 [System.IO.File]::WriteAllText((Join-Path -Path $iterationDirectory -ChildPath 'state.md'), @'
-# Iteration State: 008
+# Iteration State: 009
 
 **Schema**: v1
-**Last Completed Task**: T-801
+**Last Completed Task**: T-901
 **Tasks Remaining**: (none)
 **In Progress**: (none)
 **Baseline Ref**: iteration-baseline
@@ -200,7 +203,7 @@ console.log(loadMessage(), loadAdminMessage());
 '@, [System.Text.UTF8Encoding]::new($false))
 
 [System.IO.File]::WriteAllText((Join-Path -Path $iterationDirectory -ChildPath 'drift-log.md'), @'
-# Drift Log: Iteration 008
+# Drift Log: Iteration 009
 
 **Schema**: v1
 
@@ -224,7 +227,7 @@ console.log(loadMessage(), loadAdminMessage());
 '@, [System.Text.UTF8Encoding]::new($false))
 
 [System.IO.File]::WriteAllText((Join-Path -Path $iterationDirectory -ChildPath 'review.md'), @'
-# Review: Iteration 008
+# Review: Iteration 009
 
 **Schema**: v1
 **Reviewed**: 2026-05-06
@@ -234,7 +237,7 @@ console.log(loadMessage(), loadAdminMessage());
 
 | Task | Requirement | Verdict | Notes |
 | ---- | ----------- | ------- | ----- |
-| T-801 | FR-046, FR-049, FR-052, FR-053 | pass | Reviewer closeout was delivered for the code-touching slice. |
+| T-901 | FR-046, FR-049, FR-052, FR-053 | pass | Reviewer closeout was delivered for the code-touching slice. |
 
 ## Gap Ledger
 
@@ -242,7 +245,7 @@ No known gaps remain.
 '@, [System.Text.UTF8Encoding]::new($false))
 
 [System.IO.File]::WriteAllText((Join-Path -Path $iterationDirectory -ChildPath 'retro.md'), @'
-# Retrospective: Iteration 008
+# Retrospective: Iteration 009
 
 **Schema**: v1
 **Date**: 2026-05-06
@@ -251,7 +254,7 @@ No known gaps remain.
 
 | Task | Estimated | Actual | Delta |
 | ---- | --------- | ------ | ----- |
-| T-801 | 4 | 4 | 0 |
+| T-901 | 4 | 4 | 0 |
 
 ## Drift Summary
 
@@ -271,6 +274,134 @@ No known gaps remain.
 ## Improvement Actions
 
 1. Keep reviewer closeout artifacts mandatory for code-touching iterations.
+'@, [System.Text.UTF8Encoding]::new($false))
+
+[System.IO.File]::WriteAllText((Join-Path -Path $legacyIterationDirectory -ChildPath 'plan.md'), @'
+# Iteration Plan: 005
+
+**Schema**: v1
+**Spec**: [../../spec.md](../../spec.md)
+**Status**: retro
+**Capacity**: 2/20 story_points
+**Started**: 2026-05-05
+**Completed**:
+
+## Tasks
+
+| Task | Title | Requirement | Story | Effort | Owner | Status | Agent | Actual | Verdict |
+| ---- | ----- | ----------- | ----- | ------ | ----- | ------ | ----- | ------ | ------- |
+| T-501 | Historical reviewer closeout slice | FR-046, FR-049 | US-2 | 2 | Reviewer | done | copilot-agent | 2 | pass |
+
+## Effort Model
+
+| Setting | Value | Notes |
+| ------- | ----- | ----- |
+| Effort Unit | story_points | Unit used in task effort, capacity, and retro variance. |
+| Capacity per Iteration | 20 | Maximum planned effort before overcommit guidance applies. |
+| Iteration Bounding | scope | Keep the legacy fixture scope-bounded. |
+| Time Limit (hours) | n/a | Not used for this fixture. |
+| Overcommit Threshold | 1.0 | No overcommit expected. |
+| Defer Strategy | manual | Legacy fixture does not auto-defer work. |
+| Calibration Enabled | true | Included for contract completeness. |
+
+## Phase Baseline
+
+| Phase | Estimated Effort | Notes |
+| ----- | ---------------- | ----- |
+| Planning | 1 | Historical reviewer closeout planning |
+| Implementation | 1 | Historical reviewer closeout implementation |
+| Review | 0 | No additional review effort in the legacy fixture |
+| Rework | 0 | No expected rework |
+'@, [System.Text.UTF8Encoding]::new($false))
+
+[System.IO.File]::WriteAllText((Join-Path -Path $legacyIterationDirectory -ChildPath 'state.md'), @'
+# Iteration State: 005
+
+**Schema**: v1
+**Last Completed Task**: T-501
+**Tasks Remaining**: (none)
+**In Progress**: (none)
+**Baseline Ref**: legacy-pre-reviewer-baseline
+**Updated**: 2026-05-05T18:00:00Z
+
+## Execution Summary
+
+- Historical reviewer closeout slice completed before closeout packet enforcement existed.
+'@, [System.Text.UTF8Encoding]::new($false))
+
+[System.IO.File]::WriteAllText((Join-Path -Path $legacyIterationDirectory -ChildPath 'drift-log.md'), @'
+# Drift Log: Iteration 005
+
+**Schema**: v1
+
+## Summary
+
+**Total drift events**: 0
+**Resolution rate**: 0% (0/0 resolved)
+**Specification drift**: None detected
+**Implementation drift**: None detected
+
+## Drift Events
+
+- none
+
+## Resolution Breakdown
+
+- Resolved via spec update: 0
+- Resolved via revert: 0
+- Deferred: 0
+- Escalated to human decision: 0
+'@, [System.Text.UTF8Encoding]::new($false))
+
+[System.IO.File]::WriteAllText((Join-Path -Path $legacyIterationDirectory -ChildPath 'review.md'), @'
+# Review: Iteration 005
+
+**Schema**: v1
+**Reviewed**: 2026-05-05
+**Overall Verdict**: accepted
+
+## Task Verdicts
+
+| Task | Requirement | Verdict | Notes |
+| ---- | ----------- | ------- | ----- |
+| T-501 | FR-046, FR-049 | pass | Historical reviewer closeout was accepted before the reviewer packet contract became mandatory. |
+
+## Gap Ledger
+
+No known gaps remain.
+'@, [System.Text.UTF8Encoding]::new($false))
+
+[System.IO.File]::WriteAllText((Join-Path -Path $legacyIterationDirectory -ChildPath 'retro.md'), @'
+# Retrospective: Iteration 005
+
+**Schema**: v1
+**Date**: 2026-05-05
+
+## Estimation Accuracy
+
+| Task | Estimated | Actual | Delta |
+| ---- | --------- | ------ | ----- |
+| T-501 | 2 | 2 | 0 |
+
+## Drift Summary
+
+- Total drift events: 0
+- Resolved via spec update: 0
+- Resolved via revert: 0
+- Deferred: 0
+- Escalated to human decision: 0
+
+## What Went Well
+
+- Historical reviewer closeout stayed lightweight and sufficient for its original contract.
+
+## What Didn't Go Well
+
+- None material.
+
+## Improvement Actions
+
+1. Keep newer reviewer closeout enforcement scoped to post-cutoff iterations.
 '@, [System.Text.UTF8Encoding]::new($false))
 
 $missingPacketOutput = @(& pwsh -NoProfile -ExecutionPolicy Bypass -File $validatorScript -ProjectPath $projectRoot -IterationPath $iterationDirectory 2>&1)
@@ -308,4 +439,15 @@ if ($LASTEXITCODE -ne 0) {
 }
 
 Write-Pass 'Validator accepts retro iteration after scaffold-reviewer-artifacts generates the closeout packet'
+
+$legacyExplicitOutput = @(& pwsh -NoProfile -ExecutionPolicy Bypass -File $validatorScript -ProjectPath $projectRoot -IterationPath $legacyIterationDirectory 2>&1)
+if ($LASTEXITCODE -ne 0) {
+    Write-Fail 'Validator should accept an explicitly targeted legacy iteration when reviewer closeout enforcement is configured to start later.'
+    foreach ($line in $legacyExplicitOutput) {
+        Write-Host $line
+    }
+    exit 1
+}
+
+Write-Pass 'Validator accepts explicitly targeted legacy iterations before the configured reviewer-closeout cutoff'
 exit 0

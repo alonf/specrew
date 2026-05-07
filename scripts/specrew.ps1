@@ -66,6 +66,23 @@ For detailed command help:
 '@ | Write-Host
 }
 
+function Test-ArgumentPresent {
+    param(
+        [string[]]$ArgumentList,
+        [string[]]$OptionNames
+    )
+
+    foreach ($argument in $ArgumentList) {
+        foreach ($optionName in $OptionNames) {
+            if ($argument -eq $optionName -or $argument.StartsWith(('{0}=' -f $optionName), [System.StringComparison]::OrdinalIgnoreCase)) {
+                return $true
+            }
+        }
+    }
+
+    return $false
+}
+
 $scriptRoot = Split-Path -Parent $PSCommandPath
 
 if (-not $Command -or $Command -eq 'help' -or $Command -eq '--help' -or $Command -eq '-h') {
@@ -119,7 +136,12 @@ switch ($Command) {
             exit 1
         }
 
-        & $startScript -CliArgs $Arguments
+        $startArguments = @($Arguments)
+        if (-not (Test-ArgumentPresent -ArgumentList $startArguments -OptionNames @('--project-path', '-ProjectPath', '-project-path'))) {
+            $startArguments = @('--project-path', (Get-Location).Path) + $startArguments
+        }
+
+        & $startScript -CliArgs $startArguments
         exit $LASTEXITCODE
     }
 

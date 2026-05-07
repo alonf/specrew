@@ -154,7 +154,7 @@ specrew team add my-specialist --role "Role" --charter "Charter text"
 
 The `add` command atomically creates all required Squad artifacts: (1) a new row in `.squad\team.md`, (2) `.squad\agents\<member>\charter.md`, and (3) `.squad\agents\<member>\history.md`. The `update` and `remove` commands modify or delete these artifacts consistently. Baseline roles are protected and cannot be removed through these commands.
 
-When Copilot CLI is available, Specrew treats it as the mandatory host runtime rather than an optional delegated choice. During bootstrap, consent questions should only cover optional delegated agent families such as Claude and Codex. By default, Specrew's baseline delegated preferences treat Implementer as Copilot-first, Planner and Reviewer as Claude-first, and Spec Steward as Codex-first (with fallback to Claude when Codex is unavailable) so review and problem-solving work can use delegated agents when they are enabled.
+When Copilot CLI is available, Specrew treats it as the mandatory host runtime rather than an optional delegated choice. Optional delegated agent families such as Claude and Codex are explicit opt-in during bootstrap via `-Agents`; bootstrap no longer asks interactive consent questions for them. By default, Specrew's baseline delegated preferences treat Implementer as Copilot-first, Planner and Reviewer as Claude-first, and Spec Steward as Codex-first (with fallback to Claude when Codex is unavailable) so review and problem-solving work can use delegated agents when they are enabled.
 
 1. (Only if `.specify/` exists) Start your first feature run.
 

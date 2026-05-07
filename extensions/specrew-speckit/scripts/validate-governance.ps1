@@ -86,6 +86,44 @@ function Get-NormalizedKeyword {
     return $normalized.Trim()
 }
 
+function Get-IterationOrdinal {
+    param([AllowNull()][string]$Value)
+
+    if ([string]::IsNullOrWhiteSpace($Value)) {
+        return $null
+    }
+
+    $candidate = [System.IO.Path]::GetFileName($Value.Trim().TrimEnd('\', '/'))
+    if ($candidate -match '^(?<ordinal>\d+)$') {
+        return [int]$Matches['ordinal']
+    }
+
+    return $null
+}
+
+function Test-IterationMeetsCloseoutCutoff {
+    param(
+        [string]$IterationDirectory,
+        [AllowNull()][string]$RequiredSinceIteration
+    )
+
+    if (Test-IsNullish $RequiredSinceIteration) {
+        return $true
+    }
+
+    $cutoffOrdinal = Get-IterationOrdinal -Value $RequiredSinceIteration
+    if ($null -eq $cutoffOrdinal) {
+        return $true
+    }
+
+    $iterationOrdinal = Get-IterationOrdinal -Value $IterationDirectory
+    if ($null -eq $iterationOrdinal) {
+        return $true
+    }
+
+    return $iterationOrdinal -ge $cutoffOrdinal
+}
+
 function Test-IsNullish {
     param([AllowNull()][string]$Value)
 
@@ -981,6 +1019,7 @@ function Get-IterationConfigForValidation {
         overcommit_threshold   = '1.0'
         defer_strategy         = 'manual'
         calibration_enabled    = 'true'
+        closeout_packet_required_since_iteration = ''
         config_present         = $false
     }
 
@@ -1017,6 +1056,9 @@ function Get-IterationConfigForValidation {
         }
         elseif ($line -match '^\s*calibration_enabled:\s*("?)([^"#]+)\1\s*$') {
             $config.calibration_enabled = $Matches[2].Trim()
+        }
+        elseif ($line -match '^\s{2}closeout_packet_required_since_iteration:\s*("?)([^"#]+)\1\s*$') {
+            $config.closeout_packet_required_since_iteration = $Matches[2].Trim()
         }
     }
 
@@ -1547,7 +1589,8 @@ function Test-IterationGovernance {
 function Get-ReviewerCloseoutEnforcementMap {
     param(
         [string[]]$Targets,
-        [bool]$ExplicitTargetsProvided
+        [bool]$ExplicitTargetsProvided,
+        [AllowNull()][string]$RequiredSinceIteration
     )
 
     $enforcementMap = @{}
@@ -1557,7 +1600,9 @@ function Get-ReviewerCloseoutEnforcementMap {
 
     if ($ExplicitTargetsProvided) {
         foreach ($target in $Targets) {
-            $enforcementMap[$target] = $true
+            if (Test-IterationMeetsCloseoutCutoff -IterationDirectory $target -RequiredSinceIteration $RequiredSinceIteration) {
+                $enforcementMap[$target] = $true
+            }
         }
 
         return $enforcementMap
@@ -1578,7 +1623,7 @@ function Get-ReviewerCloseoutEnforcementMap {
             Sort-Object { [System.IO.Path]::GetFileName($_) } -Descending |
             Select-Object -First 1
 
-        if (-not [string]::IsNullOrWhiteSpace($latestTarget)) {
+        if (-not [string]::IsNullOrWhiteSpace($latestTarget) -and (Test-IterationMeetsCloseoutCutoff -IterationDirectory $latestTarget -RequiredSinceIteration $RequiredSinceIteration)) {
             $enforcementMap[$latestTarget] = $true
         }
     }
@@ -1604,7 +1649,8 @@ $explicitIterationPathsProvided = ($null -ne $IterationPath) -and @(
     $IterationPath | Where-Object { -not [string]::IsNullOrWhiteSpace([string]$_) }
 ).Count -gt 0
 $targets = @(Resolve-IterationTarget -ResolvedProjectPath $resolvedProjectPath -ExplicitIterationPaths $IterationPath)
-$reviewerCloseoutEnforcement = Get-ReviewerCloseoutEnforcementMap -Targets $targets -ExplicitTargetsProvided $explicitIterationPathsProvided
+$iterationConfig = if ($targets.Count -gt 0) { Get-IterationConfigForValidation -IterationDirectory $targets[0] } else { @{ closeout_packet_required_since_iteration = '' } }
+$reviewerCloseoutEnforcement = Get-ReviewerCloseoutEnforcementMap -Targets $targets -ExplicitTargetsProvided $explicitIterationPathsProvided -RequiredSinceIteration $iterationConfig.closeout_packet_required_since_iteration
 $results = @($targets | ForEach-Object {
         Test-IterationGovernance -IterationDirectory $_ -TeamRoles $teamRoles -EnforceReviewerCloseout $reviewerCloseoutEnforcement.ContainsKey($_)
     })

@@ -36,6 +36,8 @@ defer_strategy: "manual"
 
 # Reviewer closeout defaults
 reviewer:
+  # Enforce mandatory closeout packets only for iterations at or after this slice.
+  closeout_packet_required_since_iteration: "009"
   test_path_globs:
     - "**/tests/**"
     - "**/test/**"

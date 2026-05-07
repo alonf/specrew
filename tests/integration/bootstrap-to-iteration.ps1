@@ -109,7 +109,14 @@ if (-not (Test-Path -LiteralPath (Join-Path -Path $projectRoot -ChildPath '.git'
 
 Push-Location $repoRoot
 try {
-    $initResult = & pwsh -NoProfile -File $initScript -ProjectPath $projectRoot -Agents 'copilot' 2>&1
+    $initScriptContent = Get-Content -LiteralPath $initScript -Raw -Encoding UTF8
+    if ($initScriptContent -match 'function\s+Read-AgentConsent\b' -or
+        $initScriptContent -match 'Read-Host\s+\("Enable .* Specrew-managed delegation') {
+        Write-Fail 'specrew init still contains the interactive delegated-agent bootstrap question path.'
+        exit 1
+    }
+
+    $initResult = & pwsh -NoProfile -File $initScript -ProjectPath $projectRoot 2>&1
     if ($initResult) {
         $initResult | ForEach-Object { Write-Host $_ }
     }
@@ -188,6 +195,12 @@ $iterationConfigContent = Get-Content -LiteralPath $iterationConfigPath -Raw -En
 $roleAssignmentsContent = Get-Content -LiteralPath $roleAssignmentsPath -Raw -Encoding UTF8
 
 if (-not (Assert-ContentPattern -Content $iterationConfigContent -Pattern 'copilot:\s*\r?\n\s+enabled:\s*true' -FailureMessage 'Bootstrap should always keep Copilot enabled as the host runtime.')) {
+    exit 1
+}
+if (-not (Assert-ContentPattern -Content $iterationConfigContent -Pattern 'claude:\s*\r?\n\s+enabled:\s*false' -FailureMessage 'Bootstrap should leave Claude disabled unless -Agents explicitly opts in.')) {
+    exit 1
+}
+if (-not (Assert-ContentPattern -Content $iterationConfigContent -Pattern 'codex:\s*\r?\n\s+enabled:\s*false' -FailureMessage 'Bootstrap should leave Codex disabled unless -Agents explicitly opts in.')) {
     exit 1
 }
 if (-not (Assert-ContentPattern -Content $roleAssignmentsContent -Pattern 'Spec Steward"[\s\S]*?preferred_agent:\s*"codex"' -FailureMessage 'Bootstrap role assignments should prefer Codex for Spec Steward by default.')) {

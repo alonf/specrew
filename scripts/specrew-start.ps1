@@ -2218,7 +2218,7 @@ function Start-CopilotSession {
         $copilotArgs += '--allow-all'
     }
 
-    if (-not $SameWindow -and $IsWindows) {
+    if ($IsWindows) {
         $quotedProjectPath = $ResolvedProjectPath.Replace("'", "''")
         $quotedAgent = $Agent.Replace("'", "''")
         $quotedCopilotSource = $copilotCommand.Source.Replace("'", "''")
@@ -2234,7 +2234,13 @@ $args += @('--add-dir', '{0}', '-i', $bootstrapInput)
 {4}
 & '{5}' @args
 '@ -f $quotedProjectPath, $quotedBootstrap, $quotedAgent, $autopilotSnippet, $allowAllSnippet, $quotedCopilotSource
-        Start-Process -FilePath 'pwsh' -ArgumentList @('-NoLogo', '-NoExit', '-NoProfile', '-ExecutionPolicy', 'Bypass', '-Command', $launchScript) | Out-Null
+
+        if ($SameWindow) {
+            $process = Start-Process -FilePath 'pwsh' -ArgumentList @('-NoLogo', '-NoProfile', '-ExecutionPolicy', 'Bypass', '-Command', $launchScript) -WorkingDirectory $ResolvedProjectPath -NoNewWindow -PassThru -Wait
+            return ($null -ne $process -and $process.ExitCode -eq 0)
+        }
+
+        Start-Process -FilePath 'pwsh' -ArgumentList @('-NoLogo', '-NoExit', '-NoProfile', '-ExecutionPolicy', 'Bypass', '-Command', $launchScript) -WorkingDirectory $ResolvedProjectPath | Out-Null
         return $true
     }
 

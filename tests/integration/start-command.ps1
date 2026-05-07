@@ -146,6 +146,75 @@ if ($entryScriptContent -match $nestedStartDispatchPattern) {
 }
 Write-Pass "Entry wrapper dispatches start in-process"
 
+Write-Host "`nTest 1bb: start command avoids inline native Copilot invocation on Windows"
+$startScriptContent = Get-Content -LiteralPath $startScript -Raw -Encoding UTF8
+$sameWindowProcessLaunchPattern = 'if \(\$SameWindow\)\s*\{\s*\$process = Start-Process -FilePath ''pwsh''.*-NoNewWindow -PassThru -Wait'
+if ($startScriptContent -notmatch $sameWindowProcessLaunchPattern) {
+    Write-Fail "specrew-start.ps1 does not use a separate pwsh process for same-window Copilot launch on Windows."
+    exit 1
+}
+Write-Pass "Start command uses a separate pwsh process for same-window launch on Windows"
+
+Write-Host "`nTest 1c: entry wrapper defaults start project-path to the caller location"
+$defaultPathProjectRoot = Join-Path -Path $scratchRoot -ChildPath 'default-project'
+$null = New-Item -Path $defaultPathProjectRoot -ItemType Directory -Force
+$defaultGitInitOutput = @(& git -C $defaultPathProjectRoot init --quiet 2>&1)
+if ($LASTEXITCODE -ne 0) {
+    foreach ($line in $defaultGitInitOutput) {
+        Write-Host $line
+    }
+    Write-Fail "Failed to initialize git repository in default-path scratch project: $defaultPathProjectRoot"
+    exit 1
+}
+
+$defaultInitResult = Invoke-TestScript -ScriptPath $initScript -ArgumentList @('-ProjectPath', $defaultPathProjectRoot, '-Force', '-NoAgents')
+if ($defaultInitResult.ExitCode -ne 0) {
+    Write-Host "Bootstrap output:"
+    foreach ($line in $defaultInitResult.Output) {
+        Write-Host $line
+    }
+    Write-Fail "Bootstrap failed for the default project-path wrapper test"
+    exit 1
+}
+
+$quotedDefaultPathProjectRoot = $defaultPathProjectRoot.Replace("'", "''")
+$quotedEntryScript = $entryScript.Replace("'", "''")
+$defaultPathResult = Invoke-TestCommand -Command "Push-Location -LiteralPath '$quotedDefaultPathProjectRoot'; try { & '$quotedEntryScript' start --no-launch } finally { Pop-Location }"
+if ($defaultPathResult.ExitCode -ne 0) {
+    Write-Fail "specrew start should succeed without an explicit --project-path when run from the project root"
+    foreach ($line in $defaultPathResult.Output) {
+        Write-Host $line
+    }
+    exit 1
+}
+
+$defaultPromptPath = Join-Path -Path $defaultPathProjectRoot -ChildPath '.specrew\last-start-prompt.md'
+$defaultContextPath = Join-Path -Path $defaultPathProjectRoot -ChildPath '.specrew\start-context.json'
+if (-not (Test-Path -LiteralPath $defaultPromptPath -PathType Leaf)) {
+    Write-Fail "Wrapper default project-path flow did not create the prompt artifact in the caller project"
+    exit 1
+}
+if (-not (Test-Path -LiteralPath $defaultContextPath -PathType Leaf)) {
+    Write-Fail "Wrapper default project-path flow did not create the context artifact in the caller project"
+    exit 1
+}
+
+$defaultContext = Get-Content -LiteralPath $defaultContextPath -Raw -Encoding UTF8 | ConvertFrom-Json
+if ($defaultContext.prompt_path -ne $defaultPromptPath) {
+    Write-Fail "Wrapper default project-path flow recorded the wrong prompt path in start-context.json"
+    exit 1
+}
+if ($defaultContext.team_roster.team_path -ne (Join-Path -Path $defaultPathProjectRoot -ChildPath '.squad\team.md')) {
+    Write-Fail "Wrapper default project-path flow recorded the wrong team roster path in start-context.json"
+    exit 1
+}
+
+$defaultPathOutput = $defaultPathResult.Output -join "`n"
+if (-not (Assert-Contains -Content $defaultPathOutput -Pattern ([regex]::Escape($defaultPromptPath)) -FailureMessage 'Wrapper default project-path flow reported the wrong prompt artifact path.')) {
+    exit 1
+}
+Write-Pass "Entry wrapper defaults project-path to the caller project root"
+
 Write-Host "`nTest 2: start command enters intake-or-resume mode on a fresh repo"
 $freshStartResult = Invoke-TestScript -ScriptPath $entryScript -ArgumentList @(
     'start',
@@ -704,7 +773,7 @@ calibration_enabled: true
 defer_strategy: "manual"
 
 # >>> specrew-managed agents >>>
-# Specrew-managed agent consent and detection state (FR-022).
+# Specrew-managed delegated-agent opt-in and detection state (FR-022).
 agents:
   copilot:
     enabled: true
@@ -834,7 +903,7 @@ calibration_enabled: true
 defer_strategy: "manual"
 
 # >>> specrew-managed agents >>>
-# Specrew-managed agent consent and detection state (FR-022).
+# Specrew-managed delegated-agent opt-in and detection state (FR-022).
 agents:
   copilot:
     enabled: true

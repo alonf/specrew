@@ -52,10 +52,6 @@ function Test-ConsoleInputRedirected {
     }
 }
 
-function Test-CanPrompt {
-    return (-not $Force) -and (-not (Test-ConsoleInputRedirected))
-}
-
 function Show-Usage {
     @'
 specrew init [options]
@@ -1118,22 +1114,6 @@ function Get-AgentDetection {
     }
 }
 
-function Read-AgentConsent {
-    param(
-        [Parameter(Mandatory = $true)]
-        [pscustomobject]$Agent
-    )
-
-    $displayName = (Get-Culture).TextInfo.ToTitleCase($Agent.Name)
-    Write-Host '---' -ForegroundColor Yellow
-    Write-Host ("Agent Name: {0}" -f $displayName) -ForegroundColor Yellow
-    Write-Host ("Access Path: {0}" -f $Agent.AccessPath) -ForegroundColor Yellow
-    Write-Host ("Availability: {0}" -f $Agent.Availability) -ForegroundColor Yellow
-    Write-Host '---' -ForegroundColor Yellow
-    $response = Read-Host ("Enable {0} for Specrew-managed delegation? (y/N)" -f $Agent.Name)
-    return $response -match '^(?i)y(?:es)?$'
-}
-
 function Get-AgentSelectionMode {
     param(
         [Parameter(Mandatory = $true)]
@@ -1169,13 +1149,10 @@ function Get-AgentSelectionMode {
     }
 }
 
-function Resolve-AgentConsent {
+function Resolve-AgentSelection {
     param(
         [Parameter(Mandatory = $true)]
         [pscustomobject[]]$DetectedAgents,
-
-        [Parameter(Mandatory = $true)]
-        [bool]$PromptUser,
 
         [Parameter(Mandatory = $true)]
         [bool]$DisableAll,
@@ -1198,14 +1175,6 @@ function Resolve-AgentConsent {
     )
 
     if ($DisableAll) {
-        return $resolvedAgents
-    }
-
-    if ($PromptUser) {
-        foreach ($agent in $resolvedAgents | Where-Object { $_.Name -ne 'copilot' -and $_.Detected -and $_.Availability -eq 'available' }) {
-            $agent.Enabled = Read-AgentConsent -Agent $agent
-        }
-
         return $resolvedAgents
     }
 
@@ -1253,7 +1222,7 @@ function Get-ManagedAgentsBlock {
     $lookup = Get-AgentLookup -Agents $Agents
     $lines = @(
         '# >>> specrew-managed agents >>>',
-        '# Specrew-managed agent consent and detection state (FR-022).',
+        '# Specrew-managed delegated-agent opt-in and detection state (FR-022).',
         'agents:'
     )
 
@@ -1611,9 +1580,8 @@ $resolvedAgents = @()
 if (-not $SpecKitExtensionOnly) {
 Write-Step 'Detecting Copilot runtime and delegated agents'
     $agentDetection = Get-AgentDetection -WorkingDirectory $repoRoot
-    $shouldPromptForAgents = (-not $explicitAgentsValueSpecified) -and (-not $explicitNoAgentsSpecified) -and (Test-CanPrompt)
     try {
-        $resolvedAgents = Resolve-AgentConsent -DetectedAgents $agentDetection.Agents -PromptUser:$shouldPromptForAgents -DisableAll:$NoAgents -RequestedAgents $Agents
+        $resolvedAgents = Resolve-AgentSelection -DetectedAgents $agentDetection.Agents -DisableAll:$NoAgents -RequestedAgents $Agents
     }
     catch {
         Write-Error $_
