@@ -27,6 +27,53 @@
 **Constraints**: [domain-specific, e.g., <200ms p95, <100MB memory, offline-capable or NEEDS CLARIFICATION]  
 **Scale/Scope**: [domain-specific, e.g., 10k users, 1M LOC, 50 screens or NEEDS CLARIFICATION]
 
+## Phase 1 Quality Planning
+
+> Fill this section when the stack-aware quality-bar capability applies to the active feature. Keep it bounded to the implemented Phase 1 slice only.
+
+**Phase Scope**: `phase-1-first-slice`  
+**Inferred Quality Profile**: [e.g., `quality-profile.node-public-ws-service.v1` or `quality-profile.custom-composition.v1`]  
+**Selected preset ref or explicit custom composition**: [List the selected preset ref or explicit custom composition for this feature.]  
+**Bounded custom composition**: [If no recognized Phase 1 preset matches cleanly, describe the bounded custom composition path and the manual unknowns it leaves explicit.]
+
+### Stack Surfaces in Scope
+
+| Stack Surface | Path Globs / Evidence | Recognized Stack | Why It Matters |
+| --- | --- | --- | --- |
+| [e.g., `api-runtime`] | [e.g., `src/api/**`, `package.json`] | [preset ID or `custom`] | [material feature surface] |
+
+### Risk Dimensions
+
+| Risk Dimension | Status (`required` / `not-applicable`) | Rationale |
+| --- | --- | --- |
+| [e.g., `security`] | [required] | [why this dimension is active] |
+
+### Quality Tool Bundle
+
+| Area | Selection | Evidence / Notes |
+| --- | --- | --- |
+| Bundle ID | [tool bundle identifier] | [how it maps to the feature] |
+| Mechanical Checks | [dead-field, anti-pattern, test-integrity] | [where evidence will be recorded] |
+| Ecosystem Tools | [stack-aware lint/test/analyzer commands] | [free/community baseline when practical] |
+
+### Required Quality Gates
+
+| Required Quality Gate | Category | Evidence Source | Phase 1 Status |
+| --- | --- | --- | --- |
+| [gate ID] | [mechanical/tooling/manual-evidence] | [command or artifact path] | [planned] |
+
+### Not-Applicable Dimensions and Rationale
+
+| Dimension / Gate | Why Not Applicable in This Feature | Follow-up |
+| --- | --- | --- |
+| [e.g., `concurrency-correctness-review`] | [explicit rationale] | [recorded defer or none] |
+
+### Explicit Phase 2+ Deferrals
+
+- Pre-implementation hardening gate sign-off and blocking semantics remain deferred in this template.
+- Dedicated bug-hunter lens execution and strongest-class routing remain deferred in this template.
+- Quality-drift logic, mixed-stack override workflows, and reference-implementation comparison remain deferred in this template.
+
 ## Constitution Check
 
 *GATE: Must pass before Phase 0 research. Re-check after Phase 1 design.*

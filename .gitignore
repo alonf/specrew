@@ -23,3 +23,18 @@
 # Local scratch/test leftovers
 .scratch/
 0.7.3
+
+# Node.js build and dependency outputs
+node_modules/
+dist/
+build/
+*.log
+.env*
+
+# Universal editor/OS noise
+.DS_Store
+Thumbs.db
+*.tmp
+*.swp
+.vscode/
+.idea/

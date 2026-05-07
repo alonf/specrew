@@ -1,8 +1,10 @@
 # Specrew Development Guidelines
 
-Auto-generated from all feature plans. Last updated: 2026-04-17
+Auto-generated from all feature plans. Last updated: 2026-05-07
 
 ## Active Technologies
+- PowerShell 7.x scripts plus Markdown/YAML/JSON governance artifacts; downstream Specrew config currently pins Spec Kit `0.8.4` and Squad `0.9.1` in `.specrew/config.yml` + `extensions/specrew-speckit` script/template surfaces, `.specify` plan workflow, Squad-native runtime deployment via `deploy-squad-runtime.ps1`, existing governance/evaluation scripts under `tests/integration/` and `evaluation/scorers/` (008-quality-profile-foundation)
+- Git-tracked Markdown/YAML assets under `.specrew/` plus feature and iteration artifacts under `specs/<feature>/`; machine-readable mechanical findings stored as JSON sidecars (008-quality-profile-foundation)
 
 - Markdown, YAML, PowerShell (Spec Kit extension assets). + Spec Kit >= 0.8.4 (extension starter template), Squad >= 0.9.1 (extension structure: skills/ceremonies/directives) (001-specrew-product)
 
@@ -22,6 +24,7 @@ npm test; npm run lint
 Markdown, YAML, PowerShell (Spec Kit extension assets).: Follow standard conventions
 
 ## Recent Changes
+- 008-quality-profile-foundation: Added PowerShell 7.x scripts plus Markdown/YAML/JSON governance artifacts; downstream Specrew config currently pins Spec Kit `0.8.4` and Squad `0.9.1` in `.specrew/config.yml` + `extensions/specrew-speckit` script/template surfaces, `.specify` plan workflow, Squad-native runtime deployment via `deploy-squad-runtime.ps1`, existing governance/evaluation scripts under `tests/integration/` and `evaluation/scorers/`
 
 - 001-specrew-product: Added Markdown, YAML, PowerShell (Spec Kit extension assets). + Spec Kit >= 0.8.4 (extension starter template), Squad >= 0.9.1 (extension structure: skills/ceremonies/directives)
 

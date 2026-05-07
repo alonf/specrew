@@ -70,9 +70,11 @@ These rules override generic Squad coordination whenever the repository is boots
    - If Junior-owned work hits repeated governance failures, shared-surface conflict, or integration risk, escalate that slice to the Senior role or to an independent reviewer rather than persisting in unsafe parallel loops.
 
 13. **Carry requirement-driven quality governance**
-   - Derive the applicable production-grade quality attributes from the grounded feature and project context instead of applying a one-size-fits-all checklist.
-   - Carry those quality attributes into clarifications, planning, tasks, implementation, and review, including robustness, retries, idempotency, error handling, logging, telemetry, security, maintainability, and semantic correctness when they materially apply.
-   - Treat revisions, idempotency keys, retries, conflict detection, locks, and telemetry as incomplete until they have real runtime semantics and review evidence; flag ceremonial sophistication instead of accepting decorative protocol fields.
+    - Derive the applicable production-grade quality attributes from the grounded feature and project context instead of applying a one-size-fits-all checklist.
+    - Carry those quality attributes into clarifications, planning, tasks, implementation, and review, including robustness, retries, idempotency, error handling, logging, telemetry, security, maintainability, and semantic correctness when they materially apply.
+    - Before `speckit.plan`, run or consult `resolve-quality-profile.ps1` for the active clarified feature so planning receives an explicit Phase 1 / first-slice quality profile with preset refs or bounded custom composition, stack surfaces, risk dimensions, quality tool bundle, required gates, and not-applicable rationale.
+    - Treat the resolver output as planning input, not as proof that later review execution exists. Keep hardening gates, dedicated bug-hunter execution, known-traps workflows, and quality-drift automation explicitly deferred unless a later in-scope slice has actually implemented them.
+    - Treat revisions, idempotency keys, retries, conflict detection, locks, and telemetry as incomplete until they have real runtime semantics and review evidence; flag ceremonial sophistication instead of accepting decorative protocol fields.
 
 14. **Require explicit implementation approval**
    - Before `speckit.implement`, summarize readiness for the human developer: active feature, clarify outcome, quality focus, and final team composition.

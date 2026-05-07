@@ -9,11 +9,13 @@ This is the **Spec Kit extension** component of Specrew. It provides governance 
 ```text
 commands/          # Hook command definitions consumed by Spec Kit
 hooks/             # Lifecycle hooks for Spec Kit workflows
-templates/         # Governance artifact templates (constitution, iteration config, etc.)
+templates/         # Governance artifact templates (constitution, iteration config, quality assets, etc.)
 scripts/           # Validation and scaffolding PowerShell scripts
 squad-templates/   # Squad-native template sources (skills, ceremonies, directives, role charters)
 extension.yml      # Extension configuration
 ```
+
+Quality-governance source assets for the stack-aware quality-bar foundation live under `templates/quality/`, including versioned lens checklist sources, stack preset sources, and authoring guidance for reviewed lens upgrades.
 
 ## Squad Integration Architecture
 
@@ -54,6 +56,16 @@ The validator scans iteration artifacts and fails when lifecycle prerequisites a
 The downstream Squad coordinator is also patched to enforce the same lifecycle contract, so it must create or use the canonical Spec-Kit and Specrew artifacts before it can honestly claim end-to-end process compliance.
 
 The operating method for planning, drift detection, review/demo, and retrospective now lives in `squad-templates\` so downstream deployment surfaces receive the real workflow instead of placeholders.
+
+## Quality Governance Assets
+
+Phase 1 stack-aware quality assets are sourced from `templates/quality/`:
+
+- `templates/quality/lenses/` stores versioned, Markdown-table lens checklist sources.
+- `templates/quality/presets/` stores versioned stack preset sources.
+- `templates/quality/README.md` defines the reviewed lens-upgrade workflow and authoring rules so checklist changes stay explicit, auditable, and independently versioned.
+
+These files are intended to be scaffolded into downstream `.specrew/` quality directories rather than edited ad hoc in generated copies first.
 
 This extension also ships focused scaffolding helpers:
 
