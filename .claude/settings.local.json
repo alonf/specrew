@@ -1,0 +1,26 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(gh auth *)",
+      "Bash(gh repo *)",
+      "Bash(gh search *)",
+      "Bash(git branch *)",
+      "Bash(git push *)",
+      "Bash(python -c ' *)",
+      "WebSearch",
+      "Bash(awk '/2026-04-20/,/^---$/' .squad/decisions.md)",
+      "Bash(gh project *)",
+      "Bash(gh issue *)",
+      "Bash(git -C c:/Dev/Specrew log --oneline -10)",
+      "Bash(git -C c:/Dev/Specrew show --stat ce3d637)",
+      "Bash(git -C c:/Dev/Specrew show --stat e946390)",
+      "Bash(pwsh -NoProfile -ExecutionPolicy Bypass -File extensions/specrew-speckit/scripts/validate-governance.ps1 -ProjectPath . -IterationPath specs/001-specrew-product/iterations/000)",
+      "Bash(pwsh -NoProfile -ExecutionPolicy Bypass -File extensions/specrew-speckit/scripts/validate-governance.ps1 -ProjectPath . -IterationPath specs/001-specrew-product/iterations/005)",
+      "Bash(git -C c:/Dev/Specrew show --stat 90cb4e6)",
+      "Bash(git -C c:/Dev/Specrew show --stat 517a9c2)",
+      "Bash(git -C c:/Dev/Specrew show --stat 0440f16)",
+      "Bash(git -C c:/Dev/Specrew diff HEAD -- specs/001-specrew-product/iterations/009/)",
+      "Bash(git -C c:/Dev/Specrew show 517a9c2 -- extensions/specrew-speckit/scripts/scaffold-reviewer-artifacts.ps1)"
+    ]
+  }
+}

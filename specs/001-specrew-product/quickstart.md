@@ -22,29 +22,52 @@ specrew init
 ```
 
 This will:
-- Detect/install Spec Kit (>= 0.7.3) and Squad (>= 0.9.1)
+- Detect/install Spec Kit (>= 0.8.4) and Squad (>= 0.9.1)
 - Create `.specrew/` with governance artifacts
 - Configure 5 baseline roles in your Squad team
 - Report what was created
 
-## 3. Write a Spec
+## 3. Start a Feature Run
 
-Use Spec Kit's normal workflow:
+Use Specrew's guided entrypoint:
 
 ```bash
-# Create a feature spec
-/speckit.specify "Build a REST API for user management"
+# Start Squad in guided intake/resume mode
+specrew start
+
+# Optional shorthand: start a new feature from a plain-language request
+specrew start "Build a REST API for user management"
+
+# Optional: open Copilot in a detached terminal window
+specrew start --new-window
+
+# Optional: keep interactive approval prompts instead of non-blocking approvals
+specrew start --prompt-approvals
 ```
 
-## 4. Start an Iteration
+This should:
 
-With your spec written, start an iteration:
+- Hand off to Squad as the active coordinator
+- Have Squad drive the Spec Kit lifecycle: `specify`, then `clarify` or a recorded skip rationale, then `plan`, `tasks`, `implement`
+- `specrew start` uses the current terminal by default; add `--new-window` only when you want a detached Copilot window
+- Ask you only the questions Squad cannot safely resolve from repo context and existing artifacts
+- Present the post-clarify team before implementation, then ask you to explicitly start implementation
+- Continue through implementation once the spec/design is clear enough
+- Launch Copilot from the project root and default to non-blocking approvals unless you explicitly opt into prompt-based approvals
+- Finish with a developer-facing implementation briefing and a no-gap review/closure pass
+- Automatically print a Reviewer Summary at iteration close with paths or open hints for the review materials, so you do not need to discover a follow-up command first
 
-1. The **Planner** reads your spec requirements and generates an iteration plan
-2. You review and approve the plan
-3. The crew executes tasks, with drift-check running after each task
-4. The **Reviewer** runs the Review/Demo ceremony with per-task verdicts
-5. The **Retro Facilitator** runs the Retrospective
+## 4. Let Squad Drive the Lifecycle
+
+With `specrew start`, the intended lifecycle is:
+
+1. The **Spec Steward / Squad** continues any in-progress feature when one already exists, or gathers the next feature/fix intake when none is active
+2. Squad runs clarification only when needed, answering what it can itself
+3. Squad proposes any missing specialists or Junior/Senior same-specialty pairs, presents the final team, and waits for explicit implementation approval
+4. The **Planner** produces the implementation plan and task set
+5. The **Implementer** executes the work
+6. The **Reviewer** runs the Review/Demo ceremony with per-task verdicts and no-gap closure discipline
+7. The **Retro Facilitator** runs the Retrospective
 
 ## 5. Check Iteration Artifacts
 
@@ -59,7 +82,11 @@ specs/001-your-feature/iterations/001/
 └── retro.md       # Estimation accuracy, learnings, actions
 ```
 
-## 6. Resume After Interruption
+## 6. Start the Next Feature
+
+When you want another feature, run `specrew start` again. You can provide the next plain-language request immediately or let Squad gather it interactively. The same Spec Kit lifecycle begins again for the new feature or fix.
+
+## 7. Resume After Interruption
 
 If the crew stops mid-iteration:
 
@@ -73,5 +100,6 @@ If the crew stops mid-iteration:
 - **The spec is authoritative** — agents cannot silently override it
 - **Every task traces to a requirement** — no orphan work
 - **Drift is caught per-task** — not just at the end
+- **Known gaps do not roll forward silently** — fix them now or explicitly defer them with approval and recorded evidence
 - **Five baseline roles**: Spec Steward, Planner, Implementer, Reviewer, Retro Facilitator
 - **Your project, your governance** — the downstream constitution is yours to customize

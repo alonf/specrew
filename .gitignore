@@ -1,0 +1,25 @@
+# Squad: ignore runtime state (logs, inbox, sessions)
+.squad/orchestration-log/
+.squad/log/
+.squad/decisions/inbox/
+.squad/sessions/
+# Squad: SubSquad activation file (local to this machine)
+.squad-workstream
+
+# Local backup leftovers should not be version-controlled
+*.backup
+
+# Reviewer-local validation workspace
+.worf-review/
+# Squad: ignore runtime state (logs, inbox, sessions)
+.squad/.scratch/
+
+# Specrew: ignore ephemeral runtime handoff artifacts, but keep stable governance files tracked
+.specrew/last-start-prompt.md
+.specrew/start-context.json
+.specrew/start-summary.md
+.specrew/bootstrap-dry-run-*.md
+
+# Local scratch/test leftovers
+.scratch/
+0.7.3

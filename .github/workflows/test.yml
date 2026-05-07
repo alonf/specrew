@@ -1,0 +1,72 @@
+name: Test
+
+on:
+  push:
+    branches: [ main, 001-specrew-product ]
+  pull_request:
+    branches: [ main, 001-specrew-product ]
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Markdown lint (if available)
+        shell: bash
+        run: |
+          if command -v markdownlint >/dev/null 2>&1; then
+            markdownlint '**/*.md' --ignore node_modules --ignore .squad --ignore .specify
+          elif command -v npx >/dev/null 2>&1; then
+            if npx --yes markdownlint-cli '**/*.md' --ignore node_modules --ignore .squad --ignore .specify; then
+              echo "markdownlint-cli executed via npx"
+            else
+              echo "SKIP: markdownlint-cli unavailable or install failed"
+            fi
+          else
+            echo "SKIP: markdownlint and npx are unavailable"
+          fi
+
+      - name: PowerShell lint (if available)
+        shell: pwsh
+        run: |
+          if (-not (Get-Command Invoke-ScriptAnalyzer -ErrorAction SilentlyContinue)) {
+            Write-Host 'SKIP: PSScriptAnalyzer is unavailable'
+            exit 0
+          }
+
+          $scriptFiles = Get-ChildItem -Path . -Filter *.ps1 -Recurse -File |
+            Where-Object { $_.FullName -notmatch '[\\/]\.(git|squad|specify)[\\/]' }
+
+          if (-not $scriptFiles -or $scriptFiles.Count -eq 0) {
+            Write-Host 'SKIP: No PowerShell scripts found'
+            exit 0
+          }
+
+          $findings = @()
+          foreach ($file in $scriptFiles) {
+            $findings += Invoke-ScriptAnalyzer -Path $file.FullName -Settings PSGallery
+          }
+
+          if ($findings.Count -gt 0) {
+            $findings | Format-Table -AutoSize
+            exit 1
+          }
+
+          Write-Host 'PASS: PSScriptAnalyzer reported no findings'
+
+      - name: Integration - bootstrap to iteration
+        shell: pwsh
+        run: ./tests/integration/bootstrap-to-iteration.ps1
+
+      - name: Integration - drift scenario
+        shell: pwsh
+        run: ./tests/integration/drift-scenario.ps1

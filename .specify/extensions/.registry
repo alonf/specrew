@@ -18,6 +18,22 @@
       },
       "registered_skills": [],
       "installed_at": "2026-04-16T22:42:25.419900+00:00"
+    },
+    "specrew-speckit": {
+      "version": "0.1.0-dev",
+      "source": "local",
+      "manifest_hash": "sha256:eb1bafccbab7153fdcd123939d701506188496aaa2bb6f25077cf5aabfb63d45",
+      "enabled": true,
+      "priority": 10,
+      "registered_commands": {
+        "copilot": [
+          "speckit.specrew-speckit.before-plan",
+          "speckit.specrew-speckit.after-tasks",
+          "speckit.specrew-speckit.before-implement"
+        ]
+      },
+      "registered_skills": [],
+      "installed_at": "2026-05-04T11:11:43.021990+00:00"
     }
   }
 }

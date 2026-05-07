@@ -1,0 +1,76 @@
+# Iteration Configuration
+# Schema: v1
+# Controls effort measurement and iteration behavior for Specrew
+
+# Effort measurement unit
+# Specrew v1 uses story points; future versions may support other units
+effort_unit: "story_points"
+
+# Maximum effort units per iteration (capacity)
+# Default: 20 story points
+# Adjust based on team velocity and calibration data
+capacity_per_iteration: 20
+
+# Iteration bounding strategy
+# - scope: Iteration completes when planned tasks are done (time varies)
+# - time: Iteration has fixed time limit (scope varies)
+iteration_bounding: "scope"
+
+# Time limit (hours) if iteration_bounding = "time"
+# null for scope-bounded iterations
+time_limit_hours: null
+
+# Overcommit threshold (ratio)
+# Warns if planned effort exceeds capacity * threshold
+# 1.0 = no overcommit allowed, 1.1 = 10% overcommit tolerated
+overcommit_threshold: 1.0
+
+# Calibration tracking
+# If true, retrospectives include velocity analysis and capacity suggestions
+calibration_enabled: true
+
+# Defer strategy for overcommitted iterations
+# - manual: Planner must manually select tasks to defer
+# - lowest_priority: Automatically defer lowest-priority tasks
+defer_strategy: "manual"
+
+# Reviewer closeout defaults
+reviewer:
+  test_path_globs:
+    - "**/tests/**"
+    - "**/test/**"
+    - "**/*test*.*"
+    - "**/*spec*.*"
+  sensitive_data_patterns:
+    - "auth*"
+    - "secret*"
+    - "credential*"
+    - "token*"
+    - "key*"
+    - "crypto*"
+  test_commands: []
+  coverage:
+    tool: ""
+    kind: "qualitative"
+  skip_test_execution_at_close: false
+  vulnerability_scanner:
+    auto_detect: true
+    command: ""
+    candidates:
+      - "npm audit --json"
+      - "dotnet list package --vulnerable"
+      - "pip-audit --format json"
+      - "cargo audit --json"
+      - "govulncheck -json ./..."
+  baseline_ref: "iteration-baseline"
+  diagram_format: "mermaid"
+  hotspot_thresholds:
+    file_changed_lines: 250
+    function_changed_lines: 100
+  diagram_thresholds:
+    structure:
+      min_modules_touched: 3
+      min_inter_module_edges: 2
+    flow:
+      min_entrypoints_changed: 1
+      min_modules_in_flow: 2

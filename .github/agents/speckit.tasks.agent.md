@@ -65,6 +65,7 @@ You **MUST** consider the user input before proceeding (if not empty).
 3. **Execute task generation workflow**:
    - Load plan.md and extract tech stack, libraries, project structure
    - Load spec.md and extract user stories with their priorities (P1, P2, P3, etc.)
+   - If spec.md does not expose enough user-story structure to map executable tasks safely, stop and report the readiness gap instead of fabricating a partial task list
    - If data-model.md exists: Extract entities and map to user stories
    - If contracts/ exists: Map interface contracts to user stories
    - If research.md exists: Extract decisions for setup tasks
@@ -85,6 +86,9 @@ You **MUST** consider the user input before proceeding (if not empty).
    - Dependencies section showing story completion order
    - Parallel execution examples per story
    - Implementation strategy section (MVP first, incremental delivery)
+   - Render the full file content before writing `FEATURE_DIR/tasks.md`; do not call a file-creation tool until you have the complete markdown ready
+   - After writing `FEATURE_DIR/tasks.md`, re-read it and confirm the file exists on disk with the rendered headings and task checklist content
+   - If the file-write tool errors or verification fails, stop and report the failure instead of claiming tasks are ready
 
 5. **Report**: Output path to generated tasks.md and summary:
    - Total task count

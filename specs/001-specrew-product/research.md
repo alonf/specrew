@@ -123,3 +123,49 @@ The harness does not need to drive the LLM directly — it validates the artifac
 **Alternatives considered**:
 - Exact version pins: Too restrictive; forces users to match exact versions.
 - No version validation: Allows silent breakage (violates FR-002 version validation requirement).
+
+---
+
+### R7: Agent HQ Delegated-Agent Support (FR-021, FR-022)
+
+**Question**: How should Specrew model GitHub Copilot Agent HQ support for selectable agents such as Claude/Codex without introducing standalone runtimes?
+
+**Findings**:
+
+**Copilot / Agent HQ**: GitHub Copilot remains the execution substrate. When Agent HQ exposes selectable agents such as Claude or Codex, those agents are chosen through Copilot rather than invoked as separate Squad runtimes.
+
+**Standalone CLIs** (`claude`, `codex`): Direct CLI invocation would create an additional execution path outside Squad's Copilot runtime model. Specrew v1 should not depend on that path.
+
+**Actual probe shape in this environment**:
+- `gh copilot` is **not** the active runtime surface here; `gh copilot --help` returns `unknown command "copilot" for "gh"`.
+- The active Copilot runtime surface is the standalone `copilot` CLI. `copilot --version` succeeds (`GitHub Copilot CLI 1.0.31`) and `copilot --help`/`copilot help config` are the documented local metadata surfaces.
+- When `specrew init` runs inside an active Copilot CLI session, environment markers `COPILOT_CLI`, `COPILOT_AGENT_SESSION_ID`, and `COPILOT_CLI_BINARY_VERSION` are present and can confirm that the bootstrap is already running under Copilot.
+- The documented delegated-agent metadata surface available locally is the `model` section of `copilot help config`. In this environment that section enumerates Claude-family model IDs and Codex-family model IDs, which is sufficient for a non-executing consent probe.
+- `gh api /user` still works as an auth-context probe, but it does **not** enumerate delegated-agent availability; it only confirms GitHub identity context.
+
+**User validation**: Manual testing confirmed that using a *different* delegated agent for review (e.g., Claude for review, Copilot for implementation) yields higher-quality review feedback than same-agent self-check. This independent-perspective principle is the foundation for FR-021 (cross-agent routing).
+
+**Decision**:
+
+- FR-022: `specrew init` detects Copilot availability and which Copilot-accessible delegated agents (Copilot, Claude, Codex) are currently exposed, then prompts the user interactively for per-agent consent. Non-interactive default: Copilot-only. Detected-but-disabled agents remain available for opt-in via re-run. Billing/cost context is not collected or displayed by Specrew — consent is the only gate, and any cost implications are between the user and GitHub.
+- FR-021: When multiple delegated agents are enabled, Reviewer and Spec Steward roles preferentially route to a non-Implementer agent, preserving independent perspective. Agent preference is per-role, configurable in `role-assignments.yml`.
+- V-R7-1 implementation probe: use `copilot --version` plus active-session env markers to detect Copilot runtime, and use `copilot help config` to detect Claude/Codex family exposure. If `copilot help config` is unavailable or unparseable, mark delegated-agent availability as unavailable and continue bootstrap without failure.
+
+**Rationale**:
+
+- Explicit opt-in respects user agency; billing is GitHub's surface to manage.
+- Independent-reviewer principle improves review quality (validated by user practice).
+- Per-role delegation flexibility allows projects to choose review isolation level without adding a second Squad runtime.
+
+**Alternatives considered**:
+
+- Copilot-only with no delegated review-agent support: Leaves user unable to leverage independent review benefit.
+- Direct standalone CLI invocation of Claude/Codex: Breaks the v1 Copilot-only Squad runtime model and complicates governance.
+- Auto-enable all detected agents: Violates the explicit-consent principle; user must opt in per agent.
+- Fixed agent assignment (e.g., always use Claude for review): Reduces flexibility for users with different agent access levels.
+- Surfacing billing/cost context in the consent prompt: Rejected. Specrew cannot reliably enumerate GitHub's billing model, and duplicating it would risk drift from the authoritative source. Consent alone is the gate.
+
+**Validation tasks (tracked in iteration plans)**:
+
+- **V-R7-1 (Iteration 1, blocks T-011)**: Confirm the GitHub Copilot / Agent HQ detection API shape used to enumerate selectable agents (Copilot default, Claude, Codex). Verify that `gh copilot` or the equivalent CLI/API surface returns a deterministic list; document the exact command, expected output schema, and graceful-degradation behavior if Agent HQ is not exposed for the user's org/plan.
+- **V-R7-2 (Iteration 2, completed 2026-05-02)**: Squad already exposes a viable routing surface for FR-021. The installed Squad runtime resolves per-agent model overrides from `.squad/config.json` via `agentModelOverrides`, and the SDK config schema also supports role-to-model mapping through `config.models.roleMapping`. For Specrew's markdown-first integration, no Specrew-side wrapper is required: `preferred_agent` in `.specrew/role-assignments.yml` can be translated into the corresponding Squad agent override entries for `spec-steward`, `reviewer`, `implementer`, and other baseline roles. Remaining implementation work is translation and guardrails: map `copilot` / `claude` / `codex` consented families to concrete model IDs exposed by `copilot help config`, persist those IDs into `.squad/config.json`, and fall back to Copilot when the preferred family is unavailable or not consented.

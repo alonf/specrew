@@ -1,0 +1,59 @@
+schema_version: "1.0"
+
+extension:
+  id: specrew-speckit
+  name: "Specrew Spec Kit Extension"
+  version: "0.1.0-dev"
+  description: "Spec Kit extension providing governance artifacts, templates, and validation for Specrew"
+
+requires:
+  speckit_version: ">=0.8.4"
+
+provides:
+  commands:
+    - name: speckit.specrew-speckit.before-plan
+      file: commands/speckit.specrew-speckit.before-plan.md
+      description: "Validate requirement readiness before planning"
+    - name: speckit.specrew-speckit.after-tasks
+      file: commands/speckit.specrew-speckit.after-tasks.md
+      description: "Verify task-to-requirement traceability after task generation"
+    - name: speckit.specrew-speckit.before-implement
+      file: commands/speckit.specrew-speckit.before-implement.md
+      description: "Validate execution readiness before implementation"
+
+hooks:
+  before_plan:
+    command: speckit.specrew-speckit.before-plan
+    optional: false
+    description: "Validate spec readiness before planning"
+  after_tasks:
+    command: speckit.specrew-speckit.after-tasks
+    optional: false
+    description: "Verify task traceability after task generation"
+  before_implement:
+    command: speckit.specrew-speckit.before-implement
+    optional: false
+    description: "Validate execution readiness before implementation"
+
+tags:
+  - governance
+  - specrew
+  - squad-native
+
+config:
+  defaults:
+    governance_mode: "standard"
+    drift_detection:
+      enabled: true
+      mode: "batch"
+    capacity:
+      default_unit: "story_points"
+      default_per_iteration: 20
+      overcommit_threshold: 1.0
+    traceability:
+      require_fr_mapping: true
+      require_us_mapping: true
+      orphan_tasks_allowed: false
+    versions:
+      min_speckit: "0.8.4"
+      min_squad: "0.9.1"
