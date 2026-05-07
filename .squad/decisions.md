@@ -1,5 +1,12 @@
 # Decision Ledger
 
+## copilot-decision-2026-05-07T22-12-30+03-00
+### 2026-05-07T22:12:30+03:00: Clarify skip rationale for 005 Phase 1
+**By:** Alon Fliess (via Copilot)
+**What:** Resume `specs/005-stack-aware-quality-bar` at Phase 1 planning without re-running clarify because the hardened spec is unchanged, reviewer-approved, and materially complete for phase-scoped planning.
+**Why:** Existing feature resume — proceed through the formal lifecycle with plan/tasks/before-implement for the first slice.
+
+
 ## 2026-05-08-spec-005-clarifications-applied
 # Decision: Spec 005 Clarifications Applied - Planning Ready
 
