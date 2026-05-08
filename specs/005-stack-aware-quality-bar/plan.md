@@ -1,53 +1,106 @@
-# Implementation Plan: Stack-Aware Quality Bar (Phase 1 / First Slice)
+# Implementation Plan: Stack-Aware Quality Bar (Phase 2 / Deferred Quality Gates)
 
-**Branch**: `008-quality-profile-foundation` | **Date**: 2026-05-07 | **Spec**: [spec.md](spec.md)
+**Branch**: `008-quality-profile-foundation` | **Date**: 2026-05-08 | **Spec**: [spec.md](spec.md)  
 **Input**: Feature specification from `specs/005-stack-aware-quality-bar/spec.md`
 
 ## Summary
 
-This plan delivers only the Phase 1 foundation for stack-aware quality governance: inferred quality profiles in planning artifacts, versioned stack presets and lens checklists, deterministic mechanical-check contracts with structured JSON findings, and explicit quality evidence recording. The implementation stays inside Specrew's existing extension-driven architecture by extending `extensions/specrew-speckit` scripts/templates, downstream `.specrew/` governance assets, and deterministic integration coverage under `tests/integration/`.
+This plan defines the next implementation slice after Phase 1 / Iteration 002 closed green. Phase 2 is limited to the deferred quality-governance requirements that build directly on the now-stable Phase 1 baseline: the pre-implementation hardening gate, materially relevant bug-hunter review lenses, strongest-class routing, and the project-wide known-traps corpus. This plan is intentionally planning-only: it defines boundaries, architecture, evidence contracts, verification, and dependency-aware slices for the next task-generation pass, but it does **not** claim that Phase 2 execution has started.
 
 ## Phase Boundary
 
 ### In Scope
 
-- FR-002 through FR-004 and FR-003a
-- FR-022 through FR-026
-- FR-027 through FR-030 and FR-030a
-- FR-010 through FR-012
+- FR-031 through FR-033 — pre-implementation hardening gate
+- FR-016 through FR-019a — dedicated bug-hunter review lenses and mechanical-first ordering
+- FR-034 through FR-037 — project-wide known-traps corpus and trap reapplication
+- FR-038 through FR-040 — strongest-available routing policy, override recording, and routing evidence
 
 ### Explicitly Deferred
 
-- Phase 2 bug-hunter execution workflows beyond Phase 1 artifact foundations
-- FR-031 through FR-033 hardening gate
-- FR-034 through FR-037 known-traps corpus workflows
-- FR-041 through FR-043 quality-drift detection
-- FR-044 through FR-046 reference-implementation companion mode
-- Mixed-stack fallback/override workflows outside the minimum Phase 1 profile foundation
+- FR-041 through FR-043 — quality-drift detection and ledger maintenance
+- FR-044 through FR-046 — optional reference-implementation companion mode
+- FR-013 through FR-015 — broader override/flexibility workflows beyond the Phase 2 routing-override requirement in FR-039
+- Mixed-stack expansion, reference-baseline comparison, and any other out-of-scope work not listed above
 
 ## Technical Context
 
-**Language/Version**: PowerShell 7.x scripts plus Markdown/YAML/JSON governance artifacts; downstream Specrew config currently pins Spec Kit `0.8.4` and Squad `0.9.1` in `.specrew/config.yml`  
-**Primary Dependencies**: `extensions/specrew-speckit` script/template surfaces, `.specify` plan workflow, Squad-native runtime deployment via `deploy-squad-runtime.ps1`, existing governance/evaluation scripts under `tests/integration/` and `evaluation/scorers/`  
-**Storage**: Git-tracked Markdown/YAML assets under `.specrew/` plus feature and iteration artifacts under `specs/<feature>/`; machine-readable mechanical findings stored as JSON sidecars  
-**Testing**: PowerShell integration scripts in `tests/integration/`, governance validation via `extensions/specrew-speckit/scripts/validate-governance.ps1`, process-quality scorer/report checks in `evaluation/scorers/` and `tests/integration/process-quality-*.ps1`  
-**Target Platform**: Copilot-hosted Specrew repositories on PowerShell-capable environments, with deployed assets under `.specrew/`, `.squad/`, `.copilot/`, and `specs/`  
+**Language/Version**: PowerShell 7.x scripts plus Markdown/YAML/JSON governance artifacts; downstream Specrew config remains rooted in `.specrew/*.yml`  
+**Primary Dependencies**: `extensions/specrew-speckit` scripts/templates, `.specify` planning workflow, existing Phase 1 quality-profile/evidence contracts, iteration governance scripts, and deterministic integration coverage in `tests/integration/`  
+**Storage**: Git-tracked Markdown/YAML/JSON under `.specrew/`, `extensions/specrew-speckit/templates/quality/`, and `specs/<feature>/iterations/<NNN>/quality/`; Phase 2 adds a versioned known-traps corpus plus hardening/lens evidence artifacts  
+**Testing**: PowerShell integration scripts, governance validation through `extensions/specrew-speckit/scripts/validate-governance.ps1`, and existing process-quality reporting regressions extended for Phase 2 artifacts  
+**Target Platform**: Copilot-hosted Specrew repositories on PowerShell-capable environments with downstream `.specrew/`, `.squad/`, `.copilot/`, and `specs/` artifact trees  
 **Project Type**: Spec Kit extension plus Squad-native governance/runtime template monorepo  
-**Performance Goals**: Keep the Phase 1 quality bar deterministic and CI-friendly: preset/lens assets remain Markdown-reviewable, governance validation remains local/offline, and mechanical findings emit structured JSON suitable for downstream tooling without requiring live model execution  
-**Constraints**: Must remain additive to the current Specrew lifecycle, use supported extension surfaces only, preserve markdown-first governance conventions, avoid unresolved planning placeholders, and defer later-phase hardening/lens/drift/reference workflows explicitly rather than partially implementing them  
-**Scale/Scope**: One repo-wide foundation slice touching extension scaffolding, planner/reviewer governance prompts, deterministic validation/tests, and a minimum preset/lens catalog with one fully worked `node-public-ws-service` example
+**Performance Goals**: Keep Phase 2 review flows deterministic, inspectable, and CI-friendly: mechanical checks remain first, hardening/lens artifacts remain reviewable without hidden state, and routing decisions remain reproducible from explicit config and recorded evidence  
+**Constraints**: Preserve the green Phase 1 governance baseline, stay additive to the current Specrew lifecycle, use supported extension surfaces only, require human approval where FR-033 and FR-039 demand it, and avoid implying any Phase 3/4 capability as implemented  
+**Scale/Scope**: One bounded Phase 2 planning slice covering planner/reviewer artifact contracts, routing/config metadata, new lens checklist sources, known-traps storage, and governance/test extensions for a single repo-wide feature
+
+## Phase 2 Quality Planning
+
+**Baseline inherited from Phase 1**: `quality-profile.custom-composition.v1` with Phase 1 governance green in `iterations/002`  
+**Phase Scope**: `phase-2-hardening-bug-hunter-known-traps`  
+**Planning Status**: `ready-for-task-generation`  
+**Execution Status**: `not-started`
+
+### Baseline Quality Profile Carry-Forward
+
+| Item | Current Baseline | Phase 2 Implication |
+| --- | --- | --- |
+| Inferred profile | `quality-profile.custom-composition.v1` | Continue with bounded custom composition; Phase 2 adds specialist review behavior without pretending a recognized preset now exists |
+| Phase 1 evidence status | Green (`iterations/002` accepted, governance passed) | Phase 2 may depend on Phase 1 `quality-evidence.md` and `mechanical-findings.json` as prerequisites |
+| Mechanical checks | `dead-field`, `anti-pattern`, `test-integrity` | Must execute first and surface findings before any required model-based lens execution (FR-019a) |
+| Quality asset catalog | Versioned presets/lenses under `templates/quality/` | Phase 2 extends the lens catalog with specialist bug-hunter checklists and corpus support |
+
+### Hardening Gate Focus Areas
+
+| Concern Area | Status | Planned Evidence Surface | Notes |
+| --- | --- | --- | --- |
+| Security surface analysis | required | `specs/<feature>/iterations/<NNN>/quality/hardening-gate.md` | Must be explicit before implementation starts |
+| Error-handling expectations | required | `specs/<feature>/iterations/<NNN>/quality/hardening-gate.md` | Must capture expected failure behavior, not just happy paths |
+| Retry and idempotency requirements | required review, may conclude not-applicable | `hardening-gate.md` plus rationale row | Required as a review topic even when the answer is “not materially applicable” |
+| Test-integrity targets | required | `hardening-gate.md` and linked lens evidence | Must tie to observable negative-path expectations |
+| Operational / resilience concerns | required | `hardening-gate.md` | “TBD” is blocking unless a human-approved deferral is recorded |
+
+### Planned Bug-Hunter Lens Activation Matrix
+
+| Lens / Defect Class | Planned Status | Why | Planned Evidence Surface |
+| --- | --- | --- | --- |
+| `security-issues` | required | The feature changes governance, review, and artifact flows that can silently weaken security expectations if omitted | `specs/<feature>/iterations/<NNN>/quality/lenses/security-issues.md` |
+| `error-handling-failure-semantics` | required | Phase 2 introduces blocking/review-gate behavior, so failure handling and incomplete-state behavior are material | `.../quality/lenses/error-handling-failure-semantics.md` |
+| `configuration-secret-handling` | required | Routing/config metadata and agent-selection policy must avoid unsafe or ambiguous configuration behavior | `.../quality/lenses/configuration-secret-handling.md` |
+| `state-transition-correctness` | required | The slice governs plan → hardening gate → implementation readiness transitions and must keep blocking semantics correct | `.../quality/lenses/state-transition-correctness.md` |
+| `dependency-package-health` | optional | Material for extension/runtime dependencies, but secondary to the hardening/lifecycle changes in this slice | `.../quality/lenses/dependency-package-health.md` if activated |
+| `algorithmic-complexity-performance-path-traps` | optional | Useful for repo tooling drift, but not a primary Phase 2 blocking concern for this slice | `.../quality/lenses/algorithmic-complexity-performance-path-traps.md` if activated |
+| `idempotency-retry-safety` | not-applicable by default | The current slice is artifact/governance orchestration, not an external side-effect workflow; hardening gate still records the explicit rationale | Hardening gate rationale only unless implementation scope changes |
+| `concurrency-race-risk` | not-applicable by default | No current Phase 2 scope introduces material shared-state or realtime concurrency behavior | Hardening gate rationale only unless implementation scope changes |
+
+### Routing Policy Baseline
+
+| Policy Element | Planned Decision |
+| --- | --- |
+| Default route for required hardening/lens review | `strongest-available` |
+| Configuration source | Extend `.specrew/iteration-config.yml` agent metadata with explicit strength ranking and allow `.specrew/config.yml` quality-routing defaults |
+| Override rule | Only per-lens lower-tier overrides required by FR-039 are in scope; each override must include justification, approval, and the affected lens |
+| Recorded evidence | Each lens execution records requested class, effective class, override reference (if any), and reviewer-visible outcome |
+| Human approval points | FR-033 hardening deferrals and FR-039 lower-tier overrides require human approval |
+
+### Explicit Phase 3/4 Deferrals
+
+- Do **not** add quality-drift ledgers, baseline-diff automation, or remediation-tracking workflows in this plan.
+- Do **not** add reference-implementation storage or comparison workflows in this plan.
+- Do **not** broaden this slice into general tool/gate override workflows outside the routing-override obligation in FR-039.
 
 ## Constitution Check (Pre-Design)
 
 *GATE: Must pass before Phase 0 research. Re-check after Phase 1 design.*
 
-- **Spec Authority Gate**: PASS — Scope is explicitly limited to the Phase 1 guidance in `spec.md` and the user-provided in-scope FR list. Deferred FRs are named above rather than blended into the slice.
-- **Layering Gate**: PASS — Changes stay in the Specrew Spec Kit extension layer (`extensions/specrew-speckit`), Squad governance prompts/templates, downstream `.specrew/` generated assets, and deterministic test/evaluation surfaces. No direct Copilot/VS Code hacks are introduced.
-- **Traceability Gate**: PASS — The delivery slices below map every planned workstream to requirement IDs, downstream artifacts, verification steps, and later task-generation boundaries.
-- **Ownership Gate**: PASS — Major workstreams are owned by existing Specrew baseline roles: Spec Steward (artifact contracts/versioning), Planner (profile/preset selection surfaces), Implementer (mechanical checks + scripts), Reviewer (evidence visibility + validation), with human developer approval required for demotion workflow decisions.
-- **Capacity Gate**: PASS — Planning uses the repo-standard `story_points` effort model from `extensions/specrew-speckit/extension.yml` and `.specrew/iteration-config.yml`. This first slice is intentionally capped at a single 20-point iteration budget and organized into four serial work packages for later task generation.
-- **Drift/Reconciliation Gate**: PASS — Phase 1 uses existing Specrew drift discipline (`drift-log.md`, review gap handling, change logs) for artifact reconciliation. Dedicated quality-drift ledgers remain deferred to Phase 3; any preset/lens/rule changes in this slice must record version bumps, change logs, and reviewed demotion rationale instead of silent edits.
-- **Verification Gate**: PASS — Verification will remain deterministic: governance validation, integration scripts, and scorer/report fixtures prove the slice. Review evidence must tie every required quality gate to either emitted findings/evidence or an explicit approved exception record.
+- **Spec Authority Gate**: PASS — Scope is limited to the user-requested deferred Phase 2 requirements only, and every excluded requirement family is called out explicitly.
+- **Layering Gate**: PASS — Planned changes stay in the Specrew extension layer, downstream governance config/artifacts, reviewer/planner templates, and deterministic test lanes. No unsupported Copilot/VS Code coupling is introduced.
+- **Traceability Gate**: PASS — Each planned workstream below maps to explicit FRs, concrete artifact surfaces, and a future task-generation boundary.
+- **Ownership Gate**: PASS — Workstreams remain attributable to baseline Specrew roles: Spec Steward (artifact contracts/checklists), Planner (phase planning and routing metadata), Implementer (scripts/orchestration), Reviewer (evidence and validation), with human developer approval reserved where the spec requires it.
+- **Capacity Gate**: PASS — The next slice is planned as one bounded Phase 2 planning pass feeding one implementation iteration at the repo-standard 20 story-point capacity.
+- **Drift/Reconciliation Gate**: PASS — The plan starts from the now-green Phase 1 baseline and requires additive artifact evolution instead of silent replacement. Phase 3 drift automation remains deferred and is not implied.
+- **Verification Gate**: PASS — The slice is designed around deterministic tests, artifact contracts, and fail-closed governance, with explicit human approval checkpoints for the non-delegable decisions.
 
 ## Project Structure
 
@@ -59,182 +112,198 @@ specs/005-stack-aware-quality-bar/
 ├── research.md
 ├── data-model.md
 ├── quickstart.md
-└── contracts/
-    ├── quality-governance-artifacts.md
-    └── mechanical-findings.schema.json
+├── contracts/
+│   ├── mechanical-findings.schema.json
+│   └── quality-governance-artifacts.md
+└── iterations/
+    └── <NNN>/quality/
+        ├── hardening-gate.md           # planned Phase 2 artifact
+        ├── quality-evidence.md
+        ├── mechanical-findings.json
+        ├── lenses/
+        │   └── *.md                    # planned Phase 2 artifact
+        └── trap-reapplication.md       # planned Phase 2 artifact
 ```
 
 ### Source Code (repository root)
 
 ```text
 extensions/specrew-speckit/
-├── extension.yml
+├── commands/
+│   ├── speckit.specrew-speckit.before-plan.md
+│   └── speckit.specrew-speckit.before-implement.md
 ├── scripts/
-│   ├── scaffold-governance.ps1
+│   ├── resolve-quality-profile.ps1
+│   ├── run-mechanical-checks.ps1
 │   ├── validate-governance.ps1
-│   └── deploy-squad-runtime.ps1
+│   ├── scaffold-governance.ps1
+│   ├── scaffold-iteration-artifacts.ps1
+│   ├── scaffold-reviewer-artifacts.ps1
+│   ├── run-hardening-gate.ps1         # planned
+│   ├── run-bug-hunter-lenses.ps1      # planned
+│   └── apply-known-traps.ps1          # planned
 ├── templates/
-│   ├── iteration-config.yml
-│   ├── role-assignments.yml
 │   └── quality/
+│       ├── lenses/
 │       ├── presets/
-│       └── lenses/
+│       └── README.md
 └── squad-templates/
-    ├── coordinator/
-    ├── agents/
-    └── skills/
+    └── coordinator/
 
 tests/
 └── integration/
-
-evaluation/
-└── scorers/
-
-docs/
 ```
 
-**Structure Decision**: Implement the slice as extension-owned source templates/scripts plus deterministic repo tests, then deploy the resulting assets into downstream `.specrew/` directories through the existing scaffolding path. Quality evidence remains part of the existing feature/iteration artifact tree instead of a parallel subsystem.
+**Structure Decision**: Extend the existing Phase 1 quality-governance surfaces rather than creating a parallel subsystem. Phase 2 reuses the existing `quality/` artifact directory, adds hardening/lens/trap artifacts there, and keeps repo-wide quality knowledge in downstream `.specrew/quality/`.
 
 ## Architecture Overview
 
-### Phase 1 Components
-
 | Component | Primary Paths | Responsibilities | Requirements |
 | --- | --- | --- | --- |
-| Quality Governance Asset Registry | `extensions/specrew-speckit/templates/quality/**`, `scaffold-governance.ps1`, downstream `.specrew/config.yml` | Define where presets and lens checklists live, scaffold them into downstream repos, and make the paths/versioning discoverable to later scripts | FR-022, FR-023, FR-024, FR-024a, FR-025, FR-026 |
-| Quality Profile Resolver | planner/coordinator governance templates plus new profile-resolution script surface | Infer the active feature's quality profile from spec scope + repo signals, select preset references when recognized, and fall back to a bounded Phase 1 custom profile composition path | FR-002, FR-003, FR-003a, FR-004, FR-010, FR-011 |
-| Mechanical Check Catalog and Runner | new script surfaces under `extensions/specrew-speckit/scripts/`, contract schema in `contracts/` | Model dead-field, anti-pattern, and test-integrity checks as deterministic rules that emit machine-readable findings with remediation metadata | FR-027, FR-028, FR-029, FR-030 |
-| Rule Demotion Workflow Metadata | governance artifacts + change logs + explicit exception records | Record reviewed demotions of noisy rules from blocking mechanical checks to advisory guidance without hiding them | FR-030a |
-| Quality Evidence Publisher | plan/review artifact contract, downstream iteration artifacts, governance validation | Make selected profile, tool bundle, gate status, findings references, and approved exceptions visible and reviewable in lifecycle artifacts | FR-010, FR-011, FR-012 |
-| Deterministic Verification Lane | `tests/integration/`, `evaluation/scorers/`, `validate-governance.ps1` | Prove scaffolding, contracts, evidence visibility, and JSON finding structure without requiring later-phase live bug-hunter workflows | FR-010, FR-011, FR-012, FR-027, FR-030 |
+| Hardening Gate Orchestrator | planned `run-hardening-gate.ps1`, planner/reviewer templates, `before-implement` guidance | Render the pre-implementation hardening checklist, enforce explicit sign-off/rationale, and block readiness on unresolved critical concerns | FR-031, FR-032, FR-033 |
+| Lens Catalog and Activation Resolver | `templates/quality/lenses/*.md`, `resolve-quality-profile.ps1`, plan template | Define versioned specialist checklists and decide which lenses are required/optional/not-applicable from feature scope, stack signals, architecture, and risk | FR-016, FR-017, FR-018 |
+| Lens Execution and Evidence Publisher | planned `run-bug-hunter-lenses.ps1`, iteration `quality/lenses/*.md`, `quality-evidence.md` | Execute required lenses after mechanical checks, record row-level status/finding/exception evidence, and expose reviewable outcomes | FR-019, FR-019a, FR-040 |
+| Routing Policy Resolver | `.specrew/iteration-config.yml`, `.specrew/config.yml`, lens execution artifacts | Resolve strongest-available default routing, allow approved lower-tier overrides, and record requested/effective class per lens run | FR-038, FR-039, FR-040 |
+| Known-Traps Corpus Manager | `.specrew/quality/known-traps.md`, planned `apply-known-traps.ps1`, review artifacts | Seed, version, grow, and reapply the corpus of confirmed defect patterns across iterations | FR-034, FR-035, FR-036, FR-037 |
+| Governance Validator | `validate-governance.ps1`, iteration plan/review artifacts, new integration fixtures | Fail closed when hardening approval, required lens evidence, routing evidence, or corpus obligations are missing | FR-019, FR-033, FR-039, FR-040 |
 
 ## Phase 0: Research Decisions
 
-Research outputs are captured in [research.md](research.md). The Phase 0 decisions that drive this plan are:
+Research outputs are captured in [research.md](research.md). The decisions that drive this plan are:
 
-1. Keep quality governance assets in downstream `.specrew/` space, but source them from extension templates so Specrew remains the system of record.
-2. Use semantic-versioned Markdown artifacts for presets and lens checklists, including the worked `node-public-ws-service` preset in the preset artifact itself.
-3. Emit mechanical findings as JSON envelopes aligned with existing scorer-style structured output, with one record shape shared across dead-field, anti-pattern, and test-integrity rules.
-4. Record planned quality expectations in feature/iteration artifacts rather than inventing a separate quality-only workflow; Phase 1 stays additive to Specrew's current lifecycle.
+1. Keep hardening sign-off in lifecycle-visible feature/iteration artifacts instead of burying it inside transient chat or reviewer prose.
+2. Record bug-hunter lens execution as per-lens Markdown evidence under `iterations/<NNN>/quality/lenses/` so row-level checklist execution stays human-reviewable.
+3. Keep the known-traps corpus in downstream `.specrew/quality/known-traps.md`, seeded from existing dogfooding and iteration evidence rather than starting empty.
+4. Resolve strongest-available routing from explicit config metadata and store both requested and effective review class in each lens execution record.
 
 ## Phase 1 Design
 
 ### Data and Contract Surfaces
 
-- [data-model.md](data-model.md) defines the authoritative entities for quality profiles, stack presets, lens checklists, quality gates, structured findings, evidence records, and demotion records.
-- [contracts/quality-governance-artifacts.md](contracts/quality-governance-artifacts.md) defines the normative artifact layout and lifecycle-visible fields.
-- [contracts/mechanical-findings.schema.json](contracts/mechanical-findings.schema.json) defines the machine-readable findings payload required by FR-030.
+- [data-model.md](data-model.md) extends the Phase 1 model with hardening reviews, lens activation plans, lens execution records, routing overrides, known-trap entries, and trap reapplication scans.
+- [contracts/quality-governance-artifacts.md](contracts/quality-governance-artifacts.md) now defines the Phase 2 artifact layout and the reviewable contract for hardening, lens, routing, and known-trap evidence.
+- `mechanical-findings.schema.json` remains the Phase 1 schema; Phase 2 consumes it as a prerequisite input rather than redefining it.
 
-### Downstream Artifact Shape
-
-Phase 1 will introduce or reserve the following downstream surfaces:
+### Planned Artifact Layout
 
 ```text
 .specrew/
 ├── config.yml
-├── presets/
-│   └── node-public-ws-service-v1.md
-└── lenses/
-    ├── security-baseline-v1.md
-    ├── robustness-baseline-v1.md
-    └── test-integrity-v1.md
+└── quality/
+    └── known-traps.md                  # planned
 
-specs/<feature>/
-└── iterations/<NNN>/
-    └── quality/
-        ├── quality-evidence.md
-        └── mechanical-findings.json
+specs/<feature>/iterations/<NNN>/quality/
+├── hardening-gate.md                  # planned
+├── quality-evidence.md
+├── mechanical-findings.json
+├── lenses/
+│   ├── security-issues.md             # planned
+│   ├── error-handling-failure-semantics.md
+│   ├── configuration-secret-handling.md
+│   └── state-transition-correctness.md
+└── trap-reapplication.md              # planned
 ```
 
-- `config.yml` will gain explicit quality-asset path metadata so scripts can discover preset/lens roots without hard-coded magic beyond `.specrew/`.
-- Presets and lens checklists remain Markdown-first and git-reviewable.
-- `quality-evidence.md` is the human-review surface; `mechanical-findings.json` is the downstream-tooling surface.
+- `known-traps.md` is the cross-iteration memory surface.
+- `hardening-gate.md` is the explicit implementation-readiness gate.
+- Per-lens Markdown files capture checklist rows, findings, requested/effective routing, and approved exceptions.
+- `trap-reapplication.md` records whether newly confirmed traps were offered back into the codebase scan flow and what was found.
 
 ## Delivery Slices (Dependency-Aware)
 
-### Slice A — Quality asset registry and versioned sources
+### Slice E — Hardening gate and planning-surface upgrade
 
-**Goal**: Establish the source-of-truth artifacts and scaffolding path before any profile inference or findings logic is added.
-
-| Item | Planned Changes | Owner | Depends On | Verification | Requirements |
-| --- | --- | --- | --- | --- | --- |
-| A1 | Add extension template roots for versioned presets and lens checklists | Spec Steward | — | New integration test proves scaffold copies assets without overwriting local edits | FR-022, FR-023, FR-024, FR-024a, FR-025 |
-| A2 | Extend `scaffold-governance.ps1` and downstream `.specrew/config.yml` to expose quality artifact paths | Implementer | A1 | Dry-run scaffold output and config assertions | FR-023, FR-024, FR-025 |
-| A3 | Define the minimum v1 preset set and the worked `node-public-ws-service` example with change logs/upgrade guidance | Planner | A1 | Artifact contract test validates required sections and semantic versions | FR-024, FR-024a, FR-025, FR-026 |
-
-### Slice B — Quality profile planning integration
-
-**Goal**: Make the active quality profile explicit in planning artifacts using repo signals and versioned preset references.
+**Goal**: Make implementation readiness explicit and blocking before any Phase 2 execution starts.
 
 | Item | Planned Changes | Owner | Depends On | Verification | Requirements |
 | --- | --- | --- | --- | --- | --- |
-| B1 | Add a profile-resolution surface that maps clarified feature scope + repo evidence to stack surfaces, risk dimensions, and preset references | Planner | A1-A3 | Deterministic fixture test for recognized stack selection and bounded custom composition fallback | FR-002, FR-003, FR-003a, FR-004 |
-| B2 | Update planner/coordinator governance prompts/templates so plan artifacts expose quality profile, tool bundle, gate list, preset/lens refs, and not-applicable dimensions | Spec Steward | B1 | Contract test against rendered planning artifact sections | FR-010, FR-011 |
-| B3 | Keep unsupported/later-phase dimensions explicitly deferred instead of silently implied (e.g., hardening gate, dedicated bug-hunter execution) | Spec Steward | B2 | Review of rendered plan text and governance validation messages | FR-010, FR-011 |
+| E1 | Extend the feature plan/template and coordinator/before-implement guidance with Phase 2 hardening-gate scope, sign-off rows, and blocking semantics | Planner + Spec Steward | Phase 1 green baseline | Plan rendering and contract assertions | FR-031, FR-032, FR-033 |
+| E2 | Scaffold `hardening-gate.md` into iteration quality artifacts and wire it into reviewer/implementation readiness flows | Implementer | E1 | Iteration artifact scaffold test | FR-031, FR-032 |
+| E3 | Define fail-closed validation for unresolved `TBD` concerns and human-approved deferral records | Reviewer | E2 | Governance fixture proves blocked vs approved-deferral behavior | FR-033 |
 
-### Slice C — Mechanical checks and structured findings foundation
+### Slice F — Lens catalog expansion and activation resolver
 
-**Goal**: Define deterministic checks and the shared findings contract without introducing later-phase model-based review.
-
-| Item | Planned Changes | Owner | Depends On | Verification | Requirements |
-| --- | --- | --- | --- | --- | --- |
-| C1 | Implement or stub the dead-field/dead-symbol, anti-pattern, and test-integrity rule catalog behind one runner contract | Implementer | A1-A2 | Integration tests over fixture repos/files produce stable findings sets | FR-027, FR-028, FR-029 |
-| C2 | Emit findings through a single JSON schema with gate IDs, severity, source location, remediation, and traceability metadata | Implementer | C1 | Schema validation test and scorer-style JSON snapshot | FR-030 |
-| C3 | Define reviewed demotion records for noisy rules, including scope, rationale, approval, and change-log linkage | Reviewer + human developer | C2 | Governance test proves demoted rules remain visible as advisory | FR-030a |
-
-### Slice D — Quality evidence publication and governance validation
-
-**Goal**: Make the Phase 1 quality bar reviewable and enforceable in lifecycle artifacts.
+**Goal**: Make specialist review capability explicit, versioned, and materially scoped.
 
 | Item | Planned Changes | Owner | Depends On | Verification | Requirements |
 | --- | --- | --- | --- | --- | --- |
-| D1 | Add `quality-evidence.md` contract and render path for required gate/evidence status | Reviewer | B2, C2 | Integration test checks gate/evidence matrix completeness | FR-010, FR-011, FR-012 |
-| D2 | Extend `validate-governance.ps1` to fail when required quality evidence or approved exceptions are missing for declared Phase 1 gates | Reviewer | D1 | Governance validation fixture | FR-012 |
-| D3 | Add deterministic tests/reports to the existing integration lane without requiring live lens execution | Implementer + Reviewer | A1-A3, B1-B2, C1-C3, D1-D2 | New `tests/integration/*quality*` scripts plus existing process-quality checks remain green | FR-010, FR-011, FR-012, FR-030 |
+| F1 | Author the minimum Phase 2 specialist lens checklist set required by FR-017 in `templates/quality/lenses/` | Spec Steward | Phase 1 lens asset baseline | Lens contract tests and file-shape assertions | FR-016, FR-017 |
+| F2 | Extend profile resolution/planning logic to classify lenses as `required`, `optional`, or `not-applicable` from clarified scope and risk | Planner | F1 | Fixture-based activation tests | FR-018 |
+| F3 | Keep Phase 2 lens activation bounded to the approved scope and do not imply Phase 3 drift or Phase 4 reference workflows | Spec Steward | F2 | Rendered-plan inspection and governance assertions | Boundary rule |
+
+### Slice G — Lens execution, routing evidence, and mechanical-first ordering
+
+**Goal**: Execute required specialist review only after deterministic checks and make the routing/evidence reviewable.
+
+| Item | Planned Changes | Owner | Depends On | Verification | Requirements |
+| --- | --- | --- | --- | --- | --- |
+| G1 | Implement lens-execution orchestration that requires Phase 1 mechanical findings before opening any required bug-hunter lens | Implementer | E2, F2 | Integration test proves mechanical-first ordering | FR-019a |
+| G2 | Publish per-lens execution artifacts with row-level checklist status, focused findings, justified exceptions, and requested/effective reasoning class | Reviewer + Implementer | G1 | Lens evidence contract tests | FR-019, FR-040 |
+| G3 | Add explicit strongest-available routing resolution plus approved lower-tier override handling from config | Planner + Implementer | F2 | Routing-policy integration tests | FR-038, FR-039, FR-040 |
+
+### Slice H — Known-traps corpus and trap reapplication
+
+**Goal**: Turn confirmed review findings into persistent project memory and reusable scans.
+
+| Item | Planned Changes | Owner | Depends On | Verification | Requirements |
+| --- | --- | --- | --- | --- | --- |
+| H1 | Create/scaffold `.specrew/quality/known-traps.md` and seed it from existing Specrew dogfooding findings, prior iteration defects, and cross-implementation learnings | Spec Steward | Phase 1 accepted baseline | Seed-content contract test and reviewer inspection | FR-034, FR-035 |
+| H2 | Define the reviewed “add new trap” workflow from confirmed lens/review findings into the corpus | Reviewer | H1, G2 | Workflow/governance test for approved additions | FR-036 |
+| H3 | Add trap reapplication support that can scan for similar instances and record results in `trap-reapplication.md` | Implementer | H2 | Reapplication fixture test | FR-037 |
+
+## Dependencies and Execution Order
+
+1. **E before G** — Hardening artifacts and blocking semantics must exist before implementation-readiness enforcement or lens execution can be validated.
+2. **F before G** — Lens execution cannot run until the specialist checklist catalog and activation resolver are stable.
+3. **G before H2/H3** — Known traps should be promoted from real confirmed review findings, not from hypothetical planning-only examples.
+4. **Phase 1 evidence remains a prerequisite throughout** — Any Phase 2 execution flow must consume the existing mechanical findings/evidence surfaces rather than replacing them.
 
 ## Verification Strategy
 
 ### Deterministic Checks
 
-- Extend `tests/integration/` with Phase 1 fixture-based coverage for:
-  - preset/lens scaffold contract
-  - quality profile rendering in planning artifacts
-  - mechanical findings JSON schema compliance
-  - quality-evidence completeness and exception handling
-- Keep `tests/integration/process-quality-scorer.ps1` and `process-quality-report.ps1` passing so Phase 1 does not regress current evaluation/report behavior.
-- Use `extensions/specrew-speckit/scripts/validate-governance.ps1 -ProjectPath .` as the enforcement gate for artifact completeness.
+- Add dedicated integration coverage for:
+  - hardening-gate artifact generation and blocking semantics
+  - specialist lens activation classification (`required` / `optional` / `not-applicable`)
+  - mechanical-first ordering before lens execution
+  - strongest-available routing and approved lower-tier override recording
+  - known-traps corpus seeding, approved additions, and trap reapplication
+- Keep `quality-profile-foundation.ps1`, `mechanical-findings-contract.ps1`, `quality-evidence-governance.ps1`, `process-quality-scorer.ps1`, and `process-quality-report.ps1` green so Phase 2 does not regress the accepted baseline.
+- Extend `validate-governance.ps1 -ProjectPath .` so implementation readiness fails when:
+  - `hardening-gate.md` is missing or contains unresolved critical `TBD` rows
+  - a required lens has no row-level evidence or approved exception
+  - mechanical findings were skipped before required lens execution
+  - a lower-tier routing override lacks approval or justification
 
 ### Human Review Focus
 
-- Review the `node-public-ws-service` preset as the canonical worked example before cloning the pattern to other presets.
-- Review at least one demotion record example to ensure noisy-rule fallback remains explicit and auditable.
-- Confirm that plan/review artifacts clearly distinguish:
-  - selected preset vs. custom composition
-  - required vs. not-applicable gates
-  - emitted findings vs. approved exception
-  - Phase 1 implemented behavior vs. later-phase deferrals
+- Review the initial specialist lens set for checklist quality before use in task generation.
+- Review the seed known-traps corpus for signal quality and deduplication.
+- Confirm the routing-policy contract keeps “strongest available” explicit and inspectable instead of relying on hidden agent preference.
+- Confirm the plan and quickstart never claim that Phase 2 execution is already underway.
 
 ## Constitution Check (Post-Design)
 
 *Re-evaluated after Phase 1 design completion.*
 
-- **Spec Authority Gate**: PASS — The plan remains constrained to the user-scoped Phase 1 FRs, with every deferred requirement called out explicitly.
-- **Layering Gate**: PASS — Design changes remain in extension templates/scripts, downstream generated governance assets, and deterministic tests. No new unsupported platform coupling is introduced.
-- **Traceability Gate**: PASS — Delivery slices, contracts, and data model each point back to explicit FRs and later task-generation boundaries.
-- **Ownership Gate**: PASS — Workstreams remain assigned to baseline Specrew roles with human approval preserved for demotions and exceptions.
-- **Capacity Gate**: PASS — The design stays within a single first-slice iteration budget by sequencing registry → profile → findings → validation rather than parallelizing overlapping artifact changes.
-- **Drift/Reconciliation Gate**: PASS — Versioned preset/lens change logs, demotion records, and existing drift/gap governance provide the Phase 1 reconciliation path. Standalone quality-drift automation remains deferred to Phase 3 and is not implied by this slice.
-- **Verification Gate**: PASS — Every in-scope requirement maps to a deterministic artifact or validation lane; no Phase 1 deliverable depends on unimplemented later-phase model-based review.
+- **Spec Authority Gate**: PASS — The design remains limited to FR-016 through FR-019a and FR-031 through FR-040 only.
+- **Layering Gate**: PASS — The solution stays within extension scripts/templates, downstream governance config, and lifecycle artifacts.
+- **Traceability Gate**: PASS — Every slice maps to concrete FRs, artifact paths, and future test lanes.
+- **Ownership Gate**: PASS — Human approvals remain preserved where required, with agent roles limited to recommendation, orchestration, and evidence publishing.
+- **Capacity Gate**: PASS — The slice sequencing supports one bounded implementation iteration after task generation, with clear defer points if the task set exceeds the 20-point baseline.
+- **Drift/Reconciliation Gate**: PASS — Phase 2 grows from the accepted Phase 1 baseline and leaves Phase 3 drift automation explicitly deferred rather than implied.
+- **Verification Gate**: PASS — Planned verification combines deterministic tests, lifecycle-visible evidence, and fail-closed governance suitable for implementation gating.
 
 ## Task Generation Readiness
 
-Phase 2 task generation should preserve the slice order above and keep these dependency rules:
+Phase 2 task generation should preserve the slice order above and keep these rules:
 
-1. Do not start profile inference work before preset/lens asset scaffolding exists.
-2. Do not wire governance enforcement before the findings schema and evidence contract are stable.
-3. Keep demotion workflow tasks separate from the initial mechanical-rule implementation so reviewed approval semantics remain explicit.
-4. Treat later-phase features as explicit deferred follow-ons, not hidden sub-tasks in this first slice.
+1. Do not start hardening-gate enforcement without first defining the artifact contract and human-approval fields.
+2. Do not start lens execution tasks before the specialist checklist set and activation matrix are finalized.
+3. Keep routing-policy work separate from lens-checklist authoring so approval and evidence semantics remain explicit.
+4. Treat known-traps seeding and trap reapplication as bounded Phase 2 follow-through, not as a back door into Phase 3 drift automation.
+5. Keep every task planning-only until an iteration plan and explicit human execution approval exist; this feature plan itself is **not** an execution artifact.
 
 ## Complexity Tracking
 
-No constitution violations require justification for this Phase 1 slice.
+No constitution violations require justification for this Phase 2 planning slice.

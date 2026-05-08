@@ -1,80 +1,10 @@
-# Data Model: Stack-Aware Quality Bar (Phase 1 / First Slice)
+# Data Model: Stack-Aware Quality Bar (Phase 2 / Deferred Quality Gates)
 
-**Date**: 2026-05-07  
+**Date**: 2026-05-08  
 **Spec**: [spec.md](spec.md)  
 **Plan**: [plan.md](plan.md)
 
 ## Entities
-
-### Quality Governance Config
-
-Extension-managed discovery metadata for downstream quality assets.
-
-**Location**: `.specrew/config.yml`
-
-| Field | Type | Description |
-| --- | --- | --- |
-| `quality.presets_path` | string | Relative path to scaffolded preset artifacts |
-| `quality.lenses_path` | string | Relative path to scaffolded lens checklist artifacts |
-| `quality.findings_schema_version` | string | Active schema version for mechanical findings JSON |
-| `quality.evidence_directory_name` | string | Iteration-local directory name used for quality evidence artifacts |
-
-**Validation**:
-
-- All paths MUST be repo-relative and rooted under `.specrew/` or `specs/<feature>/iterations/<NNN>/`.
-- `findings_schema_version` MUST match the schema declared in `contracts/mechanical-findings.schema.json`.
-
----
-
-### Stack Preset
-
-Versioned, named quality configuration for a recognized stack.
-
-**Location**: `.specrew/presets/*.md`
-
-| Field | Type | Description |
-| --- | --- | --- |
-| `preset_id` | string | Stable identifier, e.g. `node-public-ws-service` |
-| `version` | semver string | Independent preset version |
-| `stack_signals[]` | string[] | Repo/spec signals that justify selection |
-| `toolchain[]` | string[] | Required mechanical or ecosystem tools |
-| `required_lenses[]` | string[] | Lens checklist IDs + versions required by the preset |
-| `mechanical_checks[]` | string[] | Required deterministic checks |
-| `risk_dimensions[]` | string[] | Quality concerns activated by the preset |
-| `worked_example` | markdown section | Required for `node-public-ws-service` in Phase 1 |
-| `upgrade_guidance` | markdown section | How teams adopt a newer preset version |
-| `change_log` | markdown table | Version-to-version delta history |
-
-**Validation**:
-
-- `version` MUST be semantic version text.
-- `node-public-ws-service` MUST include a fully specified worked example.
-- Every required lens reference MUST point to a versioned lens checklist artifact.
-
----
-
-### Versioned Lens Checklist
-
-Concrete line-item checklist for a bug-hunter or advisory quality lens.
-
-**Location**: `.specrew/lenses/*.md`
-
-| Field | Type | Description |
-| --- | --- | --- |
-| `lens_id` | string | Stable identifier, e.g. `security-baseline` |
-| `version` | semver string | Checklist version |
-| `purpose` | string | Defect class or concern covered |
-| `line_items[]` | table rows | Concrete checks with acceptance criteria |
-| `default_statuses[]` | enum[] | Allowed row states: `pass`, `fail`, `not-applicable`, `advisory` |
-| `upgrade_guidance` | markdown section | How to review/apply added checks |
-| `change_log` | markdown table | Version history |
-
-**Validation**:
-
-- Checklist content MUST remain Markdown-table based.
-- Each line item MUST be execution-ready and reviewable without external hidden policy.
-
----
 
 ### Quality Profile
 
@@ -85,159 +15,225 @@ The active feature-level quality baseline inferred during planning.
 | Field | Type | Description |
 | --- | --- | --- |
 | `profile_id` | string | Feature-local identifier for the inferred profile |
-| `feature_ref` | path | Governing `spec.md` path |
-| `stack_surfaces[]` | `Stack Surface`[] | Technology surfaces materially relevant to the feature |
-| `preset_refs[]` | string[] | Versioned stack preset references selected for the feature |
-| `custom_lens_refs[]` | string[] | Extra lens references used when no preset fully covers the shape |
-| `risk_dimensions[]` | string[] | Required quality dimensions for this feature |
-| `tool_bundle` | `Quality Tool Bundle` | Selected deterministic tools/evidence sources |
-| `not_applicable_dimensions[]` | string[] | Dimensions explicitly omitted with rationale |
-| `phase_scope` | string | Must read `phase-1-first-slice` |
+| `phase_scope` | string | For this slice, `phase-2-hardening-bug-hunter-known-traps` |
+| `preset_refs[]` | string[] | Versioned preset references, if any |
+| `custom_lens_refs[]` | string[] | Lens references used for bounded custom composition |
+| `risk_dimensions[]` | string[] | Quality concerns materially active for the feature |
+| `required_quality_gates[]` | `Quality Gate`[] | Declared prerequisite gates |
 
 **Validation**:
 
-- Profile MUST cite either one or more preset refs or an explicit custom-composition rationale.
-- `phase_scope` MUST prevent later-phase behavior from being implied as implemented.
+- Phase 2 planning MUST inherit the accepted Phase 1 baseline rather than redefining it silently.
+- The profile MUST keep out-of-scope Phase 3/4 behavior explicitly deferred.
 
 ---
 
-### Stack Surface
+### Hardening Gate Review
 
-Materially distinct technology boundary within the feature.
+Pre-implementation review packet covering silent-omission risk before coding begins.
 
-| Field | Type | Description |
-| --- | --- | --- |
-| `surface_id` | string | Stable feature-local identifier |
-| `path_globs[]` | string[] | File/system boundaries for the surface |
-| `language` | string | Dominant implementation language or artifact type |
-| `runtime_shape` | string | Service, SPA, worker, script surface, etc. |
-| `recognized_stack` | string | Preset-matching stack name or `custom` |
-
-**Validation**:
-
-- Surface boundaries MUST be explicit enough to support future mixed-stack handling even if Phase 1 uses one dominant surface.
-
----
-
-### Quality Tool Bundle
-
-Selected deterministic tools and evidence paths used to satisfy the active profile.
+**Location**: `specs/<feature>/iterations/<NNN>/quality/hardening-gate.md`
 
 | Field | Type | Description |
 | --- | --- | --- |
-| `bundle_id` | string | Stable identifier for the resolved bundle |
-| `mechanical_checks[]` | `Quality Gate`[] | Required Phase 1 deterministic gates |
-| `ecosystem_tools[]` | string[] | Stack-specific lint/static/test commands or evidence sources |
-| `manual_evidence[]` | string[] | Human-reviewed evidence paths used where tooling is not yet automated |
-
-**Validation**:
-
-- Mechanical checks MUST be first-class entries, not implied notes.
-- Every listed gate MUST map to an evidence source or approved exception path.
-
----
-
-### Quality Gate
-
-Reviewable expectation that must be satisfied or explicitly excepted.
-
-| Field | Type | Description |
-| --- | --- | --- |
-| `gate_id` | string | Stable gate key |
-| `category` | enum | `mechanical`, `tooling`, `manual-evidence` |
-| `requirement_refs[]` | string[] | Governing FRs |
-| `status` | enum | `planned`, `passed`, `failed`, `excepted`, `not-applicable` |
-| `evidence_ref` | path/string | Evidence artifact or command result |
-| `exception_ref` | path/string? | Approved exception or demotion record |
-
-**State transitions**:
-
-```text
-planned -> passed
-planned -> failed
-planned -> excepted
-planned -> not-applicable
-failed -> passed
-failed -> excepted
-```
-
----
-
-### Mechanical Check Finding
-
-Structured, actionable finding emitted by a deterministic check.
-
-**Location**: `specs/<feature>/iterations/<NNN>/quality/mechanical-findings.json`
-
-| Field | Type | Description |
-| --- | --- | --- |
-| `finding_id` | string | Stable within a run |
-| `gate_id` | string | Triggering quality gate |
-| `rule_id` | string | Specific deterministic rule |
-| `surface_id` | string | Stack surface where the issue was found |
-| `severity` | enum | `error`, `warning`, `info` |
-| `message` | string | Human-readable summary |
-| `remediation` | string | Actionable fix guidance |
-| `source.path` | string | Relative file path |
-| `source.line` | integer | 1-based line number |
-| `source.column` | integer? | Optional column |
-| `requirement_refs[]` | string[] | Traceability to FRs |
-| `demoted` | boolean | Whether the rule was demoted from blocking behavior |
-
-**Validation**:
-
-- Every finding MUST include source location, severity, and remediation guidance.
-- `demoted = true` requires an associated `Mechanical Rule Disposition Record`.
-
----
-
-### Quality Evidence Record
-
-Human-reviewable matrix of planned gates, findings, and exceptions.
-
-**Location**: `specs/<feature>/iterations/<NNN>/quality/quality-evidence.md`
-
-| Field | Type | Description |
-| --- | --- | --- |
-| `profile_ref` | string | Linked `Quality Profile` |
-| `preset_refs[]` | string[] | Versioned preset references used |
-| `gate_rows[]` | table rows | Gate, requirement refs, expected evidence, observed status, exception |
-| `findings_ref` | path | JSON findings payload path |
+| `gate_id` | string | Stable identifier, e.g. `pre-implementation-hardening` |
+| `feature_ref` | path | Governing feature path |
+| `iteration_ref` | string | Active iteration identifier |
+| `requested_review_class` | string | Requested reasoning/review tier (`strongest-available` by default) |
+| `effective_review_class` | string | Actual tier used for the hardening review |
+| `concern_rows[]` | `Hardening Concern`[] | Security, error handling, retry/idempotency, test integrity, operational concerns |
+| `overall_verdict` | enum | `ready`, `blocked`, `deferred-with-approval` |
+| `approval_ref` | string? | Required when critical concerns are deferred rather than resolved |
 | `reviewed_by` | string | Reviewer or role |
 | `reviewed_at` | ISO datetime | Review timestamp |
 
 **Validation**:
 
-- Every required gate from the plan MUST appear in the matrix.
-- Missing evidence is only valid when `exception_ref` is populated and approved.
+- Any critical concern with `status = tbd` forces `overall_verdict = blocked`.
+- `deferred-with-approval` requires explicit human approval evidence.
 
 ---
 
-### Mechanical Rule Disposition Record
+### Hardening Concern
 
-Reviewed record for rule demotion when a mechanical check becomes too noisy.
+One explicitly reviewed readiness concern inside the hardening gate.
 
 | Field | Type | Description |
 | --- | --- | --- |
-| `disposition_id` | string | Stable identifier |
-| `rule_id` | string | Rule being changed |
-| `old_behavior` | enum | `blocking`, `warning` |
-| `new_behavior` | enum | `advisory`, `warning` |
-| `scope` | enum | `global`, `preset`, `project` |
-| `rationale` | string | Why the rule was demoted |
-| `approved_by` | string | Human approver |
-| `approved_at` | ISO datetime | Approval timestamp |
-| `change_log_ref` | path | Preset/lens/change-log entry path |
+| `concern_id` | string | Stable key such as `security-surface` |
+| `category` | enum | `security`, `error-handling`, `retry-idempotency`, `test-integrity`, `operational` |
+| `status` | enum | `addressed`, `not-applicable`, `tbd`, `deferred-with-approval` |
+| `rationale` | string | Required when not applicable, deferred, or addressed with non-obvious reasoning |
+| `blocking` | boolean | Whether unresolved state blocks implementation |
+| `approval_ref` | string? | Human approval reference for any deferred critical concern |
+
+---
+
+### Bug-Hunter Lens Definition
+
+Versioned specialist checklist artifact for a focused defect class.
+
+**Location**: `.specrew/lenses/*.md`
+
+| Field | Type | Description |
+| --- | --- | --- |
+| `lens_id` | string | Stable identifier, e.g. `security-issues` |
+| `version` | semver string | Checklist version |
+| `defect_class` | string | Risk class covered by the lens |
+| `checklist_rows[]` | table rows | Reviewable line items |
+| `default_statuses[]` | enum[] | Allowed row states: `pass`, `fail`, `not-applicable`, `advisory` |
+| `upgrade_guidance` | markdown section | Adoption guidance for newer versions |
+| `change_log` | markdown table | Version history |
 
 **Validation**:
 
-- Demotions MUST never silently remove the rule; they only change how it is surfaced.
+- Phase 2 MUST publish the minimum lens families required by FR-017.
+- Lens definitions remain versioned independently from presets.
+
+---
+
+### Lens Activation Plan
+
+Planning-time classification of specialist lenses for the active feature.
+
+**Location**: feature `plan.md`
+
+| Field | Type | Description |
+| --- | --- | --- |
+| `lens_id` | string | Referenced lens |
+| `status` | enum | `required`, `optional`, `not-applicable` |
+| `rationale` | string | Why the lens was activated or omitted |
+| `evidence_path` | path | Where execution evidence will appear if activated |
+| `requested_review_class` | string | Default requested routing tier |
+
+**Validation**:
+
+- Every materially relevant lens must be classified explicitly.
+- `required` lenses must point to an execution evidence surface.
+
+---
+
+### Lens Execution Record
+
+Reviewable execution artifact for one activated specialist lens.
+
+**Location**: `specs/<feature>/iterations/<NNN>/quality/lenses/<lens-id>.md`
+
+| Field | Type | Description |
+| --- | --- | --- |
+| `lens_id` | string | Executed lens |
+| `lens_version` | semver string | Version used |
+| `requested_review_class` | string | Tier requested by policy |
+| `effective_review_class` | string | Tier actually used |
+| `override_ref` | string? | Required if the effective class is lower-tier by override |
+| `mechanical_prereq_ref` | path | Prior `mechanical-findings.json` evidence |
+| `rows[]` | `Lens Checklist Row Result`[] | Line-by-line execution results |
+| `overall_verdict` | enum | `passed`, `failed`, `excepted` |
+
+**Validation**:
+
+- Required lens execution MUST not begin without a mechanical prerequisite reference.
+- Generic unstructured review is invalid; row-level execution is mandatory.
+
+---
+
+### Lens Checklist Row Result
+
+Outcome for one checklist line item within a lens execution.
+
+| Field | Type | Description |
+| --- | --- | --- |
+| `row_id` | string | Stable within the lens |
+| `status` | enum | `pass`, `fail`, `not-applicable`, `advisory` |
+| `finding` | string? | Focused issue description |
+| `evidence_ref` | path/string? | Supporting artifact, command, or rationale |
+| `exception_ref` | string? | Required when the row is justified as excepted/not-applicable in a way that needs approval |
+
+---
+
+### Routing Policy
+
+Explicit policy for selecting the strongest available review path.
+
+**Location**: `.specrew/config.yml` and `.specrew/iteration-config.yml`
+
+| Field | Type | Description |
+| --- | --- | --- |
+| `default_policy` | enum | `strongest-available` |
+| `reasoning_classes[]` | object[] | Available classes/access paths with strength metadata |
+| `allow_lower_tier_override` | boolean | Whether FR-039 overrides are permitted |
+| `approval_required` | boolean | Must be true for lower-tier overrides |
+
+**Validation**:
+
+- The routing policy MUST be explicit and configurable.
+- Available classes and effective routing must remain reviewable after execution.
+
+---
+
+### Routing Override Record
+
+Approved exception allowing a lower-tier review class for a specific lens.
+
+| Field | Type | Description |
+| --- | --- | --- |
+| `override_id` | string | Stable identifier |
+| `lens_id` | string | Affected lens |
+| `requested_class` | string | Stronger default class |
+| `effective_class` | string | Lower-tier class approved for use |
+| `justification` | string | Why the override is needed |
+| `approved_by` | string | Human approver |
+| `approved_at` | ISO datetime | Approval timestamp |
+
+**Validation**:
+
+- Overrides are Phase 2-scoped only for routing behavior, not general gate/tool overrides.
+
+---
+
+### Known Trap Entry
+
+Persistent project-wide record of a confirmed defect pattern.
+
+**Location**: `.specrew/quality/known-traps.md`
+
+| Field | Type | Description |
+| --- | --- | --- |
+| `trap_id` | string | Stable identifier |
+| `category` | string | Defect category |
+| `example` | markdown/code block | Concrete example or snippet |
+| `detection_method` | string | How the defect can be found |
+| `remediation_guidance` | string | How to fix or avoid it |
+| `discovery_date` | date | When it was confirmed |
+| `source_ref` | path/string | Originating review or iteration evidence |
+
+**Validation**:
+
+- The initial corpus must be seeded; it cannot begin empty for this feature.
+
+---
+
+### Trap Reapplication Scan
+
+Iteration-local record of scanning existing code for a known trap pattern.
+
+**Location**: `specs/<feature>/iterations/<NNN>/quality/trap-reapplication.md`
+
+| Field | Type | Description |
+| --- | --- | --- |
+| `scan_id` | string | Stable identifier |
+| `trap_refs[]` | string[] | Traps re-applied in the scan |
+| `scope` | string | Files or surfaces scanned |
+| `result` | enum | `matches-found`, `none-found`, `skipped-with-rationale` |
+| `matches[]` | string[] | Optional references to discovered matches |
+| `recorded_at` | ISO datetime | When the scan result was recorded |
 
 ## Relationships
 
-- `Quality Governance Config` discovers `Stack Preset` and `Versioned Lens Checklist` artifacts.
-- `Quality Profile` references one or more `Stack Surface`, `Stack Preset`, and `Versioned Lens Checklist` records.
-- `Quality Tool Bundle` contains `Quality Gate` records.
-- `Mechanical Check Finding` rows satisfy or fail `Quality Gate` entries.
-- `Quality Evidence Record` summarizes gate outcomes and points at `Mechanical Check Finding` payloads.
-- `Mechanical Rule Disposition Record` can change the effective severity/blocking behavior of a rule but must remain traceable from both findings and change logs.
+- `Quality Profile` declares the Phase 2 scope and required quality gates.
+- `Hardening Gate Review` must exist before implementation readiness is accepted.
+- `Lens Activation Plan` determines which `Bug-Hunter Lens Definition` records become required execution.
+- `Lens Execution Record` depends on `mechanical-findings.json` and the active `Routing Policy`.
+- `Routing Override Record` may change the effective review class for a lens but must remain explicit and approved.
+- `Known Trap Entry` records confirmed project memory and may be sourced from `Lens Execution Record` findings.
+- `Trap Reapplication Scan` reuses one or more `Known Trap Entry` definitions against current code.

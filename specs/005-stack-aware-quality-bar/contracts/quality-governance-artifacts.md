@@ -1,12 +1,12 @@
-# Contract: Phase 1 Quality Governance Artifacts
+# Contract: Phase 1-2 Quality Governance Artifacts
 
-**Date**: 2026-05-07  
+**Date**: 2026-05-08  
 **Spec**: [../spec.md](../spec.md)  
 **Plan**: [../plan.md](../plan.md)
 
 ## Purpose
 
-This contract defines the user-facing artifact surfaces introduced by the Phase 1 quality-profile foundation. It is normative for artifact shape and discoverability, but intentionally limited to the first-slice scope.
+This contract defines the user-facing artifact surfaces for the accepted Phase 1 baseline and the planned Phase 2 deferred-quality-gates slice. It is normative for artifact shape and discoverability and intentionally excludes Phase 3/4 behavior.
 
 ## Downstream Artifact Layout
 
@@ -15,12 +15,18 @@ This contract defines the user-facing artifact surfaces introduced by the Phase 
 ├── config.yml
 ├── presets/
 │   └── *.md
-└── lenses/
-    └── *.md
+├── lenses/
+│   └── *.md
+└── quality/
+    └── known-traps.md                 # Phase 2
 
 specs/<feature>/iterations/<NNN>/quality/
-├── quality-evidence.md
-└── mechanical-findings.json
+├── hardening-gate.md                 # Phase 2
+├── quality-evidence.md               # Phase 1+
+├── mechanical-findings.json          # Phase 1+
+├── lenses/
+│   └── *.md                          # Phase 2
+└── trap-reapplication.md             # Phase 2
 ```
 
 ## `.specrew/config.yml` additions
@@ -33,81 +39,142 @@ quality:
   lenses_path: ".specrew/lenses"
   findings_schema_version: "v1"
   evidence_directory_name: "quality"
+  known_traps_path: ".specrew/quality/known-traps.md"
+  routing:
+    default_policy: "strongest-available"
+    allow_lower_tier_override: true
+    approval_required: true
 ```
 
 Rules:
 
 - Paths MUST be repo-relative.
-- `findings_schema_version` MUST match the JSON schema version in `mechanical-findings.schema.json`.
-- Omitted paths are invalid once the Phase 1 slice is enabled.
+- `findings_schema_version` MUST match `mechanical-findings.schema.json`.
+- `known_traps_path` is required once Phase 2 is enabled.
+- Routing defaults MUST be explicit; hidden implicit model preference is invalid.
 
-## Preset Artifact Contract
+## `.specrew/iteration-config.yml` additions
 
-Each preset Markdown artifact MUST contain:
+Agent metadata remains the availability source and MUST be extended so routing can be resolved explicitly:
 
-1. title with preset ID and semantic version
-2. supported stack signals
-3. required quality dimensions
-4. required mechanical checks
-5. required lens checklist references
-6. toolchain/evidence expectations
-7. upgrade guidance
-8. change log
-
-Additional rule:
-
-- `node-public-ws-service` MUST include a worked example section with concrete selections and mappings.
-
-## Lens Checklist Contract
-
-Each lens checklist Markdown artifact MUST contain:
-
-1. title with lens ID and semantic version
-2. purpose/scope
-3. line-item table with acceptance criteria
-4. row-level status vocabulary
-5. upgrade guidance
-6. change log
-
-## Planning Artifact Contract
-
-The feature `plan.md` generated for an active feature MUST expose a Phase 1 quality planning section containing:
-
-- inferred profile identifier
-- selected preset refs or explicit custom composition
-- stack surfaces in scope
-- risk dimensions
-- quality tool bundle
-- required quality gates
-- not-applicable dimensions and rationale
-- explicit Phase 1 deferrals
-
-## Iteration Evidence Contract
-
-`quality-evidence.md` MUST include a gate matrix table with:
-
-| Column | Meaning |
-| --- | --- |
-| Gate | Stable gate identifier |
-| Requirement | Governing FR(s) |
-| Evidence Source | Command, artifact, or findings path |
-| Status | `planned`, `passed`, `failed`, `excepted`, `not-applicable` |
-| Exception | Approved exception or demotion reference |
+```yaml
+agents:
+  <agent-id>:
+    enabled: true|false
+    access_path: "<path>"
+    availability: available|unavailable
+    strength_rank: <integer>
+```
 
 Rules:
 
-- Every required gate declared in the plan MUST appear in the matrix.
-- `excepted` requires an explicit exception reference.
-- `failed` MUST remain visible until resolved; it cannot be omitted from the matrix.
+- `strength_rank` is required for any agent that may satisfy a required hardening or lens review.
+- Missing ranking means the agent cannot be selected by the `strongest-available` policy.
+
+## Lens Checklist Contract
+
+Each specialist lens Markdown artifact MUST contain:
+
+1. title with lens ID and semantic version
+2. purpose/scope
+3. defect class covered
+4. line-item table with acceptance criteria
+5. row-level status vocabulary
+6. upgrade guidance
+7. change log
+
+Phase 2 minimum supported families MUST cover:
+
+- idempotency/retry safety
+- concurrency/race-condition risk
+- error handling/failure semantics
+- security issues
+- dependency/package health
+- algorithmic complexity/performance-path traps
+
+## Planning Artifact Contract
+
+The feature `plan.md` generated for an active Phase 2 feature MUST expose:
+
+- inherited Phase 1 baseline and green-governance prerequisite
+- explicit Phase 2 boundary and deferred out-of-scope families
+- hardening-gate concern areas
+- lens activation matrix (`required` / `optional` / `not-applicable`)
+- routing-policy baseline
+- known-traps corpus location
+- dependency-aware delivery slices
+
+## Hardening Gate Contract
+
+`hardening-gate.md` MUST include:
+
+| Column / Field | Meaning |
+| --- | --- |
+| Concern | Reviewed hardening topic |
+| Status | `addressed`, `not-applicable`, `tbd`, or `deferred-with-approval` |
+| Blocking | Whether unresolved state blocks implementation |
+| Rationale | Why the conclusion is valid |
+| Approval | Human approval reference when required |
+
+Rules:
+
+- Any critical concern with `tbd` status blocks implementation.
+- Deferred critical concerns require human approval.
+- Requested and effective review class MUST be recorded.
+
+## Lens Execution Contract
+
+Each file under `quality/lenses/*.md` MUST include:
+
+| Column / Field | Meaning |
+| --- | --- |
+| Lens Ref | Lens ID + version |
+| Requested Class | Requested review/reasoning class |
+| Effective Class | Effective class used |
+| Override Ref | Lower-tier override evidence when applicable |
+| Mechanical Prereq Ref | Required `mechanical-findings.json` reference |
+| Checklist Rows | Row-level execution results |
+| Overall Verdict | `passed`, `failed`, or `excepted` |
+
+Rules:
+
+- Required lens execution MUST walk the checklist row-by-row.
+- Generic unstructured review is invalid.
+- A lower-tier effective class requires explicit approval and justification.
+
+## Known-Traps Contract
+
+`.specrew/quality/known-traps.md` MUST include, per trap:
+
+1. defect category
+2. concrete example or snippet
+3. detection method
+4. remediation guidance
+5. discovery date
+6. source reference
+
+Rules:
+
+- The initial corpus MUST be seeded from existing Specrew findings rather than starting empty.
+- New confirmed traps require explicit approved addition.
+
+## Trap Reapplication Contract
+
+`trap-reapplication.md` MUST record:
+
+| Column | Meaning |
+| --- | --- |
+| Trap Ref | Trap(s) scanned for |
+| Scan Scope | Files/surfaces checked |
+| Result | `matches-found`, `none-found`, or `skipped-with-rationale` |
+| Matches | Optional discovered locations |
 
 ## Non-Goals for This Contract
 
 This contract does **not** define:
 
-- hardening-gate sign-off artifacts
-- dedicated bug-hunter execution records
-- known-traps corpus artifacts
-- quality-drift ledgers
-- reference-implementation comparison surfaces
+- Phase 3 quality-drift ledgers or baseline-diff workflows
+- general gate/tool override workflows outside routing overrides
+- Phase 4 reference-implementation companion storage or comparison surfaces
 
-Those remain deferred to later phases.
+Those remain explicitly deferred.
