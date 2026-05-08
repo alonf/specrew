@@ -7,3 +7,13 @@ governance:
   constitution_path: ".specrew/constitution.md"
   iteration_config_path: ".specrew/iteration-config.yml"
   role_assignments_path: ".specrew/role-assignments.yml"
+quality:
+  presets_path: ".specrew/presets"
+  lenses_path: ".specrew/lenses"
+  findings_schema_version: "v1"
+  evidence_directory_name: "quality"
+  known_traps_path: ".specrew/quality/known-traps.md"
+  routing:
+    default_policy: "strongest-available"
+    allow_lower_tier_override: true
+    approval_required: true

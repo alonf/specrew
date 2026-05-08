@@ -1,10 +1,10 @@
 ---
-description: "Validate requirement and Phase 1 quality-profile readiness before planning"
+description: "Validate requirement and quality-governance readiness before planning"
 ---
 
 # Validate Requirement and Quality-Profile Readiness
 
-Before planning proceeds, verify the active specification is ready for implementation planning and that the Phase 1 quality-profile inputs are explicit enough to render into the plan.
+Before planning proceeds, verify the active specification is ready for implementation planning and that the applicable quality-governance inputs are explicit enough to render into the plan.
 
 ## Required checks
 
@@ -19,9 +19,13 @@ Before planning proceeds, verify the active specification is ready for implement
    - quality tool bundle
    - required Phase 1 quality gates
    - not-applicable dimensions with rationale
-5. Keep unsupported or later-phase quality behavior explicit as deferred. Do not imply hardening-gate sign-off, dedicated bug-hunter execution, known-traps workflows, or quality-drift automation as implemented in this pre-plan check.
-6. If iteration artifacts already exist, you may run `pwsh -File .specify/extensions/specrew-speckit/scripts/validate-governance.ps1 -ProjectPath .` for an additional governance check.
+5. When the planned slice includes Phase 2 hardening-gate scope (`FR-031` through `FR-033`), keep the lifecycle boundary explicit in the planning inputs:
+   - the resolver output remains planning input, not proof that hardening review already happened
+   - the plan must make it clear that `quality/hardening-gate.md` sign-off is required before implementation starts
+   - any unresolved critical security, resilience, or operational concern will need explicit human-approved deferral before implementation may proceed
+6. Keep unsupported or later-phase quality behavior explicit as deferred. Do not imply hardening-gate sign-off, dedicated bug-hunter execution, strongest-class routing enforcement, known-traps workflows, or quality-drift automation as implemented in this pre-plan check unless the current slice truly delivers them.
+7. If iteration artifacts already exist, you may run `pwsh -File .specify/extensions/specrew-speckit/scripts/validate-governance.ps1 -ProjectPath .` for an additional governance check.
 
 ## Failure behavior
 
-If readiness is not clear, do not continue to planning. Explain whether the blocker is missing requirement clarity, missing Phase 1 quality-profile inputs, or unresolved not-applicable/deferred reasoning, and direct the user back to clarification or resolver repair before planning continues.
+If readiness is not clear, do not continue to planning. Explain whether the blocker is missing requirement clarity, missing quality-profile inputs, missing hardening-lifecycle framing for a Phase 2 slice, or unresolved not-applicable/deferred reasoning, and direct the user back to clarification or resolver repair before planning continues.

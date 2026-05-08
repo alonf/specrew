@@ -11,12 +11,51 @@
 
 Iteration 003 is the MVP execution slice for feature `005-stack-aware-quality-bar` Phase 2. It deliberately carries only the dependency-respecting Setup + Foundational work plus User Story 2 hardening-gate delivery (`T001`-`T014`) so the first execution approval can cover one truthful 20-point slice instead of the entire 32-task Phase 2 package.
 
-Later Phase 2 work is explicitly deferred, not hidden: Iteration 004 will carry User Story 3 plus known-traps follow-through (`T015`-`T024`), and Iteration 005 will carry User Story 4 plus polish (`T025`-`T032`) after the MVP slice is accepted. Human execution approval is now recorded for this iteration, `T001` is complete, and no later task has started yet.
+Later Phase 2 work is explicitly deferred, not hidden: Iteration 004 will carry User Story 3 plus known-traps follow-through (`T015`-`T024`), and Iteration 005 will carry User Story 4 plus polish (`T025`-`T032`) after the MVP slice is accepted. Human execution approval is now recorded for this iteration, `T001`-`T014` are complete, and no later task is in progress.
 
 **Primary Focus**: hardening-gate planning surfaces, scaffolding, fail-closed governance, and the minimum prerequisite config/fixture work needed for the Phase 2 MVP  
 **Target Slice**: Setup + Foundational + User Story 2 (`T001`-`T014`)  
-**Execution Status**: `T001` complete; next ready tasks remain queued  
+**Execution Status**: `T001`-`T014` complete; validator enforcement now matches the bounded hardening-gate contract and planning metadata
 **Deferred Follow-On**: User Story 3 / known-traps (`T015`-`T024`) and User Story 4 / polish (`T025`-`T032`)
+
+---
+
+## Phase 2 Hardening and Specialist Review Planning
+
+**Phase 2 Slice Scope**: `US-2 hardening-gate planning only; specialist lens execution, routing enforcement, and known-traps follow-through stay explicitly deferred.`  
+**Hardening Gate Artifact**: `specs/005-stack-aware-quality-bar/iterations/003/quality/hardening-gate.md`  
+**Known-Traps Corpus Location**: `.specrew/quality/known-traps.md`  
+**Trap Reapplication Artifact**: `specs/005-stack-aware-quality-bar/iterations/003/quality/trap-reapplication.md`
+
+### Hardening Focus Areas
+
+| Focus Area | Why It Matters in This Slice | Planned Artifact / Evidence | Status |
+| --- | --- | --- | --- |
+| Security surface analysis | The hardening gate must capture trust boundaries, auth assumptions, secret handling, and sensitive mutation paths before coding begins. | `specs/005-stack-aware-quality-bar/iterations/003/quality/hardening-gate.md` | `required` |
+| Error handling and failure semantics | Silent failure paths and fallback expectations must be made explicit in the hardening gate so implementation does not invent them later. | `specs/005-stack-aware-quality-bar/iterations/003/quality/hardening-gate.md` | `required` |
+| Retry and idempotency expectations | The hardening gate still records why retry and idempotency do not materially apply in this bounded governance slice so omissions stay reviewable. | `specs/005-stack-aware-quality-bar/iterations/003/quality/hardening-gate.md` | `not-applicable` |
+| Test-integrity targets | The hardening gate must name the evidence expected for this slice so implementation readiness does not rely on smoke-only success. | `specs/005-stack-aware-quality-bar/iterations/003/quality/quality-evidence.md` | `required` |
+
+### Lens Activation Plan
+
+| Lens / Checklist Ref | Activation | Why Activated or Omitted | Planned Evidence / Artifact Path |
+| --- | --- | --- | --- |
+| `security-baseline@v1.0.0` | `required` | Security remains materially relevant even though row-level specialist execution stays deferred in this MVP slice. | `specs/005-stack-aware-quality-bar/iterations/003/quality/lenses/security-baseline.md` |
+| `robustness-baseline@v1.0.0` | `required` | Robustness and operational concerns feed the pre-implementation hardening review directly. | `specs/005-stack-aware-quality-bar/iterations/003/quality/lenses/robustness-baseline.md` |
+| `test-integrity@v1.0.0` | `required` | Test-integrity targets are part of the hardening readiness contract for this slice. | `specs/005-stack-aware-quality-bar/iterations/003/quality/lenses/test-integrity.md` |
+
+### Routing Policy
+
+| Lens Scope | Requested Reasoning / Review Class | Effective Class (when run) | Override / Approval Record | Notes |
+| --- | --- | --- | --- | --- |
+| Required hardening and bug-hunter lenses | `strongest-available` | Record when execution happens | Explicit approved lower-tier override required before any downgrade takes effect. | Planning publishes the requested routing baseline only; effective-class evidence stays deferred until the execution path exists. |
+
+### Explicit Later Deferrals
+
+- Full line-by-line lens execution evidence remains deferred until the approved implementation/review slice authorizes it.
+- Known-traps corpus seeding, approved additions, and trap reapplication remain deferred until the dedicated known-traps slice is in scope.
+- Strongest-class routing enforcement details and requested-versus-effective execution evidence remain deferred until the routed lens execution path exists.
+- Quality-drift comparison, mixed-stack override workflows, and reference-implementation checks remain deferred unless the approved slice explicitly includes them.
 
 ---
 
@@ -39,7 +78,7 @@ Later Phase 2 work is explicitly deferred, not hidden: Iteration 004 will carry 
 | **Traceability** | ✅ PASS | Every task row below maps to in-scope FRs or to clearly bounded prerequisite work for the same Phase 2 slice. |
 | **Ownership** | ✅ PASS | Task owners remain within baseline Specrew roles: Spec Steward, Planner, Implementer, Reviewer. |
 | **Capacity** | ✅ PASS | The active slice is capped at 20/20 story_points. Remaining Phase 2 work is deferred to Iterations 004 and 005 instead of overloading this plan. |
-| **Execution Support** | ✅ PASS | `plan.md`, `state.md`, `drift-log.md`, and scaffolded `quality/` placeholders exist for Iteration 003, and execution truth now records the approved `T001` completion plus the remaining queued tasks. |
+| **Execution Support** | ✅ PASS | `plan.md`, `state.md`, `drift-log.md`, scaffolded `quality/` placeholders, bounded Phase 2 hardening planning metadata, and validator enforcement all exist for Iteration 003, and execution truth records the completed MVP slice without implying later lens/routing/trap execution already happened. |
 
 ---
 
@@ -48,19 +87,19 @@ Later Phase 2 work is explicitly deferred, not hidden: Iteration 004 will carry 
 | Task | Title | Requirement | Story | Effort | Owner | Owner File Globs | Status | Agent | Actual | Verdict |
 | ---- | ----- | ----------- | ----- | ------ | ----- | ---------------- | ------ | ----- | ------ | ------- |
 | T001 | Extend downstream Phase 2 quality defaults in `scaffold-governance.ps1`, `templates/iteration-config.yml`, and `.specrew/iteration-config.yml` | FR-031, FR-038 | US-2, US-4 | 1 | Implementer | `extensions/specrew-speckit/scripts/scaffold-governance.ps1`, `extensions/specrew-speckit/templates/iteration-config.yml`, `.specrew/iteration-config.yml` | done | Implementer | 1 | pass |
-| T002 | Seed `quality.known_traps_path` and `quality.routing` defaults in downstream config fixtures | FR-034, FR-038, FR-039 | US-3, US-4 | 1 | Implementer | `.specrew/config.yml`, `tests/integration/fixtures/quality-evidence-governance/**/.specrew/config.yml` | planned |  |  |  |
-| T003 | Add agent `strength_rank` fixture coverage in Phase 2 iteration-config fixtures | FR-038, FR-040 | US-4 | 1 | Reviewer | `tests/integration/fixtures/quality-evidence-governance/**/.specrew/iteration-config.yml` | planned |  |  |  |
-| T004 | Create Phase 2 fixture roots for hardening, lens execution, routing, and known-traps tests | FR-031, FR-016, FR-034, FR-038 | US-2, US-3, US-4 | 1 | Reviewer | `tests/integration/fixtures/hardening-gate-contract/**`, `tests/integration/fixtures/bug-hunter-lens-execution/**`, `tests/integration/fixtures/strongest-class-routing/**`, `tests/integration/fixtures/known-traps-corpus/**` | planned |  |  |  |
-| T005 | Extend iteration/reviewer scaffolding to add `hardening-gate.md`, `quality/lenses/`, and `trap-reapplication.md` | FR-031, FR-016, FR-034 | US-2, US-3 | 2 | Implementer | `extensions/specrew-speckit/scripts/scaffold-iteration-artifacts.ps1`, `extensions/specrew-speckit/scripts/scaffold-reviewer-artifacts.ps1` | planned |  |  |  |
-| T006 | Add Phase 2 parsing and approval helpers in `shared-governance.ps1` | FR-033, FR-038, FR-039 | US-2, US-4 | 1 | Reviewer | `extensions/specrew-speckit/scripts/shared-governance.ps1` | planned |  |  |  |
-| T007 | Update Phase 2 lifecycle guidance in before-plan / before-implement / coordinator templates | FR-031, FR-032, FR-033 | US-2 | 1 | Spec Steward | `extensions/specrew-speckit/commands/speckit.specrew-speckit.before-plan.md`, `extensions/specrew-speckit/commands/speckit.specrew-speckit.before-implement.md`, `extensions/specrew-speckit/squad-templates/coordinator/specrew-governance.md` | planned |  |  |  |
-| T008 | Extend Phase 2 plan rendering for hardening focus areas, lens activation, routing policy, known-traps location, and explicit later deferrals | FR-010, FR-018, FR-031, FR-038 | US-2, US-3, US-4 | 2 | Planner | `.specify/templates/plan-template.md` | planned |  |  |  |
-| T009 | Add hardening-gate fixtures for blocked, approved-deferral, and ready cases | FR-031, FR-032, FR-033 | US-2 | 1 | Reviewer | `tests/integration/fixtures/hardening-gate-contract/**/quality/hardening-gate.md` | planned |  |  |  |
-| T010 | Add governance fixtures for hardening readiness in quality-evidence-governance tests | FR-031, FR-033 | US-2 | 1 | Reviewer | `tests/integration/fixtures/quality-evidence-governance/**/quality/hardening-gate.md` | planned |  |  |  |
-| T011 | Add deterministic hardening-gate contract coverage in `tests/integration/hardening-gate-contract.ps1` | FR-031, FR-032, FR-033 | US-2 | 2 | Reviewer | `tests/integration/hardening-gate-contract.ps1`, `tests/integration/fixtures/hardening-gate-contract/**` | planned |  |  |  |
-| T012 | Implement pre-implementation hardening orchestration in `run-hardening-gate.ps1` | FR-031, FR-032 | US-2 | 2 | Implementer | `extensions/specrew-speckit/scripts/run-hardening-gate.ps1` | planned |  |  |  |
-| T013 | Extend hardening planning data in `resolve-quality-profile.ps1` and the plan template | FR-018, FR-031, FR-032 | US-2, US-3 | 2 | Planner | `extensions/specrew-speckit/scripts/resolve-quality-profile.ps1`, `.specify/templates/plan-template.md` | planned |  |  |  |
-| T014 | Enforce hardening-gate blocking semantics and human deferral approval in `validate-governance.ps1` | FR-033 | US-2 | 2 | Reviewer | `extensions/specrew-speckit/scripts/validate-governance.ps1` | planned |  |  |  |
+| T002 | Seed `quality.known_traps_path` and `quality.routing` defaults in downstream config fixtures | FR-034, FR-038, FR-039 | US-3, US-4 | 1 | Implementer | `.specrew/config.yml`, `tests/integration/fixtures/quality-evidence-governance/**/.specrew/config.yml` | done | Implementer | 1 | pass |
+| T003 | Add agent `strength_rank` fixture coverage in Phase 2 iteration-config fixtures | FR-038, FR-040 | US-4 | 1 | Reviewer | `tests/integration/fixtures/quality-evidence-governance/**/.specrew/iteration-config.yml` | done | Reviewer | 1 | pass |
+| T004 | Create Phase 2 fixture roots for hardening, lens execution, routing, and known-traps tests | FR-031, FR-016, FR-034, FR-038 | US-2, US-3, US-4 | 1 | Reviewer | `tests/integration/fixtures/hardening-gate-contract/**`, `tests/integration/fixtures/bug-hunter-lens-execution/**`, `tests/integration/fixtures/strongest-class-routing/**`, `tests/integration/fixtures/known-traps-corpus/**` | done | Reviewer | 1 | pass |
+| T005 | Extend iteration/reviewer scaffolding to add `hardening-gate.md`, `quality/lenses/`, and `trap-reapplication.md` | FR-031, FR-016, FR-034 | US-2, US-3 | 2 | Implementer | `extensions/specrew-speckit/scripts/scaffold-iteration-artifacts.ps1`, `extensions/specrew-speckit/scripts/scaffold-reviewer-artifacts.ps1` | done | Implementer | 2 | pass |
+| T006 | Add Phase 2 parsing and approval helpers in `shared-governance.ps1` | FR-033, FR-038, FR-039 | US-2, US-4 | 1 | Reviewer | `extensions/specrew-speckit/scripts/shared-governance.ps1` | done | Reviewer | 1 | pass |
+| T007 | Update Phase 2 lifecycle guidance in before-plan / before-implement / coordinator templates | FR-031, FR-032, FR-033 | US-2 | 1 | Spec Steward | `extensions/specrew-speckit/commands/speckit.specrew-speckit.before-plan.md`, `extensions/specrew-speckit/commands/speckit.specrew-speckit.before-implement.md`, `extensions/specrew-speckit/squad-templates/coordinator/specrew-governance.md` | done | Spec Steward | 1 | pass |
+| T008 | Extend Phase 2 plan rendering for hardening focus areas, lens activation, routing policy, known-traps location, and explicit later deferrals | FR-010, FR-018, FR-031, FR-038 | US-2, US-3, US-4 | 2 | Planner | `.specify/templates/plan-template.md` | done | Planner | 2 | pass |
+| T009 | Add hardening-gate fixtures for blocked, approved-deferral, and ready cases | FR-031, FR-032, FR-033 | US-2 | 1 | Reviewer | `tests/integration/fixtures/hardening-gate-contract/**/quality/hardening-gate.md` | done | Reviewer | 1 | pass |
+| T010 | Add governance fixtures for hardening readiness in quality-evidence-governance tests | FR-031, FR-033 | US-2 | 1 | Reviewer | `tests/integration/fixtures/quality-evidence-governance/**/quality/hardening-gate.md` | done | Reviewer | 1 | pass |
+| T011 | Add deterministic hardening-gate contract coverage in `tests/integration/hardening-gate-contract.ps1` | FR-031, FR-032, FR-033 | US-2 | 2 | Reviewer | `tests/integration/hardening-gate-contract.ps1`, `tests/integration/fixtures/hardening-gate-contract/**` | done | Reviewer | 2 | pass |
+| T012 | Implement pre-implementation hardening orchestration in `run-hardening-gate.ps1` | FR-031, FR-032 | US-2 | 2 | Implementer | `extensions/specrew-speckit/scripts/run-hardening-gate.ps1` | done | Implementer | 2 | pass |
+| T013 | Extend hardening planning data in `resolve-quality-profile.ps1` and the plan template | FR-018, FR-031, FR-032 | US-2, US-3 | 2 | Planner | `extensions/specrew-speckit/scripts/resolve-quality-profile.ps1`, `.specify/templates/plan-template.md` | done | Planner | 2 | pass |
+| T014 | Enforce hardening-gate blocking semantics and human deferral approval in `validate-governance.ps1` | FR-033 | US-2 | 2 | Reviewer | `extensions/specrew-speckit/scripts/validate-governance.ps1` | done | Reviewer | 2 | pass |
 
 **Total Effort**: 20 story_points
 
@@ -128,5 +167,13 @@ This is a capacity and dependency split, not a descoping decision. The deferred 
 ## Notes
 
 - This plan was repaired to resolve the Phase 2 blocker that previously implied one 20-point implementation iteration for the entire 32-task package.
-- `iterations\003\state.md` and `iterations\003\drift-log.md` are synchronized to this task table; execution approval is recorded, `T001` is complete, and no later task is in progress.
-- The scaffold-created `quality/` placeholders exist so future artifact helpers have a stable home, but they are not evidence of execution.
+- `iterations\003\state.md` and `iterations\003\drift-log.md` are synchronized to this task table; execution approval is recorded, `T001`-`T014` are complete, and no later task is in progress.
+- `T005` extended both iteration-start and reviewer-closeout scaffolds so `quality\hardening-gate.md`, `quality\lenses\`, and `quality\trap-reapplication.md` now have stable placeholder homes before later Phase 2 execution work begins.
+- `T006` adds shared Phase 2 markdown parsing plus hardening/routing approval helpers in `shared-governance.ps1`, with integration coverage proving that routing fallback evidence parses canonically and human-approved hardening deferrals stay distinct from blocking `tbd` concerns.
+- `T008` extends `.specify\templates\plan-template.md` with a bounded Phase 2 planning section for hardening focus areas, lens activation, routing policy, known-traps location, and explicit later deferrals without implying routed lens execution has already occurred.
+- `T009` adds three deterministic hardening-gate fixture scenarios (`blocked`, `approved-deferral`, and `ready`), with the approved-deferral case carrying canonical human approval evidence in a fixture-local `.squad\decisions.md`.
+- `T010` adds two `quality-evidence-governance` fixture projects that preserve the passing Phase 1 evidence baseline while introducing Phase 2 hardening-readiness cases for a blocked `tbd` concern and a human-approved deferral.
+- `T011` adds `tests\integration\hardening-gate-contract.ps1`, which exercises the bounded `blocked`, `approved-deferral`, and `ready` fixture scenarios through the shared hardening-governance helpers and proves that explicit rationale plus human-approved defer evidence remain deterministic.
+- `T012` adds `extensions\specrew-speckit\scripts\run-hardening-gate.ps1`, which now scaffolds or reconciles `quality\hardening-gate.md` against the bounded five-concern contract, preserves explicit rationale visibility, and computes truthful `blocked` / `deferred-with-approval` / `ready` verdicts from the shared hardening-governance helpers without pulling in later routing, lens, or known-traps behavior.
+- `T013` extends `extensions\specrew-speckit\scripts\resolve-quality-profile.ps1` and `.specify\templates\plan-template.md` so bounded Phase 2 hardening planning now publishes concrete slice scope, artifact refs, focus-area statuses, routing defaults, and explicit later deferrals without implying later execution has already happened.
+- `T014` updates `extensions\specrew-speckit\scripts\validate-governance.ps1` to reuse the shared hardening helpers, enforce the canonical `hardening-gate.md` verdict shape against the Phase 2 planning metadata, accept only human-approved hardening deferrals, and fail closed when execution proceeds while blocking hardening concerns remain unresolved.

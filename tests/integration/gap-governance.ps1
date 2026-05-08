@@ -324,6 +324,57 @@ Add-StructuredDecisionsLedgerEntry -ProjectRoot $projectRoot -Title 'Routing evi
     "- **Routing Evidence**: Reviewer | requested=codex | actual=claude | model=claude-sonnet-4.5 | status=fell-back | fallback=preferred agent 'codex' is not enabled"
 ) | Out-Null
 
+$routingEvidence = @(Get-RoutingEvidenceRecords -ProjectRoot $projectRoot -IterationRelativePath 'specs\001-gap-governance\iterations\007')
+if ($routingEvidence.Count -ne 1 -or
+    $routingEvidence[0].RequestedClass -ne 'codex' -or
+    $routingEvidence[0].EffectiveClass -ne 'claude' -or
+    $routingEvidence[0].Status -ne 'fell-back') {
+    Write-Fail 'Shared routing-evidence helper did not parse requested/effective routing details correctly.'
+    exit 1
+}
+
+Write-Pass 'Shared routing-evidence helper parses canonical fallback entries'
+
+$hardeningGatePath = Join-Path $iterationDirectory 'quality\hardening-gate.md'
+$null = New-Item -ItemType Directory -Path (Split-Path -Parent $hardeningGatePath) -Force
+[System.IO.File]::WriteAllText($hardeningGatePath, @'
+# Hardening Gate: Iteration 007
+
+**Schema**: v1
+**Gate ID**: `pre-implementation-hardening`
+**Feature Ref**: `specs/001-gap-governance/spec.md`
+**Iteration Ref**: `specs/001-gap-governance/iterations/007`
+**Requested Review Class**: `strongest-available`
+**Effective Review Class**: `claude`
+**Overall Verdict**: `blocked`
+**Approval Ref**: `—`
+**Reviewed By**: Reviewer
+**Reviewed At**: 2026-05-08T19:00:00Z
+
+## Concern Review
+
+| Concern | Category | Status | Blocking | Rationale | Approval |
+| --- | --- | --- | --- | --- | --- |
+| `security-surface` | `security` | `addressed` | `true` | Covered before implementation. | `—` |
+| `operational-resilience-concerns` | `operational` | `deferred-with-approval` | `true` | The follow-up is recorded with an explicit defer. | `defer-canonical-hardening` |
+| `test-integrity-targets` | `test-integrity` | `tbd` | `true` | Missing evidence still blocks readiness. | `—` |
+'@, [System.Text.UTF8Encoding]::new($false))
+
+Add-StructuredDecisionsLedgerEntry -ProjectRoot $projectRoot -Title 'Approved defer for hardening follow-up' -Type 'defer' -DecisionId 'defer-canonical-hardening' -AffectedRequirement 'FR-033' -AffectedIteration 'specs\001-gap-governance\iterations\007' -ApprovingHuman 'Alon' -NextAction 'Resolve operational resilience concern before implementation proceeds.' -Rationale 'The operational follow-up is acceptable to defer briefly while the remaining blocking concern is resolved.' -DetailLines @(
+    '- **Affected Artifact**: specs\001-gap-governance\iterations\007\quality\hardening-gate.md'
+) | Out-Null
+
+$hardeningState = Get-HardeningGateState -Path $hardeningGatePath -ProjectRoot $projectRoot
+if (-not $hardeningState.BlocksImplementation -or
+    $hardeningState.BlockingConcerns.Count -ne 1 -or
+    $hardeningState.BlockingConcerns[0].Concern -ne 'test-integrity-targets' -or
+    -not (Test-ApprovalReferenceHasHumanApproval -ProjectRoot $projectRoot -ApprovalRef 'defer-canonical-hardening' -AllowedTypes @('defer'))) {
+    Write-Fail 'Shared hardening helper did not respect human-approved deferrals while keeping unresolved TBD concerns blocking.'
+    exit 1
+}
+
+Write-Pass 'Shared hardening helpers keep approved deferrals distinct from blocking TBD concerns'
+
 $reviewerRun = @(& pwsh -NoProfile -ExecutionPolicy Bypass -File $reviewerScript -IterationDirectory $iterationDirectory 2>&1)
 if ($LASTEXITCODE -ne 0) {
     Write-Fail 'Reviewer artifact scaffolding failed for the gap-governance test.'

@@ -24,6 +24,12 @@ Repaired feature `005-stack-aware-quality-bar` Phase 2 planning after drift appe
 
 **Pattern discovered**: when task generation reveals that one phase-level package no longer fits a single iteration, repair the parent plan and task language before repairing the active iteration. Otherwise the new iteration inherits a false capacity story and every downstream approval artifact starts from drift.
 
+### 2026-05-08: Phase 2 Lifecycle Boundary Tightening
+
+T007 closed a lifecycle gap in feature `005-stack-aware-quality-bar` by making the Phase 2 boundary explicit across `before-plan`, `before-implement`, and coordinator governance guidance. The hardening gate is now described as a required pre-implementation sign-off or human-approved deferral checkpoint, while bug-hunter execution, routing enforcement, known-traps workflows, and quality-drift automation remain explicitly deferred unless the active slice truly delivers them.
+
+**Pattern discovered**: when a later-phase governance requirement becomes the current slice's entry gate, update every lifecycle checkpoint that can misstate readiness. Tightening only the implementation gate is insufficient if planning or coordinator guidance still lets the team narrate later-phase behavior as already active.
+
 ## Patterns
 
 <!-- Append entries below. Format: **Pattern:** description. **Context:** when it applies. -->

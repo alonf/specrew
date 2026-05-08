@@ -74,6 +74,43 @@
 - Dedicated bug-hunter lens execution and strongest-class routing remain deferred in this template.
 - Quality-drift logic, mixed-stack override workflows, and reference-implementation comparison remain deferred in this template.
 
+## Phase 2 Hardening and Specialist Review Planning
+
+> Fill this section when pre-implementation hardening and specialist bug-hunter review planning apply to the active feature. Mirror the bounded Phase 2 planning metadata from quality-profile resolution when available: slice scope, artifact refs, focus-area statuses, lens activation classifications, routing defaults, and explicit later deferrals. Keep it bounded to the currently approved hardening slice; list later execution or evidence work explicitly instead of implying it already happened.
+
+**Phase 2 Slice Scope**: [e.g., `US-2 hardening gate only` or `NEEDS CLARIFICATION`]  
+**Hardening Gate Artifact**: [e.g., `specs/[###-feature-name]/quality/hardening-gate.md`]  
+**Known-Traps Corpus Location**: [e.g., `.specrew/quality/known-traps.md`]  
+**Trap Reapplication Artifact**: [e.g., `specs/[###-feature-name]/quality/trap-reapplication.md` or `none yet`]
+
+### Hardening Focus Areas
+
+| Focus Area | Why It Matters in This Slice | Planned Artifact / Evidence | Status (`required` / `deferred` / `not-applicable`) |
+| --- | --- | --- | --- |
+| Security surface analysis | [record exposed trust boundaries, secrets, authz/authn, and sensitive mutation paths] | [hardening artifact section or linked evidence] | [required] |
+| Error handling and failure semantics | [record user-visible failures, retry boundaries, and fallback expectations] | [hardening artifact section or linked evidence] | [required] |
+| Retry and idempotency expectations | [record whether retry logic exists, is forbidden, or needs explicit justification] | [hardening artifact section or linked evidence] | [required] |
+| Test-integrity targets | [record what proves the slice is actually exercised and what gaps remain explicit] | [test plan, command, or review artifact] | [required] |
+
+### Lens Activation Plan
+
+| Lens / Checklist Ref | Activation (`required` / `optional` / `not-applicable`) | Why Activated or Omitted | Planned Evidence / Artifact Path |
+| --- | --- | --- | --- |
+| [e.g., `security-issues-v1`] | [required] | [scope, stack, architecture, or risk-dimension signal] | [quality/lenses/... or later evidence artifact] |
+
+### Routing Policy
+
+| Lens Scope | Requested Reasoning / Review Class | Effective Class (when run) | Override / Approval Record | Notes |
+| --- | --- | --- | --- | --- |
+| Required hardening and bug-hunter lenses | [default to strongest available reasoning/review class] | [record actual class when execution happens] | [path to explicit lower-tier override approval or `none`] | [fallback or routing rationale] |
+
+### Explicit Later Deferrals
+
+- Full line-by-line lens execution evidence remains deferred until the approved implementation/review slice authorizes it.
+- Known-traps corpus seeding, approved additions, and trap reapplication remain deferred until the dedicated known-traps slice is in scope.
+- Strongest-class routing enforcement details and requested-versus-effective execution evidence remain deferred until the routed lens execution path exists.
+- Quality-drift comparison, mixed-stack override workflows, and reference-implementation checks remain deferred unless the approved slice explicitly includes them.
+
 ## Constitution Check
 
 *GATE: Must pass before Phase 0 research. Re-check after Phase 1 design.*

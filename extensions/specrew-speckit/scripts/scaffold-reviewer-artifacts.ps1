@@ -68,6 +68,55 @@ function Write-ScaffoldFile {
     [System.IO.File]::WriteAllText($TargetPath, $Content, [System.Text.UTF8Encoding]::new($false))
 }
 
+function Write-MissingScaffoldFile {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$TargetPath,
+        [Parameter(Mandatory = $true)]
+        [string]$Content,
+        [AllowEmptyCollection()]
+        [Parameter(Mandatory = $true)]
+        [System.Collections.ArrayList]$Actions
+    )
+
+    if (Test-Path -LiteralPath $TargetPath) {
+        Add-ScaffoldAction -Actions $Actions -Action 'preserved' -Path $TargetPath
+        return
+    }
+
+    Add-ScaffoldAction -Actions $Actions -Action $(if ($DryRun) { 'would-create' } else { 'created' }) -Path $TargetPath
+    if ($DryRun) {
+        return
+    }
+
+    $parent = Split-Path -Parent $TargetPath
+    if (-not (Test-Path -LiteralPath $parent)) {
+        New-Item -ItemType Directory -Path $parent -Force | Out-Null
+    }
+
+    [System.IO.File]::WriteAllText($TargetPath, $Content, [System.Text.UTF8Encoding]::new($false))
+}
+
+function Ensure-Directory {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Path,
+        [AllowEmptyCollection()]
+        [Parameter(Mandatory = $true)]
+        [System.Collections.ArrayList]$Actions
+    )
+
+    if (Test-Path -LiteralPath $Path) {
+        Add-ScaffoldAction -Actions $Actions -Action 'preserved-directory' -Path $Path
+        return
+    }
+
+    Add-ScaffoldAction -Actions $Actions -Action $(if ($DryRun) { 'would-create-directory' } else { 'created-directory' }) -Path $Path
+    if (-not $DryRun) {
+        New-Item -ItemType Directory -Path $Path -Force | Out-Null
+    }
+}
+
 function Get-MarkdownContent {
     param([string]$Path)
 
@@ -508,6 +557,97 @@ function Get-MechanicalFindingsScaffoldJson {
             }
             findings      = @()
         } | ConvertTo-Json -Depth 8)
+}
+
+function Test-PhaseTwoQualityArtifactScaffold {
+    param(
+        [AllowEmptyCollection()]
+        [string[]]$PlanLines,
+        [string]$QualityContractPath
+    )
+
+    $phaseTwoPattern = 'hardening-gate\.md|trap-reapplication\.md|quality[\\/]+lenses'
+    $planText = ($PlanLines -join [Environment]::NewLine)
+    if ($planText -match $phaseTwoPattern) {
+        return $true
+    }
+
+    if (Test-Path -LiteralPath $QualityContractPath -PathType Leaf) {
+        $contractText = Get-Content -LiteralPath $QualityContractPath -Raw -Encoding UTF8
+        return $contractText -match $phaseTwoPattern
+    }
+
+    return $false
+}
+
+function Get-HardeningGateContent {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$FeatureRef,
+        [Parameter(Mandatory = $true)]
+        [string]$IterationRef,
+        [Parameter(Mandatory = $true)]
+        [string]$IterationNumber,
+        [Parameter(Mandatory = $true)]
+        [string]$ReviewedAt
+    )
+
+    $lines = [System.Collections.Generic.List[string]]::new()
+    $null = $lines.Add("# Hardening Gate: Iteration $IterationNumber")
+    $null = $lines.Add('')
+    $null = $lines.Add('**Schema**: v1')
+    $null = $lines.Add('**Gate ID**: `pre-implementation-hardening`')
+    $null = $lines.Add(('**Feature Ref**: `' + $FeatureRef + '`'))
+    $null = $lines.Add(('**Iteration Ref**: `' + $IterationRef + '`'))
+    $null = $lines.Add('**Requested Review Class**: `strongest-available`')
+    $null = $lines.Add('**Effective Review Class**: `(pending hardening review)`')
+    $null = $lines.Add('**Overall Verdict**: `blocked`')
+    $null = $lines.Add('**Approval Ref**: `—`')
+    $null = $lines.Add('**Reviewed By**: Reviewer (pending)')
+    $null = $lines.Add(('**Reviewed At**: ' + $ReviewedAt))
+    $null = $lines.Add('')
+    $null = $lines.Add('## Concern Review')
+    $null = $lines.Add('')
+    $null = $lines.Add('| Concern | Category | Status | Blocking | Rationale | Approval |')
+    $null = $lines.Add('| --- | --- | --- | --- | --- | --- |')
+    $null = $lines.Add('| `security-surface` | `security` | `tbd` | `true` | Scaffolded placeholder. Review trust boundaries, privilege changes, and sensitive flows before implementation proceeds. | `—` |')
+    $null = $lines.Add('| `error-handling-expectations` | `error-handling` | `tbd` | `true` | Scaffolded placeholder. Record expected failure semantics and incomplete-state handling before implementation proceeds. | `—` |')
+    $null = $lines.Add('| `retry-idempotency-requirements` | `retry-idempotency` | `tbd` | `true` | Scaffolded placeholder. Confirm whether retries/idempotency are required or explicitly not applicable. | `—` |')
+    $null = $lines.Add('| `test-integrity-targets` | `test-integrity` | `tbd` | `true` | Scaffolded placeholder. Tie negative-path expectations to observable test evidence before implementation proceeds. | `—` |')
+    $null = $lines.Add('| `operational-resilience-concerns` | `operational` | `tbd` | `true` | Scaffolded placeholder. Review runtime resilience, fallback, and operator-facing failure signals before implementation proceeds. | `—` |')
+    $null = $lines.Add('')
+    $null = $lines.Add('## Notes')
+    $null = $lines.Add('')
+    $null = $lines.Add('- This artifact was scaffolded before the hardening review ran.')
+    $null = $lines.Add('- Replace placeholder statuses with reviewed outcomes before marking implementation readiness.')
+    return ($lines -join [Environment]::NewLine) + [Environment]::NewLine
+}
+
+function Get-TrapReapplicationContent {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$IterationNumber,
+        [Parameter(Mandatory = $true)]
+        [string]$RecordedAt
+    )
+
+    $lines = [System.Collections.Generic.List[string]]::new()
+    $null = $lines.Add("# Trap Reapplication: Iteration $IterationNumber")
+    $null = $lines.Add('')
+    $null = $lines.Add('**Schema**: v1')
+    $null = $lines.Add('**Scan ID**: `trap-reapplication.pending`')
+    $null = $lines.Add(('**Recorded At**: ' + $RecordedAt))
+    $null = $lines.Add('')
+    $null = $lines.Add('## Scan Log')
+    $null = $lines.Add('')
+    $null = $lines.Add('| Trap Ref | Scan Scope | Result | Matches |')
+    $null = $lines.Add('| --- | --- | --- | --- |')
+    $null = $lines.Add('| `(pending trap refs)` | `(pending scan scope)` | `skipped-with-rationale` | Scaffolded placeholder. Known-trap reapplication has not run yet. |')
+    $null = $lines.Add('')
+    $null = $lines.Add('## Notes')
+    $null = $lines.Add('')
+    $null = $lines.Add('- Replace the placeholder row with concrete trap scan evidence once reapplication runs.')
+    return ($lines -join [Environment]::NewLine) + [Environment]::NewLine
 }
 
 function Test-IsNullish {
@@ -1800,6 +1940,8 @@ $decisionsPath = Join-Path $projectRoot '.squad\decisions.md'
 $decisionsRelativePath = '.squad\decisions.md'
 $iterationRelativePath = ([System.IO.Path]::GetRelativePath($projectRoot, $resolvedIterationDirectory)) -replace '/', '\'
 $securityContext = Get-SecurityTriggerContext -ProjectRoot $projectRoot -PlanLines $planLines
+$phaseTwoQualityArtifactsRequired = Test-PhaseTwoQualityArtifactScaffold -PlanLines $planLines -QualityContractPath $qualityContractPath
+$hasQualityEvidenceContract = $qualityGateRows.Count -gt 0 -or (Test-Path -LiteralPath $qualityContractPath -PathType Leaf)
 
 $verdictByTask = @{}
 foreach ($reviewTask in $reviewTasks) {
@@ -2232,6 +2374,23 @@ $digestLine
 "@
 
 if (-not $SummaryOnly) {
+    if ($hasQualityEvidenceContract -or $phaseTwoQualityArtifactsRequired) {
+        $hardeningGatePath = Join-Path $qualityDirectory 'hardening-gate.md'
+        $lensesDirectory = Join-Path $qualityDirectory 'lenses'
+        $trapReapplicationPath = Join-Path $qualityDirectory 'trap-reapplication.md'
+        Ensure-Directory -Path $qualityDirectory -Actions $actions
+        if ($phaseTwoQualityArtifactsRequired) {
+            Ensure-Directory -Path $lensesDirectory -Actions $actions
+            Write-MissingScaffoldFile -TargetPath $hardeningGatePath -Content (Get-HardeningGateContent `
+                    -FeatureRef $featureRef `
+                    -IterationRef $iterationRef `
+                    -IterationNumber $iterationLabel `
+                    -ReviewedAt ((Get-Date).ToUniversalTime().ToString('yyyy-MM-ddTHH:mm:ssZ'))) -Actions $actions
+            Write-MissingScaffoldFile -TargetPath $trapReapplicationPath -Content (Get-TrapReapplicationContent `
+                    -IterationNumber $iterationLabel `
+                    -RecordedAt ((Get-Date).ToUniversalTime().ToString('yyyy-MM-ddTHH:mm:ssZ'))) -Actions $actions
+        }
+    }
     Write-ScaffoldFile -TargetPath $codeMapPath -Content $codeMapContent -Actions $actions
     Write-ScaffoldFile -TargetPath $dependencyReportPath -Content $dependencyReportContent -Actions $actions
     Write-ScaffoldFile -TargetPath $coverageEvidencePath -Content $coverageEvidenceContent -Actions $actions

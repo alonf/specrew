@@ -13,6 +13,12 @@ if (-not (Test-Path -LiteralPath $sharedGovernancePath -PathType Leaf)) {
 }
 . $sharedGovernancePath
 
+$sharedGovernancePath = Join-Path $PSScriptRoot 'shared-governance.ps1'
+if (-not (Test-Path -LiteralPath $sharedGovernancePath -PathType Leaf)) {
+    throw "Missing shared governance helper '$sharedGovernancePath'."
+}
+. $sharedGovernancePath
+
 $allowedIterationStatuses = @('planning', 'executing', 'reviewing', 'retro', 'complete', 'abandoned')
 $allowedTaskStatuses = @('planned', 'in-progress', 'done', 'needs-rework', 'deferred', 'blocked')
 $terminalTaskStatuses = @('done', 'needs-rework', 'deferred', 'blocked')
@@ -412,6 +418,257 @@ function Get-MarkdownSectionTableAnyLevel {
     }
 
     return $rows.ToArray()
+}
+
+function Convert-ToRepoMarkdownPath {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$ProjectRoot,
+
+        [Parameter(Mandatory = $true)]
+        [string]$TargetPath
+    )
+
+    return ([System.IO.Path]::GetRelativePath($ProjectRoot, $TargetPath)) -replace '\\', '/'
+}
+
+function Resolve-RepoMarkdownArtifactPath {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$ProjectRoot,
+
+        [AllowNull()][string]$ArtifactRef
+    )
+
+    $normalizedRef = Normalize-MarkdownCell $ArtifactRef
+    if (Test-IsNullish $normalizedRef) {
+        return $null
+    }
+
+    if ($normalizedRef -match '<[^>]+>') {
+        return $null
+    }
+
+    $candidate = $normalizedRef -replace '/', '\'
+    if ([System.IO.Path]::IsPathRooted($candidate)) {
+        return [System.IO.Path]::GetFullPath($candidate)
+    }
+
+    return [System.IO.Path]::GetFullPath((Join-Path $ProjectRoot $candidate))
+}
+
+function Get-ObjectPropertyString {
+    param(
+        [AllowNull()][object]$InputObject,
+
+        [string[]]$PropertyNames
+    )
+
+    if ($null -eq $InputObject) {
+        return $null
+    }
+
+    foreach ($propertyName in $PropertyNames) {
+        $property = $InputObject.PSObject.Properties[$propertyName]
+        if ($null -ne $property) {
+            return [string]$property.Value
+        }
+    }
+
+    return $null
+}
+
+function Get-Phase2HardeningPlanContext {
+    param(
+        [AllowEmptyCollection()]
+        [AllowEmptyString()]
+        [Parameter(Mandatory = $true)]
+        [string[]]$PlanLines,
+
+        [Parameter(Mandatory = $true)]
+        [string]$ProjectRoot
+    )
+
+    $hasPhase2Section = Test-HeadingPresent -Lines $PlanLines -Heading 'Phase 2 Hardening and Specialist Review Planning'
+    $sliceScope = Normalize-MarkdownCell (Get-MarkdownMetadataValue -Lines $PlanLines -Label 'Phase 2 Slice Scope')
+    $artifactRef = Normalize-MarkdownCell (Get-MarkdownMetadataValue -Lines $PlanLines -Label 'Hardening Gate Artifact')
+
+    if (-not $hasPhase2Section -and (Test-IsNullish $sliceScope) -and (Test-IsNullish $artifactRef)) {
+        return $null
+    }
+
+    $routingRows = @(Get-MarkdownSectionTableAnyLevel -Lines $PlanLines -Heading 'Routing Policy')
+    $requestedReviewClass = if ($routingRows.Count -gt 0) {
+        Normalize-MarkdownCell (Get-ObjectPropertyString -InputObject $routingRows[0] -PropertyNames @('Requested Reasoning / Review Class', 'Requested Review Class'))
+    }
+    else {
+        $null
+    }
+
+    return [pscustomobject]@{
+        HasSection                 = $hasPhase2Section
+        SliceScope                 = $sliceScope
+        HardeningGateArtifactRef   = $artifactRef
+        HardeningGateArtifactPath  = Resolve-RepoMarkdownArtifactPath -ProjectRoot $ProjectRoot -ArtifactRef $artifactRef
+        RequestedReviewClass       = $requestedReviewClass
+    }
+}
+
+function Get-HardeningExpectedVerdict {
+    param(
+        [Parameter(Mandatory = $true)]
+        [object]$HardeningState
+    )
+
+    if ($HardeningState.BlocksImplementation) {
+        return 'blocked'
+    }
+
+    $hasApprovedDeferral = @(
+        $HardeningState.ConcernRows |
+            Where-Object { (Normalize-MarkdownCell ([string]$_.Status)).ToLowerInvariant() -eq 'deferred-with-approval' } |
+            Select-Object -First 1
+    ).Count -gt 0
+
+    if ($hasApprovedDeferral) {
+        return 'deferred-with-approval'
+    }
+
+    return 'ready'
+}
+
+function Test-Phase2HardeningGate {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$IterationDirectory,
+
+        [Parameter(Mandatory = $true)]
+        [string]$ProjectRoot,
+
+        [AllowEmptyCollection()]
+        [AllowEmptyString()]
+        [Parameter(Mandatory = $true)]
+        [string[]]$PlanLines,
+
+        [Parameter(Mandatory = $true)]
+        [string]$IterationStatus,
+
+        [System.Collections.Generic.List[string]]$Errors
+    )
+
+    $planContext = Get-Phase2HardeningPlanContext -PlanLines $PlanLines -ProjectRoot $ProjectRoot
+    if ($null -eq $planContext) {
+        return
+    }
+
+    if (-not $planContext.HasSection) {
+        $Errors.Add('plan.md must keep the Phase 2 Hardening and Specialist Review Planning section when hardening-gate metadata is present')
+        return
+    }
+
+    foreach ($requiredField in @(
+            @{ Label = 'Phase 2 Slice Scope'; Value = $planContext.SliceScope },
+            @{ Label = 'Hardening Gate Artifact'; Value = $planContext.HardeningGateArtifactRef }
+        )) {
+        if (Test-IsNullish ([string]$requiredField.Value)) {
+            $Errors.Add(("plan.md is missing required Phase 2 hardening metadata: {0}" -f $requiredField.Label))
+        }
+    }
+
+    $requiresGateEnforcement = $IterationStatus -in @('executing', 'reviewing', 'retro', 'complete')
+    if (-not $requiresGateEnforcement -and [string]::IsNullOrWhiteSpace($planContext.HardeningGateArtifactPath)) {
+        return
+    }
+
+    if ([string]::IsNullOrWhiteSpace($planContext.HardeningGateArtifactPath)) {
+        $Errors.Add('plan.md Hardening Gate Artifact must resolve to a concrete repo-relative path before implementation can proceed')
+        return
+    }
+
+    if (-not (Test-Path -LiteralPath $planContext.HardeningGateArtifactPath -PathType Leaf)) {
+        $Errors.Add(("Missing required hardening artifact: {0}" -f $planContext.HardeningGateArtifactRef))
+        return
+    }
+
+    $hardeningState = Get-HardeningGateState -Path $planContext.HardeningGateArtifactPath -ProjectRoot $ProjectRoot
+    $expectedIterationRef = Convert-ToRepoMarkdownPath -ProjectRoot $ProjectRoot -TargetPath $IterationDirectory
+    $expectedSpecPath = Resolve-PlanSpecPath -PlanLines $PlanLines -IterationDirectory $IterationDirectory
+    $expectedFeatureRef = if ($null -ne $expectedSpecPath) {
+        Convert-ToRepoMarkdownPath -ProjectRoot $ProjectRoot -TargetPath $expectedSpecPath
+    }
+    else {
+        $null
+    }
+
+    foreach ($metadataCheck in @(
+            @{ Label = 'Schema'; Actual = [string]$hardeningState.Metadata.Schema; Expected = 'v1' },
+            @{ Label = 'Gate ID'; Actual = [string]$hardeningState.Metadata.GateId; Expected = 'pre-implementation-hardening' },
+            @{ Label = 'Iteration Ref'; Actual = [string]$hardeningState.Metadata.IterationRef; Expected = $expectedIterationRef }
+        )) {
+        if ((Normalize-MarkdownCell $metadataCheck.Actual) -ne (Normalize-MarkdownCell $metadataCheck.Expected)) {
+            $Errors.Add(("hardening-gate.md metadata '{0}' should be '{1}' but found '{2}'" -f $metadataCheck.Label, $metadataCheck.Expected, $metadataCheck.Actual))
+        }
+    }
+
+    if (-not (Test-IsNullish $expectedFeatureRef) -and (Normalize-MarkdownCell ([string]$hardeningState.Metadata.FeatureRef)) -ne $expectedFeatureRef) {
+        $Errors.Add(("hardening-gate.md metadata 'Feature Ref' should be '{0}' but found '{1}'" -f $expectedFeatureRef, $hardeningState.Metadata.FeatureRef))
+    }
+
+    if (-not (Test-IsNullish $planContext.RequestedReviewClass) -and
+        (Normalize-MarkdownCell ([string]$hardeningState.Metadata.RequestedReviewClass)) -ne $planContext.RequestedReviewClass) {
+        $Errors.Add(("hardening-gate.md requested review class '{0}' does not match the Phase 2 routing policy '{1}'" -f $hardeningState.Metadata.RequestedReviewClass, $planContext.RequestedReviewClass))
+    }
+
+    $expectedConcernIds = @(
+        'security-surface',
+        'error-handling-expectations',
+        'retry-idempotency-requirements',
+        'test-integrity-targets',
+        'operational-resilience-concerns'
+    )
+
+    if ($hardeningState.ConcernRows.Count -ne $expectedConcernIds.Count) {
+        $Errors.Add(("hardening-gate.md must keep the bounded five-concern contract; found {0} concern rows" -f $hardeningState.ConcernRows.Count))
+    }
+
+    foreach ($concernId in $expectedConcernIds) {
+        $matches = @($hardeningState.ConcernRows | Where-Object { [string]$_.Concern -eq $concernId })
+        if ($matches.Count -ne 1) {
+            $Errors.Add(("hardening-gate.md must contain exactly one '{0}' concern row" -f $concernId))
+        }
+    }
+
+    $expectedVerdict = Get-HardeningExpectedVerdict -HardeningState $hardeningState
+    $actualVerdict = (Normalize-MarkdownCell ([string]$hardeningState.Metadata.OverallVerdict)).ToLowerInvariant()
+    if ($actualVerdict -ne $expectedVerdict) {
+        $Errors.Add(("hardening-gate.md overall verdict should be '{0}' based on the concern rows but found '{1}'" -f $expectedVerdict, $hardeningState.Metadata.OverallVerdict))
+    }
+
+    switch ($expectedVerdict) {
+        'blocked' {
+            if (-not (Test-IsNullish ([string]$hardeningState.Metadata.ApprovalRef))) {
+                $Errors.Add('hardening-gate.md must not publish a gate-level Approval Ref while the overall verdict remains blocked')
+            }
+
+            if ($requiresGateEnforcement) {
+                $blockingConcernIds = @($hardeningState.BlockingConcerns | ForEach-Object { [string]$_.Concern })
+                $Errors.Add(("hardening-gate.md still blocks implementation via unresolved concern(s): {0}" -f ($blockingConcernIds -join ', ')))
+            }
+        }
+        'deferred-with-approval' {
+            if (Test-IsNullish ([string]$hardeningState.Metadata.ApprovalRef)) {
+                $Errors.Add('hardening-gate.md must record a gate-level Approval Ref when the verdict is deferred-with-approval')
+            }
+            elseif ($null -eq $hardeningState.ApprovalRecord -or -not $hardeningState.ApprovalRecord.HasHumanApproval) {
+                $Errors.Add(("hardening-gate.md approval reference '{0}' is missing explicit human approval evidence in .squad\decisions.md" -f $hardeningState.Metadata.ApprovalRef))
+            }
+        }
+        'ready' {
+            if (-not (Test-IsNullish ([string]$hardeningState.Metadata.ApprovalRef))) {
+                $Errors.Add('hardening-gate.md must not retain a gate-level Approval Ref after all blocking concerns are fully ready')
+            }
+        }
+    }
 }
 
 function Get-Phase1RequiredQualityGateRows {
@@ -1724,6 +1981,7 @@ function Test-IterationGovernance {
     }
 
     Test-Phase1QualityEvidence -IterationDirectory $IterationDirectory -PlanLines $planLines -Errors $errors
+    Test-Phase2HardeningGate -IterationDirectory $IterationDirectory -ProjectRoot $ResolvedProjectPath -PlanLines $planLines -IterationStatus $status -Errors $errors
 
     $iterationConfig = Get-IterationConfigForValidation -IterationDirectory $IterationDirectory
     Test-PlanEffortModel -PlanLines $planLines -Capacity $capacity -IterationConfig $iterationConfig -Errors $errors

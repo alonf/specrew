@@ -153,6 +153,58 @@ function New-RiskDimension {
     }
 }
 
+function New-HardeningFocusArea {
+    param(
+        [string]$FocusArea,
+        [string]$WhyItMatters,
+        [string]$PlannedArtifactOrEvidence,
+        [string]$Status
+    )
+
+    return [pscustomobject]@{
+        focus_area                   = $FocusArea
+        why_it_matters              = $WhyItMatters
+        planned_artifact_or_evidence = $PlannedArtifactOrEvidence
+        status                      = $Status
+    }
+}
+
+function New-LensActivationPlanEntry {
+    param(
+        [string]$LensRef,
+        [string]$Activation,
+        [string]$Rationale,
+        [string]$PlannedEvidencePath,
+        [string]$RequestedReviewClass
+    )
+
+    return [pscustomobject]@{
+        lens_ref               = $LensRef
+        activation             = $Activation
+        rationale              = $Rationale
+        planned_evidence_path  = $PlannedEvidencePath
+        requested_review_class = $RequestedReviewClass
+    }
+}
+
+function New-RoutingPolicyEntry {
+    param(
+        [string]$LensScope,
+        [string]$RequestedReviewClass,
+        [string]$EffectiveClass,
+        [string]$OverrideApprovalRecord,
+        [string]$Notes
+    )
+
+    return [pscustomobject]@{
+        lens_scope               = $LensScope
+        requested_review_class   = $RequestedReviewClass
+        effective_class          = $EffectiveClass
+        override_approval_record = $OverrideApprovalRecord
+        notes                    = $Notes
+    }
+}
+
 function Get-BaselineRiskDimensions {
     return @(
         'code-quality',
@@ -177,6 +229,199 @@ function Get-PhaseOneDeferrals {
         'Pre-implementation hardening gate sign-off and blocking semantics remain deferred to Phase 2+.',
         'Dedicated bug-hunter lens execution and strongest-class routing remain deferred to Phase 2+.',
         'Quality-drift logic, mixed-stack override routing, and reference-implementation comparison remain deferred to Phase 2+.'
+    )
+}
+
+function Convert-ToRepoMarkdownPath {
+    param(
+        [string]$ResolvedProjectPath,
+        [string]$Path
+    )
+
+    if ([string]::IsNullOrWhiteSpace($Path)) {
+        return $null
+    }
+
+    try {
+        $relativePath = [System.IO.Path]::GetRelativePath($ResolvedProjectPath, $Path)
+        return ($relativePath -replace '\\', '/')
+    }
+    catch {
+        return ($Path -replace '\\', '/')
+    }
+}
+
+function Get-QualityPlanningDefaults {
+    param([string]$ResolvedProjectPath)
+
+    $defaults = [ordered]@{
+        known_traps_path          = '.specrew/quality/known-traps.md'
+        routing_default_policy    = 'strongest-available'
+        allow_lower_tier_override = $true
+        approval_required         = $true
+    }
+
+    $configPath = Join-Path $ResolvedProjectPath '.specrew\config.yml'
+    $configContent = Get-TextFileContent -Path $configPath
+    if ([string]::IsNullOrWhiteSpace($configContent)) {
+        return [pscustomobject]$defaults
+    }
+
+    $qualityBlockMatch = [regex]::Match($configContent, '(?ms)^\s*quality:\s*(?<body>(?:\r?\n\s+.+)+)')
+    if (-not $qualityBlockMatch.Success) {
+        return [pscustomobject]$defaults
+    }
+
+    $qualityBlock = $qualityBlockMatch.Groups['body'].Value
+    $knownTrapsMatch = [regex]::Match($qualityBlock, '(?m)^\s*known_traps_path:\s*"?(?<value>[^"\r\n]+)"?\s*$')
+    if ($knownTrapsMatch.Success) {
+        $defaults.known_traps_path = ($knownTrapsMatch.Groups['value'].Value.Trim() -replace '\\', '/')
+    }
+
+    $routingBlockMatch = [regex]::Match($qualityBlock, '(?ms)^\s*routing:\s*(?<body>(?:\r?\n\s{4,}.+)+)')
+    if ($routingBlockMatch.Success) {
+        $routingBlock = $routingBlockMatch.Groups['body'].Value
+        $defaultPolicyMatch = [regex]::Match($routingBlock, '(?m)^\s*default_policy:\s*"?(?<value>[^"\r\n]+)"?\s*$')
+        if ($defaultPolicyMatch.Success) {
+            $defaults.routing_default_policy = $defaultPolicyMatch.Groups['value'].Value.Trim()
+        }
+
+        $allowOverrideMatch = [regex]::Match($routingBlock, '(?m)^\s*allow_lower_tier_override:\s*(?<value>true|false)\s*$')
+        if ($allowOverrideMatch.Success) {
+            $defaults.allow_lower_tier_override = [System.Convert]::ToBoolean($allowOverrideMatch.Groups['value'].Value)
+        }
+
+        $approvalRequiredMatch = [regex]::Match($routingBlock, '(?m)^\s*approval_required:\s*(?<value>true|false)\s*$')
+        if ($approvalRequiredMatch.Success) {
+            $defaults.approval_required = [System.Convert]::ToBoolean($approvalRequiredMatch.Groups['value'].Value)
+        }
+    }
+
+    return [pscustomobject]$defaults
+}
+
+function Get-PhaseTwoArtifactRefs {
+    param(
+        [string]$ResolvedProjectPath,
+        [string]$ResolvedFeaturePath,
+        [pscustomobject]$QualityDefaults
+    )
+
+    $featureRoot = if ([string]::IsNullOrWhiteSpace($ResolvedFeaturePath)) {
+        'specs/<feature>'
+    }
+    else {
+        Convert-ToRepoMarkdownPath -ResolvedProjectPath $ResolvedProjectPath -Path $ResolvedFeaturePath
+    }
+
+    $iterationQualityRoot = '{0}/iterations/<NNN>/quality' -f $featureRoot
+    return [pscustomobject]@{
+        hardening_gate_artifact      = '{0}/hardening-gate.md' -f $iterationQualityRoot
+        known_traps_corpus_location  = [string]$QualityDefaults.known_traps_path
+        trap_reapplication_artifact  = '{0}/trap-reapplication.md' -f $iterationQualityRoot
+        lens_evidence_directory      = '{0}/lenses' -f $iterationQualityRoot
+    }
+}
+
+function Get-PhaseTwoHardeningFocusAreas {
+    param(
+        [pscustomobject]$RiskResolution,
+        [pscustomobject]$ArtifactRefs
+    )
+
+    $requiredDimensions = @($RiskResolution.required.id)
+    $retryStatus = if ($requiredDimensions -contains 'retry-idempotency-and-recovery') { 'required' } else { 'not-applicable' }
+    $retryRationale = if ($retryStatus -eq 'required') {
+        'Retry, idempotency, or recovery behavior is materially relevant for this slice, so the hardening gate must capture the explicit guardrails before implementation starts.'
+    }
+    else {
+        'The hardening gate still records why retry and idempotency do not materially apply in this slice so omissions stay reviewable before implementation begins.'
+    }
+    $qualityEvidencePath = '{0}/quality-evidence.md' -f (($ArtifactRefs.hardening_gate_artifact -replace '/hardening-gate\.md$', ''))
+
+    return @(
+        (New-HardeningFocusArea -FocusArea 'Security surface analysis' -WhyItMatters 'The hardening gate must capture trust boundaries, auth assumptions, secret handling, and sensitive mutation paths before coding begins.' -PlannedArtifactOrEvidence $ArtifactRefs.hardening_gate_artifact -Status 'required'),
+        (New-HardeningFocusArea -FocusArea 'Error handling and failure semantics' -WhyItMatters 'Silent failure paths and fallback expectations must be made explicit in the hardening gate so implementation does not invent them later.' -PlannedArtifactOrEvidence $ArtifactRefs.hardening_gate_artifact -Status 'required'),
+        (New-HardeningFocusArea -FocusArea 'Retry and idempotency expectations' -WhyItMatters $retryRationale -PlannedArtifactOrEvidence $ArtifactRefs.hardening_gate_artifact -Status $retryStatus),
+        (New-HardeningFocusArea -FocusArea 'Test-integrity targets' -WhyItMatters 'The hardening gate must name the test evidence expected for this slice so implementation readiness does not rely on smoke-only success.' -PlannedArtifactOrEvidence ('feature plan Phase 2 quality planning section plus {0}' -f $qualityEvidencePath) -Status 'required')
+    )
+}
+
+function Get-LensIdFromRef {
+    param([string]$LensRef)
+
+    if ([string]::IsNullOrWhiteSpace($LensRef)) {
+        return ''
+    }
+
+    return ($LensRef -split '@', 2)[0]
+}
+
+function Get-PhaseTwoLensActivationPlan {
+    param(
+        [pscustomobject]$Profile,
+        [pscustomobject]$ArtifactRefs,
+        [pscustomobject]$QualityDefaults
+    )
+
+    $lensRefs = [System.Collections.Generic.List[string]]::new()
+    Add-UniqueItems -List $lensRefs -Values @($Profile.required_lens_refs)
+    Add-UniqueItems -List $lensRefs -Values @($Profile.custom_lens_refs)
+
+    $entries = [System.Collections.Generic.List[object]]::new()
+    foreach ($lensRef in $lensRefs) {
+        $lensId = Get-LensIdFromRef -LensRef $lensRef
+        $evidencePath = '{0}/{1}.md' -f $ArtifactRefs.lens_evidence_directory, $lensId
+        $activation = 'optional'
+        $rationale = 'The lens remains available for later Phase 2 execution, but the current slice only publishes bounded planning metadata.'
+
+        switch ($lensId) {
+            'security-baseline' {
+                $activation = 'required'
+                $rationale = 'Security is always a materially reviewed baseline dimension, so the security lens stays pre-activated in planning even though row-level execution remains deferred.'
+            }
+            'robustness-baseline' {
+                $activation = 'required'
+                $rationale = 'Robustness, failure semantics, and retry-related concerns feed the hardening gate directly, so the robustness lens must be visible as required planning metadata.'
+            }
+            'test-integrity' {
+                $activation = 'required'
+                $rationale = 'Test-integrity targets are part of the pre-implementation hardening review, so this lens stays explicitly required in the bounded plan.'
+            }
+        }
+
+        $null = $entries.Add((New-LensActivationPlanEntry -LensRef $lensRef -Activation $activation -Rationale $rationale -PlannedEvidencePath $evidencePath -RequestedReviewClass $QualityDefaults.routing_default_policy))
+    }
+
+    return @($entries)
+}
+
+function Get-PhaseTwoRoutingPolicy {
+    param([pscustomobject]$QualityDefaults)
+
+    $overrideRecord = if ($QualityDefaults.allow_lower_tier_override) {
+        if ($QualityDefaults.approval_required) {
+            'Explicit approved lower-tier override required before any downgrade takes effect.'
+        }
+        else {
+            'Lower-tier overrides are allowed by config without a separate approval gate.'
+        }
+    }
+    else {
+        'No lower-tier override path is enabled for required hardening or specialist review work.'
+    }
+
+    return @(
+        (New-RoutingPolicyEntry -LensScope 'Required hardening and bug-hunter lenses' -RequestedReviewClass $QualityDefaults.routing_default_policy -EffectiveClass 'Record when execution happens' -OverrideApprovalRecord $overrideRecord -Notes 'Planning publishes the requested routing baseline only; effective-class evidence stays deferred until the execution path exists.')
+    )
+}
+
+function Get-PhaseTwoLaterDeferrals {
+    return @(
+        'Full line-by-line lens execution evidence remains deferred until the approved implementation/review slice authorizes it.',
+        'Known-traps corpus seeding, approved additions, and trap reapplication remain deferred until the dedicated known-traps slice is in scope.',
+        'Strongest-class routing enforcement details and requested-versus-effective execution evidence remain deferred until the routed lens execution path exists.',
+        'Quality-drift comparison, mixed-stack override workflows, and reference-implementation checks remain deferred unless the approved slice explicitly includes them.'
     )
 }
 
@@ -707,6 +952,39 @@ function Convert-QualityProfileToMarkdown {
     foreach ($deferral in $Resolution.phase2_deferrals) {
         $null = $lines.Add(("- {0}" -f $deferral))
     }
+    $null = $lines.Add('')
+    $null = $lines.Add('## Phase 2 Hardening and Specialist Review Planning')
+    $null = $lines.Add('')
+    $null = $lines.Add(('**Phase 2 Slice Scope**: `{0}`' -f $Resolution.phase2_slice_scope))
+    $null = $lines.Add(('**Hardening Gate Artifact**: `{0}`' -f $Resolution.phase2_hardening_gate_artifact))
+    $null = $lines.Add(('**Known-Traps Corpus Location**: `{0}`' -f $Resolution.phase2_known_traps_corpus_location))
+    $null = $lines.Add(('**Trap Reapplication Artifact**: `{0}`' -f $Resolution.phase2_trap_reapplication_artifact))
+    $null = $lines.Add('')
+    $null = $lines.Add('### Hardening Focus Areas')
+    $null = $lines.Add('| Focus Area | Why It Matters in This Slice | Planned Artifact / Evidence | Status |')
+    $null = $lines.Add('| --- | --- | --- | --- |')
+    foreach ($focusArea in $Resolution.phase2_hardening_focus_areas) {
+        $null = $lines.Add(('| {0} | {1} | `{2}` | `{3}` |' -f $focusArea.focus_area, $focusArea.why_it_matters, $focusArea.planned_artifact_or_evidence, $focusArea.status))
+    }
+    $null = $lines.Add('')
+    $null = $lines.Add('### Lens Activation Plan')
+    $null = $lines.Add('| Lens / Checklist Ref | Activation | Why Activated or Omitted | Planned Evidence / Artifact Path |')
+    $null = $lines.Add('| --- | --- | --- | --- |')
+    foreach ($lensPlan in $Resolution.phase2_lens_activation_plan) {
+        $null = $lines.Add(('| `{0}` | `{1}` | {2} | `{3}` |' -f $lensPlan.lens_ref, $lensPlan.activation, $lensPlan.rationale, $lensPlan.planned_evidence_path))
+    }
+    $null = $lines.Add('')
+    $null = $lines.Add('### Routing Policy')
+    $null = $lines.Add('| Lens Scope | Requested Reasoning / Review Class | Effective Class (when run) | Override / Approval Record | Notes |')
+    $null = $lines.Add('| --- | --- | --- | --- | --- |')
+    foreach ($routingRow in $Resolution.phase2_routing_policy) {
+        $null = $lines.Add(('| {0} | `{1}` | {2} | {3} | {4} |' -f $routingRow.lens_scope, $routingRow.requested_review_class, $routingRow.effective_class, $routingRow.override_approval_record, $routingRow.notes))
+    }
+    $null = $lines.Add('')
+    $null = $lines.Add('### Explicit Later Deferrals')
+    foreach ($deferral in $Resolution.phase2_explicit_later_deferrals) {
+        $null = $lines.Add(("- {0}" -f $deferral))
+    }
 
     return $lines -join "`n"
 }
@@ -760,6 +1038,8 @@ else {
 
 $riskResolution = Get-RiskResolution -Profile $profile -Signals $signals
 $requiredQualityGates = Get-RequiredQualityGates -Profile $profile -RiskResolution $riskResolution
+$qualityPlanningDefaults = Get-QualityPlanningDefaults -ResolvedProjectPath $resolvedProjectPath
+$phaseTwoArtifactRefs = Get-PhaseTwoArtifactRefs -ResolvedProjectPath $resolvedProjectPath -ResolvedFeaturePath $resolvedFeaturePath -QualityDefaults $qualityPlanningDefaults
 $presetRefs = [System.Collections.Generic.List[string]]::new()
 if ($profile.preset_ref) {
     Add-UniqueItem -List $presetRefs -Value $profile.preset_ref
@@ -803,6 +1083,14 @@ $resolution = [pscustomobject]@{
         manual_evidence   = $manualEvidence.ToArray()
     }
     required_quality_gates    = @($requiredQualityGates)
+    phase2_slice_scope        = 'US-2 hardening-gate planning only; specialist lens execution, routing enforcement, and known-traps follow-through stay explicitly deferred.'
+    phase2_hardening_gate_artifact = $phaseTwoArtifactRefs.hardening_gate_artifact
+    phase2_known_traps_corpus_location = $phaseTwoArtifactRefs.known_traps_corpus_location
+    phase2_trap_reapplication_artifact = $phaseTwoArtifactRefs.trap_reapplication_artifact
+    phase2_hardening_focus_areas = @(Get-PhaseTwoHardeningFocusAreas -RiskResolution $riskResolution -ArtifactRefs $phaseTwoArtifactRefs)
+    phase2_lens_activation_plan = @(Get-PhaseTwoLensActivationPlan -Profile $profile -ArtifactRefs $phaseTwoArtifactRefs -QualityDefaults $qualityPlanningDefaults)
+    phase2_routing_policy     = @(Get-PhaseTwoRoutingPolicy -QualityDefaults $qualityPlanningDefaults)
+    phase2_explicit_later_deferrals = @(Get-PhaseTwoLaterDeferrals)
     phase2_deferrals          = Get-PhaseOneDeferrals
 }
 $resolution | Add-Member -NotePropertyName markdown_summary -NotePropertyValue (Convert-QualityProfileToMarkdown -Resolution $resolution)

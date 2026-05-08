@@ -39,6 +39,9 @@ if (-not (Test-Path -LiteralPath $scriptPath -PathType Leaf)) {
 $scratchRoot = Join-Path $repoRoot '.scratch\reviewer-artifacts'
 $projectRoot = Join-Path $scratchRoot 'project'
 $iterationDirectory = Join-Path $projectRoot 'specs\001-sample\iterations\005'
+$hardeningGatePath = Join-Path $iterationDirectory 'quality\hardening-gate.md'
+$qualityLensesPath = Join-Path $iterationDirectory 'quality\lenses'
+$trapReapplicationPath = Join-Path $iterationDirectory 'quality\trap-reapplication.md'
 
 if (Test-Path -LiteralPath $scratchRoot) {
     Remove-Item -LiteralPath $scratchRoot -Recurse -Force
@@ -130,6 +133,16 @@ export function maskToken(token) {
 [System.IO.File]::WriteAllText((Join-Path $projectRoot 'tests\integration\api.test.js'), "describe('api', () => { it('works', () => expect(true).toBe(true)); });`n", [System.Text.UTF8Encoding]::new($false))
 [System.IO.File]::WriteAllText((Join-Path $projectRoot 'tests\integration\review-pass-a.ps1'), "Write-Host 'review-pass-a ok'`nexit 0`n", [System.Text.UTF8Encoding]::new($false))
 [System.IO.File]::WriteAllText((Join-Path $projectRoot 'tests\integration\review-pass-b.ps1'), "Write-Host 'review-pass-b ok'`nexit 0`n", [System.Text.UTF8Encoding]::new($false))
+$null = New-Item -ItemType Directory -Path (Join-Path $projectRoot 'specs\001-sample\contracts') -Force
+[System.IO.File]::WriteAllText((Join-Path $projectRoot 'specs\001-sample\contracts\quality-governance-artifacts.md'), @'
+# Quality Governance Artifacts
+
+## Phase 2 Surfaces
+
+- `specs/<feature>/iterations/<NNN>/quality/hardening-gate.md`
+- `specs/<feature>/iterations/<NNN>/quality/lenses/*.md`
+- `specs/<feature>/iterations/<NNN>/quality/trap-reapplication.md`
+'@, [System.Text.UTF8Encoding]::new($false))
 
 @(& git -C $projectRoot add . 2>&1) | Out-Null
 $commitOutput = @(& git -C $projectRoot -c user.name=Copilot -c user.email=copilot@example.com commit -m "baseline" --quiet 2>&1)
@@ -268,6 +281,13 @@ $securityContent = Get-Content -LiteralPath (Join-Path $iterationDirectory 'secu
 $diagramContent = Get-Content -LiteralPath (Join-Path $iterationDirectory 'review-diagrams.md') -Raw -Encoding UTF8
 $indexContent = Get-Content -LiteralPath (Join-Path $iterationDirectory 'reviewer-index.md') -Raw -Encoding UTF8
 $currentArchitectureContent = Get-Content -LiteralPath (Join-Path $projectRoot 'specs\001-sample\current-architecture.md') -Raw -Encoding UTF8
+$hardeningGateContent = Get-Content -LiteralPath $hardeningGatePath -Raw -Encoding UTF8
+$trapReapplicationContent = Get-Content -LiteralPath $trapReapplicationPath -Raw -Encoding UTF8
+
+if (-not (Test-Path -LiteralPath $qualityLensesPath -PathType Container)) {
+    Write-Fail 'Reviewer scaffold did not create the quality\lenses directory.'
+    exit 1
+}
 
 foreach ($check in @(
         @{ Content = $codeMapContent; Pattern = '\| Path \| Lines Added \| Lines Removed \| Owning Task ID\(s\) \| Owning Role \|'; Failure = 'Code map is missing Files Touched columns.' },
@@ -300,7 +320,11 @@ foreach ($check in @(
         @{ Content = $indexContent; Pattern = 'current-architecture\.md'; Failure = 'Reviewer index is missing the current architecture link.' },
         @{ Content = $indexContent; Pattern = 'Coverage:\s+kind=qualitative\s+\|\s+signal=focused_regression'; Failure = 'Reviewer index did not record focused_regression coverage.' },
         @{ Content = $indexContent; Pattern = 'SPECREW_REVIEW schema=v1 iter=005 feature=001-sample verdict=accepted tasks=3/3 reqs=3 files=4 new_deps=1 vuln=unscanned cov=focused_regression escalations=0 drift=1/1 index=specs\\001-sample\\iterations\\005\\reviewer-index\.md'; Failure = 'Reviewer index digest does not match FR-051 after executing review-time tests.' },
-        @{ Content = $output; Pattern = 'SPECREW_REVIEW schema=v1 iter=005 feature=001-sample verdict=accepted tasks=3/3 reqs=3 files=4 new_deps=1 vuln=unscanned cov=focused_regression escalations=0 drift=1/1 index=specs\\001-sample\\iterations\\005\\reviewer-index\.md'; Failure = 'Closeout output did not emit the FR-051 digest after executing review-time tests.' }
+        @{ Content = $output; Pattern = 'SPECREW_REVIEW schema=v1 iter=005 feature=001-sample verdict=accepted tasks=3/3 reqs=3 files=4 new_deps=1 vuln=unscanned cov=focused_regression escalations=0 drift=1/1 index=specs\\001-sample\\iterations\\005\\reviewer-index\.md'; Failure = 'Closeout output did not emit the FR-051 digest after executing review-time tests.' },
+        @{ Content = $hardeningGateContent; Pattern = '\*\*Gate ID\*\*:\s*`pre-implementation-hardening`'; Failure = 'Reviewer scaffold did not create the hardening gate placeholder.' },
+        @{ Content = $hardeningGateContent; Pattern = '\| `security-surface` \| `security` \| `tbd` \| `true` \|'; Failure = 'Reviewer scaffold hardening gate is missing the security concern placeholder row.' },
+        @{ Content = $trapReapplicationContent; Pattern = '\*\*Scan ID\*\*:\s*`trap-reapplication\.pending`'; Failure = 'Reviewer scaffold did not create the trap reapplication placeholder.' },
+        @{ Content = $trapReapplicationContent; Pattern = '\| `\(pending trap refs\)` \| `\(pending scan scope\)` \| `skipped-with-rationale` \|'; Failure = 'Reviewer scaffold trap reapplication is missing the placeholder row.' }
     )) {
     $isNegative = $check.ContainsKey('Negative') -and [bool]$check.Negative
     $matches = $check.Content -match $check.Pattern

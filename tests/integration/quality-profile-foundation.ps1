@@ -81,6 +81,23 @@ function Assert-PathExists {
     return $true
 }
 
+function Assert-Condition {
+    param(
+        [Parameter(Mandatory = $true)]
+        [bool]$Condition,
+
+        [Parameter(Mandatory = $true)]
+        [string]$FailureMessage
+    )
+
+    if (-not $Condition) {
+        Write-Fail $FailureMessage
+        return $false
+    }
+
+    return $true
+}
+
 function Assert-FileMatchesFixture {
     param(
         [Parameter(Mandatory = $true)]
@@ -259,6 +276,36 @@ else {
 if (-not (Assert-PathExists -Path $qualityProfileResolverPath -FailureMessage 'US1 quality-profile integration is missing extensions\specrew-speckit\scripts\resolve-quality-profile.ps1 for recognized-stack and bounded custom-composition planning.')) {
     $allChecksPassed = $false
 }
+else {
+    $phaseTwoFeaturePath = Join-Path $repoRoot 'specs\005-stack-aware-quality-bar'
+    $phaseTwoProfileJson = & $qualityProfileResolverPath -ProjectPath $repoRoot -FeaturePath $phaseTwoFeaturePath -OutputFormat Json
+    $phaseTwoProfile = $phaseTwoProfileJson | ConvertFrom-Json
+
+    if (-not (Assert-Condition -Condition ($phaseTwoProfile.PSObject.Properties.Name -contains 'phase2_slice_scope') -FailureMessage 'Resolved quality profile is missing the Phase 2 slice-scope field required for bounded hardening planning.')) {
+        $allChecksPassed = $false
+    }
+    if (-not (Assert-Condition -Condition ($phaseTwoProfile.phase2_hardening_gate_artifact -match 'specs/005-stack-aware-quality-bar/iterations/<NNN>/quality/hardening-gate\.md') -FailureMessage 'Resolved quality profile did not publish the canonical hardening-gate artifact path for Phase 2 planning.')) {
+        $allChecksPassed = $false
+    }
+    if (-not (Assert-Condition -Condition ($phaseTwoProfile.phase2_known_traps_corpus_location -eq '.specrew/quality/known-traps.md') -FailureMessage 'Resolved quality profile did not reuse the configured known-traps corpus location for Phase 2 planning.')) {
+        $allChecksPassed = $false
+    }
+    if (-not (Assert-Condition -Condition ($phaseTwoProfile.phase2_hardening_focus_areas.Count -eq 4) -FailureMessage 'Resolved quality profile did not publish the bounded four-row hardening focus-area plan for the approved slice.')) {
+        $allChecksPassed = $false
+    }
+    if (-not (Assert-Condition -Condition (@($phaseTwoProfile.phase2_hardening_focus_areas | Where-Object { $_.focus_area -eq 'Retry and idempotency expectations' }).Count -eq 1) -FailureMessage 'Resolved quality profile is missing the retry/idempotency hardening focus row needed for pre-implementation review.')) {
+        $allChecksPassed = $false
+    }
+    if (-not (Assert-Condition -Condition (@($phaseTwoProfile.phase2_lens_activation_plan | Where-Object { $_.lens_ref -eq 'security-baseline@v1.0.0' -and $_.activation -eq 'required' }).Count -eq 1) -FailureMessage 'Resolved quality profile did not classify the security baseline lens as required Phase 2 planning metadata.')) {
+        $allChecksPassed = $false
+    }
+    if (-not (Assert-Condition -Condition ($phaseTwoProfile.phase2_routing_policy[0].requested_review_class -eq 'strongest-available') -FailureMessage 'Resolved quality profile did not publish the configured strongest-available routing default for hardening planning.')) {
+        $allChecksPassed = $false
+    }
+    if (-not (Assert-Condition -Condition ($phaseTwoProfile.markdown_summary -match '## Phase 2 Hardening and Specialist Review Planning') -FailureMessage 'Resolved quality profile markdown summary did not render the Phase 2 hardening planning section.')) {
+        $allChecksPassed = $false
+    }
+}
 
 if (-not (Assert-PathExists -Path $planTemplatePath -FailureMessage 'Missing .specify\templates\plan-template.md for Phase 1 quality-planning contract validation.')) {
     $allChecksPassed = $false
@@ -313,11 +360,32 @@ else {
             $allChecksPassed = $false
         }
     }
+
+    $phaseTwoQualityContractPatterns = @(
+        @{
+            Pattern = 'Phase 2 Hardening and Specialist Review Planning'
+            FailureMessage = 'Plan template does not expose the bounded Phase 2 hardening-planning section.'
+        },
+        @{
+            Pattern = 'slice scope, artifact refs, focus-area statuses, lens activation classifications, routing defaults, and explicit later deferrals'
+            FailureMessage = 'Plan template does not tell planners to mirror the resolved Phase 2 hardening planning metadata.'
+        },
+        @{
+            Pattern = 'Known-Traps Corpus Location\*\*:\s*\[e\.g\., `\.specrew/quality/known-traps\.md`\]'
+            FailureMessage = 'Plan template does not show the canonical project-wide known-traps corpus location for bounded Phase 2 planning.'
+        }
+    )
+
+    foreach ($contractPattern in $phaseTwoQualityContractPatterns) {
+        if (-not (Assert-Contains -Content $planTemplateContent -Pattern $contractPattern.Pattern -FailureMessage $contractPattern.FailureMessage)) {
+            $allChecksPassed = $false
+        }
+    }
 }
 
 if (-not $allChecksPassed) {
     exit 1
 }
 
-Write-Pass 'Quality profile foundation scaffold and Phase 1 planning contract expose versioned quality assets, preserve local overrides, and define recognized-stack/custom-composition expectations'
+Write-Pass 'Quality profile foundation scaffold and Phase 1/Phase 2 planning contracts expose versioned quality assets, bounded hardening metadata, preserve local overrides, and define recognized-stack/custom-composition expectations'
 exit 0

@@ -73,12 +73,15 @@ These rules override generic Squad coordination whenever the repository is boots
     - Derive the applicable production-grade quality attributes from the grounded feature and project context instead of applying a one-size-fits-all checklist.
     - Carry those quality attributes into clarifications, planning, tasks, implementation, and review, including robustness, retries, idempotency, error handling, logging, telemetry, security, maintainability, and semantic correctness when they materially apply.
     - Before `speckit.plan`, run or consult `resolve-quality-profile.ps1` for the active clarified feature so planning receives an explicit Phase 1 / first-slice quality profile with preset refs or bounded custom composition, stack surfaces, risk dimensions, quality tool bundle, required gates, and not-applicable rationale.
-    - Treat the resolver output as planning input, not as proof that later review execution exists. Keep hardening gates, dedicated bug-hunter execution, known-traps workflows, and quality-drift automation explicitly deferred unless a later in-scope slice has actually implemented them.
+    - Treat the resolver output as planning input, not as proof that later review execution exists.
+    - When the active slice includes Phase 2 hardening-gate scope (`FR-031` through `FR-033`), planning must make the next lifecycle boundary explicit: `quality/hardening-gate.md` sign-off is required before implementation starts, and unresolved critical concerns need human-approved deferral rather than agent-only acceptance.
+    - Keep hardening gates, dedicated bug-hunter execution, strongest-class routing enforcement, known-traps workflows, and quality-drift automation explicitly deferred unless the current in-scope slice has actually implemented them.
     - Treat revisions, idempotency keys, retries, conflict detection, locks, and telemetry as incomplete until they have real runtime semantics and review evidence; flag ceremonial sophistication instead of accepting decorative protocol fields.
 
 14. **Require explicit implementation approval**
-   - Before `speckit.implement`, summarize readiness for the human developer: active feature, clarify outcome, quality focus, and final team composition.
-   - Ask the human developer to explicitly start implementation, and do not invoke `speckit.implement` until that approval is given.
+    - Before `speckit.implement`, summarize readiness for the human developer: active feature, clarify outcome, quality focus, and final team composition.
+    - If the active slice includes Phase 2 hardening-gate scope, include the hardening-gate verdict and any human-approved deferral status in that readiness summary.
+    - Ask the human developer to explicitly start implementation, and do not invoke `speckit.implement` until that approval is given.
 
 15. **Provide a review-ready implementation briefing**
    - At the end of implementation and review, provide a developer-facing briefing that summarizes what was built, how it maps to requirements, the main happy path and relevant alternative flows, dependency/package usage including newly introduced packages, the testing strategy, and an explicitly labeled estimate of coverage or confidence.

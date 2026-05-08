@@ -1,18 +1,30 @@
 # Iteration State: 003
 
 **Schema**: v1
-**Last Completed Task**: T001
-**Tasks Remaining**: T002, T003, T004, T005, T006, T007, T008, T009, T010, T011, T012, T013, T014
+**Last Completed Task**: T014
+**Tasks Remaining**: (none)
 **In Progress**: (none)
 **Baseline Ref**: 64a521fc335a0d013e29d0167dfc5c553230d32a
-**Updated**: 2026-05-08T15:02:38Z
+**Updated**: 2026-05-08T22:20:00Z
 **Status**: executing
 
 ## Execution Summary
 
-- Execution approval is recorded for Iteration 003 and `T001` is now complete.
+- Execution approval is recorded for Iteration 003 and `T001`-`T014` are now complete.
 - Iteration 003 is the active planning package for the Phase 2 MVP slice only: Setup + Foundational work plus User Story 2 (`T001`-`T014`).
-- `T002`, `T003`, and `T004` are the next ready tasks, but they have not started in this pass.
+- `T005` extended both artifact scaffolds and refreshed Iteration 003 placeholders so `hardening-gate.md`, `quality\lenses\`, and `trap-reapplication.md` exist without implying later hardening or known-traps execution is already complete.
+- `T007` aligned the before-plan, before-implement, and coordinator lifecycle guidance so Phase 2 hardening slices now require explicit hardening-gate sign-off or human-approved deferral before implementation, without overstating later lens/routing/trap execution.
+- `T008` extended `.specify\templates\plan-template.md` with bounded Phase 2 planning surfaces for hardening focus areas, lens activation, routing policy, known-traps location, and explicit later deferrals.
+- `T006` added shared markdown parsing plus hardening/routing approval helpers in `shared-governance.ps1`, and the existing gap-governance validation now proves that approved hardening deferrals stay non-blocking while unresolved `tbd` concerns still block readiness.
+- `T009` added deterministic `blocked`, `approved-deferral`, and `ready` hardening-gate fixtures, including fixture-local human approval evidence for the approved deferral path.
+- `T010` added `quality-evidence-governance` fixture projects for a blocked hardening gate and a human-approved hardening deferment while keeping the existing passing quality-evidence baseline intact.
+- `T011` added `tests\integration\hardening-gate-contract.ps1`, proving the bounded `blocked`, `approved-deferral`, and `ready` fixture scenarios stay deterministic, preserve explicit hardening rationale, and only treat the approved deferral path as non-blocking when fixture-local human approval evidence resolves cleanly.
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File .\tests\integration\hardening-gate-contract.ps1` passed for the new hardening-gate contract lane after the test landed.
+- `T012` added `extensions\specrew-speckit\scripts\run-hardening-gate.ps1`, which now scaffolds or reconciles `quality\hardening-gate.md` against the bounded five-concern contract, preserves explicit rationale visibility, and computes truthful pre-implementation `blocked` / `deferred-with-approval` / `ready` verdicts via the shared hardening-governance helpers.
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File .\extensions\specrew-speckit\scripts\run-hardening-gate.ps1 -ProjectPath . -IterationPath .\specs\005-stack-aware-quality-bar\iterations\003 -OutputFormat Json` passed and left Iteration 003 correctly blocked while all five concern rows remain `tbd`.
+- `T013` is complete and now publishes the bounded Phase 2 hardening planning metadata in the quality-profile resolver and plan template: concrete slice scope, artifact refs, focus-area statuses, routing defaults, and explicit later deferrals.
+- `T014` is complete: `validate-governance.ps1` now reuses the shared hardening-governance helpers, validates the canonical five-row `hardening-gate.md` shape against the new Phase 2 planning metadata, accepts only human-approved hardening deferrals, and fails closed if execution tries to proceed while unresolved hardening blockers remain.
+- Iteration 003 now has no remaining planned tasks, but the scaffolded local `quality\hardening-gate.md` still truthfully reports `blocked` until a real hardening review or human-approved defer record is captured for this slice.
 - User Story 3 / known-traps work (`T015`-`T024`) and User Story 4 / polish (`T025`-`T032`) are deferred to later iterations and must not be pulled into this slice without a tracked planning change.
 
 ## Notes

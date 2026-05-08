@@ -241,8 +241,12 @@ if (Test-Path -LiteralPath $scratchRoot) {
 
 $completeFixtureProject = Join-Path $fixtureRoot 'complete-evidence\project'
 $missingFixtureProject = Join-Path $fixtureRoot 'missing-evidence\project'
+$hardeningApprovedFixtureProject = Join-Path $fixtureRoot 'hardening-gate-approved\project'
+$hardeningBlockedFixtureProject = Join-Path $fixtureRoot 'hardening-gate-blocked\project'
 $completeWorkspace = New-TestWorkspace -ScratchRoot $scratchRoot -FixtureProjectPath $completeFixtureProject -WorkspaceName 'complete-evidence'
 $missingWorkspace = New-TestWorkspace -ScratchRoot $scratchRoot -FixtureProjectPath $missingFixtureProject -WorkspaceName 'missing-evidence'
+$hardeningApprovedWorkspace = New-TestWorkspace -ScratchRoot $scratchRoot -FixtureProjectPath $hardeningApprovedFixtureProject -WorkspaceName 'hardening-gate-approved'
+$hardeningBlockedWorkspace = New-TestWorkspace -ScratchRoot $scratchRoot -FixtureProjectPath $hardeningBlockedFixtureProject -WorkspaceName 'hardening-gate-blocked'
 
 $completeIterationPath = Join-Path $completeWorkspace 'specs\005-quality-evidence\iterations\001'
 $missingIterationPath = Join-Path $missingWorkspace 'specs\005-quality-evidence\iterations\001'
@@ -250,6 +254,8 @@ $completePlanPath = Join-Path $completeIterationPath 'plan.md'
 $completeEvidencePath = Join-Path $completeIterationPath 'quality\quality-evidence.md'
 $missingPlanPath = Join-Path $missingIterationPath 'plan.md'
 $missingEvidencePath = Join-Path $missingIterationPath 'quality\quality-evidence.md'
+$hardeningApprovedIterationPath = Join-Path $hardeningApprovedWorkspace 'specs\005-quality-evidence\iterations\001'
+$hardeningBlockedIterationPath = Join-Path $hardeningBlockedWorkspace 'specs\005-quality-evidence\iterations\001'
 
 $allChecksPassed = $true
 
@@ -293,6 +299,34 @@ elseif ($missingValidation.Text -notmatch 'quality-evidence|missing evidence|qua
 }
 else {
     Write-Pass 'validate-governance rejects the missing-evidence fixture with a quality-evidence-specific failure.'
+}
+
+$hardeningApprovedValidation = Invoke-Validator -ValidatorScriptPath $validatorScriptPath -ProjectPath $hardeningApprovedWorkspace -IterationPath $hardeningApprovedIterationPath
+if ($hardeningApprovedValidation.ExitCode -ne 0) {
+    Write-Fail 'validate-governance should accept the hardening-gate-approved fixture when the deferment carries explicit human approval evidence.'
+    foreach ($line in $hardeningApprovedValidation.Output) {
+        Write-Host $line
+    }
+    $allChecksPassed = $false
+}
+else {
+    Write-Pass 'validate-governance accepts the hardening-gate-approved fixture once human-approved defer evidence is present.'
+}
+
+$hardeningBlockedValidation = Invoke-Validator -ValidatorScriptPath $validatorScriptPath -ProjectPath $hardeningBlockedWorkspace -IterationPath $hardeningBlockedIterationPath
+if ($hardeningBlockedValidation.ExitCode -eq 0) {
+    Write-Fail 'validate-governance should fail when an executing iteration still has a blocked hardening gate.'
+    $allChecksPassed = $false
+}
+elseif ($hardeningBlockedValidation.Text -notmatch 'hardening-gate|blocks implementation|operational-resilience-concerns') {
+    Write-Fail 'validate-governance failed the blocked hardening fixture, but the failure did not mention the blocking hardening concern.'
+    foreach ($line in $hardeningBlockedValidation.Output) {
+        Write-Host $line
+    }
+    $allChecksPassed = $false
+}
+else {
+    Write-Pass 'validate-governance rejects the blocked hardening fixture with a hardening-gate-specific failure.'
 }
 
 if (-not $allChecksPassed) {

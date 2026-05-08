@@ -340,6 +340,97 @@ function Get-MechanicalFindingsScaffoldJson {
         } | ConvertTo-Json -Depth 8)
 }
 
+function Test-PhaseTwoQualityArtifactScaffold {
+    param(
+        [AllowEmptyCollection()]
+        [string[]]$PlanLines,
+        [string]$QualityContractPath
+    )
+
+    $phaseTwoPattern = 'hardening-gate\.md|trap-reapplication\.md|quality[\\/]+lenses'
+    $planText = ($PlanLines -join [Environment]::NewLine)
+    if ($planText -match $phaseTwoPattern) {
+        return $true
+    }
+
+    if (Test-Path -LiteralPath $QualityContractPath -PathType Leaf) {
+        $contractText = Get-Content -LiteralPath $QualityContractPath -Raw -Encoding UTF8
+        return $contractText -match $phaseTwoPattern
+    }
+
+    return $false
+}
+
+function Get-HardeningGateContent {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$FeatureRef,
+        [Parameter(Mandatory = $true)]
+        [string]$IterationRef,
+        [Parameter(Mandatory = $true)]
+        [string]$IterationNumber,
+        [Parameter(Mandatory = $true)]
+        [string]$ReviewedAt
+    )
+
+    $lines = [System.Collections.Generic.List[string]]::new()
+    $null = $lines.Add("# Hardening Gate: Iteration $IterationNumber")
+    $null = $lines.Add('')
+    $null = $lines.Add('**Schema**: v1')
+    $null = $lines.Add('**Gate ID**: `pre-implementation-hardening`')
+    $null = $lines.Add(('**Feature Ref**: `' + $FeatureRef + '`'))
+    $null = $lines.Add(('**Iteration Ref**: `' + $IterationRef + '`'))
+    $null = $lines.Add('**Requested Review Class**: `strongest-available`')
+    $null = $lines.Add('**Effective Review Class**: `(pending hardening review)`')
+    $null = $lines.Add('**Overall Verdict**: `blocked`')
+    $null = $lines.Add('**Approval Ref**: `—`')
+    $null = $lines.Add('**Reviewed By**: Reviewer (pending)')
+    $null = $lines.Add(('**Reviewed At**: ' + $ReviewedAt))
+    $null = $lines.Add('')
+    $null = $lines.Add('## Concern Review')
+    $null = $lines.Add('')
+    $null = $lines.Add('| Concern | Category | Status | Blocking | Rationale | Approval |')
+    $null = $lines.Add('| --- | --- | --- | --- | --- | --- |')
+    $null = $lines.Add('| `security-surface` | `security` | `tbd` | `true` | Scaffolded placeholder. Review trust boundaries, privilege changes, and sensitive flows before implementation proceeds. | `—` |')
+    $null = $lines.Add('| `error-handling-expectations` | `error-handling` | `tbd` | `true` | Scaffolded placeholder. Record expected failure semantics and incomplete-state handling before implementation proceeds. | `—` |')
+    $null = $lines.Add('| `retry-idempotency-requirements` | `retry-idempotency` | `tbd` | `true` | Scaffolded placeholder. Confirm whether retries/idempotency are required or explicitly not applicable. | `—` |')
+    $null = $lines.Add('| `test-integrity-targets` | `test-integrity` | `tbd` | `true` | Scaffolded placeholder. Tie negative-path expectations to observable test evidence before implementation proceeds. | `—` |')
+    $null = $lines.Add('| `operational-resilience-concerns` | `operational` | `tbd` | `true` | Scaffolded placeholder. Review runtime resilience, fallback, and operator-facing failure signals before implementation proceeds. | `—` |')
+    $null = $lines.Add('')
+    $null = $lines.Add('## Notes')
+    $null = $lines.Add('')
+    $null = $lines.Add('- This artifact was scaffolded before the hardening review ran.')
+    $null = $lines.Add('- Replace placeholder statuses with reviewed outcomes before marking implementation readiness.')
+    return ($lines -join [Environment]::NewLine) + [Environment]::NewLine
+}
+
+function Get-TrapReapplicationContent {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$IterationNumber,
+        [Parameter(Mandatory = $true)]
+        [string]$RecordedAt
+    )
+
+    $lines = [System.Collections.Generic.List[string]]::new()
+    $null = $lines.Add("# Trap Reapplication: Iteration $IterationNumber")
+    $null = $lines.Add('')
+    $null = $lines.Add('**Schema**: v1')
+    $null = $lines.Add('**Scan ID**: `trap-reapplication.pending`')
+    $null = $lines.Add(('**Recorded At**: ' + $RecordedAt))
+    $null = $lines.Add('')
+    $null = $lines.Add('## Scan Log')
+    $null = $lines.Add('')
+    $null = $lines.Add('| Trap Ref | Scan Scope | Result | Matches |')
+    $null = $lines.Add('| --- | --- | --- | --- |')
+    $null = $lines.Add('| `(pending trap refs)` | `(pending scan scope)` | `skipped-with-rationale` | Scaffolded placeholder. Known-trap reapplication has not run yet. |')
+    $null = $lines.Add('')
+    $null = $lines.Add('## Notes')
+    $null = $lines.Add('')
+    $null = $lines.Add('- Replace the placeholder row with concrete trap scan evidence once reapplication runs.')
+    return ($lines -join [Environment]::NewLine) + [Environment]::NewLine
+}
+
 function Get-PlanTaskIds {
     param(
         [Parameter(Mandatory = $true)]
@@ -498,30 +589,49 @@ else {
     @()
 }
 
-$qualityGateRows = @(Get-MarkdownSectionTable -Lines $planLines -Heading 'Required Quality Gates')
 $qualityContractPath = Join-Path $resolvedSpecDirectory 'contracts\quality-governance-artifacts.md'
-if ($qualityGateRows.Count -gt 0 -or (Test-Path -LiteralPath $qualityContractPath -PathType Leaf)) {
+$qualityGateRows = @(Get-MarkdownSectionTable -Lines $planLines -Heading 'Required Quality Gates')
+$hasQualityEvidenceContract = $qualityGateRows.Count -gt 0 -or (Test-Path -LiteralPath $qualityContractPath -PathType Leaf)
+$phaseTwoQualityArtifactsRequired = Test-PhaseTwoQualityArtifactScaffold -PlanLines $planLines -QualityContractPath $qualityContractPath
+if ($hasQualityEvidenceContract -or $phaseTwoQualityArtifactsRequired) {
     $qualityDirectory = Join-Path $iterationDirectory 'quality'
-    $qualityEvidencePath = Join-Path $qualityDirectory 'quality-evidence.md'
-    $mechanicalFindingsPath = Join-Path $qualityDirectory 'mechanical-findings.json'
     $featureId = Split-Path -Leaf $resolvedSpecDirectory
     $featureRef = Convert-ToRepoRelativePath -BasePath $projectRoot -TargetPath (Join-Path $resolvedSpecDirectory 'spec.md')
     $iterationRef = Convert-ToRepoRelativePath -BasePath $projectRoot -TargetPath $iterationDirectory
+    $hardeningGatePath = Join-Path $qualityDirectory 'hardening-gate.md'
+    $lensesDirectory = Join-Path $qualityDirectory 'lenses'
+    $trapReapplicationPath = Join-Path $qualityDirectory 'trap-reapplication.md'
+    $qualityEvidencePath = Join-Path $qualityDirectory 'quality-evidence.md'
+    $mechanicalFindingsPath = Join-Path $qualityDirectory 'mechanical-findings.json'
     $qualityEvidenceRef = Convert-ToRepoRelativePath -BasePath $projectRoot -TargetPath $qualityEvidencePath
     $mechanicalFindingsRef = Convert-ToRepoRelativePath -BasePath $projectRoot -TargetPath $mechanicalFindingsPath
 
     Ensure-Directory -Path $qualityDirectory -Actions $actions
-    Write-MissingFile -TargetPath $qualityEvidencePath -Content (Get-QualityEvidenceContent `
-            -PlanPath $planPath `
-            -FeatureId $featureId `
-            -IterationNumber $IterationNumber `
-            -FindingsRef $mechanicalFindingsRef `
-            -EvidenceRef $qualityEvidenceRef `
-            -ReviewedAt $timestamp) -Actions $actions
-    Write-MissingFile -TargetPath $mechanicalFindingsPath -Content (Get-MechanicalFindingsScaffoldJson `
-            -FeatureRef $featureRef `
-            -IterationRef $iterationRef `
-            -GeneratedAt $timestamp) -Actions $actions
+    if ($phaseTwoQualityArtifactsRequired) {
+        Ensure-Directory -Path $lensesDirectory -Actions $actions
+        Write-MissingFile -TargetPath $hardeningGatePath -Content (Get-HardeningGateContent `
+                -FeatureRef $featureRef `
+                -IterationRef $iterationRef `
+                -IterationNumber $IterationNumber `
+                -ReviewedAt $timestamp) -Actions $actions
+        Write-MissingFile -TargetPath $trapReapplicationPath -Content (Get-TrapReapplicationContent `
+                -IterationNumber $IterationNumber `
+                -RecordedAt $timestamp) -Actions $actions
+    }
+
+    if ($hasQualityEvidenceContract) {
+        Write-MissingFile -TargetPath $qualityEvidencePath -Content (Get-QualityEvidenceContent `
+                -PlanPath $planPath `
+                -FeatureId $featureId `
+                -IterationNumber $IterationNumber `
+                -FindingsRef $mechanicalFindingsRef `
+                -EvidenceRef $qualityEvidenceRef `
+                -ReviewedAt $timestamp) -Actions $actions
+        Write-MissingFile -TargetPath $mechanicalFindingsPath -Content (Get-MechanicalFindingsScaffoldJson `
+                -FeatureRef $featureRef `
+                -IterationRef $iterationRef `
+                -GeneratedAt $timestamp) -Actions $actions
+    }
 }
 
 if ($PassThru) {
