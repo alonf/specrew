@@ -20,7 +20,16 @@
       "Bash(git -C c:/Dev/Specrew show --stat 517a9c2)",
       "Bash(git -C c:/Dev/Specrew show --stat 0440f16)",
       "Bash(git -C c:/Dev/Specrew diff HEAD -- specs/001-specrew-product/iterations/009/)",
-      "Bash(git -C c:/Dev/Specrew show 517a9c2 -- extensions/specrew-speckit/scripts/scaffold-reviewer-artifacts.ps1)"
+      "Bash(git -C c:/Dev/Specrew show 517a9c2 -- extensions/specrew-speckit/scripts/scaffold-reviewer-artifacts.ps1)",
+      "Bash(git -C c:/Dev/Specrew rev-parse 0bfaf204)",
+      "Bash(git -C c:/Dev/Specrew log --oneline 0bfaf204..HEAD)",
+      "Bash(git -C c:/Dev/Specrew log --oneline -3)",
+      "Bash(git -C c:/Dev/Specrew log --oneline -5)",
+      "Bash(git -C c:/Dev/Specrew rev-parse c87f204c39463eb765a819a7cc56b9416dd925b7)",
+      "Bash(git -C c:/Dev/Specrew log --oneline c87f204..HEAD)",
+      "Bash(pwsh -NoProfile -ExecutionPolicy Bypass -File extensions/specrew-speckit/scripts/validate-governance.ps1 -ProjectPath . -IterationPath specs/005-stack-aware-quality-bar/iterations/002)",
+      "Bash(pwsh -NoProfile -ExecutionPolicy Bypass -File extensions/specrew-speckit/scripts/validate-governance.ps1 -ProjectPath . -IterationPath specs/005-stack-aware-quality-bar/iterations/001)",
+      "Bash(git -C c:/Dev/Specrew diff HEAD -- specs/005-stack-aware-quality-bar/iterations/002/state.md)"
     ]
   }
 }
