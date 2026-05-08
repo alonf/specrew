@@ -5,7 +5,7 @@
 
 ## Summary
 
-This plan defines the next implementation slice after Phase 1 / Iteration 002 closed green. Phase 2 is limited to the deferred quality-governance requirements that build directly on the now-stable Phase 1 baseline: the pre-implementation hardening gate, materially relevant bug-hunter review lenses, strongest-class routing, and the project-wide known-traps corpus. This plan is intentionally planning-only: it defines boundaries, architecture, evidence contracts, verification, and dependency-aware slices for the next task-generation pass, but it does **not** claim that Phase 2 execution has started.
+This plan defines the next implementation slice after Phase 1 / Iteration 002 closed green. Phase 2 is limited to the deferred quality-governance requirements that build directly on the now-stable Phase 1 baseline: the pre-implementation hardening gate, materially relevant bug-hunter review lenses, strongest-class routing, and the project-wide known-traps corpus. This plan is intentionally planning-only: it defines boundaries, architecture, evidence contracts, verification, and dependency-aware slices for the next task-generation pass, but it does **not** claim that Phase 2 execution has started. The feature-level design remains one coherent Phase 2 planning package, but the generated implementation work is **not** a single 20-point iteration: it is intentionally decomposed into Iteration 003 (MVP hardening-gate slice), Iteration 004 (specialist lens execution plus known-traps follow-through), and Iteration 005 (routing enforcement and polish), each bounded by the repo-standard 20 story-point capacity.
 
 ## Phase Boundary
 
@@ -33,7 +33,7 @@ This plan defines the next implementation slice after Phase 1 / Iteration 002 cl
 **Project Type**: Spec Kit extension plus Squad-native governance/runtime template monorepo  
 **Performance Goals**: Keep Phase 2 review flows deterministic, inspectable, and CI-friendly: mechanical checks remain first, hardening/lens artifacts remain reviewable without hidden state, and routing decisions remain reproducible from explicit config and recorded evidence  
 **Constraints**: Preserve the green Phase 1 governance baseline, stay additive to the current Specrew lifecycle, use supported extension surfaces only, require human approval where FR-033 and FR-039 demand it, and avoid implying any Phase 3/4 capability as implemented  
-**Scale/Scope**: One bounded Phase 2 planning slice covering planner/reviewer artifact contracts, routing/config metadata, new lens checklist sources, known-traps storage, and governance/test extensions for a single repo-wide feature
+**Scale/Scope**: One bounded Phase 2 planning slice covering planner/reviewer artifact contracts, routing/config metadata, new lens checklist sources, known-traps storage, and governance/test extensions for a single repo-wide feature, intentionally decomposed into three dependency-ordered implementation iterations (003-005) under the 20 story-point capacity ceiling
 
 ## Phase 2 Quality Planning
 
@@ -98,7 +98,7 @@ This plan defines the next implementation slice after Phase 1 / Iteration 002 cl
 - **Layering Gate**: PASS — Planned changes stay in the Specrew extension layer, downstream governance config/artifacts, reviewer/planner templates, and deterministic test lanes. No unsupported Copilot/VS Code coupling is introduced.
 - **Traceability Gate**: PASS — Each planned workstream below maps to explicit FRs, concrete artifact surfaces, and a future task-generation boundary.
 - **Ownership Gate**: PASS — Workstreams remain attributable to baseline Specrew roles: Spec Steward (artifact contracts/checklists), Planner (phase planning and routing metadata), Implementer (scripts/orchestration), Reviewer (evidence and validation), with human developer approval reserved where the spec requires it.
-- **Capacity Gate**: PASS — The next slice is planned as one bounded Phase 2 planning pass feeding one implementation iteration at the repo-standard 20 story-point capacity.
+- **Capacity Gate**: PASS — The next slice is planned as one bounded Phase 2 planning pass feeding three dependency-ordered implementation iterations (`003`-`005`), each bounded to the repo-standard 20 story-point capacity instead of forcing the full 32-task package into one slice.
 - **Drift/Reconciliation Gate**: PASS — The plan starts from the now-green Phase 1 baseline and requires additive artifact evolution instead of silent replacement. Phase 3 drift automation remains deferred and is not implied.
 - **Verification Gate**: PASS — The slice is designed around deterministic tests, artifact contracts, and fail-closed governance, with explicit human approval checkpoints for the non-delegable decisions.
 
@@ -258,6 +258,16 @@ specs/<feature>/iterations/<NNN>/quality/
 3. **G before H2/H3** — Known traps should be promoted from real confirmed review findings, not from hypothetical planning-only examples.
 4. **Phase 1 evidence remains a prerequisite throughout** — Any Phase 2 execution flow must consume the existing mechanical findings/evidence surfaces rather than replacing them.
 
+## Planned Implementation Iterations
+
+| Iteration | Scope | Delivery slices / task package | Estimated effort | Status |
+| --- | --- | --- | --- | --- |
+| 003 | MVP hardening-gate slice | `T001`-`T014`; Setup + Foundational work plus User Story 2 (`E1`-`E3`) and the minimum planning-surface prerequisites needed to keep later lens/routing deferrals explicit | 20 story_points | Ready for execution approval once iteration artifacts are accepted |
+| 004 | Specialist lens execution + known-traps follow-through | `T015`-`T024`; complete the Phase 2 specialist lens catalog/execution package plus known-traps corpus seeding, approval workflow, and trap reapplication (`F`, `G1`-`G2`, `H1`-`H3`) | 18 story_points | Deferred until Iteration 003 is accepted |
+| 005 | Routing enforcement + polish | `T025`-`T032`; strongest-available routing enforcement, lower-tier override evidence, reporting alignment, documentation updates, and shipped-extension sync (`G3` + Polish) | 16 story_points | Deferred until Iteration 004 is accepted |
+
+This sequencing preserves the Phase 2 dependency graph: Iteration 003 establishes the blocking hardening/artifact contract, Iteration 004 consumes that contract to deliver required bug-hunter execution and known-traps evidence, and Iteration 005 layers routing enforcement plus cross-cutting cleanup after the underlying execution surfaces are stable.
+
 ## Verification Strategy
 
 ### Deterministic Checks
@@ -290,7 +300,7 @@ specs/<feature>/iterations/<NNN>/quality/
 - **Layering Gate**: PASS — The solution stays within extension scripts/templates, downstream governance config, and lifecycle artifacts.
 - **Traceability Gate**: PASS — Every slice maps to concrete FRs, artifact paths, and future test lanes.
 - **Ownership Gate**: PASS — Human approvals remain preserved where required, with agent roles limited to recommendation, orchestration, and evidence publishing.
-- **Capacity Gate**: PASS — The slice sequencing supports one bounded implementation iteration after task generation, with clear defer points if the task set exceeds the 20-point baseline.
+- **Capacity Gate**: PASS — The slice sequencing now names the concrete multi-iteration execution plan: Iteration 003 (20 points), Iteration 004 (18 points), and Iteration 005 (16 points), each staying within the configured 20-point baseline.
 - **Drift/Reconciliation Gate**: PASS — Phase 2 grows from the accepted Phase 1 baseline and leaves Phase 3 drift automation explicitly deferred rather than implied.
 - **Verification Gate**: PASS — Planned verification combines deterministic tests, lifecycle-visible evidence, and fail-closed governance suitable for implementation gating.
 
@@ -303,6 +313,7 @@ Phase 2 task generation should preserve the slice order above and keep these rul
 3. Keep routing-policy work separate from lens-checklist authoring so approval and evidence semantics remain explicit.
 4. Treat known-traps seeding and trap reapplication as bounded Phase 2 follow-through, not as a back door into Phase 3 drift automation.
 5. Keep every task planning-only until an iteration plan and explicit human execution approval exist; this feature plan itself is **not** an execution artifact.
+6. Preserve the concrete execution split from this repair: Iteration 003 carries `T001`-`T014` as the MVP slice, Iteration 004 carries `T015`-`T024`, and Iteration 005 carries `T025`-`T032` unless a later tracked decision changes the package.
 
 ## Complexity Tracking
 

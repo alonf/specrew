@@ -24,6 +24,7 @@ Use this when a feature has approved feature-level planning artifacts but no act
 
 - Create the iteration directory with the existing scaffold helpers first; do not hand-roll the folder structure when Specrew already owns the contract.
 - Replace the generated plan stub with the smallest dependency-respecting execution slice that fits `.specrew\iteration-config.yml` capacity instead of copying an oversized feature task list blindly.
+- If the feature-level plan still implies a single implementation iteration after task generation reveals a larger package, repair the parent `plan.md`/`tasks.md` first so the active iteration inherits an explicit multi-iteration capacity story instead of a false one.
 - If setup tasks are already complete at the feature task-list level, carry them into the iteration plan/state explicitly so execution history remains truthful.
 - Record the human's actual implementation approval text in the iteration plan and move the plan status from `planning` to `executing` only for the approved slice.
 - After editing `plan.md`, re-sync `state.md` so `Last Completed Task`, `Tasks Remaining`, and execution summary match the authoritative task table.
@@ -32,6 +33,7 @@ Use this when a feature has approved feature-level planning artifacts but no act
 ## Examples
 
 - Feature plan totals 38 points but iteration capacity is 20. Repair by creating `iterations\001\`, plan only the first 20-point dependency slice, defer the rest explicitly, and validate the specific iteration path.
+- Feature task generation yields 32 tasks even though the feature plan still says `one implementation iteration`. First rewrite the feature plan and task package to name Iterations `003`-`005`, then scaffold and validate only Iteration `003` as the active MVP slice.
 - A scaffolded `state.md` says execution has not started, but the repaired plan marks setup tasks complete. Update `state.md` to name the last completed task and remaining queue before resuming work.
 
 ## Anti-Patterns

@@ -4,6 +4,7 @@
 **Prerequisites**: `plan.md`, `spec.md`, `research.md`, `data-model.md`, `quickstart.md`, `contracts/`  
 **Tests**: Deterministic integration coverage is required for this slice because `plan.md` and `quickstart.md` require explicit verification for hardening-gate behavior, bug-hunter lens execution, strongest-class routing, and known-traps governance.  
 **Scope Boundary**: This task list covers only FR-031–FR-033, FR-016–FR-019a, FR-034–FR-040. It excludes FR-041–FR-046, FR-013–FR-015, mixed-stack expansion, reference-baseline comparison, and any other work explicitly deferred in `C:\Dev\Specrew\specs\005-stack-aware-quality-bar\plan.md`.
+**Iteration Slicing**: This 32-task Phase 2 package is intentionally split across three bounded implementation iterations at the repo-standard 20 story-point capacity: Iteration `003` = `T001`-`T014` (MVP hardening-gate slice), Iteration `004` = `T015`-`T024` (specialist lens execution + known-traps follow-through), Iteration `005` = `T025`-`T032` (routing enforcement + polish). Do **not** treat this feature-level task list as one executable iteration.
 
 ## Phase 1: Setup (Shared Infrastructure)
 
@@ -110,6 +111,18 @@
 
 ---
 
+## Planned Iteration Slices
+
+| Iteration | Scope | Task Range | Estimated effort | Notes |
+| --- | --- | --- | --- | --- |
+| 003 | MVP hardening-gate slice | `T001`-`T014` | 20 story_points | Carries Setup, Foundational, and User Story 2 so execution can begin on a complete dependency-respecting slice. |
+| 004 | Specialist lens execution + known-traps follow-through | `T015`-`T024` | 18 story_points | Depends on Iteration 003 artifact contracts and hardening semantics. |
+| 005 | Strongest-class routing + polish | `T025`-`T032` | 16 story_points | Depends on Iteration 004 lens execution surfaces and finishes Phase 2 without pulling in Phase 3/4 work. |
+
+Execution status remains iteration-local: this feature task file stays unchecked until a specific iteration plan records approved execution and per-task state.
+
+---
+
 ## Dependencies & Execution Order
 
 ### Phase Dependencies
@@ -186,19 +199,17 @@ Task: "T028 [US4] Integrate requested/effective class recording and override ref
 
 ### MVP First (Scoped Phase 2)
 
-1. Complete Setup.
-2. Complete Foundational work.
-3. Deliver **User Story 2** and validate `tests/integration/hardening-gate-contract.ps1`.
-4. Stop and verify implementation readiness now fails closed on unresolved hardening concerns.
-5. Then layer in **User Story 3** and **User Story 4**.
+1. **Iteration 003**: Complete Setup and Foundational work.
+2. **Iteration 003**: Deliver **User Story 2** and validate `tests/integration/hardening-gate-contract.ps1` plus `tests/integration/quality-evidence-governance.ps1`.
+3. Stop after Iteration 003 and verify implementation readiness now fails closed on unresolved hardening concerns before approving any later slice.
+4. **Iteration 004**: Layer in **User Story 3** plus the known-traps follow-through that depends on real lens evidence.
+5. **Iteration 005**: Finish **User Story 4** and the Phase 2 polish/reporting sync work.
 
 ### Incremental Delivery
 
-1. Publish Phase 2 config defaults and artifact scaffolding.
-2. Add pre-implementation hardening enforcement (US2) as the first independently testable increment.
-3. Add specialist lens execution and known-traps follow-through (US3).
-4. Add strongest-class routing and approved lower-tier overrides (US4).
-5. Finish with shared reporting, documentation, and shipped-extension sync.
+1. Iteration 003 publishes Phase 2 config defaults, artifact scaffolding, and pre-implementation hardening enforcement (US2).
+2. Iteration 004 adds specialist lens execution and known-traps follow-through (US3).
+3. Iteration 005 adds strongest-class routing, approved lower-tier overrides (US4), and shared reporting/documentation/shipped-extension sync.
 
 ### Scope Guardrails
 
@@ -211,7 +222,7 @@ Task: "T028 [US4] Integrate requested/effective class recording and override ref
 
 ## Notes
 
-- All tasks remain unchecked so the file does not claim work has started.
+- All tasks remain unchecked so the file does not claim work has started; execution state belongs in the active iteration plan (`iterations\003`, then later `004`/`005`).
 - Setup, Foundational, and Polish tasks intentionally omit story labels.
 - User-story tasks use `[US2]`, `[US3]`, and `[US4]` labels to match the scoped Phase 2 stories from `spec.md`.
 - `[P]` marks tasks that can proceed in parallel because they touch different files or fixture trees.

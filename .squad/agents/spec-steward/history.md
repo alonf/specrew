@@ -18,6 +18,12 @@ Applied surgical spec-hardening to close contract gaps in specs 002 and 005 from
 
 **Pattern discovered**: When closing contract gaps, prefer surgical edits that add explicit constraints or versioned artifacts over rewriting requirements. This preserves traceability and approval history while strengthening the contract.
 
+### 2026-05-08: Phase 2 Multi-Iteration Repair
+
+Repaired feature `005-stack-aware-quality-bar` Phase 2 planning after drift appeared between the feature-level capacity claim and the generated 32-task package. The governing fix was to keep the repo-standard 20-point capacity intact, rewrite the feature plan/tasks to name concrete execution slices (`003`-`005`), and make Iteration 003 the only MVP execution candidate until its hardening-gate contract is accepted.
+
+**Pattern discovered**: when task generation reveals that one phase-level package no longer fits a single iteration, repair the parent plan and task language before repairing the active iteration. Otherwise the new iteration inherits a false capacity story and every downstream approval artifact starts from drift.
+
 ## Patterns
 
 <!-- Append entries below. Format: **Pattern:** description. **Context:** when it applies. -->
