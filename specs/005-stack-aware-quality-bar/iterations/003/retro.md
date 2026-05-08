@@ -4,7 +4,7 @@
 **Date**: 2026-05-08
 **Facilitator**: Troi (Retro Facilitator)
 **Status**: complete
-**Final Sign-Off**: Pending Alon approval
+**Final Sign-Off**: Alon Fliess approved iteration closure on 2026-05-08
 
 ## Estimation Accuracy
 
@@ -77,4 +77,14 @@
 
 - This artifact was scaffolded from plan.md, state.md, drift-log.md, and review.md for Squad's built-in Retrospective ceremony.
 - Scaffold/default reminder text has been replaced with Iteration 003 evidence only.
-- Final human sign-off is still pending; until that happens, the iteration truthfully remains in `retro` rather than `complete`.
+- Final human sign-off is now recorded; Iteration 003 is authorized to move from `retro` to terminal `complete` state.
+
+## Sign-Off
+
+**Retro Facilitator**: CLOSED - Iteration 003 retrospective is complete. Findings are recorded and improvement actions are routed forward.
+
+**Alon Fliess**: FINAL SIGN-OFF RECORDED - Iteration 003 closure approved on 2026-05-08.
+
+**Date Closed**: 2026-05-08
+**Artifact Version**: v2 (Alon final sign-off recorded)
+**Status**: Complete
