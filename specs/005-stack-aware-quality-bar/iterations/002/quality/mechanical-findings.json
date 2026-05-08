@@ -1,0 +1,11 @@
+{
+  "schemaVersion": "v1",
+  "featureRef": "specs/005-stack-aware-quality-bar/spec.md",
+  "iterationRef": "specs/005-stack-aware-quality-bar/iterations/002",
+  "generatedAt": "2026-05-07T22:58:06Z",
+  "generator": {
+    "name": "specrew-mechanical-checks",
+    "version": "0.1.0-dev"
+  },
+  "findings": []
+}

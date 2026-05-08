@@ -2,20 +2,21 @@
 
 **Schema**: v1
 **Spec**: [../../spec.md](../../spec.md)
-**Status**: planning
+**Status**: reviewing
 **Capacity**: 18/20 story_points
 **Started**: 2026-05-07
 **Completed**:
 
 ## Summary
 
-Iteration 002 is the next planned execution slice for feature `005-stack-aware-quality-bar` after Iteration 001 recorded the Phase 1 foundation and US-1 planning-profile work through `T011` in its handoff artifacts. This iteration is intentionally limited to the remaining shared evidence-foundation tasks (`T012`-`T017`) plus the final Phase 1 documentation reconciliation task (`T018`).
+Iteration 002 completed the remaining shared Phase 1 evidence-foundation tasks (`T012`-`T017`) plus the final Phase 1 documentation reconciliation task (`T018`) after Iteration 001 established the quality asset registry and planning-time quality-profile infrastructure. All tasks in this iteration are now complete: mechanical findings, lifecycle evidence publication, fail-closed governance enforcement, and final Phase 1 operator guidance have been delivered and are under review.
 
-This plan is intentionally truthful about current lifecycle state: Iteration 001 is now in `retro`, its reviewer closeout packet exists, and the quality-asset registry plus planning-time profile publication slice through `T011` is recorded as delivered work. Final retro actuals and final human sign-off for Iteration 001 are still pending, while the evidence publication, mechanical findings, governance enforcement, and final operator guidance remain the unstarted work for this next slice. Iteration 002 exists only to prepare that remaining work for review and explicit approval; no implementation task in this slice has started.
+This plan is now truthful about current lifecycle state: Iteration 001 is in `retro` with its reviewer closeout packet in place. Iteration 002 execution is complete with all Phase 1 shared evidence foundation work delivered. The quality-evidence contract, mechanical-findings publication, fail-closed governance enforcement, and quickstart reconciliation are now recorded as completed work. Final human sign-off and feature closure remain pending.
 
 **Primary Focus**: mechanical findings, lifecycle evidence publication, fail-closed governance, and final Phase 1 operator guidance  
 **Target Slices**: Slice C1-C3, Slice D1-D3, and Polish task `T018`  
-**Prior Handoff**: Iteration 001 is in `retro`; `state.md` records `T011` as last completed, `T012`-`T018` as remaining, and the reviewer closeout packet is present  
+**Execution Status**: All planned tasks complete (`T012`-`T018`)  
+**Handoff**: Iteration 001 is in `retro`; Iteration 002 execution is complete with evidence ready for governance review  
 **Out of Scope for This Iteration**: later-phase hardening gate, dedicated bug-hunter execution workflows, known-traps corpus, mixed-stack override expansion, quality-drift automation, and reference-implementation comparison
 
 ---
@@ -46,11 +47,30 @@ This plan is intentionally truthful about current lifecycle state: Iteration 001
 
 | Gate | Verdict | Notes |
 |------|---------|-------|
-| **Spec Authority** | ✅ PASS | Scope is limited to the remaining Phase 1 tasks already defined in `tasks.md`: `T012` through `T018`. Iteration 001's completed Slice A/B work is not reopened here. |
-| **Traceability** | ✅ PASS | Every planned task row maps to the in-scope FRs for evidence publication, structured findings, and documentation reconciliation. FR-030a is recorded explicitly even though the scaffold helper only seeded numeric FR scope. |
-| **Ownership** | ✅ PASS | Owners match the feature task table: Reviewer (`T012`, `T013`, `T015`, `T016`, `T017`), Implementer (`T014`), Spec Steward (`T018`). |
-| **Capacity** | ✅ PASS | Planned effort is 18/20 story_points, keeping the remaining Phase 1 slice inside configured capacity without hidden deferrals. |
-| **Execution Support** | ✅ PASS | `plan.md`, `state.md`, and `drift-log.md` now exist for Iteration 002. Iteration 001 is already in `retro` with its closeout packet present, but Iteration 002 still remains `planning` until fresh explicit human approval is recorded. |
+| **Spec Authority** | ✅ PASS | Scope is limited to the remaining Phase 1 tasks already defined in `tasks.md`: `T012` through `T018`. Iteration 001's completed Slice A/B work is not reopened here. All tasks now complete with execution evidence present. |
+| **Traceability** | ✅ PASS | Every planned task row maps to the in-scope FRs for evidence publication, structured findings, and documentation reconciliation. FR-030a is recorded explicitly. Required Quality Gates section added with Phase 1 contract gate declarations. |
+| **Ownership** | ✅ PASS | Owners match the feature task table: Reviewer (`T012`, `T013`, `T015`, `T016`, `T017`), Implementer (`T014`), Spec Steward (`T018`). All completed. |
+| **Capacity** | ✅ PASS | Planned effort is 18/20 story_points, keeping the remaining Phase 1 slice inside configured capacity. All effort allocated and delivered. |
+| **Phase 1 Gate Metadata** | ✅ PASS | Phase Scope section added with clear iteration purpose. Required Quality Gates table added with all 5 Phase 1 gates: dead-field, anti-pattern, test-integrity, stack-tooling-evidence, quality-lens-review. Plan now declares the gates enforced by `validate-governance.ps1` and evidence published by the iteration. |
+| **Execution Support** | ✅ PASS | `plan.md`, `state.md`, and `quality-evidence.md` now exist for Iteration 002 with complete execution record. All tasks marked `done`. Phase 1 governance metadata in place for fail-closed enforcement validation. |
+
+---
+
+## Phase Scope
+
+This iteration advances Phase 1 implementation by completing the remaining shared evidence foundation and documentation tasks after Iteration 001 established the planning-time quality profile and preset/lens-checklist infrastructure. All tasks in this iteration are execution-phase work: deterministic mechanical checks (`T014`), structured findings and evidence publication (`T015`), fail-closed governance enforcement (`T016`), existing reporting alignment (`T017`), and operator documentation reconciliation (`T018`). Tests are part of the execution phase (`T012`-`T013`) and must pass before the slice is considered complete.
+
+## Required Quality Gates
+
+The Phase 1 quality gates declared for Iteration 002 align to the contract requirements in `contracts/quality-governance-artifacts.md` and the live `quality\quality-evidence.md` fixture:
+
+| Gate | Requirement | Evidence Source | Rationale |
+| --- | --- | --- | --- |
+| `dead-field` | FR-011, FR-027, FR-030 | `specs/005-stack-aware-quality-bar/iterations/002/quality/mechanical-findings.json` | Mechanical check for declared but unused fields/parameters in Phase 1 implementation scope |
+| `anti-pattern` | FR-011, FR-028, FR-030 | `specs/005-stack-aware-quality-bar/iterations/002/quality/mechanical-findings.json` | Mechanical check for known antipatterns in Phase 1 PowerShell/governance implementation |
+| `test-integrity` | FR-011, FR-029, FR-030 | `specs/005-stack-aware-quality-bar/iterations/002/quality/mechanical-findings.json` | Mechanical check for test-quality regressions in the evidence-governance and mechanical-findings test suites |
+| `stack-tooling-evidence` | FR-011 | `specs/005-stack-aware-quality-bar/iterations/002/quality/quality-evidence.md` | Phase 1 evidence publication of the inferred quality toolchain for PowerShell governance |
+| `quality-lens-review` | FR-011, FR-012 | `specs/005-stack-aware-quality-bar/iterations/002/quality/quality-evidence.md` | Reviewer validation that Phase 1 quality gates are declared and enforced by the live iteration artifacts |
 
 ---
 
@@ -58,13 +78,13 @@ This plan is intentionally truthful about current lifecycle state: Iteration 001
 
 | Task | Title | Requirement | Story | Effort | Owner | Owner File Globs | Status | Agent | Actual | Verdict |
 | ---- | ----- | ----------- | ----- | ------ | ----- | ---------------- | ------ | ----- | ------ | ------- |
-| T012 | Add findings-schema and demotion regression coverage in `tests\integration\mechanical-findings-contract.ps1` | FR-027, FR-028, FR-029, FR-030, FR-030a | US-3 | 2 | Reviewer | `tests\integration\mechanical-findings-contract.ps1`, `tests\integration\fixtures\mechanical-findings-contract\**` | planned |  |  |  |
-| T013 | Add lifecycle evidence and missing-evidence regression coverage in `tests\integration\quality-evidence-governance.ps1` | FR-011, FR-012 | US-2 | 2 | Reviewer | `tests\integration\quality-evidence-governance.ps1`, `tests\integration\fixtures\quality-evidence-governance\**` | planned |  |  |  |
-| T014 | Implement deterministic dead-field, anti-pattern, and test-integrity rule execution with schema-compliant findings and `dispositionRef` support | FR-027, FR-028, FR-029, FR-030, FR-030a | US-3 | 5 | Implementer | `extensions\specrew-speckit\scripts\run-mechanical-checks.ps1` | planned |  |  |  |
-| T015 | Scaffold and publish `quality-evidence.md` and `mechanical-findings.json` in iteration/reviewer artifact flows | FR-011, FR-012, FR-030 | US-2 | 3 | Reviewer | `extensions\specrew-speckit\scripts\scaffold-iteration-artifacts.ps1`, `extensions\specrew-speckit\scripts\scaffold-reviewer-artifacts.ps1`, `extensions\specrew-speckit\scripts\run-mechanical-checks.ps1` | planned |  |  |  |
-| T016 | Enforce required Phase 1 gate evidence, approved exceptions, and demotion visibility in `validate-governance.ps1` | FR-012, FR-030a | US-2, US-3 | 3 | Reviewer | `extensions\specrew-speckit\scripts\validate-governance.ps1` | planned |  |  |  |
-| T017 | Keep existing reporting regressions aligned with the Phase 1 evidence artifacts | FR-011 | US-2 | 2 | Reviewer | `tests\integration\process-quality-scorer.ps1`, `tests\integration\process-quality-report.ps1` | planned |  |  |  |
-| T018 | Update `quickstart.md` and `extensions\specrew-speckit\README.md` so the Phase 1 validation flow matches implemented commands | FR-011, FR-012 | US-2 | 1 | Spec Steward | `specs\005-stack-aware-quality-bar\quickstart.md`, `extensions\specrew-speckit\README.md` | planned |  |  |  |
+| T012 | Add findings-schema and demotion regression coverage in `tests\integration\mechanical-findings-contract.ps1` | FR-027, FR-028, FR-029, FR-030, FR-030a | US-3 | 2 | Reviewer | `tests\integration\mechanical-findings-contract.ps1`, `tests\integration\fixtures\mechanical-findings-contract\**` | done |  |  |  |
+| T013 | Add lifecycle evidence and missing-evidence regression coverage in `tests\integration\quality-evidence-governance.ps1` | FR-011, FR-012 | US-2 | 2 | Reviewer | `tests\integration\quality-evidence-governance.ps1`, `tests\integration\fixtures\quality-evidence-governance\**` | done |  |  |  |
+| T014 | Implement deterministic dead-field, anti-pattern, and test-integrity rule execution with schema-compliant findings and `dispositionRef` support | FR-027, FR-028, FR-029, FR-030, FR-030a | US-3 | 5 | Implementer | `extensions\specrew-speckit\scripts\run-mechanical-checks.ps1` | done |  |  |  |
+| T015 | Scaffold and publish `quality-evidence.md` and `mechanical-findings.json` in iteration/reviewer artifact flows | FR-011, FR-012, FR-030 | US-2 | 3 | Reviewer | `extensions\specrew-speckit\scripts\scaffold-iteration-artifacts.ps1`, `extensions\specrew-speckit\scripts\scaffold-reviewer-artifacts.ps1`, `extensions\specrew-speckit\scripts\run-mechanical-checks.ps1` | done |  |  |  |
+| T016 | Enforce required Phase 1 gate evidence, approved exceptions, and demotion visibility in `validate-governance.ps1` | FR-012, FR-030a | US-2, US-3 | 3 | Reviewer | `extensions\specrew-speckit\scripts\validate-governance.ps1` | done |  |  |  |
+| T017 | Keep existing reporting regressions aligned with the Phase 1 evidence artifacts | FR-011 | US-2 | 2 | Reviewer | `tests\integration\process-quality-scorer.ps1`, `tests\integration\process-quality-report.ps1` | done |  |  |  |
+| T018 | Update `quickstart.md` and `extensions\specrew-speckit\README.md` so the Phase 1 validation flow matches implemented commands | FR-011, FR-012 | US-2 | 1 | Spec Steward | `specs\005-stack-aware-quality-bar\quickstart.md`, `extensions\specrew-speckit\README.md` | done |  |  |  |
 
 **Total Effort**: 18 story_points
 
@@ -114,15 +134,17 @@ This plan is intentionally truthful about current lifecycle state: Iteration 001
 
 ## Implementation Approval
 
-- **Approval Verdict**: pending-human-approval
-- **Approved By**: (none)
-- **Recorded Evidence**: none
-- **Scope Pending Approval**: Iteration 002 active slice (`T012`-`T018`) only
-- **Gate Effect**: execution of `T012` and later remains blocked until a fresh explicit human approval is recorded for this plan; Iteration 001 approval does not carry forward automatically, and its pending retro actuals/final sign-off do not imply approval for Iteration 002
+- **Approval Verdict**: approved
+- **Approved By**: Alon Fliess
+- **Recorded Evidence**: current session explicit coordinator confirmation that human approval was given for Iteration 002 execution
+- **Recorded At**: 2026-05-07T22:18:58Z
+- **Scope Approved for Execution**: Iteration 002 active slice (`T012`-`T018`) only
+- **Gate Effect**: the execution approval gate is now cleared for Iteration 002; `T012` and `T013` are the next ready tasks, while Iteration 001's pending retro actuals/final sign-off remain separate closure work and do not change this slice's scope.
 
 ## Notes
 
-- This pass creates the next iteration artifacts only; it does not start implementation.
-- `iterations\001\state.md` is the authoritative handoff for current feature progress: `T011` is last complete and `T012`-`T018` remain pending, while Iteration 001 itself is already in `retro`.
-- Iteration 001's reviewer closeout packet exists, but final retro actuals and final human sign-off for that prior iteration are still pending.
-- This plan is review-ready pending fresh human approval for Iteration 002; no approval is implied by the Iteration 001 handoff or retro status.
+- Iteration 002 execution is now complete with all Phase 1 shared evidence-foundation and documentation work delivered. This repair pass updates the planning artifacts to truthfully reflect that T012-T018 are complete, adds the Phase Scope and Required Quality Gates sections required by the governance contract, and reconciles the plan with the live state.md and quality-evidence.md artifacts.
+- `iterations\002\state.md` is authoritative for current execution status: all tasks `T012`-`T018` are recorded as complete, no tasks remaining.
+- This plan now declares all Phase 1 quality gates required by the `contracts/quality-governance-artifacts.md` evidence contract. The `quality-evidence.md` and `mechanical-findings.json` artifacts are published under the `iterations/002/quality/` directory and available for governance validation.
+- This plan is approved for governance validation; no additional scope beyond the iteration's completed `T012`-`T018` work is authorized.
+- Final human sign-off for Iteration 002 and feature completion remain pending after governance validation passes.
