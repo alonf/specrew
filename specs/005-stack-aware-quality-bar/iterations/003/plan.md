@@ -11,11 +11,11 @@
 
 Iteration 003 is the MVP execution slice for feature `005-stack-aware-quality-bar` Phase 2. It deliberately carries only the dependency-respecting Setup + Foundational work plus User Story 2 hardening-gate delivery (`T001`-`T014`) so the first execution approval can cover one truthful 20-point slice instead of the entire 32-task Phase 2 package.
 
-Later Phase 2 work is explicitly deferred, not hidden: Iteration 004 will carry User Story 3 plus known-traps follow-through (`T015`-`T024`), and Iteration 005 will carry User Story 4 plus polish (`T025`-`T032`) after the MVP slice is accepted. Human execution approval is now recorded for this iteration, and `T001` has started as the first active task.
+Later Phase 2 work is explicitly deferred, not hidden: Iteration 004 will carry User Story 3 plus known-traps follow-through (`T015`-`T024`), and Iteration 005 will carry User Story 4 plus polish (`T025`-`T032`) after the MVP slice is accepted. Human execution approval is now recorded for this iteration, `T001` is complete, and no later task has started yet.
 
 **Primary Focus**: hardening-gate planning surfaces, scaffolding, fail-closed governance, and the minimum prerequisite config/fixture work needed for the Phase 2 MVP  
 **Target Slice**: Setup + Foundational + User Story 2 (`T001`-`T014`)  
-**Execution Status**: in-progress (`T001`)  
+**Execution Status**: `T001` complete; next ready tasks remain queued  
 **Deferred Follow-On**: User Story 3 / known-traps (`T015`-`T024`) and User Story 4 / polish (`T025`-`T032`)
 
 ---
@@ -39,7 +39,7 @@ Later Phase 2 work is explicitly deferred, not hidden: Iteration 004 will carry 
 | **Traceability** | ✅ PASS | Every task row below maps to in-scope FRs or to clearly bounded prerequisite work for the same Phase 2 slice. |
 | **Ownership** | ✅ PASS | Task owners remain within baseline Specrew roles: Spec Steward, Planner, Implementer, Reviewer. |
 | **Capacity** | ✅ PASS | The active slice is capped at 20/20 story_points. Remaining Phase 2 work is deferred to Iterations 004 and 005 instead of overloading this plan. |
-| **Execution Support** | ✅ PASS | `plan.md`, `state.md`, `drift-log.md`, and scaffolded `quality/` placeholders exist for Iteration 003, and execution truth now records the approved `T001` start. |
+| **Execution Support** | ✅ PASS | `plan.md`, `state.md`, `drift-log.md`, and scaffolded `quality/` placeholders exist for Iteration 003, and execution truth now records the approved `T001` completion plus the remaining queued tasks. |
 
 ---
 
@@ -47,7 +47,7 @@ Later Phase 2 work is explicitly deferred, not hidden: Iteration 004 will carry 
 
 | Task | Title | Requirement | Story | Effort | Owner | Owner File Globs | Status | Agent | Actual | Verdict |
 | ---- | ----- | ----------- | ----- | ------ | ----- | ---------------- | ------ | ----- | ------ | ------- |
-| T001 | Extend downstream Phase 2 quality defaults in `scaffold-governance.ps1`, `templates/iteration-config.yml`, and `.specrew/iteration-config.yml` | FR-031, FR-038 | US-2, US-4 | 1 | Implementer | `extensions/specrew-speckit/scripts/scaffold-governance.ps1`, `extensions/specrew-speckit/templates/iteration-config.yml`, `.specrew/iteration-config.yml` | in-progress | Implementer |  |  |
+| T001 | Extend downstream Phase 2 quality defaults in `scaffold-governance.ps1`, `templates/iteration-config.yml`, and `.specrew/iteration-config.yml` | FR-031, FR-038 | US-2, US-4 | 1 | Implementer | `extensions/specrew-speckit/scripts/scaffold-governance.ps1`, `extensions/specrew-speckit/templates/iteration-config.yml`, `.specrew/iteration-config.yml` | done | Implementer | 1 | pass |
 | T002 | Seed `quality.known_traps_path` and `quality.routing` defaults in downstream config fixtures | FR-034, FR-038, FR-039 | US-3, US-4 | 1 | Implementer | `.specrew/config.yml`, `tests/integration/fixtures/quality-evidence-governance/**/.specrew/config.yml` | planned |  |  |  |
 | T003 | Add agent `strength_rank` fixture coverage in Phase 2 iteration-config fixtures | FR-038, FR-040 | US-4 | 1 | Reviewer | `tests/integration/fixtures/quality-evidence-governance/**/.specrew/iteration-config.yml` | planned |  |  |  |
 | T004 | Create Phase 2 fixture roots for hardening, lens execution, routing, and known-traps tests | FR-031, FR-016, FR-034, FR-038 | US-2, US-3, US-4 | 1 | Reviewer | `tests/integration/fixtures/hardening-gate-contract/**`, `tests/integration/fixtures/bug-hunter-lens-execution/**`, `tests/integration/fixtures/strongest-class-routing/**`, `tests/integration/fixtures/known-traps-corpus/**` | planned |  |  |  |
@@ -123,10 +123,10 @@ This is a capacity and dependency split, not a descoping decision. The deferred 
 - **Recorded Evidence**: user message "Approve and proceed. No blockers. Commit the two pending changes, record execution approval in iteration 003, then start T001."
 - **Recorded At**: 2026-05-08T15:00:23Z
 - **Scope Approved for Execution**: Iteration 003 active slice (`T001`-`T014`) only
-- **Gate Effect**: the execution approval gate is now cleared for Iteration 003; `T001` is in progress and later tasks remain queued behind the planned dependency order.
+- **Gate Effect**: the execution approval gate is now cleared for Iteration 003; `T001` is complete and later tasks remain queued behind the planned dependency order.
 
 ## Notes
 
 - This plan was repaired to resolve the Phase 2 blocker that previously implied one 20-point implementation iteration for the entire 32-task package.
-- `iterations\003\state.md` and `iterations\003\drift-log.md` are synchronized to this task table; execution approval is recorded and `T001` is the only active task.
+- `iterations\003\state.md` and `iterations\003\drift-log.md` are synchronized to this task table; execution approval is recorded, `T001` is complete, and no later task is in progress.
 - The scaffold-created `quality/` placeholders exist so future artifact helpers have a stable home, but they are not evidence of execution.

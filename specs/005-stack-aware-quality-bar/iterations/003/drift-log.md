@@ -10,7 +10,7 @@
 
 ## Events
 
-No specification drift detected during the Iteration 003 planning repair. Execution has not started, so no implementation drift events exist yet.
+No specification drift detected during the Iteration 003 approval/start update or Task `T001`. The delivered change stayed within the approved T001 scope: Phase 2 iteration-config routing defaults only.
 
 ### Resolution Strategies (Unused)
 
@@ -24,4 +24,4 @@ The following resolution strategies remain available if drift is detected later 
 
 - This artifact is already in place so any future drift can be logged immediately when execution begins.
 - Replace the zero-drift summary with real counts when the first drift event is recorded.
-- Planning repair only: no T-task execution has started in Iteration 003.
+- Post-T001 drift check result: no drift event recorded after validating `scaffold-governance.ps1`, downstream iteration-config defaults, and `iterations\003` lifecycle truth.

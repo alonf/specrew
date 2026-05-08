@@ -9,7 +9,7 @@
     Creates the downstream governance files required by the Specrew bootstrap:
     - .specrew\config.yml
     - .specrew\constitution.md
-    - .specrew\iteration-config.yml
+    - .specrew\iteration-config.yml (including Phase 2 routing-strength defaults)
     - .specrew\role-assignments.yml
 
 .PARAMETER ProjectPath
@@ -242,6 +242,8 @@ Ensure-ManagedDirectory -TargetPath $presetRoot -Actions $actions
 Ensure-ManagedDirectory -TargetPath $lensRoot -Actions $actions
 
 $constitutionContent = Get-TargetFileContent -TemplatePath (Join-Path $templateRoot 'downstream-constitution.md') -CreatedDate $createdDate
+# The iteration-config template carries the default agent strength metadata used by
+# Phase 2 strongest-available review routing.
 $iterationConfigContent = Get-Content -Path (Join-Path $templateRoot 'iteration-config.yml') -Raw
 $roleAssignmentsContent = Get-Content -Path (Join-Path $templateRoot 'role-assignments.yml') -Raw
 $qualityBlock = @"

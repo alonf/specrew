@@ -74,3 +74,23 @@ reviewer:
     flow:
       min_entrypoints_changed: 1
       min_modules_in_flow: 2
+
+# >>> specrew-managed agents >>>
+# Specrew-managed agent consent and detection state (FR-022).
+agents:
+  copilot:
+    enabled: false
+    access_path: copilot_default
+    availability: available
+    strength_rank: 10
+  claude:
+    enabled: false
+    access_path: copilot_agent_hq
+    availability: available
+    strength_rank: 30
+  codex:
+    enabled: false
+    access_path: copilot_agent_hq
+    availability: available
+    strength_rank: 20
+# <<< specrew-managed agents <<<
