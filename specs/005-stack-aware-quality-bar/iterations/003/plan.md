@@ -2,7 +2,7 @@
 
 **Schema**: v1
 **Spec**: [../../spec.md](../../spec.md)
-**Status**: executing
+**Status**: reviewing
 **Capacity**: 20/20 story_points
 **Started**: 2026-05-08
 **Completed**:
@@ -11,11 +11,11 @@
 
 Iteration 003 is the MVP execution slice for feature `005-stack-aware-quality-bar` Phase 2. It deliberately carries only the dependency-respecting Setup + Foundational work plus User Story 2 hardening-gate delivery (`T001`-`T014`) so the first execution approval can cover one truthful 20-point slice instead of the entire 32-task Phase 2 package.
 
-Later Phase 2 work is explicitly deferred, not hidden: Iteration 004 will carry User Story 3 plus known-traps follow-through (`T015`-`T024`), and Iteration 005 will carry User Story 4 plus polish (`T025`-`T032`) after the MVP slice is accepted. Human execution approval is now recorded for this iteration, `T001`-`T014` are complete, and no later task is in progress.
+Later Phase 2 work is explicitly deferred, not hidden: Iteration 004 will carry User Story 3 plus known-traps follow-through (`T015`-`T024`), and Iteration 005 will carry User Story 4 plus polish (`T025`-`T032`) after the MVP slice is accepted. Human execution approval is now recorded for this iteration, `T001`-`T014` are complete, reviewer closeout is now accepted, and no later task is in progress.
 
 **Primary Focus**: hardening-gate planning surfaces, scaffolding, fail-closed governance, and the minimum prerequisite config/fixture work needed for the Phase 2 MVP  
 **Target Slice**: Setup + Foundational + User Story 2 (`T001`-`T014`)  
-**Execution Status**: `T001`-`T014` complete; validator enforcement now matches the bounded hardening-gate contract and planning metadata
+**Execution Status**: `T001`-`T014` complete; reviewer closeout is accepted and validator enforcement now matches the bounded hardening-gate contract and planning metadata
 **Deferred Follow-On**: User Story 3 / known-traps (`T015`-`T024`) and User Story 4 / polish (`T025`-`T032`)
 
 ---
@@ -167,7 +167,7 @@ This is a capacity and dependency split, not a descoping decision. The deferred 
 ## Notes
 
 - This plan was repaired to resolve the Phase 2 blocker that previously implied one 20-point implementation iteration for the entire 32-task package.
-- `iterations\003\state.md` and `iterations\003\drift-log.md` are synchronized to this task table; execution approval is recorded, `T001`-`T014` are complete, and no later task is in progress.
+- `iterations\003\state.md`, `iterations\003\drift-log.md`, and the reviewer closeout packet are synchronized to this slice boundary: execution approval is recorded, `T001`-`T014` are complete, the hardening gate is ready, and no later task is in progress.
 - `T005` extended both iteration-start and reviewer-closeout scaffolds so `quality\hardening-gate.md`, `quality\lenses\`, and `quality\trap-reapplication.md` now have stable placeholder homes before later Phase 2 execution work begins.
 - `T006` adds shared Phase 2 markdown parsing plus hardening/routing approval helpers in `shared-governance.ps1`, with integration coverage proving that routing fallback evidence parses canonically and human-approved hardening deferrals stay distinct from blocking `tbd` concerns.
 - `T008` extends `.specify\templates\plan-template.md` with a bounded Phase 2 planning section for hardening focus areas, lens activation, routing policy, known-traps location, and explicit later deferrals without implying routed lens execution has already occurred.

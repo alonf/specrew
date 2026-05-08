@@ -5,23 +5,23 @@
 **Feature Ref**: `specs/005-stack-aware-quality-bar/spec.md`
 **Iteration Ref**: `specs/005-stack-aware-quality-bar/iterations/003`
 **Requested Review Class**: `strongest-available`
-**Effective Review Class**: `(pending hardening review)`
-**Overall Verdict**: `blocked`
+**Effective Review Class**: `claude`
+**Overall Verdict**: `ready`
 **Approval Ref**: `—`
-**Reviewed By**: Reviewer (pending)
-**Reviewed At**: 2026-05-08T15:19:09Z
+**Reviewed By**: Reviewer
+**Reviewed At**: 2026-05-08T19:20:00Z
 
 ## Concern Review
 
 | Concern | Category | Status | Blocking | Rationale | Approval |
 | --- | --- | --- | --- | --- | --- |
-| `security-surface` | `security` | `tbd` | `true` | Scaffolded placeholder. Review trust boundaries, privilege changes, and sensitive flows before implementation proceeds. | `—` |
-| `error-handling-expectations` | `error-handling` | `tbd` | `true` | Scaffolded placeholder. Record expected failure semantics and incomplete-state handling before implementation proceeds. | `—` |
-| `retry-idempotency-requirements` | `retry-idempotency` | `tbd` | `true` | Scaffolded placeholder. Confirm whether retries/idempotency are required or explicitly not applicable. | `—` |
-| `test-integrity-targets` | `test-integrity` | `tbd` | `true` | Scaffolded placeholder. Tie negative-path expectations to observable test evidence before implementation proceeds. | `—` |
-| `operational-resilience-concerns` | `operational` | `tbd` | `true` | Scaffolded placeholder. Review runtime resilience, fallback, and operator-facing failure signals before implementation proceeds. | `—` |
+| `security-surface` | `security` | `not-applicable` | `true` | This slice only changes local governance scripts, fixtures, and review artifacts; it does not introduce new network ingress, auth boundaries, secret handling, or sensitive runtime mutation paths. | `—` |
+| `error-handling-expectations` | `error-handling` | `addressed` | `true` | run-hardening-gate.ps1` and `validate-governance.ps1` now fail closed with explicit blocked, ready, and approved-deferral semantics, and the integration coverage exercises those paths directly. | `—` |
+| `retry-idempotency-requirements` | `retry-idempotency` | `not-applicable` | `true` | The delivered work is file-based governance orchestration rather than retried external mutation flows, so retry/idempotency side effects are not a material concern in this bounded slice. | `—` |
+| `test-integrity-targets` | `test-integrity` | `addressed` | `true` | The slice now carries deterministic hardening-gate, gap-governance, and quality-evidence coverage for blocked, approved-deferral, and ready paths instead of relying on smoke-only success. | `—` |
+| `operational-resilience-concerns` | `operational` | `not-applicable` | `true` | No long-lived service surface was introduced; operator-facing behavior stays limited to deterministic CLI validation output and scaffolded artifact state for this MVP governance slice. | `—` |
 
 ## Notes
 
-- This artifact was scaffolded before the hardening review ran.
-- Replace placeholder statuses with reviewed outcomes before marking implementation readiness.
+- This review intentionally dogfoods the Phase 2 hardening contract against the iteration that introduced it.
+- The slice is implementation-complete, but later lens execution, strongest-class routing evidence, and known-traps follow-through remain deferred to Iterations 004 and 005.

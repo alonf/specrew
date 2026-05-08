@@ -1,15 +1,15 @@
 # Current Architecture: 005-stack-aware-quality-bar
 
-**Source Iteration Ref**: 002
-**Last Updated**: 2026-05-08T16:12:10+03:00
+**Source Iteration Ref**: 003
+**Last Updated**: 2026-05-08T19:21:09+03:00
 
 ## Summary
 
-- Latest reviewer snapshot: iterations/002/
-- Current reviewer index: specs\005-stack-aware-quality-bar\iterations\002\reviewer-index.md
+- Latest reviewer snapshot: iterations/003/
+- Current reviewer index: specs\005-stack-aware-quality-bar\iterations\003\reviewer-index.md
 - Security surface: not generated for this iteration (No security-focused role and no FR-048/security-scoped plan task were found.)
-- Review diagrams: specs\005-stack-aware-quality-bar\iterations\002\review-diagrams.md
+- Review diagrams: specs\005-stack-aware-quality-bar\iterations\003\review-diagrams.md
 
 ## Linked Current Diagrams
 
-- iterations\002\review-diagrams.md
+- iterations\003\review-diagrams.md

@@ -5,8 +5,8 @@
 **Tasks Remaining**: (none)
 **In Progress**: (none)
 **Baseline Ref**: 64a521fc335a0d013e29d0167dfc5c553230d32a
-**Updated**: 2026-05-08T22:20:00Z
-**Status**: executing
+**Updated**: 2026-05-08T23:10:00Z
+**Status**: reviewing
 
 ## Execution Summary
 
@@ -21,10 +21,11 @@
 - `T011` added `tests\integration\hardening-gate-contract.ps1`, proving the bounded `blocked`, `approved-deferral`, and `ready` fixture scenarios stay deterministic, preserve explicit hardening rationale, and only treat the approved deferral path as non-blocking when fixture-local human approval evidence resolves cleanly.
 - `pwsh -NoProfile -ExecutionPolicy Bypass -File .\tests\integration\hardening-gate-contract.ps1` passed for the new hardening-gate contract lane after the test landed.
 - `T012` added `extensions\specrew-speckit\scripts\run-hardening-gate.ps1`, which now scaffolds or reconciles `quality\hardening-gate.md` against the bounded five-concern contract, preserves explicit rationale visibility, and computes truthful pre-implementation `blocked` / `deferred-with-approval` / `ready` verdicts via the shared hardening-governance helpers.
-- `pwsh -NoProfile -ExecutionPolicy Bypass -File .\extensions\specrew-speckit\scripts\run-hardening-gate.ps1 -ProjectPath . -IterationPath .\specs\005-stack-aware-quality-bar\iterations\003 -OutputFormat Json` passed and left Iteration 003 correctly blocked while all five concern rows remain `tbd`.
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File .\extensions\specrew-speckit\scripts\run-hardening-gate.ps1 -ProjectPath . -IterationPath .\specs\005-stack-aware-quality-bar\iterations\003 -OutputFormat Json` initially passed and correctly left Iteration 003 blocked while the scaffolded concern rows still remained `tbd`.
 - `T013` is complete and now publishes the bounded Phase 2 hardening planning metadata in the quality-profile resolver and plan template: concrete slice scope, artifact refs, focus-area statuses, routing defaults, and explicit later deferrals.
 - `T014` is complete: `validate-governance.ps1` now reuses the shared hardening-governance helpers, validates the canonical five-row `hardening-gate.md` shape against the new Phase 2 planning metadata, accepts only human-approved hardening deferrals, and fails closed if execution tries to proceed while unresolved hardening blockers remain.
-- Iteration 003 now has no remaining planned tasks, but the scaffolded local `quality\hardening-gate.md` still truthfully reports `blocked` until a real hardening review or human-approved defer record is captured for this slice.
+- Iteration 003 now has no remaining planned tasks, and reviewer closeout has replaced the scaffolded hardening placeholder state with a real `ready` hardening verdict for this slice.
+- Reviewer closeout is now complete for Iteration 003: the live hardening gate reports `ready`, focused regression coverage passed, and the slice can move into retro without reopening later-iteration scope.
 - User Story 3 / known-traps work (`T015`-`T024`) and User Story 4 / polish (`T025`-`T032`) are deferred to later iterations and must not be pulled into this slice without a tracked planning change.
 
 ## Notes
