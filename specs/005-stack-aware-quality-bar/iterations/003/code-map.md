@@ -37,13 +37,20 @@
 | extensions/specrew-speckit/scripts/validate-governance.ps1 | 258 | 0 | T001, T002, T005, T008, T012, T013 | Implementer |
 | extensions/specrew-speckit/squad-templates/coordinator/specrew-governance.md | 6 | 3 | T001, T002, T005, T008, T012, T013 | Implementer |
 | extensions/specrew-speckit/templates/iteration-config.yml | 20 | 0 | T001, T002, T005, T008, T012, T013 | Implementer |
+| specs/005-stack-aware-quality-bar/current-architecture.md | 6 | 6 | T001, T002, T005, T008, T012, T013 | Implementer |
+| specs/005-stack-aware-quality-bar/iterations/003/code-map.md | 159 | 0 | T001, T002, T005, T008, T012, T013 | Implementer |
+| specs/005-stack-aware-quality-bar/iterations/003/coverage-evidence.md | 42 | 0 | T001, T002, T005, T008, T012, T013 | Implementer |
+| specs/005-stack-aware-quality-bar/iterations/003/dependency-report.md | 24 | 0 | T001, T002, T005, T008, T012, T013 | Implementer |
 | specs/005-stack-aware-quality-bar/iterations/003/drift-log.md | 33 | 0 | T001, T002, T005, T008, T012, T013 | Implementer |
 | specs/005-stack-aware-quality-bar/iterations/003/plan.md | 179 | 0 | T001, T002, T005, T008, T012, T013 | Implementer |
 | specs/005-stack-aware-quality-bar/iterations/003/quality/hardening-gate.md | 27 | 0 | T001, T002, T005, T008, T012, T013 | Implementer |
 | specs/005-stack-aware-quality-bar/iterations/003/quality/mechanical-findings.json | 11 | 0 | T001, T002, T005, T008, T012, T013 | Implementer |
 | specs/005-stack-aware-quality-bar/iterations/003/quality/quality-evidence.md | 17 | 0 | T001, T002, T005, T008, T012, T013 | Implementer |
 | specs/005-stack-aware-quality-bar/iterations/003/quality/trap-reapplication.md | 15 | 0 | T001, T002, T005, T008, T012, T013 | Implementer |
-| specs/005-stack-aware-quality-bar/iterations/003/state.md | 49 | 0 | T001, T002, T005, T008, T012, T013 | Implementer |
+| specs/005-stack-aware-quality-bar/iterations/003/review-diagrams.md | 21 | 0 | T001, T002, T005, T008, T012, T013 | Implementer |
+| specs/005-stack-aware-quality-bar/iterations/003/review.md | 33 | 0 | T001, T002, T005, T008, T012, T013 | Implementer |
+| specs/005-stack-aware-quality-bar/iterations/003/reviewer-index.md | 56 | 0 | T001, T002, T005, T008, T012, T013 | Implementer |
+| specs/005-stack-aware-quality-bar/iterations/003/state.md | 50 | 0 | T001, T002, T005, T008, T012, T013 | Implementer |
 | specs/005-stack-aware-quality-bar/plan.md | 15 | 4 | T001, T002, T005, T008, T012, T013 | Implementer |
 | specs/005-stack-aware-quality-bar/tasks.md | 22 | 11 | T001, T002, T005, T008, T012, T013 | Implementer |
 | tests/integration/bootstrap-to-iteration.ps1 | 32 | 1 | T003, T004, T005, T006, T009, T010, T011, T014 | Reviewer |

@@ -5,12 +5,12 @@
 **Tasks Remaining**: (none)
 **In Progress**: (none)
 **Baseline Ref**: 64a521fc335a0d013e29d0167dfc5c553230d32a
-**Updated**: 2026-05-08T23:10:00Z
-**Status**: reviewing
+**Updated**: 2026-05-08T23:45:00Z
+**Status**: retro
 
 ## Execution Summary
 
-- Execution approval is recorded for Iteration 003 and `T001`-`T014` are now complete.
+- Execution, review, and retrospective synthesis are complete for Iteration 003; the iteration is now in `retro` pending final sign-off.
 - Iteration 003 is the active planning package for the Phase 2 MVP slice only: Setup + Foundational work plus User Story 2 (`T001`-`T014`).
 - `T005` extended both artifact scaffolds and refreshed Iteration 003 placeholders so `hardening-gate.md`, `quality\lenses\`, and `trap-reapplication.md` exist without implying later hardening or known-traps execution is already complete.
 - `T007` aligned the before-plan, before-implement, and coordinator lifecycle guidance so Phase 2 hardening slices now require explicit hardening-gate sign-off or human-approved deferral before implementation, without overstating later lens/routing/trap execution.
@@ -25,7 +25,8 @@
 - `T013` is complete and now publishes the bounded Phase 2 hardening planning metadata in the quality-profile resolver and plan template: concrete slice scope, artifact refs, focus-area statuses, routing defaults, and explicit later deferrals.
 - `T014` is complete: `validate-governance.ps1` now reuses the shared hardening-governance helpers, validates the canonical five-row `hardening-gate.md` shape against the new Phase 2 planning metadata, accepts only human-approved hardening deferrals, and fails closed if execution tries to proceed while unresolved hardening blockers remain.
 - Iteration 003 now has no remaining planned tasks, and reviewer closeout has replaced the scaffolded hardening placeholder state with a real `ready` hardening verdict for this slice.
-- Reviewer closeout is now complete for Iteration 003: the live hardening gate reports `ready`, focused regression coverage passed, and the slice can move into retro without reopening later-iteration scope.
+- Reviewer closeout is complete for Iteration 003: the live hardening gate reports `ready`, focused regression coverage passed, and the slice reached retro without reopening later-iteration scope.
+- `retro.md` is now populated with evidence-based estimation, phase-variance, and improvement-action notes for this bounded 20-point MVP slice only.
 - User Story 3 / known-traps work (`T015`-`T024`) and User Story 4 / polish (`T025`-`T032`) are deferred to later iterations and must not be pulled into this slice without a tracked planning change.
 
 ## Notes

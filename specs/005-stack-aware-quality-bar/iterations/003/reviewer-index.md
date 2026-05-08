@@ -6,10 +6,10 @@
 
 ## Summary
 
-- Header: feature=005-stack-aware-quality-bar | iteration=003 | branch=008-quality-profile-foundation | commit_range=64a521fc335a0d013e29d0167dfc5c553230d32a..0177a54daba1d008f077c4dccd7a1d9eb203d36c
+- Header: feature=005-stack-aware-quality-bar | iteration=003 | branch=008-quality-profile-foundation | commit_range=64a521fc335a0d013e29d0167dfc5c553230d32a..393f749f42fce2d318e238c525e0ee229c43f1f0
 - Verdict: accepted
 - Requirements: covered=FR-031, FR-038, FR-034, FR-039, FR-040, FR-016, FR-033, FR-032, FR-010, FR-018 | not_covered=(none)
-- Code Surface: files=74 | hotspots=5 | test_to_code=37:7
+- Code Surface: files=81 | hotspots=5 | test_to_code=37:7
 - Dependencies: changed=0 | new_to_project=0 | vulnerability=unscanned
 - Coverage: kind=qualitative | signal=focused_regression
 - Operational Signals: escalations=1 | routing_fallbacks=0
@@ -53,4 +53,4 @@
 
 ## Replay Digest
 
-SPECREW_REVIEW schema=v1 iter=003 feature=005-stack-aware-quality-bar verdict=accepted tasks=14/14 reqs=14 files=74 new_deps=0 vuln=unscanned cov=focused_regression escalations=1 drift=0/0 index=specs\005-stack-aware-quality-bar\iterations\003\reviewer-index.md
+SPECREW_REVIEW schema=v1 iter=003 feature=005-stack-aware-quality-bar verdict=accepted tasks=14/14 reqs=14 files=81 new_deps=0 vuln=unscanned cov=focused_regression escalations=1 drift=0/0 index=specs\005-stack-aware-quality-bar\iterations\003\reviewer-index.md
