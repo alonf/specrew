@@ -71,7 +71,9 @@ reviewer:
   sensitive_data_patterns:
     - "auth*"
     - "token*"
-  test_commands: []
+  test_commands:
+    - "& '.\tests\integration\review-pass-a.ps1'"
+    - "& '.\tests\integration\review-pass-b.ps1'"
   coverage:
     tool: ""
     kind: "qualitative"
@@ -126,6 +128,8 @@ export function maskToken(token) {
 }
 '@, [System.Text.UTF8Encoding]::new($false))
 [System.IO.File]::WriteAllText((Join-Path $projectRoot 'tests\integration\api.test.js'), "describe('api', () => { it('works', () => expect(true).toBe(true)); });`n", [System.Text.UTF8Encoding]::new($false))
+[System.IO.File]::WriteAllText((Join-Path $projectRoot 'tests\integration\review-pass-a.ps1'), "Write-Host 'review-pass-a ok'`nexit 0`n", [System.Text.UTF8Encoding]::new($false))
+[System.IO.File]::WriteAllText((Join-Path $projectRoot 'tests\integration\review-pass-b.ps1'), "Write-Host 'review-pass-b ok'`nexit 0`n", [System.Text.UTF8Encoding]::new($false))
 
 @(& git -C $projectRoot add . 2>&1) | Out-Null
 $commitOutput = @(& git -C $projectRoot -c user.name=Copilot -c user.email=copilot@example.com commit -m "baseline" --quiet 2>&1)
@@ -276,9 +280,12 @@ foreach ($check in @(
         @{ Content = $dependencyContent; Pattern = 'status:\s+unscanned'; Failure = 'Dependency report did not record unscanned vulnerability status.' },
         @{ Content = $coverageContent; Pattern = '## Test Strategy'; Failure = 'Coverage evidence is missing Test Strategy.' },
         @{ Content = $coverageContent; Pattern = '## Tests Run'; Failure = 'Coverage evidence is missing Tests Run.' },
-        @{ Content = $coverageContent; Pattern = 'not_executed'; Failure = 'Coverage evidence did not record not_executed.' },
+        @{ Content = $coverageContent; Pattern = '\| & ''.\\tests\\integration\\review-pass-a\.ps1'' \| pass \| 1 \| 0 \| .* \| 0 \| review-pass-a ok \|'; Failure = 'Coverage evidence did not record the first configured review-time test command.' },
+        @{ Content = $coverageContent; Pattern = '\| & ''.\\tests\\integration\\review-pass-b\.ps1'' \| pass \| 1 \| 0 \| .* \| 0 \| review-pass-b ok \|'; Failure = 'Coverage evidence did not record the second configured review-time test command.' },
         @{ Content = $coverageContent; Pattern = 'Kind:\s+qualitative'; Failure = 'Coverage evidence did not record qualitative coverage kind.' },
+        @{ Content = $coverageContent; Pattern = 'Label:\s+focused_regression'; Failure = 'Coverage evidence did not record focused_regression when review-time commands passed.' },
         @{ Content = $coverageContent; Pattern = 'tests/integration/api\.test\.js'; Failure = 'Coverage evidence did not attribute coverage to the changed test file.' },
+        @{ Content = $coverageContent; Pattern = 'cmd:& ''.\\tests\\integration\\review-pass-a\.ps1'''; Failure = 'Coverage evidence did not map the executed command back to requirements.' },
         @{ Content = $coverageContent; Pattern = 'scripts/specrew-start\.ps1'; Failure = 'Coverage evidence misclassified a non-test file as test evidence.' ; Negative = $true },
         @{ Content = $securityContent; Pattern = '## Trust Boundaries Touched'; Failure = 'Security surface is missing trust boundaries.' },
         @{ Content = $securityContent; Pattern = '## Sensitive Data Touchpoints'; Failure = 'Security surface is missing sensitive touchpoints.' },
@@ -291,8 +298,9 @@ foreach ($check in @(
         @{ Content = $indexContent; Pattern = 'security-surface\.md'; Failure = 'Reviewer index is missing the security surface link.' },
         @{ Content = $indexContent; Pattern = 'review-diagrams\.md'; Failure = 'Reviewer index is missing the review diagrams link.' },
         @{ Content = $indexContent; Pattern = 'current-architecture\.md'; Failure = 'Reviewer index is missing the current architecture link.' },
-        @{ Content = $indexContent; Pattern = 'SPECREW_REVIEW schema=v1 iter=005 feature=001-sample verdict=accepted tasks=3/3 reqs=3 files=4 new_deps=1 vuln=unscanned cov=not_executed escalations=0 drift=1/1 index=specs\\001-sample\\iterations\\005\\reviewer-index\.md'; Failure = 'Reviewer index digest does not match FR-051.' },
-        @{ Content = $output; Pattern = 'SPECREW_REVIEW schema=v1 iter=005 feature=001-sample verdict=accepted tasks=3/3 reqs=3 files=4 new_deps=1 vuln=unscanned cov=not_executed escalations=0 drift=1/1 index=specs\\001-sample\\iterations\\005\\reviewer-index\.md'; Failure = 'Closeout output did not emit the FR-051 digest.' }
+        @{ Content = $indexContent; Pattern = 'Coverage:\s+kind=qualitative\s+\|\s+signal=focused_regression'; Failure = 'Reviewer index did not record focused_regression coverage.' },
+        @{ Content = $indexContent; Pattern = 'SPECREW_REVIEW schema=v1 iter=005 feature=001-sample verdict=accepted tasks=3/3 reqs=3 files=4 new_deps=1 vuln=unscanned cov=focused_regression escalations=0 drift=1/1 index=specs\\001-sample\\iterations\\005\\reviewer-index\.md'; Failure = 'Reviewer index digest does not match FR-051 after executing review-time tests.' },
+        @{ Content = $output; Pattern = 'SPECREW_REVIEW schema=v1 iter=005 feature=001-sample verdict=accepted tasks=3/3 reqs=3 files=4 new_deps=1 vuln=unscanned cov=focused_regression escalations=0 drift=1/1 index=specs\\001-sample\\iterations\\005\\reviewer-index\.md'; Failure = 'Closeout output did not emit the FR-051 digest after executing review-time tests.' }
     )) {
     $isNegative = $check.ContainsKey('Negative') -and [bool]$check.Negative
     $matches = $check.Content -match $check.Pattern

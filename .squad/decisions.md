@@ -3965,3 +3965,17 @@ Review T-204 / FR-019 for:
 **ACCEPTED.** T-204 / FR-019 now clears the reviewer bar. No follow-up revision is required for the reviewed artifacts.
 
 
+
+## 2026-05-08T13:10:19Z — FR-054 Immutability Guardrail Deferral
+
+- **Decision ID**: defer-fr054-immutability-guardrail
+- **Type**: defer
+- **Affected Requirement**: FR-054
+- **Affected Iteration**: specs\001-specrew-product\iterations\011
+- **Approving Human**: Alon Fliess
+- **Recorded At**: 2026-05-08T13:10:19Z
+- **Next Action**: Implement automated immutable-snapshot enforcement in a future iteration
+- **Rationale**: Iteration 011 focused on fixing legacy explicit-target validation regression without retroactively modifying closed iteration artifacts. FR-054 immutability enforcement (automated rejection of rewrites to closed iteration artifacts) remains unimplemented but this deferral preserves iteration boundaries and forward-only semantics.
+
+Iteration 011 successfully delivered the technical fix for explicit-target validation regression while keeping Iteration 009 as an immutable snapshot. FR-054 full enforcement will require a separate dedicated iteration focused on immutability guardrail automation.
+

@@ -29,6 +29,8 @@ Use this when reviewer findings claim an iteration is fixed or execution-ready a
 - If rejecting, name the next revision owner for each rejected artifact and respect author lockout rules.
 - On re-review, check each previously cited defect directly in the live file and require the validator to clear the same artifact before flipping from NEEDS-WORK to PASS.
 - Keep artifact readiness separate from broader coordination prerequisites; only fail the gate on approvals or consensus items when they are part of the governing requirement or prior rejection basis.
+- For review/demo transitions, do not stop at passing regression tests: compare `state.md` against the live task table in `plan.md`, then exercise the reviewer-packet scaffold path because missing phase metadata or helper crashes can leave review artifacts non-binding even when tests stay green.
+- If reviewer-owned quality gates stay `planned` after a scaffold rerun, inspect the iteration plan's `Required Quality Gates` table for `Category` metadata (`mechanical`, `tooling`, `manual-evidence`); without it, the scaffold cannot promote those gates to review-complete evidence.
 
 ## Examples
 

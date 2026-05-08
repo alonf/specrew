@@ -1615,7 +1615,7 @@ function Get-TestExecutionRows {
         $stopwatch = [System.Diagnostics.Stopwatch]::StartNew()
         Push-Location $ProjectRoot
         try {
-            $output = @(& pwsh -NoProfile -Command $command 2>&1)
+            $output = @(& pwsh -NoProfile -ExecutionPolicy Bypass -Command $command 2>&1)
             $exitCode = $LASTEXITCODE
         }
         finally {
@@ -2018,7 +2018,7 @@ $coverageEvidenceContent = @"
 ## Test Strategy
 
 - Implementation briefing: $implementationBriefingRelative
-- Review-time strategy: use `reviewer.test_commands` when configured; otherwise record `not_executed` explicitly and keep the signal visible in closeout output.
+- Review-time strategy: use ``reviewer.test_commands`` when configured; otherwise record ``not_executed`` explicitly and keep the signal visible in closeout output.
 
 ## Tests Run
 

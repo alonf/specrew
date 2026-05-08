@@ -1,0 +1,69 @@
+{
+  "schemaVersion": "v1",
+  "featureRef": "specs/005-stack-aware-quality-bar/spec.md",
+  "iterationRef": "specs/005-stack-aware-quality-bar/iterations/002",
+  "generatedAt": "2026-05-07T22:31:00Z",
+  "generator": {
+    "name": "specrew-mechanical-contract-fixture",
+    "version": "0.1.0-dev"
+  },
+  "findings": [
+    {
+      "findingId": "mf-001",
+      "gateId": "dead-field",
+      "ruleId": "dead-field.websocket-payload-unused",
+      "surfaceId": "node-public-ws-service",
+      "severity": "error",
+      "message": "Websocket payload field 'legacyFlag' is written but never read.",
+      "remediation": "Remove the dead payload field or document a reviewed rationale before it drifts further.",
+      "source": {
+        "path": "src/server/messages/payload.ts",
+        "line": 14,
+        "column": 9
+      },
+      "requirementRefs": [
+        "FR-027",
+        "FR-030"
+      ],
+      "demoted": false
+    },
+    {
+      "findingId": "mf-002",
+      "gateId": "anti-pattern",
+      "ruleId": "anti-pattern.fire-and-forget-broadcast",
+      "surfaceId": "node-public-ws-service",
+      "severity": "warning",
+      "message": "Broadcast handler starts fire-and-forget work that can hide failures from the caller.",
+      "remediation": "Keep the finding visible and follow the approved disposition until the broadcast flow can be rewritten.",
+      "source": {
+        "path": "src/server/handlers/broadcast.ts",
+        "line": 27
+      },
+      "requirementRefs": [
+        "FR-028",
+        "FR-030",
+        "FR-030a"
+      ],
+      "demoted": true,
+      "dispositionRef": "specs/005-stack-aware-quality-bar/iterations/002/quality/dispositions/anti-pattern-fire-and-forget.md"
+    },
+    {
+      "findingId": "mf-003",
+      "gateId": "test-integrity",
+      "ruleId": "test-integrity.smoke-only-handshake",
+      "surfaceId": "node-public-ws-service",
+      "severity": "warning",
+      "message": "Handshake test opens a socket but does not assert the rejected-auth path or disconnect cleanup.",
+      "remediation": "Add positive and negative assertions so the websocket suite proves meaningful lifecycle behavior.",
+      "source": {
+        "path": "tests/integration/socket-handshake.spec.ts",
+        "line": 41
+      },
+      "requirementRefs": [
+        "FR-029",
+        "FR-030"
+      ],
+      "demoted": false
+    }
+  ]
+}

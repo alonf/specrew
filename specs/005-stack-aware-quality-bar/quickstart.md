@@ -25,6 +25,8 @@ After implementation, confirm the dry-run or real scaffold includes:
 └── lenses/
 ```
 
+The scaffold is the source of the downstream Phase 1 quality assets. `config.yml` must include the `quality` discovery block so later commands can resolve `.specrew/presets`, `.specrew/lenses`, and the iteration-local `quality/` evidence directory without extra setup.
+
 ## 2. Verify the worked preset and lens sources
 
 Confirm the scaffolded assets include at minimum:
@@ -53,7 +55,7 @@ Run the normal Specrew planning flow for a supported stack fixture, then confirm
 
 ## 4. Run mechanical checks and inspect findings
 
-After implementation, execute the new deterministic mechanical-check runner against a fixture or feature workspace:
+After implementation, execute the deterministic mechanical-check runner against a fixture or feature workspace:
 
 ```powershell
 pwsh -NoProfile -ExecutionPolicy Bypass -File .\extensions\specrew-speckit\scripts\run-mechanical-checks.ps1 -ProjectPath .
@@ -70,10 +72,19 @@ specs/<feature>/iterations/<NNN>/quality/
 Check `mechanical-findings.json` for:
 
 - top-level schema version
+- generator metadata
 - per-finding severity
 - source file/line
 - remediation guidance
 - gate and requirement references
+- `dispositionRef` on every demoted finding
+
+Check `quality-evidence.md` for:
+
+- `Profile Ref`, `Preset Refs`, `Findings Ref`, `Reviewed By`, and `Reviewed At`
+- a `Gate Matrix` row for every required Phase 1 gate declared by the plan
+- `failed` rows staying visible until resolved
+- `excepted` rows carrying an explicit exception or demotion reference instead of silently hiding the gate
 
 ## 5. Enforce the artifact contract
 
@@ -85,8 +96,8 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File .\extensions\specrew-speckit\scrip
 
 Expected result after implementation:
 
-- PASS when all required Phase 1 quality gates have evidence or approved exceptions
-- FAIL when the plan declares required quality gates but evidence artifacts are missing or incomplete
+- PASS when every declared required Phase 1 gate is present in `quality-evidence.md`, no required gate is still `planned`, required mechanical gates have `mechanical-findings.json`, and any `excepted` or demoted gate stays visible with an explicit reference
+- FAIL when a declared required gate is missing, still `planned`, lacks its evidence artifact, is marked `excepted` without an exception reference, or hides demoted findings instead of citing `dispositionRef` / excepted rows
 
 ## 6. Run deterministic integration coverage
 
@@ -95,6 +106,7 @@ Execute the existing regression checks plus the new Phase 1 fixture coverage:
 ```powershell
 pwsh -NoProfile -File .\tests\integration\quality-profile-foundation.ps1
 pwsh -NoProfile -File .\tests\integration\mechanical-findings-contract.ps1
+pwsh -NoProfile -File .\tests\integration\quality-evidence-governance.ps1
 pwsh -NoProfile -File .\tests\integration\process-quality-scorer.ps1
 pwsh -NoProfile -File .\tests\integration\process-quality-report.ps1
 ```
@@ -106,5 +118,5 @@ The Phase 1 slice is ready for task generation and implementation when:
 1. scaffolded preset/lens assets are present and versioned
 2. planning artifacts show the inferred quality profile and tool bundle
 3. mechanical findings emit valid JSON
-4. quality evidence is visible in iteration artifacts
-5. governance validation fails closed on missing evidence
+4. quality evidence is visible in iteration artifacts, including explicit exception visibility for demoted findings
+5. governance validation fails closed on missing, still-planned, or unsupported required-gate evidence

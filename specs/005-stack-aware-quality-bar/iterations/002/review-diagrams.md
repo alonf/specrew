@@ -13,7 +13,7 @@ _omitted_
 
 ## Omissions
 
-- Structure diagram omitted: inter-module edges (0) below threshold (2).
+- Structure diagram omitted: modules touched (1) below threshold (3).
 - Flow diagram omitted: entrypoints changed (0) below threshold (1).
 
 ## Local View Hints

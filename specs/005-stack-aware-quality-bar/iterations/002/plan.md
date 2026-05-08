@@ -2,10 +2,10 @@
 
 **Schema**: v1
 **Spec**: [../../spec.md](../../spec.md)
-**Status**: reviewing
+**Status**: complete
 **Capacity**: 18/20 story_points
 **Started**: 2026-05-07
-**Completed**:
+**Completed**: 2026-05-08
 
 ## Summary
 
@@ -64,13 +64,13 @@ This iteration advances Phase 1 implementation by completing the remaining share
 
 The Phase 1 quality gates declared for Iteration 002 align to the contract requirements in `contracts/quality-governance-artifacts.md` and the live `quality\quality-evidence.md` fixture:
 
-| Gate | Requirement | Evidence Source | Rationale |
-| --- | --- | --- | --- |
-| `dead-field` | FR-011, FR-027, FR-030 | `specs/005-stack-aware-quality-bar/iterations/002/quality/mechanical-findings.json` | Mechanical check for declared but unused fields/parameters in Phase 1 implementation scope |
-| `anti-pattern` | FR-011, FR-028, FR-030 | `specs/005-stack-aware-quality-bar/iterations/002/quality/mechanical-findings.json` | Mechanical check for known antipatterns in Phase 1 PowerShell/governance implementation |
-| `test-integrity` | FR-011, FR-029, FR-030 | `specs/005-stack-aware-quality-bar/iterations/002/quality/mechanical-findings.json` | Mechanical check for test-quality regressions in the evidence-governance and mechanical-findings test suites |
-| `stack-tooling-evidence` | FR-011 | `specs/005-stack-aware-quality-bar/iterations/002/quality/quality-evidence.md` | Phase 1 evidence publication of the inferred quality toolchain for PowerShell governance |
-| `quality-lens-review` | FR-011, FR-012 | `specs/005-stack-aware-quality-bar/iterations/002/quality/quality-evidence.md` | Reviewer validation that Phase 1 quality gates are declared and enforced by the live iteration artifacts |
+| Gate | Requirement | Category | Evidence Source | Rationale |
+| --- | --- | --- | --- | --- |
+| `dead-field` | FR-011, FR-027, FR-030 | mechanical | `specs/005-stack-aware-quality-bar/iterations/002/quality/mechanical-findings.json` | Mechanical check for declared but unused fields/parameters in Phase 1 implementation scope |
+| `anti-pattern` | FR-011, FR-028, FR-030 | mechanical | `specs/005-stack-aware-quality-bar/iterations/002/quality/mechanical-findings.json` | Mechanical check for known antipatterns in Phase 1 PowerShell/governance implementation |
+| `test-integrity` | FR-011, FR-029, FR-030 | mechanical | `specs/005-stack-aware-quality-bar/iterations/002/quality/mechanical-findings.json` | Mechanical check for test-quality regressions in the evidence-governance and mechanical-findings test suites |
+| `stack-tooling-evidence` | FR-011 | tooling | `specs/005-stack-aware-quality-bar/iterations/002/quality/quality-evidence.md` | Phase 1 evidence publication of the inferred quality toolchain for PowerShell governance |
+| `quality-lens-review` | FR-011, FR-012 | manual-evidence | `specs/005-stack-aware-quality-bar/iterations/002/quality/quality-evidence.md` | Reviewer validation that Phase 1 quality gates are declared and enforced by the live iteration artifacts |
 
 ---
 

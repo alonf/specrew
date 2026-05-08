@@ -17,6 +17,7 @@ $allowedIterationStatuses = @('planning', 'executing', 'reviewing', 'retro', 'co
 $allowedTaskStatuses = @('planned', 'in-progress', 'done', 'needs-rework', 'deferred', 'blocked')
 $terminalTaskStatuses = @('done', 'needs-rework', 'deferred', 'blocked')
 $allowedReviewTaskVerdicts = @('pass', 'needs-work', 'blocked')
+$allowedQualityGateStatuses = @('planned', 'passed', 'failed', 'excepted', 'not-applicable')
 
 function Resolve-IterationTarget {
     param(
@@ -142,6 +143,16 @@ function Test-IsPlaceholderReviewNote {
     }
 
     return $Value.Trim() -match '^(?:Review delivered output against .+ and adjust verdict if needed\.|Execution reported blocked; confirm blocker status and escalation path\.|Deferred work; confirm the deferral is still acceptable for this iteration\.|Task already marked needs-rework during execution; confirm re-entry scope\.|Populate verdict after reviewing the delivered evidence\.)$'
+}
+
+function Normalize-MarkdownCell {
+    param([AllowNull()][string]$Value)
+
+    if ($null -eq $Value) {
+        return ''
+    }
+
+    return $Value.Trim().Trim('`')
 }
 
 function Test-ReviewContainsScaffoldReminder {
@@ -335,6 +346,261 @@ function Get-MarkdownSectionTable {
     }
 
     return $rows.ToArray()
+}
+
+function Get-MarkdownSectionTableAnyLevel {
+    param(
+        [string[]]$Lines,
+        [string]$Heading
+    )
+
+    $headingPattern = '^#{2,3}\s+' + [regex]::Escape($Heading) + '\b'
+    $startIndex = -1
+
+    for ($index = 0; $index -lt $Lines.Count; $index++) {
+        if ($Lines[$index] -match $headingPattern) {
+            $startIndex = $index
+            break
+        }
+    }
+
+    if ($startIndex -lt 0) {
+        return @()
+    }
+
+    $tableLines = New-Object System.Collections.Generic.List[string]
+    for ($index = $startIndex + 1; $index -lt $Lines.Count; $index++) {
+        $currentLine = $Lines[$index]
+        if ($currentLine -match '^#{2,3}\s+') {
+            break
+        }
+
+        if ($currentLine.Trim().StartsWith('|')) {
+            $null = $tableLines.Add($currentLine)
+        }
+    }
+
+    if ($tableLines.Count -lt 2) {
+        return @()
+    }
+
+    $headers = ($tableLines[0].Trim('|') -split '\|') | ForEach-Object { $_.Trim() }
+    $rows = New-Object System.Collections.Generic.List[object]
+
+    for ($rowIndex = 1; $rowIndex -lt $tableLines.Count; $rowIndex++) {
+        $cells = ($tableLines[$rowIndex].Trim('|') -split '\|') | ForEach-Object { $_.Trim() }
+        $isSeparator = $true
+
+        foreach ($cell in $cells) {
+            if ($cell -notmatch '^:?-{3,}:?$') {
+                $isSeparator = $false
+                break
+            }
+        }
+
+        if ($isSeparator) {
+            continue
+        }
+
+        $row = [ordered]@{}
+        for ($cellIndex = 0; $cellIndex -lt $headers.Count; $cellIndex++) {
+            $value = if ($cellIndex -lt $cells.Count) { $cells[$cellIndex] } else { '' }
+            $row[$headers[$cellIndex]] = $value
+        }
+
+        $rows.Add([pscustomobject]$row)
+    }
+
+    return $rows.ToArray()
+}
+
+function Get-Phase1RequiredQualityGateRows {
+    param([string[]]$PlanLines)
+
+    $phaseScope = Normalize-MarkdownCell (Get-MarkdownMetadataValue -Lines $PlanLines -Label 'Phase Scope')
+    if ($phaseScope -ne 'phase-1-first-slice') {
+        return @()
+    }
+
+    return @(Get-MarkdownSectionTableAnyLevel -Lines $PlanLines -Heading 'Required Quality Gates')
+}
+
+function Get-QualityEvidenceRowMap {
+    param([string[]]$EvidenceLines)
+
+    $rowsByGate = @{}
+    foreach ($row in @(Get-MarkdownSectionTable -Lines $EvidenceLines -Heading 'Gate Matrix')) {
+        $gateId = Normalize-MarkdownCell ([string]$row.Gate)
+        if ([string]::IsNullOrWhiteSpace($gateId)) {
+            continue
+        }
+
+        $rowsByGate[$gateId] = [pscustomobject]@{
+            Gate           = $gateId
+            Requirement    = Normalize-MarkdownCell ([string]$row.Requirement)
+            EvidenceSource = Normalize-MarkdownCell ([string]$row.'Evidence Source')
+            Status         = Normalize-MarkdownCell ([string]$row.Status).ToLowerInvariant()
+            Exception      = Normalize-MarkdownCell ([string]$row.Exception)
+        }
+    }
+
+    return $rowsByGate
+}
+
+function Get-MechanicalFindingsByGate {
+    param(
+        [string]$MechanicalFindingsPath,
+        [System.Collections.Generic.List[string]]$Errors
+    )
+
+    $findingsByGate = @{}
+    if (-not (Test-Path -LiteralPath $MechanicalFindingsPath -PathType Leaf)) {
+        return $findingsByGate
+    }
+
+    try {
+        $payload = Get-Content -LiteralPath $MechanicalFindingsPath -Encoding UTF8 -Raw | ConvertFrom-Json -Depth 20
+    }
+    catch {
+        $Errors.Add(("mechanical-findings.json is not valid JSON: {0}" -f $_.Exception.Message))
+        return $findingsByGate
+    }
+
+    if ($null -eq $payload -or $null -eq $payload.findings) {
+        return $findingsByGate
+    }
+
+    foreach ($finding in @($payload.findings)) {
+        $gateId = Normalize-MarkdownCell ([string]$finding.gateId)
+        if ([string]::IsNullOrWhiteSpace($gateId)) {
+            continue
+        }
+
+        if (-not $findingsByGate.ContainsKey($gateId)) {
+            $findingsByGate[$gateId] = New-Object System.Collections.Generic.List[object]
+        }
+
+        $null = $findingsByGate[$gateId].Add($finding)
+    }
+
+    return $findingsByGate
+}
+
+function Test-Phase1QualityEvidence {
+    param(
+        [string]$IterationDirectory,
+        [string[]]$PlanLines,
+        [System.Collections.Generic.List[string]]$Errors
+    )
+
+    $requiredGateRows = @(Get-Phase1RequiredQualityGateRows -PlanLines $PlanLines)
+    if ($requiredGateRows.Count -eq 0) {
+        return
+    }
+
+    $qualityDirectory = Join-Path $IterationDirectory 'quality'
+    $qualityEvidencePath = Join-Path $qualityDirectory 'quality-evidence.md'
+    $mechanicalFindingsPath = Join-Path $qualityDirectory 'mechanical-findings.json'
+
+    if (-not (Test-Path -LiteralPath $qualityEvidencePath -PathType Leaf)) {
+        $Errors.Add('quality-evidence.md is required for Phase 1 required quality gates but is missing')
+        return
+    }
+
+    $evidenceLines = Get-MarkdownContent -Path $qualityEvidencePath
+    $evidenceRowsByGate = Get-QualityEvidenceRowMap -EvidenceLines $evidenceLines
+    if ($evidenceRowsByGate.Count -eq 0) {
+        $Errors.Add('quality-evidence.md is missing the Gate Matrix table required for Phase 1 quality evidence')
+        return
+    }
+
+    foreach ($label in @('Profile Ref', 'Findings Ref', 'Reviewed By', 'Reviewed At')) {
+        if (Test-IsNullish (Get-MarkdownMetadataValue -Lines $evidenceLines -Label $label)) {
+            $Errors.Add(("quality-evidence.md is missing required metadata: {0}" -f $label))
+        }
+    }
+
+    $mechanicalGateRequired = @($requiredGateRows | Where-Object {
+            (Normalize-MarkdownCell ([string]$_.Category)).ToLowerInvariant() -eq 'mechanical'
+        }).Count -gt 0
+    if ($mechanicalGateRequired -and -not (Test-Path -LiteralPath $mechanicalFindingsPath -PathType Leaf)) {
+        $Errors.Add('mechanical-findings.json is required for declared Phase 1 mechanical gates but is missing')
+    }
+
+    $mechanicalFindingsByGate = Get-MechanicalFindingsByGate -MechanicalFindingsPath $mechanicalFindingsPath -Errors $Errors
+
+    foreach ($requiredGate in $requiredGateRows) {
+        $gateId = Normalize-MarkdownCell ([string]$requiredGate.'Required Quality Gate')
+        if ([string]::IsNullOrWhiteSpace($gateId)) {
+            continue
+        }
+
+        $category = Normalize-MarkdownCell ([string]$requiredGate.Category).ToLowerInvariant()
+        if (-not $evidenceRowsByGate.ContainsKey($gateId)) {
+            $Errors.Add(("quality-evidence.md is missing evidence for required gate '{0}'" -f $gateId))
+            continue
+        }
+
+        $evidenceRow = $evidenceRowsByGate[$gateId]
+        if ([string]::IsNullOrWhiteSpace($evidenceRow.EvidenceSource)) {
+            $Errors.Add(("quality-evidence.md gate '{0}' is missing an Evidence Source entry" -f $gateId))
+        }
+
+        if ([string]::IsNullOrWhiteSpace($evidenceRow.Status)) {
+            $Errors.Add(("quality-evidence.md gate '{0}' is missing a Status entry" -f $gateId))
+        }
+        elseif ($evidenceRow.Status -notin $allowedQualityGateStatuses) {
+            $Errors.Add(("quality-evidence.md gate '{0}' uses invalid status '{1}'" -f $gateId, $evidenceRow.Status))
+        }
+        elseif ($evidenceRow.Status -eq 'planned') {
+            $Errors.Add(("quality-evidence.md gate '{0}' is still marked planned, so required Phase 1 evidence is incomplete" -f $gateId))
+        }
+
+        if ($evidenceRow.Status -eq 'excepted' -and (Test-IsNullish $evidenceRow.Exception)) {
+            $Errors.Add(("quality-evidence.md gate '{0}' is excepted but does not cite an approved exception reference" -f $gateId))
+        }
+
+        if ($category -ne 'mechanical') {
+            continue
+        }
+
+        $gateFindings = if ($mechanicalFindingsByGate.ContainsKey($gateId)) {
+            @($mechanicalFindingsByGate[$gateId])
+        }
+        else {
+            @()
+        }
+
+        $demotedFindings = @($gateFindings | Where-Object { $_.demoted -eq $true })
+        if ($demotedFindings.Count -eq 0) {
+            continue
+        }
+
+        $demotionRefs = New-Object System.Collections.Generic.List[string]
+        foreach ($finding in $demotedFindings) {
+            $dispositionRef = Normalize-MarkdownCell ([string]$finding.dispositionRef)
+            if ([string]::IsNullOrWhiteSpace($dispositionRef)) {
+                $Errors.Add(("mechanical finding gate '{0}' includes a demoted rule without dispositionRef visibility" -f $gateId))
+                continue
+            }
+
+            if ($demotionRefs -notcontains $dispositionRef) {
+                $null = $demotionRefs.Add($dispositionRef)
+            }
+        }
+
+        if ($gateFindings.Count -eq $demotedFindings.Count -and $demotionRefs.Count -gt 0) {
+            if ($evidenceRow.Status -ne 'excepted') {
+                $Errors.Add(("quality-evidence.md gate '{0}' must remain visible as excepted when all mechanical findings are demoted" -f $gateId))
+            }
+
+            foreach ($demotionRef in $demotionRefs) {
+                if ($evidenceRow.Exception -notlike ("*{0}*" -f $demotionRef)) {
+                    $Errors.Add(("quality-evidence.md gate '{0}' must cite demotion reference '{1}' in the Exception column" -f $gateId, $demotionRef))
+                }
+            }
+        }
+    }
 }
 
 function Test-IsManifestPath {
@@ -1456,6 +1722,8 @@ function Test-IterationGovernance {
         Test-PlanTaskSet -Tasks $tasks -Errors $errors
         Test-ConcurrencyPlanningPolicy -PlanLines $planLines -Tasks $tasks -Errors $errors
     }
+
+    Test-Phase1QualityEvidence -IterationDirectory $IterationDirectory -PlanLines $planLines -Errors $errors
 
     $iterationConfig = Get-IterationConfigForValidation -IterationDirectory $IterationDirectory
     Test-PlanEffortModel -PlanLines $planLines -Capacity $capacity -IterationConfig $iterationConfig -Errors $errors

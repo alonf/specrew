@@ -1,0 +1,7 @@
+effort_unit: "story_points"
+capacity_per_iteration: 20
+iteration_bounding: "scope"
+time_limit_hours: null
+overcommit_threshold: 1.0
+calibration_enabled: true
+defer_strategy: "manual"

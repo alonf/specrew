@@ -53,12 +53,12 @@
 
 **Independent Test**: Run `extensions/specrew-speckit/scripts/run-mechanical-checks.ps1` on a fixture iteration, confirm `specs/<feature>/iterations/<NNN>/quality/quality-evidence.md` and `mechanical-findings.json` are created, then verify `extensions/specrew-speckit/scripts/validate-governance.ps1 -ProjectPath .` fails when required evidence is missing and passes when evidence is complete.
 
-- [ ] T012 [P] Add findings-schema and demotion regression coverage in `tests/integration/mechanical-findings-contract.ps1` using fixtures in `tests/integration/fixtures/mechanical-findings-contract/` (Trace: FR-027, FR-028, FR-029, FR-030, FR-030a, Slice C1-C3)
-- [ ] T013 [P] Add lifecycle evidence and missing-evidence regression coverage in `tests/integration/quality-evidence-governance.ps1` using fixtures in `tests/integration/fixtures/quality-evidence-governance/` (Trace: FR-011, FR-012, Slice D1-D2)
-- [ ] T014 Implement deterministic dead-field, anti-pattern, and test-integrity rule execution with schema-compliant findings and `dispositionRef` support in `extensions/specrew-speckit/scripts/run-mechanical-checks.ps1` (Trace: FR-027, FR-028, FR-029, FR-030, FR-030a, Slice C1-C3)
-- [ ] T015 Scaffold and publish `quality-evidence.md` and `mechanical-findings.json` in `extensions/specrew-speckit/scripts/scaffold-iteration-artifacts.ps1`, `extensions/specrew-speckit/scripts/scaffold-reviewer-artifacts.ps1`, and `extensions/specrew-speckit/scripts/run-mechanical-checks.ps1` (Trace: FR-011, FR-012, contracts/quality-governance-artifacts.md, Slice D1)
-- [ ] T016 Enforce required Phase 1 gate evidence, approved exceptions, and demotion visibility in `extensions/specrew-speckit/scripts/validate-governance.ps1` (Trace: FR-012, FR-030a, Slice D2)
-- [ ] T017 Keep the existing reporting regressions aligned with the Phase 1 evidence artifacts in `tests/integration/process-quality-scorer.ps1` and `tests/integration/process-quality-report.ps1` (Trace: FR-011, Verification Strategy)
+- [X] T012 [P] Add findings-schema and demotion regression coverage in `tests/integration/mechanical-findings-contract.ps1` using fixtures in `tests/integration/fixtures/mechanical-findings-contract/` (Trace: FR-027, FR-028, FR-029, FR-030, FR-030a, Slice C1-C3)
+- [X] T013 [P] Add lifecycle evidence and missing-evidence regression coverage in `tests/integration/quality-evidence-governance.ps1` using fixtures in `tests/integration/fixtures/quality-evidence-governance/` (Trace: FR-011, FR-012, Slice D1-D2)
+- [X] T014 Implement deterministic dead-field, anti-pattern, and test-integrity rule execution with schema-compliant findings and `dispositionRef` support in `extensions/specrew-speckit/scripts/run-mechanical-checks.ps1` (Trace: FR-027, FR-028, FR-029, FR-030, FR-030a, Slice C1-C3)
+- [X] T015 Scaffold and publish `quality-evidence.md` and `mechanical-findings.json` in `extensions/specrew-speckit/scripts/scaffold-iteration-artifacts.ps1`, `extensions/specrew-speckit/scripts/scaffold-reviewer-artifacts.ps1`, and `extensions/specrew-speckit/scripts/run-mechanical-checks.ps1` (Trace: FR-011, FR-012, contracts/quality-governance-artifacts.md, Slice D1)
+- [X] T016 Enforce required Phase 1 gate evidence, approved exceptions, and demotion visibility in `extensions/specrew-speckit/scripts/validate-governance.ps1` (Trace: FR-012, FR-030a, Slice D2)
+- [X] T017 Keep the existing reporting regressions aligned with the Phase 1 evidence artifacts in `tests/integration/process-quality-scorer.ps1` and `tests/integration/process-quality-report.ps1` (Trace: FR-011, Verification Strategy)
 
 **Checkpoint**: Reviewable lifecycle evidence exists for every declared Phase 1 gate, and governance fails closed on silent omissions.
 
@@ -68,7 +68,7 @@
 
 **Purpose**: Finalize the first-slice operator guidance and validation path after both in-scope story slices work end to end.
 
-- [ ] T018 Update `C:\Dev\Specrew\specs\005-stack-aware-quality-bar\quickstart.md` and `extensions/specrew-speckit/README.md` so the documented Phase 1 validation flow matches the implemented scaffold, findings, and governance commands (Trace: FR-011, FR-012, quickstart.md)
+- [X] T018 Update `C:\Dev\Specrew\specs\005-stack-aware-quality-bar\quickstart.md` and `extensions\specrew-speckit\README.md` so the documented Phase 1 validation flow matches the implemented scaffold, findings, and governance commands (Trace: FR-011, FR-012, quickstart.md)
 
 ---
 

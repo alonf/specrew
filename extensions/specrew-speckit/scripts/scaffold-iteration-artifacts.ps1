@@ -94,7 +94,7 @@ function Get-MarkdownSectionTable {
         [string]$Heading
     )
 
-    $headingPattern = '^##\s+' + [regex]::Escape($Heading) + '\b'
+    $headingPattern = '^#{2,3}\s+' + [regex]::Escape($Heading) + '\b'
     $startIndex = -1
 
     for ($index = 0; $index -lt $Lines.Count; $index++) {
@@ -111,7 +111,7 @@ function Get-MarkdownSectionTable {
     $tableLines = New-Object System.Collections.Generic.List[string]
     for ($index = $startIndex + 1; $index -lt $Lines.Count; $index++) {
         $currentLine = $Lines[$index]
-        if ($currentLine -match '^##\s+') {
+        if ($currentLine -match '^#{2,3}\s+') {
             break
         }
 
@@ -152,6 +152,192 @@ function Get-MarkdownSectionTable {
     }
 
     return $rows.ToArray()
+}
+
+function Get-MarkdownMetadataValue {
+    param(
+        [string[]]$Lines,
+        [string]$Label
+    )
+
+    $pattern = '^\*\*' + [regex]::Escape($Label) + '\*\*:\s*(.+?)\s*$'
+    foreach ($line in $Lines) {
+        if ($line -match $pattern) {
+            return $Matches[1].Trim()
+        }
+    }
+
+    return $null
+}
+
+function Normalize-MarkdownCell {
+    param([AllowNull()][string]$Value)
+
+    if ($null -eq $Value) {
+        return ''
+    }
+
+    return $Value.Trim().Trim('`')
+}
+
+function Convert-ToRepoRelativePath {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$BasePath,
+
+        [Parameter(Mandatory = $true)]
+        [string]$TargetPath
+    )
+
+    return ([System.IO.Path]::GetRelativePath($BasePath, $TargetPath)).Replace('\', '/')
+}
+
+function Get-DefaultRequirementRefsForGate {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$GateId
+    )
+
+    switch ($GateId) {
+        'dead-field' { return @('FR-011', 'FR-027', 'FR-030') }
+        'anti-pattern' { return @('FR-011', 'FR-028', 'FR-030') }
+        'test-integrity' { return @('FR-011', 'FR-029', 'FR-030') }
+        'stack-tooling-evidence' { return @('FR-011') }
+        'quality-lens-review' { return @('FR-011', 'FR-012') }
+        'concurrency-correctness-review' { return @('FR-011', 'FR-012', 'FR-015') }
+        'resiliency-semantics-review' { return @('FR-011', 'FR-012', 'FR-015') }
+        'retry-idempotency-review' { return @('FR-011', 'FR-012', 'FR-015') }
+        default { return @('FR-011') }
+    }
+}
+
+function Resolve-QualityEvidenceSource {
+    param(
+        [AllowNull()][string]$Value,
+        [Parameter(Mandatory = $true)]
+        [string]$FeatureId,
+        [Parameter(Mandatory = $true)]
+        [string]$IterationNumber,
+        [Parameter(Mandatory = $true)]
+        [string]$FindingsRef,
+        [Parameter(Mandatory = $true)]
+        [string]$EvidenceRef
+    )
+
+    $normalized = Normalize-MarkdownCell $Value
+    if ([string]::IsNullOrWhiteSpace($normalized)) {
+        return $EvidenceRef
+    }
+
+    $resolved = $normalized.Replace('specs/<feature>/iterations/<NNN>/quality/mechanical-findings.json', $FindingsRef)
+    $resolved = $resolved.Replace('specs/<feature>/iterations/<NNN>/quality/quality-evidence.md', $EvidenceRef)
+    $resolved = $resolved.Replace('<feature>', $FeatureId)
+    $resolved = $resolved.Replace('<NNN>', $IterationNumber)
+    return $resolved
+}
+
+function Get-DefaultQualityGateRows {
+    return @(
+        [pscustomobject]@{ 'Required Quality Gate' = 'dead-field'; Category = 'mechanical'; 'Evidence Source' = 'specs/<feature>/iterations/<NNN>/quality/mechanical-findings.json' }
+        [pscustomobject]@{ 'Required Quality Gate' = 'anti-pattern'; Category = 'mechanical'; 'Evidence Source' = 'specs/<feature>/iterations/<NNN>/quality/mechanical-findings.json' }
+        [pscustomobject]@{ 'Required Quality Gate' = 'test-integrity'; Category = 'mechanical'; 'Evidence Source' = 'specs/<feature>/iterations/<NNN>/quality/mechanical-findings.json' }
+        [pscustomobject]@{ 'Required Quality Gate' = 'stack-tooling-evidence'; Category = 'tooling'; 'Evidence Source' = 'specs/<feature>/iterations/<NNN>/quality/quality-evidence.md' }
+        [pscustomobject]@{ 'Required Quality Gate' = 'quality-lens-review'; Category = 'manual-evidence'; 'Evidence Source' = 'specs/<feature>/iterations/<NNN>/quality/quality-evidence.md' }
+    )
+}
+
+function Get-QualityEvidenceContent {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$PlanPath,
+        [Parameter(Mandatory = $true)]
+        [string]$FeatureId,
+        [Parameter(Mandatory = $true)]
+        [string]$IterationNumber,
+        [Parameter(Mandatory = $true)]
+        [string]$FindingsRef,
+        [Parameter(Mandatory = $true)]
+        [string]$EvidenceRef,
+        [Parameter(Mandatory = $true)]
+        [string]$ReviewedAt
+    )
+
+    $planLines = if (Test-Path -LiteralPath $PlanPath -PathType Leaf) {
+        @(Get-MarkdownContent -Path $PlanPath)
+    }
+    else {
+        @()
+    }
+
+    $profileRef = Normalize-MarkdownCell (Get-MarkdownMetadataValue -Lines $planLines -Label 'Inferred Quality Profile')
+    if ([string]::IsNullOrWhiteSpace($profileRef)) {
+        $profileRef = 'quality-profile.pending'
+    }
+
+    $presetRefs = Normalize-MarkdownCell (Get-MarkdownMetadataValue -Lines $planLines -Label 'Selected preset ref or explicit custom composition')
+    if ([string]::IsNullOrWhiteSpace($presetRefs)) {
+        $presetRefs = '(pending preset selection)'
+    }
+
+    $gateRows = @(Get-MarkdownSectionTable -Lines $planLines -Heading 'Required Quality Gates')
+    if ($gateRows.Count -eq 0) {
+        $gateRows = @(Get-DefaultQualityGateRows)
+    }
+    $lines = [System.Collections.Generic.List[string]]::new()
+    $null = $lines.Add("# Quality Evidence: Iteration $IterationNumber")
+    $null = $lines.Add('')
+    $null = $lines.Add(('**Profile Ref**: `' + $profileRef + '`'))
+    $null = $lines.Add(('**Preset Refs**: ' + $presetRefs))
+    $null = $lines.Add(('**Findings Ref**: `' + $FindingsRef + '`'))
+    $null = $lines.Add('**Reviewed By**: Reviewer (pending)')
+    $null = $lines.Add(('**Reviewed At**: ' + $ReviewedAt))
+    $null = $lines.Add('')
+    $null = $lines.Add('## Gate Matrix')
+    $null = $lines.Add('')
+    $null = $lines.Add('| Gate | Requirement | Evidence Source | Status | Exception |')
+    $null = $lines.Add('| --- | --- | --- | --- | --- |')
+
+    foreach ($gateRow in $gateRows) {
+        $gateId = Normalize-MarkdownCell ([string]$gateRow.'Required Quality Gate')
+        if ([string]::IsNullOrWhiteSpace($gateId)) {
+            continue
+        }
+
+        $requirementRefs = (Get-DefaultRequirementRefsForGate -GateId $gateId) -join ', '
+        $evidenceSource = Resolve-QualityEvidenceSource `
+            -Value ([string]$gateRow.'Evidence Source') `
+            -FeatureId $FeatureId `
+            -IterationNumber $IterationNumber `
+            -FindingsRef $FindingsRef `
+            -EvidenceRef $EvidenceRef
+
+        $null = $lines.Add(('| `{0}` | {1} | `{2}` | `planned` | `—` |' -f $gateId, $requirementRefs, $evidenceSource))
+    }
+
+    return ($lines -join [Environment]::NewLine) + [Environment]::NewLine
+}
+
+function Get-MechanicalFindingsScaffoldJson {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$FeatureRef,
+        [Parameter(Mandatory = $true)]
+        [string]$IterationRef,
+        [Parameter(Mandatory = $true)]
+        [string]$GeneratedAt
+    )
+
+    return ([pscustomobject][ordered]@{
+            schemaVersion = 'v1'
+            featureRef    = $FeatureRef
+            iterationRef  = $IterationRef
+            generatedAt   = $GeneratedAt
+            generator     = [pscustomobject][ordered]@{
+                name    = 'specrew-iteration-scaffold'
+                version = '1.0.0'
+            }
+            findings      = @()
+        } | ConvertTo-Json -Depth 8)
 }
 
 function Get-PlanTaskIds {
@@ -217,6 +403,7 @@ function Get-BaselineRef {
 }
 
 $resolvedSpecDirectory = [System.IO.Path]::GetFullPath($SpecDirectory)
+$projectRoot = Split-Path -Parent (Split-Path -Parent $resolvedSpecDirectory)
 $iterationsRoot = Join-Path $resolvedSpecDirectory 'iterations'
 $iterationDirectory = Join-Path $iterationsRoot $IterationNumber
 $planPath = Join-Path $iterationDirectory 'plan.md'
@@ -303,6 +490,39 @@ The following resolution strategies remain available if drift is detected later 
 
 Write-MissingFile -TargetPath $statePath -Content $stateContent -Actions $actions
 Write-MissingFile -TargetPath $driftLogPath -Content $driftLogContent -Actions $actions
+
+$planLines = if (Test-Path -LiteralPath $planPath -PathType Leaf) {
+    @(Get-MarkdownContent -Path $planPath)
+}
+else {
+    @()
+}
+
+$qualityGateRows = @(Get-MarkdownSectionTable -Lines $planLines -Heading 'Required Quality Gates')
+$qualityContractPath = Join-Path $resolvedSpecDirectory 'contracts\quality-governance-artifacts.md'
+if ($qualityGateRows.Count -gt 0 -or (Test-Path -LiteralPath $qualityContractPath -PathType Leaf)) {
+    $qualityDirectory = Join-Path $iterationDirectory 'quality'
+    $qualityEvidencePath = Join-Path $qualityDirectory 'quality-evidence.md'
+    $mechanicalFindingsPath = Join-Path $qualityDirectory 'mechanical-findings.json'
+    $featureId = Split-Path -Leaf $resolvedSpecDirectory
+    $featureRef = Convert-ToRepoRelativePath -BasePath $projectRoot -TargetPath (Join-Path $resolvedSpecDirectory 'spec.md')
+    $iterationRef = Convert-ToRepoRelativePath -BasePath $projectRoot -TargetPath $iterationDirectory
+    $qualityEvidenceRef = Convert-ToRepoRelativePath -BasePath $projectRoot -TargetPath $qualityEvidencePath
+    $mechanicalFindingsRef = Convert-ToRepoRelativePath -BasePath $projectRoot -TargetPath $mechanicalFindingsPath
+
+    Ensure-Directory -Path $qualityDirectory -Actions $actions
+    Write-MissingFile -TargetPath $qualityEvidencePath -Content (Get-QualityEvidenceContent `
+            -PlanPath $planPath `
+            -FeatureId $featureId `
+            -IterationNumber $IterationNumber `
+            -FindingsRef $mechanicalFindingsRef `
+            -EvidenceRef $qualityEvidenceRef `
+            -ReviewedAt $timestamp) -Actions $actions
+    Write-MissingFile -TargetPath $mechanicalFindingsPath -Content (Get-MechanicalFindingsScaffoldJson `
+            -FeatureRef $featureRef `
+            -IterationRef $iterationRef `
+            -GeneratedAt $timestamp) -Actions $actions
+}
 
 if ($PassThru) {
     $actions
