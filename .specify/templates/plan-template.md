@@ -76,7 +76,7 @@
 
 ## Phase 2 Hardening and Specialist Review Planning
 
-> Fill this section when pre-implementation hardening and specialist bug-hunter review planning apply to the active feature. Mirror the bounded Phase 2 planning metadata from quality-profile resolution when available: slice scope, artifact refs, focus-area statuses, lens activation classifications, routing defaults, and explicit later deferrals. Keep it bounded to the currently approved hardening slice; list later execution or evidence work explicitly instead of implying it already happened.
+> Fill this section when pre-implementation hardening and specialist bug-hunter review planning apply to the active feature. Mirror the bounded Phase 2 planning metadata from quality-profile resolution when available: slice scope, artifact refs, focus-area statuses, lens activation classifications, routing defaults, and explicit later deferrals, plus the planning-time-vs-runtime evidence boundary. Keep it bounded to the currently approved hardening slice; record planning-time analysis, expected controls, rationale, explicit non-applicable reasoning, and any narrow runtime-only deferments instead of implying later execution or runtime proof already happened.
 
 **Phase 2 Slice Scope**: [e.g., `US-2 hardening gate only` or `NEEDS CLARIFICATION`]  
 **Hardening Gate Artifact**: [e.g., `specs/[###-feature-name]/quality/hardening-gate.md`]  
@@ -87,10 +87,10 @@
 
 | Focus Area | Why It Matters in This Slice | Planned Artifact / Evidence | Status (`required` / `deferred` / `not-applicable`) |
 | --- | --- | --- | --- |
-| Security surface analysis | [record exposed trust boundaries, secrets, authz/authn, and sensitive mutation paths] | [hardening artifact section or linked evidence] | [required] |
-| Error handling and failure semantics | [record user-visible failures, retry boundaries, and fallback expectations] | [hardening artifact section or linked evidence] | [required] |
-| Retry and idempotency expectations | [record whether retry logic exists, is forbidden, or needs explicit justification] | [hardening artifact section or linked evidence] | [required] |
-| Test-integrity targets | [record what proves the slice is actually exercised and what gaps remain explicit] | [test plan, command, or review artifact] | [required] |
+| Security surface analysis | [record planning-time analysis, exposed trust boundaries, expected controls, and whether runtime proof is still pending for closure] | [hardening artifact section or linked evidence] | [required] |
+| Error handling and failure semantics | [record user-visible failures, expected controls, retry boundaries, and fallback expectations] | [hardening artifact section or linked evidence] | [required] |
+| Retry and idempotency expectations | [record whether retry logic exists, is forbidden, or needs explicit justification, including non-applicable reasoning when valid] | [hardening artifact section or linked evidence] | [required] |
+| Test-integrity targets | [record what proves the slice is actually exercised now, what runtime-only proof remains pending, and what gaps remain explicit] | [test plan, command, or review artifact] | [required] |
 
 ### Lens Activation Plan
 
@@ -106,7 +106,7 @@
 
 ### Explicit Later Deferrals
 
-- Full line-by-line lens execution evidence remains deferred until the approved implementation/review slice authorizes it.
+- Full line-by-line lens execution evidence and runtime-only final proof remain deferred until the approved implementation/review slice authorizes them.
 - Known-traps corpus seeding, approved additions, and trap reapplication remain deferred until the dedicated known-traps slice is in scope.
 - Strongest-class routing enforcement details and requested-versus-effective execution evidence remain deferred until the routed lens execution path exists.
 - Quality-drift comparison, mixed-stack override workflows, and reference-implementation checks remain deferred unless the approved slice explicitly includes them.

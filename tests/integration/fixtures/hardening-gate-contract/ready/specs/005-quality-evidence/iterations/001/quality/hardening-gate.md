@@ -13,10 +13,10 @@
 
 ## Concern Review
 
-| Concern | Category | Status | Blocking | Rationale | Approval |
-| --- | --- | --- | --- | --- | --- |
-| `security-surface` | `security` | `addressed` | `true` | Trust boundaries, sensitive flows, and privilege assumptions are explicit. | `—` |
-| `error-handling-expectations` | `error-handling` | `addressed` | `true` | Error states, partial-failure behavior, and user-visible outcomes are defined. | `—` |
-| `retry-idempotency-requirements` | `retry-idempotency` | `not-applicable` | `true` | The operation is read-only, so retries cannot create duplicate writes. | `—` |
-| `test-integrity-targets` | `test-integrity` | `addressed` | `true` | Required negative-path tests and observability assertions are named up front. | `—` |
-| `operational-resilience-concerns` | `operational` | `addressed` | `true` | Runbook, observability, and rollback expectations are recorded before coding starts. | `—` |
+| Concern | Category | Status | Evidence Basis | Runtime Evidence Status | Expected Controls | Blocking | Rationale | Approval |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| `security-surface` | `security` | `addressed` | `planning-time-analysis` | `pending-post-implementation` | Record trust boundaries, sensitive flows, and the runtime verification required before closure. | `true` | Trust boundaries, sensitive flows, and privilege assumptions are explicit. | `—` |
+| `error-handling-expectations` | `error-handling` | `addressed` | `planning-time-analysis` | `pending-post-implementation` | Define fail-closed behavior, user-visible errors, and the regression evidence expected after implementation. | `true` | Error states, partial-failure behavior, and user-visible outcomes are defined. | `—` |
+| `retry-idempotency-requirements` | `retry-idempotency` | `not-applicable` | `not-applicable` | `not-needed` | `—` | `true` | The operation is read-only, so retries cannot create duplicate writes. | `—` |
+| `test-integrity-targets` | `test-integrity` | `addressed` | `planning-time-analysis` | `pending-post-implementation` | Name negative-path tests and observability assertions that must be recorded before closure. | `true` | Required negative-path tests and observability assertions are named up front. | `—` |
+| `operational-resilience-concerns` | `operational` | `addressed` | `planning-time-analysis` | `pending-post-implementation` | Keep runbook, observability, and rollback expectations visible until runtime proof is recorded. | `true` | Runbook, observability, and rollback expectations are recorded before coding starts. | `—` |

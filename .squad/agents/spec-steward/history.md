@@ -30,6 +30,32 @@ T007 closed a lifecycle gap in feature `005-stack-aware-quality-bar` by making t
 
 **Pattern discovered**: when a later-phase governance requirement becomes the current slice's entry gate, update every lifecycle checkpoint that can misstate readiness. Tightening only the implementation gate is insufficient if planning or coordinator guidance still lets the team narrate later-phase behavior as already active.
 
+### 2026-05-08: Feature 006 Requirement Repair for Checkpoint Sequencing and Success Metrics
+
+Repaired authoritative requirement surfaces for feature `006-human-architecture-checkpoint` to resolve four critical specification ambiguities:
+
+1. **Checkpoint sequencing made explicit**: Tightened the flow to resolve "before plan.md exists" vs "recorded in plan.md" paradox. The checkpoint now explicitly runs INSIDE `/speckit.plan`, after spec loading and before plan body generation, with the approved direction recorded IN the finalized plan.md's Architecture Intent Review section. This eliminates downstream confusion about whether the checkpoint happens before or after planning.
+
+2. **Alternatives made optional for routine features**: Repaired FR-001, FR-005, brief-schema.md, and validation rules to permit empty alternatives when no meaningful architectural choices exist. Routine convention-following features (small bug fixes, simple refactors) no longer require fabricated alternative analysis. Alternatives are required only "WHEN alternative approaches meaningfully differ in cost, risk, or reversibility."
+
+3. **SC-002 repaired to accept clean approvals**: Changed from "presence of at least one human constraint or decision override per feature" to "checkpoint completion with recorded approval (clean approval or approval-with-constraints both count as success)." Clean approvals where the human reviews and approves without changes are now explicitly valid successful outcomes, not failures requiring artificial activity.
+
+4. **Decision record validation aligned**: Updated data-model.md to explicitly bless clean approval (no constraints, no rejected alternatives, no overrides) as a valid and successful outcome. `rejected_alternatives` and `human_constraints` are now correctly marked as optional rather than required.
+
+**Pattern discovered**: When a governance checkpoint creates a "happens-before vs recorded-in" paradox, resolve by making the sequencing explicit: the checkpoint is a blocking pre-step INSIDE the command that generates the artifact, and the result is recorded IN the finalized artifact. This preserves both blocking behavior and traceability without requiring the artifact to exist before the checkpoint runs.
+
+**Pattern discovered**: When "minimal interruption" conflicts with "always require alternatives," the specification should permit stating routine nature without detailed alternative generation. Success metrics must not punish clean approvals by requiring artificial constraints or overrides. A good governance checkpoint surfaces decisions when they matter, not when they don't.
+
+### 2026-05-09: Feature 006 Metadata Cleanup—Branch and Date Alignment
+
+Performed narrow metadata-only cleanup on feature 006 to close two consistency issues discovered in spec-steward review:
+
+1. **Branch label alignment**: spec.md declared `006-human-architecture-checkpoint` as the feature branch while plan.md, research.md, and data-model.md correctly used `008-quality-profile-foundation`. Verified against git branch list that `008-quality-profile-foundation` is the current authoritative branch containing this work. Updated spec.md line 3 to match truth.
+
+2. **Stale date correction**: spec.md line 169 contained `Session 2025-01-09` (clearly a typo from 2025 vs 2026). Corrected to `2026-05-09` to match the `Created` date in spec.md metadata (line 4) and the date headers in plan.md, research.md, and data-model.md.
+
+**Pattern discovered**: When downstream documents (plan.md, research.md, data-model.md) already contain corrected metadata and the source spec is stale, prefer the truth of the downstream artifacts over cosmetic matching. Verify against authoritative sources (git branch state, session timestamps) before deciding which document to repair.
+
 ## Patterns
 
 <!-- Append entries below. Format: **Pattern:** description. **Context:** when it applies. -->

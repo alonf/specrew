@@ -14,6 +14,23 @@ function Write-Fail {
     Write-Host "FAIL: $Message" -ForegroundColor Red
 }
 
+function Assert-Condition {
+    param(
+        [Parameter(Mandatory = $true)]
+        [bool]$Condition,
+
+        [Parameter(Mandatory = $true)]
+        [string]$FailureMessage
+    )
+
+    if (-not $Condition) {
+        Write-Fail $FailureMessage
+        return $false
+    }
+
+    return $true
+}
+
 function Get-MarkdownSectionTable {
     param(
         [AllowEmptyString()]
@@ -225,15 +242,18 @@ function Invoke-Validator {
 
 $repoRoot = (Resolve-Path (Join-Path -Path $PSScriptRoot -ChildPath '..\..')).Path
 $validatorScriptPath = Join-Path $repoRoot 'extensions\specrew-speckit\scripts\validate-governance.ps1'
+$sharedGovernancePath = Join-Path $repoRoot 'extensions\specrew-speckit\scripts\shared-governance.ps1'
 $fixtureRoot = Join-Path $repoRoot 'tests\integration\fixtures\quality-evidence-governance'
 $scratchRoot = Join-Path $repoRoot '.scratch\quality-evidence-governance'
 
-foreach ($requiredPath in @($validatorScriptPath, $fixtureRoot)) {
+foreach ($requiredPath in @($validatorScriptPath, $sharedGovernancePath, $fixtureRoot)) {
     if (-not (Test-Path -LiteralPath $requiredPath)) {
         Write-Fail "Missing quality-evidence governance dependency: $requiredPath"
         exit 1
     }
 }
+
+. $sharedGovernancePath
 
 if (Test-Path -LiteralPath $scratchRoot) {
     Remove-Item -LiteralPath $scratchRoot -Recurse -Force
@@ -247,6 +267,7 @@ $completeWorkspace = New-TestWorkspace -ScratchRoot $scratchRoot -FixtureProject
 $missingWorkspace = New-TestWorkspace -ScratchRoot $scratchRoot -FixtureProjectPath $missingFixtureProject -WorkspaceName 'missing-evidence'
 $hardeningApprovedWorkspace = New-TestWorkspace -ScratchRoot $scratchRoot -FixtureProjectPath $hardeningApprovedFixtureProject -WorkspaceName 'hardening-gate-approved'
 $hardeningBlockedWorkspace = New-TestWorkspace -ScratchRoot $scratchRoot -FixtureProjectPath $hardeningBlockedFixtureProject -WorkspaceName 'hardening-gate-blocked'
+$implicitHardeningWorkspace = New-TestWorkspace -ScratchRoot $scratchRoot -FixtureProjectPath $hardeningApprovedFixtureProject -WorkspaceName 'hardening-gate-implicit'
 
 $completeIterationPath = Join-Path $completeWorkspace 'specs\005-quality-evidence\iterations\001'
 $missingIterationPath = Join-Path $missingWorkspace 'specs\005-quality-evidence\iterations\001'
@@ -256,6 +277,31 @@ $missingPlanPath = Join-Path $missingIterationPath 'plan.md'
 $missingEvidencePath = Join-Path $missingIterationPath 'quality\quality-evidence.md'
 $hardeningApprovedIterationPath = Join-Path $hardeningApprovedWorkspace 'specs\005-quality-evidence\iterations\001'
 $hardeningBlockedIterationPath = Join-Path $hardeningBlockedWorkspace 'specs\005-quality-evidence\iterations\001'
+$implicitHardeningIterationPath = Join-Path $implicitHardeningWorkspace 'specs\005-quality-evidence\iterations\001'
+$hardeningApprovedGatePath = Join-Path $hardeningApprovedIterationPath 'quality\hardening-gate.md'
+$hardeningBlockedGatePath = Join-Path $hardeningBlockedIterationPath 'quality\hardening-gate.md'
+$implicitHardeningPlanPath = Join-Path $implicitHardeningIterationPath 'plan.md'
+$implicitHardeningGatePath = Join-Path $implicitHardeningIterationPath 'quality\hardening-gate.md'
+
+$implicitPlanContent = Get-Content -LiteralPath $implicitHardeningPlanPath -Raw -Encoding UTF8
+$implicitPlanReplacement = @'
+## Iteration Acceptance Criteria
+
+1. The repair preserves one `hardening-gate.md` artifact across lifecycle phases.
+2. Pre-implementation readiness requires planning-time analysis, expected controls, rationale, and explicit non-applicable reasoning rather than runtime-only proof.
+3. Runtime-only concerns remain visibly open or pending until later runtime evidence is recorded before closure.
+
+## Notes
+
+- This iteration relies on `specs/005-quality-evidence/iterations/001/quality/hardening-gate.md` as the lifecycle-visible hardening artifact.
+- Runtime evidence remains pending post-implementation for applicable concerns.
+'@
+$implicitPlanContent = [regex]::Replace(
+    $implicitPlanContent,
+    '(?s)\r?\n## Phase 2 Hardening and Specialist Review Planning.*?(?=\r?\n## Tasks)',
+    "`r`n$implicitPlanReplacement`r`n"
+)
+[System.IO.File]::WriteAllText($implicitHardeningPlanPath, $implicitPlanContent, [System.Text.UTF8Encoding]::new($false))
 
 $allChecksPassed = $true
 
@@ -271,6 +317,32 @@ if (Assert-GateMissing -PlanPath $missingPlanPath -EvidencePath $missingEvidence
 }
 else {
     $allChecksPassed = $false
+}
+
+$approvedHardeningState = Get-HardeningGateState -Path $hardeningApprovedGatePath -ProjectRoot $hardeningApprovedWorkspace
+$approvedOperationalConcern = @($approvedHardeningState.ConcernRows | Where-Object { [string]$_.Concern -eq 'operational-resilience-concerns' })[0]
+if (-not (Assert-Condition -Condition (
+            [string]$approvedOperationalConcern.Status -eq 'deferred-with-approval' -and
+            [string]$approvedOperationalConcern.EvidenceBasis -eq 'planning-time-analysis' -and
+            [string]$approvedOperationalConcern.RuntimeEvidenceStatus -eq 'pending-post-implementation' -and
+            -not (Test-IsNullish ([string]$approvedOperationalConcern.ExpectedControls))
+        ) -FailureMessage 'Approved hardening fixture must keep planning-time analysis, expected controls, and pending runtime evidence visible for the deferred operational concern.')) {
+    $allChecksPassed = $false
+}
+else {
+    Write-Pass 'Approved hardening fixture keeps planning-time analysis and pending runtime evidence visible for the deferred operational concern.'
+}
+
+$blockedHardeningState = Get-HardeningGateState -Path $hardeningBlockedGatePath -ProjectRoot $hardeningBlockedWorkspace
+$blockedOperationalConcern = @($blockedHardeningState.ConcernRows | Where-Object { [string]$_.Concern -eq 'operational-resilience-concerns' })[0]
+if (-not (Assert-Condition -Condition (
+            [string]$blockedOperationalConcern.Status -eq 'tbd' -and
+            (Test-IsNullish ([string]$blockedOperationalConcern.EvidenceBasis))
+        ) -FailureMessage 'Blocked hardening fixture must leave the unresolved operational concern without planning-time analysis.')) {
+    $allChecksPassed = $false
+}
+else {
+    Write-Pass 'Blocked hardening fixture keeps the unresolved operational concern missing planning-time analysis.'
 }
 
 $completeValidation = Invoke-Validator -ValidatorScriptPath $validatorScriptPath -ProjectPath $completeWorkspace -IterationPath $completeIterationPath
@@ -325,8 +397,46 @@ elseif ($hardeningBlockedValidation.Text -notmatch 'hardening-gate|blocks implem
     }
     $allChecksPassed = $false
 }
+elseif ($hardeningBlockedValidation.Text -notmatch 'planning-time analysis|Expected Controls') {
+    Write-Fail 'validate-governance failed the blocked hardening fixture, but the failure did not mention the missing planning-time analysis boundary.'
+    foreach ($line in $hardeningBlockedValidation.Output) {
+        Write-Host $line
+    }
+    $allChecksPassed = $false
+}
 else {
     Write-Pass 'validate-governance rejects the blocked hardening fixture with a hardening-gate-specific failure.'
+}
+
+$implicitHardeningValidation = Invoke-Validator -ValidatorScriptPath $validatorScriptPath -ProjectPath $implicitHardeningWorkspace -IterationPath $implicitHardeningIterationPath
+if ($implicitHardeningValidation.ExitCode -ne 0) {
+    Write-Fail 'validate-governance should accept an iteration-local hardening gate even when the legacy Phase 2 metadata section is absent.'
+    foreach ($line in $implicitHardeningValidation.Output) {
+        Write-Host $line
+    }
+    $allChecksPassed = $false
+}
+else {
+    Write-Pass 'validate-governance accepts the implicit iteration-local hardening-gate plan shape.'
+}
+
+$implicitCorruptedGate = (Get-Content -LiteralPath $implicitHardeningGatePath -Raw -Encoding UTF8) -replace '\*\*Gate ID\*\*: `pre-implementation-hardening`', '**Gate ID**: `broken-hardening-gate`'
+[System.IO.File]::WriteAllText($implicitHardeningGatePath, $implicitCorruptedGate, [System.Text.UTF8Encoding]::new($false))
+
+$implicitCorruptedValidation = Invoke-Validator -ValidatorScriptPath $validatorScriptPath -ProjectPath $implicitHardeningWorkspace -IterationPath $implicitHardeningIterationPath
+if ($implicitCorruptedValidation.ExitCode -eq 0) {
+    Write-Fail 'validate-governance should fail when an implicit iteration-local hardening gate drifts out of contract.'
+    $allChecksPassed = $false
+}
+elseif ($implicitCorruptedValidation.Text -notmatch 'Gate ID|hardening-gate') {
+    Write-Fail 'validate-governance failed the implicit hardening-gate regression, but the failure did not mention the drifted hardening metadata.'
+    foreach ($line in $implicitCorruptedValidation.Output) {
+        Write-Host $line
+    }
+    $allChecksPassed = $false
+}
+else {
+    Write-Pass 'validate-governance rejects a drifted implicit iteration-local hardening gate.'
 }
 
 if (-not $allChecksPassed) {

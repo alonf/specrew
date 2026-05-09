@@ -102,7 +102,15 @@ function Assert-ConcernStatus {
         [Parameter(Mandatory = $true)]
         [string]$ExpectedStatus,
 
+        [Parameter(Mandatory = $true)]
+        [string]$ExpectedEvidenceBasis,
+
+        [Parameter(Mandatory = $true)]
+        [string]$ExpectedRuntimeEvidenceStatus,
+
         [string]$ExpectedApproval,
+
+        [bool]$RequireExpectedControls = $true,
 
         [Parameter(Mandatory = $true)]
         [string]$ScenarioName
@@ -120,7 +128,24 @@ function Assert-ConcernStatus {
         $allChecksPassed = $false
     }
 
+    if (-not (Assert-Equal -Actual ([string]$concern.EvidenceBasis) -Expected $ExpectedEvidenceBasis -FailureMessage ("{0} fixture recorded the wrong Evidence Basis for '{1}'." -f $ScenarioName, $ConcernId))) {
+        $allChecksPassed = $false
+    }
+
+    if (-not (Assert-Equal -Actual ([string]$concern.RuntimeEvidenceStatus) -Expected $ExpectedRuntimeEvidenceStatus -FailureMessage ("{0} fixture recorded the wrong Runtime Evidence Status for '{1}'." -f $ScenarioName, $ConcernId))) {
+        $allChecksPassed = $false
+    }
+
     if (-not (Assert-Equal -Actual ([string]$concern.Blocking) -Expected 'true' -FailureMessage ("{0} fixture should keep '{1}' marked blocking for explicit readiness evaluation." -f $ScenarioName, $ConcernId))) {
+        $allChecksPassed = $false
+    }
+
+    if ($RequireExpectedControls) {
+        if (-not (Assert-StringNotNullish -Value ([string]$concern.ExpectedControls) -FailureMessage ("{0} fixture should keep Expected Controls visible for '{1}'." -f $ScenarioName, $ConcernId))) {
+            $allChecksPassed = $false
+        }
+    }
+    elseif (-not (Assert-True -Condition (Test-IsNullish ([string]$concern.ExpectedControls)) -FailureMessage ("{0} fixture should keep Expected Controls empty for '{1}'." -f $ScenarioName, $ConcernId))) {
         $allChecksPassed = $false
     }
 
@@ -224,17 +249,20 @@ foreach ($scenario in $scenarios) {
     }
 
     foreach ($concernCheck in @(
-            @{ Concern = 'security-surface'; Status = 'addressed' },
-            @{ Concern = 'error-handling-expectations'; Status = 'addressed' },
-            @{ Concern = 'retry-idempotency-requirements'; Status = 'not-applicable' },
-            @{ Concern = 'test-integrity-targets'; Status = $(if ($scenario.Name -eq 'blocked') { 'tbd' } else { 'addressed' }) },
-            @{ Concern = 'operational-resilience-concerns'; Status = $(if ($scenario.Name -eq 'approved-deferral') { 'deferred-with-approval' } else { 'addressed' }); Approval = $(if ($scenario.Name -eq 'approved-deferral') { 'defer-hardening-operational-follow-up' } else { $null }) }
+            @{ Concern = 'security-surface'; Status = 'addressed'; EvidenceBasis = 'planning-time-analysis'; RuntimeEvidenceStatus = 'pending-post-implementation'; RequireExpectedControls = $true },
+            @{ Concern = 'error-handling-expectations'; Status = 'addressed'; EvidenceBasis = 'planning-time-analysis'; RuntimeEvidenceStatus = 'pending-post-implementation'; RequireExpectedControls = $true },
+            @{ Concern = 'retry-idempotency-requirements'; Status = 'not-applicable'; EvidenceBasis = 'not-applicable'; RuntimeEvidenceStatus = 'not-needed'; RequireExpectedControls = $false },
+            @{ Concern = 'test-integrity-targets'; Status = $(if ($scenario.Name -eq 'blocked') { 'tbd' } else { 'addressed' }); EvidenceBasis = $(if ($scenario.Name -eq 'blocked') { '—' } else { 'planning-time-analysis' }); RuntimeEvidenceStatus = $(if ($scenario.Name -eq 'blocked') { '—' } else { 'pending-post-implementation' }); RequireExpectedControls = $(if ($scenario.Name -eq 'blocked') { $false } else { $true }) },
+            @{ Concern = 'operational-resilience-concerns'; Status = $(if ($scenario.Name -eq 'approved-deferral') { 'deferred-with-approval' } else { 'addressed' }); EvidenceBasis = $(if ($scenario.Name -eq 'approved-deferral') { 'planning-time-analysis' } elseif ($scenario.Name -eq 'ready') { 'planning-time-analysis' } else { 'planning-time-analysis' }); RuntimeEvidenceStatus = 'pending-post-implementation'; RequireExpectedControls = $true; Approval = $(if ($scenario.Name -eq 'approved-deferral') { 'defer-hardening-operational-follow-up' } else { $null }) }
         )) {
         $assertParams = @{
-            Concerns      = $gateState.ConcernRows
-            ConcernId     = [string]$concernCheck.Concern
-            ExpectedStatus = [string]$concernCheck.Status
-            ScenarioName  = [string]$scenario.Name
+            Concerns                   = $gateState.ConcernRows
+            ConcernId                  = [string]$concernCheck.Concern
+            ExpectedStatus             = [string]$concernCheck.Status
+            ExpectedEvidenceBasis      = [string]$concernCheck.EvidenceBasis
+            ExpectedRuntimeEvidenceStatus = [string]$concernCheck.RuntimeEvidenceStatus
+            RequireExpectedControls    = [bool]$concernCheck.RequireExpectedControls
+            ScenarioName               = [string]$scenario.Name
         }
 
         if ($concernCheck.ContainsKey('Approval') -and $null -ne $concernCheck.Approval) {

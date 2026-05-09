@@ -15,13 +15,14 @@
 
 | Concern | Category | Status | Blocking | Rationale | Approval |
 | --- | --- | --- | --- | --- | --- |
-| `security-surface` | `security` | `not-applicable` | `true` | This slice only changes local governance scripts, fixtures, and review artifacts; it does not introduce new network ingress, auth boundaries, secret handling, or sensitive runtime mutation paths. | `—` |
-| `error-handling-expectations` | `error-handling` | `addressed` | `true` | run-hardening-gate.ps1` and `validate-governance.ps1` now fail closed with explicit blocked, ready, and approved-deferral semantics, and the integration coverage exercises those paths directly. | `—` |
+| `security-surface` | `security` | `not-applicable` | `true` | This specification bugfix only narrows the governance contract for when runtime evidence is required; before implementation it does not introduce new network ingress, auth boundaries, secret handling, or sensitive runtime mutation paths. | `—` |
+| `error-handling-expectations` | `error-handling` | `addressed` | `true` | Planning-time review now explicitly requires expected failure-handling controls and rationale before implementation, while preserving the later obligation to show implemented enforcement and review evidence before final closure. | `—` |
 | `retry-idempotency-requirements` | `retry-idempotency` | `not-applicable` | `true` | The delivered work is file-based governance orchestration rather than retried external mutation flows, so retry/idempotency side effects are not a material concern in this bounded slice. | `—` |
-| `test-integrity-targets` | `test-integrity` | `addressed` | `true` | The slice now carries deterministic hardening-gate, gap-governance, and quality-evidence coverage for blocked, approved-deferral, and ready paths instead of relying on smoke-only success. | `—` |
-| `operational-resilience-concerns` | `operational` | `not-applicable` | `true` | No long-lived service surface was introduced; operator-facing behavior stays limited to deterministic CLI validation output and scaffolded artifact state for this MVP governance slice. | `—` |
+| `test-integrity-targets` | `test-integrity` | `addressed` | `true` | The governing spec now distinguishes between planned test expectations needed before implementation and actual test evidence required later at post-implementation review, so the gate no longer overclaims readiness from planning artifacts alone. | `—` |
+| `operational-resilience-concerns` | `operational` | `not-applicable` | `true` | No long-lived service surface is added by this specification-only change; if a later implementation slice introduces runtime-bearing operational behavior, the same hardening artifact must carry that concern forward until runtime evidence exists. | `—` |
 
 ## Notes
 
 - This review intentionally dogfoods the Phase 2 hardening contract against the iteration that introduced it.
-- The slice is implementation-complete, but later lens execution, strongest-class routing evidence, and known-traps follow-through remain deferred to Iterations 004 and 005.
+- This artifact now represents **planning-readiness** evidence only: expected controls, rationale, non-applicable reasoning, and approved deferrals are sufficient before implementation begins, but they do not count as post-implementation closure evidence.
+- If a future implementation slice in this feature area depends on executable runtime behavior, actual code, enforcement behavior, telemetry, and test evidence must still be recorded before the affected hardening concerns can be marked fully closed.

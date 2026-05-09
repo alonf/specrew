@@ -511,6 +511,7 @@ function Get-Phase2HardeningPlanContext {
         HardeningGateArtifactRef   = $artifactRef
         HardeningGateArtifactPath  = Resolve-RepoMarkdownArtifactPath -ProjectRoot $ProjectRoot -ArtifactRef $artifactRef
         RequestedReviewClass       = $requestedReviewClass
+        IsImplicit                 = $false
     }
 }
 
@@ -556,26 +557,52 @@ function Test-Phase2HardeningGate {
         [System.Collections.Generic.List[string]]$Errors
     )
 
+    $requiresGateEnforcement = $IterationStatus -in @('executing', 'reviewing', 'retro', 'complete')
     $planContext = Get-Phase2HardeningPlanContext -PlanLines $PlanLines -ProjectRoot $ProjectRoot
     if ($null -eq $planContext) {
-        return
+        $implicitHardeningGatePath = Join-Path $IterationDirectory 'quality\hardening-gate.md'
+        $implicitHardeningGateRef = Convert-ToRepoMarkdownPath -ProjectRoot $ProjectRoot -TargetPath $implicitHardeningGatePath
+        $hasImplicitArtifact = Test-Path -LiteralPath $implicitHardeningGatePath -PathType Leaf
+        $hasImplicitPlanSignal = @(
+            $PlanLines |
+                Where-Object { $_ -match '(?i)hardening-gate\.md|hardening gate' } |
+                Select-Object -First 1
+        ).Count -gt 0
+
+        if (-not $hasImplicitArtifact -and -not $hasImplicitPlanSignal) {
+            return
+        }
+
+        if (-not $requiresGateEnforcement -and -not $hasImplicitArtifact) {
+            return
+        }
+
+        $planContext = [pscustomobject]@{
+            HasSection                = $false
+            SliceScope                = $null
+            HardeningGateArtifactRef  = $implicitHardeningGateRef
+            HardeningGateArtifactPath = $implicitHardeningGatePath
+            RequestedReviewClass      = $null
+            IsImplicit                = $true
+        }
     }
 
-    if (-not $planContext.HasSection) {
+    if (-not $planContext.IsImplicit -and -not $planContext.HasSection) {
         $Errors.Add('plan.md must keep the Phase 2 Hardening and Specialist Review Planning section when hardening-gate metadata is present')
         return
     }
 
-    foreach ($requiredField in @(
-            @{ Label = 'Phase 2 Slice Scope'; Value = $planContext.SliceScope },
-            @{ Label = 'Hardening Gate Artifact'; Value = $planContext.HardeningGateArtifactRef }
-        )) {
-        if (Test-IsNullish ([string]$requiredField.Value)) {
-            $Errors.Add(("plan.md is missing required Phase 2 hardening metadata: {0}" -f $requiredField.Label))
+    if (-not $planContext.IsImplicit) {
+        foreach ($requiredField in @(
+                @{ Label = 'Phase 2 Slice Scope'; Value = $planContext.SliceScope },
+                @{ Label = 'Hardening Gate Artifact'; Value = $planContext.HardeningGateArtifactRef }
+            )) {
+            if (Test-IsNullish ([string]$requiredField.Value)) {
+                $Errors.Add(("plan.md is missing required Phase 2 hardening metadata: {0}" -f $requiredField.Label))
+            }
         }
     }
 
-    $requiresGateEnforcement = $IterationStatus -in @('executing', 'reviewing', 'retro', 'complete')
     if (-not $requiresGateEnforcement -and [string]::IsNullOrWhiteSpace($planContext.HardeningGateArtifactPath)) {
         return
     }
@@ -638,6 +665,16 @@ function Test-Phase2HardeningGate {
         }
     }
 
+    $concernEvaluations = @()
+    foreach ($concern in @($hardeningState.ConcernRows)) {
+        $evaluation = Get-HardeningConcernEvaluation -Concern $concern -ProjectRoot $ProjectRoot
+        $concernEvaluations += $evaluation
+
+        foreach ($issue in @($evaluation.Issues)) {
+            $Errors.Add(("hardening-gate.md concern '{0}' {1}" -f $concern.Concern, $issue))
+        }
+    }
+
     $expectedVerdict = Get-HardeningExpectedVerdict -HardeningState $hardeningState
     $actualVerdict = (Normalize-MarkdownCell ([string]$hardeningState.Metadata.OverallVerdict)).ToLowerInvariant()
     if ($actualVerdict -ne $expectedVerdict) {
@@ -667,6 +704,22 @@ function Test-Phase2HardeningGate {
             if (-not (Test-IsNullish ([string]$hardeningState.Metadata.ApprovalRef))) {
                 $Errors.Add('hardening-gate.md must not retain a gate-level Approval Ref after all blocking concerns are fully ready')
             }
+        }
+    }
+
+    $explicitEvidenceRows = @(
+        $concernEvaluations |
+            Where-Object { $_.HasExplicitEvidenceFields }
+    )
+    if ($IterationStatus -eq 'complete' -and $explicitEvidenceRows.Count -gt 0) {
+        $closureBlockingConcernIds = @(
+            $hardeningState.ConcernRows |
+                Where-Object { Test-HardeningConcernBlocksClosure -Concern $_ -ProjectRoot $ProjectRoot } |
+                ForEach-Object { [string]$_.Concern }
+        )
+
+        if ($closureBlockingConcernIds.Count -gt 0) {
+            $Errors.Add(("hardening-gate.md still requires runtime evidence or explicit closure follow-through for concern(s): {0}" -f ($closureBlockingConcernIds -join ', ')))
         }
     }
 }

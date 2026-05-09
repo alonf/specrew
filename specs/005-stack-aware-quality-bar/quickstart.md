@@ -1,147 +1,88 @@
-# Quickstart: Stack-Aware Quality Bar (Phase 2 / Deferred Quality Gates)
+# Quickstart: Stack-Aware Quality Bar (Hardening Evidence Boundary Repair)
 
-This quickstart describes how the next deferred Phase 2 slice should be validated **after implementation lands**. It is a planning artifact only; it does not imply that any Phase 2 command or artifact already exists.
+This quickstart defines the validation path for the bounded hardening-gate evidence-boundary repair. It is a planning artifact only; it does **not** claim that the implementation already exists.
 
 ## Prerequisites
 
 - PowerShell 7+
 - Existing Specrew bootstrap in the target repo
-- Accepted Phase 1 quality baseline with deterministic findings/evidence already green
-- A feature spec with clarified Phase 2 scope
+- Accepted Phase 1 quality baseline
+- Approved `spec.md` clarifications from 2026-05-09
+- New repair iteration artifact at `specs/005-stack-aware-quality-bar/iterations/004/`
 
-## 1. Confirm the plan exposes the bounded Phase 2 scope
+## 1. Confirm the plan stays tightly bounded
 
-Run the normal planning flow and confirm `specs/005-stack-aware-quality-bar/plan.md` includes:
+Review `specs/005-stack-aware-quality-bar/plan.md` and confirm it:
 
-- an explicit Phase 2 scope marker
-- the inherited Phase 1 baseline and green-governance prerequisite
-- hardening-gate concern areas
-- the lens activation matrix (`required` / `optional` / `not-applicable`)
-- strongest-available routing policy
-- known-traps corpus location
-- explicit deferral of FR-041 through FR-046 and all other out-of-scope work
+- targets only the hardening-gate evidence-boundary repair
+- keeps one `hardening-gate.md` artifact across lifecycle phases
+- requires planning-time analysis before implementation begins
+- reserves runtime evidence for post-implementation review/closure
+- limits `deferred-with-approval` to runtime-only final proof
+- keeps bug-hunter, known-traps, routing expansion, drift, and reference-implementation work deferred
 
-## 2. Scaffold the Phase 2 quality artifacts
+## 2. Confirm the iteration repair artifact exists
 
-After implementation, a normal scaffold/reviewer flow should produce:
+Review `specs/005-stack-aware-quality-bar/iterations/004/plan.md` and `state.md` and confirm they:
 
-```text
-.specrew/
-└── quality/
-    └── known-traps.md
+- preserve completed Iteration `003`
+- name the affected governance/code/test surfaces
+- define the bounded repair slices
+- list the deterministic validation commands
 
-specs/<feature>/iterations/<NNN>/quality/
-├── hardening-gate.md
-├── quality-evidence.md
-├── mechanical-findings.json
-├── lenses/
-│   └── *.md
-└── trap-reapplication.md
-```
+## 3. Validate the repaired hardening-gate contract
 
-Review expectations:
+The future implementation must make `hardening-gate.md` support:
 
-- `known-traps.md` is seeded and versioned
-- `hardening-gate.md` contains explicit concern rows and blocking semantics
-- each required lens has a dedicated execution artifact
+- one lifecycle-visible artifact
+- planning-time analysis and expected controls before implementation
+- explicit `not-applicable` reasoning where valid
+- `deferred-with-approval` only after planning-time analysis already exists
+- runtime-evidence follow-through that remains open until later review records it
 
-## 3. Run deterministic mechanical checks first
-
-Phase 2 still depends on the accepted Phase 1 mechanical tier:
+The contract/regression lanes for this repair are:
 
 ```powershell
-pwsh -NoProfile -ExecutionPolicy Bypass -File .\extensions\specrew-speckit\scripts\run-mechanical-checks.ps1 -ProjectPath .
+pwsh -NoProfile -File .\tests\integration\quality-profile-foundation.ps1
+pwsh -NoProfile -File .\tests\integration\hardening-gate-contract.ps1
+pwsh -NoProfile -File .\tests\integration\quality-evidence-governance.ps1
 ```
 
-Confirm:
+## 4. Run the hardening gate against the repair iteration
 
-- `mechanical-findings.json` is produced or refreshed
-- required findings remain visible before any model-based lens review begins
-- the subsequent lens execution artifacts reference the mechanical findings payload
-
-## 4. Run the pre-implementation hardening gate
-
-After implementation, the expected hardening gate flow is:
+Once implementation exists, the repair must be provable with:
 
 ```powershell
-pwsh -NoProfile -ExecutionPolicy Bypass -File .\extensions\specrew-speckit\scripts\run-hardening-gate.ps1 -ProjectPath .
+pwsh -NoProfile -ExecutionPolicy Bypass -File .\extensions\specrew-speckit\scripts\run-hardening-gate.ps1 -ProjectPath . -IterationPath .\specs\005-stack-aware-quality-bar\iterations\004 -OutputFormat Json
 ```
 
-Validate `hardening-gate.md` for:
+Expected review behavior:
 
-- security surface analysis
-- error-handling expectations
-- retry/idempotency review, even when not applicable
-- test-integrity targets
-- operational/resilience concerns
-- explicit sign-off or human-approved deferral for any unresolved critical concern
+- blocking concerns with missing planning-time analysis stay blocked
+- runtime-only final proof may remain pending only with explicit approval and rationale
+- the artifact records whether the current basis is planning-time analysis or runtime evidence
+- no concern is marked fully closed before required runtime proof exists
 
-Implementation readiness should stay blocked when any critical row remains `TBD`.
+## 5. Enforce fail-closed governance
 
-## 5. Execute required bug-hunter lenses
-
-After the hardening gate and mechanical checks are satisfied, the expected lens flow is:
-
-```powershell
-pwsh -NoProfile -ExecutionPolicy Bypass -File .\extensions\specrew-speckit\scripts\run-bug-hunter-lenses.ps1 -ProjectPath .
-```
-
-For each required lens artifact under `quality/lenses/`, confirm:
-
-- the checklist version is recorded
-- execution is row-by-row, not generic prose
-- each row records `pass`, `fail`, `not-applicable`, or `advisory`
-- focused findings or approved exceptions remain visible
-- the requested and effective reasoning/review class are recorded
-- any lower-tier override includes justification and human approval
-
-## 6. Verify the known-traps workflow
-
-After implementation, confirm:
-
-- `.specrew/quality/known-traps.md` contains seeded project traps
-- newly confirmed review patterns can be added only through an explicit approved workflow
-- `trap-reapplication.md` records whether the scan was offered and what it found
-
-## 7. Enforce governance
-
-Run governance validation:
+Run:
 
 ```powershell
 pwsh -NoProfile -ExecutionPolicy Bypass -File .\extensions\specrew-speckit\scripts\validate-governance.ps1 -ProjectPath .
 ```
 
-Expected Phase 2 PASS conditions:
+Expected PASS conditions for this repair:
 
-- `hardening-gate.md` exists and has no unresolved blocking `TBD` concerns
-- every required lens has row-level evidence or an approved explicit exception
-- mechanical checks ran before required lens execution
-- requested/effective routing is recorded for each required lens
-- any lower-tier override has approval and justification
-- known-traps corpus and trap-reapplication artifacts satisfy the declared contract
-
-## 8. Run deterministic integration coverage
-
-The expanded regression lane should include the existing Phase 1 tests plus new Phase 2 suites, for example:
-
-```powershell
-pwsh -NoProfile -File .\tests\integration\quality-profile-foundation.ps1
-pwsh -NoProfile -File .\tests\integration\mechanical-findings-contract.ps1
-pwsh -NoProfile -File .\tests\integration\quality-evidence-governance.ps1
-pwsh -NoProfile -File .\tests\integration\hardening-gate-contract.ps1
-pwsh -NoProfile -File .\tests\integration\bug-hunter-lens-execution.ps1
-pwsh -NoProfile -File .\tests\integration\known-traps-corpus.ps1
-pwsh -NoProfile -File .\tests\integration\strongest-class-routing.ps1
-pwsh -NoProfile -File .\tests\integration\process-quality-scorer.ps1
-pwsh -NoProfile -File .\tests\integration\process-quality-report.ps1
-```
+- the repaired hardening-gate contract is present
+- missing planning-time analysis blocks implementation readiness
+- `deferred-with-approval` is rejected when used as a substitute for missing pre-implementation analysis
+- runtime-only concerns remain visibly open or deferred until later runtime evidence is recorded
 
 ## Validation Outcome
 
-The Phase 2 slice is ready for task generation and later execution when:
+The bugfix slice is ready for later implementation when:
 
-1. the plan stays bounded to the requested deferred FRs only
-2. hardening-gate expectations are explicit and blocking semantics are defined
-3. required bug-hunter lenses, routing policy, and row-level evidence surfaces are defined
-4. known-traps storage and trap-reapplication behavior are explicit
-5. governance and tests can fail closed without claiming Phase 3/4 capability
+1. the feature plan and Iteration `004` stay bounded to this repair only
+2. the hardening-gate contract explicitly distinguishes planning-time analysis from runtime evidence
+3. the approval boundary for `deferred-with-approval` is explicit and narrow
+4. the named regression lanes and governance commands are the required validation path

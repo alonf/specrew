@@ -305,6 +305,12 @@ else {
     if (-not (Assert-Condition -Condition ($phaseTwoProfile.markdown_summary -match '## Phase 2 Hardening and Specialist Review Planning') -FailureMessage 'Resolved quality profile markdown summary did not render the Phase 2 hardening planning section.')) {
         $allChecksPassed = $false
     }
+    if (-not (Assert-Condition -Condition ($phaseTwoProfile.phase2_slice_scope -match 'planning-time analysis' -and $phaseTwoProfile.phase2_slice_scope -match 'runtime-only final proof') -FailureMessage 'Resolved quality profile did not publish the repaired planning-time-versus-runtime evidence boundary in the Phase 2 slice scope.')) {
+        $allChecksPassed = $false
+    }
+    if (-not (Assert-Condition -Condition ($phaseTwoProfile.markdown_summary -match 'expected controls' -and $phaseTwoProfile.markdown_summary -match 'runtime proof can remain pending') -FailureMessage 'Resolved quality profile markdown summary did not keep expected controls and later runtime proof explicit.')) {
+        $allChecksPassed = $false
+    }
 }
 
 if (-not (Assert-PathExists -Path $planTemplatePath -FailureMessage 'Missing .specify\templates\plan-template.md for Phase 1 quality-planning contract validation.')) {
@@ -369,6 +375,14 @@ else {
         @{
             Pattern = 'slice scope, artifact refs, focus-area statuses, lens activation classifications, routing defaults, and explicit later deferrals'
             FailureMessage = 'Plan template does not tell planners to mirror the resolved Phase 2 hardening planning metadata.'
+        },
+        @{
+            Pattern = 'planning-time-vs-runtime evidence boundary'
+            FailureMessage = 'Plan template does not tell planners to keep the planning-time versus runtime evidence boundary explicit.'
+        },
+        @{
+            Pattern = 'record planning-time analysis, expected controls, rationale, explicit non-applicable reasoning, and any narrow runtime-only deferments'
+            FailureMessage = 'Plan template does not require planning-time analysis, expected controls, rationale, non-applicable reasoning, and narrow runtime-only deferments.'
         },
         @{
             Pattern = 'Known-Traps Corpus Location\*\*:\s*\[e\.g\., `\.specrew/quality/known-traps\.md`\]'

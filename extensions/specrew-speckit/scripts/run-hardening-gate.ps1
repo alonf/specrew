@@ -156,29 +156,34 @@ function Resolve-HardeningContext {
 function Get-HardeningConcernDefinitions {
     return @(
         [pscustomobject]@{
-            Concern   = 'security-surface'
-            Category  = 'security'
-            Rationale = 'Scaffolded placeholder. Review trust boundaries, privilege changes, and sensitive flows before implementation proceeds.'
+            Concern          = 'security-surface'
+            Category         = 'security'
+            Rationale        = 'Scaffolded placeholder. Review trust boundaries, privilege changes, and sensitive flows before implementation proceeds.'
+            ExpectedControls = 'Document trust boundaries, authorization expectations, and the runtime verification signals required before closure.'
         }
         [pscustomobject]@{
-            Concern   = 'error-handling-expectations'
-            Category  = 'error-handling'
-            Rationale = 'Scaffolded placeholder. Record expected failure semantics and incomplete-state handling before implementation proceeds.'
+            Concern          = 'error-handling-expectations'
+            Category         = 'error-handling'
+            Rationale        = 'Scaffolded placeholder. Record expected failure semantics and incomplete-state handling before implementation proceeds.'
+            ExpectedControls = 'Describe fail-closed behavior, surfaced errors, and the validation evidence that will confirm the failure contract once implementation exists.'
         }
         [pscustomobject]@{
-            Concern   = 'retry-idempotency-requirements'
-            Category  = 'retry-idempotency'
-            Rationale = 'Scaffolded placeholder. Confirm whether retries/idempotency are required or explicitly not applicable.'
+            Concern          = 'retry-idempotency-requirements'
+            Category         = 'retry-idempotency'
+            Rationale        = 'Scaffolded placeholder. Confirm whether retries/idempotency are required or explicitly not applicable.'
+            ExpectedControls = 'Record whether retries are forbidden, idempotent, or not applicable for this slice before implementation begins.'
         }
         [pscustomobject]@{
-            Concern   = 'test-integrity-targets'
-            Category  = 'test-integrity'
-            Rationale = 'Scaffolded placeholder. Tie negative-path expectations to observable test evidence before implementation proceeds.'
+            Concern          = 'test-integrity-targets'
+            Category         = 'test-integrity'
+            Rationale        = 'Scaffolded placeholder. Tie negative-path expectations to observable test evidence before implementation proceeds.'
+            ExpectedControls = 'Name the deterministic regression assertions and observable validation commands required before the slice can close.'
         }
         [pscustomobject]@{
-            Concern   = 'operational-resilience-concerns'
-            Category  = 'operational'
-            Rationale = 'Scaffolded placeholder. Review runtime resilience, fallback, and operator-facing failure signals before implementation proceeds.'
+            Concern          = 'operational-resilience-concerns'
+            Category         = 'operational'
+            Rationale        = 'Scaffolded placeholder. Review runtime resilience, fallback, and operator-facing failure signals before implementation proceeds.'
+            ExpectedControls = 'Record runtime resilience checks, rollback expectations, and the operational proof required before closure.'
         }
     )
 }
@@ -270,6 +275,42 @@ function Merge-HardeningConcernRows {
             $status = 'tbd'
         }
 
+        $existingEvidenceBasis = if ($null -ne $existingRow) { [string]$existingRow.EvidenceBasis } else { $null }
+        $evidenceBasis = Normalize-MarkdownCell $existingEvidenceBasis
+        if (Test-IsNullish $evidenceBasis) {
+            switch ($status) {
+                'addressed' { $evidenceBasis = 'planning-time-analysis' }
+                'deferred-with-approval' { $evidenceBasis = 'planning-time-analysis' }
+                'not-applicable' { $evidenceBasis = 'not-applicable' }
+                default { $evidenceBasis = '—' }
+            }
+        }
+
+        $existingRuntimeEvidenceStatus = if ($null -ne $existingRow) { [string]$existingRow.RuntimeEvidenceStatus } else { $null }
+        $runtimeEvidenceStatus = Normalize-MarkdownCell $existingRuntimeEvidenceStatus
+        if (Test-IsNullish $runtimeEvidenceStatus) {
+            switch ($status) {
+                'addressed' { $runtimeEvidenceStatus = 'pending-post-implementation' }
+                'deferred-with-approval' { $runtimeEvidenceStatus = 'pending-post-implementation' }
+                'not-applicable' { $runtimeEvidenceStatus = 'not-needed' }
+                default { $runtimeEvidenceStatus = '—' }
+            }
+        }
+
+        $existingExpectedControls = if ($null -ne $existingRow) { [string]$existingRow.ExpectedControls } else { $null }
+        $expectedControls = Normalize-MarkdownCell $existingExpectedControls
+        if (Test-IsNullish $expectedControls) {
+            if ($status -eq 'not-applicable') {
+                $expectedControls = '—'
+            }
+            elseif ($status -eq 'tbd') {
+                $expectedControls = '—'
+            }
+            else {
+                $expectedControls = $definition.ExpectedControls
+            }
+        }
+
         $existingRationale = if ($null -ne $existingRow) { [string]$existingRow.Rationale } else { $null }
         $rationale = Normalize-MarkdownCell $existingRationale
         if (Test-IsNullish $rationale) {
@@ -286,12 +327,15 @@ function Merge-HardeningConcernRows {
         }
 
         $rows.Add([pscustomobject]@{
-                Concern   = $definition.Concern
-                Category  = $definition.Category
-                Status    = $status
-                Blocking  = 'true'
-                Rationale = $rationale
-                Approval  = $approval
+                Concern               = $definition.Concern
+                Category              = $definition.Category
+                Status                = $status
+                EvidenceBasis         = $evidenceBasis
+                RuntimeEvidenceStatus = $runtimeEvidenceStatus
+                ExpectedControls      = $expectedControls
+                Blocking              = 'true'
+                Rationale             = $rationale
+                Approval              = $approval
             }) | Out-Null
     }
 
@@ -483,15 +527,18 @@ function Get-HardeningGateContent {
     $null = $lines.Add('')
     $null = $lines.Add('## Concern Review')
     $null = $lines.Add('')
-    $null = $lines.Add('| Concern | Category | Status | Blocking | Rationale | Approval |')
-    $null = $lines.Add('| --- | --- | --- | --- | --- | --- |')
+    $null = $lines.Add('| Concern | Category | Status | Evidence Basis | Runtime Evidence Status | Expected Controls | Blocking | Rationale | Approval |')
+    $null = $lines.Add('| --- | --- | --- | --- | --- | --- | --- | --- | --- |')
 
     foreach ($row in $ConcernRows) {
         $null = $lines.Add((
-                '| `{0}` | `{1}` | `{2}` | `{3}` | {4} | `{5}` |' -f
+                '| `{0}` | `{1}` | `{2}` | `{3}` | `{4}` | {5} | `{6}` | {7} | `{8}` |' -f
                 (Escape-MarkdownTableCell -Value ([string]$row.Concern)),
                 (Escape-MarkdownTableCell -Value ([string]$row.Category)),
                 (Escape-MarkdownTableCell -Value ([string]$row.Status)),
+                (Escape-MarkdownTableCell -Value ([string]$row.EvidenceBasis)),
+                (Escape-MarkdownTableCell -Value ([string]$row.RuntimeEvidenceStatus)),
+                (Escape-MarkdownTableCell -Value (Get-CanonicalMarkdownToken -Value ([string]$row.ExpectedControls))),
                 (Escape-MarkdownTableCell -Value ([string]$row.Blocking)),
                 (Escape-MarkdownTableCell -Value ([string]$row.Rationale)),
                 (Escape-MarkdownTableCell -Value (Get-CanonicalMarkdownToken -Value ([string]$row.Approval)))

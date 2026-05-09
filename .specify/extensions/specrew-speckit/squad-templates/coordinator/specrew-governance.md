@@ -68,7 +68,10 @@ These rules override generic Squad coordination whenever the repository is boots
 
 13. **Require explicit implementation approval**
    - Before `speckit.implement`, summarize readiness for the human developer: active feature, clarify outcome, quality focus, and final team composition.
+   - If the active slice includes Phase 2 hardening-gate scope, include the hardening-gate verdict and any human-approved deferral status in that readiness summary.
    - Ask the human developer to explicitly start implementation, and do not invoke `speckit.implement` until that approval is given.
+   - After `speckit.specrew-speckit.after-tasks` succeeds, treat `speckit.specrew-speckit.before-implement` as the next automatic lifecycle step once implementation approval is granted. Do not stop at the `after-tasks` boundary to ask the human to manually trigger hardening review, explain the blocker, or request a deferral decision that belongs to `before-implement`.
+   - If `speckit.specrew-speckit.before-implement` blocks, explain the concrete blocking artifact or verdict, why it blocks implementation, and the next valid human action before stopping.
 
 14. **Provide a review-ready implementation briefing**
    - At the end of implementation and review, provide a developer-facing briefing that summarizes what was built, how it maps to requirements, the main happy path and relevant alternative flows, dependency/package usage including newly introduced packages, the testing strategy, and an explicitly labeled estimate of coverage or confidence.

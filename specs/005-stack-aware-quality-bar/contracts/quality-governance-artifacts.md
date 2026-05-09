@@ -1,108 +1,57 @@
-# Contract: Phase 1-2 Quality Governance Artifacts
+# Contract: Hardening Evidence Boundary Repair Artifacts
 
-**Date**: 2026-05-08  
+**Date**: 2026-05-09
 **Spec**: [../spec.md](../spec.md)  
 **Plan**: [../plan.md](../plan.md)
 
 ## Purpose
 
-This contract defines the user-facing artifact surfaces for the accepted Phase 1 baseline and the planned Phase 2 deferred-quality-gates slice. It is normative for artifact shape and discoverability and intentionally excludes Phase 3/4 behavior.
+This contract defines the artifact surfaces for the bounded hardening-gate evidence-boundary repair. It is intentionally limited to the pre-implementation vs post-implementation evidence rules for one lifecycle-visible hardening artifact and the related repair iteration package.
 
-## Downstream Artifact Layout
+## Artifact Layout
 
 ```text
-.specrew/
-├── config.yml
-├── presets/
-│   └── *.md
-├── lenses/
-│   └── *.md
-└── quality/
-    └── known-traps.md                 # Phase 2
+specs/005-stack-aware-quality-bar/
+├── plan.md
+├── research.md
+├── data-model.md
+├── quickstart.md
+├── contracts/
+│   └── quality-governance-artifacts.md
+└── iterations/004/
+    ├── plan.md
+    └── state.md
 
 specs/<feature>/iterations/<NNN>/quality/
-├── hardening-gate.md                 # Phase 2
-├── quality-evidence.md               # Phase 1+
-├── mechanical-findings.json          # Phase 1+
-├── lenses/
-│   └── *.md                          # Phase 2
-└── trap-reapplication.md             # Phase 2
+└── hardening-gate.md
 ```
-
-## `.specrew/config.yml` additions
-
-The downstream config MUST expose a `quality` block:
-
-```yaml
-quality:
-  presets_path: ".specrew/presets"
-  lenses_path: ".specrew/lenses"
-  findings_schema_version: "v1"
-  evidence_directory_name: "quality"
-  known_traps_path: ".specrew/quality/known-traps.md"
-  routing:
-    default_policy: "strongest-available"
-    allow_lower_tier_override: true
-    approval_required: true
-```
-
-Rules:
-
-- Paths MUST be repo-relative.
-- `findings_schema_version` MUST match `mechanical-findings.schema.json`.
-- `known_traps_path` is required once Phase 2 is enabled.
-- Routing defaults MUST be explicit; hidden implicit model preference is invalid.
-
-## `.specrew/iteration-config.yml` additions
-
-Agent metadata remains the availability source and MUST be extended so routing can be resolved explicitly:
-
-```yaml
-agents:
-  <agent-id>:
-    enabled: true|false
-    access_path: "<path>"
-    availability: available|unavailable
-    strength_rank: <integer>
-```
-
-Rules:
-
-- `strength_rank` is required for any agent that may satisfy a required hardening or lens review.
-- Missing ranking means the agent cannot be selected by the `strongest-available` policy.
-
-## Lens Checklist Contract
-
-Each specialist lens Markdown artifact MUST contain:
-
-1. title with lens ID and semantic version
-2. purpose/scope
-3. defect class covered
-4. line-item table with acceptance criteria
-5. row-level status vocabulary
-6. upgrade guidance
-7. change log
-
-Phase 2 minimum supported families MUST cover:
-
-- idempotency/retry safety
-- concurrency/race-condition risk
-- error handling/failure semantics
-- security issues
-- dependency/package health
-- algorithmic complexity/performance-path traps
 
 ## Planning Artifact Contract
 
-The feature `plan.md` generated for an active Phase 2 feature MUST expose:
+The repaired feature `plan.md` MUST expose:
 
-- inherited Phase 1 baseline and green-governance prerequisite
-- explicit Phase 2 boundary and deferred out-of-scope families
-- hardening-gate concern areas
-- lens activation matrix (`required` / `optional` / `not-applicable`)
-- routing-policy baseline
-- known-traps corpus location
-- dependency-aware delivery slices
+- a bounded bugfix scope tied to FR-031 through FR-033a
+- one hardening-gate artifact path
+- planning-time evidence requirements before implementation
+- runtime-evidence follow-through requirements before closure
+- the narrow meaning of `deferred-with-approval`
+- explicit affected governance/code/test surfaces
+- explicit validation commands
+
+## Iteration Repair Contract
+
+`iterations/004/plan.md` MUST include:
+
+- the reason Iteration `003` stays untouched
+- bounded proposed implementation slices for the repair
+- affected governance surfaces, fixtures, and review artifacts
+- deterministic validation commands
+
+`iterations/004/state.md` MUST include:
+
+- status `planned`
+- no execution-in-progress claims
+- the baseline ref used for the repair plan
 
 ## Hardening Gate Contract
 
@@ -112,69 +61,39 @@ The feature `plan.md` generated for an active Phase 2 feature MUST expose:
 | --- | --- |
 | Concern | Reviewed hardening topic |
 | Status | `addressed`, `not-applicable`, `tbd`, or `deferred-with-approval` |
+| Evidence Basis | `planning-time-analysis`, `runtime-evidence`, or `not-applicable` |
+| Runtime Evidence Status | `not-needed`, `pending-post-implementation`, or `recorded` |
+| Expected Controls | Controls expected once implementation exists |
 | Blocking | Whether unresolved state blocks implementation |
 | Rationale | Why the conclusion is valid |
 | Approval | Human approval reference when required |
 
 Rules:
 
-- Any critical concern with `tbd` status blocks implementation.
-- Deferred critical concerns require human approval.
-- Requested and effective review class MUST be recorded.
+- Any blocking concern with missing planning-time analysis remains blocking.
+- `deferred-with-approval` is valid only when the row already records planning-time analysis, expected controls, and rationale, but final runtime proof cannot exist yet.
+- `deferred-with-approval` MUST NOT be used to bypass missing pre-implementation analysis.
+- Runtime-only concerns carried forward from the pre-implementation gate MUST remain visibly open or deferred until later review records the actual runtime evidence needed for closure.
+- Requested and effective review class MUST be recorded at the artifact level.
 
-## Lens Execution Contract
+## Validation Lane Contract
 
-Each file under `quality/lenses/*.md` MUST include:
+The required validation path for this repair is:
 
-| Column / Field | Meaning |
-| --- | --- |
-| Lens Ref | Lens ID + version |
-| Requested Class | Requested review/reasoning class |
-| Effective Class | Effective class used |
-| Override Ref | Lower-tier override evidence when applicable |
-| Mechanical Prereq Ref | Required `mechanical-findings.json` reference |
-| Checklist Rows | Row-level execution results |
-| Overall Verdict | `passed`, `failed`, or `excepted` |
-
-Rules:
-
-- Required lens execution MUST walk the checklist row-by-row.
-- Generic unstructured review is invalid.
-- A lower-tier effective class requires explicit approval and justification.
-
-## Known-Traps Contract
-
-`.specrew/quality/known-traps.md` MUST include, per trap:
-
-1. defect category
-2. concrete example or snippet
-3. detection method
-4. remediation guidance
-5. discovery date
-6. source reference
-
-Rules:
-
-- The initial corpus MUST be seeded from existing Specrew findings rather than starting empty.
-- New confirmed traps require explicit approved addition.
-
-## Trap Reapplication Contract
-
-`trap-reapplication.md` MUST record:
-
-| Column | Meaning |
-| --- | --- |
-| Trap Ref | Trap(s) scanned for |
-| Scan Scope | Files/surfaces checked |
-| Result | `matches-found`, `none-found`, or `skipped-with-rationale` |
-| Matches | Optional discovered locations |
+```powershell
+pwsh -NoProfile -File .\tests\integration\quality-profile-foundation.ps1
+pwsh -NoProfile -File .\tests\integration\hardening-gate-contract.ps1
+pwsh -NoProfile -File .\tests\integration\quality-evidence-governance.ps1
+pwsh -NoProfile -ExecutionPolicy Bypass -File .\extensions\specrew-speckit\scripts\run-hardening-gate.ps1 -ProjectPath . -IterationPath .\specs\005-stack-aware-quality-bar\iterations\004 -OutputFormat Json
+pwsh -NoProfile -ExecutionPolicy Bypass -File .\extensions\specrew-speckit\scripts\validate-governance.ps1 -ProjectPath .
+```
 
 ## Non-Goals for This Contract
 
-This contract does **not** define:
+This contract does **not** reopen:
 
-- Phase 3 quality-drift ledgers or baseline-diff workflows
-- general gate/tool override workflows outside routing overrides
-- Phase 4 reference-implementation companion storage or comparison surfaces
-
-Those remain explicitly deferred.
+- specialist bug-hunter lens execution
+- known-traps corpus seeding or trap reapplication
+- routing expansion beyond the existing hardening-gate default
+- quality-drift ledgers
+- reference-implementation comparison

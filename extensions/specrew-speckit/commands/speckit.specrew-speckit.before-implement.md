@@ -24,4 +24,4 @@ Before implementation starts, confirm the active iteration artifacts are approve
 
 ## Failure behavior
 
-If governance validation fails, approvals are incomplete, or the Phase 2 hardening gate is missing sign-off / human-approved deferral coverage, stop implementation and report the blocking artifact or verdict.
+If governance validation fails, approvals are incomplete, or the Phase 2 hardening gate is missing sign-off / human-approved deferral coverage, stop implementation, report the concrete blocking artifact or verdict, explain why it blocks implementation, and state the next valid human action.

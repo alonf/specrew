@@ -340,10 +340,10 @@ function Get-PhaseTwoHardeningFocusAreas {
     $qualityEvidencePath = '{0}/quality-evidence.md' -f (($ArtifactRefs.hardening_gate_artifact -replace '/hardening-gate\.md$', ''))
 
     return @(
-        (New-HardeningFocusArea -FocusArea 'Security surface analysis' -WhyItMatters 'The hardening gate must capture trust boundaries, auth assumptions, secret handling, and sensitive mutation paths before coding begins.' -PlannedArtifactOrEvidence $ArtifactRefs.hardening_gate_artifact -Status 'required'),
-        (New-HardeningFocusArea -FocusArea 'Error handling and failure semantics' -WhyItMatters 'Silent failure paths and fallback expectations must be made explicit in the hardening gate so implementation does not invent them later.' -PlannedArtifactOrEvidence $ArtifactRefs.hardening_gate_artifact -Status 'required'),
+        (New-HardeningFocusArea -FocusArea 'Security surface analysis' -WhyItMatters 'The hardening gate must capture planning-time security analysis, expected controls, and any explicit non-applicable reasoning before coding begins; runtime proof can remain pending only until later closure.' -PlannedArtifactOrEvidence $ArtifactRefs.hardening_gate_artifact -Status 'required'),
+        (New-HardeningFocusArea -FocusArea 'Error handling and failure semantics' -WhyItMatters 'Silent failure paths, expected controls, and fallback expectations must be made explicit in the hardening gate so implementation does not invent them later or bypass runtime follow-through.' -PlannedArtifactOrEvidence $ArtifactRefs.hardening_gate_artifact -Status 'required'),
         (New-HardeningFocusArea -FocusArea 'Retry and idempotency expectations' -WhyItMatters $retryRationale -PlannedArtifactOrEvidence $ArtifactRefs.hardening_gate_artifact -Status $retryStatus),
-        (New-HardeningFocusArea -FocusArea 'Test-integrity targets' -WhyItMatters 'The hardening gate must name the test evidence expected for this slice so implementation readiness does not rely on smoke-only success.' -PlannedArtifactOrEvidence ('feature plan Phase 2 quality planning section plus {0}' -f $qualityEvidencePath) -Status 'required')
+        (New-HardeningFocusArea -FocusArea 'Test-integrity targets' -WhyItMatters 'The hardening gate must name the planned validation evidence and expected controls for this slice so implementation readiness does not rely on smoke-only success while runtime/test proof remains visibly pending until later closure.' -PlannedArtifactOrEvidence ('feature plan Phase 2 quality planning section plus {0}' -f $qualityEvidencePath) -Status 'required')
     )
 }
 
@@ -1083,7 +1083,7 @@ $resolution = [pscustomobject]@{
         manual_evidence   = $manualEvidence.ToArray()
     }
     required_quality_gates    = @($requiredQualityGates)
-    phase2_slice_scope        = 'US-2 hardening-gate planning only; specialist lens execution, routing enforcement, and known-traps follow-through stay explicitly deferred.'
+    phase2_slice_scope        = 'US-2 hardening-gate planning only; pre-implementation readiness must accept planning-time analysis, expected controls, rationale, and explicit non-applicable reasoning, while runtime-only final proof stays pending until later closure or approved runtime-only deferment.'
     phase2_hardening_gate_artifact = $phaseTwoArtifactRefs.hardening_gate_artifact
     phase2_known_traps_corpus_location = $phaseTwoArtifactRefs.known_traps_corpus_location
     phase2_trap_reapplication_artifact = $phaseTwoArtifactRefs.trap_reapplication_artifact

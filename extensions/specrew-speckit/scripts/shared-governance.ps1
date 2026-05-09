@@ -399,6 +399,25 @@ function Normalize-MarkdownCell {
     return $Value.Trim().Trim('`')
 }
 
+function Get-ObjectPropertyString {
+    param(
+        [Parameter(Mandatory = $true)]
+        [object]$InputObject,
+
+        [Parameter(Mandatory = $true)]
+        [string[]]$PropertyNames
+    )
+
+    foreach ($propertyName in $PropertyNames) {
+        $property = $InputObject.PSObject.Properties[$propertyName]
+        if ($null -ne $property) {
+            return [string]$property.Value
+        }
+    }
+
+    return $null
+}
+
 function Test-IsNullish {
     param([AllowNull()][string]$Value)
 
@@ -504,6 +523,185 @@ function ConvertTo-BooleanMarkdownValue {
     return $normalized.ToLowerInvariant() -in @('true', 'yes', '1')
 }
 
+function Get-HardeningConcernEvidenceProjection {
+    param(
+        [Parameter(Mandatory = $true)]
+        [object]$Concern
+    )
+
+    $status = (Normalize-MarkdownCell ([string]$Concern.Status)).ToLowerInvariant()
+    $explicitEvidenceBasis = Normalize-MarkdownCell ([string]$Concern.EvidenceBasis)
+    $explicitRuntimeEvidenceStatus = Normalize-MarkdownCell ([string]$Concern.RuntimeEvidenceStatus)
+    $explicitExpectedControls = Normalize-MarkdownCell ([string]$Concern.ExpectedControls)
+    $hasExplicitEvidenceFields = -not (
+        (Test-IsNullish $explicitEvidenceBasis) -and
+        (Test-IsNullish $explicitRuntimeEvidenceStatus) -and
+        (Test-IsNullish $explicitExpectedControls)
+    )
+
+    $evidenceBasis = $explicitEvidenceBasis
+    $runtimeEvidenceStatus = $explicitRuntimeEvidenceStatus
+    $expectedControls = $explicitExpectedControls
+
+    if (-not $hasExplicitEvidenceFields) {
+        switch ($status) {
+            'addressed' {
+                $evidenceBasis = 'planning-time-analysis'
+                $runtimeEvidenceStatus = 'pending-post-implementation'
+                $expectedControls = Normalize-MarkdownCell ([string]$Concern.Rationale)
+            }
+            'deferred-with-approval' {
+                $evidenceBasis = 'planning-time-analysis'
+                $runtimeEvidenceStatus = 'pending-post-implementation'
+                $expectedControls = Normalize-MarkdownCell ([string]$Concern.Rationale)
+            }
+            'not-applicable' {
+                $evidenceBasis = 'not-applicable'
+                $runtimeEvidenceStatus = 'not-needed'
+                $expectedControls = '—'
+            }
+            default {
+                $evidenceBasis = '—'
+                $runtimeEvidenceStatus = '—'
+                $expectedControls = '—'
+            }
+        }
+    }
+
+    return [pscustomobject]@{
+        Status                     = $status
+        EvidenceBasis              = $evidenceBasis
+        RuntimeEvidenceStatus      = $runtimeEvidenceStatus
+        ExpectedControls           = $expectedControls
+        HasExplicitEvidenceFields  = $hasExplicitEvidenceFields
+    }
+}
+
+function Get-HardeningConcernEvaluation {
+    param(
+        [Parameter(Mandatory = $true)]
+        [object]$Concern,
+
+        [string]$ProjectRoot
+    )
+
+    $issues = New-Object System.Collections.Generic.List[string]
+    $status = (Normalize-MarkdownCell ([string]$Concern.Status)).ToLowerInvariant()
+    $rationale = Normalize-MarkdownCell ([string]$Concern.Rationale)
+    $approvalRef = Normalize-MarkdownCell ([string]$Concern.Approval)
+    $evidence = Get-HardeningConcernEvidenceProjection -Concern $Concern
+    $evidenceBasis = (Normalize-MarkdownCell ([string]$evidence.EvidenceBasis)).ToLowerInvariant()
+    $runtimeEvidenceStatus = (Normalize-MarkdownCell ([string]$evidence.RuntimeEvidenceStatus)).ToLowerInvariant()
+    $expectedControls = Normalize-MarkdownCell ([string]$evidence.ExpectedControls)
+    $approvalRecord = if ([string]::IsNullOrWhiteSpace($ProjectRoot)) {
+        $null
+    }
+    else {
+        Get-ApprovalReferenceRecord -ProjectRoot $ProjectRoot -ApprovalRef $approvalRef -AllowedTypes @('decision', 'defer')
+    }
+
+    if (Test-IsNullish $rationale) {
+        $issues.Add('must record rationale for the current hardening disposition') | Out-Null
+    }
+
+    switch ($status) {
+        'addressed' {
+            if ($evidence.HasExplicitEvidenceFields) {
+                if ($evidenceBasis -notin @('planning-time-analysis', 'runtime-evidence')) {
+                    $issues.Add("must use Evidence Basis 'planning-time-analysis' before closure or 'runtime-evidence' once runtime proof is recorded") | Out-Null
+                }
+
+                if (Test-IsNullish $expectedControls) {
+                    $issues.Add('must record Expected Controls before implementation can proceed') | Out-Null
+                }
+
+                switch ($evidenceBasis) {
+                    'planning-time-analysis' {
+                        if ($runtimeEvidenceStatus -notin @('pending-post-implementation', 'not-needed')) {
+                            $issues.Add("must keep Runtime Evidence Status 'pending-post-implementation' or 'not-needed' when Evidence Basis is planning-time-analysis") | Out-Null
+                        }
+                    }
+                    'runtime-evidence' {
+                        if ($runtimeEvidenceStatus -ne 'recorded') {
+                            $issues.Add("must keep Runtime Evidence Status 'recorded' when Evidence Basis is runtime-evidence") | Out-Null
+                        }
+                    }
+                }
+            }
+        }
+        'not-applicable' {
+            if ($evidence.HasExplicitEvidenceFields) {
+                if ($evidenceBasis -ne 'not-applicable') {
+                    $issues.Add("must use Evidence Basis 'not-applicable' when Status is not-applicable") | Out-Null
+                }
+
+                if ($runtimeEvidenceStatus -ne 'not-needed') {
+                    $issues.Add("must use Runtime Evidence Status 'not-needed' when Status is not-applicable") | Out-Null
+                }
+            }
+        }
+        'deferred-with-approval' {
+            if ($evidence.HasExplicitEvidenceFields) {
+                if ($evidenceBasis -ne 'planning-time-analysis') {
+                    $issues.Add("must keep Evidence Basis 'planning-time-analysis' when Status is deferred-with-approval") | Out-Null
+                }
+
+                if ($runtimeEvidenceStatus -ne 'pending-post-implementation') {
+                    $issues.Add("must keep Runtime Evidence Status 'pending-post-implementation' when Status is deferred-with-approval") | Out-Null
+                }
+
+                if (Test-IsNullish $expectedControls) {
+                    $issues.Add('must keep Expected Controls visible when Status is deferred-with-approval') | Out-Null
+                }
+            }
+
+            if (Test-IsNullish $approvalRef) {
+                $issues.Add('must record a human-approved Approval reference when Status is deferred-with-approval') | Out-Null
+            }
+            elseif (-not [string]::IsNullOrWhiteSpace($ProjectRoot) -and ($null -eq $approvalRecord -or -not $approvalRecord.HasHumanApproval)) {
+                $issues.Add(("approval reference '{0}' is missing explicit human approval evidence" -f $approvalRef)) | Out-Null
+            }
+        }
+        default {
+            $issues.Add('must resolve the concern before implementation can proceed') | Out-Null
+            if ($evidenceBasis -ne 'planning-time-analysis') {
+                $issues.Add("must record planning-time analysis before implementation can proceed") | Out-Null
+            }
+            if (Test-IsNullish $expectedControls) {
+                $issues.Add('must record Expected Controls before implementation can proceed') | Out-Null
+            }
+        }
+    }
+
+    $blocksClosure = $false
+    switch ($status) {
+        'addressed' {
+            $blocksClosure = $runtimeEvidenceStatus -eq 'pending-post-implementation'
+        }
+        'deferred-with-approval' {
+            $blocksClosure = $true
+        }
+        'not-applicable' {
+            $blocksClosure = $false
+        }
+        default {
+            $blocksClosure = $true
+        }
+    }
+
+    return [pscustomobject]@{
+        Status                    = $status
+        EvidenceBasis             = $evidence.EvidenceBasis
+        RuntimeEvidenceStatus     = $evidence.RuntimeEvidenceStatus
+        ExpectedControls          = $evidence.ExpectedControls
+        HasExplicitEvidenceFields = $evidence.HasExplicitEvidenceFields
+        ApprovalRecord            = $approvalRecord
+        Issues                    = $issues.ToArray()
+        BlocksImplementation      = $issues.Count -gt 0
+        BlocksClosure             = $blocksClosure
+    }
+}
+
 function Test-HardeningConcernBlocksImplementation {
     param(
         [Parameter(Mandatory = $true)]
@@ -516,24 +714,24 @@ function Test-HardeningConcernBlocksImplementation {
         return $false
     }
 
-    $status = (Normalize-MarkdownCell ([string]$Concern.Status)).ToLowerInvariant()
-    switch ($status) {
-        'addressed' { return $false }
-        'not-applicable' { return $false }
-        'deferred-with-approval' {
-            $approvalRef = Normalize-MarkdownCell ([string]$Concern.Approval)
-            if (Test-IsNullish $approvalRef) {
-                return $true
-            }
+    $evaluation = Get-HardeningConcernEvaluation -Concern $Concern -ProjectRoot $ProjectRoot
+    return [bool]$evaluation.BlocksImplementation
+}
 
-            if ([string]::IsNullOrWhiteSpace($ProjectRoot)) {
-                return $false
-            }
+function Test-HardeningConcernBlocksClosure {
+    param(
+        [Parameter(Mandatory = $true)]
+        [object]$Concern,
 
-            return -not (Test-ApprovalReferenceHasHumanApproval -ProjectRoot $ProjectRoot -ApprovalRef $approvalRef -AllowedTypes @('decision', 'defer'))
-        }
-        default { return $true }
+        [string]$ProjectRoot
+    )
+
+    if (-not (ConvertTo-BooleanMarkdownValue -Value ([string]$Concern.Blocking))) {
+        return $false
     }
+
+    $evaluation = Get-HardeningConcernEvaluation -Concern $Concern -ProjectRoot $ProjectRoot
+    return [bool]$evaluation.BlocksClosure
 }
 
 function Get-HardeningGateState {
@@ -562,12 +760,15 @@ function Get-HardeningGateState {
         Get-MarkdownSectionTable -Lines $lines -Heading 'Concern Review' |
             ForEach-Object {
                 [pscustomobject]@{
-                    Concern   = Normalize-MarkdownCell ([string]$_.Concern)
-                    Category  = Normalize-MarkdownCell ([string]$_.Category)
-                    Status    = Normalize-MarkdownCell ([string]$_.Status)
-                    Blocking  = Normalize-MarkdownCell ([string]$_.Blocking)
-                    Rationale = Normalize-MarkdownCell ([string]$_.Rationale)
-                    Approval  = Normalize-MarkdownCell ([string]$_.Approval)
+                    Concern               = Normalize-MarkdownCell (Get-ObjectPropertyString -InputObject $_ -PropertyNames @('Concern'))
+                    Category              = Normalize-MarkdownCell (Get-ObjectPropertyString -InputObject $_ -PropertyNames @('Category'))
+                    Status                = Normalize-MarkdownCell (Get-ObjectPropertyString -InputObject $_ -PropertyNames @('Status'))
+                    EvidenceBasis         = Normalize-MarkdownCell (Get-ObjectPropertyString -InputObject $_ -PropertyNames @('Evidence Basis'))
+                    RuntimeEvidenceStatus = Normalize-MarkdownCell (Get-ObjectPropertyString -InputObject $_ -PropertyNames @('Runtime Evidence Status'))
+                    ExpectedControls      = Normalize-MarkdownCell (Get-ObjectPropertyString -InputObject $_ -PropertyNames @('Expected Controls'))
+                    Blocking              = Normalize-MarkdownCell (Get-ObjectPropertyString -InputObject $_ -PropertyNames @('Blocking'))
+                    Rationale             = Normalize-MarkdownCell (Get-ObjectPropertyString -InputObject $_ -PropertyNames @('Rationale'))
+                    Approval              = Normalize-MarkdownCell (Get-ObjectPropertyString -InputObject $_ -PropertyNames @('Approval'))
                 }
             }
     )
