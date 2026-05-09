@@ -237,7 +237,7 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File .\extensions\specrew-speckit\scrip
 
 **Before-plan hook**: `speckit.specrew-speckit.before-plan` — PASS (executed; spec approved; requirements actionable; governance check passed)
 
-**Before-implement readiness**: PASS — explicit human approval is recorded above; the six-command baseline validation lane was already verified green before edits; Phase 2 hardening-gate requirements do not apply to this documentation-only feature.
+**Before-implement readiness**: PASS — explicit human approval is recorded above; the six-command baseline validation lane was rerun on the repaired planning commit and remained green before implementation; Phase 2 hardening-gate requirements do not apply to this documentation-only feature.
 
 **Phase 0 Research**: Complete — research.md created. All three NEEDS CLARIFICATION items resolved:
 1. Docs-only boundary confirmed (Markdown + pure-display function; no runtime impact possible)
@@ -254,5 +254,5 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File .\extensions\specrew-speckit\scrip
 - Finding placeholder: _[Record here during implementation: "no contradictory language found / edit applied: …"]_
 
 **SC-006 lane results**: Pending implementation — record baseline and post-edit lane results here.
-- Baseline (pre-edit): PASS — verified gate context confirms the six-command validation lane was already green before any edits to this feature artifact.
+- Baseline (pre-edit): PASS — the six-command validation lane remained green when rerun during the final before-implement review on the repaired planning commit, confirming the implementation baseline before any feature-010 content edits.
 - Post-implementation: _[Record here]_
