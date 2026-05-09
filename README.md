@@ -15,6 +15,9 @@ Specrew bootstraps and runs a **Squad + Spec Kit** delivery flow with stronger l
 
 1. Bootstrap a repository with `scripts\specrew-init.ps1`.
 2. Start feature work with `scripts\specrew.ps1 start`.
+   - Every later session also begins with `specrew start`.
+   - `specrew start` regenerates `.specrew/last-start-prompt.md`, `.specrew/start-context.json`, and `.specrew/start-summary.md` before launch.
+   - Do not run `copilot` directly: it bypasses the runtime handoff refresh, so the launch contract is not regenerated for the new session.
 3. Let Squad gather missing information, run the Spec Kit lifecycle, and implement from the generated artifacts.
 4. Keep iteration artifacts current under `specs\<feature>\iterations\<NNN>\`.
 

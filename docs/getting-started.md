@@ -190,6 +190,22 @@ To reduce Copilot CLI blocking on tool prompts, Specrew launches Copilot from th
 pwsh -File C:\Dev\Specrew\scripts\specrew.ps1 start --prompt-approvals
 ```
 
+### Resuming work later
+
+Every later session also begins with `specrew start` — on the same machine or on a different one.
+
+`specrew start` regenerates these transient runtime handoff files before launch:
+
+- `.specrew/last-start-prompt.md`
+- `.specrew/start-context.json`
+- `.specrew/start-summary.md`
+
+Those files do not travel with git. After you pull the tracked project state onto another machine, run `specrew start` there and Specrew will rebuild the local handoff files from the repository's tracked iteration state before launch.
+
+Do not run `copilot` directly: it skips the runtime handoff refresh, so the launch contract is not regenerated for the new session.
+
+If you are already inside a live session that was launched by `specrew start`, do not run it again in that same conversation. "Resuming" means starting a later session in a new terminal.
+
 Iteration artifact helpers still exist for direct/manual use:
 
 ```powershell

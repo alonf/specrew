@@ -115,12 +115,17 @@ function Write-PostBootstrapGuidance {
     Write-Host '   - Specrew will launch or hand off to the Squad agent with lifecycle context' -ForegroundColor White
     Write-Host '   - Squad should drive specify -> clarify -> plan -> tasks -> implement (skip clarify only for resumed clarified work with a recorded rationale)' -ForegroundColor White
     Write-Host ''
-    Write-Host '2. Run the iteration lifecycle:' -ForegroundColor Yellow
+    Write-Host '2. Resuming work later:' -ForegroundColor Yellow
+    Write-Host '   - Every later session also starts with specrew start from the project root' -ForegroundColor White
+    Write-Host '   - specrew start regenerates the runtime handoff before launch' -ForegroundColor White
+    Write-Host '   - Do not run copilot directly; it skips that refresh and leaves the launch contract stale' -ForegroundColor White
+    Write-Host ''
+    Write-Host '3. Run the iteration lifecycle:' -ForegroundColor Yellow
     Write-Host '   - Materialize iteration artifacts under specs/<feature>/iterations/<NNN>/' -ForegroundColor White
     Write-Host '   - Keep plan.md, state.md, drift-log.md, review.md, and retro.md current by phase' -ForegroundColor White
     Write-Host '   - Run validate-governance.ps1 before phase transitions' -ForegroundColor White
     Write-Host ''
-    Write-Host '3. (Optional) Add domain-specific team members:' -ForegroundColor Yellow
+    Write-Host '4. (Optional) Add domain-specific team members:' -ForegroundColor Yellow
     Write-Host '   Add extra Squad members after bootstrap with Security Analyst, UX Designer,' -ForegroundColor White
     Write-Host '   DBA, or other specialists using Specrew team management commands:' -ForegroundColor White
     Write-Host ''
