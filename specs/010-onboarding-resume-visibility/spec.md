@@ -2,7 +2,8 @@
 
 **Feature Branch**: `[010-onboarding-resume-visibility]`  
 **Created**: 2026-05-10  
-**Status**: Draft  
+**Status**: Approved  
+**Approved By**: Alon Fliess (human developer) on 2026-05-09 to authorize before-plan readiness.  
 **Input**: User description: "Make resume-mode visible in Specrew onboarding so new users understand that every session, including resumes, must start with `specrew start`, and that running `copilot` directly breaks the supported handoff contract."
 
 ## Problem Statement
