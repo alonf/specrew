@@ -29,7 +29,13 @@
       "Bash(git -C c:/Dev/Specrew log --oneline c87f204..HEAD)",
       "Bash(pwsh -NoProfile -ExecutionPolicy Bypass -File extensions/specrew-speckit/scripts/validate-governance.ps1 -ProjectPath . -IterationPath specs/005-stack-aware-quality-bar/iterations/002)",
       "Bash(pwsh -NoProfile -ExecutionPolicy Bypass -File extensions/specrew-speckit/scripts/validate-governance.ps1 -ProjectPath . -IterationPath specs/005-stack-aware-quality-bar/iterations/001)",
-      "Bash(git -C c:/Dev/Specrew diff HEAD -- specs/005-stack-aware-quality-bar/iterations/002/state.md)"
+      "Bash(git -C c:/Dev/Specrew diff HEAD -- specs/005-stack-aware-quality-bar/iterations/002/state.md)",
+      "Bash(pwsh -NoProfile -File scripts/specrew-update.ps1 --info)",
+      "Bash(pwsh -NoProfile -ExecutionPolicy Bypass -File extensions/specrew-speckit/scripts/validate-governance.ps1 -ProjectPath .)",
+      "Bash(pwsh -NoProfile -File tests/integration/quality-profile-foundation.ps1)",
+      "Bash(pwsh -NoProfile -File tests/integration/hardening-gate-contract.ps1)",
+      "Bash(pwsh -NoProfile -File tests/integration/quality-evidence-governance.ps1)",
+      "Bash(pwsh -NoProfile -File tests/integration/validation-contract-lane.ps1)"
     ]
   }
 }

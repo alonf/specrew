@@ -1,6 +1,24 @@
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
+function Resolve-ProjectPath {
+    # Resolve a project path argument against PowerShell's current location rather than the
+    # .NET process CurrentDirectory, which on Windows often stays at the shell startup dir
+    # (e.g. $HOME) even after Set-Location/cd. Without this, [System.IO.Path]::GetFullPath('.')
+    # returns the wrong absolute path and entry-point scripts falsely report "Missing config.yml".
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Path
+    )
+
+    if ([System.IO.Path]::IsPathRooted($Path)) {
+        return [System.IO.Path]::GetFullPath($Path)
+    }
+
+    $cwd = (Get-Location).Path
+    return [System.IO.Path]::GetFullPath((Join-Path -Path $cwd -ChildPath $Path))
+}
+
 function Invoke-WithFileLock {
     param(
         [Parameter(Mandatory = $true)]

@@ -13,6 +13,12 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
+$sharedGovernancePath = Join-Path (Split-Path -Parent $PSScriptRoot) 'extensions\specrew-speckit\scripts\shared-governance.ps1'
+if (-not (Test-Path -LiteralPath $sharedGovernancePath -PathType Leaf)) {
+    throw "Missing shared governance helper '$sharedGovernancePath'."
+}
+. $sharedGovernancePath
+
 function Get-NativeExitCode {
     if (Get-Variable -Name LASTEXITCODE -Scope Global -ErrorAction SilentlyContinue) {
         return $global:LASTEXITCODE
@@ -554,7 +560,7 @@ if ($Help) {
     exit 0
 }
 
-$resolvedProjectPath = [System.IO.Path]::GetFullPath($ProjectPath)
+$resolvedProjectPath = Resolve-ProjectPath -Path $ProjectPath
 $repoRoot = Split-Path -Parent $PSScriptRoot
 $configPath = Join-Path $resolvedProjectPath '.specrew\config.yml'
 $specrewManifestPath = Join-Path $repoRoot 'extensions\specrew-speckit\extension.yml'

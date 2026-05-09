@@ -2261,7 +2261,7 @@ if ($Help) {
     exit 0
 }
 
-$resolvedProjectPath = [System.IO.Path]::GetFullPath($ProjectPath)
+$resolvedProjectPath = Resolve-ProjectPath -Path $ProjectPath
 
 if (-not (Test-Path -LiteralPath $resolvedProjectPath -PathType Container)) {
     Write-Error-Message "Project path does not exist: $resolvedProjectPath"
