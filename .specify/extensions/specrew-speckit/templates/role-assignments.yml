@@ -9,7 +9,7 @@ roles:
   - name: "Spec Steward"
     type: "baseline"
     assigned_to: "unassigned"  # Assign to agent name or human
-    preferred_agent: "copilot"
+    preferred_agent: "codex"
     responsibilities: >-
       Maintains spec integrity, detects drift, reconciles deviations.
       Reviews all changes for spec compliance.
@@ -17,7 +17,7 @@ roles:
   - name: "Planner"
     type: "baseline"
     assigned_to: "unassigned"
-    preferred_agent: "copilot"
+    preferred_agent: "claude"
     responsibilities: >-
       Decomposes requirements into tasks, estimates effort, plans iterations.
       Ensures traceability and capacity constraints are met.
@@ -33,7 +33,7 @@ roles:
   - name: "Reviewer"
     type: "baseline"
     assigned_to: "unassigned"
-    preferred_agent: "copilot"
+    preferred_agent: "claude"
     responsibilities: >-
       Conducts Review/Demo ceremony. Assigns verdicts to tasks.
       Verifies deliverables meet acceptance criteria.

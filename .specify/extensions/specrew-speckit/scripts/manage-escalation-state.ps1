@@ -23,6 +23,28 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
+$sharedGovernancePath = Join-Path $PSScriptRoot 'shared-governance.ps1'
+if (-not (Test-Path -LiteralPath $sharedGovernancePath -PathType Leaf)) {
+    throw "Missing shared governance helper '$sharedGovernancePath'."
+}
+. $sharedGovernancePath
+
+function Resolve-ProjectRoot {
+    param([string]$StartPath)
+
+    $current = [System.IO.DirectoryInfo]::new([System.IO.Path]::GetFullPath($StartPath))
+    while ($null -ne $current) {
+        if ((Test-Path -LiteralPath (Join-Path $current.FullName '.squad') -PathType Container) -or
+            (Test-Path -LiteralPath (Join-Path $current.FullName '.specrew') -PathType Container)) {
+            return $current.FullName
+        }
+
+        $current = $current.Parent
+    }
+
+    throw "Could not resolve project root from '$StartPath'."
+}
+
 function Test-IsNullish {
     param([AllowNull()][string]$Value)
 
@@ -197,102 +219,145 @@ if (-not (Test-Path -LiteralPath $statePath -PathType Leaf)) {
     throw "Iteration state '$statePath' does not exist."
 }
 
-$stateContent = Get-Content -LiteralPath $statePath -Raw -Encoding UTF8
-$currentState = Get-EscalationState -StateContent $stateContent
-$nextState = $currentState
+$projectRoot = Resolve-ProjectRoot -StartPath $resolvedIterationDirectory
+$nextState = $null
+$stateContent = $null
+$currentState = $null
 $timestamp = (Get-Date).ToUniversalTime().ToString('yyyy-MM-ddTHH:mm:ssZ')
 
-switch ($Mode) {
-    'get' {
-    }
-    'activate' {
-        if ([string]::IsNullOrWhiteSpace($Artifact)) {
-            throw 'Mode activate requires -Artifact.'
-        }
+if ($Mode -eq 'get') {
+    $stateContent = Get-Content -LiteralPath $statePath -Raw -Encoding UTF8
+    $currentState = Get-EscalationState -StateContent $stateContent
+    $nextState = $currentState
+}
+else {
+    $hasFailureCount = $PSBoundParameters.ContainsKey('FailureCount')
+    $hasTier = $PSBoundParameters.ContainsKey('Tier')
+    $hasNotes = $PSBoundParameters.ContainsKey('Notes')
+    $updateEscalation = {
+        param([string]$CurrentContent)
 
-        if ([string]::IsNullOrWhiteSpace($Gate)) {
-            throw 'Mode activate requires -Gate.'
-        }
+        $script:stateContent = $CurrentContent
+        $script:currentState = Get-EscalationState -StateContent $CurrentContent
 
-        if ([string]::IsNullOrWhiteSpace($Owner)) {
-            throw 'Mode activate requires -Owner.'
-        }
+        switch ($Mode) {
+            'activate' {
+                if ([string]::IsNullOrWhiteSpace($Artifact)) {
+                    throw 'Mode activate requires -Artifact.'
+                }
 
-        $sameEscalation = $currentState.status -eq 'active' -and $currentState.artifact -eq $Artifact -and $currentState.gate -eq $Gate
-        $resolvedFailureCount = if ($PSBoundParameters.ContainsKey('FailureCount')) {
-            $FailureCount
-        }
-        elseif ($sameEscalation) {
-            $currentState.failure_count + 1
-        }
-        else {
-            1
-        }
+                if ([string]::IsNullOrWhiteSpace($Gate)) {
+                    throw 'Mode activate requires -Gate.'
+                }
 
-        $resolvedTier = if ($PSBoundParameters.ContainsKey('Tier')) { $Tier } else { Get-TierForFailureCount -Count $resolvedFailureCount }
-        $lockoutSet = New-Object System.Collections.Generic.HashSet[string] ([System.StringComparer]::OrdinalIgnoreCase)
-        foreach ($agentName in @($currentState.locked_out_agents + $LockedOutAgents)) {
-            if (-not [string]::IsNullOrWhiteSpace($agentName)) {
-                $null = $lockoutSet.Add($agentName.Trim())
+                if ([string]::IsNullOrWhiteSpace($Owner)) {
+                    throw 'Mode activate requires -Owner.'
+                }
+
+                $sameEscalation = $script:currentState.status -eq 'active' -and $script:currentState.artifact -eq $Artifact -and $script:currentState.gate -eq $Gate
+                $resolvedFailureCount = if ($hasFailureCount) {
+                    $FailureCount
+                }
+                elseif ($sameEscalation) {
+                    $script:currentState.failure_count + 1
+                }
+                else {
+                    1
+                }
+
+                $resolvedTier = if ($hasTier) { $Tier } else { Get-TierForFailureCount -Count $resolvedFailureCount }
+                $lockoutSet = New-Object System.Collections.Generic.HashSet[string] ([System.StringComparer]::OrdinalIgnoreCase)
+                foreach ($agentName in @($script:currentState.locked_out_agents + $LockedOutAgents)) {
+                    if (-not [string]::IsNullOrWhiteSpace($agentName)) {
+                        $null = $lockoutSet.Add($agentName.Trim())
+                    }
+                }
+
+                if ($sameEscalation -and -not [string]::IsNullOrWhiteSpace($script:currentState.current_owner)) {
+                    $null = $lockoutSet.Add($script:currentState.current_owner.Trim())
+                }
+
+                if ($lockoutSet.Contains($Owner.Trim())) {
+                    $null = $lockoutSet.Remove($Owner.Trim())
+                }
+
+                $noteValue = if ($hasNotes) {
+                    $Notes
+                }
+                elseif ($sameEscalation) {
+                    $script:currentState.notes
+                }
+                else {
+                    $null
+                }
+
+                $script:nextState = [pscustomobject]@{
+                    status            = 'active'
+                    artifact          = $Artifact.Trim()
+                    gate              = $Gate.Trim()
+                    failure_count     = $resolvedFailureCount
+                    current_tier      = $resolvedTier
+                    current_owner     = $Owner.Trim()
+                    locked_out_agents = @($lockoutSet | Sort-Object)
+                    last_escalated    = $timestamp
+                    resolved_at       = $null
+                    notes             = if (Test-IsNullish $noteValue) { $null } else { $noteValue.Trim() }
+                }
+            }
+            'resolve' {
+                $script:nextState = [pscustomobject]@{
+                    status            = 'inactive'
+                    artifact          = $null
+                    gate              = $null
+                    failure_count     = 0
+                    current_tier      = 'efficiency'
+                    current_owner     = $null
+                    locked_out_agents = @()
+                    last_escalated    = $null
+                    resolved_at       = $timestamp
+                    notes             = if (Test-IsNullish $Notes) { 'Resolved after governance gate passed.' } else { $Notes.Trim() }
+                }
+            }
+            'clear' {
+                $script:nextState = Get-DefaultEscalationState
             }
         }
 
-        if ($sameEscalation -and -not [string]::IsNullOrWhiteSpace($currentState.current_owner)) {
-            $null = $lockoutSet.Add($currentState.current_owner.Trim())
-        }
-
-        if ($lockoutSet.Contains($Owner.Trim())) {
-            $null = $lockoutSet.Remove($Owner.Trim())
-        }
-
-        $noteValue = if ($PSBoundParameters.ContainsKey('Notes')) {
-            $Notes
-        }
-        elseif ($sameEscalation) {
-            $currentState.notes
-        }
-        else {
-            $null
-        }
-
-        $nextState = [pscustomobject]@{
-            status            = 'active'
-            artifact          = $Artifact.Trim()
-            gate              = $Gate.Trim()
-            failure_count     = $resolvedFailureCount
-            current_tier      = $resolvedTier
-            current_owner     = $Owner.Trim()
-            locked_out_agents = @($lockoutSet | Sort-Object)
-            last_escalated    = $timestamp
-            resolved_at       = $null
-            notes             = if (Test-IsNullish $noteValue) { $null } else { $noteValue.Trim() }
-        }
+        $blockContent = Format-EscalationStateBlock -State $script:nextState
+        return Set-ManagedBlock -Content $CurrentContent -BlockName 'escalation-state' -BlockContent $blockContent
     }
-    'resolve' {
-        $nextState = [pscustomobject]@{
-            status            = 'inactive'
-            artifact          = $null
-            gate              = $null
-            failure_count     = 0
-            current_tier      = 'efficiency'
-            current_owner     = $null
-            locked_out_agents = @()
-            last_escalated    = $null
-            resolved_at       = $timestamp
-            notes             = if (Test-IsNullish $Notes) { 'Resolved after governance gate passed.' } else { $Notes.Trim() }
-        }
+
+    if ($DryRun) {
+        $stateContent = Get-Content -LiteralPath $statePath -Raw -Encoding UTF8
+        $null = & $updateEscalation $stateContent
     }
-    'clear' {
-        $nextState = Get-DefaultEscalationState
+    else {
+        $null = Update-LockedFileContent -Path $statePath -Transform $updateEscalation
     }
 }
 
-if ($Mode -ne 'get') {
-    $blockContent = Format-EscalationStateBlock -State $nextState
-    $updatedStateContent = Set-ManagedBlock -Content $stateContent -BlockName 'escalation-state' -BlockContent $blockContent
-    if (-not $DryRun) {
-        [System.IO.File]::WriteAllText($statePath, $updatedStateContent, [System.Text.UTF8Encoding]::new($false))
+if (-not $DryRun -and $Mode -ne 'get') {
+    $entryTitle = switch ($Mode) {
+        'activate' { 'Repair escalation activated' }
+        'resolve' { 'Repair escalation resolved' }
+        'clear' { 'Repair escalation cleared' }
+        default { 'Repair escalation updated' }
     }
+
+    $lockedOutDisplay = if ($nextState.locked_out_agents.Count -gt 0) { $nextState.locked_out_agents -join ', ' } else { '(none)' }
+    $notesDisplay = if (Test-IsNullish $nextState.notes) { '(none)' } else { $nextState.notes }
+    $relativeIterationDirectory = [System.IO.Path]::GetRelativePath($projectRoot, $resolvedIterationDirectory) -replace '/', '\'
+    Add-StructuredDecisionsLedgerEntry -ProjectRoot $projectRoot -Title $entryTitle -Type 'escalation' -AffectedRequirement 'FR-027' -AffectedIteration $relativeIterationDirectory -NextAction 'none' -Rationale ("Repair escalation state changed to '{0}' for artifact '{1}'." -f $nextState.status, $(if (Test-IsNullish $nextState.artifact) { '(none)' } else { $nextState.artifact })) -DetailLines @(
+        "- **Iteration**: $resolvedIterationDirectory"
+        "- **Artifact**: $(if (Test-IsNullish $nextState.artifact) { '(none)' } else { $nextState.artifact })"
+        "- **Gate**: $(if (Test-IsNullish $nextState.gate) { '(none)' } else { $nextState.gate })"
+        "- **Status**: $($nextState.status)"
+        "- **Owner**: $(if (Test-IsNullish $nextState.current_owner) { '(none)' } else { $nextState.current_owner })"
+        "- **Tier**: $($nextState.current_tier)"
+        "- **Failure Count**: $([int]$nextState.failure_count)"
+        "- **Locked Out Agents**: $lockedOutDisplay"
+        "- **Notes**: $notesDisplay"
+    ) | Out-Null
 }
 
 if ($PassThru) {
