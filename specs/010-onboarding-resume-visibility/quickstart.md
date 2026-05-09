@@ -29,7 +29,7 @@ pwsh -NoProfile -File .\tests\integration\quality-profile-foundation.ps1
 pwsh -NoProfile -File .\tests\integration\hardening-gate-contract.ps1
 pwsh -NoProfile -File .\tests\integration\quality-evidence-governance.ps1
 pwsh -NoProfile -File .\tests\integration\validation-contract-lane.ps1
-pwsh -NoProfile -File .\tests\integration\start-command.ps1
+pwsh -NoProfile -File .\tests\integration\project-path-resolution-regression.ps1
 pwsh -NoProfile -ExecutionPolicy Bypass -File .\extensions\specrew-speckit\scripts\validate-governance.ps1 -ProjectPath .
 ```
 
@@ -100,7 +100,7 @@ Add a subsection with heading `### Resuming work later` that:
 
 **Contract reference**: `contracts/onboarding-text-surface.md` → Surface 3 clauses BANNER-C1 to BANNER-C5
 
-**After editing**: Run lane command 5 (start-command) to confirm `specrew-init.ps1` is still callable.
+**After editing**: Keep lane command 5 (`project-path-resolution-regression.ps1`) in the post-edit lane to preserve TG-005 coverage; confirm banner visibility separately during manual review.
 
 ---
 
@@ -131,7 +131,7 @@ pwsh -NoProfile -File .\tests\integration\quality-profile-foundation.ps1
 pwsh -NoProfile -File .\tests\integration\hardening-gate-contract.ps1
 pwsh -NoProfile -File .\tests\integration\quality-evidence-governance.ps1
 pwsh -NoProfile -File .\tests\integration\validation-contract-lane.ps1
-pwsh -NoProfile -File .\tests\integration\start-command.ps1
+pwsh -NoProfile -File .\tests\integration\project-path-resolution-regression.ps1
 pwsh -NoProfile -ExecutionPolicy Bypass -File .\extensions\specrew-speckit\scripts\validate-governance.ps1 -ProjectPath .
 ```
 
@@ -162,7 +162,7 @@ Before closing the feature iteration:
 - [ ] SC-005: Banner resume guidance visible ≤ 100 columns
 - [ ] SC-006: All six validation lane commands pass (post-implementation green)
 - [ ] TG-004: Human has read all three primary rendered surfaces and confirmed visibility
-- [ ] TG-005: Path-resolution regression coverage remains unchanged (confirmed by lane commands 1–5)
+- [ ] TG-005: Path-resolution regression coverage remains unchanged (confirmed by lane command 5 within the six-command lane)
 
 ---
 

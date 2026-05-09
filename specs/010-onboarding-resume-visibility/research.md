@@ -22,7 +22,7 @@ How do we keep this feature within a documentation-and-banner-only scope without
 `README.md`, `docs/getting-started.md`, and `docs/user-guide.md` are plain Markdown files. They are not parsed by any Specrew script at runtime, not imported as configuration, and not validated by governance scripts for content. Changing their prose cannot break any runtime contract.
 
 **Validation lane scripts do not parse documentation prose.**
-Inspection of the six-lane validation commands confirms they test integration behavior, governance schema, and command contracts — not the wording of Markdown files or banner text. The only banner-adjacent test is `start-command.ps1`, which exercises `specrew start` exit behavior, not banner content.
+Inspection of the six-lane validation commands confirms they test integration behavior, governance schema, and command contracts — not the wording of Markdown files or banner text. The approved command 5 is `project-path-resolution-regression.ps1`, which preserves existing path-resolution coverage rather than validating banner copy.
 
 ### Decision
 **Restrict all changes to:**
@@ -87,7 +87,7 @@ The six-command validation lane is inherited from prior features and tests runti
 2. `pwsh -NoProfile -File .\tests\integration\hardening-gate-contract.ps1`
 3. `pwsh -NoProfile -File .\tests\integration\quality-evidence-governance.ps1`
 4. `pwsh -NoProfile -File .\tests\integration\validation-contract-lane.ps1`
-5. `pwsh -NoProfile -File .\tests\integration\start-command.ps1`
+5. `pwsh -NoProfile -File .\tests\integration\project-path-resolution-regression.ps1`
 6. `pwsh -NoProfile -ExecutionPolicy Bypass -File .\extensions\specrew-speckit\scripts\validate-governance.ps1 -ProjectPath .`
 
 **What each command tests relative to this feature:**
@@ -98,10 +98,10 @@ The six-command validation lane is inherited from prior features and tests runti
 | `hardening-gate-contract.ps1` | Hardening gate artifact schema | Regression guard — no hardening artifact added by this feature |
 | `quality-evidence-governance.ps1` | Evidence schema and governance quality contracts | Regression guard — no quality artifacts changed |
 | `validation-contract-lane.ps1` | Validation contract schema and lane structure | Regression guard — ensures no lane schema drift |
-| `start-command.ps1` | `specrew start` command integration | Meaningful — confirms banner path through `specrew-init.ps1` remains callable and exits cleanly after banner text edits |
+| `project-path-resolution-regression.ps1` | Entry-point path resolution regression coverage | Meaningful — preserves the existing path-resolution guard required by TG-005 while this feature updates onboarding copy only |
 | `validate-governance.ps1` | Governance artifacts, plan/spec traceability | Meaningful — confirms plan.md and spec.md satisfy governance schema after updates |
 
-**Determination:** All six commands serve as regression guards. Commands 5 and 6 additionally provide direct coverage for the two actual code-shaped changes in this feature (banner function edit and governance artifact update). No lane command validates the prose content of Markdown files — that is covered by manual review (TG-004, SC-003).
+**Determination:** All six commands serve as regression guards. Command 5 preserves the pre-existing path-resolution coverage required by TG-005, and command 6 validates governance artifacts after planning updates. No lane command validates Markdown prose or banner copy directly; that remains bounded to manual review plus scope inspection of the display-only banner edits (TG-004, SC-003).
 
 **SC-006 obligation:** The spec requires the validation lane to remain green at commit boundaries. This means all six must pass before and after the documentation edits, confirming no behavioral regression.
 
@@ -111,7 +111,7 @@ The six-command validation lane is inherited from prior features and tests runti
 Manual review covers what the lane cannot: reading the rendered surfaces and confirming the resume guidance is visible and correct (TG-004).
 
 ### Rationale
-The lane was specified by the human owner and must be preserved exactly as given. Its regression-guard role is valid even for documentation-only features because it confirms no change broke the governance schema, quality contract, or start command behavior. Running it costs little and provides documented evidence for SC-006.
+The lane was specified by the human owner and must be preserved exactly as given. Its regression-guard role is valid even for documentation-only features because it confirms no change broke the governance schema, quality contract, or existing entry-point path-resolution behavior. Running it costs little and provides documented evidence for SC-006.
 
 ### Alternatives Considered
 - Running only commands 5 and 6: rejected — SC-006 requires the full lane green.

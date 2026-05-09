@@ -59,7 +59,7 @@ Make the resume-mode contract explicit in three primary Specrew onboarding surfa
 | Risk Dimension | Status | Rationale |
 |---|---|---|
 | `security` | not-applicable | Documentation and display-text change; no code paths, data handling, or trust boundaries involved |
-| `behavioral-regression` | required | Banner function is exercised by `start-command.ps1`; any inadvertent logic change would break the lane |
+| `behavioral-regression` | required | `project-path-resolution-regression.ps1` preserves the existing entry-point path-resolution guard, while banner edits remain bounded to display-only text and manual scope review |
 | `scope-creep` | required | Documentation-only boundary must be actively enforced; only display text in `Write-PostBootstrapGuidance` may change |
 | `cross-surface-consistency` | required | Three primary surfaces must not contradict each other on the resume contract |
 | `platform-neutrality` | required | Wording must apply on Windows, macOS, and Linux without modification |
@@ -79,7 +79,7 @@ Make the resume-mode contract explicit in three primary Specrew onboarding surfa
 
 | Required Quality Gate | Category | Evidence Source | Phase 1 Status |
 |---|---|---|---|
-| Validation lane baseline green (pre-edit) | tooling | Six-command lane output recorded in state notes | planned |
+| Validation lane baseline green (pre-edit) | tooling | Six-command lane output recorded in state notes | satisfied |
 | Banner function scope check | mechanical | Human inspection: only `Write-Host` lines added, no logic changes | planned |
 | Banner width check (SC-005) | mechanical | Human inspection: lines ≤ 100 chars | planned |
 | Cross-surface consistency review | manual-evidence | Human reads all three primary surfaces together | planned |
@@ -96,7 +96,7 @@ Make the resume-mode contract explicit in three primary Specrew onboarding surfa
 | Retry and idempotency | No network or state-mutating operations | None — recorded explicitly |
 | Concurrency correctness | No concurrent code paths | None — recorded explicitly |
 | Performance profiling | Banner text rendering is not a performance surface | None — recorded explicitly |
-| Unit tests | No logic added; banner is display-only | None — regression covered by lane command 5 |
+| Unit tests | No logic added; banner is display-only | None — TG-005 regression coverage stays with lane command 5, while banner wording is checked manually |
 | Automated prose linting | No Markdown linter configured in this repo | Human review substitutes; explicit gap recorded |
 
 ### Explicit Phase 2+ Deferrals
@@ -120,7 +120,7 @@ Make the resume-mode contract explicit in three primary Specrew onboarding surfa
 | Security surface analysis | Not applicable — no code, no trust boundary, no data handling | none | not-applicable |
 | Error handling and failure semantics | Not applicable — no runtime logic changed | none | not-applicable |
 | Retry and idempotency expectations | Not applicable — no state-mutating operations | none | not-applicable |
-| Test-integrity targets | Banner regression covered by lane command 5 (`start-command.ps1`); prose correctness covered by manual review | Six-command lane results + manual review record | required (manual) |
+| Test-integrity targets | Path-resolution regression covered by lane command 5 (`project-path-resolution-regression.ps1`); prose and banner correctness covered by manual review | Six-command lane results + manual review record | required (manual) |
 
 ### Lens Activation Plan
 
@@ -211,7 +211,7 @@ tests/integration/
 ├── hardening-gate-contract.ps1      # Lane command 2 — regression guard
 ├── quality-evidence-governance.ps1  # Lane command 3 — regression guard
 ├── validation-contract-lane.ps1     # Lane command 4 — regression guard
-└── start-command.ps1                # Lane command 5 — direct coverage for banner path
+└── project-path-resolution-regression.ps1  # Lane command 5 — preserve approved path-resolution coverage
 extensions/specrew-speckit/scripts/
 └── validate-governance.ps1          # Lane command 6 — governance schema coverage
 ```
@@ -223,7 +223,7 @@ pwsh -NoProfile -File .\tests\integration\quality-profile-foundation.ps1
 pwsh -NoProfile -File .\tests\integration\hardening-gate-contract.ps1
 pwsh -NoProfile -File .\tests\integration\quality-evidence-governance.ps1
 pwsh -NoProfile -File .\tests\integration\validation-contract-lane.ps1
-pwsh -NoProfile -File .\tests\integration\start-command.ps1
+pwsh -NoProfile -File .\tests\integration\project-path-resolution-regression.ps1
 pwsh -NoProfile -ExecutionPolicy Bypass -File .\extensions\specrew-speckit\scripts\validate-governance.ps1 -ProjectPath .
 ```
 
@@ -237,10 +237,12 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File .\extensions\specrew-speckit\scrip
 
 **Before-plan hook**: `speckit.specrew-speckit.before-plan` — PASS (executed; spec approved; requirements actionable; governance check passed)
 
+**Before-implement readiness**: PASS — explicit human approval is recorded above; the six-command baseline validation lane was already verified green before edits; Phase 2 hardening-gate requirements do not apply to this documentation-only feature.
+
 **Phase 0 Research**: Complete — research.md created. All three NEEDS CLARIFICATION items resolved:
 1. Docs-only boundary confirmed (Markdown + pure-display function; no runtime impact possible)
 2. User-guide review-only handling confirmed (review against contradiction checklist; FR-005 recording obligation defined)
-3. Six-command validation lane role confirmed (regression guard + direct coverage for banner and governance; manual review covers prose)
+3. Six-command validation lane role confirmed (regression guard for path-resolution and governance; manual review covers prose and banner visibility)
 
 **Phase 1 Design**: Complete — data-model.md, contracts/onboarding-text-surface.md, quickstart.md created.
 - Four documentation surface entities defined with required content fields and validation rules
@@ -252,5 +254,5 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File .\extensions\specrew-speckit\scrip
 - Finding placeholder: _[Record here during implementation: "no contradictory language found / edit applied: …"]_
 
 **SC-006 lane results**: Pending implementation — record baseline and post-edit lane results here.
-- Baseline (pre-edit): _[Record here]_
+- Baseline (pre-edit): PASS — verified gate context confirms the six-command validation lane was already green before any edits to this feature artifact.
 - Post-implementation: _[Record here]_
