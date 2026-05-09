@@ -1,5 +1,11 @@
 # Decision Ledger
 
+## 2026-05-09-runtime-evidence-009
+### 2026-05-09T22:09:00+03:00: Feature 009 lifecycle and repair evidence
+**By:** Alon Fliess (via Copilot)
+**What:** Feature `specs/009-project-path-resolution` was run through specify, clarify, planning, tasks, hardening-gate approval, implementation, reviewer repair, and final validation. The final outcome included audited path-resolution fixes across entry-point and internal scripts, a deterministic regression lane, static anti-pattern coverage, known-traps seeding, trap reapplication evidence, and a return of `.specify\feature.json` to `specs/008-reviewer-escalation-symmetry` after closure.
+**Why:** Preserve a compact lifecycle record that feature 009 completed ahead of feature 008, including the reviewer-enforced repair cycle that expanded runtime coverage and closed the remaining audit gaps.
+
 ## copilot-decision-2026-05-07T22-12-30+03-00
 ### 2026-05-07T22:12:30+03:00: Clarify skip rationale for 005 Phase 1
 **By:** Alon Fliess (via Copilot)

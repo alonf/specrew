@@ -12,6 +12,12 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
+$sharedGovernancePath = Join-Path $PSScriptRoot 'shared-governance.ps1'
+if (-not (Test-Path -LiteralPath $sharedGovernancePath -PathType Leaf)) {
+    throw "Shared governance helper not found at '$sharedGovernancePath'."
+}
+. $sharedGovernancePath
+
 function Convert-ToRepoRelativePath {
     param(
         [Parameter(Mandatory = $true)]
@@ -420,15 +426,15 @@ function Resolve-MechanicalContext {
 
     $resolvedFeaturePath = $null
     if (-not [string]::IsNullOrWhiteSpace($FeaturePath)) {
-        $resolvedFeaturePath = [System.IO.Path]::GetFullPath($FeaturePath)
+        $resolvedFeaturePath = Resolve-ProjectPath -Path $FeaturePath
     }
     elseif (-not [string]::IsNullOrWhiteSpace($SpecPath)) {
-        $resolvedFeaturePath = Split-Path -Parent ([System.IO.Path]::GetFullPath($SpecPath))
+        $resolvedFeaturePath = Split-Path -Parent (Resolve-ProjectPath -Path $SpecPath)
     }
 
     $resolvedIterationPath = $null
     if (-not [string]::IsNullOrWhiteSpace($IterationPath)) {
-        $resolvedIterationPath = [System.IO.Path]::GetFullPath($IterationPath)
+        $resolvedIterationPath = Resolve-ProjectPath -Path $IterationPath
         if ([string]::IsNullOrWhiteSpace($resolvedFeaturePath)) {
             $resolvedFeaturePath = Split-Path -Parent (Split-Path -Parent $resolvedIterationPath)
         }
@@ -500,7 +506,7 @@ function Resolve-MechanicalContext {
     }
 
     $resolvedSpecPath = if (-not [string]::IsNullOrWhiteSpace($SpecPath)) {
-        [System.IO.Path]::GetFullPath($SpecPath)
+        Resolve-ProjectPath -Path $SpecPath
     }
     else {
         Join-Path $resolvedFeaturePath 'spec.md'
@@ -604,7 +610,7 @@ function Get-RuleDispositions {
     $candidatePaths = [System.Collections.Generic.List[string]]::new()
 
     if (-not [string]::IsNullOrWhiteSpace($DispositionPath)) {
-        $null = $candidatePaths.Add([System.IO.Path]::GetFullPath($DispositionPath))
+        $null = $candidatePaths.Add((Resolve-ProjectPath -Path $DispositionPath))
     }
 
     $dispositionDirectory = Join-Path $IterationPath 'quality\dispositions'
@@ -1066,7 +1072,7 @@ function Convert-ToValidatedPayload {
     return $payload
 }
 
-$resolvedProjectPath = [System.IO.Path]::GetFullPath($ProjectPath)
+$resolvedProjectPath = Resolve-ProjectPath -Path $ProjectPath
 if (-not (Test-Path -LiteralPath $resolvedProjectPath -PathType Container)) {
     throw "Project path '$resolvedProjectPath' does not exist."
 }

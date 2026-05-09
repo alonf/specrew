@@ -153,6 +153,7 @@ function Invoke-ScaffoldGovernance {
 
 $repoRoot = (Resolve-Path (Join-Path -Path $PSScriptRoot -ChildPath '..\..')).Path
 $sourceScriptPath = Join-Path $repoRoot 'extensions\specrew-speckit\scripts\scaffold-governance.ps1'
+$sharedGovernancePath = Join-Path $repoRoot 'extensions\specrew-speckit\scripts\shared-governance.ps1'
 $qualityProfileResolverPath = Join-Path $repoRoot 'extensions\specrew-speckit\scripts\resolve-quality-profile.ps1'
 $sourceTemplateRoot = Join-Path $repoRoot 'extensions\specrew-speckit\templates'
 $planTemplatePath = Join-Path $repoRoot '.specify\templates\plan-template.md'
@@ -163,8 +164,9 @@ $projectRoot = Join-Path $scratchRoot 'project'
 $fixtureExtensionRoot = Join-Path $scratchRoot 'fixture-extension'
 $fixtureTemplateRoot = Join-Path $fixtureExtensionRoot 'templates'
 $fixtureScriptPath = Join-Path $fixtureExtensionRoot 'scripts\scaffold-governance.ps1'
+$fixtureSharedGovernancePath = Join-Path $fixtureExtensionRoot 'scripts\shared-governance.ps1'
 
-foreach ($requiredPath in @($sourceScriptPath, $sourceTemplateRoot, $fixtureQualityRoot)) {
+foreach ($requiredPath in @($sourceScriptPath, $sharedGovernancePath, $sourceTemplateRoot, $fixtureQualityRoot)) {
     if (-not (Test-Path -LiteralPath $requiredPath)) {
         Write-Fail "Missing required quality-profile foundation dependency: $requiredPath"
         exit 1
@@ -177,6 +179,7 @@ if (Test-Path -LiteralPath $scratchRoot) {
 
 $null = New-Item -Path (Join-Path $fixtureExtensionRoot 'scripts') -ItemType Directory -Force
 Copy-Item -LiteralPath $sourceScriptPath -Destination $fixtureScriptPath -Force
+Copy-Item -LiteralPath $sharedGovernancePath -Destination $fixtureSharedGovernancePath -Force
 Copy-Item -Path (Join-Path $sourceTemplateRoot '*') -Destination $fixtureTemplateRoot -Recurse -Force
 $null = New-Item -Path (Join-Path $fixtureTemplateRoot 'quality\presets') -ItemType Directory -Force
 $null = New-Item -Path (Join-Path $fixtureTemplateRoot 'quality\lenses') -ItemType Directory -Force

@@ -13,6 +13,12 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
+$sharedGovernancePath = Join-Path $PSScriptRoot 'shared-governance.ps1'
+if (-not (Test-Path -LiteralPath $sharedGovernancePath -PathType Leaf)) {
+    throw "Missing shared governance helper '$sharedGovernancePath'."
+}
+. $sharedGovernancePath
+
 function Get-MarkdownContent {
     param([string]$Path)
 
@@ -35,7 +41,7 @@ function Get-RequirementSummaryMap {
 function Get-ImplementationEvidence {
     param([string]$Path)
 
-    $resolvedPath = [System.IO.Path]::GetFullPath($Path)
+    $resolvedPath = Resolve-ProjectPath -Path $Path
     if (-not (Test-Path -LiteralPath $resolvedPath)) {
         throw "Implementation path '$resolvedPath' does not exist."
     }
@@ -121,7 +127,7 @@ function Test-EvidenceContainsToken {
     return $regex.IsMatch($EvidenceText)
 }
 
-$resolvedSpecPath = [System.IO.Path]::GetFullPath($SpecPath)
+$resolvedSpecPath = Resolve-ProjectPath -Path $SpecPath
 if (-not (Test-Path -LiteralPath $resolvedSpecPath -PathType Leaf)) {
     throw "Spec file '$resolvedSpecPath' does not exist."
 }

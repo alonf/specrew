@@ -54,6 +54,12 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
+$sharedGovernancePath = Join-Path $PSScriptRoot 'shared-governance.ps1'
+if (-not (Test-Path -LiteralPath $sharedGovernancePath -PathType Leaf)) {
+    throw "Missing shared governance helper '$sharedGovernancePath'."
+}
+. $sharedGovernancePath
+
 function Get-TargetFileContent {
     param(
         [Parameter(Mandatory = $true)]
@@ -214,7 +220,7 @@ function Save-ConfigFile {
     [System.IO.File]::WriteAllText($TargetPath, $updatedContent, [System.Text.UTF8Encoding]::new($false))
 }
 
-$resolvedProjectPath = [System.IO.Path]::GetFullPath($ProjectPath)
+$resolvedProjectPath = Resolve-ProjectPath -Path $ProjectPath
 $extensionRoot = Split-Path -Parent $PSScriptRoot
 $templateRoot = Join-Path $extensionRoot 'templates'
 $specrewRoot = Join-Path $resolvedProjectPath '.specrew'

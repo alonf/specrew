@@ -10,6 +10,12 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
+$sharedGovernancePath = Join-Path $PSScriptRoot 'shared-governance.ps1'
+if (-not (Test-Path -LiteralPath $sharedGovernancePath -PathType Leaf)) {
+    throw "Shared governance helper not found at '$sharedGovernancePath'."
+}
+. $sharedGovernancePath
+
 function Test-AnyPattern {
     param(
         [AllowEmptyString()]
@@ -989,22 +995,22 @@ function Convert-QualityProfileToMarkdown {
     return $lines -join "`n"
 }
 
-$resolvedProjectPath = [System.IO.Path]::GetFullPath($ProjectPath)
+$resolvedProjectPath = Resolve-ProjectPath -Path $ProjectPath
 if (-not (Test-Path -LiteralPath $resolvedProjectPath -PathType Container)) {
     throw "Project path '$resolvedProjectPath' does not exist."
 }
 
 $resolvedFeaturePath = $null
 if (-not [string]::IsNullOrWhiteSpace($FeaturePath)) {
-    $resolvedFeaturePath = [System.IO.Path]::GetFullPath($FeaturePath)
+    $resolvedFeaturePath = Resolve-ProjectPath -Path $FeaturePath
 }
 elseif (-not [string]::IsNullOrWhiteSpace($SpecPath)) {
-    $resolvedFeaturePath = Split-Path -Parent ([System.IO.Path]::GetFullPath($SpecPath))
+    $resolvedFeaturePath = Split-Path -Parent (Resolve-ProjectPath -Path $SpecPath)
 }
 
 $resolvedSpecPath = $null
 if (-not [string]::IsNullOrWhiteSpace($SpecPath)) {
-    $resolvedSpecPath = [System.IO.Path]::GetFullPath($SpecPath)
+    $resolvedSpecPath = Resolve-ProjectPath -Path $SpecPath
 }
 elseif (-not [string]::IsNullOrWhiteSpace($resolvedFeaturePath)) {
     $candidateSpecPath = Join-Path $resolvedFeaturePath 'spec.md'

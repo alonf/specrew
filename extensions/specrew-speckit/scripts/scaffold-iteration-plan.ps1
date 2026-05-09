@@ -15,6 +15,12 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
+$sharedGovernancePath = Join-Path $PSScriptRoot 'shared-governance.ps1'
+if (-not (Test-Path -LiteralPath $sharedGovernancePath -PathType Leaf)) {
+    throw "Missing shared governance helper '$sharedGovernancePath'."
+}
+. $sharedGovernancePath
+
 function Add-ScaffoldAction {
     param(
         [AllowEmptyCollection()]
@@ -340,7 +346,7 @@ function Get-ConcurrencyRationaleLines {
     )
 }
 
-$resolvedSpecPath = [System.IO.Path]::GetFullPath($SpecPath)
+$resolvedSpecPath = Resolve-ProjectPath -Path $SpecPath
 if (-not (Test-Path -LiteralPath $resolvedSpecPath)) {
     throw "Spec file '$resolvedSpecPath' does not exist."
 }
@@ -351,7 +357,7 @@ $projectRoot = Split-Path -Parent $projectSpecsRoot
 $iterationDirectory = Join-Path (Join-Path $specDirectory 'iterations') $IterationNumber
 $planPath = Join-Path $iterationDirectory 'plan.md'
 $resolvedConfigPath = if ($IterationConfigPath) {
-    [System.IO.Path]::GetFullPath($IterationConfigPath)
+    Resolve-ProjectPath -Path $IterationConfigPath
 }
 else {
     Join-Path $projectRoot '.specrew\iteration-config.yml'

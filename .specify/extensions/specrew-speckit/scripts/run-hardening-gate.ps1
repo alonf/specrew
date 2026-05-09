@@ -46,15 +46,15 @@ function Resolve-HardeningContext {
 
     $resolvedFeaturePath = $null
     if (-not [string]::IsNullOrWhiteSpace($FeaturePath)) {
-        $resolvedFeaturePath = [System.IO.Path]::GetFullPath($FeaturePath)
+        $resolvedFeaturePath = Resolve-ProjectPath -Path $FeaturePath
     }
     elseif (-not [string]::IsNullOrWhiteSpace($SpecPath)) {
-        $resolvedFeaturePath = Split-Path -Parent ([System.IO.Path]::GetFullPath($SpecPath))
+        $resolvedFeaturePath = Split-Path -Parent (Resolve-ProjectPath -Path $SpecPath)
     }
 
     $resolvedIterationPath = $null
     if (-not [string]::IsNullOrWhiteSpace($IterationPath)) {
-        $resolvedIterationPath = [System.IO.Path]::GetFullPath($IterationPath)
+        $resolvedIterationPath = Resolve-ProjectPath -Path $IterationPath
         if ([string]::IsNullOrWhiteSpace($resolvedFeaturePath)) {
             $resolvedFeaturePath = Split-Path -Parent (Split-Path -Parent $resolvedIterationPath)
         }
@@ -133,7 +133,7 @@ function Resolve-HardeningContext {
     }
 
     $resolvedSpecPath = if (-not [string]::IsNullOrWhiteSpace($SpecPath)) {
-        [System.IO.Path]::GetFullPath($SpecPath)
+        Resolve-ProjectPath -Path $SpecPath
     }
     else {
         Join-Path $resolvedFeaturePath 'spec.md'
@@ -557,7 +557,7 @@ function Get-HardeningGateContent {
     return ($lines -join [Environment]::NewLine) + [Environment]::NewLine
 }
 
-$resolvedProjectPath = [System.IO.Path]::GetFullPath($ProjectPath)
+$resolvedProjectPath = Resolve-ProjectPath -Path $ProjectPath
 if (-not (Test-Path -LiteralPath $resolvedProjectPath -PathType Container)) {
     throw "Project path '$resolvedProjectPath' does not exist."
 }

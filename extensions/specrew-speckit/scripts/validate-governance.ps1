@@ -32,7 +32,7 @@ function Resolve-IterationTarget {
     )
 
     if ($ExplicitIterationPaths -and $ExplicitIterationPaths.Count -gt 0) {
-        return @($ExplicitIterationPaths | ForEach-Object { (Resolve-Path -Path $_).Path })
+        return @($ExplicitIterationPaths | ForEach-Object { (Resolve-Path -Path (Resolve-ProjectPath -Path $_)).Path })
     }
 
     $specsPath = Join-Path -Path $ResolvedProjectPath -ChildPath 'specs'
@@ -2210,7 +2210,7 @@ function Get-ReviewerCloseoutEnforcementMap {
     return $enforcementMap
 }
 
-$resolvedProjectPath = (Resolve-Path -Path $ProjectPath).Path
+$resolvedProjectPath = (Resolve-Path -Path (Resolve-ProjectPath -Path $ProjectPath)).Path
 $teamRoles = Get-TeamRoleMap -ResolvedProjectPath $resolvedProjectPath
 
 $teamValidationErrors = New-Object System.Collections.Generic.List[string]
