@@ -68,6 +68,12 @@ function Initialize-GitRepo {
 }
 
 $repoRoot = (Resolve-Path (Join-Path -Path $PSScriptRoot -ChildPath '..\..')).Path
+$sharedGovernancePath = Join-Path -Path $repoRoot -ChildPath 'extensions\specrew-speckit\scripts\shared-governance.ps1'
+if (-not (Test-Path -LiteralPath $sharedGovernancePath -PathType Leaf)) {
+    throw "Missing shared governance helper '$sharedGovernancePath'."
+}
+. $sharedGovernancePath
+
 $entryScript = Join-Path -Path $repoRoot -ChildPath 'scripts\specrew.ps1'
 $initScript = Join-Path -Path $repoRoot -ChildPath 'scripts\specrew-init.ps1'
 
@@ -95,7 +101,7 @@ if (-not $ProjectPath) {
     $ProjectPath = Join-Path -Path $repoRoot -ChildPath '.scratch\copilot-squad-smoke\project'
 }
 
-$resolvedProjectPath = [System.IO.Path]::GetFullPath($ProjectPath)
+$resolvedProjectPath = Resolve-ProjectPath -Path $ProjectPath
 if ((Test-Path -LiteralPath $resolvedProjectPath) -and -not $KeepProject) {
     Remove-Item -LiteralPath $resolvedProjectPath -Recurse -Force
 }

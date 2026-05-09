@@ -48,6 +48,12 @@ function Get-RelativePathSafe {
 }
 
 $repoRoot = (Resolve-Path (Join-Path -Path $PSScriptRoot -ChildPath '..\..')).Path
+$sharedGovernancePath = Join-Path -Path $repoRoot -ChildPath 'extensions\specrew-speckit\scripts\shared-governance.ps1'
+if (-not (Test-Path -LiteralPath $sharedGovernancePath -PathType Leaf)) {
+    throw "Missing shared governance helper '$sharedGovernancePath'."
+}
+. $sharedGovernancePath
+
 $smokeScript = Join-Path -Path $repoRoot -ChildPath 'tests\manual\copilot-squad-smoke.ps1'
 if (-not (Test-Path -LiteralPath $smokeScript -PathType Leaf)) {
     Write-Fail "Missing smoke harness: $smokeScript"
@@ -62,7 +68,7 @@ if ([string]::IsNullOrWhiteSpace($TraceDirectory)) {
     $TraceDirectory = Join-Path -Path $repoRoot -ChildPath ('.scratch\copilot-squad-{0}-lane\traces' -f $LaneName)
 }
 
-$resolvedProjectPath = [System.IO.Path]::GetFullPath($ProjectPath)
+$resolvedProjectPath = Resolve-ProjectPath -Path $ProjectPath
 $resolvedTraceDirectory = [System.IO.Path]::GetFullPath($TraceDirectory)
 $null = New-Item -Path $resolvedTraceDirectory -ItemType Directory -Force
 

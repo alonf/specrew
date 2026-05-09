@@ -98,7 +98,17 @@
 | `extensions/specrew-speckit/scripts/scaffold-iteration-plan.ps1` | `SpecPath`, `IterationConfigPath` | `Resolve-ProjectPath` (shared helper) | Shared helper imported |
 | mirrored `.specify/extensions/specrew-speckit/scripts/*` copies | same as source extension | `Resolve-ProjectPath` (shared helper) | Source and mirror kept in sync; no exemptions recorded |
 
-No in-scope exemptions remain; any future exceptions must be recorded in `.specrew/quality/known-traps.md` per FR-008.
+Iteration 002 added explicit audit-gap coverage for the remaining test/evaluation scripts, including one exemption recorded below.
+
+### Iteration 002 Audit Gap Addendum
+
+| File | Path parameter(s) | Decision | Rationale |
+| --- | --- | --- | --- |
+| `tests/manual/copilot-squad-smoke.ps1` | `ProjectPath` | Migrate to `Resolve-ProjectPath` | User-supplied relative project path should resolve via PowerShell working directory |
+| `tests/manual/copilot-squad-confidence-lane.ps1` | `ProjectPath` | Migrate to `Resolve-ProjectPath` | Same relative-path defect model as entry-point scripts |
+| `evaluation/scorers/process-scorer.ps1` | `ProjectPath` | Exempt | Uses `Resolve-Path` for project root; `GetFullPath` applies only to computed report paths |
+
+Any future exceptions must be recorded in `.specrew/quality/known-traps.md` per FR-008.
 
 ---
 
