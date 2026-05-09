@@ -250,9 +250,14 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File .\extensions\specrew-speckit\scrip
 - Quickstart captures bounded implementation order and full closure checklist
 - Post-Phase-1 constitution check: all gates PASS
 
-**FR-005 user-guide review**: Pending implementation — to be recorded in this section before closure.
-- Finding placeholder: _[Record here during implementation: "no contradictory language found / edit applied: …"]_
+**FR-005 user-guide review**: Complete.
+- Finding: FR-005 review of docs/user-guide.md: no contradictory first-launch-only language or anti-pattern endorsement found. No edit required.
 
-**SC-006 lane results**: Pending implementation — record baseline and post-edit lane results here.
-- Baseline (pre-edit): PASS — the six-command validation lane remained green when rerun during the final before-implement review on the repaired planning commit, confirming the implementation baseline before any feature-010 content edits.
-- Post-implementation: _[Record here]_
+**SC-006 lane results**: Complete.
+- Baseline (pre-edit): PASS — reran the full six-command validation lane in this implementation session before any feature-010 edits; all six commands passed, including `project-path-resolution-regression.ps1` and `validate-governance.ps1`.
+- Post-implementation: PASS — reran the full six-command validation lane after the documentation and banner-text edits; all six commands passed again, so the path-resolution regression suite behavior remained unchanged.
+
+**Manual visibility and scope review**: Complete.
+- README, getting-started, and the bootstrap banner now all state that resumed sessions still begin with `specrew start` and warn against running `copilot` directly.
+- The new banner resume lines are 23, 77, 64, and 92 characters wide, satisfying the ≤100-column visibility requirement for the added guidance.
+- Scope audit confirmed no edits to `specs/008-*` or `specs/009-*`, no runtime logic changes, and no `docs/user-guide.md` change was required.

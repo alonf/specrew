@@ -19,8 +19,8 @@
 
 **Purpose**: Establish the regression baseline and confirm the approved feature boundary before any edits.
 
-- [ ] T001 [Owner: Reviewer] [Effort: M] Run the baseline six-command validation lane from repo root using `tests/integration/quality-profile-foundation.ps1`, `tests/integration/hardening-gate-contract.ps1`, `tests/integration/quality-evidence-governance.ps1`, `tests/integration/validation-contract-lane.ps1`, `tests/integration/project-path-resolution-regression.ps1`, and `extensions/specrew-speckit/scripts/validate-governance.ps1`, then record the baseline result in `specs/010-onboarding-resume-visibility/plan.md` iteration state notes. (Trace: plan.md Validation Lane, plan.md Iteration State Notes, TG-005, SC-006)
-- [ ] T002 [P] [Owner: Planner] [Effort: S] Review `specs/010-onboarding-resume-visibility/spec.md`, `specs/010-onboarding-resume-visibility/plan.md`, `specs/010-onboarding-resume-visibility/research.md`, `specs/010-onboarding-resume-visibility/data-model.md`, `specs/010-onboarding-resume-visibility/contracts/onboarding-text-surface.md`, and `specs/010-onboarding-resume-visibility/quickstart.md` to confirm the documentation-and-banner-only scope. (Trace: FR-006, TG-003, plan.md Summary)
+- [X] T001 [Owner: Reviewer] [Effort: M] Run the baseline six-command validation lane from repo root using `tests/integration/quality-profile-foundation.ps1`, `tests/integration/hardening-gate-contract.ps1`, `tests/integration/quality-evidence-governance.ps1`, `tests/integration/validation-contract-lane.ps1`, `tests/integration/project-path-resolution-regression.ps1`, and `extensions/specrew-speckit/scripts/validate-governance.ps1`, then record the baseline result in `specs/010-onboarding-resume-visibility/plan.md` iteration state notes. (Trace: plan.md Validation Lane, plan.md Iteration State Notes, TG-005, SC-006)
+- [X] T002 [P] [Owner: Planner] [Effort: S] Review `specs/010-onboarding-resume-visibility/spec.md`, `specs/010-onboarding-resume-visibility/plan.md`, `specs/010-onboarding-resume-visibility/research.md`, `specs/010-onboarding-resume-visibility/data-model.md`, `specs/010-onboarding-resume-visibility/contracts/onboarding-text-surface.md`, and `specs/010-onboarding-resume-visibility/quickstart.md` to confirm the documentation-and-banner-only scope. (Trace: FR-006, TG-003, plan.md Summary)
 
 ---
 
@@ -28,8 +28,8 @@
 
 **Purpose**: Lock the implementation to the approved edit surfaces and validation obligations that block both user stories.
 
-- [ ] T003 [Owner: Planner] [Effort: S] Limit the planned implementation diff to `README.md`, `docs/getting-started.md`, `docs/user-guide.md`, and the `Write-PostBootstrapGuidance` text block in `scripts/specrew-init.ps1`, while leaving all `specs/008-*` and `specs/009-*` files untouched. (Trace: FR-006, Non-Goals, quickstart.md bounded workflow)
-- [ ] T004 [P] [Owner: Reviewer] [Effort: S] Prepare the manual review checklist from `specs/010-onboarding-resume-visibility/quickstart.md` for `README.md`, `docs/getting-started.md`, `docs/user-guide.md`, and `scripts/specrew-init.ps1`. (Trace: TG-004, FR-005, quickstart.md closure checklist)
+- [X] T003 [Owner: Planner] [Effort: S] Limit the planned implementation diff to `README.md`, `docs/getting-started.md`, `docs/user-guide.md`, and the `Write-PostBootstrapGuidance` text block in `scripts/specrew-init.ps1`, while leaving all `specs/008-*` and `specs/009-*` files untouched. (Trace: FR-006, Non-Goals, quickstart.md bounded workflow)
+- [X] T004 [P] [Owner: Reviewer] [Effort: S] Prepare the manual review checklist from `specs/010-onboarding-resume-visibility/quickstart.md` for `README.md`, `docs/getting-started.md`, `docs/user-guide.md`, and `scripts/specrew-init.ps1`. (Trace: TG-004, FR-005, quickstart.md closure checklist)
 
 **Checkpoint**: Scope boundary is locked and the validation approach is ready.
 
@@ -41,10 +41,10 @@
 
 **Independent Test**: Read `README.md`, `docs/getting-started.md`, and the bootstrap completion banner from `scripts/specrew-init.ps1`; each surface must explicitly say resumed sessions also begin with `specrew start`, mention runtime handoff regeneration, and warn against `copilot` directly.
 
-- [ ] T005 [P] [US1] [Owner: Implementer] [Effort: S] Add resume-session guidance and the explicit unsupported-`copilot` warning with rationale to `README.md`. (Trace: FR-001, FR-004, US1 acceptance scenarios 1 and 4)
-- [ ] T006 [P] [US1] [Owner: Implementer] [Effort: M] Add a `Resuming work later` subsection in `docs/getting-started.md` that names `specrew start` as the command for later sessions and explains runtime handoff regeneration. (Trace: FR-002, FR-004, US1 acceptance scenarios 2 and 4)
-- [ ] T007 [P] [US1] [Owner: Implementer] [Effort: S] Update only the `Write-PostBootstrapGuidance` next-steps text in `scripts/specrew-init.ps1` to add a visible resume-mode banner message and unsupported-`copilot` warning. (Trace: FR-003, FR-004, US1 acceptance scenarios 3 and 4)
-- [ ] T008 [US1] [Owner: Reviewer] [Effort: M] Validate `README.md`, `docs/getting-started.md`, and the rendered banner from `scripts/specrew-init.ps1` against User Story 1 acceptance criteria in `specs/010-onboarding-resume-visibility/spec.md`. (Trace: TG-001, TG-004, SC-001, SC-002)
+- [X] T005 [P] [US1] [Owner: Implementer] [Effort: S] Add resume-session guidance and the explicit unsupported-`copilot` warning with rationale to `README.md`. (Trace: FR-001, FR-004, US1 acceptance scenarios 1 and 4)
+- [X] T006 [P] [US1] [Owner: Implementer] [Effort: M] Add a `Resuming work later` subsection in `docs/getting-started.md` that names `specrew start` as the command for later sessions and explains runtime handoff regeneration. (Trace: FR-002, FR-004, US1 acceptance scenarios 2 and 4)
+- [X] T007 [P] [US1] [Owner: Implementer] [Effort: S] Update only the `Write-PostBootstrapGuidance` next-steps text in `scripts/specrew-init.ps1` to add a visible resume-mode banner message and unsupported-`copilot` warning. (Trace: FR-003, FR-004, US1 acceptance scenarios 3 and 4)
+- [X] T008 [US1] [Owner: Reviewer] [Effort: M] Validate `README.md`, `docs/getting-started.md`, and the rendered banner from `scripts/specrew-init.ps1` against User Story 1 acceptance criteria in `specs/010-onboarding-resume-visibility/spec.md`. (Trace: TG-001, TG-004, SC-001, SC-002)
 
 **Checkpoint**: User Story 1 is independently understandable from any of the three primary onboarding surfaces.
 
@@ -56,10 +56,10 @@
 
 **Independent Test**: Re-read the onboarding surfaces and confirm they still name `specrew start` as the resume command after restart or machine switch, and that at least one surface explains the per-machine runtime handoff regeneration from tracked project state.
 
-- [ ] T009 [US2] [Owner: Implementer] [Effort: M] Extend the `Resuming work later` subsection in `docs/getting-started.md` with `.specrew/last-start-prompt.md`, `.specrew/start-context.json`, `.specrew/start-summary.md`, the cross-machine regeneration explanation, and the active-session clarification. (Trace: FR-002, TG-002, US2 acceptance scenarios 1 and 2)
-- [ ] T010 [P] [US2] [Owner: Reviewer] [Effort: S] Review `docs/user-guide.md` for contradictory first-launch-only or direct-`copilot` language and apply only the minimum alignment edit in `docs/user-guide.md` if a contradiction is found. (Trace: FR-005, SC-004)
-- [ ] T011 [US2] [Owner: Planner] [Effort: S] Record the FR-005 review outcome for `docs/user-guide.md` in `specs/010-onboarding-resume-visibility/plan.md`. (Trace: FR-005, plan.md Iteration State Notes)
-- [ ] T012 [US2] [Owner: Reviewer] [Effort: M] Re-read `README.md`, `docs/getting-started.md`, `docs/user-guide.md`, and the rendered banner from `scripts/specrew-init.ps1` to confirm the cross-machine resume contract remains consistent and independently testable. (Trace: TG-002, TG-004, SC-003, SC-004)
+- [X] T009 [US2] [Owner: Implementer] [Effort: M] Extend the `Resuming work later` subsection in `docs/getting-started.md` with `.specrew/last-start-prompt.md`, `.specrew/start-context.json`, `.specrew/start-summary.md`, the cross-machine regeneration explanation, and the active-session clarification. (Trace: FR-002, TG-002, US2 acceptance scenarios 1 and 2)
+- [X] T010 [P] [US2] [Owner: Reviewer] [Effort: S] Review `docs/user-guide.md` for contradictory first-launch-only or direct-`copilot` language and apply only the minimum alignment edit in `docs/user-guide.md` if a contradiction is found. (Trace: FR-005, SC-004)
+- [X] T011 [US2] [Owner: Planner] [Effort: S] Record the FR-005 review outcome for `docs/user-guide.md` in `specs/010-onboarding-resume-visibility/plan.md`. (Trace: FR-005, plan.md Iteration State Notes)
+- [X] T012 [US2] [Owner: Reviewer] [Effort: M] Re-read `README.md`, `docs/getting-started.md`, `docs/user-guide.md`, and the rendered banner from `scripts/specrew-init.ps1` to confirm the cross-machine resume contract remains consistent and independently testable. (Trace: TG-002, TG-004, SC-003, SC-004)
 
 **Checkpoint**: Cross-machine and later-session guidance is consistent without changing runtime behavior.
 
@@ -69,9 +69,9 @@
 
 **Purpose**: Finish validation, visibility checks, and scope-guard review before the after-tasks gate.
 
-- [ ] T013 [Owner: Reviewer] [Effort: M] Run the post-edit six-command validation lane from repo root using `tests/integration/quality-profile-foundation.ps1`, `tests/integration/hardening-gate-contract.ps1`, `tests/integration/quality-evidence-governance.ps1`, `tests/integration/validation-contract-lane.ps1`, `tests/integration/project-path-resolution-regression.ps1`, and `extensions/specrew-speckit/scripts/validate-governance.ps1`, then record the post-implementation result in `specs/010-onboarding-resume-visibility/plan.md` iteration state notes. (Trace: plan.md Validation Lane, plan.md Iteration State Notes, TG-005, SC-006)
-- [ ] T014 [Owner: Reviewer] [Effort: S] Perform the final rendered-surface visibility review for `README.md`, `docs/getting-started.md`, and the bootstrap banner in `scripts/specrew-init.ps1`, including the 100-column banner check from `specs/010-onboarding-resume-visibility/spec.md`. (Trace: TG-004, SC-005)
-- [ ] T015 [Owner: Planner] [Effort: S] Audit the final diff for `README.md`, `docs/getting-started.md`, `docs/user-guide.md`, `scripts/specrew-init.ps1`, and `specs/010-onboarding-resume-visibility/plan.md` to confirm no `specs/008-*` or `specs/009-*` edits slipped in and no non-banner logic changed in `scripts/specrew-init.ps1`. (Trace: FR-006, TG-003, quickstart.md scope audit)
+- [X] T013 [Owner: Reviewer] [Effort: M] Run the post-edit six-command validation lane from repo root using `tests/integration/quality-profile-foundation.ps1`, `tests/integration/hardening-gate-contract.ps1`, `tests/integration/quality-evidence-governance.ps1`, `tests/integration/validation-contract-lane.ps1`, `tests/integration/project-path-resolution-regression.ps1`, and `extensions/specrew-speckit/scripts/validate-governance.ps1`, then record the post-implementation result in `specs/010-onboarding-resume-visibility/plan.md` iteration state notes. (Trace: plan.md Validation Lane, plan.md Iteration State Notes, TG-005, SC-006)
+- [X] T014 [Owner: Reviewer] [Effort: S] Perform the final rendered-surface visibility review for `README.md`, `docs/getting-started.md`, and the bootstrap banner in `scripts/specrew-init.ps1`, including the 100-column banner check from `specs/010-onboarding-resume-visibility/spec.md`. (Trace: TG-004, SC-005)
+- [X] T015 [Owner: Planner] [Effort: S] Audit the final diff for `README.md`, `docs/getting-started.md`, `docs/user-guide.md`, `scripts/specrew-init.ps1`, and `specs/010-onboarding-resume-visibility/plan.md` to confirm no `specs/008-*` or `specs/009-*` edits slipped in and no non-banner logic changed in `scripts/specrew-init.ps1`. (Trace: FR-006, TG-003, quickstart.md scope audit)
 
 ---
 
