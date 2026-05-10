@@ -68,9 +68,13 @@ All US3 integration tests pass:
 
 ---
 
-## Gap Ledger
+## Secondary Concerns
 
-No known gaps remain.
+### S-001 — Noted (but acceptable)
+
+The implementation commit modified `.claude/settings.local.json` to add US3 integration test commands to the validation lane (`reviewer-regression-event.ps1`, `reviewer-regression-ledger.ps1`, `lockout-chain-cap.ps1`, and validation-governance calls for iterations 003-004). This is necessary infrastructure for the six-script validation lane and aligns with the test-integrity requirement to run deterministic coverage. The modification is minimal and in scope for supporting US3 test execution.
+
+---
 
 ---
 
