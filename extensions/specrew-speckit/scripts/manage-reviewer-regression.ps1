@@ -1042,6 +1042,77 @@ switch ($Mode) {
             RecordedAt             = $recordedAt
         }
 
+        # T026: FR-014 - Detect closed iterations and mark carry-forward
+        $iterationStatePath = Join-Path $IterationDirectory 'state.md'
+        if (Test-Path -LiteralPath $iterationStatePath -PathType Leaf) {
+            $stateContent = Get-Content -LiteralPath $iterationStatePath -Raw -Encoding UTF8
+            $isClosedPattern = '\*\*Status\*\*:\s+(complete|closed)'
+            if ($stateContent -match $isClosedPattern) {
+                # Iteration is closed; find next iteration number
+                $currentIterNum = [regex]::Match((Get-IterationReference -IterationDirectory $IterationDirectory), '\d+').Value
+                if (-not [string]::IsNullOrWhiteSpace($currentIterNum)) {
+                    $nextIterNum = ([int]$currentIterNum + 1).ToString('000')
+                    $entry.CarryForwardIteration = "iteration $nextIterNum"
+                }
+            }
+        }
+
+        # T025: FR-012 - Conditional candidate-trap proposal when corpus is enabled
+        $settings = Get-ReviewerRegressionSettings -ProjectRoot $ProjectRoot
+        $candidateTrapProposed = $false
+        if ($settings.KnownTrapsEnabled) {
+            $knownTrapsPath = Join-Path $ProjectRoot '.specrew\quality\known-traps.md'
+            $knownTrapsDir = Split-Path -Parent $knownTrapsPath
+            if (-not (Test-Path -LiteralPath $knownTrapsDir -PathType Container)) {
+                $null = New-Item -ItemType Directory -Path $knownTrapsDir -Force
+            }
+            
+            if (-not (Test-Path -LiteralPath $knownTrapsPath -PathType Leaf)) {
+                # Initialize known-traps file if it doesn't exist
+                [System.IO.File]::WriteAllText($knownTrapsPath, @"
+# Known Traps
+
+**Schema**: v1  
+**Last Updated**: $(Get-Date -Format 'yyyy-MM-dd')
+
+## Trap Catalog
+
+<!-- Approved traps and candidate traps are recorded below -->
+
+"@, [System.Text.UTF8Encoding]::new($false))
+            }
+            
+            # Propose candidate trap
+            $candidateTrapEntry = @"
+
+<!-- candidate-trap-from-event: $newEventId -->
+## Candidate Trap (unapproved): $newEventId
+
+- **Source Event**: $newEventId
+- **Feature**: $Feature
+- **Defect Description**: $DefectDescription
+- **Defect Source Location**: $DefectSourceLocation
+- **Pattern**: _(Awaiting human review and pattern extraction)_
+- **Detection**: _(Awaiting lens or mechanical check definition)_
+- **Status**: candidate
+
+**Review Notes**: This candidate trap was automatically proposed from reviewer-regression event $newEventId. A human reviewer should extract the defect pattern, define detection logic, and approve or reject this trap entry.
+
+<!-- end-candidate-trap -->
+"@
+            
+            Update-LockedFileContent -Path $knownTrapsPath -Transform {
+                param($currentContent)
+                
+                # Append candidate trap before the final empty line or at end
+                $updated = $currentContent.TrimEnd() + [Environment]::NewLine + $candidateTrapEntry.TrimEnd() + [Environment]::NewLine
+                return $updated
+            } | Out-Null
+            
+            $candidateTrapProposed = $true
+            $entry.CandidateTrapStatus = 'proposed-awaiting-approval'
+        }
+
         $ledgerPath = Add-ReviewerRegressionLedgerEntry -ProjectRoot $ProjectRoot -Entry $entry
 
         # Track implementer owner and check for cap activation (T017: FR-009, FR-010)
@@ -1066,7 +1137,7 @@ switch ($Mode) {
                 "- **Chain Length**: $($capChain.Count)"
                 "- **Cap Threshold**: $(1 + (Get-ReviewerRegressionSettings -ProjectRoot $ProjectRoot).LockoutChainCap) (original + cap rotations)"
                 "- **Cap State**: active"
-                "- **Next Owner Path**: Awaiting human-owned revision or approved alternate owner recorded in `.squad/decisions.md`"
+                "- **Next Owner Path**: Awaiting human-owned revision or approved alternate owner recorded in ``.squad/decisions.md``"
             )
         }
 
@@ -1083,27 +1154,237 @@ switch ($Mode) {
         $null = Set-ReviewerRegressionStateBlock -IterationDirectory $IterationDirectory -Chain $chain
 
         [pscustomobject]@{
-            EventId             = $newEventId
-            Duplicate           = $false
-            Routing             = [pscustomobject]@{
+            EventId               = $newEventId
+            Duplicate             = $false
+            Routing               = [pscustomobject]@{
                 Status               = $routing.Status
                 Action               = $routing.Action
                 CurrentReviewerClass = $routing.CurrentReviewerClass
                 CurrentReviewerOwner = $routing.CurrentReviewerOwner
                 Notes                = $routing.Notes
             }
-            Chain               = $chain
-            LedgerPath          = $ledgerPath
-            DecisionPath        = $decisionPath
-            CapActivated        = $capActivatedNow
-            CapDecisionPath     = $capDecisionPath
+            Chain                 = $chain
+            LedgerPath            = $ledgerPath
+            DecisionPath          = $decisionPath
+            CapActivated          = $capActivatedNow
+            CapDecisionPath       = $capDecisionPath
+            CandidateTrapProposed = $candidateTrapProposed
+            CarryForwardIteration = $entry.CarryForwardIteration
         } | ConvertTo-Json -Depth 8
         break
     }
     'resolve' {
-        throw "Mode 'resolve' remains deferred to the later reviewer-regression clean-pass slice."
+        # T024: FR-005 clean-pass de-escalation
+        if ([string]::IsNullOrWhiteSpace($Feature) -and -not [string]::IsNullOrWhiteSpace($IterationDirectory)) {
+            $Feature = Get-FeatureReferenceFromIterationDirectory -ProjectRoot $ProjectRoot -IterationDirectory $IterationDirectory
+        }
+        Require-ParameterValue -Name 'Feature' -Value $Feature
+        Require-ParameterValue -Name 'IterationDirectory' -Value $IterationDirectory
+
+        $activeEntries = @(
+            Get-ReviewerRegressionLedgerEntries -ProjectRoot $ProjectRoot |
+                Where-Object { $_.Feature -eq $Feature -and $_.EventStatus -eq 'active' }
+        )
+
+        if ($activeEntries.Count -eq 0) {
+            # No active events to resolve
+            $chain = Get-ReviewerRegressionReadback -ProjectRoot $ProjectRoot -Feature $Feature
+            [pscustomobject]@{
+                Resolved     = $false
+                EventIds     = @()
+                Message      = "No active reviewer-regression events for feature $Feature"
+                Chain        = $chain
+            } | ConvertTo-Json -Depth 8
+            break
+        }
+
+        # Mark all active events as resolved in ledger
+        $ledgerPath = Get-ReviewerRegressionLedgerPath -ProjectRoot $ProjectRoot
+        $resolvedAt = (Get-Date).ToUniversalTime().ToString('yyyy-MM-ddTHH:mm:ssZ')
+        
+        Update-LockedFileContent -Path $ledgerPath -Transform {
+            param($currentContent)
+            
+            $updated = $currentContent
+            foreach ($entry in $activeEntries) {
+                # Update EventStatus to resolved
+                $pattern = "(?ms)(### $([regex]::Escape($entry.EventId)).*?-\s+\*\*Event Status\*\*:\s*`)active(`.*?)(###|\z)"
+                $updated = [regex]::Replace($updated, $pattern, {
+                    param($m)
+                    $before = $m.Groups[1].Value
+                    $after = $m.Groups[2].Value
+                    $next = $m.Groups[3].Value
+                    "$before`resolved$after$next"
+                })
+                
+                # Update De-Escalation Outcome
+                $pattern = "(?ms)(### $([regex]::Escape($entry.EventId)).*?-\s+\*\*De-Escalation Outcome\*\*:\s*`)\(none\)(`.*?)(###|\z)"
+                $updated = [regex]::Replace($updated, $pattern, {
+                    param($m)
+                    $before = $m.Groups[1].Value
+                    $after = $m.Groups[2].Value
+                    $next = $m.Groups[3].Value
+                    "$before`clean-pass at $resolvedAt$after$next"
+                })
+            }
+            
+            return $updated
+        } | Out-Null
+
+        # Clear runtime state for this feature
+        $configPath = Join-Path $ProjectRoot '.squad\config.json'
+        $featureKey = $Feature -replace '[/\\]', '_'
+        
+        Update-LockedFileContent -Path $configPath -Transform {
+            param($currentContent)
+            
+            $config = if ([string]::IsNullOrWhiteSpace($currentContent)) {
+                [pscustomobject]@{
+                    version = '1.0'
+                    reviewerRegressionState = [pscustomobject]@{}
+                }
+            }
+            else {
+                $currentContent | ConvertFrom-Json
+            }
+            
+            if ($null -ne $config.reviewerRegressionState.PSObject.Properties[$featureKey]) {
+                $config.reviewerRegressionState.PSObject.Properties.Remove($featureKey)
+            }
+            
+            return ($config | ConvertTo-Json -Depth 10)
+        } | Out-Null
+
+        # Update state.md managed block
+        $chain = Get-ReviewerRegressionReadback -ProjectRoot $ProjectRoot -Feature $Feature
+        $null = Set-ReviewerRegressionStateBlock -IterationDirectory $IterationDirectory -Chain $chain
+
+        [pscustomobject]@{
+            Resolved     = $true
+            EventIds     = @($activeEntries | ForEach-Object { $_.EventId })
+            Message      = "Resolved $($activeEntries.Count) active event(s) via clean pass"
+            Chain        = $chain
+        } | ConvertTo-Json -Depth 8
+        break
     }
     'withdraw' {
-        throw "Mode 'withdraw' remains deferred to iteration 004 (US3)."
+        # T024: FR-008 withdrawal reversal
+        Require-ParameterValue -Name 'EventId' -Value $EventId
+        if ([string]::IsNullOrWhiteSpace($Feature) -and -not [string]::IsNullOrWhiteSpace($IterationDirectory)) {
+            $Feature = Get-FeatureReferenceFromIterationDirectory -ProjectRoot $ProjectRoot -IterationDirectory $IterationDirectory
+        }
+        Require-ParameterValue -Name 'Feature' -Value $Feature
+        Require-ParameterValue -Name 'IterationDirectory' -Value $IterationDirectory
+
+        $targetEvent = Get-ReviewerRegressionLedgerEntries -ProjectRoot $ProjectRoot |
+            Where-Object { $_.EventId -eq $EventId } |
+            Select-Object -First 1
+
+        if ($null -eq $targetEvent) {
+            throw "Event $EventId not found in reviewer-regression ledger."
+        }
+
+        if ($targetEvent.EventStatus -ne 'active') {
+            # Already withdrawn or resolved - idempotent no-op
+            $chain = Get-ReviewerRegressionReadback -ProjectRoot $ProjectRoot -Feature $Feature
+            [pscustomobject]@{
+                EventId    = $EventId
+                Withdrawn  = $false
+                Message    = "Event $EventId is not active (status: $($targetEvent.EventStatus)); no withdrawal needed"
+                Chain      = $chain
+            } | ConvertTo-Json -Depth 8
+            break
+        }
+
+        # Mark event as withdrawn in ledger
+        $ledgerPath = Get-ReviewerRegressionLedgerPath -ProjectRoot $ProjectRoot
+        $withdrawnAt = (Get-Date).ToUniversalTime().ToString('yyyy-MM-ddTHH:mm:ssZ')
+        
+        Update-LockedFileContent -Path $ledgerPath -Transform {
+            param($currentContent)
+            
+            # Update EventStatus to withdrawn
+            $pattern = "(?ms)(### $([regex]::Escape($EventId)).*?-\s+\*\*Event Status\*\*:\s*`)active(`.*?)(###|\z)"
+            $updated = [regex]::Replace($currentContent, $pattern, {
+                param($m)
+                $before = $m.Groups[1].Value
+                $after = $m.Groups[2].Value
+                $next = $m.Groups[3].Value
+                "$before`withdrawn$after$next"
+            })
+            
+            # Update Withdrawal Reference
+            $pattern = "(?ms)(### $([regex]::Escape($EventId)).*?-\s+\*\*Withdrawal Reference\*\*:\s*`)\(none\)(`.*?)(###|\z)"
+            $updated = [regex]::Replace($updated, $pattern, {
+                param($m)
+                $before = $m.Groups[1].Value
+                $after = $m.Groups[2].Value
+                $next = $m.Groups[3].Value
+                "$before`misreport-withdrawn at $withdrawnAt$after$next"
+            })
+            
+            return $updated
+        } | Out-Null
+
+        # T025: Clean up unapproved candidate traps if corpus is enabled
+        $settings = Get-ReviewerRegressionSettings -ProjectRoot $ProjectRoot
+        if ($settings.KnownTrapsEnabled) {
+            $knownTrapsPath = Join-Path $ProjectRoot '.specrew\quality\known-traps.md'
+            if (Test-Path -LiteralPath $knownTrapsPath -PathType Leaf) {
+                Update-LockedFileContent -Path $knownTrapsPath -Transform {
+                    param($currentContent)
+                    
+                    # Remove any unapproved trap entries referencing this event
+                    $pattern = "(?ms)<!-- candidate-trap-from-event: $([regex]::Escape($EventId)) -->.*?<!-- end-candidate-trap -->\s*"
+                    $updated = [regex]::Replace($currentContent, $pattern, '')
+                    
+                    return $updated
+                } | Out-Null
+            }
+        }
+
+        # Check if there are remaining active events for this feature
+        $remainingActive = @(
+            Get-ReviewerRegressionLedgerEntries -ProjectRoot $ProjectRoot |
+                Where-Object { $_.Feature -eq $Feature -and $_.EventStatus -eq 'active' -and $_.EventId -ne $EventId }
+        )
+
+        if ($remainingActive.Count -eq 0) {
+            # No more active events - clear runtime state
+            $configPath = Join-Path $ProjectRoot '.squad\config.json'
+            $featureKey = $Feature -replace '[/\\]', '_'
+            
+            Update-LockedFileContent -Path $configPath -Transform {
+                param($currentContent)
+                
+                $config = if ([string]::IsNullOrWhiteSpace($currentContent)) {
+                    [pscustomobject]@{
+                        version = '1.0'
+                        reviewerRegressionState = [pscustomobject]@{}
+                    }
+                }
+                else {
+                    $currentContent | ConvertFrom-Json
+                }
+                
+                if ($null -ne $config.reviewerRegressionState.PSObject.Properties[$featureKey]) {
+                    $config.reviewerRegressionState.PSObject.Properties.Remove($featureKey)
+                }
+                
+                return ($config | ConvertTo-Json -Depth 10)
+            } | Out-Null
+        }
+
+        # Update state.md managed block
+        $chain = Get-ReviewerRegressionReadback -ProjectRoot $ProjectRoot -Feature $Feature
+        $null = Set-ReviewerRegressionStateBlock -IterationDirectory $IterationDirectory -Chain $chain
+
+        [pscustomobject]@{
+            EventId    = $EventId
+            Withdrawn  = $true
+            Message    = "Event $EventId withdrawn; state reverted"
+            Chain      = $chain
+        } | ConvertTo-Json -Depth 8
+        break
     }
 }

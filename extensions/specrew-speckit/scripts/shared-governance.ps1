@@ -931,8 +931,8 @@ function Get-ActiveReviewerRegressionChain {
             $currentOwner = $entry.SameClassFallbackOwner
         }
 
-        if ($null -ne $entry.CarryForwardIteration) {
-            $carryForward = $entry.CarryForwardIteration
+        if (-not [string]::IsNullOrWhiteSpace([string]$entry.CarryForwardIteration)) {
+            $carryForward = $entry.Iteration
         }
     }
 

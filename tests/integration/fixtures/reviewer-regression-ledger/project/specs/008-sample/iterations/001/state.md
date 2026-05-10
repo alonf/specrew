@@ -1,22 +1,22 @@
-# Iteration State: 001 (CLOSED)
+# Iteration State: 001
 
 **Iteration**: 001  
-**Feature**: 008-sample-carry-forward  
-**Last Updated**: 2026-05-08  
-**Status**: complete
+**Feature**: 008-sample-ledger  
+**Last Updated**: 2026-05-10  
+**Status**: executing
 
 ## Current State
 
-- **Execution Phase**: Complete
+- **Execution Phase**: Testing reviewer-regression ledger scenarios
 - **Total Task Capacity**: 5 of 20 story_points planned
-- **Tasks in Progress**: 0
+- **Tasks in Progress**: 1
 - **Tasks Blocked**: 0
-- **Tasks Completed**: 5
+- **Tasks Completed**: 2
 
 ## Baseline Ref
 
-- **Commit**: baseline-fixture-carry-forward-001
-- **Timestamp**: 2026-05-08T12:00:00Z
+- **Commit**: baseline-fixture-ledger
+- **Timestamp**: 2026-05-10T10:00:00Z
 
 <!-- >>> specrew-managed escalation-state >>> -->
 ## Repair Escalation
@@ -38,7 +38,7 @@
 
 - **Status**: active
 - **Feature**: specs/008-sample
-- **Active Event IDs**: RRE-001
+- **Active Event IDs**: RR-2026-05-10-001
 - **Prior Reviewer Class**: copilot
 - **Current Reviewer Class**: claude
 - **Current Reviewer Owner**: claude-reviewer-b
@@ -46,17 +46,15 @@
 - **Lockout Cap**: 2
 - **Cap Active**: false
 - **Locked Out Agents**: (none)
-- **Carry Forward From Iteration**: iteration 001
-- **Last Event**: 2026-05-08T18:00:00Z
-- **Notes**: Event RRE-001 reported after iteration 001 closed; carrying forward to next active iteration
+- **Carry Forward From Iteration**: (none)
+- **Last Event**: 2026-05-10T10:00:00Z
+- **Notes**: Escalated to claude after RR-2026-05-10-001
 <!-- <<< specrew-managed reviewer-regression-state <<< -->
 
 ## Task Status
 
 | Task | Status | Notes |
 | ---- | ------ | ----- |
-| T001 | done | Completed in iteration 001 |
-| T002 | done | Completed in iteration 001 |
-| T003 | done | Completed in iteration 001 |
-| T004 | done | Completed in iteration 001 |
-| T005 | done | Completed in iteration 001 |
+| T001 | done | Sample baseline task |
+| T002 | done | Sample completed task |
+| T003 | in-progress | Sample active task for ledger testing |

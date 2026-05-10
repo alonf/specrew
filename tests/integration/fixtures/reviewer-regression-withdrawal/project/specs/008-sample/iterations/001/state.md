@@ -36,19 +36,19 @@
 <!-- >>> specrew-managed reviewer-regression-state >>> -->
 ## Reviewer Regression State
 
-- **Status**: inactive
-- **Feature**: (none)
-- **Active Event IDs**: (none)
-- **Prior Reviewer Class**: (none)
-- **Current Reviewer Class**: (none)
-- **Current Reviewer Owner**: (none)
+- **Status**: active
+- **Feature**: specs/008-sample
+- **Active Event IDs**: RRE-001
+- **Prior Reviewer Class**: copilot
+- **Current Reviewer Class**: claude
+- **Current Reviewer Owner**: claude-reviewer-b
 - **Lockout Chain Length**: 0
 - **Lockout Cap**: 2
 - **Cap Active**: false
 - **Locked Out Agents**: (none)
 - **Carry Forward From Iteration**: (none)
-- **Last Event**: (none)
-- **Notes**: (none)
+- **Last Event**: 2026-05-09T12:00:00Z
+- **Notes**: Escalated to claude after RRE-001 (pending withdrawal test)
 <!-- <<< specrew-managed reviewer-regression-state <<< -->
 
 ## Task Status

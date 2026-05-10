@@ -1,22 +1,22 @@
-# Iteration State: 001 (CLOSED)
+# Iteration State: 002
 
-**Iteration**: 001  
+**Iteration**: 002  
 **Feature**: 008-sample-carry-forward  
 **Last Updated**: 2026-05-08  
-**Status**: complete
+**Status**: pending
 
 ## Current State
 
-- **Execution Phase**: Complete
+- **Execution Phase**: Not yet started
 - **Total Task Capacity**: 5 of 20 story_points planned
 - **Tasks in Progress**: 0
 - **Tasks Blocked**: 0
-- **Tasks Completed**: 5
+- **Tasks Completed**: 0
 
 ## Baseline Ref
 
-- **Commit**: baseline-fixture-carry-forward-001
-- **Timestamp**: 2026-05-08T12:00:00Z
+- **Commit**: baseline-fixture-carry-forward-002
+- **Timestamp**: 2026-05-08T18:30:00Z
 
 <!-- >>> specrew-managed escalation-state >>> -->
 ## Repair Escalation
@@ -48,15 +48,11 @@
 - **Locked Out Agents**: (none)
 - **Carry Forward From Iteration**: iteration 001
 - **Last Event**: 2026-05-08T18:00:00Z
-- **Notes**: Event RRE-001 reported after iteration 001 closed; carrying forward to next active iteration
+- **Notes**: Carried forward from closed iteration 001; event RR-2026-05-08-001 remains active
 <!-- <<< specrew-managed reviewer-regression-state <<< -->
 
 ## Task Status
 
 | Task | Status | Notes |
 | ---- | ------ | ----- |
-| T001 | done | Completed in iteration 001 |
-| T002 | done | Completed in iteration 001 |
-| T003 | done | Completed in iteration 001 |
-| T004 | done | Completed in iteration 001 |
-| T005 | done | Completed in iteration 001 |
+| T001 | pending | Awaiting start of iteration 002 |

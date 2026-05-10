@@ -183,4 +183,35 @@ $decisionText = Get-Content -LiteralPath (Join-Path $workspace '.squad\decisions
 if (-not (Assert-Condition -Condition (([regex]::Matches($decisionText, '- \*\*Type\*\*: reviewer-regression-escalation')).Count -eq 2) -FailureMessage 'Reviewer-regression decisions should be recorded for both unresolved events.')) { exit 1 }
 
 Write-Pass 'Governance validation accepts the reviewer-regression ledger and projection artifacts'
+
+Write-Host "`nTest 5: duplicate event detection prevents redundant escalation entries"
+$duplicateResult = Invoke-RegressionCommand -ScriptPath $scriptPath -ArgumentList @(
+    '-Mode', 'report',
+    '-ProjectRoot', $workspace,
+    '-Feature', 'specs/008-sample',
+    '-IterationDirectory', $iterationDirectory,
+    '-Slice', 'iteration 001 ledger baseline slice',
+    '-PriorReviewerVerdict', 'approved',
+    '-PriorReviewerClass', 'codex',
+    '-PriorReviewerOwner', 'codex-reviewer-a',
+    '-DefectDescription', 'The first codex-reviewed slice missed a regression detail.',
+    '-DefectSourceLocation', 'src/app.js:20'
+)
+if (-not (Assert-Condition -Condition ($duplicateResult.ExitCode -eq 0) -FailureMessage "Duplicate report command failed.`n$($duplicateResult.Text)")) { exit 1 }
+if (-not (Assert-Condition -Condition ($duplicateResult.Json.Duplicate -eq $true) -FailureMessage 'Duplicate detection flag should be true for identical event.')) { exit 1 }
+if (-not (Assert-Condition -Condition ($duplicateResult.Json.EventId -eq 'RRE-001') -FailureMessage 'Duplicate report should return original event ID.')) { exit 1 }
+
+Write-Pass 'Duplicate event detection prevents redundant escalation entries'
+
+Write-Host "`nTest 6: corpus-disabled path does not offer candidate traps"
+$configPath = Join-Path $workspace '.specrew\iteration-config.yml'
+$configText = Get-Content -LiteralPath $configPath -Raw -Encoding UTF8
+if (-not (Assert-Condition -Condition ($configText -match 'known_traps_integration:\s*false') -FailureMessage 'Fixture should have corpus disabled.')) { exit 1 }
+
+$ledgerAfterDuplicate = Get-Content -LiteralPath $ledgerPath -Raw -Encoding UTF8
+$trapCount = ([regex]::Matches($ledgerAfterDuplicate, '\*\*Candidate Trap Status\*\*:\s*`(?!not-applicable)')).Count
+if (-not (Assert-Condition -Condition ($trapCount -eq 0) -FailureMessage 'Corpus-disabled fixture should not propose candidate traps.')) { exit 1 }
+
+Write-Pass 'Corpus-disabled path does not offer candidate traps'
+
 exit 0

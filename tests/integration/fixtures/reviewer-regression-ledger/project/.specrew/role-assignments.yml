@@ -1,0 +1,16 @@
+# Role Assignments
+
+version: v1
+feature: 008-sample-ledger
+iteration: 001
+
+roles:
+  - name: Reviewer
+    assigned_to: copilot-reviewer-a
+    reasoning_class: copilot
+    eligible: true
+
+  - name: Implementer
+    assigned_to: implementer-alpha
+    reasoning_class: copilot
+    eligible: true

@@ -1,17 +1,17 @@
 # Iteration State: 004
 
 **Schema**: v1
-**Last Completed Task**: (none — planning-only)
-**Tasks Remaining**: T020, T021, T022, T023, T024, T025, T026
-**In Progress**: (none)
-**Baseline Ref**: *(pending implementation authorization)*
-**Updated**: *(pending implementation authorization)*
-**Current Phase**: planning
-**Iteration Status**: Planning complete; awaiting hardening-gate sign-off and implementation authorization
+**Last Completed Task**: T026
+**Tasks Remaining**: (none for this iteration)
+**In Progress**: test validation
+**Baseline Ref**: d2ba1d6
+**Updated**: 2026-05-10
+**Current Phase**: implementation
+**Iteration Status**: Implementation of US3 (T020-T026) in progress
 
 ## Execution Summary
 
-**Status**: Iteration 004 planning and approval complete. Hardening-gate sign-off recorded. Implementation authorization recorded. Ready for implementation start.
+**Status**: Iteration 004 implementation complete. Running validation tests for US3 withdrawal, carry-forward, and known-traps integration.
 
 ## Iteration Scope
 
@@ -34,13 +34,13 @@ This iteration carries **User Story 3 (withdrawal handling, carry-forward, known
 
 | Task | Status | Notes |
 | ---- | ------ | ----- |
-| T020 | pending | Build withdrawal, duplicate-report, carry-forward, and corpus-disabled fixtures |
-| T021 | pending | Add withdrawal and misreport regression coverage |
-| T022 | pending | Add closed-iteration carry-forward regression coverage |
-| T023 | pending | Extend ledger consistency and known-traps degraded-path assertions |
-| T024 | pending | Implement withdrawal reversal, clean-pass de-escalation, and repeated-event consolidation |
-| T025 | pending | Implement conditional candidate-trap proposal and unapproved-trap cleanup |
-| T026 | pending | Preserve closed-iteration history while projecting unresolved state into next active iteration |
+| T020 | done | Built withdrawal, duplicate-report, carry-forward, and corpus-disabled fixtures |
+| T021 | done | Added withdrawal and misreport regression coverage |
+| T022 | done | Added closed-iteration carry-forward regression coverage |
+| T023 | done | Extended ledger consistency and known-traps degraded-path assertions |
+| T024 | done | Implemented withdrawal reversal, clean-pass de-escalation, and repeated-event consolidation |
+| T025 | done | Implemented conditional candidate-trap proposal and unapproved-trap cleanup |
+| T026 | done | Preserved closed-iteration history while projecting unresolved state into next active iteration |
 
 ## Notes
 

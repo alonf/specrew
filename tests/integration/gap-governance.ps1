@@ -409,4 +409,39 @@ foreach ($check in @(
 }
 
 Write-Pass 'Reviewer index mirrors active gap concerns and routing fallback evidence'
+
+Write-Host "`nTest 13: reviewer-regression ledger presence does not trigger false-positive gaps"
+$reviewerRegressionLedgerPath = Join-Path $projectRoot '.specrew\reviewer-regression-log.md'
+[System.IO.File]::WriteAllText($reviewerRegressionLedgerPath, @'
+# Reviewer Regression Ledger
+
+**Schema**: v1  
+**Last Updated**: 2026-05-10
+
+---
+
+## Event RRE-001
+
+- **Feature**: specs/001-gap-governance
+- **Event Status**: resolved
+- **Recorded At**: 2026-05-10T10:00:00Z
+
+---
+'@, [System.Text.UTF8Encoding]::new($false))
+
+$validatorFinalOutput = @(& pwsh -NoProfile -ExecutionPolicy Bypass -File $validateScript -ProjectPath $projectRoot -IterationPath $iterationDirectory 2>&1)
+$validatorFinalText = ($validatorFinalOutput | ForEach-Object { [string]$_ }) -join [Environment]::NewLine
+if ($LASTEXITCODE -ne 0) {
+    Write-Fail "Validator should accept reviewer-regression ledger without gap warnings.`n$validatorFinalText"
+    exit 1
+}
+
+if ($validatorFinalText -match 'reviewer-regression-log\.md.*gap') {
+    Write-Fail "Validator should not flag reviewer-regression ledger as a gap."
+    exit 1
+}
+
+Write-Pass "Reviewer-regression ledger presence does not trigger false-positive gaps"
+
+Write-Host "`nAll gap governance tests passed successfully" -ForegroundColor Green
 exit 0
