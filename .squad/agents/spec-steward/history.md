@@ -4,6 +4,21 @@ Project-specific learnings and patterns discovered during work.
 
 ## Learnings
 
+### 2026-05-10: Feature 008 Iteration 003 Hardening Gate Canonical Concern Repair
+
+Repaired the hardening-gate.md for feature 008 iteration 003 after intra-feature schema regression was detected during revision cycle. The original planner-authored artifact omitted the five canonical concerns required by spec 005 Phase 2 (security-surface, error-handling-expectations, retry-idempotency-requirements, test-integrity-targets, operational-resilience-concerns).
+
+The repair involved:
+1. **Canonical concern addition**: Added five canonical concerns in the required order as the first five rows of the Concern Review table, each with honest pre-implementation evaluation specific to the US2 lockout-chain-cap slice.
+2. **Schema upgrade**: Upgraded from six-column schema to nine-column schema (Concern, Category, Status, Evidence Basis, Runtime Evidence Status, Expected Controls, Blocking, Rationale, Approval) to match spec 005 iteration 004 pattern.
+3. **Feature-specific concerns preserved**: Kept the six existing feature-specific concerns after the canonical five.
+4. **Governance validation fixes**: Adjusted Evidence Basis to `not-applicable` for not-applicable status, and Runtime Evidence Status to `pending-post-implementation` for planning-time-analysis addressed concerns.
+5. **Known-traps corpus seeding**: Added `missing-canonical-concerns` governance-category trap entry with concrete example, detection method (scan Concern Review table for canonical five in order), remediation guidance, discovery date 2026-05-10, and reapplication note.
+
+**Pattern discovered**: When a hardening gate is authored without the required canonical concerns, the remediation is not just adding them but ensuring they appear in the exact required order (security-surface, error-handling-expectations, retry-idempotency-requirements, test-integrity-targets, operational-resilience-concerns) as the first five rows, with feature-specific concerns following after. The nine-column schema provides better granularity for planning-vs-runtime evidence tracking than the original six-column schema.
+
+**Pattern discovered**: The governance validator enforces strict Evidence Basis and Runtime Evidence Status combinations: `not-applicable` status requires `not-applicable` Evidence Basis, and `planning-time-analysis` Evidence Basis requires `pending-post-implementation` or `not-needed` Runtime Evidence Status (not `requires-runtime-proof`).
+
 ### 2026-05-08: Spec Quality Hardening Pass
 
 Applied surgical spec-hardening to close contract gaps in specs 002 and 005 from roadmap review. Key improvements:
