@@ -2,10 +2,11 @@
 
 **Schema**: v1  
 **Spec**: [../../spec.md](../../spec.md)  
-**Status**: planning  
+**Status**: retro  
 **Capacity**: 13/20 story_points  
 **Started**: 2026-05-10  
-**Completed**: (not yet started)
+**Completed**: 2026-05-10
+**Closed**: 2026-05-10
 
 ## Summary
 
@@ -15,7 +16,7 @@ This slice is deliberately bounded to US1 acceptance criteria only. User Story 2
 
 **Primary Focus**: Reviewer-regression event recording, stronger-class routing selection, same-class independent fallback, maximum-strength human-direction hold, and ledger/active-chain projection assertions  
 **Target Slice**: User Story 1 (`T008`-`T013`)  
-**Execution Status**: planning complete - awaiting human approval and hardening-gate sign-off  
+**Execution Status**: complete - review passed, retrospective complete  
 **Deferred Follow-On**: User Story 2 (`T014`-`T019`), User Story 3 (`T020`-`T026`), Polish (`T027`-`T028`)
 
 ---
@@ -70,12 +71,12 @@ This slice is deliberately bounded to US1 acceptance criteria only. User Story 2
 
 | Task | Title | Requirement | Story | Effort | Owner | Owner File Globs | Status | Agent | Actual | Verdict |
 | ---- | ----- | ----------- | ----- | ------ | ----- | ---------------- | ------ | ----- | ------ | ------- |
-| T008 | Build stronger-class, same-class-fallback, and maximum-strength-hold fixtures | US1 | US1 | 1 | Review-operations maintainer | `tests/integration/fixtures/reviewer-regression-event/**` | planned | | | |
-| T009 | Add event-reporting and reviewer-routing regression coverage | FR-001, FR-002, FR-003, FR-004 | US1 | 2 | Review-operations maintainer | `tests/integration/reviewer-regression-event.ps1` | planned | | | |
-| T010 | Add ledger and active-chain projection assertions | FR-005, FR-006, FR-015 | US1 | 2 | Governance artifact maintainer | `tests/integration/reviewer-regression-ledger.ps1` | planned | | | |
-| T011 | Implement reviewer-regression event logging, chain deduplication, and strongest-class selection | FR-001, FR-002, FR-003, FR-015 | US1 | 3 | Reviewer-governance policy maintainer | `extensions/specrew-speckit/scripts/manage-reviewer-regression.ps1` | planned | | | |
-| T012 | Implement same-class independent-owner fallback, maximum-strength hold, and active-chain readback | FR-003, FR-004, FR-005 | US1 | 3 | Lifecycle-routing maintainer | `extensions/specrew-speckit/scripts/manage-reviewer-regression.ps1` | planned | | | |
-| T013 | Update routed reviewer/coordinator guidance for stronger-class escalation and human-direction hold | FR-002, FR-004, TG-006 | US1 | 2 | Coordinator handoff maintainer | `extensions/specrew-speckit/squad-templates/coordinator/specrew-governance.md`, `.specify/extensions/specrew-speckit/squad-templates/coordinator/specrew-governance.md`, `extensions/specrew-speckit/squad-templates/agents/reviewer/charter.md`, `.specify/extensions/specrew-speckit/squad-templates/agents/reviewer/charter.md`, `.squad/agents/reviewer/charter.md`, `.github/agents/squad.agent.md` | planned | | | |
+| T008 | Build stronger-class, same-class-fallback, and maximum-strength-hold fixtures | US1 | US1 | 1 | Review-operations maintainer | `tests/integration/fixtures/reviewer-regression-event/**` | done | copilot-agent | 1 | pass |
+| T009 | Add event-reporting and reviewer-routing regression coverage | FR-001, FR-002, FR-003, FR-004 | US1 | 2 | Review-operations maintainer | `tests/integration/reviewer-regression-event.ps1` | done | copilot-agent | 2 | pass |
+| T010 | Add ledger and active-chain projection assertions | FR-005, FR-006, FR-015 | US1 | 2 | Governance artifact maintainer | `tests/integration/reviewer-regression-ledger.ps1` | done | copilot-agent | 2 | pass |
+| T011 | Implement reviewer-regression event logging, chain deduplication, and strongest-class selection | FR-001, FR-002, FR-003, FR-015 | US1 | 3 | Reviewer-governance policy maintainer | `extensions/specrew-speckit/scripts/manage-reviewer-regression.ps1` | done | copilot-agent | 3 | pass |
+| T012 | Implement same-class independent-owner fallback, maximum-strength hold, and active-chain readback | FR-003, FR-004, FR-005 | US1 | 3 | Lifecycle-routing maintainer | `extensions/specrew-speckit/scripts/manage-reviewer-regression.ps1` | done | copilot-agent | 3 | pass |
+| T013 | Update routed reviewer/coordinator guidance for stronger-class escalation and human-direction hold | FR-002, FR-004, TG-006 | US1 | 2 | Coordinator handoff maintainer | `extensions/specrew-speckit/squad-templates/coordinator/specrew-governance.md`, `.specify/extensions/specrew-speckit/squad-templates/coordinator/specrew-governance.md`, `extensions/specrew-speckit/squad-templates/agents/reviewer/charter.md`, `.specify/extensions/specrew-speckit/squad-templates/agents/reviewer/charter.md`, `.squad/agents/reviewer/charter.md`, `.github/agents/squad.agent.md` | done | copilot-agent | 2 | pass |
 
 **Total Effort**: 13 story_points
 

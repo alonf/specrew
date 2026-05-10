@@ -822,6 +822,7 @@ function New-ReviewerRegressionEventEntry {
         Severity               = Get-LedgerFieldValue -RawText $rawText -Label 'Severity'
         EscalationAction       = Get-LedgerFieldValue -RawText $rawText -Label 'Escalation Action'
         EscalatedToClass       = Get-LedgerFieldValue -RawText $rawText -Label 'Escalated To Class'
+        SelectedReviewerOwner  = Get-LedgerFieldValue -RawText $rawText -Label 'Selected Reviewer Owner'
         SameClassFallbackOwner = Get-LedgerFieldValue -RawText $rawText -Label 'Same-Class Fallback Owner'
         CarryForwardIteration  = Get-LedgerFieldValue -RawText $rawText -Label 'Carry Forward Iteration'
         CandidateTrapStatus    = Get-LedgerFieldValue -RawText $rawText -Label 'Candidate Trap Status'
@@ -914,12 +915,14 @@ function Get-ActiveReviewerRegressionChain {
             $strongestAction = 'human-direction-hold'
             $currentClass = $entry.EscalatedToClass
             $priorClass = $entry.PriorReviewerClass
+            $currentOwner = $null
             break
         }
         elseif ($entry.EscalationAction -eq 'stronger-class') {
             $strongestAction = 'stronger-class'
             $currentClass = $entry.EscalatedToClass
             $priorClass = $entry.PriorReviewerClass
+            $currentOwner = $entry.SelectedReviewerOwner
         }
         elseif ($strongestAction -ne 'stronger-class' -and $entry.EscalationAction -eq 'same-class-independent-owner') {
             $strongestAction = 'same-class-independent-owner'

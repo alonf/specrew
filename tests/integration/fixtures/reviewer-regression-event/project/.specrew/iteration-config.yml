@@ -20,6 +20,10 @@ reasoning_tiers:
     reviewer_capable: true
 
 # Reviewer-regression specific configuration
+# This fixture supports:
+# - stronger-class escalation from copilot -> claude
+# - same-class fallback at codex via an independent owner
+# - maximum-strength hold after the active chain has already used both codex reviewers
 reviewer_regression:
   enabled: true
   clean_passes_required: 1

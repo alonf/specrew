@@ -18,4 +18,4 @@
 
 ## Reviewer-Regression Decisions
 
-*No reviewer-regression events recorded yet in this fixture.*
+*No reviewer-regression events recorded yet in this fixture. The roster supports stronger-class escalation (`copilot` -> `claude`) plus two independent `codex` reviewers for same-class fallback and maximum-strength hold coverage.*

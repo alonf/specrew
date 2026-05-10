@@ -106,5 +106,11 @@ These rules override generic Squad coordination whenever the repository is boots
    - If review finds an ambiguity, contradiction, or missing decision in the governing spec, stop closure, ask the human targeted clarification question, update the spec, and reconcile the affected plan/tasks/governance artifacts before continuing.
 
 19. **Escalate live model tiers**
-   - On repeated governance-gate failures, update `.squad/config.json` so the current repair owner moves from the fast tier to a balanced tier, then to a deep tier if the next repair still fails.
-   - Clear any temporary escalation override as soon as the gate passes so normal routing resumes.
+    - On repeated governance-gate failures, update `.squad/config.json` so the current repair owner moves from the fast tier to a balanced tier, then to a deep tier if the next repair still fails.
+    - Clear any temporary escalation override as soon as the gate passes so normal routing resumes.
+
+20. **Route reviewer regressions conservatively**
+    - When a human reports a concrete defect in Squad-approved or reviewer-ready work, treat it as a reviewer-regression event for the active feature.
+    - Route the remaining review work to the lowest strictly stronger reviewer class that is available.
+    - If no stronger reviewer class exists, use an independent reviewer owner at the same class.
+    - If the strongest reviewer class is already active and no independent same-class reviewer remains, hold the review for explicit human direction.

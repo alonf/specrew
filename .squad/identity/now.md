@@ -1,13 +1,13 @@
 ---
-updated_at: 2026-05-10T00:15:00Z
-focus_area: Feature 008 iteration 002 approved; awaiting implementation start with T008
-active_issues: [Resume feature 008 iteration 002 implementation from T008 baseline fixtures]
+updated_at: 2026-05-10T04:30:00+03:00
+focus_area: Feature 008 iteration 002 is implemented, reviewed, and retro-complete; next step is checkpointing and restarting before iteration 003 planning
+active_issues: [Checkpoint Iteration 002 closeout, then restart because squad.agent.md changed during T013]
 ---
 
 # What We're Focused On
 
-**Phase**: Feature `008-reviewer-escalation-symmetry` is active; Iteration 002 is approved and ready for implementation start  
-**Urgency**: TIER 0 — proceed with 008 iteration 002 implementation: T008 baseline fixtures, then T009/T010 parallel tests, then T011/T012 sequential logic, with T013 parallel to the logic tasks
+**Phase**: Feature `008-reviewer-escalation-symmetry` is active; Iteration 002 is closed and Iteration 003 planning is next after a session restart  
+**Urgency**: TIER 0 — checkpoint the Iteration 002 closeout and restart so the updated Squad agent definition is active before continuing
 
 ---
 
@@ -23,17 +23,14 @@ active_issues: [Resume feature 008 iteration 002 implementation from T008 baseli
 - The implementation and closeout commits landed, the full six-command validation lane is green on the final committed tree, and `.specify\feature.json` points back to feature 008
 - `docs/user-guide.md` was reviewed for contradictions and required no change
 
-### Feature 008 Lifecycle: ITERATION 001 CLOSED, ITERATION 002 BLOCKED
+### Feature 008 Lifecycle: ITERATION 001 AND 002 CLOSED
 - Iteration 001 foundations landed in commit `94afc47` with review and retro closed; targeted validation is green on the committed tree
-- Iteration 002 (`T008`-`T013`, User Story 1 only) has `plan.md`, `state.md`, `drift-log.md`, `quality/hardening-gate.md`, and `quality/quality-evidence.md` scaffolded
-- The formal `before-implement` gate for Iteration 002 is blocked because `quality/hardening-gate.md` still needs explicit human sign-off; do not infer it from earlier autonomy instructions
-- Next valid action: record explicit human approval for the bounded Iteration 002 hardening gate, rerun `speckit.specrew-speckit.before-implement`, then start `T008`
-- Planning status: Complete (`plan.md`, `research.md`, `data-model.md`, `quickstart.md` present)
-- Tasks status: Complete (`tasks.md` present)
-- Iteration status: No active iteration directory yet; implementation has not started
+- Iteration 002 (User Story 1, `T008`-`T013`) is implemented, reviewed, retro-complete, and green under `validate-governance.ps1 -IterationPath specs\008-reviewer-escalation-symmetry\iterations\002`
+- The new human-handoff trap and the per-iteration approval-evidence reuse trap are recorded in `.specrew\quality\known-traps.md`
+- T013 updated `.github\agents\squad.agent.md`, so the current session is now running on stale coordinator instructions and should restart before Iteration 003 planning begins
+- Next valid action after restart: plan Iteration 003 for User Story 2 (`T014`-`T019`)
 
 ### Next Valid Action
-1. Reconfirm implementation approval context for feature 008
-2. Run `speckit.specrew-speckit.before-implement`
-3. Scaffold iteration artifacts required for execution if absent
-4. Begin implementation for the approved slice
+1. Commit the Iteration 002 closeout work
+2. Restart the session so the updated `.github\agents\squad.agent.md` behavior is active
+3. Resume feature 008 at Iteration 003 planning for User Story 2 (`T014`-`T019`)

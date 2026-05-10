@@ -15,7 +15,12 @@ roles:
     eligible: true
   
   - role: Reviewer
-    agent: codex-reviewer
+    agent: codex-reviewer-a
+    reasoning_class: codex
+    eligible: true
+
+  - role: Reviewer
+    agent: codex-reviewer-b
     reasoning_class: codex
     eligible: true
   

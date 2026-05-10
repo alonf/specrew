@@ -1,13 +1,18 @@
 # Iteration State: 001
 
-**Iteration**: 001  
+**Schema**: v1
+**Last Completed Task**: T002
+**Tasks Remaining**: T003
+**In Progress**: T001
+**Baseline Ref**: baseline-fixture
+**Updated**: 2026-05-09T12:00:00Z
 **Feature**: 008-sample  
 **Last Updated**: 2026-05-09  
 **Status**: executing
 
 ## Current State
 
-- **Execution Phase**: Testing reviewer-regression event handling
+- **Execution Phase**: Testing stronger-class escalation, same-class fallback, and maximum-strength hold handling
 - **Total Task Capacity**: 5 of 20 story_points planned
 - **Tasks in Progress**: 1
 - **Tasks Blocked**: 0
@@ -57,4 +62,6 @@
 | ---- | ------ | ----- |
 | T001 | done | Sample baseline task |
 | T002 | done | Sample completed task |
-| T003 | in-progress | Sample active task for regression scenarios |
+| T003 | in-progress | Stronger-class escalation regression scenario |
+| T004 | planned | Same-class independent-owner fallback scenario |
+| T005 | planned | Maximum-strength human-direction hold scenario |
