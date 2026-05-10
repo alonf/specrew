@@ -4,6 +4,26 @@ Project-specific learnings and patterns discovered during work.
 
 ## Learnings
 
+### 2026-05-11: Feature 008 Iteration 005 Pre-Sign-Off Hardening-Gate Schema Convention
+
+Accepted and recorded the pre-sign-off hardening-gate schema convention established by iteration 005 sign-off. This governance pattern formalizes how hardening gates transition from planning-phase drafts to signed-off completion.
+
+**Schema Characteristics**:
+1. **Overall Verdict**: Set to `ready` (not `deferred-with-approval`) to signal planning-level readiness before sign-off is recorded
+2. **Pending Metadata**: Keep rich pending-field notation (`Reviewed By: *(pending Alon Fliess)*`, `Reviewed At: *(pending)*`) in planning-only state before transition to signed-off state
+3. **Post-Sign-Off State**: Update Reviewed By and Reviewed At to actual values, add Sign-Off Evidence section, and change Overall Verdict notation to reflect signed status (e.g., `✅ SIGNED OFF`)
+4. **Evidence Authority**: Sign-Off Evidence section records verbatim authorization statement from the approving authority, along with recorded date and context
+
+**Recognized Pattern**: Pre-implementation hardening gates use this richer schema to separate planning-level readiness (Overall Verdict: ready with all blocking concerns addressed) from sign-off completion (Reviewed By and Reviewed At recorded, Sign-Off Evidence captured). This allows gates to be ready for review without obscuring which fields are still awaiting human approval.
+
+**Scope Governance During Sign-Off**: When human approval changes the authorized scope (e.g., reducing validation commands from seven to six), update both the plan.md task definition AND the hardening-gate concern evidence to reflect the new scope. The validation-lane-completeness concern rationale must name the exact authorized command set, creating a two-artifact traceability point.
+
+**Known-Traps Seeding**: Added two traps to `.specrew/quality/known-traps.md`:
+1. **pre-sign-off-schema-convention-drift**: Detects when hardening gates regress pending metadata or Overall Verdict notation during lifecycle transitions
+2. **validation-lane-concern-scope-drift**: Detects when a hardening gate documents one command set but plan.md lists a different set
+
+**Pattern discovered**: Pre-sign-off hardening gates benefit from explicit pending-field notation in planning phase because it shows readiness FOR review while explicitly naming what's still pending human action. Regression to simpler blocked/unblocked states loses this valuable traceability bridge.
+
 ### 2026-05-10: Feature 008 Iteration 003 Approval Recording and Hardening Gate Status Vocabulary
 
 Recorded two fresh approvals for feature 008 iteration 003 (User Story 2 — implementer lockout-chain cap) into the iteration artifacts: hardening-gate sign-off and implementation authorization.

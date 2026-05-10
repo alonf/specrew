@@ -43,7 +43,7 @@
 
 **Overall Verdict**: ✅ **SIGNED OFF** — Planning artifacts are complete and reviewed. All blocking concerns are addressed at planning level. Implementation authorization authorized; ready for execution.
 
-**Sign-Off Readiness**: Planning artifacts are complete and signed off. The nine-column schema with five canonical concerns and four polish-specific concerns is in use. Pre-sign-off validation passed and implementation is authorized to proceed.
+**Sign-Off Readiness**: Planning artifacts are complete and signed off. The nine-column schema with five canonical concerns and six polish-specific concerns is in use. Pre-sign-off validation passed and implementation is authorized to proceed.
 
 **Reviewed By**: Alon Fliess  
 **Reviewed At**: 2026-05-11

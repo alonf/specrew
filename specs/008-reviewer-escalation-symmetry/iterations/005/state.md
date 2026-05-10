@@ -22,13 +22,13 @@ This iteration carries **Polish and Cross-Cutting Concerns** only: tasks `T027`-
 
 ## Decisions and Handoff
 
-- **Hardening-Gate Sign-Off**: ⏳ **PENDING** — Hardening-gate.md draft prepared for Alon Fliess sign-off; validator must pass before commitment
-- **Implementation Authorization**: ⏳ **PENDING** — Implementation authorization held pending hardening-gate sign-off and pre-sign-off validation
+- **Hardening-Gate Sign-Off**: ✅ **SIGNED** — Hardening-gate.md signed off by Alon Fliess on 2026-05-11
+- **Implementation Authorization**: ✅ **AUTHORIZED** — Implementation authorization granted by Alon Fliess on 2026-05-11 following hardening-gate sign-off
 - **Implementation Completion**: ⏳ **PENDING** — Tasks T027-T028 not yet started pending authorization
 - **Review Verdict**: ⏳ **PENDING** — Review awaits implementation completion
 - **Retrospective Verdict**: ⏳ **PENDING** — Retrospective awaits iteration closure
 - **Validation Lane**: ⏳ **PENDING** — Full six-script validation lane scheduled for T027 execution as part of implementation
-- **Iteration Status**: 🔄 **PLANNING** — Planning artifacts prepared; awaiting hardening-gate sign-off and implementation authorization
+- **Iteration Status**: 🔄 **IMPLEMENTATION-READY** — Planning artifacts prepared and signed off; hardening-gate authorization complete; awaiting implementation start
 
 ## Task Status
 

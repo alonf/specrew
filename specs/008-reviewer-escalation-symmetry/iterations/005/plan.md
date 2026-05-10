@@ -129,10 +129,20 @@ All feature 008 work is now accounted for across all five iterations (Iterations
 
 - **Approval Verdict**: ✅ **PLANNING AUTHORIZED**
 - **Approved By**: Alon Fliess
-- **Recorded Evidence**: I authorize feature 008 iteration 005 (Polish — validation lane re-run and documentation updates, tasks T027 through T028, 3 story points) planning to proceed with hardening-gate preparation. Hardening-gate sign-off and implementation authorization pending. For T027-T028 tasks that deliver user-facing handoff or visibility output (validation lane output, documentation), test coverage must invoke the scaffolded replay path (specrew-review.ps1 or scaffold-reviewer-artifacts.ps1) and assert user-visible output. Run the full six-script validation lane BEFORE committing iteration 005 closeout.
+- **Recorded Evidence**: I authorize feature 008 iteration 005 (Polish — validation lane re-run and documentation updates, tasks T027 through T028, 3 story points) planning to proceed with hardening-gate preparation. Hardening-gate sign-off and implementation authorization pending.
 - **Recorded At**: 2026-05-10
 - **Scope Authorized**: Polish (`T027`-`T028`, 3 story_points)
 - **Gate Effect**: Planning may proceed immediately; hardening-gate sign-off required before implementation starts
+
+## Implementation Authorization
+
+- **Authorization Verdict**: ✅ **AUTHORIZED**
+- **Authorized By**: Alon Fliess
+- **Recorded Date**: 2026-05-11
+- **Gate Reference**: `specs/008-reviewer-escalation-symmetry/iterations/005/quality/hardening-gate.md` (signed-off 2026-05-11)
+- **Scope Authorized**: Polish validation lane (T027) and documentation updates (T028), 3 story_points
+- **Boundary Note**: Distinct from planning-level approval; this authorization grants implementation start permission following hardening-gate sign-off.
+- **Authorization Effect**: Implementation may proceed immediately upon hardening-gate verification
 
 ## Notes
 
