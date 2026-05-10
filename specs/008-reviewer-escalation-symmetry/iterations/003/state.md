@@ -6,8 +6,8 @@
 **In Progress**: (none)
 **Baseline Ref**: — *(pending plan approval)*
 **Updated**: 2026-05-10T00:00:00Z
-**Current Phase**: planning
-**Iteration Status**: planning-only authorized; execution blocked until implementation approval is recorded
+**Current Phase**: approved
+**Iteration Status**: Implementation approved; execution may begin
 
 ## Execution Summary
 
@@ -27,7 +27,9 @@ This iteration carries **User Story 2 (implementer lockout-chain cap)** only: ta
 - **Planning Completion**: ✅ Complete — plan.md, state.md, drift-log.md, and draft hardening-gate.md scaffolded following Iteration 002 pattern
 - **Spec Authority**: ✅ PASS — Scope limited to User Story 2 (FR-009, FR-010, FR-011) per spec.md and tasks.md
 - **Traceability**: ✅ PASS — All six tasks map to US2 requirements with explicit carry-forward of User Stories 3 and Polish
-- **Next Action**: Before-implement review of planning artifacts, then implementation approval required before execution begins
+- **Hardening-Gate Sign-Off**: ✅ PASS — Hardening-gate.md signed off by Alon Fliess at 2026-05-10
+- **Implementation Authorization**: ✅ PASS — Execution authorized by Alon Fliess at 2026-05-10
+- **Next Action**: Implementation execution (tasks T014-T019)
 
 ## Task Status
 
