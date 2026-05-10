@@ -157,6 +157,10 @@ The response does not need to use exact headings when the task is small, but the
 - Q: Is a missing handoff field a hard governance failure? → A: No. Missing handoff fields are treated as a soft quality warning, not a hard governance failure.
 - Q: What recommended next step is valid for a fully complete factual or read-only answer? → A: `no further action needed` is a valid explicit recommended next step.
 
+### Session 2026-05-10
+
+- Q: How should the soft handoff validator be implemented? → A: Use a hybrid model. Update coordinator prompt/guidance to reinforce the handoff contract during response generation, then add a post-response soft validator/checker that flags missing handoff fields or three-or-more governance acronyms in the lead without hard-blocking the response. This preserves response integrity while maintaining quality oversight.
+
 ## Assumptions
 
 - "Final user-facing response" means the last coordinator message that addresses the human after Squad finishes, pauses, or hands back work for the current request.
