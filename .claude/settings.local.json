@@ -35,7 +35,8 @@
       "Bash(pwsh -NoProfile -File tests/integration/quality-profile-foundation.ps1)",
       "Bash(pwsh -NoProfile -File tests/integration/hardening-gate-contract.ps1)",
       "Bash(pwsh -NoProfile -File tests/integration/quality-evidence-governance.ps1)",
-      "Bash(pwsh -NoProfile -File tests/integration/validation-contract-lane.ps1)"
+      "Bash(pwsh -NoProfile -File tests/integration/validation-contract-lane.ps1)",
+      "Bash(pwsh -NoProfile -File tests/integration/project-path-resolution-regression.ps1)"
     ]
   }
 }

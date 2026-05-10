@@ -15,7 +15,7 @@ This slice is deliberately bounded to US1 acceptance criteria only. User Story 2
 
 **Primary Focus**: Reviewer-regression event recording, stronger-class routing selection, same-class independent fallback, maximum-strength human-direction hold, and ledger/active-chain projection assertions  
 **Target Slice**: User Story 1 (`T008`-`T013`)  
-**Execution Status**: implementation approved - ready to start T008  
+**Execution Status**: planning complete - awaiting human approval and hardening-gate sign-off  
 **Deferred Follow-On**: User Story 2 (`T014`-`T019`), User Story 3 (`T020`-`T026`), Polish (`T027`-`T028`)
 
 ---
@@ -134,12 +134,12 @@ This is a capacity and dependency split, not a descoping decision. The deferred 
 
 ## Implementation Approval
 
-- **Approval Verdict**: approved
-- **Approved By**: Alon Fliess (human developer)
-- **Recorded Evidence**: "Resume feature 008 and keep working autonomously until the task is truly finished. If you were planning, stop planning and start implementing."
-- **Recorded At**: 2026-05-10T00:00:00Z
-- **Scope Approved for Execution**: Iteration 002 User Story 1 slice (T008-T013, 13 story_points)
-- **Gate Effect**: Implementation can proceed
+- **Approval Verdict**: pending
+- **Approved By**: (awaiting explicit per-iteration approval)
+- **Recorded Evidence**: (not yet recorded; awaiting fresh per-iteration human authorization)
+- **Recorded At**: (pending)
+- **Scope Pending Approval**: Iteration 002 User Story 1 slice (T008-T013, 13 story_points)
+- **Gate Effect**: Implementation approval required before execution can proceed
 
 ## Notes
 

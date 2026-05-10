@@ -6,12 +6,12 @@
 **In Progress**: (none)
 **Baseline Ref**: 94afc47
 **Updated**: 2026-05-10T00:00:00Z
-**Current Phase**: approved-for-execution
-**Iteration Status**: implementation approved - ready to start T008
+**Current Phase**: planning-complete
+**Iteration Status**: planning complete - awaiting human approval and hardening-gate sign-off
 
 ## Execution Summary
 
-**Execution not yet started**: Iteration 002 is ready for execution. All User Story 1 tasks (`T008`-`T013`, 13 story_points) are planned, the implementation approval is recorded, and the next ready task is `T008`.
+**Awaiting explicit per-iteration approval**: Iteration 002 is planned and ready for approval review. All User Story 1 tasks (`T008`-`T013`, 13 story_points) are planned; the implementation approval is pending explicit human authorization for this iteration specifically.
 
 ## Iteration Scope
 
@@ -25,8 +25,8 @@ This iteration carries **User Story 1 (reviewer-regression routing)** only: task
 
 ## Decisions and Handoff
 
-- **Implementation Approval**: ✅ Approved by Alon Fliess (evidence: "Resume feature 008 and keep working autonomously until the task is truly finished. If you were planning, stop planning and start implementing.")
-- **Before-Implement Review**: ✅ Cleared — hardening gate verdict is `ready` for the bounded US1 slice
+- **Implementation Approval**: ⏸ awaiting explicit per-iteration approval
+- **Before-Implement Review**: ⏳ Pending — hardening gate pending human sign-off for the bounded US1 slice
 - **Review Verdict**: (not yet started)
 - **Retrospective Verdict**: (not yet started)
 - **Next Action**: Proceed with `T008` (baseline fixtures for reviewer-regression scenarios)
