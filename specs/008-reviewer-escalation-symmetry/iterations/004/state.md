@@ -25,10 +25,10 @@ This iteration carries **User Story 3 (withdrawal handling, carry-forward, known
 
 - **Hardening-Gate Sign-Off**: ✅ PASS — Draft hardening-gate.md signed off by Alon Fliess on 2026-05-10; validator passes
 - **Implementation Authorization**: ✅ PASS — Explicit implementation authorization recorded in plan.md; authorization by Alon Fliess on 2026-05-10
-- **Implementation Completion**: ⏸️ **PENDING** — Awaiting implementation execution
-- **Review Verdict**: ⏸️ **PENDING** — Awaiting implementation completion before review
+- **Implementation Completion**: ✅ PASS — All seven tasks (T020-T026) complete; implementation commit 9d906f0
+- **Review Verdict**: ✅ **ACCEPTED** — All US3 requirements met; withdrawal, carry-forward, known-traps integration verified; no gaps remain
 - **Retrospective Verdict**: ⏸️ **PENDING** — Awaiting review completion before retrospective
-- **Next Action**: Begin implementation of T020-T026 per iteration plan; commit at every lifecycle boundary
+- **Next Action**: Run full six-script validation lane before iteration closeout
 
 ## Task Status
 
