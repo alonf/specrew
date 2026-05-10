@@ -41,7 +41,7 @@
 
 ## Hardening-Gate Status
 
-**Overall Verdict**: 🔴 **BLOCKED** — Pre-sign-off draft. Awaiting human sign-off from Alon Fliess and pre-sign-off validation before implementation authorization.
+**Overall Verdict**: ⏳ **PENDING SIGN-OFF** — Planning artifacts are complete and ready for human sign-off from Alon Fliess. All blocking concerns are addressed at planning level. Implementation authorization pending sign-off approval.
 
 **Sign-Off Readiness**: Planning artifacts are complete and ready for sign-off review. The nine-column schema with five canonical concerns and four polish-specific concerns is in use. Validation must pass before pre-sign-off moves to approved.
 
