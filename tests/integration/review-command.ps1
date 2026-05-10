@@ -171,4 +171,28 @@ foreach ($pattern in @('"feature":\s*"001-sample"', '"iteration":\s*"001"', '"di
 }
 Write-Pass 'JSON mode emits structured reviewer summary data'
 
+Write-Host "`nTest 5: reviewer replay surfaces lockout-chain cap state when present"
+$capFixturePath = Join-Path $repoRoot 'tests\integration\fixtures\lockout-chain-cap\project'
+if (-not (Test-Path -LiteralPath $capFixturePath -PathType Container)) {
+    Write-Fail "Missing lockout-chain-cap fixture: $capFixturePath"
+    exit 1
+}
+
+# Check cap visibility in iteration state.md (FR-011: visibility in handoff surfaces)
+$capStateFile = Join-Path $capFixturePath 'specs\008-sample\iterations\001\state.md'
+if (-not (Test-Path -LiteralPath $capStateFile -PathType Leaf)) {
+    Write-Fail "Missing state.md in lockout-chain-cap fixture: $capStateFile"
+    exit 1
+}
+
+$capStateContent = Get-Content -LiteralPath $capStateFile -Raw -Encoding utf8
+foreach ($pattern in @('Cap Active.*true', 'Lockout Chain Length.*3', 'Next Owner Path')) {
+    if (-not (Assert-Contains -Content $capStateContent -Pattern $pattern -FailureMessage ("Cap state.md is missing '{0}'." -f $pattern))) {
+        Write-Host "Full state.md content:" -ForegroundColor Yellow
+        Write-Host $capStateContent
+        exit 1
+    }
+}
+Write-Pass 'Reviewer regression state block includes lockout-chain cap status and next-owner path'
+
 exit 0

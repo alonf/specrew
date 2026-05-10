@@ -9,12 +9,19 @@
     "updatedAt": null
   },
   "reviewerRegressionState": {
-    "status": "inactive",
-    "feature": null,
-    "currentReviewerClass": null,
-    "currentReviewerOwner": null,
-    "lockoutChainLength": 0,
-    "capActive": false,
-    "updatedAt": null
+    "feature_008-sample": {
+      "status": "active",
+      "currentReviewerClass": "claude",
+      "currentReviewerOwner": "Reviewer-Beta",
+      "implementerChain": [
+        "Implementer-Alpha",
+        "Implementer-Beta",
+        "Implementer-Gamma"
+      ],
+      "lockoutChainLength": 3,
+      "lockoutChainCap": 2,
+      "capActive": true,
+      "updatedAt": "2026-05-10T10:00:00Z"
+    }
   }
 }

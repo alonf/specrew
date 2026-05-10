@@ -32,7 +32,10 @@ param(
     [string]$DefectDescription,
 
     [Parameter(Mandatory = $false)]
-    [string]$DefectSourceLocation
+    [string]$DefectSourceLocation,
+
+    [Parameter(Mandatory = $false)]
+    [string]$ImplementerOwner
 )
 
 Set-StrictMode -Version Latest
@@ -637,6 +640,134 @@ function Get-IterationReference {
     return Split-Path -Leaf $IterationDirectory
 }
 
+function Get-ImplementerChainFromConfig {
+    <#
+    .SYNOPSIS
+    Reads the implementer chain for a feature from .squad/config.json.
+    #>
+    param(
+        [Parameter(Mandatory = $true)][string]$ProjectRoot,
+        [Parameter(Mandatory = $true)][string]$Feature
+    )
+
+    $configPath = Join-Path $ProjectRoot '.squad\config.json'
+    if (-not (Test-Path -LiteralPath $configPath -PathType Leaf)) {
+        return @()
+    }
+
+    try {
+        $config = Get-Content -LiteralPath $configPath -Raw -Encoding UTF8 | ConvertFrom-Json
+        $featureKey = $Feature -replace '[/\\]', '_'
+        
+        if ($null -eq $config.reviewerRegressionState) {
+            return @()
+        }
+
+        $featureState = $config.reviewerRegressionState.PSObject.Properties |
+            Where-Object { $_.Name -eq $featureKey } |
+            Select-Object -First 1
+
+        if ($null -eq $featureState -or $null -eq $featureState.Value.implementerChain) {
+            return @()
+        }
+
+        return @($featureState.Value.implementerChain)
+    }
+    catch {
+        return @()
+    }
+}
+
+function Update-ImplementerChainInConfig {
+    <#
+    .SYNOPSIS
+    Updates the implementer chain for a feature in .squad/config.json.
+    #>
+    param(
+        [Parameter(Mandatory = $true)][string]$ProjectRoot,
+        [Parameter(Mandatory = $true)][string]$Feature,
+        [Parameter(Mandatory = $true)][string]$ImplementerOwner
+    )
+
+    $configPath = Join-Path $ProjectRoot '.squad\config.json'
+    $featureKey = $Feature -replace '[/\\]', '_'
+
+    Update-LockedFileContent -Path $configPath -Transform {
+        param($currentContent)
+
+        $config = if ([string]::IsNullOrWhiteSpace($currentContent)) {
+            [pscustomobject]@{
+                version = '1.0'
+                reviewerRegressionState = [pscustomobject]@{}
+            }
+        }
+        else {
+            $currentContent | ConvertFrom-Json
+        }
+
+        if ($null -eq $config.reviewerRegressionState) {
+            $config | Add-Member -MemberType NoteProperty -Name 'reviewerRegressionState' -Value ([pscustomobject]@{})
+        }
+
+        $featureState = $config.reviewerRegressionState.PSObject.Properties |
+            Where-Object { $_.Name -eq $featureKey } |
+            Select-Object -First 1
+
+        if ($null -eq $featureState) {
+            $config.reviewerRegressionState | Add-Member -MemberType NoteProperty -Name $featureKey -Value ([pscustomobject]@{
+                status = 'active'
+                implementerChain = @($ImplementerOwner)
+                lockoutChainLength = 1
+                capActive = $false
+            })
+        }
+        else {
+            $chain = @($featureState.Value.implementerChain)
+            if ($ImplementerOwner -notin $chain) {
+                $chain += $ImplementerOwner
+                $featureState.Value.implementerChain = $chain
+                $featureState.Value.lockoutChainLength = $chain.Count
+            }
+        }
+
+        return ($config | ConvertTo-Json -Depth 10)
+    } | Out-Null
+}
+
+function Get-LockoutCapStatus {
+    <#
+    .SYNOPSIS
+    Determines if the lockout-chain cap is active for a feature.
+    #>
+    param(
+        [Parameter(Mandatory = $true)][string]$ProjectRoot,
+        [Parameter(Mandatory = $true)][string]$Feature,
+        [Parameter(Mandatory = $true)][int]$LockoutChainCap
+    )
+
+    $chain = @(Get-ImplementerChainFromConfig -ProjectRoot $ProjectRoot -Feature $Feature)
+    $chainLength = $chain.Count
+    $capThreshold = 1 + $LockoutChainCap  # original + cap rotations
+    $capActive = $chainLength -ge $capThreshold
+
+    return [pscustomobject]@{
+        ImplementerChain = $chain
+        ChainLength = $chainLength
+        CapThreshold = $capThreshold
+        CapActive = $capActive
+    }
+}
+
+function Get-IterationReference {
+    param([string]$IterationDirectory)
+
+    if ([string]::IsNullOrWhiteSpace($IterationDirectory)) {
+        return $null
+    }
+
+    return Split-Path -Leaf $IterationDirectory
+}
+
 function Get-FeatureReferenceFromIterationDirectory {
     param([string]$ProjectRoot, [string]$IterationDirectory)
 
@@ -703,6 +834,48 @@ function Get-ReviewerRegressionReadback {
 
     $lastEvent = $entries | Sort-Object RecordedAt | Select-Object -Last 1
 
+    $capStatus = Get-LockoutCapStatus -ProjectRoot $ProjectRoot -Feature $Feature -LockoutChainCap $settings.LockoutChainCap
+    $capNotes = if ($capStatus.CapActive) {
+        "Lockout-chain cap active ($($capStatus.ChainLength) implementers = original + $($settings.LockoutChainCap) rotations). Further rotation blocked. Human-owned revision or approved alternate owner required per FR-010."
+    }
+    else {
+        $null
+    }
+
+    $combinedNotes = if ($notes -and $capNotes) {
+        "$notes $capNotes"
+    }
+    elseif ($capNotes) {
+        $capNotes
+    }
+    else {
+        $notes
+    }
+
+    $lockedOutAgents = if ($capStatus.CapActive) {
+        @('Standard implementer rotation pool (original + 2 rotations exhausted)')
+    }
+    else {
+        @()
+    }
+
+    $nextOwnerPath = if ($capStatus.CapActive) {
+        'Awaiting human-owned revision or explicitly approved alternate owner recorded in `.squad/decisions.md`'
+    }
+    else {
+        $null
+    }
+
+    $finalNotes = if ($combinedNotes -and $nextOwnerPath) {
+        "$combinedNotes Next Owner Path: $nextOwnerPath"
+    }
+    elseif ($nextOwnerPath) {
+        "Next Owner Path: $nextOwnerPath"
+    }
+    else {
+        $combinedNotes
+    }
+
     return [pscustomobject]@{
         Status                    = $chain.Status
         Feature                   = $Feature
@@ -714,12 +887,14 @@ function Get-ReviewerRegressionReadback {
         CleanPassesRequired       = $settings.CleanPassesRequired
         CleanPassesObserved       = $chain.CleanPassesObserved
         LockoutCap                = $settings.LockoutChainCap
-        LockoutChainLength        = 0
-        CapActive                 = $false
-        LockedOutAgents           = @()
+        LockoutChainLength        = $capStatus.ChainLength
+        ImplementerChain          = $capStatus.ImplementerChain
+        CapActive                 = $capStatus.CapActive
+        LockedOutAgents           = $lockedOutAgents
+        NextOwnerPath             = $nextOwnerPath
         CarryForwardFromIteration = $chain.CarryForwardFromIteration
         LastEvent                 = if ($null -ne $lastEvent) { $lastEvent.RecordedAt } else { $null }
-        Notes                     = $notes
+        Notes                     = $finalNotes
     }
 }
 
@@ -878,6 +1053,33 @@ switch ($Mode) {
         }
 
         $ledgerPath = Add-ReviewerRegressionLedgerEntry -ProjectRoot $ProjectRoot -Entry $entry
+
+        # Track implementer owner and check for cap activation (T017: FR-009, FR-010)
+        $capActivatedNow = $false
+        if (-not [string]::IsNullOrWhiteSpace($ImplementerOwner)) {
+            $capStatusBefore = Get-LockoutCapStatus -ProjectRoot $ProjectRoot -Feature $Feature -LockoutChainCap (Get-ReviewerRegressionSettings -ProjectRoot $ProjectRoot).LockoutChainCap
+            Update-ImplementerChainInConfig -ProjectRoot $ProjectRoot -Feature $Feature -ImplementerOwner $ImplementerOwner
+            $capStatusAfter = Get-LockoutCapStatus -ProjectRoot $ProjectRoot -Feature $Feature -LockoutChainCap (Get-ReviewerRegressionSettings -ProjectRoot $ProjectRoot).LockoutChainCap
+            
+            if (-not $capStatusBefore.CapActive -and $capStatusAfter.CapActive) {
+                $capActivatedNow = $true
+            }
+        }
+
+        # Record cap activation decision (T018: FR-010, FR-011)
+        $capDecisionPath = $null
+        if ($capActivatedNow) {
+            $capChain = @(Get-ImplementerChainFromConfig -ProjectRoot $ProjectRoot -Feature $Feature)
+            $capDecisionPath = Add-StructuredDecisionsLedgerEntry -ProjectRoot $ProjectRoot -Title "Lockout-chain cap activated for $Feature" -Type 'lockout-cap' -AffectedRequirement 'FR-009, FR-010, FR-011' -AffectedIteration (Get-IterationReference -IterationDirectory $IterationDirectory) -NextAction 'awaiting-human-owned-revision-or-approved-alternate' -Rationale "Implementer lockout-chain reached the configured cap ($(Get-ReviewerRegressionSettings -ProjectRoot $ProjectRoot).LockoutChainCap rotations beyond original implementer). Cap is now active." -DetailLines @(
+                "- **Feature**: $Feature"
+                "- **Implementer Chain**: $($capChain -join ' → ')"
+                "- **Chain Length**: $($capChain.Count)"
+                "- **Cap Threshold**: $(1 + (Get-ReviewerRegressionSettings -ProjectRoot $ProjectRoot).LockoutChainCap) (original + cap rotations)"
+                "- **Cap State**: active"
+                "- **Next Owner Path**: Awaiting human-owned revision or approved alternate owner recorded in `.squad/decisions.md`"
+            )
+        }
+
         $decisionPath = Add-StructuredDecisionsLedgerEntry -ProjectRoot $ProjectRoot -Title "Reviewer regression $newEventId" -Type 'reviewer-regression-escalation' -AffectedRequirement 'FR-001, FR-002, FR-003, FR-004, FR-015' -AffectedIteration (Get-IterationReference -IterationDirectory $IterationDirectory) -NextAction 'continue-review-routing' -Rationale $routing.Notes -DetailLines @(
             "- **Event ID**: $newEventId"
             "- **Feature**: $Feature"
@@ -891,18 +1093,20 @@ switch ($Mode) {
         $null = Set-ReviewerRegressionStateBlock -IterationDirectory $IterationDirectory -Chain $chain
 
         [pscustomobject]@{
-            EventId      = $newEventId
-            Duplicate    = $false
-            Routing      = [pscustomobject]@{
+            EventId             = $newEventId
+            Duplicate           = $false
+            Routing             = [pscustomobject]@{
                 Status               = $routing.Status
                 Action               = $routing.Action
                 CurrentReviewerClass = $routing.CurrentReviewerClass
                 CurrentReviewerOwner = $routing.CurrentReviewerOwner
                 Notes                = $routing.Notes
             }
-            Chain        = $chain
-            LedgerPath   = $ledgerPath
-            DecisionPath = $decisionPath
+            Chain               = $chain
+            LedgerPath          = $ledgerPath
+            DecisionPath        = $decisionPath
+            CapActivated        = $capActivatedNow
+            CapDecisionPath     = $capDecisionPath
         } | ConvertTo-Json -Depth 8
         break
     }

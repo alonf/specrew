@@ -1,17 +1,17 @@
 # Iteration State: 003
 
 **Schema**: v1
-**Last Completed Task**: —
-**Tasks Remaining**: T014-T019
+**Last Completed Task**: T019
+**Tasks Remaining**: (none)
 **In Progress**: (none)
-**Baseline Ref**: — *(pending plan approval)*
-**Updated**: 2026-05-10T00:00:00Z
-**Current Phase**: approved
-**Iteration Status**: Implementation approved; execution may begin
+**Baseline Ref**: — *(pending commit)*
+**Updated**: 2026-05-10T14:30:00Z
+**Current Phase**: implementation-complete
+**Iteration Status**: US2 implementation complete; ready for reviewer closeout
 
 ## Execution Summary
 
-**Status**: Iteration 003 planning is complete and ready for before-implement review. The scope is User Story 2 (lockout-chain cap) tasks `T014`-`T019` (12 story_points). No implementation work has begun; all artifacts are planning-scoped.
+**Status**: Iteration 003 implementation is complete. All tasks `T014`-`T019` (12 story_points) have been executed. US2 (implementer lockout-chain cap) is fully implemented with fixtures, test coverage, core logic, decision evidence, and handoff visibility. Integration tests pass. Ready for reviewer closeout.
 
 ## Iteration Scope
 
@@ -29,23 +29,23 @@ This iteration carries **User Story 2 (implementer lockout-chain cap)** only: ta
 - **Traceability**: ✅ PASS — All six tasks map to US2 requirements with explicit carry-forward of User Stories 3 and Polish
 - **Hardening-Gate Sign-Off**: ✅ PASS — Hardening-gate.md signed off by Alon Fliess at 2026-05-10
 - **Implementation Authorization**: ✅ PASS — Execution authorized by Alon Fliess at 2026-05-10
-- **Next Action**: Implementation execution (tasks T014-T019)
+- **Implementation Completion**: ✅ PASS — All T014-T019 tasks complete, integration tests pass
+- **Next Action**: Reviewer closeout
 
 ## Task Status
 
 | Task | Status | Notes |
 | ---- | ------ | ----- |
-| T014 | planned | Lockout-chain cap fixture scaffolding ready for implementation |
-| T015 | planned | Lockout-cap regression coverage ready for implementation |
-| T016 | planned | Closeout/replay assertion extension ready for implementation |
-| T017 | planned | Chain counting and cap activation logic ready for implementation |
-| T018 | planned | Decision evidence recording ready for implementation |
-| T019 | planned | Cap visibility in handoff surfaces ready for implementation |
+| T014 | complete | Lockout-chain cap fixtures built with cap-active state, decisions evidence |
+| T015 | complete | Lockout-cap regression coverage added with 6 test scenarios |
+| T016 | complete | Closeout/replay assertions extended with cap visibility checks |
+| T017 | complete | Chain counting and cap activation logic implemented in manage-reviewer-regression.ps1 |
+| T018 | complete | Decision evidence recording implemented for cap activation |
+| T019 | complete | Cap visibility surfaced in routing.md and iteration state.md |
 
 ## Notes
 
 - Iteration 002 completed US1 (reviewer-regression routing event logging, stronger-class routing, same-class fallback, maximum-strength hold). US2 now builds on that foundation.
-- This iteration is planning-only; no implementation work is authorized until explicit implementation approval is recorded.
 - Quality profile: `quality-profile.custom-composition.v1` per plan.md.
-- Hardening-gate.md is a draft and requires review as part of before-implement readiness check.
 - All user-story 3 and polish work is explicitly deferred to later iterations with clear dependency rationale.
+- Integration test results: lockout-chain-cap.ps1 (6/6 pass), reviewer-closeout-governance.ps1 (pass with cap visibility), review-command.ps1 (5/5 pass with cap state check).
