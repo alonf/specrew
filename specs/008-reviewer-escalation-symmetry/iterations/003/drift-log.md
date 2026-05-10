@@ -4,7 +4,7 @@
 **Iteration**: 003
 **Feature**: specs/008-reviewer-escalation-symmetry
 **Created**: 2026-05-10
-**Status**: planning-only; no execution drift recorded yet
+**Status**: execution-complete; drift summary recorded below
 
 ## Purpose
 
@@ -15,9 +15,47 @@ This log tracks deviations between the approved plan and actual execution. Durin
 - Implementation decisions that conflicted with the approved spec
 - External blockers or dependencies that shifted the execution path
 
-## Planning-Phase Entries
+## Execution Drift Summary
 
-*(None at this time. Execution has not begun.)*
+**Overall Verdict**: Minor drift detected in T019 handoff visibility integration; corrected in bounded rework (commit a17f6cb).
+
+### Drift Entry 1: T019 Cap Visibility Gap (G-001)
+
+**Category**: Requirements misunderstanding (partial)  
+**Severity**: Minor  
+**Impact**: T019 initially surfaced cap state in runtime config and decisions ledger but did not wire cap visibility into the coordinator-facing `scaffold-reviewer-artifacts.ps1` and `specrew-review.ps1` surfaces  
+**Root Cause**: Task completion checked runtime state surfaces (stdout, decisions.md, state.md) but did not exercise the full scaffolded replay path (`specrew review`) until review phase  
+**Resolution**: Rework commit a17f6cb added `Get-ReviewerRegressionCapState` helper, wired cap fields into summary object and format-lines output, added `cap=active`/`cap_chain=N/M` tokens to digest line, extended `specrew-review.ps1` to expose structured cap fields, and strengthened T016 tests to invoke scaffold against cap fixture  
+**Effort Variance**: +0.5 story_points (rework)  
+**Recorded At**: 2026-05-10 (review phase)  
+**Closed At**: 2026-05-10 (rework commit a17f6cb)
+
+### Drift Entry 2: Duplicate Function Definition (S-001)
+
+**Category**: Code quality issue  
+**Severity**: Minor  
+**Impact**: `manage-reviewer-regression.ps1` contained duplicate `Get-IterationReference` definition; both functions were syntactically correct, so the script ran without error, but the duplicate created ambiguity and maintenance risk  
+**Root Cause**: No automated duplicate-definition detection in validation lane  
+**Resolution**: Removed duplicate definition in rework commit a17f6cb; retained only canonical occurrence  
+**Effort Variance**: +0.1 story_points (cleanup)  
+**Recorded At**: 2026-05-10 (review phase)  
+**Closed At**: 2026-05-10 (rework commit a17f6cb)
+
+### No Other Drift Detected
+
+- **Chain Counting Accuracy**: ✅ No drift. T017 implementation correctly identified distinct implementer owners and activated cap at exactly two rotations beyond original.
+- **Cap Threshold Alignment**: ✅ No drift. Cap activated at default threshold as specified.
+- **Post-Cap Routing Enforcement**: ✅ No drift. T017 implementation enforced human or explicitly approved alternate owner path with no synthesis of additional specialists.
+- **Decision Evidence Completeness**: ✅ No drift. T018 implementation recorded every cap activation in `.squad/decisions.md` with complete metadata.
+- **US1 Integration**: ✅ No drift. Chain counting correctly read and respected the active reviewer-regression chain from Iteration 002.
+
+## Execution Summary
+
+**Total Drift Events**: 2 (both minor, both closed in rework)  
+**Total Effort Variance**: +0.6 story_points (12.0 planned → 12.6 actual)  
+**Spec Deviation**: None  
+**External Blockers**: None  
+**Carry-Forward Items**: None
 
 ## Planned Drift Monitoring
 

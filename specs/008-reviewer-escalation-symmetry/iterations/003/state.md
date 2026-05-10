@@ -1,13 +1,13 @@
 # Iteration State: 003
 
 **Schema**: v1
-**Last Completed Task**: T019
-**Tasks Remaining**: (none)
+**Last Completed Task**: T019 (re-reviewed after rework commit a17f6cb)
+**Tasks Remaining**: (none — all blocking items resolved)
 **In Progress**: (none)
-**Baseline Ref**: — *(pending commit)*
-**Updated**: 2026-05-10T14:30:00Z
-**Current Phase**: implementation-complete
-**Iteration Status**: US2 implementation complete; ready for reviewer closeout
+**Baseline Ref**: a17f6cb
+**Updated**: 2026-05-10T18:00:00Z
+**Current Phase**: accepted
+**Iteration Status**: US2 review complete — verdict: accepted; G-001 closed; ready for retro and closeout
 
 ## Execution Summary
 
@@ -30,7 +30,8 @@ This iteration carries **User Story 2 (implementer lockout-chain cap)** only: ta
 - **Hardening-Gate Sign-Off**: ✅ PASS — Hardening-gate.md signed off by Alon Fliess at 2026-05-10
 - **Implementation Authorization**: ✅ PASS — Execution authorized by Alon Fliess at 2026-05-10
 - **Implementation Completion**: ✅ PASS — All T014-T019 tasks complete, integration tests pass
-- **Next Action**: Reviewer closeout
+- **Review Verdict**: ✅ ACCEPTED — G-001 closed via rework commit a17f6cb; all T014-T019 tasks pass; US2 fully accepted
+- **Next Action**: Retro and closeout; update hardening-gate.md evidence rows and drift-log.md conclusion before retro (non-blocking)
 
 ## Task Status
 
@@ -41,7 +42,7 @@ This iteration carries **User Story 2 (implementer lockout-chain cap)** only: ta
 | T016 | complete | Closeout/replay assertions extended with cap visibility checks |
 | T017 | complete | Chain counting and cap activation logic implemented in manage-reviewer-regression.ps1 |
 | T018 | complete | Decision evidence recording implemented for cap activation |
-| T019 | complete | Cap visibility surfaced in routing.md and iteration state.md |
+| T019 | complete | Cap visibility added to routing.md, scaffold-reviewer-artifacts.ps1 (Get-ReviewerRegressionCapState + summary lines + digest), and specrew-review.ps1 (cap_active/cap_chain fields) — G-001 closed |
 
 ## Notes
 
