@@ -5,13 +5,13 @@
 **Tasks Remaining**: (none)
 **In Progress**: none
 **Baseline Ref**: d2ba1d6
-**Updated**: 2026-05-10
-**Current Phase**: executing
-**Iteration Status**: Implementation complete; awaiting Reviewer handoff and review/demo
+**Updated**: 2026-05-11
+**Current Phase**: reviewing
+**Iteration Status**: Implementation and review complete; retrospective and closeout remain pending
 
 ## Execution Summary
 
-**Status**: T027 completed successfully with the authorized six-command validation lane and T028 completed the user-facing documentation updates using verified reviewer replay output.
+**Status**: T027 completed successfully with the authorized six-command validation lane, T028 completed the user-facing documentation updates using verified reviewer replay output, and review accepted both tasks with no gaps.
 
 ## Iteration Scope
 
@@ -24,11 +24,11 @@ This iteration carries **Polish and Cross-Cutting Concerns** only: tasks `T027`-
 
 - **Hardening-Gate Sign-Off**: ✅ **SIGNED** — Hardening-gate.md signed off by Alon Fliess on 2026-05-11
 - **Implementation Authorization**: ✅ **AUTHORIZED** — Implementation authorization granted by Alon Fliess on 2026-05-11 following hardening-gate sign-off
-- **Implementation Completion**: ✅ **COMPLETE** — T027 and T028 are implemented; review, retro, and closeout remain pending
-- **Review Verdict**: ⏳ **PENDING** — Review awaits implementation completion
+- **Implementation Completion**: ✅ **COMPLETE** — T027 and T028 are implemented; retrospective and closeout remain pending
+- **Review Verdict**: ✅ **ACCEPTED** — T027 stayed on the authorized six-command lane without `gap-governance.ps1`; T028 docs and visibility example matched actual replay output
 - **Retrospective Verdict**: ⏳ **PENDING** — Retrospective awaits iteration closure
 - **Validation Lane**: ✅ **PASSED** — Authorized six-command validation lane completed successfully under T027
-- **Iteration Status**: 🔄 **EXECUTING** — Polish implementation is active; review, retro, and closeout remain pending
+- **Iteration Status**: 🔄 **REVIEW-ACCEPTED** — Review is complete; retrospective and closeout remain pending
 
 ## Task Status
 
@@ -44,8 +44,9 @@ This iteration carries **Polish and Cross-Cutting Concerns** only: tasks `T027`-
 - Iteration 004 completed US3 (withdrawal state reversal, clean-pass de-escalation, repeated-event consolidation, carry-forward projection, known-traps integration).
 - Iteration 005 Polish will execute the full validation lane to confirm all three user stories work together correctly and update user-facing documentation.
 - T027 evidence: all five requested integration tests plus `validate-governance.ps1 -ProjectPath .` passed without drift or rework.
-- Reviewer handoff: re-check the README/user-guide replay example lines against `scaffold-reviewer-artifacts.ps1` and `specrew review` if the reviewer refreshes the fixture or output format, and review the implementation-only boundary commit without performing retro or closeout yet.
+- Reviewer acceptance confirmed the README/user-guide replay example lines against live `scaffold-reviewer-artifacts.ps1` and `specrew review` output from the lockout-cap fixture scratch replay.
 - Quality profile: `quality-profile.custom-composition.v1` per plan.md.
 - All Polish work remains explicitly scheduled in Iteration 005 with clear dependency rationale.
 - Integration test strategy: Full six-script validation lane plus documentation updates, with explicit replay-path coverage requirement for any handoff-facing behavior.
 - **REPLAY-PATH COVERAGE REQUIREMENT**: Any task that delivers user-facing handoff or visibility output must be tested through the scaffolded replay path (`specrew-review.ps1`, `scaffold-reviewer-artifacts.ps1`) with assertions on user-visible output.
+- **Next Move**: Record the Iteration 005 retrospective only, then perform closeout on the accepted review boundary.

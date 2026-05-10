@@ -2,7 +2,7 @@
 
 **Schema**: v1  
 **Spec**: [../../spec.md](../../spec.md)  
-**Status**: planning-only  
+**Status**: reviewing  
 **Capacity**: 3/20 story_points  
 **Started**: 2026-05-10  
 **Completed**: *pending*  
@@ -16,7 +16,7 @@ This slice is deliberately bounded to Polish work only. User Stories 1, 2, and 3
 
 **Primary Focus**: Re-run the full validation lane and update user-facing documentation for reviewer-regression routing, lockout-cap behavior, and withdrawal semantics.  
 **Target Slice**: Polish (`T027`-`T028`)  
-**Execution Status**: planning-only  
+**Execution Status**: review accepted; retrospective pending  
 **Prior Completions**: User Story 1 (Iteration 002), User Story 2 (Iteration 003), User Story 3 (Iteration 004)
 
 ---
@@ -69,8 +69,8 @@ This slice is deliberately bounded to Polish work only. User Stories 1, 2, and 3
 
 | Task | Title | Requirement | Story | Effort | Owner | Owner File Globs | Status | Agent | Actual | Verdict |
 | ---- | ----- | ----------- | ----- | ------ | ----- | ---------------- | ------ | ----- | ------ | ------- |
-| T027 | Run the reviewer-regression validation lane | quickstart validation commands | Polish | 2 | Review-operations maintainer | `tests/integration/reviewer-regression-event.ps1`, `tests/integration/lockout-chain-cap.ps1`, `tests/integration/reviewer-regression-ledger.ps1`, `tests/integration/reviewer-regression-withdrawal.ps1`, `tests/integration/carry-forward-closed-iteration.ps1`, `extensions/specrew-speckit/scripts/validate-governance.ps1` | done | Implementer | Authorized six-command lane passed end-to-end | pending review |
-| T028 | Document reviewer-regression routing, lockout-cap behavior, and withdrawal semantics | SC-001, SC-004, TG-006 | Polish | 1 | Coordinator handoff maintainer | `README.md`, `docs/user-guide.md` | done | Implementer | README and user guide updated; replay examples verified against actual scaffold/review output | pending review |
+| T027 | Run the reviewer-regression validation lane | quickstart validation commands | Polish | 2 | Review-operations maintainer | `tests/integration/reviewer-regression-event.ps1`, `tests/integration/lockout-chain-cap.ps1`, `tests/integration/reviewer-regression-ledger.ps1`, `tests/integration/reviewer-regression-withdrawal.ps1`, `tests/integration/carry-forward-closed-iteration.ps1`, `extensions/specrew-speckit/scripts/validate-governance.ps1` | done | Implementer | Authorized six-command lane passed end-to-end without `gap-governance.ps1` | pass |
+| T028 | Document reviewer-regression routing, lockout-cap behavior, and withdrawal semantics | SC-001, SC-004, TG-006 | Polish | 1 | Coordinator handoff maintainer | `README.md`, `docs/user-guide.md` | done | Implementer | README and user guide updated; visibility example matched replayed scaffold/review output | pass |
 
 **Total Effort**: 3 story_points
 
@@ -82,7 +82,7 @@ This slice is deliberately bounded to Polish work only. User Stories 1, 2, and 3
 
 1. **Validation Lane**: `T027` executes the authorized six-command validation lane (`reviewer-regression-event.ps1`, `lockout-chain-cap.ps1`, `reviewer-regression-ledger.ps1`, `reviewer-regression-withdrawal.ps1`, `carry-forward-closed-iteration.ps1`, `validate-governance.ps1 -ProjectPath .`) to confirm all US1, US2, and US3 work together correctly
 2. **Documentation**: `T028` updates README.md and docs/user-guide.md to document reviewer-regression routing, lockout-cap behavior, and withdrawal semantics
-3. **Handoff**: After both tasks complete and validation confirms all controls working, iteration 005 is ready for hardening-gate sign-off and closeout
+3. **Handoff**: Review is accepted. The next move is retrospective; closeout follows retro on the accepted review boundary
 
 ---
 
