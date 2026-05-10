@@ -630,16 +630,6 @@ function Find-DuplicateReviewerRegressionEvent {
         Select-Object -First 1
 }
 
-function Get-IterationReference {
-    param([string]$IterationDirectory)
-
-    if ([string]::IsNullOrWhiteSpace($IterationDirectory)) {
-        return $null
-    }
-
-    return Split-Path -Leaf $IterationDirectory
-}
-
 function Get-ImplementerChainFromConfig {
     <#
     .SYNOPSIS

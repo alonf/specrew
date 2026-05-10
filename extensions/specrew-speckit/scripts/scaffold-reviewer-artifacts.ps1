@@ -1682,6 +1682,64 @@ function Get-EscalationCount {
     return 0
 }
 
+function Get-ReviewerRegressionCapState {
+    <#
+    .SYNOPSIS
+    Parses the reviewer-regression-state managed block from state.md to extract lockout-cap fields.
+    
+    .PARAMETER StateLines
+    The lines from state.md.
+    #>
+    param([string[]]$StateLines)
+
+    $inBlock = $false
+    $capActive = $false
+    $lockedOutAgents = @()
+    $nextOwnerPath = $null
+    $chainLength = 0
+    $capThreshold = 0
+
+    foreach ($line in $StateLines) {
+        if ($line -match '<!-- >>> specrew-managed reviewer-regression-state >>> -->') {
+            $inBlock = $true
+            continue
+        }
+        if ($line -match '<!-- <<< specrew-managed reviewer-regression-state <<< -->') {
+            break
+        }
+        if (-not $inBlock) {
+            continue
+        }
+
+        if ($line -match '- \*\*Cap Active\*\*:\s*(.+)') {
+            $capActive = $Matches[1].Trim() -ieq 'true'
+        }
+        elseif ($line -match '- \*\*Lockout Chain Length\*\*:\s*(\d+)') {
+            $chainLength = [int]$Matches[1]
+        }
+        elseif ($line -match '- \*\*Lockout Cap\*\*:\s*(\d+)') {
+            $capThreshold = [int]$Matches[1]
+        }
+        elseif ($line -match '- \*\*Locked Out Agents\*\*:\s*(.+)') {
+            $agentsValue = $Matches[1].Trim()
+            if ($agentsValue -ne '(none)') {
+                $lockedOutAgents = @($agentsValue)
+            }
+        }
+        elseif ($line -match '- \*\*Next Owner Path\*\*:\s*(.+)') {
+            $nextOwnerPath = $Matches[1].Trim()
+        }
+    }
+
+    return [pscustomobject]@{
+        CapActive        = $capActive
+        ChainLength      = $chainLength
+        CapThreshold     = $capThreshold
+        LockedOutAgents  = $lockedOutAgents
+        NextOwnerPath    = $nextOwnerPath
+    }
+}
+
 function Get-OwningTaskInfo {
     param(
         [string]$Path,
@@ -1857,7 +1915,7 @@ function Get-ReviewerGapHints {
 function Format-ReviewerSummaryLines {
     param([object]$Summary)
 
-    return @(
+    $lines = @(
         ('Header: feature={0} | iteration={1} | branch={2} | commit_range={3}' -f $Summary.Feature, $Summary.Iteration, $Summary.Branch, $Summary.CommitRange)
         ('Verdict: {0}' -f $Summary.Verdict)
         ('Requirements: covered={0} | not_covered={1}' -f $Summary.RequirementsCovered, $Summary.RequirementsNotCovered)
@@ -1865,11 +1923,21 @@ function Format-ReviewerSummaryLines {
         ('Dependencies: changed={0} | new_to_project={1} | vulnerability={2}' -f $Summary.DependencyChanges, $Summary.NewDependencies, $Summary.VulnerabilitySignal)
         ('Coverage: kind={0} | signal={1}' -f $Summary.CoverageKind, $Summary.CoverageSignal)
         ('Operational Signals: escalations={0} | routing_fallbacks={1}' -f $Summary.Escalations, $Summary.RoutingFallbacks)
+    )
+
+    if ($Summary.CapActive) {
+        $lines += ('Lockout Cap: active | chain={0}/{1} | locked_out={2}' -f $Summary.CapChainLength, $Summary.CapThreshold, $Summary.CapLockedOutAgents)
+        $lines += ('Next Owner: {0}' -f $Summary.CapNextOwner)
+    }
+
+    $lines += @(
         ('Drift: {0}/{1} resolved' -f $Summary.DriftTotal, $Summary.DriftResolved)
         ('Reviewer Index: {0}' -f $Summary.IndexRelativePath)
         ('Implementation Briefing: {0}' -f $Summary.ImplementationBriefing)
         ('Local Open Hints: {0}' -f ($Summary.LocalOpenHints -join '; '))
     )
+
+    return $lines
 }
 
 function Write-ReviewerSummary {
@@ -1975,6 +2043,7 @@ $testExecutionRows = @(Get-TestExecutionRows -ProjectRoot $projectRoot -Reviewer
 $coverageRows = @(Get-RequirementCoverageRows -RequirementRefs $requirementRefs.ToArray() -ChangedFiles $changedFiles -TestPathGlobs $reviewerConfig.test_path_globs -TestExecutionRows $testExecutionRows)
 $escalationCount = Get-EscalationCount -StateLines $stateLines
 $routingFallbackCount = Get-RoutingFallbackCount -ProjectRoot $projectRoot -IterationRelativePath $iterationRelativePath
+$capState = Get-ReviewerRegressionCapState -StateLines $stateLines
 $sensitiveTouchpoints = @(Get-SensitiveTouchpoints -ProjectRoot $projectRoot -ChangedFiles $changedFiles -Patterns $reviewerConfig.sensitive_data_patterns)
 $diagramEvidence = Get-DiagramEvidence -ProjectRoot $projectRoot -ChangedFiles $changedFiles -ReviewerConfig $reviewerConfig
 $gapConcerns = @(Get-ActiveGapLedgerConcerns -ReviewLines $reviewLines)
@@ -2271,6 +2340,11 @@ $summaryObject = [pscustomobject]@{
     CoverageSignal          = $coverageSignal
     Escalations             = $escalationCount
     RoutingFallbacks        = $routingFallbackCount
+    CapActive               = $capState.CapActive
+    CapChainLength          = $capState.ChainLength
+    CapThreshold            = $capState.CapThreshold
+    CapLockedOutAgents      = if ($capState.LockedOutAgents.Count -gt 0) { $capState.LockedOutAgents -join '; ' } else { '(none)' }
+    CapNextOwner            = if ($capState.NextOwnerPath) { $capState.NextOwnerPath } else { '(none)' }
     DriftTotal              = $driftSummary.Total
     DriftResolved           = $driftSummary.Resolved
     IndexRelativePath       = $indexRelativePath
@@ -2279,7 +2353,11 @@ $summaryObject = [pscustomobject]@{
 }
 
 $summaryLines = Format-ReviewerSummaryLines -Summary $summaryObject
-$digestLine = ('SPECREW_REVIEW schema=v1 iter={0} feature={1} verdict={2} tasks={3}/{4} reqs={5} files={6} new_deps={7} vuln={8} cov={9} escalations={10} drift={11}/{12} index={13}' -f $iterationLabel, $featureId, $overallVerdict, $passCount, $taskTotal, $reviewTasks.Count, $changedFiles.Count, $dependencyAnalysis.NewToProject.Count, $vulnerabilityScan.Count, $coverageSignal, $escalationCount, $driftSummary.Total, $driftSummary.Resolved, $indexRelativePath)
+$digestLine = if ($capState.CapActive) {
+    ('SPECREW_REVIEW schema=v1 iter={0} feature={1} verdict={2} tasks={3}/{4} reqs={5} files={6} new_deps={7} vuln={8} cov={9} escalations={10} routing_fallbacks={11} cap=active cap_chain={12}/{13} drift={14}/{15} index={16}' -f $iterationLabel, $featureId, $overallVerdict, $passCount, $taskTotal, $reviewTasks.Count, $changedFiles.Count, $dependencyAnalysis.NewToProject.Count, $vulnerabilityScan.Count, $coverageSignal, $escalationCount, $routingFallbackCount, $capState.ChainLength, $capState.CapThreshold, $driftSummary.Total, $driftSummary.Resolved, $indexRelativePath)
+} else {
+    ('SPECREW_REVIEW schema=v1 iter={0} feature={1} verdict={2} tasks={3}/{4} reqs={5} files={6} new_deps={7} vuln={8} cov={9} escalations={10} drift={11}/{12} index={13}' -f $iterationLabel, $featureId, $overallVerdict, $passCount, $taskTotal, $reviewTasks.Count, $changedFiles.Count, $dependencyAnalysis.NewToProject.Count, $vulnerabilityScan.Count, $coverageSignal, $escalationCount, $driftSummary.Total, $driftSummary.Resolved, $indexRelativePath)
+}
 $triageHints = Get-ReviewerGapHints -ReviewLines $reviewLines -GapConcerns $gapConcerns -Hotspots $hotspots.ToArray() -UnknownLicenses $dependencyAnalysis.UnknownLicenses -VulnerabilityScan $vulnerabilityScan -CoverageSignal $coverageSignal -Escalations $escalationCount -RoutingFallbacks $routingFallbackCount -DriftSummary $driftSummary
 $qualityEvidenceRef = Get-RepoRelativePath -ProjectRoot $projectRoot -Path $qualityEvidencePath
 $mechanicalFindingsRef = Get-RepoRelativePath -ProjectRoot $projectRoot -Path $mechanicalFindingsPath

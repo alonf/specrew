@@ -324,6 +324,8 @@ $summary = [pscustomobject]@{
     review_diagrams  = if (Test-Path -LiteralPath $reviewDiagramsPath -PathType Leaf) { Get-RelativePath -FromDirectory $resolvedProjectPath -ToPath $reviewDiagramsPath } else { $null }
     summary_lines    = $summaryLines
     digest           = $digestLine
+    cap_active       = if ($digestLine -match 'cap=active') { $true } else { $false }
+    cap_chain        = if ($digestLine -match 'cap_chain=(\d+)/(\d+)') { "$($Matches[1])/$($Matches[2])" } else { $null }
 }
 
 if ($Json) {
