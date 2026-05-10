@@ -2,11 +2,11 @@
 
 **Schema**: v1  
 **Spec**: [../../spec.md](../../spec.md)  
-**Status**: planning  
+**Status**: complete  
 **Capacity**: 14/20 story_points  
-**Started**: *(pending implementation authorization)*  
-**Completed**: *(pending implementation authorization)*  
-**Closed**: *(pending implementation authorization)*
+**Started**: 2026-05-10  
+**Completed**: 2026-05-10  
+**Closed**: 2026-05-10
 
 ## Summary
 
@@ -72,13 +72,13 @@ This slice is deliberately bounded to US3 acceptance criteria only. Polish (`T02
 
 | Task | Title | Requirement | Story | Effort | Owner | Owner File Globs | Status | Agent | Actual | Verdict |
 | ---- | ----- | ----------- | ----- | ------ | ----- | ---------------- | ------ | ----- | ------ | ------- |
-| T020 | Build withdrawal, duplicate-report, carry-forward, and corpus-disabled fixtures | US3 | US3 | 2 | Governance artifact maintainer | `tests/integration/fixtures/reviewer-regression-withdrawal/**`, `tests/integration/fixtures/carry-forward-closed-iteration/**`, `tests/integration/fixtures/reviewer-regression-ledger/**` | planned | — | — | — |
-| T021 | Add withdrawal and misreport regression coverage | FR-008 | US3 | 2 | Review-operations maintainer | `tests/integration/reviewer-regression-withdrawal.ps1` | planned | — | — | — |
-| T022 | Add closed-iteration carry-forward regression coverage | FR-014 | US3 | 2 | Spec-governance maintainer | `tests/integration/carry-forward-closed-iteration.ps1` | planned | — | — | — |
-| T023 | Extend ledger consistency and known-traps degraded-path assertions | FR-006, FR-012, FR-015 | US3 | 2 | Quality-governance maintainer | `tests/integration/reviewer-regression-ledger.ps1`, `tests/integration/gap-governance.ps1` | planned | — | — | — |
-| T024 | Implement withdrawal reversal, clean-pass de-escalation, and repeated-event consolidation | FR-005, FR-008, FR-015 | US3 | 3 | Governance artifact maintainer | `extensions/specrew-speckit/scripts/manage-reviewer-regression.ps1` | planned | — | — | — |
-| T025 | Implement conditional candidate-trap proposal and unapproved-trap cleanup | FR-012, TG-008 | US3 | 2 | Quality-governance maintainer | `extensions/specrew-speckit/scripts/manage-reviewer-regression.ps1`, `extensions/specrew-speckit/scripts/validate-governance.ps1` | planned | — | — | — |
-| T026 | Preserve closed-iteration history while projecting unresolved state into next active iteration | FR-014, TG-003 | US3 | 1 | Spec-governance maintainer | `extensions/specrew-speckit/scripts/manage-reviewer-regression.ps1`, `specs/001-specrew-product/contracts/iteration-artifacts.md` | planned | — | — | — |
+| T020 | Build withdrawal, duplicate-report, carry-forward, and corpus-disabled fixtures | US3 | US3 | 2 | Governance artifact maintainer | `tests/integration/fixtures/reviewer-regression-withdrawal/**`, `tests/integration/fixtures/carry-forward-closed-iteration/**`, `tests/integration/fixtures/reviewer-regression-ledger/**` | done | — | — | — |
+| T021 | Add withdrawal and misreport regression coverage | FR-008 | US3 | 2 | Review-operations maintainer | `tests/integration/reviewer-regression-withdrawal.ps1` | done | — | — | — |
+| T022 | Add closed-iteration carry-forward regression coverage | FR-014 | US3 | 2 | Spec-governance maintainer | `tests/integration/carry-forward-closed-iteration.ps1` | done | — | — | — |
+| T023 | Extend ledger consistency and known-traps degraded-path assertions | FR-006, FR-012, FR-015 | US3 | 2 | Quality-governance maintainer | `tests/integration/reviewer-regression-ledger.ps1`, `tests/integration/gap-governance.ps1` | done | — | — | — |
+| T024 | Implement withdrawal reversal, clean-pass de-escalation, and repeated-event consolidation | FR-005, FR-008, FR-015 | US3 | 3 | Governance artifact maintainer | `extensions/specrew-speckit/scripts/manage-reviewer-regression.ps1` | done | — | — | — |
+| T025 | Implement conditional candidate-trap proposal and unapproved-trap cleanup | FR-012, TG-008 | US3 | 2 | Quality-governance maintainer | `extensions/specrew-speckit/scripts/manage-reviewer-regression.ps1`, `extensions/specrew-speckit/scripts/validate-governance.ps1` | done | — | — | — |
+| T026 | Preserve closed-iteration history while projecting unresolved state into next active iteration | FR-014, TG-003 | US3 | 1 | Spec-governance maintainer | `extensions/specrew-speckit/scripts/manage-reviewer-regression.ps1`, `specs/001-specrew-product/contracts/iteration-artifacts.md` | done | — | — | — |
 
 **Total Effort**: 14 story_points
 

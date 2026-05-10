@@ -3,15 +3,15 @@
 **Schema**: v1
 **Last Completed Task**: T026
 **Tasks Remaining**: (none for this iteration)
-**In Progress**: test validation
+**In Progress**: none (iteration closed)
 **Baseline Ref**: d2ba1d6
 **Updated**: 2026-05-10
-**Current Phase**: implementation
-**Iteration Status**: Implementation of US3 (T020-T026) in progress
+**Current Phase**: complete
+**Iteration Status**: Closed after successful implementation, first-pass review acceptance, zero drift, complete retrospective, and validation lane confirmation
 
 ## Execution Summary
 
-**Status**: Iteration 004 implementation complete. Running validation tests for US3 withdrawal, carry-forward, and known-traps integration.
+**Status**: Iteration 004 complete. All tasks implemented (T020-T026), reviewed and accepted, retro finalized, and validation lane green. Iteration is closed.
 
 ## Iteration Scope
 
@@ -23,12 +23,13 @@ This iteration carries **User Story 3 (withdrawal handling, carry-forward, known
 
 ## Decisions and Handoff
 
-- **Hardening-Gate Sign-Off**: ✅ PASS — Draft hardening-gate.md signed off by Alon Fliess on 2026-05-10; validator passes
+- **Hardening-Gate Sign-Off**: ✅ PASS — Hardening-gate.md signed off by Alon Fliess on 2026-05-10; validator passes; all post-implementation evidence recorded
 - **Implementation Authorization**: ✅ PASS — Explicit implementation authorization recorded in plan.md; authorization by Alon Fliess on 2026-05-10
 - **Implementation Completion**: ✅ PASS — All seven tasks (T020-T026) complete; implementation commit 9d906f0
-- **Review Verdict**: ✅ **ACCEPTED** — All US3 requirements met; withdrawal, carry-forward, known-traps integration verified; no gaps remain
-- **Retrospective Verdict**: ⏸️ **PENDING** — Awaiting review completion before retrospective
-- **Next Action**: Run full six-script validation lane before iteration closeout
+- **Review Verdict**: ✅ **ACCEPTED** — All US3 requirements met; withdrawal, carry-forward, known-traps integration verified; no gaps remain; zero reviewer-regression events
+- **Retrospective Verdict**: ✅ **COMPLETE** — Iteration 004 retro closed; execution stable, planning accurate, zero drift, first-pass review quality
+- **Validation Lane**: ✅ **PASSED** — Full six-script validation lane green on staged closeout artifacts (2026-05-10)
+- **Iteration Status**: ✅ **CLOSED** — Iteration 004 formally closed after validation confirmation
 
 ## Task Status
 

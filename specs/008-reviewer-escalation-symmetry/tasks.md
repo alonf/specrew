@@ -68,15 +68,15 @@
 
 ### Tests for User Story 2
 
-- [ ] T014 [P] [US2] [Owner: Review-operations maintainer] [Effort: S] Build cap-hit, alternate-owner-approved, and awaiting-human-owned-revision fixtures in `tests\integration\fixtures\lockout-chain-cap\project\.squad\decisions.md`, `tests\integration\fixtures\lockout-chain-cap\project\.squad\config.json`, and `tests\integration\fixtures\lockout-chain-cap\project\specs\008-sample\iterations\001\state.md` (Trace: US2 acceptance scenarios 1-3)
-- [ ] T015 [P] [US2] [Owner: Review-operations maintainer] [Effort: M] Add implementer lockout-cap regression coverage in `tests\integration\lockout-chain-cap.ps1` (Trace: FR-009, FR-010)
-- [ ] T016 [P] [US2] [Owner: Coordinator handoff maintainer] [Effort: M] Extend reviewer closeout and replay assertions for cap visibility and next-owner summary in `tests\integration\reviewer-closeout-governance.ps1` and `tests\integration\review-command.ps1` (Trace: FR-011, SC-004)
+- [X] T014 [P] [US2] [Owner: Review-operations maintainer] [Effort: S] Build cap-hit, alternate-owner-approved, and awaiting-human-owned-revision fixtures in `tests\integration\fixtures\lockout-chain-cap\project\.squad\decisions.md`, `tests\integration\fixtures\lockout-chain-cap\project\.squad\config.json`, and `tests\integration\fixtures\lockout-chain-cap\project\specs\008-sample\iterations\001\state.md` (Trace: US2 acceptance scenarios 1-3)
+- [X] T015 [P] [US2] [Owner: Review-operations maintainer] [Effort: M] Add implementer lockout-cap regression coverage in `tests\integration\lockout-chain-cap.ps1` (Trace: FR-009, FR-010)
+- [X] T016 [P] [US2] [Owner: Coordinator handoff maintainer] [Effort: M] Extend reviewer closeout and replay assertions for cap visibility and next-owner summary in `tests\integration\reviewer-closeout-governance.ps1` and `tests\integration\review-command.ps1` (Trace: FR-011, SC-004)
 
 ### Implementation for User Story 2
 
-- [ ] T017 [US2] [Owner: Runtime routing maintainer] [Effort: L] Implement lockout-chain counting, cap activation, and post-cap human or approved-alternate-owner routing in `extensions\specrew-speckit\scripts\manage-reviewer-regression.ps1` (Trace: FR-009, FR-010)
-- [ ] T018 [US2] [Owner: Decisions-ledger maintainer] [Effort: M] Record `lockout-cap` and reviewer-routing evidence entries through `extensions\specrew-speckit\scripts\shared-governance.ps1` and `extensions\specrew-speckit\scripts\manage-reviewer-regression.ps1` into `.squad\decisions.md` (Trace: FR-010, FR-011, contract Decisions Ledger)
-- [ ] T019 [US2] [Owner: Coordinator handoff maintainer] [Effort: M] Surface locked-out agents, cap status, and planned next-owner path in `extensions\specrew-speckit\scripts\scaffold-reviewer-artifacts.ps1`, `scripts\specrew-review.ps1`, and `.squad\routing.md` (Trace: FR-011, TG-005)
+- [X] T017 [US2] [Owner: Runtime routing maintainer] [Effort: L] Implement lockout-chain counting, cap activation, and post-cap human or approved-alternate-owner routing in `extensions\specrew-speckit\scripts\manage-reviewer-regression.ps1` (Trace: FR-009, FR-010)
+- [X] T018 [US2] [Owner: Decisions-ledger maintainer] [Effort: M] Record `lockout-cap` and reviewer-routing evidence entries through `extensions\specrew-speckit\scripts\shared-governance.ps1` and `extensions\specrew-speckit\scripts\manage-reviewer-regression.ps1` into `.squad\decisions.md` (Trace: FR-010, FR-011, contract Decisions Ledger)
+- [X] T019 [US2] [Owner: Coordinator handoff maintainer] [Effort: M] Surface locked-out agents, cap status, and planned next-owner path in `extensions\specrew-speckit\scripts\scaffold-reviewer-artifacts.ps1`, `scripts\specrew-review.ps1`, and `.squad\routing.md` (Trace: FR-011, TG-005)
 
 **Checkpoint**: User Story 2 is complete when the implementer chain cannot grow past the configured cap without explicit human-owned or approved alternate-owner routing and the cap is visible in reviewer-facing outputs.
 
@@ -90,16 +90,16 @@
 
 ### Tests for User Story 3
 
-- [ ] T020 [P] [US3] [Owner: Governance artifact maintainer] [Effort: M] Build withdrawal, duplicate-report, carry-forward, and corpus-disabled fixtures in `tests\integration\fixtures\reviewer-regression-withdrawal\project\.squad\decisions.md`, `tests\integration\fixtures\carry-forward-closed-iteration\project\specs\008-sample\iterations\001\state.md`, and `tests\integration\fixtures\reviewer-regression-ledger\project\.specrew\reviewer-regression-log.md` (Trace: US3 acceptance scenarios 1-5)
-- [ ] T021 [P] [US3] [Owner: Review-operations maintainer] [Effort: M] Add withdrawal and misreport regression coverage in `tests\integration\reviewer-regression-withdrawal.ps1` (Trace: FR-008)
-- [ ] T022 [P] [US3] [Owner: Spec-governance maintainer] [Effort: M] Add closed-iteration carry-forward regression coverage in `tests\integration\carry-forward-closed-iteration.ps1` (Trace: FR-014)
-- [ ] T023 [P] [US3] [Owner: Quality-governance maintainer] [Effort: M] Extend ledger consistency and known-traps degraded-path assertions in `tests\integration\reviewer-regression-ledger.ps1` and `tests\integration\gap-governance.ps1` (Trace: FR-006, FR-012, FR-015)
+- [X] T020 [P] [US3] [Owner: Governance artifact maintainer] [Effort: M] Build withdrawal, duplicate-report, carry-forward, and corpus-disabled fixtures in `tests\integration\fixtures\reviewer-regression-withdrawal\project\.squad\decisions.md`, `tests\integration\fixtures\carry-forward-closed-iteration\project\specs\008-sample\iterations\001\state.md`, and `tests\integration\fixtures\reviewer-regression-ledger\project\.specrew\reviewer-regression-log.md` (Trace: US3 acceptance scenarios 1-5)
+- [X] T021 [P] [US3] [Owner: Review-operations maintainer] [Effort: M] Add withdrawal and misreport regression coverage in `tests\integration\reviewer-regression-withdrawal.ps1` (Trace: FR-008)
+- [X] T022 [P] [US3] [Owner: Spec-governance maintainer] [Effort: M] Add closed-iteration carry-forward regression coverage in `tests\integration\carry-forward-closed-iteration.ps1` (Trace: FR-014)
+- [X] T023 [P] [US3] [Owner: Quality-governance maintainer] [Effort: M] Extend ledger consistency and known-traps degraded-path assertions in `tests\integration\reviewer-regression-ledger.ps1` and `tests\integration\gap-governance.ps1` (Trace: FR-006, FR-012, FR-015)
 
 ### Implementation for User Story 3
 
-- [ ] T024 [US3] [Owner: Governance artifact maintainer] [Effort: L] Implement withdrawal reversal, clean-pass de-escalation, and repeated-event consolidation in `extensions\specrew-speckit\scripts\manage-reviewer-regression.ps1` (Trace: FR-005, FR-008, FR-015)
-- [ ] T025 [US3] [Owner: Quality-governance maintainer] [Effort: M] Implement conditional candidate-trap proposal and unapproved-trap cleanup against `.specrew\quality\known-traps.md` in `extensions\specrew-speckit\scripts\manage-reviewer-regression.ps1` and `extensions\specrew-speckit\scripts\validate-governance.ps1` (Trace: FR-012, TG-008)
-- [ ] T026 [US3] [Owner: Spec-governance maintainer] [Effort: M] Preserve closed-iteration history while projecting unresolved reviewer-regression state into the next active iteration in `extensions\specrew-speckit\scripts\manage-reviewer-regression.ps1` and `specs\001-specrew-product\contracts\iteration-artifacts.md` (Trace: FR-014, TG-003)
+- [X] T024 [US3] [Owner: Governance artifact maintainer] [Effort: L] Implement withdrawal reversal, clean-pass de-escalation, and repeated-event consolidation in `extensions\specrew-speckit\scripts\manage-reviewer-regression.ps1` (Trace: FR-005, FR-008, FR-015)
+- [X] T025 [US3] [Owner: Quality-governance maintainer] [Effort: M] Implement conditional candidate-trap proposal and unapproved-trap cleanup against `.specrew\quality\known-traps.md` in `extensions\specrew-speckit\scripts\manage-reviewer-regression.ps1` and `extensions\specrew-speckit\scripts\validate-governance.ps1` (Trace: FR-012, TG-008)
+- [X] T026 [US3] [Owner: Spec-governance maintainer] [Effort: M] Preserve closed-iteration history while projecting unresolved reviewer-regression state into the next active iteration in `extensions\specrew-speckit\scripts\manage-reviewer-regression.ps1` and `specs\001-specrew-product\contracts\iteration-artifacts.md` (Trace: FR-014, TG-003)
 
 **Checkpoint**: User Story 3 is complete when reviewer-regression history stays auditable, withdrawals clean up only pending state, and closed-iteration reports carry forward without reopening historical artifacts.
 
