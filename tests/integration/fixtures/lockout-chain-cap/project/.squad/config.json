@@ -1,0 +1,20 @@
+{
+  "version": "1.0",
+  "feature": "008-sample-lockout",
+  "activeEscalation": {
+    "status": "inactive",
+    "artifact": null,
+    "currentTier": "efficiency",
+    "currentOwner": null,
+    "updatedAt": null
+  },
+  "reviewerRegressionState": {
+    "status": "inactive",
+    "feature": null,
+    "currentReviewerClass": null,
+    "currentReviewerOwner": null,
+    "lockoutChainLength": 0,
+    "capActive": false,
+    "updatedAt": null
+  }
+}

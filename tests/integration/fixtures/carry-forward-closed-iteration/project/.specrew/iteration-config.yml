@@ -1,0 +1,23 @@
+# Carry-Forward Iteration Configuration
+
+version: v1
+feature: 008-sample-carry-forward
+iteration: 002
+
+# Reasoning tiers for carry-forward testing
+reasoning_tiers:
+  - name: copilot
+    description: GitHub Copilot base tier
+    strength_rank: 1
+    reviewer_capable: true
+  - name: claude
+    description: Claude mid-tier
+    strength_rank: 2
+    reviewer_capable: true
+
+# Reviewer-regression specific configuration
+reviewer_regression:
+  enabled: true
+  clean_passes_required: 1
+  lockout_chain_cap: 2
+  known_traps_integration: false

@@ -17,8 +17,8 @@
 
 **Purpose**: Create the reviewer-regression artifact surface and reusable scratch fixtures before shared governance code changes begin.
 
-- [ ] T001 [Owner: Governance artifact maintainer] [Effort: S] Create the reviewer-regression ledger seed and managed-block contract examples in `.specrew\reviewer-regression-log.md` and `specs\001-specrew-product\contracts\iteration-artifacts.md` (Trace: FR-006, FR-014, contract Iteration State Mirror)
-- [ ] T002 [P] [Owner: Review-operations maintainer] [Effort: M] Create baseline scratch-project fixtures for reviewer-regression scenarios in `tests\integration\fixtures\reviewer-regression-event\project\.specrew\iteration-config.yml`, `tests\integration\fixtures\lockout-chain-cap\project\.squad\decisions.md`, `tests\integration\fixtures\reviewer-regression-withdrawal\project\specs\008-sample\iterations\001\state.md`, and `tests\integration\fixtures\carry-forward-closed-iteration\project\specs\008-sample\iterations\001\state.md` (Trace: quickstart.md, US1 independent test, US2 independent test, US3 independent test, TG-001, TG-002, TG-003)
+- [X] T001 [Owner: Governance artifact maintainer] [Effort: S] Create the reviewer-regression ledger seed and managed-block contract examples in `.specrew\reviewer-regression-log.md` and `specs\001-specrew-product\contracts\iteration-artifacts.md` (Trace: FR-006, FR-014, contract Iteration State Mirror)
+- [X] T002 [P] [Owner: Review-operations maintainer] [Effort: M] Create baseline scratch-project fixtures for reviewer-regression scenarios in `tests\integration\fixtures\reviewer-regression-event\project\.specrew\iteration-config.yml`, `tests\integration\fixtures\lockout-chain-cap\project\.squad\decisions.md`, `tests\integration\fixtures\reviewer-regression-withdrawal\project\specs\008-sample\iterations\001\state.md`, and `tests\integration\fixtures\carry-forward-closed-iteration\project\specs\008-sample\iterations\001\state.md` (Trace: quickstart.md, US1 independent test, US2 independent test, US3 independent test, TG-001, TG-002, TG-003)
 
 ---
 
@@ -28,11 +28,11 @@
 
 **⚠️ CRITICAL**: No user-story implementation should begin until this phase is complete.
 
-- [ ] T003 [Owner: Governance artifact maintainer] [Effort: M] Add reviewer-regression ledger parsing, `reviewer-regression-state` managed-block helpers, and structured decision-type support in `extensions\specrew-speckit\scripts\shared-governance.ps1` (Trace: FR-006, FR-008, FR-011)
-- [ ] T004 [Owner: Lifecycle-routing maintainer] [Effort: M] Create the `report`, `resolve`, `withdraw`, `project`, and `get` mode shell in `extensions\specrew-speckit\scripts\manage-reviewer-regression.ps1` (Trace: contract Script Interface, FR-001, FR-008, FR-014, TG-001, TG-003)
-- [ ] T005 [P] [Owner: Runtime routing maintainer] [Effort: S] Extend runtime model-routing sync for `reviewerRegressionState` in `extensions\specrew-speckit\scripts\sync-squad-model-overrides.ps1` and `.squad\config.json` without changing `activeEscalation` behavior (Trace: FR-013, contract Runtime Config Sync)
-- [ ] T006 [P] [Owner: Governance artifact maintainer] [Effort: M] Extend governance validation for reviewer-regression ledger, state, and decisions invariants in `extensions\specrew-speckit\scripts\validate-governance.ps1` (Trace: FR-007, FR-011, FR-015)
-- [ ] T007 [P] [Owner: Coordinator handoff maintainer] [Effort: M] Surface reviewer-regression escalation and routing-fallback signals in `extensions\specrew-speckit\scripts\scaffold-reviewer-artifacts.ps1` and `scripts\specrew-review.ps1` (Trace: FR-011, SC-004)
+- [X] T003 [Owner: Governance artifact maintainer] [Effort: M] Add reviewer-regression ledger parsing, `reviewer-regression-state` managed-block helpers, and structured decision-type support in `extensions\specrew-speckit\scripts\shared-governance.ps1` (Trace: FR-006, FR-008, FR-011)
+- [X] T004 [Owner: Lifecycle-routing maintainer] [Effort: M] Create the `report`, `resolve`, `withdraw`, `project`, and `get` mode shell in `extensions\specrew-speckit\scripts\manage-reviewer-regression.ps1` (Trace: contract Script Interface, FR-001, FR-008, FR-014, TG-001, TG-003)
+- [X] T005 [P] [Owner: Runtime routing maintainer] [Effort: S] Extend runtime model-routing sync for `reviewerRegressionState` in `extensions\specrew-speckit\scripts\sync-squad-model-overrides.ps1` and `.squad\config.json` without changing `activeEscalation` behavior (Trace: FR-013, contract Runtime Config Sync)
+- [X] T006 [P] [Owner: Governance artifact maintainer] [Effort: M] Extend governance validation for reviewer-regression ledger, state, and decisions invariants in `extensions\specrew-speckit\scripts\validate-governance.ps1` (Trace: FR-007, FR-011, FR-015)
+- [X] T007 [P] [Owner: Coordinator handoff maintainer] [Effort: M] Surface reviewer-regression escalation and routing-fallback signals in `extensions\specrew-speckit\scripts\scaffold-reviewer-artifacts.ps1` and `scripts\specrew-review.ps1` (Trace: FR-011, SC-004)
 
 **Checkpoint**: Shared ledger parsing, state projection, runtime sync, governance validation, and reviewer replay surfaces are ready for story-specific behavior.
 

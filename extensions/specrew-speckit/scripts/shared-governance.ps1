@@ -717,7 +717,290 @@ function Get-HardeningConcernEvaluation {
         Issues                    = $issues.ToArray()
         BlocksImplementation      = $issues.Count -gt 0
         BlocksClosure             = $blocksClosure
+        HasHumanApproval          = -not [string]::IsNullOrWhiteSpace($approvalRef) -and ($null -ne $approvalRecord -and $approvalRecord.HasHumanApproval)
     }
+}
+
+# ============================================================================
+# Reviewer-Regression Governance Functions (Spec 008 Extension)
+# ============================================================================
+
+function Get-ReviewerRegressionLedgerPath {
+    <#
+    .SYNOPSIS
+    Returns the path to the reviewer-regression ledger.
+    
+    .PARAMETER ProjectRoot
+    The root directory of the project.
+    #>
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$ProjectRoot
+    )
+
+    return Join-Path $ProjectRoot '.specrew\reviewer-regression-log.md'
+}
+
+function Get-ReviewerRegressionLedgerEntries {
+    <#
+    .SYNOPSIS
+    Parses the reviewer-regression ledger and returns all event entries.
+    
+    .PARAMETER ProjectRoot
+    The root directory of the project.
+    #>
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$ProjectRoot
+    )
+
+    $ledgerPath = Get-ReviewerRegressionLedgerPath -ProjectRoot $ProjectRoot
+    if (-not (Test-Path -LiteralPath $ledgerPath -PathType Leaf)) {
+        return @()
+    }
+
+    $lines = @(Get-Content -LiteralPath $ledgerPath -Encoding UTF8)
+    $entries = New-Object System.Collections.Generic.List[object]
+    $eventRegex = '^#{3}\s+(RRE-\d{3,})\s*$'
+
+    $currentEventId = $null
+    $currentLines = New-Object System.Collections.Generic.List[string]
+
+    foreach ($line in $lines) {
+        $eventMatch = [regex]::Match($line, $eventRegex)
+        if ($eventMatch.Success) {
+            if ($null -ne $currentEventId) {
+                $entries.Add((New-ReviewerRegressionEventEntry -EventId $currentEventId -EntryLines $currentLines)) | Out-Null
+            }
+
+            $currentEventId = $eventMatch.Groups[1].Value.Trim()
+            $currentLines = New-Object System.Collections.Generic.List[string]
+            continue
+        }
+
+        if ($null -ne $currentEventId) {
+            $currentLines.Add($line) | Out-Null
+        }
+    }
+
+    if ($null -ne $currentEventId) {
+        $entries.Add((New-ReviewerRegressionEventEntry -EventId $currentEventId -EntryLines $currentLines)) | Out-Null
+    }
+
+    return $entries.ToArray()
+}
+
+function New-ReviewerRegressionEventEntry {
+    <#
+    .SYNOPSIS
+    Creates a parsed reviewer-regression event object from ledger lines.
+    
+    .PARAMETER EventId
+    The event identifier (e.g., RRE-001).
+    
+    .PARAMETER EntryLines
+    The raw lines from the ledger entry.
+    #>
+    param(
+        [string]$EventId,
+        [System.Collections.Generic.List[string]]$EntryLines
+    )
+
+    $rawText = $EntryLines -join "`n"
+    
+    return [pscustomobject]@{
+        EventId                = $EventId
+        Feature                = Get-LedgerFieldValue -RawText $rawText -Label 'Feature'
+        Iteration              = Get-LedgerFieldValue -RawText $rawText -Label 'Iteration'
+        Slice                  = Get-LedgerFieldValue -RawText $rawText -Label 'Slice'
+        PriorReviewerVerdict   = Get-LedgerFieldValue -RawText $rawText -Label 'Prior Reviewer Verdict'
+        PriorReviewerClass     = Get-LedgerFieldValue -RawText $rawText -Label 'Prior Reviewer Class'
+        PriorReviewerOwner     = Get-LedgerFieldValue -RawText $rawText -Label 'Prior Reviewer Owner'
+        DefectDescription      = Get-LedgerFieldValue -RawText $rawText -Label 'Defect Description'
+        DefectSourceLocation   = Get-LedgerFieldValue -RawText $rawText -Label 'Defect Source Location'
+        EventStatus            = Get-LedgerFieldValue -RawText $rawText -Label 'Event Status'
+        Severity               = Get-LedgerFieldValue -RawText $rawText -Label 'Severity'
+        EscalationAction       = Get-LedgerFieldValue -RawText $rawText -Label 'Escalation Action'
+        EscalatedToClass       = Get-LedgerFieldValue -RawText $rawText -Label 'Escalated To Class'
+        SameClassFallbackOwner = Get-LedgerFieldValue -RawText $rawText -Label 'Same-Class Fallback Owner'
+        CarryForwardIteration  = Get-LedgerFieldValue -RawText $rawText -Label 'Carry Forward Iteration'
+        CandidateTrapStatus    = Get-LedgerFieldValue -RawText $rawText -Label 'Candidate Trap Status'
+        WithdrawalReference    = Get-LedgerFieldValue -RawText $rawText -Label 'Withdrawal Reference'
+        DeEscalationOutcome    = Get-LedgerFieldValue -RawText $rawText -Label 'De-Escalation Outcome'
+        RecordedAt             = Get-LedgerFieldValue -RawText $rawText -Label 'Recorded At'
+        RawLines               = $EntryLines.ToArray()
+        RawText                = $rawText
+    }
+}
+
+function Get-LedgerFieldValue {
+    <#
+    .SYNOPSIS
+    Extracts a field value from ledger entry text.
+    
+    .PARAMETER RawText
+    The raw text content of the ledger entry.
+    
+    .PARAMETER Label
+    The field label to extract.
+    #>
+    param(
+        [string]$RawText,
+        [string]$Label
+    )
+
+    $pattern = '(?m)^-\s+\*\*' + [regex]::Escape($Label) + '\*\*:\s*`?(.+?)`?\s*$'
+    if ($RawText -match $pattern) {
+        $value = $Matches[1].Trim()
+        if ($value -eq '(none)' -or $value -eq '(pending)' -or [string]::IsNullOrWhiteSpace($value)) {
+            return $null
+        }
+        return $value
+    }
+
+    return $null
+}
+
+function Get-ActiveReviewerRegressionChain {
+    <#
+    .SYNOPSIS
+    Returns the active reviewer-regression chain for a specific feature.
+    
+    .PARAMETER ProjectRoot
+    The root directory of the project.
+    
+    .PARAMETER Feature
+    The feature path to filter by.
+    #>
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$ProjectRoot,
+        
+        [Parameter(Mandatory = $true)]
+        [string]$Feature
+    )
+
+    $entries = Get-ReviewerRegressionLedgerEntries -ProjectRoot $ProjectRoot
+    $activeEntries = @($entries | Where-Object { 
+        $_.Feature -eq $Feature -and 
+        $_.EventStatus -eq 'active' 
+    })
+
+    if ($activeEntries.Count -eq 0) {
+        return [pscustomobject]@{
+            Status                     = 'inactive'
+            Feature                    = $Feature
+            ActiveEventIds             = @()
+            StrongestUnresolvedAction  = $null
+            CurrentReviewerClass       = $null
+            PriorReviewerClass         = $null
+            CurrentReviewerOwner       = $null
+            CleanPassesRequired        = 1
+            CleanPassesObserved        = 0
+            CarryForwardFromIteration  = $null
+            Notes                      = $null
+        }
+    }
+
+    # Find the strongest unresolved escalation action
+    $strongestAction = $null
+    $currentClass = $null
+    $priorClass = $null
+    $currentOwner = $null
+    $carryForward = $null
+
+    foreach ($entry in $activeEntries) {
+        if ($entry.EscalationAction -eq 'human-direction-hold') {
+            $strongestAction = 'human-direction-hold'
+            $currentClass = $entry.EscalatedToClass
+            $priorClass = $entry.PriorReviewerClass
+            break
+        }
+        elseif ($entry.EscalationAction -eq 'stronger-class') {
+            $strongestAction = 'stronger-class'
+            $currentClass = $entry.EscalatedToClass
+            $priorClass = $entry.PriorReviewerClass
+        }
+        elseif ($strongestAction -ne 'stronger-class' -and $entry.EscalationAction -eq 'same-class-independent-owner') {
+            $strongestAction = 'same-class-independent-owner'
+            $currentClass = $entry.PriorReviewerClass
+            $priorClass = $entry.PriorReviewerClass
+            $currentOwner = $entry.SameClassFallbackOwner
+        }
+
+        if ($null -ne $entry.CarryForwardIteration) {
+            $carryForward = $entry.CarryForwardIteration
+        }
+    }
+
+    return [pscustomobject]@{
+        Status                     = if ($strongestAction -eq 'human-direction-hold') { 'held' } else { 'active' }
+        Feature                    = $Feature
+        ActiveEventIds             = @($activeEntries | ForEach-Object { $_.EventId })
+        StrongestUnresolvedAction  = $strongestAction
+        CurrentReviewerClass       = $currentClass
+        PriorReviewerClass         = $priorClass
+        CurrentReviewerOwner       = $currentOwner
+        CleanPassesRequired        = 1
+        CleanPassesObserved        = 0
+        CarryForwardFromIteration  = $carryForward
+        Notes                      = $null
+    }
+}
+
+function Add-StructuredDecisionsLedgerEntry {
+    <#
+    .SYNOPSIS
+    Adds a structured decision entry to the decisions ledger with extended type support.
+    
+    .PARAMETER Type
+    The decision type. Spec 008 adds: reviewer-regression-escalation, reviewer-regression-withdrawal, lockout-cap.
+    #>
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$ProjectRoot,
+
+        [Parameter(Mandatory = $true)]
+        [string]$Title,
+
+        [Parameter(Mandatory = $true)]
+        [ValidateSet('decision', 'defer', 'escalation', 'routing-evidence', 'clarify-skip', 'review-gap', 
+                     'reviewer-regression-escalation', 'reviewer-regression-withdrawal', 'lockout-cap')]
+        [string]$Type,
+
+        [string]$DecisionId,
+        [string]$AffectedRequirement,
+        [string]$AffectedIteration,
+        [string]$ApprovingHuman,
+        [string]$NextAction = 'none',
+        [string]$Rationale,
+        [string[]]$DetailLines
+    )
+
+    $recordedAt = (Get-Date).ToUniversalTime().ToString('yyyy-MM-ddTHH:mm:ssZ')
+    $effectiveDecisionId = if ([string]::IsNullOrWhiteSpace($DecisionId)) {
+        New-DecisionsLedgerEntryId -Type $Type
+    }
+    else {
+        $DecisionId.Trim()
+    }
+
+    $lines = @(
+        "- **Decision ID**: $effectiveDecisionId"
+        "- **Type**: $Type"
+        "- **Affected Requirement**: $(Get-DecisionLedgerOptionalValue -Value $AffectedRequirement)"
+        "- **Affected Iteration**: $(Get-DecisionLedgerOptionalValue -Value $AffectedIteration)"
+        "- **Approving Human**: $(Get-DecisionLedgerOptionalValue -Value $ApprovingHuman)"
+        "- **Recorded At**: $recordedAt"
+        "- **Next Action**: $(Get-DecisionLedgerOptionalValue -Value $NextAction)"
+        "- **Rationale**: $(Get-DecisionLedgerOptionalValue -Value $Rationale)"
+    )
+
+    if ($null -ne $DetailLines -and $DetailLines.Count -gt 0) {
+        $lines += @('') + @($DetailLines | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
+    }
+
+    return Add-DecisionsLedgerEntry -ProjectRoot $ProjectRoot -Title $Title -Lines $lines
 }
 
 function Test-HardeningConcernBlocksImplementation {
