@@ -8,8 +8,8 @@
 **Effective Review Class**: *(pending sign-off)*
 **Overall Verdict**: ready
 **Approval Ref**: —
-**Reviewed By**: *(pending)*
-**Reviewed At**: *(pending)*
+**Reviewed By**: Alon Fliess
+**Reviewed At**: 2026-05-10
 
 ## Concern Review
 
@@ -40,7 +40,7 @@
 
 ## Hardening-Gate Sign-Off
 
-**Sign-Off Evidence**: *(pending human sign-off)*
+**Sign-Off Evidence**: The five canonical concerns are present in the required order with honest US3-specific pre-implementation evaluations, the eight slice-specific concerns (withdrawal-state-reversal, known-traps-approval-integrity, carry-forward-projection, repeated-event-consolidation, us1-integration-correctness, us2-integration-correctness, replay-path-visibility-coverage, plus deferred-polish if present) follow as required, the nine-column schema is in use, and the validator passes.
 
-**Signed By**: *(pending)*  
-**Signed At**: *(pending)*
+**Signed By**: Alon Fliess  
+**Signed At**: 2026-05-10

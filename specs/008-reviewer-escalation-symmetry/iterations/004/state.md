@@ -11,7 +11,7 @@
 
 ## Execution Summary
 
-**Status**: Iteration 004 planning is complete. All planning artifacts (plan.md, state.md, drift-log.md, quality/hardening-gate.md) have been scaffolded and scoped to User Story 3 (`T020`-`T026`, 14 story_points). Implementation authorization is explicitly blocked until hardening-gate sign-off and human authorization are recorded.
+**Status**: Iteration 004 planning and approval complete. Hardening-gate sign-off recorded. Implementation authorization recorded. Ready for implementation start.
 
 ## Iteration Scope
 
@@ -23,15 +23,12 @@ This iteration carries **User Story 3 (withdrawal handling, carry-forward, known
 
 ## Decisions and Handoff
 
-- **Planning Completion**: ✅ Complete — plan.md, state.md, drift-log.md, and draft hardening-gate.md scaffolded following Iteration 003 pattern
-- **Spec Authority**: ✅ PASS — Scope limited to User Story 3 (FR-006, FR-008, FR-012, FR-014, FR-015) per spec.md and tasks.md
-- **Traceability**: ✅ PASS — All seven tasks map to US3 requirements with explicit carry-forward of Polish
-- **Hardening-Gate Sign-Off**: ⏸️ **PENDING** — Draft hardening-gate.md created; awaiting human sign-off
-- **Implementation Authorization**: ⏸️ **PENDING** — Execution blocked until hardening-gate sign-off and explicit implementation authorization
-- **Implementation Completion**: ⏸️ **BLOCKED** — Cannot start implementation without authorization
-- **Review Verdict**: ⏸️ **BLOCKED** — Cannot start review without implementation
-- **Retrospective Verdict**: ⏸️ **BLOCKED** — Cannot start retrospective without review
-- **Next Action**: Coordinator must request hardening-gate sign-off and implementation authorization
+- **Hardening-Gate Sign-Off**: ✅ PASS — Draft hardening-gate.md signed off by Alon Fliess on 2026-05-10; validator passes
+- **Implementation Authorization**: ✅ PASS — Explicit implementation authorization recorded in plan.md; authorization by Alon Fliess on 2026-05-10
+- **Implementation Completion**: ⏸️ **PENDING** — Awaiting implementation execution
+- **Review Verdict**: ⏸️ **PENDING** — Awaiting implementation completion before review
+- **Retrospective Verdict**: ⏸️ **PENDING** — Awaiting review completion before retrospective
+- **Next Action**: Begin implementation of T020-T026 per iteration plan; commit at every lifecycle boundary
 
 ## Task Status
 

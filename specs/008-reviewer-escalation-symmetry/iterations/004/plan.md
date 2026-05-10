@@ -136,12 +136,12 @@ This is a capacity and dependency split, not a descoping decision. The deferred 
 
 ## Implementation Approval
 
-- **Approval Verdict**: ⏸️ **AWAITING HARDENING-GATE SIGN-OFF AND IMPLEMENTATION AUTHORIZATION**
-- **Approved By**: *(pending)*
-- **Recorded Evidence**: *(pending)*
-- **Recorded At**: *(pending)*
-- **Scope Pending Approval**: User Story 3 (`T020`-`T026`, 14 story_points)
-- **Gate Effect**: Planning complete; implementation blocked until hardening-gate sign-off and explicit implementation authorization
+- **Approval Verdict**: ✅ **AUTHORIZED**
+- **Approved By**: Alon Fliess
+- **Recorded Evidence**: I authorize feature 008 iteration 004 (User Story 3 — withdrawal handling, regression carry-forward, known-traps integration, tasks T020 through T026, 14 story points) implementation, review, retrospective, and closeout. Commit at every lifecycle boundary as you did for iteration 003. Continue the plain-language three-section handoff format for every final user-facing response. For every T020-T026 task that delivers user-facing handoff or visibility output (withdrawal-state reflection, carry-forward-state visibility, corpus-disabled degradation message, etc.), the test coverage must invoke the scaffolded replay path (specrew-review.ps1 or scaffold-reviewer-artifacts.ps1) and assert user-visible output — runtime state coverage alone is insufficient per the test-integrity corpus entry from commit 1c33d73. Run the full six-script validation lane against the staged closeout artifacts BEFORE committing the closeout, so a separate validation-alignment commit is not needed (the iteration 003 668959e pattern should not recur in iteration 004). Audit your own internal review pass for any reviewer-regression events that fired so we can record the first real-world detection if any do — US3 is the iteration most likely to surface a real event because withdrawal and carry-forward exercise the corpus integration directly.
+- **Recorded At**: 2026-05-10
+- **Scope Authorized**: User Story 3 (`T020`-`T026`, 14 story_points)
+- **Gate Effect**: Implementation may proceed immediately; all seven tasks authorized for immediate execution
 
 ## Notes
 
