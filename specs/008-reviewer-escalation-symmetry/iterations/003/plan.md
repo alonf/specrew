@@ -2,11 +2,11 @@
 
 **Schema**: v1  
 **Spec**: [../../spec.md](../../spec.md)  
-**Status**: planning  
+**Status**: complete  
 **Capacity**: 12/20 story_points  
 **Started**: 2026-05-10  
-**Completed**: —  
-**Closed**: —  
+**Completed**: 2026-05-10  
+**Closed**: 2026-05-10  
 
 ## Summary
 
@@ -16,7 +16,7 @@ This slice is deliberately bounded to US2 acceptance criteria only. User Story 3
 
 **Primary Focus**: Implementer lockout-chain counting, cap activation at configurable default, post-cap human or approved-alternate-owner routing, cap visibility in decisions ledger and handoff outputs.  
 **Target Slice**: User Story 2 (`T014`-`T019`)  
-**Execution Status**: planning  
+**Execution Status**: complete  
 **Deferred Follow-On**: User Story 3 (`T020`-`T026`), Polish (`T027`-`T028`)
 
 ---
@@ -67,12 +67,12 @@ This slice is deliberately bounded to US2 acceptance criteria only. User Story 3
 
 | Task | Title | Requirement | Story | Effort | Owner | Owner File Globs | Status | Agent | Actual | Verdict |
 | ---- | ----- | ----------- | ----- | ------ | ----- | ---------------- | ------ | ----- | ------ | ------- |
-| T014 | Build cap-hit, alternate-owner-approved, and awaiting-human-owned-revision fixtures | US2 | US2 | 1 | Review-operations maintainer | `tests/integration/fixtures/lockout-chain-cap/**` | planned | — | — | — |
-| T015 | Add implementer lockout-cap regression coverage | FR-009, FR-010 | US2 | 2 | Review-operations maintainer | `tests/integration/lockout-chain-cap.ps1` | planned | — | — | — |
-| T016 | Extend reviewer closeout and replay assertions for cap visibility and next-owner summary | FR-011 | US2 | 2 | Coordinator handoff maintainer | `tests/integration/reviewer-closeout-governance.ps1`, `tests/integration/review-command.ps1` | planned | — | — | — |
-| T017 | Implement lockout-chain counting, cap activation, and post-cap human or approved-alternate-owner routing | FR-009, FR-010 | US2 | 3 | Runtime routing maintainer | `extensions/specrew-speckit/scripts/manage-reviewer-regression.ps1` | planned | — | — | — |
-| T018 | Record `lockout-cap` and reviewer-routing evidence entries through `shared-governance.ps1` into `.squad/decisions.md` | FR-010, FR-011 | US2 | 2 | Decisions-ledger maintainer | `extensions/specrew-speckit/scripts/shared-governance.ps1`, `extensions/specrew-speckit/scripts/manage-reviewer-regression.ps1`, `.squad/decisions.md` | planned | — | — | — |
-| T019 | Surface locked-out agents, cap status, and planned next-owner path in `scaffold-reviewer-artifacts.ps1`, `specrew-review.ps1`, and `.squad/routing.md` | FR-011 | US2 | 2 | Coordinator handoff maintainer | `extensions/specrew-speckit/scripts/scaffold-reviewer-artifacts.ps1`, `scripts/specrew-review.ps1`, `.squad/routing.md` | planned | — | — | — |
+| T014 | Build cap-hit, alternate-owner-approved, and awaiting-human-owned-revision fixtures | US2 | US2 | 1 | Review-operations maintainer | `tests/integration/fixtures/lockout-chain-cap/**` | done | — | 1 | accepted |
+| T015 | Add implementer lockout-cap regression coverage | FR-009, FR-010 | US2 | 2 | Review-operations maintainer | `tests/integration/lockout-chain-cap.ps1` | done | — | 2 | accepted |
+| T016 | Extend reviewer closeout and replay assertions for cap visibility and next-owner summary | FR-011 | US2 | 2 | Coordinator handoff maintainer | `tests/integration/reviewer-closeout-governance.ps1`, `tests/integration/review-command.ps1` | done | — | 2 | accepted |
+| T017 | Implement lockout-chain counting, cap activation, and post-cap human or approved-alternate-owner routing | FR-009, FR-010 | US2 | 3 | Runtime routing maintainer | `extensions/specrew-speckit/scripts/manage-reviewer-regression.ps1` | done | — | 3 | accepted |
+| T018 | Record `lockout-cap` and reviewer-routing evidence entries through `shared-governance.ps1` into `.squad/decisions.md` | FR-010, FR-011 | US2 | 2 | Decisions-ledger maintainer | `extensions/specrew-speckit/scripts/shared-governance.ps1`, `extensions/specrew-speckit/scripts/manage-reviewer-regression.ps1`, `.squad/decisions.md` | done | — | 2 | accepted |
+| T019 | Surface locked-out agents, cap status, and planned next-owner path in `scaffold-reviewer-artifacts.ps1`, `specrew-review.ps1`, and `.squad/routing.md` | FR-011 | US2 | 2 | Coordinator handoff maintainer | `extensions/specrew-speckit/scripts/scaffold-reviewer-artifacts.ps1`, `scripts/specrew-review.ps1`, `.squad/routing.md` | done | — | 2.5 | accepted |
 
 **Total Effort**: 12 story_points
 
@@ -143,7 +143,7 @@ This is a capacity and dependency split, not a descoping decision. The deferred 
 - The slice is deliberately bounded to US2 acceptance criteria: cap counting, cap activation at default two rotations, post-cap human or approved-alternate-owner routing, and cap visibility in decisions/handoff.
 - User Story 1 (reviewer-regression routing) is complete in Iteration 002; US2 builds on the active reviewer-regression chain seeded by US1.
 - User Story 3 (withdrawal, carry-forward, known-traps) is explicitly deferred to Iteration 004 because it builds on stable US1 event logging and US2 cap enforcement.
-- Polish and full validation lane are explicitly deferred to Iteration 005.
+- Polish (`T027`-`T028`) remains deferred to Iteration 005. The full six-script validation lane is executed at Iteration 003 closeout per the explicit human authorization for this slice.
 - `T014` builds baseline fixtures for cap-hit, alternate-owner-approved, and awaiting-human-owned-revision scenarios in `tests/integration/fixtures/lockout-chain-cap/`.
 - `T015` adds deterministic integration tests for lockout-cap behavior in `tests/integration/lockout-chain-cap.ps1`.
 - `T016` extends closeout and replay assertions to verify cap visibility in `tests/integration/reviewer-closeout-governance.ps1` and `tests/integration/review-command.ps1`.

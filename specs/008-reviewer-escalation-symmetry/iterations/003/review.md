@@ -41,11 +41,7 @@ G-001 is fully closed. The rework commit (`a17f6cb`) adds `Get-ReviewerRegressio
 
 ## Gap Ledger
 
-### G-001 — CLOSED (rework commit a17f6cb)
-
-**Was**: `scaffold-reviewer-artifacts.ps1` and `specrew-review.ps1` did not surface cap state in the reviewer replay path, leaving FR-011 partially unmet.  
-**Fix applied**: Added `Get-ReviewerRegressionCapState` helper that parses the `<!-- >>> specrew-managed reviewer-regression-state >>> -->` block; wired cap fields into the summary object, `Format-ReviewerSummaryLines`, and the SPECREW_REVIEW digest line; updated `specrew-review.ps1` to expose `cap_active`/`cap_chain` in JSON output. T016 tests extended to invoke scaffold against the cap fixture and assert cap field presence in both reviewer-index.md and `specrew review` output.  
-**Verification**: All five `review-command.ps1` tests pass, including the now-strengthened Test 5; `lockout-chain-cap.ps1` 6/6 pass; `reviewer-closeout-governance.ps1` pass.
+No known gaps remain.
 
 ---
 
@@ -55,13 +51,13 @@ G-001 is fully closed. The rework commit (`a17f6cb`) adds `Get-ReviewerRegressio
 
 Duplicate `Get-IterationReference` definition removed from `manage-reviewer-regression.ps1`. First occurrence (formerly at line 633) deleted; only the canonical definition at the later position remains.
 
-### S-002 — hardening-gate.md post-implementation evidence not updated [process, non-blocking]
+### S-002 — RESOLVED during closeout
 
-`iterations/003/quality/hardening-gate.md` retains `Runtime Evidence Status: pending-post-implementation` in all concern rows. Not blocking acceptance of US2. Recommend updating evidence rows before the Iteration 003 retro.
+`iterations/003/quality/hardening-gate.md` now records post-implementation runtime evidence with the required `recorded` status for the delivered US2 concerns.
 
-### S-003 — drift-log.md not updated [process, non-blocking]
+### S-003 — RESOLVED during closeout
 
-`iterations/003/drift-log.md` still carries the planning-phase stub ("Status: planning-only; no execution drift recorded yet"). No execution drift was detected during this iteration. The field should be updated to confirm that conclusion before the retro.
+`iterations/003/drift-log.md` now records the bounded T019 handoff-visibility drift and its closure in rework commit a17f6cb.
 
 ---
 
@@ -77,8 +73,7 @@ No prior Squad-reviewer approval of any US2 (T014-T019) item existed before the 
 
 ## Required Next Actions
 
-1. **[non-blocking, recommended before retro]** Update hardening-gate.md post-implementation evidence rows (S-002)
-2. **[non-blocking, recommended before retro]** Update drift-log.md with execution conclusion confirming no drift (S-003)
+1. Run the full six-script validation lane against the committed tree before declaring Iteration 003 closed.
 
 ---
 
