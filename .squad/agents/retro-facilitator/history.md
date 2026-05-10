@@ -11,3 +11,17 @@ Project-specific learnings and patterns discovered during work.
 **Pattern:** Fail-closed governance enforcement prevents silent compliance gaps but requires upfront configuration of test-command harness. **Context:** Iteration 002 implemented required-gate enforcement successfully, but coverage verification defaulted to `not_executed` because reviewer config did not declare test commands. This pre-existing gap should be resolved before Phase 2 iterations begin, to prevent discovery of missing validation infrastructure at the wrong phase boundary.
 
 **Pattern:** Infrastructure scaffolding scales cleanly when coupled to existing artifact flows rather than creating parallel mechanisms. **Context:** Adding `quality-evidence.md` and `mechanical-findings.json` to the iteration artifact surface worked because the publish flow was integrated into existing reviewer and scaffold paths. No coupling rework was needed.
+
+## Learnings
+
+**Lesson:** Approval scope must be tethered to the active iteration slice, not inherited from prior decisions. Reusing approval evidence across iteration boundaries creates false confidence. Always refresh approval scope when a plan is resliced or deferred. **(Feature 008 Iteration 002)**
+
+**Lesson:** Human-direction hold messages must bridge governance language and human action. The original message was too governance-internal. The fix: use a three-section rule — (1) why-we-stopped, (2) what-you-can-do, (3) who-to-escalate-to. Embed this in coordinator guidance and reviewer charters. **(Feature 008 Iteration 002)**
+
+**Lesson:** Startup-loaded configuration files (.github/agents/squad.agent.md, .specify extension templates) are not re-read mid-session. Changes to these files require an explicit iteration-boundary commit and session restart via specrew-start.ps1. Document this boundary for future iterations that touch startup-loaded surfaces. **(Feature 008 Iteration 002)**
+
+**Lesson:** User-facing handoff paths require execution-time testing of the full scaffolded replay surface, not just runtime state artifacts. When implementing handoff features, ensure the complete pipeline (scaffold → digest → parse) is exercised in automated tests before marking complete. Coverage of runtime config/ledger/state alone is insufficient. **(Feature 008 Iteration 003, G-001)**
+
+**Lesson:** Duplicate function definitions create silent maintenance risk even when syntax is correct. Add post-implementation validation that searches for duplicate definitions in PowerShell scripts. S-001 (duplicate Get-IterationReference in manage-reviewer-regression.ps1) was not caught until review. **(Feature 008 Iteration 003, S-001)**
+
+**Lesson:** Reviewer-regression event detection is working correctly when zero events fire during Squad review cycles. G-001 was a first-pass finding against never-approved work, not a regression against a prior approval. Continue tracking reviewer-regression events in each iteration closeout; zero events does not indicate broken detection logic, it confirms stable Squad review quality. **(Feature 008 Iteration 003)**

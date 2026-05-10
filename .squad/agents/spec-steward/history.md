@@ -4,6 +4,22 @@ Project-specific learnings and patterns discovered during work.
 
 ## Learnings
 
+### 2026-05-10: Feature 008 Iteration 003 Approval Recording and Hardening Gate Status Vocabulary
+
+Recorded two fresh approvals for feature 008 iteration 003 (User Story 2 — implementer lockout-chain cap) into the iteration artifacts: hardening-gate sign-off and implementation authorization.
+
+The approval recording involved:
+1. **plan.md Implementation Approval section**: Updated from pending to authorized with explicit approval evidence, approving human (Alon Fliess), and recorded date.
+2. **state.md lifecycle state**: Updated Current Phase from 'planning' to 'approved' and Iteration Status to reflect implementation-approved but not yet executed state. Added hardening-gate and implementation authorization checkpoints to Decisions and Handoff section.
+3. **hardening-gate.md approval fields**: Updated Overall Verdict, Reviewed By, Reviewed At, and added Hardening-Gate Sign-Off section with verbatim sign-off evidence.
+4. **Hardening concern status vocabulary repair**: Five feature-specific concerns (`chain-counting-integrity`, `cap-activation-routing`, `decision-ledger-recording`, `handoff-visibility`, `us1-integration-correctness`) required Status correction from `requires-evidence` to `addressed` and Runtime Evidence Status correction from `requires-runtime-proof` to `pending-post-implementation` to pass validate-governance.
+
+**Pattern discovered**: For pre-implementation hardening gates, concerns that will be validated after implementation must use Status `addressed` with Evidence Basis `planning-time-analysis` and Runtime Evidence Status `pending-post-implementation`. Status `requires-evidence` is not valid for pre-implementation gates—it triggers the validator's default case which adds "must resolve the concern before implementation can proceed" issue and causes `BlocksImplementation` to be true. The correct vocabulary signals planning-level readiness while explicitly deferring runtime proof to post-implementation review.
+
+**Pattern discovered**: When a hardening gate's Overall Verdict is `ready` (all blocking concerns are addressed at planning level), the gate-level Approval Ref must be empty (—). Approval references are required only for `deferred-with-approval` verdicts where human approval explicitly permits proceeding despite unresolved concerns. A `ready` verdict means the gate is cleared based on planning-time evidence and does not require separate approval—the approval is at the implementation-authorization level in plan.md, not at the gate level.
+
+**Pattern discovered**: Hardening-gate sign-off and implementation authorization are separate but complementary approvals. The hardening-gate sign-off validates that the quality planning meets the pre-implementation bar (canonical concerns present, feature-specific concerns documented, evidence basis and controls specified). The implementation authorization grants permission to execute the iteration tasks. Both must be recorded truthfully in the respective artifact sections before implementation begins.
+
 ### 2026-05-10: Feature 008 Iteration 003 Hardening Gate Canonical Concern Repair
 
 Repaired the hardening-gate.md for feature 008 iteration 003 after intra-feature schema regression was detected during revision cycle. The original planner-authored artifact omitted the five canonical concerns required by spec 005 Phase 2 (security-surface, error-handling-expectations, retry-idempotency-requirements, test-integrity-targets, operational-resilience-concerns).

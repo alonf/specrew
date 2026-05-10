@@ -4034,3 +4034,152 @@ Iteration 011 successfully delivered the technical fix for explicit-target valid
 - **Rationale**: Delegated lifecycle routing was applied for role 'Reviewer'.
 
 - **Routing Evidence**: Reviewer | requested=claude | actual=copilot | model=(platform default) | status=fell-back | fallback=preferred agent 'claude' is not enabled
+
+## 2026-05-10T05:10:12Z — Delegated routing plan
+
+- **Enabled Agents**: copilot
+- **Independent Oversight Active**: False
+- **Roles**:
+  - Implementer | requested=copilot | actual=copilot | model=(platform default) | status=honored | fallback=(none)
+  - Spec Steward | requested=codex | actual=copilot | model=(platform default) | status=fell-back | fallback=preferred agent 'codex' is not enabled
+  - Planner | requested=claude | actual=copilot | model=(platform default) | status=fell-back | fallback=preferred agent 'claude' is not enabled
+  - Reviewer | requested=claude | actual=copilot | model=(platform default) | status=fell-back | fallback=preferred agent 'claude' is not enabled
+  - Retro Facilitator | requested=copilot | actual=copilot | model=(platform default) | status=honored | fallback=(none)
+
+## 2026-05-10T05:10:12Z — Routing evidence: Spec Steward
+
+- **Decision ID**: routing-evidence-50c489b60c40
+- **Type**: routing-evidence
+- **Affected Requirement**: FR-043
+- **Affected Iteration**: (none)
+- **Approving Human**: (none)
+- **Recorded At**: 2026-05-10T05:10:12Z
+- **Next Action**: none
+- **Rationale**: Delegated lifecycle routing was applied for role 'Spec Steward'.
+
+- **Routing Evidence**: Spec Steward | requested=codex | actual=copilot | model=(platform default) | status=fell-back | fallback=preferred agent 'codex' is not enabled
+
+## 2026-05-10T05:10:13Z — Routing evidence: Planner
+
+- **Decision ID**: routing-evidence-a7b35e4b5117
+- **Type**: routing-evidence
+- **Affected Requirement**: FR-043
+- **Affected Iteration**: (none)
+- **Approving Human**: (none)
+- **Recorded At**: 2026-05-10T05:10:13Z
+- **Next Action**: none
+- **Rationale**: Delegated lifecycle routing was applied for role 'Planner'.
+
+- **Routing Evidence**: Planner | requested=claude | actual=copilot | model=(platform default) | status=fell-back | fallback=preferred agent 'claude' is not enabled
+
+## 2026-05-10T05:10:13Z — Routing evidence: Reviewer
+
+- **Decision ID**: routing-evidence-cb1ffb91ce50
+- **Type**: routing-evidence
+- **Affected Requirement**: FR-043
+- **Affected Iteration**: (none)
+- **Approving Human**: (none)
+- **Recorded At**: 2026-05-10T05:10:13Z
+- **Next Action**: none
+- **Rationale**: Delegated lifecycle routing was applied for role 'Reviewer'.
+
+- **Routing Evidence**: Reviewer | requested=claude | actual=copilot | model=(platform default) | status=fell-back | fallback=preferred agent 'claude' is not enabled
+
+## 2026-05-10T12:05:33+03:00 — Routing evidence: Retro Facilitator / Iteration 002 retro amendment
+- **Decision ID**: routing-evidence-008-iter-002-retro-amendment
+- **Type**: routing-evidence
+- **Affected Requirement**: iteration-closeout
+- **Affected Iteration**: 002
+- **Approving Human**: Alon Fliess
+- **Recorded At**: 2026-05-10T12:05:33+03:00
+- **Next Action**: Amend `specs\008-reviewer-escalation-symmetry\iterations\002\retro.md` with the three real lessons and commit the amendment.
+- **Rationale**: Delegated lifecycle routing was applied for role 'Retro Facilitator'.
+- **Routing Evidence**: Retro Facilitator | requested=copilot | actual=copilot | model=claude-haiku-4.5 | status=honored | fallback=(none)
+
+## 2026-05-10T12:05:33+03:00 — Routing evidence: Planner / Iteration 003 US2 planning
+- **Decision ID**: routing-evidence-008-iter-003-planning
+- **Type**: routing-evidence
+- **Affected Requirement**: FR-009, FR-010, FR-011
+- **Affected Iteration**: 003
+- **Approving Human**: Alon Fliess
+- **Recorded At**: 2026-05-10T12:05:33+03:00
+- **Next Action**: Scaffold Iteration 003 planning artifacts for the User Story 2 lockout-chain-cap slice and commit the planning-only work.
+- **Rationale**: Delegated lifecycle routing was applied for role 'Planner'.
+- **Routing Evidence**: Planner | requested=claude | actual=copilot | model=claude-haiku-4.5 | status=fell-back | fallback=preferred agent 'claude' is not enabled
+
+## 2026-05-10T14:12:24+03:00 — Routing evidence: Spec Steward / Iteration 003 hardening-gate repair
+- **Decision ID**: routing-evidence-008-iter-003-hardening-gate-repair
+- **Type**: routing-evidence
+- **Affected Requirement**: FR-031, FR-009, FR-010, FR-011
+- **Affected Iteration**: 003
+- **Approving Human**: Alon Fliess
+- **Recorded At**: 2026-05-10T14:12:24+03:00
+- **Next Action**: Rewrite the Iteration 003 hardening gate to restore canonical concern enumeration, seed the canonical-concern known trap, rerun iteration validation, and commit the bounded amendment.
+- **Rationale**: The Iteration 003 hardening-gate draft was rejected for schema regression against the canonical hardening concerns, so the original planner-authored artifact is locked out for this revision cycle and an independent Spec Steward repair owner is required.
+- **Routing Evidence**: Spec Steward | requested=codex | actual=copilot | model=claude-sonnet-4.5 | status=fell-back | fallback=preferred agent 'codex' is not enabled
+
+## 2026-05-10T17:19:24+03:00 — Routing evidence: Spec Steward / Iteration 003 approval recording
+- **Decision ID**: routing-evidence-008-iter-003-approval-recording
+- **Type**: routing-evidence
+- **Affected Requirement**: FR-031, FR-009, FR-010, FR-011
+- **Affected Iteration**: 003
+- **Approving Human**: Alon Fliess
+- **Recorded At**: 2026-05-10T17:19:24+03:00
+- **Next Action**: Record the fresh hardening-gate sign-off and implementation authorization in Iteration 003 artifacts, validate the updated iteration, and commit the approval boundary.
+- **Rationale**: Delegated lifecycle routing is being used for a governance approval-recording boundary before Iteration 003 execution begins.
+- **Routing Evidence**: Spec Steward | requested=codex | actual=copilot | model=claude-sonnet-4.5 | status=fell-back | fallback=preferred agent 'codex' is not enabled
+
+## 2026-05-10T17:26:30+03:00 — Routing evidence: Implementer / Iteration 003 US2 execution
+- **Decision ID**: routing-evidence-008-iter-003-implementer
+- **Type**: routing-evidence
+- **Affected Requirement**: FR-009, FR-010, FR-011
+- **Affected Iteration**: 003
+- **Approving Human**: Alon Fliess
+- **Recorded At**: 2026-05-10T17:26:30+03:00
+- **Next Action**: Execute tasks T014-T019 for the lockout-chain-cap slice, keep User Story 3 deferred, and prepare a single implementation-boundary commit.
+- **Rationale**: Fresh implementation authorization is recorded; execution can begin under the approved Iteration 003 scope.
+- **Routing Evidence**: Implementer | requested=codex | actual=copilot | model=claude-sonnet-4.5 | status=fell-back | fallback=preferred agent 'codex' is not enabled
+
+## 2026-05-10T17:32:18+03:00 — Routing evidence: Reviewer / Iteration 003 US2 review
+- **Decision ID**: routing-evidence-008-iter-003-review
+- **Type**: routing-evidence
+- **Affected Requirement**: FR-009, FR-010, FR-011
+- **Affected Iteration**: 003
+- **Approving Human**: Alon Fliess
+- **Recorded At**: 2026-05-10T17:32:18+03:00
+- **Next Action**: Independently review the committed US2 implementation, write Iteration 003 review findings, and explicitly note whether any real reviewer-regression events fired during the internal review pass.
+- **Rationale**: Iteration 003 implementation is committed and ready for independent review before retro/closeout.
+- **Routing Evidence**: Reviewer | requested=codex | actual=copilot | model=claude-sonnet-4.6 | status=fell-back | fallback=preferred agent 'codex' is not enabled
+
+## 2026-05-10T17:38:11+03:00 — Routing evidence: Implementer / Iteration 003 review rework
+- **Decision ID**: routing-evidence-008-iter-003-rework-g001
+- **Type**: routing-evidence
+- **Affected Requirement**: FR-011, TG-005, SC-004
+- **Affected Iteration**: 003
+- **Approving Human**: Alon Fliess
+- **Recorded At**: 2026-05-10T17:38:11+03:00
+- **Next Action**: Fix review finding G-001 by surfacing lockout-cap state through scaffold-reviewer-artifacts.ps1 and specrew-review.ps1, then rerun the targeted visibility checks.
+- **Rationale**: Reviewer found a real T019 handoff-visibility gap; implementation must be corrected before review can complete.
+- **Routing Evidence**: Implementer | requested=codex | actual=copilot | model=claude-sonnet-4.5 | status=fell-back | fallback=preferred agent 'codex' is not enabled
+
+## 2026-05-10T17:46:45+03:00 — Routing evidence: Reviewer / Iteration 003 re-review
+- **Decision ID**: routing-evidence-008-iter-003-rereview
+- **Type**: routing-evidence
+- **Affected Requirement**: FR-009, FR-010, FR-011
+- **Affected Iteration**: 003
+- **Approving Human**: Alon Fliess
+- **Recorded At**: 2026-05-10T17:46:45+03:00
+- **Next Action**: Re-review the corrected US2 implementation, confirm whether G-001 is closed, and update Iteration 003 review artifacts to the final verdict.
+- **Rationale**: The single blocking review gap was fixed in commit a17f6cb and the targeted replay tests now cover the real handoff path.
+- **Routing Evidence**: Reviewer | requested=codex | actual=copilot | model=claude-sonnet-4.6 | status=fell-back | fallback=preferred agent 'codex' is not enabled
+
+## 2026-05-10T17:52:54+03:00 — Routing evidence: Retro Facilitator / Iteration 003 closeout
+- **Decision ID**: routing-evidence-008-iter-003-closeout
+- **Type**: routing-evidence
+- **Affected Requirement**: FR-009, FR-010, FR-011, FR-031
+- **Affected Iteration**: 003
+- **Approving Human**: Alon Fliess
+- **Recorded At**: 2026-05-10T17:52:54+03:00
+- **Next Action**: Record the accepted review outcome, close the drift log, backfill post-implementation hardening evidence, write the retro, and create the retro/closeout boundary commit.
+- **Rationale**: Iteration 003 implementation and re-review are accepted; remaining work is closeout packaging before the final six-script committed-tree validation lane.
+- **Routing Evidence**: Retro Facilitator | requested=codex | actual=copilot | model=claude-sonnet-4.5 | status=fell-back | fallback=preferred agent 'codex' is not enabled
