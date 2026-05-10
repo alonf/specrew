@@ -1,17 +1,17 @@
 # Iteration State: 005
 
 **Schema**: v1
-**Last Completed Task**: (none, planning-only)
-**Tasks Remaining**: T027-T028
-**In Progress**: none (planning phase)
+**Last Completed Task**: T028 documentation updates
+**Tasks Remaining**: (none)
+**In Progress**: none
 **Baseline Ref**: d2ba1d6
 **Updated**: 2026-05-10
-**Current Phase**: planning-only
-**Iteration Status**: Planning complete; hardening-gate sign-off pending; implementation authorization pending
+**Current Phase**: executing
+**Iteration Status**: Implementation complete; awaiting Reviewer handoff and review/demo
 
 ## Execution Summary
 
-**Status**: Iteration 005 planning complete. Polish slice (T027-T028) scoped for validation lane re-run and documentation updates. Awaiting hardening-gate sign-off before implementation authorization.
+**Status**: T027 completed successfully with the authorized six-command validation lane and T028 completed the user-facing documentation updates using verified reviewer replay output.
 
 ## Iteration Scope
 
@@ -24,18 +24,18 @@ This iteration carries **Polish and Cross-Cutting Concerns** only: tasks `T027`-
 
 - **Hardening-Gate Sign-Off**: ✅ **SIGNED** — Hardening-gate.md signed off by Alon Fliess on 2026-05-11
 - **Implementation Authorization**: ✅ **AUTHORIZED** — Implementation authorization granted by Alon Fliess on 2026-05-11 following hardening-gate sign-off
-- **Implementation Completion**: ⏳ **PENDING** — Tasks T027-T028 not yet started pending authorization
+- **Implementation Completion**: ✅ **COMPLETE** — T027 and T028 are implemented; review, retro, and closeout remain pending
 - **Review Verdict**: ⏳ **PENDING** — Review awaits implementation completion
 - **Retrospective Verdict**: ⏳ **PENDING** — Retrospective awaits iteration closure
-- **Validation Lane**: ⏳ **PENDING** — Full six-script validation lane scheduled for T027 execution as part of implementation
-- **Iteration Status**: 🔄 **IMPLEMENTATION-READY** — Planning artifacts prepared and signed off; hardening-gate authorization complete; awaiting implementation start
+- **Validation Lane**: ✅ **PASSED** — Authorized six-command validation lane completed successfully under T027
+- **Iteration Status**: 🔄 **EXECUTING** — Polish implementation is active; review, retro, and closeout remain pending
 
 ## Task Status
 
 | Task | Status | Notes |
 | ---- | ------ | ----- |
-| T027 | pending | Validation lane execution (six integration tests + governance validation) |
-| T028 | pending | User-facing documentation updates (README.md, docs/user-guide.md) |
+| T027 | done | Authorized six-command validation lane passed: reviewer-regression-event, lockout-chain-cap, reviewer-regression-ledger, reviewer-regression-withdrawal, carry-forward-closed-iteration, validate-governance.ps1 -ProjectPath . |
+| T028 | done | README.md and docs/user-guide.md now document routing, lockout-cap behavior, and withdrawal semantics with replay-verified visibility examples |
 
 ## Notes
 
@@ -43,6 +43,8 @@ This iteration carries **Polish and Cross-Cutting Concerns** only: tasks `T027`-
 - Iteration 003 completed US2 (implementer lockout-chain cap, cap activation, post-cap routing, cap visibility).
 - Iteration 004 completed US3 (withdrawal state reversal, clean-pass de-escalation, repeated-event consolidation, carry-forward projection, known-traps integration).
 - Iteration 005 Polish will execute the full validation lane to confirm all three user stories work together correctly and update user-facing documentation.
+- T027 evidence: all five requested integration tests plus `validate-governance.ps1 -ProjectPath .` passed without drift or rework.
+- Reviewer handoff: re-check the README/user-guide replay example lines against `scaffold-reviewer-artifacts.ps1` and `specrew review` if the reviewer refreshes the fixture or output format, and review the implementation-only boundary commit without performing retro or closeout yet.
 - Quality profile: `quality-profile.custom-composition.v1` per plan.md.
 - All Polish work remains explicitly scheduled in Iteration 005 with clear dependency rationale.
 - Integration test strategy: Full six-script validation lane plus documentation updates, with explicit replay-path coverage requirement for any handoff-facing behavior.

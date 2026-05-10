@@ -4,7 +4,7 @@
 **Iteration**: 005
 **Feature**: specs/008-reviewer-escalation-symmetry
 **Created**: 2026-05-10
-**Status**: planning-only; drift tracking begins at implementation start
+**Status**: execution complete; no drift recorded
 
 ## Purpose
 
@@ -17,9 +17,10 @@ This log tracks deviations between the approved plan and actual execution. Durin
 
 ## Execution Drift Summary
 
-*Planning complete. Execution not yet started. Drift tracking begins at implementation start.*
+Polish iteration 005 is scoped to validation lane re-run (T027) and documentation updates (T028) after all three user stories complete in Iterations 002-004.
 
-Polish iteration 005 is scoped to validation lane re-run (T027) and documentation updates (T028) after all three user stories complete in Iterations 002-004. No drift detected at planning phase.
+- 2026-05-10 — **T027** completed with **no drift**. The authorized six-command lane passed exactly as directed: `reviewer-regression-event.ps1`, `lockout-chain-cap.ps1`, `reviewer-regression-ledger.ps1`, `reviewer-regression-withdrawal.ps1`, `carry-forward-closed-iteration.ps1`, and `validate-governance.ps1 -ProjectPath .`.
+- 2026-05-10 — **T028** completed with **no drift**. `README.md` and `docs/user-guide.md` now document reviewer-regression routing, lockout-cap behavior, and withdrawal semantics; the handoff example lines were checked against actual `scaffold-reviewer-artifacts.ps1` and `specrew review` output before completion.
 
 ## Planned Drift Monitoring
 

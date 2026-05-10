@@ -69,8 +69,8 @@ This slice is deliberately bounded to Polish work only. User Stories 1, 2, and 3
 
 | Task | Title | Requirement | Story | Effort | Owner | Owner File Globs | Status | Agent | Actual | Verdict |
 | ---- | ----- | ----------- | ----- | ------ | ----- | ---------------- | ------ | ----- | ------ | ------- |
-| T027 | Run the reviewer-regression validation lane | quickstart validation commands | Polish | 2 | Review-operations maintainer | `tests/integration/reviewer-regression-event.ps1`, `tests/integration/lockout-chain-cap.ps1`, `tests/integration/reviewer-regression-ledger.ps1`, `tests/integration/reviewer-regression-withdrawal.ps1`, `tests/integration/carry-forward-closed-iteration.ps1`, `extensions/specrew-speckit/scripts/validate-governance.ps1` | planned | — | — | — |
-| T028 | Document reviewer-regression routing, lockout-cap behavior, and withdrawal semantics | SC-001, SC-004, TG-006 | Polish | 1 | Coordinator handoff maintainer | `README.md`, `docs/user-guide.md` | planned | — | — | — |
+| T027 | Run the reviewer-regression validation lane | quickstart validation commands | Polish | 2 | Review-operations maintainer | `tests/integration/reviewer-regression-event.ps1`, `tests/integration/lockout-chain-cap.ps1`, `tests/integration/reviewer-regression-ledger.ps1`, `tests/integration/reviewer-regression-withdrawal.ps1`, `tests/integration/carry-forward-closed-iteration.ps1`, `extensions/specrew-speckit/scripts/validate-governance.ps1` | done | Implementer | Authorized six-command lane passed end-to-end | pending review |
+| T028 | Document reviewer-regression routing, lockout-cap behavior, and withdrawal semantics | SC-001, SC-004, TG-006 | Polish | 1 | Coordinator handoff maintainer | `README.md`, `docs/user-guide.md` | done | Implementer | README and user guide updated; replay examples verified against actual scaffold/review output | pending review |
 
 **Total Effort**: 3 story_points
 

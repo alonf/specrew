@@ -28,6 +28,13 @@ Specrew bootstraps and runs a **Squad + Spec Kit** delivery flow with stronger l
 - `docs\github-project.md` - Specrew self-development board guidance
 - `tests\README.md` - integration and smoke test entrypoints
 
+## Reviewer-regression governance highlights
+
+- A human-found defect in work the Squad reviewer already approved or marked ready creates a **Reviewer Regression Event**. Specrew keeps the event as a soft-warning governance signal, escalates the next review to the lowest stronger reviewer class that is actually available, falls back to an independent reviewer at the same class when no stronger class exists, and holds for human direction only when neither path is safe.
+- Reviewer-regression routing is additive to the existing implementer escalation policy: it changes the remaining reviewer path for the affected feature, but it does not replace the original implementer-side FR-027 flow.
+- Specrew caps implementer rotation at **two extra owners beyond the original implementer** by default. After that cap is active, the next revision must go to a human or to an explicitly justified alternate owner recorded in `.squad\decisions.md`; Specrew does not synthesize another implementer specialist.
+- Withdrawn or misreported reviewer-regression events keep their ledger history, reverse only still-pending routing or hold state derived from that event, and do not retroactively erase completed ownership changes or auto-remove already approved known-trap entries.
+
 ## Notes
 
 - `specrew start` reuses the current terminal by default; use `--new-window` only when you explicitly want a detached shell.

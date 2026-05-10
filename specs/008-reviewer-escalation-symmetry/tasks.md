@@ -109,8 +109,8 @@
 
 **Purpose**: Re-run the full validation lane and update user-facing documentation after all reviewer-regression flows land.
 
-- [ ] T027 [P] [Owner: Review-operations maintainer] [Effort: M] Run the reviewer-regression validation lane in `tests\integration\reviewer-regression-event.ps1`, `tests\integration\lockout-chain-cap.ps1`, `tests\integration\reviewer-regression-ledger.ps1`, `tests\integration\reviewer-regression-withdrawal.ps1`, `tests\integration\carry-forward-closed-iteration.ps1`, `tests\integration\gap-governance.ps1`, and `extensions\specrew-speckit\scripts\validate-governance.ps1` (Trace: quickstart validation commands, FR-001, FR-006, FR-008, FR-009, FR-012, FR-014, TG-001, TG-002, TG-003, SC-001, SC-003, SC-004, SC-006)
-- [ ] T028 [P] [Owner: Coordinator handoff maintainer] [Effort: S] Document reviewer-regression routing, lockout-cap behavior, and withdrawal semantics in `README.md` and `docs\user-guide.md` (Trace: FR-002, FR-008, FR-010, FR-011, FR-013, SC-001, SC-004, TG-006)
+- [X] T027 [P] [Owner: Review-operations maintainer] [Effort: M] Run the authorized reviewer-regression validation lane in `tests\integration\reviewer-regression-event.ps1`, `tests\integration\lockout-chain-cap.ps1`, `tests\integration\reviewer-regression-ledger.ps1`, `tests\integration\reviewer-regression-withdrawal.ps1`, `tests\integration\carry-forward-closed-iteration.ps1`, and `extensions\specrew-speckit\scripts\validate-governance.ps1 -ProjectPath .` (Trace: quickstart validation commands, FR-001, FR-006, FR-008, FR-009, FR-012, FR-014, TG-001, TG-002, TG-003, SC-001, SC-003, SC-004, SC-006)
+- [X] T028 [P] [Owner: Coordinator handoff maintainer] [Effort: S] Document reviewer-regression routing, lockout-cap behavior, and withdrawal semantics in `README.md` and `docs\user-guide.md` (Trace: FR-002, FR-008, FR-010, FR-011, FR-013, SC-001, SC-004, TG-006)
 
 ---
 

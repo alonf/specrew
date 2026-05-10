@@ -99,6 +99,43 @@ Checklist:
 - Overall verdict recorded
 - Any unresolved drift explicitly called out
 
+## Reviewer-Regression Routing and Lockout-Cap Behavior
+
+Specrew treats a concrete human-found defect in a slice that the Squad reviewer already approved or marked ready as a **Reviewer Regression Event**. The event stays a soft-warning governance signal, but it immediately changes the next review path for that feature:
+
+1. Route to the **lowest stronger reviewer class** that is actually available.
+2. If no stronger class exists, route to an **independent reviewer owner at the same class**.
+3. If the strongest class is already active and no independent reviewer remains, **hold for explicit human direction** before review continues.
+
+This reviewer-side routing is additive to the existing implementer-side escalation flow; Specrew does not replace the original implementer FR-027 behavior just because a reviewer regression occurred.
+
+### Lockout-cap rule
+
+Reviewer regressions do not allow unlimited implementer rotation. By default, Specrew caps the implementer chain at **two rotations beyond the original implementer**. Once the cap is active, the next revision must be:
+
+- a **human-owned revision**, or
+- an **explicitly justified alternate owner** recorded in `.squad\decisions.md`
+
+Specrew does not synthesize another implementer specialist after the cap is reached.
+
+When reviewer closeout artifacts are scaffolded, the lockout-cap handoff is visible in both `reviewer-index.md` and `specrew review`. The following lines were verified against actual `scaffold-reviewer-artifacts.ps1` and `specrew review` output on the lockout-cap fixture:
+
+```text
+Lockout Cap: active | chain=3/2 | locked_out=Standard implementer rotation pool (original + 2 rotations exhausted)
+Next Owner: Awaiting human-owned revision or explicitly approved alternate owner recorded in `.squad/decisions.md`
+SPECREW_REVIEW schema=v1 iter=001 feature=008-sample verdict=blocked tasks=3/3 reqs=3 files=0 new_deps=0 vuln=unscanned cov=not_executed escalations=1 routing_fallbacks=0 cap=active cap_chain=3/2 drift=0/0 index=specs\008-sample\iterations\001\reviewer-index.md
+```
+
+### Withdrawal and misreport handling
+
+If a reviewer-regression report is later withdrawn or classified as a misreport, Specrew preserves the ledger audit trail and reverses only the still-pending state created by that event, such as:
+
+- an in-flight reviewer escalation
+- an awaiting-human-owned-revision hold
+- an alternate-owner path that has not yet completed
+
+Completed ownership changes remain historical fact. Unapproved candidate trap entries derived from the withdrawn event are removed, but already approved corpus entries stay under the normal corpus-change workflow instead of being auto-removed.
+
 ## 4. Retrospective
 
 Goal: capture estimation accuracy, drift summary, and improvement actions.
