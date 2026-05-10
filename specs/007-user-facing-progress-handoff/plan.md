@@ -2,8 +2,8 @@
 
 **Spec**: [./spec.md](./spec.md)  
 **Feature Branch**: `007-user-facing-progress-handoff`  
-**Status**: ready-to-plan  
-**Planning Date**: 2026-05-14
+**Status**: planned  
+**Planning Date**: 2026-05-11
 
 ---
 

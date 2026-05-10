@@ -3,8 +3,8 @@
 **Feature**: `specs/007-user-facing-progress-handoff`  
 **Iteration**: 001  
 **Schema**: v1  
-**Created**: 2026-05-14  
-**Last Updated**: 2026-05-14
+**Created**: 2026-05-11  
+**Last Updated**: 2026-05-11
 
 ---
 
@@ -116,9 +116,9 @@ Iteration 001 Foundation & Governance carries Phase 1–2 coordinator guidance a
 
 ## Expected Monitoring Rhythm
 
-1. **After Phase 1 tasks (T001, T002)** (~day 1): Verify coordinator prompt and handoff template are aligned in plain-language-first principle and three-section format
-2. **After Phase 2 guidance (T003, T004)** (~day 2): Verify decision guidance references coordinator prompt/template; verify Squad.agent.md session-restart note is clear
-3. **After Phase 2 governance (T005, T006)** (~day 3): Verify governance checklist is operationalizable and soft-validator design provides clear implementation target
+1. **After Phase 1 tasks (T001, T002)**: Verify coordinator prompt and handoff template are aligned in plain-language-first principle and three-section format
+2. **After Phase 2 guidance (T003, T004)**: Verify decision guidance references coordinator prompt/template; verify Squad.agent.md session-restart note is clear
+3. **After Phase 2 governance (T005, T006)**: Verify governance checklist is operationalizable and soft-validator design provides clear implementation target
 4. **Before-implement review checkpoint**: Verify all six artifacts are aligned and no drift signals have triggered
 
 ---
