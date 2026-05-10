@@ -2,11 +2,11 @@
 
 **Schema**: v1  
 **Spec**: [../../spec.md](../../spec.md)  
-**Status**: reviewing  
+**Status**: complete  
 **Capacity**: 3/20 story_points  
 **Started**: 2026-05-10  
-**Completed**: *pending*  
-**Closed**: *pending*
+**Completed**: 2026-05-11  
+**Closed**: 2026-05-11
 
 ## Summary
 
@@ -16,7 +16,7 @@ This slice is deliberately bounded to Polish work only. User Stories 1, 2, and 3
 
 **Primary Focus**: Re-run the full validation lane and update user-facing documentation for reviewer-regression routing, lockout-cap behavior, and withdrawal semantics.  
 **Target Slice**: Polish (`T027`-`T028`)  
-**Execution Status**: review accepted; retrospective pending  
+**Execution Status**: review accepted, retrospective complete, staged closeout validation passed, iteration closed  
 **Prior Completions**: User Story 1 (Iteration 002), User Story 2 (Iteration 003), User Story 3 (Iteration 004)
 
 ---
@@ -82,7 +82,7 @@ This slice is deliberately bounded to Polish work only. User Stories 1, 2, and 3
 
 1. **Validation Lane**: `T027` executes the authorized six-command validation lane (`reviewer-regression-event.ps1`, `lockout-chain-cap.ps1`, `reviewer-regression-ledger.ps1`, `reviewer-regression-withdrawal.ps1`, `carry-forward-closed-iteration.ps1`, `validate-governance.ps1 -ProjectPath .`) to confirm all US1, US2, and US3 work together correctly
 2. **Documentation**: `T028` updates README.md and docs/user-guide.md to document reviewer-regression routing, lockout-cap behavior, and withdrawal semantics
-3. **Handoff**: Review is accepted. The next move is retrospective; closeout follows retro on the accepted review boundary
+3. **Closeout**: Review remained accepted, the retrospective was recorded, and the staged closeout artifact tree passed the authorized six-command validation lane before closure
 
 ---
 
@@ -149,3 +149,6 @@ All feature 008 work is now accounted for across all five iterations (Iterations
 - This plan carries Polish work only—validation lane re-run and user-facing documentation updates—after Iteration 002 delivered US1, Iteration 003 delivered US2, and Iteration 004 delivered US3.
 - `T027` runs the full six-script validation lane to confirm all user stories work together correctly.
 - `T028` updates README.md and docs/user-guide.md with reviewer-regression routing, lockout-cap behavior, and withdrawal semantics.
+- Closeout reran the authorized six-command validation lane on the staged closeout artifact tree before commit, keeping final validation aligned with the accepted boundary.
+- Reviewer-regression audit remained at zero events across Feature 008 development, including implementation, review, withdrawal/carry-forward validation, and Polish closeout.
+- With Iteration 005 closed, Feature 008 is complete.

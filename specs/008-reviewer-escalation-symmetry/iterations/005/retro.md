@@ -60,4 +60,5 @@
 - Iteration 005 is the Polish and Cross-Cutting Concerns slice: T027 (validation lane re-run) and T028 (documentation updates).
 - Prior completions: US1 (Iteration 002), US2 (Iteration 003), US3 (Iteration 004).
 - This retrospective was completed on 2026-05-11 following review acceptance.
-- Feature 008 governance repair cycle: Iteration 004 review identified approval-recording gaps; Iteration 005 hardening-gate refreshed approval scope explicitly and tightened the schema. Feature closure is now staged before closeout with honest assessment of prior governance drift.
+- Feature 008 governance repair cycle: Iteration 004 review identified approval-recording gaps; Iteration 005 hardening-gate refreshed approval scope explicitly and tightened the schema. Feature 008 is now formally closed after the staged closeout validation lane passed with honest assessment of prior governance drift.
+- Reviewer-regression audit remained at zero events across Feature 008 development, including the final Polish closeout cycle.
