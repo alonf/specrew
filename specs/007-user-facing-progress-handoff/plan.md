@@ -77,7 +77,7 @@ This rule becomes a soft-validator detection pattern in Iteration 002; coordinat
 
 | Spec Ref | Requirement | Task | Notes |
 |----------|-------------|------|-------|
-| FR-001, FR-002, FR-003, FR-004 | Final Handoff Coverage, Progress Status Content | T001, T002, T005 | Coordinator prompt, handoff template, governance checklist |
+| FR-001, FR-002, FR-003, FR-004, FR-005 | Final Handoff Coverage, Progress Status Content, Open Issues Disclosure | T001, T002, T005 | Coordinator prompt, handoff template, governance checklist |
 | FR-006, FR-007, FR-012 | Actionable Next Step, Flexible Wording | T001, T002, T005 | Prompt reinforcement, compact patterns, inline examples |
 | FR-008, FR-009, FR-010, FR-011 | Review, Manual Test, Verification Gap, Blocked vs. Continue | T001, T003 | Coordinator decision-guidance codification |
 | FR-013, FR-014, FR-015 | Final Response Ownership, Durable Rollout, Specialized Format | T004, T006 | Squad.agent.md codification, governance surfaces |

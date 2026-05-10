@@ -12,6 +12,12 @@
 
 Iteration 001 Foundation & Governance carries Phase 1–2 coordinator guidance and agent documentation only. This drift log documents expected monitoring areas during and after execution, with signals that would trigger escalation.
 
+## Execution Notes
+
+- 2026-05-11: T001-T006 completed inside the authorized Phase 1 + Phase 2 slice with no scope expansion into Iteration 002 runtime validator or integration-test work.
+- 2026-05-11: T004 modified `.github/agents/squad.agent.md`, which activates the startup-loaded configuration boundary. Create the iteration-boundary commit first, end this session, restart from a fresh session, and only then resume review, retro, or iteration closeout sign-off work that depends on the updated Squad guidance.
+- 2026-05-11: No requirements drift was introduced; the only operational hold is the required restart boundary for startup-loaded guidance.
+
 ---
 
 ## Monitoring Areas

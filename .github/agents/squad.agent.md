@@ -96,6 +96,42 @@ The `union` merge driver keeps all lines from both sides, which is correct for a
 
 ## Team Mode
 
+## Coordinator-Response: Final-Response Handoff Contract
+
+Every final user-facing coordinator response must make two things explicit:
+
+1. **Current progress status** — what is complete, what changed, what was verified, and what remains open or blocked.
+2. **Recommended next step** — the single best immediate action for the user, Squad, a reviewer, or a manual tester.
+
+For substantial responses, use this three-section format:
+
+1. **What I just did**
+2. **Why I stopped**
+3. **What I need from you**
+
+Rules:
+
+- Lead with plain language first. Do not begin with governance-heavy labels when a human-readable paraphrase can come first.
+- If formal lifecycle terms matter, move them to a follow-up sentence or a short `Formal references` line.
+- When work is blocked, **Why I stopped** must say what is blocked, and **What I need from you** must name the unblock action before any continue-work suggestion.
+- When review is recommended, say exactly what to review.
+- When manual testing is recommended, say exactly what scenario or risk to test.
+- Lightweight responses may collapse to one concise paragraph, but both semantic fields must still be explicit.
+
+Examples:
+
+- **Completion**: "I updated the coordinator handoff guidance for feature 007 and verified the new docs are in place. Next step: review the wording for clarity before Iteration 002 starts."
+- **Blocked**: "I finished the approved documentation slice, but I stopped because rollout still needs a human decision on the handoff wording. Next step: approve or reject the wording so the lifecycle can continue safely."
+- **Plain-language-first**: "We need one human decision before moving forward: confirm the handoff wording is ready. Formal references: before-implement review, hardening-gate evidence."
+
+Artifact references:
+
+- `extensions/specrew-speckit/prompts/coordinator-response.md`
+- `extensions/specrew-speckit/prompts/coordinator-decision-guidance.md`
+- `specs/001-specrew-product/contracts/coordinator-handoff-template.md`
+
+**Session restart warning:** After editing `.github/agents/squad.agent.md`, a new session must start before Squad can load the updated coordinator-response guidance. Treat this as an iteration-boundary commit requirement before closeout or deployment.
+
 **⚠️ CRITICAL RULE: Every agent interaction MUST use the `task` tool to spawn a real agent. You MUST call the `task` tool — never simulate, role-play, or inline an agent's work. If you did not call the `task` tool, the agent was NOT spawned. No exceptions.**
 
 **On every session start:** Run `git config user.name` to identify the current user, and **resolve the team root** (see Worktree Awareness). Store the team root — all `.squad/` paths must be resolved relative to it. Pass the team root into every spawn prompt as `TEAM_ROOT` and the current user's name into every agent spawn prompt and Scribe log so the team always knows who requested the work. Check `.squad/identity/now.md` if it exists — it tells you what the team was last focused on. Update it if the focus has shifted.

@@ -1,8 +1,8 @@
 # Iteration 001 State
 
 **Schema**: v1  
-**Last Completed Task**: (none)  
-**Tasks Remaining**: T001–T006  
+**Last Completed Task**: T006  
+**Tasks Remaining**: (none)  
 **In Progress**: (none)  
 **Baseline Ref**: 4b14c088ea35449558ff5d39af1dcc6afe27ddc5  
 **Updated**: 2026-05-11
@@ -25,12 +25,12 @@
 
 | Task | Title | Effort | Planned Status | Evidence |
 |------|-------|--------|---|---|
-| T001 | Update coordinator prompt | 3 sp | planned | Scoped to `extensions/specrew-speckit/prompts/coordinator-response.md` and optional `coordinator-final-response-guidance.md`; awaiting implementation approval |
-| T002 | Create handoff template artifact | 2 sp | planned | Scoped to `specs/001-specrew-product/contracts/coordinator-handoff-template.md`; awaiting implementation approval |
-| T003 | Codify coordinator decision guidance | 2 sp | planned | Scoped to `extensions/specrew-speckit/prompts/coordinator-decision-guidance.md`; awaiting implementation approval |
-| T004 | Update Squad.agent.md | 1 sp | planned | Scoped to `.github/agents/squad.agent.md` with session-restart note; awaiting implementation approval |
-| T005 | Create governance checklist | 1 sp | planned | Scoped to `extensions/specrew-speckit/checklists/coordinator-handoff-governance.md`; awaiting implementation approval |
-| T006 | Design soft-validator concept | 1 sp | planned | Scoped to `extensions/specrew-speckit/design/soft-validator-handoff-governance.md`; awaiting implementation approval |
+| T001 | Update coordinator prompt | 3 sp | done | Created `extensions/specrew-speckit/prompts/coordinator-response.md` with explicit progress-status/next-step guidance, plain-language-first guardrail, and completion/blocker/lightweight examples |
+| T002 | Create handoff template artifact | 2 sp | done | Created `specs/001-specrew-product/contracts/coordinator-handoff-template.md` with reusable three-section completion, blocked, partial, and lightweight patterns |
+| T003 | Codify coordinator decision guidance | 2 sp | done | Created `extensions/specrew-speckit/prompts/coordinator-decision-guidance.md` with blocker, review, manual-test, verification-gap, and blocked-vs-continue decision trees |
+| T004 | Update Squad.agent.md | 1 sp | done | Added `## Coordinator-Response: Final-Response Handoff Contract` to `.github/agents/squad.agent.md`, including examples, artifact references, and explicit session-restart warning |
+| T005 | Create governance checklist | 1 sp | done | Created `extensions/specrew-speckit/checklists/coordinator-handoff-governance.md` with soft-warning checks for progress status, next step, jargon-first lead, and blocker/risk disclosure |
+| T006 | Design soft-validator concept | 1 sp | done | Created `extensions/specrew-speckit/design/soft-validator-handoff-governance.md` with the detection rule, pseudo-code, integration points, and Iteration 002 implementation sketch |
 
 **Total Planned Effort**: 10 story_points  
 **Capacity**: 20 story_points  
@@ -61,10 +61,10 @@
 ## Handoff Notes
 
 **To Implementer**: 
-- This iteration implements Foundation & Governance phases only (T001–T006)
-- Soft-validator runtime implementation and integration tests (T007–T008) are explicitly deferred to Iteration 002
-- Before-implement review checkpoint required after all Phase 2 tasks complete
-- Planned execution order: Phase 1 (`T001`/`T002` parallel) → Phase 2 serial (`T003`/`T004`) → Phase 2 parallel (`T005`/`T006`)
+- This iteration's approved implementation slice (T001–T006) is now complete
+- Soft-validator runtime implementation and integration tests (T007–T008) remain explicitly deferred to Iteration 002
+- `.github/agents/squad.agent.md` was modified, so startup-loaded guidance now requires an iteration-boundary commit plus session restart before closeout sign-off
+- Next lifecycle step is review/retro preparation, but iteration closeout must stop for restart before final sign-off in this session
 
 **To Reviewers**:
 - Focus areas: handoff-semantics correctness, coordinator guidance clarity, soft-validator concept completeness, governance-acronym rule absorption, agent-guidance durability
