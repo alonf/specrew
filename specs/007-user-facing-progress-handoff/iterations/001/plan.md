@@ -161,8 +161,8 @@ This is a capacity and dependency split, not a descoping decision. The deferred 
 **Effective Review Class**: strongest-available  
 **Overall Verdict**: ready  
 **Approval Ref**: —  
-**Reviewed By**: *(pending human sign-off)*  
-**Reviewed At**: *(pending)*  
+**Reviewed By**: Alon Fliess  
+**Reviewed At**: 2026-05-11  
 **Post-Implementation Verification**: ⏳ PENDING  
 **Verified At**: *(pending)*  
 
@@ -193,8 +193,8 @@ This is a capacity and dependency split, not a descoping decision. The deferred 
 
 **Scope**: Iteration 001 Foundation (T001–T006, 10 story_points); soft-validator and integration tests deferred to Iteration 002
 
-**Reviewed By**: *(pending human approval)*  
-**Reviewed At**: *(pending)*
+**Reviewed By**: Alon Fliess  
+**Reviewed At**: 2026-05-11
 
 ---
 

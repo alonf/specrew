@@ -8,8 +8,8 @@
 **Effective Review Class**: strongest-available  
 **Overall Verdict**: ready  
 **Approval Ref**: —  
-**Reviewed By**: *(pending human sign-off)*  
-**Reviewed At**: *(pending)*  
+**Reviewed By**: Alon Fliess  
+**Reviewed At**: 2026-05-11  
 **Post-Implementation Verification**: ⏳ PENDING  
 **Verified At**: *(pending)*
 
@@ -42,8 +42,8 @@
 
 ## Sign-Off Evidence
 
-**Authority**: *(pending)*  
-**Recorded At**: *(pending)*  
-**Evidence Statement**: *(pending hardening-gate sign-off)*  
-**Signed By**: *(pending)*  
-**Signed At**: *(pending)*
+**Authority**: Planner (planning/governance boundary)  
+**Recorded At**: 2026-05-11  
+**Evidence Statement**: "The five canonical concerns are present in the required order with honest pre-implementation evaluations for the Phase 1 + Phase 2 foundation slice, the five feature-specific concerns follow (validation-lane-completeness, handoff-semantics-correctness, governance-acronym-rule-absorption, agent-guidance-durability, governance-integration-readiness), the nine-column schema is in use, the iter-005-of-008 richer pre-sign-off convention is applied (Overall Verdict: ready with explicit Reviewed By, Reviewed At, Post-Implementation Verification, and Verified At pending fields), corpus row 4 (human-handoff) is explicitly absorbed into the plan via the governance-acronym-rule-absorption concern, the session-restart awareness for .github/agents/squad.agent.md is named in the agent-guidance-durability concern, and the validator passes."  
+**Signed By**: Alon Fliess  
+**Signed At**: 2026-05-11
