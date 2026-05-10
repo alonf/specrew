@@ -134,12 +134,13 @@ This is a capacity and dependency split, not a descoping decision. The deferred 
 
 ## Implementation Approval
 
-- **Approval Verdict**: pending
-- **Approved By**: (awaiting explicit per-iteration approval)
-- **Recorded Evidence**: (not yet recorded; awaiting fresh per-iteration human authorization)
-- **Recorded At**: (pending)
-- **Scope Pending Approval**: Iteration 002 User Story 1 slice (T008-T013, 13 story_points)
-- **Gate Effect**: Implementation approval required before execution can proceed
+- **Approval Verdict**: approved
+- **Approved By**: Alon Fliess (user)
+- **Recorded Evidence**: Blanket statement: "after you update the above, I approve the 2 pending approval, so you can continue"
+- **Recorded At**: 2026-05-10
+- **Scope Pending Approval**: Iteration 002 (User Story 1 slice, T008-T013, 13 story_points) and hardening-gate sign-off
+- **Blanket Scope Coverage**: This approval covers both the Implementation Approval and the hardening-gate Approval Ref for Iteration 002, expressed as a single blanket statement
+- **Gate Effect**: Implementation approval granted; hardening-gate approval granted; execution can proceed
 
 ## Notes
 

@@ -25,8 +25,8 @@ This iteration carries **User Story 1 (reviewer-regression routing)** only: task
 
 ## Decisions and Handoff
 
-- **Implementation Approval**: ⏸ awaiting explicit per-iteration approval
-- **Before-Implement Review**: ⏳ Pending — hardening gate pending human sign-off for the bounded US1 slice
+- **Implementation Approval**: ✅ approved — Blanket statement: "after you update the above, I approve the 2 pending approval, so you can continue" from Alon Fliess (2026-05-10)
+- **Before-Implement Review**: ✅ Approved — hardening gate sign-off included in blanket approval statement covering both Implementation Approval and hardening-gate Approval Ref
 - **Review Verdict**: (not yet started)
 - **Retrospective Verdict**: (not yet started)
 - **Next Action**: Proceed with `T008` (baseline fixtures for reviewer-regression scenarios)

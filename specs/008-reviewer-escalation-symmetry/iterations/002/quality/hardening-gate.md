@@ -5,10 +5,10 @@
 **Feature Ref**: `specs/008-reviewer-escalation-symmetry/spec.md`  
 **Iteration Ref**: `specs/008-reviewer-escalation-symmetry/iterations/002`  
 **Requested Review Class**: `strongest-available`  
-**Effective Review Class**: `—`  
+**Effective Review Class**: `strongest-available`  
 **Overall Verdict**: `ready`  
-**Reviewed By**: (to be determined)
-**Reviewed At**: (to be set)
+**Reviewed By**: Alon Fliess (user)
+**Reviewed At**: 2026-05-10
 
 ## Concern Review
 
