@@ -38,6 +38,22 @@ Retrospective for Iteration 002 (User Story 1: reviewer-regression routing) comp
 
 ---
 
+## Real Lessons Surfaced This Iteration
+
+1. **Iteration-Specific Approval Evidence Must Be Fresh**
+   - **Lesson**: Reusing approval evidence across iteration boundaries creates false confidence in scope alignment. The initial Iteration 002 approval referenced prior iteration scope before US1 slicing was finalized.
+   - **Resolution**: Cleaned up in commit a2593ce; the plan now carries fresh approval with explicit scope certification (Implementation Approval section). Future iterations will validate that approval scope matches the active plan slice.
+
+2. **Stop Messages Must Balance Governance and Human Handoff**
+   - **Lesson**: The original human-direction hold message was too governance-internal, using jargon like "maximum-strength hold" without grounding why a human should act. A rewrite drove the human-handoff corpus entry and the three-section handoff rule (FR-004 guidance, scope statement, clear next action).
+   - **Resolution**: Embedded in updated coordinator guidance (`extensions/specrew-speckit/squad-templates/coordinator/specrew-governance.md` and `.squad/agents/reviewer/charter.md`). The three-section rule (why-we-stopped, what-you-can-do, who-to-escalate-to) now applies to all human-direction holds.
+
+3. **Startup-Loaded Files Require Iteration-Boundary Commits and Session Restart**
+   - **Lesson**: Files like `.github/agents/squad.agent.md` are loaded at session startup, not when imported. Updating them mid-iteration did not reflect the changes until the next session began. This created silent drift between running state and file state.
+   - **Resolution**: T013 completion required an explicit iteration-boundary commit followed by session restart via `specrew-start.ps1`. Future iterations that touch startup-loaded configuration will enforce this boundary to prevent state mismatch.
+
+---
+
 ## What Went Well
 
 1. **Perfect Effort Accuracy**: Zero variance across all six tasks. This indicates the estimating model captured genuine complexity well and team execution was predictable.
