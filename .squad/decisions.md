@@ -306,6 +306,17 @@
 **Assignment:** honored
 **Fallback Reason:** none
 
+## 2026-05-12-runtime-evidence-feature012-iter002-planning
+### 2026-05-12T00:22:00+03:00: Runtime evidence - Feature 012 iteration 002 planning routing
+**By:** Squad (Coordinator)
+**Type:** runtime-evidence
+**Work Item:** Scaffold iteration `002`, the replay-path integration and corpus follow-through planning slice, validate governance, and commit the planning boundary without starting implementation
+**Requested Agent:** Planner
+**Actual Agent:** Planner
+**Model:** claude-sonnet-4.5
+**Assignment:** honored
+**Fallback Reason:** none
+
 ## 2026-05-11-runtime-evidence-feature012-specify
 ### 2026-05-11T18:39:12+03:00: Runtime evidence - Feature 012 opening routing
 **By:** Squad (Coordinator)
