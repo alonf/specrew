@@ -2,10 +2,12 @@
 
 **Schema**: v1  
 **Spec**: [../../spec.md](../../spec.md)  
-**Status**: planning  
-**Capacity**: 0/20 story_points  
+**Status**: executing  
+**Capacity**: 10/20 story_points  
 **Planned Start**: 2026-05-11  
-**Started**: 2026-05-11
+**Started**: 2026-05-11  
+**Hardening-Gate Sign-Off**: 2026-05-11 by Alon Fliess  
+**Implementation Authorization**: 2026-05-11
 
 ## Summary
 
@@ -15,7 +17,7 @@ This is a truthful 10-point slice deliberately stopped before pause-and-confirm 
 
 **Primary Focus**: Change detector implementation via `git diff --name-only`, baseline commit hash tracking in `.specrew/last-start-prompt.md` YAML frontmatter, auto-continue preservation for routine resumes, signature stability verification, and error-message preservation  
 **Target Slice**: Phase 1 + Phase 2 (`T029`-`T042`)  
-**Execution Status**: awaiting implementation approval  
+**Execution Status**: implementation authorized; execution pending start  
 **Deferred Follow-On**: Pause-and-confirm injection, optional parameter support, visibility output, comprehensive tests, and corpus seeding (`T043`-`T057`)
 
 ---
@@ -142,11 +144,12 @@ This is a truthful 10-point slice deliberately stopped before pause-and-confirm 
 
 ## Implementation Approval
 
-- **Approval Verdict**: ⏳ **PENDING HARDENING-GATE SIGN-OFF**
-- **Requested By**: Alon Fliess
-- **Scope Submitted for Planning**: Feature 011 iteration 001 (Phase 1 + Phase 2 foundational slice, detector logic + baseline tracking + preservation + error fidelity, tasks T029-T042, ~10 story points)
-- **Gate Effect**: Planning authorized; implementation start blocked until hardening-gate is signed off by Alon Fliess
-- **Boundary Note**: Implementation approval is explicitly distinct from hardening-gate sign-off. Hardening-gate review must conclude before this iteration can move to implementation status.
+- **Approval Verdict**: ✅ **HARDENING-GATE SIGNED OFF AND IMPLEMENTATION AUTHORIZED**
+- **Signed Off By**: Alon Fliess
+- **Signed Off At**: 2026-05-11
+- **Authorized Scope**: Feature 011 iteration 001 (Phase 1 + Phase 2 foundational slice — change detector implementation, baseline commit hash tracking via YAML frontmatter, auto-continue preservation, signature stability verification, error-message preservation, tasks T029 through T042, 10 story points)
+- **Authorized Activities**: Implementation, review, retrospective, and closeout
+- **Boundary Note**: Implementation approval is explicitly distinct from planning-level approval. Hardening-gate sign-off by Alon Fliess on 2026-05-11 authorizes the bounded scope (Phase 1 + Phase 2 detector and baseline tracking infrastructure) for implementation start. Pause-and-confirm injection, parameter support, visibility output testing, and corpus seeding are explicitly deferred to Iteration 002.
 
 ## Notes
 
@@ -158,4 +161,3 @@ This is a truthful 10-point slice deliberately stopped before pause-and-confirm 
 - `T042` runs the full test suite to confirm all core paths pass without regression.
 - User Story 2 (pause-and-confirm) and User Story 3 (parameter support) are explicitly deferred to Iteration 002.
 - Pause-and-confirm visibility output testing and known-traps corpus seeding are deferred to Iteration 002 Polish phase.
-- Implementation authorization is blocked pending hardening-gate sign-off. Plan is approved; implementation may not start until gate is reviewed and signed.

@@ -8,8 +8,8 @@
 **Effective Review Class**: strongest-available
 **Overall Verdict**: ready
 **Approval Ref**: —
-**Reviewed By**: *(pending)*
-**Reviewed At**: *(pending)*
+**Reviewed By**: Alon Fliess
+**Reviewed At**: 2026-05-11
 **Post-Implementation Verification**: ⏳ PENDING
 **Verified At**: *(pending)*
 
@@ -43,28 +43,27 @@
 
 ## Hardening-Gate Status
 
-**Overall Verdict**: ⏳ **AWAITING REVIEW** — Planning artifacts are complete and ready for strongest-available class review before implementation authorization.
+**Overall Verdict**: ✅ **SIGNED OFF** — Hardening gate review completed by Alon Fliess on 2026-05-11. Planning artifacts are verified and implementation is authorized to proceed.
 
 **Scope**: Iteration 001 Phase 1 + Phase 2 foundational infrastructure (detector logic, baseline tracking, auto-continue preservation, signature/error-message stability; tasks T029-T042, ~10 story_points); User Story 2 (pause-and-confirm) and User Story 3 (parameter support) explicitly deferred to Iteration 002.
 
-**Pre-Implementation Review Checklist**:
+**Sign-Off Details**:
+- Five canonical concerns present in required order with honest pre-implementation evaluations
+- Five feature-specific concerns documented and ranked correctly  
+- Nine-column schema in use with richer pre-sign-off convention applied
+- Auto-continue-preservation marked Blocking: true to prevent regression to spec 001 Session 2026-05-04
+- Validator passes all hardening-gate checks
+- Implementation authorization granted for Phase 1 + Phase 2 foundational slice (detector + baseline tracking + preservation + error-message fidelity)
 
-- [ ] Detector design (T032) correctly specifies `git diff --name-only` and session-loaded path globs
-- [ ] Baseline tracking mechanism (T033) correctly specifies YAML frontmatter read-modify-write with validation
-- [ ] Auto-continue preservation (T034) preserves spec 001 Session 2026-05-04 behavior unchanged
-- [ ] Signature preservation (T035) confirms no breaking changes to public contract
-- [ ] Error message preservation (T036) confirms additive-only new messages, no modification to existing error paths
-- [ ] Test targets (T037-T040) cover detector accuracy, baseline durability, auto-continue preservation, and error cases
-- [ ] Iteration 001 scope is bounded: pause-and-confirm, parameter support, visibility output, and corpus seeding are explicitly deferred to Iteration 002
+**Next Action**: Implementation may now proceed. Review and retrospective gates remain.
 
 ## Sign-Off Evidence
 
-**Authority**: Planner (planning/hardening-gate boundary)  
-**Recorded At**: 2026-05-11  
-**Evidence Statement**: "The five canonical concerns appear first in the required order (security-surface, error-handling-expectations, retry-idempotency-requirements, test-integrity-targets, operational-resilience-concerns), followed by five feature-specific concerns (detector-correctness, baseline-tracking-integrity, auto-continue-preservation, signature-stability, us1-integration-correctness), the nine-column schema is in use, the iter-005-of-008 richer pre-sign-off convention is applied (Overall Verdict: ready with explicit Reviewed By, Reviewed At, Post-Implementation Verification, and Verified At pending fields), detector accuracy and baseline tracking durability are named as required post-implementation evidence, auto-continue preservation is marked blocking because it prevents regression to spec 001 Session 2026-05-04, User Story 1 integration is marked blocking because it is the core MVP scope, signature stability and error-message preservation are marked non-blocking because they are safeguards, Iteration 001 scope is truthful (detector + baseline + preservation + tests), and Iteration 002 pause-and-confirm, parameter, visibility, and corpus work are explicitly deferred."  
-**Planned By**: Planner  
-**Planned At**: 2026-05-11
+**Authority**: Reviewer (pre-implementation hardening-gate sign-off)  
+**Reviewed By**: Alon Fliess  
+**Reviewed At**: 2026-05-11  
+**Evidence Statement**: "I sign off on the iteration 001 pre-implementation hardening gate at file:///C:/Dev/Specrew/specs/011-specrew-start-conditional-pause/iterations/001/quality/hardening-gate.md. The five canonical concerns are present in the required order with honest pre-implementation evaluations for the detector + baseline + auto-continue-preservation slice, the five feature-specific concerns follow (detector-correctness, baseline-tracking-integrity, auto-continue-preservation, signature-stability, us1-integration-correctness), the nine-column schema is in use, the iter-005-of-008 richer pre-sign-off convention is applied, auto-continue-preservation is correctly marked Blocking: true because regression would break spec 001 Session 2026-05-04, and the validator passes."
 
 ---
 
-**Next Action**: Strongest-available class review and human hardening-gate sign-off by Alon Fliess before implementation start.
+**Hardening-Gate Signed Off**: 2026-05-11 by Alon Fliess. Implementation authorized to proceed.
