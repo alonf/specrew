@@ -1,13 +1,12 @@
----
-updated_at: 2026-05-11T17:00:00+03:00
-focus_area: Feature 011 closed; next active focus is upcoming squad-descriptive-references feature opening/planning
-active_issues: [Feature 011 specrew-start-conditional-pause closed; await next feature authorization]
+updated_at: 2026-05-11T19:50:26+03:00
+focus_area: Feature 012 descriptive references in handoffs is active; repairing the iteration 001 authorization boundary before sign-off can proceed
+active_issues: [Feature 012 descriptive references in handoffs active; commit task backlog boundary, scaffold iteration 001 planning artifacts with hardening gate, refine plan wording, then request fresh sign-off and implementation authorization]
 ---
 
 # What We're Focused On
 
-**Phase**: Feature `011-specrew-start-conditional-pause` closed; next active focus is upcoming squad-descriptive-references feature opening/planning  
-**Urgency**: TIER 1 — Feature 011 durably closed; await next feature authorization
+**Phase**: Feature `012-descriptive-id-handoffs` is in authorization-boundary repair; next boundary is fresh iteration 001 sign-off and implementation authorization  
+**Urgency**: TIER 1 — finish the repair commits, then stop for fresh human authorizations
 
 ---
 
@@ -32,4 +31,4 @@ active_issues: [Feature 011 specrew-start-conditional-pause closed; await next f
 - **Feature 011 is durably closed on 2026-05-11**
 
 ### Next Valid Action
-Await explicit human authorization for next feature opening/planning (upcoming squad-descriptive-references feature or other priority)
+Finish the Feature 012 repair commits, then ask Alon for two separate fresh authorizations: iteration 001 hardening-gate sign-off and iteration 001 implementation authorization.

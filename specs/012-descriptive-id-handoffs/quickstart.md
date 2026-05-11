@@ -10,7 +10,7 @@
 ## Human Approval Boundary
 
 - Planning is approved and complete for Phase 0 and Phase 1 artifacts.
-- **Do not generate tasks yet.**
+- Generate `tasks.md` only when a later approved workflow step explicitly requests task generation; until then, do not generate tasks.
 - **Do not scaffold iteration artifacts yet.**
 - **Do not commit as part of this workflow.**
 
@@ -164,6 +164,6 @@ Before closeout, a human reviewer should confirm:
 
 - Do not widen the rule to tool-rendered output, quoted text, or code blocks.
 - Do not make the validator blocking.
-- Do not generate `tasks.md` during planning.
+- Do not generate `tasks.md` during planning unless a later approved workflow step explicitly requests task generation.
 - Do not scaffold iteration `quality/` artifacts during planning.
 - Do not treat `.github/agents/squad.agent.md` and `.squad/templates/squad.agent.md` as independent sources of truth.

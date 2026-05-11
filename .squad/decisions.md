@@ -218,6 +218,39 @@
 **Assignment:** honored
 **Fallback Reason:** none
 
+## 2026-05-11-runtime-evidence-feature012-tasks
+### 2026-05-11T19:26:29+03:00: Runtime evidence - Feature 012 task generation routing
+**By:** Squad (Coordinator)
+**Type:** runtime-evidence
+**Work Item:** Generate `tasks.md` for feature `012-descriptive-id-handoffs` from the approved spec and plan, then continue to the post-task governance readiness check
+**Requested Agent:** Planner
+**Actual Agent:** Planner
+**Model:** gpt-5.4
+**Assignment:** honored
+**Fallback Reason:** none
+
+## 2026-05-11-runtime-evidence-feature012-after-tasks
+### 2026-05-11T19:26:29+03:00: Runtime evidence - Feature 012 after-tasks governance routing
+**By:** Squad (Coordinator)
+**Type:** runtime-evidence
+**Work Item:** Run the post-task governance validation for `012-descriptive-id-handoffs` immediately after task generation
+**Requested Agent:** Planner
+**Actual Agent:** Planner
+**Model:** gpt-5.4
+**Assignment:** honored
+**Fallback Reason:** none
+
+## 2026-05-11-runtime-evidence-feature012-authorization-boundary-repair
+### 2026-05-11T19:50:26+03:00: Runtime evidence - Feature 012 iteration 001 authorization-boundary repair routing
+**By:** Squad (Coordinator)
+**Type:** runtime-evidence
+**Work Item:** Commit the generated task backlog boundary, scaffold iteration 001 planning artifacts with a canonical pre-implementation hardening gate, refine the feature plan's iteration-scaffolding constraint, and stop for fresh sign-off plus implementation authorization
+**Requested Agent:** Planner
+**Actual Agent:** Planner
+**Model:** claude-haiku-4.5
+**Assignment:** honored
+**Fallback Reason:** none
+
 ## 2026-05-11-runtime-evidence-feature012-specify
 ### 2026-05-11T18:39:12+03:00: Runtime evidence - Feature 012 opening routing
 **By:** Squad (Coordinator)
@@ -8092,3 +8125,53 @@ Repaired all three guards in `.specify/extensions/specrew-speckit/scripts/valida
 **Timestamp**: 2026-05-11 13:52:18 UTC
 
 ---
+
+## 2026-05-11T16:26:17Z — Delegated routing plan
+
+- **Enabled Agents**: copilot
+- **Independent Oversight Active**: False
+- **Roles**:
+  - Implementer | requested=copilot | actual=copilot | model=(platform default) | status=honored | fallback=(none)
+  - Spec Steward | requested=codex | actual=copilot | model=(platform default) | status=fell-back | fallback=preferred agent 'codex' is not enabled
+  - Planner | requested=claude | actual=copilot | model=(platform default) | status=fell-back | fallback=preferred agent 'claude' is not enabled
+  - Reviewer | requested=claude | actual=copilot | model=(platform default) | status=fell-back | fallback=preferred agent 'claude' is not enabled
+  - Retro Facilitator | requested=copilot | actual=copilot | model=(platform default) | status=honored | fallback=(none)
+
+## 2026-05-11T16:26:18Z — Routing evidence: Spec Steward
+
+- **Decision ID**: routing-evidence-94d4b9997268
+- **Type**: routing-evidence
+- **Affected Requirement**: FR-043
+- **Affected Iteration**: (none)
+- **Approving Human**: (none)
+- **Recorded At**: 2026-05-11T16:26:18Z
+- **Next Action**: none
+- **Rationale**: Delegated lifecycle routing was applied for role 'Spec Steward'.
+
+- **Routing Evidence**: Spec Steward | requested=codex | actual=copilot | model=(platform default) | status=fell-back | fallback=preferred agent 'codex' is not enabled
+
+## 2026-05-11T16:26:18Z — Routing evidence: Planner
+
+- **Decision ID**: routing-evidence-ebe245ab8392
+- **Type**: routing-evidence
+- **Affected Requirement**: FR-043
+- **Affected Iteration**: (none)
+- **Approving Human**: (none)
+- **Recorded At**: 2026-05-11T16:26:18Z
+- **Next Action**: none
+- **Rationale**: Delegated lifecycle routing was applied for role 'Planner'.
+
+- **Routing Evidence**: Planner | requested=claude | actual=copilot | model=(platform default) | status=fell-back | fallback=preferred agent 'claude' is not enabled
+
+## 2026-05-11T16:26:18Z — Routing evidence: Reviewer
+
+- **Decision ID**: routing-evidence-14df4e356c39
+- **Type**: routing-evidence
+- **Affected Requirement**: FR-043
+- **Affected Iteration**: (none)
+- **Approving Human**: (none)
+- **Recorded At**: 2026-05-11T16:26:18Z
+- **Next Action**: none
+- **Rationale**: Delegated lifecycle routing was applied for role 'Reviewer'.
+
+- **Routing Evidence**: Reviewer | requested=claude | actual=copilot | model=(platform default) | status=fell-back | fallback=preferred agent 'claude' is not enabled
