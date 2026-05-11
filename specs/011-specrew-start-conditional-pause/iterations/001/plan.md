@@ -2,11 +2,12 @@
 
 **Schema**: v1  
 **Spec**: [../../spec.md](../../spec.md)  
-**Status**: retro  
+**Status**: complete  
 **Capacity**: 10/20 story_points
 **Planned Start**: 2026-05-11  
 **Started**: 2026-05-11  
 **Completed**: 2026-05-11  
+**Closed**: 2026-05-11  
 **Hardening-Gate Sign-Off**: 2026-05-11 by Alon Fliess  
 **Implementation Authorization**: 2026-05-11  
 **Review Completed**: 2026-05-11 by Reviewer  
@@ -20,7 +21,7 @@ This is a truthful 10-point slice deliberately stopped before pause-and-confirm 
 
 **Primary Focus**: Change detector implementation via `git diff --name-only`, baseline commit hash tracking in `.specrew/last-start-prompt.md` YAML frontmatter, auto-continue preservation for routine resumes, signature stability verification, and error-message preservation  
 **Target Slice**: Phase 1 + Phase 2 (`T029`-`T042`)  
-**Execution Status**: review accepted; retrospective complete; closeout validation pending  
+**Execution Status**: review accepted; retrospective complete; staged closeout validation passed; iteration closed  
 **Deferred Follow-On**: Pause-and-confirm injection, optional parameter support, visibility output, comprehensive tests, and corpus seeding (`T043`-`T057`)
 
 ---
@@ -162,6 +163,6 @@ This is a truthful 10-point slice deliberately stopped before pause-and-confirm 
 - `T037`-`T040` write test fixtures and assertions for detector accuracy, baseline durability, and auto-continue preservation.
 - `T041` integrates all detector logic into a single flow in `specrew-start.ps1`.
 - `T042` runs the full test suite to confirm all core paths pass without regression.
-- Retrospective is complete; iteration closeout still requires the full six-script validation lane and a durable closeout commit before closure can be claimed.
+- Retrospective is complete, the staged closeout tree passed the full six-script validation lane, and this iteration is now durably closed in git.
 - User Story 2 (pause-and-confirm) and User Story 3 (parameter support) are explicitly deferred to Iteration 002.
 - Pause-and-confirm visibility output testing and known-traps corpus seeding are deferred to Iteration 002 Polish phase.

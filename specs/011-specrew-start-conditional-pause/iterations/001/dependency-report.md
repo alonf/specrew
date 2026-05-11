@@ -2,7 +2,7 @@
 
 **Schema**: v1
 **Reviewed**: 2026-05-11
-**Baseline Ref**: commit 58f5691 + iteration 001 implementation boundary commit(s) (unresolved)
+**Baseline Ref**: 58f5691
 
 ## Dependency Delta
 
