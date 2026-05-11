@@ -6,19 +6,19 @@
 **In Progress**: none
 **Baseline Ref**: commit 92385d3 (iteration 001 closeout boundary)
 **Updated**: 2026-05-12
-**Current Phase**: planning
-**Iteration Status**: Planning complete; awaiting hardening-gate sign-off and implementation authorization
+**Current Phase**: approved
+**Iteration Status**: Planning complete; hardening-gate signed off and implementation authorized; awaiting execution
 
 ## Planning Status
 
 | Field | Value |
 | --- | --- |
-| **Overall Status** | Planning complete for the Iteration 002 replay-path integration, corpus seeding, quality follow-through, and documentation polish slice |
-| **Planning Phase** | Complete — plan.md, state.md, drift-log.md, and the draft hardening-gate.md are scaffolded |
-| **Authorization Status** | Pending — no hardening-gate sign-off or implementation authorization recorded yet |
+| **Overall Status** | Planning complete for the Iteration 002 replay-path integration, corpus seeding, quality follow-through, and documentation polish slice; approval boundary recorded |
+| **Planning Phase** | Complete — plan.md, state.md, drift-log.md, and the signed hardening-gate.md are ready for the execution handoff |
+| **Authorization Status** | Authorized — hardening-gate sign-off and implementation authorization recorded by Alon Fliess on 2026-05-12 |
 | **Implementation Status** | Not started — all tasks remain planned |
-| **Validation Status** | Governance validation must stay green before handoff; no implementation validation evidence exists yet |
-| **Hardening Gate Verdict** | ready — planning-time artifact drafted with pending review metadata |
+| **Validation Status** | Approval-boundary governance validation and before-implement readiness checks are the active gate; no implementation validation evidence exists yet |
+| **Hardening Gate Verdict** | ready — planning-time artifact signed off by Alon Fliess on 2026-05-12 |
 
 ## Task Status Summary
 
@@ -46,8 +46,15 @@
 | Retrospective artifact | Post-review retrospective boundary | Planning stops before retro starts |
 | Any Iteration 003 scaffolding | Future planning only if explicitly authorized | User requested Iteration 002 only |
 
+## Decisions and Handoff
+
+- **Planning Completion**: ✅ **COMPLETE** — plan.md, state.md, drift-log.md, and hardening-gate.md align to the approved Iteration 002 slice
+- **Hardening-Gate Sign-Off**: ✅ **SIGNED OFF** — `quality/hardening-gate.md` signed by Alon Fliess on 2026-05-12
+- **Implementation Authorization**: ✅ **AUTHORIZED** — Iteration 002 execution authorized by Alon Fliess on 2026-05-12
+- **Next Lifecycle Boundary**: ✅ **EXECUTION READY** — the next valid step is implementation start for `T012`-`T020`
+
 ## Next Action
 
-**Current State**: Iteration 002 planning is ready for hardening-gate review. The slice is bounded to `T012` through `T020`, and the draft hardening gate already reflects the required canonical concern order plus the requested blocking flags.
+**Current State**: Iteration 002 planning is approved for execution. The slice remains bounded to `T012` through `T020`, the hardening gate is signed, and implementation authorization is recorded without starting work.
 
-**Required Next Action**: Obtain hardening-gate sign-off, then wait for explicit implementation authorization before starting any replay-path, corpus, documentation, or quality follow-through work.
+**Required Next Action**: Hand off to the next implementation spawn to begin the approved `T012` through `T020` execution slice without widening scope beyond replay-path integration, corpus seeding, quality follow-through, and documentation polish.

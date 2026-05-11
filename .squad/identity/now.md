@@ -1,12 +1,12 @@
-updated_at: 2026-05-11T22:18:50+03:00
-focus_area: Feature 012 descriptive references in handoffs is active; iteration 001 sign-off and implementation authorization are granted and the pre-implementation gate is the next boundary
-active_issues: [Feature 012 descriptive references in handoffs active; record iteration 001 sign-off and authorization, run before-implement, then execute tasks T001-T011 with restart-safe boundaries]
+updated_at: 2026-05-12T00:00:00Z
+focus_area: Feature 012 descriptive references in handoffs is active; iteration 002 hardening-gate sign-off and implementation authorization are recorded and execution is the next boundary
+active_issues: [Feature 012 descriptive references in handoffs active; iteration 002 is execution-ready, so the next spawn may begin tasks T012-T020 with bounded replay-path, corpus, and documentation scope]
 ---
 
 # What We're Focused On
 
-**Phase**: Feature `012-descriptive-id-handoffs` is at the iteration `001` before-implement boundary after recorded human approval  
-**Urgency**: TIER 1 — record the sign-off, pass the pre-implementation gate, and start the readable-reference rollout safely
+**Phase**: Feature `012-descriptive-id-handoffs` is at the iteration `002` execution boundary after recorded human approval  
+**Urgency**: TIER 1 — preserve the approved replay-path, corpus, and documentation slice and start only that bounded execution work in the next spawn
 
 ---
 
@@ -31,4 +31,4 @@ active_issues: [Feature 012 descriptive references in handoffs active; record it
 - **Feature 011 is durably closed on 2026-05-11**
 
 ### Next Valid Action
-Record the approved iteration `001` sign-off and implementation authorization, run the before-implement gate, then start the readable-reference rollout while dogfooding descriptive scope in every user-facing handoff.
+Begin the approved iteration `002` execution slice (`T012`-`T020`) in the next spawn without widening scope beyond replay-path integration, corpus seeding, feature-level quality follow-through, and documentation polish.

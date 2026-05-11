@@ -6,8 +6,8 @@
 **Capacity**: 8/20 story_points  
 **Planned Start**: 2026-05-12  
 **Started**: pending  
-**Hardening-Gate Sign-Off**: pending  
-**Implementation Authorization**: pending
+**Hardening-Gate Sign-Off**: signed-2026-05-12  
+**Implementation Authorization**: authorized-2026-05-12
 
 ## Summary
 
@@ -117,6 +117,16 @@ This iteration starts only after Iteration 001's readable-reference rollout rema
 | Retrospective artifact (`retro.md`) | Post-review retrospective boundary | Not part of planning-only scaffolding |
 | Any further follow-on slice after `T020` | Future planning only if explicitly authorized | The feature remains open after this plan; no Iteration 003 decision is made here |
 
+## Implementation Authorization
+
+- **Authorization Verdict**: ✅ **AUTHORIZED**
+- **Authorized By**: Alon Fliess
+- **Recorded Evidence**: "The user has given both approvals in the same message."
+- **Recorded Date**: 2026-05-12
+- **Gate Reference**: `specs/012-descriptive-id-handoffs/iterations/002/quality/hardening-gate.md` (signed off 2026-05-12)
+- **Scope Authorized**: User Story 3 plus bounded polish (`T012`-`T020`, 8 story_points)
+- **Authorization Effect**: Execution may proceed on the approved Iteration 002 slice; the next lifecycle boundary is implementation start
+
 ## Effort Model
 
 | Setting | Value | Notes |
@@ -141,5 +151,5 @@ This iteration starts only after Iteration 001's readable-reference rollout rema
 
 - This iteration exists to complete the approved Iteration 002 portion of the backlog only: replay-path integration tests, corpus seeding, quality follow-through, and documentation polish.
 - The canonical Iteration 001 `state.md` metadata schema is intentionally preserved for Iteration 002 to avoid the validator regression caused by the older non-canonical format.
-- The richer pre-sign-off hardening-gate convention from feature 008 iteration 005 is applied here with pending review metadata and a ready verdict.
-- No implementation starts as part of this planning boundary.
+- The richer pre-sign-off hardening-gate convention from feature 008 iteration 005 is applied here; the gate remains `ready`, and the human sign-off metadata is now recorded in `quality/hardening-gate.md`.
+- No implementation starts as part of this approval-recording boundary.
