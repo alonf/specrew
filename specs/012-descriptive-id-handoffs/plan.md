@@ -23,7 +23,7 @@ Add descriptive-reference behavior to the existing feature 007 handoff surfaces 
 **Target Platform**: Windows_NT development workflow with PowerShell-first repository automation  
 **Project Type**: Spec Kit extension and governance automation repository  
 **Performance Goals**: Low-noise soft-warning detection on final coordinator text with zero new hard-blocking behavior and no regressions to feature 007 handoff quality  
-**Constraints**: Limit scope to Squad-authored narration and stop messages, exclude verbatim/tool-rendered surfaces, preserve feature 007 compatibility, avoid iteration scaffolding during planning, and keep the split to two iterations unless a cleaner dependency boundary appears  
+**Constraints**: Limit scope to Squad-authored narration and stop messages, exclude verbatim/tool-rendered surfaces, preserve feature 007 compatibility, avoid pre-scaffolding iteration 002 during iteration 001 planning (iteration 001 hardening-gate scaffolding is canonical for runtime-bearing or session-loaded changes), and keep the split to two iterations unless a cleaner dependency boundary appears  
 **Scale/Scope**: Cross-cutting governance update across existing prompt, checklist, contract, agent-guidance, validator, validation-lane, and integration-test surfaces
 
 ## Phase 1 Quality Planning
