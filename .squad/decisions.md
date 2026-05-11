@@ -228,6 +228,17 @@
 **Model:** claude-sonnet-4.5
 **Assignment:** honored
 **Fallback Reason:** none
+
+## 2026-05-11-runtime-evidence-feature012-clarify
+### 2026-05-11T18:41:37+03:00: Runtime evidence - Feature 012 clarification routing
+**By:** Squad (Coordinator)
+**Type:** runtime-evidence
+**Work Item:** Tighten the descriptive-reference spec around the numeric-ID threshold, grouped-list handling, and exclusion of tool-rendered output from the detector
+**Requested Agent:** Spec Steward
+**Actual Agent:** Spec Steward
+**Model:** claude-sonnet-4.5
+**Assignment:** honored
+**Fallback Reason:** none
 1. **Rejection/Repair Cycle — No Smoothing Detected:** Retrospective now contains explicit "Friction Encountered and Resolved" section. New friction section isolates rejection event and names it explicitly before explaining resolution.
 2. **Approval Ref Traceability — Accurate Language Confirmed:** Language now correctly states "Approval Ref remains `—`" and grounds traceability in timestamp records per governance discipline.
 3. **State.md Retrospective Status — Consistent Fields:** All three status fields (Current Phase, Iteration Status, Retrospective Verdict) tell the same story: review complete, retrospective repaired, closure awaits re-approval.
