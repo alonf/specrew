@@ -4,6 +4,37 @@ Project-specific learnings and patterns discovered during work.
 
 ## Learnings
 
+### 2026-05-11: Per-Iteration Scaffolding Governance Trap — Feature 007 Issue 3 Repair
+
+Repaired the known-traps corpus to address unauthorized per-iteration scaffolding discovered during feature 007 iteration 002 planning work.
+
+**Problem Identified**:
+- Feature 007 iteration 002 directory with plan.md, state.md, and drift-log.md was scaffolded during planning routing without explicit human authorization
+- The Planner role was routed to execute planning work, but no fresh verbatim authorization decision was recorded in `.squad/decisions.md` before artifacts were created
+- The planning boundary crossed without capturing authorization—a governance blind spot
+- This extends beyond the existing "inferred approval" trap (row 8, known-traps.md line 8): pre-emptive iteration scaffolding is dangerous because it commits the project to an iteration boundary before the human has authorized planning to begin
+
+**Governance Principle**:
+Agents MUST NOT pre-emptively scaffold a new iteration's governance artifacts (plan.md, state.md, drift-log.md, quality/hardening-gate.md) without:
+1. A fresh verbatim authorization decision recorded in `.squad/decisions.md` (e.g., "authorize iteration NNN planning to proceed")
+2. An optional but recommended companion Planning Approval section in plan.md that records the same authorization
+
+**Trap Corpus Repair**:
+- Added new governance row to `.specrew/quality/known-traps.md` after row 13 (missing-canonical-concerns)
+- Row 14 is now: "Per-iteration-scaffolding-without-authorization" governance trap
+- Detection method: Scan `specs/NNN-feature/iterations/` for new iteration directories created after 2026-05-11; verify matching authorization decision in `.squad/decisions.md` within 30 minutes prior to creation date
+- Remediation guidance: Ensure explicit authorization is recorded before scaffolding; both decisions ledger and in-artifact Planning Approval section should capture the same authorization truth
+- Concrete example: Feature 007 iteration 002 on 2026-05-11 as the discovery trigger
+
+**Distinction from Row 8 Trap**:
+- Row 8 (inferred-approval-evidence-reuse): Blocks implementation start when hardening-gate approval was inferred rather than explicitly granted
+- Row 14 (per-iteration-scaffolding-without-authorization): Blocks iteration artifact creation when planning authorization was inferred or skipped altogether
+- Both enforce the same principle—explicit human authorization required—but at different lifecycle boundaries: Row 8 at pre-implementation gates, Row 14 at iteration planning boundaries
+
+**Pattern Discovered**: Pre-emptive scaffolding violates spec authority because it silently commits to an iteration scope before the human has authorized the planning work. This creates a hidden governance boundary that allows iteration artifacts to exist without recorded authorization. Future iterations must verify authorization before any agent scaffolds new iteration directories.
+
+**Applicability**: This trap applies to all features with iteration-based planning (specs 001-010+). Reapplication should scan for any iteration directories created without matching authorization decisions, with priority given to recent violations.
+
 ### 2026-05-11: Feature 008 Iteration 005 Pre-Sign-Off Hardening-Gate Schema Convention
 
 Accepted and recorded the pre-sign-off hardening-gate schema convention established by iteration 005 sign-off. This governance pattern formalizes how hardening gates transition from planning-phase drafts to signed-off completion.
