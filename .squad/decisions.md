@@ -151,6 +151,39 @@
 **Model:** claude-sonnet-4.5
 **Assignment:** honored
 **Fallback Reason:** none
+
+## 2026-05-11-runtime-evidence-feature011-iter002-implementation
+### 2026-05-11T17:13:13+03:00: Runtime evidence - Feature 011 Iteration 002 implementation routing
+**By:** Squad (Coordinator)
+**Type:** runtime-evidence
+**Work Item:** Execute feature `011-specrew-start-conditional-pause` iteration 002 tasks T043-T056
+**Requested Agent:** Implementer
+**Actual Agent:** Implementer
+**Model:** claude-sonnet-4.5
+**Assignment:** honored
+**Fallback Reason:** none
+
+## 2026-05-11-runtime-evidence-feature011-iter002-review-prep
+### 2026-05-11T17:13:13+03:00: Runtime evidence - Feature 011 Iteration 002 review-prep routing
+**By:** Squad (Coordinator)
+**Type:** runtime-evidence
+**Work Item:** Prepare the independent review checklist for the three blocking concerns before implementation lands
+**Requested Agent:** Reviewer
+**Actual Agent:** Reviewer
+**Model:** claude-sonnet-4.5
+**Assignment:** honored
+**Fallback Reason:** none
+
+## 2026-05-11-runtime-evidence-feature011-iter002-review
+### 2026-05-11T17:13:13+03:00: Runtime evidence - Feature 011 Iteration 002 review routing
+**By:** Squad (Coordinator)
+**Type:** runtime-evidence
+**Work Item:** Independently review feature `011-specrew-start-conditional-pause` iteration 002 implementation against the approved blocking concerns and issue the review verdict
+**Requested Agent:** Reviewer
+**Actual Agent:** Reviewer
+**Model:** claude-sonnet-4.5
+**Assignment:** honored
+**Fallback Reason:** none
 1. **Rejection/Repair Cycle — No Smoothing Detected:** Retrospective now contains explicit "Friction Encountered and Resolved" section. New friction section isolates rejection event and names it explicitly before explaining resolution.
 2. **Approval Ref Traceability — Accurate Language Confirmed:** Language now correctly states "Approval Ref remains `—`" and grounds traceability in timestamp records per governance discipline.
 3. **State.md Retrospective Status — Consistent Fields:** All three status fields (Current Phase, Iteration Status, Retrospective Verdict) tell the same story: review complete, retrospective repaired, closure awaits re-approval.
