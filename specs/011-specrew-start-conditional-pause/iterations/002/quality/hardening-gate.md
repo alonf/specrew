@@ -8,8 +8,8 @@
 **Effective Review Class**: strongest-available
 **Overall Verdict**: ready
 **Approval Ref**: —
-**Reviewed By**: *(pending sign-off)*
-**Reviewed At**: *(pending sign-off)*
+**Reviewed By**: Alon Fliess
+**Reviewed At**: 2026-05-11
 **Post-Implementation Verification**: *(pending post-implementation evidence)*
 **Verified At**: *(pending verification)*
 
@@ -52,10 +52,10 @@
 
 ## Sign-Off Evidence
 
-**Authority**: *(pending sign-off)*
-**Reviewed By**: *(pending sign-off)*
-**Reviewed At**: *(pending sign-off)*
-**Evidence Statement**: *(pending sign-off — to be completed by Alon Fliess or authorized approver)*
+**Authority**: Alon Fliess
+**Reviewed By**: Alon Fliess
+**Reviewed At**: 2026-05-11
+**Evidence Statement**: I sign off on the iteration 002 pre-implementation hardening gate at file:///C:/Dev/Specrew/specs/011-specrew-start-conditional-pause/iterations/002/quality/hardening-gate.md. The five canonical concerns are present in the required order with honest pre-implementation evaluations for the pause-and-confirm + directive-injection + visibility + corpus-seeding slice. The five feature-specific concerns follow (pause-and-confirm-correctness, directive-injection-fidelity, handoff-visibility-coverage, corpus-seeding-completeness, us1-integration-with-iter-001), the nine-column schema is in use, the iter-005-of-008 richer pre-sign-off convention is applied, the blocking flags correctly identify the three highest-risk concerns (pause-and-confirm-correctness, handoff-visibility-coverage, corpus-seeding-completeness) as Blocking: true, and the validator passes. Your self-correction in commit 6124e09 (restoring T055/FR-008 corpus seeding to iteration 002 scope after detecting it had been dropped in the initial planning) is exactly the corpus-driven behavior change the dogfooding is meant to produce; it does not affect this sign-off and should be noted as a positive signal in the iteration 002 retrospective.
 
 ---
 

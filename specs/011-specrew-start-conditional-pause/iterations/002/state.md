@@ -6,12 +6,12 @@
 **In Progress**: none
 **Baseline Ref**: commit fb926fe (iteration 001 closeout) + iteration 002 planning boundary commit
 **Updated**: 2026-05-11
-**Current Phase**: planning
-**Iteration Status**: Planning complete; hardening-gate artifact ready for sign-off; awaiting implementation authorization
+**Current Phase**: executing  
+**Iteration Status**: Hardening-gate signed off by Alon Fliess on 2026-05-11; implementation authorized on 2026-05-11
 
 ## Execution Summary
 
-**Status**: Iteration 002 planning is complete. Phase 4 + Phase 5 + Iteration 002 share of Phase 6 tasks (`T043`-`T056`) have been planned, traced to requirements, assigned to owners, and estimated. T057 comprehensive documentation (1 story_point) is deferred to feature closeout. The hardening-gate artifact is ready for sign-off. Implementation authorization will follow hardening-gate sign-off.
+**Status**: Iteration 002 hardening-gate signed off by Alon Fliess on 2026-05-11. Implementation authorized on 2026-05-11. Phase 4 + Phase 5 + Iteration 002 share of Phase 6 tasks (`T043`-`T056`) have been planned, traced to requirements, assigned to owners, and estimated. T057 comprehensive documentation (1 story_point) is deferred to feature closeout.
 
 **Planned Surfaces**:
 - Pause-and-confirm directive injection when detector reports changed session-loaded files (T047)
@@ -40,9 +40,9 @@ This iteration carries **Phase 4 (User Story 2: pause-and-confirm) + Phase 5 (Us
 ## Decisions and Handoff
 
 - **Planning Approval**: ✅ **AUTHORIZED** — Planning approval granted by Alon Fliess on 2026-05-11 for Iteration 002
-- **Hardening-Gate Sign-Off**: *(pending hardening-gate artifact sign-off)*
-- **Implementation Authorization**: *(pending hardening-gate sign-off)* — Implementation authorization will follow hardening-gate sign-off
-- **Next Action**: Await explicit human sign-off on hardening-gate artifact before opening implementation
+- **Hardening-Gate Sign-Off**: ✅ **SIGNED-OFF** by Alon Fliess on 2026-05-11
+- **Implementation Authorization**: ✅ **AUTHORIZED** for implementation on 2026-05-11 following hardening-gate sign-off
+- **Next Action**: Begin implementation of T043-T056
 
 ## Task Status
 
@@ -73,11 +73,11 @@ This iteration carries **Phase 4 (User Story 2: pause-and-confirm) + Phase 5 (Us
 
 Before implementation authorization:
 
-- [ ] Hardening-gate artifact signed off by Alon Fliess
-- [ ] All canonical concerns evaluated with honest pre-implementation analysis
-- [ ] Feature-specific concerns documented with blocking status and evidence expectations
-- [ ] Governance validator passes on planning-time artifact tree
-- [ ] Iteration 001 closeout complete and green (detector and baseline infrastructure available)
+- [x] Hardening-gate artifact signed off by Alon Fliess
+- [x] All canonical concerns evaluated with honest pre-implementation analysis
+- [x] Feature-specific concerns documented with blocking status and evidence expectations
+- [x] Governance validator passes on planning-time artifact tree
+- [x] Iteration 001 closeout complete and green (detector and baseline infrastructure available)
 
 ## Notes
 

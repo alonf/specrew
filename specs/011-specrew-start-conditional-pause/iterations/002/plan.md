@@ -2,14 +2,14 @@
 
 **Schema**: v1  
 **Spec**: [../../spec.md](../../spec.md)  
-**Status**: planning  
+**Status**: executing  
 **Capacity**: 20/20 story_points
 **Planned Start**: 2026-05-11  
-**Started**: *(pending implementation authorization)*  
+**Started**: 2026-05-11  
 **Completed**: —
 **Closed**: —  
-**Hardening-Gate Sign-Off**: *(pending implementation authorization)*  
-**Implementation Authorization**: *(pending hardening-gate sign-off)*  
+**Hardening-Gate Sign-Off**: ✅ **SIGNED-OFF** by Alon Fliess on 2026-05-11  
+**Implementation Authorization**: ✅ **AUTHORIZED** for implementation on 2026-05-11 following hardening-gate sign-off  
 **Review Completed**: —  
 **Review Verdict**: —
 
@@ -21,7 +21,7 @@ This is a 20-point slice building directly on Iteration 001 detector and baselin
 
 **Primary Focus**: Pause-and-confirm directive injection when detector reports changes, optional `-PostRestartDirective` parameter support with prepending logic, detector visibility in `.specrew/last-start-prompt.md`, known-traps corpus seeding for the auto-handoff-bypass pattern, and scaffold-replay-path coverage for all visibility output  
 **Target Slice**: Phase 4 + Phase 5 + Iteration 002 share of Phase 6 (`T043`-`T056`)  
-**Execution Status**: Planning complete; awaiting hardening-gate sign-off and implementation authorization  
+**Execution Status**: Hardening-gate signed off by Alon Fliess on 2026-05-11; implementation authorized on 2026-05-11  
 **Capacity Note**: 20 story_points; T057 documentation deferred to closeout  
 **Deferred Follow-On**: Comprehensive documentation updates (T057) deferred to feature closeout
 
