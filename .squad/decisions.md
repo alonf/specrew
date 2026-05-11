@@ -295,6 +295,17 @@
 **Assignment:** honored
 **Fallback Reason:** none
 
+## 2026-05-11-runtime-evidence-feature012-retro
+### 2026-05-11T23:55:00+03:00: Runtime evidence - Feature 012 iteration 001 retrospective routing
+**By:** Squad (Coordinator)
+**Type:** runtime-evidence
+**Work Item:** Author the iteration `001` retrospective for the readable-reference rollout, update lifecycle artifacts for the retro boundary, and keep closeout as the next step
+**Requested Agent:** Retro Facilitator
+**Actual Agent:** Retro Facilitator
+**Model:** claude-sonnet-4.5
+**Assignment:** honored
+**Fallback Reason:** none
+
 ## 2026-05-11-runtime-evidence-feature012-specify
 ### 2026-05-11T18:39:12+03:00: Runtime evidence - Feature 012 opening routing
 **By:** Squad (Coordinator)

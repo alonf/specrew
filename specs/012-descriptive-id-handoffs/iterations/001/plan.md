@@ -10,11 +10,12 @@
 **Implementation Authorization**: authorized-2026-05-11  
 **Review Completed**: 2026-05-11  
 **Review Verdict**: accepted  
-**Next Phase**: retrospective
+**Retrospective Completed**: 2026-05-11  
+**Next Phase**: closeout
 
 ## Summary
 
-Deliver the readable-reference rule and user-facing guidance surfaces for described numeric references in authored handoff prose. Iteration 001 rolls out the shared validator rule, updates prompts, checklists, contracts, and Squad startup guidance, and provides worked examples. Iteration 002 defers replay-path integration coverage, corpus seeding, and quality artifacts.
+Deliver the readable-reference rule and user-facing guidance surfaces for described numeric references in authored handoff prose. Iteration 001 rolls out the shared validator rule, updates prompts, checklists, contracts, and Squad startup guidance, and provides worked examples. Iteration 002 defers replay-path integration coverage, corpus seeding, and the trap-reapplication follow-through artifact.
 
 ## Iteration Scope
 
@@ -123,7 +124,7 @@ Iteration 001 is considered complete when:
 
 - Replay-path integration tests remain deferred to Iteration 002
 - Corpus seeding remains deferred to Iteration 002
-- Quality/ artifacts (hardening-gate.md, trap-reapplication.md) remain deferred to Iteration 002
+- Trap-reapplication follow-through remains deferred to Iteration 002
 - Any blocking enforcement remains out of scope
 - Any expansion to tool-rendered output remains out of scope
 

@@ -32,7 +32,7 @@
 
 - **Runtime Evidence Status**: All concerns now carry `runtime-evidence` with `recorded` status. Evidence is recorded in the Rationale column for each concern based on review findings documented in `specs/012-descriptive-id-handoffs/iterations/001/review.md`.
 - **Blocking Concerns**: Both blocking concerns (`validator-detection-correctness`, `coordinator-prompt-rollout-fidelity`) are satisfied with comprehensive runtime evidence from five handoff-governance integration tests and guidance surface alignment verification.
-- **Implementation Status**: Implementation complete, review accepted, and retrospective is the next lifecycle boundary before closeout.
+- **Implementation Status**: Implementation, review, and retrospective are complete; closeout is the next lifecycle boundary.
 - **Verification**: Five handoff-governance integration tests passed on the accepted implementation tree, confirming all concerns are satisfied.
 
 ## Pre-Implementation Planning Evidence
@@ -74,12 +74,12 @@
 
 - Replay-path integration tests: Deferred to Iteration 002 (T012-T014).
 - Corpus seeding in `.specrew/quality/known-traps.md`: Deferred to Iteration 002 (T015).
-- Quality artifacts (`hardening-gate.md` post-implementation update, `trap-reapplication.md`): Deferred to Iteration 002 (T016).
+- Trap-reapplication follow-through artifact: Deferred to Iteration 002 (T016).
 - Blocking enforcement or failure semantics changes: Out of scope; feature remains non-blocking per FR-008 and FR-009.
 
 ## Hardening-Gate Status
 
-**Overall Verdict**: ✅ **COMPLETE** — Planning artifacts were signed before implementation, and all required post-implementation evidence is now recorded against the accepted Iteration 001 slice. Implementation and review are complete; retrospective is next.
+**Overall Verdict**: ✅ **COMPLETE** — Planning artifacts were signed before implementation, and all required post-implementation evidence is now recorded against the accepted Iteration 001 slice. Implementation, review, and retrospective are complete; closeout is next.
 
 **Scope**: Iteration 001 readable-reference rollout (validator rule, prompts, checklist, contract, Squad startup guidance; tasks T001-T011, 9.5 story points).
 
