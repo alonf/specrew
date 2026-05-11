@@ -1,7 +1,7 @@
 # Iteration State: 002
 
 **Schema**: v1
-**Last Completed Task**: none (iteration 002 planning complete; awaiting hardening-gate sign-off and implementation authorization)
+**Last Completed Task**: none (hardening-gate signed off and implementation authorized 2026-05-11; ready for T043 start)
 **Tasks Remaining**: 20 story_points (T043-T056 planned; T057 deferred to closeout)
 **In Progress**: none
 **Baseline Ref**: commit fb926fe (iteration 001 closeout) + iteration 002 planning boundary commit
