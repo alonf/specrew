@@ -273,6 +273,28 @@
 **Assignment:** honored
 **Fallback Reason:** none
 
+## 2026-05-11-runtime-evidence-feature012-review
+### 2026-05-11T23:20:48+03:00: Runtime evidence - Feature 012 iteration 001 review routing
+**By:** Squad (Coordinator)
+**Type:** runtime-evidence
+**Work Item:** Run T008 narration validation for feature `012-descriptive-id-handoffs` iteration `001`, scaffold the missing review artifact, verify the blocking concerns, and record the review verdict for the readable-reference rollout
+**Requested Agent:** Reviewer
+**Actual Agent:** Reviewer
+**Model:** claude-sonnet-4.5
+**Assignment:** honored
+**Fallback Reason:** none
+
+## 2026-05-11-runtime-evidence-feature012-review-followthrough
+### 2026-05-11T23:20:48+03:00: Runtime evidence - Feature 012 iteration 001 review follow-through routing
+**By:** Squad (Coordinator)
+**Type:** runtime-evidence
+**Work Item:** Convert the iteration `001` hardening gate to post-implementation recorded state and normalize the review-phase artifact fields so retrospective can start cleanly
+**Requested Agent:** Reviewer
+**Actual Agent:** Reviewer
+**Model:** claude-sonnet-4.5
+**Assignment:** honored
+**Fallback Reason:** none
+
 ## 2026-05-11-runtime-evidence-feature012-specify
 ### 2026-05-11T18:39:12+03:00: Runtime evidence - Feature 012 opening routing
 **By:** Squad (Coordinator)

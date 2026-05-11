@@ -1,23 +1,25 @@
 # Iteration State: 001
 
 **Schema**: v1
-**Last Completed Task**: T007 (Mirror descriptive-reference narration guidance into .squad/templates/squad.agent.md)
-**Tasks Remaining**: T008
+**Last Completed Task**: T011 (Validate stop-message and handoff samples across guidance surfaces and validator rule)
+**Tasks Remaining**: none
 **In Progress**: none
 **Baseline Ref**: commit 070dd06 (implementation authorization boundary and pre-implementation baseline start point)
 **Updated**: 2026-05-11
-**Current Phase**: executing
-**Iteration Status**: Startup-guidance contract rollout is complete; restart boundary reached before T008 narration validation
+**Current Phase**: retro
+**Iteration Status**: Implementation complete; all tasks T001-T011 finished; review accepted; ready for retrospective
 
 ## Planning Status
 
 | Field | Value |
 | --- | --- |
-| **Overall Status** | Implementation is active; T001-T007 and T009-T011 are complete, and the restart boundary has been reached before T008 |
+| **Overall Status** | Review complete; all T001-T011 tasks done; verdict: accepted |
 | **Planning Phase** | Complete — all planning artifacts finalized |
 | **Authorization Status** | Signed off by Alon Fliess on 2026-05-11 |
-| **Implementation Status** | In progress — startup guidance is now aligned, and narration validation remains after restart |
-| **Validation Status** | Baseline lane, governance validation, direct readable-reference spot checks, and stop-message validation are green |
+| **Implementation Status** | Complete — all tasks done; validator, prompts, checklist, contract, and Squad startup guidance rolled out |
+| **Validation Status** | Complete — all five handoff-governance tests passing; validator-detection-correctness and coordinator-prompt-rollout-fidelity verified |
+| **Review Status** | Complete — review accepted on 2026-05-11 |
+| **Review Verdict** | accepted |
 
 ## Capacity Model
 
@@ -35,9 +37,9 @@
 | --- | --- | --- | --- |
 | **Phase 1: Setup** | 2 | Complete | T001, T002 |
 | **Phase 2: Foundational** | 2 | Complete | T003, T004 |
-| **Phase 3: US1 (Narration)** | 4 | In progress | T005-T007 complete; T008 remains and must run after the required restart |
+| **Phase 3: US1 (Narration)** | 4 | Complete | T005-T008 all complete |
 | **Phase 4: US2 (Stop Messages)** | 3 | Complete | T009-T011 |
-| **Total** | 1 | In progress | Remaining work is T008 narration validation only |
+| **Total** | 0 | Complete | All iteration 001 tasks complete |
 
 ## Explicit Deferrals
 
@@ -45,15 +47,14 @@
 | --- | --- | --- |
 | Replay-path integration tests | 002 | Depends on stable Iteration 001 guidance |
 | Corpus seeding in known-traps | 002 | Depends on stable Iteration 001 rule behavior |
-| Quality/ hardening-gate artifacts | 002 | Explicit deferral per plan.md |
 | Integration coverage for US3 | 002 | Explicitly deferred per feature plan |
 
 ## Next Action
 
-**Current State**: Iteration 001 is in active execution. The validator, shared contract, narration prompt, decision guidance, checklist, stop-message validation script, and both startup-guidance files are complete and green.
+**Current State**: Iteration 001 review is complete with verdict **accepted**. All T001-T011 tasks done. The validator, shared contract, narration prompt, decision guidance, checklist, stop-message validation script, and both startup-guidance files are rolled out and validated. Five handoff-governance integration tests passing. Both blocking concerns (validator-detection-correctness, coordinator-prompt-rollout-fidelity) verified with runtime evidence.
 
-**Required Next Action**: Commit this restart-trigger boundary, restart the session, and then run T008 narration validation against the live validator plus both startup-guidance surfaces.
+**Required Next Action**: Commit the accepted review boundary, then author `retro.md` and capture the iteration 001 retrospective before closeout.
 
 **Sign-Off Evidence**: The hardening-gate file at `specs/012-descriptive-id-handoffs/iterations/001/quality/hardening-gate.md` has been signed by Alon Fliess on 2026-05-11.
 
-**Authorization Evidence**: Implementation authorization is recorded in this state.md and hardening-gate.md. The only remaining Iteration 001 work is T008 narration validation after the required restart.
+**Review Evidence**: The review file at `specs/012-descriptive-id-handoffs/iterations/001/review.md` records the acceptance verdict with comprehensive blocking-concern verification and test evidence.

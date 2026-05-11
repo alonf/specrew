@@ -2,14 +2,15 @@
 
 **Schema**: v1  
 **Spec**: [../../spec.md](../../spec.md)  
-**Status**: executing  
+**Status**: retro  
 **Capacity**: 9.5/20 story_points  
 **Planned Start**: 2026-05-11  
 **Started**: 2026-05-11  
 **Hardening-Gate Sign-Off**: signed-2026-05-11  
 **Implementation Authorization**: authorized-2026-05-11  
-**Review Completed**: pending  
-**Review Verdict**: pending
+**Review Completed**: 2026-05-11  
+**Review Verdict**: accepted  
+**Next Phase**: retrospective
 
 ## Summary
 
@@ -20,9 +21,9 @@ Deliver the readable-reference rule and user-facing guidance surfaces for descri
 | Category | Coverage | Boundary |
 | --- | --- | --- |
 | **User Stories** | US1 (Readable in-flight narration), US2 (Readable stop messages and handoffs) | US3 and integration evidence deferred to Iteration 002 |
-| **Rollout Slice** | Descriptive-reference guidance and soft-warning rule for authored narration and stop messages | No blocking enforcement, no replay-path fixtures, no corpus seeding, no quality/ artifacts yet |
+| **Rollout Slice** | Descriptive-reference guidance and soft-warning rule for authored narration and stop messages | No blocking enforcement, no replay-path fixtures, no corpus seeding |
 | **Tasks** | T001-T011 | T012-T020 deferred to Iteration 002 |
-| **Primary Surfaces** | Validator rule, coordinator prompt guidance, decision guidance, checklist, contract/template, Squad startup guidance, worked examples | Integration tests, corpus, and hardening artifacts remain unscaffolded |
+| **Primary Surfaces** | Validator rule, coordinator prompt guidance, decision guidance, checklist, contract/template, Squad startup guidance, worked examples | Replay-path integration coverage and corpus seeding remain deferred to Iteration 002 |
 
 ## Rollout Checklist
 
@@ -31,7 +32,7 @@ Deliver the readable-reference rule and user-facing guidance surfaces for descri
 - [x] **T003**: Extend validator rule for opaque numeric references (shared foundational task)
 - [x] **T004**: Update coordinator handoff contract (shared foundational task)
 - [x] **T005-T007**: Readable narration guidance (US1, runs in parallel)
-- [ ] **T008**: Narration spot-check validation (US1)
+- [x] **T008**: Narration spot-check validation (US1)
 - [x] **T009-T010**: Readable stop-message guidance (US2, runs in parallel)
 - [x] **T011**: Stop-message and handoff validation (US2)
 
@@ -46,7 +47,7 @@ Deliver the readable-reference rule and user-facing guidance surfaces for descri
 | T005 | Update coordinator-response.md prompt with narration rules and examples | FR-001, FR-002, FR-003, FR-004, FR-006, FR-007 | US1 | 1 | Prompt maintainer | done | pass |
 | T006 | Update .github/agents/squad.agent.md with descriptive narration guidance | FR-005, FR-007 | US1 | 0.5 | Agent-guidance maintainer | done | pass |
 | T007 | Mirror descriptive-reference narration guidance into .squad/templates/squad.agent.md | FR-005, FR-007, FR-010 | US1 | 0.5 | Agent-guidance maintainer | done | pass |
-| T008 | Run targeted narration spot checks against validator and guidance surfaces | SC-001, SC-002 | US1 | 1 | Reviewer | in-progress | pending |
+| T008 | Run targeted narration spot checks against validator and guidance surfaces | SC-001, SC-002 | US1 | 1 | Reviewer | done | pass |
 | T009 | Update coordinator-decision-guidance.md prompt with stop-message requirements and examples | FR-001, FR-002, FR-003, FR-007 | US2 | 1 | Prompt maintainer | done | pass |
 | T010 | Update coordinator-handoff-governance.md checklist with descriptive reference checkpoints | FR-006, FR-007, FR-010 | US2 | 1 | Handoff-governance maintainer | done | pass |
 | T011 | Validate stop-message and handoff samples across guidance surfaces and validator rule | SC-001, SC-002, SC-003 | US2 | 1 | Reviewer | done | pass |
