@@ -1,27 +1,25 @@
 # Iteration State: 002
 
 **Schema**: v1
-**Last Completed Task**: T056 (Run comprehensive integration test lane)
-**Tasks Remaining**: 0 story_points (implementation complete)
-**In Progress**: None (implementation complete)
-**Baseline Ref**: commit fb926fe (iteration 001 closeout) + iteration 002 planning boundary commit
+**Last Completed Task**: T057 (Comprehensive documentation updates for README.md and docs/getting-started.md)
+**Tasks Remaining**: 0 story_points (iteration 002 complete; feature 011 closeout complete)
+**In Progress**: None (iteration 002 complete; feature 011 closeout complete)
+**Baseline Ref**: commit fb926fe (iteration 001 closeout) + iteration 002 planning boundary commit + iteration 002 implementation commits
 **Updated**: 2026-05-11
-**Current Phase**: retrospective-complete
-**Iteration Status**: Implementation complete and accepted; all tests passing; retrospective complete; ready for closeout
+**Current Phase**: complete
+**Iteration Status**: Closeout validation green; iteration 002 closed
 
 ## Execution Summary
 
-**Status**: Iteration 002 implementation complete and accepted by review on 2026-05-11. Implementation authorized on 2026-05-11 following hardening-gate sign-off by Alon Fliess. Phase 4 + Phase 5 + Iteration 002 share of Phase 6 tasks (`T043`-`T056`) have been planned, traced to requirements, assigned to owners, estimated, implemented, and reviewed. Review verdict: PASS. All blocking and non-blocking concerns satisfied. T057 comprehensive documentation (1 story_point) is deferred to feature closeout.
+**Status**: Iteration 002 implementation, review, retrospective, and closeout are complete. All Phase 4 + Phase 5 + Iteration 002 share of Phase 6 tasks (`T043`-`T057`) have been implemented, integrated, reviewed, retrospected, and closed. The full six-script validation lane passed with zero failures, and project-wide governance validation is green.
 
-**Planned Surfaces**:
+**Delivered Surfaces**:
 - Pause-and-confirm directive injection when detector reports changed session-loaded files (T047)
 - Detector visibility output in `.specrew/last-start-prompt.md` showing changed-files list (T048)
 - Optional `-PostRestartDirective` parameter for prepending custom directives (T053)
 - Known-traps corpus seeding for auto-handoff-bypass pattern per FR-008 closure criterion (T055)
 - Comprehensive integration test lane (T056)
-
-**Deferred Surfaces**:
-- Comprehensive documentation updates (T057) — feature closeout
+- Comprehensive documentation updates in `README.md` and `docs/getting-started.md` (T057)
 
 **Planning Notes**:
 - Iteration 002 builds directly on Iteration 001 detector and baseline tracking infrastructure
@@ -45,7 +43,8 @@ This iteration carries **Phase 4 (User Story 2: pause-and-confirm) + Phase 5 (Us
 - **Review Completed**: ✅ **COMPLETED** on 2026-05-11 by Reviewer agent
 - **Review Verdict**: ✅ **PASS** — All blocking and non-blocking concerns satisfied; implementation accepted
 - **Retrospective Completed**: ✅ **COMPLETED** on 2026-05-11 by Retro Facilitator
-- **Next Action**: Proceed to closeout
+- **Closeout Validation**: ✅ **GREEN** — Full six-script validation lane passed on closeout tree
+- **Next Action**: Feature 011 complete; return to feature 008 Polish (Iteration 005) or await next feature authorization
 
 ## Task Status
 
@@ -65,12 +64,10 @@ This iteration carries **Phase 4 (User Story 2: pause-and-confirm) + Phase 5 (Us
 | T054 | complete | Run test suite for T050-T052 against T053 implementation and verify parameter acceptance and custom directive rendering |
 | T055 | complete | Seed known-traps corpus entry in `.specrew/quality/known-traps.md` documenting the "auto-handoff bypass when session-loaded files change" pattern per FR-008 closure criterion |
 | T056 | complete | Run comprehensive integration test lane on committed state (all six detector/baseline/auto-continue/pause-and-confirm/parameter/end-to-end tests) |
+| T057 | complete | Comprehensive documentation updates for `README.md` and `docs/getting-started.md` covering change detection behavior, pause-and-confirm workflow, `-PostRestartDirective` parameter, baseline tracking, and practical examples |
 
-**Total Tasks in Iteration**: 14 (T043-T056)  
-**Total Effort**: 20 story_points
-
-**Deferred Tasks**:
-- T057 (documentation, 1 story_point) — feature closeout
+**Total Tasks in Iteration**: 15 (T043-T057)  
+**Total Effort**: 21 story_points (20 planned + 1 deferred T057 completed at closeout)
 
 ## Pre-Implementation Checklist
 
@@ -84,11 +81,12 @@ Before implementation authorization:
 
 ## Notes
 
-- Phase 4 + Phase 5 + Iteration 002 share of Phase 6 work planned: pause-and-confirm directive injection, optional parameter support, corpus seeding per FR-008 closure criterion, and visibility testing.
-- All planning tasks are complete; hardening-gate artifact signed off on 2026-05-11 by Alon Fliess.
-- Implementation authorized on 2026-05-11 following hardening-gate sign-off.
-- T057 comprehensive documentation updates deferred to feature closeout.
+- Phase 4 + Phase 5 + Iteration 002 share of Phase 6 work complete: pause-and-confirm directive injection, optional parameter support, corpus seeding per FR-008 closure criterion, visibility testing, and comprehensive documentation.
+- All planning, implementation, review, and retrospective tasks are complete.
+- T057 comprehensive documentation updates completed at feature closeout.
 - Quality profile: `quality-profile.cli-script-integration-focused.v1` per plan.md (inherited from Iteration 001).
 - Hardening-gate artifact path: `specs/011-specrew-start-conditional-pause/iterations/002/quality/hardening-gate.md`.
 - Drift-log path: `specs/011-specrew-start-conditional-pause/iterations/002/drift-log.md`.
+- Full six-script validation lane passed on closeout tree before durable commit.
+- Iteration 002 is durably closed.
 

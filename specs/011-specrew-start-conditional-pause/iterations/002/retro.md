@@ -124,6 +124,36 @@ Iteration 002 (User Story 2: pause-and-confirm + User Story 3: optional paramete
 
 ---
 
+## What Didn't Go Well
+
+### 1. **Execution-Boundary Artifact Repairs Required Post-Sign-Off**
+
+**What happened**: After hardening-gate sign-off landed in commit bd8d3ef, the state.md artifact still carried pre-sign-off wording ("Hardening-Gate Sign-Off: *(pending sign-off)*"). A follow-on commit 77d09b7 ("Fix stale pre-sign-off wording in feature 011 iteration 002 state.md") corrected this to reflect that sign-off had occurred and implementation authorization was granted.
+
+**Why this is friction**: The artifact repair cycle (bd8d3ef → 77d09b7) added one extra commit between sign-off and implementation. While the repair was truthful and necessary, it should have been avoided by ensuring the sign-off commit itself updated all affected artifacts to post-sign-off state in a single atomic operation.
+
+**Root cause**: The hardening-gate sign-off commit updated `hardening-gate.md` with the sign-off evidence but did not update `state.md` to reflect the same sign-off decision. This left the artifact tree in an inconsistent state where one artifact said "signed off" and another said "pending sign-off."
+
+**Corrective action**: Before committing a sign-off decision, verify that all affected iteration artifacts (`hardening-gate.md`, `state.md`, `plan.md`) are updated to reflect the sign-off decision in a single atomic commit. This avoids the need for follow-on repair commits and ensures the artifact tree is truthful at every boundary.
+
+**Future application**: Every governance gate boundary (hardening-gate sign-off, review acceptance, retrospective completion) must update all affected iteration artifacts atomically. No follow-on repair commits should be needed if the boundary commit is complete. This pattern is now captured in Improvement Actions below.
+
+---
+
+### 2. **Baseline Hash Regex Bug Inherited from Iteration 001**
+
+**What happened**: The baseline hash regex bug (missing multiline flag at line 1867) was a latent defect in iteration 001 infrastructure that only manifested in iteration 002 when YAML frontmatter grew beyond single-line baseline hash. Iteration 001 tests did not catch the bug because iteration 001 frontmatter was simple (single-line `baseline_commit_hash` field). Iteration 002 tests caught it immediately in T049 because iteration 002 frontmatter included the `session_loaded_files_changed` list, making the YAML multi-line.
+
+**Why this is friction**: The bug existed from iteration 001 but was not caught until iteration 002. This is not a failure (iteration 002 tests caught it before commit), but it reveals that iteration 001 test coverage did not exercise multi-line frontmatter scenarios.
+
+**Root cause**: Iteration 001 test fixtures used simple frontmatter (single field). Iteration 002 test fixtures used complex frontmatter (multiple fields). The regex bug only manifested in the complex case.
+
+**Corrective action**: When testing YAML parsing logic, include test fixtures with both simple (single-field) and complex (multi-field, multi-line) frontmatter scenarios to catch regex boundary issues early. This is a test-fixture completeness concern, not an implementation bug per se.
+
+**Future application**: Every feature that parses structured text (YAML frontmatter, JSON, markdown headers) should include test fixtures covering both minimal and complex cases to catch parsing edge cases before they land. This pattern is now captured in Improvement Actions below.
+
+---
+
 ## Process Friction and Repairs
 
 ### 1. **Execution-Boundary Artifact Repairs After Sign-Off (Process Friction)**
@@ -154,7 +184,7 @@ Iteration 002 (User Story 2: pause-and-confirm + User Story 3: optional paramete
 
 ---
 
-## Concrete Actions for Next Iteration
+## Improvement Actions
 
 ### 1. **Governance Gate Commits Must Update All Affected Artifacts Atomically**
 

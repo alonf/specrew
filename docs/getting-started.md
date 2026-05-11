@@ -206,6 +206,63 @@ Do not run `copilot` directly: it skips the runtime handoff refresh, so the laun
 
 If you are already inside a live session that was launched by `specrew start`, do not run it again in that same conversation. "Resuming" means starting a later session in a new terminal.
 
+### Session-loaded file change detection
+
+When you restart Copilot/Squad, `specrew start` automatically detects whether you've committed changes to **session-loaded files** (agent charters, Copilot instructions, or Spec Kit extension templates). If changes are detected, the auto-continue behavior pauses and prompts you to confirm or provide additional directives before the lifecycle resumes.
+
+**Session-loaded paths checked**:
+- `.github/agents/*`
+- `.github/copilot-instructions.md`
+- `extensions/specrew-speckit/squad-templates/coordinator/*`
+- `.specify/extensions/specrew-speckit/squad-templates/coordinator/*`
+- `.squad/agents/*/charter.md`
+
+**Pause-and-confirm workflow**:
+1. You commit changes to one or more session-loaded files (e.g., updating `.github/agents/squad.agent.md` to refine reviewer behavior).
+2. You restart Copilot/Squad and run `specrew start`.
+3. The regenerated `.specrew/last-start-prompt.md` includes a **PAUSE-AND-CONFIRM** message listing the changed files.
+4. You can review the changes and provide directives (e.g., "Focus on reviewer escalation testing") before typing `CONFIRM` or a directive to continue.
+
+**Example pause-and-confirm message**:
+```
+⚠️ Session-loaded files changed:
+- .github/agents/squad.agent.md
+- .squad/agents/reviewer/charter.md
+
+Please review the changes above and provide any additional context needed.
+Type CONFIRM or a directive to continue.
+```
+
+**Routine resumes (no changes)**: When no session-loaded files have changed, `specrew start` auto-continues immediately per the documented baseline behavior.
+
+**Optional parameter for custom directives**: Power users can prepend a custom directive using the `-PostRestartDirective` parameter:
+
+```powershell
+pwsh -File C:\Dev\Specrew\scripts\specrew.ps1 start -PostRestartDirective "Validate reviewer escalation contract before continuing."
+```
+
+The custom directive is prepended to the handoff prompt, followed by any pause-and-confirm or auto-continue logic.
+
+**Baseline tracking**: `specrew start` records a baseline commit hash in `.specrew/last-start-prompt.md` YAML frontmatter (`baseline_commit_hash: <40-char SHA>`). The detector compares this baseline against HEAD to identify committed changes. **Uncommitted work-in-progress modifications do not trigger the pause**—only committed changes are detected.
+
+**Practical examples**:
+
+- **Scenario 1: Updating agent charters mid-iteration**
+  1. You're implementing feature 011 and realize the reviewer's charter needs adjustment.
+  2. You update `.squad/agents/reviewer/charter.md` and commit.
+  3. You restart Copilot and run `specrew start`.
+  4. Result: Pause-and-confirm message appears, showing `.squad/agents/reviewer/charter.md` changed. You can add directives like "Focus on charter alignment during review" before continuing.
+
+- **Scenario 2: Routine resume with no changes**
+  1. You close your terminal at the end of the day.
+  2. The next day, you reopen the terminal and run `specrew start`.
+  3. Result: Auto-continue behavior proceeds immediately because no session-loaded files changed overnight.
+
+- **Scenario 3: Using `-PostRestartDirective` for explicit scope**
+  1. You're resuming after a break and want to ensure the team focuses on a specific area.
+  2. You run: `pwsh -File C:\Dev\Specrew\scripts\specrew.ps1 start -PostRestartDirective "Continue iteration 002 closeout tasks only."`
+  3. Result: Your directive is prepended to the handoff prompt, followed by auto-continue or pause-and-confirm logic.
+
 Iteration artifact helpers still exist for direct/manual use:
 
 ```powershell
