@@ -218,6 +218,26 @@ These clarifications resolve critical implementation ambiguities that would othe
 **Model ID:** claude-haiku-4.5
 **Status:** honored
 **Fallback Reason:** none
+
+## 2026-05-11-runtime-evidence-feature007-iter002-planning
+### 2026-05-11T03:01:19+03:00: Runtime evidence - Feature 007 Iteration 002 planning routing
+**By:** Squad (Coordinator)
+**Role / Work Item:** Planner - plan `specs/007-user-facing-progress-handoff/iterations/002`
+**Requested Agent:** claude
+**Actual Agent:** copilot
+**Model ID:** claude-sonnet-4.5
+**Status:** fallback
+**Fallback Reason:** preferred agent `claude` is not enabled in the delegated routing plan; routed through Copilot task execution
+
+## 2026-05-11-runtime-evidence-feature007-iter001-retro-repair
+### 2026-05-11T03:01:19+03:00: Runtime evidence - Feature 007 Iteration 001 retro boundary repair
+**By:** Squad (Coordinator)
+**Role / Work Item:** Retro Facilitator - repair stale restart-boundary messaging in iteration 001 retrospective/state
+**Requested Agent:** copilot
+**Actual Agent:** copilot
+**Model ID:** claude-haiku-4.5
+**Status:** honored
+**Fallback Reason:** none
 2. Design versioned lens checklist Markdown table schema during planning
 3. Implement strongest-class routing policy with explicit override tracking
 4. Design hardening-gate approval workflow with human sign-off capture
