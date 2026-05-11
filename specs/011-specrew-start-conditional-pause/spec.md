@@ -9,7 +9,7 @@
 
 Specrew's `specrew-start.ps1` handoff behavior follows the Session 2026-05-04 auto-continue clarification from spec 001: when a session resumes (detected by `.specrew/last-start-prompt.md` existing), the regenerated handoff includes an auto-continue directive so the Squad coordinator runs immediately without waiting for user input. This behavior is correct for routine resumes where nothing structural has changed.
 
-However, the user frequently restarts Copilot or the Squad session specifically to **reload session-loaded files** (behavioral files like `.github/agents/squad.agent.md`, `charter.md`, `.github/copilot-instructions.md`, or Spec Kit extension templates). In these cases, the auto-continue behavior bypasses the user's ability to issue a first-message directive (e.g., a status clarification, iteration-plan override, or scope reframing) that would apply to the restarted session. The user must manually kill the auto-running coordinator and restart, adding friction to an otherwise routine workflow.
+However, the user frequently restarts Copilot or the Squad session specifically to **reload session-loaded files** (behavioral files like `.github/agents/squad.agent.md`, `.squad/agents/*/charter.md`, `.github/copilot-instructions.md`, or Spec Kit extension templates). In these cases, the auto-continue behavior bypasses the user's ability to issue a first-message directive (e.g., a status clarification, iteration-plan override, or scope reframing) that would apply to the restarted session. The user must manually kill the auto-running coordinator and restart, adding friction to an otherwise routine workflow.
 
 Concretely observed during dogfooding on 2026-05-11:
 
@@ -44,7 +44,7 @@ A human developer who has not changed any session-loaded files between sessions 
 **Acceptance Scenarios**:
 
 1. **Given** a Specrew-managed project with `.specrew/last-start-prompt.md` already present, **When** the user runs `specrew-start.ps1` without having committed any changes to session-loaded paths, **Then** the regenerated `.specrew/last-start-prompt.md` includes an auto-continue directive and Squad's coordinator launches immediately.
-2. **Given** the user has not modified any of `.github/agents/*`, `.github/copilot-instructions.md`, `extensions/specrew-speckit/squad-templates/coordinator/*`, `.specify/extensions/specrew-speckit/squad-templates/coordinator/*`, or `charter.md` files, **When** `specrew-start.ps1` runs, **Then** the handoff detector finds zero changes and auto-continue behavior is preserved.
+2. **Given** the user has not modified any of `.github/agents/*`, `.github/copilot-instructions.md`, `extensions/specrew-speckit/squad-templates/coordinator/*`, `.specify/extensions/specrew-speckit/squad-templates/coordinator/*`, or `.squad/agents/*/charter.md` files, **When** `specrew-start.ps1` runs, **Then** the handoff detector finds zero changes and auto-continue behavior is preserved.
 3. **Given** the user has issued untracked modifications (uncommitted changes) to session-loaded files, **When** `specrew-start.ps1` runs, **Then** the detector checks committed-state changes only and auto-continue behavior is preserved (uncommitted changes do not trigger the pause).
 
 ---
@@ -61,7 +61,7 @@ A human developer who has committed changes to session-loaded files between Copi
 
 1. **Given** a Specrew-managed project with committed changes to `.github/agents/squad.agent.md` since the last `specrew-start.ps1` run, **When** the user runs `specrew-start.ps1`, **Then** the detector identifies the change and the regenerated `.specrew/last-start-prompt.md` includes a PAUSE-AND-CONFIRM directive that shows the user which files changed.
 2. **Given** a PAUSE-AND-CONFIRM directive is active in the handoff, **When** the user is presented with the handoff at the start of the session, **Then** the user sees a clear message explaining why the pause occurred (e.g., "Session-loaded files changed: .github/agents/squad.agent.md") and is asked to confirm or provide a directive before Squad's coordinator auto-continues.
-3. **Given** the user has committed changes to `charter.md` or Spec Kit extension template files, **When** `specrew-start.ps1` runs, **Then** the pause-and-confirm behavior is triggered the same way as for agent changes.
+3. **Given** the user has committed changes to `.squad/agents/*/charter.md` or Spec Kit extension template files, **When** `specrew-start.ps1` runs, **Then** the pause-and-confirm behavior is triggered the same way as for agent changes.
 
 ---
 
@@ -96,14 +96,15 @@ A power user who wants to include a specific first-message directive (e.g., "foc
 
 - **FR-001: Change Detector Implementation**: `specrew-start.ps1` MUST detect whether the previous session committed changes to any session-loaded path. The detector MUST:
   - Run `git diff --name-only` between a baseline commit (see FR-002) and HEAD.
-  - Check the following session-loaded paths: `.github/agents/*`, `.github/copilot-instructions.md`, `extensions/specrew-speckit/squad-templates/coordinator/*`, `.specify/extensions/specrew-speckit/squad-templates/coordinator/*`, and any `charter.md` file in the project root or subdirectories.
+  - Check the following session-loaded paths: `.github/agents/*`, `.github/copilot-instructions.md`, `extensions/specrew-speckit/squad-templates/coordinator/*`, `.specify/extensions/specrew-speckit/squad-templates/coordinator/*`, and `.squad/agents/*/charter.md`.
   - Return a list of changed files, or an empty list if no session-loaded files have changed.
   - Handle the bootstrap case gracefully (no prior commits) by treating it as a first-run with zero changes detected.
 
-- **FR-002: Baseline Commit Tracking**: `specrew-start.ps1` MUST track a baseline commit for the change detector. The baseline MUST be:
-  - The commit timestamp or hash recorded in the last `.specrew/last-start-prompt.md` file (if it exists).
-  - If `.specrew/last-start-prompt.md` does not exist or does not contain a baseline marker, the baseline defaults to HEAD (compare HEAD against HEAD, detecting zero changes on first run).
-  - Updated in the regenerated `.specrew/last-start-prompt.md` to the current HEAD so the next `specrew-start.ps1` run uses the correct baseline.
+- **FR-002: Baseline Commit Tracking**: `specrew-start.ps1` MUST track a baseline commit for the change detector in `.specrew/last-start-prompt.md` using a YAML frontmatter field. The baseline MUST be:
+  - Stored in `.specrew/last-start-prompt.md` as a frontmatter field: `baseline_commit_hash: <40-character git SHA>` (e.g., `baseline_commit_hash: 94afc4789abcdef0123456789abcdef0123456789`).
+  - If `.specrew/last-start-prompt.md` does not exist, the baseline defaults to HEAD (compare HEAD against HEAD, detecting zero changes on first run).
+  - If `.specrew/last-start-prompt.md` exists but the `baseline_commit_hash` field is missing or empty, treat as invalid and update to current HEAD.
+  - Updated in the regenerated `.specrew/last-start-prompt.md` frontmatter to the current HEAD so the next `specrew-start.ps1` run uses the correct baseline.
 
 - **FR-003: Pause-and-Confirm Directive Injection**: When the detector reports one or more changed session-loaded files, the regenerated `.specrew/last-start-prompt.md` MUST include a PAUSE-AND-CONFIRM directive instead of the auto-continue directive. The PAUSE-AND-CONFIRM message MUST:
   - Clearly state that session-loaded files have changed.
@@ -151,7 +152,7 @@ A power user who wants to include a specific first-message directive (e.g., "foc
 ### Key Entities
 
 - **Change Detector**: Logic inside `specrew-start.ps1` that runs `git diff --name-only` to identify committed changes to session-loaded paths.
-- **Session-Loaded Paths**: The set of behavioral files that control Squad's behavior: `.github/agents/*`, `.github/copilot-instructions.md`, `extensions/specrew-speckit/squad-templates/coordinator/*`, `.specify/extensions/specrew-speckit/squad-templates/coordinator/*`, and `charter.md` files.
+- **Session-Loaded Paths**: The set of behavioral files that control Squad's behavior: `.github/agents/*`, `.github/copilot-instructions.md`, `extensions/specrew-speckit/squad-templates/coordinator/*`, `.specify/extensions/specrew-speckit/squad-templates/coordinator/*`, and `.squad/agents/*/charter.md`.
 - **Baseline Commit**: The commit hash or timestamp recorded in the prior `.specrew/last-start-prompt.md` (or HEAD if no prior handoff exists) used to determine the starting point for the change detector's diff.
 - **PAUSE-AND-CONFIRM Directive**: A sentinel message prepended to the regenerated `.specrew/last-start-prompt.md` when session-loaded files have changed, indicating to Squad's coordinator that the user has the opportunity to inject a first-message directive before auto-continuing.
 - **Auto-Continue Directive**: The existing behavior from spec 001 Session 2026-05-04, preserved when session-loaded files have not changed, that tells Squad's coordinator to immediately resume the lifecycle.
@@ -166,7 +167,7 @@ A power user who wants to include a specific first-message directive (e.g., "foc
 - **SC-003**: After rollout, the user can use the `-PostRestartDirective` parameter to prepend a custom first-message directive to the regenerated handoff.
 - **SC-004**: After rollout, all visibility output (pause-and-confirm messages, changed-file lists) is verified by deterministic integration tests using scaffold-replay-path assertions, per test-integrity corpus guidance.
 - **SC-005**: After rollout, the known-traps corpus `.specrew/quality/known-traps.md` contains a row documenting the "auto-handoff bypass" pattern discovered on 2026-05-11.
-- **SC-006**: After rollout, running `specrew-start.ps1` from a Specrew-managed project reproduces the friction-reduced workflow observed on 2026-05-11 (commit a session-loaded file change, restart, receive pause-and-confirm, inject a directive, confirm).
+- **SC-006**: The integration test suite includes a deterministic end-to-end scenario that: (a) starts with a clean baseline commit (recorded in `.specrew/last-start-prompt.md` via `baseline_commit_hash`), (b) commits a change to a session-loaded file (e.g., `.github/agents/squad.agent.md` or `.squad/agents/*/charter.md`), (c) runs `specrew-start.ps1`, (d) verifies the regenerated `.specrew/last-start-prompt.md` contains a PAUSE-AND-CONFIRM directive with the changed file listed, (e) verifies the directive is renderable and visible via scaffold-replay-path assertions, (f) simulates user confirmation input, (g) confirms Squad's coordinator resumes correctly. The test is deterministic, reproducible, and exercises all core paths (baseline tracking, change detection, pause-and-confirm rendering).
 
 ## Clarifications
 
@@ -180,9 +181,9 @@ A power user who wants to include a specific first-message directive (e.g., "foc
 
 - Q: Are uncommitted modifications to session-loaded files treated as changes? → A: No. The detector uses `git diff --name-only HEAD` (committed state only) and does not inspect the working tree. Uncommitted work-in-progress changes do not trigger the pause. The pause is triggered only by committed changes, which are deliberate and shareable.
 
-- Q: What paths are considered "session-loaded"? → A: The definitive list is `.github/agents/*`, `.github/copilot-instructions.md`, `extensions/specrew-speckit/squad-templates/coordinator/*`, `.specify/extensions/specrew-speckit/squad-templates/coordinator/*`, and `charter.md` files (in the project root or subdirectories). These are the files that control Squad's behavior and require the user to restart/reload Copilot to take effect.
+- Q: What paths are considered "session-loaded"? → A: The definitive list is `.github/agents/*`, `.github/copilot-instructions.md`, `extensions/specrew-speckit/squad-templates/coordinator/*`, `.specify/extensions/specrew-speckit/squad-templates/coordinator/*`, and `.squad/agents/*/charter.md`. These are the files that control Squad's behavior and require the user to restart/reload Copilot to take effect.
 
-- Q: What baseline commit is used for the initial diff? → A: The baseline is recorded in the prior `.specrew/last-start-prompt.md` file (a structured field that tracks the commit hash or timestamp). If no prior handoff exists, the baseline defaults to HEAD. After the new handoff is generated, the baseline is updated to the current HEAD so the next `specrew-start.ps1` run has the correct reference point.
+- Q: What baseline commit is used for the initial diff? → A: The baseline is recorded in the prior `.specrew/last-start-prompt.md` file as a YAML frontmatter field `baseline_commit_hash: <40-character git SHA>`, defaulting to HEAD when absent, and updated to current HEAD after regeneration.
 
 - Q: How is the pause-and-confirm message formatted and rendered? → A: The message is part of the regenerated `.specrew/last-start-prompt.md` and is rendered by Squad's coordinator when the session resumes. The message MUST include a clear statement like "Session-loaded files changed: .github/agents/squad.agent.md" and a prompt asking the user to confirm or provide a directive before continuing. The exact formatting and rendering are testable via scaffold-replay-path assertions per test-integrity corpus guidance.
 
