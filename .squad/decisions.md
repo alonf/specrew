@@ -7902,3 +7902,16 @@ Repaired all three guards in `.specify/extensions/specrew-speckit/scripts/valida
 
 
 
+---
+### 2026-05-11 Spec Steward: Feature 011 Lifecycle Opening
+
+**Role**: Spec Steward  
+**Work Item**: Open feature 011 ( 11-specrew-start-conditional-pause) lifecycle  
+**Requested Agent**: copilot (Spec Steward fallback routing)  
+**Actual Agent**: Copilot CLI  
+**Model**: GPT-5.4  
+**Status**: COMPLETED  
+**Reason**: Spec authorization fixed per design intent (option 2 conditional-pause + option 3 optional -PostRestartDirective); no clarification phase needed. Feature directory created, spec.md transferred from approved source template at C:\Temp\specrew-start-conditional-pause.md, .specify\feature.json updated to point at specs/011-specrew-start-conditional-pause. Ready for planning phase.  
+**Timestamp**: 2026-05-11 13:52:18 UTC
+
+---
