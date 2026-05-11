@@ -1828,6 +1828,78 @@ function Get-RoutingPlanPromptBlock {
     return $lines -join [Environment]::NewLine
 }
 
+function Get-SessionLoadedPaths {
+    return @(
+        '.github/agents/*'
+        '.github/copilot-instructions.md'
+        'extensions/specrew-speckit/squad-templates/coordinator/*'
+        '.specify/extensions/specrew-speckit/squad-templates/coordinator/*'
+        '.squad/agents/*/charter.md'
+    )
+}
+
+function Get-BaselineCommitHash {
+    param(
+        [string]$ResolvedProjectPath
+    )
+
+    $promptPath = Join-Path $ResolvedProjectPath '.specrew\last-start-prompt.md'
+    if (-not (Test-Path -LiteralPath $promptPath -PathType Leaf)) {
+        return $null
+    }
+
+    try {
+        $content = Get-Content -LiteralPath $promptPath -Raw -Encoding UTF8
+        if ($content -match '(?ms)^---\s*\r?\n(.*?)\r?\n---') {
+            $frontmatterBlock = $Matches[1]
+            if ($frontmatterBlock -match '^\s*baseline_commit_hash:\s*([0-9a-f]{40})\s*$'){ 
+                return $Matches[1]
+            }
+        }
+    }
+    catch {
+        # Parsing failed; return null to default to HEAD
+    }
+
+    return $null
+}
+
+function Test-SessionLoadedFilesChanged {
+    param(
+        [string]$ResolvedProjectPath,
+        [AllowNull()][string]$BaselineCommitHash
+    )
+
+    try {
+        $gitRoot = & git -C $ResolvedProjectPath rev-parse --show-toplevel 2>&1
+        if ($LASTEXITCODE -ne 0) {
+            return @()
+        }
+
+        $currentHead = & git -C $ResolvedProjectPath rev-parse HEAD 2>&1
+        if ($LASTEXITCODE -ne 0) {
+            return @()
+        }
+
+        $baseline = if ([string]::IsNullOrWhiteSpace($BaselineCommitHash)) { $currentHead } else { $BaselineCommitHash }
+
+        $sessionLoadedGlobs = Get-SessionLoadedPaths
+        $changedFiles = @()
+
+        foreach ($glob in $sessionLoadedGlobs) {
+            $diffOutput = @(& git -C $ResolvedProjectPath diff --name-only $baseline HEAD -- $glob 2>&1)
+            if ($LASTEXITCODE -eq 0) {
+                $changedFiles += $diffOutput | Where-Object { -not [string]::IsNullOrWhiteSpace($_) }
+            }
+        }
+
+        return @($changedFiles | Select-Object -Unique)
+    }
+    catch {
+        return @()
+    }
+}
+
 function Get-StartPrompt {
     param(
         [string]$ResolvedProjectPath,
@@ -2077,7 +2149,33 @@ function Save-StartArtifacts {
     $contextPath = Join-Path $specrewRoot 'start-context.json'
     $summaryPath = Join-Path $specrewRoot 'start-summary.md'
 
-    Write-Utf8FileAtomic -Path $promptPath -Content $PromptContent
+    # Get current HEAD for baseline tracking
+    $currentHead = $null
+    try {
+        $currentHead = & git -C $ResolvedProjectPath rev-parse HEAD 2>&1
+        if ($LASTEXITCODE -ne 0) {
+            $currentHead = $null
+        }
+    }
+    catch {
+        $currentHead = $null
+    }
+
+    # Prepend YAML frontmatter with baseline_commit_hash if available
+    $promptContentWithFrontmatter = if ($null -ne $currentHead -and $currentHead -match '^[0-9a-f]{40}$') {
+        @"
+---
+baseline_commit_hash: $currentHead
+---
+
+$PromptContent
+"@
+    }
+    else {
+        $PromptContent
+    }
+
+    Write-Utf8FileAtomic -Path $promptPath -Content $promptContentWithFrontmatter
 
     $context = [ordered]@{
         mode             = $Mode
