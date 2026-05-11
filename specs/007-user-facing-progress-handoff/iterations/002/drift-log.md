@@ -11,7 +11,8 @@
 
 | Metric | Count |
 |--------|-------|
-| Total drift events | 0 |
+| Total drift events | 1 |
+| Resolved via implementation correction | 1 |
 | Resolved via spec update | 0 |
 | Resolved via revert | 0 |
 | Deferred for later decision | 0 |
@@ -21,7 +22,17 @@
 
 ## Event Log
 
-*(No drift events recorded yet)*
+### DR-001 — FR-017 review-link enforcement/observability gap
+
+- **Detected**: 2026-05-11 during review
+- **Task ID**: T010
+- **Requirement**: FR-017; Iteration 002 risk dimension `Review-link navigation compatibility`
+- **Severity**: Moderate
+- **Deviation**: The iteration documented the `file:///` review-link rule and added `soft-warning.review-file-reference-format` to the checklist, but the runtime validator does not emit that warning and the validation lane has no contract test proving the rule is enforced. A reviewer replay using a local review request with only a plain Windows path still returned `status: pass`.
+- **Impact**: FR-017 is documented but not enforced or observable, and the hardening-gate evidence overstates the runtime completeness of the review-link slice.
+- **Resolution Path**: Implemented runtime detection for missing `file:///` review URIs, added an integration test and validation-lane coverage, and corrected hardening-gate evidence to reflect the executable warning.
+- **Recorded At**: 2026-05-11 (review phase)
+- **Closed At**: 2026-05-11 (closure confirmed by accepted re-review)
 
 ---
 
@@ -64,3 +75,5 @@ When drift is detected:
 - Iteration 001 delivered zero drift events; this pattern should continue in Iteration 002 if implementation stays within Phase 3 boundaries
 - Any temptation to expand soft-validator scope beyond the three core rules (missing progress status, missing next step, jargon-first lead) should be deferred to feature closeout or future enhancement
 - The pre-implementation hardening-gate.md is a planning-time artifact, not an implementation task. T010 records post-implementation evidence only, not gate creation. Planning stops at the hardening-gate sign-off / human authorization boundary.
+- Review found a real FR-017 gap: documentation rollout alone does not satisfy the hardened-governance boundary when the checklist advertises an executable warning but the validator and lane cannot observe a missing `file:///` review URI.
+- Accepted re-review confirmed the repair landed in all required layers: checklist parity, validator enforcement, validation-lane observability, and hardening-gate/state truth.

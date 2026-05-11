@@ -238,6 +238,54 @@ function Test-PlainlyDisclosesBlockerOrRisk {
     return $Text -match '(?i)\b(because|cannot|needs|waiting|until|confidence|risk|blocked|skipped|failed)\b'
 }
 
+function Test-HasFileUri {
+    param([AllowEmptyString()][string]$Text)
+
+    if ([string]::IsNullOrWhiteSpace($Text)) {
+        return $false
+    }
+
+    return $Text -match '(?i)file:///'
+}
+
+function Test-HasWindowsAbsolutePath {
+    param([AllowEmptyString()][string]$Text)
+
+    if ([string]::IsNullOrWhiteSpace($Text)) {
+        return $false
+    }
+
+    return $Text -match '(?i)\b[A-Z]:[\\/][^\s`]+'
+}
+
+function Test-HasReviewCue {
+    param([AllowEmptyString()][string]$Text)
+
+    if ([string]::IsNullOrWhiteSpace($Text)) {
+        return $false
+    }
+
+    return $Text -match '(?i)\breview\b'
+}
+
+function Test-MissingReviewFileReference {
+    param([AllowEmptyString()][string]$Text)
+
+    if ([string]::IsNullOrWhiteSpace($Text)) {
+        return $false
+    }
+
+    if (Test-HasFileUri -Text $Text) {
+        return $false
+    }
+
+    if (-not (Test-HasReviewCue -Text $Text)) {
+        return $false
+    }
+
+    return Test-HasWindowsAbsolutePath -Text $Text
+}
+
 $normalizedText = Get-NormalizedText -Text $ResponseText
 $warnings = New-Object System.Collections.Generic.List[string]
 
@@ -247,6 +295,10 @@ if (-not (Test-HasExplicitProgressStatus -Text $normalizedText)) {
 
 if (-not (Test-HasExplicitNextStep -Text $normalizedText)) {
     $warnings.Add('soft-warning.missing-next-step')
+}
+
+if (Test-MissingReviewFileReference -Text $normalizedText) {
+    $warnings.Add('soft-warning.review-file-reference-format')
 }
 
 foreach ($section in (Get-HandoffSections -Text $normalizedText)) {
@@ -283,6 +335,10 @@ if ($warnings.Contains('soft-warning.missing-next-step')) {
 
 if ($warnings.Contains('soft-warning.hidden-blocker-or-risk')) {
     $summaryLines.Add('State blockers or verification gaps plainly when they exist.')
+}
+
+if ($warnings.Contains('soft-warning.review-file-reference-format')) {
+    $summaryLines.Add('Include a file:/// URI with the absolute Windows path when requesting local file review.')
 }
 
 if ($summaryLines.Count -eq 0) {

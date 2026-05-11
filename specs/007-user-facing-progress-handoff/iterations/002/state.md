@@ -3,7 +3,7 @@
 **Schema**: v1  
 **Last Completed Task**: T010  
 **Tasks Remaining**: (none)  
-**In Progress**: (none)  
+**In Progress**: none  
 **Baseline Ref**: 47c699db0787f8c925f4972e4800b92d7a2137d4  
 **Updated**: 2026-05-11
 
@@ -20,7 +20,7 @@
 | **Hardening Gate Signed By** | Alon Fliess |
 | **Implementation Authorization** | ✅ **AUTHORIZED** (2026-05-11) |
 | **Authorized By** | Alon Fliess |
-| **Gate Effect** | Planning completed, hardening-gate sign-off recorded, and implementation authorization executed T007-T010. Review is the next phase, but it should start in a fresh session because `.github/agents/squad.agent.md` changed during T010. |
+| **Gate Effect** | Planning completed, hardening-gate sign-off recorded, implementation authorization executed T007-T010, accepted re-review closed the FR-017 repair cycle, and retrospective is complete. |
 
 ---
 
@@ -29,8 +29,8 @@
 | Task | Title | Effort | Planned Status | Evidence |
 |------|-------|--------|---|---|
 | T007 | Implement soft-validator handoff-governance check | 4 sp | done | Created `extensions/specrew-speckit/validators/handoff-governance-validator.ps1` and verified soft-warning output for jargon-first and missing-field cases |
-| T008 | Create integration tests for handoff validator | 3 sp | done | Added `tests/integration/handoff-governance-jargon-response-test.ps1` and `tests/integration/handoff-governance-plain-language-response-test.ps1`; both run through the real validator runtime |
-| T009 | Update validation lane integration | 2 sp | done | Added `extensions/specrew-speckit/governance/validation-lane.md` and registered both new tests in `tests/integration/validation-contract-lane.ps1` |
+| T008 | Create integration tests for handoff validator | 3 sp | done | Added jargon, plain-language, and review-file-reference validator tests under `tests/integration/`; all exercise the real validator runtime |
+| T009 | Update validation lane integration | 2 sp | done | Added `extensions/specrew-speckit/governance/validation-lane.md` and registered all three handoff-governance tests in `tests/integration/validation-contract-lane.ps1` |
 | T010 | Polish & post-implementation hardening-gate evidence recording | 1 sp | done | Updated checklist, prompt, decision guidance, handoff template, and `.github/agents/squad.agent.md` for `file:///` review links; recorded implementation evidence in hardening-gate.md |
 
 **Total Planned Effort**: 10 story_points  
@@ -57,7 +57,7 @@
 
 | Issue | Status | Unblock Action |
 |-------|--------|---|
-| *(none currently recorded)* | — | — |
+| FR-017 review-link enforcement and observability are incomplete | resolved | Independent repair verified; reviewer reran the lane/governance checks, replayed the warning path, and accepted the slice |
 
 ---
 
@@ -78,9 +78,9 @@
 - T010 must also polish review-facing guidance so local file review requests use a `file:///` URI with the absolute Windows path in this Windows workflow
 
 **To Reviewer**:
-- T007-T010 are implemented and validated. `tests\integration\validation-contract-lane.ps1` and `extensions\specrew-speckit\scripts\validate-governance.ps1 -ProjectPath . -IterationPath .\specs\007-user-facing-progress-handoff\iterations\002` both passed on 2026-05-11.
+- T007-T010 are implemented and validated. `tests\integration\validation-contract-lane.ps1` and `extensions\specrew-speckit\scripts\validate-governance.ps1 -ProjectPath . -IterationPath .\specs\007-user-facing-progress-handoff\iterations\002` reran after the FR-017 repair and passed on 2026-05-11.
 - Blank-input validator execution returned soft warnings without crashing, and repeated identical validator runs produced identical output.
-- A fresh session is required before review because T010 updated `.github/agents/squad.agent.md`, which is loaded at startup.
+- The required fresh-session review boundary was satisfied before the accepted re-review because T010 updated `.github/agents/squad.agent.md`, which is loaded at startup.
 
 ---
 
@@ -88,10 +88,10 @@
 
 | Field | Value |
 |-------|-------|
-| **Review Status** | *(pending fresh-session review start)* |
-| **Reviewed By** | *(pending)* |
-| **Review Verdict** | *(pending)* |
-| **Review Effect** | Review is the next lifecycle phase. It should begin after a new session starts so the updated `.github/agents/squad.agent.md` guidance is active. |
+| **Review Status** | ✅ **ACCEPTED** (2026-05-11) |
+| **Reviewed By** | Reviewer |
+| **Review Verdict** | accepted — FR-017 review-link guidance is now enforced by the validator, observable in the validation lane, and consistent with hardening-gate evidence |
+| **Review Effect** | Review is complete. The independent repair satisfied the prior lockout condition, the drift item is closed, and the iteration may proceed to retrospective. |
 
 ---
 
@@ -99,10 +99,10 @@
 
 | Field | Value |
 |-------|-------|
-| **Retrospective Status** | *(pending iteration completion)* |
-| **Facilitated By** | *(pending)* |
-| **Retrospective Date** | *(pending)* |
-| **Key Findings** | *(pending)* |
-| **Improvement Actions** | *(pending)* |
-| **Calibration** | *(pending)* |
-| **Next Phase** | *(pending)* |
+| **Retrospective Status** | ✅ **COMPLETE** (2026-05-11) |
+| **Facilitated By** | Retro Facilitator |
+| **Retrospective Date** | 2026-05-11 |
+| **Key Findings** | Checklist-validator parity gap (FR-017) detected during review and repaired by Spec Steward; perfect estimation accuracy (10 sp, 0 variance) matched Iteration 001 pattern; session-restart discipline (Iteration 001 T004 boundary) worked correctly |
+| **Improvement Actions** | (1) Implementer to verify checklist-validator parity during implementation via spot-check replay; (2) Test maintainer to add both must-pass and must-fail cases for new governance rules; (3) Reviewer to add pre-review checklist step for governance parity validation |
+| **Calibration** | No capacity adjustment (20 sp baseline maintained); two consecutive perfect-estimation iterations confirm model is well-calibrated for Spec Kit governance work |
+| **Next Phase** | Feature 007 closeout (deferred) — representative Squad completion sampling to validate handoff-contract durability before final sign-off |
