@@ -251,6 +251,28 @@
 **Assignment:** honored
 **Fallback Reason:** none
 
+## 2026-05-11-runtime-evidence-feature012-state-schema-repair
+### 2026-05-11T20:06:05+03:00: Runtime evidence - Feature 012 iteration 001 state-schema repair routing
+**By:** Squad (Coordinator)
+**Type:** runtime-evidence
+**Work Item:** Align iteration `001` state metadata to the canonical schema, rerun governance validation until the crash is gone and zero FAIL lines remain, then seed the canonical state-schema trap row
+**Requested Agent:** Planner
+**Actual Agent:** Planner
+**Model:** claude-haiku-4.5
+**Assignment:** honored
+**Fallback Reason:** none
+
+## 2026-05-11-runtime-evidence-feature012-before-implement
+### 2026-05-11T22:18:50+03:00: Runtime evidence - Feature 012 iteration 001 before-implement routing
+**By:** Squad (Coordinator)
+**Type:** runtime-evidence
+**Work Item:** Record the human hardening-gate sign-off and implementation authorization for feature `012-descriptive-id-handoffs` iteration `001`, then run the pre-implementation governance gate
+**Requested Agent:** Spec Steward
+**Actual Agent:** Spec Steward
+**Model:** claude-haiku-4.5
+**Assignment:** honored
+**Fallback Reason:** none
+
 ## 2026-05-11-runtime-evidence-feature012-specify
 ### 2026-05-11T18:39:12+03:00: Runtime evidence - Feature 012 opening routing
 **By:** Squad (Coordinator)

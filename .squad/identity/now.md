@@ -1,12 +1,12 @@
-updated_at: 2026-05-11T19:50:26+03:00
-focus_area: Feature 012 descriptive references in handoffs is active; repairing the iteration 001 authorization boundary before sign-off can proceed
-active_issues: [Feature 012 descriptive references in handoffs active; commit task backlog boundary, scaffold iteration 001 planning artifacts with hardening gate, refine plan wording, then request fresh sign-off and implementation authorization]
+updated_at: 2026-05-11T22:18:50+03:00
+focus_area: Feature 012 descriptive references in handoffs is active; iteration 001 sign-off and implementation authorization are granted and the pre-implementation gate is the next boundary
+active_issues: [Feature 012 descriptive references in handoffs active; record iteration 001 sign-off and authorization, run before-implement, then execute tasks T001-T011 with restart-safe boundaries]
 ---
 
 # What We're Focused On
 
-**Phase**: Feature `012-descriptive-id-handoffs` is in authorization-boundary repair; next boundary is fresh iteration 001 sign-off and implementation authorization  
-**Urgency**: TIER 1 — finish the repair commits, then stop for fresh human authorizations
+**Phase**: Feature `012-descriptive-id-handoffs` is at the iteration `001` before-implement boundary after recorded human approval  
+**Urgency**: TIER 1 — record the sign-off, pass the pre-implementation gate, and start the readable-reference rollout safely
 
 ---
 
@@ -31,4 +31,4 @@ active_issues: [Feature 012 descriptive references in handoffs active; commit ta
 - **Feature 011 is durably closed on 2026-05-11**
 
 ### Next Valid Action
-Finish the Feature 012 repair commits, then ask Alon for two separate fresh authorizations: iteration 001 hardening-gate sign-off and iteration 001 implementation authorization.
+Record the approved iteration `001` sign-off and implementation authorization, run the before-implement gate, then start the readable-reference rollout while dogfooding descriptive scope in every user-facing handoff.

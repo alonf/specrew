@@ -6,18 +6,18 @@
 **In Progress**: none
 **Baseline Ref**: pending implementation start
 **Updated**: 2026-05-11
-**Current Phase**: planning
-**Iteration Status**: Awaiting hardening-gate sign-off and implementation authorization
+**Current Phase**: implementation-authorized
+**Iteration Status**: Hardening-gate signed; implementation authorized; not yet started
 
 ## Planning Status
 
 | Field | Value |
 | --- | --- |
-| **Overall Status** | Scaffolded; awaiting fresh hardening-gate sign-off and implementation authorization |
+| **Overall Status** | Planning complete; hardening-gate signed; implementation authorized as of 2026-05-11 |
 | **Planning Phase** | Complete — all planning artifacts finalized |
-| **Authorization Status** | Pending fresh sign-off from Spec Steward |
-| **Implementation Status** | Not started |
-| **Validation Status** | Pre-implementation baseline not yet recorded |
+| **Authorization Status** | Signed off by Alon Fliess on 2026-05-11 |
+| **Implementation Status** | Authorized but not yet started |
+| **Validation Status** | Pre-implementation baseline not yet recorded (T001 will record baseline) |
 
 ## Capacity Model
 
@@ -50,10 +50,10 @@
 
 ## Next Action
 
-**Current State**: Iteration 001 artifacts are scaffolded with the pre-sign-off hardening-gate convention. All planning documents are in place.
+**Current State**: Iteration 001 has been signed off and is authorized for implementation. All planning documents are in place and ready.
 
-**Required Next Action**: Request fresh hardening-gate sign-off from the Spec Steward. Once signed, request fresh implementation authorization. Do not begin implementation until both are recorded.
+**Required Next Action**: Begin implementation with T001 (pre-implementation baseline recording from existing handoff-governance tests). 
 
-**Sign-Off Evidence**: The hardening-gate file at `specs/012-descriptive-id-handoffs/iterations/001/quality/hardening-gate.md` is ready for review and sign-off from Alon Fliess.
+**Sign-Off Evidence**: The hardening-gate file at `specs/012-descriptive-id-handoffs/iterations/001/quality/hardening-gate.md` has been signed by Alon Fliess on 2026-05-11.
 
-**Authorization Evidence**: Once hardening-gate is signed, implementation can begin with T001 (pre-implementation baseline recording) followed by T002 (boundary confirmation) and then the parallel task chains for US1 and US2.
+**Authorization Evidence**: Implementation authorization is recorded in this state.md and hardening-gate.md. Proceed with T001 to record baseline before beginning shared foundational work in Phase 2.

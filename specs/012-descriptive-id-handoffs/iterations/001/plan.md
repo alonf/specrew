@@ -2,12 +2,12 @@
 
 **Schema**: v1  
 **Spec**: [../../spec.md](../../spec.md)  
-**Status**: planning  
+**Status**: executing  
 **Capacity**: 9.5/20 story_points  
-**Planned Start**: pending implementation authorization  
+**Planned Start**: 2026-05-11  
 **Started**: pending  
-**Hardening-Gate Sign-Off**: pending  
-**Implementation Authorization**: pending  
+**Hardening-Gate Sign-Off**: signed-2026-05-11  
+**Implementation Authorization**: authorized-2026-05-11  
 **Review Completed**: pending  
 **Review Verdict**: pending
 

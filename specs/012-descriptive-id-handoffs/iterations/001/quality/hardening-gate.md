@@ -5,11 +5,11 @@
 **Feature Ref**: `specs/012-descriptive-id-handoffs/spec.md`  
 **Iteration Ref**: `specs/012-descriptive-id-handoffs/iterations/001`  
 **Requested Review Class**: `strongest-available`  
-**Effective Review Class**: (pending sign-off)  
+**Effective Review Class**: `strongest-available`  
 **Overall Verdict**: ready  
 **Approval Ref**: —  
-**Reviewed By**: pending  
-**Reviewed At**: pending  
+**Reviewed By**: Alon Fliess  
+**Reviewed At**: 2026-05-11  
 **Post-Implementation Verification**: pending-post-implementation  
 **Verified At**: pending
 
@@ -76,11 +76,17 @@
 
 **Status**: Pre-implementation planning complete. All planning artifacts (spec.md, plan.md, research.md, data-model.md, quickstart.md, contracts/descriptive-reference-handoff.md) are finalized and in place. Iteration 001 planning artifacts (plan.md, state.md, drift-log.md, this hardening-gate.md) are scaffolded with the canonical richer pre-sign-off convention.
 
-**Required Next Actions**:
-1. Spec Steward (Alon Fliess) signs off on this hardening-gate with explicit scope refresh for Iteration 001 (T001-T011, 8 story points).
-2. Spec Steward authorizes implementation to begin with T001 (pre-implementation baseline recording).
-3. Once implementation is authorized, begin Phase 1 tasks and record baseline before starting shared foundational work in Phase 2.
+**Sign-Off Recorded**: 2026-05-11 by Alon Fliess
 
 ---
 
-*This gate remains in the pre-sign-off state until explicitly signed by the Spec Steward. Implementation must not begin until this gate is signed and fresh implementation authorization is granted.*
+## Sign-Off Evidence
+
+**Authorization Statement (verbatim):**  
+"I sign off on the iteration 001 pre-implementation hardening gate for feature 012 descriptive-id-handoffs and I authorize iteration 001 implementation, review, retrospective, and closeout."
+
+**Reviewer**: Alon Fliess  
+**Review Class**: strongest-available  
+**Review Date**: 2026-05-11  
+
+This sign-off explicitly authorizes the pre-implementation state for Iteration 001 readable-reference rollout (T001–T011, 8 story points) and grants authorization to proceed with implementation, review, retrospective, and closeout phases. The hardening-gate assessment affirms that all planning artifacts are complete, all concerns have been addressed or deferred with explicit justification, and implementation may begin immediately with T001 (pre-implementation baseline recording).
