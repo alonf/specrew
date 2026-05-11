@@ -1,7 +1,15 @@
-# Iteration Plan: Iteration 001 — Readable-Reference Rule and Guidance Rollout
+# Iteration Plan: 001 — Readable-Reference Rule and Guidance Rollout
 
-**Feature**: `012-descriptive-id-handoffs` | **Iteration**: `001` | **Date**: 2026-05-11  
-**Spec Ref**: [../../spec.md](../../spec.md) | **Feature Plan Ref**: [../../plan.md](../../plan.md)
+**Schema**: v1  
+**Spec**: [../../spec.md](../../spec.md)  
+**Status**: planning  
+**Capacity**: 9.5/20 story_points  
+**Planned Start**: pending implementation authorization  
+**Started**: pending  
+**Hardening-Gate Sign-Off**: pending  
+**Implementation Authorization**: pending  
+**Review Completed**: pending  
+**Review Verdict**: pending
 
 ## Summary
 
@@ -27,7 +35,23 @@ Deliver the readable-reference rule and user-facing guidance surfaces for descri
 - [ ] **T009-T010**: Readable stop-message guidance (US2, runs in parallel)
 - [ ] **T011**: Stop-message and handoff validation (US2)
 
-## Implementation Context
+## Tasks
+
+| Task | Title | Requirement | Story | Effort | Owner | Status | Verdict |
+| ---- | ----- | ----------- | ----- | ------ | ----- | ------ | ------- |
+| T001 | Run pre-implementation baseline from existing handoff-governance tests and record baseline result | TG-005 | Foundation | 1 | Reviewer | planned | pending |
+| T002 | Review feature boundary, two-iteration split, scope, and non-blocking enforcement | TG-004, TG-006 | Foundation | 0.5 | Planner | planned | pending |
+| T003 | Extend validator rule for opaque numeric references in authored prose | FR-006, FR-008, FR-009, FR-010 | Foundation | 1 | Handoff-governance maintainer | planned | pending |
+| T004 | Update coordinator handoff contract with descriptive-reference semantics | FR-001 through FR-005, FR-010 | Foundation | 1 | Coordinator maintainer | planned | pending |
+| T005 | Update coordinator-response.md prompt with narration rules and examples | FR-001, FR-002, FR-003, FR-004, FR-006, FR-007 | US1 | 1 | Prompt maintainer | planned | pending |
+| T006 | Update .github/agents/squad.agent.md with descriptive narration guidance | FR-005, FR-007 | US1 | 0.5 | Agent-guidance maintainer | planned | pending |
+| T007 | Mirror descriptive-reference narration guidance into .squad/templates/squad.agent.md | FR-005, FR-007, FR-010 | US1 | 0.5 | Agent-guidance maintainer | planned | pending |
+| T008 | Run targeted narration spot checks against validator and guidance surfaces | SC-001, SC-002 | US1 | 1 | Reviewer | planned | pending |
+| T009 | Update coordinator-decision-guidance.md prompt with stop-message requirements and examples | FR-001, FR-002, FR-003, FR-007 | US2 | 1 | Prompt maintainer | planned | pending |
+| T010 | Update coordinator-handoff-governance.md checklist with descriptive reference checkpoints | FR-006, FR-007, FR-010 | US2 | 1 | Handoff-governance maintainer | planned | pending |
+| T011 | Validate stop-message and handoff samples across guidance surfaces and validator rule | SC-001, SC-002, SC-003 | US2 | 1 | Reviewer | planned | pending |
+
+**Total Effort**: 9.5 story_points
 
 **Primary Files Modified**: `extensions/specrew-speckit/validators/handoff-governance-validator.ps1`, `extensions/specrew-speckit/prompts/coordinator-response.md`, `extensions/specrew-speckit/prompts/coordinator-decision-guidance.md`, `extensions/specrew-speckit/checklists/coordinator-handoff-governance.md`, `specs/001-specrew-product/contracts/coordinator-handoff-template.md`, `.github/agents/squad.agent.md`, `.squad/templates/squad.agent.md`
 
@@ -101,3 +125,16 @@ Iteration 001 is considered complete when:
 - Quality/ artifacts (hardening-gate.md, trap-reapplication.md) remain deferred to Iteration 002
 - Any blocking enforcement remains out of scope
 - Any expansion to tool-rendered output remains out of scope
+
+## Effort Model
+
+| Setting | Value | Notes |
+| ------- | ----- | ----- |
+| Effort Unit | story_points | Unit used in task effort, capacity, and retro variance. |
+| Capacity per Iteration | 20 | Maximum planned effort; Iteration 001 uses 8 of 20 available, leaving 12 for contingency or future work. |
+| Iteration Bounding | scope | `scope` keeps requirements fixed; `time` enforces a time ceiling. |
+| Time Limit (hours) | n/a | Only applies when iteration bounding is `time`. |
+| Overcommit Threshold | 1.0 | Warn planners when total estimated effort exceeds 20.0 story_points (capacity 20 x threshold 1.0). |
+| Defer Strategy | manual | Any deferral decision must be explicit; US3 explicitly deferred to Iteration 002. |
+| Calibration Enabled | true | Retrospectives should suggest future capacity adjustments when actual variance accumulates. |
+

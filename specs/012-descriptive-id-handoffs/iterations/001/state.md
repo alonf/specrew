@@ -1,6 +1,13 @@
-# Iteration State: Iteration 001
+# Iteration State: 001
 
-**Feature**: `012-descriptive-id-handoffs` | **Iteration**: `001` | **Date**: 2026-05-11
+**Schema**: v1
+**Last Completed Task**: none yet
+**Tasks Remaining**: T001, T002, T003, T004, T005, T006, T007, T008, T009, T010, T011
+**In Progress**: none
+**Baseline Ref**: pending implementation start
+**Updated**: 2026-05-11
+**Current Phase**: planning
+**Iteration Status**: Awaiting hardening-gate sign-off and implementation authorization
 
 ## Planning Status
 
