@@ -229,6 +229,26 @@ These clarifications resolve critical implementation ambiguities that would othe
 **Status:** fallback
 **Fallback Reason:** preferred agent `claude` is not enabled in the delegated routing plan; routed through Copilot task execution
 
+## 2026-05-11-runtime-evidence-feature007-iter002-plan-repair
+### 2026-05-11T03:28:32+03:00: Runtime evidence - Feature 007 Iteration 002 planning structure repair
+**By:** Squad (Coordinator)
+**Role / Work Item:** Planner - repair iteration 002 planning artifacts and draft planning-time hardening gate
+**Requested Agent:** claude
+**Actual Agent:** copilot
+**Model ID:** claude-sonnet-4.5
+**Status:** fallback
+**Fallback Reason:** preferred agent `claude` is not enabled in the delegated routing plan; routed through Copilot task execution
+
+## 2026-05-11-runtime-evidence-feature007-scaffolding-corpus-repair
+### 2026-05-11T03:28:32+03:00: Runtime evidence - Feature 007 scaffolding-authorization corpus repair
+**By:** Squad (Coordinator)
+**Role / Work Item:** Spec Steward - clarify trap coverage for unauthorized iteration scaffolding
+**Requested Agent:** codex
+**Actual Agent:** copilot
+**Model ID:** claude-haiku-4.5
+**Status:** fallback
+**Fallback Reason:** preferred agent `codex` is not enabled in the delegated routing plan; routed through Copilot task execution
+
 ## 2026-05-11-runtime-evidence-feature007-iter001-retro-repair
 ### 2026-05-11T03:01:19+03:00: Runtime evidence - Feature 007 Iteration 001 retro boundary repair
 **By:** Squad (Coordinator)
