@@ -5361,6 +5361,51 @@ Scaffold iteration 003 planning artifacts (plan.md, state.md, drift-log.md, qual
 
 ## Validation
 
+---
+
+## 2026-05-11-planner-feature-011-iter001-hardening-gate-sign-off
+
+### 2026-05-11T00:00:00Z: Planner decision - Feature 011 Iteration 001 hardening-gate sign-off and implementation authorization
+
+**By:** Planner (Copilot)  
+**Type:** hardening-gate-sign-off  
+**What:** Recorded hardening-gate sign-off and implementation authorization for feature 011 iteration 001 at boundary commit f3a9fe6.
+
+**Decision Details:**
+
+- **Feature**: 011-specrew-start-conditional-pause
+- **Iteration**: 001 (Phase 1 + Phase 2 foundational work)
+- **Signed Off By**: Alon Fliess (Spec Steward)
+- **Signed Off At**: 2026-05-11
+- **Hardening-Gate Artifact**: `specs/011-specrew-start-conditional-pause/iterations/001/quality/hardening-gate.md`
+- **Overall Verdict**: ✅ **READY** (signed off and authorized)
+- **Scope Authorized**: Tasks T029-T042 (10 story_points) — change detector implementation, baseline commit hash tracking via YAML frontmatter, auto-continue preservation for routine resumes, signature stability verification, and error-message preservation.
+
+**Governance Boundary:**
+
+- Implementation authorization is explicitly distinct from planning-level approval. Hardening-gate sign-off on 2026-05-11 authorizes the bounded scope (Phase 1 + Phase 2 detector and baseline tracking infrastructure) for implementation start.
+- User Story 2 (pause-and-confirm directive injection, T043-T049) is explicitly deferred to Iteration 002.
+- User Story 3 (optional `-PostRestartDirective` parameter, T050-T054) is explicitly deferred to Iteration 002.
+- Pause-and-confirm message rendering, parameter handling, scaffold-replay-path testing, and known-traps corpus seeding remain deferred to Iteration 002 and Polish phase.
+
+**Approval Artifacts Created:**
+
+1. `specs/011-specrew-start-conditional-pause/data-model.md` — Documents five core entities for Iteration 001 scope: Change Detector, Session-Loaded Path Match, Baseline Commit Record, Handoff Prompt State, Signature Preservation Check.
+2. `specs/011-specrew-start-conditional-pause/quickstart.md` — Practical Iteration 001 validation steps with commands for three integration tests: `specrew-start-change-detector.ps1`, `specrew-start-baseline-tracking.ps1`, `specrew-start-auto-continue-preservation.ps1`.
+
+**Rationale:**
+
+The hardening-gate review confirmed that Iteration 001 scope is truthful, bounded, and ready for implementation:
+- Detector infrastructure is sound; baseline tracking mechanism is clear.
+- Auto-continue preservation for routine resumes maintains spec 001 Session 2026-05-04 behavior.
+- Error handling and signature preservation are non-negotiable.
+- User-facing pause-and-confirm behavior is deferred after infrastructure proves solid.
+- Five canonical concerns (security-surface, error-handling, retry-idempotency, test-integrity, operational) are all addressed with planning-time analysis or marked not-applicable.
+- Five feature-specific concerns (detector-correctness, baseline-tracking-integrity, auto-continue-preservation, signature-stability, us1-integration-correctness) are documented with blocking status on auto-continue preservation (prevents regression to spec 001).
+
+**Boundary Commit**: f3a9fe6  
+**Next Action**: Implementation may proceed with tasks T029-T042. Review and retrospective gates remain.
+
 Planning artifacts passed `validate-governance.ps1` requirements:
 - ✅ Task status uses valid `planned` enum
 - ✅ All tasks trace to FR-009/FR-010/FR-011
