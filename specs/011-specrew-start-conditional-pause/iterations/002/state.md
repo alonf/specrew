@@ -2,7 +2,7 @@
 
 **Schema**: v1
 **Last Completed Task**: none (iteration 002 planning complete; awaiting hardening-gate sign-off and implementation authorization)
-**Tasks Remaining**: 21 story_points (T043-T056 planned; T057 deferred to closeout)
+**Tasks Remaining**: 20 story_points (T043-T056 planned; T057 deferred to closeout)
 **In Progress**: none
 **Baseline Ref**: commit fb926fe (iteration 001 closeout) + iteration 002 planning boundary commit
 **Updated**: 2026-05-11
@@ -11,37 +11,31 @@
 
 ## Execution Summary
 
-**Status**: Iteration 002 planning is complete. Phase 4 + Phase 5 + Iteration 002 share of Phase 6 tasks (`T043`-`T054`, `T056`) have been planned, traced to requirements, assigned to owners, and estimated. T055 corpus seeding (2 story_points) is deferred to iteration 003 and T057 comprehensive documentation (1 story_point) is deferred to feature closeout to keep the iteration at 19 story_points, safely under 20-point capacity. The hardening-gate artifact is ready for sign-off. Implementation authorization will follow hardening-gate sign-off.
+**Status**: Iteration 002 planning is complete. Phase 4 + Phase 5 + Iteration 002 share of Phase 6 tasks (`T043`-`T056`) have been planned, traced to requirements, assigned to owners, and estimated. T057 comprehensive documentation (1 story_point) is deferred to feature closeout. The hardening-gate artifact is ready for sign-off. Implementation authorization will follow hardening-gate sign-off.
 
 **Planned Surfaces**:
 - Pause-and-confirm directive injection when detector reports changed session-loaded files (T047)
 - Detector visibility output in `.specrew/last-start-prompt.md` showing changed-files list (T048)
 - Optional `-PostRestartDirective` parameter for prepending custom directives (T053)
+- Known-traps corpus seeding for auto-handoff-bypass pattern per FR-008 closure criterion (T055)
 - Comprehensive integration test lane (T056)
 
 **Deferred Surfaces**:
-- Known-traps corpus seeding for auto-handoff-bypass pattern (T055) — iteration 003
 - Comprehensive documentation updates (T057) — feature closeout
-- Comprehensive integration test lane (T056)
-- Test fixtures and assertions for pause-and-confirm scenarios (T043-T046)
-- Test fixtures and assertions for parameter scenarios (T050-T052)
-- Scaffold-replay-path visibility testing per test-integrity corpus row 16 (T045)
-- Documentation updates for pause-and-confirm and parameter usage (T057, deferred if capacity requires)
 
 **Planning Notes**:
 - Iteration 002 builds directly on Iteration 001 detector and baseline tracking infrastructure
 - Pause-and-confirm logic injects when detector reports changed session-loaded files
 - Custom directive prepending happens before pause-and-confirm or auto-continue logic
 - All visibility output tested through scaffold-replay-path, not just runtime state
-- Known-traps corpus entry is a closure criterion per FR-008
-- Comprehensive documentation updates (T057) can be deferred to later polish or closeout if capacity requires
+- Known-traps corpus entry is a FR-008 closure criterion and included in iteration 002 scope (T055, 1 story_point)
 
 ## Iteration Scope
 
-This iteration carries **Phase 4 (User Story 2: pause-and-confirm) + Phase 5 (User Story 3: optional parameter) + Iteration 002 share of Phase 6 (corpus seeding, visibility testing, changed-files-detected path coverage)** — the pause-and-confirm directive injection, optional `-PostRestartDirective` parameter, detector visibility in handoff prompt, known-traps corpus seeding for the auto-handoff bypass pattern, and comprehensive scaffold-replay-path assertions for user-visible output.
+This iteration carries **Phase 4 (User Story 2: pause-and-confirm) + Phase 5 (User Story 3: optional parameter) + Iteration 002 share of Phase 6 (corpus seeding per FR-008 closure criterion, visibility testing, changed-files-detected path coverage)** — the pause-and-confirm directive injection, optional `-PostRestartDirective` parameter, detector visibility in handoff prompt, known-traps corpus seeding for the auto-handoff bypass pattern, and comprehensive scaffold-replay-path assertions for user-visible output.
 
-**Planned Tasks**: `T043`-`T056` (21 story_points) — *(all tasks planned; none in progress)*  
-**Deferred to Later Iterations or Closeout**: `T057` documentation updates deferred to feature closeout
+**Planned Tasks**: `T043`-`T056` (20 story_points) — *(all tasks planned; none in progress)*  
+**Deferred to Closeout**: `T057` documentation updates deferred to feature closeout
 
 ## Decisions and Handoff
 
@@ -66,13 +60,13 @@ This iteration carries **Phase 4 (User Story 2: pause-and-confirm) + Phase 5 (Us
 | T052 | planned | Write end-to-end tests in `tests/integration/specrew-start-end-to-end.ps1` asserting parameter prepending works correctly in combined scenarios |
 | T053 | planned | Implement `-PostRestartDirective` parameter support in `scripts/specrew-start.ps1` with optional string parameter (default empty) and verbatim prepending |
 | T054 | planned | Run test suite for T050-T052 against T053 implementation and verify parameter acceptance and custom directive rendering |
+| T055 | planned | Seed known-traps corpus entry in `.specrew/quality/known-traps.md` documenting the "auto-handoff bypass when session-loaded files change" pattern per FR-008 closure criterion |
 | T056 | planned | Run comprehensive integration test lane on committed state (all six detector/baseline/auto-continue/pause-and-confirm/parameter/end-to-end tests) |
 
-**Total Tasks in Iteration**: 13 (T043-T054, T056)  
-**Total Effort**: 19 story_points
+**Total Tasks in Iteration**: 14 (T043-T056)  
+**Total Effort**: 20 story_points
 
 **Deferred Tasks**:
-- T055 (corpus seeding, 2 story_points) — iteration 003
 - T057 (documentation, 1 story_point) — feature closeout
 
 ## Pre-Implementation Checklist
@@ -87,10 +81,10 @@ Before implementation authorization:
 
 ## Notes
 
-- Phase 4 + Phase 5 + Iteration 002 share of Phase 6 work planned: pause-and-confirm directive injection, optional parameter support, corpus seeding, and visibility testing.
+- Phase 4 + Phase 5 + Iteration 002 share of Phase 6 work planned: pause-and-confirm directive injection, optional parameter support, corpus seeding per FR-008 closure criterion, and visibility testing.
 - All planning tasks are complete; hardening-gate artifact ready for sign-off.
 - Iteration 002 awaits explicit human sign-off on hardening-gate before implementation authorization.
-- T057 comprehensive documentation updates deferred to feature closeout to keep the iteration at 21 story_points (1 point over 20-point capacity).
+- T057 comprehensive documentation updates deferred to feature closeout.
 - Quality profile: `quality-profile.cli-script-integration-focused.v1` per plan.md (inherited from Iteration 001).
 - Hardening-gate artifact path: `specs/011-specrew-start-conditional-pause/iterations/002/quality/hardening-gate.md`.
 - Drift-log path: `specs/011-specrew-start-conditional-pause/iterations/002/drift-log.md`.
