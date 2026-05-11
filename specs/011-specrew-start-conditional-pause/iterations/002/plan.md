@@ -154,11 +154,11 @@ This is a 20-point slice building directly on Iteration 001 detector and baselin
 ## Implementation Approval
 
 - **Planning Approval**: ✅ **AUTHORIZED** — Planning approval granted by Alon Fliess on 2026-05-11 for Iteration 002
-- **Hardening-Gate Sign-Off**: *(pending hardening-gate artifact sign-off)*
-- **Implementation Authorization**: *(pending hardening-gate sign-off)* — Implementation authorization will follow hardening-gate sign-off
+- **Hardening-Gate Sign-Off**: ✅ **SIGNED-OFF** by Alon Fliess on 2026-05-11
+- **Implementation Authorization**: ✅ **AUTHORIZED** — Implementation authorization granted by Alon Fliess on 2026-05-11 following hardening-gate sign-off
 - **Authorized Scope**: Feature 011 iteration 002 (Phase 4 + Phase 5 + Iteration 002 share of Phase 6 — pause-and-confirm directive injection, optional `-PostRestartDirective` parameter, detector visibility in handoff, known-traps corpus seeding, scaffold-replay-path coverage for visibility output, tasks T043 through T056, 20 story points)
-- **Authorized Activities**: Hardening-gate artifact preparation, planning-time quality gate sign-off, then implementation, review, retrospective, and closeout
-- **Boundary Note**: Planning approval is explicitly distinct from implementation authorization. Planning authorization on 2026-05-11 authorizes the bounded scope (Phase 4 + Phase 5 + Iteration 002 share of Phase 6 pause-and-confirm and parameter features) for hardening-gate preparation and planning-time quality gate sign-off. Implementation authorization will follow hardening-gate sign-off by Alon Fliess, authorizing execution start. T057 comprehensive documentation updates are deferred to feature closeout to keep the iteration bounded at 20 story_points while retaining T055 corpus seeding in iteration 002 scope.
+- **Authorized Activities**: Implementation, review, retrospective, and closeout
+- **Boundary Note**: Planning approval is explicitly distinct from implementation authorization. Planning authorization on 2026-05-11 authorizes the bounded scope (Phase 4 + Phase 5 + Iteration 002 share of Phase 6 pause-and-confirm and parameter features) for hardening-gate preparation and planning-time quality gate sign-off. Implementation authorization granted on 2026-05-11 following hardening-gate sign-off by Alon Fliess, authorizing execution start. T057 comprehensive documentation updates are deferred to feature closeout to keep the iteration bounded at 20 story_points while retaining T055 corpus seeding in iteration 002 scope.
 
 ## Notes
 

@@ -82,8 +82,8 @@ Before implementation authorization:
 ## Notes
 
 - Phase 4 + Phase 5 + Iteration 002 share of Phase 6 work planned: pause-and-confirm directive injection, optional parameter support, corpus seeding per FR-008 closure criterion, and visibility testing.
-- All planning tasks are complete; hardening-gate artifact ready for sign-off.
-- Iteration 002 awaits explicit human sign-off on hardening-gate before implementation authorization.
+- All planning tasks are complete; hardening-gate artifact signed off on 2026-05-11 by Alon Fliess.
+- Implementation authorized on 2026-05-11 following hardening-gate sign-off.
 - T057 comprehensive documentation updates deferred to feature closeout.
 - Quality profile: `quality-profile.cli-script-integration-focused.v1` per plan.md (inherited from Iteration 001).
 - Hardening-gate artifact path: `specs/011-specrew-start-conditional-pause/iterations/002/quality/hardening-gate.md`.

@@ -42,13 +42,13 @@
 
 ## Hardening-Gate Status
 
-**Overall Verdict**: ✅ **READY FOR SIGN-OFF** — Planning artifacts are complete and ready for human sign-off; implementation authorization will follow sign-off.
+**Overall Verdict**: ✅ **SIGNED-OFF** — Hardening-gate signed off by Alon Fliess on 2026-05-11; implementation authorized on 2026-05-11.
 
 **Scope**: Iteration 002 Phase 4 + Phase 5 + Iteration 002 share of Phase 6 (pause-and-confirm directive injection, optional `-PostRestartDirective` parameter, detector visibility in handoff, known-traps corpus seeding per FR-008 closure criterion, scaffold-replay-path coverage for visibility output; tasks T043-T056, 20 story points); T057 comprehensive documentation updates deferred to feature closeout.
 
 **Pre-Sign-Off Readiness Summary**: The five canonical concerns are present in the required order with honest pre-implementation evaluations for the pause-and-confirm + parameter + corpus-seeding + visibility slice. Five feature-specific concerns follow (pause-and-confirm-correctness, directive-injection-fidelity, handoff-visibility-coverage, corpus-seeding-completeness, us1-integration-with-iter-001). The nine-column schema is in use. The richer pre-sign-off convention is applied: Overall Verdict is `ready`, Reviewed By and Reviewed At are marked pending, Evidence Basis is `planning-time-analysis`, and Runtime Evidence Status is `pending-post-implementation`. Three blocking concerns are marked: `pause-and-confirm-correctness` (FR-003 closure criterion), `handoff-visibility-coverage` (FR-009, FR-010, TG-006, and scaffold-replay-path requirement from known-traps row 16), and `corpus-seeding-completeness` (FR-008 makes corpus seeding a closure criterion). The Iteration 002 slice builds on Iteration 001 detector and baseline tracking infrastructure, which is available after Iteration 001 closeout commit `fb926fe`.
 
-**Next Action**: Await explicit human sign-off on this hardening-gate artifact before implementation authorization.
+**Next Action**: Proceed with implementation of tasks T043-T056.
 
 ## Sign-Off Evidence
 
@@ -59,4 +59,4 @@
 
 ---
 
-**Hardening-Gate Planning Status**: ✅ **READY FOR SIGN-OFF** — Planning artifacts complete; awaiting human sign-off and implementation authorization. Post-implementation evidence will be recorded during review and closeout.
+**Hardening-Gate Planning Status**: ✅ **SIGNED-OFF** — Signed off by Alon Fliess on 2026-05-11; implementation authorized on 2026-05-11. Post-implementation evidence will be recorded during review and closeout.
