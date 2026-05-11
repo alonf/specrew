@@ -1,13 +1,15 @@
 ---
-updated_at: 2026-05-10T18:15:30+03:00
-focus_area: Feature 008 iteration 004 is closed and green; next step is iteration 005 planning for Polish phase (T027-T028)
-active_issues: [Open iteration 005 planning for feature 008 Polish phase (T027-T028)]
+updated_at: 2026-05-11T10:45:00+03:00
+focus_area: Feature 008 iteration 005 Polish planning is next; Feature 011 iteration 002 planning complete and ready for sign-off
+active_issues: [Open iteration 005 planning for feature 008 Polish phase (T027-T028); Feature 011 iteration 002 awaiting hardening-gate sign-off]
 ---
 
 # What We're Focused On
 
 **Phase**: Feature `008-reviewer-escalation-symmetry` User Stories 1-3 are complete; Iteration 005 Polish planning is next  
 **Urgency**: TIER 0 — open Iteration 005 planning for Polish phase while maintaining US1-US3 validation lane green
+
+**Side Track**: Feature `011-specrew-start-conditional-pause` Iteration 002 planning complete (19 story_points, T043-T054 + T056) and awaiting hardening-gate sign-off before implementation authorization
 
 ---
 
@@ -22,6 +24,14 @@ active_issues: [Open iteration 005 planning for feature 008 Polish phase (T027-T
 - Resume-mode onboarding language landed across `README.md`, `docs/getting-started.md`, and the bootstrap banner in `scripts/specrew-init.ps1`
 - The implementation and closeout commits landed, the full six-command validation lane is green on the final committed tree, and `.specify\feature.json` points back to feature 008
 - `docs/user-guide.md` was reviewed for contradictions and required no change
+
+### Feature 011 Lifecycle: ITERATION 002 PLANNING COMPLETE
+- Iteration 001 (User Story 1, detector and baseline tracking infrastructure) is complete, implemented, and green on commit `fb926fe`
+- Iteration 002 (User Story 2 pause-and-confirm + User Story 3 parameter support, `T043`-`T054` + `T056`) planning complete with 19 story_points, committed to `397baf0`
+- Planning artifacts validated with `validate-governance.ps1` and ready for hardening-gate sign-off
+- Two blocking concerns: pause-and-confirm-correctness, handoff-visibility-coverage
+- T055 corpus seeding (2 story_points) deferred to iteration 003; T057 documentation (1 story_point) deferred to feature closeout
+- **Next step**: Hardening-gate sign-off by Alon Fliess, then implementation authorization for iteration 002
 
 ### Feature 008 Lifecycle: ITERATIONS 001-004 CLOSED
 - Iteration 001 foundations landed in commit `94afc47` with review and retro closed; targeted validation is green on the committed tree
