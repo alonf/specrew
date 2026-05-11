@@ -2,16 +2,18 @@
 
 **Schema**: v1  
 **Spec**: [../../spec.md](../../spec.md)  
-**Status**: retro  
+**Status**: complete  
 **Capacity**: 9.5/20 story_points  
 **Planned Start**: 2026-05-11  
 **Started**: 2026-05-11  
+**Completed**: 2026-05-11  
+**Closed**: 2026-05-11  
 **Hardening-Gate Sign-Off**: signed-2026-05-11  
 **Implementation Authorization**: authorized-2026-05-11  
 **Review Completed**: 2026-05-11  
 **Review Verdict**: accepted  
 **Retrospective Completed**: 2026-05-11  
-**Next Phase**: closeout
+**Closeout Validation**: green-2026-05-11
 
 ## Summary
 

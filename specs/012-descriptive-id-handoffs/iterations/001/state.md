@@ -6,14 +6,14 @@
 **In Progress**: none
 **Baseline Ref**: commit 070dd06 (implementation authorization boundary and pre-implementation baseline start point)
 **Updated**: 2026-05-11
-**Current Phase**: retro
-**Iteration Status**: Implementation complete; all tasks T001-T011 finished; review accepted; retrospective complete; ready for closeout
+**Current Phase**: complete
+**Iteration Status**: Closeout validation green; iteration 001 closed
 
 ## Planning Status
 
 | Field | Value |
 | --- | --- |
-| **Overall Status** | Retrospective complete; all T001-T011 tasks done; verdict: accepted; ready for closeout |
+| **Overall Status** | Closeout complete; all T001-T011 tasks done; verdict: accepted; iteration 001 closed |
 | **Planning Phase** | Complete — all planning artifacts finalized |
 | **Authorization Status** | Signed off by Alon Fliess on 2026-05-11 |
 | **Implementation Status** | Complete — all tasks done; validator, prompts, checklist, contract, and Squad startup guidance rolled out |
@@ -21,6 +21,7 @@
 | **Review Status** | Complete — review accepted on 2026-05-11 |
 | **Review Verdict** | accepted |
 | **Retrospective Status** | Complete — retrospective documented on 2026-05-11 |
+| **Closeout Status** | Complete — full six-command validation lane green on 2026-05-11 |
 
 ## Capacity Model
 
@@ -52,9 +53,9 @@
 
 ## Next Action
 
-**Current State**: Iteration 001 retrospective is complete. All T001-T011 tasks done with zero variance. The validator, shared contract, narration prompt, decision guidance, checklist, stop-message validation script, and both startup-guidance files are rolled out and validated. Five handoff-governance integration tests passing. Both blocking concerns (validator-detection-correctness, coordinator-prompt-rollout-fidelity) verified with runtime evidence. Retrospective documented in `retro.md` with durable learning captured.
+**Current State**: Iteration 001 closeout is complete. All T001-T011 tasks are done, the readable-reference rollout is accepted, the retrospective is documented, and the full six-command closeout validation lane passed on the closeout tree. Both blocking concerns (validator-detection-correctness, coordinator-prompt-rollout-fidelity) remain verified with runtime evidence.
 
-**Required Next Action**: Proceed to closeout. Run the full six-command closeout validation lane on the staged closeout tree, confirm `validate-governance.ps1 -ProjectPath .` stays green and `git status --short` is clean except `.claude/settings.local.json`, then commit the closeout boundary.
+**Required Next Action**: Begin feature 012 iteration 002 planning for replay-path integration, corpus follow-through, and US3 governance reinforcement when that next slice is authorized.
 
 **Sign-Off Evidence**: The hardening-gate file at `specs/012-descriptive-id-handoffs/iterations/001/quality/hardening-gate.md` has been signed by Alon Fliess on 2026-05-11.
 

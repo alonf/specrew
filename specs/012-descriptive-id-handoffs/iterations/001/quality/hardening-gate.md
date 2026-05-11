@@ -32,8 +32,8 @@
 
 - **Runtime Evidence Status**: All concerns now carry `runtime-evidence` with `recorded` status. Evidence is recorded in the Rationale column for each concern based on review findings documented in `specs/012-descriptive-id-handoffs/iterations/001/review.md`.
 - **Blocking Concerns**: Both blocking concerns (`validator-detection-correctness`, `coordinator-prompt-rollout-fidelity`) are satisfied with comprehensive runtime evidence from five handoff-governance integration tests and guidance surface alignment verification.
-- **Implementation Status**: Implementation, review, and retrospective are complete; closeout is the next lifecycle boundary.
-- **Verification**: Five handoff-governance integration tests passed on the accepted implementation tree, confirming all concerns are satisfied.
+- **Implementation Status**: Implementation, review, retrospective, and closeout are complete.
+- **Verification**: The full six-command closeout validation lane passed on the closeout tree, confirming the iteration-level tests and project-wide governance validation stayed green.
 
 ## Pre-Implementation Planning Evidence
 
@@ -79,11 +79,11 @@
 
 ## Hardening-Gate Status
 
-**Overall Verdict**: ✅ **COMPLETE** — Planning artifacts were signed before implementation, and all required post-implementation evidence is now recorded against the accepted Iteration 001 slice. Implementation, review, and retrospective are complete; closeout is next.
+**Overall Verdict**: ✅ **COMPLETE** — Planning artifacts were signed before implementation, and all required post-implementation evidence is now recorded against the accepted Iteration 001 slice. Implementation, review, retrospective, and closeout are complete.
 
 **Scope**: Iteration 001 readable-reference rollout (validator rule, prompts, checklist, contract, Squad startup guidance; tasks T001-T011, 9.5 story points).
 
-**Post-Implementation Verification Summary**: The five canonical concerns and five feature-specific concerns remain in the required order. Both blocking concerns (validator-detection-correctness, coordinator-prompt-rollout-fidelity) now carry runtime evidence from five handoff-governance integration tests. The accepted implementation tree demonstrates all concerns are satisfied.
+**Post-Implementation Verification Summary**: The five canonical concerns and five feature-specific concerns remain in the required order. Both blocking concerns (validator-detection-correctness, coordinator-prompt-rollout-fidelity) carry runtime evidence from the five handoff-governance integration tests, and the staged closeout tree passed the full six-command validation lane before the closeout commit.
 
 ---
 
@@ -100,4 +100,4 @@ This sign-off explicitly authorized the pre-implementation state for Iteration 0
 
 ---
 
-**Hardening-Gate Planning Status**: ✅ **SIGNED-OFF** — Signed off by Alon Fliess on 2026-05-11; implementation authorized on 2026-05-11. Post-implementation evidence recorded on 2026-05-11 after review acceptance.
+**Hardening-Gate Planning Status**: ✅ **SIGNED-OFF** — Signed off by Alon Fliess on 2026-05-11; implementation authorized on 2026-05-11. Post-implementation evidence was recorded on 2026-05-11 and confirmed again by the closeout validation lane.
