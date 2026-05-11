@@ -2,10 +2,12 @@
 
 **Schema**: v1  
 **Spec**: [../../spec.md](../../spec.md)  
-**Status**: executing  
+**Status**: retro  
 **Capacity**: 8/20 story_points  
 **Planned Start**: 2026-05-12  
 **Started**: 2026-05-12  
+**Review Completed**: 2026-05-12  
+**Review Verdict**: accepted
 **Hardening-Gate Sign-Off**: signed-2026-05-12  
 **Implementation Authorization**: authorized-2026-05-12
 
@@ -13,7 +15,7 @@
 
 Iteration 002 carries the bounded follow-on slice for feature `012-descriptive-id-handoffs`: replay-path integration coverage, known-traps corpus seeding, feature-level quality follow-through evidence, and documentation polish. The scope stays strictly limited to tasks `T012` through `T020`; Iteration 003 is not scaffolded here, and the feature is not treated as closed.
 
-This iteration started after Iteration 001's readable-reference rollout stayed stable. The planning-time hardening gate under `iterations/002/quality/` remains the authorization record, and the implementation slice is now complete through the review-ready boundary with replay-path tests, corpus/documentation updates, and feature-level follow-through artifacts on disk.
+This iteration started after Iteration 001's readable-reference rollout stayed stable. The planning-time hardening gate under `iterations/002/quality/` remains the authorization record, and the implementation slice is now complete through the accepted review boundary with replay-path tests, corpus/documentation updates, and feature-level follow-through artifacts on disk. Retrospective and closeout remain pending.
 
 ## Iteration Scope
 
@@ -113,8 +115,8 @@ This iteration started after Iteration 001's readable-reference rollout stayed s
 
 | Deferred Item | Target Iteration / Phase | Reason |
 | --- | --- | --- |
-| Review artifact (`review.md`) | Post-implementation review boundary | Not part of planning-only scaffolding |
-| Retrospective artifact (`retro.md`) | Post-review retrospective boundary | Not part of planning-only scaffolding |
+| Retrospective artifact (`retro.md`) | Post-review retrospective boundary | Review is now accepted; retrospective is the next lifecycle step |
+| Closeout validation and closeout artifact | Post-retrospective closeout boundary | Not part of the accepted review boundary |
 | Any further follow-on slice after `T020` | Future planning only if explicitly authorized | The feature remains open after this plan; no Iteration 003 decision is made here |
 
 ## Implementation Authorization
@@ -152,7 +154,7 @@ This iteration started after Iteration 001's readable-reference rollout stayed s
 - This iteration exists to complete the approved Iteration 002 portion of the backlog only: replay-path integration tests, corpus seeding, quality follow-through, and documentation polish.
 - The canonical Iteration 001 `state.md` metadata schema is intentionally preserved for Iteration 002 to avoid the validator regression caused by the older non-canonical format.
 - The richer pre-sign-off hardening-gate convention from feature 008 iteration 005 is applied here; the gate remains `ready`, and the human sign-off metadata is now recorded in `quality/hardening-gate.md`.
-- Implementation stopped at the review-ready boundary only. Review, retrospective, and closeout artifacts remain out of scope for this spawn.
+- The accepted review boundary is now recorded. Retrospective and closeout artifacts remain out of scope for this spawn.
 
 ## Implementation Boundary Result
 

@@ -5,20 +5,22 @@
 **Tasks Remaining**: none
 **In Progress**: none
 **Baseline Ref**: commit 92385d3 (iteration 001 closeout boundary)
-**Updated**: 2026-05-12T10:20:00Z
-**Current Phase**: executing
-**Iteration Status**: Implementation complete through the review-ready boundary; review has not started yet, and retrospective plus closeout remain pending
+**Updated**: 2026-05-12T02:14:34.5712690+03:00
+**Current Phase**: retro
+**Iteration Status**: Implementation and review are complete through the accepted review boundary; retrospective and closeout remain pending
 
 ## Planning Status
 
 | Field | Value |
 | --- | --- |
-| **Overall Status** | Implementation complete for the Iteration 002 replay-path integration, corpus seeding, quality follow-through, and documentation polish slice; the boundary is now review-ready |
+| **Overall Status** | Implementation and review are complete for the Iteration 002 replay-path integration, corpus seeding, quality follow-through, and documentation polish slice; the boundary is now retrospective-ready |
 | **Planning Phase** | Complete — the approved plan stayed unchanged during implementation |
 | **Authorization Status** | Authorized — hardening-gate sign-off and implementation authorization recorded by Alon Fliess on 2026-05-12 |
 | **Implementation Status** | Complete — tasks T012 through T020 are done on the current tree |
-| **Validation Status** | Replay lane, preserved regression lane, and `validate-governance.ps1 -ProjectPath .` are recorded as passing at the implementation boundary |
-| **Hardening Gate Verdict** | ready — planning-time artifact signed off by Alon Fliess on 2026-05-12 |
+| **Validation Status** | Replay lane, preserved regression lane, and governance validation are passing at the accepted review boundary |
+| **Hardening Gate Verdict** | ready — planning-time artifact signed off by Alon Fliess on 2026-05-12; post-implementation concerns are now accepted with runtime evidence |
+| **Review Status** | Complete — review accepted on 2026-05-12 |
+| **Review Verdict** | accepted |
 
 ## Task Status Summary
 
@@ -42,8 +44,8 @@
 
 | Item | Target Iteration / Phase | Reason |
 | --- | --- | --- |
-| Review artifact | Post-implementation review boundary | Planning stops before review starts |
-| Retrospective artifact | Post-review retrospective boundary | Planning stops before retro starts |
+| Retrospective artifact | Post-review retrospective boundary | Review is accepted; retrospective is the next lifecycle step |
+| Closeout artifact | Post-retrospective closeout boundary | Closeout still requires retrospective and closeout-lane evidence |
 | Any Iteration 003 scaffolding | Future planning only if explicitly authorized | User requested Iteration 002 only |
 
 ## Decisions and Handoff
@@ -52,10 +54,11 @@
 - **Hardening-Gate Sign-Off**: ✅ **SIGNED OFF** — `quality/hardening-gate.md` signed by Alon Fliess on 2026-05-12
 - **Implementation Authorization**: ✅ **AUTHORIZED** — Iteration 002 execution authorized by Alon Fliess on 2026-05-12
 - **Implementation Boundary**: ✅ **RECORDED** — tasks `T012` through `T020` are complete on the current tree with validation evidence on disk
-- **Next Lifecycle Boundary**: ✅ **REVIEW READY** — the next valid step is review for the completed Iteration 002 implementation slice
+- **Review Boundary**: ✅ **ACCEPTED** — `review.md` records all blocking and non-blocking concerns as satisfied on 2026-05-12
+- **Next Lifecycle Boundary**: ✅ **RETRO READY** — the next valid step is retrospective for the accepted Iteration 002 slice
 
 ## Next Action
 
-**Current State**: Iteration 002 implementation is complete and stays bounded to `T012` through `T020`. Replay-path tests, corpus seeding, feature-level quality follow-through, and documentation polish are on disk, and the rule remains additive and non-blocking.
+**Current State**: Iteration 002 implementation and review are complete and stay bounded to `T012` through `T020`. Replay-path tests, corpus seeding, feature-level quality follow-through, and documentation polish are on disk, and the rule remains additive and non-blocking.
 
-**Required Next Action**: Hand off to the Reviewer for the completed Iteration 002 slice without claiming retrospective or closeout completion yet.
+**Required Next Action**: Author the retrospective for the accepted Iteration 002 slice, then run closeout without reopening implementation unless contradictory evidence appears.
