@@ -2,12 +2,14 @@
 
 **Schema**: v1  
 **Spec**: [../../spec.md](../../spec.md)  
-**Status**: executing  
-**Capacity**: 10/20 story_points  
+**Status**: reviewing  
+**Capacity**: 10/20 story_points
 **Planned Start**: 2026-05-11  
 **Started**: 2026-05-11  
 **Hardening-Gate Sign-Off**: 2026-05-11 by Alon Fliess  
-**Implementation Authorization**: 2026-05-11
+**Implementation Authorization**: 2026-05-11  
+**Review Completed**: 2026-05-11 by Reviewer  
+**Review Verdict**: ✅ ACCEPTED
 
 ## Summary
 
@@ -17,7 +19,7 @@ This is a truthful 10-point slice deliberately stopped before pause-and-confirm 
 
 **Primary Focus**: Change detector implementation via `git diff --name-only`, baseline commit hash tracking in `.specrew/last-start-prompt.md` YAML frontmatter, auto-continue preservation for routine resumes, signature stability verification, and error-message preservation  
 **Target Slice**: Phase 1 + Phase 2 (`T029`-`T042`)  
-**Execution Status**: implementation authorized; execution pending start  
+**Execution Status**: review accepted; retrospective pending  
 **Deferred Follow-On**: Pause-and-confirm injection, optional parameter support, visibility output, comprehensive tests, and corpus seeding (`T043`-`T057`)
 
 ---
@@ -72,20 +74,20 @@ This is a truthful 10-point slice deliberately stopped before pause-and-confirm 
 
 | Task | Title | Requirement | Story | Effort | Owner | Owner File Globs | Status | Planned | Verdict |
 | ---- | ----- | ----------- | ----- | ------ | ----- | ---------------- | ------ | ------- | ------- |
-| T029 | Create baseline tracking structure documentation and examples showing `.specrew/last-start-prompt.md` YAML frontmatter with `baseline_commit_hash` field format | FR-002 | Foundation | S | Infrastructure maintainer | `specs/011-specrew-start-conditional-pause/quickstart.md` | planned | 1 day | — |
-| T030 | Create test fixture directory structure and template scaffolds for change-detection test scenarios (no changes, with changes, bootstrap case) | FR-001, FR-002 | Foundation | S | Test-infrastructure maintainer | `tests/integration/fixtures/specrew-start-detector/` | planned | 1 day | — |
-| T031 | Create planning-time hardening-gate.md artifact documenting Phase 1 quality concerns with evidence expectations and pending sign-off structure using richer pre-sign-off schema | FR-010 | Foundation | S | Quality governance maintainer | `specs/011-specrew-start-conditional-pause/iterations/001/quality/hardening-gate.md` | planned | 1 day | — |
-| T032 | Implement `git diff --name-only` change detector against baseline commit in `scripts/specrew-start.ps1`, scanning session-loaded paths and returning list of changed files or empty list | FR-001 | Foundation | M | Script maintainer | `scripts/specrew-start.ps1` | planned | 2 days | — |
-| T033 | Implement baseline commit tracking in `.specrew/last-start-prompt.md` YAML frontmatter: read existing `baseline_commit_hash` field, validate format, update to current HEAD after detector runs | FR-002 | Foundation | M | Script maintainer | `scripts/specrew-start.ps1` | planned | 2 days | — |
-| T034 | Preserve auto-continue directive when detector reports zero changes (routine resumes, spec 001 Session 2026-05-04 behavior) | FR-004 | Foundation | S | Script maintainer | `scripts/specrew-start.ps1` | planned | 1 day | — |
-| T035 | Verify `specrew-start.ps1` signature, documented arguments, and defaults remain unchanged (no breaking changes except optional `-PostRestartDirective` in Iteration 002) | FR-006 | Foundation | S | Script maintainer | `scripts/specrew-start.ps1` | planned | 1 day | — |
-| T036 | Preserve all existing error messages in their current locations; add new pause-and-confirm messages additively (no modification to existing error paths) | FR-007 | Foundation | S | Script maintainer | `scripts/specrew-start.ps1` | planned | 1 day | — |
-| T037 | Write test fixtures and scaffolds for routine resume scenarios (no commits to session-loaded paths, multiple runs in same session state) | SC-001, SC-002 | US1 | M | Test infrastructure maintainer | `tests/integration/fixtures/specrew-start-detector/routine-resume/` | planned | 2 days | — |
-| T038 | Write deterministic tests asserting detector returns empty list when no session-loaded files have changed | FR-001, SC-001, SC-002 | US1 | M | Test infrastructure maintainer | `tests/integration/specrew-start-change-detector.ps1` | planned | 2 days | — |
-| T039 | Write deterministic tests asserting regenerated `.specrew/last-start-prompt.md` includes auto-continue directive when no changes detected | FR-004, SC-001 | US1 | M | Test infrastructure maintainer | `tests/integration/specrew-start-auto-continue-preservation.ps1` | planned | 2 days | — |
-| T040 | Write baseline tracking tests asserting YAML frontmatter serialization/deserialization of `baseline_commit_hash` survives round-trip | FR-002, SC-002 | US1 | M | Test infrastructure maintainer | `tests/integration/specrew-start-baseline-tracking.ps1` | planned | 2 days | — |
-| T041 | Integrate change detector logic (T032), baseline tracking (T033), auto-continue preservation (T034) into single cohesive flow ensuring detector runs after bootstrap check but before handoff directive generation | FR-001, FR-002, FR-004 | US1 | L | Script maintainer | `scripts/specrew-start.ps1` | planned | 3 days | — |
-| T042 | Run test suite for T037-T040 against T041 implementation and verify all tests pass (zero changes detected = auto-continue preserved) | SC-001, SC-002 | US1 | M | Review-operations maintainer | `tests/integration/specrew-start-*.ps1` | planned | 2 days | — |
+| T029 | Create baseline tracking structure documentation and examples showing `.specrew/last-start-prompt.md` YAML frontmatter with `baseline_commit_hash` field format | FR-002 | Foundation | S | Infrastructure maintainer | `specs/011-specrew-start-conditional-pause/quickstart.md` | done | 1 day | — |
+| T030 | Create test fixture directory structure and template scaffolds for change-detection test scenarios (no changes, with changes, bootstrap case) | FR-001, FR-002 | Foundation | S | Test-infrastructure maintainer | `tests/integration/fixtures/specrew-start-detector/` | done | 1 day | — |
+| T031 | Create planning-time hardening-gate.md artifact documenting Phase 1 quality concerns with evidence expectations and pending sign-off structure using richer pre-sign-off schema | FR-010 | Foundation | S | Quality governance maintainer | `specs/011-specrew-start-conditional-pause/iterations/001/quality/hardening-gate.md` | done | 1 day | — |
+| T032 | Implement `git diff --name-only` change detector against baseline commit in `scripts/specrew-start.ps1`, scanning session-loaded paths and returning list of changed files or empty list | FR-001 | Foundation | M | Script maintainer | `scripts/specrew-start.ps1` | done | 2 days | — |
+| T033 | Implement baseline commit tracking in `.specrew/last-start-prompt.md` YAML frontmatter: read existing `baseline_commit_hash` field, validate format, update to current HEAD after detector runs | FR-002 | Foundation | M | Script maintainer | `scripts/specrew-start.ps1` | done | 2 days | — |
+| T034 | Preserve auto-continue directive when detector reports zero changes (routine resumes, spec 001 Session 2026-05-04 behavior) | FR-004 | Foundation | S | Script maintainer | `scripts/specrew-start.ps1` | done | 1 day | — |
+| T035 | Verify `specrew-start.ps1` signature, documented arguments, and defaults remain unchanged (no breaking changes except optional `-PostRestartDirective` in Iteration 002) | FR-006 | Foundation | S | Script maintainer | `scripts/specrew-start.ps1` | done | 1 day | — |
+| T036 | Preserve all existing error messages in their current locations; add new pause-and-confirm messages additively (no modification to existing error paths) | FR-007 | Foundation | S | Script maintainer | `scripts/specrew-start.ps1` | done | 1 day | — |
+| T037 | Write test fixtures and scaffolds for routine resume scenarios (no commits to session-loaded paths, multiple runs in same session state) | SC-001, SC-002 | US1 | M | Test infrastructure maintainer | `tests/integration/fixtures/specrew-start-detector/routine-resume/` | done | 2 days | — |
+| T038 | Write deterministic tests asserting detector returns empty list when no session-loaded files have changed | FR-001, SC-001, SC-002 | US1 | M | Test infrastructure maintainer | `tests/integration/specrew-start-change-detector.ps1` | done | 2 days | — |
+| T039 | Write deterministic tests asserting regenerated `.specrew/last-start-prompt.md` includes auto-continue directive when no changes detected | FR-004, SC-001 | US1 | M | Test infrastructure maintainer | `tests/integration/specrew-start-auto-continue-preservation.ps1` | done | 2 days | — |
+| T040 | Write baseline tracking tests asserting YAML frontmatter serialization/deserialization of `baseline_commit_hash` survives round-trip | FR-002, SC-002 | US1 | M | Test infrastructure maintainer | `tests/integration/specrew-start-baseline-tracking.ps1` | done | 2 days | — |
+| T041 | Integrate change detector logic (T032), baseline tracking (T033), auto-continue preservation (T034) into single cohesive flow ensuring detector runs after bootstrap check but before handoff directive generation | FR-001, FR-002, FR-004 | US1 | L | Script maintainer | `scripts/specrew-start.ps1` | done | 3 days | — |
+| T042 | Run test suite for T037-T040 against T041 implementation and verify all tests pass (zero changes detected = auto-continue preserved) | SC-001, SC-002 | US1 | M | Review-operations maintainer | `tests/integration/specrew-start-*.ps1` | done | 2 days | — |
 
 **Total Effort**: 10 story_points
 
