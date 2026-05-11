@@ -30,7 +30,7 @@ Deliver the readable-reference rule and user-facing guidance surfaces for descri
 - [x] **T002**: Feature boundary and two-iteration split confirmation
 - [x] **T003**: Extend validator rule for opaque numeric references (shared foundational task)
 - [x] **T004**: Update coordinator handoff contract (shared foundational task)
-- [ ] **T005-T007**: Readable narration guidance (US1, runs in parallel; T005 complete, T006-T007 pending restart-boundary edit)
+- [x] **T005-T007**: Readable narration guidance (US1, runs in parallel)
 - [ ] **T008**: Narration spot-check validation (US1)
 - [x] **T009-T010**: Readable stop-message guidance (US2, runs in parallel)
 - [x] **T011**: Stop-message and handoff validation (US2)
@@ -39,17 +39,17 @@ Deliver the readable-reference rule and user-facing guidance surfaces for descri
 
 | Task | Title | Requirement | Story | Effort | Owner | Status | Verdict |
 | ---- | ----- | ----------- | ----- | ------ | ----- | ------ | ------- |
-| T001 | Run pre-implementation baseline from existing handoff-governance tests and record baseline result | TG-005 | Foundation | 1 | Reviewer | complete | pass |
-| T002 | Review feature boundary, two-iteration split, scope, and non-blocking enforcement | TG-004, TG-006 | Foundation | 0.5 | Planner | complete | pass |
-| T003 | Extend validator rule for opaque numeric references in authored prose | FR-006, FR-008, FR-009, FR-010 | Foundation | 1 | Handoff-governance maintainer | complete | pass |
-| T004 | Update coordinator handoff contract with descriptive-reference semantics | FR-001 through FR-005, FR-010 | Foundation | 1 | Coordinator maintainer | complete | pass |
-| T005 | Update coordinator-response.md prompt with narration rules and examples | FR-001, FR-002, FR-003, FR-004, FR-006, FR-007 | US1 | 1 | Prompt maintainer | complete | pass |
-| T006 | Update .github/agents/squad.agent.md with descriptive narration guidance | FR-005, FR-007 | US1 | 0.5 | Agent-guidance maintainer | pending | pending |
-| T007 | Mirror descriptive-reference narration guidance into .squad/templates/squad.agent.md | FR-005, FR-007, FR-010 | US1 | 0.5 | Agent-guidance maintainer | pending | pending |
-| T008 | Run targeted narration spot checks against validator and guidance surfaces | SC-001, SC-002 | US1 | 1 | Reviewer | pending | pending |
-| T009 | Update coordinator-decision-guidance.md prompt with stop-message requirements and examples | FR-001, FR-002, FR-003, FR-007 | US2 | 1 | Prompt maintainer | complete | pass |
-| T010 | Update coordinator-handoff-governance.md checklist with descriptive reference checkpoints | FR-006, FR-007, FR-010 | US2 | 1 | Handoff-governance maintainer | complete | pass |
-| T011 | Validate stop-message and handoff samples across guidance surfaces and validator rule | SC-001, SC-002, SC-003 | US2 | 1 | Reviewer | complete | pass |
+| T001 | Run pre-implementation baseline from existing handoff-governance tests and record baseline result | TG-005 | Foundation | 1 | Reviewer | done | pass |
+| T002 | Review feature boundary, two-iteration split, scope, and non-blocking enforcement | TG-004, TG-006 | Foundation | 0.5 | Planner | done | pass |
+| T003 | Extend validator rule for opaque numeric references in authored prose | FR-006, FR-008, FR-009, FR-010 | Foundation | 1 | Handoff-governance maintainer | done | pass |
+| T004 | Update coordinator handoff contract with descriptive-reference semantics | FR-001 through FR-005, FR-010 | Foundation | 1 | Coordinator maintainer | done | pass |
+| T005 | Update coordinator-response.md prompt with narration rules and examples | FR-001, FR-002, FR-003, FR-004, FR-006, FR-007 | US1 | 1 | Prompt maintainer | done | pass |
+| T006 | Update .github/agents/squad.agent.md with descriptive narration guidance | FR-005, FR-007 | US1 | 0.5 | Agent-guidance maintainer | done | pass |
+| T007 | Mirror descriptive-reference narration guidance into .squad/templates/squad.agent.md | FR-005, FR-007, FR-010 | US1 | 0.5 | Agent-guidance maintainer | done | pass |
+| T008 | Run targeted narration spot checks against validator and guidance surfaces | SC-001, SC-002 | US1 | 1 | Reviewer | in-progress | pending |
+| T009 | Update coordinator-decision-guidance.md prompt with stop-message requirements and examples | FR-001, FR-002, FR-003, FR-007 | US2 | 1 | Prompt maintainer | done | pass |
+| T010 | Update coordinator-handoff-governance.md checklist with descriptive reference checkpoints | FR-006, FR-007, FR-010 | US2 | 1 | Handoff-governance maintainer | done | pass |
+| T011 | Validate stop-message and handoff samples across guidance surfaces and validator rule | SC-001, SC-002, SC-003 | US2 | 1 | Reviewer | done | pass |
 
 **Total Effort**: 9.5 story_points
 
@@ -79,7 +79,7 @@ extensions/specrew-speckit/scripts/validate-governance.ps1 -ProjectPath .
 | Feature boundary locked | pass | T001 baseline and T002 boundary review recorded in `specs/012-descriptive-id-handoffs/plan.md`; Iteration 001 remains limited to T001-T011 |
 | Existing feature 007 compatibility | pass | Existing three handoff-governance tests plus `validate-governance.ps1 -ProjectPath .` stayed green after the validator and prompt/checklist/template edits |
 | Prompt/checklist/contract alignment | pass | Validator, coordinator prompts, checklist, contract template, and stop-message validation script now describe the same descriptive-reference behavior |
-| Squad startup guidance synchronization | pending-restart-boundary | `.github/agents/squad.agent.md` and `.squad/templates/squad.agent.md` remain the only pending Iteration 001 guidance surfaces and must land together |
+| Squad startup guidance synchronization | pass | `.github/agents/squad.agent.md` and `.squad/templates/squad.agent.md` now carry the same readable-reference contract and restart-boundary warning |
 | Worked example coverage | pass | Narration and stop-message prompts now include explicit acceptable and unacceptable readable-reference examples |
 
 ## Known Dependencies

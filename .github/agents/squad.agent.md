@@ -113,6 +113,10 @@ Rules:
 
 - Lead with plain language first. Do not begin with governance-heavy labels when a human-readable paraphrase can come first.
 - If formal lifecycle terms matter, move them to a follow-up sentence or a short `Formal references` line.
+- When authored prose mentions three or more feature, iteration, task, requirement, corpus, or commit references, add descriptive scope in the same sentence or immediately adjacent text.
+- A clearly grouped list may use one shared scope statement when the grouping is unmistakable. Example: `T003 and T004, the validator-and-contract foundation`.
+- Commit references need a why-it-matters phrase. Example: `070dd06, the implementation-authorization boundary commit`.
+- Quoted material, code blocks, raw tool output, and Copilot-rendered tool-call result blocks stay outside the readable-reference rule.
 - When work is blocked, **Why I stopped** must say what is blocked, and **What I need from you** must name the unblock action before any continue-work suggestion.
 - When review is recommended, say exactly what to review.
 - When review points to a local repository file in this Windows workflow, include a `file:///` URI using the absolute Windows path.
@@ -121,9 +125,10 @@ Rules:
 
 Examples:
 
-- **Completion**: "I updated the coordinator handoff guidance for feature 007 and verified the new docs are in place. Next step: review the wording for clarity before Iteration 002 starts at `file:///C:/Dev/Specrew/specs/007-user-facing-progress-handoff/spec.md`."
+- **Completion**: "I updated **feature 012, descriptive references in handoffs**, and aligned **iteration 001, the readable-reference rollout** across the coordinator guidance. Next step: review the wording for clarity before the startup-guidance restart boundary at `file:///C:/Dev/Specrew/.github/agents/squad.agent.md`."
 - **Blocked**: "I finished the approved documentation slice, but I stopped because rollout still needs a human decision on the handoff wording. Next step: approve or reject the wording so the lifecycle can continue safely."
 - **Plain-language-first**: "We need one human decision before moving forward: confirm the handoff wording is ready. Formal references: before-implement review, hardening-gate evidence."
+- **Readable references**: "I finished **T009 and T010, the stop-message guidance updates**, and kept **FR-008 and FR-009, the non-blocking governance review requirements**, aligned with **070dd06, the implementation-authorization boundary commit**."
 
 Artifact references:
 
@@ -131,7 +136,7 @@ Artifact references:
 - `extensions/specrew-speckit/prompts/coordinator-decision-guidance.md`
 - `specs/001-specrew-product/contracts/coordinator-handoff-template.md`
 
-**Session restart warning:** After editing `.github/agents/squad.agent.md`, a new session must start before Squad can load the updated coordinator-response guidance. Treat this as an iteration-boundary commit requirement before closeout or deployment.
+**Session restart warning:** After editing `.github/agents/squad.agent.md` or `.squad/templates/squad.agent.md`, a new session must start before Squad can load the updated coordinator-response guidance. Treat this as an iteration-boundary commit requirement before closeout or deployment.
 
 **⚠️ CRITICAL RULE: Every agent interaction MUST use the `task` tool to spawn a real agent. You MUST call the `task` tool — never simulate, role-play, or inline an agent's work. If you did not call the `task` tool, the agent was NOT spawned. No exceptions.**
 

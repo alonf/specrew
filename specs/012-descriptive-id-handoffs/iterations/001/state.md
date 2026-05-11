@@ -1,22 +1,22 @@
 # Iteration State: 001
 
 **Schema**: v1
-**Last Completed Task**: T011 (Validate stop-message and handoff samples across guidance surfaces and validator rule)
-**Tasks Remaining**: T006, T007, T008
+**Last Completed Task**: T007 (Mirror descriptive-reference narration guidance into .squad/templates/squad.agent.md)
+**Tasks Remaining**: T008
 **In Progress**: none
 **Baseline Ref**: commit 070dd06 (implementation authorization boundary and pre-implementation baseline start point)
 **Updated**: 2026-05-11
 **Current Phase**: executing
-**Iteration Status**: Validator, contract, narration prompt, stop-message prompt, checklist, and stop-message validation are complete; startup-guidance restart boundary remains
+**Iteration Status**: Startup-guidance contract rollout is complete; restart boundary reached before T008 narration validation
 
 ## Planning Status
 
 | Field | Value |
 | --- | --- |
-| **Overall Status** | Implementation is active; T001-T005 and T009-T011 are complete, and the restart-boundary startup-guidance work is next |
+| **Overall Status** | Implementation is active; T001-T007 and T009-T011 are complete, and the restart boundary has been reached before T008 |
 | **Planning Phase** | Complete — all planning artifacts finalized |
 | **Authorization Status** | Signed off by Alon Fliess on 2026-05-11 |
-| **Implementation Status** | In progress — core validator and non-restart guidance surfaces are complete |
+| **Implementation Status** | In progress — startup guidance is now aligned, and narration validation remains after restart |
 | **Validation Status** | Baseline lane, governance validation, direct readable-reference spot checks, and stop-message validation are green |
 
 ## Capacity Model
@@ -35,9 +35,9 @@
 | --- | --- | --- | --- |
 | **Phase 1: Setup** | 2 | Complete | T001, T002 |
 | **Phase 2: Foundational** | 2 | Complete | T003, T004 |
-| **Phase 3: US1 (Narration)** | 4 | In progress | T005 complete; T006-T008 remain because the startup-guidance restart boundary has not been crossed yet |
+| **Phase 3: US1 (Narration)** | 4 | In progress | T005-T007 complete; T008 remains and must run after the required restart |
 | **Phase 4: US2 (Stop Messages)** | 3 | Complete | T009-T011 |
-| **Total** | 3 | In progress | Remaining work is T006, T007, and T008 only |
+| **Total** | 1 | In progress | Remaining work is T008 narration validation only |
 
 ## Explicit Deferrals
 
@@ -50,10 +50,10 @@
 
 ## Next Action
 
-**Current State**: Iteration 001 is in active execution. The validator, shared contract, narration prompt, decision guidance, checklist, and stop-message validation script are complete and green.
+**Current State**: Iteration 001 is in active execution. The validator, shared contract, narration prompt, decision guidance, checklist, stop-message validation script, and both startup-guidance files are complete and green.
 
-**Required Next Action**: Update `.github/agents/squad.agent.md` and `.squad/templates/squad.agent.md` together, commit that restart-trigger boundary, and then restart the session before finishing T008 narration validation.
+**Required Next Action**: Commit this restart-trigger boundary, restart the session, and then run T008 narration validation against the live validator plus both startup-guidance surfaces.
 
 **Sign-Off Evidence**: The hardening-gate file at `specs/012-descriptive-id-handoffs/iterations/001/quality/hardening-gate.md` has been signed by Alon Fliess on 2026-05-11.
 
-**Authorization Evidence**: Implementation authorization is recorded in this state.md and hardening-gate.md. The current open work is limited to the synchronized startup-guidance edits plus the follow-on narration validation task.
+**Authorization Evidence**: Implementation authorization is recorded in this state.md and hardening-gate.md. The only remaining Iteration 001 work is T008 narration validation after the required restart.
