@@ -43,6 +43,8 @@ The following areas are identified as drift-sensitive and should be monitored du
 
 7. **Pre-implementation hardening gate boundary**: The hardening-gate.md artifact is a planning-time document created before implementation authorization, not an implementation deliverable. Moving hardening-gate creation into T010 scope or treating it as a runtime task is drift from the planning/human-authorization boundary discipline.
 
+8. **Review-file navigation regression**: T010 polish must preserve the new FR-017 rule that local file review requests use a `file:///` URI with the absolute Windows path. Reverting to plain text paths only, or documenting a different primary format without explicit human approval, is drift from the accepted review workflow.
+
 ---
 
 ## Resolution Guidelines

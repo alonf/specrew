@@ -115,12 +115,13 @@ Rules:
 - If formal lifecycle terms matter, move them to a follow-up sentence or a short `Formal references` line.
 - When work is blocked, **Why I stopped** must say what is blocked, and **What I need from you** must name the unblock action before any continue-work suggestion.
 - When review is recommended, say exactly what to review.
+- When review points to a local repository file in this Windows workflow, include a `file:///` URI using the absolute Windows path.
 - When manual testing is recommended, say exactly what scenario or risk to test.
 - Lightweight responses may collapse to one concise paragraph, but both semantic fields must still be explicit.
 
 Examples:
 
-- **Completion**: "I updated the coordinator handoff guidance for feature 007 and verified the new docs are in place. Next step: review the wording for clarity before Iteration 002 starts."
+- **Completion**: "I updated the coordinator handoff guidance for feature 007 and verified the new docs are in place. Next step: review the wording for clarity before Iteration 002 starts at `file:///C:/Dev/Specrew/specs/007-user-facing-progress-handoff/spec.md`."
 - **Blocked**: "I finished the approved documentation slice, but I stopped because rollout still needs a human decision on the handoff wording. Next step: approve or reject the wording so the lifecycle can continue safely."
 - **Plain-language-first**: "We need one human decision before moving forward: confirm the handoff wording is ready. Formal references: before-implement review, hardening-gate evidence."
 

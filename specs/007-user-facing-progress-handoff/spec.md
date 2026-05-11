@@ -52,6 +52,7 @@ A human user receives a response after a blocked, deferred, or review-heavy requ
 2. **Given** human approval is required, **When** Squad recommends a next step, **Then** it names the approval or review decision needed.
 3. **Given** manual testing is required, **When** Squad recommends a next step, **Then** it describes the specific manual test focus.
 4. **Given** automated verification failed or was skipped, **When** Squad responds, **Then** it states the verification gap and recommends the next verification action.
+5. **Given** human review of a local repository file is recommended in this Windows environment, **When** Squad names the file to review, **Then** it includes a `file:///` URI using the absolute Windows path so the reviewer can open it directly from compatible clients.
 
 ---
 
@@ -79,6 +80,7 @@ A human user receives a concise but complete handoff even for small requests, wi
 - What happens when multiple next actions are possible? → Squad identifies the single best immediate next step and may mention secondary options only after the primary action is clear.
 - What happens when automated checks were not run because the task was read-only? → The handoff states that no verification run was needed or performed and recommends the most relevant follow-up action, if any.
 - What happens when a specialized format already contains status information but omits the next step? → The response is considered incomplete until both concepts are explicit.
+- What happens when the next step is to review a local file and the client surface may not make plain paths clickable? → In this Windows environment, the response includes a `file:///` URI with the absolute Windows path as the primary review reference. Additional fallbacks may be included, but the URI is the required baseline.
 
 ## Requirements *(mandatory)*
 
@@ -100,6 +102,7 @@ A human user receives a concise but complete handoff even for small requests, wi
 - **FR-014: Durable Rollout**: Specrew MUST update its coordinator guidance, generated agent instructions, and quality review surfaces so this handoff behavior persists across future Squad sessions.
 - **FR-015: Specialized Format Compatibility**: Existing specialized response formats MAY satisfy this requirement only if they explicitly include both current progress status and recommended next step.
 - **FR-016: Soft Quality Warning**: Missing current progress status or missing recommended next step MUST be treated as a soft quality warning for governance or prompt validation, not as a hard failure that automatically invalidates the overall response.
+- **FR-017: Review File Navigation**: When the recommended next step asks the user to review a local repository file in this Windows environment, the response MUST include a `file:///` URI using the absolute Windows path. Additional fallbacks such as the plain path or `code --goto` MAY be included, but the `file:///` URI is the required review reference.
 
 ### Response Contract
 
@@ -114,12 +117,13 @@ The response does not need to use exact headings when the task is small, but the
 
 - **FR-001 to FR-005** — **Owner roles**: Squad coordinator response-contract maintainers. **Delivery window**: Initial rollout of the user-facing handoff contract.
 - **FR-006 to FR-011** — **Owner roles**: Squad coordinator maintainers and reviewers of final-response quality. **Delivery window**: Initial rollout, with validation during representative response sampling.
-- **FR-012 to FR-016** — **Owner roles**: Prompt-template maintainers and governance/checklist maintainers. **Delivery window**: Same rollout so the contract stays durable across future sessions.
+- **FR-012 to FR-017** — **Owner roles**: Prompt-template maintainers and governance/checklist maintainers. **Delivery window**: Same rollout so the contract stays durable across future sessions.
 
 ### Traceability & Governance Requirements *(mandatory)*
 
 - **TG-001**: User Story 1 maps to FR-001, FR-003, FR-004, FR-006, FR-012, and FR-013.
 - **TG-002**: User Story 2 maps to FR-005, FR-007, FR-008, FR-009, FR-010, FR-011, and FR-016.
+- **TG-002A**: Review-file navigation behavior in User Story 2 maps to FR-008 and FR-017.
 - **TG-003**: User Story 3 maps to FR-002, FR-006, FR-012, FR-015, and FR-016.
 - **TG-004**: Any conflict between a specialized response format and this handoff contract MUST be reconciled in favor of keeping both semantic fields explicit in the final user-facing response.
 
@@ -128,6 +132,7 @@ The response does not need to use exact headings when the task is small, but the
 - **Final User-Facing Handoff**: The last Squad/coordinator message that addresses the human user after work concludes, pauses, or is handed back.
 - **Current Progress Status**: The semantic part of the handoff that states what happened, what state the work is in, and what remains open or blocked.
 - **Recommended Next Step**: The semantic part of the handoff that names the single best immediate action and, when needed, the person responsible for taking it.
+- **Review File Reference**: A navigation-ready file reference for human review requests in this Windows environment, expressed as a `file:///` URI with the absolute Windows path.
 - **Verification Gap**: Any skipped, incomplete, or failed check that materially affects confidence in the outcome and must be surfaced in the handoff.
 
 ### Non-Goals
@@ -136,6 +141,7 @@ The response does not need to use exact headings when the task is small, but the
 - This feature does not require changing unrelated product feature specifications.
 - This feature does not require every internal subagent message to include a user-facing handoff.
 - This feature does not replace detailed implementation briefings, review findings, or lifecycle gate artifacts.
+- This feature does not guarantee that every client surface renders local file references as clickable links; it standardizes the required `file:///` format that works in the supported Windows workflow.
 
 ## Success Criteria *(mandatory)*
 
@@ -147,6 +153,7 @@ The response does not need to use exact headings when the task is small, but the
 - **SC-004**: In sampled completed implementation responses, 100% identify completed verification and recommend either manual testing, review, or the next safe implementation step.
 - **SC-005**: In sampled read-only analysis or factual responses, 100% disclose that no files changed when that affects the user's next decision.
 - **SC-006**: In sampled small responses, at least 95% keep the handoff to one concise paragraph or similarly compact form while still preserving both required concepts.
+- **SC-007**: In sampled responses that ask the user to review a local file, 100% include a `file:///` URI using the absolute Windows path.
 
 ## Clarifications
 
@@ -160,6 +167,10 @@ The response does not need to use exact headings when the task is small, but the
 ### Session 2026-05-10
 
 - Q: How should the soft handoff validator be implemented? → A: Use a hybrid model. Update coordinator prompt/guidance to reinforce the handoff contract during response generation, then add a post-response soft validator/checker that flags missing handoff fields or three-or-more governance acronyms in the lead without hard-blocking the response. This preserves response integrity while maintaining quality oversight.
+
+### Session 2026-05-11
+
+- Q: What file reference format should Squad use when asking the user to review a local repository file from this Windows environment? → A: Use a `file:///` URI with the absolute Windows path as the required review reference. Additional fallbacks may be included, but the URI is the baseline.
 
 ## Assumptions
 

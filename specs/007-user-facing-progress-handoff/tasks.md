@@ -54,7 +54,7 @@ The human-handoff trap from `.specrew/quality/known-traps.md` (row 12, 2026-05-1
 - [ ] T007 Implement soft-validator handoff-governance check as new governance validator under `extensions/specrew-speckit/validators/handoff-governance-validator.ps1` with runtime detection of: (1) missing current progress status, (2) missing recommended next step, (3) three-or-more-governance-acronyms rule violation; register with governance checklist surface (`extensions/specrew-speckit/checklists/coordinator-handoff-governance.md`); hook into post-response coordinator output path; soft-validator MUST flag missing fields without blocking response delivery; traceability: [FR-016]
 - [ ] T008 [P] Create integration tests for handoff validator under `tests/integration/` with two test fixtures and validation logic: (1) `handoff-governance-jargon-response-test.ps1` — synthetic coordinator response containing 3+ governance acronyms in lead without plain-language paraphrase (e.g., `before-implement gate, hardening-gate sign-off, Implementation Approval evidence reuse`) → expect handoff-governance-validator to flag as quality concern; (2) `handoff-governance-plain-language-response-test.ps1` — synthetic coordinator response with plain-language lead followed by formal references in subsection (e.g., "We need three decisions before moving forward: (1) approval to proceed to implementation, (2) sign-off on our governance controls, (3) confirmation that we can reuse existing approval evidence. [formal references: before-implement gate, hardening-gate sign-off, ...]") → expect handoff-governance-validator to pass without flag; both fixtures must validate against FR-006 (plain-language-first, actionable next step) and FR-016 (soft quality warning); traceability: [FR-016][human-handoff-trap][test-integrity-trap]
 - [ ] T009 Update validation lane integration in `extensions/specrew-speckit/governance/validation-lane.md` to register soft-validator command in authorized-commands list and add handoff-governance-validator task to validation-lane execution; document exact authorized soft-validator commands in both validation-lane task definition AND hardening-gate concern evidence; cross-check authorization against plan.md T007 definition before sign-off to prevent validation-lane-completeness drift (`.specrew/quality/known-traps.md` row 10); traceability: [FR-016]
-- [ ] T010 Polish & hardening-gate sign-off prep including: (1) final tuning of all governance-checklist wording for clarity and consistency, (2) final review of handoff template examples for completeness across all three user stories (US1, US2, US3), (3) draft hardening-gate.md for feature 007 closure using Iteration 005 pre-sign-off schema (Overall Verdict field, pending metadata, five canonical concerns first: security-surface, error-handling-expectations, retry-idempotency-requirements, test-integrity-targets, operational-resilience-concerns); (4) human sign-off documentation prep; traceability: [iteration-005-schema][TG-001][TG-002][TG-003]
+- [ ] T010 Polish & hardening-gate sign-off prep including: (1) final tuning of all governance-checklist wording for clarity and consistency, (2) final review of handoff template examples for completeness across all three user stories (US1, US2, US3), (3) add review-file navigation guidance so local file review requests use a `file:///` URI with the absolute Windows path in this Windows environment, (4) draft hardening-gate.md for feature 007 closure using Iteration 005 pre-sign-off schema (Overall Verdict field, pending metadata, five canonical concerns first: security-surface, error-handling-expectations, retry-idempotency-requirements, test-integrity-targets, operational-resilience-concerns); (5) human sign-off documentation prep; traceability: [FR-017][iteration-005-schema][TG-001][TG-002][TG-003]
 
 ---
 
@@ -88,6 +88,7 @@ The human-handoff trap from `.specrew/quality/known-traps.md` (row 12, 2026-05-1
 | FR-014 Durable Rollout | Update coordinator guidance, agent instructions, quality surfaces for persistence | T004, T005 | Squad.agent.md + checklist |
 | FR-015 Specialized Format Compatibility | Specialized formats MAY satisfy requirement only if both handoff concepts explicit | T001, T002 | Prompt + template |
 | FR-016 Soft Quality Warning | Missing fields = soft quality warning, not hard failure | T005, T006, T007, T008, T009 | Governance checklist + soft validator |
+| FR-017 Review File Navigation | Local file review requests include a `file:///` URI using the absolute Windows path | T010 | Final-response polish across review-facing guidance surfaces |
 
 ### Governance & Traceability Requirements
 
@@ -95,6 +96,7 @@ The human-handoff trap from `.specrew/quality/known-traps.md` (row 12, 2026-05-1
 |---|---|---|---|
 | TG-001: US1 → FR-001, FR-003, FR-004, FR-006, FR-012, FR-013 | Direct mapping | T001, T002, T005, T008, T010 | Coordinator-response maintainer |
 | TG-002: US2 → FR-005, FR-007, FR-008, FR-009, FR-010, FR-011, FR-016 | Direct mapping | T003, T005, T007, T008 | Coordinator-response maintainer |
+| TG-002A: Review-file navigation in US2 → FR-008, FR-017 | Direct mapping | T010 | Coordinator-response maintainer |
 | TG-003: US3 → FR-002, FR-006, FR-012, FR-015, FR-016 | Direct mapping | T001, T002, T005, T008, T010 | Prompt maintainer |
 | TG-004: Specialized format conflicts resolved in favor of explicit semantic fields | Design principle | T001, T002, T004 | Coordinator-response maintainer |
 
@@ -155,6 +157,7 @@ The human-handoff trap from `.specrew/quality/known-traps.md` (row 12, 2026-05-1
 2. When human approval required, recommended next step names the approval/review decision
 3. When manual testing required, recommended next step describes test focus (scenario, behavior, risk)
 4. When automated verification failed/skipped, status states the gap AND recommends next verification action
+5. When the next step is local file review, the response includes a `file:///` URI using the absolute Windows path
 
 **Verification Method**: Manual code review + T008 integration tests (plain-language vs. jargon fixtures).
 

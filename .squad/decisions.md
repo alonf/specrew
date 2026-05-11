@@ -136,6 +136,16 @@
 **What:** Final user-facing responses must lead with plain English in three named sections: What I just did / Why I stopped / What I need from you. Governance vocabulary should appear only as cross-references.
 **Why:** User request — captured for team memory
 
+## 2026-05-11-runtime-evidence-feature007-iter002-implementation
+### 2026-05-11T04:10:06+03:00: Runtime evidence - Feature 007 Iteration 002 implementation
+**By:** Squad (Coordinator)
+**Type:** implementation-evidence
+**What:** Iteration 002 implementation completed T007-T010 for feature `007-user-facing-progress-handoff`: the soft validator landed, two validator integration tests landed, the validation lane was registered, and the review-file navigation rule was rolled into all durable guidance surfaces.
+**Why:** Preserve the implementation boundary, the approval evidence (`Approved, continue implementation.`), the validation results, and the new session-restart requirement triggered by updating `.github/agents/squad.agent.md`.
+**Evidence:** `extensions\specrew-speckit\validators\handoff-governance-validator.ps1`; `tests\integration\handoff-governance-jargon-response-test.ps1`; `tests\integration\handoff-governance-plain-language-response-test.ps1`; `extensions\specrew-speckit\governance\validation-lane.md`; `tests\integration\validation-contract-lane.ps1`; `specs\007-user-facing-progress-handoff\iterations\002\quality\hardening-gate.md`
+**Validation:** `tests\integration\validation-contract-lane.ps1` ✅ PASS; `extensions\specrew-speckit\scripts\validate-governance.ps1 -ProjectPath . -IterationPath .\specs\007-user-facing-progress-handoff\iterations\002` ✅ PASS; empty-input validator invocation exited cleanly with soft warnings; repeated identical validator runs produced identical output.
+**Next Action:** Start a fresh session before Iteration 002 review so the updated `.github/agents/squad.agent.md` coordinator-response guidance is active.
+
 # Decision Ledger
 
 ## 2026-05-09-runtime-evidence-009

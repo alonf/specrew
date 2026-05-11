@@ -58,6 +58,7 @@ When human review or manual testing is needed:
 - Say exactly what should be reviewed or tested.
 - Name the owner when it matters.
 - Keep the next step concrete and singular.
+- If the next step is review of a local repository file in this Windows workflow, include a `file:///` URI using the absolute Windows path.
 
 ### 4. Verification Gaps
 
@@ -86,7 +87,7 @@ Updated the coordinator handoff guidance and template for feature 007, including
 This slice is complete for the approved iteration scope. No runtime validator work was started in this session.
 
 **What I need from you**  
-Review the new handoff wording for clarity before Iteration 002 starts.
+Review the new handoff wording for clarity before Iteration 002 starts at `file:///C:/Dev/Specrew/specs/007-user-facing-progress-handoff/spec.md`.
 
 ### Blocked Example
 
@@ -97,11 +98,11 @@ I finished the documentation updates for the approved slice and recorded the ite
 I stopped because implementation beyond this point needs human approval on the blocked review item, and continuing would bypass the active lifecycle gate.
 
 **What I need from you**  
-Approve or reject the review finding on the handoff wording so implementation can continue safely.
+Approve or reject the review finding on the handoff wording so implementation can continue safely. Review target: `file:///C:/Dev/Specrew/specs/007-user-facing-progress-handoff/iterations/002/quality/hardening-gate.md`
 
 ### Lightweight Example
 
-I updated the handoff template and no code paths changed. Next step: review the wording for plain-language clarity, or reply `no further action needed` if you accept it as-is.
+I updated the handoff template and no code paths changed. Next step: review the wording for plain-language clarity at `file:///C:/Dev/Specrew/specs/001-specrew-product/contracts/coordinator-handoff-template.md`, or reply `no further action needed` if you accept it as-is.
 
 ### Plain-Language-First Example
 

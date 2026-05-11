@@ -2,9 +2,11 @@
 
 **Schema**: v1  
 **Spec**: [../../spec.md](../../spec.md)  
-**Status**: planned  
+**Status**: executing  
 **Capacity**: 10/20 story_points  
+**Started**: 2026-05-11
 **Planned**: 2026-05-11
+**Implementation Complete**: 2026-05-11
 
 ## Summary
 
@@ -21,6 +23,7 @@ Iteration 002 carries **Phase 3: Validation & Integration** — soft-validator r
 | Spec Ref | Requirement | This Iteration | Owner | Notes |
 |----------|-------------|----------------|-------|-------|
 | FR-016 | Soft Quality Warning — missing handoff fields = soft warning, not hard failure | ✅ `T007`, `T008`, `T009` | Governance-validator maintainer | Runtime validator + integration tests + validation lane registration |
+| FR-017 | Review File Navigation — local file review requests include `file:///` absolute Windows path URI | ✅ `T010` | Feature owner | Polish review-facing guidance so local file review works in compatible Windows clients |
 | Human-Handoff Trap | Three-or-more governance acronyms in lead without plain-language paraphrase | ✅ `T007`, `T008` | Governance-validator maintainer | Formalized detection rule from `.specrew/quality/known-traps.md` row 12 |
 | Test-Integrity | Integration tests must exercise actual validation runtime path | ✅ `T008` | Test maintainer | Cannot satisfy coverage by validating checklist artifact content alone |
 | Validation-Lane-Completeness | Authorized commands documented in both plan and hardening-gate evidence | ✅ `T009` | Governance-validator maintainer | Cross-check authorization before sign-off |
@@ -57,6 +60,7 @@ Iteration 002 carries **Phase 3: Validation & Integration** — soft-validator r
 | Validation lane authorization accuracy | `required` | T009 must document exact authorized soft-validator commands in both plan task definition AND hardening-gate concern evidence; cross-check before sign-off to prevent validation-lane-completeness drift |
 | Hardening gate schema compliance | `required` | T010 hardening-gate.md must use Iteration 005 pre-sign-off schema: Overall Verdict field, pending metadata, five canonical concerns first |
 | Plain-language-first absorption | `required` | T007 soft-validator must implement detection rule from T006 design document without ambiguity; T008 must validate against human-handoff trap examples |
+| Review-link navigation compatibility | `required` | T010 polish must update review-facing guidance so local file review requests use a `file:///` URI with the absolute Windows path |
 | Session-restart boundary awareness | `satisfied` | Iteration 001 T004 Squad.agent.md update required session restart; this boundary was satisfied before Iteration 002 planning began (per Iteration 001 retro.md line 54) |
 
 ---
@@ -65,10 +69,10 @@ Iteration 002 carries **Phase 3: Validation & Integration** — soft-validator r
 
 | Task | Title | Requirement | Story | Effort | Owner | Owner File Globs | Status | Agent | Actual | Verdict |
 | ---- | ----- | ----------- | ----- | ------ | ----- | ---------------- | ------ | ----- | ------ | ------- |
-| T007 | Implement soft-validator handoff-governance check | FR-016, human-handoff trap | US2 | 4 | Governance-validator maintainer | `extensions/specrew-speckit/validators/handoff-governance-validator.ps1` | planned | — | — | — |
-| T008 | Create integration tests for handoff validator | FR-016, human-handoff trap, test-integrity | US1, US2, US3 | 3 | Test maintainer | `tests/integration/handoff-governance-jargon-response-test.ps1`, `tests/integration/handoff-governance-plain-language-response-test.ps1` | planned | — | — | — |
-| T009 | Update validation lane integration | FR-016, validation-lane-completeness | Cross-cutting | 2 | Governance-validator maintainer | `extensions/specrew-speckit/governance/validation-lane.md` (or equivalent authorized-commands registry) | planned | — | — | — |
-| T010 | Polish & post-implementation hardening-gate evidence recording | iteration-005 schema, TG-001, TG-002, TG-003 | Cross-cutting | 1 | Feature owner | `extensions/specrew-speckit/checklists/coordinator-handoff-governance.md`, `specs/001-specrew-product/contracts/coordinator-handoff-template.md`, `specs/007-user-facing-progress-handoff/iterations/002/quality/hardening-gate.md` | planned | — | — | — |
+| T007 | Implement soft-validator handoff-governance check | FR-016, human-handoff trap | US2 | 4 | Governance-validator maintainer | `extensions/specrew-speckit/validators/handoff-governance-validator.ps1` | done | Implementer | 4 | pass |
+| T008 | Create integration tests for handoff validator | FR-016, human-handoff trap, test-integrity | US1, US2, US3 | 3 | Test maintainer | `tests/integration/handoff-governance-jargon-response-test.ps1`, `tests/integration/handoff-governance-plain-language-response-test.ps1` | done | Implementer | 3 | pass |
+| T009 | Update validation lane integration | FR-016, validation-lane-completeness | Cross-cutting | 2 | Governance-validator maintainer | `extensions/specrew-speckit/governance/validation-lane.md` (or equivalent authorized-commands registry) | done | Implementer | 2 | pass |
+| T010 | Polish & post-implementation hardening-gate evidence recording | FR-017, iteration-005 schema, TG-001, TG-002, TG-003 | Cross-cutting | 1 | Feature owner | `extensions/specrew-speckit/checklists/coordinator-handoff-governance.md`, `extensions/specrew-speckit/prompts/coordinator-response.md`, `extensions/specrew-speckit/prompts/coordinator-decision-guidance.md`, `specs/001-specrew-product/contracts/coordinator-handoff-template.md`, `.github/agents/squad.agent.md`, `specs/007-user-facing-progress-handoff/iterations/002/quality/hardening-gate.md` | done | Implementer | 1 | pass |
 
 **Total Effort**: 10 story_points
 
@@ -164,22 +168,24 @@ Cross-check authorization against plan.md T007 definition before sign-off to pre
 ### T010: Polish & post-implementation hardening-gate evidence recording
 
 **Owner**: Feature owner (Alon Fliess)  
-**Scope**: Final checklist tuning, template review, and post-implementation hardening-gate evidence recording
+**Scope**: Final checklist tuning, review-link guidance updates, template review, and post-implementation hardening-gate evidence recording
 
 **Deliverables**:
 1. Final tuning of all governance-checklist wording for clarity and consistency (`extensions/specrew-speckit/checklists/coordinator-handoff-governance.md`)
 2. Final review of handoff template examples for completeness across all three user stories (US1, US2, US3) (`specs/001-specrew-product/contracts/coordinator-handoff-template.md`)
-3. Post-implementation evidence recording in existing hardening-gate.md (`specs/007-user-facing-progress-handoff/iterations/002/quality/hardening-gate.md`)
+3. Review-link navigation guidance updated so local file review requests use a `file:///` URI with the absolute Windows path in this Windows environment across prompt, template, and Squad startup guidance
+4. Post-implementation evidence recording in existing hardening-gate.md (`specs/007-user-facing-progress-handoff/iterations/002/quality/hardening-gate.md`)
 
 **Post-Implementation Evidence Requirements**:
 - Update `Runtime Evidence Status` fields from `pending-post-implementation` to `recorded` for all applicable concerns
 - Record validation lane execution results (T009 authorized commands)
 - Record integration test pass evidence (T008 fixtures)
 - Record soft-validator correctness verification (T007 detection accuracy)
+- Confirm review-facing guidance surfaces use the `file:///` URI format for local file review requests
 - Update `Post-Implementation Verification` field to `✅ COMPLETE`
 - Update `Verified At` field with completion timestamp
 
-**Acceptance**: Checklist and template reviewed for completeness. Post-implementation evidence recorded in hardening-gate.md after T007-T009 complete. Documentation ready for final review.
+**Acceptance**: Checklist and template reviewed for completeness. Review-facing guidance updated to use `file:///` local review references. Post-implementation evidence recorded in hardening-gate.md after T007-T009 complete. Documentation ready for final review.
 
 **Effort**: 1 story_point
 
@@ -192,9 +198,9 @@ Cross-check authorization against plan.md T007 definition before sign-off to pre
 1. **Soft-Validator Implementation**: `T007` implements the runtime validator based on T006 design contract
 2. **Parallel Test Development**: `T008` develops integration test fixtures in parallel with T007, using T006 design patterns
 3. **Validation Lane Registration**: `T009` registers soft-validator command after T007 implementation completes and T008 tests pass
-4. **Final Polish**: `T010` runs after T007-T009 complete; final checklist/template tuning and post-implementation hardening-gate evidence recording
+4. **Final Polish**: `T010` runs after T007-T009 complete; final checklist/template tuning, review-link guidance updates, and post-implementation hardening-gate evidence recording
 
-**Concurrency Notes**: T007 and T008 can execute in parallel if T008 test implementer references T006 design document directly. T009 must wait for T007 completion and T008 test pass. T010 runs last as final polish and post-implementation hardening-gate evidence recording.
+**Concurrency Notes**: T007 and T008 can execute in parallel if T008 test implementer references T006 design document directly. T009 must wait for T007 completion and T008 test pass. T010 runs last as final polish, review-link guidance update, and post-implementation hardening-gate evidence recording.
 
 ---
 
@@ -229,7 +235,7 @@ All feature 007 implementation work is scoped to Iterations 001-002. Feature clo
 - Task dependency graph: T006 (Iteration 001) → T007 → T009; T006 → T008 (parallel with T007); T007+T008+T009 → T010
 - Workstream separability: High. T007 (validator implementation) and T008 (integration tests) work on distinct surfaces and can execute in parallel. T009 (validation lane) depends on T007 completion. T010 (polish) waits for all prior tasks.
 - Shared-surface conflict risk: Low. T007 creates new validator file. T008 creates new test files. T009 updates validation lane registry. T010 reviews/tunes existing artifacts without conflicting with prior work.
-- Recommendation: Run T007 and T008 in parallel. After both pass, run T009. After all three complete, run T010 as final polish and post-implementation hardening-gate evidence recording.
+- Recommendation: Run T007 and T008 in parallel. After both pass, run T009. After all three complete, run T010 as final polish, review-link guidance update, and post-implementation hardening-gate evidence recording.
 
 ---
 
@@ -247,12 +253,12 @@ All feature 007 implementation work is scoped to Iterations 001-002. Feature clo
 
 ## Implementation Approval
 
-- **Approval Verdict**: *(pending planning-level approval)*
-- **Approved By**: *(pending human sign-off)*
-- **Recorded Evidence**: *(pending)*
-- **Recorded At**: *(pending)*
+- **Approval Verdict**: ✅ **AUTHORIZED**
+- **Approved By**: Alon Fliess
+- **Recorded Evidence**: User input: "Approved, continue implementation."
+- **Recorded At**: 2026-05-11
 - **Scope Authorized**: Phase 3 (T007-T010, 10 story_points)
-- **Gate Effect**: Planning stops at hardening-gate draft sign-off. Implementation authorization triggers T007-T009 execution. T010 records post-implementation evidence only.
+- **Gate Effect**: Implementation authorization triggered T007-T010 execution. The implementation slice is complete, post-implementation evidence is recorded, and review now waits on a fresh session because T010 updated `.github/agents/squad.agent.md`.
 
 ---
 
@@ -278,6 +284,7 @@ All feature 007 implementation work is scoped to Iterations 001-002. Feature clo
 - T006 soft-validator design document provides clear implementation target for T007 without ambiguity.
 - T008 integration tests exercise actual soft-validator runtime path (not just checklist artifact validation) per test-integrity trap requirements.
 - T009 validation lane update cross-checks authorized commands against plan.md task definition and hardening-gate evidence to prevent validation-lane-completeness drift.
+- T010 adds the accepted `file:///` absolute Windows path review-reference rule to review-facing guidance before iteration closeout.
 - T010 records post-implementation evidence in hardening-gate.md after T007-T009 complete. The pre-implementation hardening-gate.md is a planning-time artifact created before implementation starts, not part of T010 scope.
 - Session-restart boundary (required by Iteration 001 T004 Squad.agent.md changes) has been satisfied per Iteration 001 retro. This session began after Squad.agent.md update took effect. Iteration 002 planning proceeds with updated coordinator guidance active.
 - With Iteration 002 completion, Feature 007 implementation is complete. Feature closeout will include representative sampling validation before final sign-off.

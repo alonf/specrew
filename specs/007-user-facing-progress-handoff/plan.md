@@ -14,6 +14,8 @@ This plan delivers durable Squad coordinator handoff semantics across all final 
 1. **Current progress status** — What is complete, where work stands, what was verified, what remains blocked or open
 2. **Recommended next step** — The single best immediate action for the human user or Squad
 
+When the next step is human review of a local repository file in this Windows environment, the handoff must provide a navigation-ready `file:///` URI using the absolute Windows path.
+
 The implementation prioritizes **documentation, prompt updates, and soft-validator design only** — no new runtime stack changes. We absorb the lived precedent from the `human-handoff` trap row in `.specrew/quality/known-traps.md` (2026-05-10 discovery) as a formal acceptance test: final coordinator responses with three or more governance acronyms in the lead without plain-language paraphrase must be flagged as a quality concern.
 
 ---
@@ -94,7 +96,8 @@ This rule becomes a soft-validator detection pattern in Iteration 002; coordinat
 | FR-016 implementation | T007 (soft-validator) | Post-response detection, governance integration |
 | Integration testing | T008 (integration test fixtures) | Governance-jargon response (flag), plain-language response (pass) |
 | Validation lane | T009 (validation lane updates) | Soft-validator registration, authorized command list |
-| Polish & Governance Integration | T010 (quality polish) | Final checklist tuning, hardening gate sign-off |
+| FR-017 review-file navigation | T010 (quality polish) | Add `file:///` absolute Windows path guidance for local review requests across final-response surfaces |
+| Polish & Governance Integration | T010 (quality polish) | Final checklist tuning, review-link guidance, hardening gate sign-off |
 
 ---
 
@@ -180,7 +183,7 @@ This rule becomes a soft-validator detection pattern in Iteration 002; coordinat
 
 **T010** — Quality polish  
 - **Owner**: Feature owner (Alon Fliess)  
-- **Scope**: Final checklist tuning, hardening-gate sign-off prep, documentation review  
+- **Scope**: Final checklist tuning, navigation-ready review-link guidance, hardening-gate sign-off prep, documentation review  
 
 ---
 
@@ -228,6 +231,7 @@ Iteration 002: ~10 story_points (estimated, subject to pre-implementation refine
 - **Soft-validator concept readiness** — Concept design must be complete and unambiguous so Iteration 002 implementation has a clear target (FR-016)
 - **Governance-acronym rule absorption** — Handoff templates and coordinator guidance must absorb the human-handoff trap detection rule so agents understand the constraint before soft validator lands (derived from known-traps.md human-handoff row)
 - **Specialized-format compatibility** — Coordinator guidance must explain how existing response formats preserve handoff semantics (FR-015)
+- **Review-link navigation compatibility** — Review-oriented handoffs must use a `file:///` URI with the absolute Windows path so local file review works in the supported client workflow (FR-017)
 
 ---
 

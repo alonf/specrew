@@ -23,11 +23,12 @@ Use these decision rules to turn coordinator outcomes into clear final handoffs.
 
 1. Summarize what changed in **What I just did**.
 2. In **What I need from you**, say exactly what should be reviewed.
-3. Name the owner when it matters.
+3. If the review target is a local repository file in this Windows workflow, include a `file:///` URI using the absolute Windows path.
+4. Name the owner when it matters.
 
 Example next step:
 
-> Review the new handoff wording in the coordinator prompt, template, and Squad agent contract.
+> Review the new handoff wording in the coordinator prompt, template, and Squad agent contract. Start with `file:///C:/Dev/Specrew/specs/001-specrew-product/contracts/coordinator-handoff-template.md`.
 
 ### 3. Manual Test Decision
 
@@ -85,7 +86,7 @@ Example next step:
 
 - **What I just did**: Updated the handoff docs for feature 007 and aligned the template with the prompt guidance.
 - **Why I stopped**: The approved slice is implemented, but the wording still needs a human review pass.
-- **What I need from you**: Review the wording in the prompt, template, and Squad agent section for clarity and consistency.
+- **What I need from you**: Review the wording in the prompt, template, and Squad agent section for clarity and consistency. Start with `file:///C:/Dev/Specrew/specs/001-specrew-product/contracts/coordinator-handoff-template.md`.
 
 ### Verification Gap
 

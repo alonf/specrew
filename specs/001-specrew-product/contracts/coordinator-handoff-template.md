@@ -32,7 +32,7 @@ Completed [task or change] in [feature / artifact group]. Verified [check run or
 This approved slice is complete. No open blockers remain in the current scope.
 
 **What I need from you**  
-Review [specific files or behavior] before the next iteration starts.  
+Review [specific files or behavior] before the next iteration starts. If the review target is a local repository file in this Windows workflow, include a `file:///` URI using the absolute Windows path.  
 Owner: user
 
 ### 2. Blocked Pattern
@@ -69,5 +69,6 @@ Owner: reviewer
 - If formal lifecycle terms are needed, place them after the plain-language explanation.
 - Always make both semantic fields explicit, even in compact replies.
 - When review is recommended, say what to review.
+- When review points to a local repository file in this Windows workflow, include a `file:///` URI using the absolute Windows path.
 - When manual testing is recommended, say what scenario or risk to test.
 - When no files changed and that affects the user's decision, say so directly.
