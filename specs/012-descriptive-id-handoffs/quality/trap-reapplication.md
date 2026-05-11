@@ -14,5 +14,5 @@
 
 ## Notes
 
-- This trap reapplication artifact records the implementation-boundary evidence required before review. It does not claim review, retrospective, or closeout completion.
-- The replay-path proof stays additive and non-blocking: warn fixtures still exit zero and excluded verbatim fixtures remain pass cases.
+- This trap reapplication artifact records the closeout-boundary evidence for feature 012 after review, retrospective, and the green closeout lane are complete.
+- The replay-path proof stays additive and non-blocking on the closeout tree: warn fixtures still exit zero, excluded verbatim fixtures remain pass cases, and the preserved feature 007 plus iteration 001 regressions still pass alongside the replay lane.

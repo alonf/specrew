@@ -2,20 +2,24 @@
 
 **Schema**: v1  
 **Spec**: [../../spec.md](../../spec.md)  
-**Status**: retro  
+**Status**: complete  
 **Capacity**: 8/20 story_points  
 **Planned Start**: 2026-05-12  
 **Started**: 2026-05-12  
+**Completed**: 2026-05-12  
+**Closed**: 2026-05-12  
 **Review Completed**: 2026-05-12  
 **Review Verdict**: accepted
 **Hardening-Gate Sign-Off**: signed-2026-05-12  
 **Implementation Authorization**: authorized-2026-05-12
+**Retrospective Completed**: 2026-05-12  
+**Closeout Validation**: green-2026-05-12
 
 ## Summary
 
-Iteration 002 carries the bounded follow-on slice for feature `012-descriptive-id-handoffs`: replay-path integration coverage, known-traps corpus seeding, feature-level quality follow-through evidence, and documentation polish. The scope stays strictly limited to tasks `T012` through `T020`; Iteration 003 is not scaffolded here, and the feature is not treated as closed.
+Iteration 002 carries the bounded follow-on slice for feature `012-descriptive-id-handoffs`: replay-path integration coverage, known-traps corpus seeding, feature-level quality follow-through evidence, and documentation polish. The scope stays strictly limited to tasks `T012` through `T020`; Iteration 003 is not scaffolded here, and the feature is now closed through the approved two-iteration plan.
 
-This iteration started after Iteration 001's readable-reference rollout stayed stable. The planning-time hardening gate under `iterations/002/quality/` remains the authorization record, and the implementation slice is now complete through the accepted review boundary with replay-path tests, corpus/documentation updates, and feature-level follow-through artifacts on disk. The retrospective is now complete, and closeout remains the next lifecycle step.
+This iteration started after Iteration 001's readable-reference rollout stayed stable. The planning-time hardening gate under `iterations/002/quality/` remains the authorization record, and the implementation slice is now complete with replay-path tests, corpus/documentation updates, feature-level follow-through artifacts, the recorded retrospective, and a green closeout validation lane on disk. Iteration 002 is now closed without widening the rule beyond authored prose.
 
 ## Iteration Scope
 
@@ -126,8 +130,8 @@ This iteration started after Iteration 001's readable-reference rollout stayed s
 | Deferred Item | Target Iteration / Phase | Reason |
 | --- | --- | --- |
 | Retrospective artifact (`retro.md`) | Completed at the retrospective boundary | The replay-path and corpus follow-through learning is now recorded on the current tree |
-| Closeout validation and closeout artifact | Post-retrospective closeout boundary | Not part of the accepted review boundary |
-| Any further follow-on slice after `T020` | Future planning only if explicitly authorized | The feature remains open after this plan; no Iteration 003 decision is made here |
+| Closeout validation and closeout artifact | Completed at the closeout boundary | The full eight-command closeout lane is now recorded on the closeout tree |
+| Any further follow-on slice after `T020` | Future planning only if explicitly authorized | Feature 012 is closed on the current tree; no Iteration 003 decision is made here |
 
 ## Implementation Authorization
 
@@ -164,7 +168,7 @@ This iteration started after Iteration 001's readable-reference rollout stayed s
 - This iteration exists to complete the approved Iteration 002 portion of the backlog only: replay-path integration tests, corpus seeding, quality follow-through, and documentation polish.
 - The canonical Iteration 001 `state.md` metadata schema is intentionally preserved for Iteration 002 to avoid the validator regression caused by the older non-canonical format.
 - The richer pre-sign-off hardening-gate convention from feature 008 iteration 005 is applied here; the gate remains `ready`, and the human sign-off metadata is now recorded in `quality/hardening-gate.md`.
-- The accepted review boundary and completed retrospective are now recorded. Closeout remains out of scope for this spawn.
+- The accepted review boundary, completed retrospective, and green closeout lane are now recorded on the closeout tree.
 
 ## Implementation Boundary Result
 
@@ -172,5 +176,5 @@ This iteration started after Iteration 001's readable-reference rollout stayed s
 | --- | --- |
 | Replay-path coverage | `tests\integration\descriptive-reference-authored-prose.ps1` and `tests\integration\descriptive-reference-excluded-surfaces.ps1` replay fixture text through `handoff-governance-validator.ps1` and assert on `status`, `findings`, and `summary` output. |
 | Corpus seeding | `.specrew\quality\known-traps.md` now contains the `human-handoff-id-context` row. |
-| Feature-level follow-through | `specs/012-descriptive-id-handoffs/quality/hardening-gate.md` and `specs/012-descriptive-id-handoffs/quality/trap-reapplication.md` record the implementation-boundary evidence without claiming review or closeout. |
-| Regression preservation | The existing feature 007 tests, the iteration 001 readable-reference tests, the new replay tests, and `validate-governance.ps1 -ProjectPath .` all passed on 2026-05-12. |
+| Feature-level follow-through | `specs/012-descriptive-id-handoffs/quality/hardening-gate.md` and `specs/012-descriptive-id-handoffs/quality/trap-reapplication.md` now record the closeout-boundary evidence for replay coverage, corpus durability, and preserved regressions. |
+| Regression preservation | The existing feature 007 tests, the iteration 001 readable-reference tests, the new replay tests, and `validate-governance.ps1 -ProjectPath .` all passed again on the closeout tree on 2026-05-12. |

@@ -6,7 +6,7 @@
 **Scope Ref**: `specs/012-descriptive-id-handoffs`
 **Requested Review Class**: `strongest-available`
 **Effective Review Class**: `strongest-available`
-**Overall Verdict**: `accepted-review-boundary`
+**Overall Verdict**: `closeout-complete`
 **Approval Ref**: `specs/012-descriptive-id-handoffs/iterations/002/quality/hardening-gate.md`
 **Reviewed By**: `Reviewer (on behalf of Alon Fliess)`
 **Reviewed At**: `2026-05-12`
@@ -27,8 +27,8 @@
 | `regression-preservation` | `compatibility` | `addressed` | `implementation-boundary` | `recorded` | The three existing feature 007 soft-validator detections plus the iteration 001 readable-reference detection must rerun green alongside the new replay tests. | `true` | The recorded validation lane keeps `handoff-governance-jargon-response-test.ps1`, `handoff-governance-plain-language-response-test.ps1`, `handoff-governance-review-file-reference-test.ps1`, `handoff-governance-descriptive-narration-test.ps1`, and `handoff-governance-descriptive-stop-message-test.ps1` in the post-implementation run set. | `✅ accepted` |
 | `feature-007-integration-continuity` | `integration` | `addressed` | `implementation-boundary` | `recorded` | Review-ready evidence must show the readable-reference rule remains additive and non-blocking. | `false` | The new lane adds replay tests and corpus evidence only. No validator logic, prompt guidance, or startup-guidance surfaces changed in this slice, so feature 007 and iteration 001 behaviors remain the live baseline rather than being reopened. | `✅ accepted` |
 
-## Implementation-Boundary Notes
+## Closeout Notes
 
-- This artifact records implementation evidence accepted at the review boundary. Retrospective and closeout remain pending.
+- This artifact records the feature-level follow-through evidence as of the closeout boundary. Review, retrospective, and closeout are complete for feature 012.
 - The iteration hardening gate under `iterations/002/quality/hardening-gate.md` remains the planning-time authorization record. This feature-level gate captures the follow-through evidence created by tasks `T016` through `T020`.
-- The blocking review concerns from the signed iteration gate are now backed by accepted review evidence: real replay-path tests, the seeded `human-handoff-id-context` corpus row, and preserved feature 007 plus iteration 001 regression commands.
+- The blocking review concerns from the signed iteration gate are now backed by accepted closeout evidence: real replay-path tests, the seeded `human-handoff-id-context` corpus row, and preserved feature 007 plus iteration 001 regression commands rerun on the closeout tree.

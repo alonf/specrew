@@ -140,7 +140,7 @@ The approved Iteration `001`, readable-reference rollout baseline was recorded o
 
 ### Iteration 002 Implementation Boundary Result
 
-On 2026-05-12, feature `012-descriptive-id-handoffs` completed the authorized Iteration `002`, replay-path proof slice up to the review-ready boundary. The new replay tests load fixture-backed narration and stop-message samples from `tests\integration\fixtures\descriptive-reference-*`, invoke `handoff-governance-validator.ps1` directly, and assert on the validator's user-visible `status`, `findings`, and `summary` output rather than checking state alone.
+On 2026-05-12, feature `012-descriptive-id-handoffs` completed the authorized Iteration `002`, replay-path proof slice through the closeout boundary. The new replay tests load fixture-backed narration and stop-message samples from `tests\integration\fixtures\descriptive-reference-*`, invoke `handoff-governance-validator.ps1` directly, and assert on the validator's user-visible `status`, `findings`, and `summary` output rather than checking state alone.
 
 | Command | Result |
 | --- | --- |
@@ -153,7 +153,7 @@ On 2026-05-12, feature `012-descriptive-id-handoffs` completed the authorized It
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File .\tests\integration\handoff-governance-descriptive-stop-message-test.ps1` | `PASS` |
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File .\extensions\specrew-speckit\scripts\validate-governance.ps1 -ProjectPath .` | `PASS` |
 
-**Boundary Result**: The rule remains additive and non-blocking, the `human-handoff-id-context` corpus row is now seeded, and the preserved feature 007 plus iteration 001 regression tests still fire on their fixture cases. Review, retrospective, and closeout remain explicitly pending.
+**Boundary Result**: The rule remains additive and non-blocking, the `human-handoff-id-context` corpus row is now seeded, the preserved feature 007 plus iteration 001 regression tests still fire on their fixture cases, and the documented eight-command closeout lane is green on the closeout tree. Feature 012 is now fully delivered across both approved iterations.
 
 ## Constitution Check
 

@@ -139,9 +139,9 @@ Required outcomes:
 
 ---
 
-## Post-Implementation Validation Expectations
+## Closeout Validation Expectations
 
-The review-ready implementation boundary should leave the handoff-governance lane with:
+The closeout tree for feature `012`, descriptive references in handoffs, should leave the handoff-governance lane with:
 
 1. the existing three handoff-governance tests still passing
 2. the iteration 001 readable-reference narration and stop-message tests still passing
@@ -159,6 +159,8 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File .\tests\integration\descriptive-re
 pwsh -NoProfile -ExecutionPolicy Bypass -File .\tests\integration\descriptive-reference-excluded-surfaces.ps1
 pwsh -NoProfile -ExecutionPolicy Bypass -File .\extensions\specrew-speckit\scripts\validate-governance.ps1 -ProjectPath .
 ```
+
+**Closeout note**: This eight-command lane passed on 2026-05-12 for iteration `002`, the replay-path integration and corpus follow-through slice, and the resulting closeout tree remained additive and non-blocking.
 
 ---
 

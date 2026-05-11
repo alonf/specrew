@@ -33,7 +33,7 @@
 - This signed gate preserves the richer pre-sign-off convention: `Overall Verdict: ready` remains the implementation-readiness verdict while the review metadata now records the human sign-off.
 - The five canonical concerns appear first in the required order, followed by the five feature-specific concerns in the requested order.
 - The three named high-risk concerns are explicitly marked `Blocking: true`: `integration-test-replay-path-coverage`, `corpus-seeding-completeness`, and `regression-preservation`.
-- Review accepted on 2026-05-12. Retrospective and closeout remain pending for this iteration.
+- Review accepted on 2026-05-12, the retrospective is recorded, and the full eight-command closeout lane is green on the closeout tree.
 
 ## Sign-Off Evidence
 
