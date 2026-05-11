@@ -12,6 +12,9 @@ param(
     [Parameter(Mandatory = $false)]
     [string]$Agent = 'Squad',
 
+    [Parameter(Mandatory = $false)]
+    [string]$PostRestartDirective = '',
+
     [switch]$NoLaunch,
     [switch]$NewWindow,
     [switch]$SameWindow,
@@ -35,6 +38,7 @@ function Convert-UnixStyleArguments {
         [string]$ProjectPath,
         [string]$ResumeFeature,
         [string]$Agent,
+        [string]$PostRestartDirective,
         [bool]$NoLaunch,
         [bool]$NewWindow,
         [bool]$AllowAll,
@@ -48,6 +52,7 @@ function Convert-UnixStyleArguments {
         ProjectPath    = $ProjectPath
         ResumeFeature  = $ResumeFeature
         Agent          = $Agent
+        PostRestartDirective = $PostRestartDirective
         NoLaunch       = $NoLaunch
         NewWindow      = $false
         SameWindow     = $false
@@ -79,6 +84,10 @@ function Convert-UnixStyleArguments {
             '--agent' {
                 $i++
                 if ($i -lt $CliArgs.Count) { $result.Agent = $CliArgs[$i] }
+            }
+            '--post-restart-directive' {
+                $i++
+                if ($i -lt $CliArgs.Count) { $result.PostRestartDirective = $CliArgs[$i] }
             }
             '--no-launch' {
                 $result.NoLaunch = $true
@@ -119,6 +128,7 @@ $parsedArgs = Convert-UnixStyleArguments `
     -ProjectPath $ProjectPath `
     -ResumeFeature $ResumeFeature `
     -Agent $Agent `
+    -PostRestartDirective $PostRestartDirective `
     -NoLaunch $NoLaunch.IsPresent `
     -NewWindow $NewWindow.IsPresent `
     -SameWindow $SameWindow.IsPresent `
@@ -131,6 +141,7 @@ $FeatureRequest = $parsedArgs.FeatureRequest
 $ProjectPath = $parsedArgs.ProjectPath
 $ResumeFeature = $parsedArgs.ResumeFeature
 $Agent = $parsedArgs.Agent
+$PostRestartDirective = $parsedArgs.PostRestartDirective
 $NoLaunch = [bool]$parsedArgs.NoLaunch
 $NewWindow = [bool]$parsedArgs.NewWindow
 $SameWindow = [bool]$parsedArgs.SameWindow
@@ -1852,7 +1863,7 @@ function Get-BaselineCommitHash {
         $content = Get-Content -LiteralPath $promptPath -Raw -Encoding UTF8
         if ($content -match '(?ms)^---\s*\r?\n(.*?)\r?\n---') {
             $frontmatterBlock = $Matches[1]
-            if ($frontmatterBlock -match '^\s*baseline_commit_hash:\s*([0-9a-f]{40})\s*$'){ 
+            if ($frontmatterBlock -match '(?m)^\s*baseline_commit_hash:\s*([0-9a-f]{40})\s*$'){ 
                 return $Matches[1]
             }
         }
@@ -2141,7 +2152,8 @@ function Save-StartArtifacts {
         [bool]$UseAutopilot,
         [pscustomobject]$ProjectState,
         [AllowNull()][pscustomobject]$BrownfieldDiscovery,
-        [pscustomobject]$DeliveryGuidance
+        [pscustomobject]$DeliveryGuidance,
+        [string]$PostRestartDirective = ''
     )
 
     $specrewRoot = Join-Path $ResolvedProjectPath '.specrew'
@@ -2161,19 +2173,60 @@ function Save-StartArtifacts {
         $currentHead = $null
     }
 
-    # Prepend YAML frontmatter with baseline_commit_hash if available
-    $promptContentWithFrontmatter = if ($null -ne $currentHead -and $currentHead -match '^[0-9a-f]{40}$') {
-        @"
----
-baseline_commit_hash: $currentHead
----
+    # Get baseline commit and check for session-loaded file changes
+    $baselineCommit = Get-BaselineCommitHash -ResolvedProjectPath $ResolvedProjectPath
+    $changedFiles = @(Test-SessionLoadedFilesChanged -ResolvedProjectPath $ResolvedProjectPath -BaselineCommitHash $baselineCommit)
+    $hasChanges = ($changedFiles.Count -gt 0)
 
-$PromptContent
+    # Build frontmatter with baseline hash and changed files visibility
+    $frontmatterLines = @('---')
+    if ($null -ne $currentHead -and $currentHead -match '^[0-9a-f]{40}$') {
+        $frontmatterLines += "baseline_commit_hash: $currentHead"
+    }
+    if ($hasChanges) {
+        $frontmatterLines += 'session_loaded_files_changed:'
+        foreach ($file in $changedFiles) {
+            $frontmatterLines += "  - $file"
+        }
+    }
+    $frontmatterLines += '---'
+    $frontmatterBlock = ($frontmatterLines -join [Environment]::NewLine)
+
+    # Build directive blocks
+    $directiveBlocks = @()
+
+    # Prepend custom post-restart directive if provided
+    if (-not [string]::IsNullOrWhiteSpace($PostRestartDirective)) {
+        $directiveBlocks += @"
+
+## Post-Restart Directive
+
+$PostRestartDirective
 "@
     }
-    else {
-        $PromptContent
+
+    # Inject pause-and-confirm directive if session-loaded files changed
+    if ($hasChanges) {
+        $fileListFormatted = ($changedFiles | ForEach-Object { "- $_" }) -join [Environment]::NewLine
+        $directiveBlocks += @"
+
+## PAUSE-AND-CONFIRM: Session-Loaded Files Changed
+
+**Session-loaded files have changed since the last run.** Review the changes below and provide any additional context or directives before continuing.
+
+### Changed Files
+
+$fileListFormatted
+
+**What to do next:**
+- Type **CONFIRM** to continue with the lifecycle as planned
+- OR provide a directive to adjust the approach (e.g., "Skip iteration planning and go directly to implementation")
+- OR provide context about the changes (e.g., "The agent charter was updated to improve escalation handling")
+"@
     }
+
+    # Combine all parts: frontmatter + directives + original prompt
+    $promptContentWithFrontmatter = $frontmatterBlock + [Environment]::NewLine + ($directiveBlocks -join '') + [Environment]::NewLine + $PromptContent
 
     Write-Utf8FileAtomic -Path $promptPath -Content $promptContentWithFrontmatter
 
@@ -2467,7 +2520,8 @@ $artifactPaths = Save-StartArtifacts `
     -UseAutopilot $useAutopilot `
     -ProjectState $projectState `
     -BrownfieldDiscovery $brownfieldDiscovery `
-    -DeliveryGuidance $deliveryGuidance
+    -DeliveryGuidance $deliveryGuidance `
+    -PostRestartDirective $PostRestartDirective
 
 Write-Success "Prepared Specrew start context."
 Write-Info ("Prompt:  {0}" -f $artifactPaths.PromptPath)

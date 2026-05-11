@@ -11,7 +11,21 @@ This drift log tracks deviations from the iteration 002 plan during execution. A
 
 ## Drift Events
 
-*(No drift events recorded yet; iteration 002 is in planning phase)*
+### 2026-05-11: Baseline hash regex parsing bug (corrected during test execution)
+
+**Type**: Implementation bug discovered during T049 test execution  
+**Severity**: Medium (detector false negatives)  
+**Status**: Resolved
+
+**Description**: During T049 test execution, Test 4 in `specrew-start-pause-and-confirm.ps1` failed because the baseline hash regex in `Get-BaselineCommitHash` function (line 1867) lacked the multiline flag `(?m)`. The regex pattern `'^\s*baseline_commit_hash:\s*([0-9a-f]{40})\s*$'` could not match the baseline hash when YAML frontmatter included multi-line fields (e.g., `session_loaded_files_changed` list). Without the multiline flag, `^` and `$` anchors matched only string start/end, not line boundaries within the frontmatter block.
+
+**Impact**: When frontmatter had multiple fields, baseline hash parsing failed, causing `Get-BaselineCommitHash` to return null. This defaulted baseline to HEAD, causing detector to always return empty (baseline == HEAD means no diff), resulting in false negatives (changes not detected, pause-and-confirm not triggered).
+
+**Resolution**: Added multiline flag to regex: `'(?m)^\s*baseline_commit_hash:\s*([0-9a-f]{40})\s*$'` at line 1867 in `scripts/specrew-start.ps1`. All tests now pass (6/6 passing in comprehensive test lane).
+
+**Rationale**: This was a latent bug in Iteration 001 infrastructure that only manifested in Iteration 002 when YAML frontmatter grew beyond single-line baseline hash. The bug violated FR-003 (detector correctness) but was caught and fixed during T049 test execution before commit. No spec authority violation because fix was required for conformance and was completed within iteration scope.
+
+**Artifacts**: `scripts/specrew-start.ps1` line 1867 (regex correction)
 
 ---
 
