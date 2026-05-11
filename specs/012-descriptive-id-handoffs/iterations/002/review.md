@@ -6,13 +6,13 @@
 **Reviewed At**: 2026-05-12  
 **Implementation Ref**: commit `ae35afd`  
 **Overall Verdict**: accepted  
-**Review Boundary**: Implementation complete; blocking and non-blocking review concerns satisfied; retrospective is the next lifecycle boundary
+**Review Boundary**: Implementation complete; blocking and non-blocking review concerns satisfied; the accepted review output was handed forward to the retrospective boundary now recorded in `retro.md`
 
 ---
 
 ## Summary
 
-Feature `012`, descriptive references in handoffs, iteration `002`, the replay-path proof slice, is **ACCEPTED**. The three blocking concerns all pass with runtime evidence: the new replay tests invoke the real handoff-governance validator path and assert on user-visible output, the `human-handoff-id-context` corpus row is seeded in `.specrew\quality\known-traps.md`, and the preserved feature `007`, user-facing progress handoff, plus iteration `001`, readable-reference, regression tests still fire correctly. The accepted review boundary now has truthful iteration artifacts, and retrospective plus closeout remain pending.
+Feature `012`, descriptive references in handoffs, iteration `002`, the replay-path proof slice, is **ACCEPTED**. The three blocking concerns all pass with runtime evidence: the new replay tests invoke the real handoff-governance validator path and assert on user-visible output, the `human-handoff-id-context` corpus row is seeded in `.specrew\quality\known-traps.md`, and the preserved feature `007`, user-facing progress handoff, plus iteration `001`, readable-reference, regression tests still fire correctly. The accepted review boundary now has truthful iteration artifacts; the retrospective is recorded separately in `retro.md`, and closeout remains pending.
 
 ---
 
@@ -105,8 +105,8 @@ Feature `012`, descriptive references in handoffs, iteration `002`, the replay-p
 **Status**: ✅ **PASS**
 
 **Evidence**:
-1. ✅ `specs\012-descriptive-id-handoffs\iterations\002\plan.md` now records the accepted review boundary and leaves retrospective plus closeout pending.
-2. ✅ `specs\012-descriptive-id-handoffs\iterations\002\state.md` now moves the lifecycle to `retro` and names the retrospective as the next action.
+1. ✅ `specs\012-descriptive-id-handoffs\iterations\002\plan.md` now records the accepted review boundary, and the current tree carries the completed retrospective separately in `retro.md`.
+2. ✅ `specs\012-descriptive-id-handoffs\iterations\002\state.md` moved the lifecycle to `retro` at review time and now carries the completed retrospective boundary truthfully.
 3. ✅ `specs\012-descriptive-id-handoffs\iterations\002\quality\hardening-gate.md` now records the accepted review boundary without rewriting the planning sign-off.
 4. ✅ `specs\012-descriptive-id-handoffs\quality\hardening-gate.md` now records the review acceptance truthfully for the feature-level follow-through artifact.
 
@@ -152,15 +152,15 @@ No known gaps remain.
 
 ## Verdict
 
-**ACCEPTED** — Feature `012`, descriptive references in handoffs, iteration `002`, the replay-path proof slice, satisfies the blocking replay-path, corpus, and regression-preservation concerns. The replay tests assert on the validator's user-visible output through the real governance review path, the `human-handoff-id-context` corpus row is seeded, the preserved feature `007` and iteration `001` regression cases remain green, and the review-boundary artifacts are truthful. No implementation repair is required before retrospective.
+**ACCEPTED** — Feature `012`, descriptive references in handoffs, iteration `002`, the replay-path proof slice, satisfies the blocking replay-path, corpus, and regression-preservation concerns. The replay tests assert on the validator's user-visible output through the real governance review path, the `human-handoff-id-context` corpus row is seeded, the preserved feature `007` and iteration `001` regression cases remain green, and the review-boundary artifacts are truthful. No implementation repair was required before retrospective completion.
 
 ---
 
 ## Next Action
 
-1. Hand the accepted review boundary to the Coordinator for the review-boundary commit decision.
-2. Author `retro.md` for iteration `002`, the replay-path proof slice.
-3. Run the closeout validation lane on the post-retrospective tree before closeout.
+1. Hand the accepted review boundary and the completed retrospective to the Coordinator for closeout handling.
+2. Run the closeout validation lane on the post-retrospective tree before closeout.
+3. Do not reopen implementation unless contradictory runtime evidence appears.
 
 ---
 

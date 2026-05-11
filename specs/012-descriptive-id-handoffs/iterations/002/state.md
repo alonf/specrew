@@ -5,15 +5,15 @@
 **Tasks Remaining**: none
 **In Progress**: none
 **Baseline Ref**: commit 92385d3 (iteration 001 closeout boundary)
-**Updated**: 2026-05-12T02:14:34.5712690+03:00
+**Updated**: 2026-05-12T12:30:00Z
 **Current Phase**: retro
-**Iteration Status**: Implementation and review are complete through the accepted review boundary; retrospective and closeout remain pending
+**Iteration Status**: Implementation, review, and retrospective are complete for the replay-path integration and corpus follow-through slice; closeout remains pending
 
 ## Planning Status
 
 | Field | Value |
 | --- | --- |
-| **Overall Status** | Implementation and review are complete for the Iteration 002 replay-path integration, corpus seeding, quality follow-through, and documentation polish slice; the boundary is now retrospective-ready |
+| **Overall Status** | Implementation, review, and retrospective are complete for the Iteration 002 replay-path integration, corpus seeding, quality follow-through, and documentation polish slice; the boundary is now closeout-ready |
 | **Planning Phase** | Complete — the approved plan stayed unchanged during implementation |
 | **Authorization Status** | Authorized — hardening-gate sign-off and implementation authorization recorded by Alon Fliess on 2026-05-12 |
 | **Implementation Status** | Complete — tasks T012 through T020 are done on the current tree |
@@ -21,6 +21,7 @@
 | **Hardening Gate Verdict** | ready — planning-time artifact signed off by Alon Fliess on 2026-05-12; post-implementation concerns are now accepted with runtime evidence |
 | **Review Status** | Complete — review accepted on 2026-05-12 |
 | **Review Verdict** | accepted |
+| **Retrospective Status** | Complete — retro.md now records the replay-path, corpus durability, regression-preservation, and lifecycle-prose dogfooding lessons |
 
 ## Task Status Summary
 
@@ -44,7 +45,7 @@
 
 | Item | Target Iteration / Phase | Reason |
 | --- | --- | --- |
-| Retrospective artifact | Post-review retrospective boundary | Review is accepted; retrospective is the next lifecycle step |
+| Retrospective artifact | Complete | The retrospective boundary is now recorded in `retro.md` |
 | Closeout artifact | Post-retrospective closeout boundary | Closeout still requires retrospective and closeout-lane evidence |
 | Any Iteration 003 scaffolding | Future planning only if explicitly authorized | User requested Iteration 002 only |
 
@@ -55,10 +56,11 @@
 - **Implementation Authorization**: ✅ **AUTHORIZED** — Iteration 002 execution authorized by Alon Fliess on 2026-05-12
 - **Implementation Boundary**: ✅ **RECORDED** — tasks `T012` through `T020` are complete on the current tree with validation evidence on disk
 - **Review Boundary**: ✅ **ACCEPTED** — `review.md` records all blocking and non-blocking concerns as satisfied on 2026-05-12
-- **Next Lifecycle Boundary**: ✅ **RETRO READY** — the next valid step is retrospective for the accepted Iteration 002 slice
+- **Retrospective Boundary**: ✅ **COMPLETE** — `retro.md` now records the accepted Iteration 002 process learning
+- **Next Lifecycle Boundary**: ✅ **CLOSEOUT READY** — the next valid step is closeout for the accepted Iteration 002 slice
 
 ## Next Action
 
 **Current State**: Iteration 002 implementation and review are complete and stay bounded to `T012` through `T020`. Replay-path tests, corpus seeding, feature-level quality follow-through, and documentation polish are on disk, and the rule remains additive and non-blocking.
 
-**Required Next Action**: Author the retrospective for the accepted Iteration 002 slice, then run closeout without reopening implementation unless contradictory evidence appears.
+**Required Next Action**: Run closeout for the accepted Iteration 002 slice without reopening implementation unless contradictory evidence appears.

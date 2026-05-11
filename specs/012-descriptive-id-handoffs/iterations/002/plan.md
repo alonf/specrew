@@ -15,7 +15,7 @@
 
 Iteration 002 carries the bounded follow-on slice for feature `012-descriptive-id-handoffs`: replay-path integration coverage, known-traps corpus seeding, feature-level quality follow-through evidence, and documentation polish. The scope stays strictly limited to tasks `T012` through `T020`; Iteration 003 is not scaffolded here, and the feature is not treated as closed.
 
-This iteration started after Iteration 001's readable-reference rollout stayed stable. The planning-time hardening gate under `iterations/002/quality/` remains the authorization record, and the implementation slice is now complete through the accepted review boundary with replay-path tests, corpus/documentation updates, and feature-level follow-through artifacts on disk. Retrospective and closeout remain pending.
+This iteration started after Iteration 001's readable-reference rollout stayed stable. The planning-time hardening gate under `iterations/002/quality/` remains the authorization record, and the implementation slice is now complete through the accepted review boundary with replay-path tests, corpus/documentation updates, and feature-level follow-through artifacts on disk. The retrospective is now complete, and closeout remains the next lifecycle step.
 
 ## Iteration Scope
 
@@ -88,19 +88,29 @@ This iteration started after Iteration 001's readable-reference rollout stayed s
 
 ## Tasks
 
-| Task | Title | Requirement | Story | Effort | Owner | Status | Verdict |
-| --- | --- | --- | --- | --- | --- | --- | --- |
-| T012 | Create replay fixtures for authored prose warn/pass cases and excluded-surface coverage | FR-008, FR-009, SC-004, TG-006 | US3 | 1 | Test-infrastructure maintainer | done | pass |
-| T013 | Add authored-prose replay assertions that exercise the real governance review path | FR-008, FR-009, TG-003, SC-004 | US3 | 1 | Test-infrastructure maintainer | done | pass |
-| T014 | Add excluded-surface replay assertions proving verbatim content stays out of scope | FR-006, FR-009, TG-003, SC-004 | US3 | 1 | Test-infrastructure maintainer | done | pass |
-| T015 | Seed descriptive-reference corpus examples and update validation-lane documentation | FR-007, FR-008, FR-009, TG-003, TG-006 | US3 | 1 | Quality governance maintainer | done | pass |
-| T016 | Record feature-level quality follow-through artifacts for replay coverage, feature 007 compatibility, and corpus reapplication | FR-010, TG-006 | US3 | 1 | Quality governance maintainer | done | pass |
-| T017 | Run the Iteration 002 replay lane and record low-noise governance evidence | SC-004, TG-003, TG-005, GOV-C1, GOV-C2, GOV-C3, GOV-C4, GOV-C5 | US3 | 1 | Reviewer | done | pass |
-| T018 | Polish `quickstart.md` and feature plan notes with the final Iteration 002 validation lane and closeout instructions | TG-006 | Polish | 0.5 | Documentation maintainer | done | pass |
-| T019 | Run the full closeout lane and record final evidence in quickstart plus trap reapplication | SC-001, SC-002, SC-004, TG-005 | Polish | 1 | Reviewer | done | pass |
-| T020 | Audit the final diff to confirm additive, non-blocking, authored-prose-only scope preservation | FR-010, TG-004, TG-005 | Polish | 0.5 | Planner | done | pass |
+| Task | Title | Requirement | Story | Effort | Owner | Status | Actual | Verdict |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| T012 | Create replay fixtures for authored prose warn/pass cases and excluded-surface coverage | FR-008, FR-009, SC-004, TG-006 | US3 | 1 | Test-infrastructure maintainer | done | 1 | pass |
+| T013 | Add authored-prose replay assertions that exercise the real governance review path | FR-008, FR-009, TG-003, SC-004 | US3 | 1 | Test-infrastructure maintainer | done | 1 | pass |
+| T014 | Add excluded-surface replay assertions proving verbatim content stays out of scope | FR-006, FR-009, TG-003, SC-004 | US3 | 1 | Test-infrastructure maintainer | done | 1 | pass |
+| T015 | Seed descriptive-reference corpus examples and update validation-lane documentation | FR-007, FR-008, FR-009, TG-003, TG-006 | US3 | 1 | Quality governance maintainer | done | 1 | pass |
+| T016 | Record feature-level quality follow-through artifacts for replay coverage, feature 007 compatibility, and corpus reapplication | FR-010, TG-006 | US3 | 1 | Quality governance maintainer | done | 1 | pass |
+| T017 | Run the Iteration 002 replay lane and record low-noise governance evidence | SC-004, TG-003, TG-005, GOV-C1, GOV-C2, GOV-C3, GOV-C4, GOV-C5 | US3 | 1 | Reviewer | done | 1 | pass |
+| T018 | Polish `quickstart.md` and feature plan notes with the final Iteration 002 validation lane and closeout instructions | TG-006 | Polish | 0.5 | Documentation maintainer | done | 0.5 | pass |
+| T019 | Run the full closeout lane and record final evidence in quickstart plus trap reapplication | SC-001, SC-002, SC-004, TG-005 | Polish | 1 | Reviewer | done | 1 | pass |
+| T020 | Audit the final diff to confirm additive, non-blocking, authored-prose-only scope preservation | FR-010, TG-004, TG-005 | Polish | 0.5 | Planner | done | 0.5 | pass |
 
 **Total Effort**: 8 story_points
+
+## Phase Baseline
+
+| Phase | Estimated Effort |
+| --- | --- |
+| Planning | 1 |
+| Discovery/Spikes | 0 |
+| Implementation | 6 |
+| Review | 1 |
+| Rework | 0 |
 
 ## Planned Execution Order
 
@@ -115,7 +125,7 @@ This iteration started after Iteration 001's readable-reference rollout stayed s
 
 | Deferred Item | Target Iteration / Phase | Reason |
 | --- | --- | --- |
-| Retrospective artifact (`retro.md`) | Post-review retrospective boundary | Review is now accepted; retrospective is the next lifecycle step |
+| Retrospective artifact (`retro.md`) | Completed at the retrospective boundary | The replay-path and corpus follow-through learning is now recorded on the current tree |
 | Closeout validation and closeout artifact | Post-retrospective closeout boundary | Not part of the accepted review boundary |
 | Any further follow-on slice after `T020` | Future planning only if explicitly authorized | The feature remains open after this plan; no Iteration 003 decision is made here |
 
@@ -154,7 +164,7 @@ This iteration started after Iteration 001's readable-reference rollout stayed s
 - This iteration exists to complete the approved Iteration 002 portion of the backlog only: replay-path integration tests, corpus seeding, quality follow-through, and documentation polish.
 - The canonical Iteration 001 `state.md` metadata schema is intentionally preserved for Iteration 002 to avoid the validator regression caused by the older non-canonical format.
 - The richer pre-sign-off hardening-gate convention from feature 008 iteration 005 is applied here; the gate remains `ready`, and the human sign-off metadata is now recorded in `quality/hardening-gate.md`.
-- The accepted review boundary is now recorded. Retrospective and closeout artifacts remain out of scope for this spawn.
+- The accepted review boundary and completed retrospective are now recorded. Closeout remains out of scope for this spawn.
 
 ## Implementation Boundary Result
 
