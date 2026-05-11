@@ -8175,3 +8175,1065 @@ Repaired all three guards in `.specify/extensions/specrew-speckit/scripts/valida
 - **Rationale**: Delegated lifecycle routing was applied for role 'Reviewer'.
 
 - **Routing Evidence**: Reviewer | requested=claude | actual=copilot | model=(platform default) | status=fell-back | fallback=preferred agent 'claude' is not enabled
+
+
+# Review Rubric: Feature 011 Iteration 002 Pre-Implementation Evidence Expectations
+
+**Created**: 2026-05-11  
+**Reviewer**: Reviewer agent  
+**Feature**: `011-specrew-start-conditional-pause`  
+**Iteration**: `002`  
+**Scope**: Phase 4 (User Story 2: pause-and-confirm) + Phase 5 (User Story 3: parameter support) + Iteration 002 share of Phase 6 (corpus seeding, visibility testing)
+
+---
+
+## Purpose
+
+This rubric documents the concrete evidence the future review boundary MUST verify before accepting iteration 002 as complete. The human developer identified three blocking concerns at sign-off; this rubric translates those concerns into testable checkpoints with explicit artifact paths and pass/fail criteria.
+
+---
+
+## Blocking Concern 1: Detector Logic Correctness
+
+**Spec Ref**: FR-001, FR-002, FR-003, FR-004, User Story 1 acceptance  
+**Hardening-Gate Concern**: `pause-and-confirm-correctness` (row 6 in `quality/hardening-gate.md`, Blocking: true)
+
+### What Must Be True
+
+The change detector MUST correctly distinguish:
+- **Routine resumes** (no session-loaded files changed) → auto-continue directive preserved, no pause
+- **Session-loaded-file changes** (committed changes to `.github/agents/*`, `.github/copilot-instructions.md`, `extensions/specrew-speckit/squad-templates/coordinator/*`, `.squad/agents/*/charter.md`) → PAUSE-AND-CONFIRM directive injected, file list shown, user confirmation required
+
+**No false positives**: Routine resumes without changes MUST NOT trigger pause.  
+**No false negatives**: Session-loaded file changes MUST trigger pause.
+
+### Required Evidence
+
+1. **Test Pass: Change Detector Baseline**  
+   - Path: `tests\integration\specrew-start-change-detector.ps1`  
+   - Must confirm: Detector correctly identifies changed session-loaded paths via `git diff --name-only` between baseline commit and HEAD  
+   - Must confirm: Detector returns empty list when no session-loaded files changed  
+   - Must confirm: Detector returns changed file list when session-loaded files changed
+
+2. **Test Pass: Auto-Continue Preservation**  
+   - Path: `tests\integration\specrew-start-auto-continue-preservation.ps1`  
+   - Must confirm: When detector reports zero changes, regenerated `.specrew/last-start-prompt.md` contains auto-continue directive exactly as in Iteration 001  
+   - Must confirm: No pause-and-confirm logic triggers on routine resumes  
+   - Must confirm: Iteration 001 baseline behavior is preserved
+
+3. **Test Pass: Pause-and-Confirm Injection**  
+   - Path: `tests\integration\specrew-start-pause-and-confirm.ps1`  
+   - Must confirm: When detector reports one or more changed files, regenerated `.specrew/last-start-prompt.md` contains PAUSE-AND-CONFIRM directive  
+   - Must confirm: Message clearly states "Session-loaded files changed:" or equivalent  
+   - Must confirm: Changed file paths are listed (from `git diff --name-only` output)  
+   - Must confirm: User confirmation/directive prompt is present before auto-continue logic
+
+4. **Manual Inspection: Conditional Logic**  
+   - Path: `scripts\specrew-start.ps1`  
+   - Must confirm: Pause-and-confirm logic triggers ONLY when detector reports changes (conditional on detector result, not unconditional)  
+   - Must confirm: Auto-continue logic triggers ONLY when detector reports zero changes  
+   - Must confirm: No hybrid state where both pause and auto-continue are injected
+
+### Failure Criteria
+
+- Any test in `specrew-start-change-detector.ps1`, `specrew-start-auto-continue-preservation.ps1`, or `specrew-start-pause-and-confirm.ps1` fails  
+- False positive observed: Routine resume without changes triggers pause  
+- False negative observed: Session-loaded file change does not trigger pause  
+- Pause-and-confirm logic present in auto-continue path or vice versa
+
+---
+
+## Blocking Concern 2: PAUSE-AND-CONFIRM Message Tested Through Scaffold-Replay-Path
+
+**Spec Ref**: FR-003, FR-009, FR-010, TG-006, test-integrity corpus row 16 from `specs/005-stack-aware-quality-bar/spec.md`  
+**Hardening-Gate Concern**: `handoff-visibility-coverage` (row 8 in `quality/hardening-gate.md`, Blocking: true)
+
+### What Must Be True
+
+Detector result, changed-files list, and pause-and-confirm message MUST be visible in regenerated `.specrew/last-start-prompt.md` AND testable via scaffold-replay-path assertions. Tests that only assert runtime state (e.g., `state.md`, `decisions.md`, or script stdout) without invoking the actual scaffold path do NOT satisfy this requirement.
+
+**Known-Traps Corpus Lesson**: Per row 16 in `.specrew/quality/known-traps.md`, user-facing handoff behavior MUST be tested through real scaffolded replay path (e.g., `scaffold-reviewer-artifacts.ps1` or `specrew-review.ps1`), not just fixture files or runtime state inspection.
+
+### Required Evidence
+
+1. **Test Pass: Scaffold-Replay-Path Visibility Assertions**  
+   - Path: `tests\integration\specrew-start-pause-and-confirm.ps1` (T045 implementation)  
+   - Must confirm: Test invokes `scaffold-reviewer-artifacts.ps1` or `specrew-review.ps1` (or equivalent scaffold path)  
+   - Must confirm: Test asserts pause-and-confirm messages render correctly in handoff output (not just that `.specrew/last-start-prompt.md` exists)  
+   - Must confirm: Test asserts changed-files list is present in user-visible handoff output  
+   - Must confirm: Test does NOT rely solely on runtime state inspection (e.g., reading `.specrew/last-start-prompt.md` file content directly without rendering)
+
+2. **Manual Inspection: Visibility Field in Handoff**  
+   - Path: `.specrew/last-start-prompt.md` (regenerated by `specrew-start.ps1`)  
+   - Must confirm: A structured field exists showing detector result (e.g., `## Session-Loaded Files Changed: .github/agents/squad.agent.md`)  
+   - Must confirm: Changed-files list is visible in the handoff prompt body (not hidden in frontmatter only)  
+   - Must confirm: Field is readable by a human user viewing the handoff prompt
+
+3. **Manual Inspection: T048 Implementation**  
+   - Path: `scripts\specrew-start.ps1` (T048 implementation)  
+   - Must confirm: Detector visibility output is written to `.specrew/last-start-prompt.md` in a user-facing section (YAML frontmatter and/or markdown section)  
+   - Must confirm: Visibility output includes the list of changed files from `git diff --name-only` output
+
+### Failure Criteria
+
+- `specrew-start-pause-and-confirm.ps1` T045 tests do NOT invoke the scaffold-replay-path (e.g., only assert file content directly)  
+- No visibility field for detector result exists in regenerated `.specrew/last-start-prompt.md`  
+- Changed-files list is present in runtime state but not in user-visible handoff output  
+- Tests pass but scaffold-replay-path assertions are missing or commented out
+
+---
+
+## Blocking Concern 3: Known-Traps Corpus Row Exists Before Closeout
+
+**Spec Ref**: FR-008, TG-004  
+**Hardening-Gate Concern**: `corpus-seeding-completeness` (row 9 in `quality/hardening-gate.md`, Blocking: true)
+
+### What Must Be True
+
+The known-traps corpus MUST contain a row documenting the "auto-handoff bypass when session-loaded files change" pattern before iteration 002 closeout. This is a feature closure criterion per FR-008.
+
+### Required Evidence
+
+1. **Corpus Row Exists**  
+   - Path: `.specrew\quality\known-traps.md`  
+   - Must confirm: A row exists with the following fields populated:
+     - **Category**: `governance`
+     - **Broken Pattern**: "`specrew-start.ps1` auto-handoff bypasses the user's ability to issue first-message directives in the new session when session-loaded files are committed between restarts."
+     - **Detection Method**: Code review and user-reported friction observed on 2026-05-11; deterministic test coverage in integration tests.
+     - **Remediation Guidance**: See feature `011-specrew-start-conditional-pause` implementation and FR-001 through FR-005 (or equivalent reference)
+     - **Discovery Date**: `2026-05-11`
+     - **Reapplication Result**: (may be empty at iteration 002 closeout; will be populated on first reapplication)
+
+2. **Corpus Row Format Matches Existing Entries**  
+   - Must confirm: Row format is consistent with other entries in `.specrew\quality\known-traps.md` (same table structure, same column order)  
+   - Must confirm: No placeholder text (`TBD`, `TODO`, `[...]`) in required fields
+
+3. **T055 Task Status**  
+   - Path: `specs\011-specrew-start-conditional-pause\iterations\002\plan.md`  
+   - Must confirm: T055 status is `complete` or `done` (not `planned`, `in-progress`, or `blocked`)  
+   - Must confirm: T055 owner-file-globs column matches `.specrew/quality/known-traps.md`
+
+### Failure Criteria
+
+- No corpus row for auto-handoff-bypass pattern exists in `.specrew\quality\known-traps.md` at iteration 002 closeout  
+- Corpus row exists but required fields are empty, placeholder text, or incomplete  
+- T055 task status is not `complete` at review boundary  
+- Corpus row format does not match existing entries (e.g., different table structure, missing columns)
+
+---
+
+## Non-Blocking Concerns (Required but Not Failure-Critical)
+
+### Directive Injection Fidelity (User Story 3)
+
+**Spec Ref**: FR-005, TG-003, User Story 3 acceptance  
+**Hardening-Gate Concern**: `directive-injection-fidelity` (row 7 in `quality/hardening-gate.md`, Blocking: false)
+
+**Required Evidence**:
+1. **Test Pass: Parameter Acceptance**  
+   - Path: `tests\integration\specrew-start-parameter-handling.ps1`  
+   - Must confirm: `-PostRestartDirective` parameter is accepted  
+   - Must confirm: Custom directive is prepended verbatim to regenerated `.specrew/last-start-prompt.md`  
+   - Must confirm: Parameter is optional (empty string default)  
+   - Must confirm: Empty/null parameter handled gracefully (no corruption, no duplicate directives)
+
+2. **Test Pass: Prepending Order**  
+   - Path: `tests\integration\specrew-start-end-to-end.ps1`  
+   - Must confirm: Custom directive appears as first instruction before pause-and-confirm or auto-continue logic  
+   - Must confirm: Combined scenarios pass: parameter + no changes → auto-continue; parameter + changes → pause-and-confirm
+
+3. **Manual Inspection: Signature Stability**  
+   - Path: `scripts\specrew-start.ps1`  
+   - Must confirm: `-PostRestartDirective` parameter is optional with default empty string  
+   - Must confirm: No breaking changes to existing signature (FR-006 compliance)
+
+**Failure Criteria**: Any test in `specrew-start-parameter-handling.ps1` or `specrew-start-end-to-end.ps1` fails; parameter is required instead of optional; prepending order is incorrect
+
+### US1 Integration (Auto-Continue Preservation)
+
+**Spec Ref**: FR-004, FR-006, FR-007, TG-001, User Story 1 acceptance  
+**Hardening-Gate Concern**: `us1-integration-with-iter-001` (row 10 in `quality/hardening-gate.md`, Blocking: false)
+
+**Required Evidence**:
+1. **Test Pass: Iteration 001 Regression Suite**  
+   - Paths: `tests\integration\specrew-start-change-detector.ps1`, `tests\integration\specrew-start-baseline-tracking.ps1`, `tests\integration\specrew-start-auto-continue-preservation.ps1`  
+   - Must confirm: All Iteration 001 tests still pass after Iteration 002 implementation lands
+
+2. **Test Pass: Integration Lane**  
+   - Path: `tests\integration\specrew-start-end-to-end.ps1` (T056 implementation)  
+   - Must confirm: Full six-test integration lane passes: change-detector, baseline-tracking, auto-continue-preservation, pause-and-confirm, parameter-handling, end-to-end
+
+**Failure Criteria**: Any Iteration 001 test fails after Iteration 002 implementation; integration lane fails; auto-continue behavior regressed for routine resumes
+
+---
+
+## Review Completion Criteria
+
+Iteration 002 is **ACCEPTED** when ALL of the following are true:
+
+1. ✅ **Blocking Concern 1 (Detector Logic Correctness)**: All four evidence items pass (change-detector tests, auto-continue tests, pause-and-confirm tests, manual conditional logic inspection)
+2. ✅ **Blocking Concern 2 (Scaffold-Replay-Path Visibility)**: All three evidence items pass (T045 scaffold-replay-path assertions, visibility field in handoff, T048 implementation inspection)
+3. ✅ **Blocking Concern 3 (Corpus Seeding)**: Corpus row exists with all required fields populated, T055 task status is `complete`
+4. ✅ **Non-Blocking Concerns**: Parameter handling tests pass, Iteration 001 regression suite passes, integration lane passes
+5. ✅ **Governance Validation**: `validate-governance.ps1 -IterationPath specs\011-specrew-start-conditional-pause\iterations\002` passes with zero FAIL lines
+6. ✅ **Artifact Truth**: `plan.md` task statuses match actual implementation (all tasks T043-T056 marked `complete`), `state.md` status matches hardening-gate verdict
+
+---
+
+## Verdict Translation
+
+| Outcome | Reviewer Verdict | Next Action |
+|---------|------------------|-------------|
+| All blocking concerns pass + governance validation passes | `pass` | Proceed to retrospective and closeout |
+| One or more blocking concerns fail | `needs-work` | Return to implementation with gap ledger naming specific failed evidence items |
+| Fundamental design or scope issue discovered | `blocked` | Escalate to project owner for decision |
+| Non-blocking concerns fail but all blocking concerns pass | `pass-with-notes` | Accept iteration, document rework recommendations for follow-on or closeout |
+
+---
+
+## Gap Ledger Template (If Needed)
+
+If review verdict is `needs-work`, the gap ledger MUST explicitly name:
+
+1. Which blocking concern(s) failed (1, 2, or 3)
+2. Which specific evidence item(s) are missing or incorrect
+3. The artifact path(s) and line numbers where the gap exists
+4. The required remediation action (e.g., "Add scaffold-replay-path assertions to T045 tests", "Seed corpus row in `.specrew/quality/known-traps.md` per FR-008 schema")
+5. The expected closeout criterion (e.g., "T045 tests pass with scaffold-replay-path invocations present")
+
+**No advisory text**. Each gap MUST be fixed or explicitly deferred with approval and recorded evidence.
+
+---
+
+## Notes
+
+- This rubric is pre-implementation evidence planning. It does NOT constitute a verdict on the current state.
+- The review boundary will execute this rubric after implementation is claimed complete (after T056 validation lane passes).
+- If any blocking concern fails, iteration 002 is NOT ready for closeout until the gap is closed.
+- The three blocking concerns identified by the human developer at sign-off are the highest-risk areas: detector correctness, scaffold-replay-path visibility testing, and corpus seeding completeness.
+- Known-traps corpus row 16 lesson (scaffold-replay-path testing) is explicitly enforced in Blocking Concern 2 to prevent the same gap that occurred in feature 008 iteration 003.
+
+---
+
+**Rubric Status**: ✅ **READY** — Review boundary may execute this rubric when implementation is claimed complete.
+
+
+### 2026-05-11T17:13:13+03:00: User directive
+**By:** Alon Fliess (via Copilot)
+**What:** For feature 011 iteration 002, record the hardening-gate sign-off, then proceed through implementation, review, retrospective, and closeout with commits at every lifecycle boundary. Before the closeout commit, run the full six-script validation lane against the staged closeout artifacts. Do not report iteration 002 closed unless `validate-governance.ps1 -ProjectPath .` returns zero FAIL lines and `git status --short` is empty other than `.claude/settings.local.json`. Reviewer acceptance must explicitly verify pause-and-confirm correctness, scaffold-replay-path coverage for user-visible output, and presence of the known-traps corpus row before closeout.
+**Why:** User request — captured for team memory
+
+
+# Planner Feature 011 Iteration 002 — Capacity Management and Deferrals
+
+**Date**: 2026-05-11  
+**Feature**: 011 - Conditional Pause on specrew-start When Session-Loaded Files Changed  
+**Planner**: Planner (copilot)  
+**Planning Directive**: Iteration 002 planning with explicit capacity constraints (20 story_points) requiring deferral decisions
+
+## Planning Context
+
+- **Input Spec**: `C:\Dev\Specrew\specs\011-specrew-start-conditional-pause\spec.md` and `tasks.md`
+- **Scope Authorization**: User (Alon Fliess) authorized iteration 002 planning only for FR-003 (pause-and-confirm), FR-005 (-PostRestartDirective parameter), FR-008 (corpus seeding), FR-009 (detector visibility), and FR-010 share (changed-files-detected path coverage)
+- **Reference Pattern**: Iteration 001 completed pattern used as structural reference (10 story_points, detector infrastructure)
+- **Planning Mode**: Pre-sign-off planning with nine-column hardening-gate schema and specific concern ordering
+
+## Planning Execution Summary
+
+### Capacity Constraint Analysis
+1. Initial task breakdown yielded 15 tasks (T043-T057) with estimated 22 story_points:
+   - Phase 4 (US2 pause-and-confirm): T043-T049, 12 story_points
+   - Phase 5 (US3 parameter support): T050-T054, 6 story_points
+   - Phase 6 share (corpus/visibility/testing): T055-T056, 3 story_points
+   - Documentation polish: T057, 1 story_point
+
+2. Governance validator enforced 20-point capacity with 1.0 threshold (no overcommit)
+
+3. Multiple validation iterations to resolve capacity mismatch:
+   - Iteration 1-3: Format and metadata corrections (Started field, numeric effort values, capacity string format)
+   - Iteration 4: Reduced to 21 story_points by deferring T057, still over capacity
+   - Iteration 5: Reduced to 19 story_points by deferring T055 and T057
+
+### Deferral Decisions
+
+**T055 (corpus seeding, 2 story_points)**: Deferred to iteration 003
+- **Rationale**: While FR-008 is a feature closure criterion, corpus seeding is not blocking for US2/US3 functional delivery
+- **Risk**: Deferred blocking concern `corpus-seeding-completeness` will re-activate in iteration 003
+- **Mitigation**: Visibility output and scaffold-replay-path coverage provide sufficient user comprehension in early rollout
+
+**T057 (documentation, 1 story_point)**: Deferred to feature closeout
+- **Rationale**: Comprehensive documentation updates can follow functional completion
+- **Risk**: Users may have limited guidance during iteration 002 rollout
+- **Mitigation**: Handoff prompt visibility and test coverage provide working examples
+
+### Final Capacity
+- **Planned Tasks**: 13 (T043-T054, T056)
+- **Capacity**: 19/20 story_points (safely under threshold)
+- **Blocking Concerns**: Two (pause-and-confirm-correctness, handoff-visibility-coverage)
+- **Deferred Blocking Concerns**: One (corpus-seeding-completeness, deferred to iteration 003)
+
+## Outcome
+
+**Status**: Planning complete and validated
+- Four planning artifacts created and validated with `validate-governance.ps1`
+- Working tree clean after commit `397baf0`
+- Iteration 002 ready for implementation authorization after hardening-gate sign-off
+
+**Trade-offs Accepted**:
+- Corpus seeding delayed one iteration (acceptable because it doesn't block US2/US3 functional testing)
+- Documentation delayed to closeout (acceptable because visibility output provides working examples)
+- 1 story_point of planned capacity unused (conservative approach to avoid overcommit)
+
+**Next Steps**:
+- Hardening-gate sign-off by Alon Fliess
+- Implementation authorization for iteration 002 (T043-T054, T056)
+- Iteration 003 planning to include T055 corpus seeding
+
+
+# Planner Feature 011 Plan — Runtime Evidence
+
+**Date**: 2026-05-11  
+**Feature**: 011 - Conditional Pause on specrew-start When Session-Loaded Files Changed  
+**Planner**: Planner (copilot)  
+**Planning Directive**: Two-iteration structure per user directives (Iteration 001: detector + baseline + preservation; Iteration 002: pause + parameter + visibility + tests + corpus)
+
+## Planning Context
+
+- **Input Spec**: `C:\Dev\Specrew\specs\011-specrew-start-conditional-pause\spec.md` (214 lines, complete with FR-001 through FR-010, TG-001 through TG-006, SC-001 through SC-006)
+- **Squad Agent Family**: `Planner` routed to `copilot` per `.squad/config.json`
+- **Planning Mode**: Feature-level plan boundary (no iteration-specific tasks.md or hardening-gate.md created at this step)
+- **Approval Pattern**: Feature plan requires human sign-off via `.squad/decisions.md` before iteration scaffolding
+
+## Planning Execution Summary
+
+### Phase 0: Context Gathering
+1. Read `.squad/agents/planner/history.md` — reviewed 27 prior planning learnings covering:
+   - Feature 005 pattern: Two-iteration scope with explicit capacity bounds
+   - Feature 007 pattern: Phase 1 hardening gates must be planning-time artifacts, not implementation deliverables
+   - Feature 008 pattern: Five canonical concerns (security-surface, error-handling, retry-idempotency, test-integrity, operational-resilience) are required in hardening gates
+   - Feature 010 lifecycle completion
+
+2. Read `.squad/identity/now.md` — confirms current focus:
+   - Feature 008 iterations 001-004 closed; iteration 005 Polish in progress
+   - Feature 009, 010 lifecycles complete
+   - No active escalations
+
+3. Reviewed spec 011 in full (214 lines):
+   - Problem: `specrew-start.ps1` auto-continue behavior from spec 001 Session 2026-05-04 bypasses user's ability to inject first-message directives when session-loaded files are committed between restarts
+   - Solution: Add change detector (FR-001, FR-002), pause-and-confirm injection (FR-003), preserve auto-continue (FR-004), optional parameter (FR-005), preserve signatures (FR-006, FR-007), comprehensive tests (FR-010), corpus seeding (FR-008)
+
+### Phase 1: Planning Artifact Generation
+1. Ran `.specify/scripts/powershell/setup-plan.ps1 -Json`:
+   - Output: `{"FEATURE_SPEC":"C:\\Dev\\Specrew\\specs\\011-specrew-start-conditional-pause\\spec.md","IMPL_PLAN":"C:\\Dev\\Specrew\\specs\\011-specrew-start-conditional-pause\\plan.md","SPECS_DIR":"C:\\Dev\\Specrew\\specs\\011-specrew-start-conditional-pause","BRANCH":"010-onboarding-resume-visibility","HAS_GIT":true}`
+   - Plan template copied to feature directory
+
+2. Filled plan.md sections:
+   - **Summary**: Extracted from spec; two-iteration approach with clear iteration focus
+   - **Technical Context**: PowerShell 7+, Git integration, YAML frontmatter, Pester tests, <100ms baseline assumption
+   - **Phase 1 Quality Planning**: Selected `quality-profile.cli-script-integration-focused.v1` preset; documented risk dimensions (correctness, durability, visibility, compatibility, performance); mapped stack surfaces (cli-entrypoint, session-state-file, git-integration, test-integration)
+   - **Phase 2 Hardening Planning**: Deferred Phase 2 hardening gate creation to Iteration 002 planning; documented planned focus areas and explicit later deferrals
+   - **Constitution Check**: ✅ All gates passed (Spec Authority, Layering, Traceability, Ownership, Capacity, Drift/Reconciliation, Verification)
+   - **Project Structure**: Single-file modification (`scripts/specrew-start.ps1`), integration test suite in `tests/integration/specrew-start-*.ps1`, corpus seeding in `.specrew/quality/known-traps.md`
+   - **Iteration Structure**: Documented two-iteration plan with clear FR mapping and deliverables per iteration
+
+### Phase 2: Planning-Time Decisions
+1. **Two-Iteration Structure Decision**: Iteration 001 (detector + baseline + preservation) provides a stable intermediate milestone; Iteration 002 adds visibility and user-facing features. This split allows staged human review and aligns with spec's own FRs.
+
+2. **Quality Profile Decision**: Selected `quality-profile.cli-script-integration-focused.v1` because:
+   - Stack is PowerShell 7+ + Git CLI (clear fit)
+   - Risk areas are change-detection accuracy (correctness), baseline tracking (durability), user-visible output (visibility), auto-continue regression (compatibility), and performance (<100ms)
+   - Mechanical checks (test-integrity, anti-pattern, dead-field) and ecosystem tools (Pester, Git CLI, PSScriptAnalyzer) map cleanly
+
+3. **Iteration 001 Scope Decision**: FR-001 (detector), FR-002 (baseline tracking), FR-004 (auto-continue preservation), FR-006 (signature stability), FR-007 (error fidelity) are sufficient for a stable first slice that can be reviewed independently
+
+4. **Pause-and-Confirm Deferral**: Deferring FR-003 (pause injection) to Iteration 002 because it depends on detector/baseline correctness (Iteration 001) and is a user-visible feature that deserves its own quality gate review
+
+5. **Corpus Seeding Decision**: FR-008 (known-traps corpus entry) is assigned to Iteration 002 because the pattern (auto-handoff bypass) is discovered during this feature's delivery
+
+## Quality Assurance Checklist (Planning Boundary)
+
+- ✅ Feature spec is complete (214 lines, all sections filled, no NEEDS CLARIFICATION)
+- ✅ Constitution Check passed on all seven gates (Spec Authority, Layering, Traceability, Ownership, Capacity, Drift/Reconciliation, Verification)
+- ✅ Technical Context is fully specified (language, dependencies, storage, testing, platform, project type, performance, constraints, scale/scope)
+- ✅ Phase 1 Quality Planning completed (quality profile selected, stack surfaces mapped, risk dimensions identified, quality gates defined, not-applicable dimensions justified)
+- ✅ Phase 2 Hardening Planning outlined (deferred to Iteration 002 with explicit defer rationale)
+- ✅ Two-Iteration structure justified (dependency graph supports split; intermediate milestone at Iteration 001; user-facing features in Iteration 002)
+- ✅ Project structure documented (single-file modification, integration test suite, corpus seeding)
+- ✅ Iteration effort estimates provided (~10-12 story points for Iteration 001, ~8-10 for Iteration 002)
+- ✅ Iteration deliverables mapped to requirements (each iteration's FRs and TGs listed; traceability clear)
+- ✅ Next steps documented (Phase 0 research, Phase 1 design, Iteration 001 planning, Iteration 002 planning)
+
+## Known Traps Applied During Planning
+
+From `.specrew/quality/known-traps.md`:
+
+1. **Governance - Iteration Planning Without Authorization**: Verified that this plan.md documents planning completion only; iteration-specific scaffolding (iterations/001/plan.md, iterations/002/plan.md) is deferred and requires explicit human authorization before creation.
+
+2. **Governance - Hardening Gate Pre-Sign-Off Schema**: Documented that Phase 2 hardening gate will be created during Iteration 002 planning, not before. No hardening-gate.md artifact is created at feature-level planning boundary.
+
+3. **Governance - Iteration 002 Scaffolding Without Authorization**: No Iteration 002 artifacts are created until human authorizes Iteration 002 planning to proceed (expected during Iteration 001 implementation or closeout).
+
+## Planning Completeness Summary
+
+**Feature Plan Status**: ✅ **COMPLETE AT FEATURE-LEVEL PLANNING BOUNDARY**
+
+The feature-level plan includes:
+- Approved two-iteration structure (Iteration 001: detector + baseline + preservation; Iteration 002: pause + parameter + visibility + tests + corpus)
+- Complete technical context and quality planning (Phase 1 complete; Phase 2 deferred to Iteration 002)
+- Constitution Check passed on all gates
+- Project structure documented
+- Planning-time decisions recorded with traceability
+- Ready for Phase 0/Phase 1 design artifact generation (research.md, data-model.md, quickstart.md)
+
+**Feature Plan Path**: `C:\Dev\Specrew\specs\011-specrew-start-conditional-pause\plan.md`
+
+**Next Authorized Action**: Generate Phase 0/Phase 1 design artifacts and await human authorization to begin Iteration 001 planning.
+
+---
+
+## Planner Handoff Notes
+
+- **For Spec Steward (Alon Fliess)**: The feature plan documents the two-iteration approach per your planning directives. Iteration 001 focuses on detector correctness and signature preservation; Iteration 002 adds pause-and-confirm behavior and comprehensive testing. All FRs and TGs are mapped to iterations. The plan is ready for your review and approval.
+
+- **For Iteration Facilitator**: Phase 1 design artifacts (research.md, data-model.md, quickstart.md) are ready to be generated. Phase 2 hardening-gate.md will be created during Iteration 002 planning per the spec 007 learning about hardening gates as planning-time artifacts.
+
+- **For Future Implementer**: The feature plan provides clear iteration boundaries. Iteration 001 implementation should focus on detecting changes via `git diff --name-only`, tracking baseline commit hash in YAML frontmatter, and preserving auto-continue behavior for routine resumes. Iteration 002 implementation adds pause-and-confirm messaging, the `-PostRestartDirective` parameter, and comprehensive integration tests with scaffold-replay-path assertions.
+
+- **Drift Monitoring**: Watch for any regressions of auto-continue behavior during Iteration 001 implementation. The quality gates emphasize that routine resumes without session-loaded changes MUST auto-continue per spec 001. Test coverage should exercise this path explicitly.
+
+- **Known-Traps Seeding**: Iteration 002 includes task TR-001 for seeding the known-traps corpus entry documenting the "auto-handoff bypass when session-loaded files change" pattern (discovery date 2026-05-11, category: governance). The corpus entry is required for closure per FR-008.
+
+
+# Planner Runtime Evidence — Feature 011 Tasks Generation
+
+**Session**: Planner task generation for feature 011-specrew-start-conditional-pause  
+**Date**: 2026-05-11  
+**Requested By**: Alon Fliess  
+**Task**: Generate tasks.md using existing T-* numbering convention with actionable, dependency-ordered tasks per user stories and iteration structure from plan.md.
+
+## Process Summary
+
+### Input Artifacts Loaded
+✅ `.squad/agents/planner/history.md` — Planner pattern library (learnings from features 005-008, 010)  
+✅ `.squad/decisions.md` (partial read, view_range 1-100) — Feature 008 closure and governance patterns  
+✅ `.squad/identity/now.md` — Team focus on feature 008 Polish completion  
+✅ `specs/011-specrew-start-conditional-pause/spec.md` — Feature 011 specification (FR-001 through FR-010, SC-001 through SC-006)  
+✅ `specs/011-specrew-start-conditional-pause/plan.md` — Feature 011 implementation plan (two-iteration structure, quality profile, phase scoping)  
+✅ `.specify/templates/tasks-template.md` — Task list template structure  
+✅ Existing task examples (features 005, 006, 007, 008, 009) — T-* numbering convention confirmed, highest task ID: T028  
+
+### Task Numbering Decision
+- **Baseline**: Feature 008 uses T001-T028 (highest ID: T028 for Polish phase)
+- **Feature 011 Task Range**: T029-T057 (29 tasks total across two iterations)
+- **Numbering Scheme**: Sequential within execution order; no gaps; parallel tasks marked with [P]
+
+### Task Structure Generated
+**Total Tasks**: 29 (T029-T057)  
+**Iteration 001** (Detector + Baseline + Preservation): T029-T041 (13 tasks, ~10-12 story points)  
+**Iteration 002** (Pause + Parameter + Tests + Corpus): T042-T057 (16 tasks, ~8-10 story points)  
+
+### Traceability Mapping
+- **User Story 1** (P1 - Auto-continue preservation): T029-T041
+  - Tests: T036-T039 (TDD approach, written first)
+  - Implementation: T040-T041 (detector + baseline + preservation integration)
+  - Requirements: FR-001, FR-002, FR-004, FR-006, FR-007, SC-001, SC-002
+
+- **User Story 2** (P1 - Pause-and-confirm): T042-T048
+  - Tests: T042-T045 (TDD approach, written first; includes scaffold-replay-path assertions)
+  - Implementation: T046-T048 (pause injection + visibility output)
+  - Requirements: FR-003, FR-009, FR-010, SC-003, TG-006
+
+- **User Story 3** (P2 - PostRestartDirective parameter): T049-T053
+  - Tests: T049-T051 (TDD approach, written first)
+  - Implementation: T052-T053 (parameter support + integration)
+  - Requirements: FR-005, SC-004, SC-005, SC-006
+
+- **Polish & Cross-Cutting**: T054-T057
+  - Hardening-gate artifact: T054
+  - Known-traps corpus seeding: T055 (FR-008 requirement)
+  - Validation lane: T056 (FR-010 requirement)
+  - Documentation: T057
+
+### Design Decisions Encoded
+
+1. **Two-Iteration Structure**: Per plan.md Decision 1
+   - Iteration 001: Detector infrastructure (FR-001, FR-002) + preservation (FR-004, FR-006, FR-007)
+   - Iteration 002: Pause-and-confirm (FR-003, FR-009) + parameter (FR-005) + visibility (FR-010) + corpus (FR-008)
+
+2. **TDD Approach for Tests**: Per spec.md mandate and test-integrity corpus from specs/005
+   - All user stories include test-fixtures and test-assertions phases before implementation
+   - Scaffold-replay-path assertions required for visibility output (T044, T048, T051)
+
+3. **Parallel Opportunities**: Per feature 008 learnings
+   - T029-T030 (setup phase)
+   - T036-T039 (US1 test fixtures and assertions)
+   - T042-T045 (US2 test fixtures and assertions)
+   - T049-T051 (US3 test fixtures and assertions)
+   - T054-T057 (polish lane)
+
+4. **Scope Boundaries**: Per plan.md constraints
+   - Change detector scoped to session-loaded paths only (~15-20 path globs)
+   - Performance baseline: <100ms for typical repos
+   - No new runtime dependencies; git must be available
+   - Tests use PowerShell Pester (existing infrastructure)
+   - Auto-continue preservation is non-negotiable for routine resumes
+
+5. **Traceability Format**: Matches feature 008 conventions
+   - Each task includes explicit FR and/or SC traceability
+   - User story labels included for US1/US2/US3 phases only
+   - Effort estimates: S (small), M (medium), L (large)
+   - Parallel capability marked with [P] where applicable
+
+### File Validation
+✅ File created at: `C:\Dev\Specrew\specs\011-specrew-start-conditional-pause\tasks.md`  
+✅ File size: ~20.6 KB (reasonable for 29 tasks with full documentation)  
+✅ Format verification:
+- All 29 tasks follow checkbox + ID format: `- [ ] T0XX [...]`
+- User story labels present only in US-scoped phases (T029-T053), absent in Setup/Polish (T029-T030, T054-T057)
+- Traceability references included: FR-* and SC-* (100% coverage)
+- Dependencies documented: Phase 1 → Phase 2 (foundational blocks user stories) → Phase 3-5 (user stories) → Phase 6 (polish)
+- Parallel execution examples provided for each iteration
+
+### Readiness Gate Status
+
+| Gate | Status | Rationale |
+|------|--------|-----------|
+| **Spec authority** | ✅ PASS | Plan.md Constitution Check gate passed; all FRs/TGs covered by task phases |
+| **Traceability** | ✅ PASS | 100% of 29 tasks carry explicit FR or SC reference; user story labels correct |
+| **Iteration split** | ✅ PASS | Two-iteration structure matches plan.md Decision 1; Iteration 001 = infrastructure, Iteration 002 = features |
+| **TDD compliance** | ✅ PASS | All user stories include test-fixtures and test-assertions before implementation |
+| **Scaffold-replay-path** | ✅ PASS | T044 (US2), T048 (US2), T051 (US3) explicitly invoke visibility testing via scaffold-reviewer-artifacts |
+| **Auto-continue preservation** | ✅ PASS | T033, T034, T038 explicitly guard preservation; failing this guard rejects implementation |
+| **Known-traps corpus** | ✅ PASS | T055 explicitly seeds corpus entry per FR-008 and plan.md Decision 3 |
+| **Task numbering** | ✅ PASS | Continuous T029-T057; no gaps; highest prior ID (T028) confirmed before start |
+
+### Execution Readiness Checklist
+
+Before implementation begins:
+
+- [ ] Iteration 001 planning artifacts created: `specs/011-specrew-start-conditional-pause/iterations/001/plan.md`
+- [ ] Iteration 001 hardening-gate artifact will be deferred to Iteration 002 per plan.md
+- [ ] Human approval of tasks.md required before Iteration 001 implementation authorization
+- [ ] Spec Steward (Alon Fliess) to confirm task scope maps to spec 011 FRs and TGs
+- [ ] Iteration facilitator to confirm test-integrity corpus guidance is followed (scaffold-replay-path assertions)
+
+## Next Steps
+
+1. **Feature plan approvals**: Human review of plan.md for business and technical correctness (done separately)
+2. **Task approval**: Human review of tasks.md for task granularity, traceability, and capacity (this artifact)
+3. **Iteration 001 planning**: Create `specs/011-specrew-start-conditional-pause/iterations/001/plan.md` with task assignments and state.md scaffolds
+4. **Iteration 001 implementation**: Begin after explicit authorization recorded in `.squad/decisions.md`
+5. **Iteration 002 planning**: After Iteration 001 review and retro, create `specs/011-specrew-start-conditional-pause/iterations/002/plan.md` and hardening-gate.md
+
+---
+
+**Artifact Generated**: `specs/011-specrew-start-conditional-pause/tasks.md` (29 tasks, 2 iterations, ~18-22 story points total)  
+**Evidence Path**: `.squad/decisions/inbox/planner-feature-011-tasks-runtime-evidence.md` (this file)
+
+
+# Planner: Feature 011 Iteration 001 Artifacts - Runtime Evidence
+
+**Recorded**: 2026-05-11  
+**Session**: Feature 011 iteration 001 planning (final artifacts)  
+**Recorded By**: Planner  
+**Artifacts Created**: Iteration 001 planning slice (plan.md, hardening-gate.md, feature-level plan/tasks reconciliation)
+
+---
+
+## Planning Artifacts Created
+
+### 1. Iteration 001 Plan Artifact
+
+**Location**: `specs/011-specrew-start-conditional-pause/iterations/001/plan.md`  
+**Schema**: v1  
+**Status**: planning  
+**Capacity**: 10/20 story_points  
+**Scope**: Phase 1 (Setup) + Phase 2 (Detector, Baseline Tracking, Preservation), tasks T029-T042  
+**Content Outline**:
+- Summary: Foundational slice delivering change detector infrastructure and baseline tracking before pause-and-confirm features land
+- Requirements Traceability: FR-001 through FR-010, TG-001, TG-002, TG-005, SC-001, SC-002 mapped to tasks T029-T042
+- Governance Consistency Check: All five gates (Spec Authority, Traceability, Ownership, Capacity, Execution Support) pass
+- Phase 1 Quality Planning: Risk dimensions for detector accuracy, baseline durability, auto-continue preservation, signature stability, error preservation
+- Task Table: 14 tasks split across Phase 1 (T029-T031, setup), Phase 2 (T032-T036, detector implementation), US1 (T037-T042, tests and integration)
+- Planned Execution Order: T029-T031 parallel (setup), T032-T036 implementation, T037-T040 parallel (tests), T041 integration, T042 validation
+- Deferred Follow-On: T043-T054 (Iteration 002 pause-and-confirm and parameter support), T055-T057 (Polish phase)
+- Effort Model: 10 story_points (7 implementation + 3 testing), within 20-point capacity
+- Implementation Approval: Pending hardening-gate sign-off
+
+### 2. Hardening-Gate Planning Artifact
+
+**Location**: `specs/011-specrew-start-conditional-pause/iterations/001/quality/hardening-gate.md`  
+**Schema**: v1  
+**Gate ID**: pre-implementation-hardening  
+**Overall Verdict**: ready  
+**Status**: awaiting-review  
+**Header Fields**:
+- Reviewed By: *(pending)*
+- Reviewed At: *(pending)*
+- Post-Implementation Verification: ⏳ PENDING
+- Verified At: *(pending)*
+
+**Concern Structure**:
+- Five canonical concerns (required order):
+  1. security-surface (not-applicable: no new auth/privilege/trust domains)
+  2. error-handling-expectations (addressed: graceful defaults, edge cases)
+  3. retry-idempotency-requirements (addressed: safe to run detector repeatedly, YAML round-trip safe)
+  4. test-integrity-targets (addressed: deterministic fixtures and assertions for detector, baseline, auto-continue)
+  5. operational-resilience-concerns (addressed: baseline durability, error message preservation, <100ms performance)
+
+- Five feature-specific concerns:
+  1. detector-correctness: `git diff --name-only` accuracy against session-loaded path globs
+  2. baseline-tracking-integrity: YAML frontmatter serialization/deserialization correctness
+  3. auto-continue-preservation: Spec 001 Session 2026-05-04 behavior unchanged for routine resumes (blocking)
+  4. signature-stability: `specrew-start.ps1` public contract unchanged (no breaking changes)
+  5. us1-integration-correctness: User Story 1 acceptance scenarios for routine resumes (blocking)
+
+**Post-Implementation Evidence Notes**: All Runtime Evidence Status fields set to pending-post-implementation. Planning-level evidence complete; post-implementation evidence will be recorded during Iteration 001 test execution (T042).
+
+### 3. Feature-Level Plan Reconciliation
+
+**Changes to `specs/011-specrew-start-conditional-pause/plan.md`**:
+- Updated "Phase 2 Hardening and Specialist Review Planning" section to "Phase 1 Hardening Gate and Iteration 001 Planning"
+- Changed status from "deferred until Iteration 002" to "created during Iteration 001 planning"
+- Updated hardening-gate artifact location from feature-root `specs/011-specrew-start-conditional-pause/quality/hardening-gate.md` to iteration-scoped `specs/011-specrew-start-conditional-pause/iterations/001/quality/hardening-gate.md`
+- Updated "Explicit Phase 2+ Deferrals" to "Explicit Phase 2+ Deferrals (Updated for Iteration 001 Planning)" to clarify that Iteration 001 planning-time gate is now created, not deferred
+- Updated "Hardening Focus Areas (Planned for Iteration 002)" to "Hardening Focus Areas (Planned for Iteration 001 & Deferred to Iteration 002)" with clear status for each focus area:
+  - Detector/baseline/auto-continue/signature/error-preservation: planning-gate-created (Iteration 001)
+  - Pause-and-confirm visibility, parameter handling, corpus seeding: deferred-to-iteration-002
+
+**Changes to `specs/011-specrew-start-conditional-pause/tasks.md`**:
+- Added status line: "**Iteration 001 Planning Status**: ✅ Complete — hardening-gate.md artifact created at `specs/011-specrew-start-conditional-pause/iterations/001/quality/hardening-gate.md` by task T031"
+- Updated task T031 description to point to correct location: `specs/011-specrew-start-conditional-pause/iterations/001/quality/hardening-gate.md`
+- Updated T031 concern list to include "error-message preservation" alongside detector accuracy, baseline tracking durability, auto-continue preservation, and signature stability
+
+---
+
+## Boundary & Governance Status
+
+### Pre-Implementation Review Checklist (Embedded in Hardening-Gate)
+
+The iteration plan and hardening gate are ready for strongest-available class review by Alon Fliess. The checklist includes:
+- [ ] Detector design (T032) correctly specifies `git diff --name-only` and session-loaded path globs
+- [ ] Baseline tracking mechanism (T033) correctly specifies YAML frontmatter read-modify-write with validation
+- [ ] Auto-continue preservation (T034) preserves spec 001 Session 2026-05-04 behavior unchanged
+- [ ] Signature preservation (T035) confirms no breaking changes to public contract
+- [ ] Error message preservation (T036) confirms additive-only new messages, no modification to existing error paths
+- [ ] Test targets (T037-T040) cover detector accuracy, baseline durability, auto-continue preservation, and error cases
+- [ ] Iteration 001 scope is bounded: pause-and-confirm, parameter support, visibility output, and corpus seeding are explicitly deferred to Iteration 002
+
+### Implementation Approval Status
+
+- **Plan Approval**: ✅ Planning authorized (by directive from request)
+- **Hardening-Gate Sign-Off**: ⏳ Pending review and human sign-off by Alon Fliess (Strongest-Available class)
+- **Implementation Authorization**: Blocked pending hardening-gate sign-off
+
+### Traceability & Governance Validation
+
+- Feature spec (`specs/011-specrew-start-conditional-pause/spec.md`): FRs and TGs are fully mapped to tasks
+- Iteration plan (`specs/011-specrew-start-conditional-pause/iterations/001/plan.md`): Tasks T029-T042 are traceable to plan and spec
+- Hardening gate (`specs/011-specrew-start-conditional-pause/iterations/001/quality/hardening-gate.md`): Schema v1, nine-column structure, five canonical + five feature-specific concerns, blocking verdicts for auto-continue-preservation and us1-integration-correctness
+- Feature-level artifacts (plan.md, tasks.md) reconciled to point to iteration 001 hardening gate, not deferred to iteration 002
+
+---
+
+## What's Next
+
+1. **Pre-Implementation Review** (Human Step): Alon Fliess reviews iteration 001 plan and hardening gate for:
+   - Correctness of detector design and baseline tracking logic
+   - Confirmation that auto-continue preservation preserves spec 001 Session 2026-05-04 behavior
+   - Verification that no signature changes break existing contracts
+   - Confirmation that error message preservation is additive-only
+   - Approval of test targets and evidence expectations
+
+2. **Hardening-Gate Sign-Off** (Human Step): Alon Fliess signs the hardening gate (`Reviewed By`, `Reviewed At` fields filled; `Post-Implementation Verification` may remain pending)
+
+3. **Implementation Start** (After Gate Sign-Off): Tasks T029-T042 can proceed once gate is signed. T029-T031 should start immediately (setup/documentation/gate creation), followed by T032-T036 (detector implementation), T037-T040 (test fixtures), T041 (integration), T042 (validation)
+
+4. **Iteration 002 Planning** (After Iteration 001 Closure): Will create hardening gate for pause-and-confirm behavior, parameter handling, visibility output, and corpus seeding (T043-T057)
+
+---
+
+## Runtime Evidence Summary
+
+✅ All iteration 001 planning artifacts created:
+- Iteration plan with 14 tasks, 10 story_points, clear deferred scope
+- Planning-time hardening gate with nine-column schema, five canonical + five feature-specific concerns
+- Feature-level reconciliation pointing plan/tasks to iteration 001 gate artifact
+- Clear pre-implementation review checklist for strongest-available class
+- Implementation and authorization blocked pending gate sign-off (governance boundary intact)
+
+Artifacts are ready for human review and sign-off.
+
+
+---
+date: 2026-05-11
+feature: 011-specrew-start-conditional-pause
+iteration: 001
+reviewed_by: Alon Fliess
+event_type: hardening-gate-sign-off
+---
+
+# Feature 011 Iteration 001 Hardening-Gate Sign-Off and Implementation Authorization
+
+## Approvals Recorded
+
+### 1. Hardening-Gate Sign-Off
+**Recorded At**: 2026-05-11  
+**Signed Off By**: Alon Fliess  
+**Approval Ref**: — (exception documented)  
+**File**: `specs/011-specrew-start-conditional-pause/iterations/001/quality/hardening-gate.md`
+
+**Sign-Off Statement**:
+"I sign off on the iteration 001 pre-implementation hardening gate at file:///C:/Dev/Specrew/specs/011-specrew-start-conditional-pause/iterations/001/quality/hardening-gate.md. The five canonical concerns are present in the required order with honest pre-implementation evaluations for the detector + baseline + auto-continue-preservation slice, the five feature-specific concerns follow (detector-correctness, baseline-tracking-integrity, auto-continue-preservation, signature-stability, us1-integration-correctness), the nine-column schema is in use, the iter-005-of-008 richer pre-sign-off convention is applied, auto-continue-preservation is correctly marked Blocking: true because regression would break spec 001 Session 2026-05-04, and the validator passes."
+
+**Verification**:
+- Five canonical concerns verified: security-surface, error-handling-expectations, retry-idempotency-requirements, test-integrity-targets, operational-resilience-concerns
+- Five feature-specific concerns verified: detector-correctness, baseline-tracking-integrity, auto-continue-preservation, signature-stability, us1-integration-correctness
+- Nine-column schema confirmed in use (Concern | Category | Status | Evidence Basis | Runtime Evidence Status | Expected Controls | Blocking | Rationale | Approval)
+- Richer pre-sign-off convention applied: Overall Verdict, Approval Ref, Reviewed By, Reviewed At, Post-Implementation Verification, Verified At fields present
+- Auto-continue-preservation correctly marked `Blocking: true` with explicit justification linking to spec 001 Session 2026-05-04
+- US1 integration marked `Blocking: true` as core MVP scope
+- Validator confirmed passing
+
+### 2. Implementation Authorization
+**Recorded At**: 2026-05-11  
+**Authorized By**: Alon Fliess  
+**File**: `specs/011-specrew-start-conditional-pause/iterations/001/plan.md`
+
+**Authorization Statement**:
+"I authorize feature 011 iteration 001 (Phase 1 + Phase 2 foundational slice — change detector implementation, baseline commit hash tracking via YAML frontmatter, auto-continue preservation, signature stability verification, error-message preservation, tasks T029 through T042, 10 story points) implementation, review, retrospective, and closeout."
+
+**Authorized Scope**:
+- Phase 1 (Setup & Infrastructure):
+  - Baseline documentation (T029)
+  - Test fixture scaffolding (T030)
+  - Hardening-gate planning artifact (T031)
+
+- Phase 2 (Detector Logic, Baseline Tracking, Preservation):
+  - Change detector implementation via `git diff --name-only` (T032)
+  - Baseline commit hash tracking in YAML frontmatter (T033)
+  - Auto-continue preservation for routine resumes (T034)
+  - Signature stability verification (T035)
+  - Error-message preservation (T036)
+
+- User Story 1 (Tests & Validation):
+  - Test fixture scaffolding for routine resume scenarios (T037)
+  - Detector accuracy assertions (T038)
+  - Auto-continue preservation assertions (T039)
+  - Baseline tracking durability tests (T040)
+  - Integration of detector and baseline logic (T041)
+  - Full test suite validation (T042)
+
+**Deferred to Iteration 002**:
+- Pause-and-confirm directive injection (T043-T049)
+- Optional `-PostRestartDirective` parameter support (T050-T054)
+- Visibility output testing via scaffold-replay-path (T045)
+- Known-traps corpus seeding (T055)
+
+**Effort**: 10 story points
+
+## Artifact Truth Checks
+
+| Artifact | Field | Expected | Verified | Status |
+| --- | --- | --- | --- | --- |
+| hardening-gate.md | Reviewed By | Alon Fliess | Alon Fliess | ✅ |
+| hardening-gate.md | Reviewed At | 2026-05-11 | 2026-05-11 | ✅ |
+| hardening-gate.md | Approval Ref | — | — | ✅ |
+| hardening-gate.md | Overall Verdict | ready | ready | ✅ |
+| hardening-gate.md | Post-Implementation Verification | ⏳ PENDING | ⏳ PENDING | ✅ |
+| hardening-gate.md | Sign-Off Evidence | Hardening-gate sign-off statement verbatim | Present | ✅ |
+| hardening-gate.md | Hardening-Gate Status | SIGNED OFF | Verified SIGNED OFF | ✅ |
+| plan.md | Status | approved-for-implementation | approved-for-implementation | ✅ |
+| plan.md | Capacity | 10/20 story_points | 10/20 story_points | ✅ |
+| plan.md | Hardening-Gate Sign-Off | 2026-05-11 by Alon Fliess | Present | ✅ |
+| plan.md | Implementation Authorization | 2026-05-11 | Present | ✅ |
+| plan.md | Implementation Approval Verdict | HARDENING-GATE SIGNED OFF AND IMPLEMENTATION AUTHORIZED | Verified | ✅ |
+
+## Notes
+
+- Richer pre-sign-off schema convention (iter-005-of-008) applied consistently across both hardening-gate.md and plan.md
+- Approval Ref field set to — (dash) as per governance exception for pre-implementation human approvals where no decision ledger entry is required
+- Implementation authorization explicitly grants activities: implementation, review, retrospective, and closeout
+- Post-implementation verification remains pending until iteration 001 implementation and testing complete
+- Feature-specific concern count accurate: five concerns documented with blocking status correctly applied to auto-continue-preservation and us1-integration-correctness
+- All dates recorded at ISO date precision: 2026-05-11
+- Implementation has not started; approval records pre-implementation state only
+
+## Governance Validation
+
+- ✅ Hardening-gate artifact truth validated: five canonical concerns present in order, five feature-specific concerns correct, nine-column schema in use
+- ✅ Richer pre-sign-off convention applied: Overall Verdict ready, Reviewed By and Reviewed At populated, Post-Implementation Verification pending
+- ✅ Blocking-status rationale explicit: auto-continue-preservation marked blocking with reference to spec 001 Session 2026-05-04
+- ✅ Implementation authorization scope truthful: Phase 1 + Phase 2 foundational slice named explicitly with task range T029-T042
+- ✅ Deferred work explicitly listed in plan.md with target iteration 002
+- ✅ Approval boundary honored: planning-level approval distinct from hardening-gate-triggered implementation authorization
+
+---
+
+**Recorded By**: Reviewer (approvals recorded from Alon Fliess request)  
+**Recorded At**: 2026-05-11  
+**Gateway Status**: Both artifacts updated successfully. Implementation authorization complete.
+
+
+# Spec Steward Pre-Plan Validation Evidence — Feature 011
+
+**Feature**: 011-specrew-start-conditional-pause  
+**Spec Status**: Draft  
+**Created**: 2026-05-11  
+**Validation Date**: 2026-05-11T04:15:00Z  
+**Validator**: Spec Steward (Copilot CLI)  
+**Verdict**: ✅ **READY FOR PLANNING** with one recommended clarification documented.
+
+---
+
+## Validation Findings
+
+### 1. Explicit Requirement Statements ✅ Present
+
+**Count:**
+- 10 Functional Requirements (FR-001 through FR-010)
+- 6 Traceability & Governance Requirements (TG-001 through TG-006)
+- 6 Success Criteria (SC-001 through SC-006)
+- 3 User Stories with Priority levels (P1, P1, P2)
+- Edge cases documented
+- Clarifications section (mandatory for pre-plan gate)
+
+**Actionability Assessment**: All FRs are explicit, measurable, and tied to specific user scenarios. Requirements clearly describe:
+- Input: `specrew-start.ps1` parameters and Git state
+- Processing: Change detection logic, baseline tracking, directive injection
+- Output: Regenerated `.specrew/last-start-prompt.md` with specific formatting
+
+**Status**: ✅ Specification meets the mandatory requirement for explicit, actionable statements ready for planning.
+
+---
+
+### 2. Blocking Ambiguities Check
+
+#### Ambiguity A: FR-010 Test Coverage Scope and Iteration Allocation (CLARIFIED)
+**Issue**: FR-010 requires integration tests that exercise "the detector with committed changes" and "auto-continue behavior preserved." These appear in both Iteration 001 (detector + baseline + auto-continue) and Iteration 002 (pause-and-confirm + visibility).
+
+**Analysis**:
+- FR-010 lists three required test scenarios:
+  1. Detector with changes → pause-and-confirm injected (requires FR-003 from Iter 002)
+  2. Detector with no changes → auto-continue preserved (requires FR-004 from Iter 001)
+  3. Parameter prepending test (requires FR-005 from Iter 002)
+  4. All visibility tested via scaffold-replay-path (requires FR-009 from Iter 002)
+
+- SC-006 specifies one comprehensive end-to-end test exercising "all core paths (baseline tracking, change detection, pause-and-confirm rendering)" — this requires FR-001, FR-002, FR-003, FR-004, FR-009 to be fully implemented.
+
+**Resolution**: The iteration split is sound:
+- **Iteration 001** can include **sanity-check integration tests** for FR-001/FR-002/FR-004 (detector exists, baseline tracking works, auto-continue path is not broken)
+- **Iteration 002** includes **full FR-010 test suite** with all three FR-010 test scenarios PLUS SC-006 end-to-end, since all FRs will be implemented
+
+**User Guidance Alignment**: Preserved as-is. No change needed. Iteration 001 can have baseline-level test coverage; Iteration 002 delivers comprehensive FR-010 suite.
+
+**Verdict on Ambiguity A**: ✅ **CLARIFIED (no spec change needed)** — The spec supports both sanity testing in Iter 001 and comprehensive FR-010 testing in Iter 002.
+
+---
+
+#### Ambiguity B: Known-Traps Corpus Seeding Task Allocation (CLARIFIED)
+**Issue**: FR-008 requires that "when this feature's plan.md is created, the feature plan MUST explicitly note...and assign a task (TR-*) to seed this corpus entry during the feature lifecycle."
+
+**Analysis**: This is phrased as a **mandatory content requirement for plan.md**, not a question about whether the seeding is Iter 001 or Iter 002 work.
+
+- The spec is clear: FR-008 requires explicit task assignment in plan.md
+- The spec says "seeding...during the feature lifecycle" (not bounded to a specific iteration)
+- FR-008 explicitly lists the corpus entry content that must be seeded
+
+**Resolution**: Planner will include a specific task (TR-*) in plan.md that seeds `.specrew/quality/known-traps.md` with the "auto-handoff bypass when session-loaded files change" pattern. The task will likely be in Iteration 002 (after Iteration 001 completes and the pattern is demonstrated), but the requirement is that **plan.md explicitly names it as a closure criterion**.
+
+**Verdict on Ambiguity B**: ✅ **CLARIFIED (no spec change needed)** — Spec correctly delegates the task definition and sequencing to planning phase. Planner will decide whether seeding happens in Iter 001 or Iter 002 based on readiness.
+
+---
+
+#### Ambiguity C: Session-Loaded File Path List Completeness (VERIFIED)
+**Issue**: FR-001 and the Clarifications section list specific paths. Are all paths covered?
+
+**Analysis of Listed Paths**:
+- `.github/agents/*` — behavioral configuration files
+- `.github/copilot-instructions.md` — top-level instruction override
+- `extensions/specrew-speckit/squad-templates/coordinator/*` — built-in Squad coordinator templates
+- `.specify/extensions/specrew-speckit/squad-templates/coordinator/*` — user-override coordinator templates
+- `.squad/agents/*/charter.md` — individual agent charters
+
+**Verification**: The clarification section (Q: "What paths are considered session-loaded?") explicitly provides the definitive list and includes all documented session-restart-requiring files in the codebase.
+
+**Verdict on Ambiguity C**: ✅ **VERIFIED** — Path list is exhaustive and documented.
+
+---
+
+### 3. Iteration Split Analysis
+
+**Proposed Split** (from user guidance):
+- **Iteration 001**: FR-001, FR-002, FR-004, FR-006, FR-007 (detector + baseline + auto-continue preservation)
+- **Iteration 002**: FR-003, FR-005, FR-008, FR-009, FR-010 (pause-and-confirm + parameter + visibility + tests + corpus)
+
+**Dependency Graph**:
+```
+FR-001 (Detector) ──┐
+FR-002 (Baseline) ──┤──> FR-004 (Auto-Continue, Iter 001)
+                     │
+                     ├──> FR-003 (Pause, Iter 002) [depends on Iter 001]
+                     │
+                     ├──> FR-009 (Visibility, Iter 002) [depends on Iter 001 + FR-003]
+                     │
+                     └──> FR-010 (Tests, Iter 002) [depends on all]
+
+FR-005 (Parameter, Iter 002) — independent
+FR-006 (No Signature Change, Iter 001) — property of Iter 001
+FR-007 (Error Messages, Iter 001) — property of Iter 001
+FR-008 (Corpus Seeding, Iter 002) — property of Iter 002
+```
+
+**Cleanness Assessment**:
+- ✅ **Iter 001 is independently deliverable**: Detector works, baseline tracked, auto-continue verified not broken.
+- ✅ **Iter 002 builds cleanly on Iter 001**: All Iter 002 work depends on Iter 001 being complete.
+- ✅ **Test coverage is sensible**: Iter 002 includes comprehensive FR-010 suite and SC-006 end-to-end after all features are implemented.
+- ✅ **Governance alignment**: Known-traps corpus seeding (FR-008) is grouped with other "new feature visibility" work (FR-009, FR-010).
+
+**Verdict on Iteration Split**: ✅ **CLEAN AND APPROVED** — The split preserves dependency order, allows Iteration 001 to be independently reviewable, and groups related Iteration 002 work logically.
+
+---
+
+## Known Traps Checklist
+
+Checked feature 011 spec against known governance traps from `.specrew/quality/known-traps.md`:
+
+1. **per-iteration-scaffolding-without-authorization** (Row 14): ✅ Not applicable — this is spec validation, not scaffolding. Authorization has already been recorded in `.squad/decisions.md` (Spec Steward: Feature 011 Lifecycle Opening).
+
+2. **inferred-approval-evidence-reuse** (Row 8): ✅ Not applicable — this feature has no hardening gate, hence no approval evidence to reuse.
+
+3. **missing-canonical-concerns** (Row 13): ✅ Not applicable — this feature has no hardening-gate scope, hence no canonical concerns.
+
+4. **pre-sign-off-schema-convention-drift** (Row 9): ✅ Not applicable — no hardening gate in scope.
+
+5. **validation-lane-concern-scope-drift** (Row 10): ✅ Not applicable — no hardening gate in scope.
+
+**Trap Reapplication Summary**: No trap violations detected. Feature 011 scope (detector implementation + integration tests) does not trigger governance traps documented in the corpus.
+
+---
+
+## Specification Closure & Readiness Summary
+
+### Three Required Checks for Pre-Plan Gate
+
+1. **✅ Explicit Requirement Statements**: 10 FRs, 6 TGs, 6 SCs, all tied to user stories and measurable outcomes.
+
+2. **✅ Blocking Ambiguities**: Three potential ambiguities examined and clarified:
+   - FR-010 test scope: **Iteration 001 sanity tests + Iteration 002 comprehensive suite** — supported by spec
+   - FR-008 task assignment: **Plan.md will explicitly name it** — spec correctly delegates to planning
+   - Session-loaded paths: **Definitive list provided in Clarifications** — exhaustive and verified
+
+3. **✅ Iteration Split Soundness**: Proposed 001/002 split is clean, preserves dependency order, and allows independent review of Iteration 001.
+
+### Recommended Adjustments to Iteration Split
+
+**None recommended.** The user-provided split (Iter 001: detector/baseline/auto-continue; Iter 002: pause/parameter/visibility/tests/corpus) is optimal:
+- Maximizes independent review surface for Iter 001
+- Groups related features in Iter 002
+- Preserves all dependency order
+- Allows Iter 001 to have sanity-level test coverage and Iter 002 to have comprehensive coverage
+
+---
+
+## Pre-Plan Gate Verdict
+
+**✅ READY FOR PLANNING**
+
+**Status**: Feature 011 specification is sufficiently clear, actionable, and unambiguous to proceed to planning phase.
+
+**Rationale**:
+- Explicit requirement coverage: 10 FRs with measurable acceptance scenarios
+- Ambiguities resolved: Three potential issues examined and documented as spec-supported or delegable to planning
+- Iteration split approved: Clean dependency order, no cross-iteration leakage, independent review surface
+- Governance alignment: Spec respects known traps, clarification section addresses foreseeable questions, relationships to prior specs (001, 005) are documented
+
+**Next Action**: Proceed to `/speckit.plan` to generate implementation plan artifacts.
+
+---
+
+## Sign-Off
+
+**Spec Steward**: Copilot CLI (via Copilot IDE)  
+**Validation Timestamp**: 2026-05-11T04:15:00Z  
+**Spec Audience**: Planner (for plan.md generation)  
+**Artifact Chain**: `specs/011-specrew-start-conditional-pause/spec.md` → plan.md → tasks.md → iterations/{001,002}
+
+---
+
+
+# Spec Steward Clarification: Feature 011 (Conditional Pause on specrew-start)
+
+**Session**: Alon Fliess requested Spec Steward clarification on 2026-05-11  
+**Spec**: `specs/011-specrew-start-conditional-pause/spec.md`  
+**Status**: Completed — spec updated to planning-ready state  
+**Clarifications Applied**: 4 authorized updates directly integrated
+
+## Authorized Updates Applied
+
+### 1. FR-002 Baseline Tracking Format Tightened
+- **Change**: Specified exact storage format in `.specrew/last-start-prompt.md`
+- **Detail**: Added frontmatter field requirement: `baseline_commit_hash: <40-character git SHA>`
+- **Rationale**: Removes ambiguity about "commit timestamp or hash" by requiring exact 40-char Git SHA format
+- **Verification**: Line 103-107 updated
+
+### 2. Session-Loaded Charter Paths Tightened
+- **Change**: Replaced all generic `charter.md` references with `.squad/agents/*/charter.md`
+- **Locations Updated**:
+  - Line 12: Problem statement example (`.squad/agents/*/charter.md`)
+  - Line 47: User Story 1 acceptance scenario
+  - Line 64: User Story 2 acceptance scenario  
+  - Line 100: FR-001 session-loaded paths list
+  - Line 154: Key Entities definition
+  - Line 183: Clarifications section
+- **Rationale**: Tightens scope to SQUAD agents only, excluding other project-level charter files
+- **Impact**: All downstream planning and implementation tasks will use precise path scoping
+
+### 3. SC-006 Success Criteria Made Deterministic
+- **Change**: Converted from vague "reproduces friction-reduced workflow" to explicit test scenario
+- **Detail**: Specifies reproducible end-to-end test with 7 discrete steps:
+  - (a) Clean baseline with recorded `baseline_commit_hash`
+  - (b) Commit session-loaded file change
+  - (c) Run `specrew-start.ps1`
+  - (d) Verify PAUSE-AND-CONFIRM directive injected with changed file
+  - (e) Verify scaffold-replay-path visibility assertions
+  - (f) Simulate user confirmation
+  - (g) Confirm coordinator resumes correctly
+- **Verification**: Line 170 updated
+- **Impact**: Enables automated test case generation and clear iteration acceptance criteria
+
+### 4. Approved Design Intent Preserved (No Changes Needed)
+- **Status**: Already correctly specified in spec
+- **Option 1 (always-pause)**: Explicitly rejected in Problem Statement (line 25)
+- **Option 2 (conditional pause)**: Approved in FR-003 & FR-004
+- **Option 3 (optional -PostRestartDirective)**: Approved in FR-005 & User Story 3
+- **Evidence**: Lines 41, 108-114, 115-121 confirm design hierarchy
+
+## Governance Boundary Closure
+
+This clarification operates at the **spec-ready-for-planning boundary**:
+- ✅ All mandatory ambiguities resolved without human deferral
+- ✅ No blocking questions remained (baseline format, charter paths, test scenario all specified by user authorization)
+- ✅ Approved design options preserved exactly as instructed
+- ✅ Spec maintains all prior context (Problem Statement, Relationship to Existing Features, Non-Goals, Governance Alignment)
+
+## Delegation Routing
+
+- **Spec Steward**: Directly applied authorized updates per user request
+- **Next Lifecycle Role**: Planner will ingest updated spec and generate iteration 001 plan.md
+- **Planning Approval**: Planner will confirm coverage of FR-001 through FR-010 and TG-001 through TG-006 in task decomposition
+
+## Spec Integrity Checkpoint
+
+- ✅ No contradictions introduced between FR and Success Criteria
+- ✅ No vague terminology remaining in FRs (baseline format now deterministic)
+- ✅ Test-integrity corpus alignment confirmed (FR-003, FR-009, SC-004 reference scaffold-replay-path per spec 005 guidance)
+- ✅ Known-traps seeding requirement (FR-008) preserved and visible
+- ✅ All charter.md references narrowed to `.squad/agents/*/charter.md` consistently
+
+## Planning Readiness Signal
+
+**Status**: READY FOR PLANNING
+
+The spec is now deterministic, fully specified, and ready for `/speckit.plan` to generate the iteration 001 plan.md. No further clarification loops required.
+
