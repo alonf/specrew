@@ -33,6 +33,14 @@ These sections are the preferred presentation layer for the two required semanti
 - If formal vocabulary matters, move it to a follow-up sentence, a `Formal references` line, or a short footnote.
 - Prefer "You need to review the coordinator handoff wording" over "before-implement gate / hardening-gate sign-off / approval evidence reuse".
 
+## Readable Reference Rule
+
+- When authored narration mentions a feature, iteration, task, requirement, corpus row, or commit, pair the identifier with descriptive scope in the same sentence or immediately adjacent text.
+- A clearly grouped list may use one shared scope statement when the grouping is unmistakable. Example: `T003 and T004, the validator-and-contract foundation`.
+- Commit references need a why-it-matters phrase. Example: `070dd06, the implementation-authorization boundary commit`.
+- Exclude verbatim quoted material, code blocks, raw tool output, and Copilot-rendered tool-call result blocks from this readability rule.
+- These readable-reference expectations are additive. They do **not** replace the required progress-status and next-step semantics from feature 007.
+
 ## Required Content Rules
 
 ### 1. Completion
@@ -76,12 +84,29 @@ For small or read-only requests:
 - Still state both the current progress status and the recommended next step explicitly.
 - If nothing else is needed, say `no further action needed`.
 
+### 6. Descriptive References in Narration
+
+When narration includes three or more identifiers:
+
+- keep each identifier readable on first pass
+- use one shared scope statement only when the grouped list is unmistakable
+- prefer `feature 012, descriptive references in handoffs` over `feature 012`
+- prefer `FR-008 and FR-009, the non-blocking governance review requirements` over `FR-008 and FR-009`
+
+Acceptable narration example:
+
+> I finished **feature 012, descriptive references in handoffs**, and aligned **iteration 001, the readable-reference rollout** across **T003 and T004, the validator-and-contract foundation**.
+
+Unacceptable narration example:
+
+> I finished 012, 001, T003, T004, FR-008, and 070dd06.
+
 ## Examples
 
 ### Completion Example
 
 **What I just did**  
-Updated the coordinator handoff guidance and template for feature 007, including plain-language examples and blocker wording. I verified the new documents are present in the feature and extension paths.
+Updated **feature 012, descriptive references in handoffs**, and aligned **iteration 001, the readable-reference rollout** across the validator guidance and the coordinator template. I verified the new documents are present in the feature and extension paths.
 
 **Why I stopped**  
 This slice is complete for the approved iteration scope. No runtime validator work was started in this session.
@@ -92,7 +117,7 @@ Review the new handoff wording for clarity before Iteration 002 starts at `file:
 ### Blocked Example
 
 **What I just did**  
-I finished the documentation updates for the approved slice and recorded the iteration state.
+I finished the documentation updates for **feature 012, descriptive references in handoffs**, and recorded **iteration 001, the readable-reference rollout** state.
 
 **Why I stopped**  
 I stopped because implementation beyond this point needs human approval on the blocked review item, and continuing would bypass the active lifecycle gate.
@@ -102,7 +127,7 @@ Approve or reject the review finding on the handoff wording so implementation ca
 
 ### Lightweight Example
 
-I updated the handoff template and no code paths changed. Next step: review the wording for plain-language clarity at `file:///C:/Dev/Specrew/specs/001-specrew-product/contracts/coordinator-handoff-template.md`, or reply `no further action needed` if you accept it as-is.
+I updated **feature 012, descriptive references in handoffs**, in the shared handoff template and no code paths changed. Next step: review the wording for plain-language clarity at `file:///C:/Dev/Specrew/specs/001-specrew-product/contracts/coordinator-handoff-template.md`, or reply `no further action needed` if you accept it as-is.
 
 ### Plain-Language-First Example
 

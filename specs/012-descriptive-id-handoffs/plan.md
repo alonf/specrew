@@ -66,10 +66,23 @@ Add descriptive-reference behavior to the existing feature 007 handoff surfaces 
 
 | Required Quality Gate | Category | Evidence Source | Phase 1 Status |
 | --- | --- | --- | --- |
-| `constitution-pass` | `manual-evidence` | Constitution Check section in this plan plus `research.md` | `planned` |
-| `handoff-compatibility-review` | `manual-evidence` | `research.md` decisions and `contracts/descriptive-reference-handoff.md` preservation clauses | `planned` |
-| `governance-schema-validation` | `tooling` | `pwsh -NoProfile -ExecutionPolicy Bypass -File .\extensions\specrew-speckit\scripts\validate-governance.ps1 -ProjectPath .` | `planned` |
-| `handoff-governance-regression-baseline` | `tooling` | Existing commands documented in `extensions/specrew-speckit/governance/validation-lane.md` | `planned` |
+| `constitution-pass` | `manual-evidence` | Constitution Check section in this plan plus `research.md` | `recorded-2026-05-11` |
+| `handoff-compatibility-review` | `manual-evidence` | `research.md` decisions and `contracts/descriptive-reference-handoff.md` preservation clauses | `recorded-2026-05-11` |
+| `governance-schema-validation` | `tooling` | `pwsh -NoProfile -ExecutionPolicy Bypass -File .\extensions\specrew-speckit\scripts\validate-governance.ps1 -ProjectPath .` | `pass-2026-05-11` |
+| `handoff-governance-regression-baseline` | `tooling` | Existing commands documented in `extensions/specrew-speckit/governance/validation-lane.md` | `pass-2026-05-11` |
+
+### Pre-Implementation Baseline Result
+
+The approved Iteration `001`, readable-reference rollout baseline was recorded on **2026-05-11** before any implementation edits.
+
+| Command | Result |
+| --- | --- |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File .\tests\integration\handoff-governance-jargon-response-test.ps1` | `PASS` |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File .\tests\integration\handoff-governance-plain-language-response-test.ps1` | `PASS` |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File .\tests\integration\handoff-governance-review-file-reference-test.ps1` | `PASS` |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File .\extensions\specrew-speckit\scripts\validate-governance.ps1 -ProjectPath .` | `PASS` |
+
+**Boundary Review Result**: The Iteration `001`, readable-reference rollout boundary remains locked to authored user-facing narration and stop messages only, stays non-blocking, and keeps Iteration `002`, replay-and-corpus proof work deferred.
 
 ### Not-Applicable Dimensions and Rationale
 

@@ -64,6 +64,17 @@ Example next step:
 
 - State the open risk in **Why I stopped** and recommend the next safe implementation, review, or verification action.
 
+### 6. Readable Reference Decision
+
+**If** the handoff mentions three or more feature, iteration, task, requirement, corpus, or commit references  
+**Then**
+
+1. Give each identifier descriptive scope in the same sentence or immediately adjacent text.
+2. Use one shared scope statement only when the grouped list is unmistakable.
+3. Explain why each commit reference matters to the stop message.
+4. Keep quoted material, code blocks, raw tool output, and Copilot-rendered tool-call result blocks outside this readability check.
+5. Preserve the existing progress-status, blocker/risk, and next-step semantics while adding the descriptive-reference wording.
+
 ## Handoff Semantics Mapping
 
 | Scenario | What I just did | Why I stopped | What I need from you |
@@ -79,17 +90,28 @@ Example next step:
 - Start each section with human-readable meaning first.
 - Move formal terms such as gate names, schema labels, or approval labels after the plain-language sentence.
 - If three or more governance acronyms or field names would appear in the lead, rewrite before sending.
+- If three or more identifiers would appear in the handoff, add descriptive scope before sending.
 
 ## Escalation Examples
 
 ### Review Needed
 
-- **What I just did**: Updated the handoff docs for feature 007 and aligned the template with the prompt guidance.
+- **What I just did**: Updated **feature 012, descriptive references in handoffs**, and aligned **iteration 001, the readable-reference rollout** template with the prompt guidance.
 - **Why I stopped**: The approved slice is implemented, but the wording still needs a human review pass.
 - **What I need from you**: Review the wording in the prompt, template, and Squad agent section for clarity and consistency. Start with `file:///C:/Dev/Specrew/specs/001-specrew-product/contracts/coordinator-handoff-template.md`.
 
 ### Verification Gap
 
-- **What I just did**: Finished the documentation changes for the iteration.
+- **What I just did**: Finished the documentation changes for **iteration 001, the readable-reference rollout**.
 - **Why I stopped**: I did not run runtime validator coverage because that work belongs to Iteration 002, so rollout confidence is limited to document review in this slice.
 - **What I need from you**: Confirm this iteration should stop at the documentation boundary and carry runtime validation into Iteration 002.
+
+### Readable Stop-Message Example
+
+Acceptable:
+
+> I finished **feature 012, descriptive references in handoffs**, and completed **T009 and T010, the stop-message guidance updates**. I stopped before **070dd06, the implementation-authorization boundary commit**, is followed by the restart-triggered Squad startup guidance edits.
+
+Unacceptable:
+
+> I finished 012, 001, T009, T010, and 070dd06.

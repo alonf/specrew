@@ -225,7 +225,7 @@ function Test-MentionsBlockerOrRisk {
         return $false
     }
 
-    return $Text -match '(?i)\b(blocked|blocking|failed|skipped|risk|deferred|pending)\b'
+    return $Text -match '(?i)\b(blocked|failed|skipped|risk|deferred|pending)\b|(?<!non-)blocking\b'
 }
 
 function Test-PlainlyDisclosesBlockerOrRisk {
@@ -286,6 +286,219 @@ function Test-MissingReviewFileReference {
     return Test-HasWindowsAbsolutePath -Text $Text
 }
 
+function Get-AuthoredParagraphs {
+    param([AllowEmptyString()][string]$Text)
+
+    if ([string]::IsNullOrWhiteSpace($Text)) {
+        return @()
+    }
+
+    $headingPattern = '^(?:#{1,6}\s*)?(?:\*\*)?(What I just did|Why I stopped|What I need from you)(?:\*\*)?\s*$'
+    $toolOutputPattern = '^(?:status:|findings:|summary:|PASS:|FAIL:|<command\b)'
+    $paragraphs = New-Object System.Collections.Generic.List[string]
+    $currentLines = New-Object System.Collections.Generic.List[string]
+    $inCodeBlock = $false
+
+    foreach ($line in ($Text -split "`n")) {
+        $trimmed = $line.Trim()
+
+        if ($trimmed -match '^```') {
+            if ($currentLines.Count -gt 0) {
+                $paragraphs.Add(($currentLines -join ' ').Trim())
+                $currentLines.Clear()
+            }
+
+            $inCodeBlock = -not $inCodeBlock
+            continue
+        }
+
+        if ($inCodeBlock) {
+            continue
+        }
+
+        if ([string]::IsNullOrWhiteSpace($trimmed)) {
+            if ($currentLines.Count -gt 0) {
+                $paragraphs.Add(($currentLines -join ' ').Trim())
+                $currentLines.Clear()
+            }
+
+            continue
+        }
+
+        if ($trimmed -match $headingPattern -or $trimmed -match $toolOutputPattern -or $trimmed -match '^\s*>') {
+            if ($currentLines.Count -gt 0) {
+                $paragraphs.Add(($currentLines -join ' ').Trim())
+                $currentLines.Clear()
+            }
+
+            continue
+        }
+
+        $normalizedLine = $trimmed
+        $normalizedLine = $normalizedLine -replace '^(?:[-*+]\s+|\d+\.\s+)', ''
+        if (-not [string]::IsNullOrWhiteSpace($normalizedLine)) {
+            $currentLines.Add($normalizedLine.Trim())
+        }
+    }
+
+    if ($currentLines.Count -gt 0) {
+        $paragraphs.Add(($currentLines -join ' ').Trim())
+    }
+
+    return $paragraphs.ToArray()
+}
+
+function Get-ReferencePattern {
+    return '(?i)\b(?:feature\s+\d{3}|iteration\s+\d{3}|T\d{3}|FR-\d{3}|TG-[A-Za-z0-9-]+|(?:corpus\s+row|row)\s+\d+|[0-9a-f]{7,40}|0\d{2})\b'
+}
+
+function Get-ReferenceMatches {
+    param([AllowEmptyString()][string]$Text)
+
+    if ([string]::IsNullOrWhiteSpace($Text)) {
+        return @()
+    }
+
+    $matches = [regex]::Matches($Text, (Get-ReferencePattern))
+    $results = New-Object System.Collections.Generic.List[object]
+    foreach ($match in $matches) {
+        $results.Add([pscustomobject]@{
+                Value  = $match.Value
+                Index  = $match.Index
+                Length = $match.Length
+            })
+    }
+
+    return $results.ToArray()
+}
+
+function Test-HasMeaningfulDescriptor {
+    param([AllowEmptyString()][string]$Text)
+
+    if ([string]::IsNullOrWhiteSpace($Text)) {
+        return $false
+    }
+
+    $cleanText = $Text -replace '(?i)file:///[^\s\)`]+' , ' '
+    $cleanText = $cleanText -replace '(?i)\b[A-Z]:\\[^\s\)`]+', ' '
+    $cleanText = $cleanText -replace '[`*_#\[\]\(\),.:;!?]+', ' '
+    $words = @(
+        $cleanText -split '\s+' |
+        Where-Object { -not [string]::IsNullOrWhiteSpace($_) } |
+        ForEach-Object { $_.ToLowerInvariant() } |
+        Where-Object { $_ -match '^[a-z][a-z0-9-]*$' }
+    )
+
+    if ($words.Count -lt 2) {
+        return $false
+    }
+
+    $genericWords = @(
+        'a', 'an', 'and', 'are', 'as', 'at', 'be', 'before', 'being', 'by', 'complete', 'completed', 'confirm',
+        'current', 'did', 'evidence', 'for', 'from', 'gate', 'guidance', 'hardening', 'i', 'implementation',
+        'implemented', 'in', 'is', 'it', 'just', 'need', 'needs', 'next', 'of', 'on', 'or', 'pending', 'progress',
+        'recorded', 'response', 'review', 'reviewed', 'schema', 'sign', 'signed', 'status', 'step', 'stopped',
+        'that', 'the', 'this', 'to', 'updated', 'validator', 'verified', 'waiting', 'what', 'why', 'with', 'you'
+    )
+
+    $meaningfulWords = @($words | Where-Object { $genericWords -notcontains $_ })
+    return $meaningfulWords.Count -ge 2
+}
+
+function Add-DescribedReferenceStarts {
+    param(
+        [System.Collections.Generic.HashSet[int]]$DescribedStarts,
+        [string]$Paragraph,
+        [string]$GroupValue,
+        [int]$GroupStart
+    )
+
+    foreach ($referenceMatch in (Get-ReferenceMatches -Text $GroupValue)) {
+        [void]$DescribedStarts.Add($GroupStart + $referenceMatch.Index)
+    }
+}
+
+function Get-OpaqueReferenceCount {
+    param([AllowEmptyString()][string]$Paragraph)
+
+    if ([string]::IsNullOrWhiteSpace($Paragraph)) {
+        return 0
+    }
+
+    $workingParagraph = $Paragraph -replace '(?i)file:///[^\s\)`]+', ' '
+    $workingParagraph = $workingParagraph -replace '(?i)\b[A-Z]:\\[^\s\)`]+', ' '
+    $referenceMatches = @(Get-ReferenceMatches -Text $workingParagraph)
+    if ($referenceMatches.Count -lt 3) {
+        return 0
+    }
+
+    $describedStarts = [System.Collections.Generic.HashSet[int]]::new()
+    $referencePattern = Get-ReferencePattern
+    $separatorPattern = '(?:\s*(?:,|\band\b|\bor\b|\bthrough\b|\bto\b|[-–])\s*)'
+    $groupPattern = "(?<group>$referencePattern(?:$separatorPattern$referencePattern)*)"
+    $afterDescriptorPattern = "^(?<group>$referencePattern(?:$separatorPattern$referencePattern)*)\s*(?:,|:|—|–|-)\s*(?<desc>[^.;:`n]+)"
+    $beforeDescriptorPattern = '(?i)(?<desc>(?:the\s+)?[a-z][a-z-]*(?:\s+[a-z][a-z-]*){1,8})\s*(?:\(|for\s+|in\s+)$'
+
+    foreach ($referenceMatch in $referenceMatches) {
+        if ($describedStarts.Contains($referenceMatch.Index)) {
+            continue
+        }
+
+        $afterText = $workingParagraph.Substring([Math]::Min($referenceMatch.Index + $referenceMatch.Length, $workingParagraph.Length))
+        if ($afterText -match '^\s*(?:,|:|—|–|-)\s*(?<desc>[^.;:`n]+)' -and (Test-HasMeaningfulDescriptor -Text $Matches['desc'])) {
+            [void]$describedStarts.Add($referenceMatch.Index)
+            continue
+        }
+
+        $remainingText = $workingParagraph.Substring($referenceMatch.Index)
+        $afterGroupMatch = [regex]::Match($remainingText, $afterDescriptorPattern)
+        if ($afterGroupMatch.Success -and (Test-HasMeaningfulDescriptor -Text $afterGroupMatch.Groups['desc'].Value)) {
+            Add-DescribedReferenceStarts -DescribedStarts $describedStarts -Paragraph $workingParagraph -GroupValue $afterGroupMatch.Groups['group'].Value -GroupStart $referenceMatch.Index
+            continue
+        }
+
+        $prefixLength = [Math]::Min(80, $referenceMatch.Index)
+        $prefixStart = $referenceMatch.Index - $prefixLength
+        $beforeText = $workingParagraph.Substring($prefixStart, $prefixLength)
+        if ($beforeText -match $beforeDescriptorPattern -and (Test-HasMeaningfulDescriptor -Text $Matches['desc'])) {
+            $beforeGroupMatch = [regex]::Match($remainingText, "^(?<group>$referencePattern(?:$separatorPattern$referencePattern)*)")
+            if ($beforeGroupMatch.Success) {
+                Add-DescribedReferenceStarts -DescribedStarts $describedStarts -Paragraph $workingParagraph -GroupValue $beforeGroupMatch.Groups['group'].Value -GroupStart $referenceMatch.Index
+                continue
+            }
+
+            [void]$describedStarts.Add($referenceMatch.Index)
+        }
+    }
+
+    $describedValues = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::OrdinalIgnoreCase)
+    foreach ($referenceMatch in $referenceMatches) {
+        if ($describedStarts.Contains($referenceMatch.Index)) {
+            [void]$describedValues.Add($referenceMatch.Value)
+        }
+    }
+
+    foreach ($referenceMatch in $referenceMatches) {
+        if ($describedValues.Contains($referenceMatch.Value)) {
+            [void]$describedStarts.Add($referenceMatch.Index)
+        }
+    }
+
+    return @($referenceMatches | Where-Object { -not $describedStarts.Contains($_.Index) }).Count
+}
+
+function Test-HasOpaqueReferenceWarning {
+    param([AllowEmptyString()][string]$Text)
+
+    foreach ($paragraph in (Get-AuthoredParagraphs -Text $Text)) {
+        if ((Get-OpaqueReferenceCount -Paragraph $paragraph) -ge 3) {
+            return $true
+        }
+    }
+
+    return $false
+}
+
 $normalizedText = Get-NormalizedText -Text $ResponseText
 $warnings = New-Object System.Collections.Generic.List[string]
 
@@ -299,6 +512,10 @@ if (-not (Test-HasExplicitNextStep -Text $normalizedText)) {
 
 if (Test-MissingReviewFileReference -Text $normalizedText) {
     $warnings.Add('soft-warning.review-file-reference-format')
+}
+
+if (Test-HasOpaqueReferenceWarning -Text $normalizedText) {
+    $warnings.Add('soft-warning.opaque-numeric-references')
 }
 
 foreach ($section in (Get-HandoffSections -Text $normalizedText)) {
@@ -339,6 +556,10 @@ if ($warnings.Contains('soft-warning.hidden-blocker-or-risk')) {
 
 if ($warnings.Contains('soft-warning.review-file-reference-format')) {
     $summaryLines.Add('Include a file:/// URI with the absolute Windows path when requesting local file review.')
+}
+
+if ($warnings.Contains('soft-warning.opaque-numeric-references')) {
+    $summaryLines.Add('Add descriptive scope when three or more feature, iteration, task, requirement, corpus, or commit references appear in authored prose.')
 }
 
 if ($summaryLines.Count -eq 0) {
