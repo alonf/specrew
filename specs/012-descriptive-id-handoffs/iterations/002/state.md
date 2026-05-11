@@ -1,38 +1,38 @@
 # Iteration State: 002
 
 **Schema**: v1
-**Last Completed Task**: none
-**Tasks Remaining**: T012-T020
+**Last Completed Task**: T020
+**Tasks Remaining**: none
 **In Progress**: none
 **Baseline Ref**: commit 92385d3 (iteration 001 closeout boundary)
-**Updated**: 2026-05-12
-**Current Phase**: approved
-**Iteration Status**: Planning complete; hardening-gate signed off and implementation authorized; awaiting execution
+**Updated**: 2026-05-12T10:20:00Z
+**Current Phase**: executing
+**Iteration Status**: Implementation complete through the review-ready boundary; review has not started yet, and retrospective plus closeout remain pending
 
 ## Planning Status
 
 | Field | Value |
 | --- | --- |
-| **Overall Status** | Planning complete for the Iteration 002 replay-path integration, corpus seeding, quality follow-through, and documentation polish slice; approval boundary recorded |
-| **Planning Phase** | Complete — plan.md, state.md, drift-log.md, and the signed hardening-gate.md are ready for the execution handoff |
+| **Overall Status** | Implementation complete for the Iteration 002 replay-path integration, corpus seeding, quality follow-through, and documentation polish slice; the boundary is now review-ready |
+| **Planning Phase** | Complete — the approved plan stayed unchanged during implementation |
 | **Authorization Status** | Authorized — hardening-gate sign-off and implementation authorization recorded by Alon Fliess on 2026-05-12 |
-| **Implementation Status** | Not started — all tasks remain planned |
-| **Validation Status** | Approval-boundary governance validation and before-implement readiness checks are the active gate; no implementation validation evidence exists yet |
+| **Implementation Status** | Complete — tasks T012 through T020 are done on the current tree |
+| **Validation Status** | Replay lane, preserved regression lane, and `validate-governance.ps1 -ProjectPath .` are recorded as passing at the implementation boundary |
 | **Hardening Gate Verdict** | ready — planning-time artifact signed off by Alon Fliess on 2026-05-12 |
 
 ## Task Status Summary
 
 | Task | Title | Effort | Planned Status | Notes |
 | --- | --- | --- | --- | --- |
-| T012 | Create replay fixtures for authored prose warn/pass cases and excluded-surface coverage | 1 sp | planned | Seeds replay-path coverage for US3 |
-| T013 | Add authored-prose replay assertions that exercise the real governance review path | 1 sp | planned | Must prove the real authored-message path, not a stub |
-| T014 | Add excluded-surface replay assertions proving verbatim content stays out of scope | 1 sp | planned | Guards FR-006 / FR-009 boundary |
-| T015 | Seed descriptive-reference corpus examples and update validation-lane documentation | 1 sp | planned | Carries the known-traps and lane-documentation slice |
-| T016 | Record feature-level quality follow-through artifacts for replay coverage, feature 007 compatibility, and corpus reapplication | 1 sp | planned | Uses the pre-existing planning gate rather than recreating it |
-| T017 | Run the Iteration 002 replay lane and record low-noise governance evidence | 1 sp | planned | Primary replay-path verification boundary |
-| T018 | Polish `quickstart.md` and feature plan notes with the final Iteration 002 validation lane and closeout instructions | 0.5 sp | planned | Documentation polish only |
-| T019 | Run the full closeout lane and record final evidence in quickstart plus trap reapplication | 1 sp | planned | Final validation-lane recording |
-| T020 | Audit the final diff to confirm additive, non-blocking, authored-prose-only scope preservation | 0.5 sp | planned | Final planner audit |
+| T012 | Create replay fixtures for authored prose warn/pass cases and excluded-surface coverage | 1 sp | done | Warn/pass fixture manifests and replay text now live under `tests\integration\fixtures\descriptive-reference-*` |
+| T013 | Add authored-prose replay assertions that exercise the real governance review path | 1 sp | done | `tests\integration\descriptive-reference-authored-prose.ps1` replays fixtures through `handoff-governance-validator.ps1` and asserts on user-visible output |
+| T014 | Add excluded-surface replay assertions proving verbatim content stays out of scope | 1 sp | done | `tests\integration\descriptive-reference-excluded-surfaces.ps1` proves code, quote, raw-tool, and Copilot-rendered blocks stay excluded |
+| T015 | Seed descriptive-reference corpus examples and update validation-lane documentation | 1 sp | done | The `human-handoff-id-context` row is seeded and the validation lane now lists both replay scripts plus preserved regressions |
+| T016 | Record feature-level quality follow-through artifacts for replay coverage, feature 007 compatibility, and corpus reapplication | 1 sp | done | Feature-level `quality\hardening-gate.md` and `quality\trap-reapplication.md` record implementation evidence without claiming review |
+| T017 | Run the Iteration 002 replay lane and record low-noise governance evidence | 1 sp | done | Both replay scripts passed and their evidence is cited in the feature plan, quickstart, and quality artifacts |
+| T018 | Polish `quickstart.md` and feature plan notes with the final Iteration 002 validation lane and closeout instructions | 0.5 sp | done | Quickstart and plan now reflect the actual replay lane and review-ready boundary |
+| T019 | Run the full closeout lane and record final evidence in quickstart plus trap reapplication | 1 sp | done | The full implementation-boundary lane passed; evidence is recorded without claiming closeout completion |
+| T020 | Audit the final diff to confirm additive, non-blocking, authored-prose-only scope preservation | 0.5 sp | done | Final audit confirmed the slice stayed inside replay, corpus, quality follow-through, and documentation polish only |
 
 **Total Planned Effort**: 8 story_points  
 **Capacity**: 20 story_points  
@@ -51,10 +51,11 @@
 - **Planning Completion**: ✅ **COMPLETE** — plan.md, state.md, drift-log.md, and hardening-gate.md align to the approved Iteration 002 slice
 - **Hardening-Gate Sign-Off**: ✅ **SIGNED OFF** — `quality/hardening-gate.md` signed by Alon Fliess on 2026-05-12
 - **Implementation Authorization**: ✅ **AUTHORIZED** — Iteration 002 execution authorized by Alon Fliess on 2026-05-12
-- **Next Lifecycle Boundary**: ✅ **EXECUTION READY** — the next valid step is implementation start for `T012`-`T020`
+- **Implementation Boundary**: ✅ **RECORDED** — tasks `T012` through `T020` are complete on the current tree with validation evidence on disk
+- **Next Lifecycle Boundary**: ✅ **REVIEW READY** — the next valid step is review for the completed Iteration 002 implementation slice
 
 ## Next Action
 
-**Current State**: Iteration 002 planning is approved for execution. The slice remains bounded to `T012` through `T020`, the hardening gate is signed, and implementation authorization is recorded without starting work.
+**Current State**: Iteration 002 implementation is complete and stays bounded to `T012` through `T020`. Replay-path tests, corpus seeding, feature-level quality follow-through, and documentation polish are on disk, and the rule remains additive and non-blocking.
 
-**Required Next Action**: Hand off to the next implementation spawn to begin the approved `T012` through `T020` execution slice without widening scope beyond replay-path integration, corpus seeding, quality follow-through, and documentation polish.
+**Required Next Action**: Hand off to the Reviewer for the completed Iteration 002 slice without claiming retrospective or closeout completion yet.

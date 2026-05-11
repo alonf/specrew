@@ -119,7 +119,7 @@ Manual review:
 
 ## Step 4: Add Replay Coverage and Corpus Seeding (Iteration 002)
 
-**Planned files** (do not scaffold until implementation approval is given):
+**Delivered files** at the 2026-05-12 implementation boundary:
 
 - `tests/integration/descriptive-reference-*.ps1`
 - `tests/integration/fixtures/descriptive-reference-*/**`
@@ -135,28 +135,43 @@ Required outcomes:
 - pass fixtures must prove inline scope, shared scope, and excluded-surface handling
 - corpus seeding must stay aligned with the approved non-blocking review behavior
 
+**Implementation note**: Iteration 002 now uses fixture-backed replays that invoke `handoff-governance-validator.ps1` directly and assert on the validator's `status`, `findings`, and `summary` output. The `human-handoff-id-context` corpus row is seeded in `.specrew/quality/known-traps.md`, and feature-level follow-through artifacts now live under `specs/012-descriptive-id-handoffs/quality/`.
+
 ---
 
 ## Post-Implementation Validation Expectations
 
-Iteration 002 closeout should leave the handoff-governance lane with:
+The review-ready implementation boundary should leave the handoff-governance lane with:
 
 1. the existing three handoff-governance tests still passing
-2. the new descriptive-reference replay tests passing
-3. `validate-governance.ps1 -ProjectPath .` passing
-4. corpus/trap evidence recorded without converting the rule into a blocking gate
+2. the iteration 001 readable-reference narration and stop-message tests still passing
+3. the new descriptive-reference replay tests passing
+4. `validate-governance.ps1 -ProjectPath .` passing
+5. corpus/trap evidence recorded without converting the rule into a blocking gate
+
+```powershell
+pwsh -NoProfile -ExecutionPolicy Bypass -File .\tests\integration\handoff-governance-jargon-response-test.ps1
+pwsh -NoProfile -ExecutionPolicy Bypass -File .\tests\integration\handoff-governance-plain-language-response-test.ps1
+pwsh -NoProfile -ExecutionPolicy Bypass -File .\tests\integration\handoff-governance-review-file-reference-test.ps1
+pwsh -NoProfile -ExecutionPolicy Bypass -File .\tests\integration\handoff-governance-descriptive-narration-test.ps1
+pwsh -NoProfile -ExecutionPolicy Bypass -File .\tests\integration\handoff-governance-descriptive-stop-message-test.ps1
+pwsh -NoProfile -ExecutionPolicy Bypass -File .\tests\integration\descriptive-reference-authored-prose.ps1
+pwsh -NoProfile -ExecutionPolicy Bypass -File .\tests\integration\descriptive-reference-excluded-surfaces.ps1
+pwsh -NoProfile -ExecutionPolicy Bypass -File .\extensions\specrew-speckit\scripts\validate-governance.ps1 -ProjectPath .
+```
 
 ---
 
 ## Manual Review Gate
 
-Before closeout, a human reviewer should confirm:
+Before review, a human reviewer should confirm:
 
 1. numeric references in narration and stop messages are understandable on first read
 2. grouped lists use shared scope only when the grouping is unmistakable
 3. excluded verbatim surfaces are not being flagged
 4. existing feature 007 handoff expectations still read naturally
 5. the rule is still described as non-blocking everywhere it appears
+6. the replay scripts prove the real validator path rather than state-only assertions
 
 ---
 

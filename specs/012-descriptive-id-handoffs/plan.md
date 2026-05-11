@@ -138,6 +138,23 @@ The approved Iteration `001`, readable-reference rollout baseline was recorded o
 - Any broader governance refactor outside descriptive numeric references is out of scope.
 - Task generation and iteration artifact scaffolding remain deferred to later commands.
 
+### Iteration 002 Implementation Boundary Result
+
+On 2026-05-12, feature `012-descriptive-id-handoffs` completed the authorized Iteration `002`, replay-path proof slice up to the review-ready boundary. The new replay tests load fixture-backed narration and stop-message samples from `tests\integration\fixtures\descriptive-reference-*`, invoke `handoff-governance-validator.ps1` directly, and assert on the validator's user-visible `status`, `findings`, and `summary` output rather than checking state alone.
+
+| Command | Result |
+| --- | --- |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File .\tests\integration\descriptive-reference-authored-prose.ps1` | `PASS` |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File .\tests\integration\descriptive-reference-excluded-surfaces.ps1` | `PASS` |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File .\tests\integration\handoff-governance-jargon-response-test.ps1` | `PASS` |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File .\tests\integration\handoff-governance-plain-language-response-test.ps1` | `PASS` |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File .\tests\integration\handoff-governance-review-file-reference-test.ps1` | `PASS` |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File .\tests\integration\handoff-governance-descriptive-narration-test.ps1` | `PASS` |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File .\tests\integration\handoff-governance-descriptive-stop-message-test.ps1` | `PASS` |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File .\extensions\specrew-speckit\scripts\validate-governance.ps1 -ProjectPath .` | `PASS` |
+
+**Boundary Result**: The rule remains additive and non-blocking, the `human-handoff-id-context` corpus row is now seeded, and the preserved feature 007 plus iteration 001 regression tests still fire on their fixture cases. Review, retrospective, and closeout remain explicitly pending.
+
 ## Constitution Check
 
 *GATE: Must pass before Phase 0 research. Re-check after Phase 1 design.*
