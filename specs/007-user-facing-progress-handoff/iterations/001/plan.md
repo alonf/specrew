@@ -2,9 +2,11 @@
 
 **Schema**: v1  
 **Spec**: [../../spec.md](../../spec.md)  
-**Status**: executing  
+**Status**: reviewing  
 **Capacity**: 10/20 story_points  
-**Started**: 2026-05-11
+**Started**: 2026-05-11  
+**Implementation Complete**: 2026-05-11  
+**Review Complete**: 2026-05-11
 
 ## Summary
 
@@ -69,12 +71,12 @@ This is a truthful 10-point slice deliberately stopped before integration-test i
 
 | Task | Title | Requirement | Story | Effort | Owner | Owner File Globs | Status | Agent | Actual | Verdict |
 | ---- | ----- | ----------- | ----- | ------ | ----- | ---------------- | ------ | ----- | ------ | ------- |
-| T001 | Update coordinator prompt to reinforce the two-field handoff contract (current progress status + recommended next step) with explicit guidance for completion, blocker, and lightweight scenarios | FR-001, FR-002, FR-003, FR-004, FR-005, FR-006, FR-007, FR-012, US1, US2, US3 | Foundation | 3 | Coordinator-response maintainer | `extensions/specrew-speckit/prompts/coordinator-response.md`, `extensions/specrew-speckit/prompts/coordinator-final-response-guidance.md` | planned | Implementer | — | — |
-| T002 | Create handoff template artifact with three-section format examples ("What I just did" / "Why I stopped" / "What I need from you") for completion, blocked, partial, and lightweight patterns, with current-progress and next-step identification rules | FR-001, FR-005, FR-006, FR-012, US1, US3 | Foundation | 2 | Prompt maintainer | `specs/001-specrew-product/contracts/coordinator-handoff-template.md` | planned | Implementer | — | — |
-| T003 | Codify coordinator decision guidance for blockers, review needs, manual testing, verification gaps, and blocked-vs-continue logic in coordinator guidance document | FR-008, FR-009, FR-010, FR-011, US2 | Foundation | 2 | Coordinator-response maintainer | `extensions/specrew-speckit/prompts/coordinator-decision-guidance.md` | planned | Implementer | — | — |
-| T004 | Update .github/agents/squad.agent.md to formally codify the three-section handoff format as the standard Squad coordinator final-response structure, with note that touching this file requires session restart between iteration close and feature closeout | FR-013, FR-014, FR-015 | Foundation | 1 | Agent guidance maintainer | `.github/agents/squad.agent.md` | planned | Implementer | — | — |
-| T005 | Create comprehensive handoff governance checklist surface for coordinator-response validation (soft-warning logic, not hard-blocking) with reference to governance-acronym rule and plain-language-first principle | FR-016, Human-Handoff Trap Detection | Foundation | 1 | Governance checklist maintainer | `extensions/specrew-speckit/checklists/coordinator-handoff-governance.md` | planned | Implementer | — | — |
-| T006 | Document soft-validator concept, detection rule (three-or-more governance acronyms in lead of handoff section without plain-language paraphrase), and integration points for Iteration 002 implementation in soft-validator design document | FR-016, Human-Handoff Trap Detection | Foundation | 1 | Governance-validator maintainer | `extensions/specrew-speckit/design/soft-validator-handoff-governance.md` | planned | Implementer | — | — |
+| T001 | Update coordinator prompt to reinforce the two-field handoff contract (current progress status + recommended next step) with explicit guidance for completion, blocker, and lightweight scenarios | FR-001, FR-002, FR-003, FR-004, FR-005, FR-006, FR-007, FR-012, US1, US2, US3 | Foundation | 3 | Coordinator-response maintainer | `extensions/specrew-speckit/prompts/coordinator-response.md`, `extensions/specrew-speckit/prompts/coordinator-final-response-guidance.md` | done | Implementer | 3 | pass |
+| T002 | Create handoff template artifact with three-section format examples ("What I just did" / "Why I stopped" / "What I need from you") for completion, blocked, partial, and lightweight patterns, with current-progress and next-step identification rules | FR-001, FR-005, FR-006, FR-012, US1, US3 | Foundation | 2 | Prompt maintainer | `specs/001-specrew-product/contracts/coordinator-handoff-template.md` | done | Implementer | 2 | pass |
+| T003 | Codify coordinator decision guidance for blockers, review needs, manual testing, verification gaps, and blocked-vs-continue logic in coordinator guidance document | FR-008, FR-009, FR-010, FR-011, US2 | Foundation | 2 | Coordinator-response maintainer | `extensions/specrew-speckit/prompts/coordinator-decision-guidance.md` | done | Implementer | 2 | pass |
+| T004 | Update .github/agents/squad.agent.md to formally codify the three-section handoff format as the standard Squad coordinator final-response structure, with note that touching this file requires session restart between iteration close and feature closeout | FR-013, FR-014, FR-015 | Foundation | 1 | Agent guidance maintainer | `.github/agents/squad.agent.md` | done | Implementer | 1 | pass |
+| T005 | Create comprehensive handoff governance checklist surface for coordinator-response validation (soft-warning logic, not hard-blocking) with reference to governance-acronym rule and plain-language-first principle | FR-016, Human-Handoff Trap Detection | Foundation | 1 | Governance checklist maintainer | `extensions/specrew-speckit/checklists/coordinator-handoff-governance.md` | done | Implementer | 1 | pass |
+| T006 | Document soft-validator concept, detection rule (three-or-more governance acronyms in lead of handoff section without plain-language paraphrase), and integration points for Iteration 002 implementation in soft-validator design document | FR-016, Human-Handoff Trap Detection | Foundation | 1 | Governance-validator maintainer | `extensions/specrew-speckit/design/soft-validator-handoff-governance.md` | done | Implementer | 1 | pass |
 
 **Total Effort**: 10 story_points
 

@@ -19,6 +19,8 @@ Use this skill when planning an iteration that follows a completed phase-closure
 
 Iteration 002 of feature 005 validated this: all 7 tasks delivered at estimated effort (zero variance, zero rework) because Phase 1 was fully clarified before iteration started. No mid-execution discoveries of missing scope, broken assumptions, or hidden blockers emerged.
 
+**Updated with Iteration 001 (feature 007) evidence (2026-05-11)**: Documentation-heavy Foundation & Governance iteration delivered 10/10 story points at estimated effort with zero variance and zero rework. Phase 1 + Phase 2 scope (coordinator prompt, templates, decision guidance, Squad.agent.md codification, governance checklist, soft-validator design) was fully specified in planning artifacts with clear acceptance criteria for each task. No mid-execution scope creep or discovery surprises. This validates the pattern extends beyond Phase-N feature implementation to governance-infrastructure and prompt-engineering tasks where scope clarity is achievable.
+
 ## Patterns
 
 - **Precondition: Phase clarity is complete.** Before starting an iteration, verify the prior phase's specification, clarifications, and key assumptions are frozen and recorded. If the phase still has open questions, defer the iteration.
@@ -31,6 +33,7 @@ Iteration 002 of feature 005 validated this: all 7 tasks delivered at estimated 
 
 - Iteration 002 (feature 005, Phase 1): 18/20 story_points estimated, all 7 tasks delivered at budget with zero delta. Precondition was met: Phase 1 scope was fully clarified in the prior iteration, and no new clarifications emerged during implementation. Result: zero variance.
 - Iteration 001 (feature 005, Phase 1): This iteration established the quality-profile inference and lens-checklist infrastructure. Estimation for this iteration was less certain (higher variance) because Phase 0 clarity work was still underway. After closure, Phase 1 became stable and Iteration 002 estimation became accurate.
+- Iteration 001 (feature 007, Foundation & Governance): 10/10 story_points estimated, all 6 tasks (coordinator prompt, template, decision guidance, Squad.agent.md codification, governance checklist, soft-validator design) delivered at estimated effort with zero variance and zero rework. Scope was frozen in planning artifacts with clear acceptance criteria; no mid-execution discovery surprises. Demonstrates that scope-clarity pattern extends beyond feature implementation to governance and documentation infrastructure where boundaries can be equally clear.
 
 ## Anti-Patterns
 

@@ -58,15 +58,40 @@
 
 ---
 
+## Review Record
+
+| Field | Value |
+|-------|-------|
+| **Review Status** | ✅ **ACCEPTED** (2026-05-11) |
+| **Reviewed By** | Reviewer agent |
+| **Review Verdict** | accepted |
+| **Review Effect** | All six Phase 1 + Phase 2 tasks (T001–T006) passed review against spec requirements, iteration plan, and hardening-gate evidence. Implementation delivers coordinator prompt, handoff template, decision guidance, Squad.agent.md codification, governance checklist, and soft-validator concept design with honest boundary awareness. Governance validation passed without exception. No drift detected. |
+
+---
+
 ## Handoff Notes
 
-**To Implementer**: 
-- This iteration's approved implementation slice (T001–T006) is now complete
-- Soft-validator runtime implementation and integration tests (T007–T008) remain explicitly deferred to Iteration 002
-- `.github/agents/squad.agent.md` was modified, so startup-loaded guidance now requires an iteration-boundary commit plus session restart before closeout sign-off
-- Next lifecycle step is review/retro preparation, but iteration closeout must stop for restart before final sign-off in this session
+**To Retrospective Lead**: 
+- Iteration 001 review accepted with all six tasks passing
+- Session restart required before retro due to Squad.agent.md changes
+- Focus retro on: handoff-semantics absorption, plain-language-first principle effectiveness, session-restart discipline, and soft-validator concept clarity for Iteration 002 handoff
 
-**To Reviewers**:
-- Focus areas: handoff-semantics correctness, coordinator guidance clarity, soft-validator concept completeness, governance-acronym rule absorption, agent-guidance durability
-- Planning evidence provided in hardening-gate.md; runtime evidence deferred to Iteration 002
-- Known precedent: `human-handoff` trap row in `.specrew/quality/known-traps.md` (2026-05-10) is formally integrated into coordinator guidance and soft-validator design
+**To Iteration 002 Planner**:
+- Foundation & Governance phase complete and verified
+- Soft-validator design document (T006) provides clear implementation target
+- Governance checklist and coordinator guidance ready to support runtime validator integration
+- Before-implement checkpoint recommended to validate soft-validator concept understanding before implementation begins
+
+---
+
+## Retrospective Record
+
+| Field | Value |
+|-------|-------|
+| **Retrospective Status** | ✅ **COMPLETE** (2026-05-11) |
+| **Facilitated By** | Retro Facilitator |
+| **Retrospective Date** | 2026-05-11 |
+| **Key Findings** | Perfect estimation accuracy (10 sp delivered at 10 sp estimated, zero variance). Plain-language-first principle successfully absorbed into guidance artifacts. Zero rework required post-review. Strong boundary awareness between Foundation and Iteration 002 phases. Session-restart discipline documented and understood. |
+| **Improvement Actions** | (1) Session-restart discipline enforcement in Iteration 002 planning; (2) Soft-validator implementation clarity; (3) Handoff-contract durability validation sampling. |
+| **Calibration** | Maintain 20-point capacity baseline for Iteration 002. Gather empirical data from runtime work before adjusting. |
+| **Next Phase** | **CRITICAL**: Session restart required before Iteration 002 planning begins. Iteration 001 baseline must be committed; this session must end; fresh session must start to load updated Squad.agent.md guidance. |

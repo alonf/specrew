@@ -198,6 +198,26 @@ These clarifications resolve critical implementation ambiguities that would othe
 ## Next Steps
 
 1. Proceed to `/speckit.plan` to generate implementation plan artifacts
+
+## 2026-05-11-runtime-evidence-feature007-iter001-review
+### 2026-05-11T03:01:19+03:00: Runtime evidence - Feature 007 Iteration 001 review routing
+**By:** Squad (Coordinator)
+**Role / Work Item:** Reviewer - review iteration `specs/007-user-facing-progress-handoff/iterations/001`
+**Requested Agent:** claude
+**Actual Agent:** copilot
+**Model ID:** claude-sonnet-4.5
+**Status:** fallback
+**Fallback Reason:** preferred agent `claude` is not enabled in the delegated routing plan; routed through Copilot task execution
+
+## 2026-05-11-runtime-evidence-feature007-iter001-retro
+### 2026-05-11T03:01:19+03:00: Runtime evidence - Feature 007 Iteration 001 retrospective routing
+**By:** Squad (Coordinator)
+**Role / Work Item:** Retro Facilitator - retrospective for `specs/007-user-facing-progress-handoff/iterations/001`
+**Requested Agent:** copilot
+**Actual Agent:** copilot
+**Model ID:** claude-haiku-4.5
+**Status:** honored
+**Fallback Reason:** none
 2. Design versioned lens checklist Markdown table schema during planning
 3. Implement strongest-class routing policy with explicit override tracking
 4. Design hardening-gate approval workflow with human sign-off capture
@@ -4322,3 +4342,52 @@ Iteration 011 successfully delivered the technical fix for explicit-target valid
 - **Rationale**: Iteration 003 implementation and re-review are accepted; remaining work is closeout packaging before the final six-script committed-tree validation lane.
 - **Routing Evidence**: Retro Facilitator | requested=codex | actual=copilot | model=claude-sonnet-4.5 | status=fell-back | fallback=preferred agent 'codex' is not enabled
 
+## 2026-05-11T00:01:08Z — Delegated routing plan
+
+- **Enabled Agents**: copilot
+- **Independent Oversight Active**: False
+- **Roles**:
+  - Implementer | requested=copilot | actual=copilot | model=(platform default) | status=honored | fallback=(none)
+  - Spec Steward | requested=codex | actual=copilot | model=(platform default) | status=fell-back | fallback=preferred agent 'codex' is not enabled
+  - Planner | requested=claude | actual=copilot | model=(platform default) | status=fell-back | fallback=preferred agent 'claude' is not enabled
+  - Reviewer | requested=claude | actual=copilot | model=(platform default) | status=fell-back | fallback=preferred agent 'claude' is not enabled
+  - Retro Facilitator | requested=copilot | actual=copilot | model=(platform default) | status=honored | fallback=(none)
+
+## 2026-05-11T00:01:08Z — Routing evidence: Spec Steward
+
+- **Decision ID**: routing-evidence-113707fe9206
+- **Type**: routing-evidence
+- **Affected Requirement**: FR-043
+- **Affected Iteration**: (none)
+- **Approving Human**: (none)
+- **Recorded At**: 2026-05-11T00:01:08Z
+- **Next Action**: none
+- **Rationale**: Delegated lifecycle routing was applied for role 'Spec Steward'.
+
+- **Routing Evidence**: Spec Steward | requested=codex | actual=copilot | model=(platform default) | status=fell-back | fallback=preferred agent 'codex' is not enabled
+
+## 2026-05-11T00:01:08Z — Routing evidence: Planner
+
+- **Decision ID**: routing-evidence-4a906136b0a5
+- **Type**: routing-evidence
+- **Affected Requirement**: FR-043
+- **Affected Iteration**: (none)
+- **Approving Human**: (none)
+- **Recorded At**: 2026-05-11T00:01:08Z
+- **Next Action**: none
+- **Rationale**: Delegated lifecycle routing was applied for role 'Planner'.
+
+- **Routing Evidence**: Planner | requested=claude | actual=copilot | model=(platform default) | status=fell-back | fallback=preferred agent 'claude' is not enabled
+
+## 2026-05-11T00:01:09Z — Routing evidence: Reviewer
+
+- **Decision ID**: routing-evidence-561278482668
+- **Type**: routing-evidence
+- **Affected Requirement**: FR-043
+- **Affected Iteration**: (none)
+- **Approving Human**: (none)
+- **Recorded At**: 2026-05-11T00:01:09Z
+- **Next Action**: none
+- **Rationale**: Delegated lifecycle routing was applied for role 'Reviewer'.
+
+- **Routing Evidence**: Reviewer | requested=claude | actual=copilot | model=(platform default) | status=fell-back | fallback=preferred agent 'claude' is not enabled
