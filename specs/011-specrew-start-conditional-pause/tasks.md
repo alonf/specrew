@@ -2,6 +2,7 @@
 
 **Input**: Design documents from `C:\Dev\Specrew\specs\011-specrew-start-conditional-pause\`  
 **Prerequisites**: `plan.md`, `spec.md`  
+**Iteration 001 Planning Status**: ✅ Complete — hardening-gate.md artifact created at `specs/011-specrew-start-conditional-pause/iterations/001/quality/hardening-gate.md` by task T031  
 **Tests**: Deterministic PowerShell integration coverage is required because `spec.md` defines explicit validation scenarios for change detection, pause-and-confirm behavior, parameter handling, and auto-continue preservation.  
 **Scope Boundary**: Keep change detector focused on session-loaded paths only; treat auto-continue preservation as non-negotiable for routine resumes; scaffold-replay-path assertions required for visibility output (pause messages, file lists, custom directives) per test-integrity corpus guidance from specs/005-stack-aware-quality-bar.
 
@@ -21,7 +22,7 @@
 
 - [ ] T029 [Owner: Infrastructure maintainer] [Effort: S] Create baseline tracking structure documentation and examples showing `.specrew/last-start-prompt.md` YAML frontmatter with `baseline_commit_hash` field format in `specs/011-specrew-start-conditional-pause/quickstart.md` (Trace: FR-002)
 - [ ] T030 [P] [Owner: Test-infrastructure maintainer] [Effort: S] Create test fixture directory structure and template scaffolds in `tests/integration/fixtures/specrew-start-detector/` for change-detection test scenarios (no changes, with changes, bootstrap case) (Trace: FR-001, FR-002)
-- [ ] T031 [Owner: Quality governance maintainer] [Effort: S] Create planning-time hardening-gate.md artifact at `specs/011-specrew-start-conditional-pause/quality/hardening-gate.md` documenting Phase 1 quality concerns (detector accuracy, baseline tracking durability, auto-continue preservation, signature stability, error fidelity) with evidence expectations and pending sign-off structure; use richer pre-sign-off schema with Overall Verdict: `ready` and explicit pending fields per governance convention (Trace: FR-010)
+- [ ] T031 [Owner: Quality governance maintainer] [Effort: S] Create planning-time hardening-gate.md artifact at `specs/011-specrew-start-conditional-pause/iterations/001/quality/hardening-gate.md` documenting Phase 1 quality concerns (detector accuracy, baseline tracking durability, auto-continue preservation, signature stability, error-message preservation) with evidence expectations and pending sign-off structure; use richer pre-sign-off schema with Overall Verdict: `ready` and explicit pending fields per governance convention (Trace: FR-010)
 
 ---
 
