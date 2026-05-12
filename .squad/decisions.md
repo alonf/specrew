@@ -9338,3 +9338,39 @@ The spec is now deterministic, fully specified, and ready for `/speckit.plan` to
 **Model:** gpt-5.4
 **Assignment:** honored
 **Fallback Reason:** none
+
+## 2026-05-12T09:06:12Z — 2026-05-12-runtime-evidence-feature013-iter002-planning
+
+### 2026-05-12T00:00:00Z: Runtime evidence - Feature 013 Iteration 002 planning routing
+**By:** Squad (Coordinator)
+**Type:** runtime-evidence
+**Work Item:** Plan feature `013-validator-hardening` iteration `002`, the over-claim detection, approval-reuse detection, and bookkeeping-vs-behavior classifier slice.
+**Requested Agent:** claude
+**Actual Agent:** copilot
+**Model:** claude-haiku-4.5
+**Status:** fallback
+**Fallback Reason:** preferred agent 'claude' is not enabled
+
+## 2026-05-12T09:06:12Z — 2026-05-12-runtime-evidence-feature013-iter002-planning-repair
+
+### 2026-05-12T00:00:00Z: Runtime evidence - Feature 013 Iteration 002 planning repair routing
+**By:** Squad (Coordinator)
+**Type:** runtime-evidence
+**Work Item:** Repair feature `013-validator-hardening` iteration `002` planning scope after the initial scaffold invented an unauthorized future iteration.
+**Requested Agent:** claude
+**Actual Agent:** copilot
+**Model:** claude-haiku-4.5
+**Status:** fallback
+**Fallback Reason:** preferred agent 'claude' is not enabled
+
+## 2026-05-12T09:06:12Z — 2026-05-12-runtime-evidence-feature013-iter002-planning-repair2
+
+### 2026-05-12T00:00:00Z: Runtime evidence - Feature 013 Iteration 002 planning truthfulness repair routing
+**By:** Squad (Coordinator)
+**Type:** runtime-evidence
+**Work Item:** Finish the final truthfulness repair for feature `013-validator-hardening` iteration `002` planning artifacts by removing stale iteration-003 deferrals and stale T014-T026 scope text.
+**Requested Agent:** claude
+**Actual Agent:** copilot
+**Model:** claude-haiku-4.5
+**Status:** fallback
+**Fallback Reason:** preferred agent 'claude' is not enabled
