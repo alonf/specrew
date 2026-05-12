@@ -2,7 +2,8 @@
 
 **Feature Branch**: `014-handoff-format-scoping`  
 **Created**: 2026-05-12  
-**Status**: Draft  
+**Status**: Approved  
+**Approved By**: Alon Fliess (human developer) on 2026-05-12 to authorize before-plan readiness.  
 **Input**: User description: "Open the next feature from the source draft at `C:\Temp\handoff-format-scoping.md`, create it as `014-handoff-format-scoping`, and keep the source scope intact."
 
 ## Problem Statement
