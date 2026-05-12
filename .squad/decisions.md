@@ -1,3 +1,478 @@
+### 2026-05-11T22:18:50+03:00: User directive
+**By:** Alon Fliess (via Copilot)
+**What:** Keep using the plain-language three-section handoff format, apply descriptive scope alongside numeric IDs in Squad-authored narration and stop messages during feature 012 iteration 001, require the reviewer to verify the two blocking concerns explicitly, run the full six-script validation lane before closeout, do not claim iteration closeout unless validation is green and git status is clean except for `.claude/settings.local.json`, and treat edits to `.github/agents/squad.agent.md` or `.squad/templates/squad.agent.md` as a session-restart trigger that requires an iteration-boundary commit and restart before closeout sign-off.
+**Why:** User request — captured for team memory
+
+# Decision: Feature 012 Iteration 001 Pre-Implementation Hardening Gate Sign-Off
+
+**Decided**: 2026-05-11  
+**Decision Owner**: Alon Fliess  
+**Decision Type**: Feature Authorization  
+**Status**: Effective Immediately  
+
+## Decision Summary
+
+**The pre-implementation hardening gate for Feature 012 (Descriptive-ID-Handoffs) Iteration 001 is SIGNED OFF and implementation is AUTHORIZED to proceed.**
+
+Alon Fliess explicitly authorizes:
+- Iteration 001 implementation (T001–T011, 8 story points)
+- Iteration 001 review phase
+- Iteration 001 retrospective and closeout
+
+## Authorization Details
+
+**Authorizer**: Alon Fliess  
+**Review Class**: strongest-available  
+**Review Date**: 2026-05-11  
+
+**Authorization Statement (verbatim)**:  
+"I sign off on the iteration 001 pre-implementation hardening gate for feature 012 descriptive-id-handoffs and I authorize iteration 001 implementation, review, retrospective, and closeout."
+
+## Scope Locked
+
+This decision locks the scope of Iteration 001 to the planned 11 tasks (T001–T011):
+
+| Phase | Task Count | Tasks |
+| --- | --- | --- |
+| **Phase 1: Setup** | 2 | T001, T002 |
+| **Phase 2: Foundational** | 2 | T003, T004 |
+| **Phase 3: US1 (Narration)** | 4 | T005–T008 |
+| **Phase 4: US2 (Stop Messages)** | 3 | T009–T011 |
+
+Iteration 002 explicitly defers:
+- Replay-path integration tests (T012–T014)
+- Corpus seeding in `known-traps.md` (T015)
+- Quality artifacts and hardening-gate updates (T016)
+- Any blocking enforcement changes
+- Any expansion to tool-rendered output
+
+## Hardening Gate Assessment
+
+The hardening gate assessment (see `specs/012-descriptive-id-handoffs/iterations/001/quality/hardening-gate.md`) confirms:
+
+✓ All planning artifacts are complete  
+✓ All pre-implementation concerns have been addressed or explicitly deferred  
+✓ Feature 007 compatibility is preserved through regression testing  
+✓ All user-facing guidance surfaces (prompts, checklists, contracts, startup guidance) are aligned  
+✓ Worked examples are in scope for Iteration 001  
+✓ The rule remains non-blocking per FR-008 and FR-009  
+
+## Next Actions
+
+1. **T001** (Pre-implementation baseline): Run existing handoff-governance regression tests and record baseline
+2. **T002** (Boundary confirmation): Review feature boundary and two-iteration split  
+3. **T003–T004** (Foundational): Extend validator rule and update coordinator contract
+4. **T005–T011** (Parallel US1 and US2 work): Update guidance surfaces and validate
+
+## Records Updated
+
+- `specs/012-descriptive-id-handoffs/iterations/001/quality/hardening-gate.md`: Signed off by Alon Fliess
+- `specs/012-descriptive-id-handoffs/iterations/001/plan.md`: Status changed to `implementation-authorized`
+- `specs/012-descriptive-id-handoffs/iterations/001/state.md`: Current phase changed to `implementation-authorized`
+
+---
+
+**This decision is effective immediately. Implementation may begin with T001.**
+
+## 2026-05-11-reviewer-feature012-iter001-review
+### 2026-05-11T00:00:00Z: Reviewer decision - Iteration 001 review acceptance
+**By:** Reviewer (Copilot)
+**Type:** review-approval
+**What:** Accept Iteration 001 review boundary for feature `012-descriptive-id-handoffs`.
+**Why:** Both blocking concerns pass with runtime evidence (validator-detection-correctness via five integration tests, coordinator-prompt-rollout-fidelity via feature 007 regression suite preservation), all non-blocking concerns pass (guidance synchronization, bulk-list handling, tool-call scope exclusion), and iteration artifacts are truthful. T008 narration validation completed with new integration test script `tests\integration\handoff-governance-descriptive-narration-test.ps1`. All five handoff-governance tests passing. Readable-reference rule rolled out across validator, prompts, checklist, contract, and Squad startup surfaces with feature 007 compatibility preserved.
+**Evidence:** `specs\012-descriptive-id-handoffs\iterations\001\review.md`, `specs\012-descriptive-id-handoffs\iterations\001\plan.md`, `specs\012-descriptive-id-handoffs\iterations\001\state.md`, `tests\integration\handoff-governance-descriptive-narration-test.ps1`
+**Next Action:** Proceed to retrospective and closeout.
+
+### 2026-05-12T00:17:00+03:00: User directive
+**By:** Alon Fliess (via Copilot)
+**What:** For feature 012 iteration 002, scaffold and commit planning artifacts only; use the canonical state.md schema, draft the nine-column hardening gate with the specified blocking concerns, do not start implementation, do not scaffold iteration 003, and stop for fresh hardening-gate sign-off plus implementation authorization after planning.
+**Why:** User request — captured for team memory
+
+# Planner Decision Inbox: Feature 012 Iteration 002 Planning
+
+**Date**: 2026-05-12  
+**By**: Planner  
+**Type**: planning-governance
+
+## Decision
+
+Feature `012-descriptive-id-handoffs` iteration `002` planning keeps the canonical Iteration 001 `state.md` metadata schema and applies the richer pre-sign-off hardening-gate convention with pending review metadata.
+
+## Why It Matters
+
+- The older scaffolded `state.md` shape omits canonical metadata fields and previously caused validator failures.
+- The richer hardening-gate convention lets planning show `Overall Verdict: ready` while truthfully keeping review and runtime-evidence fields pending.
+- Iteration 002 therefore treats the iteration-local hardening gate as a planning artifact now, leaving task `T016` focused on post-implementation feature-level quality follow-through evidence instead of recreating the pre-implementation gate.
+
+## Expected Follow-Through
+
+- Reuse the canonical state metadata headings exactly in future feature 012 iteration artifacts.
+- Keep the five canonical hardening concerns first, then add feature-specific concerns in explicit, reviewed order.
+- Preserve the distinction between planning-time gate creation and post-implementation evidence recording when task tables mention quality artifacts.
+
+### 2026-05-12T01:24:17+03:00: User directive
+**By:** Alon Fliess (via Copilot)
+**What:** For feature 012 iteration 002, record hardening-gate sign-off with the requested metadata repair (`error-handling-expectations` Blocking=false), then proceed with implementation, review, retrospective, and closeout for tasks T012-T020 while preserving replay-path evidence, corpus seeding, regression checks, the six-script closeout lane, readable-reference narration, and startup-guidance restart handling.
+**Why:** User request — captured for team memory
+
+# Implementer Decision Inbox: Feature 012 iteration 002 execution
+
+## Decision
+
+For feature 012, descriptive references in handoffs, iteration 002, the replay proof uses fixture-backed invocations of `extensions\specrew-speckit\validators\handoff-governance-validator.ps1` as the real governance review path, and the new tests assert on the validator's user-visible `status`, `findings`, and `summary` output instead of checking runtime state alone.
+
+## Why
+
+The signed iteration hardening gate called out replay-path integrity as a blocking concern, and the active known-traps corpus already requires user-facing handoff coverage to exercise the actual replay surface. Encoding the replay path in fixture manifests also makes the proof auditable in feature-level quality artifacts and keeps the lane aligned with the seeded corpus row.
+
+# Reviewer Decision: Feature 012 Iteration 002 Review
+
+**Date**: 2026-05-12  
+**Reviewer**: Reviewer agent  
+**Scope**: Feature `012`, descriptive references in handoffs, iteration `002`, the replay-path proof slice
+
+## Decision
+
+Accept the iteration `002` review boundary.
+
+## Why
+
+1. The replay tests use the real handoff-governance validator path and assert on user-visible output (`status`, `findings`, and `summary`) instead of internal state alone.
+2. The `human-handoff-id-context` known-trap row is seeded in `.specrew\quality\known-traps.md` and aligned with the replay lane plus preserved regressions.
+3. The preserved feature `007`, user-facing progress handoff, regression trio and the iteration `001`, readable-reference, regression pair all passed on the current tree, so the descriptive-reference proof slice remains additive and non-blocking.
+
+## Evidence
+
+- `specs\012-descriptive-id-handoffs\iterations\002\review.md`
+- `specs\012-descriptive-id-handoffs\iterations\002\plan.md`
+- `specs\012-descriptive-id-handoffs\iterations\002\state.md`
+- `specs\012-descriptive-id-handoffs\iterations\002\quality\hardening-gate.md`
+- `specs\012-descriptive-id-handoffs\quality\hardening-gate.md`
+
+## Next Action
+
+Proceed to the iteration `002` retrospective, then run closeout without reopening implementation unless contradictory runtime evidence appears.
+
+# Retro Decision: Feature 012 Iteration 002
+
+**Date**: 2026-05-12  
+**By**: Retro Facilitator  
+**Type**: process-governance
+
+## Decision
+
+Feature `012`, descriptive references in handoffs, iteration `002`, the replay-path and corpus follow-through slice, confirms four process baselines for future handoff-governance work.
+
+## Why It Matters
+
+1. User-facing governance rules need replay-path proof against the real validator output, not runtime-state-only checks.
+2. A known-traps corpus row is durable only when the validation lane and follow-through artifacts are updated in the same slice.
+3. Descriptive-reference proof must always preserve the feature `007` regression trio and the feature `012` iteration `001` readable-reference pair in the same lane.
+4. Authored lifecycle prose is a legitimate dogfood surface for readable references and should keep pairing numeric IDs with descriptive scope.
+
+## Expected Follow-Through
+
+- Add a `Phase Baseline` table to iteration plans before review closes so retro scaffolding remains reusable.
+- Keep replay-path assertions, corpus entries, validation-lane commands, and follow-through artifacts synchronized for future handoff-governance changes.
+- Preserve the combined regression lane explicitly whenever descriptive-reference or related handoff-governance behavior changes.
+
+# Reviewer Prep Rubric: Feature 013 Iteration 002
+
+**Date**: 2026-05-12  
+**Reviewer**: Reviewer  
+**Feature**: `013-validator-hardening`  
+**Iteration**: `002`  
+**Scope**: Independent review preparation for the five blocking concerns in `specs/013-validator-hardening/iterations/002/quality/hardening-gate.md`
+
+---
+
+## Purpose
+
+This note prepares the independent review boundary while implementation runs. It does **not** review code and does **not** issue a verdict. It translates the five blocking hardening-gate concerns into requirement-level evidence checks so the eventual review can fail fast on missing proof instead of retelling the implementation story.
+
+---
+
+## Acceptance Lenses the Eventual Review Must Apply
+
+Each blocking concern must pass all applicable lenses below:
+
+1. **Implemented** — the intended code or artifact change exists in the named path.
+2. **Enforced** — the real validator or restart flow rejects/permits the right cases mechanically.
+3. **Observable** — user-visible output proves the rule, including structured FAIL content where required.
+4. **Documented / Traceable** — plan, quickstart, corpus, and iteration artifacts cite the requirement and test evidence truthfully.
+5. **Regression-safe** — iteration 001 behavior and the additive CLI surface remain intact.
+
+If any lens fails for a blocking concern, the review verdict is `needs-work`.
+
+---
+
+## Blocking Concern 1: Over-Claim Detection Correctness
+
+**Hardening-Gate Concern**: `over-claim-detection-correctness`  
+**Requirement Lens**: FR-004, FR-005, FR-008, FR-010; TG-004, TG-008; SC-004, SC-005  
+**Primary Tasks**: T018, T019, T020, T029
+
+### What Must Be True
+
+- Closed-status iterations without complete closeout evidence fail mechanically.
+- Required evidence includes accepted `review.md`, `retro.md`, and post-implementation verification in `quality/hardening-gate.md` for required concerns.
+- Dirty-tree enforcement is limited to the iteration directory's canonical artifacts.
+- `.squad/decisions.md` and `.squad/identity/now.md` may inform evidence but must not fail the dirty-tree check by themselves.
+- FAIL output stays structured and names the missing evidence or changed files without surfacing raw PowerShell exceptions.
+
+### Required Evidence
+
+1. **Fixture Coverage**
+   - `tests\integration\fixtures\013-validator-hardening\overclaim\`
+   - Must include: missing retro, missing review, non-accepted review, pending post-implementation hardening evidence, clean pass case, dirty iteration-directory case, repo-level-only change case.
+
+2. **Replay Assertions**
+   - `tests\integration\validator-hardening-iteration2.ps1`
+   - Must prove: closed-status detection, each required evidence failure mode, iteration-directory-only `git status --porcelain` filtering, zero raw exceptions.
+
+3. **Implementation Inspection**
+   - `extensions\specrew-speckit\scripts\shared-governance.ps1`
+   - `extensions\specrew-speckit\scripts\validate-governance.ps1`
+   - Must show: closeout-evidence checks, scoped dirty-tree filtering, explicit evidence-only treatment of `.squad/decisions.md` and `.squad/identity/now.md`, structured FAIL generation.
+
+4. **Closeout Lane Proof**
+   - `tests\integration\validator-hardening-iteration2.ps1`
+   - `extensions\specrew-speckit\scripts\validate-governance.ps1 -ProjectPath .`
+   - Must confirm the rule works in both seeded fixtures and the live repo lane.
+
+### Failure Criteria
+
+- Any over-claim fixture passes when it should fail.
+- Repo-level evidence files alone trigger dirty-tree failure.
+- A closed-status iteration missing review, retro, or hardening verification is accepted.
+- Any failure mode produces raw exception text instead of structured FAIL output.
+
+---
+
+## Blocking Concern 2: Approval-Reuse Detection Correctness
+
+**Hardening-Gate Concern**: `approval-reuse-detection-correctness`  
+**Requirement Lens**: FR-003, FR-005, FR-008; TG-003, TG-008; SC-003, SC-005  
+**Primary Tasks**: T014, T015, T016, T029
+
+### What Must Be True
+
+- Sibling iterations with duplicated approval evidence quotes in `plan.md` or `state.md` fail mechanically.
+- Matching is based on whitespace normalization plus markdown-emphasis stripping only.
+- Distinct quotes do not false-match after normalization.
+- Reuse is allowed only when an explicit blanket multi-iteration authorization scope is recorded.
+- FAIL output names both iterations and the duplicated quote in structured form.
+
+### Required Evidence
+
+1. **Fixture Coverage**
+   - `tests\integration\fixtures\013-validator-hardening\approval-reuse\`
+   - Must include: byte-identical duplicates, whitespace-drift duplicates, emphasis-variant duplicates, distinct quotes that must pass, explicit blanket-scope pass cases, unlabeled reuse fail cases.
+
+2. **Replay Assertions**
+   - `tests\integration\validator-hardening-iteration2.ps1`
+   - Must prove: duplicate detection, normalization behavior, blanket-scope exemption, structured FAIL output, no raw exceptions.
+
+3. **Implementation Inspection**
+   - `extensions\specrew-speckit\scripts\shared-governance.ps1`
+   - `extensions\specrew-speckit\scripts\validate-governance.ps1`
+   - Must show: sibling-iteration collection, normalization logic, explicit-scope exemption handling, structured FAIL naming both iterations.
+
+### Failure Criteria
+
+- Duplicate approval evidence passes without explicit blanket scope.
+- Distinct quotes are rejected because normalization over-matches.
+- Blanket-scope cases still fail.
+- FAIL output omits one of the two iterations or the duplicated quote.
+
+---
+
+## Blocking Concern 3: Bookkeeping Classifier Accuracy
+
+**Hardening-Gate Concern**: `bookkeeping-classifier-accuracy`  
+**Requirement Lens**: FR-006, FR-010, FR-005; TG-005, TG-007; SC-006, SC-005  
+**Primary Tasks**: T022, T023, T024, T025, T026
+
+### What Must Be True
+
+- `.github/copilot-instructions.md` changes limited to timestamp, `## Active Technologies`, or `## Recent Changes` classify as `bookkeeping`.
+- Any change outside those areas classifies as `behavior`.
+- The classifier is implemented as reusable helper logic consumed by `scripts\specrew-start.ps1`, not validator-only logic.
+- Bookkeeping-only changes do not trigger restart guidance; behavior changes do.
+- Any validator-side reuse remains additive and does not change existing command surface or exit-code expectations.
+
+### Required Evidence
+
+1. **Fixture Coverage**
+   - `tests\integration\fixtures\013-validator-hardening\copilot-instructions\`
+   - Must include: timestamp-only, Active Technologies only, Recent Changes only, mixed bookkeeping-only, mixed bookkeeping+behavior, behavior-only edits, manual edits inside bookkeeping sections that must still classify correctly.
+
+2. **Classifier-Only Replay**
+   - `tests\integration\validator-hardening-iteration2.ps1 -ClassifierOnly`
+   - Must prove the expected bookkeeping vs. behavior outcomes deterministically.
+
+3. **Full Replay + Compatibility**
+   - `tests\integration\validator-hardening-iteration2.ps1`
+   - Must prove classifier participation does not alter validator CLI shape, PASS/FAIL format, or exit-code expectations.
+
+4. **Implementation Inspection**
+   - `extensions\specrew-speckit\scripts\Test-CopilotInstructionsChangeType.ps1`
+   - `scripts\specrew-start.ps1`
+   - `extensions\specrew-speckit\scripts\validate-governance.ps1`
+   - Must show: helper ownership in the reusable script, consumption by `specrew-start.ps1`, additive-only validator-side reuse.
+
+5. **Recorded Evidence**
+   - `specs\013-validator-hardening\quickstart.md`
+   - Must capture the classifier proof named in T026 after the commands pass.
+
+### Failure Criteria
+
+- Any bookkeeping-only diff is classified as behavior.
+- Any behavior-affecting diff is classified as bookkeeping.
+- Restart guidance still fires for bookkeeping-only changes.
+- The helper exists only inside the validator and is not consumed by `specrew-start.ps1`.
+- Classifier integration changes validator CLI or exit-code compatibility.
+
+---
+
+## Blocking Concern 4: Corpus Graduation Completeness
+
+**Hardening-Gate Concern**: `corpus-graduation-completeness`  
+**Requirement Lens**: FR-007; TG-003, TG-004, TG-006; SC-007  
+**Primary Tasks**: T017, T021, T027, T028, T029
+
+### What Must Be True
+
+- `.specrew/quality/known-traps.md` marks the four relevant rows as validator-enforced:
+  - per-iteration approval evidence reuse
+  - over-claim
+  - canonical iteration schema
+  - canonical concern enumeration
+- Each graduated row cites the implementing requirement(s), proving test(s), and implementation file(s).
+- Stale guidance text does not remain after graduation.
+- Feature documentation truthfully references the graduated enforcement state.
+
+### Required Evidence
+
+1. **Corpus Inspection**
+   - `.specrew\quality\known-traps.md`
+   - Must show all four rows marked validator-enforced with non-placeholder citations.
+
+2. **Traceability Inspection**
+   - Approval-reuse row must cite FR-003 and `tests\integration\validator-hardening-iteration2.ps1`.
+   - Over-claim row must cite FR-004 and `tests\integration\validator-hardening-iteration2.ps1`.
+   - Canonical-schema / canonical-concern rows must cite FR-001 / FR-002 and `tests\integration\validator-hardening-iteration1.ps1`.
+
+3. **Documentation Truth**
+   - `specs\013-validator-hardening\plan.md`
+   - `specs\013-validator-hardening\quickstart.md`
+   - `specs\013-validator-hardening\quality\trap-reapplication.md`
+   - Must reflect the final enforcement/citation state without claiming closure before proof exists.
+
+### Failure Criteria
+
+- Any required row remains ungraduated at review time.
+- Citations point to wrong or nonexistent requirement/test paths.
+- Placeholder or stale pre-enforcement guidance remains.
+- Feature docs claim graduation without the corpus proving it.
+
+---
+
+## Blocking Concern 5: Regression Preservation
+
+**Hardening-Gate Concern**: `regression-preservation`  
+**Requirement Lens**: FR-010 plus retained FR-001, FR-002, FR-005 behavior; TG-007; SC-001, SC-002, SC-003, SC-004, SC-005, SC-006, SC-007  
+**Primary Tasks**: T023, T026, T029
+
+### What Must Be True
+
+- Iteration 002 changes do not break iteration 001 canonical-schema enforcement, canonical-concern enforcement, or structured FAIL behavior.
+- `validate-governance.ps1` remains additive: same command surface, argument expectations, exit-code behavior, and PASS/FAIL compatibility.
+- The full closeout lane passes on the final tree.
+
+### Required Evidence
+
+1. **Iteration 001 Regression Lane**
+   - `tests\integration\validator-hardening-iteration1.ps1`
+   - Must stay green after iteration 002 lands.
+
+2. **Feature Closeout Lane**
+   - `tests\integration\quality-profile-foundation.ps1`
+   - `tests\integration\hardening-gate-contract.ps1`
+   - `tests\integration\quality-evidence-governance.ps1`
+   - `tests\integration\validation-contract-lane.ps1`
+   - `tests\integration\project-path-resolution-regression.ps1`
+   - `tests\integration\validator-hardening-iteration1.ps1`
+   - `tests\integration\validator-hardening-iteration2.ps1`
+   - `extensions\specrew-speckit\scripts\validate-governance.ps1 -ProjectPath .`
+
+3. **Diff Audit**
+   - Final review must inspect the touched validator, classifier, fixture, corpus, and documentation paths named by T029.
+   - Must confirm the changes remain within the authorized iteration-002 scope.
+
+### Failure Criteria
+
+- Any iteration 001 rule regresses.
+- The validator surface changes incompatibly.
+- Repo-wide validator pass breaks on the final tree.
+- Final diff contains out-of-scope behavior beyond iteration 002 authorization.
+
+---
+
+## Review Execution Checklist
+
+Before issuing a verdict, the eventual reviewer must confirm all of the following:
+
+- [ ] T014-T029 are marked complete only where corresponding evidence exists.
+- [ ] `specs\013-validator-hardening\iterations\002\state.md` and `plan.md` tell the same lifecycle truth as the review boundary.
+- [ ] `specs\013-validator-hardening\iterations\002\quality\hardening-gate.md` has post-implementation verification populated truthfully.
+- [ ] All five blocking concerns above have passed their required evidence checks.
+- [ ] Structured FAIL output remains the user-visible failure mode for new rejection paths.
+- [ ] The full closeout lane from T029 passes on the review tree.
+
+---
+
+## Verdict Translation
+
+| Outcome | Verdict | Next Move |
+| --- | --- | --- |
+| All five blocking concerns pass and artifact truth is coherent | `pass` | Proceed to retrospective and closeout |
+| Any blocking concern fails or required evidence is missing | `needs-work` | Return to implementation with a named gap ledger |
+| Scope/authority truth is contradictory or spec authority is insufficient | `blocked` | Escalate to Alon Fliess before closure |
+
+---
+
+## Notes
+
+- This is review preparation only; it is not an implementation review and not a release verdict.
+- The hardening gate remains the authority for which concerns are blocking; this note supplies the evidence bar the eventual review must enforce.
+- No soft acceptance: a known gap must be fixed now or explicitly deferred with approval and recorded evidence.
+
+# Retro Facilitator Inbox: Feature 013 iteration 002 retrospective
+
+**Date**: 2026-05-12  
+**Feature**: `013-validator-hardening`  
+**Iteration**: `002`
+
+## Decision
+
+Treat three lessons from the accepted iteration-002 review as standing process guidance for future planning and retro work:
+
+1. `/speckit.plan`-generated changes inside `.github/copilot-instructions.md` timestamp, `## Active Technologies`, and `## Recent Changes` sections are bookkeeping-only unless the diff escapes those bounded sections.
+2. Any dirty-tree blocker change must prove both sides of the rule: one fixture where canonical iteration artifacts fail and one fixture where repo-level evidence-only traces pass.
+3. `.claude/settings.local.json` and similar workstation-local files are lifecycle-boundary noise unless the iteration explicitly changes their behavior and says so.
+
+## Why
+
+Feature 013 iteration 002 hit all three patterns in a bounded way: planner-output drift had to be repaired before restart guidance stayed low-noise, the lockout-chain false-positive dirt precedent had to be encoded into the over-claim replay path, and commit `c3ac63a` carried local config noise that did not change governance truth. Recording the rule now keeps future retros from rediscovering the same distinctions as if they were new.
+
+## Next Planning Application
+
+- When a slice touches restart guidance, state the bookkeeping-only sections up front and require replay coverage before approval.
+- When a slice touches closure truth or dirt filtering, require the evidence-only pass fixture in the plan, not just the dirty fail fixture.
+- When a lifecycle commit includes local noise, either isolate it or label it explicitly so review/retro/closeout boundaries stay readable.
+
+
 ## 2026-05-11-implementer-iter005-implementation
 ### 2026-05-10T22:12:33Z: Iteration 005 implementation boundary
 **By:** Implementer (Copilot)
@@ -9456,3 +9931,4 @@ The spec is now deterministic, fully specified, and ready for `/speckit.plan` to
 **Model:** claude-haiku-4.5
 **Status:** fallback
 **Fallback Reason:** preferred agent 'claude' is not enabled
+
