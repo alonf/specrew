@@ -97,12 +97,17 @@ The `union` merge driver keeps all lines from both sides, which is correct for a
 
 ## Coordinator-Response: Final-Response Handoff Contract
 
-Every final user-facing coordinator response must make two things explicit:
+Choose exactly one coordinator response type for the top-level user-facing reply:
+
+- **Final stop message** — use only when a real immediate human action is required before the next lifecycle step can continue safely.
+- **In-flight progress update** — use when Squad is still actively working, waiting on background work, or only acknowledging session start with no current human action required.
+
+When the response is a final stop message, it must make two things explicit:
 
 1. **Current progress status** — what is complete, what changed, what was verified, and what remains open or blocked.
 2. **Recommended next step** — the single best immediate action for the user, Squad, a reviewer, or a manual tester.
 
-For substantial responses, use this three-section format:
+For a real human-blocked stop, preserve this three-section format:
 
 1. **What I just did**
 2. **Why I stopped**
@@ -117,15 +122,19 @@ Rules:
 - Commit references need a why-it-matters phrase. Example: `070dd06, the implementation-authorization boundary commit`.
 - Quoted material, code blocks, raw tool output, and Copilot-rendered tool-call result blocks stay outside the readable-reference rule.
 - When work is blocked, **Why I stopped** must say what is blocked, and **What I need from you** must name the unblock action before any continue-work suggestion.
+- If no immediate human action is required, use a single-line in-flight progress update instead of the three-section stop-message format.
+- In-flight progress updates must say what is happening now and what Squad will continue doing next.
+- Session-opening acknowledgements follow the same rule: if no human action is required yet, they are in-flight progress updates.
+- Mixed transition + true blocker cases still use the final stop message because the human action wins.
 - When review is recommended, say exactly what to review.
 - When review points to a local repository file in this Windows workflow, include a `file:///` URI using the absolute Windows path.
 - When manual testing is recommended, say exactly what scenario or risk to test.
-- Lightweight responses may collapse to one concise paragraph, but both semantic fields must still be explicit.
 
 Examples:
 
-- **Completion**: "I updated **feature 012, descriptive references in handoffs**, and aligned **iteration 001, the readable-reference rollout** across the coordinator guidance. Next step: review the wording for clarity before the startup-guidance restart boundary at `file:///C:/Dev/Specrew/.github/agents/squad.agent.md`."
-- **Blocked**: "I finished the approved documentation slice, but I stopped because rollout still needs a human decision on the handoff wording. Next step: approve or reject the wording so the lifecycle can continue safely."
+- **Final stop**: "I updated **feature 014, handoff format scoping**, and aligned **iteration 001, the bounded selector rollout** across the coordinator guidance. I stopped because I cannot continue to the next lifecycle step until you approve the scoped wording. What I need from you: approve or reject the wording so the lifecycle can continue safely."
+- **In-flight progress**: "I updated **feature 014, handoff format scoping**, and I am waiting on the preserved validator run to finish; I will continue with the bounded checklist and agent-alignment edits once it completes."
+- **First acknowledgement**: "I have started **feature 014, handoff format scoping**, and I am reviewing the approved Iteration 001 artifacts now; I will continue with the in-scope edits next."
 - **Plain-language-first**: "We need one human decision before moving forward: confirm the handoff wording is ready. Formal references: before-implement review, hardening-gate evidence."
 - **Readable references**: "I finished **T009 and T010, the stop-message guidance updates**, and kept **FR-008 and FR-009, the non-blocking governance review requirements**, aligned with **070dd06, the implementation-authorization boundary commit**."
 

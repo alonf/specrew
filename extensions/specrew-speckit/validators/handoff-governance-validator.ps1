@@ -20,6 +20,14 @@ $governancePatterns = @(
     '(?i)\bvalidator\b'
 )
 
+$placeholderUserActionPhrases = @(
+    'Nothing yet',
+    'No action needed',
+    'No action required',
+    'Nothing to do',
+    'No further action needed'
+)
+
 function Get-NormalizedText {
     param([AllowEmptyString()][string]$Text)
 
@@ -67,6 +75,43 @@ function Get-HandoffSections {
     }
 
     return $sections.ToArray()
+}
+
+function Get-HandoffSectionMap {
+    param([AllowEmptyString()][string]$Text)
+
+    $sectionMap = [ordered]@{}
+    if ([string]::IsNullOrWhiteSpace($Text)) {
+        return $sectionMap
+    }
+
+    $lines = $Text -split "`n"
+    $currentHeading = $null
+    $currentLines = New-Object System.Collections.Generic.List[string]
+    $headingPattern = '^(?:#{1,6}\s*)?(?:\*\*)?(What I just did|Why I stopped|What I need from you)(?:\*\*)?\s*$'
+
+    foreach ($line in $lines) {
+        $trimmed = $line.Trim()
+        if ($trimmed -match $headingPattern) {
+            if ($null -ne $currentHeading) {
+                $sectionMap[$currentHeading] = ($currentLines -join "`n").Trim()
+                $currentLines.Clear()
+            }
+
+            $currentHeading = $Matches[1]
+            continue
+        }
+
+        if ($null -ne $currentHeading) {
+            $currentLines.Add($line)
+        }
+    }
+
+    if ($null -ne $currentHeading) {
+        $sectionMap[$currentHeading] = ($currentLines -join "`n").Trim()
+    }
+
+    return $sectionMap
 }
 
 function Get-LeadSentence {
@@ -286,6 +331,115 @@ function Test-MissingReviewFileReference {
     return Test-HasWindowsAbsolutePath -Text $Text
 }
 
+function Get-MeaningfulHandoffSectionText {
+    param([AllowEmptyString()][string]$Text)
+
+    if ([string]::IsNullOrWhiteSpace($Text)) {
+        return ''
+    }
+
+    $meaningfulLines = New-Object System.Collections.Generic.List[string]
+    foreach ($line in ($Text -split "`n")) {
+        $trimmed = $line.Trim()
+        if ([string]::IsNullOrWhiteSpace($trimmed)) {
+            continue
+        }
+
+        if ($trimmed -match '^(?:\*\*)?(Current progress status|Recommended next step|Reference)(?:\*\*)?$') {
+            continue
+        }
+
+        if ($trimmed -match '^(?:\*\*)?Owner(?:\*\*)?:') {
+            continue
+        }
+
+        $meaningfulLines.Add($trimmed)
+    }
+
+    return ($meaningfulLines -join "`n").Trim()
+}
+
+function Get-NormalizedSemanticPhrase {
+    param([AllowEmptyString()][string]$Text)
+
+    if ([string]::IsNullOrWhiteSpace($Text)) {
+        return ''
+    }
+
+    $normalized = $Text.ToLowerInvariant()
+    $normalized = $normalized -replace "`r`n", "`n"
+    $normalized = $normalized -replace '[`*_#>\[\]\(\),.:;!?-]+', ' '
+    $normalized = $normalized -replace '\s+', ' '
+    $normalized = $normalized.Trim()
+    $normalized = $normalized -replace '^(recommended next step|next step)\s+', ''
+    return $normalized.Trim()
+}
+
+function Test-UsesStopMessageFormat {
+    param($SectionMap)
+
+    return $SectionMap.Contains('What I just did') -and
+        $SectionMap.Contains('Why I stopped') -and
+        $SectionMap.Contains('What I need from you')
+}
+
+function Test-HasHumanActionCue {
+    param([AllowEmptyString()][string]$Text)
+
+    if ([string]::IsNullOrWhiteSpace($Text)) {
+        return $false
+    }
+
+    return $Text -match '(?i)\b(review|approve|approval|confirm|clarify|answer|reply|authorize|sign off|provide|choose|decide|run|test)\b'
+}
+
+function Test-HasEmptyUserActionSection {
+    param([AllowEmptyString()][string]$Text)
+
+    $meaningfulText = Get-MeaningfulHandoffSectionText -Text $Text
+    if ([string]::IsNullOrWhiteSpace($meaningfulText)) {
+        return $true
+    }
+
+    $normalizedAction = Get-NormalizedSemanticPhrase -Text $meaningfulText
+    if ([string]::IsNullOrWhiteSpace($normalizedAction)) {
+        return $true
+    }
+
+    foreach ($placeholderPhrase in $placeholderUserActionPhrases) {
+        if ($normalizedAction -eq (Get-NormalizedSemanticPhrase -Text $placeholderPhrase)) {
+            return $true
+        }
+    }
+
+    return $false
+}
+
+function Test-HasTransitionalStopClaim {
+    param(
+        [AllowEmptyString()][string]$WhyStoppedText,
+        [AllowEmptyString()][string]$UserActionText
+    )
+
+    $whyText = Get-MeaningfulHandoffSectionText -Text $WhyStoppedText
+    if ([string]::IsNullOrWhiteSpace($whyText)) {
+        return $false
+    }
+
+    $hasTransitionalCue = $whyText -match '(?i)\b(waiting|wait|still working|still running|background (?:run|work|task|process)|transition(?:ing)?|in[- ]flight|underway|continue once|then i will continue|will continue once|pending completion)\b'
+    if (-not $hasTransitionalCue) {
+        return $false
+    }
+
+    $hasHumanBlockerCue = $whyText -match '(?i)\b(until you|waiting for your|need you to|once you|after you|your approval|your review|your confirmation|your clarification)\b'
+    if ($hasHumanBlockerCue) {
+        return $false
+    }
+
+    $actionText = Get-MeaningfulHandoffSectionText -Text $UserActionText
+    return (Test-HasEmptyUserActionSection -Text $UserActionText) -or -not (Test-HasHumanActionCue -Text $actionText)
+}
+
 function Get-AuthoredParagraphs {
     param([AllowEmptyString()][string]$Text)
 
@@ -501,6 +655,7 @@ function Test-HasOpaqueReferenceWarning {
 
 $normalizedText = Get-NormalizedText -Text $ResponseText
 $warnings = New-Object System.Collections.Generic.List[string]
+$sectionMap = Get-HandoffSectionMap -Text $normalizedText
 
 if (-not (Test-HasExplicitProgressStatus -Text $normalizedText)) {
     $warnings.Add('soft-warning.missing-progress-status')
@@ -536,6 +691,19 @@ if ((Test-MentionsBlockerOrRisk -Text $normalizedText) -and -not (Test-PlainlyDi
     $warnings.Add('soft-warning.hidden-blocker-or-risk')
 }
 
+if (Test-UsesStopMessageFormat -SectionMap $sectionMap) {
+    $userActionSection = [string]$sectionMap['What I need from you']
+    $whyStoppedSection = [string]$sectionMap['Why I stopped']
+
+    if (Test-HasEmptyUserActionSection -Text $userActionSection) {
+        $warnings.Add('soft-warning.empty-user-action-section')
+    }
+
+    if (Test-HasTransitionalStopClaim -WhyStoppedText $whyStoppedSection -UserActionText $userActionSection) {
+        $warnings.Add('soft-warning.transitional-stop-claim')
+    }
+}
+
 $status = if ($warnings.Count -gt 0) { 'warn' } else { 'pass' }
 $summaryLines = New-Object System.Collections.Generic.List[string]
 if ($warnings.Contains('soft-warning.jargon-first-lead')) {
@@ -560,6 +728,14 @@ if ($warnings.Contains('soft-warning.review-file-reference-format')) {
 
 if ($warnings.Contains('soft-warning.opaque-numeric-references')) {
     $summaryLines.Add('Add descriptive scope when three or more feature, iteration, task, requirement, corpus, or commit references appear in authored prose.')
+}
+
+if ($warnings.Contains('soft-warning.empty-user-action-section')) {
+    $summaryLines.Add('Replace empty or placeholder user-action wording with one substantive immediate human action.')
+}
+
+if ($warnings.Contains('soft-warning.transitional-stop-claim')) {
+    $summaryLines.Add('Use the three-section stop-message format only for real human blockers; keep transitional waiting updates as single-line progress prose.')
 }
 
 if ($summaryLines.Count -eq 0) {
