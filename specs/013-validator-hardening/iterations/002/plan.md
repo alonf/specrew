@@ -2,14 +2,14 @@
 
 **Schema**: v1  
 **Spec**: [../../spec.md](../../spec.md)  
-**Status**: planning  
+**Status**: executing  
 **Capacity**: 15.5/20 story_points  
-**Planned Start**: TBD (awaiting hardening-gate sign-off and implementation authorization)  
+**Planned Start**: TBD (implementation authorized by hardening-gate sign-off)  
 **Started**: pending  
 **Completed**: pending  
 **Closed**: pending  
-**Hardening-Gate Sign-Off**: pending  
-**Implementation Authorization**: pending  
+**Hardening-Gate Sign-Off**: signed (2026-05-12 by Alon Fliess)  
+**Implementation Authorization**: authorized (T014-T029, 15.5 story_points)  
 **Review Completed**: pending  
 **Review Verdict**: pending  
 **Retrospective Completed**: pending  
@@ -87,10 +87,10 @@ None. Iteration 002 is the final authorized iteration for feature 013, validator
 
 ## Implementation Authorization
 
-- **Authorization Verdict**: ⏳ **PENDING** — awaiting hardening-gate sign-off and explicit authorization from Alon Fliess
-- **Scope Pending**: Iteration 002 approval-reuse, over-claim, bookkeeping-classifier, corpus-graduation, documentation, and closeout-validation slice (`T014-T029`, 15.5 story_points)
+- **Authorization Verdict**: ✅ **AUTHORIZED** — hardening-gate sign-off completed by Alon Fliess on 2026-05-12
+- **Scope Authorized**: Iteration 002 approval-reuse, over-claim, bookkeeping-classifier, corpus-graduation, documentation, and closeout-validation slice (`T014-T029`, 15.5 story_points)
 - **Gate Reference**: `specs/013-validator-hardening/iterations/002/quality/hardening-gate.md`
-- **Next Action**: Sign off on the pre-implementation hardening gate before implementation authorization
+- **Next Action**: Begin implementation with T014-T029 scope only; no scope expansion beyond approval-reuse detection, over-claim detection, bookkeeping-classifier, corpus graduation, documentation updates, and closeout validation lane
 
 ## Effort Model
 

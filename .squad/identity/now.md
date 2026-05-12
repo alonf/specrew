@@ -1,6 +1,6 @@
-updated_at: 2026-05-12T08:51:12Z
-focus_area: Feature 013 validator hardening is active; iteration 002 planning is authorized for the over-claim detection, approval-reuse detection, and bookkeeping-vs-behavior classifier slice
-active_issues: [Feature 013 validator hardening active; iteration 002 planning should scaffold plan.md, state.md, drift-log.md, and quality/hardening-gate.md without starting implementation]
+updated_at: 2026-05-12T12:00:00Z
+focus_area: Feature 013 validator hardening iteration 002 is authorized for implementation; T014-T029 approved for approval-reuse detection, over-claim detection, bookkeeping-vs-behavior classifier, corpus graduation, documentation updates, and closeout validation
+active_issues: [Feature 013 iteration 002 authorized; implementation boundary reached; execution may proceed from T014-T029 within authorized scope only; no scope expansion without explicit approval]
 ---
 
 # What We're Focused On
@@ -19,7 +19,7 @@ active_issues: [Feature 013 validator hardening active; iteration 002 planning s
 ### Feature 013 Lifecycle: ACTIVE
 - Iteration `001`, the canonical-schema and graceful-error slice, is closed after accepted review, recorded retrospective, and a green closeout validation lane
 - The review-repair commit `f7a0f4e`, the lowercase canonical-label precision fix, is notable dogfooding evidence for later retrospective follow-through
-- Iteration `002`, the over-claim detection, approval-reuse detection, and bookkeeping-vs-behavior classifier slice, is the remaining authorized planning step
+- Iteration `002`, the over-claim detection, approval-reuse detection, and bookkeeping-vs-behavior classifier slice, is authorized for implementation (T014-T029)
 
 ### Next Valid Action
-Scaffold iteration `002` planning artifacts (`plan.md`, `state.md`, `drift-log.md`, and `quality/hardening-gate.md`), validate governance, commit the planning boundary, and then stop for fresh hardening-gate sign-off plus implementation authorization.
+Begin implementation of iteration `002` within the authorized scope (T014-T029): approval-reuse detection, over-claim detection, bookkeeping-classifier, corpus graduation, documentation updates, and closeout validation lane. Stop and request explicit approval before any deferral, scope addition, or unauthorized iteration 003.

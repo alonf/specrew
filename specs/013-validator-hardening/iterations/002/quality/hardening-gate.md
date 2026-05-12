@@ -68,12 +68,12 @@ No deferrals. Iteration 002 is the final authorized iteration and includes all r
 
 **Pre-Implementation Planning Summary**: Planning is complete. The five canonical concerns are present in required order with pre-implementation evaluations. Five feature-specific concerns follow (over-claim-detection-correctness blocking, approval-reuse-detection-correctness blocking, bookkeeping-classifier-accuracy blocking, corpus-graduation-completeness blocking, regression-preservation blocking). The nine-column schema is in use. Planning boundary is honest: implementation, review, retrospective, and final closeout remain future steps but within the same iteration 002 scope. All planning ambiguities have been resolved (FR-003, FR-004, FR-006 are spec-clarified; fixture scopes are explicit in T014, T018, T022; effort is 15.5/20 story_points under the existing iteration-capacity model). Task descriptions trace to exact requirements with no drift. Baseline Ref will be captured at implementation start. State.md uses canonical iteration 001 schema with no deviations.
 
-## Sign-Off Evidence (Pending)
+## Sign-Off Evidence
 
 **Authority**: Alon Fliess  
-**Reviewed By**: pending  
-**Reviewed At**: pending  
-**Evidence Statement**: pending — to be recorded upon approval  
+**Reviewed By**: Alon Fliess  
+**Reviewed At**: 2026-05-12  
+**Evidence Statement**: The five canonical concerns are in canonical order, the five feature-specific concerns are blocking, and the 15.5/20 capacity math matches the repo's established S=0.5/M=1/L=2 mapping.
 
 ---
 

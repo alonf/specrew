@@ -6,8 +6,8 @@
 **In Progress**: none
 **Baseline Ref**: pending (will be captured at implementation start)
 **Updated**: 2026-05-12
-**Current Phase**: planned
-**Iteration Status**: Planning complete; awaiting hardening-gate sign-off and implementation authorization
+**Current Phase**: executing
+**Iteration Status**: Hardening-gate signed; implementation authorized; ready to begin task execution from T014
 
 ## Planning Summary
 
@@ -24,10 +24,10 @@ Iteration 002 is the second and final delivery slice for feature 013, validator 
 
 ## Decisions and Handoff
 
-- **Planning Boundary**: ✅ **COMPLETE** — iteration 002 planning artifacts now exist on the feature branch
-- **Hardening-Gate Sign-Off**: ⏳ **PENDING** — pre-implementation quality gate awaits review and authorization
-- **Implementation Authorization**: ⏳ **PENDING** — awaits explicit hardening-gate sign-off and human authorization before implementation start
-- **Implementation Boundary**: ⏳ **PENDING** — tasks `T014` through `T026` will execute after authorization
+- **Planning Boundary**: ✅ **COMPLETE** — iteration 002 planning artifacts exist on the feature branch
+- **Hardening-Gate Sign-Off**: ✅ **SIGNED** — pre-implementation quality gate signed by Alon Fliess on 2026-05-12
+- **Implementation Authorization**: ✅ **AUTHORIZED** — hardening-gate sign-off completed; T014-T029 authorized for execution
+- **Implementation Boundary**: ⏳ **READY** — tasks `T014` through `T029` ready to execute within authorized scope only
 - **Review Boundary**: ⏳ **PENDING** — review gate will be recorded after implementation and testing are complete
 - **Retrospective Boundary**: ⏳ **PENDING** — retrospective will be recorded after review acceptance and before closeout
 - **Closeout Boundary**: ⏳ **PENDING** — closeout artifacts and final validation lane will be recorded within iteration 002 after review acceptance
