@@ -2,10 +2,12 @@
 
 **Schema**: v1
 **Spec**: [../../spec.md](../../spec.md)
-**Status**: planning
+**Status**: executing
 **Capacity**: 8.0/20 story_points
 **Started**: 2026-05-12
 **Completed**: (none)
+**Hardening-Gate Sign-Off**: 2026-05-12 by Alon Fliess
+**Implementation Authorization**: 2026-05-12
 
 ## Scope Summary
 
@@ -83,6 +85,6 @@
 ## Notes
 
 - This plan is intentionally limited to the Iteration 001 rollout slice; Iteration 002 proof and graduation work stays deferred and is not scaffolded here.
-- Keep `Status: planning` until the pre-implementation hardening gate is signed off and implementation authorization is recorded.
+- `Status` moved to `executing` once the pre-implementation hardening gate was signed off and implementation authorization was recorded on 2026-05-12.
 - The current validator treats committed `review.md` and `retro.md` files as evidence that later lifecycle phases have already started, so those two artifacts must be scaffolded when the review and retrospective boundaries are actually opened rather than as planning-time placeholders.
 - If the iteration scope changes later, update the task table, phase baseline, and deferral note in the same planning boundary.

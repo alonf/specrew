@@ -3,11 +3,11 @@
 **Schema**: v1
 **Last Completed Task**: (none - planning scaffold only)
 **Tasks Remaining**: T001-T015
-**In Progress**: hardening-gate sign-off pending
-**Baseline Ref**: 41507a1b590682aa6832881c4f0521a958e69194
+**In Progress**: T001-T002 (execution boundary confirmation)
+**Baseline Ref**: 1aeee29
 **Updated**: 2026-05-12
-**Current Phase**: planning
-**Iteration Status**: planning complete; awaiting hardening-gate sign-off and implementation authorization
+**Current Phase**: executing
+**Iteration Status**: hardening-gate signed off; implementation authorized; execution in progress
 
 ## Planning Summary
 
@@ -25,9 +25,9 @@ Iteration 001 is the first delivery slice for feature 014, handoff-format scopin
 
 ## Decisions and Handoff
 
-- **Planning Boundary**: drafted - Iteration 001 planning artifacts now exist on the feature branch
-- **Hardening-Gate Sign-Off**: pending
-- **Implementation Authorization**: pending
+- **Planning Boundary**: ✅ **COMPLETE** — Iteration 001 planning artifacts were committed in `1aeee29`, the planning-boundary commit
+- **Hardening-Gate Sign-Off**: ✅ **SIGNED OFF** — `quality/hardening-gate.md` signed by Alon Fliess on 2026-05-12
+- **Implementation Authorization**: ✅ **AUTHORIZED** — Iteration 001 implementation was authorized by Alon Fliess on 2026-05-12 for the bounded `tasks.md` scope only
 - **Review and Retro Placeholders**: deferred until those lifecycle boundaries open because the current validator interprets committed `review.md` and `retro.md` as active phase evidence
 - **Deferred**: Iteration 002 fixture proof, calibration, and misapplied-stop trap graduation remain unopened and unscaffolded in this turn
 
@@ -39,7 +39,7 @@ Iteration 001 is the first delivery slice for feature 014, handoff-format scopin
 
 ## Next Action
 
-Record the pre-implementation hardening-gate sign-off for Iteration 001, then request explicit implementation authorization before any runtime or prompt changes begin.
+Execute T001 through T015 only, then stop before review/retro scaffolding and request the next explicit authorization boundary.
 
 <!-- >>> specrew-managed escalation-state >>> -->
 ## Repair Escalation
