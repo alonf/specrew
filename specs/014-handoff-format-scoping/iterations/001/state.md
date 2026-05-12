@@ -6,8 +6,8 @@
 **In Progress**: none
 **Baseline Ref**: 1aeee29
 **Updated**: 2026-05-12
-**Current Phase**: retro
-**Iteration Status**: review accepted against commit `f02688f`; retrospective boundary recorded in `retro.md`; waiting for separate human closeout authorization
+**Current Phase**: closed
+**Iteration Status**: closed by Alon Fliess on 2026-05-12; iteration boundary verified and committed as iteration closeout boundary; next action requires separate feature-closeout authorization
 
 ## Planning Summary
 
@@ -49,7 +49,7 @@ Iteration 001 is the first delivery slice for feature 014, handoff-format scopin
 
 ## Next Action
 
-Hold at the retrospective boundary. Do not open closeout until Alon Fliess explicitly authorizes it; a new session is still required before future Squad runs can load the updated agent-guidance files.
+Iteration 001 closeout complete. A new session is required before future Squad runs can load the updated agent-guidance files. Do not open feature-closeout or PR; both are separately authorized steps.
 
 <!-- >>> specrew-managed escalation-state >>> -->
 ## Repair Escalation

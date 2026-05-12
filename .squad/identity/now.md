@@ -1,24 +1,25 @@
-updated_at: 2026-05-12T23:29:00+03:00
-focus_area: Feature 014 handoff-format-scoping iteration 001 retrospective boundary complete; retro.md recorded with calibration and process lessons; awaiting separate human closeout authorization
-active_issues: [Retro boundary committed; waiting for Alon Fliess closeout authorization; session restart required before next Squad session loads updated agent guidance]
+updated_at: 2026-05-12T23:59:59+03:00
+focus_area: Feature 014 handoff-format-scoping iteration 001 closeout boundary committed; awaiting separate feature-closeout authorization
+active_issues: [Iteration 001 closed; feature-closeout authorization pending; feature-PR opening pending; session restart required before next Squad session loads updated agent guidance]
 ---
 
 # What We're Focused On
 
-**Phase**: Feature `014-handoff-format-scoping`, iteration `001`, is at the retro-boundary-complete state awaiting closeout authorization  
-**Urgency**: TIER 1 — retro.md has been recorded with calibration data, three process lessons, and three candidate corpus rows; hold at this boundary until Alon Fliess explicitly authorizes iteration closeout
+**Phase**: Feature `014-handoff-format-scoping`, iteration `001`, is CLOSED; waiting for separate feature-closeout authorization before opening feature-level closeout work  
+**Urgency**: TIER 2 — iteration closeout complete; next step is feature-level closeout (FR-008 and FR-009 deferral, Iteration 002 planning, feature closeout summary), which requires separate authorization
 
 ---
 
 ## Current Status
 
-### Feature 014 Lifecycle: RETROSPECTIVE BOUNDARY COMPLETE
-- Iteration `001`, the bounded stop-vs-progress selector and additive soft-warning rollout slice, completed the authorized `T001-T015` implementation boundary at commit `f02688f`
-- The accepted review verdict is durably recorded in `review.md` and committed in `8e99013`, the review-boundary commit
-- Alon Fliess has signed off on that review verdict and authorized the retrospective boundary against the same implementation commit `f02688f`
-- The retrospective has been recorded in `retro.md`: zero-variance delivery (8.0 sp actual vs 8.0 sp estimated), three surfaced process lessons (boundary-claim durability, acceptance-evidence scattering, startup-coupling visibility), and three candidate corpus rows for future trap addition
-- No iteration closeout work is authorized until Alon Fliess separately signs off on the retrospective boundary
-- Session restart is required before the next session can load the updated `.github/agents/squad.agent.md` and `.squad/templates/squad.agent.md` guidance
+### Feature 014 Lifecycle: ITERATION CLOSEOUT BOUNDARY COMMITTED
+- Iteration `001`, the bounded stop-vs-progress selector and additive soft-warning rollout slice, is now CLOSED as of 2026-05-12
+- The hardening-gate post-implementation verification fields have been recorded with review-acceptance reference 8e99013 and date 2026-05-12
+- Six canonical iteration artifacts are confirmed present: plan.md, state.md, drift-log.md, quality/hardening-gate.md, review.md, retro.md
+- The pre-existing iteration-011 gap from Feature 001 has been recorded as a tracked defer in `.squad/decisions.md` with follow-up commitment to a separate scoped feature
+- Repository-wide governance validation is green
+- No feature-closeout or PR opening has been started; both require separate authorization
 
 ### Next Valid Action
-Hold at the retro-boundary. Await Alon Fliess's explicit authorization for iteration closeout. Do not open closeout artifacts or phase until human sign-off is received.
+Await Alon Fliess's separate feature-closeout authorization before opening feature-level work (FR-008, FR-009, Iteration 002 planning, feature summary). Session restart is required before the next session can load the updated agent guidance.
+

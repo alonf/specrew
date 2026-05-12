@@ -1,5 +1,17 @@
 ---
 
+### 2026-05-12T23:59:59+03:00: Deferred gap - Feature 001 iteration 011
+**By:** Alon Fliess (via Copilot)
+**Type:** deferred-gap
+**Iteration Reference**: specs/001-specrew-product/iterations/011
+**What:** Defer cleanup and historical-state verification of pre-existing gap in Feature 001, iteration 011 to a separate scoped feature. This gap is unrelated to Feature 014 handoff-format-scoping and is preserved without folding into Feature 014 closeout scope to maintain clean feature boundaries.
+**Approving Human**: Alon Fliess
+**Deferred On**: 2026-05-12
+**Why:** Feature 014 Iteration 001 successfully delivered its bounded stop-vs-progress selector and additive soft-warning rollout (FR-001 through FR-007) without addressing unrelated historical cleanup. Recording this gap as an explicit tracked defer preserves the "no-gap" governance policy while protecting Feature 014's integrity.
+**Follow-up Commitment:** Open a separate scoped feature to address Feature 001 iteration 011 state cleanup and verification.
+
+---
+
 ### 2026-05-12T22:49:40+03:00: User directive
 **By:** Alon Fliess (via Copilot)
 **What:** Authorize the independent review boundary for Feature 014, handoff-format scoping, Iteration 001, the bounded stop-vs-progress selector and additive soft-warning rollout, against implementation commit `f02688f`; the reviewer must evaluate the canonical and iteration-specific concerns, run the five preserved handoff-governance regressions plus the two new soft-warning rules on compliant and violating fixtures, confirm the Feature 012 `human-handoff-id-context` scope-of-applicability update does not regress its existing detection, confirm repo-wide `validate-governance.ps1` stays green, emit `review.md` with an explicit verdict, dogfood the new format-scoping rules in the review output itself, repair any blocking gap in the current iteration instead of deferring it, and stop before retrospective for separate human sign-off on the review verdict.
