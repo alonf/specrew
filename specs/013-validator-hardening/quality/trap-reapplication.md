@@ -15,5 +15,5 @@
 
 ## Notes
 
-- This artifact was updated at the Iteration 002 implementation boundary to capture the four targeted corpus traps that are now validator-enforced on the live tree.
-- Review, retrospective, and final closeout evidence remain future lifecycle steps; this artifact intentionally stops at implementation-boundary proof and does not claim feature closure.
+- This artifact was updated at the Iteration 002 implementation boundary to capture the four targeted corpus traps that are now validator-enforced on the live tree, and it remains valid at iteration closeout because the final closeout lane stayed green on the closeout tree.
+- Iteration 002 is now closed; feature-level closeout remains a separate future lifecycle step and is intentionally not claimed here.

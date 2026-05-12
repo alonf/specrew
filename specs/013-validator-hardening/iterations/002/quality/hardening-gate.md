@@ -8,9 +8,9 @@
 **Effective Review Class**: `strongest-available`
 **Overall Verdict**: ready
 **Approval Ref**: —
-**Reviewed By**: Alon Fliess
+**Reviewed By**: Reviewer (accepted in `d7b2e42`)
 **Reviewed At**: 2026-05-12
-**Post-Implementation Verification**: ✅ implementation boundary validated; blocking and non-blocking concerns satisfied with runtime evidence
+**Post-Implementation Verification**: ✅ review accepted in `d7b2e42`; blocking and non-blocking concerns remained satisfied on the closeout tree after the final validation lane rerun
 **Verified At**: 2026-05-12
 
 ## Concern Review
@@ -58,7 +58,7 @@ No deferrals. Iteration 002 is the final authorized iteration and includes all r
 - Canonical-schema and canonical-concern corpus graduation (T027)
 - Final documentation updates (T028)
 - Full closeout validation lane rerun (T029)
-- Post-implementation concern verification is now recorded on the implementation-boundary tree; review, retrospective, and final closeout remain future lifecycle steps.
+- Post-implementation concern verification is anchored to accepted review commit `d7b2e42`, the retrospective is recorded in `947edff`, and the final closeout validation lane is green on the current closeout tree.
 
 ## Hardening-Gate Status
 
@@ -66,7 +66,7 @@ No deferrals. Iteration 002 is the final authorized iteration and includes all r
 
 **Scope**: Iteration 002 is the final authorized iteration. Complete remaining feature scope (T014-T029) covering approval-evidence reuse detection, unsupported closeout-claim blocking, `.github/copilot-instructions.md` bookkeeping-vs-behavior classification, canonical corpus graduation, final documentation updates, and full governance-lane validation.
 
-**Pre-Implementation Planning Summary**: Planning is complete. The five canonical concerns are present in required order with pre-implementation evaluations. Five feature-specific concerns follow (over-claim-detection-correctness blocking, approval-reuse-detection-correctness blocking, bookkeeping-classifier-accuracy blocking, corpus-graduation-completeness blocking, regression-preservation blocking). The nine-column schema is in use. Planning boundary is honest: implementation is now complete on the current tree, while review, retrospective, and final closeout remain future lifecycle steps. All planning ambiguities were resolved without scope expansion, the baseline ref is captured in `state.md`, and the implementation slice now has runtime evidence for every blocking concern.
+**Pre-Implementation Planning Summary**: Planning is complete. The five canonical concerns are present in required order with pre-implementation evaluations. Five feature-specific concerns follow (over-claim-detection-correctness blocking, approval-reuse-detection-correctness blocking, bookkeeping-classifier-accuracy blocking, corpus-graduation-completeness blocking, regression-preservation blocking). The nine-column schema is in use. The lifecycle record is now honest through iteration closeout: implementation completed on the current tree, review acceptance is recorded in `d7b2e42`, the retrospective is recorded in `947edff`, and the final closeout lane is green without expanding scope or claiming feature-level closure.
 
 ## Sign-Off Evidence
 
@@ -77,4 +77,4 @@ No deferrals. Iteration 002 is the final authorized iteration and includes all r
 
 ---
 
-**Hardening-Gate Planning Status**: Planning-phase artifact complete with scope consolidated into single final iteration (iteration 002). Overall Verdict remains `ready`; implementation-boundary verification is now recorded on 2026-05-12 with runtime evidence for all blocking and non-blocking concerns. Review, retrospective, and closeout remain future lifecycle steps within iteration 002.
+**Hardening-Gate Planning Status**: Planning-phase artifact complete with scope consolidated into single final iteration (iteration 002). Overall Verdict remains `ready`; accepted review evidence is recorded on 2026-05-12 via `d7b2e42`, the retrospective is recorded via `947edff`, and closeout validation is now complete on 2026-05-12. Feature-level closeout remains a separate future lifecycle step.

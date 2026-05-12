@@ -141,3 +141,9 @@ Performed narrow metadata-only cleanup on feature 006 to close two consistency i
 ## Patterns
 
 <!-- Append entries below. Format: **Pattern:** description. **Context:** when it applies. -->
+
+### 2026-05-12: Iteration Closeout Truth Requires Synchronized Lifecycle Surfaces
+
+Closed feature iterations cannot stop at `state.md` alone. For feature 013 iteration 002, truthful closeout required synchronizing the live lifecycle surfaces that still narrated "future closeout" work: the iteration plan metadata, iteration state, drift log status, hardening-gate verification summary, trap-reapplication note, and `.squad/identity/now.md`.
+
+**Pattern discovered**: When an iteration closes but the feature remains open, advance every live artifact that carries lifecycle status to the same boundary in one pass. Historical boundary artifacts such as `review.md` and `retro.md` should stay frozen as review/retro records, while the active handoff surfaces must say "iteration closed; feature closeout still pending separate authorization" explicitly.

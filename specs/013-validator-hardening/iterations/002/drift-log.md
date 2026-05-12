@@ -5,7 +5,7 @@
 **Iteration**: `002`  
 **Scope**: Approval-reuse detection, over-claim detection, bookkeeping-vs-behavior classifier  
 **Updated**: 2026-05-12  
-**Status**: Retrospective recorded; closeout still pending
+**Status**: Closeout recorded; iteration 002 closed
 
 ## Purpose
 
@@ -197,8 +197,9 @@ After implementation is complete and review is accepted, update this log with:
 1. **Baseline Ref**: `c3ac63a` — iteration 002 implementation-start baseline before approval-reuse, over-claim, and classifier changes
 2. **Review Acceptance Date**: 2026-05-12 against implementation commit `99cdf51`
 3. **Drift Events Recorded**: 3 — planner-output bookkeeping drift repair, lockout-chain false-positive dirt replay repair, and `.claude/settings.local.json` minor-noise interpretation
-4. **Regression Evidence**: PASS — `validate-governance.ps1 -ProjectPath .`, `tests/integration/validator-hardening-iteration1.ps1`, `tests/integration/validator-hardening-iteration2.ps1`, and the `specrew-start` regression suite all stayed green during accepted review
+4. **Regression Evidence**: PASS — `validate-governance.ps1 -ProjectPath .`, `tests/integration/validator-hardening-iteration1.ps1`, `tests/integration/validator-hardening-iteration2.ps1`, and the `specrew-start` regression suite all stayed green during accepted review and on the final closeout-tree rerun
 5. **Known-Traps Graduation**: T017 approval-reuse, T021 over-claim, and T027 canonical-schema/canonical-concern rows graduated to `Validator-enforced`
+6. **Closeout Boundary**: 2026-05-12 — full closeout lane rerun stayed green after review acceptance `d7b2e42` and retrospective commit `947edff`; iteration 002 is closed while feature 013 remains open pending separate feature-closeout authorization
 
 ## Notable References
 

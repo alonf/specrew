@@ -2,22 +2,22 @@
 
 **Schema**: v1  
 **Spec**: [../../spec.md](../../spec.md)  
-**Status**: retro  
+**Status**: complete  
 **Capacity**: 15.5/20 story_points  
 **Planned Start**: 2026-05-12  
 **Started**: 2026-05-12  
-**Completed**: pending  
-**Closed**: pending  
+**Completed**: 2026-05-12  
+**Closed**: 2026-05-12  
 **Hardening-Gate Sign-Off**: signed (2026-05-12 by Alon Fliess)  
 **Implementation Authorization**: authorized (T014-T029, 15.5 story_points)  
 **Review Completed**: 2026-05-12  
 **Review Verdict**: accepted  
 **Retrospective Completed**: 2026-05-12  
-**Closeout Validation**: 2026-05-12 (implementation-boundary lane; final closure still pending explicit closeout authorization)
+**Closeout Validation**: 2026-05-12 (full closeout lane: quality-profile-foundation, hardening-gate-contract, quality-evidence-governance, validation-contract-lane, project-path-resolution-regression, validator-hardening-iteration1, validator-hardening-iteration2, the five `specrew-start` regression scripts, and repo-wide `validate-governance.ps1 -ProjectPath .`)
 
 ## Summary
 
-Deliver the second and final validator-hardening implementation slice: approval-evidence reuse detection, unsupported closeout claim blocking (over-claim detection and dirty-tree enforcement), the `.github/copilot-instructions.md` bookkeeping-vs-behavior classifier, canonical corpus graduation (marking iteration 001 rules as validator-enforced), final documentation updates, and the implementation-boundary validation lane. The implementation boundary is complete, the independent review was accepted on 2026-05-12, and the retrospective boundary is now recorded on the current tree. Final closeout intentionally remains pending separate authorization and follow-through.
+Deliver the second and final validator-hardening implementation slice: approval-evidence reuse detection, unsupported closeout claim blocking (over-claim detection and dirty-tree enforcement), the `.github/copilot-instructions.md` bookkeeping-vs-behavior classifier, canonical corpus graduation (marking iteration 001 rules as validator-enforced), final documentation updates, and the closeout validation lane. The implementation boundary is complete, the independent review was accepted on 2026-05-12, the retrospective boundary is recorded on the current tree, and iteration 002 closeout is now complete. Feature-level closeout remains intentionally separate and is not claimed here.
 
 ## Iteration Scope
 
