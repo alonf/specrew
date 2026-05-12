@@ -2,7 +2,7 @@
 
 **Schema**: v1  
 **Spec**: [../../spec.md](../../spec.md)  
-**Status**: planning  
+**Status**: executing  
 **Capacity**: 13/20 story_points  
 **Planned Start**: 2026-05-12  
 **Started**: 2026-05-12  
@@ -32,19 +32,19 @@ Deliver the first validator-hardening slice: canonical iteration `state.md` sche
 
 | Task | Title | Requirement | Story | Effort | Owner | Status | Actual | Verdict |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| T001 | Record the six-script baseline and current validator behavior | FR-010, TG-007, SC-005 | Foundation | 1 | Reviewer | planned |  |  |
-| T002 | Reconfirm feature scope and initialize trap reapplication follow-through | FR-007, FR-010, TG-001, TG-002, TG-003, TG-004, TG-005, SC-007 | Foundation | 0.5 | Planner | planned |  |  |
-| T003 | Build structured FAIL helpers and exception-wrapping support | FR-005, TG-008, SC-005 | Foundation | 2 | Validator maintainer | planned |  |  |
-| T004 | Scaffold the shared integration harness for iteration 001 and iteration 002 | FR-008, FR-010, TG-007, TG-008, SC-005, SC-006 | Foundation | 1 | Test maintainer | planned |  |  |
-| T005 | Reconcile the canonical contracts with the data model and plan | FR-009, TG-001, TG-002, SC-001, SC-002 | Foundation | 0.5 | Governance-contract steward | planned |  |  |
-| T006 | Create compliant and violating iteration-state fixtures | FR-001, FR-008, TG-001, SC-001 | US1 | 1 | Test maintainer | planned |  |  |
-| T007 | Add canonical-schema assertions to `validator-hardening-iteration1.ps1` | FR-001, FR-008, TG-001, TG-008, SC-001, SC-005 | US1 | 1 | Test maintainer | planned |  |  |
-| T008 | Implement canonical iteration metadata detection and grandfathering | FR-001, FR-009, TG-001, SC-001 | US1 | 2 | Validator maintainer | planned |  |  |
-| T009 | Record schema-rule evidence in `quickstart.md` | FR-001, FR-010, TG-001, SC-001, SC-005 | US1 | 0.5 | Reviewer | planned |  |  |
-| T010 | Create compliant and violating hardening-gate fixtures | FR-002, FR-008, TG-002, SC-002 | US2 | 1 | Test maintainer | planned |  |  |
-| T011 | Add canonical-concern assertions to `validator-hardening-iteration1.ps1` | FR-002, FR-008, TG-002, TG-008, SC-002, SC-005 | US2 | 1 | Test maintainer | planned |  |  |
-| T012 | Implement first-five canonical concern enforcement | FR-002, FR-009, TG-002, SC-002 | US2 | 1 | Validator maintainer | planned |  |  |
-| T013 | Record hardening-gate evidence in `quickstart.md` | FR-002, FR-010, TG-002, SC-002, SC-005 | US2 | 0.5 | Reviewer | planned |  |  |
+| T001 | Record the six-script baseline and current validator behavior | FR-010, TG-007, SC-005 | Foundation | 1 | Reviewer | done | 1 | pass |
+| T002 | Reconfirm feature scope and initialize trap reapplication follow-through | FR-007, FR-010, TG-001, TG-002, TG-003, TG-004, TG-005, SC-007 | Foundation | 0.5 | Planner | done | 0.5 | pass |
+| T003 | Build structured FAIL helpers and exception-wrapping support | FR-005, TG-008, SC-005 | Foundation | 2 | Validator maintainer | done | 2 | pass |
+| T004 | Scaffold the shared integration harness for iteration 001 and iteration 002 | FR-008, FR-010, TG-007, TG-008, SC-005, SC-006 | Foundation | 1 | Test maintainer | done | 1 | pass |
+| T005 | Reconcile the canonical contracts with the data model and plan | FR-009, TG-001, TG-002, SC-001, SC-002 | Foundation | 0.5 | Governance-contract steward | done | 0.5 | pass |
+| T006 | Create compliant and violating iteration-state fixtures | FR-001, FR-008, TG-001, SC-001 | US1 | 1 | Test maintainer | done | 1 | pass |
+| T007 | Add canonical-schema assertions to `validator-hardening-iteration1.ps1` | FR-001, FR-008, TG-001, TG-008, SC-001, SC-005 | US1 | 1 | Test maintainer | done | 1 | pass |
+| T008 | Implement canonical iteration metadata detection and grandfathering | FR-001, FR-009, TG-001, SC-001 | US1 | 2 | Validator maintainer | done | 2 | pass |
+| T009 | Record schema-rule evidence in `quickstart.md` | FR-001, FR-010, TG-001, SC-001, SC-005 | US1 | 0.5 | Reviewer | done | 0.5 | pass |
+| T010 | Create compliant and violating hardening-gate fixtures | FR-002, FR-008, TG-002, SC-002 | US2 | 1 | Test maintainer | done | 1 | pass |
+| T011 | Add canonical-concern assertions to `validator-hardening-iteration1.ps1` | FR-002, FR-008, TG-002, TG-008, SC-002, SC-005 | US2 | 1 | Test maintainer | done | 1 | pass |
+| T012 | Implement first-five canonical concern enforcement | FR-002, FR-009, TG-002, SC-002 | US2 | 1 | Validator maintainer | done | 1 | pass |
+| T013 | Record hardening-gate evidence in `quickstart.md` | FR-002, FR-010, TG-002, SC-002, SC-005 | US2 | 0.5 | Reviewer | done | 0.5 | pass |
 
 **Total Effort**: 13 story_points
 
@@ -52,11 +52,11 @@ Deliver the first validator-hardening slice: canonical iteration `state.md` sche
 
 | Gate | Status | Evidence |
 | --- | --- | --- |
-| Hardening-gate drafted with canonical concerns first | planned | `iterations/001/quality/hardening-gate.md` |
+| Hardening-gate drafted with canonical concerns first | pass | `iterations/001/quality/hardening-gate.md` signed off 2026-05-12 |
 | Canonical `state.md` metadata schema in use from planning onward | pass | `iterations/001/state.md` uses the eight canonical fields in the metadata header |
-| Iteration-1 replay coverage scoped and bounded | planned | `tasks.md` assigns fixture creation, assertions, and reviewer evidence to T004, T006-T013 |
-| Additive validator CLI surface preserved | planned | FR-010 remains in-scope for T001, T003, T004, T009, T013 |
-| Existing validator regression baseline captured before implementation | planned | T001 records the six-script baseline before rule changes |
+| Iteration-1 replay coverage scoped and bounded | pass | `tests/integration/validator-hardening-iteration1.ps1` now proves compliant, violating, grandfathered, missing-file, and unexpected-input paths through actual validator output |
+| Additive validator CLI surface preserved | pass | Shared regressions plus repo-wide `validate-governance.ps1 -ProjectPath .` stayed green after the Iteration 001 implementation landed |
+| Existing validator regression baseline captured before implementation | pass | T001 recorded the six-script baseline on 2026-05-12 with repo-wide `validate-governance.ps1 -ProjectPath .` green |
 
 ## Risk Tracking
 
@@ -105,3 +105,12 @@ Deliver the first validator-hardening slice: canonical iteration `state.md` sche
 | Overcommit Threshold | 1.0 | Warn when planned effort exceeds the configured capacity |
 | Defer Strategy | manual | Iteration 002 carries the explicitly deferred validator-hardening rules |
 | Calibration Enabled | true | Actual effort should be recorded after execution completes |
+
+## Implementation Boundary Result
+
+| Area | Evidence |
+| --- | --- |
+| Structured FAIL output | `shared-governance.ps1` now formats structured FAIL records, and `validate-governance.ps1` surfaces canonical-schema, concern-order, missing-artifact, and unexpected-input failures without raw PowerShell exception output. |
+| Canonical iteration metadata enforcement | `tests/integration/fixtures/013-validator-hardening/state-*` plus `tests/integration/validator-hardening-iteration1.ps1` prove canonical pass cases, non-canonical alias detection, missing-field failures, and grandfathered legacy acceptance. |
+| Canonical hardening-gate concern enforcement | `tests/integration/fixtures/013-validator-hardening/hardening-gate-*` plus the replay harness prove the first five canonical concerns stay ordered while allowing feature-specific rows after position five. |
+| Regression preservation | `tests/integration/hardening-gate-contract.ps1`, `tests/integration/quality-evidence-governance.ps1`, `tests/integration/project-path-resolution-regression.ps1`, `tests/integration/validator-hardening-iteration1.ps1`, and `validate-governance.ps1 -ProjectPath .` all passed on 2026-05-12. |

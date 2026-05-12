@@ -432,6 +432,71 @@ function Convert-ToRepoMarkdownPath {
     return ([System.IO.Path]::GetRelativePath($ProjectRoot, $TargetPath)) -replace '\\', '/'
 }
 
+function Add-RepoStructuredValidationFailure {
+    param(
+        [AllowEmptyCollection()]
+        [Parameter(Mandatory = $true)]
+        [System.Collections.Generic.List[string]]$Errors,
+
+        [Parameter(Mandatory = $true)]
+        [string]$ProjectRoot,
+
+        [AllowNull()][string]$TargetPath,
+        [AllowNull()][int]$LineNumber,
+        [Parameter(Mandatory = $true)][string]$Category,
+        [Parameter(Mandatory = $true)][string]$Message,
+        [Parameter(Mandatory = $true)][string]$RemediationHint
+    )
+
+    $relativePath = if ([string]::IsNullOrWhiteSpace($TargetPath)) {
+        '(none)'
+    }
+    else {
+        Convert-ToRepoMarkdownPath -ProjectRoot $ProjectRoot -TargetPath $TargetPath
+    }
+
+    Add-StructuredValidationFailure -Errors $Errors -FilePath $relativePath -LineNumber $LineNumber -Category $Category -Message $Message -RemediationHint $RemediationHint
+}
+
+function Find-CanonicalMetadataLabelLineNumber {
+    param(
+        [string[]]$Lines,
+        [string]$Label
+    )
+
+    $pattern = '^\*\*' + [regex]::Escape($Label) + '\*\*:\s*(.*?)\s*$'
+    return Find-LineNumberByPattern -Lines $Lines -Pattern $pattern
+}
+
+function Find-NonCanonicalMetadataLabelLineNumber {
+    param(
+        [string[]]$Lines,
+        [string]$Label
+    )
+
+    $aliasPatterns = switch ($Label) {
+        'Iteration Status' { @('^(?!\*\*)\s*Overall Status\s*:\s*.*$') ; break }
+        'Current Phase' { @('^(?!\*\*)\s*Planning Phase\s*:\s*.*$') ; break }
+        default { @() }
+    }
+
+    $trimmedLabel = [regex]::Escape($Label.Trim())
+    $patterns = @(
+        '^(?!\*\*)\s*' + $trimmedLabel + '\s*:\s*.*$',
+        '^#+\s*' + $trimmedLabel + '\s*$',
+        '^\s*-\s*' + $trimmedLabel + '\s*:\s*.*$'
+    ) + $aliasPatterns
+
+    foreach ($pattern in $patterns) {
+        $lineNumber = Find-LineNumberByPattern -Lines $Lines -Pattern $pattern
+        if ($null -ne $lineNumber) {
+            return $lineNumber
+        }
+    }
+
+    return $null
+}
+
 function Resolve-RepoMarkdownArtifactPath {
     param(
         [Parameter(Mandatory = $true)]
@@ -646,24 +711,35 @@ function Test-Phase2HardeningGate {
         $Errors.Add(("hardening-gate.md requested review class '{0}' does not match the Phase 2 routing policy '{1}'" -f $hardeningState.Metadata.RequestedReviewClass, $planContext.RequestedReviewClass))
     }
 
-    $expectedConcernIds = @(
-        'security-surface',
-        'error-handling-expectations',
-        'retry-idempotency-requirements',
-        'test-integrity-targets',
-        'operational-resilience-concerns'
-    )
+    if (Test-IterationRequiresCanonicalHardeningConcerns -IterationDirectory $IterationDirectory) {
+        $hardeningGatePath = $planContext.HardeningGateArtifactPath
+        $hardeningGateLines = @(Get-MarkdownContent -Path $hardeningGatePath)
+        $concernHeadingLine = Find-LineNumberByPattern -Lines $hardeningGateLines -Pattern '^#{2,3}\s+Concern Review\b'
+        $expectedConcernDefinitions = @(Get-CanonicalHardeningConcernDefinitions -ProjectRoot $ProjectRoot)
+        $expectedConcernIds = @($expectedConcernDefinitions | ForEach-Object { $_.ConcernId })
 
-    # Only enforce the bounded five-concern contract for explicit Phase 2 planning
-    if (-not $planContext.IsImplicit) {
-        if ($hardeningState.ConcernRows.Count -ne $expectedConcernIds.Count) {
-            $Errors.Add(("hardening-gate.md must keep the bounded five-concern contract; found {0} concern rows" -f $hardeningState.ConcernRows.Count))
+        if ($hardeningState.ConcernRows.Count -lt $expectedConcernIds.Count) {
+            Add-RepoStructuredValidationFailure -Errors $Errors -ProjectRoot $ProjectRoot -TargetPath $hardeningGatePath -LineNumber $concernHeadingLine -Category 'concern-order' -Message ("hardening-gate.md is missing canonical concern rows; expected at least {0} Concern Review rows but found {1}" -f $expectedConcernIds.Count, $hardeningState.ConcernRows.Count) -RemediationHint 'Ensure the five canonical concerns appear as rows 1 through 5 before any feature-specific concerns.'
         }
 
-        foreach ($concernId in $expectedConcernIds) {
+        foreach ($definition in $expectedConcernDefinitions) {
+            $concernId = $definition.ConcernId
             $matches = @($hardeningState.ConcernRows | Where-Object { [string]$_.Concern -eq $concernId })
             if ($matches.Count -ne 1) {
-                $Errors.Add(("hardening-gate.md must contain exactly one '{0}' concern row" -f $concernId))
+                Add-RepoStructuredValidationFailure -Errors $Errors -ProjectRoot $ProjectRoot -TargetPath $hardeningGatePath -LineNumber $concernHeadingLine -Category 'concern-order' -Message ("hardening-gate.md must contain exactly one canonical concern row for '{0}'" -f $concernId) -RemediationHint 'Keep each canonical concern visible exactly once in the Concern Review table.'
+                continue
+            }
+
+            $rowIndex = $definition.Position - 1
+            if ($rowIndex -ge $hardeningState.ConcernRows.Count) {
+                Add-RepoStructuredValidationFailure -Errors $Errors -ProjectRoot $ProjectRoot -TargetPath $hardeningGatePath -LineNumber $concernHeadingLine -Category 'concern-order' -Message ("hardening-gate.md is missing canonical concern '{0}' at required row position {1}" -f $concernId, $definition.Position) -RemediationHint 'Add the missing canonical concern so rows 1 through 5 match the canonical contract order.'
+                continue
+            }
+
+            $actualConcern = Normalize-MarkdownCell ([string]$hardeningState.ConcernRows[$rowIndex].Concern)
+            if ($actualConcern -ne $concernId) {
+                $actualLineNumber = Find-LineNumberByPattern -Lines $hardeningGateLines -Pattern ('^\|\s*`?' + [regex]::Escape($actualConcern) + '`?\s*\|')
+                Add-RepoStructuredValidationFailure -Errors $Errors -ProjectRoot $ProjectRoot -TargetPath $hardeningGatePath -LineNumber $actualLineNumber -Category 'concern-order' -Message ("hardening-gate.md row {0} must be canonical concern '{1}' but found '{2}'" -f $definition.Position, $concernId, $actualConcern) -RemediationHint 'Reorder the Concern Review table so the five canonical concerns appear first in the required order.'
             }
         }
     }
@@ -1237,20 +1313,48 @@ function Test-SignOffRoleNaming {
 function Test-StateArtifact {
     param(
         [string]$IterationDirectory,
+        [string]$ProjectRoot,
         [System.Collections.Generic.List[string]]$Errors
     )
 
     $statePath = Join-Path -Path $IterationDirectory -ChildPath 'state.md'
     if (-not (Test-Path -Path $statePath -PathType Leaf)) {
-        $Errors.Add('Missing required artifact: state.md')
+        Add-RepoStructuredValidationFailure -Errors $Errors -ProjectRoot $ProjectRoot -TargetPath $statePath -LineNumber $null -Category 'missing-artifact' -Message 'Missing required artifact: state.md' -RemediationHint 'Add state.md to the iteration directory before continuing the lifecycle.'
         return
     }
 
-    $stateLines = Get-MarkdownContent -Path $statePath
+    try {
+        $stateLines = @(Get-MarkdownContent -Path $statePath)
+    }
+    catch {
+        Add-RepoStructuredValidationFailure -Errors $Errors -ProjectRoot $ProjectRoot -TargetPath $statePath -LineNumber $null -Category 'parse-failure' -Message ("Unable to read state.md: {0}" -f $_.Exception.Message) -RemediationHint 'Repair the state.md file encoding or contents and rerun validate-governance.ps1.'
+        return
+    }
+
+    if (Test-IterationRequiresCanonicalStateSchema -IterationDirectory $IterationDirectory) {
+        foreach ($field in @(Get-CanonicalIterationStateFields -ProjectRoot $ProjectRoot)) {
+            $label = [string]$field.FieldName
+            $canonicalLineNumber = Find-CanonicalMetadataLabelLineNumber -Lines $stateLines -Label $label
+            if ($null -ne $canonicalLineNumber) {
+                continue
+            }
+
+            $nonCanonicalLineNumber = Find-NonCanonicalMetadataLabelLineNumber -Lines $stateLines -Label $label
+            if ($null -ne $nonCanonicalLineNumber) {
+                Add-RepoStructuredValidationFailure -Errors $Errors -ProjectRoot $ProjectRoot -TargetPath $statePath -LineNumber $nonCanonicalLineNumber -Category 'canonical-schema' -Message ("state.md uses a non-canonical label for '{0}'" -f $label) -RemediationHint ("Replace it with the canonical metadata line '**{0}**:' on its own line." -f $label)
+                continue
+            }
+
+            Add-RepoStructuredValidationFailure -Errors $Errors -ProjectRoot $ProjectRoot -TargetPath $statePath -LineNumber $null -Category 'canonical-schema' -Message ("state.md is missing canonical field '{0}'" -f $label) -RemediationHint ("Add the canonical metadata line '**{0}**:' to state.md." -f $label)
+        }
+
+        return
+    }
+
     foreach ($label in @('Last Completed Task', 'Tasks Remaining', 'In Progress', 'Baseline Ref', 'Updated')) {
         $value = Get-MarkdownMetadataValue -Lines $stateLines -Label $label
         if ($null -eq $value) {
-            $Errors.Add("state.md is missing required metadata: $label")
+            Add-RepoStructuredValidationFailure -Errors $Errors -ProjectRoot $ProjectRoot -TargetPath $statePath -LineNumber $null -Category 'missing-artifact' -Message ("state.md is missing required metadata: {0}" -f $label) -RemediationHint ("Add the '{0}' metadata line to state.md." -f $label)
         }
     }
 }
@@ -2319,10 +2423,10 @@ function Test-IterationGovernance {
 
     switch ($status) {
         'executing' {
-            Test-StateArtifact -IterationDirectory $IterationDirectory -Errors $errors
+            Test-StateArtifact -IterationDirectory $IterationDirectory -ProjectRoot $ProjectRoot -Errors $errors
         }
         'reviewing' {
-            Test-StateArtifact -IterationDirectory $IterationDirectory -Errors $errors
+            Test-StateArtifact -IterationDirectory $IterationDirectory -ProjectRoot $ProjectRoot -Errors $errors
             if (-not (Test-Path -Path $driftPath -PathType Leaf)) {
                 $errors.Add('Reviewing iterations require drift-log.md before review can start')
             }
@@ -2332,7 +2436,7 @@ function Test-IterationGovernance {
             Test-ReviewArtifact -ReviewPath $reviewPath -ProjectRoot $ProjectRoot -IterationDirectory $IterationDirectory -IterationStatus $status -PlanTasks $tasks -Errors $errors
         }
         'retro' {
-            Test-StateArtifact -IterationDirectory $IterationDirectory -Errors $errors
+            Test-StateArtifact -IterationDirectory $IterationDirectory -ProjectRoot $ProjectRoot -Errors $errors
             if (-not (Test-Path -Path $driftPath -PathType Leaf)) {
                 $errors.Add('Retro iterations require drift-log.md')
             }
@@ -2343,7 +2447,7 @@ function Test-IterationGovernance {
             Test-ReviewerCloseoutArtifacts -IterationDirectory $IterationDirectory -ProjectRoot $ProjectRoot -StateLines $stateLines -EnforceReviewerCloseout $EnforceReviewerCloseout -Errors $errors
         }
         'complete' {
-            Test-StateArtifact -IterationDirectory $IterationDirectory -Errors $errors
+            Test-StateArtifact -IterationDirectory $IterationDirectory -ProjectRoot $ProjectRoot -Errors $errors
             if (-not (Test-Path -Path $driftPath -PathType Leaf)) {
                 $errors.Add('Complete iterations require drift-log.md')
             }
@@ -2355,7 +2459,7 @@ function Test-IterationGovernance {
             Test-ReviewerCloseoutArtifacts -IterationDirectory $IterationDirectory -ProjectRoot $ProjectRoot -StateLines $stateLines -EnforceReviewerCloseout $EnforceReviewerCloseout -Errors $errors
         }
         'abandoned' {
-            Test-StateArtifact -IterationDirectory $IterationDirectory -Errors $errors
+            Test-StateArtifact -IterationDirectory $IterationDirectory -ProjectRoot $ProjectRoot -Errors $errors
             if (-not (Test-Path -Path $statePath -PathType Leaf)) {
                 $errors.Add('Abandoned iterations require state.md with explicit reason')
             }
@@ -2436,46 +2540,64 @@ function Get-ReviewerCloseoutEnforcementMap {
     return $enforcementMap
 }
 
-$resolvedProjectPath = (Resolve-Path -Path (Resolve-ProjectPath -Path $ProjectPath)).Path
-$teamRoles = Get-TeamRoleMap -ResolvedProjectPath $resolvedProjectPath
+try {
+    $resolvedProjectPath = (Resolve-Path -Path (Resolve-ProjectPath -Path $ProjectPath)).Path
+    $teamRoles = Get-TeamRoleMap -ResolvedProjectPath $resolvedProjectPath
 
-$teamValidationErrors = New-Object System.Collections.Generic.List[string]
-Test-BaselineTeamMembers -TeamRoles $teamRoles -Errors $teamValidationErrors
+    $teamValidationErrors = New-Object System.Collections.Generic.List[string]
+    Test-BaselineTeamMembers -TeamRoles $teamRoles -Errors $teamValidationErrors
 
-if ($teamValidationErrors.Count -gt 0) {
-    Write-Host "FAIL Squad team validation" -ForegroundColor Red
-    foreach ($errorMessage in $teamValidationErrors) {
-        Write-Host "  - $errorMessage" -ForegroundColor Red
+    if ($teamValidationErrors.Count -gt 0) {
+        Write-Host "FAIL Squad team validation" -ForegroundColor Red
+        foreach ($errorMessage in $teamValidationErrors) {
+            Write-Host "  - $errorMessage" -ForegroundColor Red
+        }
+        exit 1
     }
+
+    $explicitIterationPathsProvided = ($null -ne $IterationPath) -and @(
+        $IterationPath | Where-Object { -not [string]::IsNullOrWhiteSpace([string]$_) }
+    ).Count -gt 0
+    $targets = @(Resolve-IterationTarget -ResolvedProjectPath $resolvedProjectPath -ExplicitIterationPaths $IterationPath)
+    $iterationConfig = if ($targets.Count -gt 0) { Get-IterationConfigForValidation -IterationDirectory $targets[0] } else { @{ closeout_packet_required_since_iteration = '' } }
+    $reviewerCloseoutEnforcement = Get-ReviewerCloseoutEnforcementMap -Targets $targets -ExplicitTargetsProvided $explicitIterationPathsProvided -RequiredSinceIteration $iterationConfig.closeout_packet_required_since_iteration
+    $results = @($targets | ForEach-Object {
+            $targetPath = $_
+            try {
+                Test-IterationGovernance -IterationDirectory $targetPath -ProjectRoot $resolvedProjectPath -TeamRoles $teamRoles -EnforceReviewerCloseout $reviewerCloseoutEnforcement.ContainsKey($targetPath)
+            }
+            catch {
+                $iterationErrors = New-Object System.Collections.Generic.List[string]
+                Add-RepoStructuredValidationFailure -Errors $iterationErrors -ProjectRoot $resolvedProjectPath -TargetPath $targetPath -LineNumber $null -Category 'unexpected-validator-error' -Message $_.Exception.Message -RemediationHint 'Repair the malformed governance artifact or validator input for this iteration and rerun validate-governance.ps1.'
+                [pscustomobject]@{
+                    Path   = $targetPath
+                    Errors = $iterationErrors
+                }
+            }
+        })
+    $hasFailures = $false
+
+    foreach ($result in $results) {
+        if ($result.Errors.Count -eq 0) {
+            Write-Host "PASS $($result.Path)" -ForegroundColor Green
+            continue
+        }
+
+        $hasFailures = $true
+        Write-Host "FAIL $($result.Path)" -ForegroundColor Red
+        foreach ($errorMessage in $result.Errors) {
+            Write-Host "  - $errorMessage" -ForegroundColor Red
+        }
+    }
+
+    if ($hasFailures) {
+        exit 1
+    }
+
+    exit 0
+}
+catch {
+    Write-Host 'FAIL validate-governance' -ForegroundColor Red
+    Write-Host ('  - {0}' -f (New-StructuredValidationFailureText -FilePath '(none)' -LineNumber $null -Category 'unexpected-validator-error' -Message $_.Exception.Message -RemediationHint 'Repair the validator inputs or configuration and rerun validate-governance.ps1.')) -ForegroundColor Red
     exit 1
 }
-
-$explicitIterationPathsProvided = ($null -ne $IterationPath) -and @(
-    $IterationPath | Where-Object { -not [string]::IsNullOrWhiteSpace([string]$_) }
-).Count -gt 0
-$targets = @(Resolve-IterationTarget -ResolvedProjectPath $resolvedProjectPath -ExplicitIterationPaths $IterationPath)
-$iterationConfig = if ($targets.Count -gt 0) { Get-IterationConfigForValidation -IterationDirectory $targets[0] } else { @{ closeout_packet_required_since_iteration = '' } }
-$reviewerCloseoutEnforcement = Get-ReviewerCloseoutEnforcementMap -Targets $targets -ExplicitTargetsProvided $explicitIterationPathsProvided -RequiredSinceIteration $iterationConfig.closeout_packet_required_since_iteration
-$results = @($targets | ForEach-Object {
-        Test-IterationGovernance -IterationDirectory $_ -ProjectRoot $resolvedProjectPath -TeamRoles $teamRoles -EnforceReviewerCloseout $reviewerCloseoutEnforcement.ContainsKey($_)
-    })
-$hasFailures = $false
-
-foreach ($result in $results) {
-    if ($result.Errors.Count -eq 0) {
-        Write-Host "PASS $($result.Path)" -ForegroundColor Green
-        continue
-    }
-
-    $hasFailures = $true
-    Write-Host "FAIL $($result.Path)" -ForegroundColor Red
-    foreach ($errorMessage in $result.Errors) {
-        Write-Host "  - $errorMessage" -ForegroundColor Red
-    }
-}
-
-if ($hasFailures) {
-    exit 1
-}
-
-exit 0

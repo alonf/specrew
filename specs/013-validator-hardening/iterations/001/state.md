@@ -1,13 +1,13 @@
 # Iteration State: 001
 
 **Schema**: v1
-**Last Completed Task**: none yet
-**Tasks Remaining**: T001-T013
+**Last Completed Task**: T013 (Record hardening-gate evidence in `quickstart.md`)
+**Tasks Remaining**: none
 **In Progress**: none
 **Baseline Ref**: commit 977bc79 (task-backlog boundary before iteration 001 implementation)
 **Updated**: 2026-05-12
-**Current Phase**: planning
-**Iteration Status**: Hardening gate signed off; implementation authorized; awaiting execution start
+**Current Phase**: executing
+**Iteration Status**: Implementation complete; reviewer evidence recorded; awaiting independent review
 
 ## Planning Summary
 
@@ -17,16 +17,17 @@ Iteration 001 is the first delivery slice for feature 013, validator hardening. 
 
 | Task Range | Scope | Status | Notes |
 | --- | --- | --- | --- |
-| T001-T002 | Baseline and scope lock | pending | Capture the six-script baseline and confirm bounded scope |
-| T003-T005 | Shared validator and contract foundation | pending | Structured FAIL plumbing, harness scaffolding, and contract reconciliation |
-| T006-T009 | Canonical iteration `state.md` rule | pending | Fixtures, assertions, validator rule, and recorded reviewer evidence |
-| T010-T013 | Canonical hardening-gate concern rule | pending | Fixtures, assertions, validator rule, and recorded reviewer evidence |
+| T001-T002 | Baseline and scope lock | complete | Six-script baseline recorded and trap reapplication artifact initialized before validator changes begin |
+| T003-T005 | Shared validator and contract foundation | complete | Structured FAIL helpers landed, the shared replay harness exists, and the canonical contracts remained aligned to the implementation |
+| T006-T009 | Canonical iteration `state.md` rule | complete | Canonical pass, non-canonical alias, missing-field, grandfathered, and missing-file cases now replay through the actual validator surface |
+| T010-T013 | Canonical hardening-gate concern rule | complete | Canonical concern ordering, missing concern, reordered concern, and additive extra-row cases now replay through the actual validator surface |
 
 ## Decisions and Handoff
 
 - **Planning Boundary**: drafted - iteration 001 planning artifacts now exist on the feature branch
 - **Hardening-Gate Sign-Off**: ✅ **SIGNED OFF** — `quality/hardening-gate.md` signed by Alon Fliess on 2026-05-12
 - **Implementation Authorization**: ✅ **AUTHORIZED** — Iteration 001 implementation, review, retrospective, and closeout authorized by Alon Fliess on 2026-05-12
+- **Implementation Boundary**: ✅ **RECORDED** — tasks `T001` through `T013` are complete on the current tree with replay-path evidence and repo-wide regression proof captured on 2026-05-12
 - **Review Boundary**: pending - reviewer evidence is deferred until after implementation
 - **Retrospective Boundary**: pending - retro follows implementation and review
 - **Closeout Boundary**: pending - no closure claim is authorized in planning
@@ -39,4 +40,4 @@ Iteration 001 is the first delivery slice for feature 013, validator hardening. 
 
 ## Next Action
 
-The next required step is the before-implement gate and then the execution start for feature 013 iteration 001, canonical-schema and graceful-error slice.
+The next required step is to run the independent review for the canonical-schema and graceful-error slice, verifying the blocking concerns against the now-recorded replay-path evidence before the iteration advances to the retrospective boundary.

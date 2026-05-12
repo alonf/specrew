@@ -4,7 +4,22 @@
 **Spec**: [spec.md](spec.md)
 **Plan**: [plan.md](plan.md)
 
-This quickstart is a **planning artifact only**. It defines the validation and verification path for the two-iteration validator hardening feature. It does **not** claim that implementation already exists.
+This quickstart now records the completed Iteration 001 implementation evidence for the canonical-schema and graceful-error slice while preserving the planned validation path for Iteration 002.
+
+## 0. Iteration 001 implementation-start baseline
+
+The approved six-script baseline lane was recorded on **2026-05-12** before any Iteration 001 validator changes landed.
+
+```powershell
+pwsh -NoProfile -File .\tests\integration\quality-profile-foundation.ps1
+pwsh -NoProfile -File .\tests\integration\hardening-gate-contract.ps1
+pwsh -NoProfile -File .\tests\integration\quality-evidence-governance.ps1
+pwsh -NoProfile -File .\tests\integration\validation-contract-lane.ps1
+pwsh -NoProfile -File .\tests\integration\project-path-resolution-regression.ps1
+pwsh -NoProfile -ExecutionPolicy Bypass -File .\extensions\specrew-speckit\scripts\validate-governance.ps1 -ProjectPath .
+```
+
+**Observed baseline verdict**: all six commands passed, including the repo-wide `validate-governance.ps1 -ProjectPath .` corpus pass and the approved planning artifact at `specs/013-validator-hardening/iterations/001`.
 
 ## Prerequisites
 
@@ -35,7 +50,7 @@ These contracts are the normative references for FR-001 and FR-002. Implementati
 
 ## 3. Run Iteration 1 validation (post-implementation)
 
-After Iteration 1 is implemented, run:
+The Iteration 001 implementation evidence was recorded on **2026-05-12** with:
 
 ```powershell
 # Fixture-based fail-closed proof for FR-001, FR-002, FR-005
@@ -45,14 +60,11 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File .\tests\integration\validator-hard
 pwsh -NoProfile -ExecutionPolicy Bypass -File .\extensions\specrew-speckit\scripts\validate-governance.ps1 -ProjectPath .
 ```
 
-**Expected Iteration 1 pass conditions**:
+**Recorded Iteration 1 verdict**:
 
-- All violating `state.md` fixtures (non-canonical field names, missing fields) produce structured FAIL output naming the file, the missing field, and a remediation hint with zero unhandled exceptions.
-- All compliant `state.md` fixtures (all eight canonical fields present) pass with no errors.
-- All violating `hardening-gate.md` fixtures (missing or reordered canonical concerns) produce structured FAIL output naming the concern and expected position.
-- All compliant `hardening-gate.md` fixtures (five canonical concerns as first five rows) pass.
-- All parse-failure, missing-file, and empty-value edge-case fixtures produce structured FAIL output with non-zero exit codes and zero unhandled exceptions.
-- The full existing iteration corpus under `specs/` passes `validate-governance.ps1` without regressions.
+- `tests/integration/validator-hardening-iteration1.ps1` passed with compliant state and hardening-gate fixtures, non-canonical label failures, missing-field failures, grandfathered legacy pass coverage, missing-file failures, reordered/missing canonical-concern failures, and unexpected-input structured FAIL coverage.
+- `tests/integration/hardening-gate-contract.ps1`, `tests/integration/quality-evidence-governance.ps1`, and `tests/integration/project-path-resolution-regression.ps1` stayed green after the validator changes.
+- `extensions/specrew-speckit/scripts/validate-governance.ps1 -ProjectPath .` stayed green across the existing corpus under `specs/`, preserving feature 007 handoff checks, feature 012 readable-reference enforcement, and the pre-feature-013 historical iterations without new false positives.
 
 ## 4. Run Iteration 2 validation (post-implementation)
 

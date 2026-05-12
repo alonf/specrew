@@ -9303,3 +9303,26 @@ This clarification operates at the **spec-ready-for-planning boundary**:
 
 The spec is now deterministic, fully specified, and ready for `/speckit.plan` to generate the iteration 001 plan.md. No further clarification loops required.
 
+## 2026-05-12T07:31:01Z — 2026-05-12-runtime-evidence-feature013-iter001-after-tasks
+
+### 2026-05-12T00:00:00Z: Runtime evidence - Feature 013 Iteration 001 after-tasks routing
+**By:** Squad (Coordinator)
+**Type:** runtime-evidence
+**Work Item:** Run the after-tasks gate for feature `013-validator-hardening` iteration 001 and repair the canonical contracts path drift in the implementation-authorization record.
+**Requested Agent:** speckit.specrew-speckit.after-tasks
+**Actual Agent:** speckit.specrew-speckit.after-tasks
+**Model:** gpt-5.4
+**Assignment:** honored
+**Fallback Reason:** none
+
+## 2026-05-12T07:31:01Z — 2026-05-12-runtime-evidence-feature013-iter001-before-implement
+
+### 2026-05-12T00:00:00Z: Runtime evidence - Feature 013 Iteration 001 before-implement routing
+**By:** Squad (Coordinator)
+**Type:** runtime-evidence
+**Work Item:** Run the before-implement gate for feature `013-validator-hardening` iteration 001 before starting the canonical-schema and graceful-error implementation slice.
+**Requested Agent:** speckit.specrew-speckit.before-implement
+**Actual Agent:** speckit.specrew-speckit.before-implement
+**Model:** gpt-5.4
+**Assignment:** honored
+**Fallback Reason:** none

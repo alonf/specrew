@@ -446,6 +446,162 @@ function Test-IsNullish {
     return $Value.Trim() -match '^(?:—|-|none|null|n/a|\(none\)|blank|tbd|unknown)$'
 }
 
+function Find-LineNumberByPattern {
+    param(
+        [AllowEmptyCollection()]
+        [AllowEmptyString()]
+        [string[]]$Lines,
+        [string]$Pattern
+    )
+
+    if ($null -eq $Lines -or [string]::IsNullOrWhiteSpace($Pattern)) {
+        return $null
+    }
+
+    for ($index = 0; $index -lt $Lines.Count; $index++) {
+        if ($Lines[$index] -match $Pattern) {
+            return ($index + 1)
+        }
+    }
+
+    return $null
+}
+
+function New-StructuredValidationFailureText {
+    param(
+        [AllowNull()][string]$FilePath,
+        [AllowNull()][int]$LineNumber,
+        [Parameter(Mandatory = $true)][string]$Category,
+        [Parameter(Mandatory = $true)][string]$Message,
+        [Parameter(Mandatory = $true)][string]$RemediationHint
+    )
+
+    $resolvedFilePath = if ([string]::IsNullOrWhiteSpace($FilePath)) { '(none)' } else { $FilePath.Trim() }
+    $resolvedLineNumber = if ($null -eq $LineNumber -or $LineNumber -le 0) { '(none)' } else { [string]$LineNumber }
+    return 'file_path={0} | line_number={1} | category={2} | message={3} | remediation_hint={4}' -f $resolvedFilePath, $resolvedLineNumber, $Category.Trim(), $Message.Trim(), $RemediationHint.Trim()
+}
+
+function Add-StructuredValidationFailure {
+    param(
+        [AllowEmptyCollection()]
+        [Parameter(Mandatory = $true)]
+        [System.Collections.Generic.List[string]]$Errors,
+
+        [AllowNull()][string]$FilePath,
+        [AllowNull()][int]$LineNumber,
+        [Parameter(Mandatory = $true)][string]$Category,
+        [Parameter(Mandatory = $true)][string]$Message,
+        [Parameter(Mandatory = $true)][string]$RemediationHint
+    )
+
+    $Errors.Add((New-StructuredValidationFailureText -FilePath $FilePath -LineNumber $LineNumber -Category $Category -Message $Message -RemediationHint $RemediationHint)) | Out-Null
+}
+
+function Get-FeatureOrdinalFromIterationDirectory {
+    param([AllowNull()][string]$IterationDirectory)
+
+    if ([string]::IsNullOrWhiteSpace($IterationDirectory)) {
+        return $null
+    }
+
+    $normalized = $IterationDirectory -replace '/', '\'
+    $match = [regex]::Match($normalized, '[\\/]specs[\\/](?<feature>\d+)-[^\\/]+[\\/]iterations[\\/]')
+    if ($match.Success) {
+        return [int]$match.Groups['feature'].Value
+    }
+
+    return $null
+}
+
+function Test-IterationRequiresCanonicalStateSchema {
+    param([AllowNull()][string]$IterationDirectory)
+
+    $featureOrdinal = Get-FeatureOrdinalFromIterationDirectory -IterationDirectory $IterationDirectory
+    if ($null -eq $featureOrdinal) {
+        return $true
+    }
+
+    return $featureOrdinal -ge 13
+}
+
+function Test-IterationRequiresCanonicalHardeningConcerns {
+    param([AllowNull()][string]$IterationDirectory)
+
+    $featureOrdinal = Get-FeatureOrdinalFromIterationDirectory -IterationDirectory $IterationDirectory
+    if ($null -eq $featureOrdinal) {
+        return $true
+    }
+
+    return $featureOrdinal -ge 13
+}
+
+function Get-CanonicalIterationStateFields {
+    param([Parameter(Mandatory = $true)][string]$ProjectRoot)
+
+    $contractPath = Join-Path $ProjectRoot 'specs\013-validator-hardening\contracts\iteration-state-schema.md'
+    if (Test-Path -LiteralPath $contractPath -PathType Leaf) {
+        $rows = @(Get-MarkdownSectionTable -Lines (Get-MarkdownContent -Path $contractPath) -Heading 'Canonical Fields')
+        if ($rows.Count -gt 0) {
+            return @(
+                $rows |
+                    ForEach-Object {
+                        [pscustomobject]@{
+                            FieldName = Normalize-MarkdownCell (Get-ObjectPropertyString -InputObject $_ -PropertyNames @('Field Name'))
+                        }
+                    } |
+                    Where-Object { -not [string]::IsNullOrWhiteSpace($_.FieldName) }
+            )
+        }
+    }
+
+    return @(
+        [pscustomobject]@{ FieldName = 'Schema' },
+        [pscustomobject]@{ FieldName = 'Last Completed Task' },
+        [pscustomobject]@{ FieldName = 'Tasks Remaining' },
+        [pscustomobject]@{ FieldName = 'In Progress' },
+        [pscustomobject]@{ FieldName = 'Baseline Ref' },
+        [pscustomobject]@{ FieldName = 'Updated' },
+        [pscustomobject]@{ FieldName = 'Current Phase' },
+        [pscustomobject]@{ FieldName = 'Iteration Status' }
+    )
+}
+
+function Get-CanonicalHardeningConcernDefinitions {
+    param([Parameter(Mandatory = $true)][string]$ProjectRoot)
+
+    $contractPath = Join-Path $ProjectRoot 'specs\013-validator-hardening\contracts\hardening-gate-concerns.md'
+    if (Test-Path -LiteralPath $contractPath -PathType Leaf) {
+        $rows = @(Get-MarkdownSectionTable -Lines (Get-MarkdownContent -Path $contractPath) -Heading 'Canonical Concerns')
+        if ($rows.Count -gt 0) {
+            return @(
+                $rows |
+                    ForEach-Object {
+                        $positionText = Normalize-MarkdownCell (Get-ObjectPropertyString -InputObject $_ -PropertyNames @('Position'))
+                        $position = $null
+                        if ($positionText -match '^\d+$') {
+                            $position = [int]$positionText
+                        }
+
+                        [pscustomobject]@{
+                            Position  = $position
+                            ConcernId = Normalize-MarkdownCell (Get-ObjectPropertyString -InputObject $_ -PropertyNames @('Concern ID'))
+                        }
+                    } |
+                    Where-Object { $null -ne $_.Position -and -not [string]::IsNullOrWhiteSpace($_.ConcernId) } |
+                    Sort-Object Position
+            )
+        }
+    }
+
+    return @(
+        [pscustomobject]@{ Position = 1; ConcernId = 'security-surface' },
+        [pscustomobject]@{ Position = 2; ConcernId = 'error-handling-expectations' },
+        [pscustomobject]@{ Position = 3; ConcernId = 'retry-idempotency-requirements' },
+        [pscustomobject]@{ Position = 4; ConcernId = 'test-integrity-targets' },
+        [pscustomobject]@{ Position = 5; ConcernId = 'operational-resilience-concerns' }
+    )
+}
+
 function Convert-ToDecisionReferenceId {
     param([AllowNull()][string]$ApprovalRef)
 
