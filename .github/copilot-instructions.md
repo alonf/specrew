@@ -17,6 +17,8 @@ Auto-generated from all feature plans. Last updated: 2026-05-12
 - Git-tracked repository files only (`.md`, `.ps1`, `.yml`, `.json`); no database changes (012-keep-descriptive-refs)
 - PowerShell 7.x + `extensions/specrew-speckit/scripts/validate-governance.ps1`, `shared-governance.ps1`, `scripts/specrew-start.ps1`; Git working-tree inspection via `git status --porcelain` (013-validator-hardening)
 - Git-tracked Markdown governance artifacts (`specs/*/iterations/*/state.md`, `quality/hardening-gate.md`, `plan.md`, `review.md`, `retro.md`, `.github/copilot-instructions.md`, `.specrew/quality/known-traps.md`) (013-validator-hardening)
+- PowerShell 7.x automation plus Markdown/YAML/JSON governance artifacts + `extensions/specrew-speckit/validators/handoff-governance-validator.ps1`, coordinator prompt/checklist surfaces under `extensions/specrew-speckit/`, `specs/001-specrew-product/contracts/coordinator-handoff-template.md`, `.github/agents/squad.agent.md`, `.squad/templates/squad.agent.md`, `.specrew/quality/known-traps.md`, existing integration tests under `tests/integration/` (014-handoff-format-scoping)
+- Git-tracked repository artifacts only (`.md`, `.ps1`, `.json`, `.yml`); no database or external state changes (014-handoff-format-scoping)
 
 - Markdown, YAML, PowerShell (Spec Kit extension assets). + Spec Kit >= 0.8.4 (extension starter template), Squad >= 0.9.1 (extension structure: skills/ceremonies/directives) (001-specrew-product)
 
@@ -36,9 +38,9 @@ npm test; npm run lint
 Markdown, YAML, PowerShell (Spec Kit extension assets).: Follow standard conventions
 
 ## Recent Changes
+- 014-handoff-format-scoping: Added PowerShell 7.x automation plus Markdown/YAML/JSON governance artifacts + `extensions/specrew-speckit/validators/handoff-governance-validator.ps1`, coordinator prompt/checklist surfaces under `extensions/specrew-speckit/`, `specs/001-specrew-product/contracts/coordinator-handoff-template.md`, `.github/agents/squad.agent.md`, `.squad/templates/squad.agent.md`, `.specrew/quality/known-traps.md`, existing integration tests under `tests/integration/`
 - 013-validator-hardening: Added PowerShell 7.x + `extensions/specrew-speckit/scripts/validate-governance.ps1`, `shared-governance.ps1`, `scripts/specrew-start.ps1`; Git working-tree inspection via `git status --porcelain`
 - 012-keep-descriptive-refs: Added PowerShell 7.x automation plus Markdown/YAML/JSON governance artifacts + Existing Specrew Spec Kit extension surfaces, Squad/Copilot startup guidance, PowerShell validator/test scripts, Markdown contracts and checklists
-- 010-onboarding-resume-visibility: Added PowerShell 7+ (`pwsh`) for the bootstrap banner function; Markdown (CommonMark) for documentation files + None — plain Markdown + existing PowerShell function; no new packages or tooling
 
 
 <!-- MANUAL ADDITIONS START -->
