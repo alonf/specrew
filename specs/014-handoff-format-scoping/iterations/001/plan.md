@@ -2,7 +2,7 @@
 
 **Schema**: v1
 **Spec**: [../../spec.md](../../spec.md)
-**Status**: executing
+**Status**: reviewing
 **Capacity**: 8.0/20 story_points
 **Started**: 2026-05-12
 **Completed**: T001-T015 on 2026-05-12
@@ -86,5 +86,6 @@
 
 - This plan is intentionally limited to the Iteration 001 rollout slice; Iteration 002 proof and graduation work stays deferred and is not scaffolded here.
 - `Status` moved to `executing` once the pre-implementation hardening gate was signed off and implementation authorization was recorded on 2026-05-12.
+- `Status` moved to `reviewing` once `review.md` recorded the accepted independent review boundary on 2026-05-12; retrospective and closeout remain pending separate human authorization.
 - The current validator treats committed `review.md` and `retro.md` files as evidence that later lifecycle phases have already started, so those two artifacts must be scaffolded when the review and retrospective boundaries are actually opened rather than as planning-time placeholders.
 - If the iteration scope changes later, update the task table, phase baseline, and deferral note in the same planning boundary.
