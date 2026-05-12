@@ -8,8 +8,8 @@
 **Started**: 2026-05-12  
 **Completed**: pending  
 **Closed**: pending  
-**Hardening-Gate Sign-Off**: pending  
-**Implementation Authorization**: pending  
+**Hardening-Gate Sign-Off**: signed-2026-05-12  
+**Implementation Authorization**: authorized-2026-05-12  
 **Review Completed**: pending  
 **Review Verdict**: pending  
 **Retrospective Completed**: pending  
@@ -83,6 +83,16 @@ Deliver the first validator-hardening slice: canonical iteration `state.md` sche
 - `.github/copilot-instructions.md` bookkeeping classification is deferred to iteration 002.
 - Known-traps graduation is deferred to iteration 002.
 - Any implementation work is deferred until hardening-gate sign-off and explicit implementation authorization are recorded.
+
+## Implementation Authorization
+
+- **Authorization Verdict**: ✅ **AUTHORIZED**
+- **Authorized By**: Alon Fliess
+- **Recorded Evidence**: "I authorize feature 013 validator-hardening iteration 001 (canonical-schema and graceful-error slice — implement canonical iteration state.md schema enforcement, implement canonical hardening-gate concerns enforcement, write the canonical schema contracts under .specify/extensions/specrew-speckit/contracts/, replace PowerShell parameter-binding failures and exceptions with structured FAIL lines that name file/line/category/remediation, preserve all existing validator CLI surface and behavior, add scaffold-replay-path integration test coverage for both the schema rules and the graceful error reporting — tasks T001 through T013 per the iteration 001 plan) implementation, review, retrospective, and closeout."
+- **Recorded Date**: 2026-05-12
+- **Gate Reference**: `specs/013-validator-hardening/iterations/001/quality/hardening-gate.md`
+- **Scope Authorized**: Iteration 001 canonical-schema and graceful-error slice (`T001-T013`, 13 story_points)
+- **Authorization Effect**: Pre-implementation governance sign-off is complete and the lifecycle may advance to the before-implement gate and execution start.
 
 ## Effort Model
 

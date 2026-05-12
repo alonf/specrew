@@ -7,7 +7,7 @@
 **Baseline Ref**: commit 977bc79 (task-backlog boundary before iteration 001 implementation)
 **Updated**: 2026-05-12
 **Current Phase**: planning
-**Iteration Status**: Awaiting hardening-gate sign-off and implementation authorization
+**Iteration Status**: Hardening gate signed off; implementation authorized; awaiting execution start
 
 ## Planning Summary
 
@@ -25,8 +25,8 @@ Iteration 001 is the first delivery slice for feature 013, validator hardening. 
 ## Decisions and Handoff
 
 - **Planning Boundary**: drafted - iteration 001 planning artifacts now exist on the feature branch
-- **Hardening-Gate Sign-Off**: pending - `quality/hardening-gate.md` is ready for human review
-- **Implementation Authorization**: pending - no implementation work has started
+- **Hardening-Gate Sign-Off**: ✅ **SIGNED OFF** — `quality/hardening-gate.md` signed by Alon Fliess on 2026-05-12
+- **Implementation Authorization**: ✅ **AUTHORIZED** — Iteration 001 implementation, review, retrospective, and closeout authorized by Alon Fliess on 2026-05-12
 - **Review Boundary**: pending - reviewer evidence is deferred until after implementation
 - **Retrospective Boundary**: pending - retro follows implementation and review
 - **Closeout Boundary**: pending - no closure claim is authorized in planning
@@ -39,4 +39,4 @@ Iteration 001 is the first delivery slice for feature 013, validator hardening. 
 
 ## Next Action
 
-The next required step is human review of file:///C:/Dev/Specrew/specs/013-validator-hardening/iterations/001/quality/hardening-gate.md for iteration 001, canonical-schema and graceful-error slice sign-off, followed by separate implementation authorization if the draft is accepted.
+The next required step is the before-implement gate and then the execution start for feature 013 iteration 001, canonical-schema and graceful-error slice.

@@ -8,8 +8,8 @@
 **Effective Review Class**: `strongest-available`
 **Overall Verdict**: ready
 **Approval Ref**: —
-**Reviewed By**: pending
-**Reviewed At**: pending
+**Reviewed By**: Alon Fliess
+**Reviewed At**: 2026-05-12
 **Post-Implementation Verification**: pending
 **Verified At**: pending
 
@@ -62,11 +62,11 @@
 
 ## Sign-Off Evidence
 
-**Authority**: pending  
-**Reviewed By**: pending  
-**Reviewed At**: pending  
-**Evidence Statement**: pending
+**Authority**: Alon Fliess  
+**Reviewed By**: Alon Fliess  
+**Reviewed At**: 2026-05-12  
+**Evidence Statement**: I sign off on the iteration 001 pre-implementation hardening gate at file:///C:/Dev/Specrew/specs/013-validator-hardening/iterations/001/quality/hardening-gate.md for feature 013 validator-hardening (the canonical-schema and graceful-error slice that enforces canonical iteration state.md schema, enforces canonical hardening-gate concerns first in required order, and replaces PowerShell exceptions with structured FAIL lines). The five canonical concerns are present in the required order with honest pre-implementation evaluations, the five feature-specific concerns follow (canonical-schema-rule-correctness blocking, graceful-error-reporting-completeness blocking, validator-cli-surface-stability, test-coverage-via-scaffold-replay-path blocking, regression-preservation blocking), the nine-column schema is in use, the iter-005-of-008 richer pre-sign-off convention is applied, the canonical state.md schema lesson from feature 012 iter 001 carried forward correctly (no schema deviation), the validator passes cleanly, and the Baseline Ref correctly points at the task-backlog commit 977bc79.
 
 ---
 
-**Hardening-Gate Planning Status**: ready for human review and separate implementation authorization.
+**Hardening-Gate Planning Status**: signed off on 2026-05-12; implementation authorization recorded separately in the iteration plan and state artifacts.
