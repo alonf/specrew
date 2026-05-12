@@ -1,8 +1,16 @@
 # Coordinator Handoff Template
 
-Use this as the default copy-paste starting point for any final coordinator response.
+Use this as the default copy-paste starting point for any coordinator response.
 
-## Three-Section Format
+## Response-Type Selector
+
+Choose exactly one:
+
+- **Final stop message** — use only when the human is the immediate blocker for the next lifecycle step. Preserve the existing three-section stop-message format unchanged.
+- **In-flight progress update** — use when Squad is still actively working, waiting on background work, or only acknowledging session start with no human action required. Keep it as concise single-line prose and omit the user-action section entirely.
+- **Mixed transition + true blocker** — the real human blocker wins, so use the final stop message.
+
+## Final Stop Message: Three-Section Format
 
 ### What I just did
 
@@ -30,13 +38,13 @@ Owner: [user | Squad | reviewer | manual tester | no further action needed]
 
 ## Pattern Library
 
-### 1. Completion Pattern
+### 1. Review-Blocked Stop Pattern
 
 **What I just did**  
-Completed [task or change] in [feature / artifact group]. Pair numeric references with scope, for example `feature 012, descriptive references in handoffs` or `iteration 001, the readable-reference rollout`. Verified [check run or review basis].
+Completed [task or change] in [feature / artifact group]. Pair numeric references with scope, for example `feature 014, handoff format scoping` or `iteration 001, the bounded selector rollout`. Verified [check run or review basis].
 
 **Why I stopped**  
-This approved slice is complete. No open blockers remain in the current scope.
+I stopped because the next lifecycle step needs a real human review or approval before it can continue safely.
 
 **What I need from you**  
 Review [specific files or behavior] before the next iteration starts. If the review target is a local repository file in this Windows workflow, include a `file:///` URI using the absolute Windows path.  
@@ -66,15 +74,24 @@ Completed [implemented or documented work] in [artifact group]. If several ident
 Run or review [specific validation or scenario] next.  
 Owner: reviewer
 
-### 4. Lightweight Pattern
+### 4. In-Flight Progress Pattern
 
-[Current progress status in one sentence, including whether files changed.] Next step: [single action, or `no further action needed`].
+[Current progress status in one sentence, including whether files changed.] [State the active wait or transition plainly.] [State what Squad will continue doing next.]
+
+Example:
+
+> I updated **feature 014, handoff format scoping**, across the coordinator guidance, I am waiting on the preserved validator run to finish, and I will continue with the bounded checklist alignment once it completes.
+
+### 5. First-Acknowledgement Progress Pattern
+
+> I have started **feature 014, handoff format scoping**, and I am reviewing the approved Iteration 001 artifacts now; I will continue with the in-scope edits next.
 
 ## Usage Rules
 
 - Keep the lead sentence plain-language-first.
 - If formal lifecycle terms are needed, place them after the plain-language explanation.
-- Always make both semantic fields explicit, even in compact replies.
+- Use the three-section format only for real human-blocked stops.
+- Keep in-flight progress updates to single-line prose.
 - Keep identifier references readable: `feature 012` alone is not enough; prefer `feature 012, descriptive references in handoffs`.
 - When you cite a grouped list such as `T003-T005`, add one shared explanation for the whole group.
 - When you cite a commit, explain why that commit matters to the handoff.

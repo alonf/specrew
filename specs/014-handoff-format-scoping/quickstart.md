@@ -36,7 +36,7 @@ Update these existing repository surfaces together:
 - `specs/001-specrew-product/contracts/coordinator-handoff-template.md`
 - `.github/agents/squad.agent.md`
 - `.squad/templates/squad.agent.md`
-- `.specrew/quality/known-traps.md` (Iteration 002 graduation only)
+- `.specrew/quality/known-traps.md` (Iteration 001 applicability wording only; Iteration 002 graduation remains deferred)
 
 Use the contract in `contracts/coordinator-handoff-scoping.md` as the normative selector for final stop message vs in-flight progress update behavior.
 

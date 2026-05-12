@@ -66,6 +66,7 @@ This contract applies only to the coordinator's top-level user-facing response s
 
 - State what is happening now
 - Make clear that Squad is still in motion
+- Make the forward motion explicit in prose, for example by saying Squad will continue once the active background step finishes
 - Do not request human action unless the response should instead be a final stop message
 
 ### Not Allowed
@@ -119,12 +120,15 @@ Review and approve the planned wording change before Iteration 002 proof work st
 ### Correct In-Flight Progress Update
 
 ```text
-I updated the planning artifacts and I am still waiting on background research synthesis; no human action is needed yet.
+I updated the planning artifacts, I am still waiting on background research synthesis, and I will continue once it finishes.
 ```
 
 ### Mis-scoped Transitional Stop Claim
 
 ```text
+What I just did
+Updated the scoped guidance and validator wording.
+
 Why I stopped
 I am waiting for the validator run to finish and then I will continue.
 
@@ -136,3 +140,14 @@ Expected warnings:
 
 - `soft-warning.empty-user-action-section`
 - `soft-warning.transitional-stop-claim`
+
+## Iteration 001 Manual Exercise Evidence
+
+Manual validator exercise completed on 2026-05-12 against the approved contract scenarios plus one bounded synthetic placeholder-only misuse case. No new Iteration 002 fixtures were created.
+
+| Scenario | Input Basis | Expected Result | Observed Result |
+| --- | --- | --- | --- |
+| Correct final stop message | Approved final stop example above | `status: pass` with no new warnings | `status: pass`; `findings: none` |
+| Correct in-flight progress update | Approved in-flight example above | `status: pass` with no new warnings | `status: pass`; `findings: none` |
+| Placeholder-only user action misuse | Synthetic stop message using the fixed placeholder list (`No action needed`) | `soft-warning.empty-user-action-section` | `status: warn`; `findings: soft-warning.empty-user-action-section` |
+| Transitional stop claim misuse | Approved mis-scoped stop example above | `soft-warning.empty-user-action-section` and `soft-warning.transitional-stop-claim` | `status: warn`; `findings: soft-warning.empty-user-action-section`, `soft-warning.transitional-stop-claim` |

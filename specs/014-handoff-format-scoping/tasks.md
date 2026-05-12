@@ -11,7 +11,7 @@
 
 **Purpose**: Lock the approved execution boundary before any governed surface is edited.
 
-- [ ] T001 Confirm the approved Iteration 001 boundary and two-iteration split in `specs/014-handoff-format-scoping/plan.md`
+- [x] T001 Confirm the approved Iteration 001 boundary and two-iteration split in `specs/014-handoff-format-scoping/plan.md`
 
 ---
 
@@ -19,7 +19,7 @@
 
 **Purpose**: Anchor all implementation decisions to the approved contract and defer-proof boundary before story work starts.
 
-- [ ] T002 Confirm the deferred proof-work boundary and preserved regression lane in `specs/014-handoff-format-scoping/quickstart.md`
+- [x] T002 Confirm the deferred proof-work boundary and preserved regression lane in `specs/014-handoff-format-scoping/quickstart.md`
 
 **Checkpoint**: Iteration 001 scope is locked; user-story work can begin without scaffolding Iteration 002 artifacts.
 
@@ -31,9 +31,9 @@
 
 **Independent Test**: Review the worked examples and synthetic scenarios in the updated governed guidance and confirm genuine human-blocked stops use the three-section format while in-flight transitions and first acknowledgements use single-line progress prose.
 
-- [ ] T003 [P] [US1] Update response-type selector criteria and first-acknowledgement guidance in `extensions/specrew-speckit/prompts/coordinator-decision-guidance.md`
-- [ ] T004 [P] [US1] Update coordinator response instructions and worked examples in `extensions/specrew-speckit/prompts/coordinator-response.md`
-- [ ] T005 [US1] Update dual response-type examples while preserving the existing stop-message format in `specs/001-specrew-product/contracts/coordinator-handoff-template.md`
+- [x] T003 [P] [US1] Update response-type selector criteria and first-acknowledgement guidance in `extensions/specrew-speckit/prompts/coordinator-decision-guidance.md`
+- [x] T004 [P] [US1] Update coordinator response instructions and worked examples in `extensions/specrew-speckit/prompts/coordinator-response.md`
+- [x] T005 [US1] Update dual response-type examples while preserving the existing stop-message format in `specs/001-specrew-product/contracts/coordinator-handoff-template.md`
 
 **Checkpoint**: User Story 1 is complete when prompt and template surfaces all classify stop vs progress the same way.
 
@@ -45,9 +45,9 @@
 
 **Independent Test**: For Iteration 001, manually exercise the updated validator against the approved contract examples and synthetic misuse scenarios, confirm the two warnings are additive and advisory, and leave deterministic violating/compliant fixtures deferred to Iteration 002.
 
-- [ ] T006 [US2] Add fixed placeholder-phrase matching and `soft-warning.empty-user-action-section` logic in `extensions/specrew-speckit/validators/handoff-governance-validator.ps1`
-- [ ] T007 [US2] Add `soft-warning.transitional-stop-claim` logic and preserve additive soft-warning behavior in `extensions/specrew-speckit/validators/handoff-governance-validator.ps1`
-- [ ] T008 [US2] Manually exercise the new warning paths against the approved scenarios in `specs/014-handoff-format-scoping/contracts/coordinator-handoff-scoping.md`
+- [x] T006 [US2] Add fixed placeholder-phrase matching and `soft-warning.empty-user-action-section` logic in `extensions/specrew-speckit/validators/handoff-governance-validator.ps1`
+- [x] T007 [US2] Add `soft-warning.transitional-stop-claim` logic and preserve additive soft-warning behavior in `extensions/specrew-speckit/validators/handoff-governance-validator.ps1`
+- [x] T008 [US2] Manually exercise the new warning paths against the approved scenarios in `specs/014-handoff-format-scoping/contracts/coordinator-handoff-scoping.md`
 
 **Checkpoint**: User Story 2 is complete when the validator behavior matches the approved warning contract without adding new Iteration 002 fixtures or calibration artifacts.
 
@@ -59,11 +59,11 @@
 
 **Independent Test**: Compare the updated checklist, runtime guidance, template examples, and `human-handoff-id-context` wording for the same synthetic scenarios and confirm they classify final stop messages and in-flight progress updates consistently.
 
-- [ ] T009 [P] [US3] Update selector and mixed-case review criteria in `extensions/specrew-speckit/checklists/coordinator-handoff-governance.md`
-- [ ] T010 [P] [US3] Update coordinator runtime guidance for stop-vs-progress scoping in `.github/agents/squad.agent.md`
-- [ ] T011 [P] [US3] Update generated Squad template guidance for stop-vs-progress scoping in `.squad/templates/squad.agent.md`
-- [ ] T012 [US3] Extend the existing `human-handoff-id-context` row to cover both governed response types in `.specrew/quality/known-traps.md` without adding the deferred Iteration 002 misapplied-stop graduation
-- [ ] T013 [US3] Reconcile cross-artifact wording against the approved selector contract in `specs/014-handoff-format-scoping/contracts/coordinator-handoff-scoping.md`
+- [x] T009 [P] [US3] Update selector and mixed-case review criteria in `extensions/specrew-speckit/checklists/coordinator-handoff-governance.md`
+- [x] T010 [P] [US3] Update coordinator runtime guidance for stop-vs-progress scoping in `.github/agents/squad.agent.md`
+- [x] T011 [P] [US3] Update generated Squad template guidance for stop-vs-progress scoping in `.squad/templates/squad.agent.md`
+- [x] T012 [US3] Extend the existing `human-handoff-id-context` row to cover both governed response types in `.specrew/quality/known-traps.md` without adding the deferred Iteration 002 misapplied-stop graduation
+- [x] T013 [US3] Reconcile cross-artifact wording against the approved selector contract in `specs/014-handoff-format-scoping/contracts/coordinator-handoff-scoping.md`
 
 **Checkpoint**: User Story 3 is complete when all coordinator-facing governance surfaces express the same stop-vs-progress rule and the existing `human-handoff-id-context` row covers both response types without adding the deferred Iteration 002 trap graduation.
 
@@ -73,8 +73,8 @@
 
 **Purpose**: Re-run preserved validation without creating deferred warning-fixture or calibration artifacts.
 
-- [ ] T014 Run preserved handoff-governance regression scripts for additive-warning compatibility in `tests/integration/handoff-governance-jargon-response-test.ps1`, `tests/integration/handoff-governance-plain-language-response-test.ps1`, `tests/integration/handoff-governance-review-file-reference-test.ps1`, `tests/integration/handoff-governance-descriptive-narration-test.ps1`, and `tests/integration/handoff-governance-descriptive-stop-message-test.ps1`
-- [ ] T015 Run repository governance validation for bounded Iteration 001 compliance in `extensions/specrew-speckit/scripts/validate-governance.ps1`
+- [x] T014 Run preserved handoff-governance regression scripts for additive-warning compatibility in `tests/integration/handoff-governance-jargon-response-test.ps1`, `tests/integration/handoff-governance-plain-language-response-test.ps1`, `tests/integration/handoff-governance-review-file-reference-test.ps1`, `tests/integration/handoff-governance-descriptive-narration-test.ps1`, and `tests/integration/handoff-governance-descriptive-stop-message-test.ps1`
+- [x] T015 Run repository governance validation for bounded Iteration 001 compliance in `extensions/specrew-speckit/scripts/validate-governance.ps1`
 
 ---
 

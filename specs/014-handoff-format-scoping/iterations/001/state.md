@@ -1,13 +1,13 @@
 # Iteration State: 001
 
 **Schema**: v1
-**Last Completed Task**: (none - planning scaffold only)
-**Tasks Remaining**: T001-T015
-**In Progress**: T001-T002 (execution boundary confirmation)
+**Last Completed Task**: T015
+**Tasks Remaining**: none within the authorized T001-T015 boundary
+**In Progress**: none
 **Baseline Ref**: 1aeee29
 **Updated**: 2026-05-12
 **Current Phase**: executing
-**Iteration Status**: hardening-gate signed off; implementation authorized; execution in progress
+**Iteration Status**: hardening-gate signed off; authorized T001-T015 slice complete; stopped before review/retro boundary
 
 ## Planning Summary
 
@@ -17,11 +17,18 @@ Iteration 001 is the first delivery slice for feature 014, handoff-format scopin
 
 | Task Range | Scope | Status | Notes |
 | --- | --- | --- | --- |
-| T001-T002 | Boundary lock and deferred-proof confirmation | pending | Confirms the approved Iteration 001 slice and preserves the Iteration 002 deferral |
-| T003-T005 | Response-type selector and template guidance | pending | Updates decision guidance, coordinator guidance, and the handoff template |
-| T006-T008 | Additive validator warning rollout | pending | Adds the two new warnings and the bounded Iteration 001 manual scenario exercise |
-| T009-T013 | Governance-surface alignment | pending | Keeps checklist, startup guidance, and corpus applicability aligned to the same selector |
-| T014-T015 | Bounded validation sweep | pending | Re-runs preserved handoff-governance regressions and repo governance validation |
+| T001-T002 | Boundary lock and deferred-proof confirmation | done | Confirmed the approved Iteration 001 slice; quickstart now keeps the known-traps applicability update in scope while preserving Iteration 002 deferrals |
+| T003-T005 | Response-type selector and template guidance | done | Prompt and template surfaces now distinguish final stop messages from single-line in-flight progress updates, including first acknowledgements |
+| T006-T008 | Additive validator warning rollout | done | Added the two advisory warnings and recorded the bounded manual validator exercise in the contract artifact |
+| T009-T013 | Governance-surface alignment | done | Checklist, Squad runtime guidance, Squad template guidance, known-traps wording, and contract wording now share the same selector |
+| T014-T015 | Bounded validation sweep | done | All five preserved handoff-governance regressions passed and `validate-governance.ps1 -ProjectPath .` passed |
+
+## Manual Exercise Evidence
+
+- `correct-final-stop` → `status: pass`; `findings: none`
+- `correct-in-flight` → `status: pass`; `findings: none`
+- `placeholder-only` → `status: warn`; `findings: soft-warning.empty-user-action-section`
+- `transitional-stop` → `status: warn`; `findings: soft-warning.empty-user-action-section`, `soft-warning.transitional-stop-claim`
 
 ## Decisions and Handoff
 
@@ -30,6 +37,7 @@ Iteration 001 is the first delivery slice for feature 014, handoff-format scopin
 - **Implementation Authorization**: ✅ **AUTHORIZED** — Iteration 001 implementation was authorized by Alon Fliess on 2026-05-12 for the bounded `tasks.md` scope only
 - **Review and Retro Placeholders**: deferred until those lifecycle boundaries open because the current validator interprets committed `review.md` and `retro.md` as active phase evidence
 - **Deferred**: Iteration 002 fixture proof, calibration, and misapplied-stop trap graduation remain unopened and unscaffolded in this turn
+- **Session Restart Requirement**: required before a future session can load the updated `.github/agents/squad.agent.md` and `.squad/templates/squad.agent.md` guidance
 
 ## Scope and Deferrals
 
@@ -39,7 +47,7 @@ Iteration 001 is the first delivery slice for feature 014, handoff-format scopin
 
 ## Next Action
 
-Execute T001 through T015 only, then stop before review/retro scaffolding and request the next explicit authorization boundary.
+Stop at the current boundary. Do not scaffold review/retro artifacts; a new session is required before future Squad runs can load the updated agent-guidance files.
 
 <!-- >>> specrew-managed escalation-state >>> -->
 ## Repair Escalation
