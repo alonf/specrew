@@ -32,6 +32,7 @@ Use this when reviewer findings claim an iteration is fixed or execution-ready a
 - When the prior rejection was "missing iteration boundary + capacity mismatch," require the repaired feature `plan.md` and `tasks.md` to show an explicit multi-iteration split that stays within `.specrew/iteration-config.yml` capacity before you even inspect the target iteration artifacts.
 - After that package-level check, validate the specific repaired slice with `validate-governance.ps1 -IterationPath <iteration>` and treat a clean pass plus synchronized `plan.md` / `state.md` / `drift-log.md` as evidence that the only remaining blocker is explicit human execution approval, not another planning defect.
 - For review/demo transitions, do not stop at passing regression tests: compare `state.md` against the live task table in `plan.md`, then exercise the reviewer-packet scaffold path because missing phase metadata or helper crashes can leave review artifacts non-binding even when tests stay green.
+- After `review.md` exists, immediately re-check lifecycle truth: `plan.md` can no longer stay `executing`, and `state.md` can no longer describe review as deferred or pending. The validator treats `review.md` as active phase evidence and will reject stale execution-era narratives.
 - If reviewer-owned quality gates stay `planned` after a scaffold rerun, inspect the iteration plan's `Required Quality Gates` table for `Category` metadata (`mechanical`, `tooling`, `manual-evidence`); without it, the scaffold cannot promote those gates to review-complete evidence.
 
 ## Examples
