@@ -240,6 +240,9 @@ $dependencyReportPath = Join-Path -Path $iterationDirectory -ChildPath 'dependen
 $coverageEvidencePath = Join-Path -Path $iterationDirectory -ChildPath 'coverage-evidence.md'
 $reviewerIndexPath = Join-Path -Path $iterationDirectory -ChildPath 'reviewer-index.md'
 $retroPath = Join-Path -Path $iterationDirectory -ChildPath 'retro.md'
+$hardeningGatePath = Join-Path -Path $iterationDirectory -ChildPath 'quality\hardening-gate.md'
+$qualityLensesPath = Join-Path -Path $iterationDirectory -ChildPath 'quality\lenses'
+$trapReapplicationPath = Join-Path -Path $iterationDirectory -ChildPath 'quality\trap-reapplication.md'
 $specPath = Join-Path -Path $specDirectory -ChildPath 'spec.md'
 $resumeSkillPath = Join-Path -Path $projectRoot -ChildPath '.copilot\skills\specrew-iteration-resume\SKILL.md'
 $implementerCharterPath = Join-Path -Path $projectRoot -ChildPath '.squad\agents\implementer\charter.md'
@@ -318,6 +321,16 @@ $specContent = @'
 '@
 
 [System.IO.File]::WriteAllText($specPath, $specContent, [System.Text.UTF8Encoding]::new($false))
+$null = New-Item -ItemType Directory -Path (Join-Path -Path $specDirectory -ChildPath 'contracts') -Force
+[System.IO.File]::WriteAllText((Join-Path -Path $specDirectory -ChildPath 'contracts\quality-governance-artifacts.md'), @'
+# Quality Governance Artifacts
+
+## Phase 2 Surfaces
+
+- `specs/<feature>/iterations/<NNN>/quality/hardening-gate.md`
+- `specs/<feature>/iterations/<NNN>/quality/lenses/*.md`
+- `specs/<feature>/iterations/<NNN>/quality/trap-reapplication.md`
+'@, [System.Text.UTF8Encoding]::new($false))
 
 Invoke-TestScript -ScriptPath $planScript -ArgumentList @('-SpecPath', $specPath, '-IterationNumber', '001') | Out-Null
 if (-not (Test-Path -LiteralPath $planPath -PathType Leaf)) {
@@ -442,11 +455,16 @@ if ($retroResult.ExitCode -ne 0) {
     exit 1
 }
 
-foreach ($requiredArtifact in @($statePath, $driftPath, $reviewPath, $codeMapPath, $dependencyReportPath, $coverageEvidencePath, $reviewerIndexPath, $retroPath)) {
+foreach ($requiredArtifact in @($statePath, $driftPath, $reviewPath, $codeMapPath, $dependencyReportPath, $coverageEvidencePath, $reviewerIndexPath, $retroPath, $hardeningGatePath, $trapReapplicationPath)) {
     if (-not (Test-Path -LiteralPath $requiredArtifact -PathType Leaf)) {
         Write-Fail "Missing expected iteration artifact: $requiredArtifact"
         exit 1
     }
+}
+
+if (-not (Test-Path -LiteralPath $qualityLensesPath -PathType Container)) {
+    Write-Fail "Missing expected quality lenses directory: $qualityLensesPath"
+    exit 1
 }
 
 $retroContent = Get-Content -LiteralPath $retroPath -Raw -Encoding UTF8
@@ -464,6 +482,8 @@ foreach ($check in $retroChecks) {
 }
 
 $reviewerIndexContent = Get-Content -LiteralPath $reviewerIndexPath -Raw -Encoding UTF8
+$hardeningGateContent = Get-Content -LiteralPath $hardeningGatePath -Raw -Encoding UTF8
+$trapReapplicationContent = Get-Content -LiteralPath $trapReapplicationPath -Raw -Encoding UTF8
 $reviewerIndexValid = $true
 foreach ($check in @(
         @{ Pattern = 'Header:\s+feature=001-sample-feature\s+\|\s+iteration=001'; Failure = 'Reviewer index is missing the summary header.' },
@@ -507,6 +527,17 @@ foreach ($check in @(
         @{ Pattern = '## Transitive Surface'; Failure = 'Dependency report is missing the Transitive Surface note.' }
     )) {
     if (-not (Assert-ContentPattern -Content $dependencyContent -Pattern $check.Pattern -FailureMessage $check.Failure)) {
+        $reviewerIndexValid = $false
+    }
+}
+
+foreach ($check in @(
+        @{ Content = $hardeningGateContent; Pattern = '\*\*Gate ID\*\*:\s*`pre-implementation-hardening`'; Failure = 'Hardening gate scaffold is missing the gate identifier.' },
+        @{ Content = $hardeningGateContent; Pattern = '\| `security-surface` \| `security` \| `tbd` \| `true` \|'; Failure = 'Hardening gate scaffold is missing the security concern placeholder row.' },
+        @{ Content = $trapReapplicationContent; Pattern = '\*\*Scan ID\*\*:\s*`trap-reapplication\.pending`'; Failure = 'Trap reapplication scaffold is missing the scan identifier.' },
+        @{ Content = $trapReapplicationContent; Pattern = '\| `\(pending trap refs\)` \| `\(pending scan scope\)` \| `skipped-with-rationale` \|'; Failure = 'Trap reapplication scaffold is missing the placeholder scan row.' }
+    )) {
+    if (-not (Assert-ContentPattern -Content $check.Content -Pattern $check.Pattern -FailureMessage $check.Failure)) {
         $reviewerIndexValid = $false
     }
 }

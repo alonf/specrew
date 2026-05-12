@@ -1,0 +1,27 @@
+{
+  "version": "1.0",
+  "feature": "008-sample-lockout",
+  "activeEscalation": {
+    "status": "inactive",
+    "artifact": null,
+    "currentTier": "efficiency",
+    "currentOwner": null,
+    "updatedAt": null
+  },
+  "reviewerRegressionState": {
+    "feature_008-sample": {
+      "status": "active",
+      "currentReviewerClass": "claude",
+      "currentReviewerOwner": "Reviewer-Beta",
+      "implementerChain": [
+        "Implementer-Alpha",
+        "Implementer-Beta",
+        "Implementer-Gamma"
+      ],
+      "lockoutChainLength": 3,
+      "lockoutChainCap": 2,
+      "capActive": true,
+      "updatedAt": "2026-05-10T10:00:00Z"
+    }
+  }
+}

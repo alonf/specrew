@@ -1,0 +1,31 @@
+# Iteration Configuration
+
+version: v1
+feature: 008-sample
+iteration: 001
+
+# Reasoning tiers for reviewer-regression escalation scenarios
+reasoning_tiers:
+  - name: copilot
+    description: GitHub Copilot base tier
+    strength_rank: 1
+    reviewer_capable: true
+  - name: claude
+    description: Claude mid-tier
+    strength_rank: 2
+    reviewer_capable: true
+  - name: codex
+    description: Codex strongest tier
+    strength_rank: 3
+    reviewer_capable: true
+
+# Reviewer-regression specific configuration
+# This fixture supports:
+# - stronger-class escalation from copilot -> claude
+# - same-class fallback at codex via an independent owner
+# - maximum-strength hold after the active chain has already used both codex reviewers
+reviewer_regression:
+  enabled: true
+  clean_passes_required: 1
+  lockout_chain_cap: 2
+  known_traps_integration: false

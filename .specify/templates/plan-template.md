@@ -27,6 +27,90 @@
 **Constraints**: [domain-specific, e.g., <200ms p95, <100MB memory, offline-capable or NEEDS CLARIFICATION]  
 **Scale/Scope**: [domain-specific, e.g., 10k users, 1M LOC, 50 screens or NEEDS CLARIFICATION]
 
+## Phase 1 Quality Planning
+
+> Fill this section when the stack-aware quality-bar capability applies to the active feature. Keep it bounded to the implemented Phase 1 slice only.
+
+**Phase Scope**: `phase-1-first-slice`  
+**Inferred Quality Profile**: [e.g., `quality-profile.node-public-ws-service.v1` or `quality-profile.custom-composition.v1`]  
+**Selected preset ref or explicit custom composition**: [List the selected preset ref or explicit custom composition for this feature.]  
+**Bounded custom composition**: [If no recognized Phase 1 preset matches cleanly, describe the bounded custom composition path and the manual unknowns it leaves explicit.]
+
+### Stack Surfaces in Scope
+
+| Stack Surface | Path Globs / Evidence | Recognized Stack | Why It Matters |
+| --- | --- | --- | --- |
+| [e.g., `api-runtime`] | [e.g., `src/api/**`, `package.json`] | [preset ID or `custom`] | [material feature surface] |
+
+### Risk Dimensions
+
+| Risk Dimension | Status (`required` / `not-applicable`) | Rationale |
+| --- | --- | --- |
+| [e.g., `security`] | [required] | [why this dimension is active] |
+
+### Quality Tool Bundle
+
+| Area | Selection | Evidence / Notes |
+| --- | --- | --- |
+| Bundle ID | [tool bundle identifier] | [how it maps to the feature] |
+| Mechanical Checks | [dead-field, anti-pattern, test-integrity] | [where evidence will be recorded] |
+| Ecosystem Tools | [stack-aware lint/test/analyzer commands] | [free/community baseline when practical] |
+
+### Required Quality Gates
+
+| Required Quality Gate | Category | Evidence Source | Phase 1 Status |
+| --- | --- | --- | --- |
+| [gate ID] | [mechanical/tooling/manual-evidence] | [command or artifact path] | [planned] |
+
+### Not-Applicable Dimensions and Rationale
+
+| Dimension / Gate | Why Not Applicable in This Feature | Follow-up |
+| --- | --- | --- |
+| [e.g., `concurrency-correctness-review`] | [explicit rationale] | [recorded defer or none] |
+
+### Explicit Phase 2+ Deferrals
+
+- Pre-implementation hardening gate sign-off and blocking semantics remain deferred in this template.
+- Dedicated bug-hunter lens execution and strongest-class routing remain deferred in this template.
+- Quality-drift logic, mixed-stack override workflows, and reference-implementation comparison remain deferred in this template.
+
+## Phase 2 Hardening and Specialist Review Planning
+
+> Fill this section when pre-implementation hardening and specialist bug-hunter review planning apply to the active feature. Mirror the bounded Phase 2 planning metadata from quality-profile resolution when available: slice scope, artifact refs, focus-area statuses, lens activation classifications, routing defaults, and explicit later deferrals, plus the planning-time-vs-runtime evidence boundary. Keep it bounded to the currently approved hardening slice; record planning-time analysis, expected controls, rationale, explicit non-applicable reasoning, and any narrow runtime-only deferments instead of implying later execution or runtime proof already happened.
+
+**Phase 2 Slice Scope**: [e.g., `US-2 hardening gate only` or `NEEDS CLARIFICATION`]  
+**Hardening Gate Artifact**: [e.g., `specs/[###-feature-name]/quality/hardening-gate.md`]  
+**Known-Traps Corpus Location**: [e.g., `.specrew/quality/known-traps.md`]  
+**Trap Reapplication Artifact**: [e.g., `specs/[###-feature-name]/quality/trap-reapplication.md` or `none yet`]
+
+### Hardening Focus Areas
+
+| Focus Area | Why It Matters in This Slice | Planned Artifact / Evidence | Status (`required` / `deferred` / `not-applicable`) |
+| --- | --- | --- | --- |
+| Security surface analysis | [record planning-time analysis, exposed trust boundaries, expected controls, and whether runtime proof is still pending for closure] | [hardening artifact section or linked evidence] | [required] |
+| Error handling and failure semantics | [record user-visible failures, expected controls, retry boundaries, and fallback expectations] | [hardening artifact section or linked evidence] | [required] |
+| Retry and idempotency expectations | [record whether retry logic exists, is forbidden, or needs explicit justification, including non-applicable reasoning when valid] | [hardening artifact section or linked evidence] | [required] |
+| Test-integrity targets | [record what proves the slice is actually exercised now, what runtime-only proof remains pending, and what gaps remain explicit] | [test plan, command, or review artifact] | [required] |
+
+### Lens Activation Plan
+
+| Lens / Checklist Ref | Activation (`required` / `optional` / `not-applicable`) | Why Activated or Omitted | Planned Evidence / Artifact Path |
+| --- | --- | --- | --- |
+| [e.g., `security-issues-v1`] | [required] | [scope, stack, architecture, or risk-dimension signal] | [quality/lenses/... or later evidence artifact] |
+
+### Routing Policy
+
+| Lens Scope | Requested Reasoning / Review Class | Effective Class (when run) | Override / Approval Record | Notes |
+| --- | --- | --- | --- | --- |
+| Required hardening and bug-hunter lenses | [default to strongest available reasoning/review class] | [record actual class when execution happens] | [path to explicit lower-tier override approval or `none`] | [fallback or routing rationale] |
+
+### Explicit Later Deferrals
+
+- Full line-by-line lens execution evidence and runtime-only final proof remain deferred until the approved implementation/review slice authorizes them.
+- Known-traps corpus seeding, approved additions, and trap reapplication remain deferred until the dedicated known-traps slice is in scope.
+- Strongest-class routing enforcement details and requested-versus-effective execution evidence remain deferred until the routed lens execution path exists.
+- Quality-drift comparison, mixed-stack override workflows, and reference-implementation checks remain deferred unless the approved slice explicitly includes them.
+
 ## Constitution Check
 
 *GATE: Must pass before Phase 0 research. Re-check after Phase 1 design.*

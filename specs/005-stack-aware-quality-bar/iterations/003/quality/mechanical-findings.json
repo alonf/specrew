@@ -1,0 +1,11 @@
+{
+  "schemaVersion": "v1",
+  "featureRef": "specs/005-stack-aware-quality-bar/spec.md",
+  "iterationRef": "specs/005-stack-aware-quality-bar/iterations/003",
+  "generatedAt": "2026-05-08T14:19:47Z",
+  "generator": {
+    "name": "specrew-iteration-scaffold",
+    "version": "1.0.0"
+  },
+  "findings": []
+}

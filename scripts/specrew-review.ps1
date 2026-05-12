@@ -14,6 +14,12 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
+$sharedGovernancePath = Join-Path (Split-Path -Parent $PSScriptRoot) 'extensions\specrew-speckit\scripts\shared-governance.ps1'
+if (-not (Test-Path -LiteralPath $sharedGovernancePath -PathType Leaf)) {
+    throw "Missing shared governance helper '$sharedGovernancePath'."
+}
+. $sharedGovernancePath
+
 function Show-Usage {
     @'
 specrew review - replay the persisted reviewer closeout packet
@@ -281,7 +287,7 @@ if ($Quiet -and $Json) {
     exit 1
 }
 
-$resolvedProjectPath = [System.IO.Path]::GetFullPath($ProjectPath)
+$resolvedProjectPath = Resolve-ProjectPath -Path $ProjectPath
 if (-not (Test-Path -LiteralPath $resolvedProjectPath -PathType Container)) {
     Write-Error ("Project path does not exist: {0}" -f $resolvedProjectPath)
     exit 1
@@ -318,6 +324,8 @@ $summary = [pscustomobject]@{
     review_diagrams  = if (Test-Path -LiteralPath $reviewDiagramsPath -PathType Leaf) { Get-RelativePath -FromDirectory $resolvedProjectPath -ToPath $reviewDiagramsPath } else { $null }
     summary_lines    = $summaryLines
     digest           = $digestLine
+    cap_active       = if ($digestLine -match 'cap=active') { $true } else { $false }
+    cap_chain        = if ($digestLine -match 'cap_chain=(\d+)/(\d+)') { "$($Matches[1])/$($Matches[2])" } else { $null }
 }
 
 if ($Json) {

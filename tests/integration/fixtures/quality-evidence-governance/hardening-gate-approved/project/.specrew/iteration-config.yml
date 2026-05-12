@@ -1,0 +1,23 @@
+effort_unit: "story_points"
+capacity_per_iteration: 20
+iteration_bounding: "scope"
+time_limit_hours: null
+overcommit_threshold: 1.0
+calibration_enabled: true
+defer_strategy: "manual"
+agents:
+  copilot:
+    enabled: false
+    access_path: copilot_default
+    availability: available
+    strength_rank: 10
+  claude:
+    enabled: false
+    access_path: copilot_agent_hq
+    availability: available
+    strength_rank: 30
+  codex:
+    enabled: false
+    access_path: copilot_agent_hq
+    availability: available
+    strength_rank: 20

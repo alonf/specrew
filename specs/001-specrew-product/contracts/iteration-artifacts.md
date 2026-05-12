@@ -163,6 +163,37 @@ These artifacts are produced by `scaffold-reviewer-artifacts.ps1`. Closing a cod
 
 When `Status` is `active`, resume tooling MUST prioritize the escalation cycle before suggesting normal task execution. Activation and resolution of that block MUST also synchronize `.squad/config.json` so the temporary model override for the current repair owner matches `Current Tier` in real time. When the gate passes, the escalation block MUST be reset to `inactive`, clear the temporary owner override, and restore the default `efficiency` tier for future work.
 
+### Reviewer Regression State (Spec 008 Extension)
+
+When spec 008 (Reviewer Escalation Symmetry) is active, `state.md` gains an additional managed block:
+
+```markdown
+<!-- >>> specrew-managed reviewer-regression-state >>> -->
+## Reviewer Regression State
+
+- **Status**: inactive | active | held | resolved
+- **Feature**: specs/008-reviewer-escalation-symmetry | (none)
+- **Active Event IDs**: RRE-001, RRE-002 | (none)
+- **Prior Reviewer Class**: copilot | claude | (none)
+- **Current Reviewer Class**: codex | claude | (none)
+- **Current Reviewer Owner**: Reviewer | Human Reviewer | (none)
+- **Lockout Chain Length**: 0..N
+- **Lockout Cap**: 2
+- **Cap Active**: true | false
+- **Locked Out Agents**: Agent A, Agent B | (none)
+- **Carry Forward From Iteration**: 003 | (none)
+- **Last Event**: 2026-05-09T12:34:56Z | (none)
+- **Notes**: free-form routing summary | (none)
+<!-- <<< specrew-managed reviewer-regression-state <<< -->
+```
+
+This block is a runtime mirror, not the source of truth. The ledger at `.specrew/reviewer-regression-log.md` remains authoritative. The block must never replace or mutate the existing `escalation-state` managed block. Both blocks operate independently:
+
+- `escalation-state` governs implementer-side repair escalation (spec 001 FR-027)
+- `reviewer-regression-state` governs reviewer-side escalation and lockout-cap handling (spec 008 FR-001 through FR-015)
+
+Runtime sync must keep both blocks synchronized with `.squad/config.json` so routing decisions reflect both implementer and reviewer escalation state.
+
 ## Drift Log (`iterations/NNN/drift-log.md`)
 
 ```markdown

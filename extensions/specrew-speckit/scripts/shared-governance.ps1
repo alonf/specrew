@@ -1,6 +1,24 @@
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
+function Resolve-ProjectPath {
+    # Resolve a project path argument against PowerShell's current location rather than the
+    # .NET process CurrentDirectory, which on Windows often stays at the shell startup dir
+    # (e.g. $HOME) even after Set-Location/cd. Without this, [System.IO.Path]::GetFullPath('.')
+    # returns the wrong absolute path and entry-point scripts falsely report "Missing config.yml".
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Path
+    )
+
+    if ([System.IO.Path]::IsPathRooted($Path)) {
+        return [System.IO.Path]::GetFullPath($Path)
+    }
+
+    $cwd = (Get-Location).Path
+    return [System.IO.Path]::GetFullPath((Join-Path -Path $cwd -ChildPath $Path))
+}
+
 function Invoke-WithFileLock {
     param(
         [Parameter(Mandatory = $true)]
@@ -287,4 +305,1166 @@ function New-DecisionsLedgerParsedEntry {
         RoutingStatus       = if (($rawText -match 'status=(honored|fell-back)')) { $Matches[1] } else { $null }
         FallbackReason      = if (($rawText -match 'fallback=([^\r\n]+)')) { $Matches[1].Trim() } else { $null }
     }
+}
+
+function Get-MarkdownContent {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Path
+    )
+
+    return @(Get-Content -LiteralPath $Path -Encoding UTF8)
+}
+
+function Get-MarkdownMetadataValue {
+    param(
+        [AllowEmptyCollection()]
+        [AllowEmptyString()]
+        [Parameter(Mandatory = $true)]
+        [string[]]$Lines,
+        [Parameter(Mandatory = $true)]
+        [string]$Label
+    )
+
+    $pattern = '^\*\*' + [regex]::Escape($Label) + '\*\*:\s*(.+?)\s*$'
+    foreach ($line in $Lines) {
+        if ($line -match $pattern) {
+            return $Matches[1].Trim()
+        }
+    }
+
+    return $null
+}
+
+function Get-MarkdownSectionTable {
+    param(
+        [AllowEmptyCollection()]
+        [AllowEmptyString()]
+        [Parameter(Mandatory = $true)]
+        [string[]]$Lines,
+
+        [Parameter(Mandatory = $true)]
+        [string]$Heading
+    )
+
+    $headingPattern = '^#{2,3}\s+' + [regex]::Escape($Heading) + '\b'
+    $startIndex = -1
+
+    for ($index = 0; $index -lt $Lines.Count; $index++) {
+        if ($Lines[$index] -match $headingPattern) {
+            $startIndex = $index
+            break
+        }
+    }
+
+    if ($startIndex -lt 0) {
+        return @()
+    }
+
+    $tableLines = New-Object System.Collections.Generic.List[string]
+    for ($index = $startIndex + 1; $index -lt $Lines.Count; $index++) {
+        $currentLine = $Lines[$index]
+        if ($currentLine -match '^#{2,3}\s+') {
+            break
+        }
+
+        if ($currentLine.Trim().StartsWith('|')) {
+            $null = $tableLines.Add($currentLine)
+        }
+    }
+
+    if ($tableLines.Count -lt 2) {
+        return @()
+    }
+
+    $headers = ($tableLines[0].Trim('|') -split '\|') | ForEach-Object { $_.Trim() }
+    $rows = New-Object System.Collections.Generic.List[object]
+
+    for ($rowIndex = 1; $rowIndex -lt $tableLines.Count; $rowIndex++) {
+        $cells = ($tableLines[$rowIndex].Trim('|') -split '\|') | ForEach-Object { $_.Trim() }
+        $isSeparator = $true
+
+        foreach ($cell in $cells) {
+            if ($cell -notmatch '^:?-{3,}:?$') {
+                $isSeparator = $false
+                break
+            }
+        }
+
+        if ($isSeparator) {
+            continue
+        }
+
+        $row = [ordered]@{}
+        for ($cellIndex = 0; $cellIndex -lt $headers.Count; $cellIndex++) {
+            $value = if ($cellIndex -lt $cells.Count) { $cells[$cellIndex] } else { '' }
+            $row[$headers[$cellIndex]] = $value
+        }
+
+        $rows.Add([pscustomobject]$row)
+    }
+
+    return $rows.ToArray()
+}
+
+function Get-MarkdownSectionLines {
+    param(
+        [AllowEmptyCollection()]
+        [AllowEmptyString()]
+        [Parameter(Mandatory = $true)]
+        [string[]]$Lines,
+
+        [Parameter(Mandatory = $true)]
+        [string]$Heading
+    )
+
+    $headingPattern = '^#{2,3}\s+' + [regex]::Escape($Heading) + '\b'
+    $startIndex = -1
+
+    for ($index = 0; $index -lt $Lines.Count; $index++) {
+        if ($Lines[$index] -match $headingPattern) {
+            $startIndex = $index
+            break
+        }
+    }
+
+    if ($startIndex -lt 0) {
+        return @()
+    }
+
+    $sectionLines = New-Object System.Collections.Generic.List[string]
+    for ($index = $startIndex + 1; $index -lt $Lines.Count; $index++) {
+        $currentLine = $Lines[$index]
+        if ($currentLine -match '^#{2,3}\s+') {
+            break
+        }
+
+        $null = $sectionLines.Add($currentLine)
+    }
+
+    return $sectionLines.ToArray()
+}
+
+function Normalize-MarkdownCell {
+    param([AllowNull()][string]$Value)
+
+    if ($null -eq $Value) {
+        return ''
+    }
+
+    return $Value.Trim().Trim('`')
+}
+
+function Get-ObjectPropertyString {
+    param(
+        [Parameter(Mandatory = $true)]
+        [object]$InputObject,
+
+        [Parameter(Mandatory = $true)]
+        [string[]]$PropertyNames
+    )
+
+    foreach ($propertyName in $PropertyNames) {
+        $property = $InputObject.PSObject.Properties[$propertyName]
+        if ($null -ne $property) {
+            return [string]$property.Value
+        }
+    }
+
+    return $null
+}
+
+function Test-IsNullish {
+    param([AllowNull()][string]$Value)
+
+    if ([string]::IsNullOrWhiteSpace($Value)) {
+        return $true
+    }
+
+    return $Value.Trim() -match '^(?:—|-|none|null|n/a|\(none\)|blank|tbd|unknown)$'
+}
+
+function Find-LineNumberByPattern {
+    param(
+        [AllowEmptyCollection()]
+        [AllowEmptyString()]
+        [string[]]$Lines,
+        [string]$Pattern,
+        [switch]$CaseSensitive
+    )
+
+    if ($null -eq $Lines -or [string]::IsNullOrWhiteSpace($Pattern)) {
+        return $null
+    }
+
+    for ($index = 0; $index -lt $Lines.Count; $index++) {
+        $isMatch = if ($CaseSensitive) {
+            $Lines[$index] -cmatch $Pattern
+        }
+        else {
+            $Lines[$index] -match $Pattern
+        }
+
+        if ($isMatch) {
+            return ($index + 1)
+        }
+    }
+
+    return $null
+}
+
+function New-StructuredValidationFailureText {
+    param(
+        [AllowNull()][string]$FilePath,
+        [AllowNull()][int]$LineNumber,
+        [Parameter(Mandatory = $true)][string]$Category,
+        [Parameter(Mandatory = $true)][string]$Message,
+        [Parameter(Mandatory = $true)][string]$RemediationHint
+    )
+
+    $resolvedFilePath = if ([string]::IsNullOrWhiteSpace($FilePath)) { '(none)' } else { $FilePath.Trim() }
+    $resolvedLineNumber = if ($null -eq $LineNumber -or $LineNumber -le 0) { '(none)' } else { [string]$LineNumber }
+    return 'file_path={0} | line_number={1} | category={2} | message={3} | remediation_hint={4}' -f $resolvedFilePath, $resolvedLineNumber, $Category.Trim(), $Message.Trim(), $RemediationHint.Trim()
+}
+
+function Add-StructuredValidationFailure {
+    param(
+        [AllowEmptyCollection()]
+        [Parameter(Mandatory = $true)]
+        [System.Collections.Generic.List[string]]$Errors,
+
+        [AllowNull()][string]$FilePath,
+        [AllowNull()][int]$LineNumber,
+        [Parameter(Mandatory = $true)][string]$Category,
+        [Parameter(Mandatory = $true)][string]$Message,
+        [Parameter(Mandatory = $true)][string]$RemediationHint
+    )
+
+    $Errors.Add((New-StructuredValidationFailureText -FilePath $FilePath -LineNumber $LineNumber -Category $Category -Message $Message -RemediationHint $RemediationHint)) | Out-Null
+}
+
+function Get-FeatureOrdinalFromIterationDirectory {
+    param([AllowNull()][string]$IterationDirectory)
+
+    if ([string]::IsNullOrWhiteSpace($IterationDirectory)) {
+        return $null
+    }
+
+    $normalized = $IterationDirectory -replace '/', '\'
+    $match = [regex]::Match($normalized, '[\\/]specs[\\/](?<feature>\d+)-[^\\/]+[\\/]iterations[\\/]')
+    if ($match.Success) {
+        return [int]$match.Groups['feature'].Value
+    }
+
+    return $null
+}
+
+function Test-IterationRequiresCanonicalStateSchema {
+    param([AllowNull()][string]$IterationDirectory)
+
+    $featureOrdinal = Get-FeatureOrdinalFromIterationDirectory -IterationDirectory $IterationDirectory
+    if ($null -eq $featureOrdinal) {
+        return $true
+    }
+
+    return $featureOrdinal -ge 13
+}
+
+function Test-IterationRequiresCanonicalHardeningConcerns {
+    param([AllowNull()][string]$IterationDirectory)
+
+    $featureOrdinal = Get-FeatureOrdinalFromIterationDirectory -IterationDirectory $IterationDirectory
+    if ($null -eq $featureOrdinal) {
+        return $true
+    }
+
+    return $featureOrdinal -ge 13
+}
+
+function Get-CanonicalIterationStateFields {
+    param([Parameter(Mandatory = $true)][string]$ProjectRoot)
+
+    $contractPath = Join-Path $ProjectRoot 'specs\013-validator-hardening\contracts\iteration-state-schema.md'
+    if (Test-Path -LiteralPath $contractPath -PathType Leaf) {
+        $rows = @(Get-MarkdownSectionTable -Lines (Get-MarkdownContent -Path $contractPath) -Heading 'Canonical Fields')
+        if ($rows.Count -gt 0) {
+            return @(
+                $rows |
+                    ForEach-Object {
+                        [pscustomobject]@{
+                            FieldName = Normalize-MarkdownCell (Get-ObjectPropertyString -InputObject $_ -PropertyNames @('Field Name'))
+                        }
+                    } |
+                    Where-Object { -not [string]::IsNullOrWhiteSpace($_.FieldName) }
+            )
+        }
+    }
+
+    return @(
+        [pscustomobject]@{ FieldName = 'Schema' },
+        [pscustomobject]@{ FieldName = 'Last Completed Task' },
+        [pscustomobject]@{ FieldName = 'Tasks Remaining' },
+        [pscustomobject]@{ FieldName = 'In Progress' },
+        [pscustomobject]@{ FieldName = 'Baseline Ref' },
+        [pscustomobject]@{ FieldName = 'Updated' },
+        [pscustomobject]@{ FieldName = 'Current Phase' },
+        [pscustomobject]@{ FieldName = 'Iteration Status' }
+    )
+}
+
+function Get-CanonicalHardeningConcernDefinitions {
+    param([Parameter(Mandatory = $true)][string]$ProjectRoot)
+
+    $contractPath = Join-Path $ProjectRoot 'specs\013-validator-hardening\contracts\hardening-gate-concerns.md'
+    if (Test-Path -LiteralPath $contractPath -PathType Leaf) {
+        $rows = @(Get-MarkdownSectionTable -Lines (Get-MarkdownContent -Path $contractPath) -Heading 'Canonical Concerns')
+        if ($rows.Count -gt 0) {
+            return @(
+                $rows |
+                    ForEach-Object {
+                        $positionText = Normalize-MarkdownCell (Get-ObjectPropertyString -InputObject $_ -PropertyNames @('Position'))
+                        $position = $null
+                        if ($positionText -match '^\d+$') {
+                            $position = [int]$positionText
+                        }
+
+                        [pscustomobject]@{
+                            Position  = $position
+                            ConcernId = Normalize-MarkdownCell (Get-ObjectPropertyString -InputObject $_ -PropertyNames @('Concern ID'))
+                        }
+                    } |
+                    Where-Object { $null -ne $_.Position -and -not [string]::IsNullOrWhiteSpace($_.ConcernId) } |
+                    Sort-Object Position
+            )
+        }
+    }
+
+    return @(
+        [pscustomobject]@{ Position = 1; ConcernId = 'security-surface' },
+        [pscustomobject]@{ Position = 2; ConcernId = 'error-handling-expectations' },
+        [pscustomobject]@{ Position = 3; ConcernId = 'retry-idempotency-requirements' },
+        [pscustomobject]@{ Position = 4; ConcernId = 'test-integrity-targets' },
+        [pscustomobject]@{ Position = 5; ConcernId = 'operational-resilience-concerns' }
+    )
+}
+
+function Normalize-ApprovalEvidenceQuote {
+    param([AllowNull()][string]$Value)
+
+    if ([string]::IsNullOrWhiteSpace($Value)) {
+        return ''
+    }
+
+    $normalized = $Value.Trim()
+    $normalized = $normalized -replace '[*_]', ''
+    $normalized = $normalized -replace '\s+', ' '
+    return $normalized.Trim(" `t`r`n'`"")
+}
+
+function Test-BlanketAuthorizationScopeDeclared {
+    param(
+        [AllowEmptyCollection()]
+        [AllowEmptyString()]
+        [string[]]$Lines
+    )
+
+    foreach ($line in @($Lines)) {
+        if ([string]::IsNullOrWhiteSpace($line)) {
+            continue
+        }
+
+        $normalized = $line.ToLowerInvariant()
+        if ($normalized.Contains('blanket') -and $normalized.Contains('multi-iteration authorization')) {
+            return $true
+        }
+    }
+
+    return $false
+}
+
+function Get-ImplementationApprovalEvidenceRecords {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$IterationDirectory,
+
+        [Parameter(Mandatory = $true)]
+        [string]$ProjectRoot
+    )
+
+    $records = New-Object System.Collections.Generic.List[object]
+    $artifacts = @('plan.md', 'state.md')
+    $headings = @('Implementation Authorization', 'Implementation Approval')
+    $evidenceLabels = @(
+        'Recorded Evidence',
+        'Implementation Approval Evidence',
+        'Implementation Approval',
+        'Approval Evidence',
+        'Evidence Statement',
+        'Recorded Quote',
+        'Authorization Quote'
+    )
+
+    foreach ($artifactName in $artifacts) {
+        $artifactPath = Join-Path $IterationDirectory $artifactName
+        if (-not (Test-Path -LiteralPath $artifactPath -PathType Leaf)) {
+            continue
+        }
+
+        $lines = @(Get-MarkdownContent -Path $artifactPath)
+        $relativeArtifactPath = ([System.IO.Path]::GetRelativePath($ProjectRoot, $artifactPath)) -replace '/', '\'
+
+        foreach ($heading in $headings) {
+            $sectionLines = @(Get-MarkdownSectionLines -Lines $lines -Heading $heading)
+            if ($sectionLines.Count -eq 0) {
+                continue
+            }
+
+            $blanketScopeDeclared = Test-BlanketAuthorizationScopeDeclared -Lines $sectionLines
+            foreach ($sectionLine in $sectionLines) {
+                $trimmedLine = $sectionLine.Trim()
+                if ([string]::IsNullOrWhiteSpace($trimmedLine)) {
+                    continue
+                }
+
+                $rawText = $null
+                foreach ($label in $evidenceLabels) {
+                    $pattern = '^(?:-\s*)?\*\*' + [regex]::Escape($label) + '\*\*:\s*(.+?)\s*$'
+                    if ($trimmedLine -match $pattern) {
+                        $rawText = $Matches[1].Trim()
+                        break
+                    }
+                }
+
+                if ([string]::IsNullOrWhiteSpace($rawText) -and $trimmedLine -match '^(?:-\s*)?["“](.+?)["”]\s*$') {
+                    $rawText = $Matches[1].Trim()
+                }
+
+                if ([string]::IsNullOrWhiteSpace($rawText)) {
+                    continue
+                }
+
+                $normalizedText = Normalize-ApprovalEvidenceQuote -Value $rawText
+                if ([string]::IsNullOrWhiteSpace($normalizedText)) {
+                    continue
+                }
+
+                $escapedLine = [regex]::Escape($sectionLine)
+                $lineNumber = Find-LineNumberByPattern -Lines $lines -Pattern ('^\s*' + $escapedLine + '\s*$')
+
+                $records.Add([pscustomobject]@{
+                        ArtifactPath          = $artifactPath
+                        RelativeArtifactPath  = $relativeArtifactPath
+                        Heading               = $heading
+                        RawText               = $rawText
+                        NormalizedText        = $normalizedText
+                        BlanketScopeDeclared  = $blanketScopeDeclared
+                        LineNumber            = $lineNumber
+                    }) | Out-Null
+            }
+        }
+    }
+
+    return $records.ToArray()
+}
+
+function Test-ClosedIterationStatus {
+    param([AllowNull()][string]$IterationStatus)
+
+    if (Test-IsNullish $IterationStatus) {
+        return $false
+    }
+
+    $normalized = $IterationStatus.ToLowerInvariant()
+    return ($normalized -match '\bclosed\b') -or
+        ($normalized -match '\bcloseout complete\b') -or
+        ($normalized -match '\bclosure complete\b')
+}
+
+function Convert-ToDecisionReferenceId {
+    param([AllowNull()][string]$ApprovalRef)
+
+    $normalized = Normalize-MarkdownCell $ApprovalRef
+    if (Test-IsNullish $normalized) {
+        return $null
+    }
+
+    if ($normalized -match '(?i)\.squad\\decisions\.md#(?<id>[a-z0-9][a-z0-9-]*)') {
+        return $Matches['id'].Trim()
+    }
+
+    if ($normalized -match '(?i)#(?<id>[a-z0-9][a-z0-9-]*)$') {
+        return $Matches['id'].Trim()
+    }
+
+    if ($normalized -match '(?i)\b(?<id>(?:decision|defer|escalation|routing-evidence|clarify-skip|review-gap)-[a-f0-9]{12})\b') {
+        return $Matches['id'].Trim()
+    }
+
+    return $normalized
+}
+
+function Get-ApprovalReferenceRecord {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$ProjectRoot,
+
+        [AllowNull()][string]$ApprovalRef,
+
+        [string[]]$AllowedTypes = @()
+    )
+
+    $normalizedRef = Normalize-MarkdownCell $ApprovalRef
+    if (Test-IsNullish $normalizedRef) {
+        return $null
+    }
+
+    $decisionId = Convert-ToDecisionReferenceId -ApprovalRef $normalizedRef
+    $matches = @(
+        Get-DecisionsLedgerEntries -ProjectRoot $ProjectRoot |
+            Where-Object {
+                ($_.DecisionId -eq $decisionId -or $_.Title -eq $normalizedRef) -and
+                ($AllowedTypes.Count -eq 0 -or $_.Type -in $AllowedTypes)
+            } |
+            Select-Object -First 1
+    )
+
+    if ($matches.Count -eq 0) {
+        return [pscustomobject]@{
+            ApprovalRef      = $normalizedRef
+            DecisionId       = $decisionId
+            Entry            = $null
+            HasHumanApproval = $false
+            ApprovingHuman   = $null
+            Type             = $null
+        }
+    }
+
+    $entry = $matches[0]
+    return [pscustomobject]@{
+        ApprovalRef      = $normalizedRef
+        DecisionId       = $entry.DecisionId
+        Entry            = $entry
+        HasHumanApproval = -not (Test-IsNullish $entry.ApprovingHuman)
+        ApprovingHuman   = $entry.ApprovingHuman
+        Type             = $entry.Type
+    }
+}
+
+function Test-ApprovalReferenceHasHumanApproval {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$ProjectRoot,
+
+        [AllowNull()][string]$ApprovalRef,
+
+        [string[]]$AllowedTypes = @()
+    )
+
+    $record = Get-ApprovalReferenceRecord -ProjectRoot $ProjectRoot -ApprovalRef $ApprovalRef -AllowedTypes $AllowedTypes
+    return $null -ne $record -and $record.HasHumanApproval
+}
+
+function ConvertTo-BooleanMarkdownValue {
+    param([AllowNull()][string]$Value)
+
+    $normalized = Normalize-MarkdownCell $Value
+    if ([string]::IsNullOrWhiteSpace($normalized)) {
+        return $false
+    }
+
+    return $normalized.ToLowerInvariant() -in @('true', 'yes', '1')
+}
+
+function Get-HardeningConcernEvidenceProjection {
+    param(
+        [Parameter(Mandatory = $true)]
+        [object]$Concern
+    )
+
+    $status = (Normalize-MarkdownCell ([string]$Concern.Status)).ToLowerInvariant()
+    $explicitEvidenceBasis = Normalize-MarkdownCell ([string]$Concern.EvidenceBasis)
+    $explicitRuntimeEvidenceStatus = Normalize-MarkdownCell ([string]$Concern.RuntimeEvidenceStatus)
+    $explicitExpectedControls = Normalize-MarkdownCell ([string]$Concern.ExpectedControls)
+    $hasExplicitEvidenceFields = -not (
+        (Test-IsNullish $explicitEvidenceBasis) -and
+        (Test-IsNullish $explicitRuntimeEvidenceStatus) -and
+        (Test-IsNullish $explicitExpectedControls)
+    )
+
+    $evidenceBasis = $explicitEvidenceBasis
+    $runtimeEvidenceStatus = $explicitRuntimeEvidenceStatus
+    $expectedControls = $explicitExpectedControls
+
+    if (-not $hasExplicitEvidenceFields) {
+        switch ($status) {
+            'addressed' {
+                $evidenceBasis = 'planning-time-analysis'
+                $runtimeEvidenceStatus = 'pending-post-implementation'
+                $expectedControls = Normalize-MarkdownCell ([string]$Concern.Rationale)
+            }
+            'deferred-with-approval' {
+                $evidenceBasis = 'planning-time-analysis'
+                $runtimeEvidenceStatus = 'pending-post-implementation'
+                $expectedControls = Normalize-MarkdownCell ([string]$Concern.Rationale)
+            }
+            'not-applicable' {
+                $evidenceBasis = 'not-applicable'
+                $runtimeEvidenceStatus = 'not-needed'
+                $expectedControls = '—'
+            }
+            default {
+                $evidenceBasis = '—'
+                $runtimeEvidenceStatus = '—'
+                $expectedControls = '—'
+            }
+        }
+    }
+
+    return [pscustomobject]@{
+        Status                     = $status
+        EvidenceBasis              = $evidenceBasis
+        RuntimeEvidenceStatus      = $runtimeEvidenceStatus
+        ExpectedControls           = $expectedControls
+        HasExplicitEvidenceFields  = $hasExplicitEvidenceFields
+    }
+}
+
+function Get-HardeningConcernEvaluation {
+    param(
+        [Parameter(Mandatory = $true)]
+        [object]$Concern,
+
+        [string]$ProjectRoot
+    )
+
+    $issues = New-Object System.Collections.Generic.List[string]
+    $status = (Normalize-MarkdownCell ([string]$Concern.Status)).ToLowerInvariant()
+    $rationale = Normalize-MarkdownCell ([string]$Concern.Rationale)
+    $approvalRef = Normalize-MarkdownCell ([string]$Concern.Approval)
+    $evidence = Get-HardeningConcernEvidenceProjection -Concern $Concern
+    $evidenceBasis = (Normalize-MarkdownCell ([string]$evidence.EvidenceBasis)).ToLowerInvariant()
+    $runtimeEvidenceStatus = (Normalize-MarkdownCell ([string]$evidence.RuntimeEvidenceStatus)).ToLowerInvariant()
+    $expectedControls = Normalize-MarkdownCell ([string]$evidence.ExpectedControls)
+    $approvalRecord = if ([string]::IsNullOrWhiteSpace($ProjectRoot)) {
+        $null
+    }
+    else {
+        Get-ApprovalReferenceRecord -ProjectRoot $ProjectRoot -ApprovalRef $approvalRef -AllowedTypes @('decision', 'defer')
+    }
+
+    if (Test-IsNullish $rationale) {
+        $issues.Add('must record rationale for the current hardening disposition') | Out-Null
+    }
+
+    switch ($status) {
+        'addressed' {
+            if ($evidence.HasExplicitEvidenceFields) {
+                if ($evidenceBasis -notin @('planning-time-analysis', 'runtime-evidence')) {
+                    $issues.Add("must use Evidence Basis 'planning-time-analysis' before closure or 'runtime-evidence' once runtime proof is recorded") | Out-Null
+                }
+
+                if (Test-IsNullish $expectedControls) {
+                    $issues.Add('must record Expected Controls before implementation can proceed') | Out-Null
+                }
+
+                switch ($evidenceBasis) {
+                    'planning-time-analysis' {
+                        if ($runtimeEvidenceStatus -notin @('pending-post-implementation', 'not-needed')) {
+                            $issues.Add("must keep Runtime Evidence Status 'pending-post-implementation' or 'not-needed' when Evidence Basis is planning-time-analysis") | Out-Null
+                        }
+                    }
+                    'runtime-evidence' {
+                        if ($runtimeEvidenceStatus -ne 'recorded') {
+                            $issues.Add("must keep Runtime Evidence Status 'recorded' when Evidence Basis is runtime-evidence") | Out-Null
+                        }
+                    }
+                }
+            }
+        }
+        'not-applicable' {
+            if ($evidence.HasExplicitEvidenceFields) {
+                if ($evidenceBasis -ne 'not-applicable') {
+                    $issues.Add("must use Evidence Basis 'not-applicable' when Status is not-applicable") | Out-Null
+                }
+
+                if ($runtimeEvidenceStatus -ne 'not-needed') {
+                    $issues.Add("must use Runtime Evidence Status 'not-needed' when Status is not-applicable") | Out-Null
+                }
+            }
+        }
+        'deferred-with-approval' {
+            if ($evidence.HasExplicitEvidenceFields) {
+                if ($evidenceBasis -ne 'planning-time-analysis') {
+                    $issues.Add("must keep Evidence Basis 'planning-time-analysis' when Status is deferred-with-approval") | Out-Null
+                }
+
+                if ($runtimeEvidenceStatus -ne 'pending-post-implementation') {
+                    $issues.Add("must keep Runtime Evidence Status 'pending-post-implementation' when Status is deferred-with-approval") | Out-Null
+                }
+
+                if (Test-IsNullish $expectedControls) {
+                    $issues.Add('must keep Expected Controls visible when Status is deferred-with-approval') | Out-Null
+                }
+            }
+
+            if (Test-IsNullish $approvalRef) {
+                $issues.Add('must record a human-approved Approval reference when Status is deferred-with-approval') | Out-Null
+            }
+            elseif (-not [string]::IsNullOrWhiteSpace($ProjectRoot) -and ($null -eq $approvalRecord -or -not $approvalRecord.HasHumanApproval)) {
+                $issues.Add(("approval reference '{0}' is missing explicit human approval evidence" -f $approvalRef)) | Out-Null
+            }
+        }
+        default {
+            $issues.Add('must resolve the concern before implementation can proceed') | Out-Null
+            if ($evidenceBasis -ne 'planning-time-analysis') {
+                $issues.Add("must record planning-time analysis before implementation can proceed") | Out-Null
+            }
+            if (Test-IsNullish $expectedControls) {
+                $issues.Add('must record Expected Controls before implementation can proceed') | Out-Null
+            }
+        }
+    }
+
+    $blocksClosure = $false
+    switch ($status) {
+        'addressed' {
+            $blocksClosure = $runtimeEvidenceStatus -eq 'pending-post-implementation'
+        }
+        'deferred-with-approval' {
+            $blocksClosure = $true
+        }
+        'not-applicable' {
+            $blocksClosure = $false
+        }
+        default {
+            $blocksClosure = $true
+        }
+    }
+
+    return [pscustomobject]@{
+        Status                    = $status
+        EvidenceBasis             = $evidence.EvidenceBasis
+        RuntimeEvidenceStatus     = $evidence.RuntimeEvidenceStatus
+        ExpectedControls          = $evidence.ExpectedControls
+        HasExplicitEvidenceFields = $evidence.HasExplicitEvidenceFields
+        ApprovalRecord            = $approvalRecord
+        Issues                    = $issues.ToArray()
+        BlocksImplementation      = $issues.Count -gt 0
+        BlocksClosure             = $blocksClosure
+        HasHumanApproval          = -not [string]::IsNullOrWhiteSpace($approvalRef) -and ($null -ne $approvalRecord -and $approvalRecord.HasHumanApproval)
+    }
+}
+
+# ============================================================================
+# Reviewer-Regression Governance Functions (Spec 008 Extension)
+# ============================================================================
+
+function Get-ReviewerRegressionLedgerPath {
+    <#
+    .SYNOPSIS
+    Returns the path to the reviewer-regression ledger.
+    
+    .PARAMETER ProjectRoot
+    The root directory of the project.
+    #>
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$ProjectRoot
+    )
+
+    return Join-Path $ProjectRoot '.specrew\reviewer-regression-log.md'
+}
+
+function Get-ReviewerRegressionLedgerEntries {
+    <#
+    .SYNOPSIS
+    Parses the reviewer-regression ledger and returns all event entries.
+    
+    .PARAMETER ProjectRoot
+    The root directory of the project.
+    #>
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$ProjectRoot
+    )
+
+    $ledgerPath = Get-ReviewerRegressionLedgerPath -ProjectRoot $ProjectRoot
+    if (-not (Test-Path -LiteralPath $ledgerPath -PathType Leaf)) {
+        return @()
+    }
+
+    $lines = @(Get-Content -LiteralPath $ledgerPath -Encoding UTF8)
+    $entries = New-Object System.Collections.Generic.List[object]
+    $eventRegex = '^#{3}\s+(RRE-\d{3,})\s*$'
+
+    $currentEventId = $null
+    $currentLines = New-Object System.Collections.Generic.List[string]
+
+    foreach ($line in $lines) {
+        $eventMatch = [regex]::Match($line, $eventRegex)
+        if ($eventMatch.Success) {
+            if ($null -ne $currentEventId) {
+                $entries.Add((New-ReviewerRegressionEventEntry -EventId $currentEventId -EntryLines $currentLines)) | Out-Null
+            }
+
+            $currentEventId = $eventMatch.Groups[1].Value.Trim()
+            $currentLines = New-Object System.Collections.Generic.List[string]
+            continue
+        }
+
+        if ($null -ne $currentEventId) {
+            $currentLines.Add($line) | Out-Null
+        }
+    }
+
+    if ($null -ne $currentEventId) {
+        $entries.Add((New-ReviewerRegressionEventEntry -EventId $currentEventId -EntryLines $currentLines)) | Out-Null
+    }
+
+    return $entries.ToArray()
+}
+
+function New-ReviewerRegressionEventEntry {
+    <#
+    .SYNOPSIS
+    Creates a parsed reviewer-regression event object from ledger lines.
+    
+    .PARAMETER EventId
+    The event identifier (e.g., RRE-001).
+    
+    .PARAMETER EntryLines
+    The raw lines from the ledger entry.
+    #>
+    param(
+        [string]$EventId,
+        [System.Collections.Generic.List[string]]$EntryLines
+    )
+
+    $rawText = $EntryLines -join "`n"
+    
+    return [pscustomobject]@{
+        EventId                = $EventId
+        Feature                = Get-LedgerFieldValue -RawText $rawText -Label 'Feature'
+        Iteration              = Get-LedgerFieldValue -RawText $rawText -Label 'Iteration'
+        Slice                  = Get-LedgerFieldValue -RawText $rawText -Label 'Slice'
+        PriorReviewerVerdict   = Get-LedgerFieldValue -RawText $rawText -Label 'Prior Reviewer Verdict'
+        PriorReviewerClass     = Get-LedgerFieldValue -RawText $rawText -Label 'Prior Reviewer Class'
+        PriorReviewerOwner     = Get-LedgerFieldValue -RawText $rawText -Label 'Prior Reviewer Owner'
+        DefectDescription      = Get-LedgerFieldValue -RawText $rawText -Label 'Defect Description'
+        DefectSourceLocation   = Get-LedgerFieldValue -RawText $rawText -Label 'Defect Source Location'
+        EventStatus            = Get-LedgerFieldValue -RawText $rawText -Label 'Event Status'
+        Severity               = Get-LedgerFieldValue -RawText $rawText -Label 'Severity'
+        EscalationAction       = Get-LedgerFieldValue -RawText $rawText -Label 'Escalation Action'
+        EscalatedToClass       = Get-LedgerFieldValue -RawText $rawText -Label 'Escalated To Class'
+        SelectedReviewerOwner  = Get-LedgerFieldValue -RawText $rawText -Label 'Selected Reviewer Owner'
+        SameClassFallbackOwner = Get-LedgerFieldValue -RawText $rawText -Label 'Same-Class Fallback Owner'
+        CarryForwardIteration  = Get-LedgerFieldValue -RawText $rawText -Label 'Carry Forward Iteration'
+        CandidateTrapStatus    = Get-LedgerFieldValue -RawText $rawText -Label 'Candidate Trap Status'
+        WithdrawalReference    = Get-LedgerFieldValue -RawText $rawText -Label 'Withdrawal Reference'
+        DeEscalationOutcome    = Get-LedgerFieldValue -RawText $rawText -Label 'De-Escalation Outcome'
+        RecordedAt             = Get-LedgerFieldValue -RawText $rawText -Label 'Recorded At'
+        RawLines               = $EntryLines.ToArray()
+        RawText                = $rawText
+    }
+}
+
+function Get-LedgerFieldValue {
+    <#
+    .SYNOPSIS
+    Extracts a field value from ledger entry text.
+    
+    .PARAMETER RawText
+    The raw text content of the ledger entry.
+    
+    .PARAMETER Label
+    The field label to extract.
+    #>
+    param(
+        [string]$RawText,
+        [string]$Label
+    )
+
+    $pattern = '(?m)^-\s+\*\*' + [regex]::Escape($Label) + '\*\*:\s*`?(.+?)`?\s*$'
+    if ($RawText -match $pattern) {
+        $value = $Matches[1].Trim()
+        if ($value -eq '(none)' -or $value -eq '(pending)' -or [string]::IsNullOrWhiteSpace($value)) {
+            return $null
+        }
+        return $value
+    }
+
+    return $null
+}
+
+function Get-ActiveReviewerRegressionChain {
+    <#
+    .SYNOPSIS
+    Returns the active reviewer-regression chain for a specific feature.
+    
+    .PARAMETER ProjectRoot
+    The root directory of the project.
+    
+    .PARAMETER Feature
+    The feature path to filter by.
+    #>
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$ProjectRoot,
+        
+        [Parameter(Mandatory = $true)]
+        [string]$Feature
+    )
+
+    $entries = Get-ReviewerRegressionLedgerEntries -ProjectRoot $ProjectRoot
+    $activeEntries = @($entries | Where-Object { 
+        $_.Feature -eq $Feature -and 
+        $_.EventStatus -eq 'active' 
+    })
+
+    if ($activeEntries.Count -eq 0) {
+        return [pscustomobject]@{
+            Status                     = 'inactive'
+            Feature                    = $Feature
+            ActiveEventIds             = @()
+            StrongestUnresolvedAction  = $null
+            CurrentReviewerClass       = $null
+            PriorReviewerClass         = $null
+            CurrentReviewerOwner       = $null
+            CleanPassesRequired        = 1
+            CleanPassesObserved        = 0
+            CarryForwardFromIteration  = $null
+            Notes                      = $null
+        }
+    }
+
+    # Find the strongest unresolved escalation action
+    $strongestAction = $null
+    $currentClass = $null
+    $priorClass = $null
+    $currentOwner = $null
+    $carryForward = $null
+
+    foreach ($entry in $activeEntries) {
+        if ($entry.EscalationAction -eq 'human-direction-hold') {
+            $strongestAction = 'human-direction-hold'
+            $currentClass = $entry.EscalatedToClass
+            $priorClass = $entry.PriorReviewerClass
+            $currentOwner = $null
+            break
+        }
+        elseif ($entry.EscalationAction -eq 'stronger-class') {
+            $strongestAction = 'stronger-class'
+            $currentClass = $entry.EscalatedToClass
+            $priorClass = $entry.PriorReviewerClass
+            $currentOwner = $entry.SelectedReviewerOwner
+        }
+        elseif ($strongestAction -ne 'stronger-class' -and $entry.EscalationAction -eq 'same-class-independent-owner') {
+            $strongestAction = 'same-class-independent-owner'
+            $currentClass = $entry.PriorReviewerClass
+            $priorClass = $entry.PriorReviewerClass
+            $currentOwner = $entry.SameClassFallbackOwner
+        }
+
+        if (-not [string]::IsNullOrWhiteSpace([string]$entry.CarryForwardIteration)) {
+            $carryForward = $entry.Iteration
+        }
+    }
+
+    return [pscustomobject]@{
+        Status                     = if ($strongestAction -eq 'human-direction-hold') { 'held' } else { 'active' }
+        Feature                    = $Feature
+        ActiveEventIds             = @($activeEntries | ForEach-Object { $_.EventId })
+        StrongestUnresolvedAction  = $strongestAction
+        CurrentReviewerClass       = $currentClass
+        PriorReviewerClass         = $priorClass
+        CurrentReviewerOwner       = $currentOwner
+        CleanPassesRequired        = 1
+        CleanPassesObserved        = 0
+        CarryForwardFromIteration  = $carryForward
+        Notes                      = $null
+    }
+}
+
+function Add-StructuredDecisionsLedgerEntry {
+    <#
+    .SYNOPSIS
+    Adds a structured decision entry to the decisions ledger with extended type support.
+    
+    .PARAMETER Type
+    The decision type. Spec 008 adds: reviewer-regression-escalation, reviewer-regression-withdrawal, lockout-cap.
+    #>
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$ProjectRoot,
+
+        [Parameter(Mandatory = $true)]
+        [string]$Title,
+
+        [Parameter(Mandatory = $true)]
+        [ValidateSet('decision', 'defer', 'escalation', 'routing-evidence', 'clarify-skip', 'review-gap', 
+                     'reviewer-regression-escalation', 'reviewer-regression-withdrawal', 'lockout-cap')]
+        [string]$Type,
+
+        [string]$DecisionId,
+        [string]$AffectedRequirement,
+        [string]$AffectedIteration,
+        [string]$ApprovingHuman,
+        [string]$NextAction = 'none',
+        [string]$Rationale,
+        [string[]]$DetailLines
+    )
+
+    $recordedAt = (Get-Date).ToUniversalTime().ToString('yyyy-MM-ddTHH:mm:ssZ')
+    $effectiveDecisionId = if ([string]::IsNullOrWhiteSpace($DecisionId)) {
+        New-DecisionsLedgerEntryId -Type $Type
+    }
+    else {
+        $DecisionId.Trim()
+    }
+
+    $lines = @(
+        "- **Decision ID**: $effectiveDecisionId"
+        "- **Type**: $Type"
+        "- **Affected Requirement**: $(Get-DecisionLedgerOptionalValue -Value $AffectedRequirement)"
+        "- **Affected Iteration**: $(Get-DecisionLedgerOptionalValue -Value $AffectedIteration)"
+        "- **Approving Human**: $(Get-DecisionLedgerOptionalValue -Value $ApprovingHuman)"
+        "- **Recorded At**: $recordedAt"
+        "- **Next Action**: $(Get-DecisionLedgerOptionalValue -Value $NextAction)"
+        "- **Rationale**: $(Get-DecisionLedgerOptionalValue -Value $Rationale)"
+    )
+
+    if ($null -ne $DetailLines -and $DetailLines.Count -gt 0) {
+        $lines += @('') + @($DetailLines | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
+    }
+
+    return Add-DecisionsLedgerEntry -ProjectRoot $ProjectRoot -Title $Title -Lines $lines
+}
+
+function Test-HardeningConcernBlocksImplementation {
+    param(
+        [Parameter(Mandatory = $true)]
+        [object]$Concern,
+
+        [string]$ProjectRoot
+    )
+
+    if (-not (ConvertTo-BooleanMarkdownValue -Value ([string]$Concern.Blocking))) {
+        return $false
+    }
+
+    $evaluation = Get-HardeningConcernEvaluation -Concern $Concern -ProjectRoot $ProjectRoot
+    return [bool]$evaluation.BlocksImplementation
+}
+
+function Test-HardeningConcernBlocksClosure {
+    param(
+        [Parameter(Mandatory = $true)]
+        [object]$Concern,
+
+        [string]$ProjectRoot
+    )
+
+    if (-not (ConvertTo-BooleanMarkdownValue -Value ([string]$Concern.Blocking))) {
+        return $false
+    }
+
+    $evaluation = Get-HardeningConcernEvaluation -Concern $Concern -ProjectRoot $ProjectRoot
+    return [bool]$evaluation.BlocksClosure
+}
+
+function Get-HardeningGateState {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Path,
+
+        [string]$ProjectRoot
+    )
+
+    $lines = @(Get-MarkdownContent -Path $Path)
+    $metadata = [ordered]@{
+        Schema               = Normalize-MarkdownCell (Get-MarkdownMetadataValue -Lines $lines -Label 'Schema')
+        GateId               = Normalize-MarkdownCell (Get-MarkdownMetadataValue -Lines $lines -Label 'Gate ID')
+        FeatureRef           = Normalize-MarkdownCell (Get-MarkdownMetadataValue -Lines $lines -Label 'Feature Ref')
+        IterationRef         = Normalize-MarkdownCell (Get-MarkdownMetadataValue -Lines $lines -Label 'Iteration Ref')
+        RequestedReviewClass = Normalize-MarkdownCell (Get-MarkdownMetadataValue -Lines $lines -Label 'Requested Review Class')
+        EffectiveReviewClass = Normalize-MarkdownCell (Get-MarkdownMetadataValue -Lines $lines -Label 'Effective Review Class')
+        OverallVerdict       = Normalize-MarkdownCell (Get-MarkdownMetadataValue -Lines $lines -Label 'Overall Verdict')
+        ApprovalRef          = Normalize-MarkdownCell (Get-MarkdownMetadataValue -Lines $lines -Label 'Approval Ref')
+        ReviewedBy           = Normalize-MarkdownCell (Get-MarkdownMetadataValue -Lines $lines -Label 'Reviewed By')
+        ReviewedAt           = Normalize-MarkdownCell (Get-MarkdownMetadataValue -Lines $lines -Label 'Reviewed At')
+    }
+
+    $concerns = @(
+        Get-MarkdownSectionTable -Lines $lines -Heading 'Concern Review' |
+            ForEach-Object {
+                [pscustomobject]@{
+                    Concern               = Normalize-MarkdownCell (Get-ObjectPropertyString -InputObject $_ -PropertyNames @('Concern'))
+                    Category              = Normalize-MarkdownCell (Get-ObjectPropertyString -InputObject $_ -PropertyNames @('Category'))
+                    Status                = Normalize-MarkdownCell (Get-ObjectPropertyString -InputObject $_ -PropertyNames @('Status'))
+                    EvidenceBasis         = Normalize-MarkdownCell (Get-ObjectPropertyString -InputObject $_ -PropertyNames @('Evidence Basis'))
+                    RuntimeEvidenceStatus = Normalize-MarkdownCell (Get-ObjectPropertyString -InputObject $_ -PropertyNames @('Runtime Evidence Status'))
+                    ExpectedControls      = Normalize-MarkdownCell (Get-ObjectPropertyString -InputObject $_ -PropertyNames @('Expected Controls'))
+                    Blocking              = Normalize-MarkdownCell (Get-ObjectPropertyString -InputObject $_ -PropertyNames @('Blocking'))
+                    Rationale             = Normalize-MarkdownCell (Get-ObjectPropertyString -InputObject $_ -PropertyNames @('Rationale'))
+                    Approval              = Normalize-MarkdownCell (Get-ObjectPropertyString -InputObject $_ -PropertyNames @('Approval'))
+                }
+            }
+    )
+
+    $blockingConcerns = @(
+        $concerns |
+            Where-Object {
+                Test-HardeningConcernBlocksImplementation -Concern $_ -ProjectRoot $ProjectRoot
+            }
+    )
+
+    return [pscustomobject]@{
+        Path                       = $Path
+        Metadata                   = [pscustomobject]$metadata
+        ConcernRows                = $concerns
+        BlockingConcerns           = $blockingConcerns
+        BlocksImplementation       = $blockingConcerns.Count -gt 0
+        ApprovalRecord             = if ([string]::IsNullOrWhiteSpace($ProjectRoot)) {
+            $null
+        }
+        else {
+            Get-ApprovalReferenceRecord -ProjectRoot $ProjectRoot -ApprovalRef $metadata.ApprovalRef -AllowedTypes @('decision', 'defer')
+        }
+    }
+}
+
+function Get-RoutingEvidenceRecords {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$ProjectRoot,
+
+        [string]$IterationRelativePath
+    )
+
+    $pattern = '(?im)^\s*-\s+\*\*Routing Evidence\*\*:\s*(?<actor>[^|]+?)\s*\|\s*requested=(?<requested>[^|]+?)\s*\|\s*actual=(?<actual>[^|]+?)\s*\|\s*model=(?<model>[^|]+?)\s*\|\s*status=(?<status>[^|\r\n]+?)(?:\s*\|\s*fallback=(?<fallback>[^\r\n]+))?\s*$'
+    return @(
+        Get-DecisionsLedgerEntries -ProjectRoot $ProjectRoot |
+            Where-Object {
+                $_.Type -eq 'routing-evidence' -and
+                (
+                    [string]::IsNullOrWhiteSpace($IterationRelativePath) -or
+                    [string]$_.AffectedIteration -eq $IterationRelativePath
+                )
+            } |
+            ForEach-Object {
+                $entry = $_
+                $match = [regex]::Match($entry.RawText, $pattern)
+                [pscustomobject]@{
+                    DecisionId     = $entry.DecisionId
+                    AffectedIteration = $entry.AffectedIteration
+                    Actor          = if ($match.Success) { $match.Groups['actor'].Value.Trim() } else { $null }
+                    RequestedClass = if ($match.Success) { $match.Groups['requested'].Value.Trim() } else { $null }
+                    EffectiveClass = if ($match.Success) { $match.Groups['actual'].Value.Trim() } else { $null }
+                    Model          = if ($match.Success) { $match.Groups['model'].Value.Trim() } else { $null }
+                    Status         = if ($match.Success) { $match.Groups['status'].Value.Trim() } else { $entry.RoutingStatus }
+                    FallbackReason = if ($match.Success -and $match.Groups['fallback'].Success) { $match.Groups['fallback'].Value.Trim() } else { $entry.FallbackReason }
+                    Entry          = $entry
+                }
+            }
+    )
 }

@@ -7,10 +7,23 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
+$sharedGovernancePath = Join-Path $PSScriptRoot 'shared-governance.ps1'
+if (-not (Test-Path -LiteralPath $sharedGovernancePath -PathType Leaf)) {
+    throw "Missing shared governance helper '$sharedGovernancePath'."
+}
+. $sharedGovernancePath
+
+$sharedGovernancePath = Join-Path $PSScriptRoot 'shared-governance.ps1'
+if (-not (Test-Path -LiteralPath $sharedGovernancePath -PathType Leaf)) {
+    throw "Missing shared governance helper '$sharedGovernancePath'."
+}
+. $sharedGovernancePath
+
 $allowedIterationStatuses = @('planning', 'executing', 'reviewing', 'retro', 'complete', 'abandoned')
 $allowedTaskStatuses = @('planned', 'in-progress', 'done', 'needs-rework', 'deferred', 'blocked')
 $terminalTaskStatuses = @('done', 'needs-rework', 'deferred', 'blocked')
 $allowedReviewTaskVerdicts = @('pass', 'needs-work', 'blocked')
+$allowedQualityGateStatuses = @('planned', 'passed', 'failed', 'excepted', 'not-applicable')
 
 function Resolve-IterationTarget {
     param(
@@ -19,7 +32,7 @@ function Resolve-IterationTarget {
     )
 
     if ($ExplicitIterationPaths -and $ExplicitIterationPaths.Count -gt 0) {
-        return @($ExplicitIterationPaths | ForEach-Object { (Resolve-Path -Path $_).Path })
+        return @($ExplicitIterationPaths | ForEach-Object { (Resolve-Path -Path (Resolve-ProjectPath -Path $_)).Path })
     }
 
     $specsPath = Join-Path -Path $ResolvedProjectPath -ChildPath 'specs'
@@ -80,6 +93,44 @@ function Get-NormalizedKeyword {
     return $normalized.Trim()
 }
 
+function Get-IterationOrdinal {
+    param([AllowNull()][string]$Value)
+
+    if ([string]::IsNullOrWhiteSpace($Value)) {
+        return $null
+    }
+
+    $candidate = [System.IO.Path]::GetFileName($Value.Trim().TrimEnd('\', '/'))
+    if ($candidate -match '^(?<ordinal>\d+)$') {
+        return [int]$Matches['ordinal']
+    }
+
+    return $null
+}
+
+function Test-IterationMeetsCloseoutCutoff {
+    param(
+        [string]$IterationDirectory,
+        [AllowNull()][string]$RequiredSinceIteration
+    )
+
+    if (Test-IsNullish $RequiredSinceIteration) {
+        return $true
+    }
+
+    $cutoffOrdinal = Get-IterationOrdinal -Value $RequiredSinceIteration
+    if ($null -eq $cutoffOrdinal) {
+        return $true
+    }
+
+    $iterationOrdinal = Get-IterationOrdinal -Value $IterationDirectory
+    if ($null -eq $iterationOrdinal) {
+        return $true
+    }
+
+    return $iterationOrdinal -ge $cutoffOrdinal
+}
+
 function Test-IsNullish {
     param([AllowNull()][string]$Value)
 
@@ -100,12 +151,23 @@ function Test-IsPlaceholderReviewNote {
     return $Value.Trim() -match '^(?:Review delivered output against .+ and adjust verdict if needed\.|Execution reported blocked; confirm blocker status and escalation path\.|Deferred work; confirm the deferral is still acceptable for this iteration\.|Task already marked needs-rework during execution; confirm re-entry scope\.|Populate verdict after reviewing the delivered evidence\.)$'
 }
 
+function Normalize-MarkdownCell {
+    param([AllowNull()][string]$Value)
+
+    if ($null -eq $Value) {
+        return ''
+    }
+
+    return $Value.Trim().Trim('`')
+}
+
 function Test-ReviewContainsScaffoldReminder {
     param([string[]]$ReviewLines)
 
     foreach ($line in $ReviewLines) {
         $trimmed = $line.Trim()
-        if ($trimmed -eq '- Replace default verdicts with the actual per-task review outcome before closing the review phase.') {
+        if ($trimmed -eq '- Replace default verdicts with the actual per-task review outcome before closing the review phase.' -or
+            $trimmed -eq '- Replace this reminder with either: (a) `No known gaps remain.` or (b) explicit gap entries covering the affected requirement/artifact, whether the gap is fixed now or deferred with approval, and any required spec/plan/tasks updates.') {
             return $true
         }
     }
@@ -144,6 +206,86 @@ function Test-HeadingPresent {
 
     $pattern = '^##\s+' + [regex]::Escape($Heading) + '\b'
     return [bool]($Lines | Where-Object { $_ -match $pattern } | Select-Object -First 1)
+}
+
+function Get-ActiveGapLedgerLines {
+    param([string[]]$ReviewLines)
+
+    $gapLedgerLines = @(Get-MarkdownSectionLines -Lines $ReviewLines -Heading 'Gap Ledger')
+    $activeLines = New-Object System.Collections.Generic.List[string]
+    foreach ($line in $gapLedgerLines) {
+        $trimmed = $line.Trim()
+        if ([string]::IsNullOrWhiteSpace($trimmed) -or $trimmed -eq 'No known gaps remain.' -or $trimmed -eq '---') {
+            continue
+        }
+
+        $null = $activeLines.Add($trimmed)
+    }
+
+    return $activeLines.ToArray()
+}
+
+function Test-NoGapClosurePolicy {
+    param(
+        [string[]]$ReviewLines,
+        [string]$ProjectRoot,
+        [string]$IterationDirectory,
+        [string]$OverallVerdict,
+        [string]$IterationStatus,
+        [System.Collections.Generic.List[string]]$Errors
+    )
+
+    $activeGapLines = @(Get-ActiveGapLedgerLines -ReviewLines $ReviewLines)
+    if ($activeGapLines.Count -eq 0) {
+        return
+    }
+
+    if ($OverallVerdict -ne 'accepted' -and $IterationStatus -notin @('retro', 'complete')) {
+        return
+    }
+
+    $relativeIteration = ([System.IO.Path]::GetRelativePath($ProjectRoot, $IterationDirectory)) -replace '/', '\'
+    $reviewText = $ReviewLines -join "`n"
+    $deferEntries = @(
+        Get-DecisionsLedgerEntries -ProjectRoot $ProjectRoot |
+            Where-Object {
+                $_.Type -eq 'defer' -and
+                $_.AffectedIteration -eq $relativeIteration -and
+                -not (Test-IsNullish $_.ApprovingHuman)
+            }
+    )
+
+    foreach ($gapLine in $activeGapLines) {
+        $normalizedGap = $gapLine.ToLowerInvariant()
+        $isDeferred = $normalizedGap -match '\bdefer(?:red)?\b'
+        $isFixedNow = $normalizedGap -match '\b(?:fixed[- ]now|resolved[- ]now|repaired[- ]now|fixed this iteration|resolved this iteration)\b'
+
+        if (-not $isDeferred -and -not $isFixedNow) {
+            $Errors.Add("review.md Gap Ledger entry must classify the concern as fixed-now or deferred before closure: $gapLine")
+            continue
+        }
+
+        if (-not $isDeferred) {
+            continue
+        }
+
+        if ($reviewText -notmatch '\.squad\\decisions\.md') {
+            $Errors.Add('Deferred gap entries must link review.md back to .squad\decisions.md')
+        }
+
+        if ($deferEntries.Count -eq 0) {
+            $Errors.Add("Deferred gap entries require a canonical defer entry with approving human in .squad\\decisions.md for $relativeIteration")
+            continue
+        }
+
+        $requirementMatch = [regex]::Match($gapLine, '(FR-\d+)')
+        if ($requirementMatch.Success) {
+            $matchingRequirement = @($deferEntries | Where-Object { [string]$_.AffectedRequirement -eq $requirementMatch.Groups[1].Value })
+            if ($matchingRequirement.Count -eq 0) {
+                $Errors.Add("Deferred gap for $($requirementMatch.Groups[1].Value) is missing a matching defer entry in .squad\\decisions.md")
+            }
+        }
+    }
 }
 
 function Get-MarkdownSectionTable {
@@ -210,6 +352,620 @@ function Get-MarkdownSectionTable {
     }
 
     return $rows.ToArray()
+}
+
+function Get-MarkdownSectionTableAnyLevel {
+    param(
+        [string[]]$Lines,
+        [string]$Heading
+    )
+
+    $headingPattern = '^#{2,3}\s+' + [regex]::Escape($Heading) + '\b'
+    $startIndex = -1
+
+    for ($index = 0; $index -lt $Lines.Count; $index++) {
+        if ($Lines[$index] -match $headingPattern) {
+            $startIndex = $index
+            break
+        }
+    }
+
+    if ($startIndex -lt 0) {
+        return @()
+    }
+
+    $tableLines = New-Object System.Collections.Generic.List[string]
+    for ($index = $startIndex + 1; $index -lt $Lines.Count; $index++) {
+        $currentLine = $Lines[$index]
+        if ($currentLine -match '^#{2,3}\s+') {
+            break
+        }
+
+        if ($currentLine.Trim().StartsWith('|')) {
+            $null = $tableLines.Add($currentLine)
+        }
+    }
+
+    if ($tableLines.Count -lt 2) {
+        return @()
+    }
+
+    $headers = ($tableLines[0].Trim('|') -split '\|') | ForEach-Object { $_.Trim() }
+    $rows = New-Object System.Collections.Generic.List[object]
+
+    for ($rowIndex = 1; $rowIndex -lt $tableLines.Count; $rowIndex++) {
+        $cells = ($tableLines[$rowIndex].Trim('|') -split '\|') | ForEach-Object { $_.Trim() }
+        $isSeparator = $true
+
+        foreach ($cell in $cells) {
+            if ($cell -notmatch '^:?-{3,}:?$') {
+                $isSeparator = $false
+                break
+            }
+        }
+
+        if ($isSeparator) {
+            continue
+        }
+
+        $row = [ordered]@{}
+        for ($cellIndex = 0; $cellIndex -lt $headers.Count; $cellIndex++) {
+            $value = if ($cellIndex -lt $cells.Count) { $cells[$cellIndex] } else { '' }
+            $row[$headers[$cellIndex]] = $value
+        }
+
+        $rows.Add([pscustomobject]$row)
+    }
+
+    return $rows.ToArray()
+}
+
+function Convert-ToRepoMarkdownPath {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$ProjectRoot,
+
+        [Parameter(Mandatory = $true)]
+        [string]$TargetPath
+    )
+
+    return ([System.IO.Path]::GetRelativePath($ProjectRoot, $TargetPath)) -replace '\\', '/'
+}
+
+function Resolve-RepoMarkdownArtifactPath {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$ProjectRoot,
+
+        [AllowNull()][string]$ArtifactRef
+    )
+
+    $normalizedRef = Normalize-MarkdownCell $ArtifactRef
+    if (Test-IsNullish $normalizedRef) {
+        return $null
+    }
+
+    if ($normalizedRef -match '<[^>]+>') {
+        return $null
+    }
+
+    $candidate = $normalizedRef -replace '/', '\'
+    if ([System.IO.Path]::IsPathRooted($candidate)) {
+        return [System.IO.Path]::GetFullPath($candidate)
+    }
+
+    return [System.IO.Path]::GetFullPath((Join-Path $ProjectRoot $candidate))
+}
+
+function Get-ObjectPropertyString {
+    param(
+        [AllowNull()][object]$InputObject,
+
+        [string[]]$PropertyNames
+    )
+
+    if ($null -eq $InputObject) {
+        return $null
+    }
+
+    foreach ($propertyName in $PropertyNames) {
+        $property = $InputObject.PSObject.Properties[$propertyName]
+        if ($null -ne $property) {
+            return [string]$property.Value
+        }
+    }
+
+    return $null
+}
+
+function Get-Phase2HardeningPlanContext {
+    param(
+        [AllowEmptyCollection()]
+        [AllowEmptyString()]
+        [Parameter(Mandatory = $true)]
+        [string[]]$PlanLines,
+
+        [Parameter(Mandatory = $true)]
+        [string]$ProjectRoot
+    )
+
+    $hasPhase2Section = Test-HeadingPresent -Lines $PlanLines -Heading 'Phase 2 Hardening and Specialist Review Planning'
+    $sliceScope = Normalize-MarkdownCell (Get-MarkdownMetadataValue -Lines $PlanLines -Label 'Phase 2 Slice Scope')
+    $artifactRef = Normalize-MarkdownCell (Get-MarkdownMetadataValue -Lines $PlanLines -Label 'Hardening Gate Artifact')
+
+    if (-not $hasPhase2Section -and (Test-IsNullish $sliceScope) -and (Test-IsNullish $artifactRef)) {
+        return $null
+    }
+
+    $routingRows = @(Get-MarkdownSectionTableAnyLevel -Lines $PlanLines -Heading 'Routing Policy')
+    $requestedReviewClass = if ($routingRows.Count -gt 0) {
+        Normalize-MarkdownCell (Get-ObjectPropertyString -InputObject $routingRows[0] -PropertyNames @('Requested Reasoning / Review Class', 'Requested Review Class'))
+    }
+    else {
+        $null
+    }
+
+    return [pscustomobject]@{
+        HasSection                 = $hasPhase2Section
+        SliceScope                 = $sliceScope
+        HardeningGateArtifactRef   = $artifactRef
+        HardeningGateArtifactPath  = Resolve-RepoMarkdownArtifactPath -ProjectRoot $ProjectRoot -ArtifactRef $artifactRef
+        RequestedReviewClass       = $requestedReviewClass
+        IsImplicit                 = $false
+    }
+}
+
+function Get-HardeningExpectedVerdict {
+    param(
+        [Parameter(Mandatory = $true)]
+        [object]$HardeningState
+    )
+
+    if ($HardeningState.BlocksImplementation) {
+        return 'blocked'
+    }
+
+    $hasApprovedDeferral = @(
+        $HardeningState.ConcernRows |
+            Where-Object { (Normalize-MarkdownCell ([string]$_.Status)).ToLowerInvariant() -eq 'deferred-with-approval' } |
+            Select-Object -First 1
+    ).Count -gt 0
+
+    if ($hasApprovedDeferral) {
+        return 'deferred-with-approval'
+    }
+
+    return 'ready'
+}
+
+function Test-Phase2HardeningGate {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$IterationDirectory,
+
+        [Parameter(Mandatory = $true)]
+        [string]$ProjectRoot,
+
+        [AllowEmptyCollection()]
+        [AllowEmptyString()]
+        [Parameter(Mandatory = $true)]
+        [string[]]$PlanLines,
+
+        [Parameter(Mandatory = $true)]
+        [string]$IterationStatus,
+
+        [System.Collections.Generic.List[string]]$Errors
+    )
+
+    $requiresGateEnforcement = $IterationStatus -in @('executing', 'reviewing', 'retro', 'complete')
+    $planContext = Get-Phase2HardeningPlanContext -PlanLines $PlanLines -ProjectRoot $ProjectRoot
+    if ($null -eq $planContext) {
+        $implicitHardeningGatePath = Join-Path $IterationDirectory 'quality\hardening-gate.md'
+        $implicitHardeningGateRef = Convert-ToRepoMarkdownPath -ProjectRoot $ProjectRoot -TargetPath $implicitHardeningGatePath
+        $hasImplicitArtifact = Test-Path -LiteralPath $implicitHardeningGatePath -PathType Leaf
+        $hasImplicitPlanSignal = @(
+            $PlanLines |
+                Where-Object { $_ -match '(?i)hardening-gate\.md|hardening gate' } |
+                Select-Object -First 1
+        ).Count -gt 0
+
+        if (-not $hasImplicitArtifact -and -not $hasImplicitPlanSignal) {
+            return
+        }
+
+        if (-not $requiresGateEnforcement -and -not $hasImplicitArtifact) {
+            return
+        }
+
+        $planContext = [pscustomobject]@{
+            HasSection                = $false
+            SliceScope                = $null
+            HardeningGateArtifactRef  = $implicitHardeningGateRef
+            HardeningGateArtifactPath = $implicitHardeningGatePath
+            RequestedReviewClass      = $null
+            IsImplicit                = $true
+        }
+    }
+
+    if (-not $planContext.IsImplicit -and -not $planContext.HasSection) {
+        $Errors.Add('plan.md must keep the Phase 2 Hardening and Specialist Review Planning section when hardening-gate metadata is present')
+        return
+    }
+
+    if (-not $planContext.IsImplicit) {
+        foreach ($requiredField in @(
+                @{ Label = 'Phase 2 Slice Scope'; Value = $planContext.SliceScope },
+                @{ Label = 'Hardening Gate Artifact'; Value = $planContext.HardeningGateArtifactRef }
+            )) {
+            if (Test-IsNullish ([string]$requiredField.Value)) {
+                $Errors.Add(("plan.md is missing required Phase 2 hardening metadata: {0}" -f $requiredField.Label))
+            }
+        }
+    }
+
+    if (-not $requiresGateEnforcement -and [string]::IsNullOrWhiteSpace($planContext.HardeningGateArtifactPath)) {
+        return
+    }
+
+    if ([string]::IsNullOrWhiteSpace($planContext.HardeningGateArtifactPath)) {
+        $Errors.Add('plan.md Hardening Gate Artifact must resolve to a concrete repo-relative path before implementation can proceed')
+        return
+    }
+
+    if (-not (Test-Path -LiteralPath $planContext.HardeningGateArtifactPath -PathType Leaf)) {
+        $Errors.Add(("Missing required hardening artifact: {0}" -f $planContext.HardeningGateArtifactRef))
+        return
+    }
+
+    $hardeningState = Get-HardeningGateState -Path $planContext.HardeningGateArtifactPath -ProjectRoot $ProjectRoot
+    $expectedIterationRef = Convert-ToRepoMarkdownPath -ProjectRoot $ProjectRoot -TargetPath $IterationDirectory
+    $expectedSpecPath = Resolve-PlanSpecPath -PlanLines $PlanLines -IterationDirectory $IterationDirectory
+    $expectedFeatureRef = if ($null -ne $expectedSpecPath) {
+        Convert-ToRepoMarkdownPath -ProjectRoot $ProjectRoot -TargetPath $expectedSpecPath
+    }
+    else {
+        $null
+    }
+
+    foreach ($metadataCheck in @(
+            @{ Label = 'Schema'; Actual = [string]$hardeningState.Metadata.Schema; Expected = 'v1' },
+            @{ Label = 'Gate ID'; Actual = [string]$hardeningState.Metadata.GateId; Expected = 'pre-implementation-hardening' },
+            @{ Label = 'Iteration Ref'; Actual = [string]$hardeningState.Metadata.IterationRef; Expected = $expectedIterationRef }
+        )) {
+        if ((Normalize-MarkdownCell $metadataCheck.Actual) -ne (Normalize-MarkdownCell $metadataCheck.Expected)) {
+            $Errors.Add(("hardening-gate.md metadata '{0}' should be '{1}' but found '{2}'" -f $metadataCheck.Label, $metadataCheck.Expected, $metadataCheck.Actual))
+        }
+    }
+
+    if (-not (Test-IsNullish $expectedFeatureRef) -and (Normalize-MarkdownCell ([string]$hardeningState.Metadata.FeatureRef)) -ne $expectedFeatureRef) {
+        $Errors.Add(("hardening-gate.md metadata 'Feature Ref' should be '{0}' but found '{1}'" -f $expectedFeatureRef, $hardeningState.Metadata.FeatureRef))
+    }
+
+    if (-not (Test-IsNullish $planContext.RequestedReviewClass) -and
+        (Normalize-MarkdownCell ([string]$hardeningState.Metadata.RequestedReviewClass)) -ne $planContext.RequestedReviewClass) {
+        $Errors.Add(("hardening-gate.md requested review class '{0}' does not match the Phase 2 routing policy '{1}'" -f $hardeningState.Metadata.RequestedReviewClass, $planContext.RequestedReviewClass))
+    }
+
+    $expectedConcernIds = @(
+        'security-surface',
+        'error-handling-expectations',
+        'retry-idempotency-requirements',
+        'test-integrity-targets',
+        'operational-resilience-concerns'
+    )
+
+    # Only enforce the bounded five-concern contract for explicit Phase 2 planning
+    if (-not $planContext.IsImplicit) {
+        if ($hardeningState.ConcernRows.Count -ne $expectedConcernIds.Count) {
+            $Errors.Add(("hardening-gate.md must keep the bounded five-concern contract; found {0} concern rows" -f $hardeningState.ConcernRows.Count))
+        }
+
+        foreach ($concernId in $expectedConcernIds) {
+            $matches = @($hardeningState.ConcernRows | Where-Object { [string]$_.Concern -eq $concernId })
+            if ($matches.Count -ne 1) {
+                $Errors.Add(("hardening-gate.md must contain exactly one '{0}' concern row" -f $concernId))
+            }
+        }
+    }
+
+    $concernEvaluations = @()
+    foreach ($concern in @($hardeningState.ConcernRows)) {
+        $evaluation = Get-HardeningConcernEvaluation -Concern $concern -ProjectRoot $ProjectRoot
+        $concernEvaluations += $evaluation
+
+        foreach ($issue in @($evaluation.Issues)) {
+            # Skip "before implementation can proceed" errors for iterations past executing status
+            if ($IterationStatus -ne 'executing' -and $issue -match 'before implementation can proceed') {
+                continue
+            }
+            $Errors.Add(("hardening-gate.md concern '{0}' {1}" -f $concern.Concern, $issue))
+        }
+    }
+
+    $expectedVerdict = Get-HardeningExpectedVerdict -HardeningState $hardeningState
+    $actualVerdict = (Normalize-MarkdownCell ([string]$hardeningState.Metadata.OverallVerdict)).ToLowerInvariant()
+    if ($actualVerdict -ne $expectedVerdict) {
+        $Errors.Add(("hardening-gate.md overall verdict should be '{0}' based on the concern rows but found '{1}'" -f $expectedVerdict, $hardeningState.Metadata.OverallVerdict))
+    }
+
+    switch ($expectedVerdict) {
+        'blocked' {
+            if (-not (Test-IsNullish ([string]$hardeningState.Metadata.ApprovalRef))) {
+                $Errors.Add('hardening-gate.md must not publish a gate-level Approval Ref while the overall verdict remains blocked')
+            }
+
+            # Only block validation during executing status (before implementation completes)
+            # For retro/complete, the gate records historical state but doesn't block validation
+            if ($IterationStatus -eq 'executing') {
+                $blockingConcernIds = @($hardeningState.BlockingConcerns | ForEach-Object { [string]$_.Concern })
+                $Errors.Add(("hardening-gate.md still blocks implementation via unresolved concern(s): {0}" -f ($blockingConcernIds -join ', ')))
+            }
+        }
+        'deferred-with-approval' {
+            if (Test-IsNullish ([string]$hardeningState.Metadata.ApprovalRef)) {
+                $Errors.Add('hardening-gate.md must record a gate-level Approval Ref when the verdict is deferred-with-approval')
+            }
+            elseif ($null -eq $hardeningState.ApprovalRecord -or -not $hardeningState.ApprovalRecord.HasHumanApproval) {
+                $Errors.Add(("hardening-gate.md approval reference '{0}' is missing explicit human approval evidence in .squad\decisions.md" -f $hardeningState.Metadata.ApprovalRef))
+            }
+        }
+        'ready' {
+            if (-not (Test-IsNullish ([string]$hardeningState.Metadata.ApprovalRef))) {
+                $Errors.Add('hardening-gate.md must not retain a gate-level Approval Ref after all blocking concerns are fully ready')
+            }
+        }
+    }
+
+    $explicitEvidenceRows = @(
+        $concernEvaluations |
+            Where-Object { $_.HasExplicitEvidenceFields }
+    )
+    if ($IterationStatus -eq 'complete' -and $explicitEvidenceRows.Count -gt 0) {
+        $closureBlockingConcernIds = @(
+            $hardeningState.ConcernRows |
+                Where-Object { Test-HardeningConcernBlocksClosure -Concern $_ -ProjectRoot $ProjectRoot } |
+                ForEach-Object { [string]$_.Concern }
+        )
+
+        if ($closureBlockingConcernIds.Count -gt 0) {
+            $Errors.Add(("hardening-gate.md still requires runtime evidence or explicit closure follow-through for concern(s): {0}" -f ($closureBlockingConcernIds -join ', ')))
+        }
+    }
+}
+
+function Get-Phase1RequiredQualityGateRows {
+    param([string[]]$PlanLines)
+
+    $phaseScope = Normalize-MarkdownCell (Get-MarkdownMetadataValue -Lines $PlanLines -Label 'Phase Scope')
+    if ($phaseScope -ne 'phase-1-first-slice') {
+        return @()
+    }
+
+    return @(Get-MarkdownSectionTableAnyLevel -Lines $PlanLines -Heading 'Required Quality Gates')
+}
+
+function Get-QualityEvidenceRowMap {
+    param([string[]]$EvidenceLines)
+
+    $rowsByGate = @{}
+    foreach ($row in @(Get-MarkdownSectionTable -Lines $EvidenceLines -Heading 'Gate Matrix')) {
+        $gateId = Normalize-MarkdownCell ([string]$row.Gate)
+        if ([string]::IsNullOrWhiteSpace($gateId)) {
+            continue
+        }
+
+        $rowsByGate[$gateId] = [pscustomobject]@{
+            Gate           = $gateId
+            Requirement    = Normalize-MarkdownCell ([string]$row.Requirement)
+            EvidenceSource = Normalize-MarkdownCell ([string]$row.'Evidence Source')
+            Status         = Normalize-MarkdownCell ([string]$row.Status).ToLowerInvariant()
+            Exception      = Normalize-MarkdownCell ([string]$row.Exception)
+        }
+    }
+
+    return $rowsByGate
+}
+
+function Get-MechanicalFindingsByGate {
+    param(
+        [string]$MechanicalFindingsPath,
+        [System.Collections.Generic.List[string]]$Errors
+    )
+
+    $findingsByGate = @{}
+    if (-not (Test-Path -LiteralPath $MechanicalFindingsPath -PathType Leaf)) {
+        return $findingsByGate
+    }
+
+    try {
+        $payload = Get-Content -LiteralPath $MechanicalFindingsPath -Encoding UTF8 -Raw | ConvertFrom-Json -Depth 20
+    }
+    catch {
+        $Errors.Add(("mechanical-findings.json is not valid JSON: {0}" -f $_.Exception.Message))
+        return $findingsByGate
+    }
+
+    if ($null -eq $payload -or $null -eq $payload.findings) {
+        return $findingsByGate
+    }
+
+    foreach ($finding in @($payload.findings)) {
+        $gateId = Normalize-MarkdownCell ([string]$finding.gateId)
+        if ([string]::IsNullOrWhiteSpace($gateId)) {
+            continue
+        }
+
+        if (-not $findingsByGate.ContainsKey($gateId)) {
+            $findingsByGate[$gateId] = New-Object System.Collections.Generic.List[object]
+        }
+
+        $null = $findingsByGate[$gateId].Add($finding)
+    }
+
+    return $findingsByGate
+}
+
+function Test-Phase1QualityEvidence {
+    param(
+        [string]$IterationDirectory,
+        [string[]]$PlanLines,
+        [System.Collections.Generic.List[string]]$Errors
+    )
+
+    $requiredGateRows = @(Get-Phase1RequiredQualityGateRows -PlanLines $PlanLines)
+    if ($requiredGateRows.Count -eq 0) {
+        return
+    }
+
+    $qualityDirectory = Join-Path $IterationDirectory 'quality'
+    $qualityEvidencePath = Join-Path $qualityDirectory 'quality-evidence.md'
+    $mechanicalFindingsPath = Join-Path $qualityDirectory 'mechanical-findings.json'
+
+    if (-not (Test-Path -LiteralPath $qualityEvidencePath -PathType Leaf)) {
+        $Errors.Add('quality-evidence.md is required for Phase 1 required quality gates but is missing')
+        return
+    }
+
+    $evidenceLines = Get-MarkdownContent -Path $qualityEvidencePath
+    $evidenceRowsByGate = Get-QualityEvidenceRowMap -EvidenceLines $evidenceLines
+    if ($evidenceRowsByGate.Count -eq 0) {
+        $Errors.Add('quality-evidence.md is missing the Gate Matrix table required for Phase 1 quality evidence')
+        return
+    }
+
+    foreach ($label in @('Profile Ref', 'Findings Ref', 'Reviewed By', 'Reviewed At')) {
+        if (Test-IsNullish (Get-MarkdownMetadataValue -Lines $evidenceLines -Label $label)) {
+            $Errors.Add(("quality-evidence.md is missing required metadata: {0}" -f $label))
+        }
+    }
+
+    $mechanicalGateRequired = @($requiredGateRows | Where-Object {
+            (Normalize-MarkdownCell ([string]$_.Category)).ToLowerInvariant() -eq 'mechanical'
+        }).Count -gt 0
+    if ($mechanicalGateRequired -and -not (Test-Path -LiteralPath $mechanicalFindingsPath -PathType Leaf)) {
+        $Errors.Add('mechanical-findings.json is required for declared Phase 1 mechanical gates but is missing')
+    }
+
+    $mechanicalFindingsByGate = Get-MechanicalFindingsByGate -MechanicalFindingsPath $mechanicalFindingsPath -Errors $Errors
+
+    foreach ($requiredGate in $requiredGateRows) {
+        $gateId = Normalize-MarkdownCell ([string]$requiredGate.'Required Quality Gate')
+        if ([string]::IsNullOrWhiteSpace($gateId)) {
+            continue
+        }
+
+        $category = Normalize-MarkdownCell ([string]$requiredGate.Category).ToLowerInvariant()
+        if (-not $evidenceRowsByGate.ContainsKey($gateId)) {
+            $Errors.Add(("quality-evidence.md is missing evidence for required gate '{0}'" -f $gateId))
+            continue
+        }
+
+        $evidenceRow = $evidenceRowsByGate[$gateId]
+        if ([string]::IsNullOrWhiteSpace($evidenceRow.EvidenceSource)) {
+            $Errors.Add(("quality-evidence.md gate '{0}' is missing an Evidence Source entry" -f $gateId))
+        }
+
+        if ([string]::IsNullOrWhiteSpace($evidenceRow.Status)) {
+            $Errors.Add(("quality-evidence.md gate '{0}' is missing a Status entry" -f $gateId))
+        }
+        elseif ($evidenceRow.Status -notin $allowedQualityGateStatuses) {
+            $Errors.Add(("quality-evidence.md gate '{0}' uses invalid status '{1}'" -f $gateId, $evidenceRow.Status))
+        }
+        elseif ($evidenceRow.Status -eq 'planned') {
+            $Errors.Add(("quality-evidence.md gate '{0}' is still marked planned, so required Phase 1 evidence is incomplete" -f $gateId))
+        }
+
+        if ($evidenceRow.Status -eq 'excepted' -and (Test-IsNullish $evidenceRow.Exception)) {
+            $Errors.Add(("quality-evidence.md gate '{0}' is excepted but does not cite an approved exception reference" -f $gateId))
+        }
+
+        if ($category -ne 'mechanical') {
+            continue
+        }
+
+        $gateFindings = if ($mechanicalFindingsByGate.ContainsKey($gateId)) {
+            @($mechanicalFindingsByGate[$gateId])
+        }
+        else {
+            @()
+        }
+
+        $demotedFindings = @($gateFindings | Where-Object { $_.demoted -eq $true })
+        if ($demotedFindings.Count -eq 0) {
+            continue
+        }
+
+        $demotionRefs = New-Object System.Collections.Generic.List[string]
+        foreach ($finding in $demotedFindings) {
+            $dispositionRef = Normalize-MarkdownCell ([string]$finding.dispositionRef)
+            if ([string]::IsNullOrWhiteSpace($dispositionRef)) {
+                $Errors.Add(("mechanical finding gate '{0}' includes a demoted rule without dispositionRef visibility" -f $gateId))
+                continue
+            }
+
+            if ($demotionRefs -notcontains $dispositionRef) {
+                $null = $demotionRefs.Add($dispositionRef)
+            }
+        }
+
+        if ($gateFindings.Count -eq $demotedFindings.Count -and $demotionRefs.Count -gt 0) {
+            if ($evidenceRow.Status -ne 'excepted') {
+                $Errors.Add(("quality-evidence.md gate '{0}' must remain visible as excepted when all mechanical findings are demoted" -f $gateId))
+            }
+
+            foreach ($demotionRef in $demotionRefs) {
+                if ($evidenceRow.Exception -notlike ("*{0}*" -f $demotionRef)) {
+                    $Errors.Add(("quality-evidence.md gate '{0}' must cite demotion reference '{1}' in the Exception column" -f $gateId, $demotionRef))
+                }
+            }
+        }
+    }
+}
+
+function Test-IsManifestPath {
+    param([string]$Path)
+
+    return $Path -match '(?:^|\\)(package\.json|package-lock\.json|pnpm-lock\.yaml|yarn\.lock|requirements(?:-dev)?\.txt|pyproject\.toml|Cargo\.toml|Cargo\.lock|go\.mod|go\.sum|pom\.xml|packages\.lock\.json|global\.json|.*\.csproj)$'
+}
+
+function Test-IsReviewerSourcePath {
+    param([string]$Path)
+
+    $extension = [System.IO.Path]::GetExtension([string]$Path).ToLowerInvariant()
+    return $extension -in @('.ps1', '.psm1', '.js', '.jsx', '.ts', '.tsx', '.py', '.go', '.cs', '.java', '.rb', '.php', '.rs', '.kt', '.swift', '.c', '.cc', '.cpp', '.h', '.hpp')
+}
+
+function Get-MarkdownSectionLines {
+    param(
+        [string[]]$Lines,
+        [string]$Heading
+    )
+
+    $headingPattern = '^##\s+' + [regex]::Escape($Heading) + '\b'
+    $startIndex = -1
+
+    for ($index = 0; $index -lt $Lines.Count; $index++) {
+        if ($Lines[$index] -match $headingPattern) {
+            $startIndex = $index
+            break
+        }
+    }
+
+    if ($startIndex -lt 0) {
+        return @()
+    }
+
+    $sectionLines = New-Object System.Collections.Generic.List[string]
+    for ($index = $startIndex + 1; $index -lt $Lines.Count; $index++) {
+        $currentLine = $Lines[$index]
+        if ($currentLine -match '^##\s+') {
+            break
+        }
+
+        $null = $sectionLines.Add($currentLine)
+    }
+
+    return $sectionLines.ToArray()
 }
 
 function Get-TeamRoleMap {
@@ -491,7 +1247,7 @@ function Test-StateArtifact {
     }
 
     $stateLines = Get-MarkdownContent -Path $statePath
-    foreach ($label in @('Last Completed Task', 'Tasks Remaining', 'In Progress', 'Updated')) {
+    foreach ($label in @('Last Completed Task', 'Tasks Remaining', 'In Progress', 'Baseline Ref', 'Updated')) {
         $value = Get-MarkdownMetadataValue -Lines $stateLines -Label $label
         if ($null -eq $value) {
             $Errors.Add("state.md is missing required metadata: $label")
@@ -502,6 +1258,9 @@ function Test-StateArtifact {
 function Test-ReviewArtifact {
     param(
         [string]$ReviewPath,
+        [string]$ProjectRoot,
+        [string]$IterationDirectory,
+        [string]$IterationStatus,
         [object[]]$PlanTasks,
         [System.Collections.Generic.List[string]]$Errors,
         [switch]$RequireAcceptedVerdict
@@ -525,6 +1284,10 @@ function Test-ReviewArtifact {
     if ($taskVerdicts.Count -eq 0) {
         $Errors.Add('review.md must contain a populated Task Verdicts table')
         return
+    }
+
+    if (-not (Test-HeadingPresent -Lines $reviewLines -Heading 'Gap Ledger')) {
+        $Errors.Add('review.md must contain a Gap Ledger section for no-gap closure tracking')
     }
 
     if (Test-ReviewContainsScaffoldReminder -ReviewLines $reviewLines) {
@@ -567,6 +1330,8 @@ function Test-ReviewArtifact {
     if ($overallVerdict -eq 'accepted' -and $nonPassingVerdictTaskIds.Count -gt 0) {
         $Errors.Add(("review.md cannot record overall verdict 'accepted' while tasks remain non-passing: {0}" -f ($nonPassingVerdictTaskIds -join ', ')))
     }
+
+    Test-NoGapClosurePolicy -ReviewLines $reviewLines -ProjectRoot $ProjectRoot -IterationDirectory $IterationDirectory -OverallVerdict $overallVerdict -IterationStatus $IterationStatus -Errors $Errors
 }
 
 function Test-RetroArtifact {
@@ -594,6 +1359,92 @@ function Test-RetroArtifact {
 
     if (-not $hasProcessNotes) {
         $Errors.Add("retro.md must capture process notes via 'Process Notes' or both 'What Went Well' and 'What Didn't Go Well'")
+    }
+}
+
+function Get-ReviewerCloseoutDiffArtifacts {
+    param(
+        [string]$ProjectRoot,
+        [AllowNull()][string]$BaselineRef
+    )
+
+    $result = [ordered]@{
+        BaselineResolved = $false
+        Files            = @()
+    }
+
+    if ([string]::IsNullOrWhiteSpace($BaselineRef)) {
+        return [pscustomobject]$result
+    }
+
+    $gitCommand = Get-Command -Name 'git' -ErrorAction SilentlyContinue
+    if ($null -eq $gitCommand) {
+        return [pscustomobject]$result
+    }
+
+    $revParseOutput = @(& git -C $ProjectRoot rev-parse --verify $BaselineRef 2>$null)
+    if ($LASTEXITCODE -ne 0) {
+        return [pscustomobject]$result
+    }
+
+    $result.BaselineResolved = $true
+    foreach ($line in @(& git -C $ProjectRoot diff --name-only $BaselineRef -- 2>$null)) {
+        $path = ([string]$line).Trim()
+        if ([string]::IsNullOrWhiteSpace($path)) {
+            continue
+        }
+
+        $result.Files += [pscustomobject]@{
+            Path       = $path
+            IsManifest = Test-IsManifestPath -Path $path
+            IsSource    = Test-IsReviewerSourcePath -Path $path
+        }
+    }
+
+    return [pscustomobject]$result
+}
+
+function Test-ReviewerCloseoutArtifacts {
+    param(
+        [string]$IterationDirectory,
+        [string]$ProjectRoot,
+        [string[]]$StateLines,
+        [bool]$EnforceReviewerCloseout,
+        [System.Collections.Generic.List[string]]$Errors
+    )
+
+    if (-not $EnforceReviewerCloseout) {
+        return
+    }
+
+    $baselineRef = Get-MarkdownMetadataValue -Lines $StateLines -Label 'Baseline Ref'
+    $diffArtifacts = Get-ReviewerCloseoutDiffArtifacts -ProjectRoot $ProjectRoot -BaselineRef $baselineRef
+    if (-not $diffArtifacts.BaselineResolved) {
+        $Errors.Add('Reviewer closeout enforcement requires state.md Baseline Ref to resolve to a valid git revision')
+        return
+    }
+
+    $codeTouched = @($diffArtifacts.Files | Where-Object { $_.IsSource }).Count -gt 0
+    $manifestTouched = @($diffArtifacts.Files | Where-Object { $_.IsManifest }).Count -gt 0
+    if (-not $codeTouched -and -not $manifestTouched) {
+        return
+    }
+
+    $requiredArtifacts = New-Object System.Collections.Generic.List[string]
+    if ($codeTouched) {
+        foreach ($artifactName in @('code-map.md', 'coverage-evidence.md', 'reviewer-index.md', 'review-diagrams.md')) {
+            $null = $requiredArtifacts.Add($artifactName)
+        }
+    }
+    if ($manifestTouched) {
+        $null = $requiredArtifacts.Add('dependency-report.md')
+    }
+
+    foreach ($artifactName in ($requiredArtifacts | Select-Object -Unique)) {
+        $artifactPath = Join-Path $IterationDirectory $artifactName
+        if (-not (Test-Path -LiteralPath $artifactPath -PathType Leaf)) {
+            $Errors.Add(("Missing required reviewer closeout artifact: {0}. Run scaffold-reviewer-artifacts.ps1 before closing a code-touching iteration." -f $artifactName))
+        }
     }
 }
 
@@ -638,6 +1489,110 @@ function Test-PlanTaskSet {
     }
 }
 
+function Get-TaskOwnerFileGlobs {
+    param([object]$Task)
+
+    if ($null -eq $Task) {
+        return $null
+    }
+
+    foreach ($propertyName in @('Owner File Globs', 'owner_file_globs', 'OwnerFileGlobs')) {
+        $property = $Task.PSObject.Properties[$propertyName]
+        if ($null -ne $property) {
+            return [string]$property.Value
+        }
+    }
+
+    return $null
+}
+
+function Get-SameSpecialtyPairGroups {
+    param([object[]]$Tasks)
+
+    $groupMap = @{}
+    foreach ($task in $Tasks) {
+        $owner = [string]$task.Owner
+        $match = [regex]::Match($owner, '^(?<tier>Junior|Senior)\s+(?<specialty>.+?)\s+Developer$')
+        if (-not $match.Success) {
+            continue
+        }
+
+        $specialtyKey = $match.Groups['specialty'].Value.Trim().ToLowerInvariant()
+        if (-not $groupMap.ContainsKey($specialtyKey)) {
+            $groupMap[$specialtyKey] = [ordered]@{
+                Specialty = $match.Groups['specialty'].Value.Trim()
+                Junior    = New-Object System.Collections.Generic.List[object]
+                Senior    = New-Object System.Collections.Generic.List[object]
+            }
+        }
+
+        $targetList = $groupMap[$specialtyKey][$match.Groups['tier'].Value]
+        $null = $targetList.Add($task)
+    }
+
+    return @($groupMap.Values | Where-Object { $_.Junior.Count -gt 0 -and $_.Senior.Count -gt 0 })
+}
+
+function Test-ConcurrencyPlanningPolicy {
+    param(
+        [string[]]$PlanLines,
+        [object[]]$Tasks,
+        [System.Collections.Generic.List[string]]$Errors
+    )
+
+    $pairGroups = @(Get-SameSpecialtyPairGroups -Tasks $Tasks)
+    if ($pairGroups.Count -eq 0) {
+        return
+    }
+
+    if (-not (Test-HeadingPresent -Lines $PlanLines -Heading 'Concurrency Rationale')) {
+        $Errors.Add('plan.md must contain a Concurrency Rationale section before same-specialty Junior/Senior pair work is planned')
+        return
+    }
+
+    $concurrencyLines = @(Get-MarkdownSectionLines -Lines $PlanLines -Heading 'Concurrency Rationale')
+    $concurrencyText = ($concurrencyLines -join "`n").ToLowerInvariant()
+    $serialFallbackDeclared = $concurrencyText -match '\bserial\b'
+
+    foreach ($group in $pairGroups) {
+        $pairTasks = @($group.Junior + $group.Senior | Where-Object {
+                $normalizedStatus = ([string]$_.Status).Trim().ToLowerInvariant()
+                $normalizedStatus -notin @('blocked', 'deferred')
+            })
+
+        if ($pairTasks.Count -lt 2) {
+            continue
+        }
+
+        $missingBoundaryTasks = @($pairTasks | Where-Object { Test-IsNullish (Get-TaskOwnerFileGlobs -Task $_) })
+        if ($missingBoundaryTasks.Count -gt 0 -and -not $serialFallbackDeclared) {
+            $taskLabels = $missingBoundaryTasks | ForEach-Object { [string]$_.Task }
+            $Errors.Add(("plan.md schedules Junior/Senior {0} work without explicit Owner File Globs for task(s) {1}. Add ownership boundaries or state in Concurrency Rationale that the work must remain serial." -f $group.Specialty, ($taskLabels -join ', ')))
+            continue
+        }
+
+        if ($missingBoundaryTasks.Count -gt 0) {
+            continue
+        }
+
+        $normalizedBoundaryMap = @{}
+        foreach ($task in $pairTasks) {
+            $normalizedBoundaries = ((Get-TaskOwnerFileGlobs -Task $task) -split ',' | ForEach-Object { $_.Trim().ToLowerInvariant() } | Where-Object { -not [string]::IsNullOrWhiteSpace($_) } | Select-Object -Unique)
+            $boundaryKey = $normalizedBoundaries -join ';'
+            if ([string]::IsNullOrWhiteSpace($boundaryKey)) {
+                continue
+            }
+
+            if ($normalizedBoundaryMap.ContainsKey($boundaryKey)) {
+                $Errors.Add(("plan.md assigns overlapping Owner File Globs '{0}' to same-specialty Junior/Senior {1} tasks '{2}' and '{3}'. Keep the work serial or partition ownership more explicitly." -f $boundaryKey, $group.Specialty, $normalizedBoundaryMap[$boundaryKey], $task.Task))
+                break
+            }
+
+            $normalizedBoundaryMap[$boundaryKey] = [string]$task.Task
+        }
+    }
+}
+
 function Get-IterationConfigForValidation {
     param([string]$IterationDirectory)
 
@@ -649,6 +1604,7 @@ function Get-IterationConfigForValidation {
         overcommit_threshold   = '1.0'
         defer_strategy         = 'manual'
         calibration_enabled    = 'true'
+        closeout_packet_required_since_iteration = ''
         config_present         = $false
     }
 
@@ -685,6 +1641,9 @@ function Get-IterationConfigForValidation {
         }
         elseif ($line -match '^\s*calibration_enabled:\s*("?)([^"#]+)\1\s*$') {
             $config.calibration_enabled = $Matches[2].Trim()
+        }
+        elseif ($line -match '^\s{2}closeout_packet_required_since_iteration:\s*("?)([^"#]+)\1\s*$') {
+            $config.closeout_packet_required_since_iteration = $Matches[2].Trim()
         }
     }
 
@@ -1038,7 +1997,8 @@ function Test-IsEarlyPlanningStub {
 function Test-IterationGovernance {
     param(
         [string]$IterationDirectory,
-        [hashtable]$TeamRoles
+        [hashtable]$TeamRoles,
+        [bool]$EnforceReviewerCloseout = $false
     )
 
     $errors = New-Object System.Collections.Generic.List[string]
@@ -1079,7 +2039,11 @@ function Test-IterationGovernance {
 
     if (-not $isEarlyPlanningStub) {
         Test-PlanTaskSet -Tasks $tasks -Errors $errors
+        Test-ConcurrencyPlanningPolicy -PlanLines $planLines -Tasks $tasks -Errors $errors
     }
+
+    Test-Phase1QualityEvidence -IterationDirectory $IterationDirectory -PlanLines $planLines -Errors $errors
+    Test-Phase2HardeningGate -IterationDirectory $IterationDirectory -ProjectRoot $ResolvedProjectPath -PlanLines $planLines -IterationStatus $status -Errors $errors
 
     $iterationConfig = Get-IterationConfigForValidation -IterationDirectory $IterationDirectory
     Test-PlanEffortModel -PlanLines $planLines -Capacity $capacity -IterationConfig $iterationConfig -Errors $errors
@@ -1164,7 +2128,7 @@ function Test-IterationGovernance {
             if ($hasNonTerminalTasks) {
                 $errors.Add('Reviewing iterations require all tasks to be in terminal states')
             }
-            Test-ReviewArtifact -ReviewPath $reviewPath -PlanTasks $tasks -Errors $errors
+            Test-ReviewArtifact -ReviewPath $reviewPath -ProjectRoot $ResolvedProjectPath -IterationDirectory $IterationDirectory -IterationStatus $status -PlanTasks $tasks -Errors $errors
         }
         'retro' {
             Test-StateArtifact -IterationDirectory $IterationDirectory -Errors $errors
@@ -1174,7 +2138,8 @@ function Test-IterationGovernance {
             if ($hasNonTerminalTasks) {
                 $errors.Add('Retro iterations require all tasks to be in terminal states')
             }
-            Test-ReviewArtifact -ReviewPath $reviewPath -PlanTasks $tasks -Errors $errors -RequireAcceptedVerdict
+            Test-ReviewArtifact -ReviewPath $reviewPath -ProjectRoot $ResolvedProjectPath -IterationDirectory $IterationDirectory -IterationStatus $status -PlanTasks $tasks -Errors $errors -RequireAcceptedVerdict
+            Test-ReviewerCloseoutArtifacts -IterationDirectory $IterationDirectory -ProjectRoot $ResolvedProjectPath -StateLines $stateLines -EnforceReviewerCloseout $EnforceReviewerCloseout -Errors $errors
         }
         'complete' {
             Test-StateArtifact -IterationDirectory $IterationDirectory -Errors $errors
@@ -1184,8 +2149,9 @@ function Test-IterationGovernance {
             if ($hasNonTerminalTasks) {
                 $errors.Add('Complete iterations require all tasks to be in terminal states')
             }
-            Test-ReviewArtifact -ReviewPath $reviewPath -PlanTasks $tasks -Errors $errors -RequireAcceptedVerdict
+            Test-ReviewArtifact -ReviewPath $reviewPath -ProjectRoot $ResolvedProjectPath -IterationDirectory $IterationDirectory -IterationStatus $status -PlanTasks $tasks -Errors $errors -RequireAcceptedVerdict
             Test-RetroArtifact -RetroPath $retroPath -Errors $errors
+            Test-ReviewerCloseoutArtifacts -IterationDirectory $IterationDirectory -ProjectRoot $ResolvedProjectPath -StateLines $stateLines -EnforceReviewerCloseout $EnforceReviewerCloseout -Errors $errors
         }
         'abandoned' {
             Test-StateArtifact -IterationDirectory $IterationDirectory -Errors $errors
@@ -1208,7 +2174,52 @@ function Test-IterationGovernance {
     }
 }
 
-$resolvedProjectPath = (Resolve-Path -Path $ProjectPath).Path
+function Get-ReviewerCloseoutEnforcementMap {
+    param(
+        [string[]]$Targets,
+        [bool]$ExplicitTargetsProvided,
+        [AllowNull()][string]$RequiredSinceIteration
+    )
+
+    $enforcementMap = @{}
+    if (@($Targets).Count -eq 0) {
+        return $enforcementMap
+    }
+
+    if ($ExplicitTargetsProvided) {
+        foreach ($target in $Targets) {
+            if (Test-IterationMeetsCloseoutCutoff -IterationDirectory $target -RequiredSinceIteration $RequiredSinceIteration) {
+                $enforcementMap[$target] = $true
+            }
+        }
+
+        return $enforcementMap
+    }
+
+    $groupedTargets = @{}
+    foreach ($target in $Targets) {
+        $featureDirectory = Split-Path -Parent (Split-Path -Parent $target)
+        if (-not $groupedTargets.ContainsKey($featureDirectory)) {
+            $groupedTargets[$featureDirectory] = New-Object System.Collections.Generic.List[string]
+        }
+
+        $null = $groupedTargets[$featureDirectory].Add($target)
+    }
+
+    foreach ($featureDirectory in $groupedTargets.Keys) {
+        $latestTarget = $groupedTargets[$featureDirectory] |
+            Sort-Object { [System.IO.Path]::GetFileName($_) } -Descending |
+            Select-Object -First 1
+
+        if (-not [string]::IsNullOrWhiteSpace($latestTarget) -and (Test-IterationMeetsCloseoutCutoff -IterationDirectory $latestTarget -RequiredSinceIteration $RequiredSinceIteration)) {
+            $enforcementMap[$latestTarget] = $true
+        }
+    }
+
+    return $enforcementMap
+}
+
+$resolvedProjectPath = (Resolve-Path -Path (Resolve-ProjectPath -Path $ProjectPath)).Path
 $teamRoles = Get-TeamRoleMap -ResolvedProjectPath $resolvedProjectPath
 
 $teamValidationErrors = New-Object System.Collections.Generic.List[string]
@@ -1222,8 +2233,15 @@ if ($teamValidationErrors.Count -gt 0) {
     exit 1
 }
 
+$explicitIterationPathsProvided = ($null -ne $IterationPath) -and @(
+    $IterationPath | Where-Object { -not [string]::IsNullOrWhiteSpace([string]$_) }
+).Count -gt 0
 $targets = @(Resolve-IterationTarget -ResolvedProjectPath $resolvedProjectPath -ExplicitIterationPaths $IterationPath)
-$results = @($targets | ForEach-Object { Test-IterationGovernance -IterationDirectory $_ -TeamRoles $teamRoles })
+$iterationConfig = if ($targets.Count -gt 0) { Get-IterationConfigForValidation -IterationDirectory $targets[0] } else { @{ closeout_packet_required_since_iteration = '' } }
+$reviewerCloseoutEnforcement = Get-ReviewerCloseoutEnforcementMap -Targets $targets -ExplicitTargetsProvided $explicitIterationPathsProvided -RequiredSinceIteration $iterationConfig.closeout_packet_required_since_iteration
+$results = @($targets | ForEach-Object {
+        Test-IterationGovernance -IterationDirectory $_ -TeamRoles $teamRoles -EnforceReviewerCloseout $reviewerCloseoutEnforcement.ContainsKey($_)
+    })
 $hasFailures = $false
 
 foreach ($result in $results) {

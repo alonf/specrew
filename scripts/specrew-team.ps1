@@ -64,6 +64,12 @@ if ($unboundArgs -and ($unboundArgs -contains '--role' -or $unboundArgs -contain
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
+$sharedGovernancePath = Join-Path (Split-Path -Parent $PSScriptRoot) 'extensions\specrew-speckit\scripts\shared-governance.ps1'
+if (-not (Test-Path -LiteralPath $sharedGovernancePath -PathType Leaf)) {
+    throw "Missing shared governance helper '$sharedGovernancePath'."
+}
+. $sharedGovernancePath
+
 $BASELINE_ROLES = @(
     'spec-steward',
     'planner',
@@ -206,7 +212,7 @@ function Add-TeamMember {
         [string]$Charter
     )
     
-    $resolvedProjectPath = [System.IO.Path]::GetFullPath($ProjectPath)
+    $resolvedProjectPath = Resolve-ProjectPath -Path $ProjectPath
     
     if (-not (Test-SquadInitialized -Root $resolvedProjectPath)) {
         return $false
@@ -303,7 +309,7 @@ function Update-TeamMember {
         [string]$Charter
     )
     
-    $resolvedProjectPath = [System.IO.Path]::GetFullPath($ProjectPath)
+    $resolvedProjectPath = Resolve-ProjectPath -Path $ProjectPath
     
     if (-not (Test-SquadInitialized -Root $resolvedProjectPath)) {
         return $false
@@ -391,7 +397,7 @@ function Remove-TeamMember {
         [string]$MemberName
     )
     
-    $resolvedProjectPath = [System.IO.Path]::GetFullPath($ProjectPath)
+    $resolvedProjectPath = Resolve-ProjectPath -Path $ProjectPath
     
     if (-not (Test-SquadInitialized -Root $resolvedProjectPath)) {
         return $false
@@ -442,7 +448,7 @@ function Remove-TeamMember {
 function Get-TeamMembers {
     param([string]$ProjectPath)
     
-    $resolvedProjectPath = [System.IO.Path]::GetFullPath($ProjectPath)
+    $resolvedProjectPath = Resolve-ProjectPath -Path $ProjectPath
     
     if (-not (Test-SquadInitialized -Root $resolvedProjectPath)) {
         return $false
@@ -485,7 +491,7 @@ function Get-TeamMembers {
     return $true
 }
 
-$resolvedProjectPath = [System.IO.Path]::GetFullPath($ProjectPath)
+$resolvedProjectPath = Resolve-ProjectPath -Path $ProjectPath
 
 switch ($Command) {
     'add' {

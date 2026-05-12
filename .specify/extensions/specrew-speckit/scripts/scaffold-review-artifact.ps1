@@ -213,10 +213,15 @@ $reviewContent = @"
 
 $($verdictRows -join [Environment]::NewLine)
 
+## Gap Ledger
+
+- Replace this reminder with either: (a) `No known gaps remain.` or (b) explicit gap entries covering the affected requirement/artifact, whether the gap is fixed now or deferred with approval, and any required spec/plan/tasks updates.
+
 ## Notes
 
 - This artifact was scaffolded from plan.md for the Review/Demo ceremony.
 - Replace default verdicts with the actual per-task review outcome before closing the review phase.
+- Use the no-gap policy: known gaps must be fixed now or explicitly deferred with approval and recorded evidence before closure.
 - If per-task drift checks did not run during execution, invoke `specrew-drift-check` in batch and update drift-log.md before accepting the iteration.
 "@
 

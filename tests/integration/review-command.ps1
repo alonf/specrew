@@ -171,4 +171,61 @@ foreach ($pattern in @('"feature":\s*"001-sample"', '"iteration":\s*"001"', '"di
 }
 Write-Pass 'JSON mode emits structured reviewer summary data'
 
+Write-Host "`nTest 5: reviewer replay surfaces lockout-chain cap state when present"
+$capFixturePath = Join-Path $repoRoot 'tests\integration\fixtures\lockout-chain-cap\project'
+if (-not (Test-Path -LiteralPath $capFixturePath -PathType Container)) {
+    Write-Fail "Missing lockout-chain-cap fixture: $capFixturePath"
+    exit 1
+}
+
+# Scaffold reviewer artifacts for the cap fixture to generate reviewer-index.md with cap state
+$capIterationDirectory = Join-Path $capFixturePath 'specs\008-sample\iterations\001'
+$scaffoldScript = Join-Path $repoRoot 'extensions\specrew-speckit\scripts\scaffold-reviewer-artifacts.ps1'
+if (-not (Test-Path -LiteralPath $scaffoldScript -PathType Leaf)) {
+    Write-Fail "Missing scaffold script: $scaffoldScript"
+    exit 1
+}
+
+$scaffoldResult = Invoke-TestScript -ScriptPath $scaffoldScript -ArgumentList @('-IterationDirectory', $capIterationDirectory, '-DryRun:$false')
+if ($scaffoldResult.ExitCode -ne 0) {
+    Write-Fail "Failed to scaffold cap fixture reviewer artifacts"
+    Write-Host "Scaffold output:" -ForegroundColor Yellow
+    $scaffoldResult.Output | ForEach-Object { Write-Host $_ }
+    exit 1
+}
+
+# Verify scaffolded reviewer-index.md contains cap state fields
+$capReviewerIndexPath = Join-Path $capIterationDirectory 'reviewer-index.md'
+if (-not (Test-Path -LiteralPath $capReviewerIndexPath -PathType Leaf)) {
+    Write-Fail "Scaffolding did not create reviewer-index.md: $capReviewerIndexPath"
+    exit 1
+}
+
+$capIndexContent = Get-Content -LiteralPath $capReviewerIndexPath -Raw -Encoding utf8
+foreach ($pattern in @('Lockout Cap:\s+active', 'chain=\d+/\d+', 'Next Owner:')) {
+    if (-not (Assert-Contains -Content $capIndexContent -Pattern $pattern -FailureMessage ("Scaffolded reviewer-index.md is missing cap field '{0}'." -f $pattern))) {
+        Write-Host "Full reviewer-index.md content:" -ForegroundColor Yellow
+        Write-Host $capIndexContent
+        exit 1
+    }
+}
+
+# Verify specrew review shows cap state
+$capReviewResult = Invoke-TestScript -ScriptPath $entryScript -ArgumentList @('review', '--project-path', $capFixturePath)
+if ($capReviewResult.ExitCode -ne 0) {
+    Write-Fail 'specrew review on cap fixture failed'
+    Write-Host "Review output:" -ForegroundColor Yellow
+    $capReviewResult.Output | ForEach-Object { Write-Host $_ }
+    exit 1
+}
+
+$capReviewOutput = $capReviewResult.Output -join "`n"
+foreach ($pattern in @('Lockout Cap:\s+active', 'Next Owner:')) {
+    if (-not (Assert-Contains -Content $capReviewOutput -Pattern $pattern -FailureMessage ("specrew review output is missing cap field '{0}'." -f $pattern))) {
+        exit 1
+    }
+}
+
+Write-Pass 'Reviewer replay surfaces lockout-chain cap status and next-owner path via scaffolded artifacts'
+
 exit 0

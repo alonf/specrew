@@ -40,6 +40,12 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
+$sharedGovernancePath = Join-Path $PSScriptRoot 'shared-governance.ps1'
+if (-not (Test-Path -LiteralPath $sharedGovernancePath -PathType Leaf)) {
+    throw "Missing shared governance helper '$sharedGovernancePath'."
+}
+. $sharedGovernancePath
+
 function Get-BrownfieldState {
     param(
         [AllowEmptyCollection()]
@@ -226,7 +232,7 @@ function Get-MergeReport {
     return $report
 }
 
-$resolvedProjectPath = [System.IO.Path]::GetFullPath($ProjectPath)
+$resolvedProjectPath = Resolve-ProjectPath -Path $ProjectPath
 
 if (-not (Test-Path -LiteralPath $resolvedProjectPath)) {
     Write-Error "Project path '$resolvedProjectPath' does not exist."

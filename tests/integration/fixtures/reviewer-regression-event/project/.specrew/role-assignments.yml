@@ -1,0 +1,35 @@
+# Role Assignments
+
+version: v1
+
+# Sample role assignments for reviewer-regression escalation testing
+roles:
+  - role: Reviewer
+    agent: copilot-reviewer
+    reasoning_class: copilot
+    eligible: true
+  
+  - role: Reviewer
+    agent: claude-reviewer
+    reasoning_class: claude
+    eligible: true
+  
+  - role: Reviewer
+    agent: codex-reviewer-a
+    reasoning_class: codex
+    eligible: true
+
+  - role: Reviewer
+    agent: codex-reviewer-b
+    reasoning_class: codex
+    eligible: true
+  
+  - role: Implementer
+    agent: copilot-implementer
+    reasoning_class: copilot
+    eligible: true
+  
+  - role: Implementer
+    agent: claude-implementer
+    reasoning_class: claude
+    eligible: true

@@ -50,7 +50,12 @@ reviewer:
     - "token*"
     - "key*"
     - "crypto*"
-  test_commands: []
+  test_commands:
+    - "& '.\\tests\\integration\\quality-profile-foundation.ps1'"
+    - "& '.\\tests\\integration\\mechanical-findings-contract.ps1'"
+    - "& '.\\tests\\integration\\quality-evidence-governance.ps1'"
+    - "& '.\\tests\\integration\\process-quality-scorer.ps1'"
+    - "& '.\\tests\\integration\\process-quality-report.ps1'"
   coverage:
     tool: ""
     kind: "qualitative"
@@ -84,12 +89,15 @@ agents:
     enabled: false
     access_path: copilot_default
     availability: available
+    strength_rank: 10
   claude:
     enabled: false
     access_path: copilot_agent_hq
     availability: available
+    strength_rank: 30
   codex:
     enabled: false
     access_path: copilot_agent_hq
     availability: available
+    strength_rank: 20
 # <<< specrew-managed agents <<<

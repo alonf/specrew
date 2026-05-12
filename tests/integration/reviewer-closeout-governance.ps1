@@ -450,4 +450,52 @@ if ($LASTEXITCODE -ne 0) {
 }
 
 Write-Pass 'Validator accepts explicitly targeted legacy iterations before the configured reviewer-closeout cutoff'
+
+# Additional test for lockout-chain cap visibility in reviewer closeout packet
+Write-Host ''
+Write-Host 'Testing lockout-chain cap visibility in reviewer closeout...'
+
+$capFixturePath = Join-Path $repoRoot 'tests\integration\fixtures\lockout-chain-cap\project'
+if (-not (Test-Path -LiteralPath $capFixturePath -PathType Container)) {
+    Write-Fail "Missing lockout-chain-cap fixture: $capFixturePath"
+    exit 1
+}
+
+$capIterationDir = Join-Path $capFixturePath 'specs\008-sample\iterations\001'
+$capStatePath = Join-Path $capIterationDir 'state.md'
+
+if (-not (Test-Path -LiteralPath $capStatePath -PathType Leaf)) {
+    Write-Fail "Missing state.md in lockout-chain-cap fixture: $capStatePath"
+    exit 1
+}
+
+$capStateContent = Get-Content -LiteralPath $capStatePath -Raw -Encoding UTF8
+
+if ($capStateContent -notmatch '## Reviewer Regression State') {
+    Write-Fail 'Reviewer regression state block missing from lockout-chain-cap fixture state.md'
+    exit 1
+}
+
+if ($capStateContent -notmatch 'Cap Active.*true') {
+    Write-Fail 'Cap Active should be true in lockout-chain-cap fixture state.md'
+    exit 1
+}
+
+if ($capStateContent -notmatch 'Lockout Chain Length.*3') {
+    Write-Fail 'Lockout Chain Length should be 3 in lockout-chain-cap fixture state.md'
+    exit 1
+}
+
+if ($capStateContent -notmatch 'Next Owner Path.*Awaiting') {
+    Write-Fail 'Next Owner Path should indicate awaiting human or alternate in lockout-chain-cap fixture state.md'
+    exit 1
+}
+
+if ($capStateContent -notmatch 'Implementer Chain') {
+    Write-Fail 'Implementer Chain should be listed in lockout-chain-cap fixture state.md'
+    exit 1
+}
+
+Write-Pass 'Lockout-chain cap state is visible in reviewer-regression-state managed block'
+
 exit 0

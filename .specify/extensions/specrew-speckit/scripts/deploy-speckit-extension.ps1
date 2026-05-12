@@ -11,6 +11,12 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
+$sharedGovernancePath = Join-Path $PSScriptRoot 'shared-governance.ps1'
+if (-not (Test-Path -LiteralPath $sharedGovernancePath -PathType Leaf)) {
+    throw "Missing shared governance helper '$sharedGovernancePath'."
+}
+. $sharedGovernancePath
+
 function Add-DeploymentAction {
     param(
         [AllowEmptyCollection()]
@@ -280,7 +286,7 @@ function Ensure-ExtensionRegistration {
     }
 }
 
-$resolvedProjectPath = [System.IO.Path]::GetFullPath($ProjectPath)
+$resolvedProjectPath = Resolve-ProjectPath -Path $ProjectPath
 $extensionRoot = Split-Path -Parent $PSScriptRoot
 $targetSpecifyRoot = Join-Path $resolvedProjectPath '.specify'
 $targetExtensionRoot = Join-Path $targetSpecifyRoot 'extensions\specrew-speckit'

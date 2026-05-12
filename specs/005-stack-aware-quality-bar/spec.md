@@ -1,8 +1,8 @@
 # Feature Specification: Stack-Aware Quality Bar
 
-**Feature Branch**: `[005-stack-aware-quality-bar]`  
+**Feature Branch**: `[005-stack-aware-quality-bar]`
 **Created**: 2026-05-07  
-**Status**: Draft  
+**Status**: Approved
 **Input**: User description: "Specrew should improve delivered code quality by making the quality bar technology-aware, explicit, tool-backed, and enforceable, with stack-aware tool selection and explicit planning/review evidence."
 
 ## Clarifications
@@ -15,6 +15,11 @@
 - Q: What baseline should quality drift compare against first? → A: The active feature's planned quality baseline first, then prior iteration baselines when they exist.
 - Q: Should the quality bar enforce technology-specific best practices when developers lack deep quality expertise? → A: Yes, the quality bar should enforce technology-specific software quality best practices even when the human developer lacks deep quality expertise.
 - Q: When should a newly found trap be added to the known-traps corpus? → A: After human approval, immediately; it may then be promoted into a checklist item or mechanical check in the same or next slice.
+
+### Session 2026-05-09
+
+- Q: How should the single hardening-gate artifact treat runtime-only evidence before implementation begins? → A: Keep one hardening-gate artifact, but before implementation it must accept planning-time analysis, expected controls, explicit non-applicable reasoning, and human-approved deferrals for runtime-only evidence where needed; actual code, enforcement, telemetry, and test evidence remain required later before the concern can be closed after implementation/review.
+- Q: What does `deferred-with-approval` permit in the pre-implementation hardening gate? → A: It permits carrying forward only runtime-only final proof after planning-time analysis, expected controls, and rationale are recorded; it does not excuse missing pre-implementation analysis for the concern.
 
 ## Problem Statement
 
@@ -62,7 +67,7 @@ A human developer reviewing Specrew artifacts wants the planned quality bar, sel
 
 **Why this priority**: The feature delivers little value if the quality profile is inferred once but not enforced in planning and review.
 
-**Independent Test**: Produce or inspect a plan and review flow for a supported stack and verify that the planned quality gates are explicit, the chosen toolchain is recorded, and review readiness is blocked when required evidence is missing or unjustified.
+**Independent Test**: Produce or inspect a plan and review flow for a supported stack and verify that the planned quality gates are explicit, the chosen toolchain is recorded, pre-implementation readiness accepts phase-appropriate planning evidence, and later closure still requires runtime evidence when the concern depends on implemented behavior.
 
 **Acceptance Scenarios**:
 
@@ -70,6 +75,8 @@ A human developer reviewing Specrew artifacts wants the planned quality bar, sel
 2. **Given** a required quality gate for the active feature, **When** review evidence is missing, failed, or omitted without justification, **Then** Specrew does not present the work as meeting the planned quality bar.
 3. **Given** a feature where concurrency correctness or resiliency checks are not materially relevant, **When** Specrew records the quality plan, **Then** it marks those dimensions as not applicable with an explicit rationale rather than requiring irrelevant gates.
 4. **Given** a feature where an optional reporting or aggregation layer is useful, **When** Specrew records the quality plan, **Then** it may include a reporting layer such as a community-edition quality dashboard without making that layer a universal mandatory dependency.
+5. **Given** the hardening gate runs before implementation starts, **When** a concern can only be fully evidenced after runnable behavior exists, **Then** Specrew records planning-time analysis, expected controls, and any required human-approved runtime-only deferral in the hardening artifact instead of demanding completed code, telemetry, or tests too early.
+6. **Given** a hardening concern was carried forward because runtime evidence could not exist before implementation, **When** the feature reaches post-implementation review or closure, **Then** Specrew requires the actual runtime evidence for that concern before it can be marked fully closed.
 
 ---
 
@@ -118,6 +125,7 @@ A human developer wants Specrew to stay flexible when a repository uses multiple
 - Concurrency correctness, retries, idempotency, or recovery behavior are only materially relevant for some feature types and should not become universal noise.
 - The repository stack is custom, legacy, or insufficiently recognized for confident tool recommendation.
 - A project override removes a recommended tool but does not propose equivalent evidence for the same risk area.
+- A hardening concern depends on executable runtime behavior, so planning can only record expected controls and an approved deferral until implementation and review produce the evidence.
 - Multiple specialist bug-hunter lenses may apply to the same feature; Specrew should activate the materially relevant ones without inventing irrelevant specialist work.
 
 ## Requirements *(mandatory)*
@@ -147,9 +155,10 @@ A human developer wants Specrew to stay flexible when a repository uses multiple
 
 #### Pre-Implementation Hardening Gate
 
-- **FR-031**: Specrew MUST provide a **Pre-Implementation Hardening Gate** that runs after planning but before implementation begins. This gate MUST explicitly review: security surface analysis, error-handling expectations, retry and idempotency requirements, and test-integrity targets. By default, the hardening gate MUST be bound to the strongest available reasoning or review class (per FR-038 routing policy) to maximize detection of silent omissions before implementation starts.
-- **FR-032**: The hardening gate MUST require explicit sign-off or recorded rationale for any silent omissions (e.g., "no retry logic needed because operation is read-only and idempotent by nature"). Sign-off MUST be recorded in planning artifacts and remain reviewable.
-- **FR-033**: The hardening gate MUST block transition to implementation if critical security, resilience, or operational concerns are marked "TBD" or remain unaddressed without explicit deferral approval. Deferrals for unresolved security, resilience, or operational concerns MUST require human developer approval; agents may recommend deferral but cannot approve it.
+- **FR-031**: Specrew MUST provide a **Pre-Implementation Hardening Gate** that runs after planning but before implementation begins. This gate MUST explicitly review: security surface analysis, error-handling expectations, retry and idempotency requirements, and test-integrity targets. By default, the hardening gate MUST be bound to the strongest available reasoning or review class (per FR-038 routing policy) to maximize detection of silent omissions before implementation starts. Before implementation, this gate MUST evaluate phase-appropriate planning evidence rather than requiring implemented runtime proof.
+- **FR-032**: The single hardening-gate artifact MUST distinguish whether each concern is currently supported by planning-time analysis or by post-implementation runtime evidence. For pre-implementation review, the artifact MUST accept expected controls, rationale, and explicit non-applicable reasoning as valid evidence inputs, and MUST record when runtime-only evidence is still pending.
+- **FR-033**: The hardening gate MUST block transition to implementation if critical security, resilience, or operational concerns are marked "TBD", lack planning-time analysis, or remain unaddressed without explicit deferral approval. Deferrals for unresolved security, resilience, or operational concerns MUST require human developer approval; agents may recommend deferral but cannot approve it.
+- **FR-033a**: `deferred-with-approval` MUST be allowed only when the pre-implementation gate already records the planning-time analysis, expected controls, and rationale for the concern, but the final proof depends on implemented runtime behavior. It MUST NOT be used as a substitute for missing pre-implementation analysis. If a hardening concern was allowed past the pre-implementation gate because its final evidence can only exist after implementation, Specrew MUST require that concern to remain visibly open or deferred until post-implementation review records the actual code, enforcement behavior, telemetry, tests, or equivalent runtime evidence needed to close it.
 
 #### Defect Memory & Known-Traps Corpus
 
@@ -214,7 +223,7 @@ A human developer wants Specrew to stay flexible when a repository uses multiple
 ### Traceability & Governance Requirements *(mandatory)*
 
 - **TG-001**: User Story 1 MUST be covered by FR-002 through FR-010, FR-015, FR-022 through FR-026 (versioned presets and lens checklists including the `node-public-ws-service` worked example per FR-024a), and FR-003a (technology-specific best practices enforcement).
-- **TG-002**: User Story 2 MUST be covered by FR-010 through FR-012, FR-020, FR-031 through FR-033 (hardening gate with strongest-class binding per updated FR-031), and FR-041 through FR-043 (quality-drift detection running at iteration review phase per updated FR-042).
+- **TG-002**: User Story 2 MUST be covered by FR-010 through FR-012, FR-020, FR-031 through FR-033a (hardening gate with phase-appropriate evidence standards and strongest-class binding per updated FR-031 through FR-033a), and FR-041 through FR-043 (quality-drift detection running at iteration review phase per updated FR-042).
 - **TG-003**: User Story 3 MUST be covered by FR-016 through FR-019a, FR-022 through FR-023 (versioned lens checklists), FR-027 through FR-030a (mechanical checks including demotion workflow per FR-030a), FR-034 (known-traps corpus seeded from dogfooding per updated FR-034), and FR-038 through FR-040 (strongest-class routing).
 - **TG-004**: User Story 4 MUST be covered by FR-006 through FR-009, FR-013 through FR-015, and FR-021.
 - **TG-005**: Every required quality gate in a feature plan MUST be traceable to a recorded evidence source or a justified approved exception. This includes mechanical check results, row-level lens checklist completion status, and test-integrity validation.
@@ -225,7 +234,7 @@ A human developer wants Specrew to stay flexible when a repository uses multiple
 - **TG-010**: Every versioned lens checklist and stack preset MUST include upgrade guidance and change logs so projects can review and adopt quality improvements without silent regressions.
 - **TG-011**: Every mechanical check finding (dead field, anti-pattern, test-integrity issue) MUST include source location, severity, remediation guidance, and traceability to the quality gate that triggered it. If a mechanical check rule is demoted per FR-030a, the demotion MUST be recorded with rationale, scope, and approval in the quality governance change log.
 - **TG-012**: Every quality-drift event MUST be recorded in the quality gap ledger with baseline comparison, drift category, affected component, severity, and remediation or approval status.
-- **TG-013**: Every pre-implementation hardening gate sign-off MUST be traceable to the specific planning artifact, reviewer identity, and date so silent omissions remain auditable.
+- **TG-013**: Every pre-implementation hardening gate sign-off MUST be traceable to the specific planning artifact, reviewer identity, date, and evidence basis (planning-time analysis versus runtime evidence still pending) so silent omissions and approved carry-forwards remain auditable.
 
 ### Requirement Ownership & Delivery Windows
 
@@ -237,7 +246,7 @@ A human developer wants Specrew to stay flexible when a repository uses multiple
 | FR-016 to FR-021, FR-019a | Spec Steward, Reviewer, stack-aware specialist roles, Iteration Facilitator, human developer | Specialist bug-hunter activation, mechanical-versus-model review sequencing, exception governance, and ongoing quality-policy enforcement |
 | FR-022 to FR-026 | Spec Steward, Planner, human developer | Versioned lens checklists and stack preset definition |
 | FR-027 to FR-030 | Implementer, Reviewer, human developer | Mechanical check implementation and integration |
-| FR-031 to FR-033 | Spec Steward, Reviewer, human developer | Pre-implementation hardening gate workflow |
+| FR-031 to FR-033a | Spec Steward, Reviewer, human developer | Pre-implementation hardening gate workflow and post-implementation hardening closure |
 | FR-034 to FR-037 | Iteration Facilitator, Reviewer, human developer | Known-traps corpus maintenance and reapplication |
 | FR-038 to FR-040 | Spec Steward, Planner, human developer | Strongest-class routing policy configuration |
 | FR-041 to FR-043 | Reviewer, Iteration Facilitator, human developer | Quality-drift detection and ledger maintenance |
@@ -255,7 +264,7 @@ This feature is structured for phased delivery to manage complexity and establis
 - **Rationale**: Establishes the foundation for stack-aware quality governance and deterministic mechanical checks before layering model-based review.
 
 **Phase 2: Hardening Gate & Bug-Hunter Lenses**
-- FR-031 through FR-033: Implement pre-implementation hardening gate with strongest-class binding
+- FR-031 through FR-033a: Implement pre-implementation hardening gate with strongest-class binding and explicit post-implementation runtime-evidence closure
 - FR-016 through FR-019a: Activate bug-hunter review lenses with versioned checklists and row-level execution
 - FR-038 through FR-040: Enforce strongest-class routing policy for lens execution
 - FR-034 through FR-037: Seed and maintain known-traps corpus from dogfooding findings
@@ -297,7 +306,7 @@ Planning and task generation for this feature SHOULD structure work around these
 - **Bug-Hunter Review Lens**: A dedicated specialist review capability focused on a specific defect class that generic tooling or broad review may not catch reliably enough, such as concurrency correctness, idempotency, security, dependency health, complexity risk, or failure semantics. References a versioned lens checklist.
 - **Known-Traps Corpus**: A project-wide, versioned, human-readable collection of discovered defect patterns. Each trap entry includes category, example, detection method, remediation guidance, and discovery date.
 - **Quality Gap Ledger**: A per-iteration log of quality-drift events separate from spec-drift. Each entry includes drift category, affected component, baseline comparison, severity, and remediation or approval status.
-- **Hardening Gate Sign-Off**: An explicit approval or recorded rationale for silent omissions identified during pre-implementation hardening review. Includes affected concern, reviewer identity, date, and justification.
+- **Hardening Gate Sign-Off**: An explicit approval or recorded rationale for silent omissions identified during hardening review. Includes affected concern, reviewer identity, date, justification, and whether the current disposition is backed by planning-time analysis or by post-implementation runtime evidence.
 - **Lens Upgrade Proposal**: A structured proposal for updating a versioned lens checklist when new defect patterns are discovered. Includes proposed line-item changes, rationale, and approval workflow.
 - **Reference Implementation Baseline** (optional): A known-good implementation stored for comparison purposes in reference-implementation mode. Includes API contracts, behavior expectations, and quality benchmarks.
 
@@ -329,7 +338,8 @@ Planning and task generation for this feature SHOULD structure work around these
 - **SC-006**: In representative reviewer validation sessions, at least 85% of reviewers can identify the active quality bar, selected toolchain, versioned preset/lens references, mechanical check findings, and any approved omissions for a feature within 2 minutes by inspecting the lifecycle artifacts alone.
 - **SC-007**: After a representative specialist-review validation corpus is defined during planning, 100% of features in that corpus that materially involve dedicated defect classes activate the corresponding bug-hunter review lenses with versioned checklist references and row-level execution records, or record an explicit not-applicable rationale and exception path.
 - **SC-008**: In 100% of iterations, mechanical checks (dead-field detection, anti-pattern heuristics, test-integrity validation) execute successfully before model-based bug-hunter review lenses and emit structured findings with source locations, severity levels, and remediation guidance.
-- **SC-009**: In 100% of iterations, the pre-implementation hardening gate blocks transition to implementation when critical security, resilience, or operational concerns are marked "TBD" or unaddressed without explicit deferral approval.
+- **SC-009**: In 100% of iterations, the pre-implementation hardening gate accepts phase-appropriate planning evidence, but still blocks transition to implementation when critical security, resilience, or operational concerns are marked "TBD", lack explicit rationale/expected controls, or remain unaddressed without explicit deferral approval.
+- **SC-009a**: In 100% of iterations where a hardening concern depends on runtime behavior, that concern remains open or explicitly deferred after the pre-implementation gate, never uses deferral as a substitute for missing planning-time analysis, and is not marked fully closed until post-implementation review records the required runtime evidence.
 - **SC-010**: After the first 3 iterations using this capability, the known-traps corpus contains at least 5 project-specific defect patterns discovered during review, each with category, example, detection method, and remediation guidance.
 - **SC-011**: In 100% of iterations with activated bug-hunter lenses, the recorded routing evidence shows that lens execution ran on the strongest available reasoning class or an explicitly approved lower-tier override with justification.
 - **SC-012**: In 100% of iterations, quality-drift detection compares the active quality evidence against planned and previous baselines, flags regressions (new violations, degraded scores, expanded attack surface), and records findings in the quality gap ledger.
@@ -356,7 +366,7 @@ Planning and task generation for this feature SHOULD structure work around these
 ## Governance Alignment *(mandatory)*
 
 - **Spec Steward**: Owns the policy boundary that quality must be explicit, stack-aware, evidence-backed, and mechanically enforceable where possible. Ensures that exceptions remain justified instead of silent, lens checklists remain versioned and reviewable, and quality-drift events are surfaced in review.
-- **Iteration Facilitator**: Keeps the slice additive to the current product direction, ensures the pre-implementation hardening gate does not block unnecessarily, flags follow-on work if broader repository analysis or execution changes are discovered, and maintains the known-traps corpus as a living artifact.
+- **Iteration Facilitator**: Keeps the slice additive to the current product direction, ensures the pre-implementation hardening gate does not overreach into implementation-only proof too early, flags follow-on work if broader repository analysis or execution changes are discovered, and maintains the known-traps corpus as a living artifact.
 - **Capacity Model**: One bounded governance slice that strengthens planning and review artifacts with explicit quality profiles, tool bundles, evidence expectations, versioned checklists and presets, mechanical checks, hardening gates, and quality-drift detection.
-- **Drift Signals**: Generic quality plans that ignore stack signals, review approvals without evidence, omitted tools without justification, mixed-stack features forced into a single misleading toolchain, activated specialist bug-hunter lenses that leave no explicit evidence trail, irrelevant concurrency/resiliency gates applied as universal defaults, mechanical checks that emit no structured findings, pre-implementation gates bypassed without sign-off, known traps discovered but not recorded in the corpus, lens executions routed to weak reasoning classes without justification, or quality regressions not flagged in the quality gap ledger.
-- **Human Oversight Points**: Human review of inferred quality profiles, approval of material overrides or omissions, review of fallback handling for unsupported stacks or unsafe tools, review of materially activated specialist bug-hunter lenses and their findings or exceptions, final review of evidence before implementation readiness is accepted, approval of pre-implementation hardening gate sign-offs, review of mechanical check findings and remediation plans, approval of lens checklist upgrades and stack preset changes, review of known-traps corpus entries, approval of quality-drift remediation or deferral decisions, and approval of reference-implementation mode activation for high-risk features.
+- **Drift Signals**: Generic quality plans that ignore stack signals, review approvals without evidence, omitted tools without justification, mixed-stack features forced into a single misleading toolchain, activated specialist bug-hunter lenses that leave no explicit evidence trail, irrelevant concurrency/resiliency gates applied as universal defaults, mechanical checks that emit no structured findings, pre-implementation gates bypassed without sign-off, hardening concerns marked closed before runtime-only evidence exists, known traps discovered but not recorded in the corpus, lens executions routed to weak reasoning classes without justification, or quality regressions not flagged in the quality gap ledger.
+- **Human Oversight Points**: Human review of inferred quality profiles, approval of material overrides or omissions, review of fallback handling for unsupported stacks or unsafe tools, review of materially activated specialist bug-hunter lenses and their findings or exceptions, final review of evidence before implementation readiness is accepted, approval of pre-implementation hardening gate sign-offs and any runtime-only evidence deferrals, review of mechanical check findings and remediation plans, approval of lens checklist upgrades and stack preset changes, review of known-traps corpus entries, approval of quality-drift remediation or deferral decisions, and approval of reference-implementation mode activation for high-risk features.

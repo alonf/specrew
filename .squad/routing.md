@@ -43,3 +43,12 @@ How to decide who handles what in Specrew's spec-governed workflow.
 5. **Quick facts -> coordinator answers directly.** Use agents for judgment-heavy work.
 6. **Scribe always runs** after substantial work and records decisions from the inbox.
 7. **Ralph keeps the queue moving** once activated and idles only when the board is clear.
+
+## Reviewer-Regression and Lockout-Chain Cap
+
+When a human reviewer finds a concrete defect in work that a Squad reviewer previously approved:
+
+- **Reviewer Escalation**: The remaining review work routes to a stronger reviewer reasoning class, or to an independent reviewer owner at the same class, or holds for explicit human direction when the strongest class is already active.
+- **Lockout-Chain Cap**: After the original implementer plus two additional implementer rotations (default), the implementer lockout-chain cap activates. Further rotation is blocked. The next revision must be human-owned or routed to an explicitly approved alternate owner recorded in `.squad/decisions.md`.
+- **Cap Visibility**: Cap activation is surfaced in `.squad/decisions.md`, iteration `state.md`, and reviewer handoff outputs.
+- **Next-Owner Path**: When the cap is active, the next-owner path is "Awaiting human-owned revision or explicitly approved alternate owner" rather than automatic synthesis of another specialist.

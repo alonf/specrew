@@ -27,6 +27,9 @@ $scriptMap = [ordered]@{
     'start command'            = Join-Path $repoRoot 'tests\integration\start-command.ps1'
     'review replay'            = Join-Path $repoRoot 'tests\integration\review-command.ps1'
     'lifecycle trace contract' = Join-Path $repoRoot 'tests\integration\lifecycle-trace-contract.ps1'
+    'handoff governance jargon response' = Join-Path $repoRoot 'tests\integration\handoff-governance-jargon-response-test.ps1'
+    'handoff governance plain-language response' = Join-Path $repoRoot 'tests\integration\handoff-governance-plain-language-response-test.ps1'
+    'handoff governance review-file reference' = Join-Path $repoRoot 'tests\integration\handoff-governance-review-file-reference-test.ps1'
 }
 
 foreach ($label in $scriptMap.Keys) {

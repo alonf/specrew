@@ -12,6 +12,9 @@ param(
     [Parameter(Mandatory = $false)]
     [string]$Agent = 'Squad',
 
+    [Parameter(Mandatory = $false)]
+    [string]$PostRestartDirective = '',
+
     [switch]$NoLaunch,
     [switch]$NewWindow,
     [switch]$SameWindow,
@@ -29,12 +32,19 @@ if (-not (Test-Path -LiteralPath $sharedGovernancePath -PathType Leaf)) {
 }
 . $sharedGovernancePath
 
+$copilotInstructionsClassifierPath = Join-Path (Split-Path -Parent $PSScriptRoot) 'extensions\specrew-speckit\scripts\Test-CopilotInstructionsChangeType.ps1'
+if (-not (Test-Path -LiteralPath $copilotInstructionsClassifierPath -PathType Leaf)) {
+    throw "Missing copilot-instructions classifier helper '$copilotInstructionsClassifierPath'."
+}
+. $copilotInstructionsClassifierPath
+
 function Convert-UnixStyleArguments {
     param(
         [string]$FeatureRequest,
         [string]$ProjectPath,
         [string]$ResumeFeature,
         [string]$Agent,
+        [string]$PostRestartDirective,
         [bool]$NoLaunch,
         [bool]$NewWindow,
         [bool]$AllowAll,
@@ -48,6 +58,7 @@ function Convert-UnixStyleArguments {
         ProjectPath    = $ProjectPath
         ResumeFeature  = $ResumeFeature
         Agent          = $Agent
+        PostRestartDirective = $PostRestartDirective
         NoLaunch       = $NoLaunch
         NewWindow      = $false
         SameWindow     = $false
@@ -79,6 +90,10 @@ function Convert-UnixStyleArguments {
             '--agent' {
                 $i++
                 if ($i -lt $CliArgs.Count) { $result.Agent = $CliArgs[$i] }
+            }
+            '--post-restart-directive' {
+                $i++
+                if ($i -lt $CliArgs.Count) { $result.PostRestartDirective = $CliArgs[$i] }
             }
             '--no-launch' {
                 $result.NoLaunch = $true
@@ -119,6 +134,7 @@ $parsedArgs = Convert-UnixStyleArguments `
     -ProjectPath $ProjectPath `
     -ResumeFeature $ResumeFeature `
     -Agent $Agent `
+    -PostRestartDirective $PostRestartDirective `
     -NoLaunch $NoLaunch.IsPresent `
     -NewWindow $NewWindow.IsPresent `
     -SameWindow $SameWindow.IsPresent `
@@ -131,6 +147,7 @@ $FeatureRequest = $parsedArgs.FeatureRequest
 $ProjectPath = $parsedArgs.ProjectPath
 $ResumeFeature = $parsedArgs.ResumeFeature
 $Agent = $parsedArgs.Agent
+$PostRestartDirective = $parsedArgs.PostRestartDirective
 $NoLaunch = [bool]$parsedArgs.NoLaunch
 $NewWindow = [bool]$parsedArgs.NewWindow
 $SameWindow = [bool]$parsedArgs.SameWindow
@@ -1828,6 +1845,106 @@ function Get-RoutingPlanPromptBlock {
     return $lines -join [Environment]::NewLine
 }
 
+function Get-SessionLoadedPaths {
+    return @(
+        '.github/agents/*'
+        '.github/copilot-instructions.md'
+        'extensions/specrew-speckit/squad-templates/coordinator/*'
+        '.specify/extensions/specrew-speckit/squad-templates/coordinator/*'
+        '.squad/agents/*/charter.md'
+    )
+}
+
+function Get-BaselineCommitHash {
+    param(
+        [string]$ResolvedProjectPath
+    )
+
+    $promptPath = Join-Path $ResolvedProjectPath '.specrew\last-start-prompt.md'
+    if (-not (Test-Path -LiteralPath $promptPath -PathType Leaf)) {
+        return $null
+    }
+
+    try {
+        $content = Get-Content -LiteralPath $promptPath -Raw -Encoding UTF8
+        if ($content -match '(?ms)^---\s*\r?\n(.*?)\r?\n---') {
+            $frontmatterBlock = $Matches[1]
+            if ($frontmatterBlock -match '(?m)^\s*baseline_commit_hash:\s*([0-9a-f]{40})\s*$'){ 
+                return $Matches[1]
+            }
+        }
+    }
+    catch {
+        # Parsing failed; return null to default to HEAD
+    }
+
+    return $null
+}
+
+function Test-SessionLoadedFilesChanged {
+    param(
+        [string]$ResolvedProjectPath,
+        [AllowNull()][string]$BaselineCommitHash
+    )
+
+    try {
+        $gitRoot = & git -C $ResolvedProjectPath rev-parse --show-toplevel 2>&1
+        if ($LASTEXITCODE -ne 0) {
+            return @()
+        }
+
+        $currentHead = & git -C $ResolvedProjectPath rev-parse HEAD 2>&1
+        if ($LASTEXITCODE -ne 0) {
+            return @()
+        }
+
+        $baseline = if ([string]::IsNullOrWhiteSpace($BaselineCommitHash)) { $currentHead } else { $BaselineCommitHash }
+
+        $sessionLoadedGlobs = Get-SessionLoadedPaths
+        $changedFiles = @()
+
+        foreach ($glob in $sessionLoadedGlobs) {
+            $diffOutput = @(& git -C $ResolvedProjectPath diff --name-only $baseline HEAD -- $glob 2>&1)
+            if ($LASTEXITCODE -eq 0) {
+                $changedFiles += $diffOutput | Where-Object { -not [string]::IsNullOrWhiteSpace($_) }
+            }
+        }
+
+        return @($changedFiles | Select-Object -Unique)
+    }
+    catch {
+        return @()
+    }
+}
+
+function Get-RestartTriggerFiles {
+    param(
+        [string]$ResolvedProjectPath,
+        [AllowNull()][string]$BaselineCommitHash,
+        [string[]]$ChangedFiles
+    )
+
+    $restartTriggerFiles = New-Object System.Collections.Generic.List[string]
+    foreach ($changedFile in @($ChangedFiles | Select-Object -Unique)) {
+        if ([string]::IsNullOrWhiteSpace($changedFile)) {
+            continue
+        }
+
+        $normalizedChangedFile = ([string]$changedFile).Trim() -replace '/', '\'
+        if ($normalizedChangedFile -ieq '.github\copilot-instructions.md') {
+            $classification = Test-CopilotInstructionsChangeType -ProjectPath $ResolvedProjectPath -BaselineCommitHash $BaselineCommitHash -TargetPath '.github/copilot-instructions.md'
+            if ($classification.RequiresRestart) {
+                $restartTriggerFiles.Add($normalizedChangedFile) | Out-Null
+            }
+            continue
+        }
+
+        $restartTriggerFiles.Add($normalizedChangedFile) | Out-Null
+    }
+
+    return $restartTriggerFiles.ToArray()
+}
+
 function Get-StartPrompt {
     param(
         [string]$ResolvedProjectPath,
@@ -1911,22 +2028,24 @@ Then follow the formal Specrew + Spec Kit lifecycle end to end:
 24. If Junior-owned work hits repeated governance failures, integration risk, or a shared-surface conflict, escalate that slice to the Senior role or to an independent reviewer instead of looping with unsafe same-specialty parallelism.
 25. Derive the quality bar from the current feature and project context. Carry the applicable quality attributes into spec clarifications, plan, tasks, implementation, and review. Focus on production-grade concerns that materially apply, such as robustness, retries, idempotency, error handling, logging, telemetry, security, clean code, SOLID boundaries, and semantic correctness.
 26. Treat mechanisms such as revisions, idempotency keys, retries, conflict detection, locks, or telemetry as incomplete until they have real runtime semantics and review evidence. Flag ceremonial sophistication rather than assuming the presence of fields equals correctness.
-27. Before implementation begins, summarize readiness for the human developer: active feature, clarify outcome, quality focus, and final team composition. Then ask the human developer to explicitly start implementation. Do not invoke speckit.implement until the human approves.
-28. After the explicit implementation go-ahead, run `speckit.specrew-speckit.before-implement` and continue through implementation, review/demo, and retrospective without asking the human to manually trigger each remaining phase.
-29. Preserve the canonical artifact chain on disk: specs/<feature>/spec.md, plan.md, tasks.md, and specs/<feature>/iterations/<NNN>/{plan.md,state.md,drift-log.md,review.md,retro.md} as phases progress.
-30. If any lifecycle agent reports a file-write or tool-contract failure, or a required artifact is missing on disk, stop and repair that underlying failure before claiming the phase succeeded or invoking the next governance gate.
-31. At the end of implementation and review, provide a developer-facing implementation briefing covering what was built, requirement coverage, the main happy path and relevant alternative flows, dependency usage including newly introduced packages, the testing strategy, and an explicitly labeled estimate of coverage or confidence.
-32. Keep the spec authoritative, surface drift explicitly, and do not claim Spec-Kit/Specrew compliance if you bypass the lifecycle.
-33. If the roster snapshot says Mode is specrew-managed, treat it as active project state. Do NOT run generic Squad team setup, do NOT replace the baseline roles, and do NOT discard supplemental members.
-34. Use the delegated routing plan above for lifecycle work and repair ownership unless the human explicitly overrides it. Planning/problem-solving work should prefer Planner or Spec Steward delegated routing when enabled, and review/governance work should prefer Reviewer or Spec Steward delegated routing when enabled.
-35. For every delegated lifecycle, review, governance, or repair spawn, append a short dated runtime-evidence entry to .squad\decisions.md naming the role or work item, requested agent, actual agent, concrete model ID, whether the assignment was honored or fell back, and any fallback reason.
-36. Operate with a no-gap policy for lifecycle-governed work. If review, governance, or validation reveals a known alignment gap across spec, implementation, tests, docs, or observability, do not close the run as complete until the gap is fixed or the human explicitly approves a defer that is recorded in the governing artifacts.
-37. During review and final readiness checks, act as a critical reviewer for hardened lifecycle/governance requirements: classify them as implemented, enforced, observable, and documented, and emit a gap ledger whenever any dimension is missing.
-38. If review finds an ambiguity, contradiction, or missing decision in the governing spec, stop closure, ask targeted clarification questions, update the spec with the answers, and reconcile any affected plan, tasks, review, or governance artifacts before continuing.
-39. If the human approves deferring a known gap, record the defer rationale, affected requirement or artifact, and next action explicitly instead of letting the gap roll into the next iteration invisibly.
-40. Before spawning lifecycle agents, read .squad\config.json and honor any "agentModelOverrides". Re-read it before each repair spawn instead of caching it once for the entire session.
-41. When a governance-gate failure activates or resolves repair escalation, run `.specify\extensions\specrew-speckit\scripts\sync-squad-model-overrides.ps1 -IterationDirectory <active-iteration>` so `.squad\config.json` is updated immediately from the current escalation state.
-42. On repeated governance-gate failures, use that sync helper to raise the failing repair owner's model tier (balanced -> deep) and clear the temporary override after the gate passes.
+27. Before implementation begins, summarize readiness for the human developer: active feature, clarify outcome, quality focus, and final team composition. If the active slice includes Phase 2 hardening-gate scope, include the hardening-gate verdict and any human-approved deferral status in that readiness summary. Then ask the human developer to explicitly start implementation. Do not invoke speckit.implement until the human approves.
+28. After speckit.specrew-speckit.after-tasks succeeds, treat speckit.specrew-speckit.before-implement as the next automatic lifecycle step once implementation approval is granted. Do not stop at the after-tasks boundary to ask the human to manually trigger hardening review, explain the blocker, or request a deferral decision that belongs to before-implement.
+29. If speckit.specrew-speckit.before-implement blocks, explain the concrete blocking artifact or verdict, why it blocks implementation, and the next valid human action before stopping.
+30. After the explicit implementation go-ahead, run `speckit.specrew-speckit.before-implement` and continue through implementation, review/demo, and retrospective without asking the human to manually trigger each remaining phase.
+31. Preserve the canonical artifact chain on disk: specs/<feature>/spec.md, plan.md, tasks.md, and specs/<feature>/iterations/<NNN>/{plan.md,state.md,drift-log.md,review.md,retro.md} as phases progress.
+32. If any lifecycle agent reports a file-write or tool-contract failure, or a required artifact is missing on disk, stop and repair that underlying failure before claiming the phase succeeded or invoking the next governance gate.
+33. At the end of implementation and review, provide a developer-facing implementation briefing covering what was built, requirement coverage, the main happy path and relevant alternative flows, dependency usage including newly introduced packages, the testing strategy, and an explicitly labeled estimate of coverage or confidence.
+34. Keep the spec authoritative, surface drift explicitly, and do not claim Spec-Kit/Specrew compliance if you bypass the lifecycle.
+35. If the roster snapshot says Mode is specrew-managed, treat it as active project state. Do NOT run generic Squad team setup, do NOT replace the baseline roles, and do NOT discard supplemental members.
+36. Use the delegated routing plan above for lifecycle work and repair ownership unless the human explicitly overrides it. Planning/problem-solving work should prefer Planner or Spec Steward delegated routing when enabled, and review/governance work should prefer Reviewer or Spec Steward delegated routing when enabled.
+37. For every delegated lifecycle, review, governance, or repair spawn, append a short dated runtime-evidence entry to .squad\decisions.md naming the role or work item, requested agent, actual agent, concrete model ID, whether the assignment was honored or fell back, and any fallback reason.
+38. Operate with a no-gap policy for lifecycle-governed work. If review, governance, or validation reveals a known alignment gap across spec, implementation, tests, docs, or observability, do not close the run as complete until the gap is fixed or the human explicitly approves a defer that is recorded in the governing artifacts.
+39. During review and final readiness checks, act as a critical reviewer for hardened lifecycle/governance requirements: classify them as implemented, enforced, observable, and documented, and emit a gap ledger whenever any dimension is missing.
+40. If review finds an ambiguity, contradiction, or missing decision in the governing spec, stop closure, ask targeted clarification questions, update the spec with the answers, and reconcile any affected plan, tasks, review, or governance artifacts before continuing.
+41. If the human approves deferring a known gap, record the defer rationale, affected requirement or artifact, and next action explicitly instead of letting the gap roll into the next iteration invisibly.
+42. Before spawning lifecycle agents, read .squad\config.json and honor any "agentModelOverrides". Re-read it before each repair spawn instead of caching it once for the entire session.
+43. When a governance-gate failure activates or resolves repair escalation, run `.specify\extensions\specrew-speckit\scripts\sync-squad-model-overrides.ps1 -IterationDirectory <active-iteration>` so `.squad\config.json` is updated immediately from the current escalation state.
+44. On repeated governance-gate failures, use that sync helper to raise the failing repair owner's model tier (balanced -> deep) and clear the temporary override after the gate passes.
 
 Your goal is to let the human developer primarily answer unresolved questions while Squad handles the rest of the lifecycle automatically.
 "@
@@ -2067,7 +2186,8 @@ function Save-StartArtifacts {
         [bool]$UseAutopilot,
         [pscustomobject]$ProjectState,
         [AllowNull()][pscustomobject]$BrownfieldDiscovery,
-        [pscustomobject]$DeliveryGuidance
+        [pscustomobject]$DeliveryGuidance,
+        [string]$PostRestartDirective = ''
     )
 
     $specrewRoot = Join-Path $ResolvedProjectPath '.specrew'
@@ -2075,7 +2195,75 @@ function Save-StartArtifacts {
     $contextPath = Join-Path $specrewRoot 'start-context.json'
     $summaryPath = Join-Path $specrewRoot 'start-summary.md'
 
-    Write-Utf8FileAtomic -Path $promptPath -Content $PromptContent
+    # Get current HEAD for baseline tracking
+    $currentHead = $null
+    try {
+        $currentHead = & git -C $ResolvedProjectPath rev-parse HEAD 2>&1
+        if ($LASTEXITCODE -ne 0) {
+            $currentHead = $null
+        }
+    }
+    catch {
+        $currentHead = $null
+    }
+
+    # Get baseline commit and check for session-loaded file changes
+    $baselineCommit = Get-BaselineCommitHash -ResolvedProjectPath $ResolvedProjectPath
+    $changedFiles = @(Test-SessionLoadedFilesChanged -ResolvedProjectPath $ResolvedProjectPath -BaselineCommitHash $baselineCommit)
+    $restartTriggerFiles = @(Get-RestartTriggerFiles -ResolvedProjectPath $ResolvedProjectPath -BaselineCommitHash $baselineCommit -ChangedFiles $changedFiles)
+    $hasChanges = ($restartTriggerFiles.Count -gt 0)
+
+    # Build frontmatter with baseline hash and changed files visibility
+    $frontmatterLines = @('---')
+    if ($null -ne $currentHead -and $currentHead -match '^[0-9a-f]{40}$') {
+        $frontmatterLines += "baseline_commit_hash: $currentHead"
+    }
+    if ($hasChanges) {
+        $frontmatterLines += 'session_loaded_files_changed:'
+        foreach ($file in $restartTriggerFiles) {
+            $frontmatterLines += "  - $file"
+        }
+    }
+    $frontmatterLines += '---'
+    $frontmatterBlock = ($frontmatterLines -join [Environment]::NewLine)
+
+    # Build directive blocks
+    $directiveBlocks = @()
+
+    # Prepend custom post-restart directive if provided
+    if (-not [string]::IsNullOrWhiteSpace($PostRestartDirective)) {
+        $directiveBlocks += @"
+
+## Post-Restart Directive
+
+$PostRestartDirective
+"@
+    }
+
+    # Inject pause-and-confirm directive if session-loaded files changed
+    if ($hasChanges) {
+        $fileListFormatted = ($restartTriggerFiles | ForEach-Object { "- $_" }) -join [Environment]::NewLine
+        $directiveBlocks += @"
+
+## PAUSE-AND-CONFIRM: Session-Loaded Files Changed
+
+**Session-loaded files have changed since the last run.** Review the changes below and provide any additional context or directives before continuing.
+
+### Changed Files
+
+$fileListFormatted
+
+**What to do next:**
+- Type **CONFIRM** to continue with the lifecycle as planned
+- OR provide a directive to adjust the approach (e.g., "Skip iteration planning and go directly to implementation")
+- OR provide context about the changes (e.g., "The agent charter was updated to improve escalation handling")
+"@
+    }
+
+    # Combine all parts: frontmatter + directives + original prompt
+    $promptContentWithFrontmatter = $frontmatterBlock + [Environment]::NewLine + ($directiveBlocks -join '') + [Environment]::NewLine + $PromptContent
+
+    Write-Utf8FileAtomic -Path $promptPath -Content $promptContentWithFrontmatter
 
     $context = [ordered]@{
         mode             = $Mode
@@ -2259,7 +2447,7 @@ if ($Help) {
     exit 0
 }
 
-$resolvedProjectPath = [System.IO.Path]::GetFullPath($ProjectPath)
+$resolvedProjectPath = Resolve-ProjectPath -Path $ProjectPath
 
 if (-not (Test-Path -LiteralPath $resolvedProjectPath -PathType Container)) {
     Write-Error-Message "Project path does not exist: $resolvedProjectPath"
@@ -2367,7 +2555,8 @@ $artifactPaths = Save-StartArtifacts `
     -UseAutopilot $useAutopilot `
     -ProjectState $projectState `
     -BrownfieldDiscovery $brownfieldDiscovery `
-    -DeliveryGuidance $deliveryGuidance
+    -DeliveryGuidance $deliveryGuidance `
+    -PostRestartDirective $PostRestartDirective
 
 Write-Success "Prepared Specrew start context."
 Write-Info ("Prompt:  {0}" -f $artifactPaths.PromptPath)

@@ -9,9 +9,9 @@
 
 ## Execution Phase Tracking
 
-- **Phase**: retro
+- **Phase**: complete
 - **Phase Start**: 2026-05-06
-- **Current Status**: Reviewer-core implementation, replay, and regression hardening are complete. Review is accepted and retrospective can close once the persisted reviewer packet is recorded.
+- **Current Status**: Iteration 005 is now in `complete` following final sign-off. Reviewer-core implementation, replay, and regression hardening are complete with accepted review verdicts. Retrospective closure recorded 2026-05-06.
 
 ## Summary
 

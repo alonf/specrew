@@ -68,6 +68,55 @@ function Write-ScaffoldFile {
     [System.IO.File]::WriteAllText($TargetPath, $Content, [System.Text.UTF8Encoding]::new($false))
 }
 
+function Write-MissingScaffoldFile {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$TargetPath,
+        [Parameter(Mandatory = $true)]
+        [string]$Content,
+        [AllowEmptyCollection()]
+        [Parameter(Mandatory = $true)]
+        [System.Collections.ArrayList]$Actions
+    )
+
+    if (Test-Path -LiteralPath $TargetPath) {
+        Add-ScaffoldAction -Actions $Actions -Action 'preserved' -Path $TargetPath
+        return
+    }
+
+    Add-ScaffoldAction -Actions $Actions -Action $(if ($DryRun) { 'would-create' } else { 'created' }) -Path $TargetPath
+    if ($DryRun) {
+        return
+    }
+
+    $parent = Split-Path -Parent $TargetPath
+    if (-not (Test-Path -LiteralPath $parent)) {
+        New-Item -ItemType Directory -Path $parent -Force | Out-Null
+    }
+
+    [System.IO.File]::WriteAllText($TargetPath, $Content, [System.Text.UTF8Encoding]::new($false))
+}
+
+function Ensure-Directory {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Path,
+        [AllowEmptyCollection()]
+        [Parameter(Mandatory = $true)]
+        [System.Collections.ArrayList]$Actions
+    )
+
+    if (Test-Path -LiteralPath $Path) {
+        Add-ScaffoldAction -Actions $Actions -Action 'preserved-directory' -Path $Path
+        return
+    }
+
+    Add-ScaffoldAction -Actions $Actions -Action $(if ($DryRun) { 'would-create-directory' } else { 'created-directory' }) -Path $Path
+    if (-not $DryRun) {
+        New-Item -ItemType Directory -Path $Path -Force | Out-Null
+    }
+}
+
 function Get-MarkdownContent {
     param([string]$Path)
 
@@ -81,7 +130,7 @@ function Get-MarkdownSectionTable {
         [string]$Heading
     )
 
-    $headingPattern = '^##\s+' + [regex]::Escape($Heading) + '\b'
+    $headingPattern = '^#{2,3}\s+' + [regex]::Escape($Heading) + '\b'
     $startIndex = -1
     for ($index = 0; $index -lt $Lines.Count; $index++) {
         if ($Lines[$index] -match $headingPattern) {
@@ -97,7 +146,7 @@ function Get-MarkdownSectionTable {
     $tableLines = New-Object System.Collections.Generic.List[string]
     for ($index = $startIndex + 1; $index -lt $Lines.Count; $index++) {
         $currentLine = $Lines[$index]
-        if ($currentLine -match '^##\s+') {
+        if ($currentLine -match '^#{2,3}\s+') {
             break
         }
 
@@ -247,6 +296,358 @@ function Get-MetadataValue {
     }
 
     return $null
+}
+
+function Normalize-MarkdownCell {
+    param([AllowNull()][string]$Value)
+
+    if ($null -eq $Value) {
+        return ''
+    }
+
+    return $Value.Trim().Trim('`')
+}
+
+function Get-GateRowId {
+    param([object]$Row)
+
+    # Plan tables use 'Gate'; default-row objects use 'Required Quality Gate'.
+    if ($Row.PSObject.Properties['Required Quality Gate']) {
+        return Normalize-MarkdownCell ([string]$Row.'Required Quality Gate')
+    }
+    if ($Row.PSObject.Properties['Gate']) {
+        return Normalize-MarkdownCell ([string]$Row.Gate)
+    }
+    return ''
+}
+
+function Get-RepoRelativePath {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$ProjectRoot,
+
+        [Parameter(Mandatory = $true)]
+        [string]$Path
+    )
+
+    return ([System.IO.Path]::GetRelativePath($ProjectRoot, $Path)).Replace('\', '/')
+}
+
+function Get-DefaultRequirementRefsForGate {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$GateId
+    )
+
+    switch ($GateId) {
+        'dead-field' { return @('FR-011', 'FR-027', 'FR-030') }
+        'anti-pattern' { return @('FR-011', 'FR-028', 'FR-030') }
+        'test-integrity' { return @('FR-011', 'FR-029', 'FR-030') }
+        'stack-tooling-evidence' { return @('FR-011') }
+        'quality-lens-review' { return @('FR-011', 'FR-012') }
+        'concurrency-correctness-review' { return @('FR-011', 'FR-012', 'FR-015') }
+        'resiliency-semantics-review' { return @('FR-011', 'FR-012', 'FR-015') }
+        'retry-idempotency-review' { return @('FR-011', 'FR-012', 'FR-015') }
+        default { return @('FR-011') }
+    }
+}
+
+function Resolve-QualityEvidenceSource {
+    param(
+        [AllowNull()][string]$Value,
+        [Parameter(Mandatory = $true)]
+        [string]$FeatureId,
+        [Parameter(Mandatory = $true)]
+        [string]$IterationNumber,
+        [Parameter(Mandatory = $true)]
+        [string]$FindingsRef,
+        [Parameter(Mandatory = $true)]
+        [string]$EvidenceRef
+    )
+
+    $normalized = Normalize-MarkdownCell $Value
+    if ([string]::IsNullOrWhiteSpace($normalized)) {
+        return $EvidenceRef
+    }
+
+    $resolved = $normalized.Replace('specs/<feature>/iterations/<NNN>/quality/mechanical-findings.json', $FindingsRef)
+    $resolved = $resolved.Replace('specs/<feature>/iterations/<NNN>/quality/quality-evidence.md', $EvidenceRef)
+    $resolved = $resolved.Replace('<feature>', $FeatureId)
+    $resolved = $resolved.Replace('<NNN>', $IterationNumber)
+    return $resolved
+}
+
+function Get-DefaultQualityGateRows {
+    return @(
+        [pscustomobject]@{ 'Required Quality Gate' = 'dead-field'; Category = 'mechanical'; 'Evidence Source' = 'specs/<feature>/iterations/<NNN>/quality/mechanical-findings.json' }
+        [pscustomobject]@{ 'Required Quality Gate' = 'anti-pattern'; Category = 'mechanical'; 'Evidence Source' = 'specs/<feature>/iterations/<NNN>/quality/mechanical-findings.json' }
+        [pscustomobject]@{ 'Required Quality Gate' = 'test-integrity'; Category = 'mechanical'; 'Evidence Source' = 'specs/<feature>/iterations/<NNN>/quality/mechanical-findings.json' }
+        [pscustomobject]@{ 'Required Quality Gate' = 'stack-tooling-evidence'; Category = 'tooling'; 'Evidence Source' = 'specs/<feature>/iterations/<NNN>/quality/quality-evidence.md' }
+        [pscustomobject]@{ 'Required Quality Gate' = 'quality-lens-review'; Category = 'manual-evidence'; 'Evidence Source' = 'specs/<feature>/iterations/<NNN>/quality/quality-evidence.md' }
+    )
+}
+
+function Get-ExistingQualityEvidenceState {
+    param([string]$QualityEvidencePath)
+
+    $rowsByGate = @{}
+    $profileRef = $null
+    $presetRefs = $null
+    $findingsRef = $null
+    $reviewedBy = $null
+    $reviewedAt = $null
+
+    if (Test-Path -LiteralPath $QualityEvidencePath -PathType Leaf) {
+        $evidenceLines = @(Get-MarkdownContent -Path $QualityEvidencePath)
+        $profileRef = Get-MetadataValue -Lines $evidenceLines -Label 'Profile Ref'
+        $presetRefs = Get-MetadataValue -Lines $evidenceLines -Label 'Preset Refs'
+        $findingsRef = Get-MetadataValue -Lines $evidenceLines -Label 'Findings Ref'
+        $reviewedBy = Get-MetadataValue -Lines $evidenceLines -Label 'Reviewed By'
+        $reviewedAt = Get-MetadataValue -Lines $evidenceLines -Label 'Reviewed At'
+
+        foreach ($row in @(Get-MarkdownSectionTable -Lines $evidenceLines -Heading 'Gate Matrix')) {
+            $gateId = Normalize-MarkdownCell ([string]$row.Gate)
+            if ([string]::IsNullOrWhiteSpace($gateId)) {
+                continue
+            }
+
+            $rowsByGate[$gateId] = [pscustomobject]@{
+                Requirement   = Normalize-MarkdownCell ([string]$row.Requirement)
+                EvidenceSource = Normalize-MarkdownCell ([string]$row.'Evidence Source')
+                Status        = Normalize-MarkdownCell ([string]$row.Status)
+                Exception     = Normalize-MarkdownCell ([string]$row.Exception)
+            }
+        }
+    }
+
+    return [pscustomobject]@{
+        RowsByGate = $rowsByGate
+        ProfileRef = $profileRef
+        PresetRefs = $presetRefs
+        FindingsRef = $findingsRef
+        ReviewedBy = $reviewedBy
+        ReviewedAt = $reviewedAt
+    }
+}
+
+function Get-QualityEvidenceContent {
+    param(
+        [AllowEmptyString()]
+        [AllowEmptyCollection()]
+        [Parameter(Mandatory = $true)]
+        [string[]]$PlanLines,
+        [Parameter(Mandatory = $true)]
+        [string]$FeatureId,
+        [Parameter(Mandatory = $true)]
+        [string]$IterationNumber,
+        [Parameter(Mandatory = $true)]
+        [string]$FindingsRef,
+        [Parameter(Mandatory = $true)]
+        [string]$EvidenceRef,
+        [Parameter(Mandatory = $true)]
+        [hashtable]$ExistingRows,
+        [Parameter(Mandatory = $true)]
+        [hashtable]$Overrides,
+        [Parameter(Mandatory = $true)]
+        [string]$ReviewedBy,
+        [Parameter(Mandatory = $true)]
+        [string]$ReviewedAt
+    )
+
+    $profileRef = Normalize-MarkdownCell (Get-MetadataValue -Lines $PlanLines -Label 'Inferred Quality Profile')
+    if ([string]::IsNullOrWhiteSpace($profileRef)) {
+        $profileRef = 'quality-profile.pending'
+    }
+
+    $presetRefs = Normalize-MarkdownCell (Get-MetadataValue -Lines $PlanLines -Label 'Selected preset ref or explicit custom composition')
+    if ([string]::IsNullOrWhiteSpace($presetRefs)) {
+        $presetRefs = '(pending preset selection)'
+    }
+
+    $gateRows = @(Get-MarkdownSectionTable -Lines $PlanLines -Heading 'Required Quality Gates')
+    if ($gateRows.Count -eq 0) {
+        $gateRows = @(Get-DefaultQualityGateRows)
+    }
+    $lines = [System.Collections.Generic.List[string]]::new()
+    $null = $lines.Add("# Quality Evidence: Iteration $IterationNumber")
+    $null = $lines.Add('')
+    $null = $lines.Add(('**Profile Ref**: `' + $profileRef + '`'))
+    $null = $lines.Add(('**Preset Refs**: ' + $presetRefs))
+    $null = $lines.Add(('**Findings Ref**: `' + $FindingsRef + '`'))
+    $null = $lines.Add(('**Reviewed By**: ' + $ReviewedBy))
+    $null = $lines.Add(('**Reviewed At**: ' + $ReviewedAt))
+    $null = $lines.Add('')
+    $null = $lines.Add('## Gate Matrix')
+    $null = $lines.Add('')
+    $null = $lines.Add('| Gate | Requirement | Evidence Source | Status | Exception |')
+    $null = $lines.Add('| --- | --- | --- | --- | --- |')
+
+    foreach ($gateRow in $gateRows) {
+        $gateId = Get-GateRowId -Row $gateRow
+        if ([string]::IsNullOrWhiteSpace($gateId)) {
+            continue
+        }
+
+        $requirement = (Get-DefaultRequirementRefsForGate -GateId $gateId) -join ', '
+        $evidenceSource = Resolve-QualityEvidenceSource `
+            -Value ([string]$gateRow.'Evidence Source') `
+            -FeatureId $FeatureId `
+            -IterationNumber $IterationNumber `
+            -FindingsRef $FindingsRef `
+            -EvidenceRef $EvidenceRef
+        $status = 'planned'
+        $exception = '—'
+
+        if ($ExistingRows.ContainsKey($gateId)) {
+            $existingRow = $ExistingRows[$gateId]
+            if (-not [string]::IsNullOrWhiteSpace($existingRow.Requirement)) {
+                $requirement = $existingRow.Requirement
+            }
+            if (-not [string]::IsNullOrWhiteSpace($existingRow.EvidenceSource)) {
+                $evidenceSource = $existingRow.EvidenceSource
+            }
+            if (-not [string]::IsNullOrWhiteSpace($existingRow.Status)) {
+                $status = $existingRow.Status
+            }
+            if (-not [string]::IsNullOrWhiteSpace($existingRow.Exception)) {
+                $exception = $existingRow.Exception
+            }
+        }
+
+        if ($Overrides.ContainsKey($gateId)) {
+            $override = $Overrides[$gateId]
+            if ($override.Requirement) {
+                $requirement = $override.Requirement
+            }
+            if ($override.EvidenceSource) {
+                $evidenceSource = $override.EvidenceSource
+            }
+            if ($override.Status) {
+                $status = $override.Status
+            }
+            if ($override.Exception) {
+                $exception = $override.Exception
+            }
+        }
+
+        $null = $lines.Add(('| `{0}` | {1} | `{2}` | `{3}` | `{4}` |' -f $gateId, $requirement, $evidenceSource, $status, $exception))
+    }
+
+    return ($lines -join [Environment]::NewLine) + [Environment]::NewLine
+}
+
+function Get-MechanicalFindingsScaffoldJson {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$FeatureRef,
+        [Parameter(Mandatory = $true)]
+        [string]$IterationRef,
+        [Parameter(Mandatory = $true)]
+        [string]$GeneratedAt
+    )
+
+    return ([pscustomobject][ordered]@{
+            schemaVersion = 'v1'
+            featureRef    = $FeatureRef
+            iterationRef  = $IterationRef
+            generatedAt   = $GeneratedAt
+            generator     = [pscustomobject][ordered]@{
+                name    = 'specrew-reviewer-scaffold'
+                version = '1.0.0'
+            }
+            findings      = @()
+        } | ConvertTo-Json -Depth 8)
+}
+
+function Test-PhaseTwoQualityArtifactScaffold {
+    param(
+        [AllowEmptyCollection()]
+        [string[]]$PlanLines,
+        [string]$QualityContractPath
+    )
+
+    $phaseTwoPattern = 'hardening-gate\.md|trap-reapplication\.md|quality[\\/]+lenses'
+    $planText = ($PlanLines -join [Environment]::NewLine)
+    if ($planText -match $phaseTwoPattern) {
+        return $true
+    }
+
+    if (Test-Path -LiteralPath $QualityContractPath -PathType Leaf) {
+        $contractText = Get-Content -LiteralPath $QualityContractPath -Raw -Encoding UTF8
+        return $contractText -match $phaseTwoPattern
+    }
+
+    return $false
+}
+
+function Get-HardeningGateContent {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$FeatureRef,
+        [Parameter(Mandatory = $true)]
+        [string]$IterationRef,
+        [Parameter(Mandatory = $true)]
+        [string]$IterationNumber,
+        [Parameter(Mandatory = $true)]
+        [string]$ReviewedAt
+    )
+
+    $lines = [System.Collections.Generic.List[string]]::new()
+    $null = $lines.Add("# Hardening Gate: Iteration $IterationNumber")
+    $null = $lines.Add('')
+    $null = $lines.Add('**Schema**: v1')
+    $null = $lines.Add('**Gate ID**: `pre-implementation-hardening`')
+    $null = $lines.Add(('**Feature Ref**: `' + $FeatureRef + '`'))
+    $null = $lines.Add(('**Iteration Ref**: `' + $IterationRef + '`'))
+    $null = $lines.Add('**Requested Review Class**: `strongest-available`')
+    $null = $lines.Add('**Effective Review Class**: `(pending hardening review)`')
+    $null = $lines.Add('**Overall Verdict**: `blocked`')
+    $null = $lines.Add('**Approval Ref**: `—`')
+    $null = $lines.Add('**Reviewed By**: Reviewer (pending)')
+    $null = $lines.Add(('**Reviewed At**: ' + $ReviewedAt))
+    $null = $lines.Add('')
+    $null = $lines.Add('## Concern Review')
+    $null = $lines.Add('')
+    $null = $lines.Add('| Concern | Category | Status | Blocking | Rationale | Approval |')
+    $null = $lines.Add('| --- | --- | --- | --- | --- | --- |')
+    $null = $lines.Add('| `security-surface` | `security` | `tbd` | `true` | Scaffolded placeholder. Review trust boundaries, privilege changes, and sensitive flows before implementation proceeds. | `—` |')
+    $null = $lines.Add('| `error-handling-expectations` | `error-handling` | `tbd` | `true` | Scaffolded placeholder. Record expected failure semantics and incomplete-state handling before implementation proceeds. | `—` |')
+    $null = $lines.Add('| `retry-idempotency-requirements` | `retry-idempotency` | `tbd` | `true` | Scaffolded placeholder. Confirm whether retries/idempotency are required or explicitly not applicable. | `—` |')
+    $null = $lines.Add('| `test-integrity-targets` | `test-integrity` | `tbd` | `true` | Scaffolded placeholder. Tie negative-path expectations to observable test evidence before implementation proceeds. | `—` |')
+    $null = $lines.Add('| `operational-resilience-concerns` | `operational` | `tbd` | `true` | Scaffolded placeholder. Review runtime resilience, fallback, and operator-facing failure signals before implementation proceeds. | `—` |')
+    $null = $lines.Add('')
+    $null = $lines.Add('## Notes')
+    $null = $lines.Add('')
+    $null = $lines.Add('- This artifact was scaffolded before the hardening review ran.')
+    $null = $lines.Add('- Replace placeholder statuses with reviewed outcomes before marking implementation readiness.')
+    return ($lines -join [Environment]::NewLine) + [Environment]::NewLine
+}
+
+function Get-TrapReapplicationContent {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$IterationNumber,
+        [Parameter(Mandatory = $true)]
+        [string]$RecordedAt
+    )
+
+    $lines = [System.Collections.Generic.List[string]]::new()
+    $null = $lines.Add("# Trap Reapplication: Iteration $IterationNumber")
+    $null = $lines.Add('')
+    $null = $lines.Add('**Schema**: v1')
+    $null = $lines.Add('**Scan ID**: `trap-reapplication.pending`')
+    $null = $lines.Add(('**Recorded At**: ' + $RecordedAt))
+    $null = $lines.Add('')
+    $null = $lines.Add('## Scan Log')
+    $null = $lines.Add('')
+    $null = $lines.Add('| Trap Ref | Scan Scope | Result | Matches |')
+    $null = $lines.Add('| --- | --- | --- | --- |')
+    $null = $lines.Add('| `(pending trap refs)` | `(pending scan scope)` | `skipped-with-rationale` | Scaffolded placeholder. Known-trap reapplication has not run yet. |')
+    $null = $lines.Add('')
+    $null = $lines.Add('## Notes')
+    $null = $lines.Add('')
+    $null = $lines.Add('- Replace the placeholder row with concrete trap scan evidence once reapplication runs.')
+    return ($lines -join [Environment]::NewLine) + [Environment]::NewLine
 }
 
 function Test-IsNullish {
@@ -1281,6 +1682,64 @@ function Get-EscalationCount {
     return 0
 }
 
+function Get-ReviewerRegressionCapState {
+    <#
+    .SYNOPSIS
+    Parses the reviewer-regression-state managed block from state.md to extract lockout-cap fields.
+    
+    .PARAMETER StateLines
+    The lines from state.md.
+    #>
+    param([string[]]$StateLines)
+
+    $inBlock = $false
+    $capActive = $false
+    $lockedOutAgents = @()
+    $nextOwnerPath = $null
+    $chainLength = 0
+    $capThreshold = 0
+
+    foreach ($line in $StateLines) {
+        if ($line -match '<!-- >>> specrew-managed reviewer-regression-state >>> -->') {
+            $inBlock = $true
+            continue
+        }
+        if ($line -match '<!-- <<< specrew-managed reviewer-regression-state <<< -->') {
+            break
+        }
+        if (-not $inBlock) {
+            continue
+        }
+
+        if ($line -match '- \*\*Cap Active\*\*:\s*(.+)') {
+            $capActive = $Matches[1].Trim() -ieq 'true'
+        }
+        elseif ($line -match '- \*\*Lockout Chain Length\*\*:\s*(\d+)') {
+            $chainLength = [int]$Matches[1]
+        }
+        elseif ($line -match '- \*\*Lockout Cap\*\*:\s*(\d+)') {
+            $capThreshold = [int]$Matches[1]
+        }
+        elseif ($line -match '- \*\*Locked Out Agents\*\*:\s*(.+)') {
+            $agentsValue = $Matches[1].Trim()
+            if ($agentsValue -ne '(none)') {
+                $lockedOutAgents = @($agentsValue)
+            }
+        }
+        elseif ($line -match '- \*\*Next Owner Path\*\*:\s*(.+)') {
+            $nextOwnerPath = $Matches[1].Trim()
+        }
+    }
+
+    return [pscustomobject]@{
+        CapActive        = $capActive
+        ChainLength      = $chainLength
+        CapThreshold     = $capThreshold
+        LockedOutAgents  = $lockedOutAgents
+        NextOwnerPath    = $nextOwnerPath
+    }
+}
+
 function Get-OwningTaskInfo {
     param(
         [string]$Path,
@@ -1354,7 +1813,7 @@ function Get-TestExecutionRows {
         $stopwatch = [System.Diagnostics.Stopwatch]::StartNew()
         Push-Location $ProjectRoot
         try {
-            $output = @(& pwsh -NoProfile -Command $command 2>&1)
+            $output = @(& pwsh -NoProfile -ExecutionPolicy Bypass -Command $command 2>&1)
             $exitCode = $LASTEXITCODE
         }
         finally {
@@ -1456,7 +1915,7 @@ function Get-ReviewerGapHints {
 function Format-ReviewerSummaryLines {
     param([object]$Summary)
 
-    return @(
+    $lines = @(
         ('Header: feature={0} | iteration={1} | branch={2} | commit_range={3}' -f $Summary.Feature, $Summary.Iteration, $Summary.Branch, $Summary.CommitRange)
         ('Verdict: {0}' -f $Summary.Verdict)
         ('Requirements: covered={0} | not_covered={1}' -f $Summary.RequirementsCovered, $Summary.RequirementsNotCovered)
@@ -1464,11 +1923,21 @@ function Format-ReviewerSummaryLines {
         ('Dependencies: changed={0} | new_to_project={1} | vulnerability={2}' -f $Summary.DependencyChanges, $Summary.NewDependencies, $Summary.VulnerabilitySignal)
         ('Coverage: kind={0} | signal={1}' -f $Summary.CoverageKind, $Summary.CoverageSignal)
         ('Operational Signals: escalations={0} | routing_fallbacks={1}' -f $Summary.Escalations, $Summary.RoutingFallbacks)
+    )
+
+    if ($Summary.CapActive) {
+        $lines += ('Lockout Cap: active | chain={0}/{1} | locked_out={2}' -f $Summary.CapChainLength, $Summary.CapThreshold, $Summary.CapLockedOutAgents)
+        $lines += ('Next Owner: {0}' -f $Summary.CapNextOwner)
+    }
+
+    $lines += @(
         ('Drift: {0}/{1} resolved' -f $Summary.DriftTotal, $Summary.DriftResolved)
         ('Reviewer Index: {0}' -f $Summary.IndexRelativePath)
         ('Implementation Briefing: {0}' -f $Summary.ImplementationBriefing)
         ('Local Open Hints: {0}' -f ($Summary.LocalOpenHints -join '; '))
     )
+
+    return $lines
 }
 
 function Write-ReviewerSummary {
@@ -1492,6 +1961,9 @@ $driftPath = Join-Path $resolvedIterationDirectory 'drift-log.md'
 $codeMapPath = Join-Path $resolvedIterationDirectory 'code-map.md'
 $dependencyReportPath = Join-Path $resolvedIterationDirectory 'dependency-report.md'
 $coverageEvidencePath = Join-Path $resolvedIterationDirectory 'coverage-evidence.md'
+$qualityDirectory = Join-Path $resolvedIterationDirectory 'quality'
+$qualityEvidencePath = Join-Path $qualityDirectory 'quality-evidence.md'
+$mechanicalFindingsPath = Join-Path $qualityDirectory 'mechanical-findings.json'
 $securitySurfacePath = Join-Path $resolvedIterationDirectory 'security-surface.md'
 $reviewerIndexPath = Join-Path $resolvedIterationDirectory 'reviewer-index.md'
 $reviewDiagramsPath = Join-Path $resolvedIterationDirectory 'review-diagrams.md'
@@ -1524,12 +1996,20 @@ $featureId = Split-Path -Leaf $specDirectory
 $currentArchitecturePath = Join-Path $specDirectory 'current-architecture.md'
 $reviewerConfig = (Get-ReviewerConfig -ProjectRoot $projectRoot).reviewer
 $diffArtifacts = Get-DiffArtifacts -ProjectRoot $projectRoot -BaselineRef $baselineRef
+$qualityGateRows = @(Get-MarkdownSectionTable -Lines $planLines -Heading 'Required Quality Gates')
+$qualityContractPath = Join-Path $specDirectory 'contracts\quality-governance-artifacts.md'
+if ($qualityGateRows.Count -eq 0 -and (Test-Path -LiteralPath $qualityContractPath -PathType Leaf)) {
+    $qualityGateRows = @(Get-DefaultQualityGateRows)
+}
+$qualityEvidenceState = Get-ExistingQualityEvidenceState -QualityEvidencePath $qualityEvidencePath
 $implementationBriefingPath = Get-ImplementationBriefingPath -IterationDirectory $resolvedIterationDirectory
 $implementationBriefingRelative = if ($implementationBriefingPath) { Get-RelativePath -FromDirectory $projectRoot -ToPath $implementationBriefingPath } else { '(unavailable)' }
 $decisionsPath = Join-Path $projectRoot '.squad\decisions.md'
 $decisionsRelativePath = '.squad\decisions.md'
 $iterationRelativePath = ([System.IO.Path]::GetRelativePath($projectRoot, $resolvedIterationDirectory)) -replace '/', '\'
 $securityContext = Get-SecurityTriggerContext -ProjectRoot $projectRoot -PlanLines $planLines
+$phaseTwoQualityArtifactsRequired = Test-PhaseTwoQualityArtifactScaffold -PlanLines $planLines -QualityContractPath $qualityContractPath
+$hasQualityEvidenceContract = $qualityGateRows.Count -gt 0 -or (Test-Path -LiteralPath $qualityContractPath -PathType Leaf)
 
 $verdictByTask = @{}
 foreach ($reviewTask in $reviewTasks) {
@@ -1563,6 +2043,7 @@ $testExecutionRows = @(Get-TestExecutionRows -ProjectRoot $projectRoot -Reviewer
 $coverageRows = @(Get-RequirementCoverageRows -RequirementRefs $requirementRefs.ToArray() -ChangedFiles $changedFiles -TestPathGlobs $reviewerConfig.test_path_globs -TestExecutionRows $testExecutionRows)
 $escalationCount = Get-EscalationCount -StateLines $stateLines
 $routingFallbackCount = Get-RoutingFallbackCount -ProjectRoot $projectRoot -IterationRelativePath $iterationRelativePath
+$capState = Get-ReviewerRegressionCapState -StateLines $stateLines
 $sensitiveTouchpoints = @(Get-SensitiveTouchpoints -ProjectRoot $projectRoot -ChangedFiles $changedFiles -Patterns $reviewerConfig.sensitive_data_patterns)
 $diagramEvidence = Get-DiagramEvidence -ProjectRoot $projectRoot -ChangedFiles $changedFiles -ReviewerConfig $reviewerConfig
 $gapConcerns = @(Get-ActiveGapLedgerConcerns -ReviewLines $reviewLines)
@@ -1748,7 +2229,7 @@ $coverageEvidenceContent = @"
 ## Test Strategy
 
 - Implementation briefing: $implementationBriefingRelative
-- Review-time strategy: use `reviewer.test_commands` when configured; otherwise record `not_executed` explicitly and keep the signal visible in closeout output.
+- Review-time strategy: use ``reviewer.test_commands`` when configured; otherwise record ``not_executed`` explicitly and keep the signal visible in closeout output.
 
 ## Tests Run
 
@@ -1859,6 +2340,11 @@ $summaryObject = [pscustomobject]@{
     CoverageSignal          = $coverageSignal
     Escalations             = $escalationCount
     RoutingFallbacks        = $routingFallbackCount
+    CapActive               = $capState.CapActive
+    CapChainLength          = $capState.ChainLength
+    CapThreshold            = $capState.CapThreshold
+    CapLockedOutAgents      = if ($capState.LockedOutAgents.Count -gt 0) { $capState.LockedOutAgents -join '; ' } else { '(none)' }
+    CapNextOwner            = if ($capState.NextOwnerPath) { $capState.NextOwnerPath } else { '(none)' }
     DriftTotal              = $driftSummary.Total
     DriftResolved           = $driftSummary.Resolved
     IndexRelativePath       = $indexRelativePath
@@ -1867,8 +2353,60 @@ $summaryObject = [pscustomobject]@{
 }
 
 $summaryLines = Format-ReviewerSummaryLines -Summary $summaryObject
-$digestLine = ('SPECREW_REVIEW schema=v1 iter={0} feature={1} verdict={2} tasks={3}/{4} reqs={5} files={6} new_deps={7} vuln={8} cov={9} escalations={10} drift={11}/{12} index={13}' -f $iterationLabel, $featureId, $overallVerdict, $passCount, $taskTotal, $reviewTasks.Count, $changedFiles.Count, $dependencyAnalysis.NewToProject.Count, $vulnerabilityScan.Count, $coverageSignal, $escalationCount, $driftSummary.Total, $driftSummary.Resolved, $indexRelativePath)
+$digestLine = if ($capState.CapActive) {
+    ('SPECREW_REVIEW schema=v1 iter={0} feature={1} verdict={2} tasks={3}/{4} reqs={5} files={6} new_deps={7} vuln={8} cov={9} escalations={10} routing_fallbacks={11} cap=active cap_chain={12}/{13} drift={14}/{15} index={16}' -f $iterationLabel, $featureId, $overallVerdict, $passCount, $taskTotal, $reviewTasks.Count, $changedFiles.Count, $dependencyAnalysis.NewToProject.Count, $vulnerabilityScan.Count, $coverageSignal, $escalationCount, $routingFallbackCount, $capState.ChainLength, $capState.CapThreshold, $driftSummary.Total, $driftSummary.Resolved, $indexRelativePath)
+} else {
+    ('SPECREW_REVIEW schema=v1 iter={0} feature={1} verdict={2} tasks={3}/{4} reqs={5} files={6} new_deps={7} vuln={8} cov={9} escalations={10} drift={11}/{12} index={13}' -f $iterationLabel, $featureId, $overallVerdict, $passCount, $taskTotal, $reviewTasks.Count, $changedFiles.Count, $dependencyAnalysis.NewToProject.Count, $vulnerabilityScan.Count, $coverageSignal, $escalationCount, $driftSummary.Total, $driftSummary.Resolved, $indexRelativePath)
+}
 $triageHints = Get-ReviewerGapHints -ReviewLines $reviewLines -GapConcerns $gapConcerns -Hotspots $hotspots.ToArray() -UnknownLicenses $dependencyAnalysis.UnknownLicenses -VulnerabilityScan $vulnerabilityScan -CoverageSignal $coverageSignal -Escalations $escalationCount -RoutingFallbacks $routingFallbackCount -DriftSummary $driftSummary
+$qualityEvidenceRef = Get-RepoRelativePath -ProjectRoot $projectRoot -Path $qualityEvidencePath
+$mechanicalFindingsRef = Get-RepoRelativePath -ProjectRoot $projectRoot -Path $mechanicalFindingsPath
+$featureRef = Get-RepoRelativePath -ProjectRoot $projectRoot -Path (Join-Path $specDirectory 'spec.md')
+$iterationRef = Get-RepoRelativePath -ProjectRoot $projectRoot -Path $resolvedIterationDirectory
+
+$qualityEvidenceOverrides = @{}
+if ($qualityGateRows.Count -gt 0) {
+    foreach ($gateRow in $qualityGateRows) {
+        $gateId = Get-GateRowId -Row $gateRow
+        $category = if ($gateRow.PSObject.Properties['Category']) { Normalize-MarkdownCell ([string]$gateRow.Category) } else { '' }
+        if ([string]::IsNullOrWhiteSpace($gateId)) {
+            continue
+        }
+
+        switch ($category) {
+            'tooling' {
+                $qualityEvidenceOverrides[$gateId] = [pscustomobject]@{
+                    Requirement    = $null
+                    EvidenceSource = Get-RepoRelativePath -ProjectRoot $projectRoot -Path $coverageEvidencePath
+                    Status         = 'passed'
+                    Exception      = '—'
+                }
+            }
+            'manual-evidence' {
+                $qualityEvidenceOverrides[$gateId] = [pscustomobject]@{
+                    Requirement    = $null
+                    EvidenceSource = $qualityEvidenceRef
+                    Status         = 'passed'
+                    Exception      = '—'
+                }
+            }
+        }
+    }
+}
+
+$qualityEvidenceContent = $null
+if ($qualityGateRows.Count -gt 0) {
+    $qualityEvidenceContent = Get-QualityEvidenceContent `
+        -PlanLines $planLines `
+        -FeatureId $featureId `
+        -IterationNumber $iterationLabel `
+        -FindingsRef $mechanicalFindingsRef `
+        -EvidenceRef $qualityEvidenceRef `
+        -ExistingRows $qualityEvidenceState.RowsByGate `
+        -Overrides $qualityEvidenceOverrides `
+        -ReviewedBy 'Reviewer' `
+        -ReviewedAt ((Get-Date).ToUniversalTime().ToString('yyyy-MM-ddTHH:mm:ssZ'))
+}
 
 $reviewerIndexContent = @"
 # Reviewer Index: Iteration $iterationLabel
@@ -1914,9 +2452,38 @@ $digestLine
 "@
 
 if (-not $SummaryOnly) {
+    if ($hasQualityEvidenceContract -or $phaseTwoQualityArtifactsRequired) {
+        $hardeningGatePath = Join-Path $qualityDirectory 'hardening-gate.md'
+        $lensesDirectory = Join-Path $qualityDirectory 'lenses'
+        $trapReapplicationPath = Join-Path $qualityDirectory 'trap-reapplication.md'
+        Ensure-Directory -Path $qualityDirectory -Actions $actions
+        if ($phaseTwoQualityArtifactsRequired) {
+            Ensure-Directory -Path $lensesDirectory -Actions $actions
+            Write-MissingScaffoldFile -TargetPath $hardeningGatePath -Content (Get-HardeningGateContent `
+                    -FeatureRef $featureRef `
+                    -IterationRef $iterationRef `
+                    -IterationNumber $iterationLabel `
+                    -ReviewedAt ((Get-Date).ToUniversalTime().ToString('yyyy-MM-ddTHH:mm:ssZ'))) -Actions $actions
+            Write-MissingScaffoldFile -TargetPath $trapReapplicationPath -Content (Get-TrapReapplicationContent `
+                    -IterationNumber $iterationLabel `
+                    -RecordedAt ((Get-Date).ToUniversalTime().ToString('yyyy-MM-ddTHH:mm:ssZ'))) -Actions $actions
+        }
+    }
     Write-ScaffoldFile -TargetPath $codeMapPath -Content $codeMapContent -Actions $actions
     Write-ScaffoldFile -TargetPath $dependencyReportPath -Content $dependencyReportContent -Actions $actions
     Write-ScaffoldFile -TargetPath $coverageEvidencePath -Content $coverageEvidenceContent -Actions $actions
+    if ($qualityGateRows.Count -gt 0) {
+        if (Test-Path -LiteralPath $mechanicalFindingsPath -PathType Leaf) {
+            Add-ScaffoldAction -Actions $actions -Action 'preserved' -Path $mechanicalFindingsPath
+        }
+        else {
+            Write-ScaffoldFile -TargetPath $mechanicalFindingsPath -Content (Get-MechanicalFindingsScaffoldJson `
+                    -FeatureRef $featureRef `
+                    -IterationRef $iterationRef `
+                    -GeneratedAt ((Get-Date).ToUniversalTime().ToString('yyyy-MM-ddTHH:mm:ssZ'))) -Actions $actions
+        }
+        Write-ScaffoldFile -TargetPath $qualityEvidencePath -Content $qualityEvidenceContent -Actions $actions
+    }
     if ($securityContext.Enabled) {
         Write-ScaffoldFile -TargetPath $securitySurfacePath -Content $securitySurfaceContent -Actions $actions
     }

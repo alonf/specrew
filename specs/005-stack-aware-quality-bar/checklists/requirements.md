@@ -33,4 +33,5 @@
 
 - Validated after initial draft creation.
 - The specification preserves flexibility across ecosystems, keeps tool names non-mandatory, and records explicit exception handling for unsupported, mixed-stack, and unsafe-tool scenarios.
-- Ready for `/speckit.plan`; `/speckit.clarify` is optional if stakeholders want to further refine ecosystem examples or policy language.
+- Revalidated after the hardening-gate governance bugfix: the spec now makes the pre-implementation versus post-implementation evidence boundary explicit and keeps runtime-only proof out of the planning gate while still requiring it before closure.
+- Ready for `/speckit.plan`; `/speckit.clarify` is optional if stakeholders want to further refine lifecycle wording.
