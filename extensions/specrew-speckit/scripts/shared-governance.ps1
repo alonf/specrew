@@ -451,7 +451,8 @@ function Find-LineNumberByPattern {
         [AllowEmptyCollection()]
         [AllowEmptyString()]
         [string[]]$Lines,
-        [string]$Pattern
+        [string]$Pattern,
+        [switch]$CaseSensitive
     )
 
     if ($null -eq $Lines -or [string]::IsNullOrWhiteSpace($Pattern)) {
@@ -459,7 +460,14 @@ function Find-LineNumberByPattern {
     }
 
     for ($index = 0; $index -lt $Lines.Count; $index++) {
-        if ($Lines[$index] -match $Pattern) {
+        $isMatch = if ($CaseSensitive) {
+            $Lines[$index] -cmatch $Pattern
+        }
+        else {
+            $Lines[$index] -match $Pattern
+        }
+
+        if ($isMatch) {
             return ($index + 1)
         }
     }

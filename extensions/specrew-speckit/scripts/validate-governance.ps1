@@ -465,7 +465,7 @@ function Find-CanonicalMetadataLabelLineNumber {
     )
 
     $pattern = '^\*\*' + [regex]::Escape($Label) + '\*\*:\s*(.*?)\s*$'
-    return Find-LineNumberByPattern -Lines $Lines -Pattern $pattern
+    return Find-LineNumberByPattern -Lines $Lines -Pattern $pattern -CaseSensitive
 }
 
 function Find-NonCanonicalMetadataLabelLineNumber {
@@ -482,6 +482,7 @@ function Find-NonCanonicalMetadataLabelLineNumber {
 
     $trimmedLabel = [regex]::Escape($Label.Trim())
     $patterns = @(
+        '^\*\*' + $trimmedLabel + '\*\*:\s*.*$',
         '^(?!\*\*)\s*' + $trimmedLabel + '\s*:\s*.*$',
         '^#+\s*' + $trimmedLabel + '\s*$',
         '^\s*-\s*' + $trimmedLabel + '\s*:\s*.*$'
@@ -1342,6 +1343,12 @@ function Test-StateArtifact {
             $nonCanonicalLineNumber = Find-NonCanonicalMetadataLabelLineNumber -Lines $stateLines -Label $label
             if ($null -ne $nonCanonicalLineNumber) {
                 Add-RepoStructuredValidationFailure -Errors $Errors -ProjectRoot $ProjectRoot -TargetPath $statePath -LineNumber $nonCanonicalLineNumber -Category 'canonical-schema' -Message ("state.md uses a non-canonical label for '{0}'" -f $label) -RemediationHint ("Replace it with the canonical metadata line '**{0}**:' on its own line." -f $label)
+                continue
+            }
+
+            $caseVariantLineNumber = Find-LineNumberByPattern -Lines $stateLines -Pattern ('^\*\*' + [regex]::Escape($label) + '\*\*:\s*(.*?)\s*$')
+            if ($null -ne $caseVariantLineNumber) {
+                Add-RepoStructuredValidationFailure -Errors $Errors -ProjectRoot $ProjectRoot -TargetPath $statePath -LineNumber $caseVariantLineNumber -Category 'canonical-schema' -Message ("state.md uses a non-canonical label for '{0}'" -f $label) -RemediationHint ("Replace it with the canonical metadata line '**{0}**:' on its own line." -f $label)
                 continue
             }
 

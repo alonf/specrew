@@ -109,6 +109,14 @@ function Get-FeaturePlanTemplate {
         $planContent = $planContent -replace '013-validator-hardening', $FeatureId
     }
 
+    $planContent = $planContent -replace '\*\*Status\*\*: .+', '**Status**: executing'
+    $planContent = $planContent -replace '\*\*Completed\*\*: .+', '**Completed**: pending'
+    $planContent = $planContent -replace '\*\*Closed\*\*: .+', '**Closed**: pending'
+    $planContent = $planContent -replace '\*\*Review Completed\*\*: .+', '**Review Completed**: pending'
+    $planContent = $planContent -replace '\*\*Review Verdict\*\*: .+', '**Review Verdict**: pending'
+    $planContent = $planContent -replace '\*\*Retrospective Completed\*\*: .+', '**Retrospective Completed**: pending'
+    $planContent = $planContent -replace '\*\*Closeout Validation\*\*: .+', '**Closeout Validation**: pending'
+
     return $planContent
 }
 
@@ -227,6 +235,16 @@ $scenarios = @(
         RequiredPatterns  = @('category=canonical-schema', 'non-canonical label for ''Iteration Status''', 'remediation_hint=Replace it with the canonical metadata line ''\*\*Iteration Status\*\*:''')
         RelativeArtifact  = 'specs/013-validator-hardening/iterations/001/state.md'
         SuccessMessage    = 'Non-canonical Iteration Status label fails with a structured canonical-schema issue.'
+    },
+    @{
+        Name              = 'state-lowercase-canonical-label'
+        FeatureId         = '013-validator-hardening'
+        StateFixturePath  = (Join-Path $fixtureRoot 'state-noncanonical\lowercase-schema.md')
+        GateFixturePath   = $gateReadyFixture
+        ExpectPass        = $false
+        RequiredPatterns  = @('category=canonical-schema', 'non-canonical label for ''Schema''', 'remediation_hint=Replace it with the canonical metadata line ''\*\*Schema\*\*:''')
+        RelativeArtifact  = 'specs/013-validator-hardening/iterations/001/state.md'
+        SuccessMessage    = 'Lowercase canonical metadata labels fail with a structured canonical-schema issue.'
     },
     @{
         Name              = 'state-missing-field'

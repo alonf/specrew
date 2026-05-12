@@ -6,8 +6,8 @@
 **In Progress**: none
 **Baseline Ref**: commit 977bc79 (task-backlog boundary before iteration 001 implementation)
 **Updated**: 2026-05-12
-**Current Phase**: executing
-**Iteration Status**: Implementation complete; reviewer evidence recorded; awaiting independent review
+**Current Phase**: retro
+**Iteration Status**: Review accepted after a narrow lowercase canonical-label repair; retrospective is the next required boundary
 
 ## Planning Summary
 
@@ -28,7 +28,7 @@ Iteration 001 is the first delivery slice for feature 013, validator hardening. 
 - **Hardening-Gate Sign-Off**: ✅ **SIGNED OFF** — `quality/hardening-gate.md` signed by Alon Fliess on 2026-05-12
 - **Implementation Authorization**: ✅ **AUTHORIZED** — Iteration 001 implementation, review, retrospective, and closeout authorized by Alon Fliess on 2026-05-12
 - **Implementation Boundary**: ✅ **RECORDED** — tasks `T001` through `T013` are complete on the current tree with replay-path evidence and repo-wide regression proof captured on 2026-05-12
-- **Review Boundary**: pending - reviewer evidence is deferred until after implementation
+- **Review Boundary**: ✅ **ACCEPTED** — `review.md` records the four blocking concern checks, the lowercase-label review repair, and the accepted verdict on 2026-05-12
 - **Retrospective Boundary**: pending - retro follows implementation and review
 - **Closeout Boundary**: pending - no closure claim is authorized in planning
 
@@ -40,4 +40,4 @@ Iteration 001 is the first delivery slice for feature 013, validator hardening. 
 
 ## Next Action
 
-The next required step is to run the independent review for the canonical-schema and graceful-error slice, verifying the blocking concerns against the now-recorded replay-path evidence before the iteration advances to the retrospective boundary.
+The next required step is to record the retrospective boundary for the canonical-schema and graceful-error slice, then run the closeout validation lane on the post-retrospective tree before the iteration can be closed.

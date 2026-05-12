@@ -2,16 +2,16 @@
 
 **Schema**: v1  
 **Spec**: [../../spec.md](../../spec.md)  
-**Status**: executing  
+**Status**: retro  
 **Capacity**: 13/20 story_points  
 **Planned Start**: 2026-05-12  
 **Started**: 2026-05-12  
-**Completed**: pending  
+**Completed**: 2026-05-12  
 **Closed**: pending  
 **Hardening-Gate Sign-Off**: signed-2026-05-12  
 **Implementation Authorization**: authorized-2026-05-12  
-**Review Completed**: pending  
-**Review Verdict**: pending  
+**Review Completed**: 2026-05-12  
+**Review Verdict**: accepted  
 **Retrospective Completed**: pending  
 **Closeout Validation**: pending
 
@@ -54,9 +54,10 @@ Deliver the first validator-hardening slice: canonical iteration `state.md` sche
 | --- | --- | --- |
 | Hardening-gate drafted with canonical concerns first | pass | `iterations/001/quality/hardening-gate.md` signed off 2026-05-12 |
 | Canonical `state.md` metadata schema in use from planning onward | pass | `iterations/001/state.md` uses the eight canonical fields in the metadata header |
-| Iteration-1 replay coverage scoped and bounded | pass | `tests/integration/validator-hardening-iteration1.ps1` now proves compliant, violating, grandfathered, missing-file, and unexpected-input paths through actual validator output |
+| Iteration-1 replay coverage scoped and bounded | pass | `tests/integration/validator-hardening-iteration1.ps1` now proves compliant, alias-drift, lowercase-case-drift, missing-field, grandfathered, missing-file, concern-order, and unexpected-input paths through actual validator output |
 | Additive validator CLI surface preserved | pass | Shared regressions plus repo-wide `validate-governance.ps1 -ProjectPath .` stayed green after the Iteration 001 implementation landed |
 | Existing validator regression baseline captured before implementation | pass | T001 recorded the six-script baseline on 2026-05-12 with repo-wide `validate-governance.ps1 -ProjectPath .` green |
+| Accepted review boundary recorded | pass | `iterations/001/review.md` accepts the slice after repairing lowercase canonical-label case drift and re-running the replay harness plus repo-wide validator |
 
 ## Risk Tracking
 
@@ -114,3 +115,4 @@ Deliver the first validator-hardening slice: canonical iteration `state.md` sche
 | Canonical iteration metadata enforcement | `tests/integration/fixtures/013-validator-hardening/state-*` plus `tests/integration/validator-hardening-iteration1.ps1` prove canonical pass cases, non-canonical alias detection, missing-field failures, and grandfathered legacy acceptance. |
 | Canonical hardening-gate concern enforcement | `tests/integration/fixtures/013-validator-hardening/hardening-gate-*` plus the replay harness prove the first five canonical concerns stay ordered while allowing feature-specific rows after position five. |
 | Regression preservation | `tests/integration/hardening-gate-contract.ps1`, `tests/integration/quality-evidence-governance.ps1`, `tests/integration/project-path-resolution-regression.ps1`, `tests/integration/validator-hardening-iteration1.ps1`, and `validate-governance.ps1 -ProjectPath .` all passed on 2026-05-12. |
+| Review repair follow-through | The review-found lowercase-label case-drift gap is now covered by `tests/integration/fixtures/013-validator-hardening/state-noncanonical/lowercase-schema.md`, the iteration replay harness, and accepted review evidence in `review.md`. |

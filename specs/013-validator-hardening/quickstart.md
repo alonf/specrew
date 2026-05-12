@@ -62,7 +62,7 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File .\extensions\specrew-speckit\scrip
 
 **Recorded Iteration 1 verdict**:
 
-- `tests/integration/validator-hardening-iteration1.ps1` passed with compliant state and hardening-gate fixtures, non-canonical label failures, missing-field failures, grandfathered legacy pass coverage, missing-file failures, reordered/missing canonical-concern failures, and unexpected-input structured FAIL coverage.
+- `tests/integration/validator-hardening-iteration1.ps1` passed with compliant state and hardening-gate fixtures, non-canonical label failures, lowercase canonical-label case-drift failures, missing-field failures, grandfathered legacy pass coverage, missing-file failures, reordered/missing canonical-concern failures, and unexpected-input structured FAIL coverage.
 - `tests/integration/hardening-gate-contract.ps1`, `tests/integration/quality-evidence-governance.ps1`, and `tests/integration/project-path-resolution-regression.ps1` stayed green after the validator changes.
 - `extensions/specrew-speckit/scripts/validate-governance.ps1 -ProjectPath .` stayed green across the existing corpus under `specs/`, preserving feature 007 handoff checks, feature 012 readable-reference enforcement, and the pre-feature-013 historical iterations without new false positives.
 
