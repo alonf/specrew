@@ -2855,6 +2855,88 @@ All remaining tasks are traceable:
 
 **T-204 Verdict**: Functionally aligned; delivery surface incomplete. Recommend **NEEDS-WORK** status pending squad-skill wrapping. Core resume logic is production-ready and tested.
 
+## 2026-05-12-planner-iter002-authorization
+### 2026-05-12T09:35:49Z: Planner decision - Feature 013 Iteration 002 hardening-gate sign-off and implementation authorization
+**By:** Planner (Copilot)
+**Type:** authorization-boundary
+**What:** Recorded hardening-gate pre-implementation quality review sign-off and authorized Feature 013 iteration 002 for implementation within explicit scope boundary.
+
+**Scope Authorization:**
+Iteration 002 implementation authorized for tasks T014-T029 only:
+- **Approval-reuse detection** (T014-T017): Whitespace-normalized and markdown-emphasis-stripped quote matching, blanket-authorization exemption handling, structured FAIL reporting, and corpus graduation
+- **Over-claim detection** (T018-T021): Closed-status iteration validation, required review/retro/hardening evidence checks, iteration-directory-scoped dirty-tree filtering, `.squad/decisions.md`/`.squad/identity/now.md` exclusion, and corpus graduation
+- **Bookkeeping-vs-behavior classifier** (T022-T026): Distinguish timestamp-only, `## Active Technologies`, `## Recent Changes` diffs from behavior changes; integrate into restart guidance and optional validator validation
+- **Corpus graduation and documentation** (T027-T028): Mark canonical-schema, canonical-concern, approval-reuse, and over-claim rows as validator-enforced; update feature documentation
+- **Closeout validation lane** (T029): Run full regression preservation and validation suite
+
+**Planning Boundary Finalization:**
+- Hardening-gate sign-off recorded in `specs/013-validator-hardening/iterations/002/quality/hardening-gate.md`
+- Plan.md status updated from `planning` to `authorized`
+- State.md phase updated from `planned` to `authorized-implementation`
+
+**Authority Statement:**
+> "The five canonical concerns are in canonical order, the five feature-specific concerns are blocking, and the 15.5/20 capacity math matches the repo's established S=0.5/M=1/L=2 mapping."
+
+**Reviewed By:** Alon Fliess
+**Reviewed At:** 2026-05-12
+
+**Evidence:** `specs/013-validator-hardening/iterations/002/quality/hardening-gate.md`
+
+## 2026-05-12-implementer-iter002-implementation
+### 2026-05-12T11:37:31Z: Implementer decision - Feature 013 Iteration 002 implementation boundary
+**By:** Implementer (Copilot)
+**Type:** implementation-scope
+**What:** Completed Feature 013 iteration 002 implementation boundary. Three core capabilities implemented and validated within authorized scope.
+
+**Implementation Decisions:**
+
+1. **Approval-reuse parsing stays bounded to explicit authorization blocks.**
+   The validator now scans `Implementation Authorization` / `Implementation Approval` sections in iteration `plan.md` and `state.md`, extracts explicit evidence lines (for example `Recorded Evidence` / `Approval Evidence`), normalizes whitespace plus markdown emphasis, and treats blanket-scope exemptions as opt-in only when the block explicitly says `blanket` and `multi-iteration authorization`.
+
+2. **Over-claim dirty-tree filtering stays limited to canonical iteration artifacts.**
+   The closeout check only inspects canonical files under the iteration directory (`plan.md`, `state.md`, `drift-log.md`, `review.md`, `retro.md`, reviewer packet files, and `quality/*`) so repo-level evidence traces such as `.squad/decisions.md` remain visible but do not block closeout claims by themselves.
+
+3. **Classifier ownership stays with restart guidance; validator only smoke-checks compatibility.**
+   `Test-CopilotInstructionsChangeType.ps1` is the reusable source of truth for `.github/copilot-instructions.md` bookkeeping-vs-behavior classification, `specrew-start.ps1` consumes it to decide whether a restart pause is needed, and `validate-governance.ps1` only verifies the helper remains callable and conservative without taking over restart-policy decisions.
+
+**Validation Evidence:**
+- Primary lane: `tests\integration\validator-hardening-iteration2.ps1` - 57 scenarios, all passed ✓
+- Prior iteration: `tests\integration\validator-hardening-iteration1.ps1` - all passed ✓
+- Regression suite: `specrew-start` regression tests - all passed ✓
+- Governance: `validate-governance.ps1 -ProjectPath .` - clean pass ✓
+
+**Commit:** 99cdf51 - Feature 013 validator-hardening iteration 002: implement approval-reuse, over-claim detection, and bookkeeping classifier slice
+
+## 2026-05-12-reviewer-iter002-review
+### 2026-05-12T12:39:43Z: Reviewer decision - Feature 013 Iteration 002 review boundary acceptance
+**By:** Reviewer (Copilot)
+**Type:** review-approval
+**What:** Accepted the review boundary for Feature 013 iteration 002 implementation (commit 99cdf51). All five blocking concerns validated with green evidence under independent review.
+
+**Review Results:**
+All five blocking concerns passed independent validation:
+- **over-claim-detection-correctness** ✓
+- **approval-reuse-detection-correctness** ✓
+- **bookkeeping-classifier-accuracy** ✓
+- **corpus-graduation-completeness** ✓
+- **regression-preservation** ✓
+
+**Why:**
+- The five canonical concerns are satisfied with current-tree evidence.
+- The five blocking concerns all passed under independent review.
+- The review lane was re-run with green evidence from `validator-hardening-iteration2.ps1`, `validator-hardening-iteration1.ps1`, the `specrew-start` regression suite, and repo-wide `validate-governance.ps1 -ProjectPath .`.
+
+**Validation Evidence:**
+- validator-hardening-iteration2.ps1 (57 scenarios, all passed) ✓
+- validator-hardening-iteration1.ps1 ✓
+- specrew-start regression suite ✓
+- validate-governance.ps1 -ProjectPath . ✓
+
+**Next Owner Requirement:**
+Await Alon Fliess's explicit authorization to start the retrospective. Do not open retrospective or claim closeout from this review boundary alone.
+
+**Commit:** d7b2e42 - Feature 013 iteration 002 review boundary
+
 **Remaining Tasks**: Sequenced per dependency analysis. V-R7-2 independent; T-201→T-203 sequential; T-202 should integrate into T-203; T-207→T-208 sequential. No blocking interdependencies prevent parallel start of most tasks.
 
 **Traceability**: All tasks mapped to FR. No orphans. Ready for execution dispatch.
