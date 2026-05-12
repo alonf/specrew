@@ -6,12 +6,12 @@
 **In Progress**: none
 **Baseline Ref**: commit c3ac63a (iteration 002 implementation-start baseline before approval-reuse, over-claim, and classifier changes)
 **Updated**: 2026-05-12
-**Current Phase**: review-prep
-**Iteration Status**: Implementation boundary complete; review, retrospective, and closeout artifacts still pending
+**Current Phase**: reviewing
+**Iteration Status**: Review accepted; retrospective not yet authorized
 
 ## Planning Summary
 
-Iteration 002 is the second and final delivery slice for feature 013, validator hardening. It extends the iteration 001 foundation (canonical iteration-schema enforcement, graceful structured FAIL reporting) with approval-evidence reuse detection, unsupported closeout claim blocking (over-claim detection and dirty-tree enforcement), the `.github/copilot-instructions.md` bookkeeping-vs-behavior classifier that distinguishes behavior changes from automation-generated timestamps/sections, canonical corpus graduation, final documentation updates, and the implementation-boundary validation lane. The scope covers all remaining user stories (US3, US4, US5) plus polish and closeout work (US-Polish); the implementation boundary is complete and ready for review, but review/retro/closeout artifacts are not yet recorded.
+Iteration 002 is the second and final delivery slice for feature 013, validator hardening. It extends the iteration 001 foundation (canonical iteration-schema enforcement, graceful structured FAIL reporting) with approval-evidence reuse detection, unsupported closeout claim blocking (over-claim detection and dirty-tree enforcement), the `.github/copilot-instructions.md` bookkeeping-vs-behavior classifier that distinguishes behavior changes from automation-generated timestamps/sections, canonical corpus graduation, final documentation updates, and the implementation-boundary validation lane. The scope covers all remaining user stories (US3, US4, US5) plus polish and closeout work (US-Polish); implementation is complete and the independent review is now accepted, while retrospective and closeout remain intentionally pending separate authorization and execution.
 
 ## Task Status Summary
 
@@ -28,8 +28,8 @@ Iteration 002 is the second and final delivery slice for feature 013, validator 
 - **Hardening-Gate Sign-Off**: ✅ **SIGNED** — pre-implementation quality gate signed by Alon Fliess on 2026-05-12
 - **Implementation Authorization**: ✅ **AUTHORIZED** — hardening-gate sign-off completed; T014-T029 authorized for execution
 - **Implementation Boundary**: ✅ **RECORDED** — tasks `T014` through `T029` are complete on the current tree with replay-path evidence, classifier/start integration proof, and repo-wide regression coverage captured on 2026-05-12
-- **Review Boundary**: ⏳ **PENDING** — review gate will be recorded after implementation and testing are complete
-- **Retrospective Boundary**: ⏳ **PENDING** — retrospective will be recorded after review acceptance and before closeout
+- **Review Boundary**: ✅ **ACCEPTED** — `review.md` records the five canonical concerns, five blocking concerns, and green review evidence on 2026-05-12
+- **Retrospective Boundary**: ⏳ **PENDING** — do not start retrospective until Alon Fliess signs off on the accepted review verdict
 - **Closeout Boundary**: ⏳ **PENDING** — closeout artifacts and final validation lane will be recorded within iteration 002 after review acceptance
 
 ## Scope and Deferrals
@@ -40,4 +40,4 @@ Iteration 002 is the second and final delivery slice for feature 013, validator 
 
 ## Next Action
 
-Review the implementation-boundary evidence for feature `013`, validator hardening, iteration `002`, then record the review artifact and reviewer verdict. Retrospective, closeout artifacts, and final closure remain future lifecycle steps and are intentionally not claimed by this implementation handoff.
+Await Alon Fliess's separate authorization to begin the retrospective for feature `013`, validator hardening, iteration `002`. Closeout and final closure remain future lifecycle steps and are intentionally not claimed by this review boundary.
