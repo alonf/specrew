@@ -2,7 +2,7 @@
 
 **Schema**: v1  
 **Spec**: [../../spec.md](../../spec.md)  
-**Status**: reviewing  
+**Status**: retro  
 **Capacity**: 15.5/20 story_points  
 **Planned Start**: 2026-05-12  
 **Started**: 2026-05-12  
@@ -12,12 +12,12 @@
 **Implementation Authorization**: authorized (T014-T029, 15.5 story_points)  
 **Review Completed**: 2026-05-12  
 **Review Verdict**: accepted  
-**Retrospective Completed**: pending  
-**Closeout Validation**: 2026-05-12 (implementation-boundary lane; final closure still pending review/retro artifacts)
+**Retrospective Completed**: 2026-05-12  
+**Closeout Validation**: 2026-05-12 (implementation-boundary lane; final closure still pending explicit closeout authorization)
 
 ## Summary
 
-Deliver the second and final validator-hardening implementation slice: approval-evidence reuse detection, unsupported closeout claim blocking (over-claim detection and dirty-tree enforcement), the `.github/copilot-instructions.md` bookkeeping-vs-behavior classifier, canonical corpus graduation (marking iteration 001 rules as validator-enforced), final documentation updates, and the implementation-boundary validation lane. The implementation boundary is complete and the independent review is now accepted on 2026-05-12; retrospective and final closeout intentionally remain pending separate authorization and follow-through.
+Deliver the second and final validator-hardening implementation slice: approval-evidence reuse detection, unsupported closeout claim blocking (over-claim detection and dirty-tree enforcement), the `.github/copilot-instructions.md` bookkeeping-vs-behavior classifier, canonical corpus graduation (marking iteration 001 rules as validator-enforced), final documentation updates, and the implementation-boundary validation lane. The implementation boundary is complete, the independent review was accepted on 2026-05-12, and the retrospective boundary is now recorded on the current tree. Final closeout intentionally remains pending separate authorization and follow-through.
 
 ## Iteration Scope
 
@@ -103,6 +103,16 @@ None. Iteration 002 is the final authorized iteration for feature 013, validator
 | Overcommit Threshold | 1.0 | The default threshold remains in force because the corrected effort mapping keeps the iteration within capacity |
 | Defer Strategy | manual | No deferrals remain, but the iteration model still uses manual scope management |
 | Calibration Enabled | true | Actual effort should be recorded after execution completes |
+
+## Phase Baseline
+
+| Phase | Estimated Effort | Notes |
+| --- | --- | --- |
+| Planning | 1.5 | Iteration packaging, hardening-gate preparation, and review-prep evidence framing for the final validator-hardening slice |
+| Discovery/Spikes | 0 | No separate discovery spike was authorized; iteration 001 and the approved spec already bounded the slice |
+| Implementation | 13 | T014-T028 cover the feature work, replay fixtures, classifier integration, corpus graduation, and documentation truthfulness updates |
+| Review | 1 | Independent review and artifact-truth verification for the accepted implementation boundary |
+| Rework | 0 | Mid-iteration repairs were absorbed inside the planned implementation tasks rather than requiring a separate rework phase |
 
 ## Implementation Boundary Result
 
