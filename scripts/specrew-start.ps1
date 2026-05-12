@@ -32,6 +32,12 @@ if (-not (Test-Path -LiteralPath $sharedGovernancePath -PathType Leaf)) {
 }
 . $sharedGovernancePath
 
+$copilotInstructionsClassifierPath = Join-Path (Split-Path -Parent $PSScriptRoot) 'extensions\specrew-speckit\scripts\Test-CopilotInstructionsChangeType.ps1'
+if (-not (Test-Path -LiteralPath $copilotInstructionsClassifierPath -PathType Leaf)) {
+    throw "Missing copilot-instructions classifier helper '$copilotInstructionsClassifierPath'."
+}
+. $copilotInstructionsClassifierPath
+
 function Convert-UnixStyleArguments {
     param(
         [string]$FeatureRequest,
@@ -1911,6 +1917,34 @@ function Test-SessionLoadedFilesChanged {
     }
 }
 
+function Get-RestartTriggerFiles {
+    param(
+        [string]$ResolvedProjectPath,
+        [AllowNull()][string]$BaselineCommitHash,
+        [string[]]$ChangedFiles
+    )
+
+    $restartTriggerFiles = New-Object System.Collections.Generic.List[string]
+    foreach ($changedFile in @($ChangedFiles | Select-Object -Unique)) {
+        if ([string]::IsNullOrWhiteSpace($changedFile)) {
+            continue
+        }
+
+        $normalizedChangedFile = ([string]$changedFile).Trim() -replace '/', '\'
+        if ($normalizedChangedFile -ieq '.github\copilot-instructions.md') {
+            $classification = Test-CopilotInstructionsChangeType -ProjectPath $ResolvedProjectPath -BaselineCommitHash $BaselineCommitHash -TargetPath '.github/copilot-instructions.md'
+            if ($classification.RequiresRestart) {
+                $restartTriggerFiles.Add($normalizedChangedFile) | Out-Null
+            }
+            continue
+        }
+
+        $restartTriggerFiles.Add($normalizedChangedFile) | Out-Null
+    }
+
+    return $restartTriggerFiles.ToArray()
+}
+
 function Get-StartPrompt {
     param(
         [string]$ResolvedProjectPath,
@@ -2176,7 +2210,8 @@ function Save-StartArtifacts {
     # Get baseline commit and check for session-loaded file changes
     $baselineCommit = Get-BaselineCommitHash -ResolvedProjectPath $ResolvedProjectPath
     $changedFiles = @(Test-SessionLoadedFilesChanged -ResolvedProjectPath $ResolvedProjectPath -BaselineCommitHash $baselineCommit)
-    $hasChanges = ($changedFiles.Count -gt 0)
+    $restartTriggerFiles = @(Get-RestartTriggerFiles -ResolvedProjectPath $ResolvedProjectPath -BaselineCommitHash $baselineCommit -ChangedFiles $changedFiles)
+    $hasChanges = ($restartTriggerFiles.Count -gt 0)
 
     # Build frontmatter with baseline hash and changed files visibility
     $frontmatterLines = @('---')
@@ -2185,7 +2220,7 @@ function Save-StartArtifacts {
     }
     if ($hasChanges) {
         $frontmatterLines += 'session_loaded_files_changed:'
-        foreach ($file in $changedFiles) {
+        foreach ($file in $restartTriggerFiles) {
             $frontmatterLines += "  - $file"
         }
     }
@@ -2207,7 +2242,7 @@ $PostRestartDirective
 
     # Inject pause-and-confirm directive if session-loaded files changed
     if ($hasChanges) {
-        $fileListFormatted = ($changedFiles | ForEach-Object { "- $_" }) -join [Environment]::NewLine
+        $fileListFormatted = ($restartTriggerFiles | ForEach-Object { "- $_" }) -join [Environment]::NewLine
         $directiveBlocks += @"
 
 ## PAUSE-AND-CONFIRM: Session-Loaded Files Changed

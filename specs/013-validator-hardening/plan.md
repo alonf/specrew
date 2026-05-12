@@ -12,6 +12,8 @@ This plan closes six governance-validator rigor gaps exposed during Specrew dogf
 
 The existing validator command surface, exit-code conventions, and PASS/FAIL format are preserved throughout.
 
+**Implementation status (2026-05-12)**: Iteration 002's implementation boundary is now complete on the current tree. Review, retrospective, and final closeout remain pending; no closeout claim is made by this plan update.
+
 ## Technical Context
 
 **Language/Version**: PowerShell 7.x  

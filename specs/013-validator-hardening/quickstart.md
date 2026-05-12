@@ -68,28 +68,29 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File .\extensions\specrew-speckit\scrip
 
 ## 4. Run Iteration 2 validation (post-implementation)
 
-After Iteration 2 is implemented, run:
+The Iteration 002 implementation-boundary evidence was recorded on **2026-05-12** with:
 
 ```powershell
 # Fixture-based fail-closed proof for FR-003, FR-004, FR-006
 pwsh -NoProfile -ExecutionPolicy Bypass -File .\tests\integration\validator-hardening-iteration2.ps1
 
-# Bookkeeping classifier self-test
-pwsh -NoProfile -ExecutionPolicy Bypass -File .\tests\integration\validator-hardening-iteration2.ps1 -ClassifierOnly
+# specrew-start regression coverage kept green after classifier integration
+pwsh -NoProfile -ExecutionPolicy Bypass -File .\tests\integration\specrew-start-change-detector.ps1
+pwsh -NoProfile -ExecutionPolicy Bypass -File .\tests\integration\specrew-start-auto-continue-preservation.ps1
+pwsh -NoProfile -ExecutionPolicy Bypass -File .\tests\integration\specrew-start-pause-and-confirm.ps1
+pwsh -NoProfile -ExecutionPolicy Bypass -File .\tests\integration\specrew-start-parameter-handling.ps1
+pwsh -NoProfile -ExecutionPolicy Bypass -File .\tests\integration\specrew-start-end-to-end.ps1
 
 # Full backward-compatibility pass
 pwsh -NoProfile -ExecutionPolicy Bypass -File .\extensions\specrew-speckit\scripts\validate-governance.ps1 -ProjectPath .
 ```
 
-**Expected Iteration 2 pass conditions**:
+**Recorded Iteration 2 verdict**:
 
-- Sibling-iteration fixtures with duplicated approval evidence (byte-identical normalized quotes) produce structured FAIL output naming both iterations and the quote.
-- Sibling-iteration fixtures with explicit blanket multi-iteration authorization pass the reuse check.
-- Closed-iteration fixtures missing `retro.md`, `review.md` acceptance, post-implementation hardening evidence, or with uncommitted iteration-directory changes produce structured FAIL output naming the missing element.
-- Bookkeeping-only `.github/copilot-instructions.md` diffs (timestamp, Active Technologies, Recent Changes only) are classified as `bookkeeping`.
-- Behavior-affecting diffs are classified as `behavior`.
-- Mixed diffs are classified as `behavior` (conservative rule).
-- `.specrew/quality/known-traps.md` has all four targeted rows updated to `validator-enforced` with citations to the implementing requirements and proving tests.
+- `tests/integration/validator-hardening-iteration2.ps1` passed with duplicate normalized approval quotes rejected, blanket authorization exemptions accepted, distinct approval quotes accepted, clean closeout PASS coverage, missing review/retro failures, pending hardening-gate failures, dirty canonical-artifact failures, repo-level evidence-only dirt exclusions, direct classifier fixture checks, and `specrew-start.ps1` replay-path assertions.
+- `tests/integration/specrew-start-change-detector.ps1`, `specrew-start-auto-continue-preservation.ps1`, `specrew-start-pause-and-confirm.ps1`, `specrew-start-parameter-handling.ps1`, and `specrew-start-end-to-end.ps1` all stayed green after the classifier helper was integrated into restart guidance.
+- `extensions/specrew-speckit/scripts/validate-governance.ps1 -ProjectPath .` stayed green across the full repository corpus while smoke-checking classifier compatibility on `.github/copilot-instructions.md`.
+- `.specrew/quality/known-traps.md` now marks approval-reuse, over-claim, canonical-schema, and canonical-concern rows as `validator-enforced` with citations to the implementing scripts and replay-path tests.
 
 ## 5. Verify acceptance criteria
 

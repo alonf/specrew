@@ -13,6 +13,12 @@ if (-not (Test-Path -LiteralPath $sharedGovernancePath -PathType Leaf)) {
 }
 . $sharedGovernancePath
 
+$copilotInstructionsClassifierPath = Join-Path $PSScriptRoot 'Test-CopilotInstructionsChangeType.ps1'
+if (-not (Test-Path -LiteralPath $copilotInstructionsClassifierPath -PathType Leaf)) {
+    throw "Missing copilot-instructions classifier helper '$copilotInstructionsClassifierPath'."
+}
+. $copilotInstructionsClassifierPath
+
 $sharedGovernancePath = Join-Path $PSScriptRoot 'shared-governance.ps1'
 if (-not (Test-Path -LiteralPath $sharedGovernancePath -PathType Leaf)) {
     throw "Missing shared governance helper '$sharedGovernancePath'."
@@ -456,6 +462,35 @@ function Add-RepoStructuredValidationFailure {
     }
 
     Add-StructuredValidationFailure -Errors $Errors -FilePath $relativePath -LineNumber $LineNumber -Category $Category -Message $Message -RemediationHint $RemediationHint
+}
+
+function Test-CopilotInstructionsClassifierCompatibility {
+    param(
+        [string]$ProjectRoot,
+        [System.Collections.Generic.List[string]]$Errors
+    )
+
+    $instructionsPath = Join-Path $ProjectRoot '.github\copilot-instructions.md'
+    if (-not (Test-Path -LiteralPath $instructionsPath -PathType Leaf)) {
+        return
+    }
+
+    try {
+        $classification = Test-CopilotInstructionsChangeType -BeforePath $instructionsPath -AfterPath $instructionsPath
+    }
+    catch {
+        Add-RepoStructuredValidationFailure -Errors $Errors -ProjectRoot $ProjectRoot -TargetPath $instructionsPath -LineNumber $null -Category 'bookkeeping-classifier' -Message ("Unable to evaluate .github/copilot-instructions.md with the classifier helper: {0}" -f $_.Exception.Message) -RemediationHint 'Repair Test-CopilotInstructionsChangeType.ps1 so validator compatibility checks can classify copilot-instructions changes.'
+        return
+    }
+
+    if ($null -eq $classification -or $classification.Classification -notin @('bookkeeping', 'behavior')) {
+        Add-RepoStructuredValidationFailure -Errors $Errors -ProjectRoot $ProjectRoot -TargetPath $instructionsPath -LineNumber $null -Category 'bookkeeping-classifier' -Message 'The copilot-instructions classifier helper returned an invalid classification.' -RemediationHint 'Return either bookkeeping or behavior from Test-CopilotInstructionsChangeType.ps1.'
+        return
+    }
+
+    if ($classification.Classification -ne 'bookkeeping' -or [bool]$classification.RequiresRestart) {
+        Add-RepoStructuredValidationFailure -Errors $Errors -ProjectRoot $ProjectRoot -TargetPath $instructionsPath -LineNumber $null -Category 'bookkeeping-classifier' -Message 'Identical copilot-instructions content must classify as bookkeeping with no restart requirement.' -RemediationHint 'Keep Test-CopilotInstructionsChangeType.ps1 conservative for real behavior changes, but allow identical or bookkeeping-only content to stay restart-free.'
+    }
 }
 
 function Find-CanonicalMetadataLabelLineNumber {
@@ -1473,6 +1508,144 @@ function Test-RetroArtifact {
     }
 }
 
+function Get-IterationCanonicalArtifactRelativePaths {
+    param(
+        [string]$IterationDirectory,
+        [string]$ProjectRoot
+    )
+
+    $iterationRelativePath = ([System.IO.Path]::GetRelativePath($ProjectRoot, $IterationDirectory)) -replace '/', '\'
+    return @(
+        "$iterationRelativePath\plan.md",
+        "$iterationRelativePath\state.md",
+        "$iterationRelativePath\drift-log.md",
+        "$iterationRelativePath\review.md",
+        "$iterationRelativePath\retro.md",
+        "$iterationRelativePath\reviewer-index.md",
+        "$iterationRelativePath\review-diagrams.md",
+        "$iterationRelativePath\code-map.md",
+        "$iterationRelativePath\coverage-evidence.md",
+        "$iterationRelativePath\dependency-report.md",
+        "$iterationRelativePath\quality\hardening-gate.md",
+        "$iterationRelativePath\quality\trap-reapplication.md"
+    )
+}
+
+function Get-IterationDirtyCanonicalArtifacts {
+    param(
+        [string]$IterationDirectory,
+        [string]$ProjectRoot
+    )
+
+    $gitCommand = Get-Command -Name 'git' -ErrorAction SilentlyContinue
+    if ($null -eq $gitCommand) {
+        return @()
+    }
+
+    $iterationRelativePath = ([System.IO.Path]::GetRelativePath($ProjectRoot, $IterationDirectory)) -replace '/', '\'
+    $canonicalPaths = @(
+        Get-IterationCanonicalArtifactRelativePaths -IterationDirectory $IterationDirectory -ProjectRoot $ProjectRoot |
+            ForEach-Object { $_.ToLowerInvariant() }
+    )
+
+    $statusOutput = @(& git -C $ProjectRoot status --porcelain --untracked-files=all -- $iterationRelativePath 2>$null)
+    if ($LASTEXITCODE -ne 0) {
+        throw 'Unable to inspect git working tree state for the iteration directory.'
+    }
+
+    $dirtyArtifacts = New-Object System.Collections.Generic.List[object]
+    foreach ($statusLine in $statusOutput) {
+        if ([string]::IsNullOrWhiteSpace($statusLine) -or $statusLine.Length -lt 4) {
+            continue
+        }
+
+        $normalizedPath = $statusLine.Substring(3).Trim()
+        if ($normalizedPath -match '->\s*(.+)$') {
+            $normalizedPath = $Matches[1].Trim()
+        }
+
+        $normalizedPath = $normalizedPath -replace '/', '\'
+        if ($normalizedPath.ToLowerInvariant() -notin $canonicalPaths) {
+            continue
+        }
+
+        $dirtyArtifacts.Add([pscustomobject]@{
+                Status = $statusLine.Substring(0, 2).Trim()
+                Path   = $normalizedPath
+            }) | Out-Null
+    }
+
+    return $dirtyArtifacts.ToArray()
+}
+
+function Test-IterationCloseoutEvidence {
+    param(
+        [string]$IterationDirectory,
+        [string]$ProjectRoot,
+        [string[]]$StateLines,
+        [System.Collections.Generic.List[string]]$Errors
+    )
+
+    if (-not (Test-IterationRequiresCanonicalStateSchema -IterationDirectory $IterationDirectory)) {
+        return
+    }
+
+    $iterationStatus = Normalize-MarkdownCell (Get-MarkdownMetadataValue -Lines $StateLines -Label 'Iteration Status')
+    if (-not (Test-ClosedIterationStatus -IterationStatus $iterationStatus)) {
+        return
+    }
+
+    $statePath = Join-Path $IterationDirectory 'state.md'
+    $iterationStatusLineNumber = Find-CanonicalMetadataLabelLineNumber -Lines $StateLines -Label 'Iteration Status'
+    $reviewPath = Join-Path $IterationDirectory 'review.md'
+    $retroPath = Join-Path $IterationDirectory 'retro.md'
+    $gatePath = Join-Path $IterationDirectory 'quality\hardening-gate.md'
+
+    if (-not (Test-Path -LiteralPath $reviewPath -PathType Leaf)) {
+        Add-RepoStructuredValidationFailure -Errors $Errors -ProjectRoot $ProjectRoot -TargetPath $reviewPath -LineNumber $null -Category 'over-claim' -Message 'Iteration Status claims closure but review.md is missing.' -RemediationHint 'Add an accepted review.md artifact before claiming the iteration is closed.'
+    }
+    else {
+        $reviewLines = @(Get-MarkdownContent -Path $reviewPath)
+        $reviewVerdictLineNumber = Find-LineNumberByPattern -Lines $reviewLines -Pattern '^\*\*Overall Verdict\*\*:\s*(.+?)\s*$'
+        $reviewVerdict = Get-NormalizedKeyword (Get-MarkdownMetadataValue -Lines $reviewLines -Label 'Overall Verdict')
+        if ($reviewVerdict -ne 'accepted') {
+            Add-RepoStructuredValidationFailure -Errors $Errors -ProjectRoot $ProjectRoot -TargetPath $reviewPath -LineNumber $reviewVerdictLineNumber -Category 'over-claim' -Message ("Iteration Status claims closure but review.md overall verdict is '{0}' instead of accepted." -f $reviewVerdict) -RemediationHint 'Record an accepted review.md verdict before claiming the iteration is closed.'
+        }
+    }
+
+    if (-not (Test-Path -LiteralPath $retroPath -PathType Leaf)) {
+        Add-RepoStructuredValidationFailure -Errors $Errors -ProjectRoot $ProjectRoot -TargetPath $retroPath -LineNumber $null -Category 'over-claim' -Message 'Iteration Status claims closure but retro.md is missing.' -RemediationHint 'Add retro.md before claiming the iteration is closed.'
+    }
+
+    if (-not (Test-Path -LiteralPath $gatePath -PathType Leaf)) {
+        Add-RepoStructuredValidationFailure -Errors $Errors -ProjectRoot $ProjectRoot -TargetPath $gatePath -LineNumber $null -Category 'over-claim' -Message 'Iteration Status claims closure but quality/hardening-gate.md is missing.' -RemediationHint 'Add the hardening gate artifact with recorded post-implementation verification before claiming the iteration is closed.'
+    }
+    else {
+        $gateLines = @(Get-MarkdownContent -Path $gatePath)
+        $postImplementationVerification = Normalize-MarkdownCell (Get-MarkdownMetadataValue -Lines $gateLines -Label 'Post-Implementation Verification')
+        $verifiedAt = Normalize-MarkdownCell (Get-MarkdownMetadataValue -Lines $gateLines -Label 'Verified At')
+        if (Test-IsNullish $postImplementationVerification -or $postImplementationVerification.ToLowerInvariant().Contains('pending')) {
+            Add-RepoStructuredValidationFailure -Errors $Errors -ProjectRoot $ProjectRoot -TargetPath $gatePath -LineNumber (Find-LineNumberByPattern -Lines $gateLines -Pattern '^\*\*Post-Implementation Verification\*\*:') -Category 'over-claim' -Message 'Iteration Status claims closure but the hardening gate still shows pending post-implementation verification.' -RemediationHint 'Record post-implementation verification in quality/hardening-gate.md before claiming the iteration is closed.'
+        }
+
+        if (Test-IsNullish $verifiedAt -or $verifiedAt.ToLowerInvariant().Contains('pending')) {
+            Add-RepoStructuredValidationFailure -Errors $Errors -ProjectRoot $ProjectRoot -TargetPath $gatePath -LineNumber (Find-LineNumberByPattern -Lines $gateLines -Pattern '^\*\*Verified At\*\*:') -Category 'over-claim' -Message 'Iteration Status claims closure but quality/hardening-gate.md does not record Verified At.' -RemediationHint 'Record Verified At in quality/hardening-gate.md before claiming the iteration is closed.'
+        }
+
+        $gateState = Get-HardeningGateState -Path $gatePath -ProjectRoot $ProjectRoot
+        foreach ($concern in @($gateState.ConcernRows | Where-Object { Test-HardeningConcernBlocksClosure -Concern $_ -ProjectRoot $ProjectRoot })) {
+            $concernLineNumber = Find-LineNumberByPattern -Lines $gateLines -Pattern ('\|\s*`?' + [regex]::Escape([string]$concern.Concern) + '`?\s*\|')
+            Add-RepoStructuredValidationFailure -Errors $Errors -ProjectRoot $ProjectRoot -TargetPath $gatePath -LineNumber $concernLineNumber -Category 'over-claim' -Message ("Iteration Status claims closure but hardening-gate concern '{0}' still lacks recorded post-implementation evidence." -f $concern.Concern) -RemediationHint 'Promote the concern to runtime evidence or mark it not-applicable before claiming the iteration is closed.'
+        }
+    }
+
+    $dirtyArtifacts = @(Get-IterationDirtyCanonicalArtifacts -IterationDirectory $IterationDirectory -ProjectRoot $ProjectRoot)
+    if ($dirtyArtifacts.Count -gt 0) {
+        $dirtyList = ($dirtyArtifacts | ForEach-Object { $_.Path }) -join ', '
+        Add-RepoStructuredValidationFailure -Errors $Errors -ProjectRoot $ProjectRoot -TargetPath $statePath -LineNumber $iterationStatusLineNumber -Category 'over-claim' -Message ("Iteration Status claims closure while canonical iteration artifacts still have uncommitted changes: {0}" -f $dirtyList) -RemediationHint 'Commit or revert the iteration directory canonical artifacts before claiming the iteration is closed.'
+    }
+}
+
 function Get-ReviewerCloseoutDiffArtifacts {
     param(
         [string]$ProjectRoot,
@@ -2427,6 +2600,9 @@ function Test-IterationGovernance {
     }
 
     Test-SignOffRoleNaming -ArtifactContents $signOffArtifacts -TeamRoles $TeamRoles -Errors $errors
+    if ($stateLines.Count -gt 0) {
+        Test-IterationCloseoutEvidence -IterationDirectory $IterationDirectory -ProjectRoot $ProjectRoot -StateLines $stateLines -Errors $errors
+    }
 
     switch ($status) {
         'executing' {
@@ -2547,6 +2723,72 @@ function Get-ReviewerCloseoutEnforcementMap {
     return $enforcementMap
 }
 
+function Add-ApprovalReuseValidationErrors {
+    param(
+        [string[]]$Targets,
+        [string]$ProjectRoot,
+        [hashtable]$ResultMap
+    )
+
+    $groupedTargets = @{}
+    foreach ($target in @($Targets | Where-Object { Test-IterationRequiresCanonicalStateSchema -IterationDirectory $_ })) {
+        $featureDirectory = Split-Path -Parent (Split-Path -Parent $target)
+        if (-not $groupedTargets.ContainsKey($featureDirectory)) {
+            $groupedTargets[$featureDirectory] = New-Object System.Collections.Generic.List[string]
+        }
+
+        $null = $groupedTargets[$featureDirectory].Add($target)
+    }
+
+    foreach ($featureDirectory in $groupedTargets.Keys) {
+        $featureTargets = @($groupedTargets[$featureDirectory])
+        if ($featureTargets.Count -lt 2) {
+            continue
+        }
+
+        $recordsByTarget = @{}
+        foreach ($target in $featureTargets) {
+            $recordsByTarget[$target] = @(Get-ImplementationApprovalEvidenceRecords -IterationDirectory $target -ProjectRoot $ProjectRoot)
+        }
+
+        $seenPairs = @{}
+        for ($leftIndex = 0; $leftIndex -lt $featureTargets.Count; $leftIndex++) {
+            for ($rightIndex = $leftIndex + 1; $rightIndex -lt $featureTargets.Count; $rightIndex++) {
+                $leftTarget = $featureTargets[$leftIndex]
+                $rightTarget = $featureTargets[$rightIndex]
+
+                foreach ($leftRecord in $recordsByTarget[$leftTarget]) {
+                    foreach ($rightRecord in $recordsByTarget[$rightTarget]) {
+                        if ([string]::IsNullOrWhiteSpace($leftRecord.NormalizedText) -or $leftRecord.NormalizedText -cne $rightRecord.NormalizedText) {
+                            continue
+                        }
+
+                        if ([bool]$leftRecord.BlanketScopeDeclared -or [bool]$rightRecord.BlanketScopeDeclared) {
+                            continue
+                        }
+
+                        $pairKey = '{0}|{1}|{2}|{3}' -f $leftRecord.RelativeArtifactPath, $rightRecord.RelativeArtifactPath, $leftRecord.NormalizedText, $leftRecord.Heading
+                        if ($seenPairs.ContainsKey($pairKey)) {
+                            continue
+                        }
+
+                        $seenPairs[$pairKey] = $true
+                        $leftErrors = $ResultMap[$leftTarget].Errors
+                        $rightErrors = $ResultMap[$rightTarget].Errors
+                        $leftIterationPath = Convert-ToRepoMarkdownPath -ProjectRoot $ProjectRoot -TargetPath $leftTarget
+                        $rightIterationPath = Convert-ToRepoMarkdownPath -ProjectRoot $ProjectRoot -TargetPath $rightTarget
+                        $quoteText = $leftRecord.NormalizedText
+                        $remediationHint = 'Use iteration-specific implementation approval evidence, or explicitly declare a blanket multi-iteration authorization scope in the approval block.'
+
+                        Add-RepoStructuredValidationFailure -Errors $leftErrors -ProjectRoot $ProjectRoot -TargetPath $leftRecord.ArtifactPath -LineNumber $leftRecord.LineNumber -Category 'approval-reuse' -Message ("Implementation approval evidence in {0} reuses the normalized quote from {1}: ""{2}""" -f $leftIterationPath, $rightRecord.RelativeArtifactPath, $quoteText) -RemediationHint $remediationHint
+                        Add-RepoStructuredValidationFailure -Errors $rightErrors -ProjectRoot $ProjectRoot -TargetPath $rightRecord.ArtifactPath -LineNumber $rightRecord.LineNumber -Category 'approval-reuse' -Message ("Implementation approval evidence in {0} reuses the normalized quote from {1}: ""{2}""" -f $rightIterationPath, $leftRecord.RelativeArtifactPath, $quoteText) -RemediationHint $remediationHint
+                    }
+                }
+            }
+        }
+    }
+}
+
 try {
     $resolvedProjectPath = (Resolve-Path -Path (Resolve-ProjectPath -Path $ProjectPath)).Path
     $teamRoles = Get-TeamRoleMap -ResolvedProjectPath $resolvedProjectPath
@@ -2557,6 +2799,16 @@ try {
     if ($teamValidationErrors.Count -gt 0) {
         Write-Host "FAIL Squad team validation" -ForegroundColor Red
         foreach ($errorMessage in $teamValidationErrors) {
+            Write-Host "  - $errorMessage" -ForegroundColor Red
+        }
+        exit 1
+    }
+
+    $classifierCompatibilityErrors = New-Object System.Collections.Generic.List[string]
+    Test-CopilotInstructionsClassifierCompatibility -ProjectRoot $resolvedProjectPath -Errors $classifierCompatibilityErrors
+    if ($classifierCompatibilityErrors.Count -gt 0) {
+        Write-Host 'FAIL validate-governance' -ForegroundColor Red
+        foreach ($errorMessage in $classifierCompatibilityErrors) {
             Write-Host "  - $errorMessage" -ForegroundColor Red
         }
         exit 1
@@ -2582,6 +2834,11 @@ try {
                 }
             }
         })
+    $resultMap = @{}
+    foreach ($result in $results) {
+        $resultMap[$result.Path] = $result
+    }
+    Add-ApprovalReuseValidationErrors -Targets $targets -ProjectRoot $resolvedProjectPath -ResultMap $resultMap
     $hasFailures = $false
 
     foreach ($result in $results) {

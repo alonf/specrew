@@ -407,6 +407,44 @@ function Get-MarkdownSectionTable {
     return $rows.ToArray()
 }
 
+function Get-MarkdownSectionLines {
+    param(
+        [AllowEmptyCollection()]
+        [AllowEmptyString()]
+        [Parameter(Mandatory = $true)]
+        [string[]]$Lines,
+
+        [Parameter(Mandatory = $true)]
+        [string]$Heading
+    )
+
+    $headingPattern = '^#{2,3}\s+' + [regex]::Escape($Heading) + '\b'
+    $startIndex = -1
+
+    for ($index = 0; $index -lt $Lines.Count; $index++) {
+        if ($Lines[$index] -match $headingPattern) {
+            $startIndex = $index
+            break
+        }
+    }
+
+    if ($startIndex -lt 0) {
+        return @()
+    }
+
+    $sectionLines = New-Object System.Collections.Generic.List[string]
+    for ($index = $startIndex + 1; $index -lt $Lines.Count; $index++) {
+        $currentLine = $Lines[$index]
+        if ($currentLine -match '^#{2,3}\s+') {
+            break
+        }
+
+        $null = $sectionLines.Add($currentLine)
+    }
+
+    return $sectionLines.ToArray()
+}
+
 function Normalize-MarkdownCell {
     param([AllowNull()][string]$Value)
 
@@ -608,6 +646,138 @@ function Get-CanonicalHardeningConcernDefinitions {
         [pscustomobject]@{ Position = 4; ConcernId = 'test-integrity-targets' },
         [pscustomobject]@{ Position = 5; ConcernId = 'operational-resilience-concerns' }
     )
+}
+
+function Normalize-ApprovalEvidenceQuote {
+    param([AllowNull()][string]$Value)
+
+    if ([string]::IsNullOrWhiteSpace($Value)) {
+        return ''
+    }
+
+    $normalized = $Value.Trim()
+    $normalized = $normalized -replace '[*_]', ''
+    $normalized = $normalized -replace '\s+', ' '
+    return $normalized.Trim(" `t`r`n'`"")
+}
+
+function Test-BlanketAuthorizationScopeDeclared {
+    param(
+        [AllowEmptyCollection()]
+        [AllowEmptyString()]
+        [string[]]$Lines
+    )
+
+    foreach ($line in @($Lines)) {
+        if ([string]::IsNullOrWhiteSpace($line)) {
+            continue
+        }
+
+        $normalized = $line.ToLowerInvariant()
+        if ($normalized.Contains('blanket') -and $normalized.Contains('multi-iteration authorization')) {
+            return $true
+        }
+    }
+
+    return $false
+}
+
+function Get-ImplementationApprovalEvidenceRecords {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$IterationDirectory,
+
+        [Parameter(Mandatory = $true)]
+        [string]$ProjectRoot
+    )
+
+    $records = New-Object System.Collections.Generic.List[object]
+    $artifacts = @('plan.md', 'state.md')
+    $headings = @('Implementation Authorization', 'Implementation Approval')
+    $evidenceLabels = @(
+        'Recorded Evidence',
+        'Implementation Approval Evidence',
+        'Implementation Approval',
+        'Approval Evidence',
+        'Evidence Statement',
+        'Recorded Quote',
+        'Authorization Quote'
+    )
+
+    foreach ($artifactName in $artifacts) {
+        $artifactPath = Join-Path $IterationDirectory $artifactName
+        if (-not (Test-Path -LiteralPath $artifactPath -PathType Leaf)) {
+            continue
+        }
+
+        $lines = @(Get-MarkdownContent -Path $artifactPath)
+        $relativeArtifactPath = ([System.IO.Path]::GetRelativePath($ProjectRoot, $artifactPath)) -replace '/', '\'
+
+        foreach ($heading in $headings) {
+            $sectionLines = @(Get-MarkdownSectionLines -Lines $lines -Heading $heading)
+            if ($sectionLines.Count -eq 0) {
+                continue
+            }
+
+            $blanketScopeDeclared = Test-BlanketAuthorizationScopeDeclared -Lines $sectionLines
+            foreach ($sectionLine in $sectionLines) {
+                $trimmedLine = $sectionLine.Trim()
+                if ([string]::IsNullOrWhiteSpace($trimmedLine)) {
+                    continue
+                }
+
+                $rawText = $null
+                foreach ($label in $evidenceLabels) {
+                    $pattern = '^(?:-\s*)?\*\*' + [regex]::Escape($label) + '\*\*:\s*(.+?)\s*$'
+                    if ($trimmedLine -match $pattern) {
+                        $rawText = $Matches[1].Trim()
+                        break
+                    }
+                }
+
+                if ([string]::IsNullOrWhiteSpace($rawText) -and $trimmedLine -match '^(?:-\s*)?["“](.+?)["”]\s*$') {
+                    $rawText = $Matches[1].Trim()
+                }
+
+                if ([string]::IsNullOrWhiteSpace($rawText)) {
+                    continue
+                }
+
+                $normalizedText = Normalize-ApprovalEvidenceQuote -Value $rawText
+                if ([string]::IsNullOrWhiteSpace($normalizedText)) {
+                    continue
+                }
+
+                $escapedLine = [regex]::Escape($sectionLine)
+                $lineNumber = Find-LineNumberByPattern -Lines $lines -Pattern ('^\s*' + $escapedLine + '\s*$')
+
+                $records.Add([pscustomobject]@{
+                        ArtifactPath          = $artifactPath
+                        RelativeArtifactPath  = $relativeArtifactPath
+                        Heading               = $heading
+                        RawText               = $rawText
+                        NormalizedText        = $normalizedText
+                        BlanketScopeDeclared  = $blanketScopeDeclared
+                        LineNumber            = $lineNumber
+                    }) | Out-Null
+            }
+        }
+    }
+
+    return $records.ToArray()
+}
+
+function Test-ClosedIterationStatus {
+    param([AllowNull()][string]$IterationStatus)
+
+    if (Test-IsNullish $IterationStatus) {
+        return $false
+    }
+
+    $normalized = $IterationStatus.ToLowerInvariant()
+    return ($normalized -match '\bclosed\b') -or
+        ($normalized -match '\bcloseout complete\b') -or
+        ($normalized -match '\bclosure complete\b')
 }
 
 function Convert-ToDecisionReferenceId {
