@@ -2,9 +2,27 @@
 
 **Feature Branch**: `014-handoff-format-scoping`  
 **Created**: 2026-05-12  
-**Status**: Approved  
+**Status**: Closed  
+**Closed**: 2026-05-12  
 **Approved By**: Alon Fliess (human developer) on 2026-05-12 to authorize before-plan readiness.  
 **Input**: User description: "Open the next feature from the source draft at `C:\Temp\handoff-format-scoping.md`, create it as `014-handoff-format-scoping`, and keep the source scope intact."
+
+## Shipped Scope Summary
+
+**Iteration 001 Shipped (FR-001 through FR-007)**
+
+- **FR-001**: Defined two governed response types for the coordinator's top-level human-facing output: final stop message (three-section format for human-blocked stops) and in-flight progress update (single-line prose for Squad still working). Session-opening acknowledgements follow the same distinction.
+- **FR-002**: Updated coordinator governance guidance with explicit decision criteria for choosing between the two response types, including worked examples for each type and explanations of correct format selection.
+- **FR-003**: Updated the governed handoff template to capture both response types with explicit examples, preserving the existing three-section format for genuine stop points and keeping in-flight progress updates deliberately unstructured single-line prose.
+- **FR-004**: Implemented `soft-warning.empty-user-action-section` emission when a coordinator top-level response uses the three-section format but the "What I need from you" section is empty, contains placeholders like "Nothing yet" or "No action needed," or communicates no substantive human action. Placeholder matching uses a fixed repository-maintained phrase list.
+- **FR-005**: Implemented `soft-warning.transitional-stop-claim` emission when a coordinator top-level response uses "Why I stopped" to describe in-flight work, waiting, or transition-state narration rather than a true human-blocked stop.
+- **FR-006**: Ensured both new warning rules remain low-noise, advisory, and additive. Warnings are evaluated per response, do not fire on legitimate substantive stop messages, do not introduce positive `soft-info.well-scoped-handoff` emission, and preserve the existing soft-warning workflow.
+- **FR-007**: Updated the `human-handoff-id-context` corpus row scope-of-applicability to explicitly cover both final stop messages and in-flight progress updates, removing ambiguity about whether transitional narration is in scope.
+
+**Deferred to Iteration 002 (FR-008 and FR-009)**
+
+- **FR-008**: Recording the pattern "three-section stop-message format misapplied to in-flight transitions" in the known-traps catalog as a validator-enforced governance trap with citations to the governing rules and proving tests. (Deferred pending Iteration 002 execution.)
+- **FR-009**: Providing deterministic integration coverage for both new warning rules using violating and compliant fixtures, including at least one violating fixture and one compliant fixture per rule, and calibrating the rules against a historical-response sample so false positives stay acceptably low. (Deferred pending Iteration 002 execution.)
 
 ## Problem Statement
 

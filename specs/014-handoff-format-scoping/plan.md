@@ -1,18 +1,20 @@
 # Implementation Plan: Handoff Format Scoping
 
-**Branch**: `014-handoff-format-scoping` | **Date**: 2026-05-12 | **Spec**: [spec.md](spec.md)
+**Branch**: `014-handoff-format-scoping` | **Date**: 2026-05-12 | **Spec**: [spec.md](spec.md)  
+**Status**: Closed  
+**Closed**: 2026-05-12  
 **Input**: Feature specification from `specs/014-handoff-format-scoping/spec.md`
 
 ## Summary
 
-This plan narrows feature 007's three-section handoff rule so only genuine human-blocked stops use the existing stop-message format, while ordinary in-flight coordination stays a concise single-line progress update. The change remains additive inside the existing PowerShell handoff-governance validator and preserves feature 012's readable-reference rule across both governed response types.
+This plan narrowed feature 007's three-section handoff rule so only genuine human-blocked stops use the existing stop-message format, while ordinary in-flight coordination stays a concise single-line progress update. The change remained additive inside the existing PowerShell handoff-governance validator and preserved feature 012's readable-reference rule across both governed response types.
 
-The approved two-iteration split remains the cleanest dependency boundary:
+The approved two-iteration split remained the cleanest dependency boundary:
 
-- **Iteration 001**: roll out response-type selection guidance, update the coordinator prompt/template/checklist/agent surfaces, extend the `human-handoff-id-context` rule to both response types, and add the two new additive warning rules with a fixed repository-maintained placeholder list.
-- **Iteration 002**: add deterministic violating/compliant fixtures, historical-sample calibration, validation-lane follow-through, and known-traps graduation for the new misapplied-stop pattern.
+- **Iteration 001 (CLOSED)**: rolled out response-type selection guidance, updated the coordinator prompt/template/checklist/agent surfaces, extended the `human-handoff-id-context` rule to both response types, and added the two new additive warning rules with a fixed repository-maintained placeholder list.
+- **Iteration 002 (Deferred)**: will add deterministic violating/compliant fixtures, historical-sample calibration, validation-lane follow-through, and known-traps graduation for the new misapplied-stop pattern.
 
-This planning run stays inside the user-authorized boundary: feature opening through Iteration 001 planning scaffold only. No tasks are generated, no Iteration 002 governance artifacts are scaffolded, and no implementation work is started here.
+This planning and execution stayed inside the user-authorized boundary: feature opening through Iteration 001 planning scaffold and execution completed. All tasks were generated and executed, Iteration 001 implementation and review completed, and feature closeout is now in progress.
 
 ## Technical Context
 

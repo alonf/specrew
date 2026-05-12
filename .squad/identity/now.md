@@ -1,25 +1,25 @@
-updated_at: 2026-05-12T23:59:59+03:00
-focus_area: Feature 014 handoff-format-scoping iteration 001 closeout boundary committed; awaiting separate feature-closeout authorization
-active_issues: [Iteration 001 closed; feature-closeout authorization pending; feature-PR opening pending; session restart required before next Squad session loads updated agent guidance]
+updated_at: 2026-05-13T00:00:00+03:00
+focus_area: Feature 014 handoff-format-scoping closed; no active feature. Awaiting next feature authorization.
+active_issues: []
 ---
 
 # What We're Focused On
 
-**Phase**: Feature `014-handoff-format-scoping`, iteration `001`, is CLOSED; waiting for separate feature-closeout authorization before opening feature-level closeout work  
-**Urgency**: TIER 2 — iteration closeout complete; next step is feature-level closeout (FR-008 and FR-009 deferral, Iteration 002 planning, feature closeout summary), which requires separate authorization
+**Phase**: All features complete; awaiting next feature authorization.  
+**Urgency**: Tier 1 — Feature 014 closeout boundary commit completed; PR merged to main; session ready for next feature work once authorized.
 
 ---
 
 ## Current Status
 
-### Feature 014 Lifecycle: ITERATION CLOSEOUT BOUNDARY COMMITTED
-- Iteration `001`, the bounded stop-vs-progress selector and additive soft-warning rollout slice, is now CLOSED as of 2026-05-12
-- The hardening-gate post-implementation verification fields have been recorded with review-acceptance reference 8e99013 and date 2026-05-12
-- Six canonical iteration artifacts are confirmed present: plan.md, state.md, drift-log.md, quality/hardening-gate.md, review.md, retro.md
-- The pre-existing iteration-011 gap from Feature 001 has been recorded as a tracked defer in `.squad/decisions.md` with follow-up commitment to a separate scoped feature
-- Repository-wide governance validation is green
-- No feature-closeout or PR opening has been started; both require separate authorization
+### Feature 014 Lifecycle: CLOSED
+- Feature `014`, the bounded stop-vs-progress selector and additive soft-warning rollout feature, is now CLOSED as of 2026-05-13
+- All shipped capabilities (FR-001 through FR-007) were delivered in Iteration 001
+- All deferred capabilities (FR-008 and FR-009) are recorded as awaiting Iteration 002 authorization
+- Feature-closeout PR has been merged to main
+- No active feature is in scope
+- Repository is clean; tree is ready for next feature work
 
 ### Next Valid Action
-Await Alon Fliess's separate feature-closeout authorization before opening feature-level work (FR-008, FR-009, Iteration 002 planning, feature summary). Session restart is required before the next session can load the updated agent guidance.
+Await next feature authorization before opening new feature work. Session may restart to load updated agent guidance if needed.
 
