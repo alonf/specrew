@@ -50,7 +50,7 @@
 ## Deferral Note
 
 - Approval-evidence reuse, over-claim enforcement, bookkeeping classification, and corpus graduation are explicitly deferred to iteration 002.
-- Post-implementation concern verification is complete for the review boundary on 2026-05-12; retrospective and closeout remain separate lifecycle steps.
+- Post-implementation concern verification is complete for the review boundary on 2026-05-12, the retrospective is recorded, and the closeout validation lane is green on the closeout tree.
 
 ## Hardening-Gate Status
 
@@ -58,7 +58,7 @@
 
 **Scope**: Iteration 001 canonical-schema and graceful-error slice (T001-T013) covering canonical iteration metadata enforcement, canonical hardening-gate concern enforcement, structured FAIL output, and iteration-1 replay coverage.
 
-**Post-Implementation Verification Summary**: Accepted review evidence now confirms the blocking canonical-schema, graceful-error, replay-path, and regression concerns on the current tree. The lowercase canonical-label case-drift gap found during review was repaired before acceptance.
+**Post-Implementation Verification Summary**: Accepted review evidence confirms the blocking canonical-schema, graceful-error, replay-path, and regression concerns on the current tree. The lowercase canonical-label case-drift gap found during review was repaired before acceptance, the retrospective is now recorded, and the full six-script lane plus `tests/integration/validator-hardening-iteration1.ps1` are green on the closeout tree.
 
 ## Sign-Off Evidence
 
@@ -69,4 +69,4 @@
 
 ---
 
-**Hardening-Gate Planning Status**: signed off on 2026-05-12; implementation authorization recorded separately in the iteration plan and state artifacts; post-implementation review verification recorded on 2026-05-12.
+**Hardening-Gate Planning Status**: signed off on 2026-05-12; implementation authorization recorded separately in the iteration plan and state artifacts; post-implementation review verification recorded on 2026-05-12; retrospective and closeout validation now complete on 2026-05-12.

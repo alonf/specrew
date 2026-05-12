@@ -2,18 +2,18 @@
 
 **Schema**: v1  
 **Spec**: [../../spec.md](../../spec.md)  
-**Status**: retro  
+**Status**: complete  
 **Capacity**: 13/20 story_points  
 **Planned Start**: 2026-05-12  
 **Started**: 2026-05-12  
 **Completed**: 2026-05-12  
-**Closed**: pending  
+**Closed**: 2026-05-12  
 **Hardening-Gate Sign-Off**: signed-2026-05-12  
 **Implementation Authorization**: authorized-2026-05-12  
 **Review Completed**: 2026-05-12  
 **Review Verdict**: accepted  
 **Retrospective Completed**: 2026-05-12  
-**Closeout Validation**: pending
+**Closeout Validation**: 2026-05-12 (full six-script lane plus `validator-hardening-iteration1.ps1`)
 
 ## Summary
 
@@ -58,6 +58,7 @@ Deliver the first validator-hardening slice: canonical iteration `state.md` sche
 | Additive validator CLI surface preserved | pass | Shared regressions plus repo-wide `validate-governance.ps1 -ProjectPath .` stayed green after the Iteration 001 implementation landed |
 | Existing validator regression baseline captured before implementation | pass | T001 recorded the six-script baseline on 2026-05-12 with repo-wide `validate-governance.ps1 -ProjectPath .` green |
 | Accepted review boundary recorded | pass | `iterations/001/review.md` accepts the slice after repairing lowercase canonical-label case drift and re-running the replay harness plus repo-wide validator |
+| Closeout validation green | pass | The full six-script lane plus `tests/integration/validator-hardening-iteration1.ps1` passed on the staged closeout tree before iteration closure |
 
 ## Risk Tracking
 

@@ -6,8 +6,8 @@
 **In Progress**: none
 **Baseline Ref**: commit 977bc79 (task-backlog boundary before iteration 001 implementation)
 **Updated**: 2026-05-12
-**Current Phase**: retro
-**Iteration Status**: Review accepted and retrospective complete; closeout validation is the next required boundary
+**Current Phase**: complete
+**Iteration Status**: Closeout validation green; iteration 001 closed
 
 ## Planning Summary
 
@@ -30,7 +30,7 @@ Iteration 001 is the first delivery slice for feature 013, validator hardening. 
 - **Implementation Boundary**: ✅ **RECORDED** — tasks `T001` through `T013` are complete on the current tree with replay-path evidence and repo-wide regression proof captured on 2026-05-12
 - **Review Boundary**: ✅ **ACCEPTED** — `review.md` records the four blocking concern checks, the lowercase-label review repair, and the accepted verdict on 2026-05-12
 - **Retrospective Boundary**: ✅ **COMPLETE** — `retro.md` now records the lowercase-label lesson, harness-coupling lesson, and bounded-scope delivery outcome on 2026-05-12
-- **Closeout Boundary**: pending - no closure claim is authorized in planning
+- **Closeout Boundary**: ✅ **COMPLETE** — the full six-script lane plus `tests/integration/validator-hardening-iteration1.ps1` are green on the closeout tree and iteration 001 is now closed
 
 ## Scope and Deferrals
 
@@ -40,4 +40,4 @@ Iteration 001 is the first delivery slice for feature 013, validator hardening. 
 
 ## Next Action
 
-The next required step is to run the full closeout validation lane on the post-retrospective tree, confirm zero FAIL lines, and then record the separate closeout boundary for this iteration.
+No further action is required for feature `013`, validator hardening, iteration `001`, the canonical-schema and graceful-error slice. Iteration `002`, approval-reuse and over-claim hardening, remains a separate future slice and is not opened by this closeout.
