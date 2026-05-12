@@ -12,6 +12,19 @@
 
 ---
 
+## 2026-05-12T20:59:59Z — Canonical defer entry (Feature 014 iteration 001 closeout correction)
+
+- **Decision ID**: defer-fr054-immutability-guardrail
+- **Type**: defer
+- **Affected Requirement**: FR-054
+- **Affected Iteration**: specs\001-specrew-product\iterations\011
+- **Approving Human**: Alon Fliess
+- **Recorded At**: 2026-05-08T13:10:19Z
+- **Next Action**: Address automated immutable-snapshot enforcement in a separate scoped feature after Feature 001 iteration 011 cleanup verification is complete
+- **Rationale**: Historical cleanup during Feature 014 iteration 001 closeout. Iteration 011 focused on fixing legacy explicit-target validation regression without retroactively modifying closed iteration artifacts. FR-054 immutability enforcement (automated rejection of rewrites to closed iteration artifacts) remains unimplemented but this deferral preserves iteration boundaries and forward-only semantics.
+
+---
+
 ### 2026-05-12T22:49:40+03:00: User directive
 **By:** Alon Fliess (via Copilot)
 **What:** Authorize the independent review boundary for Feature 014, handoff-format scoping, Iteration 001, the bounded stop-vs-progress selector and additive soft-warning rollout, against implementation commit `f02688f`; the reviewer must evaluate the canonical and iteration-specific concerns, run the five preserved handoff-governance regressions plus the two new soft-warning rules on compliant and violating fixtures, confirm the Feature 012 `human-handoff-id-context` scope-of-applicability update does not regress its existing detection, confirm repo-wide `validate-governance.ps1` stays green, emit `review.md` with an explicit verdict, dogfood the new format-scoping rules in the review output itself, repair any blocking gap in the current iteration instead of deferring it, and stop before retrospective for separate human sign-off on the review verdict.
