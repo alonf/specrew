@@ -6,8 +6,8 @@
 **In Progress**: none
 **Baseline Ref**: 1aeee29
 **Updated**: 2026-05-12
-**Current Phase**: reviewing
-**Iteration Status**: review accepted against commit `f02688f`; stopped before retrospective and closeout pending separate human authorization
+**Current Phase**: retro
+**Iteration Status**: review accepted against commit `f02688f`; retrospective boundary recorded in `retro.md`; waiting for separate human closeout authorization
 
 ## Planning Summary
 
@@ -37,7 +37,7 @@ Iteration 001 is the first delivery slice for feature 014, handoff-format scopin
 - **Hardening-Gate Sign-Off**: ✅ **SIGNED OFF** — `quality/hardening-gate.md` signed by Alon Fliess on 2026-05-12
 - **Implementation Authorization**: ✅ **AUTHORIZED** — Iteration 001 implementation was authorized by Alon Fliess on 2026-05-12 for the bounded `tasks.md` scope only
 - **Review Boundary**: ✅ **ACCEPTED** — `review.md` records an accepted independent review against commit `f02688f`; the preserved regressions, Feature `012`, descriptive references in handoffs, replay-path compatibility tests, and repo-wide governance validation all passed
-- **Retro Placeholder**: still deferred until the retrospective boundary opens with separate human authorization
+- **Retro Artifact**: ✅ **COMPLETE** — `retro.md` records zero-variance delivery (8.0 sp actual vs 8.0 sp estimated), three surfaced process lessons (boundary-claim durability, acceptance-evidence scattering, startup-coupling visibility), and three candidate corpus rows for future trap addition; separate human closeout authorization is still required
 - **Deferred**: Iteration 002 fixture proof, calibration, and misapplied-stop trap graduation remain unopened and unscaffolded in this turn
 - **Session Restart Requirement**: required before a future session can load the updated `.github/agents/squad.agent.md` and `.squad/templates/squad.agent.md` guidance
 
@@ -49,7 +49,7 @@ Iteration 001 is the first delivery slice for feature 014, handoff-format scopin
 
 ## Next Action
 
-Hold at the accepted review boundary. Do not scaffold retro or closeout artifacts until Alon Fliess explicitly authorizes the retrospective start; a new session is still required before future Squad runs can load the updated agent-guidance files.
+Hold at the retrospective boundary. Do not open closeout until Alon Fliess explicitly authorizes it; a new session is still required before future Squad runs can load the updated agent-guidance files.
 
 <!-- >>> specrew-managed escalation-state >>> -->
 ## Repair Escalation
