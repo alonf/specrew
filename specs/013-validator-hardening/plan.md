@@ -12,7 +12,7 @@ This plan closes six governance-validator rigor gaps exposed during Specrew dogf
 
 The existing validator command surface, exit-code conventions, and PASS/FAIL format are preserved throughout.
 
-**Implementation status (2026-05-12)**: Iteration 002's implementation boundary is now complete on the current tree. Review, retrospective, and final closeout remain pending; no closeout claim is made by this plan update.
+**Implementation status (2026-05-12)**: Feature 013 is complete. Iteration 001, the canonical-schema and graceful-error slice, and Iteration 002, the approval-reuse / over-claim / bookkeeping-classifier slice, are both closed. The shipped feature now enforces canonical iteration state schema, canonical hardening-gate concern order, structured FAIL output, sibling-iteration approval-reuse detection, iteration closeout over-claim detection, and `.github/copilot-instructions.md` bookkeeping classification while preserving the existing validator CLI surface.
 
 ## Technical Context
 

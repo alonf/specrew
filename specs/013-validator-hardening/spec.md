@@ -2,12 +2,21 @@
 
 **Feature Branch**: `013-validator-hardening`  
 **Created**: 2026-05-12  
-**Status**: Draft  
+**Status**: Complete  
 **Input**: User description: "Generate a specification from the authoritative source spec at `C:\Temp\validator-hardening.md`, opening the next feature in this repository and keeping the source scope intact."
 
 ## Problem Statement
 
 Specrew's governance validator is the canonical mechanical check surface for feature and iteration artifacts, but recent dogfooding exposed six rigor gaps that still rely on human review or fail with raw script exceptions. The current process can miss canonical hardening-gate deviations, reused approval evidence, and lifecycle over-claims, and it can also crash when iteration state metadata uses non-canonical field names. This feature closes those gaps so validator failures fail closed with clear, actionable messages instead of silent acceptance or PowerShell exceptions.
+
+## Feature Closeout Summary
+
+Feature 013 is complete. The shipped feature spans two closed iterations:
+
+- **Iteration 001** delivered canonical iteration `state.md` schema enforcement, canonical hardening-gate concern enforcement, graceful structured FAIL output, and the feature-local contracts that define those validator rules.
+- **Iteration 002** delivered approval-evidence reuse detection, iteration closeout over-claim detection, the `.github/copilot-instructions.md` bookkeeping-versus-behavior classifier consumed by `specrew-start.ps1`, and graduation of the targeted known-traps corpus rows to validator-enforced status.
+
+Together, the feature hardens the deterministic governance-validator surface without changing its established CLI shape or introducing model-based review.
 
 ## Relationship to Existing Features
 
