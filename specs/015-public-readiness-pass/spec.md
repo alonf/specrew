@@ -24,7 +24,7 @@ These gaps are coupled. Licensing, attribution, README accuracy, release version
 ### Out of Scope
 
 - Approving or performing the repository visibility change from private to public.
-- Beginning hardening-gate sign-off, implementation authorization, or feature execution beyond specification and planning preparation.
+- Beginning work beyond the bounded Iteration 001 slice. Hardening-gate sign-off and implementation authorization are now recorded for `T001-T009` only; `T010-T024` and any later lifecycle expansion still require explicit human approval.
 - Packaging Specrew as an installable CLI, documenting multi-host support, or creating a polished public demo repository.
 - Launch marketing, announcements, blog posts, conference collateral, or other external promotion work.
 - Broad CI/CD redesign unrelated to public-readiness documentation and release bookkeeping.
@@ -175,7 +175,7 @@ A future feature owner can complete closeout work with explicit version-manageme
 ## Governance Alignment *(mandatory)*
 
 - **Spec Steward**: Alon Fliess as requesting human, with Squad preserving fidelity to the source draft.
-- **Iteration Facilitator**: Specrew planner/coordinator pairing responsible for translating this spec into an Iteration 001 planning scaffold only.
+- **Iteration Facilitator**: Specrew planner/coordinator pairing responsible for preserving the repaired two-iteration split: Iteration 001 = `T001-T009`, Iteration 002 = `T010-T024`.
 - **Capacity Model**: Two planned iterations totaling roughly 18 story points from the source draft baseline, with Iteration 1 focused on licensing, README, and product-status reconciliation, and Iteration 2 focused on versioning, changelog, tags, and closeout-governance extension.
 - **Drift Signals**: Any mismatch among README public state, top-level licensing/notice files, declared version, changelog, release tags, product-spec status, or future closeout guidance indicates drift from this specification.
-- **Human Oversight Points**: Current approval stops at specification, Iteration 001 planning scaffold, and upstream-tracking push. Hardening-gate sign-off, implementation start, and public-repo visibility change all require explicit later human authorization.
+- **Human Oversight Points**: Later explicit human approval recorded on 2026-05-13 now opens hardening-gate sign-off plus implementation for `T001-T009` only. Iteration 002 (`T010-T024`), public-repo visibility change, and any new scope or lifecycle artifacts beyond this bounded slice still require later human authorization.

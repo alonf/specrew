@@ -2,10 +2,12 @@
 
 **Schema**: v1
 **Spec**: [../../spec.md](../../spec.md)
-**Status**: planning
+**Status**: executing
 **Capacity**: 10.0/20 story_points
 **Started**: 2026-05-13
-**Completed**: (none)
+**Completed**: Authorized slice `T001-T009` completed on 2026-05-13; `review.md` and `retro.md` remain intentionally unopened
+**Hardening-Gate Sign-Off**: 2026-05-13 via current-session human authorization
+**Implementation Authorization**: 2026-05-13 for T001-T009 only
 
 ## Scope Summary
 
@@ -25,15 +27,15 @@
 
 | Task | Title | Requirement | Story | Effort | Owner | Owner File Globs | Status | Agent | Actual | Verdict |
 | ---- | ----- | ----------- | ----- | ------ | ----- | ---------------- | ------ | ----- | ------ | ------- |
-| T001 | Reconfirm the repaired branch name, two-iteration split, and approval boundary | FR-015 | Boundary | 0.25 | Planner | `specs/015-public-readiness-pass/spec.md`, `specs/015-public-readiness-pass/plan.md` | planned | Planner | — | pending |
-| T002 | Scaffold Iteration 001 planning artifacts without review or retro placeholders | FR-015 | Boundary | 0.25 | Planner | `specs/015-public-readiness-pass/iterations/001/plan.md`, `specs/015-public-readiness-pass/iterations/001/state.md`, `specs/015-public-readiness-pass/iterations/001/drift-log.md`, `specs/015-public-readiness-pass/iterations/001/quality/hardening-gate.md` | planned | Planner | — | pending |
-| T003 | Confirm `.specrew/config.yml` as the canonical version source for later release-truth work | FR-015 | Boundary | 0.50 | Release steward | `specs/015-public-readiness-pass/plan.md`, `specs/015-public-readiness-pass/contracts/public-readiness-warning-schema.md` | planned | Planner | — | pending |
-| T004 | Record the Iteration 001 versus Iteration 002 execution split in the iteration plan | FR-015 | Boundary | 0.50 | Planner | `specs/015-public-readiness-pass/iterations/001/plan.md` | planned | Planner | — | pending |
-| T005 | Create the MIT license text at the repository root | FR-001 | US1 | 1.00 | Repository steward | `LICENSE` | planned | Implementer | — | pending |
-| T006 | Author top-level upstream attribution for Squad and Spec Kit | FR-002 | US1 | 1.50 | Repository steward | `NOTICE.md` | planned | Implementer | — | pending |
-| T007 | Rewrite README public-readiness sections for first-time observers | FR-003, FR-004, FR-005, FR-006, FR-007 | US1 | 4.00 | Documentation steward | `README.md` | planned | Implementer | — | pending |
-| T008 | Update the product spec status to `Active 0.14.0` | FR-011 | US1 | 0.50 | Product spec steward | `specs/001-specrew-product/spec.md` | planned | Implementer | — | pending |
-| T009 | Run first-time-reader review and markdown validation for Iteration 001 surfaces | FR-001, FR-002, FR-003, FR-004, FR-005, FR-006, FR-007, FR-011 | US1 | 1.50 | human reviewer | `LICENSE`, `NOTICE.md`, `README.md`, `specs/001-specrew-product/spec.md`, `specs/015-public-readiness-pass/quickstart.md` | planned | Reviewer | — | pending |
+| T001 | Reconfirm the repaired branch name, two-iteration split, and approval boundary | FR-015 | Boundary | 0.25 | Planner | `specs/015-public-readiness-pass/spec.md`, `specs/015-public-readiness-pass/plan.md` | done | Planner | Updated the authoritative boundary text for the bounded `T001-T009` authorization and explicit `T010-T024` deferral. | pass |
+| T002 | Scaffold Iteration 001 planning artifacts without review or retro placeholders | FR-015 | Boundary | 0.25 | Planner | `specs/015-public-readiness-pass/iterations/001/plan.md`, `specs/015-public-readiness-pass/iterations/001/state.md`, `specs/015-public-readiness-pass/iterations/001/drift-log.md`, `specs/015-public-readiness-pass/iterations/001/quality/hardening-gate.md` | done | Planner | Ran `extensions/specrew-speckit/scripts/scaffold-iteration-plan.ps1`; existing `iterations/001/plan.md` was preserved and no `review.md` or `retro.md` was created. | pass |
+| T003 | Confirm `.specrew/config.yml` as the canonical version source for later release-truth work | FR-015 | Boundary | 0.50 | Release steward | `specs/015-public-readiness-pass/plan.md`, `specs/015-public-readiness-pass/contracts/public-readiness-warning-schema.md` | done | Planner | Reconciled the plan and public-readiness warning contract to treat `.specrew/config.yml` `specrew_version` as the authoritative version source for Iteration 002. | pass |
+| T004 | Record the Iteration 001 versus Iteration 002 execution split in the iteration plan | FR-015 | Boundary | 0.50 | Planner | `specs/015-public-readiness-pass/iterations/001/plan.md` | done | Planner | Recorded the authorized Iteration 001 completion state and the explicit Iteration 002 deferral boundary. | pass |
+| T005 | Create the MIT license text at the repository root | FR-001 | US1 | 1.00 | Repository steward | `LICENSE` | done | Implementer | Authored the repository MIT license with the required 2026 copyright line. | pass |
+| T006 | Author top-level upstream attribution for Squad and Spec Kit | FR-002 | US1 | 1.50 | Repository steward | `NOTICE.md` | done | Implementer | Added root-level upstream attribution for Squad and Spec Kit, including the required derived directories. | pass |
+| T007 | Rewrite README public-readiness sections for first-time observers | FR-003, FR-004, FR-005, FR-006, FR-007 | US1 | 4.00 | Documentation steward | `README.md` | done | Implementer | Rewrote the README around Current State, working scope, gaps, lifecycle, PR-at-feature-close, roadmap, license, and contributing guidance. | pass |
+| T008 | Update the product spec status to `Active 0.14.0` | FR-011 | US1 | 0.50 | Product spec steward | `specs/001-specrew-product/spec.md` | done | Implementer | Promoted the product spec from Draft to Active 0.14.0 and added the shipped-feature note. | pass |
+| T009 | Run first-time-reader review and markdown validation for Iteration 001 surfaces | FR-001, FR-002, FR-003, FR-004, FR-005, FR-006, FR-007, FR-011 | US1 | 1.50 | human reviewer | `LICENSE`, `NOTICE.md`, `README.md`, `specs/001-specrew-product/spec.md`, `specs/015-public-readiness-pass/quickstart.md` | done | Reviewer | Recorded first-time-reader, markdownlint, and governance-validation evidence in `specs/015-public-readiness-pass/quickstart.md`. | pass |
 
 ## Effort Model
 
@@ -51,11 +53,11 @@
 
 - Current roster snapshot: Spec Steward, Planner, Implementer, Reviewer, Retro Facilitator
 - Technology and scope signals: No single specialty dominates yet; treat the slice as general product work until task decomposition adds sharper evidence.
-- Task dependency graph: detailed dependencies are still pending task decomposition in this stub; revisit once the task table is populated.
-- Workstream separability: Current scope does not yet prove enough safe parallelism for same-specialty expansion; default to a smaller serial team until tasks are clearer.
-- Shared-surface conflict risk: no elevated shared-surface warning inferred yet.
+- Task dependency graph: Setup and foundational boundary work stayed serial; `T005`, `T006`, and `T008` were separable once the boundary locked; `T007` and `T009` followed sequentially.
+- Workstream separability: The authorized slice allowed limited safe parallelism on independent landing-surface files only.
+- Shared-surface conflict risk: README and quickstart remained the highest shared-surface risk, so those edits stayed serial.
 - Prior reviewer ownership/hotspot evidence: No prior reviewer hotspot signals were found for this feature.
-- Recommendation: do not propose Junior/Senior same-specialty expansion until the task table and ownership boundaries make safe parallelism explicit. If a same-specialty pair is approved later, record `Owner File Globs` for the parallel tasks or keep the work serial.
+- Recommendation: Keep Iteration 002 serial until later authorization lands; versioning, changelog, tags, and validator work all share the same release-truth surface.
 
 ## Phase Baseline
 
@@ -74,9 +76,15 @@
 - Deferred to Iteration 002: FR-008, FR-009, FR-010, FR-012, FR-013, FR-014, and FR-016
 - Overcommit guardrail: the bounded Iteration 001 task set totals 10.0 story_points, which remains under the 20 story_point capacity ceiling.
 
+## Execution Split
+
+- **Iteration 001 authorized and completed in this slice**: `T001-T009` only
+- **Iteration 002 still deferred**: `T010-T024`, including `.specrew/config.yml`, `CHANGELOG.md`, `docs/versioning.md`, release tags, `validate-governance.ps1` public-readiness warnings, and coordinator-governance extension work
+- **Lifecycle boundary kept intact**: `specs/015-public-readiness-pass/iterations/001/review.md` and `specs/015-public-readiness-pass/iterations/001/retro.md` remain intentionally uncreated
+
 ## Notes
 
 - This plan is intentionally limited to the Iteration 001 public-landing-surface slice; versioning, changelog, tags, validator warnings, and closeout-governance extension work stay deferred to Iteration 002.
-- Keep `Status: planning` until the pre-implementation hardening gate is signed off and implementation authorization is recorded.
-- The current validator treats committed `review.md` and `retro.md` files as evidence that later lifecycle phases have started, so those artifacts must remain uncreated at planning time.
-- If the iteration scope changes later, update the task table, phase baseline, and deferral note in the same planning boundary.
+- Hardening-gate sign-off and implementation authorization are recorded for Iteration 001 only; keep Iteration 002 deferred until later explicit human approval.
+- The current validator treats committed `review.md` and `retro.md` files as evidence that later lifecycle phases have started, so those artifacts remain uncreated by design.
+- If the scope changes later, update the task table, execution split, and deferral note in the same planning boundary.

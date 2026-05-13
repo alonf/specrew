@@ -21,8 +21,8 @@
 
 **Purpose**: Lock the repaired authority boundary and scaffold only the approved Iteration 001 planning surface.
 
-- [ ] T001 [Owner: Planner] [Effort: S] Reconfirm the repaired branch name, the two-iteration split, and the FR-015 approval boundary in `specs/015-public-readiness-pass/spec.md` and `specs/015-public-readiness-pass/plan.md`. (Trace: FR-015, TG-004, plan.md Summary, plan.md Capacity Gate)
-- [ ] T002 [Owner: Planner] [Effort: S] Run `extensions/specrew-speckit/scripts/scaffold-iteration-plan.ps1` to create or refresh `specs/015-public-readiness-pass/iterations/001/plan.md` only, and leave `specs/015-public-readiness-pass/iterations/001/review.md` plus `specs/015-public-readiness-pass/iterations/001/retro.md` uncreated during planning. (Trace: FR-015, TG-004, spec.md Out of Scope, spec.md Governance Alignment, plan.md Phase 1 Quality Planning)
+- [X] T001 [Owner: Planner] [Effort: S] Reconfirm the repaired branch name, the two-iteration split, and the FR-015 approval boundary in `specs/015-public-readiness-pass/spec.md` and `specs/015-public-readiness-pass/plan.md`. (Trace: FR-015, TG-004, plan.md Summary, plan.md Capacity Gate)
+- [X] T002 [Owner: Planner] [Effort: S] Run `extensions/specrew-speckit/scripts/scaffold-iteration-plan.ps1` to create or refresh `specs/015-public-readiness-pass/iterations/001/plan.md` only, and leave `specs/015-public-readiness-pass/iterations/001/review.md` plus `specs/015-public-readiness-pass/iterations/001/retro.md` uncreated during planning. (Trace: FR-015, TG-004, spec.md Out of Scope, spec.md Governance Alignment, plan.md Phase 1 Quality Planning)
 
 ---
 
@@ -32,8 +32,8 @@
 
 **⚠️ CRITICAL**: No user-story work should begin until the canonical version source and iteration split are explicitly locked.
 
-- [ ] T003 [Owner: Release steward] [Effort: S] Confirm `.specrew/config.yml` as the canonical version source and reconcile the shared implementation surface in `specs/015-public-readiness-pass/plan.md` and `specs/015-public-readiness-pass/contracts/public-readiness-warning-schema.md`. (Trace: FR-008, FR-014, FR-016, TG-002, plan.md Summary)
-- [ ] T004 [Owner: Planner] [Effort: S] Record the Iteration 001 versus Iteration 002 execution split in `specs/015-public-readiness-pass/iterations/001/plan.md` so licensing/README/product-status work stays separate from versioning/changelog/tags/governance-extension work. (Trace: FR-015, TG-004, spec.md Governance Alignment, plan.md Capacity Gate)
+- [X] T003 [Owner: Release steward] [Effort: S] Confirm `.specrew/config.yml` as the canonical version source and reconcile the shared implementation surface in `specs/015-public-readiness-pass/plan.md` and `specs/015-public-readiness-pass/contracts/public-readiness-warning-schema.md`. (Trace: FR-008, FR-014, FR-016, TG-002, plan.md Summary)
+- [X] T004 [Owner: Planner] [Effort: S] Record the Iteration 001 versus Iteration 002 execution split in `specs/015-public-readiness-pass/iterations/001/plan.md` so licensing/README/product-status work stays separate from versioning/changelog/tags/governance-extension work. (Trace: FR-015, TG-004, spec.md Governance Alignment, plan.md Capacity Gate)
 
 **Checkpoint**: The repaired planning boundary is locked and the canonical release-truth surfaces are identified.
 
@@ -47,11 +47,11 @@
 
 ### Implementation for User Story 1
 
-- [ ] T005 [P] [US1] [Owner: Repository steward] [Effort: S] Create the MIT license text in `LICENSE` with the required copyright line `Copyright (c) 2026 Alon Fliess and contributors`. (Trace: FR-001, TG-001, SC-002)
-- [ ] T006 [P] [US1] [Owner: Repository steward] [Effort: M] Author top-level upstream attribution in `NOTICE.md` for Squad and Spec Kit, explicitly naming derived directories `.specify/`, `.specify/extensions/specrew-speckit/squad-templates/`, and `extensions/specrew-speckit/`. (Trace: FR-002, TG-001, SC-002)
-- [ ] T007 [US1] [Owner: Documentation steward] [Effort: L] Rewrite `README.md` to add **Current State**, **What's working**, **What's NOT working yet**, **Recommended Lifecycle**, **PR-at-feature-close Workflow**, **Roadmap**, **License**, and **Contributing** sections with the approved alpha-only external contribution posture. (Trace: FR-003, FR-004, FR-005, FR-006, FR-007, NFR-001, NFR-002, TG-001, SC-001)
-- [ ] T008 [US1] [Owner: Product spec steward] [Effort: S] Update `specs/001-specrew-product/spec.md` from draft status to `Active 0.14.0` and add the brief note that 14 implementing features now back the product vision. (Trace: FR-011, TG-001, TG-002, SC-003)
-- [ ] T009 [US1] [Owner: human reviewer] [Effort: M] Run the first-time-reader review plus markdown lint for `LICENSE`, `NOTICE.md`, `README.md`, and `specs/001-specrew-product/spec.md`, then record the Iteration 001 evidence in `specs/015-public-readiness-pass/quickstart.md`. (Trace: FR-001, FR-002, FR-003, FR-004, FR-005, FR-006, FR-007, FR-011, SC-001, SC-002)
+- [X] T005 [P] [US1] [Owner: Repository steward] [Effort: S] Create the MIT license text in `LICENSE` with the required copyright line `Copyright (c) 2026 Alon Fliess and contributors`. (Trace: FR-001, TG-001, SC-002)
+- [X] T006 [P] [US1] [Owner: Repository steward] [Effort: M] Author top-level upstream attribution in `NOTICE.md` for Squad and Spec Kit, explicitly naming derived directories `.specify/`, `.specify/extensions/specrew-speckit/squad-templates/`, and `extensions/specrew-speckit/`. (Trace: FR-002, TG-001, SC-002)
+- [X] T007 [US1] [Owner: Documentation steward] [Effort: L] Rewrite `README.md` to add **Current State**, **What's working**, **What's NOT working yet**, **Recommended Lifecycle**, **PR-at-feature-close Workflow**, **Roadmap**, **License**, and **Contributing** sections with the approved alpha-only external contribution posture. (Trace: FR-003, FR-004, FR-005, FR-006, FR-007, NFR-001, NFR-002, TG-001, SC-001)
+- [X] T008 [US1] [Owner: Product spec steward] [Effort: S] Update `specs/001-specrew-product/spec.md` from draft status to `Active 0.14.0` and add the brief note that 14 implementing features now back the product vision. (Trace: FR-011, TG-001, TG-002, SC-003)
+- [X] T009 [US1] [Owner: human reviewer] [Effort: M] Run the first-time-reader review plus markdown lint for `LICENSE`, `NOTICE.md`, `README.md`, and `specs/001-specrew-product/spec.md`, then record the Iteration 001 evidence in `specs/015-public-readiness-pass/quickstart.md`. (Trace: FR-001, FR-002, FR-003, FR-004, FR-005, FR-006, FR-007, FR-011, SC-001, SC-002)
 
 **Checkpoint**: User Story 1 is complete when the repo landing surfaces accurately communicate public-readiness status and legal reuse posture.
 
@@ -104,7 +104,7 @@
 
 - [ ] T022 [P] [Owner: Documentation steward] [Effort: S] Run markdown lint across `README.md`, `NOTICE.md`, `CHANGELOG.md`, `docs/versioning.md`, and `specs/001-specrew-product/spec.md`, then resolve any remaining public-facing wording drift in those files. (Trace: NFR-001, NFR-002, plan.md Required Quality Gates)
 - [ ] T023 [P] [Owner: human reviewer] [Effort: S] Run `extensions/specrew-speckit/scripts/validate-governance.ps1` against a clean repo and the drift fixtures in `tests/unit/fixtures/015-public-readiness-pass/public-readiness-drift/`, then confirm public-readiness warnings remain advisory in `specs/015-public-readiness-pass/quickstart.md`. (Trace: FR-016, NFR-005, SC-007, plan.md Required Quality Gates)
-- [ ] T024 [Owner: Planner] [Effort: S] Reconcile `specs/015-public-readiness-pass/plan.md`, `specs/015-public-readiness-pass/quickstart.md`, and `specs/015-public-readiness-pass/tasks.md` with the final two-iteration execution order while preserving the explicit deferral of hardening-gate sign-off and implementation authorization. (Trace: FR-015, TG-004, spec.md Governance Alignment, plan.md Explicit Later Deferrals)
+- [ ] T024 [Owner: Planner] [Effort: S] Reconcile `specs/015-public-readiness-pass/plan.md`, `specs/015-public-readiness-pass/quickstart.md`, and `specs/015-public-readiness-pass/tasks.md` with the final two-iteration execution order while preserving the bounded Iteration 001 authorization record and the explicit Iteration 002 deferrals. (Trace: FR-015, TG-004, spec.md Governance Alignment, plan.md Explicit Later Deferrals)
 
 ---
 
@@ -198,8 +198,8 @@ Task: "T020 Update specs/015-public-readiness-pass/quickstart.md with the next-r
 
 ### Explicit Authorization Boundary
 
-- Only the planning-boundary scaffolding in T001-T004 is authorized immediately by FR-015.
-- T005-T024 remain sequenced here for execution after later explicit human approval.
+- FR-015 opened the planning-boundary scaffolding in T001-T004 immediately, and explicit human authorization recorded on 2026-05-13 now opens the full Iteration 001 slice T001-T009.
+- T010-T024 remain sequenced here for execution after later explicit human approval.
 - Do not create `specs/015-public-readiness-pass/iterations/001/review.md` or `specs/015-public-readiness-pass/iterations/001/retro.md` as part of planning-boundary work.
 
 ---

@@ -2,7 +2,7 @@
 
 **Feature**: 015 Public-Readiness Pass  
 **Branch**: `015-public-readiness-pass`  
-**Phase**: 1 — Design  
+**Phase**: 1 — Implementation-ready  
 **Date**: 2026-05-13
 
 ---
@@ -26,7 +26,9 @@ targeted additive extension to `validate-governance.ps1`.
 **Scope**: FR-001, FR-002, FR-003–FR-007, FR-011, FR-015  
 **Effort**: ≈10 story points  
 **Authorization boundary**: Spec + Iteration 001 planning scaffold + upstream-tracking push
-(FR-015). Hardening-gate sign-off and implementation start require later explicit human approval.
+(FR-015), plus explicit human hardening-gate sign-off and implementation authorization recorded on
+2026-05-13 for Iteration 001 only (`T001-T009`). Iteration 002 remains out of scope until later
+explicit human approval.
 
 **Deliverables**:
 
@@ -39,6 +41,7 @@ targeted additive extension to `validate-governance.ps1`.
 | Iteration 001 planning scaffold | `specs/015-public-readiness-pass/iterations/001/` | FR-015 |
 
 **Acceptance Check for Iteration 001**:
+
 - `LICENSE` exists at repo root and contains the MIT license text
 - `NOTICE.md` exists at repo root and has sections for Squad and Spec Kit
 - `README.md` contains all 8 required sections (Current State, What's working, What's NOT working,
@@ -67,6 +70,7 @@ targeted additive extension to `validate-governance.ps1`.
 | Public-readiness drift check | `extensions/.../scripts/validate-governance.ps1` | FR-016 |
 
 **Acceptance Check for Iteration 002**:
+
 - `.specrew/config.yml` sets `specrew_version: "0.14.0"`
 - `docs/versioning.md` explains `0.NN.0` scheme and hotfix `0.NN.M` rule
 - `CHANGELOG.md` contains entries for Features 001–014 (each with ordinal + summary)
@@ -107,7 +111,7 @@ v0.14.0  →  3ff32d4
 
 ## Developer Workflow Reference
 
-### Iteration 001 Steps (after hardening-gate authorization)
+### Iteration 001 Steps (authorized on 2026-05-13)
 
 1. Create `LICENSE` at repo root:
    - Standard MIT license text
@@ -129,13 +133,15 @@ v0.14.0  →  3ff32d4
    - Add one-sentence note: "14 implementing features have shipped as of 2026-05-13."
 
 5. Scaffold Iteration 001 planning artifacts:
+
    ```powershell
-   .\.specify\scripts\powershell\scaffold-iteration-plan.ps1 `
-     -FeatureDirectory specs\015-public-readiness-pass `
+   pwsh -File .\.specify\extensions\specrew-speckit\scripts\scaffold-iteration-plan.ps1 `
+     -SpecPath .\specs\015-public-readiness-pass\spec.md `
      -IterationNumber 001
    ```
 
 6. Run quality gates:
+
    ```powershell
    npx markdownlint-cli LICENSE NOTICE.md README.md specs/001-specrew-product/spec.md
    ```
@@ -149,6 +155,7 @@ v0.14.0  →  3ff32d4
 3. Create `CHANGELOG.md` with 14 retroactive entries
 
 4. Create git tags:
+
    ```sh
    git tag -a v0.13.0 21d9e7f -m "Specrew v0.13.0 — Features 008-013 catch-up merge (PR #79)"
    git tag -a v0.14.0 3ff32d4 -m "Specrew v0.14.0 — Feature 014 handoff-format-scoping (PR #99)"
@@ -161,6 +168,7 @@ v0.14.0  →  3ff32d4
 6. Add `Test-PublicReadinessSurfaces` function to both copies of `validate-governance.ps1`
 
 7. Run quality gates:
+
    ```powershell
    Invoke-ScriptAnalyzer -Path extensions\specrew-speckit\scripts\validate-governance.ps1
    pwsh -File extensions\specrew-speckit\scripts\validate-governance.ps1
@@ -181,11 +189,30 @@ v0.14.0  →  3ff32d4
 
 ---
 
+## Iteration 001 Validation Evidence
+
+**Date**: 2026-05-13
+
+- **First-time-reader pass**: A fresh-context review of `LICENSE`, `NOTICE.md`, `README.md`, and
+  `specs/001-specrew-product/spec.md` was able to identify Specrew as a spec-governed delivery
+  flow built from Squad plus Spec Kit, its public shipped baseline `0.14.0`, its alpha/dogfooding
+  posture, its current working scope, its known gaps, and its MIT reuse posture without needing
+  insider explanation.
+- **Markdown validation**: `npx markdownlint-cli LICENSE NOTICE.md README.md specs/001-specrew-product/spec.md specs/015-public-readiness-pass/spec.md specs/015-public-readiness-pass/plan.md specs/015-public-readiness-pass/contracts/public-readiness-warning-schema.md specs/015-public-readiness-pass/iterations/001/plan.md specs/015-public-readiness-pass/quickstart.md specs/015-public-readiness-pass/tasks.md` — **pass**
+- **Governance validation**: `pwsh -File .\extensions\specrew-speckit\scripts\validate-governance.ps1 -ProjectPath .` — **pass**
+- **Governance scope note**: The current validator baseline passed without public-readiness warning
+  automation because FR-016 remains deferred to Iteration 002; no hard-failure scope expansion was
+  required for the authorized Iteration 001 slice.
+
+---
+
 ## Authorization Boundary Reminder (FR-015)
 
-> Current approval covers: specification, Iteration 001 planning scaffold, upstream-tracking push.
+> Current approval covers: specification, Iteration 001 planning scaffold, upstream-tracking push,
+> and Iteration 001 implementation for `T001-T009` only.
 >
-> **Not yet authorized**: hardening-gate sign-off, implementation start, public repository
-> visibility change.
+> **Not yet authorized**: Iteration 002, any new deferral beyond what is already recorded,
+> `review.md` / `retro.md` scaffolding, and public repository visibility change.
 >
-> Explicit human approval is required before beginning implementation of either iteration.
+> Explicit human approval is still required before opening Iteration 002 or any later lifecycle
+> boundary beyond the bounded Iteration 001 execution slice.

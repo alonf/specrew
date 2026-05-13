@@ -9,7 +9,7 @@ Public-Readiness Pass establishes correct licensing, rewritten public documentat
 version declaration in `.specrew/config.yml` (bumped from 0.1.0-dev to 0.14.0), a retroactive CHANGELOG, retroactive git tags (v0.13.0, v0.14.0),
 updated product-spec status, and extended feature-closeout governance so future features include
 release bookkeeping by default. `.specrew/config.yml` serves as the canonical source-of-truth for the active Specrew version;
-downstream README and documentation surfaces mirror this version. All work is documentary and governance tooling; no runtime behaviour
+downstream README and documentation surfaces mirror this version. The bounded Iteration 001 slice does not edit `.specrew/config.yml`; it locks the canonical-source decision so Iteration 002 can reconcile the remaining release-truth surfaces without ambiguity. All work is documentary and governance tooling; no runtime behaviour
 changes occur. The technical approach relies on Markdown file authoring, a targeted additive
 extension to `validate-governance.ps1`, and git tagging operations.
 
@@ -85,25 +85,25 @@ iterations totalling ≈18 story points
 
 ### Explicit Phase 2+ Deferrals
 
-- Pre-implementation hardening gate sign-off and blocking semantics remain deferred until authorized by explicit human approval for each iteration.
+- Pre-implementation hardening gate sign-off is now recorded for Iteration 001 on 2026-05-13; Iteration 002 remains deferred until later explicit human approval.
 - Dedicated bug-hunter lens execution and strongest-class routing remain deferred.
 - Quality-drift logic, mixed-stack override workflows, and reference-implementation comparison remain deferred.
 
 ## Phase 2 Hardening and Specialist Review Planning
 
-**Phase 2 Slice Scope**: `not-yet-authorized` — hardening-gate sign-off is explicitly outside the current authorization boundary (FR-015)  
-**Hardening Gate Artifact**: `specs/015-public-readiness-pass/quality/hardening-gate.md` (to be scaffolded when authorized)  
+**Phase 2 Slice Scope**: `iteration-001-authorized` — hardening-gate sign-off is recorded for Iteration 001 only; Iteration 002 remains outside the current authorization boundary  
+**Hardening Gate Artifact**: `specs/015-public-readiness-pass/iterations/001/quality/hardening-gate.md`  
 **Known-Traps Corpus Location**: `.specrew/quality/known-traps.md`  
-**Trap Reapplication Artifact**: `none yet` — deferred to authorized hardening slice
+**Trap Reapplication Artifact**: `none` — not opened for the bounded Iteration 001 documentation slice
 
 ### Hardening Focus Areas
 
 | Focus Area | Why It Matters in This Slice | Planned Artifact / Evidence | Status |
 | --- | --- | --- | --- |
-| Security surface analysis | No new trust boundaries; existing `validate-governance.ps1` pattern preserved | hardening-gate.md §security (when authorized) | deferred |
-| Error handling and failure semantics | Soft-warning extension must not convert to hard exits | hardening-gate.md §error-handling (when authorized) | deferred |
-| Retry and idempotency expectations | Git tag creation is idempotent (`--force` not used; duplicate tag emits advisory) | hardening-gate.md §idempotency (when authorized) | deferred |
-| Test-integrity targets | Pester unit tests for `Test-PublicReadinessSurfaces`; manual README reviewer check | hardening-gate.md §test-integrity (when authorized) | deferred |
+| Security surface analysis | No new trust boundaries; existing `validate-governance.ps1` pattern preserved | `iterations/001/quality/hardening-gate.md` §security-surface | signed-off for Iteration 001 |
+| Error handling and failure semantics | Soft-warning extension must not convert to hard exits | `iterations/001/quality/hardening-gate.md` §error-handling-expectations | signed-off for Iteration 001 |
+| Retry and idempotency expectations | Git tag creation is idempotent (`--force` not used; duplicate tag emits advisory) | `iterations/001/quality/hardening-gate.md` §retry-idempotency-requirements | signed-off for Iteration 001 |
+| Test-integrity targets | Pester unit tests for `Test-PublicReadinessSurfaces`; manual README reviewer check | `iterations/001/quality/hardening-gate.md` §test-integrity-targets | signed-off for Iteration 001 |
 
 ### Lens Activation Plan
 
@@ -117,21 +117,21 @@ iterations totalling ≈18 story points
 
 | Lens Scope | Requested Reasoning / Review Class | Effective Class (when run) | Override / Approval Record | Notes |
 | --- | --- | --- | --- | --- |
-| All Phase 2 hardening | default to strongest available | record when authorized | none | Deferred until explicit human authorization |
+| Iteration 001 hardening | default to strongest available | strongest-available | current-session human authorization recorded 2026-05-13 | Signed off for the bounded T001-T009 slice only |
 
 ### Explicit Later Deferrals
 
-- Full Phase 2 hardening execution is deferred; authorization boundary is FR-015 (spec + Iteration 001 planning scaffold + upstream push only).
-- Known-traps corpus seeding and trap reapplication deferred to authorized hardening slice.
-- Strongest-class routing enforcement deferred until authorized review path exists.
+- Iteration 001 hardening sign-off is complete and implementation is authorized only for T001-T009.
+- Known-traps corpus seeding and trap reapplication remain deferred because they are not part of the bounded Iteration 001 documentation slice.
+- Iteration 002 hardening, release-truth work, and any later routing or validator-warning execution remain deferred until separately authorized.
 
 ## Constitution Check
 
 *GATE: Must pass before Phase 0 research. Re-check after Phase 1 design.*
 
 - **Spec Authority Gate**: ✅ PASS. Plan scope maps directly to approved `spec.md` (FR-001–FR-016,
-  TG-001–TG-004). No work is proposed outside that boundary. FR-015 explicitly limits authorization
-  to specification, Iteration 001 planning scaffold, and upstream-tracking push only.
+  TG-001–TG-004). No work is proposed outside that boundary. Later explicit human approval recorded
+  on 2026-05-13 opens `T001-T009` only; `T010-T024` remain deferred.
 
 - **Layering Gate**: ✅ PASS. Changes are correctly classified:
   - Spec Kit layer: `plan.md`, `research.md`, `data-model.md`, `quickstart.md`, `contracts/` (this
@@ -141,7 +141,9 @@ iterations totalling ≈18 story points
     `extensions/specrew-speckit/squad-templates/coordinator/specrew-governance.md`
   - Repository root: `LICENSE`, `NOTICE.md`, `CHANGELOG.md`, `README.md`, `docs/versioning.md`
     (documentation assets, not Squad or Spec Kit internals)
-  - Out of scope for this feature: Squad runtime layer changes, hardening gate, implementation start
+  - Out of scope for the currently authorized slice: Squad runtime layer changes, Iteration 002
+    versioning/tag/governance-extension work, public visibility change, and any lifecycle expansion
+    beyond `T001-T009`
 
 - **Traceability Gate**: ✅ PASS. Every planned deliverable links to at least one FR in the spec:
   - LICENSE → FR-001 | NOTICE.md → FR-002 | README sections → FR-003–FR-007

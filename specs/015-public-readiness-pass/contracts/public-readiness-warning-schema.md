@@ -34,7 +34,7 @@ function Test-PublicReadinessSurfaces {
 
 Each soft warning is emitted as a single line with the following structure:
 
-```
+```text
 WARN [public-readiness] <category>: <detail>
 ```
 
@@ -45,6 +45,12 @@ WARN [public-readiness] <category>: <detail>
 | `<category>` | `missing-artifact` / `stale-version-in-readme` | Extensible in future |
 | `<detail>` | relative file path or description string | Human-readable; not machine-parsed |
 
+### Canonical Version Source
+
+- `.specrew/config.yml` field `specrew_version` is the authoritative current-version source
+- The README staleness heuristic compares `README.md` against that declared version rather than
+  merely checking for any semver-like string
+
 ### Warning Conditions
 
 | Condition | Category | Detail Example |
@@ -53,7 +59,7 @@ WARN [public-readiness] <category>: <detail>
 | `NOTICE.md` does not exist at project root | `missing-artifact` | `NOTICE.md` |
 | `CHANGELOG.md` does not exist at project root | `missing-artifact` | `CHANGELOG.md` |
 | `docs/versioning.md` does not exist | `missing-artifact` | `docs/versioning.md` |
-| `README.md` does not contain any version string matching `\b0\.\d+\.\d+\b` | `stale-version-in-readme` | `README.md does not contain a version string` |
+| `README.md` does not contain the current version declared in `.specrew/config.yml` | `stale-version-in-readme` | `README.md does not contain declared version 0.14.0` |
 
 ### Exit Code Contract
 
@@ -118,11 +124,23 @@ function Test-PublicReadinessSurfaces {
         Write-Host 'WARN [public-readiness] missing-artifact: docs/versioning.md' -ForegroundColor Yellow
     }
 
+    $configPath = Join-Path $ProjectRoot '.specrew' 'config.yml'
+    $declaredVersion = $null
+    if (Test-Path -LiteralPath $configPath -PathType Leaf) {
+        $configContent = Get-Content -Path $configPath -Encoding UTF8
+        foreach ($line in $configContent) {
+            if ($line -match '^\s*specrew_version:\s*"?(?<version>[^"#]+)"?\s*$') {
+                $declaredVersion = $Matches['version'].Trim()
+                break
+            }
+        }
+    }
+
     $readmePath = Join-Path $ProjectRoot 'README.md'
     if (Test-Path -LiteralPath $readmePath -PathType Leaf) {
         $readmeContent = Get-Content -Path $readmePath -Raw -Encoding UTF8
-        if ($readmeContent -notmatch '\b0\.\d+\.\d+\b') {
-            Write-Host 'WARN [public-readiness] stale-version-in-readme: README.md does not contain a version string' -ForegroundColor Yellow
+        if ($declaredVersion -and $readmeContent -notmatch [regex]::Escape($declaredVersion)) {
+            Write-Host "WARN [public-readiness] stale-version-in-readme: README.md does not contain declared version $declaredVersion" -ForegroundColor Yellow
         }
     }
 }
