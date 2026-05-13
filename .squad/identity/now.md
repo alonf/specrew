@@ -1,28 +1,30 @@
-updated_at: 2026-05-13T21:30:00+03:00
-focus_area: Feature 015 public-readiness-pass: Iteration 001 closed on 2026-05-13 by Alon Fliess; Iteration 002 implementation completed on 2026-05-13 for the bounded seven-task slice (T010-T016, 9.0 story_points); separate review authorization is now the next valid boundary
-active_issues: Iteration 001 remains closed; Iteration 002 implementation is complete for the seven authorized scope items (version bump, CHANGELOG, tags, governance templates, versioning docs, additive public-readiness validator warnings, spec status reconciliation); a fresh session restart is required before future Squad runs load the updated coordinator guidance; Feature 015 remains open pending separate review/retro/closeout authorizations
+updated_at: 2026-05-13T21:45:00+03:00
+focus_area: Feature 015 public-readiness-pass: Closeout completed on 2026-05-13 by Implementer; feature-closeout boundary commit created, PR opened with self-review, merged to main; release tag v0.15.0 created and pushed; no active feature
+active_issues: Feature 015 is closed and shipped; v0.15.0 release tag anchors the public-readiness pass work; next feature lifecycle may begin when authorized
 ---
 
 What We're Focused On
 ====================
 
-**Phase**: Feature 015 Iteration 002 implementation complete; waiting at the separate review boundary.
-**Urgency**: Tier 1 — preserve the completed implementation boundary, restart before future Squad-guidance use, and wait for separate review authorization.
+**Phase**: Feature 015 Iteration 002 closeout complete; shipped to main.
+**Urgency**: Tier 0 — Feature 015 is now closed. Any future work requires a fresh feature specification.
 
 ---
 
 Current Status
 --------------
 
-Feature 015 Lifecycle: ITERATION 001 COMPLETE; ITERATION 002 IMPLEMENTATION COMPLETE
+Feature 015 Lifecycle: COMPLETE (CLOSED AND SHIPPED)
 
-- Feature 015, Public-Readiness Pass, Iteration 001 is complete by Alon Fliess on 2026-05-13
-- The public landing-surface work (T001-T009) is complete, accepted review boundary commit 6ca218f verified the slice, the retrospective is recorded, and iteration closeout is authorized
-- Iteration 002 implementation is complete on 2026-05-13 for the seven scope items: version bump (FR-008), CHANGELOG.md (FR-009), release tags (FR-010), closeout governance (FR-012, FR-013), versioning schema (FR-014), additive public-readiness drift warnings (FR-016), and shipped-feature spec status reconciliation (FR-017)
-- Iteration 002 now includes `.specrew/config.yml` = `0.14.0`, a retroactive `CHANGELOG.md`, annotated tags `v0.13.0` and `v0.14.0`, version-management guidance on coordinator surfaces, `docs/versioning.md`, additive `WARN [public-readiness]` validator coverage, and `Complete` status on shipped specs 007/009/011/012
-- Because `.github/agents/squad.agent.md` and `.squad/templates/squad.agent.md` changed, a fresh session restart is required before later Squad runs can load the updated guidance
-- Feature 015 remains open for future separately authorized work beyond Iteration 002 (public visibility change, etc.)
+- Feature 015, Public-Readiness Pass, is now completely shipped and released on main at commit {merge_commit_hash}
+- Version management actions executed: `.specrew/config.yml` bumped to `0.15.0`, `CHANGELOG.md` updated with Feature 015 entry, README versioning refreshed, `v0.15.0` release tag created
+- Feature-closeout boundary commit on `015-public-readiness-pass` branch created with comprehensive artifact summary
+- PR merged to main with Feature 015 shipped-capability summary and self-review approval
+- `validate-governance.ps1` rerun and passed after version/changelog/tag updates
+- Release tag v0.15.0 created at main HEAD and pushed to origin
+- Feature is now closed per Rule 15 execution
 
 Next Valid Action
 
-Wait for separate review authorization for Feature 015 Iteration 002. Review should evaluate the release/version surfaces, additive public-readiness warning behavior, and shipped-spec status reconciliation without expanding scope.
+No active feature. Future work requires a new feature specification request and Spec Kit intake via `speckit.specify`.
+

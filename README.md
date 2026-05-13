@@ -5,12 +5,12 @@ AI-assisted software delivery.
 
 ## Current State
 
-- Public shipped baseline: **0.14.0**, backed by 14 implementing features
+- Public shipped baseline: **0.15.0**, backed by 15 implementing features
 - Alpha software, validated through dogfooding in this repository
 - Built today for a single developer running on a single host
 - Not yet ready for multi-developer coordination or multi-host operation
 - Release truth now has public-facing surfaces in `CHANGELOG.md`,
-  `docs\versioning.md`, and the `v0.13.0` / `v0.14.0` tags
+  `docs\versioning.md`, and the `v0.13.0` / `v0.14.0` / `v0.15.0` tags
 
 ## What's working
 
@@ -68,9 +68,9 @@ Specrew currently uses a merge-at-close rhythm:
 ## Versioning
 
 - `.specrew\config.yml` is the canonical source for the active version and now
-  declares **0.14.0**.
+  declares **0.15.0**.
 - Feature releases use `0.NN.0`, where `NN` tracks the shipped feature ordinal
-  (`0.14.0` = Feature 014).
+  (`0.15.0` = Feature 015).
 - `0.NN.M` is reserved for hotfixes against an existing shipped feature
   baseline.
 - See `docs\versioning.md` for the policy details and `CHANGELOG.md` for the

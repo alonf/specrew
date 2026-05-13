@@ -4,6 +4,14 @@ Retroactive alpha release history for shipped Specrew features. `.specrew\config
 is the canonical source for the active version; this file records the feature
 baseline that each release number represents.
 
+## 0.15.0
+
+- Feature 015 — Public-Readiness Pass: established repository licensing,
+  rewritten public documentation, reconciled version declarations, retroactive
+  changelog, release tags (v0.13.0, v0.14.0), extended feature-closeout
+  governance, and public-readiness drift detection. Refs: feature branch
+  `015-public-readiness-pass`; feature closeout boundary commit (this PR).
+
 ## 0.14.0
 
 - Feature 014 — Handoff Format Scoping: scoped bounded stop-vs-progress

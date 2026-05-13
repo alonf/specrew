@@ -258,3 +258,12 @@ and the existing `extensions/specrew-speckit/` extension directories.
 
 > No constitution violations requiring justification. All changes are additive within existing
 > layer boundaries.
+
+## Feature 015 Completion Status
+
+**Closed**: 2026-05-13
+
+Feature 015 public-readiness-pass is now complete and shipped. Both iterations (001 and 002) have been implemented, reviewed, and merged to main. The feature establishes correct licensing, rewritten public documentation, reconciled versioning declarations, retroactive changelog, release tags, extended governance, and a public-readiness drift detection capability. All shipped features (001–014) are now reflected in version tracking, and the feature-closeout process is now codified for all future features.
+
+**Release Tag Anchor**: v0.15.0 at the merge commit that includes this feature-closeout boundary.
+

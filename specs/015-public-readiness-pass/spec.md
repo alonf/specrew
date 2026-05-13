@@ -2,7 +2,7 @@
 
 **Feature Branch**: `015-public-readiness-pass`  
 **Created**: 2026-05-13  
-**Status**: Draft  
+**Status**: Complete  
 **Input**: User description: "Open Feature 015 Public-Readiness Pass from `C:\Temp\public-readiness-pass.md`, keep it grounded in the source draft, create `specs/015-public-readiness-pass/spec.md`, and stop at normal specify-phase outputs without beginning hardening-gate sign-off or implementation authorization."
 
 ## Problem Statement
