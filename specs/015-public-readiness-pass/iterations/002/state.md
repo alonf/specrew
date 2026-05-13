@@ -6,8 +6,8 @@
 **In Progress**: none
 **Baseline Ref**: 3ff32d4
 **Updated**: 2026-05-13
-**Current Phase**: reviewing
-**Iteration Status**: review accepted on 2026-05-13 against implementation commit `f170562`; retrospective and closeout remain pending separate human authorization
+**Current Phase**: retro
+**Iteration Status**: review accepted and retrospective recorded on 2026-05-13 against implementation commit `f170562`; iteration closeout remains pending separate human authorization
 
 ## Planning Summary
 
@@ -53,7 +53,7 @@ Iteration 002 is the second delivery slice for Feature 015, Public-Readiness Pas
 
 ## Next Action
 
-Iteration 002 review is accepted on 2026-05-13 for the bounded T010-T016 slice. The next valid action is waiting for separate retrospective authorization; when resumed, retrospective should capture the release-truth review lessons without reopening scope.
+Iteration 002 retrospective is now recorded for the bounded T010-T016 slice. The next valid action is waiting for separate iteration-closeout authorization; closeout should validate Rule 15 on Feature 015 itself without reopening scope.
 
 <!-- >>> specrew-managed escalation-state >>> -->
 ## Repair Escalation
@@ -69,4 +69,3 @@ Iteration 002 review is accepted on 2026-05-13 for the bounded T010-T016 slice. 
 - **Resolved At**: (none)
 - **Notes**: (none)
 <!-- <<< specrew-managed escalation-state <<< -->
-

@@ -41,32 +41,32 @@ Feature 015, public-readiness pass, iteration 002 delivered the release-truth an
 
 **Pattern**: A lifecycle boundary is narrated as complete in a commit message, but the matching artifact (retro.md) does not exist until separate human authorization is given. This creates a gap where git history claims a boundary is closed while the iteration is logically incomplete.
 
-**Evidence Trail — Five Instances**:
+**Evidence Trail — Five Recurrences**:
 
-1. **Feature 014 Iteration 001** (commit `8e99013`): Review boundary claimed; retro.md absent until separate authorization (commit `a5fcb90`, later).
-2. **Feature 015 Iteration 001** (commit `6ca218f`): Review boundary claimed; retro.md absent until separate authorization (commit `82b65cc`, later).
-3. **Feature 015 Iteration 002 — Scribe Variant A** (commit `2e95c74`): Scribe administrative commit narrating "Record Feature 015 Iteration 002 review boundary completion" while retro.md remains unopened.
-4. **Feature 015 Iteration 002 — Scribe Variant B** (commit `9c46b30`): Scribe orchestration commit "Feature 015 iteration 002 review-boundary durability repair" attempting to close the boundary durability story while the retro artifact still pending separate human authorization.
-5. **Feature 015 Iteration 002 — Final Scribe State** (commit `bbaba3d`): Scribe administrative finalization "Feature 015 iteration 002 final-sync administrative state" narrating completion of lifecycle phases that include retro artifact creation, but the artifact authoring remains separate and unauthorized.
+1. **Feature 014 Iteration 001 review boundary** (commit `8e99013`): review was narrated as complete before the retrospective boundary existed.
+2. **Feature 014 Iteration 001 retro boundary follow-on** (commit `a5fcb90`): the later retro commit proves the earlier review-boundary narration got ahead of the durable lifecycle state.
+3. **Feature 015 Iteration 001 review boundary** (commit `6ca218f`): review was narrated as complete before retro.md existed under separate authorization.
+4. **Feature 015 Iteration 002 review boundary** (commit `daf2b03`): the accepted review artifact was finally committed only after the new Scribe-vs-boundary variant had already created confusion about whether the real boundary had landed.
+5. **Feature 015 Iteration 002 new Scribe-vs-boundary variant** (local-only precursor commit `2e95c74`, later followed by `170be02`, `9c46b30`, and `bbaba3d`): Scribe committed orchestration and sync state, but not the actual retro boundary artifact, creating the sneakier \"a commit exists, but not the real boundary\" failure mode.
 
 **Root Cause**: Boundary terminology ("review accepted", "review boundary", "implementation boundary") is used in commit messages to describe lifecycle progress, but no enforcement rule prevents narrating a boundary as complete when the required matching artifact (state.md update, retro.md creation) does not yet exist. Scribe-orchestrated commits can be especially fragile here because they narrate administrative state without executing the artifact creation themselves.
 
-**Rule Recommendation**: 
+**Rule Recommendation**:
 
 > **Canonical Boundary-Subject Commits Enforcement Rule**
-> 
+>
 > A lifecycle boundary commit must be enforced by a validation gate:
-> 
+>
 > 1. **Boundary-claim commits** (commits whose subject contains boundary language like "review boundary", "implementation boundary", "retro boundary", "closeout boundary") must trigger a pre-push validation that:
 >    - The matching artifact (plan.md / state.md / review.md / retro.md / closeout.md) exists and is updated with a timestamp matching the commit date ± 5 minutes.
 >    - The artifact uses the canonical lifecycle phase name (e.g., `## Next Action` in review.md correctly narrates the next phase).
 >    - No future-phase artifacts are created at the boundary commit (e.g., retro.md must not be created at the review boundary; it must remain explicitly deferred).
-> 
+>
 > 2. **Scribe-orchestrated commits** (commits whose subject contains "Scribe") must declare which boundary phase they are serving. If a Scribe commit narrates administrative work for a boundary (e.g., "Record Feature 015 Iteration 002 review boundary completion"), it must be validated as a non-boundary commit (post-phase administrative work) rather than a phase-transition commit.
-> 
+>
 > 3. **Enforcement Integration**: This rule should be added to `.specrew\quality\known-traps.md` and implemented as a lightweight pre-push hook or as a reviewer gate: "Verify boundary-subject commits reference matching artifacts and do not narrate incomplete phases."
 
-**Next Action**: Add this rule to `known-traps.md` and request implementation as a validator gate before Feature 016 iteration planning begins. This will prevent future iterations from orphaning retro/closeout artifacts behind Scribe-orchestrated commit narratives.
+**Next Action**: Add this rule to `known-traps.md` and request implementation as a validator gate before Feature 016 iteration planning begins. The hard-fail check should require a canonical boundary-subject commit, not just any later administrative commit, so future iterations cannot orphan retro/closeout artifacts behind Scribe-orchestrated narratives.
 
 ---
 
@@ -96,17 +96,17 @@ This creates a narrative gap: readers looking at `git log` see multiple referenc
 **Lesson & Recommendation**:
 
 > **Scribe Commits Should Be Batched After Lifecycle Boundaries**
-> 
+>
 > Scribe (or similar agents) should not create intermediate administrative commits between functional boundaries. Instead:
-> 
+>
 > 1. **During execution phases** (implementation, review work), Scribe commits are deferred entirely until the phase boundary is reached.
 > 2. **At each lifecycle boundary**, Scribe executes ONE batched administrative commit that:
 >    - Updates any admin-only surfaces (like timestamps, orchestration ledgers, or decision tracking files).
 >    - Uses a clear boundary-phase suffix in the subject: "Scribe: Administrative sync at [Feature N Iteration M lifecycle-boundary-name]" (e.g., "Scribe: Admin sync at Feature 015 Iteration 002 review boundary").
 >    - Does NOT narrate intent or future-phase readiness; it only records current-phase completion.
-> 
+>
 > 3. **After retrospective authorization** (retro.md creation), Scribe may create one final batched commit for post-retro administrative work if needed.
-> 
+>
 > This reduces commit noise from 4+ intermediate Scribe commits to 2 batched boundary-administrative commits, improving readability of `git log` and reducing the gap between commit narrative and artifact reality.
 
 **Next Action**: Document this batching rule in `.squad/decisions/inbox/` and consider it for Spec Kit extension guidance before Feature 016 iteration planning.
@@ -126,13 +126,14 @@ This creates a narrative gap: readers looking at `git log` see multiple referenc
 **Recommendation**:
 
 > **Formalize Reviewer-Authored Skills as Standard Reusable Patterns**
-> 
+>
 > Skills authored by reviewers during feature work should be:
+>
 > 1. Treated as first-class governance artifacts (like decision records).
 > 2. Listed in retrospectives as positive outcomes when they capture durable patterns.
 > 3. Referenced in next-iteration planning when similar work is expected.
 > 4. Reviewed for consolidation/archival when feature families complete (e.g., "release-governance" skills after Feature 016 closes).
-> 
+>
 > This makes tacit reviewer knowledge explicit and reduces rework when similar feature types appear again.
 
 **Next Action**: Include "reviewer-authored skill creation" as a positive outcome marker in future retro templates. Encourage skill creation as part of the review phase when patterns are discovered that apply to multiple features.
@@ -153,6 +154,7 @@ This creates a narrative gap: readers looking at `git log` see multiple referenc
 **Root Cause Analysis**:
 
 These repair cycles arose not from scope misalignment but from the sheer number of surfaces this feature touched:
+
 - Configuration files (`.specrew/config.yml`)
 - Documentation (README.md, docs/versioning.md, CHANGELOG.md)
 - Governance templates (extensions/specrew-speckit/squad-templates/coordinator/specrew-governance.md and two mirror locations)
@@ -169,9 +171,9 @@ Feature 014 Iteration 001 delivered 8.0 SP across a single, well-scoped domain (
 **Lesson & Guidance**:
 
 > **Cross-Cutting Governance Work Requires Tighter Synchronization**
-> 
+>
 > For future features that touch multiple surfaces (versions, templates, docs, validators, product spec):
-> 
+>
 > 1. **Front-load synchronization**: Before implementation, create a detailed "surface inventory" mapping which files must be updated, and explicitly call out multi-location requirements (e.g., validator changes in two locations, coordinator templates in four locations).
 > 2. **Batch verification**: Plan review time to verify consistency across all touched surfaces together, not serially. ("Version alignment pass", "Template synchronization pass", "Validator behavior pass".)
 > 3. **Capacity adjustment**: Consider reducing feature scope or adding a dedicated "surface-sync" task when cross-cutting work exceeds 8 SP. The estimation accuracy doesn't change, but the repair-cycle friction does.
@@ -192,18 +194,18 @@ Feature 014 Iteration 001 delivered 8.0 SP across a single, well-scoped domain (
 **Lesson**:
 
 > **Canonical-Concerns-Embed-Iteration-Specifics works best for concentrated ≤10 SP slices**
-> 
+>
 > When a feature slice is well-defined and keeps all concerns within 9–10 story points, embedding iteration-specific checks into the canonical concern review template yields:
-> 
+>
 > - Stronger coherence between requirements and review evidence.
 > - Fewer deferred concerns and rework cycles.
 > - Clearer artifact truth at the lifecycle boundary.
-> 
+>
 > When work spans 10+ SP or splits across multiple iterations, consider a two-phase approach:
-> 
+>
 > 1. **Phase 1**: Deliver core implementation + canonical concern verification.
 > 2. **Phase 2 onwards**: Layer in iteration-specific checks and proof.
-> 
+>
 > Feature 015 Iteration 002 stayed well within the "concentrated slice" zone and benefited from tight embedding. If Feature 016 adds new public-readiness mechanics beyond this scope, the next iteration should measure whether it remains <10 SP; if not, defer embedding and use a split-iteration approach.
 
 **Next Action**: Record this design principle in `.squad/decisions/inbox/` so future planners can reference it when deciding between "tight embedding" vs. "phased decomposition" for canonical-concerns review.
@@ -213,6 +215,7 @@ Feature 014 Iteration 001 delivered 8.0 SP across a single, well-scoped domain (
 ### Lesson 6: Rule 15 Validates at Feature Closeout; Automatic Version Management Should Eliminate Manual Prompting
 
 **Pattern**: Feature 015 Iteration 002 defined **Rule 15** — feature-closeout version management — which requires:
+
 1. Version bump in `.specrew/config.yml`
 2. CHANGELOG.md update
 3. README/versioning.md refresh
@@ -220,31 +223,32 @@ Feature 014 Iteration 001 delivered 8.0 SP across a single, well-scoped domain (
 5. Validator rerun
 6. Keep-open defer path for deferred work
 
-This rule is now embedded in the coordinator templates and guidance surfaces, ready to be tested at the next real feature closeout (Feature 016).
+This rule is now embedded in the coordinator templates and guidance surfaces, ready to be tested at the next real feature closeout: Feature 015 itself, immediately after this iteration closes.
 
 **Current State**: Rule 15 is documented as explicit steps in four coordinator surfaces:
+
 - `.github/agents/squad.agent.md`
 - `.squad/templates/squad.agent.md`
 - `extensions/specrew-speckit/squad-templates/coordinator/specrew-governance.md`
 - `.specify/extensions/specrew-speckit/squad-templates/coordinator/specrew-governance.md`
 
-**Challenge & Opportunity**: 
+**Challenge & Opportunity**:
 
 Currently, Rule 15 requires human coordination: a human coordinator reads the guidance, checks each step, and confirms completion. The guidance does not yet auto-execute or auto-verify. This means the rule works if humans follow it, but relies on discipline rather than automation.
 
 **Recommendation — First Real-World Test**:
 
 > **Automated Version Management at Feature Closeout**
-> 
-> When Feature 016 reaches closeout (expected 2026-05-20 or later), use Rule 15 as the first real-world test case:
-> 
+>
+> When Feature 015 reaches closeout immediately after this iteration, use Rule 15 as the first real-world test case:
+>
 > 1. **Automated Steps** (should be automated): Version bump (`.specrew/config.yml`), CHANGELOG update, validator rerun. These steps are deterministic and can be handled by a PowerShell script invoked at the closeout boundary.
-> 
+>
 > 2. **Manual Coordination** (still required for now): Reviewing the new CHANGELOG entry, approving the tag creation, deciding whether to keep the feature open for deferred work. These require human judgment.
-> 
-> 3. **Observation Goal**: When Feature 016 closeout runs, measure whether the coordinator has to manually prompt for version management steps, or whether Rule 15 automation reduced manual intervention.
-> 
-> 4. **Improvement Target**: If manual prompting is high at Feature 016 closeout, the next feature after that should consider a dedicated `Invoke-FeatureCloseout` script that:
+>
+> 3. **Observation Goal**: When Feature 015 closeout runs, measure whether the coordinator has to manually prompt for version management steps, or whether Rule 15 fires cleanly enough to reduce manual intervention.
+>
+> 4. **Improvement Target**: If manual prompting is high at Feature 015 closeout, the next feature should consider a dedicated `Invoke-FeatureCloseout` script that:
 >    - Reads the feature directory and spec.md.
 >    - Automatically bumps the version.
 >    - Auto-generates the CHANGELOG entry skeleton.
@@ -252,24 +256,28 @@ Currently, Rule 15 requires human coordination: a human coordinator reads the gu
 >    - Runs the validator and reports readiness.
 >    - Keeps all steps reversible and requires human sign-off on the final push.
 
-**Next Action**: During Feature 016 closeout, explicitly test Rule 15 and measure:
+**Next Action**: During Feature 015 closeout, explicitly test Rule 15 and measure:
+
 - How many manual steps the coordinator had to perform.
 - Whether any prompting was missed or forgotten.
 - What opportunities exist for automation without losing human control.
 
-Record findings in Feature 016 retrospective so a fully automated `Invoke-FeatureCloseout` can be planned if friction is observed.
+Record findings in the Feature 015 closeout and retrospective ledger so a fully automated `Invoke-FeatureCloseout` can be planned if friction is observed.
 
 ---
 
 ## Process Observations
 
 ### Governance Gate Success
+
 The pre-retro governance validation (`validate-governance.ps1 -ProjectPath .`) passed cleanly, confirming the review->retro transition is valid. All 31 iteration directories (from Features 001–015) passed their respective governance gates.
 
 ### Artifact Durability
+
 All required iteration artifacts (plan.md, state.md, review.md, retro.md) are now complete and truthful. The cycle from planning through retro is well-structured and supports safe iterations at scale.
 
 ### Skill Reusability
+
 The `.squad/skills/public-readiness-release-review/SKILL.md` created during review provides a durable pattern guide for future release-truth verification. This kind of reviewer-authored skill is a positive outcome and should be encouraged.
 
 ---
@@ -293,16 +301,16 @@ The `.squad/skills/public-readiness-release-review/SKILL.md` created during revi
    - Guidance for batching verification passes.
    - Capacity adjustment hints for future planners.
 
-### Before Feature 016 Closeout
+### Before Feature 015 Closeout
 
-4. **Test Rule 15 in Real-World Closeout**:
+1. **Test Rule 15 in Real-World Closeout**:
    - Execute the version-management steps exactly as documented.
    - Measure manual intervention points.
-   - Record opportunities for automation in Feature 016 retrospective.
+   - Record opportunities for automation in the Feature 015 closeout and retro trail.
 
 ### For Future Governance Work
 
-5. **Canonical-Concerns-Embed-Iteration-Specifics Principle**:
+1. **Canonical-Concerns-Embed-Iteration-Specifics Principle**:
    - Use tight embedding for ≤10 SP concentrated slices.
    - Consider split-iteration approach for larger work.
    - Document this principle in `.squad/decisions/inbox/`.
