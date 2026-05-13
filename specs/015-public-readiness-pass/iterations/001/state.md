@@ -6,8 +6,8 @@
 **In Progress**: none
 **Baseline Ref**: 3ff32d4
 **Updated**: 2026-05-13
-**Current Phase**: retro
-**Iteration Status**: retrospective completed on 2026-05-13 against implementation commit `6b757e7` and accepted review boundary commit `6ca218f`; iteration closeout remains blocked pending separate human authorization and Iteration 002 remains unopened
+**Current Phase**: complete
+**Iteration Status**: complete on 2026-05-13 by Alon Fliess; iteration closeout boundary commit is pending durable recording on the current tree; Iteration 002 remains unopened and requires separate human authorization
 
 ## Planning Summary
 
@@ -28,18 +28,19 @@ Iteration 001 is the first delivery slice for Feature 015, Public-Readiness Pass
 - **Hardening-Gate Sign-Off**: recorded on 2026-05-13 via current-session human authorization
 - **Implementation Authorization**: granted on 2026-05-13 for T001-T009 only; the bounded implementation slice is now complete
 - **Review Boundary**: ✅ **ACCEPTED** — `review.md` records the accepted re-review in Feature 015 iteration 001 review boundary commit `6ca218f`; the NOTICE and quickstart repair closed the only blocking gap in the authorized slice
-- **Retro Artifact**: ✅ **COMPLETE** — `retro.md` now records 10.0 planned vs 10.0 actual story_points, the recurring `boundary-claim-without-commit` lesson, the reviewer-routing repair success, and the `branch-name-mismatch-with-feature-directory` candidate rule; iteration closeout is still not authorized from this boundary
-- **Deferred**: Iteration 002 versioning, changelog, tags, public-readiness validator warnings, and future closeout-governance extension remain unopened and unscaffolded in this turn
+- **Retro Artifact**: ✅ **COMPLETE** — `retro.md` records 10.0 planned vs 10.0 actual story_points, the recurring `boundary-claim-without-commit` lesson, the reviewer-routing repair success, and the `branch-name-mismatch-with-feature-directory` candidate rule
+- **Iteration Closeout**: ✅ **COMPLETE** — Iteration 001 is complete on 2026-05-13 by Alon Fliess; the closeout boundary commit is pending durable recording on the current tree
+- **Deferred**: Iteration 002 versioning, changelog, tags, public-readiness validator warnings, and future closeout-governance extension remain unopened and deferred until separate human authorization
 
 ## Scope and Deferrals
 
 - **In Scope**: FR-001 through FR-007, FR-011, and FR-015 via T001-T009
 - **Deferred**: FR-008, FR-009, FR-010, FR-012, FR-013, FR-014, and FR-016 to Iteration 002
-- **Constraint**: Iteration 001 was authorized to execute only T001-T009; do not open iteration closeout or Iteration 002 without separate human authorization
+- **Constraint**: Iteration 001 executed only T001-T009; keep Iteration 002 deferred and unopened until separate human authorization opens the next planning slice
 
 ## Next Action
 
-Await separate human authorization before opening iteration closeout. Keep Iteration 002 unopened.
+Iteration 001 is complete on 2026-05-13 by Alon Fliess. The next valid action is waiting for separate human authorization before opening Iteration 002 planning.
 
 <!-- >>> specrew-managed escalation-state >>> -->
 ## Repair Escalation
