@@ -1,3 +1,14 @@
+### 2026-05-13T20:39:39+03:00: Delegated lifecycle runtime evidence
+**By:** Squad (Coordinator)
+**Role / Work Item:** Reviewer — Feature 015 Public-Readiness Pass Iteration 002 independent review boundary
+**Requested Agent:** claude
+**Actual Agent:** copilot
+**Model ID:** claude-opus-4.7
+**Status:** fell back to enabled agent family
+**Fallback Reason:** preferred agent `claude` is not enabled
+
+---
+
 ---
 
 ### 2026-05-12T23:59:59+03:00: Deferred gap - Feature 001 iteration 011
@@ -1377,4 +1388,85 @@ Iteration 002 planning artifacts (plan.md) were still in `planning` status with 
 - FR-019 resume command implementation (resume-iteration.ps1 complete; integration tests present)
 - FR-020 brownfield merge implementation (brownfield-merge.ps1 heavily modified; integration tests created)
 - T-204, T-205, T-206 actively in development
-
+
+## 2026-05-13T17:38:24Z — Delegated routing plan
+
+- **Enabled Agents**: copilot
+- **Independent Oversight Active**: False
+- **Roles**:
+  - Implementer | requested=copilot | actual=copilot | model=(platform default) | status=honored | fallback=(none)
+  - Spec Steward | requested=codex | actual=copilot | model=(platform default) | status=fell-back | fallback=preferred agent 'codex' is not enabled
+  - Planner | requested=claude | actual=copilot | model=(platform default) | status=fell-back | fallback=preferred agent 'claude' is not enabled
+  - Reviewer | requested=claude | actual=copilot | model=(platform default) | status=fell-back | fallback=preferred agent 'claude' is not enabled
+  - Retro Facilitator | requested=copilot | actual=copilot | model=(platform default) | status=honored | fallback=(none)
+
+## 2026-05-13T17:38:24Z — Routing evidence: Spec Steward
+
+- **Decision ID**: routing-evidence-a60fc7ccbc6e
+- **Type**: routing-evidence
+- **Affected Requirement**: FR-043
+- **Affected Iteration**: (none)
+- **Approving Human**: (none)
+- **Recorded At**: 2026-05-13T17:38:24Z
+- **Next Action**: none
+- **Rationale**: Delegated lifecycle routing was applied for role 'Spec Steward'.
+
+- **Routing Evidence**: Spec Steward | requested=codex | actual=copilot | model=(platform default) | status=fell-back | fallback=preferred agent 'codex' is not enabled
+
+## 2026-05-13T17:38:24Z — Routing evidence: Planner
+
+- **Decision ID**: routing-evidence-e8044a0b3c45
+- **Type**: routing-evidence
+- **Affected Requirement**: FR-043
+- **Affected Iteration**: (none)
+- **Approving Human**: (none)
+- **Recorded At**: 2026-05-13T17:38:24Z
+- **Next Action**: none
+- **Rationale**: Delegated lifecycle routing was applied for role 'Planner'.
+
+- **Routing Evidence**: Planner | requested=claude | actual=copilot | model=(platform default) | status=fell-back | fallback=preferred agent 'claude' is not enabled
+
+## 2026-05-13T17:38:24Z — Routing evidence: Reviewer
+
+- **Decision ID**: routing-evidence-5b5d7a455d86
+- **Type**: routing-evidence
+- **Affected Requirement**: FR-043
+- **Affected Iteration**: (none)
+- **Approving Human**: (none)
+- **Recorded At**: 2026-05-13T17:38:24Z
+- **Next Action**: none
+- **Rationale**: Delegated lifecycle routing was applied for role 'Reviewer'.
+
+- **Routing Evidence**: Reviewer | requested=claude | actual=copilot | model=(platform default) | status=fell-back | fallback=preferred agent 'claude' is not enabled
+
+---
+# Reviewer Decision: Feature 015 Iteration 002 Review
+
+**Date**: 2026-05-13
+**By**: Reviewer
+**Type**: review-boundary
+
+## Decision
+
+Accept the review boundary for feature `015`, public-readiness pass, iteration `002`.
+
+## Why It Matters
+
+- The release-truth surfaces now align on one public shipped baseline: `.specrew\config.yml`, `README.md`, `docs\versioning.md`, `CHANGELOG.md`, `specs\001-specrew-product\spec.md`, and the annotated `v0.14.0` tag all point to `0.14.0`.
+- Rule `15`, feature closeout version management, is now explicit across the coordinator surfaces: config bump, changelog entry, README/versioning refresh, release-tag creation, validator rerun, and a keep-open defer path.
+- The new public-readiness validator lane stayed additive under independent review: clean fixture pass without warnings, drift fixture pass with the expected warnings, pre-Feature `015` iteration pass unchanged, repo-wide validator green, and local plus `origin` tag anchors verified as `v0.13.0 -> 21d9e7f` and `v0.14.0 -> 3ff32d4`.
+
+## Evidence
+
+- `specs\015-public-readiness-pass\iterations\002\review.md`
+- `specs\015-public-readiness-pass\iterations\002\plan.md`
+- `specs\015-public-readiness-pass\iterations\002\state.md`
+- `extensions\specrew-speckit\scripts\validate-governance.ps1`
+- `tests\unit\validate-governance.public-readiness.tests.ps1`
+- `docs\versioning.md`
+- `CHANGELOG.md`
+
+## Next Action
+
+Await Alon Fliess's separate authorization before opening retrospective or closeout work for feature `015`, iteration `002`.
+
