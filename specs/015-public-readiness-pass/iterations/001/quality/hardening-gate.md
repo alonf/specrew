@@ -1,0 +1,87 @@
+# Hardening Gate: Iteration 001
+
+**Schema**: v1  
+**Gate ID**: `pre-implementation-hardening`  
+**Feature Ref**: `specs/015-public-readiness-pass/spec.md`  
+**Iteration Ref**: `specs/015-public-readiness-pass/iterations/001`  
+**Requested Review Class**: `strongest-available`  
+**Effective Review Class**: `strongest-available`  
+**Overall Verdict**: ready
+**Approval Ref**: —  
+**Reviewed By**: accepted review boundary commit `6ca218f`, verified Iteration 001 public landing surfaces and product-status reconciliation slice  
+**Reviewed At**: 2026-05-13  
+**Post-Implementation Verification**: accepted review boundary commit `6ca218f` verified the Iteration 001 public landing surfaces and product-status reconciliation slice  
+**Verified At**: 2026-05-13
+
+## Concern Review
+
+| Concern | Category | Status | Evidence Basis | Runtime Evidence Status | Expected Controls | Blocking | Rationale | Approval |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| `security-surface` | `security` | `not-applicable` | `not-applicable` | `not-needed` | Keep the feature limited to repository-local documentation and governance artifacts; do not add credentials, network I/O, or new trust boundaries. | `false` | Iteration 001 creates or rewrites Markdown files only. No external integrations, authentication flows, or secret material are introduced. | — |
+| `error-handling-expectations` | `error-handling` | `addressed` | `planning-time-analysis` | `pending-post-implementation` | Preserve existing validator behavior by keeping implementation out of scope for this iteration and recording any future release-truth checks as additive warnings only. | `false` | The public-readiness feature eventually touches governance tooling, but the authorized Iteration 001 slice is limited to documentation and planning-boundary surfaces. Human sign-off confirms the later validator-warning work remains explicitly deferred and advisory-only. | Human sign-off (2026-05-13) |
+| `retry-idempotency-requirements` | `retry-idempotency` | `not-applicable` | `not-applicable` | `not-needed` | Keep any future file and tag operations explicit and repeat-safe; no retry workflow is opened in this iteration. | `false` | Iteration 001 does not create tags or mutable release markers. Idempotency concerns are reserved for the deferred release-truth iteration. | — |
+| `test-integrity-targets` | `test-integrity` | `addressed` | `planning-time-analysis` | `pending-post-implementation` | Iteration 001 must retain a truthful validation story: first-time-reader review plus markdown validation only, with validator/Pester coverage deferred to Iteration 002. | `false` | The planning boundary must not over-claim automated coverage that belongs to the later validator-warning iteration. Human sign-off accepts the bounded Iteration 001 evidence contract and keeps Iteration 002 automation explicitly deferred. | Human sign-off (2026-05-13) |
+| `operational-resilience-concerns` | `operational` | `addressed` | `planning-time-analysis` | `pending-post-implementation` | Preserve a bounded Iteration 001 slice so public documentation changes do not silently expand into release tagging, version bumps, or governance-script edits before approval. | `false` | The main operational risk at this stage is lifecycle overreach. Human authorization explicitly bounds implementation to T001-T009 only and leaves Iteration 002 unopened. | Human sign-off (2026-05-13) |
+| `public-landing-surface-accuracy` | `documentation-accuracy` | `addressed` | `planning-time-analysis` | `not-needed` | LICENSE, NOTICE, README, and product-spec status must tell the same truthful alpha-stage story to first-time readers. | `true` | Public-open readiness fails if any one of the landing surfaces contradicts the others about license, scope, or product maturity. Review acceptance (6ca218f) verified planning-time analysis is sufficient. | review acceptance (6ca218f) |
+| `upstream-attribution-completeness` | `licensing` | `addressed` | `planning-time-analysis` | `not-needed` | `NOTICE.md` must explicitly credit Squad and Spec Kit and identify the derived Specrew directories without ambiguity. | `true` | Missing or incomplete MIT attribution is the core compliance risk this feature exists to eliminate. Review acceptance (6ca218f) verified planning-time analysis is sufficient. | review acceptance (6ca218f) |
+| `iteration-boundary-discipline` | `governance` | `addressed` | `planning-time-analysis` | `not-needed` | Planning artifacts must preserve FR-015: no implementation start before authorization, no false claim that Iteration 002 is opened, and no `review.md` or `retro.md` placeholders during planning. | `true` | Feature 014 showed that premature boundary claims create non-durable lifecycle evidence. Review acceptance (6ca218f) verified planning-time analysis is sufficient. | review acceptance (6ca218f) |
+| `first-reader-review-evidence` | `validation` | `addressed` | `planning-time-analysis` | `not-needed` | Iteration 001 acceptance must include a human first-time-reader check and markdown validation evidence recorded in `quickstart.md`. | `true` | The README rewrite is successful only if an outside reader can actually understand the repository quickly; that needs named evidence. Review acceptance (6ca218f) verified planning-time and implementation evidence. | review acceptance (6ca218f) |
+
+## Pre-Implementation Planning Evidence
+
+### Requirement Traceability
+
+- **Public landing surfaces**: FR-001, FR-002, FR-003, FR-004, FR-005, FR-006, FR-007 via T005-T007
+- **Product status reconciliation**: FR-011 via T008
+- **Planning-boundary discipline**: FR-015 via T001-T004
+- **Validation boundary**: T009 records the bounded first-reader and markdown evidence for Iteration 001; versioning, changelog, tags, and validator-warning automation remain deferred to Iteration 002
+
+### Stack-Ready Analysis
+
+| Stack Surface | Path | In Scope | Evidence |
+| --- | --- | --- | --- |
+| `repo-landing-surfaces` | `LICENSE`, `NOTICE.md`, `README.md` | Yes | T005-T007 |
+| `product-status-surface` | `specs/001-specrew-product/spec.md` | Yes | T008 |
+| `planning-boundary-artifacts` | `specs/015-public-readiness-pass/iterations/001/*.md` | Yes | T001-T004 |
+| `iteration-evidence-surface` | `specs/015-public-readiness-pass/quickstart.md` | Yes | T009 |
+
+## Deferral Note
+
+- `.specrew/config.yml` version bump, `CHANGELOG.md`, release tags, versioning documentation, future closeout-governance updates, and `validate-governance.ps1` public-readiness warnings remain explicitly deferred to Iteration 002.
+- Hardening-gate sign-off and implementation authorization are now recorded for Iteration 001 only; Iteration 002 remains outside the current approval boundary and requires later explicit human authorization.
+
+## Hardening-Gate Status
+
+**Overall Verdict**: ready
+
+**Scope**: Iteration 001 public landing-surface rollout (FR-001 through FR-007, FR-011, FR-015) covering licensing, README truthfulness, product-status reconciliation, and planning-boundary discipline.
+
+**Pre-Implementation Planning Summary**: Planning is complete for the bounded Iteration 001 slice. The five canonical concerns appear first in the required order. Four feature-specific concerns follow and remain implementation-critical because this slice defines the repository's public legal and first-reader story. Explicit human sign-off is now recorded for the bounded T001-T009 slice, so the truthful pre-implementation verdict is `ready`.
+
+## Sign-Off Evidence
+
+**Authority**: human hardening-gate sign-off and implementation authorization recorded on 2026-05-13 for Feature 015 Iteration 001 only  
+**Reviewed By**: Human reviewer (current session authorization)  
+**Reviewed At**: 2026-05-13  
+**Evidence Statement**: "Human sign-off is now granted for the Iteration 001 pre-implementation hardening gate at C:\Dev\Specrew\specs\015-public-readiness-pass\iterations\001\quality\hardening-gate.md. Human implementation authorization is now granted for Feature 015 Iteration 001 only, bounded to tasks T001-T009 in C:\Dev\Specrew\specs\015-public-readiness-pass\tasks.md. Explicitly out of scope: Iteration 002, any additional deferral beyond what is already recorded, and any review.md/retro.md scaffolding."
+
+---
+
+**Hardening-Gate Planning Status**: planning-phase artifact complete; hardening-gate sign-off is recorded on 2026-05-13, and Iteration 001 is authorized to enter implementation for T001-T009 only. Iteration 002 remains deferred pending later explicit human authorization.
+
+## Post-Implementation Evidence
+
+**Verification Boundary**: review acceptance boundary commit 6ca218f  
+**Verified At**: 2026-05-13  
+**Concerns Verified**: All blocking concerns have been verified by accepted review boundary commit 6ca218f:
+- `public-landing-surface-accuracy` — verified by 6ca218f review of LICENSE, NOTICE.md, README.md, and product spec status alignment
+- `upstream-attribution-completeness` — verified by 6ca218f review of NOTICE.md attribution completeness for Squad and Spec Kit
+- `iteration-boundary-discipline` — verified by 6ca218f acceptance of planning artifacts preserving FR-015 boundaries with no Iteration 002 premature claims
+- `first-reader-review-evidence` — verified by 6ca218f review of README rewrite and quickstart.md first-time-reader evidence
+
+**Non-Blocking Concerns**: The following concerns remain in pending-post-implementation status because the Iteration 001 slice is limited to documentation; future validator/pester work in Iteration 002 will provide complete evidence:
+- `error-handling-expectations`
+- `test-integrity-targets`
+- `operational-resilience-concerns`
+
+**Closure Status**: Iteration 001 blocking concerns are resolved by review acceptance 6ca218f. Implementation is complete and accepted. Iteration 002 planning remains pending separate human authorization.

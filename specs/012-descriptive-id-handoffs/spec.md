@@ -2,7 +2,7 @@
 
 **Feature Branch**: `012-keep-descriptive-refs`  
 **Created**: 2026-05-11  
-**Status**: Draft  
+**Status**: Complete
 **Input**: User description: "Generate a specification from the approved source spec at `C:\Temp\squad-descriptive-references.md`, focused on keeping descriptive references alongside numeric IDs in user-facing handoffs."
 
 ## Clarifications

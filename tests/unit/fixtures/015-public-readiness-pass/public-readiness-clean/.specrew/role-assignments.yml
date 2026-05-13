@@ -1,0 +1,54 @@
+# Role Assignments
+# Schema: v1
+# Maps Specrew roles to agents or humans
+# preferred_agent is optional and safe for existing consumers to ignore.
+
+roles:
+  # Baseline roles (required by Specrew, cannot be removed)
+  
+  - name: "Spec Steward"
+    type: "baseline"
+    assigned_to: "unassigned"  # Assign to agent name or human
+    preferred_agent: "codex"
+    responsibilities: >-
+      Maintains spec integrity, detects drift, reconciles deviations.
+      Reviews all changes for spec compliance.
+  
+  - name: "Planner"
+    type: "baseline"
+    assigned_to: "unassigned"
+    preferred_agent: "claude"
+    responsibilities: >-
+      Decomposes requirements into tasks, estimates effort, plans iterations.
+      Ensures traceability and capacity constraints are met.
+  
+  - name: "Implementer"
+    type: "baseline"
+    assigned_to: "unassigned"
+    preferred_agent: "copilot"
+    responsibilities: >-
+      Executes tasks from the iteration plan. Implements features,
+      writes tests, and produces deliverables per spec.
+  
+  - name: "Reviewer"
+    type: "baseline"
+    assigned_to: "unassigned"
+    preferred_agent: "claude"
+    responsibilities: >-
+      Conducts Review/Demo ceremony. Assigns verdicts to tasks.
+      Verifies deliverables meet acceptance criteria.
+  
+  - name: "Retro Facilitator"
+    type: "baseline"
+    assigned_to: "unassigned"
+    preferred_agent: "copilot"
+    responsibilities: >-
+      Leads retrospective ceremony. Analyzes velocity, identifies
+      blockers, proposes process improvements.
+
+  # Project-specific roles (add as needed for your project)
+  # Example:
+  # - name: "Security Reviewer"
+  #   type: "project"
+  #   assigned_to: "unassigned"
+  #   responsibilities: "Reviews code for security vulnerabilities and compliance."

@@ -1,0 +1,186 @@
+{
+  "mode": "resume-feature",
+  "feature_request": "",
+  "feature_path": "C:\\Dev\\Specrew\\specs\\014-handoff-format-scoping",
+  "agent": "Squad",
+  "approval_mode": "allow-all",
+  "launch_mode": "same-window",
+  "copilot_autopilot": true,
+  "project_state": {
+    "state": "existing-continue",
+    "detected_entries": [
+      "--dry-run",
+      "--help",
+      ".claude",
+      ".scratch",
+      ".vscode",
+      "docs",
+      "evaluation",
+      "extensions",
+      "scripts",
+      "specs",
+      "tests",
+      ".markdownlintrc",
+      "0.7.3",
+      "CODEOWNERS",
+      "package.json",
+      "README.md",
+      "validator-stderr.log",
+      "validator-stdout.log"
+    ],
+    "has_brownfield_indicators": true,
+    "has_specs_directory": true,
+    "spec_directories": [
+      "001-specrew-product",
+      "002-planning-flow-hardening",
+      "003-post-planning-review",
+      "004-default-specialty-pairing",
+      "005-stack-aware-quality-bar",
+      "006-human-architecture-checkpoint",
+      "007-user-facing-progress-handoff",
+      "008-reviewer-escalation-symmetry",
+      "009-project-path-resolution",
+      "010-onboarding-resume-visibility",
+      "011-specrew-start-conditional-pause",
+      "012-descriptive-id-handoffs",
+      "013-validator-hardening",
+      "014-handoff-format-scoping"
+    ]
+  },
+  "brownfield_discovery": null,
+  "delivery_guidance": {
+    "specialist_hints": [],
+    "same_specialty_pair_hints": [],
+    "parallelism_signals": [],
+    "routing_guardrails": [],
+    "quality_attributes": [
+      {
+        "name": "Maintainability & Testability",
+        "reason": "Every feature should stay reviewable, modular, and covered by meaningful verification rather than only compiling or passing a happy-path test.",
+        "validation_focus": "Keep responsibilities clear, avoid speculative complexity, and explain how tests exercise the requirement-critical paths."
+      }
+    ],
+    "semantics_watchouts": []
+  },
+  "team_roster": {
+    "team_path": "C:\\Dev\\Specrew\\.squad\\team.md",
+    "mode": "specrew-managed",
+    "team_status_configured": true,
+    "baseline_roles": [
+      {
+        "role": "Spec Steward",
+        "charter": "`.squad/agents/spec-steward/charter.md`",
+        "status": "baseline",
+        "type": "baseline"
+      },
+      {
+        "role": "Planner",
+        "charter": "`.squad/agents/planner/charter.md`",
+        "status": "baseline",
+        "type": "baseline"
+      },
+      {
+        "role": "Implementer",
+        "charter": "`.squad/agents/implementer/charter.md`",
+        "status": "baseline",
+        "type": "baseline"
+      },
+      {
+        "role": "Reviewer",
+        "charter": "`.squad/agents/reviewer/charter.md`",
+        "status": "baseline",
+        "type": "baseline"
+      },
+      {
+        "role": "Retro Facilitator",
+        "charter": "`.squad/agents/retro-facilitator/charter.md`",
+        "status": "baseline",
+        "type": "baseline"
+      }
+    ],
+    "supplemental_members": []
+  },
+  "delegated_routing": {
+    "enabled_agents": [
+      "copilot"
+    ],
+    "independent_oversight_active": false,
+    "roles": {
+      "Implementer": {
+        "role": "Implementer",
+        "requested_agent": "copilot",
+        "effective_agent": "copilot",
+        "delegated": false,
+        "access_path": "copilot_default",
+        "fallback_reason": null
+      },
+      "Spec Steward": {
+        "role": "Spec Steward",
+        "requested_agent": "codex",
+        "effective_agent": "copilot",
+        "delegated": false,
+        "access_path": "copilot_default",
+        "fallback_reason": "preferred agent 'codex' is not enabled"
+      },
+      "Planner": {
+        "role": "Planner",
+        "requested_agent": "claude",
+        "effective_agent": "copilot",
+        "delegated": false,
+        "access_path": "copilot_default",
+        "fallback_reason": "preferred agent 'claude' is not enabled"
+      },
+      "Reviewer": {
+        "role": "Reviewer",
+        "requested_agent": "claude",
+        "effective_agent": "copilot",
+        "delegated": false,
+        "access_path": "copilot_default",
+        "fallback_reason": "preferred agent 'claude' is not enabled"
+      },
+      "Retro Facilitator": {
+        "role": "Retro Facilitator",
+        "requested_agent": "copilot",
+        "effective_agent": "copilot",
+        "delegated": false,
+        "access_path": "copilot_default",
+        "fallback_reason": null
+      }
+    },
+    "fallback_events": [
+      {
+        "role": "Spec Steward",
+        "requested_agent": "codex",
+        "actual_agent": "copilot",
+        "reason": "preferred agent 'codex' is not enabled"
+      },
+      {
+        "role": "Planner",
+        "requested_agent": "claude",
+        "actual_agent": "copilot",
+        "reason": "preferred agent 'claude' is not enabled"
+      },
+      {
+        "role": "Reviewer",
+        "requested_agent": "claude",
+        "actual_agent": "copilot",
+        "reason": "preferred agent 'claude' is not enabled"
+      }
+    ]
+  },
+  "delegated_routing_evidence": {
+    "ledger_path": ".squad\\decisions.md",
+    "required_fields": [
+      "role_or_work_item",
+      "requested_agent",
+      "actual_agent",
+      "model_id",
+      "status",
+      "fallback_reason"
+    ]
+  },
+  "squad_model_overrides": {},
+  "prompt_path": "C:\\Dev\\Specrew\\.specrew\\last-start-prompt.md",
+  "summary_path": "C:\\Dev\\Specrew\\.specrew\\start-summary.md",
+  "generated_at_utc": "2026-05-12T19:47:10.5872095Z"
+}

@@ -85,31 +85,37 @@ These rules override generic Squad coordination whenever the repository is boots
     - After `speckit.specrew-speckit.after-tasks` succeeds, treat `speckit.specrew-speckit.before-implement` as the next automatic lifecycle step once implementation approval is granted. Do not stop at the `after-tasks` boundary to ask the human to manually trigger hardening review, explain the blocker, or request a deferral decision that belongs to `before-implement`.
     - If `speckit.specrew-speckit.before-implement` blocks, explain the concrete blocking artifact or verdict, why it blocks implementation, and the next valid human action before stopping.
 
-15. **Provide a review-ready implementation briefing**
-   - At the end of implementation and review, provide a developer-facing briefing that summarizes what was built, how it maps to requirements, the main happy path and relevant alternative flows, dependency/package usage including newly introduced packages, the testing strategy, and an explicitly labeled estimate of coverage or confidence.
+15. **Carry feature closeout version management**
+    - When a feature closeout is preparing to claim shipped work, treat release-version bookkeeping as required closure work rather than an optional reminder.
+    - Update the authoritative product version in `.specrew/config.yml`, add the corresponding `CHANGELOG.md` entry, refresh any README version summary or linked versioning references that surfaced the previous version, and create the release tag that anchors the closed feature state.
+    - Rerun `validate-governance.ps1` after the version/changelog/tag updates so the closeout evidence reflects the final public-readiness state.
+    - If any release-version step is intentionally deferred, keep the feature open until explicit human-approved defer evidence is recorded in the governing artifacts.
 
-16. **Honor delegated routing plans**
+16. **Provide a review-ready implementation briefing**
+    - At the end of implementation and review, provide a developer-facing briefing that summarizes what was built, how it maps to requirements, the main happy path and relevant alternative flows, dependency/package usage including newly introduced packages, the testing strategy, and an explicitly labeled estimate of coverage or confidence.
+
+17. **Honor delegated routing plans**
    - When Specrew provides an effective delegated routing plan for lifecycle roles, use that plan for planning, implementation, review, spec-governance, and repair work unless the human explicitly overrides it.
    - Treat review-heavy and problem-solving-heavy work as delegated-routing candidates when enabled agents make that possible: planning/problem-solving work should prefer Planner or Spec Steward delegated routing, while review/governance work should prefer Reviewer or Spec Steward delegated routing.
    - Materialize that plan into `.squad/config.json` via `agentModelOverrides`, and re-read the config before each lifecycle or repair spawn rather than caching it once at session start.
    - For every delegated lifecycle, review, governance, or repair spawn, append a short dated runtime-evidence entry to `.squad/decisions.md` with the role or work item, requested agent, actual agent, concrete model ID, whether the assignment was honored or fell back, and any fallback reason.
    - Keep Reviewer and Spec Steward independent from the Implementer whenever multiple enabled agents make that possible.
 
-17. **Enforce the no-gap policy**
+18. **Enforce the no-gap policy**
    - Do not close a lifecycle-governed run as complete when review, governance, or validation still reveals a known gap across spec, implementation, tests, docs, or observability.
    - Fix the gap in the current iteration, or obtain explicit human approval to defer it and record that defer in the governing artifacts so it does not roll forward invisibly.
    - A known gap is not merely review commentary; it becomes tracked work or an approved defer before closure.
 
-18. **Run critical evidence-driven review**
+19. **Run critical evidence-driven review**
    - During review and final readiness, classify hardened lifecycle/governance requirements as implemented, enforced, observable, and documented.
    - Emit a gap ledger whenever any one of those dimensions is missing, and make the next repair or defer action explicit.
    - If review finds an ambiguity, contradiction, or missing decision in the governing spec, stop closure, ask the human targeted clarification question, update the spec, and reconcile the affected plan/tasks/governance artifacts before continuing.
 
-19. **Escalate live model tiers**
+20. **Escalate live model tiers**
     - On repeated governance-gate failures, update `.squad/config.json` so the current repair owner moves from the fast tier to a balanced tier, then to a deep tier if the next repair still fails.
     - Clear any temporary escalation override as soon as the gate passes so normal routing resumes.
 
-20. **Route reviewer regressions conservatively**
+21. **Route reviewer regressions conservatively**
     - When a human reports a concrete defect in Squad-approved or reviewer-ready work, treat it as a reviewer-regression event for the active feature.
     - Route the remaining review work to the lowest strictly stronger reviewer class that is available.
     - If no stronger reviewer class exists, use an independent reviewer owner at the same class.

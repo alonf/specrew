@@ -2,7 +2,8 @@
 
 **Feature Branch**: `001-specrew-product`
 **Created**: 2026-04-17
-**Status**: Draft
+**Status**: Active 0.14.0
+**Implementation Note**: 14 implementing features have shipped as of 2026-05-13, so this product vision is now active rather than draft-only.
 **Input**: User description: "Build a project called Specrew — a spec-governed operating model for AI crews combining Spec Kit as the specification/governance layer with Squad as the persistent multi-agent runtime layer."
 
 ## Problem Statement
@@ -493,9 +494,10 @@ After `specrew init`, the canonical downstream entrypoint is `specrew start`. Sp
 **Spec Kit Extension**:
 
 - No additional human-invoked Specrew-specific Spec Kit slash commands in v1 beyond the canonical lifecycle that `specrew start` drives on the user's behalf. Governance is delivered via hooks, which may be backed internally by hook-targeted command prompt files in the extension package:
-   - `before_plan` — Validates spec contains requirements before planning proceeds
-   - `after_tasks` — Verifies task-to-requirement traceability after task generation
-   - `before_implement` — Pre-implementation governance check
+
+  - `before_plan` — Validates spec contains requirements before planning proceeds
+  - `after_tasks` — Verifies task-to-requirement traceability after task generation
+  - `before_implement` — Pre-implementation governance check
 
 **Squad Extension**:
 
@@ -595,7 +597,7 @@ Every iteration MUST follow a strict four-phase state machine. This is not optio
 
 ### Phase State Machine
 
-```
+```text
 ┌─────────┐       ┌───────────┐       ┌────────────┐       ┌──────────┐       ┌──────────┐
 │Planning │──────>│ Executing │──────>│ Reviewing  │──────>│  Retro   │──────>│ Complete │
 └─────────┘       └───────────┘       └────────────┘       └──────────┘       └──────────┘
@@ -605,6 +607,7 @@ Every iteration MUST follow a strict four-phase state machine. This is not optio
 ```
 
 **Mandatory Transitions**:
+
 - **planning → executing**: Iteration plan MUST be approved by user/Spec Steward before any task execution begins.
 - **executing → reviewing**: All planned tasks MUST be completed, abandoned, or deferred before review gate opens.
 - **reviewing → retro**: Review verdicts MUST be recorded per task and iteration-level. If verdict is "needs-rework", affected tasks re-enter executing phase.
@@ -612,12 +615,14 @@ Every iteration MUST follow a strict four-phase state machine. This is not optio
 - **any phase → abandoned**: Explicit reason MUST be recorded. Incomplete tasks become available for next iteration.
 
 **Artifact Production per Phase**:
+
 - **planning**: `plan.md` (required) — tasks, effort estimates, owners, traceability to requirements
 - **executing**: `state.md` (required) — task completion state, resume tokens; `drift-log.md` (required) — all drift events detected
 - **reviewing**: `review.md` (required) — per-task verdicts, overall iteration verdict
 - **retro**: `retro.md` (required) — estimation accuracy, drift summary, process notes, improvement actions
 
 **Violation Triggers**:
+
 - Skipping a phase (e.g., executing → complete without review) is a contract violation. Next iteration cannot begin.
 - Missing required artifacts blocks phase transition. Governance validator (FR-012) enforces this at runtime.
 - Attempting to approve a plan without spec requirements or attempting to execute without an approved plan is an error.
