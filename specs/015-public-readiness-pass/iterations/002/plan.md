@@ -2,12 +2,14 @@
 
 **Schema**: v1
 **Spec**: [../../spec.md](../../spec.md)
-**Status**: executing
+**Status**: reviewing
 **Capacity**: 9.0/20 story_points
 **Started**: 2026-05-13
-**Completed**: implementation completed on 2026-05-13 (`T010`-`T016`)
+**Completed**: implementation completed on 2026-05-13 (`T010`-`T016`); review accepted on 2026-05-13 against commit `f170562`
 **Hardening-Gate Sign-Off**: user sign-off recorded on 2026-05-13 for the Iteration 002 pre-implementation hardening gate
 **Implementation Authorization**: user directive on 2026-05-13 for the bounded `T010`-`T016` scope only
+**Review Completed**: 2026-05-13
+**Review Verdict**: accepted
 
 ## Scope Summary
 
@@ -83,6 +85,7 @@ Seven authorized scope items representing the remainder of Feature 015 public-re
 
 - This plan covers the explicitly authorized Iteration 002 scope: seven scope items (FR-008, FR-009, FR-010, FR-012, FR-013, FR-014, FR-016, FR-017) mapped to seven tasks (T010-T016).
 - The release/docs, governance/validator, and spec-alignment lanes all completed within the bounded `T010`-`T016` authorization.
+- Independent review now accepts the bounded Iteration 002 slice against commit `f170562`; retrospective and closeout remain separately authorized follow-on boundaries.
 - A fresh session restart will be required before future Squad runs can load the updated `.github/agents/squad.agent.md` and `.squad/templates/squad.agent.md` guidance.
 - All authorized scope items are represented with clear FR-traceability and release-truth ownership.
 
