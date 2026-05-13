@@ -24,7 +24,7 @@ These gaps are coupled. Licensing, attribution, README accuracy, release version
 ### Out of Scope
 
 - Approving or performing the repository visibility change from private to public.
-- Beginning work beyond the bounded Iteration 001 slice. Hardening-gate sign-off and implementation authorization are now recorded for `T001-T009` only; `T010-T024` and any later lifecycle expansion still require explicit human approval.
+- Beginning work beyond the bounded Iteration 001 slice (previously); Iteration 002 is now explicitly authorized on 2026-05-13 via user directive for the specific scope listed below.
 - Packaging Specrew as an installable CLI, documenting multi-host support, or creating a polished public demo repository.
 - Launch marketing, announcements, blog posts, conference collateral, or other external promotion work.
 - Broad CI/CD redesign unrelated to public-readiness documentation and release bookkeeping.
@@ -125,13 +125,15 @@ A future feature owner can complete closeout work with explicit version-manageme
 - **FR-014**: A human-readable versioning reference MUST exist for future readers, combining a brief README summary with a dedicated detailed reference at `docs/versioning.md` so the release policy is easy to find without overloading the README. **Owner role**: Documentation steward. **Delivery window**: Iteration 2.
 - **FR-015**: Planning and downstream execution artifacts for this feature MUST preserve the current authorization boundary: this feature is approved only through specification, Iteration 001 planning scaffold, and upstream-tracking push; hardening-gate sign-off and implementation start require later explicit human approval. **Owner role**: Planner and human reviewer. **Delivery window**: Iteration 1 planning boundary.
 - **FR-016**: `validate-governance.ps1` MUST check the public-readiness surfaces (`README.md`, `LICENSE`, `NOTICE.md`, `CHANGELOG.md`, and the versioning reference) on every invocation and emit additive soft warnings when those artifacts are missing or materially stale, rather than waiting until feature closeout to surface the drift. **Owner role**: Governance steward. **Delivery window**: Iteration 2.
+- **FR-017**: Four previously shipped and delivered feature specifications (`specs/007-user-facing-progress-handoff/spec.md`, `specs/009-project-path-resolution/spec.md`, `specs/011-specrew-start-conditional-pause/spec.md`, and `specs/012-descriptive-id-handoffs/spec.md`) MUST have their status field updated from the stale `Draft` label to the canonical shipped-spec status label `Complete` to accurately reflect their delivered and implemented state. **Owner role**: Spec steward. **Delivery window**: Iteration 2. **Canon choice**: Status label `Complete` aligns with spec 013 (validator hardening) as the standard label for shipped and fully delivered features.
 
 ### Traceability & Governance Requirements *(mandatory)*
 
 - **TG-001**: User Story 1 maps to FR-001 through FR-007 and FR-011.
-- **TG-002**: User Story 2 maps to FR-008 through FR-011, FR-014, and FR-016.
+- **TG-002**: User Story 2 maps to FR-008 through FR-011, FR-014, FR-016, and FR-017 (stale status reconciliation).
 - **TG-003**: User Story 3 maps to FR-012 through FR-016.
 - **TG-004**: Planning and execution artifacts MUST preserve the source-draft intent that public-open readiness is the goal, but repository visibility change, hardening-gate approval, and implementation authorization remain outside this specification's current approval scope.
+- **TG-005**: Iteration 002 is explicitly authorized on 2026-05-13 for the scope items: version bump (FR-008), changelog (FR-009), release tags (FR-010), closeout governance (FR-012, FR-013), versioning schema (FR-014), public-readiness drift check (FR-016), and stale shipped-feature spec status reconciliation (FR-017). These items are deferred from Iteration 1 and require separate authorization before implementation begins.
 
 ### Key Entities *(include if feature involves data)*
 
@@ -175,7 +177,7 @@ A future feature owner can complete closeout work with explicit version-manageme
 ## Governance Alignment *(mandatory)*
 
 - **Spec Steward**: Alon Fliess as requesting human, with Squad preserving fidelity to the source draft.
-- **Iteration Facilitator**: Specrew planner/coordinator pairing responsible for preserving the repaired two-iteration split: Iteration 001 = `T001-T009`, Iteration 002 = `T010-T024`.
-- **Capacity Model**: Two planned iterations totaling roughly 18 story points from the source draft baseline, with Iteration 1 focused on licensing, README, and product-status reconciliation, and Iteration 2 focused on versioning, changelog, tags, and closeout-governance extension.
-- **Drift Signals**: Any mismatch among README public state, top-level licensing/notice files, declared version, changelog, release tags, product-spec status, or future closeout guidance indicates drift from this specification.
-- **Human Oversight Points**: Later explicit human approval recorded on 2026-05-13 now opens hardening-gate sign-off plus implementation for `T001-T009` only. Iteration 002 (`T010-T024`), public-repo visibility change, and any new scope or lifecycle artifacts beyond this bounded slice still require later human authorization.
+- **Iteration Facilitator**: Specrew planner/coordinator pairing responsible for preserving the two-iteration split: Iteration 001 = `T001-T009` (completed 2026-05-13), Iteration 002 = `T010-T024` (now explicitly authorized 2026-05-13 for the scope items listed in TG-005).
+- **Capacity Model**: Two planned iterations totaling roughly 18 story points from the source draft baseline, with Iteration 1 focused on licensing, README, and product-status reconciliation (completed), and Iteration 2 focused on versioning, changelog, tags, closeout-governance extension, and stale shipped-feature spec status reconciliation (now authorized).
+- **Drift Signals**: Any mismatch among README public state, top-level licensing/notice files, declared version, changelog, release tags, product-spec status, shipped-feature spec status labels, or future closeout guidance indicates drift from this specification.
+- **Human Oversight Points**: Explicit human approval recorded on 2026-05-13 authorized `T001-T009` for Iteration 001 and `T010-T024` for Iteration 002. Public-repo visibility change and any new scope or lifecycle artifacts beyond this bounded two-iteration slice still require later human authorization.

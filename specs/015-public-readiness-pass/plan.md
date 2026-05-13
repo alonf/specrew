@@ -29,7 +29,7 @@ extension to `validate-governance.ps1`, and git tagging operations.
 **Constraints**: Additive only — no breaking changes to existing `validate-governance.ps1` hard exit
 codes or structured-failure schema; soft warnings MUST NOT become hard blockers for iteration governance  
 **Scale/Scope**: Fourteen shipped features reflected; single-developer alpha product; two planned
-iterations totalling ≈18 story points
+iterations totalling ≈19 story points
 
 ## Phase 1 Quality Planning
 
@@ -85,16 +85,31 @@ iterations totalling ≈18 story points
 
 ### Explicit Phase 2+ Deferrals
 
-- Pre-implementation hardening gate sign-off is now recorded for Iteration 001 on 2026-05-13; Iteration 002 remains deferred until later explicit human approval.
+- Pre-implementation hardening gate sign-off is now recorded for Iteration 001 on 2026-05-13.
+- Iteration 002 is now explicitly authorized on 2026-05-13 for version bump, changelog, release tags, closeout governance extension, versioning schema documentation, public-readiness drift check, and stale shipped-feature spec status reconciliation.
 - Dedicated bug-hunter lens execution and strongest-class routing remain deferred.
 - Quality-drift logic, mixed-stack override workflows, and reference-implementation comparison remain deferred.
 
+## Iteration 002 Planning Authorization
+
+**Iteration 002 Scope** (Authorized 2026-05-13):
+- Version reconciliation: `.specrew/config.yml` version bump to `0.14.0` (FR-008)
+- Release documentation: root `CHANGELOG.md` with Features 001-014 entries (FR-009)
+- Release tags: retroactive `v0.13.0` at `21d9e7f` and `v0.14.0` at `3ff32d4` (FR-010)
+- Feature closeout governance: Version management steps in closeout template (FR-012, FR-013)
+- Coordinator governance updates: Across `.github/agents/squad.agent.md`, `.squad/templates/squad.agent.md`, and `.specify/extensions/specrew-speckit/squad-templates/coordinator/specrew-governance.md` (FR-013)
+- Versioning schema: `docs/versioning.md` and README reference (FR-014)
+- Public-readiness drift check: `validate-governance.ps1` extension (FR-016)
+- Shipped-feature spec status reconciliation: Update specs 007, 009, 011, 012 status from Draft to Complete (FR-017)
+
+Iteration 002 testing and validation remain scoped: test fixtures, Pester coverage, markdown lint, validator verification, and evidence recording as defined in tasks T010-T025.
+
 ## Phase 2 Hardening and Specialist Review Planning
 
-**Phase 2 Slice Scope**: `iteration-001-authorized` — hardening-gate sign-off is recorded for Iteration 001 only; Iteration 002 remains outside the current authorization boundary  
+**Phase 2 Slice Scope**: `iteration-001-completed` and `iteration-002-authorized` — Iteration 001 hardening-gate sign-off is recorded; Iteration 002 scope is now authorized for planning and execution  
 **Hardening Gate Artifact**: `specs/015-public-readiness-pass/iterations/001/quality/hardening-gate.md`  
 **Known-Traps Corpus Location**: `.specrew/quality/known-traps.md`  
-**Trap Reapplication Artifact**: `none` — not opened for the bounded Iteration 001 documentation slice
+**Trap Reapplication Artifact**: `none` — not opened for this documentation-focused feature
 
 ### Hardening Focus Areas
 
@@ -122,8 +137,9 @@ iterations totalling ≈18 story points
 ### Explicit Later Deferrals
 
 - Iteration 001 hardening sign-off is complete and implementation is authorized only for T001-T009.
-- Known-traps corpus seeding and trap reapplication remain deferred because they are not part of the bounded Iteration 001 documentation slice.
-- Iteration 002 hardening, release-truth work, and any later routing or validator-warning execution remain deferred until separately authorized.
+- Iteration 002 is now explicitly authorized on 2026-05-13; hardening, release-truth work, validator-warning execution, and stale-status reconciliation are now in scope for T010-T025.
+- Known-traps corpus seeding and trap reapplication remain deferred because they are not part of this documentation-focused feature.
+- Public-repo visibility change and any new scope or lifecycle artifacts beyond the two-iteration slice still require later human authorization.
 
 ## Constitution Check
 
@@ -131,7 +147,7 @@ iterations totalling ≈18 story points
 
 - **Spec Authority Gate**: ✅ PASS. Plan scope maps directly to approved `spec.md` (FR-001–FR-016,
   TG-001–TG-004). No work is proposed outside that boundary. Later explicit human approval recorded
-  on 2026-05-13 opens `T001-T009` only; `T010-T024` remain deferred.
+  on 2026-05-13 completed `T001-T009`; `T010-T025` are now separately authorized for Iteration 002.
 
 - **Layering Gate**: ✅ PASS. Changes are correctly classified:
   - Spec Kit layer: `plan.md`, `research.md`, `data-model.md`, `quickstart.md`, `contracts/` (this
@@ -164,9 +180,9 @@ iterations totalling ≈18 story points
 - **Capacity Gate**: ✅ PASS. Two iterations; effort unit is story points (complexity).
   - Iteration 001: ≈10 story points (licensing 2 + README rewrite 4 + product-spec status 1 +
     planning scaffold 3)
-  - Iteration 002: ≈8 story points (versioning 2 + CHANGELOG 2 + tags 1 + closeout governance 2 +
-    drift check 1)
-  - Total: ≈18 story points (matches spec Governance Alignment baseline)
+  - Iteration 002: ≈9 story points (versioning 2 + CHANGELOG 2 + tags 1 + closeout governance 2 +
+    drift check 1 + shipped-spec status reconciliation 1)
+  - Total: ≈19 story points (matches the current two-iteration planning baseline)
 
 - **Drift/Reconciliation Gate**: ✅ PASS. Drift signals are explicit per spec §Governance Alignment:
   mismatch among README public state, licensing files, declared version, changelog, tags,
