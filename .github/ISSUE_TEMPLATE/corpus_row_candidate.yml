@@ -1,0 +1,69 @@
+name: Corpus Row Candidate
+description: A recurring pattern you spotted that looks like it should become a Specrew validator rule
+title: "[Corpus]: "
+labels: ["corpus-row-candidate"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Corpus rows are how Specrew graduates observed patterns into enforced rules. See `.specrew/quality/known-traps.md` for examples.
+
+        File this if you have seen a pattern recur (in your own use of Specrew or in this project) that the validator could catch mechanically.
+  - type: textarea
+    id: pattern
+    attributes:
+      label: The pattern
+      description: What is the recurring defect or anti-pattern?
+      placeholder: 'e.g., "a boundary commit claims a phase is complete, but the artifacts referenced are not actually committed yet"'
+    validations:
+      required: true
+  - type: textarea
+    id: examples
+    attributes:
+      label: Where have you seen it?
+      description: Concrete examples. Commit hashes, file paths, or descriptions of when it occurred.
+    validations:
+      required: true
+  - type: dropdown
+    id: category
+    attributes:
+      label: Proposed category
+      options:
+        - lifecycle-discipline
+        - validation-discipline
+        - documentation-fidelity
+        - spec-fidelity
+        - test-integrity
+        - governance-bypass
+        - other
+    validations:
+      required: true
+  - type: dropdown
+    id: detection
+    attributes:
+      label: Detection mechanism
+      description: How could a validator catch this?
+      options:
+        - Mechanical (string match, regex, file comparison)
+        - Structural (artifact shape, lifecycle position)
+        - Cross-artifact (spec vs implementation, plan vs tasks)
+        - Judgment-based (requires reviewer interpretation)
+    validations:
+      required: true
+  - type: dropdown
+    id: graduation
+    attributes:
+      label: Proposed graduation level
+      options:
+        - Passive guidance (advisory only, in known-traps.md)
+        - Soft validator warning
+        - Hard validator failure
+    validations:
+      required: true
+  - type: textarea
+    id: detection-sketch
+    attributes:
+      label: Detection sketch (optional)
+      description: Pseudocode or rule shape for how the validator could check this.
+    validations:
+      required: false

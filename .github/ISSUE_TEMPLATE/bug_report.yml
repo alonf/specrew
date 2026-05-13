@@ -1,0 +1,60 @@
+name: Bug Report
+description: Something is broken or behaving incorrectly
+title: "[Bug]: "
+labels: ["bug"]
+body:
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: Describe the bug clearly.
+      placeholder: When I ran X, I expected Y, but instead Z happened.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Reproduction steps
+      description: How can someone else reproduce this?
+      placeholder: |
+        1. Run `scripts/specrew.ps1 start`
+        2. ...
+        3. Observe ...
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What did you expect to happen?
+    validations:
+      required: false
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: OS, PowerShell version, Specrew version (from `.specrew/config.yml`), AI runtime (Claude / Codex / GitHub Copilot), anything else relevant.
+      placeholder: |
+        - OS: Windows 11
+        - PowerShell: 7.4
+        - Specrew version: 0.15.0
+        - AI runtime: ...
+    validations:
+      required: true
+  - type: textarea
+    id: artifacts
+    attributes:
+      label: Relevant artifacts
+      description: Spec / plan / iteration / commit hash references if applicable.
+      placeholder: |
+        - Spec: specs/NNN-name/spec.md
+        - Iteration: specs/NNN-name/iterations/NNN/state.md
+        - Commit: ...
+    validations:
+      required: false
+  - type: textarea
+    id: tried
+    attributes:
+      label: What did you try?
+      description: Workarounds or mitigations you already attempted.
+    validations:
+      required: false

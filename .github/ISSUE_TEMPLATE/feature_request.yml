@@ -1,0 +1,48 @@
+name: Feature Request
+description: Propose a new capability or improvement
+title: "[Feature]: "
+labels: ["enhancement"]
+body:
+  - type: dropdown
+    id: category
+    attributes:
+      label: Category
+      description: Which part of Specrew does this touch?
+      options:
+        - Governance (validator, hardening gate, retro)
+        - Prompt rules (coordinator, agent charters)
+        - Lifecycle (boundaries, transitions, artifacts)
+        - Documentation
+        - Tooling (CLI, scripts, init/start)
+        - Methodology (philosophy, approach)
+        - Other
+    validations:
+      required: true
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem does this solve?
+      description: Describe the pain point or gap this would address.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed approach
+      description: Rough sketch — does not need to be a final design.
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+    validations:
+      required: false
+  - type: checkboxes
+    id: methodology-flag
+    attributes:
+      label: Methodology change?
+      description: If this touches Specrew's methodology (squad shape, lifecycle, governance philosophy), confirm you have started a Discussion first.
+      options:
+        - label: This is not a methodology change, OR I have opened a corresponding Discussion thread.
+          required: false

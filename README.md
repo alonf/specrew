@@ -1,5 +1,9 @@
 # Specrew
 
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![Version](https://img.shields.io/badge/version-0.15.0-blue.svg)](.specrew/config.yml)
+[![Status: Alpha](https://img.shields.io/badge/status-alpha-orange.svg)](#current-state)
+
 Specrew combines Spec Kit and Squad into a spec-governed operating model for
 AI-assisted software delivery.
 
