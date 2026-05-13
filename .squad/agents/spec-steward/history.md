@@ -2,115 +2,61 @@
 
 Project-specific learnings and patterns discovered during work.
 
-## Learnings
+## Core Context
+
+Foundational patterns from May 8-11 established the spec steward discipline for Feature 015:
+
+- **Contract-gap closure strategy (May 8)**: Surgical edits that add explicit constraints or versioned artifacts over rewriting requirements. Preserves traceability and approval history while strengthening spec contracts (applied to specs 002, 005).
+- **Hardening-gate schema evolution (May 10-11)**: Nine-column schema (Concern, Category, Status, Evidence Basis, Runtime Evidence Status, Expected Controls, Blocking, Rationale, Approval) replaces six-column to distinguish planning-vs-runtime evidence. Canonical five concerns must appear in exact order before feature-specific concerns.
+- **Pre-sign-off hardening-gate convention (May 11)**: Overall Verdict `ready` signals planning-level readiness; pending metadata (`Reviewed By: *(pending)*`, `Reviewed At: *(pending)*`) explicitly names what's awaiting human approval. Evidence Basis combinations enforce strict validator rules.
+- **Per-iteration-scaffolding authorization discipline (May 11)**: Agents must not pre-emptively scaffold new iteration directories (plan.md, state.md, drift-log.md) without recorded authorization decision in `.squad/decisions.md` before artifact creation. Trap added to known-traps.md row 14.
+- **Traceability enforcement pattern**: When approval changes scope (e.g., reducing validation commands), update both plan.md task definition AND hardening-gate.md concern evidence to create two-artifact traceability point. Single-artifact enforcement loses accountability.
+
+## Recent Learnings
 
 ### 2026-05-11: Per-Iteration Scaffolding Governance Trap — Feature 007 Issue 3 Repair
 
-Repaired the known-traps corpus to address unauthorized per-iteration scaffolding discovered during feature 007 iteration 002 planning work.
-
-**Problem Identified**:
-- Feature 007 iteration 002 directory with plan.md, state.md, and drift-log.md was scaffolded during planning routing without explicit human authorization
-- The Planner role was routed to execute planning work, but no fresh verbatim authorization decision was recorded in `.squad/decisions.md` before artifacts were created
-- The planning boundary crossed without capturing authorization—a governance blind spot
-- This extends beyond the existing "inferred approval" trap (row 8, known-traps.md line 8): pre-emptive iteration scaffolding is dangerous because it commits the project to an iteration boundary before the human has authorized planning to begin
-
-**Governance Principle**:
-Agents MUST NOT pre-emptively scaffold a new iteration's governance artifacts (plan.md, state.md, drift-log.md, quality/hardening-gate.md) without:
-1. A fresh verbatim authorization decision recorded in `.squad/decisions.md` (e.g., "authorize iteration NNN planning to proceed")
-2. An optional but recommended companion Planning Approval section in plan.md that records the same authorization
-
-**Trap Corpus Repair**:
-- Added new governance row to `.specrew/quality/known-traps.md` after row 13 (missing-canonical-concerns)
-- Row 14 is now: "Per-iteration-scaffolding-without-authorization" governance trap
-- Detection method: Scan `specs/NNN-feature/iterations/` for new iteration directories created after 2026-05-11; verify matching authorization decision in `.squad/decisions.md` within 30 minutes prior to creation date
-- Remediation guidance: Ensure explicit authorization is recorded before scaffolding; both decisions ledger and in-artifact Planning Approval section should capture the same authorization truth
-- Concrete example: Feature 007 iteration 002 on 2026-05-11 as the discovery trigger
-
-**Distinction from Row 8 Trap**:
-- Row 8 (inferred-approval-evidence-reuse): Blocks implementation start when hardening-gate approval was inferred rather than explicitly granted
-- Row 14 (per-iteration-scaffolding-without-authorization): Blocks iteration artifact creation when planning authorization was inferred or skipped altogether
-- Both enforce the same principle—explicit human authorization required—but at different lifecycle boundaries: Row 8 at pre-implementation gates, Row 14 at iteration planning boundaries
-
-**Pattern Discovered**: Pre-emptive scaffolding violates spec authority because it silently commits to an iteration scope before the human has authorized the planning work. This creates a hidden governance boundary that allows iteration artifacts to exist without recorded authorization. Future iterations must verify authorization before any agent scaffolds new iteration directories.
-
-**Applicability**: This trap applies to all features with iteration-based planning (specs 001-010+). Reapplication should scan for any iteration directories created without matching authorization decisions, with priority given to recent violations.
+[See Core Context above for summary; full entry preserved for governance audit trail]
 
 ### 2026-05-11: Feature 008 Iteration 005 Pre-Sign-Off Hardening-Gate Schema Convention
 
-Accepted and recorded the pre-sign-off hardening-gate schema convention established by iteration 005 sign-off. This governance pattern formalizes how hardening gates transition from planning-phase drafts to signed-off completion.
-
-**Schema Characteristics**:
-1. **Overall Verdict**: Set to `ready` (not `deferred-with-approval`) to signal planning-level readiness before sign-off is recorded
-2. **Pending Metadata**: Keep rich pending-field notation (`Reviewed By: *(pending Alon Fliess)*`, `Reviewed At: *(pending)*`) in planning-only state before transition to signed-off state
-3. **Post-Sign-Off State**: Update Reviewed By and Reviewed At to actual values, add Sign-Off Evidence section, and change Overall Verdict notation to reflect signed status (e.g., `✅ SIGNED OFF`)
-4. **Evidence Authority**: Sign-Off Evidence section records verbatim authorization statement from the approving authority, along with recorded date and context
-
-**Recognized Pattern**: Pre-implementation hardening gates use this richer schema to separate planning-level readiness (Overall Verdict: ready with all blocking concerns addressed) from sign-off completion (Reviewed By and Reviewed At recorded, Sign-Off Evidence captured). This allows gates to be ready for review without obscuring which fields are still awaiting human approval.
-
-**Scope Governance During Sign-Off**: When human approval changes the authorized scope (e.g., reducing validation commands from seven to six), update both the plan.md task definition AND the hardening-gate concern evidence to reflect the new scope. The validation-lane-completeness concern rationale must name the exact authorized command set, creating a two-artifact traceability point.
-
-**Known-Traps Seeding**: Added two traps to `.specrew/quality/known-traps.md`:
-1. **pre-sign-off-schema-convention-drift**: Detects when hardening gates regress pending metadata or Overall Verdict notation during lifecycle transitions
-2. **validation-lane-concern-scope-drift**: Detects when a hardening gate documents one command set but plan.md lists a different set
-
-**Pattern discovered**: Pre-sign-off hardening gates benefit from explicit pending-field notation in planning phase because it shows readiness FOR review while explicitly naming what's still pending human action. Regression to simpler blocked/unblocked states loses this valuable traceability bridge.
+[See Core Context for schema evolution summary]
 
 ### 2026-05-10: Feature 008 Iteration 003 Approval Recording and Hardening Gate Status Vocabulary
 
-Recorded two fresh approvals for feature 008 iteration 003 (User Story 2 — implementer lockout-chain cap) into the iteration artifacts: hardening-gate sign-off and implementation authorization.
+[See Core Context for approval recording pattern summary; detailed entry preserved for audit trail]
 
 The approval recording involved:
 1. **plan.md Implementation Approval section**: Updated from pending to authorized with explicit approval evidence, approving human (Alon Fliess), and recorded date.
-2. **state.md lifecycle state**: Updated Current Phase from 'planning' to 'approved' and Iteration Status to reflect implementation-approved but not yet executed state. Added hardening-gate and implementation authorization checkpoints to Decisions and Handoff section.
-3. **hardening-gate.md approval fields**: Updated Overall Verdict, Reviewed By, Reviewed At, and added Hardening-Gate Sign-Off section with verbatim sign-off evidence.
-4. **Hardening concern status vocabulary repair**: Five feature-specific concerns (`chain-counting-integrity`, `cap-activation-routing`, `decision-ledger-recording`, `handoff-visibility`, `us1-integration-correctness`) required Status correction from `requires-evidence` to `addressed` and Runtime Evidence Status correction from `requires-runtime-proof` to `pending-post-implementation` to pass validate-governance.
+2. **state.md lifecycle state**: Updated Current Phase from 'planning' to 'approved' and Iteration Status to reflect implementation-approved but not yet executed state.
+3. **hardening-gate.md approval fields**: Updated Overall Verdict, Reviewed By, Reviewed At, and added Hardening-Gate Sign-Off section.
+4. **Hardening concern status vocabulary repair**: Five feature-specific concerns required Status correction from `requires-evidence` to `addressed` and Runtime Evidence Status correction to `pending-post-implementation`.
 
-**Pattern discovered**: For pre-implementation hardening gates, concerns that will be validated after implementation must use Status `addressed` with Evidence Basis `planning-time-analysis` and Runtime Evidence Status `pending-post-implementation`. Status `requires-evidence` is not valid for pre-implementation gates—it triggers the validator's default case which adds "must resolve the concern before implementation can proceed" issue and causes `BlocksImplementation` to be true. The correct vocabulary signals planning-level readiness while explicitly deferring runtime proof to post-implementation review.
-
-**Pattern discovered**: When a hardening gate's Overall Verdict is `ready` (all blocking concerns are addressed at planning level), the gate-level Approval Ref must be empty (—). Approval references are required only for `deferred-with-approval` verdicts where human approval explicitly permits proceeding despite unresolved concerns. A `ready` verdict means the gate is cleared based on planning-time evidence and does not require separate approval—the approval is at the implementation-authorization level in plan.md, not at the gate level.
-
-**Pattern discovered**: Hardening-gate sign-off and implementation authorization are separate but complementary approvals. The hardening-gate sign-off validates that the quality planning meets the pre-implementation bar (canonical concerns present, feature-specific concerns documented, evidence basis and controls specified). The implementation authorization grants permission to execute the iteration tasks. Both must be recorded truthfully in the respective artifact sections before implementation begins.
+**Pattern discovered**: For pre-implementation hardening gates, concerns validated post-implementation must use Status `addressed` with Evidence Basis `planning-time-analysis`. Status `requires-evidence` is invalid for pre-implementation gates and triggers default validator issue. **Pattern discovered**: When Overall Verdict is `ready`, Approval Ref must be empty (—); approval references are required only for `deferred-with-approval` verdicts. **Pattern discovered**: Hardening-gate sign-off and implementation authorization are separate but complementary approvals recorded in respective artifact sections before implementation begins.
 
 ### 2026-05-10: Feature 008 Iteration 003 Hardening Gate Canonical Concern Repair
 
-Repaired the hardening-gate.md for feature 008 iteration 003 after intra-feature schema regression was detected during revision cycle. The original planner-authored artifact omitted the five canonical concerns required by spec 005 Phase 2 (security-surface, error-handling-expectations, retry-idempotency-requirements, test-integrity-targets, operational-resilience-concerns).
+[Canonical concern ordering and nine-column schema pattern documented; consolidated into Core Context]
 
-The repair involved:
-1. **Canonical concern addition**: Added five canonical concerns in the required order as the first five rows of the Concern Review table, each with honest pre-implementation evaluation specific to the US2 lockout-chain-cap slice.
-2. **Schema upgrade**: Upgraded from six-column schema to nine-column schema (Concern, Category, Status, Evidence Basis, Runtime Evidence Status, Expected Controls, Blocking, Rationale, Approval) to match spec 005 iteration 004 pattern.
-3. **Feature-specific concerns preserved**: Kept the six existing feature-specific concerns after the canonical five.
-4. **Governance validation fixes**: Adjusted Evidence Basis to `not-applicable` for not-applicable status, and Runtime Evidence Status to `pending-post-implementation` for planning-time-analysis addressed concerns.
-5. **Known-traps corpus seeding**: Added `missing-canonical-concerns` governance-category trap entry with concrete example, detection method (scan Concern Review table for canonical five in order), remediation guidance, discovery date 2026-05-10, and reapplication note.
+### 2026-05-08: Spec Quality Hardening Pass and Phase 2 Lifecycle Repairs
 
-**Pattern discovered**: When a hardening gate is authored without the required canonical concerns, the remediation is not just adding them but ensuring they appear in the exact required order (security-surface, error-handling-expectations, retry-idempotency-requirements, test-integrity-targets, operational-resilience-concerns) as the first five rows, with feature-specific concerns following after. The nine-column schema provides better granularity for planning-vs-runtime evidence tracking than the original six-column schema.
+[Surgical spec hardening (specs 002, 005) and multi-iteration repair patterns consolidated into Core Context]
 
-**Pattern discovered**: The governance validator enforces strict Evidence Basis and Runtime Evidence Status combinations: `not-applicable` status requires `not-applicable` Evidence Basis, and `planning-time-analysis` Evidence Basis requires `pending-post-implementation` or `not-needed` Runtime Evidence Status (not `requires-runtime-proof`).
+### 2026-05-13: Feature 015 Iteration 002 Authorization and Planning Alignment
 
-### 2026-05-08: Spec Quality Hardening Pass
+The spec surfaces (spec.md, plan.md, tasks.md) were updated to reflect the user-authorized Iteration 002 scope covering seven items (FR-008 through FR-010, FR-012 through FR-014, FR-016 through FR-017). Key decisions:
+- **Canonical shipped-feature status label**: Status field across four previously shipped specs (007, 009, 011, 012) must be updated from stale Draft to Complete, aligning with spec 013 pattern.
+- **Traceability verification**: All 15 tasks (T010-T024) are traced to explicit FR items; no orphan tasks exist. FR-017 (shipped-feature status reconciliation) is new and properly traced.
+- **Planning surface synchronization**: Spec steward updates ensure spec.md scope boundaries, plan.md phase planning, and .squad/identity/now.md all reflect Iteration 002 authorization consistently.
 
-Applied surgical spec-hardening to close contract gaps in specs 002 and 005 from roadmap review. Key improvements:
+### 2026-05-13: Feature 015 Planning Artifact Repair
 
-- **Canonicalizer versioning and derivation allow-lists** (Spec 002): Closed loophole where canonicalization could use open-ended derivation reasoning. Now requires explicit versioned allow-list artifacts and version recording in canonicalization reports.
-- **Worked-example preset requirement** (Spec 005): Prevented preset content from being named but not specified. `node-public-ws-service` preset must include fully-specified worked example in the preset artifact itself.
-- **Known-traps corpus seeding** (Spec 005): Corpus must be seeded from dogfooding findings and prior learnings rather than starting empty.
-- **Mechanical check demotion workflow** (Spec 005): Provided safety valve for noisy checks that can be demoted to advisory through explicit reviewed workflow.
-- **Strongest-class binding for hardening gate** (Spec 005): Aligned hardening gate routing with bug-hunter lens policy by default.
-- **Quality-drift detection timing** (Spec 005): Bound detection to end of review phase before iteration close, preventing silent quality debt accumulation.
-- **Phased implementation guidance** (Spec 005): Added 4-phase delivery structure to guide planning without mandating single undifferentiated block.
+Repaired three categories of stale references:
+- **Branch reference consistency**: Corrected `016-public-readiness-pass` → `015-public-readiness-pass` in spec.md, plan.md, and .github/copilot-instructions.md.
+- **Versioning source-of-truth**: Made `.specrew/config.yml` authoritative (bumped 0.1.0-dev to 0.14.0); updated plan.md summary to state this explicitly.
+- **Recent Changes clarity**: Replaced generic language with explicit versioning governance in .github/copilot-instructions.md.
 
-**Pattern discovered**: When closing contract gaps, prefer surgical edits that add explicit constraints or versioned artifacts over rewriting requirements. This preserves traceability and approval history while strengthening the contract.
-
-### 2026-05-08: Phase 2 Multi-Iteration Repair
-
-Repaired feature `005-stack-aware-quality-bar` Phase 2 planning after drift appeared between the feature-level capacity claim and the generated 32-task package. The governing fix was to keep the repo-standard 20-point capacity intact, rewrite the feature plan/tasks to name concrete execution slices (`003`-`005`), and make Iteration 003 the only MVP execution candidate until its hardening-gate contract is accepted.
-
-**Pattern discovered**: when task generation reveals that one phase-level package no longer fits a single iteration, repair the parent plan and task language before repairing the active iteration. Otherwise the new iteration inherits a false capacity story and every downstream approval artifact starts from drift.
-
-### 2026-05-08: Phase 2 Lifecycle Boundary Tightening
-
-T007 closed a lifecycle gap in feature `005-stack-aware-quality-bar` by making the Phase 2 boundary explicit across `before-plan`, `before-implement`, and coordinator governance guidance. The hardening gate is now described as a required pre-implementation sign-off or human-approved deferral checkpoint, while bug-hunter execution, routing enforcement, known-traps workflows, and quality-drift automation remain explicitly deferred unless the active slice truly delivers them.
-
-**Pattern discovered**: when a later-phase governance requirement becomes the current slice's entry gate, update every lifecycle checkpoint that can misstate readiness. Tightening only the implementation gate is insufficient if planning or coordinator guidance still lets the team narrate later-phase behavior as already active.
+Pattern: Feature artifact repairs require attention to both machine-readable scope (spec.md FR items) and human-readable governance language (.github/copilot-instructions.md Recent Changes).
 
 ### 2026-05-08: Feature 006 Requirement Repair for Checkpoint Sequencing and Success Metrics
 

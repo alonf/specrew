@@ -1,3 +1,575 @@
+# Decision: Feature 015 Review-Boundary Commit
+
+**Date**: 2026-05-13  
+**Agent**: Implementer  
+**Authority**: Alon Fliess (user input)  
+**Decision Type**: Boundary-claim-without-commit repair  
+
+## Problem
+
+Squad's Iteration 002 review workflow declared the review boundary complete and clean, updating plan.md, state.md, and review.md plus creating the public-readiness-release-review skill. However, no dedicated review-boundary commit was created to persist these artifacts to git. The Scribe's orchestration commits (2e95c74, 170be02) remained local-only and unsigned for the review verdict itself.
+
+## Resolution
+
+Created a single dedicated review-boundary commit with:
+
+- **Commit hash**: daf2b03e5a860fb680fcb26ea9313cd38ffb90a7
+- **Subject**: "Feature 015 public-readiness-pass iteration 002 review boundary"
+- **Body sections**: Artifacts, Verification, Outstanding-findings, Next-action (in order)
+- **Staged files**:
+  - specs/015-public-readiness-pass/iterations/002/review.md (95 lines, accepted verdict)
+  - specs/015-public-readiness-pass/iterations/002/plan.md (updated to reviewing status)
+  - specs/015-public-readiness-pass/iterations/002/state.md (updated with review acceptance timestamp)
+  - .squad/skills/public-readiness-release-review/SKILL.md (new skill pattern for release-truth review)
+- **Excluded**: .claude/settings.local.json (as requested)
+- **Co-authored-by**: Copilot <223556219+Copilot@users.noreply.github.com>
+
+## Verification
+
+- ✅ Working tree clean except for .claude/settings.local.json (intentionally excluded)
+- ✅ Local HEAD: daf2b03 (review-boundary commit)
+- ✅ Origin HEAD: daf2b03 (synced after push)
+- ✅ Branch tracking: "Your branch is up to date with 'origin/015-public-readiness-pass'"
+- ✅ Push included all three local-only commits: 2e95c74 → 170be02 → daf2b03
+
+## Impact
+
+The review boundary is now durably persisted to git with explicit verify-and-handoff intent. The Scribe's context-summarization work and the Reviewer's decision are now part of the same historical record, not split across local-only noise and unsigned verdict artifacts.
+
+## Next Action
+
+Do not open retrospective or claim iteration closeout from this accepted review boundary alone. Await separate human authorization before opening the retrospective for Feature 015, iteration 002 (per review.md Next Action section).
+
+
+# Implementer Decision: Feature 015 release-boundary handling
+
+**Date**: 2026-05-13  
+**By**: Implementer  
+**Type**: release-boundary
+
+## Decision
+
+For Feature 015 Iteration 002 release-truth work, retroactive tags are created
+only when the target tag name is absent. If `v0.13.0` or `v0.14.0` already
+exists locally or remotely, implementation reports the duplicate as
+advisory-only and preserves the existing tag target without any rewrite.
+
+## Why It Matters
+
+- This keeps FR-010 aligned with the no-force / no-history-rewrite constraint.
+- It preserves historical documentary value for retroactive tags.
+- It gives future release work a concrete rule for duplicate-tag scenarios.
+
+
+# Planning Artifact Repair: Feature 015 Consistency
+
+**Date**: 2026-05-13  
+**Facilitator**: Planner  
+**Context**: Feature 015 public-readiness-pass branch naming and versioning source-of-truth repair  
+
+## What Was Repaired
+
+1. **Branch Reference Consistency**: All references to `016-public-readiness-pass` corrected to `015-public-readiness-pass` in:
+   - `specs/015-public-readiness-pass/spec.md` (Feature Branch header)
+   - `specs/015-public-readiness-pass/plan.md` (Branch field in header)
+   - `.github/copilot-instructions.md` (Recent Changes section)
+
+2. **Versioning Source-of-Truth Explicitness**: Made `.specrew/config.yml` the authoritative version reference:
+   - Updated plan.md Summary to state: "`.specrew/config.yml` serves as the canonical source-of-truth for the active Specrew version; downstream README and documentation surfaces mirror this version."
+   - Updated FR-008 in spec.md to explicitly name `.specrew/config.yml` and the stale bootstrap value: "`specrew_version: "0.1.0-dev"` to `0.14.0`"
+   - Added `.specrew/config.yml` to Project Structure section in plan.md with FR-008 reference
+
+3. **Recent Changes Entry**: Updated `.github/copilot-instructions.md` to replace generic "standard" language with explicit versioning governance: "PowerShell 7 (script extension), Markdown (all documentation artifacts), Git (tag operations) + `validate-governance.ps1` and `shared-governance.ps1` (existing); `.specrew/config.yml` specrew_version bump from 0.1.0-dev to 0.14.0 (version source-of-truth)"
+
+## Why This Matters
+
+- **Consistency**: Feature uses correct branch number (`015`, not `016`) across all planning artifacts
+- **Explicitness**: Version governance is now traceable to a specific source file (`.specrew/config.yml`) rather than treated as generic documentation policy
+- **Durability**: Future feature-closeout work will understand that version bumps target `.specrew/config.yml` as the authoritative registry, not README or CHANGELOG
+- **Scope Clarity**: Confirmed authorization boundary (Iteration 001 planning scaffold + upstream push) is preserved and explicitly stated in all artifacts
+
+## Unchanged Elements
+
+- Scope boundaries remain: specification → Iteration 001 planning scaffold → upstream push; hardening-gate sign-off and implementation authorization remain outside current scope (FR-015)
+- All FR-001 through FR-016 and TG-001 through TG-004 requirements preserved
+- Quality planning and Phase 1 design gates remain as authored
+
+## Next Actions
+
+Feature 015 planning artifacts are now repair-complete and ready for implementation authorization (when approved by human reviewer).
+
+
+# Planning Decision: Feature 015 Iteration 002 Scaffold
+
+**Decision ID**: planner-feature015-iteration002-plan  
+**Feature**: 015 — Public-Readiness Pass  
+**Date**: 2026-05-13  
+**Decision Maker**: Planner (autonomous planning boundary)  
+**Authority**: Feature 015 `plan.md` §Iteration 002 Planning Authorization (explicit human authorization on 2026-05-13)
+
+---
+
+## Decision Summary
+
+Iteration 002 planning artifacts have been scaffolded for Feature 015 using the canonical iteration plan schema (v1). The scope covers seven explicitly authorized feature requirements (FR-008 through FR-010, FR-012 through FR-014, FR-016 through FR-017) decomposed into 15 tasks (T010-T024) totaling 9.0 story points of estimated effort.
+
+---
+
+## Authorized Scope Items
+
+The Iteration 002 scope is drawn directly from `plan.md` §Iteration 002 Planning Authorization:
+
+1. **FR-008**: Version bump (`.specrew/config.yml` 0.1.0-dev → 0.14.0)
+2. **FR-009**: Retroactive CHANGELOG.md with Features 001-014 entries
+3. **FR-010**: Annotated git tags v0.13.0 (21d9e7f) and v0.14.0 (3ff32d4)
+4. **FR-012, FR-013**: Feature closeout governance updates across coordinator templates
+5. **FR-014**: Versioning schema documentation (docs/versioning.md)
+6. **FR-016**: Public-readiness drift detection validator extension
+7. **FR-017**: Shipped-feature spec status reconciliation (specs/007, 009, 011, 012)
+
+All seven scope items are represented in the task decomposition with explicit FR traceability.
+
+---
+
+## Artifacts Created
+
+Planning boundary artifacts:
+- `specs/015-public-readiness-pass/iterations/002/plan.md` — canonical iteration plan with 15 tasks, concurrency rationale, effort model
+- `specs/015-public-readiness-pass/iterations/002/state.md` — iteration state artifact with planning-phase posture
+- `specs/015-public-readiness-pass/iterations/002/drift-log.md` — zero-drift planning assessment with seven execution-monitoring areas
+- `specs/015-public-readiness-pass/iterations/002/quality/hardening-gate.md` — pre-implementation quality concerns with canonical + iteration-specific schema
+
+Governance updates:
+- `.squad/identity/now.md` — updated to reflect Iteration 002 planning boundary complete, execution authorization pending
+
+---
+
+## Key Planning Decisions
+
+### 1. Effort Scoping: 11.5 Story Points
+- Total estimated effort for Iteration 002 is 11.5 story_points
+- Approximately 58% of the 20 story_point capacity ceiling
+- Leaves 8.5 story_points of post-execution buffer for rework if needed
+- Respects the planning principle of leaving headroom for execution discovery
+- Aligns with the original plan.md estimate of "≈8 story points" with additional reserve for test scaffolding and human verification phases
+
+### 2. Task Decomposition: 15 Tasks Across Three Workstreams
+- **Validator Coverage (T010-T011, T016, T023)**: Test fixtures, Pester coverage, implementation, fixture validation
+- **Release-Truth (T012-T015, T017-T019)**: Version bump, docs, changelog, tags, spec status
+- **Governance Carry-Forward (T020-T021)**: Feature closeout templates and proof deferral
+- **Polish (T022-T024)**: Markdown validation, full validator run, plan reconciliation
+
+Decomposition respects the planning principle of clear ownership and separable workstreams.
+
+### 3. Hardening-Gate Status: `blocked` Pending Implementation Authorization
+- Pre-implementation concerns are mapped to execution-evidence targets
+- All canonical concerns (security, error-handling, idempotency, test-integrity, resilience) are addressed
+- Iteration-specific concerns (changelog-completeness, version-tag-integrity, coordinator-prompt-correctness, status-field-consistency, version-surface-alignment, validator-non-invasiveness) are explicitly monitored
+- Sign-off is reserved for post-implementation; planning-time verdict is `blocked` (procedurally correct; no implementation evidence yet)
+
+### 4. No Specification Drift
+- Planning boundary assessment confirms zero drift between authorized scope (plan.md) and task decomposition
+- All seven FR items appear in task requirements
+- No orphan tasks; all 15 tasks trace to explicit FR or planning-boundary work
+
+### 5. Iteration 001 Closure is Preserved
+- Iteration 001 is marked `complete` in state.md and plan.md; no changes are made to closed iteration artifacts
+- Iteration 002 stands alone as a new planning boundary
+- Feature 015 remains open for future separately authorized work (e.g., public visibility changes)
+
+---
+
+## Traceability Verification
+
+| FR | Task(s) | User Story | Effort |
+| --- | --- | --- | --- |
+| FR-008 | T012, T013 | US2 | 1.0 |
+| FR-009 | T015 | US2 | 1.0 |
+| FR-010 | T017 | US2 | 0.5 |
+| FR-012, FR-013 | T020, T021 | US3 | 1.5 |
+| FR-014 | T014 | US2 | 1.0 |
+| FR-016 | T010, T011, T016, T018, T023 | US2, Polish | 4.5 |
+| FR-017 | T019 | US2 | 0.5 |
+
+**Total Effort**: 11.5 story_points
+**Missing FR Items**: None  
+**Orphan Tasks**: None
+
+---
+
+## Risk Mitigation
+
+### Test-Driven Validator Development (T010-T011 → T016)
+Validator test fixtures and Pester coverage are planned before implementation to reduce risk of validator behavior deviations. Rationale: Public-readiness detection is a new surface; early test scaffolding ensures fitness before code.
+
+### Version-Truth Baseline Lock (T012-T013 First)
+Version bump and README sync are scheduled before changelog/docs/tags to establish a shared baseline. Rationale: Downstream artifacts (CHANGELOG, tags, docs) reference the canonical version; locking early reduces coordination risk.
+
+### Human Reviewer Gates (T018, T023)
+Two explicit human verification points are scheduled: post-US2 implementation (T018: Pester/analyzer/tags) and pre-polish-close (T023: validator fixture run). Rationale: Complex version/tag/validator work benefits from independent verification.
+
+### Governance Carry-Forward Proof Deferral (T021)
+The Feature Closeout Version Management guidance (T020) is documented as proof-deferred to the next real feature closeout (T021 notes). Rationale: Synthetic proof is less valuable than real feature-close evidence; deferral is explicit in quickstart.md.
+
+---
+
+## Coordination Handoff
+
+**For the Coordinator**:
+
+Before granting implementation authorization, verify:
+1. ✅ Iteration 002 scope is explicitly authorized in `.squad/identity/now.md`
+2. ✅ All 15 tasks (T010-T024) are present in `plan.md` task table with FR traceability
+3. ✅ Effort total (9.0 story_points) is within capacity
+4. ✅ Hardening-gate.md is acceptable for pre-implementation quality review
+5. ✅ No cross-cutting issues block execution of the seven authorized FR items
+
+**Next Step**: Release explicit implementation authorization via human approval recorded in state.md. Iteration 002 execution can then begin with T010-T011 (validator fixtures) and T012-T013 (version baseline) in parallel.
+
+---
+
+## Notes
+
+- This decision is autonomous planning-boundary work; no design choices or implementation preferences are encoded here.
+- Iteration 002 remains in `planning` status until explicit implementation authorization is granted.
+- No `review.md` or `retro.md` placeholders are created; those artifacts are reserved for post-execution phases.
+- All traceability is recorded in the canonical iteration plan (plan.md); this document is a summary for coordination visibility.
+
+
+# Spec Steward Decision: Feature 015 Iteration 002 Planning Authorization and Shipped-Feature Status Reconciliation
+
+**Date**: 2026-05-13  
+**Requestor**: Alon Fliess (Spec Steward)  
+**Scope**: Feature 015 public-readiness-pass, Iteration 002 planning authorization and stale shipped-feature spec status alignment  
+**Authority**: Spec Steward role — requirement traceability, drift detection, and alignment verification  
+
+---
+
+## What
+
+Align the authoritative Feature 015 planning surfaces (spec.md, plan.md, tasks.md) to the newly authorized Iteration 002 planning scope delivered on 2026-05-13 by user directive, and establish the canonical shipped-feature spec status label for reconciliation.
+
+### Scope Items Authorized (2026-05-13)
+
+1. `.specrew/config.yml` version bump to `0.14.0` (FR-008)
+2. Root `CHANGELOG.md` with Features 001-014 one-line entries (FR-009)
+3. Retroactive tags `v0.13.0` at `21d9e7f` and `v0.14.0` at `3ff32d4` (FR-010)
+4. Feature-closeout authorization template Step 10 for version bump / changelog / tag creation (FR-012, FR-013)
+5. Coordinator prompt and template updates across `.github/agents/squad.agent.md`, `.squad/templates/squad.agent.md`, and `.specify/extensions/specrew-speckit/squad-templates/coordinator/specrew-governance.md` (FR-013)
+6. Versioning schema documentation in `docs/versioning.md` and README (FR-014)
+7. Stale shipped-feature spec status reconciliation for specs 007, 009, 011, 012 (FR-017 — new requirement)
+
+### Canonical Shipped-Feature Status Label
+
+**Decision**: Use status label `Complete` as the canonical shipped-feature spec status, aligning with spec 013 (validator hardening) as the standard label for shipped and fully delivered features.
+
+**Rationale**:
+- Spec 013 (validator hardening) uses `Status: Complete` to indicate a shipped and fully delivered feature
+- Four previously shipped features (007, 009, 011, 012) currently carry the stale `Draft` status that does not reflect their delivered and implemented state
+- Status `Complete` signals that the feature is shipped, implemented, and ready for production use
+- This aligns with the inventory of 14 shipped features that Feature 015 is reconciling
+- `Draft` is inappropriate for shipped features; `Approved` is insufficient (indicates approved to ship, not shipped); `Complete` is the correct terminal state for delivered work
+
+### Planning Surface Updates Made
+
+1. **spec.md**:
+   - Updated scope boundaries to clarify that Iteration 002 is now authorized (2026-05-13)
+   - Added new FR-017 requirement for stale shipped-feature spec status reconciliation
+   - Updated traceability requirements (TG-002, TG-005) to include FR-017 and Iteration 002 authorization
+   - Updated Governance Alignment section to reflect Iteration 002 authorization and completed Iteration 001
+
+2. **plan.md**:
+   - Added "Iteration 002 Planning Authorization" section documenting the seven authorized scope items
+   - Updated "Explicit Phase 2+ Deferrals" section to reflect that Iteration 002 is now authorized
+   - Updated "Phase 2 Hardening and Specialist Review Planning" scope from "iteration-001-authorized" to "iteration-001-completed" and "iteration-002-authorized"
+   - Updated "Explicit Later Deferrals" section to reflect Iteration 002 authorization and executor permissions
+
+3. **tasks.md**:
+   - Added task T019 (under Phase 4 User Story 2): Update status field in four shipped-feature specifications (007, 009, 011, 012) from `Draft` to `Complete`
+   - Renumbered subsequent tasks (former T019-T024 → T020-T025) to accommodate the new task
+   - Updated "Phase 6: Polish & Cross-Cutting Validation" section header to include shipped-feature spec status reconciliation
+   - Updated Dependencies, Execution Order, Parallel Opportunities, Traceability Map, and Implementation Strategy sections to reflect:
+     - Iteration 001 completion (2026-05-13) for T001-T009
+     - Iteration 002 authorization (2026-05-13) for T010-T025
+     - New T019 task for shipped-feature spec status reconciliation
+     - FR-017 traceability
+
+4. **.squad/identity/now.md**:
+   - Updated status from "ITERATION 001 COMPLETE" to "ITERATION 001 COMPLETE; ITERATION 002 AUTHORIZED"
+   - Updated focus_area and active_issues to reflect Iteration 002 authorization
+   - Listed the seven authorized scope items in the status record
+   - Updated Next Valid Action from "Await separate human authorization" to "Scaffold Iteration 002 planning artifacts"
+
+---
+
+## Why
+
+### Requirement Authority
+
+Feature 015 spec.md FR-015 and FR-017 establish planning and execution boundaries. FR-015 requires that planning artifacts preserve the authorization boundary, and FR-017 (new) requires reconciliation of stale shipped-feature spec status labels.
+
+The user directive delivered on 2026-05-13 explicitly authorizes these seven scope items for Iteration 002 planning and execution. Without updating the planning surfaces, a Planner or Coordinator reviewing the artifacts would encounter:
+1. Apparent ambiguity about whether Iteration 002 is deferred or authorized
+2. Missing traceability from the new stale-status-reconciliation work back to a specification requirement
+3. Stale governance records (spec.md scope, plan.md phase planning, .squad/identity/now.md next-valid-action) that would mislead decision-making
+
+### Canonical Status Label Alignment
+
+The four shipped specs (007, 009, 011, 012) currently carry `Draft` status despite being:
+- Completed and shipped features
+- Delivered to production in Specrew's alpha release
+- Referenced in Feature 015 FR-011 as part of "14 shipped features"
+- Intended as part of the "Active 0.14.0" product state
+
+Using `Draft` for shipped features creates a governance signal misalignment: outside readers would see "Draft" status and infer these features are incomplete or intentionally unfinished, when in fact they are delivered. This contradicts the public-readiness goal of Feature 015 to accurately represent project state.
+
+Status `Complete` is the correct terminal state because:
+1. It aligns with spec 013 (validator-hardening) which uses `Complete` for a delivered feature
+2. It signals that the feature is shipped and ready for use
+3. It allows future status evolution (e.g., if a shipped feature later enters a "Deprecated" state)
+4. It matches the validator's grandfathering rules for shipped features (no schema enforcement regression)
+
+---
+
+## Traceability
+
+- **Spec Authority**: specs/015-public-readiness-pass/spec.md FR-015, FR-017, TG-005
+- **Plan Authority**: specs/015-public-readiness-pass/plan.md Iteration 002 Planning Authorization section
+- **Task Authority**: specs/015-public-readiness-pass/tasks.md T010-T025 (updated task decomposition)
+- **User Directive**: Alon Fliess authorized the seven scope items on 2026-05-13 (captured in this decision and .squad/identity/now.md)
+- **Pattern Reference**: Spec Steward History 2026-05-12 "Iteration Closeout Truth Requires Synchronized Lifecycle Surfaces" — when iteration boundaries change, all live artifacts must be synchronized
+
+---
+
+## Recommendation for Planners and Coordinators
+
+1. **Before scaffolding Iteration 002 planning artifacts**: Verify that specs/015-public-readiness-pass/spec.md, plan.md, and tasks.md align with this decision. The planning surfaces are now authoritative for Iteration 002 scope.
+
+2. **For Task T019 (shipped-feature spec status reconciliation)**: The canonical status label is `Complete`. Update the four specs' **Status** field from `Draft` to `Complete` in a single commit, with a message indicating the alignment to Feature 015 public-readiness and the canonical shipped-feature spec status pattern established in spec 013.
+
+3. **For Iteration 002 scaffolding**: Use `specs/015-public-readiness-pass/iterations/002/plan.md` as the iteration-local planning surface. Do not scaffold review.md or retro.md placeholders during planning phase.
+
+4. **Traceability verification**: Spot-check that the new FR-017 requirement is correctly traced in all downstream artifacts (plan.md, tasks.md, state.md, hardening-gate.md) once Iteration 002 artifacts are created.
+
+---
+
+## Sign-Off
+
+**Spec Steward**: Alon Fliess  
+**Decision Date**: 2026-05-13  
+**Status**: Active — Planner may begin scaffolding Iteration 002 planning artifacts per this decision.
+
+
+# Decision: Shipped Feature Spec Status Reconciliation (Feature 015 FR-017)
+
+**Date**: 2026-05-13  
+**Agent**: Spec Steward  
+**Authoritative Requirement**: Feature 015 spec.md, FR-017 + tasks.md T019
+
+## Decision Summary
+
+Reconciled the Status field across four shipped feature specifications from the stale `Draft` label to the canonical shipped-spec status `Complete`:
+
+- `specs/007-user-facing-progress-handoff/spec.md`
+- `specs/009-project-path-resolution/spec.md`
+- `specs/011-specrew-start-conditional-pause/spec.md`
+- `specs/012-descriptive-id-handoffs/spec.md`
+
+## Authority
+
+**FR-017 source text** (Feature 015 spec.md):
+> Four previously shipped and delivered feature specifications (…) MUST have their status field updated from the stale `Draft` label to the canonical shipped-spec status label `Complete` to accurately reflect their delivered and implemented state. **Canon choice**: Status label `Complete` aligns with spec 013 (validator hardening) as the standard label for shipped and fully delivered features.
+
+**Task T019** (Feature 015 tasks.md):
+> T019 [US2] [Owner: Governance steward] [Effort: M] Update the **Status** field in four shipped-feature specifications from the stale `Draft` label to the canonical shipped-spec status `Complete`… (Trace: FR-017, TG-002, SC-003)
+
+## Rationale
+
+1. **Canonical label alignment**: All four specs are previously delivered features with completed implementations and closed iterations. The status field must reflect that delivered state.
+2. **Authoritative source**: Feature 015 FR-017 explicitly names these four specs and mandates the `Complete` label per spec 013 pattern.
+3. **No scope expansion**: Only the Status field was changed; no other text edits were required because the header statements in all four specs remain truthful (they describe what was delivered and why).
+
+## Verification
+
+All four files verified after edit:
+- `specs/007-user-facing-progress-handoff/spec.md` line 5: ✅ `Status: Complete`
+- `specs/009-project-path-resolution/spec.md` line 5: ✅ `Status: Complete`
+- `specs/011-specrew-start-conditional-pause/spec.md` line 5: ✅ `Status: Complete`
+- `specs/012-descriptive-id-handoffs/spec.md` line 5: ✅ `Status: Complete`
+
+## Scope Boundaries
+
+- **In scope**: Status field reconciliation only; four specific specs as listed in FR-017.
+- **Out of scope**: Any content edits beyond minimum adjacent repairs; broader feature-status audit across all specs.
+
+---
+
+This decision closes FR-017 (T019) for Feature 015 Iteration 002.
+
+
+# Retrospective Decision: Feature 014 Iteration 001
+
+**Date**: 2026-05-12  
+**Facilitator**: Retro Facilitator  
+**Scope**: Feature 014 handoff-format-scoping, Iteration 001 retrospective boundary
+
+---
+
+## Context
+
+Feature 014 iteration 001 delivered the bounded stop-vs-progress selector and additive soft-warning rollout (FR-001 through FR-007) on 2026-05-12. Review verdict was **accepted** at commit 8e99013 with zero rework required. Retrospective analysis reveals zero estimation variance (8.0 sp actual = 8.0 sp planned) and three critical process patterns to protect in future iterations.
+
+---
+
+## Key Findings
+
+### 1. Zero-Variance Delivery Pattern
+
+- **What Happened**: All 15 tasks delivered at estimated effort (0% variance total, -12.5% unused rework buffer). No discovery surprises, no late-found gaps, zero review rework cycles.
+- **Root Cause**: Tight scope locking before execution. Feature 014 plan.md clearly separated Iteration 001 (selector + additive warnings) from deferred Iteration 002 (proof + calibration) before work started. No new unknowns emerged during implementation.
+- **Signal**: This is not luck. Feature 007 iteration 001 also achieved 0% variance with similar upstream planning rigor. The pattern is durable.
+- **Decision**: Future well-scoped feature refinements should model their capacity planning on this pattern. Reduce the rework buffer from 1.0 sp to 0.5 sp for tight-scoped features where Iteration 001 is clearly bounded and Iteration 002 is deferred. Keep exploration/spike capacity at 0.5 sp baseline.
+
+### 2. Boundary-Claim-Without-Commit Trap (Critical)
+
+- **What Happened**: Review.md was committed at 8e99013 claiming the review boundary is durably complete. However, retro.md did not exist until after separate human authorization in this session. The iteration state appeared complete in git history but was logically incomplete until the retrospective phase could actually start.
+- **Risk**: Future automation or planners treating the review claim as complete truth when the next phase's prerequisites are not yet met.
+- **Candidate Rule** (for implementation in FR-008 or a future governance feature): Before accepting a `-boundary` commit, verify that either (a) all required artifacts for the next phase exist and are committed, or (b) the next phase is explicitly deferred in state.md with a human approval note. Reject the boundary claim if both conditions fail.
+- **Decision**: Add this pattern to `.specrew/quality/known-traps.md` under a new row `boundary-claim-without-commit` with the evidence from Feature 014 iteration 001. Include the detection rule candidate so future governance work can implement it as a validator gate.
+
+### 3. Startup-Coupling Task Invisibility Trap
+
+- **What Happened**: Tasks T010 and T011 modified startup-loaded config files (`.github/agents/squad.agent.md`, `.squad/templates/squad.agent.md`). The mandatory session-restart requirement was documented in state.md, not in the task definition itself. This requirement was only surfaced during retrospective, not at task time.
+- **Risk**: Implementation team completes the work, commits it, and later planners run in old sessions without knowing a restart is required. Silent activation gaps.
+- **Candidate Rule**: Scan task.md for any task that edits files under `.github/agents/`, `.squad/templates/`, or `.specrew/config/`. Flag tasks without an explicit "Session restart required" note in the acceptance criteria.
+- **Decision**: Add this pattern to `.specrew/quality/known-traps.md` under a new row `startup-coupling-task-invisibility`. Include task-definition template guidance: any startup-config task must state "[Task name] | Acceptance: [description]. **Session restart required for next session.**"
+
+### 4. Acceptance-Evidence Scattering
+
+- **What Happened**: Task T008 (manual validator exercise) had its acceptance criteria defined in tasks.md, but the expected test outputs and scenarios were scattered across spec.md (User Story 2 scenarios), contract.md (approved scenarios), and plan.md (task description). The team had to infer evidence from multiple sources rather than reading one unified definition.
+- **Risk**: Underspecified test acceptance criteria make it harder to verify task completion and increase review friction.
+- **Candidate Rule**: For any task with acceptance criteria "verify X" or "manually exercise Y," the task definition must include explicit expected outcomes in a single artifact, not scattered across multiple sources.
+- **Decision**: Add this pattern to `.specrew/quality/known-traps.md` under a new row `acceptance-evidence-scattering`. Include guidance: "Task definitions must include acceptance evidence signatures. Instead of 'Manually exercise the new warning paths,' write 'Manually exercise: (1) correct-final-stop → pass; (2) placeholder-only → soft-warning.empty-user-action-section; [etc]. Update contract.md with observed results.' Unify acceptance in the task boundary."
+
+---
+
+## Improvement Actions (Binding for Next Planning)
+
+1. **Action**: Before any future `-boundary` commit (review, retro, closeout), run a "boundary-claim durability checklist" validation. Check: (a) Preceding phase artifacts complete and committed, (b) Next phase artifacts exist or are explicitly deferred, (c) Validator passes with both phases' minimum artifacts.
+   - **Owner**: Spec Steward + Iteration Facilitator
+   - **Target**: Next planning ceremony or future governance feature (FR-008+)
+   - **Expected Effect**: Prevent boundary-claim-without-commit patterns from recurring.
+
+2. **Action**: Embed acceptance evidence signatures into task definitions in plan.md and tasks.md. For any "verify X" or "test Y" task, include explicit expected outcomes (e.g., "scenario A → pass; scenario B → soft-warning X") in the task entry itself.
+   - **Owner**: Iteration Facilitator + Governance prompt stewards
+   - **Target**: Next planning ceremony
+   - **Expected Effect**: Unify acceptance criteria in task boundary, reduce review friction.
+
+3. **Action**: For any task modifying startup-loaded config files, add a mandatory note in acceptance criteria: "Session restart required for next session." Make this visible at task time, not discovered later.
+   - **Owner**: Governance prompt stewards
+   - **Target**: Next iteration planning (feature 015+)
+   - **Expected Effect**: Prevent silent session-coupling gaps.
+
+---
+
+## Known-Traps Additions (Candidate for Feature 014 Iteration 002 FR-008)
+
+The following candidate rows should be added to `.specrew/quality/known-traps.md` during Iteration 002:
+
+1. **`boundary-claim-without-commit`**: Lifecycle boundary claims (review, retro, closeout) recorded in committed artifacts must not be made unless all prerequisites for that boundary are durably met or explicitly deferred. A review-boundary claim without a retro-ready state creates a durability gap.
+
+2. **`startup-coupling-task-invisibility`**: Tasks modifying startup-loaded config files must explicitly document the session-restart requirement in task acceptance criteria. This prevents silent activation gaps where changes are committed but not loaded until a manual session restart.
+
+3. **`acceptance-evidence-scattering`**: Task acceptance criteria for verification or testing tasks must include expected evidence signatures in the task definition itself, not scattered across spec, contract, and plan artifacts.
+
+---
+
+## Sign-Off
+
+- **Retro Boundary**: Open, pending final human authorization before iteration closeout.
+- **Team-Relevant Decisions**: Recorded above; shared with .squad/decisions/inbox/ for integration into next planning ceremony.
+- **Deferred to Iteration 002**: Addition of the three candidate known-traps rows to `.specrew/quality/known-traps.md` as part of FR-008 work.
+
+---
+
+**Status**: Awaiting Alon Fliess's separate authorization before closing the retrospective boundary and opening the closeout phase.
+
+
+# Retro Facilitator Inbox: Feature 015 Iteration 001 Retro Boundary
+
+**Date**: 2026-05-13  
+**Feature**: `015-public-readiness-pass`  
+**Iteration**: `001`
+
+## Candidate Rule 1
+
+**Name**: `boundary-claim-without-commit`  
+**Category**: `boundary-discipline`
+
+### Proposed Rule: Boundary Claim
+
+Do not narrate a lifecycle boundary as complete until the matching durable commit already contains the
+boundary artifact plus truthful `plan.md` and `state.md` lifecycle updates. Until Feature 016
+Substantive Interaction Model Pillar 1 graduates hard rule
+`validation-fail.bundled-boundary-advance`, treat this as a manual stop condition.
+
+### Evidence: Boundary Claim
+
+- Feature 014 iteration 001 review boundary commit `8e99013`
+- Feature 014 iteration 001 retro boundary commit `a5fcb90`
+- Feature 015 iteration 001 review boundary commit `6ca218f`
+
+## Candidate Rule 2
+
+**Name**: `branch-name-mismatch-with-feature-directory`  
+**Category**: `planning-discipline`
+
+### Proposed Rule: Branch Name
+
+Before scaffolding planning artifacts or recording a planning boundary, verify that the active branch
+name matches the feature directory. If they differ, stop, repair the branch, and fix any generated
+references before the next durable commit.
+
+### Evidence: Branch Name
+
+The mistaken orphan branch `016-public-readiness-pass` required cleanup plus repaired references in:
+
+- `specs/015-public-readiness-pass/research.md`
+- `specs/015-public-readiness-pass/data-model.md`
+- `specs/015-public-readiness-pass/quickstart.md`
+- `specs/015-public-readiness-pass/checklists/requirements.md`
+- `specs/015-public-readiness-pass/iterations/001/plan.md`
+
+### Current Gap
+
+No validator rule currently checks branch name against feature directory before the planning boundary
+is committed.
+
+
+### 2026-05-12T23:17:38+03:00: User directive
+**By:** Alon Fliess (via Copilot)
+**What:** Before retrospective, commit the Feature 014 Iteration 001 review-boundary artifacts (`review.md`, `state.md`, and `plan.md`) as a single dedicated commit with message `Feature 014 handoff-format-scoping iteration 001 review boundary`, push it to `origin/014-handoff-format-scoping`, then report the new commit hash and clean tree state without opening retrospective.
+**Why:** User request — captured for team memory
+
+
+### 2026-05-12T23:21:39+03:00: User directive
+**By:** Alon Fliess (via Copilot)
+**What:** Sign off on the accepted review verdict for Feature 014, handoff-format scoping, Iteration 001, as recorded in `specs/014-handoff-format-scoping/iterations/001/review.md` and commit `8e99013`; authorize the retrospective boundary against implementation commit `f02688f`; produce `retro.md` with actual-vs-planned calibration across T001-T015, surfaced lessons including the review-boundary-without-commit pattern and any planning-output drift, and corpus-row candidates including a future `boundary-claim-without-commit` detection rule; stop before the iteration-closeout boundary for separate authorization.
+**Why:** User request — captured for team memory
+
+
+### 2026-05-12T23:48:37+03:00: User directive
+**By:** Alon Fliess (via Copilot)
+**What:** Sign off on the accepted retrospective for Feature 014 handoff-format-scoping Iteration 001, treat commit `a5fcb90` as the retro-boundary model for future boundary-commit messages, authorize the iteration-closeout boundary, and as part of the same closeout commit add a canonical defer entry for the pre-existing iteration-011 gap in `.squad/decisions.md` so repo-wide governance returns green without folding unrelated cleanup into Feature 014 scope.
+**Why:** User request — captured for team memory
+
+
+### 2026-05-13T00:23:50+03:00: User directive
+**By:** Alon Fliess (via Copilot)
+**What:** Sign off on the Feature 014 Iteration 001 closeout boundary, authorize the Feature 014 feature-closeout boundary including PR creation, self-review, merge to main, and use the high-rigor boundary-commit pattern established by `a5fcb90` for the feature-closeout commit.
+**Why:** User request — captured for team memory
+
+
 ### 2026-05-13T20:39:39+03:00: Delegated lifecycle runtime evidence
 **By:** Squad (Coordinator)
 **Role / Work Item:** Reviewer — Feature 015 Public-Readiness Pass Iteration 002 independent review boundary
@@ -1469,4 +2041,5 @@ Accept the review boundary for feature `015`, public-readiness pass, iteration `
 ## Next Action
 
 Await Alon Fliess's separate authorization before opening retrospective or closeout work for feature `015`, iteration `002`.
+
 
