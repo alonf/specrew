@@ -2,7 +2,7 @@
 
 **Feature Branch**: `009-project-path-resolution`  
 **Created**: 2026-05-09  
-**Status**: Draft  
+**Status**: Complete
 **Input**: User description: "Specrew's user-invoked PowerShell entry-point scripts (`specrew-start.ps1`, `specrew-update.ps1`, `specrew-init.ps1`, `specrew-team.ps1`, `specrew-review.ps1`) resolve their `-ProjectPath` argument with `[System.IO.Path]::GetFullPath($ProjectPath)`, which on Windows resolves against the .NET process CurrentDirectory instead of PowerShell's current location. The two values diverge whenever the user has navigated with `Set-Location`/`cd`, causing every script that defaults to `-ProjectPath '.'` to falsely report 'Project is not Specrew-managed' or 'Project is not fully bootstrapped' even when the user is sitting in the project root. An interim fix has been applied for `specrew-start.ps1` and `specrew-update.ps1` via a `Resolve-ProjectPath` helper in `extensions/specrew-speckit/scripts/shared-governance.ps1`, but the same bug remains in the other entry-point scripts and in many internal scripts that take `-ProjectPath` / `-IterationPath` / `-SpecPath` and use the same broken resolution."
 
 ## Problem Statement

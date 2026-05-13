@@ -9,8 +9,8 @@ AI-assisted software delivery.
 - Alpha software, validated through dogfooding in this repository
 - Built today for a single developer running on a single host
 - Not yet ready for multi-developer coordination or multi-host operation
-- Feature 015 Iteration 001 now fixes the public landing surfaces; Iteration 002
-  will reconcile changelog, tags, versioning docs, and validator warnings
+- Release truth now has public-facing surfaces in `CHANGELOG.md`,
+  `docs\versioning.md`, and the `v0.13.0` / `v0.14.0` tags
 
 ## What's working
 
@@ -60,13 +60,21 @@ Specrew currently uses a merge-at-close rhythm:
 
 ## Roadmap
 
-- Finish Iteration 002 public-readiness work: version reconciliation,
-  `docs/versioning.md`, `CHANGELOG.md`, release tags, and advisory validator
-  warnings
 - Harden multi-developer and multi-host workflows
 - Improve brownfield discovery and packaging for broader reuse
 - Keep future feature closeout governance strict enough that release truth stays
   synchronized by default
+
+## Versioning
+
+- `.specrew\config.yml` is the canonical source for the active version and now
+  declares **0.14.0**.
+- Feature releases use `0.NN.0`, where `NN` tracks the shipped feature ordinal
+  (`0.14.0` = Feature 014).
+- `0.NN.M` is reserved for hotfixes against an existing shipped feature
+  baseline.
+- See `docs\versioning.md` for the policy details and `CHANGELOG.md` for the
+  retroactive release history.
 
 ## License
 
@@ -85,6 +93,8 @@ review boundaries stabilize.
 - `docs\getting-started.md` - bootstrap and quickstart guidance
 - `docs\user-guide.md` - day-to-day lifecycle usage
 - `docs\github-project.md` - Specrew self-development board guidance
+- `docs\versioning.md` - release-numbering policy and tag/changelog rules
+- `CHANGELOG.md` - retroactive feature-release history
 - `tests\README.md` - integration and smoke-test entrypoints
 
 ## Reviewer-regression Governance Highlights

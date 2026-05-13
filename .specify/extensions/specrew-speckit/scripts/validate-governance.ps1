@@ -432,6 +432,76 @@ function Convert-ToRepoMarkdownPath {
     return ([System.IO.Path]::GetRelativePath($ProjectRoot, $TargetPath)) -replace '\\', '/'
 }
 
+function Write-PublicReadinessWarning {
+    param(
+        [Parameter(Mandatory = $true)][string]$Category,
+        [Parameter(Mandatory = $true)][string]$Detail
+    )
+
+    Write-Host ("WARN [public-readiness] {0}: {1}" -f $Category.Trim(), $Detail.Trim()) -ForegroundColor Yellow
+}
+
+function Get-DeclaredSpecrewVersion {
+    param([string]$ProjectRoot)
+
+    $configPath = Join-Path $ProjectRoot '.specrew\config.yml'
+    if (-not (Test-Path -LiteralPath $configPath -PathType Leaf)) {
+        return $null
+    }
+
+    try {
+        foreach ($line in Get-MarkdownContent -Path $configPath) {
+            if ($line -match '^\s*specrew_version:\s*"?(?<version>[^"#]+?)"?\s*$') {
+                return $Matches['version'].Trim()
+            }
+        }
+    }
+    catch {
+        return $null
+    }
+
+    return $null
+}
+
+function Test-PublicReadinessSurfaces {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$ProjectRoot
+    )
+
+    try {
+        foreach ($artifact in @('LICENSE', 'NOTICE.md', 'CHANGELOG.md')) {
+            $artifactPath = Join-Path $ProjectRoot $artifact
+            if (-not (Test-Path -LiteralPath $artifactPath -PathType Leaf)) {
+                Write-PublicReadinessWarning -Category 'missing-artifact' -Detail $artifact
+            }
+        }
+
+        $versioningPath = Join-Path $ProjectRoot 'docs\versioning.md'
+        if (-not (Test-Path -LiteralPath $versioningPath -PathType Leaf)) {
+            Write-PublicReadinessWarning -Category 'missing-artifact' -Detail 'docs/versioning.md'
+        }
+
+        $declaredVersion = Get-DeclaredSpecrewVersion -ProjectRoot $ProjectRoot
+        if ([string]::IsNullOrWhiteSpace($declaredVersion)) {
+            return
+        }
+
+        $readmePath = Join-Path $ProjectRoot 'README.md'
+        if (-not (Test-Path -LiteralPath $readmePath -PathType Leaf)) {
+            return
+        }
+
+        $readmeContent = Get-Content -LiteralPath $readmePath -Raw -Encoding UTF8
+        if ($readmeContent -notmatch [regex]::Escape($declaredVersion)) {
+            Write-PublicReadinessWarning -Category 'stale-version-in-readme' -Detail ("README.md does not contain declared version {0}" -f $declaredVersion)
+        }
+    }
+    catch {
+        return
+    }
+}
+
 function Resolve-RepoMarkdownArtifactPath {
     param(
         [Parameter(Mandatory = $true)]
@@ -2232,6 +2302,8 @@ if ($teamValidationErrors.Count -gt 0) {
     }
     exit 1
 }
+
+Test-PublicReadinessSurfaces -ProjectRoot $resolvedProjectPath
 
 $explicitIterationPathsProvided = ($null -ne $IterationPath) -and @(
     $IterationPath | Where-Object { -not [string]::IsNullOrWhiteSpace([string]$_) }

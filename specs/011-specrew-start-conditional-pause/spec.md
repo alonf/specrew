@@ -2,7 +2,7 @@
 
 **Feature Branch**: `[NNN-specrew-start-conditional-pause]`
 **Created**: 2026-05-11
-**Status**: Draft
+**Status**: Complete
 **Input**: User description: "During feature 007 dogfooding on 2026-05-11, the user restarted Copilot to load updated `.github/agents/squad.agent.md` between iteration 002 implementation and review/closeout. Squad's startup-handoff (`.specrew/last-start-prompt.md`) auto-continued the lifecycle and started running the reviewer before the user could send a post-restart directive (specifically: a small iter 001 stale-status fix and a plain-language-format reminder). The auto-continue behavior is correct per spec 001 Session 2026-05-04 for routine resumes, but it bypasses the user's ability to inject directives in exactly the case where they most often matter — when the restart was forced by a session-loaded behavioral file change."
 
 ## Problem Statement
