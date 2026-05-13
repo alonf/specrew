@@ -11,7 +11,7 @@ Specrew currently ships as an alpha and uses feature-counted versions.
 
 - New shipped features advance the baseline as `0.NN.0`.
 - `NN` is the zero-padded shipped feature ordinal.
-- Example: Feature 014 corresponds to version `0.14.0`.
+- Example: Feature 015 corresponds to version `0.15.0`.
 
 ## Hotfix Releases
 

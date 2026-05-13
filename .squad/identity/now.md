@@ -16,7 +16,7 @@ Current Status
 
 Feature 015 Lifecycle: COMPLETE (CLOSED AND SHIPPED)
 
-- Feature 015, Public-Readiness Pass, is now completely shipped and released on main at commit {merge_commit_hash}
+- Feature 015, Public-Readiness Pass, is now completely shipped and released on main at commit 08ed5ca
 - Version management actions executed: `.specrew/config.yml` bumped to `0.15.0`, `CHANGELOG.md` updated with Feature 015 entry, README versioning refreshed, `v0.15.0` release tag created
 - Feature-closeout boundary commit on `015-public-readiness-pass` branch created with comprehensive artifact summary
 - PR merged to main with Feature 015 shipped-capability summary and self-review approval

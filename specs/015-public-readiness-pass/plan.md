@@ -6,9 +6,9 @@
 ## Summary
 
 Public-Readiness Pass establishes correct licensing, rewritten public documentation, a reconciled
-version declaration in `.specrew/config.yml` (bumped from 0.1.0-dev to 0.14.0), a retroactive CHANGELOG, retroactive git tags (v0.13.0, v0.14.0),
+version declaration in `.specrew/config.yml` (bumped from 0.1.0-dev to 0.15.0), a retroactive CHANGELOG, retroactive git tags (v0.13.0, v0.14.0, v0.15.0),
 updated product-spec status, and extended feature-closeout governance so future features include
-release bookkeeping by default. `.specrew/config.yml` serves as the canonical source-of-truth for the active Specrew version;
+release bookkeeping by default.`.specrew/config.yml` serves as the canonical source-of-truth for the active Specrew version;
 downstream README and documentation surfaces mirror this version. The bounded Iteration 001 slice does not edit `.specrew/config.yml`; it locks the canonical-source decision so Iteration 002 can reconcile the remaining release-truth surfaces without ambiguity. All work is documentary and governance tooling; no runtime behaviour
 changes occur. The technical approach relies on Markdown file authoring, a targeted additive
 extension to `validate-governance.ps1`, and git tagging operations.
@@ -42,7 +42,7 @@ iterations totalling ≈19 story points
 
 | Stack Surface | Path Globs / Evidence | Recognized Stack | Why It Matters |
 | --- | --- | --- | --- |
-| `documentation` | `README.md`, `docs/versioning.md`, `NOTICE.md`, `CHANGELOG.md` | `custom` (docs) | First-time public observer landing surface; all FR-001–FR-009 targets |
+| `documentation` | `README.md`, `docs/versioning.md`, `NOTICE.md`, `CHANGELOG.md` | `custom` (docs) | First-time public observer landing surface; all FR-001–FR-009 targets; versioning policy documents release-truth governance |
 | `governance-script` | `extensions/specrew-speckit/scripts/validate-governance.ps1` | `custom` (PowerShell tooling) | FR-016 public-readiness drift check extension |
 | `product-spec` | `specs/001-specrew-product/spec.md` | `custom` (governance artifact) | FR-011 status reconciliation |
 
@@ -93,9 +93,9 @@ iterations totalling ≈19 story points
 ## Iteration 002 Planning Authorization
 
 **Iteration 002 Scope** (Authorized 2026-05-13):
-- Version reconciliation: `.specrew/config.yml` version bump to `0.14.0` (FR-008)
+- Version reconciliation: `.specrew/config.yml` version bump to `0.15.0` (FR-008)
 - Release documentation: root `CHANGELOG.md` with Features 001-014 entries (FR-009)
-- Release tags: retroactive `v0.13.0` at `21d9e7f` and `v0.14.0` at `3ff32d4` (FR-010)
+- Release tags: retroactive `v0.13.0` at `21d9e7f`, `v0.14.0` at `3ff32d4`, and `v0.15.0` at `08ed5ca` (FR-010)
 - Feature closeout governance: Version management steps in closeout template (FR-012, FR-013)
 - Coordinator governance updates: Across `.github/agents/squad.agent.md`, `.squad/templates/squad.agent.md`, and `.specify/extensions/specrew-speckit/squad-templates/coordinator/specrew-governance.md` (FR-013)
 - Versioning schema: `docs/versioning.md` and README reference (FR-014)
@@ -228,7 +228,7 @@ CHANGELOG.md                     # FR-009 retroactive entries Features 001–014
 
 # Versioning source-of-truth (Iteration 002)
 .specrew/
-└── config.yml                   # FR-008 specrew_version: "0.14.0" (authoritative version source)
+└── config.yml                   # FR-008 specrew_version: "0.15.0" (authoritative version source)
 
 # Versioning reference (Iteration 002)
 docs/
@@ -248,6 +248,7 @@ extensions/specrew-speckit/
 # Git tags (Iteration 002)
 # v0.13.0 → commit 21d9e7f (Merge PR #79, Feature 013 catch-up merge to main)
 # v0.14.0 → commit 3ff32d4 (Merge PR #99, Feature 014 current mainline)
+# v0.15.0 → commit 08ed5ca (Feature 015 public-readiness-pass release anchor)
 ```
 
 **Structure Decision**: Single-project documentation/governance pass. No `src/`, `backend/`,
@@ -263,7 +264,7 @@ and the existing `extensions/specrew-speckit/` extension directories.
 
 **Closed**: 2026-05-13
 
-Feature 015 public-readiness-pass is now complete and shipped. Both iterations (001 and 002) have been implemented, reviewed, and merged to main. The feature establishes correct licensing, rewritten public documentation, reconciled versioning declarations, retroactive changelog, release tags, extended governance, and a public-readiness drift detection capability. All shipped features (001–014) are now reflected in version tracking, and the feature-closeout process is now codified for all future features.
+Feature 015 public-readiness-pass is now complete and shipped. Both iterations (001 and 002) have been implemented, reviewed, and merged to main. The feature establishes correct licensing, rewritten public documentation, reconciled versioning declarations, retroactive changelog, release tags, extended governance, and a public-readiness drift detection capability. All shipped features (001–015) are now reflected in version tracking, and the feature-closeout process is now codified for all future features.
 
-**Release Tag Anchor**: v0.15.0 at the merge commit that includes this feature-closeout boundary.
+**Release Tag Anchor**: v0.15.0 at commit 08ed5ca (the merge commit that includes this feature-closeout boundary).
 
