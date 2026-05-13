@@ -2,10 +2,10 @@
 
 **Schema**: v1
 **Spec**: [../../spec.md](../../spec.md)
-**Status**: reviewing
+**Status**: retro
 **Capacity**: 10.0/20 story_points
 **Started**: 2026-05-13
-**Completed**: Authorized slice `T001-T009` completed on 2026-05-13; independent review opened on 2026-05-13 against commit `6b757e7`
+**Completed**: Authorized slice `T001-T009` completed on 2026-05-13; Feature 015 iteration 001 review boundary commit `6ca218f` accepted the slice and the retrospective is now complete on the current tree
 **Hardening-Gate Sign-Off**: 2026-05-13 via current-session human authorization
 **Implementation Authorization**: 2026-05-13 for T001-T009 only
 
@@ -80,11 +80,12 @@
 
 - **Iteration 001 authorized and completed in this slice**: `T001-T009` only
 - **Iteration 002 still deferred**: `T010-T024`, including `.specrew/config.yml`, `CHANGELOG.md`, `docs/versioning.md`, release tags, `validate-governance.ps1` public-readiness warnings, and coordinator-governance extension work
-- **Lifecycle boundary kept intact**: `specs/015-public-readiness-pass/iterations/001/review.md` is now the open review artifact for commit `6b757e7`; `retro.md` remains intentionally unopened until review is accepted
+- **Lifecycle boundary kept intact**: `review.md` records the accepted review boundary in Feature 015 iteration 001 review boundary commit `6ca218f`, `retro.md` now records the completed retrospective boundary on the current tree, and iteration closeout plus Iteration 002 remain separately authorized
 
 ## Notes
 
 - This plan is intentionally limited to the Iteration 001 public-landing-surface slice; versioning, changelog, tags, validator warnings, and closeout-governance extension work stay deferred to Iteration 002.
 - Hardening-gate sign-off and implementation authorization are recorded for Iteration 001 only; keep Iteration 002 deferred until later explicit human approval.
-- The current validator treats committed `review.md` and `retro.md` files as evidence that later lifecycle phases have started, so this plan now truthfully reflects the open review boundary while keeping retrospective unopened.
+- `Status` moved to `reviewing` once `review.md` recorded the accepted independent review boundary on 2026-05-13, and now moves to `retro` because `retro.md` truthfully records the completed retrospective boundary while keeping iteration closeout blocked pending separate human authorization.
+- The current validator treats committed `review.md` and `retro.md` files as evidence that later lifecycle phases have started, so this plan must keep lifecycle narration synchronized with the committed artifact boundary: retrospective is complete, iteration closeout is not.
 - If the scope changes later, update the task table, execution split, and deferral note in the same planning boundary.

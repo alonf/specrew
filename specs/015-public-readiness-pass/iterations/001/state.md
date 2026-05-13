@@ -6,8 +6,8 @@
 **In Progress**: none
 **Baseline Ref**: 3ff32d4
 **Updated**: 2026-05-13
-**Current Phase**: reviewed
-**Iteration Status**: accepted re-review recorded against commit `6b757e7` plus the bounded NOTICE/evidence repair; retrospective and Iteration 002 remain unopened pending separate authorization
+**Current Phase**: retro
+**Iteration Status**: retrospective completed on 2026-05-13 against implementation commit `6b757e7` and accepted review boundary commit `6ca218f`; iteration closeout remains blocked pending separate human authorization and Iteration 002 remains unopened
 
 ## Planning Summary
 
@@ -24,22 +24,22 @@ Iteration 001 is the first delivery slice for Feature 015, Public-Readiness Pass
 
 ## Decisions and Handoff
 
-- **Planning Boundary**: drafted - Iteration 001 planning artifacts now exist on the feature branch
+- **Planning Boundary**: ✅ **COMPLETE** — Iteration 001 planning artifacts were durably recorded in Feature 015 iteration 001 planning boundary commit `37d1a08`
 - **Hardening-Gate Sign-Off**: recorded on 2026-05-13 via current-session human authorization
 - **Implementation Authorization**: granted on 2026-05-13 for T001-T009 only; the bounded implementation slice is now complete
-- **Review Boundary**: ✅ **ACCEPTED** — `review.md` now records the accepted re-review against commit `6b757e7` plus the bounded NOTICE/evidence repair; no blocking gap remains in the authorized Iteration `001` slice
-- **Retro Artifact**: still unopened; retrospective remains a separate future boundary pending explicit human authorization
+- **Review Boundary**: ✅ **ACCEPTED** — `review.md` records the accepted re-review in Feature 015 iteration 001 review boundary commit `6ca218f`; the NOTICE and quickstart repair closed the only blocking gap in the authorized slice
+- **Retro Artifact**: ✅ **COMPLETE** — `retro.md` now records 10.0 planned vs 10.0 actual story_points, the recurring `boundary-claim-without-commit` lesson, the reviewer-routing repair success, and the `branch-name-mismatch-with-feature-directory` candidate rule; iteration closeout is still not authorized from this boundary
 - **Deferred**: Iteration 002 versioning, changelog, tags, public-readiness validator warnings, and future closeout-governance extension remain unopened and unscaffolded in this turn
 
 ## Scope and Deferrals
 
 - **In Scope**: FR-001 through FR-007, FR-011, and FR-015 via T001-T009
 - **Deferred**: FR-008, FR-009, FR-010, FR-012, FR-013, FR-014, and FR-016 to Iteration 002
-- **Constraint**: Iteration 001 is authorized to execute only T001-T009; do not open Iteration 002, add new deferrals, or scaffold `review.md` / `retro.md` without separate human authorization
+- **Constraint**: Iteration 001 was authorized to execute only T001-T009; do not open iteration closeout or Iteration 002 without separate human authorization
 
 ## Next Action
 
-Await separate human authorization before opening retrospective. Keep Iteration 002 unopened.
+Await separate human authorization before opening iteration closeout. Keep Iteration 002 unopened.
 
 <!-- >>> specrew-managed escalation-state >>> -->
 ## Repair Escalation
