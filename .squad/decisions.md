@@ -2087,3 +2087,15 @@ Accept the review boundary for feature `015`, public-readiness pass, iteration `
 Await Alon Fliess's separate authorization before opening retrospective or closeout work for feature `015`, iteration `002`.
 
 
+# Runtime Evidence: Feature 015 post-closeout corpus-row addition
+
+**Date**: 2026-05-14  
+**Role / Work Item**: Implementer — Feature 015 post-closeout corpus-row addition  
+**Requested Agent**: copilot  
+**Actual Agent**: copilot  
+**Model ID**: claude-haiku-4.5  
+**Status**: honored  
+**Fallback Reason**: none
+
+Repair spawn authorized to add three passive-guidance rows from Rule 15's first real-world test to `.specrew\quality\known-traps.md`, then validate, commit, and push on `main`.
+
