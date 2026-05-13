@@ -10,7 +10,7 @@
 **Approval Ref**: —
 **Reviewed By**: Alon Fliess
 **Reviewed At**: 2026-05-13
-**Post-Implementation Verification**: implementation evidence recorded for T010-T016 via public-readiness tests, repo governance validation, and tag-anchor checks
+**Post-Implementation Verification**: implementation evidence recorded for T010-T016 via public-readiness tests, repo governance validation, and tag-anchor checks; reviewed against acceptance commit `daf2b03` on 2026-05-13
 **Verified At**: 2026-05-13
 
 ## Concern Review
