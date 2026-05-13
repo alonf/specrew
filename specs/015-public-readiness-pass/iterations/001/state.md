@@ -6,8 +6,8 @@
 **In Progress**: none
 **Baseline Ref**: 3ff32d4
 **Updated**: 2026-05-13
-**Current Phase**: executing
-**Iteration Status**: authorized Iteration 001 implementation for T001-T009 is complete; review boundary remains unopened pending separate human authorization
+**Current Phase**: reviewed
+**Iteration Status**: accepted re-review recorded against commit `6b757e7` plus the bounded NOTICE/evidence repair; retrospective and Iteration 002 remain unopened pending separate authorization
 
 ## Planning Summary
 
@@ -18,16 +18,17 @@ Iteration 001 is the first delivery slice for Feature 015, Public-Readiness Pass
 | Task Range | Scope | Status | Notes |
 | --- | --- | --- | --- |
 | T001-T004 | Boundary lock and iteration split | done | Repaired the branch/reference drift, locked `.specrew/config.yml` as the future version source, and kept Iteration 002 explicitly deferred |
-| T005-T006 | Licensing and attribution surfaces | done | Added `LICENSE` and `NOTICE.md` as the public-open legal baseline |
+| T005-T006 | Licensing and attribution surfaces | done | `LICENSE` remains correct; `NOTICE.md` now attributes Squad only for `.squad\templates\` and `extensions\specrew-speckit\squad-templates\`, and narrows Spec Kit attribution to the specific upstream-derived `.specify\` paths |
 | T007-T008 | README and product status surfaces | done | Rewrote the public-facing README and updated `specs/001-specrew-product/spec.md` to `Active 0.14.0` |
-| T009 | Iteration 001 validation evidence | done | Recorded first-time-reader review plus markdown and governance validation evidence in `quickstart.md` |
+| T009 | Iteration 001 validation evidence | done | `quickstart.md` now records the repaired first-time-reader evidence for the corrected NOTICE surface, and the bounded markdown/governance validation was rerun |
 
 ## Decisions and Handoff
 
 - **Planning Boundary**: drafted - Iteration 001 planning artifacts now exist on the feature branch
 - **Hardening-Gate Sign-Off**: recorded on 2026-05-13 via current-session human authorization
 - **Implementation Authorization**: granted on 2026-05-13 for T001-T009 only; the bounded implementation slice is now complete
-- **Review and Retro Placeholders**: deferred until those lifecycle boundaries open because the current validator interprets committed `review.md` and `retro.md` as active phase evidence
+- **Review Boundary**: ✅ **ACCEPTED** — `review.md` now records the accepted re-review against commit `6b757e7` plus the bounded NOTICE/evidence repair; no blocking gap remains in the authorized Iteration `001` slice
+- **Retro Artifact**: still unopened; retrospective remains a separate future boundary pending explicit human authorization
 - **Deferred**: Iteration 002 versioning, changelog, tags, public-readiness validator warnings, and future closeout-governance extension remain unopened and unscaffolded in this turn
 
 ## Scope and Deferrals
@@ -38,7 +39,7 @@ Iteration 001 is the first delivery slice for Feature 015, Public-Readiness Pass
 
 ## Next Action
 
-Open the Iteration 001 review boundary against the implementation commit once the current bounded slice is committed and pushed; keep Iteration 002 unopened until separately authorized.
+Await separate human authorization before opening retrospective. Keep Iteration 002 unopened.
 
 <!-- >>> specrew-managed escalation-state >>> -->
 ## Repair Escalation

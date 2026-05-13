@@ -4,6 +4,10 @@ Specrew incorporates materials derived from the MIT-licensed upstream projects
 listed below. This file preserves the required copyright and permission-notice
 attribution for the derived directories used in this repository.
 
+This notice intentionally lists only the repository paths that are clearly
+upstream-derived. Specrew-owned extension surfaces are not attributed here
+unless they directly carry upstream template or workflow material.
+
 ## Squad
 
 Specrew incorporates templates and workflow materials derived from
@@ -12,8 +16,8 @@ License.
 
 - Upstream copyright: `Copyright (c) 2026 Brady Gaster and contributors`
 - Derived Specrew directories:
-  - `.specify/extensions/specrew-speckit/squad-templates/`
-  - `extensions/specrew-speckit/`
+  - `.squad/templates/`
+  - `extensions/specrew-speckit/squad-templates/`
 
 The upstream MIT permission notice remains applicable to the derived materials
 listed above. See the Squad upstream repository for the full license text.
@@ -26,8 +30,10 @@ License.
 
 - Upstream copyright: `Copyright GitHub, Inc.`
 - Derived Specrew directories:
-  - `.specify/`
-  - `extensions/specrew-speckit/`
+  - `.specify/templates/`
+  - `.specify/scripts/powershell/`
+  - `.specify/memory/`
+  - `.specify/workflows/`
 
 The upstream MIT permission notice remains applicable to the derived materials
 listed above. See the Spec Kit upstream repository for the full license text.

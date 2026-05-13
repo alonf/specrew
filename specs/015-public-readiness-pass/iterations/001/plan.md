@@ -2,10 +2,10 @@
 
 **Schema**: v1
 **Spec**: [../../spec.md](../../spec.md)
-**Status**: executing
+**Status**: reviewing
 **Capacity**: 10.0/20 story_points
 **Started**: 2026-05-13
-**Completed**: Authorized slice `T001-T009` completed on 2026-05-13; `review.md` and `retro.md` remain intentionally unopened
+**Completed**: Authorized slice `T001-T009` completed on 2026-05-13; independent review opened on 2026-05-13 against commit `6b757e7`
 **Hardening-Gate Sign-Off**: 2026-05-13 via current-session human authorization
 **Implementation Authorization**: 2026-05-13 for T001-T009 only
 
@@ -80,11 +80,11 @@
 
 - **Iteration 001 authorized and completed in this slice**: `T001-T009` only
 - **Iteration 002 still deferred**: `T010-T024`, including `.specrew/config.yml`, `CHANGELOG.md`, `docs/versioning.md`, release tags, `validate-governance.ps1` public-readiness warnings, and coordinator-governance extension work
-- **Lifecycle boundary kept intact**: `specs/015-public-readiness-pass/iterations/001/review.md` and `specs/015-public-readiness-pass/iterations/001/retro.md` remain intentionally uncreated
+- **Lifecycle boundary kept intact**: `specs/015-public-readiness-pass/iterations/001/review.md` is now the open review artifact for commit `6b757e7`; `retro.md` remains intentionally unopened until review is accepted
 
 ## Notes
 
 - This plan is intentionally limited to the Iteration 001 public-landing-surface slice; versioning, changelog, tags, validator warnings, and closeout-governance extension work stay deferred to Iteration 002.
 - Hardening-gate sign-off and implementation authorization are recorded for Iteration 001 only; keep Iteration 002 deferred until later explicit human approval.
-- The current validator treats committed `review.md` and `retro.md` files as evidence that later lifecycle phases have started, so those artifacts remain uncreated by design.
+- The current validator treats committed `review.md` and `retro.md` files as evidence that later lifecycle phases have started, so this plan now truthfully reflects the open review boundary while keeping retrospective unopened.
 - If the scope changes later, update the task table, execution split, and deferral note in the same planning boundary.

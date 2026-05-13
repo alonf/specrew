@@ -43,7 +43,10 @@ explicit human approval.
 **Acceptance Check for Iteration 001**:
 
 - `LICENSE` exists at repo root and contains the MIT license text
-- `NOTICE.md` exists at repo root and has sections for Squad and Spec Kit
+- `NOTICE.md` exists at repo root, has sections for Squad and Spec Kit, and
+  attributes only the clearly upstream-derived paths: `.squad/templates/`,
+  `extensions/specrew-speckit/squad-templates/`, `.specify/templates/`,
+  `.specify/scripts/powershell/`, `.specify/memory/`, and `.specify/workflows/`
 - `README.md` contains all 8 required sections (Current State, What's working, What's NOT working,
   Recommended Lifecycle, PR-at-feature-close Workflow, Roadmap, License, Contributing)
 - README Contributing section explicitly defers external PRs during alpha
@@ -118,8 +121,11 @@ v0.14.0  →  3ff32d4
    - Copyright line: `Copyright (c) 2026 Alon Fliess and contributors`
 
 2. Create `NOTICE.md` at repo root:
-   - Section for Squad (MIT upstream, derived `.specify/extensions/specrew-speckit/squad-templates/`)
-   - Section for Spec Kit (MIT upstream, derived `.specify/` layer)
+   - Section for Squad (MIT upstream, derived `.squad/templates/` and
+     `extensions/specrew-speckit/squad-templates/`)
+   - Section for Spec Kit (MIT upstream, derived `.specify/templates/`,
+     `.specify/scripts/powershell/`, `.specify/memory/`, and
+     `.specify/workflows/`)
    - Include required upstream notice text verbatim or by reference
 
 3. Rewrite `README.md`:
@@ -194,11 +200,13 @@ v0.14.0  →  3ff32d4
 **Date**: 2026-05-13
 
 - **First-time-reader pass**: A fresh-context review of `LICENSE`, `NOTICE.md`, `README.md`, and
-  `specs/001-specrew-product/spec.md` was able to identify Specrew as a spec-governed delivery
-  flow built from Squad plus Spec Kit, its public shipped baseline `0.14.0`, its alpha/dogfooding
-  posture, its current working scope, its known gaps, and its MIT reuse posture without needing
-  insider explanation.
-- **Markdown validation**: `npx markdownlint-cli LICENSE NOTICE.md README.md specs/001-specrew-product/spec.md specs/015-public-readiness-pass/spec.md specs/015-public-readiness-pass/plan.md specs/015-public-readiness-pass/contracts/public-readiness-warning-schema.md specs/015-public-readiness-pass/iterations/001/plan.md specs/015-public-readiness-pass/quickstart.md specs/015-public-readiness-pass/tasks.md` — **pass**
+  `specs/001-specrew-product/spec.md` after the Iteration 001 repair was able to identify Specrew
+  as a spec-governed delivery flow built from Squad plus Spec Kit, distinguish the actual
+  upstream-derived surfaces (`.squad/templates/`,
+  `extensions/specrew-speckit/squad-templates/`, and the specific `.specify/` template/script/
+  memory/workflow paths), and explain the public shipped baseline `0.14.0`, alpha/dogfooding
+  posture, current working scope, known gaps, and MIT reuse posture without insider explanation.
+- **Markdown validation**: `npx markdownlint-cli LICENSE NOTICE.md README.md specs/001-specrew-product/spec.md specs/015-public-readiness-pass/spec.md specs/015-public-readiness-pass/plan.md specs/015-public-readiness-pass/contracts/public-readiness-warning-schema.md specs/015-public-readiness-pass/iterations/001/plan.md specs/015-public-readiness-pass/quickstart.md specs/015-public-readiness-pass/tasks.md specs/015-public-readiness-pass/iterations/001/state.md` — **pass**
 - **Governance validation**: `pwsh -File .\extensions\specrew-speckit\scripts\validate-governance.ps1 -ProjectPath .` — **pass**
 - **Governance scope note**: The current validator baseline passed without public-readiness warning
   automation because FR-016 remains deferred to Iteration 002; no hard-failure scope expansion was
