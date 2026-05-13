@@ -6,12 +6,12 @@
 **In Progress**: none
 **Baseline Ref**: 3ff32d4
 **Updated**: 2026-05-13
-**Current Phase**: retro
-**Iteration Status**: iteration closeout verified on 2026-05-13 by Alon Fliess against review commit `daf2b03`; all authorized T010-T016 scope delivered and accepted; iteration closed via iteration-closeout boundary commit
+**Current Phase**: closed
+**Iteration Status**: iteration closed on 2026-05-13 via iteration-closeout boundary commit `16bbbac`; all authorized T010-T016 scope delivered and accepted; independent review accepted on 2026-05-13 against commit `f170562`; retrospective recorded on 2026-05-13
 
 ## Planning Summary
 
-Iteration 002 is the second delivery slice for Feature 015, Public-Readiness Pass. The authorized scope covers seven scope items via seven tasks: version bump to 0.14.0 (T010), retroactive CHANGELOG for Features 001-014 (T011), annotated git tags (T012), feature-closeout governance template updates (T013), versioning schema documentation (T014), public-readiness drift detection and spec status reconciliation (T015-T016). The bounded implementation slice is complete and the independent review is now accepted against commit `f170562`; retrospective and closeout remain future separately authorized boundaries.
+Iteration 002 is the second and final delivery slice for Feature 015, Public-Readiness Pass. The authorized scope covers seven scope items via seven tasks: version bump to 0.14.0 (T010), retroactive CHANGELOG for Features 001-014 (T011), annotated git tags (T012), feature-closeout governance template updates (T013), versioning schema documentation (T014), public-readiness drift detection and spec status reconciliation (T015-T016). All authorized scope is complete, independent review accepted on 2026-05-13 against commit `f170562`, retrospective recorded on 2026-05-13, and iteration closed via closeout-boundary commit `16bbbac`. The next valid action is separate feature-closeout authorization.
 
 ## Task Status Summary
 
@@ -31,8 +31,8 @@ Iteration 002 is the second delivery slice for Feature 015, Public-Readiness Pas
 - **Hardening-Gate Sign-Off**: user sign-off recorded on 2026-05-13 for the Iteration 002 pre-implementation hardening gate
 - **Implementation Authorization**: user directive on 2026-05-13 executed the bounded `T010`-`T016` scope only; the implementation slice is now complete
 - **Review Boundary**: ✅ **ACCEPTED** — `review.md` records the accepted independent review against commit `f170562`
-- **Retro Artifact**: ✅ **RECORDED** — `retro.md` records six substantive lessons and calibration data on 2026-05-13; iteration-closeout remains separately authorized
-- **Iteration Closure**: (pending) — closeout remains a future separately authorized boundary after the retro boundary
+- **Retro Artifact**: ✅ **RECORDED** — `retro.md` records six substantive lessons and calibration data on 2026-05-13
+- **Iteration Closure**: ✅ **CLOSED** — iteration closed via iteration-closeout boundary commit `16bbbac` on 2026-05-13
 - **Session Restart Requirement**: required before a future session can load the updated `.github/agents/squad.agent.md` and `.squad/templates/squad.agent.md` guidance
 
 ## Scope and Deferrals
@@ -53,7 +53,7 @@ Iteration 002 is the second delivery slice for Feature 015, Public-Readiness Pas
 
 ## Next Action
 
-Iteration 002 is closed as of 2026-05-13 after all authorized T010-T016 scope completed, independent review accepted, and post-implementation verification recorded. The next valid action is separate feature-closeout authorization; feature-closeout will test Rule 15's automatic version-management behavior and is not authorized within this iteration boundary.
+Iteration 002 is now fully closed as of 2026-05-13. All authorized T010-T016 scope completed, independent review accepted, retrospective recorded, and iteration closure verified via boundary commit `16bbbac`. The next valid action is separate feature-closeout authorization, which will test Rule 15's automatic version-management behavior and is not authorized within this iteration boundary.
 
 <!-- >>> specrew-managed escalation-state >>> -->
 ## Repair Escalation
