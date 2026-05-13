@@ -46,7 +46,10 @@
       "Bash(pwsh -NoProfile -ExecutionPolicy Bypass -File extensions/specrew-speckit/scripts/validate-governance.ps1 -ProjectPath . -IterationPath ./specs/008-reviewer-escalation-symmetry/iterations/005)",
       "Bash(grep -E \"^\\\\| \\\\`\\(security-surface|error-handling-expectations|retry-idempotency-requirements|test-integrity-targets|operational-resilience-concerns|validator-detection-correctness|coordinator-prompt-rollout-fidelity|bulk-list-handling-fidelity|tool-call-scope-exclusion|us1-integration-with-feature-007\\)\" specs/012-descriptive-id-handoffs/iterations/001/quality/hardening-gate.md)",
       "Bash(awk -F'|' '{printf \"%-45s %-15s %s\\\\n\", $2, $4, $8}')",
-      "Bash(pwsh -NoProfile -ExecutionPolicy Bypass -File extensions/specrew-speckit/scripts/validate-governance.ps1 -ProjectPath . -IterationPath ./specs/012-descriptive-id-handoffs/iterations/001)"
+      "Bash(pwsh -NoProfile -ExecutionPolicy Bypass -File extensions/specrew-speckit/scripts/validate-governance.ps1 -ProjectPath . -IterationPath ./specs/012-descriptive-id-handoffs/iterations/001)",
+      "Bash(git --no-pager diff 1c29d0e f170562 -- .github/agents/squad.agent.md)",
+      "Bash(git --no-pager diff 1c29d0e f170562 -- extensions/specrew-speckit/squad-templates/coordinator/specrew-governance.md)",
+      "Bash(git --no-pager log --oneline -6)"
     ]
   }
 }

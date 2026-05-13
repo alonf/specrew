@@ -31,8 +31,8 @@ Iteration 002 is the second delivery slice for Feature 015, Public-Readiness Pas
 - **Hardening-Gate Sign-Off**: user sign-off recorded on 2026-05-13 for the Iteration 002 pre-implementation hardening gate
 - **Implementation Authorization**: user directive on 2026-05-13 executed the bounded `T010`-`T016` scope only; the implementation slice is now complete
 - **Review Boundary**: ✅ **ACCEPTED** — `review.md` records the accepted independent review against commit `f170562`
-- **Retro Artifact**: (pending) — retrospective remains unopened pending separate human authorization
-- **Iteration Closure**: (pending) — retrospective and closeout remain future separate boundaries after the accepted review
+- **Retro Artifact**: ✅ **RECORDED** — `retro.md` records six substantive lessons and calibration data on 2026-05-13; iteration-closeout remains separately authorized
+- **Iteration Closure**: (pending) — closeout remains a future separately authorized boundary after the retro boundary
 - **Session Restart Requirement**: required before a future session can load the updated `.github/agents/squad.agent.md` and `.squad/templates/squad.agent.md` guidance
 
 ## Scope and Deferrals
