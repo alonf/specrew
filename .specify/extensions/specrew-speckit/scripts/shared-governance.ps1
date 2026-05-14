@@ -31,12 +31,13 @@ function Invoke-WithFileLock {
         [int]$RetryDelayMilliseconds = 100
     )
 
-    $directory = Split-Path -Parent $Path
+    $resolvedPath = Resolve-ProjectPath -Path $Path
+    $directory = Split-Path -Parent $resolvedPath
     if (-not [string]::IsNullOrWhiteSpace($directory) -and -not (Test-Path -LiteralPath $directory -PathType Container)) {
         $null = New-Item -ItemType Directory -Path $directory -Force
     }
 
-    $lockPath = "$Path.lock"
+    $lockPath = "$resolvedPath.lock"
     $lockStream = $null
     for ($attempt = 0; $attempt -lt $RetryCount; $attempt++) {
         try {
@@ -45,7 +46,7 @@ function Invoke-WithFileLock {
         }
         catch [System.IO.IOException] {
             if ($attempt -ge ($RetryCount - 1)) {
-                throw "Could not acquire file lock for '$Path'."
+                throw "Could not acquire file lock for '$resolvedPath'."
             }
 
             Start-Sleep -Milliseconds $RetryDelayMilliseconds
@@ -55,6 +56,9 @@ function Invoke-WithFileLock {
     try {
         & $ScriptBlock
     }
+    catch {
+        throw "Locked update failed for '$resolvedPath': $($_.Exception.Message)"
+    }
     finally {
         if ($null -ne $lockStream) {
             $lockStream.Dispose()
@@ -63,6 +67,34 @@ function Invoke-WithFileLock {
         if (Test-Path -LiteralPath $lockPath -PathType Leaf) {
             Remove-Item -LiteralPath $lockPath -Force -ErrorAction SilentlyContinue
         }
+    }
+}
+
+function Remove-OrphanedAtomicWriteArtifacts {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Path,
+
+        [AllowNull()]
+        [string]$TempPath
+    )
+
+    $resolvedPath = Resolve-ProjectPath -Path $Path
+    $lockPath = "$resolvedPath.lock"
+
+    if (-not [string]::IsNullOrWhiteSpace($TempPath) -and (Test-Path -LiteralPath $TempPath -PathType Leaf)) {
+        Remove-Item -LiteralPath $TempPath -Force -ErrorAction SilentlyContinue
+    }
+
+    $directory = Split-Path -Parent $resolvedPath
+    $fileName = Split-Path -Leaf $resolvedPath
+    if (-not [string]::IsNullOrWhiteSpace($directory) -and (Test-Path -LiteralPath $directory -PathType Container)) {
+        Get-ChildItem -LiteralPath $directory -Filter "$fileName.*.tmp" -File -ErrorAction SilentlyContinue |
+            Remove-Item -Force -ErrorAction SilentlyContinue
+    }
+
+    if (Test-Path -LiteralPath $lockPath -PathType Leaf) {
+        Remove-Item -LiteralPath $lockPath -Force -ErrorAction SilentlyContinue
     }
 }
 
@@ -76,15 +108,24 @@ function Write-Utf8FileAtomic {
         [string]$Content
     )
 
-    $directory = Split-Path -Parent $Path
+    $resolvedPath = Resolve-ProjectPath -Path $Path
+    $directory = Split-Path -Parent $resolvedPath
     if (-not [string]::IsNullOrWhiteSpace($directory) -and -not (Test-Path -LiteralPath $directory -PathType Container)) {
         $null = New-Item -ItemType Directory -Path $directory -Force
     }
 
-    $tempPath = '{0}.{1}.tmp' -f $Path, ([guid]::NewGuid().ToString('N'))
+    $tempPath = '{0}.{1}.tmp' -f $resolvedPath, ([guid]::NewGuid().ToString('N'))
     try {
         [System.IO.File]::WriteAllText($tempPath, $Content, [System.Text.UTF8Encoding]::new($false))
-        Move-Item -LiteralPath $tempPath -Destination $Path -Force
+        if (-not (Test-Path -LiteralPath $tempPath -PathType Leaf)) {
+            throw "Atomic write did not create the temp file '$tempPath'."
+        }
+
+        Move-Item -LiteralPath $tempPath -Destination $resolvedPath -Force -ErrorAction Stop
+    }
+    catch {
+        Remove-OrphanedAtomicWriteArtifacts -Path $resolvedPath -TempPath $tempPath
+        throw "Atomic write to '$resolvedPath' failed: $($_.Exception.Message)"
     }
     finally {
         if (Test-Path -LiteralPath $tempPath -PathType Leaf) {
@@ -126,7 +167,7 @@ function Get-DecisionsLedgerPath {
         [string]$ProjectRoot
     )
 
-    return Join-Path $ProjectRoot '.squad\decisions.md'
+    return Join-Path (Resolve-ProjectPath -Path $ProjectRoot) '.squad\decisions.md'
 }
 
 function Add-DecisionsLedgerEntry {
@@ -290,20 +331,565 @@ function New-DecisionsLedgerParsedEntry {
     )
 
     $rawText = $EntryLines -join "`n"
+    $authorizationTextLines = New-Object System.Collections.Generic.List[string]
+    $captureAuthorizationText = $false
+    foreach ($line in $EntryLines) {
+        if (-not $captureAuthorizationText) {
+            if ($line -match '^\s*-\s+\*\*Authorization Text\*\*:\s*$') {
+                $captureAuthorizationText = $true
+            }
+            continue
+        }
+
+        if ($line -match '^\s*-\s+\*\*[^*]+\*\*:' -or $line -match '^##\s+') {
+            break
+        }
+
+        if ($line.TrimStart().StartsWith('>')) {
+            $authorizationTextLines.Add($line.Trim()) | Out-Null
+            continue
+        }
+
+        if ([string]::IsNullOrWhiteSpace($line) -and $authorizationTextLines.Count -gt 0) {
+            $authorizationTextLines.Add('') | Out-Null
+            continue
+        }
+
+        break
+    }
+
+    $authorizationText = if ($authorizationTextLines.Count -gt 0) { ($authorizationTextLines -join "`n").Trim() } elseif (($rawText -match '(?ms)^-\s+\*\*Authorization Text\*\*:\s*(?<text>.+)$')) { $Matches['text'].Trim() } else { $null }
     return [pscustomobject]@{
         Timestamp           = $Timestamp
         Title               = $Title
         DecisionId          = if (($rawText -match '(?m)^-\s+\*\*Decision ID\*\*:\s*(.+?)\s*$')) { $Matches[1].Trim() } else { $null }
         Type                = if (($rawText -match '(?m)^-\s+\*\*Type\*\*:\s*(.+?)\s*$')) { $Matches[1].Trim() } else { $null }
+        Boundary            = if (($rawText -match '(?m)^-\s+\*\*Boundary\*\*:\s*(.+?)\s*$')) { $Matches[1].Trim() } else { $null }
         AffectedRequirement = if (($rawText -match '(?m)^-\s+\*\*Affected Requirement\*\*:\s*(.+?)\s*$')) { $Matches[1].Trim() } else { $null }
         AffectedIteration   = if (($rawText -match '(?m)^-\s+\*\*Affected Iteration\*\*:\s*(.+?)\s*$')) { $Matches[1].Trim() } else { $null }
         ApprovingHuman      = if (($rawText -match '(?m)^-\s+\*\*Approving Human\*\*:\s*(.+?)\s*$')) { $Matches[1].Trim() } else { $null }
         RecordedAt          = if (($rawText -match '(?m)^-\s+\*\*Recorded At\*\*:\s*(.+?)\s*$')) { $Matches[1].Trim() } else { $Timestamp }
+        CommitReference     = if (($rawText -match '(?m)^-\s+\*\*Commit Reference\*\*:\s*(.+?)\s*$')) { $Matches[1].Trim() } else { $null }
+        AuthorizationText   = $authorizationText
         NextAction          = if (($rawText -match '(?m)^-\s+\*\*Next Action\*\*:\s*(.+?)\s*$')) { $Matches[1].Trim() } else { $null }
         RawLines            = $EntryLines.ToArray()
         RawText             = $rawText
         RoutingStatus       = if (($rawText -match 'status=(honored|fell-back)')) { $Matches[1] } else { $null }
         FallbackReason      = if (($rawText -match 'fallback=([^\r\n]+)')) { $Matches[1].Trim() } else { $null }
+    }
+}
+
+function Get-InteractionModelBoundaryCatalog {
+    return @(
+        [pscustomobject]@{ Name = 'planning'; StopLabel = 'planning'; SubjectPatterns = @('^Feature \d+.* iteration \d+ planning boundary(?:\s|$)') },
+        [pscustomobject]@{ Name = 'hardening-gate-and-implementation-auth'; StopLabel = 'hardening-gate-and-implementation-auth'; SubjectPatterns = @('^Feature \d+.* iteration \d+: record hardening-gate sign-off and implementation authorization(?:\s|$)') },
+        [pscustomobject]@{ Name = 'implementation'; StopLabel = 'implementation'; SubjectPatterns = @('^Feature \d+.* iteration \d+: implement(?:\s|$)', '^Feature \d+.* iteration \d+: bounded(?:\s|$)', '^Feature \d+.* iteration \d+: implementation(?:\s|$)') },
+        [pscustomobject]@{ Name = 'review-boundary'; StopLabel = 'review-boundary'; SubjectPatterns = @('^Feature \d+.* iteration \d+ review boundary(?:\s|$)') },
+        [pscustomobject]@{ Name = 'review-verdict-signoff'; StopLabel = 'review-verdict-signoff'; SubjectPatterns = @('^Feature \d+.* iteration \d+ review-verdict-signoff boundary(?:\s|$)') },
+        [pscustomobject]@{ Name = 'retro-boundary'; StopLabel = 'retro-boundary'; SubjectPatterns = @('^Feature \d+.* iteration \d+ retrospective boundary(?:\s|$)') },
+        [pscustomobject]@{ Name = 'iteration-closeout'; StopLabel = 'iteration-closeout'; SubjectPatterns = @('^Feature \d+.* iteration \d+ closeout boundary(?:\s|$)') },
+        [pscustomobject]@{ Name = 'feature-closeout'; StopLabel = 'feature-closeout'; SubjectPatterns = @('^Feature \d+.*: feature-closeout boundary(?:\s|$)') }
+    )
+}
+
+function Normalize-InteractionModelBoundaryName {
+    param([AllowNull()][string]$Boundary)
+
+    if ([string]::IsNullOrWhiteSpace($Boundary)) {
+        return $null
+    }
+
+    $normalized = $Boundary.Trim().ToLowerInvariant() -replace '[^a-z0-9]+', '-'
+    switch -Regex ($normalized) {
+        '^planning$' { return 'planning' }
+        '^hardening-gate(?:-and-implementation-auth)?$' { return 'hardening-gate-and-implementation-auth' }
+        '^hardening-gate-sign-?off$' { return 'hardening-gate-signoff' }
+        '^hardening-gate-signoff$' { return 'hardening-gate-signoff' }
+        '^implementation(?:-authorization)?$' { return 'implementation' }
+        '^review$' { return 'review-boundary' }
+        '^review-boundary$' { return 'review-boundary' }
+        '^review-verdict-signoff$' { return 'review-verdict-signoff' }
+        '^retro(?:spective)?(?:-boundary)?$' { return 'retro-boundary' }
+        '^iteration-closeout$' { return 'iteration-closeout' }
+        '^feature-closeout$' { return 'feature-closeout' }
+        default { return $normalized.Trim('-') }
+    }
+}
+
+function Get-InteractionModelSectionMap {
+    param([AllowEmptyString()][string]$Text)
+
+    $sectionMap = [ordered]@{}
+    if ([string]::IsNullOrWhiteSpace($Text)) {
+        return $sectionMap
+    }
+
+    $lines = $Text -replace "`r`n", "`n" -split "`n"
+    $currentHeading = $null
+    $currentLines = New-Object System.Collections.Generic.List[string]
+    $headingPattern = '^(?:#{1,6}\s*)?(?:\*\*)?(What I just did|Why I stopped|What I need from you)(?:\*\*)?\s*$'
+
+    foreach ($line in $lines) {
+        $trimmed = $line.Trim()
+        if ($trimmed -match $headingPattern) {
+            if ($null -ne $currentHeading) {
+                $sectionMap[$currentHeading] = ($currentLines -join "`n").Trim()
+                $currentLines.Clear()
+            }
+
+            $currentHeading = $Matches[1]
+            continue
+        }
+
+        if ($null -ne $currentHeading) {
+            $null = $currentLines.Add($line)
+        }
+    }
+
+    if ($null -ne $currentHeading) {
+        $sectionMap[$currentHeading] = ($currentLines -join "`n").Trim()
+    }
+
+    return $sectionMap
+}
+
+function Get-InteractionModelSections {
+    param([AllowEmptyString()][string]$Text)
+
+    $sectionMap = Get-InteractionModelSectionMap -Text $Text
+    if ($sectionMap.Count -eq 0) {
+        return @($(if ([string]::IsNullOrWhiteSpace($Text)) { '' } else { $Text.Trim() }))
+    }
+
+    return @($sectionMap.GetEnumerator() | ForEach-Object { [string]$_.Value })
+}
+
+function Get-InteractionModelBoundaryCommitMatch {
+    param([AllowNull()][string]$Subject)
+
+    if ([string]::IsNullOrWhiteSpace($Subject)) {
+        return $null
+    }
+
+    foreach ($boundary in Get-InteractionModelBoundaryCatalog) {
+        foreach ($pattern in $boundary.SubjectPatterns) {
+            if ($Subject -match $pattern) {
+                $featureNumber = if ($Subject -match 'Feature\s+(?<feature>\d+)') { [int]$Matches['feature'] } else { $null }
+                $iterationNumber = if ($Subject -match 'iteration\s+(?<iteration>\d+)') { [int]$Matches['iteration'] } else { $null }
+                return [pscustomobject]@{
+                    Boundary      = $boundary.Name
+                    StopLabel     = $boundary.StopLabel
+                    FeatureNumber = $featureNumber
+                    IterationNumber = $iterationNumber
+                    Subject       = $Subject.Trim()
+                }
+            }
+        }
+    }
+
+    return $null
+}
+
+function Get-InteractionModelSettings {
+    param([Parameter(Mandatory = $true)][string]$ProjectRoot)
+
+    $settings = [ordered]@{
+        BarePathBoundaryHandoffSeverity = 'soft-warning'
+        ExemptionExtensions = @()
+        ConfigIssues = @()
+    }
+
+    $configPath = Join-Path $ProjectRoot '.specrew\config.yml'
+    if (-not (Test-Path -LiteralPath $configPath -PathType Leaf)) {
+        return [pscustomobject]$settings
+    }
+
+    $lines = @(Get-MarkdownContent -Path $configPath)
+    $inInteractionModel = $false
+    $inExemptions = $false
+    $currentEntry = $null
+    $extensions = New-Object System.Collections.Generic.List[object]
+
+    foreach ($line in $lines) {
+        if ($line -match '^\S') {
+            if ($line -match '^interaction_model:\s*$') {
+                $inInteractionModel = $true
+                $inExemptions = $false
+                continue
+            }
+
+            if ($inInteractionModel) {
+                break
+            }
+        }
+
+        if (-not $inInteractionModel) {
+            continue
+        }
+
+        if ($line -match '^\s{2}bare_path_boundary_handoff_severity:\s*(?<value>\S.*?)\s*$') {
+            $severity = $Matches['value'].Trim(" `t`r`n'`"")
+            if ($severity -in @('soft-warning', 'validation-fail')) {
+                $settings.BarePathBoundaryHandoffSeverity = $severity
+            }
+            else {
+                $settings.ConfigIssues += "interaction_model bare_path_boundary_handoff_severity '$severity' is invalid; expected soft-warning or validation-fail."
+            }
+            continue
+        }
+
+        if ($line -match '^\s{2}exemption_extensions:\s*$') {
+            $inExemptions = $true
+            continue
+        }
+
+        if (-not $inExemptions) {
+            continue
+        }
+
+        if ($line -match '^\s{4}-\s*id:\s*(?<value>\S.*?)\s*$') {
+            if ($null -ne $currentEntry) {
+                $extensions.Add([pscustomobject]$currentEntry) | Out-Null
+            }
+
+            $currentEntry = [ordered]@{
+                Id = $Matches['value'].Trim(" `t`r`n'`"")
+                Pattern = $null
+                Approver = $null
+                Rationale = $null
+            }
+            continue
+        }
+
+        if ($null -eq $currentEntry) {
+            continue
+        }
+
+        if ($line -match '^\s{6}pattern:\s*(?<value>\S.*?)\s*$') {
+            $currentEntry.Pattern = $Matches['value'].Trim(" `t`r`n'`"")
+            continue
+        }
+
+        if ($line -match '^\s{6}approver:\s*(?<value>\S.*?)\s*$') {
+            $currentEntry.Approver = $Matches['value'].Trim(" `t`r`n'`"")
+            continue
+        }
+
+        if ($line -match '^\s{6}rationale:\s*(?<value>\S.*?)\s*$') {
+            $currentEntry.Rationale = $Matches['value'].Trim(" `t`r`n'`"")
+            continue
+        }
+    }
+
+    if ($null -ne $currentEntry) {
+        $extensions.Add([pscustomobject]$currentEntry) | Out-Null
+    }
+
+    foreach ($entry in $extensions) {
+        if ([string]::IsNullOrWhiteSpace($entry.Pattern) -or [string]::IsNullOrWhiteSpace($entry.Approver) -or [string]::IsNullOrWhiteSpace($entry.Rationale)) {
+            $settings.ConfigIssues += "interaction_model exemption extension '$($entry.Id)' must include pattern, approver, and rationale."
+            continue
+        }
+
+        $settings.ExemptionExtensions += $entry
+    }
+
+    return [pscustomobject]$settings
+}
+
+function New-InteractionModelAuthorizationDecisionId {
+    param(
+        [Parameter(Mandatory = $true)][int]$FeatureNumber,
+        [Parameter(Mandatory = $true)][int]$IterationNumber,
+        [Parameter(Mandatory = $true)][string]$Boundary
+    )
+
+    $normalizedBoundary = (Normalize-InteractionModelBoundaryName -Boundary $Boundary) -replace '[^a-z0-9-]+', '-'
+    return ('authorization-feature-{0:d3}-iter-{1:d3}-{2}' -f $FeatureNumber, $IterationNumber, $normalizedBoundary)
+}
+
+function Add-InteractionModelAuthorizationEntry {
+    param(
+        [Parameter(Mandatory = $true)][string]$ProjectRoot,
+        [Parameter(Mandatory = $true)][int]$FeatureNumber,
+        [Parameter(Mandatory = $true)][int]$IterationNumber,
+        [Parameter(Mandatory = $true)][string]$Boundary,
+        [Parameter(Mandatory = $true)][ValidateSet('authorization', 'sign-off')][string]$Type,
+        [Parameter(Mandatory = $true)][string]$ApprovingHuman,
+        [Parameter(Mandatory = $true)][string]$AuthorizationText,
+        [string]$CommitReference = 'pending',
+        [string]$RecordedAt,
+        [string]$DecisionId
+    )
+
+    $normalizedBoundary = Normalize-InteractionModelBoundaryName -Boundary $Boundary
+    $effectiveDecisionId = if ([string]::IsNullOrWhiteSpace($DecisionId)) {
+        New-InteractionModelAuthorizationDecisionId -FeatureNumber $FeatureNumber -IterationNumber $IterationNumber -Boundary $normalizedBoundary
+    }
+    else {
+        $DecisionId.Trim()
+    }
+
+    $effectiveRecordedAt = if ([string]::IsNullOrWhiteSpace($RecordedAt)) {
+        (Get-Date).ToUniversalTime().ToString('yyyy-MM-ddTHH:mm:ssZ')
+    }
+    else {
+        $RecordedAt.Trim()
+    }
+
+    $lines = @(
+        "- **Decision ID**: $effectiveDecisionId"
+        "- **Type**: $Type"
+        "- **Boundary**: $normalizedBoundary"
+        "- **Approving Human**: $ApprovingHuman"
+        "- **Recorded At**: $effectiveRecordedAt"
+        "- **Commit Reference**: $(Get-DecisionLedgerOptionalValue -Value $CommitReference)"
+        '- **Authorization Text**:'
+    ) + @($AuthorizationText -replace "`r`n", "`n" -split "`n" | ForEach-Object { "  > $_" })
+
+    return Add-DecisionsLedgerEntry -ProjectRoot $ProjectRoot -Title "Authorization: $normalizedBoundary" -Lines $lines
+}
+
+function Get-InteractionModelAuthorizationEntries {
+    param(
+        [Parameter(Mandatory = $true)][string]$ProjectRoot,
+        [int]$FeatureNumber,
+        [int]$IterationNumber
+    )
+
+    return @(
+        Get-DecisionsLedgerEntries -ProjectRoot $ProjectRoot |
+            Where-Object {
+                $_.Type -in @('authorization', 'sign-off') -and
+                (-not $PSBoundParameters.ContainsKey('FeatureNumber') -or [string]$_.DecisionId -match ("authorization-feature-{0:d3}\b" -f $FeatureNumber)) -and
+                (-not $PSBoundParameters.ContainsKey('IterationNumber') -or [string]$_.DecisionId -match ("iter-{0:d3}\b" -f $IterationNumber))
+            }
+    )
+}
+
+function ConvertTo-InteractionModelUtcSeconds {
+    param([Parameter(Mandatory = $true)][string]$Timestamp)
+
+    if ([string]::IsNullOrWhiteSpace($Timestamp)) {
+        throw 'Timestamp cannot be blank.'
+    }
+
+    try {
+        $parsed = [datetimeoffset]::Parse(
+            $Timestamp.Trim(),
+            [System.Globalization.CultureInfo]::InvariantCulture,
+            [System.Globalization.DateTimeStyles]::AssumeUniversal
+        )
+    }
+    catch {
+        throw "Timestamp '$Timestamp' is not a valid ISO 8601 value."
+    }
+
+    return $parsed.ToUniversalTime().ToString('yyyy-MM-ddTHH:mm:ssZ')
+}
+
+function Set-InteractionModelAuthorizationMetadata {
+    param(
+        [Parameter(Mandatory = $true)][string]$ProjectRoot,
+        [Parameter(Mandatory = $true)][string]$DecisionId,
+        [AllowNull()][string]$CommitReference,
+        [AllowNull()][string]$RecordedAt
+    )
+
+    if ([string]::IsNullOrWhiteSpace($DecisionId)) {
+        throw 'DecisionId cannot be blank.'
+    }
+
+    $ledgerPath = Get-DecisionsLedgerPath -ProjectRoot $ProjectRoot
+    if (-not (Test-Path -LiteralPath $ledgerPath -PathType Leaf)) {
+        throw "Decisions ledger not found at '$ledgerPath'."
+    }
+
+    $normalizedDecisionId = $DecisionId.Trim()
+    $normalizedCommitReference = if ($PSBoundParameters.ContainsKey('CommitReference')) {
+        if ([string]::IsNullOrWhiteSpace($CommitReference)) { 'pending' } else { $CommitReference.Trim() }
+    }
+    else {
+        $null
+    }
+
+    $normalizedRecordedAt = if ($PSBoundParameters.ContainsKey('RecordedAt')) {
+        ConvertTo-InteractionModelUtcSeconds -Timestamp $RecordedAt
+    }
+    else {
+        $null
+    }
+    $updateCommitReference = $PSBoundParameters.ContainsKey('CommitReference')
+    $updateRecordedAt = $PSBoundParameters.ContainsKey('RecordedAt')
+
+    $updated = $false
+
+    Update-LockedFileContent -Path $ledgerPath -Transform {
+        param([string]$Content)
+
+        $lines = @($Content -replace "`r`n", "`n" -split "`n")
+        $insideTargetEntry = $false
+        $foundDecision = $false
+        $commitLineFound = $false
+        $recordedAtLineFound = $false
+
+        for ($index = 0; $index -lt $lines.Count; $index++) {
+            $line = $lines[$index]
+
+            if ($line -match '^##\s+') {
+                if ($insideTargetEntry) {
+                    break
+                }
+
+                $insideTargetEntry = $false
+            }
+
+            if ($line -match '^\s*-\s+\*\*Decision ID\*\*:\s*(.+?)\s*$' -and $Matches[1].Trim() -eq $normalizedDecisionId) {
+                $insideTargetEntry = $true
+                $foundDecision = $true
+                continue
+            }
+
+            if (-not $insideTargetEntry) {
+                continue
+            }
+
+            if ($updateRecordedAt -and $line -match '^\s*-\s+\*\*Recorded At\*\*:\s*.+$') {
+                $lines[$index] = "- **Recorded At**: $normalizedRecordedAt"
+                $recordedAtLineFound = $true
+                $updated = $true
+                continue
+            }
+
+            if ($updateCommitReference -and $line -match '^\s*-\s+\*\*Commit Reference\*\*:\s*.+$') {
+                $lines[$index] = "- **Commit Reference**: $normalizedCommitReference"
+                $commitLineFound = $true
+                $updated = $true
+                continue
+            }
+        }
+
+        if (-not $foundDecision) {
+            throw "Decision entry '$normalizedDecisionId' was not found in '$ledgerPath'."
+        }
+
+        if ($updateRecordedAt -and -not $recordedAtLineFound) {
+            throw "Decision entry '$normalizedDecisionId' is missing a Recorded At line."
+        }
+
+        if ($updateCommitReference -and -not $commitLineFound) {
+            throw "Decision entry '$normalizedDecisionId' is missing a Commit Reference line."
+        }
+
+        return (($lines -join "`n").TrimEnd() + "`n")
+    } | Out-Null
+
+    return [pscustomobject]@{
+        DecisionId       = $normalizedDecisionId
+        CommitReference  = $normalizedCommitReference
+        RecordedAt       = $normalizedRecordedAt
+        Updated          = $updated
+        DecisionsLedger  = $ledgerPath
+    }
+}
+
+function Sync-InteractionModelAuthorizationCommitReference {
+    param(
+        [Parameter(Mandatory = $true)][string]$ProjectRoot,
+        [Parameter(Mandatory = $true)][string]$DecisionId,
+        [Parameter(Mandatory = $true)][string]$CommitHash,
+        [switch]$UseShortHash,
+        [ValidateRange(7, 40)][int]$ShortHashLength = 7
+    )
+
+    if ([string]::IsNullOrWhiteSpace($CommitHash)) {
+        throw 'CommitHash cannot be blank.'
+    }
+
+    $normalizedHash = $CommitHash.Trim()
+    if ($normalizedHash -notmatch '^[a-fA-F0-9]{7,40}$') {
+        throw "CommitHash '$CommitHash' is not a valid git hash."
+    }
+
+    $effectiveCommitReference = if ($UseShortHash) {
+        if ($ShortHashLength -gt $normalizedHash.Length) {
+            throw "ShortHashLength $ShortHashLength exceeds commit hash length $($normalizedHash.Length)."
+        }
+
+        $normalizedHash.Substring(0, $ShortHashLength)
+    }
+    else {
+        $normalizedHash
+    }
+
+    return Set-InteractionModelAuthorizationMetadata -ProjectRoot $ProjectRoot -DecisionId $DecisionId -CommitReference $effectiveCommitReference
+}
+
+function Get-InteractionModelFileUris {
+    param([AllowEmptyString()][string]$Text)
+
+    if ([string]::IsNullOrWhiteSpace($Text)) {
+        return @()
+    }
+
+    return @(
+        [regex]::Matches($Text, '(?i)file:///[^\s)`"''<>]+') |
+            ForEach-Object { $_.Value.TrimEnd(',', '.', ';', ':') } |
+            Select-Object -Unique
+    )
+}
+
+function Convert-InteractionModelFileUriToWindowsPath {
+    param([Parameter(Mandatory = $true)][string]$FileUri)
+
+    try {
+        $uri = [System.Uri]::new($FileUri)
+    }
+    catch {
+        throw "File URI '$FileUri' is invalid."
+    }
+
+    if (-not $uri.IsAbsoluteUri -or $uri.Scheme -ne 'file') {
+        throw "URI '$FileUri' is not an absolute file:/// URI."
+    }
+
+    return [System.IO.Path]::GetFullPath($uri.LocalPath)
+}
+
+function Invoke-InteractionModelStaleReferenceScan {
+    param(
+        [Parameter(Mandatory = $true)][string]$ProjectRoot,
+        [AllowEmptyString()][string]$Text
+    )
+
+    $resolvedProjectRoot = Resolve-ProjectPath -Path $ProjectRoot
+    $missingReferences = New-Object System.Collections.Generic.List[string]
+    $checkedReferences = New-Object System.Collections.Generic.List[string]
+
+    foreach ($fileUri in @(Get-InteractionModelFileUris -Text $Text)) {
+        $checkedReferences.Add($fileUri) | Out-Null
+        try {
+            $path = Convert-InteractionModelFileUriToWindowsPath -FileUri $fileUri
+        }
+        catch {
+            $missingReferences.Add($fileUri) | Out-Null
+            continue
+        }
+
+        if (-not $path.StartsWith($resolvedProjectRoot, [System.StringComparison]::OrdinalIgnoreCase)) {
+            $missingReferences.Add($fileUri) | Out-Null
+            continue
+        }
+
+        if (-not (Test-Path -LiteralPath $path -PathType Leaf)) {
+            $missingReferences.Add($fileUri) | Out-Null
+        }
+    }
+
+    return [pscustomobject]@{
+        Status            = if ($missingReferences.Count -gt 0) { 'needs-fix' } else { 'clean' }
+        CheckedReferences = $checkedReferences.ToArray()
+        MissingReferences = $missingReferences.ToArray()
     }
 }
 
@@ -407,6 +993,44 @@ function Get-MarkdownSectionTable {
     return $rows.ToArray()
 }
 
+function Get-MarkdownSectionLines {
+    param(
+        [AllowEmptyCollection()]
+        [AllowEmptyString()]
+        [Parameter(Mandatory = $true)]
+        [string[]]$Lines,
+
+        [Parameter(Mandatory = $true)]
+        [string]$Heading
+    )
+
+    $headingPattern = '^#{2,3}\s+' + [regex]::Escape($Heading) + '\b'
+    $startIndex = -1
+
+    for ($index = 0; $index -lt $Lines.Count; $index++) {
+        if ($Lines[$index] -match $headingPattern) {
+            $startIndex = $index
+            break
+        }
+    }
+
+    if ($startIndex -lt 0) {
+        return @()
+    }
+
+    $sectionLines = New-Object System.Collections.Generic.List[string]
+    for ($index = $startIndex + 1; $index -lt $Lines.Count; $index++) {
+        $currentLine = $Lines[$index]
+        if ($currentLine -match '^#{2,3}\s+') {
+            break
+        }
+
+        $null = $sectionLines.Add($currentLine)
+    }
+
+    return $sectionLines.ToArray()
+}
+
 function Normalize-MarkdownCell {
     param([AllowNull()][string]$Value)
 
@@ -444,6 +1068,302 @@ function Test-IsNullish {
     }
 
     return $Value.Trim() -match '^(?:—|-|none|null|n/a|\(none\)|blank|tbd|unknown)$'
+}
+
+function Find-LineNumberByPattern {
+    param(
+        [AllowEmptyCollection()]
+        [AllowEmptyString()]
+        [string[]]$Lines,
+        [string]$Pattern,
+        [switch]$CaseSensitive
+    )
+
+    if ($null -eq $Lines -or [string]::IsNullOrWhiteSpace($Pattern)) {
+        return $null
+    }
+
+    for ($index = 0; $index -lt $Lines.Count; $index++) {
+        $isMatch = if ($CaseSensitive) {
+            $Lines[$index] -cmatch $Pattern
+        }
+        else {
+            $Lines[$index] -match $Pattern
+        }
+
+        if ($isMatch) {
+            return ($index + 1)
+        }
+    }
+
+    return $null
+}
+
+function New-StructuredValidationFailureText {
+    param(
+        [AllowNull()][string]$FilePath,
+        [AllowNull()][int]$LineNumber,
+        [Parameter(Mandatory = $true)][string]$Category,
+        [Parameter(Mandatory = $true)][string]$Message,
+        [Parameter(Mandatory = $true)][string]$RemediationHint
+    )
+
+    $resolvedFilePath = if ([string]::IsNullOrWhiteSpace($FilePath)) { '(none)' } else { $FilePath.Trim() }
+    $resolvedLineNumber = if ($null -eq $LineNumber -or $LineNumber -le 0) { '(none)' } else { [string]$LineNumber }
+    return 'file_path={0} | line_number={1} | category={2} | message={3} | remediation_hint={4}' -f $resolvedFilePath, $resolvedLineNumber, $Category.Trim(), $Message.Trim(), $RemediationHint.Trim()
+}
+
+function Add-StructuredValidationFailure {
+    param(
+        [AllowEmptyCollection()]
+        [Parameter(Mandatory = $true)]
+        [System.Collections.Generic.List[string]]$Errors,
+
+        [AllowNull()][string]$FilePath,
+        [AllowNull()][int]$LineNumber,
+        [Parameter(Mandatory = $true)][string]$Category,
+        [Parameter(Mandatory = $true)][string]$Message,
+        [Parameter(Mandatory = $true)][string]$RemediationHint
+    )
+
+    $Errors.Add((New-StructuredValidationFailureText -FilePath $FilePath -LineNumber $LineNumber -Category $Category -Message $Message -RemediationHint $RemediationHint)) | Out-Null
+}
+
+function Get-FeatureOrdinalFromIterationDirectory {
+    param([AllowNull()][string]$IterationDirectory)
+
+    if ([string]::IsNullOrWhiteSpace($IterationDirectory)) {
+        return $null
+    }
+
+    $normalized = $IterationDirectory -replace '/', '\'
+    $match = [regex]::Match($normalized, '[\\/]specs[\\/](?<feature>\d+)-[^\\/]+[\\/]iterations[\\/]')
+    if ($match.Success) {
+        return [int]$match.Groups['feature'].Value
+    }
+
+    return $null
+}
+
+function Test-IterationRequiresCanonicalStateSchema {
+    param([AllowNull()][string]$IterationDirectory)
+
+    $featureOrdinal = Get-FeatureOrdinalFromIterationDirectory -IterationDirectory $IterationDirectory
+    if ($null -eq $featureOrdinal) {
+        return $true
+    }
+
+    return $featureOrdinal -ge 13
+}
+
+function Test-IterationRequiresCanonicalHardeningConcerns {
+    param([AllowNull()][string]$IterationDirectory)
+
+    $featureOrdinal = Get-FeatureOrdinalFromIterationDirectory -IterationDirectory $IterationDirectory
+    if ($null -eq $featureOrdinal) {
+        return $true
+    }
+
+    return $featureOrdinal -ge 13
+}
+
+function Get-CanonicalIterationStateFields {
+    param([Parameter(Mandatory = $true)][string]$ProjectRoot)
+
+    $contractPath = Join-Path $ProjectRoot 'specs\013-validator-hardening\contracts\iteration-state-schema.md'
+    if (Test-Path -LiteralPath $contractPath -PathType Leaf) {
+        $rows = @(Get-MarkdownSectionTable -Lines (Get-MarkdownContent -Path $contractPath) -Heading 'Canonical Fields')
+        if ($rows.Count -gt 0) {
+            return @(
+                $rows |
+                    ForEach-Object {
+                        [pscustomobject]@{
+                            FieldName = Normalize-MarkdownCell (Get-ObjectPropertyString -InputObject $_ -PropertyNames @('Field Name'))
+                        }
+                    } |
+                    Where-Object { -not [string]::IsNullOrWhiteSpace($_.FieldName) }
+            )
+        }
+    }
+
+    return @(
+        [pscustomobject]@{ FieldName = 'Schema' },
+        [pscustomobject]@{ FieldName = 'Last Completed Task' },
+        [pscustomobject]@{ FieldName = 'Tasks Remaining' },
+        [pscustomobject]@{ FieldName = 'In Progress' },
+        [pscustomobject]@{ FieldName = 'Baseline Ref' },
+        [pscustomobject]@{ FieldName = 'Updated' },
+        [pscustomobject]@{ FieldName = 'Current Phase' },
+        [pscustomobject]@{ FieldName = 'Iteration Status' }
+    )
+}
+
+function Get-CanonicalHardeningConcernDefinitions {
+    param([Parameter(Mandatory = $true)][string]$ProjectRoot)
+
+    $contractPath = Join-Path $ProjectRoot 'specs\013-validator-hardening\contracts\hardening-gate-concerns.md'
+    if (Test-Path -LiteralPath $contractPath -PathType Leaf) {
+        $rows = @(Get-MarkdownSectionTable -Lines (Get-MarkdownContent -Path $contractPath) -Heading 'Canonical Concerns')
+        if ($rows.Count -gt 0) {
+            return @(
+                $rows |
+                    ForEach-Object {
+                        $positionText = Normalize-MarkdownCell (Get-ObjectPropertyString -InputObject $_ -PropertyNames @('Position'))
+                        $position = $null
+                        if ($positionText -match '^\d+$') {
+                            $position = [int]$positionText
+                        }
+
+                        [pscustomobject]@{
+                            Position  = $position
+                            ConcernId = Normalize-MarkdownCell (Get-ObjectPropertyString -InputObject $_ -PropertyNames @('Concern ID'))
+                        }
+                    } |
+                    Where-Object { $null -ne $_.Position -and -not [string]::IsNullOrWhiteSpace($_.ConcernId) } |
+                    Sort-Object Position
+            )
+        }
+    }
+
+    return @(
+        [pscustomobject]@{ Position = 1; ConcernId = 'security-surface' },
+        [pscustomobject]@{ Position = 2; ConcernId = 'error-handling-expectations' },
+        [pscustomobject]@{ Position = 3; ConcernId = 'retry-idempotency-requirements' },
+        [pscustomobject]@{ Position = 4; ConcernId = 'test-integrity-targets' },
+        [pscustomobject]@{ Position = 5; ConcernId = 'operational-resilience-concerns' }
+    )
+}
+
+function Normalize-ApprovalEvidenceQuote {
+    param([AllowNull()][string]$Value)
+
+    if ([string]::IsNullOrWhiteSpace($Value)) {
+        return ''
+    }
+
+    $normalized = $Value.Trim()
+    $normalized = $normalized -replace '[*_]', ''
+    $normalized = $normalized -replace '\s+', ' '
+    return $normalized.Trim(" `t`r`n'`"")
+}
+
+function Test-BlanketAuthorizationScopeDeclared {
+    param(
+        [AllowEmptyCollection()]
+        [AllowEmptyString()]
+        [string[]]$Lines
+    )
+
+    foreach ($line in @($Lines)) {
+        if ([string]::IsNullOrWhiteSpace($line)) {
+            continue
+        }
+
+        $normalized = $line.ToLowerInvariant()
+        if ($normalized.Contains('blanket') -and $normalized.Contains('multi-iteration authorization')) {
+            return $true
+        }
+    }
+
+    return $false
+}
+
+function Get-ImplementationApprovalEvidenceRecords {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$IterationDirectory,
+
+        [Parameter(Mandatory = $true)]
+        [string]$ProjectRoot
+    )
+
+    $records = New-Object System.Collections.Generic.List[object]
+    $artifacts = @('plan.md', 'state.md')
+    $headings = @('Implementation Authorization', 'Implementation Approval')
+    $evidenceLabels = @(
+        'Recorded Evidence',
+        'Implementation Approval Evidence',
+        'Implementation Approval',
+        'Approval Evidence',
+        'Evidence Statement',
+        'Recorded Quote',
+        'Authorization Quote'
+    )
+
+    foreach ($artifactName in $artifacts) {
+        $artifactPath = Join-Path $IterationDirectory $artifactName
+        if (-not (Test-Path -LiteralPath $artifactPath -PathType Leaf)) {
+            continue
+        }
+
+        $lines = @(Get-MarkdownContent -Path $artifactPath)
+        $relativeArtifactPath = ([System.IO.Path]::GetRelativePath($ProjectRoot, $artifactPath)) -replace '/', '\'
+
+        foreach ($heading in $headings) {
+            $sectionLines = @(Get-MarkdownSectionLines -Lines $lines -Heading $heading)
+            if ($sectionLines.Count -eq 0) {
+                continue
+            }
+
+            $blanketScopeDeclared = Test-BlanketAuthorizationScopeDeclared -Lines $sectionLines
+            foreach ($sectionLine in $sectionLines) {
+                $trimmedLine = $sectionLine.Trim()
+                if ([string]::IsNullOrWhiteSpace($trimmedLine)) {
+                    continue
+                }
+
+                $rawText = $null
+                foreach ($label in $evidenceLabels) {
+                    $pattern = '^(?:-\s*)?\*\*' + [regex]::Escape($label) + '\*\*:\s*(.+?)\s*$'
+                    if ($trimmedLine -match $pattern) {
+                        $rawText = $Matches[1].Trim()
+                        break
+                    }
+                }
+
+                if ([string]::IsNullOrWhiteSpace($rawText) -and $trimmedLine -match '^(?:-\s*)?["“](.+?)["”]\s*$') {
+                    $rawText = $Matches[1].Trim()
+                }
+
+                if ([string]::IsNullOrWhiteSpace($rawText)) {
+                    continue
+                }
+
+                $normalizedText = Normalize-ApprovalEvidenceQuote -Value $rawText
+                if ([string]::IsNullOrWhiteSpace($normalizedText)) {
+                    continue
+                }
+
+                $escapedLine = [regex]::Escape($sectionLine)
+                $lineNumber = Find-LineNumberByPattern -Lines $lines -Pattern ('^\s*' + $escapedLine + '\s*$')
+
+                $records.Add([pscustomobject]@{
+                        ArtifactPath          = $artifactPath
+                        RelativeArtifactPath  = $relativeArtifactPath
+                        Heading               = $heading
+                        RawText               = $rawText
+                        NormalizedText        = $normalizedText
+                        BlanketScopeDeclared  = $blanketScopeDeclared
+                        LineNumber            = $lineNumber
+                    }) | Out-Null
+            }
+        }
+    }
+
+    return $records.ToArray()
+}
+
+function Test-ClosedIterationStatus {
+    param([AllowNull()][string]$IterationStatus)
+
+    if (Test-IsNullish $IterationStatus) {
+        return $false
+    }
+
+    $normalized = $IterationStatus.ToLowerInvariant()
+    return ($normalized -match '\bclosed\b') -or
+        ($normalized -match '\bcloseout complete\b') -or
+        ($normalized -match '\bclosure complete\b')
 }
 
 function Convert-ToDecisionReferenceId {
@@ -717,7 +1637,293 @@ function Get-HardeningConcernEvaluation {
         Issues                    = $issues.ToArray()
         BlocksImplementation      = $issues.Count -gt 0
         BlocksClosure             = $blocksClosure
+        HasHumanApproval          = -not [string]::IsNullOrWhiteSpace($approvalRef) -and ($null -ne $approvalRecord -and $approvalRecord.HasHumanApproval)
     }
+}
+
+# ============================================================================
+# Reviewer-Regression Governance Functions (Spec 008 Extension)
+# ============================================================================
+
+function Get-ReviewerRegressionLedgerPath {
+    <#
+    .SYNOPSIS
+    Returns the path to the reviewer-regression ledger.
+    
+    .PARAMETER ProjectRoot
+    The root directory of the project.
+    #>
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$ProjectRoot
+    )
+
+    return Join-Path $ProjectRoot '.specrew\reviewer-regression-log.md'
+}
+
+function Get-ReviewerRegressionLedgerEntries {
+    <#
+    .SYNOPSIS
+    Parses the reviewer-regression ledger and returns all event entries.
+    
+    .PARAMETER ProjectRoot
+    The root directory of the project.
+    #>
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$ProjectRoot
+    )
+
+    $ledgerPath = Get-ReviewerRegressionLedgerPath -ProjectRoot $ProjectRoot
+    if (-not (Test-Path -LiteralPath $ledgerPath -PathType Leaf)) {
+        return @()
+    }
+
+    $lines = @(Get-Content -LiteralPath $ledgerPath -Encoding UTF8)
+    $entries = New-Object System.Collections.Generic.List[object]
+    $eventRegex = '^#{3}\s+(RRE-\d{3,})\s*$'
+
+    $currentEventId = $null
+    $currentLines = New-Object System.Collections.Generic.List[string]
+
+    foreach ($line in $lines) {
+        $eventMatch = [regex]::Match($line, $eventRegex)
+        if ($eventMatch.Success) {
+            if ($null -ne $currentEventId) {
+                $entries.Add((New-ReviewerRegressionEventEntry -EventId $currentEventId -EntryLines $currentLines)) | Out-Null
+            }
+
+            $currentEventId = $eventMatch.Groups[1].Value.Trim()
+            $currentLines = New-Object System.Collections.Generic.List[string]
+            continue
+        }
+
+        if ($null -ne $currentEventId) {
+            $currentLines.Add($line) | Out-Null
+        }
+    }
+
+    if ($null -ne $currentEventId) {
+        $entries.Add((New-ReviewerRegressionEventEntry -EventId $currentEventId -EntryLines $currentLines)) | Out-Null
+    }
+
+    return $entries.ToArray()
+}
+
+function New-ReviewerRegressionEventEntry {
+    <#
+    .SYNOPSIS
+    Creates a parsed reviewer-regression event object from ledger lines.
+    
+    .PARAMETER EventId
+    The event identifier (e.g., RRE-001).
+    
+    .PARAMETER EntryLines
+    The raw lines from the ledger entry.
+    #>
+    param(
+        [string]$EventId,
+        [System.Collections.Generic.List[string]]$EntryLines
+    )
+
+    $rawText = $EntryLines -join "`n"
+    
+    return [pscustomobject]@{
+        EventId                = $EventId
+        Feature                = Get-LedgerFieldValue -RawText $rawText -Label 'Feature'
+        Iteration              = Get-LedgerFieldValue -RawText $rawText -Label 'Iteration'
+        Slice                  = Get-LedgerFieldValue -RawText $rawText -Label 'Slice'
+        PriorReviewerVerdict   = Get-LedgerFieldValue -RawText $rawText -Label 'Prior Reviewer Verdict'
+        PriorReviewerClass     = Get-LedgerFieldValue -RawText $rawText -Label 'Prior Reviewer Class'
+        PriorReviewerOwner     = Get-LedgerFieldValue -RawText $rawText -Label 'Prior Reviewer Owner'
+        DefectDescription      = Get-LedgerFieldValue -RawText $rawText -Label 'Defect Description'
+        DefectSourceLocation   = Get-LedgerFieldValue -RawText $rawText -Label 'Defect Source Location'
+        EventStatus            = Get-LedgerFieldValue -RawText $rawText -Label 'Event Status'
+        Severity               = Get-LedgerFieldValue -RawText $rawText -Label 'Severity'
+        EscalationAction       = Get-LedgerFieldValue -RawText $rawText -Label 'Escalation Action'
+        EscalatedToClass       = Get-LedgerFieldValue -RawText $rawText -Label 'Escalated To Class'
+        SelectedReviewerOwner  = Get-LedgerFieldValue -RawText $rawText -Label 'Selected Reviewer Owner'
+        SameClassFallbackOwner = Get-LedgerFieldValue -RawText $rawText -Label 'Same-Class Fallback Owner'
+        CarryForwardIteration  = Get-LedgerFieldValue -RawText $rawText -Label 'Carry Forward Iteration'
+        CandidateTrapStatus    = Get-LedgerFieldValue -RawText $rawText -Label 'Candidate Trap Status'
+        WithdrawalReference    = Get-LedgerFieldValue -RawText $rawText -Label 'Withdrawal Reference'
+        DeEscalationOutcome    = Get-LedgerFieldValue -RawText $rawText -Label 'De-Escalation Outcome'
+        RecordedAt             = Get-LedgerFieldValue -RawText $rawText -Label 'Recorded At'
+        RawLines               = $EntryLines.ToArray()
+        RawText                = $rawText
+    }
+}
+
+function Get-LedgerFieldValue {
+    <#
+    .SYNOPSIS
+    Extracts a field value from ledger entry text.
+    
+    .PARAMETER RawText
+    The raw text content of the ledger entry.
+    
+    .PARAMETER Label
+    The field label to extract.
+    #>
+    param(
+        [string]$RawText,
+        [string]$Label
+    )
+
+    $pattern = '(?m)^-\s+\*\*' + [regex]::Escape($Label) + '\*\*:\s*`?(.+?)`?\s*$'
+    if ($RawText -match $pattern) {
+        $value = $Matches[1].Trim()
+        if ($value -eq '(none)' -or $value -eq '(pending)' -or [string]::IsNullOrWhiteSpace($value)) {
+            return $null
+        }
+        return $value
+    }
+
+    return $null
+}
+
+function Get-ActiveReviewerRegressionChain {
+    <#
+    .SYNOPSIS
+    Returns the active reviewer-regression chain for a specific feature.
+    
+    .PARAMETER ProjectRoot
+    The root directory of the project.
+    
+    .PARAMETER Feature
+    The feature path to filter by.
+    #>
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$ProjectRoot,
+        
+        [Parameter(Mandatory = $true)]
+        [string]$Feature
+    )
+
+    $entries = Get-ReviewerRegressionLedgerEntries -ProjectRoot $ProjectRoot
+    $activeEntries = @($entries | Where-Object { 
+        $_.Feature -eq $Feature -and 
+        $_.EventStatus -eq 'active' 
+    })
+
+    if ($activeEntries.Count -eq 0) {
+        return [pscustomobject]@{
+            Status                     = 'inactive'
+            Feature                    = $Feature
+            ActiveEventIds             = @()
+            StrongestUnresolvedAction  = $null
+            CurrentReviewerClass       = $null
+            PriorReviewerClass         = $null
+            CurrentReviewerOwner       = $null
+            CleanPassesRequired        = 1
+            CleanPassesObserved        = 0
+            CarryForwardFromIteration  = $null
+            Notes                      = $null
+        }
+    }
+
+    # Find the strongest unresolved escalation action
+    $strongestAction = $null
+    $currentClass = $null
+    $priorClass = $null
+    $currentOwner = $null
+    $carryForward = $null
+
+    foreach ($entry in $activeEntries) {
+        if ($entry.EscalationAction -eq 'human-direction-hold') {
+            $strongestAction = 'human-direction-hold'
+            $currentClass = $entry.EscalatedToClass
+            $priorClass = $entry.PriorReviewerClass
+            $currentOwner = $null
+            break
+        }
+        elseif ($entry.EscalationAction -eq 'stronger-class') {
+            $strongestAction = 'stronger-class'
+            $currentClass = $entry.EscalatedToClass
+            $priorClass = $entry.PriorReviewerClass
+            $currentOwner = $entry.SelectedReviewerOwner
+        }
+        elseif ($strongestAction -ne 'stronger-class' -and $entry.EscalationAction -eq 'same-class-independent-owner') {
+            $strongestAction = 'same-class-independent-owner'
+            $currentClass = $entry.PriorReviewerClass
+            $priorClass = $entry.PriorReviewerClass
+            $currentOwner = $entry.SameClassFallbackOwner
+        }
+
+        if (-not [string]::IsNullOrWhiteSpace([string]$entry.CarryForwardIteration)) {
+            $carryForward = $entry.Iteration
+        }
+    }
+
+    return [pscustomobject]@{
+        Status                     = if ($strongestAction -eq 'human-direction-hold') { 'held' } else { 'active' }
+        Feature                    = $Feature
+        ActiveEventIds             = @($activeEntries | ForEach-Object { $_.EventId })
+        StrongestUnresolvedAction  = $strongestAction
+        CurrentReviewerClass       = $currentClass
+        PriorReviewerClass         = $priorClass
+        CurrentReviewerOwner       = $currentOwner
+        CleanPassesRequired        = 1
+        CleanPassesObserved        = 0
+        CarryForwardFromIteration  = $carryForward
+        Notes                      = $null
+    }
+}
+
+function Add-StructuredDecisionsLedgerEntry {
+    <#
+    .SYNOPSIS
+    Adds a structured decision entry to the decisions ledger with extended type support.
+    
+    .PARAMETER Type
+    The decision type. Spec 008 adds: reviewer-regression-escalation, reviewer-regression-withdrawal, lockout-cap.
+    #>
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$ProjectRoot,
+
+        [Parameter(Mandatory = $true)]
+        [string]$Title,
+
+        [Parameter(Mandatory = $true)]
+        [ValidateSet('decision', 'defer', 'escalation', 'routing-evidence', 'clarify-skip', 'review-gap', 
+                     'reviewer-regression-escalation', 'reviewer-regression-withdrawal', 'lockout-cap')]
+        [string]$Type,
+
+        [string]$DecisionId,
+        [string]$AffectedRequirement,
+        [string]$AffectedIteration,
+        [string]$ApprovingHuman,
+        [string]$NextAction = 'none',
+        [string]$Rationale,
+        [string[]]$DetailLines
+    )
+
+    $recordedAt = (Get-Date).ToUniversalTime().ToString('yyyy-MM-ddTHH:mm:ssZ')
+    $effectiveDecisionId = if ([string]::IsNullOrWhiteSpace($DecisionId)) {
+        New-DecisionsLedgerEntryId -Type $Type
+    }
+    else {
+        $DecisionId.Trim()
+    }
+
+    $lines = @(
+        "- **Decision ID**: $effectiveDecisionId"
+        "- **Type**: $Type"
+        "- **Affected Requirement**: $(Get-DecisionLedgerOptionalValue -Value $AffectedRequirement)"
+        "- **Affected Iteration**: $(Get-DecisionLedgerOptionalValue -Value $AffectedIteration)"
+        "- **Approving Human**: $(Get-DecisionLedgerOptionalValue -Value $ApprovingHuman)"
+        "- **Recorded At**: $recordedAt"
+        "- **Next Action**: $(Get-DecisionLedgerOptionalValue -Value $NextAction)"
+        "- **Rationale**: $(Get-DecisionLedgerOptionalValue -Value $Rationale)"
+    )
+
+    if ($null -ne $DetailLines -and $DetailLines.Count -gt 0) {
+        $lines += @('') + @($DetailLines | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
+    }
+
+    return Add-DecisionsLedgerEntry -ProjectRoot $ProjectRoot -Title $Title -Lines $lines
 }
 
 function Test-HardeningConcernBlocksImplementation {

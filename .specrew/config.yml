@@ -1,4 +1,4 @@
-specrew_version: "0.15.0"
+specrew_version: "0.16.0"
 speckit_version: "0.8.4"
 squad_version: "0.9.1"
 bootstrap_date: "2026-05-04"
@@ -17,3 +17,5 @@ quality:
     default_policy: "strongest-available"
     allow_lower_tier_override: true
     approval_required: true
+interaction_model:
+  bare_path_boundary_handoff_severity: "validation-fail"

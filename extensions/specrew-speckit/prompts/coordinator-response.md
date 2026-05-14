@@ -33,6 +33,25 @@ These sections are the preferred presentation layer for the two required semanti
 
 Use the existing three-section stop-message format unchanged for real human-blocked stops.
 
+## Feature 016 Interaction-Model Overlay
+
+- Stop and ask after each named boundary: planning, hardening-gate-and-implementation-auth, implementation, review-boundary, review-verdict-signoff, retro-boundary, and iteration-closeout. `feature-closeout` remains a separate feature-level stop.
+- Each boundary commit needs its own immediately preceding authorization. One human authorization advances at most one boundary.
+- Treat `continue` as: advance to the next single boundary stop, then halt and ask again.
+- Expand a single hardening-gate sign-off + implementation authorization paste into two `.squad/decisions.md` entries: one `sign-off` for `hardening-gate-signoff`, one `authorization` for `implementation`. Both keep the same verbatim authorization text and remain reviewable before advancement.
+- Boundary-stop narration must use `file:///` URIs for artifact references outside approved exempt contexts.
+
+For Feature 016 boundary handoffs:
+
+- **What I just did** — for planning, implementation, review, and retro: include at least 3 concrete identifiers (`file:///`, commit hash, `FR-###`, `T###`, or authorization reference) **and** at least 50 words. For iteration-closeout and feature-closeout, either threshold is enough.
+- **Why I stopped** — explicitly name the boundary being entered.
+- **What I need from you** — name the boundary being authorized, cite the inspection targets as `file:///` references, and ask for the verdict required.
+
+Worked boundary examples:
+
+- **Compliant seven-step cadence**: authorize planning → authorize hardening-gate-and-implementation-auth → authorize implementation → authorize review-boundary → authorize review-verdict-signoff → authorize retro-boundary → authorize iteration-closeout.
+- **Violation**: one `continue` leads to review-boundary, retro-boundary, and iteration-closeout commits without fresh authorizations. Treat this as invalid bundled advance and stop instead.
+
 ## In-Flight Progress Update Contract
 
 An `in-flight-progress-update` MUST:
@@ -133,6 +152,17 @@ I stopped because I cannot continue to the next lifecycle step until you approve
 
 **What I need from you**  
 Review and approve the bounded wording change before Iteration 002 proof work begins.
+
+### Feature 016 Substantive Boundary Example
+
+**What I just did**  
+I updated **feature 016, substantive interaction model**, across **FR-001 through FR-019, the Iteration 001 boundary-discipline, console-substance, and click-through rules**. I aligned `file:///C:/Dev/Specrew/.github/agents/squad.agent.md`, `file:///C:/Dev/Specrew/extensions/specrew-speckit/prompts/coordinator-response.md`, and `file:///C:/Dev/Specrew/extensions/specrew-speckit/scripts/validate-governance.ps1`, recorded the canonical authorization shape in `.squad/decisions.md`, and verified the governing integration checks still pass before the next boundary.
+
+**Why I stopped**  
+I stopped at the review-boundary because the next lifecycle step is the review boundary, and Feature 016 allows only one explicitly authorized boundary advance at a time.
+
+**What I need from you**  
+Review `file:///C:/Dev/Specrew/specs/016-substantive-interaction-model/iterations/001/plan.md` and `file:///C:/Dev/Specrew/specs/016-substantive-interaction-model/iterations/001/quality/hardening-gate.md`, then approve or reject advancement to the review-boundary.
 
 ### In-Flight Progress Update Example
 

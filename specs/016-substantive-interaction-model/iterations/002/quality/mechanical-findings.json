@@ -1,0 +1,11 @@
+{
+  "schemaVersion": "v1",
+  "featureRef": "specs/016-substantive-interaction-model/spec.md",
+  "iterationRef": "specs/016-substantive-interaction-model/iterations/002",
+  "generatedAt": "2026-05-14T12:04:24Z",
+  "generator": {
+    "name": "specrew-iteration-scaffold",
+    "version": "1.0.0"
+  },
+  "findings": []
+}

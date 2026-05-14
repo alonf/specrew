@@ -1,7 +1,11 @@
 [CmdletBinding()]
 param(
     [string]$ProjectPath = (Get-Location).Path,
-    [string[]]$IterationPath
+    [string[]]$IterationPath,
+    [AllowEmptyString()][string]$ResponseText = '',
+    [string]$BoundaryName,
+    [ValidateSet('auto', 'boundary-handoff', 'narration')][string]$ResponseScope = 'auto',
+    [ValidateSet('soft-warning', 'validation-fail')][string]$BarePathBoundaryHandoffSeverity
 )
 
 Set-StrictMode -Version Latest
@@ -12,6 +16,12 @@ if (-not (Test-Path -LiteralPath $sharedGovernancePath -PathType Leaf)) {
     throw "Missing shared governance helper '$sharedGovernancePath'."
 }
 . $sharedGovernancePath
+
+$copilotInstructionsClassifierPath = Join-Path $PSScriptRoot 'Test-CopilotInstructionsChangeType.ps1'
+if (-not (Test-Path -LiteralPath $copilotInstructionsClassifierPath -PathType Leaf)) {
+    throw "Missing copilot-instructions classifier helper '$copilotInstructionsClassifierPath'."
+}
+. $copilotInstructionsClassifierPath
 
 $sharedGovernancePath = Join-Path $PSScriptRoot 'shared-governance.ps1'
 if (-not (Test-Path -LiteralPath $sharedGovernancePath -PathType Leaf)) {
@@ -432,6 +442,32 @@ function Convert-ToRepoMarkdownPath {
     return ([System.IO.Path]::GetRelativePath($ProjectRoot, $TargetPath)) -replace '\\', '/'
 }
 
+function Add-RepoStructuredValidationFailure {
+    param(
+        [AllowEmptyCollection()]
+        [Parameter(Mandatory = $true)]
+        [System.Collections.Generic.List[string]]$Errors,
+
+        [Parameter(Mandatory = $true)]
+        [string]$ProjectRoot,
+
+        [AllowNull()][string]$TargetPath,
+        [AllowNull()][int]$LineNumber,
+        [Parameter(Mandatory = $true)][string]$Category,
+        [Parameter(Mandatory = $true)][string]$Message,
+        [Parameter(Mandatory = $true)][string]$RemediationHint
+    )
+
+    $relativePath = if ([string]::IsNullOrWhiteSpace($TargetPath)) {
+        '(none)'
+    }
+    else {
+        Convert-ToRepoMarkdownPath -ProjectRoot $ProjectRoot -TargetPath $TargetPath
+    }
+
+    Add-StructuredValidationFailure -Errors $Errors -FilePath $relativePath -LineNumber $LineNumber -Category $Category -Message $Message -RemediationHint $RemediationHint
+}
+
 function Write-PublicReadinessWarning {
     param(
         [Parameter(Mandatory = $true)][string]$Category,
@@ -500,6 +536,75 @@ function Test-PublicReadinessSurfaces {
     catch {
         return
     }
+}
+
+function Test-CopilotInstructionsClassifierCompatibility {
+    param(
+        [string]$ProjectRoot,
+        [System.Collections.Generic.List[string]]$Errors
+    )
+
+    $instructionsPath = Join-Path $ProjectRoot '.github\copilot-instructions.md'
+    if (-not (Test-Path -LiteralPath $instructionsPath -PathType Leaf)) {
+        return
+    }
+
+    try {
+        $classification = Test-CopilotInstructionsChangeType -BeforePath $instructionsPath -AfterPath $instructionsPath
+    }
+    catch {
+        Add-RepoStructuredValidationFailure -Errors $Errors -ProjectRoot $ProjectRoot -TargetPath $instructionsPath -LineNumber $null -Category 'bookkeeping-classifier' -Message ("Unable to evaluate .github/copilot-instructions.md with the classifier helper: {0}" -f $_.Exception.Message) -RemediationHint 'Repair Test-CopilotInstructionsChangeType.ps1 so validator compatibility checks can classify copilot-instructions changes.'
+        return
+    }
+
+    if ($null -eq $classification -or $classification.Classification -notin @('bookkeeping', 'behavior')) {
+        Add-RepoStructuredValidationFailure -Errors $Errors -ProjectRoot $ProjectRoot -TargetPath $instructionsPath -LineNumber $null -Category 'bookkeeping-classifier' -Message 'The copilot-instructions classifier helper returned an invalid classification.' -RemediationHint 'Return either bookkeeping or behavior from Test-CopilotInstructionsChangeType.ps1.'
+        return
+    }
+
+    if ($classification.Classification -ne 'bookkeeping' -or [bool]$classification.RequiresRestart) {
+        Add-RepoStructuredValidationFailure -Errors $Errors -ProjectRoot $ProjectRoot -TargetPath $instructionsPath -LineNumber $null -Category 'bookkeeping-classifier' -Message 'Identical copilot-instructions content must classify as bookkeeping with no restart requirement.' -RemediationHint 'Keep Test-CopilotInstructionsChangeType.ps1 conservative for real behavior changes, but allow identical or bookkeeping-only content to stay restart-free.'
+    }
+}
+
+function Find-CanonicalMetadataLabelLineNumber {
+    param(
+        [string[]]$Lines,
+        [string]$Label
+    )
+
+    $pattern = '^\*\*' + [regex]::Escape($Label) + '\*\*:\s*(.*?)\s*$'
+    return Find-LineNumberByPattern -Lines $Lines -Pattern $pattern -CaseSensitive
+}
+
+function Find-NonCanonicalMetadataLabelLineNumber {
+    param(
+        [string[]]$Lines,
+        [string]$Label
+    )
+
+    $aliasPatterns = switch ($Label) {
+        'Iteration Status' { @('^(?!\*\*)\s*Overall Status\s*:\s*.*$') ; break }
+        'Current Phase' { @('^(?!\*\*)\s*Planning Phase\s*:\s*.*$') ; break }
+        default { @() }
+    }
+
+    $trimmedLabel = [regex]::Escape($Label.Trim())
+    $patterns = @(
+        '^\*\*' + $trimmedLabel + '\*\*:\s*.*$',
+        '^(?!\*\*)\s*' + $trimmedLabel + '\s*:\s*.*$',
+        '^#+\s*' + $trimmedLabel + '\s*$',
+        '^\s*-\s*' + $trimmedLabel + '\s*:\s*.*$'
+    ) + $aliasPatterns
+
+    foreach ($pattern in $patterns) {
+        $lineNumber = Find-LineNumberByPattern -Lines $Lines -Pattern $pattern
+        if ($null -ne $lineNumber) {
+            return $lineNumber
+        }
+    }
+
+    return $null
 }
 
 function Resolve-RepoMarkdownArtifactPath {
@@ -716,24 +821,35 @@ function Test-Phase2HardeningGate {
         $Errors.Add(("hardening-gate.md requested review class '{0}' does not match the Phase 2 routing policy '{1}'" -f $hardeningState.Metadata.RequestedReviewClass, $planContext.RequestedReviewClass))
     }
 
-    $expectedConcernIds = @(
-        'security-surface',
-        'error-handling-expectations',
-        'retry-idempotency-requirements',
-        'test-integrity-targets',
-        'operational-resilience-concerns'
-    )
+    if (Test-IterationRequiresCanonicalHardeningConcerns -IterationDirectory $IterationDirectory) {
+        $hardeningGatePath = $planContext.HardeningGateArtifactPath
+        $hardeningGateLines = @(Get-MarkdownContent -Path $hardeningGatePath)
+        $concernHeadingLine = Find-LineNumberByPattern -Lines $hardeningGateLines -Pattern '^#{2,3}\s+Concern Review\b'
+        $expectedConcernDefinitions = @(Get-CanonicalHardeningConcernDefinitions -ProjectRoot $ProjectRoot)
+        $expectedConcernIds = @($expectedConcernDefinitions | ForEach-Object { $_.ConcernId })
 
-    # Only enforce the bounded five-concern contract for explicit Phase 2 planning
-    if (-not $planContext.IsImplicit) {
-        if ($hardeningState.ConcernRows.Count -ne $expectedConcernIds.Count) {
-            $Errors.Add(("hardening-gate.md must keep the bounded five-concern contract; found {0} concern rows" -f $hardeningState.ConcernRows.Count))
+        if ($hardeningState.ConcernRows.Count -lt $expectedConcernIds.Count) {
+            Add-RepoStructuredValidationFailure -Errors $Errors -ProjectRoot $ProjectRoot -TargetPath $hardeningGatePath -LineNumber $concernHeadingLine -Category 'concern-order' -Message ("hardening-gate.md is missing canonical concern rows; expected at least {0} Concern Review rows but found {1}" -f $expectedConcernIds.Count, $hardeningState.ConcernRows.Count) -RemediationHint 'Ensure the five canonical concerns appear as rows 1 through 5 before any feature-specific concerns.'
         }
 
-        foreach ($concernId in $expectedConcernIds) {
+        foreach ($definition in $expectedConcernDefinitions) {
+            $concernId = $definition.ConcernId
             $matches = @($hardeningState.ConcernRows | Where-Object { [string]$_.Concern -eq $concernId })
             if ($matches.Count -ne 1) {
-                $Errors.Add(("hardening-gate.md must contain exactly one '{0}' concern row" -f $concernId))
+                Add-RepoStructuredValidationFailure -Errors $Errors -ProjectRoot $ProjectRoot -TargetPath $hardeningGatePath -LineNumber $concernHeadingLine -Category 'concern-order' -Message ("hardening-gate.md must contain exactly one canonical concern row for '{0}'" -f $concernId) -RemediationHint 'Keep each canonical concern visible exactly once in the Concern Review table.'
+                continue
+            }
+
+            $rowIndex = $definition.Position - 1
+            if ($rowIndex -ge $hardeningState.ConcernRows.Count) {
+                Add-RepoStructuredValidationFailure -Errors $Errors -ProjectRoot $ProjectRoot -TargetPath $hardeningGatePath -LineNumber $concernHeadingLine -Category 'concern-order' -Message ("hardening-gate.md is missing canonical concern '{0}' at required row position {1}" -f $concernId, $definition.Position) -RemediationHint 'Add the missing canonical concern so rows 1 through 5 match the canonical contract order.'
+                continue
+            }
+
+            $actualConcern = Normalize-MarkdownCell ([string]$hardeningState.ConcernRows[$rowIndex].Concern)
+            if ($actualConcern -ne $concernId) {
+                $actualLineNumber = Find-LineNumberByPattern -Lines $hardeningGateLines -Pattern ('^\|\s*`?' + [regex]::Escape($actualConcern) + '`?\s*\|')
+                Add-RepoStructuredValidationFailure -Errors $Errors -ProjectRoot $ProjectRoot -TargetPath $hardeningGatePath -LineNumber $actualLineNumber -Category 'concern-order' -Message ("hardening-gate.md row {0} must be canonical concern '{1}' but found '{2}'" -f $definition.Position, $concernId, $actualConcern) -RemediationHint 'Reorder the Concern Review table so the five canonical concerns appear first in the required order.'
             }
         }
     }
@@ -1307,20 +1423,54 @@ function Test-SignOffRoleNaming {
 function Test-StateArtifact {
     param(
         [string]$IterationDirectory,
+        [string]$ProjectRoot,
         [System.Collections.Generic.List[string]]$Errors
     )
 
     $statePath = Join-Path -Path $IterationDirectory -ChildPath 'state.md'
     if (-not (Test-Path -Path $statePath -PathType Leaf)) {
-        $Errors.Add('Missing required artifact: state.md')
+        Add-RepoStructuredValidationFailure -Errors $Errors -ProjectRoot $ProjectRoot -TargetPath $statePath -LineNumber $null -Category 'missing-artifact' -Message 'Missing required artifact: state.md' -RemediationHint 'Add state.md to the iteration directory before continuing the lifecycle.'
         return
     }
 
-    $stateLines = Get-MarkdownContent -Path $statePath
+    try {
+        $stateLines = @(Get-MarkdownContent -Path $statePath)
+    }
+    catch {
+        Add-RepoStructuredValidationFailure -Errors $Errors -ProjectRoot $ProjectRoot -TargetPath $statePath -LineNumber $null -Category 'parse-failure' -Message ("Unable to read state.md: {0}" -f $_.Exception.Message) -RemediationHint 'Repair the state.md file encoding or contents and rerun validate-governance.ps1.'
+        return
+    }
+
+    if (Test-IterationRequiresCanonicalStateSchema -IterationDirectory $IterationDirectory) {
+        foreach ($field in @(Get-CanonicalIterationStateFields -ProjectRoot $ProjectRoot)) {
+            $label = [string]$field.FieldName
+            $canonicalLineNumber = Find-CanonicalMetadataLabelLineNumber -Lines $stateLines -Label $label
+            if ($null -ne $canonicalLineNumber) {
+                continue
+            }
+
+            $nonCanonicalLineNumber = Find-NonCanonicalMetadataLabelLineNumber -Lines $stateLines -Label $label
+            if ($null -ne $nonCanonicalLineNumber) {
+                Add-RepoStructuredValidationFailure -Errors $Errors -ProjectRoot $ProjectRoot -TargetPath $statePath -LineNumber $nonCanonicalLineNumber -Category 'canonical-schema' -Message ("state.md uses a non-canonical label for '{0}'" -f $label) -RemediationHint ("Replace it with the canonical metadata line '**{0}**:' on its own line." -f $label)
+                continue
+            }
+
+            $caseVariantLineNumber = Find-LineNumberByPattern -Lines $stateLines -Pattern ('^\*\*' + [regex]::Escape($label) + '\*\*:\s*(.*?)\s*$')
+            if ($null -ne $caseVariantLineNumber) {
+                Add-RepoStructuredValidationFailure -Errors $Errors -ProjectRoot $ProjectRoot -TargetPath $statePath -LineNumber $caseVariantLineNumber -Category 'canonical-schema' -Message ("state.md uses a non-canonical label for '{0}'" -f $label) -RemediationHint ("Replace it with the canonical metadata line '**{0}**:' on its own line." -f $label)
+                continue
+            }
+
+            Add-RepoStructuredValidationFailure -Errors $Errors -ProjectRoot $ProjectRoot -TargetPath $statePath -LineNumber $null -Category 'canonical-schema' -Message ("state.md is missing canonical field '{0}'" -f $label) -RemediationHint ("Add the canonical metadata line '**{0}**:' to state.md." -f $label)
+        }
+
+        return
+    }
+
     foreach ($label in @('Last Completed Task', 'Tasks Remaining', 'In Progress', 'Baseline Ref', 'Updated')) {
         $value = Get-MarkdownMetadataValue -Lines $stateLines -Label $label
         if ($null -eq $value) {
-            $Errors.Add("state.md is missing required metadata: $label")
+            Add-RepoStructuredValidationFailure -Errors $Errors -ProjectRoot $ProjectRoot -TargetPath $statePath -LineNumber $null -Category 'missing-artifact' -Message ("state.md is missing required metadata: {0}" -f $label) -RemediationHint ("Add the '{0}' metadata line to state.md." -f $label)
         }
     }
 }
@@ -1429,6 +1579,144 @@ function Test-RetroArtifact {
 
     if (-not $hasProcessNotes) {
         $Errors.Add("retro.md must capture process notes via 'Process Notes' or both 'What Went Well' and 'What Didn't Go Well'")
+    }
+}
+
+function Get-IterationCanonicalArtifactRelativePaths {
+    param(
+        [string]$IterationDirectory,
+        [string]$ProjectRoot
+    )
+
+    $iterationRelativePath = ([System.IO.Path]::GetRelativePath($ProjectRoot, $IterationDirectory)) -replace '/', '\'
+    return @(
+        "$iterationRelativePath\plan.md",
+        "$iterationRelativePath\state.md",
+        "$iterationRelativePath\drift-log.md",
+        "$iterationRelativePath\review.md",
+        "$iterationRelativePath\retro.md",
+        "$iterationRelativePath\reviewer-index.md",
+        "$iterationRelativePath\review-diagrams.md",
+        "$iterationRelativePath\code-map.md",
+        "$iterationRelativePath\coverage-evidence.md",
+        "$iterationRelativePath\dependency-report.md",
+        "$iterationRelativePath\quality\hardening-gate.md",
+        "$iterationRelativePath\quality\trap-reapplication.md"
+    )
+}
+
+function Get-IterationDirtyCanonicalArtifacts {
+    param(
+        [string]$IterationDirectory,
+        [string]$ProjectRoot
+    )
+
+    $gitCommand = Get-Command -Name 'git' -ErrorAction SilentlyContinue
+    if ($null -eq $gitCommand) {
+        return @()
+    }
+
+    $iterationRelativePath = ([System.IO.Path]::GetRelativePath($ProjectRoot, $IterationDirectory)) -replace '/', '\'
+    $canonicalPaths = @(
+        Get-IterationCanonicalArtifactRelativePaths -IterationDirectory $IterationDirectory -ProjectRoot $ProjectRoot |
+            ForEach-Object { $_.ToLowerInvariant() }
+    )
+
+    $statusOutput = @(& git -C $ProjectRoot status --porcelain --untracked-files=all -- $iterationRelativePath 2>$null)
+    if ($LASTEXITCODE -ne 0) {
+        throw 'Unable to inspect git working tree state for the iteration directory.'
+    }
+
+    $dirtyArtifacts = New-Object System.Collections.Generic.List[object]
+    foreach ($statusLine in $statusOutput) {
+        if ([string]::IsNullOrWhiteSpace($statusLine) -or $statusLine.Length -lt 4) {
+            continue
+        }
+
+        $normalizedPath = $statusLine.Substring(3).Trim()
+        if ($normalizedPath -match '->\s*(.+)$') {
+            $normalizedPath = $Matches[1].Trim()
+        }
+
+        $normalizedPath = $normalizedPath -replace '/', '\'
+        if ($normalizedPath.ToLowerInvariant() -notin $canonicalPaths) {
+            continue
+        }
+
+        $dirtyArtifacts.Add([pscustomobject]@{
+                Status = $statusLine.Substring(0, 2).Trim()
+                Path   = $normalizedPath
+            }) | Out-Null
+    }
+
+    return $dirtyArtifacts.ToArray()
+}
+
+function Test-IterationCloseoutEvidence {
+    param(
+        [string]$IterationDirectory,
+        [string]$ProjectRoot,
+        [string[]]$StateLines,
+        [System.Collections.Generic.List[string]]$Errors
+    )
+
+    if (-not (Test-IterationRequiresCanonicalStateSchema -IterationDirectory $IterationDirectory)) {
+        return
+    }
+
+    $iterationStatus = Normalize-MarkdownCell (Get-MarkdownMetadataValue -Lines $StateLines -Label 'Iteration Status')
+    if (-not (Test-ClosedIterationStatus -IterationStatus $iterationStatus)) {
+        return
+    }
+
+    $statePath = Join-Path $IterationDirectory 'state.md'
+    $iterationStatusLineNumber = Find-CanonicalMetadataLabelLineNumber -Lines $StateLines -Label 'Iteration Status'
+    $reviewPath = Join-Path $IterationDirectory 'review.md'
+    $retroPath = Join-Path $IterationDirectory 'retro.md'
+    $gatePath = Join-Path $IterationDirectory 'quality\hardening-gate.md'
+
+    if (-not (Test-Path -LiteralPath $reviewPath -PathType Leaf)) {
+        Add-RepoStructuredValidationFailure -Errors $Errors -ProjectRoot $ProjectRoot -TargetPath $reviewPath -LineNumber $null -Category 'over-claim' -Message 'Iteration Status claims closure but review.md is missing.' -RemediationHint 'Add an accepted review.md artifact before claiming the iteration is closed.'
+    }
+    else {
+        $reviewLines = @(Get-MarkdownContent -Path $reviewPath)
+        $reviewVerdictLineNumber = Find-LineNumberByPattern -Lines $reviewLines -Pattern '^\*\*Overall Verdict\*\*:\s*(.+?)\s*$'
+        $reviewVerdict = Get-NormalizedKeyword (Get-MarkdownMetadataValue -Lines $reviewLines -Label 'Overall Verdict')
+        if ($reviewVerdict -ne 'accepted') {
+            Add-RepoStructuredValidationFailure -Errors $Errors -ProjectRoot $ProjectRoot -TargetPath $reviewPath -LineNumber $reviewVerdictLineNumber -Category 'over-claim' -Message ("Iteration Status claims closure but review.md overall verdict is '{0}' instead of accepted." -f $reviewVerdict) -RemediationHint 'Record an accepted review.md verdict before claiming the iteration is closed.'
+        }
+    }
+
+    if (-not (Test-Path -LiteralPath $retroPath -PathType Leaf)) {
+        Add-RepoStructuredValidationFailure -Errors $Errors -ProjectRoot $ProjectRoot -TargetPath $retroPath -LineNumber $null -Category 'over-claim' -Message 'Iteration Status claims closure but retro.md is missing.' -RemediationHint 'Add retro.md before claiming the iteration is closed.'
+    }
+
+    if (-not (Test-Path -LiteralPath $gatePath -PathType Leaf)) {
+        Add-RepoStructuredValidationFailure -Errors $Errors -ProjectRoot $ProjectRoot -TargetPath $gatePath -LineNumber $null -Category 'over-claim' -Message 'Iteration Status claims closure but quality/hardening-gate.md is missing.' -RemediationHint 'Add the hardening gate artifact with recorded post-implementation verification before claiming the iteration is closed.'
+    }
+    else {
+        $gateLines = @(Get-MarkdownContent -Path $gatePath)
+        $postImplementationVerification = Normalize-MarkdownCell (Get-MarkdownMetadataValue -Lines $gateLines -Label 'Post-Implementation Verification')
+        $verifiedAt = Normalize-MarkdownCell (Get-MarkdownMetadataValue -Lines $gateLines -Label 'Verified At')
+        if (Test-IsNullish $postImplementationVerification -or $postImplementationVerification.ToLowerInvariant().Contains('pending')) {
+            Add-RepoStructuredValidationFailure -Errors $Errors -ProjectRoot $ProjectRoot -TargetPath $gatePath -LineNumber (Find-LineNumberByPattern -Lines $gateLines -Pattern '^\*\*Post-Implementation Verification\*\*:') -Category 'over-claim' -Message 'Iteration Status claims closure but the hardening gate still shows pending post-implementation verification.' -RemediationHint 'Record post-implementation verification in quality/hardening-gate.md before claiming the iteration is closed.'
+        }
+
+        if (Test-IsNullish $verifiedAt -or $verifiedAt.ToLowerInvariant().Contains('pending')) {
+            Add-RepoStructuredValidationFailure -Errors $Errors -ProjectRoot $ProjectRoot -TargetPath $gatePath -LineNumber (Find-LineNumberByPattern -Lines $gateLines -Pattern '^\*\*Verified At\*\*:') -Category 'over-claim' -Message 'Iteration Status claims closure but quality/hardening-gate.md does not record Verified At.' -RemediationHint 'Record Verified At in quality/hardening-gate.md before claiming the iteration is closed.'
+        }
+
+        $gateState = Get-HardeningGateState -Path $gatePath -ProjectRoot $ProjectRoot
+        foreach ($concern in @($gateState.ConcernRows | Where-Object { Test-HardeningConcernBlocksClosure -Concern $_ -ProjectRoot $ProjectRoot })) {
+            $concernLineNumber = Find-LineNumberByPattern -Lines $gateLines -Pattern ('\|\s*`?' + [regex]::Escape([string]$concern.Concern) + '`?\s*\|')
+            Add-RepoStructuredValidationFailure -Errors $Errors -ProjectRoot $ProjectRoot -TargetPath $gatePath -LineNumber $concernLineNumber -Category 'over-claim' -Message ("Iteration Status claims closure but hardening-gate concern '{0}' still lacks recorded post-implementation evidence." -f $concern.Concern) -RemediationHint 'Promote the concern to runtime evidence or mark it not-applicable before claiming the iteration is closed.'
+        }
+    }
+
+    $dirtyArtifacts = @(Get-IterationDirtyCanonicalArtifacts -IterationDirectory $IterationDirectory -ProjectRoot $ProjectRoot)
+    if ($dirtyArtifacts.Count -gt 0) {
+        $dirtyList = ($dirtyArtifacts | ForEach-Object { $_.Path }) -join ', '
+        Add-RepoStructuredValidationFailure -Errors $Errors -ProjectRoot $ProjectRoot -TargetPath $statePath -LineNumber $iterationStatusLineNumber -Category 'over-claim' -Message ("Iteration Status claims closure while canonical iteration artifacts still have uncommitted changes: {0}" -f $dirtyList) -RemediationHint 'Commit or revert the iteration directory canonical artifacts before claiming the iteration is closed.'
     }
 }
 
@@ -1945,6 +2233,206 @@ function Get-TaskPriorityEvidence {
     }
 }
 
+# ============================================================================
+# Spec 008 Extension: Reviewer-Regression Governance Validation
+# ============================================================================
+
+function Test-ReviewerRegressionLedgerInvariants {
+    <#
+    .SYNOPSIS
+    Validates reviewer-regression ledger append-only and schema consistency invariants.
+    
+    .PARAMETER ProjectRoot
+    The root directory of the project.
+    #>
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$ProjectRoot
+    )
+
+    $issues = New-Object System.Collections.Generic.List[string]
+    $ledgerPath = Get-ReviewerRegressionLedgerPath -ProjectRoot $ProjectRoot
+    
+    if (-not (Test-Path -LiteralPath $ledgerPath -PathType Leaf)) {
+        # Ledger is optional; no events means no violations
+        return [pscustomobject]@{
+            Pass   = $true
+            Issues = @()
+        }
+    }
+
+    $entries = Get-ReviewerRegressionLedgerEntries -ProjectRoot $ProjectRoot
+    
+    foreach ($entry in $entries) {
+        # FR-006: Validate required fields
+        if ([string]::IsNullOrWhiteSpace($entry.Feature)) {
+            $issues.Add("$($entry.EventId): Missing required field 'Feature'") | Out-Null
+        }
+        
+        if ([string]::IsNullOrWhiteSpace($entry.EventStatus)) {
+            $issues.Add("$($entry.EventId): Missing required field 'Event Status'") | Out-Null
+        }
+        elseif ($entry.EventStatus -notin @('active', 'resolved', 'withdrawn')) {
+            $issues.Add("$($entry.EventId): Invalid Event Status '$($entry.EventStatus)'. Must be active, resolved, or withdrawn.") | Out-Null
+        }
+
+        # FR-007: Validate soft-warning classification
+        if ($null -ne $entry.Severity -and $entry.Severity -ne 'soft-warning') {
+            $issues.Add("$($entry.EventId): Severity must always be 'soft-warning' per FR-007, found '$($entry.Severity)'") | Out-Null
+        }
+
+        # FR-015: Validate escalation action consistency
+        if ($null -ne $entry.EscalationAction) {
+            $validActions = @('stronger-class', 'same-class-independent-owner', 'human-direction-hold', 'none-yet')
+            if ($entry.EscalationAction -notin $validActions) {
+                $issues.Add("$($entry.EventId): Invalid Escalation Action '$($entry.EscalationAction)'") | Out-Null
+            }
+
+            if ($entry.EscalationAction -eq 'stronger-class' -and [string]::IsNullOrWhiteSpace($entry.EscalatedToClass)) {
+                $issues.Add("$($entry.EventId): Escalation Action 'stronger-class' requires 'Escalated To Class' to be specified") | Out-Null
+            }
+
+            if ($entry.EscalationAction -eq 'same-class-independent-owner' -and [string]::IsNullOrWhiteSpace($entry.SameClassFallbackOwner)) {
+                $issues.Add("$($entry.EventId): Escalation Action 'same-class-independent-owner' requires 'Same-Class Fallback Owner' to be specified") | Out-Null
+            }
+        }
+
+        # FR-008: Validate withdrawal consistency
+        if ($entry.EventStatus -eq 'withdrawn' -and [string]::IsNullOrWhiteSpace($entry.WithdrawalReference)) {
+            $issues.Add("$($entry.EventId): Status 'withdrawn' requires 'Withdrawal Reference' per FR-008") | Out-Null
+        }
+    }
+
+    return [pscustomobject]@{
+        Pass   = $issues.Count -eq 0
+        Issues = $issues.ToArray()
+    }
+}
+
+function Test-ReviewerRegressionStateMirrorConsistency {
+    <#
+    .SYNOPSIS
+    Validates that reviewer-regression-state managed blocks mirror ledger state correctly.
+    
+    .PARAMETER IterationDirectory
+    The iteration directory containing state.md.
+    
+    .PARAMETER ProjectRoot
+    The root directory of the project.
+    #>
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$IterationDirectory,
+        
+        [Parameter(Mandatory = $true)]
+        [string]$ProjectRoot
+    )
+
+    $issues = New-Object System.Collections.Generic.List[string]
+    $stateFilePath = Join-Path $IterationDirectory 'state.md'
+    
+    if (-not (Test-Path -LiteralPath $stateFilePath -PathType Leaf)) {
+        # No state.md means no state mirror to validate
+        return [pscustomobject]@{
+            Pass   = $true
+            Issues = @()
+        }
+    }
+
+    $stateLines = @(Get-Content -LiteralPath $stateFilePath -Encoding UTF8)
+    $hasReviewerRegressionBlock = (@($stateLines | Where-Object { $_ -match '<!-- >>> specrew-managed reviewer-regression-state >>> -->' })).Count -gt 0
+
+    if (-not $hasReviewerRegressionBlock) {
+        # Block is optional; no violation if absent
+        return [pscustomobject]@{
+            Pass   = $true
+            Issues = @()
+        }
+    }
+
+    # Parse the block
+    $inBlock = $false
+    $blockStatus = $null
+    $blockFeature = $null
+
+    foreach ($line in $stateLines) {
+        if ($line -match '<!-- >>> specrew-managed reviewer-regression-state >>> -->') {
+            $inBlock = $true
+            continue
+        }
+
+        if ($line -match '<!-- <<< specrew-managed reviewer-regression-state <<< -->') {
+            $inBlock = $false
+            continue
+        }
+
+        if ($inBlock) {
+            if ($line -match '^\s*-\s+\*\*Status\*\*:\s*(.+?)\s*$') {
+                $blockStatus = $Matches[1].Trim()
+            }
+            elseif ($line -match '^\s*-\s+\*\*Feature\*\*:\s*(.+?)\s*$') {
+                $featureValue = $Matches[1].Trim()
+                if ($featureValue -ne '(none)') {
+                    $blockFeature = $featureValue
+                }
+            }
+        }
+    }
+
+    # Validate status is valid
+    $validStatuses = @('inactive', 'active', 'held', 'resolved')
+    if ($null -ne $blockStatus -and $blockStatus -notin $validStatuses) {
+        $issues.Add("reviewer-regression-state block Status '$blockStatus' is invalid. Must be one of: $($validStatuses -join ', ')") | Out-Null
+    }
+
+    return [pscustomobject]@{
+        Pass   = $issues.Count -eq 0
+        Issues = $issues.ToArray()
+    }
+}
+
+function Test-ReviewerRegressionDecisionsEntries {
+    <#
+    .SYNOPSIS
+    Validates that decisions ledger entries for reviewer-regression events follow the correct schema.
+    
+    .PARAMETER ProjectRoot
+    The root directory of the project.
+    #>
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$ProjectRoot
+    )
+
+    $issues = New-Object System.Collections.Generic.List[string]
+    $decisionsEntries = Get-DecisionsLedgerEntries -ProjectRoot $ProjectRoot
+    
+    $reviewerRegressionEntries = @($decisionsEntries | Where-Object { 
+        $null -ne $_.Type -and $_.Type -match 'reviewer-regression'
+    })
+
+    foreach ($entry in $reviewerRegressionEntries) {
+        $validTypes = @('reviewer-regression-escalation', 'reviewer-regression-withdrawal', 'lockout-cap')
+        if ($entry.Type -notin $validTypes) {
+            $issues.Add("Decision entry '$($entry.DecisionId)' has unknown reviewer-regression Type '$($entry.Type)'. Expected: $($validTypes -join ', ')") | Out-Null
+        }
+
+        # FR-011: Lockout-cap decisions must be visible
+        if ($entry.Type -eq 'lockout-cap' -and [string]::IsNullOrWhiteSpace($entry.DecisionId)) {
+            $issues.Add("Lockout-cap decision entry must have a Decision ID per FR-011") | Out-Null
+        }
+    }
+
+    return [pscustomobject]@{
+        Pass   = $issues.Count -eq 0
+        Issues = $issues.ToArray()
+    }
+}
+
+# ============================================================================
+# Main Execution (existing code continues)
+# ============================================================================
+
 function Test-PlanningCapacity {
     param(
         [string]$IterationDirectory,
@@ -2067,6 +2555,7 @@ function Test-IsEarlyPlanningStub {
 function Test-IterationGovernance {
     param(
         [string]$IterationDirectory,
+        [string]$ProjectRoot,
         [hashtable]$TeamRoles,
         [bool]$EnforceReviewerCloseout = $false
     )
@@ -2113,7 +2602,7 @@ function Test-IterationGovernance {
     }
 
     Test-Phase1QualityEvidence -IterationDirectory $IterationDirectory -PlanLines $planLines -Errors $errors
-    Test-Phase2HardeningGate -IterationDirectory $IterationDirectory -ProjectRoot $ResolvedProjectPath -PlanLines $planLines -IterationStatus $status -Errors $errors
+    Test-Phase2HardeningGate -IterationDirectory $IterationDirectory -ProjectRoot $ProjectRoot -PlanLines $planLines -IterationStatus $status -Errors $errors
 
     $iterationConfig = Get-IterationConfigForValidation -IterationDirectory $IterationDirectory
     Test-PlanEffortModel -PlanLines $planLines -Capacity $capacity -IterationConfig $iterationConfig -Errors $errors
@@ -2185,46 +2674,49 @@ function Test-IterationGovernance {
     }
 
     Test-SignOffRoleNaming -ArtifactContents $signOffArtifacts -TeamRoles $TeamRoles -Errors $errors
+    if ($stateLines.Count -gt 0) {
+        Test-IterationCloseoutEvidence -IterationDirectory $IterationDirectory -ProjectRoot $ProjectRoot -StateLines $stateLines -Errors $errors
+    }
 
     switch ($status) {
         'executing' {
-            Test-StateArtifact -IterationDirectory $IterationDirectory -Errors $errors
+            Test-StateArtifact -IterationDirectory $IterationDirectory -ProjectRoot $ProjectRoot -Errors $errors
         }
         'reviewing' {
-            Test-StateArtifact -IterationDirectory $IterationDirectory -Errors $errors
+            Test-StateArtifact -IterationDirectory $IterationDirectory -ProjectRoot $ProjectRoot -Errors $errors
             if (-not (Test-Path -Path $driftPath -PathType Leaf)) {
                 $errors.Add('Reviewing iterations require drift-log.md before review can start')
             }
             if ($hasNonTerminalTasks) {
                 $errors.Add('Reviewing iterations require all tasks to be in terminal states')
             }
-            Test-ReviewArtifact -ReviewPath $reviewPath -ProjectRoot $ResolvedProjectPath -IterationDirectory $IterationDirectory -IterationStatus $status -PlanTasks $tasks -Errors $errors
+            Test-ReviewArtifact -ReviewPath $reviewPath -ProjectRoot $ProjectRoot -IterationDirectory $IterationDirectory -IterationStatus $status -PlanTasks $tasks -Errors $errors
         }
         'retro' {
-            Test-StateArtifact -IterationDirectory $IterationDirectory -Errors $errors
+            Test-StateArtifact -IterationDirectory $IterationDirectory -ProjectRoot $ProjectRoot -Errors $errors
             if (-not (Test-Path -Path $driftPath -PathType Leaf)) {
                 $errors.Add('Retro iterations require drift-log.md')
             }
             if ($hasNonTerminalTasks) {
                 $errors.Add('Retro iterations require all tasks to be in terminal states')
             }
-            Test-ReviewArtifact -ReviewPath $reviewPath -ProjectRoot $ResolvedProjectPath -IterationDirectory $IterationDirectory -IterationStatus $status -PlanTasks $tasks -Errors $errors -RequireAcceptedVerdict
-            Test-ReviewerCloseoutArtifacts -IterationDirectory $IterationDirectory -ProjectRoot $ResolvedProjectPath -StateLines $stateLines -EnforceReviewerCloseout $EnforceReviewerCloseout -Errors $errors
+            Test-ReviewArtifact -ReviewPath $reviewPath -ProjectRoot $ProjectRoot -IterationDirectory $IterationDirectory -IterationStatus $status -PlanTasks $tasks -Errors $errors -RequireAcceptedVerdict
+            Test-ReviewerCloseoutArtifacts -IterationDirectory $IterationDirectory -ProjectRoot $ProjectRoot -StateLines $stateLines -EnforceReviewerCloseout $EnforceReviewerCloseout -Errors $errors
         }
         'complete' {
-            Test-StateArtifact -IterationDirectory $IterationDirectory -Errors $errors
+            Test-StateArtifact -IterationDirectory $IterationDirectory -ProjectRoot $ProjectRoot -Errors $errors
             if (-not (Test-Path -Path $driftPath -PathType Leaf)) {
                 $errors.Add('Complete iterations require drift-log.md')
             }
             if ($hasNonTerminalTasks) {
                 $errors.Add('Complete iterations require all tasks to be in terminal states')
             }
-            Test-ReviewArtifact -ReviewPath $reviewPath -ProjectRoot $ResolvedProjectPath -IterationDirectory $IterationDirectory -IterationStatus $status -PlanTasks $tasks -Errors $errors -RequireAcceptedVerdict
+            Test-ReviewArtifact -ReviewPath $reviewPath -ProjectRoot $ProjectRoot -IterationDirectory $IterationDirectory -IterationStatus $status -PlanTasks $tasks -Errors $errors -RequireAcceptedVerdict
             Test-RetroArtifact -RetroPath $retroPath -Errors $errors
-            Test-ReviewerCloseoutArtifacts -IterationDirectory $IterationDirectory -ProjectRoot $ResolvedProjectPath -StateLines $stateLines -EnforceReviewerCloseout $EnforceReviewerCloseout -Errors $errors
+            Test-ReviewerCloseoutArtifacts -IterationDirectory $IterationDirectory -ProjectRoot $ProjectRoot -StateLines $stateLines -EnforceReviewerCloseout $EnforceReviewerCloseout -Errors $errors
         }
         'abandoned' {
-            Test-StateArtifact -IterationDirectory $IterationDirectory -Errors $errors
+            Test-StateArtifact -IterationDirectory $IterationDirectory -ProjectRoot $ProjectRoot -Errors $errors
             if (-not (Test-Path -Path $statePath -PathType Leaf)) {
                 $errors.Add('Abandoned iterations require state.md with explicit reason')
             }
@@ -2236,6 +2728,22 @@ function Test-IterationGovernance {
                 }
             }
         }
+    }
+
+    # Reviewer-regression governance validation (spec 008)
+    $ledgerValidation = Test-ReviewerRegressionLedgerInvariants -ProjectRoot $ProjectRoot
+    if (-not $ledgerValidation.Pass) {
+        $ledgerValidation.Issues | ForEach-Object { $errors.Add($_) }
+    }
+    
+    $stateMirrorValidation = Test-ReviewerRegressionStateMirrorConsistency -IterationDirectory $IterationDirectory -ProjectRoot $ProjectRoot
+    if (-not $stateMirrorValidation.Pass) {
+        $stateMirrorValidation.Issues | ForEach-Object { $errors.Add($_) }
+    }
+    
+    $decisionsValidation = Test-ReviewerRegressionDecisionsEntries -ProjectRoot $ProjectRoot
+    if (-not $decisionsValidation.Pass) {
+        $decisionsValidation.Issues | ForEach-Object { $errors.Add($_) }
     }
 
     return [pscustomobject]@{
@@ -2289,48 +2797,402 @@ function Get-ReviewerCloseoutEnforcementMap {
     return $enforcementMap
 }
 
-$resolvedProjectPath = (Resolve-Path -Path (Resolve-ProjectPath -Path $ProjectPath)).Path
-$teamRoles = Get-TeamRoleMap -ResolvedProjectPath $resolvedProjectPath
+function Add-ApprovalReuseValidationErrors {
+    param(
+        [string[]]$Targets,
+        [string]$ProjectRoot,
+        [hashtable]$ResultMap
+    )
 
-$teamValidationErrors = New-Object System.Collections.Generic.List[string]
-Test-BaselineTeamMembers -TeamRoles $teamRoles -Errors $teamValidationErrors
+    $groupedTargets = @{}
+    foreach ($target in @($Targets | Where-Object { Test-IterationRequiresCanonicalStateSchema -IterationDirectory $_ })) {
+        $featureDirectory = Split-Path -Parent (Split-Path -Parent $target)
+        if (-not $groupedTargets.ContainsKey($featureDirectory)) {
+            $groupedTargets[$featureDirectory] = New-Object System.Collections.Generic.List[string]
+        }
 
-if ($teamValidationErrors.Count -gt 0) {
-    Write-Host "FAIL Squad team validation" -ForegroundColor Red
-    foreach ($errorMessage in $teamValidationErrors) {
-        Write-Host "  - $errorMessage" -ForegroundColor Red
+        $null = $groupedTargets[$featureDirectory].Add($target)
     }
+
+    foreach ($featureDirectory in $groupedTargets.Keys) {
+        $featureTargets = @($groupedTargets[$featureDirectory])
+        if ($featureTargets.Count -lt 2) {
+            continue
+        }
+
+        $recordsByTarget = @{}
+        foreach ($target in $featureTargets) {
+            $recordsByTarget[$target] = @(Get-ImplementationApprovalEvidenceRecords -IterationDirectory $target -ProjectRoot $ProjectRoot)
+        }
+
+        $seenPairs = @{}
+        for ($leftIndex = 0; $leftIndex -lt $featureTargets.Count; $leftIndex++) {
+            for ($rightIndex = $leftIndex + 1; $rightIndex -lt $featureTargets.Count; $rightIndex++) {
+                $leftTarget = $featureTargets[$leftIndex]
+                $rightTarget = $featureTargets[$rightIndex]
+
+                foreach ($leftRecord in $recordsByTarget[$leftTarget]) {
+                    foreach ($rightRecord in $recordsByTarget[$rightTarget]) {
+                        if ([string]::IsNullOrWhiteSpace($leftRecord.NormalizedText) -or $leftRecord.NormalizedText -cne $rightRecord.NormalizedText) {
+                            continue
+                        }
+
+                        if ([bool]$leftRecord.BlanketScopeDeclared -or [bool]$rightRecord.BlanketScopeDeclared) {
+                            continue
+                        }
+
+                        $pairKey = '{0}|{1}|{2}|{3}' -f $leftRecord.RelativeArtifactPath, $rightRecord.RelativeArtifactPath, $leftRecord.NormalizedText, $leftRecord.Heading
+                        if ($seenPairs.ContainsKey($pairKey)) {
+                            continue
+                        }
+
+                        $seenPairs[$pairKey] = $true
+                        $leftErrors = $ResultMap[$leftTarget].Errors
+                        $rightErrors = $ResultMap[$rightTarget].Errors
+                        $leftIterationPath = Convert-ToRepoMarkdownPath -ProjectRoot $ProjectRoot -TargetPath $leftTarget
+                        $rightIterationPath = Convert-ToRepoMarkdownPath -ProjectRoot $ProjectRoot -TargetPath $rightTarget
+                        $quoteText = $leftRecord.NormalizedText
+                        $remediationHint = 'Use iteration-specific implementation approval evidence, or explicitly declare a blanket multi-iteration authorization scope in the approval block.'
+
+                        Add-RepoStructuredValidationFailure -Errors $leftErrors -ProjectRoot $ProjectRoot -TargetPath $leftRecord.ArtifactPath -LineNumber $leftRecord.LineNumber -Category 'approval-reuse' -Message ("Implementation approval evidence in {0} reuses the normalized quote from {1}: ""{2}""" -f $leftIterationPath, $rightRecord.RelativeArtifactPath, $quoteText) -RemediationHint $remediationHint
+                        Add-RepoStructuredValidationFailure -Errors $rightErrors -ProjectRoot $ProjectRoot -TargetPath $rightRecord.ArtifactPath -LineNumber $rightRecord.LineNumber -Category 'approval-reuse' -Message ("Implementation approval evidence in {0} reuses the normalized quote from {1}: ""{2}""" -f $rightIterationPath, $leftRecord.RelativeArtifactPath, $quoteText) -RemediationHint $remediationHint
+                    }
+                }
+            }
+        }
+    }
+}
+
+function Get-InteractionModelIterationContextFromPath {
+    param([AllowNull()][string]$IterationDirectory)
+
+    if ([string]::IsNullOrWhiteSpace($IterationDirectory)) {
+        return $null
+    }
+
+    $normalizedPath = [System.IO.Path]::GetFullPath($IterationDirectory)
+    $match = [regex]::Match($normalizedPath, '[\\/]specs[\\/](?<feature>\d+)-[^\\/]+[\\/]iterations[\\/](?<iteration>\d+)$')
+    if (-not $match.Success) {
+        return $null
+    }
+
+    return [pscustomobject]@{
+        FeatureNumber = [int]$match.Groups['feature'].Value
+        IterationNumber = [int]$match.Groups['iteration'].Value
+    }
+}
+
+function Get-InteractionModelGitBoundaryCommits {
+    param([Parameter(Mandatory = $true)][string]$ProjectRoot)
+
+    $rawLog = @(git -C $ProjectRoot --no-pager log --reverse --format='%H%x09%cI%x09%s' 2>$null)
+    $records = New-Object System.Collections.Generic.List[object]
+    foreach ($line in $rawLog) {
+        if ([string]::IsNullOrWhiteSpace($line)) {
+            continue
+        }
+
+        $parts = $line -split "`t", 3
+        if ($parts.Count -lt 3) {
+            continue
+        }
+
+        $boundaryMatch = Get-InteractionModelBoundaryCommitMatch -Subject $parts[2]
+        if ($null -eq $boundaryMatch) {
+            continue
+        }
+
+        $committedAt = $null
+        try {
+            $committedAt = [DateTimeOffset]::Parse($parts[1])
+        }
+        catch {
+            continue
+        }
+
+        $records.Add([pscustomobject]@{
+                CommitHash      = $parts[0]
+                CommittedAt     = $committedAt
+                Boundary        = $boundaryMatch.Boundary
+                FeatureNumber   = $boundaryMatch.FeatureNumber
+                IterationNumber = $boundaryMatch.IterationNumber
+                Subject         = $boundaryMatch.Subject
+            }) | Out-Null
+    }
+
+    return $records.ToArray()
+}
+
+function Add-InteractionModelValidationErrors {
+    param(
+        [Parameter(Mandatory = $true)][string[]]$Targets,
+        [Parameter(Mandatory = $true)][string]$ProjectRoot,
+        [Parameter(Mandatory = $true)][hashtable]$ResultMap
+    )
+
+    $boundaryCommits = @(Get-InteractionModelGitBoundaryCommits -ProjectRoot $ProjectRoot)
+    foreach ($target in $Targets) {
+        if (-not $ResultMap.ContainsKey($target)) {
+            continue
+        }
+
+        $context = Get-InteractionModelIterationContextFromPath -IterationDirectory $target
+        if ($null -eq $context -or $context.FeatureNumber -lt 16) {
+            continue
+        }
+
+        $errors = $ResultMap[$target].Errors
+        $authorizationEntries = @(Get-InteractionModelAuthorizationEntries -ProjectRoot $ProjectRoot -FeatureNumber $context.FeatureNumber -IterationNumber $context.IterationNumber)
+        foreach ($entry in $authorizationEntries) {
+            $missingFields = New-Object System.Collections.Generic.List[string]
+            foreach ($requiredField in @('DecisionId', 'Type', 'Boundary', 'ApprovingHuman', 'RecordedAt', 'CommitReference', 'AuthorizationText')) {
+                $value = [string]$entry.$requiredField
+                if ([string]::IsNullOrWhiteSpace($value)) {
+                    $missingFields.Add($requiredField) | Out-Null
+                }
+            }
+
+            if ($missingFields.Count -gt 0) {
+                Add-RepoStructuredValidationFailure -Errors $errors -ProjectRoot $ProjectRoot -TargetPath (Get-DecisionsLedgerPath -ProjectRoot $ProjectRoot) -LineNumber $null -Category 'authorization-record-shape' -Message ("Authorization entry '{0}' is missing required field(s): {1}" -f $entry.Title, ($missingFields -join ', ')) -RemediationHint 'Record Decision ID, Type, Boundary, Approving Human, Recorded At, Commit Reference, and Authorization Text on every authorization entry.'
+            }
+
+            if ($entry.Type -notin @('authorization', 'sign-off')) {
+                Add-RepoStructuredValidationFailure -Errors $errors -ProjectRoot $ProjectRoot -TargetPath (Get-DecisionsLedgerPath -ProjectRoot $ProjectRoot) -LineNumber $null -Category 'authorization-record-shape' -Message ("Authorization entry '{0}' uses invalid Type '{1}'" -f $entry.Title, $entry.Type) -RemediationHint 'Use Type authorization or sign-off for Feature 016 boundary approvals.'
+            }
+
+            if ([string]$entry.RecordedAt -notmatch '^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$') {
+                Add-RepoStructuredValidationFailure -Errors $errors -ProjectRoot $ProjectRoot -TargetPath (Get-DecisionsLedgerPath -ProjectRoot $ProjectRoot) -LineNumber $null -Category 'authorization-record-shape' -Message ("Authorization entry '{0}' uses non-canonical Recorded At '{1}'" -f $entry.Title, $entry.RecordedAt) -RemediationHint 'Use UTC ISO 8601 seconds precision (YYYY-MM-DDTHH:MM:SSZ) for Feature 016 authorization entries.'
+            }
+
+            $normalizedBoundary = Normalize-InteractionModelBoundaryName -Boundary $entry.Boundary
+            if ([string]$entry.Boundary -match '[,;/]' -or ([string]$entry.Boundary -match '\band\b' -and $normalizedBoundary -ne 'hardening-gate-and-implementation-auth')) {
+                Add-RepoStructuredValidationFailure -Errors $errors -ProjectRoot $ProjectRoot -TargetPath (Get-DecisionsLedgerPath -ProjectRoot $ProjectRoot) -LineNumber $null -Category 'authorization-record-shape' -Message ("Authorization entry '{0}' records multiple boundaries in one entry: '{1}'" -f $entry.Title, $entry.Boundary) -RemediationHint 'Record one boundary per authorization entry and split paired hardening-gate + implementation authorization into two entries.'
+            }
+            elseif ($normalizedBoundary -notin @('planning', 'hardening-gate-and-implementation-auth', 'hardening-gate-signoff', 'implementation', 'review-boundary', 'review-verdict-signoff', 'retro-boundary', 'iteration-closeout', 'feature-closeout')) {
+                Add-RepoStructuredValidationFailure -Errors $errors -ProjectRoot $ProjectRoot -TargetPath (Get-DecisionsLedgerPath -ProjectRoot $ProjectRoot) -LineNumber $null -Category 'authorization-record-shape' -Message ("Authorization entry '{0}' uses unknown Boundary '{1}'" -f $entry.Title, $entry.Boundary) -RemediationHint 'Use the canonical boundary names from Feature 016.'
+            }
+        }
+
+        $seenAuthorizationTexts = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::OrdinalIgnoreCase)
+        foreach ($entry in $authorizationEntries) {
+            $normalizedText = if ([string]::IsNullOrWhiteSpace([string]$entry.AuthorizationText)) {
+                ''
+            }
+            else {
+                (([string]$entry.AuthorizationText -replace '(?m)^\s*>\s?', '' -replace '\s+', ' ').Trim().ToLowerInvariant())
+            }
+
+            if ([string]::IsNullOrWhiteSpace($normalizedText) -or -not $seenAuthorizationTexts.Add($normalizedText)) {
+                continue
+            }
+
+            if ($normalizedText -notmatch '(?i)hardening-gate|hardening gate' -or $normalizedText -notmatch '(?i)implement(?:ation)?') {
+                continue
+            }
+
+            $matchingEntries = @(
+                $authorizationEntries |
+                    Where-Object {
+                        $candidateText = if ([string]::IsNullOrWhiteSpace([string]$_.AuthorizationText)) {
+                            ''
+                        }
+                        else {
+                            (([string]$_.AuthorizationText -replace '(?m)^\s*>\s?', '' -replace '\s+', ' ').Trim().ToLowerInvariant())
+                        }
+
+                        $candidateText -eq $normalizedText
+                    }
+            )
+            $groupBoundaries = @($matchingEntries | ForEach-Object { Normalize-InteractionModelBoundaryName -Boundary $_.Boundary })
+            Write-Verbose "[DEBUG] Paired-auth check: Found $($matchingEntries.Count) matching entries with boundaries: $($groupBoundaries -join ', ')"
+            Write-Verbose "[DEBUG] Has hardening-gate-signoff: $($groupBoundaries -contains 'hardening-gate-signoff')"
+            Write-Verbose "[DEBUG] Has implementation: $($groupBoundaries -contains 'implementation')"
+            
+            # Only flag as paired-auth issue if the text appears to be authorizing (not just mentioning) both boundaries
+            # Heuristic: if we found entries for this text, at least one must be hardening-gate-signoff or implementation
+            # AND the group must have < 2 distinct boundaries when it should have both
+            $hasCoreAuthBoundary = ($groupBoundaries -contains 'hardening-gate-signoff') -or ($groupBoundaries -contains 'implementation')
+            if (-not $hasCoreAuthBoundary) {
+                Write-Verbose "[DEBUG] Skipping paired-auth check for authorization text that mentions both boundaries but isn't authorizing either"
+                continue
+            }
+            
+            if ($groupBoundaries -notcontains 'hardening-gate-signoff' -or $groupBoundaries -notcontains 'implementation' -or $matchingEntries.Count -lt 2) {
+                Add-RepoStructuredValidationFailure -Errors $errors -ProjectRoot $ProjectRoot -TargetPath (Get-DecisionsLedgerPath -ProjectRoot $ProjectRoot) -LineNumber $null -Category 'authorization-record-shape' -Message 'A paired hardening-gate sign-off + implementation authorization paste was not expanded into two distinct entries.' -RemediationHint 'Create separate hardening-gate-signoff and implementation authorization records that preserve the same authorization text.'
+            }
+        }
+
+        $iterationBoundaryCommits = @(
+            $boundaryCommits |
+                Where-Object {
+                    $_.FeatureNumber -eq $context.FeatureNumber -and
+                    $_.IterationNumber -eq $context.IterationNumber
+                }
+        )
+
+        if ($iterationBoundaryCommits.Count -eq 0) {
+            continue
+        }
+
+        foreach ($boundaryCommit in $iterationBoundaryCommits) {
+            $normalizedBoundary = Normalize-InteractionModelBoundaryName -Boundary $boundaryCommit.Boundary
+            
+            # The 'hardening-gate-and-implementation-auth' boundary is a bookkeeping commit that RECORDS authorizations
+            # rather than a boundary that requires its own authorization. Skip it.
+            if ($normalizedBoundary -eq 'hardening-gate-and-implementation-auth') {
+                Write-Verbose "[DEBUG] Skipping hardening-gate-and-implementation-auth boundary commit (bookkeeping boundary)"
+                continue
+            }
+            
+            Write-Verbose "[DEBUG] Checking boundary commit: subject='$($boundaryCommit.Subject)' hash='$($boundaryCommit.CommitHash)' boundary='$normalizedBoundary'"
+            $matchingAuthorization = @(
+                $authorizationEntries |
+                    Where-Object {
+                        $entryCommitRef = [string]$_.CommitReference
+                        if ([string]::IsNullOrWhiteSpace($entryCommitRef) -or $entryCommitRef.Trim().ToLowerInvariant() -eq 'pending') {
+                            return $false
+                        }
+
+                        $entryNormalizedBoundary = Normalize-InteractionModelBoundaryName -Boundary $_.Boundary
+                        $trimmedEntryRef = $entryCommitRef.Trim()
+                        $fullHashMatch = $trimmedEntryRef -eq $boundaryCommit.CommitHash
+                        $shortHashMatch = $boundaryCommit.CommitHash.StartsWith($trimmedEntryRef, [System.StringComparison]::OrdinalIgnoreCase)
+                        
+                        $hashMatch = $fullHashMatch -or $shortHashMatch
+                        $boundaryMatch = $entryNormalizedBoundary -eq $normalizedBoundary
+                        $humanNonNull = -not (Test-IsNullish ([string]$_.ApprovingHuman))
+                        
+                        if ($hashMatch -and $boundaryMatch -and $humanNonNull) {
+                            Write-Verbose "[DEBUG]   ✓ MATCHED: entry boundary='$entryNormalizedBoundary' ref='$trimmedEntryRef' human='$($_.ApprovingHuman)'"
+                        }
+                        
+                        $hashMatch -and $boundaryMatch -and $humanNonNull
+                    }
+            )
+
+            if ($matchingAuthorization.Count -eq 0) {
+                Add-RepoStructuredValidationFailure -Errors $errors -ProjectRoot $ProjectRoot -TargetPath (Join-Path $target 'state.md') -LineNumber $null -Category 'bundled-boundary-advance' -Message ("Boundary commit '{0}' (hash {1}) for Feature {2:d3} iteration {3:d3} was recorded without a matching authorization entry in .squad\decisions.md whose Commit Reference equals or starts with that hash and whose Approving Human is non-null." -f $boundaryCommit.Subject, $boundaryCommit.CommitHash, $context.FeatureNumber, $context.IterationNumber) -RemediationHint 'Record a human authorization whose Commit Reference matches this boundary commit hash (full or short form); one authorization advances at most one boundary.'
+            }
+        }
+    }
+}
+
+function Invoke-InteractionModelResponseValidation {
+    param(
+        [Parameter(Mandatory = $true)][string]$ProjectRoot,
+        [AllowEmptyString()][string]$ResponseText,
+        [string[]]$IterationTargets,
+        [string]$BoundaryName,
+        [string]$ResponseScope,
+        [string]$BarePathBoundaryHandoffSeverity
+    )
+
+    $validatorScript = Join-Path (Split-Path -Parent $PSScriptRoot) 'validators\handoff-governance-validator.ps1'
+    if (-not (Test-Path -LiteralPath $validatorScript -PathType Leaf)) {
+        throw "Missing handoff governance validator '$validatorScript'."
+    }
+
+    $validatorArgs = @{
+        ResponseText = $ResponseText
+        ProjectRoot  = $ProjectRoot
+        ResponseScope = $ResponseScope
+    }
+
+    if ($IterationTargets.Count -gt 0) {
+        $validatorArgs['IterationPath'] = $IterationTargets[0]
+    }
+
+    if (-not [string]::IsNullOrWhiteSpace($BoundaryName)) {
+        $validatorArgs['BoundaryName'] = $BoundaryName
+    }
+
+    if (-not [string]::IsNullOrWhiteSpace($BarePathBoundaryHandoffSeverity)) {
+        $validatorArgs['BarePathBoundaryHandoffSeverity'] = $BarePathBoundaryHandoffSeverity
+    }
+
+    & $validatorScript @validatorArgs
+    exit $LASTEXITCODE
+}
+
+try {
+    $resolvedProjectPath = (Resolve-Path -Path (Resolve-ProjectPath -Path $ProjectPath)).Path
+    $teamRoles = Get-TeamRoleMap -ResolvedProjectPath $resolvedProjectPath
+
+    $teamValidationErrors = New-Object System.Collections.Generic.List[string]
+    Test-BaselineTeamMembers -TeamRoles $teamRoles -Errors $teamValidationErrors
+
+    if ($teamValidationErrors.Count -gt 0) {
+        Write-Host "FAIL Squad team validation" -ForegroundColor Red
+        foreach ($errorMessage in $teamValidationErrors) {
+            Write-Host "  - $errorMessage" -ForegroundColor Red
+        }
+        exit 1
+    }
+
+    $classifierCompatibilityErrors = New-Object System.Collections.Generic.List[string]
+    Test-CopilotInstructionsClassifierCompatibility -ProjectRoot $resolvedProjectPath -Errors $classifierCompatibilityErrors
+    if ($classifierCompatibilityErrors.Count -gt 0) {
+        Write-Host 'FAIL validate-governance' -ForegroundColor Red
+        foreach ($errorMessage in $classifierCompatibilityErrors) {
+            Write-Host "  - $errorMessage" -ForegroundColor Red
+        }
+        exit 1
+    }
+
+    Test-PublicReadinessSurfaces -ProjectRoot $resolvedProjectPath
+
+    $explicitIterationPathsProvided = ($null -ne $IterationPath) -and @(
+        $IterationPath | Where-Object { -not [string]::IsNullOrWhiteSpace([string]$_) }
+    ).Count -gt 0
+    $targets = @(Resolve-IterationTarget -ResolvedProjectPath $resolvedProjectPath -ExplicitIterationPaths $IterationPath)
+    if (-not [string]::IsNullOrWhiteSpace($ResponseText)) {
+        Invoke-InteractionModelResponseValidation -ProjectRoot $resolvedProjectPath -ResponseText $ResponseText -IterationTargets $targets -BoundaryName $BoundaryName -ResponseScope $ResponseScope -BarePathBoundaryHandoffSeverity $BarePathBoundaryHandoffSeverity
+    }
+    $iterationConfig = if ($targets.Count -gt 0) { Get-IterationConfigForValidation -IterationDirectory $targets[0] } else { @{ closeout_packet_required_since_iteration = '' } }
+    $reviewerCloseoutEnforcement = Get-ReviewerCloseoutEnforcementMap -Targets $targets -ExplicitTargetsProvided $explicitIterationPathsProvided -RequiredSinceIteration $iterationConfig.closeout_packet_required_since_iteration
+    $results = @($targets | ForEach-Object {
+            $targetPath = $_
+            try {
+                Test-IterationGovernance -IterationDirectory $targetPath -ProjectRoot $resolvedProjectPath -TeamRoles $teamRoles -EnforceReviewerCloseout $reviewerCloseoutEnforcement.ContainsKey($targetPath)
+            }
+            catch {
+                $iterationErrors = New-Object System.Collections.Generic.List[string]
+                Add-RepoStructuredValidationFailure -Errors $iterationErrors -ProjectRoot $resolvedProjectPath -TargetPath $targetPath -LineNumber $null -Category 'unexpected-validator-error' -Message $_.Exception.Message -RemediationHint 'Repair the malformed governance artifact or validator input for this iteration and rerun validate-governance.ps1.'
+                [pscustomobject]@{
+                    Path   = $targetPath
+                    Errors = $iterationErrors
+                }
+            }
+        })
+    $resultMap = @{}
+    foreach ($result in $results) {
+        $resultMap[$result.Path] = $result
+    }
+    Add-ApprovalReuseValidationErrors -Targets $targets -ProjectRoot $resolvedProjectPath -ResultMap $resultMap
+    Add-InteractionModelValidationErrors -Targets $targets -ProjectRoot $resolvedProjectPath -ResultMap $resultMap
+    $hasFailures = $false
+
+    foreach ($result in $results) {
+        if ($result.Errors.Count -eq 0) {
+            Write-Host "PASS $($result.Path)" -ForegroundColor Green
+            continue
+        }
+
+        $hasFailures = $true
+        Write-Host "FAIL $($result.Path)" -ForegroundColor Red
+        foreach ($errorMessage in $result.Errors) {
+            Write-Host "  - $errorMessage" -ForegroundColor Red
+        }
+    }
+
+    if ($hasFailures) {
+        exit 1
+    }
+
+    exit 0
+}
+catch {
+    Write-Host 'FAIL validate-governance' -ForegroundColor Red
+    Write-Host ('  - {0}' -f (New-StructuredValidationFailureText -FilePath '(none)' -LineNumber $null -Category 'unexpected-validator-error' -Message $_.Exception.Message -RemediationHint 'Repair the validator inputs or configuration and rerun validate-governance.ps1.')) -ForegroundColor Red
     exit 1
 }
-
-Test-PublicReadinessSurfaces -ProjectRoot $resolvedProjectPath
-
-$explicitIterationPathsProvided = ($null -ne $IterationPath) -and @(
-    $IterationPath | Where-Object { -not [string]::IsNullOrWhiteSpace([string]$_) }
-).Count -gt 0
-$targets = @(Resolve-IterationTarget -ResolvedProjectPath $resolvedProjectPath -ExplicitIterationPaths $IterationPath)
-$iterationConfig = if ($targets.Count -gt 0) { Get-IterationConfigForValidation -IterationDirectory $targets[0] } else { @{ closeout_packet_required_since_iteration = '' } }
-$reviewerCloseoutEnforcement = Get-ReviewerCloseoutEnforcementMap -Targets $targets -ExplicitTargetsProvided $explicitIterationPathsProvided -RequiredSinceIteration $iterationConfig.closeout_packet_required_since_iteration
-$results = @($targets | ForEach-Object {
-        Test-IterationGovernance -IterationDirectory $_ -TeamRoles $teamRoles -EnforceReviewerCloseout $reviewerCloseoutEnforcement.ContainsKey($_)
-    })
-$hasFailures = $false
-
-foreach ($result in $results) {
-    if ($result.Errors.Count -eq 0) {
-        Write-Host "PASS $($result.Path)" -ForegroundColor Green
-        continue
-    }
-
-    $hasFailures = $true
-    Write-Host "FAIL $($result.Path)" -ForegroundColor Red
-    foreach ($errorMessage in $result.Errors) {
-        Write-Host "  - $errorMessage" -ForegroundColor Red
-    }
-}
-
-if ($hasFailures) {
-    exit 1
-}
-
-exit 0

@@ -1,7 +1,7 @@
 # Specrew
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![Version](https://img.shields.io/badge/version-0.15.0-blue.svg)](.specrew/config.yml)
+[![Version](https://img.shields.io/badge/version-0.16.0-blue.svg)](.specrew/config.yml)
 [![Status: Alpha](https://img.shields.io/badge/status-alpha-orange.svg)](#current-state)
 
 Specrew combines Spec Kit and Squad into a spec-governed operating model for
@@ -9,7 +9,7 @@ AI-assisted software delivery.
 
 ## Current State
 
-- Public shipped baseline: **0.15.0**, backed by 15 implementing features
+- Public shipped baseline: **0.16.0**, backed by 16 implementing features
 - Alpha software, validated through dogfooding in this repository
 - Built today for a single developer running on a single host
 - Not yet ready for multi-developer coordination or multi-host operation
@@ -47,8 +47,36 @@ AI-assisted software delivery.
 3. Let Squad drive `specify -> clarify -> plan -> tasks -> implement` from the
    generated feature artifacts.
 4. Keep iteration evidence current under `specs\<feature>\iterations\<NNN>\`.
-5. Move through planning, executing, reviewing, and retro in order without
-   skipping governance gates.
+5. Move through planning, implementing, review, and retro in order without
+   skipping governance gates or bundling boundary advances.
+
+## Feature 016 Interaction Model
+
+Feature 016 makes the delivery contract explicit across three linked pillars:
+
+1. **Boundary discipline** — one human authorization advances at most one
+   lifecycle boundary.
+2. **Essence in console** — boundary handoffs stay substantive enough to review
+   without opening files first.
+3. **Click-through navigation** — authored review targets use `file:///` URIs
+   instead of bare paths.
+
+### Post-Commit Verification Protocol
+
+After every boundary commit that ends with a human-blocked handoff:
+
+1. synchronize any matching `.squad/decisions.md` authorization entries from
+   `Commit Reference: pending` to the real boundary hash
+2. keep `Recorded At` in canonical UTC seconds precision
+   (`YYYY-MM-DDTHH:MM:SSZ`)
+3. run a stale-reference scan over the cited `file:///` inspection targets
+4. rerun the governed validation lane on the exact committed tree before
+   claiming the boundary is ready
+5. disclose any remaining defers or gaps instead of implying post-commit work
+   already happened
+
+Short and full commit hashes are both accepted once they point at the exact
+committed boundary tree.
 
 ## PR-at-feature-close Workflow
 
