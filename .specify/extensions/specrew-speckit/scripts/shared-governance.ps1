@@ -31,12 +31,13 @@ function Invoke-WithFileLock {
         [int]$RetryDelayMilliseconds = 100
     )
 
-    $directory = Split-Path -Parent $Path
+    $resolvedPath = Resolve-ProjectPath -Path $Path
+    $directory = Split-Path -Parent $resolvedPath
     if (-not [string]::IsNullOrWhiteSpace($directory) -and -not (Test-Path -LiteralPath $directory -PathType Container)) {
         $null = New-Item -ItemType Directory -Path $directory -Force
     }
 
-    $lockPath = "$Path.lock"
+    $lockPath = "$resolvedPath.lock"
     $lockStream = $null
     for ($attempt = 0; $attempt -lt $RetryCount; $attempt++) {
         try {
@@ -45,7 +46,7 @@ function Invoke-WithFileLock {
         }
         catch [System.IO.IOException] {
             if ($attempt -ge ($RetryCount - 1)) {
-                throw "Could not acquire file lock for '$Path'."
+                throw "Could not acquire file lock for '$resolvedPath'."
             }
 
             Start-Sleep -Milliseconds $RetryDelayMilliseconds
@@ -55,6 +56,9 @@ function Invoke-WithFileLock {
     try {
         & $ScriptBlock
     }
+    catch {
+        throw "Locked update failed for '$resolvedPath': $($_.Exception.Message)"
+    }
     finally {
         if ($null -ne $lockStream) {
             $lockStream.Dispose()
@@ -63,6 +67,34 @@ function Invoke-WithFileLock {
         if (Test-Path -LiteralPath $lockPath -PathType Leaf) {
             Remove-Item -LiteralPath $lockPath -Force -ErrorAction SilentlyContinue
         }
+    }
+}
+
+function Remove-OrphanedAtomicWriteArtifacts {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Path,
+
+        [AllowNull()]
+        [string]$TempPath
+    )
+
+    $resolvedPath = Resolve-ProjectPath -Path $Path
+    $lockPath = "$resolvedPath.lock"
+
+    if (-not [string]::IsNullOrWhiteSpace($TempPath) -and (Test-Path -LiteralPath $TempPath -PathType Leaf)) {
+        Remove-Item -LiteralPath $TempPath -Force -ErrorAction SilentlyContinue
+    }
+
+    $directory = Split-Path -Parent $resolvedPath
+    $fileName = Split-Path -Leaf $resolvedPath
+    if (-not [string]::IsNullOrWhiteSpace($directory) -and (Test-Path -LiteralPath $directory -PathType Container)) {
+        Get-ChildItem -LiteralPath $directory -Filter "$fileName.*.tmp" -File -ErrorAction SilentlyContinue |
+            Remove-Item -Force -ErrorAction SilentlyContinue
+    }
+
+    if (Test-Path -LiteralPath $lockPath -PathType Leaf) {
+        Remove-Item -LiteralPath $lockPath -Force -ErrorAction SilentlyContinue
     }
 }
 
@@ -76,15 +108,24 @@ function Write-Utf8FileAtomic {
         [string]$Content
     )
 
-    $directory = Split-Path -Parent $Path
+    $resolvedPath = Resolve-ProjectPath -Path $Path
+    $directory = Split-Path -Parent $resolvedPath
     if (-not [string]::IsNullOrWhiteSpace($directory) -and -not (Test-Path -LiteralPath $directory -PathType Container)) {
         $null = New-Item -ItemType Directory -Path $directory -Force
     }
 
-    $tempPath = '{0}.{1}.tmp' -f $Path, ([guid]::NewGuid().ToString('N'))
+    $tempPath = '{0}.{1}.tmp' -f $resolvedPath, ([guid]::NewGuid().ToString('N'))
     try {
         [System.IO.File]::WriteAllText($tempPath, $Content, [System.Text.UTF8Encoding]::new($false))
-        Move-Item -LiteralPath $tempPath -Destination $Path -Force
+        if (-not (Test-Path -LiteralPath $tempPath -PathType Leaf)) {
+            throw "Atomic write did not create the temp file '$tempPath'."
+        }
+
+        Move-Item -LiteralPath $tempPath -Destination $resolvedPath -Force -ErrorAction Stop
+    }
+    catch {
+        Remove-OrphanedAtomicWriteArtifacts -Path $resolvedPath -TempPath $tempPath
+        throw "Atomic write to '$resolvedPath' failed: $($_.Exception.Message)"
     }
     finally {
         if (Test-Path -LiteralPath $tempPath -PathType Leaf) {
@@ -126,7 +167,7 @@ function Get-DecisionsLedgerPath {
         [string]$ProjectRoot
     )
 
-    return Join-Path $ProjectRoot '.squad\decisions.md'
+    return Join-Path (Resolve-ProjectPath -Path $ProjectRoot) '.squad\decisions.md'
 }
 
 function Add-DecisionsLedgerEntry {

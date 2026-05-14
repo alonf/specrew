@@ -115,4 +115,18 @@ Await Alon Fliess's separate implementation-repair authorization focused on the 
 
 ---
 
+## Re-Review: FR-008 Repair (2026-05-15)
+
+- **Repair Scope**: Bounded FR-008 implementation-repair only; no other FRs, NFR-001 optimization work, or design changes were expanded.
+- **Repair Commit Hash**: Recorded as the pushed FR-008 repair commit for this pass (reported with the repair boundary summary because the re-review artifact is committed by that same change).
+- **Root Cause**: `Sync-InteractionModelAuthorizationCommitReference` reached `Write-Utf8FileAtomic` through a relative `.squad\decisions.md` path. The temp write used a path that could resolve against a different process current directory than the active PowerShell location, so the temp file was created in one place and `Move-Item` looked for it in another.
+- **Fix**: Both mirrored `shared-governance.ps1` copies now resolve ledger targets to explicit absolute paths before lock acquisition and temp-file creation, verify the temp file exists before moving it into place, emit clear path-specific errors on failure, and clean leftover `.lock` / `.tmp` artifacts during error handling.
+- **New Live-Execution Test**: `tests\integration\substantive-interaction-model-iteration2.ps1` now drives `Sync-InteractionModelAuthorizationCommitReference` against a real git-controlled repository fixture with a real `.squad\decisions.md`, a real commit hash, a relative `-ProjectRoot '.'`, and an intentional PowerShell-location vs process-current-directory mismatch. The scenario passes and asserts no `.lock` / `.tmp` crud remains.
+- **Concern Rows Now Verified**: `error-handling-expectations`, `retry-idempotency-requirements`, and `operational-resilience-concerns` are now verified in `quality\hardening-gate.md` based on the repaired live-execution evidence and the rerun validation lane.
+- **Updated Verdict**: accepted post-FR-008-repair
+
+The original `needs-work` review boundary above remains the historical record of the blocked defect discovery. This re-review records that the bounded FR-008 repair removed the live-repository synchronization failure without widening scope.
+
+---
+
 **Review Boundary Ref**: This artifact records the review boundary only. Review-verdict-signoff and all later lifecycle boundaries remain separate future steps.

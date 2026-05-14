@@ -14,6 +14,28 @@ function Write-Fail {
     Write-Host "FAIL: $Message" -ForegroundColor Red
 }
 
+function Assert-NoAtomicWriteArtifacts {
+    param(
+        [Parameter(Mandatory = $true)][string]$RepoPath,
+        [Parameter(Mandatory = $true)][string]$Context
+    )
+
+    $ledgerPath = Join-Path $RepoPath '.squad\decisions.md'
+    $lockPath = "$ledgerPath.lock"
+    if (Test-Path -LiteralPath $lockPath -PathType Leaf) {
+        Write-Fail "$Context left behind '$lockPath'."
+        exit 1
+    }
+
+    $tempArtifacts = @(
+        Get-ChildItem -LiteralPath (Split-Path -Parent $ledgerPath) -Filter 'decisions.md.*.tmp' -File -ErrorAction SilentlyContinue
+    )
+    if ($tempArtifacts.Count -gt 0) {
+        Write-Fail "$Context left behind temp artifacts: $($tempArtifacts.Name -join ', ')."
+        exit 1
+    }
+}
+
 function Invoke-GitCommit {
     param(
         [Parameter(Mandatory = $true)][string]$RepoPath,
@@ -189,6 +211,41 @@ try {
         exit 1
     }
 
+    Add-Content -LiteralPath $statePath -Value "`n- review boundary evidence staged" -Encoding UTF8
+    Invoke-GitCommit -RepoPath $scratchRoot -Message 'Feature 016 substantive-interaction-model iteration 002: review boundary evidence' -When '2026-05-14T14:02:00Z'
+    $reviewBoundaryCommitHash = (git -C $scratchRoot rev-parse HEAD).Trim()
+    $reviewBoundaryDecisionId = 'authorization-feature-016-iter-002-review-boundary'
+    $reviewBoundaryAuthorizationText = @'
+Open the review boundary only.
+Verify the exact committed tree before requesting the next verdict.
+'@
+    $originalLocation = (Get-Location).Path
+    $originalProcessDirectory = [System.IO.Directory]::GetCurrentDirectory()
+    try {
+        Set-Location $scratchRoot
+        [System.IO.Directory]::SetCurrentDirectory($repoRoot)
+
+        Add-InteractionModelAuthorizationEntry -ProjectRoot '.' -FeatureNumber 16 -IterationNumber 2 -Boundary 'review-boundary' -Type 'authorization' -ApprovingHuman 'Fixture Human' -AuthorizationText $reviewBoundaryAuthorizationText -CommitReference 'pending' -RecordedAt '2026-05-14T14:02:30Z' | Out-Null
+        Sync-InteractionModelAuthorizationCommitReference -ProjectRoot '.' -DecisionId $reviewBoundaryDecisionId -CommitHash $reviewBoundaryCommitHash | Out-Null
+
+        $liveLedgerText = Get-Content -LiteralPath '.\.squad\decisions.md' -Raw -Encoding UTF8
+        if ($liveLedgerText -notmatch [regex]::Escape("- **Decision ID**: $reviewBoundaryDecisionId")) {
+            Write-Fail 'Live repo sync scenario did not create the review-boundary authorization entry.'
+            exit 1
+        }
+
+        if ($liveLedgerText -notmatch [regex]::Escape("- **Commit Reference**: $reviewBoundaryCommitHash")) {
+            Write-Fail 'Live repo sync scenario did not update the review-boundary commit reference in the live git fixture.'
+            exit 1
+        }
+    }
+    finally {
+        Set-Location $originalLocation
+        [System.IO.Directory]::SetCurrentDirectory($originalProcessDirectory)
+    }
+
+    Assert-NoAtomicWriteArtifacts -RepoPath $scratchRoot -Context 'Live repo sync scenario'
+
     $scanText = @"
 Review file:///$($scratchRoot -replace '\\', '/')/specs/016-substantive-interaction-model/iterations/002/plan.md before the review-boundary.
 Reference file:///$($scratchRoot -replace '\\', '/')/specs/016-substantive-interaction-model/iterations/002/missing.md if the stale scan is broken.
@@ -212,5 +269,5 @@ finally {
     }
 }
 
-Write-Pass 'Feature 016 Iteration 002 integration replay: docs/template truth, navigation graduation, authorization fidelity, and post-commit verification evidence'
+Write-Pass 'Feature 016 Iteration 002 integration replay: docs/template truth, navigation graduation, authorization fidelity, live repo commit-sync repair, and post-commit verification evidence'
 exit 0
