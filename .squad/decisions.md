@@ -2862,6 +2862,36 @@ All recommendations are documented with implementation owners and timelines.
   > - stop at the planning boundary only; do not start hardening-gate work or implementation
   > - Feature 017 visual artifacts remain a separate follow-up feature; explicit deferrals must be documented in the iteration plan with rationale.
 
+## 2026-05-14T13:11:02Z — Sign-off: hardening-gate-signoff
+
+- **Decision ID**: authorization-feature-016-iter-002-hardening-gate-signoff
+- **Type**: sign-off
+- **Boundary**: hardening-gate-signoff
+- **Approving Human**: Alon Fliess
+- **Recorded At**: 2026-05-14T13:11:02Z
+- **Commit Reference**: a321c77
+- **Authorization Text**:
+  > I sign off on the accepted Iteration 002 pre-implementation hardening gate for Feature 016 Substantive Interaction Model and authorize proceeding to implementation.
+  >
+  > The hardening gate records five Iteration 002-specific concerns across security, error handling, retry/idempotency, test integrity, and operational resilience. Each concern is marked as addressed with evidence collection deferred to post-implementation. The Overall Verdict is ready, indicating the gate is satisfied for implementation authorization.
+  >
+  > Implementation authorization applies to the full Iteration 002 scope: FR-020 through FR-024, the Iteration 2 graduation portion of FR-016, and the accepted Iteration 001 carryovers affecting Feature 016 truth surfaces.
+
+## 2026-05-14T13:11:02Z — Authorization: implementation
+
+- **Decision ID**: authorization-feature-016-iter-002-implementation
+- **Type**: authorization
+- **Boundary**: implementation
+- **Approving Human**: Alon Fliess
+- **Recorded At**: 2026-05-14T13:11:02Z
+- **Commit Reference**: a321c77
+- **Authorization Text**:
+  > I sign off on the accepted Iteration 002 pre-implementation hardening gate for Feature 016 Substantive Interaction Model and authorize proceeding to implementation.
+  >
+  > The hardening gate records five Iteration 002-specific concerns across security, error handling, retry/idempotency, test integrity, and operational resilience. Each concern is marked as addressed with evidence collection deferred to post-implementation. The Overall Verdict is ready, indicating the gate is satisfied for implementation authorization.
+  >
+  > Implementation authorization applies to the full Iteration 002 scope: FR-020 through FR-024, the Iteration 2 graduation portion of FR-016, and the accepted Iteration 001 carryovers affecting Feature 016 truth surfaces.
+
 ## 2026-05-14-runtime-evidence-feature016-iter002-planning-boundary
 ### 2026-05-14T12:37:40Z: Runtime evidence - Feature 016 Iteration 002 planning boundary
 **By:** Squad (Coordinator)
@@ -2871,3 +2901,15 @@ All recommendations are documented with implementation owners and timelines.
 **Model ID:** unknown (same-window Copilot CLI session)
 **Status:** fallback
 **Fallback Reason:** preferred agent `claude` is not enabled in the delegated routing plan; this planning-boundary run used the available Copilot agent
+## 2026-05-14-runtime-evidence-feature016-iter002-planning-repair
+### 2026-05-14T12:58:12Z: Runtime evidence - Feature 016 Iteration 002 planning boundary Commit Reference correction
+
+**By:** Planner (delegated to Copilot)
+**Role / Work Item:** Planner - planning boundary Commit Reference repair (89e1073 → 7e803f5)
+**Requested Agent:** Planner role (no explicit agent delegation; Planner ran directly)
+**Actual Agent:** copilot
+**Model ID:** gpt-5.4
+**Status:** honored
+**Fallback Reason:** none
+**Repair Scope:** Single-line correction to .squad/decisions.md authorization entry authorization-feature-016-iter-002-planning; staged ONLY .squad/decisions.md; created repair commit 1f2bfec; pushed to origin/016-substantive-interaction-model; post-commit validation: PASS (all iterations validated successfully)
+**Root Cause:** Stale hash from Iteration 2 FR-008 carryover scope (post-commit Commit Reference synchronization requirement)
