@@ -2,10 +2,10 @@
 
 **Schema**: v1
 **Spec**: [../../spec.md](../../spec.md)
-**Status**: reviewing
+**Status**: retro-complete
 **Capacity**: 17.0/20 story_points
 **Started**: 2026-05-14
-**Completed**: 2026-05-14
+**Completed**: 2026-05-15
 **Planning Authority**: Resumed Iteration 002 planning authorized on 2026-05-14 for the original
 FR-020 through FR-024 slice plus explicit carryover triage from accepted Iteration 001 review/retro
 evidence.
