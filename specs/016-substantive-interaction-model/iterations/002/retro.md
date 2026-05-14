@@ -18,43 +18,37 @@ The review boundary discovered a blocking FR-008 post-commit synchronization def
 
 Six corpus-row candidates were identified across Feature 016 Iteration 002 execution:
 
-### Required Feature 016 Rows
+### Primary Findings
 
-1. **`bundled-boundary-advance`** (governance-trap)
-   - **Category**: boundary-claim-without-artifact
-   - **Evidence**: Feature 016 iteration boundaries were narrated in commit subjects and decision ledger entries before the matching artifacts (retro.md, review.md) were committed. The trap manifested in Feature 014-015 and confirmed across Feature 016 lifecycle.
-   - **Durability Rule**: Do not narrate a lifecycle boundary as complete in git history until the matching durable commit contains the boundary artifact plus truthful plan.md/state.md updates. Enforce via validator gate.
-   - **Applicable When**: Any lifecycle boundary (review, retro, closeout) claims completion in subject or decision text.
+1. **`fr-008-live-execution-vs-fixture-test-divergence`** — validation-discipline
+   - **Evidence**: The FR-008 post-commit synchronization helper passed all scratch-workspace replay tests (synthetic fixtures) but failed on the live repository due to a path-resolution mismatch (process current directory vs PowerShell location). Initial implementation did not isolate the defect early enough.
+   - **Durability Rule**: Automation-dependent helpers (FR-008 post-commit sync, Authorization ledger updates) must include live-repository test fixtures in the implementation task definition, not rely solely on synthetic workspace replays. Exercise the real helper flow against a real git-controlled repository to surface path-resolution or permission issues before review boundary.
+   - **Applicable When**: Any feature implementing governance automation that depends on filesystem operations, git state, or ledger synchronization.
 
-2. **`thin-handoff-summary`** (coordination-debt)
-   - **Category**: handoff-content-insufficiency
-   - **Evidence**: Early Feature 016 iteration handoffs between planning → implementation → review carried insufficient context about the paired authorization evidence refresh needed for FR-008 post-commit synchronization. The Planner, Implementer, and Reviewer each discovered parts of the full picture rather than inheriting complete context.
-   - **Durability Rule**: Boundary handoffs must explicitly state which decision ledger entries require post-commit Commit Reference updates, what automated helpers are expected to perform them, and what manual repair procedures apply if automation fails. List this in every boundary handoff summary.
-   - **Applicable When**: Feature includes automation-dependent authorization tracking (FR-008 post-commit flow).
+2. **`local-vs-origin-truth-surface-drift`** — lifecycle-discipline
+   - **Evidence**: During Feature 016 Iteration 002 review-boundary work, local tree updates had not been pushed to origin, creating ambiguity about which version was the authoritative reference for review evidence and post-commit synchronization. This drift delayed boundary clarity and required explicit reconciliation (`git status --branch` + `git log --oneline -1 origin/HEAD`).
+   - **Durability Rule**: At every lifecycle boundary, include an explicit verification step before the boundary-signoff commit: "Local HEAD equals origin HEAD after push." Document the exact command output in the boundary commit message to make the durable truth surface explicit.
+   - **Applicable When**: Any multi-session or multi-user feature work where local and origin branches might diverge during active development.
 
-3. **`bare-path-in-handoff`** (validation-blind-spot)
-   - **Category**: path-format-compliance-gap
-   - **Evidence**: Iteration 002 review.md draft initially included bare filesystem paths (e.g., `tests\integration\...`) in narrative handoff text instead of `file:///` URLs. The stale-reference scan now flags these, and the post-commit verification protocol requires a scan before accepting verdict.
-   - **Durability Rule**: Iterate-lifecycle handoffs must use `file:///` URLs for all repository file references. The stale-reference scan is mandatory after every review, retro, and closeout boundary commit. This prevents silent broken-link bugs from reaching downstream boundaries.
-   - **Applicable When**: Handoff text contains file path references that need to survive round-trip serialization and cross-session retrieval.
+3. **`coordinator-prompt-chat-output-must-mirror-validator-enforced-artifact-discipline`** — interaction-model
+   - **Evidence**: Feature 016 iteration boundaries are enforced by validators on artifact structure (FR-016 bare-path rules, FR-020-024 corpus row presence) but the coordinator guidance prompts must match validator expectations or teams inherit silent non-compliance. The handoff template, reviewer checklist, and Spec Kit surfaces must all reflect the same artifact-discipline expectations.
+   - **Durability Rule**: When validator rules are added, update all three artifact-generation surfaces: (1) coordinator prompts (Spec Kit planning + reviewer guidance), (2) handoff templates and checklist wording, (3) integration test fixtures that prove the rule behavior. Validator enforcement + prompt/template alignment = durable discipline.
+   - **Applicable When**: Adding new structural rules or governance requirements that span multiple coordinator surfaces.
 
-4. **`thin-artifact-content`** (completeness-boundary)
-   - **Category**: artifact-substantiveness-threshold
-   - **Evidence**: Iteration 002 retro.md must substantively capture six corpus-row candidates with categories, durability rules, and applicability guidance rather than bare listings. Three deferral items must be named explicitly with rationale. Positive learnings from the FR-008 repair cycle must be reflected to preserve knowledge for Feature 017+.
-   - **Durability Rule**: Retro artifacts must include minimum content: (1) all corpus candidates with categories and evidence basis, (2) explicit deferrals with rationale, (3) positive learnings from the iteration, (4) estimation variance analysis, (5) handoff guidance for next iteration/feature. Passive compliance (artifact-exists) is not sufficient; substantive content drives durability.
-   - **Applicable When**: Closing out any iteration with deferred work, discovered patterns, or process improvements.
+4. **`nfr-budget-recalibration-trigger`** — estimation-discipline
+   - **Evidence**: Feature 016 Iteration 002 planned at 17.0 SP and delivered ~22-25 SP actual (+30-50% variance), driven primarily by self-referential governance work (authorization ledger updates tracking their own lifecycle) and live-repository testing discovery friction. This variance is systematic and repeatable for governance-automation features, not a one-time scheduling miss.
+   - **Durability Rule**: For features with automation-dependent governance (FR-008 post-commit flow, authorization ledger self-reference), plan with +30-50% variance buffer. Do not reduce base estimates; increase the iteration capacity band to 20-25 SP for complex governance-automation features. Explicitly budget 3-5 SP for discovery and integration testing on live repositories.
+   - **Applicable When**: Planning iterations involving self-referential lifecycle automation or cross-artifact synchronization (e.g., Feature 016-017 governance work).
 
-### Selected Carryover Rows (Previously Grounded)
+5. **`repair-cycles-cascade-from-bookkeeping-misalignment`** — process-discipline
+   - **Evidence**: The FR-008 post-commit synchronization defect required root-cause analysis, implementation repair, live-execution test fixture creation, cleanup verification, and retro-boundary analysis—a multi-cycle repair spanning implementation → review → repair → retro. The defect was not in FR-016 logic but in FR-008 bookkeeping helper infrastructure, yet it blocked the entire Feature 016 Iteration 002 review verdict.
+   - **Durability Rule**: Repair cycles triggered by infrastructure defects (ledger writes, commit-reference synchronization, helper automation) cascade through multiple boundaries. Isolate carryover-infrastructure work in dedicated tasks upfront (e.g., FR-008 helper live-testing as a separate T007 acceptance criterion) rather than treating it as review-boundary discovery. This prevents silent blockage and keeps repair scopes bounded.
+   - **Applicable When**: Iterations carrying forward infrastructure from prior features without fresh integration testing on the live repository.
 
-5. **`fr-008-pending-commit-reference-vs-validator-hash-match`** (automation-fidelity)
-   - **Category**: post-commit-synchronization-correctness
-   - **Evidence**: Reconfirmed in Iteration 002 retro after FR-008 repair. The automated synchronization helper now keeps `pending` → full hash → short hash transitions atomic and verifiable against git history. Manual repair was required once (at review boundary), but the repaired helper passes live-execution testing.
-   - **Status**: Previously accepted, reconfirmed post-repair with live evidence.
-
-6. **`nfr-budget-calibrated-against-pre-refactor-baseline`** (performance-truth)
-   - **Category**: validator-runtime-stability
-   - **Evidence**: Iteration 002 repo validator re-measurement on the green tree: 179550 ms. This is higher than the implementation-boundary snapshot (150061 ms) but stable across re-runs. The growth is not optimized away in this iteration but is captured for retrospective discussion rather than silently ignored.
-   - **Status**: Previously accepted baseline; growth noted in retro.
+6. **`worktree-pattern-for-clean-review-and-repair`** — lifecycle-discipline (positive pattern)
+   - **Evidence**: Feature 016 Iteration 002 review-boundary work and FR-008 repair were conducted in a dedicated `C:\Dev\Specrew-review` worktree separate from the main repository at `C:\Dev\Specrew`. This isolation allowed review-boundary repairs and local-vs-origin reconciliation without impacting concurrent feature development, and enabled explicit verification of "local HEAD equals origin HEAD" at boundary close.
+   - **Durability Rule**: Establish review-boundary and repair-cycle work in a dedicated worktree. Use explicit branch-tracking (`git branch --set-upstream-to=origin/<branch>`) and post-push verification (`git status --branch` + `git log --oneline -1 origin/HEAD`) to ensure local truth matches origin before boundary signoff. This pattern prevents silent local-only changes and enables clean, reversible repair cycles.
+   - **Applicable When**: Any multi-session or multi-boundary feature (review → repair → retro) where clean isolation and explicit truth-surface verification are needed.
 
 ---
 
