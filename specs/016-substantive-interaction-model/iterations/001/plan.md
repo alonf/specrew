@@ -12,7 +12,7 @@
 **Review Verdict**: accepted (post-repair)
 **Review-Verdict-Signoff**: user sign-off recorded on 2026-05-14; authorization entry added to `.squad/decisions.md` with decision ID `authorization-feature-016-iter-001-review-verdict-signoff`
 **Retrospective Boundary**: retro.md drafted on 2026-05-14T10:13:30Z; retrospective boundary completed with authorization-feature-016-iter-001-retro-boundary entry
-**Iteration-Closeout Boundary**: authorized on 2026-05-14T11:27:03Z; iteration-closeout boundary commit pending
+**Iteration-Closeout Boundary**: completed at `aa01752` (2026-05-14T11:27:03Z); current HEAD `5f04f4f` contains post-closeout bookkeeping alignment; next valid action is Iteration 2 planning authorization
 
 ## Scope Summary
 
