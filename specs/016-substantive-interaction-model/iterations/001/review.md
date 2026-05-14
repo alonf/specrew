@@ -4,9 +4,9 @@
 **Reviewed By**: Reviewer
 **Reviewed At**: 2026-05-14
 **Implementation Ref**: commit `ed8dea9`
-**Overall Verdict**: needs-rework
-**Explicit Reviewer Verdict**: needs-work
-**Review Boundary**: Review boundary completed with blocking defects found; review-verdict-signoff, retrospective, and closeout remain unopened.
+**Overall Verdict**: accepted
+**Explicit Reviewer Verdict**: needs-work (initial verdict; accepted post-repair via review-verdict-signoff)
+**Review Boundary**: Review boundary completed with blocking defects found on 2026-05-14; implementation-repair and regex-hardening authorized on 2026-05-14 (commits 37822b6 and 59f1b21); review-verdict-signoff completed on 2026-05-14 with acceptance following independent human verifier validation on HEAD 59f1b21.
 
 ---
 
@@ -98,8 +98,8 @@ The blocking defect is operational: the committed tree fails the repo-wide valid
 
 ## Gap Ledger
 
-- FR-006 / FR-009 defect remains open in `extensions\specrew-speckit\scripts\validate-governance.ps1` (and mirror) because the committed bundled-boundary logic rejects the canonical implementation authorization sequence.
-- NFR-001 evidence integrity remains open in `specs\016-substantive-interaction-model\quickstart.md` until the repo-validator lane is green on the final committed tree and the measurement is re-recorded from that clean run.
+- FR-006 / FR-009 defect — **fixed-now** in commits 37822b6 (validator-logic refactor paired-auth hash matching) and 59f1b21 (regex anchoring for boundary patterns). The bundled-boundary logic now correctly accepts the canonical implementation authorization sequence.
+- NFR-001 evidence integrity — **fixed-now** via review-verdict-signoff (2026-05-14T09:26:39Z) with independent human verifier validation on HEAD 59f1b21. Final repo-validator measured at 150007 ms (baseline 109134 ms, delta +37.5%), accepted with documented rationale. Performance optimization deferred to Feature N.
 
 ---
 
@@ -126,7 +126,7 @@ The blocking defect is operational: the committed tree fails the repo-wide valid
 
 ## Verdict
 
-**NEEDS-WORK** — Feature `016`, substantive interaction model, iteration `001`, cannot be accepted yet. The requested focus areas around schema-drift inference, FR-016 parameterization, canonical paired decisions entries, and the two new real-surface integration tests review clean, but the implementation still fails its own repo-wide validator lane and therefore does not meet FR-006 / FR-009 closure or NFR-001 evidence-integrity expectations.
+**ACCEPTED** — Feature `016`, substantive interaction model, iteration `001`, is accepted following post-repair verification. Initial review boundary found blocking defects in FR-006/FR-009 and NFR-001 measurement integrity (needs-work verdict on 2026-05-14). Implementation-repair authorizations (commits 37822b6 and 59f1b21) resolved validator-logic defects and regex anchoring issues. Review-verdict-signoff completed (2026-05-14T09:26:39Z) by Alon Fliess with independent human verifier validation on HEAD 59f1b21 confirming repo-wide validator PASS with no bundled-boundary-advance failures.
 
 ---
 
