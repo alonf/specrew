@@ -7,6 +7,7 @@
 **Started**: 2026-05-14
 **Completed**: 2026-05-15
 **Retro Completed**: 2026-05-15
+**Iteration Closed**: 2026-05-14T22:14:15Z
 **Planning Authority**: Resumed Iteration 002 planning authorized on 2026-05-14 for the original
 FR-020 through FR-024 slice plus explicit carryover triage from accepted Iteration 001 review/retro
 evidence.
