@@ -2229,6 +2229,31 @@ Iteration 002 planning artifacts (plan.md) were still in `planning` status with 
   >
   > This authorization covers review-verdict-signoff only and does NOT authorize retrospective, iteration closeout, or any other lifecycle boundary beyond this point.
 
+# Boundary: retro-boundary
+
+- **Decision ID**: authorization-feature-016-iter-001-retro-boundary
+- **Type**: authorization
+- **Boundary**: retro-boundary
+- **Approving Human**: Alon Fliess
+- **Recorded At**: 2026-05-14T10:13:30Z
+- **Commit Reference**: c747465
+- **Authorization Text**:
+  > I authorize the retro-boundary for Feature 016 Iteration 001. Retro Facilitator has performed independent post-commit validator verification on HEAD 1db47c3 and confirms:
+  >
+  > - `pwsh -NoProfile -ExecutionPolicy Bypass -File .\extensions\specrew-speckit\scripts\validate-governance.ps1 -ProjectPath .` → PASS on HEAD 1db47c3 (no validation errors, no bundled-boundary-advance failures)
+  >
+  > Retro Facilitator is authorized to draft retro.md capturing substantive lessons learned during Iteration 001 execution, including:
+  > - Calibration data: planned vs. actual effort and velocity
+  > - Substantive lessons: bundled-boundary commit matching discipline, regex anchoring requirements, authorization-entry timestamp/hash synchronization, validator scope bounding, and NFR measurement baseline discipline
+  > - Six named corpus-row candidates from iteration execution (documented in retro.md): fr-008-pending-commit-reference-vs-validator-hash-match, nfr-budget-calibrated-against-pre-refactor-baseline, regex-boundary-patterns-require-anchoring, validator-idempotency-requires-immutable-data-sources, authorization-text-capture-preserves-human-intent-without-leakage, single-boundary-authorization-discipline-prevents-creeping-scope
+  > - Process learnings: repair escalation pathways, pre-commit verification gates, authorization-entry synchronization requirements, spec authority discipline, hardening-repair-verdict sequence
+  > - Estimation learnings and accuracy analysis
+  > - Deferral items and positive learnings documentation
+  >
+  > Retro Facilitator is authorized to add additional corpus-row candidates to retro.md if clearly warranted by iteration-execution evidence, beyond the six required candidates.
+  >
+  > This authorization covers retro-boundary work only. Iteration closeout remains a separate authorization boundary.
+
 ---
 # Reviewer Decision: Feature 015 Iteration 002 Review
 
@@ -2726,5 +2751,6 @@ All recommendations are documented with implementation owners and timelines.
 
 - This repair is limited to Feature 016 before-plan readiness.
 - Feature 017 remains explicitly out of scope.
+
 
 
