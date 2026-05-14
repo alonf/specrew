@@ -72,7 +72,7 @@ Iteration 001 delivered the authorized Feature 016 governance and validator slic
 - **Implementation Authorization**: recorded as `implementation` in `file:///C:/Dev/Specrew/.squad/decisions.md`; both authorization entries cite the user's verbatim approval text.
 - **Implementation Repair**: completed post-`ed8dea9` (commits `37822b6` and `59f1b21`) to address FR-006/FR-009 validator-logic defects and NFR-001 evidence integrity concerns.
 - **Review-Verdict-Signoff**: completed on 2026-05-14; authorization entry recorded as `authorization-feature-016-iter-001-review-verdict-signoff` in `file:///C:/Dev/Specrew/.squad/decisions.md` following independent human verifier validation against HEAD 59f1b21.
-- **Current Boundary State**: retrospective boundary is complete; iteration-closeout authorization is next.
+- **Current Boundary State**: iteration-closeout boundary is complete; next valid action is Iteration 2 planning authorization.
 - **Session Restart Requirement**: required before a future fresh session can load the updated startup surfaces in `file:///C:/Dev/Specrew/.github/agents/squad.agent.md` and `file:///C:/Dev/Specrew/.squad/templates/squad.agent.md`.
 
 ## Scope and Deferrals
@@ -89,6 +89,6 @@ Iteration 001 delivered the authorized Feature 016 governance and validator slic
 
 ## Next Action
 
-The retrospective boundary is complete. The next valid action is iteration-closeout authorization by Alon Fliess.
+Iteration 001 is closed. The next valid action is Iteration 2 planning authorization.
 
 
