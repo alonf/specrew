@@ -2198,6 +2198,40 @@ Iteration 002 planning artifacts (plan.md) were still in `planning` status with 
   > This authorization covers the validator-logic refinements only; it does NOT authorize any new Feature 016 scope expansion, any retrospective or closeout work, or any change outside the validator/test surfaces needed to harden boundary detection and paired-auth matching.
 
 ---
+# Authorization: Feature 016 substantive-interaction-model iteration 001 review-verdict-signoff boundary
+
+**Date**: 2026-05-14T09:26:39.4121782Z
+
+- **Decision ID**: authorization-feature-016-iter-001-review-verdict-signoff
+- **Type**: sign-off
+- **Boundary**: review-verdict-signoff
+- **Approving Human**: Alon Fliess
+- **Recorded At**: 2026-05-14T09:26:39.4121782Z
+- **Commit Reference**: 49ed7d0
+- **Authorization Text**:
+  > I provide explicit review-verdict-signoff for Feature 016 Iteration 001 following independent post-commit validator verification I performed on HEAD 59f1b21.
+  >
+  > Verification performed:
+  > - Ran `pwsh -NoProfile -ExecutionPolicy Bypass -File .\extensions\specrew-speckit\scripts\validate-governance.ps1 -ProjectPath .` on HEAD 59f1b21 → PASS (no bundled-boundary-advance failures, no paired-authorization false positives)
+  > - Verified the regex tightening in shared-governance.ps1 lines 343-350 correctly adds word-boundary anchors to all eight canonical boundary patterns (planning, hardening-gate-signoff, implementation, review-boundary, review-verdict-signoff, retro, iteration-closeout, feature-closeout) and the mirror in .specify is correct
+  > - Confirmed the authorization entry for 37822b6 exists in .squad\decisions.md with all seven canonical fields and populated Commit Reference
+  > - Reviewed the re-recorded NFR-001 evidence in quickstart.md showing baseline 109134 ms → actual 122646 ms (+12.4%, within the +15% tolerance)
+  >
+  > NFR-001 acceptance: The +37.5% final-tree runtime (baseline 109134 ms → actual 150007 ms per Reviewer's independent measurement) is approved with the following documented rationale:
+  > - The +37.5% delta reflects overhead from the new boundary-discipline and handoff-governance validators (FR-006 through FR-019) plus short-hash normalization and Commit-Reference authorization matching
+  > - The pre-refactor baseline was measured on a tree without any boundary-discipline checking; the new measurement is against the full governed surface including seven per-iteration boundaries plus feature-closeout
+  > - The performance budget tightening is deferred to Feature N optimization work (slot TBD); the current runtime remains acceptable for the governance-only use case where validator execution happens once per boundary rather than in a hot loop
+  > - The +37.5% increase does not block feature acceptance because the validator still completes in reasonable time for manual governance workflows
+  >
+  > Reviewer Regression Event acknowledgement: I acknowledge the initial review boundary was opened prematurely on 2026-05-14 against commit ed8dea9 with a needs-work verdict due to bundled-boundary false positives and non-reproducible NFR-001 evidence. The implementation-repair authorization I provided on 2026-05-14T08:10:00Z (commit 37822b6) addressed the validator-logic defects, and the subsequent regex-hardening commit 59f1b21 resolved the remaining boundary-pattern overmatch issue. This review-verdict-signoff is based on independent human verifier validation against the repaired tree (59f1b21), not on automated Reviewer output alone.
+  >
+  > Retro corpus-row candidates identified during Feature 016 execution:
+  > 1. `fr-008-pending-commit-reference-vs-validator-hash-match` — Authorization entries with Commit Reference: pending must be updated to the actual boundary commit hash before bundled-boundary-advance validation will accept them; the validator does not treat "pending" as a wildcard match (governance-discipline, passive guidance).
+  > 2. `nfr-budget-calibrated-against-pre-refactor-baseline` — When measuring runtime performance budgets for new validation rules, capture the pre-refactor baseline measurement on a tree without the new rules; otherwise the "actual vs baseline" comparison may conflate governance overhead with other unrelated changes (measurement-discipline, passive guidance).
+  >
+  > This authorization covers review-verdict-signoff only and does NOT authorize retrospective, iteration closeout, or any other lifecycle boundary beyond this point.
+
+---
 # Reviewer Decision: Feature 015 Iteration 002 Review
 
 **Date**: 2026-05-13

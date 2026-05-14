@@ -2,12 +2,12 @@
 
 **Schema**: v1
 **Last Completed Task**: T020 — Iteration 001 validation evidence capture
-**Tasks Remaining**: Repair the FR-006 / FR-009 bundled-boundary defect and re-record trustworthy final-tree validator evidence before review-verdict-signoff can be considered
+**Tasks Remaining**: Retrospective authorization is next; iteration closeout follows retro boundary
 **In Progress**: (none)
 **Baseline Ref**: 9ba35ad002181ce06124597da2c247892c7739ec
-**Updated**: 2026-05-14T09:30:00Z
+**Updated**: 2026-05-14T09:26:39Z
 **Current Phase**: reviewing
-**Iteration Status**: review boundary completed against commit `ed8dea9` with a needs-work verdict; implementation repair is required before review-verdict-signoff, retrospective, or closeout can open
+**Iteration Status**: review-verdict-signoff boundary completed; retrospective authorization is next, followed by retro boundary and iteration closeout
 
 ## Execution Summary
 
@@ -15,7 +15,8 @@
 - Updated the coordinator prompt/checklist/template surfaces for per-boundary authorization, substantive boundary handoffs, and `file:///` navigation expectations while keeping prompt additions within the NFR-002 budget.
 - Extended shared governance helpers, `validate-governance.ps1`, and `handoff-governance-validator.ps1` for canonical authorization parsing, bundled-boundary detection, substantive handoff warnings, bare-path detection, and broken `file:///` checks.
 - Recorded validation evidence in `specs/016-substantive-interaction-model/quickstart.md`, including baseline vs actual validator timing and prompt-line counts.
-- Independent review on 2026-05-14 found a blocking runtime defect: the committed tree still fails `bundled-boundary-advance` on the canonical implementation authorization sequence, so the review verdict is needs-work and the claimed final-tree validator timing is not accepted.
+- Independent review on 2026-05-14 found a blocking runtime defect; implementation repair addressed validator-logic design defects and NFR-001 evidence integrity concerns; subsequent regex hardening resolved boundary-pattern overmatch.
+- Review-verdict-signoff completed on 2026-05-14 following independent human verifier validation against HEAD 59f1b21; NFR-001 +37.5% delta accepted with documented rationale and deferred performance optimization.
 
 ## Notes
 

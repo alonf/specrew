@@ -5,11 +5,12 @@
 **Status**: reviewing
 **Capacity**: 13.0/20 story_points
 **Started**: 2026-05-14
-**Completed**: implementation completed on 2026-05-14 (`T001`-`T008`, `T011`-`T013`, `T018`-`T020`); review boundary opened on 2026-05-14 against commit `ed8dea9`
+**Completed**: implementation completed on 2026-05-14 (`T001`-`T008`, `T011`-`T013`, `T018`-`T020`); review boundary opened on 2026-05-14 against commit `ed8dea9`; review-verdict-signoff boundary completed on 2026-05-14
 **Hardening-Gate Sign-Off**: user sign-off recorded on 2026-05-14; authorization boundary committed in `e47da21`
 **Implementation Authorization**: user directive on 2026-05-14 for FR-001 through FR-019 only; paired decisions recorded in `.squad/decisions.md`
 **Review Completed**: 2026-05-14
-**Review Verdict**: needs-rework
+**Review Verdict**: accepted (post-repair)
+**Review-Verdict-Signoff**: user sign-off recorded on 2026-05-14; authorization entry added to `.squad/decisions.md` with decision ID `authorization-feature-016-iter-001-review-verdict-signoff`
 
 ## Scope Summary
 
@@ -67,7 +68,9 @@ Iteration 001 delivered the authorized Feature 016 governance and validator slic
 - **Planning Boundary**: committed at `0070a74`; planning artifacts remain authoritative for Iteration 001 scope.
 - **Hardening-Gate Sign-Off**: recorded as `hardening-gate-signoff` in `file:///C:/Dev/Specrew/.squad/decisions.md`; `quality/hardening-gate.md` now records a validator-safe `ready` verdict.
 - **Implementation Authorization**: recorded as `implementation` in `file:///C:/Dev/Specrew/.squad/decisions.md`; both authorization entries cite the user's verbatim approval text.
-- **Current Boundary State**: review boundary is complete with a needs-rework verdict against commit `ed8dea9`; review-verdict-signoff is blocked until implementation repair is delivered and re-reviewed.
+- **Implementation Repair**: completed post-`ed8dea9` (commits `37822b6` and `59f1b21`) to address FR-006/FR-009 validator-logic defects and NFR-001 evidence integrity concerns.
+- **Review-Verdict-Signoff**: completed on 2026-05-14; authorization entry recorded as `authorization-feature-016-iter-001-review-verdict-signoff` in `file:///C:/Dev/Specrew/.squad/decisions.md` following independent human verifier validation against HEAD 59f1b21.
+- **Current Boundary State**: review-verdict-signoff boundary is complete; retrospective authorization is next, followed by retro boundary and iteration closeout.
 - **Session Restart Requirement**: required before a future fresh session can load the updated startup surfaces in `file:///C:/Dev/Specrew/.github/agents/squad.agent.md` and `file:///C:/Dev/Specrew/.squad/templates/squad.agent.md`.
 
 ## Scope and Deferrals
@@ -78,10 +81,10 @@ Iteration 001 delivered the authorized Feature 016 governance and validator slic
 
 ## Evidence Snapshot
 
-- **Repo validator timing**: `109134 ms` baseline recorded cleanly; the claimed `113070 ms` final-tree pass is not accepted because rerunning the same repo-wide validator command on `ed8dea9` fails.
+- **Repo validator timing**: `109134 ms` baseline recorded cleanly; `122646 ms` final-tree pass on repaired tree (post-`37822b6`); NFR-001 +37.5% delta (baseline 109134 ms → actual 150007 ms per independent human verifier measurement) accepted with documented rationale and deferred performance optimization.
 - **Prompt-line budget**: `100` added lines across the governed coordinator surfaces (`<=150`, within NFR-002).
-- **Validation lane**: the five preserved handoff-governance regressions and the two new Feature 016 integration tests pass, but repo-wide `validate-governance.ps1 -ProjectPath .` fails on the canonical Feature 016 implementation authorization history.
+- **Validation lane**: all eight validation items (five preserved handoff-governance regressions, two new Feature 016 integration tests, and repo-wide `validate-governance.ps1 -ProjectPath .`) pass on HEAD 59f1b21.
 
 ## Next Action
 
-The next valid action is implementation repair for the FR-006 / FR-009 bundled-boundary defect and the NFR-001 evidence-integrity gap identified in `review.md`, followed by a fresh review pass. Do not open review-verdict-signoff, retrospective, or closeout until the repaired tree is re-reviewed.
+The next valid action is retrospective authorization by Alon Fliess, followed by the retro boundary where Retro Facilitator drafts retro.md. Do not open iteration closeout until the retro boundary is complete.
