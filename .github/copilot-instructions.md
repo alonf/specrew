@@ -44,7 +44,6 @@ Markdown, YAML, PowerShell (Spec Kit extension assets).: Follow standard convent
 ## Recent Changes
 - 016-substantive-interaction-model: Added PowerShell 7 for validator/test automation, Markdown for prompt/contracts/docs, Git commit metadata for boundary-signature inspection + `extensions/specrew-speckit/scripts/validate-governance.ps1`; `extensions/specrew-speckit/scripts/shared-governance.ps1`; `extensions/specrew-speckit/validators/handoff-governance-validator.ps1`; coordinator prompt surfaces under `extensions/specrew-speckit/prompts/` and `.github/agents/`
 - 015-public-readiness-pass: Added PowerShell 7 (script extension), Markdown (all documentation artifacts), Git (tag operations) + `validate-governance.ps1` and `shared-governance.ps1` (existing); `.specrew/config.yml` specrew_version bump from 0.1.0-dev to 0.14.0 (version source-of-truth)
-- 014-handoff-format-scoping: Added PowerShell 7.x automation plus Markdown/YAML/JSON governance artifacts + `extensions/specrew-speckit/validators/handoff-governance-validator.ps1`, coordinator prompt/checklist surfaces under `extensions/specrew-speckit/`, `specs/001-specrew-product/contracts/coordinator-handoff-template.md`, `.github/agents/squad.agent.md`, `.squad/templates/squad.agent.md`, `.specrew/quality/known-traps.md`, existing integration tests under `tests/integration/`
 
 
 <!-- MANUAL ADDITIONS START -->

@@ -13,6 +13,9 @@ baseline that each release number represents.
   PEPs, and TC39 proposals. A future "Public Proposals Surface" feature
   (Proposal 028) will harden the lifecycle integration with soft validators
   and auto status transitions.
+- Pruned stale Recent Changes entry for 014-handoff-format-scoping in
+  `.github/copilot-instructions.md` to keep the rolling window at the two
+  most recent features.
 
 ## 0.16.0
 
