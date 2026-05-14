@@ -2198,15 +2198,13 @@ Iteration 002 planning artifacts (plan.md) were still in `planning` status with 
   > This authorization covers the validator-logic refinements only; it does NOT authorize any new Feature 016 scope expansion, any retrospective or closeout work, or any change outside the validator/test surfaces needed to harden boundary detection and paired-auth matching.
 
 ---
-# Authorization: Feature 016 substantive-interaction-model iteration 001 review-verdict-signoff boundary
-
-**Date**: 2026-05-14T09:26:39.4121782Z
+## 2026-05-14T09:26:39Z — Authorization: review-verdict-signoff
 
 - **Decision ID**: authorization-feature-016-iter-001-review-verdict-signoff
 - **Type**: sign-off
 - **Boundary**: review-verdict-signoff
 - **Approving Human**: Alon Fliess
-- **Recorded At**: 2026-05-14T09:26:39.4121782Z
+- **Recorded At**: 2026-05-14T09:26:39Z
 - **Commit Reference**: 58e3ed0
 - **Authorization Text**:
   > I provide explicit review-verdict-signoff for Feature 016 Iteration 001 following independent post-commit validator verification I performed on HEAD 59f1b21.
