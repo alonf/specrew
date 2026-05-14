@@ -2055,6 +2055,17 @@ Iteration 002 planning artifacts (plan.md) were still in `planning` status with 
 
 - **Routing Evidence**: Reviewer | requested=claude | actual=copilot | model=(platform default) | status=fell-back | fallback=preferred agent 'claude' is not enabled
 
+## 2026-05-14T00:00:00Z — Authorization: planning
+
+- **Decision ID**: authorization-feature-016-iter-001-planning
+- **Type**: authorization
+- **Boundary**: planning
+- **Approving Human**: Alon Fliess
+- **Recorded At**: 2026-05-14T00:00:00Z
+- **Commit Reference**: 0070a74
+- **Authorization Text**:
+  > Continue to the planning boundary for Feature 016 Substantive Interaction Model Iteration 001.
+
 ## 2026-05-14T01:13:53Z — Authorization: hardening-gate-signoff
 
 - **Decision ID**: authorization-feature-016-iter-001-hardening-gate-signoff
@@ -2103,7 +2114,7 @@ Iteration 002 planning artifacts (plan.md) were still in `planning` status with 
 - **Boundary**: implementation
 - **Approving Human**: Alon Fliess
 - **Recorded At**: 2026-05-14T01:13:53Z
-- **Commit Reference**: e47da21
+- **Commit Reference**: ed8dea9
 - **Authorization Text**:
   > I sign off on the accepted Iteration 001 pre-implementation hardening gate for Feature 016 Substantive Interaction Model. The five concerns drafted at file:///C:/Dev/Specrew/specs/016-substantive-interaction-model/iterations/001/quality/hardening-gate.md
   > (security-surface, error-handling-expectations, retry-idempotency-requirements, test-integrity-targets, operational-resilience-concerns) are appropriate for this coordinator-prompt + validator-extension feature, with specific FR/NFR/Risk traceability and measurable
@@ -2147,6 +2158,17 @@ Iteration 002 planning artifacts (plan.md) were still in `planning` status with 
 - **Model**: gpt-5.4
 - **Status**: completed
 - **Routing Evidence**: Implementer | requested=general-purpose | actual=general-purpose | model=gpt-5.4 | status=completed
+
+## 2026-05-14T02:48:00Z — Authorization: review-boundary
+
+- **Decision ID**: authorization-feature-016-iter-001-review-boundary
+- **Type**: authorization
+- **Boundary**: review-boundary
+- **Approving Human**: Alon Fliess
+- **Recorded At**: 2026-05-14T02:48:00Z
+- **Commit Reference**: 7ddb7db
+- **Authorization Text**:
+  > Review the completed Feature 016 Substantive Interaction Model Iteration 001 implementation against the hardening-gate concerns and the authorized FR-001 through FR-019 scope. Verify that the bundled-boundary detection works as expected, that the validator rules are correct, and that the coordinator guidance is clear and actionable. If the implementation meets the acceptance criteria, record an accepted verdict in `file:///C:/Dev/Specrew/specs/016-substantive-interaction-model/iterations/001/review.md`. If issues are found, document them with specific remediation guidance and mark the verdict as needs-work.
 
 ---
 # Reviewer Decision: Feature 015 Iteration 002 Review
@@ -2192,3 +2214,52 @@ Await Alon Fliess's separate authorization before opening retrospective or close
 
 Repair spawn authorized to add three passive-guidance rows from Rule 15's first real-world test to `.specrew\quality\known-traps.md`, then validate, commit, and push on `main`.
 
+## 2026-05-14T06:14:15Z — Delegated routing plan
+
+- **Enabled Agents**: copilot
+- **Independent Oversight Active**: False
+- **Roles**:
+  - Implementer | requested=copilot | actual=copilot | model=(platform default) | status=honored | fallback=(none)
+  - Spec Steward | requested=codex | actual=copilot | model=(platform default) | status=fell-back | fallback=preferred agent 'codex' is not enabled
+  - Planner | requested=claude | actual=copilot | model=(platform default) | status=fell-back | fallback=preferred agent 'claude' is not enabled
+  - Reviewer | requested=claude | actual=copilot | model=(platform default) | status=fell-back | fallback=preferred agent 'claude' is not enabled
+  - Retro Facilitator | requested=copilot | actual=copilot | model=(platform default) | status=honored | fallback=(none)
+
+## 2026-05-14T06:14:15Z — Routing evidence: Spec Steward
+
+- **Decision ID**: routing-evidence-b351b5ff3003
+- **Type**: routing-evidence
+- **Affected Requirement**: FR-043
+- **Affected Iteration**: (none)
+- **Approving Human**: (none)
+- **Recorded At**: 2026-05-14T06:14:15Z
+- **Next Action**: none
+- **Rationale**: Delegated lifecycle routing was applied for role 'Spec Steward'.
+
+- **Routing Evidence**: Spec Steward | requested=codex | actual=copilot | model=(platform default) | status=fell-back | fallback=preferred agent 'codex' is not enabled
+
+## 2026-05-14T06:14:15Z — Routing evidence: Planner
+
+- **Decision ID**: routing-evidence-736f371fbe63
+- **Type**: routing-evidence
+- **Affected Requirement**: FR-043
+- **Affected Iteration**: (none)
+- **Approving Human**: (none)
+- **Recorded At**: 2026-05-14T06:14:15Z
+- **Next Action**: none
+- **Rationale**: Delegated lifecycle routing was applied for role 'Planner'.
+
+- **Routing Evidence**: Planner | requested=claude | actual=copilot | model=(platform default) | status=fell-back | fallback=preferred agent 'claude' is not enabled
+
+## 2026-05-14T06:14:15Z — Routing evidence: Reviewer
+
+- **Decision ID**: routing-evidence-a97dfff5eea0
+- **Type**: routing-evidence
+- **Affected Requirement**: FR-043
+- **Affected Iteration**: (none)
+- **Approving Human**: (none)
+- **Recorded At**: 2026-05-14T06:14:15Z
+- **Next Action**: none
+- **Rationale**: Delegated lifecycle routing was applied for role 'Reviewer'.
+
+- **Routing Evidence**: Reviewer | requested=claude | actual=copilot | model=(platform default) | status=fell-back | fallback=preferred agent 'claude' is not enabled

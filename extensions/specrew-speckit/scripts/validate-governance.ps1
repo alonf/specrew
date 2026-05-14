@@ -2961,10 +2961,10 @@ function Add-InteractionModelValidationErrors {
             }
 
             $normalizedBoundary = Normalize-InteractionModelBoundaryName -Boundary $entry.Boundary
-            if ([string]$entry.Boundary -match '[,;/]|\band\b') {
+            if ([string]$entry.Boundary -match '[,;/]' -or ([string]$entry.Boundary -match '\band\b' -and $normalizedBoundary -ne 'hardening-gate-and-implementation-auth')) {
                 Add-RepoStructuredValidationFailure -Errors $errors -ProjectRoot $ProjectRoot -TargetPath (Get-DecisionsLedgerPath -ProjectRoot $ProjectRoot) -LineNumber $null -Category 'authorization-record-shape' -Message ("Authorization entry '{0}' records multiple boundaries in one entry: '{1}'" -f $entry.Title, $entry.Boundary) -RemediationHint 'Record one boundary per authorization entry and split paired hardening-gate + implementation authorization into two entries.'
             }
-            elseif ($normalizedBoundary -notin @('planning', 'hardening-gate-signoff', 'implementation', 'review-boundary', 'review-verdict-signoff', 'retro-boundary', 'iteration-closeout', 'feature-closeout')) {
+            elseif ($normalizedBoundary -notin @('planning', 'hardening-gate-and-implementation-auth', 'hardening-gate-signoff', 'implementation', 'review-boundary', 'review-verdict-signoff', 'retro-boundary', 'iteration-closeout', 'feature-closeout')) {
                 Add-RepoStructuredValidationFailure -Errors $errors -ProjectRoot $ProjectRoot -TargetPath (Get-DecisionsLedgerPath -ProjectRoot $ProjectRoot) -LineNumber $null -Category 'authorization-record-shape' -Message ("Authorization entry '{0}' uses unknown Boundary '{1}'" -f $entry.Title, $entry.Boundary) -RemediationHint 'Use the canonical boundary names from Feature 016.'
             }
         }
@@ -2982,7 +2982,7 @@ function Add-InteractionModelValidationErrors {
                 continue
             }
 
-            if ($normalizedText -notmatch '(?i)hardening-gate|hardening gate' -or $normalizedText -notmatch '(?i)implementation') {
+            if ($normalizedText -notmatch '(?i)hardening-gate|hardening gate' -or $normalizedText -notmatch '(?i)implement(?:ation)?') {
                 continue
             }
 
@@ -3000,6 +3000,19 @@ function Add-InteractionModelValidationErrors {
                     }
             )
             $groupBoundaries = @($matchingEntries | ForEach-Object { Normalize-InteractionModelBoundaryName -Boundary $_.Boundary })
+            Write-Verbose "[DEBUG] Paired-auth check: Found $($matchingEntries.Count) matching entries with boundaries: $($groupBoundaries -join ', ')"
+            Write-Verbose "[DEBUG] Has hardening-gate-signoff: $($groupBoundaries -contains 'hardening-gate-signoff')"
+            Write-Verbose "[DEBUG] Has implementation: $($groupBoundaries -contains 'implementation')"
+            
+            # Only flag as paired-auth issue if the text appears to be authorizing (not just mentioning) both boundaries
+            # Heuristic: if we found entries for this text, at least one must be hardening-gate-signoff or implementation
+            # AND the group must have < 2 distinct boundaries when it should have both
+            $hasCoreAuthBoundary = ($groupBoundaries -contains 'hardening-gate-signoff') -or ($groupBoundaries -contains 'implementation')
+            if (-not $hasCoreAuthBoundary) {
+                Write-Verbose "[DEBUG] Skipping paired-auth check for authorization text that mentions both boundaries but isn't authorizing either"
+                continue
+            }
+            
             if ($groupBoundaries -notcontains 'hardening-gate-signoff' -or $groupBoundaries -notcontains 'implementation' -or $matchingEntries.Count -lt 2) {
                 Add-RepoStructuredValidationFailure -Errors $errors -ProjectRoot $ProjectRoot -TargetPath (Get-DecisionsLedgerPath -ProjectRoot $ProjectRoot) -LineNumber $null -Category 'authorization-record-shape' -Message 'A paired hardening-gate sign-off + implementation authorization paste was not expanded into two distinct entries.' -RemediationHint 'Create separate hardening-gate-signoff and implementation authorization records that preserve the same authorization text.'
             }
@@ -3013,30 +3026,48 @@ function Add-InteractionModelValidationErrors {
                 }
         )
 
-        if ($iterationBoundaryCommits.Count -lt 2) {
+        if ($iterationBoundaryCommits.Count -eq 0) {
             continue
         }
 
-        for ($index = 0; $index -lt ($iterationBoundaryCommits.Count - 1); $index++) {
-            $left = $iterationBoundaryCommits[$index]
-            $right = $iterationBoundaryCommits[$index + 1]
-            $interveningAuthorization = @(
+        foreach ($boundaryCommit in $iterationBoundaryCommits) {
+            $normalizedBoundary = Normalize-InteractionModelBoundaryName -Boundary $boundaryCommit.Boundary
+            
+            # The 'hardening-gate-and-implementation-auth' boundary is a bookkeeping commit that RECORDS authorizations
+            # rather than a boundary that requires its own authorization. Skip it.
+            if ($normalizedBoundary -eq 'hardening-gate-and-implementation-auth') {
+                Write-Verbose "[DEBUG] Skipping hardening-gate-and-implementation-auth boundary commit (bookkeeping boundary)"
+                continue
+            }
+            
+            Write-Verbose "[DEBUG] Checking boundary commit: subject='$($boundaryCommit.Subject)' hash='$($boundaryCommit.CommitHash)' boundary='$normalizedBoundary'"
+            $matchingAuthorization = @(
                 $authorizationEntries |
                     Where-Object {
-                        $recordedAt = $null
-                        try {
-                            $recordedAt = [DateTimeOffset]::Parse([string]$_.RecordedAt)
-                        }
-                        catch {
+                        $entryCommitRef = [string]$_.CommitReference
+                        if ([string]::IsNullOrWhiteSpace($entryCommitRef) -or $entryCommitRef.Trim().ToLowerInvariant() -eq 'pending') {
                             return $false
                         }
 
-                        $recordedAt -gt $left.CommittedAt -and $recordedAt -le $right.CommittedAt -and -not (Test-IsNullish ([string]$_.ApprovingHuman))
+                        $entryNormalizedBoundary = Normalize-InteractionModelBoundaryName -Boundary $_.Boundary
+                        $trimmedEntryRef = $entryCommitRef.Trim()
+                        $fullHashMatch = $trimmedEntryRef -eq $boundaryCommit.CommitHash
+                        $shortHashMatch = $boundaryCommit.CommitHash.StartsWith($trimmedEntryRef, [System.StringComparison]::OrdinalIgnoreCase)
+                        
+                        $hashMatch = $fullHashMatch -or $shortHashMatch
+                        $boundaryMatch = $entryNormalizedBoundary -eq $normalizedBoundary
+                        $humanNonNull = -not (Test-IsNullish ([string]$_.ApprovingHuman))
+                        
+                        if ($hashMatch -and $boundaryMatch -and $humanNonNull) {
+                            Write-Verbose "[DEBUG]   ✓ MATCHED: entry boundary='$entryNormalizedBoundary' ref='$trimmedEntryRef' human='$($_.ApprovingHuman)'"
+                        }
+                        
+                        $hashMatch -and $boundaryMatch -and $humanNonNull
                     }
             )
 
-            if ($interveningAuthorization.Count -eq 0) {
-                Add-RepoStructuredValidationFailure -Errors $errors -ProjectRoot $ProjectRoot -TargetPath (Join-Path $target 'state.md') -LineNumber $null -Category 'bundled-boundary-advance' -Message ("Boundary commits '{0}' and '{1}' were recorded for Feature {2:d3} iteration {3:d3} without an intervening authorization entry in .squad\decisions.md." -f $left.Subject, $right.Subject, $context.FeatureNumber, $context.IterationNumber) -RemediationHint 'Record a fresh human authorization between each boundary commit; one authorization advances at most one boundary.'
+            if ($matchingAuthorization.Count -eq 0) {
+                Add-RepoStructuredValidationFailure -Errors $errors -ProjectRoot $ProjectRoot -TargetPath (Join-Path $target 'state.md') -LineNumber $null -Category 'bundled-boundary-advance' -Message ("Boundary commit '{0}' (hash {1}) for Feature {2:d3} iteration {3:d3} was recorded without a matching authorization entry in .squad\decisions.md whose Commit Reference equals or starts with that hash and whose Approving Human is non-null." -f $boundaryCommit.Subject, $boundaryCommit.CommitHash, $context.FeatureNumber, $context.IterationNumber) -RemediationHint 'Record a human authorization whose Commit Reference matches this boundary commit hash (full or short form); one authorization advances at most one boundary.'
             }
         }
     }

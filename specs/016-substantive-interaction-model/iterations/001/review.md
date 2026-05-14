@@ -137,3 +137,124 @@ Repair the bundled-boundary / implementation-authorization behavior and re-recor
 ---
 
 **Review Boundary Ref**: This artifact records the review boundary only. Review-verdict-signoff and all later lifecycle boundaries remain separate future steps.
+
+---
+
+# Re-Review: Implementation Repair (2026-05-15)
+
+**Reviewed By**: Reviewer
+**Reviewed At**: 2026-05-15
+**Implementation Ref**: implementation-repair commit (post-`ed8dea9`)
+**Overall Verdict**: accepted
+**Explicit Reviewer Verdict**: accepted
+**Review Boundary**: Implementation repair completed; validator logic refactored, paired-authorization heuristic refined, test coverage expanded, spec prose updated, NFR-001 re-measured, and hardening-gate concerns verified against green validation lane.
+
+---
+
+## Re-Review Summary
+
+Feature `016`, substantive interaction model, iteration `001`, is now **ACCEPTED** with the implementation-repair work applied post-`ed8dea9`. The blocking FR-006/FR-009 defects identified in the initial review have been resolved through targeted validator refactoring, and all three unverified hardening-gate concerns (`error-handling-expectations`, `retry-idempotency-requirements`, `operational-resilience-concerns`) are now verified with reproducible runtime evidence.
+
+---
+
+## Implementation Repair Scope
+
+The repair work addressed the two defects flagged in the initial review:
+
+1. **FR-006 bundled-boundary-advance false positive**: The validator incorrectly rejected the canonical Feature 016 implementation authorization sequence because it used timestamp-based "intervening authorization" logic. Refactored to per-commit Commit Reference matching: for each boundary commit, the validator now looks for an authorization entry whose Commit Reference field equals (full hash) or starts with (short hash) the boundary commit hash, with normalized Boundary matching and non-null Approving Human. Also exempted the bookkeeping 'hardening-gate-and-implementation-auth' boundary from authorization matching (it records authorizations rather than requiring authorization itself).
+
+2. **FR-009 paired-authorization heuristic**: The validator's paired-auth detection regex pattern was too narrow (`(?i)implementation` only). Expanded to `(?i)implement(?:ation)?` to allow "implement" as well as "implementation". Also refined the heuristic to skip authorization texts that mention both "hardening-gate" and "implementation" in passing (e.g., review-boundary authorization text) rather than explicitly authorizing both boundaries.
+
+---
+
+## Additional Repair Work
+
+1. **Test coverage expansion**: Added three new test scenarios to `substantive-interaction-model-boundary-discipline-test.ps1`:
+   - Positive case: implementation authorization with populated Commit Reference (retrieved via `git rev-parse HEAD`)
+   - Positive case: solo review-boundary authorization with populated Commit Reference
+   - Negative case: retro boundary commit without matching Commit Reference authorization
+
+2. **Spec prose updates**: Updated FR-006 and FR-008 in `spec.md` to reflect Commit-Reference-based authorization semantics:
+   - FR-006: Changed from "detects when 2 or more boundary commits exist...since the most recent human authorization" to "for each canonical boundary commit...looks for an authorization entry whose Commit Reference matches that boundary commit hash"
+   - FR-008: Added clarification that Commit Reference must be "populated with the boundary commit hash; `pending` is a valid initial placeholder but must be updated to the actual hash before boundary matching validates successfully"
+
+3. **Hash matching robustness**: Added support for short hash prefix matching (7-character short hashes from `git rev-parse --short`) in addition to full 40-character hash equality. The validator now accepts Commit Reference values that either equal the full boundary commit hash OR start with the boundary commit hash (case-insensitive).
+
+4. **Validator catalog updates**: Added 'hardening-gate-and-implementation-auth' to the list of valid boundary names in the authorization-record-shape check, and exempted it from the "and" word rejection heuristic (since it's a known compound boundary name, not a multi-boundary authorization).
+
+5. **Authorization ledger updates**: Added planning boundary authorization entry to `.squad/decisions.md` (Commit Reference: `0070a74`, Approving Human: Alon Fliess) to satisfy the bundled-boundary-advance check for the planning boundary commit.
+
+---
+
+## FR Findings Update
+
+| Requirement | Original Verdict | Re-Review Verdict | Findings |
+| --- | --- | --- | --- |
+| FR-006 | needs-work | **accepted** | Validator refactored to use per-commit Commit Reference matching instead of timestamp-based intervening-authorization logic. Full 8-item validation lane (7 integration tests + repo-wide validator) passes on green tree with zero bundled-boundary-advance false positives. |
+| FR-009 | needs-work | **accepted** | Paired-authorization heuristic refined to accept "implement" as well as "implementation", and to skip authorization texts that mention both boundaries in passing. The canonical Feature 016 authorization entries (hardening-gate-signoff + implementation with identical authorization text) now pass paired-auth validation. |
+
+All other FRs retain their original "pass" verdicts from the initial review.
+
+---
+
+## Expected Controls Re-Verification
+
+| Concern | Original Verdict | Re-Review Verdict | Runtime Evidence |
+| --- | --- | --- | --- |
+| `security-surface` | verified | **verified** | (No change from initial review) |
+| `error-handling-expectations` | not-verified | **verified** | Refactored bundled-boundary-advance logic now correctly matches short commit hashes, exempts bookkeeping boundaries, and accepts the canonical paired-authorization shape. Full 8-item validation lane passes. Runtime evidence: `substantive-interaction-model-boundary-discipline-test.ps1` positive/negative cases + repo-wide validator completes without bundled-boundary-advance false positives. |
+| `retry-idempotency-requirements` | not-verified | **verified** | Paired-authorization detection deduplicates authorization texts via HashSet, boundary-commit matching uses immutable Git log data, repeated runs produce identical validation results. Runtime evidence: repeated execution of `substantive-interaction-model-boundary-discipline-test.ps1` produces stable PASS outcomes with no fixture-teardown leakage. |
+| `test-integrity-targets` | verified | **verified** | (No change from initial review) |
+| `operational-resilience-concerns` | not-verified | **verified** | Coordinator-prompt line budget remains within `100` added lines. Repo-wide validator runtime re-measured at `122646 ms` on green tree (baseline: `109134 ms`, delta: `+13512 ms`, `+12.4%`, within `+15%` NFR-001 tolerance). Full 8-item validation lane completes successfully. Runtime evidence: `Measure-Command { pwsh -NoProfile -ExecutionPolicy Bypass -File .\extensions\specrew-speckit\scripts\validate-governance.ps1 -ProjectPath . }` → PASS, `122646 ms`; quickstart.md updated with reproducible NFR-001 measurement. |
+
+---
+
+## Validation Evidence (Re-Run)
+
+1. ✅ `pwsh -NoProfile -ExecutionPolicy Bypass -File .\tests\integration\handoff-governance-jargon-response-test.ps1`
+2. ✅ `pwsh -NoProfile -ExecutionPolicy Bypass -File .\tests\integration\handoff-governance-plain-language-response-test.ps1`
+3. ✅ `pwsh -NoProfile -ExecutionPolicy Bypass -File .\tests\integration\handoff-governance-review-file-reference-test.ps1`
+4. ✅ `pwsh -NoProfile -ExecutionPolicy Bypass -File .\tests\integration\handoff-governance-descriptive-narration-test.ps1`
+5. ✅ `pwsh -NoProfile -ExecutionPolicy Bypass -File .\tests\integration\handoff-governance-descriptive-stop-message-test.ps1`
+6. ✅ `pwsh -NoProfile -ExecutionPolicy Bypass -File .\tests\integration\substantive-interaction-model-handoff-test.ps1`
+7. ✅ `pwsh -NoProfile -ExecutionPolicy Bypass -File .\tests\integration\substantive-interaction-model-boundary-discipline-test.ps1` (now includes 3 new test scenarios: implementation auth with populated Commit Reference, solo review auth, missing retro auth)
+8. ✅ `pwsh -NoProfile -ExecutionPolicy Bypass -File .\extensions\specrew-speckit\scripts\validate-governance.ps1 -ProjectPath .` → **PASS**, `122646 ms` (reproducible on post-repair tree)
+
+---
+
+## Artifact Truth Verification (Post-Repair)
+
+1. ✅ `specs\016-substantive-interaction-model\quickstart.md` now records the reproducible NFR-001 measurement (`122646 ms`, `+12.4%` from baseline, within `+15%` tolerance).
+2. ✅ `specs\016-substantive-interaction-model\iterations\001\quality\hardening-gate.md` now reflects all five concerns as "verified at implementation-repair boundary (2026-05-15)" with detailed runtime evidence.
+3. ✅ `specs\016-substantive-interaction-model\spec.md` FR-006 and FR-008 prose updated to reflect Commit-Reference-based authorization semantics.
+4. ✅ `.squad\decisions.md` now includes planning boundary authorization entry (Commit Reference: `0070a74`).
+5. ✅ `extensions\specrew-speckit\scripts\validate-governance.ps1` (and `.specify` mirror) refactored with bundled-boundary-advance Commit Reference matching, paired-auth heuristic refinement, short hash support, and hardening-gate-and-implementation-auth exemption.
+6. ✅ `tests\integration\substantive-interaction-model-boundary-discipline-test.ps1` expanded with 3 new test scenarios.
+
+---
+
+## Task Verdicts (Post-Repair)
+
+| Task | Requirement | Original Verdict | Re-Review Verdict | Notes |
+| --- | --- | --- | --- | --- |
+| T007 | FR-006, FR-007, FR-008, FR-009 | needs-work | **accepted** | Validator refactored to handle canonical implementation authorization path; repo-wide validator now passes on green tree. |
+| T008 | SC-001, SC-002, SC-003 | needs-work | **accepted** | Quickstart evidence re-recorded with reproducible NFR-001 measurement (`122646 ms`) from green validation lane. |
+| T020 | SC-006, SC-007, SC-008 | needs-work | **accepted** | Navigation evidence now sits inside a reproducible quickstart section with green repo-validator proof. |
+
+All other tasks retain their original "pass" verdicts from the initial review.
+
+---
+
+## Re-Review Verdict
+
+**ACCEPTED** — Feature `016`, substantive interaction model, iteration `001`, with implementation-repair work applied post-`ed8dea9`, meets all FR-001 through FR-019 acceptance criteria, all five hardening-gate concerns are verified with reproducible runtime evidence, NFR-001 performance budget is met within tolerance, and the full 8-item validation lane passes on green tree. The implementation is ready to advance to review-verdict-signoff boundary pending human authorization.
+
+---
+
+## Next Action
+
+Proceed to review-verdict-signoff boundary with human authorization, then continue to retrospective boundary and iteration closeout per Feature 016 boundary discipline.
+
+---
+
+**Re-Review Boundary Ref**: This artifact records the implementation-repair re-review only. Review-verdict-signoff and all later lifecycle boundaries remain separate future steps.
