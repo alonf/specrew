@@ -2869,7 +2869,7 @@ All recommendations are documented with implementation owners and timelines.
 - **Boundary**: hardening-gate-signoff
 - **Approving Human**: Alon Fliess
 - **Recorded At**: 2026-05-14T13:11:02Z
-- **Commit Reference**: a321c77
+- **Commit Reference**: 1c3d91d
 - **Authorization Text**:
   > I sign off on the accepted Iteration 002 pre-implementation hardening gate for Feature 016 Substantive Interaction Model and authorize proceeding to implementation.
   >
@@ -2884,7 +2884,7 @@ All recommendations are documented with implementation owners and timelines.
 - **Boundary**: implementation
 - **Approving Human**: Alon Fliess
 - **Recorded At**: 2026-05-14T13:11:02Z
-- **Commit Reference**: a321c77
+- **Commit Reference**: 1c3d91d
 - **Authorization Text**:
   > I sign off on the accepted Iteration 002 pre-implementation hardening gate for Feature 016 Substantive Interaction Model and authorize proceeding to implementation.
   >
