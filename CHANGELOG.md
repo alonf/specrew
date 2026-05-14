@@ -4,6 +4,16 @@ Retroactive alpha release history for shipped Specrew features. `.specrew\config
 is the canonical source for the active version; this file records the feature
 baseline that each release number represents.
 
+## Unreleased
+
+- Added `proposals/` surface as Specrew's public design pipeline. Initial
+  promotion: 29 numbered proposals plus supporting README, INDEX, and
+  template, ranging from shipped features (001-007) to draft features
+  (008-012) to candidate ideas (013-029). Pattern follows Rust RFCs, Python
+  PEPs, and TC39 proposals. A future "Public Proposals Surface" feature
+  (Proposal 028) will harden the lifecycle integration with soft validators
+  and auto status transitions.
+
 ## 0.16.0
 
 - Feature 016 — Substantive Interaction Model: established boundary discipline across three linked pillars (boundary-discipline, essence-in-console, click-through-navigation), formalized post-commit verification protocol with UTC seconds-precision timestamps, added stale-reference scan mandate after boundary commits, promoted Feature 016 Iteration 2 graduation portion and accepted FR-008/FR-020-FR-024 carryovers. Refs: feature branch `016-substantive-interaction-model`; feature closeout boundary commit (this PR).
