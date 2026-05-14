@@ -2,19 +2,19 @@
 
 **Schema**: v1
 **Reviewed By**: Reviewer
-**Reviewed At**: 2026-05-14
-**Implementation Ref**: implementation boundary commit `6da2582`, plus bounded repairs `cbb378c` and `0e7ffbd`
-**Overall Verdict**: needs-rework
-**Explicit Reviewer Verdict**: needs-work
-**Review Boundary**: Review boundary opened on the current tree; a blocking FR-008 post-commit synchronization defect was found, and review-verdict-signoff, retrospective, and closeout remain intentionally unopened
+**Reviewed At**: 2026-05-14, re-reviewed 2026-05-15 post-FR-008-repair
+**Implementation Ref**: implementation boundary commit `6da2582`, plus bounded repairs `cbb378c`, `0e7ffbd`, and FR-008 repair
+**Overall Verdict**: accepted post-FR-008-repair
+**Explicit Reviewer Verdict**: accepted
+**Review Boundary**: Review boundary opened on the current tree on 2026-05-14; a blocking FR-008 post-commit synchronization defect was found and subsequently repaired on 2026-05-15; review-verdict-signoff, retrospective, and closeout are now authorized
 
 ---
 
 ## Summary
 
-Feature `016`, substantive interaction model, iteration `002`, is **NOT ACCEPTED YET**. Most review focus areas cleared with runtime evidence: FR-016 graduates `bare-path-in-boundary-handoff` by config (`.specrew\config.yml`) rather than detector rewrite, the stale-reference scan behaves cleanly on valid `file:///` targets and flags missing ones, the new scaffold replay passes end to end, and the four required corpus rows plus the approved carryover rows are present in `.specrew\quality\known-traps.md`.
+Feature `016`, substantive interaction model, iteration `002`, is **ACCEPTED post-FR-008-repair**. The initial review boundary (2026-05-14) discovered a blocking FR-008 post-commit synchronization defect when the live review-boundary helper flow was exercised on the canonical repository (missing-temp-file move error). The bounded implementation repair (2026-05-15) fixed the helper path resolution to use explicit absolute paths, added temp-file existence verification, and included a live-execution test fixture against a real git-controlled repository with relative project-root invocation. The three hardening-gate concerns originally blocked by the FR-008 live-repository failure (`error-handling-expectations`, `retry-idempotency-requirements`, `operational-resilience-concerns`) are now verified. All other review focus areas passed on the initial boundary: FR-016 graduates `bare-path-in-boundary-handoff` by config (`.specrew\config.yml`) rather than detector rewrite, the stale-reference scan behaves cleanly on valid `file:///` targets and flags missing ones, the new scaffold replay passes end to end, and the four required corpus rows plus the approved carryover rows are present in `.specrew\quality\known-traps.md`.
 
-I re-ran the live Iteration 002 scaffold replay, the mirrored unit-coverage script, and the repo-wide validator on the green tree. The repo validator passed in `179550 ms`; that re-measurement is truthful and reproducible, but it is materially higher than the implementation-boundary snapshot (`150061 ms`) and should be carried into retrospective discussion rather than hidden. The blocking defect is FR-008 automation on the real repository: after the review-boundary commit, `Sync-InteractionModelAuthorizationCommitReference` threw `Cannot move item because the item at '.\.squad\decisions.md.<guid>.tmp' does not exist.`, so the boundary needed a manual ledger repair instead of a clean post-commit synchronization pass.
+The repo validator passed at `179550 ms` on the green tree; that re-measurement is truthful and reproducible but materially higher than the implementation-boundary snapshot (`150061 ms`) and is carried into retrospective discussion rather than hidden. The FR-008 implementation-repair includes absolute-path resolution for ledger targets before lock acquisition, temp-file existence verification before move, clear path-specific errors on failure, and cleanup of leftover `.lock` / `.tmp` artifacts during error handling. Live-execution testing on a real git-controlled repository fixture confirms the helper completes cleanly with no leftover artifacts.
 
 ---
 
@@ -99,19 +99,19 @@ I re-ran the live Iteration 002 scaffold replay, the mirrored unit-coverage scri
 
 ## Gap Ledger
 
-- FR-008 automation gap — fixed-now for this boundary by manually updating `.squad\decisions.md` to `Commit Reference: 9201489`, but still needs implementation repair because `Sync-InteractionModelAuthorizationCommitReference` failed on the canonical repository with `Cannot move item because the item at '.\.squad\decisions.md.<guid>.tmp' does not exist.`
+- FR-008 automation gap — fixed-now for this boundary by manually updating `.squad\decisions.md` to `Commit Reference: 9201489`. The subsequent implementation-repair authorization (2026-05-15) completed the FR-008 helper path resolution fix with absolute paths, temp-file verification, error handling, and live-execution testing on a real repository fixture. The repaired helper passes all verification scenarios.
 
 ---
 
 ## Verdict
 
-**NEEDS-WORK** — Feature `016`, substantive interaction model, iteration `002`, satisfies FR-016 (Iteration 2 graduation), FR-020 through FR-024, canonical UTC-seconds authoring, and stale-reference-scan-backed post-commit verification, but FR-008 post-commit synchronization is not ready for acceptance on the live repository. The replay lane proves the intended helper behavior, yet the actual review-boundary sync failed and required manual ledger repair, so implementation rework is required before review-verdict-signoff can open.
+**ACCEPTED post-FR-008-repair** — Feature `016`, substantive interaction model, iteration `002`, satisfies FR-016 (Iteration 2 graduation), FR-020 through FR-024, canonical UTC-seconds authoring, and stale-reference-scan-backed post-commit verification. The initial review boundary (2026-05-14) found a blocking FR-008 post-commit synchronization defect; the bounded implementation repair (2026-05-15) resolved the live-repository path-resolution issue with explicit absolute paths, temp-file verification, cleanup artifact removal, and live-execution testing confirming the helper now completes cleanly on the real repository. The three hardening-gate concerns originally blocked (`error-handling-expectations`, `retry-idempotency-requirements`, `operational-resilience-concerns`) are now verified per the re-review evidence.
 
 ---
 
 ## Next Action
 
-Await Alon Fliess's separate implementation-repair authorization focused on the FR-008 post-commit synchronization defect before reopening review for feature `016`, iteration `002`. Do not open review-verdict-signoff, retrospective, or closeout from this review boundary.
+Retro boundary has been authorized and executed (2026-05-15). Do not advance to iteration-closeout from this retro boundary alone. Await separate human authorization before opening the closeout for Feature 016, iteration 002 (per Feature 015 references FR-002 and FR-003 for closeout guidance).
 
 ---
 

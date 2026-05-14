@@ -6,10 +6,10 @@
 **Iteration Ref**: `specs/016-substantive-interaction-model/iterations/002`
 **Requested Review Class**: `strongest-available`
 **Effective Review Class**: `strongest-available`
-**Overall Verdict**: `ready`
-**Approval Ref**: `—`
-**Reviewed By**: Alon Fliess
-**Reviewed At**: 2026-05-14
+**Overall Verdict**: `verified`
+**Approval Ref**: `2026-05-15T00:00:00Z` (retro-boundary authorization)
+**Reviewed By**: Alon Fliess, Reviewer
+**Reviewed At**: 2026-05-15 (post-FR-008-repair verification)
 
 ## Concern Review
 
