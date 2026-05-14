@@ -2254,6 +2254,32 @@ Iteration 002 planning artifacts (plan.md) were still in `planning` status with 
   >
   > This authorization covers retro-boundary work only. Iteration closeout remains a separate authorization boundary.
 
+## 2026-05-14T11:27:03Z — Authorization: iteration-closeout
+
+- **Decision ID**: authorization-feature-016-iter-001-iteration-closeout
+- **Type**: authorization
+- **Boundary**: iteration-closeout
+- **Approving Human**: Alon Fliess
+- **Recorded At**: 2026-05-14T11:27:03Z
+- **Commit Reference**: f60295a
+- **Authorization Text**:
+  > I authorize the iteration-closeout boundary for Feature 016 Iteration 001.
+  >
+  > **Deliverables Summary**: 
+  > - FR-001 through FR-019 delivered and accepted via review-verdict-signoff on 2026-05-14
+  > - Six named corpus-row candidates identified during iteration execution: fr-008-pending-commit-reference-vs-validator-hash-match, nfr-budget-calibrated-against-pre-refactor-baseline, regex-boundary-patterns-require-anchoring, validator-idempotency-requires-immutable-data-sources, authorization-text-capture-preserves-human-intent-without-leakage, single-boundary-authorization-discipline-prevents-creeping-scope
+  > - Three estimation learnings recorded in retro.md: effort-calibration stable at 13.0 points, velocity sustainable at 13.0 points per iteration, quality shock-absorber recommendation of 5-10 point reserve for discovery-time defects
+  >
+  > **Iteration Completion State**: 
+  > - All authorized implementation tasks T001-T008, T011-T013, T018-T020 complete with accepted review verdict (post-repair)
+  > - Retrospective boundary completed on 2026-05-14T10:13:30Z with substantive lessons and corpus-row candidates recorded in retro.md
+  > - NFR-001 +37.5% delta accepted with documented performance rationale; performance optimization deferred to future optimization work
+  >
+  > **Scope Clarity for Iteration 2**: 
+  > - Iteration 2 FR-020 through FR-024 remains separately authorized
+  > - No portion of Iteration 1 scope carries over pending
+  > - Carryover items for post-commit automation planning: pending→post-commit automation, validator performance optimization, fractional-second timestamp support or format requirement, post-commit verification formalization, stale-reference scan mandate
+
 ---
 # Reviewer Decision: Feature 015 Iteration 002 Review
 

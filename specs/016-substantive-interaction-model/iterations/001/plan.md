@@ -5,13 +5,14 @@
 **Status**: retrospective-complete
 **Capacity**: 13.0/20 story_points
 **Started**: 2026-05-14
-**Completed**: implementation completed on 2026-05-14 (`T001`-`T008`, `T011`-`T013`, `T018`-`T020`); review boundary opened on 2026-05-14 against commit `ed8dea9`; review-verdict-signoff boundary completed on 2026-05-14
+**Completed**: implementation completed on 2026-05-14 (`T001`-`T008`, `T011`-`T013`, `T018`-`T020`); review boundary opened on 2026-05-14 against commit `ed8dea9`; review-verdict-signoff boundary completed on 2026-05-14; retrospective boundary completed on 2026-05-14T10:13:30Z; iteration-closeout boundary authorized on 2026-05-14T11:27:03Z
 **Hardening-Gate Sign-Off**: user sign-off recorded on 2026-05-14; authorization boundary committed in `e47da21`
 **Implementation Authorization**: user directive on 2026-05-14 for FR-001 through FR-019 only; paired decisions recorded in `.squad/decisions.md`
 **Review Completed**: 2026-05-14
 **Review Verdict**: accepted (post-repair)
 **Review-Verdict-Signoff**: user sign-off recorded on 2026-05-14; authorization entry added to `.squad/decisions.md` with decision ID `authorization-feature-016-iter-001-review-verdict-signoff`
 **Retrospective Boundary**: retro.md drafted on 2026-05-14T10:13:30Z; retrospective boundary completed with authorization-feature-016-iter-001-retro-boundary entry
+**Iteration-Closeout Boundary**: authorized on 2026-05-14T11:27:03Z; iteration-closeout boundary commit pending
 
 ## Scope Summary
 
