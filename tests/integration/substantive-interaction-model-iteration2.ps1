@@ -155,8 +155,6 @@ try {
 
     $fixtureIteration = Join-Path $scratchRoot 'specs\016-substantive-interaction-model\iterations\002'
     $statePath = Join-Path $fixtureIteration 'state.md'
-    Copy-Item -LiteralPath (Join-Path $repoRoot 'specs\016-substantive-interaction-model\iterations\002\review.md') -Destination (Join-Path $fixtureIteration 'review.md') -Force
-    Copy-Item -LiteralPath (Join-Path $repoRoot 'specs\016-substantive-interaction-model\iterations\002\retro.md') -Destination (Join-Path $fixtureIteration 'retro.md') -Force
     $stateContent = Get-Content -LiteralPath $statePath -Raw -Encoding UTF8
     $stateContent = $stateContent -replace '\*\*Current Phase\*\*:.*', '**Current Phase**: implementing'
     $stateContent = $stateContent -replace '\*\*Iteration Status\*\*:.*', '**Iteration Status**: executing'
