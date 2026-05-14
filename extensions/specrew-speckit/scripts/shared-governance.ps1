@@ -340,14 +340,14 @@ function New-DecisionsLedgerParsedEntry {
 
 function Get-InteractionModelBoundaryCatalog {
     return @(
-        [pscustomobject]@{ Name = 'planning'; StopLabel = 'planning'; SubjectPatterns = @('^Feature \d+.* iteration \d+ planning boundary') },
-        [pscustomobject]@{ Name = 'hardening-gate-and-implementation-auth'; StopLabel = 'hardening-gate-and-implementation-auth'; SubjectPatterns = @('^Feature \d+.* iteration \d+: record hardening-gate sign-off and implementation authorization') },
-        [pscustomobject]@{ Name = 'implementation'; StopLabel = 'implementation'; SubjectPatterns = @('^Feature \d+.* iteration \d+: implement', '^Feature \d+.* iteration \d+: bounded') },
-        [pscustomobject]@{ Name = 'review-boundary'; StopLabel = 'review-boundary'; SubjectPatterns = @('^Feature \d+.* iteration \d+ review boundary') },
-        [pscustomobject]@{ Name = 'review-verdict-signoff'; StopLabel = 'review-verdict-signoff'; SubjectPatterns = @('^Feature \d+.* iteration \d+ review-verdict-signoff boundary') },
-        [pscustomobject]@{ Name = 'retro-boundary'; StopLabel = 'retro-boundary'; SubjectPatterns = @('^Feature \d+.* iteration \d+ retrospective boundary') },
-        [pscustomobject]@{ Name = 'iteration-closeout'; StopLabel = 'iteration-closeout'; SubjectPatterns = @('^Feature \d+.* iteration \d+ closeout boundary') },
-        [pscustomobject]@{ Name = 'feature-closeout'; StopLabel = 'feature-closeout'; SubjectPatterns = @('^Feature \d+.*: feature-closeout boundary') }
+        [pscustomobject]@{ Name = 'planning'; StopLabel = 'planning'; SubjectPatterns = @('^Feature \d+.* iteration \d+ planning boundary(?:\s|$)') },
+        [pscustomobject]@{ Name = 'hardening-gate-and-implementation-auth'; StopLabel = 'hardening-gate-and-implementation-auth'; SubjectPatterns = @('^Feature \d+.* iteration \d+: record hardening-gate sign-off and implementation authorization(?:\s|$)') },
+        [pscustomobject]@{ Name = 'implementation'; StopLabel = 'implementation'; SubjectPatterns = @('^Feature \d+.* iteration \d+: implement(?:\s|$)', '^Feature \d+.* iteration \d+: bounded(?:\s|$)', '^Feature \d+.* iteration \d+: implementation(?:\s|$)') },
+        [pscustomobject]@{ Name = 'review-boundary'; StopLabel = 'review-boundary'; SubjectPatterns = @('^Feature \d+.* iteration \d+ review boundary(?:\s|$)') },
+        [pscustomobject]@{ Name = 'review-verdict-signoff'; StopLabel = 'review-verdict-signoff'; SubjectPatterns = @('^Feature \d+.* iteration \d+ review-verdict-signoff boundary(?:\s|$)') },
+        [pscustomobject]@{ Name = 'retro-boundary'; StopLabel = 'retro-boundary'; SubjectPatterns = @('^Feature \d+.* iteration \d+ retrospective boundary(?:\s|$)') },
+        [pscustomobject]@{ Name = 'iteration-closeout'; StopLabel = 'iteration-closeout'; SubjectPatterns = @('^Feature \d+.* iteration \d+ closeout boundary(?:\s|$)') },
+        [pscustomobject]@{ Name = 'feature-closeout'; StopLabel = 'feature-closeout'; SubjectPatterns = @('^Feature \d+.*: feature-closeout boundary(?:\s|$)') }
     )
 }
 

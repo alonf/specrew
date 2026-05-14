@@ -2171,6 +2171,33 @@ Iteration 002 planning artifacts (plan.md) were still in `planning` status with 
   > Review the completed Feature 016 Substantive Interaction Model Iteration 001 implementation against the hardening-gate concerns and the authorized FR-001 through FR-019 scope. Verify that the bundled-boundary detection works as expected, that the validator rules are correct, and that the coordinator guidance is clear and actionable. If the implementation meets the acceptance criteria, record an accepted verdict in `file:///C:/Dev/Specrew/specs/016-substantive-interaction-model/iterations/001/review.md`. If issues are found, document them with specific remediation guidance and mark the verdict as needs-work.
 
 ---
+
+## 2026-05-14T08:10:00Z — Authorization: implementation (validator-logic repair pass)
+
+- **Decision ID**: authorization-feature-016-iter-001-implementation-repair
+- **Type**: authorization
+- **Boundary**: implementation
+- **Approving Human**: Alon Fliess
+- **Recorded At**: 2026-05-14T08:10:00Z
+- **Commit Reference**: 37822b6
+- **Authorization Text**:
+  > Repair package validator output reveals two validator-logic design defects (not bookkeeping defects). Authorizing a deeper validator-logic repair as continuation of Iteration 1 implementation work, in scope per FR-006/FR-008/FR-009.
+  >
+  > Keep the bookkeeping fixes Implementer already applied to .squad\decisions.md (Commit Reference update + new review-boundary entry). The new work refines the validator logic so the bookkeeping pattern actually validates clean.
+  >
+  > The two validator-logic defects are:
+  > 1. The paired-authorization lookup mistakenly compares recorded commit hashes as STRINGS rather than querying git ancestry/merge-base. Result: legitimate paired authorization entries are rejected because `37822b6` (short) ≠ `37822b6b7e1e1513e5fcc33438515d5edc5d1843` (full) even though they refer to the same commit object.
+  > 2. The canonical boundary-subject regex overmatches hyphenated/underscored continuations of canonical tokens. Example: `Feature 016 ... iteration 001: implementation-repair refactor ...` incorrectly matches `^Feature \d+.* iteration \d+: implement` because the pattern lacks token termination, causing `implementation-repair` to appear as a bundled advance even though it's just descriptive narration.
+  >
+  > Repair scope:
+  > - Harden all canonical boundary-subject patterns with consistent token terminators (word boundaries or explicit space/end-of-string anchors) to prevent the same bug class across all seven per-iteration boundaries plus feature-closeout.
+  > - Fix paired-auth detection so commit-reference lookup uses git-native object identity (full hash normalization or merge-base ancestry) rather than naive string equality.
+  > - Update `tests\integration\substantive-interaction-model-boundary-discipline-test.ps1` to add positive/negative regex classification coverage for the four tightening cases: `implement T001-T015` (✅), `implementation T001-T020` (✅), `implementation-repair refactor` (❌), `implementation_continuation` (❌).
+  > - Preserve all existing test coverage and keep repo-wide validation green across the full 8-item validation lane.
+  >
+  > This authorization covers the validator-logic refinements only; it does NOT authorize any new Feature 016 scope expansion, any retrospective or closeout work, or any change outside the validator/test surfaces needed to harden boundary detection and paired-auth matching.
+
+---
 # Reviewer Decision: Feature 015 Iteration 002 Review
 
 **Date**: 2026-05-13

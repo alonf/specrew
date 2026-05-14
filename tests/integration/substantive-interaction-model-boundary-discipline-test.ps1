@@ -181,6 +181,66 @@ try {
         Write-Fail "Expected bundled-boundary-advance finding for retro boundary without matching Commit Reference authorization.`n$missingAuthFailJoined"
         exit 1
     }
+
+    # Test regex classification - positive cases
+    $positiveImplement = 'Feature 016 substantive-interaction-model iteration 001: implement T001-T015'
+    $positiveImplementation = 'Feature 016 substantive-interaction-model iteration 001: implementation T001-T020'
+    
+    . (Join-Path $repoRoot 'extensions\specrew-speckit\scripts\shared-governance.ps1')
+    $catalog = Get-InteractionModelBoundaryCatalog
+    $implementationBoundary = $catalog | Where-Object { $_.Name -eq 'implementation' } | Select-Object -First 1
+    
+    $positiveImplementMatched = $false
+    foreach ($pattern in $implementationBoundary.SubjectPatterns) {
+        if ($positiveImplement -match $pattern) {
+            $positiveImplementMatched = $true
+            break
+        }
+    }
+    if (-not $positiveImplementMatched) {
+        Write-Fail "Expected positive match for: $positiveImplement"
+        exit 1
+    }
+    
+    $positiveImplementationMatched = $false
+    foreach ($pattern in $implementationBoundary.SubjectPatterns) {
+        if ($positiveImplementation -match $pattern) {
+            $positiveImplementationMatched = $true
+            break
+        }
+    }
+    if (-not $positiveImplementationMatched) {
+        Write-Fail "Expected positive match for: $positiveImplementation"
+        exit 1
+    }
+
+    # Test regex classification - negative cases
+    $negativeRepair = 'Feature 016 substantive-interaction-model iteration 001: implementation-repair refactor'
+    $negativeContinuation = 'Feature 016 substantive-interaction-model iteration 001: implementation_continuation'
+    
+    $negativeRepairMatched = $false
+    foreach ($pattern in $implementationBoundary.SubjectPatterns) {
+        if ($negativeRepair -match $pattern) {
+            $negativeRepairMatched = $true
+            break
+        }
+    }
+    if ($negativeRepairMatched) {
+        Write-Fail "Expected NO match for: $negativeRepair"
+        exit 1
+    }
+    
+    $negativeContinuationMatched = $false
+    foreach ($pattern in $implementationBoundary.SubjectPatterns) {
+        if ($negativeContinuation -match $pattern) {
+            $negativeContinuationMatched = $true
+            break
+        }
+    }
+    if ($negativeContinuationMatched) {
+        Write-Fail "Expected NO match for: $negativeContinuation"
+        exit 1
+    }
 }
 finally {
     if (Test-Path -LiteralPath $scratchRoot) {
@@ -188,5 +248,5 @@ finally {
     }
 }
 
-Write-Pass 'Feature 016 boundary discipline validation: negative (missing auth), positive (populated Commit Reference), positive (solo review auth), negative (missing retro auth)'
+Write-Pass 'Feature 016 boundary discipline validation: negative (missing auth), positive (populated Commit Reference), positive (solo review auth), negative (missing retro auth), positive regex (implement T001-T015), positive regex (implementation T001-T020), negative regex (implementation-repair), negative regex (implementation_continuation)'
 exit 0
