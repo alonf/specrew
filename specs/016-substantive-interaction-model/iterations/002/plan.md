@@ -2,10 +2,10 @@
 
 **Schema**: v1
 **Spec**: [../../spec.md](../../spec.md)
-**Status**: executing
+**Status**: reviewing
 **Capacity**: 17.0/20 story_points
 **Started**: 2026-05-14
-**Completed**:
+**Completed**: 2026-05-14
 **Planning Authority**: Resumed Iteration 002 planning authorized on 2026-05-14 for the original
 FR-020 through FR-024 slice plus explicit carryover triage from accepted Iteration 001 review/retro
 evidence.
@@ -114,3 +114,4 @@ evidence.
 - Carryover absorption is intentional and bounded. The plan is explicit about what was brought in and
   what remains deferred so the feature does not hide accepted review/retro lessons.
 - Keep `Status: planning` until the human authorizes movement beyond the planning boundary.
+

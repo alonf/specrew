@@ -2939,3 +2939,81 @@ All recommendations are documented with implementation owners and timelines.
 **Fallback Reason:** none
 **Repair Scope:** Repointed `authorization-feature-016-iter-002-implementation` from 4e6286c to 6da2582 so the implementation boundary commit has a matching human authorization entry while preserving the original authorization text, Decision ID, and Recorded At value
 **Root Cause:** The implementation boundary commit `6da2582`, Feature 016 substantive-interaction-model iteration 002: implement T001-T013, landed after the earlier hardening-gate truth repair, so the implementation authorization ledger entry still referenced the pre-implementation evidence commit instead of the actual implementation boundary
+
+## 2026-05-14T18:40:42Z — Authorization: review-boundary
+
+- **Decision ID**: authorization-feature-016-iter-002-review-boundary
+- **Type**: authorization
+- **Boundary**: review-boundary
+- **Approving Human**: Alon Fliess
+- **Recorded At**: 2026-05-14T18:40:42Z
+- **Commit Reference**: pending
+- **Authorization Text**:
+  > You are Reviewer, the review and governance specialist for this project.
+  > 
+  > TEAM_ROOT: C:\Dev\Specrew-review
+  > All `.squad/` paths are relative to this root.
+  > WORKTREE_PATH: C:\Dev\Specrew-review
+  > WORKTREE_MODE: true
+  > **Requested by:** Alon Fliess
+  > 
+  > WORKTREE: You are working in a dedicated worktree at `C:\Dev\Specrew-review`.
+  > - All file operations should be relative to this path
+  > - Do NOT switch branches — the worktree is your branch (`feature016-review-boundary`)
+  > - Build and test in this worktree, not the main repo
+  > - Push to the canonical branch with: `git push origin HEAD:refs/heads/016-substantive-interaction-model`
+  > 
+  > Read `.squad/decisions.md` before starting.
+  > Read `specs/016-substantive-interaction-model/iterations/002/plan.md`, `state.md`, `quality/hardening-gate.md`, `tasks.md`, and `quickstart.md` before starting.
+  > 
+  > Context:
+  > - Feature 016 Iteration 002 implementation is complete on commit `6da2582`, the implementation boundary commit.
+  > - Two bounded follow-up repairs are already on the pushed branch:
+  >   - `cbb378c`, the validation-fixture and runtime-evidence repair
+  >   - `0e7ffbd`, the non-canonical implementation-authorization bookkeeping fix
+  > - Current local worktree is clean and based on pushed origin-equivalent HEAD `0e7ffbd`.
+  > - Repo validator previously passed on the implementation tree.
+  > - The user has now explicitly authorized advancing to the review boundary.
+  > - Out-of-scope main-checkout files must remain untouched: `.claude/settings.local.json`, `.github/copilot-instructions.md`, `scripts/specrew-where.ps1`.
+  > 
+  > User-authorized review-boundary workflow:
+  > 1. Evaluate the Iteration 002 implementation against the five hardening-gate Expected Controls at `specs/016-substantive-interaction-model/iterations/002/quality/hardening-gate.md`.
+  >    - For each concern (`security-surface`, `error-handling-expectations`, `retry-idempotency-requirements`, `test-integrity-targets`, `operational-resilience-concerns`), update `Runtime Evidence Status` from `pending-post-implementation` to `verified` with specific citations (test paths, validator output, NFR-001 measurement) or `not-verified` with rationale.
+  > 2. Draft `specs/016-substantive-interaction-model/iterations/002/review.md` with:
+  >    - Overall verdict (`accepted` | `needs-work` | `rejected`)
+  >    - FR-by-FR findings for FR-020 through FR-024, FR-016 Iteration 2 graduation, and the three carryover deliverables
+  >    - Explicit Expected Controls verification with runtime evidence
+  >    - Any defects or open questions
+  >    - A note that local-vs-origin truth-surface drift was observed during user verification (`local-vs-origin-truth-surface-drift` as a retro candidate)
+  > 3. Focus the review on:
+  >    - FR-008 Commit Reference synchronization automation
+  >    - FR-016 hard-fail config flip via config, not code rewrite
+  >    - stale-reference scan behavior
+  >    - the new `tests/integration/substantive-interaction-model-iteration2.ps1` scaffold-replay execution
+  >    - NFR-001 validator timing re-measurement on the green tree
+  >    - the four corpus row additions in `.specrew/quality/known-traps.md`
+  > 4. Stage `review.md`, updated `quality/hardening-gate.md`, and any needed `state.md` / `plan.md` lifecycle updates reflecting review-in-progress.
+  > 5. Record the review-boundary authorization in `.squad/decisions.md` if it does not already exist. Use the user's current message as the authorization text. Use the two-commit pattern, not amend, for any post-commit Commit Reference updates. FR-008 automation is expected to help here; verify whether it works cleanly and note that in the review.
+  > 6. Create the canonical review-boundary commit with subject exactly:
+  >    `Feature 016 substantive-interaction-model iteration 002 review boundary`
+  > 7. Push to `origin/016-substantive-interaction-model` with explicit refspec and verify local HEAD equals origin HEAD after push.
+  > 8. Post-commit verification: run `pwsh -NoProfile -ExecutionPolicy Bypass -File .\extensions\specrew-speckit\scripts\validate-governance.ps1 -ProjectPath .` and confirm PASS on Feature 016 Iteration 002.
+  > 9. STOP at the review boundary. Do NOT advance to review-verdict-signoff.
+  > 10. If defects requiring rework are found, the verdict must be `needs-work`, not `accepted`, with explicit defect descriptions.
+  > 
+  > Important review requirements:
+  > - Be critical and evidence-driven. Classify the hardening-gate concerns as implemented, enforced, observable, and documented through actual runtime evidence.
+  > - Re-measure NFR-001 on the green tree and cite the measurement in `hardening-gate.md` and `review.md`.
+  > - Ensure the review remains truthful: if review and retro artifacts must exist now, create/update only the review artifact. Do not open retro.
+  > - If the review-boundary authorization auto-generation or post-commit synchronization fails, repair it explicitly and report the exact behavior.
+  > - Verify that the pushed branch state matches origin after push; call out any drift if found.
+  > 
+  > At the end, provide a concise boundary handoff including:
+  > - What changed and the review verdict
+  > - Review-boundary commit hash and any follow-up bookkeeping commit hash
+  > - Whether the validator passed post-push
+  > - Whether FR-008 automation worked cleanly or needed manual repair
+  > - Why you stopped and what exact next human authorization is required
+  > 
+  > ⚠️ OUTPUT: Report outcomes in human terms. Never expose tool internals or SQL.
+  > ⚠️ RESPONSE ORDER: After ALL tool calls, write a 2-3 sentence plain text summary as FINAL output. No tool calls after this summary.
