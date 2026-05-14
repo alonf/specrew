@@ -2055,6 +2055,88 @@ Iteration 002 planning artifacts (plan.md) were still in `planning` status with 
 
 - **Routing Evidence**: Reviewer | requested=claude | actual=copilot | model=(platform default) | status=fell-back | fallback=preferred agent 'claude' is not enabled
 
+## 2026-05-14T01:13:53Z — Authorization: hardening-gate-signoff
+
+- **Decision ID**: authorization-feature-016-iter-001-hardening-gate-signoff
+- **Type**: sign-off
+- **Boundary**: hardening-gate-signoff
+- **Approving Human**: Alon Fliess
+- **Recorded At**: 2026-05-14T01:13:53Z
+- **Commit Reference**: pending
+- **Authorization Text**:
+  > I sign off on the accepted Iteration 001 pre-implementation hardening gate for Feature 016 Substantive Interaction Model. The five concerns drafted at file:///C:/Dev/Specrew/specs/016-substantive-interaction-model/iterations/001/quality/hardening-gate.md
+  > (security-surface, error-handling-expectations, retry-idempotency-requirements, test-integrity-targets, operational-resilience-concerns) are appropriate for this coordinator-prompt + validator-extension feature, with specific FR/NFR/Risk traceability and measurable
+  > Expected Controls.
+  >
+  > I authorize implementation of Iteration 001 for Feature 016 against the planned scope: FR-001 through FR-019 (Pillar 1 Boundary Discipline + Pillar 2 Essence in Console + Pillar 3 Click-Through Navigation) per the iteration plan at
+  > file:///C:/Dev/Specrew/specs/016-substantive-interaction-model/iterations/001/plan.md and the task breakdown at file:///C:/Dev/Specrew/specs/016-substantive-interaction-model/tasks.md, targeting the ~13 SP capacity.
+  >
+  > Per FR-008 and FR-009, the auto-generation machinery these introduce is itself the work being built. For THIS authorization specifically, Squad MUST create two distinct entries in file:///C:/Dev/Specrew/.squad/decisions.md by hand, one for hardening-gate sign-off and
+  > one for implementation authorization, modeling the shape that FR-008's implementation will produce automatically going forward. Both entries cite this verbatim authorization text and capture the canonical 7 required fields.
+  >
+  > Step 1: Auto-generate (hand-create) the two distinct decisions.md entries per FR-008 / FR-009. Update the hardening-gate.md verdict from `blocked` to `accepted` (concerns remain `pending-gate-review` until implementation verifies expected controls — that happens at
+  > review boundary, not now). Stage these as part of the hardening-gate-and-implementation-auth boundary commit.
+  >
+  > Step 2: Cut the hardening-gate-and-implementation-auth boundary commit on 016-substantive-interaction-model branch. Push.
+  >
+  > Step 3: Proceed with implementation work against the task table. Per the source spec NFR-006 (backward compat), grandfathering for pre-Feature-016 iterations applies. Per NFR-002, coordinator-prompt additions stay under 150 new lines. Per NFR-001, validator
+  > performance budgets apply.
+  >
+  > Step 4: Implementation MUST progress through tasks.md in dependency order. When implementation is complete for the authorized FR scope, cut the implementation boundary commit (canonical subject pattern: `Feature 016 substantive-interaction-model iteration 001:
+  > implement` or `Feature 016 substantive-interaction-model iteration 001: bounded T001-TNNN scope`). Push.
+  >
+  > Step 5: STOP at the implementation boundary commit. Do NOT advance to review work — that requires separate authorization. Present a substantive three-section boundary handoff per Pillar 2 modeling the discipline being shipped:
+  >   - What I just did: enumerate the FR coverage delivered, commit hashes for hardening-gate-and-implementation-auth + implementation, specific file:/// paths for new validator rules + coordinator-prompt updates, test coverage status, baseline-vs-actual measurements
+  > against NFR-001/NFR-002 budgets
+  >   - Why I stopped: name the review boundary as next; explain that the review boundary requires separate authorization per per-boundary discipline (FR-002/FR-003)
+  >   - What I need from you: specific review of the implementation against the hardening-gate concerns' Expected Controls, plus authorization to advance to review boundary
+  >
+  > Step 6: Do NOT touch the working-tree out-of-scope files (.claude/settings.local.json, scripts/specrew-where.ps1, subagent history). They remain unstaged. Do NOT modify SpecrewDraft or SpecrewManualTestProjects folders.
+  >
+  > Step 7: If implementation reveals that any FR cannot be delivered within the authorized scope, do NOT silently defer — surface the deferral, name the FR, name the reason, and ask for explicit deferral approval per Specrew's deferral discipline. Implementation scope
+  > locks are real; scope expansion requires authorization.
+
+## 2026-05-14T01:13:53Z — Authorization: implementation
+
+- **Decision ID**: authorization-feature-016-iter-001-implementation
+- **Type**: authorization
+- **Boundary**: implementation
+- **Approving Human**: Alon Fliess
+- **Recorded At**: 2026-05-14T01:13:53Z
+- **Commit Reference**: pending
+- **Authorization Text**:
+  > I sign off on the accepted Iteration 001 pre-implementation hardening gate for Feature 016 Substantive Interaction Model. The five concerns drafted at file:///C:/Dev/Specrew/specs/016-substantive-interaction-model/iterations/001/quality/hardening-gate.md
+  > (security-surface, error-handling-expectations, retry-idempotency-requirements, test-integrity-targets, operational-resilience-concerns) are appropriate for this coordinator-prompt + validator-extension feature, with specific FR/NFR/Risk traceability and measurable
+  > Expected Controls.
+  >
+  > I authorize implementation of Iteration 001 for Feature 016 against the planned scope: FR-001 through FR-019 (Pillar 1 Boundary Discipline + Pillar 2 Essence in Console + Pillar 3 Click-Through Navigation) per the iteration plan at
+  > file:///C:/Dev/Specrew/specs/016-substantive-interaction-model/iterations/001/plan.md and the task breakdown at file:///C:/Dev/Specrew/specs/016-substantive-interaction-model/tasks.md, targeting the ~13 SP capacity.
+  >
+  > Per FR-008 and FR-009, the auto-generation machinery these introduce is itself the work being built. For THIS authorization specifically, Squad MUST create two distinct entries in file:///C:/Dev/Specrew/.squad/decisions.md by hand, one for hardening-gate sign-off and
+  > one for implementation authorization, modeling the shape that FR-008's implementation will produce automatically going forward. Both entries cite this verbatim authorization text and capture the canonical 7 required fields.
+  >
+  > Step 1: Auto-generate (hand-create) the two distinct decisions.md entries per FR-008 / FR-009. Update the hardening-gate.md verdict from `blocked` to `accepted` (concerns remain `pending-gate-review` until implementation verifies expected controls — that happens at
+  > review boundary, not now). Stage these as part of the hardening-gate-and-implementation-auth boundary commit.
+  >
+  > Step 2: Cut the hardening-gate-and-implementation-auth boundary commit on 016-substantive-interaction-model branch. Push.
+  >
+  > Step 3: Proceed with implementation work against the task table. Per the source spec NFR-006 (backward compat), grandfathering for pre-Feature-016 iterations applies. Per NFR-002, coordinator-prompt additions stay under 150 new lines. Per NFR-001, validator
+  > performance budgets apply.
+  >
+  > Step 4: Implementation MUST progress through tasks.md in dependency order. When implementation is complete for the authorized FR scope, cut the implementation boundary commit (canonical subject pattern: `Feature 016 substantive-interaction-model iteration 001:
+  > implement` or `Feature 016 substantive-interaction-model iteration 001: bounded T001-TNNN scope`). Push.
+  >
+  > Step 5: STOP at the implementation boundary commit. Do NOT advance to review work — that requires separate authorization. Present a substantive three-section boundary handoff per Pillar 2 modeling the discipline being shipped:
+  >   - What I just did: enumerate the FR coverage delivered, commit hashes for hardening-gate-and-implementation-auth + implementation, specific file:/// paths for new validator rules + coordinator-prompt updates, test coverage status, baseline-vs-actual measurements
+  > against NFR-001/NFR-002 budgets
+  >   - Why I stopped: name the review boundary as next; explain that the review boundary requires separate authorization per per-boundary discipline (FR-002/FR-003)
+  >   - What I need from you: specific review of the implementation against the hardening-gate concerns' Expected Controls, plus authorization to advance to review boundary
+  >
+  > Step 6: Do NOT touch the working-tree out-of-scope files (.claude/settings.local.json, scripts/specrew-where.ps1, subagent history). They remain unstaged. Do NOT modify SpecrewDraft or SpecrewManualTestProjects folders.
+  >
+  > Step 7: If implementation reveals that any FR cannot be delivered within the authorized scope, do NOT silently defer — surface the deferral, name the FR, name the reason, and ask for explicit deferral approval per Specrew's deferral discipline. Implementation scope
+  > locks are real; scope expansion requires authorization.
+
 ---
 # Reviewer Decision: Feature 015 Iteration 002 Review
 
