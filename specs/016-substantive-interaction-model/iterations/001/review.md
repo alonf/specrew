@@ -99,7 +99,7 @@ The blocking defect is operational: the committed tree fails the repo-wide valid
 ## Gap Ledger
 
 - FR-006 / FR-009 defect — fixed-now in commits 37822b6 (validator-logic refactor paired-auth hash matching) and 59f1b21 (regex anchoring for boundary patterns). The bundled-boundary logic now correctly accepts the canonical implementation authorization sequence.
-- NFR-001 evidence integrity — fixed-now via review-verdict-signoff (2026-05-14T09:26:39Z) with independent human verifier validation on HEAD 59f1b21. Final repo-validator measured at 150007 ms (baseline 109134 ms, delta +37.5%), accepted with documented rationale. Performance optimization deferred to Feature N.
+- NFR-001 evidence integrity — fixed-now via review-verdict-signoff (2026-05-14T09:26:39Z) with independent human verifier validation on HEAD 59f1b21. Final repo-validator measured at 150007 ms (baseline 109134 ms, delta +37.5%), accepted with documented rationale. Performance tuning to be addressed in Feature N.
 
 ---
 

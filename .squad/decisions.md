@@ -2229,7 +2229,7 @@ Iteration 002 planning artifacts (plan.md) were still in `planning` status with 
   >
   > This authorization covers review-verdict-signoff only and does NOT authorize retrospective, iteration closeout, or any other lifecycle boundary beyond this point.
 
-# Boundary: retro-boundary
+## 2026-05-14T10:13:30Z — Authorization: retro-boundary
 
 - **Decision ID**: authorization-feature-016-iter-001-retro-boundary
 - **Type**: authorization
