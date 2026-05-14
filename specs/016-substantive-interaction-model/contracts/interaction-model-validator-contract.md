@@ -29,6 +29,7 @@ Feature 016 validator rules do **not** inspect:
 - raw conversation transcripts
 - user-typed authorization text directly
 - arbitrary repository prose unrelated to Squad-authored handoffs/artifacts
+- general-purpose parser normalization for non-canonical timestamp formats unless separately authorized
 
 ---
 
@@ -98,6 +99,15 @@ approved exemption contexts.
 The severity flip may occur only after exemption-list integration tests show bounded false
 positives.
 
+### Post-Commit Verification Constraint
+
+The Iteration 002 plan also requires proof on the **exact committed tree**:
+
+- Commit Reference placeholders must be synchronized before the boundary is considered verified
+- canonical `Recorded At` authoring uses UTC seconds precision
+- stale-reference scans are mandatory after boundary commits even if no dedicated new validator rule
+  is added in this slice
+
 ---
 
 ## Exemption Contract
@@ -140,6 +150,7 @@ Feature 016 proof must include:
 - compliant fixtures that emit no finding
 - exemption-list fixtures demonstrating bounded false positives
 - historical corpus cross-references for the new rows introduced in Iteration 2
+- post-commit verification evidence showing commit-reference synchronization and exact-tree reruns
 
 ---
 
@@ -151,6 +162,7 @@ Feature 016 adds new rule IDs and extends existing governance validation, but it
 2. hard-fail Pillar 2 handoff-substance rules
 3. bypass grandfathering for pre-Feature-016 history
 4. rewrite the bare-path detector between Iteration 1 and Iteration 2
+5. silently expand the decisions-ledger timestamp parser instead of documenting the canonical authoring format
 
 ---
 

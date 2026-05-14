@@ -40,6 +40,18 @@ Feature 017 visual-artifact behaviour is out of scope.
 - **Authorization Text**: <verbatim authorization phrase from user>
 ```
 
+### Timestamp Precision Rule
+
+- `Recorded At` uses canonical UTC ISO 8601 **seconds precision** for Feature 016 authored entries
+- fractional seconds are not part of the canonical authoring contract for this feature
+- if broader parser support is ever needed, it must be authorized explicitly in a later feature
+
+### Commit Reference Lifecycle
+
+- `Commit Reference: pending` is allowed only as a temporary boundary-time placeholder
+- the same post-commit verification cycle must replace `pending` with the actual boundary commit hash
+- a boundary is not verification-ready while the matching authorization entry still carries `pending`
+
 ### Paired Authorization Rule
 
 When one pasted authorization covers both hardening-gate sign-off and implementation
@@ -62,6 +74,15 @@ message:
 1. **What I just did**
 2. **Why I stopped**
 3. **What I need from you**
+
+### Post-Commit Verification Rule
+
+For boundaries that end with a commit and a human-blocked handoff:
+
+1. synchronize the matching authorization entry to the real commit hash
+2. confirm the cited `file:///` references still resolve on the exact committed tree
+3. rerun the governed verification commands on that exact committed tree before claiming readiness
+4. state any remaining defer explicitly instead of implying the post-commit checks already happened
 
 ### Section Semantics
 
@@ -157,6 +178,15 @@ governance wording before another boundary commit can be emitted.
 What I need from you
 Review file:///C:/Dev/Specrew/specs/016-substantive-interaction-model/plan.md and approve or reject the
 review-boundary wording for the next step.
+```
+
+### Compliant Post-Commit Verification Note
+
+```text
+Post-commit verification
+- Updated Commit Reference from pending to 59f1b21 in file:///C:/Dev/Specrew/.squad/decisions.md
+- Rechecked cited artifacts and confirmed file:///C:/Dev/Specrew/specs/016-substantive-interaction-model/quickstart.md still resolves
+- Re-ran file:///C:/Dev/Specrew/extensions/specrew-speckit/scripts/validate-governance.ps1 on the exact committed tree before requesting the next verdict
 ```
 
 ### Non-Compliant Bundled Advance

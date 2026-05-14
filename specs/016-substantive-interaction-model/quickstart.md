@@ -2,7 +2,7 @@
 
 **Feature**: 016 Substantive Interaction Model  
 **Branch**: `016-substantive-interaction-model`  
-**Phase**: 1 — Iteration 001 implemented; review authorization pending  
+**Phase**: 1 — Iteration 001 closed; Iteration 002 planning resumed  
 **Date**: 2026-05-14
 
 ---
@@ -53,11 +53,13 @@ rollout
 
 ---
 
-### Iteration 2 — Proof fixtures + corpus + docs + graduation
+### Iteration 2 — Proof fixtures + corpus + docs + graduation + carryover closure
 
-**Scope**: FR-020–FR-024 plus the Iteration 2 graduation portion of FR-016  
-**Effort**: ~9 story points  
-**Goal**: Prove bounded false positives, add durable corpus memory, and update public guidance
+**Scope**: FR-020–FR-024 plus the Iteration 2 graduation portion of FR-016, together with the
+accepted Iteration 001 carryovers that are tightly coupled to Feature 016 authority  
+**Effort**: ~17 story points  
+**Goal**: Prove bounded false positives, add durable corpus memory, update public guidance, and close
+the post-commit verification / authorization-hygiene gaps discovered during Iteration 001
 
 **Deliverables**:
 
@@ -66,8 +68,12 @@ rollout
 | Violating + compliant replay fixtures | `tests/integration/`, `tests/unit/fixtures/`, `tests/unit/` | FR-021 |
 | New corpus rows + historical cross-refs | `.specrew/quality/known-traps.md` | FR-020, FR-024 |
 | README lifecycle update | `README.md` | FR-022 |
-| Handoff template update | `specs/001-specrew-product/contracts/coordinator-handoff-template.md` or equivalent governed template surface | FR-023 |
+| Validator-scope + post-commit verification documentation update | `extensions/specrew-speckit/governance/validation-lane.md` | FR-022 + carryover verification protocol |
+| Handoff template update | `specs/001-specrew-product/contracts/coordinator-handoff-template.md` or equivalent governed template surface | FR-023 + carryover verification/stale-reference discipline |
 | Bare-path severity flip by configuration | validator configuration / rule table | FR-016 |
+| Pending -> post-commit Commit Reference synchronization | `.squad/decisions.md` contract surfaces, shared governance helpers, verification docs | FR-008 carryover |
+| Canonical seconds-precision `Recorded At` policy | contracts, docs, examples, helper-generated entries | timestamp carryover |
+| Stale-reference scan mandate after boundary commits | handoff guidance, verification docs, replay expectations | stale-reference carryover |
 
 **Acceptance check for Iteration 2**:
 
@@ -76,6 +82,9 @@ rollout
 - `bare-path-in-boundary-handoff` flips from soft warning to hard fail **without rewriting the detector**
 - README "Recommended Lifecycle" explicitly reflects the three-pillar model
 - Historical corpus rows are cross-referenced from the new Feature 016 rows
+- Authorization entries no longer rely on stale `pending` Commit References after boundary commits
+- `Recorded At` examples and generated entries use canonical UTC seconds precision
+- Post-commit verification guidance explicitly requires stale-reference scans and exact-tree reruns
 
 ---
 
@@ -157,13 +166,19 @@ Invoke-Pester .\tests\unit\
 
 ### Iteration 2 Steps
 
-1. Add violating + compliant fixtures for every new interaction-model rule.
+1. Add violating + compliant fixtures for every new interaction-model rule, using scaffold-replay
+   paths rather than helper-only mocks.
 2. Add exemption-list fixtures demonstrating bounded false positives.
 3. Promote `bare-path-in-boundary-handoff` from soft warning to hard fail via config/rule-table
    flip once proof exists.
-4. Add the new known-trap rows and historical cross-references.
-5. Update README "Recommended Lifecycle" with the three-pillar interaction model and scope note.
-6. Update the per-feature handoff template with explicit substantive examples for each boundary.
+4. Add the new Feature 016 corpus rows plus the selected feature-local passive-guidance graduation
+   rows and historical cross-references.
+5. Update README "Recommended Lifecycle" and validator documentation with the three-pillar model,
+   validator scope note, post-commit verification protocol, and seconds-precision policy.
+6. Update the per-feature handoff template with explicit substantive examples for each boundary,
+   including post-commit verification and stale-reference-scan expectations.
+7. Replace `pending` Commit References with real commit hashes during the same post-commit
+   verification cycle and rerun validation on the exact committed tree.
 
 Suggested validation commands during implementation:
 
@@ -184,16 +199,21 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File .\extensions\specrew-speckit\scrip
 - Must preserve Iteration 1 soft-warning / Iteration 2 hard-fail promotion for boundary-handoff bare
   paths
 - Must keep Pillar 2 rules soft-warning-only throughout Feature 016
+- Must keep canonical decisions-ledger authoring at UTC seconds precision unless a later feature
+  explicitly authorizes broader parser support
+- Must treat stale-reference scans and exact-tree post-commit verification as governed work, not
+  reviewer folklore
 
 ---
 
 ## Scope Reminder
 
-> Feature 016 now has an implemented Iteration 001 slice plus recorded evidence in
+> Feature 016 now has a closed Iteration 001 slice plus recorded evidence in
 > `specs/016-substantive-interaction-model/` and `specs/016-substantive-interaction-model/iterations/001/`.
 >
-> Review, retro, iteration closeout, and all Iteration 2 proof/doc/corpus work still require their
-> own explicit authorizations.
+> Iteration 002 planning is now authorized and truthfully includes both the original FR-020 through
+> FR-024 sustainability work and the accepted feature-local carryovers from Iteration 001.
 >
-> The remaining deferred scope is FR-020 through FR-024 plus the Iteration 2 promotion half of
-> FR-016 only.
+> Explicitly deferred from this resumed plan: standalone fractional-second parser broadening,
+> standalone stale-reference soft-validator support, validator performance optimization, and the
+> non-feature-local `self-referential-feature-sp-surcharge` row.

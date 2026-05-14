@@ -495,6 +495,16 @@ The following candidate rows should be added to `.specrew/quality/known-traps.md
 **Status**: Awaiting Alon Fliess's separate authorization before closing the retrospective boundary and opening the closeout phase.
 
 
+### 2026-05-14T00:00:00Z: Delegated lifecycle runtime evidence
+**By:** Squad (Coordinator)  
+**Role / Work Item:** Planner — Feature 016 Iteration 002 task generation  
+**Requested agent:** claude  
+**Actual agent:** copilot  
+**Model ID:** unknown (same-window Copilot session)  
+**Status:** fell back  
+**Fallback reason:** preferred agent `claude` is not enabled in the active Specrew routing plan
+
+
 # Retro Facilitator Inbox: Feature 015 Iteration 001 Retro Boundary
 
 **Date**: 2026-05-13  
@@ -2778,5 +2788,86 @@ All recommendations are documented with implementation owners and timelines.
 - This repair is limited to Feature 016 before-plan readiness.
 - Feature 017 remains explicitly out of scope.
 
+## 2026-05-14-runtime-evidence-feature016-iter002-planning-prep
+### 2026-05-14T12:02:39Z: Runtime evidence - Feature 016 Iteration 002 planning preparation
+**By:** Squad (Coordinator)
+**Role / Work Item:** Planner - open `specs/016-substantive-interaction-model/iterations/002` and scaffold planning artifacts for the authorized Iteration 002 slice
+**Requested Agent:** claude
+**Actual Agent:** copilot
+**Model ID:** (platform default)
+**Status:** fallback
+**Fallback Reason:** preferred agent `claude` is not enabled in the delegated routing plan; routed through Copilot task execution
+
+## copilot-decision-2026-05-14T12-02-39Z-feature016-iter002-clarify-skip
+### 2026-05-14T12:02:39Z: Clarify skip rationale for Feature 016 Iteration 002 planning
+**By:** Alon Fliess (via Copilot)
+**What:** Open `specs/016-substantive-interaction-model/iterations/002` planning without re-running clarify because Feature 016 already has an approved, materially complete spec with all ten clarify-time questions resolved in `spec.md`, and the authorized Iteration 002 scope is already grounded as FR-020 through FR-024 plus the Iteration 2 promotion half of FR-016.
+**Why:** Iteration 001 is closed, its plan/state/retro artifacts explicitly defer the Iteration 002 proof, corpus, documentation, template, and severity-promotion work, and the carryover planning decisions are already concrete: preserve the validator scope boundary to Squad-authored artifacts/handoffs only, keep commit-reference synchronization explicit in authorization records, carry the repair-escalation pathway forward, and treat the README/template/public-doc work as the bounded follow-through slice rather than new clarify work.
+
+## 2026-05-14-runtime-evidence-feature016-iter002-before-plan-hook
+### 2026-05-14T12:14:00Z: Runtime evidence - Feature 016 Iteration 002 mandatory before-plan validation
+**By:** Squad (Coordinator)
+**Role / Work Item:** Planner - run `speckit.specrew-speckit.before-plan` for Feature 016 Iteration 002 before continuing planning
+**Requested Agent:** claude
+**Actual Agent:** copilot
+**Model ID:** (platform default)
+**Status:** fallback
+**Fallback Reason:** preferred agent `claude` is not enabled in the delegated routing plan; routed through Copilot task execution
+
+## copilot-decision-2026-05-14T12-35-00Z-feature016-iter002-carryover-triage
+### 2026-05-14T12:35:00Z: Iteration 002 carryover triage for Feature 016
+**By:** Alon Fliess (via Copilot)
+**What:** Treat Iteration 002 as the original FR-020 through FR-024 + FR-016 graduation slice **plus** the accepted feature-local carryovers that materially affect Feature 016 truth surfaces: FR-008 pending -> post-commit Commit Reference synchronization, canonical UTC seconds-precision `Recorded At` formatting, post-commit verification protocol formalization, stale-reference scan mandate after boundary commits, and graduation of the feature-local passive-guidance rows grounded by Iteration 001 review/retro evidence.
+**Why:** This keeps the resumed plan truthful to accepted Iteration 001 learnings while staying below the 20 SP constitutional cap and inside the requested 15-19 SP planning target. Explicitly deferred from this plan are standalone fractional-second parser support, standalone stale-reference soft-validator support, validator performance optimization, `self-referential-feature-sp-surcharge`, and `decisions-ledger-parser-fractional-second-timestamp-incompatibility`.
+
+## 2026-05-14-runtime-evidence-feature016-iter002-delegated-plan
+### 2026-05-14T12:36:00Z: Runtime evidence - Feature 016 Iteration 002 delegated planning run
+**By:** Squad (Coordinator)
+**Role / Work Item:** Planner - run delegated iteration-002 planning for `specs/016-substantive-interaction-model/iterations/002` and update the Speckit planning artifacts only
+**Requested Agent:** claude
+**Actual Agent:** copilot
+**Model ID:** gpt-5.4
+**Status:** fallback
+**Fallback Reason:** preferred agent `claude` is not enabled in the delegated routing plan; the planning run was executed through the Copilot-backed `speckit.plan` agent instead
 
 
+## 2026-05-14-runtime-evidence-feature016-iter002-after-tasks
+### 2026-05-14T12:40:00Z: Runtime evidence - Feature 016 Iteration 002 after-tasks governance pass
+**By:** Squad (Coordinator)
+**Role / Work Item:** Reviewer - run `speckit.specrew-speckit.after-tasks` for Feature 016 Iteration 002 and stop at the planning boundary
+**Requested Agent:** claude
+**Actual Agent:** copilot
+**Model ID:** gpt-5.4
+**Status:** fallback
+**Fallback Reason:** preferred agent `claude` is not enabled in the delegated routing plan; the governance pass was executed through the Copilot-backed `speckit.specrew-speckit.after-tasks` agent
+
+## 2026-05-14T12:37:40Z — Authorization: planning
+
+- **Decision ID**: authorization-feature-016-iter-002-planning
+- **Type**: authorization
+- **Boundary**: planning
+- **Approving Human**: Alon Fliess
+- **Recorded At**: 2026-05-14T12:37:40Z
+- **Commit Reference**: 89e1073
+- **Authorization Text**:
+  > I authorize opening Iteration 002 planning for Feature 016 Substantive Interaction Model.
+  >
+  > Authorized planning scope:
+  > - FR-020 through FR-024
+  > - the Iteration 2 graduation portion of FR-016
+  > - accepted Iteration 001 carryovers that materially affect Feature 016 truth surfaces: FR-008 pending -> post-commit Commit Reference synchronization, canonical UTC seconds-precision `Recorded At` formatting, post-commit verification protocol formalization, stale-reference scan mandate after boundary commits, and graduation of the feature-local passive-guidance rows grounded by Iteration 001 review/retro evidence
+  >
+  > Planning constraints:
+  > - keep Iteration 002 bounded to 17.0 / 20 story_points
+  > - stop at the planning boundary only; do not start hardening-gate work or implementation
+  > - Feature 017 visual artifacts remain a separate follow-up feature; explicit deferrals must be documented in the iteration plan with rationale.
+
+## 2026-05-14-runtime-evidence-feature016-iter002-planning-boundary
+### 2026-05-14T12:37:40Z: Runtime evidence - Feature 016 Iteration 002 planning boundary
+**By:** Squad (Coordinator)
+**Role / Work Item:** Planner - finalize the Iteration 002 planning boundary and stop before hardening-gate or implementation
+**Requested Agent:** claude
+**Actual Agent:** copilot
+**Model ID:** unknown (same-window Copilot CLI session)
+**Status:** fallback
+**Fallback Reason:** preferred agent `claude` is not enabled in the delegated routing plan; this planning-boundary run used the available Copilot agent

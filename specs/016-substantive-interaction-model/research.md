@@ -127,20 +127,26 @@ entire chat transcript. It also constrains false positives and keeps the validat
 
 ## 7. Proof Strategy and Artifact Split
 
-**Decision**: Keep the implementation plan aligned to the approved two-iteration split:
+**Decision**: Keep the implementation plan aligned to the approved two-iteration split, while
+allowing the resumed Iteration 002 plan to absorb tightly-coupled carryovers discovered during
+Iteration 001 review/retro:
 
 - **Iteration 1 (~13 SP)**: coordinator prompt updates, authorization-recording shape, paired-entry
   handling, `validation-fail.bundled-boundary-advance`, initial soft-warning shape of
   `bare-path-in-boundary-handoff`, and four soft-validator rules.
-- **Iteration 2 (~9 SP)**: violating/compliant fixtures, three new active corpus rows plus passive
-  `thin-artifact-content`, README lifecycle update, per-feature handoff-template update,
-  historical cross-references, and the bare-path severity flip from soft warning to hard fail by
-  configuration only.
+- **Iteration 2 (originally ~9 SP, now planned at 17.0 SP after explicit carryover triage)**:
+  violating/compliant fixtures, the required Feature 016 corpus rows plus selected
+  feature-local passive-guidance graduation rows, README lifecycle update, validator-scope and
+  post-commit verification documentation, per-feature handoff-template update, historical
+  cross-references, FR-008 post-commit Commit Reference synchronization follow-through, canonical
+  seconds-precision ledger authoring, and the bare-path severity flip from soft warning to hard fail
+  by configuration only.
 
-**Rationale**: This preserves user authorization for the feature's bounded rollout and keeps the
-graduation risk isolated until the false-positive proof exists. It also matches the repository's
-existing pattern of delivering rule semantics first and strengthening replay/documentation proof in a
-follow-up iteration.
+**Rationale**: This preserves the feature's bounded two-iteration rollout while also making the
+resumed planning truthfully reflect the accepted carryovers instead of pretending they disappeared.
+The graduation risk still stays isolated until the false-positive proof exists, and the carryovers
+remain limited to the same validator/doc/template/ledger surfaces rather than expanding the feature
+into unrelated work.
 
 **Alternatives considered**:
 - Collapse everything into one iteration → rejected; exceeds the approved capacity and removes the
@@ -185,10 +191,74 @@ fresh-context review remains a necessary complement to mechanical validator test
 
 ---
 
+## 10. Iteration 002 Carryover Scope Triage
+
+**Decision**: Resume Iteration 002 as a **17.0 / 20 story_points** slice that keeps the original
+FR-020 through FR-024 + FR-016 graduation work, but also absorbs the tightly-coupled carryovers from
+Iteration 001: FR-008 post-commit Commit Reference synchronization, a canonical seconds-precision
+ledger format, formal post-commit verification steps, a stale-reference scan mandate, and selected
+feature-local passive-guidance graduation rows.
+
+**Rationale**: The accepted Iteration 001 review and retro proved that treating these items as
+"future someday" cleanup would hide live governance lessons inside a nominally closed iteration. The
+user explicitly asked for truthful carryover evaluation, and the combined slice still stays below the
+constitutional 20 SP ceiling and inside the requested 15-19 SP planning target.
+
+**Alternatives considered**:
+- Preserve the original ~9 SP Iteration 002 plan unchanged → rejected; would falsely imply the
+  carryovers do not materially affect Feature 016 readiness.
+- Pull in every retro idea, including unrelated or weakly grounded items → rejected; would blur
+  feature authority and exceed the bounded planning target.
+
+---
+
+## 11. Timestamp Precision Strategy
+
+**Decision**: Use **UTC seconds precision** as the canonical `Recorded At` format for Feature 016
+authorization entries and documentation updates in Iteration 002, and defer general parser support
+for fractional-second timestamps.
+
+**Rationale**: Seconds precision solves the real interoperability problem surfaced by the
+carryover without widening parser behavior or adding a new acceptance surface that the feature does
+not need. It is also cheaper to prove, easier to document in contracts and templates, and keeps the
+decisions-ledger contract mechanically inspectable.
+
+**Alternatives considered**:
+- Add broad fractional-second parser support now → rejected; valid future work, but unnecessary for
+  the bounded Feature 016 follow-through slice.
+- Leave timestamp precision implicit → rejected; this would preserve the ambiguity that produced the
+  carryover in the first place.
+
+---
+
+## 12. Post-Commit Verification Scope
+
+**Decision**: Formalize post-commit verification as a documented workflow requirement in the README,
+validator documentation, quickstart guidance, and per-feature handoff template: after each boundary
+commit, synchronize Commit Reference fields, run the stale-reference scan, and verify the exact
+committed tree before claiming readiness.
+
+**Rationale**: Iteration 001 surfaced a real pre-commit vs post-commit catch-22: evidence claimed on
+one tree was not always reproducible on the final committed tree, and stale `pending` or stale
+artifact references weakened the decisions ledger and handoffs. Formalizing the protocol in the
+governed docs/template surfaces lets Iteration 002 close the gap without prematurely committing to a
+new standalone validator family.
+
+**Alternatives considered**:
+- Add a separate stale-reference / post-commit validator family immediately → rejected; possible
+  future step, but not required to make the bounded follow-through slice truthful.
+- Leave verification as reviewer folklore → rejected; insufficiently inspectable for a governance
+  product.
+
+---
+
 ## Research Conclusion
 
 Feature 016 planning is fully resolved. The approved design keeps the feature inside existing
 Specrew governance surfaces, preserves the clarified single-boundary authorization and paired-entry
 recording rules, keeps Pillar 2 soft-warning-only, and stages the bare-path rule exactly as
 authorized: Iteration 1 soft warning, Iteration 2 hard fail via configuration flip after bounded
-false-positive proof.
+false-positive proof. The resumed Iteration 002 slice now also records the truth about the accepted
+carryovers: post-commit authorization hygiene, seconds-precision ledger canon, verification protocol
+formalization, stale-reference scan discipline, and selected passive-guidance graduation all belong
+to the bounded follow-through plan, while parser broadening and unrelated retro ideas stay deferred.

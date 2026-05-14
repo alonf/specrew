@@ -36,10 +36,13 @@ paste and reviewed/overridden during boundary inspection if needed.
 
 - Exactly one boundary per record
 - `authorization-text` must preserve verbatim user wording
-- `recorded-at` must be UTC ISO 8601
+- `recorded-at` must use canonical UTC ISO 8601 **seconds precision** (`YYYY-MM-DDTHH:MM:SSZ`) for
+  newly generated Feature 016 entries
 - Multi-boundary user paste for adjacent hardening-gate sign-off + implementation authorization
   produces **two records**, not one
 - Validator scope inspects the generated record, not the raw user chat text
+- `commit-reference` may begin as `pending`, but the post-commit verification cycle must synchronize
+  it to the actual boundary commit hash before the boundary is considered verified
 
 ### State Transitions
 
@@ -47,6 +50,7 @@ paste and reviewed/overridden during boundary inspection if needed.
 parsed-from-user-paste
   -> generated-pending-review
   -> confirmed
+  -> commit-reference-synchronized
   -> overridden-and-confirmed
 ```
 
@@ -230,11 +234,53 @@ enforcement status, and proof references.
 
 ---
 
+## Entity 8: Post-Commit Verification Record
+
+**Definition**: A planning-time logical record describing the exact checks that must complete after a
+boundary commit before the handoff, ledger, and docs may claim the boundary is ready for the next
+human decision.
+
+| Field | Type | Required | Notes |
+| --- | --- | --- | --- |
+| `boundary-name` | enum | yes | Specific boundary just committed |
+| `commit-hash` | string | yes | Actual commit hash or short hash under verification |
+| `decisions-ledger-sync` | enum | yes | `pending`, `synchronized`, or `verified` |
+| `timestamp-format-check` | enum | yes | Confirms seconds-precision canonical form |
+| `stale-reference-scan` | enum | yes | `not-run`, `clean`, or `needs-fix` |
+| `validator-rerun` | enum | yes | `not-run`, `pass`, or `fail` |
+| `evidence-paths` | list | no | README/template/quickstart/review references used to prove the check |
+| `notes` | string | no | Human-readable explanation for exceptions or deferred follow-up |
+
+### Validation Rules
+
+- Every post-commit verification record points at one boundary commit only
+- `decisions-ledger-sync = synchronized` requires the corresponding authorization entry to use the
+  real commit hash rather than `pending`
+- `timestamp-format-check` enforces canonical seconds precision for newly authored entries
+- `stale-reference-scan` must check the boundary handoff and cited artifacts after the final commit
+- `validator-rerun` must refer to the exact committed tree, not a pre-commit working state
+
+### State Transitions
+
+```text
+planned
+  -> boundary-committed
+  -> ledger-synchronized
+  -> stale-reference-scanned
+  -> validator-rerun
+  -> verified
+```
+
+---
+
 ## Entity Relationships
 
 ```text
 Boundary Authorization Record
   └── may participate in Boundary Authorization Pair
+
+Boundary Authorization Record
+  └── must reconcile through Post-Commit Verification Record before boundary readiness is claimed
 
 Boundary Authorization Record + Boundary Commit Signature
   └── feed Interaction-Model Validator Rule
@@ -248,6 +294,10 @@ Boundary Handoff Message
 Interaction-Model Validator Rule
   └── maps to Known Trap Row
       └── may cross-reference historical corpus rows
+
+Boundary Handoff Message
+  └── feeds Post-Commit Verification Record
+      └── checks stale references and exact-tree verification claims
 ```
 
 ---
@@ -257,7 +307,9 @@ Interaction-Model Validator Rule
 | Entity | Before Feature 016 | Iteration 1 Target | Iteration 2 Target |
 | --- | --- | --- | --- |
 | Boundary authorization recording | Informal / inconsistent | Canonical single-boundary shape + paired-entry expansion | Same shape retained |
+| Commit-reference synchronization | Manual / inconsistent | Pending placeholder allowed | Post-commit sync protocol made explicit |
+| Ledger timestamp precision | Implicit | UTC ISO 8601 | Canonical UTC seconds precision documented and enforced in authored examples |
 | Boundary handoff substance | Existing three sections, insufficiently enforced | Soft-warning enforcement for substantive sections | Same soft-warning-only posture |
 | Bare-path in boundary handoff | Convention only | Soft warning with exemption support | Hard fail after bounded false-positive proof |
 | Known-trap coverage | Prior handoff-related rows only | No new rows yet | New rows + historical cross-references |
-| README/template lifecycle guidance | General lifecycle guidance | unchanged | Updated with three-pillar interaction model |
+| README/template lifecycle guidance | General lifecycle guidance | unchanged | Updated with three-pillar interaction model and post-commit verification protocol |
