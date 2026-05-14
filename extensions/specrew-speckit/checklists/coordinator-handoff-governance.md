@@ -30,6 +30,7 @@ The core user-facing risk is jargon-first handoff wording that hides the actual 
 | Specific stop boundary | `Why I stopped` names the exact boundary that is being entered and matches the active iteration state | The boundary is generic, missing, or contradicts the active iteration state | Warn with `soft-warning.unspecific-stop-boundary` |
 | Actionable boundary request | `What I need from you` names the boundary, includes `file:///` inspection targets, and requests a verdict | One or more of `boundary-name`, `inspection-target`, or `verdict-required` is missing | Warn once with `soft-warning.unactionable-user-request` |
 | Click-through file references | Artifact references in authored narration and stop messages use `file:///` outside exempt contexts, and cited files exist | Bare paths appear outside exemptions or a `file:///` target is broken | Warn with `soft-warning.bare-path-in-*` / `soft-warning.broken-file-url-reference` |
+| Post-commit verification truth | Boundary handoffs that claim implementation-ready or review-ready state disclose commit-reference sync, exact-tree reruns, and stale-reference scan status | The handoff implies post-commit verification happened but omits whether the ledger was synchronized, the exact-tree rerun happened, or the stale-reference scan was clean | Warn, request explicit post-commit verification status |
 | Blocker / risk disclosure | If blockers, skipped checks, failed checks, or known risks exist, the response states them plainly | The response hides or omits a known blocker or risk | Warn, request clarification |
 
 ## Review Method
@@ -115,6 +116,7 @@ When the next step is to review a local repository file in this Windows environm
 - Missing or mismatched stop boundary = `soft-warning.unspecific-stop-boundary`
 - Missing boundary-name / inspection-target / verdict-required = `soft-warning.unactionable-user-request`
 - Bare path or broken `file:///` reference = `soft-warning.bare-path-in-*` / `soft-warning.broken-file-url-reference`
+- Hidden post-commit verification status = `soft-warning.hidden-post-commit-verification`
 
 ## Reviewer Notes
 

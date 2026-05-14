@@ -180,6 +180,15 @@ Invoke-Pester .\tests\unit\
 7. Replace `pending` Commit References with real commit hashes during the same post-commit
    verification cycle and rerun validation on the exact committed tree.
 
+### Iteration 2 Command Matrix
+
+| Scenario Group | Command | Expected Result |
+| --- | --- | --- |
+| Authorization fidelity | `pwsh -NoProfile -ExecutionPolicy Bypass -File .\tests\integration\substantive-interaction-model-iteration2.ps1` | The pending authorization scenario fails until Commit Reference synchronization happens, then short/full hash reruns pass. |
+| Docs/template truth | `pwsh -NoProfile -ExecutionPolicy Bypass -File .\tests\integration\substantive-interaction-model-iteration2.ps1` | README, validation-lane, handoff template, and checklist wording stay aligned with the three-pillar and post-commit protocol. |
+| Navigation graduation | `pwsh -NoProfile -ExecutionPolicy Bypass -File .\tests\unit\validate-governance.interaction-model.tests.ps1` | Violating fixtures hard-fail, compliant fixtures pass, and exempt contexts stay clean while using the same detector. |
+| Post-commit verification evidence | `pwsh -NoProfile -ExecutionPolicy Bypass -File .\extensions\specrew-speckit\scripts\validate-governance.ps1 -ProjectPath .` | The repo remains green after exact-tree reruns, canonical timestamps, and stale-reference scan evidence are updated. |
+
 Suggested validation commands during implementation:
 
 ```powershell

@@ -626,6 +626,232 @@ function Get-InteractionModelAuthorizationEntries {
     )
 }
 
+function ConvertTo-InteractionModelUtcSeconds {
+    param([Parameter(Mandatory = $true)][string]$Timestamp)
+
+    if ([string]::IsNullOrWhiteSpace($Timestamp)) {
+        throw 'Timestamp cannot be blank.'
+    }
+
+    try {
+        $parsed = [datetimeoffset]::Parse(
+            $Timestamp.Trim(),
+            [System.Globalization.CultureInfo]::InvariantCulture,
+            [System.Globalization.DateTimeStyles]::AssumeUniversal
+        )
+    }
+    catch {
+        throw "Timestamp '$Timestamp' is not a valid ISO 8601 value."
+    }
+
+    return $parsed.ToUniversalTime().ToString('yyyy-MM-ddTHH:mm:ssZ')
+}
+
+function Set-InteractionModelAuthorizationMetadata {
+    param(
+        [Parameter(Mandatory = $true)][string]$ProjectRoot,
+        [Parameter(Mandatory = $true)][string]$DecisionId,
+        [AllowNull()][string]$CommitReference,
+        [AllowNull()][string]$RecordedAt
+    )
+
+    if ([string]::IsNullOrWhiteSpace($DecisionId)) {
+        throw 'DecisionId cannot be blank.'
+    }
+
+    $ledgerPath = Get-DecisionsLedgerPath -ProjectRoot $ProjectRoot
+    if (-not (Test-Path -LiteralPath $ledgerPath -PathType Leaf)) {
+        throw "Decisions ledger not found at '$ledgerPath'."
+    }
+
+    $normalizedDecisionId = $DecisionId.Trim()
+    $normalizedCommitReference = if ($PSBoundParameters.ContainsKey('CommitReference')) {
+        if ([string]::IsNullOrWhiteSpace($CommitReference)) { 'pending' } else { $CommitReference.Trim() }
+    }
+    else {
+        $null
+    }
+
+    $normalizedRecordedAt = if ($PSBoundParameters.ContainsKey('RecordedAt')) {
+        ConvertTo-InteractionModelUtcSeconds -Timestamp $RecordedAt
+    }
+    else {
+        $null
+    }
+    $updateCommitReference = $PSBoundParameters.ContainsKey('CommitReference')
+    $updateRecordedAt = $PSBoundParameters.ContainsKey('RecordedAt')
+
+    $updated = $false
+
+    Update-LockedFileContent -Path $ledgerPath -Transform {
+        param([string]$Content)
+
+        $lines = @($Content -replace "`r`n", "`n" -split "`n")
+        $insideTargetEntry = $false
+        $foundDecision = $false
+        $commitLineFound = $false
+        $recordedAtLineFound = $false
+
+        for ($index = 0; $index -lt $lines.Count; $index++) {
+            $line = $lines[$index]
+
+            if ($line -match '^##\s+') {
+                if ($insideTargetEntry) {
+                    break
+                }
+
+                $insideTargetEntry = $false
+            }
+
+            if ($line -match '^\s*-\s+\*\*Decision ID\*\*:\s*(.+?)\s*$' -and $Matches[1].Trim() -eq $normalizedDecisionId) {
+                $insideTargetEntry = $true
+                $foundDecision = $true
+                continue
+            }
+
+            if (-not $insideTargetEntry) {
+                continue
+            }
+
+            if ($updateRecordedAt -and $line -match '^\s*-\s+\*\*Recorded At\*\*:\s*.+$') {
+                $lines[$index] = "- **Recorded At**: $normalizedRecordedAt"
+                $recordedAtLineFound = $true
+                $updated = $true
+                continue
+            }
+
+            if ($updateCommitReference -and $line -match '^\s*-\s+\*\*Commit Reference\*\*:\s*.+$') {
+                $lines[$index] = "- **Commit Reference**: $normalizedCommitReference"
+                $commitLineFound = $true
+                $updated = $true
+                continue
+            }
+        }
+
+        if (-not $foundDecision) {
+            throw "Decision entry '$normalizedDecisionId' was not found in '$ledgerPath'."
+        }
+
+        if ($updateRecordedAt -and -not $recordedAtLineFound) {
+            throw "Decision entry '$normalizedDecisionId' is missing a Recorded At line."
+        }
+
+        if ($updateCommitReference -and -not $commitLineFound) {
+            throw "Decision entry '$normalizedDecisionId' is missing a Commit Reference line."
+        }
+
+        return (($lines -join "`n").TrimEnd() + "`n")
+    } | Out-Null
+
+    return [pscustomobject]@{
+        DecisionId       = $normalizedDecisionId
+        CommitReference  = $normalizedCommitReference
+        RecordedAt       = $normalizedRecordedAt
+        Updated          = $updated
+        DecisionsLedger  = $ledgerPath
+    }
+}
+
+function Sync-InteractionModelAuthorizationCommitReference {
+    param(
+        [Parameter(Mandatory = $true)][string]$ProjectRoot,
+        [Parameter(Mandatory = $true)][string]$DecisionId,
+        [Parameter(Mandatory = $true)][string]$CommitHash,
+        [switch]$UseShortHash,
+        [ValidateRange(7, 40)][int]$ShortHashLength = 7
+    )
+
+    if ([string]::IsNullOrWhiteSpace($CommitHash)) {
+        throw 'CommitHash cannot be blank.'
+    }
+
+    $normalizedHash = $CommitHash.Trim()
+    if ($normalizedHash -notmatch '^[a-fA-F0-9]{7,40}$') {
+        throw "CommitHash '$CommitHash' is not a valid git hash."
+    }
+
+    $effectiveCommitReference = if ($UseShortHash) {
+        if ($ShortHashLength -gt $normalizedHash.Length) {
+            throw "ShortHashLength $ShortHashLength exceeds commit hash length $($normalizedHash.Length)."
+        }
+
+        $normalizedHash.Substring(0, $ShortHashLength)
+    }
+    else {
+        $normalizedHash
+    }
+
+    return Set-InteractionModelAuthorizationMetadata -ProjectRoot $ProjectRoot -DecisionId $DecisionId -CommitReference $effectiveCommitReference
+}
+
+function Get-InteractionModelFileUris {
+    param([AllowEmptyString()][string]$Text)
+
+    if ([string]::IsNullOrWhiteSpace($Text)) {
+        return @()
+    }
+
+    return @(
+        [regex]::Matches($Text, '(?i)file:///[^\s)`"''<>]+') |
+            ForEach-Object { $_.Value.TrimEnd(',', '.', ';', ':') } |
+            Select-Object -Unique
+    )
+}
+
+function Convert-InteractionModelFileUriToWindowsPath {
+    param([Parameter(Mandatory = $true)][string]$FileUri)
+
+    try {
+        $uri = [System.Uri]::new($FileUri)
+    }
+    catch {
+        throw "File URI '$FileUri' is invalid."
+    }
+
+    if (-not $uri.IsAbsoluteUri -or $uri.Scheme -ne 'file') {
+        throw "URI '$FileUri' is not an absolute file:/// URI."
+    }
+
+    return [System.IO.Path]::GetFullPath($uri.LocalPath)
+}
+
+function Invoke-InteractionModelStaleReferenceScan {
+    param(
+        [Parameter(Mandatory = $true)][string]$ProjectRoot,
+        [AllowEmptyString()][string]$Text
+    )
+
+    $resolvedProjectRoot = Resolve-ProjectPath -Path $ProjectRoot
+    $missingReferences = New-Object System.Collections.Generic.List[string]
+    $checkedReferences = New-Object System.Collections.Generic.List[string]
+
+    foreach ($fileUri in @(Get-InteractionModelFileUris -Text $Text)) {
+        $checkedReferences.Add($fileUri) | Out-Null
+        try {
+            $path = Convert-InteractionModelFileUriToWindowsPath -FileUri $fileUri
+        }
+        catch {
+            $missingReferences.Add($fileUri) | Out-Null
+            continue
+        }
+
+        if (-not $path.StartsWith($resolvedProjectRoot, [System.StringComparison]::OrdinalIgnoreCase)) {
+            $missingReferences.Add($fileUri) | Out-Null
+            continue
+        }
+
+        if (-not (Test-Path -LiteralPath $path -PathType Leaf)) {
+            $missingReferences.Add($fileUri) | Out-Null
+        }
+    }
+
+    return [pscustomobject]@{
+        Status            = if ($missingReferences.Count -gt 0) { 'needs-fix' } else { 'clean' }
+        CheckedReferences = $checkedReferences.ToArray()
+        MissingReferences = $missingReferences.ToArray()
+    }
+}
+
 function Get-MarkdownContent {
     param(
         [Parameter(Mandatory = $true)]

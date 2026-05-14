@@ -50,6 +50,8 @@ Feature 017 visual-artifact behaviour is out of scope.
 
 - `Commit Reference: pending` is allowed only as a temporary boundary-time placeholder
 - the same post-commit verification cycle must replace `pending` with the actual boundary commit hash
+- the synchronized reference may be either the full hash or a short hash prefix that still resolves to
+  the exact committed boundary
 - a boundary is not verification-ready while the matching authorization entry still carries `pending`
 
 ### Paired Authorization Rule
@@ -80,9 +82,10 @@ message:
 For boundaries that end with a commit and a human-blocked handoff:
 
 1. synchronize the matching authorization entry to the real commit hash
-2. confirm the cited `file:///` references still resolve on the exact committed tree
-3. rerun the governed verification commands on that exact committed tree before claiming readiness
-4. state any remaining defer explicitly instead of implying the post-commit checks already happened
+2. normalize `Recorded At` to canonical UTC seconds precision
+3. run a stale-reference scan and confirm the cited `file:///` references still resolve on the exact committed tree
+4. rerun the governed verification commands on that exact committed tree before claiming readiness
+5. state any remaining defer explicitly instead of implying the post-commit checks already happened
 
 ### Section Semantics
 

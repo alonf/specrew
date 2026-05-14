@@ -86,6 +86,61 @@ Example:
 
 > I have started **feature 014, handoff format scoping**, and I am reviewing the approved Iteration 001 artifacts now; I will continue with the in-scope edits next.
 
+## Feature 016 Boundary Worked Examples
+
+Use these as concrete examples for the seven per-iteration handoff boundaries.
+
+### 1. Planning boundary
+
+- State the planned scope, the main artifacts updated, and the exact planning
+  stop reason.
+- Request a verdict on the planning artifacts using `file:///` links.
+
+### 2. Hardening-gate sign-off
+
+- Summarize the active concerns, current verdict, and what still needs human
+  inspection.
+- Request sign-off on the gate artifact before implementation begins.
+
+### 3. Implementation boundary
+
+- Summarize the code, docs, fixtures, and validation updates that landed.
+- State that post-commit verification reran on the exact committed tree.
+- Request the next review-boundary verdict with `file:///` inspection targets.
+
+### 4. Review boundary
+
+- Summarize what the reviewer should inspect and what validations already ran.
+- Call out any remaining risk or defer explicitly.
+
+### 5. Review-verdict sign-off
+
+- Summarize the review outcome and the exact fixes or accepted defers.
+- Request explicit sign-off on the verdict artifact.
+
+### 6. Retro boundary
+
+- Summarize the outcome, lessons, and any carryovers promoted into durable
+  corpus guidance.
+- Request review of the retro artifact and the carryover decision.
+
+### 7. Iteration closeout
+
+- Summarize the final implemented scope, evidence state, and what remains
+  intentionally deferred.
+- Request the closeout verdict on the iteration packet.
+
+## Post-Commit Verification Checklist
+
+For implementation, review, retro, and closeout boundaries that cite committed
+artifacts:
+
+1. synchronize `Commit Reference` from `pending` to the real boundary hash
+2. normalize `Recorded At` to UTC seconds precision
+3. run a stale-reference scan on every cited `file:///` target
+4. rerun the governed validation commands on the exact committed tree
+5. disclose any remaining defer explicitly in the handoff
+
 ## Usage Rules
 
 - Keep the lead sentence plain-language-first.

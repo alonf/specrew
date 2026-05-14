@@ -2960,6 +2960,10 @@ function Add-InteractionModelValidationErrors {
                 Add-RepoStructuredValidationFailure -Errors $errors -ProjectRoot $ProjectRoot -TargetPath (Get-DecisionsLedgerPath -ProjectRoot $ProjectRoot) -LineNumber $null -Category 'authorization-record-shape' -Message ("Authorization entry '{0}' uses invalid Type '{1}'" -f $entry.Title, $entry.Type) -RemediationHint 'Use Type authorization or sign-off for Feature 016 boundary approvals.'
             }
 
+            if ([string]$entry.RecordedAt -notmatch '^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$') {
+                Add-RepoStructuredValidationFailure -Errors $errors -ProjectRoot $ProjectRoot -TargetPath (Get-DecisionsLedgerPath -ProjectRoot $ProjectRoot) -LineNumber $null -Category 'authorization-record-shape' -Message ("Authorization entry '{0}' uses non-canonical Recorded At '{1}'" -f $entry.Title, $entry.RecordedAt) -RemediationHint 'Use UTC ISO 8601 seconds precision (YYYY-MM-DDTHH:MM:SSZ) for Feature 016 authorization entries.'
+            }
+
             $normalizedBoundary = Normalize-InteractionModelBoundaryName -Boundary $entry.Boundary
             if ([string]$entry.Boundary -match '[,;/]' -or ([string]$entry.Boundary -match '\band\b' -and $normalizedBoundary -ne 'hardening-gate-and-implementation-auth')) {
                 Add-RepoStructuredValidationFailure -Errors $errors -ProjectRoot $ProjectRoot -TargetPath (Get-DecisionsLedgerPath -ProjectRoot $ProjectRoot) -LineNumber $null -Category 'authorization-record-shape' -Message ("Authorization entry '{0}' records multiple boundaries in one entry: '{1}'" -f $entry.Title, $entry.Boundary) -RemediationHint 'Record one boundary per authorization entry and split paired hardening-gate + implementation authorization into two entries.'

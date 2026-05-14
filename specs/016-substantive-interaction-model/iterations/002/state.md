@@ -1,23 +1,35 @@
 # Iteration State: 002
 
 **Schema**: v1
-**Last Completed Task**: (none)
-**Tasks Remaining**: I2-01, I2-02, I2-03, I2-04, I2-05, I2-06, I2-07, I2-08, I2-09
-**In Progress**: (none)
+**Last Completed Task**: T013
+**Tasks Remaining**: none within the authorized Iteration 002 implementation boundary
+**In Progress**: none
 **Baseline Ref**: 964485d4f0468407950b7941fd401398648e517e
-**Updated**: 2026-05-14T12:35:00Z
+**Updated**: 2026-05-14T14:45:48Z
+**Current Phase**: implementation-boundary
+**Iteration Status**: implementation scope complete on the current tree; validation lane green; awaiting separate review-boundary authorization
 
 ## Execution Summary
 
-- Execution has not started yet.
-- Iteration 002 planning now records a 17.0 / 20 story_points slice: the original FR-020 through
-  FR-024 + FR-016 graduation work, plus the accepted feature-local carryovers from Iteration 001.
-- This artifact remains planning-state only; update it again when implementation work begins.
+- Iteration 002 implementation completed the full authorized 17.0 / 20.0 SP slice on 2026-05-14.
+- Delivered scope covers FR-020 through FR-024, the Iteration 2 graduation portion of FR-016, and the
+  accepted FR-008 / timestamp / stale-reference carryovers folded into this iteration.
+- The validation lane is green on the implementation tree, but review has not started and still
+  requires a separate review-boundary authorization.
+
+## Task Status Summary
+
+| Task Range | Scope | Status | Notes |
+| --- | --- | --- | --- |
+| T001-T002 | Setup + shared helper protocol | done | Added command matrix, mirrored helper updates, canonical timestamp normalization, commit-reference synchronization, and stale-reference scan helpers |
+| T003-T005 | US1 authorization fidelity | done | Added authorization fixtures, validator checks for canonical timestamps, commit-reference sync helpers, and post-commit verification docs |
+| T006-T008 | US2 docs/template truth | done | README, validation lane, handoff template, checklist, and coordinator guidance now describe the three-pillar + exact-tree protocol |
+| T009-T011 | US3 proof, graduation, corpus | done | Added navigation fixtures, config-only hard-fail promotion, and required Feature 016 corpus rows plus passive-guidance graduations |
+| T012-T013 | Validation + reconciliation | done | Ran the implementation validation lane and reconciled tasks, plans, and corpus traceability surfaces |
 
 ## Notes
 
-- Update this file after each task completes.
-- Keep task identifiers aligned to `iterations/002/plan.md`.
+- Next valid action: separate review-boundary authorization against the implementation-boundary tree.
 - Explicitly deferred from this state: standalone fractional-second parser support, standalone
   stale-reference soft-validator support, validator performance optimization, and
   `self-referential-feature-sp-surcharge`.

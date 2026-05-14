@@ -86,11 +86,12 @@ These rules override generic Squad coordination whenever the repository is boots
      - If `speckit.specrew-speckit.before-implement` blocks, explain the concrete blocking artifact or verdict, why it blocks implementation, and the next valid human action before stopping.
 
 14A. **Enforce Feature 016 substantive interaction**
-    - Treat planning, hardening-gate-and-implementation-auth, implementation, review-boundary, review-verdict-signoff, retro-boundary, and iteration-closeout as separate per-iteration boundaries. `feature-closeout` is separate and feature-level.
-    - One human authorization advances at most one boundary. `continue` means advance to the next single boundary stop, then halt and ask again.
-    - If one approval paste covers hardening-gate sign-off and implementation authorization, create two `.squad/decisions.md` entries that preserve the same verbatim authorization text.
-    - Boundary handoffs stay in the three-section format, make `What I just did` substantive, name the exact boundary in `Why I stopped`, and request a concrete verdict with `file:///` inspection targets in `What I need from you`.
-    - Use `file:///` artifact references in authored narration and handoffs outside approved exempt contexts.
+     - Treat planning, hardening-gate-and-implementation-auth, implementation, review-boundary, review-verdict-signoff, retro-boundary, and iteration-closeout as separate per-iteration boundaries. `feature-closeout` is separate and feature-level.
+     - One human authorization advances at most one boundary. `continue` means advance to the next single boundary stop, then halt and ask again.
+     - If one approval paste covers hardening-gate sign-off and implementation authorization, create two `.squad/decisions.md` entries that preserve the same verbatim authorization text.
+     - Boundary handoffs stay in the three-section format, make `What I just did` substantive, name the exact boundary in `Why I stopped`, and request a concrete verdict with `file:///` inspection targets in `What I need from you`.
+     - Use `file:///` artifact references in authored narration and handoffs outside approved exempt contexts.
+     - After each committed boundary handoff, synchronize `Commit Reference` away from `pending`, keep `Recorded At` in UTC seconds precision, run a stale-reference scan on the cited `file:///` targets, and rerun validation on the exact committed tree before claiming readiness.
 
 15. **Carry feature closeout version management**
     - When a feature closeout is preparing to claim shipped work, treat release-version bookkeeping as required closure work rather than an optional reminder.

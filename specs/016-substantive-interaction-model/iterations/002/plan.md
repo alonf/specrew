@@ -2,7 +2,7 @@
 
 **Schema**: v1
 **Spec**: [../../spec.md](../../spec.md)
-**Status**: planning
+**Status**: executing
 **Capacity**: 17.0/20 story_points
 **Started**: 2026-05-14
 **Completed**:
@@ -23,15 +23,15 @@ evidence.
 
 | Task | Title | Requirement | Story | Effort | Owner | Owner File Globs | Status | Agent | Actual | Verdict |
 | ---- | ----- | ----------- | ----- | ------ | ----- | ---------------- | ------ | ----- | ------ | ------- |
-| I2-01 | Add violating/compliant/exempt replay fixtures for all new interaction-model rules | FR-021, FR-016 | US1/US2/US3 | 4.0 | Quality steward | `tests/integration/**`, `tests/unit/**`, `tests/**/fixtures/016-substantive-interaction-model/**` | planned | copilot | — | planned |
-| I2-02 | Promote `bare-path-in-boundary-handoff` by config/rule-table flip only after proof passes | FR-016, FR-021 | US3 | 1.0 | Validator steward | `extensions/specrew-speckit/scripts/validate-governance.ps1`, `.specify/extensions/specrew-speckit/scripts/validate-governance.ps1` | planned | copilot | — | planned |
-| I2-03 | Add the four required Feature 016 known-traps rows plus historical cross-references | FR-020, FR-024 | TG-004 | 2.0 | Quality steward | `.specrew/quality/known-traps.md` | planned | copilot | — | planned |
-| I2-04 | Graduate selected feature-local passive-guidance rows from Iteration 001 retro | FR-020, FR-024 + approved passive-guidance carryovers | US3/TG-004 | 1.5 | Quality steward | `.specrew/quality/known-traps.md`, `specs/016-substantive-interaction-model/iterations/001/*.md` | planned | copilot | — | planned |
-| I2-05 | Update README and validator documentation for the three-pillar model and post-commit verification protocol | FR-022 + carryover | US2/US3 | 2.0 | Documentation steward | `README.md`, `extensions/specrew-speckit/governance/validation-lane.md` | planned | copilot | — | planned |
-| I2-06 | Update the per-feature handoff template with seven worked examples and verification/stale-reference expectations | FR-023 + carryover | US2/US3 | 2.0 | Documentation steward | `specs/001-specrew-product/contracts/coordinator-handoff-template.md` | planned | copilot | — | planned |
-| I2-07 | Implement pending -> post-commit Commit Reference synchronization for generated authorization entries | FR-008 carryover | US1 | 2.5 | Governance steward | `.squad/decisions.md`, `extensions/specrew-speckit/scripts/shared-governance.ps1`, `.specify/extensions/specrew-speckit/scripts/shared-governance.ps1` | planned | copilot | — | planned |
-| I2-08 | Enforce and document canonical UTC seconds-precision `Recorded At` format | timestamp carryover | US1 | 1.0 | Governance steward | `specs/016-substantive-interaction-model/contracts/*.md`, `README.md`, `specs/001-specrew-product/contracts/coordinator-handoff-template.md` | planned | copilot | — | planned |
-| I2-09 | Mandate stale-reference scans after boundary commits and wire the rule into handoff/checklist wording | stale-reference carryover | US3 | 1.0 | Documentation steward | `README.md`, `extensions/specrew-speckit/governance/validation-lane.md`, `specs/001-specrew-product/contracts/coordinator-handoff-template.md` | planned | copilot | — | planned |
+| I2-01 | Add violating/compliant/exempt replay fixtures for all new interaction-model rules | FR-021, FR-016 | US1/US2/US3 | 4.0 | Quality steward | `tests/integration/**`, `tests/unit/**`, `tests/**/fixtures/016-substantive-interaction-model/**` | done | copilot | 4.0 | pass |
+| I2-02 | Promote `bare-path-in-boundary-handoff` by config/rule-table flip only after proof passes | FR-016, FR-021 | US3 | 1.0 | Validator steward | `extensions/specrew-speckit/scripts/validate-governance.ps1`, `.specify/extensions/specrew-speckit/scripts/validate-governance.ps1` | done | copilot | 1.0 | pass |
+| I2-03 | Add the four required Feature 016 known-traps rows plus historical cross-references | FR-020, FR-024 | TG-004 | 2.0 | Quality steward | `.specrew/quality/known-traps.md` | done | copilot | 2.0 | pass |
+| I2-04 | Graduate selected feature-local passive-guidance rows from Iteration 001 retro | FR-020, FR-024 + approved passive-guidance carryovers | US3/TG-004 | 1.5 | Quality steward | `.specrew/quality/known-traps.md`, `specs/016-substantive-interaction-model/iterations/001/*.md` | done | copilot | 1.5 | pass |
+| I2-05 | Update README and validator documentation for the three-pillar model and post-commit verification protocol | FR-022 + carryover | US2/US3 | 2.0 | Documentation steward | `README.md`, `extensions/specrew-speckit/governance/validation-lane.md` | done | copilot | 2.0 | pass |
+| I2-06 | Update the per-feature handoff template with seven worked examples and verification/stale-reference expectations | FR-023 + carryover | US2/US3 | 2.0 | Documentation steward | `specs/001-specrew-product/contracts/coordinator-handoff-template.md` | done | copilot | 2.0 | pass |
+| I2-07 | Implement pending -> post-commit Commit Reference synchronization for generated authorization entries | FR-008 carryover | US1 | 2.5 | Governance steward | `.squad/decisions.md`, `extensions/specrew-speckit/scripts/shared-governance.ps1`, `.specify/extensions/specrew-speckit/scripts/shared-governance.ps1` | done | copilot | 2.5 | pass |
+| I2-08 | Enforce and document canonical UTC seconds-precision `Recorded At` format | timestamp carryover | US1 | 1.0 | Governance steward | `specs/016-substantive-interaction-model/contracts/*.md`, `README.md`, `specs/001-specrew-product/contracts/coordinator-handoff-template.md` | done | copilot | 1.0 | pass |
+| I2-09 | Mandate stale-reference scans after boundary commits and wire the rule into handoff/checklist wording | stale-reference carryover | US3 | 1.0 | Documentation steward | `README.md`, `extensions/specrew-speckit/governance/validation-lane.md`, `specs/001-specrew-product/contracts/coordinator-handoff-template.md` | done | copilot | 1.0 | pass |
 
 ## Effort Model
 
