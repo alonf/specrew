@@ -290,21 +290,340 @@ function New-DecisionsLedgerParsedEntry {
     )
 
     $rawText = $EntryLines -join "`n"
+    $authorizationTextLines = New-Object System.Collections.Generic.List[string]
+    $captureAuthorizationText = $false
+    foreach ($line in $EntryLines) {
+        if (-not $captureAuthorizationText) {
+            if ($line -match '^\s*-\s+\*\*Authorization Text\*\*:\s*$') {
+                $captureAuthorizationText = $true
+            }
+            continue
+        }
+
+        if ($line -match '^\s*-\s+\*\*[^*]+\*\*:' -or $line -match '^##\s+') {
+            break
+        }
+
+        if ($line.TrimStart().StartsWith('>')) {
+            $authorizationTextLines.Add($line.Trim()) | Out-Null
+            continue
+        }
+
+        if ([string]::IsNullOrWhiteSpace($line) -and $authorizationTextLines.Count -gt 0) {
+            $authorizationTextLines.Add('') | Out-Null
+            continue
+        }
+
+        break
+    }
+
+    $authorizationText = if ($authorizationTextLines.Count -gt 0) { ($authorizationTextLines -join "`n").Trim() } elseif (($rawText -match '(?ms)^-\s+\*\*Authorization Text\*\*:\s*(?<text>.+)$')) { $Matches['text'].Trim() } else { $null }
     return [pscustomobject]@{
         Timestamp           = $Timestamp
         Title               = $Title
         DecisionId          = if (($rawText -match '(?m)^-\s+\*\*Decision ID\*\*:\s*(.+?)\s*$')) { $Matches[1].Trim() } else { $null }
         Type                = if (($rawText -match '(?m)^-\s+\*\*Type\*\*:\s*(.+?)\s*$')) { $Matches[1].Trim() } else { $null }
+        Boundary            = if (($rawText -match '(?m)^-\s+\*\*Boundary\*\*:\s*(.+?)\s*$')) { $Matches[1].Trim() } else { $null }
         AffectedRequirement = if (($rawText -match '(?m)^-\s+\*\*Affected Requirement\*\*:\s*(.+?)\s*$')) { $Matches[1].Trim() } else { $null }
         AffectedIteration   = if (($rawText -match '(?m)^-\s+\*\*Affected Iteration\*\*:\s*(.+?)\s*$')) { $Matches[1].Trim() } else { $null }
         ApprovingHuman      = if (($rawText -match '(?m)^-\s+\*\*Approving Human\*\*:\s*(.+?)\s*$')) { $Matches[1].Trim() } else { $null }
         RecordedAt          = if (($rawText -match '(?m)^-\s+\*\*Recorded At\*\*:\s*(.+?)\s*$')) { $Matches[1].Trim() } else { $Timestamp }
+        CommitReference     = if (($rawText -match '(?m)^-\s+\*\*Commit Reference\*\*:\s*(.+?)\s*$')) { $Matches[1].Trim() } else { $null }
+        AuthorizationText   = $authorizationText
         NextAction          = if (($rawText -match '(?m)^-\s+\*\*Next Action\*\*:\s*(.+?)\s*$')) { $Matches[1].Trim() } else { $null }
         RawLines            = $EntryLines.ToArray()
         RawText             = $rawText
         RoutingStatus       = if (($rawText -match 'status=(honored|fell-back)')) { $Matches[1] } else { $null }
         FallbackReason      = if (($rawText -match 'fallback=([^\r\n]+)')) { $Matches[1].Trim() } else { $null }
     }
+}
+
+function Get-InteractionModelBoundaryCatalog {
+    return @(
+        [pscustomobject]@{ Name = 'planning'; StopLabel = 'planning'; SubjectPatterns = @('^Feature \d+.* iteration \d+ planning boundary') },
+        [pscustomobject]@{ Name = 'hardening-gate-and-implementation-auth'; StopLabel = 'hardening-gate-and-implementation-auth'; SubjectPatterns = @('^Feature \d+.* iteration \d+: record hardening-gate sign-off and implementation authorization') },
+        [pscustomobject]@{ Name = 'implementation'; StopLabel = 'implementation'; SubjectPatterns = @('^Feature \d+.* iteration \d+: implement', '^Feature \d+.* iteration \d+: bounded') },
+        [pscustomobject]@{ Name = 'review-boundary'; StopLabel = 'review-boundary'; SubjectPatterns = @('^Feature \d+.* iteration \d+ review boundary') },
+        [pscustomobject]@{ Name = 'review-verdict-signoff'; StopLabel = 'review-verdict-signoff'; SubjectPatterns = @('^Feature \d+.* iteration \d+ review-verdict-signoff boundary') },
+        [pscustomobject]@{ Name = 'retro-boundary'; StopLabel = 'retro-boundary'; SubjectPatterns = @('^Feature \d+.* iteration \d+ retrospective boundary') },
+        [pscustomobject]@{ Name = 'iteration-closeout'; StopLabel = 'iteration-closeout'; SubjectPatterns = @('^Feature \d+.* iteration \d+ closeout boundary') },
+        [pscustomobject]@{ Name = 'feature-closeout'; StopLabel = 'feature-closeout'; SubjectPatterns = @('^Feature \d+.*: feature-closeout boundary') }
+    )
+}
+
+function Normalize-InteractionModelBoundaryName {
+    param([AllowNull()][string]$Boundary)
+
+    if ([string]::IsNullOrWhiteSpace($Boundary)) {
+        return $null
+    }
+
+    $normalized = $Boundary.Trim().ToLowerInvariant() -replace '[^a-z0-9]+', '-'
+    switch -Regex ($normalized) {
+        '^planning$' { return 'planning' }
+        '^hardening-gate(?:-and-implementation-auth)?$' { return 'hardening-gate-and-implementation-auth' }
+        '^hardening-gate-sign-?off$' { return 'hardening-gate-signoff' }
+        '^hardening-gate-signoff$' { return 'hardening-gate-signoff' }
+        '^implementation(?:-authorization)?$' { return 'implementation' }
+        '^review$' { return 'review-boundary' }
+        '^review-boundary$' { return 'review-boundary' }
+        '^review-verdict-signoff$' { return 'review-verdict-signoff' }
+        '^retro(?:spective)?(?:-boundary)?$' { return 'retro-boundary' }
+        '^iteration-closeout$' { return 'iteration-closeout' }
+        '^feature-closeout$' { return 'feature-closeout' }
+        default { return $normalized.Trim('-') }
+    }
+}
+
+function Get-InteractionModelSectionMap {
+    param([AllowEmptyString()][string]$Text)
+
+    $sectionMap = [ordered]@{}
+    if ([string]::IsNullOrWhiteSpace($Text)) {
+        return $sectionMap
+    }
+
+    $lines = $Text -replace "`r`n", "`n" -split "`n"
+    $currentHeading = $null
+    $currentLines = New-Object System.Collections.Generic.List[string]
+    $headingPattern = '^(?:#{1,6}\s*)?(?:\*\*)?(What I just did|Why I stopped|What I need from you)(?:\*\*)?\s*$'
+
+    foreach ($line in $lines) {
+        $trimmed = $line.Trim()
+        if ($trimmed -match $headingPattern) {
+            if ($null -ne $currentHeading) {
+                $sectionMap[$currentHeading] = ($currentLines -join "`n").Trim()
+                $currentLines.Clear()
+            }
+
+            $currentHeading = $Matches[1]
+            continue
+        }
+
+        if ($null -ne $currentHeading) {
+            $null = $currentLines.Add($line)
+        }
+    }
+
+    if ($null -ne $currentHeading) {
+        $sectionMap[$currentHeading] = ($currentLines -join "`n").Trim()
+    }
+
+    return $sectionMap
+}
+
+function Get-InteractionModelSections {
+    param([AllowEmptyString()][string]$Text)
+
+    $sectionMap = Get-InteractionModelSectionMap -Text $Text
+    if ($sectionMap.Count -eq 0) {
+        return @($(if ([string]::IsNullOrWhiteSpace($Text)) { '' } else { $Text.Trim() }))
+    }
+
+    return @($sectionMap.GetEnumerator() | ForEach-Object { [string]$_.Value })
+}
+
+function Get-InteractionModelBoundaryCommitMatch {
+    param([AllowNull()][string]$Subject)
+
+    if ([string]::IsNullOrWhiteSpace($Subject)) {
+        return $null
+    }
+
+    foreach ($boundary in Get-InteractionModelBoundaryCatalog) {
+        foreach ($pattern in $boundary.SubjectPatterns) {
+            if ($Subject -match $pattern) {
+                $featureNumber = if ($Subject -match 'Feature\s+(?<feature>\d+)') { [int]$Matches['feature'] } else { $null }
+                $iterationNumber = if ($Subject -match 'iteration\s+(?<iteration>\d+)') { [int]$Matches['iteration'] } else { $null }
+                return [pscustomobject]@{
+                    Boundary      = $boundary.Name
+                    StopLabel     = $boundary.StopLabel
+                    FeatureNumber = $featureNumber
+                    IterationNumber = $iterationNumber
+                    Subject       = $Subject.Trim()
+                }
+            }
+        }
+    }
+
+    return $null
+}
+
+function Get-InteractionModelSettings {
+    param([Parameter(Mandatory = $true)][string]$ProjectRoot)
+
+    $settings = [ordered]@{
+        BarePathBoundaryHandoffSeverity = 'soft-warning'
+        ExemptionExtensions = @()
+        ConfigIssues = @()
+    }
+
+    $configPath = Join-Path $ProjectRoot '.specrew\config.yml'
+    if (-not (Test-Path -LiteralPath $configPath -PathType Leaf)) {
+        return [pscustomobject]$settings
+    }
+
+    $lines = @(Get-MarkdownContent -Path $configPath)
+    $inInteractionModel = $false
+    $inExemptions = $false
+    $currentEntry = $null
+    $extensions = New-Object System.Collections.Generic.List[object]
+
+    foreach ($line in $lines) {
+        if ($line -match '^\S') {
+            if ($line -match '^interaction_model:\s*$') {
+                $inInteractionModel = $true
+                $inExemptions = $false
+                continue
+            }
+
+            if ($inInteractionModel) {
+                break
+            }
+        }
+
+        if (-not $inInteractionModel) {
+            continue
+        }
+
+        if ($line -match '^\s{2}bare_path_boundary_handoff_severity:\s*(?<value>\S.*?)\s*$') {
+            $severity = $Matches['value'].Trim(" `t`r`n'`"")
+            if ($severity -in @('soft-warning', 'validation-fail')) {
+                $settings.BarePathBoundaryHandoffSeverity = $severity
+            }
+            else {
+                $settings.ConfigIssues += "interaction_model bare_path_boundary_handoff_severity '$severity' is invalid; expected soft-warning or validation-fail."
+            }
+            continue
+        }
+
+        if ($line -match '^\s{2}exemption_extensions:\s*$') {
+            $inExemptions = $true
+            continue
+        }
+
+        if (-not $inExemptions) {
+            continue
+        }
+
+        if ($line -match '^\s{4}-\s*id:\s*(?<value>\S.*?)\s*$') {
+            if ($null -ne $currentEntry) {
+                $extensions.Add([pscustomobject]$currentEntry) | Out-Null
+            }
+
+            $currentEntry = [ordered]@{
+                Id = $Matches['value'].Trim(" `t`r`n'`"")
+                Pattern = $null
+                Approver = $null
+                Rationale = $null
+            }
+            continue
+        }
+
+        if ($null -eq $currentEntry) {
+            continue
+        }
+
+        if ($line -match '^\s{6}pattern:\s*(?<value>\S.*?)\s*$') {
+            $currentEntry.Pattern = $Matches['value'].Trim(" `t`r`n'`"")
+            continue
+        }
+
+        if ($line -match '^\s{6}approver:\s*(?<value>\S.*?)\s*$') {
+            $currentEntry.Approver = $Matches['value'].Trim(" `t`r`n'`"")
+            continue
+        }
+
+        if ($line -match '^\s{6}rationale:\s*(?<value>\S.*?)\s*$') {
+            $currentEntry.Rationale = $Matches['value'].Trim(" `t`r`n'`"")
+            continue
+        }
+    }
+
+    if ($null -ne $currentEntry) {
+        $extensions.Add([pscustomobject]$currentEntry) | Out-Null
+    }
+
+    foreach ($entry in $extensions) {
+        if ([string]::IsNullOrWhiteSpace($entry.Pattern) -or [string]::IsNullOrWhiteSpace($entry.Approver) -or [string]::IsNullOrWhiteSpace($entry.Rationale)) {
+            $settings.ConfigIssues += "interaction_model exemption extension '$($entry.Id)' must include pattern, approver, and rationale."
+            continue
+        }
+
+        $settings.ExemptionExtensions += $entry
+    }
+
+    return [pscustomobject]$settings
+}
+
+function New-InteractionModelAuthorizationDecisionId {
+    param(
+        [Parameter(Mandatory = $true)][int]$FeatureNumber,
+        [Parameter(Mandatory = $true)][int]$IterationNumber,
+        [Parameter(Mandatory = $true)][string]$Boundary
+    )
+
+    $normalizedBoundary = (Normalize-InteractionModelBoundaryName -Boundary $Boundary) -replace '[^a-z0-9-]+', '-'
+    return ('authorization-feature-{0:d3}-iter-{1:d3}-{2}' -f $FeatureNumber, $IterationNumber, $normalizedBoundary)
+}
+
+function Add-InteractionModelAuthorizationEntry {
+    param(
+        [Parameter(Mandatory = $true)][string]$ProjectRoot,
+        [Parameter(Mandatory = $true)][int]$FeatureNumber,
+        [Parameter(Mandatory = $true)][int]$IterationNumber,
+        [Parameter(Mandatory = $true)][string]$Boundary,
+        [Parameter(Mandatory = $true)][ValidateSet('authorization', 'sign-off')][string]$Type,
+        [Parameter(Mandatory = $true)][string]$ApprovingHuman,
+        [Parameter(Mandatory = $true)][string]$AuthorizationText,
+        [string]$CommitReference = 'pending',
+        [string]$RecordedAt,
+        [string]$DecisionId
+    )
+
+    $normalizedBoundary = Normalize-InteractionModelBoundaryName -Boundary $Boundary
+    $effectiveDecisionId = if ([string]::IsNullOrWhiteSpace($DecisionId)) {
+        New-InteractionModelAuthorizationDecisionId -FeatureNumber $FeatureNumber -IterationNumber $IterationNumber -Boundary $normalizedBoundary
+    }
+    else {
+        $DecisionId.Trim()
+    }
+
+    $effectiveRecordedAt = if ([string]::IsNullOrWhiteSpace($RecordedAt)) {
+        (Get-Date).ToUniversalTime().ToString('yyyy-MM-ddTHH:mm:ssZ')
+    }
+    else {
+        $RecordedAt.Trim()
+    }
+
+    $lines = @(
+        "- **Decision ID**: $effectiveDecisionId"
+        "- **Type**: $Type"
+        "- **Boundary**: $normalizedBoundary"
+        "- **Approving Human**: $ApprovingHuman"
+        "- **Recorded At**: $effectiveRecordedAt"
+        "- **Commit Reference**: $(Get-DecisionLedgerOptionalValue -Value $CommitReference)"
+        '- **Authorization Text**:'
+    ) + @($AuthorizationText -replace "`r`n", "`n" -split "`n" | ForEach-Object { "  > $_" })
+
+    return Add-DecisionsLedgerEntry -ProjectRoot $ProjectRoot -Title "Authorization: $normalizedBoundary" -Lines $lines
+}
+
+function Get-InteractionModelAuthorizationEntries {
+    param(
+        [Parameter(Mandatory = $true)][string]$ProjectRoot,
+        [int]$FeatureNumber,
+        [int]$IterationNumber
+    )
+
+    return @(
+        Get-DecisionsLedgerEntries -ProjectRoot $ProjectRoot |
+            Where-Object {
+                $_.Type -in @('authorization', 'sign-off') -and
+                (-not $PSBoundParameters.ContainsKey('FeatureNumber') -or [string]$_.DecisionId -match ("authorization-feature-{0:d3}\b" -f $FeatureNumber)) -and
+                (-not $PSBoundParameters.ContainsKey('IterationNumber') -or [string]$_.DecisionId -match ("iter-{0:d3}\b" -f $IterationNumber))
+            }
+    )
 }
 
 function Get-MarkdownContent {

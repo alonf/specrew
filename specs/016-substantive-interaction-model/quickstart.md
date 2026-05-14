@@ -2,8 +2,8 @@
 
 **Feature**: 016 Substantive Interaction Model  
 **Branch**: `016-substantive-interaction-model`  
-**Phase**: 1 — Implementation-ready  
-**Date**: 2026-05-13
+**Phase**: 1 — Iteration 001 implemented; review authorization pending  
+**Date**: 2026-05-14
 
 ---
 
@@ -138,6 +138,23 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File .\tests\integration\<feature-016-r
 Invoke-Pester .\tests\unit\
 ```
 
+### Implementation Evidence — 2026-05-14
+
+- **Baseline repo validator**: `pwsh -NoProfile -ExecutionPolicy Bypass -File .\extensions\specrew-speckit\scripts\validate-governance.ps1 -ProjectPath .` → pass, `109134 ms`
+- **Baseline handoff regressions**:
+  - `pwsh -NoProfile -ExecutionPolicy Bypass -File .\tests\integration\handoff-governance-jargon-response-test.ps1` → pass
+  - `pwsh -NoProfile -ExecutionPolicy Bypass -File .\tests\integration\handoff-governance-plain-language-response-test.ps1` → pass
+  - `pwsh -NoProfile -ExecutionPolicy Bypass -File .\tests\integration\handoff-governance-review-file-reference-test.ps1` → pass
+  - `pwsh -NoProfile -ExecutionPolicy Bypass -File .\tests\integration\handoff-governance-descriptive-narration-test.ps1` → pass
+  - `pwsh -NoProfile -ExecutionPolicy Bypass -File .\tests\integration\handoff-governance-descriptive-stop-message-test.ps1` → pass
+- **Feature 016 validation additions**:
+  - `pwsh -NoProfile -ExecutionPolicy Bypass -File .\tests\integration\substantive-interaction-model-handoff-test.ps1` → pass
+  - `pwsh -NoProfile -ExecutionPolicy Bypass -File .\tests\integration\substantive-interaction-model-boundary-discipline-test.ps1` → pass
+- **Final repo validator**: `pwsh -NoProfile -ExecutionPolicy Bypass -File .\extensions\specrew-speckit\scripts\validate-governance.ps1 -ProjectPath .` → pass, `113070 ms`
+- **NFR-001 baseline vs actual**: repo validator moved from `109134 ms` to `113070 ms` (`+3936 ms`, about `+3.6%`, within the `+15%` tolerance captured in the hardening gate notes). The ad-hoc Feature 016 response-validation path measured `1332 ms` command-level wall time, and the bundled-boundary fixture replay measured `6180 ms` end-to-end including fixture setup.
+- **NFR-002 prompt-line budget**: prompt/governance guidance additions totaled `100` added lines across `.github\agents\squad.agent.md`, `.squad\templates\squad.agent.md`, `extensions\specrew-speckit\prompts\coordinator-decision-guidance.md`, `extensions\specrew-speckit\prompts\coordinator-response.md`, `extensions\specrew-speckit\checklists\coordinator-handoff-governance.md`, `extensions\specrew-speckit\squad-templates\coordinator\specrew-governance.md`, and `.specify\extensions\specrew-speckit\squad-templates\coordinator\specrew-governance.md` (budget: `<=150`).
+- **Authorized-scope outcome**: Iteration 001 delivered the authorized FR-001 through FR-019 scope only. FR-020 through FR-024 and the Iteration 2 promotion half of FR-016 remain intentionally untouched.
+
 ### Iteration 2 Steps
 
 1. Add violating + compliant fixtures for every new interaction-model rule.
@@ -172,10 +189,11 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File .\extensions\specrew-speckit\scrip
 
 ## Scope Reminder
 
-> Feature 016 planning covers only the canonical planning artifacts in
-> `specs/016-substantive-interaction-model/` plus the agent-context update.
+> Feature 016 now has an implemented Iteration 001 slice plus recorded evidence in
+> `specs/016-substantive-interaction-model/` and `specs/016-substantive-interaction-model/iterations/001/`.
 >
-> This workflow does **not** create implementation artifacts.
+> Review, retro, iteration closeout, and all Iteration 2 proof/doc/corpus work still require their
+> own explicit authorizations.
 >
-> `tasks.md` and any `specs/016-substantive-interaction-model/iterations/` scaffolds are separate
-> boundary outputs that require their own explicit authorization.
+> The remaining deferred scope is FR-020 through FR-024 plus the Iteration 2 promotion half of
+> FR-016 only.

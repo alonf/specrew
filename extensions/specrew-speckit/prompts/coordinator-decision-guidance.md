@@ -83,6 +83,22 @@ Example next step:
 2. State the confidence gap in plain language.
 3. Recommend the next verification action before broader rollout.
 
+### 5B. Feature 016 Boundary Decision
+
+**If** the work is crossing a lifecycle boundary  
+**Then**
+
+1. Name the exact boundary from the canonical set: planning, hardening-gate-and-implementation-auth, implementation, review-boundary, review-verdict-signoff, retro-boundary, iteration-closeout, or feature-closeout.
+2. Require a fresh immediately preceding authorization for that boundary only.
+3. Treat `continue` as a one-boundary step, never as blanket permission.
+4. If one pasted approval covers hardening-gate sign-off and implementation authorization, generate two `.squad/decisions.md` entries that preserve the same verbatim authorization text.
+5. Use `file:///` links for inspection targets and narration references outside approved exempt contexts.
+
+Examples:
+
+- **Compliant**: "I used the current authorization to advance only to the implementation boundary. I stopped again and I need your review of `file:///C:/Dev/Specrew/specs/016-substantive-interaction-model/iterations/001/plan.md` before the review-boundary."
+- **Violation**: "You said continue, so I emitted review-boundary, retro-boundary, and iteration-closeout commits." Expected validator result: `validation-fail.bundled-boundary-advance`.
+
 ### 5A. Stop-vs-Progress Decision
 
 **If** a real blocker prevents safe continuation  
@@ -132,6 +148,12 @@ Example next step:
 - **What I just did**: Updated **feature 012, descriptive references in handoffs**, and aligned **iteration 001, the readable-reference rollout** template with the prompt guidance.
 - **Why I stopped**: The approved slice is implemented, but the wording still needs a human review pass.
 - **What I need from you**: Review the wording in the prompt, template, and Squad agent section for clarity and consistency. Start with `file:///C:/Dev/Specrew/specs/001-specrew-product/contracts/coordinator-handoff-template.md`.
+
+### Feature 016 Boundary-Blocked Stop Message
+
+- **What I just did**: Completed **feature 016, substantive interaction model**, across **FR-001 through FR-019, the Iteration 001 three-pillar scope**, and verified the updated prompt and validator surfaces with the repo governance checks.
+- **Why I stopped**: I stopped at the review-boundary because per-boundary discipline requires a separate authorization before any review-boundary commit can be emitted.
+- **What I need from you**: Review `file:///C:/Dev/Specrew/specs/016-substantive-interaction-model/iterations/001/plan.md` and approve or reject advancement to the review-boundary.
 
 ### Verification-Gap Stop Message
 

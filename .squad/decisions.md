@@ -2062,7 +2062,7 @@ Iteration 002 planning artifacts (plan.md) were still in `planning` status with 
 - **Boundary**: hardening-gate-signoff
 - **Approving Human**: Alon Fliess
 - **Recorded At**: 2026-05-14T01:13:53Z
-- **Commit Reference**: pending
+- **Commit Reference**: e47da21
 - **Authorization Text**:
   > I sign off on the accepted Iteration 001 pre-implementation hardening gate for Feature 016 Substantive Interaction Model. The five concerns drafted at file:///C:/Dev/Specrew/specs/016-substantive-interaction-model/iterations/001/quality/hardening-gate.md
   > (security-surface, error-handling-expectations, retry-idempotency-requirements, test-integrity-targets, operational-resilience-concerns) are appropriate for this coordinator-prompt + validator-extension feature, with specific FR/NFR/Risk traceability and measurable
@@ -2103,7 +2103,7 @@ Iteration 002 planning artifacts (plan.md) were still in `planning` status with 
 - **Boundary**: implementation
 - **Approving Human**: Alon Fliess
 - **Recorded At**: 2026-05-14T01:13:53Z
-- **Commit Reference**: pending
+- **Commit Reference**: e47da21
 - **Authorization Text**:
   > I sign off on the accepted Iteration 001 pre-implementation hardening gate for Feature 016 Substantive Interaction Model. The five concerns drafted at file:///C:/Dev/Specrew/specs/016-substantive-interaction-model/iterations/001/quality/hardening-gate.md
   > (security-surface, error-handling-expectations, retry-idempotency-requirements, test-integrity-targets, operational-resilience-concerns) are appropriate for this coordinator-prompt + validator-extension feature, with specific FR/NFR/Risk traceability and measurable
@@ -2136,6 +2136,17 @@ Iteration 002 planning artifacts (plan.md) were still in `planning` status with 
   >
   > Step 7: If implementation reveals that any FR cannot be delivered within the authorized scope, do NOT silently defer — surface the deferral, name the FR, name the reason, and ask for explicit deferral approval per Specrew's deferral discipline. Implementation scope
   > locks are real; scope expansion requires authorization.
+
+## 2026-05-14T01:54:55Z — Routing evidence: Implementer
+
+- **Decision ID**: routing-evidence-feature-016-iter-001-implementation
+- **Type**: routing-evidence
+- **Scope**: feature-016-iteration-001-implementation
+- **Requested Agent**: Implementer
+- **Actual Agent**: general-purpose
+- **Model**: gpt-5.4
+- **Status**: completed
+- **Routing Evidence**: Implementer | requested=general-purpose | actual=general-purpose | model=gpt-5.4 | status=completed
 
 ---
 # Reviewer Decision: Feature 015 Iteration 002 Review

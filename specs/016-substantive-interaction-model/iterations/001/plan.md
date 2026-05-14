@@ -1,88 +1,87 @@
-# Iteration Plan: 001 (Stub)
+# Iteration Plan: 001
 
 **Schema**: v1
 **Spec**: [../../spec.md](../../spec.md)
-**Status**: planning
-**Capacity**: 0/20 story_points
+**Status**: executing
+**Capacity**: 13.0/20 story_points
 **Started**: 2026-05-14
-**Completed**:
+**Completed**: implementation completed on 2026-05-14 (`T001`-`T008`, `T011`-`T013`, `T018`-`T020`)
+**Hardening-Gate Sign-Off**: user sign-off recorded on 2026-05-14; authorization boundary committed in `e47da21`
+**Implementation Authorization**: user directive on 2026-05-14 for FR-001 through FR-019 only; paired decisions recorded in `.squad/decisions.md`
+**Review Completed**:
+**Review Verdict**:
 
 ## Scope Summary
 
-| Requirement | Summary | Stories |
-| ----------- | ------- | ------- |
-| FR-001 | The coordinator prompt MUST require Squad to stop and request explicit human authorization after EACH of the 7 iteration boundary commits: planning, hardening-gate-and-implementation-auth, implementation, review-boundary, review-verdict-signoff, retro-boundary, and iteration-closeout. These 7 iteration boundaries MUST be enumerated by name in the coordinator prompt. `feature-closeout` remains a separate feature-level boundary and is not part of the per-iteration count. **Owner role**: Governance steward. **Delivery window**: Iteration 1. | — |
-| FR-002 | The coordinator prompt MUST explicitly forbid bundled boundary advances. The rule: "Each boundary commit requires its own immediately-preceding authorization; one human authorization advances at most one boundary." Even when the user says "continue" or provides broad multi-step authorization, Squad MUST NOT emit multiple boundary commits without intervening explicit per-boundary authorization. **Owner role**: Governance steward. **Delivery window**: Iteration 1. | — |
-| FR-003 | The coordinator prompt MUST clarify that "continue" from the user means "advance to the next single boundary stop, then halt and ask." Squad MUST treat "continue" as a single-step instruction, not a license for autonomous multi-boundary advance. **Owner role**: Governance steward. **Delivery window**: Iteration 1. | — |
-| FR-004 | The coordinator prompt MUST include a worked example showing the compliant 7-authorization-per-iteration pattern with explicit authorization phrasing for each boundary (matching the dogfooding pattern established in Features 011-014). **Owner role**: Governance steward. **Delivery window**: Iteration 1. | — |
-| FR-005 | The coordinator prompt MUST include a worked example showing a violating bundled-advance pattern (Squad emitting review + retro + closeout commits without intervening authorization) and the validator FAIL response. **Owner role**: Governance steward. **Delivery window**: Iteration 1. | — |
-| FR-006 | `validate-governance.ps1` MUST be extended with hard-validator rule `validation-fail.bundled-boundary-advance` that: detects when 2 or more boundary commits exist in the commit history since the most recent human authorization recorded in `.squad/decisions.md`, emits structured FAIL output naming the offending commit pair, the iteration, and the missing intervening authorization, and returns non-zero exit code so the validator can be used as a CI gate. **Owner role**: Validator steward. **Delivery window**: Iteration 1. | — |
-| FR-007 | The validator MUST recognize the canonical boundary-commit signature patterns (subject-line regex). Recognition MUST be subject-line-pattern-based, not file-content-based, to keep the rule mechanical and fast. The canonical patterns are listed in the Implementation Boundary section. **Owner role**: Validator steward. **Delivery window**: Iteration 1. | — |
-| FR-008 | Squad MUST auto-generate the canonical human-authorization shape in `.squad/decisions.md` from the user's authorization paste. Required captured fields: Decision ID, Type (`authorization` or `sign-off`), Boundary, Approving Human, Recorded At (ISO 8601 UTC), Commit Reference, Authorization Text (verbatim). The boundary inspection flow MUST allow the user to review or override the generated metadata before advancing. **Owner role**: Governance steward. **Delivery window**: Iteration 1. | — |
-| FR-009 | Paired authorizations (hardening-gate sign-off + implementation authorization) MUST be recorded as TWO distinct entries in `.squad/decisions.md`, even when the user supplies one authorization paste. Squad MUST auto-generate the pair as separate entries; single-entry multi-boundary authorizations are rejected as bundled. **Owner role**: Governance steward. **Delivery window**: Iteration 1. | — |
-| FR-010 | The coordinator prompt MUST require Squad's boundary handoffs to use Feature 014's three-section format AND populate each section substantively. For planning, implementation, review, and retro, "What I just did" MUST include at least 3 specific identifiers (commit hash, `file:///` path, FR-###, T###, or decision reference) AND at least 50 words. For iteration-closeout and feature-closeout, the section MAY satisfy a soft OR threshold (either the identifier count OR the word-count threshold). These thresholds are fixed for Feature 016 and MUST NOT be made tunable per project. "Why I stopped" MUST name the specific boundary phase being entered (not generic "next step"). "What I need from you" MUST be a specific actionable request naming the boundary, the inspection target(s), and the verdict required. This requirement applies to Squad's console handoffs only, not downstream artifact bodies. **Owner role**: Governance steward. **Delivery window**: Iteration 1. | — |
-| FR-011 | `validate-governance.ps1` MUST be extended with soft-validator rule `soft-warning.thin-what-i-just-did` that fires when the "What I just did" section of a boundary handoff fails the fixed threshold for its lifecycle phase: planning, implementation, review, and retro require both the identifier count and the 50-word minimum; iteration-closeout and feature-closeout require at least one of those two thresholds. This rule remains soft-warning throughout Feature 016. **Owner role**: Validator steward. **Delivery window**: Iteration 1. | — |
-| FR-012 | `validate-governance.ps1` MUST be extended with soft-validator rule `soft-warning.unspecific-stop-boundary` that fires when "Why I stopped" content does not name the specific boundary phase. The validator MUST cross-reference the current iteration state to detect mismatches (e.g., Squad says "next is review" but the iteration is at retro boundary). **Owner role**: Validator steward. **Delivery window**: Iteration 1. | — |
-| FR-013 | `validate-governance.ps1` MUST be extended with soft-validator rule `soft-warning.unactionable-user-request` that fires once per handoff when "What I need from you" content does not name (a) the specific boundary being authorized, (b) the inspection target(s) as `file:///` references, AND (c) the verdict required. The emitted warning MUST list every missing component (`boundary-name`, `inspection-target`, `verdict-required`) in that single warning. **Owner role**: Validator steward. **Delivery window**: Iteration 1. | — |
-| FR-014 | The coordinator prompt MUST include worked examples of substantive vs thin handoffs for each lifecycle phase, with annotations explaining what makes each section substantive. **Owner role**: Governance steward. **Delivery window**: Iteration 1. | — |
-| FR-015 | The coordinator prompt MUST require `file:///` URL format for ALL artifact references in Squad's narration and boundary stop messages. Bare relative paths or bare absolute paths in narration are forbidden. **Owner role**: Governance steward. **Delivery window**: Iteration 1. | — |
-| FR-016 | `validate-governance.ps1` MUST implement the bare-path-in-boundary-handoff rule as a parameterized severity rule so rollout can change by configuration rather than rewrite. In Iteration 1, the rule emits `soft-warning.bare-path-in-boundary-handoff`; in Iteration 2, after exemption-list integration tests prove bounded false positives, the same rule flips to `validation-fail.bare-path-in-boundary-handoff`. The rule fires when a boundary stop message contains a bare path reference outside approved exemption contexts. **Owner role**: Validator steward. **Delivery window**: Iteration 1-2. | — |
-| FR-017 | `validate-governance.ps1` MUST be extended with soft-validator rule `soft-warning.bare-path-in-narration` that fires when non-boundary Squad text (in-flight progress updates, tool-call narration) contains bare path references. Lower severity than the boundary-handoff rule because in-flight narration is less critical for click-through. **Owner role**: Validator steward. **Delivery window**: Iteration 1. | — |
-| FR-018 | The validator MUST define explicit exemptions for paths in: shell-command arguments (e.g., `git add specs/...`), inline-code blocks, log output, JSON/YAML literals, regex patterns, and file glob arguments. Projects MAY extend that exemption list via `.specrew/config.yml`, but each extension MUST carry recorded human approval with approver name and rationale so exemption growth remains reviewable. These contexts contain paths but are not intended for click-through navigation. **Owner role**: Validator steward. **Delivery window**: Iteration 1. | — |
-| FR-019 | When Squad cites an artifact via `file:///` URL, the validator MUST check that the file actually exists at that path. Citations to non-existent paths emit soft-warning `soft-warning.broken-file-url-reference`. **Owner role**: Validator steward. **Delivery window**: Iteration 1. | — |
-| FR-020 | New corpus rows MUST be added to `.specrew/quality/known-traps.md`: Category `boundary-discipline`, ID `bundled-boundary-advance` — validator-enforced per FR-006; Category `interaction-model`, ID `thin-handoff-summary` — validator-enforced per FR-011-013 and marked as future graduation-candidate while remaining soft-warning in Feature 016; Category `interaction-model`, ID `bare-path-in-handoff` — validator-enforced per FR-016-017 with cross-reference notes documenting its Iteration 1 soft-warning state and Iteration 2 hard-fail graduation; Category `interaction-model`, ID `thin-artifact-content` — passive/not validator-enforced in Feature 016, recorded only as future candidacy for artifact-scope expansion. Each row MUST cite the implementing FRs and integration tests (if any). **Owner role**: Quality steward. **Delivery window**: Iteration 2. | — |
-| FR-021 | Integration tests MUST exercise each new rule against synthetic violating fixtures (must emit warning/FAIL) and compliant fixtures (must NOT emit). Test coverage MUST use scaffold-replay-path patterns per the test-integrity corpus row. Exemption-list integration tests MUST explicitly demonstrate bounded false positives before FR-016 severity flips from Iteration 1 soft-warning to Iteration 2 hard-fail. **Owner role**: Quality steward. **Delivery window**: Iteration 2. | — |
-| FR-022 | The README "Recommended Lifecycle" section and validator documentation MUST be updated to describe the three-pillar interaction model with explicit reference to the 7-authorization pattern, the essence-in-console expectation, the click-through navigation convention, and the validator's scope limitation to Squad-authored handoffs/artifacts rather than conversation transcripts or user-typed text. **Owner role**: Documentation steward. **Delivery window**: Iteration 2. | — |
-| FR-023 | The per-feature handoff template MUST include explicit worked examples of substantive boundary handoffs for each of the 7 boundaries. **Owner role**: Documentation steward. **Delivery window**: Iteration 2. | — |
-| FR-024 | Related historical corpus rows MUST be cross-referenced from this feature's new corpus rows so future readers can trace the full enforcement evolution: Feature 012's `human-handoff-id-context` (numeric ID descriptors); Feature 014's `empty-user-action-section` (placeholder text in user-action section); Feature 014's `transitional-stop-claim` (transitional narration disguised as stop). **Owner role**: Quality steward. **Delivery window**: Iteration 2. | — |
+Iteration 001 delivered the authorized Feature 016 governance and validator slice only: per-boundary authorization discipline, substantive boundary-handoff guidance, and `file:///` click-through navigation enforcement for FR-001 through FR-019. Iteration 2 proof, corpus, template, and documentation follow-through remains explicitly deferred.
+
+| Scope Slice | Requirements | Tasks | Status | Notes |
+| --- | --- | --- | --- | --- |
+| Setup + foundations | FR-006, FR-007, FR-008, FR-009, FR-011, FR-016, FR-018 | T001-T004 | done | Baseline captured; shared governance/helper plumbing aligned before story work |
+| User Story 1 — boundary discipline | FR-001 through FR-009 | T005-T008 | done | Seven named boundaries, single-step `continue`, paired authorization shape, bundled-boundary hard fail |
+| User Story 2 — essence in console | FR-010 through FR-014 | T011-T013 | done | Substantive-threshold guidance and additive soft warnings shipped |
+| User Story 3 — click-through navigation | FR-015 through FR-019 | T018-T020 | done | `file:///` guidance, bare-path soft warnings, exemption contexts, broken-link checks shipped |
 
 ## Tasks
 
-| Task | Title | Requirement | Story | Effort | Owner | Owner File Globs | Status | Agent | Actual | Verdict |
-| ---- | ----- | ----------- | ----- | ------ | ----- | ---------------- | ------ | ----- | ------ | ------- |
+| Task | Title | Scope Item | Requirement | Story | Effort | Owner | Owner File Globs | Status | Agent | Actual | Verdict |
+| ---- | ----- | ---------- | ----------- | ----- | ------ | ----- | ---------------- | ------ | ----- | ------ | ------- |
+| T001 | Capture repo baseline and record it in quickstart | Foundation | FR-006, FR-007, FR-011, FR-016 | US0 | 1.0 | Quality steward | `specs/016-substantive-interaction-model/quickstart.md`, `tests/integration/*.ps1`, `extensions/specrew-speckit/scripts/validate-governance.ps1` | done | Implementer | 1.0 | done |
+| T002 | Reconcile approved design artifacts against Iteration 1 scope | Foundation | TG-005, TG-006 | US0 | 0.5 | Iteration facilitator | `specs/016-substantive-interaction-model/*.md`, `contracts/*.md` | done | Implementer | 0.5 | done |
+| T003 | Reconcile boundary and validator contracts with the final helper vocabulary | Foundation | FR-008, FR-009, FR-016, FR-018 | US0 | 0.5 | Governance steward | `specs/016-substantive-interaction-model/contracts/*.md` | done | Implementer | 0.5 | done |
+| T004 | Add shared helper plumbing for boundary/auth/handoff parsing | Foundation | FR-006, FR-007, FR-011, FR-016 | US0 | 1.5 | Validator steward | `extensions/specrew-speckit/scripts/shared-governance.ps1`, `.specify/extensions/specrew-speckit/scripts/shared-governance.ps1` | done | Implementer | 1.5 | done |
+| T005 | Update boundary-discipline coordinator guidance and examples | 1 | FR-001, FR-002, FR-003, FR-004, FR-005 | US1 | 1.5 | Governance steward | `.github/agents/squad.agent.md`, `extensions/specrew-speckit/prompts/*.md`, `extensions/specrew-speckit/squad-templates/coordinator/specrew-governance.md`, `.specify/extensions/specrew-speckit/squad-templates/coordinator/specrew-governance.md` | done | Implementer | 1.5 | done |
+| T006 | Add canonical authorization-record guidance and paired-entry rules | 1 | FR-008, FR-009 | US1 | 1.0 | Governance steward | `.github/agents/squad.agent.md`, `extensions/specrew-speckit/prompts/coordinator-response.md`, `specs/016-substantive-interaction-model/contracts/boundary-authorization-and-handoff.md` | done | Implementer | 1.0 | done |
+| T007 | Implement bundled-boundary hard fail and canonical boundary recognition | 1 | FR-006, FR-007, FR-008, FR-009 | US1 | 2.0 | Validator steward | `extensions/specrew-speckit/scripts/validate-governance.ps1`, `.specify/extensions/specrew-speckit/scripts/validate-governance.ps1`, `extensions/specrew-speckit/scripts/shared-governance.ps1`, `.specify/extensions/specrew-speckit/scripts/shared-governance.ps1` | done | Implementer | 2.0 | done |
+| T008 | Record boundary-discipline replay evidence | 1 | SC-001, SC-002, SC-003 | US1 | 0.5 | Quality steward | `specs/016-substantive-interaction-model/quickstart.md` | done | Implementer | 0.5 | done |
+| T011 | Update substantive-handoff guidance and examples | 2 | FR-010, FR-014 | US2 | 1.0 | Governance steward | `.github/agents/squad.agent.md`, `extensions/specrew-speckit/prompts/coordinator-response.md`, `extensions/specrew-speckit/checklists/coordinator-handoff-governance.md`, `extensions/specrew-speckit/squad-templates/coordinator/specrew-governance.md`, `.specify/extensions/specrew-speckit/squad-templates/coordinator/specrew-governance.md` | done | Implementer | 1.0 | done |
+| T012 | Implement substantive-handoff soft warnings | 2 | FR-011, FR-012, FR-013 | US2 | 1.5 | Validator steward | `extensions/specrew-speckit/validators/handoff-governance-validator.ps1`, `extensions/specrew-speckit/scripts/validate-governance.ps1`, `.specify/extensions/specrew-speckit/scripts/validate-governance.ps1` | done | Implementer | 1.5 | done |
+| T013 | Record console-substance validation evidence | 2 | SC-004, SC-005 | US2 | 0.5 | Quality steward | `specs/016-substantive-interaction-model/quickstart.md` | done | Implementer | 0.5 | done |
+| T018 | Update navigation guidance to require `file:///` references | 3 | FR-015, FR-018, FR-019 | US3 | 1.0 | Governance steward | `.github/agents/squad.agent.md`, `extensions/specrew-speckit/prompts/coordinator-decision-guidance.md`, `extensions/specrew-speckit/prompts/coordinator-response.md`, `extensions/specrew-speckit/squad-templates/coordinator/specrew-governance.md`, `.specify/extensions/specrew-speckit/squad-templates/coordinator/specrew-governance.md` | done | Implementer | 1.0 | done |
+| T019 | Implement bare-path and broken-file-url warnings with exemptions | 3 | FR-016, FR-017, FR-018, FR-019 | US3 | 1.5 | Validator steward | `extensions/specrew-speckit/validators/handoff-governance-validator.ps1`, `extensions/specrew-speckit/scripts/validate-governance.ps1`, `.specify/extensions/specrew-speckit/scripts/validate-governance.ps1`, `extensions/specrew-speckit/scripts/shared-governance.ps1`, `.specify/extensions/specrew-speckit/scripts/shared-governance.ps1` | done | Implementer | 1.5 | done |
+| T020 | Record navigation validation evidence | 3 | SC-006, SC-007, SC-008 | US3 | 0.5 | Quality steward | `specs/016-substantive-interaction-model/quickstart.md` | done | Implementer | 0.5 | done |
 
 ## Effort Model
 
 | Setting | Value | Notes |
 | ------- | ----- | ----- |
-| Effort Unit | story_points | Unit used in task effort, capacity, and retro variance. |
-| Capacity per Iteration | 20 | Maximum planned effort before overcommit guidance applies. |
-| Iteration Bounding | scope | `scope` keeps requirements fixed; `time` enforces a time ceiling. |
-| Time Limit (hours) | n/a | Only applies when iteration bounding is `time`. |
-| Overcommit Threshold | 1.0 | Warn planners when total estimated effort exceeds 20 story_points (capacity 20 x threshold 1.0). |
-| Defer Strategy | manual | How planning should choose deferrals when the iteration is over capacity. |
-| Calibration Enabled | true | When true, retrospectives should suggest future capacity adjustments. |
+| Effort Unit | story_points | Unit used in task effort, capacity, and retro variance |
+| Capacity per Iteration | 20 | Maximum planned effort before overcommit guidance applies |
+| Iteration Bounding | scope | `scope` keeps requirements fixed |
+| Time Limit (hours) | n/a | Only applies when iteration bounding is `time` |
+| Overcommit Threshold | 1.0 | Warn when total planned effort exceeds capacity |
+| Defer Strategy | manual | Explicit human approval required for any scope deferral |
+| Calibration Enabled | true | Retro should update future capacity guidance as needed |
 
-## Concurrency Rationale
+## Required Quality Gates
 
-- Current roster snapshot: Spec Steward, Planner, Implementer, Reviewer, Retro Facilitator
-- Technology and scope signals: Mixed frontend and backend/service signals are present in the scoped requirements.
-- Task dependency graph: detailed dependencies are still pending task decomposition in this stub; revisit once the task table is populated.
-- Workstream separability: Conflict-heavy signals are present, so keep same-specialty work serial unless ownership boundaries become explicit.
-- Shared-surface conflict risk: elevated due to shared-state / cross-cutting cues in scope text.
-- Prior reviewer ownership/hotspot evidence: No prior reviewer hotspot signals were found for this feature.
-- Recommendation: do not propose Junior/Senior same-specialty expansion until the task table and ownership boundaries make safe parallelism explicit. If a same-specialty pair is approved later, record `Owner File Globs` for the parallel tasks or keep the work serial.
+| Required Quality Gate | Category | Evidence Source | Status |
+| --- | --- | --- | --- |
+| `validator-replay-clean` | tooling | `tests/integration/substantive-interaction-model-handoff-test.ps1`, `tests/integration/substantive-interaction-model-boundary-discipline-test.ps1`, repo validator | passed |
+| `manual-handoff-readability-check` | manual-evidence | Iteration 1 handoff examples recorded in `quickstart.md` and exercised through the validator surface | passed |
+| `grandfathering-check` | mechanical | Repo-wide `validate-governance.ps1 -ProjectPath .` remained green after Feature 016 changes | passed |
+| `mirror-sync-check` | mechanical | `extensions/` and `.specify/extensions/` script/template pairs updated together | passed |
 
-## Phase Baseline
+## Decisions and Handoff
 
-| Phase | Estimated Effort | Notes |
-| ----- | ---------------- | ----- |
-| Planning | TBD | Populate after task decomposition and approval gating |
-| Discovery/Spikes | TBD | Capture any required risk-reduction work revealed during planning |
-| Implementation | TBD | Sum planned delivery tasks once the task table is complete |
-| Review | TBD | Estimate review/demo effort after verdict flow is defined |
-| Rework | TBD | Expected needs-work buffer if review finds gaps |
+- **Planning Boundary**: committed at `0070a74`; planning artifacts remain authoritative for Iteration 001 scope.
+- **Hardening-Gate Sign-Off**: recorded as `hardening-gate-signoff` in `file:///C:/Dev/Specrew/.squad/decisions.md`; `quality/hardening-gate.md` now records a validator-safe `ready` verdict.
+- **Implementation Authorization**: recorded as `implementation` in `file:///C:/Dev/Specrew/.squad/decisions.md`; both authorization entries cite the user's verbatim approval text.
+- **Current Boundary State**: authorized Iteration 001 implementation is complete; the next valid lifecycle action is separate review-boundary authorization.
+- **Session Restart Requirement**: required before a future fresh session can load the updated startup surfaces in `file:///C:/Dev/Specrew/.github/agents/squad.agent.md` and `file:///C:/Dev/Specrew/.squad/templates/squad.agent.md`.
 
-## Traceability Summary
+## Scope and Deferrals
 
-- Requirement scope for this stub: FR-001, FR-002, FR-003, FR-004, FR-005, FR-006, FR-007, FR-008, FR-009, FR-010, FR-011, FR-012, FR-013, FR-014, FR-015, FR-016, FR-017, FR-018, FR-019, FR-020, FR-021, FR-022, FR-023, FR-024
-- User stories represented in current scope: 
-- Pending detailed planning: populate the task table, then run specrew-capacity-planning and specrew-traceability-check before approval.
-- Overcommit guardrail: compare planned task effort against the configured threshold and record any required deferrals from the lowest-priority requirement slices before leaving planning.
+- **In Scope**: FR-001 through FR-019, limited to Iteration 1 behavior and the soft-warning rollout shape for `bare-path-in-boundary-handoff`.
+- **Deferred**: FR-020 through FR-024; the Iteration 2 promotion half of FR-016; README lifecycle updates; corpus rows; per-feature handoff template updates; full violating/compliant fixture expansion.
+- **Constraint**: Review, retro, and iteration closeout remain separately authorized boundaries.
 
-## Notes
+## Evidence Snapshot
 
-- This stub captures the planned scope pending detailed planning in the Specrew Planning ceremony.
-- Add task rows only for work that is traceable to the scoped requirements above.
-- Keep Status: planning until the plan is fully decomposed and approved.
-- If task effort exceeds the configured threshold, make the deferral decision explicit in this plan before execution starts and name the lowest-priority requirement slices proposed for deferral.
+- **Repo validator timing**: `109134 ms` baseline -> `113070 ms` final (`+3.6%`, within the NFR-001 `+15%` tolerance).
+- **Prompt-line budget**: `100` added lines across the governed coordinator surfaces (`<=150`, within NFR-002).
+- **Validation lane**: repo-wide `validate-governance.ps1 -ProjectPath .` remained green alongside the five preserved handoff-governance regressions and the two new Feature 016 integration tests.
+
+## Next Action
+
+The next valid action is separate review-boundary authorization against the implemented Iteration 001 scope. Review should inspect the changed coordinator surfaces, validator/helper scripts, new Feature 016 fixtures, and the hardening-gate Expected Controls before any review artifact or review-boundary commit is created.

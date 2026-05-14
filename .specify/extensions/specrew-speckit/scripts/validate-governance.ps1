@@ -1,7 +1,11 @@
 [CmdletBinding()]
 param(
     [string]$ProjectPath = (Get-Location).Path,
-    [string[]]$IterationPath
+    [string[]]$IterationPath,
+    [AllowEmptyString()][string]$ResponseText = '',
+    [string]$BoundaryName,
+    [ValidateSet('auto', 'boundary-handoff', 'narration')][string]$ResponseScope = 'auto',
+    [ValidateSet('soft-warning', 'validation-fail')][string]$BarePathBoundaryHandoffSeverity
 )
 
 Set-StrictMode -Version Latest
@@ -2289,6 +2293,222 @@ function Get-ReviewerCloseoutEnforcementMap {
     return $enforcementMap
 }
 
+function Get-InteractionModelIterationContextFromPath {
+    param([AllowNull()][string]$IterationDirectory)
+
+    if ([string]::IsNullOrWhiteSpace($IterationDirectory)) {
+        return $null
+    }
+
+    $normalizedPath = [System.IO.Path]::GetFullPath($IterationDirectory)
+    $match = [regex]::Match($normalizedPath, '[\\/]specs[\\/](?<feature>\d+)-[^\\/]+[\\/]iterations[\\/](?<iteration>\d+)$')
+    if (-not $match.Success) {
+        return $null
+    }
+
+    return [pscustomobject]@{
+        FeatureNumber = [int]$match.Groups['feature'].Value
+        IterationNumber = [int]$match.Groups['iteration'].Value
+    }
+}
+
+function Get-InteractionModelGitBoundaryCommits {
+    param([Parameter(Mandatory = $true)][string]$ProjectRoot)
+
+    $rawLog = @(git -C $ProjectRoot --no-pager log --reverse --format='%H%x09%cI%x09%s' 2>$null)
+    $records = New-Object System.Collections.Generic.List[object]
+    foreach ($line in $rawLog) {
+        if ([string]::IsNullOrWhiteSpace($line)) {
+            continue
+        }
+
+        $parts = $line -split "`t", 3
+        if ($parts.Count -lt 3) {
+            continue
+        }
+
+        $boundaryMatch = Get-InteractionModelBoundaryCommitMatch -Subject $parts[2]
+        if ($null -eq $boundaryMatch) {
+            continue
+        }
+
+        $committedAt = $null
+        try {
+            $committedAt = [DateTimeOffset]::Parse($parts[1])
+        }
+        catch {
+            continue
+        }
+
+        $records.Add([pscustomobject]@{
+                CommitHash      = $parts[0]
+                CommittedAt     = $committedAt
+                Boundary        = $boundaryMatch.Boundary
+                FeatureNumber   = $boundaryMatch.FeatureNumber
+                IterationNumber = $boundaryMatch.IterationNumber
+                Subject         = $boundaryMatch.Subject
+            }) | Out-Null
+    }
+
+    return $records.ToArray()
+}
+
+function Add-InteractionModelValidationErrors {
+    param(
+        [Parameter(Mandatory = $true)][string[]]$Targets,
+        [Parameter(Mandatory = $true)][string]$ProjectRoot,
+        [Parameter(Mandatory = $true)][hashtable]$ResultMap
+    )
+
+    $boundaryCommits = @(Get-InteractionModelGitBoundaryCommits -ProjectRoot $ProjectRoot)
+    foreach ($target in $Targets) {
+        if (-not $ResultMap.ContainsKey($target)) {
+            continue
+        }
+
+        $context = Get-InteractionModelIterationContextFromPath -IterationDirectory $target
+        if ($null -eq $context -or $context.FeatureNumber -lt 16) {
+            continue
+        }
+
+        $errors = $ResultMap[$target].Errors
+        $authorizationEntries = @(Get-InteractionModelAuthorizationEntries -ProjectRoot $ProjectRoot -FeatureNumber $context.FeatureNumber -IterationNumber $context.IterationNumber)
+        foreach ($entry in $authorizationEntries) {
+            $missingFields = New-Object System.Collections.Generic.List[string]
+            foreach ($requiredField in @('DecisionId', 'Type', 'Boundary', 'ApprovingHuman', 'RecordedAt', 'CommitReference', 'AuthorizationText')) {
+                $value = [string]$entry.$requiredField
+                if ([string]::IsNullOrWhiteSpace($value)) {
+                    $missingFields.Add($requiredField) | Out-Null
+                }
+            }
+
+            if ($missingFields.Count -gt 0) {
+                Add-StructuredValidationFailure -Errors $errors -FilePath '.squad\decisions.md' -LineNumber $null -Category 'authorization-record-shape' -Message ("Authorization entry '{0}' is missing required field(s): {1}" -f $entry.Title, ($missingFields -join ', ')) -RemediationHint 'Record Decision ID, Type, Boundary, Approving Human, Recorded At, Commit Reference, and Authorization Text on every authorization entry.'
+            }
+
+            if ($entry.Type -notin @('authorization', 'sign-off')) {
+                Add-StructuredValidationFailure -Errors $errors -FilePath '.squad\decisions.md' -LineNumber $null -Category 'authorization-record-shape' -Message ("Authorization entry '{0}' uses invalid Type '{1}'" -f $entry.Title, $entry.Type) -RemediationHint 'Use Type authorization or sign-off for Feature 016 boundary approvals.'
+            }
+
+            $normalizedBoundary = Normalize-InteractionModelBoundaryName -Boundary $entry.Boundary
+            if ([string]$entry.Boundary -match '[,;/]|\band\b') {
+                Add-StructuredValidationFailure -Errors $errors -FilePath '.squad\decisions.md' -LineNumber $null -Category 'authorization-record-shape' -Message ("Authorization entry '{0}' records multiple boundaries in one entry: '{1}'" -f $entry.Title, $entry.Boundary) -RemediationHint 'Record one boundary per authorization entry and split paired hardening-gate + implementation authorization into two entries.'
+            }
+            elseif ($normalizedBoundary -notin @('planning', 'hardening-gate-signoff', 'implementation', 'review-boundary', 'review-verdict-signoff', 'retro-boundary', 'iteration-closeout', 'feature-closeout')) {
+                Add-StructuredValidationFailure -Errors $errors -FilePath '.squad\decisions.md' -LineNumber $null -Category 'authorization-record-shape' -Message ("Authorization entry '{0}' uses unknown Boundary '{1}'" -f $entry.Title, $entry.Boundary) -RemediationHint 'Use the canonical boundary names from Feature 016.'
+            }
+        }
+
+        $seenAuthorizationTexts = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::OrdinalIgnoreCase)
+        foreach ($entry in $authorizationEntries) {
+            $normalizedText = if ([string]::IsNullOrWhiteSpace([string]$entry.AuthorizationText)) {
+                ''
+            }
+            else {
+                (([string]$entry.AuthorizationText -replace '(?m)^\s*>\s?', '' -replace '\s+', ' ').Trim().ToLowerInvariant())
+            }
+
+            if ([string]::IsNullOrWhiteSpace($normalizedText) -or -not $seenAuthorizationTexts.Add($normalizedText)) {
+                continue
+            }
+
+            if ($normalizedText -notmatch '(?i)hardening-gate|hardening gate' -or $normalizedText -notmatch '(?i)implementation') {
+                continue
+            }
+
+            $matchingEntries = @(
+                $authorizationEntries |
+                    Where-Object {
+                        $candidateText = if ([string]::IsNullOrWhiteSpace([string]$_.AuthorizationText)) {
+                            ''
+                        }
+                        else {
+                            (([string]$_.AuthorizationText -replace '(?m)^\s*>\s?', '' -replace '\s+', ' ').Trim().ToLowerInvariant())
+                        }
+
+                        $candidateText -eq $normalizedText
+                    }
+            )
+            $groupBoundaries = @($matchingEntries | ForEach-Object { Normalize-InteractionModelBoundaryName -Boundary $_.Boundary })
+            if ($groupBoundaries -notcontains 'hardening-gate-signoff' -or $groupBoundaries -notcontains 'implementation' -or $matchingEntries.Count -lt 2) {
+                Add-StructuredValidationFailure -Errors $errors -FilePath '.squad\decisions.md' -LineNumber $null -Category 'authorization-record-shape' -Message 'A paired hardening-gate sign-off + implementation authorization paste was not expanded into two distinct entries.' -RemediationHint 'Create separate hardening-gate-signoff and implementation authorization records that preserve the same authorization text.'
+            }
+        }
+
+        $iterationBoundaryCommits = @(
+            $boundaryCommits |
+                Where-Object {
+                    $_.FeatureNumber -eq $context.FeatureNumber -and
+                    $_.IterationNumber -eq $context.IterationNumber
+                }
+        )
+
+        if ($iterationBoundaryCommits.Count -lt 2) {
+            continue
+        }
+
+        for ($index = 0; $index -lt ($iterationBoundaryCommits.Count - 1); $index++) {
+            $left = $iterationBoundaryCommits[$index]
+            $right = $iterationBoundaryCommits[$index + 1]
+            $interveningAuthorization = @(
+                $authorizationEntries |
+                    Where-Object {
+                        $recordedAt = $null
+                        try {
+                            $recordedAt = [DateTimeOffset]::Parse([string]$_.RecordedAt)
+                        }
+                        catch {
+                            return $false
+                        }
+
+                        $recordedAt -gt $left.CommittedAt -and $recordedAt -le $right.CommittedAt -and -not (Test-IsNullish ([string]$_.ApprovingHuman))
+                    }
+            )
+
+            if ($interveningAuthorization.Count -eq 0) {
+                Add-StructuredValidationFailure -Errors $errors -FilePath (([System.IO.Path]::GetRelativePath($ProjectRoot, $target)) -replace '/', '\') -LineNumber $null -Category 'bundled-boundary-advance' -Message ("Boundary commits '{0}' and '{1}' were recorded for Feature {2:d3} iteration {3:d3} without an intervening authorization entry in .squad\decisions.md." -f $left.Subject, $right.Subject, $context.FeatureNumber, $context.IterationNumber) -RemediationHint 'Record a fresh human authorization between each boundary commit; one authorization advances at most one boundary.'
+            }
+        }
+    }
+}
+
+function Invoke-InteractionModelResponseValidation {
+    param(
+        [Parameter(Mandatory = $true)][string]$ProjectRoot,
+        [AllowEmptyString()][string]$ResponseText,
+        [string[]]$IterationTargets,
+        [string]$BoundaryName,
+        [string]$ResponseScope,
+        [string]$BarePathBoundaryHandoffSeverity
+    )
+
+    $validatorScript = Join-Path $ProjectRoot 'extensions\specrew-speckit\validators\handoff-governance-validator.ps1'
+    if (-not (Test-Path -LiteralPath $validatorScript -PathType Leaf)) {
+        throw "Missing handoff governance validator '$validatorScript'."
+    }
+
+    $validatorArgs = @{
+        ResponseText = $ResponseText
+        ProjectRoot  = $ProjectRoot
+        ResponseScope = $ResponseScope
+    }
+
+    if ($IterationTargets.Count -gt 0) {
+        $validatorArgs['IterationPath'] = $IterationTargets[0]
+    }
+
+    if (-not [string]::IsNullOrWhiteSpace($BoundaryName)) {
+        $validatorArgs['BoundaryName'] = $BoundaryName
+    }
+
+    if (-not [string]::IsNullOrWhiteSpace($BarePathBoundaryHandoffSeverity)) {
+        $validatorArgs['BarePathBoundaryHandoffSeverity'] = $BarePathBoundaryHandoffSeverity
+    }
+
+    & $validatorScript @validatorArgs
+    exit $LASTEXITCODE
+}
+
 $resolvedProjectPath = (Resolve-Path -Path (Resolve-ProjectPath -Path $ProjectPath)).Path
 $teamRoles = Get-TeamRoleMap -ResolvedProjectPath $resolvedProjectPath
 
@@ -2309,11 +2529,19 @@ $explicitIterationPathsProvided = ($null -ne $IterationPath) -and @(
     $IterationPath | Where-Object { -not [string]::IsNullOrWhiteSpace([string]$_) }
 ).Count -gt 0
 $targets = @(Resolve-IterationTarget -ResolvedProjectPath $resolvedProjectPath -ExplicitIterationPaths $IterationPath)
+if (-not [string]::IsNullOrWhiteSpace($ResponseText)) {
+    Invoke-InteractionModelResponseValidation -ProjectRoot $resolvedProjectPath -ResponseText $ResponseText -IterationTargets $targets -BoundaryName $BoundaryName -ResponseScope $ResponseScope -BarePathBoundaryHandoffSeverity $BarePathBoundaryHandoffSeverity
+}
 $iterationConfig = if ($targets.Count -gt 0) { Get-IterationConfigForValidation -IterationDirectory $targets[0] } else { @{ closeout_packet_required_since_iteration = '' } }
 $reviewerCloseoutEnforcement = Get-ReviewerCloseoutEnforcementMap -Targets $targets -ExplicitTargetsProvided $explicitIterationPathsProvided -RequiredSinceIteration $iterationConfig.closeout_packet_required_since_iteration
 $results = @($targets | ForEach-Object {
         Test-IterationGovernance -IterationDirectory $_ -TeamRoles $teamRoles -EnforceReviewerCloseout $reviewerCloseoutEnforcement.ContainsKey($_)
     })
+$resultMap = @{}
+foreach ($result in $results) {
+    $resultMap[$result.Path] = $result
+}
+Add-InteractionModelValidationErrors -Targets $targets -ProjectRoot $resolvedProjectPath -ResultMap $resultMap
 $hasFailures = $false
 
 foreach ($result in $results) {

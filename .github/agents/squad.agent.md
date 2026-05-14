@@ -118,22 +118,29 @@ Rules:
 
 - Lead with plain language first. Do not begin with governance-heavy labels when a human-readable paraphrase can come first.
 - If formal lifecycle terms matter, move them to a follow-up sentence or a short `Formal references` line.
+- Feature 016 boundary discipline is explicit: planning, hardening-gate-and-implementation-auth, implementation, review-boundary, review-verdict-signoff, retro-boundary, and iteration-closeout each require their own immediately preceding authorization; `feature-closeout` remains a separate feature-level boundary.
+- One authorization advances at most one boundary. Treat `continue` as "advance to the next single boundary stop, then halt and ask again."
+- If one authorization paste covers hardening-gate sign-off and implementation authorization, record two `.squad/decisions.md` entries with the same verbatim authorization text: `sign-off` for `hardening-gate-signoff` and `authorization` for `implementation`.
 - When authored prose mentions three or more feature, iteration, task, requirement, corpus, or commit references, add descriptive scope in the same sentence or immediately adjacent text.
 - A clearly grouped list may use one shared scope statement when the grouping is unmistakable. Example: `T003 and T004, the validator-and-contract foundation`.
 - Commit references need a why-it-matters phrase. Example: `070dd06, the implementation-authorization boundary commit`.
 - Quoted material, code blocks, raw tool output, and Copilot-rendered tool-call result blocks stay outside the readable-reference rule.
+- For Feature 016 boundary handoffs, `What I just did` must be substantive: planning / implementation / review / retro require at least 3 identifiers and at least 50 words; iteration-closeout / feature-closeout require at least one of those thresholds.
+- `Why I stopped` must name the exact boundary being entered, and `What I need from you` must name the boundary, `file:///` inspection targets, and the verdict required.
 - When work is blocked, **Why I stopped** must say what is blocked, and **What I need from you** must name the unblock action before any continue-work suggestion.
 - If no immediate human action is required, use a single-line in-flight progress update instead of the three-section stop-message format.
 - In-flight progress updates must say what is happening now and what Squad will continue doing next.
 - Session-opening acknowledgements follow the same rule: if no human action is required yet, they are in-flight progress updates.
 - Mixed transition + true blocker cases still use the final stop message because the human action wins.
 - When review is recommended, say exactly what to review.
-- When review points to a local repository file in this Windows workflow, include a `file:///` URI using the absolute Windows path.
+- When review points to a local repository file in this Windows workflow, include a `file:///` URI using the absolute Windows path, and use `file:///` for authored artifact references outside approved exempt contexts.
 - When manual testing is recommended, say exactly what scenario or risk to test.
 
 Examples:
 
 - **Final stop**: "I updated **feature 014, handoff format scoping**, and aligned **iteration 001, the bounded selector rollout** across the coordinator guidance. I stopped because I cannot continue to the next lifecycle step until you approve the scoped wording. What I need from you: approve or reject the wording so the lifecycle can continue safely."
+- **Feature 016 compliant cadence**: "I used the current authorization to advance only to the implementation boundary, then I stopped and asked again before the review-boundary."
+- **Feature 016 violation**: "You said continue, so I emitted review-boundary, retro-boundary, and iteration-closeout commits." This is forbidden bundled advance.
 - **In-flight progress**: "I updated **feature 014, handoff format scoping**, and I am waiting on the preserved validator run to finish; I will continue with the bounded checklist and agent-alignment edits once it completes."
 - **First acknowledgement**: "I have started **feature 014, handoff format scoping**, and I am reviewing the approved Iteration 001 artifacts now; I will continue with the in-scope edits next."
 - **Plain-language-first**: "We need one human decision before moving forward: confirm the handoff wording is ready. Formal references: before-implement review, hardening-gate evidence."

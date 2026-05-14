@@ -1,11 +1,29 @@
 [CmdletBinding()]
 param(
     [AllowEmptyString()]
-    [string]$ResponseText = ''
+    [string]$ResponseText = '',
+
+    [string]$ProjectRoot = (Get-Location).Path,
+
+    [string]$IterationPath,
+
+    [string]$BoundaryName,
+
+    [ValidateSet('auto', 'boundary-handoff', 'narration')]
+    [string]$ResponseScope = 'auto',
+
+    [ValidateSet('soft-warning', 'validation-fail')]
+    [string]$BarePathBoundaryHandoffSeverity
 )
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
+
+$sharedGovernancePath = Join-Path (Split-Path -Parent $PSScriptRoot) 'scripts\shared-governance.ps1'
+if (-not (Test-Path -LiteralPath $sharedGovernancePath -PathType Leaf)) {
+    throw "Missing shared governance helper '$sharedGovernancePath'."
+}
+. $sharedGovernancePath
 
 $governancePatterns = @(
     '(?i)before-implement',
@@ -28,6 +46,18 @@ $placeholderUserActionPhrases = @(
     'No further action needed'
 )
 
+$boundaryPhraseMap = [ordered]@{
+    'planning' = @('planning boundary', 'authorize planning', 'enter planning')
+    'hardening-gate-and-implementation-auth' = @('hardening-gate-and-implementation-auth', 'hardening gate and implementation authorization')
+    'hardening-gate-signoff' = @('hardening-gate-signoff', 'hardening gate sign-off', 'hardening-gate sign-off')
+    'implementation' = @('implementation boundary', 'implementation authorization', 'authorize implementation', 'implementation')
+    'review-boundary' = @('review boundary', 'authorize review-boundary', 'enter review-boundary', 'review-boundary')
+    'review-verdict-signoff' = @('review-verdict-signoff', 'review verdict sign-off', 'review-verdict signoff')
+    'retro-boundary' = @('retro boundary', 'retrospective boundary', 'retro-boundary')
+    'iteration-closeout' = @('iteration closeout', 'iteration-closeout')
+    'feature-closeout' = @('feature closeout', 'feature-closeout')
+}
+
 function Get-NormalizedText {
     param([AllowEmptyString()][string]$Text)
 
@@ -39,79 +69,6 @@ function Get-NormalizedText {
     $normalized = $normalized -replace "[`t ]+", ' '
     $normalized = $normalized -replace " *`n *", "`n"
     return $normalized.Trim()
-}
-
-function Get-HandoffSections {
-    param([AllowEmptyString()][string]$Text)
-
-    if ([string]::IsNullOrWhiteSpace($Text)) {
-        return @('')
-    }
-
-    $lines = $Text -split "`n"
-    $sections = New-Object System.Collections.Generic.List[string]
-    $currentLines = New-Object System.Collections.Generic.List[string]
-    $headingPattern = '^(?:#{1,6}\s*)?(?:\*\*)?(What I just did|Why I stopped|What I need from you)(?:\*\*)?\s*$'
-
-    foreach ($line in $lines) {
-        if ($line.Trim() -match $headingPattern) {
-            if ($currentLines.Count -gt 0) {
-                $sections.Add(($currentLines -join "`n").Trim())
-                $currentLines.Clear()
-            }
-
-            continue
-        }
-
-        $currentLines.Add($line)
-    }
-
-    if ($currentLines.Count -gt 0) {
-        $sections.Add(($currentLines -join "`n").Trim())
-    }
-
-    if ($sections.Count -eq 0) {
-        return @($Text.Trim())
-    }
-
-    return $sections.ToArray()
-}
-
-function Get-HandoffSectionMap {
-    param([AllowEmptyString()][string]$Text)
-
-    $sectionMap = [ordered]@{}
-    if ([string]::IsNullOrWhiteSpace($Text)) {
-        return $sectionMap
-    }
-
-    $lines = $Text -split "`n"
-    $currentHeading = $null
-    $currentLines = New-Object System.Collections.Generic.List[string]
-    $headingPattern = '^(?:#{1,6}\s*)?(?:\*\*)?(What I just did|Why I stopped|What I need from you)(?:\*\*)?\s*$'
-
-    foreach ($line in $lines) {
-        $trimmed = $line.Trim()
-        if ($trimmed -match $headingPattern) {
-            if ($null -ne $currentHeading) {
-                $sectionMap[$currentHeading] = ($currentLines -join "`n").Trim()
-                $currentLines.Clear()
-            }
-
-            $currentHeading = $Matches[1]
-            continue
-        }
-
-        if ($null -ne $currentHeading) {
-            $currentLines.Add($line)
-        }
-    }
-
-    if ($null -ne $currentHeading) {
-        $sectionMap[$currentHeading] = ($currentLines -join "`n").Trim()
-    }
-
-    return $sectionMap
 }
 
 function Get-LeadSentence {
@@ -127,7 +84,6 @@ function Get-LeadSentence {
         '^[#>*`\-\s]+$'
     )
 
-    $contentLine = ''
     foreach ($line in $lines) {
         $trimmed = $line.Trim()
         if ([string]::IsNullOrWhiteSpace($trimmed)) {
@@ -142,24 +98,20 @@ function Get-LeadSentence {
             }
         }
 
-        if (-not $shouldSkip) {
-            $contentLine = $trimmed
-            break
+        if ($shouldSkip) {
+            continue
         }
+
+        $candidate = ($trimmed -replace '^\*+', '') -replace '\*+$', ''
+        $sentenceMatch = [regex]::Match($candidate, '^.+?(?:[.!?](?:\s|$)|$)')
+        if ($sentenceMatch.Success) {
+            return $sentenceMatch.Value.Trim()
+        }
+
+        return $candidate.Trim()
     }
 
-    if ([string]::IsNullOrWhiteSpace($contentLine)) {
-        return ''
-    }
-
-    $contentLine = $contentLine -replace '^\*+', ''
-    $contentLine = $contentLine -replace '\*+$', ''
-    $sentenceMatch = [regex]::Match($contentLine, '^.+?(?:[.!?](?:\s|$)|$)')
-    if ($sentenceMatch.Success) {
-        return $sentenceMatch.Value.Trim()
-    }
-
-    return $contentLine.Trim()
+    return ''
 }
 
 function Get-GovernanceHitCount {
@@ -171,10 +123,7 @@ function Get-GovernanceHitCount {
 
     $hitCount = 0
     foreach ($pattern in $governancePatterns) {
-        $matches = [regex]::Matches($Text, $pattern)
-        if ($matches.Count -gt 0) {
-            $hitCount += $matches.Count
-        }
+        $hitCount += [regex]::Matches($Text, $pattern).Count
     }
 
     return $hitCount
@@ -191,26 +140,7 @@ function Test-HasPlainLanguageParaphrase {
     }
 
     $leadLower = $Lead.ToLowerInvariant()
-    $plainLanguageStarts = @(
-        'we need',
-        'you need',
-        'review ',
-        'approve',
-        'confirm',
-        'run ',
-        'manually',
-        'updated',
-        'completed',
-        'finished',
-        'i updated',
-        'i completed',
-        'i finished',
-        'this slice',
-        'next step',
-        'provide'
-    )
-
-    foreach ($prefix in $plainLanguageStarts) {
+    foreach ($prefix in @('we need', 'you need', 'review ', 'approve', 'confirm', 'run ', 'manually', 'updated', 'completed', 'finished', 'i updated', 'i completed', 'i finished', 'this slice', 'next step', 'provide')) {
         if ($leadLower.StartsWith($prefix)) {
             return $true
         }
@@ -226,13 +156,7 @@ function Test-HasExplicitProgressStatus {
         return $false
     }
 
-    $patterns = @(
-        '(?i)\b(completed|updated|implemented|changed|reviewed|verified|created|recorded|fixed|finished|added)\b',
-        '(?i)no files changed',
-        '(?i)\b(blocked|waiting|pending|stopped|open|remaining)\b'
-    )
-
-    foreach ($pattern in $patterns) {
+    foreach ($pattern in @('(?i)\b(completed|updated|implemented|changed|reviewed|verified|created|recorded|fixed|finished|added)\b', '(?i)no files changed', '(?i)\b(blocked|waiting|pending|stopped|open|remaining)\b')) {
         if ($Text -match $pattern) {
             return $true
         }
@@ -248,13 +172,7 @@ function Test-HasExplicitNextStep {
         return $false
     }
 
-    $patterns = @(
-        '(?i)\bnext step\b',
-        '(?i)\b(no further action needed)\b',
-        '(?i)\b(review|approve|confirm|run|provide|reply|authorize|sign off|test|continue)\b'
-    )
-
-    foreach ($pattern in $patterns) {
+    foreach ($pattern in @('(?i)\bnext step\b', '(?i)\b(no further action needed)\b', '(?i)\b(review|approve|confirm|run|provide|reply|authorize|sign off|continue|restart)\b')) {
         if ($Text -match $pattern) {
             return $true
         }
@@ -266,153 +184,63 @@ function Test-HasExplicitNextStep {
 function Test-MentionsBlockerOrRisk {
     param([AllowEmptyString()][string]$Text)
 
-    if ([string]::IsNullOrWhiteSpace($Text)) {
-        return $false
-    }
-
-    return $Text -match '(?i)\b(blocked|failed|skipped|risk|deferred|pending)\b|(?<!non-)blocking\b'
+    return -not [string]::IsNullOrWhiteSpace($Text) -and ($Text -match '(?i)\b(blocked|failed|skipped|risk|deferred|pending)\b|(?<!non-)blocking\b')
 }
 
 function Test-PlainlyDisclosesBlockerOrRisk {
     param([AllowEmptyString()][string]$Text)
 
-    if ([string]::IsNullOrWhiteSpace($Text)) {
-        return $false
-    }
-
-    return $Text -match '(?i)\b(because|cannot|needs|waiting|until|confidence|risk|blocked|skipped|failed)\b'
+    return -not [string]::IsNullOrWhiteSpace($Text) -and ($Text -match '(?i)\b(because|cannot|needs|waiting|until|confidence|risk|blocked|skipped|failed)\b')
 }
 
 function Test-HasFileUri {
     param([AllowEmptyString()][string]$Text)
 
-    if ([string]::IsNullOrWhiteSpace($Text)) {
-        return $false
-    }
-
-    return $Text -match '(?i)file:///'
+    return -not [string]::IsNullOrWhiteSpace($Text) -and ($Text -match '(?i)file:///')
 }
 
 function Test-HasWindowsAbsolutePath {
     param([AllowEmptyString()][string]$Text)
 
-    if ([string]::IsNullOrWhiteSpace($Text)) {
-        return $false
-    }
-
-    return $Text -match '(?i)\b[A-Z]:[\\/][^\s`]+'
+    return -not [string]::IsNullOrWhiteSpace($Text) -and ($Text -match '(?i)\b[A-Z]:[\\/][^\s`]+' )
 }
 
 function Test-HasReviewCue {
     param([AllowEmptyString()][string]$Text)
 
-    if ([string]::IsNullOrWhiteSpace($Text)) {
-        return $false
-    }
-
-    return $Text -match '(?i)\breview\b'
+    return -not [string]::IsNullOrWhiteSpace($Text) -and ($Text -match '(?i)\breview\b')
 }
 
 function Test-MissingReviewFileReference {
     param([AllowEmptyString()][string]$Text)
 
-    if ([string]::IsNullOrWhiteSpace($Text)) {
+    if (-not (Test-HasReviewCue -Text $Text) -or -not (Test-HasWindowsAbsolutePath -Text $Text)) {
         return $false
     }
 
-    if (Test-HasFileUri -Text $Text) {
-        return $false
-    }
-
-    if (-not (Test-HasReviewCue -Text $Text)) {
-        return $false
-    }
-
-    return Test-HasWindowsAbsolutePath -Text $Text
-}
-
-function Get-MeaningfulHandoffSectionText {
-    param([AllowEmptyString()][string]$Text)
-
-    if ([string]::IsNullOrWhiteSpace($Text)) {
-        return ''
-    }
-
-    $meaningfulLines = New-Object System.Collections.Generic.List[string]
-    foreach ($line in ($Text -split "`n")) {
-        $trimmed = $line.Trim()
-        if ([string]::IsNullOrWhiteSpace($trimmed)) {
-            continue
-        }
-
-        if ($trimmed -match '^(?:\*\*)?(Current progress status|Recommended next step|Reference)(?:\*\*)?$') {
-            continue
-        }
-
-        if ($trimmed -match '^(?:\*\*)?Owner(?:\*\*)?:') {
-            continue
-        }
-
-        $meaningfulLines.Add($trimmed)
-    }
-
-    return ($meaningfulLines -join "`n").Trim()
-}
-
-function Get-NormalizedSemanticPhrase {
-    param([AllowEmptyString()][string]$Text)
-
-    if ([string]::IsNullOrWhiteSpace($Text)) {
-        return ''
-    }
-
-    $normalized = $Text.ToLowerInvariant()
-    $normalized = $normalized -replace "`r`n", "`n"
-    $normalized = $normalized -replace '[`*_#>\[\]\(\),.:;!?-]+', ' '
-    $normalized = $normalized -replace '\s+', ' '
-    $normalized = $normalized.Trim()
-    $normalized = $normalized -replace '^(recommended next step|next step)\s+', ''
-    return $normalized.Trim()
+    return -not (Test-HasFileUri -Text $Text)
 }
 
 function Test-UsesStopMessageFormat {
-    param($SectionMap)
+    param([hashtable]$SectionMap)
 
-    return $SectionMap.Contains('What I just did') -and
-        $SectionMap.Contains('Why I stopped') -and
-        $SectionMap.Contains('What I need from you')
-}
-
-function Test-HasHumanActionCue {
-    param([AllowEmptyString()][string]$Text)
-
-    if ([string]::IsNullOrWhiteSpace($Text)) {
-        return $false
-    }
-
-    return $Text -match '(?i)\b(review|approve|approval|confirm|clarify|answer|reply|authorize|sign off|provide|choose|decide|run|test)\b'
+    return $SectionMap.Contains('What I just did') -and $SectionMap.Contains('Why I stopped') -and $SectionMap.Contains('What I need from you')
 }
 
 function Test-HasEmptyUserActionSection {
     param([AllowEmptyString()][string]$Text)
 
-    $meaningfulText = Get-MeaningfulHandoffSectionText -Text $Text
-    if ([string]::IsNullOrWhiteSpace($meaningfulText)) {
+    if ([string]::IsNullOrWhiteSpace($Text)) {
         return $true
     }
 
-    $normalizedAction = Get-NormalizedSemanticPhrase -Text $meaningfulText
-    if ([string]::IsNullOrWhiteSpace($normalizedAction)) {
-        return $true
-    }
-
-    foreach ($placeholderPhrase in $placeholderUserActionPhrases) {
-        if ($normalizedAction -eq (Get-NormalizedSemanticPhrase -Text $placeholderPhrase)) {
+    foreach ($phrase in $placeholderUserActionPhrases) {
+        if ($Text -match ('(?i)^\s*' + [regex]::Escape($phrase) + '\s*$')) {
             return $true
         }
     }
 
-    return $false
+    return -not ($Text -match '(?i)\b(review|approve|confirm|run|provide|reply|authorize|sign off|restart|test)\b')
 }
 
 function Test-HasTransitionalStopClaim {
@@ -421,23 +249,13 @@ function Test-HasTransitionalStopClaim {
         [AllowEmptyString()][string]$UserActionText
     )
 
-    $whyText = Get-MeaningfulHandoffSectionText -Text $WhyStoppedText
-    if ([string]::IsNullOrWhiteSpace($whyText)) {
+    if ([string]::IsNullOrWhiteSpace($WhyStoppedText)) {
         return $false
     }
 
-    $hasTransitionalCue = $whyText -match '(?i)\b(waiting|wait|still working|still running|background (?:run|work|task|process)|transition(?:ing)?|in[- ]flight|underway|continue once|then i will continue|will continue once|pending completion)\b'
-    if (-not $hasTransitionalCue) {
-        return $false
-    }
-
-    $hasHumanBlockerCue = $whyText -match '(?i)\b(until you|waiting for your|need you to|once you|after you|your approval|your review|your confirmation|your clarification)\b'
-    if ($hasHumanBlockerCue) {
-        return $false
-    }
-
-    $actionText = Get-MeaningfulHandoffSectionText -Text $UserActionText
-    return (Test-HasEmptyUserActionSection -Text $UserActionText) -or -not (Test-HasHumanActionCue -Text $actionText)
+    $looksTransitional = $WhyStoppedText -match '(?i)\b(waiting|in progress|still running|background|transition|paused for now|slice is complete)\b'
+    $hasSubstantiveAction = -not (Test-HasEmptyUserActionSection -Text $UserActionText)
+    return $looksTransitional -and -not $hasSubstantiveAction
 }
 
 function Get-AuthoredParagraphs {
@@ -447,129 +265,10 @@ function Get-AuthoredParagraphs {
         return @()
     }
 
-    $headingPattern = '^(?:#{1,6}\s*)?(?:\*\*)?(What I just did|Why I stopped|What I need from you)(?:\*\*)?\s*$'
-    $toolOutputPattern = '^(?:status:|findings:|summary:|PASS:|FAIL:|<command\b)'
-    $paragraphs = New-Object System.Collections.Generic.List[string]
-    $currentLines = New-Object System.Collections.Generic.List[string]
-    $inCodeBlock = $false
-
-    foreach ($line in ($Text -split "`n")) {
-        $trimmed = $line.Trim()
-
-        if ($trimmed -match '^```') {
-            if ($currentLines.Count -gt 0) {
-                $paragraphs.Add(($currentLines -join ' ').Trim())
-                $currentLines.Clear()
-            }
-
-            $inCodeBlock = -not $inCodeBlock
-            continue
-        }
-
-        if ($inCodeBlock) {
-            continue
-        }
-
-        if ([string]::IsNullOrWhiteSpace($trimmed)) {
-            if ($currentLines.Count -gt 0) {
-                $paragraphs.Add(($currentLines -join ' ').Trim())
-                $currentLines.Clear()
-            }
-
-            continue
-        }
-
-        if ($trimmed -match $headingPattern -or $trimmed -match $toolOutputPattern -or $trimmed -match '^\s*>') {
-            if ($currentLines.Count -gt 0) {
-                $paragraphs.Add(($currentLines -join ' ').Trim())
-                $currentLines.Clear()
-            }
-
-            continue
-        }
-
-        $normalizedLine = $trimmed
-        $normalizedLine = $normalizedLine -replace '^(?:[-*+]\s+|\d+\.\s+)', ''
-        if (-not [string]::IsNullOrWhiteSpace($normalizedLine)) {
-            $currentLines.Add($normalizedLine.Trim())
-        }
-    }
-
-    if ($currentLines.Count -gt 0) {
-        $paragraphs.Add(($currentLines -join ' ').Trim())
-    }
-
-    return $paragraphs.ToArray()
-}
-
-function Get-ReferencePattern {
-    return '(?i)\b(?:feature\s+\d{3}|iteration\s+\d{3}|T\d{3}|FR-\d{3}|TG-[A-Za-z0-9-]+|(?:corpus\s+row|row)\s+\d+|[0-9a-f]{7,40}|0\d{2})\b'
-}
-
-function Get-ReferenceMatches {
-    param([AllowEmptyString()][string]$Text)
-
-    if ([string]::IsNullOrWhiteSpace($Text)) {
-        return @()
-    }
-
-    $matches = [regex]::Matches($Text, (Get-ReferencePattern))
-    $results = New-Object System.Collections.Generic.List[object]
-    foreach ($match in $matches) {
-        $results.Add([pscustomobject]@{
-                Value  = $match.Value
-                Index  = $match.Index
-                Length = $match.Length
-            })
-    }
-
-    return $results.ToArray()
-}
-
-function Test-HasMeaningfulDescriptor {
-    param([AllowEmptyString()][string]$Text)
-
-    if ([string]::IsNullOrWhiteSpace($Text)) {
-        return $false
-    }
-
-    $cleanText = $Text -replace '(?i)file:///[^\s\)`]+' , ' '
-    $cleanText = $cleanText -replace '(?i)\b[A-Z]:\\[^\s\)`]+', ' '
-    $cleanText = $cleanText -replace '[`*_#\[\]\(\),.:;!?]+', ' '
-    $words = @(
-        $cleanText -split '\s+' |
-        Where-Object { -not [string]::IsNullOrWhiteSpace($_) } |
-        ForEach-Object { $_.ToLowerInvariant() } |
-        Where-Object { $_ -match '^[a-z][a-z0-9-]*$' }
-    )
-
-    if ($words.Count -lt 2) {
-        return $false
-    }
-
-    $genericWords = @(
-        'a', 'an', 'and', 'are', 'as', 'at', 'be', 'before', 'being', 'by', 'complete', 'completed', 'confirm',
-        'current', 'did', 'evidence', 'for', 'from', 'gate', 'guidance', 'hardening', 'i', 'implementation',
-        'implemented', 'in', 'is', 'it', 'just', 'need', 'needs', 'next', 'of', 'on', 'or', 'pending', 'progress',
-        'recorded', 'response', 'review', 'reviewed', 'schema', 'sign', 'signed', 'status', 'step', 'stopped',
-        'that', 'the', 'this', 'to', 'updated', 'validator', 'verified', 'waiting', 'what', 'why', 'with', 'you'
-    )
-
-    $meaningfulWords = @($words | Where-Object { $genericWords -notcontains $_ })
-    return $meaningfulWords.Count -ge 2
-}
-
-function Add-DescribedReferenceStarts {
-    param(
-        [System.Collections.Generic.HashSet[int]]$DescribedStarts,
-        [string]$Paragraph,
-        [string]$GroupValue,
-        [int]$GroupStart
-    )
-
-    foreach ($referenceMatch in (Get-ReferenceMatches -Text $GroupValue)) {
-        [void]$DescribedStarts.Add($GroupStart + $referenceMatch.Index)
-    }
+    $normalized = $Text -replace "`r`n", "`n"
+    $normalized = [regex]::Replace($normalized, '(?ms)```.*?```', '')
+    $normalized = [regex]::Replace($normalized, '(?m)^\s*>.+$', '')
+    return @($normalized -split '(?:\n\s*\n)+' | ForEach-Object { $_.Trim() } | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
 }
 
 function Get-OpaqueReferenceCount {
@@ -579,66 +278,35 @@ function Get-OpaqueReferenceCount {
         return 0
     }
 
-    $workingParagraph = $Paragraph -replace '(?i)file:///[^\s\)`]+', ' '
-    $workingParagraph = $workingParagraph -replace '(?i)\b[A-Z]:\\[^\s\)`]+', ' '
-    $referenceMatches = @(Get-ReferenceMatches -Text $workingParagraph)
-    if ($referenceMatches.Count -lt 3) {
+    $referencePattern = '(?i)\b(?:feature\s+\d+|iteration\s+\d+|T\d{3,}|FR-\d+|TG-[A-Za-z0-9-]+|[0-9a-f]{7,40})\b'
+    $referenceCount = [regex]::Matches($Paragraph, $referencePattern).Count
+    if ($referenceCount -lt 3) {
         return 0
     }
 
-    $describedStarts = [System.Collections.Generic.HashSet[int]]::new()
-    $referencePattern = Get-ReferencePattern
-    $separatorPattern = '(?:\s*(?:,|\band\b|\bor\b|\bthrough\b|\bto\b|[-–])\s*)'
-    $groupPattern = "(?<group>$referencePattern(?:$separatorPattern$referencePattern)*)"
-    $afterDescriptorPattern = "^(?<group>$referencePattern(?:$separatorPattern$referencePattern)*)\s*(?:,|:|—|–|-)\s*(?<desc>[^.;:`n]+)"
-    $beforeDescriptorPattern = '(?i)(?<desc>(?:the\s+)?[a-z][a-z-]*(?:\s+[a-z][a-z-]*){1,8})\s*(?:\(|for\s+|in\s+)$'
+    $descriptorPatterns = @(
+        '(?i)\bfeature\s+\d+,\s+\w',
+        '(?i)\biteration\s+\d+,\s+\w',
+        '(?i)\(T\d{3,}\s+(?:and|through|-)\s*T\d{3,}\)',
+        '(?i)\bT\d{3,}(?:\s+(?:and|through|-)\s*T\d{3,})?,\s+(?!T\d|FR-\d|TG-|[0-9a-f]{7,40}\b)(?:the|\w{3,})',
+        '(?i)\(FR-\d+\s+(?:and|through|-)\s*FR-\d+\)',
+        '(?i)\bFR-\d+(?:\s+(?:and|through|-)\s*FR-\d+)?,\s+(?!T\d|FR-\d|TG-|[0-9a-f]{7,40}\b)(?:the|\w{3,})',
+        '(?i)\bTG-[A-Za-z0-9-]+,\s+\w',
+        '(?i)\b[0-9a-f]{7,40},\s+(?!T\d|FR-\d|TG-|[0-9a-f]{7,40}\b)(?:the|\w{3,})'
+    )
 
-    foreach ($referenceMatch in $referenceMatches) {
-        if ($describedStarts.Contains($referenceMatch.Index)) {
-            continue
-        }
-
-        $afterText = $workingParagraph.Substring([Math]::Min($referenceMatch.Index + $referenceMatch.Length, $workingParagraph.Length))
-        if ($afterText -match '^\s*(?:,|:|—|–|-)\s*(?<desc>[^.;:`n]+)' -and (Test-HasMeaningfulDescriptor -Text $Matches['desc'])) {
-            [void]$describedStarts.Add($referenceMatch.Index)
-            continue
-        }
-
-        $remainingText = $workingParagraph.Substring($referenceMatch.Index)
-        $afterGroupMatch = [regex]::Match($remainingText, $afterDescriptorPattern)
-        if ($afterGroupMatch.Success -and (Test-HasMeaningfulDescriptor -Text $afterGroupMatch.Groups['desc'].Value)) {
-            Add-DescribedReferenceStarts -DescribedStarts $describedStarts -Paragraph $workingParagraph -GroupValue $afterGroupMatch.Groups['group'].Value -GroupStart $referenceMatch.Index
-            continue
-        }
-
-        $prefixLength = [Math]::Min(80, $referenceMatch.Index)
-        $prefixStart = $referenceMatch.Index - $prefixLength
-        $beforeText = $workingParagraph.Substring($prefixStart, $prefixLength)
-        if ($beforeText -match $beforeDescriptorPattern -and (Test-HasMeaningfulDescriptor -Text $Matches['desc'])) {
-            $beforeGroupMatch = [regex]::Match($remainingText, "^(?<group>$referencePattern(?:$separatorPattern$referencePattern)*)")
-            if ($beforeGroupMatch.Success) {
-                Add-DescribedReferenceStarts -DescribedStarts $describedStarts -Paragraph $workingParagraph -GroupValue $beforeGroupMatch.Groups['group'].Value -GroupStart $referenceMatch.Index
-                continue
-            }
-
-            [void]$describedStarts.Add($referenceMatch.Index)
+    $describedPatternCount = 0
+    foreach ($pattern in $descriptorPatterns) {
+        if ($Paragraph -match $pattern) {
+            $describedPatternCount++
         }
     }
 
-    $describedValues = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::OrdinalIgnoreCase)
-    foreach ($referenceMatch in $referenceMatches) {
-        if ($describedStarts.Contains($referenceMatch.Index)) {
-            [void]$describedValues.Add($referenceMatch.Value)
-        }
+    if ($describedPatternCount -ge 2) {
+        return 0
     }
 
-    foreach ($referenceMatch in $referenceMatches) {
-        if ($describedValues.Contains($referenceMatch.Value)) {
-            [void]$describedStarts.Add($referenceMatch.Index)
-        }
-    }
-
-    return @($referenceMatches | Where-Object { -not $describedStarts.Contains($_.Index) }).Count
+    return $referenceCount
 }
 
 function Test-HasOpaqueReferenceWarning {
@@ -653,27 +321,324 @@ function Test-HasOpaqueReferenceWarning {
     return $false
 }
 
+function Get-ResolvedResponseScope {
+    param(
+        [string]$RequestedScope,
+        [hashtable]$SectionMap
+    )
+
+    if ($RequestedScope -ne 'auto') {
+        return $RequestedScope
+    }
+
+    if (Test-UsesStopMessageFormat -SectionMap $SectionMap) {
+        return 'boundary-handoff'
+    }
+
+    return 'narration'
+}
+
+function Get-IdentifierCount {
+    param([AllowEmptyString()][string]$Text)
+
+    if ([string]::IsNullOrWhiteSpace($Text)) {
+        return 0
+    }
+
+    $patterns = @(
+        '(?i)\bFR-\d+\b',
+        '(?i)\bT\d{3,}\b',
+        '(?i)\b[a-f0-9]{7,40}\b',
+        '(?i)\b(?:authorization|decision|sign-off)-[a-z0-9-]+\b',
+        '(?i)file:///[^\s)]+'
+    )
+
+    $count = 0
+    foreach ($pattern in $patterns) {
+        $count += [regex]::Matches($Text, $pattern).Count
+    }
+
+    return $count
+}
+
+function Get-WordCount {
+    param([AllowEmptyString()][string]$Text)
+
+    if ([string]::IsNullOrWhiteSpace($Text)) {
+        return 0
+    }
+
+    return [regex]::Matches($Text, '\b[\p{L}\p{N}][\p{L}\p{N}\-/]*\b').Count
+}
+
+function Get-ExpectedBoundary {
+    param(
+        [string]$ResolvedProjectRoot,
+        [string]$ResolvedIterationPath,
+        [string]$ProvidedBoundaryName
+    )
+
+    if (-not [string]::IsNullOrWhiteSpace($ProvidedBoundaryName)) {
+        return Normalize-InteractionModelBoundaryName -Boundary $ProvidedBoundaryName
+    }
+
+    if ([string]::IsNullOrWhiteSpace($ResolvedIterationPath) -or -not (Test-Path -LiteralPath $ResolvedIterationPath -PathType Container)) {
+        return $null
+    }
+
+    $statePath = Join-Path $ResolvedIterationPath 'state.md'
+    if (Test-Path -LiteralPath $statePath -PathType Leaf) {
+        $stateLines = @(Get-MarkdownContent -Path $statePath)
+        foreach ($label in @('Current Boundary', 'Next Boundary')) {
+            $value = Get-MarkdownMetadataValue -Lines $stateLines -Label $label
+            if (-not [string]::IsNullOrWhiteSpace($value)) {
+                return Normalize-InteractionModelBoundaryName -Boundary $value
+            }
+        }
+
+        $canonicalStateText = @(
+            Get-MarkdownMetadataValue -Lines $stateLines -Label 'Current Phase'
+            Get-MarkdownMetadataValue -Lines $stateLines -Label 'Iteration Status'
+        ) -join ' '
+
+        if (-not [string]::IsNullOrWhiteSpace($canonicalStateText)) {
+            $normalizedStateText = $canonicalStateText.ToLowerInvariant()
+            $boundaryPatterns = @(
+                @{ Pattern = '(?i)\breview-verdict-signoff\b|review verdict sign-?off'; Boundary = 'review-verdict-signoff' }
+                @{ Pattern = '(?i)\breview-boundary\b|\breview boundary\b|\breview authorization\b'; Boundary = 'review-boundary' }
+                @{ Pattern = '(?i)\bretro-boundary\b|\bretrospective boundary\b|\bretrospective\b'; Boundary = 'retro-boundary' }
+                @{ Pattern = '(?i)\biteration-closeout\b|\biteration closeout\b|\bcloseout boundary\b'; Boundary = 'iteration-closeout' }
+                @{ Pattern = '(?i)\bhardening-gate-signoff\b|\bhardening gate sign-?off\b'; Boundary = 'hardening-gate-signoff' }
+                @{ Pattern = '(?i)\bhardening-gate-and-implementation-auth\b|\bhardening gate and implementation authorization\b'; Boundary = 'hardening-gate-and-implementation-auth' }
+                @{ Pattern = '(?i)\bimplementation\b|\bimplementation authorization\b'; Boundary = 'implementation' }
+                @{ Pattern = '(?i)\bplanning\b'; Boundary = 'planning' }
+            )
+
+            foreach ($candidate in $boundaryPatterns) {
+                if ($normalizedStateText -match $candidate.Pattern) {
+                    return $candidate.Boundary
+                }
+            }
+        }
+    }
+
+    $planPath = Join-Path $ResolvedIterationPath 'plan.md'
+    if (-not (Test-Path -LiteralPath $planPath -PathType Leaf)) {
+        return $null
+    }
+
+    $planLines = @(Get-MarkdownContent -Path $planPath)
+    $status = (Get-MarkdownMetadataValue -Lines $planLines -Label 'Status')
+    switch (($status | ForEach-Object { if ($null -eq $_) { '' } else { $_.ToLowerInvariant() } })) {
+        'planning' { return 'planning' }
+        'executing' { return 'implementation' }
+        'reviewing' { return 'review-boundary' }
+        'retro' { return 'retro-boundary' }
+        'complete' { return 'iteration-closeout' }
+        default { return $null }
+    }
+}
+
+function Test-MentionsBoundary {
+    param(
+        [AllowEmptyString()][string]$Text,
+        [AllowNull()][string]$Boundary
+    )
+
+    $normalizedBoundary = Normalize-InteractionModelBoundaryName -Boundary $Boundary
+    if ([string]::IsNullOrWhiteSpace($Text) -or [string]::IsNullOrWhiteSpace($normalizedBoundary)) {
+        return $false
+    }
+
+    if (-not $boundaryPhraseMap.Contains($normalizedBoundary)) {
+        return $Text.ToLowerInvariant().Contains($normalizedBoundary)
+    }
+
+    foreach ($phrase in $boundaryPhraseMap[$normalizedBoundary]) {
+        if ($Text -match ('(?i)\b' + [regex]::Escape($phrase) + '\b')) {
+            return $true
+        }
+    }
+
+    return $false
+}
+
+function Test-HasVerdictCue {
+    param([AllowEmptyString()][string]$Text)
+
+    return -not [string]::IsNullOrWhiteSpace($Text) -and ($Text -match '(?i)\b(approve|reject|authorize|sign off|confirm|accept|decline|pass|needs-work|blocked)\b')
+}
+
+function Get-MissingUserRequestComponents {
+    param(
+        [AllowEmptyString()][string]$Text,
+        [AllowNull()][string]$ExpectedBoundary
+    )
+
+    $missing = New-Object System.Collections.Generic.List[string]
+    if (-not (Test-MentionsBoundary -Text $Text -Boundary $ExpectedBoundary)) {
+        $missing.Add('boundary-name') | Out-Null
+    }
+
+    if (-not (Test-HasFileUri -Text $Text)) {
+        $missing.Add('inspection-target') | Out-Null
+    }
+
+    if (-not (Test-HasVerdictCue -Text $Text)) {
+        $missing.Add('verdict-required') | Out-Null
+    }
+
+    return $missing.ToArray()
+}
+
+function Get-FileUriMatches {
+    param([AllowEmptyString()][string]$Text)
+
+    if ([string]::IsNullOrWhiteSpace($Text)) {
+        return @()
+    }
+
+    return @([regex]::Matches($Text, '(?i)file:///[^\s)`"''<>]+') | ForEach-Object { $_.Value.TrimEnd(',', '.', ';', ':') })
+}
+
+function Convert-FileUriToWindowsPath {
+    param([Parameter(Mandatory = $true)][string]$FileUri)
+
+    try {
+        $uri = [System.Uri]$FileUri
+        return [System.Uri]::UnescapeDataString($uri.LocalPath)
+    }
+    catch {
+        return $null
+    }
+}
+
+function Get-BrokenFileUriFindings {
+    param([AllowEmptyString()][string]$Text)
+
+    $findings = New-Object System.Collections.Generic.List[string]
+    foreach ($fileUri in (Get-FileUriMatches -Text $Text | Select-Object -Unique)) {
+        $windowsPath = Convert-FileUriToWindowsPath -FileUri $fileUri
+        if ([string]::IsNullOrWhiteSpace($windowsPath) -or -not (Test-Path -LiteralPath $windowsPath)) {
+            $findings.Add("soft-warning.broken-file-url-reference :: reference=$fileUri") | Out-Null
+        }
+    }
+
+    return $findings.ToArray()
+}
+
+function Get-PathScanLines {
+    param([AllowEmptyString()][string]$Text)
+
+    if ([string]::IsNullOrWhiteSpace($Text)) {
+        return @()
+    }
+
+    $withoutCodeBlocks = [regex]::Replace(($Text -replace "`r`n", "`n"), '(?ms)```.*?```', '')
+    $withoutInlineCode = [regex]::Replace($withoutCodeBlocks, '(?s)`[^`\r\n]+`', '')
+    $withoutUrls = [regex]::Replace($withoutInlineCode, '(?i)\b[a-z][a-z0-9+\.-]*://[^\s)]+', '')
+    return @($withoutUrls -split "`n")
+}
+
+function Test-IsExemptPathLine {
+    param([AllowEmptyString()][string]$Line)
+
+    if ([string]::IsNullOrWhiteSpace($Line)) {
+        return $true
+    }
+
+    $trimmed = $Line.Trim()
+    if ($trimmed -match '^(?i)(?:ps>|cmd>|info:|warn:|error:|trace:|\[[A-Z]+\])') {
+        return $true
+    }
+
+    if ($trimmed -match '^\s*[\{\[].*[:=].*[\\/].*[\}\]]?\s*$') {
+        return $true
+    }
+
+    if ($trimmed -match '^\s*[\w\.\-"]+\s*:\s*["'']?.+[\\/].*$') {
+        return $true
+    }
+
+    if ($trimmed -match '^\s*/.+/[a-z]*\s*$') {
+        return $true
+    }
+
+    if ($trimmed -match '(?i)\b(?:git|pwsh|powershell|npm|node|python|go|dotnet|gh|curl|Get-ChildItem|Select-String|Resolve-Path)\b.+(?:[\\/]|[\*\?])') {
+        return $true
+    }
+
+    return $false
+}
+
+function Get-BarePathMatches {
+    param(
+        [AllowEmptyString()][string]$Text,
+        [AllowEmptyCollection()][object[]]$ExemptionExtensions
+    )
+
+    $pattern = '(?i)(?<path>(?:[A-Z]:[\\/]|\.{1,2}[\\/]|(?:[A-Za-z0-9_.-]+[\\/])+[A-Za-z0-9_.-]+)(?:[\\/][A-Za-z0-9_.-]+)*)'
+    $matches = New-Object System.Collections.Generic.List[string]
+
+    foreach ($line in (Get-PathScanLines -Text $Text)) {
+        if (Test-IsExemptPathLine -Line $line) {
+            continue
+        }
+
+        foreach ($match in [regex]::Matches($line, $pattern)) {
+            $candidate = $match.Groups['path'].Value
+            if ([string]::IsNullOrWhiteSpace($candidate)) {
+                continue
+            }
+
+            $isExtensionExempt = $false
+            foreach ($extension in @($ExemptionExtensions)) {
+                if (-not [string]::IsNullOrWhiteSpace([string]$extension.Pattern) -and $candidate -match [string]$extension.Pattern) {
+                    $isExtensionExempt = $true
+                    break
+                }
+            }
+
+            if (-not $isExtensionExempt) {
+                $matches.Add($candidate) | Out-Null
+            }
+        }
+    }
+
+    return @($matches | Select-Object -Unique)
+}
+
 $normalizedText = Get-NormalizedText -Text $ResponseText
+$sectionMap = Get-InteractionModelSectionMap -Text $normalizedText
+$resolvedResponseScope = Get-ResolvedResponseScope -RequestedScope $ResponseScope -SectionMap $sectionMap
+$resolvedProjectRoot = Resolve-ProjectPath -Path $ProjectRoot
+$resolvedIterationPath = if ([string]::IsNullOrWhiteSpace($IterationPath)) { $null } else { Resolve-ProjectPath -Path $IterationPath }
+$settings = Get-InteractionModelSettings -ProjectRoot $resolvedProjectRoot
+$effectiveBarePathSeverity = if ($PSBoundParameters.ContainsKey('BarePathBoundaryHandoffSeverity')) { $BarePathBoundaryHandoffSeverity } else { $settings.BarePathBoundaryHandoffSeverity }
+$expectedBoundary = Get-ExpectedBoundary -ResolvedProjectRoot $resolvedProjectRoot -ResolvedIterationPath $resolvedIterationPath -ProvidedBoundaryName $BoundaryName
+$hasInteractionBoundaryContext = -not [string]::IsNullOrWhiteSpace($expectedBoundary) -or -not [string]::IsNullOrWhiteSpace($BoundaryName) -or -not [string]::IsNullOrWhiteSpace($IterationPath)
+
 $warnings = New-Object System.Collections.Generic.List[string]
-$sectionMap = Get-HandoffSectionMap -Text $normalizedText
+$failures = New-Object System.Collections.Generic.List[string]
+$summaryLines = New-Object System.Collections.Generic.List[string]
 
 if (-not (Test-HasExplicitProgressStatus -Text $normalizedText)) {
-    $warnings.Add('soft-warning.missing-progress-status')
+    $warnings.Add('soft-warning.missing-progress-status') | Out-Null
 }
 
 if (-not (Test-HasExplicitNextStep -Text $normalizedText)) {
-    $warnings.Add('soft-warning.missing-next-step')
+    $warnings.Add('soft-warning.missing-next-step') | Out-Null
 }
 
 if (Test-MissingReviewFileReference -Text $normalizedText) {
-    $warnings.Add('soft-warning.review-file-reference-format')
+    $warnings.Add('soft-warning.review-file-reference-format') | Out-Null
 }
 
 if (Test-HasOpaqueReferenceWarning -Text $normalizedText) {
-    $warnings.Add('soft-warning.opaque-numeric-references')
+    $warnings.Add('soft-warning.opaque-numeric-references') | Out-Null
 }
 
-foreach ($section in (Get-HandoffSections -Text $normalizedText)) {
+foreach ($section in (Get-InteractionModelSections -Text $normalizedText)) {
     $lead = Get-LeadSentence -Section $section
     if ([string]::IsNullOrWhiteSpace($lead)) {
         continue
@@ -682,80 +647,154 @@ foreach ($section in (Get-HandoffSections -Text $normalizedText)) {
     $governanceHitCount = Get-GovernanceHitCount -Text $lead
     if ($governanceHitCount -ge 3 -and -not (Test-HasPlainLanguageParaphrase -Lead $lead -GovernanceHitCount $governanceHitCount)) {
         if (-not $warnings.Contains('soft-warning.jargon-first-lead')) {
-            $warnings.Add('soft-warning.jargon-first-lead')
+            $warnings.Add('soft-warning.jargon-first-lead') | Out-Null
         }
     }
 }
 
 if ((Test-MentionsBlockerOrRisk -Text $normalizedText) -and -not (Test-PlainlyDisclosesBlockerOrRisk -Text $normalizedText)) {
-    $warnings.Add('soft-warning.hidden-blocker-or-risk')
+    $warnings.Add('soft-warning.hidden-blocker-or-risk') | Out-Null
 }
 
 if (Test-UsesStopMessageFormat -SectionMap $sectionMap) {
-    $userActionSection = [string]$sectionMap['What I need from you']
-    $whyStoppedSection = [string]$sectionMap['Why I stopped']
+    $whatIJustDid = [string]$sectionMap['What I just did']
+    $whyStopped = [string]$sectionMap['Why I stopped']
+    $whatINeed = [string]$sectionMap['What I need from you']
 
-    if (Test-HasEmptyUserActionSection -Text $userActionSection) {
-        $warnings.Add('soft-warning.empty-user-action-section')
+    if (Test-HasEmptyUserActionSection -Text $whatINeed) {
+        $warnings.Add('soft-warning.empty-user-action-section') | Out-Null
     }
 
-    if (Test-HasTransitionalStopClaim -WhyStoppedText $whyStoppedSection -UserActionText $userActionSection) {
-        $warnings.Add('soft-warning.transitional-stop-claim')
+    if (Test-HasTransitionalStopClaim -WhyStoppedText $whyStopped -UserActionText $whatINeed) {
+        $warnings.Add('soft-warning.transitional-stop-claim') | Out-Null
+    }
+
+    if ($resolvedResponseScope -eq 'boundary-handoff' -and $hasInteractionBoundaryContext) {
+        $identifierCount = Get-IdentifierCount -Text $whatIJustDid
+        $wordCount = Get-WordCount -Text $whatIJustDid
+        $isCloseoutBoundary = $expectedBoundary -in @('iteration-closeout', 'feature-closeout')
+        $meetsSubstance = if ($isCloseoutBoundary) { $identifierCount -ge 3 -or $wordCount -ge 50 } else { $identifierCount -ge 3 -and $wordCount -ge 50 }
+        if (-not $meetsSubstance) {
+            $warnings.Add(("soft-warning.thin-what-i-just-did :: boundary={0}; identifiers={1}; words={2}" -f $(if ([string]::IsNullOrWhiteSpace($expectedBoundary)) { 'unknown' } else { $expectedBoundary }), $identifierCount, $wordCount)) | Out-Null
+        }
+
+        if (-not (Test-MentionsBoundary -Text $whyStopped -Boundary $expectedBoundary)) {
+            $warnings.Add(("soft-warning.unspecific-stop-boundary :: expected-boundary={0}" -f $(if ([string]::IsNullOrWhiteSpace($expectedBoundary)) { 'unknown' } else { $expectedBoundary }))) | Out-Null
+        }
+
+        $missingComponents = @(Get-MissingUserRequestComponents -Text $whatINeed -ExpectedBoundary $expectedBoundary)
+        if ($missingComponents.Count -gt 0) {
+            $warnings.Add(("soft-warning.unactionable-user-request :: missing={0}" -f ($missingComponents -join ','))) | Out-Null
+        }
     }
 }
 
-$status = if ($warnings.Count -gt 0) { 'warn' } else { 'pass' }
-$summaryLines = New-Object System.Collections.Generic.List[string]
+foreach ($configIssue in @($settings.ConfigIssues)) {
+    $warnings.Add("soft-warning.bare-path-config-issue :: $configIssue") | Out-Null
+}
+
+foreach ($brokenFileUri in (Get-BrokenFileUriFindings -Text $normalizedText)) {
+    $warnings.Add($brokenFileUri) | Out-Null
+}
+
+$barePathMatches = @(Get-BarePathMatches -Text $normalizedText -ExemptionExtensions $settings.ExemptionExtensions)
+if ($barePathMatches.Count -gt 0) {
+    $detail = $barePathMatches -join ', '
+    if ($resolvedResponseScope -eq 'boundary-handoff' -and $hasInteractionBoundaryContext) {
+        $ruleId = "{0}.bare-path-in-boundary-handoff" -f $effectiveBarePathSeverity
+        $finding = "$ruleId :: paths=$detail"
+        if ($effectiveBarePathSeverity -eq 'validation-fail') {
+            $failures.Add($finding) | Out-Null
+        }
+        else {
+            $warnings.Add($finding) | Out-Null
+        }
+    }
+    elseif ($resolvedResponseScope -eq 'narration') {
+        $warnings.Add("soft-warning.bare-path-in-narration :: paths=$detail") | Out-Null
+    }
+}
+
 if ($warnings.Contains('soft-warning.jargon-first-lead')) {
-    $summaryLines.Add('Rewrite the lead sentence in plain language before formal lifecycle references.')
+    $summaryLines.Add('Rewrite the lead sentence in plain language before formal lifecycle references.') | Out-Null
 }
 
 if ($warnings.Contains('soft-warning.missing-progress-status')) {
-    $summaryLines.Add('Add an explicit current progress status statement.')
+    $summaryLines.Add('Add an explicit current progress status statement.') | Out-Null
 }
 
 if ($warnings.Contains('soft-warning.missing-next-step')) {
-    $summaryLines.Add('Add a single explicit next step.')
+    $summaryLines.Add('Add a single explicit next step.') | Out-Null
 }
 
 if ($warnings.Contains('soft-warning.hidden-blocker-or-risk')) {
-    $summaryLines.Add('State blockers or verification gaps plainly when they exist.')
+    $summaryLines.Add('State blockers or verification gaps plainly when they exist.') | Out-Null
 }
 
 if ($warnings.Contains('soft-warning.review-file-reference-format')) {
-    $summaryLines.Add('Include a file:/// URI with the absolute Windows path when requesting local file review.')
+    $summaryLines.Add('Include a file:/// URI with the absolute Windows path when requesting local file review.') | Out-Null
 }
 
 if ($warnings.Contains('soft-warning.opaque-numeric-references')) {
-    $summaryLines.Add('Add descriptive scope when three or more feature, iteration, task, requirement, corpus, or commit references appear in authored prose.')
+    $summaryLines.Add('Add descriptive scope when three or more feature, iteration, task, requirement, corpus, or commit references appear in authored prose.') | Out-Null
 }
 
 if ($warnings.Contains('soft-warning.empty-user-action-section')) {
-    $summaryLines.Add('Replace empty or placeholder user-action wording with one substantive immediate human action.')
+    $summaryLines.Add('Replace empty or placeholder user-action wording with one substantive immediate human action.') | Out-Null
 }
 
 if ($warnings.Contains('soft-warning.transitional-stop-claim')) {
-    $summaryLines.Add('Use the three-section stop-message format only for real human blockers; keep transitional waiting updates as single-line progress prose.')
+    $summaryLines.Add('Use the three-section stop-message format only for real human blockers; keep transitional waiting updates as single-line progress prose.') | Out-Null
+}
+
+if (@($warnings | Where-Object { $_ -like 'soft-warning.thin-what-i-just-did*' }).Count -gt 0) {
+    $summaryLines.Add('Strengthen "What I just did" with at least three concrete identifiers and enough words for the active boundary.') | Out-Null
+}
+
+if (@($warnings | Where-Object { $_ -like 'soft-warning.unspecific-stop-boundary*' }).Count -gt 0) {
+    $summaryLines.Add('Name the exact boundary in "Why I stopped" and keep it aligned with the active iteration state.') | Out-Null
+}
+
+if (@($warnings | Where-Object { $_ -like 'soft-warning.unactionable-user-request*' }).Count -gt 0) {
+    $summaryLines.Add('Name the boundary, provide file:/// inspection targets, and request an explicit verdict in "What I need from you".') | Out-Null
+}
+
+if (@($warnings | Where-Object { $_ -like 'soft-warning.bare-path-in-*' }).Count -gt 0) {
+    $summaryLines.Add('Replace bare paths with file:/// URIs unless the path is inside an approved exempt context.') | Out-Null
+}
+
+if (@($warnings | Where-Object { $_ -like 'soft-warning.broken-file-url-reference*' }).Count -gt 0) {
+    $summaryLines.Add('Repair or remove file:/// references that do not resolve to existing files.') | Out-Null
+}
+
+if ($failures.Count -gt 0) {
+    $summaryLines.Add('Hard validation findings block this handoff until the referenced path or boundary issue is repaired.') | Out-Null
 }
 
 if ($summaryLines.Count -eq 0) {
-    $summaryLines.Add('No soft warnings.')
+    $summaryLines.Add('No soft warnings.') | Out-Null
 }
+
+$status = if ($failures.Count -gt 0) { 'fail' } elseif ($warnings.Count -gt 0) { 'warn' } else { 'pass' }
 
 Write-Output ("status: {0}" -f $status)
 Write-Output 'findings:'
-if ($warnings.Count -eq 0) {
+if ($failures.Count -eq 0 -and $warnings.Count -eq 0) {
     Write-Output '  - none'
 }
 else {
-    foreach ($warning in $warnings) {
-        Write-Output ("  - {0}" -f $warning)
+    foreach ($finding in @($failures + $warnings)) {
+        Write-Output ("  - {0}" -f $finding)
     }
 }
 
 Write-Output 'summary:'
 foreach ($summaryLine in $summaryLines) {
     Write-Output ("  - {0}" -f $summaryLine)
+}
+
+if ($failures.Count -gt 0) {
+    exit 1
 }
 
 exit 0

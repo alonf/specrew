@@ -26,6 +26,10 @@ The core user-facing risk is jargon-first handoff wording that hides the actual 
 | Shared-scope grouping clarity | A grouped list or range uses one shared explanation only when the grouping is unmistakable | A grouped list relies on one explanation but the covered identifiers are ambiguous | Warn, request rewrite |
 | Excluded verbatim surfaces stay excluded | Numeric references that appear only in quoted material, code blocks, raw tool output, or Copilot-rendered tool-call result blocks are ignored | The review counts excluded verbatim content toward the descriptive-reference warning | Warn, request rewrite |
 | Review file reference format | If the next step is local file review in this Windows workflow, the response includes a `file:///` URI using the absolute Windows path | The response points the reviewer at a local file with only a plain path or no navigation-ready URI | Warn, request rewrite |
+| Thin "What I just did" | Planning / implementation / review / retro handoffs include at least 3 identifiers and at least 50 words; iteration-closeout / feature-closeout include at least one of those thresholds | The section is too thin for the active boundary | Warn with `soft-warning.thin-what-i-just-did` |
+| Specific stop boundary | `Why I stopped` names the exact boundary that is being entered and matches the active iteration state | The boundary is generic, missing, or contradicts the active iteration state | Warn with `soft-warning.unspecific-stop-boundary` |
+| Actionable boundary request | `What I need from you` names the boundary, includes `file:///` inspection targets, and requests a verdict | One or more of `boundary-name`, `inspection-target`, or `verdict-required` is missing | Warn once with `soft-warning.unactionable-user-request` |
+| Click-through file references | Artifact references in authored narration and stop messages use `file:///` outside exempt contexts, and cited files exist | Bare paths appear outside exemptions or a `file:///` target is broken | Warn with `soft-warning.bare-path-in-*` / `soft-warning.broken-file-url-reference` |
 | Blocker / risk disclosure | If blockers, skipped checks, failed checks, or known risks exist, the response states them plainly | The response hides or omits a known blocker or risk | Warn, request clarification |
 
 ## Review Method
@@ -107,6 +111,10 @@ When the next step is to review a local repository file in this Windows environm
 - Missing `file:///` review URI for local file review = `soft-warning.review-file-reference-format`
 - Three-or-more governance labels in the lead without paraphrase = `soft-warning.jargon-first-lead`
 - Hidden blocker or verification gap = `soft-warning.hidden-blocker-or-risk`
+- Thin boundary summary = `soft-warning.thin-what-i-just-did`
+- Missing or mismatched stop boundary = `soft-warning.unspecific-stop-boundary`
+- Missing boundary-name / inspection-target / verdict-required = `soft-warning.unactionable-user-request`
+- Bare path or broken `file:///` reference = `soft-warning.bare-path-in-*` / `soft-warning.broken-file-url-reference`
 
 ## Reviewer Notes
 
