@@ -59,9 +59,9 @@ Iteration 001 delivered the authorized Feature 016 governance and validator slic
 
 | Required Quality Gate | Category | Evidence Source | Status |
 | --- | --- | --- | --- |
-| `validator-replay-clean` | tooling | `tests/integration/substantive-interaction-model-handoff-test.ps1`, `tests/integration/substantive-interaction-model-boundary-discipline-test.ps1`, repo validator | failed |
+| `validator-replay-clean` | tooling | `tests/integration/substantive-interaction-model-handoff-test.ps1`, `tests/integration/substantive-interaction-model-boundary-discipline-test.ps1`, repo validator | passed |
 | `manual-handoff-readability-check` | manual-evidence | Iteration 1 handoff examples recorded in `quickstart.md` and exercised through the validator surface | passed |
-| `grandfathering-check` | mechanical | Repo-wide `validate-governance.ps1 -ProjectPath .` now fails on Feature 016's own canonical implementation authorization sequence | failed |
+| `grandfathering-check` | mechanical | Repo-wide `validate-governance.ps1 -ProjectPath .` passes on Feature 016's canonical implementation authorization sequence with anchored boundary patterns | passed |
 | `mirror-sync-check` | mechanical | `extensions/` and `.specify/extensions/` script/template pairs updated together | passed |
 
 ## Decisions and Handoff
@@ -71,7 +71,7 @@ Iteration 001 delivered the authorized Feature 016 governance and validator slic
 - **Implementation Authorization**: recorded as `implementation` in `file:///C:/Dev/Specrew/.squad/decisions.md`; both authorization entries cite the user's verbatim approval text.
 - **Implementation Repair**: completed post-`ed8dea9` (commits `37822b6` and `59f1b21`) to address FR-006/FR-009 validator-logic defects and NFR-001 evidence integrity concerns.
 - **Review-Verdict-Signoff**: completed on 2026-05-14; authorization entry recorded as `authorization-feature-016-iter-001-review-verdict-signoff` in `file:///C:/Dev/Specrew/.squad/decisions.md` following independent human verifier validation against HEAD 59f1b21.
-- **Current Boundary State**: review-verdict-signoff boundary is complete; retrospective authorization is next, followed by retro boundary and iteration closeout.
+- **Current Boundary State**: retrospective boundary is complete; iteration-closeout authorization is next.
 - **Session Restart Requirement**: required before a future fresh session can load the updated startup surfaces in `file:///C:/Dev/Specrew/.github/agents/squad.agent.md` and `file:///C:/Dev/Specrew/.squad/templates/squad.agent.md`.
 
 ## Scope and Deferrals
@@ -82,12 +82,12 @@ Iteration 001 delivered the authorized Feature 016 governance and validator slic
 
 ## Evidence Snapshot
 
-- **Repo validator timing**: `109134 ms` baseline recorded cleanly; `122646 ms` final-tree pass on repaired tree (post-`37822b6`); NFR-001 +37.5% delta (baseline 109134 ms → actual 150007 ms per independent human verifier measurement) accepted with documented rationale and deferred performance optimization.
+- **Repo validator timing**: `109134 ms` baseline (pre-Feature 016); `150007 ms` final-tree pass on accepted repaired tree (post-`59f1b21`); NFR-001 +37.5% delta accepted with documented rationale and deferred performance optimization.
+- **Validator state**: All eight validation items pass on HEAD `6f0db62`: five preserved handoff-governance regressions, two new Feature 016 integration tests, and repo-wide `validate-governance.ps1 -ProjectPath .` green with anchored canonical boundary patterns and immutable Commit Reference matching discipline.
 - **Prompt-line budget**: `100` added lines across the governed coordinator surfaces (`<=150`, within NFR-002).
-- **Validation lane**: all eight validation items (five preserved handoff-governance regressions, two new Feature 016 integration tests, and repo-wide `validate-governance.ps1 -ProjectPath .`) pass on HEAD 59f1b21.
 
 ## Next Action
 
-The next valid action is retrospective authorization by Alon Fliess, followed by the retro boundary where Retro Facilitator drafts retro.md. Do not open iteration closeout until the retro boundary is complete.
+The retrospective boundary is complete. The next valid action is iteration-closeout authorization by Alon Fliess.
 
 
