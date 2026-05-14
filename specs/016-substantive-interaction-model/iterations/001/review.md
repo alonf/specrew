@@ -98,8 +98,8 @@ The blocking defect is operational: the committed tree fails the repo-wide valid
 
 ## Gap Ledger
 
-- FR-006 / FR-009 defect — **fixed-now** in commits 37822b6 (validator-logic refactor paired-auth hash matching) and 59f1b21 (regex anchoring for boundary patterns). The bundled-boundary logic now correctly accepts the canonical implementation authorization sequence.
-- NFR-001 evidence integrity — **fixed-now** via review-verdict-signoff (2026-05-14T09:26:39Z) with independent human verifier validation on HEAD 59f1b21. Final repo-validator measured at 150007 ms (baseline 109134 ms, delta +37.5%), accepted with documented rationale. Performance optimization deferred to Feature N.
+- FR-006 / FR-009 defect — fixed-now in commits 37822b6 (validator-logic refactor paired-auth hash matching) and 59f1b21 (regex anchoring for boundary patterns). The bundled-boundary logic now correctly accepts the canonical implementation authorization sequence.
+- NFR-001 evidence integrity — fixed-now via review-verdict-signoff (2026-05-14T09:26:39Z) with independent human verifier validation on HEAD 59f1b21. Final repo-validator measured at 150007 ms (baseline 109134 ms, delta +37.5%), accepted with documented rationale. Performance optimization deferred to Feature N.
 
 ---
 
@@ -113,14 +113,14 @@ The blocking defect is operational: the committed tree fails the repo-wide valid
 | T004 | FR-006, FR-007, FR-011, FR-016 | pass | Shared helper plumbing exists for boundary recognition, decision parsing, handoff extraction, and severity lookup. |
 | T005 | FR-001, FR-002, FR-003, FR-004, FR-005 | pass | Coordinator guidance now enumerates the seven boundaries, forbids bundled advances, and documents single-step `continue`. |
 | T006 | FR-008, FR-009 | pass | The two hand-created Feature 016 authorization entries preserve all seven canonical fields and the verbatim authorization text faithfully. |
-| T007 | FR-006, FR-007, FR-008, FR-009 | needs-work | The validator correctly finds bundled advances in the scratch replay, but the committed tree still fails the canonical implementation authorization path. |
-| T008 | SC-001, SC-002, SC-003 | needs-work | Quickstart evidence claims a final repo-validator pass that is not reproducible on the committed tree, so the evidence package is not review-safe. |
+| T007 | FR-006, FR-007, FR-008, FR-009 | pass | **Fixed post-review**: The validator correctly finds bundled advances in scratch replay. Implementation-repair (commit 37822b6) fixed the paired-auth hash matching logic; regex-hardening (commit 59f1b21) fixed boundary-pattern overmatch. Final validator on HEAD 59f1b21 confirms PASS with no bundled-boundary-advance failures. |
+| T008 | SC-001, SC-002, SC-003 | pass | **Fixed post-review**: Quickstart evidence was re-recorded post-repair (commits 37822b6, 59f1b21). Baseline 109134 ms vs. actual 150007 ms (+37.5%) validated independently by human verifier on HEAD 59f1b21. Evidence integrity and repo-validator pass confirmed. |
 | T011 | FR-010, FR-014 | pass | The substantive-handoff guidance and examples align with the validator thresholds and boundary-specific wording. |
 | T012 | FR-011, FR-012, FR-013 | pass | Thin-summary, unspecific-boundary, and unactionable-request warnings behave as specified in the real handoff replay. |
 | T013 | SC-004, SC-005 | pass | Console-substance evidence is supported by the passing handoff replay and the governed examples. |
 | T018 | FR-015, FR-018, FR-019 | pass | Navigation guidance requires `file:///` references and names the approved exemption contexts. |
 | T019 | FR-016, FR-017, FR-018, FR-019 | pass | Bare-path, narration, and broken-file-url detection all work on the real validator surface, and FR-016 stays parameterized. |
-| T020 | SC-006, SC-007, SC-008 | needs-work | The navigation evidence block sits inside the same quickstart section whose claimed final repo-validator pass is not reproducible on `ed8dea9`. |
+| T020 | SC-006, SC-007, SC-008 | pass | **Fixed post-review**: Navigation evidence block was re-recorded post-repair. Validator confirmed PASS on HEAD 59f1b21 with clean bare-path, narration, and file-url detection across all integration tests. |
 
 ---
 
