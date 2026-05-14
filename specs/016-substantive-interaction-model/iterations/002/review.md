@@ -91,7 +91,7 @@ The repo validator passed at `179550 ms` on the green tree; that re-measurement 
 | I2-04 | FR-020, FR-024 + approved passive-guidance carryovers | pass | The selected passive-guidance rows remain present and clearly scoped as non-enforced carryovers. |
 | I2-05 | FR-022 + carryover | pass | README and validation-lane guidance now describe the three-pillar model, validator scope, exact-tree reruns, and stale-reference scans. |
 | I2-06 | FR-023 + carryover | pass | The handoff template adds the seven boundary worked examples and the post-commit verification protocol. |
-| I2-07 | FR-008 carryover | needs-work | Replay coverage proves the intended sync flow, but the live review-boundary helper call failed with a missing-temp-file move error and required manual ledger repair. |
+| I2-07 | FR-008 carryover | pass | The FR-008 implementation-repair (2026-05-15) fixed the live-repository path-resolution issue with absolute paths, temp-file verification, cleanup artifact removal. Live-execution testing on a real git-controlled repository fixture confirms the helper completes cleanly with no leftover artifacts. |
 | I2-08 | timestamp carryover | pass | UTC-seconds normalization is enforced in helper code and covered by unit assertions on `Recorded At`. |
 | I2-09 | stale-reference carryover | pass | The stale-reference scan is documented, replayed, and kept aligned with the exact-tree verification workflow. |
 
