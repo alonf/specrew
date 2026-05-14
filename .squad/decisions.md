@@ -3039,3 +3039,14 @@ All recommendations are documented with implementation owners and timelines.
 - **Commit Reference**: 8acd997
 - **Authorization Text**:
   > I authorize iteration-closeout for Feature 016 substantive-interaction-model Iteration 002. The retro boundary is complete with corpus capture, estimation variance analysis, deferral documentation, and positive learnings recorded. Iteration 002 delivered all authorized scope (FR-020 through FR-024, the Iteration 2 graduation portion of FR-016, and accepted FR-008/timestamp/stale-reference carryovers) and passed all review verdicts post-FR-008-repair. Iteration Status transitions to closed on boundary commit. Feature-closeout remains separately authorized.
+
+## 2026-05-14T23:14:40Z — Authorization: feature-closeout
+
+- **Decision ID**: authorization-feature-016-feature-closeout
+- **Type**: authorization
+- **Boundary**: feature-closeout
+- **Approving Human**: Alon Fliess
+- **Recorded At**: 2026-05-14T23:14:40Z
+- **Commit Reference**: pending
+- **Authorization Text**:
+  > I authorize feature-closeout for Feature 016 Substantive Interaction Model. Iteration 002 is closed and merged to feature branch. All hardening-gate concerns verified post-FR-008-repair, review verdict accepted, and retro complete with corpus capture and durability learnings. Authorized to proceed with Rule 15 version-management boundary commit (0.15.0 → 0.16.0), feature-closeout PR creation and merge to main, tag push, and final validator confirmation. Two chore commits (Feature 017, Feature 020) remain separately authorized.
