@@ -2065,6 +2065,30 @@ Iteration 002 planning artifacts (plan.md) were still in `planning` status with 
 
 - **Routing Evidence**: Reviewer | requested=claude | actual=copilot | model=(platform default) | status=fell-back | fallback=preferred agent 'claude' is not enabled
 
+## 2026-05-15T18:12:42Z — Hardening-gate sign-off: Feature 018
+
+- **Decision ID**: feature-018-hardening-gate-signoff-20260515
+- **Type**: sign-off
+- **Affected Requirement**: Feature 018 hardening-gate-and-implementation-auth boundary
+- **Affected Iteration**: 001
+- **Approving Human**: Alon Fliess
+- **Recorded At**: 2026-05-15T18:12:42Z
+- **Next Action**: Enter `/speckit.specrew-speckit.before-implement` for feature 018 after the pre-implementation review and hardening-gate artifacts are updated.
+- **Rationale**: Bundled human authorization granted the hardening-gate sign-off and implementation authorization together for feature 018.
+- **Authorization Text**: AUTHORIZE hardening-gate-and-implementation-auth + implementation for Feature 018 (Velocity Dashboard Visual Richness + PoC-Parity Restoration).
+
+## 2026-05-15T18:12:42Z — Implementation authorization: Feature 018
+
+- **Decision ID**: feature-018-implementation-authorization-20260515
+- **Type**: authorization
+- **Affected Requirement**: Feature 018 implementation boundary
+- **Affected Iteration**: 001
+- **Approving Human**: Alon Fliess
+- **Recorded At**: 2026-05-15T18:12:42Z
+- **Next Action**: If `/speckit.specrew-speckit.before-implement` passes, enter `/speckit.implement` for feature 018 and stop at the review-boundary.
+- **Rationale**: Bundled human authorization granted the hardening-gate sign-off and implementation authorization together for feature 018.
+- **Authorization Text**: AUTHORIZE hardening-gate-and-implementation-auth + implementation for Feature 018 (Velocity Dashboard Visual Richness + PoC-Parity Restoration).
+
 ## 2026-05-14T00:00:00Z — Authorization: planning
 
 - **Decision ID**: authorization-feature-016-iter-001-planning
@@ -3402,3 +3426,53 @@ Feature 017 (velocity-dashboard) is closed and shipped to main with Rule 15 vers
 ## Impact
 
 Feature 017 (Velocity Dashboard) is now closed and shipped. Version 0.17.0 is the active baseline, and no feature is currently open without explicit authorization.
+
+## 2026-05-15T16:10:40Z — Delegated routing plan
+
+- **Enabled Agents**: copilot
+- **Independent Oversight Active**: False
+- **Roles**:
+  - Implementer | requested=copilot | actual=copilot | model=(platform default) | status=honored | fallback=(none)
+  - Spec Steward | requested=codex | actual=copilot | model=(platform default) | status=fell-back | fallback=preferred agent 'codex' is not enabled
+  - Planner | requested=claude | actual=copilot | model=(platform default) | status=fell-back | fallback=preferred agent 'claude' is not enabled
+  - Reviewer | requested=claude | actual=copilot | model=(platform default) | status=fell-back | fallback=preferred agent 'claude' is not enabled
+  - Retro Facilitator | requested=copilot | actual=copilot | model=(platform default) | status=honored | fallback=(none)
+
+## 2026-05-15T16:10:40Z — Routing evidence: Spec Steward
+
+- **Decision ID**: routing-evidence-206ce5416f23
+- **Type**: routing-evidence
+- **Affected Requirement**: FR-043
+- **Affected Iteration**: (none)
+- **Approving Human**: (none)
+- **Recorded At**: 2026-05-15T16:10:40Z
+- **Next Action**: none
+- **Rationale**: Delegated lifecycle routing was applied for role 'Spec Steward'.
+
+- **Routing Evidence**: Spec Steward | requested=codex | actual=copilot | model=(platform default) | status=fell-back | fallback=preferred agent 'codex' is not enabled
+
+## 2026-05-15T16:10:40Z — Routing evidence: Planner
+
+- **Decision ID**: routing-evidence-cc6d58bdf628
+- **Type**: routing-evidence
+- **Affected Requirement**: FR-043
+- **Affected Iteration**: (none)
+- **Approving Human**: (none)
+- **Recorded At**: 2026-05-15T16:10:40Z
+- **Next Action**: none
+- **Rationale**: Delegated lifecycle routing was applied for role 'Planner'.
+
+- **Routing Evidence**: Planner | requested=claude | actual=copilot | model=(platform default) | status=fell-back | fallback=preferred agent 'claude' is not enabled
+
+## 2026-05-15T16:10:40Z — Routing evidence: Reviewer
+
+- **Decision ID**: routing-evidence-7692f5bf7c1e
+- **Type**: routing-evidence
+- **Affected Requirement**: FR-043
+- **Affected Iteration**: (none)
+- **Approving Human**: (none)
+- **Recorded At**: 2026-05-15T16:10:40Z
+- **Next Action**: none
+- **Rationale**: Delegated lifecycle routing was applied for role 'Reviewer'.
+
+- **Routing Evidence**: Reviewer | requested=claude | actual=copilot | model=(platform default) | status=fell-back | fallback=preferred agent 'claude' is not enabled
