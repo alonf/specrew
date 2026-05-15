@@ -24,13 +24,13 @@ Action expectations are non-binding suggestions. The reviewer at the next review
 
 ## Tier 1 — Process / durability
 
-### T1-1 🔴 PENDING: Nothing is committed on the feature branch
+### T1-1 🟢 RESOLVED-IN-PROGRESS: Planning and repair artifacts are committed on the feature branch
 
 The branch `017-velocity-dashboard` is at `de84fe9` (= main HEAD). Every artifact Squad has created — spec.md (42KB), plan.md (17KB), tasks.md (33KB), data-model.md, research.md, quickstart.md, three contracts files, plus uncommitted edits to `.github/copilot-instructions.md`, `.specify/feature.json`, and `proposals/009-velocity-dashboard.md` — lives in working tree only.
 
 **Risk**: laptop interruption = full loss of clarify + planning work.
 
-**Suggested disposition**: planning-boundary commit MUST land before implementation begins. Verify the commit captures everything in this worktree.
+**Resolution**: Planning and implementation-repair artifacts are committed in boundary commit `9093f98`. Verify the commit captures everything in this worktree at review.
 
 ### T1-2 🟢 RESOLVED-IN-PROGRESS: Spec self-contradicted on lifecycle status
 

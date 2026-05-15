@@ -3051,3 +3051,15 @@ All recommendations are documented with implementation owners and timelines.
 - **Authorization Text**:
   > I authorize feature-closeout for Feature 016 Substantive Interaction Model. Iteration 002 is closed and merged to feature branch. All hardening-gate concerns verified post-FR-008-repair, review verdict accepted, and retro complete with corpus capture and durability learnings. Authorized to proceed with Rule 15 version-management boundary commit (0.15.0 → 0.16.0), feature-closeout PR creation and merge to main, tag push, and final validator confirmation. Two chore commits (Feature 017, Feature 020) remain separately authorized.
 
+
+## 2026-05-15T09:35:00Z — Authorization: implementation-repair
+
+- **Decision ID**: authorization-feature-017-iter-001-implementation-repair
+- **Type**: authorization
+- **Boundary**: implementation-repair
+- **Approving Human**: Alon Fliess
+- **Recorded At**: 2026-05-15T09:35:00Z
+- **Commit Reference**: 9093f98
+- **Authorization Text**:
+  > Repair + spec expansion — Feature 017 Velocity Dashboard. Begin with Part 1 spec extensions so the FRs are recorded before implementation repairs run against them. Then update plan/tasks, repair implementation (R1-R10), verify with live dashboard + validator + existing tests, commit, update decisions and identity, push, and stop at review-boundary.
+  > Do not advance past review-boundary.
