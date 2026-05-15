@@ -477,6 +477,15 @@ function Write-PublicReadinessWarning {
     Write-Host ("WARN [public-readiness] {0}: {1}" -f $Category.Trim(), $Detail.Trim()) -ForegroundColor Yellow
 }
 
+function Write-DashboardGovernanceWarning {
+    param(
+        [Parameter(Mandatory = $true)][string]$Category,
+        [Parameter(Mandatory = $true)][string]$Detail
+    )
+
+    Write-Host ("WARN [dashboard] {0}: {1}" -f $Category.Trim(), $Detail.Trim()) -ForegroundColor Yellow
+}
+
 function Get-DeclaredSpecrewVersion {
     param([string]$ProjectRoot)
 
@@ -535,6 +544,83 @@ function Test-PublicReadinessSurfaces {
     }
     catch {
         return
+    }
+}
+
+function Get-DashboardRendererPath {
+    param([Parameter(Mandatory = $true)][string]$ProjectRoot)
+
+    return Join-Path $ProjectRoot 'scripts\internal\dashboard-renderer.ps1'
+}
+
+function Get-FeatureOrdinalFromRef {
+    param([AllowNull()][string]$FeatureRef)
+
+    if ([string]::IsNullOrWhiteSpace($FeatureRef)) {
+        return $null
+    }
+
+    if ($FeatureRef -match '^(?<ordinal>\d+)-') {
+        return [int]$Matches['ordinal']
+    }
+
+    return $null
+}
+
+function Test-DashboardGovernanceSurfaces {
+    param([Parameter(Mandatory = $true)][string]$ProjectRoot)
+
+    $rendererPath = Get-DashboardRendererPath -ProjectRoot $ProjectRoot
+    if (-not (Test-Path -LiteralPath $rendererPath -PathType Leaf)) {
+        return
+    }
+
+    . $rendererPath
+
+    $features = @(Get-SpecrewFeatureRecords -ProjectRoot $ProjectRoot)
+    $roadmapDefinition = Read-SpecrewRoadmapDefinition -ProjectRoot $ProjectRoot
+    if ($roadmapDefinition.exists) {
+        foreach ($warning in @($roadmapDefinition.warnings)) {
+            Write-DashboardGovernanceWarning -Category 'roadmap-schema' -Detail $warning
+        }
+
+        $roadmapProgress = Get-SpecrewRoadmapProgress -RoadmapDefinition $roadmapDefinition -FeatureRecords $features
+        foreach ($warning in @($roadmapProgress.warnings)) {
+            $category = if ($warning -like 'Roadmap drift:*') { 'roadmap-drift' } else { 'roadmap-schema' }
+            Write-DashboardGovernanceWarning -Category $category -Detail $warning
+        }
+    }
+
+    foreach ($feature in $features) {
+        $featureOrdinal = Get-FeatureOrdinalFromRef -FeatureRef $feature.feature_ref
+        if ($null -eq $featureOrdinal -or $featureOrdinal -lt 17) {
+            continue
+        }
+
+        foreach ($iteration in @($feature.closed_iterations)) {
+            $dashboardPath = Join-Path $iteration.iteration_directory 'dashboard.md'
+            if (-not (Test-Path -LiteralPath $dashboardPath -PathType Leaf)) {
+                Write-DashboardGovernanceWarning -Category 'missing-dashboard-artifact' -Detail ("Closed iteration '{0} {1}' is missing dashboard.md." -f $feature.feature_ref, $iteration.iteration_ref)
+            }
+            else {
+                $dashboardText = Get-Content -LiteralPath $dashboardPath -Raw -Encoding UTF8
+                if ($dashboardText -notmatch '\*\*Schema\*\*:\s*v1') {
+                    Write-DashboardGovernanceWarning -Category 'dashboard-schema-version' -Detail ("Iteration dashboard '{0}' is missing the expected schema marker." -f $dashboardPath)
+                }
+            }
+        }
+
+        if ([string]$feature.feature_status -match '(?i)complete|closed|shipped') {
+            if (-not (Test-Path -LiteralPath $feature.closeout_dashboard_path -PathType Leaf)) {
+                Write-DashboardGovernanceWarning -Category 'missing-dashboard-artifact' -Detail ("Closed feature '{0}' is missing closeout-dashboard.md." -f $feature.feature_ref)
+            }
+            else {
+                $closeoutText = Get-Content -LiteralPath $feature.closeout_dashboard_path -Raw -Encoding UTF8
+                if ($closeoutText -notmatch '\*\*Schema\*\*:\s*v1') {
+                    Write-DashboardGovernanceWarning -Category 'dashboard-schema-version' -Detail ("Feature closeout dashboard '{0}' is missing the expected schema marker." -f $feature.closeout_dashboard_path)
+                }
+            }
+        }
     }
 }
 
@@ -3140,6 +3226,7 @@ try {
     }
 
     Test-PublicReadinessSurfaces -ProjectRoot $resolvedProjectPath
+    Test-DashboardGovernanceSurfaces -ProjectRoot $resolvedProjectPath
 
     $explicitIterationPathsProvided = ($null -ne $IterationPath) -and @(
         $IterationPath | Where-Object { -not [string]::IsNullOrWhiteSpace([string]$_) }

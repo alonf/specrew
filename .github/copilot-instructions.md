@@ -1,6 +1,6 @@
 # Specrew Development Guidelines
 
-Auto-generated from all feature plans. Last updated: 2026-05-14
+Auto-generated from all feature plans. Last updated: 2026-05-15
 
 ## Active Technologies
 - PowerShell 7.x scripts plus Markdown/YAML/JSON governance artifacts; downstream Specrew config currently pins Spec Kit `0.8.4` and Squad `0.9.1` in `.specrew/config.yml` + `extensions/specrew-speckit` script/template surfaces, `.specify` plan workflow, Squad-native runtime deployment via `deploy-squad-runtime.ps1`, existing governance/evaluation scripts under `tests/integration/` and `evaluation/scorers/` (008-quality-profile-foundation)
@@ -23,6 +23,7 @@ Auto-generated from all feature plans. Last updated: 2026-05-14
 - Filesystem only — Markdown files at repo root and under `docs/`, `specs/`, and `extensions/specrew-speckit/` (015-public-readiness-pass)
 - PowerShell 7 for validator/test automation, Markdown for prompt/contracts/docs, Git commit metadata for boundary-signature inspection + `extensions/specrew-speckit/scripts/validate-governance.ps1`; `extensions/specrew-speckit/scripts/shared-governance.ps1`; `extensions/specrew-speckit/validators/handoff-governance-validator.ps1`; coordinator prompt surfaces under `extensions/specrew-speckit/prompts/` and `.github/agents/` (016-substantive-interaction-model)
 - Filesystem + Git history + `.squad/decisions.md` authorization ledger + `.specrew/quality/known-traps.md` corpus (016-substantive-interaction-model)
+- PowerShell 7.x scripts plus Markdown/YAML/JSON governance artifacts + `scripts/specrew.ps1`, `scripts/specrew-where.ps1`, mirrored `extensions/specrew-speckit` + `.specify/extensions/specrew-speckit` governance scripts, `.specify/feature.json`, `.specrew/iteration-config.yml`, `.specrew/role-assignments.yml`, `specs/**` iteration artifacts, `.specrew/roadmap.yml`, and Git-tracked docs/tests (017-velocity-dashboard)
 
 - Markdown, YAML, PowerShell (Spec Kit extension assets). + Spec Kit >= 0.8.4 (extension starter template), Squad >= 0.9.1 (extension structure: skills/ceremonies/directives) (001-specrew-product)
 
@@ -42,9 +43,20 @@ npm test; npm run lint
 Markdown, YAML, PowerShell (Spec Kit extension assets).: Follow standard conventions
 
 ## Recent Changes
+- 017-velocity-dashboard: Added PowerShell 7.x scripts plus Markdown/YAML/JSON governance artifacts + `scripts/specrew.ps1`, `scripts/specrew-where.ps1`, mirrored `extensions/specrew-speckit` + `.specify/extensions/specrew-speckit` governance scripts, `.specify/feature.json`, `.specrew/iteration-config.yml`, `.specrew/role-assignments.yml`, `specs/**` iteration artifacts, and `.specrew/roadmap.yml`
 - 016-substantive-interaction-model: Added PowerShell 7 for validator/test automation, Markdown for prompt/contracts/docs, Git commit metadata for boundary-signature inspection + `extensions/specrew-speckit/scripts/validate-governance.ps1`; `extensions/specrew-speckit/scripts/shared-governance.ps1`; `extensions/specrew-speckit/validators/handoff-governance-validator.ps1`; coordinator prompt surfaces under `extensions/specrew-speckit/prompts/` and `.github/agents/`
-- 015-public-readiness-pass: Added PowerShell 7 (script extension), Markdown (all documentation artifacts), Git (tag operations) + `validate-governance.ps1` and `shared-governance.ps1` (existing); `.specrew/config.yml` specrew_version bump from 0.1.0-dev to 0.14.0 (version source-of-truth)
 
 
 <!-- MANUAL ADDITIONS START -->
+- Repository/project-status requests should prefer the shared velocity dashboard
+  renderer exposed by `scripts/specrew.ps1 where`, `scripts/specrew.ps1 status`,
+  and `scripts/specrew-where.ps1`.
+- Only route the dashboard automatically when the request is explicitly about the
+  current repository or project status (for example: "where are we?", "project
+  status", "dashboard", "velocity", "what shipped / what is next"). Generic
+  "status" questions without repository/project framing should stay in normal
+  conversational mode.
+- Keep dashboard-related changes aligned across the live command surface,
+  closeout snapshots, `.specrew/roadmap.yml`, validator warnings, docs, and
+  fixture-backed tests.
 <!-- MANUAL ADDITIONS END -->

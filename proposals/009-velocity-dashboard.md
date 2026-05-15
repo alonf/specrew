@@ -1,7 +1,7 @@
 ---
 proposal: 009
 title: Velocity Dashboard ("Where Am I?")
-status: draft
+status: active
 phase: phase-2
 estimated-sp: 19
 discussion: tbd
@@ -38,6 +38,16 @@ Five pillars:
 3. Color theme — semantic palette (green = shipped, yellow = active, gray = queued, red = blocked, cyan = identity), single constants block for replacement
 4. Auto-invocation at iteration-closeout — coordinator-prompt rule writes `dashboard.md` artifact per iteration
 5. User education — `--help`, `docs/dashboard.md`, README section, first-time-without-roadmap.yml friendly setup message
+
+### Implementation landing
+
+- Canonical command surface: `scripts/specrew.ps1 where`, `scripts/specrew.ps1 status`, and `scripts/specrew-where.ps1`
+- Shared renderer + aggregation: `scripts/internal/dashboard-renderer.ps1`
+- Closeout snapshots: `extensions/specrew-speckit/scripts/scaffold-reviewer-artifacts.ps1`,
+  `extensions/specrew-speckit/scripts/scaffold-feature-closeout-dashboard.ps1`,
+  and mirrored `.specify/extensions/...` copies
+- User-facing guidance: `docs/dashboard-guide.md`, `docs/roadmap-maintenance.md`,
+  and `tests/manual/feature-017-dashboard-quickstart.md`
 
 Forward-compatible multi-developer support: `--Team` flag exists as a stub in Iteration 1 (prints "team mode requires multi-developer reconciliation feature"); becomes real when Multi-Developer Reconciliation ships.
 
@@ -81,3 +91,6 @@ Phase 2 — after the queued graduation candidates and Methodology Site. Foundat
 - 2026-05-14: candidate captured during F-015 closeout discussion
 - 2026-05-14: PoC drafted to validate concept (~250 lines PowerShell)
 - 2026-05-14: status → draft; source spec written
+- 2026-05-15: final implementation landed on the supported Specrew command,
+  validator, closeout, docs, and fixture surfaces; the PoC intent is now
+  archived through `specs/017-velocity-dashboard/implementation-decisions.md` and the Feature 017 spec set

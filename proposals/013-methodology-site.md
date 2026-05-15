@@ -32,6 +32,8 @@ A GitHub Pages site published from `docs/site/` or similar:
 5. **Getting started** — 5-minute happy path: `specrew init`, `specrew start`, first feature, first iteration
 6. **Lifecycle diagram** — visual map of the 7 boundaries (specify → clarify → plan → tasks → implement → review → retro → closeout)
 7. **Examples / showcases** — Clipboard corpus (ClipBoard2 → ClipBoard6) as worked examples showing methodology evolution
+   plus a future gallery slot for Feature 017 velocity dashboard snapshots so
+   the site can reuse real closeout artifacts as lightweight showcase material
 8. **For contributors** — pointer to CONTRIBUTING.md, methodology Discussion category, corpus-row-candidate issue template
 9. **Roadmap** — phase model + current focus + what's next
 
@@ -70,6 +72,9 @@ Phase 2 — not load-bearing for the methodology itself (Specrew works without a
 
 - Composes with: Proposal 028 (Public Proposals Surface) — site links to `/proposals/` as the roadmap surface
 - Composes with: Proposal 012 (Visual Artifact Extension) — diagrams embed in site
+- Placeholder integration: Feature 017 dashboard snapshots (`dashboard.md` /
+  `closeout-dashboard.md`) can become showcase inputs once the methodology site
+  starts publishing examples
 - Sources from: weekend article + conference talk material
 - Audience: cold-arrival public visitors (distinct from engaged contributors)
 

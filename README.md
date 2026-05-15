@@ -21,6 +21,8 @@ AI-assisted software delivery.
 - `specrew init` bootstraps Spec Kit, Squad, and Specrew governance into a repo
 - `specrew start` is the canonical entrypoint and refreshes runtime handoff
   artifacts before launch
+- `specrew where` / `specrew status` render the repository's velocity dashboard
+  from canonical feature, iteration, and roadmap artifacts
 - Squad drives the lifecycle from `speckit.specify` through
   `speckit.implement`, with an explicit clarify gate
 - Iteration planning, execution, review, and retrospective artifacts are
@@ -44,10 +46,12 @@ AI-assisted software delivery.
 
 1. Bootstrap a repository with `scripts\specrew-init.ps1`.
 2. Start every work session with `scripts\specrew.ps1 start`.
-3. Let Squad drive `specify -> clarify -> plan -> tasks -> implement` from the
+3. Use `scripts\specrew.ps1 where` whenever you want the current project-status
+   dashboard.
+4. Let Squad drive `specify -> clarify -> plan -> tasks -> implement` from the
    generated feature artifacts.
-4. Keep iteration evidence current under `specs\<feature>\iterations\<NNN>\`.
-5. Move through planning, implementing, review, and retro in order without
+5. Keep iteration evidence current under `specs\<feature>\iterations\<NNN>\`.
+6. Move through planning, implementing, review, and retro in order without
    skipping governance gates or bundling boundary advances.
 
 ## Feature 016 Interaction Model
@@ -123,6 +127,8 @@ review boundaries stabilize.
 ## Key Documents
 
 - `docs\getting-started.md` - bootstrap and quickstart guidance
+- `docs\dashboard-guide.md` - dashboard sections, flags, and closeout snapshots
+- `docs\roadmap-maintenance.md` - `.specrew/roadmap.yml` maintenance guidance
 - `docs\user-guide.md` - day-to-day lifecycle usage
 - `docs\github-project.md` - Specrew self-development board guidance
 - `docs\versioning.md` - release-numbering policy and tag/changelog rules
