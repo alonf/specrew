@@ -2338,12 +2338,27 @@ Facilitate and complete the retrospective for Feature 017 (Velocity Dashboard), 
      7. Iteration 002 carryover: FR-042..FR-046 + FR-019..FR-033 remain scope; ~16-18 SP total
      8. Bundled multi-boundary authorization pattern: clarify→plan→tasks bundled under single authorization, but implementation/review/retro remain separate
 
+
 2. **Corpus-row candidates identified**: Three candidates proposed for `.specrew/quality/known-traps.md`:
    - Bundled planning-phase boundary authorization (permissible variant of one-boundary-at-a-time rule)
    - Essence-vs-exhaustive corpus row self-enforcement (positive observation; no rule change needed)
    - Pre-implementation external review for specification integrity (coordination pattern)
 
 3. **Squad decisions updated**: This decision record captures the retrospective authorization and runtime evidence.
+
+---
+
+## 2026-05-16T00:00:00Z — Authorization: iteration-closeout
+
+- **Decision ID**: authorization-feature-017-iter-001-iteration-closeout
+- **Type**: authorization
+- **Boundary**: iteration-closeout
+- **Approving Human**: Alon Fliess
+- **Recorded At**: 2026-05-16T00:00:00Z
+- **Commit Reference**: (recorded by closeout boundary commit)
+- **Authorization Text**:
+   > Feature 017 Iteration 001 retrospective complete with 8 substantive lessons captured. Iteration-closeout is explicitly authorized. Advance from retro-boundary to iteration-closeout: create `iterations/001/state.md` with delivered SP metrics (~18 SP actual vs. 11 SP planned, +7 SP variance from external-review repair cycle), update `.squad/decisions.md` with this authorization entry, update `.squad/identity/now.md` to reflect Iteration 001 closed and Iteration 002 pending authorization, verify `iterations/002/deferrals.md`, and create the iteration-closeout boundary commit.
+   > Iteration 002 scope is fully specified in plan.md + tasks.md (FR-019..FR-033 plus FR-042..FR-046, ~16-18 SP). Next valid boundary: hardening-gate-and-implementation-auth for Iteration 002 (when explicitly authorized).
 
 4. **Identity/now state prepared**: Update pending (separate batch commit).
 

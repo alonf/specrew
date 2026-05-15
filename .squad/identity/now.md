@@ -1,6 +1,6 @@
-updated_at: 2026-05-16T10:30:00Z
-focus_area: Feature 017 velocity dashboard iteration 001 retrospective complete — eight substantive lessons documented; iteration-closeout is next boundary
-active_issues: Roadmap Phase 1 drifted-over warning remains until roadmap plan is reconciled; T2-4 closeout grandfathering decision and T2-6 Iteration 2 routing examples remain deferred to Iteration 2 and feature-closeout respectively
+updated_at: 2026-05-16T16:00:00Z
+focus_area: Feature 017 velocity dashboard iteration 001 closed — delivered ~18 SP with 8 retrospective lessons; iteration 002 pending explicit hardening-gate authorization (scope fully specified: FR-019..FR-033 plus FR-042..FR-046, ~16-18 SP)
+active_issues: None blocking iteration-closeout; Iteration 002 ready for hardening-gate review when authorized
 ---
 
 What We're Focused On
