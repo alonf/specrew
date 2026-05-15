@@ -3352,3 +3352,53 @@ range preserved in notes, and Iteration 002 now has the missing `plan.md`, `stat
 
 Do not advance further from this boundary. The next valid action is explicit iteration-closeout
 authorization for Feature 017 Iteration 002.
+
+## 2026-05-15T15:26:30Z — Authorization: feature-closeout
+
+- **Decision ID**: authorization-feature-017-feature-closeout
+- **Type**: authorization
+- **Boundary**: feature-closeout
+- **Approving Human**: Alon Fliess
+- **Recorded At**: 2026-05-15T15:26:30Z
+- **Commit Reference**: 17e2a4c
+- **Authorization Text**:
+  > The human has authorized exactly one boundary advance: iteration-closeout -> feature-closeout for Feature 017 Velocity Dashboard.
+  > Apply R-FC-1 in `scripts\internal\dashboard-renderer.ps1`, rerun `specrew where`, generate the feature closeout dashboard snapshot, execute Rule 15 version-management updates, open and merge the feature-closeout PR, tag v0.17.0, verify on main, and stop.
+
+# Feature 017 Closeout Execution: Rule 15 Version Management
+
+**Date**: 2026-05-15  
+**By**: Implementer  
+**Authority**: Feature 017 feature-closeout authorization (Rule 15)  
+**Decision Type**: feature-closeout-version-management
+
+## Decision
+
+Feature 017 (velocity-dashboard) is closed and shipped to main with Rule 15 version-management completed.
+
+### Actions Completed
+
+1. **Truthfulness repairs and artifacts**
+   - R-FC-1 ETA classifier fix applied in `scripts\internal\dashboard-renderer.ps1`
+   - `.specrew/quality/known-traps.md` reinforced for form-correctness vs meaning-correctness
+   - `specrew where` rerun to confirm non-shipped ETA labels
+   - `specs/017-velocity-dashboard/closeout-dashboard.md` captured as the feature-closeout snapshot
+
+2. **Version management (Rule 15 core)**
+   - `.specrew/config.yml`: version bumped to 0.17.0
+   - `CHANGELOG.md`: Feature 017 entry added for v0.17.0
+   - `README.md`: version badge, baseline, and recent tag window refreshed
+
+3. **Release integration**
+   - Feature-closeout boundary commit created and pushed
+   - PR created and merged to main via merge commit (no squash/rebase)
+   - Annotated tag v0.17.0 created at the merge commit and pushed
+
+4. **Post-merge verification**
+   - `validate-governance.ps1` rerun on main and passed
+   - `specrew where` on main renders truthful ETA labels
+   - Closeout dashboard artifact present on main
+
+## Impact
+
+Feature 017 (Velocity Dashboard) is now closed and shipped. Version 0.17.0 is the active baseline, and no feature is currently open without explicit authorization.

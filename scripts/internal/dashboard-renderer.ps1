@@ -1007,6 +1007,27 @@ function Get-SpecrewEtaText {
     return "$etaDays calendar day(s)"
 }
 
+function Resolve-SpecrewEtaCompletionLabel {
+    param(
+        [AllowNull()][string]$Status,
+        [string]$Default = 'in-progress'
+    )
+
+    if ([string]::IsNullOrWhiteSpace($Status)) {
+        return $Default
+    }
+
+    $normalized = $Status.ToLowerInvariant()
+    switch ($normalized) {
+        'shipped' { return 'shipped' }
+        'queued' { return 'queued' }
+        'in-progress' { return 'in-progress' }
+        'drifted' { return 'in-progress' }
+        'drifted-over' { return 'in-progress' }
+        default { return $Default }
+    }
+}
+
 function Get-SpecrewProjection {
     param(
         [Parameter(Mandatory = $true)][object]$VelocityHeadline,
@@ -1050,6 +1071,46 @@ function Get-SpecrewProjection {
         }
     }
 
+    $phaseCompletedLabel = 'in-progress'
+    if ($null -ne $ActivePhase) {
+        $phaseStatus = if (-not [string]::IsNullOrWhiteSpace([string]$ActivePhase.effective_status)) {
+            [string]$ActivePhase.effective_status
+        }
+        elseif (-not [string]::IsNullOrWhiteSpace([string]$ActivePhase.declared_status)) {
+            [string]$ActivePhase.declared_status
+        }
+        else {
+            $null
+        }
+        $phaseCompletedLabel = Resolve-SpecrewEtaCompletionLabel -Status $phaseStatus -Default 'in-progress'
+    }
+
+    $roadmapCompletedLabel = 'in-progress'
+    if ($RoadmapPhases.Count -gt 0) {
+        $normalizedStatuses = @()
+        foreach ($phase in $RoadmapPhases) {
+            $phaseStatus = if (-not [string]::IsNullOrWhiteSpace([string]$phase.effective_status)) {
+                [string]$phase.effective_status
+            }
+            elseif (-not [string]::IsNullOrWhiteSpace([string]$phase.declared_status)) {
+                [string]$phase.declared_status
+            }
+            else {
+                $null
+            }
+            if (-not [string]::IsNullOrWhiteSpace($phaseStatus)) {
+                $normalizedStatuses += $phaseStatus.ToLowerInvariant()
+            }
+        }
+
+        if ($normalizedStatuses.Count -gt 0 -and -not ($normalizedStatuses | Where-Object { $_ -ne 'shipped' } | Select-Object -First 1)) {
+            $roadmapCompletedLabel = 'shipped'
+        }
+        elseif ($normalizedStatuses.Count -gt 0 -and -not ($normalizedStatuses | Where-Object { $_ -ne 'queued' } | Select-Object -First 1)) {
+            $roadmapCompletedLabel = 'queued'
+        }
+    }
+
     $etaScopes = @(
         [pscustomobject]@{
             scope_id              = 'active-feature'
@@ -1062,21 +1123,21 @@ function Get-SpecrewProjection {
             scope_id              = 'current-phase'
             label                 = 'Current phase'
             remaining_story_points = $activePhaseRemaining
-            eta_text              = Get-SpecrewEtaText -Remaining $activePhaseRemaining -PointsPerDay $pointsPerDay -CompletedLabel 'shipped'
+            eta_text              = Get-SpecrewEtaText -Remaining $activePhaseRemaining -PointsPerDay $pointsPerDay -CompletedLabel $phaseCompletedLabel
             confidence            = $VelocityHeadline.confidence
         },
         [pscustomobject]@{
             scope_id              = 'roadmap'
             label                 = 'Roadmap'
             remaining_story_points = $roadmapRemaining
-            eta_text              = Get-SpecrewEtaText -Remaining $roadmapRemaining -PointsPerDay $pointsPerDay -CompletedLabel 'shipped'
+            eta_text              = Get-SpecrewEtaText -Remaining $roadmapRemaining -PointsPerDay $pointsPerDay -CompletedLabel $roadmapCompletedLabel
             confidence            = $VelocityHeadline.confidence
         }
     )
 
     return [pscustomobject]@{
             remaining_story_points = $roadmapRemaining
-            eta_text               = Get-SpecrewEtaText -Remaining $roadmapRemaining -PointsPerDay $pointsPerDay -CompletedLabel 'shipped'
+            eta_text               = Get-SpecrewEtaText -Remaining $roadmapRemaining -PointsPerDay $pointsPerDay -CompletedLabel $roadmapCompletedLabel
         confidence             = $VelocityHeadline.confidence
         eta_scopes             = @($etaScopes)
     }

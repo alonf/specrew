@@ -1,7 +1,7 @@
 # Specrew
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![Version](https://img.shields.io/badge/version-0.16.0-blue.svg)](.specrew/config.yml)
+[![Version](https://img.shields.io/badge/version-0.17.0-blue.svg)](.specrew/config.yml)
 [![Status: Alpha](https://img.shields.io/badge/status-alpha-orange.svg)](#current-state)
 
 Specrew combines Spec Kit and Squad into a spec-governed operating model for
@@ -9,12 +9,12 @@ AI-assisted software delivery.
 
 ## Current State
 
-- Public shipped baseline: **0.16.0**, backed by 16 implementing features
+- Public shipped baseline: **0.17.0**, backed by 17 implementing features
 - Alpha software, validated through dogfooding in this repository
 - Built today for a single developer running on a single host
 - Not yet ready for multi-developer coordination or multi-host operation
 - Release truth now has public-facing surfaces in `CHANGELOG.md`,
-  `docs\versioning.md`, and the `v0.13.0` / `v0.14.0` / `v0.15.0` tags
+  `docs\versioning.md`, and the `v0.15.0` / `v0.16.0` / `v0.17.0` tags
 
 ## What's working
 
@@ -107,9 +107,9 @@ Specrew currently uses a merge-at-close rhythm:
 ## Versioning
 
 - `.specrew\config.yml` is the canonical source for the active version and now
-  declares **0.15.0**.
+  declares **0.17.0**.
 - Feature releases use `0.NN.0`, where `NN` tracks the shipped feature ordinal
-  (`0.15.0` = Feature 015).
+  (`0.17.0` = Feature 017).
 - `0.NN.M` is reserved for hotfixes against an existing shipped feature
   baseline.
 - See `docs\versioning.md` for the policy details and `CHANGELOG.md` for the
