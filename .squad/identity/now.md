@@ -1,31 +1,29 @@
-updated_at: 2026-05-16T16:00:00Z
-focus_area: Feature 017 velocity dashboard iteration 001 closed — delivered ~18 SP with 8 retrospective lessons; iteration 002 pending explicit hardening-gate authorization (scope fully specified: FR-019..FR-033 plus FR-042..FR-046, ~16-18 SP)
-active_issues: None blocking iteration-closeout; Iteration 002 ready for hardening-gate review when authorized
+updated_at: 2026-05-16T18:30:00Z
+focus_area: Feature 017 velocity dashboard iteration 002 pre-implementation gate signed off — implementation authorized for FR-019..FR-033 plus FR-042..FR-046 under explicit hardening concerns
+active_issues: No blocking pre-implementation issue; monitor lifecycle safety, routing-classifier conservatism, grandfathering, NFR-001 budget preservation, docs/runtime alignment, Iteration 001 compatibility, and FR-032 replay coverage during implementation
 ---
 
 What We're Focused On
 ====================
 
-**Phase**: Feature 017 Iteration 001 retro-boundary complete; awaiting explicit iteration-closeout authorization.
-**Urgency**: Tier 1 — preserve the retrospective findings (8 substantive lessons, 3 corpus-row candidates), hold the workflow at iteration-closeout boundary, and await explicit human authorization before proceeding.
+**Phase**: Feature 017 Iteration 002 pre-implementation review complete; implementation is now authorized to begin.
+**Urgency**: Tier 1 — implement the authorized Iteration 002 slice while preserving additive closeout behavior, conservative Squad routing, grandfathering correctness, and Iteration 001 dashboard compatibility.
 
 ---
 
 Current Status
 --------------
 
-Feature 017 Lifecycle: RETRO-BOUNDARY COMPLETE (ITERATION-CLOSEOUT NOT AUTHORIZED)
+Feature 017 Lifecycle: ITERATION 002 IMPLEMENTATION AUTHORIZED (PRE-IMPLEMENTATION REVIEW COMPLETE)
 
-- Retrospective facilitation documented 8 substantive lessons with sources, implications, and evidence links
-- Estimation variance lesson (11 → 17-19 SP) feeds into Iteration 2 planning with 15% buffer recommendation
-- Session-State Durability and Branch Reconciliation emerged as Phase 2 pillar features (not polish)
-- External pre-implementation review pattern documented as process improvement candidate
-- F-016 boundary machinery validated across all 8 lifecycle boundaries (specify through retro-boundary)
-- Iteration 001 is complete in all aspects; Iteration 002 scope is defined (FR-019..FR-046, ~16-18 SP)
-- Corpus-row self-enforcement observation confirms essence-in-console principle is now implicit team expectation
-- Roadmap Phase 1 non-blocking drifted-over warning persists (reconciliation deferred)
+- Iteration 002 self-review covers FR-019..FR-033 plus FR-042..FR-046 with no material blocker
+- Hardening gate is signed off as `ready`; implementation may proceed under fourteen explicit concerns
+- Pre-implementation governance validation reruns cleanly on the committed gate tree; earlier dashboard warning themes remain preserved as explicit implementation concerns
+- Grandfathering cutover is now explicit: pre-rollout iterations, including Feature 017 Iteration 001, must not be treated as invalid history
+- FR-030 routing stays conservative: explicit project/repo status requests route to the dashboard; ambiguous “status” requests do not
+- Iteration 002 must preserve the Iteration 001 renderer contract, re-measure NFR-001 on the green tree, and keep docs aligned with actual behavior
 
 Next Valid Action
 
-Request explicit iteration-closeout authorization if the human wants to proceed. Do not open iteration-closeout, feature-closeout, or any later boundary from this retro-complete state alone.
+Begin Iteration 002 implementation for the authorized slice only. Do not open review-boundary, retrospective, or closeout from this gate sign-off alone; the next valid human-visible claim is implementation progress backed by runtime evidence.
 

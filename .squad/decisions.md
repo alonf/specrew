@@ -3160,3 +3160,74 @@ All recommendations are documented with implementation owners and timelines.
 - **Authorization Text**:
   > The human reviewer has already ACCEPTED Feature 017 Iteration 1 and authorized exactly one boundary advance: from review-boundary to review-verdict-signoff.
   > Record the accepted review-verdict-signoff boundary, stop at retro-boundary, and request explicit retro authorization next.
+
+---
+
+### 2026-05-16T18:30:00Z: Delegated lifecycle runtime evidence
+**By:** Squad (Coordinator)
+**Role / Work Item:** Reviewer — Feature 017 Velocity Dashboard Iteration 002 pre-implementation self-review and hardening-gate signoff surface
+**Requested Agent:** copilot (Reviewer family)
+**Actual Agent:** copilot
+**Model ID:** unknown (Copilot CLI host does not expose the active model identifier)
+**Status:** honored
+**Fallback Reason:** none
+
+---
+
+# Reviewer Decision: Feature 017 Iteration 002 Pre-Implementation Hardening Gate Sign-Off
+
+**Decision ID**: reviewer-feature-017-iter-002-hardening-gate-signoff
+**Feature**: 017 — Velocity Dashboard
+**Date**: 2026-05-16
+**Decision Maker**: Reviewer
+**Authority**: bounded reviewer self-review under the explicitly authorized implementation boundary for Iteration 002
+
+## Decision Summary
+
+Iteration 002's pre-implementation review is complete. No material blocker prevents implementation of FR-019..FR-033 plus FR-042..FR-046, and the hardening gate is signed off as `ready` with explicit monitoring obligations for lifecycle safety, classifier safety, grandfathering, NFR-001 budget preservation, documentation/runtime alignment, Iteration 001 compatibility, FR-032 replay coverage, proof-of-concept uplift, and essence-first handoff discipline.
+
+## Evidence Reviewed
+
+- `specs/017-velocity-dashboard/spec.md`
+- `specs/017-velocity-dashboard/plan.md`
+- `specs/017-velocity-dashboard/tasks.md`
+- `specs/017-velocity-dashboard/iterations/002/deferrals.md`
+- `specs/017-velocity-dashboard/iterations/001/retro.md`
+- `specs/017-velocity-dashboard/iterations/001/state.md`
+- `specs/017-velocity-dashboard/iterations/001/review.md`
+- `.specrew/quality/known-traps.md`
+- `specs/017-velocity-dashboard/iterations/002/pre-implementation-review.md`
+- `specs/017-velocity-dashboard/iterations/002/quality/hardening-gate.md`
+
+## Review Outcome
+
+- **Verdict**: ready
+- **Blocking issues**: none
+- **Required implementation posture**:
+  1. Automatic dashboard generation is required, but artifact absence must warn rather than block lifecycle progression.
+  2. FR-030 routing stays conservative; ambiguous “status” requests remain outside dashboard auto-routing.
+  3. FR-022 grandfathering is explicit: all pre-rollout iterations, including Feature 017 Iteration 001, remain valid without dashboard artifacts.
+  4. Iteration 002 must preserve the Iteration 001 renderer contract and re-measure NFR-001 on the green tree.
+  5. Documentation/help/review artifacts must stay aligned with implemented behavior and preserve the essence-vs-exhaustive corpus lesson.
+
+## Governance Validation Baseline
+
+- `validate-governance.ps1 -ProjectPath .` completed with exit code `0`
+- The committed pre-implementation rerun returned no WARN or FAIL lines
+- Earlier ad hoc dashboard warning themes (roadmap drift, missing `dashboard.md`, missing `closeout-dashboard.md`) are still recorded in the hardening gate as implementation concerns rather than erased from the review record
+
+---
+
+## 2026-05-16T18:30:00Z — Authorization: implementation
+
+- **Decision ID**: authorization-feature-017-iter-002-implementation
+- **Type**: authorization
+- **Boundary**: implementation
+- **Approving Human**: Alon Fliess
+- **Recorded At**: 2026-05-16T18:30:00Z
+- **Commit Reference**: pending (recorded by the canonical hardening-gate + implementation-auth boundary commit)
+- **Authorization Text**:
+  > The user has authorized a bundled hardening-gate-and-implementation-auth boundary for Feature 017 Iteration 002.
+  > Your scope in this step is ONLY the pre-implementation self-review and hardening-gate signoff surface needed before implementation proceeds.
+  > If you identify no blocking issue, say implementation may proceed under the recorded concerns.
+  > Do NOT start implementation yourself.
