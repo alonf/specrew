@@ -3225,9 +3225,39 @@ Iteration 002's pre-implementation review is complete. No material blocker preve
 - **Boundary**: implementation
 - **Approving Human**: Alon Fliess
 - **Recorded At**: 2026-05-16T18:30:00Z
-- **Commit Reference**: pending (recorded by the canonical hardening-gate + implementation-auth boundary commit)
+- **Commit Reference**: 9b51630
 - **Authorization Text**:
   > The user has authorized a bundled hardening-gate-and-implementation-auth boundary for Feature 017 Iteration 002.
-  > Your scope in this step is ONLY the pre-implementation self-review and hardening-gate signoff surface needed before implementation proceeds.
-  > If you identify no blocking issue, say implementation may proceed under the recorded concerns.
-  > Do NOT start implementation yourself.
+  > Advance from iteration-closeout to hardening-gate-and-implementation-auth. ONE boundary advance only. Stop at the next required human boundary (review-boundary) and request explicit authorization.
+  > Implementation scope includes FR-019 through FR-033 and FR-042 through FR-046, with the required hardening-gate concerns, pre-implementation self-review, and implementation proceeding after that boundary commit lands.
+  > If repair cycles emerge during Iteration 002 implementation, absorb them inside implementation work; stop at review-boundary and do not advance further without explicit human authorization.
+
+---
+
+### 2026-05-15T11:36:20Z: Delegated lifecycle runtime evidence
+**By:** Squad (Coordinator)  
+**Role / Work Item:** Implementer — Feature 017 Velocity Dashboard Iteration 002 implementation boundary  
+**Requested Agent:** copilot  
+**Actual Agent:** copilot  
+**Model ID:** unknown (Copilot CLI host does not expose the active model identifier)  
+**Status:** honored  
+**Fallback Reason:** none
+
+---
+
+# Implementer Boundary Note: Feature 017 Iteration 002 Implementation
+
+**Date**: 2026-05-15  
+**Scope**: FR-019..FR-033 plus FR-042..FR-046
+
+## Summary
+
+Completed the Iteration 002 implementation slice: closeout dashboard scaffolds now warn instead of blocking, validator grandfathering exempts pre-rollout iterations (including Feature 017 Iteration 001), onboarding messaging points to roadmap docs, routing guidance adds explicit positive/negative examples, and documentation + fixtures now cover closeout snapshots, immutability, and validator warning behavior.
+
+## Evidence
+
+- `scripts\internal\dashboard-renderer.ps1`
+- `extensions\specrew-speckit\scripts\scaffold-reviewer-artifacts.ps1`
+- `extensions\specrew-speckit\scripts\scaffold-feature-closeout-dashboard.ps1`
+- `extensions\specrew-speckit\scripts\validate-governance.ps1`
+- `tests\integration\feature-017-dashboard-core.ps1`

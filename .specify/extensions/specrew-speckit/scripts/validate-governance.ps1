@@ -567,6 +567,20 @@ function Get-FeatureOrdinalFromRef {
     return $null
 }
 
+function Get-IterationOrdinalFromRef {
+    param([AllowNull()][string]$IterationRef)
+
+    if ([string]::IsNullOrWhiteSpace($IterationRef)) {
+        return $null
+    }
+
+    if ($IterationRef -match '^\d+$') {
+        return [int]$IterationRef
+    }
+
+    return $null
+}
+
 function Test-DashboardGovernanceSurfaces {
     param([Parameter(Mandatory = $true)][string]$ProjectRoot)
 
@@ -591,13 +605,23 @@ function Test-DashboardGovernanceSurfaces {
         }
     }
 
+    $dashboardRolloutFeatureOrdinal = 17
+    $dashboardRolloutIterationFloor = 2
+
     foreach ($feature in $features) {
         $featureOrdinal = Get-FeatureOrdinalFromRef -FeatureRef $feature.feature_ref
-        if ($null -eq $featureOrdinal -or $featureOrdinal -lt 17) {
+        if ($null -eq $featureOrdinal -or $featureOrdinal -lt $dashboardRolloutFeatureOrdinal) {
             continue
         }
 
         foreach ($iteration in @($feature.closed_iterations)) {
+            $iterationOrdinal = Get-IterationOrdinalFromRef -IterationRef $iteration.iteration_ref
+            $requiresDashboard = ($featureOrdinal -gt $dashboardRolloutFeatureOrdinal) -or `
+                ($featureOrdinal -eq $dashboardRolloutFeatureOrdinal -and $null -ne $iterationOrdinal -and $iterationOrdinal -ge $dashboardRolloutIterationFloor)
+            if (-not $requiresDashboard) {
+                continue
+            }
+
             $dashboardPath = Join-Path $iteration.iteration_directory 'dashboard.md'
             if (-not (Test-Path -LiteralPath $dashboardPath -PathType Leaf)) {
                 Write-DashboardGovernanceWarning -Category 'missing-dashboard-artifact' -Detail ("Closed iteration '{0} {1}' is missing dashboard.md." -f $feature.feature_ref, $iteration.iteration_ref)
@@ -611,6 +635,21 @@ function Test-DashboardGovernanceSurfaces {
         }
 
         if ([string]$feature.feature_status -match '(?i)complete|closed|shipped') {
+            $requiresFeatureDashboard = $false
+            if ($featureOrdinal -gt $dashboardRolloutFeatureOrdinal) {
+                $requiresFeatureDashboard = $true
+            }
+            elseif ($featureOrdinal -eq $dashboardRolloutFeatureOrdinal) {
+                $requiresFeatureDashboard = (@($feature.closed_iterations | Where-Object {
+                            $iterationOrdinal = Get-IterationOrdinalFromRef -IterationRef $_.iteration_ref
+                            $null -ne $iterationOrdinal -and $iterationOrdinal -ge $dashboardRolloutIterationFloor
+                        })).Count -gt 0
+            }
+
+            if (-not $requiresFeatureDashboard) {
+                continue
+            }
+
             if (-not (Test-Path -LiteralPath $feature.closeout_dashboard_path -PathType Leaf)) {
                 Write-DashboardGovernanceWarning -Category 'missing-dashboard-artifact' -Detail ("Closed feature '{0}' is missing closeout-dashboard.md." -f $feature.feature_ref)
             }

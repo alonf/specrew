@@ -39,6 +39,7 @@ specrew where - show the velocity dashboard ("where am I?")
 Usage:
   specrew where [options]
   specrew status [options]
+  scripts/specrew-where.ps1 [options]
 
 Options:
   --project-path <path>  Target project root (default: current directory)
@@ -59,6 +60,7 @@ Examples:
   specrew status --compact
   specrew where --no-color
   specrew where --team
+  pwsh -NoProfile -File .\scripts\specrew-where.ps1 --no-color
 '@ | Write-Host
 }
 

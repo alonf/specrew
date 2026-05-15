@@ -66,22 +66,35 @@ if (-not (Test-Path -LiteralPath $featureDirectory -PathType Container)) {
 $featureRef = Split-Path -Leaf $featureDirectory
 $targetPath = Join-Path $featureDirectory 'closeout-dashboard.md'
 $rendererPath = Join-Path $resolvedProjectPath 'scripts\internal\dashboard-renderer.ps1'
-if (-not (Test-Path -LiteralPath $rendererPath -PathType Leaf)) {
-    throw "Velocity dashboard renderer '$rendererPath' is missing."
+$rendererAvailable = Test-Path -LiteralPath $rendererPath -PathType Leaf
+if ($rendererAvailable) {
+    . $rendererPath
 }
-. $rendererPath
 
 $actions = [System.Collections.ArrayList]::new()
 if (Test-Path -LiteralPath $targetPath -PathType Leaf) {
     Add-ScaffoldAction -Actions $actions -Action 'preserved' -Path $targetPath
 }
 else {
-    Add-ScaffoldAction -Actions $actions -Action $(if ($DryRun) { 'would-create' } else { 'created' }) -Path $targetPath
-    if (-not $DryRun) {
-        $snapshot = Get-SpecrewDashboardSnapshot -ProjectRoot $resolvedProjectPath -FeatureId $featureRef
-        $lines = ConvertTo-SpecrewDashboardLines -Snapshot $snapshot
-        $content = ConvertTo-SpecrewDashboardArtifactContent -Snapshot $snapshot -Lines $lines -CaptureKind 'feature-closeout' -HistoricalNotice $null
-        Write-Utf8FileAtomic -Path $targetPath -Content $content
+    if ($DryRun) {
+        Add-ScaffoldAction -Actions $actions -Action 'would-create' -Path $targetPath
+    }
+    elseif (-not $rendererAvailable) {
+        Write-Host ("WARN [dashboard] Velocity dashboard renderer '{0}' is missing; feature closeout snapshot not generated." -f $rendererPath) -ForegroundColor Yellow
+        Add-ScaffoldAction -Actions $actions -Action 'warning' -Path $targetPath
+    }
+    else {
+        try {
+            $snapshot = Get-SpecrewDashboardSnapshot -ProjectRoot $resolvedProjectPath -FeatureId $featureRef
+            $lines = ConvertTo-SpecrewDashboardLines -Snapshot $snapshot
+            $content = ConvertTo-SpecrewDashboardArtifactContent -Snapshot $snapshot -Lines $lines -CaptureKind 'feature-closeout' -HistoricalNotice $null
+            Write-Utf8FileAtomic -Path $targetPath -Content $content
+            Add-ScaffoldAction -Actions $actions -Action 'created' -Path $targetPath
+        }
+        catch {
+            Write-Host ("WARN [dashboard] Unable to generate feature closeout snapshot: {0}" -f $_.Exception.Message) -ForegroundColor Yellow
+            Add-ScaffoldAction -Actions $actions -Action 'warning' -Path $targetPath
+        }
     }
 }
 

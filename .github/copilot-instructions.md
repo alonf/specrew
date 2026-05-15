@@ -52,10 +52,12 @@ Markdown, YAML, PowerShell (Spec Kit extension assets).: Follow standard convent
   renderer exposed by `scripts/specrew.ps1 where`, `scripts/specrew.ps1 status`,
   and `scripts/specrew-where.ps1`.
 - Only route the dashboard automatically when the request is explicitly about the
-  current repository or project status (for example: "where are we?", "project
-  status", "dashboard", "velocity", "what shipped / what is next"). Generic
-  "status" questions without repository/project framing should stay in normal
-  conversational mode.
+  current repository or project status (for example: "show the current project
+  status", "where are we in this repo", "summarize roadmap progress for this
+  project"). Do **not** route for other status prompts (for example: "what's your
+  status?", "show the status of PR #125", "reviewer status"). If intent is
+  ambiguous, stay in normal conversational mode rather than forcing the
+  dashboard.
 - Keep dashboard-related changes aligned across the live command surface,
   closeout snapshots, `.specrew/roadmap.yml`, validator warnings, docs, and
   fixture-backed tests.

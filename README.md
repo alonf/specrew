@@ -23,6 +23,9 @@ AI-assisted software delivery.
   artifacts before launch
 - `specrew where` / `specrew status` render the repository's velocity dashboard
   from canonical feature, iteration, and roadmap artifacts
+- Iteration closeout and feature closeout capture immutable dashboard snapshots
+  under `specs/<feature>/iterations/<NNN>/dashboard.md` and
+  `specs/<feature>/closeout-dashboard.md`
 - Squad drives the lifecycle from `speckit.specify` through
   `speckit.implement`, with an explicit clarify gate
 - Iteration planning, execution, review, and retrospective artifacts are

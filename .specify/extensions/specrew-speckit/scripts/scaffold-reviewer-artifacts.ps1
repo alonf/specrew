@@ -2514,7 +2514,14 @@ if (-not $SummaryOnly) {
     if ($securityContext.Enabled) {
         Write-ScaffoldFile -TargetPath $securitySurfacePath -Content $securitySurfaceContent -Actions $actions
     }
-    Write-MissingScaffoldFile -TargetPath $dashboardPath -Content (Get-IterationDashboardArtifactContent -ProjectRoot $projectRoot -FeatureId $featureId -IterationNumber $iterationLabel) -Actions $actions
+    try {
+        $dashboardContent = Get-IterationDashboardArtifactContent -ProjectRoot $projectRoot -FeatureId $featureId -IterationNumber $iterationLabel
+        Write-MissingScaffoldFile -TargetPath $dashboardPath -Content $dashboardContent -Actions $actions
+    }
+    catch {
+        Write-Host ("WARN [dashboard] Unable to generate iteration dashboard snapshot: {0}" -f $_.Exception.Message) -ForegroundColor Yellow
+        Add-ScaffoldAction -Actions $actions -Action 'warning' -Path $dashboardPath
+    }
     Write-ScaffoldFile -TargetPath $reviewerIndexPath -Content $reviewerIndexContent -Actions $actions
     Write-ScaffoldFile -TargetPath $reviewDiagramsPath -Content $reviewDiagramsContent -Actions $actions
     Write-ScaffoldFile -TargetPath $currentArchitecturePath -Content $currentArchitectureContent -Actions $actions

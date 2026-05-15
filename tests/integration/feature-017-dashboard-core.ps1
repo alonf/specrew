@@ -76,11 +76,20 @@ function Normalize-DashboardText {
     return (($Text -replace '\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z', '<timestamp>') -replace '\r', '').Trim()
 }
 
+function Get-FileHashValue {
+    param([Parameter(Mandatory = $true)][string]$Path)
+
+    return (Get-FileHash -LiteralPath $Path -Algorithm SHA256).Hash
+}
+
 $repoRoot = (Resolve-Path (Join-Path -Path $PSScriptRoot -ChildPath '..\..')).Path
 $fixtureRoot = Join-Path $repoRoot 'tests\integration\fixtures\feature-017-dashboard'
 $scratchRoot = Join-Path $repoRoot '.scratch\feature-017-dashboard'
 $entryScript = Join-Path $repoRoot 'scripts\specrew.ps1'
 $whereScript = Join-Path $repoRoot 'scripts\specrew-where.ps1'
+$reviewerScaffoldScript = Join-Path $repoRoot 'extensions\specrew-speckit\scripts\scaffold-reviewer-artifacts.ps1'
+$featureCloseoutScript = Join-Path $repoRoot 'extensions\specrew-speckit\scripts\scaffold-feature-closeout-dashboard.ps1'
+$validatorScript = Join-Path $repoRoot 'extensions\specrew-speckit\scripts\validate-governance.ps1'
 
 if (Test-Path -LiteralPath $scratchRoot) {
     Remove-Item -LiteralPath $scratchRoot -Recurse -Force
@@ -132,8 +141,48 @@ try {
     $noRoadmapWorkspace = New-TestWorkspace -FixtureName 'no-roadmap-repository' -WorkspaceName 'no-roadmap'
     $noRoadmapResult = Invoke-CommandScript -ScriptPath $entryScript -ArgumentList @('where', '--project-path', $noRoadmapWorkspace, '--no-color')
     Assert-True -Condition ($noRoadmapResult.ExitCode -eq 0) -Message 'No-roadmap fixture: dashboard should succeed.'
-    Assert-Contains -Text $noRoadmapResult.Text -Pattern 'No \.specrew/roadmap\.yml file found' -Message 'No-roadmap fixture: setup guidance missing.'
+    Assert-Contains -Text $noRoadmapResult.Text -Pattern 'No \.specrew/roadmap\.yml file found.*docs/roadmap-maintenance\.md' -Message 'No-roadmap fixture: setup guidance missing.'
     Write-Pass 'No-roadmap fixture preserves other sections and emits setup guidance'
+
+    $closeoutWorkspace = New-TestWorkspace -FixtureName 'closeout-repository' -WorkspaceName 'closeout'
+    $closeoutIterationDirectory = Join-Path $closeoutWorkspace 'specs\017-velocity-dashboard\iterations\002'
+    $validatorMissing = Invoke-CommandScript -ScriptPath $validatorScript -ArgumentList @('-ProjectPath', $closeoutWorkspace, '-IterationPath', $closeoutIterationDirectory)
+    Assert-True -Condition ($validatorMissing.ExitCode -eq 0) -Message 'Closeout fixture: validator should run without failing.'
+    Assert-Contains -Text $validatorMissing.Text -Pattern "Closed iteration '017-velocity-dashboard 002' is missing dashboard\.md" -Message 'Closeout fixture: missing dashboard artifact warning for iteration 002 expected.'
+    Assert-Contains -Text $validatorMissing.Text -Pattern "Closed feature '017-velocity-dashboard' is missing closeout-dashboard\.md" -Message 'Closeout fixture: missing feature closeout dashboard warning expected.'
+    Assert-True -Condition ($validatorMissing.Text -notmatch "017-velocity-dashboard 001") -Message 'Closeout fixture: pre-rollout iteration should be grandfathered.'
+    Write-Pass 'Validator grandfathering honors pre-rollout dashboard artifacts'
+
+    $closeoutScaffold = Invoke-CommandScript -ScriptPath $reviewerScaffoldScript -ArgumentList @('-IterationDirectory', $closeoutIterationDirectory)
+    Assert-True -Condition ($closeoutScaffold.ExitCode -eq 0) -Message 'Closeout fixture: reviewer artifact scaffold should succeed.'
+    $iterationDashboardPath = Join-Path $closeoutIterationDirectory 'dashboard.md'
+    Assert-True -Condition (Test-Path -LiteralPath $iterationDashboardPath -PathType Leaf) -Message 'Closeout fixture: iteration dashboard snapshot should be created.'
+    $iterationDashboardText = Get-Content -LiteralPath $iterationDashboardPath -Raw -Encoding UTF8
+    Assert-Contains -Text $iterationDashboardText -Pattern 'Historical snapshot captured during iteration closeout' -Message 'Closeout fixture: iteration snapshot should include historical notice.'
+    $iterationHash = Get-FileHashValue -Path $iterationDashboardPath
+    $closeoutScaffoldRepeat = Invoke-CommandScript -ScriptPath $reviewerScaffoldScript -ArgumentList @('-IterationDirectory', $closeoutIterationDirectory)
+    Assert-True -Condition ($closeoutScaffoldRepeat.ExitCode -eq 0) -Message 'Closeout fixture: repeat reviewer scaffold should succeed.'
+    $iterationHashRepeat = Get-FileHashValue -Path $iterationDashboardPath
+    Assert-True -Condition ($iterationHash -eq $iterationHashRepeat) -Message 'Closeout fixture: iteration dashboard snapshot should remain immutable.'
+    Write-Pass 'Iteration closeout scaffold writes and preserves the dashboard snapshot'
+
+    $featureCloseout = Invoke-CommandScript -ScriptPath $featureCloseoutScript -ArgumentList @('-ProjectPath', $closeoutWorkspace, '-FeatureId', '017-velocity-dashboard')
+    Assert-True -Condition ($featureCloseout.ExitCode -eq 0) -Message 'Closeout fixture: feature closeout dashboard scaffold should succeed.'
+    $featureDashboardPath = Join-Path $closeoutWorkspace 'specs\017-velocity-dashboard\closeout-dashboard.md'
+    Assert-True -Condition (Test-Path -LiteralPath $featureDashboardPath -PathType Leaf) -Message 'Closeout fixture: feature closeout dashboard snapshot should be created.'
+    $featureDashboardText = Get-Content -LiteralPath $featureDashboardPath -Raw -Encoding UTF8
+    Assert-Contains -Text $featureDashboardText -Pattern 'Historical snapshot captured during feature closeout' -Message 'Closeout fixture: feature snapshot should include historical notice.'
+    $featureHash = Get-FileHashValue -Path $featureDashboardPath
+    $featureCloseoutRepeat = Invoke-CommandScript -ScriptPath $featureCloseoutScript -ArgumentList @('-ProjectPath', $closeoutWorkspace, '-FeatureId', '017-velocity-dashboard')
+    Assert-True -Condition ($featureCloseoutRepeat.ExitCode -eq 0) -Message 'Closeout fixture: repeat feature closeout scaffold should succeed.'
+    $featureHashRepeat = Get-FileHashValue -Path $featureDashboardPath
+    Assert-True -Condition ($featureHash -eq $featureHashRepeat) -Message 'Closeout fixture: feature closeout snapshot should remain immutable.'
+    Write-Pass 'Feature closeout scaffold writes and preserves the dashboard snapshot'
+
+    $validatorPost = Invoke-CommandScript -ScriptPath $validatorScript -ArgumentList @('-ProjectPath', $closeoutWorkspace, '-IterationPath', $closeoutIterationDirectory)
+    Assert-True -Condition ($validatorPost.ExitCode -eq 0) -Message 'Closeout fixture: validator should run after snapshots are created.'
+    Assert-True -Condition ($validatorPost.Text -notmatch 'missing-dashboard-artifact') -Message 'Closeout fixture: missing-dashboard warnings should clear after snapshots are generated.'
+    Write-Pass 'Validator clears missing-dashboard warnings once snapshots exist'
 }
 finally {
     if (Test-Path -LiteralPath $scratchRoot) {

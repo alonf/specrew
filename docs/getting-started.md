@@ -192,6 +192,8 @@ pwsh -NoProfile -File C:\Dev\Specrew\scripts\specrew.ps1 where --no-color
 pwsh -NoProfile -File C:\Dev\Specrew\scripts\specrew.ps1 status --compact
 ```
 
+For a sample output and section-by-section guide, see `docs/dashboard-guide.md`.
+
 Add `.specrew\roadmap.yml` when you want roadmap progress and remaining-effort
 projection to appear in the dashboard.
 
