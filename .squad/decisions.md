@@ -3063,3 +3063,28 @@ All recommendations are documented with implementation owners and timelines.
 - **Authorization Text**:
   > Repair + spec expansion — Feature 017 Velocity Dashboard. Begin with Part 1 spec extensions so the FRs are recorded before implementation repairs run against them. Then update plan/tasks, repair implementation (R1-R10), verify with live dashboard + validator + existing tests, commit, update decisions and identity, push, and stop at review-boundary.
   > Do not advance past review-boundary.
+
+---
+
+### 2026-05-15T12:58:32+03:00: Delegated lifecycle runtime evidence
+**By:** Squad (Coordinator)
+**Role / Work Item:** Reviewer — Feature 017 Velocity Dashboard Iteration 001 review-verdict-signoff boundary
+**Requested Agent:** copilot (Reviewer family)
+**Actual Agent:** copilot
+**Model ID:** unknown (Copilot CLI host does not expose the active model identifier)
+**Status:** honored
+**Fallback Reason:** none
+
+---
+
+## 2026-05-15T09:58:32Z — Authorization: review-verdict-signoff
+
+- **Decision ID**: authorization-feature-017-iter-001-review-verdict-signoff
+- **Type**: authorization
+- **Boundary**: review-verdict-signoff
+- **Approving Human**: Alon Fliess
+- **Recorded At**: 2026-05-15T09:58:32Z
+- **Commit Reference**: pending (single-boundary-commit constraint; recorded by canonical boundary subject)
+- **Authorization Text**:
+  > The human reviewer has already ACCEPTED Feature 017 Iteration 1 and authorized exactly one boundary advance: from review-boundary to review-verdict-signoff.
+  > Record the accepted review-verdict-signoff boundary, stop at retro-boundary, and request explicit retro authorization next.

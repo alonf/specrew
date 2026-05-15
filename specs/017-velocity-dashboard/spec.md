@@ -280,7 +280,7 @@ This example assumes a healthy state: complete roadmap, sufficient history, and 
 
 ## Non-Functional Constraints
 
-- **NFR-001**: Dashboard generation must be fast enough to feel natural inside a normal closeout workflow rather than like an extra chore.
+- **NFR-001**: Dashboard rendering <= 1.5s on a 16-feature repo; budget calibrated from Iteration 1 empirical measurement.
 - **NFR-002**: The dashboard must remain readable in both rich console environments and plain-text capture contexts; visual policy follows FR-004 to ensure monochrome-safe, low-noise rendering.
 - **NFR-003**: The feature must stay additive: it should improve visibility without changing unrelated lifecycle behavior.
 - **NFR-004**: User-facing warnings and setup messages must be specific, calm, and remediation-oriented rather than opaque or noisy.

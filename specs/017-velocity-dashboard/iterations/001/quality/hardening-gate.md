@@ -1,9 +1,9 @@
 # Hardening Gate: Feature 017 Iteration 001
 
 **Schema**: v1
-**Reviewed By**: pending
-**Reviewed At**: pending
-**Approval Ref**: pending
+**Reviewed By**: Reviewer
+**Reviewed At**: 2026-05-15
+**Approval Ref**: `specs/017-velocity-dashboard/iterations/001/review.md`
 **Overall Verdict**: ready
 **Post-Implementation Verification**: recorded via dashboard command parity, fixture replay, and validator warning coverage
 **Verified At**: 2026-05-15T01:55:00Z
