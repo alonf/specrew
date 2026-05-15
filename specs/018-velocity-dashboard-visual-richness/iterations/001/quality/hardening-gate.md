@@ -21,8 +21,8 @@
 | `error-handling-expectations` | `error-handling` | `addressed` | `runtime-evidence` | `recorded` | Missing roadmap/history inputs, unsupported terminal capability, malformed fixture data, or closeout-artifact write issues must degrade to bounded warnings or truthful empty states rather than crashes or silent success. | `true` | Replay stayed warning-oriented and bounded; the feature did not introduce crash-on-missing-data behavior. | — |
 | `retry-idempotency-requirements` | `retry-idempotency` | `addressed` | `runtime-evidence` | `recorded` | Re-running `specrew where`, `specrew status`, or the closeout scaffold paths must be safe on the same tree and must not silently rewrite historical dashboard artifacts. | `true` | Closeout replay kept historical artifact immutability intact while preserving parity with live rendering. | — |
 | `test-integrity-targets` | `test-integrity` | `addressed` | `runtime-evidence` | `recorded` | Runtime proof must come from the real unit, integration, render-budget, and validator entrypoints named in `tasks.md`, including rich-mode, monochrome-mode, artifact, and replay-path fixtures. | `true` | The dashboard-specific replay lane is green across the named unit, integration, and budget entrypoints. | — |
-| `operational-resilience-concerns` | `operational` | `addressed` | `runtime-evidence` | `recorded` | Live rendering, stored snapshots, and validator/scaffold warnings must stay additive and operator-readable, especially when rich-mode capability is absent or a closeout artifact is missing. | `true` | Rich mode remained additive; fallback and warning paths stayed readable and bounded. | — |
-| `terminal-capability-decision-precedence` | `terminal-compatibility` | `addressed` | `runtime-evidence` | `recorded` | Verification must prove one deterministic precedence chain across `--ASCII`, `NO_UNICODE`, redirected output, UTF-8 capability, `LANG`, and Windows virtual-terminal checks, with the same result from `specrew where`, `specrew status`, and `specrew-where.ps1`. | `true` | Shared render-profile helpers now own the precedence chain for all entry points. | — |
+| `operational-resilience-concerns` | `operational` | `addressed` | `runtime-evidence` | `recorded` | Live rendering, stored snapshots, and validator/scaffold warnings must stay additive and operator-readable, especially when rich-mode capability is absent or a closeout artifact is missing. Diagnostics must stay truthful about why fallback occurred. | `true` | Rich mode remained additive; fallback warnings now stay bounded to explicit operator controls and directly verifiable terminal constraints. | — |
+| `terminal-capability-decision-precedence` | `terminal-compatibility` | `addressed` | `runtime-evidence` | `recorded` | Verification must prove one deterministic precedence chain across `--ASCII`, `NO_UNICODE`, `TERM=dumb`, UTF-8 capability, `LANG`, and Windows virtual-terminal checks, with the same result from `specrew where`, `specrew status`, and `specrew-where.ps1`. | `true` | Shared render-profile helpers now own the precedence chain for all entry points, and the misleading `[Console]::IsOutputRedirected` fallback branch has been removed. | — |
 | `windows-vt-fallback-truthfulness` | `compatibility` | `addressed` | `runtime-evidence` | `recorded` | Verification must show that missing `$Host.UI.SupportsVirtualTerminal` support disables ANSI emphasis cleanly while preserving the same underlying meaning, markers, and sparkline intent in ASCII-safe form. | `true` | Monochrome replay proved semantic parity without ANSI dependence. | — |
 | `render-budget-stop-ship-evidence` | `performance` | `addressed` | `runtime-evidence` | `recorded` | Verification must record a green `<= 1.5s` render-budget result on the representative 16-feature repository and treat a miss as stop-ship evidence until explicitly reconciled. | `true` | The render-budget harness passed and live current-shell `specrew where --no-color` on the Specrew repo measured 1043.86 ms / 1028.64 ms / 1040.12 ms after one warmup run. | — |
 | `ansi-stripping-with-unicode-preservation` | `artifact-integrity` | `addressed` | `runtime-evidence` | `recorded` | Verification must prove stored dashboard artifacts strip ANSI escape sequences while preserving readable Unicode glyphs and line endings across the closeout/validator path. | `true` | Artifact content now strips ANSI via regex while preserving Unicode glyphs, and validator coverage checks for regressions. | — |
@@ -36,7 +36,7 @@
 
 | Concern Label | Expected Verification Focus |
 | --- | --- |
-| `terminal-capability-decision-precedence` | Cross-entry-point precedence proof for `--ASCII`, environment overrides, redirected output, UTF-8 capability, and Windows VT eligibility |
+| `terminal-capability-decision-precedence` | Cross-entry-point precedence proof for `--ASCII`, environment overrides, `TERM=dumb`, UTF-8 capability, and Windows VT eligibility |
 | `windows-vt-fallback-truthfulness` | Windows fallback replay proving semantic parity without ANSI dependence |
 | `render-budget-stop-ship-evidence` | Measured `<= 1.5s` render-budget result on the representative 16-feature repository |
 
@@ -88,8 +88,9 @@ covering renderer richness, fallback truthfulness, snapshot integrity, closeout 
 performance budget preservation, and operator guidance.
 
 **Implementation Summary**: The single-iteration execution slice completed with green dashboard-specific
-replay, live current-shell render timing inside NFR-001, ANSI-free persisted artifacts, and closeout
-scaffold parity preserved. Deferred scope remained excluded.
+replay, live current-shell render timing inside NFR-001, ANSI-free persisted artifacts, closeout
+scaffold parity preserved, and bounded repair `R-018-V2` implemented without widening scope. Deferred
+scope remained excluded.
 
 ## Sign-Off Evidence
 
@@ -100,9 +101,12 @@ Feature 018 Iteration 001
 **Review-Verdict-Signoff Ref**: `specs/018-velocity-dashboard-visual-richness/iterations/001/review.md`  
 **Evidence Statement**: The iteration-scoped hardening gate preserved the approved concern set through
 implementation, and post-implementation verification is now complete based on the green replay lane,
-validator updates, closeout-parity replay, and live current-shell timing evidence.
+validator updates, closeout-parity replay, live current-shell timing evidence, and the repaired
+direct-entrypoint UTF-8 priming proof. Human fresh-terminal visual confirmation remains a separate
+review-verdict-signoff prerequisite.
 
 ---
 
-**Hardening-Gate Status**: signed off on 2026-05-15 and verified post-implementation on 2026-05-15; the
-review-verdict-signoff pass is currently blocked by `R-018-V2`, so retro remains unopened.
+**Hardening-Gate Status**: signed off on 2026-05-15 and verified post-implementation on 2026-05-15; bounded
+repair `R-018-V2` is now implemented, but review-verdict-signoff still awaits human fresh-terminal
+confirmation of `.\scripts\specrew.ps1 where`, so retro remains unopened.

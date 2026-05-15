@@ -60,6 +60,17 @@ function Invoke-CommandScript {
     }
 }
 
+function Invoke-PowerShellCommandText {
+    param([Parameter(Mandatory = $true)][string]$CommandText)
+
+    $output = @(& pwsh -NoProfile -ExecutionPolicy Bypass -Command $CommandText 2>&1)
+    return [pscustomobject]@{
+        ExitCode = $LASTEXITCODE
+        Text     = ($output -join "`n")
+        Lines    = @($output | ForEach-Object { [string]$_ })
+    }
+}
+
 function Normalize-ExpectedText {
     param([Parameter(Mandatory = $true)][string]$Text)
 
@@ -89,6 +100,7 @@ $repoRoot = (Resolve-Path (Join-Path -Path $PSScriptRoot -ChildPath '..\..')).Pa
 $fixtureRoot = Join-Path $repoRoot 'tests\integration\fixtures\feature-018-dashboard'
 $scratchRoot = Join-Path $repoRoot '.scratch\feature-018-dashboard'
 $entryScript = Join-Path $repoRoot 'scripts\specrew.ps1'
+$whereScript = Join-Path $repoRoot 'scripts\specrew-where.ps1'
 $rendererPath = Join-Path $repoRoot 'scripts\internal\dashboard-renderer.ps1'
 $reviewerScaffoldScript = Join-Path $repoRoot 'extensions\specrew-speckit\scripts\scaffold-reviewer-artifacts.ps1'
 $featureCloseoutScript = Join-Path $repoRoot 'extensions\specrew-speckit\scripts\scaffold-feature-closeout-dashboard.ps1'
@@ -119,6 +131,33 @@ try {
     $richExpected = Normalize-ExpectedText -Text (Get-Content -LiteralPath (Join-Path $fixtureRoot 'rich-capable-expected.txt') -Raw -Encoding UTF8)
     Assert-True -Condition ($richActual -eq $richExpected) -Message 'Rich-capable replay should match the expected rich dashboard contract.'
     Write-Pass 'Rich-capable replay matches the expected Unicode-rich dashboard contract'
+
+    $utf8PrimingCommand = @"
+Set-StrictMode -Version Latest
+`$seed = [System.Text.Encoding]::GetEncoding(437)
+[Console]::InputEncoding = `$seed
+[Console]::OutputEncoding = `$seed
+`$beforeInput = [Console]::InputEncoding.WebName
+`$beforeOutput = [Console]::OutputEncoding.WebName
+`$rendered = @(& '$whereScript' -CliArgs @('--project-path', '$richWorkspace') *>&1)
+`$afterInput = [Console]::InputEncoding.WebName
+`$afterOutput = [Console]::OutputEncoding.WebName
+[pscustomobject]@{
+    before_input  = `$beforeInput
+    before_output = `$beforeOutput
+    after_input   = `$afterInput
+    after_output  = `$afterOutput
+    text          = (`$rendered -join "`n")
+} | ConvertTo-Json -Compress
+"@
+    $utf8PrimingResult = Invoke-PowerShellCommandText -CommandText $utf8PrimingCommand
+    Assert-True -Condition ($utf8PrimingResult.ExitCode -eq 0) -Message 'Direct specrew-where rich replay should succeed from a non-UTF-8 console.'
+    $utf8PrimingPayload = $utf8PrimingResult.Text | ConvertFrom-Json
+    Assert-True -Condition ($utf8PrimingPayload.before_output -eq $utf8PrimingPayload.after_output) -Message 'specrew-where should restore the original output encoding after rich rendering.'
+    Assert-True -Condition ($utf8PrimingPayload.before_input -eq $utf8PrimingPayload.after_input) -Message 'specrew-where should restore the original input encoding after rich rendering.'
+    Assert-True -Condition ($utf8PrimingPayload.text -match 'Rendering: rich default') -Message 'specrew-where should auto-prime UTF-8 so the direct entrypoint stays in rich mode.'
+    Assert-True -Condition ((([string]$utf8PrimingPayload.text).Contains([string][char]0x2588)) -and ($utf8PrimingPayload.text -match 'Sparkline: .*values 18 / 15 / 11 / 13 / 8 / 8')) -Message 'Direct specrew-where rich replay should preserve rich-only glyph output after UTF-8 priming.'
+    Write-Pass 'Direct specrew-where replay auto-primes UTF-8 and restores the caller console state'
 
     $monoWorkspace = New-TestWorkspace -FixtureName 'monochrome-repository' -WorkspaceName 'monochrome-repository'
     $monoResult = Invoke-CommandScript -ScriptPath $entryScript -ArgumentList @('where', '--project-path', $monoWorkspace, '--ASCII')

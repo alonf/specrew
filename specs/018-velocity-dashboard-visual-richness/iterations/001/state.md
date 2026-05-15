@@ -1,13 +1,13 @@
 # Iteration State: 001
 
 **Schema**: v1
-**Last Completed Task**: T030
-**Tasks Remaining**: (none)
-**In Progress**: (none)
+**Last Completed Task**: R-018-V2 implementation (R-018-V2a / R-018-V2b / R-018-V2c)
+**Tasks Remaining**: Human terminal confirmation of `.\scripts\specrew.ps1 where`, then review-verdict-signoff rerun
+**In Progress**: Waiting on human fresh-terminal confirmation
 **Baseline Ref**: 228911a44085182b3844781f0713b18f6ad8f694
 **Updated**: 2026-05-15
 **Current Phase**: reviewing
-**Iteration Status**: review-verdict-signoff is blocked pending bounded repair `R-018-V2`; retro remains pending explicit authorization
+**Iteration Status**: bounded repair `R-018-V2` is implemented, but review-verdict-signoff remains blocked pending human fresh-terminal confirmation; retro remains pending explicit authorization
 
 ## Execution Summary
 
@@ -31,7 +31,7 @@ performance evidence were all updated inside the approved boundary.
 - **Planning Boundary**: ✅ **COMPLETE** — iteration execution artifacts remained truthful throughout implementation
 - **Hardening-Gate Sign-Off**: ✅ **PRESERVED** — the pre-implementation sign-off remained the governing concern set for execution
 - **Implementation Authorization**: ✅ **EXECUTED** — `/speckit.specrew-speckit.before-implement` passed and the authorized implementation package was completed
-- **Review Boundary**: ⚠️ **BLOCKED** — `R-018-V1` is absorbed, but direct-terminal rich-mode verification failed and reopened review as bounded repair `R-018-V2`
+- **Review Boundary**: ⚠️ **BLOCKED BY HUMAN CONFIRMATION** — `R-018-V1` and `R-018-V2` are now implemented, but the required fresh-terminal `.\scripts\specrew.ps1 where` confirmation has not yet been recorded
 - **Retro Artifact**: not started
 - **Constraint**: do not create `review.md` or `retro.md` placeholders before the lifecycle actually
   reaches those boundaries
@@ -52,14 +52,15 @@ performance evidence were all updated inside the approved boundary.
 - ✅ Tasks T001-T030 completed without widening beyond the approved Feature 018 scope
 - ✅ Dashboard-specific automated replay is green across Feature 017 regression, Feature 018 rich/mono replay, and the render-budget harness
 - ✅ Stored dashboard artifacts now strip ANSI escape sequences while preserving readable Unicode glyphs
-- ⚠️ `review.md` now records the blocked review-verdict-signoff state: `R-018-V1` is fixed, but `R-018-V2` still blocks acceptance
+- ⚠️ `review.md` now records the repaired-but-pending-human-confirmation review state: `R-018-V2` is implemented, but acceptance still waits on the fresh-terminal command check
 - ✅ `retro.md` remains intentionally absent, keeping the next boundary truthful
 - ✅ The branch is stopped after review-verdict-signoff as instructed
 
 ## Next Action
 
-Request explicit bounded repair authorization for `R-018-V2`. Do not open `retro.md`, iteration-closeout, or
-feature-closeout from this blocked review state.
+Human reviewer must next run `.\scripts\specrew.ps1 where` in a fresh PowerShell terminal with no manual `chcp` /
+encoding setup and confirm rich rendering. Do not open `retro.md`, iteration-closeout, or feature-closeout from
+this blocked review state until that confirmation is recorded.
 
 <!-- >>> specrew-managed escalation-state >>> -->
 ## Repair Escalation

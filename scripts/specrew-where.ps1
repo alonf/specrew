@@ -23,6 +23,170 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
+function Test-SpecrewWhereArgumentPresent {
+    param(
+        [string[]]$ArgumentList,
+        [string[]]$OptionNames
+    )
+
+    foreach ($argument in @($ArgumentList | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })) {
+        foreach ($optionName in $OptionNames) {
+            if ($argument -eq $optionName -or $argument.StartsWith(('{0}=' -f $optionName), [System.StringComparison]::OrdinalIgnoreCase)) {
+                return $true
+            }
+        }
+    }
+
+    return $false
+}
+
+function Get-SpecrewWhereRawCaptureKind {
+    param([string[]]$ArgumentList)
+
+    $normalizedArguments = @($ArgumentList | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
+    for ($index = 0; $index -lt $normalizedArguments.Count; $index++) {
+        $argument = $normalizedArguments[$index]
+        if ($argument -match '^--capture-kind=(.+)$') {
+            return $Matches[1]
+        }
+
+        if ($argument -ieq '--capture-kind') {
+            $index++
+            if ($index -lt $normalizedArguments.Count) {
+                return $normalizedArguments[$index]
+            }
+        }
+    }
+
+    return $null
+}
+
+function Test-SpecrewShouldPrimeUtf8 {
+    param(
+        [bool]$Ascii,
+        [bool]$NoColor,
+        [bool]$Json,
+        [bool]$Help,
+        [string]$CaptureKind,
+        [string[]]$CliArgs
+    )
+
+    if ($Ascii -or $NoColor -or $Json -or $Help) {
+        return $false
+    }
+
+    if (-not [string]::IsNullOrWhiteSpace($env:NO_COLOR) -or -not [string]::IsNullOrWhiteSpace($env:NO_UNICODE)) {
+        return $false
+    }
+
+    if (Test-SpecrewWhereArgumentPresent -ArgumentList $CliArgs -OptionNames @('--ascii', '--no-color', '--json', '--help', '-h')) {
+        return $false
+    }
+
+    $rawCaptureKind = if (-not [string]::IsNullOrWhiteSpace($CaptureKind)) { $CaptureKind } else { Get-SpecrewWhereRawCaptureKind -ArgumentList $CliArgs }
+    if (-not [string]::IsNullOrWhiteSpace($rawCaptureKind) -and $rawCaptureKind -ine 'live') {
+        return $false
+    }
+
+    return $true
+}
+
+function Enter-SpecrewUtf8ConsoleScope {
+    $utf8Encoding = [System.Text.UTF8Encoding]::new($false)
+    $state = [pscustomobject]@{
+        InputEncoding  = $null
+        OutputEncoding = $null
+        VariableValue  = $null
+        Changed        = $false
+    }
+
+    try {
+        $state.InputEncoding = [Console]::InputEncoding
+    }
+    catch {
+        $state.InputEncoding = $null
+    }
+
+    try {
+        $state.OutputEncoding = [Console]::OutputEncoding
+    }
+    catch {
+        $state.OutputEncoding = $null
+    }
+
+    try {
+        $state.VariableValue = (Get-Variable -Name OutputEncoding -Scope Global -ErrorAction Stop).Value
+    }
+    catch {
+        $state.VariableValue = $null
+    }
+
+    try {
+        if ($null -eq $state.InputEncoding -or $state.InputEncoding.WebName -notmatch 'utf-?8') {
+            [Console]::InputEncoding = $utf8Encoding
+            $state.Changed = $true
+        }
+
+        if ($null -eq $state.OutputEncoding -or $state.OutputEncoding.WebName -notmatch 'utf-?8') {
+            [Console]::OutputEncoding = $utf8Encoding
+            $state.Changed = $true
+        }
+
+        if ($null -eq $state.VariableValue -or $state.VariableValue.WebName -notmatch 'utf-?8') {
+            Set-Variable -Name OutputEncoding -Scope Global -Value $utf8Encoding
+            $state.Changed = $true
+        }
+    }
+    catch {
+        # Best-effort only; rendering still falls back truthfully if UTF-8 remains unavailable.
+    }
+
+    return $state
+}
+
+function Exit-SpecrewUtf8ConsoleScope {
+    param([AllowNull()][object]$State)
+
+    if ($null -eq $State -or -not $State.Changed) {
+        return
+    }
+
+    try {
+        if ($null -ne $State.InputEncoding) {
+            [Console]::InputEncoding = $State.InputEncoding
+        }
+    }
+    catch {
+    }
+
+    try {
+        if ($null -ne $State.OutputEncoding) {
+            [Console]::OutputEncoding = $State.OutputEncoding
+        }
+    }
+    catch {
+    }
+
+    try {
+        if ($null -ne $State.VariableValue) {
+            Set-Variable -Name OutputEncoding -Scope Global -Value $State.VariableValue
+        }
+    }
+    catch {
+    }
+}
+
+$utf8ConsoleScope = $null
+if (Test-SpecrewShouldPrimeUtf8 `
+        -Ascii $Ascii.IsPresent `
+        -NoColor $NoColor.IsPresent `
+        -Json $Json.IsPresent `
+        -Help $Help.IsPresent `
+        -CaptureKind $CaptureKind `
+        -CliArgs $CliArgs) {
+    $utf8ConsoleScope = Enter-SpecrewUtf8ConsoleScope
+}
+
 $sharedGovernancePath = Join-Path (Split-Path -Parent $PSScriptRoot) 'extensions\specrew-speckit\scripts\shared-governance.ps1'
 if (-not (Test-Path -LiteralPath $sharedGovernancePath -PathType Leaf)) {
     throw "Missing shared governance helper '$sharedGovernancePath'."
@@ -221,68 +385,73 @@ function Convert-UnixStyleArguments {
     return [pscustomobject]$result
 }
 
-$parsed = Convert-UnixStyleArguments `
-    -ProjectPath $ProjectPath `
-    -FeatureId $FeatureId `
-    -IterationNumber $IterationNumber `
-    -Compact $Compact.IsPresent `
-    -Ascii $Ascii.IsPresent `
-    -NoColor $NoColor.IsPresent `
-    -RecentCount $RecentCount `
-    -BarWidth $BarWidth `
-    -Json $Json.IsPresent `
-    -Team $Team.IsPresent `
-    -Help $Help.IsPresent `
-    -OutputPath $OutputPath `
-    -CaptureKind $CaptureKind `
-    -PreserveExistingArtifact $PreserveExistingArtifact.IsPresent `
-    -HistoricalNotice $HistoricalNotice `
-    -CliArgs $CliArgs
+try {
+    $parsed = Convert-UnixStyleArguments `
+        -ProjectPath $ProjectPath `
+        -FeatureId $FeatureId `
+        -IterationNumber $IterationNumber `
+        -Compact $Compact.IsPresent `
+        -Ascii $Ascii.IsPresent `
+        -NoColor $NoColor.IsPresent `
+        -RecentCount $RecentCount `
+        -BarWidth $BarWidth `
+        -Json $Json.IsPresent `
+        -Team $Team.IsPresent `
+        -Help $Help.IsPresent `
+        -OutputPath $OutputPath `
+        -CaptureKind $CaptureKind `
+        -PreserveExistingArtifact $PreserveExistingArtifact.IsPresent `
+        -HistoricalNotice $HistoricalNotice `
+        -CliArgs $CliArgs
 
-if ($parsed.Help) {
-    Show-Usage
-    exit 0
-}
+    if ($parsed.Help) {
+        Show-Usage
+        exit 0
+    }
 
-$snapshot = Get-SpecrewDashboardSnapshot `
-    -ProjectRoot $parsed.ProjectPath `
-    -FeatureId $parsed.FeatureId `
-    -IterationNumber $parsed.IterationNumber `
-    -Compact:$parsed.Compact `
-    -Ascii:$parsed.Ascii `
-    -NoColor:$parsed.NoColor `
-    -RecentCount $parsed.RecentCount `
-    -BarWidth $parsed.BarWidth `
-    -CaptureKind $parsed.CaptureKind `
-    -Team:$parsed.Team
+    $snapshot = Get-SpecrewDashboardSnapshot `
+        -ProjectRoot $parsed.ProjectPath `
+        -FeatureId $parsed.FeatureId `
+        -IterationNumber $parsed.IterationNumber `
+        -Compact:$parsed.Compact `
+        -Ascii:$parsed.Ascii `
+        -NoColor:$parsed.NoColor `
+        -RecentCount $parsed.RecentCount `
+        -BarWidth $parsed.BarWidth `
+        -CaptureKind $parsed.CaptureKind `
+        -Team:$parsed.Team
 
-$lines = if ($parsed.Compact) {
-    ConvertTo-SpecrewCompactDashboardLines -Snapshot $snapshot
-}
-else {
-    ConvertTo-SpecrewDashboardLines -Snapshot $snapshot
-}
-
-if (-not [string]::IsNullOrWhiteSpace($parsed.OutputPath)) {
-    $resolvedOutputPath = Resolve-ProjectPath -Path $parsed.OutputPath
-    if ($parsed.PreserveExistingArtifact -and (Test-Path -LiteralPath $resolvedOutputPath -PathType Leaf)) {
-        Write-Host "Preserved existing dashboard artifact at $resolvedOutputPath"
+    $lines = if ($parsed.Compact) {
+        ConvertTo-SpecrewCompactDashboardLines -Snapshot $snapshot
     }
     else {
-        $artifactContent = ConvertTo-SpecrewDashboardArtifactContent -Snapshot $snapshot -Lines $lines -CaptureKind $parsed.CaptureKind -HistoricalNotice $parsed.HistoricalNotice
-        Write-Utf8FileAtomic -Path $resolvedOutputPath -Content $artifactContent
-        Write-Host "Wrote dashboard artifact to $resolvedOutputPath"
+        ConvertTo-SpecrewDashboardLines -Snapshot $snapshot
     }
-}
 
-if ($parsed.Json) {
-    $payload = [pscustomobject]@{
-        snapshot = $snapshot
-        lines    = $lines
+    if (-not [string]::IsNullOrWhiteSpace($parsed.OutputPath)) {
+        $resolvedOutputPath = Resolve-ProjectPath -Path $parsed.OutputPath
+        if ($parsed.PreserveExistingArtifact -and (Test-Path -LiteralPath $resolvedOutputPath -PathType Leaf)) {
+            Write-Host "Preserved existing dashboard artifact at $resolvedOutputPath"
+        }
+        else {
+            $artifactContent = ConvertTo-SpecrewDashboardArtifactContent -Snapshot $snapshot -Lines $lines -CaptureKind $parsed.CaptureKind -HistoricalNotice $parsed.HistoricalNotice
+            Write-Utf8FileAtomic -Path $resolvedOutputPath -Content $artifactContent
+            Write-Host "Wrote dashboard artifact to $resolvedOutputPath"
+        }
     }
-    $payload | ConvertTo-Json -Depth 8
+
+    if ($parsed.Json) {
+        $payload = [pscustomobject]@{
+            snapshot = $snapshot
+            lines    = $lines
+        }
+        $payload | ConvertTo-Json -Depth 8
+        exit 0
+    }
+
+    Write-SpecrewDashboardLines -Lines $lines -ColorMode $snapshot.color_mode
     exit 0
 }
-
-Write-SpecrewDashboardLines -Lines $lines -ColorMode $snapshot.color_mode
-exit 0
+finally {
+    Exit-SpecrewUtf8ConsoleScope -State $utf8ConsoleScope
+}

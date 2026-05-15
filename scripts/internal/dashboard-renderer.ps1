@@ -1056,7 +1056,6 @@ function Get-SpecrewDashboardRenderProfile {
     $effectiveRecentCount = if ($RecentCount -gt 0) { $RecentCount } else { Get-SpecrewDashboardDefaultRecentCount }
     $effectiveBarWidth = if ($BarWidth -gt 0) { $BarWidth } else { Get-SpecrewDashboardDefaultBarWidth }
     $isWindowsHost = Get-SpecrewIsWindowsHost -CapabilityOverrides $CapabilityOverrides
-    $outputRedirected = [bool](Get-SpecrewDashboardCapabilityValue -CapabilityOverrides $CapabilityOverrides -Name 'OutputRedirected' -DefaultValue [Console]::IsOutputRedirected)
     $termValue = [string](Get-SpecrewDashboardCapabilityValue -CapabilityOverrides $CapabilityOverrides -Name 'Term' -DefaultValue $env:TERM)
     $utf8Eligible = Test-SpecrewUtf8Output -CapabilityOverrides $CapabilityOverrides -CaptureKind $CaptureKind
     $virtualTerminalSupported = Test-SpecrewVirtualTerminalSupport -CapabilityOverrides $CapabilityOverrides -CaptureKind $CaptureKind
@@ -1070,9 +1069,6 @@ function Get-SpecrewDashboardRenderProfile {
     }
     elseif (-not [string]::IsNullOrWhiteSpace($env:NO_UNICODE)) {
         $fallbackReason = 'Unicode rendering disabled by NO_UNICODE.'
-    }
-    elseif ($CaptureKind -eq 'live' -and $outputRedirected) {
-        $fallbackReason = 'Output is redirected, so the live dashboard uses monochrome-safe fallback.'
     }
     elseif ($CaptureKind -eq 'live' -and $termValue -eq 'dumb') {
         $fallbackReason = 'TERM=dumb disables rich terminal rendering.'
@@ -1098,7 +1094,6 @@ function Get-SpecrewDashboardRenderProfile {
         snapshot_strip_ansi       = $CaptureKind -ne 'live'
         capture_kind              = $CaptureKind
         color_mode                = if ($ansiEnabled) { 'semantic-color' } else { 'monochrome' }
-        output_redirected         = $outputRedirected
         utf8_eligible             = $utf8Eligible
         supports_virtual_terminal = $virtualTerminalSupported
         term                      = $termValue

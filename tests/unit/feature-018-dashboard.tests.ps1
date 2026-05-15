@@ -34,7 +34,6 @@ $fixtureRoot = Join-Path $repoRoot 'tests\integration\fixtures\feature-018-dashb
 
 $richOverride = @{
     IsWindows              = $false
-    OutputRedirected       = $false
     Term                   = 'xterm-256color'
     ConsoleEncodingName    = 'utf-8'
     Lang                   = 'en_US.UTF-8'
@@ -42,7 +41,6 @@ $richOverride = @{
 }
 $windowsFallbackOverride = @{
     IsWindows              = $true
-    OutputRedirected       = $false
     Term                   = 'xterm-256color'
     ConsoleEncodingName    = 'utf-8'
     Lang                   = 'en_US.UTF-8'
@@ -70,6 +68,18 @@ finally {
 $windowsFallbackProfile = Get-SpecrewDashboardRenderProfile -CapabilityOverrides $windowsFallbackOverride
 Assert-True -Condition ($windowsFallbackProfile.rendering_mode -eq 'monochrome') -Message 'Missing Windows VT support should force fallback.'
 Assert-True -Condition ($windowsFallbackProfile.fallback_reason -match 'Windows virtual-terminal support') -Message 'Windows fallback should explain the VT reason.'
+
+$redirectedWindowsOverride = @{
+    IsWindows               = $true
+    OutputRedirected        = $true
+    Term                    = 'xterm-256color'
+    ConsoleEncodingName     = 'utf-8'
+    Lang                    = 'en_US.UTF-8'
+    SupportsVirtualTerminal = $true
+}
+$redirectedWindowsProfile = Get-SpecrewDashboardRenderProfile -CapabilityOverrides $redirectedWindowsOverride
+Assert-True -Condition ($redirectedWindowsProfile.rendering_mode -eq 'rich') -Message 'Output redirection alone should not disable rich rendering.'
+Assert-True -Condition ([string]::IsNullOrWhiteSpace([string]$redirectedWindowsProfile.fallback_reason)) -Message 'Rich rendering should not report a fallback reason when redirected output is the only difference.'
 
 $richSnapshot = Get-SpecrewDashboardSnapshot -ProjectRoot $fixtureRoot -CapabilityOverrides $richOverride
 $richLines = @(ConvertTo-SpecrewDashboardLines -Snapshot $richSnapshot)
