@@ -2307,6 +2307,63 @@ Accept the review boundary for feature `015`, public-readiness pass, iteration `
 - Rule `15`, feature closeout version management, is now explicit across the coordinator surfaces: config bump, changelog entry, README/versioning refresh, release-tag creation, validator rerun, and a keep-open defer path.
 - The new public-readiness validator lane stayed additive under independent review: clean fixture pass without warnings, drift fixture pass with the expected warnings, pre-Feature `015` iteration pass unchanged, repo-wide validator green, and local plus `origin` tag anchors verified as `v0.13.0 -> 21d9e7f` and `v0.14.0 -> 3ff32d4`.
 
+---
+
+# Retro Facilitator Decision: Feature 017 Iteration 001 Retrospective
+
+**Date**: 2026-05-16  
+**By**: Retro Facilitator (delegated agent)  
+**Type**: retro-boundary  
+**Commit Reference**: TBD (to be recorded at commit time)
+
+## Authorization
+
+Explicit human authorization provided by Alon Fliess (user input): "The user has explicitly authorized exactly one boundary advance: from review-verdict-signoff to retro-boundary for Feature 017 Iteration 001."
+
+## Decision
+
+Facilitate and complete the retrospective for Feature 017 (Velocity Dashboard), Iteration 001, advancing from review-verdict-signoff to retro-boundary.
+
+## What Was Completed
+
+1. **Retro artifact created**: `specs/017-velocity-dashboard/iterations/001/retro.md`
+   - Schema: v1, four-section format (Eight Substantive Lessons, Summary of New Corpus-Row Candidates, Updated Squad Decisions, Updated Identity/Now State)
+   - Eight substantive lessons documented with sources, implications, and evidence links:
+     1. Estimation variance: 11 SP planned → 17-19 SP actual (clarify gap + external review)
+     2. Mid-implementation reboot resilience: uncommitted work survived, stale session state misdirected parallel session
+     3. External pre-implementation review pattern: 16 findings across 3 severity tiers
+     4. Architectural pillar features surfaced: Lifecycle Branch Reconciliation + Session-State Durability
+     5. Corpus-row self-enforcement: essence-vs-exhaustive principle now implicit team expectation
+     6. F-016 machinery validation: boundary discipline held across all 8 lifecycle boundaries
+     7. Iteration 002 carryover: FR-042..FR-046 + FR-019..FR-033 remain scope; ~16-18 SP total
+     8. Bundled multi-boundary authorization pattern: clarify→plan→tasks bundled under single authorization, but implementation/review/retro remain separate
+
+2. **Corpus-row candidates identified**: Three candidates proposed for `.specrew/quality/known-traps.md`:
+   - Bundled planning-phase boundary authorization (permissible variant of one-boundary-at-a-time rule)
+   - Essence-vs-exhaustive corpus row self-enforcement (positive observation; no rule change needed)
+   - Pre-implementation external review for specification integrity (coordination pattern)
+
+3. **Squad decisions updated**: This decision record captures the retrospective authorization and runtime evidence.
+
+4. **Identity/now state prepared**: Update pending (separate batch commit).
+
+## Why It Matters
+
+Feature 017 Iteration 001 completed a full lifecycle (specify → clarify → plan → tasks → implementation → review-boundary → review-verdict-signoff → retro-boundary) while surfacing two new pillar features (Session-State Durability, Branch Reconciliation) required for Phase 2 adoption. The retrospective documents lessons from a complex real-world feature with external review, repair cycles, and multi-tier findings.
+
+## Evidence
+
+- `specs/017-velocity-dashboard/iterations/001/retro.md` (this boundary artifact)
+- `specs/017-velocity-dashboard/iterations/001/review.md` (prior boundary)
+- `specs/017-velocity-dashboard/clarify-residual-findings.md` (16 findings, 3 tiers)
+- `C:\Dev\SpecrewDraft\session-state-durability.md` (pillar feature motivation)
+- `C:\Dev\SpecrewDraft\branch-reconciliation.md` (pillar feature motivation)
+- Repo validator runs confirm no governance regressions
+
+## Next Action
+
+Request explicit iteration-closeout authorization before the iteration-closeout boundary may proceed. Do NOT open iteration-closeout, feature-closeout, or any later boundary from this retro state alone.
+
 ## Evidence
 
 - `specs\015-public-readiness-pass\iterations\002\review.md`
