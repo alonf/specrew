@@ -459,23 +459,41 @@ function Get-SpecrewPlannedStoryPoints {
     param([Parameter(Mandatory = $true)][string]$IterationDirectory)
 
     $planPath = Join-Path $IterationDirectory 'plan.md'
-    if (-not (Test-Path -LiteralPath $planPath -PathType Leaf)) {
-        return [decimal]0
+    $planLines = @()
+    if (Test-Path -LiteralPath $planPath -PathType Leaf) {
+        $planLines = @(Get-SpecrewMarkdownContent -Path $planPath)
+        $capacityLine = Get-SpecrewMarkdownMetadataValue -Lines $planLines -Label 'Capacity'
+        $capacity = ConvertTo-SpecrewNullableDecimal -Value $capacityLine
+        if ($null -ne $capacity) {
+            return $capacity
+        }
     }
 
-    $planLines = @(Get-SpecrewMarkdownContent -Path $planPath)
-    $capacityLine = Get-SpecrewMarkdownMetadataValue -Lines $planLines -Label 'Capacity'
-    $capacity = ConvertTo-SpecrewNullableDecimal -Value $capacityLine
-    if ($null -ne $capacity) {
-        return $capacity
-    }
-
-    $taskRows = @(Get-SpecrewMarkdownSectionTable -Lines $planLines -Heading 'Tasks')
     $sum = [decimal]0
-    foreach ($taskRow in $taskRows) {
-        $effort = ConvertTo-SpecrewNullableDecimal -Value ([string]$taskRow.Effort)
-        if ($null -ne $effort) {
-            $sum += $effort
+    if ($planLines.Count -gt 0) {
+        $taskRows = @(Get-SpecrewMarkdownSectionTable -Lines $planLines -Heading 'Tasks')
+        foreach ($taskRow in $taskRows) {
+            $effort = ConvertTo-SpecrewNullableDecimal -Value ([string]$taskRow.Effort)
+            if ($null -ne $effort) {
+                $sum += $effort
+            }
+        }
+    }
+
+    if ($sum -gt 0) {
+        return $sum
+    }
+
+    $statePath = Join-Path $IterationDirectory 'state.md'
+    if (Test-Path -LiteralPath $statePath -PathType Leaf) {
+        $stateLines = @(Get-SpecrewMarkdownContent -Path $statePath)
+        foreach ($line in $stateLines) {
+            if ($line -match '^\|\s*\*\*Planned Story Points(?: \(Iteration \d+\))?\*\*\s*\|\s*(?<value>[^|]+)\|') {
+                $planned = ConvertTo-SpecrewNullableDecimal -Value $Matches['value']
+                if ($null -ne $planned) {
+                    return $planned
+                }
+            }
         }
     }
 
@@ -1021,34 +1039,44 @@ function Get-SpecrewProjection {
         }
     }
     $activePhaseRemaining = if ($null -ne $ActivePhase) { [decimal]$ActivePhase.remaining_effort_sp } else { $null }
+    $featureCompletedLabel = 'shipped'
+    if ($null -ne $ActiveFeature -and -not [string]::IsNullOrWhiteSpace([string]$ActiveFeature.feature_status)) {
+        $statusText = [string]$ActiveFeature.feature_status
+        switch -Regex ($statusText) {
+            'implementation complete' { $featureCompletedLabel = 'implementation complete' }
+            'iteration complete' { $featureCompletedLabel = 'iteration complete' }
+            'shipped' { $featureCompletedLabel = 'shipped' }
+            default { $featureCompletedLabel = 'TBD' }
+        }
+    }
 
     $etaScopes = @(
         [pscustomobject]@{
             scope_id              = 'active-feature'
             label                 = 'Active feature'
             remaining_story_points = $activeFeatureRemaining
-            eta_text              = Get-SpecrewEtaText -Remaining $activeFeatureRemaining -PointsPerDay $pointsPerDay -CompletedLabel 'feature shipped'
+            eta_text              = Get-SpecrewEtaText -Remaining $activeFeatureRemaining -PointsPerDay $pointsPerDay -CompletedLabel $featureCompletedLabel
             confidence            = $VelocityHeadline.confidence
         },
         [pscustomobject]@{
             scope_id              = 'current-phase'
             label                 = 'Current phase'
             remaining_story_points = $activePhaseRemaining
-            eta_text              = Get-SpecrewEtaText -Remaining $activePhaseRemaining -PointsPerDay $pointsPerDay -CompletedLabel 'phase shipped'
+            eta_text              = Get-SpecrewEtaText -Remaining $activePhaseRemaining -PointsPerDay $pointsPerDay -CompletedLabel 'shipped'
             confidence            = $VelocityHeadline.confidence
         },
         [pscustomobject]@{
             scope_id              = 'roadmap'
             label                 = 'Roadmap'
             remaining_story_points = $roadmapRemaining
-            eta_text              = Get-SpecrewEtaText -Remaining $roadmapRemaining -PointsPerDay $pointsPerDay -CompletedLabel 'roadmap shipped'
+            eta_text              = Get-SpecrewEtaText -Remaining $roadmapRemaining -PointsPerDay $pointsPerDay -CompletedLabel 'shipped'
             confidence            = $VelocityHeadline.confidence
         }
     )
 
     return [pscustomobject]@{
             remaining_story_points = $roadmapRemaining
-            eta_text               = Get-SpecrewEtaText -Remaining $roadmapRemaining -PointsPerDay $pointsPerDay -CompletedLabel 'roadmap shipped'
+            eta_text               = Get-SpecrewEtaText -Remaining $roadmapRemaining -PointsPerDay $pointsPerDay -CompletedLabel 'shipped'
         confidence             = $VelocityHeadline.confidence
         eta_scopes             = @($etaScopes)
     }

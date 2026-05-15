@@ -3278,6 +3278,18 @@ Completed the Iteration 002 implementation slice: closeout dashboard scaffolds n
 
 ---
 
+## 2026-05-16T20:10:00Z — Authorization: iteration-closeout
+
+- **Decision ID**: authorization-feature-017-iter-002-iteration-closeout
+- **Type**: authorization
+- **Boundary**: iteration-closeout
+- **Approving Human**: Alon Fliess
+- **Recorded At**: 2026-05-16T20:10:00Z
+- **Commit Reference**: 17
+- **Authorization Text**:
+  > The human has authorized exactly one boundary advance: retro-boundary -> iteration-closeout for Feature 017 Iteration 002.
+  > Investigate planned-story-point parsing, ETA label duplication, and shipped-label drift; repair R-IC-1 through R-IC-3, rerun specrew where, validator, and tests, update closeout bookkeeping artifacts, and stop at feature-closeout pending explicit authorization.
+
 ## 2026-05-16T19:05:00Z — Authorization: review-verdict-signoff
 
 - **Decision ID**: authorization-feature-017-iter-002-review-verdict-signoff

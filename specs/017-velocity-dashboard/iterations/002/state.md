@@ -5,18 +5,18 @@
 **Tasks Remaining**: none within the authorized Iteration 002 scope; iteration-closeout remains separately authorized
 **In Progress**: none
 **Baseline Ref**: 9b51630
-**Updated**: 2026-05-15T13:30:59Z
-**Current Phase**: retro-complete
-**Iteration Status**: retro complete; review-verdict-signoff is accepted, bookkeeping repairs are applied, and the next valid action is explicit iteration-closeout authorization
+**Updated**: 2026-05-17T14:19:27Z
+**Current Phase**: closed
+**Iteration Status**: closed via iteration-closeout boundary commit `17`; feature-closeout remains pending explicit authorization
 
 ## Iteration Metrics
 
 | Metric | Value | Notes |
 | --- | --- | --- |
 | **Planned Story Points** | 16 SP | The practical carryover planning band for Iteration 002 was ~16-18 SP, as recorded during Iteration 001 closeout/retro; 16 SP is the clean baseline value for dashboard parsing |
-| **Actual Delivered Story Points** | 18 SP | Derived from the delivered boundary range `9b51630..6590e93`: implementation commit `5394640` completed FR-019..FR-033 plus FR-042..FR-046, and review-signoff commit `6590e93` absorbed the two accepted truth-surface repairs (`R-V1`, `R-V2`) |
-| **Variance** | +2 SP (+12.5%) | Landed at the top of the planned ~16-18 SP band after review-verdict-signoff included the final truth-surface repairs |
-| **Elapsed Calendar Days** | 1 day | 2026-05-15 hardening-gate-and-implementation-auth boundary → 2026-05-15 review-verdict-signoff; same-day delivery is recorded as a 1-day span to avoid zero-day collapse |
+| **Actual Delivered Story Points** | 18 SP | Derived from the delivered boundary range `9b51630..17`: implementation commit `5394640` completed FR-019..FR-033 plus FR-042..FR-046, review-signoff commit `6590e93` absorbed the two accepted truth-surface repairs (`R-V1`, `R-V2`), and iteration-closeout repairs (`R-IC-1`..`R-IC-3`) restored truthful dashboard parsing |
+| **Variance** | +2 SP (+12.5%) | Landed at the top of the planned ~16-18 SP band after review-verdict-signoff and iteration-closeout truth-surface repairs |
+| **Elapsed Calendar Days** | 1 day | 9b51630 → 17 (same-day span recorded as 1 day to avoid zero-day collapse) |
 | **Total Story Points (Iteration 002)** | 18 SP | Canonical machine-parsable total for dashboard aggregation |
 
 ## Artifact References
@@ -41,7 +41,13 @@ matched the real lifecycle state on the feature branch.
 - This Iteration 002 `state.md` and companion `plan.md` stub now exist, removing the missing-state
   warning and making the delivered iteration visible to `specrew where`.
 
+## Late-Discovered Repairs (Iteration Closeout)
+
+- **R-IC-1**: Planned story points now fall back to `state.md` when `plan.md` is missing, restoring Iteration 001 planned SP as 11 instead of 0.
+- **R-IC-2**: ETA text no longer duplicates scope labels (no more `feature feature shipped` or `phase phase shipped` strings).
+- **R-IC-3**: ETA labels respect FR-036 feature status derivation, so Implementation Complete no longer renders as shipped.
+
 ## Next Action
 
-Request explicit iteration-closeout authorization. Do not open iteration-closeout or feature-closeout
-from this retro-complete state alone.
+Request explicit feature-closeout authorization. Iteration 002 is now closed; feature-closeout
+remains separately authorized.
