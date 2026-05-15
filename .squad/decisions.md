@@ -3232,6 +3232,20 @@ Iteration 002's pre-implementation review is complete. No material blocker preve
   > Implementation scope includes FR-019 through FR-033 and FR-042 through FR-046, with the required hardening-gate concerns, pre-implementation self-review, and implementation proceeding after that boundary commit lands.
   > If repair cycles emerge during Iteration 002 implementation, absorb them inside implementation work; stop at review-boundary and do not advance further without explicit human authorization.
 
+## 2026-05-16T18:30:00Z — Authorization: hardening-gate-signoff
+
+- **Decision ID**: authorization-feature-017-iter-002-hardening-gate-signoff
+- **Type**: authorization
+- **Boundary**: hardening-gate-signoff
+- **Approving Human**: Alon Fliess
+- **Recorded At**: 2026-05-16T18:30:00Z
+- **Commit Reference**: 9b51630
+- **Authorization Text**:
+  > The user has authorized a bundled hardening-gate-and-implementation-auth boundary for Feature 017 Iteration 002.
+  > Advance from iteration-closeout to hardening-gate-and-implementation-auth. ONE boundary advance only. Stop at the next required human boundary (review-boundary) and request explicit authorization.
+  > Implementation scope includes FR-019 through FR-033 and FR-042 through FR-046, with the required hardening-gate concerns, pre-implementation self-review, and implementation proceeding after that boundary commit lands.
+  > If repair cycles emerge during Iteration 002 implementation, absorb them inside implementation work; stop at review-boundary and do not advance further without explicit human authorization.
+
 ---
 
 ### 2026-05-15T11:36:20Z: Delegated lifecycle runtime evidence
@@ -3271,7 +3285,58 @@ Completed the Iteration 002 implementation slice: closeout dashboard scaffolds n
 - **Boundary**: review-verdict-signoff
 - **Approving Human**: Alon Fliess
 - **Recorded At**: 2026-05-16T19:05:00Z
-- **Commit Reference**: pending (single-boundary-commit constraint; recorded by canonical boundary subject)
+- **Commit Reference**: 6590e93
 - **Authorization Text**:
   > The human has ACCEPTED review verdict for Feature 017 Iteration 002 WITH TWO REPAIR ITEMS and authorized exactly one boundary advance: review-boundary -> review-verdict-signoff.
   > Apply R-V1 and R-V2 in `scripts\internal\dashboard-renderer.ps1`, re-run specrew where, validator, and tests, update review/verdict artifacts, and stop at retro-boundary.
+
+## 2026-05-15T13:30:59Z — Authorization: retro-boundary
+
+- **Decision ID**: authorization-feature-017-iter-002-retro-boundary
+- **Type**: authorization
+- **Boundary**: retro-boundary
+- **Approving Human**: Alon Fliess
+- **Recorded At**: 2026-05-15T13:30:59Z
+- **Commit Reference**: pending (single retro-boundary commit to be recorded by canonical subject)
+- **Authorization Text**:
+  > The human has authorized exactly one boundary advance: review-verdict-signoff -> retro-boundary for Feature 017 Iteration 002.
+  > Absorb pre-retro repairs R-Retro-1 and R-Retro-2, create the missing Iteration 002 retrospective/state/plan artifacts, update known traps and runtime state, verify with `specrew where` and the governance validator, create exactly one retro-boundary commit, push it, and stop at iteration-closeout pending.
+
+---
+
+### 2026-05-15T13:30:59Z: Delegated lifecycle runtime evidence
+**By:** Squad (Coordinator)
+**Role / Work Item:** Retro Facilitator — Feature 017 Velocity Dashboard Iteration 002 retro-boundary
+**Requested Agent:** copilot
+**Actual Agent:** copilot
+**Model ID:** unknown (Copilot CLI host does not expose the active model identifier)
+**Status:** honored
+**Fallback Reason:** none
+
+---
+
+# Retro Facilitator Decision: Feature 017 Iteration 002 Retrospective
+
+**Date**: 2026-05-15
+**Type**: retro-boundary
+**Scope**: Feature 017 Iteration 002 review-verdict-signoff → retro-boundary
+
+## Summary
+
+Completed the Iteration 002 retro boundary and absorbed both pre-retro bookkeeping repairs.
+Iteration 001 story points are now stored as a clean numeric `18 SP` with the observed `17-19 SP`
+range preserved in notes, and Iteration 002 now has the missing `plan.md`, `state.md`, and
+`retro.md` artifacts required for truthful dashboard rendering and canonical iteration tracking.
+
+## Result
+
+- `specrew where` can now render Feature 017 Iteration 001 as `18 SP` instead of `0 SP`
+- Iteration 002 is now visible to dashboard aggregation because `iterations/002/state.md` exists
+- The retro captures the eight required substantive topics, including the four bug categories and
+  feature-closeout readiness posture
+- `.specrew/quality/known-traps.md` now records the form-correctness-vs-meaning-correctness pattern
+
+## Next Action
+
+Do not advance further from this boundary. The next valid action is explicit iteration-closeout
+authorization for Feature 017 Iteration 002.

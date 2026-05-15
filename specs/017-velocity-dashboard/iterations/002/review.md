@@ -43,7 +43,20 @@
 
 ## Gap Ledger
 
-No blocking gaps remain.
+- fixed-now — `R-V1` and `R-V2` were absorbed before accepted review-verdict-signoff, so no blocking review gap remains on the green tree.
+
+---
+
+## Task Verdicts
+
+| Task | Requirement | Verdict | Notes |
+| --- | --- | --- | --- |
+| I2-01 | FR-019..FR-023 | pass | Closeout dashboard generation, immutability, and mirror parity landed without reopening the Iteration 001 renderer contract. |
+| I2-02 | FR-024..FR-030 | pass | Help, docs, onboarding, and routing guidance now describe the shipped dashboard behavior truthfully and conservatively. |
+| I2-03 | FR-031 | pass | Validator and corpus work now surface dashboard drift, grandfathering, and artifact-warning behavior additively. |
+| I2-04 | FR-032 | pass | Integration and unit coverage exercise healthy, sparse, malformed, no-roadmap, and replay-path scenarios through the real dashboard surfaces. |
+| I2-05 | FR-033, FR-042..FR-046 | pass | The production dashboard narrative and Iteration 001 compatibility obligations remained intact through implementation and review. |
+| I2-06 | R-V1, R-V2 | pass | Review-signoff repairs corrected branch-local shipped inference and same-day duration collapse before this verdict was accepted. |
 
 ---
 

@@ -13,10 +13,11 @@
 | Metric | Value | Notes |
 | --- | --- | --- |
 | **Planned Story Points** | 11 SP | Initial planning estimate (FR-001 through FR-018 core dashboard scope) |
-| **Actual Delivered Story Points** | ~18 SP | Core dashboard (FR-001..FR-018) + repair-cycle scope (FR-034..FR-046) |
+| **Actual Delivered Story Points** | 18 SP | Core dashboard (FR-001..FR-018) + repair-cycle scope (FR-034..FR-046); observed retrospective range was 17-19 SP, but the machine-parsable closeout value is 18 SP |
 | **Variance** | +7 SP (+~64%) | External pre-implementation review surfaced 16 findings requiring spec + content repair |
 | **Elapsed Calendar Days** | 2 days | 2026-05-15 (planning baseline) → 2026-05-16 (retro completion) |
 | **Primary Deliverables** | FR-001..FR-018, FR-034..FR-046 | Dashboard core, roadmap integration, repair cycle for spec consistency |
+| **Total Story Points (Iteration 001)** | 18 SP | Canonical machine-parsable total for dashboard aggregation; retrospective range context remains in the Actual Delivered Story Points notes |
 
 ### Variance Breakdown
 
