@@ -1,30 +1,25 @@
-updated_at: 2026-05-13T21:45:00+03:00
-focus_area: Feature 015 public-readiness-pass: Closeout completed on 2026-05-13 by Implementer; feature-closeout boundary commit created, PR opened with self-review, merged to main; release tag v0.15.0 created and pushed; no active feature
-active_issues: Feature 015 is closed and shipped; v0.15.0 release tag anchors the public-readiness pass work; next feature lifecycle may begin when authorized
+updated_at: 2026-05-15T15:26:30Z
+focus_area: Feature 017 closed and shipped to main at v0.17.0
+active_issues: No active feature. Next feature lifecycle requires explicit authorization.
 ---
 
 What We're Focused On
 ====================
 
-**Phase**: Feature 015 Iteration 002 closeout complete; shipped to main.
-**Urgency**: Tier 0 — Feature 015 is now closed. Any future work requires a fresh feature specification.
+**Phase**: Feature 017 closed and shipped to main at v0.17.0.
+**Urgency**: Tier 2 — no active feature; wait for explicit authorization before starting a new lifecycle.
 
 ---
 
 Current Status
 --------------
 
-Feature 015 Lifecycle: COMPLETE (CLOSED AND SHIPPED)
+Feature 017 Lifecycle: CLOSED AND SHIPPED (v0.17.0)
 
-- Feature 015, Public-Readiness Pass, is now completely shipped and released on main at commit 08ed5ca
-- Version management actions executed: `.specrew/config.yml` bumped to `0.15.0`, `CHANGELOG.md` updated with Feature 015 entry, README versioning refreshed, `v0.15.0` release tag created
-- Feature-closeout boundary commit on `015-public-readiness-pass` branch created with comprehensive artifact summary
-- PR merged to main with Feature 015 shipped-capability summary and self-review approval
-- `validate-governance.ps1` rerun and passed after version/changelog/tag updates
-- Release tag v0.15.0 created at main HEAD and pushed to origin
-- Feature is now closed per Rule 15 execution
+- Feature 017 closeout complete; merged to main with v0.17.0 tag
+- No active feature or iteration currently authorized
 
 Next Valid Action
 
-No active feature. Future work requires a new feature specification request and Spec Kit intake via `speckit.specify`.
+Request explicit human authorization before starting the next feature lifecycle.
 

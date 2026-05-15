@@ -33,6 +33,8 @@ Usage:
   specrew init [options]           Bootstrap Specrew in the current or target project
   specrew start [args]             Start or resume the Squad-driven Spec Kit lifecycle
   specrew review [options]         Replay the persisted reviewer closeout packet
+  specrew where [options]          Show the velocity dashboard ("where am I?")
+  specrew status [options]         Alias for specrew where
   specrew update [options]         Refresh Specrew assets or upgrade managed platforms
   specrew team <command> [args]    Manage Squad team members
 
@@ -40,6 +42,8 @@ Commands:
   init     Initialize Specrew (Spec Kit + Squad + governance)
   start    Start or resume feature delivery through Squad + Spec Kit
   review   Show reviewer summary for a completed iteration
+  where    Show the velocity dashboard
+  status   Alias for where
   update   Refresh Specrew or upgrade Spec Kit / Squad in an existing project
   team     Manage team members (add, update, remove, list)
   help     Show this help message
@@ -49,6 +53,8 @@ Examples:
   specrew start
   specrew start "Build a REST API for user management"
   specrew review --project-path .
+  specrew where
+  specrew status --compact
   specrew update
   specrew update --info
   specrew update --all
@@ -61,6 +67,7 @@ For detailed command help:
   specrew init --help
   specrew start --help
   specrew review --help
+  specrew where --help
   specrew update --help
   specrew team --help (shows usage when no subcommand provided)
 '@ | Write-Host
@@ -153,6 +160,28 @@ switch ($Command) {
         }
 
         & pwsh -NoProfile -ExecutionPolicy Bypass -File $reviewScript @Arguments
+        exit $LASTEXITCODE
+    }
+
+    'where' {
+        $whereScript = Join-Path $scriptRoot 'specrew-where.ps1'
+        if (-not (Test-Path -LiteralPath $whereScript)) {
+            Write-Host "ERROR: specrew-where.ps1 not found at $whereScript" -ForegroundColor Red
+            exit 1
+        }
+
+        & pwsh -NoProfile -ExecutionPolicy Bypass -File $whereScript @Arguments
+        exit $LASTEXITCODE
+    }
+
+    'status' {
+        $whereScript = Join-Path $scriptRoot 'specrew-where.ps1'
+        if (-not (Test-Path -LiteralPath $whereScript)) {
+            Write-Host "ERROR: specrew-where.ps1 not found at $whereScript" -ForegroundColor Red
+            exit 1
+        }
+
+        & pwsh -NoProfile -ExecutionPolicy Bypass -File $whereScript @Arguments
         exit $LASTEXITCODE
     }
 

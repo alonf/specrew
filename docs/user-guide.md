@@ -29,6 +29,34 @@ If you want a repeatable mission-completion smoke check of the real handoff boun
 3. Review/Demo
 4. Retrospective
 
+## Project Status Dashboard
+
+Use the dashboard whenever you need a one-screen delivery summary:
+
+```powershell
+pwsh -NoProfile -File .\scripts\specrew.ps1 where
+pwsh -NoProfile -File .\scripts\specrew.ps1 status --compact
+pwsh -NoProfile -File .\scripts\specrew-where.ps1 --team --no-color
+```
+
+The dashboard reads:
+
+- `.specify/feature.json` for the active feature
+- `specs/<feature>/iterations/<NNN>/` artifacts for closed and active iteration data
+- `.specrew/roadmap.yml` for roadmap phases when present
+
+Closeout workflows now preserve historical dashboard snapshots:
+
+- `specs/<feature>/iterations/<NNN>/dashboard.md`
+- `specs/<feature>/closeout-dashboard.md`
+
+These snapshots are generated automatically during iteration-closeout and
+feature-closeout scaffolding and are preserved as immutable historical records.
+
+The validator may emit `WARN [dashboard]` lines when roadmap declarations drift
+from canonical shipped work or when required dashboard artifacts are missing
+after the rollout cutover (historical pre-rollout iterations are grandfathered).
+
 Core iteration artifacts live under `specs/<feature>/iterations/<NNN>/`.
 
 ## 1. Planning

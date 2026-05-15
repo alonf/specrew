@@ -1682,6 +1682,64 @@ function Get-EscalationCount {
     return 0
 }
 
+function Get-ReviewerRegressionCapState {
+    <#
+    .SYNOPSIS
+    Parses the reviewer-regression-state managed block from state.md to extract lockout-cap fields.
+    
+    .PARAMETER StateLines
+    The lines from state.md.
+    #>
+    param([string[]]$StateLines)
+
+    $inBlock = $false
+    $capActive = $false
+    $lockedOutAgents = @()
+    $nextOwnerPath = $null
+    $chainLength = 0
+    $capThreshold = 0
+
+    foreach ($line in $StateLines) {
+        if ($line -match '<!-- >>> specrew-managed reviewer-regression-state >>> -->') {
+            $inBlock = $true
+            continue
+        }
+        if ($line -match '<!-- <<< specrew-managed reviewer-regression-state <<< -->') {
+            break
+        }
+        if (-not $inBlock) {
+            continue
+        }
+
+        if ($line -match '- \*\*Cap Active\*\*:\s*(.+)') {
+            $capActive = $Matches[1].Trim() -ieq 'true'
+        }
+        elseif ($line -match '- \*\*Lockout Chain Length\*\*:\s*(\d+)') {
+            $chainLength = [int]$Matches[1]
+        }
+        elseif ($line -match '- \*\*Lockout Cap\*\*:\s*(\d+)') {
+            $capThreshold = [int]$Matches[1]
+        }
+        elseif ($line -match '- \*\*Locked Out Agents\*\*:\s*(.+)') {
+            $agentsValue = $Matches[1].Trim()
+            if ($agentsValue -ne '(none)') {
+                $lockedOutAgents = @($agentsValue)
+            }
+        }
+        elseif ($line -match '- \*\*Next Owner Path\*\*:\s*(.+)') {
+            $nextOwnerPath = $Matches[1].Trim()
+        }
+    }
+
+    return [pscustomobject]@{
+        CapActive        = $capActive
+        ChainLength      = $chainLength
+        CapThreshold     = $capThreshold
+        LockedOutAgents  = $lockedOutAgents
+        NextOwnerPath    = $nextOwnerPath
+    }
+}
+
 function Get-OwningTaskInfo {
     param(
         [string]$Path,
@@ -1857,7 +1915,7 @@ function Get-ReviewerGapHints {
 function Format-ReviewerSummaryLines {
     param([object]$Summary)
 
-    return @(
+    $lines = @(
         ('Header: feature={0} | iteration={1} | branch={2} | commit_range={3}' -f $Summary.Feature, $Summary.Iteration, $Summary.Branch, $Summary.CommitRange)
         ('Verdict: {0}' -f $Summary.Verdict)
         ('Requirements: covered={0} | not_covered={1}' -f $Summary.RequirementsCovered, $Summary.RequirementsNotCovered)
@@ -1865,11 +1923,21 @@ function Format-ReviewerSummaryLines {
         ('Dependencies: changed={0} | new_to_project={1} | vulnerability={2}' -f $Summary.DependencyChanges, $Summary.NewDependencies, $Summary.VulnerabilitySignal)
         ('Coverage: kind={0} | signal={1}' -f $Summary.CoverageKind, $Summary.CoverageSignal)
         ('Operational Signals: escalations={0} | routing_fallbacks={1}' -f $Summary.Escalations, $Summary.RoutingFallbacks)
+    )
+
+    if ($Summary.CapActive) {
+        $lines += ('Lockout Cap: active | chain={0}/{1} | locked_out={2}' -f $Summary.CapChainLength, $Summary.CapThreshold, $Summary.CapLockedOutAgents)
+        $lines += ('Next Owner: {0}' -f $Summary.CapNextOwner)
+    }
+
+    $lines += @(
         ('Drift: {0}/{1} resolved' -f $Summary.DriftTotal, $Summary.DriftResolved)
         ('Reviewer Index: {0}' -f $Summary.IndexRelativePath)
         ('Implementation Briefing: {0}' -f $Summary.ImplementationBriefing)
         ('Local Open Hints: {0}' -f ($Summary.LocalOpenHints -join '; '))
     )
+
+    return $lines
 }
 
 function Write-ReviewerSummary {
@@ -1885,7 +1953,31 @@ function Write-ReviewerSummary {
     }
 }
 
-$resolvedIterationDirectory = [System.IO.Path]::GetFullPath($IterationDirectory)
+function Get-DashboardRendererScriptPath {
+    param([Parameter(Mandatory = $true)][string]$ProjectRoot)
+
+    return Join-Path $ProjectRoot 'scripts\internal\dashboard-renderer.ps1'
+}
+
+function Get-IterationDashboardArtifactContent {
+    param(
+        [Parameter(Mandatory = $true)][string]$ProjectRoot,
+        [Parameter(Mandatory = $true)][string]$FeatureId,
+        [Parameter(Mandatory = $true)][string]$IterationNumber
+    )
+
+    $rendererPath = Get-DashboardRendererScriptPath -ProjectRoot $ProjectRoot
+    if (-not (Test-Path -LiteralPath $rendererPath -PathType Leaf)) {
+        throw "Velocity dashboard renderer '$rendererPath' is missing."
+    }
+
+    . $rendererPath
+    $snapshot = Get-SpecrewDashboardSnapshot -ProjectRoot $ProjectRoot -FeatureId $FeatureId -IterationNumber $IterationNumber -Compact
+    $lines = ConvertTo-SpecrewCompactDashboardLines -Snapshot $snapshot
+    return ConvertTo-SpecrewDashboardArtifactContent -Snapshot $snapshot -Lines $lines -CaptureKind 'iteration-closeout' -HistoricalNotice $null
+}
+
+$resolvedIterationDirectory = Resolve-ProjectPath -Path $IterationDirectory
 $planPath = Join-Path $resolvedIterationDirectory 'plan.md'
 $reviewPath = Join-Path $resolvedIterationDirectory 'review.md'
 $statePath = Join-Path $resolvedIterationDirectory 'state.md'
@@ -1897,6 +1989,7 @@ $qualityDirectory = Join-Path $resolvedIterationDirectory 'quality'
 $qualityEvidencePath = Join-Path $qualityDirectory 'quality-evidence.md'
 $mechanicalFindingsPath = Join-Path $qualityDirectory 'mechanical-findings.json'
 $securitySurfacePath = Join-Path $resolvedIterationDirectory 'security-surface.md'
+$dashboardPath = Join-Path $resolvedIterationDirectory 'dashboard.md'
 $reviewerIndexPath = Join-Path $resolvedIterationDirectory 'reviewer-index.md'
 $reviewDiagramsPath = Join-Path $resolvedIterationDirectory 'review-diagrams.md'
 $actions = [System.Collections.ArrayList]::new()
@@ -1975,6 +2068,7 @@ $testExecutionRows = @(Get-TestExecutionRows -ProjectRoot $projectRoot -Reviewer
 $coverageRows = @(Get-RequirementCoverageRows -RequirementRefs $requirementRefs.ToArray() -ChangedFiles $changedFiles -TestPathGlobs $reviewerConfig.test_path_globs -TestExecutionRows $testExecutionRows)
 $escalationCount = Get-EscalationCount -StateLines $stateLines
 $routingFallbackCount = Get-RoutingFallbackCount -ProjectRoot $projectRoot -IterationRelativePath $iterationRelativePath
+$capState = Get-ReviewerRegressionCapState -StateLines $stateLines
 $sensitiveTouchpoints = @(Get-SensitiveTouchpoints -ProjectRoot $projectRoot -ChangedFiles $changedFiles -Patterns $reviewerConfig.sensitive_data_patterns)
 $diagramEvidence = Get-DiagramEvidence -ProjectRoot $projectRoot -ChangedFiles $changedFiles -ReviewerConfig $reviewerConfig
 $gapConcerns = @(Get-ActiveGapLedgerConcerns -ReviewLines $reviewLines)
@@ -2271,6 +2365,11 @@ $summaryObject = [pscustomobject]@{
     CoverageSignal          = $coverageSignal
     Escalations             = $escalationCount
     RoutingFallbacks        = $routingFallbackCount
+    CapActive               = $capState.CapActive
+    CapChainLength          = $capState.ChainLength
+    CapThreshold            = $capState.CapThreshold
+    CapLockedOutAgents      = if ($capState.LockedOutAgents.Count -gt 0) { $capState.LockedOutAgents -join '; ' } else { '(none)' }
+    CapNextOwner            = if ($capState.NextOwnerPath) { $capState.NextOwnerPath } else { '(none)' }
     DriftTotal              = $driftSummary.Total
     DriftResolved           = $driftSummary.Resolved
     IndexRelativePath       = $indexRelativePath
@@ -2279,7 +2378,11 @@ $summaryObject = [pscustomobject]@{
 }
 
 $summaryLines = Format-ReviewerSummaryLines -Summary $summaryObject
-$digestLine = ('SPECREW_REVIEW schema=v1 iter={0} feature={1} verdict={2} tasks={3}/{4} reqs={5} files={6} new_deps={7} vuln={8} cov={9} escalations={10} drift={11}/{12} index={13}' -f $iterationLabel, $featureId, $overallVerdict, $passCount, $taskTotal, $reviewTasks.Count, $changedFiles.Count, $dependencyAnalysis.NewToProject.Count, $vulnerabilityScan.Count, $coverageSignal, $escalationCount, $driftSummary.Total, $driftSummary.Resolved, $indexRelativePath)
+$digestLine = if ($capState.CapActive) {
+    ('SPECREW_REVIEW schema=v1 iter={0} feature={1} verdict={2} tasks={3}/{4} reqs={5} files={6} new_deps={7} vuln={8} cov={9} escalations={10} routing_fallbacks={11} cap=active cap_chain={12}/{13} drift={14}/{15} index={16}' -f $iterationLabel, $featureId, $overallVerdict, $passCount, $taskTotal, $reviewTasks.Count, $changedFiles.Count, $dependencyAnalysis.NewToProject.Count, $vulnerabilityScan.Count, $coverageSignal, $escalationCount, $routingFallbackCount, $capState.ChainLength, $capState.CapThreshold, $driftSummary.Total, $driftSummary.Resolved, $indexRelativePath)
+} else {
+    ('SPECREW_REVIEW schema=v1 iter={0} feature={1} verdict={2} tasks={3}/{4} reqs={5} files={6} new_deps={7} vuln={8} cov={9} escalations={10} drift={11}/{12} index={13}' -f $iterationLabel, $featureId, $overallVerdict, $passCount, $taskTotal, $reviewTasks.Count, $changedFiles.Count, $dependencyAnalysis.NewToProject.Count, $vulnerabilityScan.Count, $coverageSignal, $escalationCount, $driftSummary.Total, $driftSummary.Resolved, $indexRelativePath)
+}
 $triageHints = Get-ReviewerGapHints -ReviewLines $reviewLines -GapConcerns $gapConcerns -Hotspots $hotspots.ToArray() -UnknownLicenses $dependencyAnalysis.UnknownLicenses -VulnerabilityScan $vulnerabilityScan -CoverageSignal $coverageSignal -Escalations $escalationCount -RoutingFallbacks $routingFallbackCount -DriftSummary $driftSummary
 $qualityEvidenceRef = Get-RepoRelativePath -ProjectRoot $projectRoot -Path $qualityEvidencePath
 $mechanicalFindingsRef = Get-RepoRelativePath -ProjectRoot $projectRoot -Path $mechanicalFindingsPath
@@ -2348,9 +2451,10 @@ $(($summaryLines | ForEach-Object { "- $_" }) -join [Environment]::NewLine)
 3. [dependency-report.md](dependency-report.md)
 4. [coverage-evidence.md](coverage-evidence.md)
 5. $(if ($securityContext.Enabled) { '[security-surface.md](security-surface.md)' } else { 'security-surface.md omitted: ' + $securitySurfaceReason })
-6. [review-diagrams.md](review-diagrams.md)
-7. [$currentArchitectureFromIterationRelative]($currentArchitectureFromIterationRelative)
-8. $(if ($implementationBriefingPath) { '[' + (Split-Path -Leaf $implementationBriefingPath) + '](' + (Split-Path -Leaf $implementationBriefingPath) + ')' } else { 'Implementation briefing unavailable for this iteration' })
+6. [dashboard.md](dashboard.md)
+7. [review-diagrams.md](review-diagrams.md)
+8. [$currentArchitectureFromIterationRelative]($currentArchitectureFromIterationRelative)
+9. $(if ($implementationBriefingPath) { '[' + (Split-Path -Leaf $implementationBriefingPath) + '](' + (Split-Path -Leaf $implementationBriefingPath) + ')' } else { 'Implementation briefing unavailable for this iteration' })
 
 ## Artifact Links
 
@@ -2359,6 +2463,7 @@ $(($summaryLines | ForEach-Object { "- $_" }) -join [Environment]::NewLine)
 - [dependency-report.md](dependency-report.md)
 - [coverage-evidence.md](coverage-evidence.md)
 - $(if ($securityContext.Enabled) { '[security-surface.md](security-surface.md)' } else { 'security-surface.md omitted: ' + $securitySurfaceReason })
+- [dashboard.md](dashboard.md)
 - [review-diagrams.md](review-diagrams.md)
 - [$currentArchitectureFromIterationRelative]($currentArchitectureFromIterationRelative) *(mutable current view)*
 - $(if ($implementationBriefingPath) { '[' + (Split-Path -Leaf $implementationBriefingPath) + '](' + (Split-Path -Leaf $implementationBriefingPath) + ')' } else { 'Implementation briefing unavailable' })
@@ -2408,6 +2513,14 @@ if (-not $SummaryOnly) {
     }
     if ($securityContext.Enabled) {
         Write-ScaffoldFile -TargetPath $securitySurfacePath -Content $securitySurfaceContent -Actions $actions
+    }
+    try {
+        $dashboardContent = Get-IterationDashboardArtifactContent -ProjectRoot $projectRoot -FeatureId $featureId -IterationNumber $iterationLabel
+        Write-MissingScaffoldFile -TargetPath $dashboardPath -Content $dashboardContent -Actions $actions
+    }
+    catch {
+        Write-Host ("WARN [dashboard] Unable to generate iteration dashboard snapshot: {0}" -f $_.Exception.Message) -ForegroundColor Yellow
+        Add-ScaffoldAction -Actions $actions -Action 'warning' -Path $dashboardPath
     }
     Write-ScaffoldFile -TargetPath $reviewerIndexPath -Content $reviewerIndexContent -Actions $actions
     Write-ScaffoldFile -TargetPath $reviewDiagramsPath -Content $reviewDiagramsContent -Actions $actions

@@ -12,14 +12,15 @@ description: "Task list template for feature implementation"
 
 **Organization**: Tasks are grouped by user story to enable independent implementation and testing of each story.
 
-## Format: `[ID] [P?] [Story] [Owner] [Capacity] Description`
+## Format: `- [ ] T### [P?] [US#?] [assigned_to: ...] [effort: ...] Description with exact file path(s) or action (Trace: ...)`
 
 - **[P]**: Can run in parallel (different files, no dependencies)
-- **[Story]**: Which user story this task belongs to (e.g., US1, US2, US3)
-- **[Owner]**: Responsible role or team member
-- **[Capacity]**: Planned effort unit (points, token budget, etc.)
+- **[US#]**: Include when work belongs to a user story (`US1`, `US2`, `US3`)
+- **[assigned_to]**: Responsible steward / owner role
+- **[effort]**: Relative effort estimate (`S`, `M`, `L`) or the repo's current bounded capacity unit
 - Include exact file paths in descriptions
-- Include traceability reference to spec/plan artifact in descriptions
+- Include explicit traceability metadata in every task description
+- Group tasks into numbered phases with delivery goals, independent test criteria, dependency notes, and a verification-command footer
 
 ## Path Conventions
 

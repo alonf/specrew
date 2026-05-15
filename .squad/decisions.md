@@ -2307,6 +2307,78 @@ Accept the review boundary for feature `015`, public-readiness pass, iteration `
 - Rule `15`, feature closeout version management, is now explicit across the coordinator surfaces: config bump, changelog entry, README/versioning refresh, release-tag creation, validator rerun, and a keep-open defer path.
 - The new public-readiness validator lane stayed additive under independent review: clean fixture pass without warnings, drift fixture pass with the expected warnings, pre-Feature `015` iteration pass unchanged, repo-wide validator green, and local plus `origin` tag anchors verified as `v0.13.0 -> 21d9e7f` and `v0.14.0 -> 3ff32d4`.
 
+---
+
+# Retro Facilitator Decision: Feature 017 Iteration 001 Retrospective
+
+**Date**: 2026-05-16  
+**By**: Retro Facilitator (delegated agent)  
+**Type**: retro-boundary  
+**Commit Reference**: TBD (to be recorded at commit time)
+
+## Authorization
+
+Explicit human authorization provided by Alon Fliess (user input): "The user has explicitly authorized exactly one boundary advance: from review-verdict-signoff to retro-boundary for Feature 017 Iteration 001."
+
+## Decision
+
+Facilitate and complete the retrospective for Feature 017 (Velocity Dashboard), Iteration 001, advancing from review-verdict-signoff to retro-boundary.
+
+## What Was Completed
+
+1. **Retro artifact created**: `specs/017-velocity-dashboard/iterations/001/retro.md`
+   - Schema: v1, four-section format (Eight Substantive Lessons, Summary of New Corpus-Row Candidates, Updated Squad Decisions, Updated Identity/Now State)
+   - Eight substantive lessons documented with sources, implications, and evidence links:
+     1. Estimation variance: 11 SP planned → 17-19 SP actual (clarify gap + external review)
+     2. Mid-implementation reboot resilience: uncommitted work survived, stale session state misdirected parallel session
+     3. External pre-implementation review pattern: 16 findings across 3 severity tiers
+     4. Architectural pillar features surfaced: Lifecycle Branch Reconciliation + Session-State Durability
+     5. Corpus-row self-enforcement: essence-vs-exhaustive principle now implicit team expectation
+     6. F-016 machinery validation: boundary discipline held across all 8 lifecycle boundaries
+     7. Iteration 002 carryover: FR-042..FR-046 + FR-019..FR-033 remain scope; ~16-18 SP total
+     8. Bundled multi-boundary authorization pattern: clarify→plan→tasks bundled under single authorization, but implementation/review/retro remain separate
+
+
+2. **Corpus-row candidates identified**: Three candidates proposed for `.specrew/quality/known-traps.md`:
+   - Bundled planning-phase boundary authorization (permissible variant of one-boundary-at-a-time rule)
+   - Essence-vs-exhaustive corpus row self-enforcement (positive observation; no rule change needed)
+   - Pre-implementation external review for specification integrity (coordination pattern)
+
+3. **Squad decisions updated**: This decision record captures the retrospective authorization and runtime evidence.
+
+---
+
+## 2026-05-16T00:00:00Z — Authorization: iteration-closeout
+
+- **Decision ID**: authorization-feature-017-iter-001-iteration-closeout
+- **Type**: authorization
+- **Boundary**: iteration-closeout
+- **Approving Human**: Alon Fliess
+- **Recorded At**: 2026-05-16T00:00:00Z
+- **Commit Reference**: (recorded by closeout boundary commit)
+- **Authorization Text**:
+   > Feature 017 Iteration 001 retrospective complete with 8 substantive lessons captured. Iteration-closeout is explicitly authorized. Advance from retro-boundary to iteration-closeout: create `iterations/001/state.md` with delivered SP metrics (~18 SP actual vs. 11 SP planned, +7 SP variance from external-review repair cycle), update `.squad/decisions.md` with this authorization entry, update `.squad/identity/now.md` to reflect Iteration 001 closed and Iteration 002 pending authorization, verify `iterations/002/deferrals.md`, and create the iteration-closeout boundary commit.
+   > Iteration 002 scope is fully specified in plan.md + tasks.md (FR-019..FR-033 plus FR-042..FR-046, ~16-18 SP). Next valid boundary: hardening-gate-and-implementation-auth for Iteration 002 (when explicitly authorized).
+
+4. **Identity/now state prepared**: Update pending (separate batch commit).
+
+## Why It Matters
+
+Feature 017 Iteration 001 completed a full lifecycle (specify → clarify → plan → tasks → implementation → review-boundary → review-verdict-signoff → retro-boundary) while surfacing two new pillar features (Session-State Durability, Branch Reconciliation) required for Phase 2 adoption. The retrospective documents lessons from a complex real-world feature with external review, repair cycles, and multi-tier findings.
+
+## Evidence
+
+- `specs/017-velocity-dashboard/iterations/001/retro.md` (this boundary artifact)
+- `specs/017-velocity-dashboard/iterations/001/review.md` (prior boundary)
+- `specs/017-velocity-dashboard/clarify-residual-findings.md` (16 findings, 3 tiers)
+- `C:\Dev\SpecrewDraft\session-state-durability.md` (pillar feature motivation)
+- `C:\Dev\SpecrewDraft\branch-reconciliation.md` (pillar feature motivation)
+- Repo validator runs confirm no governance regressions
+
+## Next Action
+
+Request explicit iteration-closeout authorization before the iteration-closeout boundary may proceed. Do NOT open iteration-closeout, feature-closeout, or any later boundary from this retro state alone.
+
 ## Evidence
 
 - `specs\015-public-readiness-pass\iterations\002\review.md`
@@ -3051,3 +3123,282 @@ All recommendations are documented with implementation owners and timelines.
 - **Authorization Text**:
   > I authorize feature-closeout for Feature 016 Substantive Interaction Model. Iteration 002 is closed and merged to feature branch. All hardening-gate concerns verified post-FR-008-repair, review verdict accepted, and retro complete with corpus capture and durability learnings. Authorized to proceed with Rule 15 version-management boundary commit (0.15.0 → 0.16.0), feature-closeout PR creation and merge to main, tag push, and final validator confirmation. Two chore commits (Feature 017, Feature 020) remain separately authorized.
 
+
+## 2026-05-15T09:35:00Z — Authorization: implementation-repair
+
+- **Decision ID**: authorization-feature-017-iter-001-implementation-repair
+- **Type**: authorization
+- **Boundary**: implementation-repair
+- **Approving Human**: Alon Fliess
+- **Recorded At**: 2026-05-15T09:35:00Z
+- **Commit Reference**: 9093f98
+- **Authorization Text**:
+  > Repair + spec expansion — Feature 017 Velocity Dashboard. Begin with Part 1 spec extensions so the FRs are recorded before implementation repairs run against them. Then update plan/tasks, repair implementation (R1-R10), verify with live dashboard + validator + existing tests, commit, update decisions and identity, push, and stop at review-boundary.
+  > Do not advance past review-boundary.
+
+---
+
+### 2026-05-15T12:58:32+03:00: Delegated lifecycle runtime evidence
+**By:** Squad (Coordinator)
+**Role / Work Item:** Reviewer — Feature 017 Velocity Dashboard Iteration 001 review-verdict-signoff boundary
+**Requested Agent:** copilot (Reviewer family)
+**Actual Agent:** copilot
+**Model ID:** unknown (Copilot CLI host does not expose the active model identifier)
+**Status:** honored
+**Fallback Reason:** none
+
+---
+
+## 2026-05-15T09:58:32Z — Authorization: review-verdict-signoff
+
+- **Decision ID**: authorization-feature-017-iter-001-review-verdict-signoff
+- **Type**: authorization
+- **Boundary**: review-verdict-signoff
+- **Approving Human**: Alon Fliess
+- **Recorded At**: 2026-05-15T09:58:32Z
+- **Commit Reference**: pending (single-boundary-commit constraint; recorded by canonical boundary subject)
+- **Authorization Text**:
+  > The human reviewer has already ACCEPTED Feature 017 Iteration 1 and authorized exactly one boundary advance: from review-boundary to review-verdict-signoff.
+  > Record the accepted review-verdict-signoff boundary, stop at retro-boundary, and request explicit retro authorization next.
+
+---
+
+### 2026-05-16T18:30:00Z: Delegated lifecycle runtime evidence
+**By:** Squad (Coordinator)
+**Role / Work Item:** Reviewer — Feature 017 Velocity Dashboard Iteration 002 pre-implementation self-review and hardening-gate signoff surface
+**Requested Agent:** copilot (Reviewer family)
+**Actual Agent:** copilot
+**Model ID:** unknown (Copilot CLI host does not expose the active model identifier)
+**Status:** honored
+**Fallback Reason:** none
+
+---
+
+# Reviewer Decision: Feature 017 Iteration 002 Pre-Implementation Hardening Gate Sign-Off
+
+**Decision ID**: reviewer-feature-017-iter-002-hardening-gate-signoff
+**Feature**: 017 — Velocity Dashboard
+**Date**: 2026-05-16
+**Decision Maker**: Reviewer
+**Authority**: bounded reviewer self-review under the explicitly authorized implementation boundary for Iteration 002
+
+## Decision Summary
+
+Iteration 002's pre-implementation review is complete. No material blocker prevents implementation of FR-019..FR-033 plus FR-042..FR-046, and the hardening gate is signed off as `ready` with explicit monitoring obligations for lifecycle safety, classifier safety, grandfathering, NFR-001 budget preservation, documentation/runtime alignment, Iteration 001 compatibility, FR-032 replay coverage, proof-of-concept uplift, and essence-first handoff discipline.
+
+## Evidence Reviewed
+
+- `specs/017-velocity-dashboard/spec.md`
+- `specs/017-velocity-dashboard/plan.md`
+- `specs/017-velocity-dashboard/tasks.md`
+- `specs/017-velocity-dashboard/iterations/002/deferrals.md`
+- `specs/017-velocity-dashboard/iterations/001/retro.md`
+- `specs/017-velocity-dashboard/iterations/001/state.md`
+- `specs/017-velocity-dashboard/iterations/001/review.md`
+- `.specrew/quality/known-traps.md`
+- `specs/017-velocity-dashboard/iterations/002/pre-implementation-review.md`
+- `specs/017-velocity-dashboard/iterations/002/quality/hardening-gate.md`
+
+## Review Outcome
+
+- **Verdict**: ready
+- **Blocking issues**: none
+- **Required implementation posture**:
+  1. Automatic dashboard generation is required, but artifact absence must warn rather than block lifecycle progression.
+  2. FR-030 routing stays conservative; ambiguous “status” requests remain outside dashboard auto-routing.
+  3. FR-022 grandfathering is explicit: all pre-rollout iterations, including Feature 017 Iteration 001, remain valid without dashboard artifacts.
+  4. Iteration 002 must preserve the Iteration 001 renderer contract and re-measure NFR-001 on the green tree.
+  5. Documentation/help/review artifacts must stay aligned with implemented behavior and preserve the essence-vs-exhaustive corpus lesson.
+
+## Governance Validation Baseline
+
+- `validate-governance.ps1 -ProjectPath .` completed with exit code `0`
+- The committed pre-implementation rerun returned no WARN or FAIL lines
+- Earlier ad hoc dashboard warning themes (roadmap drift, missing `dashboard.md`, missing `closeout-dashboard.md`) are still recorded in the hardening gate as implementation concerns rather than erased from the review record
+
+---
+
+## 2026-05-16T18:30:00Z — Authorization: implementation
+
+- **Decision ID**: authorization-feature-017-iter-002-implementation
+- **Type**: authorization
+- **Boundary**: implementation
+- **Approving Human**: Alon Fliess
+- **Recorded At**: 2026-05-16T18:30:00Z
+- **Commit Reference**: 9b51630
+- **Authorization Text**:
+  > The user has authorized a bundled hardening-gate-and-implementation-auth boundary for Feature 017 Iteration 002.
+  > Advance from iteration-closeout to hardening-gate-and-implementation-auth. ONE boundary advance only. Stop at the next required human boundary (review-boundary) and request explicit authorization.
+  > Implementation scope includes FR-019 through FR-033 and FR-042 through FR-046, with the required hardening-gate concerns, pre-implementation self-review, and implementation proceeding after that boundary commit lands.
+  > If repair cycles emerge during Iteration 002 implementation, absorb them inside implementation work; stop at review-boundary and do not advance further without explicit human authorization.
+
+## 2026-05-16T18:30:00Z — Authorization: hardening-gate-signoff
+
+- **Decision ID**: authorization-feature-017-iter-002-hardening-gate-signoff
+- **Type**: authorization
+- **Boundary**: hardening-gate-signoff
+- **Approving Human**: Alon Fliess
+- **Recorded At**: 2026-05-16T18:30:00Z
+- **Commit Reference**: 9b51630
+- **Authorization Text**:
+  > The user has authorized a bundled hardening-gate-and-implementation-auth boundary for Feature 017 Iteration 002.
+  > Advance from iteration-closeout to hardening-gate-and-implementation-auth. ONE boundary advance only. Stop at the next required human boundary (review-boundary) and request explicit authorization.
+  > Implementation scope includes FR-019 through FR-033 and FR-042 through FR-046, with the required hardening-gate concerns, pre-implementation self-review, and implementation proceeding after that boundary commit lands.
+  > If repair cycles emerge during Iteration 002 implementation, absorb them inside implementation work; stop at review-boundary and do not advance further without explicit human authorization.
+
+---
+
+### 2026-05-15T11:36:20Z: Delegated lifecycle runtime evidence
+**By:** Squad (Coordinator)  
+**Role / Work Item:** Implementer — Feature 017 Velocity Dashboard Iteration 002 implementation boundary  
+**Requested Agent:** copilot  
+**Actual Agent:** copilot  
+**Model ID:** unknown (Copilot CLI host does not expose the active model identifier)  
+**Status:** honored  
+**Fallback Reason:** none
+
+---
+
+# Implementer Boundary Note: Feature 017 Iteration 002 Implementation
+
+**Date**: 2026-05-15  
+**Scope**: FR-019..FR-033 plus FR-042..FR-046
+
+## Summary
+
+Completed the Iteration 002 implementation slice: closeout dashboard scaffolds now warn instead of blocking, validator grandfathering exempts pre-rollout iterations (including Feature 017 Iteration 001), onboarding messaging points to roadmap docs, routing guidance adds explicit positive/negative examples, and documentation + fixtures now cover closeout snapshots, immutability, and validator warning behavior.
+
+## Evidence
+
+- `scripts\internal\dashboard-renderer.ps1`
+- `extensions\specrew-speckit\scripts\scaffold-reviewer-artifacts.ps1`
+- `extensions\specrew-speckit\scripts\scaffold-feature-closeout-dashboard.ps1`
+- `extensions\specrew-speckit\scripts\validate-governance.ps1`
+- `tests\integration\feature-017-dashboard-core.ps1`
+
+---
+
+## 2026-05-16T20:10:00Z — Authorization: iteration-closeout
+
+- **Decision ID**: authorization-feature-017-iter-002-iteration-closeout
+- **Type**: authorization
+- **Boundary**: iteration-closeout
+- **Approving Human**: Alon Fliess
+- **Recorded At**: 2026-05-16T20:10:00Z
+- **Commit Reference**: 17
+- **Authorization Text**:
+  > The human has authorized exactly one boundary advance: retro-boundary -> iteration-closeout for Feature 017 Iteration 002.
+  > Investigate planned-story-point parsing, ETA label duplication, and shipped-label drift; repair R-IC-1 through R-IC-3, rerun specrew where, validator, and tests, update closeout bookkeeping artifacts, and stop at feature-closeout pending explicit authorization.
+
+## 2026-05-16T19:05:00Z — Authorization: review-verdict-signoff
+
+- **Decision ID**: authorization-feature-017-iter-002-review-verdict-signoff
+- **Type**: authorization
+- **Boundary**: review-verdict-signoff
+- **Approving Human**: Alon Fliess
+- **Recorded At**: 2026-05-16T19:05:00Z
+- **Commit Reference**: 6590e93
+- **Authorization Text**:
+  > The human has ACCEPTED review verdict for Feature 017 Iteration 002 WITH TWO REPAIR ITEMS and authorized exactly one boundary advance: review-boundary -> review-verdict-signoff.
+  > Apply R-V1 and R-V2 in `scripts\internal\dashboard-renderer.ps1`, re-run specrew where, validator, and tests, update review/verdict artifacts, and stop at retro-boundary.
+
+## 2026-05-15T13:30:59Z — Authorization: retro-boundary
+
+- **Decision ID**: authorization-feature-017-iter-002-retro-boundary
+- **Type**: authorization
+- **Boundary**: retro-boundary
+- **Approving Human**: Alon Fliess
+- **Recorded At**: 2026-05-15T13:30:59Z
+- **Commit Reference**: pending (single retro-boundary commit to be recorded by canonical subject)
+- **Authorization Text**:
+  > The human has authorized exactly one boundary advance: review-verdict-signoff -> retro-boundary for Feature 017 Iteration 002.
+  > Absorb pre-retro repairs R-Retro-1 and R-Retro-2, create the missing Iteration 002 retrospective/state/plan artifacts, update known traps and runtime state, verify with `specrew where` and the governance validator, create exactly one retro-boundary commit, push it, and stop at iteration-closeout pending.
+
+---
+
+### 2026-05-15T13:30:59Z: Delegated lifecycle runtime evidence
+**By:** Squad (Coordinator)
+**Role / Work Item:** Retro Facilitator — Feature 017 Velocity Dashboard Iteration 002 retro-boundary
+**Requested Agent:** copilot
+**Actual Agent:** copilot
+**Model ID:** unknown (Copilot CLI host does not expose the active model identifier)
+**Status:** honored
+**Fallback Reason:** none
+
+---
+
+# Retro Facilitator Decision: Feature 017 Iteration 002 Retrospective
+
+**Date**: 2026-05-15
+**Type**: retro-boundary
+**Scope**: Feature 017 Iteration 002 review-verdict-signoff → retro-boundary
+
+## Summary
+
+Completed the Iteration 002 retro boundary and absorbed both pre-retro bookkeeping repairs.
+Iteration 001 story points are now stored as a clean numeric `18 SP` with the observed `17-19 SP`
+range preserved in notes, and Iteration 002 now has the missing `plan.md`, `state.md`, and
+`retro.md` artifacts required for truthful dashboard rendering and canonical iteration tracking.
+
+## Result
+
+- `specrew where` can now render Feature 017 Iteration 001 as `18 SP` instead of `0 SP`
+- Iteration 002 is now visible to dashboard aggregation because `iterations/002/state.md` exists
+- The retro captures the eight required substantive topics, including the four bug categories and
+  feature-closeout readiness posture
+- `.specrew/quality/known-traps.md` now records the form-correctness-vs-meaning-correctness pattern
+
+## Next Action
+
+Do not advance further from this boundary. The next valid action is explicit iteration-closeout
+authorization for Feature 017 Iteration 002.
+
+## 2026-05-15T15:26:30Z — Authorization: feature-closeout
+
+- **Decision ID**: authorization-feature-017-feature-closeout
+- **Type**: authorization
+- **Boundary**: feature-closeout
+- **Approving Human**: Alon Fliess
+- **Recorded At**: 2026-05-15T15:26:30Z
+- **Commit Reference**: 17e2a4c
+- **Authorization Text**:
+  > The human has authorized exactly one boundary advance: iteration-closeout -> feature-closeout for Feature 017 Velocity Dashboard.
+  > Apply R-FC-1 in `scripts\internal\dashboard-renderer.ps1`, rerun `specrew where`, generate the feature closeout dashboard snapshot, execute Rule 15 version-management updates, open and merge the feature-closeout PR, tag v0.17.0, verify on main, and stop.
+
+# Feature 017 Closeout Execution: Rule 15 Version Management
+
+**Date**: 2026-05-15  
+**By**: Implementer  
+**Authority**: Feature 017 feature-closeout authorization (Rule 15)  
+**Decision Type**: feature-closeout-version-management
+
+## Decision
+
+Feature 017 (velocity-dashboard) is closed and shipped to main with Rule 15 version-management completed.
+
+### Actions Completed
+
+1. **Truthfulness repairs and artifacts**
+   - R-FC-1 ETA classifier fix applied in `scripts\internal\dashboard-renderer.ps1`
+   - `.specrew/quality/known-traps.md` reinforced for form-correctness vs meaning-correctness
+   - `specrew where` rerun to confirm non-shipped ETA labels
+   - `specs/017-velocity-dashboard/closeout-dashboard.md` captured as the feature-closeout snapshot
+
+2. **Version management (Rule 15 core)**
+   - `.specrew/config.yml`: version bumped to 0.17.0
+   - `CHANGELOG.md`: Feature 017 entry added for v0.17.0
+   - `README.md`: version badge, baseline, and recent tag window refreshed
+
+3. **Release integration**
+   - Feature-closeout boundary commit created and pushed
+   - PR created and merged to main via merge commit (no squash/rebase)
+   - Annotated tag v0.17.0 created at the merge commit and pushed
+
+4. **Post-merge verification**
+   - `validate-governance.ps1` rerun on main and passed
+   - `specrew where` on main renders truthful ETA labels
+   - Closeout dashboard artifact present on main
+
+## Impact
+
+Feature 017 (Velocity Dashboard) is now closed and shipped. Version 0.17.0 is the active baseline, and no feature is currently open without explicit authorization.

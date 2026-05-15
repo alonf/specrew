@@ -1953,7 +1953,31 @@ function Write-ReviewerSummary {
     }
 }
 
-$resolvedIterationDirectory = [System.IO.Path]::GetFullPath($IterationDirectory)
+function Get-DashboardRendererScriptPath {
+    param([Parameter(Mandatory = $true)][string]$ProjectRoot)
+
+    return Join-Path $ProjectRoot 'scripts\internal\dashboard-renderer.ps1'
+}
+
+function Get-IterationDashboardArtifactContent {
+    param(
+        [Parameter(Mandatory = $true)][string]$ProjectRoot,
+        [Parameter(Mandatory = $true)][string]$FeatureId,
+        [Parameter(Mandatory = $true)][string]$IterationNumber
+    )
+
+    $rendererPath = Get-DashboardRendererScriptPath -ProjectRoot $ProjectRoot
+    if (-not (Test-Path -LiteralPath $rendererPath -PathType Leaf)) {
+        throw "Velocity dashboard renderer '$rendererPath' is missing."
+    }
+
+    . $rendererPath
+    $snapshot = Get-SpecrewDashboardSnapshot -ProjectRoot $ProjectRoot -FeatureId $FeatureId -IterationNumber $IterationNumber -Compact
+    $lines = ConvertTo-SpecrewCompactDashboardLines -Snapshot $snapshot
+    return ConvertTo-SpecrewDashboardArtifactContent -Snapshot $snapshot -Lines $lines -CaptureKind 'iteration-closeout' -HistoricalNotice $null
+}
+
+$resolvedIterationDirectory = Resolve-ProjectPath -Path $IterationDirectory
 $planPath = Join-Path $resolvedIterationDirectory 'plan.md'
 $reviewPath = Join-Path $resolvedIterationDirectory 'review.md'
 $statePath = Join-Path $resolvedIterationDirectory 'state.md'
@@ -1965,6 +1989,7 @@ $qualityDirectory = Join-Path $resolvedIterationDirectory 'quality'
 $qualityEvidencePath = Join-Path $qualityDirectory 'quality-evidence.md'
 $mechanicalFindingsPath = Join-Path $qualityDirectory 'mechanical-findings.json'
 $securitySurfacePath = Join-Path $resolvedIterationDirectory 'security-surface.md'
+$dashboardPath = Join-Path $resolvedIterationDirectory 'dashboard.md'
 $reviewerIndexPath = Join-Path $resolvedIterationDirectory 'reviewer-index.md'
 $reviewDiagramsPath = Join-Path $resolvedIterationDirectory 'review-diagrams.md'
 $actions = [System.Collections.ArrayList]::new()
@@ -2426,9 +2451,10 @@ $(($summaryLines | ForEach-Object { "- $_" }) -join [Environment]::NewLine)
 3. [dependency-report.md](dependency-report.md)
 4. [coverage-evidence.md](coverage-evidence.md)
 5. $(if ($securityContext.Enabled) { '[security-surface.md](security-surface.md)' } else { 'security-surface.md omitted: ' + $securitySurfaceReason })
-6. [review-diagrams.md](review-diagrams.md)
-7. [$currentArchitectureFromIterationRelative]($currentArchitectureFromIterationRelative)
-8. $(if ($implementationBriefingPath) { '[' + (Split-Path -Leaf $implementationBriefingPath) + '](' + (Split-Path -Leaf $implementationBriefingPath) + ')' } else { 'Implementation briefing unavailable for this iteration' })
+6. [dashboard.md](dashboard.md)
+7. [review-diagrams.md](review-diagrams.md)
+8. [$currentArchitectureFromIterationRelative]($currentArchitectureFromIterationRelative)
+9. $(if ($implementationBriefingPath) { '[' + (Split-Path -Leaf $implementationBriefingPath) + '](' + (Split-Path -Leaf $implementationBriefingPath) + ')' } else { 'Implementation briefing unavailable for this iteration' })
 
 ## Artifact Links
 
@@ -2437,6 +2463,7 @@ $(($summaryLines | ForEach-Object { "- $_" }) -join [Environment]::NewLine)
 - [dependency-report.md](dependency-report.md)
 - [coverage-evidence.md](coverage-evidence.md)
 - $(if ($securityContext.Enabled) { '[security-surface.md](security-surface.md)' } else { 'security-surface.md omitted: ' + $securitySurfaceReason })
+- [dashboard.md](dashboard.md)
 - [review-diagrams.md](review-diagrams.md)
 - [$currentArchitectureFromIterationRelative]($currentArchitectureFromIterationRelative) *(mutable current view)*
 - $(if ($implementationBriefingPath) { '[' + (Split-Path -Leaf $implementationBriefingPath) + '](' + (Split-Path -Leaf $implementationBriefingPath) + ')' } else { 'Implementation briefing unavailable' })
@@ -2486,6 +2513,14 @@ if (-not $SummaryOnly) {
     }
     if ($securityContext.Enabled) {
         Write-ScaffoldFile -TargetPath $securitySurfacePath -Content $securitySurfaceContent -Actions $actions
+    }
+    try {
+        $dashboardContent = Get-IterationDashboardArtifactContent -ProjectRoot $projectRoot -FeatureId $featureId -IterationNumber $iterationLabel
+        Write-MissingScaffoldFile -TargetPath $dashboardPath -Content $dashboardContent -Actions $actions
+    }
+    catch {
+        Write-Host ("WARN [dashboard] Unable to generate iteration dashboard snapshot: {0}" -f $_.Exception.Message) -ForegroundColor Yellow
+        Add-ScaffoldAction -Actions $actions -Action 'warning' -Path $dashboardPath
     }
     Write-ScaffoldFile -TargetPath $reviewerIndexPath -Content $reviewerIndexContent -Actions $actions
     Write-ScaffoldFile -TargetPath $reviewDiagramsPath -Content $reviewDiagramsContent -Actions $actions

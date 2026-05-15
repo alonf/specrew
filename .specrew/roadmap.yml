@@ -1,0 +1,78 @@
+# Feature 017 sample roadmap for the velocity dashboard.
+# Shipped progress is derived from canonical iteration history, not maintained here.
+phases:
+  - id: phase-1-foundations
+    name: "Phase 1: Foundations"
+    description: "Bootstrap, governance hardening, and quality-bar groundwork."
+    planned_effort_sp: 48
+    status: shipped
+    feature_refs:
+      - 009-project-path-resolution
+      - 011-specrew-start-conditional-pause
+      - 013-validator-hardening
+
+  - id: phase-2-experience
+    name: "Phase 2: Developer Experience"
+    description: "Interaction model, visibility, and public-readiness follow-through."
+    planned_effort_sp: 68
+    status: in-progress
+    feature_refs:
+      - 015-public-readiness-pass
+      - 016-substantive-interaction-model
+      - 017-velocity-dashboard
+
+  - id: phase-3-visibility
+    name: "Phase 3: Visibility & Insights"
+    description: "Placeholder for follow-on visibility and lifecycle polish work."
+    planned_effort_sp: 0
+    status: queued
+    feature_refs:
+      # TODO: add feature refs when Phase 3 scope is defined
+
+  - id: phase-4-governance
+    name: "Phase 4: Governance Scaling"
+    description: "Placeholder for scaling governance automation and validation."
+    planned_effort_sp: 0
+    status: queued
+    feature_refs:
+      # TODO: add feature refs when Phase 4 scope is defined
+
+  - id: phase-5-multi-developer
+    name: "Phase 5: Multi-Developer"
+    description: "Placeholder for multi-developer coordination and reconciliation."
+    planned_effort_sp: 0
+    status: queued
+    feature_refs:
+      # TODO: add feature refs when Phase 5 scope is defined
+
+  - id: phase-6-distribution
+    name: "Phase 6: Distribution"
+    description: "Placeholder for packaging, installation, and distribution work."
+    planned_effort_sp: 0
+    status: queued
+    feature_refs:
+      # TODO: add feature refs when Phase 6 scope is defined
+
+  - id: phase-7-reliability
+    name: "Phase 7: Reliability"
+    description: "Placeholder for operational resilience and reliability upgrades."
+    planned_effort_sp: 0
+    status: queued
+    feature_refs:
+      # TODO: add feature refs when Phase 7 scope is defined
+
+  - id: phase-8-ecosystem
+    name: "Phase 8: Ecosystem"
+    description: "Placeholder for ecosystem integrations and community surfaces."
+    planned_effort_sp: 0
+    status: queued
+    feature_refs:
+      # TODO: add feature refs when Phase 8 scope is defined
+
+  - id: phase-9-ga
+    name: "Phase 9: Public GA"
+    description: "Placeholder for GA readiness, support, and public distribution."
+    planned_effort_sp: 0
+    status: queued
+    feature_refs:
+      # TODO: add feature refs when Phase 9 scope is defined

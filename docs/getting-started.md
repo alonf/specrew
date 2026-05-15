@@ -182,6 +182,21 @@ pwsh -File C:\Dev\Specrew\scripts\specrew.ps1 start "Build a REST API for user m
 - `speckit.implement`
 - developer-facing implementation briefing plus no-gap review before closure
 
+### Checking status after startup
+
+Once a repo has feature and iteration artifacts, use the dashboard to answer
+"where are we right now?":
+
+```powershell
+pwsh -NoProfile -File C:\Dev\Specrew\scripts\specrew.ps1 where --no-color
+pwsh -NoProfile -File C:\Dev\Specrew\scripts\specrew.ps1 status --compact
+```
+
+For a sample output and section-by-section guide, see `docs/dashboard-guide.md`.
+
+Add `.specrew\roadmap.yml` when you want roadmap progress and remaining-effort
+projection to appear in the dashboard.
+
 The human developer should mainly answer only the unresolved questions Squad cannot safely answer from repo context or existing artifacts. If you start without a request, Squad should inspect current work, continue any in-progress feature, or ask the next intake question and wait for your answer before invoking `speckit.specify`. In a new brownfield repo, Squad should first mine existing code, manifests, docs, and recent git history to seed the starting spec and propose concrete specialist additions when the current team lacks obvious stack/domain expertise. Review and closure now also operate under a **no-gap policy**: if Specrew finds a known gap across spec, implementation, tests, docs, or observability, it should fix it in the current iteration or explicitly defer it with your approval and recorded evidence before claiming the run is complete.
 
 To reduce Copilot CLI blocking on tool prompts, Specrew launches Copilot from the target project directory, reuses the current terminal by default, and hands Copilot a compact bootstrap message that points it at `.specrew\last-start-prompt.md` and `.specrew\start-context.json` instead of pasting the full handoff prompt into the terminal. Intake-first runs stay out of autopilot until the request is grounded; once scope is grounded, Specrew can continue with `--allow-all` by default. Copilot may still ask you to trust the project directory on first launch. If you prefer Copilot's interactive approval prompts, use:

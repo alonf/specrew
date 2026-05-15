@@ -24,6 +24,7 @@ $iterationRoot = Join-Path -Path $specRoot -ChildPath 'iterations\001'
 $specPath = Join-Path -Path $specRoot -ChildPath 'spec.md'
 $configPath = Join-Path -Path $projectRoot -ChildPath '.specrew\iteration-config.yml'
 $planPath = Join-Path -Path $iterationRoot -ChildPath 'plan.md'
+$teamPath = Join-Path -Path $projectRoot -ChildPath '.squad\team.md'
 
 if (Test-Path -LiteralPath $scratchRoot) {
     Remove-Item -LiteralPath $scratchRoot -Recurse -Force
@@ -31,6 +32,7 @@ if (Test-Path -LiteralPath $scratchRoot) {
 
 $null = New-Item -Path $specRoot -ItemType Directory -Force
 $null = New-Item -Path (Split-Path -Parent $configPath) -ItemType Directory -Force
+$null = New-Item -Path (Split-Path -Parent $teamPath) -ItemType Directory -Force
 
 [System.IO.File]::WriteAllText($specPath, @'
 # Feature Spec: 001 Effort Sample
@@ -55,6 +57,20 @@ time_limit_hours: 40
 overcommit_threshold: 1.25
 calibration_enabled: "false"
 defer_strategy: "manual"
+'@, [System.Text.UTF8Encoding]::new($false))
+
+[System.IO.File]::WriteAllText($teamPath, @'
+# Squad Team
+
+## Specrew Baseline Roles
+
+| Role | Charter | Status |
+| ---- | ------- | ------ |
+| Spec Steward | `.squad/agents/spec-steward/charter.md` | baseline |
+| Planner | `.squad/agents/planner/charter.md` | baseline |
+| Implementer | `.squad/agents/implementer/charter.md` | baseline |
+| Reviewer | `.squad/agents/reviewer/charter.md` | baseline |
+| Retro Facilitator | `.squad/agents/retro-facilitator/charter.md` | baseline |
 '@, [System.Text.UTF8Encoding]::new($false))
 
 $scaffoldOutput = @(

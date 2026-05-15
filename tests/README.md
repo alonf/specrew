@@ -38,6 +38,7 @@ pwsh -NoProfile -File tests/integration/planning-effort-model.ps1
 pwsh -NoProfile -File tests/integration/planning-overcommit.ps1
 pwsh -NoProfile -File tests/integration/process-quality-report.ps1
 pwsh -NoProfile -File tests/integration/process-quality-scorer.ps1
+pwsh -NoProfile -File tests/integration/feature-017-dashboard-core.ps1
 ```
 
 ### CI workflow parity
@@ -54,6 +55,7 @@ pwsh -NoProfile -File tests/integration/planning-effort-model.ps1
 pwsh -NoProfile -File tests/integration/planning-overcommit.ps1
 pwsh -NoProfile -File tests/integration/process-quality-report.ps1
 pwsh -NoProfile -File tests/integration/process-quality-scorer.ps1
+pwsh -NoProfile -File tests/integration/feature-017-dashboard-core.ps1
 
 # Contract lane
 pwsh -NoProfile -File tests/integration/validation-contract-lane.ps1
@@ -100,3 +102,11 @@ The scheduled confidence workflow uploads these traces as build artifacts so liv
 - Integration scripts return `0` on pass.
 - Integration scripts return non-zero on validation failure.
 - Scripts may print `SKIP:` and return `0` when required external tooling is unavailable.
+
+### Dashboard-specific checks
+
+```powershell
+pwsh -NoProfile -File tests/integration/feature-017-dashboard-core.ps1
+pwsh -NoProfile -File tests/unit/feature-017-dashboard.tests.ps1
+Get-Content tests/manual/feature-017-dashboard-quickstart.md
+```
