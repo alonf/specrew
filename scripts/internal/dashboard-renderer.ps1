@@ -265,6 +265,132 @@ function Get-SpecrewGitBranch {
     return ([string]$branch[0]).Trim()
 }
 
+function Get-SpecrewBoundaryCatalog {
+    return @(
+        [pscustomobject]@{ Name = 'planning'; Pattern = '^Feature \d+.* iteration \d+ planning boundary(?:\s|$)' },
+        [pscustomobject]@{ Name = 'iteration-closeout'; Pattern = '^Feature \d+.* iteration \d+ closeout boundary(?:\s|$)' },
+        [pscustomobject]@{ Name = 'feature-closeout'; Pattern = '^Feature \d+.*: feature-closeout boundary(?:\s|$)' }
+    )
+}
+
+function Get-SpecrewBoundaryCommitMatch {
+    param([AllowNull()][string]$Subject)
+
+    if ([string]::IsNullOrWhiteSpace($Subject)) {
+        return $null
+    }
+
+    foreach ($boundary in Get-SpecrewBoundaryCatalog) {
+        if ($Subject -match $boundary.Pattern) {
+            $featureNumber = if ($Subject -match 'Feature\s+(?<feature>\d+)') { [int]$Matches['feature'] } else { $null }
+            $iterationNumber = if ($Subject -match 'iteration\s+(?<iteration>\d+)') { [int]$Matches['iteration'] } else { $null }
+            return [pscustomobject]@{
+                Boundary        = $boundary.Name
+                FeatureNumber   = $featureNumber
+                IterationNumber = $iterationNumber
+                Subject         = $Subject.Trim()
+            }
+        }
+    }
+
+    return $null
+}
+
+function Get-SpecrewGitBoundaryCommits {
+    param([Parameter(Mandatory = $true)][string]$ProjectRoot)
+
+    $gitCommand = Get-Command -Name 'git' -ErrorAction SilentlyContinue
+    if ($null -eq $gitCommand) {
+        return @()
+    }
+
+    $rawLog = @(git -C $ProjectRoot --no-pager log --format='%H%x09%cI%x09%s' 2>$null)
+    if ($LASTEXITCODE -ne 0) {
+        return @()
+    }
+
+    $records = New-Object System.Collections.Generic.List[object]
+    foreach ($line in $rawLog) {
+        if ([string]::IsNullOrWhiteSpace($line)) {
+            continue
+        }
+
+        $parts = $line -split "`t", 3
+        if ($parts.Count -lt 3) {
+            continue
+        }
+
+        $boundaryMatch = Get-SpecrewBoundaryCommitMatch -Subject $parts[2]
+        if ($null -eq $boundaryMatch) {
+            continue
+        }
+
+        $committedAt = $null
+        try {
+            $committedAt = [DateTimeOffset]::Parse($parts[1]).UtcDateTime
+        }
+        catch {
+            continue
+        }
+
+        $records.Add([pscustomobject]@{
+                CommitHash      = $parts[0]
+                CommittedAt     = $committedAt
+                Boundary        = $boundaryMatch.Boundary
+                FeatureNumber   = $boundaryMatch.FeatureNumber
+                IterationNumber = $boundaryMatch.IterationNumber
+                Subject         = $boundaryMatch.Subject
+            }) | Out-Null
+    }
+
+    return $records.ToArray()
+}
+
+function Get-SpecrewBoundaryCommitTimestamp {
+    param(
+        [AllowEmptyCollection()][object[]]$BoundaryCommits,
+        [Parameter(Mandatory = $true)][string]$Boundary,
+        [AllowNull()][int]$FeatureNumber,
+        [AllowNull()][int]$IterationNumber,
+        [switch]$Latest
+    )
+
+    if ($BoundaryCommits.Count -eq 0 -or $null -eq $FeatureNumber) {
+        return $null
+    }
+
+    $matches = @(
+        $BoundaryCommits |
+            Where-Object {
+                $_.Boundary -eq $Boundary -and
+                $_.FeatureNumber -eq $FeatureNumber -and
+                ($null -eq $IterationNumber -or $_.IterationNumber -eq $IterationNumber)
+            }
+    )
+
+    if ($matches.Count -eq 0) {
+        return $null
+    }
+
+    $ordered = if ($Latest) { $matches | Sort-Object CommittedAt -Descending } else { $matches | Sort-Object CommittedAt }
+    return $ordered[0].CommittedAt
+}
+
+function Get-SpecrewCalendarDayDuration {
+    param(
+        [Parameter(Mandatory = $true)][datetime]$Start,
+        [Parameter(Mandatory = $true)][datetime]$End
+    )
+
+    $startDate = $Start.Date
+    $endDate = $End.Date
+    if ($endDate -lt $startDate) {
+        return 1
+    }
+
+    return [math]::Max(1, [int](($endDate - $startDate).TotalDays + 1))
+}
+
 function Get-SpecrewActiveFeatureDirectory {
     param([Parameter(Mandatory = $true)][string]$ProjectRoot)
 
@@ -360,11 +486,21 @@ function Get-SpecrewIterationRecord {
     param(
         [Parameter(Mandatory = $true)][string]$FeatureId,
         [Parameter(Mandatory = $true)][string]$FeatureTitle,
-        [Parameter(Mandatory = $true)][string]$IterationDirectory
+        [Parameter(Mandatory = $true)][string]$IterationDirectory,
+        [AllowEmptyCollection()][object[]]$BoundaryCommits
     )
 
     $iterationName = Split-Path -Leaf $IterationDirectory
     $iterationLabel = Format-SpecrewIterationIdentifier -FeatureRef $FeatureId -IterationRef $iterationName
+    $featureNumberValue = $null
+    $featureNumberText = Get-SpecrewFeatureNumber -FeatureRef $FeatureId
+    if (-not [int]::TryParse([string]$featureNumberText, [ref]$featureNumberValue)) {
+        $featureNumberValue = $null
+    }
+    $iterationNumberValue = $null
+    if (-not [int]::TryParse([string]$iterationName, [ref]$iterationNumberValue)) {
+        $iterationNumberValue = $null
+    }
     $statePath = Join-Path $IterationDirectory 'state.md'
     $planPath = Join-Path $IterationDirectory 'plan.md'
     $reviewPath = Join-Path $IterationDirectory 'review.md'
@@ -401,6 +537,19 @@ function Get-SpecrewIterationRecord {
         $completedAt = ConvertTo-SpecrewNullableDate -Value (Get-SpecrewMarkdownMetadataValue -Lines $stateLines -Label 'Updated')
     }
 
+    $boundaryStartedAt = $null
+    $boundaryCompletedAt = $null
+    if ($BoundaryCommits.Count -gt 0 -and $null -ne $featureNumberValue -and $null -ne $iterationNumberValue) {
+        $boundaryStartedAt = Get-SpecrewBoundaryCommitTimestamp -BoundaryCommits $BoundaryCommits -Boundary 'planning' -FeatureNumber $featureNumberValue -IterationNumber $iterationNumberValue
+        $boundaryCompletedAt = Get-SpecrewBoundaryCommitTimestamp -BoundaryCommits $BoundaryCommits -Boundary 'iteration-closeout' -FeatureNumber $featureNumberValue -IterationNumber $iterationNumberValue -Latest
+    }
+    if ($null -ne $boundaryStartedAt) {
+        $startedAt = $boundaryStartedAt
+    }
+    if ($null -ne $boundaryCompletedAt) {
+        $completedAt = $boundaryCompletedAt
+    }
+
     $isClosed = ($statePhase -match '(?i)closed|complete') -or ($iterationStatus -match '(?i)closed') -or ($reviewVerdict -match '(?i)accepted')
     $planned = Get-SpecrewPlannedStoryPoints -IterationDirectory $IterationDirectory
     $actual = if ($isClosed) { Get-SpecrewDeliveredStoryPoints -IterationDirectory $IterationDirectory } else { [decimal]0 }
@@ -408,7 +557,7 @@ function Get-SpecrewIterationRecord {
         $actual = $planned
     }
     $elapsedDays = if ($null -ne $startedAt -and $null -ne $completedAt) {
-        [math]::Max(1, [int][math]::Ceiling(($completedAt - $startedAt).TotalDays))
+        Get-SpecrewCalendarDayDuration -Start $startedAt -End $completedAt
     }
     else {
         1
@@ -438,8 +587,13 @@ function Get-SpecrewIterationRecord {
 function Get-SpecrewDerivedFeatureStatus {
     param(
         [AllowNull()][object]$ActiveIteration,
-        [AllowEmptyCollection()][object[]]$ClosedIterations
+        [AllowEmptyCollection()][object[]]$ClosedIterations,
+        [switch]$HasFeatureCloseout,
+        [switch]$IsMainBranch,
+        [switch]$IsActiveFeature
     )
+
+    $canShip = if ($IsActiveFeature) { $HasFeatureCloseout -and $IsMainBranch } else { $true }
 
     if ($null -ne $ActiveIteration) {
         $phase = [string]$ActiveIteration.state_phase
@@ -448,7 +602,7 @@ function Get-SpecrewDerivedFeatureStatus {
             switch -Regex ($normalizedPhase) {
                 'planning' { return 'Planning' }
                 'review|demo' { return 'In Review' }
-                'closed|complete' { return 'Shipped' }
+                'closed|complete' { return $(if ($canShip) { 'Shipped' } else { 'Iteration Complete' }) }
                 default { return 'In Progress' }
             }
         }
@@ -457,19 +611,26 @@ function Get-SpecrewDerivedFeatureStatus {
     }
 
     if ($ClosedIterations.Count -gt 0) {
-        return 'Shipped'
+        return $(if ($canShip) { 'Shipped' } else { 'Implementation Complete' })
     }
 
     return 'Planning'
 }
 
 function Get-SpecrewFeatureRecords {
-    param([Parameter(Mandatory = $true)][string]$ProjectRoot)
+    param(
+        [Parameter(Mandatory = $true)][string]$ProjectRoot,
+        [AllowNull()][string]$ActiveFeatureRef
+    )
 
     $specsPath = Join-Path $ProjectRoot 'specs'
     if (-not (Test-Path -LiteralPath $specsPath -PathType Container)) {
         return @()
     }
+
+    $boundaryCommits = @(Get-SpecrewGitBoundaryCommits -ProjectRoot $ProjectRoot)
+    $branchName = Get-SpecrewGitBranch -ProjectRoot $ProjectRoot
+    $isMainBranch = $branchName -in @('main', 'master')
 
     $features = New-Object System.Collections.Generic.List[object]
     foreach ($featureDirectory in Get-ChildItem -LiteralPath $specsPath -Directory | Sort-Object Name) {
@@ -497,7 +658,7 @@ function Get-SpecrewFeatureRecords {
                     ForEach-Object {
                         $iterationDirectoryPath = $_.FullName
                         try {
-                            Get-SpecrewIterationRecord -FeatureId $featureDirectory.Name -FeatureTitle $featureTitle -IterationDirectory $iterationDirectoryPath
+                            Get-SpecrewIterationRecord -FeatureId $featureDirectory.Name -FeatureTitle $featureTitle -IterationDirectory $iterationDirectoryPath -BoundaryCommits $boundaryCommits
                         }
                         catch {
                             Add-SpecrewDashboardWarning -Message ("Skipping iteration artifact '{0}' because it could not be parsed cleanly: {1}" -f $iterationDirectoryPath, $_.Exception.Message)
@@ -521,7 +682,19 @@ function Get-SpecrewFeatureRecords {
         }
         $remainingTotal = [math]::Max(0, $plannedTotal - $delivered)
         $activeIterationValue = if ($activeIteration.Count -gt 0) { $activeIteration[0] } else { $null }
-        $featureStatus = Get-SpecrewDerivedFeatureStatus -ActiveIteration $activeIterationValue -ClosedIterations $closedIterations
+        $featureNumberValue = $null
+        $featureNumberText = Get-SpecrewFeatureNumber -FeatureRef $featureDirectory.Name
+        if (-not [int]::TryParse([string]$featureNumberText, [ref]$featureNumberValue)) {
+            $featureNumberValue = $null
+        }
+        $hasFeatureCloseout = if ($null -ne $featureNumberValue) {
+            $null -ne (Get-SpecrewBoundaryCommitTimestamp -BoundaryCommits $boundaryCommits -Boundary 'feature-closeout' -FeatureNumber $featureNumberValue -Latest)
+        }
+        else {
+            $false
+        }
+        $isActiveFeature = -not [string]::IsNullOrWhiteSpace($ActiveFeatureRef) -and $featureDirectory.Name -eq $ActiveFeatureRef
+        $featureStatus = Get-SpecrewDerivedFeatureStatus -ActiveIteration $activeIterationValue -ClosedIterations $closedIterations -HasFeatureCloseout:$hasFeatureCloseout -IsMainBranch:$isMainBranch -IsActiveFeature:$isActiveFeature
         $features.Add([pscustomobject]@{
                 feature_ref             = $featureDirectory.Name
                 feature_title           = $featureTitle
@@ -893,12 +1066,15 @@ function Get-SpecrewDashboardSnapshot {
 
     $resolvedProjectRoot = (Resolve-Path -Path (Resolve-ProjectPath -Path $ProjectRoot)).Path
     Reset-SpecrewDashboardWarnings
-    $features = @(Get-SpecrewFeatureRecords -ProjectRoot $resolvedProjectRoot)
-    $activeFeatureDirectory = Get-SpecrewActiveFeatureDirectory -ProjectRoot $resolvedProjectRoot
-    $activeFeatureRef = if ($activeFeatureDirectory) { Split-Path -Leaf $activeFeatureDirectory } else { $null }
+    $activeFeatureRef = $null
     if (-not [string]::IsNullOrWhiteSpace($FeatureId)) {
         $activeFeatureRef = $FeatureId
     }
+    else {
+        $activeFeatureDirectory = Get-SpecrewActiveFeatureDirectory -ProjectRoot $resolvedProjectRoot
+        $activeFeatureRef = if ($activeFeatureDirectory) { Split-Path -Leaf $activeFeatureDirectory } else { $null }
+    }
+    $features = @(Get-SpecrewFeatureRecords -ProjectRoot $resolvedProjectRoot -ActiveFeatureRef $activeFeatureRef)
 
     $warnings = New-Object System.Collections.Generic.List[string]
     if ($Team) {

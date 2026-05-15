@@ -7,7 +7,7 @@
 **Requested Review Class**: `strongest-available`  
 **Effective Review Class**: `reviewer-self-review`  
 **Overall Verdict**: ready  
-**Approval Ref**: `.squad/decisions.md` (`authorization-feature-017-iter-002-implementation`)  
+**Approval Ref**: `specs/017-velocity-dashboard/iterations/002/review.md` (review-verdict-signoff accepted)  
 **Reviewed By**: Reviewer  
 **Reviewed At**: 2026-05-16  
 **Post-Implementation Verification**: pending-post-implementation  

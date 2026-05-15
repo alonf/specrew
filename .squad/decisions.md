@@ -3261,3 +3261,17 @@ Completed the Iteration 002 implementation slice: closeout dashboard scaffolds n
 - `extensions\specrew-speckit\scripts\scaffold-feature-closeout-dashboard.ps1`
 - `extensions\specrew-speckit\scripts\validate-governance.ps1`
 - `tests\integration\feature-017-dashboard-core.ps1`
+
+---
+
+## 2026-05-16T19:05:00Z — Authorization: review-verdict-signoff
+
+- **Decision ID**: authorization-feature-017-iter-002-review-verdict-signoff
+- **Type**: authorization
+- **Boundary**: review-verdict-signoff
+- **Approving Human**: Alon Fliess
+- **Recorded At**: 2026-05-16T19:05:00Z
+- **Commit Reference**: pending (single-boundary-commit constraint; recorded by canonical boundary subject)
+- **Authorization Text**:
+  > The human has ACCEPTED review verdict for Feature 017 Iteration 002 WITH TWO REPAIR ITEMS and authorized exactly one boundary advance: review-boundary -> review-verdict-signoff.
+  > Apply R-V1 and R-V2 in `scripts\internal\dashboard-renderer.ps1`, re-run specrew where, validator, and tests, update review/verdict artifacts, and stop at retro-boundary.

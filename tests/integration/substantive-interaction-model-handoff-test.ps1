@@ -20,6 +20,19 @@ $fixtureIteration = Join-Path $repoRoot 'tests\integration\fixtures\016-substant
 $existingPlanUri = 'file:///C:/Dev/Specrew/specs/016-substantive-interaction-model/iterations/001/plan.md'
 $existingGateUri = 'file:///C:/Dev/Specrew/specs/016-substantive-interaction-model/iterations/001/quality/hardening-gate.md'
 $missingUri = 'file:///C:/Dev/Specrew/specs/016-substantive-interaction-model/missing-artifact.md'
+$settingsPath = Join-Path $repoRoot '.specrew\config.yml'
+$barePathSeverity = 'soft-warning'
+if (Test-Path -LiteralPath $settingsPath -PathType Leaf) {
+    foreach ($line in Get-Content -LiteralPath $settingsPath -Encoding UTF8) {
+        if ($line -match '^\s{2}bare_path_boundary_handoff_severity:\s*"?(?<value>[^"]+)"?\s*$') {
+            $barePathSeverity = $Matches['value'].Trim()
+            break
+        }
+    }
+}
+$expectedStatus = if ($barePathSeverity -eq 'validation-fail') { 'status: fail' } else { 'status: warn' }
+$expectedExitCode = if ($barePathSeverity -eq 'validation-fail') { 1 } else { 0 }
+$expectedBarePathToken = if ($barePathSeverity -eq 'validation-fail') { 'validation-fail.bare-path-in-boundary-handoff' } else { 'soft-warning.bare-path-in-boundary-handoff' }
 
 foreach ($path in @($validatorScript, (Join-Path $fixtureIteration 'plan.md'), (Join-Path $fixtureIteration 'state.md'))) {
     if (-not (Test-Path -LiteralPath $path -PathType Leaf)) {
@@ -44,19 +57,19 @@ Reference: $missingUri
 $warnOutput = @(
     pwsh -NoProfile -ExecutionPolicy Bypass -File $validatorScript -ProjectPath $repoRoot -IterationPath $fixtureIteration -ResponseText $warnResponse 2>&1
 )
-if ($LASTEXITCODE -ne 0) {
-    Write-Fail 'validate-governance should stay advisory for thin/bare-path handoff findings.'
+if ($LASTEXITCODE -ne $expectedExitCode) {
+    Write-Fail ("validate-governance should return exit {0} for thin/bare-path handoff findings." -f $expectedExitCode)
     $warnOutput | ForEach-Object { Write-Host $_ }
     exit 1
 }
 
 $warnJoined = ($warnOutput | ForEach-Object { [string]$_ }) -join [Environment]::NewLine
 foreach ($expected in @(
-        'status: warn',
+        $expectedStatus,
         'soft-warning.thin-what-i-just-did',
         'soft-warning.unspecific-stop-boundary',
         'soft-warning.unactionable-user-request',
-        'soft-warning.bare-path-in-boundary-handoff',
+        $expectedBarePathToken,
         'soft-warning.broken-file-url-reference'
     )) {
     if ($warnJoined -notmatch [regex]::Escape($expected)) {
