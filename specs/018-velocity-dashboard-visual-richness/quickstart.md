@@ -65,6 +65,9 @@ Expected behavior:
 ```powershell
 pwsh -NoProfile -File .\tests\integration\feature-017-dashboard-core.ps1
 pwsh -NoProfile -File .\tests\unit\feature-017-dashboard.tests.ps1
+pwsh -NoProfile -File .\tests\integration\feature-018-rich-dashboard.ps1
+pwsh -NoProfile -File .\tests\unit\feature-018-dashboard.tests.ps1
+pwsh -NoProfile -File .\tests\integration\feature-018-render-budget.ps1
 pwsh -NoProfile -File .\extensions\specrew-speckit\scripts\validate-governance.ps1 -ProjectPath .
 pwsh -NoProfile -Command "if (Get-Command Invoke-ScriptAnalyzer -ErrorAction SilentlyContinue) { Invoke-ScriptAnalyzer -Path . -Recurse -IncludeDefaultRules }"
 ```

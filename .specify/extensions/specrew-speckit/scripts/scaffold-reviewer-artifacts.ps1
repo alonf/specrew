@@ -1972,7 +1972,16 @@ function Get-IterationDashboardArtifactContent {
     }
 
     . $rendererPath
-    $snapshot = Get-SpecrewDashboardSnapshot -ProjectRoot $ProjectRoot -FeatureId $FeatureId -IterationNumber $IterationNumber -Compact
+    $snapshotParameters = @{
+        ProjectRoot     = $ProjectRoot
+        FeatureId       = $FeatureId
+        IterationNumber = $IterationNumber
+        Compact         = $true
+    }
+    if ((Get-Command Get-SpecrewDashboardSnapshot -ErrorAction SilentlyContinue).Parameters.ContainsKey('CaptureKind')) {
+        $snapshotParameters.CaptureKind = 'iteration-closeout'
+    }
+    $snapshot = Get-SpecrewDashboardSnapshot @snapshotParameters
     $lines = ConvertTo-SpecrewCompactDashboardLines -Snapshot $snapshot
     return ConvertTo-SpecrewDashboardArtifactContent -Snapshot $snapshot -Lines $lines -CaptureKind 'iteration-closeout' -HistoricalNotice $null
 }

@@ -3,79 +3,69 @@
 **Schema**: v1
 **Feature**: 018 — Velocity Dashboard Visual Richness + PoC-Parity Restoration
 **Logging Date**: 2026-05-15
-**Monitoring Boundary**: planning-time assessment; execution-time findings should be added only after implementation begins
+**Monitoring Boundary**: execution-time assessment after completing T001-T030
 
-## Planning-Time Drift Assessment
+## Execution-Time Drift Assessment
 
-Iteration 001 scaffolding aligns to the approved feature bundle (`spec.md`, `plan.md`, `tasks.md`) and the
-reviewer inbox note at `.squad/decisions/inbox/reviewer-feature018-preimpl.md`. The pre-implementation
-artifact repair does not widen scope; it only makes the iteration boundary truthful for the upcoming
-before-implement gate.
+Iteration 001 completed inside the approved feature bundle (`spec.md`, `plan.md`, `tasks.md`) and preserved
+the reviewer watchpoints from the iteration hardening gate.
 
-**Planning-time drift status**: ✅ **ZERO DRIFT**
+**Execution-time drift status**: ✅ **ZERO DRIFT**
 
-No planning drift was introduced while creating the execution scaffold. The five approved pillars, three
-user stories, and explicit out-of-scope items remain unchanged.
+No scope-expanding drift was introduced. The implementation stayed inside the approved five pillars, added
+only the single Velocity sparkline, and preserved the named deferrals.
 
 ## Monitoring Areas for Execution
 
 ### 1. **Terminal Capability Decision Precedence**
-- **What to watch**: `--ASCII`, `NO_UNICODE`, redirected output, `LANG`, and Windows VT checks must resolve
-  in one deterministic order.
-- **Drift signal**: rich mode activates when an explicit fallback signal should win, or different entry
-  points choose different precedence.
-- **Owner**: CLI steward + UX steward
-- **Monitoring method**: T003-T005 implementation review plus T014/T021/T028 fixture replay.
+- **Outcome**: ✅ Verified
+- **Evidence**: renderer precedence now resolves `--ASCII`, `--no-color` / `NO_COLOR`, `NO_UNICODE`,
+  redirected output, `TERM=dumb`, UTF-8 capability, and Windows VT eligibility in one shared render-profile path.
+- **Resolution**: no drift; entry points stay aligned through shared option plumbing in `scripts/specrew.ps1`,
+  `scripts/specrew-where.ps1`, and `scripts/internal/dashboard-renderer.ps1`.
 
 ### 2. **Windows VT Fallback Truthfulness**
-- **What to watch**: Windows consoles without virtual-terminal support must keep the same meaning as rich
-  mode without ANSI dependence.
-- **Drift signal**: semantic emphasis or sparkline meaning disappears, or ASCII fallback becomes less
-  informative than the approved baseline.
-- **Owner**: UX steward
-- **Monitoring method**: T016-T019 fallback implementation review plus monochrome expected-output fixtures.
+- **Outcome**: ✅ Verified
+- **Evidence**: Feature 018 monochrome replay and unit coverage proved missing ANSI capability still preserves
+  the same semantics, markers, and bounded empty states.
+- **Resolution**: no drift; the fallback remains truthful and ASCII-safe.
 
 ### 3. **Render-Budget Stop-Ship Evidence**
-- **What to watch**: the richer dashboard still renders within the 1.5 second budget on the representative
-  16-feature repository.
-- **Drift signal**: performance evidence is missing, inconclusive, or exceeds the budget without explicit
-  deferral approval.
-- **Owner**: Reliability steward
-- **Monitoring method**: T024 budget harness and T028 replay lane.
+- **Outcome**: ✅ Verified
+- **Evidence**: the representative 16-feature harness passed, and live current-shell `specrew where --no-color`
+  measurements on the Specrew repo completed in 1043.86 ms, 1028.64 ms, and 1040.12 ms after one warmup run.
+- **Resolution**: no drift; NFR-001 stayed within the <= 1.5 second limit.
 
 ### 4. **ANSI Stripping with Unicode Preservation**
-- **What to watch**: stored dashboard artifacts remain ANSI-free while preserving readable Unicode glyphs.
-- **Drift signal**: snapshots lose Unicode meaning, keep ANSI escape codes, or diverge between live and
-  persisted output.
-- **Owner**: UX steward + Reliability steward
-- **Monitoring method**: T019/T020 implementation review, T022 validator compatibility tests, and T029 replay.
+- **Outcome**: ✅ Verified
+- **Evidence**: unit/integration coverage plus validator updates proved stored dashboard artifacts strip ANSI
+  escape sequences while preserving readable Unicode glyphs.
+- **Resolution**: no drift; persisted snapshots stay historically readable without terminal-control noise.
 
 ### 5. **Closeout Dashboard Artifact Rendering**
-- **What to watch**: iteration-closeout and feature-closeout scaffolds keep the same rendering and
-  immutability rules as live dashboard output.
-- **Drift signal**: closeout artifacts use different fallback logic, mutate historical files, or omit the
-  approved richer surfaces.
-- **Owner**: Reliability steward
-- **Monitoring method**: T020 scaffold updates plus T022/T029 replay.
+- **Outcome**: ✅ Verified
+- **Evidence**: closeout scaffold scripts now pass `CaptureKind` only when supported, preserving parity with
+  fixture-local older renderer copies while keeping artifact immutability rules intact.
+- **Resolution**: no drift; closeout rendering remains aligned with the live dashboard contract.
 
 ### 6. **Flag Surface and Documentation Alignment**
-- **What to watch**: help, README, dashboard guide, and manual quickstart all explain `--ASCII`,
-  `--RecentCount`, `--BarWidth`, eligibility rules, and snapshot behavior consistently.
-- **Drift signal**: docs promise controls or defaults the CLI does not actually expose.
-- **Owner**: Documentation steward + CLI steward
-- **Monitoring method**: T003 help review plus T026-T027 documentation verification.
+- **Outcome**: ✅ Verified
+- **Evidence**: help text, dashboard guide, README, manual quickstart, and feature quickstart all now describe
+  `--ASCII`, `--RecentCount`, `--BarWidth`, rich/fallback eligibility, and snapshot behavior consistently.
+- **Resolution**: no drift; the documented control surface matches shipped behavior.
 
-## Resolution Strategies (Reserved)
+## Resolution Strategies
 
-If drift is detected later during execution, use one of these explicit outcomes:
+No execution-time drift required escalation, but these explicit outcomes remain the approved playbook for any
+follow-on slice:
 
 - **spec-updated**: Update the spec or plan because the approved intent changed with human approval
 - **implementation-reverted**: Revert implementation to restore the approved scope
 - **deferred**: Record the drift as a named deferral to a later authorized slice
 - **human-decision**: Escalate to Alon when the implementation/spec mismatch cannot be resolved locally
 
-## Handoff to Implementation
+## Handoff to Review
 
-Execution should begin only after `/speckit.specrew-speckit.before-implement` confirms the artifact set.
-The first live monitoring checkpoint should happen immediately after T003-T005, because that is where most
-cross-cutting drift can first appear.
+Implementation is complete and no additional execution work is planned for Iteration 001. The next lifecycle
+handoff is the review boundary, where reviewers should confirm the green replay lane and the preserved
+deferrals.

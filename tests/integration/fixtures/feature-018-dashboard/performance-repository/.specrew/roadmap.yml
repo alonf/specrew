@@ -1,0 +1,23 @@
+phases:
+  - id: backlog
+    name: "Backlog"
+    description: "Closed history provides enough pace samples to exercise the render budget harness."
+    planned_effort_sp: 120
+    status: in-progress
+    feature_refs:
+      - 001-feature-001
+      - 002-feature-002
+      - 003-feature-003
+      - 004-feature-004
+      - 005-feature-005
+      - 006-feature-006
+      - 007-feature-007
+      - 008-feature-008
+      - 009-feature-009
+      - 010-feature-010
+      - 011-feature-011
+      - 012-feature-012
+      - 013-feature-013
+      - 014-feature-014
+      - 015-feature-015
+      - 016-feature-016

@@ -85,7 +85,14 @@ else {
     }
     else {
         try {
-            $snapshot = Get-SpecrewDashboardSnapshot -ProjectRoot $resolvedProjectPath -FeatureId $featureRef
+            $snapshotParameters = @{
+                ProjectRoot = $resolvedProjectPath
+                FeatureId   = $featureRef
+            }
+            if ((Get-Command Get-SpecrewDashboardSnapshot -ErrorAction SilentlyContinue).Parameters.ContainsKey('CaptureKind')) {
+                $snapshotParameters.CaptureKind = 'feature-closeout'
+            }
+            $snapshot = Get-SpecrewDashboardSnapshot @snapshotParameters
             $lines = ConvertTo-SpecrewDashboardLines -Snapshot $snapshot
             $content = ConvertTo-SpecrewDashboardArtifactContent -Snapshot $snapshot -Lines $lines -CaptureKind 'feature-closeout' -HistoricalNotice $null
             Write-Utf8FileAtomic -Path $targetPath -Content $content

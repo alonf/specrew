@@ -2,12 +2,12 @@
 
 **Schema**: v1
 **Spec**: [../../spec.md](../../spec.md)
-**Status**: planning
+**Status**: executing
 **Capacity**: 14.5/20 story_points
 **Started**: 2026-05-15
-**Completed**:
+**Completed**: 2026-05-15
 **Hardening-Gate Sign-Off**: human sign-off and implementation authorization were recorded in `.squad/decisions.md` on 2026-05-15; this iteration artifact now captures the exact concern set required before execution starts
-**Implementation Authorization**: bundled authorization exists for Iteration 001, but implementation remains paused until `/speckit.specrew-speckit.before-implement` passes on this iteration artifact set
+**Implementation Authorization**: bundled authorization was executed after `/speckit.specrew-speckit.before-implement` passed on 2026-05-15; the implementation package is now ready for the review boundary
 
 ## Scope Summary
 
@@ -29,12 +29,12 @@ feature in one bounded implementation pass while preserving the explicit out-of-
 
 | Task | Title | Requirement | Story | Effort | Owner | Owner File Globs | Status | Agent | Actual | Verdict |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| I1-01 | Scaffold quality and fixture roots | FR-016, FR-017, FR-018, TG-004 | Setup | 1.0 | Reliability steward, Test steward | `specs/018-velocity-dashboard-visual-richness/iterations/001/quality/**`, `tests/integration/fixtures/feature-018-dashboard/**` | planned | unassigned | — | — |
-| I1-02 | Lock shared CLI/rendering policy | FR-001, FR-004, FR-005, FR-008, FR-019 | Foundational | 1.5 | CLI steward, UX steward | `scripts/specrew.ps1`, `scripts/specrew-where.ps1`, `scripts/internal/dashboard-renderer.ps1` | planned | unassigned | — | — |
-| I1-03 | Deliver rich-capable dashboard rendering | FR-004, FR-006, FR-007, FR-008, FR-009, FR-011, FR-012, FR-013, FR-014, FR-016 | US1 | 4.0 | UX steward, Product steward, Roadmap steward, Test steward | `scripts/internal/dashboard-renderer.ps1`, `tests/unit/feature-018-dashboard.tests.ps1`, `tests/integration/feature-018-rich-dashboard.ps1`, `tests/integration/fixtures/feature-018-dashboard/rich-capable-*` | planned | unassigned | — | — |
-| I1-04 | Preserve fallback truth and snapshot safety | FR-001, FR-004, FR-005, FR-007, FR-008, FR-009, FR-010, FR-014, FR-017, TG-004 | US2 | 3.5 | UX steward, Product steward, Reliability steward, Test steward | `scripts/internal/dashboard-renderer.ps1`, `extensions/specrew-speckit/scripts/*.ps1`, `.specify/extensions/specrew-speckit/scripts/*.ps1`, `tests/integration/fixtures/feature-018-dashboard/monochrome-*` | planned | unassigned | — | — |
-| I1-05 | Prove regression safety, docs, and performance | FR-015, FR-016, FR-017, FR-018, FR-019, FR-020 | US3 | 3.0 | Reliability steward, Documentation steward, Test steward | `tests/unit/*.ps1`, `tests/integration/*.ps1`, `docs/dashboard-guide.md`, `README.md`, `tests/manual/feature-017-dashboard-quickstart.md`, `specs/018-velocity-dashboard-visual-richness/quickstart.md` | planned | unassigned | — | — |
-| I1-06 | Replay validation and preserve explicit deferrals | FR-001, FR-002, FR-003, FR-015, FR-016, FR-017, FR-018, TG-004 | Polish | 1.5 | Reliability steward, Spec Steward | `specs/018-velocity-dashboard-visual-richness/iterations/001/quality/**`, `extensions/specrew-speckit/scripts/validate-governance.ps1`, `.specify/extensions/specrew-speckit/scripts/validate-governance.ps1` | planned | unassigned | — | — |
+| I1-01 | Scaffold quality and fixture roots | FR-016, FR-017, FR-018, TG-004 | Setup | 1.0 | Reliability steward, Test steward | `specs/018-velocity-dashboard-visual-richness/iterations/001/quality/**`, `tests/integration/fixtures/feature-018-dashboard/**` | done | implementer | 1.0 | pass |
+| I1-02 | Lock shared CLI/rendering policy | FR-001, FR-004, FR-005, FR-008, FR-019 | Foundational | 1.5 | CLI steward, UX steward | `scripts/specrew.ps1`, `scripts/specrew-where.ps1`, `scripts/internal/dashboard-renderer.ps1` | done | implementer | 1.5 | pass |
+| I1-03 | Deliver rich-capable dashboard rendering | FR-004, FR-006, FR-007, FR-008, FR-009, FR-011, FR-012, FR-013, FR-014, FR-016 | US1 | 4.0 | UX steward, Product steward, Roadmap steward, Test steward | `scripts/internal/dashboard-renderer.ps1`, `tests/unit/feature-018-dashboard.tests.ps1`, `tests/integration/feature-018-rich-dashboard.ps1`, `tests/integration/fixtures/feature-018-dashboard/rich-capable-*` | done | implementer | 4.0 | pass |
+| I1-04 | Preserve fallback truth and snapshot safety | FR-001, FR-004, FR-005, FR-007, FR-008, FR-009, FR-010, FR-014, FR-017, TG-004 | US2 | 3.5 | UX steward, Product steward, Reliability steward, Test steward | `scripts/internal/dashboard-renderer.ps1`, `extensions/specrew-speckit/scripts/*.ps1`, `.specify/extensions/specrew-speckit/scripts/*.ps1`, `tests/integration/fixtures/feature-018-dashboard/monochrome-*` | done | implementer | 3.5 | pass |
+| I1-05 | Prove regression safety, docs, and performance | FR-015, FR-016, FR-017, FR-018, FR-019, FR-020 | US3 | 3.0 | Reliability steward, Documentation steward, Test steward | `tests/unit/*.ps1`, `tests/integration/*.ps1`, `docs/dashboard-guide.md`, `README.md`, `tests/manual/feature-017-dashboard-quickstart.md`, `specs/018-velocity-dashboard-visual-richness/quickstart.md` | done | implementer | 3.0 | pass |
+| I1-06 | Replay validation and preserve explicit deferrals | FR-001, FR-002, FR-003, FR-015, FR-016, FR-017, FR-018, TG-004 | Polish | 1.5 | Reliability steward, Spec Steward | `specs/018-velocity-dashboard-visual-richness/iterations/001/quality/**`, `extensions/specrew-speckit/scripts/validate-governance.ps1`, `.specify/extensions/specrew-speckit/scripts/validate-governance.ps1` | done | implementer | 1.5 | pass |
 
 ## Effort Model
 

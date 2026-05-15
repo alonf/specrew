@@ -1,0 +1,9 @@
+phases:
+  - id: dashboard
+    name: "Dashboard"
+    description: "Closeout artifact rendering stays aligned with the live dashboard contract."
+    planned_effort_sp: 22
+    status: shipped
+    feature_refs:
+      - 017-velocity-dashboard
+      - 018-velocity-dashboard-visual-richness

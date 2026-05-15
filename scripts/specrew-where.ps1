@@ -4,7 +4,10 @@ param(
     [string]$FeatureId,
     [string]$IterationNumber,
     [switch]$Compact,
+    [switch]$Ascii,
     [switch]$NoColor,
+    [int]$RecentCount = 6,
+    [int]$BarWidth = 28,
     [switch]$Json,
     [switch]$Team,
     [switch]$Help,
@@ -46,7 +49,10 @@ Options:
   --feature <id>         Restrict the dashboard to one feature
   --iteration <NNN>      Focus on one iteration when it exists
   --compact              Render the fixed compact dashboard (24 lines max)
+  --ASCII                Force monochrome / ASCII-safe fallback rendering
   --no-color             Force monochrome output
+  --RecentCount <N>      Show N Recent Shipped entries (default: 6)
+  --BarWidth <N>         Use N columns for rich shipped bars (default: 28)
   --team                 Reserved team path; falls back to the personal dashboard
   --json                 Emit the assembled snapshot as JSON
   --output-path <path>   Persist the rendered dashboard or closeout snapshot
@@ -58,9 +64,11 @@ Options:
 Examples:
   specrew where
   specrew status --compact
+  specrew where --ASCII
+  specrew where --RecentCount 4 --BarWidth 20
   specrew where --no-color
   specrew where --team
-  pwsh -NoProfile -File .\scripts\specrew-where.ps1 --no-color
+  pwsh -NoProfile -File .\scripts\specrew-where.ps1 --ASCII --BarWidth 20
 '@ | Write-Host
 }
 
@@ -70,7 +78,10 @@ function Convert-UnixStyleArguments {
         [string]$FeatureId,
         [string]$IterationNumber,
         [bool]$Compact,
+        [bool]$Ascii,
         [bool]$NoColor,
+        [int]$RecentCount,
+        [int]$BarWidth,
         [bool]$Json,
         [bool]$Team,
         [bool]$Help,
@@ -86,7 +97,10 @@ function Convert-UnixStyleArguments {
         FeatureId                = $FeatureId
         IterationNumber          = $IterationNumber
         Compact                  = $Compact
+        Ascii                    = $Ascii
         NoColor                  = $NoColor
+        RecentCount              = if ($RecentCount -gt 0) { $RecentCount } else { 6 }
+        BarWidth                 = if ($BarWidth -gt 0) { $BarWidth } else { 28 }
         Json                     = $Json
         Team                     = $Team
         Help                     = $Help
@@ -99,6 +113,7 @@ function Convert-UnixStyleArguments {
     $CliArgs = @($CliArgs | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
     for ($index = 0; $index -lt $CliArgs.Count; $index++) {
         $argument = $CliArgs[$index]
+        $parsedValue = 0
         switch -Regex ($argument) {
             '^--project-path(?:=(.+))?$' {
                 if ($Matches[1]) {
@@ -161,7 +176,40 @@ function Convert-UnixStyleArguments {
                 }
             }
             '^--compact$' { $result.Compact = $true }
+            '^--ascii$' { $result.Ascii = $true }
             '^--no-color$' { $result.NoColor = $true }
+            '^--recentcount(?:=(.+))?$' {
+                $value = if ($Matches[1]) {
+                    $Matches[1]
+                }
+                else {
+                    $index++
+                    if ($index -ge $CliArgs.Count) { throw '--RecentCount requires a value.' }
+                    $CliArgs[$index]
+                }
+
+                if (-not [int]::TryParse([string]$value, [ref]$parsedValue) -or $parsedValue -le 0) {
+                    throw '--RecentCount requires a positive integer.'
+                }
+
+                $result.RecentCount = $parsedValue
+            }
+            '^--barwidth(?:=(.+))?$' {
+                $value = if ($Matches[1]) {
+                    $Matches[1]
+                }
+                else {
+                    $index++
+                    if ($index -ge $CliArgs.Count) { throw '--BarWidth requires a value.' }
+                    $CliArgs[$index]
+                }
+
+                if (-not [int]::TryParse([string]$value, [ref]$parsedValue) -or $parsedValue -le 0) {
+                    throw '--BarWidth requires a positive integer.'
+                }
+
+                $result.BarWidth = $parsedValue
+            }
             '^--json$' { $result.Json = $true }
             '^--team$' { $result.Team = $true }
             '^--preserve-existing-artifact$' { $result.PreserveExistingArtifact = $true }
@@ -178,7 +226,10 @@ $parsed = Convert-UnixStyleArguments `
     -FeatureId $FeatureId `
     -IterationNumber $IterationNumber `
     -Compact $Compact.IsPresent `
+    -Ascii $Ascii.IsPresent `
     -NoColor $NoColor.IsPresent `
+    -RecentCount $RecentCount `
+    -BarWidth $BarWidth `
     -Json $Json.IsPresent `
     -Team $Team.IsPresent `
     -Help $Help.IsPresent `
@@ -198,7 +249,11 @@ $snapshot = Get-SpecrewDashboardSnapshot `
     -FeatureId $parsed.FeatureId `
     -IterationNumber $parsed.IterationNumber `
     -Compact:$parsed.Compact `
+    -Ascii:$parsed.Ascii `
     -NoColor:$parsed.NoColor `
+    -RecentCount $parsed.RecentCount `
+    -BarWidth $parsed.BarWidth `
+    -CaptureKind $parsed.CaptureKind `
     -Team:$parsed.Team
 
 $lines = if ($parsed.Compact) {

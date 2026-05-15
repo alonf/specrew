@@ -22,7 +22,8 @@ AI-assisted software delivery.
 - `specrew start` is the canonical entrypoint and refreshes runtime handoff
   artifacts before launch
 - `specrew where` / `specrew status` render the repository's velocity dashboard
-  from canonical feature, iteration, and roadmap artifacts
+  from canonical feature, iteration, and roadmap artifacts, using richer default
+  rendering when the terminal can truthfully support it
 - Iteration closeout and feature closeout capture immutable dashboard snapshots
   under `specs/<feature>/iterations/<NNN>/dashboard.md` and
   `specs/<feature>/closeout-dashboard.md`
@@ -51,10 +52,12 @@ AI-assisted software delivery.
 2. Start every work session with `scripts\specrew.ps1 start`.
 3. Use `scripts\specrew.ps1 where` whenever you want the current project-status
    dashboard.
-4. Let Squad drive `specify -> clarify -> plan -> tasks -> implement` from the
+4. Use `--ASCII`, `--RecentCount <N>`, and `--BarWidth <N>` to force fallback
+   or tune the richer Recent Shipped density without changing lifecycle data.
+5. Let Squad drive `specify -> clarify -> plan -> tasks -> implement` from the
    generated feature artifacts.
-5. Keep iteration evidence current under `specs\<feature>\iterations\<NNN>\`.
-6. Move through planning, implementing, review, and retro in order without
+6. Keep iteration evidence current under `specs\<feature>\iterations\<NNN>\`.
+7. Move through planning, implementing, review, and retro in order without
    skipping governance gates or bundling boundary advances.
 
 ## Feature 016 Interaction Model
@@ -130,7 +133,7 @@ review boundaries stabilize.
 ## Key Documents
 
 - `docs\getting-started.md` - bootstrap and quickstart guidance
-- `docs\dashboard-guide.md` - dashboard sections, flags, and closeout snapshots
+- `docs\dashboard-guide.md` - dashboard sections, rich/fallback rules, flags, and closeout snapshots
 - `docs\roadmap-maintenance.md` - `.specrew/roadmap.yml` maintenance guidance
 - `docs\user-guide.md` - day-to-day lifecycle usage
 - `docs\github-project.md` - Specrew self-development board guidance

@@ -10,24 +10,25 @@
 **Approval Ref**: `—`
 **Reviewed By**: Alon Fliess
 **Reviewed At**: 2026-05-15
-**Post-Implementation Verification**: pending-post-implementation
+**Post-Implementation Verification**: complete
+**Verified At**: 2026-05-15
 
 ## Concern Review
 
 | Concern | Category | Status | Evidence Basis | Runtime Evidence Status | Expected Controls | Blocking | Rationale | Approval |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | `security-surface` | `security` | `not-applicable` | `not-applicable` | `not-needed` | Keep the slice limited to repository-local PowerShell, Markdown, YAML, JSON, and git-tracked artifact generation. Do not introduce secrets, network I/O, or new trust boundaries. | `false` | Feature 018 stays inside local renderer, CLI, validator, closeout scaffold, fixture, and documentation surfaces. The execution scaffold introduces no new credential, auth, or external service behavior. | — |
-| `error-handling-expectations` | `error-handling` | `addressed` | `planning-time-analysis` | `pending-post-implementation` | Missing roadmap/history inputs, unsupported terminal capability, malformed fixture data, or closeout-artifact write issues must degrade to bounded warnings or truthful empty states rather than crashes or silent success. | `true` | The feature’s value depends on graceful degradation. Planning now fixes the expectation that the renderer and scaffold scripts keep warning-oriented behavior when data or terminal capability is incomplete. | — |
-| `retry-idempotency-requirements` | `retry-idempotency` | `addressed` | `planning-time-analysis` | `pending-post-implementation` | Re-running `specrew where`, `specrew status`, or the closeout scaffold paths must be safe on the same tree and must not silently rewrite historical dashboard artifacts. | `true` | Snapshot immutability is part of the shipped contract. Planning records repeat-safe execution as a required control before implementation begins. | — |
-| `test-integrity-targets` | `test-integrity` | `addressed` | `planning-time-analysis` | `pending-post-implementation` | Runtime proof must come from the real unit, integration, render-budget, and validator entrypoints named in `tasks.md`, including rich-mode, monochrome-mode, artifact, and replay-path fixtures. | `true` | This slice changes presentation, fallback behavior, closeout artifacts, and validator expectations. Planning therefore treats the replay path and fixture coverage as implementation-blocking quality evidence. | — |
-| `operational-resilience-concerns` | `operational` | `addressed` | `planning-time-analysis` | `pending-post-implementation` | Live rendering, stored snapshots, and validator/scaffold warnings must stay additive and operator-readable, especially when rich-mode capability is absent or a closeout artifact is missing. | `true` | The dashboard is a trust surface. Planning makes operator-facing resilience explicit so the feature does not trade clarity for polish. | — |
-| `terminal-capability-decision-precedence` | `terminal-compatibility` | `addressed` | `planning-time-analysis` | `pending-post-implementation` | Verification must prove one deterministic precedence chain across `--ASCII`, `NO_UNICODE`, redirected output, UTF-8 capability, `LANG`, and Windows virtual-terminal checks, with the same result from `specrew where`, `specrew status`, and `specrew-where.ps1`. | `true` | This is the reviewer’s first explicit concern. If precedence diverges across entry points or capability signals, the default-rich promise becomes untrustworthy immediately. | — |
-| `windows-vt-fallback-truthfulness` | `compatibility` | `addressed` | `planning-time-analysis` | `pending-post-implementation` | Verification must show that missing `$Host.UI.SupportsVirtualTerminal` support disables ANSI emphasis cleanly while preserving the same underlying meaning, markers, and sparkline intent in ASCII-safe form. | `true` | This is the reviewer’s second explicit concern. Windows fallback is the highest-risk real-world degradation path for this richer console feature. | — |
-| `render-budget-stop-ship-evidence` | `performance` | `addressed` | `planning-time-analysis` | `pending-post-implementation` | Verification must record a green `<= 1.5s` render-budget result on the representative 16-feature repository and treat a miss as stop-ship evidence until explicitly reconciled. | `true` | This is the reviewer’s third explicit concern and the main performance boundary for the feature. Richer output is not acceptable if it violates NFR-001. | — |
-| `ansi-stripping-with-unicode-preservation` | `artifact-integrity` | `addressed` | `planning-time-analysis` | `pending-post-implementation` | Verification must prove stored dashboard artifacts strip ANSI escape sequences while preserving readable Unicode glyphs and line endings across the closeout/validator path. | `true` | This is the reviewer’s fourth explicit concern. The persisted artifact contract is central because the richer mode intentionally adds ANSI and Unicode in live output. | — |
-| `closeout-dashboard-artifact-rendering` | `governance-compatibility` | `addressed` | `planning-time-analysis` | `pending-post-implementation` | Verification must show that both iteration-closeout and feature-closeout dashboard scaffolds apply the same rendering/fallback rules, preserve immutability, and remain validator-compatible. | `true` | This is the reviewer’s fifth explicit concern. The richer presentation must not fork the closeout path away from the live dashboard contract. | — |
-| `flag-surface-and-doc-guidance-alignment` | `documentation-accuracy` | `addressed` | `planning-time-analysis` | `pending-post-implementation` | Verification should confirm that help text, docs, README, and manual quickstart all describe `--ASCII`, `--RecentCount`, `--BarWidth`, eligibility rules, and snapshot behavior exactly as implemented. | `false` | This is a lower-risk but still necessary follow-through concern. Operators cannot trust the richer dashboard if the control surface is documented inaccurately. | — |
-| `roadmap-density-and-empty-state-clarity` | `user-experience` | `addressed` | `planning-time-analysis` | `pending-post-implementation` | Verification should confirm roadmap descriptions, empty states, and 80-character truncation remain explicit and readable in both rich and monochrome modes. | `false` | This is a lower-risk clarity concern that protects the feature’s one-screen comprehension goal without widening scope beyond the approved presentation layer. | — |
+| `error-handling-expectations` | `error-handling` | `addressed` | `runtime-evidence` | `recorded` | Missing roadmap/history inputs, unsupported terminal capability, malformed fixture data, or closeout-artifact write issues must degrade to bounded warnings or truthful empty states rather than crashes or silent success. | `true` | Replay stayed warning-oriented and bounded; the feature did not introduce crash-on-missing-data behavior. | — |
+| `retry-idempotency-requirements` | `retry-idempotency` | `addressed` | `runtime-evidence` | `recorded` | Re-running `specrew where`, `specrew status`, or the closeout scaffold paths must be safe on the same tree and must not silently rewrite historical dashboard artifacts. | `true` | Closeout replay kept historical artifact immutability intact while preserving parity with live rendering. | — |
+| `test-integrity-targets` | `test-integrity` | `addressed` | `runtime-evidence` | `recorded` | Runtime proof must come from the real unit, integration, render-budget, and validator entrypoints named in `tasks.md`, including rich-mode, monochrome-mode, artifact, and replay-path fixtures. | `true` | The dashboard-specific replay lane is green across the named unit, integration, and budget entrypoints. | — |
+| `operational-resilience-concerns` | `operational` | `addressed` | `runtime-evidence` | `recorded` | Live rendering, stored snapshots, and validator/scaffold warnings must stay additive and operator-readable, especially when rich-mode capability is absent or a closeout artifact is missing. | `true` | Rich mode remained additive; fallback and warning paths stayed readable and bounded. | — |
+| `terminal-capability-decision-precedence` | `terminal-compatibility` | `addressed` | `runtime-evidence` | `recorded` | Verification must prove one deterministic precedence chain across `--ASCII`, `NO_UNICODE`, redirected output, UTF-8 capability, `LANG`, and Windows virtual-terminal checks, with the same result from `specrew where`, `specrew status`, and `specrew-where.ps1`. | `true` | Shared render-profile helpers now own the precedence chain for all entry points. | — |
+| `windows-vt-fallback-truthfulness` | `compatibility` | `addressed` | `runtime-evidence` | `recorded` | Verification must show that missing `$Host.UI.SupportsVirtualTerminal` support disables ANSI emphasis cleanly while preserving the same underlying meaning, markers, and sparkline intent in ASCII-safe form. | `true` | Monochrome replay proved semantic parity without ANSI dependence. | — |
+| `render-budget-stop-ship-evidence` | `performance` | `addressed` | `runtime-evidence` | `recorded` | Verification must record a green `<= 1.5s` render-budget result on the representative 16-feature repository and treat a miss as stop-ship evidence until explicitly reconciled. | `true` | The render-budget harness passed and live current-shell `specrew where --no-color` on the Specrew repo measured 1043.86 ms / 1028.64 ms / 1040.12 ms after one warmup run. | — |
+| `ansi-stripping-with-unicode-preservation` | `artifact-integrity` | `addressed` | `runtime-evidence` | `recorded` | Verification must prove stored dashboard artifacts strip ANSI escape sequences while preserving readable Unicode glyphs and line endings across the closeout/validator path. | `true` | Artifact content now strips ANSI via regex while preserving Unicode glyphs, and validator coverage checks for regressions. | — |
+| `closeout-dashboard-artifact-rendering` | `governance-compatibility` | `addressed` | `runtime-evidence` | `recorded` | Verification must show that both iteration-closeout and feature-closeout dashboard scaffolds apply the same rendering/fallback rules, preserve immutability, and remain validator-compatible. | `true` | Scaffold scripts now pass `CaptureKind` only when supported, preserving compatibility and parity. | — |
+| `flag-surface-and-doc-guidance-alignment` | `documentation-accuracy` | `addressed` | `runtime-evidence` | `recorded` | Verification should confirm that help text, docs, README, and manual quickstart all describe `--ASCII`, `--RecentCount`, `--BarWidth`, eligibility rules, and snapshot behavior exactly as implemented. | `false` | User-facing guidance now matches the shipped CLI surface and snapshot rules. | — |
+| `roadmap-density-and-empty-state-clarity` | `user-experience` | `addressed` | `runtime-evidence` | `recorded` | Verification should confirm roadmap descriptions, empty states, and 80-character truncation remain explicit and readable in both rich and monochrome modes. | `false` | Unit and integration replay kept roadmap clarity bounded in both render modes. | — |
 
 ## Risk-Tier Verification Focus
 
@@ -74,8 +75,8 @@
 
 ## Deferral Note
 
-- The review boundary comes later. This artifact records planning-time concerns and expected controls only.
-- Runtime evidence will be recorded here after implementation, review, and validation replay are actually completed.
+- Runtime evidence is now recorded for the implementation boundary.
+- Review still comes later; this artifact does not claim review acceptance or retro completion.
 - No `review.md` or `retro.md` placeholder should be created at this boundary.
 
 ## Hardening-Gate Status
@@ -86,11 +87,9 @@
 covering renderer richness, fallback truthfulness, snapshot integrity, closeout parity, regression safety,
 performance budget preservation, and operator guidance.
 
-**Pre-Implementation Planning Summary**: Planning is complete for the single-iteration execution slice.
-The five canonical concerns appear first in the required order, the reviewer’s five explicit concern labels
-are preserved verbatim as additional blocking rows, and two lower-risk follow-through concerns capture the
-docs/clarity work without reopening scope. Runtime evidence is intentionally deferred to implementation and
-later review.
+**Implementation Summary**: The single-iteration execution slice completed with green dashboard-specific
+replay, live current-shell render timing inside NFR-001, ANSI-free persisted artifacts, and closeout
+scaffold parity preserved. Deferred scope remained excluded.
 
 ## Sign-Off Evidence
 
@@ -98,15 +97,11 @@ later review.
 Feature 018 Iteration 001  
 **Reviewed By**: Alon Fliess  
 **Reviewed At**: 2026-05-15  
-**Evidence Statement**: The iteration-scoped hardening gate now exists under
-`specs/018-velocity-dashboard-visual-richness/iterations/001/quality/hardening-gate.md`, carries the five
-canonical concerns first, preserves the reviewer-requested labels
-(`terminal-capability-decision-precedence`, `windows-vt-fallback-truthfulness`,
-`render-budget-stop-ship-evidence`, `ansi-stripping-with-unicode-preservation`,
-`closeout-dashboard-artifact-rendering`), and keeps the review boundary separate from this planning-only
-execution scaffold.
+**Evidence Statement**: The iteration-scoped hardening gate preserved the approved concern set through
+implementation, and post-implementation verification is now complete based on the green replay lane,
+validator updates, closeout-parity replay, and live current-shell timing evidence.
 
 ---
 
-**Hardening-Gate Planning Status**: signed off on 2026-05-15; bundled implementation authorization is
-already recorded, but execution still waits on `/speckit.specrew-speckit.before-implement`.
+**Hardening-Gate Status**: signed off on 2026-05-15 and verified post-implementation on 2026-05-15; the
+branch is now waiting at the review boundary.
