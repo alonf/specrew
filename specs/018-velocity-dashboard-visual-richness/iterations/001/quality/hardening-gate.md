@@ -104,5 +104,5 @@ validator updates, closeout-parity replay, and live current-shell timing evidenc
 
 ---
 
-**Hardening-Gate Status**: signed off on 2026-05-15, verified post-implementation on 2026-05-15, and
-accepted through review-verdict-signoff on 2026-05-15; retro remains unopened.
+**Hardening-Gate Status**: signed off on 2026-05-15 and verified post-implementation on 2026-05-15; the
+review-verdict-signoff pass is currently blocked by `R-018-V2`, so retro remains unopened.

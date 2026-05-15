@@ -4,18 +4,18 @@
 **Reviewed By**: Alon Fliess  
 **Reviewed At**: 2026-05-15  
 **Implementation Ref**: review-verdict-signoff boundary commit for repair `R-018-V1`  
-**Overall Verdict**: accepted-with-repair  
-**Explicit Reviewer Verdict**: accepted  
+**Overall Verdict**: needs-rework  
+**Explicit Reviewer Verdict**: needs-rework  
 **Review Boundary**: This artifact records review-verdict-signoff only. Retro-boundary, iteration-closeout, and feature-closeout remain unopened.
 
 ---
 
 ## Verdict
 
-**ACCEPTED WITH REPAIR** — Feature `018`, velocity dashboard visual richness, iteration `001`, is signed off at
-review-verdict-signoff with repair `R-018-V1` absorbed. The accepted repair restores unique Recent Shipped row
-labels by preserving per-iteration granularity with combined feature-and-iteration labels, and no broader scope
-was reopened.
+**NEEDS REWORK** — Review-verdict-signoff absorbed repair `R-018-V1`, but the required direct-terminal rich-mode
+inspection surfaced an additional blocker before signoff could close. The new blocker is that a live PowerShell
+terminal run still rendered `monochrome-safe fallback` instead of the expected rich presentation, so the boundary
+must stop pending a bounded follow-up repair.
 
 ---
 
@@ -25,7 +25,9 @@ was reopened.
   combined label (`F-017 · iter-001`) instead of feature-only text.
 - Supporting regression coverage now asserts label uniqueness for repeated-feature shipped history and updates
   the rich / monochrome expected dashboard contracts accordingly.
-- No other review findings were reopened, and retro remains explicitly out of scope for this pass.
+- **New blocker discovered during signoff inspection**: the required direct terminal run still rendered
+  `monochrome-safe fallback`, so the rich-mode acceptance check for Unicode block bars, ANSI emphasis, semantic
+  status markers, active-feature arrow, and sparkline did not pass.
 
 ---
 
@@ -52,21 +54,24 @@ was reopened.
 | I1-05 | FR-015, FR-016, FR-017, FR-018, FR-019, FR-020 | pass | Regression, docs, and render-budget evidence reran green, and live `specrew where --no-color` no longer emits duplicate Recent Shipped labels. |
 | I1-06 | FR-001, FR-002, FR-003, FR-015, FR-016, FR-017, FR-018, TG-004 | pass | Validator-facing review/plan/state/hardening-gate surfaces now align truthfully at review-verdict-signoff. |
 | R-018-V1 | Recent Shipped label uniqueness / Feature 017 per-iteration granularity | pass | Recent Shipped rows now render combined feature-and-iteration labels (`F-017 · iter-001`, `F-017 · iter-002`) across live rich and monochrome dashboard surfaces, and regression coverage locks the fix in. |
+| R-018-V2 | Direct-terminal rich-mode eligibility / visual parity confirmation | needs-rework | A direct `specrew where` terminal run still rendered `monochrome-safe fallback`, so `█/░`, ANSI color emphasis, `✓/◐/○`, `→`, and the velocity sparkline did not appear for the required signoff inspection. |
 
 ---
 
 ## Gap Ledger
 
-- fixed-now — No blocking review gaps remain after `R-018-V1`.
+- fixed-now — `R-018-V1` removed duplicate Recent Shipped labels while preserving per-iteration granularity.
+- needs-rework — `R-018-V2` direct-terminal rich-mode rendering remains blocked because signoff inspection still
+  hit monochrome fallback in a live PowerShell session.
 
 ---
 
 ## Next Action
 
-Request explicit retro-boundary authorization before any retrospective work begins. Do **not** advance to retro,
-iteration-closeout, or feature-closeout from this signoff alone.
+Request explicit bounded repair authorization for `R-018-V2` before re-running review-verdict-signoff. Do **not**
+advance to retro, iteration-closeout, or feature-closeout from this blocked review state.
 
 ---
 
-**Review-Verdict-Signoff Ref**: This artifact records review-verdict-signoff only. Retro-boundary,
+**Review-Verdict-Signoff Ref**: This artifact records a blocked review-verdict-signoff pass. Retro-boundary,
 iteration-closeout, and feature-closeout remain separate future lifecycle steps.
