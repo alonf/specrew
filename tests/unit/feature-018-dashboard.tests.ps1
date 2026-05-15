@@ -96,5 +96,33 @@ Assert-True -Condition ($artifactContent -notmatch ([char]27 + '\[[0-9;]*[A-Za-z
 Assert-True -Condition ($artifactContent -match '✓ F-017|→ F-018|ℹ ') -Message 'Stored dashboard artifacts should preserve rich Unicode glyphs.'
 Assert-True -Condition ($artifactContent -match '\*\*Rendering Mode\*\*:\s+rich') -Message 'Stored dashboard artifacts should record the effective rendering mode.'
 
+$iterationOne = [pscustomobject]@{
+    feature_ref          = '017-velocity-dashboard'
+    feature_title        = 'Feature Specification: Velocity Dashboard'
+    iteration_label      = 'feature-017.iter-001'
+    actual_story_points  = [decimal]18
+    planned_story_points = [decimal]11
+    elapsed_days         = 1
+    closed_at            = [datetime]'2026-05-15T00:00:00Z'
+    iteration_ref        = '001'
+    iteration_status     = 'closed'
+}
+$iterationTwo = [pscustomobject]@{
+    feature_ref          = '017-velocity-dashboard'
+    feature_title        = 'Feature Specification: Velocity Dashboard'
+    iteration_label      = 'feature-017.iter-002'
+    actual_story_points  = [decimal]18
+    planned_story_points = [decimal]16
+    elapsed_days         = 1
+    closed_at            = [datetime]'2026-05-15T00:00:00Z'
+    iteration_ref        = '002'
+    iteration_status     = 'closed'
+}
+$featureRecord = [pscustomobject]@{ closed_iterations = @($iterationOne, $iterationTwo) }
+$recentEntryOne = New-SpecrewRecentShippedEntry -Iteration $iterationOne -FeatureRecord $featureRecord
+$recentEntryTwo = New-SpecrewRecentShippedEntry -Iteration $iterationTwo -FeatureRecord $featureRecord
+Assert-True -Condition ($recentEntryOne.label -ne $recentEntryTwo.label) -Message 'Recent Shipped labels should stay unique across multiple closed iterations for the same feature.'
+Assert-True -Condition ($recentEntryOne.label -eq 'F-017 · iter-001') -Message 'Recent Shipped labels should combine the feature code with the iteration token.'
+
 Write-Pass 'Feature 018 dashboard unit coverage: render-profile precedence, rich rendering, override knobs, sparkline scope, roadmap truncation, and ANSI stripping with Unicode preservation'
 exit 0

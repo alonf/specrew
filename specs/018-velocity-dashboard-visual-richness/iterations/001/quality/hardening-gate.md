@@ -97,11 +97,12 @@ scaffold parity preserved. Deferred scope remained excluded.
 Feature 018 Iteration 001  
 **Reviewed By**: Alon Fliess  
 **Reviewed At**: 2026-05-15  
+**Review-Verdict-Signoff Ref**: `specs/018-velocity-dashboard-visual-richness/iterations/001/review.md`  
 **Evidence Statement**: The iteration-scoped hardening gate preserved the approved concern set through
 implementation, and post-implementation verification is now complete based on the green replay lane,
 validator updates, closeout-parity replay, and live current-shell timing evidence.
 
 ---
 
-**Hardening-Gate Status**: signed off on 2026-05-15 and verified post-implementation on 2026-05-15; the
-branch is now waiting at the review boundary.
+**Hardening-Gate Status**: signed off on 2026-05-15, verified post-implementation on 2026-05-15, and
+accepted through review-verdict-signoff on 2026-05-15; retro remains unopened.

@@ -1336,6 +1336,29 @@ function Get-SpecrewFeatureReadableTitle {
     return $title.Trim()
 }
 
+function Get-SpecrewRecentShippedLabel {
+    param(
+        [AllowNull()][string]$FeatureRef,
+        [AllowNull()][string]$IterationLabel
+    )
+
+    $featureCode = Get-SpecrewFeatureDisplayCode -FeatureRef $FeatureRef
+    $iterationToken = $IterationLabel
+    if (-not [string]::IsNullOrWhiteSpace($IterationLabel) -and $IterationLabel -match '(iter-\d+)$') {
+        $iterationToken = $Matches[1]
+    }
+
+    if (-not [string]::IsNullOrWhiteSpace($featureCode) -and -not [string]::IsNullOrWhiteSpace($iterationToken)) {
+        return ('{0} · {1}' -f $featureCode, $iterationToken)
+    }
+
+    if (-not [string]::IsNullOrWhiteSpace($featureCode)) {
+        return $featureCode
+    }
+
+    return $iterationToken
+}
+
 function New-SpecrewRecentShippedEntry {
     param(
         [Parameter(Mandatory = $true)][object]$Iteration,
@@ -1348,6 +1371,7 @@ function New-SpecrewRecentShippedEntry {
     return [pscustomobject]@{
         feature_ref            = $Iteration.feature_ref
         feature_code           = Get-SpecrewFeatureDisplayCode -FeatureRef $Iteration.feature_ref
+        label                  = Get-SpecrewRecentShippedLabel -FeatureRef $Iteration.feature_ref -IterationLabel $Iteration.iteration_label
         short_name             = Get-SpecrewFeatureReadableTitle -FeatureTitle $Iteration.feature_title -FeatureRef $Iteration.feature_ref
         iteration_label        = $Iteration.iteration_label
         delivered_story_points = [decimal]$Iteration.actual_story_points
@@ -1805,7 +1829,7 @@ function ConvertTo-SpecrewDashboardLines {
         $maxDelivered = ($Snapshot.recent_shipped | Measure-Object -Property delivered_story_points -Maximum).Maximum
         foreach ($entry in $Snapshot.recent_shipped) {
             $meter = Format-SpecrewDashboardMeter -Value $entry.delivered_story_points -Maximum $maxDelivered -Width $Snapshot.render_profile.bar_width -RenderProfile $Snapshot.render_profile
-            $lines.Add(('{0} {1} {2} | {3:0.#} SP | {4} iter | closed {5} | {6}' -f $palette.ShippedMarker, $entry.feature_code, $entry.short_name, $entry.delivered_story_points, $entry.iteration_count, $entry.close_date_text, $meter)) | Out-Null
+            $lines.Add(('{0} {1} | {2} | {3:0.#} SP | {4} iter | closed {5} | {6}' -f $palette.ShippedMarker, $entry.label, $entry.short_name, $entry.delivered_story_points, $entry.iteration_count, $entry.close_date_text, $meter)) | Out-Null
         }
     }
     $lines.Add('') | Out-Null
@@ -1892,7 +1916,7 @@ function ConvertTo-SpecrewCompactDashboardLines {
     $lines.Add($(if (-not [string]::IsNullOrWhiteSpace($sparkline)) { $sparkline } elseif ($Snapshot.velocity_headline.sample_size -gt 0) { $Snapshot.velocity_headline.trend_tokens } else { 'No trend yet' })) | Out-Null
     $lines.Add('RECENT SHIPPED') | Out-Null
     foreach ($entry in @($Snapshot.recent_shipped | Select-Object -First 3)) {
-        $lines.Add(('{0} {1} {2:0.#} SP' -f $palette.ShippedMarker, $entry.feature_code, $entry.delivered_story_points)) | Out-Null
+        $lines.Add(('{0} {1} | {2:0.#} SP' -f $palette.ShippedMarker, $entry.label, $entry.delivered_story_points)) | Out-Null
     }
     while ($lines.Count -lt 13) {
         $lines.Add('-') | Out-Null

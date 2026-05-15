@@ -2,12 +2,13 @@
 
 **Schema**: v1
 **Spec**: [../../spec.md](../../spec.md)
-**Status**: executing
+**Status**: reviewing
 **Capacity**: 14.5/20 story_points
 **Started**: 2026-05-15
 **Completed**: 2026-05-15
+**Review Completed**: 2026-05-15
 **Hardening-Gate Sign-Off**: human sign-off and implementation authorization were recorded in `.squad/decisions.md` on 2026-05-15; this iteration artifact now captures the exact concern set required before execution starts
-**Implementation Authorization**: bundled authorization was executed after `/speckit.specrew-speckit.before-implement` passed on 2026-05-15; the implementation package is now ready for the review boundary
+**Implementation Authorization**: bundled authorization was executed after `/speckit.specrew-speckit.before-implement` passed on 2026-05-15; the implementation package then cleared review-verdict-signoff with bounded repair `R-018-V1`, and retro remains separately authorized
 
 ## Scope Summary
 
@@ -69,7 +70,7 @@ feature in one bounded implementation pass while preserving the explicit out-of-
 | Planning | 0.0 story_points | Planning artifacts are now scaffolded for the execution boundary |
 | Discovery/Spikes | 0.5 story_points | Reserved only for bounded hardening clarification that emerges during T003-T005 |
 | Implementation | 11.0 story_points | T001-T027 grouped execution work |
-| Review | 1.5 story_points | Separate later boundary; not opened in this task |
+| Review | 1.5 story_points | Consumed by review-verdict-signoff, including bounded repair `R-018-V1` |
 | Rework | 1.5 story_points | Reserved in the envelope for bounded review repairs without scope expansion |
 
 ## Phase 1 Quality Planning
@@ -112,7 +113,7 @@ feature in one bounded implementation pass while preserving the explicit out-of-
 
 | Lens Scope | Requested Reasoning / Review Class | Effective Class (when run) | Override / Approval Record | Notes |
 | --- | --- | --- | --- | --- |
-| Pre-implementation hardening review | strongest-available | strongest-available | `.squad/decisions.md` entries dated 2026-05-15 | Review boundary remains later; this task only prepares the execution artifact set |
+| Pre-implementation hardening review | strongest-available | strongest-available | `.squad/decisions.md` entries dated 2026-05-15 | Preserved through implementation and later referenced by `iterations/001/review.md` at review-verdict-signoff |
 
 ## Traceability Summary
 
@@ -125,8 +126,7 @@ feature in one bounded implementation pass while preserving the explicit out-of-
   `terminal-capability-decision-precedence`, `windows-vt-fallback-truthfulness`,
   `render-budget-stop-ship-evidence`, `ansi-stripping-with-unicode-preservation`, and
   `closeout-dashboard-artifact-rendering`.
-- Review and retrospective artifacts are intentionally absent at this boundary. They should not be
-  scaffolded until implementation finishes and the lifecycle truly advances.
+- Review is now recorded in `review.md`; retro remains intentionally absent until separately authorized.
 
 ## Notes
 
@@ -135,5 +135,5 @@ feature in one bounded implementation pass while preserving the explicit out-of-
 - The execution scaffold deliberately uses iteration-scoped quality artifacts under
   `iterations/001/quality/` so `/speckit.specrew-speckit.before-implement` can validate a truthful
   pre-implementation boundary.
-- Do not widen scope beyond the five approved pillars, and do not start feature-code implementation in
-  this planning step.
+- The later review repair (`R-018-V1`) stayed inside the same five approved pillars and did not widen scope
+  beyond the accepted implementation slice.
