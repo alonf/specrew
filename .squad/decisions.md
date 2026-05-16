@@ -2093,6 +2093,34 @@ Iteration 002 planning artifacts (plan.md) were still in `planning` status with 
 - Reach human alignment during `/speckit.clarify` on the 10 source-spec questions before planning
 - Default recommendations to carry into clarify: PSGallery-only for v1, preserve-and-flag template conflicts, module version mirrors `.specrew/config.yml` `specrew_version`, self-sign for v1, and indefinite clone-and-PATH fallback support
 
+## 2026-05-16T12:28:07Z — Feature 019 specify authorization
+
+- **Decision ID**: feature-019-specify-authorization
+- **Type**: authorization
+- **Boundary**: /speckit.specify
+- **Approving Human**: Alon Fliess
+- **Recorded At**: 2026-05-16T12:28:07Z
+- **Feature**: 019 — Specrew Distribution Module via PowerShell Gallery
+- **Generated Artifact**: `file:///C:/Dev/Specrew/specs/019-specrew-distribution-module/spec.md`
+
+### Authorized boundary work
+
+- Ingest `file:///C:/Dev/SpecrewDraft/specrew-distribution-module.md`
+- Generate Draft spec artifact `specs/019-specrew-distribution-module/spec.md`
+- Preserve the five pillars, explicit non-goals, and the 10 clarify-time questions
+- Stop after `/speckit.specify` and wait for explicit authorization before `/speckit.clarify`
+
+## 2026-05-16T12:28:07Z — Routing evidence: /speckit.specify
+
+- **Decision ID**: routing-evidence-feature-019-specify
+- **Type**: routing-evidence
+- **Role or Work Item**: /speckit.specify
+- **Requested Agent**: speckit.specify
+- **Actual Agent**: speckit.specify
+- **Model ID**: claude-sonnet-4.5
+- **Status**: honored
+- **Fallback Reason**: (none)
+
 ## 2026-05-15T18:12:42Z — Hardening-gate sign-off: Feature 018
 
 - **Decision ID**: feature-018-hardening-gate-signoff-20260515
