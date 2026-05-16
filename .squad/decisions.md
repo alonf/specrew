@@ -4040,3 +4040,204 @@ Do not advance to `/speckit.plan` from this clarify-complete boundary alone. Awa
 
 Authorization runtime: Feature 019 clarify completion authorized by Alon Fliess on 2026-05-16 at commit edd1ded (with local spec.md clarify edits present before boundary closeout).
 
+
+# Planning Decision: Feature 019 /speckit.plan Boundary Complete
+
+**Decision ID**: planner-feature019-plan-complete  
+**Feature**: 019 — Specrew Distribution Module  
+**Date**: 2026-05-16  
+**Decision Maker**: Planner (autonomous planning boundary)  
+**Authority**: User authorization for /speckit.plan boundary completion (2026-05-16)
+
+---
+
+## Decision Summary
+
+Feature 019 implementation planning is complete with a 5-pillar distribution architecture (Module Packaging, Resource Bundling, Init Refactor, Update Story, Publishing Workflow). All design artifacts generated (plan.md, research.md, data-model.md, contracts/, quickstart.md). Constitution Check passed all gates. Estimated effort: 14 SP (within 10-15 SP spec estimate). Track dependencies mapped with critical path identified. Next boundary: `/speckit.tasks` (awaiting human authorization).
+
+---
+
+## Planning Scope
+
+Feature 019 addresses the PowerShell Gallery module distribution requirement identified in user feedback (Venya's clone-and-PATH friction). The planning boundary encompasses:
+
+1. **Phase 0 Research**: 6 research tasks resolving design unknowns (PSGallery best practices, module loader patterns, conflict resolution protocol, cross-platform path handling, publish workflow design, signing strategy)
+2. **Phase 1 Design Artifacts**: 3 design artifacts defining implementation contracts (data-model.md, contracts/Specrew.psd1.contract.md, quickstart.md)
+3. **Implementation Strategy**: 5-pillar architecture with dependency graph, critical path analysis, and parallelization opportunities
+4. **Quality Planning**: Phase 1 quality gates (cross-platform correctness, template integrity, module packaging correctness, update conflict safety, publishing automation, credential management)
+5. **Governance Alignment**: Constitution Check passed; all gates green; traceability verified
+
+---
+
+## Key Planning Decisions
+
+### 1. Five-Pillar Implementation Architecture
+
+**Decision**: Organize implementation into 5 major pillars aligned with spec requirements (FR-001 through FR-032):
+
+| Pillar | Scope | Estimated SP |
+| --- | --- | --- |
+| Pillar 1: Module Packaging | Module manifest, exports, metadata | 2 SP |
+| Pillar 2: Resource Bundling | Bundle scripts, extensions, templates, docs | 2 SP |
+| Pillar 3: Init Refactor | Detect module-vs-clone, resolve templates from module path | 3 SP |
+| Pillar 4: Update Story | Template-Refresh pattern, conflict resolution | 4 SP |
+| Pillar 5: Publishing Workflow | GitHub Actions, version stamping, signing, publish | 3 SP |
+
+**Total Estimated Effort**: 14 SP
+
+**Rationale**: Pillars map 1:1 to spec sections (FR groups). Clear separation enables parallelization (Pillar 1 + 2 can run in parallel; Pillar 4 + 5 can run in parallel after Pillar 3). Total effort (14 SP) falls within spec estimate (10-15 SP) and fits single-iteration budget.
+
+### 2. Template-Refresh Conflict Resolution Protocol (Git-Style Markers)
+
+**Decision**: Use Git-style conflict markers (`<<<<<<<`, `=======`, `>>>>>>>`) for user-vs-module template conflicts, backed by `.specrew/template-conflicts/*.conflict` artifacts with full diff.
+
+**Rationale**: Git-style markers are universally recognized, supported by tooling (VSCode conflict resolution UI), and require zero learning curve. Conflict artifacts provide full context for manual resolution without data loss. Protocol is crew-framework-agnostic (no hard dependency on Squad internals).
+
+**Research Evidence**: research.md R3 documents alternatives considered and decision rationale.
+
+### 3. Cross-Platform Path Handling (Join-Path Everywhere + WSL Verification)
+
+**Decision**: Enforce `Join-Path` for all path construction across scripts; add dedicated WSL verification task to validate real cross-platform behavior.
+
+**Rationale**: PowerShell `Join-Path` automatically uses correct delimiters for current platform (Windows `\`, Linux/Mac `/`). Dedicated WSL task ensures real-world cross-platform correctness beyond unit tests (WSL is common Windows+Linux hybrid environment where path issues surface).
+
+**Research Evidence**: research.md R4 documents audit strategy and verification checklist.
+
+### 4. Module Version Stamping (Single Source of Truth: .specrew/config.yml)
+
+**Decision**: Module manifest `ModuleVersion` is stamped from `.specrew/config.yml` `specrew_version` at build time via GitHub Actions workflow.
+
+**Rationale**: Single source of truth reduces drift risk and eliminates version-sync governance burden. Aligns with spec clarification (Q9: "same version policy"). Publishing workflow reads config, updates manifest, validates, signs, and publishes.
+
+**Research Evidence**: research.md R5 documents workflow structure and version stamping mechanism.
+
+### 5. Self-Signed Certificate (5-Year Validity)
+
+**Decision**: Use self-signed code signing certificate with 5-year validity period; store as GitHub Actions secrets (SIGNING_CERT_BASE64, SIGNING_CERT_PASSWORD).
+
+**Rationale**: Balances security (moderate risk window) with maintenance burden (renewal every 5 years). Real codesign certificate deferred to post-v1 unless early feedback shows trust warnings are significant blocker.
+
+**Research Evidence**: research.md R6 documents certificate generation procedure and validity period trade-offs.
+
+### 6. Track Dependency Order (Critical Path Identified)
+
+**Decision**: Implementation follows this dependency order:
+
+```
+Phase 0 (Research) → [Pillar 1 ∥ Pillar 2] → Pillar 3 → [Pillar 4 ∥ Pillar 5] → Integration Tests → Final Validation
+```
+
+**Critical Path**: Phase 0 → Pillar 1/2 → Pillar 3 → Pillar 4 → Final Validation
+
+**Parallelization Opportunities**:
+- Pillar 1 + Pillar 2 (independent; both feed into Pillar 3)
+- Pillar 4 + Pillar 5 (independent after Pillar 3 completes)
+
+**Rationale**: Pillar 3 (init refactor) depends on Pillar 1 (manifest structure) and Pillar 2 (template bundling layout). Pillar 4 (update) and Pillar 5 (publish) share init refactor's module-path detection logic but are otherwise independent. Critical path ensures incremental testability; parallelization opportunities reduce total cycle time.
+
+---
+
+## Plan-Time Design Questions Captured
+
+Six design questions surfaced during planning but do not block the plan structure. Captured in plan.md for Phase 0 investigation:
+
+1. **Module Manifest File List**: Explicit enumeration vs. automatic detection (trade-offs: safety vs. maintenance)
+2. **Conflict Marker Format Details**: Exact marker syntax and language-aware alternatives (requires Squad integration validation)
+3. **Cross-Platform Test Automation**: Manual checklist vs. GitHub Actions matrix (trade-offs: setup speed vs. robustness)
+4. **Module Loader Implementation**: Explicit dot-sourcing vs. dynamic discovery (trade-offs: debuggability vs. DRY)
+5. **PSGallery API Key Rotation**: Rotation cadence and procedure documentation (not a blocker; maintainer runbook item)
+6. **Self-Signed Certificate Validity**: 1-year vs. 5-year vs. 10-year validity period (resolved in research as 5-year; question remains for renewal procedure)
+
+All questions assigned to Phase 0 research tasks (R1-R6) or implementation-time decision points.
+
+---
+
+## Constitution Check: All Gates Passed
+
+**Spec Authority Gate**: ✅ PASS (plan scope maps to spec FR-001 through FR-032, US-1 through US-5)  
+**Layering Gate**: ✅ PASS (all changes in Spec Kit layer; Squad layer only provides runtime resolution behavior)  
+**Traceability Gate**: ✅ PASS (all deliverables trace to user stories, FRs, and planned tasks)  
+**Ownership Gate**: ✅ PASS (Spec Steward: Alon Fliess; Iteration Facilitator: Alon Fliess)  
+**Capacity Gate**: ✅ PASS (14 SP estimated; single iteration; fits Phase 2 Quality Hardening Bundle sequencing)  
+**Drift/Reconciliation Gate**: ✅ PASS (drift detection via Specrew-Speckit validators, integration tests, publish logs; reconciliation path defined)  
+**Verification Gate**: ✅ PASS (process verification: validators + GitHub Actions validation; outcome verification: success criteria SC-001 through SC-006 + User Story acceptance scenarios)
+
+**No violations detected.** Implementation may proceed to `/speckit.tasks` boundary.
+
+---
+
+## Artifacts Generated
+
+**Phase 0 (Research)**:
+- `specs/019-specrew-distribution-module/research.md` (6 research tasks; all design unknowns resolved)
+
+**Phase 1 (Design)**:
+- `specs/019-specrew-distribution-module/data-model.md` (11 entities, relationships, state machines)
+- `specs/019-specrew-distribution-module/contracts/Specrew.psd1.contract.md` (module manifest schema, exported function signatures)
+- `specs/019-specrew-distribution-module/quickstart.md` (user-facing installation and usage guide)
+
+**Planning Artifact**:
+- `specs/019-specrew-distribution-module/plan.md` (5-pillar strategy, track dependencies, Constitution Check, quality gates, implementation strategy)
+
+**Squad State Updates**:
+- `.squad/identity/now.md` (updated to reflect /speckit.plan complete; next valid action: /speckit.tasks authorization)
+- `.squad/decisions.md` (this decision appended)
+
+---
+
+## Boundary Verification
+
+**Pre-Commit Checklist**:
+- ✅ plan.md complete with all template sections filled
+- ✅ research.md complete with 6 research tasks documented
+- ✅ data-model.md complete with 11 entities and relationships
+- ✅ contracts/Specrew.psd1.contract.md complete with manifest schema and function signatures
+- ✅ quickstart.md complete with user-facing installation guide
+- ✅ Constitution Check passed (all gates green)
+- ✅ Track dependency graph documented with critical path identified
+- ✅ Plan-time design questions captured (6 questions for Phase 0 investigation)
+- ✅ Quality gates defined (cross-platform, template integrity, publish automation, credential management)
+- ✅ Effort estimated (14 SP; within spec estimate 10-15 SP)
+- ✅ .squad/identity/now.md updated (next valid action: /speckit.tasks authorization)
+- ✅ .squad/decisions.md updated (this decision appended)
+
+**NOT Delivered** (scope boundaries respected):
+- ❌ /speckit.tasks generation (not authorized at this boundary)
+- ❌ Implementation execution (requires /speckit.tasks first)
+- ❌ Code changes to scripts/ or extensions/ (implementation-time work)
+- ❌ GitHub Actions workflow creation (implementation-time work)
+- ❌ PSGallery module publishing (post-implementation work)
+
+---
+
+## Next Action
+
+**For Spec Steward (Alon Fliess)**:
+- Review planning artifacts (plan.md, research.md, data-model.md, contracts/, quickstart.md)
+- Verify Constitution Check passes and track dependencies are sound
+- Authorize `/speckit.tasks` boundary if planning is acceptable
+
+**For Implementation Team** (after /speckit.tasks authorization):
+- Read research.md (Phase 0 output) before starting implementation
+- Review data-model.md, contracts/, quickstart.md as implementation blueprints
+- Follow track dependency order (see plan.md Track Dependencies graph)
+- Execute quality gates after each pillar completes
+- Record evidence in `specs/019-specrew-distribution-module/test-evidence/`
+
+---
+
+## Traceability
+
+- **Spec Authority**: `specs/019-specrew-distribution-module/spec.md` (FR-001 through FR-032, US-1 through US-5)
+- **Plan Authority**: `specs/019-specrew-distribution-module/plan.md` (5-pillar strategy, track dependencies, Constitution Check)
+- **User Authorization**: Alon Fliess authorized /speckit.plan boundary completion on 2026-05-16 (this session)
+- **Constitutional Alignment**: Principles I (Spec Is Authoritative), IX (Mandatory Traceability), XVII (Planning Starts From Approved Specs), XXI (Verification Is Mandatory)
+
+---
+
+## Notes
+
+- This decision is autonomous planning-boundary work; no implementation choices are encoded here.
+- Feature 019 remains in `planning-complete` status until /speckit.tasks authorization is granted.
+- All traceability is recorded in the canonical plan (plan.md); this document is a summary for coordination visibility.
+- Phase 2 hardening gate is explicitly deferred (distribution infrastructure focus; no complex security surface or runtime business logic).
