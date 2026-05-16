@@ -3702,7 +3702,8 @@ Do not sign off the visual-richness claim until a direct PowerShell terminal run
 - **Boundary**: iteration-closeout
 - **Approving Human**: Alon Fliess
 - **Recorded At**: 2026-05-16T00:45:00Z
-- **Commit Reference**: pending (canonical iteration-closeout boundary commit created with this closeout change set)
+- **Commit Reference**: b40965985e4f919d3733b8c43cc022aeafdb4fb3
+- **Boundary Note**: This hash is the canonical Feature 018 Iteration 001 iteration-closeout boundary commit.
 - **Authorization Text**:
   > Advance only the authorized boundary: Feature 018 Iteration 001 from retro-boundary to iteration-closeout.
   > Do NOT open or imply feature-closeout. Rule 15 release/version work is explicitly out of scope for this authorization.
