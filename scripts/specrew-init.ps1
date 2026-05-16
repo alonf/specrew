@@ -58,6 +58,181 @@ function Test-ConsoleInputRedirected {
     }
 }
 
+function Test-PreFlightDependencies {
+    param(
+        [switch]$IncludeOptional
+    )
+
+    $missingDeps = @()
+    $outdatedDeps = @()
+
+    # PowerShell 7+
+    if ($PSVersionTable.PSVersion.Major -lt 7) {
+        $missingDeps += [pscustomobject]@{
+            Tool = 'PowerShell'
+            Current = "$($PSVersionTable.PSVersion)"
+            Required = '7.0+'
+            Platform = if ($IsWindows) { 'Windows' } elseif ($IsLinux) { 'Linux' } elseif ($IsMacOS) { 'macOS' } else { 'Unknown' }
+            InstallHint = if ($IsWindows) {
+                'Install from https://aka.ms/powershell-release?tag=stable or via winget: winget install Microsoft.PowerShell'
+            } elseif ($IsLinux) {
+                'Install via package manager or from https://aka.ms/powershell-release?tag=stable'
+            } elseif ($IsMacOS) {
+                'Install via Homebrew: brew install powershell'
+            } else {
+                'Install from https://aka.ms/powershell-release?tag=stable'
+            }
+        }
+    }
+
+    # uv (required for Spec Kit)
+    $uvCommand = Get-Command 'uv' -ErrorAction SilentlyContinue
+    if (-not $uvCommand) {
+        $missingDeps += [pscustomobject]@{
+            Tool = 'uv'
+            Current = 'not installed'
+            Required = 'any'
+            Platform = if ($IsWindows) { 'Windows' } elseif ($IsLinux) { 'Linux' } elseif ($IsMacOS) { 'macOS' } else { 'Unknown' }
+            InstallHint = if ($IsWindows) {
+                'Install via PowerShell: irm https://astral.sh/uv/install.ps1 | iex'
+            } elseif ($IsLinux -or $IsMacOS) {
+                'Install via shell: curl -LsSf https://astral.sh/uv/install.sh | sh'
+            } else {
+                'Install from https://docs.astral.sh/uv/getting-started/installation/'
+            }
+        }
+    }
+
+    # Node.js 24+
+    $nodeCommand = Get-Command 'node' -ErrorAction SilentlyContinue
+    if (-not $nodeCommand) {
+        $missingDeps += [pscustomobject]@{
+            Tool = 'Node.js'
+            Current = 'not installed'
+            Required = '24.0+'
+            Platform = if ($IsWindows) { 'Windows' } elseif ($IsLinux) { 'Linux' } elseif ($IsMacOS) { 'macOS' } else { 'Unknown' }
+            InstallHint = if ($IsWindows) {
+                'Install from https://nodejs.org/ or via winget: winget install OpenJS.NodeJS.LTS'
+            } elseif ($IsLinux) {
+                'Install via package manager or from https://nodejs.org/'
+            } elseif ($IsMacOS) {
+                'Install via Homebrew: brew install node'
+            } else {
+                'Install from https://nodejs.org/'
+            }
+        }
+    } else {
+        try {
+            $nodeVersion = & node --version 2>$null
+            if ($nodeVersion -match 'v(\d+)\.') {
+                $nodeMajor = [int]$Matches[1]
+                if ($nodeMajor -lt 24) {
+                    $outdatedDeps += [pscustomobject]@{
+                        Tool = 'Node.js'
+                        Current = $nodeVersion
+                        Required = '24.0+'
+                        Platform = if ($IsWindows) { 'Windows' } elseif ($IsLinux) { 'Linux' } elseif ($IsMacOS) { 'macOS' } else { 'Unknown' }
+                        InstallHint = 'Update from https://nodejs.org/'
+                    }
+                }
+            }
+        } catch {}
+    }
+
+    # npm 10+
+    $npmCommand = Get-Command 'npm' -ErrorAction SilentlyContinue
+    if (-not $npmCommand) {
+        $missingDeps += [pscustomobject]@{
+            Tool = 'npm'
+            Current = 'not installed'
+            Required = '10.0+'
+            Platform = if ($IsWindows) { 'Windows' } elseif ($IsLinux) { 'Linux' } elseif ($IsMacOS) { 'macOS' } else { 'Unknown' }
+            InstallHint = 'Included with Node.js; install Node.js first'
+        }
+    } else {
+        try {
+            $npmVersion = & npm --version 2>$null
+            if ($npmVersion -match '(\d+)\.') {
+                $npmMajor = [int]$Matches[1]
+                if ($npmMajor -lt 10) {
+                    $outdatedDeps += [pscustomobject]@{
+                        Tool = 'npm'
+                        Current = $npmVersion
+                        Required = '10.0+'
+                        Platform = if ($IsWindows) { 'Windows' } elseif ($IsLinux) { 'Linux' } elseif ($IsMacOS) { 'macOS' } else { 'Unknown' }
+                        InstallHint = 'Update via: npm install -g npm@latest'
+                    }
+                }
+            }
+        } catch {}
+    }
+
+    # git 2.30+
+    $gitCommand = Get-Command 'git' -ErrorAction SilentlyContinue
+    if (-not $gitCommand) {
+        $missingDeps += [pscustomobject]@{
+            Tool = 'git'
+            Current = 'not installed'
+            Required = '2.30+'
+            Platform = if ($IsWindows) { 'Windows' } elseif ($IsLinux) { 'Linux' } elseif ($IsMacOS) { 'macOS' } else { 'Unknown' }
+            InstallHint = if ($IsWindows) {
+                'Install from https://git-scm.com/ or via winget: winget install Git.Git'
+            } elseif ($IsLinux) {
+                'Install via package manager (e.g., apt install git, yum install git)'
+            } elseif ($IsMacOS) {
+                'Install via Homebrew: brew install git or Xcode Command Line Tools'
+            } else {
+                'Install from https://git-scm.com/'
+            }
+        }
+    } else {
+        try {
+            $gitVersion = & git --version 2>$null
+            if ($gitVersion -match 'git version (\d+)\.(\d+)') {
+                $gitMajor = [int]$Matches[1]
+                $gitMinor = [int]$Matches[2]
+                if ($gitMajor -lt 2 -or ($gitMajor -eq 2 -and $gitMinor -lt 30)) {
+                    $outdatedDeps += [pscustomobject]@{
+                        Tool = 'git'
+                        Current = $gitVersion
+                        Required = '2.30+'
+                        Platform = if ($IsWindows) { 'Windows' } elseif ($IsLinux) { 'Linux' } elseif ($IsMacOS) { 'macOS' } else { 'Unknown' }
+                        InstallHint = 'Update from https://git-scm.com/ or your package manager'
+                    }
+                }
+            }
+        } catch {}
+    }
+
+    # gh CLI (optional but recommended)
+    if ($IncludeOptional) {
+        $ghCommand = Get-Command 'gh' -ErrorAction SilentlyContinue
+        if (-not $ghCommand) {
+            $missingDeps += [pscustomobject]@{
+                Tool = 'gh'
+                Current = 'not installed'
+                Required = 'any (optional)'
+                Platform = if ($IsWindows) { 'Windows' } elseif ($IsLinux) { 'Linux' } elseif ($IsMacOS) { 'macOS' } else { 'Unknown' }
+                InstallHint = if ($IsWindows) {
+                    'Optional: Install from https://cli.github.com/ or via winget: winget install GitHub.cli'
+                } elseif ($IsLinux) {
+                    'Optional: Install via package manager or from https://cli.github.com/'
+                } elseif ($IsMacOS) {
+                    'Optional: Install via Homebrew: brew install gh'
+                } else {
+                    'Optional: Install from https://cli.github.com/'
+                }
+            }
+        }
+    }
+
+    return [pscustomobject]@{
+        MissingDeps = @($missingDeps)
+        OutdatedDeps = @($outdatedDeps)
+        AllOk = ($missingDeps.Count -eq 0 -and $outdatedDeps.Count -eq 0)
+    }
+}
+
 function Show-Usage {
     @'
 specrew init [options]
@@ -95,6 +270,8 @@ function Write-PostBootstrapGuidance {
     $baselineRoles = 'Spec Steward, Planner, Implementer, Reviewer, Retro Facilitator'
     $teamPath = Join-Path $ProjectPath '.squad\team.md'
     $specrewScriptsPath = $PSScriptRoot
+    $executionLayout = Get-SpecrewExecutionLayout
+    $isModuleContext = ($executionLayout.Mode -eq 'module')
 
     Write-Host ''
     Write-Host '============================================================' -ForegroundColor Cyan
@@ -129,41 +306,71 @@ function Write-PostBootstrapGuidance {
     Write-Host '   Add extra Squad members after bootstrap with Security Analyst, UX Designer,' -ForegroundColor White
     Write-Host '   DBA, or other specialists using Specrew team management commands:' -ForegroundColor White
     Write-Host ''
-    Write-Host '  pwsh -File <specrew-repo>\scripts\specrew.ps1 team add <member-name> --role <role> --charter "<charter-text>"' -ForegroundColor White
-    Write-Host '  pwsh -File <specrew-repo>\scripts\specrew.ps1 start' -ForegroundColor White
-    Write-Host '  pwsh -File <specrew-repo>\scripts\specrew.ps1 team list' -ForegroundColor White
-    Write-Host '  pwsh -File <specrew-repo>\scripts\specrew.ps1 team update <member-name> --charter "<new-charter>"' -ForegroundColor White
-    Write-Host '  pwsh -File <specrew-repo>\scripts\specrew.ps1 team remove <member-name>' -ForegroundColor White
+
+    if ($isModuleContext) {
+        Write-Host '  specrew team add <member-name> --role <role> --charter "<charter-text>"' -ForegroundColor White
+        Write-Host '  specrew start' -ForegroundColor White
+        Write-Host '  specrew team list' -ForegroundColor White
+        Write-Host '  specrew team update <member-name> --charter "<new-charter>"' -ForegroundColor White
+        Write-Host '  specrew team remove <member-name>' -ForegroundColor White
+    } else {
+        Write-Host '  pwsh -File <specrew-repo>\scripts\specrew.ps1 team add <member-name> --role <role> --charter "<charter-text>"' -ForegroundColor White
+        Write-Host '  pwsh -File <specrew-repo>\scripts\specrew.ps1 start' -ForegroundColor White
+        Write-Host '  pwsh -File <specrew-repo>\scripts\specrew.ps1 team list' -ForegroundColor White
+        Write-Host '  pwsh -File <specrew-repo>\scripts\specrew.ps1 team update <member-name> --charter "<new-charter>"' -ForegroundColor White
+        Write-Host '  pwsh -File <specrew-repo>\scripts\specrew.ps1 team remove <member-name>' -ForegroundColor White
+    }
+
     Write-Host ''
     Write-Host '   Keep the Specrew-managed baseline block intact in .squad/team.md.' -ForegroundColor Yellow
     Write-Host ''
-    Write-Host 'Replace <specrew-repo> with the actual path where you cloned Specrew.' -ForegroundColor Yellow
-    Write-Host ''
-    Write-Host '=== Optional: Add Specrew to PATH for Convenience ===' -ForegroundColor Cyan
-    Write-Host ''
-    Write-Host 'To use the short form (e.g., "specrew team list") instead of full paths,' -ForegroundColor White
-    Write-Host 'you can add the scripts directory to your PATH.' -ForegroundColor White
-    Write-Host ''
-    Write-Host 'OPTION 1: Current Session Only' -ForegroundColor Yellow
-    Write-Host 'Run this command in your current PowerShell session:' -ForegroundColor White
-    Write-Host ''
-    Write-Host ('  $env:PATH = "$env:PATH;{0}"' -f $specrewScriptsPath) -ForegroundColor Green
-    Write-Host ''
-    Write-Host '(This only affects the current shell and is lost when you close it.)' -ForegroundColor DarkGray
-    Write-Host ''
-    Write-Host 'OPTION 2: Persistent (All Future Sessions)' -ForegroundColor Yellow
-    Write-Host 'To make this permanent for your user account, run:' -ForegroundColor White
-    Write-Host ''
-    Write-Host ('  $currentPath = [Environment]::GetEnvironmentVariable("PATH", "User")') -ForegroundColor Green
-    Write-Host ('  $pathEntries = $currentPath -split "";""') -ForegroundColor Green
-    Write-Host ('  if ($pathEntries -notcontains ""{0}"") {{' -f $specrewScriptsPath) -ForegroundColor Green
-    Write-Host ('      [Environment]::SetEnvironmentVariable("PATH", "$currentPath;{0}", "User")' -f $specrewScriptsPath) -ForegroundColor Green
-    Write-Host ('      Write-Host "Added Specrew scripts to user PATH. Restart your shell to apply." -ForegroundColor Green') -ForegroundColor Green
-    Write-Host ('  }') -ForegroundColor Green
-    Write-Host ''
-    Write-Host '(This adds the path to your user-level environment and persists across sessions.' -ForegroundColor DarkGray
-    Write-Host ' Restart your shell after running this command.)' -ForegroundColor DarkGray
-    Write-Host ''
+
+    if (-not $isModuleContext) {
+        Write-Host 'Replace <specrew-repo> with the actual path where you cloned Specrew.' -ForegroundColor Yellow
+        Write-Host ''
+        Write-Host '=== Optional: Add Specrew to PATH for Convenience ===' -ForegroundColor Cyan
+        Write-Host ''
+        Write-Host 'To use the short form (e.g., "specrew team list") instead of full paths,' -ForegroundColor White
+        Write-Host 'you can add the scripts directory to your PATH.' -ForegroundColor White
+        Write-Host ''
+
+        if ($IsWindows) {
+            Write-Host 'OPTION 1: Current Session Only (Windows)' -ForegroundColor Yellow
+            Write-Host 'Run this command in your current PowerShell session:' -ForegroundColor White
+            Write-Host ''
+            Write-Host ('  $env:PATH = "$env:PATH;{0}"' -f $specrewScriptsPath) -ForegroundColor Green
+            Write-Host ''
+            Write-Host '(This only affects the current shell and is lost when you close it.)' -ForegroundColor DarkGray
+            Write-Host ''
+            Write-Host 'OPTION 2: Persistent (All Future Sessions, Windows)' -ForegroundColor Yellow
+            Write-Host 'To make this permanent for your user account, run:' -ForegroundColor White
+            Write-Host ''
+            Write-Host ('  $currentPath = [Environment]::GetEnvironmentVariable("PATH", "User")') -ForegroundColor Green
+            Write-Host ('  $pathEntries = $currentPath -split "";""') -ForegroundColor Green
+            Write-Host ('  if ($pathEntries -notcontains ""{0}"") {{' -f $specrewScriptsPath) -ForegroundColor Green
+            Write-Host ('      [Environment]::SetEnvironmentVariable("PATH", "$currentPath;{0}", "User")' -f $specrewScriptsPath) -ForegroundColor Green
+            Write-Host ('      Write-Host "Added Specrew scripts to user PATH. Restart your shell to apply." -ForegroundColor Green') -ForegroundColor Green
+            Write-Host ('  }') -ForegroundColor Green
+            Write-Host ''
+            Write-Host '(This adds the path to your user-level environment and persists across sessions.' -ForegroundColor DarkGray
+            Write-Host ' Restart your shell after running this command.)' -ForegroundColor DarkGray
+        } elseif ($IsLinux -or $IsMacOS) {
+            $shellProfile = if ($IsMacOS) { '~/.zshrc or ~/.bash_profile' } else { '~/.bashrc or ~/.profile' }
+            Write-Host 'Adding Specrew to PATH (Linux/macOS)' -ForegroundColor Yellow
+            Write-Host ('Add this line to your shell profile ({0}):' -f $shellProfile) -ForegroundColor White
+            Write-Host ''
+            Write-Host ('  export PATH="$PATH:{0}"' -f $specrewScriptsPath) -ForegroundColor Green
+            Write-Host ''
+            Write-Host 'Then reload your shell:' -ForegroundColor White
+            Write-Host ''
+            Write-Host ('  source {0}' -f $shellProfile) -ForegroundColor Green
+            Write-Host ''
+            Write-Host 'Or restart your terminal.' -ForegroundColor DarkGray
+        }
+
+        Write-Host ''
+    }
+
     Write-Host '============================================================' -ForegroundColor Cyan
     Write-Host ''
     Write-Host 'Documentation:' -ForegroundColor White
@@ -1673,6 +1880,51 @@ if ($Help) {
     Show-Usage
     exit 0
 }
+
+# Pre-flight dependency check
+Write-Step 'Checking required dependencies'
+$preFlightCheck = Test-PreFlightDependencies -IncludeOptional
+
+if (-not $preFlightCheck.AllOk) {
+    $hasErrors = $preFlightCheck.MissingDeps.Count -gt 0 -or ($preFlightCheck.OutdatedDeps | Where-Object { $_.Tool -ne 'gh' }).Count -gt 0
+    
+    if ($preFlightCheck.MissingDeps.Count -gt 0) {
+        Write-Host ''
+        Write-Host 'Missing required dependencies:' -ForegroundColor Red
+        Write-Host ''
+        foreach ($dep in $preFlightCheck.MissingDeps) {
+            if ($dep.Tool -eq 'gh') {
+                Write-Host ("  [{0}] {1} (optional but recommended)" -f $dep.Platform, $dep.Tool) -ForegroundColor Yellow
+                Write-Host ("      {0}" -f $dep.InstallHint) -ForegroundColor DarkGray
+            } else {
+                Write-Host ("  [{0}] {1} {2} (required: {3})" -f $dep.Platform, $dep.Tool, $dep.Current, $dep.Required) -ForegroundColor Red
+                Write-Host ("      {0}" -f $dep.InstallHint) -ForegroundColor DarkGray
+            }
+            Write-Host ''
+        }
+    }
+    
+    if ($preFlightCheck.OutdatedDeps.Count -gt 0) {
+        Write-Host ''
+        Write-Host 'Outdated dependencies:' -ForegroundColor Yellow
+        Write-Host ''
+        foreach ($dep in $preFlightCheck.OutdatedDeps) {
+            Write-Host ("  [{0}] {1} {2} (required: {3})" -f $dep.Platform, $dep.Tool, $dep.Current, $dep.Required) -ForegroundColor Yellow
+            Write-Host ("      {0}" -f $dep.InstallHint) -ForegroundColor DarkGray
+            Write-Host ''
+        }
+    }
+    
+    if ($hasErrors) {
+        Write-Host 'Install all required dependencies before running specrew init.' -ForegroundColor Red
+        exit 4
+    } else {
+        Write-Host 'All required dependencies are installed.' -ForegroundColor Green
+    }
+} else {
+    Write-Host 'All required dependencies are installed.' -ForegroundColor Green
+}
+Write-Host ''
 
 $resolvedProjectPath = Resolve-ProjectPath -Path $ProjectPath
 $executionLayout = Get-SpecrewExecutionLayout

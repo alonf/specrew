@@ -879,7 +879,7 @@ function Read-SpecrewRoadmapDefinition {
 function Get-SpecrewRoadmapProgress {
     param(
         [Parameter(Mandatory = $true)][object]$RoadmapDefinition,
-        [Parameter(Mandatory = $true)][object[]]$FeatureRecords
+        [Parameter(Mandatory = $true)][AllowEmptyCollection()][object[]]$FeatureRecords
     )
 
     $featureByRef = @{}
