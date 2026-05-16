@@ -6,22 +6,22 @@ active_issues: Feature 019 before-implement quality gate passed. All 6 quality l
 What We're Focused On
 ====================
 
-**Phase**: Feature 019 `/speckit.tasks` complete for Specrew Distribution Module.
-**Urgency**: Tier 1 — Await explicit authorization before advancing to hardening gate or implementation.
+**Phase**: Feature 019 `/speckit.specrew-speckit.before-implement` complete for Specrew Distribution Module.
+**Urgency**: Tier 1 — Await explicit authorization for hardening-gate-and-implementation-auth before advancing.
 
 ---
 
 Current Status
 --------------
 
-Feature Lifecycle: TASKS-COMPLETE
+Feature Lifecycle: BEFORE-IMPLEMENT-COMPLETE
 
 - Feature 019 is `Specrew Distribution Module via PowerShell Gallery`
 - Clarified spec: `file:///C:/Dev/Specrew/specs/019-specrew-distribution-module/spec.md`
 - Implementation plan: `file:///C:/Dev/Specrew/specs/019-specrew-distribution-module/plan.md`
 - Task breakdown: `file:///C:/Dev/Specrew/specs/019-specrew-distribution-module/tasks.md`
 - Public proposal: `file:///C:/Dev/Specrew/proposals/031-specrew-distribution-module.md` (`draft`)
-- `/speckit.tasks` complete with:
+- `/speckit.specrew-speckit.before-implement` complete with:
   - **39 total tasks** across 6 phases
   - **Phase 0 (Design Questions)**: 6 tasks explicitly resolving plan-time design questions
     - T001: Module Manifest File-List Strategy (blocks Pillar 1/2)
@@ -42,10 +42,8 @@ Feature Lifecycle: TASKS-COMPLETE
   - Critical path defined: Phase 0 → P1/P2 (parallel) → P3 → P4/P5 (parallel) → Validation
 - Branch: `019-specrew-distribution-module`
 - Estimated effort: 14 SP (within 10-15 SP spec estimate)
-- **Authorization scope**: `/speckit.tasks` complete; before-implement and implementation NOT started
+- **Authorization scope**: `/speckit.specrew-speckit.before-implement` complete; implementation blocked pending hardening-gate-and-implementation-auth authorization
 
 Next Valid Action
 
-Await explicit authorization before advancing to:
-- `/speckit.specrew-speckit.before-implement` (hardening gate, if applicable)
-- Implementation (if hardening gate skipped or passed)
+Await explicit human authorization for `hardening-gate-and-implementation-auth` to proceed with implementation. No lifecycle boundary advancement applied; only state artifact corrected to reflect completed before-implement boundary.

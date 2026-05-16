@@ -4501,3 +4501,34 @@ Await explicit authorization before advancing to:
 - Implementation (if hardening gate skipped or passed)
 
 Per user directive: "Do NOT advance to /speckit.specrew-speckit.before-implement. Do NOT advance to hardening-gate-and-implementation-auth."
+
+
+# Repair: Feature 019 Before-Implement Lifecycle State Artifact
+
+**Date**: 2026-05-16  
+**Authority**: Reviewer (boundary-state tightly-coupled repair)  
+**Scope**: `.squad/identity/now.md` lifecycle section state correction  
+
+## What
+
+The state artifact `.squad/identity/now.md` contained stale lifecycle information after the Feature 019 before-implement boundary was crossed:
+- **Top lines (correct)**: Reported `/speckit.specrew-speckit.before-implement` completed with READY verdict
+- **Lifecycle section (stale)**: Reported `/speckit.tasks` complete and listed authorization for before-implement as next action
+
+This mismatch created boundary-state confusion: the top and bottom of the artifact contradicted each other about which lifecycle phase was active.
+
+## Repair Applied
+
+1. Updated "What We're Focused On" phase line from `/speckit.tasks` complete → `/speckit.specrew-speckit.before-implement` complete
+2. Updated urgency line to reference `hardening-gate-and-implementation-auth` authorization (next valid action after before-implement)
+3. Updated Feature Lifecycle status from `TASKS-COMPLETE` → `BEFORE-IMPLEMENT-COMPLETE`
+4. Updated "Current Status" section references from `/speckit.tasks` → `/speckit.specrew-speckit.before-implement`
+5. Updated "Authorization scope" line to clarify before-implement is complete and implementation is blocked pending authorization
+6. Updated "Next Valid Action" section to await explicit human authorization for `hardening-gate-and-implementation-auth` only
+
+## Why
+
+Lifecycle artifacts must be consistent at all points to avoid automation, planner, or coordinator tools making incorrect routing decisions based on stale phase information. The boundary was crossed and verified; the state record must reflect that fact durably.
+
+No lifecycle boundary advancement applied; only state artifact corrected to match the actual completed boundary.
+
