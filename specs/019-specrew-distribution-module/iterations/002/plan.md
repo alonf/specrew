@@ -36,10 +36,10 @@ Total effort estimate: 8 Story Points
 
 | Task | Title | Requirement | Story | Effort | Owner | Status | Agent | Actual | Verdict |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| T041 | Join-Path Audit and Hardening Sweep | FR-030 | US5 | 3.0 | Implementation Team | planned | TBD | TBD | TBD |
-| T054 | Cross-Platform Parity Evidence | SC-006 | US5 | 3.0 | Implementation Team | planned | TBD | TBD | TBD |
-| T060 | Publish-Workflow Enablement | FR-025 | US4 | 1.0 | Implementation Team | planned | TBD | TBD | TBD |
-| T061 | Documentation Updates | US5 | US5 | 1.0 | Implementation Team | planned | TBD | TBD | TBD |
+| T041 | Join-Path Audit and Hardening Sweep | FR-030 | US5 | 3.0 | Implementation Team | done | Copilot | 3.0 | PASS |
+| T054 | Cross-Platform Parity Evidence | SC-006 | US5 | 3.0 | Implementation Team | done | Copilot | 3.0 | PASS |
+| T060 | Publish-Workflow Enablement | FR-025 | US4 | 1.0 | Implementation Team | done | Copilot | 1.0 | PASS |
+| T061 | Documentation Updates | US5 | US5 | 1.0 | Implementation Team | done | Copilot | 1.0 | PASS |
 
 ## Task Details
 
