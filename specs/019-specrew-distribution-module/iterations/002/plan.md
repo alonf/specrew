@@ -36,17 +36,17 @@ Total effort estimate: 8 Story Points
 
 | Task | Title | Requirement | Story | Effort | Owner | Status | Agent | Actual | Verdict |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| T041 | Join-Path Audit and Hardening Sweep | FR-030 | US5 | 3.0 | Implementation Team | pending | TBD | TBD | TBD |
-| T054 | Cross-Platform Parity Evidence | SC-006 | US5 | 3.0 | Implementation Team | pending | TBD | TBD | TBD |
-| T060 | Publish-Workflow Enablement | FR-025 | US4 | 1.0 | Implementation Team | pending | TBD | TBD | TBD |
-| T061 | Documentation Updates | US5 | US5 | 1.0 | Implementation Team | pending | TBD | TBD | TBD |
+| T041 | Join-Path Audit and Hardening Sweep | FR-030 | US5 | 3.0 | Implementation Team | planned | TBD | TBD | TBD |
+| T054 | Cross-Platform Parity Evidence | SC-006 | US5 | 3.0 | Implementation Team | planned | TBD | TBD | TBD |
+| T060 | Publish-Workflow Enablement | FR-025 | US4 | 1.0 | Implementation Team | planned | TBD | TBD | TBD |
+| T061 | Documentation Updates | US5 | US5 | 1.0 | Implementation Team | planned | TBD | TBD | TBD |
 
 ## Task Details
 
 ### T041: Join-Path Audit and Hardening Sweep
 
 **Effort**: 3 SP  
-**Status**: pending  
+**Status**: planned  
 **Owner**: Implementation Team  
 **Trace**: FR-030, research.md R4, `.specrew/cross-platform-backlog.md`
 
@@ -69,7 +69,7 @@ Total effort estimate: 8 Story Points
 ### T054: Cross-Platform Parity Evidence
 
 **Effort**: 3 SP  
-**Status**: pending  
+**Status**: planned  
 **Owner**: Implementation Team  
 **Trace**: US5 acceptance scenarios, SC-006, `.specrew/cross-platform-backlog.md`
 
@@ -87,7 +87,7 @@ Total effort estimate: 8 Story Points
 ### T060: Publish-Workflow Enablement
 
 **Effort**: 1 SP  
-**Status**: pending  
+**Status**: planned  
 **Owner**: Implementation Team  
 **Trace**: T053, FR-025, `.github/workflows/publish-module.yml`
 
@@ -102,7 +102,7 @@ Total effort estimate: 8 Story Points
 ### T061: Documentation Updates
 
 **Effort**: 1 SP  
-**Status**: pending  
+**Status**: planned  
 **Owner**: Implementation Team  
 **Trace**: README.md, `docs/getting-started.md`, US5
 
