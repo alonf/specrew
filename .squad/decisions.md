@@ -141,6 +141,105 @@ Feature 019 before-implement quality gate passed with READY verdict. All 6 quali
 **Do not advance to hardening-gate-and-implementation-auth or implementation**. Boundary commit will be created and pushed to origin/019-specrew-distribution-module. Await explicit human authorization before advancing to the next boundary.
 
 
+# Decision: Feature 019 Hardening-Gate and Implementation Authorization
+
+**Date**: 2026-05-16T17:42:05Z  
+**Boundary**: hardening-gate-and-implementation-auth  
+**Feature**: 019-specrew-distribution-module (Specrew Distribution Module via PowerShell Gallery)  
+**Iteration**: 001  
+**Authority**: Alon Fliess (human authorization)  
+**Decision Type**: Hardening-gate sign-off and implementation authorization
+
+## Authorization Scope
+
+Human approver **Alon Fliess** explicitly authorized the hardening-gate-and-implementation-auth boundary for Feature 019 Iteration 001 on 2026-05-16T17:42:05Z.
+
+**Authorized scope**: Feature 019 Iteration 001 — the 39 tasks in tasks.md across Phase 0 T001-T006 + Pillars 1-5 + final validation
+
+**Authorized actions**:
+1. Hardening-gate sign-off for Feature 019 Iteration 001 pre-implementation readiness
+2. Implementation authorization to proceed with task execution via `/speckit.implement`
+
+**Critical constraints**:
+- T001-T006 (Phase 0 design-question tasks) remain **unresolved by design** and MUST surface during implementation via pause-for-decision handling
+- Implementer agent must NOT auto-decide T001-T006; each requires explicit human decision with options and implications review
+- Implementation must stop after this boundary completion; do NOT advance to `/speckit.implement` without separate explicit authorization
+
+## Hardening-Gate Sign-Off Record
+
+**Hardening Gate Artifact**: `specs/019-specrew-distribution-module/iterations/001/quality/hardening-gate.md`  
+**Overall Verdict**: ✅ **READY**  
+**Reviewed By**: Alon Fliess  
+**Reviewed At**: 2026-05-16T17:42:05Z  
+
+### Quality Lens Verdicts Summary
+
+All 6 pre-implementation quality lenses carried forward from before-implement boundary with PASS verdicts:
+
+1. **Constitution Alignment** — ✅ PASS (Principles I, II, IX, XIII, XIV, XVII, XXI satisfied)
+2. **Traceability Completeness** — ✅ PASS (All 5 US, 32 FR, 39 tasks with explicit traceability)
+3. **Cross-Platform Coverage** — ✅ PASS (FR-030 Join-Path mandate, FR-031 Windows/Linux/macOS testing, FR-032 PS 7+ requirement)
+4. **Test Strategy Coverage** — ✅ PASS (All 5 pillars with explicit test tasks, Phase 6 Final Validation for US1-US5)
+5. **Validator Integration Sketch** — ✅ PASS (Drift detection via Specrew-Speckit validators, Human Oversight Points defined)
+6. **Security Baseline** — ✅ PASS (FR-028 API key secrets, FR-025 cert secrets, T042 GitHub Actions secrets config)
+
+### Phase 2 Hardening Deferral
+
+**Rationale**: Feature 019 focuses on distribution infrastructure (module packaging, install/update mechanics, CI/CD automation) rather than runtime business logic or security-sensitive data processing. Phase 1 quality gates are sufficient for v1: manual cross-platform verification, integration test scenarios, PSGallery test-gallery dry-run, GitHub Actions workflow validation. Hardening focus will return in future features that introduce complex state machines, external integrations, or user-data handling.
+
+**Deferred-with-Evidence Items**: None. Phase 2 hardening is deferred entirely for this feature, not deferred-with-approval.
+
+### Phase 0 Design-Question Tasks: Preserved for Implementation-Time Resolution
+
+**⚠️ CRITICAL IMPLEMENTATION CONSTRAINT**: All 6 design-question tasks (T001-T006) remain unresolved and MUST surface during implementation:
+
+| Task | Blocking Behavior | Human Decision Required | Resolution Status |
+|------|-------------------|------------------------|-------------------|
+| T001 | Blocks T007, T010-T014 | YES — FileList strategy decision | UNRESOLVED |
+| T002 | Blocks T030-T033 | YES — Conflict marker format | UNRESOLVED |
+| T003 | Blocks T040, T041 | YES — Cross-platform test automation depth | UNRESOLVED |
+| T004 | Blocks T008 | YES — Module loader structure | UNRESOLVED |
+| T005 | Non-blocking (doc-only) | OPTIONAL — Documentation-only | UNRESOLVED |
+| T006 | Blocks T038 | YES — Self-signed cert validity period | UNRESOLVED |
+
+## Implementation Authorization Record
+
+**Authorized By**: Alon Fliess  
+**Authorized At**: 2026-05-16T17:42:05Z  
+**Branch**: 019-specrew-distribution-module  
+**Starting Commit**: 3e4da27 (to be updated with boundary commit hash after this record is committed)  
+**Boundary Commit**: pending (will be recorded after boundary artifacts are committed)  
+
+**Stop After**: This boundary (hardening-gate-and-implementation-auth). Do NOT advance to `/speckit.implement` without separate explicit human authorization.
+
+## Runtime Evidence
+
+**Hardening-gate artifacts created**:
+- `specs/019-specrew-distribution-module/iterations/001/quality/hardening-gate.md` — pre-implementation hardening gate with READY verdict, 6 quality lens verdicts carried forward, Phase 0 design-question constraints, risk-tier verification focus, stack-ready analysis, and explicit Phase 2 hardening deferral
+- Iteration directory structure scaffolded: `specs/019-specrew-distribution-module/iterations/001/quality/`
+
+**State updates**:
+- `.squad/identity/now.md` — updated to reflect hardening-gate-and-implementation-auth boundary complete, next action requires explicit human authorization for `/speckit.implement`
+- `.squad/decisions.md` — this authorization record appended
+
+## Verification
+
+- ✅ Iteration 001 artifact structure exists: `specs/019-specrew-distribution-module/iterations/001/quality/`
+- ✅ Hardening gate artifact created at canonical path: `specs/019-specrew-distribution-module/iterations/001/quality/hardening-gate.md`
+- ✅ All 6 quality lens verdicts carried forward from before-implement boundary with PASS status
+- ✅ Phase 0 design-question tasks (T001-T006) explicitly preserved as unresolved with blocking behavior documented
+- ✅ Implementation authorization recorded with human approver, timestamp, scope, and constraints
+- ✅ State artifact updated with boundary completion and next-action requirement
+
+## Impact
+
+Feature 019 hardening-gate-and-implementation-auth boundary complete. Pre-implementation readiness confirmed with READY verdict. Implementation authorization granted for Feature 019 Iteration 001 (39 tasks across Phase 0 + Pillars 1-5 + final validation). T001-T006 design-question tasks remain unresolved by design and will surface during implementation execution. Boundary artifacts will be committed and pushed to origin/019-specrew-distribution-module. Implementer must not advance to task execution without separate explicit human authorization.
+
+## Next Action
+
+**Boundary artifacts commit and push required**. After boundary commit is created, update the "Boundary Commit" field in this record with the actual commit hash. Then await explicit human authorization for `/speckit.implement` to begin task execution.
+
+
 # Decision: Feature 015 Review-Boundary Commit
 
 **Date**: 2026-05-13  
