@@ -508,6 +508,30 @@ function Get-DeclaredSpecrewVersion {
     return $null
 }
 
+function Get-ExtensionManifestVersion {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$ManifestPath
+    )
+
+    if (-not (Test-Path -LiteralPath $ManifestPath -PathType Leaf)) {
+        return $null
+    }
+
+    try {
+        foreach ($line in Get-MarkdownContent -Path $ManifestPath) {
+            if ($line -match '^\s*version:\s*"?(?<version>[^"#]+?)"?\s*$') {
+                return $Matches['version'].Trim()
+            }
+        }
+    }
+    catch {
+        return $null
+    }
+
+    return $null
+}
+
 function Test-PublicReadinessSurfaces {
     param(
         [Parameter(Mandatory = $true)]
@@ -540,6 +564,22 @@ function Test-PublicReadinessSurfaces {
         $readmeContent = Get-Content -LiteralPath $readmePath -Raw -Encoding UTF8
         if ($readmeContent -notmatch [regex]::Escape($declaredVersion)) {
             Write-PublicReadinessWarning -Category 'stale-version-in-readme' -Detail ("README.md does not contain declared version {0}" -f $declaredVersion)
+        }
+
+        $extensionManifestPaths = @(
+            @{ Path = (Join-Path $ProjectRoot 'extensions\specrew-speckit\extension.yml'); Label = 'extensions/specrew-speckit/extension.yml' },
+            @{ Path = (Join-Path $ProjectRoot '.specify\extensions\specrew-speckit\extension.yml'); Label = '.specify/extensions/specrew-speckit/extension.yml' }
+        )
+
+        foreach ($manifest in $extensionManifestPaths) {
+            $manifestVersion = Get-ExtensionManifestVersion -ManifestPath $manifest.Path
+            if ([string]::IsNullOrWhiteSpace($manifestVersion)) {
+                continue
+            }
+
+            if ($manifestVersion -ne $declaredVersion) {
+                Write-PublicReadinessWarning -Category 'stale-version-in-extension-manifest' -Detail ("{0} declares version '{1}' but .specrew/config.yml declares specrew_version '{2}'. Rule 15 (feature-closeout version management) requires these to match." -f $manifest.Label, $manifestVersion, $declaredVersion)
+            }
         }
     }
     catch {
