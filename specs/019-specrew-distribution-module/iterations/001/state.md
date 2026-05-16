@@ -1,13 +1,13 @@
 # Iteration State: 001
 
 **Schema**: v1
-**Last Completed Task**: retro-boundary
-**Tasks Remaining**: T042 and T053 remain human follow-up post-merge; T041 and T054 remain deferred to Iteration 002
+**Last Completed Task**: iteration-closeout
+**Tasks Remaining**: T042 and T053 remain human follow-up post-merge; T041 and T054 carried forward to Iteration 002
 **In Progress**: none
 **Baseline Ref**: 1b8dace
-**Current Phase**: retro-complete
-**Iteration Status**: retro-boundary complete; T042/T053 remain human-owned, and T041/T054 remain deferred; iteration-closeout remains unopened
-**Updated**: 2026-05-16T20:45:00Z
+**Current Phase**: closed
+**Iteration Status**: Iteration 001 formally closed via closeout.md reconciliation bookkeeping on 2026-05-17; T042/T053 remain human post-merge follow-up, T041/T054 carried forward to Iteration 002
+**Updated**: 2026-05-17T02:00:00Z
 
 ## Execution Summary
 
