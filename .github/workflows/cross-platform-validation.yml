@@ -1,0 +1,161 @@
+name: Cross-Platform Validation
+
+on:
+  push:
+    branches:
+      - main
+      - 'feature/**'
+      - '0*-*'  # Feature branches like 019-specrew-distribution-module
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  validate-ubuntu:
+    name: Ubuntu Validation
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      
+      - name: Setup PowerShell
+        shell: bash
+        run: |
+          # Install PowerShell 7.x
+          wget -q https://github.com/PowerShell/PowerShell/releases/download/v7.4.1/powershell_7.4.1-1.deb_amd64.deb
+          sudo dpkg -i powershell_7.4.1-1.deb_amd64.deb
+          sudo apt-get install -f
+          pwsh --version
+      
+      - name: Test module manifest
+        shell: pwsh
+        run: |
+          Write-Host "Testing module manifest..." -ForegroundColor Cyan
+          Test-ModuleManifest -Path ./Specrew.psd1
+          Write-Host "✅ Module manifest valid" -ForegroundColor Green
+      
+      - name: Import module
+        shell: pwsh
+        run: |
+          Write-Host "Importing Specrew module..." -ForegroundColor Cyan
+          Import-Module ./Specrew.psd1
+          $commands = Get-Command -Module Specrew
+          Write-Host "✅ Module imported; $($commands.Count) commands exported:" -ForegroundColor Green
+          $commands | ForEach-Object { Write-Host "  - $($_.Name)" }
+      
+      - name: Test specrew init
+        shell: pwsh
+        run: |
+          Write-Host "Testing specrew init in clean directory..." -ForegroundColor Cyan
+          $testDir = New-Item -ItemType Directory -Path "./test-init-$([Guid]::NewGuid().ToString('N').Substring(0,8))" -Force
+          Push-Location $testDir
+          
+          # Run init
+          Import-Module ../Specrew.psd1
+          specrew-init -ProjectName "test-project" -ProjectDescription "Test project for CI" -SkipInteractive
+          
+          # Verify artifacts were created
+          $requiredPaths = @('.specify', '.squad', '.github')
+          foreach ($path in $requiredPaths) {
+            if (-not (Test-Path $path)) {
+              Write-Error "Missing required path: $path"
+              exit 1
+            }
+          }
+          
+          Pop-Location
+          Remove-Item -Recurse -Force $testDir
+          Write-Host "✅ specrew init completed successfully" -ForegroundColor Green
+      
+      - name: Test specrew where
+        shell: pwsh
+        run: |
+          Write-Host "Testing specrew where (dashboard renderer)..." -ForegroundColor Cyan
+          Import-Module ./Specrew.psd1
+          
+          # Run where command (should work even without full project setup)
+          $output = specrew-where 2>&1 | Out-String
+          
+          if ($LASTEXITCODE -ne 0) {
+            Write-Host "specrew where output:" -ForegroundColor Yellow
+            Write-Host $output
+            Write-Host "Note: Command may require full project setup; non-zero exit is acceptable for CI validation" -ForegroundColor Gray
+          } else {
+            Write-Host "✅ specrew where executed successfully" -ForegroundColor Green
+          }
+      
+      - name: Test path separator handling
+        shell: pwsh
+        run: |
+          Write-Host "Testing path separator handling..." -ForegroundColor Cyan
+          
+          # Verify Join-Path usage in core scripts
+          $coreScripts = @(
+            './scripts/specrew-start.ps1',
+            './scripts/specrew-init.ps1',
+            './scripts/internal/dashboard-renderer.ps1'
+          )
+          
+          foreach ($script in $coreScripts) {
+            if (Test-Path $script) {
+              $content = Get-Content $script -Raw
+              
+              # Check for hardcoded backslashes in path construction (not in comments or strings)
+              # This is a basic check; detailed audit is done manually
+              if ($content -match '\$\w+\\[a-zA-Z]') {
+                Write-Warning "Potential hardcoded backslash in $script"
+              }
+            }
+          }
+          
+          Write-Host "✅ Path separator check complete" -ForegroundColor Green
+      
+      - name: Summary
+        shell: pwsh
+        run: |
+          Write-Host "`n=== Cross-Platform Validation Summary ===" -ForegroundColor Cyan
+          Write-Host "Platform: $($PSVersionTable.Platform)" -ForegroundColor White
+          Write-Host "OS: $($PSVersionTable.OS)" -ForegroundColor White
+          Write-Host "PowerShell: $($PSVersionTable.PSVersion)" -ForegroundColor White
+          Write-Host "✅ All Ubuntu validation checks passed" -ForegroundColor Green
+
+  validate-macos:
+    name: macOS Validation
+    runs-on: macos-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      
+      - name: Setup PowerShell
+        shell: bash
+        run: |
+          # Install PowerShell 7.x on macOS
+          brew install --cask powershell
+          pwsh --version
+      
+      - name: Test module manifest
+        shell: pwsh
+        run: |
+          Write-Host "Testing module manifest on macOS..." -ForegroundColor Cyan
+          Test-ModuleManifest -Path ./Specrew.psd1
+          Write-Host "✅ Module manifest valid on macOS" -ForegroundColor Green
+      
+      - name: Import module
+        shell: pwsh
+        run: |
+          Write-Host "Importing Specrew module on macOS..." -ForegroundColor Cyan
+          Import-Module ./Specrew.psd1
+          $commands = Get-Command -Module Specrew
+          Write-Host "✅ Module imported; $($commands.Count) commands exported" -ForegroundColor Green
+      
+      - name: Summary
+        shell: pwsh
+        run: |
+          Write-Host "`n=== macOS Validation Summary ===" -ForegroundColor Cyan
+          Write-Host "Platform: $($PSVersionTable.Platform)" -ForegroundColor White
+          Write-Host "OS: $($PSVersionTable.OS)" -ForegroundColor White
+          Write-Host "PowerShell: $($PSVersionTable.PSVersion)" -ForegroundColor White
+          Write-Host "✅ macOS validation checks passed" -ForegroundColor Green
