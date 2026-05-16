@@ -3,7 +3,7 @@
 **Schema**: v1
 **Feature**: 019-specrew-distribution-module  
 **Branch**: 019-specrew-distribution-module  
-**Status**: planning
+**Status**: complete
 **Capacity**: 8/20 story_points
 **Started**: 2026-05-17
 **Created**: 2026-05-17  
@@ -24,6 +24,10 @@ Iteration 002 completes the cross-platform hardening and PSGallery publish-workf
 
 Total tasks: 4 primary tasks (T041, T054, publish-workflow-enablement, docs-update)  
 Total effort estimate: 8 Story Points
+
+## Repair Cycle Status
+
+Iteration 002 entered a bounded post-review repair cycle after human WSL Ubuntu verification surfaced five concrete bugs (R-019-V2-R1 through R-019-V2-R5). That repair cycle is now complete on commits `e559d65` and `5986501`, and the next valid lifecycle action is a freshly authorized `/review` pass against the repaired tree. This plan does not reopen scope; it records the repair outcome and the stop point only.
 
 ## Scope Guardrails
 
@@ -46,7 +50,7 @@ Total effort estimate: 8 Story Points
 ### T041: Join-Path Audit and Hardening Sweep
 
 **Effort**: 3 SP  
-**Status**: planned  
+**Status**: done  
 **Owner**: Implementation Team  
 **Trace**: FR-030, research.md R4, `.specrew/cross-platform-backlog.md`
 
@@ -69,7 +73,7 @@ Total effort estimate: 8 Story Points
 ### T054: Cross-Platform Parity Evidence
 
 **Effort**: 3 SP  
-**Status**: planned  
+**Status**: done  
 **Owner**: Implementation Team  
 **Trace**: US5 acceptance scenarios, SC-006, `.specrew/cross-platform-backlog.md`
 
@@ -87,7 +91,7 @@ Total effort estimate: 8 Story Points
 ### T060: Publish-Workflow Enablement
 
 **Effort**: 1 SP  
-**Status**: planned  
+**Status**: done  
 **Owner**: Implementation Team  
 **Trace**: T053, FR-025, `.github/workflows/publish-module.yml`
 
@@ -102,7 +106,7 @@ Total effort estimate: 8 Story Points
 ### T061: Documentation Updates
 
 **Effort**: 1 SP  
-**Status**: planned  
+**Status**: done  
 **Owner**: Implementation Team  
 **Trace**: README.md, `docs/getting-started.md`, US5
 
