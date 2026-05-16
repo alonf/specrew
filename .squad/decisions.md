@@ -207,8 +207,8 @@ All 6 pre-implementation quality lenses carried forward from before-implement bo
 **Authorized By**: Alon Fliess  
 **Authorized At**: 2026-05-16T17:42:05Z  
 **Branch**: 019-specrew-distribution-module  
-**Starting Commit**: 3e4da27 (to be updated with boundary commit hash after this record is committed)  
-**Boundary Commit**: pending (will be recorded after boundary artifacts are committed)  
+**Starting Commit**: 3e4da27 (before boundary)  
+**Boundary Commit**: 7432e02 (hardening-gate-and-implementation-auth)
 
 **Stop After**: This boundary (hardening-gate-and-implementation-auth). Do NOT advance to `/speckit.implement` without separate explicit human authorization.
 

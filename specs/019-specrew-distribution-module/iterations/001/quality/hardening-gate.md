@@ -7,7 +7,7 @@
 **Requested Review Class**: `deferred`
 **Effective Review Class**: `deferred`
 **Overall Verdict**: ready
-**Approval Ref**: pending (to be updated after boundary commit)
+**Approval Ref**: 7432e02
 **Reviewed By**: Alon Fliess
 **Reviewed At**: 2026-05-16T17:42:05Z
 **Post-Implementation Verification**: not-started
@@ -123,7 +123,8 @@
 **Reviewed At**: 2026-05-16T17:42:05Z  
 **Authorized Boundary**: hardening-gate-and-implementation-auth  
 **Authorized Scope**: Feature 019 Iteration 001 — the 39 tasks in tasks.md across Phase 0 T001-T006 + Pillars 1-5 + final validation  
-**Current Starting Commit**: 3e4da27 (to be updated with boundary commit hash)  
+**Current Starting Commit**: 3e4da27 (before boundary)  
+**Boundary Commit**: 7432e02 (hardening-gate-and-implementation-auth)  
 **Stop After**: This boundary (hardening-gate-and-implementation-auth). Do NOT advance to /speckit.implement without separate explicit human authorization.
 
 **Next Valid Human Action**: Explicit authorization required for `/speckit.implement` to begin task execution. Implementer must surface T001-T006 design decisions via pause-for-decision handling and must not auto-decide them.
