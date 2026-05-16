@@ -75,9 +75,9 @@
 
 ## Deferral Note
 
-- Runtime evidence is now recorded for the implementation boundary.
-- Review still comes later; this artifact does not claim review acceptance or retro completion.
-- No `review.md` or `retro.md` placeholder should be created at this boundary.
+- Runtime evidence is recorded for the implementation boundary.
+- Review is now accepted in the linked `review.md`; this artifact still does not claim retro completion.
+- No `retro.md` placeholder should be created before that later boundary is explicitly authorized.
 
 ## Hardening-Gate Status
 
@@ -100,13 +100,14 @@ Feature 018 Iteration 001
 **Reviewed At**: 2026-05-15  
 **Review-Verdict-Signoff Ref**: `specs/018-velocity-dashboard-visual-richness/iterations/001/review.md`  
 **Evidence Statement**: The iteration-scoped hardening gate preserved the approved concern set through
-implementation, and post-implementation verification is now complete based on the green replay lane,
-validator updates, closeout-parity replay, live current-shell timing evidence, and the repaired
-direct-entrypoint UTF-8 priming proof. Human fresh-terminal visual confirmation remains a separate
-review-verdict-signoff prerequisite.
+implementation, and post-implementation verification is complete based on the green replay lane,
+validator updates, closeout-parity replay, live current-shell timing evidence, repaired direct-entrypoint
+UTF-8 priming proof, and the accepted review verdict that records Alon Fliess's direct-terminal rich-mode
+confirmation after `R-018-V2`. The deferred `roadmap-phase-status-marker-uniformity` observation is logged
+as a cosmetic follow-up in `.specrew/quality/known-traps.md` and does not reopen this gate.
 
 ---
 
-**Hardening-Gate Status**: signed off on 2026-05-15 and verified post-implementation on 2026-05-15; bounded
-repair `R-018-V2` is now implemented, but review-verdict-signoff still awaits human fresh-terminal
-confirmation of `.\scripts\specrew.ps1 where`, so retro remains unopened.
+**Hardening-Gate Status**: signed off on 2026-05-15 and verified post-implementation on 2026-05-15; the
+accepted review-verdict-signoff now records absorbed `R-018-V1` / `R-018-V2` evidence plus direct-terminal
+rich-mode confirmation, and retro remains unopened pending explicit authorization.

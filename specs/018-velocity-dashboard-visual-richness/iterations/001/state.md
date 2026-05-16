@@ -1,19 +1,20 @@
 # Iteration State: 001
 
 **Schema**: v1
-**Last Completed Task**: R-018-V2 implementation (R-018-V2a / R-018-V2b / R-018-V2c)
-**Tasks Remaining**: Human terminal confirmation of `.\scripts\specrew.ps1 where`, then review-verdict-signoff rerun
-**In Progress**: Waiting on human fresh-terminal confirmation
+**Last Completed Task**: review-verdict-signoff accepted (`R-018-V1` and `R-018-V2` absorbed)
+**Tasks Remaining**: Explicit retro-boundary authorization only
+**In Progress**: none
 **Baseline Ref**: 228911a44085182b3844781f0713b18f6ad8f694
 **Updated**: 2026-05-15
 **Current Phase**: reviewing
-**Iteration Status**: bounded repair `R-018-V2` is implemented, but review-verdict-signoff remains blocked pending human fresh-terminal confirmation; retro remains pending explicit authorization
+**Iteration Status**: accepted at review-verdict-signoff after direct-terminal rich-mode confirmation; retro remains pending explicit authorization
 
 ## Execution Summary
 
 Iteration 001 remained the single execution slice for Feature 018 and completed without widening scope.
 The renderer, CLI, closeout scaffold, validator, fixtures, regression coverage, documentation, and
-performance evidence were all updated inside the approved boundary.
+performance evidence were all updated inside the approved boundary. Review-verdict-signoff is now accepted
+after Alon Fliess directly confirmed live rich-mode rendering in a fresh PowerShell terminal.
 
 ## Task Status Summary
 
@@ -31,7 +32,7 @@ performance evidence were all updated inside the approved boundary.
 - **Planning Boundary**: ✅ **COMPLETE** — iteration execution artifacts remained truthful throughout implementation
 - **Hardening-Gate Sign-Off**: ✅ **PRESERVED** — the pre-implementation sign-off remained the governing concern set for execution
 - **Implementation Authorization**: ✅ **EXECUTED** — `/speckit.specrew-speckit.before-implement` passed and the authorized implementation package was completed
-- **Review Boundary**: ⚠️ **BLOCKED BY HUMAN CONFIRMATION** — `R-018-V1` and `R-018-V2` are now implemented, but the required fresh-terminal `.\scripts\specrew.ps1 where` confirmation has not yet been recorded
+- **Review Boundary**: ✅ **ACCEPTED** — review-verdict-signoff absorbed `R-018-V1` and `R-018-V2`, and Alon Fliess recorded direct-terminal rich-mode confirmation
 - **Retro Artifact**: not started
 - **Constraint**: do not create `review.md` or `retro.md` placeholders before the lifecycle actually
   reaches those boundaries
@@ -52,15 +53,15 @@ performance evidence were all updated inside the approved boundary.
 - ✅ Tasks T001-T030 completed without widening beyond the approved Feature 018 scope
 - ✅ Dashboard-specific automated replay is green across Feature 017 regression, Feature 018 rich/mono replay, and the render-budget harness
 - ✅ Stored dashboard artifacts now strip ANSI escape sequences while preserving readable Unicode glyphs
-- ⚠️ `review.md` now records the repaired-but-pending-human-confirmation review state: `R-018-V2` is implemented, but acceptance still waits on the fresh-terminal command check
+- ✅ `review.md` now records the accepted review-verdict-signoff state with `R-018-V1` and `R-018-V2` absorbed plus the human direct-terminal confirmation evidence
+- ✅ Deferred cosmetic follow-up `roadmap-phase-status-marker-uniformity` is logged in `.specrew\quality\known-traps.md` without reopening acceptance
 - ✅ `retro.md` remains intentionally absent, keeping the next boundary truthful
 - ✅ The branch is stopped after review-verdict-signoff as instructed
 
 ## Next Action
 
-Human reviewer must next run `.\scripts\specrew.ps1 where` in a fresh PowerShell terminal with no manual `chcp` /
-encoding setup and confirm rich rendering. Do not open `retro.md`, iteration-closeout, or feature-closeout from
-this blocked review state until that confirmation is recorded.
+Request explicit retro-boundary authorization before any retrospective work begins. Do not open `retro.md`,
+iteration-closeout, or feature-closeout from this accepted pre-retro state without that authorization.
 
 <!-- >>> specrew-managed escalation-state >>> -->
 ## Repair Escalation

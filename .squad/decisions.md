@@ -3644,3 +3644,15 @@ Repair or explain the live capability-detection path so a direct terminal run sh
 ## Next move
 
 Do not sign off the visual-richness claim until a direct PowerShell terminal run produces the rich glyph set and semantic emphasis on the rich-capable repository fixture, or the requirement is explicitly re-scoped with approval.
+
+---
+
+## 2026-05-15T23:30:00Z — Canonical defer entry (Feature 018 iteration 001 review signoff cosmetic defer)
+
+- **Decision ID**: defer-roadmap-phase-status-marker-uniformity-feature-018-iter-001
+- **Type**: defer
+- **Affected Iteration**: specs\018-velocity-dashboard-visual-richness\iterations\001
+- **Approving Human**: Alon Fliess
+- **Recorded At**: 2026-05-15T23:30:00Z
+- **Next Action**: Normalize roadmap rich-marker styling in a later scoped polish pass without changing lifecycle meaning or fallback semantics
+- **Rationale**: Direct-terminal review acceptance for Feature 018 Iteration 001 confirmed that rich-mode rendering now works after `R-018-V2`. The remaining roadmap phase status marker uniformity observation is cosmetic only, so it is explicitly deferred instead of reopening review-verdict-signoff.
