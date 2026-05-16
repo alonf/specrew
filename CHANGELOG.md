@@ -6,6 +6,25 @@ baseline that each release number represents.
 
 ## Unreleased
 
+- Split Proposal 031 / Feature 019 Specrew Distribution Module from a
+  single-iteration MVP (~12 SP) into a two-iteration feature (~27 SP)
+  to make cross-platform support explicit and verifiable before the
+  first PSGallery publish. **Iteration 1** (in flight): Windows-correct
+  module structure + end-to-end Windows validation; PSGallery publish
+  workflow exists but is gated. **Iteration 2** (planned, ~10-15 SP):
+  Cross-Platform Hardening — sweep all PowerShell scripts for the 104+
+  embedded `\` path-string occurrences identified 2026-05-16, replace
+  with multi-arg `Join-Path` or forward slashes, end-to-end verify on
+  Linux (Ubuntu via WSL using Copilot CLI as test harness), add
+  `.github/workflows/cross-platform-validation.yml` CI matrix, update
+  README + getting-started docs to claim cross-platform support, and
+  fire the first real PSGallery publish at Iteration 2 feature-closeout.
+  Rationale: shipping a Windows-only module to PSGallery would deliver
+  a broken first impression to Linux/macOS users; Iteration 2 gates
+  the public publish behind cross-platform verification. Roadmap
+  Phase 2 planned_effort_sp bumped 220 → 235 to absorb the additional
+  iteration scope. Proposal 031 estimated-sp 12 → 27; INDEX.md updated
+  accordingly.
 - Promoted Proposal 033 Specrew Governance CLI to the `proposals/` surface
   with full source-spec content (status: draft, phase-2, ~18 SP). Captures
   the governance-of-governance gap surfaced 2026-05-16 evening during the

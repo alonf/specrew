@@ -32,7 +32,7 @@ Proposals with full source-spec content, ready for `/speckit.specify` ingestion 
 | [011](011-architecture-intent-checkpoint.md) | Architecture Intent Checkpoint | phase-1 | 10 | On-disk spec exists at specs/006-human-architecture-checkpoint |
 | [012](012-visual-artifact-extension.md) | Visual Artifact Extension | phase-1 | 15 | Pillar 4 of the interaction model |
 | [030](030-quality-hardening-bundle.md) | Quality Hardening Bundle (Form-vs-Meaning Verification) | phase-2 | 35 | Bundles 4 sub-components addressing form-correct/meaning-wrong bug class |
-| [031](031-specrew-distribution-module.md) | Specrew Distribution Module (PowerShell Gallery) | phase-2 | 12 | One-line install via `Install-Module Specrew`; pre-public-flip priority |
+| [031](031-specrew-distribution-module.md) | Specrew Distribution Module (PowerShell Gallery) | phase-2 | 27 | Two-iteration: Iter 1 Windows module + Iter 2 cross-platform hardening; pre-public-flip priority |
 | [032](032-specrew-slash-commands.md) | Specrew Slash-Command Surface | phase-2 | 7 | `/specrew.*` commands; composes tightly with 031 (combined option recommended) |
 | [033](033-specrew-governance-cli.md) | Specrew Governance CLI | phase-2 | 18 | `specrew roadmap` / `propose` / `feature` CLI surfaces; absorbs Proposal 028 |
 
