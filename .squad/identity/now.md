@@ -1,6 +1,6 @@
-updated_at: 2026-05-16T17:42:05Z
-focus_area: Feature 019 hardening-gate-and-implementation-auth boundary completed
-active_issues: Feature 019 hardening-gate-and-implementation-auth boundary complete. Hardening gate artifact created at specs/019-specrew-distribution-module/iterations/001/quality/hardening-gate.md with READY verdict. All 6 quality lenses carried forward from before-implement with PASS verdicts. Implementation authorization recorded in .squad/decisions.md for 39 tasks across Phase 0 (T001-T006 design questions) + Pillars 1-5 + final validation. T001-T006 remain unresolved by design and MUST surface during implementation via pause-for-decision handling. Boundary artifacts committed and pushed to origin/019-specrew-distribution-module. Next valid action: Await explicit human authorization for /speckit.implement to begin task execution.
+updated_at: 2026-05-16T18:30:00Z
+focus_area: Feature 019 governance artifact repair complete
+active_issues: Feature 019 governance artifacts repaired to pass validation. Hardening gate artifact at specs/019-specrew-distribution-module/iterations/001/quality/hardening-gate.md now uses canonical format with required concerns (security-surface, error-handling-expectations, retry-idempotency-requirements, test-integrity-targets, operational-resilience-concerns). Iteration plan.md repaired with required Schema, Started, Capacity metadata and Effort Model with Calibration Enabled. Overall Verdict: ready (awaiting human review and authorization). Validation passing: pwsh validate-governance.ps1 returns PASS for iteration 001. Next valid action: Await explicit human authorization for hardening-gate-and-implementation-auth boundary before advancing to /speckit.implement.
 ---
 
 What We're Focused On
@@ -14,17 +14,18 @@ What We're Focused On
 Current Status
 --------------
 
-Feature Lifecycle: HARDENING-GATE-AND-IMPLEMENTATION-AUTH-COMPLETE
+Feature Lifecycle: GOVERNANCE-ARTIFACT-REPAIR-COMPLETE
 
 - Feature 019 is `Specrew Distribution Module via PowerShell Gallery`
 - Clarified spec: `file:///C:/Dev/Specrew/specs/019-specrew-distribution-module/spec.md`
 - Implementation plan: `file:///C:/Dev/Specrew/specs/019-specrew-distribution-module/plan.md`
 - Task breakdown: `file:///C:/Dev/Specrew/specs/019-specrew-distribution-module/tasks.md`
 - Public proposal: `file:///C:/Dev/Specrew/proposals/031-specrew-distribution-module.md` (`draft`)
-- Hardening gate artifact: `file:///C:/Dev/Specrew/specs/019-specrew-distribution-module/iterations/001/quality/hardening-gate.md` (READY verdict)
-- Implementation authorization: `file:///C:/Dev/Specrew/.squad/decisions.md` (2026-05-16T17:42:05Z)
-- `hardening-gate-and-implementation-auth` boundary complete with:
-  - **39 total tasks** across 6 phases
+- Hardening gate artifact: `file:///C:/Dev/Specrew/specs/019-specrew-distribution-module/iterations/001/quality/hardening-gate.md` (canonical format, READY verdict)
+- Iteration plan: `file:///C:/Dev/Specrew/specs/019-specrew-distribution-module/iterations/001/plan.md` (canonical format with Schema, Started, Capacity, Effort Model)
+- Governance repair completed on 2026-05-16T18:30:00Z
+- Validation status: PASS (pwsh validate-governance.ps1 -IterationPath Feature019/iterations/001)
+- **39 total tasks** across 6 phases
   - **Phase 0 (Design Questions)**: 6 tasks explicitly resolving plan-time design questions
     - T001: Module Manifest File-List Strategy (blocks Pillar 1/2)
     - T002: Conflict-Marker Format (blocks Pillar 4)
@@ -44,11 +45,10 @@ Feature Lifecycle: HARDENING-GATE-AND-IMPLEMENTATION-AUTH-COMPLETE
   - Critical path defined: Phase 0 → P1/P2 (parallel) → P3 → P4/P5 (parallel) → Validation
 - Branch: `019-specrew-distribution-module`
 - Estimated effort: 14 SP (within 10-15 SP spec estimate)
-- **Authorization scope**: `hardening-gate-and-implementation-auth` boundary complete; implementation execution blocked pending `/speckit.implement` authorization
-- **Hardening Gate Status**: READY (all 6 quality lenses PASS, Phase 2 hardening deferred per plan rationale)
-- **Implementation Authorization**: Granted by Alon Fliess on 2026-05-16T17:42:05Z for 39 tasks
+- **Authorization scope**: Governance artifacts repaired and validation passing; awaiting human authorization for hardening-gate-and-implementation-auth boundary
+- **Hardening Gate Status**: READY verdict with canonical concerns; pending human review
 - **Critical Constraint**: T001-T006 design-question tasks remain unresolved by design and MUST surface during implementation
 
 Next Valid Action
 
-Await explicit human authorization for `/speckit.implement` to begin task execution. Implementer must surface T001-T006 design decisions via pause-for-decision handling and must not auto-decide them. Implementation must stop after completing the 39 tasks and producing final validation evidence.
+Await explicit human authorization for hardening-gate-and-implementation-auth boundary. After authorization, implementer must surface T001-T006 design decisions via pause-for-decision handling and must not auto-decide them. Implementation must stop after completing the 39 tasks and producing final validation evidence.
