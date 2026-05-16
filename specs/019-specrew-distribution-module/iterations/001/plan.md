@@ -23,6 +23,7 @@ Total effort estimate: 14 Story Points
 ## Scope Guardrails
 
 - **Approved T003 direction**: Iteration 001 uses `specs/019-specrew-distribution-module/iterations/001/quality/cross-platform-manual-checklist.md` as the cross-platform evidence surface.
+- **Approved T004 direction**: `Specrew.psm1` will use explicit dot-sourcing with `scripts/internal/dashboard-renderer.ps1` loaded first, then the reviewed entry-point order via `Join-Path`.
 - **Windows-first only**: do not widen this slice to Ubuntu/macOS matrix validation, WSL verification, line-ending or case-sensitivity testing, or a broad Join-Path audit sweep.
 - **Deferred evidence ledger**: explicit Iteration 002 backlog items live in `.specrew/cross-platform-backlog.md`.
 - **Real publish boundary**: local dry-run/manual gate validation is in scope; the first real PSGallery publish is not.
@@ -64,9 +65,9 @@ Total effort estimate: 14 Story Points
 
 ## Critical Constraints
 
-**⚠️ Phase 0 design-question tasks**: T001-T003 are now resolved; T004-T006 still require explicit human handling. Implementer must not auto-decide the remaining design questions.
+**⚠️ Phase 0 design-question tasks**: T001-T004 are now resolved; T005-T006 still require explicit human handling. T005 is documentation-only and non-blocking, but it still must not be auto-decided.
 
-**⚠️ T003 guardrail**: loader/resource path work in Iteration 001 only needs to be Windows-correct. Cross-platform edge-case validation remains an Iteration 002 concern.
+**⚠️ T003/T004 compose-with guardrail**: loader/resource path work in Iteration 001 only needs to be Windows-correct. Cross-platform edge-case validation and broader embedded `\` cleanup remain Iteration 002 concerns.
 
 ## Authorization
 

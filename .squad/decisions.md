@@ -1,3 +1,72 @@
+# Decision: Feature 019 T004 Module Loader Structure
+
+**Date**: 2026-05-16T16:03:28Z  
+**Boundary**: Phase 0 T004  
+**Feature**: 019-specrew-distribution-module (Specrew Distribution Module via PowerShell Gallery)  
+**Iteration**: 001  
+**Authority**: Alon Fliess (human verdict received during implementation)  
+**Decision Type**: Design-question resolution
+
+## Task
+
+Resolve T004: choose the `Specrew.psm1` loader structure so Pillar 1 can implement a deterministic, auditable module loader without widening Iteration 001 into the broader cross-platform cleanup deferred to Iteration 002.
+
+## Verdict
+
+**Approved option**: **Option A — explicit dot-sourcing for `Specrew.psm1`**
+
+**Approved loader shape**:
+- `$ScriptRoot = $PSScriptRoot`
+- Load internal helpers first, then entry-point commands in an explicit reviewed order
+- Use `Join-Path` for every path segment
+- Export the FR-002 public command surface; alias bindings are allowed if the implementation convention needs them
+
+**Approved ordering guidance**:
+1. `scripts/internal/dashboard-renderer.ps1`
+2. `scripts/specrew.ps1`
+3. `scripts/specrew-init.ps1`
+4. `scripts/specrew-review.ps1`
+5. `scripts/specrew-start.ps1`
+6. `scripts/specrew-team.ps1`
+7. `scripts/specrew-update.ps1`
+8. `scripts/specrew-where.ps1`
+
+**Compose-with note**:
+- Loader-level path construction is cross-platform-safe now because it uses `Join-Path`.
+- The scripts themselves still have broader embedded `\` cleanup deferred to Iteration 002.
+
+**Future suggestion captured, not implemented now**:
+- Add a validator soft warning for top-level `scripts/` files that are not enumerated in both the loader and `FileList`.
+
+## Rationale
+
+- The decision composes cleanly with T001's explicit `FileList` allowlist philosophy.
+- Deterministic load order avoids filesystem-order ambiguity across platforms.
+- Explicit line-by-line dot-sourcing is more auditable and debuggable when a specific script fails to load.
+- The reviewed list avoids accidental-load drift from new, experimental, or scratch scripts.
+
+## Commit Reference Workflow
+
+**Starting Commit**: `c1f83dbe02587b414f2f005ef9bf6b10dfccb9e8`  
+**Truthful workflow**: record the human verdict in the design, contract, and execution-state artifacts first, run the relevant iteration governance validation for the touched surfaces, then create a dedicated checkpoint commit to anchor T004 in git. This entry intentionally records the starting ref and workflow without pre-claiming the later checkpoint hash inside the same staged change.
+
+## Runtime Evidence
+
+- Updated `specs/019-specrew-distribution-module/contracts/Specrew.psd1.contract.md` to capture the approved explicit loader contract, load order, and export expectations.
+- Updated `specs/019-specrew-distribution-module/research.md`, `plan.md`, and `tasks.md` so T004 now reflects the approved explicit dot-sourcing direction rather than an unresolved recommendation.
+- Updated `specs/019-specrew-distribution-module/iterations/001/plan.md`, `specs/019-specrew-distribution-module/iterations/001/state.md`, and `.squad/identity/now.md` so Phase 0 truthfully advances from T004 to the T005 handoff boundary.
+- Kept the validator soft-warning idea as future-only guidance and did **not** widen Iteration 001 into new validator work.
+- Did **not** start T005 resolution, T006 resolution, or any downstream implementation work in this run.
+
+## Impact
+
+T004 is now resolved for Iteration 001. Pillar 1 has an approved deterministic loader shape to implement later, but this run stops at the T005 handoff boundary rather than starting T008 or other downstream work.
+
+## Next Action
+
+Present the T005 human-decision handoff, keeping its documentation-only / non-blocking status explicit and leaving T006 unresolved.
+
+
 # Decision: Feature 019 T003 Cross-Platform Test Automation Depth
 
 **Date**: 2026-05-16T15:54:03Z  

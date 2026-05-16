@@ -86,15 +86,18 @@ Choose between explicit dot-sourcing vs. dynamic discovery for `Specrew.psm1` mo
 **Pattern A: Explicit Dot-Sourcing**
 ```powershell
 # Specrew.psm1
-$PSScriptRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
+$ScriptRoot = $PSScriptRoot
+$scriptsPath = Join-Path -Path $ScriptRoot -ChildPath 'scripts'
+$internalScriptsPath = Join-Path -Path $scriptsPath -ChildPath 'internal'
 
-. (Join-Path $PSScriptRoot 'scripts\specrew.ps1')
-. (Join-Path $PSScriptRoot 'scripts\specrew-init.ps1')
-. (Join-Path $PSScriptRoot 'scripts\specrew-start.ps1')
-. (Join-Path $PSScriptRoot 'scripts\specrew-update.ps1')
-. (Join-Path $PSScriptRoot 'scripts\specrew-review.ps1')
-. (Join-Path $PSScriptRoot 'scripts\specrew-team.ps1')
-. (Join-Path $PSScriptRoot 'scripts\specrew-where.ps1')
+. (Join-Path -Path $internalScriptsPath -ChildPath 'dashboard-renderer.ps1')
+. (Join-Path -Path $scriptsPath -ChildPath 'specrew.ps1')
+. (Join-Path -Path $scriptsPath -ChildPath 'specrew-init.ps1')
+. (Join-Path -Path $scriptsPath -ChildPath 'specrew-review.ps1')
+. (Join-Path -Path $scriptsPath -ChildPath 'specrew-start.ps1')
+. (Join-Path -Path $scriptsPath -ChildPath 'specrew-team.ps1')
+. (Join-Path -Path $scriptsPath -ChildPath 'specrew-update.ps1')
+. (Join-Path -Path $scriptsPath -ChildPath 'specrew-where.ps1')
 
 Export-ModuleMember -Function 'specrew', 'specrew-init', 'specrew-start', 'specrew-update', 'specrew-review', 'specrew-team', 'specrew-where'
 ```
@@ -122,9 +125,24 @@ Export-ModuleMember -Function '*'
 | Performance | Fast (no directory scan) | Slightly slower (directory scan) |
 | Risk | Low (only listed files loaded) | Medium (accidental loads if *.ps1 in scripts/) |
 
-### Decision: Explicit Dot-Sourcing
+### Decision: Approved Iteration 001 Verdict — Explicit Dot-Sourcing
 
-**Rationale**: Transparency and debuggability outweigh maintenance burden. Specrew has a small, stable set of entry-point scripts (~7 files); adding a new entry point is rare and explicit listing reduces risk of accidental loads.
+**Approved T004 verdict (2026-05-16)**:
+- **Option A selected**: explicit dot-sourcing for `Specrew.psm1`
+- **Loader shape**:
+  - `$ScriptRoot = $PSScriptRoot`
+  - load `scripts/internal/dashboard-renderer.ps1` first
+  - then load the reviewed entry-point order: `specrew.ps1`, `specrew-init.ps1`, `specrew-review.ps1`, `specrew-start.ps1`, `specrew-team.ps1`, `specrew-update.ps1`, `specrew-where.ps1`
+  - use `Join-Path` for every path segment
+  - export the public command surface matching FR-002, with aliases allowed if the implementation convention needs them
+- **Compose-with note**: loader-level path construction is cross-platform-safe now because it uses `Join-Path`, but the broader embedded `\` cleanup inside the scripts remains deferred to Iteration 002
+- **Future suggestion captured, not implemented now**: add a validator soft warning for top-level `scripts/` files that are not enumerated in both the loader and `FileList`
+
+**Rationale**:
+- Composes with T001's explicit `FileList` allowlist philosophy
+- Deterministic load order avoids filesystem-order ambiguity across platforms
+- Line-by-line failures remain auditable and debuggable
+- Avoids accidental-load drift from new or scratch scripts
 
 ---
 
@@ -339,10 +357,11 @@ Write-Host $pfxBase64  # Copy to GitHub Actions secret SIGNING_CERT_BASE64
 **Currently approved human decisions**:
 1. **T001 — Module Manifest**: Explicit `FileList` allowlist, FunctionsToExport, version stamped from `.specrew/config.yml`
 2. **T002 — Conflict Resolution**: Git-style `.conflict` sidecar artifacts with next-session Squad mediation
+3. **T003 — Cross-Platform Verification Depth**: Iteration 001 uses a Windows-first manual checklist/evidence artifact; Ubuntu/macOS/WSL hardening remains deferred to Iteration 002
+4. **T004 — Module Loader Structure**: Explicit dot-sourcing, deterministic reviewed load order, `Join-Path` per path segment, FR-002 export surface
 
 **Research recommendations still awaiting explicit execution-time approval**:
-3. **T003 — Cross-Platform Verification Depth**: Iteration 001 uses a Windows-first manual checklist/evidence artifact; the Ubuntu/macOS/WSL matrix and related hardening move to Iteration 002
-4. **T004 candidate**: Explicit dot-sourcing vs. dynamic discovery for `Specrew.psm1` remains unresolved
-5. **T006 candidate**: 5-year validity self-signed certificate stored as GitHub Actions secrets
+5. **T005 candidate**: document PSGallery API key rotation frequency, steps, and secret-update protocol in the maintainer runbook
+6. **T006 candidate**: 5-year validity self-signed certificate stored as GitHub Actions secrets
 
-**Next execution boundary**: Phase 0 continues at T004 (Module Loader Structure).
+**Next execution boundary**: Phase 0 pauses at T005 (API-key rotation guidance handoff); T005 remains documentation-only and non-blocking.

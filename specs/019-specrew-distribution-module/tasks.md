@@ -30,7 +30,7 @@
   **Blocks**: T040, T041  
   **Downstream Impact**: Pillar 5 Publishing Workflow cross-platform verification task scope depends on automation depth decision
 
-- [ ] T004 [assigned_to: Implementation Team] [effort: S] **Resolve Module Loader Structure** — Choose explicit dot-sourcing vs dynamic discovery for Specrew.psm1; update contracts/Specrew.psd1.contract.md with loader pattern (Trace: plan.md Plan-Time Design Question 4, research.md R2)  
+- [ ] T004 [assigned_to: Implementation Team] [effort: S] **Resolve Module Loader Structure** — Choose explicit dot-sourcing vs dynamic discovery for Specrew.psm1; update contracts/Specrew.psd1.contract.md with loader pattern. **Approved 2026-05-16**: Option A — explicit dot-sourcing using `$ScriptRoot = $PSScriptRoot`, `Join-Path` for every path segment, `scripts/internal/dashboard-renderer.ps1` first, then the reviewed entry-point order (`specrew`, `specrew-init`, `specrew-review`, `specrew-start`, `specrew-team`, `specrew-update`, `specrew-where`); broader embedded `\` cleanup stays deferred to Iteration 002. (Trace: plan.md Plan-Time Design Question 4, research.md R2)  
   **Blocks**: T008  
   **Downstream Impact**: Pillar 1 Module Packaging Specrew.psm1 implementation depends on loader structure decision
 

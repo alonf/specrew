@@ -145,6 +145,54 @@ This contract ensures consistent module structure across versions and enables au
 
 ---
 
+### Module Loader (`Specrew.psm1`)
+
+**Purpose**: Dot-source the packaged Specrew scripts in a deterministic, reviewed order and export the public command surface defined by FR-002.
+
+**T004 Decision (2026-05-16)**:
+- **Approved strategy**: Option A — explicit dot-sourcing for `Specrew.psm1`
+- **Loader root**: set `$ScriptRoot = $PSScriptRoot`
+- **Path construction rule**: use `Join-Path` for every path segment
+- **Ordering rule**: load internal helper `scripts/internal/dashboard-renderer.ps1` first, then load entry points in this reviewed order:
+  1. `scripts/specrew.ps1`
+  2. `scripts/specrew-init.ps1`
+  3. `scripts/specrew-review.ps1`
+  4. `scripts/specrew-start.ps1`
+  5. `scripts/specrew-team.ps1`
+  6. `scripts/specrew-update.ps1`
+  7. `scripts/specrew-where.ps1`
+- **Export rule**: `Export-ModuleMember` must expose the FR-002 command surface; aliases are allowed if the implementation convention requires them
+- **Compose-with note**: loader-level path construction is cross-platform-safe now because it uses `Join-Path`, but the broader embedded `\` cleanup inside existing scripts remains deferred to Iteration 002
+
+**Contract Sketch**:
+
+```powershell
+$ScriptRoot = $PSScriptRoot
+$scriptsPath = Join-Path -Path $ScriptRoot -ChildPath 'scripts'
+$internalScriptsPath = Join-Path -Path $scriptsPath -ChildPath 'internal'
+
+. (Join-Path -Path $internalScriptsPath -ChildPath 'dashboard-renderer.ps1')
+. (Join-Path -Path $scriptsPath -ChildPath 'specrew.ps1')
+. (Join-Path -Path $scriptsPath -ChildPath 'specrew-init.ps1')
+. (Join-Path -Path $scriptsPath -ChildPath 'specrew-review.ps1')
+. (Join-Path -Path $scriptsPath -ChildPath 'specrew-start.ps1')
+. (Join-Path -Path $scriptsPath -ChildPath 'specrew-team.ps1')
+. (Join-Path -Path $scriptsPath -ChildPath 'specrew-update.ps1')
+. (Join-Path -Path $scriptsPath -ChildPath 'specrew-where.ps1')
+
+Export-ModuleMember -Function @(
+    'specrew',
+    'specrew-init',
+    'specrew-start',
+    'specrew-update',
+    'specrew-review',
+    'specrew-team',
+    'specrew-where'
+)
+```
+
+---
+
 ### Bundled Files
 
 #### `FileList` (array, required)
