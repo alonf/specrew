@@ -2065,6 +2065,34 @@ Iteration 002 planning artifacts (plan.md) were still in `planning` status with 
 
 - **Routing Evidence**: Reviewer | requested=claude | actual=copilot | model=(platform default) | status=fell-back | fallback=preferred agent 'claude' is not enabled
 
+## 2026-05-16T12:03:53Z — Feature 019 start authorization
+
+- **Decision ID**: feature-019-start-authorization
+- **Type**: authorization
+- **Boundary**: feature-start
+- **Approving Human**: Alon Fliess
+- **Recorded At**: 2026-05-16T12:03:53Z
+- **Feature**: 019 — Specrew Distribution Module via PowerShell Gallery
+- **Source Spec**: `file:///C:/Dev/SpecrewDraft/specrew-distribution-module.md`
+- **Public Proposal**: `file:///C:/Dev/Specrew/proposals/031-specrew-distribution-module.md`
+
+### Authorized boundary work
+
+- Branch from `main` at `aac726b` to `019-specrew-distribution-module`
+- Update `.specify/feature.json` to point at `specs/019-specrew-distribution-module`
+- Push the feature-start boundary commit to `origin/019-specrew-distribution-module`
+- Stop after feature-start and wait for explicit authorization before `/speckit.specify`
+
+### Scope lock
+
+- **In scope**: PSGallery module packaging, bundled scripts/templates/extensions/agent assets, `specrew init` bootstrap-from-module refactor, `specrew update` template-refresh story, and Rule 15 publish/version workflow integration
+- **Out of scope**: Slash Commands / Proposal 032, winget / Chocolatey / Scoop, signing beyond self-sign for v1, and migration tooling for existing alpha users
+
+### Clarify-time direction to preserve
+
+- Reach human alignment during `/speckit.clarify` on the 10 source-spec questions before planning
+- Default recommendations to carry into clarify: PSGallery-only for v1, preserve-and-flag template conflicts, module version mirrors `.specrew/config.yml` `specrew_version`, self-sign for v1, and indefinite clone-and-PATH fallback support
+
 ## 2026-05-15T18:12:42Z — Hardening-gate sign-off: Feature 018
 
 - **Decision ID**: feature-018-hardening-gate-signoff-20260515
@@ -3799,6 +3827,56 @@ sequencing inputs, and leaves feature-closeout explicitly unopened.
 - **Affected Iteration**: (none)
 - **Approving Human**: (none)
 - **Recorded At**: 2026-05-16T10:26:39Z
+- **Next Action**: none
+- **Rationale**: Delegated lifecycle routing was applied for role 'Reviewer'.
+
+- **Routing Evidence**: Reviewer | requested=claude | actual=copilot | model=(platform default) | status=fell-back | fallback=preferred agent 'claude' is not enabled
+
+## 2026-05-16T12:02:33Z — Delegated routing plan
+
+- **Enabled Agents**: copilot
+- **Independent Oversight Active**: False
+- **Roles**:
+  - Implementer | requested=copilot | actual=copilot | model=(platform default) | status=honored | fallback=(none)
+  - Spec Steward | requested=codex | actual=copilot | model=(platform default) | status=fell-back | fallback=preferred agent 'codex' is not enabled
+  - Planner | requested=claude | actual=copilot | model=(platform default) | status=fell-back | fallback=preferred agent 'claude' is not enabled
+  - Reviewer | requested=claude | actual=copilot | model=(platform default) | status=fell-back | fallback=preferred agent 'claude' is not enabled
+  - Retro Facilitator | requested=copilot | actual=copilot | model=(platform default) | status=honored | fallback=(none)
+
+## 2026-05-16T12:02:33Z — Routing evidence: Spec Steward
+
+- **Decision ID**: routing-evidence-51813d20b077
+- **Type**: routing-evidence
+- **Affected Requirement**: FR-043
+- **Affected Iteration**: (none)
+- **Approving Human**: (none)
+- **Recorded At**: 2026-05-16T12:02:33Z
+- **Next Action**: none
+- **Rationale**: Delegated lifecycle routing was applied for role 'Spec Steward'.
+
+- **Routing Evidence**: Spec Steward | requested=codex | actual=copilot | model=(platform default) | status=fell-back | fallback=preferred agent 'codex' is not enabled
+
+## 2026-05-16T12:02:33Z — Routing evidence: Planner
+
+- **Decision ID**: routing-evidence-4a2943e79954
+- **Type**: routing-evidence
+- **Affected Requirement**: FR-043
+- **Affected Iteration**: (none)
+- **Approving Human**: (none)
+- **Recorded At**: 2026-05-16T12:02:33Z
+- **Next Action**: none
+- **Rationale**: Delegated lifecycle routing was applied for role 'Planner'.
+
+- **Routing Evidence**: Planner | requested=claude | actual=copilot | model=(platform default) | status=fell-back | fallback=preferred agent 'claude' is not enabled
+
+## 2026-05-16T12:02:34Z — Routing evidence: Reviewer
+
+- **Decision ID**: routing-evidence-58e89b8ec8bf
+- **Type**: routing-evidence
+- **Affected Requirement**: FR-043
+- **Affected Iteration**: (none)
+- **Approving Human**: (none)
+- **Recorded At**: 2026-05-16T12:02:33Z
 - **Next Action**: none
 - **Rationale**: Delegated lifecycle routing was applied for role 'Reviewer'.
 
