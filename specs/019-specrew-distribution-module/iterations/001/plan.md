@@ -74,10 +74,9 @@ Total effort estimate: 14 Story Points
 - **Planning approval**: Alon Fliess (2026-05-16)
 - **Hardening-gate sign-off**: Alon Fliess (2026-05-16T17:42:05Z)
 - **Implementation authorization**: Alon Fliess (2026-05-16T17:42:05Z)
-- **Review status**: Reviewer boundary completed on 2026-05-16 with a bounded repair lane; manifest allowlist + package-surface evidence repair is now complete and ready to return to independent review before review-verdict-signoff
+- **Review status**: Reviewer re-review accepted on 2026-05-16 against commit `9e2fb30`; review-verdict-signoff is the next valid lifecycle step and remains unopened from this boundary
 
 ## Reference
 
 Full task details in feature-level tasks.md:  
 `file:///C:/Dev/Specrew/specs/019-specrew-distribution-module/tasks.md`
-
