@@ -7,7 +7,7 @@
 **Requested Review Class**: `deferred`
 **Effective Review Class**: `deferred`
 **Overall Verdict**: ready
-**Approval Ref**: d2cc45a
+**Approval Ref**: 6c1b3dd
 **Reviewed By**: Alon Fliess
 **Reviewed At**: 2026-05-16T17:42:05Z
 **Post-Implementation Verification**: not-started
