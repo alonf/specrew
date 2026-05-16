@@ -3909,3 +3909,134 @@ sequencing inputs, and leaves feature-closeout explicitly unopened.
 - **Rationale**: Delegated lifecycle routing was applied for role 'Reviewer'.
 
 - **Routing Evidence**: Reviewer | requested=claude | actual=copilot | model=(platform default) | status=fell-back | fallback=preferred agent 'claude' is not enabled
+
+
+# Clarification Decision: Feature 019 Distribution Module
+
+**Date**: 2026-05-16
+**Agent**: Clarifier (explicit human authorization)
+**Authority**: Alon Fliess (Feature Sponsor)
+**Decision Type**: Clarify-boundary completion (all 10 questions resolved)
+
+---
+
+## Problem
+
+Feature 019 Draft spec contained 10 open clarification questions (Q1-Q10) that required resolution before planning could begin. These questions covered critical design choices: template update pattern, distribution channels, module naming, API key management, signing strategy, backward compatibility, conflict resolution, cross-platform path handling, version policy, and migration path.
+
+## Resolution
+
+All 10 clarification questions have been resolved via explicit human authorization on 2026-05-16. Final verdicts integrated into spec.md:
+
+### Q1: Update Story Pattern
+**Decision**: Pattern B (Template-Refresh with preserve-and-flag conflict resolution)
+
+**Rationale**: Specrew templates carry evolving methodology guidance. If templates can never be updated post-init, downstream projects cannot adopt Specrew evolution without manual re-bootstrap. Pattern B enables `specrew update` to refresh templates safely, with conflict resolution mediated by the protocol chosen in Q7.
+
+**Extended by Q7**: The conflict-resolution protocol is designed to remain crew-framework-agnostic (not hard-coded only to Squad) to align with future Proposal 024 Multi-Host Runtime Abstraction, while naming Squad as the current provider in user-facing behavior.
+
+### Q2: Distribution Channel Scope
+**Decision**: PowerShell Gallery only for v1 (already resolved in prior session)
+
+### Q3: Module Name on PSGallery
+**Decision**: Specrew (canonical name; fallback SpeckitSpecrew if claimed) (already resolved in prior session)
+
+### Q4: PSGallery API Key Management
+**Decision**: GitHub Actions secret (name: `PSGALLERY_API_KEY`)
+
+**Rationale**: Provides security (no local/codebase exposure), automation (tag-triggered publish), and Rule 15 integration without manual steps.
+
+### Q5: Module Signing Strategy
+**Decision**: Self-sign for v1, integrated into GitHub Action
+
+**Rationale**: Quick setup, reduces trust warnings, avoids certificate acquisition lead time. Signing logic runs in publish workflow; cert material stored as GitHub Actions secret. Real codesign cert can be acquired post-v1 if user feedback indicates trust warnings are a blocker.
+
+### Q6: Backward Compatibility with Clone-and-PATH
+**Decision**: Support indefinitely (both distribution models coexist)
+
+**Rationale**: Alpha users can continue clone-and-PATH workflow; new users can use `Install-Module`. README documents both paths; no forced migration.
+
+### Q7: Template-Update Conflict Resolution
+**Decision**: Preserve-and-flag with crew-mediated merge protocol (crew-framework-agnostic design)
+
+**Rationale**: User-modified templates preserved with conflict markers (`<<<< USER / ==== / >>>> MODULE-v0.22`) and `.specrew/template-conflicts/<filename>.conflict` artifacts written for next-session review. Protocol designed to remain crew-framework-agnostic (not Squad-only) to align with future Proposal 024, but Squad is current provider for user-facing behavior.
+
+### Q8: Cross-Platform Path Handling
+**Decision**: Join-Path everywhere plus dedicated WSL verification task
+
+**Rationale**: All path construction uses `Join-Path` for correct delimiters on all platforms. Implementation plan must include dedicated WSL verification task to validate real cross-platform behavior.
+
+### Q9: Module Version Policy
+**Decision**: Same version (manifest stamped from `.specrew/config.yml` at build time)
+
+**Rationale**: Single source of truth reduces drift risk. Publishing workflow reads version from config and updates manifest before `Publish-Module`.
+
+### Q10: Alpha-User Migration Path
+**Decision**: README documentation only; `specrew update` is the migration path
+
+**Rationale**: No automated migration command in v1. README docs sufficient; users run `Install-Module Specrew`, then `specrew update` in project to refresh templates. Tooling can be added later if friction reports indicate need.
+
+---
+
+## Spec Updates Made
+
+### Requirements Updated
+- **FR-020 through FR-023**: Made Template-Refresh pattern unconditional (removed "if Pattern B" conditional language)
+- **FR-021**: Extended to specify crew-framework-agnostic conflict resolution protocol
+- **FR-024 through FR-028**: Updated for GitHub Actions secret strategy and self-signing
+- **FR-030**: Made Join-Path and WSL verification explicit
+
+### User Stories Updated
+- **US3**: Removed "pattern selection pending" note; specified preserve-and-flag conflict protocol
+- **US4**: Updated to reflect GitHub Actions secret, self-signing, and manifest version stamping
+- **US5**: Removed "cross-platform path handling strategy pending" note; specified WSL verification
+
+### Other Sections Updated
+- **Clarifications**: Added Q1 with full rationale; existing Q2-Q3 preserved; added Q4-Q10 with full rationale
+- **Clarifications Pending**: Entire section removed (all questions resolved)
+- **Assumptions**: Updated to reflect all resolved clarifications and crew-agnostic protocol design
+- **Non-Goals**: Clarified that real certificate and migration tooling are deferred (not pending)
+- **IN scope**: Updated to specify Pattern B explicitly
+
+---
+
+## Artifacts Updated
+
+Files modified:
+1. `specs/019-specrew-distribution-module/spec.md` — all 10 clarifications integrated, Clarifications Pending removed, Status remains Draft
+2. `.squad/identity/now.md` — updated to reflect clarify-complete status, next action is await plan authorization
+3. `.squad/decisions.md` — this decision entry appended
+
+---
+
+## Verification
+
+- ✅ All 10 questions (Q1-Q10) resolved and recorded in spec.md Clarifications section
+- ✅ Clarifications Pending section removed entirely from spec.md
+- ✅ FR-020 through FR-023 updated to unconditional Template-Refresh language
+- ✅ FR-021 specifies crew-framework-agnostic conflict resolution protocol
+- ✅ FR-024 through FR-028 updated for GitHub Actions secrets and self-signing
+- ✅ FR-030 updated for Join-Path and WSL verification
+- ✅ User Stories 3, 4, 5 updated to remove conditional/pending language
+- ✅ Assumptions section updated to reflect all resolved clarifications
+- ✅ Non-Goals section clarified (deferred, not pending)
+- ✅ Status remains Draft (correct for post-clarify, pre-plan state)
+- ✅ .squad/identity/now.md updated to clarify-complete status
+- ✅ No implementation code touched (artifact/state only boundary)
+
+---
+
+## Impact
+
+The /speckit.clarify boundary for Feature 019 is now complete. All design choices are resolved and integrated into the Draft spec. The specification is ready for planning authorization (`/speckit.plan`) when explicitly authorized by the human sponsor.
+
+Template-Refresh pattern (Pattern B) is confirmed with crew-framework-agnostic conflict resolution, enabling future evolution while respecting current Squad-mediated workflows and future Proposal 024 host abstractions.
+
+---
+
+## Next Action
+
+Do not advance to `/speckit.plan` from this clarify-complete boundary alone. Await separate explicit human authorization before opening the planning boundary for Feature 019.
+
+Authorization runtime: Feature 019 clarify completion authorized by Alon Fliess on 2026-05-16 at commit edd1ded (with local spec.md clarify edits present before boundary closeout).
+

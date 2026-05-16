@@ -41,7 +41,7 @@ After installing the Specrew module, a user navigates to their project directory
 
 ### User Story 3 - Module Update and Template Refresh (Priority: P2)
 
-An existing Specrew user discovers a new version is available (e.g., via release notes or `Update-Module` notification). They run `Update-Module Specrew` to get the latest scripts and extensions. Then they run `specrew update` in their project directory to refresh templates while preserving user-edited files.
+An existing Specrew user discovers a new version is available (e.g., via release notes or `Update-Module` notification). They run `Update-Module Specrew` to get the latest scripts and extensions. Then they run `specrew update` in their project directory to refresh templates while preserving user-edited files via the preserve-and-flag conflict resolution protocol.
 
 **Why this priority**: Essential for long-term maintainability. Without a clean update path, users are stuck on old versions or must manually reconcile template changes.
 
@@ -49,17 +49,15 @@ An existing Specrew user discovers a new version is available (e.g., via release
 
 **Acceptance Scenarios**:
 
-1. **Given** a project initialized with module v0.21, **When** user updates to v0.22 and runs `specrew update`, **Then** new template files are added, existing unmodified files are updated, and user-modified files are preserved with conflict markers for manual review
-2. **Given** a template file deleted in v0.22, **When** user runs `specrew update`, **Then** the file is flagged for manual deletion (or automatically removed with a backup)
+1. **Given** a project initialized with module v0.21, **When** user updates to v0.22 and runs `specrew update`, **Then** new template files are added, existing unmodified files are updated, and user-modified files are preserved with conflict markers and `.specrew/template-conflicts/<filename>.conflict` artifacts for crew-mediated review
+2. **Given** a template file deleted in v0.22, **When** user runs `specrew update`, **Then** the file is flagged for manual deletion review (or automatically archived with notification)
 3. **Given** scripts updated in the module, **When** user runs any `specrew` command after `Update-Module`, **Then** the new script logic takes effect immediately (scripts run from module path, not project path)
-
-_Note: Update story pattern selection pending — see Clarifications Pending section._
 
 ---
 
 ### User Story 4 - Module Publishing on Feature Closeout (Priority: P2)
 
-A Specrew maintainer completes a feature, follows Rule 15 (version bump, tag, PR), and pushes the tag to origin. A GitHub Action triggers automatically, runs `Publish-Module` with the PSGallery API key, and publishes the new version to PowerShell Gallery. Users can discover the new version via `Find-Module Specrew -AllVersions` or `Update-Module Specrew`.
+A Specrew maintainer completes a feature, follows Rule 15 (version bump, tag, PR), and pushes the tag to origin. A GitHub Action triggers automatically, stamps the module manifest version from `.specrew/config.yml`, self-signs the module package using certificate material from GitHub Actions secrets, runs `Publish-Module` with the PSGallery API key, and publishes the new version to PowerShell Gallery. Users can discover the new version via `Find-Module Specrew -AllVersions` or `Update-Module Specrew`.
 
 **Why this priority**: Completes the distribution loop. Without automated publishing, module updates require manual maintainer steps, creating friction and risk of version drift.
 
@@ -68,16 +66,14 @@ A Specrew maintainer completes a feature, follows Rule 15 (version bump, tag, PR
 **Acceptance Scenarios**:
 
 1. **Given** a maintainer pushes a `v*.*` tag to origin, **When** the GitHub Action runs, **Then** `Publish-Module` succeeds and the new version appears on PSGallery within 10 minutes
-2. **Given** the module version in `Specrew.psd1` matches `.specrew/config.yml` `specrew_version`, **When** `Publish-Module` runs, **Then** the PSGallery listing shows the correct version number
+2. **Given** the module version is stamped from `.specrew/config.yml` `specrew_version` at build time, **When** `Publish-Module` runs, **Then** the PSGallery listing shows the correct version number matching the config file
 3. **Given** a publishing failure (e.g., API key expired), **When** the GitHub Action runs, **Then** the workflow fails visibly and logs the error for maintainer investigation
-
-_Note: PSGallery API key management and module signing strategy pending — see Clarifications Pending section._
 
 ---
 
 ### User Story 5 - Cross-Platform Consistency (Priority: P3)
 
-A user installs Specrew on Windows, Linux, and Mac. The module works identically on all three platforms: commands execute without path delimiter issues, templates copy correctly, and scripts resolve module paths using `Join-Path` everywhere.
+A user installs Specrew on Windows, Linux, and Mac. The module works identically on all three platforms: commands execute without path delimiter issues, templates copy correctly, and scripts resolve module paths using `Join-Path` everywhere. Implementation includes dedicated WSL verification testing to validate real cross-platform behavior.
 
 **Why this priority**: PowerShell 7+ is cross-platform; Specrew should be too. Lower priority because most alpha users are on Windows, but essential for public flip credibility.
 
@@ -89,8 +85,6 @@ A user installs Specrew on Windows, Linux, and Mac. The module works identically
 2. **Given** Specrew installed on macOS, **When** user runs `specrew where`, **Then** file paths display correctly without backslash artifacts
 3. **Given** module manifest declares PowerShell ≥ 7 requirement, **When** user tries to install on PowerShell 5.1, **Then** installation fails with a clear error message
 
-_Note: Cross-platform path handling strategy pending — see Clarifications Pending section._
-
 ---
 
 ### Edge Cases
@@ -98,10 +92,8 @@ _Note: Cross-platform path handling strategy pending — see Clarifications Pend
 - What happens when a user runs `specrew init` in a directory that already contains partial `.specify/` or `.squad/` directories from a previous incomplete initialization?
 - How does `specrew update` handle a conflict where the user deleted a template file that still exists in the new module version?
 - What happens if a user manually modifies `Specrew.psm1` after installation (e.g., to debug an issue)? Does `Update-Module` restore the original, or does it preserve user changes?
-- What happens when PSGallery name `Specrew` is already taken by another author? Do we have a fallback name strategy?
+- What happens when PSGallery name `Specrew` is already taken by another author? Do we have a fallback name strategy? _(Resolution: Use SpeckitSpecrew as fallback; pre-flight check via Find-Module Specrew before first publish — clarified 2026-05-16)_
 - How does the module behave when installed in both `-Scope CurrentUser` and `-Scope AllUsers` simultaneously?
-
-_Note: Module name on PSGallery pending — see Clarifications Pending section._
 
 ## Requirements *(mandatory)*
 
@@ -137,23 +129,23 @@ _Note: Module name on PSGallery pending — see Clarifications Pending section._
 #### Pillar 4: Update Story
 
 - **FR-019**: `Update-Module Specrew` MUST update scripts and extensions in the installed module path, taking effect immediately on next command invocation
-- **FR-020**: `specrew update` command MUST implement the selected template-refresh pattern (to be determined at clarify time)
-- **FR-021**: If Pattern B is selected at clarify time, `specrew update` MUST detect user-modified template files and preserve them with conflict markers for manual review
-- **FR-022**: If Pattern B is selected at clarify time, `specrew update` MUST add new template files from the updated module version
-- **FR-023**: If Pattern B is selected at clarify time, `specrew update` MUST flag template files deleted in the new module version for manual review
+- **FR-020**: `specrew update` command MUST implement the Template-Refresh pattern, syncing templates from the updated module version to the user project
+- **FR-021**: `specrew update` MUST detect user-modified template files, preserve them with conflict markers (e.g., `<<<< USER / ==== / >>>> MODULE-v0.22`), and write `.specrew/template-conflicts/<filename>.conflict` artifacts for next-session crew-mediated resolution
+- **FR-022**: `specrew update` MUST add new template files from the updated module version non-destructively
+- **FR-023**: `specrew update` MUST flag template files deleted in the new module version for manual review (preserve with deletion marker or archive)
 
 #### Pillar 5: Publishing + Versioning
 
-- **FR-024**: A `Publish-Module` workflow MUST exist that reads version from `.specrew/config.yml` `specrew_version`
-- **FR-025**: The workflow MUST sign the module package with a maintainer API key (PSGallery requirement)
+- **FR-024**: A `Publish-Module` workflow MUST exist that reads version from `.specrew/config.yml` `specrew_version` and stamps it into the module manifest at build time
+- **FR-025**: The workflow MUST self-sign the module package using certificate material stored as a GitHub Actions secret
 - **FR-026**: The workflow MUST publish to PSGallery on every `v*.*` tag push to origin
-- **FR-027**: The workflow MUST integrate with the existing Rule 15 feature-closeout sequence (after tag push, before PR merge)
-- **FR-028**: The workflow MUST run as a GitHub Action using a PSGallery API key stored as a GitHub secret
-- **FR-029**: The workflow MUST log errors visibly if publishing fails (e.g., API key expired, version collision)
+- **FR-027**: The workflow MUST integrate with the existing Rule 15 feature-closeout sequence (trigger after tag push, before PR merge)
+- **FR-028**: The workflow MUST run as a GitHub Action using a PSGallery API key stored as a GitHub secret (name: `PSGALLERY_API_KEY`)
+- **FR-029**: The workflow MUST log errors visibly if publishing fails (e.g., API key expired, version collision, signing failure)
 
 #### Cross-Platform Requirements
 
-- **FR-030**: All scripts MUST use `Join-Path` for path construction to ensure correct delimiters on Windows (`\`) and Linux/Mac (`/`)
+- **FR-030**: All scripts MUST use `Join-Path` for path construction to ensure correct delimiters on Windows (`\`) and Linux/Mac (`/`); implementation plan MUST include a dedicated WSL verification task
 - **FR-031**: Module MUST be tested on Windows, Linux (Ubuntu), and macOS before every release
 - **FR-032**: Module manifest MUST declare `PSEdition = 'Core'` to enforce PowerShell 7+ requirement
 
@@ -186,27 +178,29 @@ _Note: Module name on PSGallery pending — see Clarifications Pending section._
 
 - Users have PowerShell 7+ installed (PowerShell Gallery requires pwsh 7 for modern cross-platform modules)
 - Users have internet connectivity to access PowerShell Gallery during install and update
-- Existing alpha users (who cloned the repo) are willing to migrate to the module-based distribution post-launch; migration path to be defined at clarify time
+- Existing alpha users (who cloned the repo) can continue using clone-and-PATH indefinitely; both distribution models coexist (clarified 2026-05-16)
 - The existing Rule 15 sequence is authoritative; the new `Publish-Module` step composes with the existing tag + PR workflow without disrupting it
-- Template-update conflict resolution, module signing strategy, PSGallery name selection, and cross-platform path handling approach are open for clarify-time resolution (see Clarifications Pending section)
+- Template-update conflicts are resolved via preserve-and-flag with crew-mediated protocol; the conflict-resolution mechanism is crew-framework-agnostic to align with future Proposal 024 Multi-Host Runtime Abstraction (clarified 2026-05-16)
+- Module manifest version is stamped from `.specrew/config.yml` `specrew_version` at build time (clarified 2026-05-16)
+- PSGallery API key and self-signed certificate material are stored as GitHub Actions secrets (clarified 2026-05-16)
 
 ## Non-Goals (Explicit Scope Boundaries)
 
 **OUT of scope for this feature:**
 
 1. **Slash Commands / Proposal 032**: This feature does NOT implement or integrate with the Slash-Command Surface (Proposal 032). That proposal is blocked until after Multi-Host Runtime Abstraction CORE (Proposal 024). Distribution is orthogonal to Squad/Copilot CLI surface changes.
-2. **winget / Chocolatey / Scoop distribution**: Only PowerShell Gallery for v1. Other distribution channels may be added post-public-flip if demand emerges.
-3. **Module signing beyond self-sign for v1**: Real codesign certificate acquisition is deferred unless early feedback shows PSGallery trust warnings are a significant blocker.
-4. **Alpha-user migration tooling**: No automated `specrew migrate-to-module` command in v1. Manual migration guidance in README is sufficient initially; tooling can be added later if friction reports indicate a need.
-5. **Template versioning and backward compatibility**: No complex version-negotiation logic in v1. Templates copied at init time are user-owned; updates are manual or via `specrew update` (Pattern B). If a breaking template change ships, users handle it as a manual migration step.
+2. **winget / Chocolatey / Scoop distribution**: Only PowerShell Gallery for v1 (clarified 2026-05-16). These distribution channels are explicitly deferred to reduce test-matrix burden and maintain tight scope for public-flip readiness. Other distribution channels may be added post-public-flip as separate small features if user demand emerges.
+3. **Real codesign certificate acquisition**: Self-sign for v1 (clarified 2026-05-16); real certificate acquisition is deferred unless early feedback shows PSGallery trust warnings are a significant blocker.
+4. **Alpha-user migration tooling**: No automated `specrew migrate-to-module` command in v1 (clarified 2026-05-16). Manual migration guidance in README is sufficient initially; `specrew update` serves as the migration path. Tooling can be added later if friction reports indicate a need.
+5. **Template versioning and backward compatibility**: No complex version-negotiation logic in v1. Templates copied at init time are user-owned; updates are via `specrew update` (Template-Refresh pattern). If a breaking template change ships, users handle it via the preserve-and-flag conflict resolution protocol.
 
 **IN scope for this feature:**
 
 1. PowerShell Gallery module packaging (Pillar 1)
 2. Template + resource bundling in the module (Pillar 2)
 3. `specrew init` bootstrap refactor to resolve templates from module install path (Pillar 3)
-4. `specrew update` template-refresh story (Pillar 4, pending clarify-time pattern selection)
-5. Publishing/versioning workflow integrated into Rule 15 feature-closeout (Pillar 5)
+4. `specrew update` template-refresh using Pattern B (Template-Refresh with preserve-and-flag conflict resolution) (Pillar 4)
+5. Publishing/versioning workflow integrated into Rule 15 feature-closeout, using GitHub Actions secret for PSGallery API key and self-signed certificate (Pillar 5)
 
 ## Governance Alignment *(mandatory)*
 
@@ -220,155 +214,22 @@ _Note: Module name on PSGallery pending — see Clarifications Pending section._
   - Pre-release manual test on Windows/Linux/macOS before first `Publish-Module` run
   - Post-release verification that PSGallery listing is correct and `Install-Module Specrew` works for new users
 
-## Clarifications Pending *(mandatory for Draft status)*
+## Clarifications
 
-The following 10 questions were identified during specification and require resolution at the next `/speckit.clarify` boundary before proceeding to planning and implementation. **These are open questions; recommendations provided are for context only and do not represent pre-made decisions.**
+### Session 2026-05-16
 
-### Q1: Update Story Pattern
+- Q: Update Story Pattern — When a user updates the Specrew module and wants to refresh templates in their project, how should `specrew update` handle user-modified files? → A: Pattern B (Template-Refresh). Specrew templates carry evolving methodology guidance. If templates can never be updated post-init, downstream projects cannot adopt Specrew evolution without manual re-bootstrap. Pattern B enables `specrew update` to refresh templates safely, with conflict resolution mediated by the preserve-and-flag plus crew-mediated merge protocol. This allows projects to benefit from upstream template improvements while preserving user customizations.
+- Q: Distribution Channel Scope — Should v1 support multiple distribution channels, or start with one and expand later? → A: PowerShell Gallery only for v1. Single distribution channel keeps scope tight and reduces test-matrix burden. PSGallery is the idiomatic PowerShell distribution path and covers the cross-platform pwsh-7+ audience cleanly. winget, Chocolatey, and Scoop can be added post-public-flip as separate small features if user demand emerges.
+- Q: Module Name on PSGallery — What name should we use when registering the module on PowerShell Gallery? → A: Specrew (claim canonical name on PowerShell Gallery). We own the project name; reserve the canonical module name on PSGallery before public flip so no one else can claim it. The exact name "Specrew" matches the repository name, the binary name (specrew), the install instruction format the README will eventually carry (Install-Module Specrew), and the brand the methodology site will use. Namespaced variants would fragment identity for no benefit. Pre-flight: if Specrew is already taken on PSGallery, fall back to SpeckitSpecrew and document the divergence; otherwise proceed with the canonical claim. Verifying availability is a one-line Find-Module Specrew check before the first publish.
+- Q: PSGallery API Key Management — Where should the PSGallery API key be stored for automated publishing? → A: GitHub Actions secret. This provides security (secret is not exposed in codebase or local machines), automation (publish triggers on tag push), and integration with Rule 15 feature-closeout workflow without manual maintainer steps.
+- Q: Module Signing Strategy — Should the module be signed for PSGallery trust, and if so, how? → A: Self-sign for v1, integrated into GitHub Action. Quick to set up, reduces trust warnings on install, and avoids acquisition lead time for real certificates. Signing logic runs in the publish workflow; certificate material is stored as a GitHub Actions secret. Real codesign certificate can be acquired post-v1 if user feedback indicates trust warnings are a significant blocker.
+- Q: Backward Compatibility with Clone-and-PATH — After module distribution launches, should the existing clone-and-PATH approach continue to work? → A: Support indefinitely. Both distribution models coexist (Spec Kit pattern). Alpha users who cloned the repo can continue using that workflow; new users can use `Install-Module`. README documents both paths; no forced migration. This reduces transition friction and respects existing workflows.
+- Q: Template-Update Conflict Resolution — When `specrew update` detects a user-modified template file that also changed in the new module version, what should happen? → A: Preserve-and-flag with crew-mediated merge protocol. User-modified templates are preserved with conflict markers (e.g., `<<<< USER / ==== / >>>> MODULE-v0.22`) and `.specrew/template-conflicts/<filename>.conflict` artifacts are written for next-session review. The conflict-resolution protocol is designed to remain crew-framework-agnostic (not hard-coded to Squad) to align with future Proposal 024 Multi-Host Runtime Abstraction, but Squad is the current provider for user-facing behavior. This gives users full control and visibility into changes without data loss.
+- Q: Cross-Platform Path Handling — How should scripts handle Windows (`\`) vs Linux/Mac (`/`) path delimiters? → A: Use `Join-Path` everywhere for explicit cross-platform correctness, plus dedicated WSL verification task. All path construction in scripts uses `Join-Path` to ensure correct delimiters on all platforms. Implementation plan must include a dedicated task for WSL testing to validate real cross-platform behavior beyond unit tests.
+- Q: Module Version Policy — Should the module version in `Specrew.psd1` be the same as the repo version, or maintained separately? → A: Same version. Module manifest is stamped from `.specrew/config.yml` `specrew_version` at build time. Single source of truth reduces drift risk and eliminates version-sync governance burden. Publishing workflow reads version from config and updates manifest before `Publish-Module`.
+- Q: Alpha-User Migration Path — How should existing alpha users (who cloned the repo) transition to the module-based distribution? → A: README documentation only for migration initially; `specrew update` is the migration path. No automated `specrew migrate-to-module` command in v1. Manual migration guidance in README is sufficient; users run `Install-Module Specrew`, then `specrew update` in their project to refresh templates. Tooling can be added later if friction reports indicate a need, but initial feedback suggests README docs are sufficient.
 
-**Context**: When a user updates the Specrew module and wants to refresh templates in their project, how should `specrew update` handle user-modified files?
 
-**Options**:
-- **Pattern A (No Auto-Update)**: Templates copied at init are user-owned forever; no `specrew update` template-refresh capability
-- **Pattern B (Template-Refresh)**: `specrew update` syncs templates while preserving user edits with conflict markers
-- **Pattern C (Scripts-from-Module, Templates-from-Project)**: Cleanest separation; scripts always run from module path, templates are never updated
-
-**Recommended direction** (for clarify-time consideration): Pattern B provides the best UX by balancing update convenience with user control
-
-**Implications**: Affects FR-020 through FR-023 and User Story 3 acceptance scenarios
-
----
-
-### Q2: Distribution Channel Scope
-
-**Context**: Should v1 support multiple distribution channels, or start with one and expand later?
-
-**Options**:
-- PowerShell Gallery only for v1
-- PowerShell Gallery + winget for v1
-- PowerShell Gallery + winget + Chocolatey + Scoop for v1
-
-**Recommended direction** (for clarify-time consideration): PSGallery only for v1; add other channels post-public-flip if demand emerges
-
-**Implications**: Affects module packaging effort, testing matrix, and maintenance burden
-
----
-
-### Q3: Module Name on PSGallery
-
-**Context**: What name should we use when registering the module on PowerShell Gallery?
-
-**Options**:
-- `Specrew` (exact match with repo name)
-- `SpeckitSquad.Specrew` (namespaced to avoid collisions)
-- Other variant (e.g., `Specrew-CLI`, `SpeckitSpecrew`)
-
-**Recommended direction** (for clarify-time consideration): Claim `Specrew` exactly if available (we own the name; reserve before public flip)
-
-**Implications**: Affects module manifest name, install command, and user-facing documentation
-
----
-
-### Q4: PSGallery API Key Management
-
-**Context**: Where should the PSGallery API key be stored for automated publishing?
-
-**Options**:
-- GitHub Actions secret (CI-triggered publish on tag push)
-- Local maintainer machine (manual publish step)
-
-**Recommended direction** (for clarify-time consideration): GitHub Actions secret for security, automation, and integration with Rule 15
-
-**Implications**: Affects FR-028, publishing workflow design, and maintainer onboarding
-
----
-
-### Q5: Module Signing Strategy
-
-**Context**: Should the module be signed for PSGallery trust, and if so, how?
-
-**Options**:
-- No signing for v1 (fastest to ship, but PSGallery shows "unsigned" warning)
-- Self-sign for v1 (quick setup, reduces warnings)
-- Acquire real codesign certificate for v1 (most trusted, but adds acquisition lead time)
-
-**Recommended direction** (for clarify-time consideration): Self-sign for v1; revisit for v1.0+ based on user feedback
-
-**Implications**: Affects FR-025, publishing workflow complexity, and user trust on install
-
----
-
-### Q6: Backward Compatibility with Clone-and-PATH
-
-**Context**: After module distribution launches, should the existing clone-and-PATH approach continue to work?
-
-**Options**:
-- Support indefinitely (Spec Kit pattern: both distribution models coexist)
-- Deprecate after module lands (module becomes the canonical path; clone-and-PATH sunsets)
-- Deprecate immediately (remove clone-and-PATH bootstrap from README)
-
-**Recommended direction** (for clarify-time consideration): Support indefinitely; document migration in README but don't force it
-
-**Implications**: Affects alpha-user migration timeline, documentation, and testing matrix
-
----
-
-### Q7: Template-Update Conflict Resolution
-
-**Context**: When `specrew update` detects a user-modified template file that also changed in the new module version, what should happen?
-
-**Options**:
-- Overwrite (user changes lost)
-- Skip (new template changes ignored)
-- 3-way merge (complex, requires merge tooling)
-- Preserve and flag with explicit diff for manual review
-
-**Recommended direction** (for clarify-time consideration): Preserve and flag with explicit diff — gives users full control and visibility
-
-**Implications**: Affects FR-021 implementation and User Story 3 edge-case handling
-
----
-
-### Q8: Cross-Platform Path Handling
-
-**Context**: How should scripts handle Windows (`\`) vs Linux/Mac (`/`) path delimiters?
-
-**Options**:
-- Use `Join-Path` everywhere for explicit cross-platform correctness
-- Rely on PowerShell's automatic path normalization
-
-**Recommended direction** (for clarify-time consideration): Use `Join-Path` everywhere, plus integration tests on Linux for validation
-
-**Implications**: Affects FR-030, code review checklist, and cross-platform testing requirements
-
----
-
-### Q9: Module Version Policy
-
-**Context**: Should the module version in `Specrew.psd1` be the same as the repo version, or maintained separately?
-
-**Options**:
-- Same version: `Specrew.psd1` reads `.specrew/config.yml` `specrew_version` at build time
-- Separate version: Module versioning decoupled from repo versioning
-
-**Recommended direction** (for clarify-time consideration): Same version — single source of truth reduces drift risk
-
-**Implications**: Affects FR-024, publishing workflow, and version-sync governance
-
----
-
-### Q10: Alpha-User Migration Path
-
-**Context**: How should existing alpha users (who cloned the repo) transition to the module-based distribution?
-
-**Options**:
-- Provide a `specrew migrate-to-module` command that automates the transition
-- Document manual migration steps in README only
-- No migration tooling or documentation (users figure it out themselves)
-
-**Recommended direction** (for clarify-time consideration): README documentation initially; add tooling later if friction reports indicate a need
-
-**Implications**: Affects user story prioritization, alpha-user communication timeline, and v1 scope
 
 ## Cross-References
 
