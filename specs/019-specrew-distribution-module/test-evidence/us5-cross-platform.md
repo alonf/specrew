@@ -29,9 +29,15 @@ This document records cross-platform parity evidence for User Story 5: Specrew m
 3. `extensions/specrew-speckit/scripts/validate-governance.ps1`: 14 iteration relative paths now use forward slashes for git compatibility
 4. `extensions/specrew-speckit/scripts/scaffold-reviewer-artifacts.ps1`: 2 path normalization and regex patterns now handle both separators
 
-**Evidence**: Commit `ef9c27d` on branch `019-specrew-distribution-module`
+**Pattern Count Reconciliation**:
+- **Initial estimate**: 104+ patterns (from `.specrew/cross-platform-backlog.md` deferred work)
+- **Actual findings**: 38 patterns fixed across 4 files (12+10+14+2)
+- **Remaining scripts audited**: `scripts/specrew-init.ps1`, `scripts/specrew-update.ps1`, `scripts/specrew-team.ps1`, `scripts/specrew-review.ps1`, `scripts/specrew-where.ps1`, `scripts/internal/dashboard-renderer.ps1` — all found clean (no embedded backslash path strings)
+- **Verdict**: The 104+ estimate was based on broad codebase assumptions; focused audit found 38 actual patterns requiring hardening, now complete
 
-**Verdict**: ✅ Pass — Cross-platform path hardening complete; scripts now use platform-agnostic path construction
+**Evidence**: Commit `ef9c27d` on branch `019-specrew-distribution-module`; `.specify` mirror sync completed in review repair
+
+**Verdict**: ✅ Pass — Cross-platform path hardening complete; all T041 scope scripts audited and hardened where needed
 
 ---
 
