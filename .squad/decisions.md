@@ -4241,3 +4241,120 @@ All questions assigned to Phase 0 research tasks (R1-R6) or implementation-time 
 - Feature 019 remains in `planning-complete` status until /speckit.tasks authorization is granted.
 - All traceability is recorded in the canonical plan (plan.md); this document is a summary for coordination visibility.
 - Phase 2 hardening gate is explicitly deferred (distribution infrastructure focus; no complex security surface or runtime business logic).
+
+
+# Decision: Feature 019 /speckit.tasks Boundary Complete
+
+**Date**: 2026-05-16
+**Agent**: Copilot
+**Authority**: Alon Fliess (user directive: "Complete the /speckit.tasks boundary for Feature 019")
+**Decision Type**: Tasks-boundary completion
+
+## What
+
+Generated comprehensive task breakdown for Feature 019 (Specrew Distribution Module) with 39 tasks across 6 phases, completing the /speckit.tasks lifecycle boundary.
+
+### Artifacts Created
+
+- **tasks.md**: Complete task breakdown (39 tasks, 6 phases, 14 SP total)
+  - Phase 0: Design-Question Resolution (6 tasks)
+  - Pillar 1: Module Packaging (3 tasks)
+  - Pillar 2: Resource Bundling (5 tasks)
+  - Pillar 3: Init Refactor (5 tasks)
+  - Pillar 4: Update Story (6 tasks)
+  - Pillar 5: Publishing Workflow (7 tasks)
+  - Phase 6: Final Validation (7 tasks)
+
+### Six Design-Question Resolution Tasks
+
+Per user requirement, six design-question resolution tasks are explicitly enumerated at Phase 0:
+
+1. **T001**: Resolve Module Manifest File-List Strategy (blocks Pillar 1/2)
+2. **T002**: Resolve Conflict-Marker Format (blocks Pillar 4)
+3. **T003**: Resolve Cross-Platform Test Automation Depth (blocks Pillar 5)
+4. **T004**: Resolve Module Loader Structure (blocks Pillar 1)
+5. **T005**: Document API-Key Rotation Guidance (documentation-only)
+6. **T006**: Resolve Self-Signed Certificate Validity Period (blocks Pillar 5)
+
+Each task includes explicit "Blocks" annotations showing downstream dependencies and "Downstream Impact" rationale explaining why the decision matters.
+
+### Task Organization
+
+- **By Pillar**: Tasks organized following plan.md 5-pillar architecture
+- **Explicit Dependencies**: Each task annotates blocking dependencies with task IDs
+- **Parallel Opportunities**: 16+ tasks marked [P] for parallel execution
+- **Traceability**: Every task traces to FR, US, and plan.md tracks
+- **Critical Path**: Phase 0 → P1/P2 (parallel) → P3 → P4/P5 (parallel) → Validation
+
+### State Updates
+
+- **.squad/identity/now.md**: Updated to TASKS-COMPLETE lifecycle stage
+- **focus_area**: Feature 019 /speckit.tasks completed
+- **active_issues**: 39 tasks enumerated, six design questions explicitly listed
+- **Next valid action**: Await authorization before advancing to hardening gate or implementation
+
+## Why
+
+The /speckit.tasks boundary completion enables implementation authorization by providing:
+
+1. **Concrete Work Units**: 39 actionable tasks with explicit file paths and verification commands
+2. **Dependency Clarity**: Task blocking relationships prevent premature work and rework
+3. **Design-Question Resolution**: Six plan-time questions surfaced during planning now have dedicated resolution tasks before implementation begins
+4. **Parallel Execution Planning**: 16+ parallel-capable tasks identified for efficient execution
+5. **Traceability**: Every task maps to FRs, user stories, and plan tracks per Constitution Principle IX
+
+## Traceability
+
+- **Spec Authority**: specs/019-specrew-distribution-module/spec.md (FR-001 through FR-032, US1-US5)
+- **Plan Authority**: specs/019-specrew-distribution-module/plan.md (5-pillar architecture, Phase 0 research, Phase 1 design artifacts)
+- **User Directive**: "Complete the /speckit.tasks boundary for Feature 019" (2026-05-16)
+- **Constitution Alignment**: Principle IX (Mandatory Traceability), Principle XVII (Planning Starts From Approved Specs), Principle XXI (Verification Is Mandatory)
+
+## Runtime Evidence
+
+**Files Changed**:
+- Created: specs/019-specrew-distribution-module/tasks.md (26,676 characters, 39 tasks)
+- Updated: .squad/identity/now.md (lifecycle stage: TASKS-COMPLETE)
+- Updated: .squad/decisions.md (this entry)
+
+**Task-Count-Per-Pillar Summary**:
+- Phase 0 (Design Questions): 6 tasks
+- Pillar 1 (Module Packaging): 3 tasks
+- Pillar 2 (Resource Bundling): 5 tasks
+- Pillar 3 (Init Refactor): 5 tasks
+- Pillar 4 (Update Story): 6 tasks
+- Pillar 5 (Publishing Workflow): 7 tasks
+- Phase 6 (Final Validation): 7 tasks
+- **Total**: 39 tasks
+
+**Verification**:
+`powershell
+Test-Path C:\Dev\Specrew\specs\019-specrew-distribution-module\tasks.md
+# Expected: True (file exists)
+Get-Content C:\Dev\Specrew\specs\019-specrew-distribution-module\tasks.md | Select-String -Pattern "^- \[ \] T\d{3}"
+# Expected: 39 matches (all 39 tasks present)
+`
+
+## Scope Confirmation
+
+**Scope In**:
+- ✅ Generated tasks.md from plan.md + spec.md
+- ✅ Six design-question resolution tasks explicitly enumerated with blocking annotations
+- ✅ Ordered, concrete, actionable tasks with per-task scope, owner, dependencies, acceptance criteria, and explicit FR references
+- ✅ Preserved implementation ordering from plan: Phase 0 → Pillars 1 & 2 (parallel) → Pillar 3 → Pillars 4 & 5 (parallel) → final validation
+- ✅ Updated .squad/identity/now.md to TASKS-COMPLETE stage
+- ✅ Appended decisions.md entry for tasks-boundary runtime evidence
+
+**Scope Out**:
+- ❌ No code changes under scripts/ or extensions/
+- ❌ No validator additions beyond task planning language
+- ❌ No /speckit.specrew-speckit.before-implement work
+- ❌ No hardening-gate or implementation work
+
+## Next Action
+
+Await explicit authorization before advancing to:
+- /speckit.specrew-speckit.before-implement (hardening gate, if applicable)
+- Implementation (if hardening gate skipped or passed)
+
+Per user directive: "Do NOT advance to /speckit.specrew-speckit.before-implement. Do NOT advance to hardening-gate-and-implementation-auth."

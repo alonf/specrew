@@ -1,0 +1,335 @@
+# Tasks: Specrew Distribution Module
+
+**Feature**: 019-specrew-distribution-module  
+**Input**: Design documents from `/specs/019-specrew-distribution-module/`  
+**Prerequisites**: plan.md, spec.md, research.md, data-model.md, contracts/Specrew.psd1.contract.md, quickstart.md
+
+**Organization**: Tasks are grouped by implementation pillar (from plan.md). The first phase resolves six design questions that surfaced during planning but do not block the plan structure. Each task includes explicit traceability metadata and file paths.
+
+**Estimated Total Effort**: 14 Story Points (SP) across all pillars
+
+---
+
+## Phase 0: Design-Question Resolution (Pre-Implementation)
+
+**Purpose**: Resolve six plan-time design questions that surfaced during planning. These tasks must complete before Pillar 1/2 implementation begins to ensure concrete implementation decisions are in place.
+
+**⚠️ CRITICAL**: These decisions block implementation work. Complete this phase first.
+
+### Design Question Tasks
+
+- [ ] T001 [assigned_to: Implementation Team] [effort: S] **Resolve Module Manifest File-List Strategy** — Decide explicit FileList enumeration vs. automatic detection for Specrew.psd1; update contracts/Specrew.psd1.contract.md with decision and rationale (Trace: plan.md Plan-Time Design Question 1, FR-010)  
+  **Blocks**: T007, T010, T011, T012, T013, T014  
+  **Downstream Impact**: Pillar 1 Module Packaging implementation depends on FileList structure decision
+
+- [ ] T002 [assigned_to: Implementation Team] [effort: S] **Resolve Conflict-Marker Format** — Choose conflict marker format (Git-style vs custom vs structured) for specrew update; document in data-model.md Template Conflict entity (Trace: plan.md Plan-Time Design Question 2, FR-021)  
+  **Blocks**: T030, T031, T032, T033  
+  **Downstream Impact**: Pillar 4 Update Story conflict-resolution implementation depends on marker format decision
+
+- [ ] T003 [assigned_to: Implementation Team] [effort: M] **Resolve Cross-Platform Test Automation Depth** — Decide manual checklist vs GitHub Actions matrix for cross-platform verification; update plan.md Pillar 5 with automation strategy (Trace: plan.md Plan-Time Design Question 3, FR-031)  
+  **Blocks**: T040, T041  
+  **Downstream Impact**: Pillar 5 Publishing Workflow cross-platform verification task scope depends on automation depth decision
+
+- [ ] T004 [assigned_to: Implementation Team] [effort: S] **Resolve Module Loader Structure** — Choose explicit dot-sourcing vs dynamic discovery for Specrew.psm1; update contracts/Specrew.psd1.contract.md with loader pattern (Trace: plan.md Plan-Time Design Question 4, research.md R2)  
+  **Blocks**: T008  
+  **Downstream Impact**: Pillar 1 Module Packaging Specrew.psm1 implementation depends on loader structure decision
+
+- [ ] T005 [assigned_to: Alon Fliess] [effort: S] **Document API-Key Rotation Guidance** — Document PSGallery API key rotation procedure in docs/maintainer-runbook.md including frequency recommendation, rotation steps, and secret update protocol (Trace: plan.md Plan-Time Design Question 5, data-model.md PSGallery API Key entity)  
+  **Blocks**: None (documentation task; does not block implementation)  
+  **Downstream Impact**: Maintainer reference for future key rotation; not blocking for v1
+
+- [ ] T006 [assigned_to: Implementation Team] [effort: S] **Resolve Self-Signed Certificate Validity Period** — Choose validity period (1 year vs 5 years vs 10 years) for self-signed certificate; document in data-model.md Signing Certificate entity and update Pillar 5 certificate generation task parameters (Trace: plan.md Plan-Time Design Question 6, research.md R6)  
+  **Blocks**: T038  
+  **Downstream Impact**: Pillar 5 Publishing Workflow certificate generation task depends on validity period decision
+
+**Phase 0 Verification**:
+```powershell
+# Verify all six design-question decisions documented
+Test-Path C:\Dev\Specrew\specs\019-specrew-distribution-module\contracts\Specrew.psd1.contract.md
+Test-Path C:\Dev\Specrew\specs\019-specrew-distribution-module\data-model.md
+Test-Path C:\Dev\Specrew\docs\maintainer-runbook.md
+```
+
+**Checkpoint**: Design questions resolved — Pillar 1/2 implementation can now begin
+
+---
+
+## Phase 1: Pillar 1 — Module Packaging (US1, US2, US4)
+
+**Goal**: Create valid PowerShell module manifest and loader that exports all Specrew CLI commands
+
+**User Stories Served**: US1 (First-Time Install), US2 (Project Bootstrap from Installed Module), US4 (Module Publishing on Feature Closeout)
+
+**Dependencies**: T001 (FileList strategy), T004 (loader structure) must complete first
+
+### Implementation Tasks
+
+- [ ] T007 [P] [assigned_to: Implementation Team] [effort: M] **Create Module Manifest Specrew.psd1** — Generate Specrew.psd1 in repository root with: ModuleVersion placeholder (to be stamped from config.yml at build time), PowerShellVersion = '7.0', GUID (generate once), Author = 'Alon Fliess', Description from spec, FunctionsToExport list (specrew, specrew-init, specrew-start, specrew-update, specrew-review, specrew-team, specrew-where), FileList per T001 decision, PrivateData.PSData (tags, ProjectUri, LicenseUri, ReleaseNotes), PSEdition = 'Core' (Trace: FR-001, FR-002, FR-003, FR-004, FR-032, contracts/Specrew.psd1.contract.md)
+
+- [ ] T008 [P] [assigned_to: Implementation Team] [effort: M] **Create Module Loader Specrew.psm1** — Implement Specrew.psm1 in repository root following T004 loader structure decision; dot-source all scripts from scripts/ directory using Join-Path for cross-platform path handling; Export-ModuleMember for all CLI functions (Trace: FR-002, FR-030, research.md R2)
+
+- [ ] T009 [assigned_to: Implementation Team] [effort: S] **Validate Module Manifest** — Run Test-ModuleManifest against Specrew.psd1; verify no errors; confirm all FunctionsToExport match actual script files; validate PrivateData structure (Trace: FR-001, Quality Gate: Module manifest validity)
+
+**Pillar 1 Verification**:
+```powershell
+# Validate manifest structure
+Test-ModuleManifest C:\Dev\Specrew\Specrew.psd1
+# Verify exports match scripts
+Get-Content C:\Dev\Specrew\Specrew.psd1 | Select-String -Pattern "FunctionsToExport"
+```
+
+**Checkpoint**: Module manifest valid — can proceed to Pillar 2 bundling
+
+---
+
+## Phase 2: Pillar 2 — Resource Bundling (US1, US2)
+
+**Goal**: Bundle scripts, extensions, templates, and docs in module package; exclude repo artifacts
+
+**User Stories Served**: US1 (First-Time Install), US2 (Project Bootstrap from Installed Module)
+
+**Dependencies**: T001 (FileList strategy), T007 (manifest created) must complete first
+
+### Implementation Tasks
+
+- [ ] T010 [P] [assigned_to: Implementation Team] [effort: M] **Create Templates Directory Structure** — Create templates/ directory in repository root with subdirectories: templates/specify/ (copy from .specify/templates/), templates/squad/ (copy from .squad/agents/ and .squad/identity/), templates/github/ (copy from .github/workflows/specrew-*.yml); preserve directory structure for specrew init bootstrap (Trace: FR-008, data-model.md Template Tree entity)
+
+- [ ] T011 [P] [assigned_to: Implementation Team] [effort: S] **Bundle Specrew-Speckit Extension** — Verify extensions/specrew-speckit/ is correctly structured for bundling (validators/, coordinator-prompts/, scripts/); update FileList in Specrew.psd1 to include extensions/specrew-speckit/**/* (Trace: FR-007)
+
+- [ ] T012 [P] [assigned_to: Implementation Team] [effort: S] **Bundle Scripts Directory** — Verify scripts/ directory structure (entry points + internal/ utilities); update FileList in Specrew.psd1 to include scripts/*.ps1 and scripts/internal/*.ps1 (Trace: FR-006)
+
+- [ ] T013 [P] [assigned_to: Implementation Team] [effort: S] **Bundle Documentation** — Verify docs/ directory contains dashboard-guide.md, roadmap-maintenance.md; add maintainer-runbook.md (from T005); update FileList in Specrew.psd1 to include docs/*.md (Trace: FR-009)
+
+- [ ] T014 [assigned_to: Implementation Team] [effort: M] **Validate Exclusions** — Audit FileList in Specrew.psd1; confirm specs/, proposals/, tests/, CHANGELOG.md, LICENSE, README.md, .git/, .vscode/, *.log are excluded; verify module package size estimate under 5 MB (Trace: FR-005, FR-010)
+
+**Pillar 2 Verification**:
+```powershell
+# Verify templates directory structure
+Test-Path C:\Dev\Specrew\templates\specify
+Test-Path C:\Dev\Specrew\templates\squad
+Test-Path C:\Dev\Specrew\templates\github
+# Verify bundled size estimate
+Get-ChildItem -Path C:\Dev\Specrew -Recurse -File | Where-Object { $_.FullName -match "scripts|extensions|templates|docs|Specrew\.ps" } | Measure-Object -Property Length -Sum
+```
+
+**Checkpoint**: Resources bundled — templates ready for init refactor
+
+---
+
+## Phase 3: Pillar 3 — Init Refactor (US2, US5)
+
+**Goal**: Refactor specrew-init.ps1 to detect module-vs-clone execution context and resolve templates from module path
+
+**User Stories Served**: US2 (Project Bootstrap from Installed Module), US5 (Cross-Platform Consistency)
+
+**Dependencies**: T007 (manifest), T008 (loader), T010 (templates structure) must complete first
+
+### Implementation Tasks
+
+- [ ] T015 [assigned_to: Implementation Team] [effort: M] **Implement Module-vs-Clone Detection Logic** — Update scripts/specrew-init.ps1 to detect execution context: if running from module (Test-Path "$PSScriptRoot/../Specrew.psd1"), resolve templates from "$PSScriptRoot/../templates/"; else fall back to existing clone-and-PATH logic (.specify/templates/ in repo root); use Join-Path for all path construction (Trace: FR-011, FR-012, FR-030, US5 cross-platform requirement)
+
+- [ ] T016 [assigned_to: Implementation Team] [effort: L] **Refactor Template-Copy Logic for Module Path** — Update specrew-init.ps1 template-copy loops to: (1) copy templates/specify/* to <user-project>/.specify/, (2) copy templates/squad/* to <user-project>/.squad/, (3) copy templates/github/* to <user-project>/.github/; preserve directory structure; use Join-Path for all destination paths (Trace: FR-013, FR-014, FR-015, FR-030)
+
+- [ ] T017 [assigned_to: Implementation Team] [effort: M] **Preserve Per-Project File Generation** — Verify specrew-init.ps1 still generates per-project files after template copy: feature.json baseline, .squad/decisions.md skeleton, .squad/identity/now.md; no changes expected to generation logic (Trace: FR-016)
+
+- [ ] T018 [assigned_to: Implementation Team] [effort: M] **Implement Idempotency Check** — Add idempotency logic to specrew-init.ps1: detect if .specify/, .squad/, .github/ directories already exist; prompt user for confirmation before overwriting or skip template copy if already initialized (Trace: FR-018)
+
+- [ ] T019 [assigned_to: Implementation Team] [effort: S] **Add Bootstrap Validation** — Implement post-bootstrap validation in specrew-init.ps1: verify .specify/templates/ exists with expected files, .squad/agents/ exists, .github/workflows/ contains at least one workflow; report success/failure to user (Trace: FR-017)
+
+**Pillar 3 Verification**:
+```powershell
+# Test module-path init (requires module installed locally first via Import-Module)
+Import-Module C:\Dev\Specrew\Specrew.psd1 -Force
+specrew-init -ProjectPath C:\TestProjects\ModuleInitTest
+Test-Path C:\TestProjects\ModuleInitTest\.specify\templates\spec-template.md
+Test-Path C:\TestProjects\ModuleInitTest\.squad\agents\copilot.md
+Test-Path C:\TestProjects\ModuleInitTest\.github\workflows
+```
+
+**Checkpoint**: Init refactored — bootstrap works from module path
+
+---
+
+## Phase 4: Pillar 4 — Update Story (US3, US5)
+
+**Goal**: Implement specrew update command with Template-Refresh pattern and preserve-and-flag conflict resolution
+
+**User Stories Served**: US3 (Module Update and Template Refresh), US5 (Cross-Platform Consistency)
+
+**Dependencies**: T002 (conflict marker format), T015-T019 (init refactor for module-path detection logic) must complete first
+
+### Implementation Tasks
+
+- [ ] T030 [assigned_to: Implementation Team] [effort: L] **Create specrew-update.ps1 Entry Point** — Implement scripts/specrew-update.ps1 with: module-version detection (compare user project's init version from baseline vs current installed module version), template-scan logic (detect user-modified templates via content hash comparison), template-refresh flow (classify changes: no-change/user-only/module-only/both-modified), use Join-Path for all path construction (Trace: FR-019, FR-020, FR-030, US3)
+
+- [ ] T031 [assigned_to: Implementation Team] [effort: L] **Implement Preserve-and-Flag Conflict Resolution** — Add conflict-handling logic to specrew-update.ps1: for both-modified templates, inject conflict markers per T002 format decision; preserve user's local template in place with markers; embed module's new template content in markers; write .specrew/template-conflicts/<filename>.conflict artifact with full diff (Trace: FR-021, data-model.md Template Conflict entity, research.md R3)
+
+- [ ] T032 [assigned_to: Implementation Team] [effort: M] **Implement New-Template Addition** — Add new-template handling logic to specrew-update.ps1: detect templates added in new module version; copy to user project non-destructively; report added files to user (Trace: FR-022)
+
+- [ ] T033 [assigned_to: Implementation Team] [effort: M] **Implement Template-Deletion Flagging** — Add deletion-handling logic to specrew-update.ps1: detect templates deleted in new module version; flag for manual review via .specrew/template-conflicts/<filename>.deletion artifact or preserve with deletion marker (Trace: FR-023)
+
+- [ ] T034 [assigned_to: Implementation Team] [effort: S] **Add Conflict Artifact Generation** — Implement .specrew/template-conflicts/ artifact generation in specrew-update.ps1: create directory if not exists, write <filename>.conflict files with structure from research.md R3 (User Version, Module Version, Resolution Instructions) (Trace: FR-021, data-model.md Conflict Artifact entity)
+
+- [ ] T035 [assigned_to: Implementation Team] [effort: M] **Integrate Conflict Detection into specrew-start** — Update scripts/specrew-start.ps1 to check for .specrew/template-conflicts/*.conflict artifacts at session start; prompt user to review conflicts if unresolved artifacts exist; surface conflict count and file list (Trace: research.md R3 crew-mediated resolution flow)
+
+**Pillar 4 Verification**:
+```powershell
+# Test update workflow (requires two module versions installed for testing)
+# 1. Init project with v0.21
+# 2. Modify a template file locally
+# 3. Update module to v0.22
+# 4. Run specrew update
+specrew-update -ProjectPath C:\TestProjects\UpdateTest
+Test-Path C:\TestProjects\UpdateTest\.specrew\template-conflicts\*.conflict
+Get-Content C:\TestProjects\UpdateTest\.specify\templates\spec-template.md | Select-String -Pattern "<<<<<<<|=======|>>>>>>>"
+```
+
+**Checkpoint**: Update story complete — template refresh works with conflict resolution
+
+---
+
+## Phase 5: Pillar 5 — Publishing Workflow (US4, US5)
+
+**Goal**: Implement GitHub Actions workflow for automated module publishing to PSGallery with version stamping and signing
+
+**User Stories Served**: US4 (Module Publishing on Feature Closeout), US5 (Cross-Platform Consistency)
+
+**Dependencies**: T003 (cross-platform automation depth), T006 (certificate validity period), T007 (manifest), T008 (loader), all Pillar 1-4 tasks complete
+
+### Implementation Tasks
+
+- [ ] T036 [assigned_to: Implementation Team] [effort: L] **Create GitHub Actions Publish Workflow** — Implement .github/workflows/publish-module.yml with: trigger on `v*.*` tag push; job steps: checkout code, read version from .specrew/config.yml specrew_version, stamp version into Specrew.psd1 ModuleVersion field, run Test-ModuleManifest validation; use PowerShell 7+ runner (Trace: FR-024, FR-026, FR-027, FR-032)
+
+- [ ] T037 [assigned_to: Implementation Team] [effort: M] **Implement Version Stamping Step** — Add version-stamping logic to publish-module.yml: read specrew_version from .specrew/config.yml using yq or PowerShell YAML parser, update ModuleVersion field in Specrew.psd1 using Update-ModuleManifest or sed, verify stamped version matches config (Trace: FR-024, data-model.md Module Manifest entity)
+
+- [ ] T038 [assigned_to: Implementation Team] [effort: M] **Implement Module Signing Step** — Add self-signing logic to publish-module.yml: restore certificate from GitHub Actions secret (SIGNING_CERT_BASE64 + SIGNING_CERT_PASSWORD), use Set-AuthenticodeSignature to sign Specrew.psd1 and Specrew.psm1, verify signature validity; certificate validity period per T006 decision (Trace: FR-025, research.md R6, data-model.md Signing Certificate entity)
+
+- [ ] T039 [assigned_to: Implementation Team] [effort: M] **Implement Publish-Module Step** — Add publishing logic to publish-module.yml: run Publish-Module -Name Specrew -Repository PSGallery -NuGetApiKey $env:PSGALLERY_API_KEY; handle errors and log failure details; verify publish success by querying PSGallery for new version (Trace: FR-026, FR-028, FR-029, data-model.md PSGallery API Key entity)
+
+- [ ] T040 [assigned_to: Implementation Team] [effort: M] **Implement Cross-Platform Verification Task** — Per T003 automation decision: if manual, create cross-platform test checklist in specs/019-specrew-distribution-module/test-evidence/cross-platform-checklist.md; if automated, add GitHub Actions matrix job (windows-latest, ubuntu-latest, macos-latest) with Install-Module test, specrew init test, path-delimiter validation; use Join-Path audit script (Trace: FR-030, FR-031, research.md R4, US5)
+
+- [ ] T041 [P] [assigned_to: Implementation Team] [effort: S] **Create Join-Path Audit Script** — Implement scripts/internal/audit-join-path.ps1 to scan all .ps1 files for hardcoded path delimiters (backslash not in strings, forward-slash outside Join-Path); report violations; integrate into cross-platform verification task from T040 (Trace: FR-030, research.md R4)
+
+- [ ] T042 [P] [assigned_to: Alon Fliess] [effort: S] **Configure GitHub Actions Secrets** — Add GitHub Actions secrets to repository: PSGALLERY_API_KEY (obtain from PowerShell Gallery account), SIGNING_CERT_BASE64 (generate self-signed cert, export to PFX, encode to Base64), SIGNING_CERT_PASSWORD (cert export password); document secret names in publish-module.yml comments (Trace: FR-025, FR-028, data-model.md PSGallery API Key, Signing Certificate entities)
+
+**Pillar 5 Verification**:
+```powershell
+# Test workflow on test tag (do not push to origin without verification)
+git tag v0.21.0-test
+git push origin v0.21.0-test
+# Monitor GitHub Actions run: https://github.com/alonf/specrew/actions
+# Verify workflow steps: version-stamp → sign → publish
+# Check PSGallery: Find-Module Specrew -AllVersions
+```
+
+**Checkpoint**: Publishing workflow complete — automated releases ready
+
+---
+
+## Phase 6: Final Validation and Evidence Collection
+
+**Goal**: Validate all user stories end-to-end; collect test evidence for acceptance criteria
+
+**Dependencies**: All Pillars 1-5 must complete first
+
+### Validation Tasks
+
+- [ ] T050 [assigned_to: Implementation Team] [effort: M] **Execute User Story 1 Acceptance Scenarios** — Test US1 scenarios: (1) Install-Module on clean Windows machine, verify specrew command available, (2) Run specrew init in empty directory, verify .specify/.squad/.github created, (3) Install-Module on Linux, verify cross-platform path handling; record evidence in specs/019-specrew-distribution-module/test-evidence/us1-install.md (Trace: US1 acceptance scenarios, SC-001, SC-002)
+
+- [ ] T051 [assigned_to: Implementation Team] [effort: M] **Execute User Story 2 Acceptance Scenarios** — Test US2 scenarios: (1) specrew init from installed module, verify templates copied from module path, (2) re-run specrew init, verify idempotency, (3) run specrew start, verify lifecycle operates normally; record evidence in specs/019-specrew-distribution-module/test-evidence/us2-bootstrap.md (Trace: US2 acceptance scenarios, SC-002)
+
+- [ ] T052 [assigned_to: Implementation Team] [effort: L] **Execute User Story 3 Acceptance Scenarios** — Test US3 scenarios: (1) Install v0.21, init project, modify template, update to v0.22, run specrew update, verify conflict markers and artifacts, (2) verify new templates added, (3) verify script updates take effect immediately; record evidence in specs/019-specrew-distribution-module/test-evidence/us3-update.md (Trace: US3 acceptance scenarios, SC-003)
+
+- [ ] T053 [assigned_to: Alon Fliess] [effort: M] **Execute User Story 4 Acceptance Scenarios** — Test US4 scenarios: (1) Push v*.* tag, verify GitHub Action runs, (2) verify version stamped from config.yml, (3) simulate API key failure and verify error logging; record evidence in specs/019-specrew-distribution-module/test-evidence/us4-publish.md (Trace: US4 acceptance scenarios, SC-005)
+
+- [ ] T054 [assigned_to: Implementation Team] [effort: L] **Execute User Story 5 Acceptance Scenarios** — Test US5 scenarios: (1) Install on Linux, run specrew init, verify forward-slash paths, (2) Install on macOS, run specrew where, verify no backslash artifacts, (3) Attempt install on PS 5.1, verify failure with clear error; record evidence in specs/019-specrew-distribution-module/test-evidence/us5-cross-platform.md (Trace: US5 acceptance scenarios, SC-006)
+
+- [ ] T055 [assigned_to: Implementation Team] [effort: M] **Validate Success Criteria** — Review all success criteria from spec: SC-001 (install under 1 minute), SC-002 (init 95% success rate), SC-003 (update under 30 seconds), SC-004 (zero friction reports), SC-005 (publish within 15 minutes), SC-006 (cross-platform parity); document measurements in specs/019-specrew-distribution-module/test-evidence/success-criteria.md (Trace: SC-001 through SC-006)
+
+- [ ] T056 [assigned_to: Implementation Team] [effort: S] **Update Quickstart Guide** — Review and finalize specs/019-specrew-distribution-module/quickstart.md based on actual implementation and test evidence; ensure all commands are correct and troubleshooting section reflects real issues encountered (Trace: quickstart.md, US1 through US5)
+
+**Final Validation Verification**:
+```powershell
+# Verify test evidence collected
+Test-Path C:\Dev\Specrew\specs\019-specrew-distribution-module\test-evidence\us1-install.md
+Test-Path C:\Dev\Specrew\specs\019-specrew-distribution-module\test-evidence\us2-bootstrap.md
+Test-Path C:\Dev\Specrew\specs\019-specrew-distribution-module\test-evidence\us3-update.md
+Test-Path C:\Dev\Specrew\specs\019-specrew-distribution-module\test-evidence\us4-publish.md
+Test-Path C:\Dev\Specrew\specs\019-specrew-distribution-module\test-evidence\us5-cross-platform.md
+Test-Path C:\Dev\Specrew\specs\019-specrew-distribution-module\test-evidence\success-criteria.md
+```
+
+**Checkpoint**: All validation complete — ready for feature closeout
+
+---
+
+## Implementation Summary
+
+### Task Count by Phase
+
+- **Phase 0 (Design Questions)**: 6 tasks
+- **Phase 1 (Pillar 1 — Module Packaging)**: 3 tasks
+- **Phase 2 (Pillar 2 — Resource Bundling)**: 5 tasks
+- **Phase 3 (Pillar 3 — Init Refactor)**: 5 tasks
+- **Phase 4 (Pillar 4 — Update Story)**: 6 tasks
+- **Phase 5 (Pillar 5 — Publishing Workflow)**: 7 tasks
+- **Phase 6 (Final Validation)**: 7 tasks
+
+**Total**: 39 tasks
+
+### Parallel Execution Opportunities
+
+**Phase 0**: T001, T002, T003, T004, T006 can execute in parallel (T005 is documentation-only, no blocking dependencies)
+
+**Phase 1**: T007, T008 can execute in parallel after T001 and T004 complete
+
+**Phase 2**: T010, T011, T012, T013 can execute in parallel after T001 and T007 complete
+
+**Phase 3**: T017 (per-project file generation) can execute in parallel with T015-T016 (template-copy refactor)
+
+**Phase 4**: T032 (new-template addition) and T033 (deletion flagging) can execute in parallel with T031 (conflict resolution) after T030 (entry point) completes
+
+**Phase 5**: T041 (Join-Path audit script) and T042 (GitHub Actions secrets) can execute in parallel with other Pillar 5 tasks
+
+**Phase 6**: T050-T054 (user story validation) can execute in parallel after all Pillars 1-5 complete
+
+### Critical Path
+
+Phase 0 (Design Questions) → Pillar 1 Module Packaging → Pillar 2 Resource Bundling → Pillar 3 Init Refactor → Pillar 4 Update Story → Pillar 5 Publishing Workflow → Final Validation
+
+**Estimated Duration**: 14 SP (single iteration, focused Monday-Tuesday slot per plan.md)
+
+### Dependencies Summary
+
+- **Pillar 1 depends on**: T001 (FileList strategy), T004 (loader structure)
+- **Pillar 2 depends on**: T001 (FileList strategy), T007 (manifest created)
+- **Pillar 3 depends on**: T007 (manifest), T008 (loader), T010 (templates structure)
+- **Pillar 4 depends on**: T002 (conflict marker format), T015-T019 (init refactor)
+- **Pillar 5 depends on**: T003 (cross-platform automation depth), T006 (certificate validity), all Pillars 1-4
+- **Final Validation depends on**: All Pillars 1-5 complete
+
+### Traceability Map
+
+| Task Range | User Stories | Functional Requirements | Plan Tracks |
+|------------|-------------|------------------------|-------------|
+| T001-T006 | All | All (design decisions) | Phase 0 Research |
+| T007-T009 | US1, US2, US4 | FR-001 through FR-005, FR-032 | Pillar 1 Module Packaging |
+| T010-T014 | US1, US2 | FR-006 through FR-010 | Pillar 2 Resource Bundling |
+| T015-T019 | US2, US5 | FR-011 through FR-018, FR-030 | Pillar 3 Init Refactor |
+| T030-T035 | US3, US5 | FR-019 through FR-023, FR-030 | Pillar 4 Update Story |
+| T036-T042 | US4, US5 | FR-024 through FR-032 | Pillar 5 Publishing Workflow |
+| T050-T056 | US1-US5 | SC-001 through SC-006 | Final Validation |
+
+---
+
+## Next Steps After Tasks Complete
+
+1. **Feature Closeout**: Follow Rule 15 sequence — version bump in .specrew/config.yml, tag (e.g., v0.21.0), push tag to trigger publish workflow, create PR for feature branch merge
+2. **PSGallery Verification**: After first publish, verify module appears on PSGallery via Find-Module Specrew -AllVersions
+3. **Documentation Update**: Update main README.md to add Install-Module Specrew as primary install path; preserve clone-and-PATH instructions for existing users
+4. **Feedback Collection**: Monitor GitHub issues and feedback channels for onboarding friction reports related to module install/init/update workflows
+
+---
+
+**Generated**: 2026-05-16  
+**Next Boundary**: `/speckit.implement` (after explicit authorization)
