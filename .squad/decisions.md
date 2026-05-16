@@ -3668,3 +3668,18 @@ Do not sign off the visual-richness claim until a direct PowerShell terminal run
 - **Authorization Text**:
   > ACCEPT review-verdict-signoff for Feature 018 Iteration 001. Direct-terminal verification confirms rich-mode rendering works after R-018-V2.
   > This is a single boundary advance only: create and push the review-verdict-signoff boundary commit to origin/018-velocity-dashboard-visual-richness, and stop before retro-boundary.
+
+## 2026-05-16T00:35:00Z — Authorization: retro-boundary
+
+- **Decision ID**: authorization-feature-018-iter-001-retro-boundary
+- **Type**: authorization
+- **Boundary**: retro-boundary
+- **Approving Human**: Alon Fliess
+- **Recorded At**: 2026-05-16T00:35:00Z
+- **Commit Reference**: 7ed5a21
+- **Authorization Text**:
+  > AUTHORIZE retro-boundary for Feature 018 Iteration 001. Advance from review-verdict-signoff to retro-boundary only, stop at iteration-closeout. Record the eight substantive lessons in retro.md, cross-reference the four relevant corpus rows in known-traps.md, and update identity/now.md to retro-complete state.
+  > Eight lessons captured: (1) Five-attempt R-018-V2 detection-debugging saga, (2) Squad-discipline exemplar of refusing false signoff, (3) Recurring push-omission pattern, (4) Three new corpus rows + one deferred cosmetic, (5) PoC re-audit pattern, (6) F-018 estimation variance (zero variance: 14.5 SP), (7) Honest pre-implementation review assessment, (8) Article-visual-evidence milestone.
+  > This is a single boundary advance only: create and push the retro-boundary commit to origin/018-velocity-dashboard-visual-richness, and stop before iteration-closeout.
+
+---
