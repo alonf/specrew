@@ -4,17 +4,29 @@
 
 ## Summary
 
-**Total drift events**: 0
-**Resolution rate**: 100% (0/0 resolved)
-**Specification drift**: None detected
+**Total drift events**: 1
+**Resolution rate**: 0% (0/1 resolved)
+**Specification drift**: 1 open implementation-vs-contract drift discovered during review
 
 ## Events
 
-No specification drift detected during Iteration 001 execution to date.
+### Event 2026-05-16 — Explicit `FileList` allowlist drift discovered at review boundary
 
-### Resolution Strategies (Unused)
+- **Status**: open
+- **Category**: implementation-drift
+- **Detected by**: independent review boundary for Iteration 001
+- **Affected artifacts**:
+  - `Specrew.psd1`
+  - `tests\integration\distribution-module-init.ps1`
+  - `tests\integration\distribution-module-publish.ps1`
+  - `specs\019-specrew-distribution-module\iterations\001\review.md`
+- **Description**: The approved T001/T010/T013 distribution contract relies on an explicit `FileList` allowlist, but review comparison against the working tree found real distributable files still missing from `Specrew.psd1`. The missing set includes at least `scripts\internal\invoke-module-release.ps1` and `templates\github\agents\squad.agent.md`, plus additional docs / extension README surfaces. The current integration tests masked the drift because they stage full directory trees instead of a manifest-driven package surface.
+- **Impact**: Review cannot truthfully sign off FR-006 through FR-009 package-bundling claims or the installed-module bootstrap / publish evidence until the allowlist and the package-surface tests are repaired together.
+- **Resolution path**: bounded repair items `R-019-R1` and `R-019-R2` in `iterations\001\review.md`
+- **Target disposition**: implementation-reverted (repair implementation/tests to match the approved explicit allowlist strategy)
 
-The following resolution strategies remain available if drift is detected later in execution:
+### Resolution Strategies
+
 - **spec-updated**: Update the spec to reflect implementation choice
 - **implementation-reverted**: Revert implementation to match spec
 - **deferred**: Mark drift as deferred to next iteration
@@ -22,9 +34,6 @@ The following resolution strategies remain available if drift is detected later 
 
 ### Notes
 
-- This artifact was scaffolded before review starts so drift can be logged immediately when detected.
-- Replace the zero-drift summary with real counts when the first drift event is recorded.
-- Post-task checks for T006 and T007-T014 found no requirement drift; the implementation stayed within the approved Windows-first Iteration 001 scope and did not widen into Pillar 5 publish execution or Iteration 002 cross-platform backlog work.
-- Pillar 3 execution (T015-T019) also remained drift-free: module-vs-clone detection, bundled template sync, idempotent rerun behavior, and bootstrap validation all landed inside the approved Windows-first lane without widening into Ubuntu/macOS/WSL validation, CI matrix work, or broad embedded-backslash cleanup.
-- Pillar 4 execution (T030-T035) also remained drift-free: template-refresh classification, Git-style `.conflict` artifact generation, `.deletion` flagging, and `specrew start` unresolved-artifact surfacing all landed inside the approved Windows-first lane without widening into Ubuntu/macOS/WSL validation, CI matrix work, or real PSGallery publish.
-- Pillar 5 / final validation also remained drift-free. Final validation did surface a missing bundled `.github/agents/squad.agent.md` template that blocked installed-module `specrew start`; the repair added that coordinator prompt template and tightened bootstrap validation, but it stayed fully inside the approved Iteration 001 scope and did not require any spec change.
+- The implementation stayed inside the approved Windows-first scope; the review blocker is contract parity, not unauthorized scope widening.
+- T041 / T054 remain deferred, and T042 / T053 remain human/manual follow-up only.
+- This drift log now supersedes the earlier zero-drift placeholder narrative for Iteration 001.
