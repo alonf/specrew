@@ -170,7 +170,7 @@ switch ($Command) {
             exit 1
         }
 
-        & pwsh -NoProfile -ExecutionPolicy Bypass -File $whereScript @Arguments
+        & $whereScript -CliArgs $Arguments
         exit $LASTEXITCODE
     }
 
@@ -181,7 +181,7 @@ switch ($Command) {
             exit 1
         }
 
-        & pwsh -NoProfile -ExecutionPolicy Bypass -File $whereScript @Arguments
+        & $whereScript -CliArgs $Arguments
         exit $LASTEXITCODE
     }
 

@@ -105,3 +105,44 @@ Reconciled the Status field across four previously delivered feature specificati
 Closed feature iterations cannot stop at `state.md` alone. For feature 013 iteration 002, truthful closeout required synchronizing the live lifecycle surfaces that still narrated "future closeout" work: the iteration plan metadata, iteration state, drift log status, hardening-gate verification summary, trap-reapplication note, and `.squad/identity/now.md`.
 
 **Pattern discovered**: When an iteration closes but the feature remains open, advance every live artifact that carries lifecycle status to the same boundary in one pass. Historical boundary artifacts such as `review.md` and `retro.md` should stay frozen as review/retro records, while the active handoff surfaces must say "iteration closed; feature closeout still pending separate authorization" explicitly.
+
+### 2026-05-15: Feature 018 Velocity Dashboard Visual Richness Planning Bundle
+
+Feature 018 planning bundle completed across four sequential boundaries. Key spec steward actions:
+
+**Clarify Phase (2026-05-15)**:
+- 12 authorized clarification defaults integrated into spec.md
+- Clarifications section extended with Q&A session 2026-05-15 covering terminal detection, rendering modes, layout behavior, sparkline placement, and snapshot persistence
+- Functional requirements (FR-005, FR-006, FR-008, FR-011, FR-013, FR-019) integrated with decision context
+- Edge Cases section expanded with 8 terminal/rendering/persistence scenarios
+- Assumptions section formalized from clarification defaults
+- Governance Alignment documented ownership roles and delivery windows per spec patterns
+
+**Before-Plan Gate (2026-05-15)**:
+- spec.md status transitioned from Draft → Approved to clear planning-phase blocker
+- Spec structure verified complete: 20 functional requirements, 3 user stories, 8 edge cases, quality planning context
+- Phase 1 quality planning context prepared (quality composition, stack surfaces, risk dimensions)
+- Planning prerequisites confirmed satisfied; no blocking gaps identified
+
+**Quality Composition Pattern**:
+- Custom bundle (feature-018-rich-dashboard-compatibility) created because no stock preset cleanly matched console renderer requirements
+- Five stack surfaces identified: dashboard-renderer-core, dashboard-cli-surface, closeout-and-validator-paths, docs-and-discovery, fixture-replay-harness
+- Six risk dimensions marked required: terminal-compatibility, fallback-truthfulness, artifact-integrity, performance-budget, backward-compatibility, documentation-clarity
+- Mechanical checks tied to requirement pillars: rich-mode fixtures, monochrome-fallback fixtures, sparkline-only validation, nfr-001-render-budget
+- Quality tool bundle reuses existing PowerShell governance/tooling lane per Feature 017 precedent
+
+**Scope Discipline**:
+- Single-iteration feature slice scoped explicitly (10–12 SP nominal, 12–15 SP envelope)
+- Five approved pillars enforced: rich-mode primitives, PoC-parity information density, sparkline addition, backward-compatible validation, documentation
+- Deferred items listed explicitly: working-days projection, MVP-vs-1.0 two-horizon, minimum-days sample stretching, bootstrapped-date schema changes, configurable velocity windows
+- Ownership roles and delivery windows documented in spec per governance pattern
+- Specification ready for implementation authorization; explicit human sign-off required before hardening-gate-and-implementation-auth boundary
+
+**Planning Artifact Alignment**:
+- Spec status field changed from Draft to Approved
+- All FR/US relationships documented
+- Edge cases and Assumptions sections complete per Feature 017 precedent
+- Clarifications session recorded with dates and decision context
+- Quality composition explicit (no hidden assumptions about test coverage or tooling)
+- 2026-05-15: Feature 018 decision consolidation and inbox merge completed. Six inbox decisions merged into decisions.md: Implementer bounded repair R-018-V2 decision, Implementer feature-iteration label preservation for Recent Shipped granularity, Planner iteration-scoped hardening scaffold authorization, Reviewer pre-implementation refresh to ready-with-concerns, Reviewer initial pre-implementation blocker (resolved by hardening-gate artifact creation), and Reviewer visual terminal check (documented direct terminal misdiagnosis). Iteration 001 now carries explicit pre-implementation approval ledger with five recorded watchpoints for implementation governance: terminal-capability decision precedence, Windows VT fallback truthfulness, render-budget stop-ship evidence, ANSI stripping with Unicode preservation, and closeout dashboard artifact rendering immutability. Review verdict remains `blocked` pending Alon confirmation run of fresh `.\scripts\specrew.ps1 where` terminal to verify rich glyphs/colors/sparklines render correctly. Orchestration and session logs created for Feature 018 bounded repair; all inbox files cleared; .squad/ state ready for git commit.
+

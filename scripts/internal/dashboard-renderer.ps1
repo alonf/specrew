@@ -36,7 +36,7 @@ function Get-SpecrewDashboardWarnings {
 function Get-SpecrewMarkdownContent {
     param([Parameter(Mandatory = $true)][string]$Path)
 
-    return @(Get-Content -LiteralPath $Path -Encoding UTF8)
+    return [System.IO.File]::ReadAllLines($Path, [System.Text.Encoding]::UTF8)
 }
 
 function Get-SpecrewMarkdownMetadataValue {
@@ -304,7 +304,7 @@ function Get-SpecrewGitBoundaryCommits {
         return @()
     }
 
-    $rawLog = @(git -C $ProjectRoot --no-pager log --format='%H%x09%cI%x09%s' 2>$null)
+    $rawLog = @(git -C $ProjectRoot --no-pager log --grep='boundary' --regexp-ignore-case --format='%H%x09%cI%x09%s' 2>$null)
     if ($LASTEXITCODE -ne 0) {
         return @()
     }
@@ -418,12 +418,19 @@ function Get-SpecrewActiveFeatureDirectory {
 }
 
 function Get-SpecrewDeliveredStoryPoints {
-    param([Parameter(Mandatory = $true)][string]$IterationDirectory)
+    param(
+        [Parameter(Mandatory = $true)][string]$IterationDirectory,
+        [AllowEmptyCollection()][string[]]$RetroLines = @(),
+        [AllowEmptyCollection()][string[]]$StateLines = @()
+    )
 
     $retroPath = Join-Path $IterationDirectory 'retro.md'
-    if (Test-Path -LiteralPath $retroPath -PathType Leaf) {
-        $retroLines = @(Get-SpecrewMarkdownContent -Path $retroPath)
-        foreach ($line in $retroLines) {
+    if (@($RetroLines).Count -eq 0 -and (Test-Path -LiteralPath $retroPath -PathType Leaf)) {
+        $RetroLines = @(Get-SpecrewMarkdownContent -Path $retroPath)
+    }
+
+    if (@($RetroLines).Count -gt 0) {
+        foreach ($line in @($RetroLines)) {
             if ($line -match '^\|\s*\*\*Total Effort\*\*\s*\|\s*\*\*(?<planned>[^|]+)\*\*\s*\|\s*\*\*(?<actual>[^|]+)\*\*') {
                 $actual = ConvertTo-SpecrewNullableDecimal -Value $Matches['actual']
                 if ($null -ne $actual) {
@@ -440,9 +447,12 @@ function Get-SpecrewDeliveredStoryPoints {
     }
 
     $statePath = Join-Path $IterationDirectory 'state.md'
-    if (Test-Path -LiteralPath $statePath -PathType Leaf) {
-        $stateLines = @(Get-SpecrewMarkdownContent -Path $statePath)
-        foreach ($line in $stateLines) {
+    if (@($StateLines).Count -eq 0 -and (Test-Path -LiteralPath $statePath -PathType Leaf)) {
+        $StateLines = @(Get-SpecrewMarkdownContent -Path $statePath)
+    }
+
+    if (@($StateLines).Count -gt 0) {
+        foreach ($line in @($StateLines)) {
             if ($line -match '^\|\s*\*\*Total Story Points(?: \(Iteration \d+\))?\*\*\s*\|\s*(?<value>[^|]+)\|') {
                 $total = ConvertTo-SpecrewNullableDecimal -Value $Matches['value']
                 if ($null -ne $total) {
@@ -456,13 +466,19 @@ function Get-SpecrewDeliveredStoryPoints {
 }
 
 function Get-SpecrewPlannedStoryPoints {
-    param([Parameter(Mandatory = $true)][string]$IterationDirectory)
+    param(
+        [Parameter(Mandatory = $true)][string]$IterationDirectory,
+        [AllowEmptyCollection()][string[]]$PlanLines = @(),
+        [AllowEmptyCollection()][string[]]$StateLines = @()
+    )
 
     $planPath = Join-Path $IterationDirectory 'plan.md'
-    $planLines = @()
-    if (Test-Path -LiteralPath $planPath -PathType Leaf) {
-        $planLines = @(Get-SpecrewMarkdownContent -Path $planPath)
-        $capacityLine = Get-SpecrewMarkdownMetadataValue -Lines $planLines -Label 'Capacity'
+    if (@($PlanLines).Count -eq 0 -and (Test-Path -LiteralPath $planPath -PathType Leaf)) {
+        $PlanLines = @(Get-SpecrewMarkdownContent -Path $planPath)
+    }
+
+    if (@($PlanLines).Count -gt 0) {
+        $capacityLine = Get-SpecrewMarkdownMetadataValue -Lines @($PlanLines) -Label 'Capacity'
         $capacity = ConvertTo-SpecrewNullableDecimal -Value $capacityLine
         if ($null -ne $capacity) {
             return $capacity
@@ -470,8 +486,8 @@ function Get-SpecrewPlannedStoryPoints {
     }
 
     $sum = [decimal]0
-    if ($planLines.Count -gt 0) {
-        $taskRows = @(Get-SpecrewMarkdownSectionTable -Lines $planLines -Heading 'Tasks')
+    if (@($PlanLines).Count -gt 0) {
+        $taskRows = @(Get-SpecrewMarkdownSectionTable -Lines @($PlanLines) -Heading 'Tasks')
         foreach ($taskRow in $taskRows) {
             $effort = ConvertTo-SpecrewNullableDecimal -Value ([string]$taskRow.Effort)
             if ($null -ne $effort) {
@@ -485,9 +501,12 @@ function Get-SpecrewPlannedStoryPoints {
     }
 
     $statePath = Join-Path $IterationDirectory 'state.md'
-    if (Test-Path -LiteralPath $statePath -PathType Leaf) {
-        $stateLines = @(Get-SpecrewMarkdownContent -Path $statePath)
-        foreach ($line in $stateLines) {
+    if (@($StateLines).Count -eq 0 -and (Test-Path -LiteralPath $statePath -PathType Leaf)) {
+        $StateLines = @(Get-SpecrewMarkdownContent -Path $statePath)
+    }
+
+    if (@($StateLines).Count -gt 0) {
+        foreach ($line in @($StateLines)) {
             if ($line -match '^\|\s*\*\*Planned Story Points(?: \(Iteration \d+\))?\*\*\s*\|\s*(?<value>[^|]+)\|') {
                 $planned = ConvertTo-SpecrewNullableDecimal -Value $Matches['value']
                 if ($null -ne $planned) {
@@ -535,8 +554,6 @@ function Get-SpecrewIterationRecord {
     try {
         $stateLines = @(Get-SpecrewMarkdownContent -Path $statePath)
         $planLines = if (Test-Path -LiteralPath $planPath -PathType Leaf) { @(Get-SpecrewMarkdownContent -Path $planPath) } else { @() }
-        $reviewLines = if (Test-Path -LiteralPath $reviewPath -PathType Leaf) { @(Get-SpecrewMarkdownContent -Path $reviewPath) } else { @() }
-        $retroLines = if (Test-Path -LiteralPath $retroPath -PathType Leaf) { @(Get-SpecrewMarkdownContent -Path $retroPath) } else { @() }
     }
     catch {
         Add-SpecrewDashboardWarning -Message ("Skipping iteration artifact '{0}' because it could not be read cleanly: {1}" -f $IterationDirectory, $_.Exception.Message)
@@ -545,15 +562,11 @@ function Get-SpecrewIterationRecord {
 
     $statePhase = [string](Get-SpecrewMarkdownMetadataValue -Lines $stateLines -Label 'Current Phase')
     $iterationStatus = [string](Get-SpecrewMarkdownMetadataValue -Lines $stateLines -Label 'Iteration Status')
-    $reviewVerdict = [string](Get-SpecrewMarkdownMetadataValue -Lines $reviewLines -Label 'Overall Verdict')
+    $reviewVerdict = ''
+    $reviewLines = @()
+    $retroLines = @()
     $startedAt = ConvertTo-SpecrewNullableDate -Value (Get-SpecrewMarkdownMetadataValue -Lines $planLines -Label 'Started')
     $completedAt = ConvertTo-SpecrewNullableDate -Value (Get-SpecrewMarkdownMetadataValue -Lines $planLines -Label 'Review Completed')
-    if ($null -eq $completedAt) {
-        $completedAt = ConvertTo-SpecrewNullableDate -Value (Get-SpecrewMarkdownMetadataValue -Lines $retroLines -Label 'Conducted At')
-    }
-    if ($null -eq $completedAt) {
-        $completedAt = ConvertTo-SpecrewNullableDate -Value (Get-SpecrewMarkdownMetadataValue -Lines $stateLines -Label 'Updated')
-    }
 
     $boundaryStartedAt = $null
     $boundaryCompletedAt = $null
@@ -568,9 +581,36 @@ function Get-SpecrewIterationRecord {
         $completedAt = $boundaryCompletedAt
     }
 
-    $isClosed = ($statePhase -match '(?i)closed|complete') -or ($iterationStatus -match '(?i)closed') -or ($reviewVerdict -match '(?i)accepted')
-    $planned = Get-SpecrewPlannedStoryPoints -IterationDirectory $IterationDirectory
-    $actual = if ($isClosed) { Get-SpecrewDeliveredStoryPoints -IterationDirectory $IterationDirectory } else { [decimal]0 }
+    $isClosed = ($statePhase -match '(?i)closed|complete') -or ($iterationStatus -match '(?i)closed')
+    if (-not $isClosed -and (Test-Path -LiteralPath $reviewPath -PathType Leaf)) {
+        try {
+            $reviewLines = @(Get-SpecrewMarkdownContent -Path $reviewPath)
+            $reviewVerdict = [string](Get-SpecrewMarkdownMetadataValue -Lines $reviewLines -Label 'Overall Verdict')
+            $isClosed = $reviewVerdict -match '(?i)accepted'
+        }
+        catch {
+            Add-SpecrewDashboardWarning -Message ("Skipping review verdict for '{0}' because review.md could not be read cleanly: {1}" -f $IterationDirectory, $_.Exception.Message)
+        }
+    }
+
+    if ($isClosed -and (Test-Path -LiteralPath $retroPath -PathType Leaf)) {
+        try {
+            $retroLines = @(Get-SpecrewMarkdownContent -Path $retroPath)
+        }
+        catch {
+            Add-SpecrewDashboardWarning -Message ("Skipping retro evidence for '{0}' because retro.md could not be read cleanly: {1}" -f $IterationDirectory, $_.Exception.Message)
+        }
+    }
+
+    if ($null -eq $completedAt -and @($retroLines).Count -gt 0) {
+        $completedAt = ConvertTo-SpecrewNullableDate -Value (Get-SpecrewMarkdownMetadataValue -Lines $retroLines -Label 'Conducted At')
+    }
+    if ($null -eq $completedAt) {
+        $completedAt = ConvertTo-SpecrewNullableDate -Value (Get-SpecrewMarkdownMetadataValue -Lines $stateLines -Label 'Updated')
+    }
+
+    $planned = Get-SpecrewPlannedStoryPoints -IterationDirectory $IterationDirectory -PlanLines $planLines -StateLines $stateLines
+    $actual = if ($isClosed) { Get-SpecrewDeliveredStoryPoints -IterationDirectory $IterationDirectory -RetroLines $retroLines -StateLines $stateLines } else { [decimal]0 }
     if ($isClosed -and $actual -le 0 -and $planned -gt 0) {
         $actual = $planned
     }
@@ -717,6 +757,7 @@ function Get-SpecrewFeatureRecords {
                 feature_ref             = $featureDirectory.Name
                 feature_title           = $featureTitle
                 feature_status          = $featureStatus
+                has_feature_closeout    = $hasFeatureCloseout
                 spec_path               = $specPath
                 closeout_dashboard_path = Join-Path $featureDirectory.FullName 'closeout-dashboard.md'
                 iterations              = @($iterations)
@@ -896,34 +937,255 @@ function Get-SpecrewRoadmapProgress {
     }
 }
 
+function Get-SpecrewDashboardDefaultRecentCount {
+    return 6
+}
+
+function Get-SpecrewDashboardDefaultBarWidth {
+    return 28
+}
+
+function Get-SpecrewDashboardCapabilityValue {
+    param(
+        [AllowNull()][object]$CapabilityOverrides,
+        [Parameter(Mandatory = $true)][string]$Name,
+        $DefaultValue
+    )
+
+    if ($null -eq $CapabilityOverrides) {
+        return $DefaultValue
+    }
+
+    if ($CapabilityOverrides -is [System.Collections.IDictionary] -and $CapabilityOverrides.Contains($Name)) {
+        return $CapabilityOverrides[$Name]
+    }
+
+    $property = $CapabilityOverrides.PSObject.Properties[$Name]
+    if ($null -ne $property) {
+        return $property.Value
+    }
+
+    return $DefaultValue
+}
+
+function Get-SpecrewConsoleEncodingName {
+    try {
+        return [Console]::OutputEncoding.WebName
+    }
+    catch {
+        return ''
+    }
+}
+
+function Get-SpecrewIsWindowsHost {
+    param([AllowNull()][object]$CapabilityOverrides)
+
+    $defaultValue = $false
+    if ($PSVersionTable.PSVersion.Major -ge 6) {
+        $defaultValue = [bool]$IsWindows
+    }
+
+    return [bool](Get-SpecrewDashboardCapabilityValue -CapabilityOverrides $CapabilityOverrides -Name 'IsWindows' -DefaultValue $defaultValue)
+}
+
+function Test-SpecrewUtf8Output {
+    param(
+        [AllowNull()][object]$CapabilityOverrides,
+        [ValidateSet('live', 'iteration-closeout', 'feature-closeout')][string]$CaptureKind = 'live'
+    )
+
+    if ($CaptureKind -ne 'live') {
+        return $true
+    }
+
+    $encodingName = [string](Get-SpecrewDashboardCapabilityValue -CapabilityOverrides $CapabilityOverrides -Name 'ConsoleEncodingName' -DefaultValue (Get-SpecrewConsoleEncodingName))
+    if ($encodingName -match 'utf-?8') {
+        return $true
+    }
+
+    if (-not (Get-SpecrewIsWindowsHost -CapabilityOverrides $CapabilityOverrides)) {
+        $language = [string](Get-SpecrewDashboardCapabilityValue -CapabilityOverrides $CapabilityOverrides -Name 'Lang' -DefaultValue $(if (-not [string]::IsNullOrWhiteSpace($env:LC_ALL)) { $env:LC_ALL } elseif (-not [string]::IsNullOrWhiteSpace($env:LC_CTYPE)) { $env:LC_CTYPE } else { $env:LANG }))
+        if ($language -match 'utf-?8') {
+            return $true
+        }
+    }
+
+    return $false
+}
+
+function Test-SpecrewVirtualTerminalSupport {
+    param(
+        [AllowNull()][object]$CapabilityOverrides,
+        [ValidateSet('live', 'iteration-closeout', 'feature-closeout')][string]$CaptureKind = 'live'
+    )
+
+    if ($CaptureKind -ne 'live') {
+        return $false
+    }
+
+    if (-not (Get-SpecrewIsWindowsHost -CapabilityOverrides $CapabilityOverrides)) {
+        return $true
+    }
+
+    $override = Get-SpecrewDashboardCapabilityValue -CapabilityOverrides $CapabilityOverrides -Name 'SupportsVirtualTerminal' -DefaultValue $null
+    if ($null -ne $override) {
+        return [bool]$override
+    }
+
+    try {
+        if ($null -ne $Host.UI -and $Host.UI.PSObject.Properties.Match('SupportsVirtualTerminal').Count -gt 0) {
+            return [bool]$Host.UI.SupportsVirtualTerminal
+        }
+    }
+    catch {
+        return $false
+    }
+
+    return $false
+}
+
+function Get-SpecrewDashboardRenderProfile {
+    param(
+        [switch]$Ascii,
+        [switch]$NoColor,
+        [int]$RecentCount = 6,
+        [int]$BarWidth = 28,
+        [ValidateSet('live', 'iteration-closeout', 'feature-closeout')][string]$CaptureKind = 'live',
+        [AllowNull()][object]$CapabilityOverrides
+    )
+
+    $effectiveRecentCount = if ($RecentCount -gt 0) { $RecentCount } else { Get-SpecrewDashboardDefaultRecentCount }
+    $effectiveBarWidth = if ($BarWidth -gt 0) { $BarWidth } else { Get-SpecrewDashboardDefaultBarWidth }
+    $isWindowsHost = Get-SpecrewIsWindowsHost -CapabilityOverrides $CapabilityOverrides
+    $termValue = [string](Get-SpecrewDashboardCapabilityValue -CapabilityOverrides $CapabilityOverrides -Name 'Term' -DefaultValue $env:TERM)
+    $utf8Eligible = Test-SpecrewUtf8Output -CapabilityOverrides $CapabilityOverrides -CaptureKind $CaptureKind
+    $virtualTerminalSupported = Test-SpecrewVirtualTerminalSupport -CapabilityOverrides $CapabilityOverrides -CaptureKind $CaptureKind
+    $fallbackReason = $null
+
+    if ($Ascii) {
+        $fallbackReason = 'ASCII rendering forced by --ASCII.'
+    }
+    elseif ($NoColor -or -not [string]::IsNullOrWhiteSpace($env:NO_COLOR)) {
+        $fallbackReason = 'Monochrome-safe fallback forced by --no-color / NO_COLOR.'
+    }
+    elseif (-not [string]::IsNullOrWhiteSpace($env:NO_UNICODE)) {
+        $fallbackReason = 'Unicode rendering disabled by NO_UNICODE.'
+    }
+    elseif ($CaptureKind -eq 'live' -and $termValue -eq 'dumb') {
+        $fallbackReason = 'TERM=dumb disables rich terminal rendering.'
+    }
+    elseif (-not $utf8Eligible) {
+        $fallbackReason = 'UTF-8-capable output is unavailable.'
+    }
+    elseif ($CaptureKind -eq 'live' -and $isWindowsHost -and -not $virtualTerminalSupported) {
+        $fallbackReason = 'Windows virtual-terminal support is unavailable.'
+    }
+
+    $renderingMode = if ([string]::IsNullOrWhiteSpace($fallbackReason)) { 'rich' } else { 'monochrome' }
+    $ansiEnabled = $renderingMode -eq 'rich' -and $CaptureKind -eq 'live' -and $virtualTerminalSupported
+
+    return [pscustomobject]@{
+        rendering_mode            = $renderingMode
+        ansi_enabled              = $ansiEnabled
+        unicode_enabled           = $renderingMode -eq 'rich'
+        ascii_forced              = $Ascii.IsPresent
+        fallback_reason           = $fallbackReason
+        recent_count              = $effectiveRecentCount
+        bar_width                 = $effectiveBarWidth
+        snapshot_strip_ansi       = $CaptureKind -ne 'live'
+        capture_kind              = $CaptureKind
+        color_mode                = if ($ansiEnabled) { 'semantic-color' } else { 'monochrome' }
+        utf8_eligible             = $utf8Eligible
+        supports_virtual_terminal = $virtualTerminalSupported
+        term                      = $termValue
+        is_windows                = $isWindowsHost
+    }
+}
+
 function Get-SpecrewDashboardColorMode {
-    param([switch]$NoColor)
+    param(
+        [switch]$Ascii,
+        [switch]$NoColor,
+        [ValidateSet('live', 'iteration-closeout', 'feature-closeout')][string]$CaptureKind = 'live',
+        [AllowNull()][object]$CapabilityOverrides
+    )
 
-    if ($NoColor -or $env:NO_COLOR) {
-        return 'monochrome'
+    return (Get-SpecrewDashboardRenderProfile -Ascii:$Ascii -NoColor:$NoColor -CaptureKind $CaptureKind -CapabilityOverrides $CapabilityOverrides).color_mode
+}
+
+function Get-SpecrewDashboardGlyphPalette {
+    param([Parameter(Mandatory = $true)][object]$RenderProfile)
+
+    if ($RenderProfile.rendering_mode -eq 'rich') {
+        return [pscustomobject]@{
+            RuleChar      = '─'
+            ActiveArrow   = '→'
+            ActiveMarker  = '◐'
+            ShippedMarker = '✓'
+            QueuedMarker  = '○'
+            WarnMarker    = '⚠'
+            BarFill       = '█'
+            BarEmpty      = '░'
+            ProgressFill  = '█'
+            ProgressEmpty = '░'
+            SparkChars    = @('▁', '▂', '▃', '▄', '▅', '▆', '▇', '█')
+            FooterMarker  = 'ℹ'
+        }
     }
 
-    if ([Console]::IsOutputRedirected -or $env:TERM -eq 'dumb' -or $env:CI -eq 'true' -or $env:GITHUB_ACTIONS -eq 'true') {
-        return 'monochrome'
+    return [pscustomobject]@{
+        RuleChar      = '-'
+        ActiveArrow   = '>'
+        ActiveMarker  = '[~]'
+        ShippedMarker = '[x]'
+        QueuedMarker  = '[ ]'
+        WarnMarker    = '!'
+        BarFill       = '#'
+        BarEmpty      = '.'
+        ProgressFill  = '#'
+        ProgressEmpty = '.'
+        SparkChars    = @()
+        FooterMarker  = 'i'
     }
+}
 
-    if ($null -eq $Host.UI -or $null -eq $Host.UI.RawUI) {
-        return 'monochrome'
+function Format-SpecrewDashboardMeter {
+    param(
+        [decimal]$Value,
+        [decimal]$Maximum,
+        [int]$Width,
+        [Parameter(Mandatory = $true)][object]$RenderProfile
+    )
+
+    $palette = Get-SpecrewDashboardGlyphPalette -RenderProfile $RenderProfile
+    $safeWidth = [math]::Max(1, $Width)
+    $filled = if ($Maximum -gt 0) {
+        [math]::Min($safeWidth, [int][math]::Round(($Value / $Maximum) * $safeWidth))
     }
+    else {
+        0
+    }
+    $filled = [math]::Max(0, $filled)
 
-    return 'semantic-color'
+    return ('{0}{1}' -f ($palette.BarFill * $filled), ($palette.BarEmpty * ($safeWidth - $filled)))
 }
 
 function Format-SpecrewDashboardProgressBar {
     param(
         [decimal]$Current,
         [decimal]$Total,
-        [int]$Width = 16
+        [int]$Width = 16,
+        [string]$OverflowMarker = ' ',
+        [Parameter(Mandatory = $true)][object]$RenderProfile
     )
 
-    $percent = if ($Total -gt 0) { [math]::Min(100, [math]::Round(($Current / $Total) * 100)) } else { 0 }
-    $filled = [math]::Min($Width, [int][math]::Round(($percent / 100) * $Width))
-    return ('[{0}{1}] {2,3}%' -f ('#' * $filled), ('.' * ($Width - $filled)), $percent)
+    $palette = Get-SpecrewDashboardGlyphPalette -RenderProfile $RenderProfile
+    $safeWidth = [math]::Max(1, $Width)
+    $percent = if ($Total -gt 0) { [math]::Round(($Current / $Total) * 100) } else { 0 }
+    $ratio = if ($Total -gt 0) { $Current / $Total } else { 0 }
+    $filled = [math]::Min($safeWidth, [int][math]::Round($ratio * $safeWidth))
+    $safeOverflowMarker = if ([string]::IsNullOrEmpty($OverflowMarker)) { ' ' } else { $OverflowMarker.Substring(0, 1) }
+    return ('[{0}{1}]{2} {3,3}%' -f ($palette.ProgressFill * $filled), ($palette.ProgressEmpty * ($safeWidth - $filled)), $safeOverflowMarker, $percent)
 }
 
 function Format-SpecrewDashboardBarRow {
@@ -931,11 +1193,12 @@ function Format-SpecrewDashboardBarRow {
         [Parameter(Mandatory = $true)][string]$Label,
         [decimal]$Value,
         [decimal]$Maximum,
-        [int]$Width = 14
+        [int]$Width = 14,
+        [Parameter(Mandatory = $true)][object]$RenderProfile
     )
 
-    $barWidth = if ($Maximum -gt 0) { [math]::Max(1, [int][math]::Round(($Value / $Maximum) * $Width)) } else { 0 }
-    return ('{0,-18} {1,5} SP {2}' -f $Label, ('{0:0.#}' -f $Value), ('#' * $barWidth))
+    $meter = Format-SpecrewDashboardMeter -Value $Value -Maximum $Maximum -Width $Width -RenderProfile $RenderProfile
+    return ('{0,-18} {1,5:0.#} SP {2}' -f $Label, $Value, $meter)
 }
 
 function Get-SpecrewVelocityHeadline {
@@ -947,38 +1210,55 @@ function Get-SpecrewVelocityHeadline {
     $recent = @($ClosedIterations | Sort-Object closed_at -Descending | Select-Object -First 10)
     if ($recent.Count -eq 0) {
         return [pscustomobject]@{
-            sample_size       = 0
-            total_story_points = [decimal]0
-            average_elapsed_days = [decimal]0
-            points_per_day    = [decimal]0
-            confidence        = 'low'
-            trend_tokens      = ''
-            iterations        = @()
+            sample_size                  = 0
+            total_story_points           = [decimal]0
+            total_elapsed_days           = [decimal]0
+            average_elapsed_days         = [decimal]0
+            points_per_day               = [decimal]0
+            confidence                   = 'low'
+            trend_tokens                 = ''
+            recent_values                = @()
+            sample_basis_text            = 'Awaiting the first closed iteration before velocity can be summarized.'
+            insufficient_history_message = 'Need at least one closed iteration before velocity can be calculated.'
+            iterations                   = @()
         }
     }
 
     $totalStoryPoints = [decimal]0
     $totalDays = [decimal]0
     $tokens = New-Object System.Collections.Generic.List[string]
+    $recentValues = New-Object System.Collections.Generic.List[decimal]
     foreach ($iteration in $recent) {
-        $totalStoryPoints += [decimal]$iteration.actual_story_points
-        $totalDays += [decimal]([math]::Max(1, $iteration.elapsed_days))
-        $tokens.Add(('{0:0.#}' -f $iteration.actual_story_points)) | Out-Null
+        $storyPoints = [decimal]$iteration.actual_story_points
+        $elapsedDays = [decimal]([math]::Max(1, $iteration.elapsed_days))
+        $totalStoryPoints += $storyPoints
+        $totalDays += $elapsedDays
+        $tokens.Add(('{0:0.#}' -f $storyPoints)) | Out-Null
+        $recentValues.Add($storyPoints) | Out-Null
     }
 
     $pointsPerDay = if ($totalDays -gt 0) { [math]::Round(($totalStoryPoints / $totalDays), 2) } else { [decimal]0 }
     $averageDays = if ($recent.Count -gt 0) { [math]::Round(($totalDays / $recent.Count), 1) } else { [decimal]0 }
     $confidence = if ($recent.Count -ge 10) { 'high' } elseif ($recent.Count -ge 4) { 'moderate' } else { 'low' }
+    $insufficientHistoryMessage = if ($recent.Count -lt 2) {
+        'Need at least two closed iterations before the velocity trend can show a stable direction.'
+    }
+    else {
+        $null
+    }
 
     return [pscustomobject]@{
-        sample_size          = $recent.Count
-        total_story_points   = $totalStoryPoints
-        total_elapsed_days   = $totalDays
-        average_elapsed_days = $averageDays
-        points_per_day       = $pointsPerDay
-        confidence           = $confidence
-        trend_tokens         = ($tokens -join ' / ')
-        iterations           = $recent
+        sample_size                  = $recent.Count
+        total_story_points           = $totalStoryPoints
+        total_elapsed_days           = $totalDays
+        average_elapsed_days         = $averageDays
+        points_per_day               = $pointsPerDay
+        confidence                   = $confidence
+        trend_tokens                 = ($tokens -join ' / ')
+        recent_values                = $recentValues.ToArray()
+        sample_basis_text            = ('Based on {0} closed iteration(s), {1:0.#} SP across {2:0.#} calendar day(s) (avg {3:0.#} day(s)).' -f $recent.Count, $totalStoryPoints, $totalDays, $averageDays)
+        insufficient_history_message = $insufficientHistoryMessage
+        iterations                   = $recent
     }
 }
 
@@ -1026,6 +1306,179 @@ function Resolve-SpecrewEtaCompletionLabel {
         'drifted-over' { return 'in-progress' }
         default { return $Default }
     }
+}
+
+function Get-SpecrewFeatureDisplayCode {
+    param([AllowNull()][string]$FeatureRef)
+
+    $featureNumber = Get-SpecrewFeatureNumber -FeatureRef $FeatureRef
+    if ([string]::IsNullOrWhiteSpace($featureNumber)) {
+        return $FeatureRef
+    }
+
+    return ('F-{0}' -f $featureNumber)
+}
+
+function Get-SpecrewFeatureReadableTitle {
+    param(
+        [AllowNull()][string]$FeatureTitle,
+        [AllowNull()][string]$FeatureRef
+    )
+
+    $title = if (-not [string]::IsNullOrWhiteSpace($FeatureTitle)) {
+        $FeatureTitle -replace '^Feature Specification:\s*', ''
+    }
+    else {
+        $FeatureRef
+    }
+
+    return $title.Trim()
+}
+
+function Format-SpecrewDashboardTruncatedText {
+    param(
+        [AllowNull()][string]$Text,
+        [int]$MaxWidth
+    )
+
+    if ($MaxWidth -le 0) {
+        return ''
+    }
+
+    if ([string]::IsNullOrWhiteSpace($Text)) {
+        return ''
+    }
+
+    $trimmed = $Text.Trim()
+    if ($trimmed.Length -le $MaxWidth) {
+        return $trimmed
+    }
+
+    if ($MaxWidth -le 3) {
+        return $trimmed.Substring(0, $MaxWidth)
+    }
+
+    return ($trimmed.Substring(0, $MaxWidth - 3) + '...')
+}
+
+function Get-SpecrewRecentShippedLabel {
+    param(
+        [AllowNull()][string]$FeatureRef,
+        [AllowNull()][string]$IterationLabel
+    )
+
+    $featureCode = Get-SpecrewFeatureDisplayCode -FeatureRef $FeatureRef
+    $iterationToken = $IterationLabel
+    if (-not [string]::IsNullOrWhiteSpace($IterationLabel) -and $IterationLabel -match '(iter-\d+)$') {
+        $iterationToken = $Matches[1]
+    }
+
+    if (-not [string]::IsNullOrWhiteSpace($featureCode) -and -not [string]::IsNullOrWhiteSpace($iterationToken)) {
+        return ('{0} · {1}' -f $featureCode, $iterationToken)
+    }
+
+    if (-not [string]::IsNullOrWhiteSpace($featureCode)) {
+        return $featureCode
+    }
+
+    return $iterationToken
+}
+
+function Get-SpecrewRecentShippedIterationToken {
+    param(
+        [AllowNull()][string]$IterationLabel,
+        [AllowNull()][string]$IterationRef
+    )
+
+    $iterationToken = $IterationRef
+    if ([string]::IsNullOrWhiteSpace($iterationToken) -and -not [string]::IsNullOrWhiteSpace($IterationLabel) -and $IterationLabel -match '(iter-\d+)$') {
+        $iterationToken = $Matches[1]
+    }
+    elseif (-not [string]::IsNullOrWhiteSpace($iterationToken) -and $iterationToken -notmatch '^iter-') {
+        $iterationToken = "iter-$iterationToken"
+    }
+
+    if ([string]::IsNullOrWhiteSpace($iterationToken)) {
+        return ''
+    }
+
+    return ('· {0}' -f $iterationToken)
+}
+
+function New-SpecrewRecentShippedEntry {
+    param(
+        [Parameter(Mandatory = $true)][object]$Iteration,
+        [AllowNull()][object]$FeatureRecord
+    )
+
+    $closeDateText = if ($null -ne $Iteration.closed_at) { $Iteration.closed_at.ToString('yyyy-MM-dd') } else { 'unknown-date' }
+    $closedIterationCount = if ($null -ne $FeatureRecord) { @($FeatureRecord.closed_iterations).Count } else { 1 }
+
+    return [pscustomobject]@{
+        feature_ref            = $Iteration.feature_ref
+        feature_code           = Get-SpecrewFeatureDisplayCode -FeatureRef $Iteration.feature_ref
+        label                  = Get-SpecrewRecentShippedLabel -FeatureRef $Iteration.feature_ref -IterationLabel $Iteration.iteration_label
+        short_name             = Get-SpecrewFeatureReadableTitle -FeatureTitle $Iteration.feature_title -FeatureRef $Iteration.feature_ref
+        iteration_label        = $Iteration.iteration_label
+        delivered_story_points = [decimal]$Iteration.actual_story_points
+        iteration_count        = [int]$closedIterationCount
+        close_date_text        = $closeDateText
+        closed_at              = $Iteration.closed_at
+        actual_story_points    = [decimal]$Iteration.actual_story_points
+        planned_story_points   = [decimal]$Iteration.planned_story_points
+        elapsed_days           = [int]$Iteration.elapsed_days
+        feature_title          = $Iteration.feature_title
+        iteration_ref          = $Iteration.iteration_ref
+        feature_status         = $Iteration.iteration_status
+    }
+}
+
+function Get-SpecrewVelocitySparkline {
+    param(
+        [AllowEmptyCollection()][decimal[]]$Values,
+        [Parameter(Mandatory = $true)][object]$RenderProfile
+    )
+
+    if ($RenderProfile.rendering_mode -ne 'rich' -or $Values.Count -eq 0) {
+        return $null
+    }
+
+    $palette = Get-SpecrewDashboardGlyphPalette -RenderProfile $RenderProfile
+    if ($palette.SparkChars.Count -eq 0) {
+        return $null
+    }
+
+    $minimum = ($Values | Measure-Object -Minimum).Minimum
+    $maximum = ($Values | Measure-Object -Maximum).Maximum
+    $spark = New-Object System.Collections.Generic.List[string]
+
+    foreach ($value in $Values) {
+        if ($maximum -eq $minimum) {
+            $index = [math]::Floor(($palette.SparkChars.Count - 1) / 2)
+        }
+        else {
+            $ratio = ([decimal]$value - [decimal]$minimum) / ([decimal]$maximum - [decimal]$minimum)
+            $index = [math]::Min($palette.SparkChars.Count - 1, [int][math]::Round($ratio * ($palette.SparkChars.Count - 1)))
+        }
+        $spark.Add($palette.SparkChars[$index]) | Out-Null
+    }
+
+    return ($spark -join '')
+}
+
+function Format-SpecrewRoadmapDescription {
+    param([AllowNull()][string]$Description)
+
+    if ([string]::IsNullOrWhiteSpace($Description)) {
+        return 'No roadmap description recorded.'
+    }
+
+    $trimmed = $Description.Trim()
+    if ($trimmed.Length -le 80) {
+        return $trimmed
+    }
+
+    return ($trimmed.Substring(0, 77) + '...')
 }
 
 function Get-SpecrewProjection {
@@ -1149,12 +1602,18 @@ function Get-SpecrewDashboardSnapshot {
         [AllowNull()][string]$FeatureId,
         [AllowNull()][string]$IterationNumber,
         [switch]$Compact,
+        [switch]$Ascii,
         [switch]$NoColor,
+        [int]$RecentCount = 6,
+        [int]$BarWidth = 28,
+        [ValidateSet('live', 'iteration-closeout', 'feature-closeout')][string]$CaptureKind = 'live',
+        [AllowNull()][object]$CapabilityOverrides,
         [switch]$Team
     )
 
     $resolvedProjectRoot = (Resolve-Path -Path (Resolve-ProjectPath -Path $ProjectRoot)).Path
     Reset-SpecrewDashboardWarnings
+    $renderProfile = Get-SpecrewDashboardRenderProfile -Ascii:$Ascii -NoColor:$NoColor -RecentCount $RecentCount -BarWidth $BarWidth -CaptureKind $CaptureKind -CapabilityOverrides $CapabilityOverrides
     $activeFeatureRef = $null
     if (-not [string]::IsNullOrWhiteSpace($FeatureId)) {
         $activeFeatureRef = $FeatureId
@@ -1164,10 +1623,17 @@ function Get-SpecrewDashboardSnapshot {
         $activeFeatureRef = if ($activeFeatureDirectory) { Split-Path -Leaf $activeFeatureDirectory } else { $null }
     }
     $features = @(Get-SpecrewFeatureRecords -ProjectRoot $resolvedProjectRoot -ActiveFeatureRef $activeFeatureRef)
+    $featureLookup = @{}
+    foreach ($feature in $features) {
+        $featureLookup[$feature.feature_ref] = $feature
+    }
 
     $warnings = New-Object System.Collections.Generic.List[string]
     if ($Team) {
         $warnings.Add('Team mode is reserved for future multi-developer support; rendering the personal dashboard instead.') | Out-Null
+    }
+    if ($renderProfile.rendering_mode -eq 'monochrome' -and -not [string]::IsNullOrWhiteSpace([string]$renderProfile.fallback_reason)) {
+        $warnings.Add($renderProfile.fallback_reason) | Out-Null
     }
 
     $featureRecord = @($features | Where-Object { $_.feature_ref -eq $activeFeatureRef } | Select-Object -First 1)
@@ -1244,11 +1710,18 @@ function Get-SpecrewDashboardSnapshot {
     }
 
     $projection = Get-SpecrewProjection -VelocityHeadline $velocityHeadline -RoadmapPhases $roadmapProgress.phases -ActiveFeature $featureRecord -ActivePhase $activePhase
+    $recentShipped = @(
+        $closedIterations |
+            Select-Object -First $renderProfile.recent_count |
+            ForEach-Object { New-SpecrewRecentShippedEntry -Iteration $_ -FeatureRecord $featureLookup[$_.feature_ref] }
+    )
     $snapshot = [pscustomobject]@{
         schema_version       = 'v1'
         captured_at          = (Get-Date).ToUniversalTime().ToString('yyyy-MM-ddTHH:mm:ssZ')
+        today_anchor         = (Get-Date).ToString('yyyy-MM-dd')
         render_mode          = if ($Compact) { 'compact' } else { 'full' }
-        color_mode           = Get-SpecrewDashboardColorMode -NoColor:$NoColor
+        color_mode           = $renderProfile.color_mode
+        render_profile       = $renderProfile
         repository_identity  = [pscustomobject]@{
             name   = Split-Path -Leaf $resolvedProjectRoot
             branch = Get-SpecrewGitBranch -ProjectRoot $resolvedProjectRoot
@@ -1259,14 +1732,21 @@ function Get-SpecrewDashboardSnapshot {
         active_phase         = $activePhase
         summary_line         = ''
         velocity_headline    = $velocityHeadline
-        recent_shipped       = @($closedIterations | Select-Object -First 3)
+        recent_shipped       = @($recentShipped)
         recent_variance      = @($closedIterations | Select-Object -First 3)
         history              = @($closedIterations | Select-Object -First 8)
         roadmap_progress     = @($roadmapProgress.phases)
         projection           = $projection
+        footer_note          = ''
         warnings             = @($warnings | Select-Object -Unique)
     }
-    $snapshot.summary_line = Get-SpecrewSummaryLine -Snapshot $snapshot
+    $snapshot.summary_line = Get-SpecrewSummaryLine -Snapshot $snapshot -Compact:$Compact
+    $snapshot.footer_note = if ($renderProfile.rendering_mode -eq 'rich') {
+        'Use --ASCII any time you need the monochrome-safe fallback; stored closeout snapshots keep Unicode glyphs but never ANSI escapes.'
+    }
+    else {
+        'Monochrome-safe fallback is active. Re-run without --ASCII / --no-color in a UTF-8 + ANSI-capable terminal to see the richer view.'
+    }
     return $snapshot
 }
 
@@ -1276,11 +1756,16 @@ function Get-SpecrewSummaryLine {
         [switch]$Compact
     )
 
+    $palette = Get-SpecrewDashboardGlyphPalette -RenderProfile $Snapshot.render_profile
     $featureLabel = if ($null -ne $Snapshot.active_feature) {
-        Get-SpecrewFeatureShortLabel -FeatureRef $Snapshot.active_feature.feature_ref
+        '{0} {1}' -f (Get-SpecrewFeatureDisplayCode -FeatureRef $Snapshot.active_feature.feature_ref), (Get-SpecrewFeatureReadableTitle -FeatureTitle $Snapshot.active_feature.feature_title -FeatureRef $Snapshot.active_feature.feature_ref)
     }
     else {
         'No active feature'
+    }
+
+    if ($null -ne $Snapshot.active_feature) {
+        $featureLabel = '{0} {1}' -f $palette.ActiveArrow, $featureLabel
     }
 
     $statusText = if ($null -ne $Snapshot.active_feature -and -not [string]::IsNullOrWhiteSpace([string]$Snapshot.active_feature.feature_status)) {
@@ -1314,75 +1799,85 @@ function Get-SpecrewSummaryLine {
 
     if ($null -eq $Snapshot.active_feature) {
         if ($Compact) {
-            return ('Summary: {0} | {1} | ETA F:{2} P:{3} R:{4}' -f $featureLabel, $velocityText, $featureEta, $phaseEta, $roadmapEta)
+            return ('Summary: {0} | {1}' -f $featureLabel, $velocityText)
         }
 
-        return ('Summary: {0} | Velocity {1} | ETA: feature {2} · phase {3} · roadmap {4}' -f $featureLabel, $velocityText, $featureEta, $phaseEta, $roadmapEta)
+        return ('Summary: {0} | Velocity {1}' -f $featureLabel, $velocityText)
     }
 
     if ($Compact) {
-        $statusSegment = if ($null -ne $phaseText) { "$featureLabel $statusText · $phaseText" } else { "$featureLabel $statusText" }
-        return ('Summary: {0} | {1} | ETA F:{2} P:{3} R:{4}' -f $statusSegment, $velocityText, $featureEta, $phaseEta, $roadmapEta)
+        $statusSegment = if ($null -ne $phaseText) { "$statusText · $phaseText" } else { $statusText }
+        return ('Summary: {0} | {1} | {2}' -f $featureLabel, $statusSegment, $velocityText)
     }
 
     $phaseSegment = if ($null -ne $phaseText) { " · phase $phaseText" } else { '' }
-    return ('Summary: {0} ({1}{2}) | Velocity {3} | ETA: feature {4} · phase {5} · roadmap {6}' -f $featureLabel, $statusText, $phaseSegment, $velocityText, $featureEta, $phaseEta, $roadmapEta)
+    return ('Summary: {0} ({1}{2}) | Velocity {3}' -f $featureLabel, $statusText, $phaseSegment, $velocityText)
 }
 
 function ConvertTo-SpecrewDashboardLines {
     param([Parameter(Mandatory = $true)][object]$Snapshot)
 
+    $palette = Get-SpecrewDashboardGlyphPalette -RenderProfile $Snapshot.render_profile
     $lines = New-Object System.Collections.Generic.List[string]
-    $header = 'SPECREW VELOCITY DASHBOARD'
-    $lines.Add($header) | Out-Null
+    $rule = $palette.RuleChar * 72
+    $lines.Add('SPECREW VELOCITY DASHBOARD') | Out-Null
+    $lines.Add($rule) | Out-Null
+    $lines.Add(('Today: {0} | Captured: {1}' -f $Snapshot.today_anchor, $Snapshot.captured_at)) | Out-Null
+    $lines.Add(('Repo: {0} | Branch: {1}' -f $Snapshot.repository_identity.name, $Snapshot.repository_identity.branch)) | Out-Null
+    $lines.Add(('Rendering: {0}' -f $(if ($Snapshot.render_profile.rendering_mode -eq 'rich') { 'rich default' } else { 'monochrome-safe fallback' }))) | Out-Null
     $lines.Add($Snapshot.summary_line) | Out-Null
-    $lines.Add(('Repo: {0} | Branch: {1} | Captured: {2}' -f $Snapshot.repository_identity.name, $Snapshot.repository_identity.branch, $Snapshot.captured_at)) | Out-Null
     $lines.Add('') | Out-Null
 
     $lines.Add('ACTIVE WORK') | Out-Null
     if ($null -ne $Snapshot.active_feature) {
-        $featureLine = 'Feature: {0} ({1})' -f $Snapshot.active_feature.feature_ref, $Snapshot.active_feature.feature_title
-        if (-not [string]::IsNullOrWhiteSpace([string]$Snapshot.active_feature.feature_status)) {
-            $featureLine += " | status $($Snapshot.active_feature.feature_status)"
-        }
-        $lines.Add($featureLine) | Out-Null
+        $lines.Add(('Feature: {0} {1} | {2} | status {3}' -f $palette.ActiveArrow, (Get-SpecrewFeatureDisplayCode -FeatureRef $Snapshot.active_feature.feature_ref), (Get-SpecrewFeatureReadableTitle -FeatureTitle $Snapshot.active_feature.feature_title -FeatureRef $Snapshot.active_feature.feature_ref), $Snapshot.active_feature.feature_status)) | Out-Null
         if ($null -ne $Snapshot.active_iteration) {
             $phaseHighlight = if (-not [string]::IsNullOrWhiteSpace([string]$Snapshot.active_iteration.state_phase)) { $Snapshot.active_iteration.state_phase.ToUpperInvariant() } else { 'UNKNOWN' }
             $startedText = if ($null -ne $Snapshot.active_iteration.started_at) { $Snapshot.active_iteration.started_at.ToString('yyyy-MM-dd') } else { 'unknown-start' }
-            $lines.Add(('Iteration: {0} | planned {1:0.#} SP | phase {2} | started {3}' -f $Snapshot.active_iteration.iteration_label, $Snapshot.active_iteration.planned_story_points, $phaseHighlight, $startedText)) | Out-Null
-            if ($Snapshot.active_feature.planned_story_points -gt 0) {
-                $lines.Add(('In-flight: {0:0.#} SP planned · {1:0.#} SP delivered · {2:0.#} SP remaining' -f $Snapshot.active_feature.planned_story_points, $Snapshot.active_feature.delivered_story_points, $Snapshot.active_feature.remaining_story_points)) | Out-Null
-            }
+            $lines.Add(('Iteration: {0} | phase {1} | started {2}' -f $Snapshot.active_iteration.iteration_label, $phaseHighlight, $startedText)) | Out-Null
+            $lines.Add(('In-flight: {0:0.#} SP planned | {1:0.#} SP delivered | {2:0.#} SP remaining' -f $Snapshot.active_feature.planned_story_points, $Snapshot.active_feature.delivered_story_points, $Snapshot.active_feature.remaining_story_points)) | Out-Null
         }
         else {
-            $lines.Add('Iteration: no active iteration recorded') | Out-Null
+            $lines.Add('No active iteration is recorded for the current feature.') | Out-Null
         }
     }
     else {
-        $lines.Add('Feature: none detected') | Out-Null
+        $lines.Add('No active feature is set. Start or resume a feature to populate this section.') | Out-Null
     }
     $lines.Add('') | Out-Null
 
     $lines.Add('VELOCITY') | Out-Null
     if ($Snapshot.velocity_headline.sample_size -gt 0) {
-        $lines.Add(('Headline: {0:0.##} SP/day from {1} closed iteration(s) ({2:0.#} SP / {3:0.#} total days, avg {4} days) | confidence {5}' -f $Snapshot.velocity_headline.points_per_day, $Snapshot.velocity_headline.sample_size, $Snapshot.velocity_headline.total_story_points, $Snapshot.velocity_headline.total_elapsed_days, $Snapshot.velocity_headline.average_elapsed_days, $Snapshot.velocity_headline.confidence)) | Out-Null
-        $lines.Add(('Recent sample: {0}' -f $Snapshot.velocity_headline.trend_tokens)) | Out-Null
+        $lines.Add(('Headline: {0:0.##} SP/day | confidence {1}' -f $Snapshot.velocity_headline.points_per_day, $Snapshot.velocity_headline.confidence)) | Out-Null
+        $lines.Add(('Sample basis: {0}' -f $Snapshot.velocity_headline.sample_basis_text)) | Out-Null
+        $sparkline = Get-SpecrewVelocitySparkline -Values $Snapshot.velocity_headline.recent_values -RenderProfile $Snapshot.render_profile
+        if (-not [string]::IsNullOrWhiteSpace($sparkline)) {
+            $lines.Add(('Sparkline: {0} | values {1}' -f $sparkline, $Snapshot.velocity_headline.trend_tokens)) | Out-Null
+        }
+        elseif (-not [string]::IsNullOrWhiteSpace([string]$Snapshot.velocity_headline.insufficient_history_message)) {
+            $lines.Add(('Trend: {0}' -f $Snapshot.velocity_headline.insufficient_history_message)) | Out-Null
+        }
+        else {
+            $lines.Add(('Trend: {0}' -f $Snapshot.velocity_headline.trend_tokens)) | Out-Null
+        }
     }
     else {
         $lines.Add('Headline: waiting for the first closed iteration') | Out-Null
+        $lines.Add('Trend: Need at least one closed iteration before velocity can be calculated.') | Out-Null
     }
     $lines.Add('') | Out-Null
 
     $lines.Add('RECENT SHIPPED') | Out-Null
     if ($Snapshot.recent_shipped.Count -eq 0) {
-        $lines.Add('No shipped iterations yet.') | Out-Null
+        $lines.Add('No shipped iterations yet. Close the first iteration to seed shipped history.') | Out-Null
     }
     else {
-        $maxDelivered = ($Snapshot.recent_shipped | Measure-Object -Property actual_story_points -Maximum).Maximum
-        foreach ($iteration in $Snapshot.recent_shipped) {
-            $label = $iteration.iteration_label
-            $dateText = if ($null -ne $iteration.closed_at) { $iteration.closed_at.ToString('yyyy-MM-dd') } else { 'unknown-date' }
-            $lines.Add((Format-SpecrewDashboardBarRow -Label $label -Value $iteration.actual_story_points -Maximum $maxDelivered) + " ($dateText)") | Out-Null
+        $maxDelivered = ($Snapshot.recent_shipped | Measure-Object -Property delivered_story_points -Maximum).Maximum
+        foreach ($entry in $Snapshot.recent_shipped) {
+            $meter = Format-SpecrewDashboardMeter -Value $entry.delivered_story_points -Maximum $maxDelivered -Width $Snapshot.render_profile.bar_width -RenderProfile $Snapshot.render_profile
+            $iterationToken = Get-SpecrewRecentShippedIterationToken -IterationLabel $entry.iteration_label -IterationRef $entry.iteration_ref
+            $title = Format-SpecrewDashboardTruncatedText -Text $entry.short_name -MaxWidth 32
+            $lines.Add(('{0} {1,-5} {2,-10} {3} {4,5:0.0} SP {5,2} iter {6} {7}' -f $palette.ShippedMarker, $entry.feature_code, $iterationToken, $meter, $entry.delivered_story_points, $entry.iteration_count, $entry.close_date_text, $title)) | Out-Null
         }
     }
     $lines.Add('') | Out-Null
@@ -1405,7 +1900,7 @@ function ConvertTo-SpecrewDashboardLines {
     else {
         $historyMax = ($Snapshot.history | Measure-Object -Property actual_story_points -Maximum).Maximum
         foreach ($iteration in $Snapshot.history) {
-            $lines.Add((Format-SpecrewDashboardBarRow -Label $iteration.label -Value $iteration.actual_story_points -Maximum $historyMax)) | Out-Null
+            $lines.Add((Format-SpecrewDashboardBarRow -Label $iteration.label -Value $iteration.actual_story_points -Maximum $historyMax -Width ([math]::Min(16, $Snapshot.render_profile.bar_width)) -RenderProfile $Snapshot.render_profile)) | Out-Null
         }
     }
     $lines.Add('') | Out-Null
@@ -1415,13 +1910,22 @@ function ConvertTo-SpecrewDashboardLines {
         $lines.Add('Roadmap unavailable yet; add .specrew/roadmap.yml (see docs/roadmap-maintenance.md) to enable this section.') | Out-Null
     }
     else {
+        $roadmapSpWidth = 12
+        $roadmapStatusWidth = 12
         foreach ($phase in $Snapshot.roadmap_progress) {
-            $bar = Format-SpecrewDashboardProgressBar -Current $phase.derived_shipped_effort_sp -Total $phase.planned_effort_sp
-            $phaseLabel = $phase.name
-            if ($null -ne $Snapshot.active_phase -and $Snapshot.active_phase.phase_id -eq $phase.phase_id) {
-                $phaseLabel += ' (current)'
+            $marker = if ($null -ne $Snapshot.active_phase -and $Snapshot.active_phase.phase_id -eq $phase.phase_id) { $palette.ActiveMarker } elseif ($phase.effective_status -eq 'shipped') { $palette.ShippedMarker } else { $palette.QueuedMarker }
+            $phaseLabel = if ($null -ne $Snapshot.active_phase -and $Snapshot.active_phase.phase_id -eq $phase.phase_id) { "$($phase.name) (current)" } else { $phase.name }
+            $overflowMarker = if ($phase.effective_status -eq 'drifted-over') {
+                if ($Snapshot.render_profile.rendering_mode -eq 'rich') { '▶' } else { '>' }
             }
-            $lines.Add(('{0}: {1} | declared {2} | effective {3} | derived {4:0.#}/{5:0.#} SP' -f $phaseLabel, $bar, $phase.declared_status, $phase.effective_status, $phase.derived_shipped_effort_sp, $phase.planned_effort_sp)) | Out-Null
+            else {
+                ' '
+            }
+            $bar = Format-SpecrewDashboardProgressBar -Current $phase.derived_shipped_effort_sp -Total $phase.planned_effort_sp -Width 16 -OverflowMarker $overflowMarker -RenderProfile $Snapshot.render_profile
+            $spPair = '{0:0.#}/{1:0.#} SP' -f $phase.derived_shipped_effort_sp, $phase.planned_effort_sp
+            $descriptionPrefix = '  ' + (' ' * $bar.Length) + ' ' + (' ' * $roadmapSpWidth) + ' ' + (' ' * $roadmapStatusWidth) + ' '
+            $lines.Add(('{0} {1} {2,-12} {3,-12} {4}' -f $marker, $bar, $spPair, $phase.effective_status, $phaseLabel)) | Out-Null
+            $lines.Add(($descriptionPrefix + (Format-SpecrewRoadmapDescription -Description $phase.description))) | Out-Null
         }
     }
     $lines.Add('') | Out-Null
@@ -1439,9 +1943,13 @@ function ConvertTo-SpecrewDashboardLines {
     }
     else {
         foreach ($warning in $Snapshot.warnings) {
-            $lines.Add("WARN: $warning") | Out-Null
+            $lines.Add(('WARN: {0}' -f $warning)) | Out-Null
         }
     }
+
+    $lines.Add('') | Out-Null
+    $lines.Add('FOOTER') | Out-Null
+    $lines.Add(('{0} {1}' -f $palette.FooterMarker, $Snapshot.footer_note)) | Out-Null
 
     return $lines.ToArray()
 }
@@ -1449,40 +1957,34 @@ function ConvertTo-SpecrewDashboardLines {
 function ConvertTo-SpecrewCompactDashboardLines {
     param([Parameter(Mandatory = $true)][object]$Snapshot)
 
+    $palette = Get-SpecrewDashboardGlyphPalette -RenderProfile $Snapshot.render_profile
     $lines = New-Object System.Collections.Generic.List[string]
     $lines.Add('SPECREW VELOCITY DASHBOARD') | Out-Null
     $lines.Add((Get-SpecrewSummaryLine -Snapshot $Snapshot -Compact)) | Out-Null
-    $lines.Add(('Repo {0} | {1}' -f $Snapshot.repository_identity.name, $Snapshot.repository_identity.branch)) | Out-Null
+    $lines.Add(('Today {0} | Repo {1}' -f $Snapshot.today_anchor, $Snapshot.repository_identity.name)) | Out-Null
+    $lines.Add(('Rendering {0}' -f $Snapshot.render_profile.rendering_mode)) | Out-Null
     $lines.Add('ACTIVE') | Out-Null
     $lines.Add($(if ($null -ne $Snapshot.active_feature) {
-                $featureLabel = Get-SpecrewFeatureShortLabel -FeatureRef $Snapshot.active_feature.feature_ref
-                $iterationLabel = if ($null -ne $Snapshot.active_iteration) { $Snapshot.active_iteration.iteration_label } else { 'no-iteration' }
-                "$featureLabel | $iterationLabel | $($Snapshot.active_feature.feature_status)"
+                '{0} {1} | {2}' -f $palette.ActiveArrow, (Get-SpecrewFeatureDisplayCode -FeatureRef $Snapshot.active_feature.feature_ref), (Get-SpecrewFeatureReadableTitle -FeatureTitle $Snapshot.active_feature.feature_title -FeatureRef $Snapshot.active_feature.feature_ref)
             }
             else { 'No active feature' })) | Out-Null
     $lines.Add('VELOCITY') | Out-Null
-    $lines.Add($(if ($Snapshot.velocity_headline.sample_size -gt 0) { '{0:0.##} SP/day ({1} iters, {2})' -f $Snapshot.velocity_headline.points_per_day, $Snapshot.velocity_headline.sample_size, $Snapshot.velocity_headline.confidence } else { 'Awaiting first closeout' })) | Out-Null
+    $lines.Add($(if ($Snapshot.velocity_headline.sample_size -gt 0) { '{0:0.##} SP/day | {1}' -f $Snapshot.velocity_headline.points_per_day, $Snapshot.velocity_headline.confidence } else { 'Awaiting first closeout' })) | Out-Null
+    $sparkline = Get-SpecrewVelocitySparkline -Values $Snapshot.velocity_headline.recent_values -RenderProfile $Snapshot.render_profile
+    $lines.Add($(if (-not [string]::IsNullOrWhiteSpace($sparkline)) { $sparkline } elseif ($Snapshot.velocity_headline.sample_size -gt 0) { $Snapshot.velocity_headline.trend_tokens } else { 'No trend yet' })) | Out-Null
     $lines.Add('RECENT SHIPPED') | Out-Null
-    foreach ($iteration in @($Snapshot.recent_shipped | Select-Object -First 3)) {
-        $lines.Add(('{0} {1:0.#} SP' -f $iteration.iteration_label, $iteration.actual_story_points)) | Out-Null
+    foreach ($entry in @($Snapshot.recent_shipped | Select-Object -First 3)) {
+        $lines.Add(('{0} {1} | {2:0.#} SP' -f $palette.ShippedMarker, $entry.label, $entry.delivered_story_points)) | Out-Null
     }
-    while ($lines.Count -lt 11) {
-        $lines.Add('-') | Out-Null
-    }
-    $lines.Add('VARIANCE') | Out-Null
-    $lines.Add('Iter P A D') | Out-Null
-    foreach ($iteration in @($Snapshot.recent_variance | Select-Object -First 3)) {
-        $delta = [decimal]$iteration.actual_story_points - [decimal]$iteration.planned_story_points
-        $lines.Add(('{0} {1:0.#} {2:0.#} {3:+0.##;-0.##;0}' -f $iteration.iteration_label, $iteration.planned_story_points, $iteration.actual_story_points, $delta)) | Out-Null
-    }
-    while ($lines.Count -lt 16) {
+    while ($lines.Count -lt 13) {
         $lines.Add('-') | Out-Null
     }
     $lines.Add('ROADMAP') | Out-Null
     foreach ($phase in @($Snapshot.roadmap_progress | Select-Object -First 2)) {
-        $lines.Add(('{0}: {1:0.#}/{2:0.#} SP {3}' -f $phase.phase_id, $phase.derived_shipped_effort_sp, $phase.planned_effort_sp, $phase.effective_status)) | Out-Null
+        $marker = if ($null -ne $Snapshot.active_phase -and $Snapshot.active_phase.phase_id -eq $phase.phase_id) { $palette.ActiveMarker } elseif ($phase.effective_status -eq 'shipped') { $palette.ShippedMarker } else { $palette.QueuedMarker }
+        $lines.Add(('{0} {1} {2:0.#}/{3:0.#} SP' -f $marker, $phase.phase_id, $phase.derived_shipped_effort_sp, $phase.planned_effort_sp)) | Out-Null
     }
-    while ($lines.Count -lt 19) {
+    while ($lines.Count -lt 17) {
         $lines.Add('-') | Out-Null
     }
     $lines.Add('PROJECTION') | Out-Null
@@ -1498,9 +2000,15 @@ function ConvertTo-SpecrewCompactDashboardLines {
     $lines.Add('WARNINGS') | Out-Null
     $warningSummary = if ($Snapshot.warnings.Count -gt 0) { $Snapshot.warnings[0] } else { 'No active dashboard warnings.' }
     if ($warningSummary.Length -gt 84) {
-        $warningSummary = $warningSummary.Substring(0, 84)
+        $warningSummary = $warningSummary.Substring(0, 81) + '...'
     }
     $lines.Add($warningSummary) | Out-Null
+    $lines.Add('FOOTER') | Out-Null
+    $footer = $Snapshot.footer_note
+    if ($footer.Length -gt 84) {
+        $footer = $footer.Substring(0, 81) + '...'
+    }
+    $lines.Add($footer) | Out-Null
     if ($lines.Count -gt 24) {
         return @($lines | Select-Object -First 24)
     }
@@ -1522,18 +2030,18 @@ function Write-SpecrewDashboardLines {
 
     foreach ($line in $Lines) {
         if ($ColorMode -eq 'semantic-color') {
-            if ($line -eq 'SPECREW VELOCITY DASHBOARD') {
+            if ($line -eq 'SPECREW VELOCITY DASHBOARD' -or $line -like 'Summary:*') {
                 Write-Host $line -ForegroundColor Green
                 continue
             }
 
-            if ($line -like 'Summary:*') {
-                Write-Host $line -ForegroundColor Green
-                continue
-            }
-
-            if ($line -match '^(ACTIVE WORK|VELOCITY|RECENT SHIPPED|RECENT ITERATIONS \(PLAN VS REALITY\)|FULL HISTORY|ROADMAP|PROJECTION|WARNINGS|ACTIVE|VARIANCE)$') {
+            if ($line -match '^(ACTIVE WORK|VELOCITY|RECENT SHIPPED|RECENT ITERATIONS \(PLAN VS REALITY\)|FULL HISTORY|ROADMAP|PROJECTION|WARNINGS|FOOTER|ACTIVE)$') {
                 Write-Host $line -ForegroundColor Cyan
+                continue
+            }
+
+            if ($line -like 'Today:*' -or $line -like 'Repo:*' -or $line -like 'Rendering:*') {
+                Write-Host $line -ForegroundColor DarkGray
                 continue
             }
 
@@ -1545,6 +2053,16 @@ function Write-SpecrewDashboardLines {
 
         Write-Host $line
     }
+}
+
+function Remove-SpecrewAnsiEscapeSequences {
+    param([AllowNull()][string]$Text)
+
+    if ($null -eq $Text) {
+        return ''
+    }
+
+    return [regex]::Replace($Text, ([string][char]27 + '\[[0-9;]*[A-Za-z]'), '')
 }
 
 function ConvertTo-SpecrewDashboardArtifactContent {
@@ -1572,20 +2090,25 @@ function ConvertTo-SpecrewDashboardArtifactContent {
         $HistoricalNotice
     }
 
-    return @"
-# Velocity Dashboard Snapshot
+    $lineFeed = "`n"
+    $dashboardText = Remove-SpecrewAnsiEscapeSequences -Text ($Lines -join $lineFeed)
 
-**Schema**: v1
-**Capture Kind**: $CaptureKind
-**Captured At**: $($Snapshot.captured_at)
-**Render Mode**: $($Snapshot.render_mode)
-**Color Mode**: $($Snapshot.color_mode)
-**Historical Notice**: $notice
-
-## Dashboard
-
-```text
-$($Lines -join [Environment]::NewLine)
-```
-"@
+    return @(
+        '# Velocity Dashboard Snapshot',
+        '',
+        '**Schema**: v1',
+        ('**Capture Kind**: {0}' -f $CaptureKind),
+        ('**Captured At**: {0}' -f $Snapshot.captured_at),
+        ('**Render Mode**: {0}' -f $Snapshot.render_mode),
+        ('**Rendering Mode**: {0}' -f $Snapshot.render_profile.rendering_mode),
+        ('**Color Mode**: {0}' -f $Snapshot.color_mode),
+        ('**Historical Notice**: {0}' -f $notice),
+        '',
+        '## Dashboard',
+        '',
+        '```text',
+        $dashboardText,
+        '```',
+        ''
+    ) -join $lineFeed
 }

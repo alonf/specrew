@@ -2065,6 +2065,30 @@ Iteration 002 planning artifacts (plan.md) were still in `planning` status with 
 
 - **Routing Evidence**: Reviewer | requested=claude | actual=copilot | model=(platform default) | status=fell-back | fallback=preferred agent 'claude' is not enabled
 
+## 2026-05-15T18:12:42Z — Hardening-gate sign-off: Feature 018
+
+- **Decision ID**: feature-018-hardening-gate-signoff-20260515
+- **Type**: sign-off
+- **Affected Requirement**: Feature 018 hardening-gate-and-implementation-auth boundary
+- **Affected Iteration**: 001
+- **Approving Human**: Alon Fliess
+- **Recorded At**: 2026-05-15T18:12:42Z
+- **Next Action**: Enter `/speckit.specrew-speckit.before-implement` for feature 018 after the pre-implementation review and hardening-gate artifacts are updated.
+- **Rationale**: Bundled human authorization granted the hardening-gate sign-off and implementation authorization together for feature 018.
+- **Authorization Text**: AUTHORIZE hardening-gate-and-implementation-auth + implementation for Feature 018 (Velocity Dashboard Visual Richness + PoC-Parity Restoration).
+
+## 2026-05-15T18:12:42Z — Implementation authorization: Feature 018
+
+- **Decision ID**: feature-018-implementation-authorization-20260515
+- **Type**: authorization
+- **Affected Requirement**: Feature 018 implementation boundary
+- **Affected Iteration**: 001
+- **Approving Human**: Alon Fliess
+- **Recorded At**: 2026-05-15T18:12:42Z
+- **Next Action**: If `/speckit.specrew-speckit.before-implement` passes, enter `/speckit.implement` for feature 018 and stop at the review-boundary.
+- **Rationale**: Bundled human authorization granted the hardening-gate sign-off and implementation authorization together for feature 018.
+- **Authorization Text**: AUTHORIZE hardening-gate-and-implementation-auth + implementation for Feature 018 (Velocity Dashboard Visual Richness + PoC-Parity Restoration).
+
 ## 2026-05-14T00:00:00Z — Authorization: planning
 
 - **Decision ID**: authorization-feature-016-iter-001-planning
@@ -3402,3 +3426,330 @@ Feature 017 (velocity-dashboard) is closed and shipped to main with Rule 15 vers
 ## Impact
 
 Feature 017 (Velocity Dashboard) is now closed and shipped. Version 0.17.0 is the active baseline, and no feature is currently open without explicit authorization.
+
+## 2026-05-15T16:10:40Z — Delegated routing plan
+
+- **Enabled Agents**: copilot
+- **Independent Oversight Active**: False
+- **Roles**:
+  - Implementer | requested=copilot | actual=copilot | model=(platform default) | status=honored | fallback=(none)
+  - Spec Steward | requested=codex | actual=copilot | model=(platform default) | status=fell-back | fallback=preferred agent 'codex' is not enabled
+  - Planner | requested=claude | actual=copilot | model=(platform default) | status=fell-back | fallback=preferred agent 'claude' is not enabled
+  - Reviewer | requested=claude | actual=copilot | model=(platform default) | status=fell-back | fallback=preferred agent 'claude' is not enabled
+  - Retro Facilitator | requested=copilot | actual=copilot | model=(platform default) | status=honored | fallback=(none)
+
+## 2026-05-15T16:10:40Z — Routing evidence: Spec Steward
+
+- **Decision ID**: routing-evidence-206ce5416f23
+- **Type**: routing-evidence
+- **Affected Requirement**: FR-043
+- **Affected Iteration**: (none)
+- **Approving Human**: (none)
+- **Recorded At**: 2026-05-15T16:10:40Z
+- **Next Action**: none
+- **Rationale**: Delegated lifecycle routing was applied for role 'Spec Steward'.
+
+- **Routing Evidence**: Spec Steward | requested=codex | actual=copilot | model=(platform default) | status=fell-back | fallback=preferred agent 'codex' is not enabled
+
+## 2026-05-15T16:10:40Z — Routing evidence: Planner
+
+- **Decision ID**: routing-evidence-cc6d58bdf628
+- **Type**: routing-evidence
+- **Affected Requirement**: FR-043
+- **Affected Iteration**: (none)
+- **Approving Human**: (none)
+- **Recorded At**: 2026-05-15T16:10:40Z
+- **Next Action**: none
+- **Rationale**: Delegated lifecycle routing was applied for role 'Planner'.
+
+- **Routing Evidence**: Planner | requested=claude | actual=copilot | model=(platform default) | status=fell-back | fallback=preferred agent 'claude' is not enabled
+
+## 2026-05-15T16:10:40Z — Routing evidence: Reviewer
+
+- **Decision ID**: routing-evidence-7692f5bf7c1e
+- **Type**: routing-evidence
+- **Affected Requirement**: FR-043
+- **Affected Iteration**: (none)
+- **Approving Human**: (none)
+- **Recorded At**: 2026-05-15T16:10:40Z
+- **Next Action**: none
+- **Rationale**: Delegated lifecycle routing was applied for role 'Reviewer'.
+
+- **Routing Evidence**: Reviewer | requested=claude | actual=copilot | model=(platform default) | status=fell-back | fallback=preferred agent 'claude' is not enabled
+
+
+# Implementer Decision: Feature 018 bounded repair R-018-V2
+
+**Date**: 2026-05-15  
+**By**: Implementer  
+**Type**: bounded-repair
+
+## Decision
+
+For Feature 018 review repair `R-018-V2`, the dashboard renderer must no longer use
+`[Console]::IsOutputRedirected` as a live rich-mode eligibility gate. Instead, the
+live `scripts\specrew-where.ps1` entrypoint temporarily primes UTF-8 when rich mode
+has not already been disabled by explicit operator controls, then restores the
+caller console state on exit.
+
+## Why It Matters
+
+- Fresh PowerShell review runs were receiving a misleading redirected-output fallback
+  diagnosis even when the real issue was pre-render UTF-8 state.
+- Moving the UTF-8 priming to the entry script keeps diagnostics truthful and leaves
+  the shared renderer focused on directly verifiable eligibility checks.
+- Restore-on-exit protects caller state so the repair stays bounded and safe for
+  repeated local CLI use.
+
+## Scope Guardrail
+
+This decision is limited to Feature 018 review repair `R-018-V2a` / `R-018-V2b` /
+`R-018-V2c`. It does not authorize review acceptance, retro opening, or any broader
+terminal-capability redesign beyond the bounded repair.
+
+
+# Implementer decision: Feature 018 review repair
+
+- **Date**: 2026-05-15
+- **Feature**: 018 — Velocity Dashboard Visual Richness + PoC-Parity Restoration
+- **Boundary**: review-verdict-signoff
+- **Decision**: Preserve Recent Shipped per-iteration granularity by rendering a combined feature-and-iteration label (`F-017 · iter-001`) on live dashboard rows.
+
+## Rationale
+
+1. Feature-only Recent Shipped labels regressed once Feature 017 and later features accumulated multiple closed
+   iterations, causing `specrew where` to emit duplicate row labels.
+2. A combined feature-and-iteration label keeps Feature 017 granularity visible without widening the repair into
+   roadmap, projection, or retro surfaces.
+3. The same label needs to flow through both rich and monochrome render paths so validator-backed snapshots and
+   operator reruns stay consistent.
+
+
+# Planner Decision Inbox: Feature 018 Hardening Scaffold
+
+**Date**: 2026-05-15  
+**Role**: Planner  
+**Feature**: 018-velocity-dashboard-visual-richness  
+**Iteration**: 001
+
+## Decision
+
+Use iteration-scoped execution artifacts under
+`specs/018-velocity-dashboard-visual-richness/iterations/001/quality/` as the canonical pre-implementation
+package for Feature 018, even though the backlog still contains feature-root quality paths.
+
+## Why
+
+1. `.squad/decisions/inbox/reviewer-feature018-preimpl.md` identified the missing hardening gate as the
+   only blocker before implementation.
+2. `/speckit.specrew-speckit.before-implement` needs a truthful iteration artifact set, not future
+   review/retro placeholders.
+3. Carrying the reviewer's five exact concern labels into the iteration-scoped hardening gate keeps the
+   execution boundary auditable without reopening planning.
+
+## Recorded Concern Labels
+
+- `terminal-capability-decision-precedence`
+- `windows-vt-fallback-truthfulness`
+- `render-budget-stop-ship-evidence`
+- `ansi-stripping-with-unicode-preservation`
+- `closeout-dashboard-artifact-rendering`
+
+## Consequence
+
+Execution can stay paused at the correct boundary: plan/state/drift plus iteration-scoped quality artifacts
+exist, review/retro remain unopened, and implementation can start later only if the before-implement gate
+accepts this package.
+
+
+# Reviewer decision: Feature 018 pre-implementation refresh
+
+- **Date**: 2026-05-15
+- **Feature**: 018 — Velocity Dashboard Visual Richness + PoC-Parity Restoration
+- **Boundary**: pre-implementation / hardening-gate-and-implementation-auth
+- **Decision**: Refresh the pre-implementation review to `ready-with-concerns`.
+
+## Rationale
+
+The earlier blocker was real when the hardening gate was absent. It is no longer real: the authorized
+iteration-scoped artifact set now exists under `specs/018-velocity-dashboard-visual-richness/iterations/001/`,
+the approval ledger records hardening-gate sign-off plus bundled implementation authorization, and the current
+iteration package passes governance validation.
+
+## Carry-forward watchpoints
+
+1. Terminal-capability precedence must stay deterministic across `--ASCII`, Unicode opt-out,
+   redirected/dumb output, UTF-8 checks, and Windows VT eligibility.
+2. Missing Windows VT support must force a clean monochrome fallback with no partial ANSI leakage.
+3. Render-budget proof (`<= 1.5s`) remains stop-ship evidence, not polish.
+4. Stored dashboard artifacts must strip ANSI while preserving readable Unicode.
+5. Iteration-closeout and feature-closeout dashboard rendering must stay parity-safe and immutable.
+
+
+# Reviewer Decision Inbox: Feature 018 Pre-Implementation Review
+
+**Date**: 2026-05-15  
+**Role**: Reviewer  
+**Feature**: 018-velocity-dashboard-visual-richness  
+**Iteration**: 001  
+**Verdict**: blocked
+
+## Decision
+
+Feature 018 is implementable on substance, but implementation should not start yet.
+
+## Why
+
+1. `spec.md`, `plan.md`, and `tasks.md` do cover the requested rendering, fallback, regression, artifact, and documentation surfaces.
+2. The approved next-step ledger in `.squad/decisions.md` requires the pre-implementation review and hardening-gate artifacts to be updated before implementation proceeds.
+3. `specs/018-velocity-dashboard-visual-richness/quality/hardening-gate.md` is still missing, so the implementation boundary is incomplete.
+
+## Required Next Move
+
+Create the hardening-gate artifact and carry these explicit concerns into it before implementation begins:
+
+- terminal-capability decision precedence
+- Windows VT fallback truthfulness
+- NFR-001 render-budget stop-ship evidence
+- ANSI stripping with Unicode preservation
+- iteration-closeout and feature-closeout dashboard artifact rendering
+
+## Scope Discipline
+
+No planning-package rewrite is required once the hardening gate exists. Do not widen scope beyond the approved five pillars.
+
+
+# Reviewer decision: Feature 018 visual terminal check
+
+- **Date**: 2026-05-15
+- **Feature**: 018 — Velocity Dashboard Visual Richness + PoC-Parity Restoration
+- **Boundary**: review / direct-terminal rich-render verification
+- **Decision**: needs-work
+
+## Rationale
+
+I ran `specrew where` directly in the PowerShell terminal against `tests\integration\fixtures\feature-018-dashboard\rich-capable-repository`.
+The command rendered `Rendering: monochrome-safe fallback` and warned that output was redirected, so the approved rich-mode surface did not appear in the live review session.
+
+## Additional repair item before signoff
+
+Repair or explain the live capability-detection path so a direct terminal run shows the approved rich-mode elements instead of fallback substitutes. In the reviewed session these rich elements failed together:
+
+1. Unicode block chars `█` / `░` did not render; ASCII `#` / `.` bars appeared instead.
+2. ANSI semantic colors were not active because the renderer stayed in monochrome mode.
+3. Status markers `✓` / `◐` / `○` did not render; `[x]` / `[~]` / `[ ]` appeared instead.
+4. The active-feature arrow `→` did not render; `>` appeared instead.
+5. The sparkline `▁▂▃▄▅▆▇█` did not render; a textual trend list appeared instead.
+
+## Next move
+
+Do not sign off the visual-richness claim until a direct PowerShell terminal run produces the rich glyph set and semantic emphasis on the rich-capable repository fixture, or the requirement is explicitly re-scoped with approval.
+
+---
+
+## 2026-05-15T23:30:00Z — Canonical defer entry (Feature 018 iteration 001 review signoff cosmetic defer)
+
+- **Decision ID**: defer-roadmap-phase-status-marker-uniformity-feature-018-iter-001
+- **Type**: defer
+- **Affected Iteration**: specs\018-velocity-dashboard-visual-richness\iterations\001
+- **Approving Human**: Alon Fliess
+- **Recorded At**: 2026-05-15T23:30:00Z
+- **Next Action**: Normalize roadmap rich-marker styling in a later scoped polish pass without changing lifecycle meaning or fallback semantics
+- **Rationale**: Direct-terminal review acceptance for Feature 018 Iteration 001 confirmed that rich-mode rendering now works after `R-018-V2`. The remaining roadmap phase status marker uniformity observation is cosmetic only, so it is explicitly deferred instead of reopening review-verdict-signoff.
+
+## 2026-05-16T00:26:17Z — Authorization: review-verdict-signoff
+
+- **Decision ID**: authorization-feature-018-iter-001-review-verdict-signoff
+- **Type**: authorization
+- **Boundary**: review-verdict-signoff
+- **Approving Human**: Alon Fliess
+- **Recorded At**: 2026-05-16T00:26:17Z
+- **Commit Reference**: 41d0767
+- **Authorization Text**:
+  > ACCEPT review-verdict-signoff for Feature 018 Iteration 001. Direct-terminal verification confirms rich-mode rendering works after R-018-V2.
+  > This is a single boundary advance only: create and push the review-verdict-signoff boundary commit to origin/018-velocity-dashboard-visual-richness, and stop before retro-boundary.
+
+## 2026-05-16T00:35:00Z — Authorization: retro-boundary
+
+- **Decision ID**: authorization-feature-018-iter-001-retro-boundary
+- **Type**: authorization
+- **Boundary**: retro-boundary
+- **Approving Human**: Alon Fliess
+- **Recorded At**: 2026-05-16T00:35:00Z
+- **Commit Reference**: 7ed5a21
+- **Authorization Text**:
+  > AUTHORIZE retro-boundary for Feature 018 Iteration 001. Advance from review-verdict-signoff to retro-boundary only, stop at iteration-closeout. Record the eight substantive lessons in retro.md, cross-reference the four relevant corpus rows in known-traps.md, and update identity/now.md to retro-complete state.
+  > Eight lessons captured: (1) Five-attempt R-018-V2 detection-debugging saga, (2) Squad-discipline exemplar of refusing false signoff, (3) Recurring push-omission pattern, (4) Three new corpus rows + one deferred cosmetic, (5) PoC re-audit pattern, (6) F-018 estimation variance (zero variance: 14.5 SP), (7) Honest pre-implementation review assessment, (8) Article-visual-evidence milestone.
+  > This is a single boundary advance only: create and push the retro-boundary commit to origin/018-velocity-dashboard-visual-richness, and stop before iteration-closeout.
+
+---
+
+### 2026-05-16T00:45:00Z: Delegated lifecycle runtime evidence
+**By:** Squad (Coordinator)
+**Role / Work Item:** Implementer — Feature 018 Velocity Dashboard Visual Richness Iteration 001 iteration-closeout boundary
+**Requested Agent:** copilot
+**Actual Agent:** copilot
+**Model ID:** unknown (Copilot CLI host does not expose the active model identifier)
+**Status:** honored
+**Fallback Reason:** none
+
+---
+
+## 2026-05-16T00:45:00Z — Authorization: iteration-closeout
+
+- **Decision ID**: authorization-feature-018-iter-001-iteration-closeout
+- **Type**: authorization
+- **Boundary**: iteration-closeout
+- **Approving Human**: Alon Fliess
+- **Recorded At**: 2026-05-16T00:45:00Z
+- **Commit Reference**: b40965985e4f919d3733b8c43cc022aeafdb4fb3
+- **Boundary Note**: This hash is the canonical Feature 018 Iteration 001 iteration-closeout boundary commit.
+- **Authorization Text**:
+  > Advance only the authorized boundary: Feature 018 Iteration 001 from retro-boundary to iteration-closeout.
+  > Do NOT open or imply feature-closeout. Rule 15 release/version work is explicitly out of scope for this authorization.
+  > Update the closeout bookkeeping, rerun the validator and existing relevant tests, create and push the iteration-closeout boundary commit, and stop there.
+
+---
+
+# Implementer Decision Inbox: Feature 018 Iteration 001 iteration-closeout boundary
+
+**Date**: 2026-05-16  
+**Role**: Implementer  
+**Feature**: 018-velocity-dashboard-visual-richness  
+**Iteration**: 001
+
+## Decision
+
+Treat Iteration 001 as truthfully closed at the iteration layer once the closeout state records the
+requested PoC re-audit calibration baseline (~10-12 SP, with the original ~6-8 SP noted), grounds actual
+delivery in the authoritative iteration task actuals (14.5 SP), cross-references the strategic-response
+sequencing inputs, and leaves feature-closeout explicitly unopened.
+
+## Why
+
+1. The truthful delivery measure for this iteration is the task-actual table in
+   `specs/018-velocity-dashboard-visual-richness/iterations/001/plan.md`, which sums to 14.5 SP and already
+   includes the accepted execution slices that absorbed the review repairs.
+2. The implementation and absorbed-repair evidence is corroborated by the authorized commit arc
+   `228911a..7ed5a21`, including `d380212`, `cb052b9`, `aafc2e9`, and `41d0767`, so the closeout narrative
+   can explain the basis without inventing extra hidden scope.
+3. The strategic-response note is bookkeeping for forward readers only; retro remains the lesson authority,
+   and this closeout must not imply feature-closeout or Rule 15 release work.
+
+## Boundary Guardrail
+
+- Close the iteration only.
+- Keep feature-closeout pending explicit authorization.
+- Accept only the pre-existing roadmap-drift validator warnings as carry-forward; no new warning class is acceptable.
+
+## 2026-05-16T09:40:32Z — Authorization: feature-closeout
+
+- **Decision ID**: authorization-feature-018-feature-closeout
+- **Type**: authorization
+- **Boundary**: feature-closeout
+- **Approving Human**: Alon Fliess
+- **Recorded At**: 2026-05-16T09:40:32Z
+- **Commit Reference**: 35ff51577e7a54551e9133e4fef8cb4261fa444b
+- **Boundary Note**: This hash is the canonical Feature 018 feature-closeout boundary commit.
+- **Authorization Text**:
+  > AUTHORIZE feature-closeout for Feature 018 Velocity Dashboard Visual Richness + PoC-Parity Restoration. Rule 15 fires.

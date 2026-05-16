@@ -1,0 +1,58 @@
+SPECREW VELOCITY DASHBOARD
+------------------------------------------------------------------------
+Today: <today> | Captured: <timestamp>
+Repo: monochrome-repository | Branch: 018-velocity-dashboard-visual-richness
+Rendering: monochrome-safe fallback
+Summary: > F-018 Velocity Dashboard Visual Richness (In Progress · phase executing) | Velocity 3.65 SP/day (6 closed iterations, moderate)
+
+ACTIVE WORK
+Feature: > F-018 | Velocity Dashboard Visual Richness | status In Progress
+Iteration: feature-018.iter-001 | phase EXECUTING | started 2026-05-13
+In-flight: 14 SP planned | 0 SP delivered | 14 SP remaining
+
+VELOCITY
+Headline: 3.65 SP/day | confidence moderate
+Sample basis: Based on 6 closed iteration(s), 73 SP across 20 calendar day(s) (avg 3.3 day(s)).
+Trend: 18 / 15 / 11 / 13 / 8 / 8
+
+RECENT SHIPPED
+[x] F-017 · iter-001 ############################  18.0 SP  1 iter 2026-05-15 Velocity Dashboard
+[x] F-016 · iter-001 #######################.....  15.0 SP  1 iter 2026-05-14 Visible Delivery
+[x] F-015 · iter-001 #################...........  11.0 SP  1 iter 2026-05-13 Shared Foundation
+[x] F-014 · iter-001 ####################........  13.0 SP  1 iter 2026-05-12 Team Readiness
+[x] F-013 · iter-001 ############................   8.0 SP  1 iter 2026-05-04 Governance Upgrade
+[x] F-012 · iter-001 ############................   8.0 SP  1 iter 2026-05-02 Foundation Reset
+
+RECENT ITERATIONS (PLAN VS REALITY)
+Iter                  Planned Actual Delta Days
+feature-017.iter-001      18     18     0    5
+feature-016.iter-001      15     15     0    2
+feature-015.iter-001      11     11     0    1
+
+FULL HISTORY
+feature-017.iter-001    18 SP ################
+feature-016.iter-001    15 SP #############...
+feature-015.iter-001    11 SP ##########......
+feature-014.iter-001    13 SP ############....
+feature-013.iter-001     8 SP #######.........
+feature-012.iter-001     8 SP #######.........
+
+ROADMAP
+[x] [################]  100% 16/16 SP     shipped      Foundations
+                                                     Foundational governance and shared tooling are complete.
+[ ] [################]> 127% 57/45 SP     drifted-over Delivery
+                                                     Console delivery visibility and closeout reliability are already established.
+[~] [................]    0% 0/30 SP      in-progress  Richness (current)
+                                                     Restore rich dashboard density while preserving truthful fallback semantics a...
+
+PROJECTION
+Active feature remaining: 14 SP | ETA: 4 calendar day(s) | confidence moderate
+Current phase remaining: 30 SP | ETA: 9 calendar day(s) | confidence moderate
+Roadmap remaining: 30 SP | ETA: 9 calendar day(s) | confidence moderate
+
+WARNINGS
+WARN: ASCII rendering forced by --ASCII.
+WARN: Roadmap drift: phase 'Delivery' shipped effort exceeds plan by 12 SP (57 / 45 SP).
+
+FOOTER
+i Monochrome-safe fallback is active. Re-run without --ASCII / --no-color in a UTF-8 + ANSI-capable terminal to see the richer view.

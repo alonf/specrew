@@ -631,10 +631,21 @@ function Test-DashboardGovernanceSurfaces {
                 if ($dashboardText -notmatch '\*\*Schema\*\*:\s*v1') {
                     Write-DashboardGovernanceWarning -Category 'dashboard-schema-version' -Detail ("Iteration dashboard '{0}' is missing the expected schema marker." -f $dashboardPath)
                 }
+                if ($dashboardText -match ([char]27 + '\[[0-9;]*[A-Za-z]')) {
+                    Write-DashboardGovernanceWarning -Category 'dashboard-artifact-ansi' -Detail ("Iteration dashboard '{0}' still contains ANSI escape sequences; stored snapshots must strip ANSI while preserving Unicode." -f $dashboardPath)
+                }
             }
         }
 
-        if ([string]$feature.feature_status -match '(?i)complete|closed|shipped') {
+        $hasFeatureCloseout = $false
+        if ($null -ne $feature -and $null -ne $feature.PSObject.Properties['has_feature_closeout']) {
+            $hasFeatureCloseout = [bool]$feature.has_feature_closeout
+        }
+        elseif ([string]$feature.feature_status -match '(?i)complete|closed|shipped') {
+            $hasFeatureCloseout = $true
+        }
+
+        if ($hasFeatureCloseout) {
             $requiresFeatureDashboard = $false
             if ($featureOrdinal -gt $dashboardRolloutFeatureOrdinal) {
                 $requiresFeatureDashboard = $true
@@ -657,6 +668,9 @@ function Test-DashboardGovernanceSurfaces {
                 $closeoutText = Get-Content -LiteralPath $feature.closeout_dashboard_path -Raw -Encoding UTF8
                 if ($closeoutText -notmatch '\*\*Schema\*\*:\s*v1') {
                     Write-DashboardGovernanceWarning -Category 'dashboard-schema-version' -Detail ("Feature closeout dashboard '{0}' is missing the expected schema marker." -f $feature.closeout_dashboard_path)
+                }
+                if ($closeoutText -match ([char]27 + '\[[0-9;]*[A-Za-z]')) {
+                    Write-DashboardGovernanceWarning -Category 'dashboard-artifact-ansi' -Detail ("Feature closeout dashboard '{0}' still contains ANSI escape sequences; stored snapshots must strip ANSI while preserving Unicode." -f $feature.closeout_dashboard_path)
                 }
             }
         }

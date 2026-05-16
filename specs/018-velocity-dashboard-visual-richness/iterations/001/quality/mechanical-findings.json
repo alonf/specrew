@@ -1,0 +1,11 @@
+{
+  "schemaVersion": "v1",
+  "featureRef": "specs/018-velocity-dashboard-visual-richness/spec.md",
+  "iterationRef": "specs/018-velocity-dashboard-visual-richness/iterations/001",
+  "generatedAt": "2026-05-15T00:00:00Z",
+  "generator": {
+    "name": "specrew-iteration-scaffold",
+    "version": "1.0.0"
+  },
+  "findings": []
+}

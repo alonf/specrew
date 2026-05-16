@@ -1,7 +1,7 @@
 # Specrew
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![Version](https://img.shields.io/badge/version-0.17.0-blue.svg)](.specrew/config.yml)
+[![Version](https://img.shields.io/badge/version-0.18.0-blue.svg)](.specrew/config.yml)
 [![Status: Alpha](https://img.shields.io/badge/status-alpha-orange.svg)](#current-state)
 
 Specrew combines Spec Kit and Squad into a spec-governed operating model for
@@ -9,12 +9,12 @@ AI-assisted software delivery.
 
 ## Current State
 
-- Public shipped baseline: **0.17.0**, backed by 17 implementing features
+- Public shipped baseline: **0.18.0**, backed by 18 implementing features
 - Alpha software, validated through dogfooding in this repository
 - Built today for a single developer running on a single host
 - Not yet ready for multi-developer coordination or multi-host operation
 - Release truth now has public-facing surfaces in `CHANGELOG.md`,
-  `docs\versioning.md`, and the `v0.15.0` / `v0.16.0` / `v0.17.0` tags
+  `docs\versioning.md`, and the `v0.15.0` / `v0.16.0` / `v0.17.0` / `v0.18.0` tags
 
 ## What's working
 
@@ -22,7 +22,8 @@ AI-assisted software delivery.
 - `specrew start` is the canonical entrypoint and refreshes runtime handoff
   artifacts before launch
 - `specrew where` / `specrew status` render the repository's velocity dashboard
-  from canonical feature, iteration, and roadmap artifacts
+  from canonical feature, iteration, and roadmap artifacts, using richer default
+  rendering when the terminal can truthfully support it
 - Iteration closeout and feature closeout capture immutable dashboard snapshots
   under `specs/<feature>/iterations/<NNN>/dashboard.md` and
   `specs/<feature>/closeout-dashboard.md`
@@ -51,10 +52,12 @@ AI-assisted software delivery.
 2. Start every work session with `scripts\specrew.ps1 start`.
 3. Use `scripts\specrew.ps1 where` whenever you want the current project-status
    dashboard.
-4. Let Squad drive `specify -> clarify -> plan -> tasks -> implement` from the
+4. Use `--ASCII`, `--RecentCount <N>`, and `--BarWidth <N>` to force fallback
+   or tune the richer Recent Shipped density without changing lifecycle data.
+5. Let Squad drive `specify -> clarify -> plan -> tasks -> implement` from the
    generated feature artifacts.
-5. Keep iteration evidence current under `specs\<feature>\iterations\<NNN>\`.
-6. Move through planning, implementing, review, and retro in order without
+6. Keep iteration evidence current under `specs\<feature>\iterations\<NNN>\`.
+7. Move through planning, implementing, review, and retro in order without
    skipping governance gates or bundling boundary advances.
 
 ## Feature 016 Interaction Model
@@ -107,9 +110,9 @@ Specrew currently uses a merge-at-close rhythm:
 ## Versioning
 
 - `.specrew\config.yml` is the canonical source for the active version and now
-  declares **0.17.0**.
+  declares **0.18.0**.
 - Feature releases use `0.NN.0`, where `NN` tracks the shipped feature ordinal
-  (`0.17.0` = Feature 017).
+  (`0.18.0` = Feature 018).
 - `0.NN.M` is reserved for hotfixes against an existing shipped feature
   baseline.
 - See `docs\versioning.md` for the policy details and `CHANGELOG.md` for the
@@ -130,7 +133,7 @@ review boundaries stabilize.
 ## Key Documents
 
 - `docs\getting-started.md` - bootstrap and quickstart guidance
-- `docs\dashboard-guide.md` - dashboard sections, flags, and closeout snapshots
+- `docs\dashboard-guide.md` - dashboard sections, rich/fallback rules, flags, and closeout snapshots
 - `docs\roadmap-maintenance.md` - `.specrew/roadmap.yml` maintenance guidance
 - `docs\user-guide.md` - day-to-day lifecycle usage
 - `docs\github-project.md` - Specrew self-development board guidance

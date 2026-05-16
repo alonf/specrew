@@ -1,0 +1,26 @@
+phases:
+  - id: foundations
+    name: "Foundations"
+    description: "Foundational governance and shared tooling are complete."
+    planned_effort_sp: 16
+    status: shipped
+    feature_refs:
+      - 012-foundation-reset
+      - 013-governance-upgrade
+  - id: delivery
+    name: "Delivery"
+    description: "Console delivery visibility and closeout reliability are already established."
+    planned_effort_sp: 45
+    status: shipped
+    feature_refs:
+      - 014-team-readiness
+      - 015-shared-foundation
+      - 016-visible-delivery
+      - 017-velocity-dashboard
+  - id: richness
+    name: "Richness"
+    description: "Restore rich dashboard density while preserving truthful fallback semantics and keeping the sparkline only in Velocity for this release candidate."
+    planned_effort_sp: 30
+    status: in-progress
+    feature_refs:
+      - 018-velocity-dashboard-visual-richness

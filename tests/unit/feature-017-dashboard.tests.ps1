@@ -51,6 +51,8 @@ Assert-True -Condition ($progress.warnings.Count -eq 0) -Message 'Healthy fixtur
 
 $snapshot = Get-SpecrewDashboardSnapshot -ProjectRoot $fixtureRoot -Team
 Assert-True -Condition ($snapshot.warnings -contains 'Team mode is reserved for future multi-developer support; rendering the personal dashboard instead.') -Message '--team should add the reserved-path warning.'
+Assert-True -Condition ($snapshot.render_profile.recent_count -eq 6) -Message 'Feature 018 should preserve the default Recent Shipped count at 6.'
+Assert-True -Condition ($snapshot.render_profile.bar_width -eq 28) -Message 'Feature 018 should preserve the default rich bar width at 28.'
 
 $artifactText = ConvertTo-SpecrewDashboardArtifactContent -Snapshot $snapshot -Lines (ConvertTo-SpecrewCompactDashboardLines -Snapshot $snapshot) -CaptureKind 'feature-closeout' -HistoricalNotice $null
 Assert-True -Condition ($artifactText -match 'Historical snapshot captured during feature closeout') -Message 'Feature-closeout artifact should include the historical notice.'
