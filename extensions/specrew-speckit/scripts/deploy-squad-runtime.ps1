@@ -341,32 +341,32 @@ function Get-BaselineRoleDefinitions {
         [pscustomobject]@{
             Name           = 'Spec Steward'
             AgentDirectory = 'spec-steward'
-            TemplatePath   = 'agents\spec-steward\charter.md'
-            DirectivePaths = @('directives\spec-authority.md')
+            TemplatePath   = 'agents/spec-steward/charter.md'
+            DirectivePaths = @('directives/spec-authority.md')
         }
         [pscustomobject]@{
             Name           = 'Planner'
             AgentDirectory = 'planner'
-            TemplatePath   = 'agents\planner\charter.md'
-            DirectivePaths = @('directives\spec-authority.md', 'directives\traceability.md')
+            TemplatePath   = 'agents/planner/charter.md'
+            DirectivePaths = @('directives/spec-authority.md', 'directives/traceability.md')
         }
         [pscustomobject]@{
             Name           = 'Implementer'
             AgentDirectory = 'implementer'
-            TemplatePath   = 'agents\implementer\charter.md'
-            DirectivePaths = @('directives\spec-authority.md', 'directives\drift-reporting.md')
+            TemplatePath   = 'agents/implementer/charter.md'
+            DirectivePaths = @('directives/spec-authority.md', 'directives/drift-reporting.md')
         }
         [pscustomobject]@{
             Name           = 'Reviewer'
             AgentDirectory = 'reviewer'
-            TemplatePath   = 'agents\reviewer\charter.md'
-            DirectivePaths = @('directives\spec-authority.md', 'directives\drift-reporting.md')
+            TemplatePath   = 'agents/reviewer/charter.md'
+            DirectivePaths = @('directives/spec-authority.md', 'directives/drift-reporting.md')
         }
         [pscustomobject]@{
             Name           = 'Retro Facilitator'
             AgentDirectory = 'retro-facilitator'
-            TemplatePath   = 'agents\retro-facilitator\charter.md'
-            DirectivePaths = @('directives\spec-authority.md')
+            TemplatePath   = 'agents/retro-facilitator/charter.md'
+            DirectivePaths = @('directives/spec-authority.md')
         }
     )
 }

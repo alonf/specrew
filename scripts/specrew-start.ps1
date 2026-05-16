@@ -878,18 +878,18 @@ function Get-BrownfieldLanguageSummary {
     param([string]$Root)
 
     $excludePatterns = @(
-        '\.git\\',
-        '\.specify\\',
-        '\.specrew\\',
-        '\.squad\\',
-        '\.copilot\\',
-        'node_modules\\',
-        'dist\\',
-        'build\\',
-        'coverage\\',
-        'vendor\\',
-        'bin\\',
-        'obj\\'
+        '\.git[\\/]',
+        '\.specify[\\/]',
+        '\.specrew[\\/]',
+        '\.squad[\\/]',
+        '\.copilot[\\/]',
+        'node_modules[\\/]',
+        'dist[\\/]',
+        'build[\\/]',
+        'coverage[\\/]',
+        'vendor[\\/]',
+        'bin[\\/]',
+        'obj[\\/]'
     )
 
     $extensionCounts = @{}

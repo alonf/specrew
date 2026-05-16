@@ -1727,20 +1727,20 @@ function Get-IterationCanonicalArtifactRelativePaths {
         [string]$ProjectRoot
     )
 
-    $iterationRelativePath = ([System.IO.Path]::GetRelativePath($ProjectRoot, $IterationDirectory)) -replace '/', '\'
+    $iterationRelativePath = ([System.IO.Path]::GetRelativePath($ProjectRoot, $IterationDirectory)) -replace '\\', '/'
     return @(
-        "$iterationRelativePath\plan.md",
-        "$iterationRelativePath\state.md",
-        "$iterationRelativePath\drift-log.md",
-        "$iterationRelativePath\review.md",
-        "$iterationRelativePath\retro.md",
-        "$iterationRelativePath\reviewer-index.md",
-        "$iterationRelativePath\review-diagrams.md",
-        "$iterationRelativePath\code-map.md",
-        "$iterationRelativePath\coverage-evidence.md",
-        "$iterationRelativePath\dependency-report.md",
-        "$iterationRelativePath\quality\hardening-gate.md",
-        "$iterationRelativePath\quality\trap-reapplication.md"
+        "$iterationRelativePath/plan.md",
+        "$iterationRelativePath/state.md",
+        "$iterationRelativePath/drift-log.md",
+        "$iterationRelativePath/review.md",
+        "$iterationRelativePath/retro.md",
+        "$iterationRelativePath/reviewer-index.md",
+        "$iterationRelativePath/review-diagrams.md",
+        "$iterationRelativePath/code-map.md",
+        "$iterationRelativePath/coverage-evidence.md",
+        "$iterationRelativePath/dependency-report.md",
+        "$iterationRelativePath/quality/hardening-gate.md",
+        "$iterationRelativePath/quality/trap-reapplication.md"
     )
 }
 
@@ -1755,7 +1755,7 @@ function Get-IterationDirtyCanonicalArtifacts {
         return @()
     }
 
-    $iterationRelativePath = ([System.IO.Path]::GetRelativePath($ProjectRoot, $IterationDirectory)) -replace '/', '\'
+    $iterationRelativePath = ([System.IO.Path]::GetRelativePath($ProjectRoot, $IterationDirectory)) -replace '\\', '/'
     $canonicalPaths = @(
         Get-IterationCanonicalArtifactRelativePaths -IterationDirectory $IterationDirectory -ProjectRoot $ProjectRoot |
             ForEach-Object { $_.ToLowerInvariant() }

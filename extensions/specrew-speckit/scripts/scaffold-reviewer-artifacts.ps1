@@ -992,7 +992,7 @@ function Resolve-ModuleReference {
     }
 
     $candidatePath = [System.IO.Path]::GetFullPath((Join-Path 'C:\' $combinedPath)).Substring(3)
-    $candidateKey = $candidatePath.Replace('/', '\')
+    $candidateKey = $candidatePath.Replace('\', '/')
     $candidateModuleId = Get-ModuleIdFromPath -Path $candidateKey
 
     if ($ModuleLookup.ContainsKey($candidateModuleId)) {
@@ -1491,7 +1491,7 @@ function Get-ManifestDiffRows {
     $unknownLicenses = New-Object System.Collections.Generic.List[string]
 
     foreach ($manifestFile in $ManifestFiles) {
-        if ($manifestFile.Path -notmatch '(?:^|\\)package\.json$') {
+        if ($manifestFile.Path -notmatch '(?:^|[\\/])package\.json$') {
             continue
         }
 
