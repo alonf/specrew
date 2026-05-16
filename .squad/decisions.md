@@ -1,3 +1,68 @@
+# Decision: Feature 019 T002 Conflict-Marker Format
+
+**Date**: 2026-05-16T15:45:15Z  
+**Boundary**: Phase 0 T002  
+**Feature**: 019-specrew-distribution-module (Specrew Distribution Module via PowerShell Gallery)  
+**Iteration**: 001  
+**Authority**: Alon Fliess (human verdict received during implementation)  
+**Decision Type**: Design-question resolution
+
+## Task
+
+Resolve T002: choose the conflict-marker format for template-refresh conflicts so `specrew update` and the next `specrew start` can preserve both versions, keep the unresolved artifact plain text, and support crew-mediated resolution without widening Iteration 001 beyond text-template handling.
+
+## Verdict
+
+**Approved option**: **Option A — Git-style markers (`<<<<<<<`, `=======`, `>>>>>>>`)**
+
+**Approved `.specrew/template-conflicts/<filename>.conflict` format**:
+
+```text
+<<<<<<< user-version (preserved at: <iso8601-utc-timestamp>)
+{user's modified content}
+=======
+{new module-template content}
+>>>>>>> module-version (specrew_version: <module-version>, source: templates/<path>)
+```
+
+**Compose-with note for later implementation**:
+- After `specrew update` detects conflicts, the next `specrew start` should parse `.conflict` artifacts.
+- Squad should walk the user through each conflict interactively with `accept-new`, `keep-user`, or `manual-resolve`.
+- After resolution, Squad should write the resolved destination file and remove the corresponding `.conflict` artifact.
+
+**Iteration 2 follow-up**:
+- Verify Linux/macOS clean reading with LF and no BOM during the cross-platform hardening pass.
+
+## Rationale
+
+- Git-style markers are the universal standard for text-file conflicts.
+- The format best fits Iteration 001's text-template-only scope.
+- IDE diff tooling and `git mergetool` compatibility come for free.
+- The team avoids any custom parser requirement in Iteration 001.
+- Unresolved artifacts remain plain text while waiting for user resolution.
+
+## Commit Reference Workflow
+
+**Starting Commit**: `695218c847986a47a85cec067e8f617f24351331`  
+**Truthful workflow**: record the human verdict in the design and execution-state artifacts first, run iteration governance validation for the touched artifacts, then create a dedicated checkpoint commit to anchor T002 in git. This entry deliberately records the starting ref and workflow without pre-claiming the later checkpoint hash inside the same staged change.
+
+## Runtime Evidence
+
+- Updated `specs/019-specrew-distribution-module/spec.md` so FR-021 and the update-story acceptance language reflect the approved Git-style `.conflict` artifact contract and next-session resolution flow.
+- Updated `specs/019-specrew-distribution-module/research.md` to capture the exact marker format, the `specrew start` compose-with flow, and the Iteration 2 LF/no-BOM follow-up.
+- Updated `specs/019-specrew-distribution-module/data-model.md` so the Template Conflict, Conflict Artifact, and Module Update Operation entities describe the approved plain-text sidecar format and resolution lifecycle.
+- Updated `specs/019-specrew-distribution-module/iterations/001/state.md` and `.squad/identity/now.md` to reflect T002 complete and the new pause at T003.
+- Did **not** start T003 or any work blocked by unresolved T003+ decisions.
+
+## Impact
+
+T002 is now resolved for Iteration 001. Pillar 4 conflict artifacts now have an approved plain-text contract, but execution stops at the next mandatory pause: T003 (cross-platform test automation depth).
+
+## Next Action
+
+Present the T003 human-decision handoff, then pause without starting T040/T041 or any wider cross-platform work.
+
+
 # Decision: Feature 019 T001 Module Manifest File-List Strategy
 
 **Date**: 2026-05-16T15:38:37Z  

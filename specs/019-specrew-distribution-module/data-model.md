@@ -72,11 +72,16 @@ erDiagram
         string UserContentHash
         string ModuleContentHash
         string ConflictMarkerFormat
+        string PreservedAt
+        string ModuleVersion
+        string SourceTemplatePath
     }
     
     CONFLICT_ARTIFACT {
         string ArtifactPath PK
-        string Timestamp
+        string PreservedAt
+        string ModuleVersion
+        string SourceTemplatePath
         string ResolutionStatus
     }
     
@@ -219,19 +224,24 @@ erDiagram
 - **TemplateRelativePath** (string, PK): Project-relative path to conflicted template (e.g., '.specify/templates/spec-template.md')
 - **UserContentHash** (string): SHA256 hash of user's modified template content
 - **ModuleContentHash** (string): SHA256 hash of new module template content
-- **ConflictMarkerFormat** (string): Format used for conflict markers (e.g., 'git-style')
+- **ConflictMarkerFormat** (string): Format used for conflict markers (approved value: 'git-style')
+- **PreservedAt** (string): ISO 8601 UTC timestamp recorded in the user-version marker label
+- **ModuleVersion** (string): Specrew version recorded in the module-version marker label
+- **SourceTemplatePath** (string): Module-relative template source path recorded in the module-version marker label (e.g., 'templates/specify/spec-template.md')
 
 **Resolution Flow**:
 1. **Detection** (`specrew update`): Compare user template vs. new module template
-2. **Preserve-and-Flag**: Inject Git-style conflict markers into user template; keep file in place
-3. **Artifact Generation**: Write `.specrew/template-conflicts/<filename>.conflict` with full diff
-4. **User Resolution**: User edits template to resolve conflict, removes markers, deletes `.conflict` artifact
-5. **Verification** (next `specrew start`): Check for remaining `.conflict` artifacts; prompt user if unresolved
+2. **Preserve-and-Flag**: Write `.specrew/template-conflicts/<filename>.conflict` as the canonical unresolved sidecar payload
+3. **Artifact Payload**: Store both versions in plain text using the approved Git-style marker block
+4. **User Resolution** (next `specrew start`): Squad parses the artifact and offers `accept-new`, `keep-user`, or `manual-resolve`
+5. **Verification / Cleanup**: After the resolved file is written, remove the `.conflict` artifact
 
 **Validation Rules**:
 - TemplateRelativePath must match a User Modified Template
 - UserContentHash and ModuleContentHash must differ (otherwise no conflict)
-- ConflictMarkerFormat must be 'git-style' (as per research decision)
+- ConflictMarkerFormat must be 'git-style' (per T002 approval)
+- PreservedAt must be ISO 8601 UTC with seconds precision
+- SourceTemplatePath must resolve under `templates/`
 
 **Relationships**:
 - Detected By → Module Update Operation (many-to-one)
@@ -241,40 +251,35 @@ erDiagram
 
 ### 6. Conflict Artifact (`.specrew/template-conflicts/*.conflict`)
 
-**Purpose**: A file written by `specrew update` to record a template conflict with full diff for user review and resolution.
+**Purpose**: A plain-text sidecar file written by `specrew update` to preserve both versions of a conflicted template for next-session crew-mediated resolution.
 
 **Attributes**:
 - **ArtifactPath** (string, PK): Absolute path to conflict artifact file (e.g., '.specrew/template-conflicts/spec-template.md.conflict')
-- **Timestamp** (string): ISO 8601 timestamp of conflict detection (e.g., '2026-05-16T16:00:00Z')
-- **ResolutionStatus** (string): 'pending', 'resolved', or 'ignored'
+- **PreservedAt** (string): ISO 8601 UTC timestamp captured in the user-version marker label
+- **ModuleVersion** (string): Specrew version captured in the module-version marker label
+- **SourceTemplatePath** (string): Template source path captured in the module-version marker label
+- **ResolutionStatus** (string): `pending` while the artifact exists; `resolved` once `specrew start` writes the chosen merge result and removes the artifact
 
 **Content Structure**:
-```markdown
-# Template Conflict: <filename>
-
-**Module Version**: <version>  
-**Conflict Detected**: <timestamp>  
-**Resolution Status**: <status>
-
-## User Version (Local)
-[User's full template content]
-
-## Module Version (<version>)
-[Module's full template content]
-
-## Resolution Instructions
-[Step-by-step resolution guide]
+```text
+<<<<<<< user-version (preserved at: <iso8601-utc-timestamp>)
+{user's modified content}
+=======
+{new module-template content}
+>>>>>>> module-version (specrew_version: <module-version>, source: templates/<path>)
 ```
 
 **Lifecycle**:
 1. **Created** (during `specrew update` when conflict detected)
-2. **Resolved** (user manually edits template, deletes artifact file)
-3. **Ignored** (user decides to keep current template, deletes artifact to silence warning)
+2. **Mediated** (next `specrew start` parses the artifact and offers `accept-new`, `keep-user`, or `manual-resolve`)
+3. **Resolved** (chosen or manually merged content is written to the destination file and the artifact is removed)
 
 **Validation Rules**:
 - ArtifactPath must be under `.specrew/template-conflicts/` directory
-- Timestamp must match conflict detection time
-- ResolutionStatus must be one of: 'pending', 'resolved', 'ignored'
+- PreservedAt must match the conflict detection time
+- ModuleVersion must match the installed Specrew version used for the update
+- SourceTemplatePath must point at the originating file under `templates/`
+- ResolutionStatus must be one of: `pending`, `resolved`
 
 **Relationships**:
 - Generated By → Template Conflict (one-to-one)
@@ -358,8 +363,8 @@ erDiagram
    - **User modified only**: User template differs, module template unchanged → preserve user version
    - **Module updated only**: User template matches old module template, module template changed → update to new version
    - **Both modified**: User template differs, module template changed → CONFLICT (preserve-and-flag)
-4. **Apply updates**: Update non-conflicted templates, inject conflict markers for conflicted templates
-5. **Generate artifacts**: Write `.specrew/template-conflicts/*.conflict` files for each conflict
+4. **Apply updates**: Update non-conflicted templates and write plain-text `.conflict` sidecars for conflicted templates
+5. **Generate artifacts**: Write `.specrew/template-conflicts/*.conflict` files for each conflict using the approved Git-style marker format
 6. **Report results**: Log summary (templates updated, conflicts detected, artifacts written)
 
 **Validation Rules**:

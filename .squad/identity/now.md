@@ -1,13 +1,13 @@
-updated_at: 2026-05-16T15:38:37Z
-focus_area: Feature 019 Phase 0 paused at T002
-active_issues: Feature 019 Iteration 001 execution is active for Phase 0 only. T001 is resolved with Option 1 explicit FileList allowlist semantics and captured in the contract/decision ledger. T002 conflict-marker format is the next mandatory human decision; do not start T002+ blocked implementation work until that decision is recorded.
+updated_at: 2026-05-16T15:45:15Z
+focus_area: Feature 019 Phase 0 paused at T003
+active_issues: Feature 019 Iteration 001 execution is active for Phase 0 only. T001 is resolved with Option 1 explicit FileList allowlist semantics and T002 is resolved with Option A Git-style .conflict markers plus next-start mediated resolution. T003 cross-platform test automation depth is the next mandatory human decision; do not start T003+ blocked implementation work until that decision is recorded.
 ---
 
 What We're Focused On
 ====================
 
-**Phase**: Feature 019 Iteration 001 Phase 0 execution is active. T001 is resolved and execution is paused at the T002 human-decision boundary.
-**Urgency**: Tier 1 — Capture the T002 human decision before any blocked implementation work continues.
+**Phase**: Feature 019 Iteration 001 Phase 0 execution is active. T001-T002 are resolved and execution is paused at the T003 human-decision boundary.
+**Urgency**: Tier 1 — Capture the T003 human decision before any blocked implementation work continues.
 
 ---
 
@@ -29,7 +29,9 @@ Feature Lifecycle: PHASE0-EXECUTION-PAUSED
 - Implementation execution has started only for Phase 0 design-question handling.
 - T001 resolved by human verdict: **Option 1 — Explicit FileList allowlist for Specrew.psd1**.
 - T001 rationale captured in `specs/019-specrew-distribution-module/contracts/Specrew.psd1.contract.md` and `.squad/decisions.md`.
-- T002 (Conflict-Marker Format) is now the mandatory human-decision pause before any blocked Pillar 4 work proceeds.
+- T002 resolved by human verdict: **Option A — Git-style conflict markers in `.specrew/template-conflicts/<filename>.conflict` artifacts**.
+- T002 rationale and compose-with flow captured in `specs/019-specrew-distribution-module/spec.md`, `research.md`, `data-model.md`, and `.squad/decisions.md`.
+- T003 (Cross-Platform Test Automation Depth) is now the mandatory human-decision pause before any blocked Pillar 5 work proceeds.
 - **39 total tasks** across 6 phases
   - **Phase 0 (Design Questions)**: 6 tasks explicitly resolving plan-time design questions
     - T001: Module Manifest File-List Strategy (blocks Pillar 1/2)
@@ -52,8 +54,8 @@ Feature Lifecycle: PHASE0-EXECUTION-PAUSED
 - Estimated effort: 14 SP (within 10-15 SP spec estimate)
 - **Authorization scope**: Iteration 001 implementation is authorized, but T001-T006 must still be handled truthfully during execution and must not be auto-decided.
 - **Hardening Gate Status**: READY verdict with canonical concerns; sign-off complete (2026-05-16T17:42:05Z)
-- **Critical Constraint**: T002-T006 design-question tasks remain unresolved by design and MUST surface during implementation without auto-decision
+- **Critical Constraint**: T003-T006 design-question tasks remain unresolved by design and MUST surface during implementation without auto-decision
 
 Next Valid Action
 
-Obtain and record the human decision for T002 (conflict-marker format). After that decision is captured, continue Phase 0 sequencing without widening scope and without starting implementation tasks still blocked by unresolved T003-T006 decisions.
+Obtain and record the human decision for T003 (cross-platform test automation depth). After that decision is captured, continue Phase 0 sequencing without widening scope and without starting implementation tasks still blocked by unresolved T004-T006 decisions.

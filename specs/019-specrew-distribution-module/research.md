@@ -137,66 +137,42 @@ Define crew-framework-agnostic conflict marker format that Squad coordinator can
 
 **Conflict Scenario**: User modifies `.specify/templates/spec-template.md` locally. Module v0.22 ships an updated `spec-template.md`. `specrew update` detects the conflict.
 
-**Conflict Resolution Flow** (Template-Refresh Pattern B from spec clarifications):
+**Approved Iteration 001 verdict (T002, 2026-05-16)**:
+- **Option A selected**: Git-style markers (`<<<<<<<`, `=======`, `>>>>>>>`)
+- **Why**: universal text-conflict standard; best fit for Iteration 001 text-template-only scope; IDE diff tooling and `git mergetool` compatibility; zero training cost; no custom parser needed in Iteration 001; unresolved artifacts remain plain text
 
-1. **Conflict Detection**: `specrew update` compares user's local template with new module template
-2. **Preserve-and-Flag**:
-   - User's local template preserved in place with conflict markers
-   - New module template content embedded in markers
-   - `.specrew/template-conflicts/<filename>.conflict` artifact written with full diff
-3. **Crew-Mediated Resolution**:
-   - Next `specrew start` detects conflict artifacts
-   - Squad coordinator surfaces conflict to user via session prompt
-   - User reviews diff, resolves conflict manually, deletes `.conflict` artifact
+**Conflict Resolution Flow** (Template-Refresh Pattern B from the approved T002 decision):
 
-**Conflict Marker Format** (Git-style, universally recognized):
+1. **Conflict Detection**: `specrew update` compares the user's local template with the new module template.
+2. **Preserve-and-Flag Artifact**:
+   - `specrew update` writes `.specrew/template-conflicts/<filename>.conflict`.
+   - The artifact preserves both versions in plain text using the approved Git-style marker block.
+   - The artifact records the preserved-at UTC timestamp, module version, and source template path inline in the marker labels.
+3. **Crew-Mediated Resolution on Next `specrew start`**:
+   - Squad parses each `.conflict` artifact.
+   - Squad walks the user through `accept-new`, `keep-user`, or `manual-resolve`.
+   - After the user chooses or completes a manual merge, Squad writes the resolved destination file and removes the artifact.
+4. **Iteration 2 Hardening Follow-Up**:
+   - Verify Linux/macOS clean reading with LF and no BOM during the later cross-platform hardening pass.
 
-```markdown
-<<<<<<< USER (modified locally)
-[User's modified template content]
+**Approved Conflict Artifact Format** (`.specrew/template-conflicts/<filename>.conflict`):
+
+```text
+<<<<<<< user-version (preserved at: <iso8601-utc-timestamp>)
+{user's modified content}
 =======
-[Module v0.22 template content]
->>>>>>> MODULE-v0.22
+{new module-template content}
+>>>>>>> module-version (specrew_version: <module-version>, source: templates/<path>)
 ```
 
 **Alternative Formats Considered**:
-- Custom markers (`<<<< USER`, `==== MODULE`, `>>>> END`): Less familiar; requires documentation
-- Structured comments (language-aware): Complex; requires parsing logic per file type
-- Git-style markers: **SELECTED** — universally recognized, tooling support (VSCode conflict resolution UI), zero learning curve
+- Custom markers (`<<<< USER`, `==== MODULE`, `>>>> END`): clearer labels, but requires custom parser behavior and adds training/documentation cost
+- Structured comments (language-aware): powerful in theory, but too complex for Iteration 001
+- Git-style markers: **APPROVED** — universal convention, IDE tooling support, `git mergetool` compatibility, and no Iteration 001 parser design burden
 
-**Conflict Artifact Format** (`.specrew/template-conflicts/<filename>.conflict`):
+### Decision: Git-Style Conflict Artifacts with Next-Start Squad Mediation
 
-```markdown
-# Template Conflict: spec-template.md
-
-**Module Version**: v0.22  
-**Conflict Detected**: 2026-05-16 14:32:00  
-**Resolution Status**: Pending
-
-## User Version (Local)
-
-```markdown
-[User's full template content]
-```
-
-## Module Version (v0.22)
-
-```markdown
-[Module's full template content]
-```
-
-## Resolution Instructions
-
-1. Review the diff above
-2. Edit `.specify/templates/spec-template.md` to resolve the conflict
-3. Remove conflict markers (`<<<<<<<`, `=======`, `>>>>>>>`)
-4. Delete this file (`.specrew/template-conflicts/spec-template.md.conflict`)
-5. Run `specrew start` to confirm resolution
-```
-
-### Decision: Git-Style Conflict Markers + Conflict Artifacts
-
-**Rationale**: Git-style markers are universally recognized, supported by tooling (VSCode), and zero learning curve. Conflict artifacts provide full context for resolution without losing either version. Squad coordinator can detect `.conflict` files and surface them to user via session prompt (crew-framework-agnostic; no hard dependency on Squad internals).
+**Rationale**: The approved format keeps unresolved conflicts in plain text and preserves both versions without inventing a custom syntax. The sidecar artifact gives Squad a crew-framework-agnostic payload to parse on the next `specrew start`, while deferring cross-platform line-ending/BOM hardening to Iteration 2.
 
 ---
 
@@ -372,14 +348,15 @@ Write-Host $pfxBase64  # Copy to GitHub Actions secret SIGNING_CERT_BASE64
 
 ## Research Summary
 
-**All design unknowns resolved.** Implementation tracks can proceed without blocking questions.
+**Execution note**: research recommendations exist for all six design questions, but only the human-approved Phase 0 decisions should be treated as binding during implementation.
 
-**Key Decisions**:
-1. **Module Manifest**: Explicit FileList, FunctionsToExport, version stamped from `.specrew/config.yml`
-2. **Module Loader**: Explicit dot-sourcing for transparency and debuggability
-3. **Conflict Resolution**: Git-style markers + `.specrew/template-conflicts/*.conflict` artifacts
-4. **Cross-Platform Paths**: `Join-Path` everywhere + dedicated WSL verification task
-5. **Publish Workflow**: GitHub Actions with version stamping, self-signing, and PSGallery publish
-6. **Certificate**: 5-year validity self-signed certificate stored as GitHub Actions secrets
+**Currently approved human decisions**:
+1. **T001 — Module Manifest**: Explicit `FileList` allowlist, FunctionsToExport, version stamped from `.specrew/config.yml`
+2. **T002 — Conflict Resolution**: Git-style `.conflict` sidecar artifacts with next-session Squad mediation
 
-**Next Phase**: Phase 1 (Design Artifacts) — Generate `data-model.md`, `contracts/Specrew.psd1.contract.md`, and `quickstart.md`.
+**Research recommendations still awaiting explicit execution-time approval**:
+3. **T003 candidate**: `Join-Path` everywhere + cross-platform verification strategy still needs a human automation-depth decision
+4. **T004 candidate**: Explicit dot-sourcing for transparency and debuggability
+5. **T006 candidate**: 5-year validity self-signed certificate stored as GitHub Actions secrets
+
+**Next execution boundary**: Phase 0 continues at T003 (Cross-Platform Test Automation Depth).
