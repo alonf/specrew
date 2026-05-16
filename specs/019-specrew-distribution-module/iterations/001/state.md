@@ -1,11 +1,11 @@
 # Iteration State: 001
 
 **Schema**: v1
-**Last Completed Task**: T014 (Validate Exclusions)
-**Tasks Remaining**: T015-T019, T030-T042, T050-T056
-**In Progress**: T015-T019 planning handoff (Pillar 3 next)
+**Last Completed Task**: T019 (Add Bootstrap Validation)
+**Tasks Remaining**: T030-T042, T050-T056
+**In Progress**: Pillar 4 handoff ready (T030-T035 next)
 **Baseline Ref**: c1f83dbe02587b414f2f005ef9bf6b10dfccb9e8
-**Updated**: 2026-05-16T16:28:59Z
+**Updated**: 2026-05-16T16:50:00Z
 
 ## Execution Summary
 
@@ -20,9 +20,14 @@
 - T007-T009 are complete: repository-root `Specrew.psd1` and `Specrew.psm1` now exist, export the FR-002 command surface, and pass `Test-ModuleManifest` / `Import-Module` validation.
 - T010-T013 are complete: the module package now bundles `templates/` (specify, squad, github), `extensions/specrew-speckit/`, `scripts/`, and the required reference docs through the explicit manifest allowlist.
 - T014 is complete: `FileList` excludes `specs/`, `proposals/`, `tests/`, root repo metadata, and transient artifacts; the packaged size estimate stays under the 5 MB ceiling.
-- Windows-first validation evidence now includes `Test-ModuleManifest`, `Import-Module`, exported-function verification, `specrew help`, template/directory presence checks, and targeted `validate-governance.ps1` PASS output for `iterations/001`.
-- No spec drift was detected while completing T006 or Pillars 1-2; `iterations/001/drift-log.md` remains at zero drift events.
-- Pillar 3 (`T015-T019`) is now the next active implementation lane. T038/T040/T041 and broader cross-platform work remain out of scope for this batch.
+- T015 is complete: `scripts\specrew-init.ps1` now distinguishes clone vs. bundled-module execution by inspecting the distribution root (`.git` absence + `Specrew.psd1`/`templates\` presence) before resolving bundled template sources.
+- T016 is complete: bootstrap now syncs `templates\specify\`, `templates\squad\`, and `templates\github\` into project-local `.specify\`, `.squad\`, and `.github\` surfaces with preserved directory structure.
+- T017 is complete: per-project generation remained intact after template deployment; validation proved `.specrew\config.yml`, `.squad\decisions.md`, `.squad\identity\now.md`, and downstream runtime artifacts still materialize correctly.
+- T018 is complete: rerunning `specrew init` against an already bootstrapped project now exits cleanly without re-entering brownfield conflict analysis, reports preserved `.specify` / `.squad` / `.github` surfaces, and requires `-Force` to refresh bundled templates.
+- T019 is complete: bootstrap now validates `.specify\templates\`, `.squad\agents\`, and `.github\workflows\` before reporting success, and fails closed if required surfaces are missing.
+- Windows-first validation evidence now includes `Test-ModuleManifest`, `Import-Module`, exported-function verification, `specrew help`, the new module-bundle bootstrap regression (`tests\integration\distribution-module-init.ps1`), existing init regressions (`bootstrap-to-iteration.ps1`, `brownfield-conflict-handling.ps1`, `project-path-resolution-regression.ps1`), and targeted `validate-governance.ps1` PASS output for `iterations/001`.
+- No spec drift was detected while completing Pillar 3; `iterations/001/drift-log.md` remains at zero drift events.
+- Pillar 3 (`T015-T019`) is complete. Pillar 4 (`T030-T035`) is now the next authorized implementation lane. T040/T041 and broader cross-platform work remain out of scope for this batch.
 
 ## Notes
 

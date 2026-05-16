@@ -11,7 +11,7 @@
 | 2 | `Import-Module ./Specrew.psd1 -Force` succeeds | [x] Done | `Import-Module .\Specrew.psd1 -Force` completed; only the expected unapproved-verb warning surfaced for Specrew command names | Executed 2026-05-16 during Pillar 1 validation |
 | 3 | Exported function set matches FR-002 (`specrew`, `specrew-init`, `specrew-start`, `specrew-where`, `specrew-review`, `specrew-team`, `specrew-update`) | [x] Done | `Get-Command -Module Specrew` returned all seven expected functions | Executed 2026-05-16 during Pillar 1 validation |
 | 4 | `specrew help` returns expected catalog | [x] Done | `Import-Module .\Specrew.psd1 -Force; specrew help` returned the expected command catalog and examples | Executed 2026-05-16 during Pillar 1 validation |
-| 5 | In a fresh empty Windows directory, `specrew init` succeeds and populates `.specify/`, `.squad/`, `.github/` | [ ] Pending |  |  |
+| 5 | In a fresh empty Windows directory, `specrew init` succeeds and populates `.specify/`, `.squad/`, `.github/` | [x] Done | `pwsh -NoProfile -ExecutionPolicy Bypass -File .\tests\integration\distribution-module-init.ps1` passed; module-path bootstrap created `.specify\templates\spec-template.md`, `.squad\identity\now.md`, `.squad\decisions.md`, and `.github\workflows\specrew-ci.yml` | Executed 2026-05-16 during Pillar 3 validation |
 | 6 | `specrew start "test feature"` launches a Copilot CLI session with bootstrap prompt loaded | [ ] Pending |  |  |
 | 7 | `specrew where` renders the dashboard from installed module path | [ ] Pending |  |  |
 | 8 | `specrew update` template-refresh dry-run shows expected diff | [ ] Pending |  |  |

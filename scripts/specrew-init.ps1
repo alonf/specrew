@@ -294,6 +294,37 @@ function Add-Action {
         })
 }
 
+function Write-BootstrapSummary {
+    param(
+        [AllowEmptyCollection()]
+        [Parameter(Mandatory = $true)]
+        [System.Collections.ArrayList]$Actions,
+
+        [Parameter(Mandatory = $true)]
+        [bool]$DryRunMode,
+
+        [Parameter(Mandatory = $true)]
+        [string]$ProjectPath,
+
+        [Parameter(Mandatory = $true)]
+        [bool]$ShowGuidance
+    )
+
+    Write-Host ''
+    Write-Host 'Bootstrap summary' -ForegroundColor Green
+    $Actions | Format-Table -AutoSize
+
+    if ($DryRunMode) {
+        Write-Host 'Dry run complete. No files were changed.' -ForegroundColor Yellow
+        return
+    }
+
+    Write-Host ("Bootstrap completed for {0}." -f $ProjectPath) -ForegroundColor Green
+    if ($ShowGuidance) {
+        Write-PostBootstrapGuidance -ProjectPath $ProjectPath
+    }
+}
+
 function Ensure-DirectoryExists {
     param(
         [Parameter(Mandatory = $true)]
@@ -312,6 +343,176 @@ function Ensure-DirectoryExists {
     }
 
     New-Item -ItemType Directory -Path $Path -Force | Out-Null
+}
+
+function Get-SpecrewExecutionLayout {
+    $distributionRoot = Split-Path -Parent $PSScriptRoot
+    $manifestPath = Join-Path -Path $distributionRoot -ChildPath 'Specrew.psd1'
+    $templateRoot = Join-Path -Path $distributionRoot -ChildPath 'templates'
+    $gitMetadataPath = Join-Path -Path $distributionRoot -ChildPath '.git'
+
+    $isModuleLayout = (Test-Path -LiteralPath $manifestPath -PathType Leaf) -and
+        (Test-Path -LiteralPath $templateRoot -PathType Container) -and
+        -not (Test-Path -LiteralPath $gitMetadataPath)
+
+    return [pscustomobject]@{
+        RootPath     = $distributionRoot
+        Mode         = $(if ($isModuleLayout) { 'module' } else { 'clone' })
+        TemplateRoot = $(if (Test-Path -LiteralPath $templateRoot -PathType Container) { $templateRoot } else { $null })
+    }
+}
+
+function Copy-TemplateTree {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$SourceRoot,
+
+        [Parameter(Mandatory = $true)]
+        [string]$TargetRoot,
+
+        [Parameter(Mandatory = $true)]
+        [bool]$OverwriteExisting,
+
+        [Parameter(Mandatory = $true)]
+        [switch]$PreviewOnly
+    )
+
+    if (-not (Test-Path -LiteralPath $SourceRoot -PathType Container)) {
+        throw "Missing bundled template source '$SourceRoot'."
+    }
+
+    Ensure-DirectoryExists -Path $TargetRoot -PreviewOnly:$PreviewOnly
+
+    $copied = 0
+    $updated = 0
+    $preserved = 0
+    $sourceFiles = @(Get-ChildItem -LiteralPath $SourceRoot -File -Recurse | Sort-Object FullName)
+
+    foreach ($sourceFile in $sourceFiles) {
+        $relativePath = [System.IO.Path]::GetRelativePath($SourceRoot, $sourceFile.FullName)
+        $targetPath = Join-Path -Path $TargetRoot -ChildPath $relativePath
+        $parent = Split-Path -Parent $targetPath
+        if (-not [string]::IsNullOrWhiteSpace($parent)) {
+            Ensure-DirectoryExists -Path $parent -PreviewOnly:$PreviewOnly
+        }
+
+        if (Test-Path -LiteralPath $targetPath -PathType Leaf) {
+            if (-not $OverwriteExisting) {
+                $preserved++
+                continue
+            }
+
+            $sourceContent = Get-Content -LiteralPath $sourceFile.FullName -Raw
+            $targetContent = Get-Content -LiteralPath $targetPath -Raw
+            if ($sourceContent -eq $targetContent) {
+                $preserved++
+                continue
+            }
+
+            if (-not $PreviewOnly) {
+                Copy-Item -LiteralPath $sourceFile.FullName -Destination $targetPath -Force
+            }
+
+            $updated++
+            continue
+        }
+
+        if (-not $PreviewOnly) {
+            Copy-Item -LiteralPath $sourceFile.FullName -Destination $targetPath -Force
+        }
+
+        $copied++
+    }
+
+    return [pscustomobject]@{
+        Copied    = $copied
+        Updated   = $updated
+        Preserved = $preserved
+        Total     = $sourceFiles.Count
+    }
+}
+
+function Invoke-BundledTemplateDeployment {
+    param(
+        [Parameter(Mandatory = $true)]
+        [pscustomobject]$ExecutionLayout,
+
+        [Parameter(Mandatory = $true)]
+        [string]$ProjectPath,
+
+        [Parameter(Mandatory = $true)]
+        [bool]$ForceRefresh,
+
+        [Parameter(Mandatory = $true)]
+        [bool]$SpecKitReady,
+
+        [Parameter(Mandatory = $true)]
+        [bool]$SquadReady,
+
+        [Parameter(Mandatory = $true)]
+        [bool]$HadSpecify,
+
+        [Parameter(Mandatory = $true)]
+        [bool]$HadSquad,
+
+        [Parameter(Mandatory = $true)]
+        [bool]$HadGitHub,
+
+        [Parameter(Mandatory = $true)]
+        [bool]$SpecKitExtensionOnly,
+
+        [AllowEmptyCollection()]
+        [Parameter(Mandatory = $true)]
+        [System.Collections.ArrayList]$Actions,
+
+        [Parameter(Mandatory = $true)]
+        [switch]$PreviewOnly
+    )
+
+    if ([string]::IsNullOrWhiteSpace($ExecutionLayout.TemplateRoot)) {
+        throw 'Bundled templates are unavailable for bootstrap.'
+    }
+
+    Add-Action -Actions $Actions -Step 'template-source' -Outcome ("{0}: {1}" -f $ExecutionLayout.Mode, $ExecutionLayout.TemplateRoot)
+
+    $deployments = [System.Collections.ArrayList]::new()
+    if ($SpecKitReady) {
+        $null = $deployments.Add([pscustomobject]@{
+                Name        = '.specify'
+                SourceRoot  = Join-Path -Path $ExecutionLayout.TemplateRoot -ChildPath 'specify'
+                TargetRoot  = Join-Path -Path $ProjectPath -ChildPath '.specify'
+                HadExisting = $HadSpecify
+            })
+    }
+
+    if (-not $SpecKitExtensionOnly -and $SquadReady) {
+        $null = $deployments.Add([pscustomobject]@{
+                Name        = '.squad'
+                SourceRoot  = Join-Path -Path $ExecutionLayout.TemplateRoot -ChildPath 'squad'
+                TargetRoot  = Join-Path -Path $ProjectPath -ChildPath '.squad'
+                HadExisting = $HadSquad
+            })
+    }
+
+    if (-not $SpecKitExtensionOnly) {
+        $null = $deployments.Add([pscustomobject]@{
+                Name        = '.github'
+                SourceRoot  = Join-Path -Path $ExecutionLayout.TemplateRoot -ChildPath 'github'
+                TargetRoot  = Join-Path -Path $ProjectPath -ChildPath '.github'
+                HadExisting = $HadGitHub
+            })
+    }
+
+    foreach ($deployment in $deployments) {
+        if ($deployment.HadExisting -and -not $ForceRefresh) {
+            Add-Action -Actions $Actions -Step 'template-copy' -Outcome ("preserved existing {0}; re-run with -Force to refresh bundled templates" -f $deployment.Name)
+            continue
+        }
+
+        $result = Copy-TemplateTree -SourceRoot $deployment.SourceRoot -TargetRoot $deployment.TargetRoot -OverwriteExisting:$ForceRefresh -PreviewOnly:$PreviewOnly
+        $verb = if ($PreviewOnly) { 'would-sync' } else { 'synced' }
+        Add-Action -Actions $Actions -Step 'template-copy' -Outcome ("{0} {1} from {2} ({3} new, {4} updated, {5} preserved)" -f $verb, $deployment.Name, $deployment.SourceRoot, $result.Copied, $result.Updated, $result.Preserved)
+    }
 }
 
 function Write-MissingUtf8File {
@@ -341,6 +542,65 @@ function Write-MissingUtf8File {
     }
 
     [System.IO.File]::WriteAllText($Path, $Content, [System.Text.UTF8Encoding]::new($false))
+}
+
+function Test-BootstrappedProjectState {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$ProjectPath,
+
+        [Parameter(Mandatory = $true)]
+        [bool]$SpecKitExtensionOnly
+    )
+
+    $failures = [System.Collections.Generic.List[string]]::new()
+    $expectedSpecifyFiles = @(
+        'agent-file-template.md',
+        'checklist-template.md',
+        'constitution-template.md',
+        'plan-template.md',
+        'spec-template.md',
+        'tasks-template.md'
+    )
+
+    $specifyTemplatesRoot = Join-Path -Path $ProjectPath -ChildPath '.specify'
+    $specifyTemplatesRoot = Join-Path -Path $specifyTemplatesRoot -ChildPath 'templates'
+    if (-not (Test-Path -LiteralPath $specifyTemplatesRoot -PathType Container)) {
+        $failures.Add("Missing required template directory '$specifyTemplatesRoot'.")
+    }
+    else {
+        foreach ($expectedFile in $expectedSpecifyFiles) {
+            $expectedPath = Join-Path -Path $specifyTemplatesRoot -ChildPath $expectedFile
+            if (-not (Test-Path -LiteralPath $expectedPath -PathType Leaf)) {
+                $failures.Add("Missing required Spec Kit template '$expectedPath'.")
+            }
+        }
+    }
+
+    if (-not $SpecKitExtensionOnly) {
+        $squadAgentsRoot = Join-Path -Path $ProjectPath -ChildPath '.squad'
+        $squadAgentsRoot = Join-Path -Path $squadAgentsRoot -ChildPath 'agents'
+        if (-not (Test-Path -LiteralPath $squadAgentsRoot -PathType Container)) {
+            $failures.Add("Missing required Squad agents directory '$squadAgentsRoot'.")
+        }
+
+        $workflowRoot = Join-Path -Path $ProjectPath -ChildPath '.github'
+        $workflowRoot = Join-Path -Path $workflowRoot -ChildPath 'workflows'
+        if (-not (Test-Path -LiteralPath $workflowRoot -PathType Container)) {
+            $failures.Add("Missing required workflow directory '$workflowRoot'.")
+        }
+        else {
+            $workflowCount = @(Get-ChildItem -LiteralPath $workflowRoot -File -ErrorAction SilentlyContinue).Count
+            if ($workflowCount -lt 1) {
+                $failures.Add("Expected at least one workflow under '$workflowRoot'.")
+            }
+        }
+    }
+
+    return [pscustomobject]@{
+        Succeeded = ($failures.Count -eq 0)
+        Failures  = @($failures)
+    }
 }
 
 function Get-SpecKitGitReference {
@@ -1410,7 +1670,8 @@ if ($Help) {
 }
 
 $resolvedProjectPath = Resolve-ProjectPath -Path $ProjectPath
-$repoRoot = Split-Path -Parent $PSScriptRoot
+$executionLayout = Get-SpecrewExecutionLayout
+$repoRoot = $executionLayout.RootPath
 $validateVersionsScript = Join-Path $repoRoot 'extensions\specrew-speckit\scripts\validate-versions.ps1'
 $deploySpeckitExtensionScript = Join-Path $repoRoot 'extensions\specrew-speckit\scripts\deploy-speckit-extension.ps1'
 $deploySquadRuntimeScript = Join-Path $repoRoot 'extensions\specrew-speckit\scripts\deploy-squad-runtime.ps1'
@@ -1432,6 +1693,21 @@ $existingEntries = @(Get-ChildItem -Path $resolvedProjectPath -Force -ErrorActio
 $blockingEntries = @($existingEntries | Where-Object { $_.Name -ne '.git' })
 $hadSpecify = Test-Path -LiteralPath (Join-Path $resolvedProjectPath '.specify')
 $hadSquad = Test-Path -LiteralPath (Join-Path $resolvedProjectPath '.squad')
+$hadGitHub = Test-Path -LiteralPath (Join-Path $resolvedProjectPath '.github')
+$hadSpecifyContent = $hadSpecify -and ((@(
+            Get-ChildItem -LiteralPath (Join-Path $resolvedProjectPath '.specify') -Force -ErrorAction SilentlyContinue
+        ).Count) -gt 0)
+$hadSquadContent = $hadSquad -and ((@(
+            Get-ChildItem -LiteralPath (Join-Path $resolvedProjectPath '.squad') -Force -ErrorAction SilentlyContinue
+        ).Count) -gt 0)
+$hadGitHubContent = $hadGitHub -and ((@(
+            Get-ChildItem -LiteralPath (Join-Path $resolvedProjectPath '.github') -Force -ErrorAction SilentlyContinue
+        ).Count) -gt 0)
+$hasSpecrewConfig = Test-Path -LiteralPath (Join-Path $resolvedProjectPath '.specrew\config.yml')
+$alreadyBootstrapped = $hadSpecify -and $hasSpecrewConfig
+if (-not $SpecKitExtensionOnly) {
+    $alreadyBootstrapped = $alreadyBootstrapped -and $hadSquad -and $hadGitHub
+}
 $bootstrapMode = if ($hadSpecify -or $hadSquad) { 'brownfield' } else { 'greenfield' }
 $shouldInitializeSpecify = -not $hadSpecify
 $shouldInitializeSquad = -not $hadSquad
@@ -1442,6 +1718,40 @@ $squadSurfaceReady = $hadSquad -or $shouldInitializeSquad
 if ($blockingEntries.Count -gt 0 -and -not $Force -and -not $hadSpecify -and -not $hadSquad) {
     Write-Error "Target directory '$resolvedProjectPath' is not empty. Re-run with -Force to allow bootstrap into a populated workspace."
     exit 3
+}
+
+if ($alreadyBootstrapped -and -not $Force) {
+    Write-Step 'Checking idempotent bootstrap state'
+    Add-Action -Actions $actions -Step 'specify-init' -Outcome 'preserved existing .specify'
+    if (-not $SpecKitExtensionOnly) {
+        Add-Action -Actions $actions -Step 'squad-init' -Outcome 'preserved existing .squad'
+    }
+    Add-Action -Actions $actions -Step 'template-source' -Outcome ("{0}: {1}" -f $executionLayout.Mode, $executionLayout.TemplateRoot)
+    Add-Action -Actions $actions -Step 'template-copy' -Outcome 'preserved existing .specify; re-run with -Force to refresh bundled templates'
+    if (-not $SpecKitExtensionOnly) {
+        Add-Action -Actions $actions -Step 'template-copy' -Outcome 'preserved existing .squad; re-run with -Force to refresh bundled templates'
+        Add-Action -Actions $actions -Step 'template-copy' -Outcome 'preserved existing .github; re-run with -Force to refresh bundled templates'
+    }
+
+    if ($DryRun) {
+        Add-Action -Actions $actions -Step 'bootstrap-validation' -Outcome 'would validate .specify templates, .squad agents, and .github workflows'
+    }
+    else {
+        $bootstrapValidation = Test-BootstrappedProjectState -ProjectPath $resolvedProjectPath -SpecKitExtensionOnly:$SpecKitExtensionOnly
+        if (-not $bootstrapValidation.Succeeded) {
+            foreach ($failure in $bootstrapValidation.Failures) {
+                Write-Error $failure -ErrorAction Continue
+            }
+
+            exit 1
+        }
+
+        Add-Action -Actions $actions -Step 'bootstrap-validation' -Outcome 'validated .specify templates, .squad agents, and .github workflows'
+        Write-Host ("Specrew is already bootstrapped in '{0}'. Re-run with -Force to refresh bundled templates." -f $resolvedProjectPath) -ForegroundColor Yellow
+    }
+
+    Write-BootstrapSummary -Actions $actions -DryRunMode:$DryRun -ProjectPath $resolvedProjectPath -ShowGuidance:$false
+    exit 0
 }
 
 if ($bootstrapMode -eq 'brownfield') {
@@ -1715,6 +2025,20 @@ else {
     Add-Action -Actions $actions -Step 'spec-kit-extension' -Outcome 'skipped: .specify is absent in brownfield workspace'
 }
 
+Write-Step 'Deploying bundled project templates'
+Invoke-BundledTemplateDeployment `
+    -ExecutionLayout $executionLayout `
+    -ProjectPath $resolvedProjectPath `
+    -ForceRefresh:$Force `
+    -SpecKitReady:$specifySurfaceReady `
+    -SquadReady:$squadSurfaceReady `
+    -HadSpecify:$hadSpecifyContent `
+    -HadSquad:$hadSquadContent `
+    -HadGitHub:$hadGitHubContent `
+    -SpecKitExtensionOnly:$SpecKitExtensionOnly `
+    -Actions $actions `
+    -PreviewOnly:$DryRun
+
 if (-not $SpecKitExtensionOnly) {
     $resolvedSpecKitVersion = (($versionResults | Where-Object { $_.Platform -eq 'Spec Kit' } | Select-Object -First 1).Version)
     if ([string]::IsNullOrWhiteSpace($resolvedSpecKitVersion)) {
@@ -1767,18 +2091,23 @@ if (-not $SpecKitExtensionOnly) {
     }
 }
 
-Write-Host ''
-Write-Host 'Bootstrap summary' -ForegroundColor Green
-$actions | Format-Table -AutoSize
-
+Write-Step 'Validating bootstrapped project state'
 if ($DryRun) {
-    Write-Host 'Dry run complete. No files were changed.' -ForegroundColor Yellow
+    Add-Action -Actions $actions -Step 'bootstrap-validation' -Outcome 'would validate .specify templates, .squad agents, and .github workflows'
 }
 else {
-    Write-Host ("Bootstrap completed for {0}." -f $resolvedProjectPath) -ForegroundColor Green
-    if (-not $SpecKitExtensionOnly -and $squadSurfaceReady) {
-        Write-PostBootstrapGuidance -ProjectPath $resolvedProjectPath
+    $bootstrapValidation = Test-BootstrappedProjectState -ProjectPath $resolvedProjectPath -SpecKitExtensionOnly:$SpecKitExtensionOnly
+    if (-not $bootstrapValidation.Succeeded) {
+        foreach ($failure in $bootstrapValidation.Failures) {
+            Write-Error $failure -ErrorAction Continue
+        }
+
+        exit 1
     }
+
+    Add-Action -Actions $actions -Step 'bootstrap-validation' -Outcome 'validated .specify templates, .squad agents, and .github workflows'
 }
+
+Write-BootstrapSummary -Actions $actions -DryRunMode:$DryRun -ProjectPath $resolvedProjectPath -ShowGuidance:(-not $SpecKitExtensionOnly -and $squadSurfaceReady)
 
 exit 0

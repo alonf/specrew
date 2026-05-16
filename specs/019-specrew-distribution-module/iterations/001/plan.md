@@ -45,7 +45,7 @@ Total effort estimate: 14 Story Points
 | T001-T006 | Design Questions (Phase 0) | FR-001..FR-032 | Setup | 2.0 | Planner | done | Implementer | 2.0 | pass |
 | T007-T009 | Module Packaging (Pillar 1) | FR-001..FR-004, FR-032 | US1, US2, US4 | 2.0 | Implementer | done | Implementer | 2.0 | pass |
 | T010-T014 | Resource Bundling (Pillar 2) | FR-006..FR-009 | US1, US2 | 2.0 | Implementer | done | Implementer | 2.0 | pass |
-| T015-T019 | Init Refactor (Pillar 3) | FR-010..FR-013, FR-030 | US2, US5 | 2.0 | Implementer | planned | — | — | — |
+| T015-T019 | Init Refactor (Pillar 3) | FR-010..FR-013, FR-030 | US2, US5 | 2.0 | Implementer | done | Implementer | 2.0 | pass |
 | T030-T035 | Update Story (Pillar 4) | FR-020..FR-024, FR-030 | US3, US5 | 2.0 | Implementer | planned | — | — | — |
 | T036-T042 | Publishing Workflow (Pillar 5) | FR-005, FR-014, FR-025..FR-029 | US4, US5 | 2.0 | Implementer | planned | — | — | — |
 | T050-T056 | Final Validation (Phase 6) | SC-001..SC-006 | US1-US5 | 2.0 | Reviewer | planned | — | — | — |

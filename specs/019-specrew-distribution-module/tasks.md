@@ -126,24 +126,20 @@ Get-ChildItem -Path C:\Dev\Specrew -Recurse -File | Where-Object { $_.FullName -
 
 ### Implementation Tasks
 
-- [ ] T015 [assigned_to: Implementation Team] [effort: M] **Implement Module-vs-Clone Detection Logic** — Update scripts/specrew-init.ps1 to detect execution context: if running from module (Test-Path "$PSScriptRoot/../Specrew.psd1"), resolve templates from "$PSScriptRoot/../templates/"; else fall back to existing clone-and-PATH logic (.specify/templates/ in repo root); use Join-Path for all path construction (Trace: FR-011, FR-012, FR-030, US5 cross-platform requirement)
+- [x] T015 [assigned_to: Implementation Team] [effort: M] **Implement Module-vs-Clone Detection Logic** — Update scripts/specrew-init.ps1 to detect execution context: if running from module (Test-Path "$PSScriptRoot/../Specrew.psd1"), resolve templates from "$PSScriptRoot/../templates/"; else fall back to existing clone-and-PATH logic (.specify/templates/ in repo root); use Join-Path for all path construction (Trace: FR-011, FR-012, FR-030, US5 cross-platform requirement)
 
-- [ ] T016 [assigned_to: Implementation Team] [effort: L] **Refactor Template-Copy Logic for Module Path** — Update specrew-init.ps1 template-copy loops to: (1) copy templates/specify/* to <user-project>/.specify/, (2) copy templates/squad/* to <user-project>/.squad/, (3) copy templates/github/* to <user-project>/.github/; preserve directory structure; use Join-Path for all destination paths (Trace: FR-013, FR-014, FR-015, FR-030)
+- [x] T016 [assigned_to: Implementation Team] [effort: L] **Refactor Template-Copy Logic for Module Path** — Update specrew-init.ps1 template-copy loops to: (1) copy templates/specify/* to <user-project>/.specify/, (2) copy templates/squad/* to <user-project>/.squad/, (3) copy templates/github/* to <user-project>/.github/; preserve directory structure; use Join-Path for all destination paths (Trace: FR-013, FR-014, FR-015, FR-030)
 
-- [ ] T017 [assigned_to: Implementation Team] [effort: M] **Preserve Per-Project File Generation** — Verify specrew-init.ps1 still generates per-project files after template copy: feature.json baseline, .squad/decisions.md skeleton, .squad/identity/now.md; no changes expected to generation logic (Trace: FR-016)
+- [x] T017 [assigned_to: Implementation Team] [effort: M] **Preserve Per-Project File Generation** — Verify specrew-init.ps1 still generates per-project files after template copy: feature.json baseline, .squad/decisions.md skeleton, .squad/identity/now.md; no changes expected to generation logic (Trace: FR-016)
 
-- [ ] T018 [assigned_to: Implementation Team] [effort: M] **Implement Idempotency Check** — Add idempotency logic to specrew-init.ps1: detect if .specify/, .squad/, .github/ directories already exist; prompt user for confirmation before overwriting or skip template copy if already initialized (Trace: FR-018)
+- [x] T018 [assigned_to: Implementation Team] [effort: M] **Implement Idempotency Check** — Add idempotency logic to specrew-init.ps1: detect if .specify/, .squad/, .github/ directories already exist; prompt user for confirmation before overwriting or skip template copy if already initialized (Trace: FR-018)
 
-- [ ] T019 [assigned_to: Implementation Team] [effort: S] **Add Bootstrap Validation** — Implement post-bootstrap validation in specrew-init.ps1: verify .specify/templates/ exists with expected files, .squad/agents/ exists, .github/workflows/ contains at least one workflow; report success/failure to user (Trace: FR-017)
+- [x] T019 [assigned_to: Implementation Team] [effort: S] **Add Bootstrap Validation** — Implement post-bootstrap validation in specrew-init.ps1: verify .specify/templates/ exists with expected files, .squad/agents/ exists, .github/workflows/ contains at least one workflow; report success/failure to user (Trace: FR-017)
 
 **Pillar 3 Verification**:
 ```powershell
-# Test module-path init (requires module installed locally first via Import-Module)
-Import-Module C:\Dev\Specrew\Specrew.psd1 -Force
-specrew-init -ProjectPath C:\TestProjects\ModuleInitTest
-Test-Path C:\TestProjects\ModuleInitTest\.specify\templates\spec-template.md
-Test-Path C:\TestProjects\ModuleInitTest\.squad\agents\copilot.md
-Test-Path C:\TestProjects\ModuleInitTest\.github\workflows
+# Exercise the bundled-module bootstrap path and rerun guard
+pwsh -NoProfile -ExecutionPolicy Bypass -File .\tests\integration\distribution-module-init.ps1
 ```
 
 **Checkpoint**: Init refactored — bootstrap works from module path
