@@ -46,6 +46,43 @@ function Copy-DistributionSurface {
     Copy-Item -LiteralPath $SourcePath -Destination $DestinationPath -Force
 }
 
+function Get-PackagedFileList {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$ManifestPath
+    )
+
+    $manifest = Import-PowerShellDataFile -Path $ManifestPath
+    return @($manifest.FileList | ForEach-Object { [string]$_ })
+}
+
+function Copy-PackagedModuleSurface {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$SourceRoot,
+
+        [Parameter(Mandatory = $true)]
+        [string]$DestinationRoot,
+
+        [Parameter(Mandatory = $true)]
+        [string[]]$RequiredEntries
+    )
+
+    $manifestPath = Join-Path -Path $SourceRoot -ChildPath 'Specrew.psd1'
+    $fileList = Get-PackagedFileList -ManifestPath $manifestPath
+
+    $missingEntries = @($RequiredEntries | Where-Object { $_ -notin $fileList })
+    if ($missingEntries.Count -gt 0) {
+        throw "Specrew.psd1 FileList is missing required packaged entries: $($missingEntries -join ', ')."
+    }
+
+    foreach ($relativePath in $fileList) {
+        $sourcePath = Join-Path -Path $SourceRoot -ChildPath ($relativePath -replace '/', '\')
+        $destinationPath = Join-Path -Path $DestinationRoot -ChildPath ($relativePath -replace '/', '\')
+        Copy-DistributionSurface -SourcePath $sourcePath -DestinationPath $destinationPath
+    }
+}
+
 function Invoke-ModuleBootstrap {
     param(
         [Parameter(Mandatory = $true)]
@@ -102,12 +139,9 @@ if ($missingTools.Count -gt 0) {
     exit 0
 }
 
-Copy-DistributionSurface -SourcePath (Join-Path -Path $repoRoot -ChildPath 'Specrew.psd1') -DestinationPath (Join-Path -Path $moduleRoot -ChildPath 'Specrew.psd1')
-Copy-DistributionSurface -SourcePath (Join-Path -Path $repoRoot -ChildPath 'Specrew.psm1') -DestinationPath (Join-Path -Path $moduleRoot -ChildPath 'Specrew.psm1')
-Copy-DistributionSurface -SourcePath (Join-Path -Path $repoRoot -ChildPath 'scripts') -DestinationPath (Join-Path -Path $moduleRoot -ChildPath 'scripts')
-Copy-DistributionSurface -SourcePath (Join-Path -Path $repoRoot -ChildPath 'extensions') -DestinationPath (Join-Path -Path $moduleRoot -ChildPath 'extensions')
-Copy-DistributionSurface -SourcePath (Join-Path -Path $repoRoot -ChildPath 'templates') -DestinationPath (Join-Path -Path $moduleRoot -ChildPath 'templates')
-Copy-DistributionSurface -SourcePath (Join-Path -Path $repoRoot -ChildPath 'docs') -DestinationPath (Join-Path -Path $moduleRoot -ChildPath 'docs')
+Copy-PackagedModuleSurface -SourceRoot $repoRoot -DestinationRoot $moduleRoot -RequiredEntries @(
+    'templates/github/agents/squad.agent.md'
+)
 
 $firstRun = Invoke-ModuleBootstrap -ModuleManifestPath $moduleManifestPath -ProjectPath $projectRoot -ArgumentList @('-Force')
 if ($firstRun.ExitCode -ne 0) {

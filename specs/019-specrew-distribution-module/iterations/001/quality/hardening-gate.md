@@ -9,8 +9,8 @@
 **Overall Verdict**: ready
 **Reviewed By**: Alon Fliess
 **Reviewed At**: 2026-05-16T17:42:05Z
-**Post-Implementation Verification**: review-blocked — independent review found explicit `FileList` allowlist drift in `Specrew.psd1`, and the current package-surface tests do not yet prove the approved bounded distribution contract
-**Verified At**: 2026-05-16T18:28:34Z
+**Post-Implementation Verification**: repaired-and-revalidated — bounded review repair updated the explicit `FileList` allowlist and reran the package-shaped validation lane against the shipped module surface
+**Verified At**: 2026-05-16T20:25:00Z
 
 ## Concern Review
 
@@ -34,6 +34,6 @@ Planning artifacts prepared per Feature 019 spec and tasks.md. Human authorizati
 
 **Rationale**: Canonical hardening concerns reviewed with READY verdict. All 6 quality lenses confirmed artifacts are execution-ready. Phase 2 hardening deferred per plan rationale (distribution infrastructure focus). Hardening-gate-and-implementation-auth boundary complete; implementation authorization audit record exists.
 
-**Implementation Summary**: Pre-implementation hardening-gate sign-off remains the authorization record for this slice. Implementation completed on the bounded Windows-first review tree, but post-implementation verification is now blocked: independent review found explicit `FileList` allowlist drift in `Specrew.psd1`, and the current package-surface tests do not yet prove the approved bounded distribution contract. T041 / T054 remain deferred to Iteration 002, and T042 / T053 remain human-owned follow-up only.
+**Implementation Summary**: Pre-implementation hardening-gate sign-off remains the authorization record for this slice. The bounded review repair updated `Specrew.psd1` to include the missing shipped files and refreshed the package-surface tests so they stage scratch workspaces from the manifest-defined package surface. Post-implementation verification has been rerun successfully for `Test-ModuleManifest`, the installed-module bootstrap lane, the publish dry-run/manual-gate lane, and governance validation. T041 / T054 remain deferred to Iteration 002, and T042 / T053 remain human-owned follow-up only.
 
 

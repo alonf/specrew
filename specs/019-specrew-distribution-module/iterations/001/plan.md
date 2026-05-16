@@ -44,11 +44,11 @@ Total effort estimate: 14 Story Points
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | T001-T006 | Design Questions (Phase 0) | FR-001..FR-032 | Setup | 2.0 | Planner | done | Implementer | 2.0 | pass |
 | T007-T009 | Module Packaging (Pillar 1) | FR-001..FR-004, FR-032 | US1, US2, US4 | 2.0 | Implementer | done | Implementer | 2.0 | pass |
-| T010-T014 | Resource Bundling (Pillar 2) | FR-006..FR-009 | US1, US2 | 2.0 | Implementer | done | Implementer | 2.0 | needs-work — explicit `FileList` allowlist is still incomplete on the shipped manifest |
+| T010-T014 | Resource Bundling (Pillar 2) | FR-006..FR-009 | US1, US2 | 2.0 | Implementer | done | Implementer | 2.0 | pass — bounded repair added the missing shipped allowlist entries and refreshed package-shaped evidence |
 | T015-T019 | Init Refactor (Pillar 3) | FR-010..FR-013, FR-030 | US2, US5 | 2.0 | Implementer | done | Implementer | 2.0 | pass |
 | T030-T035 | Update Story (Pillar 4) | FR-020..FR-024, FR-030 | US3, US5 | 2.0 | Implementer | done | Implementer | 2.0 | pass |
-| T036-T042 | Publishing Workflow (Pillar 5) | FR-005, FR-014, FR-025..FR-029 | US4, US5 | 2.0 | Implementer | done | Implementer | 2.0 | needs-work — shipped manifest omits `scripts\internal\invoke-module-release.ps1` (T041 deferred; T042 manual follow-up) |
-| T050-T056 | Final Validation (Phase 6) | SC-001..SC-006 | US1-US5 | 2.0 | Implementer | done | Implementer | 2.0 | needs-work — package-shaped evidence must be refreshed after the allowlist repair (T053 manual follow-up; T054 deferred) |
+| T036-T042 | Publishing Workflow (Pillar 5) | FR-005, FR-014, FR-025..FR-029 | US4, US5 | 2.0 | Implementer | done | Implementer | 2.0 | pass — bounded repair now ships `scripts\internal\invoke-module-release.ps1`; T041 remains deferred and T042 remains manual follow-up |
+| T050-T056 | Final Validation (Phase 6) | SC-001..SC-006 | US1-US5 | 2.0 | Implementer | done | Implementer | 2.0 | pass — package-shaped evidence refreshed against the repaired manifest surface; T053 remains manual follow-up and T054 remains deferred |
 
 ## Effort Model
 
@@ -74,7 +74,7 @@ Total effort estimate: 14 Story Points
 - **Planning approval**: Alon Fliess (2026-05-16)
 - **Hardening-gate sign-off**: Alon Fliess (2026-05-16T17:42:05Z)
 - **Implementation authorization**: Alon Fliess (2026-05-16T17:42:05Z)
-- **Review status**: Reviewer boundary completed on 2026-05-16 with blocking explicit-allowlist drift; bounded repair required before review-verdict-signoff
+- **Review status**: Reviewer boundary completed on 2026-05-16 with a bounded repair lane; manifest allowlist + package-surface evidence repair is now complete and ready to return to independent review before review-verdict-signoff
 
 ## Reference
 

@@ -38,6 +38,15 @@ function Copy-ReleaseSurface {
     Copy-Item -LiteralPath $SourcePath -Destination $DestinationPath -Force
 }
 
+function Get-PackagedFileList {
+    param(
+        [Parameter(Mandatory = $true)][string]$ManifestPath
+    )
+
+    $manifest = Import-PowerShellDataFile -Path $ManifestPath
+    return @($manifest.FileList | ForEach-Object { [string]$_ })
+}
+
 function Reset-ReleaseWorkspace {
     [CmdletBinding(SupportsShouldProcess = $true, ConfirmImpact = 'None')]
     param(
@@ -55,18 +64,21 @@ function Reset-ReleaseWorkspace {
         $null = New-Item -Path $DestinationRoot -ItemType Directory -Force
     }
 
-    foreach ($surface in @(
-            '.github',
-            '.specrew',
-            'docs',
-            'extensions',
-            'scripts',
-            'templates',
-            'Specrew.psd1',
-            'Specrew.psm1'
-        )) {
-        Copy-ReleaseSurface -SourcePath (Join-Path -Path $SourceRoot -ChildPath $surface) -DestinationPath (Join-Path -Path $DestinationRoot -ChildPath $surface)
+    $fileList = Get-PackagedFileList -ManifestPath (Join-Path -Path $SourceRoot -ChildPath 'Specrew.psd1')
+    if ('scripts/internal/invoke-module-release.ps1' -notin $fileList) {
+        throw "Specrew.psd1 FileList is missing required packaged entry 'scripts/internal/invoke-module-release.ps1'."
     }
+
+    foreach ($relativePath in $fileList) {
+        $normalizedRelativePath = $relativePath -replace '/', '\'
+        Copy-ReleaseSurface `
+            -SourcePath (Join-Path -Path $SourceRoot -ChildPath $normalizedRelativePath) `
+            -DestinationPath (Join-Path -Path $DestinationRoot -ChildPath $normalizedRelativePath)
+    }
+
+    Copy-ReleaseSurface `
+        -SourcePath (Join-Path -Path $SourceRoot -ChildPath '.specrew\config.yml') `
+        -DestinationPath (Join-Path -Path $DestinationRoot -ChildPath '.specrew\config.yml')
 }
 
 $repoRoot = (Resolve-Path (Join-Path -Path $PSScriptRoot -ChildPath '..\..')).Path
@@ -74,7 +86,7 @@ $scratchRoot = Join-Path -Path $repoRoot -ChildPath '.scratch\distribution-modul
 $workspaceParent = Join-Path -Path $scratchRoot -ChildPath 'workspace'
 $workspaceRoot = Join-Path -Path $workspaceParent -ChildPath 'Specrew'
 $summaryPath = Join-Path -Path $scratchRoot -ChildPath 'release-summary.md'
-$releaseScript = Join-Path -Path $repoRoot -ChildPath 'scripts\internal\invoke-module-release.ps1'
+$releaseScript = Join-Path -Path $workspaceRoot -ChildPath 'scripts\internal\invoke-module-release.ps1'
 
 if (Test-Path -LiteralPath $scratchRoot) {
     Remove-Item -LiteralPath $scratchRoot -Recurse -Force
