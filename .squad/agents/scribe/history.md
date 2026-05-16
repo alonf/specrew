@@ -80,3 +80,20 @@ I maintain the squad's shared memory and merge team-relevant decisions into the 
        - **Review Status**: `blocked` (NOT accepted; iteration does NOT move to retrospective until Alon provides explicit signoff)
        - **Preservation Note**: Feature 018 repair work complete; Feature 017 unchanged; all existing warnings preserved; no new warnings introduced
        - **Next Action**: Await Alon confirmation run and explicit signoff before opening retrospective
+
+📌 **Session Log — Feature 018 Review-Verdict-Signoff (2026-05-16T00:26:17Z)**:
+       - **Outcome**: Review accepted; direct-terminal verification confirms rich rendering works
+       - **Scope**: Post-repair review of Feature 018 Iteration 001 following R-018-V2
+       - **Direct-Terminal Verification**: Alon ran `.\scripts\specrew.ps1 where` in fresh PowerShell terminal; confirmed Unicode glyphs (█/░, ✓/◐/○, →), ANSI colors, and sparklines (▁▂▃▄▅▆▇█) all render correctly
+       - **Hardening-Gate Evidence**: All five concerns verified:
+         1. terminal-capability-decision-precedence ✅
+         2. windows-vt-fallback-truthfulness ✅ (ASCII fallback confirmed)
+         3. render-budget-stop-ship-evidence ✅ (~1.3s, within 1.5s budget)
+         4. ansi-stripping-with-unicode-preservation ✅
+         5. closeout-dashboard-artifact-rendering ✅
+       - **Regressions**: Zero; Feature 017 baseline preserved; dashboard test suite PASS; validator PASS
+       - **Verdict**: accepted
+       - **Boundary Commit**: 41d0767 (Feature 018 iteration 001 review-verdict-signoff boundary)
+       - **Decisions Recorded**: Review-verdict-signoff authorization added to .squad/decisions.md
+       - **Deferred Items**: One cosmetic-only (roadmap phase status marker uniformity)
+       - **Next Action**: **Explicit retro-boundary authorization required** before retrospective work begins; do not advance without separate human approval
