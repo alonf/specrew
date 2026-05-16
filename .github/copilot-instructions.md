@@ -48,7 +48,6 @@ Markdown, YAML, PowerShell (Spec Kit extension assets).: Follow standard convent
 
 ## Recent Changes
 - 018-velocity-dashboard-visual-richness: Added PowerShell 7.x scripts plus Markdown/YAML/JSON governance artifacts + `scripts/internal/dashboard-renderer.ps1`, `scripts/specrew.ps1`, `scripts/specrew-where.ps1`, mirrored `extensions/specrew-speckit` + `.specify/extensions/specrew-speckit` closeout/validator scripts, `.specify/feature.json`, `.specrew/roadmap.yml`, `specs/**` dashboard artifacts, `docs/dashboard-guide.md`, `README.md`, and dashboard fixture/test harnesses under `tests/`
-- 018-velocity-dashboard-visual-richness: Added PowerShell 7.x scripts plus Markdown/YAML/JSON governance artifacts + `scripts/internal/dashboard-renderer.ps1`, `scripts/specrew.ps1`,
 - 017-velocity-dashboard: Added PowerShell 7.x scripts plus Markdown/YAML/JSON governance artifacts + `scripts/specrew.ps1`, `scripts/specrew-where.ps1`, mirrored `extensions/specrew-speckit` + `.specify/extensions/specrew-speckit` governance scripts, `.specify/feature.json`, `.specrew/iteration-config.yml`, `.specrew/role-assignments.yml`, `specs/**` iteration artifacts, and `.specrew/roadmap.yml`
 
 

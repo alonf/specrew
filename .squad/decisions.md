@@ -3741,3 +3741,14 @@ sequencing inputs, and leaves feature-closeout explicitly unopened.
 - Close the iteration only.
 - Keep feature-closeout pending explicit authorization.
 - Accept only the pre-existing roadmap-drift validator warnings as carry-forward; no new warning class is acceptable.
+
+## 2026-05-16T09:40:32Z — Authorization: feature-closeout
+
+- **Decision ID**: authorization-feature-018-feature-closeout
+- **Type**: authorization
+- **Boundary**: feature-closeout
+- **Approving Human**: Alon Fliess
+- **Recorded At**: 2026-05-16T09:40:32Z
+- **Commit Reference**: pending
+- **Authorization Text**:
+  > AUTHORIZE feature-closeout for Feature 018 Velocity Dashboard Visual Richness + PoC-Parity Restoration. Rule 15 fires.
