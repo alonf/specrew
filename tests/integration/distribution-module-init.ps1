@@ -91,19 +91,19 @@ function Invoke-ModuleBootstrap {
         [Parameter(Mandatory = $true)]
         [string]$ProjectPath,
 
-        [AllowEmptyCollection()]
-        [Parameter(Mandatory = $true)]
-        [string[]]$ArgumentList
+        [switch]$ForceBootstrap
     )
 
+    $moduleRoot = Split-Path -Parent $ModuleManifestPath
+    $moduleScriptPath = Join-Path -Path $moduleRoot -ChildPath 'scripts\specrew-init.ps1'
     $escapedManifest = $ModuleManifestPath.Replace("'", "''")
+    $escapedScriptPath = $moduleScriptPath.Replace("'", "''")
     $escapedProject = $ProjectPath.Replace("'", "''")
-    $argumentExpression = ($ArgumentList | ForEach-Object { "'{0}'" -f $_.Replace("'", "''") }) -join ', '
+    $forceClause = if ($ForceBootstrap) { ' -Force' } else { '' }
     $command = @"
 `$ErrorActionPreference = 'Stop'
 Import-Module '$escapedManifest' -Force
-`$arguments = @($argumentExpression)
-specrew-init -ProjectPath '$escapedProject' @arguments
+& '$escapedScriptPath' -ProjectPath '$escapedProject'$forceClause
 "@
 
     $output = @(& pwsh -NoProfile -ExecutionPolicy Bypass -Command $command 2>&1)
@@ -142,10 +142,21 @@ if ($missingTools.Count -gt 0) {
 Copy-PackagedModuleSurface -SourceRoot $repoRoot -DestinationRoot $moduleRoot -RequiredEntries @(
     'templates/github/agents/squad.agent.md'
 )
+$null = New-Item -Path (Join-Path -Path $moduleRoot -ChildPath '.git') -ItemType Directory -Force
 
-$firstRun = Invoke-ModuleBootstrap -ModuleManifestPath $moduleManifestPath -ProjectPath $projectRoot -ArgumentList @('-Force')
+$firstRun = Invoke-ModuleBootstrap -ModuleManifestPath $moduleManifestPath -ProjectPath $projectRoot -ForceBootstrap
 if ($firstRun.ExitCode -ne 0) {
     Write-Fail ("Initial module bootstrap failed with exit code {0}. Output:`n{1}" -f $firstRun.ExitCode, ($firstRun.Output -join [Environment]::NewLine))
+    exit 1
+}
+
+$firstRunOutput = $firstRun.Output -join [Environment]::NewLine
+if ($firstRunOutput -match 'Replace <specrew-repo>') {
+    Write-Fail ("Module bootstrap should stay in module mode even when the loaded module root contains .git metadata. Output:`n{0}" -f $firstRunOutput)
+    exit 1
+}
+if ($firstRunOutput -notmatch 'specrew team list') {
+    Write-Fail ("Module bootstrap guidance did not emit module-mode commands after import. Output:`n{0}" -f $firstRunOutput)
     exit 1
 }
 
@@ -192,7 +203,7 @@ foreach ($trackedFile in $trackedFiles) {
 
 Write-Pass 'Module bootstrap copied bundled templates and preserved per-project artifacts.'
 
-$secondRun = Invoke-ModuleBootstrap -ModuleManifestPath $moduleManifestPath -ProjectPath $projectRoot -ArgumentList @()
+$secondRun = Invoke-ModuleBootstrap -ModuleManifestPath $moduleManifestPath -ProjectPath $projectRoot
 if ($secondRun.ExitCode -ne 0) {
     Write-Fail ("Idempotency rerun failed with exit code {0}. Output:`n{1}" -f $secondRun.ExitCode, ($secondRun.Output -join [Environment]::NewLine))
     exit 1

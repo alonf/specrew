@@ -249,6 +249,14 @@ The automated WSL verification script requires `sudo` to install PowerShell 7 in
 - **Windows Validation**: `tests/integration/start-command.ps1` passed after the quoting fix
 - **Linux/macOS Validation**: Launcher now uses positional bash arguments; human WSL Ubuntu re-test still pending
 
+### Follow-up Repair Evidence (R-019-V2-R7)
+
+- **Status**: Completed on Windows; WSL re-verification pending-human-execution
+- **Files Changed**: `scripts/specrew-init.ps1`, `tests/integration/distribution-module-init.ps1`, `specs/019-specrew-distribution-module/test-evidence/us5-cross-platform.md`
+- **Heuristic Change**: `Get-SpecrewExecutionLayout` now detects module mode from `Get-Module -Name Specrew` instead of repo metadata, so `Import-Module Specrew.psd1` keeps module-mode guidance even when the loaded module lives inside a cloned checkout containing `.git`
+- **Windows Validation**: `pwsh -NoProfile -File tests/integration/distribution-module-init.ps1` adds a `.git` directory to the packaged module scratch root and confirms module-mode guidance is still emitted
+- **Linux/macOS Validation**: Targeted heuristic repair landed; human WSL Ubuntu re-test remains pending
+
 ### Known Traps Added
 
 Three corpus rows added to `.specrew/quality/known-traps.md`:

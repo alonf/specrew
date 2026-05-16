@@ -554,13 +554,10 @@ function Ensure-DirectoryExists {
 
 function Get-SpecrewExecutionLayout {
     $distributionRoot = Split-Path -Parent $PSScriptRoot
-    $manifestPath = Join-Path -Path $distributionRoot -ChildPath 'Specrew.psd1'
     $templateRoot = Join-Path -Path $distributionRoot -ChildPath 'templates'
-    $gitMetadataPath = Join-Path -Path $distributionRoot -ChildPath '.git'
+    $loadedModule = Get-Module -Name 'Specrew' -ErrorAction SilentlyContinue | Select-Object -First 1
 
-    $isModuleLayout = (Test-Path -LiteralPath $manifestPath -PathType Leaf) -and
-        (Test-Path -LiteralPath $templateRoot -PathType Container) -and
-        -not (Test-Path -LiteralPath $gitMetadataPath)
+    $isModuleLayout = $null -ne $loadedModule
 
     return [pscustomobject]@{
         RootPath     = $distributionRoot
