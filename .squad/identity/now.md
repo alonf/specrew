@@ -1,13 +1,13 @@
-updated_at: 2026-05-16T16:28:59Z
-focus_area: Feature 019 Pillar 3 handoff
-active_issues: Feature 019 Iteration 001 has completed Phase 0 plus Pillar 1 and Pillar 2. T006 is resolved with Option A 1-year certificate validity aligned to the annual API-key review, Specrew.psd1 and Specrew.psm1 now exist, templates/ is bundled, and the manifest allowlist excludes non-distribution surfaces. Keep Ubuntu/macOS/WSL hardening plus the broader embedded backslash cleanup deferred to Iteration 002, and do not start Pillar 5 publish execution in this batch.
+updated_at: 2026-05-16T22:10:00Z
+focus_area: Feature 019 Pillar 4 complete
+active_issues: Feature 019 Iteration 001 has completed Pillar 4 (T030-T035). Template refresh now preserves Git-style conflict artifacts in `.specrew/template-conflicts`, flags deletions for manual review, and surfaces unresolved template-refresh artifacts on `specrew start`. Keep Iteration 001 Windows-first, defer Ubuntu/macOS/WSL hardening plus the broader embedded backslash cleanup to Iteration 002, and move next to Pillar 5 publish workflow work.
 ---
 
 What We're Focused On
 ====================
 
-**Phase**: Feature 019 Iteration 001 Pillar 1 and Pillar 2 are complete. Pillar 3 is the next execution lane.
-**Urgency**: Tier 1 — carry the new module bundle into the init refactor without widening scope.
+**Phase**: Feature 019 Iteration 001 Pillar 4 is complete. Pillar 5 is the next execution lane.
+**Urgency**: Tier 1 — carry the validated update story into publish-workflow work without widening scope.
 
 ---
 
@@ -25,8 +25,8 @@ Feature Lifecycle: IMPLEMENTATION-IN-PROGRESS
 - Iteration plan: `file:///C:/Dev/Specrew/specs/019-specrew-distribution-module/iterations/001/plan.md` (canonical format with Schema, Started, Capacity, Effort Model)
 - Hardening-gate-and-implementation-auth boundary completed on 2026-05-16T17:42:05Z
 - Governance repair completed on 2026-05-16T19:00:00Z
-- Validation status: Phase 0 + Pillar 1/2 validations in progress for the new module bundle; no publish workflow work has started.
-- Implementation execution has completed Phase 0 and the first two implementation pillars.
+- Validation status: Phase 0 through Pillar 4 validations now cover module packaging, bundled bootstrap, template refresh, unresolved-artifact surfacing, and targeted iteration governance; no publish workflow work has started.
+- Implementation execution has completed Phase 0 plus Pillars 1-4.
 - T001 resolved by human verdict: **Option 1 — Explicit FileList allowlist for Specrew.psd1**.
 - T001 rationale captured in `specs/019-specrew-distribution-module/contracts/Specrew.psd1.contract.md` and `.squad/decisions.md`.
 - T002 resolved by human verdict: **Option A — Git-style conflict markers in `.specrew/template-conflicts/<filename>.conflict` artifacts**.
@@ -62,10 +62,10 @@ Feature Lifecycle: IMPLEMENTATION-IN-PROGRESS
   - Critical path defined: Phase 0 → P1/P2 (parallel) → P3 → P4/P5 (parallel) → Validation
 - Branch: `019-specrew-distribution-module`
 - Estimated effort: 14 SP (within 10-15 SP spec estimate)
-- **Authorization scope**: Iteration 001 implementation is authorized; T001-T006 are now resolved and Pillar 3 is the next authorized lane.
+- **Authorization scope**: Iteration 001 implementation is authorized; T001-T006 are now resolved and Pillar 5 is the next authorized lane.
 - **Hardening Gate Status**: READY verdict with canonical concerns; sign-off complete (2026-05-16T17:42:05Z)
 - **Critical Constraint**: Iteration 001 remains Windows-first; do not pull Ubuntu/macOS/WSL hardening, broader embedded backslash cleanup, or new validator work into this slice.
 
 Next Valid Action
 
-Carry the new module bundle into Pillar 3 (`specrew init` module-vs-clone refactor), keeping Pillar 5 publish execution and Iteration 002 cross-platform backlog items deferred.
+Begin Pillar 5 (`T036-T042`) publish-workflow implementation while keeping Iteration 001 Windows-first and deferring cross-platform hardening plus real PSGallery publish.

@@ -206,6 +206,31 @@ function Write-Info {
     Write-Host $Message -ForegroundColor Cyan
 }
 
+function Get-UnresolvedTemplateRefreshArtifacts {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$ResolvedProjectPath
+    )
+
+    $artifactRoot = Join-Path $ResolvedProjectPath '.specrew\template-conflicts'
+    if (-not (Test-Path -LiteralPath $artifactRoot -PathType Container)) {
+        return @()
+    }
+
+    return @(
+        Get-ChildItem -LiteralPath $artifactRoot -File -Recurse -ErrorAction SilentlyContinue |
+            Where-Object { $_.Extension -in @('.conflict', '.deletion') } |
+            Sort-Object FullName |
+            ForEach-Object {
+                [pscustomobject]@{
+                    Path         = $_.FullName
+                    RelativePath = Get-DisplayPathFromProjectRoot -ResolvedProjectPath $ResolvedProjectPath -Path $_.FullName
+                    Kind         = $_.Extension.TrimStart('.')
+                }
+            }
+    )
+}
+
 function Test-BootstrapSurface {
     param(
         [string]$Root,
@@ -2212,6 +2237,7 @@ function Save-StartArtifacts {
     $changedFiles = @(Test-SessionLoadedFilesChanged -ResolvedProjectPath $ResolvedProjectPath -BaselineCommitHash $baselineCommit)
     $restartTriggerFiles = @(Get-RestartTriggerFiles -ResolvedProjectPath $ResolvedProjectPath -BaselineCommitHash $baselineCommit -ChangedFiles $changedFiles)
     $hasChanges = ($restartTriggerFiles.Count -gt 0)
+    $templateRefreshArtifacts = @(Get-UnresolvedTemplateRefreshArtifacts -ResolvedProjectPath $ResolvedProjectPath)
 
     # Build frontmatter with baseline hash and changed files visibility
     $frontmatterLines = @('---')
@@ -2260,6 +2286,21 @@ $fileListFormatted
 "@
     }
 
+    if ($templateRefreshArtifacts.Count -gt 0) {
+        $artifactListFormatted = ($templateRefreshArtifacts | ForEach-Object { "- $($_.RelativePath)" }) -join [Environment]::NewLine
+        $directiveBlocks += @"
+
+## ACTION REQUIRED: Unresolved Template Refresh Artifacts
+
+specrew update left $($templateRefreshArtifacts.Count) unresolved template-refresh artifact(s). Review these before continuing:
+
+$artifactListFormatted
+
+- For .conflict artifacts, guide the user through accept-new, keep-user, or manual-resolve.
+- For .deletion artifacts, review whether the preserved project file should be kept, archived, or removed manually.
+"@
+    }
+
     # Combine all parts: frontmatter + directives + original prompt
     $promptContentWithFrontmatter = $frontmatterBlock + [Environment]::NewLine + ($directiveBlocks -join '') + [Environment]::NewLine + $PromptContent
 
@@ -2304,9 +2345,10 @@ $fileListFormatted
             -SquadModelOverrides $SquadModelOverrides)
 
     return [pscustomobject]@{
-        PromptPath  = $promptPath
-        ContextPath = $contextPath
-        SummaryPath = $summaryPath
+        PromptPath               = $promptPath
+        ContextPath              = $contextPath
+        SummaryPath              = $summaryPath
+        TemplateRefreshArtifacts = $templateRefreshArtifacts
     }
 }
 
@@ -2563,6 +2605,12 @@ Write-Info ("Prompt:  {0}" -f $artifactPaths.PromptPath)
 Write-Info ("Context: {0}" -f $artifactPaths.ContextPath)
 Write-Info ("Summary: {0}" -f $artifactPaths.SummaryPath)
 Write-Info ("Copilot approval mode: {0}" -f $approvalMode)
+if ($artifactPaths.TemplateRefreshArtifacts.Count -gt 0) {
+    Write-Info ("Unresolved template-refresh artifacts detected: {0}" -f $artifactPaths.TemplateRefreshArtifacts.Count)
+    foreach ($artifact in $artifactPaths.TemplateRefreshArtifacts) {
+        Write-Info ("  - {0}" -f $artifact.RelativePath)
+    }
+}
 if ($approvalMode -eq 'allow-all' -and -not $useAutopilot) {
     Write-Info 'allow-all reduces later tool-approval blocking, but intake still stays interactive until the request is grounded.'
 }

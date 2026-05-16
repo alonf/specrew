@@ -1,11 +1,13 @@
 # Iteration State: 001
 
 **Schema**: v1
-**Last Completed Task**: T019 (Add Bootstrap Validation)
-**Tasks Remaining**: T030-T042, T050-T056
-**In Progress**: Pillar 4 handoff ready (T030-T035 next)
-**Baseline Ref**: c1f83dbe02587b414f2f005ef9bf6b10dfccb9e8
-**Updated**: 2026-05-16T16:50:00Z
+**Last Completed Task**: T035 (Integrate Conflict Detection into specrew-start)
+**Tasks Remaining**: T036-T042, T050-T056
+**In Progress**: Pillar 5 handoff ready (T036-T042 next)
+**Baseline Ref**: 1b8dace
+**Current Phase**: Pillar 5 handoff ready
+**Iteration Status**: executing
+**Updated**: 2026-05-16T22:10:00Z
 
 ## Execution Summary
 
@@ -25,9 +27,14 @@
 - T017 is complete: per-project generation remained intact after template deployment; validation proved `.specrew\config.yml`, `.squad\decisions.md`, `.squad\identity\now.md`, and downstream runtime artifacts still materialize correctly.
 - T018 is complete: rerunning `specrew init` against an already bootstrapped project now exits cleanly without re-entering brownfield conflict analysis, reports preserved `.specify` / `.squad` / `.github` surfaces, and requires `-Force` to refresh bundled templates.
 - T019 is complete: bootstrap now validates `.specify\templates\`, `.squad\agents\`, and `.github\workflows\` before reporting success, and fails closed if required surfaces are missing.
-- Windows-first validation evidence now includes `Test-ModuleManifest`, `Import-Module`, exported-function verification, `specrew help`, the new module-bundle bootstrap regression (`tests\integration\distribution-module-init.ps1`), existing init regressions (`bootstrap-to-iteration.ps1`, `brownfield-conflict-handling.ps1`, `project-path-resolution-regression.ps1`), and targeted `validate-governance.ps1` PASS output for `iterations/001`.
-- No spec drift was detected while completing Pillar 3; `iterations/001/drift-log.md` remains at zero drift events.
-- Pillar 3 (`T015-T019`) is complete. Pillar 4 (`T030-T035`) is now the next authorized implementation lane. T040/T041 and broader cross-platform work remain out of scope for this batch.
+- Windows-first validation evidence now includes `Test-ModuleManifest`, `Import-Module`, exported-function verification, `specrew help`, the module-bundle bootstrap regression (`tests\integration\distribution-module-init.ps1`), existing init regressions (`bootstrap-to-iteration.ps1`, `brownfield-conflict-handling.ps1`, `project-path-resolution-regression.ps1`), the update-story regressions (`update-command.ps1`, `distribution-module-update.ps1`, `specrew-start-change-detector.ps1`), and targeted `validate-governance.ps1 -IterationPath specs\019-specrew-distribution-module\iterations\001` PASS output.
+- T030 is complete: `scripts\specrew-update.ps1` now detects project-vs-current module versions, scans managed template surfaces, and classifies template refresh outcomes as no-change, user-only, module-only, both-modified, or deleted.
+- T031 and T034 are complete: both-modified templates now preserve user content with approved Git-style conflict markers and emit matching `.specrew\template-conflicts\*.conflict` artifacts for next-session mediation.
+- T032 is complete: new managed templates are added non-destructively during `specrew update`.
+- T033 is complete: templates removed from the new module surface are now flagged with `.specrew\template-conflicts\*.deletion` artifacts for manual review.
+- T035 is complete: `scripts\specrew-start.ps1` now surfaces unresolved template-refresh artifacts at session start so Squad can guide `accept-new`, `keep-user`, or `manual-resolve` follow-up for conflicts and call out deletion-review work.
+- No spec drift was detected while completing Pillar 4; `iterations/001/drift-log.md` remains at zero drift events.
+- Pillar 4 (`T030-T035`) is complete. Pillar 5 (`T036-T042`) is now the next authorized implementation lane. Broader cross-platform hardening and real PSGallery publish remain out of scope for this batch.
 
 ## Notes
 
