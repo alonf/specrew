@@ -295,12 +295,15 @@ erDiagram
 - **ExpirationDate** (string): ISO 8601 date when key expires (e.g., '2027-05-16')
 - **Owner** (string): Maintainer responsible for key rotation (e.g., 'Alon Fliess')
 
-**Rotation Procedure** (documented in `docs/maintainer-runbook.md`):
-1. Log in to PowerShell Gallery account
-2. Generate new API key (Settings → API Keys → New Key)
-3. Update GitHub Actions secret (Settings → Secrets → PSGALLERY_API_KEY)
-4. Delete old API key from PowerShell Gallery (after verifying new key works)
-5. Document rotation date in runbook
+**Rotation Guidance** (documented in `docs/operations/psgallery-release-credentials.md`):
+- **Routine rotation**: annual review/rotation at the calendar anniversary of key creation
+- **Triggered rotation**: maintainer transition, suspected leak, unexplained publish-auth failure, or an annual review finding the key is older than 12 months
+
+**Rotation Procedure**:
+1. Generate a new API key on PowerShellGallery.com scoped to the Specrew module with an appropriate expiration
+2. Update the GitHub Actions secret (`PSGALLERY_API_KEY` or equivalent)
+3. Trigger the workflow's manual-dispatch dry-run path to confirm authentication without performing a real publish
+4. Revoke the old key only after the dry run confirms the new key works
 
 **Validation Rules**:
 - KeyId must match GitHub Actions secret name
@@ -328,7 +331,7 @@ erDiagram
 - **GitHub Actions Secret (Password)**: `SIGNING_CERT_PASSWORD`
 - **Not Stored**: Private key never committed to repository or exposed locally (only in GitHub Actions secrets)
 
-**Renewal Procedure** (documented in `docs/maintainer-runbook.md`):
+**Renewal Procedure** (to be documented alongside the API-key guidance in `docs/operations/psgallery-release-credentials.md` once T006 is decided):
 1. Generate new self-signed certificate (see research.md R6 for PowerShell commands)
 2. Export to PFX, convert to Base64
 3. Update GitHub Actions secrets (SIGNING_CERT_BASE64, SIGNING_CERT_PASSWORD)

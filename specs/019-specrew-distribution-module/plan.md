@@ -347,13 +347,13 @@ graph TD
    - **Decision rationale**: Composes with T001's explicit `FileList` allowlist philosophy, avoids filesystem-order ambiguity, and keeps load failures auditable line-by-line.
    - **Compose-with note from T003**: loader-level path construction is cross-platform-safe now because it uses `Join-Path`, but broader embedded `\` cleanup inside existing scripts remains deferred to Iteration 002.
 
-5. **PSGallery API Key Rotation Strategy**: How often should the PSGallery API key be rotated? What is the rotation procedure? (Not a blocker for v1 but should be documented for maintainer reference.)
-   - **Investigation Path**: Review PSGallery API key management best practices; document rotation procedure in maintainer runbook.
-   - **Decision Owner**: Feature sponsor (Alon Fliess); document in `docs/maintainer-runbook.md` post-implementation.
+5. **PSGallery API Key Rotation Strategy**: **Resolved 2026-05-16 for Iteration 001** — Option A lightweight documentation now. Document the cadence in `docs/operations/psgallery-release-credentials.md`: annual review/rotation at the calendar anniversary of key creation, plus triggered rotation for maintainer transition, suspected leak, unexplained publish-auth failure, or an annual review finding the key older than 12 months.
+   - **Approved procedure**: generate a new scoped Specrew API key, update `PSGALLERY_API_KEY` (or equivalent) in GitHub Actions secrets, confirm auth via the workflow's manual-dispatch dry-run path, then revoke the old key only after the dry run succeeds.
+   - **Decision owner**: Alon Fliess (human verdict during implementation). This remains documentation-only and non-blocking.
 
 6. **Self-Signed Certificate Validity Period**: What validity period should the self-signed certificate use? Trade-offs: short validity (e.g., 1 year) requires frequent renewal; long validity (e.g., 10 years) reduces maintenance burden but increases risk window if private key leaks.
    - **Investigation Path**: Research PowerShell module signing best practices; balance security vs. maintenance.
-   - **Decision Owner**: Implementation team during Pillar 5.
+   - **Decision Owner**: Implementation team during Pillar 5. Pair the annual certificate review discussion with T005's annual API-key review event.
 
 ## Phase 0: Research (Design Unknowns Resolution)
 

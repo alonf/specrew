@@ -1,13 +1,13 @@
-updated_at: 2026-05-16T16:03:28Z
-focus_area: Feature 019 Phase 0 paused at T005
-active_issues: Feature 019 Iteration 001 execution is active for Phase 0 only. T001 is resolved with Option 1 explicit FileList allowlist semantics, T002 is resolved with Option A Git-style .conflict markers plus next-start mediated resolution, T003 is resolved with Option A Windows-first manual checklist/evidence for Iteration 001, and T004 is resolved with Option A explicit dot-sourcing for Specrew.psm1. Do not auto-decide T005 or T006, do not start downstream implementation work in this run, and keep Ubuntu/macOS/WSL hardening plus broader embedded backslash cleanup deferred to Iteration 002.
+updated_at: 2026-05-16T16:10:41Z
+focus_area: Feature 019 Phase 0 paused at T006
+active_issues: Feature 019 Iteration 001 execution is active for Phase 0 only. T001 is resolved with Option 1 explicit FileList allowlist semantics, T002 is resolved with Option A Git-style .conflict markers plus next-start mediated resolution, T003 is resolved with Option A Windows-first manual checklist/evidence for Iteration 001, T004 is resolved with Option A explicit dot-sourcing for Specrew.psm1, and T005 is resolved with Option A lightweight PSGallery API-key rotation guidance documented under docs/operations/psgallery-release-credentials.md. Do not auto-decide T006, do not start downstream implementation work in this run, and keep Ubuntu/macOS/WSL hardening plus broader embedded backslash cleanup deferred to Iteration 002.
 ---
 
 What We're Focused On
 ====================
 
-**Phase**: Feature 019 Iteration 001 Phase 0 execution is active. T001-T004 are resolved and execution is paused at the T005 human-handoff boundary.
-**Urgency**: Tier 1 — Deliver the T005 decision handoff without widening scope or auto-deciding it.
+**Phase**: Feature 019 Iteration 001 Phase 0 execution is active. T001-T005 are resolved and execution is paused at the T006 human-handoff boundary.
+**Urgency**: Tier 1 — Deliver the T006 decision handoff without widening scope or auto-deciding it.
 
 ---
 
@@ -35,7 +35,10 @@ Feature Lifecycle: PHASE0-EXECUTION-PAUSED
 - T003 rationale, checklist scaffold, and Iteration 002 deferrals are captured in `plan.md`, `research.md`, `tasks.md`, `iterations/001/state.md`, `iterations/001/quality/cross-platform-manual-checklist.md`, and `.specrew/cross-platform-backlog.md`.
 - T004 resolved by human verdict: **Option A — explicit dot-sourcing for `Specrew.psm1`**.
 - T004 rationale and approved loader order are captured in `contracts/Specrew.psd1.contract.md`, `plan.md`, `research.md`, `tasks.md`, `iterations/001/plan.md`, `iterations/001/state.md`, and `.squad/decisions.md`.
-- T005 (API-Key Rotation Guidance) is now the active human-handoff boundary; it is documentation-only and non-blocking, but it must not be auto-decided in this run.
+- T005 resolved by human verdict: **Option A — document lightweight PSGallery API-key rotation cadence now**.
+- T005 cadence/procedure are captured in `docs/operations/psgallery-release-credentials.md`, `plan.md`, `research.md`, `data-model.md`, `tasks.md`, `iterations/001/plan.md`, `iterations/001/state.md`, and `.squad/decisions.md`.
+- T005 remains documentation-only and non-blocking.
+- T006 (Self-Signed Certificate Validity Period) is now the active human-handoff boundary and must not be auto-decided in this run.
 - **39 total tasks** across 6 phases
   - **Phase 0 (Design Questions)**: 6 tasks explicitly resolving plan-time design questions
     - T001: Module Manifest File-List Strategy (blocks Pillar 1/2)
@@ -58,8 +61,8 @@ Feature Lifecycle: PHASE0-EXECUTION-PAUSED
 - Estimated effort: 14 SP (within 10-15 SP spec estimate)
 - **Authorization scope**: Iteration 001 implementation is authorized, but T001-T006 must still be handled truthfully during execution and must not be auto-decided.
 - **Hardening Gate Status**: READY verdict with canonical concerns; sign-off complete (2026-05-16T17:42:05Z)
-- **Critical Constraint**: T005-T006 design-question tasks remain unresolved by design and MUST surface during implementation without auto-decision. Iteration 001 remains Windows-first; do not pull Ubuntu/macOS/WSL hardening, broader embedded backslash cleanup, or new validator work into this slice.
+- **Critical Constraint**: T006 remains unresolved by design and MUST surface during implementation without auto-decision. Iteration 001 remains Windows-first; do not pull Ubuntu/macOS/WSL hardening, broader embedded backslash cleanup, or new validator work into this slice.
 
 Next Valid Action
 
-Present the T005 human-decision handoff for API-key rotation guidance, keeping its documentation-only / non-blocking status explicit. Stop after the handoff without auto-deciding T005 or starting work blocked by unresolved T005/T006 decisions.
+Present the T006 human-decision handoff for self-signed certificate validity period, keeping the blocked downstream publishing work and annual-operations compose-with note explicit. Stop after the handoff without auto-deciding T006 or starting T038/T040/T041.

@@ -1,3 +1,64 @@
+# Decision: Feature 019 T005 API-Key Rotation Guidance
+
+**Date**: 2026-05-16T16:10:41Z  
+**Boundary**: Phase 0 T005  
+**Feature**: 019-specrew-distribution-module (Specrew Distribution Module via PowerShell Gallery)  
+**Iteration**: 001  
+**Authority**: Alon Fliess (human verdict received during implementation)  
+**Decision Type**: Design-question resolution
+
+## Task
+
+Resolve T005: capture the approved PSGallery API-key rotation cadence and lightweight maintainer procedure in the canonical maintainer-facing operations docs without widening Iteration 001 into real publish execution or broader release-process changes.
+
+## Verdict
+
+**Approved option**: **Option A — document lightweight PSGallery API-key rotation cadence now**
+
+**Approved cadence**:
+- **Routine rotation**: annual review/rotation at the calendar anniversary of key creation
+- **Triggered rotation**: maintainer transition, suspected leak, unexplained publish-auth failure, or an annual review finding that the key is older than 12 months
+
+**Approved lightweight procedure**:
+1. Generate a new API key on PowerShellGallery.com scoped to the Specrew module with an appropriate expiration.
+2. Update the GitHub Actions secret (`PSGALLERY_API_KEY` or equivalent) to the new value.
+3. Trigger a dry-run publish through the workflow's manual-dispatch path to confirm authentication without performing a real publish.
+4. Revoke the old API key only after step 3 confirms the new key works.
+
+**Compose-with note for T006**:
+- Pair the annual API-key review with certificate renewal review in a single annual operations event.
+
+**Non-blocking status**:
+- T005 remains documentation-only and does **not** block downstream implementation.
+
+## Rationale
+
+- The documentation cost is low compared with the operational continuity and security benefit.
+- The before-implement security-baseline lens already covered credential handling, so recording the cadence now keeps the execution boundary truthful.
+- The chosen operations-doc location gives T006 a natural place to add certificate guidance later without forcing broader user-facing documentation changes now.
+
+## Commit Reference Workflow
+
+**Starting Commit**: `ecee74f84578a71688ee03b940d2144788091452`  
+**Truthful workflow**: record the human verdict in the maintainer-facing operations runbook plus the relevant planning and execution artifacts first, run the relevant iteration governance validation for the touched surfaces, then create a dedicated checkpoint commit to anchor T005 in git. This entry intentionally records the starting ref and the workflow without pre-claiming the later checkpoint hash inside the same staged change.
+
+## Runtime Evidence
+
+- Created `docs/operations/psgallery-release-credentials.md` as the canonical maintainer-facing runbook for release credentials, with the approved annual/triggered cadence and the four-step PSGallery API-key rotation procedure.
+- Updated `docs/README.md` with a lightweight pointer to the new operations runbook instead of broadening README or other user-facing documentation.
+- Updated `specs/019-specrew-distribution-module/plan.md`, `research.md`, `data-model.md`, `tasks.md`, `iterations/001/plan.md`, and `iterations/001/state.md` so T005 is recorded as complete, documentation-only, and non-blocking while T006 becomes the active human-decision boundary.
+- Updated `.squad/identity/now.md` so the live execution context now points at the T006 pause instead of the completed T005 pause.
+- Did **not** auto-decide T006, start real publish execution, or widen Iteration 001 into broader release-process work.
+
+## Impact
+
+T005 is now complete for Iteration 001 and anchored in the maintainer docs. Downstream implementation may continue past this documentation lane, but the execution boundary for this run still stops at T006.
+
+## Next Action
+
+Present the T006 human-decision handoff, including the validity-period options, recommendation, tradeoffs, and blocked downstream work, then pause without auto-deciding T006.
+
+
 # Decision: Feature 019 T004 Module Loader Structure
 
 **Date**: 2026-05-16T16:03:28Z  

@@ -359,9 +359,9 @@ Write-Host $pfxBase64  # Copy to GitHub Actions secret SIGNING_CERT_BASE64
 2. **T002 — Conflict Resolution**: Git-style `.conflict` sidecar artifacts with next-session Squad mediation
 3. **T003 — Cross-Platform Verification Depth**: Iteration 001 uses a Windows-first manual checklist/evidence artifact; Ubuntu/macOS/WSL hardening remains deferred to Iteration 002
 4. **T004 — Module Loader Structure**: Explicit dot-sourcing, deterministic reviewed load order, `Join-Path` per path segment, FR-002 export surface
+5. **T005 — API-Key Rotation Guidance**: document annual PSGallery API-key review/rotation plus triggered rotation events in `docs/operations/psgallery-release-credentials.md`, using the approved four-step secret-update and dry-run verification flow; remains documentation-only and non-blocking
 
 **Research recommendations still awaiting explicit execution-time approval**:
-5. **T005 candidate**: document PSGallery API key rotation frequency, steps, and secret-update protocol in the maintainer runbook
 6. **T006 candidate**: 5-year validity self-signed certificate stored as GitHub Actions secrets
 
-**Next execution boundary**: Phase 0 pauses at T005 (API-key rotation guidance handoff); T005 remains documentation-only and non-blocking.
+**Next execution boundary**: Phase 0 pauses at T006 (self-signed certificate validity period handoff); T005 is complete and remains non-blocking.

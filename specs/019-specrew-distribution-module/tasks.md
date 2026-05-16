@@ -12,9 +12,9 @@
 
 ## Phase 0: Design-Question Resolution (Pre-Implementation)
 
-**Purpose**: Resolve six plan-time design questions that surfaced during planning. These tasks must complete before Pillar 1/2 implementation begins to ensure concrete implementation decisions are in place.
+**Purpose**: Resolve six plan-time design questions that surfaced during planning. T001-T004 must complete before Pillar 1/2 implementation begins, T006 must complete before the Pillar 5 signing work, and T005 remains a documentation-only non-blocking task.
 
-**⚠️ CRITICAL**: These decisions block implementation work. Complete this phase first.
+**⚠️ CRITICAL**: T001-T004 and T006 carry implementation impact. T005 should still be recorded truthfully, but it does not block implementation work.
 
 ### Design Question Tasks
 
@@ -34,7 +34,7 @@
   **Blocks**: T008  
   **Downstream Impact**: Pillar 1 Module Packaging Specrew.psm1 implementation depends on loader structure decision
 
-- [ ] T005 [assigned_to: Alon Fliess] [effort: S] **Document API-Key Rotation Guidance** — Document PSGallery API key rotation procedure in docs/maintainer-runbook.md including frequency recommendation, rotation steps, and secret update protocol. **Non-blocking**: This is a documentation-only task that does not block any implementation work; can be completed in parallel with Pillars 1-5 or deferred until post-v1 if time-constrained. (Trace: plan.md Plan-Time Design Question 5, data-model.md PSGallery API Key entity)  
+- [x] T005 [assigned_to: Alon Fliess] [effort: S] **Document API-Key Rotation Guidance** — Document PSGallery API key rotation procedure in `docs/operations/psgallery-release-credentials.md`, including the approved cadence (annual review/rotation at the key-creation anniversary plus triggered rotation for maintainer transition, suspected leak, unexplained publish-auth failure, or annual-review age >12 months) and the four-step secret-update + dry-run verification protocol. **Approved 2026-05-16**: Option A — document lightweight cadence now and pair the annual review with T006 certificate review later. **Non-blocking**: documentation-only; does not block implementation work. (Trace: plan.md Plan-Time Design Question 5, data-model.md PSGallery API Key entity)  
   **Blocks**: None (documentation task; does not block implementation)  
   **Downstream Impact**: Maintainer reference for future key rotation; not blocking for v1
 
@@ -47,7 +47,7 @@
 # Verify all six design-question decisions documented
 Test-Path C:\Dev\Specrew\specs\019-specrew-distribution-module\contracts\Specrew.psd1.contract.md
 Test-Path C:\Dev\Specrew\specs\019-specrew-distribution-module\data-model.md
-Test-Path C:\Dev\Specrew\docs\maintainer-runbook.md
+Test-Path C:\Dev\Specrew\docs\operations\psgallery-release-credentials.md
 ```
 
 **Checkpoint**: Design questions resolved — Pillar 1/2 implementation can now begin
@@ -98,7 +98,7 @@ Get-Content C:\Dev\Specrew\Specrew.psd1 | Select-String -Pattern "FunctionsToExp
 
 - [ ] T012 [P] [assigned_to: Implementation Team] [effort: S] **Bundle Scripts Directory** — Verify scripts/ directory structure (entry points + internal/ utilities); update FileList in Specrew.psd1 to include scripts/*.ps1 and scripts/internal/*.ps1 (Trace: FR-006)
 
-- [ ] T013 [P] [assigned_to: Implementation Team] [effort: S] **Bundle Documentation** — Verify docs/ directory contains dashboard-guide.md, roadmap-maintenance.md; add maintainer-runbook.md (from T005); update FileList in Specrew.psd1 to include docs/*.md (Trace: FR-009)
+- [ ] T013 [P] [assigned_to: Implementation Team] [effort: S] **Bundle Documentation** — Verify docs/ directory contains dashboard-guide.md, roadmap-maintenance.md, and `operations/psgallery-release-credentials.md` (from T005); update FileList in Specrew.psd1 to include docs/*.md and the operations subdirectory as needed (Trace: FR-009)
 
 - [ ] T014 [assigned_to: Implementation Team] [effort: M] **Validate Exclusions** — Audit FileList in Specrew.psd1; confirm specs/, proposals/, tests/, CHANGELOG.md, LICENSE, README.md, .git/, .vscode/, *.log are excluded; verify module package size estimate under 5 MB (Trace: FR-005, FR-010)
 

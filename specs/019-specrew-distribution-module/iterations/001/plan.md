@@ -65,7 +65,7 @@ Total effort estimate: 14 Story Points
 
 ## Critical Constraints
 
-**⚠️ Phase 0 design-question tasks**: T001-T004 are now resolved; T005-T006 still require explicit human handling. T005 is documentation-only and non-blocking, but it still must not be auto-decided.
+**⚠️ Phase 0 design-question tasks**: T001-T005 are now resolved; T006 still requires explicit human handling. T005 is complete and remains documentation-only / non-blocking.
 
 **⚠️ T003/T004 compose-with guardrail**: loader/resource path work in Iteration 001 only needs to be Windows-correct. Cross-platform edge-case validation and broader embedded `\` cleanup remain Iteration 002 concerns.
 
