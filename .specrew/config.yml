@@ -1,6 +1,6 @@
 specrew_version: "0.18.0"
-speckit_version: "0.8.4"
-squad_version: "0.9.1"
+speckit_version: "0.8.11"
+squad_version: "0.9.4"
 bootstrap_date: "2026-05-04"
 bootstrap_mode: "brownfield"
 governance:

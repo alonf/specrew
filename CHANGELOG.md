@@ -26,6 +26,24 @@ baseline that each release number represents.
   three new proposals under Draft with phase-2 placement. Pre-promotion
   curation removed 4 leaked private references (memory entry paths +
   draft source-spec paths) following the May 15 promotion pattern.
+- Bumped pinned external tooling in `.specrew/config.yml`: Spec Kit
+  `0.8.4` → `0.8.11` (7 upstream patches including a PowerShell
+  UTF-8-without-BOM fix and extension registration hardening) and Squad
+  `0.9.1` → `0.9.4` (5 weeks of upstream work including new built-in
+  skills/agents, `squad loop` and `squad config model` commands, a
+  StorageProvider abstraction, `/fleet` parallel dispatch, and dozens
+  of bug fixes). Bumped pre-public-flip so any regression has detection
+  runway. Validator green post-bump (38 PASS, 0 FAIL, baseline WARN
+  only); Specrew customizations to `.github/agents/squad.agent.md` and
+  `.squad/templates/` were not touched by the Squad upgrade. Two latent
+  bugs in Specrew's own update tooling surfaced during this chore and
+  are queued as follow-up: (1) `scripts/specrew-update.ps1` write-back
+  logic rewrites `specrew_version` to `0.1.0-dev` on every `--spec-kit`
+  or `--squad` invocation; (2) `extensions/specrew-speckit/extension.yml`
+  version pin was never bumped past `0.1.0-dev` during Feature 015
+  Public-Readiness Pass and is the upstream source that drives bug (1).
+  This commit manually preserves `specrew_version: 0.18.0` after the
+  bumps.
 
 ## 0.18.0
 
