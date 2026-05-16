@@ -21,7 +21,7 @@ Proposals whose features have shipped to main and are part of Specrew's current 
 | [007](007-substantive-interaction-model.md) | Substantive Interaction Model | feature-016 | phase-1 | 22 |
 | [009](009-velocity-dashboard.md) | Velocity Dashboard ("Where Am I?") | feature-017 | phase-2 | 19 |
 
-## Draft (7)
+## Draft (8)
 
 Proposals with full source-spec content, ready for `/speckit.specify` ingestion when prioritized.
 
@@ -34,6 +34,7 @@ Proposals with full source-spec content, ready for `/speckit.specify` ingestion 
 | [030](030-quality-hardening-bundle.md) | Quality Hardening Bundle (Form-vs-Meaning Verification) | phase-2 | 35 | Bundles 4 sub-components addressing form-correct/meaning-wrong bug class |
 | [031](031-specrew-distribution-module.md) | Specrew Distribution Module (PowerShell Gallery) | phase-2 | 12 | One-line install via `Install-Module Specrew`; pre-public-flip priority |
 | [032](032-specrew-slash-commands.md) | Specrew Slash-Command Surface | phase-2 | 7 | `/specrew.*` commands; composes tightly with 031 (combined option recommended) |
+| [033](033-specrew-governance-cli.md) | Specrew Governance CLI | phase-2 | 18 | `specrew roadmap` / `propose` / `feature` CLI surfaces; absorbs Proposal 028 |
 
 ## Candidate (17)
 
@@ -76,6 +77,7 @@ For roadmap-style viewing, proposals grouped by phase placement:
 - 030 (Quality Hardening Bundle — draft, HIGH-PRIORITY in queue)
 - 031 (Specrew Distribution Module — draft, pre-public-flip priority)
 - 032 (Specrew Slash-Command Surface — draft, composes with 031)
+- 033 (Specrew Governance CLI — draft, absorbs 028)
 - 013, 014, 015, 017, 018, 019, 020, 021, 022, 023, 027, 028, 029 (candidates)
 
 **Phase 3** (refactor + maintainability):

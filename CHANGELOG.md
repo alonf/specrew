@@ -6,6 +6,21 @@ baseline that each release number represents.
 
 ## Unreleased
 
+- Promoted Proposal 033 Specrew Governance CLI to the `proposals/` surface
+  with full source-spec content (status: draft, phase-2, ~18 SP). Captures
+  the governance-of-governance gap surfaced 2026-05-16 evening during the
+  Feature 019 clarify cycle: roadmap updates, proposal lifecycle, and
+  feature creation lack structured user-facing CLI surfaces beyond
+  ad-hoc edits and commanding Squad. Five pillars: roadmap CLI,
+  propose CLI (with load-bearing `propose specify` graduating a draft
+  proposal to an active feature spec), feature CLI (deferred to
+  Iteration 2), validator integration, and "Specrew for Project
+  Maintainers" documentation. ABSORBS Proposal 028 scope. Phase 2
+  priority slot between Feature 019 Distribution Module and the Phase 3
+  Multi-Host Runtime Abstraction CORE anchor; ships before Multi-Host
+  CORE so the abstraction work has a real CLI consumer to design
+  against. Roadmap Phase 2 planned_effort_sp bumped from 200 to 220 SP
+  to absorb this feature.
 - Added `proposals/` surface as Specrew's public design pipeline. Initial
   promotion: 29 numbered proposals plus supporting README, INDEX, and
   template, ranging from shipped features (001-007) to draft features

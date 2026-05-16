@@ -18,8 +18,8 @@ phases:
 
   - id: phase-2-experience
     name: "Phase 2: Developer Experience"
-    description: "Interaction model, visibility, public-readiness, distribution, and state-foundation work. Bridges the methodology from internal dogfooding to external usability."
-    planned_effort_sp: 200
+    description: "Interaction model, visibility, public-readiness, distribution, state-foundation, and governance CLI surfaces. Bridges the methodology from internal dogfooding to external usability and gives downstream maintainers structured control of their roadmap, proposals, and feature lifecycle."
+    planned_effort_sp: 220
     status: in-progress
     feature_refs:
       - 015-public-readiness-pass
