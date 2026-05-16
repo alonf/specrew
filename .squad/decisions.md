@@ -1,3 +1,58 @@
+# Decision: Feature 019 T001 Module Manifest File-List Strategy
+
+**Date**: 2026-05-16T15:38:37Z  
+**Boundary**: Phase 0 T001  
+**Feature**: 019-specrew-distribution-module (Specrew Distribution Module via PowerShell Gallery)  
+**Iteration**: 001  
+**Authority**: Alon Fliess (human verdict received during implementation)  
+**Decision Type**: Design-question resolution
+
+## Task
+
+Resolve T001: decide the `Specrew.psd1` `FileList` strategy for bundled module contents (explicit enumeration vs. automatic detection) and update the manifest contract with the approved direction for FR-010 exclusion safety.
+
+## Verdict
+
+**Approved option**: **Option 1 — Explicit `FileList` allowlist for `Specrew.psd1`**
+
+**Allowed composition sketch for later implementation**:
+- `Specrew.psd1`
+- `Specrew.psm1`
+- `scripts/*.ps1`
+- `scripts/internal/*.ps1`
+- approved `extensions/specrew-speckit/**` assets
+- `templates/**/*`
+- selected documentation files only
+
+Per-directory wildcards are allowed within the explicit allowlist.
+
+## Rationale
+
+- FR-010 requires provable exclusion semantics for distributed module contents.
+- An allowlist avoids silent drift and accidental shipping of excluded or sensitive repository surfaces.
+- Per-directory wildcard entries keep the manifest maintainable without switching to automatic discovery.
+
+## Commit Reference Workflow
+
+**Starting Commit**: `3158eca6045a7928cc87fc12e4da58ec157ec3f9`  
+**Truthful workflow**: record the human verdict in the contract and execution-state artifacts first, validate the updated tree, then create a small checkpoint commit to anchor this decision in git. The exact checkpoint hash is intentionally not pre-claimed inside this entry before the commit exists.
+
+## Runtime Evidence
+
+- Updated `specs/019-specrew-distribution-module/contracts/Specrew.psd1.contract.md` to state the explicit allowlist decision and rationale.
+- Updated `specs/019-specrew-distribution-module/iterations/001/state.md` to reflect T001 complete and the mandatory pause at T002.
+- Updated `.squad/identity/now.md` to reflect active Phase 0 execution and the T002 decision hold.
+- Did **not** start T002 resolution or any implementation tasks blocked by unresolved T002+ decisions.
+
+## Impact
+
+T001 is now resolved for Iteration 001. Pillar 1 and Pillar 2 can rely on an explicit `FileList` allowlist design, but execution remains paused at T002 before any blocked downstream work proceeds.
+
+## Next Action
+
+Stop at T002 and obtain a human decision on conflict-marker format before continuing Phase 0.
+
+
 # Decision: Feature 019 Before-Implement Quality Gate
 
 **Date**: 2026-05-16  

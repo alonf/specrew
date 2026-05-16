@@ -154,6 +154,12 @@ This contract ensures consistent module structure across versions and enables au
 - **Validation**: Each path must exist in module directory; total package size must be under 5 MB (per spec FR-005)
 - **Example**: `FileList = @('Specrew.psd1', 'scripts/*.ps1', 'templates/**/*')`
 
+**T001 Decision (2026-05-16)**:
+- **Approved strategy**: Option 1 — explicit `FileList` allowlist for `Specrew.psd1`
+- **Why**: FR-010 requires provable exclusion semantics; an allowlist prevents silent drift and accidental shipping of excluded or sensitive repository surfaces
+- **Allowed pattern style**: per-directory wildcards are acceptable inside the allowlist (for example `scripts/*.ps1`, `templates/**/*`)
+- **Implementation boundary**: only enumerated surfaces may ship; new distributable surfaces must be added deliberately rather than auto-discovered
+
 **Inclusion Rules** (from spec FR-006 through FR-010):
 
 | Category | Glob Pattern | Rationale |
