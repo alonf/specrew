@@ -32,7 +32,7 @@ Total effort estimate: 8 Story Points
 - **WSL Unavailable is NOT a stop**: Record pending-human-execution and continue
 - **Mechanical Boundaries Auto-Advance**: Iteration 002 opening/scaffolding, before-implement for Iteration 002 if READY, hardening-gate-and-implementation-auth using the user's authorization text as pre-authorization, /speckit.implement task execution, mechanical repair cycles from concrete review verdicts
 
-## Task Breakdown
+## Tasks
 
 | Task | Title | Requirement | Story | Effort | Owner | Status | Agent | Actual | Verdict |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
@@ -40,6 +40,8 @@ Total effort estimate: 8 Story Points
 | T054 | Cross-Platform Parity Evidence | SC-006 | US5 | 3.0 | Implementation Team | pending | TBD | TBD | TBD |
 | T060 | Publish-Workflow Enablement | FR-025 | US4 | 1.0 | Implementation Team | pending | TBD | TBD | TBD |
 | T061 | Documentation Updates | US5 | US5 | 1.0 | Implementation Team | pending | TBD | TBD | TBD |
+
+## Task Details
 
 ### T041: Join-Path Audit and Hardening Sweep
 
