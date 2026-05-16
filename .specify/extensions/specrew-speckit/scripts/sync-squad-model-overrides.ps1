@@ -206,6 +206,84 @@ $null = Update-LockedFileContent -Path $configPath -Transform {
     if ($script:effectiveOverrides.Count -gt 0) {
         $config['agentModelOverrides'] = $script:effectiveOverrides
     }
+
+    # Spec 008 Extension: Sync reviewer-regression state
+    # This extension adds reviewerRegressionState alongside activeEscalation without modifying FR-027 behavior
+    if ($null -eq $config['reviewerRegressionState']) {
+        $config['reviewerRegressionState'] = [ordered]@{
+            status                = 'inactive'
+            feature               = $null
+            currentReviewerClass  = $null
+            currentReviewerOwner  = $null
+            lockoutChainLength    = 0
+            capActive             = $false
+            updatedAt             = $null
+        }
+    }
+
+    # Project active reviewer-regression state from the current iteration if present
+    $stateFilePath = Join-Path $resolvedIterationDirectory 'state.md'
+    if (Test-Path -LiteralPath $stateFilePath -PathType Leaf) {
+        $stateLines = @(Get-Content -LiteralPath $stateFilePath -Encoding UTF8)
+        $inRegressionBlock = $false
+        $regressionStatus = 'inactive'
+        $regressionFeature = $null
+        $currentReviewerClass = $null
+        $currentReviewerOwner = $null
+        $lockoutChainLength = 0
+        $capActive = $false
+
+        foreach ($line in $stateLines) {
+            if ($line -match '<!-- >>> specrew-managed reviewer-regression-state >>> -->') {
+                $inRegressionBlock = $true
+                continue
+            }
+
+            if ($line -match '<!-- <<< specrew-managed reviewer-regression-state <<< -->') {
+                $inRegressionBlock = $false
+                continue
+            }
+
+            if ($inRegressionBlock) {
+                if ($line -match '^\s*-\s+\*\*Status\*\*:\s*(.+?)\s*$') {
+                    $regressionStatus = $Matches[1].Trim()
+                }
+                elseif ($line -match '^\s*-\s+\*\*Feature\*\*:\s*(.+?)\s*$') {
+                    $featureValue = $Matches[1].Trim()
+                    if ($featureValue -ne '(none)') {
+                        $regressionFeature = $featureValue
+                    }
+                }
+                elseif ($line -match '^\s*-\s+\*\*Current Reviewer Class\*\*:\s*(.+?)\s*$') {
+                    $classValue = $Matches[1].Trim()
+                    if ($classValue -ne '(none)') {
+                        $currentReviewerClass = $classValue
+                    }
+                }
+                elseif ($line -match '^\s*-\s+\*\*Current Reviewer Owner\*\*:\s*(.+?)\s*$') {
+                    $ownerValue = $Matches[1].Trim()
+                    if ($ownerValue -ne '(none)') {
+                        $currentReviewerOwner = $ownerValue
+                    }
+                }
+                elseif ($line -match '^\s*-\s+\*\*Lockout Chain Length\*\*:\s*(\d+)') {
+                    $lockoutChainLength = [int]$Matches[1]
+                }
+                elseif ($line -match '^\s*-\s+\*\*Cap Active\*\*:\s*(true|false)') {
+                    $capActive = $Matches[1] -eq 'true'
+                }
+            }
+        }
+
+        # Update config with parsed reviewer-regression state
+        $config['reviewerRegressionState']['status'] = $regressionStatus
+        $config['reviewerRegressionState']['feature'] = $regressionFeature
+        $config['reviewerRegressionState']['currentReviewerClass'] = $currentReviewerClass
+        $config['reviewerRegressionState']['currentReviewerOwner'] = $currentReviewerOwner
+        $config['reviewerRegressionState']['lockoutChainLength'] = $lockoutChainLength
+        $config['reviewerRegressionState']['capActive'] = $capActive
+        $config['reviewerRegressionState']['updatedAt'] = $syncTimestamp
+    }
     elseif (Test-MapKey -Map $config -Key 'agentModelOverrides') {
         $config.Remove('agentModelOverrides')
     }
