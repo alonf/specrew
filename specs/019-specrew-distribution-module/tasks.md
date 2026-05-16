@@ -26,7 +26,7 @@
   **Blocks**: T030, T031, T032, T033  
   **Downstream Impact**: Pillar 4 Update Story conflict-resolution implementation depends on marker format decision
 
-- [ ] T003 [assigned_to: Implementation Team] [effort: M] **Resolve Cross-Platform Test Automation Depth** — Decide manual checklist vs GitHub Actions matrix for cross-platform verification; update plan.md Pillar 5 with automation strategy (Trace: plan.md Plan-Time Design Question 3, FR-031)  
+- [ ] T003 [assigned_to: Implementation Team] [effort: M] **Resolve Cross-Platform Test Automation Depth** — Decide manual checklist vs GitHub Actions matrix for cross-platform verification; update plan.md Pillar 5 with automation strategy. **Approved 2026-05-16**: Option A — use `specs/019-specrew-distribution-module/iterations/001/quality/cross-platform-manual-checklist.md` for Iteration 001 manual evidence and defer GitHub Actions matrix / Ubuntu / macOS / WSL hardening work to Iteration 002. (Trace: plan.md Plan-Time Design Question 3, FR-031)  
   **Blocks**: T040, T041  
   **Downstream Impact**: Pillar 5 Publishing Workflow cross-platform verification task scope depends on automation depth decision
 
@@ -196,6 +196,8 @@ Get-Content C:\TestProjects\UpdateTest\.specify\templates\spec-template.md | Sel
 
 **Dependencies**: T003 (cross-platform automation depth), T006 (certificate validity period), T007 (manifest), T008 (loader), all Pillar 1-4 tasks complete
 
+**Iteration 001 scope note**: T003 fixed this slice to a Windows-first manual evidence path. Do not widen Pillar 5 or Phase 6 work to Ubuntu/macOS matrix validation, WSL end-to-end verification, Join-Path audit hardening, or a real PSGallery publish inside Iteration 001; those items are tracked for Iteration 002.
+
 ### Implementation Tasks
 
 - [ ] T036 [assigned_to: Implementation Team] [effort: L] **Create GitHub Actions Publish Workflow** — Implement .github/workflows/publish-module.yml with: trigger on `v*.*` tag push; job steps: checkout code, read version from .specrew/config.yml specrew_version, stamp version into Specrew.psd1 ModuleVersion field, run Test-ModuleManifest validation; use PowerShell 7+ runner (Trace: FR-024, FR-026, FR-027, FR-032)
@@ -206,9 +208,9 @@ Get-Content C:\TestProjects\UpdateTest\.specify\templates\spec-template.md | Sel
 
 - [ ] T039 [assigned_to: Implementation Team] [effort: M] **Implement Publish-Module Step** — Add publishing logic to publish-module.yml: run Publish-Module -Name Specrew -Repository PSGallery -NuGetApiKey $env:PSGALLERY_API_KEY; handle errors and log failure details; verify publish success by querying PSGallery for new version (Trace: FR-026, FR-028, FR-029, data-model.md PSGallery API Key entity)
 
-- [ ] T040 [assigned_to: Implementation Team] [effort: M] **Implement Cross-Platform Verification Task** — Per T003 automation decision: if manual, create cross-platform test checklist in specs/019-specrew-distribution-module/test-evidence/cross-platform-checklist.md; if automated, add GitHub Actions matrix job (windows-latest, ubuntu-latest, macos-latest) with Install-Module test, specrew init test, path-delimiter validation; use Join-Path audit script (Trace: FR-030, FR-031, research.md R4, US5)
+- [ ] T040 [assigned_to: Implementation Team] [effort: M] **Implement Cross-Platform Verification Task** — Per the approved T003 manual path, execute against `specs/019-specrew-distribution-module/iterations/001/quality/cross-platform-manual-checklist.md` for the Windows-first deliverables only. Ubuntu/macOS/WSL expansion and matrix automation are deferred to Iteration 002. (Trace: FR-030, FR-031, research.md R4, US5)
 
-- [ ] T041 [P] [assigned_to: Implementation Team] [effort: S] **Create Join-Path Audit Script** — Implement scripts/internal/audit-join-path.ps1 to scan all .ps1 files for hardcoded path delimiters (backslash not in strings, forward-slash outside Join-Path); report violations; integrate into cross-platform verification task from T040 (Trace: FR-030, research.md R4)
+- [ ] T041 [P] [assigned_to: Implementation Team] [effort: S] **Create Join-Path Audit Script** — Implement scripts/internal/audit-join-path.ps1 to scan all .ps1 files for hardcoded path delimiters (backslash not in strings, forward-slash outside Join-Path); report violations; integrate into cross-platform verification task from T040. **Iteration 001 defer**: the broad audit/hardening sweep moves to Iteration 002; do not implement it inside the Windows-first slice. (Trace: FR-030, research.md R4)
 
 - [ ] T042 [P] [assigned_to: Alon Fliess] [effort: S] **Configure GitHub Actions Secrets** — Add GitHub Actions secrets to repository: PSGALLERY_API_KEY (obtain from PowerShell Gallery account), SIGNING_CERT_BASE64 (generate self-signed cert, export to PFX, encode to Base64), SIGNING_CERT_PASSWORD (cert export password); document secret names in publish-module.yml comments (Trace: FR-025, FR-028, data-model.md PSGallery API Key, Signing Certificate entities)
 
@@ -232,9 +234,11 @@ git push origin v0.21.0-test
 
 **Dependencies**: All Pillars 1-5 must complete first
 
+**Iteration 001 validation note**: Do not claim FR-031 / SC-006 cross-platform parity in this slice. Iteration 001 records Windows-first manual evidence only; Ubuntu/macOS/WSL parity evidence is deferred to Iteration 002.
+
 ### Validation Tasks
 
-- [ ] T050 [assigned_to: Implementation Team] [effort: M] **Execute User Story 1 Acceptance Scenarios** — Test US1 scenarios: (1) Install-Module on clean Windows machine, verify specrew command available, (2) Run specrew init in empty directory, verify .specify/.squad/.github created, (3) Install-Module on Linux, verify cross-platform path handling; record evidence in specs/019-specrew-distribution-module/test-evidence/us1-install.md (Trace: US1 acceptance scenarios, SC-001, SC-002)
+- [ ] T050 [assigned_to: Implementation Team] [effort: M] **Execute User Story 1 Acceptance Scenarios** — For Iteration 001, test the Windows-first US1 scenarios: (1) Install-Module on a clean Windows machine and verify the specrew command is available, (2) run specrew init in an empty directory and verify .specify/.squad/.github are created. Linux install/path-handling evidence remains deferred to Iteration 002. Record current evidence in specs/019-specrew-distribution-module/test-evidence/us1-install.md (Trace: US1 acceptance scenarios, SC-001, SC-002)
 
 - [ ] T051 [assigned_to: Implementation Team] [effort: M] **Execute User Story 2 Acceptance Scenarios** — Test US2 scenarios: (1) specrew init from installed module, verify templates copied from module path, (2) re-run specrew init, verify idempotency, (3) run specrew start, verify lifecycle operates normally; record evidence in specs/019-specrew-distribution-module/test-evidence/us2-bootstrap.md (Trace: US2 acceptance scenarios, SC-002)
 
@@ -242,9 +246,9 @@ git push origin v0.21.0-test
 
 - [ ] T053 [assigned_to: Alon Fliess] [effort: M] **Execute User Story 4 Acceptance Scenarios** — Test US4 scenarios: (1) Push v*.* tag, verify GitHub Action runs, (2) verify version stamped from config.yml, (3) simulate API key failure and verify error logging; record evidence in specs/019-specrew-distribution-module/test-evidence/us4-publish.md (Trace: US4 acceptance scenarios, SC-005)
 
-- [ ] T054 [assigned_to: Implementation Team] [effort: L] **Execute User Story 5 Acceptance Scenarios** — Test US5 scenarios: (1) Install on Linux, run specrew init, verify forward-slash paths, (2) Install on macOS, run specrew where, verify no backslash artifacts, (3) Attempt install on PS 5.1, verify failure with clear error; record evidence in specs/019-specrew-distribution-module/test-evidence/us5-cross-platform.md (Trace: US5 acceptance scenarios, SC-006)
+- [ ] T054 [assigned_to: Implementation Team] [effort: L] **Execute User Story 5 Acceptance Scenarios** — **Deferred to Iteration 002** by the approved T003 Windows-first boundary. Linux/macOS parity and PS 5.1 rejection evidence remain required for the feature, but they are not part of Iteration 001 execution. Record later evidence in specs/019-specrew-distribution-module/test-evidence/us5-cross-platform.md when the deferred slice is authorized. (Trace: US5 acceptance scenarios, SC-006)
 
-- [ ] T055 [assigned_to: Implementation Team] [effort: M] **Validate Success Criteria** — Review all success criteria from spec: SC-001 (install under 1 minute), SC-002 (init 95% success rate), SC-003 (update under 30 seconds), SC-004 (zero friction reports), SC-005 (publish within 15 minutes), SC-006 (cross-platform parity); document measurements in specs/019-specrew-distribution-module/test-evidence/success-criteria.md (Trace: SC-001 through SC-006)
+- [ ] T055 [assigned_to: Implementation Team] [effort: M] **Validate Success Criteria** — Review all success criteria from spec: SC-001 (install under 1 minute), SC-002 (init 95% success rate), SC-003 (update under 30 seconds), SC-004 (zero friction reports), SC-005 (publish within 15 minutes), SC-006 (cross-platform parity). **Iteration 001 rule**: do not claim SC-006 satisfied until the Iteration 002 cross-platform evidence exists. Document partial Windows-first measurements truthfully. (Trace: SC-001 through SC-006)
 
 - [ ] T056 [assigned_to: Implementation Team] [effort: S] **Update Quickstart Guide** — Review and finalize specs/019-specrew-distribution-module/quickstart.md based on actual implementation and test evidence; ensure all commands are correct and troubleshooting section reflects real issues encountered (Trace: quickstart.md, US1 through US5)
 
@@ -289,9 +293,9 @@ Test-Path C:\Dev\Specrew\specs\019-specrew-distribution-module\test-evidence\suc
 
 **Phase 4**: T032 (new-template addition) and T033 (deletion flagging) can execute in parallel with T031 (conflict resolution) after T030 (entry point) completes
 
-**Phase 5**: T041 (Join-Path audit script) and T042 (GitHub Actions secrets) can execute in parallel with other Pillar 5 tasks
+**Phase 5**: T042 (GitHub Actions secrets) can execute in parallel with other Iteration 001 Pillar 5 tasks; T041 is deferred to Iteration 002
 
-**Phase 6**: T050-T054 (user story validation) can execute in parallel after all Pillars 1-5 complete
+**Phase 6**: T050-T053 can execute in parallel after all Iteration 001 Pillars 1-5 work completes; T054 remains deferred to Iteration 002
 
 ### Critical Path
 

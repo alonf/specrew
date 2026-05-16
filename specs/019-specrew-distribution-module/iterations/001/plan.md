@@ -11,14 +11,21 @@
 
 ## Overview
 
-Iteration 001 covers the full Feature 019 implementation: PowerShell Gallery module packaging for one-line install, removing clone-and-PATH friction before public flip.
+Iteration 001 covers the Windows-first execution slice for Feature 019: PowerShell Gallery module packaging for one-line install, bootstrap/update flow enablement, dashboard visibility from the installed module path, and publish dry-run/manual-gate readiness without claiming cross-platform parity yet.
 
-**Scope**: All 39 tasks across Phase 0 (T001-T006 design questions) + Pillars 1-5 (module packaging, resource bundling, init refactor, update story, publishing workflow) + final validation (T050-T056).
+**Scope**: Windows-first Phase 0 through Phase 6 work needed for Iteration 001, plus the manual evidence and deferred-scope artifacts that preserve the approved Iteration 001 / Iteration 002 split for cross-platform hardening.
 
 ## Task Summary
 
 Total tasks: 39  
 Total effort estimate: 14 Story Points
+
+## Scope Guardrails
+
+- **Approved T003 direction**: Iteration 001 uses `specs/019-specrew-distribution-module/iterations/001/quality/cross-platform-manual-checklist.md` as the cross-platform evidence surface.
+- **Windows-first only**: do not widen this slice to Ubuntu/macOS matrix validation, WSL verification, line-ending or case-sensitivity testing, or a broad Join-Path audit sweep.
+- **Deferred evidence ledger**: explicit Iteration 002 backlog items live in `.specrew/cross-platform-backlog.md`.
+- **Real publish boundary**: local dry-run/manual gate validation is in scope; the first real PSGallery publish is not.
 
 ### Task Breakdown by Phase
 
@@ -57,7 +64,9 @@ Total effort estimate: 14 Story Points
 
 ## Critical Constraints
 
-**⚠️ T001-T006 Design-Question Tasks**: Remain unresolved by design and MUST surface during implementation via pause-for-decision handling. Implementer must not auto-decide them.
+**⚠️ Phase 0 design-question tasks**: T001-T003 are now resolved; T004-T006 still require explicit human handling. Implementer must not auto-decide the remaining design questions.
+
+**⚠️ T003 guardrail**: loader/resource path work in Iteration 001 only needs to be Windows-correct. Cross-platform edge-case validation remains an Iteration 002 concern.
 
 ## Authorization
 

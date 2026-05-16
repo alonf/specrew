@@ -1,3 +1,69 @@
+# Decision: Feature 019 T003 Cross-Platform Test Automation Depth
+
+**Date**: 2026-05-16T15:54:03Z  
+**Boundary**: Phase 0 T003  
+**Feature**: 019-specrew-distribution-module (Specrew Distribution Module via PowerShell Gallery)  
+**Iteration**: 001  
+**Authority**: Alon Fliess (human verdict received during implementation)  
+**Decision Type**: Design-question resolution
+
+## Task
+
+Resolve T003: choose the Iteration 001 cross-platform verification depth for FR-030/FR-031 so the team can keep the approved Windows-first slice honest, capture concrete evidence, and avoid silently pulling Iteration 002 hardening into the current implementation boundary.
+
+## Verdict
+
+**Approved option**: **Option A — manual checklist/evidence for Iteration 001**
+
+**Approved Iteration 001 manual checklist artifact**: `specs/019-specrew-distribution-module/iterations/001/quality/cross-platform-manual-checklist.md`
+
+**Checklist deliverables to capture later (not yet executed in this decision step)**:
+1. `Test-ModuleManifest` passes for `Specrew.psd1`
+2. `Import-Module ./Specrew.psd1 -Force` succeeds
+3. Exported function set matches FR-002 (`specrew`, `specrew-init`, `specrew-start`, `specrew-where`, `specrew-review`, `specrew-team`, `specrew-update`)
+4. `specrew help` returns expected catalog
+5. In a fresh empty Windows directory, `specrew init` succeeds and populates `.specify/`, `.squad/`, `.github/`
+6. `specrew start "test feature"` launches a Copilot CLI session with bootstrap prompt loaded
+7. `specrew where` renders the dashboard from installed module path
+8. `specrew update` template-refresh dry-run shows expected diff
+9. Publish-Module workflow validates locally in dry-run/manual gate mode and does not perform a real PSGallery publish
+
+**Explicit Iteration 002 deferrals**:
+- `.github/workflows/cross-platform-validation.yml` with `ubuntu-latest` matrix
+- macOS testing
+- 104+ embedded-backslash sweep across existing PowerShell scripts
+- WSL Ubuntu end-to-end verification using Copilot CLI
+- README + `docs/getting-started.md` cross-platform claims
+- first real PSGallery publish
+
+## Rationale
+
+- This is the load-bearing decision that preserves the Iteration 001 / Iteration 002 split already captured in commit `12e4cd3` on `main`.
+- Iteration 001 stays Windows-first and must not absorb Ubuntu/macOS runner setup, line-ending validation, case-sensitivity testing, or broad Join-Path audit hardening.
+- A concrete manual evidence target keeps the current slice verifiable without pretending the later cross-platform hardening work is already done.
+
+## Commit Reference Workflow
+
+**Starting Commit**: `4da2e9b7ee986ce18c9cc0af5d766487b20eded9`  
+**Truthful workflow**: record the human verdict in the planning, research, execution-state, and deferred-scope artifacts first, run iteration governance validation for the touched surfaces, then create a dedicated checkpoint commit to anchor T003 in git. This entry intentionally records the starting ref and the workflow without pre-claiming the later checkpoint hash inside the same staged change.
+
+## Runtime Evidence
+
+- Updated `specs/019-specrew-distribution-module/plan.md` and `specs/019-specrew-distribution-module/iterations/001/plan.md` so Iteration 001 is explicitly Windows-first and the manual-checklist path is the approved verification surface.
+- Updated `specs/019-specrew-distribution-module/research.md`, `specs/019-specrew-distribution-module/tasks.md`, `specs/019-specrew-distribution-module/iterations/001/state.md`, and `.squad/identity/now.md` to capture the approved manual-checklist path, the Iteration 002 deferrals, and the new mandatory pause at T004.
+- Created `specs/019-specrew-distribution-module/iterations/001/quality/cross-platform-manual-checklist.md` as a not-yet-executed evidence scaffold.
+- Created `.specrew/cross-platform-backlog.md` to hold the explicit Iteration 002 cross-platform backlog without widening current scope.
+- Did **not** start T004 or any work blocked by unresolved T004+ decisions.
+
+## Impact
+
+T003 is now resolved for Iteration 001. The feature keeps its full cross-platform end-state requirements, but the current slice is narrowed to truthful Windows-first manual evidence while Iteration 002 carries the wider cross-platform hardening backlog.
+
+## Next Action
+
+Present the T004 human-decision handoff, keeping the compose-with constraint explicit: loader path construction only needs to be Windows-correct in Iteration 001; Iteration 002 expands that surface to cross-platform edge cases.
+
+
 # Decision: Feature 019 T002 Conflict-Marker Format
 
 **Date**: 2026-05-16T15:45:15Z  

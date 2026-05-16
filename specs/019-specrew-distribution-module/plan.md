@@ -9,15 +9,15 @@
 
 **Primary Requirement**: Enable one-line PowerShell Gallery installation (`Install-Module Specrew`) for Specrew, removing clone-and-PATH friction and supporting both fresh installs and updates via template-refresh protocol.
 
-**Technical Approach**: Package Specrew as a PowerShell module with bundled scripts, extensions, and templates. Refactor `specrew-init.ps1` to detect module-vs-clone execution context and resolve template paths accordingly. Implement `specrew-update` command using Template-Refresh pattern (preserve-and-flag conflicts with crew-mediated resolution). Automate module publishing via GitHub Actions on `v*.*` tag push, with version stamping from `.specrew/config.yml`, self-signed certificate, and PSGallery API key from secrets. Enforce cross-platform correctness via `Join-Path` everywhere and dedicated WSL verification task.
+**Technical Approach**: Package Specrew as a PowerShell module with bundled scripts, extensions, and templates. Refactor `specrew-init.ps1` to detect module-vs-clone execution context and resolve template paths accordingly. Implement `specrew-update` command using Template-Refresh pattern (preserve-and-flag conflicts with crew-mediated resolution). Automate module publishing via GitHub Actions on `v*.*` tag push, with version stamping from `.specrew/config.yml`, self-signed certificate, and PSGallery API key from secrets. For Iteration 001, keep loader/resource path handling Windows-correct and capture Windows-first manual evidence via `specs/019-specrew-distribution-module/iterations/001/quality/cross-platform-manual-checklist.md`; Iteration 002 expands FR-030/FR-031 hardening to Ubuntu/macOS/WSL validation, runner setup, and broader path-audit work.
 
 ## Technical Context
 
 **Language/Version**: PowerShell 7+ (Core edition required for cross-platform support)  
 **Primary Dependencies**: PowerShellGet (built-in), GitHub Actions (CI/CD), PSGallery API  
 **Storage**: File-based (module manifest, templates, scripts, extensions); no database  
-**Testing**: Manual cross-platform verification (Windows, Ubuntu, macOS), integration tests for install/init/update workflows, PSGallery test gallery for dry-run validation  
-**Target Platform**: Windows, Linux, macOS (anywhere PowerShell 7+ runs)  
+**Testing**: Iteration 001 manual Windows-first checklist/evidence, integration tests for install/init/update workflows, and PSGallery dry-run/manual-gate validation; Ubuntu/macOS/WSL validation is deferred to Iteration 002  
+**Target Platform**: Iteration 001 delivery path is Windows-first; feature end-state remains Windows, Linux, and macOS anywhere PowerShell 7+ runs  
 **Project Type**: PowerShell module (CLI tooling + template distribution)  
 **Performance Goals**: `Install-Module` under 30 seconds; `specrew init` under 60 seconds; `specrew update` under 30 seconds  
 **Constraints**: Module package under 5 MB; no external runtime dependencies beyond PowerShell 7; idempotent init/update operations; preserve user-edited templates on update  
@@ -30,7 +30,7 @@
 **Phase Scope**: `phase-1-first-slice` (all 5 pillars: module manifest, resource bundling, init refactor, update command, publish workflow)  
 **Inferred Quality Profile**: `quality-profile.custom-composition.v1` (PowerShell module with CI/CD automation; no recognized preset matches this stack surface)  
 **Selected preset ref or explicit custom composition**: Custom composition for PowerShell module distribution  
-**Bounded custom composition**: Manual cross-platform verification (Windows/Ubuntu/macOS), integration test scenarios from spec user stories, PSGallery test-gallery dry-run validation, GitHub Actions workflow validation
+**Bounded custom composition**: Iteration 001 manual Windows-first checklist/evidence, integration test scenarios from spec user stories, PSGallery dry-run/manual-gate validation, GitHub Actions workflow validation; explicit Iteration 002 cross-platform backlog tracked separately
 
 ### Stack Surfaces in Scope
 
@@ -58,14 +58,14 @@
 | Area | Selection | Evidence / Notes |
 | --- | --- | --- |
 | Bundle ID | `custom-powershell-module-v1` | No recognized preset; manual test scenarios and checklist |
-| Mechanical Checks | Path-delimiter audit (`Join-Path` enforcement), template-copy integrity checks, manifest validation | Evidence in integration test logs and WSL verification task |
+| Mechanical Checks | Windows-first loader/path correctness, template-copy integrity checks, manifest validation | Iteration 001 evidence comes from the manual checklist; broader Join-Path audit hardening is deferred to Iteration 002 |
 | Ecosystem Tools | `Test-ModuleManifest` (built-in), `Publish-Module -WhatIf` (dry-run), GitHub Actions validation | Free baseline; manual execution during implementation |
 
 ### Required Quality Gates
 
 | Required Quality Gate | Category | Evidence Source | Phase 1 Status |
 | --- | --- | --- | --- |
-| Cross-platform path correctness | mechanical | WSL verification task (dedicated), integration tests on Ubuntu/macOS | planned |
+| Cross-platform path correctness | mechanical | Iteration 001 manual checklist for Windows-installed module behavior; Iteration 002 backlog for Ubuntu/macOS/WSL verification | planned |
 | Template-copy integrity | mechanical | Integration test: init in empty dir, verify all files present and structured correctly | planned |
 | Module manifest validity | tooling | `Test-ModuleManifest Specrew.psd1` output | planned |
 | PSGallery publish dry-run | tooling | `Publish-Module -WhatIf` output or test-gallery publish | planned |
@@ -313,7 +313,7 @@ graph TD
 **During Implementation** (`/speckit.implement` boundary):
 - Specrew-Speckit validators run on every task completion (traceability checks, spec-to-task alignment)
 - Integration tests run after each pillar completes (incremental validation)
-- Cross-platform verification task executes after Pillar 3 + Pillar 4 complete (WSL + Ubuntu + macOS)
+- Cross-platform verification executes in two slices: Iteration 001 manual Windows-first checklist, then Iteration 002 Ubuntu/macOS/WSL hardening once explicitly authorized.
 
 **Post-Implementation** (before feature closeout):
 - Manual User Story acceptance scenario checklist (US-1 through US-5)
@@ -339,11 +339,12 @@ graph TD
    - **Investigation Path**: Research crew-framework-agnostic conflict formats; validate Squad coordinator can parse markers.
    - **Decision Owner**: Implementation team during Pillar 4; consult Squad integration if needed.
 
-3. **Cross-Platform Test Automation**: Should cross-platform verification be manual (checklist + evidence recording) or automated (GitHub Actions matrix with Windows/Ubuntu/macOS runners)? Trade-offs: manual is faster to set up but error-prone; automated is robust but adds CI/CD complexity.
-   - **Investigation Path**: Evaluate GitHub Actions runner availability and cost; assess automation effort vs. manual test burden.
-   - **Decision Owner**: Implementation team during Pillar 5; fallback to manual if automation effort exceeds 1 SP.
+3. **Cross-Platform Test Automation**: **Resolved 2026-05-16 for Iteration 001** — Option A manual checklist/evidence. Use `specs/019-specrew-distribution-module/iterations/001/quality/cross-platform-manual-checklist.md` for the Windows-first deliverables; defer GitHub Actions matrix automation, Ubuntu/macOS/WSL verification, and broader path-hardening work to Iteration 002.
+   - **Decision rationale**: Preserves the approved Windows-first Iteration 001 / Iteration 002 split captured in commit `12e4cd3` on `main`.
+   - **Decision owner**: Alon Fliess (human verdict during implementation).
 
 4. **Module Loader (`Specrew.psm1`) Implementation**: Should the module loader explicitly dot-source each script file, or use dynamic discovery? Trade-offs: explicit dot-sourcing is transparent and debuggable but requires maintenance; dynamic discovery is DRY but harder to troubleshoot.
+   - **Compose-with note from T003**: loader path construction only needs to be Windows-correct in Iteration 001; Iteration 002 expands validation to cross-platform edge cases.
    - **Investigation Path**: Review PowerShell module loader patterns; assess trade-offs for maintainability vs. automation.
    - **Decision Owner**: Implementation team during Pillar 1.
 
@@ -366,7 +367,7 @@ graph TD
 | **R1: PSGallery Module Packaging Best Practices** | Pillar 1 and Pillar 2 depend on understanding PSGallery module structure, file list management, and metadata conventions | Section in `research.md` documenting best practices from existing modules (Pester, PSReadLine, PowerShellGet itself); recommendations for Specrew manifest structure | Implementation team (Phase 0) |
 | **R2: PowerShell Module Loader Patterns** | Pillar 1 depends on choosing explicit dot-sourcing vs. dynamic discovery for `Specrew.psm1` | Section in `research.md` documenting loader patterns, trade-offs, and recommendation for Specrew | Implementation team (Phase 0) |
 | **R3: Template-Refresh Conflict Resolution Protocol** | Pillar 4 depends on crew-framework-agnostic conflict marker format that Squad coordinator can parse | Section in `research.md` documenting conflict marker format, resolution flow, and Squad integration touchpoints | Implementation team (Phase 0) |
-| **R4: Cross-Platform Path Handling Verification** | Pillar 5 depends on validating `Join-Path` enforcement across all scripts; WSL verification task design | Section in `research.md` documenting path handling audit strategy, WSL test procedure, and verification checklist | Implementation team (Phase 0) |
+| **R4: Cross-Platform Path Handling Verification** | Pillar 5 depends on right-sizing Iteration 001 verification without collapsing the later cross-platform hardening slice | Section in `research.md` documenting the approved Windows-first checklist, explicit Iteration 002 deferrals, and the T004 compose-with note | Implementation team (Phase 0) |
 | **R5: GitHub Actions Publish Workflow Design** | Pillar 5 depends on version stamping mechanism, signing procedure, and PSGallery API key usage | Section in `research.md` documenting workflow structure, secret management, and error handling strategy | Implementation team (Phase 0) |
 | **R6: Module Signing Strategy** | Pillar 5 depends on self-signed certificate generation, storage, and validity period | Section in `research.md` documenting certificate generation procedure, GitHub Actions secrets storage, and validity period recommendation | Implementation team (Phase 0) |
 

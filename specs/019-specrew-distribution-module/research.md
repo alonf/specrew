@@ -179,58 +179,44 @@ Define crew-framework-agnostic conflict marker format that Squad coordinator can
 ## R4: Cross-Platform Path Handling Verification
 
 ### Investigation Scope
-Validate `Join-Path` enforcement across all scripts and design WSL verification task.
+Resolve the automation depth for FR-030/FR-031 without collapsing the approved Iteration 001 / Iteration 002 split for cross-platform hardening.
 
 ### Findings
 
-**Path Delimiter Issue**:
-- Windows: `\` (backslash)
-- Linux/macOS: `/` (forward slash)
-- PowerShell `Join-Path`: Automatically uses correct delimiter for current platform
+**Approved Iteration 001 verdict (T003, 2026-05-16)**:
+- **Option A selected**: manual checklist/evidence for Iteration 001
+- **Load-bearing rationale**: preserve the Iteration 001 / Iteration 002 split already captured in commit `12e4cd3` on `main`
+- **Scope guardrail**: Iteration 001 stays Windows-first and must not pull Ubuntu/macOS matrix setup, line-ending validation, case-sensitivity testing, runner setup, or Join-Path audit hardening into this slice
 
-**Audit Strategy**:
-1. **Static Analysis**: Grep for hardcoded path delimiters (`\`, `/`) in string literals
-2. **Enforcement**: Replace all path construction with `Join-Path`
-3. **Verification Task**: Manual WSL test + Ubuntu/macOS test
+**Iteration 001 manual checklist artifact**:
+- `specs/019-specrew-distribution-module/iterations/001/quality/cross-platform-manual-checklist.md`
 
-**WSL Verification Task Design**:
+**Manual checklist deliverables for later execution**:
+1. `Test-ModuleManifest` passes for `Specrew.psd1`
+2. `Import-Module ./Specrew.psd1 -Force` succeeds
+3. Exported function set matches FR-002 (`specrew`, `specrew-init`, `specrew-start`, `specrew-where`, `specrew-review`, `specrew-team`, `specrew-update`)
+4. `specrew help` returns expected catalog
+5. In a fresh empty Windows directory, `specrew init` succeeds and populates `.specify/`, `.squad/`, `.github/`
+6. `specrew start "test feature"` launches a Copilot CLI session with bootstrap prompt loaded
+7. `specrew where` renders the dashboard from installed module path
+8. `specrew update` template-refresh dry-run shows expected diff
+9. Publish-Module workflow validates locally in dry-run/manual gate mode and does not perform a real PSGallery publish
 
-```powershell
-# Test script: tests/wsl-verification.ps1
-# Run in WSL (Windows Subsystem for Linux) to validate cross-platform correctness
+**Explicit Iteration 002 deferred scope**:
+- `.github/workflows/cross-platform-validation.yml` with `ubuntu-latest` matrix
+- macOS testing
+- 104+ embedded-backslash sweep across existing PowerShell scripts
+- WSL Ubuntu end-to-end verification using Copilot CLI
+- README + `docs/getting-started.md` cross-platform claims
+- first real PSGallery publish
 
-# 1. Install module in WSL
-Install-Module Specrew -Scope CurrentUser
+**Compose-with note for T004**:
+- Loader path construction only needs to be Windows-correct in Iteration 001.
+- Iteration 002 expands loader/resource verification to cross-platform edge cases.
 
-# 2. Bootstrap test project
-mkdir ~/specrew-wsl-test
-cd ~/specrew-wsl-test
-specrew init
+### Decision: Windows-First Manual Checklist for Iteration 001
 
-# 3. Verify template paths
-Test-Path .specify/templates/spec-template.md  # Should be $true
-Test-Path .squad/agents/copilot.md             # Should be $true
-Test-Path .github/workflows/specrew-review.yml # Should be $true
-
-# 4. Verify no backslash artifacts in copied files
-rg '\\\\' .specify/ .squad/ .github/  # Should return no matches
-
-# 5. Verify specrew commands work
-specrew where  # Should output project paths with forward slashes
-specrew start  # Should not crash on path resolution
-```
-
-**Verification Checklist**:
-- [ ] `specrew init` succeeds in WSL without errors
-- [ ] All template files copied with correct paths (forward slashes)
-- [ ] `specrew where` outputs paths with forward slashes
-- [ ] `specrew start` does not crash on path resolution
-- [ ] Repeat on Ubuntu VM (native Linux, not WSL)
-- [ ] Repeat on macOS VM (native macOS)
-
-### Decision: `Join-Path` Everywhere + Dedicated WSL Verification Task
-
-**Rationale**: `Join-Path` is the PowerShell-native solution for cross-platform path handling. Dedicated WSL verification task ensures real-world cross-platform correctness beyond unit tests (WSL is a common Windows+Linux hybrid environment where path issues surface).
+**Rationale**: `Join-Path` remains the target implementation pattern, but the approved execution boundary only requires Windows-first proof in Iteration 001. The manual checklist provides a concrete evidence target without pretending the later Ubuntu/macOS/WSL hardening work is already complete.
 
 ---
 
@@ -355,8 +341,8 @@ Write-Host $pfxBase64  # Copy to GitHub Actions secret SIGNING_CERT_BASE64
 2. **T002 — Conflict Resolution**: Git-style `.conflict` sidecar artifacts with next-session Squad mediation
 
 **Research recommendations still awaiting explicit execution-time approval**:
-3. **T003 candidate**: `Join-Path` everywhere + cross-platform verification strategy still needs a human automation-depth decision
-4. **T004 candidate**: Explicit dot-sourcing for transparency and debuggability
+3. **T003 — Cross-Platform Verification Depth**: Iteration 001 uses a Windows-first manual checklist/evidence artifact; the Ubuntu/macOS/WSL matrix and related hardening move to Iteration 002
+4. **T004 candidate**: Explicit dot-sourcing vs. dynamic discovery for `Specrew.psm1` remains unresolved
 5. **T006 candidate**: 5-year validity self-signed certificate stored as GitHub Actions secrets
 
-**Next execution boundary**: Phase 0 continues at T003 (Cross-Platform Test Automation Depth).
+**Next execution boundary**: Phase 0 continues at T004 (Module Loader Structure).
