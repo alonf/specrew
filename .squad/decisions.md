@@ -1,3 +1,146 @@
+# Decision: Feature 019 Before-Implement Quality Gate
+
+**Date**: 2026-05-16  
+**Boundary**: /speckit.specrew-speckit.before-implement  
+**Feature**: 019-specrew-distribution-module (Specrew Distribution Module via PowerShell Gallery)  
+**Authority**: Alon Fliess (user authorization)  
+**Decision Type**: Quality-gate boundary with hardening-gate readiness verdict
+
+## Runtime Evidence
+
+Executed before-implement quality gate for Feature 019 Specrew Distribution Module. Applied 6 required quality lenses to spec.md, plan.md, and tasks.md artifacts.
+
+**Artifacts Evaluated**:
+- Spec: C:\Dev\Specrew\specs\019-specrew-distribution-module\spec.md (5 User Stories, 32 Functional Requirements)
+- Plan: C:\Dev\Specrew\specs\019-specrew-distribution-module\plan.md (5-pillar architecture, 14 SP estimate)
+- Tasks: C:\Dev\Specrew\specs\019-specrew-distribution-module\tasks.md (39 tasks across 6 phases)
+- Supporting artifacts: research.md, data-model.md, quickstart.md, contracts/Specrew.psd1.contract.md
+
+## Quality Lens Verdicts
+
+### Lens 1: Constitution Alignment — ✅ PASS
+- Principle I (Spec Is Authoritative): Plan tracks back to approved spec FRs; no ad-hoc scope detected
+- Principle II (Layered System): All changes are Spec Kit layer (module packaging, scripts); no Squad layer violations
+- Principle IX (Mandatory Traceability): All 39 tasks have explicit FR/US traceability; tasks.md Traceability Map complete
+- Principle XIII (Spec Stewardship): Alon Fliess explicitly named as Spec Steward
+- Principle XIV (Iteration Facilitation): Alon Fliess explicitly named as Iteration Facilitator
+- Principle XVII (Planning Starts From Approved Specs): All tasks derived from spec FRs; no ad-hoc prompts
+- Principle XXI (Verification Is Mandatory): Phase 1 quality gates defined; user story acceptance scenarios planned
+
+### Lens 2: Traceability Completeness — ✅ PASS
+- All 5 User Stories map to specific FRs with bidirectional traceability
+- All 32 Functional Requirements have task coverage across 6 phases (Phase 0-5, Final Validation)
+- All 39 tasks include explicit FR/US trace annotations in parenthetical (Trace: ...) format
+- Explicit dependency tracking: T001-T006 block Pillars 1-5; Pillar 3 blocks Pillar 4; all blocks documented
+- No orphaned tasks: All tasks trace to US1-US5 via FR-001 through FR-032
+- Success criteria SC-001 through SC-006 map to specific user stories and validation tasks T050-T056
+
+### Lens 3: Cross-Platform Coverage — ✅ PASS
+- FR-030 mandates Join-Path for all path construction; WSL verification task explicitly planned
+- FR-031 requires testing on Windows, Linux (Ubuntu), and macOS before every release
+- FR-032 mandates PSEdition = Core to enforce PowerShell 7+ cross-platform requirement
+- T003 design-question task explicitly addresses cross-platform test automation depth (manual vs automated)
+- T040 implements cross-platform verification per T003 decision; T041 provides Join-Path audit script
+- T054 validates US5 Cross-Platform Consistency scenarios on Linux, macOS, and PS 5.1 rejection
+- US5 includes specific acceptance scenarios for forward-slash paths on Linux, macOS path display, and PS 5.1 install failure
+
+### Lens 4: Test Strategy Coverage — ✅ PASS
+- Pillar 1 (Module Packaging): T009 validates manifest with Test-ModuleManifest; manual test checklist planned
+- Pillar 2 (Resource Bundling): T014 validates exclusions and size estimate; directory structure verification planned
+- Pillar 3 (Init Refactor): T019 implements bootstrap validation; integration test for module-path init planned
+- Pillar 4 (Update Story): Conflict-resolution test scenario with two module versions; conflict marker verification planned
+- Pillar 5 (Publishing Workflow): GitHub Actions workflow validation, test tag dry-run, PSGallery verification planned
+- Phase 6 (Final Validation): Explicit test tasks for all 5 user stories (T050-T054) with evidence collection
+- T055 validates all 6 success criteria with measurements; T056 finalizes quickstart guide based on test evidence
+- Plan Phase 1 Quality Planning documents 6 required quality gates with evidence sources and status
+
+### Lens 5: Validator Integration Sketch — ✅ PASS
+- Plan defines drift detection via Specrew-Speckit validators during /speckit.implement boundary
+- Drift-detection mechanism includes: (1) Specrew-Speckit validators, (2) integration test failures, (3) manual PSGallery publish log review
+- Validators will check spec-to-task traceability on every task completion during implementation
+- Spec defines Human Oversight Points for clarify-time decisions, planning approval, pre-release manual test, and post-release verification
+- Plan Phase 2 Quality Planning explicitly defers hardening gate and specialist review; rationale documented (distribution infrastructure focus)
+
+### Lens 6: Security Baseline — ✅ PASS
+- FR-028 mandates PSGallery API key stored as GitHub Actions secret (name: PSGALLERY_API_KEY)
+- FR-025 mandates self-signed certificate stored as GitHub Actions secret; T038 implements signing step
+- T042 explicitly plans GitHub Actions secrets configuration (PSGALLERY_API_KEY, SIGNING_CERT_BASE64, SIGNING_CERT_PASSWORD)
+- T005 documents PSGallery API key rotation procedure for maintainer reference (non-blocking for v1)
+- T006 resolves self-signed certificate validity period with security vs maintenance trade-off analysis
+- Data model includes PSGallery API Key entity with expiration tracking and Signing Certificate entity with validity period
+- Plan Phase 1 Quality Planning identifies credential management as required risk dimension; GitHub Actions secrets best practices cover Phase 1
+
+## Artifact Polishing Applied
+
+**T002 (Conflict-Marker Format)**:
+- Added explicit options: (A) Git-style, (B) Custom, (C) Structured comments
+- Added implications: Squad coordinator parser dependency, T031 implementation impact
+- Rationale: Ensures design-question task has clear options and implications for human decision-making
+
+**T005 (API-Key Rotation Guidance)**:
+- Added explicit non-blocking statement: "This is a documentation-only task that does not block any implementation work"
+- Clarified parallel execution capability with Pillars 1-5 or post-v1 deferral option
+- Rationale: Removes ambiguity about blocking behavior for design-question task
+
+## T001-T006 Design-Question Task Validation
+
+All 6 design-question tasks (Phase 0) properly framed:
+
+| Task | Blocking Behavior | Options Listed | Implications Documented | Status |
+|------|-------------------|----------------|------------------------|--------|
+| T001 | ✅ Blocks T007, T010-T014 | ✅ Explicit FileList vs automatic | ✅ Maintenance vs safety trade-off | READY |
+| T002 | ✅ Blocks T030-T033 | ✅ Git-style vs Custom vs Structured | ✅ Parser dependency, impl impact | READY |
+| T003 | ✅ Blocks T040, T041 | ✅ Manual checklist vs GitHub Actions matrix | ✅ Setup speed vs robustness, CI/CD complexity | READY |
+| T004 | ✅ Blocks T008 | ✅ Explicit dot-sourcing vs dynamic discovery | ✅ Transparency vs automation, debuggability | READY |
+| T005 | ✅ Non-blocking (doc-only) | ✅ Frequency recommendations (rotation strategy) | ✅ Maintainer reference, not blocking v1 | READY |
+| T006 | ✅ Blocks T038 | ✅ 1-year vs 5-year vs 10-year validity | ✅ Maintenance burden vs security risk window | READY |
+
+**Validation Result**: All design-question tasks are properly scoped with clear options, implications, and blocking behavior. Ready for human decision-making during Phase 0 execution.
+
+## Hardening-Gate Readiness Verdict
+
+**Overall Verdict**: ✅ **READY** (with deferral)
+
+**Rationale**: 
+- Feature 019 focuses on distribution infrastructure (module packaging, install/update mechanics, CI/CD automation) rather than runtime business logic or security-sensitive data processing
+- Plan Phase 2 Hardening and Specialist Review Planning explicitly documents deferral rationale: "This feature focuses on distribution infrastructure... rather than runtime business logic or security-sensitive data processing. Hardening focus will return in future features that introduce complex state machines, external integrations, or user-data handling."
+- Phase 1 quality gates are sufficient for v1: manual cross-platform verification, integration test scenarios, PSGallery test-gallery dry-run, GitHub Actions workflow validation
+- Security surface analysis covered by Phase 1 credential-management gate (GitHub Actions secrets best practices)
+- Error handling and idempotency covered by Phase 1 acceptance scenarios (US2 idempotency, US3 conflict resolution)
+- No complex retry logic, concurrency, or state machines requiring dedicated hardening
+
+**Hardening Gate Artifact**: Not created (deferred per plan)  
+**Next Valid Human Action**: Await explicit authorization for hardening-gate-and-implementation-auth boundary before starting implementation
+
+## Blockers Surfaced
+
+**None**. All quality lenses returned PASS verdict. No blockers detected.
+
+## Confirmation of Scope Boundaries
+
+**In Scope** (completed at this boundary):
+- ✅ Applied 6 pre-implementation quality lenses to spec.md, plan.md, tasks.md
+- ✅ Evaluated hardening-gate readiness and produced explicit READY recommendation
+- ✅ Performed necessary artifact polishing (T002 options/implications, T005 non-blocking clarification)
+- ✅ Validated T001-T006 design-question tasks have proper framing (blocking behavior, options, implications)
+- ✅ Updated .squad/identity/now.md with before-implement completion and recommendation
+- ✅ Appended dated decisions.md entry with runtime evidence and lens verdicts
+
+**Out of Scope** (explicitly not started):
+- ❌ Hardening-gate-and-implementation-auth boundary (not authorized)
+- ❌ Implementation work (no code changes to scripts/ or extensions/)
+- ❌ Validator additions (no changes to specrew-speckit extension)
+- ❌ Resolution of T001-T006 design questions (human decision tasks; preserved as-is)
+
+## Impact
+
+Feature 019 before-implement quality gate passed with READY verdict. All 6 quality lenses confirmed artifacts are execution-ready. Minor polishing improved clarity of T002 and T005 design-question tasks. Feature is ready for hardening-gate-and-implementation-auth boundary when human authorization is provided.
+
+## Next Action
+
+**Do not advance to hardening-gate-and-implementation-auth or implementation**. Boundary commit will be created and pushed to origin/019-specrew-distribution-module. Await explicit human authorization before advancing to the next boundary.
+
+
 # Decision: Feature 015 Review-Boundary Commit
 
 **Date**: 2026-05-13  

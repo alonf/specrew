@@ -22,7 +22,7 @@
   **Blocks**: T007, T010, T011, T012, T013, T014  
   **Downstream Impact**: Pillar 1 Module Packaging implementation depends on FileList structure decision
 
-- [ ] T002 [assigned_to: Implementation Team] [effort: S] **Resolve Conflict-Marker Format** — Choose conflict marker format (Git-style vs custom vs structured) for specrew update; document in data-model.md Template Conflict entity (Trace: plan.md Plan-Time Design Question 2, FR-021)  
+- [ ] T002 [assigned_to: Implementation Team] [effort: S] **Resolve Conflict-Marker Format** — Choose conflict marker format (Git-style vs custom vs structured) for specrew update; document in data-model.md Template Conflict entity. **Options**: (A) Git-style (`<<<<<<<`, `=======`, `>>>>>>>`): familiar to developers but may break non-text files; (B) Custom (`<<<< USER`, `==== MODULE-v0.22`, `>>>> END`): clearer labels but requires parser updates; (C) Structured comments: language-aware but complex. **Implications**: Squad coordinator must be able to parse markers for crew-mediated resolution; choice affects T031 conflict-handling implementation. (Trace: plan.md Plan-Time Design Question 2, FR-021)  
   **Blocks**: T030, T031, T032, T033  
   **Downstream Impact**: Pillar 4 Update Story conflict-resolution implementation depends on marker format decision
 
@@ -34,7 +34,7 @@
   **Blocks**: T008  
   **Downstream Impact**: Pillar 1 Module Packaging Specrew.psm1 implementation depends on loader structure decision
 
-- [ ] T005 [assigned_to: Alon Fliess] [effort: S] **Document API-Key Rotation Guidance** — Document PSGallery API key rotation procedure in docs/maintainer-runbook.md including frequency recommendation, rotation steps, and secret update protocol (Trace: plan.md Plan-Time Design Question 5, data-model.md PSGallery API Key entity)  
+- [ ] T005 [assigned_to: Alon Fliess] [effort: S] **Document API-Key Rotation Guidance** — Document PSGallery API key rotation procedure in docs/maintainer-runbook.md including frequency recommendation, rotation steps, and secret update protocol. **Non-blocking**: This is a documentation-only task that does not block any implementation work; can be completed in parallel with Pillars 1-5 or deferred until post-v1 if time-constrained. (Trace: plan.md Plan-Time Design Question 5, data-model.md PSGallery API Key entity)  
   **Blocks**: None (documentation task; does not block implementation)  
   **Downstream Impact**: Maintainer reference for future key rotation; not blocking for v1
 
