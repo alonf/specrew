@@ -1175,14 +1175,17 @@ function Format-SpecrewDashboardProgressBar {
         [decimal]$Current,
         [decimal]$Total,
         [int]$Width = 16,
+        [string]$OverflowMarker = ' ',
         [Parameter(Mandatory = $true)][object]$RenderProfile
     )
 
     $palette = Get-SpecrewDashboardGlyphPalette -RenderProfile $RenderProfile
     $safeWidth = [math]::Max(1, $Width)
-    $percent = if ($Total -gt 0) { [math]::Min(100, [math]::Round(($Current / $Total) * 100)) } else { 0 }
-    $filled = [math]::Min($safeWidth, [int][math]::Round(($percent / 100) * $safeWidth))
-    return ('[{0}{1}] {2,3}%' -f ($palette.ProgressFill * $filled), ($palette.ProgressEmpty * ($safeWidth - $filled)), $percent)
+    $percent = if ($Total -gt 0) { [math]::Round(($Current / $Total) * 100) } else { 0 }
+    $ratio = if ($Total -gt 0) { $Current / $Total } else { 0 }
+    $filled = [math]::Min($safeWidth, [int][math]::Round($ratio * $safeWidth))
+    $safeOverflowMarker = if ([string]::IsNullOrEmpty($OverflowMarker)) { ' ' } else { $OverflowMarker.Substring(0, 1) }
+    return ('[{0}{1}]{2} {3,3}%' -f ($palette.ProgressFill * $filled), ($palette.ProgressEmpty * ($safeWidth - $filled)), $safeOverflowMarker, $percent)
 }
 
 function Format-SpecrewDashboardBarRow {
@@ -1912,7 +1915,13 @@ function ConvertTo-SpecrewDashboardLines {
         foreach ($phase in $Snapshot.roadmap_progress) {
             $marker = if ($null -ne $Snapshot.active_phase -and $Snapshot.active_phase.phase_id -eq $phase.phase_id) { $palette.ActiveMarker } elseif ($phase.effective_status -eq 'shipped') { $palette.ShippedMarker } else { $palette.QueuedMarker }
             $phaseLabel = if ($null -ne $Snapshot.active_phase -and $Snapshot.active_phase.phase_id -eq $phase.phase_id) { "$($phase.name) (current)" } else { $phase.name }
-            $bar = Format-SpecrewDashboardProgressBar -Current $phase.derived_shipped_effort_sp -Total $phase.planned_effort_sp -Width 16 -RenderProfile $Snapshot.render_profile
+            $overflowMarker = if ($phase.effective_status -eq 'drifted-over') {
+                if ($Snapshot.render_profile.rendering_mode -eq 'rich') { '▶' } else { '>' }
+            }
+            else {
+                ' '
+            }
+            $bar = Format-SpecrewDashboardProgressBar -Current $phase.derived_shipped_effort_sp -Total $phase.planned_effort_sp -Width 16 -OverflowMarker $overflowMarker -RenderProfile $Snapshot.render_profile
             $spPair = '{0:0.#}/{1:0.#} SP' -f $phase.derived_shipped_effort_sp, $phase.planned_effort_sp
             $descriptionPrefix = '  ' + (' ' * $bar.Length) + ' ' + (' ' * $roadmapSpWidth) + ' ' + (' ' * $roadmapStatusWidth) + ' '
             $lines.Add(('{0} {1} {2,-12} {3,-12} {4}' -f $marker, $bar, $spPair, $phase.effective_status, $phaseLabel)) | Out-Null

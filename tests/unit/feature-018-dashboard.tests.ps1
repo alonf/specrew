@@ -109,6 +109,9 @@ Assert-True -Condition ([string]::IsNullOrWhiteSpace([string]$redirectedWindowsP
 $richSnapshot = Get-SpecrewDashboardSnapshot -ProjectRoot $fixtureRoot -CapabilityOverrides $richOverride
 $richLines = @(ConvertTo-SpecrewDashboardLines -Snapshot $richSnapshot)
 $richText = $richLines -join "`n"
+$monoSnapshot = Get-SpecrewDashboardSnapshot -ProjectRoot $fixtureRoot -Ascii -CapabilityOverrides $richOverride
+$monoLines = @(ConvertTo-SpecrewDashboardLines -Snapshot $monoSnapshot)
+$monoText = $monoLines -join "`n"
 
 Assert-True -Condition ($richText -match 'Today: \d{4}-\d{2}-\d{2}') -Message 'Header should include the Today anchor.'
 Assert-True -Condition ($richText -match 'Captured: \d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z') -Message 'Header should include the captured timestamp.'
@@ -124,10 +127,12 @@ $recentBarStartIndexes = @($recentShippedLines | ForEach-Object { [regex]::Match
 Assert-True -Condition ($recentBarStartIndexes.Count -eq 1) -Message 'Recent Shipped bars should align to a fixed column.'
 
 $roadmapLines = @(Get-SectionLines -Lines $richLines -Header 'ROADMAP')
-$roadmapSummaryLines = @($roadmapLines | Where-Object { $_ -match '^[✓○◐] \[[█░]{16}\]\s+\d{1,3}%\s+.{1,12}\s+(?:shipped|queued|in-progress|drifted-over)\s+.+' })
+$roadmapSummaryLines = @($roadmapLines | Where-Object { $_ -match '^[✓○◐] \[[█░]{16}\][▶ ]\s+\d{1,4}%\s+.{1,12}\s+(?:shipped|queued|in-progress|drifted-over)\s+.+' })
 Assert-True -Condition ($roadmapSummaryLines.Count -eq 3) -Message 'Roadmap summary rows should render aligned fixed-width bar, SP, and status columns.'
-$roadmapBarStartIndexes = @($roadmapSummaryLines | ForEach-Object { [regex]::Match($_, '\[[█░]{16}\]\s+\d{1,3}%').Index } | Select-Object -Unique)
+$roadmapBarStartIndexes = @($roadmapSummaryLines | ForEach-Object { [regex]::Match($_, '\[[█░]{16}\][▶ ]\s+\d{1,4}%').Index } | Select-Object -Unique)
 Assert-True -Condition ($roadmapBarStartIndexes.Count -eq 1) -Message 'Roadmap bars should align to a fixed early column.'
+$roadmapSpStartIndexes = @($roadmapSummaryLines | ForEach-Object { [regex]::Match($_, '\d+(?:\.\d+)?/\d+(?:\.\d+)? SP').Index } | Select-Object -Unique)
+Assert-True -Condition ($roadmapSpStartIndexes.Count -eq 1) -Message 'Roadmap SP columns should stay aligned even when phase percentages exceed 100%.'
 for ($index = 0; $index -lt $roadmapSummaryLines.Count; $index++) {
     $summaryLine = $roadmapSummaryLines[$index]
     $detailLine = $roadmapLines[($index * 2) + 1]
@@ -135,6 +140,20 @@ for ($index = 0; $index -lt $roadmapSummaryLines.Count; $index++) {
     $detailStart = [regex]::Match($detailLine, '\S').Index
     Assert-True -Condition ($detailStart -eq $phaseStart) -Message 'Roadmap descriptions should align with the phase-name column.'
 }
+
+$richRoadmapDriftedLine = @($roadmapSummaryLines | Where-Object { $_ -match 'drifted-over' } | Select-Object -First 1)
+Assert-True -Condition ($richRoadmapDriftedLine.Count -eq 1) -Message 'Rich roadmap output should include the drifted-over phase summary.'
+Assert-True -Condition ($richRoadmapDriftedLine[0] -match '\[[█░]{16}\]▶\s+127%') -Message 'Drifted roadmap phases should render the rich overflow marker and uncapped percentage.'
+Assert-True -Condition ($richRoadmapDriftedLine[0] -match '57/45 SP') -Message 'Drifted roadmap phases should preserve the shipped-versus-planned SP pair.'
+Assert-True -Condition ((@($roadmapSummaryLines | Where-Object { $_ -notmatch 'drifted-over' -and $_ -match '\[[█░]{16}\] \s+\d{1,4}%' })).Count -eq 2) -Message 'Non-drifted roadmap phases should render a blank overflow slot.'
+
+$monoRoadmapLines = @(Get-SectionLines -Lines $monoLines -Header 'ROADMAP')
+$monoRoadmapSummaryLines = @($monoRoadmapLines | Where-Object { $_ -match '^\[(?:x| |~)\] \[[#\.]{16}\][> ]\s+\d{1,4}%\s+.{1,12}\s+(?:shipped|queued|in-progress|drifted-over)\s+.+' })
+$monoRoadmapDriftedLine = @($monoRoadmapSummaryLines | Where-Object { $_ -match 'drifted-over' } | Select-Object -First 1)
+Assert-True -Condition ($monoRoadmapDriftedLine.Count -eq 1) -Message 'Monochrome roadmap output should include the drifted-over phase summary.'
+Assert-True -Condition ($monoRoadmapDriftedLine[0] -match '\[[#\.]{16}\]>\s+127%') -Message 'Drifted roadmap phases should render the monochrome overflow marker and uncapped percentage.'
+Assert-True -Condition ((@($monoRoadmapSummaryLines | Where-Object { $_ -notmatch 'drifted-over' -and $_ -match '\[[#\.]{16}\] \s+\d{1,4}%' })).Count -eq 2) -Message 'Monochrome non-drifted roadmap phases should render a blank overflow slot.'
+Assert-True -Condition ($monoText -notmatch '▶') -Message 'Monochrome fallback should not emit the rich overflow marker.'
 
 $overrideSnapshot = Get-SpecrewDashboardSnapshot -ProjectRoot $fixtureRoot -RecentCount 4 -BarWidth 20 -CapabilityOverrides $richOverride
 Assert-True -Condition ($overrideSnapshot.recent_shipped.Count -eq 4) -Message '--RecentCount should limit the Recent Shipped section.'

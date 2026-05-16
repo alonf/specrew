@@ -38,12 +38,12 @@ feature-013.iter-001     8 SP #######.........
 feature-012.iter-001     8 SP #######.........
 
 ROADMAP
-[x] [################] 100% 16/16 SP     shipped      Foundations
-                                                    Foundational governance and shared tooling are complete.
-[ ] [################] 100% 57/45 SP     drifted-over Delivery
-                                                    Console delivery visibility and closeout reliability are already established.
-[~] [................]   0% 0/30 SP      in-progress  Richness (current)
-                                                    Restore rich dashboard density while preserving truthful fallback semantics a...
+[x] [################]  100% 16/16 SP     shipped      Foundations
+                                                     Foundational governance and shared tooling are complete.
+[ ] [################]> 127% 57/45 SP     drifted-over Delivery
+                                                     Console delivery visibility and closeout reliability are already established.
+[~] [................]    0% 0/30 SP      in-progress  Richness (current)
+                                                     Restore rich dashboard density while preserving truthful fallback semantics a...
 
 PROJECTION
 Active feature remaining: 14 SP | ETA: 4 calendar day(s) | confidence moderate
