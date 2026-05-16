@@ -1,7 +1,12 @@
 {
   "default": true,
   "MD013": false,
+  "MD022": false,
+  "MD024": false,
+  "MD025": { "front_matter_title": "" },
   "MD031": false,
   "MD032": false,
-  "MD040": false
+  "MD036": false,
+  "MD040": false,
+  "MD060": false
 }
