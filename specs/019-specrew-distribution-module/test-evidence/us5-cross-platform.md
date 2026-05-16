@@ -229,12 +229,25 @@ The automated WSL verification script requires `sudo` to install PowerShell 7 in
    - **Fix Applied**: Pre-flight check (R-019-V2-R3) now provides platform-specific install hints for all JIT error paths
    - **Verification**: Covered by R-019-V2-R3 pre-flight check implementation
 
+6. **R-019-V2-R6**: `specrew start` bash shim breaks quoted bootstrap input on Linux/macOS
+   - **Bug**: The non-Windows `bash -c` launcher embedded a raw joined argument string, so bootstrap content containing quotes caused `/usr/bin/bash: -c: line 1: unexpected EOF while looking for matching '\''`
+   - **File**: `scripts/specrew-start.ps1` line 2481
+   - **Fix Applied**: Replaced inline string interpolation with positional argument dispatch (`bash -c ... bash <project> <copilot> <args...>`) so bash receives each argument without reparsing quoted prompt content
+   - **Verification**: PowerShell syntax validated and Windows regression test re-run; WSL re-verification is still pending-human-execution
+
 ### Repair Evidence
 
 - **Commit**: e559d65
 - **Files Changed**: `scripts/specrew-start.ps1`, `scripts/internal/dashboard-renderer.ps1`, `scripts/specrew-init.ps1`
 - **Windows Validation**: All fixes tested on Windows 11; no regression in existing behavior
 - **Linux/macOS Validation**: Code paths repaired and verified structurally; human will re-test in WSL Ubuntu
+
+### Follow-up Repair Evidence (R-019-V2-R6)
+
+- **Status**: Completed on Windows; WSL re-verification pending-human-execution
+- **Files Changed**: `scripts/specrew-start.ps1`, `specs/019-specrew-distribution-module/test-evidence/us5-cross-platform.md`
+- **Windows Validation**: `tests/integration/start-command.ps1` passed after the quoting fix
+- **Linux/macOS Validation**: Launcher now uses positional bash arguments; human WSL Ubuntu re-test still pending
 
 ### Known Traps Added
 

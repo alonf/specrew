@@ -2478,7 +2478,8 @@ $args += @('--add-dir', '{0}', '-i', $bootstrapInput)
     try {
         if ($IsLinux -or $IsMacOS) {
             # Linux/macOS: preserve TTY to avoid Copilot CLI falling back to non-interactive mode
-            bash -c "cd '$($ResolvedProjectPath -replace "'", "'\''")' && '$($copilotCommand.Source -replace "'", "'\''")' $($copilotArgs -join ' ')"
+            $bashScript = 'cd "$1" && shift && "$@"'
+            bash -c $bashScript bash $ResolvedProjectPath $copilotCommand.Source @copilotArgs
         }
         else {
             & $copilotCommand.Source @copilotArgs
