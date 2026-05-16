@@ -185,4 +185,62 @@ The automated WSL verification script requires `sudo` to install PowerShell 7 in
 ---
 
 **Recorded**: 2026-05-17T03:00:00Z  
-**Updated**: 2026-05-17T03:00:00Z
+**Updated**: 2026-05-17 (Iteration 002 repair cycle)
+
+---
+
+## Iteration 002 Repair Cycle (R-019-V2)
+
+**Date**: 2026-05-17  
+**Authority**: Spec Steward (reviewer-regression repair authorized)  
+**Context**: Human-performed WSL Ubuntu manual verification discovered five cross-platform bugs after Iteration 002 /review-verdict-signoff was initially accepted.
+
+### Bugs Discovered in Human WSL Testing
+
+1. **R-019-V2-R1**: `specrew start` launch-dispatcher fails on Linux/macOS
+   - **Bug**: Non-Windows branch invokes Copilot CLI without preserving TTY; Copilot falls back to non-interactive one-shot mode and exits immediately
+   - **File**: `scripts/specrew-start.ps1` line 2479
+   - **Fix Applied**: Wrapped non-Windows Copilot launch in TTY-preserving `bash -c` shim
+   - **Verification**: Windows behavior validated; Linux path repaired in code (human will re-test in WSL)
+
+2. **R-019-V2-R2**: `specrew where` crashes on freshly-initialized empty-state project
+   - **Bug**: `Get-SpecrewRoadmapProgress` parameter `$FeatureRecords` marked `Mandatory=$true` rejects empty arrays; fresh init project crashes instead of showing empty-state dashboard
+   - **File**: `scripts/internal/dashboard-renderer.ps1` line 882
+   - **Fix Applied**: Added `[AllowEmptyCollection()]` attribute to `$FeatureRecords` parameter
+   - **Verification**: Tested on Windows fresh init / empty project path
+
+3. **R-019-V2-R3**: Dependency pre-flight check missing (UX gap)
+   - **Bug**: `specrew init` performs JIT dependency checks during execution; missing dependencies reported one at a time instead of all at once
+   - **File**: `scripts/specrew-init.ps1` (new function added after line 60)
+   - **Fix Applied**: Added comprehensive pre-flight check (`Test-PreFlightDependencies`) before main execution; reports all missing/outdated dependencies at once with platform-aware remediation hints
+   - **Required Dependencies**: PowerShell 7+, uv, Node.js 24+, npm 10+, git 2.30+
+   - **Recommended/warn-only**: gh CLI
+   - **Verification**: Tested on Windows
+
+4. **R-019-V2-R4**: Init success message has Windows-only PATH instructions
+   - **Bug**: `Write-PostBootstrapGuidance` displays Windows-specific `$env:PATH` and `[Environment]::SetEnvironmentVariable` instructions on all platforms
+   - **File**: `scripts/specrew-init.ps1` lines 268-348
+   - **Fix Applied**: Added platform detection and conditional messaging; module-default messaging for module installs; Linux/macOS shows shell profile instructions
+   - **Verification**: Tested Windows path; Linux/macOS branches verified in code
+
+5. **R-019-V2-R5**: Actionable install hints missing in JIT dependency errors
+   - **Bug**: JIT missing-tool errors (line 1889 and similar paths) lacked platform-specific install guidance
+   - **File**: `scripts/specrew-init.ps1` existing error paths
+   - **Fix Applied**: Pre-flight check (R-019-V2-R3) now provides platform-specific install hints for all JIT error paths
+   - **Verification**: Covered by R-019-V2-R3 pre-flight check implementation
+
+### Repair Evidence
+
+- **Commit**: e559d65
+- **Files Changed**: `scripts/specrew-start.ps1`, `scripts/internal/dashboard-renderer.ps1`, `scripts/specrew-init.ps1`
+- **Windows Validation**: All fixes tested on Windows 11; no regression in existing behavior
+- **Linux/macOS Validation**: Code paths repaired and verified structurally; human will re-test in WSL Ubuntu
+
+### Known Traps Added
+
+Three corpus rows added to `.specrew/quality/known-traps.md`:
+1. **dashboard-empty-state-not-handled**: Dashboard functions must handle empty feature collections gracefully
+2. **test-on-fresh-project-state**: Always test commands against freshly-initialized empty-state projects
+3. **form-vs-meaning-recurrence**: Platform-aware messaging must check execution context (Windows vs Linux/macOS, clone-repo vs module) before displaying instructions
+
+---
