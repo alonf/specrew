@@ -2476,14 +2476,7 @@ $args += @('--add-dir', '{0}', '-i', $bootstrapInput)
 
     Push-Location -LiteralPath $ResolvedProjectPath
     try {
-        if ($IsLinux -or $IsMacOS) {
-            # Linux/macOS: preserve TTY to avoid Copilot CLI falling back to non-interactive mode
-            $bashScript = 'cd "$1" && shift && "$@"'
-            bash -c $bashScript bash $ResolvedProjectPath $copilotCommand.Source @copilotArgs
-        }
-        else {
-            & $copilotCommand.Source @copilotArgs
-        }
+        & $copilotCommand.Source @copilotArgs
         return $true
     }
     finally {

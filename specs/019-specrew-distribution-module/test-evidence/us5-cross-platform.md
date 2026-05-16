@@ -271,6 +271,15 @@ The automated WSL verification script requires `sudo` to install PowerShell 7 in
 - **Windows Validation**: `pwsh -NoProfile -File tests/integration/distribution-module-init.ps1` now exercises the exported `specrew-init` proxy, verifies module-mode guidance, and fails if the env var leaks after the call
 - **Linux/macOS Validation**: The inherited-marker repair is in place; human WSL Ubuntu re-test remains pending
 
+### Follow-up Repair Evidence (R-019-V2-R9)
+
+- **Status**: Completed on Windows; WSL re-verification pending-human-execution
+- **Files Changed**: `scripts/specrew-start.ps1`, `specs/019-specrew-distribution-module/test-evidence/us5-cross-platform.md`
+- **R1 Reversal**: The R-019-V2-R1 TTY hypothesis was wrong. WSL diagnostic evidence confirmed direct native Copilot CLI invocation works on Linux both with and without `-i`, while the `bash -c` wrapper introduced by R1 is the regression that hangs with no output.
+- **Fix Applied**: Removed the Linux/macOS-specific `bash -c` launcher and restored the unified direct invocation path: `& $copilotCommand.Source @copilotArgs` after `Push-Location`.
+- **Windows Validation**: `pwsh -NoProfile -File tests/integration/start-command.ps1` re-run after the reversal
+- **Linux/macOS Validation**: Native invocation has been restored; human WSL Ubuntu re-test remains pending
+
 ### Known Traps Added
 
 Three corpus rows added to `.specrew/quality/known-traps.md`:
