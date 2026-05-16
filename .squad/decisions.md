@@ -3749,6 +3749,7 @@ sequencing inputs, and leaves feature-closeout explicitly unopened.
 - **Boundary**: feature-closeout
 - **Approving Human**: Alon Fliess
 - **Recorded At**: 2026-05-16T09:40:32Z
-- **Commit Reference**: pending
+- **Commit Reference**: 35ff51577e7a54551e9133e4fef8cb4261fa444b
+- **Boundary Note**: This hash is the canonical Feature 018 feature-closeout boundary commit.
 - **Authorization Text**:
   > AUTHORIZE feature-closeout for Feature 018 Velocity Dashboard Visual Richness + PoC-Parity Restoration. Rule 15 fires.
