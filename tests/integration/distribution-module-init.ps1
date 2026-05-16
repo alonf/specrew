@@ -94,16 +94,16 @@ function Invoke-ModuleBootstrap {
         [switch]$ForceBootstrap
     )
 
-    $moduleRoot = Split-Path -Parent $ModuleManifestPath
-    $moduleScriptPath = Join-Path -Path $moduleRoot -ChildPath 'scripts\specrew-init.ps1'
     $escapedManifest = $ModuleManifestPath.Replace("'", "''")
-    $escapedScriptPath = $moduleScriptPath.Replace("'", "''")
     $escapedProject = $ProjectPath.Replace("'", "''")
     $forceClause = if ($ForceBootstrap) { ' -Force' } else { '' }
     $command = @"
 `$ErrorActionPreference = 'Stop'
 Import-Module '$escapedManifest' -Force
-& '$escapedScriptPath' -ProjectPath '$escapedProject'$forceClause
+specrew-init -ProjectPath '$escapedProject'$forceClause
+if (Test-Path -LiteralPath 'env:SPECREW_INVOKED_FROM_MODULE') {
+    throw 'Module proxy leaked SPECREW_INVOKED_FROM_MODULE into the caller session.'
+}
 "@
 
     $output = @(& pwsh -NoProfile -ExecutionPolicy Bypass -Command $command 2>&1)
@@ -202,6 +202,7 @@ foreach ($trackedFile in $trackedFiles) {
 }
 
 Write-Pass 'Module bootstrap copied bundled templates and preserved per-project artifacts.'
+Write-Pass 'Module proxy preserved module mode and cleared SPECREW_INVOKED_FROM_MODULE after execution.'
 
 $secondRun = Invoke-ModuleBootstrap -ModuleManifestPath $moduleManifestPath -ProjectPath $projectRoot
 if ($secondRun.ExitCode -ne 0) {

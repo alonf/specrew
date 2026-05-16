@@ -235,6 +235,12 @@ The automated WSL verification script requires `sudo` to install PowerShell 7 in
    - **Fix Applied**: Replaced inline string interpolation with positional argument dispatch (`bash -c ... bash <project> <copilot> <args...>`) so bash receives each argument without reparsing quoted prompt content
    - **Verification**: PowerShell syntax validated and Windows regression test re-run; WSL re-verification is still pending-human-execution
 
+7. **R-019-V2-R8**: `specrew-init` module-mode heuristic fails through the module proxy
+   - **Bug**: `Get-SpecrewExecutionLayout` checked `Get-Module -Name Specrew` inside a fresh child `pwsh`, but `Specrew.psm1` launches child scripts in a new process so the loaded module state does not flow into the child session
+   - **Files**: `Specrew.psm1`, `scripts/specrew-init.ps1`
+   - **Fix Applied**: `Invoke-SpecrewScript` now sets `SPECREW_INVOKED_FROM_MODULE=1` immediately before launching the child `pwsh`, clears it in a `finally` block afterward, and `Get-SpecrewExecutionLayout` now keys module-mode detection off that inherited environment variable
+   - **Verification**: Windows integration regression updated to invoke exported `specrew-init` through the module proxy, confirm module-mode guidance still appears, and assert the env var is cleared after the call
+
 ### Repair Evidence
 
 - **Commit**: e559d65
@@ -256,6 +262,14 @@ The automated WSL verification script requires `sudo` to install PowerShell 7 in
 - **Heuristic Change**: `Get-SpecrewExecutionLayout` now detects module mode from `Get-Module -Name Specrew` instead of repo metadata, so `Import-Module Specrew.psd1` keeps module-mode guidance even when the loaded module lives inside a cloned checkout containing `.git`
 - **Windows Validation**: `pwsh -NoProfile -File tests/integration/distribution-module-init.ps1` adds a `.git` directory to the packaged module scratch root and confirms module-mode guidance is still emitted
 - **Linux/macOS Validation**: Targeted heuristic repair landed; human WSL Ubuntu re-test remains pending
+
+### Follow-up Repair Evidence (R-019-V2-R8)
+
+- **Status**: Completed on Windows; WSL re-verification pending-human-execution
+- **Files Changed**: `Specrew.psm1`, `scripts/specrew-init.ps1`, `tests/integration/distribution-module-init.ps1`, `specs/019-specrew-distribution-module/test-evidence/us5-cross-platform.md`
+- **Mechanism Change**: Module proxy launches now mark child `pwsh` sessions with `SPECREW_INVOKED_FROM_MODULE=1`; `Get-SpecrewExecutionLayout` no longer depends on `Get-Module` inside the child process
+- **Windows Validation**: `pwsh -NoProfile -File tests/integration/distribution-module-init.ps1` now exercises the exported `specrew-init` proxy, verifies module-mode guidance, and fails if the env var leaks after the call
+- **Linux/macOS Validation**: The inherited-marker repair is in place; human WSL Ubuntu re-test remains pending
 
 ### Known Traps Added
 

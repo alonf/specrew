@@ -555,9 +555,7 @@ function Ensure-DirectoryExists {
 function Get-SpecrewExecutionLayout {
     $distributionRoot = Split-Path -Parent $PSScriptRoot
     $templateRoot = Join-Path -Path $distributionRoot -ChildPath 'templates'
-    $loadedModule = Get-Module -Name 'Specrew' -ErrorAction SilentlyContinue | Select-Object -First 1
-
-    $isModuleLayout = $null -ne $loadedModule
+    $isModuleLayout = $env:SPECREW_INVOKED_FROM_MODULE -eq '1'
 
     return [pscustomobject]@{
         RootPath     = $distributionRoot

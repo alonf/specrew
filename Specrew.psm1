@@ -37,7 +37,13 @@ function Invoke-SpecrewScript {
         $forwardedArguments = @($forwardedArguments[0])
     }
 
-    & pwsh -NoProfile -ExecutionPolicy Bypass -File $scriptPath @forwardedArguments
+    $env:SPECREW_INVOKED_FROM_MODULE = '1'
+    try {
+        & pwsh -NoProfile -ExecutionPolicy Bypass -File $scriptPath @forwardedArguments
+    }
+    finally {
+        Remove-Item -LiteralPath 'env:SPECREW_INVOKED_FROM_MODULE' -ErrorAction SilentlyContinue
+    }
 }
 
 function specrew {
