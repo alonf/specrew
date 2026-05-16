@@ -2,13 +2,14 @@
 
 **Schema**: v1
 **Spec**: [../../spec.md](../../spec.md)
-**Status**: reviewing
+**Status**: retro-complete
 **Capacity**: 14.5/20 story_points
 **Started**: 2026-05-15
 **Completed**: 2026-05-15
 **Review Completed**: 2026-05-15
+**Retro Completed**: 2026-05-16
 **Hardening-Gate Sign-Off**: human sign-off and implementation authorization were recorded in `.squad/decisions.md` on 2026-05-15; this iteration artifact now captures the exact concern set required before execution starts
-**Implementation Authorization**: bundled authorization was executed after `/speckit.specrew-speckit.before-implement` passed on 2026-05-15; the implementation package then cleared review-verdict-signoff with bounded repair `R-018-V1`, and retro remains separately authorized
+**Implementation Authorization**: bundled authorization was executed after `/speckit.specrew-speckit.before-implement` passed on 2026-05-15; the implementation package then cleared review-verdict-signoff with bounded repair `R-018-V1`, retro completed on 2026-05-16, and iteration-closeout is now the authorized bookkeeping boundary
 
 ## Scope Summary
 

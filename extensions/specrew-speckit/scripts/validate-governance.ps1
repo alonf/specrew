@@ -637,7 +637,15 @@ function Test-DashboardGovernanceSurfaces {
             }
         }
 
-        if ([string]$feature.feature_status -match '(?i)complete|closed|shipped') {
+        $hasFeatureCloseout = $false
+        if ($null -ne $feature -and $null -ne $feature.PSObject.Properties['has_feature_closeout']) {
+            $hasFeatureCloseout = [bool]$feature.has_feature_closeout
+        }
+        elseif ([string]$feature.feature_status -match '(?i)complete|closed|shipped') {
+            $hasFeatureCloseout = $true
+        }
+
+        if ($hasFeatureCloseout) {
             $requiresFeatureDashboard = $false
             if ($featureOrdinal -gt $dashboardRolloutFeatureOrdinal) {
                 $requiresFeatureDashboard = $true

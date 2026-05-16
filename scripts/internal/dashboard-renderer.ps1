@@ -757,6 +757,7 @@ function Get-SpecrewFeatureRecords {
                 feature_ref             = $featureDirectory.Name
                 feature_title           = $featureTitle
                 feature_status          = $featureStatus
+                has_feature_closeout    = $hasFeatureCloseout
                 spec_path               = $specPath
                 closeout_dashboard_path = Join-Path $featureDirectory.FullName 'closeout-dashboard.md'
                 iterations              = @($iterations)

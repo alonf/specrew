@@ -1,67 +1,71 @@
-# Iteration State: 001
+# Iteration 001 Closeout State
 
-**Schema**: v1
-**Last Completed Task**: review-verdict-signoff accepted (`R-018-V1` and `R-018-V2` absorbed)
-**Tasks Remaining**: Explicit retro-boundary authorization only
-**In Progress**: none
-**Baseline Ref**: 228911a44085182b3844781f0713b18f6ad8f694
-**Updated**: 2026-05-15
-**Current Phase**: reviewing
-**Iteration Status**: accepted at review-verdict-signoff after direct-terminal rich-mode confirmation; retro remains pending explicit authorization
+**Schema**: v1  
+**Status**: closed  
+**Last Completed Task**: iteration-closeout boundary prepared after accepted retro-boundary  
+**Tasks Remaining**: Feature-closeout pending explicit authorization only  
+**In Progress**: none  
+**Baseline Ref**: 228911a44085182b3844781f0713b18f6ad8f694  
+**Retro Ref**: [`iterations/001/retro.md`](./retro.md)  
+**Updated**: 2026-05-16  
+**Current Phase**: closed  
+**Iteration Status**: Feature 018 Iteration 001 is closed at iteration-closeout. Feature-closeout and Rule 15 release/version work remain unopened pending explicit authorization.
 
 ## Execution Summary
 
-Iteration 001 remained the single execution slice for Feature 018 and completed without widening scope.
-The renderer, CLI, closeout scaffold, validator, fixtures, regression coverage, documentation, and
-performance evidence were all updated inside the approved boundary. Review-verdict-signoff is now accepted
-after Alon Fliess directly confirmed live rich-mode rendering in a fresh PowerShell terminal.
+Iteration 001 stayed inside the approved single-iteration presentation boundary and is now closed at the
+iteration layer only. The truthful delivery measure is the iteration task-actual table in
+[`plan.md`](./plan.md): I1-01 through I1-06 sum to **14.5 SP** (`1.0 + 1.5 + 4.0 + 3.5 + 3.0 + 1.5`), and
+that total is corroborated by the implementation-to-retro commit evidence anchored at `228911a..7ed5a21`
+with the absorbed review/repair commits `d380212`, `cb052b9`, `aafc2e9`, and `41d0767` included in the same
+delivery arc. No iteration work was deferred, split out, or hidden outside the authorized commit set.
 
-## Task Status Summary
+## Iteration Metrics
 
-| Slice | Task Range | Status | Notes |
-| --- | --- | --- | --- |
-| Setup scaffolding | T001-T002 | done | Feature-scoped quality artifacts and rich/mono/closeout/performance fixture roots exist |
-| Shared rendering policy | T003-T005 | done | One shared option + renderer policy now governs `specrew where`, `specrew status`, and closeout capture |
-| User Story 1 rich rendering | T006-T013 | done | Rich header/footer, shipped density, velocity sparkline, roadmap detail, and fixture replay landed |
-| User Story 2 fallback + artifact trust | T014-T020 | done | Fallback precedence, ASCII-safe semantics, ANSI stripping, and scaffold parity landed |
-| User Story 3 regression, docs, and budget | T021-T027 | done | Regression/docs updates landed and live current-shell render timing stayed within NFR-001 |
-| Polish + replay | T028-T030 | done | Automated replay passed and explicit deferrals remained excluded |
+| Metric | Value | Notes |
+| --- | --- | --- |
+| **Original pre-audit planning baseline** | ~6-8 SP | Early human estimate before the PoC re-audit tightened the real delivery shape |
+| **Revised planning baseline after PoC re-audit** | ~10-12 SP | Requested closeout calibration baseline for this iteration |
+| **Actual delivered SP** | 14.5 SP | Truthful measure comes from the authoritative iteration task actuals in `iterations/001/plan.md`; the cited commit set is corroborating evidence, not an extra additive total |
+| **Variance vs revised ~10-12 SP baseline** | +2.5 to +4.5 SP | 14.5 SP actual minus the revised PoC re-audit planning baseline |
+| **Comparison to Feature 017 calibrated +6-8 SP variance baseline** | materially lower variance | Feature 018's +2.5 to +4.5 SP uplift is 1.5 to 5.5 SP smaller than Feature 017's calibrated +6 to +8 SP variance baseline |
+| **Detailed execution envelope check** | inside the later ~12-15 SP envelope | The feature-level plan explicitly allowed a realistic actual envelope of ~12-15 SP |
+| **Elapsed calendar days** | 2 calendar days | Planning-boundary commit `228911a` dated 2026-05-15 through retro-boundary commit `7ed5a21` dated 2026-05-16 |
+| **Commit evidence** | `228911a..7ed5a21` | Includes implementation, review absorption, repair, review-verdict-signoff, and retro-boundary closure evidence; see also `d380212`, `cb052b9`, `aafc2e9`, `41d0767` |
 
-## Decisions and Handoff
+## Boundary and Scope Summary
 
-- **Planning Boundary**: ✅ **COMPLETE** — iteration execution artifacts remained truthful throughout implementation
-- **Hardening-Gate Sign-Off**: ✅ **PRESERVED** — the pre-implementation sign-off remained the governing concern set for execution
-- **Implementation Authorization**: ✅ **EXECUTED** — `/speckit.specrew-speckit.before-implement` passed and the authorized implementation package was completed
-- **Review Boundary**: ✅ **ACCEPTED** — review-verdict-signoff absorbed `R-018-V1` and `R-018-V2`, and Alon Fliess recorded direct-terminal rich-mode confirmation
-- **Retro Artifact**: not started
-- **Constraint**: do not create `review.md` or `retro.md` placeholders before the lifecycle actually
-  reaches those boundaries
+- **Planning Boundary**: ✅ complete
+- **Hardening-Gate Sign-Off**: ✅ preserved through execution
+- **Implementation Authorization**: ✅ executed
+- **Review-Verdict-Signoff**: ✅ accepted with bounded repairs `R-018-V1` and `R-018-V2`
+- **Retro Boundary**: ✅ complete — see [`retro.md`](./retro.md)
+- **Iteration-Closeout**: ✅ closed at the iteration layer only
+- **Explicitly Still Out of Scope Here**: feature-closeout, Rule 15 release/version work, and any scope beyond
+  FR-001 through FR-020
 
-## Scope and Deferrals
+## Strategic Response
 
-- **In Scope**: FR-001 through FR-020 via T001-T030, covering rich primitives, PoC-parity density,
-  one velocity sparkline, backward-compatible validation, and documentation updates
-- **Deferred by Spec**: working-days projection, MVP/1.0 dual horizons, minimum-days stretching,
-  bootstrapped-date schema changes, configurable velocity windows, and any additional visualization beyond
-  the single velocity sparkline
-- **Execution Boundary Rule**: implementation began only after the iteration-scoped hardening gate and
-  before-implement validation agreed that the package was coherent; no extra scope was pulled in afterward
+Feature 018's retro lessons, together with the form-correct / meaning-wrong bug-class observation, changed
+the Phase 2 queue order for forward-looking planning surfaces. The bookkeeping references are
+`project_quality_hardening_bundle_priority_2026_05_16.md`,
+`project_meaning_verification_at_review_boundary_feature_queued.md`, and
+`file:///C:/Dev/SpecrewDraft/proposals/030-quality-hardening-bundle.md`.
 
-## Implementation Checklist Outcome
+**Net effect**: the **Quality Hardening Bundle (~30-40 SP)** now inserts ahead of **Session-State
+Durability** and **Branch Reconciliation**. This section is a closeout cross-reference for forward readers
+only; `retro.md` remains unchanged and authoritative for the lesson narrative.
 
-- ✅ Iteration-scoped plan, state, drift, and quality artifacts now record actual implementation evidence
-- ✅ Tasks T001-T030 completed without widening beyond the approved Feature 018 scope
-- ✅ Dashboard-specific automated replay is green across Feature 017 regression, Feature 018 rich/mono replay, and the render-budget harness
-- ✅ Stored dashboard artifacts now strip ANSI escape sequences while preserving readable Unicode glyphs
-- ✅ `review.md` now records the accepted review-verdict-signoff state with `R-018-V1` and `R-018-V2` absorbed plus the human direct-terminal confirmation evidence
-- ✅ Deferred cosmetic follow-up `roadmap-phase-status-marker-uniformity` is logged in `.specrew\quality\known-traps.md` without reopening acceptance
-- ✅ `retro.md` remains intentionally absent, keeping the next boundary truthful
-- ✅ The branch is stopped after review-verdict-signoff as instructed
+## Verification Snapshot
+
+- ✅ Governance and dashboard validation rerun on the iteration-closeout tree
+- ✅ Pre-existing roadmap-drift warnings remain acceptable carry-forward only
+- ✅ No new validator warning class was introduced by this closeout bookkeeping
 
 ## Next Action
 
-Request explicit retro-boundary authorization before any retrospective work begins. Do not open `retro.md`,
-iteration-closeout, or feature-closeout from this accepted pre-retro state without that authorization.
+Await explicit feature-closeout authorization. Do **not** imply or open feature-closeout from this closed
+iteration artifact.
 
 <!-- >>> specrew-managed escalation-state >>> -->
 ## Repair Escalation

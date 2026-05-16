@@ -3683,3 +3683,60 @@ Do not sign off the visual-richness claim until a direct PowerShell terminal run
   > This is a single boundary advance only: create and push the retro-boundary commit to origin/018-velocity-dashboard-visual-richness, and stop before iteration-closeout.
 
 ---
+
+### 2026-05-16T00:45:00Z: Delegated lifecycle runtime evidence
+**By:** Squad (Coordinator)
+**Role / Work Item:** Implementer — Feature 018 Velocity Dashboard Visual Richness Iteration 001 iteration-closeout boundary
+**Requested Agent:** copilot
+**Actual Agent:** copilot
+**Model ID:** unknown (Copilot CLI host does not expose the active model identifier)
+**Status:** honored
+**Fallback Reason:** none
+
+---
+
+## 2026-05-16T00:45:00Z — Authorization: iteration-closeout
+
+- **Decision ID**: authorization-feature-018-iter-001-iteration-closeout
+- **Type**: authorization
+- **Boundary**: iteration-closeout
+- **Approving Human**: Alon Fliess
+- **Recorded At**: 2026-05-16T00:45:00Z
+- **Commit Reference**: pending (canonical iteration-closeout boundary commit created with this closeout change set)
+- **Authorization Text**:
+  > Advance only the authorized boundary: Feature 018 Iteration 001 from retro-boundary to iteration-closeout.
+  > Do NOT open or imply feature-closeout. Rule 15 release/version work is explicitly out of scope for this authorization.
+  > Update the closeout bookkeeping, rerun the validator and existing relevant tests, create and push the iteration-closeout boundary commit, and stop there.
+
+---
+
+# Implementer Decision Inbox: Feature 018 Iteration 001 iteration-closeout boundary
+
+**Date**: 2026-05-16  
+**Role**: Implementer  
+**Feature**: 018-velocity-dashboard-visual-richness  
+**Iteration**: 001
+
+## Decision
+
+Treat Iteration 001 as truthfully closed at the iteration layer once the closeout state records the
+requested PoC re-audit calibration baseline (~10-12 SP, with the original ~6-8 SP noted), grounds actual
+delivery in the authoritative iteration task actuals (14.5 SP), cross-references the strategic-response
+sequencing inputs, and leaves feature-closeout explicitly unopened.
+
+## Why
+
+1. The truthful delivery measure for this iteration is the task-actual table in
+   `specs/018-velocity-dashboard-visual-richness/iterations/001/plan.md`, which sums to 14.5 SP and already
+   includes the accepted execution slices that absorbed the review repairs.
+2. The implementation and absorbed-repair evidence is corroborated by the authorized commit arc
+   `228911a..7ed5a21`, including `d380212`, `cb052b9`, `aafc2e9`, and `41d0767`, so the closeout narrative
+   can explain the basis without inventing extra hidden scope.
+3. The strategic-response note is bookkeeping for forward readers only; retro remains the lesson authority,
+   and this closeout must not imply feature-closeout or Rule 15 release work.
+
+## Boundary Guardrail
+
+- Close the iteration only.
+- Keep feature-closeout pending explicit authorization.
+- Accept only the pre-existing roadmap-drift validator warnings as carry-forward; no new warning class is acceptable.
