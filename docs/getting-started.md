@@ -4,10 +4,14 @@ Practical quickstart for running Specrew in a new repo (greenfield) and adding i
 
 ## Prerequisites
 
-- PowerShell (`pwsh`)
+- PowerShell 7.x (`pwsh`)
 - Git
 - `uv` (used to install Spec Kit if missing)
 - `npm` (used to install Squad if missing)
+
+**Platform Support**: Specrew is validated on Windows 11. Cross-platform hardening
+for Linux and macOS is in progress (path handling hardened; CI validation configured).
+See README.md for current platform validation status.
 
 ## Before You Begin: Getting the Specrew Bootstrap Script
 

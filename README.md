@@ -36,14 +36,27 @@ AI-assisted software delivery.
 - Optional delegated-agent routing can extend the Copilot-hosted baseline when
   Claude or Codex lanes are configured
 
+## Platform Support
+
+Specrew is developed and validated on **Windows 11** with PowerShell 7.x. Cross-platform
+hardening for Linux and macOS is in progress:
+
+- **Windows**: ✅ Fully validated (primary development platform)
+- **Linux (Ubuntu)**: 🔧 Path handling hardened; CI validation configured (pending first workflow run)
+- **macOS**: 🔧 Path handling hardened; CI validation configured (pending first workflow run)
+- **WSL**: ⏳ Manual verification pending (automated validation blocked by sudo requirements)
+
+See `specs/019-specrew-distribution-module/test-evidence/us5-cross-platform.md` for
+detailed cross-platform validation status.
+
 ## What's NOT working yet
 
 - Multi-developer reconciliation is not yet a polished default workflow
 - Multi-host runtime support is not yet ready for public promises
 - Just-in-time brownfield cartography for arbitrary inherited repos is still a
   roadmap item
-- Installable packaging and a polished public CLI distribution are still
-  deferred
+- PowerShell Gallery module publication is in progress (workflow ready; secrets
+  pending)
 - External pull requests are not yet part of the alpha operating model
 
 ## Recommended Lifecycle
