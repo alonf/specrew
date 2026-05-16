@@ -1332,6 +1332,32 @@ function Get-SpecrewFeatureReadableTitle {
     return $title.Trim()
 }
 
+function Format-SpecrewDashboardTruncatedText {
+    param(
+        [AllowNull()][string]$Text,
+        [int]$MaxWidth
+    )
+
+    if ($MaxWidth -le 0) {
+        return ''
+    }
+
+    if ([string]::IsNullOrWhiteSpace($Text)) {
+        return ''
+    }
+
+    $trimmed = $Text.Trim()
+    if ($trimmed.Length -le $MaxWidth) {
+        return $trimmed
+    }
+
+    if ($MaxWidth -le 3) {
+        return $trimmed.Substring(0, $MaxWidth)
+    }
+
+    return ($trimmed.Substring(0, $MaxWidth - 3) + '...')
+}
+
 function Get-SpecrewRecentShippedLabel {
     param(
         [AllowNull()][string]$FeatureRef,
@@ -1353,6 +1379,27 @@ function Get-SpecrewRecentShippedLabel {
     }
 
     return $iterationToken
+}
+
+function Get-SpecrewRecentShippedIterationToken {
+    param(
+        [AllowNull()][string]$IterationLabel,
+        [AllowNull()][string]$IterationRef
+    )
+
+    $iterationToken = $IterationRef
+    if ([string]::IsNullOrWhiteSpace($iterationToken) -and -not [string]::IsNullOrWhiteSpace($IterationLabel) -and $IterationLabel -match '(iter-\d+)$') {
+        $iterationToken = $Matches[1]
+    }
+    elseif (-not [string]::IsNullOrWhiteSpace($iterationToken) -and $iterationToken -notmatch '^iter-') {
+        $iterationToken = "iter-$iterationToken"
+    }
+
+    if ([string]::IsNullOrWhiteSpace($iterationToken)) {
+        return ''
+    }
+
+    return ('· {0}' -f $iterationToken)
 }
 
 function New-SpecrewRecentShippedEntry {
@@ -1825,7 +1872,9 @@ function ConvertTo-SpecrewDashboardLines {
         $maxDelivered = ($Snapshot.recent_shipped | Measure-Object -Property delivered_story_points -Maximum).Maximum
         foreach ($entry in $Snapshot.recent_shipped) {
             $meter = Format-SpecrewDashboardMeter -Value $entry.delivered_story_points -Maximum $maxDelivered -Width $Snapshot.render_profile.bar_width -RenderProfile $Snapshot.render_profile
-            $lines.Add(('{0} {1} | {2} | {3:0.#} SP | {4} iter | closed {5} | {6}' -f $palette.ShippedMarker, $entry.label, $entry.short_name, $entry.delivered_story_points, $entry.iteration_count, $entry.close_date_text, $meter)) | Out-Null
+            $iterationToken = Get-SpecrewRecentShippedIterationToken -IterationLabel $entry.iteration_label -IterationRef $entry.iteration_ref
+            $title = Format-SpecrewDashboardTruncatedText -Text $entry.short_name -MaxWidth 32
+            $lines.Add(('{0} {1,-5} {2,-10} {3} {4,5:0.0} SP {5,2} iter {6} {7}' -f $palette.ShippedMarker, $entry.feature_code, $iterationToken, $meter, $entry.delivered_story_points, $entry.iteration_count, $entry.close_date_text, $title)) | Out-Null
         }
     }
     $lines.Add('') | Out-Null
@@ -1858,12 +1907,16 @@ function ConvertTo-SpecrewDashboardLines {
         $lines.Add('Roadmap unavailable yet; add .specrew/roadmap.yml (see docs/roadmap-maintenance.md) to enable this section.') | Out-Null
     }
     else {
+        $roadmapSpWidth = 12
+        $roadmapStatusWidth = 12
         foreach ($phase in $Snapshot.roadmap_progress) {
             $marker = if ($null -ne $Snapshot.active_phase -and $Snapshot.active_phase.phase_id -eq $phase.phase_id) { $palette.ActiveMarker } elseif ($phase.effective_status -eq 'shipped') { $palette.ShippedMarker } else { $palette.QueuedMarker }
             $phaseLabel = if ($null -ne $Snapshot.active_phase -and $Snapshot.active_phase.phase_id -eq $phase.phase_id) { "$($phase.name) (current)" } else { $phase.name }
             $bar = Format-SpecrewDashboardProgressBar -Current $phase.derived_shipped_effort_sp -Total $phase.planned_effort_sp -Width 16 -RenderProfile $Snapshot.render_profile
-            $lines.Add(('{0} {1} | {2} | {3:0.#}/{4:0.#} SP | {5}' -f $marker, $phaseLabel, $bar, $phase.derived_shipped_effort_sp, $phase.planned_effort_sp, $phase.effective_status)) | Out-Null
-            $lines.Add(('  {0}' -f (Format-SpecrewRoadmapDescription -Description $phase.description))) | Out-Null
+            $spPair = '{0:0.#}/{1:0.#} SP' -f $phase.derived_shipped_effort_sp, $phase.planned_effort_sp
+            $descriptionPrefix = '  ' + (' ' * $bar.Length) + ' ' + (' ' * $roadmapSpWidth) + ' ' + (' ' * $roadmapStatusWidth) + ' '
+            $lines.Add(('{0} {1} {2,-12} {3,-12} {4}' -f $marker, $bar, $spPair, $phase.effective_status, $phaseLabel)) | Out-Null
+            $lines.Add(($descriptionPrefix + (Format-SpecrewRoadmapDescription -Description $phase.description))) | Out-Null
         }
     }
     $lines.Add('') | Out-Null

@@ -26,6 +26,31 @@ function Assert-True {
     }
 }
 
+function Get-SectionLines {
+    param(
+        [AllowEmptyCollection()]
+        [AllowEmptyString()]
+        [Parameter(Mandatory = $true)][string[]]$Lines,
+        [Parameter(Mandatory = $true)][string]$Header
+    )
+
+    $startIndex = [array]::IndexOf($Lines, $Header)
+    if ($startIndex -lt 0) {
+        return @()
+    }
+
+    $sectionLines = New-Object System.Collections.Generic.List[string]
+    for ($index = $startIndex + 1; $index -lt $Lines.Count; $index++) {
+        if ([string]::IsNullOrWhiteSpace($Lines[$index])) {
+            break
+        }
+
+        $sectionLines.Add($Lines[$index]) | Out-Null
+    }
+
+    return $sectionLines.ToArray()
+}
+
 $repoRoot = (Resolve-Path (Join-Path -Path $PSScriptRoot -ChildPath '..\..')).Path
 $rendererPath = Join-Path $repoRoot 'scripts\internal\dashboard-renderer.ps1'
 $fixtureRoot = Join-Path $repoRoot 'tests\integration\fixtures\feature-018-dashboard\rich-capable-repository'
@@ -91,6 +116,25 @@ Assert-True -Condition ($richText -match 'Feature: → F-018') -Message 'Rich mo
 Assert-True -Condition ($richText -match 'Sparkline: ') -Message 'Velocity should include the sparkline in rich mode.'
 Assert-True -Condition ((@($richLines | Where-Object { $_ -match '^Sparkline:' })).Count -eq 1) -Message 'The sparkline should appear exactly once.'
 Assert-True -Condition ($richText -match 'Restore rich dashboard density while preserving truthful fallback semantics .*\.{3}') -Message 'Roadmap descriptions should truncate beyond 80 characters.'
+
+$recentShippedLines = @(Get-SectionLines -Lines $richLines -Header 'RECENT SHIPPED')
+$recentPattern = '^[✓] F-\d{3}\s+· iter-\d{3}\s+[█░]{28}\s+\d+\.\d SP\s+\d+ iter \d{4}-\d{2}-\d{2}\s+.{1,32}$'
+Assert-True -Condition ((@($recentShippedLines | Where-Object { $_ -match $recentPattern })).Count -eq $recentShippedLines.Count) -Message 'Recent Shipped rows should keep aligned fixed-width columns and a 32-character max title.'
+$recentBarStartIndexes = @($recentShippedLines | ForEach-Object { [regex]::Match($_, '[█░]{28}').Index } | Select-Object -Unique)
+Assert-True -Condition ($recentBarStartIndexes.Count -eq 1) -Message 'Recent Shipped bars should align to a fixed column.'
+
+$roadmapLines = @(Get-SectionLines -Lines $richLines -Header 'ROADMAP')
+$roadmapSummaryLines = @($roadmapLines | Where-Object { $_ -match '^[✓○◐] \[[█░]{16}\]\s+\d{1,3}%\s+.{1,12}\s+(?:shipped|queued|in-progress|drifted-over)\s+.+' })
+Assert-True -Condition ($roadmapSummaryLines.Count -eq 3) -Message 'Roadmap summary rows should render aligned fixed-width bar, SP, and status columns.'
+$roadmapBarStartIndexes = @($roadmapSummaryLines | ForEach-Object { [regex]::Match($_, '\[[█░]{16}\]\s+\d{1,3}%').Index } | Select-Object -Unique)
+Assert-True -Condition ($roadmapBarStartIndexes.Count -eq 1) -Message 'Roadmap bars should align to a fixed early column.'
+for ($index = 0; $index -lt $roadmapSummaryLines.Count; $index++) {
+    $summaryLine = $roadmapSummaryLines[$index]
+    $detailLine = $roadmapLines[($index * 2) + 1]
+    $phaseStart = ([regex]::Match($summaryLine, '(?:shipped|queued|in-progress|drifted-over)\s+').Index + [regex]::Match($summaryLine, '(?:shipped|queued|in-progress|drifted-over)\s+').Length)
+    $detailStart = [regex]::Match($detailLine, '\S').Index
+    Assert-True -Condition ($detailStart -eq $phaseStart) -Message 'Roadmap descriptions should align with the phase-name column.'
+}
 
 $overrideSnapshot = Get-SpecrewDashboardSnapshot -ProjectRoot $fixtureRoot -RecentCount 4 -BarWidth 20 -CapabilityOverrides $richOverride
 Assert-True -Condition ($overrideSnapshot.recent_shipped.Count -eq 4) -Message '--RecentCount should limit the Recent Shipped section.'

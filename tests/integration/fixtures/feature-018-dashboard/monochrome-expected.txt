@@ -16,12 +16,12 @@ Sample basis: Based on 6 closed iteration(s), 73 SP across 20 calendar day(s) (a
 Trend: 18 / 15 / 11 / 13 / 8 / 8
 
 RECENT SHIPPED
-[x] F-017 · iter-001 | Velocity Dashboard | 18 SP | 1 iter | closed 2026-05-15 | ############################
-[x] F-016 · iter-001 | Visible Delivery | 15 SP | 1 iter | closed 2026-05-14 | #######################.....
-[x] F-015 · iter-001 | Shared Foundation | 11 SP | 1 iter | closed 2026-05-13 | #################...........
-[x] F-014 · iter-001 | Team Readiness | 13 SP | 1 iter | closed 2026-05-12 | ####################........
-[x] F-013 · iter-001 | Governance Upgrade | 8 SP | 1 iter | closed 2026-05-04 | ############................
-[x] F-012 · iter-001 | Foundation Reset | 8 SP | 1 iter | closed 2026-05-02 | ############................
+[x] F-017 · iter-001 ############################  18.0 SP  1 iter 2026-05-15 Velocity Dashboard
+[x] F-016 · iter-001 #######################.....  15.0 SP  1 iter 2026-05-14 Visible Delivery
+[x] F-015 · iter-001 #################...........  11.0 SP  1 iter 2026-05-13 Shared Foundation
+[x] F-014 · iter-001 ####################........  13.0 SP  1 iter 2026-05-12 Team Readiness
+[x] F-013 · iter-001 ############................   8.0 SP  1 iter 2026-05-04 Governance Upgrade
+[x] F-012 · iter-001 ############................   8.0 SP  1 iter 2026-05-02 Foundation Reset
 
 RECENT ITERATIONS (PLAN VS REALITY)
 Iter                  Planned Actual Delta Days
@@ -38,12 +38,12 @@ feature-013.iter-001     8 SP #######.........
 feature-012.iter-001     8 SP #######.........
 
 ROADMAP
-[x] Foundations | [################] 100% | 16/16 SP | shipped
-  Foundational governance and shared tooling are complete.
-[ ] Delivery | [################] 100% | 57/45 SP | drifted-over
-  Console delivery visibility and closeout reliability are already established.
-[~] Richness (current) | [................]   0% | 0/30 SP | in-progress
-  Restore rich dashboard density while preserving truthful fallback semantics a...
+[x] [################] 100% 16/16 SP     shipped      Foundations
+                                                    Foundational governance and shared tooling are complete.
+[ ] [################] 100% 57/45 SP     drifted-over Delivery
+                                                    Console delivery visibility and closeout reliability are already established.
+[~] [................]   0% 0/30 SP      in-progress  Richness (current)
+                                                    Restore rich dashboard density while preserving truthful fallback semantics a...
 
 PROJECTION
 Active feature remaining: 14 SP | ETA: 4 calendar day(s) | confidence moderate
