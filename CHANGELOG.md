@@ -16,6 +16,16 @@ baseline that each release number represents.
 - Pruned stale Recent Changes entry for 014-handoff-format-scoping in
   `.github/copilot-instructions.md` to keep the rolling window at the two
   most recent features.
+- Promoted three additional proposals to the `proposals/` surface
+  reflecting post-F-017/F-018 strategic decisions: 030 Quality Hardening
+  Bundle (Form-vs-Meaning Verification, ~35 SP across 4 sub-components),
+  031 Specrew Distribution Module (PowerShell Gallery, ~12 SP), and 032
+  Specrew Slash-Command Surface (`/specrew.*` first-class commands, ~7 SP;
+  031+032 recommended combined). Updated `INDEX.md` to move Proposal 009
+  (Velocity Dashboard) from Draft to Shipped as feature-017 and add the
+  three new proposals under Draft with phase-2 placement. Pre-promotion
+  curation removed 4 leaked private references (memory entry paths +
+  draft source-spec paths) following the May 15 promotion pattern.
 
 ## 0.18.0
 

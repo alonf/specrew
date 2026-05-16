@@ -6,7 +6,7 @@ This index is the navigation surface for all proposals in this directory. Sorted
 
 ---
 
-## Shipped (7)
+## Shipped (8)
 
 Proposals whose features have shipped to main and are part of Specrew's current capability.
 
@@ -19,18 +19,21 @@ Proposals whose features have shipped to main and are part of Specrew's current 
 | [005](005-handoff-format-scoping.md) | Handoff Format Scoping | feature-014 | phase-1 | 8 |
 | [006](006-public-readiness-pass.md) | Public-Readiness Pass | feature-015 | phase-1 | 19 |
 | [007](007-substantive-interaction-model.md) | Substantive Interaction Model | feature-016 | phase-1 | 22 |
+| [009](009-velocity-dashboard.md) | Velocity Dashboard ("Where Am I?") | feature-017 | phase-2 | 19 |
 
-## Draft (5)
+## Draft (7)
 
 Proposals with full source-spec content, ready for `/speckit.specify` ingestion when prioritized.
 
 | # | Title | Phase | SP | Notes |
 |---|---|---|---|---|
 | [008](008-nfr-governance.md) | Non-Functional Requirement Governance | phase-2 | 28 | Absorbs queued Boundary Validation Tier |
-| [009](009-velocity-dashboard.md) | Velocity Dashboard ("Where Am I?") | phase-2 | 19 | Console dashboard for project state |
 | [010](010-multi-developer-reconciliation.md) | Multi-Developer Reconciliation | phase-5 | 75 | Major scope; unlocks team scaling |
 | [011](011-architecture-intent-checkpoint.md) | Architecture Intent Checkpoint | phase-1 | 10 | On-disk spec exists at specs/006-human-architecture-checkpoint |
 | [012](012-visual-artifact-extension.md) | Visual Artifact Extension | phase-1 | 15 | Pillar 4 of the interaction model |
+| [030](030-quality-hardening-bundle.md) | Quality Hardening Bundle (Form-vs-Meaning Verification) | phase-2 | 35 | Bundles 4 sub-components addressing form-correct/meaning-wrong bug class |
+| [031](031-specrew-distribution-module.md) | Specrew Distribution Module (PowerShell Gallery) | phase-2 | 12 | One-line install via `Install-Module Specrew`; pre-public-flip priority |
+| [032](032-specrew-slash-commands.md) | Specrew Slash-Command Surface | phase-2 | 7 | `/specrew.*` commands; composes tightly with 031 (combined option recommended) |
 
 ## Candidate (17)
 
@@ -69,7 +72,10 @@ For roadmap-style viewing, proposals grouped by phase placement:
 
 **Phase 2** (convention enforcement + structural fidelity):
 - 008 (NFR Governance — draft)
-- 009 (Velocity Dashboard — draft)
+- 009 (Velocity Dashboard — shipped as feature-017)
+- 030 (Quality Hardening Bundle — draft, HIGH-PRIORITY in queue)
+- 031 (Specrew Distribution Module — draft, pre-public-flip priority)
+- 032 (Specrew Slash-Command Surface — draft, composes with 031)
 - 013, 014, 015, 017, 018, 019, 020, 021, 022, 023, 027, 028, 029 (candidates)
 
 **Phase 3** (refactor + maintainability):
