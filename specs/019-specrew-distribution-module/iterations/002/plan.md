@@ -34,6 +34,13 @@ Total effort estimate: 8 Story Points
 
 ## Task Breakdown
 
+| Task | Title | Requirement | Story | Effort | Owner | Status | Agent | Actual | Verdict |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| T041 | Join-Path Audit and Hardening Sweep | FR-030 | US5 | 3.0 | Implementation Team | pending | TBD | TBD | TBD |
+| T054 | Cross-Platform Parity Evidence | SC-006 | US5 | 3.0 | Implementation Team | pending | TBD | TBD | TBD |
+| T060 | Publish-Workflow Enablement | FR-025 | US4 | 1.0 | Implementation Team | pending | TBD | TBD | TBD |
+| T061 | Documentation Updates | US5 | US5 | 1.0 | Implementation Team | pending | TBD | TBD | TBD |
+
 ### T041: Join-Path Audit and Hardening Sweep
 
 **Effort**: 3 SP  
@@ -75,7 +82,7 @@ Total effort estimate: 8 Story Points
 - WSL verification documented (or marked pending if unavailable)
 - Test evidence in `test-evidence/us5-cross-platform.md` shows cross-platform parity
 
-### Publish-Workflow Enablement
+### T060: Publish-Workflow Enablement
 
 **Effort**: 1 SP  
 **Status**: pending  
@@ -90,7 +97,7 @@ Total effort estimate: 8 Story Points
 - Workflow still respects secret requirements (PSGALLERY_API_KEY, SIGNING_CERT_BASE64, SIGNING_CERT_PASSWORD)
 - Documentation in `docs/operations/psgallery-release-credentials.md` updated if workflow changes affect release procedure
 
-### Documentation Updates
+### T061: Documentation Updates
 
 **Effort**: 1 SP  
 **Status**: pending  
