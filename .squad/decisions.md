@@ -3476,3 +3476,171 @@ Feature 017 (Velocity Dashboard) is now closed and shipped. Version 0.17.0 is th
 - **Rationale**: Delegated lifecycle routing was applied for role 'Reviewer'.
 
 - **Routing Evidence**: Reviewer | requested=claude | actual=copilot | model=(platform default) | status=fell-back | fallback=preferred agent 'claude' is not enabled
+
+
+# Implementer Decision: Feature 018 bounded repair R-018-V2
+
+**Date**: 2026-05-15  
+**By**: Implementer  
+**Type**: bounded-repair
+
+## Decision
+
+For Feature 018 review repair `R-018-V2`, the dashboard renderer must no longer use
+`[Console]::IsOutputRedirected` as a live rich-mode eligibility gate. Instead, the
+live `scripts\specrew-where.ps1` entrypoint temporarily primes UTF-8 when rich mode
+has not already been disabled by explicit operator controls, then restores the
+caller console state on exit.
+
+## Why It Matters
+
+- Fresh PowerShell review runs were receiving a misleading redirected-output fallback
+  diagnosis even when the real issue was pre-render UTF-8 state.
+- Moving the UTF-8 priming to the entry script keeps diagnostics truthful and leaves
+  the shared renderer focused on directly verifiable eligibility checks.
+- Restore-on-exit protects caller state so the repair stays bounded and safe for
+  repeated local CLI use.
+
+## Scope Guardrail
+
+This decision is limited to Feature 018 review repair `R-018-V2a` / `R-018-V2b` /
+`R-018-V2c`. It does not authorize review acceptance, retro opening, or any broader
+terminal-capability redesign beyond the bounded repair.
+
+
+# Implementer decision: Feature 018 review repair
+
+- **Date**: 2026-05-15
+- **Feature**: 018 — Velocity Dashboard Visual Richness + PoC-Parity Restoration
+- **Boundary**: review-verdict-signoff
+- **Decision**: Preserve Recent Shipped per-iteration granularity by rendering a combined feature-and-iteration label (`F-017 · iter-001`) on live dashboard rows.
+
+## Rationale
+
+1. Feature-only Recent Shipped labels regressed once Feature 017 and later features accumulated multiple closed
+   iterations, causing `specrew where` to emit duplicate row labels.
+2. A combined feature-and-iteration label keeps Feature 017 granularity visible without widening the repair into
+   roadmap, projection, or retro surfaces.
+3. The same label needs to flow through both rich and monochrome render paths so validator-backed snapshots and
+   operator reruns stay consistent.
+
+
+# Planner Decision Inbox: Feature 018 Hardening Scaffold
+
+**Date**: 2026-05-15  
+**Role**: Planner  
+**Feature**: 018-velocity-dashboard-visual-richness  
+**Iteration**: 001
+
+## Decision
+
+Use iteration-scoped execution artifacts under
+`specs/018-velocity-dashboard-visual-richness/iterations/001/quality/` as the canonical pre-implementation
+package for Feature 018, even though the backlog still contains feature-root quality paths.
+
+## Why
+
+1. `.squad/decisions/inbox/reviewer-feature018-preimpl.md` identified the missing hardening gate as the
+   only blocker before implementation.
+2. `/speckit.specrew-speckit.before-implement` needs a truthful iteration artifact set, not future
+   review/retro placeholders.
+3. Carrying the reviewer's five exact concern labels into the iteration-scoped hardening gate keeps the
+   execution boundary auditable without reopening planning.
+
+## Recorded Concern Labels
+
+- `terminal-capability-decision-precedence`
+- `windows-vt-fallback-truthfulness`
+- `render-budget-stop-ship-evidence`
+- `ansi-stripping-with-unicode-preservation`
+- `closeout-dashboard-artifact-rendering`
+
+## Consequence
+
+Execution can stay paused at the correct boundary: plan/state/drift plus iteration-scoped quality artifacts
+exist, review/retro remain unopened, and implementation can start later only if the before-implement gate
+accepts this package.
+
+
+# Reviewer decision: Feature 018 pre-implementation refresh
+
+- **Date**: 2026-05-15
+- **Feature**: 018 — Velocity Dashboard Visual Richness + PoC-Parity Restoration
+- **Boundary**: pre-implementation / hardening-gate-and-implementation-auth
+- **Decision**: Refresh the pre-implementation review to `ready-with-concerns`.
+
+## Rationale
+
+The earlier blocker was real when the hardening gate was absent. It is no longer real: the authorized
+iteration-scoped artifact set now exists under `specs/018-velocity-dashboard-visual-richness/iterations/001/`,
+the approval ledger records hardening-gate sign-off plus bundled implementation authorization, and the current
+iteration package passes governance validation.
+
+## Carry-forward watchpoints
+
+1. Terminal-capability precedence must stay deterministic across `--ASCII`, Unicode opt-out,
+   redirected/dumb output, UTF-8 checks, and Windows VT eligibility.
+2. Missing Windows VT support must force a clean monochrome fallback with no partial ANSI leakage.
+3. Render-budget proof (`<= 1.5s`) remains stop-ship evidence, not polish.
+4. Stored dashboard artifacts must strip ANSI while preserving readable Unicode.
+5. Iteration-closeout and feature-closeout dashboard rendering must stay parity-safe and immutable.
+
+
+# Reviewer Decision Inbox: Feature 018 Pre-Implementation Review
+
+**Date**: 2026-05-15  
+**Role**: Reviewer  
+**Feature**: 018-velocity-dashboard-visual-richness  
+**Iteration**: 001  
+**Verdict**: blocked
+
+## Decision
+
+Feature 018 is implementable on substance, but implementation should not start yet.
+
+## Why
+
+1. `spec.md`, `plan.md`, and `tasks.md` do cover the requested rendering, fallback, regression, artifact, and documentation surfaces.
+2. The approved next-step ledger in `.squad/decisions.md` requires the pre-implementation review and hardening-gate artifacts to be updated before implementation proceeds.
+3. `specs/018-velocity-dashboard-visual-richness/quality/hardening-gate.md` is still missing, so the implementation boundary is incomplete.
+
+## Required Next Move
+
+Create the hardening-gate artifact and carry these explicit concerns into it before implementation begins:
+
+- terminal-capability decision precedence
+- Windows VT fallback truthfulness
+- NFR-001 render-budget stop-ship evidence
+- ANSI stripping with Unicode preservation
+- iteration-closeout and feature-closeout dashboard artifact rendering
+
+## Scope Discipline
+
+No planning-package rewrite is required once the hardening gate exists. Do not widen scope beyond the approved five pillars.
+
+
+# Reviewer decision: Feature 018 visual terminal check
+
+- **Date**: 2026-05-15
+- **Feature**: 018 — Velocity Dashboard Visual Richness + PoC-Parity Restoration
+- **Boundary**: review / direct-terminal rich-render verification
+- **Decision**: needs-work
+
+## Rationale
+
+I ran `specrew where` directly in the PowerShell terminal against `tests\integration\fixtures\feature-018-dashboard\rich-capable-repository`.
+The command rendered `Rendering: monochrome-safe fallback` and warned that output was redirected, so the approved rich-mode surface did not appear in the live review session.
+
+## Additional repair item before signoff
+
+Repair or explain the live capability-detection path so a direct terminal run shows the approved rich-mode elements instead of fallback substitutes. In the reviewed session these rich elements failed together:
+
+1. Unicode block chars `█` / `░` did not render; ASCII `#` / `.` bars appeared instead.
+2. ANSI semantic colors were not active because the renderer stayed in monochrome mode.
+3. Status markers `✓` / `◐` / `○` did not render; `[x]` / `[~]` / `[ ]` appeared instead.
+4. The active-feature arrow `→` did not render; `>` appeared instead.
+5. The sparkline `▁▂▃▄▅▆▇█` did not render; a textual trend list appeared instead.
+
+## Next move
+
+Do not sign off the visual-richness claim until a direct PowerShell terminal run produces the rich glyph set and semantic emphasis on the rich-capable repository fixture, or the requirement is explicitly re-scoped with approval.
