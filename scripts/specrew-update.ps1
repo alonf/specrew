@@ -199,7 +199,7 @@ function Update-SpecrewConfig {
         [Parameter(Mandatory = $true)]
         [string]$ConfigPath,
 
-        [Parameter(Mandatory = $true)]
+        [AllowNull()]
         [string]$SpecrewVersion,
 
         [AllowNull()]
@@ -216,7 +216,10 @@ function Update-SpecrewConfig {
         ''
     }
 
-    $updatedContent = Set-YamlScalarValue -Content $existingContent -Key 'specrew_version' -Value $SpecrewVersion
+    $updatedContent = $existingContent
+    if (-not [string]::IsNullOrWhiteSpace($SpecrewVersion)) {
+        $updatedContent = Set-YamlScalarValue -Content $updatedContent -Key 'specrew_version' -Value $SpecrewVersion
+    }
     if (-not [string]::IsNullOrWhiteSpace($SpecKitVersion)) {
         $updatedContent = Set-YamlScalarValue -Content $updatedContent -Key 'speckit_version' -Value $SpecKitVersion
     }
@@ -774,7 +777,7 @@ foreach ($result in $postValidationResults) {
 
 $configAction = Update-SpecrewConfig `
     -ConfigPath $configPath `
-    -SpecrewVersion $sourceSpecrewVersion `
+    -SpecrewVersion $(if ($scopes -contains 'Specrew') { $sourceSpecrewVersion } else { $null }) `
     -SpecKitVersion $(if ($postValidationByPlatform.ContainsKey('Spec Kit')) { [string]$postValidationByPlatform['Spec Kit'].Version } elseif ($projectConfig.ContainsKey('speckit_version')) { [string]$projectConfig['speckit_version'] } else { $null }) `
     -SquadVersion $(if ($postValidationByPlatform.ContainsKey('Squad')) { [string]$postValidationByPlatform['Squad'].Version } elseif ($projectConfig.ContainsKey('squad_version')) { [string]$projectConfig['squad_version'] } else { $null })
 

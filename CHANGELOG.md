@@ -44,6 +44,25 @@ baseline that each release number represents.
   Public-Readiness Pass and is the upstream source that drives bug (1).
   This commit manually preserves `specrew_version: 0.18.0` after the
   bumps.
+- Closed out both bugs queued in the previous entry. (1) Bumped
+  `extensions/specrew-speckit/extension.yml` and its deployed mirror
+  `.specify/extensions/specrew-speckit/extension.yml` from `0.1.0-dev`
+  to `0.18.0` to match the canonical `.specrew/config.yml`. (2) Fixed
+  `scripts/specrew-update.ps1` to only rewrite `specrew_version` when
+  the user explicitly requests a Specrew update (`--specrew` or
+  `--all`); previously `--spec-kit` and `--squad` invocations
+  downgraded `specrew_version` to the stale extension-manifest pin on
+  every run. (3) Extended Rule 15 (feature-closeout version management)
+  in `extensions/specrew-speckit/squad-templates/coordinator/specrew-governance.md`
+  and the deployed mirrors at `.github/agents/squad.agent.md` and
+  `.squad/templates/squad.agent.md` to enumerate
+  `extensions/specrew-speckit/extension.yml` as a required bump target,
+  preventing future drift. Empirically verified: `specrew update --info`
+  reports Specrew current `0.18.0` (was `0.1.0-dev`); rerunning
+  `specrew update --spec-kit` no longer mutates `specrew_version`;
+  validator green (38 PASS, 0 FAIL, baseline WARN only). Test gap noted
+  for follow-up: `tests/integration/update-command.ps1` lacks coverage
+  asserting `--spec-kit` and `--squad` do not modify `specrew_version`.
 
 ## 0.18.0
 
