@@ -20,6 +20,24 @@ Maintainer-facing operations guidance for credentials used by the PowerShell Gal
 3. Run the publish workflow through its **manual-dispatch dry-run path** to confirm authentication without performing a real publish.
 4. Revoke the old API key only after the dry run confirms the new key works.
 
-### Annual Operations Note
+## Module-Signing Certificate Renewal
 
-When T006 certificate guidance is added, review it in the same annual operations event as this API-key review so release credentials stay in sync.
+### Cadence
+
+- **Routine renewal**: once per year, aligned to the annual PSGallery credential review
+- **Renew immediately if**:
+  - certificate material is suspected to be exposed
+  - signing fails unexpectedly during publish validation
+  - maintainer ownership changes and you want fresh certificate custody
+
+### Renewal Procedure
+
+1. Generate a new self-signed code-signing certificate with `-NotAfter (Get-Date).AddYears(1)`.
+2. Export the certificate to a password-protected PFX, Base64-encode it, and update the GitHub Actions secrets (`SIGNING_CERT_BASE64`, `SIGNING_CERT_PASSWORD`).
+3. Run the publish workflow through its **manual-dispatch dry-run path** to confirm signing succeeds without performing a real publish.
+4. Archive the old certificate material for historical signature verification after the new certificate is validated.
+5. Record the renewal date and set the next annual reminder.
+
+## Annual Operations Event
+
+Review the PSGallery API key and the self-signed signing certificate together in one annual operations event so release credentials stay in sync and the renewal flow stays warm.

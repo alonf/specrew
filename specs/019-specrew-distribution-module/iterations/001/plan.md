@@ -42,9 +42,9 @@ Total effort estimate: 14 Story Points
 
 | Task | Title | Requirement | Story | Effort | Owner | Status | Agent | Actual | Verdict |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| T001-T006 | Design Questions (Phase 0) | FR-001..FR-032 | Setup | 2.0 | Planner | planned | — | — | — |
-| T007-T009 | Module Packaging (Pillar 1) | FR-001..FR-004, FR-032 | US1, US2, US4 | 2.0 | Implementer | planned | — | — | — |
-| T010-T014 | Resource Bundling (Pillar 2) | FR-006..FR-009 | US1, US2 | 2.0 | Implementer | planned | — | — | — |
+| T001-T006 | Design Questions (Phase 0) | FR-001..FR-032 | Setup | 2.0 | Planner | done | Implementer | 2.0 | pass |
+| T007-T009 | Module Packaging (Pillar 1) | FR-001..FR-004, FR-032 | US1, US2, US4 | 2.0 | Implementer | done | Implementer | 2.0 | pass |
+| T010-T014 | Resource Bundling (Pillar 2) | FR-006..FR-009 | US1, US2 | 2.0 | Implementer | done | Implementer | 2.0 | pass |
 | T015-T019 | Init Refactor (Pillar 3) | FR-010..FR-013, FR-030 | US2, US5 | 2.0 | Implementer | planned | — | — | — |
 | T030-T035 | Update Story (Pillar 4) | FR-020..FR-024, FR-030 | US3, US5 | 2.0 | Implementer | planned | — | — | — |
 | T036-T042 | Publishing Workflow (Pillar 5) | FR-005, FR-014, FR-025..FR-029 | US4, US5 | 2.0 | Implementer | planned | — | — | — |
@@ -65,7 +65,7 @@ Total effort estimate: 14 Story Points
 
 ## Critical Constraints
 
-**⚠️ Phase 0 design-question tasks**: T001-T005 are now resolved; T006 still requires explicit human handling. T005 is complete and remains documentation-only / non-blocking.
+**⚠️ Phase 0 design-question tasks**: T001-T006 are now resolved. T005 remained documentation-only / non-blocking, and T006 fixed the self-signed certificate validity to the approved 1-year renewal cadence.
 
 **⚠️ T003/T004 compose-with guardrail**: loader/resource path work in Iteration 001 only needs to be Windows-correct. Cross-platform edge-case validation and broader embedded `\` cleanup remain Iteration 002 concerns.
 

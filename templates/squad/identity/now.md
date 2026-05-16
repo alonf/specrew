@@ -1,20 +1,20 @@
-updated_at: 2026-05-16T16:28:59Z
-focus_area: Feature 019 Pillar 3 handoff
-active_issues: Feature 019 Iteration 001 has completed Phase 0 plus Pillar 1 and Pillar 2. T006 is resolved with Option A 1-year certificate validity aligned to the annual API-key review, Specrew.psd1 and Specrew.psm1 now exist, templates/ is bundled, and the manifest allowlist excludes non-distribution surfaces. Keep Ubuntu/macOS/WSL hardening plus the broader embedded backslash cleanup deferred to Iteration 002, and do not start Pillar 5 publish execution in this batch.
+updated_at: 2026-05-16T16:10:41Z
+focus_area: Feature 019 Phase 0 paused at T006
+active_issues: Feature 019 Iteration 001 execution is active for Phase 0 only. T001 is resolved with Option 1 explicit FileList allowlist semantics, T002 is resolved with Option A Git-style .conflict markers plus next-start mediated resolution, T003 is resolved with Option A Windows-first manual checklist/evidence for Iteration 001, T004 is resolved with Option A explicit dot-sourcing for Specrew.psm1, and T005 is resolved with Option A lightweight PSGallery API-key rotation guidance documented under docs/operations/psgallery-release-credentials.md. Do not auto-decide T006, do not start downstream implementation work in this run, and keep Ubuntu/macOS/WSL hardening plus broader embedded backslash cleanup deferred to Iteration 002.
 ---
 
 What We're Focused On
 ====================
 
-**Phase**: Feature 019 Iteration 001 Pillar 1 and Pillar 2 are complete. Pillar 3 is the next execution lane.
-**Urgency**: Tier 1 — carry the new module bundle into the init refactor without widening scope.
+**Phase**: Feature 019 Iteration 001 Phase 0 execution is active. T001-T005 are resolved and execution is paused at the T006 human-handoff boundary.
+**Urgency**: Tier 1 — Deliver the T006 decision handoff without widening scope or auto-deciding it.
 
 ---
 
 Current Status
 --------------
 
-Feature Lifecycle: IMPLEMENTATION-IN-PROGRESS
+Feature Lifecycle: PHASE0-EXECUTION-PAUSED
 
 - Feature 019 is `Specrew Distribution Module via PowerShell Gallery`
 - Clarified spec: `file:///C:/Dev/Specrew/specs/019-specrew-distribution-module/spec.md`
@@ -25,8 +25,8 @@ Feature Lifecycle: IMPLEMENTATION-IN-PROGRESS
 - Iteration plan: `file:///C:/Dev/Specrew/specs/019-specrew-distribution-module/iterations/001/plan.md` (canonical format with Schema, Started, Capacity, Effort Model)
 - Hardening-gate-and-implementation-auth boundary completed on 2026-05-16T17:42:05Z
 - Governance repair completed on 2026-05-16T19:00:00Z
-- Validation status: Phase 0 + Pillar 1/2 validations in progress for the new module bundle; no publish workflow work has started.
-- Implementation execution has completed Phase 0 and the first two implementation pillars.
+- Validation status: PASS (pwsh validate-governance.ps1 -IterationPath Feature019/iterations/001)
+- Implementation execution has started only for Phase 0 design-question handling.
 - T001 resolved by human verdict: **Option 1 — Explicit FileList allowlist for Specrew.psd1**.
 - T001 rationale captured in `specs/019-specrew-distribution-module/contracts/Specrew.psd1.contract.md` and `.squad/decisions.md`.
 - T002 resolved by human verdict: **Option A — Git-style conflict markers in `.specrew/template-conflicts/<filename>.conflict` artifacts**.
@@ -38,10 +38,7 @@ Feature Lifecycle: IMPLEMENTATION-IN-PROGRESS
 - T005 resolved by human verdict: **Option A — document lightweight PSGallery API-key rotation cadence now**.
 - T005 cadence/procedure are captured in `docs/operations/psgallery-release-credentials.md`, `plan.md`, `research.md`, `data-model.md`, `tasks.md`, `iterations/001/plan.md`, `iterations/001/state.md`, and `.squad/decisions.md`.
 - T005 remains documentation-only and non-blocking.
-- T006 resolved by human verdict: **Option A — 1-year validity for the self-signed module-signing certificate**.
-- T006 rationale and renewal procedure are captured in `docs/operations/psgallery-release-credentials.md`, `plan.md`, `research.md`, `data-model.md`, `tasks.md`, `iterations/001/plan.md`, `iterations/001/state.md`, and `.squad/decisions.md`.
-- Pillar 1 is complete: `Specrew.psd1` and `Specrew.psm1` exist at repo root and expose the FR-002 command surface.
-- Pillar 2 is complete: `templates/`, `extensions/specrew-speckit/`, `scripts/`, and the required docs are all bundled through the manifest allowlist.
+- T006 (Self-Signed Certificate Validity Period) is now the active human-handoff boundary and must not be auto-decided in this run.
 - **39 total tasks** across 6 phases
   - **Phase 0 (Design Questions)**: 6 tasks explicitly resolving plan-time design questions
     - T001: Module Manifest File-List Strategy (blocks Pillar 1/2)
@@ -62,10 +59,10 @@ Feature Lifecycle: IMPLEMENTATION-IN-PROGRESS
   - Critical path defined: Phase 0 → P1/P2 (parallel) → P3 → P4/P5 (parallel) → Validation
 - Branch: `019-specrew-distribution-module`
 - Estimated effort: 14 SP (within 10-15 SP spec estimate)
-- **Authorization scope**: Iteration 001 implementation is authorized; T001-T006 are now resolved and Pillar 3 is the next authorized lane.
+- **Authorization scope**: Iteration 001 implementation is authorized, but T001-T006 must still be handled truthfully during execution and must not be auto-decided.
 - **Hardening Gate Status**: READY verdict with canonical concerns; sign-off complete (2026-05-16T17:42:05Z)
-- **Critical Constraint**: Iteration 001 remains Windows-first; do not pull Ubuntu/macOS/WSL hardening, broader embedded backslash cleanup, or new validator work into this slice.
+- **Critical Constraint**: T006 remains unresolved by design and MUST surface during implementation without auto-decision. Iteration 001 remains Windows-first; do not pull Ubuntu/macOS/WSL hardening, broader embedded backslash cleanup, or new validator work into this slice.
 
 Next Valid Action
 
-Carry the new module bundle into Pillar 3 (`specrew init` module-vs-clone refactor), keeping Pillar 5 publish execution and Iteration 002 cross-platform backlog items deferred.
+Present the T006 human-decision handoff for self-signed certificate validity period, keeping the blocked downstream publishing work and annual-operations compose-with note explicit. Stop after the handoff without auto-deciding T006 or starting T038/T040/T041.

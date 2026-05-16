@@ -1,3 +1,62 @@
+# Decision: Feature 019 T006 Self-Signed Certificate Validity Period
+
+**Date**: 2026-05-16T16:23:58Z  
+**Boundary**: Phase 0 T006  
+**Feature**: 019-specrew-distribution-module (Specrew Distribution Module via PowerShell Gallery)  
+**Iteration**: 001  
+**Authority**: Alon Fliess (human verdict received during implementation)  
+**Decision Type**: Design-question resolution
+
+## Task
+
+Resolve T006: choose the self-signed certificate validity period so the future publish workflow can sign the Specrew module with a bounded risk window while keeping the maintainer renewal procedure concrete and repeatable.
+
+## Verdict
+
+**Approved option**: **Option A — 1-year validity for the self-signed module-signing certificate**
+
+**Approved certificate rule**:
+- Generate the certificate with `-NotAfter (Get-Date).AddYears(1)`.
+- Store the replacement PFX material in GitHub Actions secrets (`SIGNING_CERT_BASE64`, `SIGNING_CERT_PASSWORD`).
+- Keep migration to a real code-signing certificate explicitly out of scope for Iteration 001.
+
+**Approved renewal procedure**:
+1. Generate a new self-signed code-signing certificate with `AddYears(1)`.
+2. Export it, Base64-encode it, and update the GitHub Actions signing secrets.
+3. Run the publish workflow's dry-run path to verify signing succeeds without performing a real publish.
+4. Archive the old certificate material for historical verification.
+5. Record the renewal date and calendar reminder.
+
+**Compose-with note for T005**:
+- Pair certificate renewal with the annual PSGallery API-key review in one release-credential operations event.
+
+## Rationale
+
+- The approved 1-year cadence keeps the compromise window short for a self-signed credential.
+- It aligns cleanly with the already-approved annual API-key review so maintainers do not carry two separate release-credential calendars.
+- Exercising the renewal flow yearly reduces the chance of a stale or forgotten signing process when Pillar 5 goes live.
+
+## Commit Reference Workflow
+
+**Starting Commit**: `52cf7a0e2f3fa4cc63151d734ad597e0f6246e7d`  
+**Truthful workflow**: record the human verdict in the maintainer-facing operations runbook plus the relevant planning, research, data-model, and execution-state artifacts first, run the relevant iteration validations for the touched surfaces, then create a dedicated checkpoint commit to anchor T006 in git. This entry intentionally records the starting ref and the workflow without pre-claiming the later checkpoint hash inside the same staged change.
+
+## Runtime Evidence
+
+- Updated `docs/operations/psgallery-release-credentials.md` so the annual operations event now covers both PSGallery API-key rotation and self-signed certificate renewal.
+- Updated `specs/019-specrew-distribution-module/plan.md`, `research.md`, `data-model.md`, `tasks.md`, `iterations/001/plan.md`, and `iterations/001/state.md` so Phase 0 is truthfully complete and the approved 1-year renewal cadence is recorded in the planning artifacts.
+- Updated `.squad/identity/now.md` so live execution context advances from the T006 handoff pause to the Pillar 3 follow-on lane.
+- Did **not** start real PSGallery publishing, Ubuntu/macOS/WSL hardening, or the broader Iteration 002 path-hardening sweep.
+
+## Impact
+
+T006 is now complete for Iteration 001. Phase 0 design questions are fully resolved, Pillar 5 has an approved signing-certificate cadence to implement later, and execution can proceed into the first implementation pillars without a remaining design-question hold.
+
+## Next Action
+
+Execute Pillar 1 and Pillar 2 in dependency order, validate the new module packaging surfaces, then hand off to Pillar 3 without widening into publish execution.
+
+
 # Decision: Feature 019 T005 API-Key Rotation Guidance
 
 **Date**: 2026-05-16T16:10:41Z  

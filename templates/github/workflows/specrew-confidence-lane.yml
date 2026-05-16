@@ -1,0 +1,43 @@
+name: Specrew Confidence Lane
+
+env:
+  SPEC_KIT_VERSION: '0.8.4'
+  SQUAD_VERSION: '0.9.1'
+
+on:
+  schedule:
+    - cron: '0 6 * * 1'
+  workflow_dispatch:
+
+jobs:
+  confidence-lane:
+    name: Confidence lane
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Setup uv
+        uses: astral-sh/setup-uv@v5
+
+      - name: Install specify CLI
+        run: uv tool install --force specify-cli --from "git+https://github.com/github/spec-kit.git@v${SPEC_KIT_VERSION}"
+
+      - name: Install squad CLI
+        run: npm install -g "@bradygaster/squad-cli@${SQUAD_VERSION}"
+
+      - name: Run confidence lane smoke harness
+        shell: pwsh
+        run: ./tests/manual/copilot-squad-confidence-lane.ps1 -LaunchCopilot -TraceDirectory ./.scratch/copilot-squad-confidence-lane/traces -LaneName confidence -MissingToolExitMode skip
+
+      - name: Upload confidence lane traces
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: specrew-confidence-lane-traces
+          path: ./.scratch/copilot-squad-confidence-lane/traces

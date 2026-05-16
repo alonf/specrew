@@ -351,13 +351,13 @@ graph TD
    - **Approved procedure**: generate a new scoped Specrew API key, update `PSGALLERY_API_KEY` (or equivalent) in GitHub Actions secrets, confirm auth via the workflow's manual-dispatch dry-run path, then revoke the old key only after the dry run succeeds.
    - **Decision owner**: Alon Fliess (human verdict during implementation). This remains documentation-only and non-blocking.
 
-6. **Self-Signed Certificate Validity Period**: What validity period should the self-signed certificate use? Trade-offs: short validity (e.g., 1 year) requires frequent renewal; long validity (e.g., 10 years) reduces maintenance burden but increases risk window if private key leaks.
-   - **Investigation Path**: Research PowerShell module signing best practices; balance security vs. maintenance.
-   - **Decision Owner**: Implementation team during Pillar 5. Pair the annual certificate review discussion with T005's annual API-key review event.
+6. **Self-Signed Certificate Validity Period**: **Resolved 2026-05-16 for Iteration 001** — Option A 1-year validity. Generate the self-signed certificate with `-NotAfter (Get-Date).AddYears(1)`, renew it during the same annual operations event as the PSGallery API-key review, and keep real code-signing certificate acquisition out of scope for this iteration.
+   - **Decision rationale**: aligns with T005's annual credential-review cadence, minimizes the compromise window for a self-signed credential, and keeps the renewal flow practiced.
+   - **Decision owner**: Alon Fliess (human verdict during implementation).
 
 ## Phase 0: Research (Design Unknowns Resolution)
 
-**Objective**: Resolve all design unknowns before Phase 1 design artifacts and Phase 2 implementation begin. No NEEDS CLARIFICATION items remain after this phase.
+**Objective**: Resolve all design unknowns before Phase 1 design artifacts and Phase 2 implementation begin. No NEEDS CLARIFICATION items remain after this phase. **Status**: complete for Iteration 001; Pillar 1 and Pillar 2 are the active implementation lanes.
 
 ### Research Tasks
 

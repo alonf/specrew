@@ -323,24 +323,24 @@ erDiagram
 - **Thumbprint** (string, PK): Unique certificate identifier (SHA1 hash, e.g., 'A1B2C3...')
 - **Subject** (string): Certificate subject (e.g., 'CN=Specrew Module Signing')
 - **NotBefore** (string): ISO 8601 date when certificate becomes valid (e.g., '2026-05-16')
-- **NotAfter** (string): ISO 8601 date when certificate expires (e.g., '2031-05-16')
-- **ValidityPeriod** (string): Human-readable validity period (e.g., '5 years')
+- **NotAfter** (string): ISO 8601 date when certificate expires (e.g., '2027-05-16')
+- **ValidityPeriod** (string): Human-readable validity period (approved value: '1 year')
 
 **Storage**:
 - **GitHub Actions Secret (Base64-encoded PFX)**: `SIGNING_CERT_BASE64`
 - **GitHub Actions Secret (Password)**: `SIGNING_CERT_PASSWORD`
 - **Not Stored**: Private key never committed to repository or exposed locally (only in GitHub Actions secrets)
 
-**Renewal Procedure** (to be documented alongside the API-key guidance in `docs/operations/psgallery-release-credentials.md` once T006 is decided):
-1. Generate new self-signed certificate (see research.md R6 for PowerShell commands)
-2. Export to PFX, convert to Base64
-3. Update GitHub Actions secrets (SIGNING_CERT_BASE64, SIGNING_CERT_PASSWORD)
-4. Verify next module publish succeeds with new certificate
-5. Document renewal date in runbook
+**Renewal Procedure**:
+1. Generate a new self-signed certificate with `-NotAfter (Get-Date).AddYears(1)` (see research.md R6 for PowerShell commands)
+2. Export to PFX, convert to Base64, and update `SIGNING_CERT_BASE64` plus `SIGNING_CERT_PASSWORD`
+3. Verify the workflow dry-run path signs successfully with the replacement certificate
+4. Archive the old certificate material for historical signature verification
+5. Record the renewal date in the operations runbook and set the next annual reminder
 
 **Validation Rules**:
 - NotAfter must be after NotBefore (temporal consistency)
-- ValidityPeriod must be 5 years (as per research decision)
+- ValidityPeriod must be 1 year (per approved T006 decision)
 - Thumbprint must be valid SHA1 hex string (40 characters)
 
 **Relationships**:

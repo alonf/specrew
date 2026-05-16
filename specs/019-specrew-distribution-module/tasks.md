@@ -38,7 +38,7 @@
   **Blocks**: None (documentation task; does not block implementation)  
   **Downstream Impact**: Maintainer reference for future key rotation; not blocking for v1
 
-- [ ] T006 [assigned_to: Implementation Team] [effort: S] **Resolve Self-Signed Certificate Validity Period** — Choose validity period (1 year vs 5 years vs 10 years) for self-signed certificate; document in data-model.md Signing Certificate entity and update Pillar 5 certificate generation task parameters (Trace: plan.md Plan-Time Design Question 6, research.md R6)  
+- [x] T006 [assigned_to: Implementation Team] [effort: S] **Resolve Self-Signed Certificate Validity Period** — Choose validity period (1 year vs 5 years vs 10 years) for self-signed certificate; document in data-model.md Signing Certificate entity and update Pillar 5 certificate generation task parameters. **Approved 2026-05-16**: Option A — 1-year validity, renewed during the same annual operations event as the PSGallery API-key review; renewal procedure covers `AddYears(1)`, GitHub Actions secret refresh, publish dry-run signing verification, archival of the old certificate, and reminder capture. (Trace: plan.md Plan-Time Design Question 6, research.md R6)  
   **Blocks**: T038  
   **Downstream Impact**: Pillar 5 Publishing Workflow certificate generation task depends on validity period decision
 
@@ -64,11 +64,11 @@ Test-Path C:\Dev\Specrew\docs\operations\psgallery-release-credentials.md
 
 ### Implementation Tasks
 
-- [ ] T007 [P] [assigned_to: Implementation Team] [effort: M] **Create Module Manifest Specrew.psd1** — Generate Specrew.psd1 in repository root with: ModuleVersion placeholder (to be stamped from config.yml at build time), PowerShellVersion = '7.0', GUID (generate once), Author = 'Alon Fliess', Description from spec, FunctionsToExport list (specrew, specrew-init, specrew-start, specrew-update, specrew-review, specrew-team, specrew-where), FileList per T001 decision, PrivateData.PSData (tags, ProjectUri, LicenseUri, ReleaseNotes), PSEdition = 'Core' (Trace: FR-001, FR-002, FR-003, FR-004, FR-032, contracts/Specrew.psd1.contract.md)
+- [x] T007 [P] [assigned_to: Implementation Team] [effort: M] **Create Module Manifest Specrew.psd1** — Generate Specrew.psd1 in repository root with: ModuleVersion placeholder (to be stamped from config.yml at build time), PowerShellVersion = '7.0', GUID (generate once), Author = 'Alon Fliess', Description from spec, FunctionsToExport list (specrew, specrew-init, specrew-start, specrew-update, specrew-review, specrew-team, specrew-where), FileList per T001 decision, PrivateData.PSData (tags, ProjectUri, LicenseUri, ReleaseNotes), PSEdition = 'Core' (Trace: FR-001, FR-002, FR-003, FR-004, FR-032, contracts/Specrew.psd1.contract.md)
 
-- [ ] T008 [P] [assigned_to: Implementation Team] [effort: M] **Create Module Loader Specrew.psm1** — Implement Specrew.psm1 in repository root following T004 loader structure decision; dot-source all scripts from scripts/ directory using Join-Path for cross-platform path handling; Export-ModuleMember for all CLI functions (Trace: FR-002, FR-030, research.md R2)
+- [x] T008 [P] [assigned_to: Implementation Team] [effort: M] **Create Module Loader Specrew.psm1** — Implement Specrew.psm1 in repository root following T004 loader structure decision; dot-source all scripts from scripts/ directory using Join-Path for cross-platform path handling; Export-ModuleMember for all CLI functions (Trace: FR-002, FR-030, research.md R2)
 
-- [ ] T009 [assigned_to: Implementation Team] [effort: S] **Validate Module Manifest** — Run Test-ModuleManifest against Specrew.psd1; verify no errors; confirm all FunctionsToExport match actual script files; validate PrivateData structure (Trace: FR-001, Quality Gate: Module manifest validity)
+- [x] T009 [assigned_to: Implementation Team] [effort: S] **Validate Module Manifest** — Run Test-ModuleManifest against Specrew.psd1; verify no errors; confirm all FunctionsToExport match actual script files; validate PrivateData structure (Trace: FR-001, Quality Gate: Module manifest validity)
 
 **Pillar 1 Verification**:
 ```powershell
@@ -92,15 +92,15 @@ Get-Content C:\Dev\Specrew\Specrew.psd1 | Select-String -Pattern "FunctionsToExp
 
 ### Implementation Tasks
 
-- [ ] T010 [P] [assigned_to: Implementation Team] [effort: M] **Create Templates Directory Structure** — Create templates/ directory in repository root with subdirectories: templates/specify/ (copy from .specify/templates/), templates/squad/ (copy from .squad/agents/ and .squad/identity/), templates/github/ (copy from .github/workflows/specrew-*.yml); preserve directory structure for specrew init bootstrap (Trace: FR-008, data-model.md Template Tree entity)
+- [x] T010 [P] [assigned_to: Implementation Team] [effort: M] **Create Templates Directory Structure** — Create templates/ directory in repository root with subdirectories: templates/specify/ (copy from .specify/templates/), templates/squad/ (copy from .squad/agents/ and .squad/identity/), templates/github/ (copy from .github/workflows/specrew-*.yml); preserve directory structure for specrew init bootstrap (Trace: FR-008, data-model.md Template Tree entity)
 
-- [ ] T011 [P] [assigned_to: Implementation Team] [effort: S] **Bundle Specrew-Speckit Extension** — Verify extensions/specrew-speckit/ is correctly structured for bundling (validators/, coordinator-prompts/, scripts/); update FileList in Specrew.psd1 to include extensions/specrew-speckit/**/* (Trace: FR-007)
+- [x] T011 [P] [assigned_to: Implementation Team] [effort: S] **Bundle Specrew-Speckit Extension** — Verify extensions/specrew-speckit/ is correctly structured for bundling (validators/, coordinator-prompts/, scripts/); update FileList in Specrew.psd1 to include extensions/specrew-speckit/**/* (Trace: FR-007)
 
-- [ ] T012 [P] [assigned_to: Implementation Team] [effort: S] **Bundle Scripts Directory** — Verify scripts/ directory structure (entry points + internal/ utilities); update FileList in Specrew.psd1 to include scripts/*.ps1 and scripts/internal/*.ps1 (Trace: FR-006)
+- [x] T012 [P] [assigned_to: Implementation Team] [effort: S] **Bundle Scripts Directory** — Verify scripts/ directory structure (entry points + internal/ utilities); update FileList in Specrew.psd1 to include scripts/*.ps1 and scripts/internal/*.ps1 (Trace: FR-006)
 
-- [ ] T013 [P] [assigned_to: Implementation Team] [effort: S] **Bundle Documentation** — Verify docs/ directory contains dashboard-guide.md, roadmap-maintenance.md, and `operations/psgallery-release-credentials.md` (from T005); update FileList in Specrew.psd1 to include docs/*.md and the operations subdirectory as needed (Trace: FR-009)
+- [x] T013 [P] [assigned_to: Implementation Team] [effort: S] **Bundle Documentation** — Verify docs/ directory contains dashboard-guide.md, roadmap-maintenance.md, and `operations/psgallery-release-credentials.md` (from T005); update FileList in Specrew.psd1 to include docs/*.md and the operations subdirectory as needed (Trace: FR-009)
 
-- [ ] T014 [assigned_to: Implementation Team] [effort: M] **Validate Exclusions** — Audit FileList in Specrew.psd1; confirm specs/, proposals/, tests/, CHANGELOG.md, LICENSE, README.md, .git/, .vscode/, *.log are excluded; verify module package size estimate under 5 MB (Trace: FR-005, FR-010)
+- [x] T014 [assigned_to: Implementation Team] [effort: M] **Validate Exclusions** — Audit FileList in Specrew.psd1; confirm specs/, proposals/, tests/, CHANGELOG.md, LICENSE, README.md, .git/, .vscode/, *.log are excluded; verify module package size estimate under 5 MB (Trace: FR-005, FR-010)
 
 **Pillar 2 Verification**:
 ```powershell

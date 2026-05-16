@@ -7,10 +7,10 @@
 
 | # | Deliverable | Status | Evidence | Notes |
 | --- | --- | --- | --- | --- |
-| 1 | `Test-ModuleManifest` passes for `Specrew.psd1` | [ ] Pending |  |  |
-| 2 | `Import-Module ./Specrew.psd1 -Force` succeeds | [ ] Pending |  |  |
-| 3 | Exported function set matches FR-002 (`specrew`, `specrew-init`, `specrew-start`, `specrew-where`, `specrew-review`, `specrew-team`, `specrew-update`) | [ ] Pending |  |  |
-| 4 | `specrew help` returns expected catalog | [ ] Pending |  |  |
+| 1 | `Test-ModuleManifest` passes for `Specrew.psd1` | [x] Done | `Test-ModuleManifest .\Specrew.psd1` → Name=`Specrew`, Version=`0.18.0`, PowerShellVersion=`7.0`, CompatiblePSEditions=`Core` | Executed 2026-05-16 during Pillar 1 validation |
+| 2 | `Import-Module ./Specrew.psd1 -Force` succeeds | [x] Done | `Import-Module .\Specrew.psd1 -Force` completed; only the expected unapproved-verb warning surfaced for Specrew command names | Executed 2026-05-16 during Pillar 1 validation |
+| 3 | Exported function set matches FR-002 (`specrew`, `specrew-init`, `specrew-start`, `specrew-where`, `specrew-review`, `specrew-team`, `specrew-update`) | [x] Done | `Get-Command -Module Specrew` returned all seven expected functions | Executed 2026-05-16 during Pillar 1 validation |
+| 4 | `specrew help` returns expected catalog | [x] Done | `Import-Module .\Specrew.psd1 -Force; specrew help` returned the expected command catalog and examples | Executed 2026-05-16 during Pillar 1 validation |
 | 5 | In a fresh empty Windows directory, `specrew init` succeeds and populates `.specify/`, `.squad/`, `.github/` | [ ] Pending |  |  |
 | 6 | `specrew start "test feature"` launches a Copilot CLI session with bootstrap prompt loaded | [ ] Pending |  |  |
 | 7 | `specrew where` renders the dashboard from installed module path | [ ] Pending |  |  |

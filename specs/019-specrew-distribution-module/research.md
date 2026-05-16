@@ -323,7 +323,7 @@ $cert = New-SelfSignedCertificate `
     -Subject "CN=Specrew Module Signing" `
     -Type CodeSigningCert `
     -CertStoreLocation Cert:\CurrentUser\My `
-    -NotAfter (Get-Date).AddYears(5)
+    -NotAfter (Get-Date).AddYears(1)
 
 # Export certificate to PFX (with password protection)
 $certPath = "C:\Temp\specrew-signing-cert.pfx"
@@ -341,12 +341,25 @@ Write-Host $pfxBase64  # Copy to GitHub Actions secret SIGNING_CERT_BASE64
 | Validity Period | Pros | Cons |
 | --- | --- | --- |
 | 1 year | Lower risk window if private key leaks | Frequent renewal (annual maintenance burden) |
-| 5 years | Balanced security vs. maintenance | Moderate risk window; reasonable renewal cadence |
+| 5 years | Balanced security vs. maintenance | Moderate risk window; longer stale-secret window than the annual API-key review |
 | 10 years | Minimal maintenance burden | High risk window if private key leaks |
 
-### Decision: 5-Year Validity Period for Self-Signed Certificate
+### Decision: Approved Iteration 001 Verdict — 1-Year Validity Period
 
-**Rationale**: Balances security (moderate risk window) with maintenance burden (renewal every 5 years). Private key stored as GitHub Actions secret (SIGNING_CERT_BASE64 + SIGNING_CERT_PASSWORD); not exposed in codebase or local machines. Renewal procedure documented in `docs/maintainer-runbook.md`.
+**Approved T006 verdict (2026-05-16)**:
+- **Option A selected**: 1-year validity for the self-signed module-signing certificate
+- **Certificate generation rule**: use `-NotAfter (Get-Date).AddYears(1)` when creating the replacement certificate
+- **Compose-with note**: align renewal with T005's annual PSGallery API-key review so the release-credential event stays consolidated
+- **Out-of-scope note**: migration to a real code-signing certificate remains deferred beyond Iteration 001
+
+**Renewal procedure**:
+1. Generate a new self-signed certificate with `AddYears(1)`
+2. Export and store the replacement certificate material in GitHub Actions secrets
+3. Run the publish workflow dry-run path to verify signing succeeds
+4. Archive the old certificate for historical verification
+5. Record the renewal date and calendar reminder
+
+**Rationale**: This keeps the compromise window short for a self-signed credential, aligns with the approved annual API-key rotation cadence, and keeps the renewal procedure exercised regularly rather than letting it go stale.
 
 ---
 
@@ -361,7 +374,6 @@ Write-Host $pfxBase64  # Copy to GitHub Actions secret SIGNING_CERT_BASE64
 4. **T004 — Module Loader Structure**: Explicit dot-sourcing, deterministic reviewed load order, `Join-Path` per path segment, FR-002 export surface
 5. **T005 — API-Key Rotation Guidance**: document annual PSGallery API-key review/rotation plus triggered rotation events in `docs/operations/psgallery-release-credentials.md`, using the approved four-step secret-update and dry-run verification flow; remains documentation-only and non-blocking
 
-**Research recommendations still awaiting explicit execution-time approval**:
-6. **T006 candidate**: 5-year validity self-signed certificate stored as GitHub Actions secrets
+6. **T006 — Self-Signed Certificate Validity**: 1-year validity self-signed certificate stored as GitHub Actions secrets, renewed during the annual release-credential event
 
-**Next execution boundary**: Phase 0 pauses at T006 (self-signed certificate validity period handoff); T005 is complete and remains non-blocking.
+**Next execution boundary**: Phase 0 is complete. Pillar 1 (module packaging) and Pillar 2 (resource bundling) are the next active implementation lanes.
