@@ -121,6 +121,7 @@ $requiredPaths = @(
     '.squad\agents\implementer\charter.md',
     '.squad\decisions.md',
     '.squad\identity\now.md',
+    '.github\agents\squad.agent.md',
     '.github\workflows\specrew-ci.yml',
     '.specrew\config.yml'
 )

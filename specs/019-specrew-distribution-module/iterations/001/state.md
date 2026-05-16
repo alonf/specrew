@@ -1,13 +1,13 @@
 # Iteration State: 001
 
 **Schema**: v1
-**Last Completed Task**: T035 (Integrate Conflict Detection into specrew-start)
-**Tasks Remaining**: T036-T042, T050-T056
-**In Progress**: Pillar 5 handoff ready (T036-T042 next)
+**Last Completed Task**: T056 (Update Quickstart Guide)
+**Tasks Remaining**: T042 and T053 require human follow-up; T041 and T054 are deferred to Iteration 002
+**In Progress**: Implementation boundary complete; review-ready with manual release follow-up explicitly documented
 **Baseline Ref**: 1b8dace
-**Current Phase**: Pillar 5 handoff ready
+**Current Phase**: implementation boundary ready
 **Iteration Status**: executing
-**Updated**: 2026-05-16T22:10:00Z
+**Updated**: 2026-05-16T23:59:00Z
 
 ## Execution Summary
 
@@ -34,13 +34,24 @@
 - T033 is complete: templates removed from the new module surface are now flagged with `.specrew\template-conflicts\*.deletion` artifacts for manual review.
 - T035 is complete: `scripts\specrew-start.ps1` now surfaces unresolved template-refresh artifacts at session start so Squad can guide `accept-new`, `keep-user`, or `manual-resolve` follow-up for conflicts and call out deletion-review work.
 - No spec drift was detected while completing Pillar 4; `iterations/001/drift-log.md` remains at zero drift events.
-- Pillar 4 (`T030-T035`) is complete. Pillar 5 (`T036-T042`) is now the next authorized implementation lane. Broader cross-platform hardening and real PSGallery publish remain out of scope for this batch.
+- Pillar 5 is complete for the authorized Iteration 001 slice: `.github/workflows/publish-module.yml` now exists, `scripts/internal/invoke-module-release.ps1` stamps from `.specrew/config.yml`, signs the module using the approved 1-year model, and keeps tag pushes on a dry-run-only lane while reserving live publish for manual dispatch.
+- `tests/integration/distribution-module-publish.ps1` now validates the workflow helper end to end: version stamping, signing, `Publish-Module -WhatIf`, tag-gated live publish, and clear missing-`PSGALLERY_API_KEY` failure reporting all pass.
+- T040 is complete: the Windows-first checklist is now fully executed. Installed-module `specrew start` and `specrew where` evidence were captured, update artifacts were verified, and publish dry-run/manual-gate evidence was recorded.
+- T041 remains explicitly deferred to Iteration 002. No Join-Path audit script was implemented in this batch.
+- T042 remains human-owned: secret names, setup steps, and the exact live-publish follow-up are now documented in the workflow comments, `docs/operations/psgallery-release-credentials.md`, and `test-evidence/us4-publish.md`, but no secrets were configured in this iteration.
+- Final validation is complete for the authorized Iteration 001 slice:
+  - T050-T052 are done with evidence under `specs/019-specrew-distribution-module/test-evidence/`
+  - T053 is prepared but still human-owned because no real tag push or PSGallery publish happened
+  - T054 remains deferred to Iteration 002
+  - T055 and T056 are complete with truthful success-criteria and quickstart updates
+- Final validation exposed one tightly coupled bootstrap gap: installed-module bootstrap was not bundling `.github/agents/squad.agent.md`, which `specrew start` requires. The repair landed inside the approved boundary by adding `templates/github/agents/squad.agent.md`, extending `specrew-init` bootstrap validation, and updating `tests/integration/distribution-module-init.ps1`.
+- No real PSGallery publish, Ubuntu/macOS/WSL validation, or broad embedded-backslash cleanup was performed in this batch.
 
 ## Notes
 
 - Update this file after each task completes or when the active human-decision hold changes.
 - Keep task identifiers aligned to plan.md.
-- T006 is resolved; carry the approved 1-year renewal cadence forward into Pillar 5 workflow work.
+- T042 and T053 should stay open in the handoff until the maintainer configures secrets, pushes the release tag, and manually dispatches the live publish lane.
 - Keep the T004 validator soft-warning idea as future-only guidance; do not widen Iteration 001 into validator work.
 
 <!-- >>> specrew-managed escalation-state >>> -->

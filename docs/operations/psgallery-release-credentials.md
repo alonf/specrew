@@ -2,6 +2,32 @@
 
 Maintainer-facing operations guidance for credentials used by the PowerShell Gallery release workflow.
 
+## Iteration 001 Release Boundary
+
+- Workflow: `.github/workflows/publish-module.yml`
+- Helper: `scripts/internal/invoke-module-release.ps1`
+- Safety model:
+  - `push` on `v*.*` tags runs the **dry-run** lane only
+  - a live publish requires `workflow_dispatch` with `release_mode=publish`
+- Iteration 001 explicitly stops short of a real PSGallery publish; the first live publish remains a human-owned follow-up.
+
+## Required GitHub Actions Secrets
+
+| Secret | Purpose | Human follow-up |
+| --- | --- | --- |
+| `PSGALLERY_API_KEY` | Authenticates `Publish-Module` against PSGallery | Create/rotate in PowerShell Gallery, then add it in repository Actions secrets |
+| `SIGNING_CERT_BASE64` | Restores the 1-year self-signed signing certificate PFX for live publish | Generate/export the PFX, Base64-encode it, and store the encoded value as a secret |
+| `SIGNING_CERT_PASSWORD` | Unlocks the PFX restored from `SIGNING_CERT_BASE64` | Store the matching export password as a separate secret |
+
+## First Live Publish Follow-Up
+
+1. Create or renew the self-signed code-signing certificate with `-NotAfter (Get-Date).AddYears(1)`.
+2. Export the certificate to PFX, Base64-encode it, and add/update the three required repository secrets above.
+3. Push the approved `v*.*` release tag to `origin`; this should run the dry-run lane only.
+4. Inspect the GitHub Actions run and confirm the stamp/sign/WhatIf steps succeeded.
+5. Manually dispatch **Publish Specrew module** against that same tag with `release_mode=publish`.
+6. After the manual publish run succeeds, verify the new version on PSGallery.
+
 ## PSGallery API Key Rotation
 
 ### Cadence

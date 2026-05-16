@@ -585,6 +585,7 @@ function Test-BootstrappedProjectState {
         }
 
         $workflowRoot = Join-Path -Path $ProjectPath -ChildPath '.github'
+        $coordinatorPromptPath = Join-Path -Path $workflowRoot -ChildPath 'agents\squad.agent.md'
         $workflowRoot = Join-Path -Path $workflowRoot -ChildPath 'workflows'
         if (-not (Test-Path -LiteralPath $workflowRoot -PathType Container)) {
             $failures.Add("Missing required workflow directory '$workflowRoot'.")
@@ -594,6 +595,10 @@ function Test-BootstrappedProjectState {
             if ($workflowCount -lt 1) {
                 $failures.Add("Expected at least one workflow under '$workflowRoot'.")
             }
+        }
+
+        if (-not (Test-Path -LiteralPath $coordinatorPromptPath -PathType Leaf)) {
+            $failures.Add("Missing required coordinator prompt '$coordinatorPromptPath'.")
         }
     }
 
@@ -1734,7 +1739,7 @@ if ($alreadyBootstrapped -and -not $Force) {
     }
 
     if ($DryRun) {
-        Add-Action -Actions $actions -Step 'bootstrap-validation' -Outcome 'would validate .specify templates, .squad agents, and .github workflows'
+        Add-Action -Actions $actions -Step 'bootstrap-validation' -Outcome 'would validate .specify templates, .squad agents, .github workflows, and .github/agents/squad.agent.md'
     }
     else {
         $bootstrapValidation = Test-BootstrappedProjectState -ProjectPath $resolvedProjectPath -SpecKitExtensionOnly:$SpecKitExtensionOnly
@@ -1746,7 +1751,7 @@ if ($alreadyBootstrapped -and -not $Force) {
             exit 1
         }
 
-        Add-Action -Actions $actions -Step 'bootstrap-validation' -Outcome 'validated .specify templates, .squad agents, and .github workflows'
+        Add-Action -Actions $actions -Step 'bootstrap-validation' -Outcome 'validated .specify templates, .squad agents, .github workflows, and .github/agents/squad.agent.md'
         Write-Host ("Specrew is already bootstrapped in '{0}'. Re-run with -Force to refresh bundled templates." -f $resolvedProjectPath) -ForegroundColor Yellow
     }
 
@@ -2093,7 +2098,7 @@ if (-not $SpecKitExtensionOnly) {
 
 Write-Step 'Validating bootstrapped project state'
 if ($DryRun) {
-    Add-Action -Actions $actions -Step 'bootstrap-validation' -Outcome 'would validate .specify templates, .squad agents, and .github workflows'
+    Add-Action -Actions $actions -Step 'bootstrap-validation' -Outcome 'would validate .specify templates, .squad agents, .github workflows, and .github/agents/squad.agent.md'
 }
 else {
     $bootstrapValidation = Test-BootstrappedProjectState -ProjectPath $resolvedProjectPath -SpecKitExtensionOnly:$SpecKitExtensionOnly
@@ -2105,7 +2110,7 @@ else {
         exit 1
     }
 
-    Add-Action -Actions $actions -Step 'bootstrap-validation' -Outcome 'validated .specify templates, .squad agents, and .github workflows'
+    Add-Action -Actions $actions -Step 'bootstrap-validation' -Outcome 'validated .specify templates, .squad agents, .github workflows, and .github/agents/squad.agent.md'
 }
 
 Write-BootstrapSummary -Actions $actions -DryRunMode:$DryRun -ProjectPath $resolvedProjectPath -ShowGuidance:(-not $SpecKitExtensionOnly -and $squadSurfaceReady)

@@ -1,0 +1,66 @@
+# Secrets required for the manual publish path (T042 human-owned follow-up):
+#   - PSGALLERY_API_KEY
+#   - SIGNING_CERT_BASE64
+#   - SIGNING_CERT_PASSWORD
+#
+# Iteration 001 safety rule:
+#   - every v*.* tag push runs the dry-run validation lane only
+#   - a real PSGallery publish requires a maintainer to manually dispatch this workflow
+#     with release_mode=publish against the tagged ref after the secrets above exist
+name: Publish Specrew module
+
+on:
+  push:
+    tags:
+      - 'v*.*'
+  workflow_dispatch:
+    inputs:
+      release_mode:
+        description: 'dry-run validates stamp/sign/publish without a live release; publish performs a real PSGallery publish'
+        required: true
+        default: dry-run
+        type: choice
+        options:
+          - dry-run
+          - publish
+
+permissions:
+  contents: read
+
+jobs:
+  publish-module:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Resolve release mode
+        id: release_mode
+        shell: pwsh
+        run: |
+          $mode = 'dry-run'
+          if ('${{ github.event_name }}' -eq 'workflow_dispatch') {
+            $mode = '${{ inputs.release_mode }}'
+            if ([string]::IsNullOrWhiteSpace($mode)) {
+              $mode = 'dry-run'
+            }
+          }
+
+          "release_mode=$mode" >> $env:GITHUB_OUTPUT
+          Write-Host "Release mode: $mode"
+
+      - name: Stamp, sign, and publish
+        shell: pwsh
+        env:
+          PSGALLERY_API_KEY: ${{ secrets.PSGALLERY_API_KEY }}
+          SIGNING_CERT_BASE64: ${{ secrets.SIGNING_CERT_BASE64 }}
+          SIGNING_CERT_PASSWORD: ${{ secrets.SIGNING_CERT_PASSWORD }}
+        run: |
+          .\scripts\internal\invoke-module-release.ps1 `
+            -RepositoryRoot (Get-Location).Path `
+            -ReleaseMode '${{ steps.release_mode.outputs.release_mode }}' `
+            -GitRefType '${{ github.ref_type }}' `
+            -GitRefName '${{ github.ref_name }}' `
+            -AllowEphemeralSigningCertificate `
+            -SummaryPath $env:GITHUB_STEP_SUMMARY

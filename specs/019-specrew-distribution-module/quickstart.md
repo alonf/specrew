@@ -16,6 +16,8 @@ Specrew is a specification-driven development workflow system designed for AI-au
 
 **Estimated Time**: Under 5 minutes from install to first `specrew start` session.
 
+> **Iteration 001 truth note**: the module packaging, bundled bootstrap/update flow, and publish workflow are implemented, but the **first live PSGallery publish is still a maintainer-owned manual gate**. Until that publish happens, use the clone-and-PATH workflow at the end of this guide.
+
 ---
 
 ## Prerequisites
@@ -36,11 +38,13 @@ Before installing Specrew, ensure your environment meets these requirements:
 
 ### Step 1: Install Specrew Module
 
-Run this single command to install Specrew from PowerShell Gallery:
+Once the maintainer completes the first manual-gated PSGallery publish, install Specrew with:
 
 ```powershell
 Install-Module Specrew -Scope CurrentUser
 ```
+
+If the gallery package is not live yet, PowerShell will return "Cannot find module 'Specrew' in the gallery" — that is expected before the first public publish and the fallback path is documented in [Alternative Installation](#alternative-installation-clone-and-path).
 
 **What happens**:
 - PowerShell downloads the Specrew module from PowerShell Gallery
@@ -70,7 +74,7 @@ Script     0.18.0     Specrew                {specrew, specrew-init, specrew-sta
 Confirm Specrew commands are available:
 
 ```powershell
-specrew --help
+specrew help
 ```
 
 **Expected Output**:
@@ -106,16 +110,21 @@ specrew init
 - Templates are copied from the module installation directory to your project:
   - `.specify/` — Spec Kit templates (spec, plan, tasks templates)
   - `.squad/` — Squad agent configurations
-  - `.github/` — GitHub workflow templates (optional; can be skipped)
+  - `.github/` — GitHub workflow templates and the Squad coordinator prompt
 - Per-project files are generated:
   - `.squad/decisions.md` — Session decision log
   - `.squad/identity/now.md` — Current project state
-  - `.specrew/feature.json` — Feature tracking baseline
+  - `.specrew/config.yml` — Specrew/Spec Kit/Squad version baseline
+  - `.specrew/iteration-config.yml` — Iteration defaults
+  - `.specrew/role-assignments.yml` — Runtime role routing
 
 **Verification**:
 ```powershell
 # Check that directories were created
 Test-Path .specify/, .squad/, .github/
+
+# Check that start-ready artifacts exist
+Test-Path .github\agents\squad.agent.md, .github\workflows\specrew-ci.yml
 ```
 
 **Expected Output**: All three directories should exist (unless you skipped GitHub workflows).
@@ -132,7 +141,8 @@ specrew start
 
 **What happens**:
 - Specrew loads project state from `.squad/identity/now.md`
-- Copilot (or your configured AI agent) receives project context
+- Specrew writes `.specrew\last-start-prompt.md`, `.specrew\start-context.json`, and `.specrew\start-summary.md`
+- Copilot (or your configured AI agent) receives the generated project context
 - You're prompted to describe what you want to build or change
 
 **Example Session Flow**:
@@ -239,9 +249,9 @@ Import-Module Specrew -Force
 
 ### Issue: "Install-Module: Cannot find module 'Specrew' in the gallery"
 
-**Cause**: Module not yet published to PowerShell Gallery (expected before first public release).
+**Cause**: The first manual-gated PSGallery publish has not happened yet, or the new version has not propagated.
 
-**Solution**: Wait for module to be published, or use clone-and-PATH workflow (see "Alternative Installation" below).
+**Solution**: Wait for the maintainer to complete the live publish, or use clone-and-PATH workflow (see "Alternative Installation" below).
 
 ---
 
@@ -255,7 +265,7 @@ Import-Module Specrew -Force
 
 ### Issue: "specrew init" fails with path errors on Linux/Mac
 
-**Cause**: Cross-platform path handling issue (likely a bug; should not happen in released module).
+**Cause**: Cross-platform parity is still deferred beyond Iteration 001.
 
 **Solution**: Report issue to [GitHub Issues](https://github.com/alonf/specrew/issues) with error message and platform details.
 
@@ -325,7 +335,7 @@ After bootstrapping your project with `specrew init`:
 
 ## Version History
 
-- **v0.18.0** (2026-05-16): Initial PowerShell Gallery release; distribution module feature complete
+- **v0.18.0** (2026-05-16): Module packaging, bundled init/update flow, and manual-gated publish workflow are ready; first live PSGallery publish is still pending maintainer follow-up
 - **Earlier versions**: Available via clone-and-PATH only (no PSGallery distribution)
 
 ---
