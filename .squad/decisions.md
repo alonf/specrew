@@ -5006,3 +5006,49 @@ Lifecycle artifacts must be consistent at all points to avoid automation, planne
 
 No lifecycle boundary advancement applied; only state artifact corrected to match the actual completed boundary.
 
+
+
+## 2026-05-16T19:07:46Z — Canonical defer entry (Feature 019 iteration 001 cross-platform carry-forward)
+
+- **Decision ID**: defer-feature-019-iter-001-cross-platform-carry-forward
+- **Type**: defer
+- **Affected Iteration**: specs\019-specrew-distribution-module\iterations\001
+- **Approving Human**: Alon Fliess
+- **Recorded At**: 2026-05-16T19:07:46Z
+- **Next Action**: Execute T041 and T054 in Iteration 002 without reopening Feature 019 Iteration 001 review-verdict-signoff
+- **Rationale**: Iteration 001 is explicitly Windows-first. Ubuntu/macOS/WSL parity, PowerShell 5.1 rejection proof, and the broader Join-Path hardening sweep remain accepted carry-forward work for Iteration 002 and are non-blocking for this signoff.
+
+## 2026-05-16T19:07:46Z — Canonical defer entry (Feature 019 iteration 001 release-ops carry-forward)
+
+- **Decision ID**: defer-feature-019-iter-001-release-ops-carry-forward
+- **Type**: defer
+- **Affected Iteration**: specs\019-specrew-distribution-module\iterations\001
+- **Approving Human**: Alon Fliess
+- **Recorded At**: 2026-05-16T19:07:46Z
+- **Next Action**: Complete T042 and T053 as maintainer-owned post-merge release operations without reopening Feature 019 Iteration 001 review-verdict-signoff
+- **Rationale**: Secrets configuration and the first real PSGallery publish remain intentionally human-operated release steps. The workflow, documentation, and dry-run/manual-gate evidence are already accepted for Iteration 001, so these post-merge actions stay explicit carry-forward rather than blockers.
+
+## 2026-05-16T19:07:46Z — Authorization: review-verdict-signoff
+
+- **Decision ID**: authorization-feature-019-iter-001-review-verdict-signoff
+- **Type**: authorization
+- **Boundary**: review-verdict-signoff
+- **Approving Human**: Alon Fliess
+- **Recorded At**: 2026-05-16T19:07:46Z
+- **Commit Reference**: pending (single-boundary-commit constraint; recorded by canonical boundary subject)
+- **Scope**: Feature 019 Iteration 001
+- **Accepted Review-Boundary Commit**: 567c070
+- **Accepted Carry-Forward Items**:
+  - T041 and T054 deferred to Iteration 002.
+  - T042 and T053 remain human follow-up post-merge.
+- **Authorization Text**:
+  > Current boundary: /review-verdict-signoff for Feature 019 Iteration 001.
+  > Human approver: Alon Fliess.
+  > Accepted review boundary commit: 567c070.
+  > Human acceptance basis is the exact authorization text provided in the chat. Treat it as the authoritative signoff statement.
+  > Stop at /review-verdict-signoff completion. Do not advance to retro.
+  > Boundary commit must be pushed to origin/019-specrew-distribution-module.
+  > Carry-forward items to preserve explicitly:
+  > - T041 and T054 deferred to Iteration 002.
+  > - T042 and T053 remain human follow-up post-merge.
+  > - Do not perform retro, iteration closeout, feature closeout, or credential setup.

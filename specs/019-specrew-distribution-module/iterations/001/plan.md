@@ -74,7 +74,7 @@ Total effort estimate: 14 Story Points
 - **Planning approval**: Alon Fliess (2026-05-16)
 - **Hardening-gate sign-off**: Alon Fliess (2026-05-16T17:42:05Z)
 - **Implementation authorization**: Alon Fliess (2026-05-16T17:42:05Z)
-- **Review status**: Reviewer re-review accepted on 2026-05-16 against commit `9e2fb30`; review-verdict-signoff is the next valid lifecycle step and remains unopened from this boundary
+- **Review status**: Review-verdict-signoff completed on 2026-05-16 with human authorization against accepted review-boundary commit `567c070`; retro-boundary is the next valid lifecycle step and remains unopened from this boundary
 
 ## Reference
 

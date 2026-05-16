@@ -4,25 +4,24 @@
 **Reviewer**: Reviewer  
 **Reviewed By**: Reviewer  
 **Reviewed At**: 2026-05-16  
-**Implementation Ref**: commit `9e2fb30`  
+**Implementation Ref**: accepted review-boundary commit `567c070` (revalidated implementation repair on `9e2fb30`)  
 **Overall Verdict**: accepted  
-**Explicit Reviewer Verdict**: pass  
-**Review Boundary**: Independent re-review accepted; the bounded repair resolved the packaged-module allowlist drift and package-surface evidence overclaim; review-verdict-signoff is now the next valid lifecycle step and remains unopened from this boundary.
+**Explicit Reviewer Verdict**: accepted  
+**Review Boundary**: This artifact records review-verdict-signoff only. Retro-boundary, iteration-closeout, feature-closeout, and credential setup remain unopened.
 
 ---
 
 ## Summary
 
-Feature `019`, Specrew distribution module, iteration `001`, is **ACCEPTED** against implementation commit
-`9e2fb30`. The bounded repair corrected the explicit `FileList` allowlist in `Specrew.psd1`, including the
-previously missing shipped surfaces `scripts\internal\invoke-module-release.ps1` and
-`templates\github\agents\squad.agent.md`, and refreshed the US1/US2/package proof so the scratch module and release
-workspace are now staged from the manifest-defined package surface instead of whole-tree copies.
+Feature `019`, Specrew distribution module, iteration `001`, is **ACCEPTED** at review-verdict-signoff. Human approver
+Alon Fliess accepted the repaired review boundary on commit `567c070` after `R-019-R1` and `R-019-R2` were already
+resolved on the green tree. No new implementation delta is introduced at this boundary; this update records the
+authorized signoff and retro-ready bookkeeping only.
 
-The Windows-first review lane revalidated manifest/import behavior, the installed-module bootstrap path, the update
-lane, the publish dry-run/manual-gate path, governance validation, and an explicit FileList audit on the repaired tree.
-The prior blockers `R-019-R1` and `R-019-R2` are resolved. T041/T054 remain deferred to Iteration 002, and T042/T053
-remain human follow-up only; those items stay non-blocking for this boundary.
+The accepted Windows-first evidence set remains the same: manifest/import behavior, the installed-module bootstrap path,
+the update lane, the publish dry-run/manual-gate path, governance validation, and the explicit `FileList` audit all
+passed on the repaired tree. Carry-forward remains explicit and non-blocking here: T041/T054 are deferred to Iteration
+002, and T042/T053 remain human follow-up post-merge.
 
 ---
 
@@ -98,24 +97,26 @@ remain human follow-up only; those items stay non-blocking for this boundary.
 5. ✅ `pwsh -NoProfile -ExecutionPolicy Bypass -File .\tests\integration\distribution-module-init.ps1`
 6. ✅ `pwsh -NoProfile -ExecutionPolicy Bypass -File .\tests\integration\distribution-module-update.ps1`
 7. ✅ `pwsh -NoProfile -ExecutionPolicy Bypass -File .\tests\integration\distribution-module-publish.ps1`
-8. ✅ `pwsh -NoProfile -ExecutionPolicy Bypass -File .\extensions\specrew-speckit\scripts\validate-governance.ps1 -ProjectPath . -IterationPath .\specs\019-specrew-distribution-module\iterations\001`
-9. ✅ Repair commit `9e2fb30` pushed to `origin/019-specrew-distribution-module` before recording this re-review boundary.
+8. ✅ `pwsh -NoProfile -ExecutionPolicy Bypass -File .\extensions\specrew-speckit\scripts\validate-governance.ps1 -ProjectPath . -IterationPath .\specs\019-specrew-distribution-module\iterations\001` passed again on the signoff bookkeeping tree.
+9. ✅ Accepted review-boundary commit `567c070` is the human-approved signoff basis and is already on `origin/019-specrew-distribution-module`.
+10. ✅ Review, plan, state, decision-ledger, and inbox artifacts now record review-verdict-signoff while keeping retro, closeout, and credential setup unopened.
 
 ---
 
 ## Artifact Truth Verification
 
-1. ✅ `specs\019-specrew-distribution-module\iterations\001\plan.md` now records the accepted re-review boundary and points to review-verdict-signoff as the next lifecycle step.
-2. ✅ `specs\019-specrew-distribution-module\iterations\001\state.md` now records accepted review completion without opening review-verdict-signoff, retro, or closeout prematurely.
-3. ✅ `specs\019-specrew-distribution-module\iterations\001\drift-log.md` remains truthful: the review-discovered allowlist drift is logged as resolved rather than silently normalized.
-4. ✅ `specs\019-specrew-distribution-module\iterations\001\quality\hardening-gate.md` remains aligned: post-implementation verification is recorded as repaired-and-revalidated.
-5. ✅ Out-of-scope truth is preserved: T041/T054 remain deferred to Iteration 002, and T042/T053 remain human follow-up only.
+1. ✅ `specs\019-specrew-distribution-module\iterations\001\plan.md` now records accepted review-verdict-signoff and points to retro-boundary as the next lifecycle step.
+2. ✅ `specs\019-specrew-distribution-module\iterations\001\state.md` now records retro-ready signoff completion without opening retro, closeout, or credential setup prematurely.
+3. ✅ `.squad\decisions.md` now records the human approver, review-boundary commit `567c070`, UTC-seconds timestamp, and accepted carry-forward items for this signoff.
+4. ✅ `specs\019-specrew-distribution-module\iterations\001\drift-log.md` remains truthful: the review-discovered allowlist drift is logged as resolved rather than silently normalized.
+5. ✅ Out-of-scope truth is preserved explicitly: T041/T054 remain deferred to Iteration 002, and T042/T053 remain human follow-up post-merge.
 
 ---
 
 ## Gap Ledger
 
-No known gaps remain.
+- deferred — `T041` and `T054` stay deferred to Iteration 002 by accepted carry-forward direction.
+- deferred — `T042` and `T053` remain maintainer-owned post-merge release follow-up and do not reopen this signoff.
 
 ---
 
@@ -135,19 +136,18 @@ No known gaps remain.
 
 ## Verdict
 
-**ACCEPTED / READY-FOR-SIGNOFF** — Feature `019`, Specrew distribution module, iteration `001`, satisfies the
-bounded review scope against commit `9e2fb30`. The prior blockers are resolved: the shipped manifest now matches the
-approved explicit allowlist contract, and the installed-module/publish evidence now proves the real package surface
-instead of a whole-tree copy.
+**ACCEPTED / RETRO-READY** — Feature `019`, Specrew distribution module, iteration `001`, is signed off at
+review-verdict-signoff against accepted review-boundary commit `567c070`. The repaired manifest allowlist and
+package-shaped evidence remain accepted, and the only remaining items are the explicitly preserved carry-forward tasks.
 
 ---
 
 ## Next Action
 
-Proceed to the `review-verdict-signoff` boundary with human authorization. Do **not** start retrospective, closeout, or
-later lifecycle boundaries from this accepted review boundary alone.
+Request explicit `retro-boundary` authorization before any retrospective work begins. Do **not** open retro,
+iteration-closeout, feature-closeout, or credential setup from this accepted signoff alone.
 
 ---
 
-**Review Boundary Ref**: This artifact records the re-review acceptance boundary only. Review-verdict-signoff and all
-later lifecycle boundaries remain separate future steps.
+**Review-Verdict-Signoff Ref**: This artifact records review-verdict-signoff only. Retro-boundary,
+iteration-closeout, feature-closeout, and credential setup remain separate future steps.

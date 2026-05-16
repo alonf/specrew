@@ -1,13 +1,13 @@
 # Iteration State: 001
 
 **Schema**: v1
-**Last Completed Task**: review (independent re-review accepted on repaired tree)
-**Tasks Remaining**: review-verdict-signoff pending human authorization; T042 and T053 remain human follow-up; T041 and T054 remain deferred to Iteration 002
+**Last Completed Task**: review-verdict-signoff
+**Tasks Remaining**: retro-boundary pending human authorization; T042 and T053 remain human follow-up post-merge; T041 and T054 remain deferred to Iteration 002
 **In Progress**: none
 **Baseline Ref**: 1b8dace
 **Current Phase**: reviewing
-**Iteration Status**: accepted at review boundary and ready for review-verdict-signoff; T042/T053 remain human-owned and T041/T054 remain deferred
-**Updated**: 2026-05-16T18:56:31Z
+**Iteration Status**: accepted at review-verdict-signoff and retro-ready; retro remains unopened, T042/T053 remain human-owned, and T041/T054 remain deferred
+**Updated**: 2026-05-16T19:07:46Z
 
 ## Execution Summary
 
@@ -18,15 +18,16 @@
 - `tests\integration\distribution-module-publish.ps1` now stages its release workspace from `Specrew.psd1` `FileList` plus the repository-only `.specrew\config.yml` input, so the publish dry-run proves the packaged release helper is actually shipped.
 - Revalidation on the repaired tree passed for `Test-ModuleManifest`, `Import-Module`, `Get-Command -Module Specrew`, `distribution-module-init.ps1`, `distribution-module-update.ps1`, `distribution-module-publish.ps1`, the explicit FileList audit, and `validate-governance.ps1 -IterationPath`.
 - Repair commit `9e2fb30` was pushed to `origin/019-specrew-distribution-module` before the accepted re-review boundary was recorded.
-- Independent re-review accepted Iteration 001 as READY-FOR-SIGNOFF on the repaired tree. Review-verdict-signoff remains a separate future boundary and is not opened by this state update.
+- Independent re-review accepted Iteration 001 as READY-FOR-SIGNOFF on the repaired tree, and human authorization then advanced exactly one boundary to review-verdict-signoff against accepted review-boundary commit `567c070`.
+- Review-verdict-signoff is now complete. Retro remains unopened from this state update, and no retro, closeout, or credential setup work was performed here.
 - T042 remains human-owned: GitHub Actions secret names, setup steps, and live-publish instructions are documented, but no secrets were configured during Iteration 001.
-- T053 remains human-owned: the first real tag push + manual dispatch publish is still pending after the accepted review boundary.
+- T053 remains human-owned: the first real tag push + manual dispatch publish is still pending post-merge after accepted signoff.
 - T041 and T054 remain explicitly deferred to Iteration 002. Ubuntu/macOS/WSL parity, PowerShell 5.1 rejection proof, and broad Join-Path hardening are not blockers for this review.
 
 ## Notes
 
-- Review is complete and accepted; the next valid action is the separate `review-verdict-signoff` boundary.
-- Do not open retrospective, closeout, or later lifecycle boundaries from this state without the required human authorization.
+- Review-verdict-signoff is complete; the next valid action is the separate `retro-boundary` authorization.
+- Do not open retrospective, closeout, credential setup, or later lifecycle boundaries from this state without the required human authorization.
 - Keep the manual release follow-up (T042, T053) and Iteration 002 backlog (T041, T054) classified as non-blocking carry-forward work.
 
 <!-- >>> specrew-managed escalation-state >>> -->
