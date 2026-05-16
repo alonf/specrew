@@ -1,39 +1,35 @@
-updated_at: 2026-05-16T19:07:46Z
-focus_area: Feature 019 retro-ready handoff
-active_issues: No blocking review gaps remain for Feature 019 Iteration 001. Review-verdict-signoff is complete against accepted review-boundary commit 567c070. Carry-forward only: T041/T054 deferred to Iteration 002; T042/T053 human post-merge follow-up.
+updated_at: 2026-05-17T02:30:00Z
+focus_area: Feature 019 Iteration 002 cross-platform hardening + publish-workflow enablement
+active_issues: Iteration 002 opened per explicit human authorization; executing permissive overnight autonomous run with locked scope (T041 Join-Path audit, T054 cross-platform parity evidence, publish-workflow enablement, docs updates); stop conditions: test/validator/hardening failures, unanswered design questions, human-judgment boundaries, token budget >$80, human interrupt.
 ---
 
 What We're Focused On
 ====================
 
-**Phase**: Feature 019 Iteration 001 review-verdict-signoff is complete; retro remains unopened.
-**Urgency**: Tier 2 — preserve boundary discipline, keep carry-forward explicit, and wait for explicit retro authorization.
+**Phase**: Feature 019 Iteration 002 — cross-platform hardening and PSGallery publish-workflow enablement
+**Urgency**: Tier 1 — autonomous execution authorized; advance through mechanical boundaries until stop condition reached
 
 ---
 
 Current Status
 --------------
 
-Feature Lifecycle: RETRO-READY
+Feature Lifecycle: ITERATION-002-EXECUTING
 
 - Feature 019 is `Specrew Distribution Module via PowerShell Gallery`
 - Clarified spec: `file:///C:/Dev/Specrew/specs/019-specrew-distribution-module/spec.md`
 - Implementation plan: `file:///C:/Dev/Specrew/specs/019-specrew-distribution-module/plan.md`
 - Task breakdown: `file:///C:/Dev/Specrew/specs/019-specrew-distribution-module/tasks.md`
-- Review artifact: `file:///C:/Dev/Specrew/specs/019-specrew-distribution-module/iterations/001/review.md` (accepted review-verdict-signoff)
-- Iteration plan: `file:///C:/Dev/Specrew/specs/019-specrew-distribution-module/iterations/001/plan.md`
-- Iteration state: `file:///C:/Dev/Specrew/specs/019-specrew-distribution-module/iterations/001/state.md`
-- Hardening gate artifact: `file:///C:/Dev/Specrew/specs/019-specrew-distribution-module/iterations/001/quality/hardening-gate.md` (READY verdict preserved)
-- Accepted review-boundary commit: `567c070`
-- Review-verdict-signoff recorded on 2026-05-16T19:07:46Z with human approver Alon Fliess.
-- Validation status: `validate-governance.ps1 -ProjectPath . -IterationPath .\specs\019-specrew-distribution-module\iterations\001` passed on the signoff tree; only pre-existing warnings remain (roadmap drift and missing dashboard artifact for the iteration).
-- The accepted repaired implementation evidence remains unchanged from the re-review boundary: manifest/import checks, FileList audit, init/update/publish integration lanes, and governance validation all passed on the repaired tree.
-- Carry-forward preserved explicitly:
-  - T041 and T054 deferred to Iteration 002.
-  - T042 and T053 remain human follow-up post-merge.
-- Boundary discipline: do not perform retro, iteration closeout, feature closeout, or credential setup from this state.
+- Iteration 001 closeout: `file:///C:/Dev/Specrew/specs/019-specrew-distribution-module/iterations/001/closeout.md` (reconciliation bookkeeping materialized 2026-05-17)
+- Iteration 002 plan: `file:///C:/Dev/Specrew/specs/019-specrew-distribution-module/iterations/002/plan.md`
+- Iteration 002 state: `file:///C:/Dev/Specrew/specs/019-specrew-distribution-module/iterations/002/state.md`
+- Baseline ref: `2992fbc` (closeout reconciliation boundary commit)
+- Authorization: Explicit human authorization received 2026-05-17: "AUTHORIZE Feature 019 Iteration 002 OPENING + PERMISSIVE OVERNIGHT AUTONOMOUS RUN"
+- Scope lock: T041 (Join-Path audit/hardening sweep), T054 (cross-platform parity evidence), publish-workflow enablement (remove manual gate), docs updates. Does NOT include T042 (secret setup) or T053 (real publish) — those remain human post-merge follow-up.
+- WSL unavailable handling: If WSL unavailable, record `pending-human-execution` in test-evidence and continue (NOT a stop condition)
+- Evidence-driven documentation: Only update README/docs if T041 and T054 produce actual validation evidence
 
 Next Valid Action
 -----------------
 
-Request explicit retro-boundary authorization for Feature 019 Iteration 001. Do not open retro, closeout, or credential setup from this retro-ready handoff alone.
+Proceed to before-implement validation, then execute Iteration 002 scope (T041, T054, publish-workflow enablement, docs updates). Auto-advance through mechanical boundaries until stop condition reached.
