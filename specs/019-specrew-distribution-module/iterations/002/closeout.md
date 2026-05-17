@@ -128,7 +128,7 @@ These are recorded in `iterations/002/retro.md` for corpus inclusion decision by
 ## Committed Work Trail
 
 **Baseline Ref**: `2992fbc` (Iteration 001 closeout reconciliation boundary)  
-**Closeout Ref**: `7b08dfd` (verb-conformance fix, HEAD)
+**Closeout Ref**: `dd234d1` (Authorize Iteration 002 closeout for Feature 019, HEAD)
 
 **Complete Commit Trail** (Iteration 002 delivery + repair cycle):
 ```
