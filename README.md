@@ -38,13 +38,13 @@ AI-assisted software delivery.
 
 ## Platform Support
 
-Specrew is developed and validated on **Windows 11** with PowerShell 7.x. Cross-platform
-hardening for Linux and macOS is in progress:
+Specrew is developed and validated on **Windows 11** with PowerShell 7.x and runs on
+Linux/macOS via the same PowerShell module:
 
 - **Windows**: ✅ Fully validated (primary development platform)
-- **Linux (Ubuntu)**: 🔧 Path handling hardened; CI validation configured (pending first workflow run)
-- **macOS**: 🔧 Path handling hardened; CI validation configured (pending first workflow run)
-- **WSL**: ⏳ Manual verification pending (automated validation blocked by sudo requirements)
+- **WSL (Ubuntu)**: ✅ Manually validated — `specrew init` + `specrew start` launch Copilot's interactive REPL with Squad selected
+- **Linux (Ubuntu)**: ✅ Path handling cross-platform; CI matrix configured
+- **macOS**: 🔧 Path handling cross-platform; CI matrix configured (no in-house validation runs yet)
 
 See `specs/019-specrew-distribution-module/test-evidence/us5-cross-platform.md` for
 detailed cross-platform validation status.
