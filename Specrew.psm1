@@ -37,37 +37,79 @@ function Invoke-SpecrewScript {
         $forwardedArguments = @($forwardedArguments[0])
     }
 
+    # On Linux/macOS, `specrew start` needs a special launch path because
+    # PowerShell on Linux strips TTY from native command children when invoked
+    # from a script body (empirically verified: even nano's TUI fails to
+    # render when launched via `& nano` inside a .ps1). PowerShell FUNCTION
+    # bodies, however, do preserve TTY. So for `specrew start` on Linux/macOS:
+    #
+    # 1. The script (specrew-start.ps1) does all prep work but writes the
+    #    final `copilot` launch args to a deferred-launch file instead of
+    #    invoking copilot itself.
+    # 2. After the script returns, THIS function (Invoke-SpecrewScript) reads
+    #    the deferred-launch file and invokes `& copilot @args` from its own
+    #    body — function context, TTY preserved → Copilot TUI renders.
+    #
+    # The user-facing command is typically `specrew start` (CommandName =
+    # 'specrew', first argument = 'start'); the direct `specrew-start`
+    # function form is also supported. Both forms route here.
+    $isStartCommand = (
+        ($CommandName -eq 'specrew-start') -or
+        ($CommandName -eq 'specrew' -and
+         $forwardedArguments.Count -gt 0 -and
+         "$($forwardedArguments[0])" -eq 'start')
+    )
+    $needsDeferredLaunch = $isStartCommand -and -not $IsWindows
+
+    $deferredLaunchFile = $null
+    if ($needsDeferredLaunch) {
+        $deferredLaunchFile = [System.IO.Path]::Combine(
+            [System.IO.Path]::GetTempPath(),
+            "specrew-deferred-launch-$([guid]::NewGuid().ToString()).json"
+        )
+        $env:SPECREW_DEFERRED_LAUNCH_FILE = $deferredLaunchFile
+    }
+
     $env:SPECREW_INVOKED_FROM_MODULE = '1'
     try {
-        # `specrew start` on Linux/macOS launches `copilot` as a child process
-        # that needs a direct parent/child relationship to the user's interactive
-        # pwsh to keep its REPL alive (Copilot CLI v1.0.48 on Linux exits the
-        # agent loop when launched through an intermediate `pwsh -File`
-        # subprocess). Run the script in-process for this case so `& copilot`
-        # inside the script becomes a direct child of the caller's pwsh.
-        #
-        # The user-facing command is typically `specrew start` (CommandName =
-        # 'specrew', first argument = 'start'); the direct `specrew-start`
-        # function form is also supported. Both forms route here.
-        #
-        # Other commands keep the subprocess for clean profile/policy isolation.
-        $isStartCommand = (
-            ($CommandName -eq 'specrew-start') -or
-            ($CommandName -eq 'specrew' -and
-             $forwardedArguments.Count -gt 0 -and
-             "$($forwardedArguments[0])" -eq 'start')
-        )
-        $needsInProcessLaunch = $isStartCommand -and -not $IsWindows
-
-        if ($needsInProcessLaunch) {
+        if ($needsDeferredLaunch) {
+            # In-process invocation so the script can write the deferred-launch
+            # file to a location this function can read after the script returns.
             & $scriptPath @forwardedArguments
         }
         else {
             & pwsh -NoProfile -ExecutionPolicy Bypass -File $scriptPath @forwardedArguments
         }
+
+        # After the script returns, check for a deferred launch request.
+        if ($needsDeferredLaunch -and (Test-Path -LiteralPath $deferredLaunchFile -PathType Leaf)) {
+            try {
+                $launchInfo = Get-Content -LiteralPath $deferredLaunchFile -Raw -Encoding UTF8 | ConvertFrom-Json
+                $copilotPath = [string]$launchInfo.CopilotPath
+                $copilotArgs = @($launchInfo.CopilotArgs)
+                $workingDirectory = [string]$launchInfo.WorkingDirectory
+
+                Push-Location -LiteralPath $workingDirectory
+                try {
+                    # Function-body invocation: PowerShell on Linux preserves
+                    # TTY for native command children when called from a
+                    # function body (vs a script body which strips it).
+                    & $copilotPath @copilotArgs
+                }
+                finally {
+                    Pop-Location
+                }
+            }
+            finally {
+                Remove-Item -LiteralPath $deferredLaunchFile -Force -ErrorAction SilentlyContinue
+            }
+        }
     }
     finally {
         Remove-Item -LiteralPath 'env:SPECREW_INVOKED_FROM_MODULE' -ErrorAction SilentlyContinue
+        if ($needsDeferredLaunch) {
+            Remove-Item -LiteralPath 'env:SPECREW_DEFERRED_LAUNCH_FILE' -ErrorAction SilentlyContinue
+        }
     }
 }
 

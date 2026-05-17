@@ -2528,45 +2528,42 @@ $args += @('--add-dir', '{0}', '-i', $bootstrapInput)
         return $true
     }
 
-    # Linux/macOS: allocate a fresh pseudo-TTY for copilot via the `script`
-    # command. PowerShell's `&` invocation does not consistently propagate
-    # the user's terminal TTY to child processes when called from a script
-    # context — empirically, copilot from interactive prompt gets TTY and
-    # renders its TUI; copilot from `&` inside a script body sees stdin
-    # as non-TTY and falls back to one-shot processing.
+    # Linux/macOS: defer the actual `copilot` launch to the Specrew module
+    # function so it happens in PowerShell FUNCTION context (which preserves
+    # TTY on Linux) instead of SCRIPT context (which strips TTY for native
+    # command children, regardless of in-process vs subprocess invocation).
     #
-    # `script` creates a fresh PTY master/slave pair, runs the command with
-    # stdin/stdout connected to the slave, and proxies data to/from the
-    # user's terminal via the master. The output log is discarded (/dev/null).
-    # Copilot sees a real TTY → its TUI renders → REPL stays open.
-    Push-Location -LiteralPath $ResolvedProjectPath
-    try {
-        if ($IsMacOS) {
-            # BSD `script` (macOS): command + args passed as positional args
-            # after the log file.
-            & script -q /dev/null $copilotCommand.Source @copilotArgs
+    # Empirical evidence: PowerShell function bodies called from prompt
+    # render TUIs correctly; PowerShell script bodies do not — even nano
+    # fails to render. This is a Linux pwsh I/O handling difference between
+    # function and script execution contexts that we cannot work around
+    # from within a script.
+    #
+    # Mechanism: write the launch args to a deferred-launch file. The
+    # module's Invoke-SpecrewScript reads it after the script returns and
+    # invokes `& copilot @args` from its own function body, which is
+    # function context and preserves TTY.
+    $deferredLaunchPath = $env:SPECREW_DEFERRED_LAUNCH_FILE
+    if ([string]::IsNullOrWhiteSpace($deferredLaunchPath)) {
+        # Direct script invocation (not via the module proxy). Fall back to
+        # in-script launch — TUI won't render but the command will run.
+        Push-Location -LiteralPath $ResolvedProjectPath
+        try {
+            & $copilotCommand.Source @copilotArgs
+            return $true
         }
-        else {
-            # util-linux `script` (Linux): -c flag with a shell-interpreted
-            # command string. POSIX single-quote each value to handle paths
-            # or args with spaces/special chars.
-            $quoteSh = {
-                param([string]$Value)
-                "'" + ($Value -replace "'", "'\''") + "'"
-            }
-            $cmdParts = New-Object System.Collections.Generic.List[string]
-            $cmdParts.Add((& $quoteSh $copilotCommand.Source)) | Out-Null
-            foreach ($arg in $copilotArgs) {
-                $cmdParts.Add((& $quoteSh $arg)) | Out-Null
-            }
-            $cmdString = $cmdParts -join ' '
-            & script -qfc $cmdString /dev/null
+        finally {
+            Pop-Location
         }
-        return $true
     }
-    finally {
-        Pop-Location
+
+    $launchInfo = [pscustomobject]@{
+        CopilotPath      = $copilotCommand.Source
+        CopilotArgs      = @($copilotArgs)
+        WorkingDirectory = $ResolvedProjectPath
     }
+    $launchInfo | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath $deferredLaunchPath -Encoding UTF8
+    return $true
 }
 
 if ($Help) {
