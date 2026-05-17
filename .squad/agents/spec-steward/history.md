@@ -181,3 +181,22 @@ Feature 018 planning bundle completed across four sequential boundaries. Key spe
 - Quality composition explicit (no hidden assumptions about test coverage or tooling)
 - 2026-05-15: Feature 018 decision consolidation and inbox merge completed. Six inbox decisions merged into decisions.md: Implementer bounded repair R-018-V2 decision, Implementer feature-iteration label preservation for Recent Shipped granularity, Planner iteration-scoped hardening scaffold authorization, Reviewer pre-implementation refresh to ready-with-concerns, Reviewer initial pre-implementation blocker (resolved by hardening-gate artifact creation), and Reviewer visual terminal check (documented direct terminal misdiagnosis). Iteration 001 now carries explicit pre-implementation approval ledger with five recorded watchpoints for implementation governance: terminal-capability decision precedence, Windows VT fallback truthfulness, render-budget stop-ship evidence, ANSI stripping with Unicode preservation, and closeout dashboard artifact rendering immutability. Review verdict remains `blocked` pending Alon confirmation run of fresh `.\scripts\specrew.ps1 where` terminal to verify rich glyphs/colors/sparklines render correctly. Orchestration and session logs created for Feature 018 bounded repair; all inbox files cleared; .squad/ state ready for git commit.
 
+## 2026-05-18: Feature 019 Iteration 002 Boundary 1 Governance Artifact Scaffold
+
+**Context**: Cross-platform behavioral issue diagnostic discipline; 22-iteration repair chain (R1–R22).
+
+**Key Learnings**:
+1. Diagnostic discipline upfront can prevent extended repair chases (22→5-line fix with diagnostic prep)
+2. Form-vs-meaning recurrence in symptom-chasing (flags and wrappers chased over root cause at invocation layer)
+3. Cross-platform scope partitioning: syntactic vs. behavioral audits must be separate test evidence
+4. Deferred-launch pattern reusability: env-var-pointed temp file for script-to-function-body handoff
+5. Repair-chase depth thresholds: >5 iterations without root isolation signals need for diagnostic pause
+
+**Pattern**: Cross-platform behavioral issues require minimal-variable diagnostic tests BEFORE hypothesizing platform-conditional workarounds.
+
+**Applicable Features**: Feature 020+ (cross-platform interactive CLI workflows).
+
+**Evidence**: Iteration 002 repair chain analysis, cross-platform test evidence finalization, corpus candidate approval.
+
+---
+
