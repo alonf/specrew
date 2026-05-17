@@ -7,6 +7,17 @@
     PowerShellVersion = '7.0'
     CompatiblePSEditions = @('Core')
     FunctionsToExport = @(
+        'Invoke-Specrew',
+        'Initialize-Specrew',
+        'Start-Specrew',
+        'Update-Specrew',
+        'Show-SpecrewReview',
+        'Invoke-SpecrewTeam',
+        'Show-SpecrewStatus'
+    )
+    CmdletsToExport = @()
+    VariablesToExport = @()
+    AliasesToExport = @(
         'specrew',
         'specrew-init',
         'specrew-start',
@@ -15,9 +26,6 @@
         'specrew-team',
         'specrew-where'
     )
-    CmdletsToExport = @()
-    VariablesToExport = @()
-    AliasesToExport = @()
     FileList = @(
         'Specrew.psd1',
         'Specrew.psm1',

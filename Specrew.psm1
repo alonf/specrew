@@ -113,54 +113,80 @@ function Invoke-SpecrewScript {
     }
 }
 
-function specrew {
+# Functions use PowerShell's approved Verb-Noun naming convention so
+# `Import-Module Specrew.psd1` does NOT emit the "unapproved verbs" warning.
+# The CLI-friendly names users actually type (`specrew`, `specrew-start`,
+# `specrew-init`, etc.) are exposed as aliases below — aliases don't trigger
+# the verb-check warning, so users keep their muscle memory.
+
+function Invoke-Specrew {
     [CmdletBinding()]
     param([Parameter(Position = 0, ValueFromRemainingArguments = $true)][object[]]$Arguments)
     Invoke-SpecrewScript -CommandName 'specrew' -Arguments $Arguments
 }
 
-function specrew-init {
+function Initialize-Specrew {
     [CmdletBinding()]
     param([Parameter(Position = 0, ValueFromRemainingArguments = $true)][object[]]$Arguments)
     Invoke-SpecrewScript -CommandName 'specrew-init' -Arguments $Arguments
 }
 
-function specrew-review {
+function Show-SpecrewReview {
     [CmdletBinding()]
     param([Parameter(Position = 0, ValueFromRemainingArguments = $true)][object[]]$Arguments)
     Invoke-SpecrewScript -CommandName 'specrew-review' -Arguments $Arguments
 }
 
-function specrew-start {
+function Start-Specrew {
     [CmdletBinding()]
     param([Parameter(Position = 0, ValueFromRemainingArguments = $true)][object[]]$Arguments)
     Invoke-SpecrewScript -CommandName 'specrew-start' -Arguments $Arguments
 }
 
-function specrew-team {
+function Invoke-SpecrewTeam {
     [CmdletBinding()]
     param([Parameter(Position = 0, ValueFromRemainingArguments = $true)][object[]]$Arguments)
     Invoke-SpecrewScript -CommandName 'specrew-team' -Arguments $Arguments
 }
 
-function specrew-update {
+function Update-Specrew {
     [CmdletBinding()]
     param([Parameter(Position = 0, ValueFromRemainingArguments = $true)][object[]]$Arguments)
     Invoke-SpecrewScript -CommandName 'specrew-update' -Arguments $Arguments
 }
 
-function specrew-where {
+function Show-SpecrewStatus {
     [CmdletBinding()]
     param([Parameter(Position = 0, ValueFromRemainingArguments = $true)][object[]]$Arguments)
     Invoke-SpecrewScript -CommandName 'specrew-where' -Arguments $Arguments
 }
 
-Export-ModuleMember -Function @(
-    'specrew',
-    'specrew-init',
-    'specrew-start',
-    'specrew-update',
-    'specrew-review',
-    'specrew-team',
-    'specrew-where'
-)
+# CLI-friendly aliases so users continue typing the names they already know.
+# These don't trigger the unapproved-verb warning that the function names did.
+Set-Alias -Name 'specrew'         -Value 'Invoke-Specrew'        -Force
+Set-Alias -Name 'specrew-init'    -Value 'Initialize-Specrew'    -Force
+Set-Alias -Name 'specrew-review'  -Value 'Show-SpecrewReview'    -Force
+Set-Alias -Name 'specrew-start'   -Value 'Start-Specrew'         -Force
+Set-Alias -Name 'specrew-team'    -Value 'Invoke-SpecrewTeam'    -Force
+Set-Alias -Name 'specrew-update'  -Value 'Update-Specrew'        -Force
+Set-Alias -Name 'specrew-where'   -Value 'Show-SpecrewStatus'    -Force
+
+Export-ModuleMember `
+    -Function @(
+        'Invoke-Specrew',
+        'Initialize-Specrew',
+        'Start-Specrew',
+        'Update-Specrew',
+        'Show-SpecrewReview',
+        'Invoke-SpecrewTeam',
+        'Show-SpecrewStatus'
+    ) `
+    -Alias @(
+        'specrew',
+        'specrew-init',
+        'specrew-start',
+        'specrew-update',
+        'specrew-review',
+        'specrew-team',
+        'specrew-where'
+    )
