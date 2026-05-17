@@ -43,7 +43,7 @@ Iteration 002 entered a bounded post-review repair cycle after human WSL Ubuntu 
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | T041 | Join-Path Audit and Hardening Sweep | FR-030 | US5 | 3.0 | Implementation Team | done | Copilot | 3.0 | PASS |
 | T054 | Cross-Platform Parity Evidence | SC-006 | US5 | 3.0 | Implementation Team | done | Copilot | 3.0 | PASS |
-| T060 | Publish-Workflow Enablement | FR-025 | US4 | 1.0 | Implementation Team | done | Copilot | 1.0 | PASS |
+| T060 | Publish-Workflow Enablement | FR-026 | US4 | 1.0 | Implementation Team | done | Copilot | 1.0 | PASS |
 | T061 | Documentation Updates | US5 | US5 | 1.0 | Implementation Team | done | Copilot | 1.0 | PASS |
 
 ## Task Details
@@ -94,7 +94,7 @@ Iteration 002 entered a bounded post-review repair cycle after human WSL Ubuntu 
 **Effort**: 1 SP  
 **Status**: done  
 **Owner**: Implementation Team  
-**Trace**: T053, FR-025, `.github/workflows/publish-module.yml`
+**Trace**: T053, FR-026, `.github/workflows/publish-module.yml`
 
 **Description**: Remove/configure the manual-approval gate in `.github/workflows/publish-module.yml` so the workflow can fire automatically on release-tag push. This enablement allows T053 (first real publish) to execute later as human post-merge follow-up without requiring workflow changes at that time.
 

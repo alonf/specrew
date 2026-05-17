@@ -330,8 +330,8 @@ foreach ($check in $freshStartChecks) {
         exit 1
     }
 }
-if ($freshContext.approval_mode -ne $(if ($IsWindows) { 'allow-all' } else { 'prompt-approvals' })) {
-    Write-Fail ("Fresh repo start recorded the wrong approval mode for this platform: {0}" -f $freshContext.approval_mode)
+if ($freshContext.approval_mode -ne 'allow-all') {
+    Write-Fail ("Fresh repo start recorded the wrong approval mode: {0}" -f $freshContext.approval_mode)
     exit 1
 }
 if ($freshContext.copilot_autopilot) {
@@ -369,13 +369,7 @@ if ($freshManualLaunchLine.Count -eq 0) {
     Write-Fail 'Fresh repo no-launch flow did not emit the manual launch line.'
     exit 1
 }
-if ($IsWindows) {
-    if (-not (Assert-Contains -Content $freshManualLaunchLine[0] -Pattern '--allow-all' -FailureMessage 'Fresh repo no-launch flow did not preserve allow-all in the manual handoff command on Windows.')) {
-        exit 1
-    }
-}
-elseif ($freshManualLaunchLine[0] -match '--allow-all') {
-    Write-Fail 'Fresh repo no-launch flow should suppress --allow-all in the manual handoff command on Linux/macOS.'
+if (-not (Assert-Contains -Content $freshManualLaunchLine[0] -Pattern '--allow-all' -FailureMessage 'Fresh repo no-launch flow did not preserve allow-all in the manual handoff command.')) {
     exit 1
 }
 if (-not (Assert-Contains -Content $freshManualLaunchLine[0] -Pattern '(^| )-i( |$)' -FailureMessage 'Fresh repo no-launch flow should auto-load the bootstrap with -i.')) {
@@ -396,12 +390,6 @@ if (-not (Assert-Contains -Content $freshOutput -Pattern 'start-summary\.md' -Fa
 }
 if ($freshOutput -match '/\.specrew/') {
     Write-Fail 'Fresh repo no-launch flow emitted an absolute-looking bootstrap path.'
-    exit 1
-}
-if (-not $IsWindows -and -not (Assert-Contains -Content $freshOutput -Pattern 'default REPL behavior on Linux/macOS' -FailureMessage 'Fresh repo no-launch flow did not explain the Linux/macOS default-REPL launch contract.')) {
-    exit 1
-}
-if (-not $IsWindows -and -not (Assert-Contains -Content $freshOutput -Pattern 'bootstrap file reads will require approval prompts' -FailureMessage 'Fresh repo no-launch flow did not explain the Linux/macOS approval-prompt expectation.')) {
     exit 1
 }
 Write-Pass "Fresh repo start enters intake-or-resume mode"
@@ -459,12 +447,8 @@ if ($fakeCopilotArgs -notmatch '(^| )-i( |$)') {
     Write-Fail 'Live launch should auto-load the bootstrap prompt with -i.'
     exit 1
 }
-if ($IsWindows -and $fakeCopilotArgs -notmatch '--allow-all') {
-    Write-Fail 'Live launch should preserve --allow-all on Windows.'
-    exit 1
-}
-if (-not $IsWindows -and $fakeCopilotArgs -match '--allow-all') {
-    Write-Fail 'Live launch should suppress --allow-all on Linux/macOS.'
+if ($fakeCopilotArgs -notmatch '--allow-all') {
+    Write-Fail 'Live launch should preserve --allow-all on every platform.'
     exit 1
 }
 if ($fakeCopilotArgs -notmatch '--autopilot') {
@@ -548,8 +532,8 @@ foreach ($check in $promptChecks) {
         exit 1
     }
 }
-if ($startContext.approval_mode -ne $(if ($IsWindows) { 'allow-all' } else { 'prompt-approvals' })) {
-    Write-Fail ("New feature flow recorded the wrong approval mode for this platform: {0}" -f $startContext.approval_mode)
+if ($startContext.approval_mode -ne 'allow-all') {
+    Write-Fail ("New feature flow recorded the wrong approval mode: {0}" -f $startContext.approval_mode)
     exit 1
 }
 if (-not $startContext.copilot_autopilot) {
@@ -576,7 +560,7 @@ if (@($startContext.delivery_guidance.routing_guardrails).Count -eq 0) {
 }
 if ($summaryContent -notmatch 'Review/closure use a no-gap policy' -or
     $summaryContent -notmatch 'Delegated Routing' -or
-    $summaryContent -notmatch $(if ($IsWindows) { 'allow-all reduces tool-approval blocking after the request is grounded' } else { 'default REPL behavior.*suppresses? --allow-all.*approval prompts' })) {
+    $summaryContent -notmatch 'allow-all reduces tool-approval blocking after the request is grounded') {
     Write-Fail 'Start summary is missing the expected launch/no-gap/delegated-routing guidance.'
     exit 1
 }

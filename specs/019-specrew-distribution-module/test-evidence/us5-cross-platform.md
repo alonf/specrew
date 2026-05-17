@@ -2,8 +2,8 @@
 
 **Feature**: 019-specrew-distribution-module  
 **Iteration**: 002  
-**Test Date**: 2026-05-17  
-**Tested By**: Autonomous execution (Iteration 002 overnight run)
+**Test Date**: 2026-05-18  
+**Tested By**: Autonomous execution (Iteration 002 overnight run) + Alon Fliess (WSL Ubuntu verification)
 
 ---
 
@@ -126,7 +126,7 @@ PowerShell on Linux strips TTY for `& nativeCommand` when invoked from SCRIPT-bo
 - ✅ Windows: Existing validation on host system (Windows 11)
 - ✅ Ubuntu: CI workflow runner validates module functionality
 - ✅ macOS: CI workflow runner validates module functionality
-- ⏳ WSL Ubuntu: Manual verification pending
+- ✅ WSL Ubuntu (native ext4): End-to-end verification completed by Alon Fliess on 2026-05-18
 
 ---
 
@@ -137,7 +137,7 @@ PowerShell on Linux strips TTY for `& nativeCommand` when invoked from SCRIPT-bo
 | Windows 11 | ✅ | ✅ | ✅ | ✅ | ✅ | Pass |
 | Ubuntu (CI) | ✅ CI | ✅ CI | ✅ CI | ✅ CI | ✅ CI | Pass (automated) |
 | macOS (CI) | ✅ CI | ✅ CI | N/A | N/A | ✅ | Pass (automated) |
-| WSL Ubuntu-24.04 | ⏳ | ⏳ | ⏳ | ⏳ | ⏳ | Pending manual |
+| WSL Ubuntu-24.04 | ✅ | ✅ | ✅ | ✅ | ✅ | Pass (verified 2026-05-18) |
 
 **Legend**:
 - ✅ = Verified and passing
@@ -151,9 +151,9 @@ PowerShell on Linux strips TTY for `& nativeCommand` when invoked from SCRIPT-bo
 
 1. **CI Integration**: The cross-platform validation workflow will run automatically on push to feature branches and pull requests. Monitor the first run to ensure Ubuntu and macOS runners pass.
 
-2. **WSL Manual Verification**: Complete the pending WSL verification steps before feature merge to ensure full cross-platform parity evidence.
+2. **WSL Ubuntu Baseline**: Treat the 2026-05-18 WSL Ubuntu verification as the regression baseline for future `specrew init` / `specrew start` launch-flow changes.
 
-3. **Documentation Updates**: Once WSL verification is complete, update README and `docs/getting-started.md` to reflect confirmed Linux support via WSL.
+3. **Documentation Alignment**: Keep README and `docs/getting-started.md` aligned with the verified WSL Ubuntu status and future CI evidence.
 
 4. **Future Enhancements**: Consider adding Windows Server runner to CI matrix for enterprise environment validation.
 
@@ -163,14 +163,13 @@ PowerShell on Linux strips TTY for `& nativeCommand` when invoked from SCRIPT-bo
 
 1. Push changes to trigger CI workflow
 2. Monitor CI workflow results for Ubuntu and macOS runners
-3. Complete WSL manual verification (human execution required)
-4. Update documentation to reflect confirmed cross-platform support
-5. Proceed to T060: Publish-workflow enablement
+3. Re-run the WSL Ubuntu smoke path after future launch-flow changes to preserve the verified baseline
+4. Keep documentation and evidence aligned with the verified cross-platform support status
 
 ---
 
 **Recorded**: 2026-05-17T03:00:00Z  
-**Updated**: 2026-05-17 (Iteration 002 repair cycle)
+**Updated**: 2026-05-18 (WSL Ubuntu verified; R21/R22 cleanup confirmed)
 
 ---
 
@@ -218,7 +217,7 @@ PowerShell on Linux strips TTY for `& nativeCommand` when invoked from SCRIPT-bo
    - **Bug**: The non-Windows `bash -c` launcher embedded a raw joined argument string, so bootstrap content containing quotes caused `/usr/bin/bash: -c: line 1: unexpected EOF while looking for matching '\''`
    - **File**: `scripts/specrew-start.ps1` line 2481
    - **Fix Applied**: Replaced inline string interpolation with positional argument dispatch (`bash -c ... bash <project> <copilot> <args...>`) so bash receives each argument without reparsing quoted prompt content
-   - **Verification**: PowerShell syntax validated and Windows regression test re-run; WSL re-verification is still pending-human-execution
+   - **Verification**: PowerShell syntax validated and Windows regression test re-run; WSL Ubuntu end-to-end behavior was later re-verified by Alon Fliess on 2026-05-18
 
 7. **R-019-V2-R8**: `specrew-init` module-mode heuristic fails through the module proxy
    - **Bug**: `Get-SpecrewExecutionLayout` checked `Get-Module -Name Specrew` inside a fresh child `pwsh`, but `Specrew.psm1` launches child scripts in a new process so the loaded module state does not flow into the child session
@@ -235,39 +234,39 @@ PowerShell on Linux strips TTY for `& nativeCommand` when invoked from SCRIPT-bo
 
 ### Follow-up Repair Evidence (R-019-V2-R6)
 
-- **Status**: Completed on Windows; WSL re-verification pending-human-execution
+- **Status**: Completed on Windows first; later end-to-end verified on WSL Ubuntu by Alon Fliess on 2026-05-18
 - **Files Changed**: `scripts/specrew-start.ps1`, `specs/019-specrew-distribution-module/test-evidence/us5-cross-platform.md`
 - **Windows Validation**: `tests/integration/start-command.ps1` passed after the quoting fix
-- **Linux/macOS Validation**: Launcher now uses positional bash arguments; human WSL Ubuntu re-test still pending
+- **Linux/macOS Validation**: Launcher now uses positional bash arguments; final end-to-end WSL Ubuntu verification completed on 2026-05-18
 
 ### Follow-up Repair Evidence (R-019-V2-R7)
 
-- **Status**: Completed on Windows; WSL re-verification pending-human-execution
+- **Status**: Completed on Windows first; later end-to-end verified on WSL Ubuntu by Alon Fliess on 2026-05-18
 - **Files Changed**: `scripts/specrew-init.ps1`, `tests/integration/distribution-module-init.ps1`, `specs/019-specrew-distribution-module/test-evidence/us5-cross-platform.md`
 - **Heuristic Change**: `Get-SpecrewExecutionLayout` now detects module mode from `Get-Module -Name Specrew` instead of repo metadata, so `Import-Module Specrew.psd1` keeps module-mode guidance even when the loaded module lives inside a cloned checkout containing `.git`
 - **Windows Validation**: `pwsh -NoProfile -File tests/integration/distribution-module-init.ps1` adds a `.git` directory to the packaged module scratch root and confirms module-mode guidance is still emitted
-- **Linux/macOS Validation**: Targeted heuristic repair landed; human WSL Ubuntu re-test remains pending
+- **Linux/macOS Validation**: Targeted heuristic repair landed; WSL Ubuntu end-to-end verification later completed on 2026-05-18
 
 ### Follow-up Repair Evidence (R-019-V2-R8)
 
-- **Status**: Completed on Windows; WSL re-verification pending-human-execution
+- **Status**: Completed on Windows first; later end-to-end verified on WSL Ubuntu by Alon Fliess on 2026-05-18
 - **Files Changed**: `Specrew.psm1`, `scripts/specrew-init.ps1`, `tests/integration/distribution-module-init.ps1`, `specs/019-specrew-distribution-module/test-evidence/us5-cross-platform.md`
 - **Mechanism Change**: Module proxy launches now mark child `pwsh` sessions with `SPECREW_INVOKED_FROM_MODULE=1`; `Get-SpecrewExecutionLayout` no longer depends on `Get-Module` inside the child process
 - **Windows Validation**: `pwsh -NoProfile -File tests/integration/distribution-module-init.ps1` now exercises the exported `specrew-init` proxy, verifies module-mode guidance, and fails if the env var leaks after the call
-- **Linux/macOS Validation**: The inherited-marker repair is in place; human WSL Ubuntu re-test remains pending
+- **Linux/macOS Validation**: The inherited-marker repair is in place; WSL Ubuntu end-to-end verification later completed on 2026-05-18
 
 ### Follow-up Repair Evidence (R-019-V2-R9)
 
-- **Status**: Completed on Windows; WSL re-verification pending-human-execution
+- **Status**: Completed on Windows first; later end-to-end verified on WSL Ubuntu by Alon Fliess on 2026-05-18
 - **Files Changed**: `scripts/specrew-start.ps1`, `specs/019-specrew-distribution-module/test-evidence/us5-cross-platform.md`
 - **R1 Reversal**: The R-019-V2-R1 TTY hypothesis was wrong. WSL diagnostic evidence confirmed direct native Copilot CLI invocation works on Linux both with and without `-i`, while the `bash -c` wrapper introduced by R1 is the regression that hangs with no output.
 - **Fix Applied**: Removed the Linux/macOS-specific `bash -c` launcher and restored the unified direct invocation path: `& $copilotCommand.Source @copilotArgs` after `Push-Location`.
 - **Windows Validation**: `pwsh -NoProfile -File tests/integration/start-command.ps1` re-run after the reversal
-- **Linux/macOS Validation**: Native invocation has been restored; human WSL Ubuntu re-test remains pending
+- **Linux/macOS Validation**: Native invocation was restored; final WSL Ubuntu end-to-end verification completed on 2026-05-18
 
 ### Follow-up Repair Evidence (R-019-V2-R11)
 
-- **Status**: Completed on Windows; WSL re-verification pending-human-execution
+- **Status**: Completed on Windows first; later end-to-end verified on WSL Ubuntu by Alon Fliess on 2026-05-18
 - **Files Changed**: `scripts/specrew-start.ps1`, `tests/integration/start-command.ps1`, `docs/getting-started.md`, `docs/user-guide.md`, `specs/019-specrew-distribution-module/test-evidence/us5-cross-platform.md`
 - **R10 Correction**: R-019-V2-R10 was a wrong-direction workaround. Removing bootstrap auto-load and switching to a paste-the-block pattern treated the symptom, but the user confirmed on both Windows and WSL that the real fix is to keep `-i` and add `--mode interactive` whenever Specrew is not using autopilot.
 - **Actual Root Cause**: Copilot CLI v1.0.48 no longer preserves the desired interactive REPL mode by default for the `copilot --agent ... --add-dir ... -i <bootstrap>` pattern. Without an explicit `--mode interactive`, the injected bootstrap is consumed as a one-shot run and Copilot exits.
@@ -285,17 +284,17 @@ PowerShell on Linux strips TTY for `& nativeCommand` when invoked from SCRIPT-bo
   10. **R10** wrongly removed `-i` bootstrap auto-load and replaced it with a manual paste pattern.
   11. **R11** restores the real launch contract: auto-load the bootstrap with `-i`, and explicitly pass `--mode interactive` whenever autopilot is off.
 - **Windows Validation**: `pwsh -NoProfile -File tests/integration/start-command.ps1` passed after restoring `-i` and adding explicit interactive mode assertions
-- **Linux/macOS Validation**: The user already confirmed the same explicit `--mode interactive` requirement on Windows and WSL; full end-to-end WSL re-test remains pending-human-execution
+- **Linux/macOS Validation**: The user confirmed the same explicit `--mode interactive` requirement on Windows and WSL during the investigation, and final end-to-end WSL verification completed on 2026-05-18 after R21/R22
 
 ### Follow-up Repair Evidence (R-019-V2-R12)
 
-- **Status**: Completed on Windows; WSL/Linux re-verification pending-human-execution
+- **Status**: Completed on Windows first; later end-to-end verified on WSL Ubuntu by Alon Fliess on 2026-05-18
 - **Files Changed**: `scripts/specrew-start.ps1`, `tests/integration/start-command.ps1`, `docs/getting-started.md`, `docs/user-guide.md`, `specs/019-specrew-distribution-module/test-evidence/us5-cross-platform.md`
 - **Platform Divergence Confirmed**: Windows now behaves correctly with `--allow-all + -i + --mode interactive`, but Linux/WSL still exits one-shot after bootstrap when `--allow-all` is present alongside the interactive bootstrap flow.
 - **Decision Applied**: Specrew now keeps `--allow-all` on Windows and suppresses it on Linux/macOS. On Linux/macOS, the runtime output and generated summary explicitly explain that Copilot CLI v1.0.48 ignores or overrides the intended interactive behavior there, so bootstrap file reads will require approval prompts for now.
 - **Future Tracking Note**: Revisit and remove this platform-conditional suppression once Copilot CLI v1.0.49+ (or later) preserves the intended interactive REPL behavior on Linux/macOS with the `-i` bootstrap flow.
 - **Windows Validation**: `pwsh -NoProfile -File tests/integration/start-command.ps1` passed after the platform-conditional `--allow-all` change
-- **Linux/macOS Validation**: Manual WSL/Linux end-to-end verification is still pending; only the launch contract and regression coverage were updated in this repair
+- **Linux/macOS Validation**: This repair updated the launch contract and regression coverage first; final WSL Ubuntu end-to-end verification completed on 2026-05-18
 
 ### Follow-up Repair Evidence (R-019-V2-R13)
 
@@ -305,7 +304,7 @@ PowerShell on Linux strips TTY for `& nativeCommand` when invoked from SCRIPT-bo
 - **Windows Behavior Unchanged**: Windows still needs `--mode interactive` in the non-autopilot path, and still pairs it with `--allow-all` when allowed, to keep the REPL open after bootstrap.
 - **Decision Applied**: Specrew now adds `--mode interactive` only on Windows when autopilot is off. Linux/macOS non-autopilot launches now pass `--agent`, `--add-dir`, and `-i` without `--mode interactive` or `--allow-all`, and the runtime messaging explicitly warns users to expect approval prompts for bootstrap file reads there.
 - **Windows Validation**: `pwsh -NoProfile -File tests/integration/start-command.ps1` passed after the Windows-only `--mode interactive` change
-- **Linux/macOS Validation**: Manual WSL/Linux end-to-end re-verification remains pending-human-execution; this repair updates the launch contract and Windows regression coverage only
+- **Linux/macOS Validation**: This repair updated the launch contract and Windows regression coverage first; final WSL Ubuntu end-to-end verification completed on 2026-05-18
 
 ### Follow-up Repair Evidence (R-019-V2-R14)
 
@@ -316,7 +315,7 @@ PowerShell on Linux strips TTY for `& nativeCommand` when invoked from SCRIPT-bo
 - **Defense-in-Depth Retained**: The current platform-conditional launch logic from R11/R12/R13 remains intentionally in place. Windows still adds `--mode interactive` (and may add `--allow-all`), while Linux/macOS still omit those flags for the `-i` bootstrap flow until a later explicit cleanup decision revisits that defense-in-depth contract.
 - **Scoped Audit Result**: The same separator-trimming/relative-display bug class was also fixed in `scripts/specrew-start.ps1`'s URI-based `Get-RelativeDisplayPath` helper and in `scripts/specrew-review.ps1`'s `Get-RelativePath`, so Linux/macOS relative paths no longer force Windows-only separators or a Windows-only trailing-root assumption.
 - **Windows Validation**: `pwsh -NoProfile -File tests/integration/start-command.ps1`; `pwsh -NoProfile -File tests/integration/review-command.ps1`
-- **Linux/macOS Validation**: Focused regression coverage now asserts both `\` and `/` trimming behavior and blocks `/.specrew/...` bootstrap references from reappearing. Full WSL/Linux end-to-end re-verification remains pending-human-execution.
+- **Linux/macOS Validation**: Focused regression coverage now asserts both `\` and `/` trimming behavior and blocks `/.specrew/...` bootstrap references from reappearing. Full WSL Ubuntu end-to-end verification completed on 2026-05-18.
 
 ### Follow-up Repair Evidence (R-019-V2-R15/R16)
 

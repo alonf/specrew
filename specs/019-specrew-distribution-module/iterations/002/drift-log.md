@@ -4,11 +4,33 @@
 
 ## Summary
 
-**Total drift events**: 1
-**Resolution rate**: 100% (1/1 resolved)
+**Total drift events**: 2
+**Resolution rate**: 100% (2/2 resolved)
 **Specification drift**: 0 open implementation-vs-contract drifts; the R-019-V2-R1 through R-019-V2-R22 repair chain is fully resolved and revalidated end-to-end on both Windows 11 and WSL Ubuntu
 
 ## Events
+
+### Event 2026-05-18 — Pre-signoff Boundary 2 gap closure sweep
+
+- **Status**: resolved
+- **Category**: repair-follow-through
+- **Detected by**: Boundary 2 gap ledger in `iterations/002/review.md`
+- **Affected artifacts**:
+  - `tests/integration/start-command.ps1`
+  - `specs/019-specrew-distribution-module/test-evidence/us5-cross-platform.md`
+  - `specs/019-specrew-distribution-module/iterations/002/plan.md`
+  - `specs/019-specrew-distribution-module/iterations/002/review.md`
+- **Description**: Closed the three carry-forward review gaps before signoff by aligning the start-command integration assertions with the post-R22 uniform `--allow-all` default, refreshing stale WSL Ubuntu evidence states to the verified 2026-05-18 outcome, and correcting T060 traceability from `FR-025` to `FR-026`.
+- **Resolution path**:
+  - GAP-B2-001: Removed platform-conditional approval-mode assertions from `tests/integration/start-command.ps1`; default and no-launch expectations now require `allow-all` uniformly unless `--prompt-approvals` is explicitly selected.
+  - GAP-B2-002: Updated `test-evidence/us5-cross-platform.md` top-to-bottom so WSL Ubuntu status, acceptance scenarios, recommendations, and repair-history notes all reflect the verified 2026-05-18 result.
+  - GAP-B2-003: Corrected Iteration 002 plan T060 traceability to `FR-026`; `tasks.md` and `state.md` already matched the intended publish-on-tag requirement and needed no further edits.
+- **Validation**:
+  - `pwsh -NoProfile -File tests/integration/start-command.ps1`
+  - `pwsh -NoProfile -File .specify\extensions\specrew-speckit\scripts\validate-governance.ps1 -ProjectPath .`
+- **Target disposition**: implementation-repaired
+- **Resolved At**: 2026-05-18T00:00:00Z
+- **Resolution Notes**: This sweep stayed strictly inside the Boundary 2 micro-repair lane: no new feature work, no retro/closeout work, and no reviewer rerun. The remaining pre-signoff artifact is the review gap-ledger closure note that records the resolution commit hash.
 
 ### Event 2026-05-18 — R-019-V2 22-sub-iteration repair chain for cross-platform `specrew start` TTY launch
 
