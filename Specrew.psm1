@@ -46,8 +46,18 @@ function Invoke-SpecrewScript {
         # subprocess). Run the script in-process for this case so `& copilot`
         # inside the script becomes a direct child of the caller's pwsh.
         #
+        # The user-facing command is typically `specrew start` (CommandName =
+        # 'specrew', first argument = 'start'); the direct `specrew-start`
+        # function form is also supported. Both forms route here.
+        #
         # Other commands keep the subprocess for clean profile/policy isolation.
-        $needsInProcessLaunch = ($CommandName -eq 'specrew-start') -and -not $IsWindows
+        $isStartCommand = (
+            ($CommandName -eq 'specrew-start') -or
+            ($CommandName -eq 'specrew' -and
+             $forwardedArguments.Count -gt 0 -and
+             "$($forwardedArguments[0])" -eq 'start')
+        )
+        $needsInProcessLaunch = $isStartCommand -and -not $IsWindows
 
         if ($needsInProcessLaunch) {
             & $scriptPath @forwardedArguments
