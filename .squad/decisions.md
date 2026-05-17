@@ -6365,3 +6365,77 @@ Implement boundary-state durability by **centralizing the write-temp-then-rename
 - **Internal Helper**: `scripts/internal/sync-boundary-state.ps1` (source of truth)
 - **Wrapper Template**: `.specify/extensions/specrew-speckit/scripts/sync-boundary-state.ps1`
 - **Test Coverage**: `tests/integration/stale-state-detection.tests.ps1` (validates sync correctness)
+
+# Decision: Feature 020 Iteration 1 Version-Check Test Repair Authorization
+
+**Date**: 2026-05-18T01-14-43Z  
+**Boundary**: Feature 020 Iteration 1 bounded repair cycle + continuation  
+**Feature**: 020-session-state-durability (Session-State Durability & In-Flight Progress Tracking)  
+**Authority**: Alon Fliess (human repair authorization)  
+**Decision Type**: Runtime evidence + Authorization context preservation
+
+## Repair Scope Migration
+
+**Previous blocker**: Integration test failure in 	ests/integration/stale-state-detection.tests.ps1  
+**Current blocker**: Integration test failure in 	ests/integration/version-checks.tests.ps1  
+**Repair status**: Stale-state-detection blocker resolved (commit e3e941e). Feature advancement blocked by version-check test suite failure.  
+
+## Authorization Context
+
+**Requested by**: Alon Fliess (Chief Architect)  
+**Requested role**: Implementer  
+**Requested agent**: copilot  
+**Actual agent**: implementer-version-check-repair  
+**Model**: claude-sonnet-4.5  
+**Routing status**: honored via active implementer lane  
+**Current branch**: 020-session-state-durability  
+**Pre-repair HEAD**: 87bac84  
+
+**Authorized work item**: Feature 020 Iteration 1 bounded repair for version-check failure, then continue permissive run if repair succeeds
+
+## Repair Tasks
+
+1. Diagnose root cause in 	ests/integration/version-checks.tests.ps1
+2. Apply targeted fix to restore test pass state
+3. Rerun version-check test suite to confirm pass
+4. Rerun stale-state-detection test suite (preserve progress)
+5. Rerun atomicity test suite (preserve progress)
+6. Commit repair with Co-authored-by trailer if tests pass
+7. Push repair commit immediately
+
+## Continuation Criteria
+
+**If repair succeeds:**
+- Feature 020 Iteration 1 implementation continues (I1-T001 through I1-T014, 16 SP)
+- Proceed with implementation until next stop condition
+- Stop at iteration-completion handoff (not auto-advance to Iter 2)
+- Coverage: Pillar 1 (boundary-event state sync), Pillar 4 (stale-state detection), Scope Addition 1 (module-vs-project version check)
+
+**If repair fails:**
+- Document failure and preserve blocker evidence
+- Halt iteration work pending human re-authorization
+- Report back to Alon for next decision
+
+## Stop Conditions Preserved
+
+Feature 020 Iteration 1 implementation will stop if any of these occur:
+- New validator FAIL
+- New test failure (beyond version-check repair scope)
+- >10 consecutive reconciliation edits
+- Git push failure
+- Iteration-completion handoff
+
+## Evidence Artifacts
+
+**Test suite**: 	ests/integration/version-checks.tests.ps1  
+**Branch**:  20-session-state-durability  
+**Session log**: .squad/log/20260518T011443Z-feature020-iteration1-version-check-repair.md  
+**Prior blocker context**: .squad/log/20260522T120000Z-feature020-iteration1-test-failure-boundary.md  
+**Previous stale-state repair**: .squad/log/20260517T220052Z-feature-020-planning-completion.md  
+
+## Assignment Honored
+
+- **Requested role/work item**: Implementer / Feature 020 Iteration 1 bounded repair + continuation
+- **Requested agent**: copilot
+- **Actual agent**: implementer-version-check-repair
+- **Authorization preserved**: yes

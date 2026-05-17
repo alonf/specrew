@@ -1,7 +1,7 @@
 ---
-updated_at: 2026-05-22T12-00-00Z
-focus_area: Feature 020 Iteration 1 Blocked at Test Failure; requires stale-state-detection integration test repair
-active_issues: Implementer attempted Feature 020 Iteration 1 execution on commit e3e941e (after repair). Pre-implementation validation PASS. However, integration test suite `tests/integration/stale-state-detection.tests.ps1` failed at good-state scenario (lines 83-88). Root cause identified: `sync-boundary-state.ps1` storing literal "HEAD" instead of resolved commit hash in auth_commit_hash field. Feature branch lookup fails because script receives "HEAD" instead of feature ref. BLOCKED: Integration test must pass before implementation can proceed. No feature code changes committed.
+updated_at: 2026-05-18T01-14-43Z
+focus_area: Feature 020 Iteration 1 Repair Authorized; version-check test failure, stale-state repair complete
+active_issues: Implementer authorized to diagnose/fix version-check test failure in `tests/integration/version-checks.tests.ps1`. Prior stale-state-detection blocker resolved (commit e3e941e). Iteration 1 continues if repair succeeds. Stop conditions preserved: new validator FAIL, new test failure, >10 consecutive reconciliation edits, git push failure, or iteration-completion handoff.
 ---
 
 # What We're Focused On
