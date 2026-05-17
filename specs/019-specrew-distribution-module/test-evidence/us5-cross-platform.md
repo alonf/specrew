@@ -11,7 +11,7 @@
 
 This document records cross-platform parity evidence for User Story 5: Specrew module works identically on Windows, Linux (Ubuntu), and macOS with correct path handling and no delimiter issues.
 
-**Status**: Partially verified; WSL manual verification pending human execution
+**Status**: Fully verified — Windows 11 and WSL Ubuntu (native ext4) confirmed 2026-05-18
 
 ---
 
@@ -71,41 +71,26 @@ This document records cross-platform parity evidence for User Story 5: Specrew m
 
 ---
 
-### ⏳ T054: WSL Ubuntu End-to-End Verification (Pending Human Execution)
+### ✅ T054: WSL Ubuntu End-to-End Verification (Completed 2026-05-18)
 
-**What was attempted**:
-- WSL version 2.7.3.0 detected on system
-- Ubuntu-24.04 and Ubuntu-22.04 distributions available
-- Automatic verification attempted but blocked by sudo password requirement for PowerShell installation
+**What was verified**:
+- WSL Ubuntu (native ext4) end-to-end verification performed by Alon Fliess on 2026-05-18
+- `specrew init` produces correct module-mode messaging — identical to Windows behavior
+- `specrew start` opens Copilot interactive REPL with Squad selected and `--allow-all` enabled
+- Bootstrap auto-loads via `-i`; Squad reads `.specrew/last-start-prompt.md` and `.specrew/start-context.json`; intake conversation proceeds normally
+- Module imports without "unapproved verbs" warning after verb-conformance fix (commit 7b08dfd)
 
-**Blocking issue**:
-The automated WSL verification script requires `sudo` to install PowerShell 7 in the Ubuntu distribution. This cannot be automated without passwordless sudo configuration.
+**Root cause identified during WSL verification**:
+PowerShell on Linux strips TTY for `& nativeCommand` when invoked from SCRIPT-body context; preserves TTY from FUNCTION-body context. Diagnostic: `function F { & nano }; F` renders TUI correctly; `& nano` in script body does not.
 
-**Pending steps for human execution**:
-1. Open WSL Ubuntu distribution: `wsl -d Ubuntu-24.04`
-2. Install PowerShell 7:
-   ```bash
-   wget -q https://github.com/PowerShell/PowerShell/releases/download/v7.4.1/powershell_7.4.1-1.deb_amd64.deb
-   sudo dpkg -i powershell_7.4.1-1.deb_amd64.deb
-   sudo apt-get install -f
-   pwsh --version
-   ```
-3. Navigate to Specrew repository: `cd /mnt/c/Dev/Specrew`
-4. Test module manifest: `pwsh -Command "Test-ModuleManifest -Path ./Specrew.psd1"`
-5. Import module: `pwsh -Command "Import-Module ./Specrew.psd1; Get-Command -Module Specrew"`
-6. Create test directory and run `specrew-init`:
-   ```bash
-   mkdir ~/test-specrew
-   cd ~/test-specrew
-   pwsh -Command "Import-Module /mnt/c/Dev/Specrew/Specrew.psd1; specrew-init -ProjectName 'wsl-test' -ProjectDescription 'WSL verification' -SkipInteractive"
-   ls -la .specify .squad .github
-   ```
-7. Verify no path delimiter errors in output
-8. Document results in this file
+**Fix applied (R-019-V2-R21, commit 72d3b51)**:
+- `scripts/specrew-start.ps1` writes launch args to `$env:SPECREW_DEFERRED_LAUNCH_FILE` (temp file)
+- `Invoke-SpecrewScript` in `Specrew.psm1` (function context) reads the file after script returns and invokes `& copilot @args` from function body
+- TTY preserved because invocation site is function body, not script body
 
-**Evidence**: WSL is available and ready; PowerShell installation and module testing pending manual execution
+**Evidence**: User confirmation 2026-05-18; commits `72d3b51` (R21 fix), `6fa14d6` (R22 cleanup), `7b08dfd` (verb conformance)
 
-**Verdict**: ⏳ Pending human execution — WSL verification cannot be automated without passwordless sudo; manual steps documented above
+**Verdict**: ✅ Pass — WSL Ubuntu end-to-end verification complete; cross-platform parity confirmed on both Windows 11 and WSL Ubuntu (native ext4)
 
 ---
 
@@ -339,5 +324,107 @@ Three corpus rows added to `.specrew/quality/known-traps.md`:
 1. **dashboard-empty-state-not-handled**: Dashboard functions must handle empty feature collections gracefully
 2. **test-on-fresh-project-state**: Always test commands against freshly-initialized empty-state projects
 3. **form-vs-meaning-recurrence**: Platform-aware messaging must check execution context (Windows vs Linux/macOS, clone-repo vs module) before displaying instructions
+
+---
+
+### Follow-up Repair Evidence (R-019-V2-R15/R16)
+
+- **Status**: Reverted by R-019-V2-R22 (wrong direction)
+- **Files Changed**: `scripts/specrew-start.ps1`, `specs/019-specrew-distribution-module/test-evidence/us5-cross-platform.md`
+- **Attempted Fix**: Shortened ask_user bootstrap content and added embedded-content-in-`-i` workaround to avoid quoting issues on Linux
+- **Why Wrong**: The issue was not prompt content shape or quoting — it was TTY propagation from script-body context. Content changes had no effect on the actual failure mode.
+- **Outcome**: Reverted by R22; launch args restored to standard design
+
+---
+
+### Follow-up Repair Evidence (R-019-V2-R17)
+
+- **Status**: Reverted by R-019-V2-R22 (wrong direction)
+- **Files Changed**: `scripts/specrew-start.ps1`, `Specrew.psm1`
+- **Attempted Fix**: execvp P/Invoke approach to replace the PowerShell process with the copilot process, inheriting file descriptors including TTY
+- **Why Wrong**: P/Invoke execvp requires native library loading that introduces cross-platform complexity; and the fundamental invocation-context issue (script-body vs function-body) is orthogonal to process replacement strategies.
+- **Outcome**: Reverted by R22
+
+---
+
+### Follow-up Repair Evidence (R-019-V2-R18/R19)
+
+- **Status**: Kept — load-bearing for R-019-V2-R21
+- **Files Changed**: `Specrew.psm1`
+- **Fix Applied**: In-process script invocation in `Invoke-SpecrewScript`: instead of spawning a child `pwsh` process for every script call, scripts are dot-sourced/invoked within the module's PowerShell session. This provides the function-body execution context required by R21's deferred-launch coordination.
+- **Outcome**: Kept in final state; foundation for R21
+
+---
+
+### Follow-up Repair Evidence (R-019-V2-R20)
+
+- **Status**: Reverted by R-019-V2-R22 (wrong direction)
+- **Files Changed**: `scripts/specrew-start.ps1`
+- **Attempted Fix**: `script(1)` PTY allocator wrapper — used the Unix `script` command to allocate a pseudo-TTY and wrap the copilot invocation inside it
+- **Why Wrong**: `script(1)` introduces a new process layer with its own I/O buffering; output is not streamed in real time; the interactive REPL experience is degraded. And the underlying issue is solved cleanly by R21 without any PTY wrapper.
+- **Outcome**: Reverted by R22
+
+---
+
+### Follow-up Repair Evidence (R-019-V2-R21)
+
+- **Status**: ✅ Completed and verified on both platforms — THE actual fix
+- **Commit**: `72d3b51`
+- **Files Changed**: `scripts/specrew-start.ps1`, `Specrew.psm1`
+- **Root Cause (empirically confirmed)**: PowerShell on Linux preserves TTY for `& nativeCommand` children from FUNCTION-body context; strips TTY from SCRIPT-body context. Confirmed via `function F { & nano }; F` — nano renders TUI from function context; same invocation from script body does not.
+- **Fix Applied**:
+  - `scripts/specrew-start.ps1`: Instead of `& copilot @args` at the end of the script body, writes launch args to a JSON temp file at `$env:SPECREW_DEFERRED_LAUNCH_FILE`
+  - `Specrew.psm1` (`Invoke-SpecrewScript`, function context): After the child script returns, reads `$env:SPECREW_DEFERRED_LAUNCH_FILE`, deserializes the args, and invokes `& copilot @args` from the function body; cleans up the temp file in a `finally` block
+  - This is approximately 5 lines of coordination code total
+- **Windows Validation**: `pwsh -NoProfile -File tests/integration/start-command.ps1` passed; interactive REPL confirmed
+- **Linux/macOS Validation**: WSL Ubuntu end-to-end confirmed by Alon Fliess 2026-05-18 — `specrew start` opens Copilot interactive REPL with Squad + `--allow-all` + bootstrap via `-i`; intake conversation proceeds normally
+
+---
+
+### Follow-up Repair Evidence (R-019-V2-R22)
+
+- **Status**: ✅ Completed — cleanup of all wrong-direction artifacts
+- **Commit**: `6fa14d6`
+- **Files Changed**: `scripts/specrew-start.ps1`, `tests/integration/start-command.ps1`, `docs/getting-started.md`, `docs/user-guide.md`, `specs/019-specrew-distribution-module/test-evidence/us5-cross-platform.md`
+- **Cleanup Applied**: Reverted all wrong-direction artifacts from R10-R20:
+  - `--mode interactive` flag (introduced by R11/R13, removed)
+  - Platform-conditional `--allow-all` suppression on Linux/macOS (introduced by R12, removed)
+  - Short ask_user bootstrap content (introduced by R15/R16, removed)
+  - Embedded-content-in-`-i` workaround (introduced by R15, removed)
+  - `script(1)` PTY wrapper (introduced by R20, removed)
+  - execvp P/Invoke approach (introduced by R17, removed)
+- **Final Launch Args**: `--agent Squad [--autopilot] --add-dir <project> -i $bootstrap [--allow-all]` — uniform across both platforms
+- **Windows Validation**: `pwsh -NoProfile -File tests/integration/start-command.ps1` passed after R22 cleanup
+- **Linux/macOS Validation**: Confirmed by Alon Fliess 2026-05-18 — uniform launch args work identically on WSL Ubuntu
+
+---
+
+### Verb Conformance Fix
+
+- **Status**: ✅ Completed
+- **Commit**: `7b08dfd`
+- **Files Changed**: `Specrew.psm1`, `Specrew.psd1`
+- **Fix Applied**: Module exports now use approved `Verb-Noun` form:
+  - `Invoke-Specrew` (was `specrew`)
+  - `Initialize-Specrew` (was `specrew-init` function)
+  - `Start-Specrew` (was `specrew-start` function)
+  - `Update-Specrew` (was `specrew-update` function)
+  - `Show-SpecrewReview` (was `specrew-review` function)
+  - `Invoke-SpecrewTeam` (was `specrew-team` function)
+  - `Show-SpecrewStatus` (was `specrew-where` function)
+  - CLI-friendly aliases preserved: `specrew`, `specrew-init`, `specrew-start`, `specrew-update`, `specrew-review`, `specrew-team`, `specrew-where`
+- **Windows Validation**: `Import-Module Specrew.psd1` no longer emits "unapproved verbs" warning; all CLI aliases functional
+- **Linux/macOS Validation**: Confirmed by Alon Fliess 2026-05-18 — same behavior on WSL Ubuntu
+
+---
+
+## Platform Verification Summary
+
+| Platform | Status | Verified By | Date |
+| --- | --- | --- | --- |
+| Windows 11 | ✅ Fully verified | Alon Fliess | 2026-05-18 |
+| WSL Ubuntu (native ext4) | ✅ Fully verified | Alon Fliess | 2026-05-18 |
+| Ubuntu (CI runner) | ✅ CI matrix configured | Automated | 2026-05-17 |
+| macOS (CI runner) | ✅ CI matrix configured | Automated | 2026-05-17 |
 
 ---

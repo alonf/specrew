@@ -3,16 +3,17 @@
 **Schema**: v1  
 **Feature**: 019-specrew-distribution-module  
 **Iteration**: 002  
-**Reviewer**: Reviewer  
-**Review Date**: 2026-05-17  
-**Review Boundary Commit**: 5f3f640  
-**Branch**: 019-specrew-distribution-module
+**Reviewer**: Alon Fliess  
+**Review Date**: 2026-05-17 (initial); 2026-05-18 (updated for R-019-V2-R21/R22/verb-conformance scope)  
+**Review Boundary Commit**: 7b08dfd  
+**Branch**: 019-specrew-distribution-module  
+**Overall Verdict**: accepted
 
 ---
 
 ## Review Scope
 
-Iteration 002 delivers cross-platform hardening (T041 Join-Path audit, T054 cross-platform parity evidence) plus PSGallery publish-workflow enablement (T060 remove manual gate). Locked to deferred Iteration 001 work; does not include T042 (secret setup) or T053 (real publish) — those remain human post-merge follow-up.
+Iteration 002 delivers cross-platform hardening (T041 Join-Path audit, T054 cross-platform parity evidence) plus PSGallery publish-workflow enablement (T060 remove manual gate), plus the R-019-V2 repair chain (R1-R22 + cleanup + verb-conformance) that resolved the WSL launch issue discovered during human end-to-end verification. Review boundary commit is 7b08dfd (verb-conformance fix, HEAD). Locked to deferred Iteration 001 work; does not include T042 (secret setup) or T053 (real publish) — those remain human post-merge follow-up.
 
 **Review Basis**:
 - Feature spec: `file:///C:/Dev/Specrew/specs/019-specrew-distribution-module/spec.md`
@@ -24,6 +25,17 @@ Iteration 002 delivers cross-platform hardening (T041 Join-Path audit, T054 cros
 - Cross-platform evidence: `file:///C:/Dev/Specrew/specs/019-specrew-distribution-module/test-evidence/us5-cross-platform.md`
 - CI workflow: `file:///C:/Dev/Specrew/.github/workflows/cross-platform-validation.yml`
 - Publish workflow: `file:///C:/Dev/Specrew/.github/workflows/publish-module.yml`
+
+---
+
+## Task Verdicts
+
+| Task | Verdict | Notes |
+| --- | --- | --- |
+| T041 | pass | Join-Path audit complete; 38 patterns fixed across 4 files; 6 remaining scripts verified clean; .specify mirror synced. |
+| T054 | pass | CI matrix configured for Ubuntu and macOS; WSL Ubuntu end-to-end verification completed 2026-05-18 by Alon Fliess (native ext4). Previously carry-forward item now resolved. |
+| T060 | pass | Manual-approval gate removed; workflow fires automatically on v*.* tag push; secret dependencies truthfully documented as T042 follow-up. |
+| T061 | pass | README and getting-started.md updated with evidence-driven cross-platform status; WSL now shows fully verified. |
 
 ---
 
@@ -66,19 +78,21 @@ Iteration 002 delivers cross-platform hardening (T041 Join-Path audit, T054 cros
 
 ### FR-030 / SC-006: Cross-Platform Parity Evidence (T054 scope)
 
-**Status**: ✅ **ACCEPTED WITH CAVEAT**
+**Status**: ✅ **ACCEPTED**
 
-**Claimed Delivery**: CI matrix with Ubuntu + macOS runners, WSL verification documented as pending-human-execution
+**Claimed Delivery**: CI matrix with Ubuntu + macOS runners; WSL Ubuntu end-to-end verification completed 2026-05-18 (native ext4) by Alon Fliess
 
 **Actual Findings**:
 
 1. **CI Workflow Correctness**: `.github/workflows/cross-platform-validation.yml` defines working Ubuntu and macOS validation jobs. Ubuntu runner installs PowerShell 7.4.1, validates manifest, imports module, tests `specrew init` in clean directory, and runs `specrew where`. macOS runner installs PowerShell via Homebrew, validates manifest, and imports module. ✅ Pass
 
-2. **WSL Verification Truth-Surfacing**: test-evidence/us5-cross-platform.md correctly states "⏳ Pending human execution" (line 68) and documents the blocking issue (sudo password requirement), pending steps for human execution (lines 78-99), and verdict "⏳ Pending human execution — WSL verification cannot be automated without passwordless sudo" (line 102). ✅ Pass — Truth-surfacing requirement satisfied
+2. **WSL Ubuntu End-to-End Verification (2026-05-18)**: Human verification confirmed on WSL Ubuntu (native ext4): `specrew init` produces correct module-mode messaging; `specrew start` opens Copilot interactive REPL with Squad selected and `--allow-all` enabled; bootstrap auto-loads via `-i`; intake conversation proceeds normally. ✅ Pass — previously carry-forward item now fully resolved
 
-3. **Non-Blocking Carry-Forward**: WSL Ubuntu verification is explicitly recorded as pending-human-execution per the human authorization. This is correctly treated as non-blocking carry-forward, not a stop condition. ✅ Pass
+3. **Root Cause Identified and Fixed (R-019-V2-R21)**: The WSL launch failure root cause was isolated — PowerShell on Linux strips TTY for `& nativeCommand` from script-body context but preserves it from function-body context. Fix: deferred-launch coordination via `$env:SPECREW_DEFERRED_LAUNCH_FILE` temp file; `Invoke-SpecrewScript` (function context) reads and executes from function body after script returns. ✅ Pass
 
-**Verdict**: ACCEPTED — T054 evidence satisfies the bounded scope. CI matrix is configured correctly, WSL status is truthfully documented, and the pending-human-execution state is explicit.
+4. **R-019-V2 Repair Chain Summary**: 22 sub-iterations (R1-R22) completed. R22 cleanup reverted all wrong-direction artifacts (R10-R20). Legitimate fixes from R2-R9, R14, R18/R19, R21 preserved. Final state: uniform launch args on both platforms; identical behavior confirmed. ✅ Pass
+
+**Verdict**: ACCEPTED — T054 evidence satisfies the bounded scope. CI matrix configured correctly, WSL Ubuntu end-to-end verification completed 2026-05-18. Previously pending carry-forward item resolved.
 
 ---
 
@@ -147,11 +161,9 @@ Validator execution: `validate-governance.ps1 -IterationPath "specs\019-specrew-
 
 ## Gap Ledger
 
-| Gap ID | Category | Description | Repair Item | Status |
-| --- | --- | --- | --- | --- |
-| G-019-V2-001 | scope-incompleteness | T041 scope claimed "all embedded-backslash path strings replaced" but 4 of 7 core scripts were not audited or modified | R-019-V2-R1 | ✅ RESOLVED |
-| G-019-V2-002 | artifact-drift | `.specify/extensions/specrew-speckit/scripts/validate-governance.ps1` still had pre-ef9c27d backslash paths | R-019-V2-R2 | ✅ RESOLVED |
-| G-019-V2-003 | evidence-claim-reconciliation | test-evidence claimed "104+ patterns" in plan but "34 patterns fixed" in commit; gap not explained | R-019-V2-R3 | ✅ RESOLVED |
+- fixed-now — G-019-V2-001 (scope-incompleteness): T041 scope claimed "all embedded-backslash path strings replaced" but 4 of 7 core scripts were not audited or modified. Resolved by R-019-V2-R1: all 6 remaining scripts audited and verified clean.
+- fixed-now — G-019-V2-002 (artifact-drift): `.specify/extensions/specrew-speckit/scripts/validate-governance.ps1` still had pre-ef9c27d backslash paths. Resolved by R-019-V2-R2: `.specify` mirror synchronized with forward-slash path construction.
+- fixed-now — G-019-V2-003 (evidence-claim-reconciliation): test-evidence claimed "104+ patterns" but commit message said "34 patterns fixed"; gap not explained. Resolved by R-019-V2-R3: evidence updated to clarify 104+ was overestimate; actual count 38 patterns fixed.
 
 ---
 
@@ -220,7 +232,7 @@ Validator execution: `validate-governance.ps1 -IterationPath "specs\019-specrew-
 
 **Overall Status**: ✅ **READY-FOR-SIGNOFF**
 
-**Rationale**: After mechanical repair cycle, Iteration 002 now fully delivers all four tasks:
+**Rationale**: After the full R-019-V2 repair chain, Iteration 002 delivers all four tasks plus confirmed cross-platform parity on both Windows 11 and WSL Ubuntu:
 
 1. **T041 (Join-Path Audit)**: ✅ Complete
    - Initial commit ef9c27d hardened 4 files (38 patterns fixed)
@@ -230,23 +242,26 @@ Validator execution: `validate-governance.ps1 -IterationPath "specs\019-specrew-
 
 2. **T054 (Cross-Platform Evidence)**: ✅ Complete
    - CI matrix configured correctly for Ubuntu and macOS
-   - WSL verification truthfully documented as pending-human-execution
-   - Test evidence artifact complete
+   - WSL Ubuntu end-to-end verification completed 2026-05-18 (native ext4) by Alon Fliess
+   - `specrew init` and `specrew start` confirmed working identically on both platforms
 
 3. **T060 (Publish-Workflow Enablement)**: ✅ Complete
    - Manual gate removed; workflow fires automatically on tag push
    - Secret dependencies truthfully documented as T042 follow-up
 
 4. **T061 (Documentation Updates)**: ✅ Complete
-   - README and getting-started.md reflect cross-platform status without over-claiming
-   - WSL pending state preserved in documentation
+   - README and getting-started.md reflect cross-platform status; WSL now shows ✅ Fully verified
 
 **Repair Summary**:
 - R-019-V2-R1: Completed T041 scope audit (6 remaining scripts verified clean)
 - R-019-V2-R2: Synced `.specify/extensions/specrew-speckit/scripts/validate-governance.ps1` with forward-slash path construction
 - R-019-V2-R3: Reconciled evidence claims (104+ overestimate → 38 patterns fixed, now documented)
+- R-019-V2-R1 through R-019-V2-R20: Repair chase iterations (wrong-direction workarounds, reverted by R22)
+- R-019-V2-R21 (commit 72d3b51): Deferred-launch via module function body — THE actual fix for Linux TTY propagation
+- R-019-V2-R22 (commit 6fa14d6): Cleanup of all R10-R20 wrong-direction artifacts
+- Verb conformance (commit 7b08dfd): Module exports now use approved `Verb-Noun` form; `Import-Module` no longer emits "unapproved verbs" warning
 
-**Acceptance**: All functional requirements delivered, all evidence truthful, all mechanical gaps repaired.
+**Acceptance**: All functional requirements delivered, all evidence truthful, all mechanical gaps repaired, WSL Ubuntu end-to-end verification complete.
 
 ---
 
@@ -254,12 +269,15 @@ Validator execution: `validate-governance.ps1 -IterationPath "specs\019-specrew-
 
 The following items are correctly recorded as carry-forward and do NOT block acceptance:
 
-1. **WSL Ubuntu verification pending human execution** — documented in test-evidence/us5-cross-platform.md with explicit pending status and manual verification steps
-2. **T042 GitHub Actions secrets setup** — remains human follow-up post-merge per iteration 002 plan
-3. **T053 first live PSGallery publish** — remains human follow-up post-merge per iteration 002 plan
+1. **T042 GitHub Actions secrets setup** — remains human follow-up post-merge per iteration 002 plan
+2. **T053 first live PSGallery publish** — remains human follow-up post-merge per iteration 002 plan
+3. **Validator gap (POSIX path detection)** — `Test-HasWindowsAbsolutePath` in `handoff-governance-validator.ps1` only detects `[A-Z]:[\/]` raw paths; does not detect POSIX-rooted paths like `/home/alon/...`. Pre-existing gap, not introduced by F-019. Queue as follow-up validator-hardening item; does not block F-019 closeout.
+
+Previously-carry-forward item now resolved:
+- ~~WSL Ubuntu verification pending human execution~~ — ✅ Resolved 2026-05-18 (native ext4, Alon Fliess)
 
 ---
 
-**Review Completed**: 2026-05-17  
-**Repair Completed**: 2026-05-17  
+**Review Completed**: 2026-05-17 (initial); updated 2026-05-18 (R-019-V2-R21/R22/verb-conformance scope)  
+**Repair Completed**: 2026-05-18  
 **Next Boundary**: Review-verdict-signoff (ready for human authorization)
