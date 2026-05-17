@@ -244,15 +244,21 @@ function Get-InstalledSpecrewVersion {
         return $module[0].Version.ToString()
     }
 
-    $manifestPath = Join-Path $ProjectRoot 'Specrew.psd1'
-    if (Test-Path -LiteralPath $manifestPath -PathType Leaf) {
-        try {
-            $manifest = Import-PowerShellDataFile -LiteralPath $manifestPath
-            if ($manifest.ContainsKey('ModuleVersion')) {
-                return [string]$manifest.ModuleVersion
+    $manifestCandidates = @(
+        (Join-Path (Split-Path -Parent $PSScriptRoot) 'Specrew.psd1'),
+        (Join-Path $ProjectRoot 'Specrew.psd1')
+    ) | Select-Object -Unique
+
+    foreach ($manifestPath in $manifestCandidates) {
+        if (Test-Path -LiteralPath $manifestPath -PathType Leaf) {
+            try {
+                $manifest = Import-PowerShellDataFile -LiteralPath $manifestPath
+                if ($manifest.ContainsKey('ModuleVersion')) {
+                    return [string]$manifest.ModuleVersion
+                }
             }
-        }
-        catch {
+            catch {
+            }
         }
     }
 
@@ -3057,7 +3063,7 @@ if ($artifactPaths.TemplateRefreshArtifacts.Count -gt 0) {
     }
 }
 if (-not [string]::IsNullOrWhiteSpace($versionMismatchWarning)) {
-    Write-Host ("WARN: {0}" -f $versionMismatchWarning) -ForegroundColor Yellow
+    Write-Output ("WARN: {0}" -f $versionMismatchWarning)
 }
 if (-not $useAutopilot) {
     Write-Info 'Specrew auto-loads the bootstrap with -i and stays out of autopilot until the request is grounded.'
