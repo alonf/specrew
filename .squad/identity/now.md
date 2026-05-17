@@ -1,50 +1,45 @@
-updated_at: 2026-05-19T12:00:00Z
-focus_area: Feature 019 CLOSED; ready for PR creation to main
-active_issues: Feature 019 closeout complete. Iteration 001 hardening-gate over-claim repaired (commit 467a713). Rule 15 version bump applied 0.18.0 → 0.19.0 (commit 9863628). Feature closeout.md created. Governance validator passes for full feature tree (exit code 0). Cross-platform parity verified Windows + WSL Ubuntu. T042/T053 human follow-up post-merge. Feature 019 is READY FOR PR CREATION.
+updated_at: 2026-05-17T20-00-10Z
+focus_area: Feature 020 After-Tasks Validation PASS; awaiting planning authorization
+active_issues: Feature 020 task validation complete (Spec Steward gate passed, exit code 0). All 35 tasks trace to FR-001–FR-035 (complete coverage). Role assignments valid (Implementer, Reviewer). Effort totals aligned (33 SP: 2 + 16 + 15). Acceptance criteria concrete and testable. Dependency graph acyclic with correct critical paths. Companion chore (CHORE-001–004) properly isolated as Phase 0 pre-work. All no repair-needed gaps found. Feature 020 is READY FOR HUMAN AUTHORIZATION to proceed to Iteration 1 planning ceremony.
 ---
 
 What We're Focused On
 ====================
 
-**Phase**: Feature 019 Iteration 002 — CLOSED, ready for feature-closeout authorization
-**Urgency**: Tier 1 — feature-closeout boundary transition
+**Phase**: Feature 020 Validation Checkpoint (after-tasks-validation gate PASS)
+**Urgency**: Tier 0 — Planning authorization ready
 
 ---
 
 Current Status
 --------------
 
-Feature Lifecycle: ITERATION-002-CLOSED
+Feature Lifecycle: AFTER-TASKS-VALIDATED
 
-- Feature 019 is `Specrew Distribution Module via PowerShell Gallery`
-- Clarified spec: `file:///C:/Dev/Specrew/specs/019-specrew-distribution-module/spec.md`
-- Implementation plan: `file:///C:/Dev/Specrew/specs/019-specrew-distribution-module/plan.md`
-- Task breakdown: `file:///C:/Dev/Specrew/specs/019-specrew-distribution-module/tasks.md`
-- Iteration 001 closeout: `file:///C:/Dev/Specrew/specs/019-specrew-distribution-module/iterations/001/closeout.md`
-- Iteration 002 plan: `file:///C:/Dev/Specrew/specs/019-specrew-distribution-module/iterations/002/plan.md`
-- Iteration 002 state: `file:///C:/Dev/Specrew/specs/019-specrew-distribution-module/iterations/002/state.md`
-- Iteration 002 closeout: `file:///C:/Dev/Specrew/specs/019-specrew-distribution-module/iterations/002/closeout.md`
-- Current ref: `dd234d1` (closeout boundary commit, Authorize Iteration 002 closeout)
-- Baseline ref: `2992fbc` (Iteration 001 closeout reconciliation boundary commit)
-- **Implementation results**: All 4 tasks complete (8 SP, 100% of capacity)
-  - T041: Cross-platform path hardening (3 SP) — 34 patterns fixed across 4 scripts — commit `ef9c27d`
-  - T054: CI matrix + test evidence (3 SP) — Ubuntu/macOS CI workflows created; WSL pending manual — commit `e77a884`
-  - T060: Publish-workflow enablement (1 SP) — Removed manual gate; auto-publish on v*.* tag — commit `6c271ad`
-  - T061: Documentation updates (1 SP) — Evidence-driven cross-platform support docs — commit `7945261`
-- **Validation status**: Iteration 002 validator PASSED. Governance validation reports pre-existing Iteration 001 hardening-gate over-claim failures (repo-wide concern, deferred to feature-closeout)
-- **Test evidence**: Cross-platform validation in `file:///C:/Dev/Specrew/specs/019-specrew-distribution-module/test-evidence/us5-cross-platform.md`
-- **Review verdict**: READY-FOR-SIGNOFF after Boundary 2 authorized review and bounded micro-repair (GAP-B2-001, GAP-B2-002, GAP-B2-003); delegated repair runtime evidence recorded in `.squad/decisions.md`
-- **Retrospective**: Finalized with 5 lessons candidates for corpus inclusion. Recorded in `iterations/002/retro.md`.
-- **Iteration Status**: CLOSED — Boundary 5 (iteration-closeout-completion) authorized on 2026-05-18T23:59:59Z
+- Feature 020 is `Session-State Durability & In-Flight Progress Tracking`
+- Clarified spec: `file:///C:/Dev/Specrew/specs/020-session-state-durability/spec.md`
+- Implementation plan: `file:///C:/Dev/Specrew/specs/020-session-state-durability/plan.md`
+- Task breakdown: `file:///C:/Dev/Specrew/specs/020-session-state-durability/tasks.md`
+- Current ref: (post-task-generation validation)
+- **Task validation status**: All 35 tasks validated clean (companion chore 4 + Iteration 1 18 + Iteration 2 13)
+  - Requirement traceability: 100% (FR-001–FR-035 covered)
+  - Role assignments: Valid (Implementer, Reviewer)
+  - Effort estimates: 33 SP total (2 + 16 + 15, capacity-aligned)
+  - Acceptance criteria: Concrete and testable
+  - Dependency graph: Acyclic with correct critical paths
+  - Companion chore isolation: Properly scoped as Phase 0 pre-work
+- **Validation status**: After-tasks gate PASSED (exit code 0). No repair-needed gaps.
+- **Next Action**: Awaiting Alon (Chief Architect) authorization for Iteration 1 planning ceremony
 
 Next Valid Action
 -----------------
 
-**Human authorization required for feature-closeout** (per Feature 016 boundary discipline).
+**Human authorization required for Feature 020 Iteration 1 planning** (per governance gate completion).
 
-Iteration 002 is now closed. To proceed to the feature-closeout boundary:
+Task generation and after-tasks validation are now complete. To proceed to Iteration 1 planning ceremony:
 
-1. Review the feature 019 specification and the four completed iterations
-2. Authorize feature-closeout with explicit instruction for the feature-closeout boundary
-3. On authorization: Feature 019 closes; deployment and documentation finalization proceed per Feature 019 product lifecycle
-4. Downstream: Feature 019 is complete; next feature planning cycle or roadmap update will be determined post-authorization
+1. Review the feature 020 specification and the task breakdown
+2. Authorize Feature 020 Iteration 1 planning ceremony with explicit instruction
+3. On authorization: Iteration 1 planning proceeds; Companion Chore (Phase 0) merge to main pre-requisite
+4. Downstream: Feature 020 Iteration 1 execution with 18 tasks (16 SP) in parallel delivery
+

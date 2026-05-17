@@ -2,6 +2,39 @@
 
 Project-specific learnings and patterns discovered during work.
 
+## Recent Work (2026-05-17)
+
+### 2026-05-17: Feature 020 After-Tasks Validation PASS — Session-State Durability
+
+**Pattern**: Batch after-tasks validation with full traceability audit on requirement mapping and task definition readiness.
+
+**Context**: Feature 020 task generation completed (35 tasks, 33 SP across 3 phases: 2 SP companion chore + 16 SP Iteration 1 + 15 SP Iteration 2). Spec Steward runs after-tasks validation gate to certify all tasks meet Definition of Ready before human authorization for Iteration 1 planning.
+
+**Validation Results**:
+1. **Task count & story points**: 35 tasks / 33 SP verified against plan targets (2 + 16 + 15 = 33 SP) ✅ PASS
+2. **Requirement traceability**: All 35 tasks trace to FR-001–FR-035; all user stories US1–US5 covered; 100% scope coverage ✅ PASS
+3. **Role assignment**: All tasks assigned to defined roles (Implementer, Reviewer); no unknowns ✅ PASS
+4. **Effort estimation**: Phase totals match plan capacity (companion chore 2 SP pre-work, Iteration 1/2 parallel delivery) ✅ PASS
+5. **Acceptance criteria**: All criteria concrete and testable (sample: "verify atomic updates" <measurable>, "confirm <2s completion" <measurable>) ✅ PASS
+6. **Dependency graph**: No circular dependencies; critical path identified (Phase 0 → T001/T002/T003 → parallel groups → T028 release) ✅ PASS
+7. **Companion chore isolation**: Phase 0 (CHORE-001–004) properly marked pre-work, not counted against iteration capacity, must merge to main before Iteration 1 ✅ PASS
+8. **Artifact integrity**: tasks.md, plan.md, spec.md all present, complete, well-formatted; no repair-needed gaps ✅ PASS
+
+**Gate Outcome**: PASS (exit code 0). Feature 020 cleared for human authorization to proceed to Iteration 1 planning ceremony.
+
+**Key Learnings**:
+1. **After-tasks gate discipline**: Comprehensive validation batch (eight criteria across task/requirement/role/effort/criteria/dependency/scope/artifact) is production-ready pattern. Gate enforces governance before planning authorization.
+2. **Requirement traceability at scale**: 35 tasks across 3 phases with 35 functional requirements (FR-001–FR-035) requires systematic cross-referencing. Vendor pattern: all tasks must have explicit Trace comment linking to FR tags.
+3. **Companion chore separation**: Pre-work tasks (Phase 0) require explicit "must merge before Iteration 1" language and capacity exclusion to prevent downstream confusion.
+
+**Artifacts**:
+- `.squad/orchestration-log/2026-05-17T20-00-10Z-speckit-after-tasks.md` — Agent execution trace
+- `.squad/log/2026-05-17T20-00-10Z-feature-020-after-tasks.md` — Session readiness summary
+- `.squad/decisions.md` — Feature 020 After-Tasks Validation PASS decision entry
+- `specs/020-session-state-durability/tasks.md` — 35 validated tasks
+
+---
+
 ## Recent Work (2026-05-19)
 
 ### 2026-05-19: Feature 020 Specify+Clarify Completion — Session-State Durability

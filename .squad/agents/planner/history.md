@@ -6,6 +6,8 @@ Project-specific learnings and patterns discovered during work.
 
 <!-- Append entries below. Format: **Pattern:** description. **Context:** when it applies. -->
 
+- **Feature 020 (Session-State Durability) planning authorization gate**: After-tasks validation passed on 2026-05-17T20-00-10Z. All 35 tasks (33 SP) validated: 4 companion-chore phase 0, 18 Iteration 1, 13 Iteration 2. Requirement mapping 100% (FR-001–FR-035). Role assignments valid. Dependency graph acyclic. Ready for human authorization to proceed to Iteration 1 planning ceremony. Planner is next: await Alon approval before planning-phase kickoff.
+
 ## Learnings
 
 - 2026-05-07: Feature `specs\005-stack-aware-quality-bar\` had no active iteration artifacts; execution readiness was repaired by first scaffolding `iterations\001\plan.md` and then `state.md`/`drift-log.md` with the Specrew helpers before replacing the stub with a capacity-bounded execution slice.

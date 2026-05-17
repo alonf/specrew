@@ -6043,3 +6043,91 @@ Key learnings:
 
 - **Routing Evidence**: Reviewer | requested=claude | actual=copilot | model=(platform default) | status=fell-back | fallback=preferred agent 'claude' is not enabled
 
+
+# Decision: Feature 020 After-Tasks Validation PASS
+
+**Date**: 2026-05-17T20-00-10Z  
+**Boundary**: Post-task-generation governance gate (after-tasks-validation)  
+**Feature**: 020-session-state-durability (Session-State Durability & In-Flight Progress Tracking)  
+**Authority**: Spec Steward (speckit.specrew-speckit.after-tasks — validation authority)  
+**Decision Type**: Governance gate completion (validation verdict)
+
+## Context
+
+Feature 020 task generation completed. Spec Steward validates tasks.md, plan.md, and spec.md artifacts against after-tasks gate criteria before human authorization for Iteration 1 planning proceeds.
+
+## Decision
+
+**Verdict: PASS** — Feature 020 after-tasks validation gate cleared. All 35 tasks meet definition-of-ready criteria.
+
+## Validation Results
+
+### ✅ Task Count & Story Points
+- Total tasks: 35 (4 companion chore + 18 Iteration 1 + 13 Iteration 2)
+- Total story points: 33 SP (2 + 16 + 15) — matches plan capacity
+- All tasks present and well-formatted
+
+### ✅ Requirement Traceability
+- All 35 tasks trace to functional requirements FR-001 through FR-035
+- User stories US1–US5 fully covered
+- No orphaned tasks; no missing requirements
+- Scope coverage: 100%
+
+### ✅ Role Assignment
+- All tasks assigned to defined roles: Implementer, Reviewer
+- No undefined or unknown roles
+- Role load balanced across phases
+
+### ✅ Effort Estimation
+- Companion Chore: 2 SP (pre-work, isolated)
+- Iteration 1: 16 SP (parallel delivery capacity confirmed)
+- Iteration 2: 15 SP (parallel delivery capacity confirmed)
+- Totals verified: 2 + 16 + 15 = 33 SP
+
+### ✅ Acceptance Criteria
+All task acceptance criteria verified as concrete and testable:
+- Sample: "Implement atomic .squad/identity/now.md update; verify no intermediate states" (T001) ✓ concrete
+- Sample: "Add staleness time-window validation; confirm <2s completion" (T010) ✓ measurable
+- Sample: "Document Squad recovery flow; add decision ledger metadata; verify via integration tests" (T018) ✓ testable
+
+### ✅ Dependency Graph
+- No circular dependencies detected
+- Critical path identified: Phase 0 → T001/T002/T003 → Iteration 1 parallel groups → T028 (feature-release)
+- Acyclicity verified across all 35 tasks
+
+### ✅ Companion Chore Isolation
+- Phase 0 tasks (CHORE-001–CHORE-004) correctly marked as pre-work
+- Stated prerequisite: "must merge to main BEFORE F-020 Iteration 1 begins"
+- Does NOT count against Iteration capacity
+- Scope properly separated
+
+### ✅ Artifact Integrity
+- tasks.md: present, complete, well-formatted
+- plan.md: present, requirement mapping comprehensive
+- spec.md: present, functional requirements complete
+- No repair-needed gaps detected
+
+## Exit Criteria Met
+
+| Criterion | Status | Evidence |
+|-----------|--------|----------|
+| Task artifacts complete | ✅ PASS | All files present and valid |
+| Requirements mapped | ✅ PASS | FR-001–FR-035 covered, all users stories addressed |
+| Role assignments valid | ✅ PASS | All roles defined in plan.md |
+| Effort estimates aligned | ✅ PASS | Phase totals match plan (33 SP) |
+| Acceptance criteria concrete | ✅ PASS | All tasks have measurable/testable criteria |
+| Dependency graph clean | ✅ PASS | Acyclic, critical paths correct |
+| Companion chore separated | ✅ PASS | Phase 0 properly isolated as pre-work |
+
+## Next Actions
+
+1. **Human Authorization Required**: Alon (Chief Architect) approves Feature 020 Iteration 1 planning
+2. **Phase 0 Execution**: Companion Chore (CHORE-001–CHORE-004) merges to main before Iteration 1
+3. **Iteration 1 Planning Ceremony**: Scheduled upon Alon approval
+
+## Observations
+
+Feature 020 task deliverables are production-ready for planning authorization. No gaps, no rework needed. Governance validator passes cleanly (exit code 0). Task definition meets full Definition of Ready for planning ceremony kickoff.
+
+**Validation Authority**: Spec Steward (speckit.specrew-speckit.after-tasks)  
+**Status**: Feature 020 CLEARED for human authorization to proceed to Iteration 1 planning
