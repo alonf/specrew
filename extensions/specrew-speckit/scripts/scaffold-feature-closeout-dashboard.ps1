@@ -29,6 +29,80 @@ function Add-ScaffoldAction {
         })
 }
 
+function Get-FeatureCloseoutIdentityPath {
+    param(
+        [Parameter(Mandatory = $true)][string]$ResolvedProjectPath
+    )
+
+    return Join-Path $ResolvedProjectPath '.squad\identity\now.md'
+}
+
+function Get-FeatureCloseoutNumberLabel {
+    param(
+        [Parameter(Mandatory = $true)][string]$FeatureRef
+    )
+
+    if ($FeatureRef -match '^(?<number>\d{3})') {
+        return "Feature $($Matches['number'])"
+    }
+
+    return $FeatureRef
+}
+
+function Get-NextRoadmapItemLabel {
+    param(
+        [Parameter(Mandatory = $true)][string]$ResolvedProjectPath
+    )
+
+    if (-not (Get-Command Read-SpecrewRoadmapDefinition -ErrorAction SilentlyContinue)) {
+        return 'Roadmap update pending'
+    }
+
+    $roadmapDefinition = Read-SpecrewRoadmapDefinition -ProjectRoot $ResolvedProjectPath
+    $nextPhase = @($roadmapDefinition.phases | Where-Object { $_.status -eq 'queued' } | Select-Object -First 1)
+    if ($nextPhase.Count -eq 0) {
+        $nextPhase = @($roadmapDefinition.phases | Where-Object { $_.status -ne 'shipped' } | Select-Object -First 1)
+    }
+
+    if ($nextPhase.Count -gt 0 -and -not [string]::IsNullOrWhiteSpace([string]$nextPhase[0].name)) {
+        return [string]$nextPhase[0].name
+    }
+
+    return 'Roadmap update pending'
+}
+
+function Set-FeatureCloseoutIdentityNow {
+    param(
+        [Parameter(Mandatory = $true)][string]$ResolvedProjectPath,
+        [Parameter(Mandatory = $true)][string]$FeatureRef
+    )
+
+    $identityPath = Get-FeatureCloseoutIdentityPath -ResolvedProjectPath $ResolvedProjectPath
+    $identityDirectory = Split-Path -Parent $identityPath
+    if (-not (Test-Path -LiteralPath $identityDirectory -PathType Container)) {
+        $null = New-Item -ItemType Directory -Path $identityDirectory -Force
+    }
+
+    $timestamp = (Get-Date).ToUniversalTime().ToString('yyyy-MM-ddTHH:mm:ssZ')
+    $featureLabel = Get-FeatureCloseoutNumberLabel -FeatureRef $FeatureRef
+    $nextRoadmapItem = Get-NextRoadmapItemLabel -ResolvedProjectPath $ResolvedProjectPath
+    $content = @(
+        '---'
+        ('updated_at: {0}' -f $timestamp)
+        'focus_area: No active feature'
+        'active_issues: []'
+        '---'
+        ''
+        '# What We''re Focused On'
+        ''
+        ('No active feature. Last completed: {0} at {1}. Next roadmap item: {2} (not yet authorized).' -f $featureLabel, $timestamp, $nextRoadmapItem)
+        ''
+    ) -join [Environment]::NewLine
+
+    [System.IO.File]::WriteAllText($identityPath, $content, [System.Text.UTF8Encoding]::new($false))
+    return $identityPath
+}
+
 function Get-ResolvedFeatureDirectory {
     param(
         [Parameter(Mandatory = $true)][string]$ResolvedProjectPath,
@@ -103,6 +177,11 @@ else {
             Add-ScaffoldAction -Actions $actions -Action 'warning' -Path $targetPath
         }
     }
+}
+
+if (-not $DryRun) {
+    $identityPath = Set-FeatureCloseoutIdentityNow -ResolvedProjectPath $resolvedProjectPath -FeatureRef $featureRef
+    Add-ScaffoldAction -Actions $actions -Action 'updated' -Path $identityPath
 }
 
 if ($PassThru) {
