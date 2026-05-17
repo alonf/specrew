@@ -176,7 +176,7 @@ Options:
   -NoLaunch | --no-launch                  Generate handoff prompt/context but do not launch Copilot
   -NewWindow | --new-window                Launch Copilot in a new PowerShell window instead of the current terminal
   -SameWindow | --same-window              Compatibility alias for the default current-terminal launch mode
-  -AllowAll | --allow-all                  Explicitly launch Copilot with --allow-all (default behavior)
+  -AllowAll | --allow-all                  Explicitly launch Copilot with --allow-all on Windows; Linux/macOS suppress it to preserve interactive behavior
   -PromptApprovals | --prompt-approvals    Keep Copilot's interactive approval prompts enabled
   -Help | --help                           Show this help message
 
@@ -186,6 +186,7 @@ Options:
     - A quoted feature request is optional shorthand for a new feature, not a full spec document.
      - Specrew launches Copilot from the target project directory, reuses the current terminal by default, and only uses --new-window when you explicitly ask for a detached shell.
      - Intake-first runs stay out of autopilot until the feature request is grounded; Specrew auto-loads the bootstrap via -i and explicitly passes --mode interactive whenever autopilot is off so Copilot stays in the REPL.
+     - Windows keeps --allow-all enabled by default after the scope is grounded; Linux/macOS intentionally suppress --allow-all for now because Copilot CLI v1.0.48 does not reliably preserve the intended interactive behavior there.
      - Copilot CLI may still ask you to trust the project directory on first launch.
      - If Copilot CLI is unavailable, Specrew still writes a handoff prompt and context file.
 '@ | Write-Host
@@ -2148,7 +2149,8 @@ function Get-StartSummaryContent {
         [AllowNull()][pscustomobject]$BrownfieldDiscovery,
         [pscustomobject]$DeliveryGuidance,
         [pscustomobject]$RoutingPlan,
-        [System.Collections.IDictionary]$SquadModelOverrides
+        [System.Collections.IDictionary]$SquadModelOverrides,
+        [string]$ApprovalOperatorNote
     )
 
     $summaryLines = New-Object System.Collections.Generic.List[string]
@@ -2164,7 +2166,7 @@ function Get-StartSummaryContent {
     $summaryLines.Add(("- **Approval Mode**: {0}" -f $ApprovalMode)) | Out-Null
     $summaryLines.Add(("- **Launch Mode**: {0}" -f $LaunchMode)) | Out-Null
     $summaryLines.Add(("- **Copilot Autopilot**: {0}" -f $UseAutopilot)) | Out-Null
-    $summaryLines.Add(("- **Operator Note**: {0}" -f $(if (-not $UseAutopilot) { 'Specrew auto-loads the bootstrap with -i and passes --mode interactive so the REPL stays open while intake remains interactive until the scope is grounded.' } elseif ($ApprovalMode -eq 'allow-all') { 'allow-all reduces tool-approval blocking after the request is grounded.' } else { 'prompt-approvals keeps Copilot permission prompts interactive throughout the session.' }))) | Out-Null
+    $summaryLines.Add(("- **Operator Note**: {0}" -f $ApprovalOperatorNote)) | Out-Null
     $summaryLines.Add('') | Out-Null
     $summaryLines.Add('## Human Gates') | Out-Null
     $summaryLines.Add('- Clarify is mandatory for newly generated specs unless a concrete skip rationale is recorded first.') | Out-Null
@@ -2212,6 +2214,7 @@ function Save-StartArtifacts {
         [pscustomobject]$ProjectState,
         [AllowNull()][pscustomobject]$BrownfieldDiscovery,
         [pscustomobject]$DeliveryGuidance,
+        [string]$ApprovalOperatorNote,
         [string]$PostRestartDirective = ''
     )
 
@@ -2342,7 +2345,8 @@ $artifactListFormatted
             -BrownfieldDiscovery $BrownfieldDiscovery `
             -DeliveryGuidance $DeliveryGuidance `
             -RoutingPlan $RoutingPlan `
-            -SquadModelOverrides $SquadModelOverrides)
+            -SquadModelOverrides $SquadModelOverrides `
+            -ApprovalOperatorNote $ApprovalOperatorNote)
 
     return [pscustomobject]@{
         PromptPath               = $promptPath
@@ -2414,6 +2418,28 @@ function Get-ManualCopilotCommand {
     $allowAllSegment = if ($AllowAll) { ' --allow-all' } else { '' }
 
     return '$bootstrap = ''{0}''; copilot --agent ''{1}''{2}{3} --add-dir ''{4}'' -i $bootstrap{5}' -f $quotedBootstrap, $quotedAgent, $autopilotSegment, $interactiveModeSegment, $quotedProjectPath, $allowAllSegment
+}
+
+function Get-AllowAllRuntimePlan {
+    param([bool]$AllowAll)
+
+    $suppressAllowAll = ($AllowAll -and -not $IsWindows)
+
+    return [pscustomobject]@{
+        PassAllowAll        = ($AllowAll -and -not $suppressAllowAll)
+        ApprovalMode        = if ($AllowAll -and -not $suppressAllowAll) { 'allow-all' } else { 'prompt-approvals' }
+        DisplayMode         = if ($suppressAllowAll) { 'prompt-approvals (requested --allow-all suppressed on Linux/macOS)' } elseif ($AllowAll) { 'allow-all' } else { 'prompt-approvals' }
+        SuppressionNote     = if ($suppressAllowAll) { 'Copilot CLI v1.0.48 ignores or overrides the intended interactive behavior on Linux/macOS when --allow-all is combined with the interactive bootstrap. Specrew is intentionally suppressing --allow-all there, so bootstrap file reads will require approval prompts.' } else { $null }
+        ApprovalOperatorNote = if ($suppressAllowAll) {
+            'Specrew intentionally suppresses --allow-all on Linux/macOS because Copilot CLI v1.0.48 ignores or overrides the intended interactive behavior there. Expect approval prompts for bootstrap file reads until Copilot CLI v1.0.49+ or later fixes the issue.'
+        }
+        elseif ($AllowAll) {
+            'allow-all reduces tool-approval blocking after the request is grounded.'
+        }
+        else {
+            'prompt-approvals keeps Copilot permission prompts interactive throughout the session.'
+        }
+    }
 }
 
 function Start-CopilotSession {
@@ -2569,8 +2595,26 @@ $squadModelOverrides = Set-SquadModelOverrides -Root $resolvedProjectPath -Routi
 Write-DelegatedRoutingLedgerEntries -ResolvedProjectPath $resolvedProjectPath -RoutingPlan $routingPlan -SquadModelOverrides $squadModelOverrides
 $requiresInteractiveIntake = ($mode -eq 'intake-or-resume' -and -not $FeatureRequest -and -not $resolvedFeaturePath)
 $useAutopilot = -not $requiresInteractiveIntake
-$effectiveAllowAll = if ($PromptApprovals) { $false } else { $true }
-$approvalMode = if ($effectiveAllowAll) { 'allow-all' } else { 'prompt-approvals' }
+$requestedAllowAll = if ($PromptApprovals) { $false } else { $true }
+$allowAllRuntimePlan = Get-AllowAllRuntimePlan -AllowAll $requestedAllowAll
+$approvalMode = $allowAllRuntimePlan.ApprovalMode
+$approvalOperatorNote = if (-not $useAutopilot) {
+    if (-not [string]::IsNullOrWhiteSpace($allowAllRuntimePlan.SuppressionNote)) {
+        'Specrew auto-loads the bootstrap with -i and passes --mode interactive so the REPL stays open while intake remains interactive until the scope is grounded. Linux/macOS intentionally suppress --allow-all because Copilot CLI v1.0.48 does not preserve the intended interactive behavior there, so bootstrap file reads will require approval prompts until Copilot CLI v1.0.49+ or later fixes the issue.'
+    }
+    else {
+        'Specrew auto-loads the bootstrap with -i and passes --mode interactive so the REPL stays open while intake remains interactive until the scope is grounded.'
+    }
+}
+elseif (-not [string]::IsNullOrWhiteSpace($allowAllRuntimePlan.SuppressionNote)) {
+    'Specrew intentionally suppresses --allow-all on Linux/macOS because Copilot CLI v1.0.48 ignores or overrides the intended interactive behavior there. Expect approval prompts for bootstrap file reads until Copilot CLI v1.0.49+ or later fixes the issue.'
+}
+elseif ($approvalMode -eq 'allow-all') {
+    'allow-all reduces tool-approval blocking after the request is grounded.'
+}
+else {
+    'prompt-approvals keeps Copilot permission prompts interactive throughout the session.'
+}
 $launchMode = if ($NoLaunch) { 'none' } elseif ($NewWindow -and $IsWindows) { 'new-window' } else { 'same-window' }
 $promptContent = Get-StartPrompt `
     -ResolvedProjectPath $resolvedProjectPath `
@@ -2599,13 +2643,14 @@ $artifactPaths = Save-StartArtifacts `
     -ProjectState $projectState `
     -BrownfieldDiscovery $brownfieldDiscovery `
     -DeliveryGuidance $deliveryGuidance `
+    -ApprovalOperatorNote $approvalOperatorNote `
     -PostRestartDirective $PostRestartDirective
 
 Write-Success "Prepared Specrew start context."
 Write-Info ("Prompt:  {0}" -f $artifactPaths.PromptPath)
 Write-Info ("Context: {0}" -f $artifactPaths.ContextPath)
 Write-Info ("Summary: {0}" -f $artifactPaths.SummaryPath)
-Write-Info ("Copilot approval mode: {0}" -f $approvalMode)
+Write-Info ("Copilot approval mode: {0}" -f $allowAllRuntimePlan.DisplayMode)
 if ($artifactPaths.TemplateRefreshArtifacts.Count -gt 0) {
     Write-Info ("Unresolved template-refresh artifacts detected: {0}" -f $artifactPaths.TemplateRefreshArtifacts.Count)
     foreach ($artifact in $artifactPaths.TemplateRefreshArtifacts) {
@@ -2618,10 +2663,13 @@ if (-not $useAutopilot) {
 elseif ($approvalMode -eq 'allow-all') {
     Write-Info 'allow-all reduces tool-approval blocking after the request is grounded.'
 }
+if (-not [string]::IsNullOrWhiteSpace($allowAllRuntimePlan.SuppressionNote)) {
+    Write-Info $allowAllRuntimePlan.SuppressionNote
+}
 
 if ($NoLaunch) {
     Write-Info "Launch skipped by --no-launch."
-    Write-Info ("Manual launch command (run from the project root; Copilot auto-loads the bootstrap via -i): {0}" -f (Get-ManualCopilotCommand -ResolvedProjectPath $resolvedProjectPath -PromptPath $artifactPaths.PromptPath -ContextPath $artifactPaths.ContextPath -Agent $Agent -AllowAll $effectiveAllowAll -UseAutopilot $useAutopilot -RequireInteractiveIntake $requiresInteractiveIntake))
+    Write-Info ("Manual launch command (run from the project root; Copilot auto-loads the bootstrap via -i): {0}" -f (Get-ManualCopilotCommand -ResolvedProjectPath $resolvedProjectPath -PromptPath $artifactPaths.PromptPath -ContextPath $artifactPaths.ContextPath -Agent $Agent -AllowAll $allowAllRuntimePlan.PassAllowAll -UseAutopilot $useAutopilot -RequireInteractiveIntake $requiresInteractiveIntake))
     exit 0
 }
 
@@ -2637,14 +2685,14 @@ $copilotStarted = Start-CopilotSession `
     -PromptPath $artifactPaths.PromptPath `
     -ContextPath $artifactPaths.ContextPath `
     -Agent $Agent `
-    -AllowAll $effectiveAllowAll `
+    -AllowAll $allowAllRuntimePlan.PassAllowAll `
     -SameWindow ($launchMode -eq 'same-window') `
     -UseAutopilot $useAutopilot `
     -RequireInteractiveIntake $requiresInteractiveIntake
 
 if (-not $copilotStarted) {
     Write-Info "Copilot CLI was not available, so Specrew wrote a resume-safe handoff prompt instead."
-    Write-Info ("Manual launch command (run from {0}; Copilot auto-loads the bootstrap via -i): {1}" -f $resolvedProjectPath, (Get-ManualCopilotCommand -ResolvedProjectPath $resolvedProjectPath -PromptPath $artifactPaths.PromptPath -ContextPath $artifactPaths.ContextPath -Agent $Agent -AllowAll $effectiveAllowAll -UseAutopilot $useAutopilot -RequireInteractiveIntake $requiresInteractiveIntake))
+    Write-Info ("Manual launch command (run from {0}; Copilot auto-loads the bootstrap via -i): {1}" -f $resolvedProjectPath, (Get-ManualCopilotCommand -ResolvedProjectPath $resolvedProjectPath -PromptPath $artifactPaths.PromptPath -ContextPath $artifactPaths.ContextPath -Agent $Agent -AllowAll $allowAllRuntimePlan.PassAllowAll -UseAutopilot $useAutopilot -RequireInteractiveIntake $requiresInteractiveIntake))
     exit 0
 }
 

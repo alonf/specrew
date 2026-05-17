@@ -302,6 +302,16 @@ The automated WSL verification script requires `sudo` to install PowerShell 7 in
 - **Windows Validation**: `pwsh -NoProfile -File tests/integration/start-command.ps1` passed after restoring `-i` and adding explicit interactive mode assertions
 - **Linux/macOS Validation**: The user already confirmed the same explicit `--mode interactive` requirement on Windows and WSL; full end-to-end WSL re-test remains pending-human-execution
 
+### Follow-up Repair Evidence (R-019-V2-R12)
+
+- **Status**: Completed on Windows; WSL/Linux re-verification pending-human-execution
+- **Files Changed**: `scripts/specrew-start.ps1`, `tests/integration/start-command.ps1`, `docs/getting-started.md`, `docs/user-guide.md`, `specs/019-specrew-distribution-module/test-evidence/us5-cross-platform.md`
+- **Platform Divergence Confirmed**: Windows now behaves correctly with `--allow-all + -i + --mode interactive`, but Linux/WSL still exits one-shot after bootstrap when `--allow-all` is present alongside the interactive bootstrap flow.
+- **Decision Applied**: Specrew now keeps `--allow-all` on Windows and suppresses it on Linux/macOS. On Linux/macOS, the runtime output and generated summary explicitly explain that Copilot CLI v1.0.48 ignores or overrides the intended interactive behavior there, so bootstrap file reads will require approval prompts for now.
+- **Future Tracking Note**: Revisit and remove this platform-conditional suppression once Copilot CLI v1.0.49+ (or later) preserves the intended interactive REPL behavior on Linux/macOS with the `-i` bootstrap flow.
+- **Windows Validation**: `pwsh -NoProfile -File tests/integration/start-command.ps1` passed after the platform-conditional `--allow-all` change
+- **Linux/macOS Validation**: Manual WSL/Linux end-to-end verification is still pending; only the launch contract and regression coverage were updated in this repair
+
 ### Known Traps Added
 
 Three corpus rows added to `.specrew/quality/known-traps.md`:
