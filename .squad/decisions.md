@@ -6131,3 +6131,105 @@ Feature 020 task deliverables are production-ready for planning authorization. N
 
 **Validation Authority**: Spec Steward (speckit.specrew-speckit.after-tasks)  
 **Status**: Feature 020 CLEARED for human authorization to proceed to Iteration 1 planning
+
+---
+
+## 2026-05-17T20:26:01Z — Before-Implement Gate Validation: Feature 020 (REPAIR-NEEDED)
+
+**Decision ID**: before-implement-gate-feature-020-repair-needed  
+**Type**: gate-validation-result  
+**Boundary**: before-implement-gate  
+**Approving Agent**: speckit.specrew-speckit.before-implement (Spec Steward)  
+**Recorded At**: 2026-05-17T20:26:01Z  
+**Gate Status**: REPAIR-NEEDED (feature blocked from Iteration 1 implementation)  
+**Next Action**: Await bounded repair authorization before proceeding
+
+### Gate Outcome Summary
+
+Feature 020 (Session-State Durability & In-Flight Progress Tracking) has **failed the before-implement governance gate** with status **REPAIR-NEEDED**. Six bounded blockers have been identified that must be resolved before the feature can proceed to Phase 1 implementation authorization.
+
+**Key Finding**: Feature 020 is **not authorized** to begin Iteration 1 implementation pending repair work and re-validation.
+
+### Verified Blockers
+
+#### 1. Specification Status: Draft
+- **Gate Requirement**: Feature spec must reach RFC or Active status before implementation authorization
+- **Current State**: `specs/020-session-state-durability/spec.md` remains Draft
+- **Impact**: Cannot authorize Phase 1 task execution against incomplete requirements
+- **Repair Action**: Upgrade spec status through explicit governance transition
+
+#### 2. FR-025 Drift
+- **Gate Requirement**: Functional requirements must align across specification and planning artifacts
+- **Issue**: Inconsistency between `spec.md` and `plan.md` / `tasks.md` (module-vs-project version check authoritative source)
+- **Impact**: Task decomposition may diverge from actual requirements
+- **Repair Action**: Trigger `speckit.clarify` to resolve drift; reconcile plan/tasks with clarified spec
+
+#### 3. Role Governance Drift
+- **Gate Requirement**: Role assignments must align with feature governance metadata
+- **Issue**: Mismatch between labels in `spec.md` and baseline `role-assignments.yml`
+- **Impact**: Ceremony assignments and authority chains unclear
+- **Repair Action**: Verify role-assignments.yml consistency with all spec governance labels
+
+#### 4. Missing Phase 1 Task Coverage for Quality Gates
+- **Gate Requirement**: All planned quality gates must have corresponding Phase 1 tasks
+- **Missing Gates**:
+  - `performance-baseline`
+  - `backward-compatibility-check`
+- **Impact**: Quality gate execution is not covered by bounded tasks
+- **Repair Action**: Add explicit Phase 1 tasks for all planned quality gates
+
+#### 5. Environment Issue: Pester 5.x Not Available
+- **Gate Requirement**: PowerShell testing infrastructure must match feature tech stack
+- **Current Environment**: Pester 3.4.0 only
+- **Feature Requirement**: Pester 5.x for unit and integration tests (per `plan.md` Phase 1 Quality Planning)
+- **Impact**: PowerShell-based test validation cannot execute against Pester 5.x spec
+- **Repair Action**: Upgrade test environment to Pester 5.x OR establish Pester 3.4.0 compatibility shim
+
+#### 6. Total Capacity Drift
+- **Gate Requirement**: Total SP across all tasks must match spec estimates and plan commitments
+- **Current State**: Unreconciled capacity mismatch across spec/plan/tasks
+- **Impact**: Velocity tracking and iteration planning are unreliable
+- **Repair Action**: Re-estimate and align total SP across spec, plan, and task artifacts
+
+### Sequencing Rule: Prerequisite CHORE Merges
+
+The gate reaffirmed a critical sequencing constraint that remains active:
+
+> **CHORE-001 through CHORE-004 must merge to main before any Iteration 1 implementation begins.**
+
+This prerequisite is **not blocking the before-implement gate validation itself**, but **will block the begin-implementation gate** if not satisfied at that time.
+
+**Prerequisite Status**:
+- CHORE-001: [Pending main merge]
+- CHORE-002: [Pending main merge]
+- CHORE-003: [Pending main merge]
+- CHORE-004: [Pending main merge]
+
+### Repair Authorization Scope
+
+Bounded repair work may address blockers 1–6 above without requiring a full re-plan. Proposed repair workflow:
+
+1. **Spec Clarification** (trigger `speckit.clarify` for FR-025 drift)
+2. **Role Synchronization** (align role-assignments.yml with spec metadata)
+3. **Quality Gate Task Coverage** (add Phase 1 tasks for performance-baseline and backward-compatibility-check)
+4. **Environment Remediation** (Pester 5.x upgrade or 3.4.0 compatibility shim)
+5. **Capacity Reconciliation** (re-estimate spec/plan/task totals across all three artifacts)
+
+Once repair is complete and verified, Feature 020 can proceed to **re-validate at before-implement gate** before implementation authorization.
+
+### Cross-References
+
+- **Orchestration Log**: `.squad/orchestration-log/2026-05-17T202601Z-before-implement-gate-feature020.md`
+- **Session Log**: `.squad/log/2026-05-17T202601Z-feature020-before-implement-blocked.md`
+- **Feature Spec**: `specs/020-session-state-durability/spec.md` (Status: Draft)
+- **Feature Plan**: `specs/020-session-state-durability/plan.md`
+- **Feature Tasks**: `specs/020-session-state-durability/tasks.md`
+- **Research**: `specs/020-session-state-durability/research.md` (planning blocker resolution)
+- **Role Assignments**: `.specrew/role-assignments.yml`
+
+### Governance Framework References
+
+- **Gate Template**: Before-Implement Governance Gate (Spec Kit)
+- **Feature Lifecycle**: Four-phase model (Planning → Review → Implementation → Closeout)
+- **Quality Bar**: Feature 020 custom quality composition (PowerShell CLI tool + file I/O correctness + git integration)
+- **Related Gates**: Before-Plan Gate (passed 2026-05-15), After-Tasks Gate (passed 2026-05-17)
