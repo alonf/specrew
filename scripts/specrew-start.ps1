@@ -2528,15 +2528,40 @@ $args += @('--add-dir', '{0}', '-i', $bootstrapInput)
         return $true
     }
 
-    # Linux/macOS: launch copilot as a direct child of the current pwsh.
-    # When the Specrew module proxy runs this script in-process (the module
-    # uses `& $scriptPath` instead of spawning a `pwsh -File` subprocess on
-    # Linux/macOS), the current pwsh IS the user's interactive pwsh, so
-    # copilot becomes a direct child of that interactive pwsh with full
-    # TTY/process-group inheritance and the REPL stays alive.
+    # Linux/macOS: allocate a fresh pseudo-TTY for copilot via the `script`
+    # command. PowerShell's `&` invocation does not consistently propagate
+    # the user's terminal TTY to child processes when called from a script
+    # context — empirically, copilot from interactive prompt gets TTY and
+    # renders its TUI; copilot from `&` inside a script body sees stdin
+    # as non-TTY and falls back to one-shot processing.
+    #
+    # `script` creates a fresh PTY master/slave pair, runs the command with
+    # stdin/stdout connected to the slave, and proxies data to/from the
+    # user's terminal via the master. The output log is discarded (/dev/null).
+    # Copilot sees a real TTY → its TUI renders → REPL stays open.
     Push-Location -LiteralPath $ResolvedProjectPath
     try {
-        & $copilotCommand.Source @copilotArgs
+        if ($IsMacOS) {
+            # BSD `script` (macOS): command + args passed as positional args
+            # after the log file.
+            & script -q /dev/null $copilotCommand.Source @copilotArgs
+        }
+        else {
+            # util-linux `script` (Linux): -c flag with a shell-interpreted
+            # command string. POSIX single-quote each value to handle paths
+            # or args with spaces/special chars.
+            $quoteSh = {
+                param([string]$Value)
+                "'" + ($Value -replace "'", "'\''") + "'"
+            }
+            $cmdParts = New-Object System.Collections.Generic.List[string]
+            $cmdParts.Add((& $quoteSh $copilotCommand.Source)) | Out-Null
+            foreach ($arg in $copilotArgs) {
+                $cmdParts.Add((& $quoteSh $arg)) | Out-Null
+            }
+            $cmdString = $cmdParts -join ' '
+            & script -qfc $cmdString /dev/null
+        }
         return $true
     }
     finally {
