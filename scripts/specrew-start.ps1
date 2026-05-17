@@ -2415,7 +2415,8 @@ function Get-ManualCopilotCommand {
     $quotedBootstrap = (Get-CopilotBootstrapInput -ResolvedProjectPath $ResolvedProjectPath -PromptPath $PromptPath -ContextPath $ContextPath -RequireInteractiveIntake $RequireInteractiveIntake).Replace("'", "''")
     $autopilotSegment = if ($UseAutopilot) { ' --autopilot' } else { '' }
     $interactiveModeSegment = if ($UseAutopilot) { '' } else { ' --mode interactive' }
-    $allowAllSegment = if ($AllowAll) { ' --allow-all' } else { '' }
+    $passAllowAll = ($AllowAll -and $IsWindows)
+    $allowAllSegment = if ($passAllowAll) { ' --allow-all' } else { '' }
 
     return '$bootstrap = ''{0}''; copilot --agent ''{1}''{2}{3} --add-dir ''{4}'' -i $bootstrap{5}' -f $quotedBootstrap, $quotedAgent, $autopilotSegment, $interactiveModeSegment, $quotedProjectPath, $allowAllSegment
 }
@@ -2471,7 +2472,9 @@ function Start-CopilotSession {
 
     $copilotArgs += @('--add-dir', $ResolvedProjectPath, '-i', $bootstrapInput)
 
-    if ($AllowAll) {
+    $passAllowAll = ($AllowAll -and $IsWindows)
+
+    if ($passAllowAll) {
         $copilotArgs += '--allow-all'
     }
 
@@ -2481,7 +2484,7 @@ function Start-CopilotSession {
         $quotedCopilotSource = $copilotCommand.Source.Replace("'", "''")
         $quotedBootstrap = $bootstrapInput.Replace("'", "''")
         $autopilotSnippet = if ($UseAutopilot) { '$args += ''--autopilot''' } else { '$args += @(''--mode'', ''interactive'')' }
-        $allowAllSnippet = if ($AllowAll) { '$args += ''--allow-all''' } else { '' }
+        $allowAllSnippet = if ($passAllowAll) { '$args += ''--allow-all''' } else { '' }
         $launchScript = @'
 Set-Location -LiteralPath '{0}'
 $bootstrapInput = '{1}'

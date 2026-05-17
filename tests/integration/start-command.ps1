@@ -153,6 +153,16 @@ if ($startScriptContent -notmatch $sameWindowProcessLaunchPattern) {
     Write-Fail "specrew-start.ps1 does not use a separate pwsh process for same-window Copilot launch on Windows."
     exit 1
 }
+$nativeAllowAllSuppressionPattern = '\$passAllowAll = \(\$AllowAll -and \$IsWindows\)[\s\S]*if \(\$passAllowAll\) \{\s*\$copilotArgs \+= ''--allow-all'''
+if ($startScriptContent -notmatch $nativeAllowAllSuppressionPattern) {
+    Write-Fail "specrew-start.ps1 no longer suppresses --allow-all in the native non-Windows launch path."
+    exit 1
+}
+$windowsAllowAllSnippetPattern = '\$allowAllSnippet = if \(\$passAllowAll\) \{ ''\$args \+= ''''--allow-all'''''' \} else \{ '''' \}'
+if ($startScriptContent -notmatch $windowsAllowAllSnippetPattern) {
+    Write-Fail "specrew-start.ps1 no longer preserves the Windows embedded launch-script --allow-all behavior."
+    exit 1
+}
 Write-Pass "Start command uses a separate pwsh process for same-window launch on Windows"
 
 Write-Host "`nTest 1c: entry wrapper defaults start project-path to the caller location"
