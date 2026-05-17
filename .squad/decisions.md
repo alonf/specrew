@@ -48,6 +48,41 @@ When generating iteration plans for Feature 020:
 - Related spec requirements: FR-025 through FR-035 (version checks), TG-002 (ownership statement)
 
 
+# Decision: Feature 020 Before-Implement Repair Runtime Evidence
+
+**Date**: 2026-05-17T20:30:46Z  
+**Boundary**: Before-implement bounded micro-repair cycle  
+**Feature**: 020-session-state-durability (Session-State Durability & In-Flight Progress Tracking)  
+**Authority**: Alon Fliess (human repair authorization)  
+**Decision Type**: Runtime evidence
+
+## Repair Scope
+
+Apply the bounded repair set for GAP-BI-001 through GAP-BI-006 without widening into implementation or a fresh gate rerun.
+
+## Runtime Evidence
+
+- **Requested role / work item**: Spec Steward / before-implement bounded micro-repair cycle for GAP-BI-001 through GAP-BI-006
+- **Requested agent**: `spec-steward`
+- **Actual agent**: `spec-steward`
+- **Model**: `claude-haiku-4.5`
+- **Assignment honored**: yes
+- **Fallback**: none
+- **Repair choices**:
+  - GAP-BI-004 used **Option 4A** by making Phase 1 quality-gate coverage explicit in existing Reviewer tasks (`I1-T005` for backward-compatibility evidence, `I1-T014` for performance-baseline evidence).
+  - GAP-BI-005 used **Option 5A** as a documented Phase 0 prerequisite note for installing Pester 5.5.0 in CurrentUser scope, avoiding scope expansion to a new chore task.
+
+## Impact
+
+- `spec.md` now reflects approved lifecycle state, the corrected FR-025 version anchor, baseline-only role names, and the reconciled 33 SP total.
+- `plan.md` now aligns its capacity, tool-bundle, and Phase 1 quality-gate evidence story with the repaired spec/tasks set.
+- `tasks.md` now explicitly carries the Phase 1 backward-compatibility and performance-baseline evidence in existing Iteration 1 Reviewer tasks.
+
+## Next Action
+
+Request explicit human authorization to rerun `speckit.specrew-speckit.before-implement` on the repaired tree.
+
+
 # Decision: Feature 019 T006 Self-Signed Certificate Validity Period
 
 **Date**: 2026-05-16T16:23:58Z  
