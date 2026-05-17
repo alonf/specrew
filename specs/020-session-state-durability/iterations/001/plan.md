@@ -65,9 +65,9 @@ Total effort estimate: 16 Story Points
 ## Authorization
 
 - **Iteration-start**: ✓ Alon Fliess (2026-05-18, commit 0e90d1f restored planning artifacts and preserved Iteration-start authorization)
-- **Planning approval**: ✓ complete
+- **Planning approval**: planning approved at task-validation pass (commit `e456f3b`)
 - **Phase 0 completion**: ✓ CHORE-001–CHORE-004 merged to main at 9f63790, integrated at b5e4461 (2026-05-18)
-- **Implementation authorization**: ready (Phase 0 prerequisite satisfied; proceed with I1-T001 through I1-T014)
+- **Implementation authorization**: before-implement gate passed at commit `6d3aaa7`, implementation authorized
 - **Review status**: not-started
 
 ## Notes
