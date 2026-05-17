@@ -1,0 +1,8 @@
+# Session-State Schema v1
+
+**Feature**: 020-session-state-durability  
+**Date**: 2026-05-19  
+**Schema Version**: v1  
+**Purpose**: YAML schema for session-state files and task progress tracking
+
+[Content from earlier - see session-state-schema.yml file]
