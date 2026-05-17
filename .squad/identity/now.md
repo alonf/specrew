@@ -37,13 +37,11 @@ Feature Lifecycle: ITERATION-002-REPAIR-COMPLETE
 Next Valid Action
 -----------------
 
-**Human authorization required for review-verdict-signoff** (per Feature 016 boundary discipline).
+**Human authorization required for iteration-closeout** (per Feature 016 boundary discipline).
 
-Iteration 002 review is complete and governance-validated. To proceed:
+Iteration 002 retrospective is complete. To proceed to the iteration-closeout boundary:
 
-1. Review the Boundary 2 verdict and gap ledger in `file:///C:/Dev/Specrew/specs/019-specrew-distribution-module/iterations/002/review.md`
-2. Authorize signoff with explicit instruction for the review-verdict-signoff boundary
-3. If signoff accepts READY-FOR-SIGNOFF: proceed to retro boundary
-4. If signoff downgrades to REPAIR-NEEDED: authorize a bounded repair cycle separately
-
-**Alternative**: If you prefer to review manually first, inspect the updated review artifact, hardening gate, drift log, and test evidence, then provide explicit authorization for the next step.
+1. Review the iteration-closeout artifact set in `file:///C:/Dev/Specrew/specs/019-specrew-distribution-module/iterations/002/`
+2. Authorize closure with explicit instruction for the iteration-closeout boundary
+3. On authorization: Iteration 002 closes; pre-existing Iteration 001 hardening-gate failure remains deferred to feature-closeout
+4. Downstream: Feature 019 Iteration 003 planning or feature-closeout trajectory will be determined post-authorization
