@@ -2399,36 +2399,28 @@ function Get-CopilotBootstrapInput {
         [bool]$RequireInteractiveIntake
     )
 
-    # Embed the full Squad coordinator prompt content directly in the -i argument
-    # so Copilot does NOT need to make tool calls during bootstrap. Copilot CLI
-    # v1.0.48 exits the REPL after the -i prompt completes if it triggered tool
-    # calls (file reads), because Copilot considers the "task" done once all
-    # tools have run. Passing the content directly keeps the conversation open
-    # for the user's intake response, since there is nothing for Copilot to
-    # "complete" — the system message becomes the prompt and Copilot waits for
-    # the next user input.
+    # Pass a SHORT casual prompt via -i to keep Copilot's REPL alive.
     #
-    # The on-disk files at $PromptPath / $ContextPath remain for audit and
-    # post-session inspection; only the -i payload changes.
-    if (Test-Path -LiteralPath $PromptPath -PathType Leaf) {
-        return Get-Content -LiteralPath $PromptPath -Raw -Encoding UTF8
-    }
-
+    # Empirical evidence from WSL 2026-05-17: Copilot CLI v1.0.48's agent loop
+    # terminates the session after processing a long/instructional -i prompt
+    # (the model treats the prompt as a self-contained task and exits when
+    # done). Short casual prompts ("hello", "Begin Specrew session", or
+    # explicit "use the ask_user tool to ask X" directives) keep the agent
+    # loop alive and return control to the REPL waiting for user input.
+    #
+    # The full Squad coordinator instructions, project-state snapshot, team
+    # roster, and lifecycle directives stay on disk at $PromptPath and
+    # $ContextPath. Squad can consult those files via tool calls AFTER the
+    # initial user response (i.e. after the agent loop is already alive),
+    # which keeps the session interactive throughout.
     $promptDisplayPath = Get-DisplayPathFromProjectRoot -ResolvedProjectPath $ResolvedProjectPath -Path $PromptPath
     $contextDisplayPath = Get-DisplayPathFromProjectRoot -ResolvedProjectPath $ResolvedProjectPath -Path $ContextPath
-    $lines = @(
-        "Read '$promptDisplayPath' and '$contextDisplayPath' from the project root before doing anything else."
-        "Treat '$promptDisplayPath' as the authoritative Specrew handoff and '$contextDisplayPath' as the current lifecycle state."
-    )
 
     if ($RequireInteractiveIntake) {
-        $lines += "If intake is still unresolved after reading those files, ask the next intake question and wait for the human developer's answer before invoking any Speckit lifecycle agent or command, skipping clarify, or guessing missing scope."
-    }
-    else {
-        $lines += "After reading those files, follow the lifecycle exactly as directed by the handoff and do not bypass required clarify or governance gates."
+        return "Begin a new Specrew session for this project. Use the ask_user tool to ask me what I want to build today, then wait for my answer. Read '$promptDisplayPath' and '$contextDisplayPath' for full session context after I respond."
     }
 
-    return $lines -join ' '
+    return "Resume the active Specrew session for this project. Use the ask_user tool to confirm I'm ready to continue, then read '$promptDisplayPath' and '$contextDisplayPath' for the current lifecycle state and proceed with the next phase."
 }
 
 function Get-ManualCopilotCommand {
@@ -2444,17 +2436,13 @@ function Get-ManualCopilotCommand {
 
     $quotedProjectPath = $ResolvedProjectPath.Replace("'", "''")
     $quotedAgent = $Agent.Replace("'", "''")
-    $quotedPromptPath = $PromptPath.Replace("'", "''")
+    $quotedBootstrap = (Get-CopilotBootstrapInput -ResolvedProjectPath $ResolvedProjectPath -PromptPath $PromptPath -ContextPath $ContextPath -RequireInteractiveIntake $RequireInteractiveIntake).Replace("'", "''")
     $autopilotSegment = if ($UseAutopilot) { ' --autopilot' } else { '' }
     $interactiveModeSegment = if ($UseAutopilot -or -not $IsWindows) { '' } else { ' --mode interactive' }
     $passAllowAll = ($AllowAll -and $IsWindows)
     $allowAllSegment = if ($passAllowAll) { ' --allow-all' } else { '' }
 
-    # Read the bootstrap content at command-run time rather than embedding it
-    # inline; the file content is multi-KB and would make the displayed manual
-    # command unreadable. The Get-Content call mirrors what Get-CopilotBootstrapInput
-    # does internally for the in-process launch path.
-    return '$bootstrap = Get-Content -LiteralPath ''{0}'' -Raw -Encoding UTF8; copilot --agent ''{1}''{2}{3} --add-dir ''{4}'' -i $bootstrap{5}' -f $quotedPromptPath, $quotedAgent, $autopilotSegment, $interactiveModeSegment, $quotedProjectPath, $allowAllSegment
+    return 'copilot --agent ''{0}''{1}{2} --add-dir ''{3}'' -i ''{4}''{5}' -f $quotedAgent, $autopilotSegment, $interactiveModeSegment, $quotedProjectPath, $quotedBootstrap, $allowAllSegment
 }
 
 function Get-AllowAllRuntimePlan {
