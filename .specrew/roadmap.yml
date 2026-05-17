@@ -14,12 +14,13 @@ phases:
   - id: phase-2-experience
     name: "Phase 2: Developer Experience"
     description: "Interaction model, visibility, and public-readiness follow-through."
-    planned_effort_sp: 68
+    planned_effort_sp: 85
     status: in-progress
     feature_refs:
       - 015-public-readiness-pass
       - 016-substantive-interaction-model
       - 017-velocity-dashboard
+      - 018-velocity-dashboard-visual-richness
 
   - id: phase-3-visibility
     name: "Phase 3: Visibility & Insights"
@@ -47,11 +48,11 @@ phases:
 
   - id: phase-6-distribution
     name: "Phase 6: Distribution"
-    description: "Placeholder for packaging, installation, and distribution work."
-    planned_effort_sp: 0
-    status: queued
+    description: "Packaging, installation, and distribution work (PSGallery + cross-platform module distribution)."
+    planned_effort_sp: 22
+    status: in-progress
     feature_refs:
-      # TODO: add feature refs when Phase 6 scope is defined
+      - 019-specrew-distribution-module
 
   - id: phase-7-reliability
     name: "Phase 7: Reliability"

@@ -49,24 +49,32 @@ jobs:
         shell: pwsh
         run: |
           Write-Host "Testing specrew init in clean directory..." -ForegroundColor Cyan
+          $repoRoot = (Get-Location).Path
           $testDir = New-Item -ItemType Directory -Path "./test-init-$([Guid]::NewGuid().ToString('N').Substring(0,8))" -Force
-          Push-Location $testDir
-          
-          # Run init
-          Import-Module ../Specrew.psd1
-          specrew-init -ProjectName "test-project" -ProjectDescription "Test project for CI" -SkipInteractive
-          
+          $testDirPath = $testDir.FullName
+
+          # Initialize a fresh git repo in the test directory so init can resolve project root.
+          git -C $testDirPath init --quiet
+          if ($LASTEXITCODE -ne 0) {
+            Write-Error "Failed to git init the scratch test directory."
+            exit 1
+          }
+
+          # Run init using the actual supported parameter surface: -ProjectPath / -Force / -NoAgents.
+          Import-Module "$repoRoot/Specrew.psd1"
+          specrew-init -ProjectPath $testDirPath -Force -NoAgents
+
           # Verify artifacts were created
           $requiredPaths = @('.specify', '.squad', '.github')
           foreach ($path in $requiredPaths) {
-            if (-not (Test-Path $path)) {
+            $resolved = Join-Path -Path $testDirPath -ChildPath $path
+            if (-not (Test-Path -LiteralPath $resolved)) {
               Write-Error "Missing required path: $path"
               exit 1
             }
           }
-          
-          Pop-Location
-          Remove-Item -Recurse -Force $testDir
+
+          Remove-Item -Recurse -Force $testDirPath
           Write-Host "✅ specrew init completed successfully" -ForegroundColor Green
       
       - name: Test specrew where
@@ -132,9 +140,22 @@ jobs:
       - name: Setup PowerShell
         shell: bash
         run: |
-          # Install PowerShell 7.x on macOS
-          brew install --cask powershell
-          pwsh --version
+          # PowerShell 7.x is pre-installed on macos-latest runners; verify and
+          # fall back to a direct GitHub-release install if it ever isn't.
+          if command -v pwsh >/dev/null 2>&1; then
+            pwsh --version
+          else
+            echo "PowerShell not found on runner; installing from GitHub release..."
+            arch="$(uname -m)"
+            if [ "$arch" = "arm64" ]; then
+              pkg_arch="osx-arm64"
+            else
+              pkg_arch="osx-x64"
+            fi
+            curl -fsSL -o pwsh.pkg "https://github.com/PowerShell/PowerShell/releases/download/v7.4.1/powershell-7.4.1-${pkg_arch}.pkg"
+            sudo installer -pkg pwsh.pkg -target /
+            pwsh --version
+          fi
       
       - name: Test module manifest
         shell: pwsh
