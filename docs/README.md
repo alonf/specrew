@@ -7,6 +7,7 @@ This directory contains the main user-facing documentation for Specrew.
 - `getting-started.md` - practical bootstrap and quickstart guidance for greenfield and brownfield repos
 - `user-guide.md` - lifecycle guide for planning, execution, review, retrospective, and drift handling
 - `github-project.md` - Specrew self-development board and project operating model
+- `operations\psgallery-release-credentials.md` - maintainer-facing release-credential runbook (PSGallery API-key rotation now; certificate guidance can co-locate later)
 
 ## Recommended Reading Order
 

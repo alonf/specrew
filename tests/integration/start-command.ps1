@@ -59,6 +59,39 @@ function Assert-Contains {
     return $true
 }
 
+function Get-FunctionDefinitionsText {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Path,
+        [Parameter(Mandatory = $true)]
+        [string[]]$FunctionNames
+    )
+
+    $tokens = $null
+    $parseErrors = $null
+    $ast = [System.Management.Automation.Language.Parser]::ParseFile($Path, [ref]$tokens, [ref]$parseErrors)
+    if ($parseErrors.Count -gt 0) {
+        throw ("Failed to parse function definitions from {0}: {1}" -f $Path, ($parseErrors | ForEach-Object { $_.Message } | Select-Object -First 1))
+    }
+
+    foreach ($functionName in $FunctionNames) {
+        $functionAst = $ast.Find(
+            {
+                param($node)
+                $node -is [System.Management.Automation.Language.FunctionDefinitionAst] -and
+                $node.Name -eq $functionName
+            },
+            $true
+        )
+
+        if ($null -eq $functionAst) {
+            throw ("Failed to locate function '{0}' in {1}" -f $functionName, $Path)
+        }
+
+        $functionAst.Extent.Text
+    }
+}
+
 $repoRoot = (Resolve-Path (Join-Path -Path $PSScriptRoot -ChildPath '..\..')).Path
 $entryScript = Join-Path -Path $repoRoot -ChildPath 'scripts\specrew.ps1'
 $startScript = Join-Path -Path $repoRoot -ChildPath 'scripts\specrew-start.ps1'
@@ -137,6 +170,24 @@ if (-not (Assert-Contains -Content $helpOutput -Pattern 'same-window' -FailureMe
 }
 Write-Pass "Help output includes specrew start"
 
+Write-Host "`nTest 1aa: display-path helpers trim both path separators"
+Invoke-Expression ((Get-FunctionDefinitionsText -Path $startScript -FunctionNames @('Get-DisplayRelativePath', 'Get-DisplayPathFromProjectRoot')) -join "`n`n")
+$windowsDisplayPath = Get-DisplayPathFromProjectRoot -ResolvedProjectPath $projectRoot -Path (Join-Path -Path $projectRoot -ChildPath '.specrew\last-start-prompt.md')
+if ($windowsDisplayPath -ne '.specrew\last-start-prompt.md') {
+    Write-Fail ("Get-DisplayPathFromProjectRoot returned the wrong Windows-relative path: {0}" -f $windowsDisplayPath)
+    exit 1
+}
+$linuxDisplayPath = Get-DisplayRelativePath -ProjectRoot '/repo/project/' -ResolvedPath '/repo/project/.specrew/last-start-prompt.md'
+if ($linuxDisplayPath -ne '.specrew/last-start-prompt.md') {
+    Write-Fail ("Get-DisplayRelativePath returned the wrong Linux-style relative path: {0}" -f $linuxDisplayPath)
+    exit 1
+}
+if ($linuxDisplayPath -match '^/\.specrew/') {
+    Write-Fail ("Linux-style display path still looks absolute: {0}" -f $linuxDisplayPath)
+    exit 1
+}
+Write-Pass "Display-path helpers trim both slash styles"
+
 Write-Host "`nTest 1b: entry wrapper preserves the same terminal for start"
 $entryScriptContent = Get-Content -LiteralPath $entryScript -Raw -Encoding UTF8
 $nestedStartDispatchPattern = [regex]::Escape('& pwsh -NoProfile -ExecutionPolicy Bypass -File $startScript')
@@ -151,6 +202,16 @@ $startScriptContent = Get-Content -LiteralPath $startScript -Raw -Encoding UTF8
 $sameWindowProcessLaunchPattern = 'if \(\$SameWindow\)\s*\{\s*\$process = Start-Process -FilePath ''pwsh''.*-NoNewWindow -PassThru -Wait'
 if ($startScriptContent -notmatch $sameWindowProcessLaunchPattern) {
     Write-Fail "specrew-start.ps1 does not use a separate pwsh process for same-window Copilot launch on Windows."
+    exit 1
+}
+$uniformAllowAllPattern = 'if \(\$AllowAll\) \{\s*\$copilotArgs \+= ''--allow-all'''
+if ($startScriptContent -notmatch $uniformAllowAllPattern) {
+    Write-Fail "specrew-start.ps1 no longer applies --allow-all uniformly when AllowAll is true."
+    exit 1
+}
+$windowsAllowAllSnippetPattern = '\$allowAllSnippet = if \(\$AllowAll\) \{ ''\$args \+= ''''--allow-all'''''' \} else \{ '''' \}'
+if ($startScriptContent -notmatch $windowsAllowAllSnippetPattern) {
+    Write-Fail "specrew-start.ps1 no longer preserves the Windows embedded launch-script --allow-all behavior."
     exit 1
 }
 Write-Pass "Start command uses a separate pwsh process for same-window launch on Windows"
@@ -270,7 +331,7 @@ foreach ($check in $freshStartChecks) {
     }
 }
 if ($freshContext.approval_mode -ne 'allow-all') {
-    Write-Fail "Fresh repo start did not default to allow-all approval mode."
+    Write-Fail ("Fresh repo start recorded the wrong approval mode: {0}" -f $freshContext.approval_mode)
     exit 1
 }
 if ($freshContext.copilot_autopilot) {
@@ -303,7 +364,19 @@ if ($freshOutput -match '--autopilot') {
     Write-Fail 'Fresh repo no-launch flow should not use autopilot before intake is grounded.'
     exit 1
 }
-if (-not (Assert-Contains -Content $freshOutput -Pattern '--allow-all' -FailureMessage 'Fresh repo no-launch flow did not preserve allow-all in the manual handoff command.')) {
+$freshManualLaunchLine = @($freshStartResult.Output | Where-Object { $_ -match 'Manual launch command' } | Select-Object -Last 1)
+if ($freshManualLaunchLine.Count -eq 0) {
+    Write-Fail 'Fresh repo no-launch flow did not emit the manual launch line.'
+    exit 1
+}
+if (-not (Assert-Contains -Content $freshManualLaunchLine[0] -Pattern '--allow-all' -FailureMessage 'Fresh repo no-launch flow did not preserve allow-all in the manual handoff command.')) {
+    exit 1
+}
+if (-not (Assert-Contains -Content $freshManualLaunchLine[0] -Pattern '(^| )-i( |$)' -FailureMessage 'Fresh repo no-launch flow should auto-load the bootstrap with -i.')) {
+    exit 1
+}
+if ($freshManualLaunchLine[0] -match '--mode interactive') {
+    Write-Fail 'Fresh repo no-launch flow should not pass --mode interactive; -i auto-loading is sufficient.'
     exit 1
 }
 if (-not (Assert-Contains -Content $freshOutput -Pattern 'last-start-prompt\.md' -FailureMessage 'Fresh repo no-launch flow did not bootstrap from the saved prompt file.')) {
@@ -313,6 +386,10 @@ if (-not (Assert-Contains -Content $freshOutput -Pattern 'start-context\.json' -
     exit 1
 }
 if (-not (Assert-Contains -Content $freshOutput -Pattern 'start-summary\.md' -FailureMessage 'Fresh repo no-launch flow did not print the summary artifact path.')) {
+    exit 1
+}
+if ($freshOutput -match '/\.specrew/') {
+    Write-Fail 'Fresh repo no-launch flow emitted an absolute-looking bootstrap path.'
     exit 1
 }
 Write-Pass "Fresh repo start enters intake-or-resume mode"
@@ -364,6 +441,22 @@ if (-not (Test-Path -LiteralPath $fakeCopilotLog -PathType Leaf)) {
 $fakeCopilotArgs = Get-Content -LiteralPath $fakeCopilotLog -Raw -Encoding UTF8
 if ($fakeCopilotArgs -notmatch 'last-start-prompt\.md' -or $fakeCopilotArgs -notmatch 'start-context\.json') {
     Write-Fail 'Live launch did not pass the bootstrap handoff file references to Copilot.'
+    exit 1
+}
+if ($fakeCopilotArgs -notmatch '(^| )-i( |$)') {
+    Write-Fail 'Live launch should auto-load the bootstrap prompt with -i.'
+    exit 1
+}
+if ($fakeCopilotArgs -notmatch '--allow-all') {
+    Write-Fail 'Live launch should preserve --allow-all on every platform.'
+    exit 1
+}
+if ($fakeCopilotArgs -notmatch '--autopilot') {
+    Write-Fail 'Live launch should use autopilot once the request is grounded.'
+    exit 1
+}
+if ($fakeCopilotArgs -match '--mode interactive') {
+    Write-Fail 'Live launch should not combine --mode interactive with --autopilot.'
     exit 1
 }
 if ($fakeCopilotArgs -match 'You are Squad running inside a Specrew-bootstrapped repository') {
@@ -440,7 +533,7 @@ foreach ($check in $promptChecks) {
     }
 }
 if ($startContext.approval_mode -ne 'allow-all') {
-    Write-Fail "New feature flow did not record allow-all approval mode."
+    Write-Fail ("New feature flow recorded the wrong approval mode: {0}" -f $startContext.approval_mode)
     exit 1
 }
 if (-not $startContext.copilot_autopilot) {
@@ -500,7 +593,6 @@ Write-Pass "Conflict-heavy requests suppress same-specialty pair hints"
 Write-Host "`nTest 4: prompt-approvals mode is preserved in start context"
 $promptApprovalResult = Invoke-TestScript -ScriptPath $entryScript -ArgumentList @(
     'start',
-    'Inspect an auth flow bug',
     '--project-path', $projectRoot,
     '--prompt-approvals',
     '--no-launch'
@@ -519,8 +611,19 @@ if ($promptApprovalContext.approval_mode -ne 'prompt-approvals') {
     Write-Fail "Prompt approval mode was not recorded correctly."
     exit 1
 }
+if ($promptApprovalContext.copilot_autopilot) {
+    Write-Fail "Prompt-approvals intake flow should keep autopilot off until the request is grounded."
+    exit 1
+}
 $promptApprovalOutput = $promptApprovalResult.Output -join "`n"
 if (-not (Assert-Contains -Content $promptApprovalOutput -Pattern 'Manual launch command' -FailureMessage 'Prompt-approvals flow did not print an exact manual launch command.')) {
+    exit 1
+}
+if (-not (Assert-Contains -Content $promptApprovalOutput -Pattern '(^| )-i( |$)' -FailureMessage 'Prompt-approvals flow should auto-load the bootstrap with -i.')) {
+    exit 1
+}
+if ($promptApprovalOutput -match '--mode interactive') {
+    Write-Fail 'Prompt-approvals flow should not pass --mode interactive; -i auto-loading is sufficient.'
     exit 1
 }
 if ($promptApprovalOutput -match '--allow-all') {

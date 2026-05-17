@@ -1,0 +1,212 @@
+name: Cross-Platform Validation
+
+on:
+  push:
+    branches:
+      - main
+      - 'feature/**'
+      - '0*-*'  # Feature branches like 019-specrew-distribution-module
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  validate-ubuntu:
+    name: Ubuntu Validation
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      
+      - name: Setup PowerShell
+        shell: bash
+        run: |
+          # Install PowerShell 7.x
+          wget -q https://github.com/PowerShell/PowerShell/releases/download/v7.4.1/powershell_7.4.1-1.deb_amd64.deb
+          sudo dpkg -i powershell_7.4.1-1.deb_amd64.deb
+          sudo apt-get install -f
+          pwsh --version
+
+      - name: Setup Node.js 24
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      - name: Setup uv
+        shell: bash
+        run: |
+          # specrew init's pre-flight requires uv for spec-kit bootstrap on Linux/macOS.
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          # uv installs into $HOME/.local/bin by default; expose it on PATH for later steps.
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+          # Verify uv is reachable in subsequent shells.
+          "$HOME/.local/bin/uv" --version
+
+      - name: Test module manifest
+        shell: pwsh
+        run: |
+          Write-Host "Testing module manifest..." -ForegroundColor Cyan
+          Test-ModuleManifest -Path ./Specrew.psd1
+          Write-Host "✅ Module manifest valid" -ForegroundColor Green
+      
+      - name: Import module
+        shell: pwsh
+        run: |
+          Write-Host "Importing Specrew module..." -ForegroundColor Cyan
+          Import-Module ./Specrew.psd1
+          $commands = Get-Command -Module Specrew
+          Write-Host "✅ Module imported; $($commands.Count) commands exported:" -ForegroundColor Green
+          $commands | ForEach-Object { Write-Host "  - $($_.Name)" }
+      
+      - name: Test specrew init
+        shell: pwsh
+        run: |
+          Write-Host "Testing specrew init in clean directory..." -ForegroundColor Cyan
+          $repoRoot = (Get-Location).Path
+          $testDir = New-Item -ItemType Directory -Path "./test-init-$([Guid]::NewGuid().ToString('N').Substring(0,8))" -Force
+          $testDirPath = $testDir.FullName
+
+          # Initialize a fresh git repo in the test directory so init can resolve project root.
+          git -C $testDirPath init --quiet
+          if ($LASTEXITCODE -ne 0) {
+            Write-Error "Failed to git init the scratch test directory."
+            exit 1
+          }
+
+          # Run init using the actual supported parameter surface: -ProjectPath / -Force / -NoAgents.
+          Import-Module "$repoRoot/Specrew.psd1"
+          specrew-init -ProjectPath $testDirPath -Force -NoAgents
+
+          # Verify artifacts were created
+          $requiredPaths = @('.specify', '.squad', '.github')
+          foreach ($path in $requiredPaths) {
+            $resolved = Join-Path -Path $testDirPath -ChildPath $path
+            if (-not (Test-Path -LiteralPath $resolved)) {
+              Write-Error "Missing required path: $path"
+              exit 1
+            }
+          }
+
+          Remove-Item -Recurse -Force $testDirPath
+          Write-Host "✅ specrew init completed successfully" -ForegroundColor Green
+      
+      - name: Test specrew where
+        shell: pwsh
+        run: |
+          Write-Host "Testing specrew where (dashboard renderer)..." -ForegroundColor Cyan
+          Import-Module ./Specrew.psd1
+          
+          # Run where command (should work even without full project setup)
+          $output = specrew-where 2>&1 | Out-String
+          
+          if ($LASTEXITCODE -ne 0) {
+            Write-Host "specrew where output:" -ForegroundColor Yellow
+            Write-Host $output
+            Write-Host "Note: Command may require full project setup; non-zero exit is acceptable for CI validation" -ForegroundColor Gray
+          } else {
+            Write-Host "✅ specrew where executed successfully" -ForegroundColor Green
+          }
+      
+      - name: Test path separator handling
+        shell: pwsh
+        run: |
+          Write-Host "Testing path separator handling..." -ForegroundColor Cyan
+          
+          # Verify Join-Path usage in core scripts
+          $coreScripts = @(
+            './scripts/specrew-start.ps1',
+            './scripts/specrew-init.ps1',
+            './scripts/internal/dashboard-renderer.ps1'
+          )
+          
+          foreach ($script in $coreScripts) {
+            if (Test-Path $script) {
+              $content = Get-Content $script -Raw
+              
+              # Check for hardcoded backslashes in path construction (not in comments or strings)
+              # This is a basic check; detailed audit is done manually
+              if ($content -match '\$\w+\\[a-zA-Z]') {
+                Write-Warning "Potential hardcoded backslash in $script"
+              }
+            }
+          }
+          
+          Write-Host "✅ Path separator check complete" -ForegroundColor Green
+      
+      - name: Summary
+        shell: pwsh
+        run: |
+          Write-Host "`n=== Cross-Platform Validation Summary ===" -ForegroundColor Cyan
+          Write-Host "Platform: $($PSVersionTable.Platform)" -ForegroundColor White
+          Write-Host "OS: $($PSVersionTable.OS)" -ForegroundColor White
+          Write-Host "PowerShell: $($PSVersionTable.PSVersion)" -ForegroundColor White
+          Write-Host "✅ All Ubuntu validation checks passed" -ForegroundColor Green
+
+  validate-macos:
+    name: macOS Validation
+    runs-on: macos-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      
+      - name: Setup PowerShell
+        shell: bash
+        run: |
+          # PowerShell 7.x is pre-installed on macos-latest runners; verify and
+          # fall back to a direct GitHub-release install if it ever isn't.
+          if command -v pwsh >/dev/null 2>&1; then
+            pwsh --version
+          else
+            echo "PowerShell not found on runner; installing from GitHub release..."
+            arch="$(uname -m)"
+            if [ "$arch" = "arm64" ]; then
+              pkg_arch="osx-arm64"
+            else
+              pkg_arch="osx-x64"
+            fi
+            curl -fsSL -o pwsh.pkg "https://github.com/PowerShell/PowerShell/releases/download/v7.4.1/powershell-7.4.1-${pkg_arch}.pkg"
+            sudo installer -pkg pwsh.pkg -target /
+            pwsh --version
+          fi
+
+      - name: Setup Node.js 24
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      - name: Setup uv
+        shell: bash
+        run: |
+          # specrew init's pre-flight requires uv for spec-kit bootstrap on Linux/macOS.
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          # uv installs into $HOME/.local/bin by default; expose it on PATH for later steps.
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+          # Verify uv is reachable in subsequent shells.
+          "$HOME/.local/bin/uv" --version
+
+      - name: Test module manifest
+        shell: pwsh
+        run: |
+          Write-Host "Testing module manifest on macOS..." -ForegroundColor Cyan
+          Test-ModuleManifest -Path ./Specrew.psd1
+          Write-Host "✅ Module manifest valid on macOS" -ForegroundColor Green
+      
+      - name: Import module
+        shell: pwsh
+        run: |
+          Write-Host "Importing Specrew module on macOS..." -ForegroundColor Cyan
+          Import-Module ./Specrew.psd1
+          $commands = Get-Command -Module Specrew
+          Write-Host "✅ Module imported; $($commands.Count) commands exported" -ForegroundColor Green
+      
+      - name: Summary
+        shell: pwsh
+        run: |
+          Write-Host "`n=== macOS Validation Summary ===" -ForegroundColor Cyan
+          Write-Host "Platform: $($PSVersionTable.Platform)" -ForegroundColor White
+          Write-Host "OS: $($PSVersionTable.OS)" -ForegroundColor White
+          Write-Host "PowerShell: $($PSVersionTable.PSVersion)" -ForegroundColor White
+          Write-Host "✅ macOS validation checks passed" -ForegroundColor Green

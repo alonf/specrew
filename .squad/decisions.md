@@ -1,3 +1,665 @@
+# Decision: Feature 019 T006 Self-Signed Certificate Validity Period
+
+**Date**: 2026-05-16T16:23:58Z  
+**Boundary**: Phase 0 T006  
+**Feature**: 019-specrew-distribution-module (Specrew Distribution Module via PowerShell Gallery)  
+**Iteration**: 001  
+**Authority**: Alon Fliess (human verdict received during implementation)  
+**Decision Type**: Design-question resolution
+
+## Task
+
+Resolve T006: choose the self-signed certificate validity period so the future publish workflow can sign the Specrew module with a bounded risk window while keeping the maintainer renewal procedure concrete and repeatable.
+
+## Verdict
+
+**Approved option**: **Option A — 1-year validity for the self-signed module-signing certificate**
+
+**Approved certificate rule**:
+- Generate the certificate with `-NotAfter (Get-Date).AddYears(1)`.
+- Store the replacement PFX material in GitHub Actions secrets (`SIGNING_CERT_BASE64`, `SIGNING_CERT_PASSWORD`).
+- Keep migration to a real code-signing certificate explicitly out of scope for Iteration 001.
+
+**Approved renewal procedure**:
+1. Generate a new self-signed code-signing certificate with `AddYears(1)`.
+2. Export it, Base64-encode it, and update the GitHub Actions signing secrets.
+3. Run the publish workflow's dry-run path to verify signing succeeds without performing a real publish.
+4. Archive the old certificate material for historical verification.
+5. Record the renewal date and calendar reminder.
+
+**Compose-with note for T005**:
+- Pair certificate renewal with the annual PSGallery API-key review in one release-credential operations event.
+
+## Rationale
+
+- The approved 1-year cadence keeps the compromise window short for a self-signed credential.
+- It aligns cleanly with the already-approved annual API-key review so maintainers do not carry two separate release-credential calendars.
+- Exercising the renewal flow yearly reduces the chance of a stale or forgotten signing process when Pillar 5 goes live.
+
+## Commit Reference Workflow
+
+**Starting Commit**: `52cf7a0e2f3fa4cc63151d734ad597e0f6246e7d`  
+**Truthful workflow**: record the human verdict in the maintainer-facing operations runbook plus the relevant planning, research, data-model, and execution-state artifacts first, run the relevant iteration validations for the touched surfaces, then create a dedicated checkpoint commit to anchor T006 in git. This entry intentionally records the starting ref and the workflow without pre-claiming the later checkpoint hash inside the same staged change.
+
+## Runtime Evidence
+
+- Updated `docs/operations/psgallery-release-credentials.md` so the annual operations event now covers both PSGallery API-key rotation and self-signed certificate renewal.
+- Updated `specs/019-specrew-distribution-module/plan.md`, `research.md`, `data-model.md`, `tasks.md`, `iterations/001/plan.md`, and `iterations/001/state.md` so Phase 0 is truthfully complete and the approved 1-year renewal cadence is recorded in the planning artifacts.
+- Updated `.squad/identity/now.md` so live execution context advances from the T006 handoff pause to the Pillar 3 follow-on lane.
+- Did **not** start real PSGallery publishing, Ubuntu/macOS/WSL hardening, or the broader Iteration 002 path-hardening sweep.
+
+## Impact
+
+T006 is now complete for Iteration 001. Phase 0 design questions are fully resolved, Pillar 5 has an approved signing-certificate cadence to implement later, and execution can proceed into the first implementation pillars without a remaining design-question hold.
+
+## Next Action
+
+Execute Pillar 1 and Pillar 2 in dependency order, validate the new module packaging surfaces, then hand off to Pillar 3 without widening into publish execution.
+
+
+# Decision: Feature 019 T005 API-Key Rotation Guidance
+
+**Date**: 2026-05-16T16:10:41Z  
+**Boundary**: Phase 0 T005  
+**Feature**: 019-specrew-distribution-module (Specrew Distribution Module via PowerShell Gallery)  
+**Iteration**: 001  
+**Authority**: Alon Fliess (human verdict received during implementation)  
+**Decision Type**: Design-question resolution
+
+## Task
+
+Resolve T005: capture the approved PSGallery API-key rotation cadence and lightweight maintainer procedure in the canonical maintainer-facing operations docs without widening Iteration 001 into real publish execution or broader release-process changes.
+
+## Verdict
+
+**Approved option**: **Option A — document lightweight PSGallery API-key rotation cadence now**
+
+**Approved cadence**:
+- **Routine rotation**: annual review/rotation at the calendar anniversary of key creation
+- **Triggered rotation**: maintainer transition, suspected leak, unexplained publish-auth failure, or an annual review finding that the key is older than 12 months
+
+**Approved lightweight procedure**:
+1. Generate a new API key on PowerShellGallery.com scoped to the Specrew module with an appropriate expiration.
+2. Update the GitHub Actions secret (`PSGALLERY_API_KEY` or equivalent) to the new value.
+3. Trigger a dry-run publish through the workflow's manual-dispatch path to confirm authentication without performing a real publish.
+4. Revoke the old API key only after step 3 confirms the new key works.
+
+**Compose-with note for T006**:
+- Pair the annual API-key review with certificate renewal review in a single annual operations event.
+
+**Non-blocking status**:
+- T005 remains documentation-only and does **not** block downstream implementation.
+
+## Rationale
+
+- The documentation cost is low compared with the operational continuity and security benefit.
+- The before-implement security-baseline lens already covered credential handling, so recording the cadence now keeps the execution boundary truthful.
+- The chosen operations-doc location gives T006 a natural place to add certificate guidance later without forcing broader user-facing documentation changes now.
+
+## Commit Reference Workflow
+
+**Starting Commit**: `ecee74f84578a71688ee03b940d2144788091452`  
+**Truthful workflow**: record the human verdict in the maintainer-facing operations runbook plus the relevant planning and execution artifacts first, run the relevant iteration governance validation for the touched surfaces, then create a dedicated checkpoint commit to anchor T005 in git. This entry intentionally records the starting ref and the workflow without pre-claiming the later checkpoint hash inside the same staged change.
+
+## Runtime Evidence
+
+- Created `docs/operations/psgallery-release-credentials.md` as the canonical maintainer-facing runbook for release credentials, with the approved annual/triggered cadence and the four-step PSGallery API-key rotation procedure.
+- Updated `docs/README.md` with a lightweight pointer to the new operations runbook instead of broadening README or other user-facing documentation.
+- Updated `specs/019-specrew-distribution-module/plan.md`, `research.md`, `data-model.md`, `tasks.md`, `iterations/001/plan.md`, and `iterations/001/state.md` so T005 is recorded as complete, documentation-only, and non-blocking while T006 becomes the active human-decision boundary.
+- Updated `.squad/identity/now.md` so the live execution context now points at the T006 pause instead of the completed T005 pause.
+- Did **not** auto-decide T006, start real publish execution, or widen Iteration 001 into broader release-process work.
+
+## Impact
+
+T005 is now complete for Iteration 001 and anchored in the maintainer docs. Downstream implementation may continue past this documentation lane, but the execution boundary for this run still stops at T006.
+
+## Next Action
+
+Present the T006 human-decision handoff, including the validity-period options, recommendation, tradeoffs, and blocked downstream work, then pause without auto-deciding T006.
+
+
+# Decision: Feature 019 T004 Module Loader Structure
+
+**Date**: 2026-05-16T16:03:28Z  
+**Boundary**: Phase 0 T004  
+**Feature**: 019-specrew-distribution-module (Specrew Distribution Module via PowerShell Gallery)  
+**Iteration**: 001  
+**Authority**: Alon Fliess (human verdict received during implementation)  
+**Decision Type**: Design-question resolution
+
+## Task
+
+Resolve T004: choose the `Specrew.psm1` loader structure so Pillar 1 can implement a deterministic, auditable module loader without widening Iteration 001 into the broader cross-platform cleanup deferred to Iteration 002.
+
+## Verdict
+
+**Approved option**: **Option A — explicit dot-sourcing for `Specrew.psm1`**
+
+**Approved loader shape**:
+- `$ScriptRoot = $PSScriptRoot`
+- Load internal helpers first, then entry-point commands in an explicit reviewed order
+- Use `Join-Path` for every path segment
+- Export the FR-002 public command surface; alias bindings are allowed if the implementation convention needs them
+
+**Approved ordering guidance**:
+1. `scripts/internal/dashboard-renderer.ps1`
+2. `scripts/specrew.ps1`
+3. `scripts/specrew-init.ps1`
+4. `scripts/specrew-review.ps1`
+5. `scripts/specrew-start.ps1`
+6. `scripts/specrew-team.ps1`
+7. `scripts/specrew-update.ps1`
+8. `scripts/specrew-where.ps1`
+
+**Compose-with note**:
+- Loader-level path construction is cross-platform-safe now because it uses `Join-Path`.
+- The scripts themselves still have broader embedded `\` cleanup deferred to Iteration 002.
+
+**Future suggestion captured, not implemented now**:
+- Add a validator soft warning for top-level `scripts/` files that are not enumerated in both the loader and `FileList`.
+
+## Rationale
+
+- The decision composes cleanly with T001's explicit `FileList` allowlist philosophy.
+- Deterministic load order avoids filesystem-order ambiguity across platforms.
+- Explicit line-by-line dot-sourcing is more auditable and debuggable when a specific script fails to load.
+- The reviewed list avoids accidental-load drift from new, experimental, or scratch scripts.
+
+## Commit Reference Workflow
+
+**Starting Commit**: `c1f83dbe02587b414f2f005ef9bf6b10dfccb9e8`  
+**Truthful workflow**: record the human verdict in the design, contract, and execution-state artifacts first, run the relevant iteration governance validation for the touched surfaces, then create a dedicated checkpoint commit to anchor T004 in git. This entry intentionally records the starting ref and workflow without pre-claiming the later checkpoint hash inside the same staged change.
+
+## Runtime Evidence
+
+- Updated `specs/019-specrew-distribution-module/contracts/Specrew.psd1.contract.md` to capture the approved explicit loader contract, load order, and export expectations.
+- Updated `specs/019-specrew-distribution-module/research.md`, `plan.md`, and `tasks.md` so T004 now reflects the approved explicit dot-sourcing direction rather than an unresolved recommendation.
+- Updated `specs/019-specrew-distribution-module/iterations/001/plan.md`, `specs/019-specrew-distribution-module/iterations/001/state.md`, and `.squad/identity/now.md` so Phase 0 truthfully advances from T004 to the T005 handoff boundary.
+- Kept the validator soft-warning idea as future-only guidance and did **not** widen Iteration 001 into new validator work.
+- Did **not** start T005 resolution, T006 resolution, or any downstream implementation work in this run.
+
+## Impact
+
+T004 is now resolved for Iteration 001. Pillar 1 has an approved deterministic loader shape to implement later, but this run stops at the T005 handoff boundary rather than starting T008 or other downstream work.
+
+## Next Action
+
+Present the T005 human-decision handoff, keeping its documentation-only / non-blocking status explicit and leaving T006 unresolved.
+
+
+# Decision: Feature 019 T003 Cross-Platform Test Automation Depth
+
+**Date**: 2026-05-16T15:54:03Z  
+**Boundary**: Phase 0 T003  
+**Feature**: 019-specrew-distribution-module (Specrew Distribution Module via PowerShell Gallery)  
+**Iteration**: 001  
+**Authority**: Alon Fliess (human verdict received during implementation)  
+**Decision Type**: Design-question resolution
+
+## Task
+
+Resolve T003: choose the Iteration 001 cross-platform verification depth for FR-030/FR-031 so the team can keep the approved Windows-first slice honest, capture concrete evidence, and avoid silently pulling Iteration 002 hardening into the current implementation boundary.
+
+## Verdict
+
+**Approved option**: **Option A — manual checklist/evidence for Iteration 001**
+
+**Approved Iteration 001 manual checklist artifact**: `specs/019-specrew-distribution-module/iterations/001/quality/cross-platform-manual-checklist.md`
+
+**Checklist deliverables to capture later (not yet executed in this decision step)**:
+1. `Test-ModuleManifest` passes for `Specrew.psd1`
+2. `Import-Module ./Specrew.psd1 -Force` succeeds
+3. Exported function set matches FR-002 (`specrew`, `specrew-init`, `specrew-start`, `specrew-where`, `specrew-review`, `specrew-team`, `specrew-update`)
+4. `specrew help` returns expected catalog
+5. In a fresh empty Windows directory, `specrew init` succeeds and populates `.specify/`, `.squad/`, `.github/`
+6. `specrew start "test feature"` launches a Copilot CLI session with bootstrap prompt loaded
+7. `specrew where` renders the dashboard from installed module path
+8. `specrew update` template-refresh dry-run shows expected diff
+9. Publish-Module workflow validates locally in dry-run/manual gate mode and does not perform a real PSGallery publish
+
+**Explicit Iteration 002 deferrals**:
+- `.github/workflows/cross-platform-validation.yml` with `ubuntu-latest` matrix
+- macOS testing
+- 104+ embedded-backslash sweep across existing PowerShell scripts
+- WSL Ubuntu end-to-end verification using Copilot CLI
+- README + `docs/getting-started.md` cross-platform claims
+- first real PSGallery publish
+
+## Rationale
+
+- This is the load-bearing decision that preserves the Iteration 001 / Iteration 002 split already captured in commit `12e4cd3` on `main`.
+- Iteration 001 stays Windows-first and must not absorb Ubuntu/macOS runner setup, line-ending validation, case-sensitivity testing, or broad Join-Path audit hardening.
+- A concrete manual evidence target keeps the current slice verifiable without pretending the later cross-platform hardening work is already done.
+
+## Commit Reference Workflow
+
+**Starting Commit**: `4da2e9b7ee986ce18c9cc0af5d766487b20eded9`  
+**Truthful workflow**: record the human verdict in the planning, research, execution-state, and deferred-scope artifacts first, run iteration governance validation for the touched surfaces, then create a dedicated checkpoint commit to anchor T003 in git. This entry intentionally records the starting ref and the workflow without pre-claiming the later checkpoint hash inside the same staged change.
+
+## Runtime Evidence
+
+- Updated `specs/019-specrew-distribution-module/plan.md` and `specs/019-specrew-distribution-module/iterations/001/plan.md` so Iteration 001 is explicitly Windows-first and the manual-checklist path is the approved verification surface.
+- Updated `specs/019-specrew-distribution-module/research.md`, `specs/019-specrew-distribution-module/tasks.md`, `specs/019-specrew-distribution-module/iterations/001/state.md`, and `.squad/identity/now.md` to capture the approved manual-checklist path, the Iteration 002 deferrals, and the new mandatory pause at T004.
+- Created `specs/019-specrew-distribution-module/iterations/001/quality/cross-platform-manual-checklist.md` as a not-yet-executed evidence scaffold.
+- Created `.specrew/cross-platform-backlog.md` to hold the explicit Iteration 002 cross-platform backlog without widening current scope.
+- Did **not** start T004 or any work blocked by unresolved T004+ decisions.
+
+## Impact
+
+T003 is now resolved for Iteration 001. The feature keeps its full cross-platform end-state requirements, but the current slice is narrowed to truthful Windows-first manual evidence while Iteration 002 carries the wider cross-platform hardening backlog.
+
+## Next Action
+
+Present the T004 human-decision handoff, keeping the compose-with constraint explicit: loader path construction only needs to be Windows-correct in Iteration 001; Iteration 002 expands that surface to cross-platform edge cases.
+
+
+# Decision: Feature 019 T002 Conflict-Marker Format
+
+**Date**: 2026-05-16T15:45:15Z  
+**Boundary**: Phase 0 T002  
+**Feature**: 019-specrew-distribution-module (Specrew Distribution Module via PowerShell Gallery)  
+**Iteration**: 001  
+**Authority**: Alon Fliess (human verdict received during implementation)  
+**Decision Type**: Design-question resolution
+
+## Task
+
+Resolve T002: choose the conflict-marker format for template-refresh conflicts so `specrew update` and the next `specrew start` can preserve both versions, keep the unresolved artifact plain text, and support crew-mediated resolution without widening Iteration 001 beyond text-template handling.
+
+## Verdict
+
+**Approved option**: **Option A — Git-style markers (`<<<<<<<`, `=======`, `>>>>>>>`)**
+
+**Approved `.specrew/template-conflicts/<filename>.conflict` format**:
+
+```text
+<<<<<<< user-version (preserved at: <iso8601-utc-timestamp>)
+{user's modified content}
+=======
+{new module-template content}
+>>>>>>> module-version (specrew_version: <module-version>, source: templates/<path>)
+```
+
+**Compose-with note for later implementation**:
+- After `specrew update` detects conflicts, the next `specrew start` should parse `.conflict` artifacts.
+- Squad should walk the user through each conflict interactively with `accept-new`, `keep-user`, or `manual-resolve`.
+- After resolution, Squad should write the resolved destination file and remove the corresponding `.conflict` artifact.
+
+**Iteration 2 follow-up**:
+- Verify Linux/macOS clean reading with LF and no BOM during the cross-platform hardening pass.
+
+## Rationale
+
+- Git-style markers are the universal standard for text-file conflicts.
+- The format best fits Iteration 001's text-template-only scope.
+- IDE diff tooling and `git mergetool` compatibility come for free.
+- The team avoids any custom parser requirement in Iteration 001.
+- Unresolved artifacts remain plain text while waiting for user resolution.
+
+## Commit Reference Workflow
+
+**Starting Commit**: `695218c847986a47a85cec067e8f617f24351331`  
+**Truthful workflow**: record the human verdict in the design and execution-state artifacts first, run iteration governance validation for the touched artifacts, then create a dedicated checkpoint commit to anchor T002 in git. This entry deliberately records the starting ref and workflow without pre-claiming the later checkpoint hash inside the same staged change.
+
+## Runtime Evidence
+
+- Updated `specs/019-specrew-distribution-module/spec.md` so FR-021 and the update-story acceptance language reflect the approved Git-style `.conflict` artifact contract and next-session resolution flow.
+- Updated `specs/019-specrew-distribution-module/research.md` to capture the exact marker format, the `specrew start` compose-with flow, and the Iteration 2 LF/no-BOM follow-up.
+- Updated `specs/019-specrew-distribution-module/data-model.md` so the Template Conflict, Conflict Artifact, and Module Update Operation entities describe the approved plain-text sidecar format and resolution lifecycle.
+- Updated `specs/019-specrew-distribution-module/iterations/001/state.md` and `.squad/identity/now.md` to reflect T002 complete and the new pause at T003.
+- Did **not** start T003 or any work blocked by unresolved T003+ decisions.
+
+## Impact
+
+T002 is now resolved for Iteration 001. Pillar 4 conflict artifacts now have an approved plain-text contract, but execution stops at the next mandatory pause: T003 (cross-platform test automation depth).
+
+## Next Action
+
+Present the T003 human-decision handoff, then pause without starting T040/T041 or any wider cross-platform work.
+
+
+# Decision: Feature 019 T001 Module Manifest File-List Strategy
+
+**Date**: 2026-05-16T15:38:37Z  
+**Boundary**: Phase 0 T001  
+**Feature**: 019-specrew-distribution-module (Specrew Distribution Module via PowerShell Gallery)  
+**Iteration**: 001  
+**Authority**: Alon Fliess (human verdict received during implementation)  
+**Decision Type**: Design-question resolution
+
+## Task
+
+Resolve T001: decide the `Specrew.psd1` `FileList` strategy for bundled module contents (explicit enumeration vs. automatic detection) and update the manifest contract with the approved direction for FR-010 exclusion safety.
+
+## Verdict
+
+**Approved option**: **Option 1 — Explicit `FileList` allowlist for `Specrew.psd1`**
+
+**Allowed composition sketch for later implementation**:
+- `Specrew.psd1`
+- `Specrew.psm1`
+- `scripts/*.ps1`
+- `scripts/internal/*.ps1`
+- approved `extensions/specrew-speckit/**` assets
+- `templates/**/*`
+- selected documentation files only
+
+Per-directory wildcards are allowed within the explicit allowlist.
+
+## Rationale
+
+- FR-010 requires provable exclusion semantics for distributed module contents.
+- An allowlist avoids silent drift and accidental shipping of excluded or sensitive repository surfaces.
+- Per-directory wildcard entries keep the manifest maintainable without switching to automatic discovery.
+
+## Commit Reference Workflow
+
+**Starting Commit**: `3158eca6045a7928cc87fc12e4da58ec157ec3f9`  
+**Truthful workflow**: record the human verdict in the contract and execution-state artifacts first, validate the updated tree, then create a small checkpoint commit to anchor this decision in git. The exact checkpoint hash is intentionally not pre-claimed inside this entry before the commit exists.
+
+## Runtime Evidence
+
+- Updated `specs/019-specrew-distribution-module/contracts/Specrew.psd1.contract.md` to state the explicit allowlist decision and rationale.
+- Updated `specs/019-specrew-distribution-module/iterations/001/state.md` to reflect T001 complete and the mandatory pause at T002.
+- Updated `.squad/identity/now.md` to reflect active Phase 0 execution and the T002 decision hold.
+- Did **not** start T002 resolution or any implementation tasks blocked by unresolved T002+ decisions.
+
+## Impact
+
+T001 is now resolved for Iteration 001. Pillar 1 and Pillar 2 can rely on an explicit `FileList` allowlist design, but execution remains paused at T002 before any blocked downstream work proceeds.
+
+## Next Action
+
+Stop at T002 and obtain a human decision on conflict-marker format before continuing Phase 0.
+
+
+# Decision: Feature 019 Before-Implement Quality Gate
+
+**Date**: 2026-05-16  
+**Boundary**: /speckit.specrew-speckit.before-implement  
+**Feature**: 019-specrew-distribution-module (Specrew Distribution Module via PowerShell Gallery)  
+**Authority**: Alon Fliess (user authorization)  
+**Decision Type**: Quality-gate boundary with hardening-gate readiness verdict
+
+## Runtime Evidence
+
+Executed before-implement quality gate for Feature 019 Specrew Distribution Module. Applied 6 required quality lenses to spec.md, plan.md, and tasks.md artifacts.
+
+**Artifacts Evaluated**:
+- Spec: C:\Dev\Specrew\specs\019-specrew-distribution-module\spec.md (5 User Stories, 32 Functional Requirements)
+- Plan: C:\Dev\Specrew\specs\019-specrew-distribution-module\plan.md (5-pillar architecture, 14 SP estimate)
+- Tasks: C:\Dev\Specrew\specs\019-specrew-distribution-module\tasks.md (39 tasks across 6 phases)
+- Supporting artifacts: research.md, data-model.md, quickstart.md, contracts/Specrew.psd1.contract.md
+
+## Quality Lens Verdicts
+
+### Lens 1: Constitution Alignment — ✅ PASS
+- Principle I (Spec Is Authoritative): Plan tracks back to approved spec FRs; no ad-hoc scope detected
+- Principle II (Layered System): All changes are Spec Kit layer (module packaging, scripts); no Squad layer violations
+- Principle IX (Mandatory Traceability): All 39 tasks have explicit FR/US traceability; tasks.md Traceability Map complete
+- Principle XIII (Spec Stewardship): Alon Fliess explicitly named as Spec Steward
+- Principle XIV (Iteration Facilitation): Alon Fliess explicitly named as Iteration Facilitator
+- Principle XVII (Planning Starts From Approved Specs): All tasks derived from spec FRs; no ad-hoc prompts
+- Principle XXI (Verification Is Mandatory): Phase 1 quality gates defined; user story acceptance scenarios planned
+
+### Lens 2: Traceability Completeness — ✅ PASS
+- All 5 User Stories map to specific FRs with bidirectional traceability
+- All 32 Functional Requirements have task coverage across 6 phases (Phase 0-5, Final Validation)
+- All 39 tasks include explicit FR/US trace annotations in parenthetical (Trace: ...) format
+- Explicit dependency tracking: T001-T006 block Pillars 1-5; Pillar 3 blocks Pillar 4; all blocks documented
+- No orphaned tasks: All tasks trace to US1-US5 via FR-001 through FR-032
+- Success criteria SC-001 through SC-006 map to specific user stories and validation tasks T050-T056
+
+### Lens 3: Cross-Platform Coverage — ✅ PASS
+- FR-030 mandates Join-Path for all path construction; WSL verification task explicitly planned
+- FR-031 requires testing on Windows, Linux (Ubuntu), and macOS before every release
+- FR-032 mandates PSEdition = Core to enforce PowerShell 7+ cross-platform requirement
+- T003 design-question task explicitly addresses cross-platform test automation depth (manual vs automated)
+- T040 implements cross-platform verification per T003 decision; T041 provides Join-Path audit script
+- T054 validates US5 Cross-Platform Consistency scenarios on Linux, macOS, and PS 5.1 rejection
+- US5 includes specific acceptance scenarios for forward-slash paths on Linux, macOS path display, and PS 5.1 install failure
+
+### Lens 4: Test Strategy Coverage — ✅ PASS
+- Pillar 1 (Module Packaging): T009 validates manifest with Test-ModuleManifest; manual test checklist planned
+- Pillar 2 (Resource Bundling): T014 validates exclusions and size estimate; directory structure verification planned
+- Pillar 3 (Init Refactor): T019 implements bootstrap validation; integration test for module-path init planned
+- Pillar 4 (Update Story): Conflict-resolution test scenario with two module versions; conflict marker verification planned
+- Pillar 5 (Publishing Workflow): GitHub Actions workflow validation, test tag dry-run, PSGallery verification planned
+- Phase 6 (Final Validation): Explicit test tasks for all 5 user stories (T050-T054) with evidence collection
+- T055 validates all 6 success criteria with measurements; T056 finalizes quickstart guide based on test evidence
+- Plan Phase 1 Quality Planning documents 6 required quality gates with evidence sources and status
+
+### Lens 5: Validator Integration Sketch — ✅ PASS
+- Plan defines drift detection via Specrew-Speckit validators during /speckit.implement boundary
+- Drift-detection mechanism includes: (1) Specrew-Speckit validators, (2) integration test failures, (3) manual PSGallery publish log review
+- Validators will check spec-to-task traceability on every task completion during implementation
+- Spec defines Human Oversight Points for clarify-time decisions, planning approval, pre-release manual test, and post-release verification
+- Plan Phase 2 Quality Planning explicitly defers hardening gate and specialist review; rationale documented (distribution infrastructure focus)
+
+### Lens 6: Security Baseline — ✅ PASS
+- FR-028 mandates PSGallery API key stored as GitHub Actions secret (name: PSGALLERY_API_KEY)
+- FR-025 mandates self-signed certificate stored as GitHub Actions secret; T038 implements signing step
+- T042 explicitly plans GitHub Actions secrets configuration (PSGALLERY_API_KEY, SIGNING_CERT_BASE64, SIGNING_CERT_PASSWORD)
+- T005 documents PSGallery API key rotation procedure for maintainer reference (non-blocking for v1)
+- T006 resolves self-signed certificate validity period with security vs maintenance trade-off analysis
+- Data model includes PSGallery API Key entity with expiration tracking and Signing Certificate entity with validity period
+- Plan Phase 1 Quality Planning identifies credential management as required risk dimension; GitHub Actions secrets best practices cover Phase 1
+
+## Artifact Polishing Applied
+
+**T002 (Conflict-Marker Format)**:
+- Added explicit options: (A) Git-style, (B) Custom, (C) Structured comments
+- Added implications: Squad coordinator parser dependency, T031 implementation impact
+- Rationale: Ensures design-question task has clear options and implications for human decision-making
+
+**T005 (API-Key Rotation Guidance)**:
+- Added explicit non-blocking statement: "This is a documentation-only task that does not block any implementation work"
+- Clarified parallel execution capability with Pillars 1-5 or post-v1 deferral option
+- Rationale: Removes ambiguity about blocking behavior for design-question task
+
+## T001-T006 Design-Question Task Validation
+
+All 6 design-question tasks (Phase 0) properly framed:
+
+| Task | Blocking Behavior | Options Listed | Implications Documented | Status |
+|------|-------------------|----------------|------------------------|--------|
+| T001 | ✅ Blocks T007, T010-T014 | ✅ Explicit FileList vs automatic | ✅ Maintenance vs safety trade-off | READY |
+| T002 | ✅ Blocks T030-T033 | ✅ Git-style vs Custom vs Structured | ✅ Parser dependency, impl impact | READY |
+| T003 | ✅ Blocks T040, T041 | ✅ Manual checklist vs GitHub Actions matrix | ✅ Setup speed vs robustness, CI/CD complexity | READY |
+| T004 | ✅ Blocks T008 | ✅ Explicit dot-sourcing vs dynamic discovery | ✅ Transparency vs automation, debuggability | READY |
+| T005 | ✅ Non-blocking (doc-only) | ✅ Frequency recommendations (rotation strategy) | ✅ Maintainer reference, not blocking v1 | READY |
+| T006 | ✅ Blocks T038 | ✅ 1-year vs 5-year vs 10-year validity | ✅ Maintenance burden vs security risk window | READY |
+
+**Validation Result**: All design-question tasks are properly scoped with clear options, implications, and blocking behavior. Ready for human decision-making during Phase 0 execution.
+
+## Hardening-Gate Readiness Verdict
+
+**Overall Verdict**: ✅ **READY** (with deferral)
+
+**Rationale**: 
+- Feature 019 focuses on distribution infrastructure (module packaging, install/update mechanics, CI/CD automation) rather than runtime business logic or security-sensitive data processing
+- Plan Phase 2 Hardening and Specialist Review Planning explicitly documents deferral rationale: "This feature focuses on distribution infrastructure... rather than runtime business logic or security-sensitive data processing. Hardening focus will return in future features that introduce complex state machines, external integrations, or user-data handling."
+- Phase 1 quality gates are sufficient for v1: manual cross-platform verification, integration test scenarios, PSGallery test-gallery dry-run, GitHub Actions workflow validation
+- Security surface analysis covered by Phase 1 credential-management gate (GitHub Actions secrets best practices)
+- Error handling and idempotency covered by Phase 1 acceptance scenarios (US2 idempotency, US3 conflict resolution)
+- No complex retry logic, concurrency, or state machines requiring dedicated hardening
+
+**Hardening Gate Artifact**: Not created (deferred per plan)  
+**Next Valid Human Action**: Authorize hardening-gate-and-implementation-auth boundary (completed 2026-05-16T17:42:05Z). Separate explicit authorization required for /speckit.implement before starting implementation.
+
+## Blockers Surfaced
+
+**None**. All quality lenses returned PASS verdict. No blockers detected.
+
+## Confirmation of Scope Boundaries
+
+**In Scope** (completed at this boundary):
+- ✅ Applied 6 pre-implementation quality lenses to spec.md, plan.md, tasks.md
+- ✅ Evaluated hardening-gate readiness and produced explicit READY recommendation
+- ✅ Performed necessary artifact polishing (T002 options/implications, T005 non-blocking clarification)
+- ✅ Validated T001-T006 design-question tasks have proper framing (blocking behavior, options, implications)
+- ✅ Updated .squad/identity/now.md with before-implement completion and recommendation
+- ✅ Appended dated decisions.md entry with runtime evidence and lens verdicts
+
+**Out of Scope** (explicitly not started):
+- ❌ Hardening-gate-and-implementation-auth boundary (not authorized)
+- ❌ Implementation work (no code changes to scripts/ or extensions/)
+- ❌ Validator additions (no changes to specrew-speckit extension)
+- ❌ Resolution of T001-T006 design questions (human decision tasks; preserved as-is)
+
+## Impact
+
+Feature 019 before-implement quality gate passed with READY verdict. All 6 quality lenses confirmed artifacts are execution-ready. Minor polishing improved clarity of T002 and T005 design-question tasks. Feature is ready for hardening-gate-and-implementation-auth boundary when human authorization is provided.
+
+## Next Action
+
+**Do not advance to hardening-gate-and-implementation-auth or implementation**. Boundary commit will be created and pushed to origin/019-specrew-distribution-module. Await explicit human authorization before advancing to the next boundary.
+
+
+# Decision: Feature 019 Hardening-Gate and Implementation Authorization
+
+**Date**: 2026-05-16T17:42:05Z  
+**Boundary**: hardening-gate-and-implementation-auth  
+**Feature**: 019-specrew-distribution-module (Specrew Distribution Module via PowerShell Gallery)  
+**Iteration**: 001  
+**Authority**: Alon Fliess (human authorization)  
+**Decision Type**: Hardening-gate sign-off and implementation authorization
+
+## Authorization Scope
+
+Human approver **Alon Fliess** explicitly authorized the hardening-gate-and-implementation-auth boundary for Feature 019 Iteration 001 on 2026-05-16T17:42:05Z.
+
+**Authorized scope**: Feature 019 Iteration 001 — the 39 tasks in tasks.md across Phase 0 T001-T006 + Pillars 1-5 + final validation
+
+**Authorized actions**:
+1. Hardening-gate sign-off for Feature 019 Iteration 001 pre-implementation readiness
+2. Implementation authorization to proceed with task execution via `/speckit.implement`
+
+**Critical constraints**:
+- T001-T006 (Phase 0 design-question tasks) remain **unresolved by design** and MUST surface during implementation via pause-for-decision handling
+- Implementer agent must NOT auto-decide T001-T006; each requires explicit human decision with options and implications review
+- Implementation must stop after this boundary completion; do NOT advance to `/speckit.implement` without separate explicit authorization
+
+## Hardening-Gate Sign-Off Record
+
+**Hardening Gate Artifact**: `specs/019-specrew-distribution-module/iterations/001/quality/hardening-gate.md`  
+**Overall Verdict**: ✅ **READY**  
+**Reviewed By**: Alon Fliess  
+**Reviewed At**: 2026-05-16T17:42:05Z  
+
+### Quality Lens Verdicts Summary
+
+All 6 pre-implementation quality lenses carried forward from before-implement boundary with PASS verdicts:
+
+1. **Constitution Alignment** — ✅ PASS (Principles I, II, IX, XIII, XIV, XVII, XXI satisfied)
+2. **Traceability Completeness** — ✅ PASS (All 5 US, 32 FR, 39 tasks with explicit traceability)
+3. **Cross-Platform Coverage** — ✅ PASS (FR-030 Join-Path mandate, FR-031 Windows/Linux/macOS testing, FR-032 PS 7+ requirement)
+4. **Test Strategy Coverage** — ✅ PASS (All 5 pillars with explicit test tasks, Phase 6 Final Validation for US1-US5)
+5. **Validator Integration Sketch** — ✅ PASS (Drift detection via Specrew-Speckit validators, Human Oversight Points defined)
+6. **Security Baseline** — ✅ PASS (FR-028 API key secrets, FR-025 cert secrets, T042 GitHub Actions secrets config)
+
+### Phase 2 Hardening Deferral
+
+**Rationale**: Feature 019 focuses on distribution infrastructure (module packaging, install/update mechanics, CI/CD automation) rather than runtime business logic or security-sensitive data processing. Phase 1 quality gates are sufficient for v1: manual cross-platform verification, integration test scenarios, PSGallery test-gallery dry-run, GitHub Actions workflow validation. Hardening focus will return in future features that introduce complex state machines, external integrations, or user-data handling.
+
+**Deferred-with-Evidence Items**: None. Phase 2 hardening is deferred entirely for this feature, not deferred-with-approval.
+
+### Phase 0 Design-Question Tasks: Preserved for Implementation-Time Resolution
+
+**⚠️ CRITICAL IMPLEMENTATION CONSTRAINT**: All 6 design-question tasks (T001-T006) remain unresolved and MUST surface during implementation:
+
+| Task | Blocking Behavior | Human Decision Required | Resolution Status |
+|------|-------------------|------------------------|-------------------|
+| T001 | Blocks T007, T010-T014 | YES — FileList strategy decision | UNRESOLVED |
+| T002 | Blocks T030-T033 | YES — Conflict marker format | UNRESOLVED |
+| T003 | Blocks T040, T041 | YES — Cross-platform test automation depth | UNRESOLVED |
+| T004 | Blocks T008 | YES — Module loader structure | UNRESOLVED |
+| T005 | Non-blocking (doc-only) | OPTIONAL — Documentation-only | UNRESOLVED |
+| T006 | Blocks T038 | YES — Self-signed cert validity period | UNRESOLVED |
+
+## Implementation Authorization Record
+
+**Authorized By**: Alon Fliess  
+**Authorized At**: 2026-05-16T17:42:05Z  
+**Branch**: 019-specrew-distribution-module  
+**Starting Commit**: 3e4da27 (before boundary)  
+**Boundary Commit**: fa56928 (hardening-gate-and-implementation-auth)
+
+**Stop After**: This boundary (hardening-gate-and-implementation-auth) is complete. Do NOT advance to `/speckit.implement` without separate explicit human authorization.
+
+## Runtime Evidence
+
+**Hardening-gate artifacts created**:
+- `specs/019-specrew-distribution-module/iterations/001/quality/hardening-gate.md` — pre-implementation hardening gate with READY verdict, 6 quality lens verdicts carried forward, Phase 0 design-question constraints, risk-tier verification focus, stack-ready analysis, and explicit Phase 2 hardening deferral
+- Iteration directory structure scaffolded: `specs/019-specrew-distribution-module/iterations/001/quality/`
+
+**State updates**:
+- `.squad/identity/now.md` — updated to reflect hardening-gate-and-implementation-auth boundary complete, next action requires explicit human authorization for `/speckit.implement`
+- `.squad/decisions.md` — this authorization record appended
+
+## Verification
+
+- ✅ Iteration 001 artifact structure exists: `specs/019-specrew-distribution-module/iterations/001/quality/`
+- ✅ Hardening gate artifact created at canonical path: `specs/019-specrew-distribution-module/iterations/001/quality/hardening-gate.md`
+- ✅ All 6 quality lens verdicts carried forward from before-implement boundary with PASS status
+- ✅ Phase 0 design-question tasks (T001-T006) explicitly preserved as unresolved with blocking behavior documented
+- ✅ Implementation authorization recorded with human approver, timestamp, scope, and constraints
+- ✅ State artifact updated with boundary completion and next-action requirement
+
+## Impact
+
+Feature 019 hardening-gate-and-implementation-auth boundary complete. Pre-implementation readiness confirmed with READY verdict. Implementation authorization audit record exists with human approver, timestamp, scope, and constraints. T001-T006 design-question tasks remain unresolved by design and will surface during implementation execution. Boundary artifacts committed and pushed to origin/019-specrew-distribution-module (fa56928). /speckit.implement has NOT started and requires separate explicit human authorization before task execution.
+
+## Next Action
+ 
+ Hardening-gate-and-implementation-auth boundary is complete. Await explicit human authorization for /speckit.implement only to begin task execution.
+
+
+# Decision: Feature 019 Boundary 6 Feature-Closeout Authorization
+
+**Date**: 2026-05-17T16:17:27Z  
+**Boundary**: feature-closeout  
+**Feature**: 019-specrew-distribution-module (Specrew Distribution Module via PowerShell Gallery)  
+**Authority**: Alon Fliess (human authorization)  
+**Decision Type**: Feature-closeout authorization
+
+## Authorization Scope
+
+Human approver **Alon Fliess** explicitly authorized **Boundary 6 — feature-closeout** for Feature 019 as a permissive autonomous run that must stop only at PR creation or on a hard failure.
+
+**Authorized starting ref**: `f2d77ee` — the iteration-closeout finalization commit on branch `019-specrew-distribution-module`
+
+**Authorized execution sequence**:
+1. Repair the pre-existing Iteration 001 hardening-gate over-claim so `iterations/001` transitions to PASS.
+2. Apply the Rule 15 version bump from `0.18.0` to `0.19.0` across all required version-tracked files.
+3. Create the feature-level closeout artifact and update `.squad/identity/now.md` plus `.squad/decisions.md` to reflect the feature-closed state.
+4. Create the PR from `019-specrew-distribution-module` to `main` and stop after surfacing the PR URL.
+
+**Hard-stop conditions**:
+- Validator fail after a fix attempt
+- Test failure in the executed validation lanes
+- Missing Rule 15 version target file
+- Git commit or push failure
+- `gh pr create` failure
+- More than 10 consecutive reconciliation edits without resolution
+
+**Out of scope**:
+- Script or module logic changes outside the required Rule 15 version field updates
+- Corpus graduation into `.specrew/quality/known-traps.md`
+- PR merge
+
+## Runtime Evidence
+
+- Coordinator resumed the authoritative Specrew handoff from `.specrew/last-start-prompt.md` and `.specrew/start-context.json`.
+- Current focus confirmed in `.squad/identity/now.md`: Feature 019 Iteration 002 is closed and ready for feature-closeout authorization.
+- Team root resolved to `C:\Dev\Specrew`; current branch confirmed as `019-specrew-distribution-module`.
+- Open GitHub issue scan found no open `squad:{member}` assignments that need pickup before Boundary 6 execution.
+
+## Next Action
+
+Execute the Boundary 6 feature-closeout pass in sequence under the authorized stop-at-PR-creation discipline, then report the phase commit hashes, validator transitions, final validator result, and PR URL.
+
+
 # Decision: Feature 015 Review-Boundary Commit
 
 **Date**: 2026-05-13  
@@ -1425,6 +2087,17 @@ Feature 013 iteration 002 hit all three patterns in a bounded way: planner-outpu
 **Assignment:** honored
 **Fallback Reason:** none
 
+## 2026-05-17-runtime-evidence-feature019-iter002-review
+### 2026-05-17T17:10:35+03:00: Runtime evidence - Feature 019 Iteration 002 review routing
+**By:** Squad (Coordinator)
+**Type:** runtime-evidence
+**Work Item:** Independently review feature `019-specrew-distribution-module` iteration 002 against the repaired cross-platform scope, R-019-V2-R1 through R22 repair history, and the Boundary 1 governance scaffold, then issue the review verdict
+**Requested Agent:** Reviewer
+**Actual Agent:** Reviewer
+**Model:** claude-sonnet-4.6
+**Assignment:** honored
+**Fallback Reason:** none
+
 ## 2026-05-11-runtime-evidence-feature012-tasks
 ### 2026-05-11T19:26:29+03:00: Runtime evidence - Feature 012 task generation routing
 **By:** Squad (Coordinator)
@@ -2064,6 +2737,62 @@ Iteration 002 planning artifacts (plan.md) were still in `planning` status with 
 - **Rationale**: Delegated lifecycle routing was applied for role 'Reviewer'.
 
 - **Routing Evidence**: Reviewer | requested=claude | actual=copilot | model=(platform default) | status=fell-back | fallback=preferred agent 'claude' is not enabled
+
+## 2026-05-16T12:03:53Z — Feature 019 start authorization
+
+- **Decision ID**: feature-019-start-authorization
+- **Type**: authorization
+- **Boundary**: feature-start
+- **Approving Human**: Alon Fliess
+- **Recorded At**: 2026-05-16T12:03:53Z
+- **Feature**: 019 — Specrew Distribution Module via PowerShell Gallery
+- **Source Spec**: `file:///C:/Dev/SpecrewDraft/specrew-distribution-module.md`
+- **Public Proposal**: `file:///C:/Dev/Specrew/proposals/031-specrew-distribution-module.md`
+
+### Authorized boundary work
+
+- Branch from `main` at `aac726b` to `019-specrew-distribution-module`
+- Update `.specify/feature.json` to point at `specs/019-specrew-distribution-module`
+- Push the feature-start boundary commit to `origin/019-specrew-distribution-module`
+- Stop after feature-start and wait for explicit authorization before `/speckit.specify`
+
+### Scope lock
+
+- **In scope**: PSGallery module packaging, bundled scripts/templates/extensions/agent assets, `specrew init` bootstrap-from-module refactor, `specrew update` template-refresh story, and Rule 15 publish/version workflow integration
+- **Out of scope**: Slash Commands / Proposal 032, winget / Chocolatey / Scoop, signing beyond self-sign for v1, and migration tooling for existing alpha users
+
+### Clarify-time direction to preserve
+
+- Reach human alignment during `/speckit.clarify` on the 10 source-spec questions before planning
+- Default recommendations to carry into clarify: PSGallery-only for v1, preserve-and-flag template conflicts, module version mirrors `.specrew/config.yml` `specrew_version`, self-sign for v1, and indefinite clone-and-PATH fallback support
+
+## 2026-05-16T12:28:07Z — Feature 019 specify authorization
+
+- **Decision ID**: feature-019-specify-authorization
+- **Type**: authorization
+- **Boundary**: /speckit.specify
+- **Approving Human**: Alon Fliess
+- **Recorded At**: 2026-05-16T12:28:07Z
+- **Feature**: 019 — Specrew Distribution Module via PowerShell Gallery
+- **Generated Artifact**: `file:///C:/Dev/Specrew/specs/019-specrew-distribution-module/spec.md`
+
+### Authorized boundary work
+
+- Ingest `file:///C:/Dev/SpecrewDraft/specrew-distribution-module.md`
+- Generate Draft spec artifact `specs/019-specrew-distribution-module/spec.md`
+- Preserve the five pillars, explicit non-goals, and the 10 clarify-time questions
+- Stop after `/speckit.specify` and wait for explicit authorization before `/speckit.clarify`
+
+## 2026-05-16T12:28:07Z — Routing evidence: /speckit.specify
+
+- **Decision ID**: routing-evidence-feature-019-specify
+- **Type**: routing-evidence
+- **Role or Work Item**: /speckit.specify
+- **Requested Agent**: speckit.specify
+- **Actual Agent**: speckit.specify
+- **Model ID**: claude-sonnet-4.5
+- **Status**: honored
+- **Fallback Reason**: (none)
 
 ## 2026-05-15T18:12:42Z — Hardening-gate sign-off: Feature 018
 
@@ -3428,6 +4157,7 @@ Feature 017 (velocity-dashboard) is closed and shipped to main with Rule 15 vers
 Feature 017 (Velocity Dashboard) is now closed and shipped. Version 0.17.0 is the active baseline, and no feature is currently open without explicit authorization.
 
 ## 2026-05-15T16:10:40Z — Delegated routing plan
+## 2026-05-15T00:01:57Z — Delegated routing plan
 
 - **Enabled Agents**: copilot
 - **Independent Oversight Active**: False
@@ -3441,11 +4171,15 @@ Feature 017 (Velocity Dashboard) is now closed and shipped. Version 0.17.0 is th
 ## 2026-05-15T16:10:40Z — Routing evidence: Spec Steward
 
 - **Decision ID**: routing-evidence-206ce5416f23
+## 2026-05-15T00:01:57Z — Routing evidence: Spec Steward
+
+- **Decision ID**: routing-evidence-1f62e5e6f73f
 - **Type**: routing-evidence
 - **Affected Requirement**: FR-043
 - **Affected Iteration**: (none)
 - **Approving Human**: (none)
 - **Recorded At**: 2026-05-15T16:10:40Z
+- **Recorded At**: 2026-05-15T00:01:57Z
 - **Next Action**: none
 - **Rationale**: Delegated lifecycle routing was applied for role 'Spec Steward'.
 
@@ -3454,11 +4188,15 @@ Feature 017 (Velocity Dashboard) is now closed and shipped. Version 0.17.0 is th
 ## 2026-05-15T16:10:40Z — Routing evidence: Planner
 
 - **Decision ID**: routing-evidence-cc6d58bdf628
+## 2026-05-15T00:01:57Z — Routing evidence: Planner
+
+- **Decision ID**: routing-evidence-d9ede0be4802
 - **Type**: routing-evidence
 - **Affected Requirement**: FR-043
 - **Affected Iteration**: (none)
 - **Approving Human**: (none)
 - **Recorded At**: 2026-05-15T16:10:40Z
+- **Recorded At**: 2026-05-15T00:01:57Z
 - **Next Action**: none
 - **Rationale**: Delegated lifecycle routing was applied for role 'Planner'.
 
@@ -3467,11 +4205,15 @@ Feature 017 (Velocity Dashboard) is now closed and shipped. Version 0.17.0 is th
 ## 2026-05-15T16:10:40Z — Routing evidence: Reviewer
 
 - **Decision ID**: routing-evidence-7692f5bf7c1e
+## 2026-05-15T00:01:57Z — Routing evidence: Reviewer
+
+- **Decision ID**: routing-evidence-a4888e001342
 - **Type**: routing-evidence
 - **Affected Requirement**: FR-043
 - **Affected Iteration**: (none)
 - **Approving Human**: (none)
 - **Recorded At**: 2026-05-15T16:10:40Z
+- **Recorded At**: 2026-05-15T00:01:57Z
 - **Next Action**: none
 - **Rationale**: Delegated lifecycle routing was applied for role 'Reviewer'.
 
@@ -3755,6 +4497,7 @@ sequencing inputs, and leaves feature-closeout explicitly unopened.
   > AUTHORIZE feature-closeout for Feature 018 Velocity Dashboard Visual Richness + PoC-Parity Restoration. Rule 15 fires.
 
 ## 2026-05-16T10:26:39Z — Delegated routing plan
+## 2026-05-15T08:26:18Z — Delegated routing plan
 
 - **Enabled Agents**: copilot
 - **Independent Oversight Active**: False
@@ -3768,11 +4511,15 @@ sequencing inputs, and leaves feature-closeout explicitly unopened.
 ## 2026-05-16T10:26:39Z — Routing evidence: Spec Steward
 
 - **Decision ID**: routing-evidence-3572bde54970
+## 2026-05-15T08:26:18Z — Routing evidence: Spec Steward
+
+- **Decision ID**: routing-evidence-4d0b4770c019
 - **Type**: routing-evidence
 - **Affected Requirement**: FR-043
 - **Affected Iteration**: (none)
 - **Approving Human**: (none)
 - **Recorded At**: 2026-05-16T10:26:39Z
+- **Recorded At**: 2026-05-15T08:26:18Z
 - **Next Action**: none
 - **Rationale**: Delegated lifecycle routing was applied for role 'Spec Steward'.
 
@@ -3781,11 +4528,15 @@ sequencing inputs, and leaves feature-closeout explicitly unopened.
 ## 2026-05-16T10:26:39Z — Routing evidence: Planner
 
 - **Decision ID**: routing-evidence-a9458cb47f3b
+## 2026-05-15T08:26:18Z — Routing evidence: Planner
+
+- **Decision ID**: routing-evidence-25ffa0f363af
 - **Type**: routing-evidence
 - **Affected Requirement**: FR-043
 - **Affected Iteration**: (none)
 - **Approving Human**: (none)
 - **Recorded At**: 2026-05-16T10:26:39Z
+- **Recorded At**: 2026-05-15T08:26:18Z
 - **Next Action**: none
 - **Rationale**: Delegated lifecycle routing was applied for role 'Planner'.
 
@@ -3794,12 +4545,1400 @@ sequencing inputs, and leaves feature-closeout explicitly unopened.
 ## 2026-05-16T10:26:39Z — Routing evidence: Reviewer
 
 - **Decision ID**: routing-evidence-072e9e4d12b7
+## 2026-05-15T08:26:18Z — Routing evidence: Reviewer
+
+- **Decision ID**: routing-evidence-0c44ee8ff01f
 - **Type**: routing-evidence
 - **Affected Requirement**: FR-043
 - **Affected Iteration**: (none)
 - **Approving Human**: (none)
 - **Recorded At**: 2026-05-16T10:26:39Z
+- **Recorded At**: 2026-05-15T08:26:18Z
 - **Next Action**: none
 - **Rationale**: Delegated lifecycle routing was applied for role 'Reviewer'.
 
 - **Routing Evidence**: Reviewer | requested=claude | actual=copilot | model=(platform default) | status=fell-back | fallback=preferred agent 'claude' is not enabled
+
+## 2026-05-16T12:02:33Z — Delegated routing plan
+
+- **Enabled Agents**: copilot
+- **Independent Oversight Active**: False
+- **Roles**:
+  - Implementer | requested=copilot | actual=copilot | model=(platform default) | status=honored | fallback=(none)
+  - Spec Steward | requested=codex | actual=copilot | model=(platform default) | status=fell-back | fallback=preferred agent 'codex' is not enabled
+  - Planner | requested=claude | actual=copilot | model=(platform default) | status=fell-back | fallback=preferred agent 'claude' is not enabled
+  - Reviewer | requested=claude | actual=copilot | model=(platform default) | status=fell-back | fallback=preferred agent 'claude' is not enabled
+  - Retro Facilitator | requested=copilot | actual=copilot | model=(platform default) | status=honored | fallback=(none)
+
+## 2026-05-16T12:02:33Z — Routing evidence: Spec Steward
+
+- **Decision ID**: routing-evidence-51813d20b077
+- **Type**: routing-evidence
+- **Affected Requirement**: FR-043
+- **Affected Iteration**: (none)
+- **Approving Human**: (none)
+- **Recorded At**: 2026-05-16T12:02:33Z
+- **Next Action**: none
+- **Rationale**: Delegated lifecycle routing was applied for role 'Spec Steward'.
+
+- **Routing Evidence**: Spec Steward | requested=codex | actual=copilot | model=(platform default) | status=fell-back | fallback=preferred agent 'codex' is not enabled
+
+## 2026-05-16T12:02:33Z — Routing evidence: Planner
+
+- **Decision ID**: routing-evidence-4a2943e79954
+- **Type**: routing-evidence
+- **Affected Requirement**: FR-043
+- **Affected Iteration**: (none)
+- **Approving Human**: (none)
+- **Recorded At**: 2026-05-16T12:02:33Z
+- **Next Action**: none
+- **Rationale**: Delegated lifecycle routing was applied for role 'Planner'.
+
+- **Routing Evidence**: Planner | requested=claude | actual=copilot | model=(platform default) | status=fell-back | fallback=preferred agent 'claude' is not enabled
+
+## 2026-05-16T12:02:34Z — Routing evidence: Reviewer
+
+- **Decision ID**: routing-evidence-58e89b8ec8bf
+- **Type**: routing-evidence
+- **Affected Requirement**: FR-043
+- **Affected Iteration**: (none)
+- **Approving Human**: (none)
+- **Recorded At**: 2026-05-16T12:02:33Z
+- **Next Action**: none
+- **Rationale**: Delegated lifecycle routing was applied for role 'Reviewer'.
+
+- **Routing Evidence**: Reviewer | requested=claude | actual=copilot | model=(platform default) | status=fell-back | fallback=preferred agent 'claude' is not enabled
+
+
+# Clarification Decision: Feature 019 Distribution Module
+
+**Date**: 2026-05-16
+**Agent**: Clarifier (explicit human authorization)
+**Authority**: Alon Fliess (Feature Sponsor)
+**Decision Type**: Clarify-boundary completion (all 10 questions resolved)
+
+---
+
+## Problem
+
+Feature 019 Draft spec contained 10 open clarification questions (Q1-Q10) that required resolution before planning could begin. These questions covered critical design choices: template update pattern, distribution channels, module naming, API key management, signing strategy, backward compatibility, conflict resolution, cross-platform path handling, version policy, and migration path.
+
+## Resolution
+
+All 10 clarification questions have been resolved via explicit human authorization on 2026-05-16. Final verdicts integrated into spec.md:
+
+### Q1: Update Story Pattern
+**Decision**: Pattern B (Template-Refresh with preserve-and-flag conflict resolution)
+
+**Rationale**: Specrew templates carry evolving methodology guidance. If templates can never be updated post-init, downstream projects cannot adopt Specrew evolution without manual re-bootstrap. Pattern B enables `specrew update` to refresh templates safely, with conflict resolution mediated by the protocol chosen in Q7.
+
+**Extended by Q7**: The conflict-resolution protocol is designed to remain crew-framework-agnostic (not hard-coded only to Squad) to align with future Proposal 024 Multi-Host Runtime Abstraction, while naming Squad as the current provider in user-facing behavior.
+
+### Q2: Distribution Channel Scope
+**Decision**: PowerShell Gallery only for v1 (already resolved in prior session)
+
+### Q3: Module Name on PSGallery
+**Decision**: Specrew (canonical name; fallback SpeckitSpecrew if claimed) (already resolved in prior session)
+
+### Q4: PSGallery API Key Management
+**Decision**: GitHub Actions secret (name: `PSGALLERY_API_KEY`)
+
+**Rationale**: Provides security (no local/codebase exposure), automation (tag-triggered publish), and Rule 15 integration without manual steps.
+
+### Q5: Module Signing Strategy
+**Decision**: Self-sign for v1, integrated into GitHub Action
+
+**Rationale**: Quick setup, reduces trust warnings, avoids certificate acquisition lead time. Signing logic runs in publish workflow; cert material stored as GitHub Actions secret. Real codesign cert can be acquired post-v1 if user feedback indicates trust warnings are a blocker.
+
+### Q6: Backward Compatibility with Clone-and-PATH
+**Decision**: Support indefinitely (both distribution models coexist)
+
+**Rationale**: Alpha users can continue clone-and-PATH workflow; new users can use `Install-Module`. README documents both paths; no forced migration.
+
+### Q7: Template-Update Conflict Resolution
+**Decision**: Preserve-and-flag with crew-mediated merge protocol (crew-framework-agnostic design)
+
+**Rationale**: User-modified templates preserved with conflict markers (`<<<< USER / ==== / >>>> MODULE-v0.22`) and `.specrew/template-conflicts/<filename>.conflict` artifacts written for next-session review. Protocol designed to remain crew-framework-agnostic (not Squad-only) to align with future Proposal 024, but Squad is current provider for user-facing behavior.
+
+### Q8: Cross-Platform Path Handling
+**Decision**: Join-Path everywhere plus dedicated WSL verification task
+
+**Rationale**: All path construction uses `Join-Path` for correct delimiters on all platforms. Implementation plan must include dedicated WSL verification task to validate real cross-platform behavior.
+
+### Q9: Module Version Policy
+**Decision**: Same version (manifest stamped from `.specrew/config.yml` at build time)
+
+**Rationale**: Single source of truth reduces drift risk. Publishing workflow reads version from config and updates manifest before `Publish-Module`.
+
+### Q10: Alpha-User Migration Path
+**Decision**: README documentation only; `specrew update` is the migration path
+
+**Rationale**: No automated migration command in v1. README docs sufficient; users run `Install-Module Specrew`, then `specrew update` in project to refresh templates. Tooling can be added later if friction reports indicate need.
+
+---
+
+## Spec Updates Made
+
+### Requirements Updated
+- **FR-020 through FR-023**: Made Template-Refresh pattern unconditional (removed "if Pattern B" conditional language)
+- **FR-021**: Extended to specify crew-framework-agnostic conflict resolution protocol
+- **FR-024 through FR-028**: Updated for GitHub Actions secret strategy and self-signing
+- **FR-030**: Made Join-Path and WSL verification explicit
+
+### User Stories Updated
+- **US3**: Removed "pattern selection pending" note; specified preserve-and-flag conflict protocol
+- **US4**: Updated to reflect GitHub Actions secret, self-signing, and manifest version stamping
+- **US5**: Removed "cross-platform path handling strategy pending" note; specified WSL verification
+
+### Other Sections Updated
+- **Clarifications**: Added Q1 with full rationale; existing Q2-Q3 preserved; added Q4-Q10 with full rationale
+- **Clarifications Pending**: Entire section removed (all questions resolved)
+- **Assumptions**: Updated to reflect all resolved clarifications and crew-agnostic protocol design
+- **Non-Goals**: Clarified that real certificate and migration tooling are deferred (not pending)
+- **IN scope**: Updated to specify Pattern B explicitly
+
+---
+
+## Artifacts Updated
+
+Files modified:
+1. `specs/019-specrew-distribution-module/spec.md` — all 10 clarifications integrated, Clarifications Pending removed, Status remains Draft
+2. `.squad/identity/now.md` — updated to reflect clarify-complete status, next action is await plan authorization
+3. `.squad/decisions.md` — this decision entry appended
+
+---
+
+## Verification
+
+- ✅ All 10 questions (Q1-Q10) resolved and recorded in spec.md Clarifications section
+- ✅ Clarifications Pending section removed entirely from spec.md
+- ✅ FR-020 through FR-023 updated to unconditional Template-Refresh language
+- ✅ FR-021 specifies crew-framework-agnostic conflict resolution protocol
+- ✅ FR-024 through FR-028 updated for GitHub Actions secrets and self-signing
+- ✅ FR-030 updated for Join-Path and WSL verification
+- ✅ User Stories 3, 4, 5 updated to remove conditional/pending language
+- ✅ Assumptions section updated to reflect all resolved clarifications
+- ✅ Non-Goals section clarified (deferred, not pending)
+- ✅ Status remains Draft (correct for post-clarify, pre-plan state)
+- ✅ .squad/identity/now.md updated to clarify-complete status
+- ✅ No implementation code touched (artifact/state only boundary)
+
+---
+
+## Impact
+
+The /speckit.clarify boundary for Feature 019 is now complete. All design choices are resolved and integrated into the Draft spec. The specification is ready for planning authorization (`/speckit.plan`) when explicitly authorized by the human sponsor.
+
+Template-Refresh pattern (Pattern B) is confirmed with crew-framework-agnostic conflict resolution, enabling future evolution while respecting current Squad-mediated workflows and future Proposal 024 host abstractions.
+
+---
+
+## Next Action
+
+Do not advance to `/speckit.plan` from this clarify-complete boundary alone. Await separate explicit human authorization before opening the planning boundary for Feature 019.
+
+Authorization runtime: Feature 019 clarify completion authorized by Alon Fliess on 2026-05-16 at commit edd1ded (with local spec.md clarify edits present before boundary closeout).
+
+
+# Planning Decision: Feature 019 /speckit.plan Boundary Complete
+
+**Decision ID**: planner-feature019-plan-complete  
+**Feature**: 019 — Specrew Distribution Module  
+**Date**: 2026-05-16  
+**Decision Maker**: Planner (autonomous planning boundary)  
+**Authority**: User authorization for /speckit.plan boundary completion (2026-05-16)
+
+---
+
+## Decision Summary
+
+Feature 019 implementation planning is complete with a 5-pillar distribution architecture (Module Packaging, Resource Bundling, Init Refactor, Update Story, Publishing Workflow). All design artifacts generated (plan.md, research.md, data-model.md, contracts/, quickstart.md). Constitution Check passed all gates. Estimated effort: 14 SP (within 10-15 SP spec estimate). Track dependencies mapped with critical path identified. Next boundary: `/speckit.tasks` (awaiting human authorization).
+
+---
+
+## Planning Scope
+
+Feature 019 addresses the PowerShell Gallery module distribution requirement identified in user feedback (Venya's clone-and-PATH friction). The planning boundary encompasses:
+
+1. **Phase 0 Research**: 6 research tasks resolving design unknowns (PSGallery best practices, module loader patterns, conflict resolution protocol, cross-platform path handling, publish workflow design, signing strategy)
+2. **Phase 1 Design Artifacts**: 3 design artifacts defining implementation contracts (data-model.md, contracts/Specrew.psd1.contract.md, quickstart.md)
+3. **Implementation Strategy**: 5-pillar architecture with dependency graph, critical path analysis, and parallelization opportunities
+4. **Quality Planning**: Phase 1 quality gates (cross-platform correctness, template integrity, module packaging correctness, update conflict safety, publishing automation, credential management)
+5. **Governance Alignment**: Constitution Check passed; all gates green; traceability verified
+
+---
+
+## Key Planning Decisions
+
+### 1. Five-Pillar Implementation Architecture
+
+**Decision**: Organize implementation into 5 major pillars aligned with spec requirements (FR-001 through FR-032):
+
+| Pillar | Scope | Estimated SP |
+| --- | --- | --- |
+| Pillar 1: Module Packaging | Module manifest, exports, metadata | 2 SP |
+| Pillar 2: Resource Bundling | Bundle scripts, extensions, templates, docs | 2 SP |
+| Pillar 3: Init Refactor | Detect module-vs-clone, resolve templates from module path | 3 SP |
+| Pillar 4: Update Story | Template-Refresh pattern, conflict resolution | 4 SP |
+| Pillar 5: Publishing Workflow | GitHub Actions, version stamping, signing, publish | 3 SP |
+
+**Total Estimated Effort**: 14 SP
+
+**Rationale**: Pillars map 1:1 to spec sections (FR groups). Clear separation enables parallelization (Pillar 1 + 2 can run in parallel; Pillar 4 + 5 can run in parallel after Pillar 3). Total effort (14 SP) falls within spec estimate (10-15 SP) and fits single-iteration budget.
+
+### 2. Template-Refresh Conflict Resolution Protocol (Git-Style Markers)
+
+**Decision**: Use Git-style conflict markers (`<<<<<<<`, `=======`, `>>>>>>>`) for user-vs-module template conflicts, backed by `.specrew/template-conflicts/*.conflict` artifacts with full diff.
+
+**Rationale**: Git-style markers are universally recognized, supported by tooling (VSCode conflict resolution UI), and require zero learning curve. Conflict artifacts provide full context for manual resolution without data loss. Protocol is crew-framework-agnostic (no hard dependency on Squad internals).
+
+**Research Evidence**: research.md R3 documents alternatives considered and decision rationale.
+
+### 3. Cross-Platform Path Handling (Join-Path Everywhere + WSL Verification)
+
+**Decision**: Enforce `Join-Path` for all path construction across scripts; add dedicated WSL verification task to validate real cross-platform behavior.
+
+**Rationale**: PowerShell `Join-Path` automatically uses correct delimiters for current platform (Windows `\`, Linux/Mac `/`). Dedicated WSL task ensures real-world cross-platform correctness beyond unit tests (WSL is common Windows+Linux hybrid environment where path issues surface).
+
+**Research Evidence**: research.md R4 documents audit strategy and verification checklist.
+
+### 4. Module Version Stamping (Single Source of Truth: .specrew/config.yml)
+
+**Decision**: Module manifest `ModuleVersion` is stamped from `.specrew/config.yml` `specrew_version` at build time via GitHub Actions workflow.
+
+**Rationale**: Single source of truth reduces drift risk and eliminates version-sync governance burden. Aligns with spec clarification (Q9: "same version policy"). Publishing workflow reads config, updates manifest, validates, signs, and publishes.
+
+**Research Evidence**: research.md R5 documents workflow structure and version stamping mechanism.
+
+### 5. Self-Signed Certificate (5-Year Validity)
+
+**Decision**: Use self-signed code signing certificate with 5-year validity period; store as GitHub Actions secrets (SIGNING_CERT_BASE64, SIGNING_CERT_PASSWORD).
+
+**Rationale**: Balances security (moderate risk window) with maintenance burden (renewal every 5 years). Real codesign certificate deferred to post-v1 unless early feedback shows trust warnings are significant blocker.
+
+**Research Evidence**: research.md R6 documents certificate generation procedure and validity period trade-offs.
+
+### 6. Track Dependency Order (Critical Path Identified)
+
+**Decision**: Implementation follows this dependency order:
+
+```
+Phase 0 (Research) → [Pillar 1 ∥ Pillar 2] → Pillar 3 → [Pillar 4 ∥ Pillar 5] → Integration Tests → Final Validation
+```
+
+**Critical Path**: Phase 0 → Pillar 1/2 → Pillar 3 → Pillar 4 → Final Validation
+
+**Parallelization Opportunities**:
+- Pillar 1 + Pillar 2 (independent; both feed into Pillar 3)
+- Pillar 4 + Pillar 5 (independent after Pillar 3 completes)
+
+**Rationale**: Pillar 3 (init refactor) depends on Pillar 1 (manifest structure) and Pillar 2 (template bundling layout). Pillar 4 (update) and Pillar 5 (publish) share init refactor's module-path detection logic but are otherwise independent. Critical path ensures incremental testability; parallelization opportunities reduce total cycle time.
+
+---
+
+## Plan-Time Design Questions Captured
+
+Six design questions surfaced during planning but do not block the plan structure. Captured in plan.md for Phase 0 investigation:
+
+1. **Module Manifest File List**: Explicit enumeration vs. automatic detection (trade-offs: safety vs. maintenance)
+2. **Conflict Marker Format Details**: Exact marker syntax and language-aware alternatives (requires Squad integration validation)
+3. **Cross-Platform Test Automation**: Manual checklist vs. GitHub Actions matrix (trade-offs: setup speed vs. robustness)
+4. **Module Loader Implementation**: Explicit dot-sourcing vs. dynamic discovery (trade-offs: debuggability vs. DRY)
+5. **PSGallery API Key Rotation**: Rotation cadence and procedure documentation (not a blocker; maintainer runbook item)
+6. **Self-Signed Certificate Validity**: 1-year vs. 5-year vs. 10-year validity period (resolved in research as 5-year; question remains for renewal procedure)
+
+All questions assigned to Phase 0 research tasks (R1-R6) or implementation-time decision points.
+
+---
+
+## Constitution Check: All Gates Passed
+
+**Spec Authority Gate**: ✅ PASS (plan scope maps to spec FR-001 through FR-032, US-1 through US-5)  
+**Layering Gate**: ✅ PASS (all changes in Spec Kit layer; Squad layer only provides runtime resolution behavior)  
+**Traceability Gate**: ✅ PASS (all deliverables trace to user stories, FRs, and planned tasks)  
+**Ownership Gate**: ✅ PASS (Spec Steward: Alon Fliess; Iteration Facilitator: Alon Fliess)  
+**Capacity Gate**: ✅ PASS (14 SP estimated; single iteration; fits Phase 2 Quality Hardening Bundle sequencing)  
+**Drift/Reconciliation Gate**: ✅ PASS (drift detection via Specrew-Speckit validators, integration tests, publish logs; reconciliation path defined)  
+**Verification Gate**: ✅ PASS (process verification: validators + GitHub Actions validation; outcome verification: success criteria SC-001 through SC-006 + User Story acceptance scenarios)
+
+**No violations detected.** Implementation may proceed to `/speckit.tasks` boundary.
+
+---
+
+## Artifacts Generated
+
+**Phase 0 (Research)**:
+- `specs/019-specrew-distribution-module/research.md` (6 research tasks; all design unknowns resolved)
+
+**Phase 1 (Design)**:
+- `specs/019-specrew-distribution-module/data-model.md` (11 entities, relationships, state machines)
+- `specs/019-specrew-distribution-module/contracts/Specrew.psd1.contract.md` (module manifest schema, exported function signatures)
+- `specs/019-specrew-distribution-module/quickstart.md` (user-facing installation and usage guide)
+
+**Planning Artifact**:
+- `specs/019-specrew-distribution-module/plan.md` (5-pillar strategy, track dependencies, Constitution Check, quality gates, implementation strategy)
+
+**Squad State Updates**:
+- `.squad/identity/now.md` (updated to reflect /speckit.plan complete; next valid action: /speckit.tasks authorization)
+- `.squad/decisions.md` (this decision appended)
+
+---
+
+## Boundary Verification
+
+**Pre-Commit Checklist**:
+- ✅ plan.md complete with all template sections filled
+- ✅ research.md complete with 6 research tasks documented
+- ✅ data-model.md complete with 11 entities and relationships
+- ✅ contracts/Specrew.psd1.contract.md complete with manifest schema and function signatures
+- ✅ quickstart.md complete with user-facing installation guide
+- ✅ Constitution Check passed (all gates green)
+- ✅ Track dependency graph documented with critical path identified
+- ✅ Plan-time design questions captured (6 questions for Phase 0 investigation)
+- ✅ Quality gates defined (cross-platform, template integrity, publish automation, credential management)
+- ✅ Effort estimated (14 SP; within spec estimate 10-15 SP)
+- ✅ .squad/identity/now.md updated (next valid action: /speckit.tasks authorization)
+- ✅ .squad/decisions.md updated (this decision appended)
+
+**NOT Delivered** (scope boundaries respected):
+- ❌ /speckit.tasks generation (not authorized at this boundary)
+- ❌ Implementation execution (requires /speckit.tasks first)
+- ❌ Code changes to scripts/ or extensions/ (implementation-time work)
+- ❌ GitHub Actions workflow creation (implementation-time work)
+- ❌ PSGallery module publishing (post-implementation work)
+
+---
+
+## Next Action
+
+**For Spec Steward (Alon Fliess)**:
+- Review planning artifacts (plan.md, research.md, data-model.md, contracts/, quickstart.md)
+- Verify Constitution Check passes and track dependencies are sound
+- Authorize `/speckit.tasks` boundary if planning is acceptable
+
+**For Implementation Team** (after /speckit.tasks authorization):
+- Read research.md (Phase 0 output) before starting implementation
+- Review data-model.md, contracts/, quickstart.md as implementation blueprints
+- Follow track dependency order (see plan.md Track Dependencies graph)
+- Execute quality gates after each pillar completes
+- Record evidence in `specs/019-specrew-distribution-module/test-evidence/`
+
+---
+
+## Traceability
+
+- **Spec Authority**: `specs/019-specrew-distribution-module/spec.md` (FR-001 through FR-032, US-1 through US-5)
+- **Plan Authority**: `specs/019-specrew-distribution-module/plan.md` (5-pillar strategy, track dependencies, Constitution Check)
+- **User Authorization**: Alon Fliess authorized /speckit.plan boundary completion on 2026-05-16 (this session)
+- **Constitutional Alignment**: Principles I (Spec Is Authoritative), IX (Mandatory Traceability), XVII (Planning Starts From Approved Specs), XXI (Verification Is Mandatory)
+
+---
+
+## Notes
+
+- This decision is autonomous planning-boundary work; no implementation choices are encoded here.
+- Feature 019 remains in `planning-complete` status until /speckit.tasks authorization is granted.
+- All traceability is recorded in the canonical plan (plan.md); this document is a summary for coordination visibility.
+- Phase 2 hardening gate is explicitly deferred (distribution infrastructure focus; no complex security surface or runtime business logic).
+
+
+# Decision: Feature 019 /speckit.tasks Boundary Complete
+
+**Date**: 2026-05-16
+**Agent**: Copilot
+**Authority**: Alon Fliess (user directive: "Complete the /speckit.tasks boundary for Feature 019")
+**Decision Type**: Tasks-boundary completion
+
+## What
+
+Generated comprehensive task breakdown for Feature 019 (Specrew Distribution Module) with 39 tasks across 6 phases, completing the /speckit.tasks lifecycle boundary.
+
+### Artifacts Created
+
+- **tasks.md**: Complete task breakdown (39 tasks, 6 phases, 14 SP total)
+  - Phase 0: Design-Question Resolution (6 tasks)
+  - Pillar 1: Module Packaging (3 tasks)
+  - Pillar 2: Resource Bundling (5 tasks)
+  - Pillar 3: Init Refactor (5 tasks)
+  - Pillar 4: Update Story (6 tasks)
+  - Pillar 5: Publishing Workflow (7 tasks)
+  - Phase 6: Final Validation (7 tasks)
+
+### Six Design-Question Resolution Tasks
+
+Per user requirement, six design-question resolution tasks are explicitly enumerated at Phase 0:
+
+1. **T001**: Resolve Module Manifest File-List Strategy (blocks Pillar 1/2)
+2. **T002**: Resolve Conflict-Marker Format (blocks Pillar 4)
+3. **T003**: Resolve Cross-Platform Test Automation Depth (blocks Pillar 5)
+4. **T004**: Resolve Module Loader Structure (blocks Pillar 1)
+5. **T005**: Document API-Key Rotation Guidance (documentation-only)
+6. **T006**: Resolve Self-Signed Certificate Validity Period (blocks Pillar 5)
+
+Each task includes explicit "Blocks" annotations showing downstream dependencies and "Downstream Impact" rationale explaining why the decision matters.
+
+### Task Organization
+
+- **By Pillar**: Tasks organized following plan.md 5-pillar architecture
+- **Explicit Dependencies**: Each task annotates blocking dependencies with task IDs
+- **Parallel Opportunities**: 16+ tasks marked [P] for parallel execution
+- **Traceability**: Every task traces to FR, US, and plan.md tracks
+- **Critical Path**: Phase 0 → P1/P2 (parallel) → P3 → P4/P5 (parallel) → Validation
+
+### State Updates
+
+- **.squad/identity/now.md**: Updated to TASKS-COMPLETE lifecycle stage
+- **focus_area**: Feature 019 /speckit.tasks completed
+- **active_issues**: 39 tasks enumerated, six design questions explicitly listed
+- **Next valid action**: Await authorization before advancing to hardening gate or implementation
+
+## Why
+
+The /speckit.tasks boundary completion enables implementation authorization by providing:
+
+1. **Concrete Work Units**: 39 actionable tasks with explicit file paths and verification commands
+2. **Dependency Clarity**: Task blocking relationships prevent premature work and rework
+3. **Design-Question Resolution**: Six plan-time questions surfaced during planning now have dedicated resolution tasks before implementation begins
+4. **Parallel Execution Planning**: 16+ parallel-capable tasks identified for efficient execution
+5. **Traceability**: Every task maps to FRs, user stories, and plan tracks per Constitution Principle IX
+
+## Traceability
+
+- **Spec Authority**: specs/019-specrew-distribution-module/spec.md (FR-001 through FR-032, US1-US5)
+- **Plan Authority**: specs/019-specrew-distribution-module/plan.md (5-pillar architecture, Phase 0 research, Phase 1 design artifacts)
+- **User Directive**: "Complete the /speckit.tasks boundary for Feature 019" (2026-05-16)
+- **Constitution Alignment**: Principle IX (Mandatory Traceability), Principle XVII (Planning Starts From Approved Specs), Principle XXI (Verification Is Mandatory)
+
+## Runtime Evidence
+
+**Files Changed**:
+- Created: specs/019-specrew-distribution-module/tasks.md (26,676 characters, 39 tasks)
+- Updated: .squad/identity/now.md (lifecycle stage: TASKS-COMPLETE)
+- Updated: .squad/decisions.md (this entry)
+
+**Task-Count-Per-Pillar Summary**:
+- Phase 0 (Design Questions): 6 tasks
+- Pillar 1 (Module Packaging): 3 tasks
+- Pillar 2 (Resource Bundling): 5 tasks
+- Pillar 3 (Init Refactor): 5 tasks
+- Pillar 4 (Update Story): 6 tasks
+- Pillar 5 (Publishing Workflow): 7 tasks
+- Phase 6 (Final Validation): 7 tasks
+- **Total**: 39 tasks
+
+**Verification**:
+`powershell
+Test-Path C:\Dev\Specrew\specs\019-specrew-distribution-module\tasks.md
+# Expected: True (file exists)
+Get-Content C:\Dev\Specrew\specs\019-specrew-distribution-module\tasks.md | Select-String -Pattern "^- \[ \] T\d{3}"
+# Expected: 39 matches (all 39 tasks present)
+`
+
+## Scope Confirmation
+
+**Scope In**:
+- ✅ Generated tasks.md from plan.md + spec.md
+- ✅ Six design-question resolution tasks explicitly enumerated with blocking annotations
+- ✅ Ordered, concrete, actionable tasks with per-task scope, owner, dependencies, acceptance criteria, and explicit FR references
+- ✅ Preserved implementation ordering from plan: Phase 0 → Pillars 1 & 2 (parallel) → Pillar 3 → Pillars 4 & 5 (parallel) → final validation
+- ✅ Updated .squad/identity/now.md to TASKS-COMPLETE stage
+- ✅ Appended decisions.md entry for tasks-boundary runtime evidence
+
+**Scope Out**:
+- ❌ No code changes under scripts/ or extensions/
+- ❌ No validator additions beyond task planning language
+- ❌ No /speckit.specrew-speckit.before-implement work
+- ❌ No hardening-gate or implementation work
+
+## Next Action
+
+Await explicit authorization before advancing to:
+- /speckit.specrew-speckit.before-implement (hardening gate, if applicable)
+- Implementation (if hardening gate skipped or passed)
+
+Per user directive: "Do NOT advance to /speckit.specrew-speckit.before-implement. Do NOT advance to hardening-gate-and-implementation-auth."
+
+
+# Repair: Feature 019 Before-Implement Lifecycle State Artifact
+
+**Date**: 2026-05-16  
+**Authority**: Reviewer (boundary-state tightly-coupled repair)  
+**Scope**: `.squad/identity/now.md` lifecycle section state correction  
+
+## What
+
+The state artifact `.squad/identity/now.md` contained stale lifecycle information after the Feature 019 before-implement boundary was crossed:
+- **Top lines (correct)**: Reported `/speckit.specrew-speckit.before-implement` completed with READY verdict
+- **Lifecycle section (stale)**: Reported `/speckit.tasks` complete and listed authorization for before-implement as next action
+
+This mismatch created boundary-state confusion: the top and bottom of the artifact contradicted each other about which lifecycle phase was active.
+
+## Repair Applied
+
+1. Updated "What We're Focused On" phase line from `/speckit.tasks` complete → `/speckit.specrew-speckit.before-implement` complete
+2. Updated urgency line to reference `hardening-gate-and-implementation-auth` authorization (next valid action after before-implement)
+3. Updated Feature Lifecycle status from `TASKS-COMPLETE` → `BEFORE-IMPLEMENT-COMPLETE`
+4. Updated "Current Status" section references from `/speckit.tasks` → `/speckit.specrew-speckit.before-implement`
+5. Updated "Authorization scope" line to clarify before-implement is complete and implementation is blocked pending authorization
+6. Updated "Next Valid Action" section to await explicit human authorization for `hardening-gate-and-implementation-auth` only
+
+## Why
+
+Lifecycle artifacts must be consistent at all points to avoid automation, planner, or coordinator tools making incorrect routing decisions based on stale phase information. The boundary was crossed and verified; the state record must reflect that fact durably.
+
+No lifecycle boundary advancement applied; only state artifact corrected to match the actual completed boundary.
+
+
+
+## 2026-05-16T19:07:46Z — Canonical defer entry (Feature 019 iteration 001 cross-platform carry-forward)
+
+- **Decision ID**: defer-feature-019-iter-001-cross-platform-carry-forward
+- **Type**: defer
+- **Affected Iteration**: specs\019-specrew-distribution-module\iterations\001
+- **Approving Human**: Alon Fliess
+- **Recorded At**: 2026-05-16T19:07:46Z
+- **Next Action**: Execute T041 and T054 in Iteration 002 without reopening Feature 019 Iteration 001 review-verdict-signoff
+- **Rationale**: Iteration 001 is explicitly Windows-first. Ubuntu/macOS/WSL parity, PowerShell 5.1 rejection proof, and the broader Join-Path hardening sweep remain accepted carry-forward work for Iteration 002 and are non-blocking for this signoff.
+
+## 2026-05-16T19:07:46Z — Canonical defer entry (Feature 019 iteration 001 release-ops carry-forward)
+
+- **Decision ID**: defer-feature-019-iter-001-release-ops-carry-forward
+- **Type**: defer
+- **Affected Iteration**: specs\019-specrew-distribution-module\iterations\001
+- **Approving Human**: Alon Fliess
+- **Recorded At**: 2026-05-16T19:07:46Z
+- **Next Action**: Complete T042 and T053 as maintainer-owned post-merge release operations without reopening Feature 019 Iteration 001 review-verdict-signoff
+- **Rationale**: Secrets configuration and the first real PSGallery publish remain intentionally human-operated release steps. The workflow, documentation, and dry-run/manual-gate evidence are already accepted for Iteration 001, so these post-merge actions stay explicit carry-forward rather than blockers.
+
+## 2026-05-16T19:07:46Z — Authorization: review-verdict-signoff
+
+- **Decision ID**: authorization-feature-019-iter-001-review-verdict-signoff
+- **Type**: authorization
+- **Boundary**: review-verdict-signoff
+- **Approving Human**: Alon Fliess
+- **Recorded At**: 2026-05-16T19:07:46Z
+- **Commit Reference**: aa8603c
+- **Scope**: Feature 019 Iteration 001
+- **Accepted Review-Boundary Commit**: 567c070
+- **Accepted Carry-Forward Items**:
+  - T041 and T054 deferred to Iteration 002.
+  - T042 and T053 remain human follow-up post-merge.
+- **Authorization Text**:
+  > Current boundary: /review-verdict-signoff for Feature 019 Iteration 001.
+  > Human approver: Alon Fliess.
+  > Accepted review boundary commit: 567c070.
+  > Human acceptance basis is the exact authorization text provided in the chat. Treat it as the authoritative signoff statement.
+  > Stop at /review-verdict-signoff completion. Do not advance to retro.
+  > Boundary commit must be pushed to origin/019-specrew-distribution-module.
+  > Carry-forward items to preserve explicitly:
+  > - T041 and T054 deferred to Iteration 002.
+  > - T042 and T053 remain human follow-up post-merge.
+  > - Do not perform retro, iteration closeout, feature closeout, or credential setup.
+
+## 2026-05-17T05:09:25Z — Delegated routing plan
+
+- **Enabled Agents**: copilot
+- **Independent Oversight Active**: False
+- **Roles**:
+  - Implementer | requested=copilot | actual=copilot | model=(platform default) | status=honored | fallback=(none)
+  - Spec Steward | requested=codex | actual=copilot | model=(platform default) | status=fell-back | fallback=preferred agent 'codex' is not enabled
+  - Planner | requested=claude | actual=copilot | model=(platform default) | status=fell-back | fallback=preferred agent 'claude' is not enabled
+  - Reviewer | requested=claude | actual=copilot | model=(platform default) | status=fell-back | fallback=preferred agent 'claude' is not enabled
+  - Retro Facilitator | requested=copilot | actual=copilot | model=(platform default) | status=honored | fallback=(none)
+
+## 2026-05-17T05:09:26Z — Routing evidence: Spec Steward
+
+- **Decision ID**: routing-evidence-7081c8013218
+- **Type**: routing-evidence
+- **Affected Requirement**: FR-043
+- **Affected Iteration**: (none)
+- **Approving Human**: (none)
+- **Recorded At**: 2026-05-17T05:09:26Z
+- **Next Action**: none
+- **Rationale**: Delegated lifecycle routing was applied for role 'Spec Steward'.
+
+- **Routing Evidence**: Spec Steward | requested=codex | actual=copilot | model=(platform default) | status=fell-back | fallback=preferred agent 'codex' is not enabled
+
+## 2026-05-17T05:09:26Z — Routing evidence: Planner
+
+- **Decision ID**: routing-evidence-bce1d9c30c5f
+- **Type**: routing-evidence
+- **Affected Requirement**: FR-043
+- **Affected Iteration**: (none)
+- **Approving Human**: (none)
+- **Recorded At**: 2026-05-17T05:09:26Z
+- **Next Action**: none
+- **Rationale**: Delegated lifecycle routing was applied for role 'Planner'.
+
+- **Routing Evidence**: Planner | requested=claude | actual=copilot | model=(platform default) | status=fell-back | fallback=preferred agent 'claude' is not enabled
+
+## 2026-05-17T05:09:26Z — Routing evidence: Reviewer
+
+- **Decision ID**: routing-evidence-1c0eed88247d
+- **Type**: routing-evidence
+- **Affected Requirement**: FR-043
+- **Affected Iteration**: (none)
+- **Approving Human**: (none)
+- **Recorded At**: 2026-05-17T05:09:26Z
+- **Next Action**: none
+- **Rationale**: Delegated lifecycle routing was applied for role 'Reviewer'.
+
+- **Routing Evidence**: Reviewer | requested=claude | actual=copilot | model=(platform default) | status=fell-back | fallback=preferred agent 'claude' is not enabled
+---
+
+### 2026-05-17T05:29:37Z: Delegated lifecycle runtime evidence
+**By:** Squad (Coordinator)
+**Role / Work Item:** Implementer — Feature 019 Iteration 002 R-019-V2-R13 bounded micro-repair cycle
+**Requested Agent:** copilot
+**Actual Agent:** copilot
+**Model ID:** claude-sonnet-4.5
+**Status:** honored
+**Fallback Reason:** none
+
+
+# Implementer Decision: R-018-V3 visual alignment
+
+**Date**: 2026-05-16  
+**By**: Implementer  
+**Authority**: Alon Fliess authorization for bounded repair `R-018-V3`
+
+## Decision
+
+Keep the repair strictly inside the live full-dashboard renderer by reordering only the `RECENT SHIPPED` and `ROADMAP` row columns in `scripts\internal\dashboard-renderer.ps1`, while leaving Full History, Recent Iterations, Velocity, Active Work, Projection, Warnings, Footer, and closeout artifacts untouched.
+
+## Why
+
+- The repair request is explicitly visual-alignment scoped and forbids feature-closeout follow-through.
+- Updating the shared full renderer preserves the live `specrew where` contract without widening scope into unrelated surfaces.
+- Fixture and regression coverage can lock the new alignment without mutating historical closeout dashboards.
+
+
+# Implementer R13 Repair Decision
+
+- **Date:** 2026-05-17
+- **Feature / Iteration:** Feature 019 / Iteration 002
+- **Decision:** `specrew start` now treats Copilot non-autopilot launch flags as platform-conditional: Windows keeps `--mode interactive` (plus `--allow-all` when allowed), while Linux/macOS rely on the default REPL behavior for `-i` and suppress both `--mode interactive` and `--allow-all`.
+- **Why:** Runtime evidence for Copilot CLI v1.0.48 showed the inverse behavior across platforms: Windows still needs `--mode interactive` to stay in the REPL, but Linux/macOS already stay interactive without it and actively break when `--mode interactive` is added.
+- **Files to keep aligned:** `scripts\specrew-start.ps1`, `tests\integration\start-command.ps1`, `specs\019-specrew-distribution-module\test-evidence\us5-cross-platform.md`
+
+
+# Reviewer Decision Inbox: Feature 018 Review Signoff
+
+**Date**: 2026-05-15  
+**Role**: Reviewer  
+**Feature**: 018-velocity-dashboard-visual-richness  
+**Iteration**: 001  
+**Boundary**: review-verdict-signoff  
+**Verdict**: accepted
+
+## Decision
+
+Accept Feature 018 Iteration 001 at review-verdict-signoff with `R-018-V1` and `R-018-V2` absorbed.
+
+## Why
+
+1. Automated evidence remains green across the Feature 017 regression lane, the Feature 018 rich-mode lane, the Feature 018 render-budget lane, and `validate-governance.ps1`.
+2. Alon Fliess directly confirmed in a fresh PowerShell terminal that `.\scripts\specrew.ps1 where` now renders the approved rich-mode surface after `R-018-V2`, with no manual encoding setup required.
+3. The remaining roadmap phase marker observation is cosmetic only; roadmap meaning, fallback semantics, and acceptance criteria remain satisfied.
+
+## Deferred Cosmetic Follow-Up
+
+- `roadmap-phase-status-marker-uniformity` should normalize roadmap rich marker styling in a later polish pass.
+- This item is explicitly deferred in `.specrew/quality/known-traps.md` and does not reopen Feature 018 Iteration 001 acceptance.
+
+## Next Move
+
+Stop at accepted pre-retro state and request explicit retro-boundary authorization before opening retrospective work.
+
+
+# Reviewer Decision Inbox: Feature 019 Iteration 001 Re-Review
+
+**Date**: 2026-05-16  
+**Role**: Reviewer  
+**Feature**: 019-specrew-distribution-module  
+**Iteration**: 001  
+**Boundary**: review  
+**Verdict**: accepted
+
+## Decision
+
+Accept Feature 019 Iteration 001 at the re-review boundary. The bounded repair resolved both prior blockers and the
+iteration is now READY-FOR-SIGNOFF.
+
+## Why
+
+1. `Specrew.psd1` now ships the previously missing required package surfaces, including `scripts\internal\invoke-module-release.ps1` and `templates\github\agents\squad.agent.md`, plus the related README surfaces identified during review.
+2. `tests\integration\distribution-module-init.ps1` and `tests\integration\distribution-module-publish.ps1` now stage scratch workspaces from `Specrew.psd1` `FileList`, so the install/bootstrap/publish proof matches the actual shipped package instead of a whole-tree copy.
+3. The repaired tree revalidated cleanly across manifest/import checks, init/update/publish integration lanes, governance validation, and an explicit FileList audit, and commit `9e2fb30` has been pushed to `origin/019-specrew-distribution-module`.
+4. T042/T053 live-publish follow-up and T041/T054 cross-platform hardening remain correctly classified as non-blocking human/deferred work.
+
+## Next Move
+
+Open the separate `review-verdict-signoff` boundary with human authorization when ready. Do not start retrospective,
+closeout, or later lifecycle boundaries from this re-review decision alone.
+
+
+# Reviewer Decision Inbox: Feature 019 Iteration 001 Review
+
+**Date**: 2026-05-16  
+**Role**: Reviewer  
+**Feature**: 019-specrew-distribution-module  
+**Iteration**: 001  
+**Boundary**: review  
+**Verdict**: needs-work
+
+## Decision
+
+Do not sign off Feature 019 Iteration 001 yet. Route a bounded repair for the explicit package allowlist and refresh
+the package-shaped evidence before re-review.
+
+## Why
+
+1. `Specrew.psd1` still omits required distributable files from the approved explicit `FileList` strategy, including `scripts\internal\invoke-module-release.ps1` and `templates\github\agents\squad.agent.md`.
+2. That omission breaks the truthful US1/US2 installed-module story and the bounded publish-module packaging contract even though the repo-shaped scratch-module regressions pass locally.
+3. T042/T053 live-publish follow-up and T041/T054 cross-platform hardening remain correctly classified as non-blocking human/deferred work; they are not the reason signoff is blocked.
+
+## Required Repair
+
+- Update `C:\Dev\Specrew\Specrew.psd1` to ship the missing allowlist entries.
+- Refresh the package-surface tests/evidence so they prove the repaired manifest-shaped package, not a whole-tree copy.
+
+## Next Move
+
+Authorize bounded repair items `R-019-R1` and `R-019-R2`, then return the iteration to independent review. Do not
+open review-verdict-signoff, retro, or closeout from this boundary.
+
+
+# Reviewer Decision Inbox: Feature 019 Review Signoff
+
+**Date**: 2026-05-16  
+**Role**: Reviewer  
+**Feature**: 019-specrew-distribution-module  
+**Iteration**: 001  
+**Boundary**: review-verdict-signoff  
+**Verdict**: accepted
+
+## Decision
+
+Accept Feature 019 Iteration 001 at review-verdict-signoff against accepted review-boundary commit `567c070`.
+
+## Why
+
+1. The accepted repaired tree already resolved `R-019-R1` and `R-019-R2`, restoring the explicit `FileList` allowlist and package-shaped install/publish evidence.
+2. Governance validation passed again on the signoff bookkeeping tree, so review, plan, state, and decision artifacts now align truthfully at retro-ready status.
+3. Remaining work is explicitly non-blocking carry-forward only: `T041`/`T054` are deferred to Iteration 002, and `T042`/`T053` stay human follow-up post-merge.
+
+## Carry-Forward
+
+- `T041` and `T054` deferred to Iteration 002.
+- `T042` and `T053` remain human follow-up post-merge.
+
+## Next Move
+
+Stop at accepted pre-retro state and request explicit retro-boundary authorization before opening retrospective work.
+
+
+# User Directive: Feature 018 Final Pre-Rule-15 Polish
+
+**Date**: 2026-05-16  
+**By**: Alon Fliess  
+**Authority**: Feature 018 governance boundary  
+**Feature**: 018-velocity-dashboard-visual-richness  
+**Target**: R-018-V4 completion  
+
+## Directive
+
+This is the **FINAL pre-Rule-15 polish** for Feature 018. After R-018-V4 lands and verifies cleanly:
+
+1. **No additional polish items** shall be proposed after R-018-V4 lands.
+2. **Next valid step** is feature-closeout authorization.
+3. **Deferred items remain deferred** and do not block v0.18.0 ship.
+
+## Rationale
+
+- R-018-V4 represents the completion of bounded, focused polish within this iteration.
+- Further polish work must await explicit feature-closeout authorization.
+- Shipping v0.18.0 does not require resolution of deferred cosmetic or advanced items.
+
+## Acceptance Criteria
+
+- R-018-V4 applies cleanly and verifies without regression across all test lanes.
+- No new polish proposals emerge between R-018-V4 verification and feature-closeout authorization.
+- Feature-closeout governance proceeds only after explicit separate authorization.
+
+## Next Move
+
+Upon R-018-V4 verification success, await explicit feature-closeout authorization before proceeding to closeout boundary.
+
+
+---
+
+### 2026-05-17T07:19:22Z: Delegated lifecycle runtime evidence
+**By:** Squad (Coordinator)
+**Role / Work Item:** Implementer — Feature 019 Iteration 002 R-019-V2-R14 bounded micro-repair cycle
+**Requested Agent:** copilot
+**Actual Agent:** copilot
+**Model ID:** claude-sonnet-4.5
+**Status:** honored
+**Fallback Reason:** none
+
+## 2026-05-17T12:18:09Z — Delegated routing plan
+
+- **Enabled Agents**: copilot
+- **Independent Oversight Active**: False
+- **Roles**:
+  - Implementer | requested=copilot | actual=copilot | model=(platform default) | status=honored | fallback=(none)
+  - Spec Steward | requested=codex | actual=copilot | model=(platform default) | status=fell-back | fallback=preferred agent 'codex' is not enabled
+  - Planner | requested=claude | actual=copilot | model=(platform default) | status=fell-back | fallback=preferred agent 'claude' is not enabled
+  - Reviewer | requested=claude | actual=copilot | model=(platform default) | status=fell-back | fallback=preferred agent 'claude' is not enabled
+  - Retro Facilitator | requested=copilot | actual=copilot | model=(platform default) | status=honored | fallback=(none)
+
+## 2026-05-17T12:18:09Z — Routing evidence: Spec Steward
+
+- **Decision ID**: routing-evidence-25e07e9e8d20
+- **Type**: routing-evidence
+- **Affected Requirement**: FR-043
+- **Affected Iteration**: (none)
+- **Approving Human**: (none)
+- **Recorded At**: 2026-05-17T12:18:09Z
+- **Next Action**: none
+- **Rationale**: Delegated lifecycle routing was applied for role 'Spec Steward'.
+
+- **Routing Evidence**: Spec Steward | requested=codex | actual=copilot | model=(platform default) | status=fell-back | fallback=preferred agent 'codex' is not enabled
+
+## 2026-05-17T12:18:09Z — Routing evidence: Planner
+
+- **Decision ID**: routing-evidence-bbb31d31e85f
+- **Type**: routing-evidence
+- **Affected Requirement**: FR-043
+- **Affected Iteration**: (none)
+- **Approving Human**: (none)
+- **Recorded At**: 2026-05-17T12:18:09Z
+- **Next Action**: none
+- **Rationale**: Delegated lifecycle routing was applied for role 'Planner'.
+
+- **Routing Evidence**: Planner | requested=claude | actual=copilot | model=(platform default) | status=fell-back | fallback=preferred agent 'claude' is not enabled
+
+## 2026-05-17T12:18:10Z — Routing evidence: Reviewer
+
+- **Decision ID**: routing-evidence-57fdc6f471f2
+- **Type**: routing-evidence
+- **Affected Requirement**: FR-043
+- **Affected Iteration**: (none)
+- **Approving Human**: (none)
+- **Recorded At**: 2026-05-17T12:18:10Z
+- **Next Action**: none
+- **Rationale**: Delegated lifecycle routing was applied for role 'Reviewer'.
+
+- **Routing Evidence**: Reviewer | requested=claude | actual=copilot | model=(platform default) | status=fell-back | fallback=preferred agent 'claude' is not enabled
+
+## 2026-05-17T13:52:40Z — Delegated routing plan
+
+- **Enabled Agents**: copilot
+- **Independent Oversight Active**: False
+- **Roles**:
+  - Implementer | requested=copilot | actual=copilot | model=(platform default) | status=honored | fallback=(none)
+  - Spec Steward | requested=codex | actual=copilot | model=(platform default) | status=fell-back | fallback=preferred agent 'codex' is not enabled
+  - Planner | requested=claude | actual=copilot | model=(platform default) | status=fell-back | fallback=preferred agent 'claude' is not enabled
+  - Reviewer | requested=claude | actual=copilot | model=(platform default) | status=fell-back | fallback=preferred agent 'claude' is not enabled
+  - Retro Facilitator | requested=copilot | actual=copilot | model=(platform default) | status=honored | fallback=(none)
+
+## 2026-05-17T13:52:40Z — Routing evidence: Spec Steward
+
+- **Decision ID**: routing-evidence-bb5c4c3a6742
+- **Type**: routing-evidence
+- **Affected Requirement**: FR-043
+- **Affected Iteration**: (none)
+- **Approving Human**: (none)
+- **Recorded At**: 2026-05-17T13:52:40Z
+- **Next Action**: none
+- **Rationale**: Delegated lifecycle routing was applied for role 'Spec Steward'.
+
+- **Routing Evidence**: Spec Steward | requested=codex | actual=copilot | model=(platform default) | status=fell-back | fallback=preferred agent 'codex' is not enabled
+
+## 2026-05-17T13:52:41Z — Routing evidence: Planner
+
+- **Decision ID**: routing-evidence-3274e198d9e1
+- **Type**: routing-evidence
+- **Affected Requirement**: FR-043
+- **Affected Iteration**: (none)
+- **Approving Human**: (none)
+- **Recorded At**: 2026-05-17T13:52:41Z
+- **Next Action**: none
+- **Rationale**: Delegated lifecycle routing was applied for role 'Planner'.
+
+- **Routing Evidence**: Planner | requested=claude | actual=copilot | model=(platform default) | status=fell-back | fallback=preferred agent 'claude' is not enabled
+
+## 2026-05-17T13:52:41Z — Routing evidence: Reviewer
+
+- **Decision ID**: routing-evidence-8b00f08db2d6
+- **Type**: routing-evidence
+- **Affected Requirement**: FR-043
+- **Affected Iteration**: (none)
+- **Approving Human**: (none)
+- **Recorded At**: 2026-05-17T13:52:41Z
+- **Next Action**: none
+- **Rationale**: Delegated lifecycle routing was applied for role 'Reviewer'.
+
+- **Routing Evidence**: Reviewer | requested=claude | actual=copilot | model=(platform default) | status=fell-back | fallback=preferred agent 'claude' is not enabled
+
+## 2026-05-17T14:10:35Z — Runtime evidence: Feature 019 Iteration 002 bounded micro-repair
+
+- **Decision ID**: runtime-evidence-f019-i002-repair
+- **Type**: runtime-evidence
+- **Work Item**: Feature 019 Iteration 002 bounded micro-repair for GAP-B2-001, GAP-B2-002, GAP-B2-003 before review-verdict-signoff
+- **Affected Iteration**: 002
+- **Recorded At**: 2026-05-17T14:10:35Z
+- **Routing Evidence**: Implementer | requested=Implementer | actual=Implementer | model=claude-sonnet-4.5 | status=honored | fallback=(none)
+- **Rationale**: Delegated bounded repair cycle was requested and assigned to Implementer role for targeted micro-repairs on the three identified gaps before proceeding to review-verdict-signoff boundary.
+
+## 2026-05-17T14:15:30Z — Runtime evidence: Feature 019 Iteration 002 retrospective finalization
+- **Decision ID**: runtime-evidence-f019-i002-retro
+- **Type**: runtime-evidence
+- **Work Item**: Feature 019 Iteration 002 retrospective finalization after accepted review-verdict-signoff
+- **Affected Iteration**: 002
+- **Recorded At**: 2026-05-17T14:15:30Z
+- **Routing Evidence**: Retro Facilitator | requested=Retro Facilitator | actual=Retro Facilitator | model=claude-haiku-4.5 | status=honored | fallback=(none)
+- **Rationale**: Delegated retro spawn for Iteration 002 was completed after review-verdict-signoff was accepted. The retrospective boundary commit is 492bb09.
+
+## 2026-05-18T23:59:59Z — Boundary: Feature 019 Iteration 002 iteration-closeout-completion
+
+- **Decision ID**: boundary-f019-i002-iteration-closeout-completion
+- **Type**: boundary-event
+- **Boundary**: iteration-closeout-completion (Boundary 5)
+- **Feature**: 019-specrew-distribution-module
+- **Iteration**: 002
+- **Closer**: Spec Steward
+- **Closed At**: 2026-05-18T23:59:59Z
+- **Closeout Commit**: dd234d1 (Authorize Iteration 002 closeout for Feature 019, HEAD)
+- **Baseline Commit**: 2992fbc (Iteration 001 closeout reconciliation)
+
+### Delivery Summary
+
+- **Story Points**: 8 SP planned = 8 SP delivered (100% accuracy)
+- **Tasks Complete**: T041 (Join-Path, 3 SP), T054 (Cross-platform parity, 3 SP), T060 (Publish workflow, 1 SP), T061 (Documentation, 1 SP)
+- **Review Verdict**: READY-FOR-SIGNOFF (Boundary 2 authorized review, commit 7b08dfd)
+- **Signoff Authority**: Alon Fliess (human accept)
+- **Repair Cycle**: R-019-V2-R1 through R-019-V2-R22 (22 sub-iterations) — resolved via deferred-launch coordination (R21, commit 72d3b51) + cleanup (R22, commit 6fa14d6)
+- **Cross-Platform Validation**: Windows 11 verified (integration tests); WSL Ubuntu verified (human end-to-end 2026-05-18); macOS CI configured
+- **Drift Resolution**: 2 events (both resolved) — pre-signoff gap closure (GAP-B2-001/002/003) and R-019-V2 TTY issue repair
+- **Governance Validator**: iterations/002 passes; pre-existing Iteration 001 hardening-gate over-claim noted as feature-level cleanup deferred to feature-closeout
+
+### Closeout Artifact
+
+Generated: specs/019-specrew-distribution-module/iterations/002/closeout.md
+
+### Carry-Forward Items
+
+- T042 (GitHub Actions secrets) — human follow-up post-merge
+- T053 (first live PSGallery publish) — human follow-up post-merge  
+- Pre-existing Iteration 001 hardening-gate over-claim — deferred to feature-closeout (Boundary 6)
+- Corpus improvement candidates (5 lessons from retro) — deferred to quality steward decision
+
+### Next Boundary
+
+Boundary 6 — Feature Closeout (not started; requires human authorization from Boundary 5 completion)
+
+- **Status**: CLOSED
+- **Authority**: Spec Steward (iteration-closeout-completion authorization)
+- **Artifact**: closeout.md
+
+## 2026-05-17T16:16:11Z — Delegated routing plan
+
+- **Enabled Agents**: copilot
+- **Independent Oversight Active**: False
+- **Roles**:
+  - Implementer | requested=copilot | actual=copilot | model=(platform default) | status=honored | fallback=(none)
+  - Spec Steward | requested=codex | actual=copilot | model=(platform default) | status=fell-back | fallback=preferred agent 'codex' is not enabled
+  - Planner | requested=claude | actual=copilot | model=(platform default) | status=fell-back | fallback=preferred agent 'claude' is not enabled
+  - Reviewer | requested=claude | actual=copilot | model=(platform default) | status=fell-back | fallback=preferred agent 'claude' is not enabled
+  - Retro Facilitator | requested=copilot | actual=copilot | model=(platform default) | status=honored | fallback=(none)
+
+## 2026-05-17T16:16:11Z — Routing evidence: Spec Steward
+
+- **Decision ID**: routing-evidence-ef7f054c6197
+- **Type**: routing-evidence
+- **Affected Requirement**: FR-043
+- **Affected Iteration**: (none)
+- **Approving Human**: (none)
+- **Recorded At**: 2026-05-17T16:16:11Z
+- **Next Action**: none
+- **Rationale**: Delegated lifecycle routing was applied for role 'Spec Steward'.
+
+- **Routing Evidence**: Spec Steward | requested=codex | actual=copilot | model=(platform default) | status=fell-back | fallback=preferred agent 'codex' is not enabled
+
+## 2026-05-17T16:16:11Z — Routing evidence: Planner
+
+- **Decision ID**: routing-evidence-8e030a262390
+- **Type**: routing-evidence
+- **Affected Requirement**: FR-043
+- **Affected Iteration**: (none)
+- **Approving Human**: (none)
+- **Recorded At**: 2026-05-17T16:16:11Z
+- **Next Action**: none
+- **Rationale**: Delegated lifecycle routing was applied for role 'Planner'.
+
+- **Routing Evidence**: Planner | requested=claude | actual=copilot | model=(platform default) | status=fell-back | fallback=preferred agent 'claude' is not enabled
+
+## 2026-05-17T16:16:11Z — Routing evidence: Reviewer
+
+- **Decision ID**: routing-evidence-3424a3a4cde3
+- **Type**: routing-evidence
+- **Affected Requirement**: FR-043
+- **Affected Iteration**: (none)
+- **Approving Human**: (none)
+- **Recorded At**: 2026-05-17T16:16:11Z
+- **Next Action**: none
+- **Rationale**: Delegated lifecycle routing was applied for role 'Reviewer'.
+
+- **Routing Evidence**: Reviewer | requested=claude | actual=copilot | model=(platform default) | status=fell-back | fallback=preferred agent 'claude' is not enabled
+
+---
+
+## Decision: retro-facilitator-f019-iter002.md
+
+
+# Decision: Feature 019 Iteration 002 Retrospective — Process Learnings
+
+**Date**: 2026-05-18  
+**Facilitator**: Retro Facilitator  
+**Feature**: 019-specrew-distribution-module  
+**Iteration**: 002  
+**Iteration Outcome**: DELIVERED (8 SP at 100% accuracy); Repair Chain: 22 sub-iterations resolved to 5-line fix  
+**Status**: FINALIZED
+
+---
+
+## Learnings Approved for Corpus
+
+The following five lessons from Iteration 002 are approved for inclusion in `.specrew/quality/known-traps.md` (exact corpus row numbering and ordering delegated to Quality Steward):
+
+### L1: Diagnostic Discipline for Cross-Platform Behavioral Issues
+
+**Severity**: High — asymmetry between diagnosis effort and fix complexity
+
+**Evidence**: R-019-V2-R1 through R-019-V2-R22 repair chain (22 sub-iterations to isolate root cause; 5-line fix thereafter).
+
+**Corpus Candidate**: "Before iterating on platform-conditional workarounds for cross-platform behavioral issues, run a minimal-variable diagnostic test on a base Linux environment (e.g., `function F { & nano }; F` for TTY preservation). This 30-second test can eliminate 14+ sub-iteration searches. Diagnostic examples: function-vs-script-body invocation, TTY preservation, I/O buffering, signal propagation."
+
+**Impact**: Applies to future cross-platform features (e.g., Feature 020+) where Linux platform differences are suspected.
+
+---
+
+### L2: Form-vs-Meaning Recurrence in Symptom-Chasing
+
+**Severity**: Medium — observable but not unique to this iteration
+
+**Evidence**: R10-R20 chased symptom shapes (flag permutations, bash wrappers, prompt content) while the actual root cause was at the invocation-context layer.
+
+**Corpus Candidate**: Extend the existing form-vs-meaning corpus row with this iteration's specific example: "Platform-conditional launch flags are a common form-vs-meaning trap. When debugging cross-platform issues, invert assumptions: instead of 'does adding `--mode interactive` fix it on Windows?', ask 'what is the platform-independent root cause?' The answer is often at a different architectural layer (process context, invocation site, I/O handler) than the symptoms suggest."
+
+**Impact**: Reinforces prior corpus guidance (Feature 006); applies to all future debugging work.
+
+---
+
+### L3: Cross-Platform Sweep Scope Partitioning
+
+**Severity**: Medium — scope was Windows-first; second pass discovered cross-platform gaps
+
+**Evidence**: T041 (Join-Path audit) completed syntactic path-hardening but did not discover the behavioral TTY-propagation divergence (found later during WSL end-to-end verification).
+
+**Corpus Candidate**: "When scoping cross-platform validation features, explicitly partition scope into (1) syntactic/mechanical audits (path delimiters, string escaping) and (2) behavioral audits (I/O handling, signal propagation, process context). Create separate test evidence for each partition. Mechanical audits alone may appear complete while behavioral gaps remain. Include explicit behavioral-divergence test patterns (function-vs-script-body invocation, TTY preservation, process-local state) in the pre-scope checklist."
+
+**Impact**: Applies to future cross-platform hardening features (Feature 020+).
+
+---
+
+### L4: Deferred-Launch Pattern Reusability
+
+**Severity**: Low — positive outcome, reusable pattern identified
+
+**Evidence**: R-019-V2-R21 (commit 72d3b51) solves the cross-platform TTY issue via env-var-pointed temp file coordination between script-body and function-body contexts.
+
+**Corpus Candidate**: "Reusable pattern: script-context-to-function-context handoff via env-var-pointed temp file. When a script needs to launch an interactive child process from script context on Linux (where TTY is stripped), write launch args to a temp file path pointed by an env var, then invoke the child from within a function body (where TTY is preserved). Code template: (1) `$env:SPECREW_DEFERRED_LAUNCH_FILE = $tempFile; & code-from-script; & read-and-exec-from-function-body`. This pattern is applicable to any Specrew command that launches interactive processes."
+
+**Impact**: Reusable in Feature 020+ when adding interactive CLI workflows.
+
+---
+
+### L5: Cost of the Repair Chase — Effort Asymmetry
+
+**Severity**: Medium — consumed unplanned effort; prompted review of iteration authorization
+
+**Evidence**: 22 sub-iterations × 1-2 Premium requests each → ~5-line actual fix; driven by lack of diagnostic discipline upfront.
+
+**Corpus Candidate**: "Repair-chase depth threshold: When a wrong-direction iteration chain exceeds 5 sub-iterations without root-cause isolation, pause and run a minimal-variable diagnostic test on a base environment before continuing to hypothesize workarounds. This pattern converts a 22-iteration search into a 1-iteration diagnostic + 1-iteration fix. Cost-benefit: diagnostic upfront saves 20 iterations and proportional token budget. Integrate this as a 'stop and diagnose' checkpoint in future iteration authorization language."
+
+**Impact**: Informs Feature 013 Validator Hardening work (future repair-chase detection) and Feature 021+ iteration authorization improvements.
+
+---
+
+## Process Discipline — What Went Well
+
+✅ **Permissive Autonomous Run Discipline**: The iteration was authorized with explicit stop conditions (test/validator failures, token budget >$80, unanswered design questions). The autonomous run honored all stop conditions and paused at the human-judgment boundary (review-verdict-signoff). No overcommit.
+
+✅ **Cross-Platform Repair Tracking**: All 22 sub-iterations were recorded in drift-log.md with clear classification (wrong-direction vs. load-bearing vs. actual fix). This enabled efficient R22 cleanup and prevented regressing legitimate fixes (R2-R9, R14, R18-R19, R21).
+
+✅ **Evidence-Driven Review**: The review process used concrete test evidence (Windows 11 and WSL Ubuntu end-to-end verification by Alon Fliess) to accept the repair chain and confirm acceptance criteria.
+
+✅ **Functional Completeness**: All four planned tasks (T041, T054, T060, T061) delivered 100% of planned functionality; repair chain did not introduce scope creep or feature expansion.
+
+---
+
+## Process Friction — What Didn't Go Well
+
+❌ **Diagnostic Discipline Upfront**: The 22-iteration repair chase could have been prevented by running a single `function F { & nano }; F` diagnostic test before hypothesizing platform-conditional workarounds. This is a methodological gap, not an execution failure.
+
+❌ **Cross-Platform Scope Definition**: T041 was scoped as a mechanical path-hardening audit and did not include behavioral-divergence testing. The TTY propagation issue was discovered in review, not during scope execution. Future cross-platform features should partition scope explicitly.
+
+---
+
+## Out of Scope (Per Human Instruction)
+
+**Iteration 001 Hardening-Gate Over-Claim**: The pre-existing Iteration 001 issue is deferred to feature-closeout cleanup and is NOT treated as a blocker here. This retro focuses on Iteration 002 process learnings only.
+
+---
+
+## Governance Validation Status
+
+**Baseline**: Iteration 002 governance validation produces expected warnings only:
+- Roadmap drift for Phase 1 and Phase 2 (pre-existing, not caused by this iteration)
+- Missing dashboard.md artifacts for Iteration 001 and 002 (deferred per prior planning)
+
+**Result**: No new blockers introduced by Iteration 002 retro. Repository governance state remains consistent with prior baseline.
+
+---
+
+## Recommendations for Next Iteration
+
+### Immediate (Feature 019 Iteration 003 or subsequent)
+
+1. **Diagnostic Discipline Checklist**: Create a pre-iteration checkpoint for cross-platform behavioral issues that requires a minimal-variable diagnostic test before hypothesizing platform-conditional workarounds.
+
+2. **Corpus Expansion**: Add 5 new rows to `.specrew/quality/known-traps.md` covering diagnostic discipline, form-vs-meaning in symptom-chasing, cross-platform sweep partitioning, deferred-launch pattern, and repair-chase depth limits.
+
+### Future Planning
+
+3. **Behavioral-Divergence Test Coverage**: When scoping cross-platform validation features, explicitly partition scope into syntactic and behavioral audits; create separate test evidence for each.
+
+4. **Deferred-Launch Pattern Documentation**: Document the reusable script-to-function-body handoff pattern in the quality corpus for adoption in other Specrew interactive commands.
+
+5. **Repair-Chase Depth Limits**: Extend iteration authorization language to include stop conditions for repair chains that exceed diagnostic thresholds (e.g., 5+ sub-iterations without root cause isolation).
+
+---
+
+## Approved Action Items
+
+- **Quality Steward**: Review the five corpus candidates and add them to `.specrew/quality/known-traps.md` with appropriate ordering and integration into existing rows (especially L2 extension).
+- **Feature 019 Closeout Coordinator**: Preserve these learnings for any future Feature 019 iterations or related cross-platform work.
+- **Future Iteration Planners**: Reference these corpus rows when scoping cross-platform features to prevent repeat of diagnostic discipline gaps.
+
+---
+
+**Decision Finalized**: 2026-05-18  
+**Next Step**: Route to Quality Steward for corpus integration; archive to `.squad/decisions/` after approval
+
+---
+
+## Decision: reviewer-f019-iter2-review.md
+
+
+# Reviewer Decision: Feature 019 Iteration 002 Boundary 2 Review
+
+**Date**: 2026-05-18  
+**Boundary**: Boundary 2 — /review for Feature 019 Iteration 002  
+**Feature**: 019-specrew-distribution-module  
+**Iteration**: 002  
+**Authority**: Alon Fliess (authorization: "AUTHORIZE Boundary 2 — /review for Feature 019 Iteration 002")  
+**Review Commit**: 7b08dfd (HEAD)
+
+## Verdict
+
+**READY-FOR-SIGNOFF**
+
+## Summary
+
+All four Iteration 002 tasks (T041, T054, T060, T061) are complete and correctly implemented. R21 deferred-launch fix is present and minimal (~5 lines). R22 cleanup is confirmed complete — zero wrong-direction artifacts from R10–R20 remain in the codebase. Cross-platform parity confirmed by Alon Fliess (Windows 11 + WSL Ubuntu native ext4, 2026-05-18). All Windows integration tests pass (exit code 0). Governance validator passes.
+
+## Traceability
+
+- T041 → FR-030: ✅ 38 patterns hardened, 6 remaining scripts verified clean, `.specify` mirror synced
+- T054 → SC-006/US5: ✅ CI matrix created, WSL Ubuntu end-to-end human-verified 2026-05-18
+- T060 → FR-026 (gate removal): ✅ Manual gate removed, auto-fires on `v*.*` tag push
+- T061 → US5 docs: ✅ README + getting-started.md evidence-driven updates
+
+## Gaps Found (carry-forward, non-blocking)
+
+| ID | Description | Action |
+| --- | --- | --- |
+| GAP-B2-001 | `tests/integration/start-command.ps1` line 333 expects `prompt-approvals` on non-Windows but R22 restored uniform `allow-all`. Would fail on Linux with Copilot CLI installed. | Fix before claiming green CI on Linux |
+| GAP-B2-002 | `test-evidence/us5-cross-platform.md` AS3 acceptance table still shows WSL as "⏳ Pending manual" despite header declaring "Fully verified". | Cosmetic back-update sweep |
+| GAP-B2-003 | plan.md T060 traces to FR-025 (self-signing); actual scope satisfies FR-026 (fires on tag push). | Trivial label correction |
+
+## Next Actions
+
+1. Human sign-off by Alon Fliess to complete acceptance.
+2. GAP-B2-001 mechanical fix (update line 333 assertion from platform-conditional to uniform `allow-all`) to be done before iteration closeout or in retro.
+3. GAP-B2-002 and GAP-B2-003 are cosmetic; may be deferred to retro or closeout sweep.
+4. After sign-off: retro, then iteration closeout. T042 and T053 remain human post-merge follow-up.
+
+---
+
+## Decision: spec-steward-f019-iter2-boundary1.md
+
+
+---
+date: 2026-05-18T00:00:00Z
+from: Spec Steward
+subject: F-019 Iteration 002 Boundary 1 Completion — Governance Artifact Scaffold Decisions
+---
+
+# Decision: F-019 Iteration 002 Boundary 1 Completion
+
+## Summary
+
+Feature 019 (Specrew Distribution Module) Iteration 002 Boundary 1 (governance artifacts scaffold) completed on commit e96180d. Core work: hardening-gate deduplication, cross-platform evidence finalization (R15-R22 repair chain), and retro.md scaffold creation to unblock validator.
+
+## Decisions Made
+
+### D1: Retro.md Scaffolding for Validator Unblocking
+
+**Decision**: Create iterations/002/retro.md as a mechanically scaffolded artifact (not stub) to satisfy governance validator requirements, capturing learnings extracted from drift-log.md and review.md without requiring human retro facilitation upfront.
+
+**Rationale**: 
+- Validator fails if retro.md is missing (required artifact)
+- Human retro facilitation is Boundary 2 work, deferred per user instruction
+- Extraction of learnings from existing drift-log.md and review.md is mechanical and does not require human facilitation
+- Artifact explicitly marked as "pending full facilitation" to indicate lifecycle phase boundary
+
+**Acceptance**: Validator passes (PASS) for F-019 Iteration 002 with non-blocking warnings (pre-existing roadmap drift, missing dashboard artifacts for closed iterations).
+
+### D2: Hardening-Gate Deduplication
+
+**Decision**: Remove duplicate "Post-Implementation Verification Evidence" section from quality/hardening-gate.md while preserving all evidence (kept first section with full Windows 11 + WSL Ubuntu verification trail).
+
+**Rationale**: Artifact contained identical section twice (lines 27-54 and 67-93); removing one instance preserves all evidence while improving readability.
+
+### D3: Cross-Platform Evidence Finalization
+
+**Decision**: Append R-019-V2-R15 through R22 evidence and verb-conformance fix to test-evidence/us5-cross-platform.md, documenting:
+- Wrong-direction repairs (R15/R16, R17, R20) with reverted-by classification
+- Load-bearing repairs (R18/R19, R21)
+- Cleanup phase (R22)
+- Verb-conformance fix (commit 7b08dfd)
+
+**Rationale**: Test evidence previously covered R1-R14; appending R15-R22 completes the repair chain narrative and provides audit trail for understanding fix evolution.
+
+## Process Notes
+
+**Boundary Classification**: All work remains within Boundary 1 (governance artifacts update). Boundary 2 (retro facilitation, iteration closeout) deferred per user instruction.
+
+**Validator Status**: F-019 Iteration 002 passes governance validation after artifact updates.
+
+**Commit**: e96180d pushed to origin/019-specrew-distribution-module
+
+## Next Steps
+
+Boundary 2 (retro facilitation, iteration closeout) awaits explicit human authorization per Feature 016 boundary discipline.
+
+---
+
+## Decision: spec-steward-f019-runtime-evidence.md
+
+
+---
+date: 2026-05-18T00:00:00Z
+from: Spec Steward
+subject: F-019 Iteration 002 Boundary 1 — Delegated Work Summary
+---
+
+# Runtime Evidence: F-019 Iteration 002 Boundary 1 Delegated Routing
+
+## Work Item
+
+**Feature**: 019-specrew-distribution-module  
+**Iteration**: 002  
+**Boundary**: Boundary 1 (governance artifacts scaffold)  
+**Assigned Role**: Spec Steward (autonomous governance artifact update)
+
+## Execution
+
+**Requested Work**: RESUME F-019 Iteration 002 closeout. Execute Boundary 1 only. Update or create missing governance artifacts.
+
+**Actual Agent**: Spec Steward (self)  
+**Model Used**: claude-haiku-4.5  
+**Assignment Honored**: Yes — Boundary 1 work completed as requested, no Boundary 2 work attempted
+
+## Deliverables
+
+### Completed Artifacts
+
+1. **quality/hardening-gate.md** (updated)
+   - Removed duplicate Post-Implementation Verification Evidence section
+   - Preserved complete evidence trail: Windows 11 + WSL Ubuntu verification, commit trail, verdict rationale
+   - Validator: PASS
+
+2. **test-evidence/us5-cross-platform.md** (updated)
+   - Appended R-019-V2-R15 through R22 evidence
+   - Documented wrong-direction repairs (R15/R16, R17, R20) with reverted-by classification
+   - Documented load-bearing repairs (R18/R19, R21)
+   - Added cleanup phase (R22) and verb-conformance fix (commit 7b08dfd) documentation
+   - Total evidence entries: 319 → 431 lines
+   - Validator: PASS
+
+3. **iterations/002/retro.md** (created)
+   - Mechanically scaffolded artifact capturing learnings from drift-log.md and review.md
+   - Includes: Summary, Key Learnings (L1-L5), Estimation Accuracy, Drift Summary, Improvement Actions, Process Notes
+   - Marked as "pending full facilitation" for Boundary 2
+   - Validator: PASS
+
+### Validator Results
+
+```
+PASS C:\Dev\Specrew\specs\019-specrew-distribution-module\iterations\002
+WARN [dashboard] roadmap-drift: Phase 1/2 shipped effort exceeds plan (pre-existing)
+WARN [dashboard] missing-dashboard-artifact: Closed iteration missing dashboard.md (pre-existing)
+```
+
+**Blocking Issues**: None  
+**Non-Blocking Warnings**: Pre-existing (not introduced by Boundary 1 work)
+
+## Commit Trail
+
+- **Commit**: e96180d
+- **Message**: F-019 Iteration 002 Boundary 1 governance artifacts: hardening-gate cleanup, retro scaffold, cross-platform evidence finalization
+- **Branch**: origin/019-specrew-distribution-module
+- **Status**: Pushed ✅
+
+## Scope Boundaries
+
+**Boundary 1 (Completed)**:
+- ✅ Governance artifact updates (hardening-gate, drift-log, review, test-evidence)
+- ✅ Retro.md scaffold
+- ✅ Validator passing
+
+**Boundary 2 (Deferred)**:
+- ❌ Full retro facilitation
+- ❌ Iteration closeout
+- ❌ Feature closeout
+- ❌ Version bump
+- ❌ PR creation
+- ❌ Code changes
+
+**Preservation**: No unrelated local changes were modified; .squad/decisions.md preserved.
+
+## Decision Artifacts Created
+
+1. `.squad/decisions/inbox/spec-steward-f019-iter2-boundary1.md` — Boundary 1 decisions (retro scaffolding, hardening-gate deduplication, evidence finalization)
+2. `.squad/decisions/inbox/spec-steward-f019-runtime-evidence.md` — This artifact
+
+## Learnings Appended
+
+Updated `.squad/agents/spec-steward/history.md` with 2026-05-18 pattern entry: Feature 019 Iteration 002 Boundary 1 Governance Artifact Scaffold and Diagnostic Discipline.
+
+Key learnings:
+1. Diagnostic discipline for cross-platform behavioral issues (22:1 iteration:fix asymmetry)
+2. Form-vs-meaning recurrence in symptom-chasing
+3. Cross-platform sweep scope partitioning
+4. Deferred-launch pattern reusability
+5. Governance artifact scaffolding and validator coupling

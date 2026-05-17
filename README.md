@@ -1,7 +1,7 @@
 # Specrew
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![Version](https://img.shields.io/badge/version-0.18.0-blue.svg)](.specrew/config.yml)
+[![Version](https://img.shields.io/badge/version-0.19.0-blue.svg)](.specrew/config.yml)
 [![Status: Alpha](https://img.shields.io/badge/status-alpha-orange.svg)](#current-state)
 
 Specrew combines Spec Kit and Squad into a spec-governed operating model for
@@ -9,12 +9,12 @@ AI-assisted software delivery.
 
 ## Current State
 
-- Public shipped baseline: **0.18.0**, backed by 18 implementing features
+- Public shipped baseline: **0.19.0**, backed by 19 implementing features
 - Alpha software, validated through dogfooding in this repository
 - Built today for a single developer running on a single host
 - Not yet ready for multi-developer coordination or multi-host operation
 - Release truth now has public-facing surfaces in `CHANGELOG.md`,
-  `docs\versioning.md`, and the `v0.15.0` / `v0.16.0` / `v0.17.0` / `v0.18.0` tags
+  `docs\versioning.md`, and the `v0.15.0` / `v0.16.0` / `v0.17.0` / `v0.18.0` / `v0.19.0` tags
 
 ## What's working
 
@@ -36,14 +36,27 @@ AI-assisted software delivery.
 - Optional delegated-agent routing can extend the Copilot-hosted baseline when
   Claude or Codex lanes are configured
 
+## Platform Support
+
+Specrew is developed and validated on **Windows 11** with PowerShell 7.x and runs on
+Linux/macOS via the same PowerShell module:
+
+- **Windows**: ✅ Fully validated (primary development platform)
+- **WSL (Ubuntu)**: ✅ Manually validated — `specrew init` + `specrew start` launch Copilot's interactive REPL with Squad selected
+- **Linux (Ubuntu)**: ✅ Path handling cross-platform; CI matrix configured
+- **macOS**: 🔧 Path handling cross-platform; CI matrix configured (no in-house validation runs yet)
+
+See `specs/019-specrew-distribution-module/test-evidence/us5-cross-platform.md` for
+detailed cross-platform validation status.
+
 ## What's NOT working yet
 
 - Multi-developer reconciliation is not yet a polished default workflow
 - Multi-host runtime support is not yet ready for public promises
 - Just-in-time brownfield cartography for arbitrary inherited repos is still a
   roadmap item
-- Installable packaging and a polished public CLI distribution are still
-  deferred
+- PowerShell Gallery module publication is in progress (workflow ready; secrets
+  pending)
 - External pull requests are not yet part of the alpha operating model
 
 ## Recommended Lifecycle
@@ -110,9 +123,9 @@ Specrew currently uses a merge-at-close rhythm:
 ## Versioning
 
 - `.specrew\config.yml` is the canonical source for the active version and now
-  declares **0.18.0**.
+  declares **0.19.0**.
 - Feature releases use `0.NN.0`, where `NN` tracks the shipped feature ordinal
-  (`0.18.0` = Feature 018).
+  (`0.19.0` = Feature 019).
 - `0.NN.M` is reserved for hotfixes against an existing shipped feature
   baseline.
 - See `docs\versioning.md` for the policy details and `CHANGELOG.md` for the

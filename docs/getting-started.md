@@ -4,10 +4,14 @@ Practical quickstart for running Specrew in a new repo (greenfield) and adding i
 
 ## Prerequisites
 
-- PowerShell (`pwsh`)
+- PowerShell 7.x (`pwsh`)
 - Git
 - `uv` (used to install Spec Kit if missing)
 - `npm` (used to install Squad if missing)
+
+**Platform Support**: Specrew is validated on Windows 11. Cross-platform hardening
+for Linux and macOS is in progress (path handling hardened; CI validation configured).
+See README.md for current platform validation status.
 
 ## Before You Begin: Getting the Specrew Bootstrap Script
 
@@ -199,7 +203,7 @@ projection to appear in the dashboard.
 
 The human developer should mainly answer only the unresolved questions Squad cannot safely answer from repo context or existing artifacts. If you start without a request, Squad should inspect current work, continue any in-progress feature, or ask the next intake question and wait for your answer before invoking `speckit.specify`. In a new brownfield repo, Squad should first mine existing code, manifests, docs, and recent git history to seed the starting spec and propose concrete specialist additions when the current team lacks obvious stack/domain expertise. Review and closure now also operate under a **no-gap policy**: if Specrew finds a known gap across spec, implementation, tests, docs, or observability, it should fix it in the current iteration or explicitly defer it with your approval and recorded evidence before claiming the run is complete.
 
-To reduce Copilot CLI blocking on tool prompts, Specrew launches Copilot from the target project directory, reuses the current terminal by default, and hands Copilot a compact bootstrap message that points it at `.specrew\last-start-prompt.md` and `.specrew\start-context.json` instead of pasting the full handoff prompt into the terminal. Intake-first runs stay out of autopilot until the request is grounded; once scope is grounded, Specrew can continue with `--allow-all` by default. Copilot may still ask you to trust the project directory on first launch. If you prefer Copilot's interactive approval prompts, use:
+To reduce Copilot CLI blocking on tool prompts, Specrew launches Copilot from the target project directory, reuses the current terminal by default, and auto-loads a compact bootstrap message via `-i` that points Copilot at `.specrew\last-start-prompt.md` and `.specrew\start-context.json`. Intake-first runs stay out of autopilot until the request is grounded; once scope is grounded, Specrew defaults to `--allow-all` to reduce approval blocking. Copilot may still ask you to trust the project directory on first launch. If you prefer Copilot's interactive approval prompts, use:
 
 ```powershell
 pwsh -File C:\Dev\Specrew\scripts\specrew.ps1 start --prompt-approvals

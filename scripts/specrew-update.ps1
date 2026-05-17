@@ -540,6 +540,407 @@ function Compare-VersionState {
     }
 }
 
+function Get-TemplateRefreshMappings {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$RootPath
+    )
+
+    return @(
+        [pscustomobject]@{
+            SourceRoot         = Join-Path -Path $RootPath -ChildPath '.specify\templates'
+            TargetRelativeRoot = '.specify\templates'
+            SourceLabelRoot    = '.specify/templates'
+        }
+        [pscustomobject]@{
+            SourceRoot         = Join-Path -Path $RootPath -ChildPath '.squad\templates'
+            TargetRelativeRoot = '.squad'
+            SourceLabelRoot    = '.squad/templates'
+        }
+        [pscustomobject]@{
+            SourceRoot         = Join-Path -Path $RootPath -ChildPath '.github\workflows'
+            TargetRelativeRoot = '.github\workflows'
+            SourceLabelRoot    = '.github/workflows'
+        }
+    )
+}
+
+function Get-TemplateInventory {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$RootPath,
+
+        [Parameter(Mandatory = $true)]
+        [string]$ProjectPath
+    )
+
+    $inventory = @{}
+    foreach ($mapping in @(Get-TemplateRefreshMappings -RootPath $RootPath)) {
+        if (-not (Test-Path -LiteralPath $mapping.SourceRoot -PathType Container)) {
+            continue
+        }
+
+        $files = @(Get-ChildItem -LiteralPath $mapping.SourceRoot -File -Recurse | Sort-Object FullName)
+        foreach ($file in $files) {
+            $relativeSourcePath = [System.IO.Path]::GetRelativePath($mapping.SourceRoot, $file.FullName)
+            $projectRelativePath = Join-Path -Path $mapping.TargetRelativeRoot -ChildPath $relativeSourcePath
+            $normalizedKey = $projectRelativePath.Replace('/', '\')
+            $inventory[$normalizedKey] = [pscustomobject]@{
+                SourcePath          = $file.FullName
+                RelativeSourcePath  = $relativeSourcePath.Replace('\', '/')
+                ProjectRelativePath = $normalizedKey
+                TargetPath          = Join-Path -Path $ProjectPath -ChildPath $projectRelativePath
+                SourceTemplatePath  = '{0}/{1}' -f $mapping.SourceLabelRoot.TrimEnd('/'), $relativeSourcePath.Replace('\', '/')
+            }
+        }
+    }
+
+    return $inventory
+}
+
+function Get-NullableFileContent {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Path
+    )
+
+    if (-not (Test-Path -LiteralPath $Path -PathType Leaf)) {
+        return $null
+    }
+
+    return Get-Content -LiteralPath $Path -Raw -Encoding UTF8
+}
+
+function Get-ContentHash {
+    param(
+        [AllowNull()]
+        [string]$Content
+    )
+
+    if ($null -eq $Content) {
+        return $null
+    }
+
+    $sha256 = [System.Security.Cryptography.SHA256]::Create()
+    try {
+        $bytes = [System.Text.UTF8Encoding]::new($false).GetBytes($Content)
+        return ([System.BitConverter]::ToString($sha256.ComputeHash($bytes))).Replace('-', '')
+    }
+    finally {
+        $sha256.Dispose()
+    }
+}
+
+function Resolve-PreviousSpecrewRoot {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$CurrentRoot,
+
+        [AllowNull()]
+        [string]$CurrentVersion,
+
+        [AllowNull()]
+        [string]$ProjectVersion
+    )
+
+    if ([string]::IsNullOrWhiteSpace($ProjectVersion)) {
+        return $null
+    }
+
+    if ($ProjectVersion -eq $CurrentVersion) {
+        return $CurrentRoot
+    }
+
+    $parentRoot = Split-Path -Parent $CurrentRoot
+    if ([string]::IsNullOrWhiteSpace($parentRoot)) {
+        return $null
+    }
+
+    $candidateRoot = Join-Path -Path $parentRoot -ChildPath $ProjectVersion
+    $candidateUpdateScript = Join-Path -Path $candidateRoot -ChildPath 'scripts\specrew-update.ps1'
+    if ((Test-Path -LiteralPath $candidateRoot -PathType Container) -and (Test-Path -LiteralPath $candidateUpdateScript -PathType Leaf)) {
+        return $candidateRoot
+    }
+
+    return $null
+}
+
+function Get-TemplateArtifactBaseName {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$ProjectRelativePath
+    )
+
+    $trimmed = $ProjectRelativePath.TrimStart('.', '\', '/')
+    $safeName = $trimmed -replace '[\\/:*?"<>|]+', '__'
+    $safeName = $safeName.Trim('_')
+    if ([string]::IsNullOrWhiteSpace($safeName)) {
+        return 'template-refresh'
+    }
+
+    return $safeName
+}
+
+function Ensure-ParentDirectory {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Path
+    )
+
+    $parent = Split-Path -Parent $Path
+    if (-not [string]::IsNullOrWhiteSpace($parent) -and -not (Test-Path -LiteralPath $parent -PathType Container)) {
+        $null = New-Item -ItemType Directory -Path $parent -Force
+    }
+}
+
+function Format-ConflictArtifactContent {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$UserContent,
+
+        [Parameter(Mandatory = $true)]
+        [string]$ModuleContent,
+
+        [Parameter(Mandatory = $true)]
+        [string]$PreservedAt,
+
+        [Parameter(Mandatory = $true)]
+        [string]$ModuleVersion,
+
+        [Parameter(Mandatory = $true)]
+        [string]$SourceTemplatePath
+    )
+
+    $builder = [System.Text.StringBuilder]::new()
+    $null = $builder.Append('<<<<<<< user-version (preserved at: ').Append($PreservedAt).Append(')').Append([Environment]::NewLine)
+    $null = $builder.Append($UserContent)
+    if (-not $UserContent.EndsWith("`n")) {
+        $null = $builder.Append([Environment]::NewLine)
+    }
+
+    $null = $builder.Append('=======').Append([Environment]::NewLine)
+    $null = $builder.Append($ModuleContent)
+    if (-not $ModuleContent.EndsWith("`n")) {
+        $null = $builder.Append([Environment]::NewLine)
+    }
+
+    $null = $builder.Append('>>>>>>> module-version (specrew_version: ').Append($ModuleVersion).Append(', source: ').Append($SourceTemplatePath).Append(')').Append([Environment]::NewLine)
+    return $builder.ToString()
+}
+
+function Format-DeletionArtifactContent {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$ProjectRelativePath,
+
+        [Parameter(Mandatory = $true)]
+        [string]$PreservedAt,
+
+        [Parameter(Mandatory = $true)]
+        [string]$PreviousVersion,
+
+        [Parameter(Mandatory = $true)]
+        [string]$CurrentVersion,
+
+        [Parameter(Mandatory = $true)]
+        [string]$SourceTemplatePath
+    )
+
+    return @(
+        '# Specrew template deletion review'
+        ''
+        ('preserved_at_utc: {0}' -f $PreservedAt)
+        ('template_path: {0}' -f $ProjectRelativePath)
+        ('previous_specrew_version: {0}' -f $PreviousVersion)
+        ('current_specrew_version: {0}' -f $CurrentVersion)
+        ('previous_source: {0}' -f $SourceTemplatePath)
+        'resolution: pending-manual-review'
+        ''
+        'The current Specrew module no longer ships this template.'
+        'Review the preserved project file and decide whether to keep it, archive it, or remove it manually.'
+    ) -join [Environment]::NewLine
+}
+
+function Get-TemplateChangeClassification {
+    param(
+        [AllowNull()]
+        [string]$BaselineContent,
+
+        [AllowNull()]
+        [string]$ProjectContent,
+
+        [AllowNull()]
+        [string]$CurrentContent,
+
+        [Parameter(Mandatory = $true)]
+        [string]$CurrentVersion,
+
+        [AllowNull()]
+        [string]$ProjectVersion
+    )
+
+    if ($null -eq $CurrentContent) {
+        return 'absent'
+    }
+
+    if ($null -eq $ProjectContent) {
+        if ($null -eq $BaselineContent) {
+            return 'new-template'
+        }
+
+        return 'module-only'
+    }
+
+    if ($null -eq $BaselineContent) {
+        if ($ProjectContent -eq $CurrentContent) {
+            return 'no-change'
+        }
+
+        if ($CurrentVersion -eq $ProjectVersion) {
+            return 'user-only'
+        }
+
+        return 'both-modified'
+    }
+
+    $userChanged = ($ProjectContent -ne $BaselineContent)
+    $moduleChanged = ($CurrentContent -ne $BaselineContent)
+
+    if (-not $userChanged -and -not $moduleChanged) {
+        return 'no-change'
+    }
+    if ($userChanged -and -not $moduleChanged) {
+        return 'user-only'
+    }
+    if (-not $userChanged -and $moduleChanged) {
+        return 'module-only'
+    }
+
+    return 'both-modified'
+}
+
+function Invoke-TemplateRefresh {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$ProjectPath,
+
+        [Parameter(Mandatory = $true)]
+        [string]$CurrentRoot,
+
+        [AllowNull()]
+        [string]$PreviousRoot,
+
+        [Parameter(Mandatory = $true)]
+        [string]$CurrentVersion,
+
+        [AllowNull()]
+        [string]$ProjectVersion
+    )
+
+    $actions = [System.Collections.ArrayList]::new()
+    $artifactRoot = Join-Path -Path $ProjectPath -ChildPath '.specrew\template-conflicts'
+    $currentInventory = Get-TemplateInventory -RootPath $CurrentRoot -ProjectPath $ProjectPath
+    $previousInventory = if ($PreviousRoot) {
+        Get-TemplateInventory -RootPath $PreviousRoot -ProjectPath $ProjectPath
+    }
+    else {
+        @{}
+    }
+
+    if ($PreviousRoot -or $currentVersion -eq $ProjectVersion) {
+        foreach ($projectRelativePath in @($currentInventory.Keys | Sort-Object)) {
+            $currentTemplate = $currentInventory[$projectRelativePath]
+            $previousTemplate = if ($previousInventory.ContainsKey($projectRelativePath)) { $previousInventory[$projectRelativePath] } else { $null }
+            $baselineContent = if ($null -ne $previousTemplate) { Get-NullableFileContent -Path $previousTemplate.SourcePath } else { $null }
+            $projectContent = Get-NullableFileContent -Path $currentTemplate.TargetPath
+            $currentContent = Get-NullableFileContent -Path $currentTemplate.SourcePath
+            $classification = Get-TemplateChangeClassification `
+                -BaselineContent $baselineContent `
+                -ProjectContent $projectContent `
+                -CurrentContent $currentContent `
+                -CurrentVersion $CurrentVersion `
+                -ProjectVersion $ProjectVersion
+
+            switch ($classification) {
+                'module-only' {
+                    Ensure-ParentDirectory -Path $currentTemplate.TargetPath
+                    Write-Utf8FileAtomic -Path $currentTemplate.TargetPath -Content $currentContent
+                    $null = $actions.Add([pscustomobject]@{
+                            Action   = 'template-updated'
+                            Detail   = $currentTemplate.ProjectRelativePath
+                            Template = $currentTemplate.ProjectRelativePath
+                        })
+                }
+                'new-template' {
+                    Ensure-ParentDirectory -Path $currentTemplate.TargetPath
+                    Write-Utf8FileAtomic -Path $currentTemplate.TargetPath -Content $currentContent
+                    $null = $actions.Add([pscustomobject]@{
+                            Action   = 'template-added'
+                            Detail   = $currentTemplate.ProjectRelativePath
+                            Template = $currentTemplate.ProjectRelativePath
+                        })
+                }
+                'both-modified' {
+                    $preservedAt = [DateTime]::UtcNow.ToString('yyyy-MM-ddTHH:mm:ssZ')
+                    $artifactBaseName = Get-TemplateArtifactBaseName -ProjectRelativePath $currentTemplate.ProjectRelativePath
+                    $artifactPath = Join-Path -Path $artifactRoot -ChildPath ('{0}.conflict' -f $artifactBaseName)
+                    $conflictContent = Format-ConflictArtifactContent `
+                        -UserContent $projectContent `
+                        -ModuleContent $currentContent `
+                        -PreservedAt $preservedAt `
+                        -ModuleVersion $CurrentVersion `
+                        -SourceTemplatePath $currentTemplate.SourceTemplatePath
+
+                    Write-Utf8FileAtomic -Path $artifactPath -Content $conflictContent
+                    Write-Utf8FileAtomic -Path $currentTemplate.TargetPath -Content $conflictContent
+                    $null = $actions.Add([pscustomobject]@{
+                            Action   = 'template-conflict'
+                            Detail   = ('{0} -> {1}' -f $currentTemplate.ProjectRelativePath, $artifactPath)
+                            Template = $currentTemplate.ProjectRelativePath
+                        })
+                }
+            }
+        }
+
+        foreach ($projectRelativePath in @($previousInventory.Keys | Sort-Object)) {
+            if ($currentInventory.ContainsKey($projectRelativePath)) {
+                continue
+            }
+
+            $previousTemplate = $previousInventory[$projectRelativePath]
+            if (-not (Test-Path -LiteralPath $previousTemplate.TargetPath -PathType Leaf)) {
+                continue
+            }
+
+            $preservedAt = [DateTime]::UtcNow.ToString('yyyy-MM-ddTHH:mm:ssZ')
+            $artifactBaseName = Get-TemplateArtifactBaseName -ProjectRelativePath $projectRelativePath
+            $artifactPath = Join-Path -Path $artifactRoot -ChildPath ('{0}.deletion' -f $artifactBaseName)
+            $artifactContent = Format-DeletionArtifactContent `
+                -ProjectRelativePath $projectRelativePath `
+                -PreservedAt $preservedAt `
+                -PreviousVersion $(if ($ProjectVersion) { $ProjectVersion } else { 'unknown' }) `
+                -CurrentVersion $CurrentVersion `
+                -SourceTemplatePath $previousTemplate.SourceTemplatePath
+
+            Write-Utf8FileAtomic -Path $artifactPath -Content $artifactContent
+            $null = $actions.Add([pscustomobject]@{
+                    Action   = 'template-deleted'
+                    Detail   = ('{0} -> {1}' -f $projectRelativePath, $artifactPath)
+                    Template = $projectRelativePath
+                })
+        }
+    }
+    else {
+        $null = $actions.Add([pscustomobject]@{
+                Action   = 'template-baseline-unavailable'
+                Detail   = ('Could not locate module version {0}; template refresh fell back to managed asset updates only.' -f $ProjectVersion)
+                Template = $null
+            })
+    }
+
+    return $actions
+}
+
 $parsedArgs = Convert-UnixStyleArguments `
     -ProjectPath $ProjectPath `
     -InfoMode $InfoMode.IsPresent `
@@ -664,6 +1065,25 @@ if ($InfoMode) {
 
 $summary = [System.Collections.ArrayList]::new()
 $installFailureMessage = $null
+$previousSpecrewRoot = Resolve-PreviousSpecrewRoot `
+    -CurrentRoot $repoRoot `
+    -CurrentVersion $sourceSpecrewVersion `
+    -ProjectVersion $currentSpecrewVersion
+
+if ($scopes -contains 'Specrew') {
+    $versionTransition = if ([string]::IsNullOrWhiteSpace($currentSpecrewVersion)) {
+        'not-recorded -> {0}' -f $sourceSpecrewVersion
+    }
+    else {
+        '{0} -> {1}' -f $currentSpecrewVersion, $sourceSpecrewVersion
+    }
+
+    $null = $summary.Add([pscustomobject]@{
+            Platform = 'Specrew'
+            Action   = 'module-version-detected'
+            Detail   = $versionTransition
+        })
+}
 
 if ($scopes -contains 'Specrew') {
     if (Test-Path -LiteralPath (Join-Path $resolvedProjectPath '.specify') -PathType Container) {
@@ -710,6 +1130,23 @@ if ($scopes -contains 'Specrew') {
                 Platform = 'Specrew'
                 Action   = 'skipped'
                 Detail   = '.squad is absent in this project'
+            })
+    }
+
+    $templateRefreshActions = @(
+        Invoke-TemplateRefresh `
+            -ProjectPath $resolvedProjectPath `
+            -CurrentRoot $repoRoot `
+            -PreviousRoot $previousSpecrewRoot `
+            -CurrentVersion $sourceSpecrewVersion `
+            -ProjectVersion $currentSpecrewVersion
+    )
+
+    foreach ($action in $templateRefreshActions) {
+        $null = $summary.Add([pscustomobject]@{
+                Platform = 'Specrew'
+                Action   = [string]$action.Action
+                Detail   = [string]$action.Detail
             })
     }
 }

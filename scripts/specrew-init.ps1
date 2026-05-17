@@ -58,6 +58,181 @@ function Test-ConsoleInputRedirected {
     }
 }
 
+function Test-PreFlightDependencies {
+    param(
+        [switch]$IncludeOptional
+    )
+
+    $missingDeps = @()
+    $outdatedDeps = @()
+
+    # PowerShell 7+
+    if ($PSVersionTable.PSVersion.Major -lt 7) {
+        $missingDeps += [pscustomobject]@{
+            Tool = 'PowerShell'
+            Current = "$($PSVersionTable.PSVersion)"
+            Required = '7.0+'
+            Platform = if ($IsWindows) { 'Windows' } elseif ($IsLinux) { 'Linux' } elseif ($IsMacOS) { 'macOS' } else { 'Unknown' }
+            InstallHint = if ($IsWindows) {
+                'Install from https://aka.ms/powershell-release?tag=stable or via winget: winget install Microsoft.PowerShell'
+            } elseif ($IsLinux) {
+                'Install via package manager or from https://aka.ms/powershell-release?tag=stable'
+            } elseif ($IsMacOS) {
+                'Install via Homebrew: brew install powershell'
+            } else {
+                'Install from https://aka.ms/powershell-release?tag=stable'
+            }
+        }
+    }
+
+    # uv (required for Spec Kit)
+    $uvCommand = Get-Command 'uv' -ErrorAction SilentlyContinue
+    if (-not $uvCommand) {
+        $missingDeps += [pscustomobject]@{
+            Tool = 'uv'
+            Current = 'not installed'
+            Required = 'any'
+            Platform = if ($IsWindows) { 'Windows' } elseif ($IsLinux) { 'Linux' } elseif ($IsMacOS) { 'macOS' } else { 'Unknown' }
+            InstallHint = if ($IsWindows) {
+                'Install via PowerShell: irm https://astral.sh/uv/install.ps1 | iex'
+            } elseif ($IsLinux -or $IsMacOS) {
+                'Install via shell: curl -LsSf https://astral.sh/uv/install.sh | sh'
+            } else {
+                'Install from https://docs.astral.sh/uv/getting-started/installation/'
+            }
+        }
+    }
+
+    # Node.js 24+
+    $nodeCommand = Get-Command 'node' -ErrorAction SilentlyContinue
+    if (-not $nodeCommand) {
+        $missingDeps += [pscustomobject]@{
+            Tool = 'Node.js'
+            Current = 'not installed'
+            Required = '24.0+'
+            Platform = if ($IsWindows) { 'Windows' } elseif ($IsLinux) { 'Linux' } elseif ($IsMacOS) { 'macOS' } else { 'Unknown' }
+            InstallHint = if ($IsWindows) {
+                'Install from https://nodejs.org/ or via winget: winget install OpenJS.NodeJS.LTS'
+            } elseif ($IsLinux) {
+                'Install via package manager or from https://nodejs.org/'
+            } elseif ($IsMacOS) {
+                'Install via Homebrew: brew install node'
+            } else {
+                'Install from https://nodejs.org/'
+            }
+        }
+    } else {
+        try {
+            $nodeVersion = & node --version 2>$null
+            if ($nodeVersion -match 'v(\d+)\.') {
+                $nodeMajor = [int]$Matches[1]
+                if ($nodeMajor -lt 24) {
+                    $outdatedDeps += [pscustomobject]@{
+                        Tool = 'Node.js'
+                        Current = $nodeVersion
+                        Required = '24.0+'
+                        Platform = if ($IsWindows) { 'Windows' } elseif ($IsLinux) { 'Linux' } elseif ($IsMacOS) { 'macOS' } else { 'Unknown' }
+                        InstallHint = 'Update from https://nodejs.org/'
+                    }
+                }
+            }
+        } catch {}
+    }
+
+    # npm 10+
+    $npmCommand = Get-Command 'npm' -ErrorAction SilentlyContinue
+    if (-not $npmCommand) {
+        $missingDeps += [pscustomobject]@{
+            Tool = 'npm'
+            Current = 'not installed'
+            Required = '10.0+'
+            Platform = if ($IsWindows) { 'Windows' } elseif ($IsLinux) { 'Linux' } elseif ($IsMacOS) { 'macOS' } else { 'Unknown' }
+            InstallHint = 'Included with Node.js; install Node.js first'
+        }
+    } else {
+        try {
+            $npmVersion = & npm --version 2>$null
+            if ($npmVersion -match '(\d+)\.') {
+                $npmMajor = [int]$Matches[1]
+                if ($npmMajor -lt 10) {
+                    $outdatedDeps += [pscustomobject]@{
+                        Tool = 'npm'
+                        Current = $npmVersion
+                        Required = '10.0+'
+                        Platform = if ($IsWindows) { 'Windows' } elseif ($IsLinux) { 'Linux' } elseif ($IsMacOS) { 'macOS' } else { 'Unknown' }
+                        InstallHint = 'Update via: npm install -g npm@latest'
+                    }
+                }
+            }
+        } catch {}
+    }
+
+    # git 2.30+
+    $gitCommand = Get-Command 'git' -ErrorAction SilentlyContinue
+    if (-not $gitCommand) {
+        $missingDeps += [pscustomobject]@{
+            Tool = 'git'
+            Current = 'not installed'
+            Required = '2.30+'
+            Platform = if ($IsWindows) { 'Windows' } elseif ($IsLinux) { 'Linux' } elseif ($IsMacOS) { 'macOS' } else { 'Unknown' }
+            InstallHint = if ($IsWindows) {
+                'Install from https://git-scm.com/ or via winget: winget install Git.Git'
+            } elseif ($IsLinux) {
+                'Install via package manager (e.g., apt install git, yum install git)'
+            } elseif ($IsMacOS) {
+                'Install via Homebrew: brew install git or Xcode Command Line Tools'
+            } else {
+                'Install from https://git-scm.com/'
+            }
+        }
+    } else {
+        try {
+            $gitVersion = & git --version 2>$null
+            if ($gitVersion -match 'git version (\d+)\.(\d+)') {
+                $gitMajor = [int]$Matches[1]
+                $gitMinor = [int]$Matches[2]
+                if ($gitMajor -lt 2 -or ($gitMajor -eq 2 -and $gitMinor -lt 30)) {
+                    $outdatedDeps += [pscustomobject]@{
+                        Tool = 'git'
+                        Current = $gitVersion
+                        Required = '2.30+'
+                        Platform = if ($IsWindows) { 'Windows' } elseif ($IsLinux) { 'Linux' } elseif ($IsMacOS) { 'macOS' } else { 'Unknown' }
+                        InstallHint = 'Update from https://git-scm.com/ or your package manager'
+                    }
+                }
+            }
+        } catch {}
+    }
+
+    # gh CLI (optional but recommended)
+    if ($IncludeOptional) {
+        $ghCommand = Get-Command 'gh' -ErrorAction SilentlyContinue
+        if (-not $ghCommand) {
+            $missingDeps += [pscustomobject]@{
+                Tool = 'gh'
+                Current = 'not installed'
+                Required = 'any (optional)'
+                Platform = if ($IsWindows) { 'Windows' } elseif ($IsLinux) { 'Linux' } elseif ($IsMacOS) { 'macOS' } else { 'Unknown' }
+                InstallHint = if ($IsWindows) {
+                    'Optional: Install from https://cli.github.com/ or via winget: winget install GitHub.cli'
+                } elseif ($IsLinux) {
+                    'Optional: Install via package manager or from https://cli.github.com/'
+                } elseif ($IsMacOS) {
+                    'Optional: Install via Homebrew: brew install gh'
+                } else {
+                    'Optional: Install from https://cli.github.com/'
+                }
+            }
+        }
+    }
+
+    return [pscustomobject]@{
+        MissingDeps = @($missingDeps)
+        OutdatedDeps = @($outdatedDeps)
+        AllOk = ($missingDeps.Count -eq 0 -and $outdatedDeps.Count -eq 0)
+    }
+}
+
 function Show-Usage {
     @'
 specrew init [options]
@@ -95,6 +270,8 @@ function Write-PostBootstrapGuidance {
     $baselineRoles = 'Spec Steward, Planner, Implementer, Reviewer, Retro Facilitator'
     $teamPath = Join-Path $ProjectPath '.squad\team.md'
     $specrewScriptsPath = $PSScriptRoot
+    $executionLayout = Get-SpecrewExecutionLayout
+    $isModuleContext = ($executionLayout.Mode -eq 'module')
 
     Write-Host ''
     Write-Host '============================================================' -ForegroundColor Cyan
@@ -129,41 +306,71 @@ function Write-PostBootstrapGuidance {
     Write-Host '   Add extra Squad members after bootstrap with Security Analyst, UX Designer,' -ForegroundColor White
     Write-Host '   DBA, or other specialists using Specrew team management commands:' -ForegroundColor White
     Write-Host ''
-    Write-Host '  pwsh -File <specrew-repo>\scripts\specrew.ps1 team add <member-name> --role <role> --charter "<charter-text>"' -ForegroundColor White
-    Write-Host '  pwsh -File <specrew-repo>\scripts\specrew.ps1 start' -ForegroundColor White
-    Write-Host '  pwsh -File <specrew-repo>\scripts\specrew.ps1 team list' -ForegroundColor White
-    Write-Host '  pwsh -File <specrew-repo>\scripts\specrew.ps1 team update <member-name> --charter "<new-charter>"' -ForegroundColor White
-    Write-Host '  pwsh -File <specrew-repo>\scripts\specrew.ps1 team remove <member-name>' -ForegroundColor White
+
+    if ($isModuleContext) {
+        Write-Host '  specrew team add <member-name> --role <role> --charter "<charter-text>"' -ForegroundColor White
+        Write-Host '  specrew start' -ForegroundColor White
+        Write-Host '  specrew team list' -ForegroundColor White
+        Write-Host '  specrew team update <member-name> --charter "<new-charter>"' -ForegroundColor White
+        Write-Host '  specrew team remove <member-name>' -ForegroundColor White
+    } else {
+        Write-Host '  pwsh -File <specrew-repo>\scripts\specrew.ps1 team add <member-name> --role <role> --charter "<charter-text>"' -ForegroundColor White
+        Write-Host '  pwsh -File <specrew-repo>\scripts\specrew.ps1 start' -ForegroundColor White
+        Write-Host '  pwsh -File <specrew-repo>\scripts\specrew.ps1 team list' -ForegroundColor White
+        Write-Host '  pwsh -File <specrew-repo>\scripts\specrew.ps1 team update <member-name> --charter "<new-charter>"' -ForegroundColor White
+        Write-Host '  pwsh -File <specrew-repo>\scripts\specrew.ps1 team remove <member-name>' -ForegroundColor White
+    }
+
     Write-Host ''
     Write-Host '   Keep the Specrew-managed baseline block intact in .squad/team.md.' -ForegroundColor Yellow
     Write-Host ''
-    Write-Host 'Replace <specrew-repo> with the actual path where you cloned Specrew.' -ForegroundColor Yellow
-    Write-Host ''
-    Write-Host '=== Optional: Add Specrew to PATH for Convenience ===' -ForegroundColor Cyan
-    Write-Host ''
-    Write-Host 'To use the short form (e.g., "specrew team list") instead of full paths,' -ForegroundColor White
-    Write-Host 'you can add the scripts directory to your PATH.' -ForegroundColor White
-    Write-Host ''
-    Write-Host 'OPTION 1: Current Session Only' -ForegroundColor Yellow
-    Write-Host 'Run this command in your current PowerShell session:' -ForegroundColor White
-    Write-Host ''
-    Write-Host ('  $env:PATH = "$env:PATH;{0}"' -f $specrewScriptsPath) -ForegroundColor Green
-    Write-Host ''
-    Write-Host '(This only affects the current shell and is lost when you close it.)' -ForegroundColor DarkGray
-    Write-Host ''
-    Write-Host 'OPTION 2: Persistent (All Future Sessions)' -ForegroundColor Yellow
-    Write-Host 'To make this permanent for your user account, run:' -ForegroundColor White
-    Write-Host ''
-    Write-Host ('  $currentPath = [Environment]::GetEnvironmentVariable("PATH", "User")') -ForegroundColor Green
-    Write-Host ('  $pathEntries = $currentPath -split "";""') -ForegroundColor Green
-    Write-Host ('  if ($pathEntries -notcontains ""{0}"") {{' -f $specrewScriptsPath) -ForegroundColor Green
-    Write-Host ('      [Environment]::SetEnvironmentVariable("PATH", "$currentPath;{0}", "User")' -f $specrewScriptsPath) -ForegroundColor Green
-    Write-Host ('      Write-Host "Added Specrew scripts to user PATH. Restart your shell to apply." -ForegroundColor Green') -ForegroundColor Green
-    Write-Host ('  }') -ForegroundColor Green
-    Write-Host ''
-    Write-Host '(This adds the path to your user-level environment and persists across sessions.' -ForegroundColor DarkGray
-    Write-Host ' Restart your shell after running this command.)' -ForegroundColor DarkGray
-    Write-Host ''
+
+    if (-not $isModuleContext) {
+        Write-Host 'Replace <specrew-repo> with the actual path where you cloned Specrew.' -ForegroundColor Yellow
+        Write-Host ''
+        Write-Host '=== Optional: Add Specrew to PATH for Convenience ===' -ForegroundColor Cyan
+        Write-Host ''
+        Write-Host 'To use the short form (e.g., "specrew team list") instead of full paths,' -ForegroundColor White
+        Write-Host 'you can add the scripts directory to your PATH.' -ForegroundColor White
+        Write-Host ''
+
+        if ($IsWindows) {
+            Write-Host 'OPTION 1: Current Session Only (Windows)' -ForegroundColor Yellow
+            Write-Host 'Run this command in your current PowerShell session:' -ForegroundColor White
+            Write-Host ''
+            Write-Host ('  $env:PATH = "$env:PATH;{0}"' -f $specrewScriptsPath) -ForegroundColor Green
+            Write-Host ''
+            Write-Host '(This only affects the current shell and is lost when you close it.)' -ForegroundColor DarkGray
+            Write-Host ''
+            Write-Host 'OPTION 2: Persistent (All Future Sessions, Windows)' -ForegroundColor Yellow
+            Write-Host 'To make this permanent for your user account, run:' -ForegroundColor White
+            Write-Host ''
+            Write-Host ('  $currentPath = [Environment]::GetEnvironmentVariable("PATH", "User")') -ForegroundColor Green
+            Write-Host ('  $pathEntries = $currentPath -split "";""') -ForegroundColor Green
+            Write-Host ('  if ($pathEntries -notcontains ""{0}"") {{' -f $specrewScriptsPath) -ForegroundColor Green
+            Write-Host ('      [Environment]::SetEnvironmentVariable("PATH", "$currentPath;{0}", "User")' -f $specrewScriptsPath) -ForegroundColor Green
+            Write-Host ('      Write-Host "Added Specrew scripts to user PATH. Restart your shell to apply." -ForegroundColor Green') -ForegroundColor Green
+            Write-Host ('  }') -ForegroundColor Green
+            Write-Host ''
+            Write-Host '(This adds the path to your user-level environment and persists across sessions.' -ForegroundColor DarkGray
+            Write-Host ' Restart your shell after running this command.)' -ForegroundColor DarkGray
+        } elseif ($IsLinux -or $IsMacOS) {
+            $shellProfile = if ($IsMacOS) { '~/.zshrc or ~/.bash_profile' } else { '~/.bashrc or ~/.profile' }
+            Write-Host 'Adding Specrew to PATH (Linux/macOS)' -ForegroundColor Yellow
+            Write-Host ('Add this line to your shell profile ({0}):' -f $shellProfile) -ForegroundColor White
+            Write-Host ''
+            Write-Host ('  export PATH="$PATH:{0}"' -f $specrewScriptsPath) -ForegroundColor Green
+            Write-Host ''
+            Write-Host 'Then reload your shell:' -ForegroundColor White
+            Write-Host ''
+            Write-Host ('  source {0}' -f $shellProfile) -ForegroundColor Green
+            Write-Host ''
+            Write-Host 'Or restart your terminal.' -ForegroundColor DarkGray
+        }
+
+        Write-Host ''
+    }
+
     Write-Host '============================================================' -ForegroundColor Cyan
     Write-Host ''
     Write-Host 'Documentation:' -ForegroundColor White
@@ -294,6 +501,37 @@ function Add-Action {
         })
 }
 
+function Write-BootstrapSummary {
+    param(
+        [AllowEmptyCollection()]
+        [Parameter(Mandatory = $true)]
+        [System.Collections.ArrayList]$Actions,
+
+        [Parameter(Mandatory = $true)]
+        [bool]$DryRunMode,
+
+        [Parameter(Mandatory = $true)]
+        [string]$ProjectPath,
+
+        [Parameter(Mandatory = $true)]
+        [bool]$ShowGuidance
+    )
+
+    Write-Host ''
+    Write-Host 'Bootstrap summary' -ForegroundColor Green
+    $Actions | Format-Table -AutoSize
+
+    if ($DryRunMode) {
+        Write-Host 'Dry run complete. No files were changed.' -ForegroundColor Yellow
+        return
+    }
+
+    Write-Host ("Bootstrap completed for {0}." -f $ProjectPath) -ForegroundColor Green
+    if ($ShowGuidance) {
+        Write-PostBootstrapGuidance -ProjectPath $ProjectPath
+    }
+}
+
 function Ensure-DirectoryExists {
     param(
         [Parameter(Mandatory = $true)]
@@ -312,6 +550,171 @@ function Ensure-DirectoryExists {
     }
 
     New-Item -ItemType Directory -Path $Path -Force | Out-Null
+}
+
+function Get-SpecrewExecutionLayout {
+    $distributionRoot = Split-Path -Parent $PSScriptRoot
+    $templateRoot = Join-Path -Path $distributionRoot -ChildPath 'templates'
+    $isModuleLayout = $env:SPECREW_INVOKED_FROM_MODULE -eq '1'
+
+    return [pscustomobject]@{
+        RootPath     = $distributionRoot
+        Mode         = $(if ($isModuleLayout) { 'module' } else { 'clone' })
+        TemplateRoot = $(if (Test-Path -LiteralPath $templateRoot -PathType Container) { $templateRoot } else { $null })
+    }
+}
+
+function Copy-TemplateTree {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$SourceRoot,
+
+        [Parameter(Mandatory = $true)]
+        [string]$TargetRoot,
+
+        [Parameter(Mandatory = $true)]
+        [bool]$OverwriteExisting,
+
+        [Parameter(Mandatory = $true)]
+        [switch]$PreviewOnly
+    )
+
+    if (-not (Test-Path -LiteralPath $SourceRoot -PathType Container)) {
+        throw "Missing bundled template source '$SourceRoot'."
+    }
+
+    Ensure-DirectoryExists -Path $TargetRoot -PreviewOnly:$PreviewOnly
+
+    $copied = 0
+    $updated = 0
+    $preserved = 0
+    $sourceFiles = @(Get-ChildItem -LiteralPath $SourceRoot -File -Recurse | Sort-Object FullName)
+
+    foreach ($sourceFile in $sourceFiles) {
+        $relativePath = [System.IO.Path]::GetRelativePath($SourceRoot, $sourceFile.FullName)
+        $targetPath = Join-Path -Path $TargetRoot -ChildPath $relativePath
+        $parent = Split-Path -Parent $targetPath
+        if (-not [string]::IsNullOrWhiteSpace($parent)) {
+            Ensure-DirectoryExists -Path $parent -PreviewOnly:$PreviewOnly
+        }
+
+        if (Test-Path -LiteralPath $targetPath -PathType Leaf) {
+            if (-not $OverwriteExisting) {
+                $preserved++
+                continue
+            }
+
+            $sourceContent = Get-Content -LiteralPath $sourceFile.FullName -Raw
+            $targetContent = Get-Content -LiteralPath $targetPath -Raw
+            if ($sourceContent -eq $targetContent) {
+                $preserved++
+                continue
+            }
+
+            if (-not $PreviewOnly) {
+                Copy-Item -LiteralPath $sourceFile.FullName -Destination $targetPath -Force
+            }
+
+            $updated++
+            continue
+        }
+
+        if (-not $PreviewOnly) {
+            Copy-Item -LiteralPath $sourceFile.FullName -Destination $targetPath -Force
+        }
+
+        $copied++
+    }
+
+    return [pscustomobject]@{
+        Copied    = $copied
+        Updated   = $updated
+        Preserved = $preserved
+        Total     = $sourceFiles.Count
+    }
+}
+
+function Invoke-BundledTemplateDeployment {
+    param(
+        [Parameter(Mandatory = $true)]
+        [pscustomobject]$ExecutionLayout,
+
+        [Parameter(Mandatory = $true)]
+        [string]$ProjectPath,
+
+        [Parameter(Mandatory = $true)]
+        [bool]$ForceRefresh,
+
+        [Parameter(Mandatory = $true)]
+        [bool]$SpecKitReady,
+
+        [Parameter(Mandatory = $true)]
+        [bool]$SquadReady,
+
+        [Parameter(Mandatory = $true)]
+        [bool]$HadSpecify,
+
+        [Parameter(Mandatory = $true)]
+        [bool]$HadSquad,
+
+        [Parameter(Mandatory = $true)]
+        [bool]$HadGitHub,
+
+        [Parameter(Mandatory = $true)]
+        [bool]$SpecKitExtensionOnly,
+
+        [AllowEmptyCollection()]
+        [Parameter(Mandatory = $true)]
+        [System.Collections.ArrayList]$Actions,
+
+        [Parameter(Mandatory = $true)]
+        [switch]$PreviewOnly
+    )
+
+    if ([string]::IsNullOrWhiteSpace($ExecutionLayout.TemplateRoot)) {
+        throw 'Bundled templates are unavailable for bootstrap.'
+    }
+
+    Add-Action -Actions $Actions -Step 'template-source' -Outcome ("{0}: {1}" -f $ExecutionLayout.Mode, $ExecutionLayout.TemplateRoot)
+
+    $deployments = [System.Collections.ArrayList]::new()
+    if ($SpecKitReady) {
+        $null = $deployments.Add([pscustomobject]@{
+                Name        = '.specify'
+                SourceRoot  = Join-Path -Path $ExecutionLayout.TemplateRoot -ChildPath 'specify'
+                TargetRoot  = Join-Path -Path $ProjectPath -ChildPath '.specify'
+                HadExisting = $HadSpecify
+            })
+    }
+
+    if (-not $SpecKitExtensionOnly -and $SquadReady) {
+        $null = $deployments.Add([pscustomobject]@{
+                Name        = '.squad'
+                SourceRoot  = Join-Path -Path $ExecutionLayout.TemplateRoot -ChildPath 'squad'
+                TargetRoot  = Join-Path -Path $ProjectPath -ChildPath '.squad'
+                HadExisting = $HadSquad
+            })
+    }
+
+    if (-not $SpecKitExtensionOnly) {
+        $null = $deployments.Add([pscustomobject]@{
+                Name        = '.github'
+                SourceRoot  = Join-Path -Path $ExecutionLayout.TemplateRoot -ChildPath 'github'
+                TargetRoot  = Join-Path -Path $ProjectPath -ChildPath '.github'
+                HadExisting = $HadGitHub
+            })
+    }
+
+    foreach ($deployment in $deployments) {
+        if ($deployment.HadExisting -and -not $ForceRefresh) {
+            Add-Action -Actions $Actions -Step 'template-copy' -Outcome ("preserved existing {0}; re-run with -Force to refresh bundled templates" -f $deployment.Name)
+            continue
+        }
+
+        $result = Copy-TemplateTree -SourceRoot $deployment.SourceRoot -TargetRoot $deployment.TargetRoot -OverwriteExisting:$ForceRefresh -PreviewOnly:$PreviewOnly
+        $verb = if ($PreviewOnly) { 'would-sync' } else { 'synced' }
+        Add-Action -Actions $Actions -Step 'template-copy' -Outcome ("{0} {1} from {2} ({3} new, {4} updated, {5} preserved)" -f $verb, $deployment.Name, $deployment.SourceRoot, $result.Copied, $result.Updated, $result.Preserved)
+    }
 }
 
 function Write-MissingUtf8File {
@@ -341,6 +744,70 @@ function Write-MissingUtf8File {
     }
 
     [System.IO.File]::WriteAllText($Path, $Content, [System.Text.UTF8Encoding]::new($false))
+}
+
+function Test-BootstrappedProjectState {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$ProjectPath,
+
+        [Parameter(Mandatory = $true)]
+        [bool]$SpecKitExtensionOnly
+    )
+
+    $failures = [System.Collections.Generic.List[string]]::new()
+    $expectedSpecifyFiles = @(
+        'agent-file-template.md',
+        'checklist-template.md',
+        'constitution-template.md',
+        'plan-template.md',
+        'spec-template.md',
+        'tasks-template.md'
+    )
+
+    $specifyTemplatesRoot = Join-Path -Path $ProjectPath -ChildPath '.specify'
+    $specifyTemplatesRoot = Join-Path -Path $specifyTemplatesRoot -ChildPath 'templates'
+    if (-not (Test-Path -LiteralPath $specifyTemplatesRoot -PathType Container)) {
+        $failures.Add("Missing required template directory '$specifyTemplatesRoot'.")
+    }
+    else {
+        foreach ($expectedFile in $expectedSpecifyFiles) {
+            $expectedPath = Join-Path -Path $specifyTemplatesRoot -ChildPath $expectedFile
+            if (-not (Test-Path -LiteralPath $expectedPath -PathType Leaf)) {
+                $failures.Add("Missing required Spec Kit template '$expectedPath'.")
+            }
+        }
+    }
+
+    if (-not $SpecKitExtensionOnly) {
+        $squadAgentsRoot = Join-Path -Path $ProjectPath -ChildPath '.squad'
+        $squadAgentsRoot = Join-Path -Path $squadAgentsRoot -ChildPath 'agents'
+        if (-not (Test-Path -LiteralPath $squadAgentsRoot -PathType Container)) {
+            $failures.Add("Missing required Squad agents directory '$squadAgentsRoot'.")
+        }
+
+        $workflowRoot = Join-Path -Path $ProjectPath -ChildPath '.github'
+        $coordinatorPromptPath = Join-Path -Path $workflowRoot -ChildPath 'agents\squad.agent.md'
+        $workflowRoot = Join-Path -Path $workflowRoot -ChildPath 'workflows'
+        if (-not (Test-Path -LiteralPath $workflowRoot -PathType Container)) {
+            $failures.Add("Missing required workflow directory '$workflowRoot'.")
+        }
+        else {
+            $workflowCount = @(Get-ChildItem -LiteralPath $workflowRoot -File -ErrorAction SilentlyContinue).Count
+            if ($workflowCount -lt 1) {
+                $failures.Add("Expected at least one workflow under '$workflowRoot'.")
+            }
+        }
+
+        if (-not (Test-Path -LiteralPath $coordinatorPromptPath -PathType Leaf)) {
+            $failures.Add("Missing required coordinator prompt '$coordinatorPromptPath'.")
+        }
+    }
+
+    return [pscustomobject]@{
+        Succeeded = ($failures.Count -eq 0)
+        Failures  = @($failures)
+    }
 }
 
 function Get-SpecKitGitReference {
@@ -1409,8 +1876,54 @@ if ($Help) {
     exit 0
 }
 
+# Pre-flight dependency check
+Write-Step 'Checking required dependencies'
+$preFlightCheck = Test-PreFlightDependencies -IncludeOptional
+
+if (-not $preFlightCheck.AllOk) {
+    $hasErrors = $preFlightCheck.MissingDeps.Count -gt 0 -or ($preFlightCheck.OutdatedDeps | Where-Object { $_.Tool -ne 'gh' }).Count -gt 0
+    
+    if ($preFlightCheck.MissingDeps.Count -gt 0) {
+        Write-Host ''
+        Write-Host 'Missing required dependencies:' -ForegroundColor Red
+        Write-Host ''
+        foreach ($dep in $preFlightCheck.MissingDeps) {
+            if ($dep.Tool -eq 'gh') {
+                Write-Host ("  [{0}] {1} (optional but recommended)" -f $dep.Platform, $dep.Tool) -ForegroundColor Yellow
+                Write-Host ("      {0}" -f $dep.InstallHint) -ForegroundColor DarkGray
+            } else {
+                Write-Host ("  [{0}] {1} {2} (required: {3})" -f $dep.Platform, $dep.Tool, $dep.Current, $dep.Required) -ForegroundColor Red
+                Write-Host ("      {0}" -f $dep.InstallHint) -ForegroundColor DarkGray
+            }
+            Write-Host ''
+        }
+    }
+    
+    if ($preFlightCheck.OutdatedDeps.Count -gt 0) {
+        Write-Host ''
+        Write-Host 'Outdated dependencies:' -ForegroundColor Yellow
+        Write-Host ''
+        foreach ($dep in $preFlightCheck.OutdatedDeps) {
+            Write-Host ("  [{0}] {1} {2} (required: {3})" -f $dep.Platform, $dep.Tool, $dep.Current, $dep.Required) -ForegroundColor Yellow
+            Write-Host ("      {0}" -f $dep.InstallHint) -ForegroundColor DarkGray
+            Write-Host ''
+        }
+    }
+    
+    if ($hasErrors) {
+        Write-Host 'Install all required dependencies before running specrew init.' -ForegroundColor Red
+        exit 4
+    } else {
+        Write-Host 'All required dependencies are installed.' -ForegroundColor Green
+    }
+} else {
+    Write-Host 'All required dependencies are installed.' -ForegroundColor Green
+}
+Write-Host ''
+
 $resolvedProjectPath = Resolve-ProjectPath -Path $ProjectPath
-$repoRoot = Split-Path -Parent $PSScriptRoot
+$executionLayout = Get-SpecrewExecutionLayout
+$repoRoot = $executionLayout.RootPath
 $validateVersionsScript = Join-Path $repoRoot 'extensions\specrew-speckit\scripts\validate-versions.ps1'
 $deploySpeckitExtensionScript = Join-Path $repoRoot 'extensions\specrew-speckit\scripts\deploy-speckit-extension.ps1'
 $deploySquadRuntimeScript = Join-Path $repoRoot 'extensions\specrew-speckit\scripts\deploy-squad-runtime.ps1'
@@ -1432,6 +1945,21 @@ $existingEntries = @(Get-ChildItem -Path $resolvedProjectPath -Force -ErrorActio
 $blockingEntries = @($existingEntries | Where-Object { $_.Name -ne '.git' })
 $hadSpecify = Test-Path -LiteralPath (Join-Path $resolvedProjectPath '.specify')
 $hadSquad = Test-Path -LiteralPath (Join-Path $resolvedProjectPath '.squad')
+$hadGitHub = Test-Path -LiteralPath (Join-Path $resolvedProjectPath '.github')
+$hadSpecifyContent = $hadSpecify -and ((@(
+            Get-ChildItem -LiteralPath (Join-Path $resolvedProjectPath '.specify') -Force -ErrorAction SilentlyContinue
+        ).Count) -gt 0)
+$hadSquadContent = $hadSquad -and ((@(
+            Get-ChildItem -LiteralPath (Join-Path $resolvedProjectPath '.squad') -Force -ErrorAction SilentlyContinue
+        ).Count) -gt 0)
+$hadGitHubContent = $hadGitHub -and ((@(
+            Get-ChildItem -LiteralPath (Join-Path $resolvedProjectPath '.github') -Force -ErrorAction SilentlyContinue
+        ).Count) -gt 0)
+$hasSpecrewConfig = Test-Path -LiteralPath (Join-Path $resolvedProjectPath '.specrew\config.yml')
+$alreadyBootstrapped = $hadSpecify -and $hasSpecrewConfig
+if (-not $SpecKitExtensionOnly) {
+    $alreadyBootstrapped = $alreadyBootstrapped -and $hadSquad -and $hadGitHub
+}
 $bootstrapMode = if ($hadSpecify -or $hadSquad) { 'brownfield' } else { 'greenfield' }
 $shouldInitializeSpecify = -not $hadSpecify
 $shouldInitializeSquad = -not $hadSquad
@@ -1442,6 +1970,40 @@ $squadSurfaceReady = $hadSquad -or $shouldInitializeSquad
 if ($blockingEntries.Count -gt 0 -and -not $Force -and -not $hadSpecify -and -not $hadSquad) {
     Write-Error "Target directory '$resolvedProjectPath' is not empty. Re-run with -Force to allow bootstrap into a populated workspace."
     exit 3
+}
+
+if ($alreadyBootstrapped -and -not $Force) {
+    Write-Step 'Checking idempotent bootstrap state'
+    Add-Action -Actions $actions -Step 'specify-init' -Outcome 'preserved existing .specify'
+    if (-not $SpecKitExtensionOnly) {
+        Add-Action -Actions $actions -Step 'squad-init' -Outcome 'preserved existing .squad'
+    }
+    Add-Action -Actions $actions -Step 'template-source' -Outcome ("{0}: {1}" -f $executionLayout.Mode, $executionLayout.TemplateRoot)
+    Add-Action -Actions $actions -Step 'template-copy' -Outcome 'preserved existing .specify; re-run with -Force to refresh bundled templates'
+    if (-not $SpecKitExtensionOnly) {
+        Add-Action -Actions $actions -Step 'template-copy' -Outcome 'preserved existing .squad; re-run with -Force to refresh bundled templates'
+        Add-Action -Actions $actions -Step 'template-copy' -Outcome 'preserved existing .github; re-run with -Force to refresh bundled templates'
+    }
+
+    if ($DryRun) {
+        Add-Action -Actions $actions -Step 'bootstrap-validation' -Outcome 'would validate .specify templates, .squad agents, .github workflows, and .github/agents/squad.agent.md'
+    }
+    else {
+        $bootstrapValidation = Test-BootstrappedProjectState -ProjectPath $resolvedProjectPath -SpecKitExtensionOnly:$SpecKitExtensionOnly
+        if (-not $bootstrapValidation.Succeeded) {
+            foreach ($failure in $bootstrapValidation.Failures) {
+                Write-Error $failure -ErrorAction Continue
+            }
+
+            exit 1
+        }
+
+        Add-Action -Actions $actions -Step 'bootstrap-validation' -Outcome 'validated .specify templates, .squad agents, .github workflows, and .github/agents/squad.agent.md'
+        Write-Host ("Specrew is already bootstrapped in '{0}'. Re-run with -Force to refresh bundled templates." -f $resolvedProjectPath) -ForegroundColor Yellow
+    }
+
+    Write-BootstrapSummary -Actions $actions -DryRunMode:$DryRun -ProjectPath $resolvedProjectPath -ShowGuidance:$false
+    exit 0
 }
 
 if ($bootstrapMode -eq 'brownfield') {
@@ -1715,6 +2277,20 @@ else {
     Add-Action -Actions $actions -Step 'spec-kit-extension' -Outcome 'skipped: .specify is absent in brownfield workspace'
 }
 
+Write-Step 'Deploying bundled project templates'
+Invoke-BundledTemplateDeployment `
+    -ExecutionLayout $executionLayout `
+    -ProjectPath $resolvedProjectPath `
+    -ForceRefresh:$Force `
+    -SpecKitReady:$specifySurfaceReady `
+    -SquadReady:$squadSurfaceReady `
+    -HadSpecify:$hadSpecifyContent `
+    -HadSquad:$hadSquadContent `
+    -HadGitHub:$hadGitHubContent `
+    -SpecKitExtensionOnly:$SpecKitExtensionOnly `
+    -Actions $actions `
+    -PreviewOnly:$DryRun
+
 if (-not $SpecKitExtensionOnly) {
     $resolvedSpecKitVersion = (($versionResults | Where-Object { $_.Platform -eq 'Spec Kit' } | Select-Object -First 1).Version)
     if ([string]::IsNullOrWhiteSpace($resolvedSpecKitVersion)) {
@@ -1767,18 +2343,23 @@ if (-not $SpecKitExtensionOnly) {
     }
 }
 
-Write-Host ''
-Write-Host 'Bootstrap summary' -ForegroundColor Green
-$actions | Format-Table -AutoSize
-
+Write-Step 'Validating bootstrapped project state'
 if ($DryRun) {
-    Write-Host 'Dry run complete. No files were changed.' -ForegroundColor Yellow
+    Add-Action -Actions $actions -Step 'bootstrap-validation' -Outcome 'would validate .specify templates, .squad agents, .github workflows, and .github/agents/squad.agent.md'
 }
 else {
-    Write-Host ("Bootstrap completed for {0}." -f $resolvedProjectPath) -ForegroundColor Green
-    if (-not $SpecKitExtensionOnly -and $squadSurfaceReady) {
-        Write-PostBootstrapGuidance -ProjectPath $resolvedProjectPath
+    $bootstrapValidation = Test-BootstrappedProjectState -ProjectPath $resolvedProjectPath -SpecKitExtensionOnly:$SpecKitExtensionOnly
+    if (-not $bootstrapValidation.Succeeded) {
+        foreach ($failure in $bootstrapValidation.Failures) {
+            Write-Error $failure -ErrorAction Continue
+        }
+
+        exit 1
     }
+
+    Add-Action -Actions $actions -Step 'bootstrap-validation' -Outcome 'validated .specify templates, .squad agents, .github workflows, and .github/agents/squad.agent.md'
 }
+
+Write-BootstrapSummary -Actions $actions -DryRunMode:$DryRun -ProjectPath $resolvedProjectPath -ShowGuidance:(-not $SpecKitExtensionOnly -and $squadSurfaceReady)
 
 exit 0
