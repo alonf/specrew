@@ -176,8 +176,8 @@ Options:
   -NoLaunch | --no-launch                  Generate handoff prompt/context but do not launch Copilot
   -NewWindow | --new-window                Launch Copilot in a new PowerShell window instead of the current terminal
   -SameWindow | --same-window              Compatibility alias for the default current-terminal launch mode
-  -AllowAll | --allow-all                  Explicitly launch Copilot with --allow-all on Windows; Linux/macOS suppress it to preserve interactive behavior
-  -PromptApprovals | --prompt-approvals    Keep Copilot's interactive approval prompts enabled
+  -AllowAll | --allow-all                  Launch Copilot with --allow-all so tool calls run without approval prompts (this is the default)
+  -PromptApprovals | --prompt-approvals    Keep Copilot's interactive approval prompts enabled (disables --allow-all)
   -Help | --help                           Show this help message
 
  Notes:
