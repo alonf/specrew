@@ -322,6 +322,17 @@ The automated WSL verification script requires `sudo` to install PowerShell 7 in
 - **Windows Validation**: `pwsh -NoProfile -File tests/integration/start-command.ps1` passed after the Windows-only `--mode interactive` change
 - **Linux/macOS Validation**: Manual WSL/Linux end-to-end re-verification remains pending-human-execution; this repair updates the launch contract and Windows regression coverage only
 
+### Follow-up Repair Evidence (R-019-V2-R14)
+
+- **Status**: Completed on Windows; Linux/macOS root-cause repair landed pending human WSL re-verification
+- **Files Changed**: `scripts/specrew-start.ps1`, `scripts/specrew-review.ps1`, `tests/integration/start-command.ps1`, `specs/019-specrew-distribution-module/test-evidence/us5-cross-platform.md`
+- **Actual Root Cause Fix**: The WSL exit investigation was finally traced to `Get-DisplayPathFromProjectRoot` trimming only `\`. On Linux/macOS, bootstrap artifact paths such as `/.specrew/last-start-prompt.md` were rendered as absolute-looking references instead of project-relative paths, which broke the intended bootstrap handoff.
+- **R11/R12/R13 Reframed**: R11, R12, and R13 were defensive symptom-chasing against the wrong cause. They captured real runtime observations about `--mode interactive` and `--allow-all`, but they did not address the path-display bug that was actually corrupting the bootstrap references shown to Copilot on Linux/macOS.
+- **Defense-in-Depth Retained**: The current platform-conditional launch logic from R11/R12/R13 remains intentionally in place. Windows still adds `--mode interactive` (and may add `--allow-all`), while Linux/macOS still omit those flags for the `-i` bootstrap flow until a later explicit cleanup decision revisits that defense-in-depth contract.
+- **Scoped Audit Result**: The same separator-trimming/relative-display bug class was also fixed in `scripts/specrew-start.ps1`'s URI-based `Get-RelativeDisplayPath` helper and in `scripts/specrew-review.ps1`'s `Get-RelativePath`, so Linux/macOS relative paths no longer force Windows-only separators or a Windows-only trailing-root assumption.
+- **Windows Validation**: `pwsh -NoProfile -File tests/integration/start-command.ps1`; `pwsh -NoProfile -File tests/integration/review-command.ps1`
+- **Linux/macOS Validation**: Focused regression coverage now asserts both `\` and `/` trimming behavior and blocks `/.specrew/...` bootstrap references from reappearing. Full WSL/Linux end-to-end re-verification remains pending-human-execution.
+
 ### Known Traps Added
 
 Three corpus rows added to `.specrew/quality/known-traps.md`:

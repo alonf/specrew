@@ -839,9 +839,15 @@ function Get-RelativeDisplayPath {
         [string]$Path
     )
 
-    $rootUri = [System.Uri](([System.IO.Path]::GetFullPath($Root).TrimEnd('\')) + '\')
+    $directorySeparator = [System.IO.Path]::DirectorySeparatorChar
+    $rootUri = [System.Uri](([System.IO.Path]::GetFullPath($Root).TrimEnd('\', '/')) + $directorySeparator)
     $targetUri = [System.Uri]([System.IO.Path]::GetFullPath($Path))
-    return [System.Uri]::UnescapeDataString($rootUri.MakeRelativeUri($targetUri).ToString()).Replace('/', '\')
+    $relativePath = [System.Uri]::UnescapeDataString($rootUri.MakeRelativeUri($targetUri).ToString())
+    if ($directorySeparator -eq '\') {
+        return $relativePath.Replace('/', '\')
+    }
+
+    return $relativePath
 }
 
 function Get-LanguageNameFromExtension {
@@ -2357,22 +2363,32 @@ $artifactListFormatted
     }
 }
 
+function Get-DisplayRelativePath {
+    param(
+        [string]$ProjectRoot,
+        [string]$ResolvedPath
+    )
+
+    $trimmedProjectRoot = $ProjectRoot.TrimEnd('\', '/')
+    if ($ResolvedPath.StartsWith($trimmedProjectRoot, [System.StringComparison]::OrdinalIgnoreCase)) {
+        $relativePath = $ResolvedPath.Substring($trimmedProjectRoot.Length).TrimStart('\', '/')
+        if (-not [string]::IsNullOrWhiteSpace($relativePath)) {
+            return $relativePath
+        }
+    }
+
+    return $ResolvedPath
+}
+
 function Get-DisplayPathFromProjectRoot {
     param(
         [string]$ResolvedProjectPath,
         [string]$Path
     )
 
-    $projectRoot = [System.IO.Path]::GetFullPath($ResolvedProjectPath).TrimEnd('\')
+    $projectRoot = [System.IO.Path]::GetFullPath($ResolvedProjectPath)
     $resolvedPath = [System.IO.Path]::GetFullPath($Path)
-    if ($resolvedPath.StartsWith($projectRoot, [System.StringComparison]::OrdinalIgnoreCase)) {
-        $relativePath = $resolvedPath.Substring($projectRoot.Length).TrimStart('\')
-        if (-not [string]::IsNullOrWhiteSpace($relativePath)) {
-            return $relativePath
-        }
-    }
-
-    return $resolvedPath
+    return Get-DisplayRelativePath -ProjectRoot $projectRoot -ResolvedPath $resolvedPath
 }
 
 function Get-CopilotBootstrapInput {

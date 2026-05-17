@@ -59,6 +59,39 @@ function Assert-Contains {
     return $true
 }
 
+function Get-FunctionDefinitionsText {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Path,
+        [Parameter(Mandatory = $true)]
+        [string[]]$FunctionNames
+    )
+
+    $tokens = $null
+    $parseErrors = $null
+    $ast = [System.Management.Automation.Language.Parser]::ParseFile($Path, [ref]$tokens, [ref]$parseErrors)
+    if ($parseErrors.Count -gt 0) {
+        throw ("Failed to parse function definitions from {0}: {1}" -f $Path, ($parseErrors | ForEach-Object { $_.Message } | Select-Object -First 1))
+    }
+
+    foreach ($functionName in $FunctionNames) {
+        $functionAst = $ast.Find(
+            {
+                param($node)
+                $node -is [System.Management.Automation.Language.FunctionDefinitionAst] -and
+                $node.Name -eq $functionName
+            },
+            $true
+        )
+
+        if ($null -eq $functionAst) {
+            throw ("Failed to locate function '{0}' in {1}" -f $functionName, $Path)
+        }
+
+        $functionAst.Extent.Text
+    }
+}
+
 $repoRoot = (Resolve-Path (Join-Path -Path $PSScriptRoot -ChildPath '..\..')).Path
 $entryScript = Join-Path -Path $repoRoot -ChildPath 'scripts\specrew.ps1'
 $startScript = Join-Path -Path $repoRoot -ChildPath 'scripts\specrew-start.ps1'
@@ -136,6 +169,24 @@ if (-not (Assert-Contains -Content $helpOutput -Pattern 'same-window' -FailureMe
     exit 1
 }
 Write-Pass "Help output includes specrew start"
+
+Write-Host "`nTest 1aa: display-path helpers trim both path separators"
+Invoke-Expression ((Get-FunctionDefinitionsText -Path $startScript -FunctionNames @('Get-DisplayRelativePath', 'Get-DisplayPathFromProjectRoot')) -join "`n`n")
+$windowsDisplayPath = Get-DisplayPathFromProjectRoot -ResolvedProjectPath $projectRoot -Path (Join-Path -Path $projectRoot -ChildPath '.specrew\last-start-prompt.md')
+if ($windowsDisplayPath -ne '.specrew\last-start-prompt.md') {
+    Write-Fail ("Get-DisplayPathFromProjectRoot returned the wrong Windows-relative path: {0}" -f $windowsDisplayPath)
+    exit 1
+}
+$linuxDisplayPath = Get-DisplayRelativePath -ProjectRoot '/repo/project/' -ResolvedPath '/repo/project/.specrew/last-start-prompt.md'
+if ($linuxDisplayPath -ne '.specrew/last-start-prompt.md') {
+    Write-Fail ("Get-DisplayRelativePath returned the wrong Linux-style relative path: {0}" -f $linuxDisplayPath)
+    exit 1
+}
+if ($linuxDisplayPath -match '^/\.specrew/') {
+    Write-Fail ("Linux-style display path still looks absolute: {0}" -f $linuxDisplayPath)
+    exit 1
+}
+Write-Pass "Display-path helpers trim both slash styles"
 
 Write-Host "`nTest 1b: entry wrapper preserves the same terminal for start"
 $entryScriptContent = Get-Content -LiteralPath $entryScript -Raw -Encoding UTF8
@@ -351,6 +402,10 @@ if (-not (Assert-Contains -Content $freshOutput -Pattern 'start-context\.json' -
     exit 1
 }
 if (-not (Assert-Contains -Content $freshOutput -Pattern 'start-summary\.md' -FailureMessage 'Fresh repo no-launch flow did not print the summary artifact path.')) {
+    exit 1
+}
+if ($freshOutput -match '/\.specrew/') {
+    Write-Fail 'Fresh repo no-launch flow emitted an absolute-looking bootstrap path.'
     exit 1
 }
 if (-not $IsWindows -and -not (Assert-Contains -Content $freshOutput -Pattern 'default REPL behavior on Linux/macOS' -FailureMessage 'Fresh repo no-launch flow did not explain the Linux/macOS default-REPL launch contract.')) {

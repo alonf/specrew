@@ -242,9 +242,15 @@ function Get-RelativePath {
         [string]$ToPath
     )
 
-    $fromUri = [System.Uri]([System.IO.Path]::GetFullPath($FromDirectory).TrimEnd('\') + '\')
+    $directorySeparator = [System.IO.Path]::DirectorySeparatorChar
+    $fromUri = [System.Uri]([System.IO.Path]::GetFullPath($FromDirectory).TrimEnd('\', '/') + $directorySeparator)
     $toUri = [System.Uri]([System.IO.Path]::GetFullPath($ToPath))
-    return [System.Uri]::UnescapeDataString($fromUri.MakeRelativeUri($toUri).ToString()) -replace '/', '\'
+    $relativePath = [System.Uri]::UnescapeDataString($fromUri.MakeRelativeUri($toUri).ToString())
+    if ($directorySeparator -eq '\') {
+        return $relativePath -replace '/', '\'
+    }
+
+    return $relativePath
 }
 
 function Try-OpenPath {
