@@ -2,6 +2,26 @@
 
 Project-specific learnings and patterns discovered during work.
 
+## Recent Work (2026-05-19)
+
+### 2026-05-19: Feature 020 Specify+Clarify Completion — Session-State Durability
+
+**Pattern**: Batch specify+clarify completion with deferred planning (signoff pause).
+
+**Context**: Feature 020 (Session-State Durability & In-Flight Progress Tracking) generated from Proposal 035. Three user stories (P1: post-reboot recovery; P1: boundary-event sync; P2: where-am-I query). Twelve clarification questions resolved using recommended answers; no human override required.
+
+**Key Learnings**:
+1. **Deferred-planning pattern**: Specify+clarify can complete and pause for human signoff before planning phase, allowing feature intent validation while preserving planning autonomy. Useful for features with high cross-boundary impact (like F-020's state durability requirements).
+2. **Clarification batch efficiency**: When all Q1–Q12 questions have defensible recommended answers, batch clarification completes without human iteration. Two-iteration delivery shape confirmed realistic (~40–50 SP).
+3. **Orchestration logging discipline**: Specify+clarify batch completion requires both orchestration log (agent work trail) and session log (human-facing readiness summary), even without decision inbox entries.
+4. **Spec quality baseline**: Three user stories, 12 acceptance scenarios, technology-agnostic success criteria, and mandatory content checklist provide complete specification contract for planning phase entry.
+
+**Artifacts**:
+- `.squad/orchestration-log/2026-05-19T183143Z-spec-steward.md` — Agent execution trace
+- `.squad/log/2026-05-19T183143Z-feature020-specify-clarify.md` — Session readiness summary
+- `specs/020-session-state-durability/spec.md` — Feature specification
+- `specs/020-session-state-durability/checklists/requirements.md` — Quality checklist
+
 ## Core Context
 
 Foundational patterns from May 8-11 established the spec steward discipline for Feature 015:
