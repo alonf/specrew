@@ -61,17 +61,30 @@ detailed cross-platform validation status.
 
 ## Recommended Lifecycle
 
-1. Bootstrap a repository with `scripts\specrew-init.ps1`.
-2. Start every work session with `scripts\specrew.ps1 start`.
-3. Use `scripts\specrew.ps1 where` whenever you want the current project-status
-   dashboard.
-4. Use `--ASCII`, `--RecentCount <N>`, and `--BarWidth <N>` to force fallback
-   or tune the richer Recent Shipped density without changing lifecycle data.
+1. **Install Specrew** — pick one path:
+   - **PowerShell Gallery** (after the first live publish; T053 post-merge
+     follow-up): `Install-Module Specrew -Scope CurrentUser`
+   - **Local clone** (current alpha state):
+     `git clone https://github.com/alonf/specrew && Import-Module specrew/Specrew.psd1`
+2. **Bootstrap a project** with `specrew init` from inside the target directory.
+3. **Start every work session** with `specrew start`; Specrew refreshes runtime
+   handoff artifacts before launching Copilot + Squad.
+4. **Check status** anytime with `specrew where` (alias: `specrew status`) —
+   the velocity dashboard. Use `--ASCII`, `--RecentCount <N>`, and
+   `--BarWidth <N>` to force fallback or tune the Recent Shipped density
+   without changing lifecycle data.
 5. Let Squad drive `specify -> clarify -> plan -> tasks -> implement` from the
    generated feature artifacts.
 6. Keep iteration evidence current under `specs\<feature>\iterations\<NNN>\`.
 7. Move through planning, implementing, review, and retro in order without
    skipping governance gates or bundling boundary advances.
+
+> **Direct-script invocation** (no module load) still works against a cloned
+> repo: `pwsh -File scripts/specrew.ps1 <command>`. The module aliases
+> (`specrew`, `specrew-init`, `specrew-start`, `specrew-update`, `specrew-where`,
+> `specrew-team`, `specrew-review`) are the recommended path because they
+> survive PowerShell Gallery installation without any path-dependent
+> gymnastics.
 
 ## Feature 016 Interaction Model
 

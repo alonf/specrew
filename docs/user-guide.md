@@ -7,10 +7,15 @@ This guide covers the day-to-day Specrew lifecycle: planning, execution, review/
 After `specrew init`, start feature work with:
 
 ```powershell
-pwsh -File C:\Dev\Specrew\scripts\specrew.ps1 start
+specrew start
 ```
 
-`specrew start` is the canonical downstream entrypoint.
+`specrew start` is the canonical downstream entrypoint. The `specrew` command
+resolves through the PowerShell module alias (installed via `Install-Module
+Specrew -Scope CurrentUser` once the first PSGallery publish lands, or via
+`Import-Module C:\Dev\Specrew\Specrew.psd1` from a local clone). For environments
+that can't load the module, the direct-script fallback is
+`pwsh -File C:\Dev\Specrew\scripts\specrew.ps1 start` — same arguments otherwise.
 
 It prepares the Squad handoff, launches Copilot CLI when available, and tells Squad to drive the full Spec Kit lifecycle with an explicit clarify gate: `specify`, then `clarify`, then `plan`, `tasks`, and `implement`, with skip rationale reserved for resumed specs that are already clarified and materially unchanged. The intended human role is to answer only the unresolved questions Squad cannot safely answer from repo context or current artifacts. You can optionally pass a short plain-language request if you already know the next feature or fix.
 
@@ -34,10 +39,13 @@ If you want a repeatable mission-completion smoke check of the real handoff boun
 Use the dashboard whenever you need a one-screen delivery summary:
 
 ```powershell
-pwsh -NoProfile -File .\scripts\specrew.ps1 where
-pwsh -NoProfile -File .\scripts\specrew.ps1 status --compact
-pwsh -NoProfile -File .\scripts\specrew-where.ps1 --team --no-color
+specrew where
+specrew status --compact
+specrew where --team --no-color
 ```
+
+> Direct-script equivalent (no module): replace `specrew` with
+> `pwsh -NoProfile -File C:\Dev\Specrew\scripts\specrew.ps1`.
 
 The dashboard reads:
 
@@ -198,19 +206,19 @@ To add domain-specific help after bootstrap, use Specrew's command-driven team m
 
 ```powershell
 # Add a new domain-specific member
-pwsh -File C:\Dev\Specrew\scripts\specrew.ps1 team add security-analyst `
+specrew team add security-analyst `
   --role "Security Analyst" `
   --charter "Review code for security vulnerabilities, ensure secure coding practices."
 
 # List all current team members
-pwsh -File C:\Dev\Specrew\scripts\specrew.ps1 team list
+specrew team list
 
 # Update an existing member's charter
-pwsh -File C:\Dev\Specrew\scripts\specrew.ps1 team update security-analyst `
+specrew team update security-analyst `
   --charter "Updated security review charter..."
 
 # Remove a domain-specific member (baseline roles cannot be removed)
-pwsh -File C:\Dev\Specrew\scripts\specrew.ps1 team remove security-analyst
+specrew team remove security-analyst
 ```
 
 Replace `C:\Dev\Specrew` with the actual path where you cloned the Specrew repository.

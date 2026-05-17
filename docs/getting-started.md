@@ -13,33 +13,60 @@ Practical quickstart for running Specrew in a new repo (greenfield) and adding i
 for Linux and macOS is in progress (path handling hardened; CI validation configured).
 See README.md for current platform validation status.
 
-## Before You Begin: Getting the Specrew Bootstrap Script
+## Before You Begin: Install Specrew
 
-Specrew currently works as a **local repository clone**. This means you need to clone the Specrew repository to your machine to access the bootstrap script.
+Specrew ships as a PowerShell module. Pick whichever install path fits your environment:
 
-### Clone Specrew (one-time setup)
+### Option A — PowerShell Gallery (recommended once published)
+
+After the first live PSGallery publish (T053 post-merge follow-up):
 
 ```powershell
-# Clone Specrew to a location on your machine (e.g., C:\Dev\Specrew)
-git clone https://github.com/alonf/specrew.git C:\Dev\Specrew
-Set-Location C:\Dev\Specrew
+Install-Module Specrew -Scope CurrentUser
 ```
 
-The Specrew repository includes the `scripts/specrew-init.ps1` bootstrap script. This script is what you'll use to initialize your project.
+Once installed, the `specrew`, `specrew-init`, `specrew-start`, `specrew-update`,
+`specrew-where`, `specrew-team`, and `specrew-review` aliases (plus their
+PowerShell-canonical `Verb-Noun` forms — `Invoke-Specrew`, `Initialize-Specrew`,
+`Start-Specrew`, `Update-Specrew`, `Show-SpecrewStatus`, `Invoke-SpecrewTeam`,
+`Show-SpecrewReview`) are available in any PowerShell session.
 
-### Future: Packaged Installation
+### Option B — Local clone (current alpha state)
 
-In future versions, Specrew will be available as an npm or pip package, eliminating the need for a separate clone. For now, cloning is the supported approach.
+Until the PSGallery publish lands, clone the repo and import the module manifest:
 
-## Bootstrap Script Help
+```powershell
+git clone https://github.com/alonf/specrew.git C:\Dev\Specrew
+Import-Module C:\Dev\Specrew\Specrew.psd1
+```
 
-Once you have cloned Specrew, you can view the bootstrap script help:
+The module-import path exposes the same `specrew` / `specrew-init` / `specrew-start`
+aliases as the PSGallery install, so the rest of this guide works identically.
+
+### Option C — Direct script invocation (fallback for non-module scenarios)
+
+If you can't or don't want to load the module, every command is also reachable via
+direct script invocation against the cloned repository:
+
+```powershell
+pwsh -File C:\Dev\Specrew\scripts\specrew.ps1 <command>
+```
+
+This is the lowest-friction fallback if your environment blocks module imports.
+
+## Bootstrap Help
+
+Once the module is loaded (Option A or B), view the bootstrap help:
+
+```powershell
+specrew init --help
+```
+
+If you're on Option C (direct-script), the equivalent is:
 
 ```powershell
 pwsh -File C:\Dev\Specrew\scripts\specrew-init.ps1 -Help
 ```
-
-Replace `C:\Dev\Specrew` with the path where you cloned Specrew.
 
 ## Greenfield Quickstart (recommended)
 
@@ -65,10 +92,12 @@ git init
 1. Run bootstrap.
 
 ```powershell
-pwsh -File C:\Dev\Specrew\scripts\specrew-init.ps1 -ProjectPath .
+specrew init -ProjectPath .
 ```
 
 For a fresh git-only repo, `-Force` is **not** required. Add `-Force` only when you want non-interactive default selections or when the repo already contains files beyond `.git`.
+
+> Direct-script equivalent (Option C, no module): `pwsh -File C:\Dev\Specrew\scripts\specrew-init.ps1 -ProjectPath .`
 
 1. Verify bootstrap succeeded (essential before proceeding).
 
@@ -113,26 +142,30 @@ Specrew manages those five baseline roles so re-running bootstrap can keep gover
 
 ```powershell
 # Add a new domain-specific member
-pwsh -File C:\Dev\Specrew\scripts\specrew.ps1 team add security-analyst `
+specrew team add security-analyst `
   --role "Security Analyst" `
   --charter "Review code for security vulnerabilities, ensure secure coding practices, validate authentication/authorization logic."
 
 # List all team members (baseline + domain-specific)
-pwsh -File C:\Dev\Specrew\scripts\specrew.ps1 team list
+specrew team list
 
 # Update an existing member's charter
-pwsh -File C:\Dev\Specrew\scripts\specrew.ps1 team update security-analyst `
+specrew team update security-analyst `
   --charter "Updated charter text..."
 
 # Remove a domain-specific member
-pwsh -File C:\Dev\Specrew\scripts\specrew.ps1 team remove security-analyst
+specrew team remove security-analyst
 ```
 
-Replace `C:\Dev\Specrew` with the actual path where you cloned the Specrew repository.
+> Direct-script equivalents (Option C, no module): replace `specrew` with
+> `pwsh -File C:\Dev\Specrew\scripts\specrew.ps1` — same arguments otherwise.
 
-### Optional: Adding Specrew to PATH
+### Optional: Adding Specrew to PATH (only needed for Option C)
 
-For convenience, you can add the Specrew scripts directory to your PATH to use short commands like `specrew team list` instead of typing the full path each time.
+If you're using Option C (direct-script invocation) and want the short `specrew`
+command without `pwsh -File`, add the scripts directory to your PATH. With the
+module (Option A or B), this is unnecessary — the aliases resolve in any
+PowerShell session that has the module imported.
 
 **Current Session Only** (temporary, lost when shell closes):
 ```powershell
@@ -165,14 +198,16 @@ When Copilot CLI is available, Specrew treats it as the mandatory host runtime r
 If the bootstrap created `.specify/` successfully, the canonical next step is:
 
 ```powershell
-pwsh -File C:\Dev\Specrew\scripts\specrew.ps1 start
+specrew start
 ```
 
 Optionally, you can provide a short plain-language request up front:
 
 ```powershell
-pwsh -File C:\Dev\Specrew\scripts\specrew.ps1 start "Build a REST API for user management"
+specrew start "Build a REST API for user management"
 ```
+
+> Direct-script equivalent (Option C, no module): `pwsh -File C:\Dev\Specrew\scripts\specrew.ps1 start [optional-request]`
 
 `specrew start` should launch or hand off to Squad and have Squad drive the full Spec Kit lifecycle for you:
 
@@ -192,9 +227,12 @@ Once a repo has feature and iteration artifacts, use the dashboard to answer
 "where are we right now?":
 
 ```powershell
-pwsh -NoProfile -File C:\Dev\Specrew\scripts\specrew.ps1 where --no-color
-pwsh -NoProfile -File C:\Dev\Specrew\scripts\specrew.ps1 status --compact
+specrew where --no-color
+specrew status --compact
 ```
+
+> Direct-script equivalent (Option C, no module): replace `specrew` with
+> `pwsh -NoProfile -File C:\Dev\Specrew\scripts\specrew.ps1` — same arguments.
 
 For a sample output and section-by-section guide, see `docs/dashboard-guide.md`.
 
@@ -206,7 +244,7 @@ The human developer should mainly answer only the unresolved questions Squad can
 To reduce Copilot CLI blocking on tool prompts, Specrew launches Copilot from the target project directory, reuses the current terminal by default, and auto-loads a compact bootstrap message via `-i` that points Copilot at `.specrew\last-start-prompt.md` and `.specrew\start-context.json`. Intake-first runs stay out of autopilot until the request is grounded; once scope is grounded, Specrew defaults to `--allow-all` to reduce approval blocking. Copilot may still ask you to trust the project directory on first launch. If you prefer Copilot's interactive approval prompts, use:
 
 ```powershell
-pwsh -File C:\Dev\Specrew\scripts\specrew.ps1 start --prompt-approvals
+specrew start --prompt-approvals
 ```
 
 ### Resuming work later
@@ -257,7 +295,7 @@ Type CONFIRM or a directive to continue.
 **Optional parameter for custom directives**: Power users can prepend a custom directive using the `-PostRestartDirective` parameter:
 
 ```powershell
-pwsh -File C:\Dev\Specrew\scripts\specrew.ps1 start -PostRestartDirective "Validate reviewer escalation contract before continuing."
+specrew start -PostRestartDirective "Validate reviewer escalation contract before continuing."
 ```
 
 The custom directive is prepended to the handoff prompt, followed by any pause-and-confirm or auto-continue logic.
@@ -279,7 +317,7 @@ The custom directive is prepended to the handoff prompt, followed by any pause-a
 
 - **Scenario 3: Using `-PostRestartDirective` for explicit scope**
   1. You're resuming after a break and want to ensure the team focuses on a specific area.
-  2. You run: `pwsh -File C:\Dev\Specrew\scripts\specrew.ps1 start -PostRestartDirective "Continue iteration 002 closeout tasks only."`
+  2. You run: `specrew start -PostRestartDirective "Continue iteration 002 closeout tasks only."`
   3. Result: Your directive is prepended to the handoff prompt, followed by auto-continue or pause-and-confirm logic.
 
 Iteration artifact helpers still exist for direct/manual use:
@@ -311,19 +349,19 @@ Current practical flow is additive and review-first.
 1. Try a dry run to preview actions.
 
 ```powershell
-pwsh -File C:\Dev\Specrew\scripts\specrew-init.ps1 -ProjectPath . -DryRun
+specrew init -ProjectPath . -DryRun
 ```
 
 If the directory is populated (has files beyond `.git` and hasn't been initialized with Specrew), add `-Force`:
 
 ```powershell
-pwsh -File C:\Dev\Specrew\scripts\specrew-init.ps1 -ProjectPath . -DryRun -Force
+specrew init -ProjectPath . -DryRun -Force
 ```
 
 1. Apply bootstrap with `-Force` on populated repos.
 
 ```powershell
-pwsh -File C:\Dev\Specrew\scripts\specrew-init.ps1 -ProjectPath . -Force
+specrew init -ProjectPath . -Force
 ```
 
 1. Review merged/added files.
@@ -337,7 +375,7 @@ pwsh -File C:\Dev\Specrew\scripts\specrew-init.ps1 -ProjectPath . -Force
 1. After resolving any conflicts or making adjustments, re-run with `-Force` to complete the merge.
 
 ```powershell
-pwsh -File C:\Dev\Specrew\scripts\specrew-init.ps1 -ProjectPath . -Force
+specrew init -ProjectPath . -Force
 ```
 
 Notes:
@@ -401,7 +439,7 @@ Specrew now preflights `specify init` before touching your project. If it sees t
 1. Re-run Specrew bootstrap with `uv` available. Specrew should attempt the repair automatically:
 
 ```powershell
-pwsh -File C:\Dev\Specrew\scripts\specrew-init.ps1 -ProjectPath . -Force
+specrew init -ProjectPath . -Force
 ```
 
 1. If Specrew reports that automatic repair failed, run the same official install manually:
@@ -414,7 +452,7 @@ uv tool install --force specify-cli --from git+https://github.com/github/spec-ki
 
 ```powershell
 specify version
-pwsh -File C:\Dev\Specrew\scripts\specrew-init.ps1 -ProjectPath . -Force
+specrew init -ProjectPath . -Force
 ```
 
 1. If the official GitHub release still cannot initialize, check the [Spec Kit repository](https://github.com/github/spec-kit) for release notes or open issues before retrying.
@@ -441,7 +479,7 @@ specify init --here --ai copilot --script ps --ignore-agent-tools --force
 3. After manually initializing `.specify/`, re-run bootstrap to complete the rest:
 
 ```powershell
-pwsh -File C:\Dev\Specrew\scripts\specrew-init.ps1 -ProjectPath . -Force
+specrew init -ProjectPath . -Force
 ```
 
 4. Once `.specify/` exists, you can proceed with the iteration scaffolding steps (plan, artifacts, review, retro).
