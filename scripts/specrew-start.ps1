@@ -2399,6 +2399,21 @@ function Get-CopilotBootstrapInput {
         [bool]$RequireInteractiveIntake
     )
 
+    # Embed the full Squad coordinator prompt content directly in the -i argument
+    # so Copilot does NOT need to make tool calls during bootstrap. Copilot CLI
+    # v1.0.48 exits the REPL after the -i prompt completes if it triggered tool
+    # calls (file reads), because Copilot considers the "task" done once all
+    # tools have run. Passing the content directly keeps the conversation open
+    # for the user's intake response, since there is nothing for Copilot to
+    # "complete" — the system message becomes the prompt and Copilot waits for
+    # the next user input.
+    #
+    # The on-disk files at $PromptPath / $ContextPath remain for audit and
+    # post-session inspection; only the -i payload changes.
+    if (Test-Path -LiteralPath $PromptPath -PathType Leaf) {
+        return Get-Content -LiteralPath $PromptPath -Raw -Encoding UTF8
+    }
+
     $promptDisplayPath = Get-DisplayPathFromProjectRoot -ResolvedProjectPath $ResolvedProjectPath -Path $PromptPath
     $contextDisplayPath = Get-DisplayPathFromProjectRoot -ResolvedProjectPath $ResolvedProjectPath -Path $ContextPath
     $lines = @(
@@ -2429,13 +2444,17 @@ function Get-ManualCopilotCommand {
 
     $quotedProjectPath = $ResolvedProjectPath.Replace("'", "''")
     $quotedAgent = $Agent.Replace("'", "''")
-    $quotedBootstrap = (Get-CopilotBootstrapInput -ResolvedProjectPath $ResolvedProjectPath -PromptPath $PromptPath -ContextPath $ContextPath -RequireInteractiveIntake $RequireInteractiveIntake).Replace("'", "''")
+    $quotedPromptPath = $PromptPath.Replace("'", "''")
     $autopilotSegment = if ($UseAutopilot) { ' --autopilot' } else { '' }
     $interactiveModeSegment = if ($UseAutopilot -or -not $IsWindows) { '' } else { ' --mode interactive' }
     $passAllowAll = ($AllowAll -and $IsWindows)
     $allowAllSegment = if ($passAllowAll) { ' --allow-all' } else { '' }
 
-    return '$bootstrap = ''{0}''; copilot --agent ''{1}''{2}{3} --add-dir ''{4}'' -i $bootstrap{5}' -f $quotedBootstrap, $quotedAgent, $autopilotSegment, $interactiveModeSegment, $quotedProjectPath, $allowAllSegment
+    # Read the bootstrap content at command-run time rather than embedding it
+    # inline; the file content is multi-KB and would make the displayed manual
+    # command unreadable. The Get-Content call mirrors what Get-CopilotBootstrapInput
+    # does internally for the in-process launch path.
+    return '$bootstrap = Get-Content -LiteralPath ''{0}'' -Raw -Encoding UTF8; copilot --agent ''{1}''{2}{3} --add-dir ''{4}'' -i $bootstrap{5}' -f $quotedPromptPath, $quotedAgent, $autopilotSegment, $interactiveModeSegment, $quotedProjectPath, $allowAllSegment
 }
 
 function Get-AllowAllRuntimePlan {
@@ -2447,9 +2466,9 @@ function Get-AllowAllRuntimePlan {
         PassAllowAll        = ($AllowAll -and -not $suppressAllowAll)
         ApprovalMode        = if ($AllowAll -and -not $suppressAllowAll) { 'allow-all' } else { 'prompt-approvals' }
         DisplayMode         = if ($suppressAllowAll) { 'prompt-approvals (requested --allow-all suppressed on Linux/macOS)' } elseif ($AllowAll) { 'allow-all' } else { 'prompt-approvals' }
-        SuppressionNote     = if ($suppressAllowAll) { 'Specrew suppresses --allow-all on Linux/macOS. Copilot CLI v1.0.48 already defaults the -i bootstrap flow into the REPL there, but bootstrap file reads will require approval prompts.' } else { $null }
+        SuppressionNote     = if ($suppressAllowAll) { 'Specrew suppresses --allow-all on Linux/macOS. The bootstrap content is embedded directly in -i so Copilot does not need to make tool calls during startup; the REPL stays open for intake.' } else { $null }
         ApprovalOperatorNote = if ($suppressAllowAll) {
-            'Linux/macOS rely on Copilot CLI v1.0.48''s default REPL behavior for the -i bootstrap flow, so Specrew suppresses --allow-all there. Expect approval prompts for bootstrap file reads.'
+            'Linux/macOS: the bootstrap content is embedded directly in -i so Copilot does not need to read files during startup. The REPL stays open for intake conversation.'
         }
         elseif ($AllowAll) {
             'allow-all reduces tool-approval blocking after the request is grounded.'
@@ -2620,14 +2639,14 @@ $allowAllRuntimePlan = Get-AllowAllRuntimePlan -AllowAll $requestedAllowAll
 $approvalMode = $allowAllRuntimePlan.ApprovalMode
 $approvalOperatorNote = if (-not $useAutopilot) {
     if (-not [string]::IsNullOrWhiteSpace($allowAllRuntimePlan.SuppressionNote)) {
-        'Specrew auto-loads the bootstrap with -i. Windows adds --mode interactive to keep the REPL open during intake, while Linux/macOS rely on Copilot CLI v1.0.48''s default REPL behavior for the same bootstrap flow and therefore expect approval prompts for bootstrap file reads.'
+        'Specrew embeds the bootstrap content directly in -i so Copilot does not need to read files during startup. Windows adds --mode interactive to keep the REPL open during intake; Linux/macOS rely on Copilot CLI''s default REPL behavior for the same embedded-bootstrap flow.'
     }
     else {
-        'Specrew auto-loads the bootstrap with -i. Windows adds --mode interactive to keep the REPL open during intake; Linux/macOS rely on Copilot CLI''s default REPL behavior for the same bootstrap flow.'
+        'Specrew embeds the bootstrap content directly in -i so Copilot does not need to read files during startup. Windows adds --mode interactive to keep the REPL open during intake; Linux/macOS rely on Copilot CLI''s default REPL behavior for the same embedded-bootstrap flow.'
     }
 }
 elseif (-not [string]::IsNullOrWhiteSpace($allowAllRuntimePlan.SuppressionNote)) {
-    'Linux/macOS rely on Copilot CLI v1.0.48''s default REPL behavior for the -i bootstrap flow, so Specrew suppresses --allow-all there and bootstrap file reads will require approval prompts.'
+    'Specrew embeds the bootstrap content directly in -i so Copilot does not need to read files during startup. Linux/macOS suppress --allow-all because the embedded-bootstrap flow stays in REPL on Copilot CLI''s default mode.'
 }
 elseif ($approvalMode -eq 'allow-all') {
     'allow-all reduces tool-approval blocking after the request is grounded.'
