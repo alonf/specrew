@@ -1,3 +1,58 @@
+# Decision: Reviewer Feature 020 Iteration 001 Scope-Correction Reauthorization for Review-Verdict-Signoff Rerun
+
+**Date**: 2026-05-22  
+**Boundary**: Review cycle (corrected scope authorization before rerun)  
+**Feature**: 020-session-state-durability (Session-State Durability & In-Flight Progress Tracking)  
+**Authority**: Alon Fliess (human authorization)  
+**Decision Type**: Scope clarification & runtime evidence
+
+## Context
+
+Feature 020 Iteration 001 review cycle hit a scope mismatch when the prior Reviewer (Copilot CLI) issued CHANGES-REQUESTED due to missing requirement coverage for FR-006..014, FR-021..024, and FR-029. A follow-up human authorization from Alon Fliess has now clarified that these requirements are deferred to Iteration 2, and the Iteration 1 scope should be validated against the corrected boundary only.
+
+## Decision
+
+**Re-authorize Feature 020 Iteration 1 review-verdict-signoff with corrected scope boundary and runtime evidence.**
+
+Iteration 1 Authoritative Scope: FR-001..005, FR-015..020, FR-025..028
+- **Pillar 1** (boundary-event state sync): FR-001, FR-002, FR-015, FR-016, FR-017
+- **Pillar 4** (stale-state detection): FR-003, FR-004, FR-018, FR-019, FR-020
+- **Scope Addition 1** (module-vs-project version check): FR-025, FR-026, FR-027, FR-028
+
+Explicitly Deferred to Iteration 2:
+- FR-006..014 (design, planning, and infrastructure features)
+- FR-021..024 (welcome-back prompt flow)
+- FR-029 (PSGallery latest-version check)
+
+## Runtime Evidence
+
+- **Requested role / work item**: Reviewer / Feature 020 Iteration 001 review-verdict-signoff rerun (corrected scope)
+- **Requested agent**: Reviewer / GitHub Copilot CLI
+- **Actual agent**: reviewer-iter001-scope-rerun (acting as Reviewer)
+- **Model**: claude-sonnet-4.5
+- **Reviewed HEAD**: 71768e8943d44ae2a7df1164ba59137d0ad774fc (no HEAD change from prior review)
+- **Assignment honored**: yes
+
+## Retro Note
+
+> "the prior human authorization paste contained an FR-range error from memory; the reviewer correctly caught authorization-vs-plan drift, which is a positive signal."
+
+The prior Reviewer's catch was correct. The human has now repaired the authorization record. This workflow is expected: **the reviewer acts as a boundary checker; the human clarifies or corrects edge cases at handoff.**
+
+## Impact
+
+- Review rerun authorized against corrected scope boundary
+- Iteration 1 deliverables will be re-validated using correct FR-range baseline
+- Deferred requirements logged for Iteration 2 iteration-plan generation
+- Governance quality improved: reviewer-caught drift led to human clarification (feedback loop working as designed)
+
+## Cross-References
+
+- Iteration 1 plan: specs\020-session-state-durability\iterations\001\plan.md
+
+---
+
+
 # Decision: Implementer Phase 0 Chore—Feature Closeout Dashboard Update
 
 **Date**: 2026-05-17  
@@ -171,6 +226,40 @@ T006 is now complete for Iteration 001. Phase 0 design questions are fully resol
 ## Next Action
 
 Execute Pillar 1 and Pillar 2 in dependency order, validate the new module packaging surfaces, then hand off to Pillar 3 without widening into publish execution.
+
+---
+
+# Decision: Feature 020 Iteration 001 Corrected-Scope Review-Verdict-Signoff
+
+**Date**: 2026-05-18T02:02:12+03:00  
+**Boundary**: Review-verdict-signoff rerun  
+**Feature**: 020-session-state-durability (Session-State Durability & In-Flight Progress Tracking)  
+**Iteration**: 001  
+**Authority**: Alon Fliess (corrected human scope authorization)  
+**Decision Type**: Review verdict signoff
+
+## Context
+
+The earlier review-boundary request pasted an FR range from memory that was wider than the Iteration 001 contract. The reviewer correctly rejected closure on that mismatch. The corrected authorization re-established the authoritative Iteration 001 scope as FR-001..005, FR-015..020, and FR-025..028, with FR-006..014, FR-021..024, and FR-029 deferred by the iteration plan Scope Guardrails.
+
+## Verdict
+
+**Approved** — Iteration 001 passes review-verdict-signoff on the corrected scope.
+
+- Reviewed HEAD: `71768e8`
+- Validator: PASS
+- Required integration suites: PASS (`boundary-sync-atomicity.tests.ps1`, `stale-state-detection.tests.ps1`, `version-checks.tests.ps1`)
+- Review artifact: `specs/020-session-state-durability/iterations/001/review.md`
+
+## Impact
+
+- Iteration 001 is accepted for boundary-event sync, stale-state detection, and module version mismatch behavior only.
+- Retro may begin from this state.
+- Iteration 002 remains unopened; deferred requirements stay deferred and are not silently pulled forward.
+
+## Governance Note
+
+Preserve in retro context: the prior authorization paste had an FR-range memory error, and the reviewer correctly caught the authorization-versus-plan drift instead of softening the verdict.
 
 
 # Decision: Feature 019 T005 API-Key Rotation Guidance
@@ -6439,3 +6528,4 @@ Feature 020 Iteration 1 implementation will stop if any of these occur:
 - **Requested agent**: copilot
 - **Actual agent**: implementer-version-check-repair
 - **Authorization preserved**: yes
+

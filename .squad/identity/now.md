@@ -1,7 +1,7 @@
 ---
-updated_at: 2026-05-18T01-14-43Z
-focus_area: Feature 020 Iteration 1 Repair Authorized; version-check test failure, stale-state repair complete
-active_issues: Implementer authorized to diagnose/fix version-check test failure in `tests/integration/version-checks.tests.ps1`. Prior stale-state-detection blocker resolved (commit e3e941e). Iteration 1 continues if repair succeeds. Stop conditions preserved: new validator FAIL, new test failure, >10 consecutive reconciliation edits, git push failure, or iteration-completion handoff.
+updated_at: 2026-05-22T14-30-00Z
+focus_area: Feature 020 Iteration 1 Review Rerun Authorized (Corrected Scope)
+active_issues: Reviewer authorized to execute review-verdict-signoff against corrected scope (FR-001..005, FR-015..020, FR-025..028). Iteration 2 will cover deferred requirements (FR-006..014, FR-021..024, FR-029). Stop conditions preserved: new test failure, validator FAIL, or review verdict mismatch.
 ---
 
 # What We're Focused On
