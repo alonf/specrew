@@ -611,8 +611,53 @@ All 6 pre-implementation quality lenses carried forward from before-implement bo
 Feature 019 hardening-gate-and-implementation-auth boundary complete. Pre-implementation readiness confirmed with READY verdict. Implementation authorization audit record exists with human approver, timestamp, scope, and constraints. T001-T006 design-question tasks remain unresolved by design and will surface during implementation execution. Boundary artifacts committed and pushed to origin/019-specrew-distribution-module (fa56928). /speckit.implement has NOT started and requires separate explicit human authorization before task execution.
 
 ## Next Action
+ 
+ Hardening-gate-and-implementation-auth boundary is complete. Await explicit human authorization for /speckit.implement only to begin task execution.
 
-Hardening-gate-and-implementation-auth boundary is complete. Await explicit human authorization for /speckit.implement only to begin task execution.
+
+# Decision: Feature 019 Boundary 6 Feature-Closeout Authorization
+
+**Date**: 2026-05-17T16:17:27Z  
+**Boundary**: feature-closeout  
+**Feature**: 019-specrew-distribution-module (Specrew Distribution Module via PowerShell Gallery)  
+**Authority**: Alon Fliess (human authorization)  
+**Decision Type**: Feature-closeout authorization
+
+## Authorization Scope
+
+Human approver **Alon Fliess** explicitly authorized **Boundary 6 — feature-closeout** for Feature 019 as a permissive autonomous run that must stop only at PR creation or on a hard failure.
+
+**Authorized starting ref**: `f2d77ee` — the iteration-closeout finalization commit on branch `019-specrew-distribution-module`
+
+**Authorized execution sequence**:
+1. Repair the pre-existing Iteration 001 hardening-gate over-claim so `iterations/001` transitions to PASS.
+2. Apply the Rule 15 version bump from `0.18.0` to `0.19.0` across all required version-tracked files.
+3. Create the feature-level closeout artifact and update `.squad/identity/now.md` plus `.squad/decisions.md` to reflect the feature-closed state.
+4. Create the PR from `019-specrew-distribution-module` to `main` and stop after surfacing the PR URL.
+
+**Hard-stop conditions**:
+- Validator fail after a fix attempt
+- Test failure in the executed validation lanes
+- Missing Rule 15 version target file
+- Git commit or push failure
+- `gh pr create` failure
+- More than 10 consecutive reconciliation edits without resolution
+
+**Out of scope**:
+- Script or module logic changes outside the required Rule 15 version field updates
+- Corpus graduation into `.specrew/quality/known-traps.md`
+- PR merge
+
+## Runtime Evidence
+
+- Coordinator resumed the authoritative Specrew handoff from `.specrew/last-start-prompt.md` and `.specrew/start-context.json`.
+- Current focus confirmed in `.squad/identity/now.md`: Feature 019 Iteration 002 is closed and ready for feature-closeout authorization.
+- Team root resolved to `C:\Dev\Specrew`; current branch confirmed as `019-specrew-distribution-module`.
+- Open GitHub issue scan found no open `squad:{member}` assignments that need pickup before Boundary 6 execution.
+
+## Next Action
+
+Execute the Boundary 6 feature-closeout pass in sequence under the authorized stop-at-PR-creation discipline, then report the phase commit hashes, validator transitions, final validator result, and PR URL.
 
 
 # Decision: Feature 015 Review-Boundary Commit
@@ -5498,3 +5543,52 @@ Boundary 6 — Feature Closeout (not started; requires human authorization from 
 - **Authority**: Spec Steward (iteration-closeout-completion authorization)
 - **Artifact**: closeout.md
 
+## 2026-05-17T16:16:11Z — Delegated routing plan
+
+- **Enabled Agents**: copilot
+- **Independent Oversight Active**: False
+- **Roles**:
+  - Implementer | requested=copilot | actual=copilot | model=(platform default) | status=honored | fallback=(none)
+  - Spec Steward | requested=codex | actual=copilot | model=(platform default) | status=fell-back | fallback=preferred agent 'codex' is not enabled
+  - Planner | requested=claude | actual=copilot | model=(platform default) | status=fell-back | fallback=preferred agent 'claude' is not enabled
+  - Reviewer | requested=claude | actual=copilot | model=(platform default) | status=fell-back | fallback=preferred agent 'claude' is not enabled
+  - Retro Facilitator | requested=copilot | actual=copilot | model=(platform default) | status=honored | fallback=(none)
+
+## 2026-05-17T16:16:11Z — Routing evidence: Spec Steward
+
+- **Decision ID**: routing-evidence-ef7f054c6197
+- **Type**: routing-evidence
+- **Affected Requirement**: FR-043
+- **Affected Iteration**: (none)
+- **Approving Human**: (none)
+- **Recorded At**: 2026-05-17T16:16:11Z
+- **Next Action**: none
+- **Rationale**: Delegated lifecycle routing was applied for role 'Spec Steward'.
+
+- **Routing Evidence**: Spec Steward | requested=codex | actual=copilot | model=(platform default) | status=fell-back | fallback=preferred agent 'codex' is not enabled
+
+## 2026-05-17T16:16:11Z — Routing evidence: Planner
+
+- **Decision ID**: routing-evidence-8e030a262390
+- **Type**: routing-evidence
+- **Affected Requirement**: FR-043
+- **Affected Iteration**: (none)
+- **Approving Human**: (none)
+- **Recorded At**: 2026-05-17T16:16:11Z
+- **Next Action**: none
+- **Rationale**: Delegated lifecycle routing was applied for role 'Planner'.
+
+- **Routing Evidence**: Planner | requested=claude | actual=copilot | model=(platform default) | status=fell-back | fallback=preferred agent 'claude' is not enabled
+
+## 2026-05-17T16:16:11Z — Routing evidence: Reviewer
+
+- **Decision ID**: routing-evidence-3424a3a4cde3
+- **Type**: routing-evidence
+- **Affected Requirement**: FR-043
+- **Affected Iteration**: (none)
+- **Approving Human**: (none)
+- **Recorded At**: 2026-05-17T16:16:11Z
+- **Next Action**: none
+- **Rationale**: Delegated lifecycle routing was applied for role 'Reviewer'.
+
+- **Routing Evidence**: Reviewer | requested=claude | actual=copilot | model=(platform default) | status=fell-back | fallback=preferred agent 'claude' is not enabled
