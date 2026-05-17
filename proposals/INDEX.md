@@ -6,7 +6,7 @@ This index is the navigation surface for all proposals in this directory. Sorted
 
 ---
 
-## Shipped (8)
+## Shipped (9)
 
 Proposals whose features have shipped to main and are part of Specrew's current capability.
 
@@ -20,8 +20,9 @@ Proposals whose features have shipped to main and are part of Specrew's current 
 | [006](006-public-readiness-pass.md) | Public-Readiness Pass | feature-015 | phase-1 | 19 |
 | [007](007-substantive-interaction-model.md) | Substantive Interaction Model | feature-016 | phase-1 | 22 |
 | [009](009-velocity-dashboard.md) | Velocity Dashboard ("Where Am I?") | feature-017 | phase-2 | 19 |
+| [031](031-specrew-distribution-module.md) | Specrew Distribution Module (PowerShell Gallery) | feature-019 | phase-2 | 22 |
 
-## Draft (9)
+## Draft (10)
 
 Proposals with full source-spec content, ready for `/speckit.specify` ingestion when prioritized.
 
@@ -32,12 +33,14 @@ Proposals with full source-spec content, ready for `/speckit.specify` ingestion 
 | [011](011-architecture-intent-checkpoint.md) | Architecture Intent Checkpoint | phase-1 | 10 | On-disk spec exists at specs/006-human-architecture-checkpoint |
 | [012](012-visual-artifact-extension.md) | Visual Artifact Extension | phase-1 | 15 | Pillar 4 of the interaction model |
 | [030](030-quality-hardening-bundle.md) | Quality Hardening Bundle (Form-vs-Meaning Verification) | phase-2 | 35 | Bundles 4 sub-components addressing form-correct/meaning-wrong bug class |
-| [031](031-specrew-distribution-module.md) | Specrew Distribution Module (PowerShell Gallery) | phase-2 | 27 | Two-iteration: Iter 1 Windows module + Iter 2 cross-platform hardening; pre-public-flip priority |
 | [032](032-specrew-slash-commands.md) | Specrew Slash-Command Surface | phase-2 | 7 | `/specrew.*` commands; composes tightly with 031 (combined option recommended) |
 | [033](033-specrew-governance-cli.md) | Specrew Governance CLI | phase-2 | 18 | `specrew roadmap` / `propose` / `feature` CLI surfaces; absorbs Proposal 028 |
 | [034](034-markdown-lint-strict-defaults-restoration.md) | Markdown Lint Cleanup and Strict-Defaults Restoration | phase-2 | 12 | Fix all ~1,565 markdown lint violations + remove `.markdownlint.json` relaxation; sequenced AFTER F-019 closes |
+| [035](035-session-state-durability.md) | Session-State Durability & In-Flight Progress Tracking | phase-2 | 30 | Next up after F-019. Source spec at file:///C:/Dev/SpecrewDraft/session-state-durability.md. Addresses L6 closeout-cascade lesson. |
+| [036](036-branch-reconciliation.md) | Lifecycle Branch Reconciliation | phase-2 | 13 | SDLC pillar; single-developer precursor to [010] multi-developer. MERGE only, never rebase. |
+| [040](040-token-economy-governance.md) | Token Economy as Governance Driver | phase-4 | 38 | 7-layer architecture; two billing modes (metered + quota); model names ONLY in catalog L3-L4 |
 
-## Candidate (17)
+## Candidate (24)
 
 Idea-form proposals not yet developed into full source specs. Open for discussion; may mature to draft or be withdrawn.
 
@@ -60,6 +63,14 @@ Idea-form proposals not yet developed into full source specs. Open for discussio
 | [027](027-iteration-011-cleanup.md) | Iteration 011 Cleanup | phase-2 | 7 |
 | [028](028-public-proposals-surface.md) | Public Proposals Surface | phase-2 | 13 |
 | [029](029-handoff-format-scoping-refinement.md) | Handoff Format Scoping Refinement | phase-2 | 5 |
+| [037](037-psscriptanalyzer-lint-cleanup.md) | PSScriptAnalyzer Lint Cleanup | phase-2 | 7 |
+| [038](038-adaptive-boundary-discipline.md) | F-016 Adaptive Boundary Discipline (Boundary-Class Refinement) | phase-2 | 10 |
+| [039](039-squad-upstream-reconciliation.md) | Squad Upstream Reconciliation | phase-3 | 22 |
+| [041](041-specrew-autopilot.md) | Specrew Autopilot (Experiment + Production Feature) | phase-4 | 28 |
+| [042](042-specrew-integration-test-suite.md) | Specrew Integration Test Suite | phase-2 | 25 |
+| [043](043-structured-question-protocol.md) | Structured Question Protocol | phase-3 | 10 |
+| [044](044-downstream-quality-baseline-bootstrap.md) | Downstream Quality Baseline Bootstrap | phase-2 | 10 |
+| [045](045-ci-watchdog-recurrence-prevention.md) | CI Watchdog & Recurrence Prevention | phase-2 | 8 |
 
 ---
 
@@ -72,21 +83,27 @@ For roadmap-style viewing, proposals grouped by phase placement:
 - 011 (Architecture Intent Checkpoint — draft, on-disk spec exists)
 - 012 (Visual Artifact Extension — candidate)
 
-**Phase 2** (convention enforcement + structural fidelity):
-- 008 (NFR Governance — draft)
+**Phase 2** (convention enforcement + structural fidelity + distribution + state durability):
 - 009 (Velocity Dashboard — shipped as feature-017)
+- 031 (Specrew Distribution Module — shipped as feature-019)
+- 008 (NFR Governance — draft)
 - 030 (Quality Hardening Bundle — draft, HIGH-PRIORITY in queue)
-- 031 (Specrew Distribution Module — draft, pre-public-flip priority)
 - 032 (Specrew Slash-Command Surface — draft, composes with 031)
 - 033 (Specrew Governance CLI — draft, absorbs 028)
-- 034 (Markdown Lint Cleanup and Strict-Defaults Restoration — draft, post-F-019)
-- 013, 014, 015, 017, 018, 019, 020, 021, 022, 023, 027, 028, 029 (candidates)
+- 034 (Markdown Lint Cleanup — draft, post-F-019)
+- 035 (Session-State Durability — draft, NEXT UP)
+- 036 (Branch Reconciliation — draft, SDLC pillar)
+- 013, 014, 015, 017, 018, 019, 020, 021, 022, 023, 027, 028, 029, 037, 038, 042, 044, 045 (candidates)
 
-**Phase 3** (refactor + maintainability):
+**Phase 3** (refactor + maintainability + upstream reconciliation):
 - 026 (Refactor Track R1-R5)
+- 039 (Squad Upstream Reconciliation — depends on 024)
+- 043 (Structured Question Protocol — could fold into 024)
 
-**Phase 4** (validator hardening + review-depth lift, MVP):
+**Phase 4** (token economy + autopilot experiment):
 - 016 (Outcome Scoring — candidate)
+- 040 (Token Economy Governance — draft)
+- 041 (Specrew Autopilot — candidate)
 
 **Phase 5** (multi-developer):
 - 010 (Multi-Developer Reconciliation — draft)

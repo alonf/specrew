@@ -1,10 +1,11 @@
 ---
 proposal: 031
 title: Specrew Distribution Module (PowerShell Gallery)
-status: draft
+status: shipped
 phase: phase-2
 estimated-sp: 27
 discussion: tbd
+shipped-as: feature-019
 ---
 
 # Specrew Distribution Module (PowerShell Gallery)
