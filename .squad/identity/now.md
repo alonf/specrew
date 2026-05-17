@@ -1,7 +1,7 @@
 ---
-updated_at: 2026-05-17T20-00-10Z
-focus_area: Feature 020 After-Tasks Validation PASS; awaiting Iteration 1 authorization
-active_issues: Feature 020 task validation complete (Spec Steward gate passed, exit code 0). All 35 tasks trace to FR-001–FR-035 (complete coverage). Role assignments valid (Implementer, Reviewer). Effort totals aligned (33 SP: 2 + 16 + 15). Acceptance criteria concrete and testable. Dependency graph acyclic with correct critical paths. Companion chore (CHORE-001–004) shipped to main as 9f63790 and merged into 020 branch. Feature 020 is READY FOR HUMAN AUTHORIZATION to proceed to Iteration 1 execution.
+updated_at: 2026-05-22T12-00-00Z
+focus_area: Feature 020 Iteration 1 Blocked at Test Failure; requires stale-state-detection integration test repair
+active_issues: Implementer attempted Feature 020 Iteration 1 execution on commit e3e941e (after repair). Pre-implementation validation PASS. However, integration test suite `tests/integration/stale-state-detection.tests.ps1` failed at good-state scenario (lines 83-88). Root cause identified: `sync-boundary-state.ps1` storing literal "HEAD" instead of resolved commit hash in auth_commit_hash field. Feature branch lookup fails because script receives "HEAD" instead of feature ref. BLOCKED: Integration test must pass before implementation can proceed. No feature code changes committed.
 ---
 
 # What We're Focused On

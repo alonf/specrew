@@ -6299,3 +6299,69 @@ Once repair is complete and verified, Feature 020 can proceed to **re-validate a
 - **Feature Lifecycle**: Four-phase model (Planning → Review → Implementation → Closeout)
 - **Quality Bar**: Feature 020 custom quality composition (PowerShell CLI tool + file I/O correctness + git integration)
 - **Related Gates**: Before-Plan Gate (passed 2026-05-15), After-Tasks Gate (passed 2026-05-17)
+
+---
+
+# Decision: Feature 020 Iteration 1 Boundary-State Durability Implementation Architecture
+
+**Date**: 2026-05-18  
+**Feature**: 020-session-state-durability (Session-State Durability & In-Flight Progress Tracking)  
+**Iteration**: 001  
+**Authority**: Implementer (autonomous implementation planning decision)  
+**Decision Type**: Implementation architecture clarification
+
+## Decision
+
+Implement boundary-state durability by **centralizing the write-temp-then-rename logic in `scripts/internal/sync-boundary-state.ps1`**, then invoke it through mirrored Spec Kit wrappers plus lifecycle hook/ceremony surfaces.
+
+## Rationale
+
+1. **Single Write Semantics**: File-write pattern (atomic write via temp-then-rename) appears in multiple boundaries:
+   - `specrew start` session state recording
+   - Downstream `.specify` execution (Spec Kit extensions)
+   - Future closeout automation (dashboard artifact generation)
+
+2. **Centralization Benefit**: Moving all write logic to one internal helper (`scripts/internal/sync-boundary-state.ps1`) ensures:
+   - Consistent durability semantics across all boundaries
+   - Easier testing and validation of file I/O atomicity
+   - Single point of maintenance if durability requirements evolve
+
+3. **Mirrored Extension Layout**: The mirrored `.specify/extensions/specrew-speckit` structure is used by bootstrap and update flows. Preserving this layout:
+   - Maintains existing extension distribution mechanism
+   - Avoids breaking changes to module structure
+   - Enables future `.specify` extension customization without core refactor
+
+4. **Lifecycle Hooks & Ceremonies**: Spec Kit surfaces (`.specify/extensions/specrew-speckit/scripts/sync-boundary-state.ps1` wrapper) expose boundary sync as:
+   - Explicit ceremony step in planning/tasks workflows
+   - Customizable hook for power users
+   - Clear audit point for governance validation
+
+## Implementation Scope
+
+- **Core Logic**: `scripts/internal/sync-boundary-state.ps1` (centralized, shared)
+- **Wrapper Call Sites**:
+  - `scripts/specrew-start.ps1` → calls internal helper
+  - `.specify/extensions/specrew-speckit/scripts/sync-boundary-state.ps1` → wrapper exposing helper
+  - Future closeout scripts → will call internal helper
+
+- **Artifacts Written**:
+  - `.specrew/last-start-prompt.md` (frontmatter + body)
+  - `.specrew/start-context.json` (session state JSON)
+  - `.squad/identity/now.md` (markdown frontmatter)
+  - `.squad/decisions.md` (ledger entry append)
+  - `.specify/feature.json` (active feature tracking)
+
+## Impact
+
+- **Iteration 1 Tasks**: I1-T006, I1-T007, I1-T008, I1-T009 map directly to this architecture
+- **Boundary-Event Sync** (Pillar 1): Fully enabled by centralized write logic
+- **Stale-State Detection** (Pillar 4): Depends on reliable state durability
+- **Future Extensibility**: Foundation laid for Iteration 2 (Task tracking, feature closeout)
+
+## Cross-References
+
+- **Feature Spec**: `specs/020-session-state-durability/spec.md` (Pillar 1, Pillar 4)
+- **Feature Plan**: `specs/020-session-state-durability/iterations/001/plan.md` (Tasks I1-T006 through I1-T009)
+- **Internal Helper**: `scripts/internal/sync-boundary-state.ps1` (source of truth)
+- **Wrapper Template**: `.specify/extensions/specrew-speckit/scripts/sync-boundary-state.ps1`
+- **Test Coverage**: `tests/integration/stale-state-detection.tests.ps1` (validates sync correctness)
