@@ -110,6 +110,24 @@ These repairs captured real runtime observations (e.g., `--mode interactive` is 
 
 ---
 
+### L6: Closeout-Artifact Consistency Cascade
+
+**Category**: Governance ceremony / state durability
+**Severity**: Medium — observed in real time during this iteration's own closeout
+**Evidence**: Squad spent ~30+ minutes in a reconciliation loop at the iteration-closeout boundary (Boundary 5), generating multiple corrective commits (`dd234d1` → `3938223` → `2057d6b`) chasing cross-file consistency
+
+**Finding**: The iteration-closeout boundary requires five separate governance artifacts to agree on a single state transition: `closeout.md`, `retro.md`, `state.md`, `.squad/identity/now.md`, and `.squad/decisions.md`. But these artifacts are authored across separate boundaries (review, retro, closeout) with no atomic-update mechanism. At iteration-closeout time, Squad discovered cascading inconsistencies (e.g., retro.md said "iteration-closeout pending" while closeout.md said "closed at HEAD"; state.md still showed pre-closeout "next boundary: review"; .squad/identity/now.md hadn't advanced). Each corrective commit fixed one file's stale references but revealed another's. The reconciliation loop nearly required human intervention after compaction. The boundary work itself is mechanical (~5 lines per file); the cost is the read-everything-then-fix-one-thing pattern Squad uses to maintain cross-file invariants without a transactional update mechanism.
+
+**Why It Matters**: This is a structural failure mode of Specrew's current closeout ceremony, not an execution error. Every iteration-close will face the same cascade until the underlying state-durability problem is solved. The cost compounds with feature complexity (F-019 had 12+ commits during closeout alone), and it consumes Premium quota disproportionate to the boundary's semantic value.
+
+**Recommendation for Future Work**:
+- This lesson directly motivates the queued **Session-State Durability & In-Flight Progress Tracking feature** (source spec at `file:///C:/Dev/SpecrewDraft/session-state-durability.md`), specifically Pillar 1 (boundary-event state synchronization). Every boundary commit should atomically update all dependent state files in a single transactional write — eliminating post-hoc reconciliation entirely.
+- Until that feature ships, the workaround is to flatten boundary-by-boundary closeout into a single permissive autonomous run with stop-at-PR-creation. The boundary discipline value (human approval at each strategic-progression boundary) is real but the reconciliation overhead at iteration/feature close erases the discipline benefit.
+
+**Impact On This Iteration**: The closeout artifacts converged after three correction passes and one human reconciliation step. Iteration 002 is closed at commit `2057d6b` (or HEAD if further reconciliation lands), but the time-to-close was ~30+ minutes for purely mechanical state updates.
+
+---
+
 ## Carry-Forward & Future Improvements
 
 ### Non-Blocking Items (Preserved from Iteration 001)
@@ -126,6 +144,7 @@ The following rows are candidates for `.specrew/quality/known-traps.md` (full in
 - **Cross-Platform Sweep Scope Partitioning** (L3)
 - **Deferred-Launch Pattern for Interactive Processes** (L4)
 - **Iteration Authorization: Repair-Chase Depth Limits** (L5)
+- **Closeout-Artifact Consistency Cascade** (L6 — motivates queued Session-State Durability feature; until it ships, prefer flattened permissive closeout runs)
 
 ---
 

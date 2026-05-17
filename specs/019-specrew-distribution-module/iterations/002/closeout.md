@@ -64,7 +64,7 @@ Iteration 002 delivered **8 story points** of cross-platform hardening and publi
 - `6fa14d6` — R22 cleanup (reverted R10-R20 wrong-direction artifacts)
 - `872b5a8` — uniform `--allow-all` default restored
 - `f998730` — README WSL-validated
-- `7b08dfd` — verb conformance (HEAD)
+- `7b08dfd` — verb conformance
 
 **Actual Fix Summary**: Deferred-launch coordination pattern — `specrew-start.ps1` writes launch args to `$env:SPECREW_DEFERRED_LAUNCH_FILE` (temp file) instead of invoking `& copilot @args` directly from script body; `Invoke-SpecrewScript` in `Specrew.psm1` (function context) reads and executes from its own function body after script returns. TTY is preserved because invocation site is function body called from user prompt, not script body. Approximately 5 lines of coordination code.
 
@@ -129,11 +129,11 @@ These are recorded in `iterations/002/retro.md` for corpus inclusion decision by
 
 **Baseline Ref**: `2992fbc` (Iteration 001 closeout reconciliation boundary)  
 **Closeout Ref**: `dd234d1` (Authorize Iteration 002 closeout for Feature 019)  
-**Closure Ref**: `3938223` (Spec Steward: Bounded accuracy repair for Iteration 002 closeout boundary, HEAD)
+**Closure Ref**: `2057d6b` (Spec Steward: Repair Feature 019 Iteration 002 lifecycle artifacts for accurate closure state, HEAD)
 
 **Complete Commit Trail** (Iteration 002 delivery + repair cycle + closure):
 ```
-3938223 — Spec Steward: Bounded accuracy repair for Iteration 002 closeout boundary (HEAD) ← Closure Ref
+2057d6b — Spec Steward: Repair Feature 019 Iteration 002 lifecycle artifacts for accurate closure state ← Closure Ref
 dd234d1 — Authorize Iteration 002 closeout for Feature 019 ← Closeout Ref
 bdd6991 — Retro Facilitator: Bounded handoff-consistency fix for iteration 002
 373c073 — chore: correct iteration-closeout boundary in .squad/identity/now.md
