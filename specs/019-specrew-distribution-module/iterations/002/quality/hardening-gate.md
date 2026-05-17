@@ -63,40 +63,4 @@
 **Repair Chain Summary**: R-019-V2-R1 through R-019-V2-R22 (22 sub-iterations). Root cause: PowerShell on Linux strips TTY for `& nativeCommand` from script-body context; preserves TTY from function-body context. Fix: deferred launch via temp-file coordination to module function body. Full event record in `specs/019-specrew-distribution-module/iterations/002/drift-log.md`.
 
 
-## Post-Implementation Verification Evidence
 
-### Windows 11 Verification (2026-05-18)
-
-- `specrew init`: Correct module-mode messaging confirmed
-- `specrew start`: Opens Copilot interactive REPL with Squad selected and `--allow-all` enabled
-- Bootstrap auto-loads via `-i`; Squad reads `.specrew/last-start-prompt.md` and `.specrew/start-context.json`; intake conversation proceeds normally
-- Module imports without "unapproved verbs" warning (commit 7b08dfd)
-
-### WSL Ubuntu (native ext4) Verification (2026-05-18)
-
-- `specrew init`: Correct module-mode messaging confirmed — identical to Windows behavior
-- `specrew start`: Opens Copilot interactive REPL with Squad selected and `--allow-all` enabled
-- Bootstrap auto-loads via `-i`; Squad reads `.specrew/last-start-prompt.md` and `.specrew/start-context.json`; intake conversation proceeds normally
-- Module imports without "unapproved verbs" warning
-- **Root cause confirmed**: `function F { & nano }; F` diagnostic confirmed TTY preservation in function-body context on Linux; R-019-V2-R21 is the minimal correct fix
-
-### Critical Commit Trail
-
-| Commit | Description | Classification |
-| --- | --- | --- |
-| `e559d65` | R1: Wrong-direction bash TTY shim | reverted by R22 |
-| `72d3b51` | R21: Deferred-launch via function body (THE actual fix) | kept |
-| `6fa14d6` | R22: Cleanup of R10-R20 wrong-direction artifacts | kept |
-| `872b5a8` | Uniform `--allow-all` default restored | kept |
-| `f998730` | README WSL-validated | kept |
-| `7b08dfd` | Verb conformance (HEAD) | kept |
-
-## Hardening-Gate Status
-
-**Overall Verdict**: ready
-
-**Scope**: Iteration 002 post-repair verification for Feature 019 Specrew Distribution Module — cross-platform launch flow (R-019-V2-R21 deferred-launch fix), R22 wrong-direction artifact cleanup, and verb-conformance (commit 7b08dfd).
-
-**Rationale**: Cross-platform launch flow verified end-to-end on Windows 11 and WSL Ubuntu (native ext4) 2026-05-18 by Alon Fliess. Root cause isolated and fixed via R-019-V2-R21 deferred-launch pattern. R22 reverted all wrong-direction artifacts from the R1-R20 repair chase. Verb-conformance fix eliminates "unapproved verbs" warning on module import. All legitimate cross-platform fixes (R8, R14, R18/R19, R21) preserved; all wrong-direction artifacts removed.
-
-**Repair Chain Summary**: R-019-V2-R1 through R-019-V2-R22 (22 sub-iterations). Root cause: PowerShell on Linux strips TTY for `& nativeCommand` invoked from script-body context; preserves TTY from function-body context. Fix: deferred launch via temp-file coordination to module function body. Full event record in `specs/019-specrew-distribution-module/iterations/002/drift-log.md`.

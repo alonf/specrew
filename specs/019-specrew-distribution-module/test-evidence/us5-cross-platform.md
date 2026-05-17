@@ -318,6 +318,98 @@ PowerShell on Linux strips TTY for `& nativeCommand` when invoked from SCRIPT-bo
 - **Windows Validation**: `pwsh -NoProfile -File tests/integration/start-command.ps1`; `pwsh -NoProfile -File tests/integration/review-command.ps1`
 - **Linux/macOS Validation**: Focused regression coverage now asserts both `\` and `/` trimming behavior and blocks `/.specrew/...` bootstrap references from reappearing. Full WSL/Linux end-to-end re-verification remains pending-human-execution.
 
+### Follow-up Repair Evidence (R-019-V2-R15/R16)
+
+- **Status**: Completed but wrong-direction; reverted by R22 cleanup
+- **Files Changed**: `scripts/specrew-start.ps1`, `docs/getting-started.md`, `docs/user-guide.md`, `specs/019-specrew-distribution-module/test-evidence/us5-cross-platform.md`
+- **Direction**: Symptom-chasing attempt to shorten ask_user bootstrap content
+- **Outcome**: Non-blocking; fully reverted by R22 cleanup (commit 6fa14d6). Windows validation used to refine understanding of why explicit `--mode interactive` was needed, but the shortened content was not the actual fix.
+
+### Follow-up Repair Evidence (R-019-V2-R17)
+
+- **Status**: Completed but wrong-direction; reverted by R22 cleanup
+- **Files Changed**: `scripts/specrew-start.ps1`, `Specrew.psm1`
+- **Direction**: Attempted execvp P/Invoke approach to delegate child process launch to Win32 APIs
+- **Outcome**: Non-blocking; fully reverted by R22 cleanup. Did not preserve TTY behavior on Linux as hypothesized.
+
+### Follow-up Repair Evidence (R-019-V2-R18/R19)
+
+- **Status**: ✅ Completed and LOAD-BEARING for R21 (kept)
+- **Files Changed**: `Specrew.psm1`, `scripts/specrew-start.ps1`, `tests/integration/start-command.ps1`, `specs/019-specrew-distribution-module/test-evidence/us5-cross-platform.md`
+- **Direction**: In-process script invocation in `Invoke-SpecrewScript` function
+- **Mechanism**: `Invoke-SpecrewScript` now uses `& ([scriptblock]::Create($scriptContent))` to execute scripts in function-body context (call site) instead of as spawned processes
+- **Outcome**: ✅ LOAD-BEARING — This approach preserved function-body context and became the architectural foundation for R21's deferred-launch fix. While R18/R19 alone did not solve the TTY issue, they set up the execution model that R21 later leveraged to defer native command invocation into function-body context.
+- **Windows Validation**: Integration tests passed after R18/R19 refactoring
+- **Linux/macOS Validation**: Real TTY behavior on Linux still required the deferred-launch pattern (R21) to fully work
+
+### Follow-up Repair Evidence (R-019-V2-R20)
+
+- **Status**: Completed but wrong-direction; reverted by R22 cleanup
+- **Files Changed**: `scripts/specrew-start.ps1`, `Specrew.psm1`
+- **Direction**: Attempted `script(1)` PTY wrapper to allocate a pseudo-terminal for child process invocation on Linux
+- **Outcome**: Non-blocking; fully reverted by R22 cleanup. PTY wrapper did not solve the function-vs-script-body context issue that R21 actually fixed.
+
+### Follow-up Repair Evidence (R-019-V2-R21 — THE ACTUAL FIX)
+
+- **Status**: ✅ RESOLVED — THE MINIMAL CORRECT FIX (commit 72d3b51)
+- **Files Changed**: `scripts/specrew-start.ps1`, `Specrew.psm1`, `tests/integration/start-command.ps1`
+- **Root Cause**: PowerShell on Linux strips TTY for `& nativeCommand` when invoked from SCRIPT-body context, but preserves TTY from FUNCTION-body context. This is a platform-specific I/O handling difference with no flag workaround.
+- **Diagnostic Confirmation**: `function F { & nano }; F` renders TUI correctly on Linux; same `& nano` from script body does not. Root cause confirmed empirically 2026-05-18 by Alon Fliess.
+- **The Fix**: ~5 lines of coordination code:
+  1. `scripts/specrew-start.ps1` writes copilot launch args to `$env:SPECREW_DEFERRED_LAUNCH_FILE` (temp file path)
+  2. Returns from script context (no native invocation from script body)
+  3. `Invoke-SpecrewScript` (function context) reads the temp file after script returns
+  4. Invokes `& copilot @args` from its own function body
+  5. TTY is preserved because invocation site is a function body called from user's prompt
+- **Evidence**: Verified end-to-end on both Windows 11 and WSL Ubuntu (native ext4) 2026-05-18 by Alon Fliess
+- **Windows Behavior**: `specrew start` opens Copilot interactive REPL with Squad selected and `--allow-all` enabled; bootstrap auto-loads via `-i`; Squad reads `.specrew/last-start-prompt.md` and `.specrew/start-context.json`; intake conversation proceeds normally
+- **Linux/macOS Behavior**: Identical to Windows on WSL Ubuntu 2026-05-18; same command output, same REPL behavior, same bootstrap handoff
+- **Verdict**: ✅ ACCEPTED — R21 is the minimal, correct, end-to-end verified fix for cross-platform `specrew start` TTY propagation
+
+### Follow-up Repair Evidence (R-019-V2-R22 — CLEANUP)
+
+- **Status**: ✅ RESOLVED — Cleanup of wrong-direction artifacts (commit 6fa14d6)
+- **Files Changed**: `scripts/specrew-start.ps1`, `Specrew.psm1`, `tests/integration/start-command.ps1`, `docs/getting-started.md`, `docs/user-guide.md`, `specs/019-specrew-distribution-module/test-evidence/us5-cross-platform.md`
+- **Direction**: Revert all non-load-bearing repair attempts (R10-R20) to restore canonical launch args
+- **Reverted Items**:
+  - R10: Removed `-i` bootstrap auto-load and switched to paste-pattern (reverted)
+  - R11: Added `--mode interactive` flag (reverted for platform uniformity)
+  - R12: Suppressed `--allow-all` on Linux/macOS (reverted)
+  - R13: Windows-only `--mode interactive` (reverted)
+  - R15/R16: Shortened bootstrap content (reverted)
+  - R17: execvp P/Invoke wrapper (reverted)
+  - R20: `script(1)` PTY wrapper (reverted)
+- **Preserved Items** (legitimate fixes kept):
+  - R2-R5: Unrelated quality improvements (dashboard empty-state, pre-flight checks, platform guidance)
+  - R7-R9: Distribution-module mode detection; `SPECREW_INVOKED_FROM_MODULE` env-var; direct-invocation restoration
+  - R14: Path-separator fix in `Get-DisplayPathFromProjectRoot` (Linux paths now compute project-relative display paths correctly)
+  - R18/R19: In-process script invocation in `Specrew.psm1` (load-bearing for R21)
+  - R21: Deferred-launch via module function body (THE actual fix for cross-platform TTY)
+- **Final Launch Args** (uniform across Windows, Linux, macOS):
+  - `--agent Squad [--autopilot] --add-dir <project> -i $bootstrap [--allow-all]`
+  - No platform-conditional flag suppression; no `--mode interactive` addition
+  - Deferred launch coordination ensures TTY preservation on all platforms
+- **Evidence**: Verified on both Windows 11 and WSL Ubuntu 2026-05-18 by Alon Fliess after R22 cleanup
+- **Verdict**: ✅ ACCEPTED — R22 cleanup removed all speculative workarounds and restored the clean launch contract. R-019-V2 repair chain now carries only the legitimate fixes (R2-R5, R7-R9, R14, R18/R19, R21, R22).
+
+### Verb Conformance Fix (commit 7b08dfd)
+
+- **Status**: ✅ Completed
+- **Commit**: `7b08dfd`
+- **Files Changed**: `Specrew.psm1`, `Specrew.psd1`
+- **Fix Applied**: Module exports now use approved `Verb-Noun` form:
+  - `Invoke-Specrew` (was `specrew`)
+  - `Initialize-Specrew` (was `specrew-init` function)
+  - `Start-Specrew` (was `specrew-start` function)
+  - `Update-Specrew` (was `specrew-update` function)
+  - `Show-SpecrewReview` (was `specrew-review` function)
+  - `Invoke-SpecrewTeam` (was `specrew-team` function)
+  - `Show-SpecrewStatus` (was `specrew-where` function)
+  - CLI-friendly aliases preserved: `specrew`, `specrew-init`, `specrew-start`, `specrew-update`, `specrew-review`, `specrew-team`, `specrew-where`
+- **Windows Validation**: `Import-Module Specrew.psd1` no longer emits "unapproved verbs" warning; all CLI aliases functional
+- **Linux/macOS Validation**: Confirmed by Alon Fliess 2026-05-18 — same behavior on WSL Ubuntu
+- **Verdict**: ✅ ACCEPTED — Verb conformance eliminates module import warnings and aligns with PowerShell best practices while preserving user-facing CLI convenience names.
+
 ### Known Traps Added
 
 Three corpus rows added to `.specrew/quality/known-traps.md`:
