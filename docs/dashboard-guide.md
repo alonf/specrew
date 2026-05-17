@@ -40,6 +40,11 @@ Useful flags:
 
 - Iteration closeout scaffolds `specs/<feature>/iterations/<NNN>/dashboard.md`.
 - Feature closeout scaffolds `specs/<feature>/closeout-dashboard.md`.
+- The feature-closeout hook is `extensions\specrew-speckit\scripts\scaffold-feature-closeout-dashboard.ps1`
+  (mirrored under `.specify\extensions\specrew-speckit\scripts\`). It resolves the
+  target feature from `-FeatureId` or `.specify\feature.json`, writes the feature
+  closeout dashboard, and refreshes `.squad\identity\now.md` to the post-closeout
+  "No active feature" state.
 
 Both files are historical snapshots captured during closeout. Re-running the
 dashboard later produces a fresh live view and must not overwrite these files.
