@@ -1,36 +1,37 @@
 ---
-focus_area: "Feature 020 Iteration 001 Closeout Recorded"
-active_issues: "Iteration 001 is closed on corrected scope. Iteration 002 remains deferred and unopened pending separate human authorization."
-updated_at: 2026-05-17T23:26:59Z
+focus_area: "Feature 020 Iteration 002 Authorized Start"
+active_issues: "Iteration 002 now authorized for implementation. Scope baseline fixed from plan.md. No post-iteration scope drift permitted."
+updated_at: 2026-05-24T00:00:00Z
 session_state_active: true
-session_state_boundary: iteration-closeout
+session_state_boundary: iteration-start
 session_state_feature: 020-session-state-durability
 session_state_feature_path: "C:\Dev\Specrew\specs\020-session-state-durability"
-session_state_iteration: 001
-session_state_task: "(none)"
-session_state_auth_commit: 9e8cbec
-session_state_recorded_at: 2026-05-17T23:26:59Z
+session_state_iteration: 002
+session_state_task: "(in progress)"
+session_state_auth_commit: e4b4f1f
+session_state_recorded_at: 2026-05-24T00:00:00Z
 ---
 
 # What We're Focused On
 
-**Phase**: Feature 020 Iteration 001 closed at iteration-closeout
-**Urgency**: Tier 0 — hold boundary and wait for Iteration 002 authorization
+**Phase**: Feature 020 Iteration 002 authorized implementation start
+**Urgency**: Tier 1 — Execute Iteration 002 tasks with permissive error logging; stop at iteration-completion handoff only
 
 ---
 
 Current Status
 --------------
 
-Feature Lifecycle: ITERATION-CLOSEOUT RECORDED
+Feature Lifecycle: ITERATION-START AUTHORIZED
 
 - Active feature: `020-session-state-durability`
-- Current boundary: `iteration-closeout`
+- Current boundary: `iteration-start`
 - Closed Iteration 001 scope: FR-001..005, FR-015..020, FR-025..028
-- Review verdict remains accepted and `retro.md` remains complete
-- Iteration 002 scope stays deferred and unopened on this branch
+- Iteration 002 opened scope: FR-006..014, FR-021..024, FR-029
+- Scope baseline: Iteration 002 plan.md (authoritative; no drift permitted)
+- Implementation approach: Permissive execution with logged errors
 
 Next Valid Action
 -----------------
 
-Wait for explicit human authorization before opening Iteration 002. Do **not** enter feature-closeout from this state.
+Proceed with Iteration 002 implementation tasks in order. Stop at iteration-completion handoff. Do **not** auto-advance to Iteration 003 or open review/retro boundaries unless explicitly authorized.

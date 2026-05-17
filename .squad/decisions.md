@@ -6711,3 +6711,60 @@ Feature 020 Iteration 1 implementation will stop if any of these occur:
 - **Task ID**: (none)
 - **Auth Commit Hash**: 9e8cbec
 - **Recorded At**: 2026-05-17T23:26:59Z
+
+---
+
+# Decision: Implementer Feature 020 Iteration 002 Authorization and Permissive Execution Run
+
+**Date**: 2026-05-24  
+**Boundary**: iteration-start (deferred Iteration 002 opened for implementation)  
+**Feature**: 020-session-state-durability (Session-State Durability & In-Flight Progress Tracking)  
+**Authority**: Alon Fliess (human authorization)  
+**Decision Type**: Iteration authorization & runtime evidence
+
+## Context
+
+Feature 020 Iteration 001 closed on corrected scope (FR-001..005, FR-015..020, FR-025..028) with all work items completed and review verdict accepted. The deferred Iteration 002 scope (FR-006..014, FR-021..024, FR-029) has been pending separate human authorization and iteration-plan generation.
+
+This authorization permits opening Iteration 002 for implementation and establishes the scope-of-truth baseline from Iteration 002 `plan.md`.
+
+## Decision
+
+**Authorize Feature 020 Iteration 002 implementation run with source-of-truth scope boundary from Iteration 002 plan.md.**
+
+### Iteration 002 Authorized Scope (to be validated against plan.md)
+- **Pillar 2** (welcome-back prompt and user guidance): FR-006..014, FR-021..024
+- **Scope Addition 2** (PSGallery latest-version check): FR-029
+
+### Scope Authority Rule
+**Iteration 002 plan.md (created at iteration-start) is the authoritative source of truth for all subsequent review scope validation. Do not use memory-based FR lists for later review scope verification.**
+
+## Runtime Evidence
+
+- **Requested role / work item**: Implementer / Feature 020 Iteration 002 authorization and permissive execution run
+- **Requested agent**: copilot
+- **Actual agent**: implementer-iter002-run
+- **Model**: claude-sonnet-4.5
+- **Authorization branch**: 020-session-state-durability
+- **Assignment honored**: yes
+- **Scope source of truth**: Iteration 002 plan.md (created at iteration-start is authoritative)
+- **Retro carry-forward lessons**: Include canonical `## Phase Baseline`, persist concrete commit hashes, and keep warnings test-observable
+
+## Stop Conditions
+
+Implementation will stop at **iteration-completion handoff only**. Do not open review, retro, or closeout boundaries unless explicitly authorized.
+
+## Impact
+
+- Iteration 002 implementation officially opens on 020-session-state-durability branch
+- Scope baseline fixed from plan.md; no post-iteration scope drift permitted
+- Implementer proceeds with permissive execution (errors logged, not fatal unless critical)
+- Session logs and decisions will track authorization chain for future audit
+
+## Cross-References
+
+- Iteration 002 plan: `specs\020-session-state-durability\iterations\002\plan.md`
+- Iteration 001 closeout: `.squad\log\20260518T023455Z-feature020-iteration-closeout-recording.md`
+- Prior iteration closure: `.squad\decisions.md` (Reviewer Feature 020 Iteration 001 Scope-Correction)
+
+---
