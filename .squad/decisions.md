@@ -1,3 +1,53 @@
+# Decision: Feature 020 Distribution Owner Role Mapping
+
+**Date**: 2026-05-19  
+**Boundary**: Planning phase (before-plan gate blocker resolution)  
+**Feature**: 020-session-state-durability (Session-State Durability & In-Flight Progress Tracking)  
+**Authority**: Planner (role-mapping planning decision)  
+**Decision Type**: Role assignment clarification
+
+## Context
+
+Feature 020 spec TG-002 assigns task ownership to "Distribution Owner" for version checks, but this role does not exist in `.specrew/role-assignments.yml`, creating a planning blocker.
+
+## Decision
+
+**Map "Distribution Owner" responsibility to existing Implementer baseline role.**
+
+For Feature 020 planning and all future planning:
+- Tasks assigned to "Distribution Owner" in spec text → assigned to **Implementer** in iteration plans
+- No new role added to `.specrew/role-assignments.yml`
+
+## Rationale
+
+1. **Baseline role sufficiency**: Implementer role is standard for feature implementation work including version-check implementation.
+2. **Precedent**: Feature 019 assigned all distribution-related tasks to Implementer role; version checks are lower complexity.
+3. **Scope analysis**: Version-check tasks are runtime operational checks, comparable to Feature 011 (startup file-change detection) and Feature 017 (runtime queries) — all assigned to Implementer.
+4. **No specialized capability**: Version checks require only config reads, API queries, and warning messages — all standard Implementer skills.
+5. **Governance simplicity**: Introducing a sixth project-specific role for 11 of 35 requirements creates permanent overhead with no clear benefit.
+6. **Term interpretation**: "Distribution Owner" in spec likely refers to domain area rather than a formal role assignment.
+
+## Implementation Guidance for Planner
+
+When generating iteration plans for Feature 020:
+- User Story 4 (module version check): assign all tasks to **Implementer**
+- User Story 5 (PSGallery check): assign all tasks to **Implementer**
+- Do NOT create "Distribution Owner" role in role-assignments.yml
+
+## Impact
+
+- Planning blocker resolved: Feature 020 iteration planning can proceed with valid role assignments
+- Governance stability: no role-assignments.yml changes required
+- Precedent set: future features with "domain Owner" terminology should map to baseline roles
+
+## Cross-References
+
+- Planning blocker research: `specs/020-session-state-durability/research.md` (full analysis)
+- Role definitions: `.specrew/role-assignments.yml` (five baseline roles)
+- Precedent: Feature 019 iteration plans (`specs/019-specrew-distribution-module/iterations/001/plan.md`)
+- Related spec requirements: FR-025 through FR-035 (version checks), TG-002 (ownership statement)
+
+
 # Decision: Feature 019 T006 Self-Signed Certificate Validity Period
 
 **Date**: 2026-05-16T16:23:58Z  
@@ -5992,3 +6042,4 @@ Key learnings:
 - **Rationale**: Delegated lifecycle routing was applied for role 'Reviewer'.
 
 - **Routing Evidence**: Reviewer | requested=claude | actual=copilot | model=(platform default) | status=fell-back | fallback=preferred agent 'claude' is not enabled
+
