@@ -3,11 +3,81 @@
 **Schema**: v1  
 **Feature**: 019-specrew-distribution-module  
 **Iteration**: 002  
-**Reviewer**: Alon Fliess  
-**Review Date**: 2026-05-17 (initial); 2026-05-18 (updated for R-019-V2-R21/R22/verb-conformance scope)  
+**Reviewer**: Reviewer (Copilot agent) — Boundary 2 authorized review; prior reviews by Alon Fliess  
+**Review Date**: 2026-05-17 (initial); 2026-05-18 (R21/R22/verb-conformance scope); 2026-05-18 (Boundary 2 authorized fresh review)  
 **Review Boundary Commit**: 7b08dfd  
 **Branch**: 019-specrew-distribution-module  
-**Overall Verdict**: accepted
+**Overall Verdict**: READY-FOR-SIGNOFF
+
+---
+
+## Authorized Review — Boundary 2
+
+**Authorization**: "AUTHORIZE Boundary 2 — /review for Feature 019 Iteration 002" by Alon Fliess  
+**Review Commit**: 7b08dfd (HEAD)  
+**Review Scope**: T041, T054, T060, T061; R21/R22 repair chain cleanup; cross-platform parity; no-gap policy classification
+
+### 1. Spec-to-Implementation Traceability
+
+| Task | Spec Anchor | Delivery Confirmed | Notes |
+| --- | --- | --- | --- |
+| T041 | FR-030 (Join-Path cross-platform) | ✅ | 38 patterns fixed in ef9c27d; 6 remaining scripts verified clean; `.specify` mirror synced |
+| T054 | SC-006, US5 acceptance scenarios | ✅ | CI matrix created; WSL Ubuntu end-to-end verified 2026-05-18 by Alon Fliess |
+| T060 | FR-026 (fires on tag push) | ✅ | Manual gate removed; `on.push.tags: ['v*.*']` trigger active; secrets documented as T042 follow-up |
+| T061 | US5, README/docs | ✅ | README and getting-started.md updated; WSL shown as verified |
+
+**Traceability label note**: plan.md T060 traces to `FR-025` (self-signing workflow) but T060's actual scope — gate removal enabling auto-publish on tag push — aligns with FR-026. Functional delivery is correct; the label is imprecise. Recorded as GAP-B2-003 (trivial, non-blocking).
+
+### 2. R21/R22 Repair-Chain Assessment
+
+**R21 (deferred-launch fix, commit 72d3b51)**: Confirmed present and correct.  
+- `specrew-start.ps1` lines 2526–2545: writes launch args to `$env:SPECREW_DEFERRED_LAUNCH_FILE` on non-Windows; falls back to in-script launch if env var absent.  
+- `Specrew.psm1` lines 62–113: `Invoke-SpecrewScript` sets deferred-launch file, invokes script in-process, then executes `& copilot @args` from function body after script returns. `finally` block clears both env vars.  
+- Architecture is minimal (~5 lines coordination code) and correct.
+
+**R22 (wrong-direction cleanup, commit 6fa14d6)**: Confirmed clean.  
+Searched `specrew-start.ps1` for all wrong-direction markers from R10–R20. Result: **zero matches** for `--mode interactive`, `bash -c`, `script -q`, `DllImport`, `execvp`, platform-conditional `--allow-all` suppression. The revert was complete.
+
+**Uniform `--allow-all`**: Lines 2481–2483 confirm `--allow-all` is added when `$AllowAll` is true, with no platform fork. The Windows new-window launch script (lines 2490–2500) also applies the same conditional uniformly. Correct per R22 design intent.
+
+### 3. Cross-Platform Parity Assessment
+
+**Windows**: Governance validator passes (exit code 0, non-blocking warnings only). All integration tests pass (`tests/integration/start-command.ps1` — all 12+ checks green, exit code 0 confirmed live run 2026-05-18).
+
+**WSL Ubuntu (native ext4)**: Human verification by Alon Fliess 2026-05-18 — `specrew init` and `specrew start` confirmed working identically. Module imports without "unapproved verbs" warning. Root cause (`function F { & nano }; F` vs script-body TTY stripping) empirically confirmed.
+
+**CI matrix**: `.github/workflows/cross-platform-validation.yml` configures Ubuntu and macOS runners. Will produce first run evidence on next push.
+
+**Parity verdict**: Windows and WSL Ubuntu at parity for the scope delivered. macOS pending first CI run (not a current-branch concern).
+
+### 4. No-Gap Policy Classification
+
+| Dimension | Status | Evidence |
+| --- | --- | --- |
+| Implemented | ✅ | Deferred-launch (R21, 72d3b51), R22 cleanup (6fa14d6), verb conformance (7b08dfd), Join-Path hardening (ef9c27d), SPECREW_INVOKED_FROM_MODULE env-var propagation (R8) |
+| Enforced | ✅ | `$needsDeferredLaunch = $isStartCommand -and -not $IsWindows` triggers automatically; env-var set/cleared in `try/finally`; governance validator passes |
+| Observable | ✅ | `specrew start` opens Copilot interactive REPL with TTY on both platforms; `specrew init` module-mode messaging correct on both; `Import-Module` emits no "unapproved verbs" warning |
+| Documented | ✅ | `hardening-gate.md` (full concern table + commit trail), `drift-log.md` (22-sub-iteration event record), `test-evidence/us5-cross-platform.md` (AS coverage), `Specrew.psm1` inline comments explain deferred-launch pattern |
+
+### 5. Gap Ledger — Boundary 2
+
+| ID | Severity | Dimension | Description | Disposition |
+| --- | --- | --- | --- | --- |
+| GAP-B2-001 | minor | enforced | `tests/integration/start-command.ps1` line 333 asserts `approval_mode = 'prompt-approvals'` on non-Windows, but current code produces `allow-all` uniformly after R22. Test passes on Windows; would fail on Linux with Copilot CLI installed. Test expectation dates from R12 (reverted by R22) and was not updated. | carry-forward; mechanical fix required before claiming green CI on Linux |
+| GAP-B2-002 | minor | documented | `test-evidence/us5-cross-platform.md` acceptance scenarios table (AS3, lines ~125–140) and summary table still show "⏳ Pending manual" for WSL Ubuntu despite document header declaring "Fully verified" 2026-05-18. Prior-to-verification state left in table. | carry-forward; cosmetic doc update |
+| GAP-B2-003 | trivial | traceability | plan.md T060 trace column says `FR-025` (self-signing); T060's actual scope (gate removal) satisfies FR-026 (fires on tag push). Functional delivery correct; label imprecise. | carry-forward; no functional impact |
+
+### Boundary 2 Verdict
+
+**READY-FOR-SIGNOFF**
+
+All four Iteration 002 tasks (T041, T054, T060, T061) are complete and correctly implemented at the 7b08dfd branch tip. The R21 deferred-launch fix is present and minimal. R22 cleanup is verified complete — zero wrong-direction artifacts remain. Cross-platform parity is confirmed by human verification on both Windows 11 and WSL Ubuntu (native ext4). Governance validator passes. All Windows integration tests pass.
+
+Three carry-forward gaps identified. None block acceptance. GAP-B2-001 (stale Linux test assertion) is the most actionable: it should be fixed before the next CI run claims green on Linux. GAP-B2-002 and GAP-B2-003 are cosmetic.
+
+**Human gate**: Alon Fliess sign-off confirms acceptance. Retro and closeout may proceed after sign-off.
+
+---
 
 ---
 
