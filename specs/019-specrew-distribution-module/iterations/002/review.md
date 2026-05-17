@@ -26,7 +26,7 @@
 | T060 | FR-026 (fires on tag push) | ✅ | Manual gate removed; `on.push.tags: ['v*.*']` trigger active; secrets documented as T042 follow-up |
 | T061 | US5, README/docs | ✅ | README and getting-started.md updated; WSL shown as verified |
 
-**Traceability label note**: plan.md T060 traces to `FR-025` (self-signing workflow) but T060's actual scope — gate removal enabling auto-publish on tag push — aligns with FR-026. Functional delivery is correct; the label is imprecise. Recorded as GAP-B2-003 (trivial, non-blocking).
+**Traceability label note**: plan.md T060 now traces to `FR-026` after the bounded pre-signoff repair commit `6ea8165`. Functional delivery stayed correct throughout; the follow-through only fixed the label drift previously recorded as GAP-B2-003.
 
 ### 2. R21/R22 Repair-Chain Assessment
 
@@ -63,9 +63,9 @@ Searched `specrew-start.ps1` for all wrong-direction markers from R10–R20. Res
 
 | ID | Severity | Dimension | Description | Disposition |
 | --- | --- | --- | --- | --- |
-| GAP-B2-001 | minor | enforced | `tests/integration/start-command.ps1` line 333 asserts `approval_mode = 'prompt-approvals'` on non-Windows, but current code produces `allow-all` uniformly after R22. Test passes on Windows; would fail on Linux with Copilot CLI installed. Test expectation dates from R12 (reverted by R22) and was not updated. | carry-forward; mechanical fix required before claiming green CI on Linux |
-| GAP-B2-002 | minor | documented | `test-evidence/us5-cross-platform.md` acceptance scenarios table (AS3, lines ~125–140) and summary table still show "⏳ Pending manual" for WSL Ubuntu despite document header declaring "Fully verified" 2026-05-18. Prior-to-verification state left in table. | carry-forward; cosmetic doc update |
-| GAP-B2-003 | trivial | traceability | plan.md T060 trace column says `FR-025` (self-signing); T060's actual scope (gate removal) satisfies FR-026 (fires on tag push). Functional delivery correct; label imprecise. | carry-forward; no functional impact |
+| GAP-B2-001 | minor | enforced | `tests/integration/start-command.ps1` carried stale non-Windows approval-mode expectations from R12. The bounded repair removed the platform fork and now asserts uniform `allow-all` propagation after R22. | closed in `6ea8165` |
+| GAP-B2-002 | minor | documented | `test-evidence/us5-cross-platform.md` still showed stale WSL Ubuntu pending-manual states in the AS3/status tables and follow-through notes. The bounded repair refreshed the document top-to-bottom to the verified 2026-05-18 outcome. | closed in `6ea8165` |
+| GAP-B2-003 | trivial | traceability | plan.md T060 traced to `FR-025` even though the delivered scope satisfies `FR-026`. The bounded repair corrected the Iteration 002 plan trace without widening scope. | closed in `6ea8165` |
 
 ### Boundary 2 Verdict
 
@@ -73,7 +73,7 @@ Searched `specrew-start.ps1` for all wrong-direction markers from R10–R20. Res
 
 All four Iteration 002 tasks (T041, T054, T060, T061) are complete and correctly implemented at the 7b08dfd branch tip. The R21 deferred-launch fix is present and minimal. R22 cleanup is verified complete — zero wrong-direction artifacts remain. Cross-platform parity is confirmed by human verification on both Windows 11 and WSL Ubuntu (native ext4). Governance validator passes. All Windows integration tests pass.
 
-Three carry-forward gaps identified. None block acceptance. GAP-B2-001 (stale Linux test assertion) is the most actionable: it should be fixed before the next CI run claims green on Linux. GAP-B2-002 and GAP-B2-003 are cosmetic.
+The three Boundary 2 carry-forward gaps were closed in bounded pre-signoff repair commit `6ea8165`. Acceptance status is unchanged: the implementation remains READY-FOR-SIGNOFF, and this follow-through only reconciled stale test/doc/traceability artifacts without widening scope.
 
 **Human gate**: Alon Fliess sign-off confirms acceptance. Retro and closeout may proceed after sign-off.
 
