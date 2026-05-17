@@ -4750,6 +4750,180 @@ sequencing inputs, and leaves feature-closeout explicitly unopened.
 ## 2026-05-16T10:26:39Z — Routing evidence: Reviewer
 
 - **Decision ID**: routing-evidence-072e9e4d12b7
+
+---
+
+# Decision: Feature 020 Iteration 001 Implementation Architecture — sync-boundary-state Centralization
+
+**Date**: 2026-05-17  
+**Feature**: 020-session-state-durability  
+**Iteration**: 001  
+**Authority**: Implementer (autonomous planning decision)  
+**Decision Type**: Implementation architecture  
+
+## Decision
+
+Implement boundary-state durability by centralizing the write-temp-then-rename logic in `scripts/internal/sync-boundary-state.ps1`, then invoke through mirrored Spec Kit wrappers plus lifecycle hook/ceremony surfaces.
+
+## Rationale
+
+1. **Single Write Semantics**: File-write pattern (atomic write via temp-then-rename) appears in multiple boundaries
+2. **Centralization Benefit**: Ensures consistent durability semantics across boundaries
+3. **Mirrored Extension Layout**: Maintains existing extension distribution mechanism
+4. **Lifecycle Hooks & Ceremonies**: Expose boundary sync as explicit ceremony step
+
+## Note from Inbox
+
+> Implementer note: sync-boundary-state wrappers now resolve a literal HEAD auth_commit_hash via `git rev-parse --verify HEAD` and fail closed if HEAD cannot be resolved to a 40-character SHA. Integration fixtures were seeded with real commits so boundary-sync coverage exercises the HEAD-resolution path against valid repository state.
+
+---
+
+# Decision: Feature 020 Iteration 001 Reviewer Boundary — CHANGES-REQUESTED (Initial Scope Mismatch)
+
+**Date**: 2026-05-18  
+**Feature**: 020-session-state-durability  
+**Iteration**: 001  
+**Authority**: Reviewer (GitHub Copilot CLI)  
+**Boundary**: review-boundary  
+
+## Decision
+
+Reviewer issued CHANGES-REQUESTED after discovering authorization scope mismatch:
+- FR-006..014 not implemented, enforced, observable, or documented
+- FR-021..024 welcome-back prompt requirements not implemented  
+- FR-029 PSGallery latest-version check not implemented
+
+## Context
+
+- **Reviewed HEAD**: 71768e8
+- **Validator Result**: PASS  
+- **Test Results**: PASS  
+- **Primary Finding**: Mismatch between human authorization scope and actual Iteration 001 deliverables
+
+## Routing
+
+- **Requested role**: Reviewer  
+- **Requested agent**: Reviewer  
+- **Actual agent**: GitHub Copilot CLI (claude-sonnet-4.5)  
+- **Routing status**: honored
+
+## Next Move
+
+Repair missing requirement coverage OR record explicit human-approved scope correction before attempting review-verdict-signoff.
+
+---
+
+# Decision: Feature 020 Iteration 001 Retro Boundary — Scope Source-of-Truth Rule
+
+**Date**: 2026-05-18  
+**Feature**: 020-session-state-durability  
+**Iteration**: 001  
+**Authority**: Retro Facilitator  
+**Decision Type**: Governance learning  
+
+## Decision
+
+**Human-authored authorization pastes must cite the current iteration plan Scope Guardrails as the authoritative scope source instead of restating requirement ranges from memory.**
+
+## Context
+
+- Requested by: Retro Facilitator  
+- Prior human authorization paste drifted because it restated FR ranges from memory  
+- Reviewer caught the mismatch by checking `specs\020-session-state-durability\iterations\001\plan.md`  
+- Reviewer correctly enforced iteration plan as authoritative scope source
+
+## Applies To
+
+- Review reruns  
+- Retro authorization  
+- Iteration-closeout authorization  
+- Any future repair-cycle handoff that names scope
+
+## Expected Effect
+
+Prevent authorization-versus-plan drift from reopening already-deferred Iteration 002 lanes.
+
+---
+
+# Decision: Feature 020 Iteration 001 Reviewer Rerun (Scope-Corrected Signoff)
+
+**Date**: 2026-05-18  
+**Feature**: 020-session-state-durability  
+**Iteration**: 001  
+**Authority**: Alon Fliess (human re-authorization)  
+**Boundary**: review-verdict-signoff (corrected scope)  
+
+## Decision
+
+Execute review-verdict-signoff against **corrected scope** (FR-001..005, FR-015..020, FR-025..028).
+
+## Context
+
+- **Requested role**: Reviewer  
+- **Requested work item**: review-verdict-signoff rerun (corrected scope)  
+- **Requested agent**: reviewer-iter001-scope-rerun  
+- **Actual agent**: GitHub Copilot CLI (claude-sonnet-4.5)  
+- **Routing status**: honored (active reviewer lane)  
+- **Reviewed HEAD**: 71768e8 (no change from prior review)
+
+## Corrected Authoritative Scope
+
+- FR-001..005, FR-015..020, FR-025..028 (11 features)
+
+## Explicitly Deferred to Iteration 002
+
+- FR-006..014 (design, planning, infrastructure)
+- FR-021..024 (welcome-back prompt)
+- FR-029 (PSGallery version check)
+
+## Prior Human Authorization Error
+
+Original authorization paste contained FR-range error from memory.
+
+## Reviewer Catch
+
+Prior reviewer correctly identified authorization-vs-plan drift (positive signal for governance quality).
+
+## Next Move
+
+Execute review-verdict-signoff against corrected scope on Iteration 1 deliverables:
+- Pillar 1: boundary-event state sync  
+- Pillar 4: stale-state detection  
+- Scope Addition 1: module-vs-project version check
+
+---
+
+# Decision: Feature 020 Iteration 001 Iteration-Closeout
+
+**Date**: 2026-05-18  
+**Feature**: 020-session-state-durability  
+**Iteration**: 001  
+**Authority**: Spec Steward (Alon Fliess)  
+**Decision Type**: Iteration closure  
+
+## Decision
+
+Close Iteration 001 at the iteration layer only; keep Iteration 002 unopened and do not enter feature-closeout.
+
+## Context
+
+- **Requested role**: Spec Steward  
+- **Requested work item**: Iteration 001 iteration-closeout only  
+- **Authoritative scope**: FR-001..005, FR-015..020, FR-025..028  
+- **Explicitly deferred**: FR-006..014, FR-021..024, FR-029..035
+
+## Validation
+
+- **Validator result**: PASS  
+- **Test results**: PASS (boundary-sync-atomicity, stale-state-detection, version-checks)
+
+## Expected Effect
+
+Feature 020 Iteration 001 now has truthful closeout bookkeeping without widening scope or implicitly advancing the lifecycle.
+
+## Iteration 002 Status
+
+Unopened and awaiting separate human authorization before opening.
 ## 2026-05-15T08:26:18Z — Routing evidence: Reviewer
 
 - **Decision ID**: routing-evidence-0c44ee8ff01f

@@ -1,0 +1,6 @@
+Work item: Feature 020 Iteration 001 version-check repair and completion handoff
+Requested agent: Implementer
+Actual agent: Implementer
+Concrete model ID: not-surfaced-by-current-copilot-cli-runtime
+Routing outcome: honored
+Evidence: Repaired scripts\specrew-start.ps1 so version mismatch warnings resolve the running Specrew manifest version and emit the exact FR-026 text to standard output; verified with tests\integration\version-checks.tests.ps1, tests\integration\stale-state-detection.tests.ps1, and tests\integration\boundary-sync-atomicity.tests.ps1 on 2026-05-18.

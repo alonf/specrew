@@ -1,0 +1,17 @@
+Reviewer decision: Feature 020 Iteration 001 review-boundary recorded with CHANGES-REQUESTED.
+
+- Requested by: Alon Fliess
+- Requested role / work item: Reviewer / Feature 020 Iteration 001 review-boundary only
+- Requested agent: Reviewer
+- Actual agent: GitHub Copilot CLI acting as Reviewer
+- Model: not surfaced by the GitHub Copilot CLI runtime in this session
+- Routing status: honored (requested Reviewer role executed without fallback)
+- Reviewed HEAD: 71768e8943d44ae2a7df1164ba59137d0ad774fc
+- Validator result: PASS (`validate-governance.ps1 -ProjectPath . -IterationPath .\specs\020-session-state-durability\iterations\001`)
+- Required test result: PASS (`boundary-sync-atomicity.tests.ps1`, `stale-state-detection.tests.ps1`, `version-checks.tests.ps1`)
+- Boundary verdict: needs-rework / CHANGES-REQUESTED
+- Gap summary:
+  - FR-006..014 are not implemented, enforced, observable, or documented in the Iteration 001 package named by this review brief.
+  - FR-021..024 welcome-back prompt requirements are not implemented or evidenced on the reviewed tree.
+  - FR-029 PSGallery latest-version check is not implemented or evidenced on the reviewed tree.
+- Next move: repair the missing requirement coverage or record an explicit human-approved scope correction before attempting review-verdict-signoff.

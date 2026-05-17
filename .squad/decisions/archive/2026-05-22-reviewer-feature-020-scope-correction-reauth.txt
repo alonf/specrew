@@ -1,0 +1,13 @@
+Reviewer decision: Feature 020 Iteration 001 scope-correction reauthorization for review-verdict-signoff rerun.
+
+- Requested by: Alon Fliess (human authorization)
+- Requested role / work item: Reviewer / Feature 020 Iteration 001 review-verdict-signoff rerun (corrected scope)
+- Requested agent: reviewer-iter001-scope-rerun
+- Actual agent: GitHub Copilot CLI acting as Reviewer (model: claude-sonnet-4.5)
+- Routing status: honored (active reviewer lane)
+- Reviewed HEAD: 71768e8 (no HEAD change from prior review)
+- Corrected authoritative scope: FR-001..005, FR-015..020, FR-025..028
+- Explicitly deferred to Iteration 002: FR-006..014, FR-021..024, FR-029
+- Prior human authorization error: the original authorization paste contained an FR-range error from memory
+- Reviewer catch: prior reviewer correctly identified authorization-vs-plan drift (positive signal for governance quality)
+- Next move: execute review-verdict-signoff against corrected scope on Iteration 1 deliverables (Pillar 1 boundary-event state sync, Pillar 4 stale-state detection, Scope Addition 1 module-vs-project version check)
