@@ -103,6 +103,11 @@ function Set-FeatureCloseoutIdentityNow {
     return $identityPath
 }
 
+$syncBoundaryStateScript = Join-Path $PSScriptRoot 'sync-boundary-state.ps1'
+if (-not (Test-Path -LiteralPath $syncBoundaryStateScript -PathType Leaf)) {
+    throw "Missing boundary-state sync helper '$syncBoundaryStateScript'."
+}
+
 function Get-ResolvedFeatureDirectory {
     param(
         [Parameter(Mandatory = $true)][string]$ResolvedProjectPath,
@@ -182,6 +187,7 @@ else {
 if (-not $DryRun) {
     $identityPath = Set-FeatureCloseoutIdentityNow -ResolvedProjectPath $resolvedProjectPath -FeatureRef $featureRef
     Add-ScaffoldAction -Actions $actions -Action 'updated' -Path $identityPath
+    & $syncBoundaryStateScript -ProjectPath $resolvedProjectPath -BoundaryType 'feature-closeout' -FeatureRef $featureRef -PassThru | Out-Null
 }
 
 if ($PassThru) {

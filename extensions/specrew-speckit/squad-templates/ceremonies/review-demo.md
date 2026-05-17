@@ -100,6 +100,16 @@ That scaffold gives the Reviewer:
 - a contract-valid overall verdict field
 - note prompts that call out blocked, deferred, and batch-drift-review cases
 
+Before leaving the ceremony with an accepted verdict, persist the `review-signoff` boundary:
+
+```powershell
+pwsh -File .\.specify\extensions\specrew-speckit\scripts\sync-boundary-state.ps1 `
+  -ProjectPath . `
+  -BoundaryType review-signoff `
+  -FeatureRef NNN-feature `
+  -IterationNumber NNN
+```
+
 Run `specrew-traceability-check` if verdict discussion reveals scope ambiguity or orphan work.
 
 ## Outputs

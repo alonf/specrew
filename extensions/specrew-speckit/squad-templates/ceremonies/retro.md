@@ -47,6 +47,16 @@ pwsh -File .\.specify\extensions\specrew-speckit\scripts\scaffold-retro-artifact
 
 This scaffold seeds `retro.md` from the current `plan.md`, `state.md`, `drift-log.md`, and `review.md` so the ceremony can focus on evidence and decisions instead of formatting.
 
+When the retrospective is complete and the iteration is ready to close, persist the `iteration-closeout` boundary:
+
+```powershell
+pwsh -File .\.specify\extensions\specrew-speckit\scripts\sync-boundary-state.ps1 `
+  -ProjectPath . `
+  -BoundaryType iteration-closeout `
+  -FeatureRef NNN-feature `
+  -IterationNumber NNN
+```
+
 ### 1. Preflight gate
 
 Do not start synthesis until these checks pass:

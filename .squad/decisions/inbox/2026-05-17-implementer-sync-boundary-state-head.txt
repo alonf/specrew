@@ -1,0 +1,1 @@
+Implementer note: sync-boundary-state wrappers now resolve a literal HEAD auth_commit_hash via `git rev-parse --verify HEAD` and fail closed if HEAD cannot be resolved to a 40-character SHA. Integration fixtures were seeded with real commits so boundary-sync coverage exercises the HEAD-resolution path against valid repository state.

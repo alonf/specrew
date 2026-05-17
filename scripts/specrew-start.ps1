@@ -38,6 +38,12 @@ if (-not (Test-Path -LiteralPath $copilotInstructionsClassifierPath -PathType Le
 }
 . $copilotInstructionsClassifierPath
 
+$boundaryStateHelperPath = Join-Path $PSScriptRoot 'internal\sync-boundary-state.ps1'
+if (-not (Test-Path -LiteralPath $boundaryStateHelperPath -PathType Leaf)) {
+    throw "Missing boundary-state helper '$boundaryStateHelperPath'."
+}
+. $boundaryStateHelperPath
+
 function Convert-UnixStyleArguments {
     param(
         [string]$FeatureRequest,
@@ -205,6 +211,306 @@ function Write-Error-Message {
 function Write-Info {
     param([string]$Message)
     Write-Host $Message -ForegroundColor Cyan
+}
+
+function Get-SpecrewConfigValue {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$ProjectRoot,
+
+        [Parameter(Mandatory = $true)]
+        [string]$Key
+    )
+
+    $configPath = Join-Path $ProjectRoot '.specrew\config.yml'
+    if (-not (Test-Path -LiteralPath $configPath -PathType Leaf)) {
+        return $null
+    }
+
+    foreach ($line in Get-Content -LiteralPath $configPath -Encoding UTF8) {
+        if ($line -match ('^\s*{0}:\s*"?(?<value>[^"#]+?)"?\s*$' -f [regex]::Escape($Key))) {
+            return $Matches['value'].Trim()
+        }
+    }
+
+    return $null
+}
+
+function Get-InstalledSpecrewVersion {
+    param([Parameter(Mandatory = $true)][string]$ProjectRoot)
+
+    $module = @(Get-Module -Name Specrew -ListAvailable | Sort-Object Version -Descending | Select-Object -First 1)
+    if ($module.Count -gt 0 -and $module[0].Version) {
+        return $module[0].Version.ToString()
+    }
+
+    $manifestPath = Join-Path $ProjectRoot 'Specrew.psd1'
+    if (Test-Path -LiteralPath $manifestPath -PathType Leaf) {
+        try {
+            $manifest = Import-PowerShellDataFile -LiteralPath $manifestPath
+            if ($manifest.ContainsKey('ModuleVersion')) {
+                return [string]$manifest.ModuleVersion
+            }
+        }
+        catch {
+        }
+    }
+
+    return $null
+}
+
+function Get-SpecrewVersionMismatchWarning {
+    param([Parameter(Mandatory = $true)][string]$ProjectRoot)
+
+    $projectVersion = Get-SpecrewConfigValue -ProjectRoot $ProjectRoot -Key 'specrew_version'
+    $installedVersion = Get-InstalledSpecrewVersion -ProjectRoot $ProjectRoot
+    if ([string]::IsNullOrWhiteSpace($projectVersion) -or [string]::IsNullOrWhiteSpace($installedVersion)) {
+        return $null
+    }
+
+    if ($projectVersion -eq $installedVersion) {
+        return $null
+    }
+
+    return "Module version mismatch detected: installed $installedVersion, project expects $projectVersion. To update: specrew update"
+}
+
+function Get-SpecrewPromptSessionState {
+    param([Parameter(Mandatory = $true)][string]$ProjectRoot)
+
+    $paths = Get-SpecrewSessionStatePaths -ProjectRoot $ProjectRoot
+    if (-not (Test-Path -LiteralPath $paths.PromptPath -PathType Leaf)) {
+        return $null
+    }
+
+    $parsed = ConvertFrom-SpecrewFrontmatter -Content (Get-Content -LiteralPath $paths.PromptPath -Raw -Encoding UTF8)
+    return Get-SpecrewSessionStateFromFrontmatter -Frontmatter $parsed.Frontmatter
+}
+
+function Get-SpecrewIdentitySessionState {
+    param([Parameter(Mandatory = $true)][string]$ProjectRoot)
+
+    $paths = Get-SpecrewSessionStatePaths -ProjectRoot $ProjectRoot
+    if (-not (Test-Path -LiteralPath $paths.IdentityPath -PathType Leaf)) {
+        return $null
+    }
+
+    $parsed = ConvertFrom-SpecrewFrontmatter -Content (Get-Content -LiteralPath $paths.IdentityPath -Raw -Encoding UTF8)
+    return Get-SpecrewSessionStateFromFrontmatter -Frontmatter $parsed.Frontmatter
+}
+
+function Get-SpecrewStartContextSessionState {
+    param([Parameter(Mandatory = $true)][string]$ProjectRoot)
+
+    $paths = Get-SpecrewSessionStatePaths -ProjectRoot $ProjectRoot
+    if (-not (Test-Path -LiteralPath $paths.ContextPath -PathType Leaf)) {
+        return $null
+    }
+
+    try {
+        $context = Get-Content -LiteralPath $paths.ContextPath -Raw -Encoding UTF8 | ConvertFrom-Json -Depth 12
+    }
+    catch {
+        return $null
+    }
+
+    if ($null -eq $context.session_state) {
+        return $null
+    }
+
+    $sessionState = $context.session_state
+    return [pscustomobject]@{
+        active           = if ($sessionState.active) { 'true' } else { 'false' }
+        boundary_type    = [string]$sessionState.boundary_type
+        feature_ref      = [string]$sessionState.feature_ref
+        feature_path     = [string]$sessionState.feature_path
+        iteration_number = [string]$sessionState.iteration_number
+        task_id          = [string]$sessionState.task_id
+        auth_commit_hash = [string]$sessionState.auth_commit_hash
+        recorded_at      = [string]$sessionState.recorded_at
+    }
+}
+
+function Get-SpecrewSessionStateSnapshot {
+    param([Parameter(Mandatory = $true)][string]$ProjectRoot)
+
+    $promptState = Get-SpecrewPromptSessionState -ProjectRoot $ProjectRoot
+    $contextState = Get-SpecrewStartContextSessionState -ProjectRoot $ProjectRoot
+    $identityState = Get-SpecrewIdentitySessionState -ProjectRoot $ProjectRoot
+    $decisionsState = Get-LatestSpecrewBoundarySyncState -ProjectRoot $ProjectRoot
+    $states = @(
+        foreach ($candidate in @($promptState, $contextState, $identityState, $decisionsState)) {
+            if ($null -ne $candidate) {
+                $candidate
+            }
+        }
+    )
+
+    return [pscustomobject]@{
+        prompt    = $promptState
+        context   = $contextState
+        identity  = $identityState
+        decisions = $decisionsState
+        session_state = if ($states.Count -gt 0) { $states[0] } else { $null }
+    }
+}
+
+function Test-SpecrewFeatureMergedToMain {
+    param(
+        [Parameter(Mandatory = $true)][string]$ProjectRoot,
+        [AllowNull()][string]$FeatureRef
+    )
+
+    $featureNumber = Get-SpecrewFeatureNumber -FeatureRef $FeatureRef
+    if ([string]::IsNullOrWhiteSpace($featureNumber)) {
+        return [pscustomobject]@{ IsMerged = $false; Detail = $null }
+    }
+
+    $bootstrapDate = Get-SpecrewConfigValue -ProjectRoot $ProjectRoot -Key 'bootstrap_date'
+    if ([string]::IsNullOrWhiteSpace($bootstrapDate)) {
+        $bootstrapDate = '90 days ago'
+    }
+
+    $logOutput = @(& git -C $ProjectRoot log main --since="$bootstrapDate" --merges --oneline --grep="$featureNumber" 2>&1)
+    if ($LASTEXITCODE -ne 0) {
+        return [pscustomobject]@{ IsMerged = $false; Detail = $null }
+    }
+
+    if ($logOutput.Count -gt 0) {
+        return [pscustomobject]@{
+            IsMerged = $true
+            Detail   = ('Feature {0} appears in merge history on main: {1}' -f $featureNumber, ($logOutput[0].ToString().Trim()))
+        }
+    }
+
+    return [pscustomobject]@{ IsMerged = $false; Detail = $null }
+}
+
+function Test-SpecrewFeatureBranchExists {
+    param(
+        [Parameter(Mandatory = $true)][string]$ProjectRoot,
+        [AllowNull()][string]$FeatureRef
+    )
+
+    if ([string]::IsNullOrWhiteSpace($FeatureRef)) {
+        return $true
+    }
+
+    & git -C $ProjectRoot show-ref --verify --quiet ("refs/heads/{0}" -f $FeatureRef)
+    if ($LASTEXITCODE -eq 0) {
+        return $true
+    }
+
+    & git -C $ProjectRoot show-ref --verify --quiet ("refs/remotes/origin/{0}" -f $FeatureRef)
+    return ($LASTEXITCODE -eq 0)
+}
+
+function Test-SpecrewAuthorizationRecord {
+    param(
+        [Parameter(Mandatory = $true)][string]$ProjectRoot,
+        [pscustomobject]$SessionState
+    )
+
+    if ($null -eq $SessionState -or [string]::IsNullOrWhiteSpace([string]$SessionState.feature_ref)) {
+        return $true
+    }
+
+    $paths = Get-SpecrewSessionStatePaths -ProjectRoot $ProjectRoot
+    if (-not (Test-Path -LiteralPath $paths.DecisionsPath -PathType Leaf)) {
+        return $false
+    }
+
+    $content = Get-Content -LiteralPath $paths.DecisionsPath -Raw -Encoding UTF8
+    if (-not [string]::IsNullOrWhiteSpace([string]$SessionState.auth_commit_hash) -and $content -match [regex]::Escape([string]$SessionState.auth_commit_hash)) {
+        return $true
+    }
+
+    $featureNumber = Get-SpecrewFeatureNumber -FeatureRef $SessionState.feature_ref
+    if ([string]::IsNullOrWhiteSpace($featureNumber)) {
+        return $false
+    }
+
+    return ($content -match ('Feature\s+{0}' -f [regex]::Escape($featureNumber)) -and $content -match 'authorization')
+}
+
+function Test-SpecrewSessionStateConsistency {
+    param([Parameter(Mandatory = $true)][pscustomobject]$Snapshot)
+
+    $issues = New-Object System.Collections.Generic.List[string]
+    $namedStates = @(
+        @{ Name = 'last-start-prompt.md'; State = $Snapshot.prompt }
+        @{ Name = 'start-context.json'; State = $Snapshot.context }
+        @{ Name = 'identity/now.md'; State = $Snapshot.identity }
+    )
+
+    $existingCount = @($namedStates | Where-Object { $null -ne $_.State }).Count
+    if ($existingCount -gt 0) {
+        foreach ($entry in $namedStates) {
+            if ($null -eq $entry.State) {
+                $issues.Add(("Session-state file missing or unreadable: {0}" -f $entry.Name)) | Out-Null
+            }
+        }
+    }
+
+    $activeStates = @(
+        foreach ($entry in $namedStates) {
+            if ($null -ne $entry.State) {
+                $entry.State
+            }
+        }
+        if ($null -ne $Snapshot.decisions) {
+            $Snapshot.decisions
+        }
+    )
+    $featureRefs = @($activeStates | ForEach-Object { [string]$_.feature_ref } | Where-Object { -not [string]::IsNullOrWhiteSpace($_) } | Select-Object -Unique)
+    if ($featureRefs.Count -gt 1) {
+        $issues.Add(("Session-state feature mismatch detected: {0}" -f ($featureRefs -join ', '))) | Out-Null
+    }
+
+    $boundaries = @($activeStates | ForEach-Object { [string]$_.boundary_type } | Where-Object { -not [string]::IsNullOrWhiteSpace($_) } | Select-Object -Unique)
+    if ($boundaries.Count -gt 1) {
+        $issues.Add(("Session-state boundary mismatch detected: {0}" -f ($boundaries -join ', '))) | Out-Null
+    }
+
+    return $issues.ToArray()
+}
+
+function Test-SpecrewStaleSessionState {
+    param([Parameter(Mandatory = $true)][string]$ProjectRoot)
+
+    $snapshot = Get-SpecrewSessionStateSnapshot -ProjectRoot $ProjectRoot
+    $sessionState = $snapshot.session_state
+    if ($null -eq $sessionState) {
+        return [pscustomobject]@{
+            IsStale = $false
+            Issues = @()
+            SessionState = $null
+        }
+    }
+
+    $issues = New-Object System.Collections.Generic.List[string]
+    foreach ($issue in (Test-SpecrewSessionStateConsistency -Snapshot $snapshot)) {
+        $issues.Add($issue) | Out-Null
+    }
+
+    $mergeCheck = Test-SpecrewFeatureMergedToMain -ProjectRoot $ProjectRoot -FeatureRef $sessionState.feature_ref
+    if ($mergeCheck.IsMerged) {
+        $issues.Add($mergeCheck.Detail) | Out-Null
+    }
+
+    if (-not (Test-SpecrewFeatureBranchExists -ProjectRoot $ProjectRoot -FeatureRef $sessionState.feature_ref)) {
+        $issues.Add(("Feature branch is missing: {0}" -f $sessionState.feature_ref)) | Out-Null
+    }
+
+    if (-not (Test-SpecrewAuthorizationRecord -ProjectRoot $ProjectRoot -SessionState $sessionState)) {
+        $issues.Add(("Authorization record missing for {0}." -f $sessionState.feature_ref)) | Out-Null
+    }
+
+    return [pscustomobject]@{
+        IsStale = ($issues.Count -gt 0)
+        Issues = $issues.ToArray()
+        SessionState = $sessionState
+    }
 }
 
 function Get-UnresolvedTemplateRefreshArtifacts {
@@ -2221,6 +2527,7 @@ function Save-StartArtifacts {
         [AllowNull()][pscustomobject]$BrownfieldDiscovery,
         [pscustomobject]$DeliveryGuidance,
         [string]$ApprovalOperatorNote,
+        [AllowNull()][pscustomobject]$SessionState,
         [string]$PostRestartDirective = ''
     )
 
@@ -2252,6 +2559,16 @@ function Save-StartArtifacts {
     $frontmatterLines = @('---')
     if ($null -ne $currentHead -and $currentHead -match '^[0-9a-f]{40}$') {
         $frontmatterLines += "baseline_commit_hash: $currentHead"
+    }
+    if ($null -ne $SessionState) {
+        $frontmatterLines += ('session_state_active: {0}' -f $SessionState.active)
+        $frontmatterLines += ('session_state_boundary: {0}' -f $SessionState.boundary_type)
+        $frontmatterLines += ('session_state_feature: {0}' -f $(if ($SessionState.feature_ref) { $SessionState.feature_ref } else { '(none)' }))
+        $frontmatterLines += ('session_state_feature_path: {0}' -f $(if ($SessionState.feature_path) { $SessionState.feature_path } else { '(none)' }))
+        $frontmatterLines += ('session_state_iteration: {0}' -f $(if ($SessionState.iteration_number) { $SessionState.iteration_number } else { '(none)' }))
+        $frontmatterLines += ('session_state_task: {0}' -f $(if ($SessionState.task_id) { $SessionState.task_id } else { '(none)' }))
+        $frontmatterLines += ('session_state_auth_commit: {0}' -f $(if ($SessionState.auth_commit_hash) { $SessionState.auth_commit_hash } else { '(none)' }))
+        $frontmatterLines += ('session_state_recorded_at: {0}' -f $SessionState.recorded_at)
     }
     if ($hasChanges) {
         $frontmatterLines += 'session_loaded_files_changed:'
@@ -2331,6 +2648,21 @@ $artifactListFormatted
         delegated_routing_evidence = [ordered]@{
             ledger_path     = '.squad\decisions.md'
             required_fields = @('role_or_work_item', 'requested_agent', 'actual_agent', 'model_id', 'status', 'fallback_reason')
+        }
+        session_state    = if ($null -ne $SessionState) {
+            [ordered]@{
+                active           = ($SessionState.active -eq 'true')
+                boundary_type    = $SessionState.boundary_type
+                feature_ref      = $SessionState.feature_ref
+                feature_path     = $SessionState.feature_path
+                iteration_number = $SessionState.iteration_number
+                task_id          = $SessionState.task_id
+                auth_commit_hash = $SessionState.auth_commit_hash
+                recorded_at      = $SessionState.recorded_at
+            }
+        }
+        else {
+            $null
         }
         squad_model_overrides = $SquadModelOverrides
         prompt_path      = $promptPath
@@ -2590,6 +2922,22 @@ if ($NewWindow -and $SameWindow) {
     exit 1
 }
 
+$staleSessionStateCheck = Test-SpecrewStaleSessionState -ProjectRoot $resolvedProjectPath
+if ($staleSessionStateCheck.IsStale) {
+    Write-Error-Message 'Stale state detected.'
+    foreach ($issue in $staleSessionStateCheck.Issues) {
+        Write-Host ("- {0}" -f $issue) -ForegroundColor Yellow
+    }
+    Write-Host 'Options:' -ForegroundColor Yellow
+    Write-Host '  A) re-anchor to the correct feature' -ForegroundColor Yellow
+    Write-Host '  B) create a new feature' -ForegroundColor Yellow
+    Write-Host '  C) exit and manually fix state' -ForegroundColor Yellow
+    exit 1
+}
+
+$validatedSessionState = $staleSessionStateCheck.SessionState
+$versionMismatchWarning = Get-SpecrewVersionMismatchWarning -ProjectRoot $resolvedProjectPath
+
 if ($FeatureRequest -and -not $ResumeFeature) {
     $resolvedFeaturePath = $null
 }
@@ -2610,6 +2958,29 @@ else {
         exit 1
     }
 }
+
+if ($null -eq $resolvedFeaturePath -and $null -ne $validatedSessionState -and -not [string]::IsNullOrWhiteSpace([string]$validatedSessionState.feature_path)) {
+    if (Test-Path -LiteralPath ([string]$validatedSessionState.feature_path) -PathType Container) {
+        $resolvedFeaturePath = [string]$validatedSessionState.feature_path
+    }
+}
+
+$validatedSessionState = if ($null -ne $validatedSessionState -and $resolvedFeaturePath) {
+    [pscustomobject]@{
+        active           = if ($validatedSessionState.active) { $validatedSessionState.active } else { 'true' }
+        boundary_type    = $validatedSessionState.boundary_type
+        feature_ref      = if ($validatedSessionState.feature_ref) { $validatedSessionState.feature_ref } else { Split-Path -Leaf $resolvedFeaturePath }
+        feature_path     = $resolvedFeaturePath
+        iteration_number = $validatedSessionState.iteration_number
+        task_id          = $validatedSessionState.task_id
+        auth_commit_hash = $validatedSessionState.auth_commit_hash
+        recorded_at      = $validatedSessionState.recorded_at
+    }
+}
+else {
+    $validatedSessionState
+}
+
 $mode = if ($FeatureRequest) {
     'new-feature'
 }
@@ -2671,6 +3042,7 @@ $artifactPaths = Save-StartArtifacts `
     -BrownfieldDiscovery $brownfieldDiscovery `
     -DeliveryGuidance $deliveryGuidance `
     -ApprovalOperatorNote $approvalOperatorNote `
+    -SessionState $validatedSessionState `
     -PostRestartDirective $PostRestartDirective
 
 Write-Success "Prepared Specrew start context."
@@ -2683,6 +3055,9 @@ if ($artifactPaths.TemplateRefreshArtifacts.Count -gt 0) {
     foreach ($artifact in $artifactPaths.TemplateRefreshArtifacts) {
         Write-Info ("  - {0}" -f $artifact.RelativePath)
     }
+}
+if (-not [string]::IsNullOrWhiteSpace($versionMismatchWarning)) {
+    Write-Host ("WARN: {0}" -f $versionMismatchWarning) -ForegroundColor Yellow
 }
 if (-not $useAutopilot) {
     Write-Info 'Specrew auto-loads the bootstrap with -i and stays out of autopilot until the request is grounded.'

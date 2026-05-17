@@ -20,6 +20,18 @@ provides:
     - name: speckit.specrew-speckit.before-implement
       file: commands/speckit.specrew-speckit.before-implement.md
       description: "Validate execution readiness before implementation"
+    - name: speckit.specrew-speckit.sync-specify
+      file: commands/speckit.specrew-speckit.sync-specify.md
+      description: "Persist session-state metadata after specification"
+    - name: speckit.specrew-speckit.sync-clarify
+      file: commands/speckit.specrew-speckit.sync-clarify.md
+      description: "Persist session-state metadata after clarification"
+    - name: speckit.specrew-speckit.sync-plan
+      file: commands/speckit.specrew-speckit.sync-plan.md
+      description: "Persist session-state metadata after planning"
+    - name: speckit.specrew-speckit.sync-tasks
+      file: commands/speckit.specrew-speckit.sync-tasks.md
+      description: "Persist session-state metadata after task generation"
 
 hooks:
   before_plan:

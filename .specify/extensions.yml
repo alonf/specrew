@@ -109,6 +109,13 @@ hooks:
     prompt: Commit specification changes?
     description: Auto-commit after specification
     condition: null
+  - extension: specrew-speckit
+    command: speckit.specrew-speckit.sync-specify
+    enabled: true
+    optional: false
+    prompt: Execute speckit.specrew-speckit.sync-specify?
+    description: Persist boundary-state metadata after specification
+    condition: null
   after_clarify:
   - extension: git
     command: speckit.git.commit
@@ -117,6 +124,13 @@ hooks:
     prompt: Commit clarification changes?
     description: Auto-commit after spec clarification
     condition: null
+  - extension: specrew-speckit
+    command: speckit.specrew-speckit.sync-clarify
+    enabled: true
+    optional: false
+    prompt: Execute speckit.specrew-speckit.sync-clarify?
+    description: Persist boundary-state metadata after clarification
+    condition: null
   after_plan:
   - extension: git
     command: speckit.git.commit
@@ -124,6 +138,13 @@ hooks:
     optional: true
     prompt: Commit plan changes?
     description: Auto-commit after implementation planning
+    condition: null
+  - extension: specrew-speckit
+    command: speckit.specrew-speckit.sync-plan
+    enabled: true
+    optional: false
+    prompt: Execute speckit.specrew-speckit.sync-plan?
+    description: Persist boundary-state metadata after planning
     condition: null
   after_tasks:
   - extension: git
@@ -139,6 +160,13 @@ hooks:
     optional: false
     prompt: Execute speckit.specrew-speckit.after-tasks?
     description: Verify task traceability after task generation
+    condition: null
+  - extension: specrew-speckit
+    command: speckit.specrew-speckit.sync-tasks
+    enabled: true
+    optional: false
+    prompt: Execute speckit.specrew-speckit.sync-tasks?
+    description: Persist boundary-state metadata after task generation
     condition: null
   after_implement:
   - extension: git
