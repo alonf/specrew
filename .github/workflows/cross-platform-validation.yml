@@ -28,7 +28,22 @@ jobs:
           sudo dpkg -i powershell_7.4.1-1.deb_amd64.deb
           sudo apt-get install -f
           pwsh --version
-      
+
+      - name: Setup Node.js 24
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      - name: Setup uv
+        shell: bash
+        run: |
+          # specrew init's pre-flight requires uv for spec-kit bootstrap on Linux/macOS.
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          # uv installs into $HOME/.local/bin by default; expose it on PATH for later steps.
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+          # Verify uv is reachable in subsequent shells.
+          "$HOME/.local/bin/uv" --version
+
       - name: Test module manifest
         shell: pwsh
         run: |
@@ -156,7 +171,22 @@ jobs:
             sudo installer -pkg pwsh.pkg -target /
             pwsh --version
           fi
-      
+
+      - name: Setup Node.js 24
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      - name: Setup uv
+        shell: bash
+        run: |
+          # specrew init's pre-flight requires uv for spec-kit bootstrap on Linux/macOS.
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          # uv installs into $HOME/.local/bin by default; expose it on PATH for later steps.
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+          # Verify uv is reachable in subsequent shells.
+          "$HOME/.local/bin/uv" --version
+
       - name: Test module manifest
         shell: pwsh
         run: |
