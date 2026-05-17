@@ -109,4 +109,6 @@ The human scope-correction authorization paste restated FR ranges from memory an
 
 - This artifact was scaffolded from plan.md, state.md, drift-log.md, and review.md for Squad's built-in Retrospective ceremony.
 - The key repair-cycle lessons captured here are: missing planning-artifact recovery, literal-`HEAD` durability repair, version-check warning observability repair, and corrected-scope authorization source-of-truth discipline.
-- Retro boundary is complete. Iteration-closeout may begin, but Iteration 002 remains unopened and separately authorized.
+- Retro boundary is complete. Iteration-closeout is now complete as well, and Iteration 002 remains unopened and separately authorized.
+
+**Iteration Closeout**: Complete — corrected-scope iteration-closeout recorded on 2026-05-18 after re-running governance validation plus the three required integration suites; stop here and wait for separate Iteration 002 authorization.

@@ -2,7 +2,7 @@
 
 **Schema**: v1
 **Capture Kind**: iteration-closeout
-**Captured At**: 2026-05-17T23:12:29Z
+**Captured At**: 2026-05-17T23:27:00Z
 **Render Mode**: compact
 **Rendering Mode**: rich
 **Color Mode**: monochrome
@@ -12,7 +12,7 @@
 
 ```text
 SPECREW VELOCITY DASHBOARD
-Summary: → F-020 Session-State Durability & In-Flight Progress Tracking | Implementation Complete · complete | 10.58 SP/day (10 closed iterations, high)
+Summary: → F-020 Session-State Durability & In-Flight Progress Tracking | Iteration 001 Closed · complete | 10.58 SP/day (10 closed iterations, high)
 Today 2026-05-18 | Repo Specrew
 Rendering rich
 ACTIVE
@@ -29,7 +29,7 @@ ROADMAP
 ○ phase-2-experience 121.5/247 SP
 -
 PROJECTION
-F:0SP implementation complete | P:n/a TBD
+F:0SP iteration closed | P:n/a TBD
 R:598SP 57 calendar day(s)
 WARNINGS
 No active dashboard warnings.

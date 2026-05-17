@@ -3,7 +3,7 @@
 **Schema**: v1
 **Feature**: 020-session-state-durability  
 **Branch**: 020-session-state-durability  
-**Status**: retro-complete
+**Status**: complete
 **Capacity**: 16/20 story_points
 **Started**: 2026-05-18
 **Completed**: 2026-05-18
@@ -83,9 +83,11 @@ Total effort estimate: 16 Story Points
 - **Implementation authorization**: before-implement gate passed at commit `6d3aaa7`, implementation authorized
 - **Review status**: corrected-scope review-verdict-signoff completed on 2026-05-18 against HEAD `71768e8`; authoritative scope followed the human reauthorization recorded in `.squad\decisions\inbox\2026-05-22-reviewer-feature-020-scope-correction-reauth.txt`, and Scope Guardrails continue to defer FR-006..014, FR-021..024, and FR-029+ to Iteration 002
 - **Retro status**: retro-boundary completed on 2026-05-18; `retro.md` captures the repair-cycle lessons, corrected-scope governance lesson, and next-action improvements for iteration-closeout readiness
+- **Closeout status**: iteration-closeout completed on 2026-05-18 against the corrected Iteration 001 scope; Iteration 002 remains unopened and still requires separate human authorization
 
 ## Notes
 
 - T005 and T011 include manual backward-compatibility testing as part of reviewer verification.
 - T014 captures the version-check coverage lane for `specrew start`; the bounded repair on 2026-05-18 restored the exact FR-026 warning text by resolving the running-module manifest version and emitting the warning on standard output.
 - Iteration-start boundary is explicitly authorized per Feature 020 authorization context (commit 0e90d1f restored planning artifacts and preserved Iteration-start authorization).
+- This plan is now execution-complete for Iteration 001 only. Iteration 002 remains the next possible lifecycle slice, but it is not opened by this closeout.

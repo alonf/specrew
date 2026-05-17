@@ -1,0 +1,10 @@
+Spec Steward decision: Feature 020 Iteration 001 iteration-closeout recorded against corrected scope.
+
+- Requested by: Alon Fliess
+- Requested role / work item: Spec Steward / Feature 020 Iteration 001 iteration-closeout only
+- Authoritative scope: FR-001..005, FR-015..020, FR-025..028
+- Explicitly deferred: FR-006..014, FR-021..024, FR-029..035
+- Validation result: PASS (`validate-governance.ps1 -ProjectPath . -IterationPath .\specs\020-session-state-durability\iterations\001`)
+- Required test result: PASS (`boundary-sync-atomicity.tests.ps1`, `stale-state-detection.tests.ps1`, `version-checks.tests.ps1`)
+- Decision: close Iteration 001 at the iteration layer only; keep Iteration 002 unopened and do not enter feature-closeout
+- Expected effect: Feature 020 Iteration 001 now has truthful closeout bookkeeping without widening scope or implicitly advancing the lifecycle
