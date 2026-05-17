@@ -4101,6 +4101,7 @@ Feature 017 (velocity-dashboard) is closed and shipped to main with Rule 15 vers
 Feature 017 (Velocity Dashboard) is now closed and shipped. Version 0.17.0 is the active baseline, and no feature is currently open without explicit authorization.
 
 ## 2026-05-15T16:10:40Z — Delegated routing plan
+## 2026-05-15T00:01:57Z — Delegated routing plan
 
 - **Enabled Agents**: copilot
 - **Independent Oversight Active**: False
@@ -4114,11 +4115,15 @@ Feature 017 (Velocity Dashboard) is now closed and shipped. Version 0.17.0 is th
 ## 2026-05-15T16:10:40Z — Routing evidence: Spec Steward
 
 - **Decision ID**: routing-evidence-206ce5416f23
+## 2026-05-15T00:01:57Z — Routing evidence: Spec Steward
+
+- **Decision ID**: routing-evidence-1f62e5e6f73f
 - **Type**: routing-evidence
 - **Affected Requirement**: FR-043
 - **Affected Iteration**: (none)
 - **Approving Human**: (none)
 - **Recorded At**: 2026-05-15T16:10:40Z
+- **Recorded At**: 2026-05-15T00:01:57Z
 - **Next Action**: none
 - **Rationale**: Delegated lifecycle routing was applied for role 'Spec Steward'.
 
@@ -4127,11 +4132,15 @@ Feature 017 (Velocity Dashboard) is now closed and shipped. Version 0.17.0 is th
 ## 2026-05-15T16:10:40Z — Routing evidence: Planner
 
 - **Decision ID**: routing-evidence-cc6d58bdf628
+## 2026-05-15T00:01:57Z — Routing evidence: Planner
+
+- **Decision ID**: routing-evidence-d9ede0be4802
 - **Type**: routing-evidence
 - **Affected Requirement**: FR-043
 - **Affected Iteration**: (none)
 - **Approving Human**: (none)
 - **Recorded At**: 2026-05-15T16:10:40Z
+- **Recorded At**: 2026-05-15T00:01:57Z
 - **Next Action**: none
 - **Rationale**: Delegated lifecycle routing was applied for role 'Planner'.
 
@@ -4140,11 +4149,15 @@ Feature 017 (Velocity Dashboard) is now closed and shipped. Version 0.17.0 is th
 ## 2026-05-15T16:10:40Z — Routing evidence: Reviewer
 
 - **Decision ID**: routing-evidence-7692f5bf7c1e
+## 2026-05-15T00:01:57Z — Routing evidence: Reviewer
+
+- **Decision ID**: routing-evidence-a4888e001342
 - **Type**: routing-evidence
 - **Affected Requirement**: FR-043
 - **Affected Iteration**: (none)
 - **Approving Human**: (none)
 - **Recorded At**: 2026-05-15T16:10:40Z
+- **Recorded At**: 2026-05-15T00:01:57Z
 - **Next Action**: none
 - **Rationale**: Delegated lifecycle routing was applied for role 'Reviewer'.
 
@@ -4428,6 +4441,7 @@ sequencing inputs, and leaves feature-closeout explicitly unopened.
   > AUTHORIZE feature-closeout for Feature 018 Velocity Dashboard Visual Richness + PoC-Parity Restoration. Rule 15 fires.
 
 ## 2026-05-16T10:26:39Z — Delegated routing plan
+## 2026-05-15T08:26:18Z — Delegated routing plan
 
 - **Enabled Agents**: copilot
 - **Independent Oversight Active**: False
@@ -4441,11 +4455,15 @@ sequencing inputs, and leaves feature-closeout explicitly unopened.
 ## 2026-05-16T10:26:39Z — Routing evidence: Spec Steward
 
 - **Decision ID**: routing-evidence-3572bde54970
+## 2026-05-15T08:26:18Z — Routing evidence: Spec Steward
+
+- **Decision ID**: routing-evidence-4d0b4770c019
 - **Type**: routing-evidence
 - **Affected Requirement**: FR-043
 - **Affected Iteration**: (none)
 - **Approving Human**: (none)
 - **Recorded At**: 2026-05-16T10:26:39Z
+- **Recorded At**: 2026-05-15T08:26:18Z
 - **Next Action**: none
 - **Rationale**: Delegated lifecycle routing was applied for role 'Spec Steward'.
 
@@ -4454,11 +4472,15 @@ sequencing inputs, and leaves feature-closeout explicitly unopened.
 ## 2026-05-16T10:26:39Z — Routing evidence: Planner
 
 - **Decision ID**: routing-evidence-a9458cb47f3b
+## 2026-05-15T08:26:18Z — Routing evidence: Planner
+
+- **Decision ID**: routing-evidence-25ffa0f363af
 - **Type**: routing-evidence
 - **Affected Requirement**: FR-043
 - **Affected Iteration**: (none)
 - **Approving Human**: (none)
 - **Recorded At**: 2026-05-16T10:26:39Z
+- **Recorded At**: 2026-05-15T08:26:18Z
 - **Next Action**: none
 - **Rationale**: Delegated lifecycle routing was applied for role 'Planner'.
 
@@ -4467,11 +4489,15 @@ sequencing inputs, and leaves feature-closeout explicitly unopened.
 ## 2026-05-16T10:26:39Z — Routing evidence: Reviewer
 
 - **Decision ID**: routing-evidence-072e9e4d12b7
+## 2026-05-15T08:26:18Z — Routing evidence: Reviewer
+
+- **Decision ID**: routing-evidence-0c44ee8ff01f
 - **Type**: routing-evidence
 - **Affected Requirement**: FR-043
 - **Affected Iteration**: (none)
 - **Approving Human**: (none)
 - **Recorded At**: 2026-05-16T10:26:39Z
+- **Recorded At**: 2026-05-15T08:26:18Z
 - **Next Action**: none
 - **Rationale**: Delegated lifecycle routing was applied for role 'Reviewer'.
 
