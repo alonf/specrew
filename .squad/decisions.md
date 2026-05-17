@@ -5942,3 +5942,36 @@ Key learnings:
 3. Cross-platform sweep scope partitioning
 4. Deferred-launch pattern reusability
 5. Governance artifact scaffolding and validator coupling
+# Decision: Feature 020 Phase 0 Companion Chore
+
+**Date**: 2026-05-17  
+**Boundary**: Phase 0 Companion Chore  
+**Feature**: 020  
+**Authority**: Alon Fliess  
+**Decision Type**: Implementation-boundary completion
+
+## Task
+
+Establish the canonical feature-closeout update point for .squad\identity\now.md within the Phase 0 companion chore, ensuring the post-closeout session anchor aligns with the same lifecycle hook that persists closeout-dashboard.md.
+
+## Decision
+
+Treat xtensions\specrew-speckit\scripts\scaffold-feature-closeout-dashboard.ps1 (plus the mirrored .specify copy) as the canonical feature-closeout update point for .squad\identity\now.md.
+
+## Rationale
+
+Existing dashboard docs and integration coverage already define scaffold-feature-closeout-dashboard.ps1 as the feature-closeout scaffold. Updating 
+ow.md here keeps the post-closeout session anchor aligned with the same lifecycle hook that persists closeout-dashboard.md.
+
+## Implementation Evidence
+
+- Updated xtensions\specrew-speckit\scripts\scaffold-feature-closeout-dashboard.ps1 to establish the pattern
+- Mirrored the update to .specify\extensions\specrew-speckit\scripts\scaffold-feature-closeout-dashboard.ps1
+- Updated supporting documentation in docs\dashboard-guide.md
+- Commit: 9f63790 — chore: establish .squad/identity/now.md closeout pattern (pre-F020)
+
+## Impact
+
+Feature 020 Phase 0 companion chore is now complete. The closeout pattern is established and documented. Execution can proceed to Feature 020 Phase 1 implementation.
+
+
