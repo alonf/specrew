@@ -259,6 +259,45 @@ try {
         }
     }
     Write-Pass '--all handles explicit platform scopes without unnecessary upgrades'
+
+    Write-Host "`nTest 5: --spec-kit does not mutate specrew_version (regression coverage for 94b44d7)"
+    $preserveTestSpecrewVersion = '0.99.0'
+    Set-ConfigValue -ConfigPath $configPath -Key 'specrew_version' -Value $preserveTestSpecrewVersion
+
+    $specKitOnlyResult = Invoke-TestScript -ScriptPath $entryScript -ArgumentList @('update', '--project-path', $projectRoot, '--spec-kit')
+    if ($specKitOnlyResult.ExitCode -ne 0) {
+        Write-Fail 'specrew update --spec-kit failed'
+        foreach ($line in $specKitOnlyResult.Output) {
+            Write-Host $line
+        }
+        exit 1
+    }
+
+    $specrewVersionAfterSpecKit = Get-ConfigValue -ConfigPath $configPath -Key 'specrew_version'
+    if ($specrewVersionAfterSpecKit -ne $preserveTestSpecrewVersion) {
+        Write-Fail ("specrew update --spec-kit mutated specrew_version (expected '{0}', found '{1}'). Regression of bug fixed in 94b44d7." -f $preserveTestSpecrewVersion, $specrewVersionAfterSpecKit)
+        exit 1
+    }
+    Write-Pass '--spec-kit preserves specrew_version (no-mutation contract holds)'
+
+    Write-Host "`nTest 6: --squad does not mutate specrew_version (regression coverage for 94b44d7)"
+    Set-ConfigValue -ConfigPath $configPath -Key 'specrew_version' -Value $preserveTestSpecrewVersion
+
+    $squadOnlyResult = Invoke-TestScript -ScriptPath $entryScript -ArgumentList @('update', '--project-path', $projectRoot, '--squad')
+    if ($squadOnlyResult.ExitCode -ne 0) {
+        Write-Fail 'specrew update --squad failed'
+        foreach ($line in $squadOnlyResult.Output) {
+            Write-Host $line
+        }
+        exit 1
+    }
+
+    $specrewVersionAfterSquad = Get-ConfigValue -ConfigPath $configPath -Key 'specrew_version'
+    if ($specrewVersionAfterSquad -ne $preserveTestSpecrewVersion) {
+        Write-Fail ("specrew update --squad mutated specrew_version (expected '{0}', found '{1}'). Regression of bug fixed in 94b44d7." -f $preserveTestSpecrewVersion, $specrewVersionAfterSquad)
+        exit 1
+    }
+    Write-Pass '--squad preserves specrew_version (no-mutation contract holds)'
 }
 finally {
     [Environment]::SetEnvironmentVariable('SPECREW_UPDATE_LATEST_SPECREW', $originalSpecrewOverride, 'Process')

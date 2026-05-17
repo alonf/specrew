@@ -1,10 +1,15 @@
-# Feature 017 sample roadmap for the velocity dashboard.
-# Shipped progress is derived from canonical iteration history, not maintained here.
+# Specrew roadmap. Phase plans capture intended work; derived shipped SP
+# is computed by the dashboard renderer from canonical iteration history.
+# Updated 2026-05-16 to reflect Phase 2 sequencing decisions: Proposal 024
+# Multi-Host Runtime Abstraction CORE promoted to Phase 3 prerequisite;
+# Squad Upstream Reconciliation, F-006, Red Team, LLC, and Meaning-
+# Verification sequenced after Multi-Host CORE per the Squad coupling
+# analysis.
 phases:
   - id: phase-1-foundations
     name: "Phase 1: Foundations"
-    description: "Bootstrap, governance hardening, and quality-bar groundwork."
-    planned_effort_sp: 48
+    description: "Bootstrap, governance hardening, validator rigor, and quality-bar groundwork. Historical Phase 1 includes the F-001 through F-014 lifecycle features that established the spec-governed operating model."
+    planned_effort_sp: 65
     status: shipped
     feature_refs:
       - 009-project-path-resolution
@@ -13,67 +18,83 @@ phases:
 
   - id: phase-2-experience
     name: "Phase 2: Developer Experience"
-    description: "Interaction model, visibility, and public-readiness follow-through."
-    planned_effort_sp: 85
+    description: "Interaction model, visibility, public-readiness, distribution (two iterations: module + cross-platform hardening), state-foundation, and governance CLI surfaces. Bridges the methodology from internal dogfooding to external usability and gives downstream maintainers structured control of their roadmap, proposals, and feature lifecycle."
+    planned_effort_sp: 247
     status: in-progress
     feature_refs:
       - 015-public-readiness-pass
       - 016-substantive-interaction-model
       - 017-velocity-dashboard
       - 018-velocity-dashboard-visual-richness
+      - 019-specrew-distribution-module
 
-  - id: phase-3-visibility
-    name: "Phase 3: Visibility & Insights"
-    description: "Placeholder for follow-on visibility and lifecycle polish work."
-    planned_effort_sp: 0
+  - id: phase-3-runtime-abstraction
+    name: "Phase 3: Runtime Abstraction & Spec Fidelity"
+    description: "Multi-Host Runtime Abstraction CORE (Proposal 024) as the swap-Squad foundation, plus Squad Upstream Reconciliation that builds on it, Validator Hardening rigor lift, and Slash-Command Surface (deferred from Phase 2 because it touches the per-host CLI command surface)."
+    planned_effort_sp: 100
     status: queued
     feature_refs:
-      # TODO: add feature refs when Phase 3 scope is defined
+      # TODO: add feature refs as features /speckit.specify; planned scope below
+      # - Multi-Host Runtime Abstraction CORE (~35 SP, Proposal 024 scoped to CORE only)
+      # - Squad Upstream Reconciliation (~20 SP, depends on Multi-Host CORE)
+      # - Validator Hardening (~28 SP, 8 gaps per memory entry)
+      # - Specrew Slash-Command Surface (~7 SP, Proposal 032, depends on Multi-Host CORE)
+      # - F-006 Architecture Intent Checkpoint (~10 SP, smaller per Squad-skill compose)
 
-  - id: phase-4-governance
-    name: "Phase 4: Governance Scaling"
-    description: "Placeholder for scaling governance automation and validation."
-    planned_effort_sp: 0
+  - id: phase-4-token-and-autopilot
+    name: "Phase 4: Token Economy & Autopilot Experiment"
+    description: "Graduates Token Economy from research-stage to feature (cost guardrails). Runs the Autopilot Experiment that measures Specrew maturity by removing human-in-loop at boundaries and observing where quality breaks. Findings feed validator-hardening as a continuous loop."
+    planned_effort_sp: 50
     status: queued
     feature_refs:
-      # TODO: add feature refs when Phase 4 scope is defined
+      # TODO: add feature refs as features /speckit.specify; planned scope below
+      # - Token Economy as Governance Driver (~20 SP, currently research-stage)
+      # - Specrew Autopilot Experiment + Production Feature (~25 SP, dual-purpose)
 
   - id: phase-5-multi-developer
     name: "Phase 5: Multi-Developer"
-    description: "Placeholder for multi-developer coordination and reconciliation."
+    description: "Multi-Developer Reconciliation for team adoption; Expertise-Aware Adaptive Interaction Capability 3 (decision routing across heterogeneous-expertise teams). Depends on Phase 3 Multi-Host CORE for per-developer host heterogeneity."
+    planned_effort_sp: 110
+    status: queued
+    feature_refs:
+      # TODO: add feature refs as features /speckit.specify; planned scope below
+      # - Multi-Developer Reconciliation (~75 SP, Proposal 010)
+      # - Expertise-Aware Adaptive Interaction full (~35 SP, Capabilities 1-3)
+
+  - id: phase-6-ecosystem
+    name: "Phase 6: Ecosystem & Methodology Surface"
+    description: "Multi-Host SECOND PROVIDER (CAO, demonstrates abstraction works), Methodology Site (GitHub Pages for cold-arrival audience), Public Proposals Surface lifecycle hardening, NFR Governance, Reactive Specialist Lifecycle Management."
+    planned_effort_sp: 110
+    status: queued
+    feature_refs:
+      # TODO: add feature refs as features /speckit.specify; planned scope below
+      # - Multi-Host Runtime Abstraction SECOND PROVIDER (~30 SP, Proposal 024)
+      # - Methodology Site (~20 SP, Proposal 013)
+      # - Public Proposals Surface lifecycle Option B (~13 SP, Proposal 028)
+      # - NFR Governance (~25 SP, Proposal 008)
+      # - Reactive Specialist Lifecycle Management (~22 SP, Proposal 023)
+
+  - id: phase-7-brownfield
+    name: "Phase 7: Brownfield Support"
+    description: "JIT Codebase Cartography for adopting Specrew in existing large codebases. Distributed specrew-context.md with Human/Auto zones; pre-directory-read hook; specrew-indexer CLI parsing project metadata via Roslyn/libclang/Tree-sitter."
+    planned_effort_sp: 100
+    status: queued
+    feature_refs:
+      # TODO: add feature refs as features /speckit.specify; planned scope below
+      # - JIT Codebase Cartography (~100 SP, Proposal 025, conditional on brownfield demand)
+
+  - id: phase-8-packaging
+    name: "Phase 8: Packaging & 1.0"
+    description: "1.0 readiness: stable distribution channels (winget / Chocolatey / Scoop added to PSGallery), real codesign certificate, expanded test matrix, performance baseline, security review."
     planned_effort_sp: 0
     status: queued
     feature_refs:
-      # TODO: add feature refs when Phase 5 scope is defined
-
-  - id: phase-6-distribution
-    name: "Phase 6: Distribution"
-    description: "Packaging, installation, and distribution work (PSGallery + cross-platform module distribution)."
-    planned_effort_sp: 22
-    status: in-progress
-    feature_refs:
-      - 019-specrew-distribution-module
-
-  - id: phase-7-reliability
-    name: "Phase 7: Reliability"
-    description: "Placeholder for operational resilience and reliability upgrades."
-    planned_effort_sp: 0
-    status: queued
-    feature_refs:
-      # TODO: add feature refs when Phase 7 scope is defined
-
-  - id: phase-8-ecosystem
-    name: "Phase 8: Ecosystem"
-    description: "Placeholder for ecosystem integrations and community surfaces."
-    planned_effort_sp: 0
-    status: queued
-    feature_refs:
-      # TODO: add feature refs when Phase 8 scope is defined
+      # TODO: add feature refs as features /speckit.specify; scope TBD pending Phase 6 outcomes
 
   - id: phase-9-ga
     name: "Phase 9: Public GA"
-    description: "Placeholder for GA readiness, support, and public distribution."
+    description: "Public 1.0 release. Support model, documentation completeness, contributor onboarding, community templates, conference-talk-driven case studies."
     planned_effort_sp: 0
     status: queued
     feature_refs:
-      # TODO: add feature refs when Phase 9 scope is defined
+      # TODO: add feature refs as features /speckit.specify; scope TBD pending Phase 8 outcomes

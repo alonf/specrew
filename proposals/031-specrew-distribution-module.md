@@ -3,7 +3,7 @@ proposal: 031
 title: Specrew Distribution Module (PowerShell Gallery)
 status: draft
 phase: phase-2
-estimated-sp: 12
+estimated-sp: 27
 discussion: tbd
 ---
 
@@ -65,8 +65,12 @@ That replaces the current clone-and-PATH friction with idiomatic PowerShell ergo
 
 ## Effort
 
-- **Iteration 1 only**: ~10-15 SP across the 5 pillars
-- Single iteration. One-day focused work.
+Two-iteration feature (~25-30 SP total).
+
+- **Iteration 1** (~10-15 SP): Windows-correct module structure, PSGallery package built and validated locally, `specrew init` / `specrew start` / `specrew where` / `specrew update` work end-to-end on Windows post-install. PSGallery publish workflow EXISTS but is GATED — does not fire until Iteration 2 verifies cross-platform.
+- **Iteration 2** (~10-15 SP) — Cross-Platform Hardening: sweep all PowerShell scripts for embedded `\` in path strings (104+ sites observed across 7 entry-point scripts), replace with multi-arg `Join-Path` or forward slashes. End-to-end verification on Linux (Ubuntu via WSL) using Copilot CLI as the test harness. Add `.github/workflows/cross-platform-validation.yml` running validator + integration tests on `ubuntu-latest` (macOS optional, cost-dependent). README + `docs/getting-started.md` updated to claim "Tested on Windows + Linux (Ubuntu via WSL)" replacing the implicit Windows-only baseline. First real PSGallery publish fires at Iteration 2 feature-closeout.
+
+Rationale for the split: shipping a Windows-only PowerShell module to PSGallery as v1 would deliver a broken first impression to Linux/macOS users who run `Install-Module Specrew` and hit file-not-found errors from literal backslash paths. Iteration 1 builds confidence on Windows; Iteration 2 graduates the module to cross-platform-verified before its first public publish.
 
 ## Phase placement
 
