@@ -5053,3 +5053,238 @@ No lifecycle boundary advancement applied; only state artifact corrected to matc
   > - T042 and T053 remain human follow-up post-merge.
   > - Do not perform retro, iteration closeout, feature closeout, or credential setup.
 
+## 2026-05-17T05:09:25Z — Delegated routing plan
+
+- **Enabled Agents**: copilot
+- **Independent Oversight Active**: False
+- **Roles**:
+  - Implementer | requested=copilot | actual=copilot | model=(platform default) | status=honored | fallback=(none)
+  - Spec Steward | requested=codex | actual=copilot | model=(platform default) | status=fell-back | fallback=preferred agent 'codex' is not enabled
+  - Planner | requested=claude | actual=copilot | model=(platform default) | status=fell-back | fallback=preferred agent 'claude' is not enabled
+  - Reviewer | requested=claude | actual=copilot | model=(platform default) | status=fell-back | fallback=preferred agent 'claude' is not enabled
+  - Retro Facilitator | requested=copilot | actual=copilot | model=(platform default) | status=honored | fallback=(none)
+
+## 2026-05-17T05:09:26Z — Routing evidence: Spec Steward
+
+- **Decision ID**: routing-evidence-7081c8013218
+- **Type**: routing-evidence
+- **Affected Requirement**: FR-043
+- **Affected Iteration**: (none)
+- **Approving Human**: (none)
+- **Recorded At**: 2026-05-17T05:09:26Z
+- **Next Action**: none
+- **Rationale**: Delegated lifecycle routing was applied for role 'Spec Steward'.
+
+- **Routing Evidence**: Spec Steward | requested=codex | actual=copilot | model=(platform default) | status=fell-back | fallback=preferred agent 'codex' is not enabled
+
+## 2026-05-17T05:09:26Z — Routing evidence: Planner
+
+- **Decision ID**: routing-evidence-bce1d9c30c5f
+- **Type**: routing-evidence
+- **Affected Requirement**: FR-043
+- **Affected Iteration**: (none)
+- **Approving Human**: (none)
+- **Recorded At**: 2026-05-17T05:09:26Z
+- **Next Action**: none
+- **Rationale**: Delegated lifecycle routing was applied for role 'Planner'.
+
+- **Routing Evidence**: Planner | requested=claude | actual=copilot | model=(platform default) | status=fell-back | fallback=preferred agent 'claude' is not enabled
+
+## 2026-05-17T05:09:26Z — Routing evidence: Reviewer
+
+- **Decision ID**: routing-evidence-1c0eed88247d
+- **Type**: routing-evidence
+- **Affected Requirement**: FR-043
+- **Affected Iteration**: (none)
+- **Approving Human**: (none)
+- **Recorded At**: 2026-05-17T05:09:26Z
+- **Next Action**: none
+- **Rationale**: Delegated lifecycle routing was applied for role 'Reviewer'.
+
+- **Routing Evidence**: Reviewer | requested=claude | actual=copilot | model=(platform default) | status=fell-back | fallback=preferred agent 'claude' is not enabled
+---
+
+### 2026-05-17T05:29:37Z: Delegated lifecycle runtime evidence
+**By:** Squad (Coordinator)
+**Role / Work Item:** Implementer — Feature 019 Iteration 002 R-019-V2-R13 bounded micro-repair cycle
+**Requested Agent:** copilot
+**Actual Agent:** copilot
+**Model ID:** claude-sonnet-4.5
+**Status:** honored
+**Fallback Reason:** none
+
+
+# Implementer Decision: R-018-V3 visual alignment
+
+**Date**: 2026-05-16  
+**By**: Implementer  
+**Authority**: Alon Fliess authorization for bounded repair `R-018-V3`
+
+## Decision
+
+Keep the repair strictly inside the live full-dashboard renderer by reordering only the `RECENT SHIPPED` and `ROADMAP` row columns in `scripts\internal\dashboard-renderer.ps1`, while leaving Full History, Recent Iterations, Velocity, Active Work, Projection, Warnings, Footer, and closeout artifacts untouched.
+
+## Why
+
+- The repair request is explicitly visual-alignment scoped and forbids feature-closeout follow-through.
+- Updating the shared full renderer preserves the live `specrew where` contract without widening scope into unrelated surfaces.
+- Fixture and regression coverage can lock the new alignment without mutating historical closeout dashboards.
+
+
+# Implementer R13 Repair Decision
+
+- **Date:** 2026-05-17
+- **Feature / Iteration:** Feature 019 / Iteration 002
+- **Decision:** `specrew start` now treats Copilot non-autopilot launch flags as platform-conditional: Windows keeps `--mode interactive` (plus `--allow-all` when allowed), while Linux/macOS rely on the default REPL behavior for `-i` and suppress both `--mode interactive` and `--allow-all`.
+- **Why:** Runtime evidence for Copilot CLI v1.0.48 showed the inverse behavior across platforms: Windows still needs `--mode interactive` to stay in the REPL, but Linux/macOS already stay interactive without it and actively break when `--mode interactive` is added.
+- **Files to keep aligned:** `scripts\specrew-start.ps1`, `tests\integration\start-command.ps1`, `specs\019-specrew-distribution-module\test-evidence\us5-cross-platform.md`
+
+
+# Reviewer Decision Inbox: Feature 018 Review Signoff
+
+**Date**: 2026-05-15  
+**Role**: Reviewer  
+**Feature**: 018-velocity-dashboard-visual-richness  
+**Iteration**: 001  
+**Boundary**: review-verdict-signoff  
+**Verdict**: accepted
+
+## Decision
+
+Accept Feature 018 Iteration 001 at review-verdict-signoff with `R-018-V1` and `R-018-V2` absorbed.
+
+## Why
+
+1. Automated evidence remains green across the Feature 017 regression lane, the Feature 018 rich-mode lane, the Feature 018 render-budget lane, and `validate-governance.ps1`.
+2. Alon Fliess directly confirmed in a fresh PowerShell terminal that `.\scripts\specrew.ps1 where` now renders the approved rich-mode surface after `R-018-V2`, with no manual encoding setup required.
+3. The remaining roadmap phase marker observation is cosmetic only; roadmap meaning, fallback semantics, and acceptance criteria remain satisfied.
+
+## Deferred Cosmetic Follow-Up
+
+- `roadmap-phase-status-marker-uniformity` should normalize roadmap rich marker styling in a later polish pass.
+- This item is explicitly deferred in `.specrew/quality/known-traps.md` and does not reopen Feature 018 Iteration 001 acceptance.
+
+## Next Move
+
+Stop at accepted pre-retro state and request explicit retro-boundary authorization before opening retrospective work.
+
+
+# Reviewer Decision Inbox: Feature 019 Iteration 001 Re-Review
+
+**Date**: 2026-05-16  
+**Role**: Reviewer  
+**Feature**: 019-specrew-distribution-module  
+**Iteration**: 001  
+**Boundary**: review  
+**Verdict**: accepted
+
+## Decision
+
+Accept Feature 019 Iteration 001 at the re-review boundary. The bounded repair resolved both prior blockers and the
+iteration is now READY-FOR-SIGNOFF.
+
+## Why
+
+1. `Specrew.psd1` now ships the previously missing required package surfaces, including `scripts\internal\invoke-module-release.ps1` and `templates\github\agents\squad.agent.md`, plus the related README surfaces identified during review.
+2. `tests\integration\distribution-module-init.ps1` and `tests\integration\distribution-module-publish.ps1` now stage scratch workspaces from `Specrew.psd1` `FileList`, so the install/bootstrap/publish proof matches the actual shipped package instead of a whole-tree copy.
+3. The repaired tree revalidated cleanly across manifest/import checks, init/update/publish integration lanes, governance validation, and an explicit FileList audit, and commit `9e2fb30` has been pushed to `origin/019-specrew-distribution-module`.
+4. T042/T053 live-publish follow-up and T041/T054 cross-platform hardening remain correctly classified as non-blocking human/deferred work.
+
+## Next Move
+
+Open the separate `review-verdict-signoff` boundary with human authorization when ready. Do not start retrospective,
+closeout, or later lifecycle boundaries from this re-review decision alone.
+
+
+# Reviewer Decision Inbox: Feature 019 Iteration 001 Review
+
+**Date**: 2026-05-16  
+**Role**: Reviewer  
+**Feature**: 019-specrew-distribution-module  
+**Iteration**: 001  
+**Boundary**: review  
+**Verdict**: needs-work
+
+## Decision
+
+Do not sign off Feature 019 Iteration 001 yet. Route a bounded repair for the explicit package allowlist and refresh
+the package-shaped evidence before re-review.
+
+## Why
+
+1. `Specrew.psd1` still omits required distributable files from the approved explicit `FileList` strategy, including `scripts\internal\invoke-module-release.ps1` and `templates\github\agents\squad.agent.md`.
+2. That omission breaks the truthful US1/US2 installed-module story and the bounded publish-module packaging contract even though the repo-shaped scratch-module regressions pass locally.
+3. T042/T053 live-publish follow-up and T041/T054 cross-platform hardening remain correctly classified as non-blocking human/deferred work; they are not the reason signoff is blocked.
+
+## Required Repair
+
+- Update `C:\Dev\Specrew\Specrew.psd1` to ship the missing allowlist entries.
+- Refresh the package-surface tests/evidence so they prove the repaired manifest-shaped package, not a whole-tree copy.
+
+## Next Move
+
+Authorize bounded repair items `R-019-R1` and `R-019-R2`, then return the iteration to independent review. Do not
+open review-verdict-signoff, retro, or closeout from this boundary.
+
+
+# Reviewer Decision Inbox: Feature 019 Review Signoff
+
+**Date**: 2026-05-16  
+**Role**: Reviewer  
+**Feature**: 019-specrew-distribution-module  
+**Iteration**: 001  
+**Boundary**: review-verdict-signoff  
+**Verdict**: accepted
+
+## Decision
+
+Accept Feature 019 Iteration 001 at review-verdict-signoff against accepted review-boundary commit `567c070`.
+
+## Why
+
+1. The accepted repaired tree already resolved `R-019-R1` and `R-019-R2`, restoring the explicit `FileList` allowlist and package-shaped install/publish evidence.
+2. Governance validation passed again on the signoff bookkeeping tree, so review, plan, state, and decision artifacts now align truthfully at retro-ready status.
+3. Remaining work is explicitly non-blocking carry-forward only: `T041`/`T054` are deferred to Iteration 002, and `T042`/`T053` stay human follow-up post-merge.
+
+## Carry-Forward
+
+- `T041` and `T054` deferred to Iteration 002.
+- `T042` and `T053` remain human follow-up post-merge.
+
+## Next Move
+
+Stop at accepted pre-retro state and request explicit retro-boundary authorization before opening retrospective work.
+
+
+# User Directive: Feature 018 Final Pre-Rule-15 Polish
+
+**Date**: 2026-05-16  
+**By**: Alon Fliess  
+**Authority**: Feature 018 governance boundary  
+**Feature**: 018-velocity-dashboard-visual-richness  
+**Target**: R-018-V4 completion  
+
+## Directive
+
+This is the **FINAL pre-Rule-15 polish** for Feature 018. After R-018-V4 lands and verifies cleanly:
+
+1. **No additional polish items** shall be proposed after R-018-V4 lands.
+2. **Next valid step** is feature-closeout authorization.
+3. **Deferred items remain deferred** and do not block v0.18.0 ship.
+
+## Rationale
+
+- R-018-V4 represents the completion of bounded, focused polish within this iteration.
+- Further polish work must await explicit feature-closeout authorization.
+- Shipping v0.18.0 does not require resolution of deferred cosmetic or advanced items.
+
+## Acceptance Criteria
+
+- R-018-V4 applies cleanly and verifies without regression across all test lanes.
+- No new polish proposals emerge between R-018-V4 verification and feature-closeout authorization.
+- Feature-closeout governance proceeds only after explicit separate authorization.
+
+## Next Move
+
+Upon R-018-V4 verification success, await explicit feature-closeout authorization before proceeding to closeout boundary.
+
