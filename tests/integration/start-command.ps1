@@ -129,9 +129,6 @@ if (-not (Assert-Contains -Content $helpOutput -Pattern 'specrew start' -Failure
 if (-not (Assert-Contains -Content $helpOutput -Pattern 'prompt-approvals' -FailureMessage 'Help output does not describe the prompt-approvals option.')) {
     exit 1
 }
-if (-not (Assert-Contains -Content $helpOutput -Pattern 'allow-all/yolo approval semantics' -FailureMessage 'Help output does not explain the allow-all/yolo launch behavior.')) {
-    exit 1
-}
 if (-not (Assert-Contains -Content $helpOutput -Pattern 'new-window' -FailureMessage 'Help output does not describe the new-window option.')) {
     exit 1
 }
@@ -299,14 +296,6 @@ if ($freshContext.project_state.state -ne 'greenfield-new') {
 if (-not (Assert-Contains -Content $freshOutput -Pattern 'Manual launch command' -FailureMessage 'Fresh repo no-launch flow did not print an exact manual launch command.')) {
     exit 1
 }
-$freshManualLaunchLine = @($freshStartResult.Output | Where-Object { $_ -match 'Manual launch command' } | Select-Object -Last 1)
-if ($freshManualLaunchLine.Count -eq 0) {
-    Write-Fail 'Fresh repo no-launch flow did not emit the manual launch line.'
-    exit 1
-}
-if (-not (Assert-Contains -Content $freshOutput -Pattern 'SPECREW BOOTSTRAP PROMPT' -FailureMessage 'Fresh repo no-launch flow did not print the paste-ready bootstrap block.')) {
-    exit 1
-}
 if (-not (Assert-Contains -Content $freshOutput -Pattern "copilot --agent 'Squad'" -FailureMessage 'Fresh repo no-launch flow did not show the Copilot + Squad handoff command.')) {
     exit 1
 }
@@ -314,15 +303,21 @@ if ($freshOutput -match '--autopilot') {
     Write-Fail 'Fresh repo no-launch flow should not use autopilot before intake is grounded.'
     exit 1
 }
+$freshManualLaunchLine = @($freshStartResult.Output | Where-Object { $_ -match 'Manual launch command' } | Select-Object -Last 1)
+if ($freshManualLaunchLine.Count -eq 0) {
+    Write-Fail 'Fresh repo no-launch flow did not emit the manual launch line.'
+    exit 1
+}
+if (-not (Assert-Contains -Content $freshManualLaunchLine[0] -Pattern '--allow-all' -FailureMessage 'Fresh repo no-launch flow did not preserve allow-all in the manual handoff command.')) {
+    exit 1
+}
+if (-not (Assert-Contains -Content $freshManualLaunchLine[0] -Pattern '(^| )-i( |$)' -FailureMessage 'Fresh repo no-launch flow should auto-load the bootstrap with -i.')) {
+    exit 1
+}
+if (-not (Assert-Contains -Content $freshManualLaunchLine[0] -Pattern '--mode interactive' -FailureMessage 'Fresh repo no-launch flow should force --mode interactive while autopilot is off.')) {
+    exit 1
+}
 if (-not (Assert-Contains -Content $freshOutput -Pattern 'last-start-prompt\.md' -FailureMessage 'Fresh repo no-launch flow did not bootstrap from the saved prompt file.')) {
-    exit 1
-}
-if ($freshManualLaunchLine[0] -notmatch '--allow-all') {
-    Write-Fail 'Fresh repo no-launch flow should keep allow-all semantics in the manual handoff command.'
-    exit 1
-}
-if ($freshManualLaunchLine[0] -match '(^| )-i( |$)') {
-    Write-Fail 'Fresh repo no-launch flow should not inject the bootstrap with -i in the manual handoff command.'
     exit 1
 }
 if (-not (Assert-Contains -Content $freshOutput -Pattern 'start-context\.json' -FailureMessage 'Fresh repo no-launch flow did not bootstrap from the saved context file.')) {
@@ -333,7 +328,7 @@ if (-not (Assert-Contains -Content $freshOutput -Pattern 'start-summary\.md' -Fa
 }
 Write-Pass "Fresh repo start enters intake-or-resume mode"
 
-Write-Host "`nTest 2b: default launch reuses the current terminal and prints the bootstrap block"
+Write-Host "`nTest 2b: default launch reuses the current terminal and passes the bootstrap handoff"
 $fakeBinRoot = Join-Path -Path $scratchRoot -ChildPath 'fake-bin'
 $null = New-Item -Path $fakeBinRoot -ItemType Directory -Force
 $fakeCopilotLog = Join-Path -Path $scratchRoot -ChildPath 'fake-copilot.log'
@@ -378,20 +373,20 @@ if (-not (Test-Path -LiteralPath $fakeCopilotLog -PathType Leaf)) {
     exit 1
 }
 $fakeCopilotArgs = Get-Content -LiteralPath $fakeCopilotLog -Raw -Encoding UTF8
-$liveLaunchOutput = $liveLaunchResult.Output -join "`n"
-if (-not (Assert-Contains -Content $liveLaunchOutput -Pattern 'SPECREW BOOTSTRAP PROMPT' -FailureMessage 'Live launch did not print the paste-ready bootstrap block.')) {
+if ($fakeCopilotArgs -notmatch 'last-start-prompt\.md' -or $fakeCopilotArgs -notmatch 'start-context\.json') {
+    Write-Fail 'Live launch did not pass the bootstrap handoff file references to Copilot.'
     exit 1
 }
-if ($liveLaunchOutput -notmatch 'last-start-prompt\.md' -or $liveLaunchOutput -notmatch 'start-context\.json') {
-    Write-Fail 'Live launch did not show the prompt/context references inside the bootstrap block.'
+if ($fakeCopilotArgs -notmatch '(^| )-i( |$)') {
+    Write-Fail 'Live launch should auto-load the bootstrap prompt with -i.'
     exit 1
 }
-if ($fakeCopilotArgs -notmatch '--allow-all') {
-    Write-Fail 'Live launch should keep allow-all semantics in the Copilot command.'
+if ($fakeCopilotArgs -notmatch '--autopilot') {
+    Write-Fail 'Live launch should use autopilot once the request is grounded.'
     exit 1
 }
-if ($fakeCopilotArgs -match '(^| )-i( |$)') {
-    Write-Fail 'Live launch should not inject the bootstrap prompt with -i.'
+if ($fakeCopilotArgs -match '--mode interactive') {
+    Write-Fail 'Live launch should not combine --mode interactive with --autopilot.'
     exit 1
 }
 if ($fakeCopilotArgs -match 'You are Squad running inside a Specrew-bootstrapped repository') {
@@ -495,8 +490,7 @@ if (@($startContext.delivery_guidance.routing_guardrails).Count -eq 0) {
 }
 if ($summaryContent -notmatch 'Review/closure use a no-gap policy' -or
     $summaryContent -notmatch 'Delegated Routing' -or
-    $summaryContent -notmatch 'paste as the first message' -or
-    $summaryContent -notmatch 'combining -i with allow-all/yolo') {
+    $summaryContent -notmatch 'allow-all reduces tool-approval blocking after the request is grounded') {
     Write-Fail 'Start summary is missing the expected launch/no-gap/delegated-routing guidance.'
     exit 1
 }
@@ -529,7 +523,6 @@ Write-Pass "Conflict-heavy requests suppress same-specialty pair hints"
 Write-Host "`nTest 4: prompt-approvals mode is preserved in start context"
 $promptApprovalResult = Invoke-TestScript -ScriptPath $entryScript -ArgumentList @(
     'start',
-    'Inspect an auth flow bug',
     '--project-path', $projectRoot,
     '--prompt-approvals',
     '--no-launch'
@@ -548,21 +541,22 @@ if ($promptApprovalContext.approval_mode -ne 'prompt-approvals') {
     Write-Fail "Prompt approval mode was not recorded correctly."
     exit 1
 }
+if ($promptApprovalContext.copilot_autopilot) {
+    Write-Fail "Prompt-approvals intake flow should keep autopilot off until the request is grounded."
+    exit 1
+}
 $promptApprovalOutput = $promptApprovalResult.Output -join "`n"
 if (-not (Assert-Contains -Content $promptApprovalOutput -Pattern 'Manual launch command' -FailureMessage 'Prompt-approvals flow did not print an exact manual launch command.')) {
     exit 1
 }
-$promptManualLaunchLine = @($promptApprovalResult.Output | Where-Object { $_ -match 'Manual launch command' } | Select-Object -Last 1)
-if ($promptManualLaunchLine.Count -eq 0) {
-    Write-Fail 'Prompt-approvals flow did not emit the manual launch line.'
+if (-not (Assert-Contains -Content $promptApprovalOutput -Pattern '(^| )-i( |$)' -FailureMessage 'Prompt-approvals flow should auto-load the bootstrap with -i.')) {
     exit 1
 }
-if ($promptManualLaunchLine[0] -match '--allow-all') {
+if (-not (Assert-Contains -Content $promptApprovalOutput -Pattern '--mode interactive' -FailureMessage 'Prompt-approvals flow should force --mode interactive while autopilot is off.')) {
+    exit 1
+}
+if ($promptApprovalOutput -match '--allow-all') {
     Write-Fail "Prompt-approvals flow should not include --allow-all in the manual launch command."
-    exit 1
-}
-if ($promptManualLaunchLine[0] -match '(^| )-i( |$)') {
-    Write-Fail "Prompt-approvals flow should not inject the bootstrap with -i in the manual launch command."
     exit 1
 }
 Write-Pass "Prompt approvals mode is preserved"

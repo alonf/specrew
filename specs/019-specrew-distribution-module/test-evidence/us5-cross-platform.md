@@ -280,22 +280,27 @@ The automated WSL verification script requires `sudo` to install PowerShell 7 in
 - **Windows Validation**: `pwsh -NoProfile -File tests/integration/start-command.ps1` re-run after the reversal
 - **Linux/macOS Validation**: Native invocation has been restored; human WSL Ubuntu re-test remains pending
 
-### Follow-up Repair Evidence (R-019-V2-R10)
+### Follow-up Repair Evidence (R-019-V2-R11)
 
 - **Status**: Completed on Windows; WSL re-verification pending-human-execution
 - **Files Changed**: `scripts/specrew-start.ps1`, `tests/integration/start-command.ps1`, `docs/getting-started.md`, `docs/user-guide.md`, `specs/019-specrew-distribution-module/test-evidence/us5-cross-platform.md`
-- **R1-R10 Defect History Walkthrough**:
-  1. **R1** chased a TTY-preservation theory and introduced a Linux/macOS `bash -c` wrapper.
-  2. **R2-R5** fixed real cross-platform issues (dashboard empty-state handling, dependency pre-flight, platform-aware bootstrap guidance, and actionable install hints) but did not explain the start-session collapse.
-  3. **R6** fixed quoting inside the `bash -c` launcher, but that only stabilized the wrapper; it did not explain why a tool-using bootstrap still behaved like a one-shot run.
-  4. **R7-R8** repaired module-mode detection and child-session propagation for `specrew-init`; those fixes were correct but orthogonal to the `specrew start` REPL defect.
-  5. **R9** reversed the original TTY diagnosis after WSL proved native direct Copilot invocation works and the `bash -c` wrapper itself was the Linux/macOS regression.
-  6. **Early R10 hypothesis (now corrected)** blamed `--allow-all` alone. Canonical Squad research plus WSL diagnostics showed the actual failure is more specific: **`-i` plus allow-all/yolo semantics causes a tool-using bootstrap prompt to run as an effective one-shot command instead of leaving the Copilot REPL open.**
-- **Final Root Cause**: Specrew was auto-injecting the bootstrap prompt with `-i` while also launching Copilot in allow-all/yolo mode. For a bootstrap that immediately reads files and performs tool calls, Copilot consumes that injected message as a one-shot task and exits instead of staying in the REPL for the user.
-- **Fix Applied**: Kept `--allow-all` semantics, removed `-i` bootstrap injection from both the native launch path and the Windows launch-script template, and now print a clearly delimited bootstrap block for the user to paste as the first REPL message after `copilot --agent squad --allow-all` starts.
-- **Startup Messaging**: `specrew start` and the saved summary now describe the real REPL-plus-paste flow instead of claiming the bootstrap is auto-injected.
-- **Windows Validation**: `pwsh -NoProfile -File tests/integration/start-command.ps1` passed after the REPL-plus-paste repair
-- **Linux/macOS Validation**: WSL manual re-test remains pending to confirm the restored interactive REPL behavior end to end
+- **R10 Correction**: R-019-V2-R10 was a wrong-direction workaround. Removing bootstrap auto-load and switching to a paste-the-block pattern treated the symptom, but the user confirmed on both Windows and WSL that the real fix is to keep `-i` and add `--mode interactive` whenever Specrew is not using autopilot.
+- **Actual Root Cause**: Copilot CLI v1.0.48 no longer preserves the desired interactive REPL mode by default for the `copilot --agent ... --add-dir ... -i <bootstrap>` pattern. Without an explicit `--mode interactive`, the injected bootstrap is consumed as a one-shot run and Copilot exits.
+- **Fix Applied**: Reverted the R10 paste-pattern changes, restored bootstrap auto-load through `-i $bootstrapInput`, and added `--mode interactive` on both the native launch path and the Windows embedded launch script whenever `-UseAutopilot` is false. `--autopilot` and `--mode interactive` remain mutually exclusive.
+- **Concise Repair History (R1-R11)**:
+  1. **R1** introduced a Linux/macOS TTY-preservation shim for `specrew start`.
+  2. **R2** fixed empty-state dashboard crashes in `specrew where`.
+  3. **R3** added dependency pre-flight checks to `specrew init`.
+  4. **R4** corrected Windows-only init success messaging on non-Windows platforms.
+  5. **R5** added actionable install hints to dependency failure paths.
+  6. **R6** repaired quoted bootstrap input handling inside the non-Windows launcher.
+  7. **R7** corrected distribution-module mode detection for `specrew-init`.
+  8. **R8** propagated the module invocation marker across child PowerShell sessions.
+  9. **R9** reversed the mistaken Linux/macOS `bash -c` TTY theory and restored direct native invocation.
+  10. **R10** wrongly removed `-i` bootstrap auto-load and replaced it with a manual paste pattern.
+  11. **R11** restores the real launch contract: auto-load the bootstrap with `-i`, and explicitly pass `--mode interactive` whenever autopilot is off.
+- **Windows Validation**: `pwsh -NoProfile -File tests/integration/start-command.ps1` passed after restoring `-i` and adding explicit interactive mode assertions
+- **Linux/macOS Validation**: The user already confirmed the same explicit `--mode interactive` requirement on Windows and WSL; full end-to-end WSL re-test remains pending-human-execution
 
 ### Known Traps Added
 
