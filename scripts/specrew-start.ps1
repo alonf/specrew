@@ -2528,14 +2528,57 @@ $args += @('--add-dir', '{0}', '-i', $bootstrapInput)
         return $true
     }
 
-    Push-Location -LiteralPath $ResolvedProjectPath
-    try {
-        & $copilotCommand.Source @copilotArgs
-        return $true
+    # Linux/macOS: replace this script-mode pwsh process with copilot via execvp.
+    # Empirical evidence from F-019 Iter 2 (R10-R16): launching copilot as a
+    # child of script-mode pwsh causes Copilot CLI v1.0.48's agent loop to
+    # terminate after the auto-prompt completes, regardless of prompt content
+    # or flag combination. The fix is to eliminate the intermediate pwsh layer
+    # entirely. execvp replaces the current process image with copilot, so
+    # copilot becomes a direct child of the user's interactive pwsh with full
+    # TTY/process-group inheritance.
+    Invoke-CopilotExecOnUnix -CopilotPath $copilotCommand.Source -CopilotArgs $copilotArgs -WorkingDirectory $ResolvedProjectPath
+    # Unreachable on success — execvp replaces the process. On failure, the
+    # helper throws, so we never fall through to here.
+    return $false
+}
+
+function Invoke-CopilotExecOnUnix {
+    param(
+        [Parameter(Mandatory = $true)][string]$CopilotPath,
+        [Parameter(Mandatory = $true)][string[]]$CopilotArgs,
+        [Parameter(Mandatory = $true)][string]$WorkingDirectory
+    )
+
+    if (-not ($IsLinux -or $IsMacOS)) {
+        throw "Invoke-CopilotExecOnUnix is only supported on Linux and macOS."
     }
-    finally {
-        Pop-Location
+
+    if (-not ('Specrew.Native.Libc' -as [type])) {
+        Add-Type -TypeDefinition @"
+using System.Runtime.InteropServices;
+namespace Specrew.Native {
+    public static class Libc {
+        [DllImport("libc", SetLastError = true)]
+        public static extern int execvp(string file, string[] argv);
     }
+}
+"@
+    }
+
+    # Set the OS-level cwd so copilot inherits the project directory.
+    [System.IO.Directory]::SetCurrentDirectory($WorkingDirectory)
+
+    # argv[0] is the program name by Unix convention; the remaining entries
+    # are the actual arguments. Both go in the argv array passed to execvp.
+    $argv = @($CopilotPath) + $CopilotArgs
+
+    # execvp returns ONLY on failure. On success, this process is replaced
+    # by copilot and execution continues inside copilot — the PowerShell
+    # runtime is unloaded as part of the replacement.
+    [Specrew.Native.Libc]::execvp($CopilotPath, $argv) | Out-Null
+
+    $err = [System.Runtime.InteropServices.Marshal]::GetLastWin32Error()
+    throw "execvp failed (errno=$err) — could not replace pwsh with copilot at '$CopilotPath'"
 }
 
 if ($Help) {
