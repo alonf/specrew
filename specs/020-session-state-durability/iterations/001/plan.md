@@ -3,7 +3,7 @@
 **Schema**: v1
 **Feature**: 020-session-state-durability  
 **Branch**: 020-session-state-durability  
-**Status**: implementation-complete
+**Status**: reviewing
 **Capacity**: 16/20 story_points
 **Started**: 2026-05-18
 **Created**: 2026-05-18  
@@ -68,7 +68,7 @@ Total effort estimate: 16 Story Points
 - **Planning approval**: planning approved at task-validation pass (commit `e456f3b`)
 - **Phase 0 completion**: ✓ CHORE-001–CHORE-004 merged to main at 9f63790, integrated at b5e4461 (2026-05-18)
 - **Implementation authorization**: before-implement gate passed at commit `6d3aaa7`, implementation authorized
-- **Review status**: pending independent review after implementation-complete handoff
+- **Review status**: corrected-scope review-verdict-signoff completed on 2026-05-18 against HEAD `71768e8`; authoritative scope followed the human reauthorization recorded in `.squad\decisions\inbox\2026-05-22-reviewer-feature-020-scope-correction-reauth.txt`, and Scope Guardrails continue to defer FR-006..014, FR-021..024, and FR-029+ to Iteration 002
 
 ## Notes
 

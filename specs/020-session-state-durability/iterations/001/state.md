@@ -5,9 +5,9 @@
 **Tasks Remaining**: (none within the authorized Iteration 001 scope)
 **In Progress**: none
 **Baseline Ref**: 0e90d1f
-**Current Phase**: implementation-complete
-**Iteration Status**: Iteration 001 implementation is complete on the repaired tree. Boundary sync, stale-state detection, and module-version mismatch warning behavior now satisfy the authorized Iteration 001 scope, including the exact FR-026 warning text. Next valid action is independent review / iteration-completion handoff only; Iteration 002 remains unopened.
-**Updated**: 2026-05-18T01:20:06+03:00
+**Current Phase**: complete
+**Iteration Status**: Corrected-scope review-verdict-signoff is complete on the repaired tree. Boundary-sync, stale-state, and module-version mismatch lanes remain green on HEAD `71768e8`; Iteration 001 is approved for FR-001..005, FR-015..020, and FR-025..028. Retro can begin. Iteration 002 deferred lanes remain unopened.
+**Updated**: 2026-05-18T02:02:12+03:00
 
 ## Execution Summary
 
@@ -24,7 +24,7 @@
 - **Phase 0 Complete**: Phase 0 chore shipped to `main` as `9f63790`, merged into feature branch via `b5e4461`
 - **Implementation Begin**: 2026-05-18 (authorized execution)
 - **Implementation Complete**: 2026-05-18 (all Iteration 001 tasks delivered and required integration tests passing)
-- **Review Boundary**: pending
+- **Review Boundary**: 2026-05-18 — corrected-scope rerun approved on HEAD `71768e8`; review-verdict-signoff completed against the Iteration 001 contract
 - **Iteration Closeout**: pending
 
 ## Notes
@@ -32,7 +32,8 @@
 - This iteration started with explicit authorization. No approval cycles or human re-validation were required for the Iteration-start boundary.
 - The authorization context (commit 0e90d1f) restored missing planning artifacts (research.md, data-model.md, quickstart.md, contracts/) and preserved the Iteration-start authorization.
 - Phase 0 chore shipped to `main` as `9f63790`, merged into feature branch via `b5e4461`, and no longer blocks Iteration 1.
-- Iteration 001 is ready for reviewer handoff from the repaired tree; do not advance to Iteration 002 without separate authorization.
+- The prior authorization paste had an FR-range error from memory; the reviewer correctly caught the authorization-versus-plan drift, and that governance lesson should be preserved in retro context.
+- Review-verdict-signoff is complete. Retro may begin, but Iteration 002 remains unopened and still requires separate authorization.
 
 <!-- >>> specrew-managed escalation-state >>> -->
 ## Repair Escalation
