@@ -3,9 +3,12 @@
 **Schema**: v1
 **Feature**: 020-session-state-durability  
 **Branch**: 020-session-state-durability  
-**Status**: reviewing
+**Status**: retro-complete
 **Capacity**: 16/20 story_points
 **Started**: 2026-05-18
+**Completed**: 2026-05-18
+**Review Completed**: 2026-05-18
+**Retro Completed**: 2026-05-18
 **Created**: 2026-05-18  
 **Updated**: 2026-05-18
 
@@ -54,6 +57,16 @@ Total effort estimate: 16 Story Points
 | Defer Strategy | manual | Any deferral must be named explicitly and deferred to Iteration 002 |
 | Calibration Enabled | true | Retro should compare this grouped baseline against actual delivery |
 
+## Phase Baseline
+
+| Phase | Estimated Effort | Notes |
+| --- | --- | --- |
+| Planning | 1.0 | Iteration artifact recovery, scope locking, and explicit Phase 0 prerequisite confirmation |
+| Discovery/Spikes | 0.5 | Reserved for bounded implementation discoveries inside the Iteration 001 lane |
+| Implementation | 12.0 | Boundary sync, stale-state detection, and module-version warning delivery work |
+| Review | 1.5 | Corrected-scope review-verdict-signoff plus validator and integration evidence replay |
+| Rework | 1.0 | Small bounded repair reserve for review-discovered defects without widening into Iteration 002 |
+
 ## Scope Guardrails
 
 - **Phase 0 prerequisite**: ✓ Phase 0 companion chore (CHORE-001 through CHORE-004) completed and merged to main at commit 9f63790 (2026-05-18), merged into branch at b5e4461. Establishes the `.squad/identity/now.md` closeout pattern.
@@ -69,6 +82,7 @@ Total effort estimate: 16 Story Points
 - **Phase 0 completion**: ✓ CHORE-001–CHORE-004 merged to main at 9f63790, integrated at b5e4461 (2026-05-18)
 - **Implementation authorization**: before-implement gate passed at commit `6d3aaa7`, implementation authorized
 - **Review status**: corrected-scope review-verdict-signoff completed on 2026-05-18 against HEAD `71768e8`; authoritative scope followed the human reauthorization recorded in `.squad\decisions\inbox\2026-05-22-reviewer-feature-020-scope-correction-reauth.txt`, and Scope Guardrails continue to defer FR-006..014, FR-021..024, and FR-029+ to Iteration 002
+- **Retro status**: retro-boundary completed on 2026-05-18; `retro.md` captures the repair-cycle lessons, corrected-scope governance lesson, and next-action improvements for iteration-closeout readiness
 
 ## Notes
 

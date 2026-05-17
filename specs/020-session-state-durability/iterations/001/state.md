@@ -6,8 +6,8 @@
 **In Progress**: none
 **Baseline Ref**: 0e90d1f
 **Current Phase**: complete
-**Iteration Status**: Corrected-scope review-verdict-signoff is complete on the repaired tree. Boundary-sync, stale-state, and module-version mismatch lanes remain green on HEAD `71768e8`; Iteration 001 is approved for FR-001..005, FR-015..020, and FR-025..028. Retro can begin. Iteration 002 deferred lanes remain unopened.
-**Updated**: 2026-05-18T02:02:12+03:00
+**Iteration Status**: Retro boundary is complete on the corrected-scope tree. Governance validation plus the boundary-sync, stale-state, and module-version mismatch suites reran green at the review->retro transition on HEAD `9508faf`; Iteration-closeout may begin, and Iteration 002 deferred lanes remain unopened.
+**Updated**: 2026-05-18T02:11:39+03:00
 
 ## Execution Summary
 
@@ -25,6 +25,7 @@
 - **Implementation Begin**: 2026-05-18 (authorized execution)
 - **Implementation Complete**: 2026-05-18 (all Iteration 001 tasks delivered and required integration tests passing)
 - **Review Boundary**: 2026-05-18 — corrected-scope rerun approved on HEAD `71768e8`; review-verdict-signoff completed against the Iteration 001 contract
+- **Retro Boundary**: 2026-05-18 — `retro.md` completed after repairing the missing `Phase Baseline` scaffold dependency; key lessons capture planning-artifact recovery, literal-`HEAD` durability, version-warning observability, and plan-over-memory scope discipline
 - **Iteration Closeout**: pending
 
 ## Notes
@@ -32,8 +33,9 @@
 - This iteration started with explicit authorization. No approval cycles or human re-validation were required for the Iteration-start boundary.
 - The authorization context (commit 0e90d1f) restored missing planning artifacts (research.md, data-model.md, quickstart.md, contracts/) and preserved the Iteration-start authorization.
 - Phase 0 chore shipped to `main` as `9f63790`, merged into feature branch via `b5e4461`, and no longer blocks Iteration 1.
-- The prior authorization paste had an FR-range error from memory; the reviewer correctly caught the authorization-versus-plan drift, and that governance lesson should be preserved in retro context.
-- Review-verdict-signoff is complete. Retro may begin, but Iteration 002 remains unopened and still requires separate authorization.
+- The retro scaffold initially failed because `iterations/001/plan.md` was missing the canonical `## Phase Baseline` table; that bookkeeping repair is now complete and recorded as a retro lesson.
+- The prior authorization paste had an FR-range error from memory; the reviewer correctly caught the authorization-versus-plan drift, and retro records the rule that human authorization pastes must cite the iteration plan as the authoritative scope source.
+- Review-verdict-signoff and retro are complete. Iteration-closeout may begin, but Iteration 002 remains unopened and still requires separate authorization.
 
 <!-- >>> specrew-managed escalation-state >>> -->
 ## Repair Escalation

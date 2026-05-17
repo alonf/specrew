@@ -1,0 +1,8 @@
+Retro decision: Feature 020 Iteration 001 authorization scope source-of-truth rule.
+
+- Requested by: Retro Facilitator
+- Context: corrected-scope review-verdict-signoff and retro-boundary follow-through for Feature 020 Iteration 001
+- Evidence: the prior human authorization paste drifted because it restated FR ranges from memory; the reviewer caught the mismatch by checking `specs\020-session-state-durability\iterations\001\plan.md`
+- Decision: human-authored authorization pastes must cite the current iteration plan Scope Guardrails as the authoritative scope source instead of restating requirement ranges from memory
+- Applies to: review reruns, retro authorization, iteration-closeout authorization, and any future repair-cycle handoff that names scope
+- Expected effect: prevent authorization-versus-plan drift from reopening already-deferred Iteration 002 lanes
