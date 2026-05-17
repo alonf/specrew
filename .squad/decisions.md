@@ -1,6 +1,37 @@
+# Decision: Implementer Phase 0 Chore—Feature Closeout Dashboard Update
+
+**Date**: 2026-05-17  
+**Authority**: Implementer (phase planning decision)  
+**Decision Type**: Lifecycle anchor clarification
+
+## Context
+
+The Implementer role manages `.squad\identity\now.md` updates across feature lifecycle boundaries. During Feature 019 closeout, the question arose: when should the post-closeout session anchor be updated?
+
+## Decision
+
+**Treat `extensions\specrew-speckit\scripts\scaffold-feature-closeout-dashboard.ps1` (plus the mirrored `.specify` copy) as the canonical feature-closeout update point for `.squad\identity\now.md`.**
+
+For all future feature closeouts:
+- Post-closeout `.squad\identity\now.md` update → trigger at `scaffold-feature-closeout-dashboard.ps1` execution
+- Rationale: Existing dashboard docs and integration coverage already define this script as the feature-closeout scaffold
+
+## Impact
+
+- Keeps post-closeout session anchor aligned with the same lifecycle hook that persists `closeout-dashboard.md`
+- Simplifies handoff: Implementer knows exactly when the session-identity anchor refreshes
+
+## Cross-References
+
+- Closeout script: `extensions\specrew-speckit\scripts\scaffold-feature-closeout-dashboard.ps1`
+- Dashboard integration: `tests\integration\` and `docs\dashboard-guide.md`
+- Identity anchor: `.squad\identity\now.md`
+
+---
+
 # Decision: Feature 020 Distribution Owner Role Mapping
 
-**Date**: 2026-05-19  
+**Date**: 2026-05-19
 **Boundary**: Planning phase (before-plan gate blocker resolution)  
 **Feature**: 020-session-state-durability (Session-State Durability & In-Flight Progress Tracking)  
 **Authority**: Planner (role-mapping planning decision)  
