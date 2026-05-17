@@ -185,9 +185,8 @@ Options:
     - Squad should continue any in-progress feature when possible, or gather the missing feature/fix details from the human developer.
     - A quoted feature request is optional shorthand for a new feature, not a full spec document.
      - Specrew launches Copilot from the target project directory, reuses the current terminal by default, and only uses --new-window when you explicitly ask for a detached shell.
-     - Specrew always auto-loads the bootstrap via -i.
-     - Intake-first runs stay out of autopilot until the feature request is grounded. On Windows, Specrew adds --mode interactive so Copilot stays in the REPL; Linux/macOS rely on Copilot CLI's default REPL behavior for the same -i bootstrap flow.
-     - Windows keeps --allow-all enabled by default after the scope is grounded; Linux/macOS intentionally suppress --allow-all, so bootstrap file reads will require approval prompts there.
+     - Specrew always auto-loads the bootstrap via -i so Copilot reads the Squad handoff before doing anything else.
+     - Intake-first runs stay out of autopilot until the feature request is grounded; once scope is grounded, Specrew defaults to --allow-all to reduce approval blocking.
      - Copilot CLI may still ask you to trust the project directory on first launch.
      - If Copilot CLI is unavailable, Specrew still writes a handoff prompt and context file.
 '@ | Write-Host
@@ -2399,28 +2398,21 @@ function Get-CopilotBootstrapInput {
         [bool]$RequireInteractiveIntake
     )
 
-    # Pass a SHORT casual prompt via -i to keep Copilot's REPL alive.
-    #
-    # Empirical evidence from WSL 2026-05-17: Copilot CLI v1.0.48's agent loop
-    # terminates the session after processing a long/instructional -i prompt
-    # (the model treats the prompt as a self-contained task and exits when
-    # done). Short casual prompts ("hello", "Begin Specrew session", or
-    # explicit "use the ask_user tool to ask X" directives) keep the agent
-    # loop alive and return control to the REPL waiting for user input.
-    #
-    # The full Squad coordinator instructions, project-state snapshot, team
-    # roster, and lifecycle directives stay on disk at $PromptPath and
-    # $ContextPath. Squad can consult those files via tool calls AFTER the
-    # initial user response (i.e. after the agent loop is already alive),
-    # which keeps the session interactive throughout.
     $promptDisplayPath = Get-DisplayPathFromProjectRoot -ResolvedProjectPath $ResolvedProjectPath -Path $PromptPath
     $contextDisplayPath = Get-DisplayPathFromProjectRoot -ResolvedProjectPath $ResolvedProjectPath -Path $ContextPath
+    $lines = @(
+        "Read '$promptDisplayPath' and '$contextDisplayPath' from the project root before doing anything else."
+        "Treat '$promptDisplayPath' as the authoritative Specrew handoff and '$contextDisplayPath' as the current lifecycle state."
+    )
 
     if ($RequireInteractiveIntake) {
-        return "Begin a new Specrew session for this project. Use the ask_user tool to ask me what I want to build today, then wait for my answer. Read '$promptDisplayPath' and '$contextDisplayPath' for full session context after I respond."
+        $lines += "If intake is still unresolved after reading those files, ask the next intake question and wait for the human developer's answer before invoking any Speckit lifecycle agent or command, skipping clarify, or guessing missing scope."
+    }
+    else {
+        $lines += "After reading those files, follow the lifecycle exactly as directed by the handoff and do not bypass required clarify or governance gates."
     }
 
-    return "Resume the active Specrew session for this project. Use the ask_user tool to confirm I'm ready to continue, then read '$promptDisplayPath' and '$contextDisplayPath' for the current lifecycle state and proceed with the next phase."
+    return $lines -join ' '
 }
 
 function Get-ManualCopilotCommand {
@@ -2438,27 +2430,20 @@ function Get-ManualCopilotCommand {
     $quotedAgent = $Agent.Replace("'", "''")
     $quotedBootstrap = (Get-CopilotBootstrapInput -ResolvedProjectPath $ResolvedProjectPath -PromptPath $PromptPath -ContextPath $ContextPath -RequireInteractiveIntake $RequireInteractiveIntake).Replace("'", "''")
     $autopilotSegment = if ($UseAutopilot) { ' --autopilot' } else { '' }
-    $interactiveModeSegment = if ($UseAutopilot -or -not $IsWindows) { '' } else { ' --mode interactive' }
-    $passAllowAll = ($AllowAll -and $IsWindows)
-    $allowAllSegment = if ($passAllowAll) { ' --allow-all' } else { '' }
+    $allowAllSegment = if ($AllowAll) { ' --allow-all' } else { '' }
 
-    return 'copilot --agent ''{0}''{1}{2} --add-dir ''{3}'' -i ''{4}''{5}' -f $quotedAgent, $autopilotSegment, $interactiveModeSegment, $quotedProjectPath, $quotedBootstrap, $allowAllSegment
+    return 'copilot --agent ''{0}''{1} --add-dir ''{2}'' -i ''{3}''{4}' -f $quotedAgent, $autopilotSegment, $quotedProjectPath, $quotedBootstrap, $allowAllSegment
 }
 
 function Get-AllowAllRuntimePlan {
     param([bool]$AllowAll)
 
-    $suppressAllowAll = ($AllowAll -and -not $IsWindows)
-
     return [pscustomobject]@{
-        PassAllowAll        = ($AllowAll -and -not $suppressAllowAll)
-        ApprovalMode        = if ($AllowAll -and -not $suppressAllowAll) { 'allow-all' } else { 'prompt-approvals' }
-        DisplayMode         = if ($suppressAllowAll) { 'prompt-approvals (requested --allow-all suppressed on Linux/macOS)' } elseif ($AllowAll) { 'allow-all' } else { 'prompt-approvals' }
-        SuppressionNote     = if ($suppressAllowAll) { 'Specrew suppresses --allow-all on Linux/macOS. The bootstrap content is embedded directly in -i so Copilot does not need to make tool calls during startup; the REPL stays open for intake.' } else { $null }
-        ApprovalOperatorNote = if ($suppressAllowAll) {
-            'Linux/macOS: the bootstrap content is embedded directly in -i so Copilot does not need to read files during startup. The REPL stays open for intake conversation.'
-        }
-        elseif ($AllowAll) {
+        PassAllowAll        = $AllowAll
+        ApprovalMode        = if ($AllowAll) { 'allow-all' } else { 'prompt-approvals' }
+        DisplayMode         = if ($AllowAll) { 'allow-all' } else { 'prompt-approvals' }
+        SuppressionNote     = $null
+        ApprovalOperatorNote = if ($AllowAll) {
             'allow-all reduces tool-approval blocking after the request is grounded.'
         }
         else {
@@ -2490,15 +2475,10 @@ function Start-CopilotSession {
     if ($UseAutopilot) {
         $copilotArgs += '--autopilot'
     }
-    elseif ($IsWindows) {
-        $copilotArgs += @('--mode', 'interactive')
-    }
 
     $copilotArgs += @('--add-dir', $ResolvedProjectPath, '-i', $bootstrapInput)
 
-    $passAllowAll = ($AllowAll -and $IsWindows)
-
-    if ($passAllowAll) {
+    if ($AllowAll) {
         $copilotArgs += '--allow-all'
     }
 
@@ -2507,8 +2487,8 @@ function Start-CopilotSession {
         $quotedAgent = $Agent.Replace("'", "''")
         $quotedCopilotSource = $copilotCommand.Source.Replace("'", "''")
         $quotedBootstrap = $bootstrapInput.Replace("'", "''")
-        $autopilotSnippet = if ($UseAutopilot) { '$args += ''--autopilot''' } else { '$args += @(''--mode'', ''interactive'')' }
-        $allowAllSnippet = if ($passAllowAll) { '$args += ''--allow-all''' } else { '' }
+        $autopilotSnippet = if ($UseAutopilot) { '$args += ''--autopilot''' } else { '' }
+        $allowAllSnippet = if ($AllowAll) { '$args += ''--allow-all''' } else { '' }
         $launchScript = @'
 Set-Location -LiteralPath '{0}'
 $bootstrapInput = '{1}'
@@ -2653,16 +2633,8 @@ $useAutopilot = -not $requiresInteractiveIntake
 $requestedAllowAll = if ($PromptApprovals) { $false } else { $true }
 $allowAllRuntimePlan = Get-AllowAllRuntimePlan -AllowAll $requestedAllowAll
 $approvalMode = $allowAllRuntimePlan.ApprovalMode
-$approvalOperatorNote = if (-not $useAutopilot) {
-    if (-not [string]::IsNullOrWhiteSpace($allowAllRuntimePlan.SuppressionNote)) {
-        'Specrew embeds the bootstrap content directly in -i so Copilot does not need to read files during startup. Windows adds --mode interactive to keep the REPL open during intake; Linux/macOS rely on Copilot CLI''s default REPL behavior for the same embedded-bootstrap flow.'
-    }
-    else {
-        'Specrew embeds the bootstrap content directly in -i so Copilot does not need to read files during startup. Windows adds --mode interactive to keep the REPL open during intake; Linux/macOS rely on Copilot CLI''s default REPL behavior for the same embedded-bootstrap flow.'
-    }
-}
-elseif (-not [string]::IsNullOrWhiteSpace($allowAllRuntimePlan.SuppressionNote)) {
-    'Specrew embeds the bootstrap content directly in -i so Copilot does not need to read files during startup. Linux/macOS suppress --allow-all because the embedded-bootstrap flow stays in REPL on Copilot CLI''s default mode.'
+$approvalOperatorNote = if (-not $useAutopilot -and $approvalMode -eq 'allow-all') {
+    'allow-all reduces later tool-approval blocking, but intake still remains interactive until the scope is grounded.'
 }
 elseif ($approvalMode -eq 'allow-all') {
     'allow-all reduces tool-approval blocking after the request is grounded.'
@@ -2713,12 +2685,7 @@ if ($artifactPaths.TemplateRefreshArtifacts.Count -gt 0) {
     }
 }
 if (-not $useAutopilot) {
-    if ($IsWindows) {
-        Write-Info 'Specrew auto-loads the bootstrap with -i and adds --mode interactive on Windows so the Copilot REPL stays open until the request is grounded.'
-    }
-    else {
-        Write-Info 'Specrew auto-loads the bootstrap with -i and relies on Copilot CLI''s default REPL behavior on Linux/macOS until the request is grounded.'
-    }
+    Write-Info 'Specrew auto-loads the bootstrap with -i and stays out of autopilot until the request is grounded.'
 }
 elseif ($approvalMode -eq 'allow-all') {
     Write-Info 'allow-all reduces tool-approval blocking after the request is grounded.'

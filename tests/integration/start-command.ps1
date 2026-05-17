@@ -204,17 +204,12 @@ if ($startScriptContent -notmatch $sameWindowProcessLaunchPattern) {
     Write-Fail "specrew-start.ps1 does not use a separate pwsh process for same-window Copilot launch on Windows."
     exit 1
 }
-$nativeAllowAllSuppressionPattern = '\$passAllowAll = \(\$AllowAll -and \$IsWindows\)[\s\S]*if \(\$passAllowAll\) \{\s*\$copilotArgs \+= ''--allow-all'''
-if ($startScriptContent -notmatch $nativeAllowAllSuppressionPattern) {
-    Write-Fail "specrew-start.ps1 no longer suppresses --allow-all in the native non-Windows launch path."
+$uniformAllowAllPattern = 'if \(\$AllowAll\) \{\s*\$copilotArgs \+= ''--allow-all'''
+if ($startScriptContent -notmatch $uniformAllowAllPattern) {
+    Write-Fail "specrew-start.ps1 no longer applies --allow-all uniformly when AllowAll is true."
     exit 1
 }
-$nativeInteractivePattern = '\$interactiveModeSegment = if \(\$UseAutopilot -or -not \$IsWindows\) \{ '''' \} else \{ '' --mode interactive'' \}'
-if ($startScriptContent -notmatch $nativeInteractivePattern) {
-    Write-Fail "specrew-start.ps1 no longer keeps --mode interactive Windows-only for non-autopilot manual launch commands."
-    exit 1
-}
-$windowsAllowAllSnippetPattern = '\$allowAllSnippet = if \(\$passAllowAll\) \{ ''\$args \+= ''''--allow-all'''''' \} else \{ '''' \}'
+$windowsAllowAllSnippetPattern = '\$allowAllSnippet = if \(\$AllowAll\) \{ ''\$args \+= ''''--allow-all'''''' \} else \{ '''' \}'
 if ($startScriptContent -notmatch $windowsAllowAllSnippetPattern) {
     Write-Fail "specrew-start.ps1 no longer preserves the Windows embedded launch-script --allow-all behavior."
     exit 1
@@ -386,13 +381,8 @@ elseif ($freshManualLaunchLine[0] -match '--allow-all') {
 if (-not (Assert-Contains -Content $freshManualLaunchLine[0] -Pattern '(^| )-i( |$)' -FailureMessage 'Fresh repo no-launch flow should auto-load the bootstrap with -i.')) {
     exit 1
 }
-if ($IsWindows) {
-    if (-not (Assert-Contains -Content $freshManualLaunchLine[0] -Pattern '--mode interactive' -FailureMessage 'Fresh repo no-launch flow should force --mode interactive on Windows while autopilot is off.')) {
-        exit 1
-    }
-}
-elseif ($freshManualLaunchLine[0] -match '--mode interactive') {
-    Write-Fail 'Fresh repo no-launch flow should rely on Copilot CLI default REPL behavior on Linux/macOS instead of passing --mode interactive.'
+if ($freshManualLaunchLine[0] -match '--mode interactive') {
+    Write-Fail 'Fresh repo no-launch flow should not pass --mode interactive; -i auto-loading is sufficient.'
     exit 1
 }
 if (-not (Assert-Contains -Content $freshOutput -Pattern 'last-start-prompt\.md' -FailureMessage 'Fresh repo no-launch flow did not bootstrap from the saved prompt file.')) {
@@ -648,13 +638,8 @@ if (-not (Assert-Contains -Content $promptApprovalOutput -Pattern 'Manual launch
 if (-not (Assert-Contains -Content $promptApprovalOutput -Pattern '(^| )-i( |$)' -FailureMessage 'Prompt-approvals flow should auto-load the bootstrap with -i.')) {
     exit 1
 }
-if ($IsWindows) {
-    if (-not (Assert-Contains -Content $promptApprovalOutput -Pattern '--mode interactive' -FailureMessage 'Prompt-approvals flow should force --mode interactive on Windows while autopilot is off.')) {
-        exit 1
-    }
-}
-elseif ($promptApprovalOutput -match '--mode interactive') {
-    Write-Fail "Prompt-approvals flow should rely on Copilot CLI default REPL behavior on Linux/macOS instead of passing --mode interactive."
+if ($promptApprovalOutput -match '--mode interactive') {
+    Write-Fail 'Prompt-approvals flow should not pass --mode interactive; -i auto-loading is sufficient.'
     exit 1
 }
 if ($promptApprovalOutput -match '--allow-all') {
