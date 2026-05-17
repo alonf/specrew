@@ -204,4 +204,4 @@ The following rows are candidates for `.specrew/quality/known-traps.md` (full in
 
 **Retro Completed**: 2026-05-18  
 **Authorized**: By Retro Facilitator after Boundary 3 review-verdict-signoff  
-**Next Phase**: Iteration-closeout (retro complete; waiting for human authorization; pre-existing Iteration 001 hardening-gate cleanup remains deferred to feature-closeout)
+**Iteration Closeout**: Complete — Boundary 5 authorized 2026-05-18 by Spec Steward; pre-existing Iteration 001 hardening-gate cleanup remains deferred to feature-closeout
