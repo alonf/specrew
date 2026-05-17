@@ -14,7 +14,7 @@ What We're Focused On
 Current Status
 --------------
 
-Feature Lifecycle: ITERATION-002-REPAIR-COMPLETE
+Feature Lifecycle: ITERATION-002-RETRO-COMPLETE
 
 - Feature 019 is `Specrew Distribution Module via PowerShell Gallery`
 - Clarified spec: `file:///C:/Dev/Specrew/specs/019-specrew-distribution-module/spec.md`
