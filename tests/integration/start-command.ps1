@@ -158,6 +158,11 @@ if ($startScriptContent -notmatch $nativeAllowAllSuppressionPattern) {
     Write-Fail "specrew-start.ps1 no longer suppresses --allow-all in the native non-Windows launch path."
     exit 1
 }
+$nativeInteractivePattern = '\$interactiveModeSegment = if \(\$UseAutopilot -or -not \$IsWindows\) \{ '''' \} else \{ '' --mode interactive'' \}'
+if ($startScriptContent -notmatch $nativeInteractivePattern) {
+    Write-Fail "specrew-start.ps1 no longer keeps --mode interactive Windows-only for non-autopilot manual launch commands."
+    exit 1
+}
 $windowsAllowAllSnippetPattern = '\$allowAllSnippet = if \(\$passAllowAll\) \{ ''\$args \+= ''''--allow-all'''''' \} else \{ '''' \}'
 if ($startScriptContent -notmatch $windowsAllowAllSnippetPattern) {
     Write-Fail "specrew-start.ps1 no longer preserves the Windows embedded launch-script --allow-all behavior."
@@ -330,7 +335,13 @@ elseif ($freshManualLaunchLine[0] -match '--allow-all') {
 if (-not (Assert-Contains -Content $freshManualLaunchLine[0] -Pattern '(^| )-i( |$)' -FailureMessage 'Fresh repo no-launch flow should auto-load the bootstrap with -i.')) {
     exit 1
 }
-if (-not (Assert-Contains -Content $freshManualLaunchLine[0] -Pattern '--mode interactive' -FailureMessage 'Fresh repo no-launch flow should force --mode interactive while autopilot is off.')) {
+if ($IsWindows) {
+    if (-not (Assert-Contains -Content $freshManualLaunchLine[0] -Pattern '--mode interactive' -FailureMessage 'Fresh repo no-launch flow should force --mode interactive on Windows while autopilot is off.')) {
+        exit 1
+    }
+}
+elseif ($freshManualLaunchLine[0] -match '--mode interactive') {
+    Write-Fail 'Fresh repo no-launch flow should rely on Copilot CLI default REPL behavior on Linux/macOS instead of passing --mode interactive.'
     exit 1
 }
 if (-not (Assert-Contains -Content $freshOutput -Pattern 'last-start-prompt\.md' -FailureMessage 'Fresh repo no-launch flow did not bootstrap from the saved prompt file.')) {
@@ -342,7 +353,10 @@ if (-not (Assert-Contains -Content $freshOutput -Pattern 'start-context\.json' -
 if (-not (Assert-Contains -Content $freshOutput -Pattern 'start-summary\.md' -FailureMessage 'Fresh repo no-launch flow did not print the summary artifact path.')) {
     exit 1
 }
-if (-not $IsWindows -and -not (Assert-Contains -Content $freshOutput -Pattern 'suppressing --allow-all there, so bootstrap file reads will require approval prompts' -FailureMessage 'Fresh repo no-launch flow did not explain the Linux/macOS allow-all suppression tradeoff.')) {
+if (-not $IsWindows -and -not (Assert-Contains -Content $freshOutput -Pattern 'default REPL behavior on Linux/macOS' -FailureMessage 'Fresh repo no-launch flow did not explain the Linux/macOS default-REPL launch contract.')) {
+    exit 1
+}
+if (-not $IsWindows -and -not (Assert-Contains -Content $freshOutput -Pattern 'bootstrap file reads will require approval prompts' -FailureMessage 'Fresh repo no-launch flow did not explain the Linux/macOS approval-prompt expectation.')) {
     exit 1
 }
 Write-Pass "Fresh repo start enters intake-or-resume mode"
@@ -517,7 +531,7 @@ if (@($startContext.delivery_guidance.routing_guardrails).Count -eq 0) {
 }
 if ($summaryContent -notmatch 'Review/closure use a no-gap policy' -or
     $summaryContent -notmatch 'Delegated Routing' -or
-    $summaryContent -notmatch $(if ($IsWindows) { 'allow-all reduces tool-approval blocking after the request is grounded' } else { 'suppresses --allow-all on Linux/macOS' })) {
+    $summaryContent -notmatch $(if ($IsWindows) { 'allow-all reduces tool-approval blocking after the request is grounded' } else { 'default REPL behavior.*suppresses? --allow-all.*approval prompts' })) {
     Write-Fail 'Start summary is missing the expected launch/no-gap/delegated-routing guidance.'
     exit 1
 }
@@ -579,7 +593,13 @@ if (-not (Assert-Contains -Content $promptApprovalOutput -Pattern 'Manual launch
 if (-not (Assert-Contains -Content $promptApprovalOutput -Pattern '(^| )-i( |$)' -FailureMessage 'Prompt-approvals flow should auto-load the bootstrap with -i.')) {
     exit 1
 }
-if (-not (Assert-Contains -Content $promptApprovalOutput -Pattern '--mode interactive' -FailureMessage 'Prompt-approvals flow should force --mode interactive while autopilot is off.')) {
+if ($IsWindows) {
+    if (-not (Assert-Contains -Content $promptApprovalOutput -Pattern '--mode interactive' -FailureMessage 'Prompt-approvals flow should force --mode interactive on Windows while autopilot is off.')) {
+        exit 1
+    }
+}
+elseif ($promptApprovalOutput -match '--mode interactive') {
+    Write-Fail "Prompt-approvals flow should rely on Copilot CLI default REPL behavior on Linux/macOS instead of passing --mode interactive."
     exit 1
 }
 if ($promptApprovalOutput -match '--allow-all') {

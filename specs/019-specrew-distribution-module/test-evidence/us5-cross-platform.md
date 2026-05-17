@@ -312,6 +312,16 @@ The automated WSL verification script requires `sudo` to install PowerShell 7 in
 - **Windows Validation**: `pwsh -NoProfile -File tests/integration/start-command.ps1` passed after the platform-conditional `--allow-all` change
 - **Linux/macOS Validation**: Manual WSL/Linux end-to-end verification is still pending; only the launch contract and regression coverage were updated in this repair
 
+### Follow-up Repair Evidence (R-019-V2-R13)
+
+- **Status**: Completed on Windows; Linux/macOS divergence documented for next human re-check
+- **Files Changed**: `scripts/specrew-start.ps1`, `tests/integration/start-command.ps1`, `specs/019-specrew-distribution-module/test-evidence/us5-cross-platform.md`
+- **New Runtime Evidence**: Linux Copilot CLI v1.0.48 already defaults the `copilot --agent ... --add-dir ... -i <bootstrap>` flow into the REPL without `--mode interactive`, but adding `--mode interactive` there causes a one-shot exit after bootstrap instead of staying interactive.
+- **Windows Behavior Unchanged**: Windows still needs `--mode interactive` in the non-autopilot path, and still pairs it with `--allow-all` when allowed, to keep the REPL open after bootstrap.
+- **Decision Applied**: Specrew now adds `--mode interactive` only on Windows when autopilot is off. Linux/macOS non-autopilot launches now pass `--agent`, `--add-dir`, and `-i` without `--mode interactive` or `--allow-all`, and the runtime messaging explicitly warns users to expect approval prompts for bootstrap file reads there.
+- **Windows Validation**: `pwsh -NoProfile -File tests/integration/start-command.ps1` passed after the Windows-only `--mode interactive` change
+- **Linux/macOS Validation**: Manual WSL/Linux end-to-end re-verification remains pending-human-execution; this repair updates the launch contract and Windows regression coverage only
+
 ### Known Traps Added
 
 Three corpus rows added to `.specrew/quality/known-traps.md`:
