@@ -39,7 +39,22 @@ function Invoke-SpecrewScript {
 
     $env:SPECREW_INVOKED_FROM_MODULE = '1'
     try {
-        & pwsh -NoProfile -ExecutionPolicy Bypass -File $scriptPath @forwardedArguments
+        # `specrew start` on Linux/macOS launches `copilot` as a child process
+        # that needs a direct parent/child relationship to the user's interactive
+        # pwsh to keep its REPL alive (Copilot CLI v1.0.48 on Linux exits the
+        # agent loop when launched through an intermediate `pwsh -File`
+        # subprocess). Run the script in-process for this case so `& copilot`
+        # inside the script becomes a direct child of the caller's pwsh.
+        #
+        # Other commands keep the subprocess for clean profile/policy isolation.
+        $needsInProcessLaunch = ($CommandName -eq 'specrew-start') -and -not $IsWindows
+
+        if ($needsInProcessLaunch) {
+            & $scriptPath @forwardedArguments
+        }
+        else {
+            & pwsh -NoProfile -ExecutionPolicy Bypass -File $scriptPath @forwardedArguments
+        }
     }
     finally {
         Remove-Item -LiteralPath 'env:SPECREW_INVOKED_FROM_MODULE' -ErrorAction SilentlyContinue
