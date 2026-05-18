@@ -172,13 +172,14 @@ Each executable item uses this structure:
   - **Owner role**: Reviewer
   - **Dependencies**: I1-T002, I1-T006, I1-T009
 
-- [ ] I1-T012 [US5] [assigned_to: Reviewer] [effort: 0.4 SP] Record final review evidence and traceability in `specs/021-specrew-slash-commands/iterations/001/quality/hardening-gate.md` after executing the new slash-command suites and manual quickstart checks (Trace: I1-W004; FR-025, FR-026; SC-003, SC-004)
+- [ ] I1-T012 [US5] [assigned_to: Reviewer] [effort: 0.4 SP] Record final review evidence and traceability in `specs/021-specrew-slash-commands/iterations/001/quality/hardening-gate.md` after executing the new slash-command suites and manual quickstart checks (Trace: I1-W004; US5)
   - **Title**: Hardening evidence and final traceability review
-  - **FR coverage**: FR-025, FR-026
-  - **SC coverage**: SC-003, SC-004
+  - **FR coverage**: None (FR-025 is ongoing governance discipline; FR-026 is pre-planning artifact)
+  - **SC coverage**: None (SC-003 and SC-004 map to I1-T009 distribution validation)
   - **User story coverage**: US5
   - **Owner role**: Reviewer
   - **Dependencies**: I1-T010, I1-T011
+   - **Before-Implement Repair (GAP-BI-001, GAP-BI-002)**: FR-025 and FR-026 traces removed because FR-025 is an ongoing governance discipline (not a single-task deliverable) and FR-026 is a pre-planning artifact (already satisfied by planning-time creation of hardening-gate.md).
 
 **Phase 4 Total**: 3 tasks, 1.3 SP
 

@@ -23,6 +23,18 @@ I maintain the squad's shared memory and merge team-relevant decisions into the 
 - Post-retro closure needs two separate memory signals: artifact completion can be true while iteration status must stay `retro` until Alon sign-off lands.
 - **Before-Implement Validator Workflow (Feature 021 session 2026-05-18)**: When the before-implement validator surfaces gaps, use bounded governance-only repairs: fix task traceability, reference mappings, and decision records without expanding scope, then rerun validator. Stop at READY verdict; halt and report new gaps if any. Implementation authorization is recorded only after READY verdict is confirmed, and it binds implementation to the READY condition.
 
+📌 **Session Log — Feature 021 Final Before-Implement Gap Repair (2026-05-18T22:45:00Z)**:
+   - **Session:** Feature 021 final before-implement bounded repair cycle (session 2) — resolve 2 remaining gaps (GAP-BI-001, GAP-BI-002)
+   - **Agent:** Scribe
+   - **Work:** Governance-only artifact repair: clarified FR-025 and FR-026 scope; removed ambiguous traces from I1-T012
+   - **Gap Details:**
+     - **GAP-BI-001 (FR-025)**: FR-025 is an ongoing governance discipline (recording decisions when scope/policy/compatibility changes occur), not a single-task deliverable. Removed from I1-T012 trace.
+     - **GAP-BI-002 (FR-026)**: FR-026 is a pre-planning artifact (hardening-gate.md was created at planning time), not an execution-time evidence deliverable. Removed from I1-T012 trace.
+   - **Artifacts Modified:** `tasks.md` (I1-T012 trace and FR/SC coverage updated); `scribe-feature021-final-before-implement-repair.md` created in decisions inbox
+   - **Repair Constraint:** Governance-only; no scope, capacity, or testing approach changes
+   - **Next:** Rerun before-implement validator to confirm READY-FOR-IMPLEMENTATION verdict; if READY, record implementation-start authorization per decision document
+   - **Preservation Note:** Feature 020 carry-forward defaults (repair cycles, live bookkeeping, push after commit) maintained; no regressions introduced
+
 📌 **Session Log — Feature 020 After-Tasks Validation (2026-05-17T20-00-10Z)**:
    - **Session:** Feature 020 post-task-generation validation and authorization readiness
    - **Agent:** Spec Steward (speckit.specrew-speckit.after-tasks)
