@@ -1,3 +1,38 @@
+# Decision: Feature 021 Clarify Resolution Complete
+
+**Date**: 2026-05-18T10:38:09.6239788+03:00  
+**Boundary**: Clarify-complete  
+**Feature**: 021-specrew-slash-commands (Specrew Slash-Command Surface)  
+**Authority**: Alon Fliess  
+**Decision Type**: Clarification resolution and plan-readiness record
+
+## Summary
+
+Feature 021 clarification is complete. The spec now records the human-confirmed decisions for catalog breadth, output handling, argument forwarding, and compatibility pinning, and it resolves the remaining naming, discovery, help-integration, cross-platform, and expansion-path ambiguities in alignment with the approved proposal and Specrew governance defaults.
+
+## Resolved Decisions
+
+- **DP-001 / catalog breadth**: Ship the full 7-command v1 catalog.
+- **DP-002 / output model**: Preserve raw/native command output by default, with only minimal slash-command wrapper context.
+- **DP-003 / namespace convention**: Use `/specrew.<command>` as the canonical slash-command shape; do not introduce dash-style canonical alternatives such as `/specrew-where`.
+- **DP-004 / discovery mechanism**: Prefer host-native `/specrew.` prefix discovery when available; treat manual catalog registration only as an implementation detail to enable that host-native discovery path; keep `/specrew.help` as the required fallback.
+- **DP-005 / argument forwarding**: Forward only documented per-command arguments; reject unsupported extras with help guidance.
+- **DP-006 / help integration**: Keep `/specrew.help` as the canonical Specrew catalog; broader session help may reference it but must not absorb the full Specrew catalog.
+- **DP-007 / compatibility pin**: Pin compatibility to the first published Specrew release that ships Feature 021 slash commands.
+- **Cross-platform behavior**: Follow the file:///C:/Dev/Specrew/specs/019-specrew-distribution-module/spec.md PowerShell 7+ baseline across Windows 11, WSL Ubuntu, Linux Ubuntu, and macOS; if host prefix discovery is weaker on a platform, command execution and `/specrew.help` must still work with explicit guidance.
+- **Future expansion path**: Future commands such as `/specrew.audit` and `/specrew.metrics` remain post-v1 work and must enter as explicit additive `/specrew.<command>` catalog entries without renaming the shipped v1 namespace.
+
+## Artifact Updates
+
+- **Updated spec**: file:///C:/Dev/Specrew/specs/021-specrew-slash-commands/spec.md
+- **Recorded decision log**: file:///C:/Dev/Specrew/.squad/decisions.md
+
+## Next Authorized Step
+
+Feature 021 may now proceed to `/speckit.plan`. Clarify-time policy blockers are resolved.
+
+---
+
 # Decision: Feature 021 Specification Approval & Clarify-Boundary Authorization
 
 **Date**: 2026-05-24T08:30:00Z  

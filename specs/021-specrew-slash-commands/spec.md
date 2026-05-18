@@ -11,6 +11,15 @@ Specrew currently lacks a first-class `/specrew.*` command surface inside Squad 
 
 This feature uses file:///C:/Dev/Specrew/proposals/032-specrew-slash-commands.md as the authoritative source for the initial Specrew slash-command surface. It must compose with the shipped distribution baseline described in file:///C:/Dev/Specrew/proposals/031-specrew-distribution-module.md and file:///C:/Dev/Specrew/specs/019-specrew-distribution-module/spec.md, preserve the boundary discipline established in file:///C:/Dev/Specrew/specs/016-substantive-interaction-model/spec.md, and remain additive to the project-status and session-state foundations defined in file:///C:/Dev/Specrew/specs/017-velocity-dashboard/spec.md, file:///C:/Dev/Specrew/specs/018-velocity-dashboard-visual-richness/spec.md, and file:///C:/Dev/Specrew/specs/020-session-state-durability/spec.md. This specify boundary stops after the initial spec so human review can occur on branch `021-specrew-slash-commands` before planning begins.
 
+## Clarifications
+
+### Session 2026-05-18
+
+- Q: DP-001 - V1 catalog breadth → A: Ship the full 7-command v1 catalog.
+- Q: DP-002 - Output handling model → A: Preserve raw/native command output by default, with only minimal slash-command wrapper context.
+- Q: DP-005 - Argument forwarding policy → A: Forward only documented per-command arguments; reject unsupported extras with help guidance.
+- Q: DP-007 - Minimum compatibility pin → A: Pin compatibility to the first published Specrew release that ships Feature 021 slash commands.
+
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - Discover Specrew as a First-Class Command Surface (Priority: P1)
@@ -119,15 +128,15 @@ A product steward wants the v1 slash-command surface to be stable enough for use
 - **FR-001**: The feature MUST define a v1 Specrew slash-command catalog containing `/specrew.where`, `/specrew.status`, `/specrew.update`, `/specrew.team`, `/specrew.review`, `/specrew.help`, and `/specrew.version`. **Owner role**: Product steward. **Delivery window**: Iteration 001.
 - **FR-002**: Each v1 command MUST have a canonical user-facing definition that states its purpose, expected usage shape, and help/discovery text. **Owner role**: Product steward. **Delivery window**: Iteration 001.
 - **FR-003**: `/specrew.status` MUST behave as an alias for `/specrew.where` rather than introducing a separate status experience. **Owner role**: Product steward. **Delivery window**: Iteration 001.
-- **FR-004**: The command-definition contract MUST preserve the `/specrew.<command>` naming convention for v1 unless a human review decision explicitly changes the namespace rule before planning. **Owner role**: Governance steward. **Delivery window**: Iteration 001.
-- **FR-005**: The v1 command-definition contract MUST describe how future commands can be added without renaming the shipped v1 catalog or colliding with `/speckit.*`. **Owner role**: Governance steward. **Delivery window**: Iteration 001.
+- **FR-004**: The command-definition contract MUST preserve `/specrew.<command>` as the canonical namespace for every v1 user-facing command, including the `/specrew.status` alias, and MUST NOT introduce dash-style alternatives such as `/specrew-where` as parallel canonical names. **Owner role**: Governance steward. **Delivery window**: Iteration 001.
+- **FR-005**: The v1 command-definition contract MUST describe an additive expansion path in which future commands such as `/specrew.audit` or `/specrew.metrics` are introduced as explicit new `/specrew.<command>` entries without renaming the shipped v1 catalog, without wildcard routing, and without colliding with `/speckit.*`. **Owner role**: Governance steward. **Delivery window**: Iteration 001.
 
 #### Pillar 2: Invocation Routing
 
 - **FR-006**: Each v1 slash command MUST route to its intended Specrew workflow in the current project context rather than relying on natural-language interpretation as the primary path. **Owner role**: Runtime steward. **Delivery window**: Iteration 001.
 - **FR-007**: The routed behavior for `/specrew.where` and `/specrew.status` MUST preserve the current Specrew project-status semantics established by file:///C:/Dev/Specrew/specs/017-velocity-dashboard/spec.md, file:///C:/Dev/Specrew/specs/018-velocity-dashboard-visual-richness/spec.md, and file:///C:/Dev/Specrew/specs/020-session-state-durability/spec.md. **Owner role**: Runtime steward. **Delivery window**: Iteration 001.
 - **FR-008**: `/specrew.update`, `/specrew.team`, `/specrew.review`, `/specrew.help`, and `/specrew.version` MUST each invoke the corresponding Specrew capability without being misrouted to a different command intent. **Owner role**: Runtime steward. **Delivery window**: Iteration 001.
-- **FR-009**: The routing contract MUST define how command arguments are accepted, rejected, or forwarded so that unsupported input fails clearly instead of being silently ignored. **Owner role**: Runtime steward. **Delivery window**: Iteration 001.
+- **FR-009**: The routing contract MUST define how documented per-command arguments are accepted and forwarded, and MUST reject unsupported or ambiguous extras with clear help guidance instead of silently ignoring them. **Owner role**: Runtime steward. **Delivery window**: Iteration 001.
 - **FR-010**: If a routed command cannot run because project context or compatibility prerequisites are missing, the product MUST stop with a clear remediation message. **Owner role**: Reliability steward. **Delivery window**: Iteration 001.
 - **FR-011**: Routing and validation failures MUST emit reviewer-visible diagnostics so validators and humans can distinguish a routing fault from a missing command or missing setup condition. **Owner role**: Reliability steward. **Delivery window**: Iteration 001.
 
@@ -135,16 +144,16 @@ A product steward wants the v1 slash-command surface to be stable enough for use
 
 - **FR-012**: Users MUST be able to discover the v1 Specrew slash-command catalog from the session command surface or an explicit fallback help path in every supported host experience. **Owner role**: UX steward. **Delivery window**: Iteration 001.
 - **FR-013**: `/specrew.help` MUST present the full v1 catalog, brief descriptions, alias guidance for `/specrew.status`, and next-step guidance for first-time users. **Owner role**: UX steward. **Delivery window**: Iteration 001.
-- **FR-014**: The Specrew help experience MUST coexist with broader session help so that Specrew users can find Specrew commands without obscuring `/speckit.*` lifecycle commands. **Owner role**: UX steward. **Delivery window**: Iteration 001.
-- **FR-015**: Discovery guidance MUST make it clear when the host can surface prefix suggestions directly and when users should rely on `/specrew.help` as the canonical fallback catalog. **Owner role**: UX steward. **Delivery window**: Iteration 001.
+- **FR-014**: `/specrew.help` MUST remain the canonical Specrew catalog, and broader session help such as `/help` MAY reference `/specrew.help` but MUST NOT absorb or replace the full Specrew catalog in a way that obscures `/speckit.*` lifecycle commands. **Owner role**: UX steward. **Delivery window**: Iteration 001.
+- **FR-015**: Discovery guidance MUST make it clear that native `/specrew.` prefix discovery is the preferred user experience when the host supports it, that manual catalog registration may be used only to enable that host-native discovery path, and that `/specrew.help` remains the canonical fallback catalog whenever inline suggestions are incomplete or unavailable. **Owner role**: UX steward. **Delivery window**: Iteration 001.
 
 #### Pillar 4: Distribution Bundling
 
 - **FR-016**: The Specrew slash-command surface MUST be provisioned through the standard Specrew distribution and project-setup experience described in file:///C:/Dev/Specrew/proposals/031-specrew-distribution-module.md and file:///C:/Dev/Specrew/specs/019-specrew-distribution-module/spec.md. **Owner role**: Distribution steward. **Delivery window**: Iteration 001.
 - **FR-017**: A fresh project that receives the supported Specrew baseline MUST gain the slash-command surface without manual copying of command-definition assets. **Owner role**: Distribution steward. **Delivery window**: Iteration 001.
 - **FR-018**: The supported project refresh path MUST update the slash-command surface safely and report command-surface changes clearly to the user. **Owner role**: Distribution steward. **Delivery window**: Iteration 001.
-- **FR-019**: The slash-command surface MUST declare the minimum compatible Specrew baseline required for v1 and MUST explain incompatibility when a project or installed baseline is older than that requirement. **Owner role**: Distribution steward. **Delivery window**: Iteration 001.
-- **FR-020**: Supported operating environments MUST either provide the same slash-command surface behavior or degrade transparently with explicit user guidance where parity is not yet available. **Owner role**: Reliability steward. **Delivery window**: Iteration 001.
+- **FR-019**: The slash-command surface MUST declare the first published Specrew release that ships Feature 021 slash commands as the minimum compatible v1 baseline and MUST explain incompatibility when a project or installed baseline is older than that requirement. **Owner role**: Distribution steward. **Delivery window**: Iteration 001.
+- **FR-020**: Supported PowerShell 7+ operating environments MUST follow the cross-platform baseline already established in file:///C:/Dev/Specrew/specs/019-specrew-distribution-module/spec.md for Windows 11, WSL Ubuntu, Linux Ubuntu, and macOS; where a host cannot provide identical prefix-discovery behavior, command execution and `/specrew.help` MUST still work with explicit user guidance about the degraded discovery path. **Owner role**: Reliability steward. **Delivery window**: Iteration 001.
 
 #### Pillar 5: Coexistence with `/speckit.*`
 
@@ -157,13 +166,13 @@ A product steward wants the v1 slash-command surface to be stable enough for use
 
 ### Decision Points Requiring Human Review
 
-- **DP-001 - V1 catalog breadth**: Default assumption for this spec is that all seven proposed commands ship in v1. Human review must confirm whether v1 stays at seven commands or is trimmed before planning.
-- **DP-002 - Output handling model**: Default assumption for this spec is that slash commands preserve command-native output with only minimal wrapper context. Human review must confirm whether any commands should instead return a stronger session summary.
-- **DP-003 - Namespace convention**: Default assumption for this spec is that `/specrew.<command>` remains the canonical naming convention because it matches the proposal and mirrors `/speckit.*` namespace shape. Human review must confirm whether any dash-style alternative is desired.
-- **DP-004 - Discovery mechanism**: Default assumption for this spec is that native prefix discovery is preferred when the host supports it and `/specrew.help` remains the required fallback. Human review must confirm whether a manual catalog should be treated as the primary experience.
-- **DP-005 - Argument forwarding policy**: Default assumption for this spec is that only documented arguments are forwarded and ambiguous extras are rejected with help guidance. Human review must confirm whether pass-through behavior is acceptable for any v1 command.
-- **DP-006 - Help integration boundary**: Default assumption for this spec is that `/specrew.help` is the canonical Specrew catalog and broader help can reference it without absorbing the whole Specrew catalog. Human review must confirm how tightly the two help surfaces should integrate.
-- **DP-007 - Minimum compatibility pin**: Default assumption for this spec is that the slash-command surface requires a declared minimum Specrew distribution baseline and that mismatches fail clearly with upgrade guidance. Human review must confirm the exact compatibility policy before planning.
+- **DP-001 - V1 catalog breadth**: Resolved to ship all seven proposed commands in v1.
+- **DP-002 - Output handling model**: Resolved so slash commands preserve command-native output with only minimal wrapper context by default.
+- **DP-003 - Namespace convention**: Resolved so `/specrew.<command>` remains the canonical naming convention because it matches the proposal and mirrors `/speckit.*` namespace shape.
+- **DP-004 - Discovery mechanism**: Resolved so native prefix discovery is preferred when the host supports it, manual catalog registration is only an enabling implementation detail, and `/specrew.help` remains the required fallback.
+- **DP-005 - Argument forwarding policy**: Resolved so only documented arguments are forwarded and ambiguous extras are rejected with help guidance.
+- **DP-006 - Help integration boundary**: Resolved so `/specrew.help` is the canonical Specrew catalog and broader help can reference it without absorbing the full Specrew catalog.
+- **DP-007 - Minimum compatibility pin**: Resolved so the minimum compatible baseline is the first published Specrew release that ships Feature 021 slash commands and mismatches fail clearly with upgrade guidance.
 
 ### Traceability & Governance Requirements *(mandatory)*
 
@@ -188,29 +197,31 @@ A product steward wants the v1 slash-command surface to be stable enough for use
 - **SC-002**: The acceptance suite succeeds for all seven v1 commands, including alias parity between `/specrew.status` and `/specrew.where`, with zero command-routing collisions against `/speckit.*`.
 - **SC-003**: A fresh supported project can receive the slash-command surface through the standard Specrew setup flow in one pass without manual copying of command-definition assets.
 - **SC-004**: A supported project refresh preserves access to the slash-command surface and clearly reports any compatibility or update issue instead of failing silently.
-- **SC-005**: Human reviewers can evaluate and resolve all seven decision points before planning starts, leaving no unrecorded v1 policy blocker at the `/speckit.plan` boundary.
+- **SC-005**: Human reviewers can confirm that all seven decision points are resolved before planning starts, leaving no unrecorded v1 policy blocker at the `/speckit.plan` boundary.
 - **SC-006**: Reviewers can demonstrate that Specrew commands and Spec Kit commands operate side by side in the same session without unauthorized lifecycle advancement.
 
 ## Assumptions
 
-- file:///C:/Dev/Specrew/proposals/032-specrew-slash-commands.md remains the authoritative scope source for the initial slash-command surface until human review says otherwise.
+- file:///C:/Dev/Specrew/proposals/032-specrew-slash-commands.md remains the authoritative scope source for the initial slash-command surface.
 - The shipped distribution baseline in file:///C:/Dev/Specrew/specs/019-specrew-distribution-module/spec.md is the foundation for provisioning this command surface; this feature does not reopen module-packaging scope.
-- The v1 catalog remains the seven commands named in the proposal unless a recorded human decision trims the release.
+- The v1 catalog is the seven commands named in the proposal.
 - The boundary discipline and review-stop behavior from file:///C:/Dev/Specrew/specs/016-substantive-interaction-model/spec.md remain mandatory for every Specrew slash command.
 - Dashboard and session-state behavior already defined in file:///C:/Dev/Specrew/specs/017-velocity-dashboard/spec.md, file:///C:/Dev/Specrew/specs/018-velocity-dashboard-visual-richness/spec.md, and file:///C:/Dev/Specrew/specs/020-session-state-durability/spec.md remain the semantic source for `/specrew.where` and `/specrew.status`.
-- Human review on branch `021-specrew-slash-commands` will happen before file:///C:/Dev/Specrew/specs/021-specrew-slash-commands/spec.md advances to `/speckit.plan`.
+- `/specrew.help` remains the canonical Specrew catalog even when broader session help references it.
+- The minimum compatible baseline for this feature is the first published Specrew release that ships Feature 021 slash commands.
+- Supported PowerShell 7+ operating environments follow the Windows 11, WSL Ubuntu, Linux Ubuntu, and macOS baseline already established in file:///C:/Dev/Specrew/specs/019-specrew-distribution-module/spec.md.
 
 ## Non-Goals (Explicit Scope Boundaries)
 
 - This feature does **not** replace existing natural-language routing or shell-based invocation paths; it adds a first-class slash-command surface alongside them.
-- This feature does **not** define future command families such as `/specrew.audit` or `/specrew.metrics`; it only establishes the v1 expansion contract.
+- This feature does **not** ship future command families such as `/specrew.audit` or `/specrew.metrics`; it only establishes the additive v1 expansion contract they must follow.
 - This feature does **not** redesign the underlying project-status, team-management, review, update, or version capabilities beyond the command-surface changes needed to expose them as slash commands.
-- This feature does **not** authorize planning, implementation, or review advancement automatically; the work stops at specify completion for human review.
+- This feature does **not** authorize planning, implementation, or review advancement automatically; moving beyond file:///C:/Dev/Specrew/specs/021-specrew-slash-commands/spec.md still requires explicit lifecycle invocation and preserved human boundary discipline.
 
 ## Risk Register
 
 - **Risk 1 - Command-definition complexity grows too quickly**: If the command contract becomes overly elaborate in v1, maintainers may struggle to add or validate commands consistently. **Mitigation**: keep the v1 contract narrow, ship only the seven-command catalog, and record any expansion rules explicitly in file:///C:/Dev/Specrew/.squad/decisions.md.
-- **Risk 2 - Output handling feels inconsistent across commands**: If routed slash commands produce surprising output shapes, users may distrust the surface. **Mitigation**: lock output expectations in the acceptance suite and resolve DP-002 before planning.
+- **Risk 2 - Output handling feels inconsistent across commands**: If routed slash commands produce surprising output shapes, users may distrust the surface. **Mitigation**: lock output expectations in the acceptance suite and preserve the resolved raw-output default unless a future feature records a different policy.
 - **Risk 3 - Prefix discovery is unreliable in some hosts**: If the host does not surface `/specrew.` suggestions cleanly, the discovery promise weakens. **Mitigation**: treat `/specrew.help` as a mandatory fallback and test both discovery paths.
 - **Risk 4 - Distribution and compatibility drift**: If projects receive the command catalog without the right baseline, slash commands may appear broken. **Mitigation**: define a clear compatibility pin, validate refresh/setup paths, and fail visibly with remediation guidance.
 - **Risk 5 - Namespace confusion with `/speckit.*`**: If the two command surfaces overlap or imply different boundary rules, users may accidentally cross governance lines. **Mitigation**: preserve additive namespace rules, keep coexistence testing mandatory, and enforce Feature 016 boundary discipline.
