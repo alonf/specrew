@@ -40,7 +40,7 @@ Proposals with full source-spec content, ready for `/speckit.specify` ingestion 
 | [036](036-branch-reconciliation.md) | Lifecycle Branch Reconciliation | phase-2 | 13 | SDLC pillar; single-developer precursor to [010] multi-developer. MERGE only, never rebase. |
 | [040](040-token-economy-governance.md) | Token Economy as Governance Driver | phase-4 | 38 | 7-layer architecture; two billing modes (metered + quota); model names ONLY in catalog L3-L4 |
 
-## Candidate (27)
+## Candidate (28)
 
 Idea-form proposals not yet developed into full source specs. Open for discussion; may mature to draft or be withdrawn.
 
@@ -74,6 +74,7 @@ Idea-form proposals not yet developed into full source specs. Open for discussio
 | [046](046-auto-render-dashboard-at-closeout.md) | Auto-Render Dashboard at Iteration & Feature Closeout | phase-2 | 5 |
 | [047](047-project-governance-profile.md) | Project Governance Profile (Init-Time Preference Capture) | phase-2 | 20 |
 | [048](048-dashboard-velocity-metric-refinement.md) | Dashboard Velocity Metric Refinement | phase-2 | 5 |
+| [049](049-version-check-source-unification.md) | Version-Check Source Unification | phase-2 | 3 |
 
 ---
 
@@ -96,7 +97,7 @@ For roadmap-style viewing, proposals grouped by phase placement:
 - 034 (Markdown Lint Cleanup — draft, post-F-019)
 - 035 (Session-State Durability — draft, NEXT UP)
 - 036 (Branch Reconciliation — draft, SDLC pillar)
-- 013, 014, 015, 017, 018, 019, 020, 021, 022, 023, 027, 028, 029, 037, 038, 042, 044, 045, 046, 047, 048 (candidates)
+- 013, 014, 015, 017, 018, 019, 020, 021, 022, 023, 027, 028, 029, 037, 038, 042, 044, 045, 046, 047, 048, 049 (candidates)
 
 **Phase 3** (refactor + maintainability + upstream reconciliation):
 - 026 (Refactor Track R1-R5)
