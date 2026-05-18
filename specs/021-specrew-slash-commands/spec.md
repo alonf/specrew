@@ -2,7 +2,7 @@
 
 **Feature Branch**: `021-specrew-slash-commands`  
 **Created**: 2026-05-18  
-**Status**: Shipped (feature-closeout Phase A complete — see feature-closeout decision in `.squad/decisions/inbox/` for full closure trail)
+**Status**: Shipped (shipping PR: #260 — Feature 021: Specrew slash-command surface)
 **Input**: User description: "Generate the initial feature specification for Specrew Slash-Command Surface from file:///C:/Dev/Specrew/proposals/032-specrew-slash-commands.md with governance carryforward from Feature 020 and stop at specify completion for human review."
 
 ## Problem Statement

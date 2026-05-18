@@ -22,7 +22,7 @@ baseline that each release number represents.
 - Minimum compatibility pin to 0.21.0; incompatible baselines detected and reported
   with upgrade guidance.
 - Feature-closeout Phase A complete (governance, documentation, version updates).
-  Shipped PR citation pending publication; see `.squad/decisions/inbox/` for closure trail.
+  Shipping PR: #260 (`Feature 021: Specrew slash-command surface`).
 
 ## Unreleased
 
