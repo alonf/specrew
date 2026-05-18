@@ -3,7 +3,7 @@
 **Schema**: v1
 **Feature**: 020-session-state-durability  
 **Branch**: 020-session-state-durability  
-**Status**: retro-complete
+**Status**: complete
 **Capacity**: 15/20 story_points
 **Started**: 2026-05-18
 **Completed**: 2026-05-18
@@ -103,7 +103,7 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File .\tests\integration\version-checks
 - **Implementation authorization**: pre-implement validation completed on the scaffolded Iteration 002 artifacts; the authorized scope shipped in `fe031bd` with bounded repairs in `b0bbb31`, `142e4c6`, and `d6b0ad2`
 - **Review status**: review-verdict-signoff is accepted on HEAD `5845b73`; the rerun stayed anchored to `iterations\002\plan.md`, the governance validator passed, and all six required integration suites reran green
 - **Retro status**: retro-boundary completed on 2026-05-18; `retro.md` captures the repair-budget result, repeated stream-capture pitfalls, the PowerShell variable-collision lesson, and the bookkeeping-drift lessons for future boundaries
-- **Closeout status**: iteration-closeout remains the only authorized remaining boundary for Iteration 002; do not open feature-closeout from this plan state
+- **Closeout status**: iteration-closeout completed on 2026-05-18 against the accepted Iteration 002 scope; stop here and require fresh human authorization before opening feature-closeout
 
 ## Traceability Summary
 
