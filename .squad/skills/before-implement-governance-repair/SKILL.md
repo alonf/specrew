@@ -12,3 +12,4 @@ Use this pattern when a feature is blocked at the `speckit.specrew-speckit.befor
 4. Add a hardening-gate sign-off section that records authority, authorization text, implementation-start condition, and any explicitly deferred items with rationale.
 5. Audit authoritative planning artifacts for accidental `FR-031`..`FR-033` references; if absent, leave scope alone.
 6. Rerun `pwsh -NoProfile -ExecutionPolicy Bypass -File .\extensions\specrew-speckit\scripts\validate-governance.ps1 -ProjectPath . -IterationPath .\specs\<feature>\iterations\<NNN>` and stop if new blockers remain.
+7. If the iteration is parked at the implementation-start boundary, normalize the iteration-plan header to validator-recognized values: use execution-boundary status wording (`executing`) and keep the `Capacity` denominator equal to `.specrew\iteration-config.yml` capacity while preserving any smaller feature-slice lock in the body text.

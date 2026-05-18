@@ -3,8 +3,8 @@
 **Schema**: v1
 **Feature**: 021-specrew-slash-commands  
 **Branch**: 021-specrew-slash-commands  
-**Status**: planned
-**Capacity**: 7/7 story_points
+**Status**: executing
+**Capacity**: 7/20 story_points
 **Started**: not-started
 **Completed**: (not started)
 **Review Completed**: (not started)
