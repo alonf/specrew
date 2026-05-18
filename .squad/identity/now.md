@@ -1,22 +1,22 @@
 ---
-focus_area: "Feature 020 Iteration 002 Authorized Bounded Repair for PSGallery Warning Regression with Fresh 3-Cycle Budget"
-active_issues: "Iteration 002 in active execution with bounded repair for PSGallery warning regression. Fresh 3-cycle repair budget active with 30-minute wall-clock guardrail per test identity. Scope baseline fixed from plan.md. No post-iteration scope drift permitted. Repair guardrails: no Iteration 001 edits, no feature-level spec/plan/tasks edits, no test-assertion changes after attempt 1, no review/closeout boundary entry. Drift-log entry required per repair attempt. Session authorized by Alon Fliess."
-updated_at: 2026-05-24T00:12:00Z
+focus_area: "Feature 020 Iteration 002 Review-Boundary Authorization for Reviewer / Retro Facilitator / Governance Closer"
+active_issues: "Iteration 002 transitions from iteration-execution-repair to review-boundary authorization. Scope authority: iterations/002/plan.md (locked, no drift). Sequence authorized: review-boundary → verdict-signoff → retro-boundary → iteration-closeout → stop. Guardrails: no feature-level spec/plan/tasks edits, no Iteration 001 edits, no production code changes unless bug found (task stops). Review-boundary in progress. Session authorized by Alon Fliess."
+updated_at: 2026-05-24T00:13:00Z
 session_state_active: true
-session_state_boundary: iteration-execution-repair
+session_state_boundary: review-boundary
 session_state_feature: 020-session-state-durability
 session_state_feature_path: "C:\Dev\Specrew\specs\020-session-state-durability"
 session_state_iteration: 002
-session_state_task: "(in progress - PSGallery warning repair; fresh 3-cycle budget active)"
-session_state_auth_commit: (to be established post in-flight-work push)
-session_state_recorded_at: 2026-05-24T00:12:00Z
-repair_policy_active: true
-repair_budget_cycles: 3
-repair_wall_clock_minutes: 30
-repair_session_start: 2026-05-24T00:12:00Z
-repair_log_directory: ".squad/log/"
-active_agent: "implementer-iter002-psgallery-repair"
-active_agent_model: "claude-sonnet-4.5"
+session_state_task: "(in progress - review-boundary; scope authority: iterations/002/plan.md)"
+session_state_auth_commit: (to be established post review-boundary artifacts)
+session_state_recorded_at: 2026-05-24T00:13:00Z
+review_boundary_active: true
+review_boundary_scope_authority: "specs/020-session-state-durability/iterations/002/plan.md"
+review_sequence_authorized: "review-boundary → verdict-signoff → retro-boundary → iteration-closeout → stop"
+review_session_start: 2026-05-24T00:13:00Z
+review_log_directory: ".squad/log/"
+active_agent: "scribe-review-boundary-recording"
+active_agent_model: "N/A"
 ---
 
 # What We're Focused On
