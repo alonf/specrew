@@ -13303,3 +13303,11 @@ Feature 020 closeout is now officially complete and recorded in authorization ar
 - Local 020 branch deletion (verify remote gone + main sync first)
 - No new feature-020 work beyond documented proposals
 
+## 2026-05-18T07:14:15Z — Boundary sync: specify
+
+- **Boundary Type**: specify
+- **Feature Ref**: 021-specrew-slash-commands
+- **Iteration Number**: (none)
+- **Task ID**: (none)
+- **Auth Commit Hash**: (none)
+- **Recorded At**: 2026-05-18T07:14:15Z
