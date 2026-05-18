@@ -4907,7 +4907,7 @@ All recommendations are documented with implementation owners and timelines.
 - **Boundary**: review-verdict-signoff
 - **Approving Human**: Alon Fliess
 - **Recorded At**: 2026-05-15T09:58:32Z
-- **Commit Reference**: pending (single-boundary-commit constraint; recorded by canonical boundary subject)
+- **Commit Reference**: pending
 - **Authorization Text**:
   > The human reviewer has already ACCEPTED Feature 017 Iteration 1 and authorized exactly one boundary advance: from review-boundary to review-verdict-signoff.
   > Record the accepted review-verdict-signoff boundary, stop at retro-boundary, and request explicit retro authorization next.
@@ -13921,7 +13921,7 @@ The Reviewer role successfully delivered the independent review boundary pass fo
 - **Boundary**: iteration-closeout
 - **Approving Human**: Alon Fliess
 - **Recorded At**: 2026-05-18T14:25:53Z
-- **Commit Reference**: pending
+- **Commit Reference**: pending (single-boundary-commit constraint; recorded by canonical boundary subject)
 - **Authorization Text**:
 
 > Authorized: Iteration 001 review-boundary → review-verdict-signoff → retro → iteration-closeout. Permissive sequencing; stop at iteration-closeout handoff. Do NOT enter feature-closeout (separate authorization).
@@ -14120,7 +14120,7 @@ Feature-closeout still requires separate explicit human authorization. The next 
 - **Boundary**: clarify
 - **Approving Human**: Alon Fliess
 - **Recorded At**: 2026-05-18T17:10:53Z
-- **Commit Reference**: pending
+- **Commit Reference**: a5a7996
 - **Authorization Text**:
   > Authorized: Run /speckit.clarify for Feature 022. Stop at clarify-completion boundary for human review.
   >
