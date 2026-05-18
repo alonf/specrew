@@ -1,3 +1,64 @@
+## 2026-05-18T23:27:46Z — Authorization: retro-boundary
+
+- **Decision ID**: authorization-feature-022-iter-001-retro-boundary
+- **Type**: authorization
+- **Boundary**: retro-boundary
+- **Approving Human**: Alon Fliess
+- **Recorded At**: 2026-05-18T23:27:46Z
+- **Commit Reference**: 250db74
+- **Authorization Text**:
+  > You are the Retro Facilitator / Iteration Closer for Feature 022 Iteration 001.
+  > Execute the remaining authorized sequence only: retro-boundary, then iteration-closeout. Do not enter feature-closeout.
+
+## 2026-05-18T23:37:34Z — Authorization: iteration-closeout
+
+- **Decision ID**: authorization-feature-022-iter-001-iteration-closeout
+- **Type**: authorization
+- **Boundary**: iteration-closeout
+- **Approving Human**: Alon Fliess
+- **Recorded At**: 2026-05-18T23:37:34Z
+- **Commit Reference**: pending (single iteration-closeout commit to be recorded by canonical subject)
+- **Authorization Text**:
+  > You are the Retro Facilitator / Iteration Closer for Feature 022 Iteration 001.
+  > After retro-boundary, execute iteration-closeout only, keep feature-closeout unopened, rerun the validator and the same nine required suites, and stop once iteration-closeout is complete.
+
+---
+
+# Decision: Feature 022 Iteration Closeout
+
+**Date**: 2026-05-18T23:37:34Z  
+**Boundary**: iteration-closeout  
+**Feature**: 022-hotfix-schema-tests (Hotfix + Schema Tests)  
+**Iteration**: 001  
+**Authority**: Alon Fliess (retro-boundary and iteration-closeout authorized in sequence)  
+**Decision Type**: Iteration closure and boundary stop
+
+## Evidence Rerun
+
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File .\extensions\specrew-speckit\scripts\validate-governance.ps1 -ProjectPath . -IterationPath .\specs\022-hotfix-schema-tests\iterations\001`
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File .\tests\integration\closeout-identity-schema-parity.tests.ps1`
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File .\tests\integration\lifecycle-boundary-sync.tests.ps1`
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File .\tests\integration\start-recovery-flow.tests.ps1`
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File .\tests\integration\stale-state-detection.tests.ps1`
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File .\tests\integration\boundary-sync-atomicity.tests.ps1`
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File .\tests\integration\specrew-start-end-to-end.ps1`
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File .\tests\integration\review-command.ps1`
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File .\tests\integration\iteration-resume.ps1`
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File .\tests\integration\start-command.ps1`
+
+## Closeout Summary
+
+- Iteration 001 is closed at the iteration layer only; Feature 022 remains bounded to the three confirmed hotfix defects and their regression coverage.
+- `closeout.md`, `dashboard.md`, `code-map.md`, `coverage-evidence.md`, `dependency-report.md`, `reviewer-index.md`, `review-diagrams.md`, `current-architecture.md`, and `quality\trap-reapplication.md` now preserve the canonical closeout packet for this code-touching iteration.
+- Retro lessons are carried forward explicitly: Proposal 054 prevention, integration-test requirement for form-versus-meaning bugs, worktree isolation value, Feature 021 hygiene defaults, CHANGELOG coverage gap, `/speckit.tasks` truth-surface lag, and stewardship-label template drift.
+
+## Boundary Stop
+
+- Iteration-closeout is complete.
+- Feature-closeout remains explicitly unopened and unauthorized.
+
+---
+
 # Decision: Feature 022 Retro Boundary
 
 **Date**: 2026-05-18T23:27:46Z  
