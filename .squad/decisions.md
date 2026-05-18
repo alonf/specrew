@@ -14113,6 +14113,26 @@ Feature-closeout still requires separate explicit human authorization. The next 
 - **Rationale**: Delegated lifecycle routing was applied for role 'Reviewer'.
 
 - **Routing Evidence**: Reviewer | requested=claude | actual=copilot | model=(platform default) | status=fell-back | fallback=preferred agent 'claude' is not enabled
+## 2026-05-18T17:35:05Z — Authorization: planning
+
+- **Decision ID**: authorization-feature-022-planning
+- **Type**: authorization
+- **Boundary**: planning
+- **Approving Human**: Alon Fliess
+- **Recorded At**: 2026-05-18T17:35:05Z
+- **Commit Reference**: pending
+- **Authorization Text**:
+  > Authorized: Run /speckit.plan for Feature 022. Stop at plan-completion boundary for human review.
+  >
+  > Planning constraints:
+  > - keep Feature 022 as a single-iteration hotfix with a 10 SP capacity lock
+  > - treat FR-005 as limited to `.squad/identity/now.md`, keep `--recover` orthogonal to autopilot behavior, and defer the fourth inbox-to-ledger bug
+  > - map stewardship labels descriptively onto baseline Squad roles in planning artifacts
+  > - scaffold the hardening gate and the iteration-start triad up front during planning
+  > - push after every commit, verify `origin/022-hotfix-schema-tests` matches local before the boundary handoff, and do not enter `/speckit.tasks`
+
+---
+
 ## 2026-05-18T17:10:53Z — Authorization: clarify
 
 - **Decision ID**: authorization-feature-022-clarify
@@ -14306,3 +14326,12 @@ User request — captured for team memory to ensure plan authorization respects 
 **By:** Alon Fliess (via Copilot)  
 **What:** Hold plan-boundary authorization for Feature 022 until the specify and clarify artifacts are durably committed and pushed, origin matches local HEAD, the boundary ledger points at truthful commit references, and the post-push verification commands are all green. Do not enter \/speckit.plan\, do not modify \spec.md\ content, do not amend or rebase commits, and do not investigate the deferred fourth bug.  
 **Why:** User request — captured for team memory
+
+## 2026-05-18T18:20:35Z — Boundary sync: plan
+
+- **Boundary Type**: plan
+- **Feature Ref**: 022-hotfix-schema-tests
+- **Iteration Number**: (none)
+- **Task ID**: (none)
+- **Auth Commit Hash**: (none)
+- **Recorded At**: 2026-05-18T18:20:35Z

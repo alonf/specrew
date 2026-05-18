@@ -30,6 +30,8 @@ Auto-generated from all feature plans. Last updated: 2026-05-18
 - Git-tracked file artifacts only under `specs/`, `.specrew/`, `.specify/`, `docs/`, `scripts/`, `extensions/`, and `tests/` (018-velocity-dashboard-visual-richness)
 - PowerShell 7+ for runtime scripts and module entry points; Markdown/YAML skill metadata for the slash-command contract + Existing `scripts/specrew.ps1` dispatcher, `Specrew.psm1` alias/module surface, Specrew distribution/update flows, Squad-native SKILL.md deployment surfaces, shared governance/version-check helpers (021-specrew-slash-commands)
 - File-based only: `.copilot/skills/`, `.squad/templates/skills/`, `.specrew/config.yml`, feature docs under `specs/021-specrew-slash-commands/`, and existing repository scripts/docs (021-specrew-slash-commands)
+- PowerShell 7.x for the active runtime/test lane, while preserving existing Specrew PowerShell module compatibility expectations + `scripts/specrew-start.ps1`, `scripts/internal/sync-boundary-state.ps1`, `extensions/specrew-speckit/scripts/scaffold-feature-closeout-dashboard.ps1`, lifecycle sync command wrappers under `extensions/specrew-speckit/commands/`, shared governance helpers, Git CLI (022-hotfix-schema-tests)
+- File-based only (`.specrew/`, `.squad/`, `specs/`, `tests/`) (022-hotfix-schema-tests)
 
 - Markdown, YAML, PowerShell (Spec Kit extension assets). + Spec Kit >= 0.8.4 (extension starter template), Squad >= 0.9.1 (extension structure: skills/ceremonies/directives) (001-specrew-product)
 
@@ -49,6 +51,7 @@ npm test; npm run lint
 Markdown, YAML, PowerShell (Spec Kit extension assets).: Follow standard conventions
 
 ## Recent Changes
+- 022-hotfix-schema-tests: Added PowerShell 7.x for the active runtime/test lane, while preserving existing Specrew PowerShell module compatibility expectations + `scripts/specrew-start.ps1`, `scripts/internal/sync-boundary-state.ps1`, `extensions/specrew-speckit/scripts/scaffold-feature-closeout-dashboard.ps1`, lifecycle sync command wrappers under `extensions/specrew-speckit/commands/`, shared governance helpers, Git CLI
 - 021-specrew-slash-commands: Added PowerShell 7+ for runtime scripts and module entry points; Markdown/YAML skill metadata for the slash-command contract + Existing `scripts/specrew.ps1` dispatcher, `Specrew.psm1` alias/module surface, Specrew distribution/update flows, Squad-native SKILL.md deployment surfaces, shared governance/version-check helpers
 - 018-velocity-dashboard-visual-richness: Added PowerShell 7.x scripts plus Markdown/YAML/JSON governance artifacts + `scripts/internal/dashboard-renderer.ps1`, `scripts/specrew.ps1`, `scripts/specrew-where.ps1`, mirrored `extensions/specrew-speckit` + `.specify/extensions/specrew-speckit` closeout/validator scripts, `.specify/feature.json`, `.specrew/roadmap.yml`, `specs/**` dashboard artifacts, `docs/dashboard-guide.md`, `README.md`, and dashboard fixture/test harnesses under `tests/`
 

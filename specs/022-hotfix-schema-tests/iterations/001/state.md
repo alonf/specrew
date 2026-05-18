@@ -1,24 +1,26 @@
 # Iteration State: 001
 
 **Schema**: v1
-**Last Completed Task**: before-plan scaffold repair
-**Tasks Remaining**: detailed planning decomposition
-**In Progress**: planning
-**Baseline Ref**: 0bef7477a9f60018aaf7b30097b9e22c94d46cdc
-**Updated**: 2026-05-18
+**Last Completed Task**: plan-completion artifact set finalized
+**Tasks Remaining**: human review of the completed plan; `/speckit.tasks` remains unopened
+**In Progress**: none
+**Baseline Ref**: 92f20d31ab7dc8f2ad703914a7f41d22e3bba2b4
+**Updated**: 2026-05-18T21:15:00Z
 **Current Phase**: planning
-**Iteration Status**: Planning is the active step; the before-plan scaffold is in place and detailed decomposition remains to be completed inside the planning boundary.
+**Iteration Status**: Planning is complete for Iteration 001. The feature is stopped at the plan-completion boundary for human review, with task generation and implementation still unauthorized.
 
 ## Execution Summary
 
-- No implementation work has started for Feature 022 Iteration 001.
-- Planning is now the active lifecycle step; task decomposition still belongs to `/speckit.plan`.
-- The feature remains bounded to a single iteration. No second iteration is opened by this repair.
+- Feature 022 remains a single-iteration hotfix bounded to the three confirmed bugs plus regression coverage.
+- Phase 0 research and Phase 1 design artifacts are now present: `plan.md`, `research.md`, `data-model.md`, `contracts/`, and `quickstart.md`.
+- The grouped work-package plan locks the slice to 10 SP total with 1 SP reserved for repair.
+- Hardening-gate planning analysis now names schema parity, boundary sync, and restart recovery as the blocking concern rows; runtime evidence is still pending.
+- `/speckit.tasks` and implementation remain intentionally unopened.
 
 ## Notes
 
-- Update this file after planning decomposes the iteration into concrete tasks.
-- Keep all future task identifiers aligned to `plan.md`.
+- Update this file only after a later human decision authorizes the next boundary.
+- Keep all future task identifiers and evidence aligned to `iterations/001/plan.md`.
 
 <!-- >>> specrew-managed escalation-state >>> -->
 ## Repair Escalation
