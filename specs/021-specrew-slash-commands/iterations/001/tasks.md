@@ -137,12 +137,14 @@ Each executable item uses this structure:
   - **Owner role**: Implementer
   - **Dependencies**: I1-T007
 
-- [ ] I1-T009 [US3] [assigned_to: Reviewer] [effort: 0.4 SP] Add setup, refresh, and compatibility validation coverage in `tests/integration/slash-command-distribution.tests.ps1` and `tests/integration/slash-command-compatibility.tests.ps1` (Trace: I1-W003; FR-016, FR-017, FR-018, FR-019, FR-020)
-  - **Title**: Distribution and compatibility validation suite
-  - **FR coverage**: FR-016, FR-017, FR-018, FR-019, FR-020
-  - **User story coverage**: US3
-  - **Owner role**: Reviewer
-  - **Dependencies**: I1-T008
+- [ ] I1-T009 [US3] [assigned_to: Reviewer] [effort: 0.4 SP] Add setup, refresh, and compatibility validation coverage in `tests/integration/slash-command-distribution.tests.ps1` and `tests/integration/slash-command-compatibility.tests.ps1` (Trace: I1-W003; FR-016, FR-017, FR-018, FR-019, FR-020; SC-003, SC-004)
+   - **Title**: Distribution and compatibility validation suite
+   - **FR coverage**: FR-016, FR-017, FR-018, FR-019, FR-020
+   - **SC coverage**: SC-003, SC-004
+   - **User story coverage**: US3
+   - **Owner role**: Reviewer
+   - **Dependencies**: I1-T008
+   - **Before-Implement Repair (GAP-BI-003, GAP-BI-004)**: Setup/refresh delivery outcomes moved from I1-T012 to I1-T009 because they map directly to distribution/compatibility validation.
 
 **Phase 3 Total**: 3 tasks, 1.5 SP
 
@@ -168,12 +170,13 @@ Each executable item uses this structure:
   - **Owner role**: Reviewer
   - **Dependencies**: I1-T002, I1-T006, I1-T009
 
-- [ ] I1-T012 [US5] [assigned_to: Reviewer] [effort: 0.4 SP] Record final review evidence and traceability in `specs/021-specrew-slash-commands/iterations/001/quality/hardening-gate.md` after executing the new slash-command suites and manual quickstart checks (Trace: I1-W004; FR-025, FR-026; SC-003, SC-004)
+- [ ] I1-T012 [US5] [assigned_to: Reviewer] [effort: 0.4 SP] Record final review evidence and traceability in `specs/021-specrew-slash-commands/iterations/001/quality/hardening-gate.md` after executing the new slash-command suites and manual quickstart checks (Trace: I1-W004; FR-025)
   - **Title**: Hardening evidence and final traceability review
-  - **FR coverage**: FR-025, FR-026
+   - **FR coverage**: FR-025
   - **User story coverage**: US5
   - **Owner role**: Reviewer
   - **Dependencies**: I1-T010, I1-T011
+   - **Before-Implement Repair (GAP-BI-001, GAP-BI-002)**: FR-025 retained for governance decision recording. FR-026 and SC-003/SC-004 removed/moved.
 
 **Phase 4 Total**: 3 tasks, 1.3 SP
 
@@ -227,3 +230,4 @@ I1-T006 + I1-T009 -> I1-T010 -> I1-T011 -> I1-T012
 - Preserve Feature 020 carry-forward defaults during execution: 3 repair cycles, 30-minute wall-clock per failing test, live bookkeeping, per-lane drift labels, push after every commit, Write-Output-visible warnings, no case-insensitive PowerShell variable collisions, and file:/// prose-path discipline.
 - Treat stewardship labels as baseline Squad-role mappings only; do not reopen plan/spec ownership artifacts.
 - Do not spend the `0.7 SP` reserve unless a concrete defect or evidence gap is logged against `I1-T001` through `I1-T012`.
+

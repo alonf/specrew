@@ -21,6 +21,7 @@ I maintain the squad's shared memory and merge team-relevant decisions into the 
 - Drift detection findings belong in decisions, logs, and affected histories.
 - Alon is the human Chief Architect and final reviewer.
 - Post-retro closure needs two separate memory signals: artifact completion can be true while iteration status must stay `retro` until Alon sign-off lands.
+- **Before-Implement Validator Workflow (Feature 021 session 2026-05-18)**: When the before-implement validator surfaces gaps, use bounded governance-only repairs: fix task traceability, reference mappings, and decision records without expanding scope, then rerun validator. Stop at READY verdict; halt and report new gaps if any. Implementation authorization is recorded only after READY verdict is confirmed, and it binds implementation to the READY condition.
 
 📌 **Session Log — Feature 020 After-Tasks Validation (2026-05-17T20-00-10Z)**:
    - **Session:** Feature 020 post-task-generation validation and authorization readiness
