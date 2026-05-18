@@ -1,3 +1,35 @@
+# Decision: Feature 021 Specification Approval & Clarify-Boundary Authorization
+
+**Date**: 2026-05-24T08:30:00Z  
+**Boundary**: Specify-completion → clarify-boundary (authorization jump)  
+**Feature**: 021-specrew-slash-commands (Specrew Slash-Command Surface)  
+**Authority**: Alon Fliess  
+**Decision Type**: Specification approval with next-boundary authorization
+
+## Summary
+
+Human review of Feature 021 specification completed and approved. All specification artifacts meet quality gates. Feature 021 is authorized to proceed directly to the `/speckit.clarify` boundary for interactive clarification rounds before planning.
+
+## Approval Evidence
+
+- **Reviewer**: Alon Fliess
+- **Reviewed spec**: file:///C:/Dev/Specrew/specs/021-specrew-slash-commands/spec.md
+- **Supporting artifact**: file:///C:/Dev/Specrew/specs/021-specrew-slash-commands/checklists/requirements.md
+- **Branch**: 021-specrew-slash-commands
+- **Verdict**: Approve — specification artifacts are complete and ready for clarification
+
+## Boundary Authorization
+
+- **Current boundary** (from Feature-start decision): specify-completion stop
+- **New authorized boundary**: `/speckit.clarify` (interactive clarification and underspecification detection)
+- **Rationale**: Specification body is substantive and governance-aligned. Clarification rounds will surface decision points and edge cases before planning phase.
+
+## Next Authorized Step
+
+Execute `/speckit.clarify` to run interactive clarification session. Feature 021 clarification agent will generate up to 5 targeted questions addressing underspecified areas, encoding answers back into spec.md and decision record.
+
+---
+
 # Decision: Start Feature 021 — Specrew Slash-Command Surface (Proposal 032)
 
 **Date**: 2026-05-24T02:15:00Z  
