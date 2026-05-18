@@ -14243,3 +14243,66 @@ User request — captured for team memory per Scribe charter to preserve cross-a
 **By:** Alon Fliess (via Copilot)
 **What:** Run `/speckit.clarify` for Feature 022 only, resolve FR-005 / FR-014 / FR-019 using the provided narrow-scope, orthogonal-flag, and follow-up-feature recommendations, stop at clarify-completion for human review, do not enter `/speckit.plan`, do not broaden scope to the possible fourth bug, and do not modify the spec beyond resolving those three clarification markers.
 **Why:** User request — captured for team memory
+---
+
+# Decision: Feature 022 Durability Anchor Reconciliation
+
+**Date**: 2026-05-18T17:25:25Z  
+**Decision Type**: Durability anchor decision  
+**Feature**: 022-hotfix-schema-tests  
+**Boundary**: Durable artifact commitment and boundary reconciliation  
+**Authority**: Spec Steward
+
+## Summary
+
+Commit \5a7996\ on branch \ 22-hotfix-schema-tests\ is designated as the truthful durability anchor for Feature 022's combined specify+clarify artifact set. All boundary ledger references to this feature's work shall be reconciled to point to this commit rather than attempting to reconstruct uncommitted specify-only boundaries.
+
+## Rationale
+
+The Feature 022 specification and clarification artifacts existed locally without a durable checkpoint. The user explicitly held plan-boundary authorization until real git/origin durability was restored without history rewriting. This decision establishes the canonical commit reference for all downstream ledger and coordination state.
+
+## Boundary Impact
+
+- Boundary ledger updated to reference \5a7996\ as truthful checkpoint for Feature 022 combined specify+clarify boundary
+- Origin push verification passed: local HEAD == origin/022-hotfix-schema-tests
+- Post-push validation commands green
+
+---
+
+### 2026-05-18T17:25:25Z: Spec Steward durability decision
+
+**By:** Spec Steward  
+**What:** Treat commit \5a7996\ on \ 22-hotfix-schema-tests\ as the truthful durability anchor for the current Feature 022 combined specify+clarify artifact set. Reconcile any pending boundary commit references to that checkpoint rather than reconstructing an uncommitted specify-only boundary.  
+**Why:** Feature 022 artifacts existed locally without a durable checkpoint, and the user explicitly held \/speckit.plan\ authorization until real git/origin durability was restored without history rewriting.
+
+---
+
+# Decision: Plan-Boundary Authorization Hold for Feature 022
+
+**Date**: 2026-05-18T20:22:08Z  
+**Decision Type**: Authorization hold directive  
+**Feature**: 022-hotfix-schema-tests  
+**Authority**: Alon Fliess (via Copilot)
+
+## Summary
+
+Plan-boundary authorization for Feature 022 is held pending durability confirmation. The /speckit.plan command must not be invoked until the specify and clarify artifacts are durably committed and pushed to origin with matching local and origin HEAD commits, all boundary ledger references point to truthful commit references, and post-push verification commands are green.
+
+## Constraints
+
+- Do not enter \/speckit.plan\
+- Do not modify \spec.md\ content
+- Do not amend or rebase commits
+- Do not investigate the deferred fourth bug
+
+## Rationale
+
+User request — captured for team memory to ensure plan authorization respects durability boundaries and post-push validation state before allowing the feature into the planning phase.
+
+---
+
+### 2026-05-18T20:22:08Z: User directive
+
+**By:** Alon Fliess (via Copilot)  
+**What:** Hold plan-boundary authorization for Feature 022 until the specify and clarify artifacts are durably committed and pushed, origin matches local HEAD, the boundary ledger points at truthful commit references, and the post-push verification commands are all green. Do not enter \/speckit.plan\, do not modify \spec.md\ content, do not amend or rebase commits, and do not investigate the deferred fourth bug.  
+**Why:** User request — captured for team memory
