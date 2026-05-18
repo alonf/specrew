@@ -37,6 +37,7 @@ Usage:
   specrew status [options]         Alias for specrew where
   specrew update [options]         Refresh Specrew assets or upgrade managed platforms
   specrew team <command> [args]    Manage Squad team members
+  specrew version [options]        Show version and slash-command compatibility state
 
 Commands:
   init     Initialize Specrew (Spec Kit + Squad + governance)
@@ -46,6 +47,7 @@ Commands:
   status   Alias for where
   update   Refresh Specrew or upgrade Spec Kit / Squad in an existing project
   team     Manage team members (add, update, remove, list)
+  version  Show the installed Specrew version and slash-command compatibility
   help     Show this help message
 
 Examples:
@@ -59,6 +61,7 @@ Examples:
   specrew update --info
   specrew update --all
   specrew team list
+  specrew version
   specrew team add security-analyst --role "Security Analyst" --charter "Review security"
   specrew team update security-analyst --charter "Updated charter"
   specrew team remove security-analyst
@@ -69,7 +72,17 @@ For detailed command help:
   specrew review --help
   specrew where --help
   specrew update --help
+  specrew version --help
   specrew team --help (shows usage when no subcommand provided)
+
+Slash-command catalog (`/specrew.help` fallback):
+  /specrew.where    Current Specrew project dashboard
+  /specrew.status   Alias for /specrew.where
+  /specrew.update   Refresh Specrew-managed assets and runtime surfaces
+  /specrew.team     Manage Squad team members
+  /specrew.review   Replay reviewer closeout state without approving a boundary
+  /specrew.help     Canonical catalog/help fallback
+  /specrew.version  Installed version and compatibility state
 '@ | Write-Host
 }
 
@@ -90,7 +103,309 @@ function Test-ArgumentPresent {
     return $false
 }
 
+function Write-UnsupportedArgumentError {
+    param(
+        [Parameter(Mandatory = $true)][string]$CommandName,
+        [Parameter(Mandatory = $true)][string]$Argument
+    )
+
+    Write-Output "WARNING: Unsupported argument '$Argument' for 'specrew $CommandName'."
+    Write-Host ("ERROR: Unsupported argument '{0}'." -f $Argument) -ForegroundColor Red
+    Write-Host ("Run 'specrew {0} --help' for usage or '/specrew.help' for the full Specrew catalog." -f $CommandName) -ForegroundColor Yellow
+    exit 1
+}
+
+function Write-MissingArgumentValueError {
+    param(
+        [Parameter(Mandatory = $true)][string]$CommandName,
+        [Parameter(Mandatory = $true)][string]$OptionName
+    )
+
+    Write-Output "WARNING: Missing value for '$OptionName' in 'specrew $CommandName'."
+    Write-Host ("ERROR: '{0}' requires a value." -f $OptionName) -ForegroundColor Red
+    Write-Host ("Run 'specrew {0} --help' for usage or '/specrew.help' for the full Specrew catalog." -f $CommandName) -ForegroundColor Yellow
+    exit 1
+}
+
+function Resolve-ProjectPathFromArguments {
+    param([string[]]$ArgumentList)
+
+    $normalizedArguments = @($ArgumentList | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
+    for ($index = 0; $index -lt $normalizedArguments.Count; $index++) {
+        $argument = $normalizedArguments[$index]
+        if ($argument -match '^--project-path=(.+)$') {
+            return $Matches[1]
+        }
+
+        if ($argument -ieq '--project-path') {
+            $index++
+            if ($index -lt $normalizedArguments.Count) {
+                return $normalizedArguments[$index]
+            }
+
+            return $null
+        }
+    }
+
+    return (Get-Location).Path
+}
+
+function Assert-OptionArguments {
+    param(
+        [Parameter(Mandatory = $true)][string]$CommandName,
+        [Parameter(Mandatory = $true)][string[]]$ArgumentList,
+        [string[]]$SwitchOptions = @(),
+        [string[]]$ValueOptions = @(),
+        [int]$MaxPositionals = 0
+    )
+
+    $normalizedArguments = @($ArgumentList | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
+    $remainingPositionals = $MaxPositionals
+
+    for ($index = 0; $index -lt $normalizedArguments.Count; $index++) {
+        $argument = $normalizedArguments[$index]
+
+        if ($SwitchOptions -icontains $argument) {
+            continue
+        }
+
+        $matchedValueOption = $null
+        foreach ($optionName in $ValueOptions) {
+            if ($argument -ieq $optionName -or $argument.StartsWith(('{0}=' -f $optionName), [System.StringComparison]::OrdinalIgnoreCase)) {
+                $matchedValueOption = $optionName
+                break
+            }
+        }
+
+        if ($null -ne $matchedValueOption) {
+            if ($argument -ieq $matchedValueOption) {
+                $index++
+                if ($index -ge $normalizedArguments.Count) {
+                    Write-MissingArgumentValueError -CommandName $CommandName -OptionName $matchedValueOption
+                }
+            }
+
+            continue
+        }
+
+        if (-not $argument.StartsWith('-') -and $remainingPositionals -gt 0) {
+            $remainingPositionals--
+            continue
+        }
+
+        Write-UnsupportedArgumentError -CommandName $CommandName -Argument $argument
+    }
+}
+
+function Assert-TeamArguments {
+    param([string[]]$ArgumentList)
+
+    $normalizedArguments = @($ArgumentList | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
+    if ($normalizedArguments.Count -eq 0) {
+        return
+    }
+
+    if ($normalizedArguments[0] -in @('--help', '-h')) {
+        return
+    }
+
+    $subcommand = $normalizedArguments[0]
+    $index = 1
+
+    switch ($subcommand) {
+        'list' {
+            while ($index -lt $normalizedArguments.Count) {
+                $argument = $normalizedArguments[$index]
+                if ($argument -ieq '--project-path') {
+                    $index++
+                    if ($index -ge $normalizedArguments.Count) {
+                        Write-MissingArgumentValueError -CommandName 'team' -OptionName '--project-path'
+                    }
+                }
+                elseif (-not $argument.StartsWith('--project-path=', [System.StringComparison]::OrdinalIgnoreCase)) {
+                    Write-UnsupportedArgumentError -CommandName 'team' -Argument $argument
+                }
+
+                $index++
+            }
+
+            return
+        }
+        'add' {
+            if ($index -lt $normalizedArguments.Count -and -not $normalizedArguments[$index].StartsWith('-')) {
+                $index++
+            }
+        }
+        'update' {
+            if ($index -lt $normalizedArguments.Count -and -not $normalizedArguments[$index].StartsWith('-')) {
+                $index++
+            }
+        }
+        'remove' {
+            if ($index -lt $normalizedArguments.Count -and -not $normalizedArguments[$index].StartsWith('-')) {
+                $index++
+            }
+
+            while ($index -lt $normalizedArguments.Count) {
+                $argument = $normalizedArguments[$index]
+                if ($argument -ieq '--project-path') {
+                    $index++
+                    if ($index -ge $normalizedArguments.Count) {
+                        Write-MissingArgumentValueError -CommandName 'team' -OptionName '--project-path'
+                    }
+                }
+                elseif (-not $argument.StartsWith('--project-path=', [System.StringComparison]::OrdinalIgnoreCase)) {
+                    Write-UnsupportedArgumentError -CommandName 'team' -Argument $argument
+                }
+
+                $index++
+            }
+
+            return
+        }
+        default {
+            Write-UnsupportedArgumentError -CommandName 'team' -Argument $subcommand
+        }
+    }
+
+    while ($index -lt $normalizedArguments.Count) {
+        $argument = $normalizedArguments[$index]
+        switch -Regex ($argument) {
+            '^--project-path(?:=.+)?$' {
+                if ($argument -ieq '--project-path') {
+                    $index++
+                    if ($index -ge $normalizedArguments.Count) {
+                        Write-MissingArgumentValueError -CommandName 'team' -OptionName '--project-path'
+                    }
+                }
+            }
+            '^--role(?:=.+)?$' {
+                if ($argument -ieq '--role') {
+                    $index++
+                    if ($index -ge $normalizedArguments.Count) {
+                        Write-MissingArgumentValueError -CommandName 'team' -OptionName '--role'
+                    }
+                }
+            }
+            '^--charter(?:=.+)?$' {
+                if ($argument -ieq '--charter') {
+                    $index++
+                    if ($index -ge $normalizedArguments.Count) {
+                        Write-MissingArgumentValueError -CommandName 'team' -OptionName '--charter'
+                    }
+                }
+            }
+            default {
+                Write-UnsupportedArgumentError -CommandName 'team' -Argument $argument
+            }
+        }
+
+        $index++
+    }
+}
+
+function Assert-WhitelistedArguments {
+    param(
+        [Parameter(Mandatory = $true)][string]$CommandName,
+        [string[]]$ArgumentList
+    )
+
+    switch ($CommandName) {
+        'where' {
+            Assert-OptionArguments -CommandName $CommandName -ArgumentList $ArgumentList -SwitchOptions @('--compact', '--ascii', '--no-color', '--json', '--team', '--worktrees', '--help', '-h') -ValueOptions @('--project-path', '--feature', '--iteration', '--recentcount', '--barwidth')
+        }
+        'status' {
+            Assert-OptionArguments -CommandName $CommandName -ArgumentList $ArgumentList -SwitchOptions @('--compact', '--ascii', '--no-color', '--json', '--team', '--worktrees', '--help', '-h') -ValueOptions @('--project-path', '--feature', '--iteration', '--recentcount', '--barwidth')
+        }
+        'update' {
+            Assert-OptionArguments -CommandName $CommandName -ArgumentList $ArgumentList -SwitchOptions @('--info', '--all', '--specrew', '--squad', '--spec-kit', '--skip-update-check', '--help', '-h') -ValueOptions @('--project-path')
+        }
+        'review' {
+            Assert-OptionArguments -CommandName $CommandName -ArgumentList $ArgumentList -SwitchOptions @('--quiet', '--json', '--open', '--help', '-h') -ValueOptions @('--project-path', '--feature', '--iteration') -MaxPositionals 1
+        }
+        'version' {
+            Assert-OptionArguments -CommandName $CommandName -ArgumentList $ArgumentList -SwitchOptions @('--help', '-h') -ValueOptions @('--project-path')
+        }
+        'team' {
+            Assert-TeamArguments -ArgumentList $ArgumentList
+        }
+        'help' {
+            Assert-OptionArguments -CommandName $CommandName -ArgumentList $ArgumentList -SwitchOptions @('--help', '-h')
+        }
+    }
+}
+
 $scriptRoot = Split-Path -Parent $PSCommandPath
+$versionCheckHelperPath = Join-Path $scriptRoot 'internal\version-check.ps1'
+if (-not (Test-Path -LiteralPath $versionCheckHelperPath -PathType Leaf)) {
+    throw "Missing version-check helper '$versionCheckHelperPath'."
+}
+. $versionCheckHelperPath
+
+function Assert-ProjectSetup {
+    param(
+        [Parameter(Mandatory = $true)][string]$CommandName,
+        [string[]]$ArgumentList
+    )
+
+    $projectPath = Resolve-ProjectPathFromArguments -ArgumentList $ArgumentList
+    if ([string]::IsNullOrWhiteSpace($projectPath)) {
+        Write-MissingArgumentValueError -CommandName $CommandName -OptionName '--project-path'
+    }
+
+    $resolvedProjectPath = Resolve-ProjectPath -Path $projectPath
+    $configPath = Join-Path $resolvedProjectPath '.specrew\config.yml'
+    if (Test-Path -LiteralPath $configPath -PathType Leaf) {
+        return
+    }
+
+    Write-Output "WARNING: Specrew project setup is missing at '$resolvedProjectPath'."
+    Write-Host ("ERROR: 'specrew {0}' requires a Specrew-managed project." -f $CommandName) -ForegroundColor Red
+    Write-Host ("Run 'specrew init --project-path {0}' first, then retry the command." -f $resolvedProjectPath) -ForegroundColor Yellow
+    exit 1
+}
+
+function Assert-SlashCommandCompatibility {
+    param(
+        [Parameter(Mandatory = $true)][string]$CommandName,
+        [string[]]$ArgumentList
+    )
+
+    $projectPath = Resolve-ProjectPathFromArguments -ArgumentList $ArgumentList
+    if ([string]::IsNullOrWhiteSpace($projectPath)) {
+        return
+    }
+
+    $resolvedProjectPath = Resolve-ProjectPath -Path $projectPath
+    $slashCommandMinVersionText = Get-SpecrewSlashCommandMinVersion
+    $slashCommandMinVersion = ConvertTo-SpecrewSemanticVersion -Value $slashCommandMinVersionText
+    if ($null -eq $slashCommandMinVersion) {
+        return
+    }
+
+    $reasons = New-Object System.Collections.Generic.List[string]
+    $projectBaselineVersionText = Get-SpecrewVersionConfigValue -ProjectRoot $resolvedProjectPath -Key 'specrew_version'
+    $projectBaselineVersion = ConvertTo-SpecrewSemanticVersion -Value $projectBaselineVersionText
+    if ($null -ne $projectBaselineVersion -and $projectBaselineVersion -lt $slashCommandMinVersion) {
+        $reasons.Add(("project baseline {0}" -f $projectBaselineVersionText)) | Out-Null
+    }
+
+    $installedVersionText = Get-SpecrewInstalledVersion -ProjectRoot $resolvedProjectPath
+    $installedVersion = ConvertTo-SpecrewSemanticVersion -Value $installedVersionText
+    if ($null -ne $installedVersion -and $installedVersion -lt $slashCommandMinVersion) {
+        $reasons.Add(("installed version {0}" -f $installedVersionText)) | Out-Null
+    }
+
+    if ($reasons.Count -eq 0) {
+        return
+    }
+
+    Write-Output "WARNING: Slash-command compatibility check failed for 'specrew $CommandName'."
+    Write-Host ("ERROR: 'specrew {0}' requires Specrew {1} or later." -f $CommandName, $slashCommandMinVersionText) -ForegroundColor Red
+    Write-Host ("Observed: {0}." -f ($reasons -join '; ')) -ForegroundColor Yellow
+    Write-Host "Run 'specrew update' to refresh project assets or 'Update-Module Specrew' to upgrade the installed module." -ForegroundColor Yellow
+    exit 1
+}
 
 if (-not $Command -or $Command -eq 'help' -or $Command -eq '--help' -or $Command -eq '-h') {
     Show-Usage
@@ -110,13 +425,16 @@ switch ($Command) {
     }
     
     'team' {
+        Assert-WhitelistedArguments -CommandName 'team' -ArgumentList $Arguments
+        Assert-ProjectSetup -CommandName 'team' -ArgumentList $Arguments
+        Assert-SlashCommandCompatibility -CommandName 'team' -ArgumentList $Arguments
+
         $teamScript = Join-Path $scriptRoot 'specrew-team.ps1'
         if (-not (Test-Path -LiteralPath $teamScript)) {
             Write-Host "ERROR: specrew-team.ps1 not found at $teamScript" -ForegroundColor Red
             exit 1
         }
         
-        # If no subcommand provided, show usage
         if (-not $Arguments -or $Arguments.Count -eq 0) {
             Write-Host "Usage: specrew team <command> [options]" -ForegroundColor Yellow
             Write-Host ""
@@ -153,6 +471,10 @@ switch ($Command) {
     }
 
     'review' {
+        Assert-WhitelistedArguments -CommandName 'review' -ArgumentList $Arguments
+        Assert-ProjectSetup -CommandName 'review' -ArgumentList $Arguments
+        Assert-SlashCommandCompatibility -CommandName 'review' -ArgumentList $Arguments
+
         $reviewScript = Join-Path $scriptRoot 'specrew-review.ps1'
         if (-not (Test-Path -LiteralPath $reviewScript)) {
             Write-Host "ERROR: specrew-review.ps1 not found at $reviewScript" -ForegroundColor Red
@@ -164,6 +486,10 @@ switch ($Command) {
     }
 
     'where' {
+        Assert-WhitelistedArguments -CommandName 'where' -ArgumentList $Arguments
+        Assert-ProjectSetup -CommandName 'where' -ArgumentList $Arguments
+        Assert-SlashCommandCompatibility -CommandName 'where' -ArgumentList $Arguments
+
         $whereScript = Join-Path $scriptRoot 'specrew-where.ps1'
         if (-not (Test-Path -LiteralPath $whereScript)) {
             Write-Host "ERROR: specrew-where.ps1 not found at $whereScript" -ForegroundColor Red
@@ -175,17 +501,25 @@ switch ($Command) {
     }
 
     'status' {
+        Assert-WhitelistedArguments -CommandName 'status' -ArgumentList $Arguments
+        Assert-ProjectSetup -CommandName 'status' -ArgumentList $Arguments
+        Assert-SlashCommandCompatibility -CommandName 'status' -ArgumentList $Arguments
+
         $whereScript = Join-Path $scriptRoot 'specrew-where.ps1'
         if (-not (Test-Path -LiteralPath $whereScript)) {
             Write-Host "ERROR: specrew-where.ps1 not found at $whereScript" -ForegroundColor Red
             exit 1
         }
 
+        # Alias parity safeguard: `status` MUST NOT diverge from `where`.
         & $whereScript -CliArgs $Arguments
         exit $LASTEXITCODE
     }
 
     'update' {
+        Assert-WhitelistedArguments -CommandName 'update' -ArgumentList $Arguments
+        Assert-ProjectSetup -CommandName 'update' -ArgumentList $Arguments
+
         $updateScript = Join-Path $scriptRoot 'specrew-update.ps1'
         if (-not (Test-Path -LiteralPath $updateScript)) {
             Write-Host "ERROR: specrew-update.ps1 not found at $updateScript" -ForegroundColor Red
@@ -195,9 +529,23 @@ switch ($Command) {
         & pwsh -NoProfile -ExecutionPolicy Bypass -File $updateScript @Arguments
         exit $LASTEXITCODE
     }
+
+    'version' {
+        Assert-WhitelistedArguments -CommandName 'version' -ArgumentList $Arguments
+
+        $versionScript = Join-Path $scriptRoot 'specrew-version.ps1'
+        if (-not (Test-Path -LiteralPath $versionScript)) {
+            Write-Host "ERROR: specrew-version.ps1 not found at $versionScript" -ForegroundColor Red
+            exit 1
+        }
+
+        & pwsh -NoProfile -ExecutionPolicy Bypass -File $versionScript @Arguments
+        exit $LASTEXITCODE
+    }
     
     default {
         Write-Host "ERROR: Unknown command '$Command'" -ForegroundColor Red
+        Write-Host "Run 'specrew help' or '/specrew.help' to see the supported Specrew command catalog." -ForegroundColor Yellow
         Write-Host ""
         Show-Usage
         exit 1

@@ -13,12 +13,14 @@ Practical quickstart for running Specrew in a new repo (greenfield) and adding i
 for Linux and macOS is in progress (path handling hardened; CI validation configured).
 See README.md for current platform validation status.
 
-## Key Capabilities (v0.20.0)
+## Key Capabilities (v0.21.0)
 
 - **Session-State Durability**: Squad accurately resumes work after system reboots,
   detecting stale state and multi-worktree status.
 - **In-Flight Progress Tracking**: Task progress, completed tasks, and active
   boundaries persist through all lifecycle events.
+- **Slash-Command Surface**: First-class `/specrew.*` commands for key workflows.
+  `/specrew.help` shows the full catalog; `/specrew.status` is an alias for `/specrew.where`.
 - **Full Workflow Governance**: Spec Kit integration, Squad orchestration, and
   Specrew version stability across Phase 2 feature delivery.
 
@@ -35,10 +37,10 @@ Install-Module Specrew -Scope CurrentUser
 ```
 
 Once installed, the `specrew`, `specrew-init`, `specrew-start`, `specrew-update`,
-`specrew-where`, `specrew-team`, and `specrew-review` aliases (plus their
+`specrew-where`, `specrew-team`, `specrew-review`, and `specrew-version` aliases (plus their
 PowerShell-canonical `Verb-Noun` forms — `Invoke-Specrew`, `Initialize-Specrew`,
 `Start-Specrew`, `Update-Specrew`, `Show-SpecrewStatus`, `Invoke-SpecrewTeam`,
-`Show-SpecrewReview`) are available in any PowerShell session.
+`Show-SpecrewReview`, `Show-SpecrewVersion`) are available in any PowerShell session.
 
 ### Option B — Local clone (current alpha state)
 
@@ -49,8 +51,8 @@ git clone https://github.com/alonf/specrew.git C:\Dev\Specrew
 Import-Module C:\Dev\Specrew\Specrew.psd1
 ```
 
-The module-import path exposes the same `specrew` / `specrew-init` / `specrew-start`
-aliases as the PSGallery install, so the rest of this guide works identically.
+The module-import path exposes the same `specrew` / `specrew-init` / `specrew-start` / `specrew-version` /
+`specrew-where` / `specrew-team` / `specrew-review` / `specrew-update` aliases as the PSGallery install, so the rest of this guide works identically.
 
 ### Option C — Direct script invocation (fallback for non-module scenarios)
 

@@ -82,6 +82,10 @@ function ConvertTo-SpecrewSemanticVersion {
     }
 }
 
+function Get-SpecrewSlashCommandMinVersion {
+    return '0.21.0'
+}
+
 function Get-SpecrewVersionCheckCachePath {
     param([Parameter(Mandatory = $true)][string]$ProjectRoot)
 

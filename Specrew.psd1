@@ -1,6 +1,6 @@
 @{
     RootModule = 'Specrew.psm1'
-    ModuleVersion = '0.20.0'
+    ModuleVersion = '0.21.0'
     GUID = '8ad5b7b5-c4c6-4df4-b9bd-700a8533dcc4'
     Author = 'Alon Fliess'
     Description = 'Specrew: specification-driven development workflow for AI-augmented teams'
@@ -11,6 +11,7 @@
         'Initialize-Specrew',
         'Start-Specrew',
         'Update-Specrew',
+        'Show-SpecrewVersion',
         'Show-SpecrewReview',
         'Invoke-SpecrewTeam',
         'Show-SpecrewStatus'
@@ -22,6 +23,7 @@
         'specrew-init',
         'specrew-start',
         'specrew-update',
+        'specrew-version',
         'specrew-review',
         'specrew-team',
         'specrew-where'
@@ -30,6 +32,7 @@
         'Specrew.psd1',
         'Specrew.psm1',
         'scripts/internal/dashboard-renderer.ps1',
+        'scripts/internal/version-check.ps1',
         'scripts/internal/sync-boundary-state.ps1',
         'scripts/internal/invoke-module-release.ps1',
         'scripts/specrew-init.ps1',
@@ -37,6 +40,7 @@
         'scripts/specrew-start.ps1',
         'scripts/specrew-team.ps1',
         'scripts/specrew-update.ps1',
+        'scripts/specrew-version.ps1',
         'scripts/specrew-where.ps1',
         'scripts/specrew.ps1',
         'extensions/specrew-speckit/checklists/coordinator-handoff-governance.md',
@@ -97,6 +101,13 @@
         'extensions/specrew-speckit/squad-templates/skills/capacity-planning.md',
         'extensions/specrew-speckit/squad-templates/skills/drift-check.md',
         'extensions/specrew-speckit/squad-templates/skills/iteration-resume.md',
+        'extensions/specrew-speckit/squad-templates/skills/specrew-help/SKILL.md',
+        'extensions/specrew-speckit/squad-templates/skills/specrew-review/SKILL.md',
+        'extensions/specrew-speckit/squad-templates/skills/specrew-status/SKILL.md',
+        'extensions/specrew-speckit/squad-templates/skills/specrew-team/SKILL.md',
+        'extensions/specrew-speckit/squad-templates/skills/specrew-update/SKILL.md',
+        'extensions/specrew-speckit/squad-templates/skills/specrew-version/SKILL.md',
+        'extensions/specrew-speckit/squad-templates/skills/specrew-where/SKILL.md',
         'extensions/specrew-speckit/squad-templates/skills/traceability-check.md',
         'extensions/specrew-speckit/templates/downstream-constitution.md',
         'extensions/specrew-speckit/templates/iteration-config.yml',
