@@ -10,6 +10,7 @@ param(
     [int]$BarWidth = 28,
     [switch]$Json,
     [switch]$Team,
+    [switch]$Worktrees,
     [switch]$Help,
     [string]$OutputPath,
     [ValidateSet('live', 'iteration-closeout', 'feature-closeout')]
@@ -199,6 +200,12 @@ if (-not (Test-Path -LiteralPath $rendererPath -PathType Leaf)) {
 }
 . $rendererPath
 
+$worktreeHelperPath = Join-Path $PSScriptRoot 'internal\worktree-awareness.ps1'
+if (-not (Test-Path -LiteralPath $worktreeHelperPath -PathType Leaf)) {
+    throw "Missing worktree-awareness helper '$worktreeHelperPath'."
+}
+. $worktreeHelperPath
+
 function Show-Usage {
     @'
 specrew where - show the velocity dashboard ("where am I?")
@@ -218,6 +225,7 @@ Options:
   --RecentCount <N>      Show N Recent Shipped entries (default: 6)
   --BarWidth <N>         Use N columns for rich shipped bars (default: 28)
   --team                 Reserved team path; falls back to the personal dashboard
+  --worktrees            List all git worktrees with feature and boundary state
   --json                 Emit the assembled snapshot as JSON
   --output-path <path>   Persist the rendered dashboard or closeout snapshot
   --capture-kind <kind>  live | iteration-closeout | feature-closeout
@@ -248,6 +256,7 @@ function Convert-UnixStyleArguments {
         [int]$BarWidth,
         [bool]$Json,
         [bool]$Team,
+        [bool]$Worktrees,
         [bool]$Help,
         [string]$OutputPath,
         [string]$CaptureKind,
@@ -267,6 +276,7 @@ function Convert-UnixStyleArguments {
         BarWidth                 = if ($BarWidth -gt 0) { $BarWidth } else { 28 }
         Json                     = $Json
         Team                     = $Team
+        Worktrees                = $Worktrees
         Help                     = $Help
         OutputPath               = $OutputPath
         CaptureKind              = $CaptureKind
@@ -376,6 +386,7 @@ function Convert-UnixStyleArguments {
             }
             '^--json$' { $result.Json = $true }
             '^--team$' { $result.Team = $true }
+            '^--worktrees$' { $result.Worktrees = $true }
             '^--preserve-existing-artifact$' { $result.PreserveExistingArtifact = $true }
             '^(?:-h|--help)$' { $result.Help = $true }
             default { throw ("Unknown argument for specrew where: {0}" -f $argument) }
@@ -383,6 +394,53 @@ function Convert-UnixStyleArguments {
     }
 
     return [pscustomobject]$result
+}
+
+function ConvertTo-SpecrewWorktreeLines {
+    param([object[]]$Worktrees)
+
+    $lines = New-Object System.Collections.Generic.List[string]
+    $lines.Add('Specrew worktrees') | Out-Null
+    $lines.Add('-----------------') | Out-Null
+
+    foreach ($worktree in @($Worktrees)) {
+        $featureLabel = if (-not [string]::IsNullOrWhiteSpace([string]$worktree.feature_number)) {
+            [string]$worktree.feature_number
+        }
+        elseif (-not [string]::IsNullOrWhiteSpace([string]$worktree.feature_ref)) {
+            [string]$worktree.feature_ref
+        }
+        else {
+            '(none)'
+        }
+
+        $boundaryLabel = if (-not [string]::IsNullOrWhiteSpace([string]$worktree.boundary_type)) { [string]$worktree.boundary_type } else { '(none)' }
+        $activityLabel = if (-not [string]::IsNullOrWhiteSpace([string]$worktree.last_activity)) { [string]$worktree.last_activity } else { '(none)' }
+        $pathLine = [string]$worktree.path
+        if (-not $worktree.exists -and -not [string]::IsNullOrWhiteSpace([string]$worktree.note)) {
+            $pathLine = '{0} {1}' -f $pathLine, [string]$worktree.note
+        }
+        elseif (-not [string]::IsNullOrWhiteSpace([string]$worktree.note)) {
+            $pathLine = '{0} {1}' -f $pathLine, [string]$worktree.note
+        }
+
+        $marker = if ($worktree.is_current) { '*' } else { '-' }
+        $lines.Add(('{0} {1}' -f $marker, $pathLine)) | Out-Null
+        $lines.Add(('    Feature: {0}' -f $featureLabel)) | Out-Null
+        $lines.Add(('    Boundary: {0}' -f $boundaryLabel)) | Out-Null
+        $lines.Add(('    Last activity: {0}' -f $activityLabel)) | Out-Null
+    }
+
+    return $lines.ToArray()
+}
+
+function ConvertTo-SpecrewWorktreePayload {
+    param([object[]]$Worktrees)
+
+    return [pscustomobject]@{
+        worktrees = @($Worktrees)
+        lines     = @(ConvertTo-SpecrewWorktreeLines -Worktrees $Worktrees)
+    }
 }
 
 try {
@@ -397,6 +455,7 @@ try {
         -BarWidth $BarWidth `
         -Json $Json.IsPresent `
         -Team $Team.IsPresent `
+        -Worktrees $Worktrees.IsPresent `
         -Help $Help.IsPresent `
         -OutputPath $OutputPath `
         -CaptureKind $CaptureKind `
@@ -406,6 +465,19 @@ try {
 
     if ($parsed.Help) {
         Show-Usage
+        exit 0
+    }
+
+    if ($parsed.Worktrees) {
+        $worktrees = @(Get-WorktreeState -ProjectRoot $parsed.ProjectPath)
+        $lines = ConvertTo-SpecrewWorktreeLines -Worktrees $worktrees
+
+        if ($parsed.Json) {
+            ConvertTo-SpecrewWorktreePayload -Worktrees $worktrees | ConvertTo-Json -Depth 6
+            exit 0
+        }
+
+        Write-SpecrewDashboardLines -Lines $lines -ColorMode $(if ($parsed.NoColor -or $parsed.Ascii) { 'plain' } else { 'plain' })
         exit 0
     }
 

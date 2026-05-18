@@ -14,6 +14,7 @@ param(
     [switch]$NoAgents,
     [Alias('spec-kit-extension-only')]
     [switch]$SpecKitExtensionOnly,
+    [switch]$SkipUpdateCheck,
     [switch]$Help,
     [Parameter(ValueFromRemainingArguments = $true)]
     [string[]]$CliArgs
@@ -27,6 +28,12 @@ if (-not (Test-Path -LiteralPath $sharedGovernancePath -PathType Leaf)) {
     throw "Missing shared governance helper '$sharedGovernancePath'."
 }
 . $sharedGovernancePath
+
+$versionCheckHelperPath = Join-Path $PSScriptRoot 'internal\version-check.ps1'
+if (-not (Test-Path -LiteralPath $versionCheckHelperPath -PathType Leaf)) {
+    throw "Missing version-check helper '$versionCheckHelperPath'."
+}
+. $versionCheckHelperPath
 
 function Get-NativeExitCode {
     if (Get-Variable -Name LASTEXITCODE -Scope Global -ErrorAction SilentlyContinue) {
@@ -248,6 +255,8 @@ Options:
                          Minimum Squad version (default: 0.9.1)
   -Agents | --agents      Optional delegated agents: claude | codex | comma list | all (Copilot host stays enabled)
   -NoAgents | --no-agents Disable optional delegated agents (Copilot host stays enabled)
+  -SkipUpdateCheck | --skip-update-check
+                         Skip the PSGallery latest-version check for this run
   -Help | --help          Show usage
 '@ | Write-Host
 }
@@ -1859,6 +1868,10 @@ for ($cliIndex = 0; $cliIndex -lt $cliArguments.Count; $cliIndex++) {
             $SpecKitExtensionOnly = $true
             continue
         }
+        '^--skip-update-check$' {
+            $SkipUpdateCheck = $true
+            continue
+        }
         default {
             Write-Error ("Unknown option '{0}'." -f $cliArg)
             exit 3
@@ -2361,5 +2374,12 @@ else {
 }
 
 Write-BootstrapSummary -Actions $actions -DryRunMode:$DryRun -ProjectPath $resolvedProjectPath -ShowGuidance:(-not $SpecKitExtensionOnly -and $squadSurfaceReady)
+
+if (-not $DryRun) {
+    $psGalleryUpdateWarning = Get-PSGalleryUpdateWarning -ProjectRoot $resolvedProjectPath -SkipCheck:$SkipUpdateCheck
+    if (-not [string]::IsNullOrWhiteSpace($psGalleryUpdateWarning)) {
+        Write-Output ("WARN: {0}" -f $psGalleryUpdateWarning)
+    }
+}
 
 exit 0

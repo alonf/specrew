@@ -5,6 +5,7 @@ param(
     [switch]$Specrew,
     [switch]$Squad,
     [switch]$SpecKit,
+    [switch]$SkipUpdateCheck,
     [switch]$Help,
     [Parameter(ValueFromRemainingArguments = $true)]
     [string[]]$CliArgs
@@ -18,6 +19,12 @@ if (-not (Test-Path -LiteralPath $sharedGovernancePath -PathType Leaf)) {
     throw "Missing shared governance helper '$sharedGovernancePath'."
 }
 . $sharedGovernancePath
+
+$versionCheckHelperPath = Join-Path $PSScriptRoot 'internal\version-check.ps1'
+if (-not (Test-Path -LiteralPath $versionCheckHelperPath -PathType Leaf)) {
+    throw "Missing version-check helper '$versionCheckHelperPath'."
+}
+. $versionCheckHelperPath
 
 function Get-NativeExitCode {
     if (Get-Variable -Name LASTEXITCODE -Scope Global -ErrorAction SilentlyContinue) {
@@ -35,6 +42,7 @@ function Convert-UnixStyleArguments {
         [bool]$Specrew,
         [bool]$Squad,
         [bool]$SpecKit,
+        [bool]$SkipUpdateCheck,
         [bool]$Help,
         [string[]]$CliArgs
     )
@@ -46,6 +54,7 @@ function Convert-UnixStyleArguments {
         Specrew     = $Specrew
         Squad       = $Squad
         SpecKit     = $SpecKit
+        SkipUpdateCheck = $SkipUpdateCheck
         Help        = $Help
     }
 
@@ -80,6 +89,9 @@ function Convert-UnixStyleArguments {
             '--spec-kit' {
                 $result.SpecKit = $true
             }
+            '--skip-update-check' {
+                $result.SkipUpdateCheck = $true
+            }
             '--help' {
                 $result.Help = $true
             }
@@ -106,6 +118,8 @@ Options:
   -Specrew | --specrew   Update Specrew-managed project surfaces only
   -Squad | --squad       Upgrade Squad to the latest known compatible version
   -SpecKit | --spec-kit  Upgrade Spec Kit to the latest known compatible version
+  -SkipUpdateCheck | --skip-update-check
+                         Skip the PSGallery latest-version check for this run
   -Help | --help         Show usage
 
 Behavior:
@@ -948,6 +962,7 @@ $parsedArgs = Convert-UnixStyleArguments `
     -Specrew $Specrew.IsPresent `
     -Squad $Squad.IsPresent `
     -SpecKit $SpecKit.IsPresent `
+    -SkipUpdateCheck $SkipUpdateCheck.IsPresent `
     -Help $Help.IsPresent `
     -CliArgs $CliArgs
 
@@ -957,6 +972,7 @@ $All = [bool]$parsedArgs.All
 $Specrew = [bool]$parsedArgs.Specrew
 $Squad = [bool]$parsedArgs.Squad
 $SpecKit = [bool]$parsedArgs.SpecKit
+$SkipUpdateCheck = [bool]$parsedArgs.SkipUpdateCheck
 $Help = [bool]$parsedArgs.Help
 
 if ($Help) {
@@ -1232,6 +1248,11 @@ if ($otherUpdates.Count -gt 0) {
     Write-Host ''
     Write-Host 'Additional platform updates are available:' -ForegroundColor Yellow
     $otherUpdates | Select-Object Platform, Current, LatestKnown | Format-Table -AutoSize
+}
+
+$psGalleryUpdateWarning = Get-PSGalleryUpdateWarning -ProjectRoot $resolvedProjectPath -SkipCheck:$SkipUpdateCheck
+if (-not [string]::IsNullOrWhiteSpace($psGalleryUpdateWarning)) {
+    Write-Output ("WARN: {0}" -f $psGalleryUpdateWarning)
 }
 
 if ($installFailureMessage) {

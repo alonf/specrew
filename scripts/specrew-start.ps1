@@ -20,6 +20,7 @@ param(
     [switch]$SameWindow,
     [switch]$AllowAll,
     [switch]$PromptApprovals,
+    [switch]$SkipUpdateCheck,
     [switch]$Help,
 
     [Parameter(ValueFromRemainingArguments = $true)]
@@ -44,6 +45,30 @@ if (-not (Test-Path -LiteralPath $boundaryStateHelperPath -PathType Leaf)) {
 }
 . $boundaryStateHelperPath
 
+$taskProgressHelperPath = Join-Path $PSScriptRoot 'internal\task-progress.ps1'
+if (-not (Test-Path -LiteralPath $taskProgressHelperPath -PathType Leaf)) {
+    throw "Missing task-progress helper '$taskProgressHelperPath'."
+}
+. $taskProgressHelperPath
+
+$worktreeHelperPath = Join-Path $PSScriptRoot 'internal\worktree-awareness.ps1'
+if (-not (Test-Path -LiteralPath $worktreeHelperPath -PathType Leaf)) {
+    throw "Missing worktree-awareness helper '$worktreeHelperPath'."
+}
+. $worktreeHelperPath
+
+$coordinatorResumeHelperPath = Join-Path $PSScriptRoot 'internal\coordinator-resume.ps1'
+if (-not (Test-Path -LiteralPath $coordinatorResumeHelperPath -PathType Leaf)) {
+    throw "Missing coordinator-resume helper '$coordinatorResumeHelperPath'."
+}
+. $coordinatorResumeHelperPath
+
+$versionCheckHelperPath = Join-Path $PSScriptRoot 'internal\version-check.ps1'
+if (-not (Test-Path -LiteralPath $versionCheckHelperPath -PathType Leaf)) {
+    throw "Missing version-check helper '$versionCheckHelperPath'."
+}
+. $versionCheckHelperPath
+
 function Convert-UnixStyleArguments {
     param(
         [string]$FeatureRequest,
@@ -55,6 +80,7 @@ function Convert-UnixStyleArguments {
         [bool]$NewWindow,
         [bool]$AllowAll,
         [bool]$PromptApprovals,
+        [bool]$SkipUpdateCheck,
         [bool]$Help,
         [string[]]$CliArgs
     )
@@ -70,6 +96,7 @@ function Convert-UnixStyleArguments {
         SameWindow     = $false
         AllowAll       = $AllowAll
         PromptApprovals = $PromptApprovals
+        SkipUpdateCheck = $SkipUpdateCheck
         Help           = $Help
     }
 
@@ -116,6 +143,9 @@ function Convert-UnixStyleArguments {
             '--prompt-approvals' {
                 $result.PromptApprovals = $true
             }
+            '--skip-update-check' {
+                $result.SkipUpdateCheck = $true
+            }
             '--help' {
                 $result.Help = $true
             }
@@ -146,6 +176,7 @@ $parsedArgs = Convert-UnixStyleArguments `
     -SameWindow $SameWindow.IsPresent `
     -AllowAll $AllowAll.IsPresent `
     -PromptApprovals $PromptApprovals.IsPresent `
+    -SkipUpdateCheck $SkipUpdateCheck.IsPresent `
     -Help $Help.IsPresent `
     -CliArgs $CliArgs
 
@@ -159,6 +190,7 @@ $NewWindow = [bool]$parsedArgs.NewWindow
 $SameWindow = [bool]$parsedArgs.SameWindow
 $AllowAll = [bool]$parsedArgs.AllowAll
 $PromptApprovals = [bool]$parsedArgs.PromptApprovals
+$SkipUpdateCheck = [bool]$parsedArgs.SkipUpdateCheck
 $Help = [bool]$parsedArgs.Help
 
 Set-StrictMode -Version Latest
@@ -184,6 +216,7 @@ Options:
   -SameWindow | --same-window              Compatibility alias for the default current-terminal launch mode
   -AllowAll | --allow-all                  Launch Copilot with --allow-all so tool calls run without approval prompts (this is the default)
   -PromptApprovals | --prompt-approvals    Keep Copilot's interactive approval prompts enabled (disables --allow-all)
+  -SkipUpdateCheck | --skip-update-check   Skip the PSGallery latest-version check for this run
   -Help | --help                           Show this help message
 
  Notes:
@@ -2299,7 +2332,8 @@ function Get-StartPrompt {
         [pscustomobject]$RoutingPlan,
         [pscustomobject]$ProjectState,
         [AllowNull()][pscustomobject]$BrownfieldDiscovery,
-        [pscustomobject]$DeliveryGuidance
+        [pscustomobject]$DeliveryGuidance,
+        [AllowNull()][pscustomobject]$SessionState
     )
 
     $featureLine = if ($ResolvedFeaturePath) {
@@ -2316,6 +2350,7 @@ function Get-StartPrompt {
         'User feature request: (not provided yet; gather or confirm during intake)'
     }
 
+    $resumePromptBlock = Get-CoordinatorResumePromptBlock -ProjectRoot $ResolvedProjectPath -ResolvedFeaturePath $ResolvedFeaturePath -SessionState $SessionState
     $teamRosterBlock = Get-TeamRosterPromptBlock -TeamRoster $TeamRoster
     $routingPlanBlock = Get-RoutingPlanPromptBlock -RoutingPlan $RoutingPlan
     $projectStateBlock = Get-ProjectStatePromptBlock -ProjectState $ProjectState
@@ -2329,6 +2364,8 @@ Project root: $ResolvedProjectPath
 Mode: $Mode
 $featureLine
 $requestLine
+
+$resumePromptBlock
 
 $teamRosterBlock
 
@@ -2943,6 +2980,7 @@ if ($staleSessionStateCheck.IsStale) {
 
 $validatedSessionState = $staleSessionStateCheck.SessionState
 $versionMismatchWarning = Get-SpecrewVersionMismatchWarning -ProjectRoot $resolvedProjectPath
+$psGalleryUpdateWarning = Get-PSGalleryUpdateWarning -ProjectRoot $resolvedProjectPath -SkipCheck:$SkipUpdateCheck
 
 if ($FeatureRequest -and -not $ResumeFeature) {
     $resolvedFeaturePath = $null
@@ -3029,7 +3067,8 @@ $promptContent = Get-StartPrompt `
     -RoutingPlan $routingPlan `
     -ProjectState $projectState `
     -BrownfieldDiscovery $brownfieldDiscovery `
-    -DeliveryGuidance $deliveryGuidance
+    -DeliveryGuidance $deliveryGuidance `
+    -SessionState $validatedSessionState
 
 $artifactPaths = Save-StartArtifacts `
     -ResolvedProjectPath $resolvedProjectPath `
@@ -3064,6 +3103,9 @@ if ($artifactPaths.TemplateRefreshArtifacts.Count -gt 0) {
 }
 if (-not [string]::IsNullOrWhiteSpace($versionMismatchWarning)) {
     Write-Output ("WARN: {0}" -f $versionMismatchWarning)
+}
+if (-not [string]::IsNullOrWhiteSpace($psGalleryUpdateWarning)) {
+    Write-Output ("WARN: {0}" -f $psGalleryUpdateWarning)
 }
 if (-not $useAutopilot) {
     Write-Info 'Specrew auto-loads the bootstrap with -i and stays out of autopilot until the request is grounded.'

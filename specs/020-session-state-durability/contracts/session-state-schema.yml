@@ -1,8 +1,37 @@
-# Session-State Schema v1
+schema: "v1"
+feature: "020-session-state-durability"
+updated_at: "2026-05-18T00:00:00Z"
 
-**Feature**: 020-session-state-durability  
-**Date**: 2026-05-19  
-**Schema Version**: v1  
-**Purpose**: YAML schema for session-state files and task progress tracking
+tasks_progress:
+  path: "specs/<feature>/iterations/<NNN>/tasks-progress.yml"
+  purpose: "Iteration-local execution truth for stable task progress across restarts and task-list regeneration."
+  document:
+    schema: "v1"
+    feature: "<feature>"
+    iteration: "<NNN>"
+    updated_at: "<ISO-8601 UTC timestamp>"
+    tasks:
+      "<task-id>":
+        title: "<task title from iteration plan>"
+        status: "pending | in-progress | complete | blocked"
+        started_at: "<ISO-8601 UTC timestamp | null>"
+        completed_at: "<ISO-8601 UTC timestamp | null>"
+        blocked_reason: "<string | null>"
+  invariants:
+    - "Task IDs are copied from iterations/<NNN>/plan.md and remain stable even if feature-level tasks.md is regenerated."
+    - "When status becomes in-progress, started_at is recorded if missing."
+    - "When status becomes complete, completed_at is recorded and blocked_reason is cleared."
+    - "When status becomes blocked, blocked_reason is required."
 
-[Content from earlier - see session-state-schema.yml file]
+version_check_cache:
+  path: ".specrew/version-check-cache.json"
+  purpose: "Shared PSGallery latest-version cache used by specrew start/init/update."
+  document:
+    schema: "v1"
+    latest_version: "<semantic version>"
+    checked_at: "<ISO-8601 UTC timestamp>"
+    cache_valid_until: "<ISO-8601 UTC timestamp>"
+    source: "cache | override | psgallery"
+  invariants:
+    - "Cache remains valid for 24 hours from checked_at."
+    - "Missing or stale cache entries trigger a fresh PSGallery probe unless skip controls are active."
