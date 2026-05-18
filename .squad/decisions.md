@@ -1,3 +1,52 @@
+# Decision: Feature 022 Scope Lock and Repair Map
+
+**Date**: 2026-05-18T21:45:00Z  
+**Boundary**: implementation-slice execution record  
+**Feature**: 022-hotfix-schema-tests (Hotfix + Schema Tests)  
+**Iteration**: 001  
+**Authority**: Alon Fliess (implementation authorized on the dedicated worktree/branch)  
+**Decision Type**: Scope lock, deferred-scope ledger, and approved repair map
+
+## Scope Lock
+
+- Keep Feature 022 bounded to the three confirmed defects only:
+  1. closeout identity schema parity in `.squad\identity\now.md`
+  2. seven-boundary lifecycle synchronization durability
+  3. actionable stale-state recovery in `specrew start`
+- Preserve the serial execution constraint across W002, W003, and W004 because they share session-state, restart, and boundary-sync surfaces.
+- Keep user-visible warnings on the touched PowerShell surfaces on `Write-Output`.
+- Stop at the implementation-complete handoff only; do not open review, retro, iteration-closeout, or feature-closeout as part of this slice.
+
+## Deferred Scope Ledger
+
+- **Deferred**: broader FR-005 schema-audit work outside `.squad\identity\now.md`
+- **Deferred**: Proposal 054 composition beyond keeping the three new regression suites independently runnable
+- **Deferred**: FR-019 fourth-bug follow-up outside the accepted three-bug hotfix scope
+- **Deferred**: any workflow redesign beyond stale-state recovery, ordered boundary sync, and closeout identity parity
+
+## Approved Repair Map
+
+1. **Foundational closeout writer** — `scripts\internal\sync-boundary-state.ps1` remains the single authority for prompt/context/identity/ledger updates, now preserving closeout parser fields, resolving `HEAD` to a durable commit hash, and delaying `.specify\feature.json` cleanup until after state is written.
+2. **Early lifecycle boundaries** — the existing specify / clarify / plan / tasks command wrappers remain the approved injection points and continue to invoke `.specify\extensions\specrew-speckit\scripts\sync-boundary-state.ps1` at boundary completion without widening the command surface.
+3. **Late lifecycle boundaries** — `scripts\specrew-review.ps1`, `extensions\specrew-speckit\scripts\scaffold-feature-closeout-dashboard.ps1`, and the shared sync helper own review-signoff / iteration-closeout / feature-closeout sequencing, including warning ledger entries when late boundaries arrive out of order.
+4. **Restart recovery** — `scripts\specrew-start.ps1` and `scripts\internal\coordinator-resume.ps1` now reuse the shared session-state parser, surface actionable A/B/C stale-state recovery, support `--recover`, and persist `recovery_session` diagnostics into the start artifacts.
+
+## Runtime Evidence Lane
+
+- New standalone regressions:
+  - `tests\integration\closeout-identity-schema-parity.tests.ps1`
+  - `tests\integration\lifecycle-boundary-sync.tests.ps1`
+  - `tests\integration\start-recovery-flow.tests.ps1`
+- Preserved regression coverage re-run for impacted legacy behavior:
+  - `tests\integration\stale-state-detection.tests.ps1`
+  - `tests\integration\boundary-sync-atomicity.tests.ps1`
+  - `tests\integration\specrew-start-end-to-end.ps1`
+  - `tests\integration\review-command.ps1`
+  - `tests\integration\iteration-resume.ps1`
+  - `tests\integration\start-command.ps1`
+
+---
+
 # Decision: Feature 021 Conditional Implementation-Start Authorization Record
 
 **Date**: 2026-05-18T09:48:42Z  

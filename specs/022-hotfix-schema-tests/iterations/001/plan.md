@@ -3,16 +3,16 @@
 **Schema**: v1
 **Feature**: 022-hotfix-schema-tests  
 **Branch**: 022-hotfix-schema-tests  
-**Status**: tasks-complete
+**Status**: executing
 **Capacity**: 9/20 story_points
 **Started**: 2026-05-18
-**Completed**: 2026-05-18
+**Completed**: (pending review)
 **Created**: 2026-05-18  
-**Updated**: 2026-05-18T18:47:44Z
+**Updated**: 2026-05-18T21:45:00Z
 
 ## Overview
 
-Iteration 001 is the only authorized delivery slice for Feature 022. It keeps the hotfix bounded to the three confirmed restart defects plus regression coverage. Tasks I1-T001 through I1-T016 have been generated and committed at `specs/022-hotfix-schema-tests/tasks.md` (tasks-boundary commit a135e11dd3ab7983d2f2fa8438303cbd279443ee).
+Iteration 001 is the only authorized delivery slice for Feature 022. It kept the hotfix bounded to the three confirmed restart defects plus regression coverage. Implementation work for I1-T001 through I1-T016 is complete on the current branch, and the slice is now awaiting a human review-boundary handoff.
 
 **Scope**: FR-001 through FR-019 inside one iteration only. This iteration plan allocates execution capacity and grouped work packages, which have been decomposed into executable tasks at the feature-level tasks artifact.
 
@@ -29,11 +29,11 @@ Total effort estimate: 9.0 Story Points (+ 1.0 SP repair reserve)
 
 | Task | Title | Requirement | Story | Effort | Owner | Owner File Globs | Status | Agent | Actual | Verdict |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| I1-W001 | Scope lock, contracts, and stewardship-role reconciliation | FR-005, FR-014, FR-016..FR-019 | US1, US2, US3 | 1.0 | Spec Steward | `specs/022-hotfix-schema-tests/**`, `.squad/decisions.md` | planned | Spec Steward | 0.0 | PLANNED |
-| I1-W002 | Closeout identity schema parity repair | FR-001..FR-004, FR-010 | US3 | 2.0 | Implementer | `extensions/specrew-speckit/scripts/scaffold-feature-closeout-dashboard.ps1`, `scripts/internal/sync-boundary-state.ps1`, `.squad/identity/now.md` | planned | Implementer | 0.0 | PLANNED |
-| I1-W003 | Seven-boundary sync restoration and observability | FR-006..FR-010 | US2 | 2.5 | Implementer | `extensions/specrew-speckit/commands/speckit.specrew-speckit.sync-*.md`, `scripts/internal/sync-boundary-state.ps1`, `.squad/decisions.md` | planned | Implementer | 0.0 | PLANNED |
-| I1-W004 | Restart recovery UX and `--recover` lane | FR-011..FR-015 | US1 | 2.0 | Implementer | `scripts/specrew-start.ps1`, `.specrew/start-context.json`, `.specrew/last-start-prompt.md` | planned | Implementer | 0.0 | PLANNED |
-| I1-W005 | Standalone regression suites and hardening evidence | FR-004, FR-009, FR-015, SC-001..SC-005 | US1, US2, US3 | 1.5 | Reviewer | `tests/integration/*.ps1`, `specs/022-hotfix-schema-tests/iterations/001/quality/hardening-gate.md` | planned | Reviewer | 0.0 | PLANNED |
+| I1-W001 | Scope lock, contracts, and stewardship-role reconciliation | FR-005, FR-014, FR-016..FR-019 | US1, US2, US3 | 1.0 | Spec Steward | `specs/022-hotfix-schema-tests/**`, `.squad/decisions.md` | done | Spec Steward | 1.0 | DONE |
+| I1-W002 | Closeout identity schema parity repair | FR-001..FR-004, FR-010 | US3 | 2.0 | Implementer | `extensions/specrew-speckit/scripts/scaffold-feature-closeout-dashboard.ps1`, `scripts/internal/sync-boundary-state.ps1`, `.squad/identity/now.md` | done | Implementer | 2.0 | DONE |
+| I1-W003 | Seven-boundary sync restoration and observability | FR-006..FR-010 | US2 | 2.5 | Implementer | `extensions/specrew-speckit/commands/speckit.specrew-speckit.sync-*.md`, `scripts/internal/sync-boundary-state.ps1`, `.squad/decisions.md` | done | Implementer | 2.5 | DONE |
+| I1-W004 | Restart recovery UX and `--recover` lane | FR-011..FR-015 | US1 | 2.0 | Implementer | `scripts/specrew-start.ps1`, `.specrew/start-context.json`, `.specrew/last-start-prompt.md` | done | Implementer | 2.0 | DONE |
+| I1-W005 | Standalone regression suites and hardening evidence | FR-004, FR-009, FR-015, SC-001..SC-005 | US1, US2, US3 | 1.5 | Reviewer | `tests/integration/*.ps1`, `specs/022-hotfix-schema-tests/iterations/001/quality/hardening-gate.md` | done | Reviewer | 1.5 | DONE |
 
 ## Effort Model
 
