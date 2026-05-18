@@ -412,7 +412,20 @@ function Get-TaskProgressSummary {
         [AllowNull()][string]$ResolvedFeaturePath
     )
 
-    $state = Sync-IterationTaskProgress -ProjectRoot $ProjectRoot -FeatureRef $FeatureRef -IterationNumber $IterationNumber -ResolvedFeaturePath $ResolvedFeaturePath
+    $effectiveFeatureRef = Resolve-TaskProgressFeatureRef -ProjectRoot $ProjectRoot -FeatureRef $FeatureRef -ResolvedFeaturePath $ResolvedFeaturePath
+    $planPath = Get-IterationPlanPath -ProjectRoot $ProjectRoot -FeatureRef $effectiveFeatureRef -IterationNumber $IterationNumber -ResolvedFeaturePath $ResolvedFeaturePath
+    $progressPath = Get-IterationTaskProgressPath -ProjectRoot $ProjectRoot -FeatureRef $effectiveFeatureRef -IterationNumber $IterationNumber -ResolvedFeaturePath $ResolvedFeaturePath
+    $state = if (Test-Path -LiteralPath $planPath -PathType Leaf) {
+        Sync-IterationTaskProgress -ProjectRoot $ProjectRoot -FeatureRef $effectiveFeatureRef -IterationNumber $IterationNumber -ResolvedFeaturePath $ResolvedFeaturePath
+    }
+    else {
+        [pscustomobject]@{
+            Path       = $progressPath
+            FeatureRef = $effectiveFeatureRef
+            Iteration  = $IterationNumber
+            Tasks      = (Get-TaskProgressState -Path $progressPath).Tasks
+        }
+    }
     $complete = New-Object System.Collections.Generic.List[object]
     $inProgress = New-Object System.Collections.Generic.List[object]
     $pending = New-Object System.Collections.Generic.List[object]
