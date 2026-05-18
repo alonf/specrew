@@ -4,6 +4,10 @@ Retroactive alpha release history for shipped Specrew features. `.specrew\config
 is the canonical source for the active version; this file records the feature
 baseline that each release number represents.
 
+## Unreleased
+
+- Feature 022 (in flight): F-020 implementation hotfix + schema parity tests. Fixes three production bugs surfaced post-F-021 ship: (1) closeout-helper schema mismatch — `Set-FeatureCloseoutIdentityNow` writes human-readable frontmatter without the `session_state_*` machine-readable fields the stale-state validator requires; (2) boundary-sync hook-coverage gap — `Invoke-SpecrewBoundaryStateSync` not invoked at all 7 lifecycle boundaries (last sync entry for F-021 was at plan-boundary); (3) stale-state recovery UX broken — `specrew start` prints A/B/C options without accepting input. Adds three standalone PowerShell integration tests at `tests/integration/closeout-identity-schema-parity.tests.ps1`, `tests/integration/lifecycle-boundary-sync.tests.ps1`, and `tests/integration/start-recovery-flow.tests.ps1` that compose into Proposal 054's pre-merge gate scenarios.
+
 ## 0.21.0 - Specrew Slash-Command Surface
 
 - Feature 021: Introduced first-class `/specrew.*` slash-command surface with seven
@@ -21,120 +25,29 @@ baseline that each release number represents.
   namespace collisions.
 - Minimum compatibility pin to 0.21.0; incompatible baselines detected and reported
   with upgrade guidance.
-- Feature-closeout Phase A complete (governance, documentation, version updates).
-  Shipping PR: #260 (`Feature 021: Specrew slash-command surface`).
+- Shipping PR: #260 (`Feature 021: Specrew slash-command surface`).
 
-## Unreleased
+## 0.20.0 - Session-State Durability & In-Flight Progress Tracking
 
-- Added relaxed `.markdownlint.json` config (commits 82a90db + b850bd8)
-  to unblock CI which had been failing on every push to main for 3+ days
-  due to 1,274 accumulated markdown lint violations. Config disables
-  high-volume style-mismatch rule classes (MD013, MD022, MD024, MD025-
-  with-frontmatter-exception, MD031, MD032, MD036, MD040, MD060) reducing
-  violations 1,274 → 291. Config-only, no markdown content changes
-  (avoids merge-conflict risk with in-flight F-019 Iter 1 implementation).
-  Deliberate band-aid; methodologically-clean fix follows in Proposal 034.
-- Promoted Proposal 034 Markdown Lint Cleanup and Strict-Defaults
-  Restoration to the `proposals/` surface (status: draft, phase-2,
-  ~12 SP). Sweeps all ~1,565 markdown lint violations (291 genuine +
-  ~1,274 currently masked by the relaxed config), removes the
-  `.markdownlint.json` relaxation, hardens CI with PR-diff annotations,
-  adds Squad coordinator markdown-strict-defaults invariant, and adds a
-  soft validator rule for markdown drift. Sequenced AFTER F-019
-  Distribution Module (both iterations) closes — markdown sweep on
-  main today would conflict with F-019's heavy markdown-surface activity.
-  Roadmap Phase 2 planned_effort_sp bumped 235 → 247 to absorb.
-- Split Proposal 031 / Feature 019 Specrew Distribution Module from a
-  single-iteration MVP (~12 SP) into a two-iteration feature (~27 SP)
-  to make cross-platform support explicit and verifiable before the
-  first PSGallery publish. **Iteration 1** (in flight): Windows-correct
-  module structure + end-to-end Windows validation; PSGallery publish
-  workflow exists but is gated. **Iteration 2** (planned, ~10-15 SP):
-  Cross-Platform Hardening — sweep all PowerShell scripts for the 104+
-  embedded `\` path-string occurrences identified 2026-05-16, replace
-  with multi-arg `Join-Path` or forward slashes, end-to-end verify on
-  Linux (Ubuntu via WSL using Copilot CLI as test harness), add
-  `.github/workflows/cross-platform-validation.yml` CI matrix, update
-  README + getting-started docs to claim cross-platform support, and
-  fire the first real PSGallery publish at Iteration 2 feature-closeout.
-  Rationale: shipping a Windows-only module to PSGallery would deliver
-  a broken first impression to Linux/macOS users; Iteration 2 gates
-  the public publish behind cross-platform verification. Roadmap
-  Phase 2 planned_effort_sp bumped 220 → 235 to absorb the additional
-  iteration scope. Proposal 031 estimated-sp 12 → 27; INDEX.md updated
-  accordingly.
-- Promoted Proposal 033 Specrew Governance CLI to the `proposals/` surface
-  with full source-spec content (status: draft, phase-2, ~18 SP). Captures
-  the governance-of-governance gap surfaced 2026-05-16 evening during the
-  Feature 019 clarify cycle: roadmap updates, proposal lifecycle, and
-  feature creation lack structured user-facing CLI surfaces beyond
-  ad-hoc edits and commanding Squad. Five pillars: roadmap CLI,
-  propose CLI (with load-bearing `propose specify` graduating a draft
-  proposal to an active feature spec), feature CLI (deferred to
-  Iteration 2), validator integration, and "Specrew for Project
-  Maintainers" documentation. ABSORBS Proposal 028 scope. Phase 2
-  priority slot between Feature 019 Distribution Module and the Phase 3
-  Multi-Host Runtime Abstraction CORE anchor; ships before Multi-Host
-  CORE so the abstraction work has a real CLI consumer to design
-  against. Roadmap Phase 2 planned_effort_sp bumped from 200 to 220 SP
-  to absorb this feature.
-- Added `proposals/` surface as Specrew's public design pipeline. Initial
-  promotion: 29 numbered proposals plus supporting README, INDEX, and
-  template, ranging from shipped features (001-007) to draft features
-  (008-012) to candidate ideas (013-029). Pattern follows Rust RFCs, Python
-  PEPs, and TC39 proposals. A future "Public Proposals Surface" feature
-  (Proposal 028) will harden the lifecycle integration with soft validators
-  and auto status transitions.
-- Pruned stale Recent Changes entry for 014-handoff-format-scoping in
-  `.github/copilot-instructions.md` to keep the rolling window at the two
-  most recent features.
-- Promoted three additional proposals to the `proposals/` surface
-  reflecting post-F-017/F-018 strategic decisions: 030 Quality Hardening
-  Bundle (Form-vs-Meaning Verification, ~35 SP across 4 sub-components),
-  031 Specrew Distribution Module (PowerShell Gallery, ~12 SP), and 032
-  Specrew Slash-Command Surface (`/specrew.*` first-class commands, ~7 SP;
-  031+032 recommended combined). Updated `INDEX.md` to move Proposal 009
-  (Velocity Dashboard) from Draft to Shipped as feature-017 and add the
-  three new proposals under Draft with phase-2 placement. Pre-promotion
-  curation removed 4 leaked private references (memory entry paths +
-  draft source-spec paths) following the May 15 promotion pattern.
-- Bumped pinned external tooling in `.specrew/config.yml`: Spec Kit
-  `0.8.4` → `0.8.11` (7 upstream patches including a PowerShell
-  UTF-8-without-BOM fix and extension registration hardening) and Squad
-  `0.9.1` → `0.9.4` (5 weeks of upstream work including new built-in
-  skills/agents, `squad loop` and `squad config model` commands, a
-  StorageProvider abstraction, `/fleet` parallel dispatch, and dozens
-  of bug fixes). Bumped pre-public-flip so any regression has detection
-  runway. Validator green post-bump (38 PASS, 0 FAIL, baseline WARN
-  only); Specrew customizations to `.github/agents/squad.agent.md` and
-  `.squad/templates/` were not touched by the Squad upgrade. Two latent
-  bugs in Specrew's own update tooling surfaced during this chore and
-  are queued as follow-up: (1) `scripts/specrew-update.ps1` write-back
-  logic rewrites `specrew_version` to `0.1.0-dev` on every `--spec-kit`
-  or `--squad` invocation; (2) `extensions/specrew-speckit/extension.yml`
-  version pin was never bumped past `0.1.0-dev` during Feature 015
-  Public-Readiness Pass and is the upstream source that drives bug (1).
-  This commit manually preserves `specrew_version: 0.18.0` after the
-  bumps.
-- Closed out both bugs queued in the previous entry. (1) Bumped
-  `extensions/specrew-speckit/extension.yml` and its deployed mirror
-  `.specify/extensions/specrew-speckit/extension.yml` from `0.1.0-dev`
-  to `0.18.0` to match the canonical `.specrew/config.yml`. (2) Fixed
-  `scripts/specrew-update.ps1` to only rewrite `specrew_version` when
-  the user explicitly requests a Specrew update (`--specrew` or
-  `--all`); previously `--spec-kit` and `--squad` invocations
-  downgraded `specrew_version` to the stale extension-manifest pin on
-  every run. (3) Extended Rule 15 (feature-closeout version management)
-  in `extensions/specrew-speckit/squad-templates/coordinator/specrew-governance.md`
-  and the deployed mirrors at `.github/agents/squad.agent.md` and
-  `.squad/templates/squad.agent.md` to enumerate
-  `extensions/specrew-speckit/extension.yml` as a required bump target,
-  preventing future drift. Empirically verified: `specrew update --info`
-  reports Specrew current `0.18.0` (was `0.1.0-dev`); rerunning
-  `specrew update --spec-kit` no longer mutates `specrew_version`;
-  validator green (38 PASS, 0 FAIL, baseline WARN only). Test gap noted
-  for follow-up: `tests/integration/update-command.ps1` lacks coverage
-  asserting `--spec-kit` and `--squad` do not modify `specrew_version`.
+- Feature 020: Made session state durable and surfaced in-flight progress so Squad resumes cleanly after reboot, restart, or closeout. Shipped across two iterations (31 SP delivered, 0 SP variance).
+- Iteration 1 (16 SP) — boundary-event state synchronization at all 7 lifecycle boundaries via `Invoke-SpecrewBoundaryStateSync` and `scripts/internal/sync-boundary-state.ps1`; stale-state detection at `specrew start` (merged-feature, missing-branch, missing-authorization, cross-file mismatch cases); module-vs-project version mismatch warning with exact "Module version mismatch detected" capturable text via `Write-Output`.
+- Iteration 2 (15 SP) — durable task-progress tracking in `tasks-progress.yml`; cross-worktree awareness via `specrew where --worktrees` derived from `git worktree list`; substantive welcome-back prompts at `specrew start` including last completed task, in-progress task, and validator warning summary; PSGallery latest-version check (cached daily, skippable via `--skip-update-check` flag or `SPECREW_SKIP_UPDATE_CHECK` env var, silent on network failure).
+- New internal helpers under `scripts/internal/`: `sync-boundary-state.ps1`, `task-progress.ps1`, `worktree-awareness.ps1`, `version-check.ps1`, `coordinator-resume.ps1`. Session-state schema v1 contract at `specs/020-session-state-durability/contracts/session-state-schema.yml`.
+- Integration test coverage: `tests/integration/boundary-sync-atomicity.tests.ps1`, `stale-state-detection.tests.ps1`, `version-checks.tests.ps1`, `task-progress-tracking.tests.ps1`, `cross-worktree-awareness.tests.ps1`, `psgallery-check.tests.ps1` (6 suites green at closeout).
+- Phase 0 chore: `Set-FeatureCloseoutIdentityNow` helper establishes the closeout pattern that updates `.squad/identity/now.md` at feature-closeout.
+- Shipping PR: #225 (`Feature 020: Session-State Durability & In-Flight Progress Tracking into main`).
+
+## 0.19.0 - Specrew Distribution Module (PowerShell Gallery)
+
+- Feature 019: Packaged Specrew as a first-class PowerShell module installable from PowerShell Gallery, replacing the previous clone-and-PATH onboarding friction. Shipped across two iterations.
+- Iteration 1 — Windows-correct module structure (`Specrew.psd1` manifest + `Specrew.psm1` entry point); exported module functions following PowerShell verb conformance: `Invoke-Specrew`, `Initialize-Specrew`, `Start-Specrew`, `Update-Specrew`, `Show-SpecrewReview`, `Invoke-SpecrewTeam`, `Show-SpecrewStatus` plus CLI-friendly aliases (`specrew`, `specrew-init`, `specrew-start`, `specrew-update`, etc.). Template + resource bundling so `specrew init` bootstraps user projects from the installed module path. `specrew update` template-refresh preserves user-edited files.
+- Iteration 2 — Cross-Platform Hardening verified on Windows 11, WSL Ubuntu, Linux Ubuntu, and macOS via PowerShell 7+. Swept 104+ embedded `\` path strings across 7 entry-point scripts, replaced with multi-arg `Join-Path` or forward slashes. Added `.github/workflows/cross-platform-validation.yml` running validator + integration tests on `ubuntu-latest` and `macos-latest`. Deferred-launch architecture via `$env:SPECREW_DEFERRED_LAUNCH_FILE` resolves the Linux PowerShell TTY stripping that exits Copilot CLI immediately when launched from script context. Documentation updated to claim "Tested on Windows + Linux (Ubuntu via WSL)" replacing the implicit Windows-only baseline.
+- Publishing workflow: `.github/workflows/publish-module.yml` fires on `v*.*` tag push to publish to PSGallery. Workflow exists and is wired; first real publish deferred to weekend public-flip.
+- Bumped pinned external tooling: Spec Kit `0.8.4` → `0.8.11` (7 upstream patches including PowerShell UTF-8-without-BOM fix and extension-registration hardening); Squad `0.9.1` → `0.9.4` (5 weeks of upstream work including new built-in skills/agents, `squad loop` and `squad config model` commands, StorageProvider abstraction, `/fleet` parallel dispatch).
+- Fixed two latent bugs in update tooling: (1) `scripts/specrew-update.ps1` no longer rewrites `specrew_version` on `--spec-kit` or `--squad` invocations (was downgrading to `0.1.0-dev` from stale extension manifest); (2) `extensions/specrew-speckit/extension.yml` and its `.specify/extensions/specrew-speckit/extension.yml` mirror bumped from `0.1.0-dev` to the canonical version. Rule 15 extended to enumerate `extension.yml` as a required bump target at feature-closeout.
+- Added the public `proposals/` surface as Specrew's design pipeline (initial promotion: 29 numbered proposals + README + INDEX + template). Pattern follows Rust RFCs, Python PEPs, TC39 proposals.
+- Markdown lint config relaxed (`.markdownlint.json`) to unblock CI; methodologically-clean fix queued as Proposal 034.
+- Shipping PR: #189 (`Merge pull request #189 from alonf/019-specrew-distribution-module`).
 
 ## 0.18.0
 
