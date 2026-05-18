@@ -1,3 +1,66 @@
+# Decision: Feature 021 Gate Sequence Authorization Record
+
+**Date**: 2026-05-18  
+**Boundary**: Gate-sequence-initiated  
+**Feature**: 021-specrew-slash-commands (Specrew Slash-Command Surface)  
+**Authority**: Alon Fliess (human authorization via Session Scribe instruction)  
+**Decision Type**: Explicit authorization to run combined after-tasks + before-implement gate sequence
+
+## Summary
+
+Human authorization granted by Alon Fliess to run the combined `/speckit.specrew-speckit.after-tasks` + `/speckit.specrew-speckit.before-implement` gate sequence to validate Feature 021 Iteration 001 artifacts before implementation. The sequence executed successfully and surfaced one validator-identified concern requiring human disposition.
+
+## Gate Sequence Results
+
+### After-Tasks Validator: ⚠ TRACEABILITY ISSUE FLAGGED
+
+**Status**: 11/12 tasks have valid traceability; 1 task has ambiguous requirements mapping
+
+**Task I1-T012 (Hardening evidence and final traceability review)** flagged for:
+- **Issue**: `FR-025` traces to governance decision recording in `.squad/decisions.md`, but the task targets only `hardening-gate.md`
+- **Issue**: `FR-026` traces to pre-planning scaffold creation, but `hardening-gate.md` already exists and the task is a post-test evidence activity
+- **Issue**: `SC-003` and `SC-004` (setup/refresh delivery outcomes) map more directly to `I1-T008`/`I1-T009` than to an evidence-recording task
+
+**Validator recommendation**: Correct `I1-T012` traceability before execution by:
+- Either retargeting the task to explicitly include `.squad/decisions.md` updates if `FR-025` is intended
+- Or removing `FR-025` from the Trace field
+- Remove or restate `FR-026` as pre-planning scope
+- Consider moving `SC-003`/`SC-004` trace references to `I1-T008` and/or `I1-T009`
+
+**Validator note**: No orphaned tasks, no missing owners, all 12 tasks include effort estimates; role alignment is correct.
+
+### Before-Implement Validator: 🛑 NOT READY FOR IMPLEMENTATION
+
+**Status**: Blocking issue — tasks boundary not yet approved
+
+**Finding**: The active iteration artifacts remain at the "tasks-complete boundary", not the "implementation authorization boundary".
+
+**Blocker**: `.squad/decisions.md` currently records only `/speckit.tasks` authorization and explicitly states:
+- "Human review of the tasks-complete artifact set before implementation"
+- "No implementation boundary has been opened"
+
+**What is ready**:
+- Active iteration is correctly scoped to Iteration 001 only
+- Phase 1 distinction confirmed (no Phase 2 scope)
+- Hardening gate exists and covers Phase 1 quality bar with `ready` verdict
+
+**Next required action**: Human reviewer must approve the tasks-complete artifact set and record explicit implementation authorization in `.squad/decisions.md` before implementation can proceed.
+
+## Validator Gaps Observed
+
+Per the human authorization scope:
+1. **Feature-level vs iteration-level tasks.md location** ✅ Verified — only iteration-scoped `tasks.md` exists; no competing feature-level artifact
+2. **Baseline role alignment** ✅ Verified — Spec Steward, Implementer, Reviewer mappings consistent with governance table
+3. **FR/SC traceability completeness** ⚠ One task (`I1-T012`) has ambiguous mapping requiring human disposition
+
+## Boundary Status
+
+**Current**: Tasks-complete artifact set awaiting human approval  
+**Halted at**: Before-implement REPAIR-NEEDED status (due to I1-T012 traceability ambiguity + implementation authorization requirement)  
+**Do not proceed to**: Implementation until human review and explicit approval recorded
+
+---
+
 # Decision: Feature 021 Tasks Decomposition Authorized
 
 **Date**: 2026-05-18
