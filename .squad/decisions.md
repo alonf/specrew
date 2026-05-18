@@ -13981,3 +13981,76 @@ The Reviewer role successfully delivered the independent review boundary pass fo
 > - Before each handoff, verify git rev-parse HEAD == git rev-parse origin/021-specrew-slash-commands
 > 
 > Proceed.
+
+---
+
+# Decision: Reviewer Feature 021 Iteration 001 Iteration-Closeout Boundary
+
+**Date**: 2026-05-18T14:53:48Z  
+**Boundary**: iteration-closeout (final iteration-layer boundary before feature-closeout decision point)  
+**Feature**: 021-specrew-slash-commands (Specrew Slash-Command Surface)  
+**Iteration**: 001  
+**Authority**: Alon Fliess (human authorization via spawn manifest request for Reviewer to finalize iteration-closeout only)  
+**Decision Type**: Iteration-closeout completion and feature-closeout deferral record
+
+## Context
+
+Feature 021 Iteration 001 reached the authorized iteration-closeout boundary after accepted review and completed retro, with feature-closeout explicitly unauthorized. All iteration-scoped work packages (I1-W001..I1-W004) are complete; the tracker now routes `/specrew` commands with full v1 surface integration; the exact governance validator plus six Feature 021 test suites all passed on the closeout-candidate tree.
+
+## Decision
+
+**Record Iteration 001 as complete on the current tree, preserve only the truthful closeout packet artifacts required for validator compliance, and stop before feature-closeout.**
+
+### Retained Closeout Artifacts
+- `iterations\001\closeout.md` — iteration completion summary, deliverables evidence, validation replay, and carry-forward boundary statement
+- `iterations\001\dashboard.md` — updated snapshot of iteration metrics and completion status
+- `iterations\001\code-map.md` — reviewed artifact cross-reference for closeout boundary
+- `iterations\001\coverage-evidence.md` — test suite evidence summary
+- `iterations\001\reviewer-index.md` — reviewer-facing navigation guide
+- `iterations\001\review-diagrams.md` — visual context for closure
+
+### Omitted Artifacts (Truthfulness Rationale)
+- `dependency-report.md` — omitted because no dependency manifest files changed relative to baseline ref `d80fd4b`; nothing truthful to report
+- `current-architecture.md` — omitted because it adds no new truthful closeout signal beyond the iteration-local packet already retained
+
+## Validation Evidence
+
+- ✅ Re-ran `validate-governance.ps1 -ProjectPath . -IterationPath .\specs\021-specrew-slash-commands\iterations\001` — PASS
+- ✅ Re-ran `slash-command-routing.tests.ps1` — PASS
+- ✅ Re-ran `slash-command-distribution.tests.ps1` — PASS
+- ✅ Re-ran `slash-command-compatibility.tests.ps1` — PASS
+- ✅ Re-ran `slash-command-discovery.tests.ps1` — PASS
+- ✅ Re-ran `slash-command-coexistence.tests.ps1` — PASS
+- ✅ Re-ran `slash-command-arg-whitelist.tests.ps1` — PASS
+
+All seven lanes passed on the closeout tree. Only non-blocking pre-existing warnings remain (Rule 15 version mismatch, pre-existing missing-dashboard warnings for closed Feature 019 iterations).
+
+## Scope Lock
+
+**Stop at iteration-closeout. Do NOT open feature-closeout.**
+
+Feature-closeout still requires separate explicit human authorization. The next valid action is to wait for fresh human decision before any feature-level closing work.
+
+## Runtime Evidence
+
+- **Requested role / work item**: Reviewer / Feature 021 Iteration 001 iteration-closeout
+- **Requested agent**: Reviewer
+- **Actual agent**: Reviewer
+- **Model**: claude-opus-4.7
+- **Assignment honored**: yes
+- **Fallback reason**: none
+
+## Impact
+
+- Iteration 001 delivery is closed at the iteration layer
+- Feature 021 minimal v1 surface is delivered and integrated with the runtime
+- Feature-closeout decision remains explicitly deferred and unauthorized
+- Next step: await human authorization for feature-closeout if feature-level wrap-up is needed
+
+## Cross-References
+
+- Iteration plan: `specs\021-specrew-slash-commands\iterations\001\plan.md`
+- Iteration state: `specs\021-specrew-slash-commands\iterations\001\state.md`
+- Iteration closeout: `specs\021-specrew-slash-commands\iterations\001\closeout.md`
+- Session log: `.squad\log\20260518T145348Z-feature-021-iteration-001-closeout.md`
+- Orchestration log: `.squad\log\20260518T145348Z-orchestration-feature-021-iteration-001-closeout.md`

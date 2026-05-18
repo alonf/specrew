@@ -3,7 +3,7 @@
 **Schema**: v1
 **Feature**: 021-specrew-slash-commands  
 **Branch**: 021-specrew-slash-commands  
-**Status**: retro-complete
+**Status**: complete
 **Capacity**: 7/20 story_points
 **Started**: 2026-05-18
 **Completed**: 2026-05-18
@@ -75,9 +75,14 @@ Total effort estimate: 6.3 Story Points (+ 0.7 SP repair reserve)
 - **Planning approval**: Alon Fliess authorized `/speckit.plan` for Feature 021.
 - **Clarify handoff**: accepted clarify-completion boundary commit `934da76`.
 - **Scope source**: file:///C:/Dev/Specrew/specs/021-specrew-slash-commands/spec.md remains authoritative for this iteration plan.
-- **Next boundary**: human review of the before-implement gate outcome before `/speckit.implement`.
+- **Review status**: accepted in `iterations\001\review.md`; the exact governance validator plus the six required Feature 021 suites reran green at review and again on the iteration-closeout tree.
+- **Retro status**: complete in `iterations\001\retro.md`; eight substantive lessons are preserved without widening scope.
+- **Closeout status**: iteration-closeout is complete on the current tree; `closeout.md`, `dashboard.md`, and the truthful reviewer closeout packet are now present, and feature-closeout remains explicitly unauthorized.
+- **Next boundary**: stop at iteration-closeout and wait for fresh human authorization before any feature-closeout work.
 
 ## Notes
 
 - This plan intentionally uses grouped work packages instead of executable tasks so the planning boundary remains intact.
 - The baseline role mapping in file:///C:/Dev/Specrew/specs/021-specrew-slash-commands/plan.md is the authoritative interpretation for stewardship labels at before-implement time.
+- Reviewer closeout packet retained for truthful closeout/validator compliance: `code-map.md`, `coverage-evidence.md`, `reviewer-index.md`, `review-diagrams.md`, and `dashboard.md`.
+- `dependency-report.md` is intentionally omitted because no dependency manifest files changed relative to baseline ref `d80fd4b`; `current-architecture.md` is intentionally omitted because it adds no new truthful closeout signal beyond the iteration-local packet.
