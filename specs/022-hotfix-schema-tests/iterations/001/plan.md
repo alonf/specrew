@@ -3,16 +3,17 @@
 **Schema**: v1
 **Feature**: 022-hotfix-schema-tests  
 **Branch**: 022-hotfix-schema-tests  
-**Status**: executing
+**Status**: reviewing
 **Capacity**: 9/20 story_points
 **Started**: 2026-05-18
-**Completed**: (pending review)
+**Completed**: 2026-05-19
+**Review Completed**: 2026-05-19
 **Created**: 2026-05-18  
-**Updated**: 2026-05-18T21:45:00Z
+**Updated**: 2026-05-19T02:16:37Z
 
 ## Overview
 
-Iteration 001 is the only authorized delivery slice for Feature 022. It kept the hotfix bounded to the three confirmed restart defects plus regression coverage. Implementation work for I1-T001 through I1-T016 is complete on the current branch, and the slice is now awaiting a human review-boundary handoff.
+Iteration 001 is the only authorized delivery slice for Feature 022. It stayed bounded to the three confirmed restart defects plus regression coverage, and review-verdict-signoff is now complete on the current branch without opening retro or closeout.
 
 **Scope**: FR-001 through FR-019 inside one iteration only. This iteration plan allocates execution capacity and grouped work packages, which have been decomposed into executable tasks at the feature-level tasks artifact.
 
@@ -83,11 +84,13 @@ Total effort estimate: 9.0 Story Points (+ 1.0 SP repair reserve)
 - **Planning approval**: Alon Fliess authorized Feature 022 planning.
 - **Tasks completed**: 16 executable tasks generated and committed at `specs/022-hotfix-schema-tests/tasks.md` (tasks-boundary commit a135e11dd3ab7983d2f2fa8438303cbd279443ee).
 - **Scope source**: `specs/022-hotfix-schema-tests/spec.md` remains authoritative for this iteration plan.
-- **Next boundary**: before-implement validator review gate before `/speckit.implement`.
+- **Review status**: review-verdict-signoff completed on HEAD `3b5f22bce192246503e1206c9cddd2bae1bf19d2`; the governance validator passed and all nine required integration suites reran green.
+- **Next boundary**: retro-boundary only, and only after fresh authorization.
 
 ## Notes
 
 - This plan was initially created with grouped work packages to keep the planning boundary intact.
 - Tasks I1-T001 through I1-T016 have been generated from these work packages and are now available at `specs/022-hotfix-schema-tests/tasks.md` (commit a135e11dd3ab7983d2f2fa8438303cbd279443ee).
 - The baseline-role mapping in `specs/022-hotfix-schema-tests/plan.md` is the authoritative stewardship-label interpretation for implementation planning.
-- The hardening gate records planning-time analysis as complete; runtime evidence remains pending post-implementation.
+- The hardening gate records implementation evidence and the review boundary reran that evidence green.
+- Retro, iteration-closeout, and feature-closeout remain intentionally unopened from this plan state.

@@ -1,3 +1,46 @@
+# Decision: Feature 022 Review Verdict Signoff
+
+**Date**: 2026-05-19T02:16:37Z  
+**Boundary**: review-verdict-signoff  
+**Feature**: 022-hotfix-schema-tests (Hotfix + Schema Tests)  
+**Iteration**: 001  
+**Authority**: Alon Fliess (review requested on the dedicated worktree/branch)  
+**Decision Type**: Independent review verdict and boundary stop
+
+## Verdict
+
+- **Review Verdict**: APPROVED
+- **Implementation Ref**: `3b5f22bce192246503e1206c9cddd2bae1bf19d2`
+- **Boundary Scope**: FR-001..FR-019, SC-001..SC-005, US1..US3
+
+## Evidence Rerun
+
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File .\extensions\specrew-speckit\scripts\validate-governance.ps1 -ProjectPath . -IterationPath .\specs\022-hotfix-schema-tests\iterations\001`
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File .\tests\integration\closeout-identity-schema-parity.tests.ps1`
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File .\tests\integration\lifecycle-boundary-sync.tests.ps1`
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File .\tests\integration\start-recovery-flow.tests.ps1`
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File .\tests\integration\stale-state-detection.tests.ps1`
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File .\tests\integration\boundary-sync-atomicity.tests.ps1`
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File .\tests\integration\specrew-start-end-to-end.ps1`
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File .\tests\integration\review-command.ps1`
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File .\tests\integration\iteration-resume.ps1`
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File .\tests\integration\start-command.ps1`
+
+## Review Findings
+
+- Closeout identity schema parity is restored without widening scope beyond `.squad\identity\now.md`.
+- All seven lifecycle boundaries record ordered sync evidence and keep late-boundary drift observable.
+- `specrew start` now supports actionable stale-state recovery and explicit `--recover` entry while preserving approval semantics.
+- Hotfix governance remained single-iteration only and kept the broader audit / fourth-bug follow-up explicitly deferred.
+- The validator emitted non-blocking `missing-dashboard-artifact` warnings; review remained authorized to stop without dashboard work.
+
+## Boundary Stop
+
+- Retro-boundary, iteration-closeout, and feature-closeout remain unopened.
+- Stop after recording this review verdict and the corresponding `specs\022-hotfix-schema-tests\iterations\001\review.md` artifact.
+
+---
+
 # Decision: Feature 022 Scope Lock and Repair Map
 
 **Date**: 2026-05-18T21:45:00Z  
