@@ -1,3 +1,74 @@
+# Decision: Implementer Feature 020 Iteration 002 Bounded PSGallery Warning Repair with Fresh 3-Cycle Budget
+
+**Date**: 2026-05-24T00:12:00Z  
+**Boundary**: Iteration-execution repair (active PSGallery warning repair phase)  
+**Feature**: 020-session-state-durability (Session-State Durability & In-Flight Progress Tracking)  
+**Authority**: Alon Fliess (human authorization via Spawn Manifest)  
+**Decision Type**: Bounded scope authorization & PSGallery repair budget enforcement
+
+## Context
+
+Feature 020 Iteration 002 is authorized for bounded repair of a PSGallery warning regression affecting test suite stability. A fresh, time-limited repair session with strict budget constraints has been authorized to diagnose, fix, and verify the defect while preserving all existing scope isolation guarantees.
+
+## Decision
+
+**Authorize fresh 3-cycle repair budget per failing test identity, with drift-log entry per attempt and 30-minute wall-clock guardrail for PSGallery warning regression.**
+
+### Repair Budget Authorization
+
+- **Per-Test Budget**: Fresh 3 repair attempts per failing PSGallery test identity
+- **Drift Logging**: Each repair attempt logged with timestamp, test identity, and status in `.squad/log/`
+- **Wall-Clock Guardrail**: 30-minute session limit per repair cycle
+- **Scope**: Diagnose PSGallery warning failure, fix defect, verify failing suite plus prior green suites, push all attempts, continue Iteration 002 permissive execution
+- **Failure Path**: After 3 cycles or 30 minutes elapsed, escalate to human decision on repair termination or extension
+
+### Scope Isolation (Reaffirmed)
+
+- **Do NOT edit** feature-level artifacts (spec, plan, tasks)
+- **Do NOT edit** Iteration 001 artifacts or scope
+- **Do NOT change** test assertions after attempt 1
+- **Do NOT enter** Iteration 002 review/closeout boundary (stop at execution completion)
+
+### Drift-Log Format
+
+Each repair attempt recorded in `.squad/log/` with timestamp and entry format:
+
+```
+Repair Attempt N (Test Identity: <test_id>)
+- Timestamp: YYYY-MM-DDTHH:MM:SSZ
+- Status: [diagnosing | fixing | testing | passed | failed]
+- Evidence: <brief description or log reference>
+```
+
+## Runtime Evidence
+
+- **Requested role / work item**: Implementer / Feature 020 Iteration 002 bounded repair for PSGallery warning regression
+- **Requested agent**: copilot (general implementer)
+- **Actual agent**: implementer-iter002-psgallery-repair
+- **Model**: claude-sonnet-4.5
+- **Assignment honored**: yes
+- **Policy baseline**: Fresh 3-cycle repair budget with drift-log discipline
+- **Session start**: 2026-05-24T00:12:00Z
+- **Repair session log**: `.squad/log/20260524T001200Z-scribe-iter002-psgallery-repair-authz.md`
+
+## Impact
+
+- Iteration 002 PSGallery warning repair work proceeds with enforced budget constraints
+- Drift-log discipline ensures traceability of all PSGallery repair attempts
+- 30-minute wall-clock guardrail prevents runaway repair sessions
+- Scope isolation maintained: no bleeding into planning, review, or Iteration 001
+- Policy creates continuation point for Iteration 002 permissive execution after repair completion
+
+## Cross-References
+
+- Iteration 2 plan: specs\020-session-state-durability\iterations\002\plan.md
+- Feature 020 status: `.squad\identity\now.md` (Iteration 002 PSGallery repair-policy activation)
+- Session log: `.squad\log\20260524T001200Z-scribe-iter002-psgallery-repair-authz.md`
+- Prior decision: Decision: Scribe Feature 020 Iteration 002 3-Cycle Repair Budget & Drift-Log Policy (2026-05-24T00:11:00Z)
+
+---
+
+
 # Decision: Scribe Feature 020 Iteration 002 3-Cycle Repair Budget & Drift-Log Policy
 
 **Date**: 2026-05-24T00:11:00Z  
