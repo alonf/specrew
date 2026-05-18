@@ -1,3 +1,35 @@
+# Decision: Feature 020 Stray PR Cleanup
+
+**Date**: 2026-05-18T06:35:44Z  
+**Boundary**: Feature-closeout cleanup  
+**Feature**: 020-session-state-durability (Session-State Durability & In-Flight Progress Tracking)  
+**Authority**: Alon Fliess  
+**Decision Type**: Post-merge governance cleanup
+
+## Summary
+
+Feature 020 officially shipped via PR #225 and merge commit `7ee90d5`. PR #259 is treated as stray post-merge work and must not be merged into `main`.
+
+## Decision
+
+- PR #259 is treated as stray post-merge work and is closed without merge.
+- Feature 020 officially shipped via PR #225.
+- The remote `020-session-state-durability` branch is deleted to prevent further accidental commits against already-shipped closeout work.
+- Proposal 048 is routed to `main` directly as a separate chore path and is not part of Feature 020 closeout.
+
+## Rationale
+
+- Commit `1f083f9` is a duplicate/refinement of already-shipped closeout documentation already substantively represented on `main` by `835fc95`.
+- Commit `25d4759` is Proposal 048 work and is out of scope for Feature 020 closeout.
+- Commit `275f457` is PR-reference bookkeeping and does not justify keeping the feature branch open after shipment.
+
+## Impact
+
+- Requirement and closeout history remain aligned to the authoritative shipped path on `main`.
+- The stray PR path is closed to prevent further drift or accidental reuse of the Feature 020 branch.
+
+---
+
 # Decision: Feature 020 Closeout Complete — Shipped to Main
 
 **Date**: 2026-05-24T00:32:00Z  
@@ -13217,4 +13249,57 @@ ow.md here keeps the post-closeout session anchor aligned with the same lifecycl
 
 Feature 020 Phase 0 companion chore is now complete. The closeout pattern is established and documented. Execution can proceed to Feature 020 Phase 1 implementation.
 
+
+---
+
+# Decision: Feature 020 Branch Closeout & PR #259 Disposition
+
+**Date**: 2026-05-18
+**Boundary**: Feature closeout
+**Feature**: 020 (Session-state durability & in-flight progress tracking)
+**Authority**: Alon Fliess (Authorized)
+**Decision Type**: Feature completion & branch cleanup
+
+## Task
+
+Close PR #259 as stray, delete the 020-session-state-durability branch, and record the official feature-closeout completion.
+
+## Decision
+
+PR #259 closed without merge. Remote branch 020-session-state-durability deleted. Feature-020 closeout boundary officially complete via PR #225 merge (commit 7ee90d5).
+
+## Rationale
+
+**Audit Trail Evidence**:
+1. PR #225 successfully merged Feature 020 to main as commit 7ee90d5
+2. PR #259 contains three commits on top of already-shipped state: 1f083f9, 25d4759, 275f457
+3. Self-review correctly identified out-of-scope proposal-048 commit as blocking merge
+4. Cleanest disposition: treat 020 branch as completed work, close PR #259 without merge
+
+**Scope & Out-of-Scope**:
+- ✅ PR #259 closed via gh pr close 259 with audit comment
+- ✅ Remote 020-session-state-durability branch deleted via git push origin --delete
+- ✅ Closeout decision recorded in .squad/decisions.md
+- ❌ Do NOT cherry-pick 1f083f9 to main
+- ❌ Do NOT touch proposal 048 in cleanup
+- ❌ Do NOT delete local 020 branch until remote is confirmed gone
+- ❌ Do NOT open new feature work
+- ❌ Do NOT tag a release
+
+## Implementation Evidence
+
+- **PR #259**: Closed, state = CLOSED, base = main
+- **Remote Branch**: origin/020-session-state-durability deleted (git push origin --delete successful)
+- **PR Comment**: Audit trail recorded with PR #259 close reason
+- **Commit Trail**: 7ee90d5 (PR #225 merge) remains canonical feature-020 shipped state
+
+## Impact
+
+Feature 020 closeout is now officially complete and recorded in authorization artifacts. Boundary 1 shipped via PR #225. Branch cleanup verified. No in-flight merge risk remains.
+
+## Next Steps (Out of Scope)
+
+- Proposal 048 chore commit to follow as separate git commit
+- Local 020 branch deletion (verify remote gone + main sync first)
+- No new feature-020 work beyond documented proposals
 
