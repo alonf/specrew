@@ -1,23 +1,25 @@
 # Iteration State: 002
 
 **Schema**: v1
-**Last Completed Task**: (none)
-**Tasks Remaining**: I2-T001, I2-T002, I2-T003, I2-T004, I2-T005, I2-T006, I2-T007, I2-T008, I2-T009, I2-T010, I2-T011, I2-T012, I2-T013, I2-T014, I2-T015, I2-T016, I2-T017
+**Last Completed Task**: I2-T017
+**Tasks Remaining**: none within the authorized Iteration 002 scope
 **In Progress**: (none)
 **Baseline Ref**: d2cf2a38362e1707a1c6c583a7ef5f15b6563148
-**Current Phase**: planning
-**Iteration Status**: PLANNING — Iteration 002 is opened and scoped for task-progress tracking, cross-worktree awareness, substantive recovery prompts, and PSGallery update checks; execution begins only after the pre-implement validator passes.
-**Updated**: 2026-05-17T23:46:21Z
+**Current Phase**: complete
+**Iteration Status**: COMPLETE — Iteration 002 implementation shipped in `fe031bd` with bounded repairs in `b0bbb31`, `142e4c6`, and `d6b0ad2`; all authorized tasks are done, the review boundary recorded bookkeeping-only CHANGES-REQUESTED gaps, and the repaired artifacts are ready for a fresh review rerun before any retro or closeout work.
+**Updated**: 2026-05-18T03:39:17+03:00
 
 ## Execution Summary
 
-- Iteration-start scaffold completed with plan.md, state.md, and drift-log.md present in `specs\020-session-state-durability\iterations\002`.
-- The authoritative Iteration 002 scope is locked to FR-006..014, FR-021..024, and FR-029..035 via `iterations\002\plan.md`.
-- Execution has not started yet; the next boundary is the pre-implement validator on the scaffolded iteration artifacts.
+- Iteration-start authorization remains anchored to baseline ref `d2cf2a38362e1707a1c6c583a7ef5f15b6563148`, and the authorized Iteration 002 scope stays locked to FR-006..014, FR-021..024, and FR-029..035 via `iterations\002\plan.md`.
+- Implementation completed on 2026-05-18 in `fe031bd`, with bounded scope-preserving repair commits `b0bbb31`, `142e4c6`, and `d6b0ad2`.
+- All authorized tasks I2-T001 through I2-T017 are complete; no execution work remains inside the approved Iteration 002 scope.
+- The review boundary against HEAD `d6b0ad2` found bookkeeping-only gaps in `plan.md` and `drift-log.md`; this repair reconciles those artifacts without changing runtime behavior.
 
 ## Notes
 
 - Update this file after each task completes and persist concrete commit hashes for validator and execution boundaries.
+- Retro and closeout remain out of scope until a fresh Iteration 002 review rerun clears the current review boundary.
 - Keep task identifiers and phase summaries aligned to `iterations\002\plan.md`.
 
 <!-- >>> specrew-managed escalation-state >>> -->
