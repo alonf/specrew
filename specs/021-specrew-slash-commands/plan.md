@@ -161,11 +161,24 @@
 ### Iteration authorization defaults applied
 
 - **Human authority**: Alon Fliess remains the approving authority for planning and the stop/go decision at the `/speckit.tasks` boundary.
+- **Clarify boundary handoff**: accepted clarify-completion boundary commit `934da76` is the authoritative handoff into this planning pass.
 - **Capacity**: locked at 7 SP total with the usual repair reserve inside the ceiling.
 - **Repair policy**: 3-cycle repair budget and 30-minute wall-clock per failing test are carried forward as defaults.
 - **Bookkeeping**: live updates to plan/gate/decision artifacts are required throughout implementation.
 - **Drift handling**: per-lane drift labels must distinguish discovery, routing, compatibility, and coexistence failures.
 - **Operational discipline**: push-after-every-commit, Write-Output-visible warnings, no case-insensitive variable collisions, and file:/// prose-path discipline remain mandatory.
+
+### Single-iteration allocation
+
+| Delivery lane | Scope anchor | Baseline owner | Planned effort (SP) |
+| --- | --- | --- | --- |
+| Catalog and contract authoring | FR-001 through FR-005, FR-012 through FR-015, FR-021 through FR-025 | Spec Steward | 1.5 |
+| Routing, alias, and argument-whitelist delivery | FR-006 through FR-011 | Implementer | 2.0 |
+| Distribution, compatibility, and remediation delivery | FR-016 through FR-020 | Implementer | 1.5 |
+| Discovery/coexistence validation and review evidence | SC-001 through SC-006, FR-023 through FR-026 hardening evidence | Reviewer | 1.3 |
+| Repair reserve | Bounded defect repair and artifact-quality assurance only | Reviewer + Retro Facilitator | 0.7 |
+
+**Allocation verdict**: Feature 021 remains a single-iteration feature. Primary planned scope is locked to **6.3 SP**, with **0.7 SP** held back as the usual repair reserve inside the **7 SP** ceiling.
 
 ## Project Structure
 
@@ -183,6 +196,7 @@ specs/021-specrew-slash-commands/
 │   └── slash-command-routing.md
 ├── iterations/
 │   └── 001/
+│       ├── plan.md
 │       └── quality/
 │           └── hardening-gate.md
 └── tasks.md             # Not created by this planning pass
@@ -238,6 +252,7 @@ tests/
 - `contracts/slash-command-catalog.md` defines the public command catalog and help/discovery contract.
 - `contracts/slash-command-routing.md` defines routing, whitelisted arguments, compatibility gates, and failure semantics.
 - `quickstart.md` defines the validation flow for discovery, routing, update/init provisioning, compatibility failures, and `/speckit.*` coexistence.
+- `iterations/001/plan.md` locks the single-iteration allocation, guardrails, and authorization notes for the execution boundary that may follow human review.
 - `update-agent-context.ps1 -AgentType copilot` must be run after these artifacts are created so agent-facing context stays current without overwriting manual notes.
 
 ## Post-Design Constitution Re-Check

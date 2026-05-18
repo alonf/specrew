@@ -2,7 +2,7 @@
 
 **Feature Branch**: `021-specrew-slash-commands`  
 **Created**: 2026-05-18  
-**Status**: Draft  
+**Status**: Approved
 **Input**: User description: "Generate the initial feature specification for Specrew Slash-Command Surface from file:///C:/Dev/Specrew/proposals/032-specrew-slash-commands.md with governance carryforward from Feature 020 and stop at specify completion for human review."
 
 ## Problem Statement
@@ -240,10 +240,11 @@ A product steward wants the v1 slash-command surface to be stable enough for use
 
 - **Spec Steward**: Alon Fliess (feature sponsor and human review authority for the initial specification)
 - **Iteration Facilitator**: Alon Fliess (accountable for cadence, blockers, and specify-to-plan review sequencing)
-- **Capacity Model**: Story Points (SP); estimated 5-8 SP in a single iteration, with approximately 10% of capacity reserved for repair and artifact-quality assurance
+- **Capacity Model**: Story Points (SP); locked at 7 SP for Iteration 001, with 0.7 SP reserved inside that ceiling for repair and artifact-quality assurance
 - **Drift Signals**: Loss of the seven-command catalog, namespace changes without recorded approval, missing command discovery fallback, compatibility ambiguity, silent validator failures, missing Feature 021-prefixed governance entries, or any authored prose that drops required file:/// references indicate drift
 - **Human Oversight Points**:
   - Specify-complete human review on branch `021-specrew-slash-commands` before `/speckit.plan`
   - Resolution of DP-001 through DP-007 with structured decision logging in file:///C:/Dev/Specrew/.squad/decisions.md
+  - Accepted clarify-completion boundary commit `934da76` as the planning handoff before this plan boundary
   - Verification that file:///C:/Dev/Specrew/specs/021-specrew-slash-commands/iterations/001/quality/hardening-gate.md exists as the iteration kickoff quality scaffold
   - Push-after-every-commit discipline for spec and plan artifacts before the next review boundary

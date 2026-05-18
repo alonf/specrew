@@ -1,3 +1,39 @@
+# Decision: Feature 021 Planning Boundary Locked
+
+**Date**: 2026-05-18
+**Boundary**: Plan-complete
+**Feature**: 021-specrew-slash-commands (Specrew Slash-Command Surface)
+**Authority**: Alon Fliess
+**Decision Type**: Planning authorization record and iteration-capacity lock
+
+## Summary
+
+Feature 021 planning completed from the clarified specification, using accepted clarify-completion boundary commit `934da76` as the authoritative handoff. The feature remains a single-iteration delivery, with the seven-command v1 slash-command surface, coexistence guardrails, and compatibility/remediation work all planned inside a locked 7 SP envelope.
+
+## Locked Planning Decisions
+
+- **Capacity lock**: Iteration 001 is capped at **7 SP total**, with **0.7 SP** reserved inside that ceiling for bounded repair and artifact-quality assurance.
+- **Stewardship label disposition**: product, governance, runtime, UX, distribution, reliability, and quality owner labels are interpreted descriptively and mapped onto the baseline Squad roles already provisioned by Specrew. No roster expansion is justified at planning time.
+- **Execution defaults preserved from Feature 020**: 3 repair cycles, 30-minute wall-clock per failing test, live bookkeeping during execution, per-lane drift labeling, upfront hardening-gate usage, push after every commit, Write-Output-visible warnings, no case-insensitive variable collisions, and markdown-link [name](file:///...) prose paths.
+- **Boundary stop**: Planning ends here for human review. `tasks.md` and implementation remain unopened.
+
+## Artifact Set
+
+- **Approved spec**: file:///C:/Dev/Specrew/specs/021-specrew-slash-commands/spec.md
+- **Feature plan**: file:///C:/Dev/Specrew/specs/021-specrew-slash-commands/plan.md
+- **Research**: file:///C:/Dev/Specrew/specs/021-specrew-slash-commands/research.md
+- **Data model**: file:///C:/Dev/Specrew/specs/021-specrew-slash-commands/data-model.md
+- **Contracts**: file:///C:/Dev/Specrew/specs/021-specrew-slash-commands/contracts/
+- **Quickstart**: file:///C:/Dev/Specrew/specs/021-specrew-slash-commands/quickstart.md
+- **Iteration plan**: file:///C:/Dev/Specrew/specs/021-specrew-slash-commands/iterations/001/plan.md
+- **Hardening gate**: file:///C:/Dev/Specrew/specs/021-specrew-slash-commands/iterations/001/quality/hardening-gate.md
+
+## Next Authorized Step
+
+Human review of the plan-complete boundary. Only after that review may Feature 021 proceed to `/speckit.tasks`.
+
+---
+
 # Decision: Feature 021 Clarify Resolution Complete
 
 **Date**: 2026-05-18T10:38:09.6239788+03:00  
@@ -13466,3 +13502,12 @@ Feature 020 closeout is now officially complete and recorded in authorization ar
 - **Task ID**: (none)
 - **Auth Commit Hash**: (none)
 - **Recorded At**: 2026-05-18T08:08:15Z
+
+## 2026-05-18T08:13:44Z — Boundary sync: plan
+
+- **Boundary Type**: plan
+- **Feature Ref**: 021-specrew-slash-commands
+- **Iteration Number**: (none)
+- **Task ID**: (none)
+- **Auth Commit Hash**: (none)
+- **Recorded At**: 2026-05-18T08:13:44Z
