@@ -4,6 +4,26 @@ Retroactive alpha release history for shipped Specrew features. `.specrew\config
 is the canonical source for the active version; this file records the feature
 baseline that each release number represents.
 
+## 0.21.0 - Specrew Slash-Command Surface
+
+- Feature 021: Introduced first-class `/specrew.*` slash-command surface with seven
+  v1 commands: `/specrew.where`, `/specrew.status`, `/specrew.update`, `/specrew.team`,
+  `/specrew.review`, `/specrew.help`, and `/specrew.version`. Aliases: `/specrew.status`
+  is a canonical alias for `/specrew.where`.
+- Command discovery and help fallback for environments where host-native command
+  suggestions are unavailable or incomplete.
+- Routing to intended Specrew capabilities with explicit argument validation and
+  compatibility checking. Commands fail clearly with remediation guidance when
+  prerequisites are missing.
+- Integration with standard Specrew distribution and setup flows; slash-command
+  surface provisioned as part of `specrew init` and `specrew update`.
+- Coexistence with `/speckit.*` commands; no lifecycle advancement bypasses, no
+  namespace collisions.
+- Minimum compatibility pin to 0.21.0; incompatible baselines detected and reported
+  with upgrade guidance.
+- Feature-closeout Phase A complete (governance, documentation, version updates).
+  Shipped PR citation pending publication; see `.squad/decisions/inbox/` for closure trail.
+
 ## Unreleased
 
 - Added relaxed `.markdownlint.json` config (commits 82a90db + b850bd8)
