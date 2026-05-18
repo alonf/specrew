@@ -14,16 +14,18 @@ AI-assisted software delivery.
 - Built today for a single developer running on a single host
 - Not yet ready for multi-developer coordination or multi-host operation
 - Release truth now has public-facing surfaces in `CHANGELOG.md`,
-  `docs\versioning.md`, and the `v0.15.0` / `v0.16.0` / `v0.17.0` / `v0.18.0` / `v0.19.0` / `v0.20.0` tags
+  `docs\versioning.md`, and the `v0.15.0` / `v0.16.0` / `v0.17.0` / `v0.18.0` / `v0.19.0` tags; `v0.20.0` is intentionally deferred until post-merge release tagging
 
 ## What's working
 
 - `specrew init` bootstraps Spec Kit, Squad, and Specrew governance into a repo
 - `specrew start` is the canonical entrypoint and refreshes runtime handoff
-  artifacts before launch, with full session-state durability and recovery
+  artifacts before launch, with full session-state durability, welcome-back
+  recovery, module-version mismatch warnings, and cached PSGallery update checks
 - `specrew where` / `specrew status` render the repository's velocity dashboard
   from canonical feature, iteration, and roadmap artifacts, using richer default
-  rendering when the terminal can truthfully support it
+  rendering when the terminal can truthfully support it; `specrew where
+  --worktrees` adds cross-worktree feature, boundary, and task visibility
 - Session-state durability and in-flight progress tracking across system reboots,
   worktree switches, and boundary events (Feature 020)
 - Iteration closeout and feature closeout capture immutable dashboard snapshots
@@ -70,11 +72,13 @@ detailed cross-platform validation status.
      `git clone https://github.com/alonf/specrew && Import-Module specrew/Specrew.psd1`
 2. **Bootstrap a project** with `specrew init` from inside the target directory.
 3. **Start every work session** with `specrew start`; Specrew refreshes runtime
-   handoff artifacts before launching Copilot + Squad.
+   handoff artifacts before launching Copilot + Squad and surfaces any
+   module-version or PSGallery update warnings without blocking the session.
 4. **Check status** anytime with `specrew where` (alias: `specrew status`) —
    the velocity dashboard. Use `--ASCII`, `--RecentCount <N>`, and
    `--BarWidth <N>` to force fallback or tune the Recent Shipped density
-   without changing lifecycle data.
+   without changing lifecycle data. Add `--worktrees` when you want the current
+   worktree plus sibling worktree feature/boundary/task state.
 5. Let Squad drive `specify -> clarify -> plan -> tasks -> implement` from the
    generated feature artifacts.
 6. Keep iteration evidence current under `specs\<feature>\iterations\<NNN>\`.
@@ -138,9 +142,9 @@ Specrew currently uses a merge-at-close rhythm:
 ## Versioning
 
 - `.specrew\config.yml` is the canonical source for the active version and now
-  declares **0.19.0**.
+  declares **0.20.0**.
 - Feature releases use `0.NN.0`, where `NN` tracks the shipped feature ordinal
-  (`0.19.0` = Feature 019).
+  (`0.20.0` = Feature 020).
 - `0.NN.M` is reserved for hotfixes against an existing shipped feature
   baseline.
 - See `docs\versioning.md` for the policy details and `CHANGELOG.md` for the

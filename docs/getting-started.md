@@ -237,6 +237,7 @@ Once a repo has feature and iteration artifacts, use the dashboard to answer
 
 ```powershell
 specrew where --no-color
+specrew where --worktrees --no-color
 specrew status --compact
 ```
 
@@ -244,6 +245,9 @@ specrew status --compact
 > `pwsh -NoProfile -File C:\Dev\Specrew\scripts\specrew.ps1` — same arguments.
 
 For a sample output and section-by-section guide, see `docs/dashboard-guide.md`.
+
+`specrew where --worktrees` is the fastest way to confirm which worktree owns
+which active feature, boundary, and in-flight task before you resume.
 
 Add `.specrew\roadmap.yml` when you want roadmap progress and remaining-effort
 projection to appear in the dashboard.
@@ -267,6 +271,24 @@ Every later session also begins with `specrew start` — on the same machine or 
 - `.specrew/start-summary.md`
 
 Those files do not travel with git. After you pull the tracked project state onto another machine, run `specrew start` there and Specrew will rebuild the local handoff files from the repository's tracked iteration state before launch.
+
+Feature 020 makes that resume path durable: `specrew start` now verifies session
+state consistency, surfaces a substantive welcome-back summary for the active
+feature/task, warns when the installed module version differs from the project's
+`.specrew\config.yml`, and performs the cached PSGallery latest-version check
+used by `specrew init`, `specrew start`, and `specrew update`.
+
+If you need a quiet automation resume, use:
+
+```powershell
+specrew start --skip-update-check
+```
+
+or set:
+
+```powershell
+$env:SPECREW_SKIP_UPDATE_CHECK = '1'
+```
 
 Do not run `copilot` directly: it skips the runtime handoff refresh, so the launch contract is not regenerated for the new session.
 

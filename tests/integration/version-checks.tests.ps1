@@ -59,7 +59,7 @@ if ($mismatchResult.ExitCode -ne 0) {
     Write-Fail ("Version-mismatch start should remain non-blocking:`n{0}" -f $mismatchOutput)
     exit 1
 }
-foreach ($pattern in @('Module version mismatch detected', 'installed 0\.19\.0', 'project expects 0\.18\.0', 'specrew update', 'Launch skipped by --no-launch')) {
+foreach ($pattern in @('Module version mismatch detected', 'installed 0\.20\.0', 'project expects 0\.18\.0', 'specrew update', 'Launch skipped by --no-launch')) {
     if ($mismatchOutput -notmatch $pattern) {
         Write-Fail ("Version-mismatch output did not include expected pattern '{0}'." -f $pattern)
         exit 1
@@ -71,7 +71,7 @@ if ($mismatchOutput -match 'Options:\s+|re-anchor') {
 }
 Write-Pass 'Version mismatch warning is non-blocking and actionable'
 
-Set-SpecrewVersion -ConfigPath $configPath -Version '0.19.0'
+Set-SpecrewVersion -ConfigPath $configPath -Version '0.20.0'
 $matchResult = Invoke-TestScript -ScriptPath $startScript -ArgumentList @('-ProjectPath', $projectRoot, '-NoLaunch')
 $matchOutput = $matchResult.Output -join [Environment]::NewLine
 if ($matchResult.ExitCode -ne 0) {

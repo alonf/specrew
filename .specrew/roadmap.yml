@@ -16,10 +16,10 @@ phases:
       - 011-specrew-start-conditional-pause
       - 013-validator-hardening
 
-   - id: phase-2-experience
+  - id: phase-2-experience
     name: "Phase 2: Developer Experience"
-    description: "Interaction model, visibility, public-readiness, distribution (two iterations: module + cross-platform hardening), state-foundation, and governance CLI surfaces. Bridges the methodology from internal dogfooding to external usability and gives downstream maintainers structured control of their roadmap, proposals, and feature lifecycle."
-    planned_effort_sp: 247
+    description: "Interaction model, visibility, public-readiness, distribution (two iterations: module + cross-platform hardening), state-foundation, governance CLI surfaces, Proposal 032 slash-command work, and the queued Proposal 046 / Proposal 047 follow-ons. Bridges the methodology from internal dogfooding to external usability and gives downstream maintainers structured control of their roadmap, proposals, and feature lifecycle."
+    planned_effort_sp: 279
     status: in-progress
     feature_refs:
       - 015-public-readiness-pass
@@ -31,15 +31,14 @@ phases:
 
   - id: phase-3-runtime-abstraction
     name: "Phase 3: Runtime Abstraction & Spec Fidelity"
-    description: "Multi-Host Runtime Abstraction CORE (Proposal 024) as the swap-Squad foundation, plus Squad Upstream Reconciliation that builds on it, Validator Hardening rigor lift, and Slash-Command Surface (deferred from Phase 2 because it touches the per-host CLI command surface)."
-    planned_effort_sp: 100
+    description: "Multi-Host Runtime Abstraction CORE (Proposal 024) as the swap-Squad foundation, plus Squad Upstream Reconciliation that builds on it and Validator Hardening's rigor lift."
+    planned_effort_sp: 93
     status: queued
     feature_refs:
       # TODO: add feature refs as features /speckit.specify; planned scope below
       # - Multi-Host Runtime Abstraction CORE (~35 SP, Proposal 024 scoped to CORE only)
       # - Squad Upstream Reconciliation (~20 SP, depends on Multi-Host CORE)
       # - Validator Hardening (~28 SP, 8 gaps per memory entry)
-      # - Specrew Slash-Command Surface (~7 SP, Proposal 032, depends on Multi-Host CORE)
       # - F-006 Architecture Intent Checkpoint (~10 SP, smaller per Squad-skill compose)
 
   - id: phase-4-token-and-autopilot
