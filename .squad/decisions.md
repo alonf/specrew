@@ -14113,3 +14113,133 @@ Feature-closeout still requires separate explicit human authorization. The next 
 - **Rationale**: Delegated lifecycle routing was applied for role 'Reviewer'.
 
 - **Routing Evidence**: Reviewer | requested=claude | actual=copilot | model=(platform default) | status=fell-back | fallback=preferred agent 'claude' is not enabled
+## 2026-05-18T17:10:53Z — Authorization: clarify
+
+- **Decision ID**: authorization-feature-022-clarify
+- **Type**: authorization
+- **Boundary**: clarify
+- **Approving Human**: Alon Fliess
+- **Recorded At**: 2026-05-18T17:10:53Z
+- **Commit Reference**: pending
+- **Authorization Text**:
+  > Authorized: Run /speckit.clarify for Feature 022. Stop at clarify-completion boundary for human review.
+  >
+  > Clarify boundary scope: resolve FR-005, FR-014, and FR-019 only, using the provided narrow-scope, orthogonal-flag, and follow-up-feature recommendations. Do not enter /speckit.plan, do not expand scope to the fourth-bug investigation, and do not modify the spec beyond resolving those three clarification markers.
+
+---
+
+## 2026-05-18T17:10:53Z — Routing evidence: Spec Steward
+
+- **Decision ID**: routing-evidence-feature-022-clarify
+- **Type**: routing-evidence
+- **Affected Requirement**: Feature 022 clarify boundary
+- **Affected Iteration**: specs/022-hotfix-schema-tests/iterations/001
+- **Approving Human**: Alon Fliess
+- **Recorded At**: 2026-05-18T17:10:53Z
+- **Next Action**: Human review of `file:///C:/Dev/Specrew/specs/022-hotfix-schema-tests/spec.md` before `/speckit.plan`
+- **Rationale**: Delegated lifecycle routing was applied for the Feature 022 clarify boundary.
+
+- **Routing Evidence**: Spec Steward | requested=codex | actual=copilot-backed `speckit.clarify` | model=gpt-5.4 | status=fell-back | fallback=preferred agent `codex` is not enabled
+
+---
+
+# Decision: Feature 022 Clarify Resolution Complete
+
+**Date**: 2026-05-18T17:10:53Z  
+**Boundary**: Clarify-complete  
+**Feature**: 022-hotfix-schema-tests (F-020 Implementation Hotfix + Schema Parity Tests)  
+**Authority**: Alon Fliess  
+**Decision Type**: Clarification resolution and plan-readiness record
+
+## Summary
+
+Feature 022 clarification is complete. The spec now resolves the schema-audit boundary in **FR-005, the closeout-identity-only hotfix scope**, the recovery-flag semantics in **FR-014, the orthogonal `--recover` behavior**, and the follow-up disposition in **FR-019, the deferred inbox-to-ledger symptom**. The spec keeps the hotfix bounded to the three confirmed restart bugs plus their regression coverage, preserves the Proposal 054 follow-through note for broader schema parity auditing, and leaves the stewardship-label mismatch as a planning/governance mapping note rather than a new clarify branch.
+
+## Clarify Evidence
+
+- **Updated spec**: file:///C:/Dev/Specrew/specs/022-hotfix-schema-tests/spec.md
+- **Feature pointer**: file:///C:/Dev/Specrew/.specify/feature.json
+- **Active focus marker**: file:///C:/Dev/Specrew/.squad/identity/now.md
+
+## Resolved Decisions
+
+- **DP-A / FR-005**: Limit schema-parity auditing to `file:///C:/Dev/Specrew/.squad/identity/now.md`; broader state-surface auditing is deferred to Proposal 054 / future durable pre-merge gate work.
+- **DP-B / FR-014**: Keep `--recover` orthogonal to best-guess or autopilot-style confirmation behavior; recovery launch and confirmation behavior remain separately controlled concerns.
+- **DP-C / FR-019**: Record the inbox-to-ledger / Scribe auto-consolidation symptom as follow-up work outside Feature 022 acceptance scope.
+
+## Next Authorized Step
+
+Human review of the clarify-completion artifact set. Only after that review may Feature 022 proceed to `/speckit.plan`.
+
+---
+
+## 2026-05-18T16:57:42Z — Routing evidence: Spec Steward
+
+- **Decision ID**: routing-evidence-feature-022-specify
+- **Type**: routing-evidence
+- **Affected Requirement**: Feature 022 specification boundary
+- **Affected Iteration**: specs/022-hotfix-schema-tests/iterations/001
+- **Approving Human**: (none)
+- **Recorded At**: 2026-05-18T16:57:42Z
+- **Next Action**: Human review of `file:///C:/Dev/Specrew/specs/022-hotfix-schema-tests/spec.md` before `/speckit.clarify`
+- **Rationale**: Delegated lifecycle routing was applied for the Feature 022 specify boundary.
+
+- **Routing Evidence**: Spec Steward | requested=codex | actual=copilot-backed `speckit.specify` | model=gpt-5.4 | status=fell-back | fallback=preferred agent `codex` is not enabled
+
+---
+
+# Decision: Start Feature 022 — F-020 Implementation Hotfix + Schema Parity Tests
+
+**Date**: 2026-05-18T16:57:42Z  
+**Boundary**: Feature-start (specify-completion stop)  
+**Feature**: 022-hotfix-schema-tests (F-020 Implementation Hotfix + Schema Parity Tests)  
+**Authority**: Alon Fliess  
+**Decision Type**: Feature-start authorization with specify-completion boundary
+
+## Summary
+
+Feature 022 is now opened as a brownfield hotfix focused on the restart failures discovered after Feature 021 shipped. The new draft specification captures the three confirmed production bugs, the single-iteration hotfix scope, the required regression surfaces for schema parity, seven-boundary synchronization, and end-to-end restart recovery, and the carry-forward governance defaults inherited from Feature 021. Work stopped at the specify-completion boundary exactly as requested.
+
+## Specification Evidence
+
+- **Spec file**: file:///C:/Dev/Specrew/specs/022-hotfix-schema-tests/spec.md
+- **Requirements checklist**: file:///C:/Dev/Specrew/specs/022-hotfix-schema-tests/checklists/requirements.md
+- **Feature pointer**: file:///C:/Dev/Specrew/.specify/feature.json
+- **Active focus marker**: file:///C:/Dev/Specrew/.squad/identity/now.md
+- **Branch**: `022-hotfix-schema-tests`
+
+## Clarify Items Preserved
+
+- Whether schema-parity auditing should extend beyond the closeout identity surface to other state artifacts
+- Whether `--recover` should remain orthogonal to best-guess confirmation behavior
+- Whether the possible boundary-sync inbox-to-ledger symptom belongs in Feature 022 or a follow-up
+- The current default assumption keeps new regression coverage in `tests/integration` unless planning later justifies a different bundle
+
+## Next Boundary
+
+Human review of the specify-completion artifact set. Only after that review may Feature 022 proceed to `/speckit.clarify`.
+
+---
+
+# Decision: Feature 022 Clarification Authorization
+
+**Date**: 2026-05-18T20:10:53+03:00  
+**Decision Type**: Clarification authorization  
+**Feature**: 022-hotfix-schema-tests  
+**Boundary**: Clarify-completion authorization  
+**Authority**: Alon Fliess (via Copilot directive)
+
+## Authorization
+
+Run `/speckit.clarify` for Feature 022 only. Resolve clarification markers FR-005, FR-014, and FR-019 using the provided narrow-scope, orthogonal-flag, and follow-up-feature recommendations. Stop at clarify-completion for human review. Do not enter `/speckit.plan`. Do not broaden scope to the possible fourth bug. Do not modify the spec beyond resolving those three clarification markers.
+
+## Rationale
+
+User request — captured for team memory per Scribe charter to preserve cross-agent coordination state.
+
+---
+
+### 2026-05-18T20:10:53+03:00: User directive
+**By:** Alon Fliess (via Copilot)
+**What:** Run `/speckit.clarify` for Feature 022 only, resolve FR-005 / FR-014 / FR-019 using the provided narrow-scope, orthogonal-flag, and follow-up-feature recommendations, stop at clarify-completion for human review, do not enter `/speckit.plan`, do not broaden scope to the possible fourth bug, and do not modify the spec beyond resolving those three clarification markers.
+**Why:** User request — captured for team memory
