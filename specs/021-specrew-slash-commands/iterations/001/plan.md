@@ -3,11 +3,11 @@
 **Schema**: v1
 **Feature**: 021-specrew-slash-commands  
 **Branch**: 021-specrew-slash-commands  
-**Status**: executing
+**Status**: reviewing
 **Capacity**: 7/20 story_points
-**Started**: not-started
-**Completed**: (not started)
-**Review Completed**: (not started)
+**Started**: 2026-05-18
+**Completed**: 2026-05-18
+**Review Completed**: 2026-05-18
 **Retro Completed**: (not started)
 **Created**: 2026-05-18  
 **Updated**: 2026-05-18
@@ -31,10 +31,10 @@ Total effort estimate: 6.3 Story Points (+ 0.7 SP repair reserve)
 
 | Task | Title | Requirement | Story | Effort | Owner | Status | Agent | Actual | Verdict |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| I1-W001 | Catalog and contract authoring | FR-001..FR-005, FR-012..FR-015, FR-021..FR-025 | US1, US4, US5 | 1.5 | Spec Steward | planned | TBD | — | planned |
-| I1-W002 | Routing, alias normalization, and arg whitelist | FR-006..FR-011 | US2 | 2.0 | Implementer | planned | TBD | — | planned |
-| I1-W003 | Distribution, compatibility, and remediation delivery | FR-016..FR-020 | US3 | 1.5 | Implementer | planned | TBD | — | planned |
-| I1-W004 | Discovery fallback, coexistence, and hardening evidence | FR-023..FR-026, SC-001..SC-006 | US1, US4, US5 | 1.3 | Reviewer | planned | TBD | — | planned |
+| I1-W001 | Catalog and contract authoring | FR-001..FR-005, FR-012..FR-015, FR-021..FR-025 | US1, US4, US5 | 1.5 | Spec Steward | done | Spec Steward | 1.5 | PASS |
+| I1-W002 | Routing, alias normalization, and arg whitelist | FR-006..FR-011 | US2 | 2.0 | Implementer | done | Implementer | 2.0 | PASS |
+| I1-W003 | Distribution, compatibility, and remediation delivery | FR-016..FR-020 | US3 | 1.5 | Implementer | done | Implementer | 1.5 | PASS |
+| I1-W004 | Discovery fallback, coexistence, and hardening evidence | FR-023..FR-026, SC-001..SC-006 | US1, US4, US5 | 1.3 | Reviewer | done | Reviewer | 1.3 | PASS |
 
 ## Effort Model
 

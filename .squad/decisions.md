@@ -13644,3 +13644,346 @@ Feature 020 closeout is now officially complete and recorded in authorization ar
 - **Task ID**: (none)
 - **Auth Commit Hash**: (none)
 - **Recorded At**: 2026-05-18T08:13:44Z
+
+
+# Decision: Feature 021 Iteration 001 Review Boundary Accepted
+
+**Date**: 2026-05-18T17:13:50+03:00  
+**Boundary**: review-boundary (merged from inbox)  
+**Feature**: 021-specrew-slash-commands (Specrew Slash-Command Surface)  
+**Iteration**: 001  
+**Decision Type**: Reviewer independent verdict
+
+## Summary
+
+Independent review of Feature 021 Iteration 001 found the authorized scope accepted on implementation commit `29a130b2896dcc87bbcf0843fbd70e6e22be0222`, with bookkeeping reconciliation `d582a7e1deada0c7e00d7c49ae3deb594f4365f4` remaining bounded to truthful lifecycle artifacts only.
+
+The exact governance validator and the exact six Feature 021 suites reran green on the review tree. No substantive defect, scope-interpretation gap, or deferred review issue remained at the review boundary.
+
+## Evidence
+
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File .\extensions\specrew-speckit\scripts\validate-governance.ps1 -ProjectPath . -IterationPath .\specs\021-specrew-slash-commands\iterations\001`
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File .\tests\integration\slash-command-routing.tests.ps1`
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File .\tests\integration\slash-command-distribution.tests.ps1`
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File .\tests\integration\slash-command-compatibility.tests.ps1`
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File .\tests\integration\slash-command-discovery.tests.ps1`
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File .\tests\integration\slash-command-coexistence.tests.ps1`
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File .\tests\unit\slash-command-arg-whitelist.tests.ps1`
+- `specs\021-specrew-slash-commands\iterations\001\review.md`
+- `specs\021-specrew-slash-commands\iterations\001\quality\hardening-gate.md`
+
+## Next Action
+
+Retro-boundary sequence now available for separate authorization. This decision does not open retro, iteration-closeout, or feature-closeout by itself.
+
+---
+
+# Decision: Reviewer Feature 021 Iteration 001 Review-Boundary Delegation
+
+**Date**: 2026-05-18T14:22:22.563297Z  
+**Boundary**: Review delegation (runtime evidence)  
+**Feature**: 021-specrew-slash-commands (Specrew Slash-Command Surface)  
+**Iteration**: 001  
+**Work Item**: Feature 021 Iteration 001 review-boundary  
+**Decision Type**: Delegated routing with runtime evidence
+
+## Delegation Status
+
+- **Requested agent role**: Reviewer
+- **Actual agent**: Reviewer
+- **Model ID**: claude-opus-4.7
+- **Assignment honored**: yes
+- **Fallback reason**: none
+
+## Impact
+
+The Reviewer role successfully delivered the independent review boundary pass for Feature 021 Iteration 001 within the authorized scope. Retro-boundary sequence may proceed with separate authorization.
+
+
+---
+
+# Decision: Feature 021 Iteration 001 Review-Boundary Authorization
+
+**Recorded At**: 2026-05-18T14:25:50Z  
+**Boundary**: review-boundary  
+**Feature**: 021-specrew-slash-commands (Specrew Slash-Command Surface)  
+**Iteration**: 001  
+**Authority**: Alon Fliess (human authorization via Session Scribe instruction)  
+**Commit Reference**: pending  
+**Decision Type**: Explicit review-boundary authorization record
+
+## Authorization Text
+
+> Authorized: Iteration 001 review-boundary → review-verdict-signoff → retro → iteration-closeout. Permissive sequencing; stop at iteration-closeout handoff. Do NOT enter feature-closeout (separate authorization).
+> 
+> Iteration 001 implementation complete at commit 29a130b; bookkeeping reconciled at d582a7e. Verified:
+> 
+> - All 12 tasks: I1-T001 through I1-T011 marked [x] done with 29a130b commit refs, baseline-role agents, zero variance, PASS verdicts. I1-T012 (review-evidence task) remains [ ] for the Reviewer to complete
+> during review.
+> - state.md: Current Phase: implementation-complete, Last Completed Task: I1-T011, Tasks Remaining: I1-T012 only.
+> - hardening-gate.md: Verified At: 2026-05-18T13:44:25Z, Post-Implementation Verification: repaired-and-revalidated with all 6 green suites + governance validator cited.
+> - Origin tip: d582a7e aligned with local.
+> 
+> Sequence (4 sequential boundaries, permissive run, no human gate between):
+> 
+> 1. Review-boundary — Reviewer agent runs independent review of Iteration 001 against the iteration plan's scope (FR-001..026 + SC-001..006; US1-US5). Verify the implementation commit 29a130b delivers the
+> authorized scope; verify the 6 test suites + governance validator are green; complete I1-T012 by recording final review evidence in iterations/001/quality/hardening-gate.md. Produce review verdict.
+> 2. Review-verdict-signoff — record verdict in .squad/decisions.md and iterations/001/review.md. If APPROVED, continue. If CHANGES-REQUESTED, stop with specific change list (and be precise about
+> scope-interpretation vs substance per Iter-1-of-F-020 lesson).
+> 3. Retro-boundary — Retro Facilitator captures lessons. Mandatory retro content for F-021 (these are high-value lessons, do not skip):
+> 
+>     - F-020 carry-forward defaults worked when honored, didn't when not — the 3-cycle repair budget didn't get tested (clean implementation); push-after-every-commit WASN'T honored (single-commit landing
+>   required separate push-hygiene reconciliation); live bookkeeping WASN'T honored (required separate bookkeeping repair after handoff).
+>     - Inbox-vs-ledger consolidation gap — Squad's pre-restart session wrote authorization records to .squad/decisions/inbox/ but never merged them into .squad/decisions.md. Restart triggered consolidation.
+>   Worth a validator rule (absorb into Proposal 004 as gap #10).
+>     - Iteration-start triad gap — state.md was missing at iteration-start; caught only at before-implement. The iteration-start scaffolding should produce plan.md + state.md + drift-log.md atomically. Worth a
+>   validator rule (absorb into Proposal 004 as gap #11).
+>     - Push-hygiene declared but not mechanically enforced — F-020 retro lesson #5 made push-after-every-commit a default. F-021 implementation didn't honor it. Worth absorbing into Proposal 004 as gap #12 or
+>   into Proposal 030's quality-hardening scope.
+>     - Pre-handoff claim verification gap — Squad's "implementation complete" handoff falsely claimed tasks were marked done. Mechanical pre-handoff verification (artifact-vs-claim check) would have caught this
+>   at source. Worth absorbing into Proposal 030 as a new sub-component (Gap D from the gap analysis).
+>     - Stewardship-label-vs-baseline-role drift — same pattern as F-020 GAP-BI-003. Spec template generates "Product steward / Runtime steward / etc." labels that always need disposition. Template fix or
+>   pre-clarify documentation could close this.
+>     - Restart-after-Specrew-update is critical — confirmed empirically. Squad's session predated F-020 merge; new mechanisms didn't fire until restart. Worth a banner warning when Specrew version has changed
+>   since session start (composes with Proposal 050 Version Surface).
+>     - Multi-session coordination — proposals from concurrent sessions cooperated cleanly on INDEX.md (both 052 + 053 integrated); but Squad's F-021 work was in a separate session checkout requiring explicit
+>   push-hygiene reconciliation. Cross-references Proposal 010 (Multi-Developer Reconciliation) — same coordination problem manifests in multi-session work.
+> 4. Iteration-closeout — finalize iterations/001/closeout.md, update dashboards, write iteration-completion record. F-021 has only one iteration, so iteration-closeout opens the feature-closeout question (do
+> NOT auto-enter).
+> 
+> Stop conditions:
+> - Review verdict = CHANGES-REQUESTED → stop with specific change list
+> - Any validator FAIL
+> - Test regression on the 6 suites (rerun at each boundary; must stay green)
+> - >10 consecutive reconciliation file-edits
+> - git push failure
+> - Iteration-closeout handoff reached
+> 
+> Out of scope:
+> - Do NOT enter feature-closeout (separate authorization will follow iteration-closeout handoff)
+> - Do NOT modify Implementation commit 29a130b content (CLOSED)
+> - Do NOT modify spec.md, plan.md, tasks.md content beyond task-table updates that the Reviewer naturally produces (T012 PASS marking)
+> - Do NOT open Iteration 002 (F-021 is single-iteration; no Iter 2)
+> 
+> Push hygiene (carried forward — and given this iteration's track record, treat as critical):
+> - Push after EVERY commit (review-rerun signoff, retro, closeout — separate commits, separate pushes)
+> - No local-only state allowed; origin must reflect truth continuously
+> - Before each handoff, verify git rev-parse HEAD == git rev-parse origin/021-specrew-slash-commands
+> 
+> Proceed.
+
+---
+
+# Decision: Feature 021 Iteration 001 Review-Verdict-Signoff Authorization
+
+**Recorded At**: 2026-05-18T14:25:51Z  
+**Boundary**: review-verdict-signoff  
+**Feature**: 021-specrew-slash-commands (Specrew Slash-Command Surface)  
+**Iteration**: 001  
+**Authority**: Alon Fliess (human authorization via Session Scribe instruction)  
+**Commit Reference**: pending  
+**Decision Type**: Explicit review-verdict-signoff authorization record
+
+## Authorization Text
+
+> Authorized: Iteration 001 review-boundary → review-verdict-signoff → retro → iteration-closeout. Permissive sequencing; stop at iteration-closeout handoff. Do NOT enter feature-closeout (separate authorization).
+> 
+> Iteration 001 implementation complete at commit 29a130b; bookkeeping reconciled at d582a7e. Verified:
+> 
+> - All 12 tasks: I1-T001 through I1-T011 marked [x] done with 29a130b commit refs, baseline-role agents, zero variance, PASS verdicts. I1-T012 (review-evidence task) remains [ ] for the Reviewer to complete
+> during review.
+> - state.md: Current Phase: implementation-complete, Last Completed Task: I1-T011, Tasks Remaining: I1-T012 only.
+> - hardening-gate.md: Verified At: 2026-05-18T13:44:25Z, Post-Implementation Verification: repaired-and-revalidated with all 6 green suites + governance validator cited.
+> - Origin tip: d582a7e aligned with local.
+> 
+> Sequence (4 sequential boundaries, permissive run, no human gate between):
+> 
+> 1. Review-boundary — Reviewer agent runs independent review of Iteration 001 against the iteration plan's scope (FR-001..026 + SC-001..006; US1-US5). Verify the implementation commit 29a130b delivers the
+> authorized scope; verify the 6 test suites + governance validator are green; complete I1-T012 by recording final review evidence in iterations/001/quality/hardening-gate.md. Produce review verdict.
+> 2. Review-verdict-signoff — record verdict in .squad/decisions.md and iterations/001/review.md. If APPROVED, continue. If CHANGES-REQUESTED, stop with specific change list (and be precise about
+> scope-interpretation vs substance per Iter-1-of-F-020 lesson).
+> 3. Retro-boundary — Retro Facilitator captures lessons. Mandatory retro content for F-021 (these are high-value lessons, do not skip):
+> 
+>     - F-020 carry-forward defaults worked when honored, didn't when not — the 3-cycle repair budget didn't get tested (clean implementation); push-after-every-commit WASN'T honored (single-commit landing
+>   required separate push-hygiene reconciliation); live bookkeeping WASN'T honored (required separate bookkeeping repair after handoff).
+>     - Inbox-vs-ledger consolidation gap — Squad's pre-restart session wrote authorization records to .squad/decisions/inbox/ but never merged them into .squad/decisions.md. Restart triggered consolidation.
+>   Worth a validator rule (absorb into Proposal 004 as gap #10).
+>     - Iteration-start triad gap — state.md was missing at iteration-start; caught only at before-implement. The iteration-start scaffolding should produce plan.md + state.md + drift-log.md atomically. Worth a
+>   validator rule (absorb into Proposal 004 as gap #11).
+>     - Push-hygiene declared but not mechanically enforced — F-020 retro lesson #5 made push-after-every-commit a default. F-021 implementation didn't honor it. Worth absorbing into Proposal 004 as gap #12 or
+>   into Proposal 030's quality-hardening scope.
+>     - Pre-handoff claim verification gap — Squad's "implementation complete" handoff falsely claimed tasks were marked done. Mechanical pre-handoff verification (artifact-vs-claim check) would have caught this
+>   at source. Worth absorbing into Proposal 030 as a new sub-component (Gap D from the gap analysis).
+>     - Stewardship-label-vs-baseline-role drift — same pattern as F-020 GAP-BI-003. Spec template generates "Product steward / Runtime steward / etc." labels that always need disposition. Template fix or
+>   pre-clarify documentation could close this.
+>     - Restart-after-Specrew-update is critical — confirmed empirically. Squad's session predated F-020 merge; new mechanisms didn't fire until restart. Worth a banner warning when Specrew version has changed
+>   since session start (composes with Proposal 050 Version Surface).
+>     - Multi-session coordination — proposals from concurrent sessions cooperated cleanly on INDEX.md (both 052 + 053 integrated); but Squad's F-021 work was in a separate session checkout requiring explicit
+>   push-hygiene reconciliation. Cross-references Proposal 010 (Multi-Developer Reconciliation) — same coordination problem manifests in multi-session work.
+> 4. Iteration-closeout — finalize iterations/001/closeout.md, update dashboards, write iteration-completion record. F-021 has only one iteration, so iteration-closeout opens the feature-closeout question (do
+> NOT auto-enter).
+> 
+> Stop conditions:
+> - Review verdict = CHANGES-REQUESTED → stop with specific change list
+> - Any validator FAIL
+> - Test regression on the 6 suites (rerun at each boundary; must stay green)
+> - >10 consecutive reconciliation file-edits
+> - git push failure
+> - Iteration-closeout handoff reached
+> 
+> Out of scope:
+> - Do NOT enter feature-closeout (separate authorization will follow iteration-closeout handoff)
+> - Do NOT modify Implementation commit 29a130b content (CLOSED)
+> - Do NOT modify spec.md, plan.md, tasks.md content beyond task-table updates that the Reviewer naturally produces (T012 PASS marking)
+> - Do NOT open Iteration 002 (F-021 is single-iteration; no Iter 2)
+> 
+> Push hygiene (carried forward — and given this iteration's track record, treat as critical):
+> - Push after EVERY commit (review-rerun signoff, retro, closeout — separate commits, separate pushes)
+> - No local-only state allowed; origin must reflect truth continuously
+> - Before each handoff, verify git rev-parse HEAD == git rev-parse origin/021-specrew-slash-commands
+> 
+> Proceed.
+
+---
+
+# Decision: Feature 021 Iteration 001 Retro-Boundary Authorization
+
+**Recorded At**: 2026-05-18T14:25:52Z  
+**Boundary**: retro-boundary  
+**Feature**: 021-specrew-slash-commands (Specrew Slash-Command Surface)  
+**Iteration**: 001  
+**Authority**: Alon Fliess (human authorization via Session Scribe instruction)  
+**Commit Reference**: pending  
+**Decision Type**: Explicit retro-boundary authorization record
+
+## Authorization Text
+
+> Authorized: Iteration 001 review-boundary → review-verdict-signoff → retro → iteration-closeout. Permissive sequencing; stop at iteration-closeout handoff. Do NOT enter feature-closeout (separate authorization).
+> 
+> Iteration 001 implementation complete at commit 29a130b; bookkeeping reconciled at d582a7e. Verified:
+> 
+> - All 12 tasks: I1-T001 through I1-T011 marked [x] done with 29a130b commit refs, baseline-role agents, zero variance, PASS verdicts. I1-T012 (review-evidence task) remains [ ] for the Reviewer to complete
+> during review.
+> - state.md: Current Phase: implementation-complete, Last Completed Task: I1-T011, Tasks Remaining: I1-T012 only.
+> - hardening-gate.md: Verified At: 2026-05-18T13:44:25Z, Post-Implementation Verification: repaired-and-revalidated with all 6 green suites + governance validator cited.
+> - Origin tip: d582a7e aligned with local.
+> 
+> Sequence (4 sequential boundaries, permissive run, no human gate between):
+> 
+> 1. Review-boundary — Reviewer agent runs independent review of Iteration 001 against the iteration plan's scope (FR-001..026 + SC-001..006; US1-US5). Verify the implementation commit 29a130b delivers the
+> authorized scope; verify the 6 test suites + governance validator are green; complete I1-T012 by recording final review evidence in iterations/001/quality/hardening-gate.md. Produce review verdict.
+> 2. Review-verdict-signoff — record verdict in .squad/decisions.md and iterations/001/review.md. If APPROVED, continue. If CHANGES-REQUESTED, stop with specific change list (and be precise about
+> scope-interpretation vs substance per Iter-1-of-F-020 lesson).
+> 3. Retro-boundary — Retro Facilitator captures lessons. Mandatory retro content for F-021 (these are high-value lessons, do not skip):
+> 
+>     - F-020 carry-forward defaults worked when honored, didn't when not — the 3-cycle repair budget didn't get tested (clean implementation); push-after-every-commit WASN'T honored (single-commit landing
+>   required separate push-hygiene reconciliation); live bookkeeping WASN'T honored (required separate bookkeeping repair after handoff).
+>     - Inbox-vs-ledger consolidation gap — Squad's pre-restart session wrote authorization records to .squad/decisions/inbox/ but never merged them into .squad/decisions.md. Restart triggered consolidation.
+>   Worth a validator rule (absorb into Proposal 004 as gap #10).
+>     - Iteration-start triad gap — state.md was missing at iteration-start; caught only at before-implement. The iteration-start scaffolding should produce plan.md + state.md + drift-log.md atomically. Worth a
+>   validator rule (absorb into Proposal 004 as gap #11).
+>     - Push-hygiene declared but not mechanically enforced — F-020 retro lesson #5 made push-after-every-commit a default. F-021 implementation didn't honor it. Worth absorbing into Proposal 004 as gap #12 or
+>   into Proposal 030's quality-hardening scope.
+>     - Pre-handoff claim verification gap — Squad's "implementation complete" handoff falsely claimed tasks were marked done. Mechanical pre-handoff verification (artifact-vs-claim check) would have caught this
+>   at source. Worth absorbing into Proposal 030 as a new sub-component (Gap D from the gap analysis).
+>     - Stewardship-label-vs-baseline-role drift — same pattern as F-020 GAP-BI-003. Spec template generates "Product steward / Runtime steward / etc." labels that always need disposition. Template fix or
+>   pre-clarify documentation could close this.
+>     - Restart-after-Specrew-update is critical — confirmed empirically. Squad's session predated F-020 merge; new mechanisms didn't fire until restart. Worth a banner warning when Specrew version has changed
+>   since session start (composes with Proposal 050 Version Surface).
+>     - Multi-session coordination — proposals from concurrent sessions cooperated cleanly on INDEX.md (both 052 + 053 integrated); but Squad's F-021 work was in a separate session checkout requiring explicit
+>   push-hygiene reconciliation. Cross-references Proposal 010 (Multi-Developer Reconciliation) — same coordination problem manifests in multi-session work.
+> 4. Iteration-closeout — finalize iterations/001/closeout.md, update dashboards, write iteration-completion record. F-021 has only one iteration, so iteration-closeout opens the feature-closeout question (do
+> NOT auto-enter).
+> 
+> Stop conditions:
+> - Review verdict = CHANGES-REQUESTED → stop with specific change list
+> - Any validator FAIL
+> - Test regression on the 6 suites (rerun at each boundary; must stay green)
+> - >10 consecutive reconciliation file-edits
+> - git push failure
+> - Iteration-closeout handoff reached
+> 
+> Out of scope:
+> - Do NOT enter feature-closeout (separate authorization will follow iteration-closeout handoff)
+> - Do NOT modify Implementation commit 29a130b content (CLOSED)
+> - Do NOT modify spec.md, plan.md, tasks.md content beyond task-table updates that the Reviewer naturally produces (T012 PASS marking)
+> - Do NOT open Iteration 002 (F-021 is single-iteration; no Iter 2)
+> 
+> Push hygiene (carried forward — and given this iteration's track record, treat as critical):
+> - Push after EVERY commit (review-rerun signoff, retro, closeout — separate commits, separate pushes)
+> - No local-only state allowed; origin must reflect truth continuously
+> - Before each handoff, verify git rev-parse HEAD == git rev-parse origin/021-specrew-slash-commands
+> 
+> Proceed.
+
+---
+
+# Decision: Feature 021 Iteration 001 Iteration-Closeout Authorization
+
+**Recorded At**: 2026-05-18T14:25:53Z  
+**Boundary**: iteration-closeout  
+**Feature**: 021-specrew-slash-commands (Specrew Slash-Command Surface)  
+**Iteration**: 001  
+**Authority**: Alon Fliess (human authorization via Session Scribe instruction)  
+**Commit Reference**: pending  
+**Decision Type**: Explicit iteration-closeout authorization record
+
+## Authorization Text
+
+> Authorized: Iteration 001 review-boundary → review-verdict-signoff → retro → iteration-closeout. Permissive sequencing; stop at iteration-closeout handoff. Do NOT enter feature-closeout (separate authorization).
+> 
+> Iteration 001 implementation complete at commit 29a130b; bookkeeping reconciled at d582a7e. Verified:
+> 
+> - All 12 tasks: I1-T001 through I1-T011 marked [x] done with 29a130b commit refs, baseline-role agents, zero variance, PASS verdicts. I1-T012 (review-evidence task) remains [ ] for the Reviewer to complete
+> during review.
+> - state.md: Current Phase: implementation-complete, Last Completed Task: I1-T011, Tasks Remaining: I1-T012 only.
+> - hardening-gate.md: Verified At: 2026-05-18T13:44:25Z, Post-Implementation Verification: repaired-and-revalidated with all 6 green suites + governance validator cited.
+> - Origin tip: d582a7e aligned with local.
+> 
+> Sequence (4 sequential boundaries, permissive run, no human gate between):
+> 
+> 1. Review-boundary — Reviewer agent runs independent review of Iteration 001 against the iteration plan's scope (FR-001..026 + SC-001..006; US1-US5). Verify the implementation commit 29a130b delivers the
+> authorized scope; verify the 6 test suites + governance validator are green; complete I1-T012 by recording final review evidence in iterations/001/quality/hardening-gate.md. Produce review verdict.
+> 2. Review-verdict-signoff — record verdict in .squad/decisions.md and iterations/001/review.md. If APPROVED, continue. If CHANGES-REQUESTED, stop with specific change list (and be precise about
+> scope-interpretation vs substance per Iter-1-of-F-020 lesson).
+> 3. Retro-boundary — Retro Facilitator captures lessons. Mandatory retro content for F-021 (these are high-value lessons, do not skip):
+> 
+>     - F-020 carry-forward defaults worked when honored, didn't when not — the 3-cycle repair budget didn't get tested (clean implementation); push-after-every-commit WASN'T honored (single-commit landing
+>   required separate push-hygiene reconciliation); live bookkeeping WASN'T honored (required separate bookkeeping repair after handoff).
+>     - Inbox-vs-ledger consolidation gap — Squad's pre-restart session wrote authorization records to .squad/decisions/inbox/ but never merged them into .squad/decisions.md. Restart triggered consolidation.
+>   Worth a validator rule (absorb into Proposal 004 as gap #10).
+>     - Iteration-start triad gap — state.md was missing at iteration-start; caught only at before-implement. The iteration-start scaffolding should produce plan.md + state.md + drift-log.md atomically. Worth a
+>   validator rule (absorb into Proposal 004 as gap #11).
+>     - Push-hygiene declared but not mechanically enforced — F-020 retro lesson #5 made push-after-every-commit a default. F-021 implementation didn't honor it. Worth absorbing into Proposal 004 as gap #12 or
+>   into Proposal 030's quality-hardening scope.
+>     - Pre-handoff claim verification gap — Squad's "implementation complete" handoff falsely claimed tasks were marked done. Mechanical pre-handoff verification (artifact-vs-claim check) would have caught this
+>   at source. Worth absorbing into Proposal 030 as a new sub-component (Gap D from the gap analysis).
+>     - Stewardship-label-vs-baseline-role drift — same pattern as F-020 GAP-BI-003. Spec template generates "Product steward / Runtime steward / etc." labels that always need disposition. Template fix or
+>   pre-clarify documentation could close this.
+>     - Restart-after-Specrew-update is critical — confirmed empirically. Squad's session predated F-020 merge; new mechanisms didn't fire until restart. Worth a banner warning when Specrew version has changed
+>   since session start (composes with Proposal 050 Version Surface).
+>     - Multi-session coordination — proposals from concurrent sessions cooperated cleanly on INDEX.md (both 052 + 053 integrated); but Squad's F-021 work was in a separate session checkout requiring explicit
+>   push-hygiene reconciliation. Cross-references Proposal 010 (Multi-Developer Reconciliation) — same coordination problem manifests in multi-session work.
+> 4. Iteration-closeout — finalize iterations/001/closeout.md, update dashboards, write iteration-completion record. F-021 has only one iteration, so iteration-closeout opens the feature-closeout question (do
+> NOT auto-enter).
+> 
+> Stop conditions:
+> - Review verdict = CHANGES-REQUESTED → stop with specific change list
+> - Any validator FAIL
+> - Test regression on the 6 suites (rerun at each boundary; must stay green)
+> - >10 consecutive reconciliation file-edits
+> - git push failure
+> - Iteration-closeout handoff reached
+> 
+> Out of scope:
+> - Do NOT enter feature-closeout (separate authorization will follow iteration-closeout handoff)
+> - Do NOT modify Implementation commit 29a130b content (CLOSED)
+> - Do NOT modify spec.md, plan.md, tasks.md content beyond task-table updates that the Reviewer naturally produces (T012 PASS marking)
+> - Do NOT open Iteration 002 (F-021 is single-iteration; no Iter 2)
+> 
+> Push hygiene (carried forward — and given this iteration's track record, treat as critical):
+> - Push after EVERY commit (review-rerun signoff, retro, closeout — separate commits, separate pushes)
+> - No local-only state allowed; origin must reflect truth continuously
+> - Before each handoff, verify git rev-parse HEAD == git rev-parse origin/021-specrew-slash-commands
+> 
+> Proceed.
