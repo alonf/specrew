@@ -6,7 +6,7 @@
 **In Progress**: none
 **Baseline Ref**: d80fd4b
 **Current Phase**: complete
-**Iteration Status**: iteration-closeout complete on 2026-05-18; closeout artifacts, validator replay, and the six required Feature 021 suites are recorded on the current tree, while the closeout boundary commit remains pending durable recording. Feature-closeout remains explicitly unopened and unauthorized.
+**Iteration Status**: iteration-closeout complete on 2026-05-18; closeout artifacts, validator replay, and the six required Feature 021 suites are durably recorded in commit `515dd89`. Feature-closeout remains explicitly unopened and unauthorized.
 **Updated**: 2026-05-18T14:53:48Z
 
 ## Execution Summary

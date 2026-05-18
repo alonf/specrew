@@ -4,7 +4,7 @@
 **Feature**: 021-specrew-slash-commands  
 **Iteration**: 001  
 **Closed**: 2026-05-18T17:53:48+03:00  
-**Status**: COMPLETE ON CURRENT TREE — closeout boundary commit pending durable recording  
+**Status**: COMPLETE — iteration-closeout durably recorded in commit `515dd89`  
 **Closer**: Reviewer (authorized iteration-closeout boundary requested by Alon Fliess)
 
 ---

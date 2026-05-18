@@ -18,7 +18,7 @@ session_state_feature_path: "C:\Dev\Specrew\specs\021-specrew-slash-commands"
 session_state_iteration: 001
 session_state_feature_closeout_authorized: false
 session_state_task: "(none)"
-session_state_auth_commit: "e670a02f9bad2b1b4508295b7a1246b2de24fe8b"
+session_state_auth_commit: "515dd8960fa1dabd8c140aee56f43aec0b51eee0"
 session_state_recorded_at: 2026-05-18T14:53:48Z
 ---
 
