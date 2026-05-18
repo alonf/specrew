@@ -61,14 +61,16 @@ Each executable item uses this structure:
 
 **Independent Test**: A reviewer can inspect the generated skill templates and confirm the seven-command v1 catalog, `/specrew.status` alias guidance, and `/specrew.help` fallback guidance are complete and consistent.
 
-- [ ] I1-T001 [US1] [assigned_to: Spec Steward] [effort: 0.8 SP] Author discovery-facing skill templates in `extensions/specrew-speckit/squad-templates/skills/specrew-where/SKILL.md`, `extensions/specrew-speckit/squad-templates/skills/specrew-status/SKILL.md`, `extensions/specrew-speckit/squad-templates/skills/specrew-help/SKILL.md`, and `extensions/specrew-speckit/squad-templates/skills/README.md` (Trace: I1-W001; FR-001, FR-002, FR-003, FR-012, FR-013, FR-014, FR-015)
+- [x] I1-T001 [US1] [assigned_to: Spec Steward] [effort: 0.8 SP] Author discovery-facing skill templates in `extensions/specrew-speckit/squad-templates/skills/specrew-where/SKILL.md`, `extensions/specrew-speckit/squad-templates/skills/specrew-status/SKILL.md`, `extensions/specrew-speckit/squad-templates/skills/specrew-help/SKILL.md`, and `extensions/specrew-speckit/squad-templates/skills/README.md` (Trace: I1-W001; FR-001, FR-002, FR-003, FR-012, FR-013, FR-014, FR-015)
+  - **Execution**: Status=done; Agent=Spec Steward; Commit(s)=`29a130b`; Actual=0.8 SP; Verdict=PASS
   - **Title**: Discovery catalog skill authoring
   - **FR coverage**: FR-001, FR-002, FR-003, FR-012, FR-013, FR-014, FR-015
   - **User story coverage**: US1
   - **Owner role**: Spec Steward
   - **Dependencies**: None
 
-- [ ] I1-T002 [P] [US5] [assigned_to: Spec Steward] [effort: 0.7 SP] Author execution-facing skill templates in `extensions/specrew-speckit/squad-templates/skills/specrew-update/SKILL.md`, `extensions/specrew-speckit/squad-templates/skills/specrew-team/SKILL.md`, `extensions/specrew-speckit/squad-templates/skills/specrew-review/SKILL.md`, and `extensions/specrew-speckit/squad-templates/skills/specrew-version/SKILL.md` with explicit coexistence and boundary-safe wording (Trace: I1-W001; FR-004, FR-005, FR-021, FR-022, FR-023, FR-024)
+- [x] I1-T002 [P] [US5] [assigned_to: Spec Steward] [effort: 0.7 SP] Author execution-facing skill templates in `extensions/specrew-speckit/squad-templates/skills/specrew-update/SKILL.md`, `extensions/specrew-speckit/squad-templates/skills/specrew-team/SKILL.md`, `extensions/specrew-speckit/squad-templates/skills/specrew-review/SKILL.md`, and `extensions/specrew-speckit/squad-templates/skills/specrew-version/SKILL.md` with explicit coexistence and boundary-safe wording (Trace: I1-W001; FR-004, FR-005, FR-021, FR-022, FR-023, FR-024)
+  - **Execution**: Status=done; Agent=Spec Steward; Commit(s)=`29a130b`; Actual=0.7 SP; Verdict=PASS
   - **Title**: Execution catalog skill authoring
   - **FR coverage**: FR-004, FR-005, FR-021, FR-022, FR-023, FR-024
   - **User story coverage**: US4, US5
@@ -85,28 +87,32 @@ Each executable item uses this structure:
 
 **Independent Test**: In an initialized project, a tester can invoke the v1 slash commands, observe `/specrew.status` parity with `/specrew.where`, and receive explicit help-driven failures for unsupported arguments.
 
-- [ ] I1-T003 [US2] [assigned_to: Implementer] [effort: 0.5 SP] Implement slash-command recognition and command-to-backend dispatch in `scripts/specrew.ps1` and `Specrew.psm1` for `/specrew.where`, `/specrew.update`, `/specrew.team`, `/specrew.review`, `/specrew.help`, and `/specrew.version` (Trace: I1-W002; FR-006, FR-008)
+- [x] I1-T003 [US2] [assigned_to: Implementer] [effort: 0.5 SP] Implement slash-command recognition and command-to-backend dispatch in `scripts/specrew.ps1` and `Specrew.psm1` for `/specrew.where`, `/specrew.update`, `/specrew.team`, `/specrew.review`, `/specrew.help`, and `/specrew.version` (Trace: I1-W002; FR-006, FR-008)
+  - **Execution**: Status=done; Agent=Implementer; Commit(s)=`29a130b`; Actual=0.5 SP; Verdict=PASS
   - **Title**: Core slash router wiring
   - **FR coverage**: FR-006, FR-008
   - **User story coverage**: US2
   - **Owner role**: Implementer
   - **Dependencies**: I1-T001, I1-T002
 
-- [ ] I1-T004 [US2] [assigned_to: Implementer] [effort: 0.4 SP] Implement `/specrew.status` alias normalization and semantic parity safeguards in `scripts/specrew.ps1` and `scripts/specrew-where.ps1` (Trace: I1-W002; FR-007)
+- [x] I1-T004 [US2] [assigned_to: Implementer] [effort: 0.4 SP] Implement `/specrew.status` alias normalization and semantic parity safeguards in `scripts/specrew.ps1` and `scripts/specrew-where.ps1` (Trace: I1-W002; FR-007)
+  - **Execution**: Status=done; Agent=Implementer; Commit(s)=`29a130b`; Actual=0.4 SP; Verdict=PASS
   - **Title**: Alias normalization and parity enforcement
   - **FR coverage**: FR-007
   - **User story coverage**: US2
   - **Owner role**: Implementer
   - **Dependencies**: I1-T003
 
-- [ ] I1-T005 [P] [US2] [assigned_to: Implementer] [effort: 0.6 SP] Implement per-command argument whitelist parsing, unsupported-argument rejection, and help guidance in `scripts/specrew.ps1`, `scripts/specrew-update.ps1`, `scripts/specrew-team.ps1`, and `scripts/specrew-review.ps1` (Trace: I1-W002; FR-009, FR-010, FR-011)
+- [x] I1-T005 [P] [US2] [assigned_to: Implementer] [effort: 0.6 SP] Implement per-command argument whitelist parsing, unsupported-argument rejection, and help guidance in `scripts/specrew.ps1`, `scripts/specrew-update.ps1`, `scripts/specrew-team.ps1`, and `scripts/specrew-review.ps1` (Trace: I1-W002; FR-009, FR-010, FR-011)
+  - **Execution**: Status=done; Agent=Implementer; Commit(s)=`29a130b`; Actual=0.6 SP; Verdict=PASS
   - **Title**: Argument whitelist and failure handling
   - **FR coverage**: FR-009, FR-010, FR-011
   - **User story coverage**: US2
   - **Owner role**: Implementer
   - **Dependencies**: I1-T003
 
-- [ ] I1-T006 [US2] [assigned_to: Reviewer] [effort: 0.5 SP] Add routing, alias, and whitelist validation coverage in `tests/integration/slash-command-routing.tests.ps1` and `tests/unit/slash-command-arg-whitelist.tests.ps1` (Trace: I1-W002; FR-006, FR-007, FR-008, FR-009, FR-010, FR-011)
+- [x] I1-T006 [US2] [assigned_to: Reviewer] [effort: 0.5 SP] Add routing, alias, and whitelist validation coverage in `tests/integration/slash-command-routing.tests.ps1` and `tests/unit/slash-command-arg-whitelist.tests.ps1` (Trace: I1-W002; FR-006, FR-007, FR-008, FR-009, FR-010, FR-011)
+  - **Execution**: Status=done; Agent=Reviewer; Commit(s)=`29a130b`; Actual=0.5 SP; Verdict=PASS
   - **Title**: Routing validation suite
   - **FR coverage**: FR-006, FR-007, FR-008, FR-009, FR-010, FR-011
   - **User story coverage**: US2
@@ -123,21 +129,24 @@ Each executable item uses this structure:
 
 **Independent Test**: A fresh project gains the slash-command surface through standard setup, an existing project receives updates through the supported refresh path, and unsupported baselines fail with clear remediation guidance.
 
-- [ ] I1-T007 [P] [US3] [assigned_to: Implementer] [effort: 0.5 SP] Wire runtime skill deployment for all `specrew-*` templates in `extensions/specrew-speckit/scripts/deploy-squad-runtime.ps1` and the `extensions/specrew-speckit/squad-templates/skills/specrew-*/SKILL.md` source set (Trace: I1-W003; FR-016, FR-017)
+- [x] I1-T007 [P] [US3] [assigned_to: Implementer] [effort: 0.5 SP] Wire runtime skill deployment for all `specrew-*` templates in `extensions/specrew-speckit/scripts/deploy-squad-runtime.ps1` and the `extensions/specrew-speckit/squad-templates/skills/specrew-*/SKILL.md` source set (Trace: I1-W003; FR-016, FR-017)
+  - **Execution**: Status=done; Agent=Implementer; Commit(s)=`29a130b`; Actual=0.5 SP; Verdict=PASS
   - **Title**: Runtime skill deployment wiring
   - **FR coverage**: FR-016, FR-017
   - **User story coverage**: US3
   - **Owner role**: Implementer
   - **Dependencies**: I1-T001, I1-T002
 
-- [ ] I1-T008 [US3] [assigned_to: Implementer] [effort: 0.6 SP] Implement slash-surface provisioning, update reporting, minimum-version checks, and remediation messaging in `scripts/specrew-init.ps1`, `scripts/specrew-update.ps1`, `scripts/internal/version-check.ps1`, and `scripts/specrew.ps1` (Trace: I1-W003; FR-016, FR-017, FR-018, FR-019, FR-020)
+- [x] I1-T008 [US3] [assigned_to: Implementer] [effort: 0.6 SP] Implement slash-surface provisioning, update reporting, minimum-version checks, and remediation messaging in `scripts/specrew-init.ps1`, `scripts/specrew-update.ps1`, `scripts/internal/version-check.ps1`, and `scripts/specrew.ps1` (Trace: I1-W003; FR-016, FR-017, FR-018, FR-019, FR-020)
+  - **Execution**: Status=done; Agent=Implementer; Commit(s)=`29a130b`; Actual=0.6 SP; Verdict=PASS
   - **Title**: Provisioning and compatibility enforcement
   - **FR coverage**: FR-016, FR-017, FR-018, FR-019, FR-020
   - **User story coverage**: US3
   - **Owner role**: Implementer
   - **Dependencies**: I1-T007
 
-- [ ] I1-T009 [US3] [assigned_to: Reviewer] [effort: 0.4 SP] Add setup, refresh, and compatibility validation coverage in `tests/integration/slash-command-distribution.tests.ps1` and `tests/integration/slash-command-compatibility.tests.ps1` (Trace: I1-W003; FR-016, FR-017, FR-018, FR-019, FR-020; SC-003, SC-004)
+- [x] I1-T009 [US3] [assigned_to: Reviewer] [effort: 0.4 SP] Add setup, refresh, and compatibility validation coverage in `tests/integration/slash-command-distribution.tests.ps1` and `tests/integration/slash-command-compatibility.tests.ps1` (Trace: I1-W003; FR-016, FR-017, FR-018, FR-019, FR-020; SC-003, SC-004)
+  - **Execution**: Status=done; Agent=Reviewer; Commit(s)=`29a130b`; Actual=0.4 SP; Verdict=PASS
    - **Title**: Distribution and compatibility validation suite
    - **FR coverage**: FR-016, FR-017, FR-018, FR-019, FR-020
    - **SC coverage**: SC-003, SC-004
@@ -156,7 +165,8 @@ Each executable item uses this structure:
 
 **Independent Test**: Reviewers can validate host-native `/specrew.` discovery where supported, `/specrew.help` fallback everywhere else, side-by-side `/specrew.*` and `/speckit.*` usage, and a completed review evidence trail for SC-001 through SC-006.
 
-- [ ] I1-T010 [US1] [assigned_to: Reviewer] [effort: 0.4 SP] Add discovery fallback and first-time catalog validation in `tests/integration/slash-command-discovery.tests.ps1` and `specs/021-specrew-slash-commands/quickstart.md` (Trace: I1-W004; FR-012, FR-013, FR-014, FR-015; SC-001, SC-005)
+- [x] I1-T010 [US1] [assigned_to: Reviewer] [effort: 0.4 SP] Add discovery fallback and first-time catalog validation in `tests/integration/slash-command-discovery.tests.ps1` and `specs/021-specrew-slash-commands/quickstart.md` (Trace: I1-W004; FR-012, FR-013, FR-014, FR-015; SC-001, SC-005)
+  - **Execution**: Status=done; Agent=Reviewer; Commit(s)=`29a130b`; Actual=0.4 SP; Verdict=PASS
   - **Title**: Discovery fallback validation lane
   - **FR coverage**: FR-012, FR-013, FR-014, FR-015
   - **SC coverage**: SC-001, SC-005
@@ -164,7 +174,8 @@ Each executable item uses this structure:
   - **Owner role**: Reviewer
   - **Dependencies**: I1-T001, I1-T006, I1-T009
 
-- [ ] I1-T011 [P] [US4] [assigned_to: Reviewer] [effort: 0.5 SP] Add namespace coexistence, collision handling, and boundary-safety checks in `tests/integration/slash-command-coexistence.tests.ps1` and `tests/unit/validate-governance.interaction-model.tests.ps1` (Trace: I1-W004; FR-021, FR-022, FR-023, FR-024; SC-002, SC-006)
+- [x] I1-T011 [P] [US4] [assigned_to: Reviewer] [effort: 0.5 SP] Add namespace coexistence, collision handling, and boundary-safety checks in `tests/integration/slash-command-coexistence.tests.ps1` and `tests/unit/validate-governance.interaction-model.tests.ps1` (Trace: I1-W004; FR-021, FR-022, FR-023, FR-024; SC-002, SC-006)
+  - **Execution**: Status=done; Agent=Reviewer; Commit(s)=`29a130b`; Actual=0.5 SP; Verdict=PASS
   - **Title**: Namespace coexistence and boundary-safety validation
   - **FR coverage**: FR-021, FR-022, FR-023, FR-024
   - **SC coverage**: SC-002, SC-006
