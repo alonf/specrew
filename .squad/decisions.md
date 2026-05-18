@@ -1,3 +1,83 @@
+# Decision: Hardening-Gate Quality Artifact Repair for Iteration 002
+
+**Date**: 2026-05-18T02:00:00Z  
+**Boundary**: Iteration-closeout (pre-closeout artifact repair)  
+**Feature**: 020-session-state-durability (Session-State Durability & In-Flight Progress Tracking)  
+**Authority**: Alon Fliess  
+**Decision Type**: Governance artifact repair (bounded, artifact-only)
+
+## Context
+
+Iteration 002 closeout validator identified a missing artifact: `specs/020-session-state-durability/iterations/002/quality/hardening-gate.md`. Iteration 001 has this artifact; Iteration 002 does not. The artifact is part of the required quality-gate evidence for iteration closure.
+
+## Scope
+
+- Create `specs/020-session-state-durability/iterations/002/quality/hardening-gate.md` mirroring Iteration 001 structure
+- Adjust concern review table for Iteration 002's scope: US3 (task-progress + cross-worktree + welcome-back) and US5 (PSGallery)
+- Cite Iteration 002's authorized scope in Pre-Implementation Planning Evidence
+- Include Sign-Off Evidence based on accepted review, passing retro, and integration test evidence
+- Overall Verdict: ready
+
+## Decision
+
+**Create the missing hardening-gate.md artifact for Iteration 002 at quality-gate level.**
+
+### Authorized Sequence
+
+1. Create `specs/020-session-state-durability/iterations/002/quality/` directory and `hardening-gate.md` file
+2. Commit with message: `docs(iteration-002): add hardening-gate quality artifact for closeout`
+3. Push immediately
+4. Rerun iteration-closeout validator
+5. If PASS, commit and push closeout artifacts (closeout.md, state.md update, plan.md update, dashboard.md, .squad updates)
+6. Stop at iteration-closeout handoff (do NOT enter feature-closeout)
+
+### Stop Conditions
+
+- Validator FAIL after repair → stop and report
+- Test regression → stop and report
+- >10 consecutive reconciliation file-edits → stop and report
+- git push failure → stop and report
+
+### Out of Scope
+
+- Do NOT modify production code
+- Do NOT modify Iteration 001 artifacts (CLOSED, immutable)
+- Do NOT modify feature-level spec.md, plan.md, or tasks.md
+- Do NOT enter feature-closeout (separate authorization required)
+- Do NOT add additional quality artifacts beyond hardening-gate.md unless validator explicitly demands
+
+---
+
+# Decision: Iteration-Closeout for Feature 020 Iteration 002
+
+**Date**: 2026-05-18T01:30:00Z  
+**Boundary**: Iteration-closeout  
+**Feature**: 020-session-state-durability (Session-State Durability & In-Flight Progress Tracking)  
+**Authority**: Alon Fliess (continuing the accepted review → retro → closeout sequence)  
+**Decision Type**: Iteration closeout recorded
+
+## Context
+
+Iteration 002 is review-complete and retro-complete on `06fee69`. The final closeout step now needs to freeze the iteration summary, preserve the dashboard snapshot, and stop at the iteration layer without opening feature-closeout.
+
+## Decision
+
+**Close Iteration 002 at the iteration layer only and stop after recording the closeout artifact set.**
+
+### Evidence Preserved
+
+- Accepted review scope: `specs\020-session-state-durability\iterations\002\review.md`
+- Retro lessons: `specs\020-session-state-durability\iterations\002\retro.md`
+- Dashboard snapshot: `specs\020-session-state-durability\iterations\002\dashboard.md`
+- Closeout summary: `specs\020-session-state-durability\iterations\002\closeout.md`
+
+## Impact
+
+- Iteration 002 is fully closed with truthful plan/state/retro/closeout artifacts.
+- Feature-closeout remains unopened and still requires fresh human authorization.
+
+---
+
 # Decision: Retro-Boundary for Feature 020 Iteration 002
 
 **Date**: 2026-05-18T01:20:00Z  
@@ -7110,3 +7190,12 @@ Implementation will stop at **iteration-completion handoff only**. Do not open r
 - **Task ID**: (none)
 - **Auth Commit Hash**: 5845b73
 - **Recorded At**: 2026-05-18T01:10:46Z
+
+## 2026-05-18T01:21:57Z — Boundary sync: iteration-closeout
+
+- **Boundary Type**: iteration-closeout
+- **Feature Ref**: 020-session-state-durability
+- **Iteration Number**: 002
+- **Task ID**: (none)
+- **Auth Commit Hash**: 06fee69
+- **Recorded At**: 2026-05-18T01:21:57Z
