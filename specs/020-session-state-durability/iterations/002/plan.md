@@ -3,10 +3,11 @@
 **Schema**: v1
 **Feature**: 020-session-state-durability  
 **Branch**: 020-session-state-durability  
-**Status**: reviewing
+**Status**: review-complete
 **Capacity**: 15/20 story_points
 **Started**: 2026-05-18
 **Completed**: 2026-05-18
+**Review Completed**: 2026-05-18
 **Created**: 2026-05-18
 **Updated**: 2026-05-18
 
@@ -99,8 +100,8 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File .\tests\integration\version-checks
 - **Iteration-start**: authorized by Alon Fliess for the Iteration 002 scaffold and pre-implement validation run; branch context anchored to commit `e4b4f1f`
 - **Planning approval**: this plan is the authoritative scope contract for Iteration 002 and must remain inside FR-006..014, FR-021..024, and FR-029..035
 - **Implementation authorization**: pre-implement validation completed on the scaffolded Iteration 002 artifacts; the authorized scope shipped in `fe031bd` with bounded repairs in `b0bbb31`, `142e4c6`, and `d6b0ad2`
-- **Review status**: review boundary recorded CHANGES-REQUESTED against HEAD `d6b0ad2` for governance bookkeeping only; green validator and integration evidence still covers the delivered runtime scope
-- **Retro / closeout**: not authorized while Iteration 002 remains at the review boundary awaiting a fresh review rerun
+- **Review status**: review-verdict-signoff is accepted on HEAD `5845b73`; the rerun stayed anchored to `iterations\002\plan.md`, the governance validator passed, and all six required integration suites reran green
+- **Retro / closeout**: retro-boundary and iteration-closeout remain the only authorized remaining boundaries for Iteration 002; do not open feature-closeout from this plan state
 
 ## Traceability Summary
 
@@ -112,5 +113,6 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File .\tests\integration\version-checks
 
 - The iteration-start scaffold was created with repository helper scripts and retains the canonical bookkeeping sections, including `## Phase Baseline`.
 - Iteration 002 implementation completed on 2026-05-18 with the primary delivery commit `fe031bd` and bounded repair commits `b0bbb31`, `142e4c6`, and `d6b0ad2`.
+- Reviewer closeout artifacts (`code-map.md`, `coverage-evidence.md`, `dependency-report.md`, `reviewer-index.md`, `review-diagrams.md`, `dashboard.md`) were scaffolded after the accepted review rerun so retro/closeout can proceed without reopening scope.
 - Use concrete commit hashes rather than symbolic refs when recording execution progress, validator evidence, and boundary handoffs.
 - Keep warning surfaces observable in captured output so CI and scripted tests can assert the exact user-facing text.

@@ -1,3 +1,39 @@
+# Decision: Review-Verdict-Signoff for Feature 020 Iteration 002
+
+**Date**: 2026-05-18T01:05:21Z  
+**Boundary**: Review-verdict-signoff  
+**Feature**: 020-session-state-durability (Session-State Durability & In-Flight Progress Tracking)  
+**Authority**: Alon Fliess (per prior authorized review → retro → closeout sequence)  
+**Decision Type**: Accepted review signoff
+
+## Context
+
+The Iteration 002 governance-only repair landed in `c6348a4`, and the independent review rerun on HEAD `5845b73` rechecked the authoritative scope in `specs\020-session-state-durability\iterations\002\plan.md`. The reviewer confirmed the prior CHANGES-REQUESTED items were bookkeeping-only, now repaired, and no behavioral or scope-interpretation gaps remain.
+
+## Decision
+
+**Accept Iteration 002 review-verdict-signoff and continue immediately to retro-boundary and iteration-closeout.**
+
+### Evidence
+
+- Governance validator: PASS on `specs\020-session-state-durability\iterations\002`
+- Integration suites rerun green:
+  - `boundary-sync-atomicity.tests.ps1`
+  - `stale-state-detection.tests.ps1`
+  - `task-progress-tracking.tests.ps1`
+  - `cross-worktree-awareness.tests.ps1`
+  - `version-checks.tests.ps1`
+  - `psgallery-check.tests.ps1`
+- Reviewer verdict: `accepted` in `specs\020-session-state-durability\iterations\002\review.md`
+
+## Impact
+
+- Iteration 002 is review-complete on its authorized scope.
+- Reviewer closeout packet generation is now valid for the accepted tree.
+- The only remaining authorized work is retro-boundary followed by iteration-closeout.
+
+---
+
 # Decision: Scribe Feature 020 Iteration 002 Governance-Only Repair Authorization for Review-Boundary
 
 **Date**: 2026-05-24T00:14:00Z  
@@ -7035,3 +7071,12 @@ Implementation will stop at **iteration-completion handoff only**. Do not open r
 - Prior iteration closure: `.squad\decisions.md` (Reviewer Feature 020 Iteration 001 Scope-Correction)
 
 ---
+
+## 2026-05-18T01:10:46Z — Boundary sync: review-signoff
+
+- **Boundary Type**: review-signoff
+- **Feature Ref**: 020-session-state-durability
+- **Iteration Number**: 002
+- **Task ID**: (none)
+- **Auth Commit Hash**: 5845b73
+- **Recorded At**: 2026-05-18T01:10:46Z
