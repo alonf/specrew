@@ -182,6 +182,38 @@ function Get-SpecrewFeatureNumber {
     return $null
 }
 
+function Get-SpecrewBoundaryOrder {
+    return @('specify', 'clarify', 'plan', 'tasks', 'review-signoff', 'iteration-closeout', 'feature-closeout')
+}
+
+function Resolve-SpecrewBoundaryAuthCommitHash {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$ProjectRoot,
+
+        [AllowNull()]
+        [string]$AuthCommitHash
+    )
+
+    if (-not [string]::IsNullOrWhiteSpace($AuthCommitHash) -and $AuthCommitHash -ne 'HEAD') {
+        return $AuthCommitHash.Trim()
+    }
+
+    $resolvedHead = @(& git -C $ProjectRoot rev-parse --verify HEAD 2>$null)
+    if ($LASTEXITCODE -eq 0 -and $resolvedHead.Count -gt 0) {
+        $candidateHead = $resolvedHead[0].ToString().Trim()
+        if ($candidateHead -match '^[0-9a-f]{40}$') {
+            return $candidateHead
+        }
+    }
+
+    if ($AuthCommitHash -eq 'HEAD') {
+        throw "Failed to resolve literal HEAD to a concrete commit hash."
+    }
+
+    return $null
+}
+
 function New-SpecrewSessionState {
     param(
         [Parameter(Mandatory = $true)]
@@ -207,18 +239,16 @@ function New-SpecrewSessionState {
     $resolvedFeatureRef = Resolve-SpecrewFeatureRef -ProjectRoot $ProjectRoot -FeatureRef $FeatureRef
     $featurePath = Resolve-SpecrewFeatureDirectory -ProjectRoot $ProjectRoot -FeatureRef $resolvedFeatureRef
     $recordedAt = (Get-Date).ToUniversalTime().ToString('yyyy-MM-ddTHH:mm:ssZ')
-    $isFeatureCloseout = ($BoundaryType -eq 'feature-closeout')
-
     return [pscustomobject]@{
         boundary_type    = $BoundaryType
-        feature_ref      = if ($isFeatureCloseout) { $null } else { $resolvedFeatureRef }
-        feature_number   = if ($isFeatureCloseout) { $null } else { Get-SpecrewFeatureNumber -FeatureRef $resolvedFeatureRef }
-        feature_path     = if ($isFeatureCloseout) { $null } else { $featurePath }
+        feature_ref      = $resolvedFeatureRef
+        feature_number   = Get-SpecrewFeatureNumber -FeatureRef $resolvedFeatureRef
+        feature_path     = $featurePath
         iteration_number = if ([string]::IsNullOrWhiteSpace($IterationNumber)) { $null } else { $IterationNumber.Trim() }
         task_id          = if ([string]::IsNullOrWhiteSpace($TaskId)) { $null } else { $TaskId.Trim() }
         auth_commit_hash = if ([string]::IsNullOrWhiteSpace($AuthCommitHash)) { $null } else { $AuthCommitHash.Trim() }
         recorded_at      = $recordedAt
-        active           = if ($isFeatureCloseout) { 'false' } else { 'true' }
+        active           = if ($BoundaryType -eq 'feature-closeout') { 'false' } else { 'true' }
     }
 }
 
@@ -230,8 +260,10 @@ function Get-SpecrewPromptBody {
 # Specrew Session State
 
 - No active feature.
+- Last feature: $(if ($SessionState.feature_ref) { $SessionState.feature_ref } else { '(none)' })
 - Last boundary: $($SessionState.boundary_type)
 - Recorded at: $($SessionState.recorded_at)
+- Authorization commit: $(if ($SessionState.auth_commit_hash) { $SessionState.auth_commit_hash } else { '(none)' })
 "@
     }
 
@@ -254,7 +286,7 @@ function Get-SpecrewIdentityBody {
         return @"
 # What We're Focused On
 
-No active feature. Last recorded boundary: $($SessionState.boundary_type) at $($SessionState.recorded_at).
+No active feature. Last completed feature: $(if ($SessionState.feature_ref) { $SessionState.feature_ref } else { '(none)' }) at the $($SessionState.boundary_type) boundary ($($SessionState.recorded_at)).
 "@
     }
 
@@ -278,7 +310,15 @@ function Update-SpecrewMarkdownStateFile {
         [pscustomobject]$SessionState,
 
         [Parameter(Mandatory = $true)]
-        [string]$DefaultBody
+        [string]$DefaultBody,
+
+        [AllowNull()]
+        [System.Collections.IDictionary]$AdditionalFrontmatter,
+
+        [AllowNull()]
+        [string]$PreferredBody,
+
+        [switch]$UsePreferredBody
     )
 
     $existingContent = if (Test-Path -LiteralPath $Path -PathType Leaf) {
@@ -302,6 +342,12 @@ function Update-SpecrewMarkdownStateFile {
         $frontmatter[$entry.Key] = $entry.Value
     }
 
+    if ($null -ne $AdditionalFrontmatter) {
+        foreach ($entry in $AdditionalFrontmatter.GetEnumerator()) {
+            $frontmatter[[string]$entry.Key] = $entry.Value
+        }
+    }
+
     $frontmatter['updated_at'] = $SessionState.recorded_at
     $frontmatter['session_state_active'] = $SessionState.active
     $frontmatter['session_state_boundary'] = $SessionState.boundary_type
@@ -312,7 +358,15 @@ function Update-SpecrewMarkdownStateFile {
     $frontmatter['session_state_auth_commit'] = if ($SessionState.auth_commit_hash) { $SessionState.auth_commit_hash } else { '(none)' }
     $frontmatter['session_state_recorded_at'] = $SessionState.recorded_at
 
-    $body = if ([string]::IsNullOrWhiteSpace($parsed.Body)) { $DefaultBody } else { $parsed.Body.Trim() }
+    $body = if ($UsePreferredBody) {
+        if ([string]::IsNullOrWhiteSpace($PreferredBody)) { $DefaultBody } else { $PreferredBody.Trim() }
+    }
+    elseif ([string]::IsNullOrWhiteSpace($parsed.Body)) {
+        $DefaultBody
+    }
+    else {
+        $parsed.Body.Trim()
+    }
     $content = New-SpecrewMarkdownContent -Frontmatter $frontmatter -Body $body
     Write-FileAtomically -Path $Path -Content ($content.TrimEnd() + [Environment]::NewLine)
 }
@@ -440,6 +494,31 @@ function Add-SpecrewBoundarySyncLedgerEntry {
     Add-DecisionsLedgerEntry -ProjectRoot $ProjectRoot -Title ('Boundary sync: {0}' -f $SessionState.boundary_type) -Lines $lines | Out-Null
 }
 
+function Add-SpecrewBoundarySyncWarningLedgerEntry {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$ProjectRoot,
+
+        [Parameter(Mandatory = $true)]
+        [string]$BoundaryType,
+
+        [AllowNull()]
+        [pscustomobject]$LatestBoundary,
+
+        [Parameter(Mandatory = $true)]
+        [string]$Message
+    )
+
+    $lines = @(
+        ('- **Boundary Type**: {0}' -f $BoundaryType)
+        ('- **Latest Recorded Boundary**: {0}' -f $(if ($null -ne $LatestBoundary -and $LatestBoundary.boundary_type) { $LatestBoundary.boundary_type } else { '(none)' }))
+        ('- **Recorded At**: {0}' -f ((Get-Date).ToUniversalTime().ToString('yyyy-MM-ddTHH:mm:ssZ')))
+        ('- **Warning**: {0}' -f $Message)
+    )
+
+    Add-DecisionsLedgerEntry -ProjectRoot $ProjectRoot -Title ('Boundary sync warning: {0}' -f $BoundaryType) -Lines $lines | Out-Null
+}
+
 function Get-LatestSpecrewBoundarySyncState {
     param(
         [Parameter(Mandatory = $true)]
@@ -514,7 +593,16 @@ function Invoke-SpecrewBoundaryStateSync {
         [string]$TaskId,
 
         [AllowNull()]
-        [string]$AuthCommitHash
+        [string]$AuthCommitHash,
+
+        [AllowNull()]
+        [string]$IdentityFocusArea,
+
+        [AllowNull()]
+        [string]$IdentityActiveIssues,
+
+        [AllowNull()]
+        [string]$IdentityBody
     )
 
     $paths = Get-SpecrewSessionStatePaths -ProjectRoot $ProjectPath
@@ -530,23 +618,54 @@ function Invoke-SpecrewBoundaryStateSync {
         }
     }
 
+    $latestBoundary = Get-LatestSpecrewBoundarySyncState -ProjectRoot $paths.ProjectRoot
+    $boundaryOrder = @(Get-SpecrewBoundaryOrder)
+    $expectedBoundaryType = if ($null -eq $latestBoundary) {
+        $boundaryOrder[0]
+    }
+    else {
+        $latestBoundaryIndex = [Array]::IndexOf($boundaryOrder, [string]$latestBoundary.boundary_type)
+        if ($latestBoundaryIndex -ge 0 -and $latestBoundaryIndex -lt ($boundaryOrder.Count - 1)) {
+            $boundaryOrder[$latestBoundaryIndex + 1]
+        }
+        else {
+            $null
+        }
+    }
+
+    if (-not [string]::IsNullOrWhiteSpace($expectedBoundaryType) -and $expectedBoundaryType -ne $BoundaryType) {
+        Add-SpecrewBoundarySyncWarningLedgerEntry -ProjectRoot $paths.ProjectRoot -BoundaryType $BoundaryType -LatestBoundary $latestBoundary -Message ("Expected next boundary '{0}' but received '{1}'." -f $expectedBoundaryType, $BoundaryType)
+    }
+
+    $effectiveAuthCommitHash = Resolve-SpecrewBoundaryAuthCommitHash -ProjectRoot $paths.ProjectRoot -AuthCommitHash $AuthCommitHash
     $sessionState = New-SpecrewSessionState `
         -BoundaryType $BoundaryType `
         -ProjectRoot $paths.ProjectRoot `
         -FeatureRef $effectiveFeatureRef `
         -IterationNumber $IterationNumber `
         -TaskId $TaskId `
-        -AuthCommitHash $AuthCommitHash
+        -AuthCommitHash $effectiveAuthCommitHash
+
+    $identityAdditionalFrontmatter = $null
+    if (-not [string]::IsNullOrWhiteSpace($IdentityFocusArea) -or -not [string]::IsNullOrWhiteSpace($IdentityActiveIssues)) {
+        $identityAdditionalFrontmatter = [ordered]@{}
+        if (-not [string]::IsNullOrWhiteSpace($IdentityFocusArea)) {
+            $identityAdditionalFrontmatter['focus_area'] = $IdentityFocusArea.Trim()
+        }
+        if (-not [string]::IsNullOrWhiteSpace($IdentityActiveIssues)) {
+            $identityAdditionalFrontmatter['active_issues'] = $IdentityActiveIssues.Trim()
+        }
+    }
 
     Update-SpecrewMarkdownStateFile -Path $paths.PromptPath -SessionState $sessionState -DefaultBody (Get-SpecrewPromptBody -SessionState $sessionState)
     Update-SpecrewStartContext -Path $paths.ContextPath -SessionState $sessionState
-    Update-SpecrewMarkdownStateFile -Path $paths.IdentityPath -SessionState $sessionState -DefaultBody (Get-SpecrewIdentityBody -SessionState $sessionState)
+    Update-SpecrewMarkdownStateFile -Path $paths.IdentityPath -SessionState $sessionState -DefaultBody (Get-SpecrewIdentityBody -SessionState $sessionState) -AdditionalFrontmatter $identityAdditionalFrontmatter -PreferredBody $IdentityBody -UsePreferredBody:(-not [string]::IsNullOrWhiteSpace($IdentityBody))
+
+    Add-SpecrewBoundarySyncLedgerEntry -ProjectRoot $paths.ProjectRoot -SessionState $sessionState
 
     if ($BoundaryType -eq 'feature-closeout') {
         Clear-SpecrewActiveFeature -FeatureJsonPath $paths.FeatureJsonPath
     }
-
-    Add-SpecrewBoundarySyncLedgerEntry -ProjectRoot $paths.ProjectRoot -SessionState $sessionState
 
     return [pscustomobject]@{
         success          = $true
@@ -559,5 +678,6 @@ function Invoke-SpecrewBoundaryStateSync {
         context_path     = $paths.ContextPath
         identity_path    = $paths.IdentityPath
         decisions_path   = $paths.DecisionsPath
+        auth_commit_hash = $sessionState.auth_commit_hash
     }
 }

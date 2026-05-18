@@ -29,6 +29,9 @@ pwsh -NoProfile -File tests/integration/start-command.ps1
 pwsh -NoProfile -File tests/integration/review-command.ps1
 pwsh -NoProfile -File tests/integration/lifecycle-trace-contract.ps1
 pwsh -NoProfile -File tests/integration/validation-contract-lane.ps1
+pwsh -NoProfile -File tests/integration/closeout-identity-schema-parity.tests.ps1
+pwsh -NoProfile -File tests/integration/lifecycle-boundary-sync.tests.ps1
+pwsh -NoProfile -File tests/integration/start-recovery-flow.tests.ps1
 pwsh -NoProfile -File tests/integration/bootstrap-asset-blocker-recovery.ps1
 pwsh -NoProfile -File tests/integration/brownfield-conflict-handling.ps1
 pwsh -NoProfile -File tests/integration/validate-versions-cli-behavior.ps1
@@ -62,6 +65,9 @@ pwsh -NoProfile -File tests/integration/planning-overcommit.ps1
 pwsh -NoProfile -File tests/integration/process-quality-report.ps1
 pwsh -NoProfile -File tests/integration/process-quality-scorer.ps1
 pwsh -NoProfile -File tests/integration/feature-017-dashboard-core.ps1
+pwsh -NoProfile -File tests/integration/closeout-identity-schema-parity.tests.ps1
+pwsh -NoProfile -File tests/integration/lifecycle-boundary-sync.tests.ps1
+pwsh -NoProfile -File tests/integration/start-recovery-flow.tests.ps1
 
 # Contract lane
 pwsh -NoProfile -File tests/integration/validation-contract-lane.ps1

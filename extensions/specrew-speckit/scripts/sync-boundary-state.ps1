@@ -11,6 +11,9 @@ param(
     [string]$IterationNumber,
     [string]$TaskId,
     [string]$AuthCommitHash,
+    [string]$IdentityFocusArea,
+    [string]$IdentityActiveIssues,
+    [string]$IdentityBody,
     [switch]$PassThru
 )
 
@@ -36,15 +39,18 @@ $result = Invoke-SpecrewBoundaryStateSync `
     -FeatureRef $FeatureRef `
     -IterationNumber $IterationNumber `
     -TaskId $TaskId `
-    -AuthCommitHash $effectiveAuthCommitHash
+    -AuthCommitHash $effectiveAuthCommitHash `
+    -IdentityFocusArea $IdentityFocusArea `
+    -IdentityActiveIssues $IdentityActiveIssues `
+    -IdentityBody $IdentityBody
 
 if ($PassThru) {
     $result
 }
 else {
-    Write-Host ("Boundary sync complete: {0}" -f $BoundaryType) -ForegroundColor Green
-    Write-Host ("Prompt: {0}" -f $result.prompt_path)
-    Write-Host ("Context: {0}" -f $result.context_path)
-    Write-Host ("Identity: {0}" -f $result.identity_path)
-    Write-Host ("Decisions: {0}" -f $result.decisions_path)
+    Write-Output ("Boundary sync complete: {0}" -f $BoundaryType)
+    Write-Output ("Prompt: {0}" -f $result.prompt_path)
+    Write-Output ("Context: {0}" -f $result.context_path)
+    Write-Output ("Identity: {0}" -f $result.identity_path)
+    Write-Output ("Decisions: {0}" -f $result.decisions_path)
 }

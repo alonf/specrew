@@ -813,13 +813,17 @@ if ($frontendOnlyRoles -notcontains 'Frontend Experience Specialist') {
 Write-Pass "Brownfield frontend-only repos avoid forced backend specialists"
 
 Write-Host "`nTest 6: start command preserves the existing Specrew roster and serializes delegated routing"
-$teamAddResult = Invoke-TestScript -ScriptPath $entryScript -ArgumentList @(
-    'team',
-    'add', 'react-expert',
-    '--role', 'Frontend React Expert',
-    '--charter', 'Decide and implement React-related frontend work.',
-    '-ProjectPath', $projectRoot
-)
+$quotedProjectRoot = $projectRoot.Replace("'", "''")
+$quotedEntryScriptForTeam = $entryScript.Replace("'", "''")
+$teamAddResult = Invoke-TestCommand -Command @"
+Push-Location -LiteralPath '$quotedProjectRoot'
+try {
+    & '$quotedEntryScriptForTeam' team add react-expert --role 'Frontend React Expert' --charter 'Decide and implement React-related frontend work.'
+}
+finally {
+    Pop-Location
+}
+"@
 
 if ($teamAddResult.ExitCode -ne 0) {
     Write-Fail "Failed to add a supplemental team member for roster-preservation testing"

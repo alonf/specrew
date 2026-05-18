@@ -226,3 +226,45 @@ $detailBlock- $validatorLine
 $suggestedActionsBlock
 "@
 }
+
+function Get-CoordinatorRecoveryPromptBlock {
+    param(
+        [AllowNull()][pscustomobject]$RecoverySession
+    )
+
+    if ($null -eq $RecoverySession) {
+        return $null
+    }
+
+    $reasonLines = if (@($RecoverySession.stale_reasons).Count -gt 0) {
+        (@($RecoverySession.stale_reasons) | ForEach-Object { '- ' + [string]$_ }) -join [Environment]::NewLine
+    }
+    else {
+        '- Recovery was requested explicitly.'
+    }
+
+    $choiceLines = if (@($RecoverySession.choice_set).Count -gt 0) {
+        (@($RecoverySession.choice_set) | ForEach-Object { '- ' + [string]$_ }) -join [Environment]::NewLine
+    }
+    else {
+        '- Recovery is active without an interactive choice requirement.'
+    }
+
+    return @"
+## Recovery Mode
+
+- Entry mode: $($RecoverySession.entry_mode)
+- Selected choice: $(if ($RecoverySession.selected_choice) { $RecoverySession.selected_choice } else { '(none)' })
+- Bypass stale-state gate: $($RecoverySession.bypass_gate)
+- Approval behavior changed: $($RecoverySession.approval_mode_changed)
+- Next action: $($RecoverySession.next_action_message)
+
+### Recovery Reasons
+
+$reasonLines
+
+### Available Recovery Choices
+
+$choiceLines
+"@
+}

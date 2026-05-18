@@ -178,8 +178,12 @@ if (-not (Test-Path -LiteralPath $capFixturePath -PathType Container)) {
     exit 1
 }
 
+$capProjectRoot = Join-Path $scratchRoot 'lockout-chain-cap-project'
+Copy-Item -LiteralPath $capFixturePath -Destination $capProjectRoot -Recurse -Force
+[System.IO.File]::WriteAllText((Join-Path $capProjectRoot '.specrew\config.yml'), "project_name: cap-fixture`nspecrew_version: `"0.21.0`"`nbootstrap_date: `"2026-01-01`"`n", [System.Text.UTF8Encoding]::new($false))
+
 # Scaffold reviewer artifacts for the cap fixture to generate reviewer-index.md with cap state
-$capIterationDirectory = Join-Path $capFixturePath 'specs\008-sample\iterations\001'
+$capIterationDirectory = Join-Path $capProjectRoot 'specs\008-sample\iterations\001'
 $scaffoldScript = Join-Path $repoRoot 'extensions\specrew-speckit\scripts\scaffold-reviewer-artifacts.ps1'
 if (-not (Test-Path -LiteralPath $scaffoldScript -PathType Leaf)) {
     Write-Fail "Missing scaffold script: $scaffoldScript"
@@ -211,7 +215,7 @@ foreach ($pattern in @('Lockout Cap:\s+active', 'chain=\d+/\d+', 'Next Owner:'))
 }
 
 # Verify specrew review shows cap state
-$capReviewResult = Invoke-TestScript -ScriptPath $entryScript -ArgumentList @('review', '--project-path', $capFixturePath)
+$capReviewResult = Invoke-TestScript -ScriptPath $entryScript -ArgumentList @('review', '--project-path', $capProjectRoot)
 if ($capReviewResult.ExitCode -ne 0) {
     Write-Fail 'specrew review on cap fixture failed'
     Write-Host "Review output:" -ForegroundColor Yellow

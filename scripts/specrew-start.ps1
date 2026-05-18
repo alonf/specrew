@@ -20,6 +20,8 @@ param(
     [switch]$SameWindow,
     [switch]$AllowAll,
     [switch]$PromptApprovals,
+    [switch]$Recover,
+    [string]$RecoveryChoice,
     [switch]$SkipUpdateCheck,
     [switch]$Help,
 
@@ -78,8 +80,11 @@ function Convert-UnixStyleArguments {
         [string]$PostRestartDirective,
         [bool]$NoLaunch,
         [bool]$NewWindow,
+        [bool]$SameWindow,
         [bool]$AllowAll,
         [bool]$PromptApprovals,
+        [bool]$Recover,
+        [AllowNull()][string]$RecoveryChoice,
         [bool]$SkipUpdateCheck,
         [bool]$Help,
         [string[]]$CliArgs
@@ -96,6 +101,8 @@ function Convert-UnixStyleArguments {
         SameWindow     = $false
         AllowAll       = $AllowAll
         PromptApprovals = $PromptApprovals
+        Recover        = $Recover
+        RecoveryChoice = $RecoveryChoice
         SkipUpdateCheck = $SkipUpdateCheck
         Help           = $Help
     }
@@ -143,6 +150,13 @@ function Convert-UnixStyleArguments {
             '--prompt-approvals' {
                 $result.PromptApprovals = $true
             }
+            '--recover' {
+                $result.Recover = $true
+            }
+            '--recovery-choice' {
+                $i++
+                if ($i -lt $CliArgs.Count) { $result.RecoveryChoice = $CliArgs[$i].ToUpperInvariant() }
+            }
             '--skip-update-check' {
                 $result.SkipUpdateCheck = $true
             }
@@ -176,6 +190,8 @@ $parsedArgs = Convert-UnixStyleArguments `
     -SameWindow $SameWindow.IsPresent `
     -AllowAll $AllowAll.IsPresent `
     -PromptApprovals $PromptApprovals.IsPresent `
+    -Recover $Recover.IsPresent `
+    -RecoveryChoice $RecoveryChoice `
     -SkipUpdateCheck $SkipUpdateCheck.IsPresent `
     -Help $Help.IsPresent `
     -CliArgs $CliArgs
@@ -190,6 +206,8 @@ $NewWindow = [bool]$parsedArgs.NewWindow
 $SameWindow = [bool]$parsedArgs.SameWindow
 $AllowAll = [bool]$parsedArgs.AllowAll
 $PromptApprovals = [bool]$parsedArgs.PromptApprovals
+$Recover = [bool]$parsedArgs.Recover
+$RecoveryChoice = [string]$parsedArgs.RecoveryChoice
 $SkipUpdateCheck = [bool]$parsedArgs.SkipUpdateCheck
 $Help = [bool]$parsedArgs.Help
 
@@ -216,6 +234,7 @@ Options:
   -SameWindow | --same-window              Compatibility alias for the default current-terminal launch mode
   -AllowAll | --allow-all                  Launch Copilot with --allow-all so tool calls run without approval prompts (this is the default)
   -PromptApprovals | --prompt-approvals    Keep Copilot's interactive approval prompts enabled (disables --allow-all)
+  -Recover | --recover                     Bypass stale-state blocking and enter recovery mode directly
   -SkipUpdateCheck | --skip-update-check   Skip the PSGallery latest-version check for this run
   -Help | --help                           Show this help message
 
@@ -514,6 +533,84 @@ function Test-SpecrewSessionStateConsistency {
     return $issues.ToArray()
 }
 
+function Get-SpecrewLatestIterationDirectory {
+    param(
+        [Parameter(Mandatory = $true)][string]$FeaturePath
+    )
+
+    $iterationsRoot = Join-Path $FeaturePath 'iterations'
+    if (-not (Test-Path -LiteralPath $iterationsRoot -PathType Container)) {
+        return $null
+    }
+
+    return @(
+        Get-ChildItem -LiteralPath $iterationsRoot -Directory |
+            Sort-Object Name -Descending |
+            Select-Object -First 1
+    )[0]
+}
+
+function Get-SpecrewMetadataValueFromFile {
+    param(
+        [Parameter(Mandatory = $true)][string]$Path,
+        [Parameter(Mandatory = $true)][string]$Label
+    )
+
+    if (-not (Test-Path -LiteralPath $Path -PathType Leaf)) {
+        return $null
+    }
+
+    $pattern = '(?m)^\*\*' + [regex]::Escape($Label) + '\*\*:\s*(?<value>.+?)\s*$'
+    $match = [regex]::Match((Get-Content -LiteralPath $Path -Raw -Encoding UTF8), $pattern)
+    if ($match.Success) {
+        return $match.Groups['value'].Value.Trim()
+    }
+
+    return $null
+}
+
+function Get-SpecrewLateBoundaryIssues {
+    param(
+        [Parameter(Mandatory = $true)][string]$ProjectRoot,
+        [AllowNull()][pscustomobject]$SessionState
+    )
+
+    if ($null -eq $SessionState) {
+        return @()
+    }
+
+    $issues = New-Object System.Collections.Generic.List[string]
+    $featurePath = if (-not [string]::IsNullOrWhiteSpace([string]$SessionState.feature_path)) {
+        [string]$SessionState.feature_path
+    }
+    elseif (-not [string]::IsNullOrWhiteSpace([string]$SessionState.feature_ref)) {
+        Join-Path $ProjectRoot ('specs\' + [string]$SessionState.feature_ref)
+    }
+    else {
+        $null
+    }
+
+    if ([string]::IsNullOrWhiteSpace($featurePath) -or -not (Test-Path -LiteralPath $featurePath -PathType Container)) {
+        return @()
+    }
+
+    $latestIterationDirectory = Get-SpecrewLatestIterationDirectory -FeaturePath $featurePath
+    if ($null -ne $latestIterationDirectory) {
+        $reviewPath = Join-Path $latestIterationDirectory.FullName 'review.md'
+        $reviewVerdict = Get-SpecrewMetadataValueFromFile -Path $reviewPath -Label 'Overall Verdict'
+        if ($reviewVerdict -match '^(?i)accepted$' -and [string]$SessionState.boundary_type -notin @('review-signoff', 'iteration-closeout', 'feature-closeout')) {
+            $issues.Add(("Late boundary sync mismatch: review.md is accepted in iteration {0}, but the recorded boundary is '{1}' instead of review-signoff or later." -f $latestIterationDirectory.Name, $SessionState.boundary_type)) | Out-Null
+        }
+    }
+
+    $closeoutDashboardPath = Join-Path $featurePath 'closeout-dashboard.md'
+    if ((Test-Path -LiteralPath $closeoutDashboardPath -PathType Leaf) -and [string]$SessionState.boundary_type -ne 'feature-closeout') {
+        $issues.Add(("Late boundary sync mismatch: closeout-dashboard.md exists for '{0}', but the recorded boundary is '{1}' instead of feature-closeout." -f (Split-Path -Leaf $featurePath), $SessionState.boundary_type)) | Out-Null
+    }
+
+    return $issues.ToArray()
+}
+
 function Test-SpecrewStaleSessionState {
     param([Parameter(Mandatory = $true)][string]$ProjectRoot)
 
@@ -530,6 +627,18 @@ function Test-SpecrewStaleSessionState {
     $issues = New-Object System.Collections.Generic.List[string]
     foreach ($issue in (Test-SpecrewSessionStateConsistency -Snapshot $snapshot)) {
         $issues.Add($issue) | Out-Null
+    }
+
+    foreach ($issue in (Get-SpecrewLateBoundaryIssues -ProjectRoot $ProjectRoot -SessionState $sessionState)) {
+        $issues.Add($issue) | Out-Null
+    }
+
+    if ([string]$sessionState.active -eq 'false') {
+        return [pscustomobject]@{
+            IsStale      = ($issues.Count -gt 0)
+            Issues       = $issues.ToArray()
+            SessionState = $sessionState
+        }
     }
 
     $mergeCheck = Test-SpecrewFeatureMergedToMain -ProjectRoot $ProjectRoot -FeatureRef $sessionState.feature_ref
@@ -549,6 +658,95 @@ function Test-SpecrewStaleSessionState {
         IsStale = ($issues.Count -gt 0)
         Issues = $issues.ToArray()
         SessionState = $sessionState
+    }
+}
+
+function Read-SpecrewRecoveryChoice {
+    param([AllowNull()][string]$PreferredChoice)
+
+    if (-not [string]::IsNullOrWhiteSpace($PreferredChoice)) {
+        return $PreferredChoice.Trim().ToUpperInvariant()
+    }
+
+    while ($true) {
+        $selection = Read-Host 'Choose recovery path [A/B/C]'
+        if (-not [string]::IsNullOrWhiteSpace($selection)) {
+            $normalizedSelection = $selection.Trim().ToUpperInvariant()
+            if ($normalizedSelection -in @('A', 'B', 'C')) {
+                return $normalizedSelection
+            }
+        }
+
+        Write-Output "WARN: Invalid recovery choice. Enter A, B, or C." | Out-Host
+    }
+}
+
+function New-SpecrewRecoverySession {
+    param(
+        [Parameter(Mandatory = $true)][string]$EntryMode,
+        [Parameter(Mandatory = $true)][string[]]$StaleReasons,
+        [Parameter(Mandatory = $true)][bool]$BypassGate,
+        [AllowNull()][string]$SelectedChoice,
+        [Parameter(Mandatory = $true)][string]$NextActionMessage
+    )
+
+    return [pscustomobject]@{
+        entry_mode              = $EntryMode
+        stale_reasons           = @($StaleReasons)
+        choice_set              = if ($EntryMode -eq 'detected-stale-state') { @('A', 'B', 'C') } else { @('recover') }
+        selected_choice         = $SelectedChoice
+        bypass_gate             = $BypassGate
+        approval_mode_changed   = $false
+        next_action_message     = $NextActionMessage
+    }
+}
+
+function Resolve-SpecrewRecoverySelection {
+    param(
+        [Parameter(Mandatory = $true)][string]$Choice,
+        [AllowNull()][pscustomobject]$SessionState
+    )
+
+    $recoveryFeaturePath = if ($null -ne $SessionState -and -not [string]::IsNullOrWhiteSpace([string]$SessionState.feature_path)) {
+        [string]$SessionState.feature_path
+    }
+    else {
+        $null
+    }
+
+    switch ($Choice) {
+        'A' {
+            return [pscustomobject]@{
+                ResumeFeatureOverride = if (-not [string]::IsNullOrWhiteSpace($recoveryFeaturePath)) { $recoveryFeaturePath } else { 'auto' }
+                SkipAutoResume        = $false
+                ForceNoLaunch         = $false
+                NextActionMessage     = if (-not [string]::IsNullOrWhiteSpace($recoveryFeaturePath)) {
+                    "Recovery will re-anchor to '$recoveryFeaturePath' so you can repair or continue the last known feature state."
+                }
+                else {
+                    'Recovery will try to re-anchor to the last known feature automatically so you can repair or continue.'
+                }
+                Directive             = 'Recovery choice A selected: re-anchor to the last known feature, inspect the stale-state evidence, and continue with an explicit repair or resume plan.'
+            }
+        }
+        'B' {
+            return [pscustomobject]@{
+                ResumeFeatureOverride = $null
+                SkipAutoResume        = $true
+                ForceNoLaunch         = $false
+                NextActionMessage     = 'Recovery will bypass the stale feature state and return you to fresh feature intake.'
+                Directive             = 'Recovery choice B selected: do not resume the stale feature automatically. Start fresh intake for a new feature after acknowledging the stale-state evidence.'
+            }
+        }
+        default {
+            return [pscustomobject]@{
+                ResumeFeatureOverride = $null
+                SkipAutoResume        = $true
+                ForceNoLaunch         = $true
+                NextActionMessage     = 'Recovery will stop after writing diagnostics so you can manually fix or document the stale state before restarting.'
+                Directive             = 'Recovery choice C selected: do not launch Copilot automatically. Review the recorded stale-state evidence, repair the session-state artifacts manually, then rerun specrew start.'
+            }
+        }
     }
 }
 
@@ -2333,7 +2531,8 @@ function Get-StartPrompt {
         [pscustomobject]$ProjectState,
         [AllowNull()][pscustomobject]$BrownfieldDiscovery,
         [pscustomobject]$DeliveryGuidance,
-        [AllowNull()][pscustomobject]$SessionState
+        [AllowNull()][pscustomobject]$SessionState,
+        [AllowNull()][pscustomobject]$RecoverySession
     )
 
     $featureLine = if ($ResolvedFeaturePath) {
@@ -2351,6 +2550,7 @@ function Get-StartPrompt {
     }
 
     $resumePromptBlock = Get-CoordinatorResumePromptBlock -ProjectRoot $ResolvedProjectPath -ResolvedFeaturePath $ResolvedFeaturePath -SessionState $SessionState
+    $recoveryPromptBlock = Get-CoordinatorRecoveryPromptBlock -RecoverySession $RecoverySession
     $teamRosterBlock = Get-TeamRosterPromptBlock -TeamRoster $TeamRoster
     $routingPlanBlock = Get-RoutingPlanPromptBlock -RoutingPlan $RoutingPlan
     $projectStateBlock = Get-ProjectStatePromptBlock -ProjectState $ProjectState
@@ -2366,6 +2566,8 @@ $featureLine
 $requestLine
 
 $resumePromptBlock
+
+$recoveryPromptBlock
 
 $teamRosterBlock
 
@@ -2505,7 +2707,8 @@ function Get-StartSummaryContent {
         [pscustomobject]$DeliveryGuidance,
         [pscustomobject]$RoutingPlan,
         [System.Collections.IDictionary]$SquadModelOverrides,
-        [string]$ApprovalOperatorNote
+        [string]$ApprovalOperatorNote,
+        [AllowNull()][pscustomobject]$RecoverySession
     )
 
     $summaryLines = New-Object System.Collections.Generic.List[string]
@@ -2523,6 +2726,15 @@ function Get-StartSummaryContent {
     $summaryLines.Add(("- **Copilot Autopilot**: {0}" -f $UseAutopilot)) | Out-Null
     $summaryLines.Add(("- **Operator Note**: {0}" -f $ApprovalOperatorNote)) | Out-Null
     $summaryLines.Add('') | Out-Null
+    if ($null -ne $RecoverySession) {
+        $summaryLines.Add('## Recovery') | Out-Null
+        $summaryLines.Add(("- **Entry Mode**: {0}" -f $RecoverySession.entry_mode)) | Out-Null
+        $summaryLines.Add(("- **Selected Choice**: {0}" -f $(if ($RecoverySession.selected_choice) { $RecoverySession.selected_choice } else { '(none)' }))) | Out-Null
+        $summaryLines.Add(("- **Bypass Gate**: {0}" -f $RecoverySession.bypass_gate)) | Out-Null
+        $summaryLines.Add(("- **Approval Mode Changed**: {0}" -f $RecoverySession.approval_mode_changed)) | Out-Null
+        $summaryLines.Add(("- **Next Action**: {0}" -f $RecoverySession.next_action_message)) | Out-Null
+        $summaryLines.Add('') | Out-Null
+    }
     $summaryLines.Add('## Human Gates') | Out-Null
     $summaryLines.Add('- Clarify is mandatory for newly generated specs unless a concrete skip rationale is recorded first.') | Out-Null
     $summaryLines.Add('- After spec + clarify, Squad presents the final team and asks for explicit implementation approval.') | Out-Null
@@ -2571,6 +2783,7 @@ function Save-StartArtifacts {
         [pscustomobject]$DeliveryGuidance,
         [string]$ApprovalOperatorNote,
         [AllowNull()][pscustomobject]$SessionState,
+        [AllowNull()][pscustomobject]$RecoverySession,
         [string]$PostRestartDirective = ''
     )
 
@@ -2633,6 +2846,11 @@ function Save-StartArtifacts {
 
 $PostRestartDirective
 "@
+    }
+
+    $recoveryPromptBlock = Get-CoordinatorRecoveryPromptBlock -RecoverySession $RecoverySession
+    if (-not [string]::IsNullOrWhiteSpace($recoveryPromptBlock)) {
+        $directiveBlocks += ([Environment]::NewLine + $recoveryPromptBlock)
     }
 
     # Inject pause-and-confirm directive if session-loaded files changed
@@ -2707,6 +2925,20 @@ $artifactListFormatted
         else {
             $null
         }
+        recovery_session = if ($null -ne $RecoverySession) {
+            [ordered]@{
+                entry_mode            = $RecoverySession.entry_mode
+                stale_reasons         = @($RecoverySession.stale_reasons)
+                choice_set            = @($RecoverySession.choice_set)
+                selected_choice       = $RecoverySession.selected_choice
+                bypass_gate           = $RecoverySession.bypass_gate
+                approval_mode_changed = $RecoverySession.approval_mode_changed
+                next_action_message   = $RecoverySession.next_action_message
+            }
+        }
+        else {
+            $null
+        }
         squad_model_overrides = $SquadModelOverrides
         prompt_path      = $promptPath
         summary_path     = $summaryPath
@@ -2727,7 +2959,8 @@ $artifactListFormatted
             -DeliveryGuidance $DeliveryGuidance `
             -RoutingPlan $RoutingPlan `
             -SquadModelOverrides $SquadModelOverrides `
-            -ApprovalOperatorNote $ApprovalOperatorNote)
+            -ApprovalOperatorNote $ApprovalOperatorNote `
+            -RecoverySession $RecoverySession)
 
     return [pscustomobject]@{
         PromptPath               = $promptPath
@@ -2960,29 +3193,71 @@ if ($AllowAll -and $PromptApprovals) {
     exit 1
 }
 
+if (-not [string]::IsNullOrWhiteSpace($RecoveryChoice) -and $RecoveryChoice -notin @('A', 'B', 'C')) {
+    Write-Error-Message "Recovery choice must be A, B, or C."
+    exit 1
+}
+
+if ($Recover -and -not [string]::IsNullOrWhiteSpace($RecoveryChoice)) {
+    Write-Error-Message "Use either --recover or --recovery-choice, not both."
+    exit 1
+}
+
 if ($NewWindow -and $SameWindow) {
     Write-Error-Message "Use either --new-window or --same-window, not both."
     exit 1
 }
 
 $staleSessionStateCheck = Test-SpecrewStaleSessionState -ProjectRoot $resolvedProjectPath
-if ($staleSessionStateCheck.IsStale) {
-    Write-Error-Message 'Stale state detected.'
-    foreach ($issue in $staleSessionStateCheck.Issues) {
-        Write-Host ("- {0}" -f $issue) -ForegroundColor Yellow
+$validatedSessionState = $staleSessionStateCheck.SessionState
+$recoverySession = $null
+$recoveryDirective = $PostRestartDirective
+$skipAutoResumeResolution = $false
+$forceNoLaunch = $false
+
+if ($Recover) {
+    $recoveryReasons = if ($staleSessionStateCheck.Issues.Count -gt 0) {
+        @($staleSessionStateCheck.Issues)
     }
-    Write-Host 'Options:' -ForegroundColor Yellow
-    Write-Host '  A) re-anchor to the correct feature' -ForegroundColor Yellow
-    Write-Host '  B) create a new feature' -ForegroundColor Yellow
-    Write-Host '  C) exit and manually fix state' -ForegroundColor Yellow
-    exit 1
+    else {
+        @('Recovery mode was requested explicitly by the operator.')
+    }
+
+    $recoverySession = New-SpecrewRecoverySession -EntryMode 'explicit-recover-flag' -StaleReasons $recoveryReasons -BypassGate $true -SelectedChoice $null -NextActionMessage 'Recovery mode is active. Review the stale-state evidence, choose whether to re-anchor or start fresh, and continue without changing approval behavior.'
+    if (-not [string]::IsNullOrWhiteSpace($recoveryDirective)) {
+        $recoveryDirective += [Environment]::NewLine + [Environment]::NewLine
+    }
+    $recoveryDirective += 'Recovery mode was entered with --recover. Bypass the stale-state gate, preserve the existing approval/autopilot behavior, and guide the operator through the next recovery action explicitly.'
+}
+elseif ($staleSessionStateCheck.IsStale) {
+    Write-Output 'Stale state detected.'
+    foreach ($issue in $staleSessionStateCheck.Issues) {
+        Write-Output ("- {0}" -f $issue)
+    }
+    Write-Output 'Options:'
+    Write-Output '  A) re-anchor to the correct feature'
+    Write-Output '  B) create a new feature'
+    Write-Output '  C) exit and manually fix state'
+
+    $selectedRecoveryChoice = Read-SpecrewRecoveryChoice -PreferredChoice $RecoveryChoice
+    $recoveryPlan = Resolve-SpecrewRecoverySelection -Choice $selectedRecoveryChoice -SessionState $validatedSessionState
+    $recoverySession = New-SpecrewRecoverySession -EntryMode 'detected-stale-state' -StaleReasons @($staleSessionStateCheck.Issues) -BypassGate $false -SelectedChoice $selectedRecoveryChoice -NextActionMessage $recoveryPlan.NextActionMessage
+    $ResumeFeature = $recoveryPlan.ResumeFeatureOverride
+    $skipAutoResumeResolution = $recoveryPlan.SkipAutoResume
+    $forceNoLaunch = $recoveryPlan.ForceNoLaunch
+    if (-not [string]::IsNullOrWhiteSpace($recoveryDirective)) {
+        $recoveryDirective += [Environment]::NewLine + [Environment]::NewLine
+    }
+    $recoveryDirective += $recoveryPlan.Directive
 }
 
-$validatedSessionState = $staleSessionStateCheck.SessionState
 $versionMismatchWarning = Get-SpecrewVersionMismatchWarning -ProjectRoot $resolvedProjectPath
 $psGalleryUpdateWarning = Get-PSGalleryUpdateWarning -ProjectRoot $resolvedProjectPath -SkipCheck:$SkipUpdateCheck
 
 if ($FeatureRequest -and -not $ResumeFeature) {
+    $resolvedFeaturePath = $null
+}
+elseif ($skipAutoResumeResolution) {
     $resolvedFeaturePath = $null
 }
 elseif (-not $FeatureRequest -and -not $ResumeFeature) {
@@ -3057,7 +3332,7 @@ elseif ($approvalMode -eq 'allow-all') {
 else {
     'prompt-approvals keeps Copilot permission prompts interactive throughout the session.'
 }
-$launchMode = if ($NoLaunch) { 'none' } elseif ($NewWindow -and $IsWindows) { 'new-window' } else { 'same-window' }
+$launchMode = if ($NoLaunch -or $forceNoLaunch) { 'none' } elseif ($NewWindow -and $IsWindows) { 'new-window' } else { 'same-window' }
 $promptContent = Get-StartPrompt `
     -ResolvedProjectPath $resolvedProjectPath `
     -Mode $mode `
@@ -3068,7 +3343,8 @@ $promptContent = Get-StartPrompt `
     -ProjectState $projectState `
     -BrownfieldDiscovery $brownfieldDiscovery `
     -DeliveryGuidance $deliveryGuidance `
-    -SessionState $validatedSessionState
+    -SessionState $validatedSessionState `
+    -RecoverySession $recoverySession
 
 $artifactPaths = Save-StartArtifacts `
     -ResolvedProjectPath $resolvedProjectPath `
@@ -3088,7 +3364,8 @@ $artifactPaths = Save-StartArtifacts `
     -DeliveryGuidance $deliveryGuidance `
     -ApprovalOperatorNote $approvalOperatorNote `
     -SessionState $validatedSessionState `
-    -PostRestartDirective $PostRestartDirective
+    -RecoverySession $recoverySession `
+    -PostRestartDirective $recoveryDirective
 
 Write-Success "Prepared Specrew start context."
 Write-Info ("Prompt:  {0}" -f $artifactPaths.PromptPath)
@@ -3117,7 +3394,7 @@ if (-not [string]::IsNullOrWhiteSpace($allowAllRuntimePlan.SuppressionNote)) {
     Write-Info $allowAllRuntimePlan.SuppressionNote
 }
 
-if ($NoLaunch) {
+if ($NoLaunch -or $forceNoLaunch) {
     Write-Info "Launch skipped by --no-launch."
     Write-Info ("Manual launch command (run from the project root; Copilot auto-loads the bootstrap via -i): {0}" -f (Get-ManualCopilotCommand -ResolvedProjectPath $resolvedProjectPath -PromptPath $artifactPaths.PromptPath -ContextPath $artifactPaths.ContextPath -Agent $Agent -AllowAll $allowAllRuntimePlan.PassAllowAll -UseAutopilot $useAutopilot -RequireInteractiveIntake $requiresInteractiveIntake))
     exit 0

@@ -20,6 +20,12 @@ if (-not (Test-Path -LiteralPath $sharedGovernancePath -PathType Leaf)) {
 }
 . $sharedGovernancePath
 
+$boundaryStateHelperPath = Join-Path $PSScriptRoot 'internal\sync-boundary-state.ps1'
+if (-not (Test-Path -LiteralPath $boundaryStateHelperPath -PathType Leaf)) {
+    throw "Missing boundary-state helper '$boundaryStateHelperPath'."
+}
+. $boundaryStateHelperPath
+
 function Show-Usage {
     @'
 specrew review - replay the persisted reviewer closeout packet
@@ -265,6 +271,25 @@ function Try-OpenPath {
     }
 }
 
+function Get-ReviewBoundarySyncWarning {
+    param(
+        [Parameter(Mandatory = $true)][string]$ProjectRoot,
+        [Parameter(Mandatory = $true)][string]$ReviewPath
+    )
+
+    $reviewVerdict = Get-MetadataValue -Path $ReviewPath -Label 'Overall Verdict'
+    if ($reviewVerdict -notmatch '^(?i)accepted$') {
+        return $null
+    }
+
+    $latestBoundary = Get-LatestSpecrewBoundarySyncState -ProjectRoot $ProjectRoot
+    if ($null -eq $latestBoundary -or [string]$latestBoundary.boundary_type -notin @('review-signoff', 'iteration-closeout', 'feature-closeout')) {
+        return 'WARN: Accepted review artifacts exist, but lifecycle state is not synced to review-signoff or a later boundary.'
+    }
+
+    return $null
+}
+
 $parsedArgs = Convert-UnixStyleArguments `
     -ProjectPath $ProjectPath `
     -FeatureId $FeatureId `
@@ -332,6 +357,7 @@ $summary = [pscustomobject]@{
     digest           = $digestLine
     cap_active       = if ($digestLine -match 'cap=active') { $true } else { $false }
     cap_chain        = if ($digestLine -match 'cap_chain=(\d+)/(\d+)') { "$($Matches[1])/$($Matches[2])" } else { $null }
+    boundary_sync_warning = Get-ReviewBoundarySyncWarning -ProjectRoot $resolvedProjectPath -ReviewPath $reviewPath
 }
 
 if ($Json) {
@@ -355,6 +381,9 @@ else {
     if (-not [string]::IsNullOrWhiteSpace($digestLine)) {
         Write-Host ''
         Write-Host $digestLine
+    }
+    if (-not [string]::IsNullOrWhiteSpace([string]$summary.boundary_sync_warning)) {
+        Write-Output $summary.boundary_sync_warning
     }
 }
 
