@@ -1,3 +1,54 @@
+# Decision: Feature 021 Tasks Decomposition Authorized
+
+**Date**: 2026-05-18
+**Boundary**: Tasks-decomposition-authorized
+**Feature**: 021-specrew-slash-commands (Specrew Slash-Command Surface)
+**Authority**: Alon Fliess (human authorization via Session Scribe instruction)
+**Decision Type**: Task generation and decomposition authorization
+
+## Summary
+
+Human authorization granted to run `/speckit.tasks` for Feature 021, decomposing the approved iteration planning work packages (I1-W001..I1-W004) into 12 executable tasks within the locked 7 SP capacity envelope while preserving a separate 0.7 SP repair reserve. Task generation completed successfully and stopped at the tasks boundary only.
+
+## Task Generation Artifact
+
+- **Generated artifact**: file:///C:/Dev/Specrew/specs/021-specrew-slash-commands/iterations/001/tasks.md
+- **Total tasks**: 12 executable tasks (`I1-T001` through `I1-T012`)
+- **Primary scope**: 6.3 SP
+- **Repair reserve**: 0.7 SP
+- **Capacity ceiling**: 7.0 SP (locked)
+
+## Task Decomposition Summary
+
+| Work Package | Scope | Tasks | Effort |
+| --- | --- | --- | ---: |
+| I1-W001 | Catalog and contract authoring | I1-T001-I1-T002 | 1.5 |
+| I1-W002 | Routing, alias normalization, and arg whitelist | I1-T003-I1-T006 | 2.0 |
+| I1-W003 | Distribution, compatibility, and remediation delivery | I1-T007-I1-T009 | 1.5 |
+| I1-W004 | Discovery fallback, coexistence, and hardening evidence | I1-T010-I1-T012 | 1.3 |
+| Repair reserve | Bounded repair only (do not pre-spend) | Not pre-spent | 0.7 |
+| **Total** |  | 12 executable tasks | **7.0** |
+
+## Critical Path
+
+```text
+I1-T001 -> I1-T003 -> I1-T004 -> I1-T005 -> I1-T006
+I1-T002 -> I1-T007 -> I1-T008 -> I1-T009
+I1-T006 + I1-T009 -> I1-T010 -> I1-T011 -> I1-T012
+```
+
+## Parallel Opportunities Identified
+
+- `I1-T001` and `I1-T002` can run in parallel at iteration start
+- `I1-T004` and `I1-T005` can run in parallel after `I1-T003`
+- `I1-T010` and `I1-T011` can run in parallel after routing and distribution validation complete
+
+## Boundary Status
+
+**Next authorized step**: Human review of the tasks-complete artifact set before implementation. No implementation boundary has been opened.
+
+---
+
 # Decision: Feature 021 Planning Boundary Locked
 
 **Date**: 2026-05-18
