@@ -14335,3 +14335,12 @@ User request — captured for team memory to ensure plan authorization respects 
 - **Task ID**: (none)
 - **Auth Commit Hash**: (none)
 - **Recorded At**: 2026-05-18T18:20:35Z
+
+## 2026-05-18T18:31:15Z — Boundary sync: tasks
+
+- **Boundary Type**: tasks
+- **Feature Ref**: 022-hotfix-schema-tests
+- **Iteration Number**: 001
+- **Task ID**: (none)
+- **Auth Commit Hash**: (none)
+- **Recorded At**: 2026-05-18T18:31:14Z
