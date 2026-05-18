@@ -14054,3 +14054,62 @@ Feature-closeout still requires separate explicit human authorization. The next 
 - Iteration closeout: `specs\021-specrew-slash-commands\iterations\001\closeout.md`
 - Session log: `.squad\log\20260518T145348Z-feature-021-iteration-001-closeout.md`
 - Orchestration log: `.squad\log\20260518T145348Z-orchestration-feature-021-iteration-001-closeout.md`
+
+## 2026-05-18T15:19:34Z — Boundary sync: feature-closeout
+
+- **Boundary Type**: feature-closeout
+- **Feature Ref**: (none)
+- **Iteration Number**: (none)
+- **Task ID**: (none)
+- **Auth Commit Hash**: (none)
+- **Recorded At**: 2026-05-18T15:19:34Z
+
+## 2026-05-18T16:57:20Z — Delegated routing plan
+
+- **Enabled Agents**: copilot
+- **Independent Oversight Active**: False
+- **Roles**:
+  - Implementer | requested=copilot | actual=copilot | model=(platform default) | status=honored | fallback=(none)
+  - Spec Steward | requested=codex | actual=copilot | model=(platform default) | status=fell-back | fallback=preferred agent 'codex' is not enabled
+  - Planner | requested=claude | actual=copilot | model=(platform default) | status=fell-back | fallback=preferred agent 'claude' is not enabled
+  - Reviewer | requested=claude | actual=copilot | model=(platform default) | status=fell-back | fallback=preferred agent 'claude' is not enabled
+  - Retro Facilitator | requested=copilot | actual=copilot | model=(platform default) | status=honored | fallback=(none)
+
+## 2026-05-18T16:57:21Z — Routing evidence: Spec Steward
+
+- **Decision ID**: routing-evidence-7586b37b53ef
+- **Type**: routing-evidence
+- **Affected Requirement**: FR-043
+- **Affected Iteration**: (none)
+- **Approving Human**: (none)
+- **Recorded At**: 2026-05-18T16:57:21Z
+- **Next Action**: none
+- **Rationale**: Delegated lifecycle routing was applied for role 'Spec Steward'.
+
+- **Routing Evidence**: Spec Steward | requested=codex | actual=copilot | model=(platform default) | status=fell-back | fallback=preferred agent 'codex' is not enabled
+
+## 2026-05-18T16:57:21Z — Routing evidence: Planner
+
+- **Decision ID**: routing-evidence-ec34ea845b0c
+- **Type**: routing-evidence
+- **Affected Requirement**: FR-043
+- **Affected Iteration**: (none)
+- **Approving Human**: (none)
+- **Recorded At**: 2026-05-18T16:57:21Z
+- **Next Action**: none
+- **Rationale**: Delegated lifecycle routing was applied for role 'Planner'.
+
+- **Routing Evidence**: Planner | requested=claude | actual=copilot | model=(platform default) | status=fell-back | fallback=preferred agent 'claude' is not enabled
+
+## 2026-05-18T16:57:21Z — Routing evidence: Reviewer
+
+- **Decision ID**: routing-evidence-2764a9599a7d
+- **Type**: routing-evidence
+- **Affected Requirement**: FR-043
+- **Affected Iteration**: (none)
+- **Approving Human**: (none)
+- **Recorded At**: 2026-05-18T16:57:21Z
+- **Next Action**: none
+- **Rationale**: Delegated lifecycle routing was applied for role 'Reviewer'.
+
+- **Routing Evidence**: Reviewer | requested=claude | actual=copilot | model=(platform default) | status=fell-back | fallback=preferred agent 'claude' is not enabled
