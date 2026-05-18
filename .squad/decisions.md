@@ -1,3 +1,73 @@
+# Decision: Start Feature 021 — Specrew Slash-Command Surface (Proposal 032)
+
+**Date**: 2026-05-24T02:15:00Z  
+**Boundary**: Feature-start (specification-completion stop)  
+**Feature**: 021-specrew-slash-commands (Specrew Slash-Command Surface)  
+**Authority**: Alon Fliess  
+**Decision Type**: Feature-start authorization with specify-completion boundary
+
+## Summary
+
+Feature 021 is authorized to begin. Specification phase completed. All artifacts committed to `021-specrew-slash-commands` branch and pushed to remote. Stopped at specify-completion boundary pending human review of the initial spec before proceeding to planning.
+
+## Specification Evidence
+
+- **Spec file**: file:///C:/Dev/Specrew/specs/021-specrew-slash-commands/spec.md
+- **Proposal source**: file:///C:/Dev/Specrew/proposals/032-specrew-slash-commands.md
+- **Branch**: 021-specrew-slash-commands
+- **Commit**: 0a15140 ("Specify Feature 021: Specrew Slash-Command Surface")
+- **Quality scaffold**: specs/021-specrew-slash-commands/iterations/001/quality/hardening-gate.md (created)
+- **Feature pointer**: .specify/feature.json → specs/021-specrew-slash-commands
+
+## Specification Content
+
+Seven user stories across five pillars:
+- US-001: SKILL.md slash-command definitions
+- US-002: Squad invocation routing (/specrew.where, /specrew.status, etc.)
+- US-003: Discovery and help integration (/specrew.help catalog)
+- US-004: Distribution bundling (specrew init distribution)
+- US-005: Coexistence with /speckit.* namespace
+- US-006: Argument forwarding and output handling
+- US-007: Cross-platform PowerShell compatibility (Linux/Mac)
+
+Seven decision points preserved from proposal (DP-001 through DP-007):
+- DP-001: Full 7-command catalog or subset?
+- DP-002: Raw vs Squad-summarized output handling?
+- DP-003: Naming convention (/specrew.where vs /specrew-where)?
+- DP-004: Tab completion — built-in or manual?
+- DP-005: Argument forwarding — pass-through or whitelist?
+- DP-006: /specrew.help integration with Copilot /help?
+- DP-007: Minimum version pin and future expansion path?
+
+## Governance Carryforward from Feature 020
+
+Applied Feature 020 governance defaults:
+- Repair budget: ~10% iteration capacity for quality assurance
+- Bookkeeping discipline: structured decision recording in .squad/decisions.md
+- Drift labeling: explicit 021- branch prefix + feature ID in all artifacts
+- Upfront hardening-gate scaffolding: template created at iteration 001 kickoff
+- Push-after-every-commit: spec committed and pushed to remote
+- Write-Output observability: validator scripts with explicit logging
+- No case-insensitive variable collisions: PowerShell naming discipline
+
+## Path Format Discipline
+
+All prose in Feature 021 artifacts uses file:/// URL references for readability and tooling compatibility (e.g., file:///C:/Dev/Specrew/proposals/032-specrew-slash-commands.md).
+
+## Next Boundary
+
+**Stop condition**: Specification complete and reviewed.
+**Authorized next step**: Execute `/speckit.plan` to generate iteration 001 plan after human approval.
+**Review scope**: Initial spec.md (7 user stories, 7 decision points, risk register, cross-references to Proposal 031 and Features 016-020).
+
+## Risk Register (from proposal)
+
+- **Skill format complexity**: Mitigation — keep v1 schema small; document extension contract
+- **Output redirection edge cases**: Mitigation — test in fresh Copilot session; document environment-dependent behavior
+- **Auto-completion friction**: Mitigation — explicit registration in agent metadata if needed
+
+---
+
 # Decision: Feature 020 Stray PR Cleanup
 
 **Date**: 2026-05-18T06:35:44Z  
