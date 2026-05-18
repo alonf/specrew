@@ -3,18 +3,18 @@
 **Schema**: v1
 **Feature**: 022-hotfix-schema-tests  
 **Branch**: 022-hotfix-schema-tests  
-**Status**: planning
+**Status**: tasks-complete
 **Capacity**: 9/20 story_points
 **Started**: 2026-05-18
-**Completed**:
+**Completed**: 2026-05-18
 **Created**: 2026-05-18  
-**Updated**: 2026-05-18
+**Updated**: 2026-05-18T18:47:44Z
 
 ## Overview
 
-Iteration 001 is the only authorized delivery slice for Feature 022. It keeps the hotfix bounded to the three confirmed restart defects plus regression coverage and stops at the plan-completion boundary for human review.
+Iteration 001 is the only authorized delivery slice for Feature 022. It keeps the hotfix bounded to the three confirmed restart defects plus regression coverage. Tasks I1-T001 through I1-T016 have been generated and committed at `specs/022-hotfix-schema-tests/tasks.md` (tasks-boundary commit a135e11dd3ab7983d2f2fa8438303cbd279443ee).
 
-**Scope**: FR-001 through FR-019 inside one iteration only. This artifact allocates execution capacity and grouped work packages, but it does **not** open `/speckit.tasks` or implementation by itself.
+**Scope**: FR-001 through FR-019 inside one iteration only. This iteration plan allocates execution capacity and grouped work packages, which have been decomposed into executable tasks at the feature-level tasks artifact.
 
 ## Task Summary
 
@@ -81,12 +81,13 @@ Total effort estimate: 9.0 Story Points (+ 1.0 SP repair reserve)
 ## Authorization
 
 - **Planning approval**: Alon Fliess authorized Feature 022 planning.
-- **Clarify handoff**: planning starts from the accepted clarify-completion state already recorded for Feature 022.
+- **Tasks completed**: 16 executable tasks generated and committed at `specs/022-hotfix-schema-tests/tasks.md` (tasks-boundary commit a135e11dd3ab7983d2f2fa8438303cbd279443ee).
 - **Scope source**: `specs/022-hotfix-schema-tests/spec.md` remains authoritative for this iteration plan.
-- **Boundary stop**: stop at plan completion and wait for fresh human authorization before `/speckit.tasks`.
+- **Next boundary**: before-implement validator review gate before `/speckit.implement`.
 
 ## Notes
 
-- This plan intentionally uses grouped work packages instead of executable tasks so the planning boundary remains intact.
+- This plan was initially created with grouped work packages to keep the planning boundary intact.
+- Tasks I1-T001 through I1-T016 have been generated from these work packages and are now available at `specs/022-hotfix-schema-tests/tasks.md` (commit a135e11dd3ab7983d2f2fa8438303cbd279443ee).
 - The baseline-role mapping in `specs/022-hotfix-schema-tests/plan.md` is the authoritative stewardship-label interpretation for implementation planning.
-- The hardening gate currently records planning-time analysis only; runtime evidence remains pending.
+- The hardening gate records planning-time analysis as complete; runtime evidence remains pending post-implementation.
