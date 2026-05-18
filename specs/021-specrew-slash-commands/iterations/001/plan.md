@@ -68,14 +68,14 @@ Total effort estimate: 6.3 Story Points (+ 0.7 SP repair reserve)
 - **Carry-forward defaults stay active**: 3 repair cycles, 30-minute wall-clock per failing test, live bookkeeping during execution, per-lane drift-log labeling, push after every commit, Write-Output-visible warnings, no case-insensitive PowerShell variable collisions, and markdown-link [name](file:///...) prose paths.
 - **Hardening scaffold is mandatory**: file:///C:/Dev/Specrew/specs/021-specrew-slash-commands/iterations/001/quality/hardening-gate.md remains the canonical quality gate artifact.
 - **Boundary safety is non-negotiable**: `/specrew.*` must remain additive to `/speckit.*` and may not imply lifecycle approval.
-- **Planning boundary stop**: `tasks.md` is intentionally absent. Human review of the plan-complete boundary is required before `/speckit.tasks`.
+- **Task backlog alignment**: the executable task backlog lives at file:///C:/Dev/Specrew/specs/021-specrew-slash-commands/iterations/001/tasks.md and must stay aligned with this grouped work-package plan.
 
 ## Authorization
 
 - **Planning approval**: Alon Fliess authorized `/speckit.plan` for Feature 021.
 - **Clarify handoff**: accepted clarify-completion boundary commit `934da76`.
 - **Scope source**: file:///C:/Dev/Specrew/specs/021-specrew-slash-commands/spec.md remains authoritative for this iteration plan.
-- **Next boundary**: human review of the plan-complete artifact set before tasks are generated.
+- **Next boundary**: human review of the before-implement gate outcome before `/speckit.implement`.
 
 ## Notes
 

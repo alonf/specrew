@@ -159,6 +159,7 @@ Each executable item uses this structure:
 - [ ] I1-T010 [US1] [assigned_to: Reviewer] [effort: 0.4 SP] Add discovery fallback and first-time catalog validation in `tests/integration/slash-command-discovery.tests.ps1` and `specs/021-specrew-slash-commands/quickstart.md` (Trace: I1-W004; FR-012, FR-013, FR-014, FR-015; SC-001, SC-005)
   - **Title**: Discovery fallback validation lane
   - **FR coverage**: FR-012, FR-013, FR-014, FR-015
+  - **SC coverage**: SC-001, SC-005
   - **User story coverage**: US1
   - **Owner role**: Reviewer
   - **Dependencies**: I1-T001, I1-T006, I1-T009
@@ -166,17 +167,18 @@ Each executable item uses this structure:
 - [ ] I1-T011 [P] [US4] [assigned_to: Reviewer] [effort: 0.5 SP] Add namespace coexistence, collision handling, and boundary-safety checks in `tests/integration/slash-command-coexistence.tests.ps1` and `tests/unit/validate-governance.interaction-model.tests.ps1` (Trace: I1-W004; FR-021, FR-022, FR-023, FR-024; SC-002, SC-006)
   - **Title**: Namespace coexistence and boundary-safety validation
   - **FR coverage**: FR-021, FR-022, FR-023, FR-024
+  - **SC coverage**: SC-002, SC-006
   - **User story coverage**: US4
   - **Owner role**: Reviewer
   - **Dependencies**: I1-T002, I1-T006, I1-T009
 
-- [ ] I1-T012 [US5] [assigned_to: Reviewer] [effort: 0.4 SP] Record final review evidence and traceability in `specs/021-specrew-slash-commands/iterations/001/quality/hardening-gate.md` after executing the new slash-command suites and manual quickstart checks (Trace: I1-W004; FR-025)
+- [ ] I1-T012 [US5] [assigned_to: Reviewer] [effort: 0.4 SP] Record final review evidence and traceability in `specs/021-specrew-slash-commands/iterations/001/quality/hardening-gate.md` after executing the new slash-command suites and manual quickstart checks (Trace: I1-W004; FR-025, FR-026; SC-003, SC-004)
   - **Title**: Hardening evidence and final traceability review
-   - **FR coverage**: FR-025
+  - **FR coverage**: FR-025, FR-026
+  - **SC coverage**: SC-003, SC-004
   - **User story coverage**: US5
   - **Owner role**: Reviewer
   - **Dependencies**: I1-T010, I1-T011
-   - **Before-Implement Repair (GAP-BI-001, GAP-BI-002)**: FR-025 retained for governance decision recording. FR-026 and SC-003/SC-004 removed/moved.
 
 **Phase 4 Total**: 3 tasks, 1.3 SP
 

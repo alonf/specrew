@@ -7,7 +7,7 @@
 **Requested Review Class**: `strongest-available`
 **Effective Review Class**: `strongest-available`
 **Overall Verdict**: `ready`
-**Approval Ref**: `Human planning authorization for Feature 021 / current session`
+**Approval Ref**: `—`
 **Reviewed By**: `Planner`
 **Reviewed At**: `2026-05-18`
 **Post-Implementation Verification**: `Not started. This file is the Feature 021 hardening-gate scaffold created at specify time so iteration kickoff has a canonical quality artifact ready before planning and implementation.`
@@ -26,6 +26,19 @@
 ## Pre-Implementation Planning Evidence
 
 This scaffold was created at specify completion on 2026-05-18. Planning is now authorized from accepted clarify-completion boundary commit `934da76`, and the plan-complete artifact set now includes file:///C:/Dev/Specrew/specs/021-specrew-slash-commands/plan.md, file:///C:/Dev/Specrew/specs/021-specrew-slash-commands/research.md, file:///C:/Dev/Specrew/specs/021-specrew-slash-commands/data-model.md, file:///C:/Dev/Specrew/specs/021-specrew-slash-commands/contracts/, file:///C:/Dev/Specrew/specs/021-specrew-slash-commands/quickstart.md, and file:///C:/Dev/Specrew/specs/021-specrew-slash-commands/iterations/001/plan.md. Runtime evidence and approval references remain pending until implementation and review actually occur.
+
+## Pre-Implementation Sign-Off
+
+**Authority**: Alon Fliess  
+**Recorded At**: 2026-05-18T09:48:42Z  
+**Authorization Text**: Authorized: Bounded governance-only repair for the 5 before-implement gaps + re-run before-implement validator. Stop at READY-FOR-IMPLEMENTATION verdict (or report new gaps if any).  
+**Implementation Start Condition**: Implementation may proceed once `speckit.specrew-speckit.before-implement` returns `READY-FOR-IMPLEMENTATION`.  
+**Deferred Items**:
+- Full line-by-line lens execution evidence and runtime-only final proof remain deferred until the approved implementation/review slice authorizes them.
+- Known-traps corpus additions and trap reapplication remain deferred until implementation reveals a concrete new trap.
+- Requested-versus-effective review-class evidence remains deferred until lens execution actually occurs.
+- Mixed-stack override workflows and reference-implementation comparisons remain deferred unless the later implementation slice expands scope.
+**Deferred Rationale**: This artifact remains a planning-time hardening scaffold. Runtime evidence, concrete lens execution results, and any new trap handling stay deferred until the approved implementation and review phases run.
 
 ## Hardening-Gate Status
 

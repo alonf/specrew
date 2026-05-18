@@ -1,3 +1,22 @@
+# Decision: Feature 021 Conditional Implementation-Start Authorization Record
+
+**Date**: 2026-05-18T09:48:42Z  
+**Boundary**: implementation-authorization (conditional on before-implement verdict)  
+**Feature**: 021-specrew-slash-commands (Specrew Slash-Command Surface)  
+**Iteration**: 001  
+**Authority**: Alon Fliess (human authorization via Session Scribe instruction)  
+**Decision Type**: Conditional implementation-start authorization record
+
+## Authorization Text
+
+> Authorized: Bounded governance-only repair for the 5 before-implement gaps + re-run before-implement validator. Stop at READY-FOR-IMPLEMENTATION verdict (or report new gaps if any).
+
+## Conditional Start Rule
+
+Implementation may proceed once `speckit.specrew-speckit.before-implement` returns `READY-FOR-IMPLEMENTATION`. Do not enter `/speckit.implement` as part of this authorization record.
+
+---
+
 # Decision: Feature 021 Gate Sequence Authorization Record
 
 **Date**: 2026-05-18  
