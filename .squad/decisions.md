@@ -1,3 +1,75 @@
+# Decision: Scribe Feature 020 Iteration 002 Governance-Only Repair Authorization for Review-Boundary
+
+**Date**: 2026-05-24T00:14:00Z  
+**Boundary**: Review-boundary repair (governance-only mode)  
+**Feature**: 020-session-state-durability (Session-State Durability & In-Flight Progress Tracking)  
+**Authority**: Alon Fliess (human authorization via Spawn Manifest - governance repair authority)  
+**Decision Type**: Bounded governance-only repair authorization with authorized follow-on sequence
+
+## Context
+
+Feature 020 Iteration 002 review-boundary has received CHANGES-REQUESTED feedback requiring governance-only repairs to review artifacts and state. A bounded governance-only repair session is authorized with a clear follow-on sequence (rerun review-boundary → verdict-signoff → retro → closeout) contingent on passing the rerun.
+
+## Decision
+
+**Authorize bounded governance-only repair for Iteration 002 review-boundary CHANGES-REQUESTED, with authorized follow-on sequence: governance-repair → rerun review-boundary → verdict-signoff (if approved) → retro-boundary → iteration-closeout → stop.**
+
+### Governance Repair Scope
+
+**Allowed Actions**:
+- Repair governance artifacts (decision records, session logs, identity state)
+- Update review-boundary state & transition artifacts
+- Update iteration state documentation
+- Document all changes in `.squad/log/` with timestamps
+
+**Guardrails (DO NOT)**:
+- **Production code edits** (none authorized for this repair)
+- **Iteration 001 edits** (locked scope - no modifications)
+- **Feature-level spec/plan/tasks edits** (scope isolation enforced)
+- **Feature-closeout operations** (stop at iteration-closeout)
+
+### Authorized Sequence (Contingent)
+
+1. **Governance-only repair** (in progress) — repair review artifacts
+2. **Rerun review-boundary** — execute review sequence with repaired artifacts
+3. **Review-verdict-signoff** — signoff only if review passes
+4. **Retro-boundary** — if verdict is approved
+5. **Iteration-closeout** — if retro passes
+6. **STOP** — do not auto-advance to feature-closeout or Iteration 003
+
+### Push Hygiene Discipline
+
+- Push after governance repair commit (establish baseline)
+- Push after each subsequent boundary commit (verdict, retro, closeout)
+- Track commit markers in session log for audit trail
+
+## Runtime Evidence
+
+- **Requested role / work item**: Governance Repair Agent / Feature 020 Iteration 002 bounded repair for review-boundary CHANGES-REQUESTED
+- **Requested agent**: Scribe (Session Logger, Memory Manager & Decision Merger)
+- **Actual agent**: scribe-governance-repair-authorization
+- **Model**: N/A (governance agent)
+- **Assignment honored**: yes
+- **Scope authority**: `specs/020-session-state-durability/iterations/002/plan.md` (line-based scope lock)
+- **Session start**: 2026-05-24T00:14:00Z
+- **Repair session log**: `.squad/log/20260524T0014Z-scribe-governance-repair-authz.md`
+
+## Decision Artifacts
+
+- **Session log**: `.squad/log/20260524T0014Z-scribe-governance-repair-authz.md`
+- **Identity state**: `.squad/identity/now.md` (updated with repair mode flag)
+- **Scope baseline**: `specs/020-session-state-durability/iterations/002/plan.md` (locked, no drift)
+
+## Impact
+
+- Iteration 002 review-boundary governance artifacts repaired with enforced scope isolation
+- Clear, authorized follow-on sequence (rerun → verdict → retro → closeout) established
+- Push hygiene discipline ensures traceability at each boundary transition
+- Scope isolation maintained: no production code, Iteration 001, or feature-level changes
+- Transition point: ready for rerun review-boundary after governance repair completion
+
+---
+
 # Decision: Implementer Feature 020 Iteration 002 Bounded PSGallery Warning Repair with Fresh 3-Cycle Budget
 
 **Date**: 2026-05-24T00:12:00Z  
