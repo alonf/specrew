@@ -4,6 +4,8 @@
 **Created**: 2026-05-19  
 **Status**: Shipped  
 **Closed**: 2026-05-18  
+**Feature Closeout Commit**: `1f083f9`  
+**Pull Request**: [#259](https://github.com/alonf/specrew/pull/259)  
 **Input**: User description: "Session-State Durability & In-Flight Progress Tracking"
 
 ## User Scenarios & Testing *(mandatory)*
