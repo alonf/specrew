@@ -1,3 +1,68 @@
+# Decision: Feature-Closeout Authorization for Feature 020 — Session-State Durability & In-Flight Progress Tracking
+
+**Date**: 2026-05-24T00:30:00Z  
+**Boundary**: Feature-closeout  
+**Feature**: 020-session-state-durability (Session-State Durability & In-Flight Progress Tracking)  
+**Authority**: Alon Fliess  
+**Decision Type**: Feature-closeout authorization (permissive run, 3-cycle repair budget, Phase-0 closeout pattern)
+
+## Context
+
+Iteration 001 + Iteration 002 both complete: 31/31 story points delivered, zero variance, all artifacts finalized and preserved. Both iterations closed cleanly. Feature 020 is eligible for the final lifecycle boundary: feature-closeout, with permissive PR creation + self-review + merge to main.
+
+## Scope — Feature-Closeout Sequence (Permissive Run, 3-Cycle Repair Budget)
+
+### Phase A — Feature-Level Governance Artifacts
+
+1. Update `specs/020-session-state-durability/spec.md` — set Status to Shipped
+2. Run Phase-0 closeout-pattern helper — `Set-FeatureCloseoutIdentityNow` updates `.squad/identity/now.md` to "No active feature..."
+3. Update `.specrew/roadmap.yml` per post-F-020 sequencing decision
+4. Bump Specrew version: `.specrew/config.yml` specrew_version 0.19.0 → 0.20.0 AND Specrew.psd1 ModuleVersion (if present)
+5. Update README + docs/getting-started.md with brief F-020 capability summary
+6. Feature-level closeout commit: `docs(feature-020): close session-state durability + in-flight progress tracking`. Push.
+
+### Phase B — PR Creation + Self-Review + Merge
+
+7. Create PR via `gh pr create` from 020-session-state-durability to main
+8. Self-review the PR; stop if unexpected diffs need human judgment
+9. Merge the PR — use merge commit, not squash
+
+### Phase C — Verify and Stop
+
+10. Verify main reflects the merge: `git fetch origin && git log origin/main -1`
+11. Stop here. Do NOT tag v0.20.0
+
+## Authorized Repair Budget
+
+- Up to 3 cycles per failed integration test (each suite can fail and be repaired once per 3-attempt budget)
+- File reconciliation limit: >10 consecutive edits requires human checkpoint
+- Test regression cancels the run
+
+## Stop Conditions
+
+- Validator FAIL at any feature-level step → stop, report
+- Test regression on any of the 6 integration suites → stop, report
+- PR creation fails → stop, report
+- Self-review surfaces unexpected diffs requiring human judgment → stop, report
+- Merge conflict → stop, report
+- >10 consecutive reconciliation file-edits → stop, report
+- git push failure → stop, report
+- 3-cycle repair budget exhausted on any test → stop, report
+- Phase C complete (merge verified on main) → stop as planned
+
+## Out of Scope (Do NOT)
+
+- Do NOT tag v0.20.0 or any release tag
+- Do NOT modify production code unless a test fails
+- Do NOT touch Iteration 001 or 002 artifacts except the feature-level spec.md status update
+- Do NOT open any new feature
+
+## Decision
+
+**Execute the feature-closeout sequence: Phase A (governance artifacts + commit + push) → Phase B (PR + self-review + merge) → Phase C (verify + stop).**
+
+---
+
 # Decision: Hardening-Gate Quality Artifact Repair for Iteration 002
 
 **Date**: 2026-05-18T02:00:00Z  

@@ -16,7 +16,7 @@ phases:
       - 011-specrew-start-conditional-pause
       - 013-validator-hardening
 
-  - id: phase-2-experience
+   - id: phase-2-experience
     name: "Phase 2: Developer Experience"
     description: "Interaction model, visibility, public-readiness, distribution (two iterations: module + cross-platform hardening), state-foundation, and governance CLI surfaces. Bridges the methodology from internal dogfooding to external usability and gives downstream maintainers structured control of their roadmap, proposals, and feature lifecycle."
     planned_effort_sp: 247
@@ -27,6 +27,7 @@ phases:
       - 017-velocity-dashboard
       - 018-velocity-dashboard-visual-richness
       - 019-specrew-distribution-module
+      - 020-session-state-durability
 
   - id: phase-3-runtime-abstraction
     name: "Phase 3: Runtime Abstraction & Spec Fidelity"

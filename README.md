@@ -1,7 +1,7 @@
 # Specrew
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![Version](https://img.shields.io/badge/version-0.19.0-blue.svg)](.specrew/config.yml)
+[![Version](https://img.shields.io/badge/version-0.20.0-blue.svg)](.specrew/config.yml)
 [![Status: Alpha](https://img.shields.io/badge/status-alpha-orange.svg)](#current-state)
 
 Specrew combines Spec Kit and Squad into a spec-governed operating model for
@@ -9,21 +9,23 @@ AI-assisted software delivery.
 
 ## Current State
 
-- Public shipped baseline: **0.19.0**, backed by 19 implementing features
+- Public shipped baseline: **0.20.0**, backed by 20 implementing features
 - Alpha software, validated through dogfooding in this repository
 - Built today for a single developer running on a single host
 - Not yet ready for multi-developer coordination or multi-host operation
 - Release truth now has public-facing surfaces in `CHANGELOG.md`,
-  `docs\versioning.md`, and the `v0.15.0` / `v0.16.0` / `v0.17.0` / `v0.18.0` / `v0.19.0` tags
+  `docs\versioning.md`, and the `v0.15.0` / `v0.16.0` / `v0.17.0` / `v0.18.0` / `v0.19.0` / `v0.20.0` tags
 
 ## What's working
 
 - `specrew init` bootstraps Spec Kit, Squad, and Specrew governance into a repo
 - `specrew start` is the canonical entrypoint and refreshes runtime handoff
-  artifacts before launch
+  artifacts before launch, with full session-state durability and recovery
 - `specrew where` / `specrew status` render the repository's velocity dashboard
   from canonical feature, iteration, and roadmap artifacts, using richer default
   rendering when the terminal can truthfully support it
+- Session-state durability and in-flight progress tracking across system reboots,
+  worktree switches, and boundary events (Feature 020)
 - Iteration closeout and feature closeout capture immutable dashboard snapshots
   under `specs/<feature>/iterations/<NNN>/dashboard.md` and
   `specs/<feature>/closeout-dashboard.md`

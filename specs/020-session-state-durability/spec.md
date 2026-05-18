@@ -2,7 +2,7 @@
 
 **Feature Branch**: `020-session-state-durability`  
 **Created**: 2026-05-19  
-**Status**: Approved  
+**Status**: Shipped  
 **Input**: User description: "Session-State Durability & In-Flight Progress Tracking"
 
 ## User Scenarios & Testing *(mandatory)*

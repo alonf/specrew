@@ -1,23 +1,23 @@
 ---
-focus_area: "Feature 020 Iteration 002 Governance-Only Repair Authorization for Reviewer / Retro Facilitator / Governance Closer"
-active_issues: "Iteration 002 in bounded governance-only repair mode for review-boundary CHANGES-REQUESTED. Scope authority: iterations/002/plan.md (locked, no drift). Sequence authorized: governance-repair → rerun review-boundary → verdict-signoff → retro-boundary → iteration-closeout → stop. Guardrails: no feature-level spec/plan/tasks edits, no Iteration 001 edits, no production code changes. Governance-repair in progress. Session authorized by Alon Fliess."
-review_boundary_active: true
-review_boundary_repair_mode: true
-review_boundary_scope_authority: specs/020-session-state-durability/iterations/002/plan.md
-review_sequence_authorized: "governance-repair → rerun review-boundary → verdict-signoff → retro-boundary → iteration-closeout → stop"
-review_session_start: 2026-05-24T00:14:00Z
+focus_area: "No active feature — Feature 020 shipped to main"
+active_issues: "Feature-closeout complete. Feature 020 Session-State Durability closed at feature-level boundary. All iterations (001, 002) preserved. Ready for next feature."
+review_boundary_active: false
+review_boundary_repair_mode: false
+review_boundary_scope_authority: "(none)"
+review_sequence_authorized: "(none)"
+review_session_start: "(none)"
 review_log_directory: .squad/log/
-active_agent: scribe-governance-repair-authorization
-active_agent_model: N/A
-updated_at: 2026-05-18T01:21:57Z
-session_state_active: true
-session_state_boundary: iteration-closeout
-session_state_feature: 020-session-state-durability
-session_state_feature_path: "C:\Dev\Specrew\specs\020-session-state-durability"
-session_state_iteration: 002
+active_agent: "(none)"
+active_agent_model: "(none)"
+updated_at: 2026-05-24T00:31:00Z
+session_state_active: false
+session_state_boundary: "(none)"
+session_state_feature: "(none)"
+session_state_feature_path: "(none)"
+session_state_iteration: "(none)"
 session_state_task: "(none)"
-session_state_auth_commit: 06fee69
-session_state_recorded_at: 2026-05-18T01:21:57Z
+session_state_auth_commit: "(none)"
+session_state_recorded_at: "(none)"
 ---
 
-2026-05-18T01:10:46Z
+2026-05-24T00:31:00Z - Feature 020 closed and merged to main

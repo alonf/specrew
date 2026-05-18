@@ -13,6 +13,15 @@ Practical quickstart for running Specrew in a new repo (greenfield) and adding i
 for Linux and macOS is in progress (path handling hardened; CI validation configured).
 See README.md for current platform validation status.
 
+## Key Capabilities (v0.20.0)
+
+- **Session-State Durability**: Squad accurately resumes work after system reboots,
+  detecting stale state and multi-worktree status.
+- **In-Flight Progress Tracking**: Task progress, completed tasks, and active
+  boundaries persist through all lifecycle events.
+- **Full Workflow Governance**: Spec Kit integration, Squad orchestration, and
+  Specrew version stability across Phase 2 feature delivery.
+
 ## Before You Begin: Install Specrew
 
 Specrew ships as a PowerShell module. Pick whichever install path fits your environment:
