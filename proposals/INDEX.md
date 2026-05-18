@@ -40,7 +40,7 @@ Proposals with full source-spec content, ready for `/speckit.specify` ingestion 
 | [036](036-branch-reconciliation.md) | Lifecycle Branch Reconciliation | phase-2 | 13 | SDLC pillar; single-developer precursor to [010] multi-developer. MERGE only, never rebase. |
 | [040](040-token-economy-governance.md) | Token Economy as Governance Driver | phase-4 | 38 | 7-layer architecture; two billing modes (metered + quota); model names ONLY in catalog L3-L4 |
 
-## Candidate (30)
+## Candidate (31)
 
 Idea-form proposals not yet developed into full source specs. Open for discussion; may mature to draft or be withdrawn.
 
@@ -77,6 +77,7 @@ Idea-form proposals not yet developed into full source specs. Open for discussio
 | [049](049-version-check-source-unification.md) | Version-Check Source Unification | phase-2 | 3 |
 | [050](050-version-surface-discoverability.md) | Version Surface Discoverability (init/start banner + `specrew version` command) | phase-2 | 3 |
 | [051](051-path-reference-formatting-standard.md) | Path Reference Formatting Standard (file:/// URL + markdown-link surface rules) | phase-2 | 5 |
+| [052](052-specrew-profile-system.md) | Specrew Profile System (Methodology Core + Domain Profile Composition) | phase-3 | 35 |
 
 ---
 
@@ -101,10 +102,11 @@ For roadmap-style viewing, proposals grouped by phase placement:
 - 036 (Branch Reconciliation — draft, SDLC pillar)
 - 013, 014, 015, 017, 018, 019, 020, 021, 022, 023, 027, 028, 029, 037, 038, 042, 044, 045, 046, 047, 048, 049, 050, 051 (candidates)
 
-**Phase 3** (refactor + maintainability + upstream reconciliation):
+**Phase 3** (refactor + maintainability + upstream reconciliation + extensibility):
 - 026 (Refactor Track R1-R5)
 - 039 (Squad Upstream Reconciliation — depends on 024)
 - 043 (Structured Question Protocol — could fold into 024)
+- 052 (Specrew Profile System — sibling to 024 Multi-Host; both are extensibility foundations)
 
 **Phase 4** (token economy + autopilot experiment):
 - 016 (Outcome Scoring — candidate)
