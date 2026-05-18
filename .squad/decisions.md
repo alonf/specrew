@@ -1,3 +1,56 @@
+# Decision: Implementer Feature 020 Iteration 002 Bounded Repair for Cross-Worktree Switch-Parameter Failure
+
+**Date**: 2026-05-24T00:10:00Z  
+**Boundary**: Iteration-start execution (active permissive run, bounded repair phase)  
+**Feature**: 020-session-state-durability (Session-State Durability & In-Flight Progress Tracking)  
+**Authority**: Alon Fliess (human authorization)  
+**Decision Type**: Bounded scope authorization & runtime evidence
+
+## Context
+
+Feature 020 Iteration 002 is currently in active authorized implementation under permissive error-logging protocol. During in-flight execution, a cross-worktree parameter-binding bug was discovered affecting switch-parameter invocation. A bounded repair scope has been authorized to fix this defect without widening into feature-level planning, Iteration 001 boundaries, or review/closeout transitions.
+
+## Decision
+
+**Authorize bounded repair for cross-worktree switch-parameter failure within Iteration 002 execution lane.**
+
+### Primary Work Authorization
+- Push current in-flight work to origin first (establish truth baseline before repair)
+- Repair cross-worktree parameter-binding bug blocking switch-parameter invocation
+- Rerun required test suites after repair
+- Continue authorized Iteration 002 permissive implementation run
+
+### Guardrails (Scope Boundaries)
+- **Do NOT edit** Iteration 001 artifacts or scope
+- **Do NOT edit** feature-level spec/plan/tasks files
+- **Do NOT enter** Iteration 002 review/closeout boundary (stop at execution completion)
+
+## Runtime Evidence
+
+- **Requested role / work item**: Implementer / Feature 020 Iteration 002 bounded repair for cross-worktree switch-parameter failure
+- **Requested agent**: copilot (general implementer)
+- **Actual agent**: implementer-iter002-repair
+- **Model**: claude-sonnet-4.5
+- **Assignment honored**: yes
+- **Scope baseline**: Iteration 002 plan.md (no drift permitted)
+- **Commit baseline**: To be established after in-flight work push
+
+## Impact
+
+- Iteration 002 active execution continues with blocking bug fixed
+- No scope creep into planning, review, or closeout boundaries
+- In-flight work preserved and established at origin before repair begins
+- Bounded-repair governance model demonstrated for future cross-worktree issues
+
+## Cross-References
+
+- Iteration 2 plan: specs\020-session-state-durability\iterations\002\plan.md
+- Feature 020 status: `.squad\identity\now.md` (Iteration 002 authorized start)
+- Session log: `.squad\log\20260524T001000Z-feature020-iter002-bounded-repair.md`
+
+---
+
+
 # Decision: Reviewer Feature 020 Iteration 001 Scope-Correction Reauthorization for Review-Verdict-Signoff Rerun
 
 **Date**: 2026-05-22  
