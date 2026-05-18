@@ -3,11 +3,12 @@
 **Schema**: v1
 **Feature**: 020-session-state-durability  
 **Branch**: 020-session-state-durability  
-**Status**: review-complete
+**Status**: retro-complete
 **Capacity**: 15/20 story_points
 **Started**: 2026-05-18
 **Completed**: 2026-05-18
 **Review Completed**: 2026-05-18
+**Retro Completed**: 2026-05-18
 **Created**: 2026-05-18
 **Updated**: 2026-05-18
 
@@ -101,7 +102,8 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File .\tests\integration\version-checks
 - **Planning approval**: this plan is the authoritative scope contract for Iteration 002 and must remain inside FR-006..014, FR-021..024, and FR-029..035
 - **Implementation authorization**: pre-implement validation completed on the scaffolded Iteration 002 artifacts; the authorized scope shipped in `fe031bd` with bounded repairs in `b0bbb31`, `142e4c6`, and `d6b0ad2`
 - **Review status**: review-verdict-signoff is accepted on HEAD `5845b73`; the rerun stayed anchored to `iterations\002\plan.md`, the governance validator passed, and all six required integration suites reran green
-- **Retro / closeout**: retro-boundary and iteration-closeout remain the only authorized remaining boundaries for Iteration 002; do not open feature-closeout from this plan state
+- **Retro status**: retro-boundary completed on 2026-05-18; `retro.md` captures the repair-budget result, repeated stream-capture pitfalls, the PowerShell variable-collision lesson, and the bookkeeping-drift lessons for future boundaries
+- **Closeout status**: iteration-closeout remains the only authorized remaining boundary for Iteration 002; do not open feature-closeout from this plan state
 
 ## Traceability Summary
 

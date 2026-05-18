@@ -1,3 +1,33 @@
+# Decision: Retro-Boundary for Feature 020 Iteration 002
+
+**Date**: 2026-05-18T01:20:00Z  
+**Boundary**: Retro-boundary  
+**Feature**: 020-session-state-durability (Session-State Durability & In-Flight Progress Tracking)  
+**Authority**: Alon Fliess (continuing the accepted review → retro → closeout sequence)  
+**Decision Type**: Iteration retrospective recorded
+
+## Context
+
+Iteration 002 is already review-complete on `2b35621`. The retrospective now needs to preserve the actual delivery lessons from the implementation and repair chain before the iteration closes.
+
+## Decision
+
+**Record the Iteration 002 retrospective and leave iteration-closeout as the only remaining authorized boundary.**
+
+### Lessons Preserved
+
+- The 3-cycle repair budget succeeded on three separate test identities, each in 1/3 attempts.
+- Stream-capture observability remains a repeat failure mode for warning surfaces.
+- PowerShell case-insensitive variable collisions need an explicit lint or checklist defense.
+- Closed iterations should not be load-bearing inputs for active helper logic, and long permissive runs need tighter task-event bookkeeping sync.
+
+## Impact
+
+- `retro.md` now truthfully captures phase variance, drift lessons, and improvement actions for the accepted Iteration 002 tree.
+- Iteration-closeout is the sole remaining authorized boundary for Feature 020 Iteration 002.
+
+---
+
 # Decision: Review-Verdict-Signoff for Feature 020 Iteration 002
 
 **Date**: 2026-05-18T01:05:21Z  
