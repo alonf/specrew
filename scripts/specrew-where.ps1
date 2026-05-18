@@ -469,11 +469,11 @@ try {
     }
 
     if ($parsed.Worktrees) {
-        $worktrees = @(Get-WorktreeState -ProjectRoot $parsed.ProjectPath)
-        $lines = ConvertTo-SpecrewWorktreeLines -Worktrees $worktrees
+        $worktreeState = @(Get-WorktreeState -ProjectRoot $parsed.ProjectPath)
+        $lines = ConvertTo-SpecrewWorktreeLines -Worktrees $worktreeState
 
         if ($parsed.Json) {
-            ConvertTo-SpecrewWorktreePayload -Worktrees $worktrees | ConvertTo-Json -Depth 6
+            ConvertTo-SpecrewWorktreePayload -Worktrees $worktreeState | ConvertTo-Json -Depth 6
             exit 0
         }
 
