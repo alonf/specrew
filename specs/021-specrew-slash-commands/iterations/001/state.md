@@ -1,13 +1,13 @@
 # Iteration State: 001
 
 **Schema**: v1
-**Last Completed Task**: I1-T012
+**Last Completed Task**: I1-T012 (review-verdict-signoff completed); retro-boundary complete; iteration-closeout remains unopened
 **Tasks Remaining**: none within the authorized Iteration 001 execution scope; retro-boundary and iteration-closeout remain unopened
 **In Progress**: none
 **Baseline Ref**: d80fd4b
-**Current Phase**: reviewing
-**Iteration Status**: REVIEW-ACCEPTED — Feature 021 Iteration 001 review boundary passed against implementation commit `29a130b` and bookkeeping reconciliation `d582a7e`; retro and iteration-closeout remain unopened.
-**Updated**: 2026-05-18T14:13:50Z
+**Current Phase**: retro-completed
+**Iteration Status**: RETRO-COMPLETE — Feature 021 Iteration 001 retro-boundary passed on 2026-05-18; captured eight process-improvement lessons from carry-forward defaults, governance automation gaps, session-coordination friction, and validator-hardening opportunities. Iteration-closeout remains unopened.
+**Updated**: 2026-05-18T14:30:00Z
 
 ## Execution Summary
 
@@ -25,13 +25,13 @@
 - **Implementation Begin**: 2026-05-18 (governance reconciliation confirmed the untracked slash assets and missing tracked runtime changes)
 - **Implementation Complete**: 2026-05-18 (tracked runtime, deployment, docs, and slash-command validation assets aligned with the authorized Feature 021 scope and reconciled to commit `29a130b`)
 - **Review Boundary**: 2026-05-18 — accepted on the working tree against implementation commit `29a130b` after rerunning the exact validator and six Feature 021 suites
-- **Retro Boundary**: not started
+- **Retro Boundary**: 2026-05-18 — completed with eight substantive process-improvement lessons recorded in `retro.md`; captured carry-forward default compliance, governance automation gaps, session coordination friction, and validator-hardening opportunities
 - **Iteration Closeout**: not started
 
 ## Notes
 
-- This state now reflects accepted review-boundary truth only; it does not claim retro completion or iteration closeout.
-- Governance validation should now be interpreted against the reviewing boundary for Iteration 001.
+- This state now reflects retro-boundary completion. Eight substantive lessons have been recorded in `retro.md` with concrete causes, effects, and next actions. Iteration-closeout is not yet authorized.
+- Governance validation continues to apply at the retro-boundary tree.
 - Pre-existing repository-level public-readiness warnings outside Feature 021 may still appear during validator runs.
 
 <!-- >>> specrew-managed escalation-state >>> -->

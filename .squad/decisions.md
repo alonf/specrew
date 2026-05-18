@@ -13774,17 +13774,15 @@ The Reviewer role successfully delivered the independent review boundary pass fo
 
 ---
 
-# Decision: Feature 021 Iteration 001 Review-Verdict-Signoff Authorization
+## 2026-05-18T14:25:51Z — Authorization: review-verdict-signoff
 
-**Recorded At**: 2026-05-18T14:25:51Z  
-**Boundary**: review-verdict-signoff  
-**Feature**: 021-specrew-slash-commands (Specrew Slash-Command Surface)  
-**Iteration**: 001  
-**Authority**: Alon Fliess (human authorization via Session Scribe instruction)  
-**Commit Reference**: pending  
-**Decision Type**: Explicit review-verdict-signoff authorization record
-
-## Authorization Text
+- **Decision ID**: authorization-feature-021-iter-001-review-verdict-signoff
+- **Type**: authorization
+- **Boundary**: review-verdict-signoff
+- **Approving Human**: Alon Fliess
+- **Recorded At**: 2026-05-18T14:25:51Z
+- **Commit Reference**: e3372217cfad37fbecf33507077a97633606a42b
+- **Authorization Text**:
 
 > Authorized: Iteration 001 review-boundary → review-verdict-signoff → retro → iteration-closeout. Permissive sequencing; stop at iteration-closeout handoff. Do NOT enter feature-closeout (separate authorization).
 > 
@@ -13846,17 +13844,15 @@ The Reviewer role successfully delivered the independent review boundary pass fo
 
 ---
 
-# Decision: Feature 021 Iteration 001 Retro-Boundary Authorization
+## 2026-05-18T14:25:52Z — Authorization: retro-boundary
 
-**Recorded At**: 2026-05-18T14:25:52Z  
-**Boundary**: retro-boundary  
-**Feature**: 021-specrew-slash-commands (Specrew Slash-Command Surface)  
-**Iteration**: 001  
-**Authority**: Alon Fliess (human authorization via Session Scribe instruction)  
-**Commit Reference**: pending  
-**Decision Type**: Explicit retro-boundary authorization record
-
-## Authorization Text
+- **Decision ID**: authorization-feature-021-iter-001-retro-boundary
+- **Type**: authorization
+- **Boundary**: retro-boundary
+- **Approving Human**: Alon Fliess
+- **Recorded At**: 2026-05-18T14:25:52Z
+- **Commit Reference**: pending
+- **Authorization Text**:
 
 > Authorized: Iteration 001 review-boundary → review-verdict-signoff → retro → iteration-closeout. Permissive sequencing; stop at iteration-closeout handoff. Do NOT enter feature-closeout (separate authorization).
 > 
@@ -13918,17 +13914,15 @@ The Reviewer role successfully delivered the independent review boundary pass fo
 
 ---
 
-# Decision: Feature 021 Iteration 001 Iteration-Closeout Authorization
+## 2026-05-18T14:25:53Z — Authorization: iteration-closeout
 
-**Recorded At**: 2026-05-18T14:25:53Z  
-**Boundary**: iteration-closeout  
-**Feature**: 021-specrew-slash-commands (Specrew Slash-Command Surface)  
-**Iteration**: 001  
-**Authority**: Alon Fliess (human authorization via Session Scribe instruction)  
-**Commit Reference**: pending  
-**Decision Type**: Explicit iteration-closeout authorization record
-
-## Authorization Text
+- **Decision ID**: authorization-feature-021-iter-001-iteration-closeout
+- **Type**: authorization
+- **Boundary**: iteration-closeout
+- **Approving Human**: Alon Fliess
+- **Recorded At**: 2026-05-18T14:25:53Z
+- **Commit Reference**: pending
+- **Authorization Text**:
 
 > Authorized: Iteration 001 review-boundary → review-verdict-signoff → retro → iteration-closeout. Permissive sequencing; stop at iteration-closeout handoff. Do NOT enter feature-closeout (separate authorization).
 > 

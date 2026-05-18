@@ -3,12 +3,12 @@
 **Schema**: v1
 **Feature**: 021-specrew-slash-commands  
 **Branch**: 021-specrew-slash-commands  
-**Status**: reviewing
+**Status**: retro-complete
 **Capacity**: 7/20 story_points
 **Started**: 2026-05-18
 **Completed**: 2026-05-18
 **Review Completed**: 2026-05-18
-**Retro Completed**: (not started)
+**Retro Completed**: 2026-05-18
 **Created**: 2026-05-18  
 **Updated**: 2026-05-18
 
