@@ -13,7 +13,7 @@
 
 ## Requirement Completeness
 
-- [ ] No [NEEDS CLARIFICATION] markers remain
+- [x] No [NEEDS CLARIFICATION] markers remain
 - [x] Requirements are testable and unambiguous
 - [x] Success criteria are measurable
 - [x] Success criteria are technology-agnostic (no implementation details)
@@ -31,9 +31,6 @@
 
 ## Notes
 
-- Remaining clarify items intentionally preserved for `/speckit.clarify`:
-  - FR-005 asks whether schema-parity auditing should expand beyond the closeout identity state to other state artifacts.
-  - FR-014 asks whether `--recover` should stay orthogonal to best-guess confirmation behavior.
-  - FR-019 asks whether a possible missing-ledger symptom belongs in Feature 022 or a follow-up feature.
+- Clarify resolutions are incorporated in `spec.md`; no unresolved clarify markers remain on the planning path.
 - Assumption used instead of a clarification marker: new regression coverage will default to the existing `tests/integration` structure unless planning uncovers a stronger bundling rationale.
-- Validation summary: all checklist items pass except the intentional clarify gate for the three unresolved scope/behavior decisions above.
+- Validation summary: all checklist items pass and the clarify gate is complete.

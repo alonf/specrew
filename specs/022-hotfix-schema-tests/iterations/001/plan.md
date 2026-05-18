@@ -1,4 +1,4 @@
-# Iteration Plan: 001 (Stub)
+# Iteration Plan: 001 (Planning Scaffold)
 
 **Schema**: v1
 **Spec**: [../../spec.md](../../spec.md)
@@ -78,8 +78,8 @@
 
 ## Notes
 
-- This stub captures the planned scope pending detailed planning in the Specrew Planning ceremony.
+- This planning scaffold captures the approved clarified scope ahead of detailed planning in the Specrew Planning ceremony.
 - Add task rows only for work that is traceable to the scoped requirements above.
 - Keep Status: planning until the plan is fully decomposed and approved.
 - If task effort exceeds the configured threshold, make the deferral decision explicit in this plan before execution starts and name the lowest-priority requirement slices proposed for deferral.
-- `/speckit.plan` has not been entered yet; this file exists only to restore the missing before-plan prerequisite scaffold.
+- This file preserves the before-plan scaffold truthfully so `/speckit.plan` can continue with detailed decomposition without treating the planning boundary as unopened.

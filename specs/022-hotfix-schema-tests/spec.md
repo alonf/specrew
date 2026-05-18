@@ -2,7 +2,7 @@
 
 **Feature Branch**: `022-hotfix-schema-tests`  
 **Created**: 2026-05-18  
-**Status**: Draft  
+**Status**: Approved  
 **Input**: User description: "Start Feature 022 as a reactive hotfix feature addressing three production bugs discovered when attempting to restart Squad after F-021 shipped: closeout-helper schema mismatch, incomplete boundary-sync wiring across the seven lifecycle boundaries, and broken stale-state recovery UX in `specrew start`. Include schema-parity, lifecycle boundary, and restart regression coverage while preserving the current single-iteration operating model and Feature 021 carry-forward defaults."
 
 ## Problem Statement
