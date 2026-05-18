@@ -48,11 +48,11 @@ Planning-time analysis is complete. The plan-complete artifact set includes `spe
 
 **Rationale**: Planning-time analysis is complete for all eight hardening concerns; all concern rows recorded as addressed with planning-time-analysis evidence basis. Tasks I1-T001 through I1-T016 have been generated at tasks-boundary commit a135e11dd3ab7983d2f2fa8438303cbd279443ee. Runtime evidence is pending post-implementation execution of the three standalone regression lanes.
 
-## Current Progress Status
+## Current progress status
 
 Iteration 001 planning and task decomposition are complete. All eight hardening gate concerns have been analyzed and addressed with planning-time evidence. Task generation has produced 16 executable tasks (I1-T001 through I1-T016) covering four phase groups: governance setup, foundation work, boundary-sync restoration, and restart recovery UX. Feature 022 is ready to proceed to implementation phase after validator approval.
 
-## Recommended Next Step
+## Recommended next step
 
 Execute `/speckit.implement` to begin implementation of I1-T001 through I1-T016, then run the post-implementation hardening-gate evidence review to collect runtime proof from the three standalone regression lanes before feature closeout.
 
