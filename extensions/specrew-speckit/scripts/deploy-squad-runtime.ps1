@@ -394,12 +394,26 @@ Ensure-Directory -Path $copilotSkillsRoot -Actions $actions
 Ensure-Directory -Path $squadAgentsRoot -Actions $actions
 Ensure-Directory -Path (Join-Path $squadRoot 'casting') -Actions $actions
 
-$skillFiles = @(Get-ChildItem -LiteralPath (Join-Path $templateRoot 'skills') -Filter '*.md' | Where-Object { $_.Name -ne 'README.md' } | Sort-Object Name)
+$skillsTemplateRoot = Join-Path $templateRoot 'skills'
+$skillFiles = @(Get-ChildItem -LiteralPath $skillsTemplateRoot -Filter '*.md' | Where-Object { $_.Name -ne 'README.md' } | Sort-Object Name)
 foreach ($skillFile in $skillFiles) {
     $skillName = 'specrew-{0}' -f $skillFile.BaseName
     $skillDir = Join-Path $copilotSkillsRoot $skillName
     Ensure-Directory -Path $skillDir -Actions $actions
     Set-ManagedFile -TargetPath (Join-Path $skillDir 'SKILL.md') -Content (Get-Content -LiteralPath $skillFile.FullName -Raw) -Actions $actions
+}
+
+# Subdirectory-style skills (for example the slash-command runtime surfaces) deploy as-is.
+$skillDirectories = @(Get-ChildItem -LiteralPath $skillsTemplateRoot -Directory | Sort-Object Name)
+foreach ($skillDirectory in $skillDirectories) {
+    $skillSourcePath = Join-Path $skillDirectory.FullName 'SKILL.md'
+    if (-not (Test-Path -LiteralPath $skillSourcePath -PathType Leaf)) {
+        continue
+    }
+
+    $skillDir = Join-Path $copilotSkillsRoot $skillDirectory.Name
+    Ensure-Directory -Path $skillDir -Actions $actions
+    Set-ManagedFile -TargetPath (Join-Path $skillDir 'SKILL.md') -Content (Get-Content -LiteralPath $skillSourcePath -Raw) -Actions $actions
 }
 
 $coordinatorGovernancePath = Join-Path $templateRoot 'coordinator\specrew-governance.md'

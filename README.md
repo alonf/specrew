@@ -24,6 +24,9 @@ AI-assisted software delivery.
 - `specrew where` / `specrew status` render the repository's velocity dashboard
   from canonical feature, iteration, and roadmap artifacts, using richer default
   rendering when the terminal can truthfully support it
+- Feature 021 adds a seven-command `/specrew.*` slash-command surface with
+  `/specrew.help` as the canonical catalog fallback when host-native discovery
+  is unavailable
 - Session-state durability and in-flight progress tracking across system reboots,
   worktree switches, and boundary events (Feature 020)
 - Iteration closeout and feature closeout capture immutable dashboard snapshots
@@ -84,7 +87,7 @@ detailed cross-platform validation status.
 > **Direct-script invocation** (no module load) still works against a cloned
 > repo: `pwsh -File scripts/specrew.ps1 <command>`. The module aliases
 > (`specrew`, `specrew-init`, `specrew-start`, `specrew-update`, `specrew-where`,
-> `specrew-team`, `specrew-review`) are the recommended path because they
+> `specrew-team`, `specrew-review`, `specrew-version`) are the recommended path because they
 > survive PowerShell Gallery installation without any path-dependent
 > gymnastics.
 

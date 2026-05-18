@@ -14,6 +14,7 @@ $script:SpecrewScriptMap = [ordered]@{
     'specrew-start'  = Join-Path -Path $scriptsPath -ChildPath 'specrew-start.ps1'
     'specrew-team'   = Join-Path -Path $scriptsPath -ChildPath 'specrew-team.ps1'
     'specrew-update' = Join-Path -Path $scriptsPath -ChildPath 'specrew-update.ps1'
+    'specrew-version' = Join-Path -Path $scriptsPath -ChildPath 'specrew-version.ps1'
     'specrew-where'  = Join-Path -Path $scriptsPath -ChildPath 'specrew-where.ps1'
 }
 
@@ -155,6 +156,12 @@ function Update-Specrew {
     Invoke-SpecrewScript -CommandName 'specrew-update' -Arguments $Arguments
 }
 
+function Show-SpecrewVersion {
+    [CmdletBinding()]
+    param([Parameter(Position = 0, ValueFromRemainingArguments = $true)][object[]]$Arguments)
+    Invoke-SpecrewScript -CommandName 'specrew-version' -Arguments $Arguments
+}
+
 function Show-SpecrewStatus {
     [CmdletBinding()]
     param([Parameter(Position = 0, ValueFromRemainingArguments = $true)][object[]]$Arguments)
@@ -169,6 +176,7 @@ Set-Alias -Name 'specrew-review'  -Value 'Show-SpecrewReview'    -Force
 Set-Alias -Name 'specrew-start'   -Value 'Start-Specrew'         -Force
 Set-Alias -Name 'specrew-team'    -Value 'Invoke-SpecrewTeam'    -Force
 Set-Alias -Name 'specrew-update'  -Value 'Update-Specrew'        -Force
+Set-Alias -Name 'specrew-version' -Value 'Show-SpecrewVersion'   -Force
 Set-Alias -Name 'specrew-where'   -Value 'Show-SpecrewStatus'    -Force
 
 Export-ModuleMember `
@@ -177,6 +185,7 @@ Export-ModuleMember `
         'Initialize-Specrew',
         'Start-Specrew',
         'Update-Specrew',
+        'Show-SpecrewVersion',
         'Show-SpecrewReview',
         'Invoke-SpecrewTeam',
         'Show-SpecrewStatus'
@@ -186,6 +195,7 @@ Export-ModuleMember `
         'specrew-init',
         'specrew-start',
         'specrew-update',
+        'specrew-version',
         'specrew-review',
         'specrew-team',
         'specrew-where'

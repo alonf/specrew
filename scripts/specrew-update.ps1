@@ -1140,6 +1140,12 @@ if ($scopes -contains 'Specrew') {
                     Detail   = [string]$action.Path
                 })
         }
+
+        $null = $summary.Add([pscustomobject]@{
+                Platform = 'Specrew'
+                Action   = 'slash-surface-refreshed'
+                Detail   = '/specrew.where, /specrew.status, /specrew.update, /specrew.team, /specrew.review, /specrew.help, /specrew.version'
+            })
     }
     else {
         $null = $summary.Add([pscustomobject]@{
