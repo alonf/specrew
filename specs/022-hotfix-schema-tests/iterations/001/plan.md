@@ -3,17 +3,18 @@
 **Schema**: v1
 **Feature**: 022-hotfix-schema-tests  
 **Branch**: 022-hotfix-schema-tests  
-**Status**: reviewing
+**Status**: retro-complete
 **Capacity**: 9/20 story_points
 **Started**: 2026-05-18
 **Completed**: 2026-05-19
 **Review Completed**: 2026-05-19
+**Retro Completed**: 2026-05-19
 **Created**: 2026-05-18  
-**Updated**: 2026-05-19T02:16:37Z
+**Updated**: 2026-05-18T23:27:46Z
 
 ## Overview
 
-Iteration 001 is the only authorized delivery slice for Feature 022. It stayed bounded to the three confirmed restart defects plus regression coverage, and review-verdict-signoff is now complete on the current branch without opening retro or closeout.
+Iteration 001 is the only authorized delivery slice for Feature 022. It stayed bounded to the three confirmed restart defects plus regression coverage, and retro-boundary is now complete on the current branch without opening iteration-closeout or feature-closeout.
 
 **Scope**: FR-001 through FR-019 inside one iteration only. This iteration plan allocates execution capacity and grouped work packages, which have been decomposed into executable tasks at the feature-level tasks artifact.
 
@@ -85,7 +86,8 @@ Total effort estimate: 9.0 Story Points (+ 1.0 SP repair reserve)
 - **Tasks completed**: 16 executable tasks generated and committed at `specs/022-hotfix-schema-tests/tasks.md` (tasks-boundary commit a135e11dd3ab7983d2f2fa8438303cbd279443ee).
 - **Scope source**: `specs/022-hotfix-schema-tests/spec.md` remains authoritative for this iteration plan.
 - **Review status**: review-verdict-signoff completed on HEAD `3b5f22bce192246503e1206c9cddd2bae1bf19d2`; the governance validator passed and all nine required integration suites reran green.
-- **Next boundary**: retro-boundary only, and only after fresh authorization.
+- **Retro status**: retro-boundary completed on 2026-05-19; `retro.md` captures the Feature 020 restart-escape lesson, Proposal 054 scenario mapping, worktree-isolation benefit, Feature 021 hygiene defaults, CHANGELOG/form-versus-meaning coverage gap, `/speckit.tasks` truth-surface lag, and stewardship-label template drift.
+- **Next boundary**: iteration-closeout only, and only after fresh authorization.
 
 ## Notes
 
@@ -93,4 +95,4 @@ Total effort estimate: 9.0 Story Points (+ 1.0 SP repair reserve)
 - Tasks I1-T001 through I1-T016 have been generated from these work packages and are now available at `specs/022-hotfix-schema-tests/tasks.md` (commit a135e11dd3ab7983d2f2fa8438303cbd279443ee).
 - The baseline-role mapping in `specs/022-hotfix-schema-tests/plan.md` is the authoritative stewardship-label interpretation for implementation planning.
 - The hardening gate records implementation evidence and the review boundary reran that evidence green.
-- Retro, iteration-closeout, and feature-closeout remain intentionally unopened from this plan state.
+- Iteration-closeout and feature-closeout remain intentionally unopened from this plan state.

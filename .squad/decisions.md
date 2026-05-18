@@ -1,3 +1,43 @@
+# Decision: Feature 022 Retro Boundary
+
+**Date**: 2026-05-18T23:27:46Z  
+**Boundary**: retro-boundary  
+**Feature**: 022-hotfix-schema-tests (Hotfix + Schema Tests)  
+**Iteration**: 001  
+**Authority**: Alon Fliess (retro + iteration-closeout authorized after review-complete)  
+**Decision Type**: Retrospective completion and boundary stop
+
+## Evidence Rerun
+
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File .\extensions\specrew-speckit\scripts\validate-governance.ps1 -ProjectPath . -IterationPath .\specs\022-hotfix-schema-tests\iterations\001`
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File .\tests\integration\closeout-identity-schema-parity.tests.ps1`
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File .\tests\integration\lifecycle-boundary-sync.tests.ps1`
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File .\tests\integration\start-recovery-flow.tests.ps1`
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File .\tests\integration\stale-state-detection.tests.ps1`
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File .\tests\integration\boundary-sync-atomicity.tests.ps1`
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File .\tests\integration\specrew-start-end-to-end.ps1`
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File .\tests\integration\review-command.ps1`
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File .\tests\integration\iteration-resume.ps1`
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File .\tests\integration\start-command.ps1`
+
+## Retro Outcomes
+
+- Feature 020's intended durability design still allowed the critical bugs to escape until a real post-ship restart; Proposal 054 remains the structural prevention, not optional cleanup.
+- Form-versus-meaning defects need integration coverage, not just unit checks; the CHANGELOG miss belongs to the same failure class.
+- The three standalone Feature 022 suites are the Proposal 054 proof-of-concept lanes: scenario C (`closeout-identity-schema-parity`), scenario A (`lifecycle-boundary-sync`), and scenario B (`start-recovery-flow`).
+- Dedicated worktree isolation avoided concurrent-session friction and should be preserved as a documented hotfix default.
+- Feature 021's retro defaults worked when explicitly enforced here: push hygiene, live bookkeeping, and pre-handoff verification.
+- `/speckit.tasks` still leaves a post-boundary state-transition gap because it does not automatically advance iteration truth surfaces.
+- Stewardship-label template drift is now a recurring governance issue across Features 020, 021, and 022.
+
+## Boundary Stop
+
+- Retro-boundary is complete.
+- Iteration-closeout remains the next authorized boundary.
+- Feature-closeout remains explicitly unopened and unauthorized.
+
+---
+
 # Decision: Feature 022 Review Verdict Signoff
 
 **Date**: 2026-05-19T02:16:37Z  
