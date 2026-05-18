@@ -40,7 +40,7 @@ function Get-SpecrewInstalledVersion {
 
     $resolvedProjectRoot = Resolve-ProjectPath -Path $ProjectRoot
     $manifestCandidates = @(
-        (Join-Path (Split-Path -Parent $PSScriptRoot) 'Specrew.psd1'),
+        (Join-Path (Split-Path -Parent (Split-Path -Parent $PSScriptRoot)) 'Specrew.psd1'),
         (Join-Path $resolvedProjectRoot 'Specrew.psd1')
     ) | Select-Object -Unique
 
