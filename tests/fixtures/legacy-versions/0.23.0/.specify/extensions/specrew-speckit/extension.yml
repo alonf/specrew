@@ -1,0 +1,8 @@
+schema_version: "1.0"
+schema: "v1"
+
+extension:
+  id: specrew-speckit
+  name: "Specrew Spec Kit Extension"
+  version: "0.23.0"
+  description: "Spec Kit extension providing governance artifacts, templates, and validation for Specrew"

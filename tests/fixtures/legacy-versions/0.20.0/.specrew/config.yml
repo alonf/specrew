@@ -1,0 +1,4 @@
+team_id: team-gamma
+specrew_version: 0.20.0
+capacity_unit: story_points
+default_iteration_capacity: 20

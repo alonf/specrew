@@ -1,0 +1,10 @@
+{
+  "warnings": {
+    "total": 3,
+    "soft": 1,
+    "medium": 2,
+    "hard": 0
+  },
+  "command": "validate-governance",
+  "recorded_at": "2025-04-10T16:20:00Z"
+}

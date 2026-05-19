@@ -61,6 +61,10 @@ jobs:
         shell: pwsh
         run: ./extensions/specrew-speckit/scripts/validate-governance.ps1 -ProjectPath .
 
+      - name: Integration - legacy state readers
+        shell: pwsh
+        run: pwsh -NoProfile -File ./tests/integration/Test-LegacyStateReaders.Tests.ps1
+
   deterministic-gate:
     name: Deterministic gate
     runs-on: ubuntu-latest

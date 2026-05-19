@@ -17,6 +17,37 @@ if (-not (Test-Path -LiteralPath $sharedGovernancePath -PathType Leaf)) {
 }
 . $sharedGovernancePath
 
+$script:ValidatorCommand = 'validate-governance'
+$script:ValidatorSoftWarnings = 0
+$script:ValidatorMediumWarnings = 0
+
+function Write-ValidatorSummaryAndExit {
+    param(
+        [AllowNull()]
+        [string]$ProjectRoot,
+
+        [Parameter(Mandatory = $true)]
+        [int]$ExitCode,
+
+        [int]$HardWarnings = 0
+    )
+
+    if (-not [string]::IsNullOrWhiteSpace($ProjectRoot)) {
+        try {
+            Write-SpecrewValidatorSummary `
+                -ProjectRoot $ProjectRoot `
+                -Command $script:ValidatorCommand `
+                -SoftWarnings $script:ValidatorSoftWarnings `
+                -MediumWarnings $script:ValidatorMediumWarnings `
+                -HardWarnings $HardWarnings | Out-Null
+        }
+        catch {
+        }
+    }
+
+    exit $ExitCode
+}
+
 $copilotInstructionsClassifierPath = Join-Path $PSScriptRoot 'Test-CopilotInstructionsChangeType.ps1'
 if (-not (Test-Path -LiteralPath $copilotInstructionsClassifierPath -PathType Leaf)) {
     throw "Missing copilot-instructions classifier helper '$copilotInstructionsClassifierPath'."
@@ -474,6 +505,7 @@ function Write-PublicReadinessWarning {
         [Parameter(Mandatory = $true)][string]$Detail
     )
 
+    $script:ValidatorSoftWarnings++
     Write-Host ("WARN [public-readiness] {0}: {1}" -f $Category.Trim(), $Detail.Trim()) -ForegroundColor Yellow
 }
 
@@ -483,6 +515,7 @@ function Write-DashboardGovernanceWarning {
         [Parameter(Mandatory = $true)][string]$Detail
     )
 
+    $script:ValidatorSoftWarnings++
     Write-Host ("WARN [dashboard] {0}: {1}" -f $Category.Trim(), $Detail.Trim()) -ForegroundColor Yellow
 }
 
@@ -497,6 +530,30 @@ function Get-DeclaredSpecrewVersion {
     try {
         foreach ($line in Get-MarkdownContent -Path $configPath) {
             if ($line -match '^\s*specrew_version:\s*"?(?<version>[^"#]+?)"?\s*$') {
+                return $Matches['version'].Trim()
+            }
+        }
+    }
+    catch {
+        return $null
+    }
+
+    return $null
+}
+
+function Get-ExtensionManifestVersion {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$ManifestPath
+    )
+
+    if (-not (Test-Path -LiteralPath $ManifestPath -PathType Leaf)) {
+        return $null
+    }
+
+    try {
+        foreach ($line in Get-MarkdownContent -Path $ManifestPath) {
+            if ($line -match '^\s*version:\s*"?(?<version>[^"#]+?)"?\s*$') {
                 return $Matches['version'].Trim()
             }
         }
@@ -540,6 +597,22 @@ function Test-PublicReadinessSurfaces {
         $readmeContent = Get-Content -LiteralPath $readmePath -Raw -Encoding UTF8
         if ($readmeContent -notmatch [regex]::Escape($declaredVersion)) {
             Write-PublicReadinessWarning -Category 'stale-version-in-readme' -Detail ("README.md does not contain declared version {0}" -f $declaredVersion)
+        }
+
+        $extensionManifestPaths = @(
+            @{ Path = (Join-Path $ProjectRoot 'extensions\specrew-speckit\extension.yml'); Label = 'extensions/specrew-speckit/extension.yml' },
+            @{ Path = (Join-Path $ProjectRoot '.specify\extensions\specrew-speckit\extension.yml'); Label = '.specify/extensions/specrew-speckit/extension.yml' }
+        )
+
+        foreach ($manifest in $extensionManifestPaths) {
+            $manifestVersion = Get-ExtensionManifestVersion -ManifestPath $manifest.Path
+            if ([string]::IsNullOrWhiteSpace($manifestVersion)) {
+                continue
+            }
+
+            if ($manifestVersion -ne $declaredVersion) {
+                Write-PublicReadinessWarning -Category 'stale-version-in-extension-manifest' -Detail ("{0} declares version '{1}' but .specrew/config.yml declares specrew_version '{2}'. Rule 15 (feature-closeout version management) requires these to match." -f $manifest.Label, $manifestVersion, $declaredVersion)
+            }
         }
     }
     catch {
@@ -1614,6 +1687,101 @@ function Test-StateArtifact {
     }
 }
 
+function Test-ReaderTolerance {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$ProjectRoot,
+
+        [AllowEmptyCollection()]
+        [Parameter(Mandatory = $true)]
+        [System.Collections.Generic.List[string]]$Errors
+    )
+
+    # TODO (future feature): widen to heuristic detection — flag any function whose body contains a .specrew\ / .specify\ / .squad\ literal AND a ConvertFrom-Json call without -AsHashtable. Current allowlist is correct-but-narrow; new readers added outside this list will not be caught.
+    $targets = @(
+        @{
+            Path      = Join-Path $ProjectRoot 'scripts\specrew-start.ps1'
+            Functions = @('Get-SpecrewStartContextSessionState', 'Resolve-FeatureDirectory')
+        },
+        @{
+            Path      = Join-Path $ProjectRoot 'scripts\internal\worktree-awareness.ps1'
+            Functions = @('Get-WorktreeFeatureRef')
+        },
+        @{
+            Path      = Join-Path $ProjectRoot 'scripts\internal\coordinator-resume.ps1'
+            Functions = @('Get-ValidatorWarningSummary')
+        },
+        @{
+            Path      = Join-Path $ProjectRoot 'scripts\internal\version-check.ps1'
+            Functions = @('Get-SpecrewVersionCheckCacheState')
+        },
+        @{
+            Path      = Join-Path $ProjectRoot 'scripts\internal\sync-boundary-state.ps1'
+            Functions = @('Update-SpecrewStartContext', 'Clear-SpecrewActiveFeature', 'Invoke-SpecrewBoundaryStateSync')
+        },
+        @{
+            Path      = Join-Path $ProjectRoot 'extensions\specrew-speckit\scripts\scaffold-feature-closeout-dashboard.ps1'
+            Functions = @('Get-ResolvedFeatureDirectory')
+        },
+        @{
+            Path      = Join-Path $ProjectRoot '.specify\extensions\specrew-speckit\scripts\scaffold-feature-closeout-dashboard.ps1'
+            Functions = @('Get-ResolvedFeatureDirectory')
+        }
+    )
+
+    foreach ($target in $targets) {
+        $scriptPath = $target.Path
+        if (-not (Test-Path -LiteralPath $scriptPath -PathType Leaf)) {
+            continue
+        }
+
+        $tokens = $null
+        $parseErrors = $null
+        $ast = [System.Management.Automation.Language.Parser]::ParseFile($scriptPath, [ref]$tokens, [ref]$parseErrors)
+        if ($parseErrors.Count -gt 0) {
+            Add-RepoStructuredValidationFailure -Errors $Errors -ProjectRoot $ProjectRoot -TargetPath $scriptPath -LineNumber $parseErrors[0].Extent.StartLineNumber -Category 'reader-tolerance' -Message 'Could not parse script for reader-tolerance validation.' -RemediationHint 'Repair the PowerShell syntax errors before rerunning validate-governance.ps1.'
+            continue
+        }
+
+        foreach ($functionName in @($target.Functions)) {
+            $functionAst = @(
+                $ast.FindAll({
+                        param($node)
+                        $node -is [System.Management.Automation.Language.FunctionDefinitionAst] -and $node.Name -eq $functionName
+                    }, $true)
+            ) | Select-Object -First 1
+
+            if ($null -eq $functionAst) {
+                continue
+            }
+
+            $convertCommands = @(
+                $functionAst.FindAll({
+                        param($node)
+                        if ($node -isnot [System.Management.Automation.Language.CommandAst]) {
+                            return $false
+                        }
+
+                        if ($node.CommandElements.Count -eq 0) {
+                            return $false
+                        }
+
+                        $commandName = $node.CommandElements[0].Extent.Text.Trim()
+                        return $commandName -eq 'ConvertFrom-Json'
+                    }, $true)
+            )
+
+            foreach ($commandAst in $convertCommands) {
+                if ($commandAst.Extent.Text -match '(?i)-AsHashtable\b') {
+                    continue
+                }
+
+                Add-RepoStructuredValidationFailure -Errors $Errors -ProjectRoot $ProjectRoot -TargetPath $scriptPath -LineNumber $commandAst.Extent.StartLineNumber -Category 'reader-tolerance' -Message ("Function {0} reads Specrew state with ConvertFrom-Json but without -AsHashtable." -f $functionName) -RemediationHint 'Add -AsHashtable and use hashtable indexers so missing fields do not crash under Set-StrictMode -Version Latest.'
+            }
+        }
+    }
+}
+
 function Test-ReviewArtifact {
     param(
         [string]$ReviewPath,
@@ -1755,7 +1923,7 @@ function Get-IterationDirtyCanonicalArtifacts {
         return @()
     }
 
-    $iterationRelativePath = ([System.IO.Path]::GetRelativePath($ProjectRoot, $IterationDirectory)) -replace '/', '\'
+    $iterationRelativePath = ([System.IO.Path]::GetRelativePath($ProjectRoot, $IterationDirectory)) -replace '\\', '/'
     $canonicalPaths = @(
         Get-IterationCanonicalArtifactRelativePaths -IterationDirectory $IterationDirectory -ProjectRoot $ProjectRoot |
             ForEach-Object { $_.ToLowerInvariant() }
@@ -3249,8 +3417,11 @@ function Invoke-InteractionModelResponseValidation {
         $validatorArgs['BarePathBoundaryHandoffSeverity'] = $BarePathBoundaryHandoffSeverity
     }
 
-    & $validatorScript @validatorArgs
-    exit $LASTEXITCODE
+    $validatorOutput = @(& $validatorScript @validatorArgs 2>&1)
+    foreach ($line in $validatorOutput) {
+        Write-Host $line
+    }
+    return [int]$LASTEXITCODE
 }
 
 try {
@@ -3265,7 +3436,7 @@ try {
         foreach ($errorMessage in $teamValidationErrors) {
             Write-Host "  - $errorMessage" -ForegroundColor Red
         }
-        exit 1
+        Write-ValidatorSummaryAndExit -ProjectRoot $resolvedProjectPath -ExitCode 1 -HardWarnings $teamValidationErrors.Count
     }
 
     $classifierCompatibilityErrors = New-Object System.Collections.Generic.List[string]
@@ -3275,7 +3446,7 @@ try {
         foreach ($errorMessage in $classifierCompatibilityErrors) {
             Write-Host "  - $errorMessage" -ForegroundColor Red
         }
-        exit 1
+        Write-ValidatorSummaryAndExit -ProjectRoot $resolvedProjectPath -ExitCode 1 -HardWarnings $classifierCompatibilityErrors.Count
     }
 
     Test-PublicReadinessSurfaces -ProjectRoot $resolvedProjectPath
@@ -3286,7 +3457,8 @@ try {
     ).Count -gt 0
     $targets = @(Resolve-IterationTarget -ResolvedProjectPath $resolvedProjectPath -ExplicitIterationPaths $IterationPath)
     if (-not [string]::IsNullOrWhiteSpace($ResponseText)) {
-        Invoke-InteractionModelResponseValidation -ProjectRoot $resolvedProjectPath -ResponseText $ResponseText -IterationTargets $targets -BoundaryName $BoundaryName -ResponseScope $ResponseScope -BarePathBoundaryHandoffSeverity $BarePathBoundaryHandoffSeverity
+        $responseValidationExitCode = Invoke-InteractionModelResponseValidation -ProjectRoot $resolvedProjectPath -ResponseText $ResponseText -IterationTargets $targets -BoundaryName $BoundaryName -ResponseScope $ResponseScope -BarePathBoundaryHandoffSeverity $BarePathBoundaryHandoffSeverity
+        Write-ValidatorSummaryAndExit -ProjectRoot $resolvedProjectPath -ExitCode $responseValidationExitCode -HardWarnings $(if ($responseValidationExitCode -eq 0) { 0 } else { 1 })
     }
     $iterationConfig = if ($targets.Count -gt 0) { Get-IterationConfigForValidation -IterationDirectory $targets[0] } else { @{ closeout_packet_required_since_iteration = '' } }
     $reviewerCloseoutEnforcement = Get-ReviewerCloseoutEnforcementMap -Targets $targets -ExplicitTargetsProvided $explicitIterationPathsProvided -RequiredSinceIteration $iterationConfig.closeout_packet_required_since_iteration
@@ -3310,9 +3482,19 @@ try {
     }
     Add-ApprovalReuseValidationErrors -Targets $targets -ProjectRoot $resolvedProjectPath -ResultMap $resultMap
     Add-InteractionModelValidationErrors -Targets $targets -ProjectRoot $resolvedProjectPath -ResultMap $resultMap
+    $readerToleranceErrors = New-Object System.Collections.Generic.List[string]
+    Test-ReaderTolerance -ProjectRoot $resolvedProjectPath -Errors $readerToleranceErrors
+    if ($readerToleranceErrors.Count -gt 0) {
+        $results += [pscustomobject]@{
+            Path   = $resolvedProjectPath
+            Errors = $readerToleranceErrors
+        }
+    }
     $hasFailures = $false
+    $hardFailureCount = 0
 
     foreach ($result in $results) {
+        $hardFailureCount += $result.Errors.Count
         if ($result.Errors.Count -eq 0) {
             Write-Host "PASS $($result.Path)" -ForegroundColor Green
             continue
@@ -3326,13 +3508,19 @@ try {
     }
 
     if ($hasFailures) {
-        exit 1
+        Write-ValidatorSummaryAndExit -ProjectRoot $resolvedProjectPath -ExitCode 1 -HardWarnings $hardFailureCount
     }
 
-    exit 0
+    Write-ValidatorSummaryAndExit -ProjectRoot $resolvedProjectPath -ExitCode 0 -HardWarnings 0
 }
 catch {
     Write-Host 'FAIL validate-governance' -ForegroundColor Red
     Write-Host ('  - {0}' -f (New-StructuredValidationFailureText -FilePath '(none)' -LineNumber $null -Category 'unexpected-validator-error' -Message $_.Exception.Message -RemediationHint 'Repair the validator inputs or configuration and rerun validate-governance.ps1.')) -ForegroundColor Red
-    exit 1
+    $summaryProjectRoot = $null
+    try {
+        $summaryProjectRoot = (Resolve-Path -Path (Resolve-ProjectPath -Path $ProjectPath)).Path
+    }
+    catch {
+    }
+    Write-ValidatorSummaryAndExit -ProjectRoot $summaryProjectRoot -ExitCode 1 -HardWarnings 1
 }
