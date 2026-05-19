@@ -283,9 +283,18 @@ function Write-PostBootstrapGuidance {
     $isModuleContext = ($executionLayout.Mode -eq 'module')
 
     Write-Host ''
-    Write-Host '============================================================' -ForegroundColor Cyan
-    Write-Host '  Specrew Bootstrap Complete' -ForegroundColor Green
-    Write-Host '============================================================' -ForegroundColor Cyan
+    Write-Host '         ╱─────────────────╲' -ForegroundColor Cyan
+    Write-Host '        ╱  ●━━●━━●            ╲' -ForegroundColor Cyan
+    Write-Host '       │       ╲                │' -ForegroundColor Cyan
+    Write-Host '       │   ●━━●━●                │' -ForegroundColor Blue
+    Write-Host '       │        ╲                │' -ForegroundColor Blue
+    Write-Host '        ╲  ●━━●━━●              ╱' -ForegroundColor Blue
+    Write-Host '         ╲─────────────────╱' -ForegroundColor Blue
+    Write-Host ''
+    Write-Host '             S  P  E  C  R  E  W' -ForegroundColor White
+    Write-Host '           ─── GOVERNED AI SDLC ───' -ForegroundColor DarkGray
+    Write-Host ''
+    Write-Host '             Bootstrap Complete' -ForegroundColor Green
     Write-Host ''
     Write-Host ("Baseline Specrew crew installed: {0}." -f $baselineRoles) -ForegroundColor White
     Write-Host ''
