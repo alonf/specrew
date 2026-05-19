@@ -53,6 +53,7 @@ A two-surface formatting standard plus the enforcement to make it stick.
 > The initial spec is on disk at specs/001-physics-simulation/spec.md. I'm sending it through clarify next.
 
 **Shell command output (correct)**:
+
 ```
 Dashboard snapshot: file:///C:/Dev/Specrew/specs/020-session-state-durability/iterations/002/dashboard.md
 ```
@@ -61,6 +62,7 @@ Dashboard snapshot: file:///C:/Dev/Specrew/specs/020-session-state-durability/it
 > The iteration plan is at [plan.md](file:///C:/Dev/Specrew/specs/020/iterations/002/plan.md) and the drift log is at [drift-log.md](file:///C:/Dev/Specrew/specs/020/iterations/002/drift-log.md).
 
 **Decision-ledger / state file (correct)** — YAML key:value:
+
 ```yaml
 spec_path: file:///C:/Dev/Specrew/specs/001-physics-simulation/spec.md
 ```

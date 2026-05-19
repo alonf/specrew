@@ -147,13 +147,13 @@ Each executable item uses this structure:
 
 - [x] I1-T009 [US3] [assigned_to: Reviewer] [effort: 0.4 SP] Add setup, refresh, and compatibility validation coverage in `tests/integration/slash-command-distribution.tests.ps1` and `tests/integration/slash-command-compatibility.tests.ps1` (Trace: I1-W003; FR-016, FR-017, FR-018, FR-019, FR-020; SC-003, SC-004)
   - **Execution**: Status=done; Agent=Reviewer; Commit(s)=`29a130b`; Actual=0.4 SP; Verdict=PASS
-   - **Title**: Distribution and compatibility validation suite
-   - **FR coverage**: FR-016, FR-017, FR-018, FR-019, FR-020
-   - **SC coverage**: SC-003, SC-004
-   - **User story coverage**: US3
-   - **Owner role**: Reviewer
-   - **Dependencies**: I1-T008
-   - **Before-Implement Repair (GAP-BI-003, GAP-BI-004)**: Setup/refresh delivery outcomes moved from I1-T012 to I1-T009 because they map directly to distribution/compatibility validation.
+  - **Title**: Distribution and compatibility validation suite
+  - **FR coverage**: FR-016, FR-017, FR-018, FR-019, FR-020
+  - **SC coverage**: SC-003, SC-004
+  - **User story coverage**: US3
+  - **Owner role**: Reviewer
+  - **Dependencies**: I1-T008
+  - **Before-Implement Repair (GAP-BI-003, GAP-BI-004)**: Setup/refresh delivery outcomes moved from I1-T012 to I1-T009 because they map directly to distribution/compatibility validation.
 
 **Phase 3 Total**: 3 tasks, 1.5 SP
 

@@ -59,11 +59,13 @@ if ($sessionState) {
 ### For Iteration 1 (Writers + Readers)
 
 **Step 1: Audit Your Script**
+
 - [ ] Identify if your script reads or writes state files in `.specrew/`, `.specify/`, `.squad/` directories
 - [ ] Check if you use `ConvertFrom-Json` (reader) or `ConvertTo-Json` (writer)
 - [ ] Verify if your script has `Set-StrictMode -Version Latest` (should be line 1)
 
 **Step 2: Migrate Readers to Hashtables**
+
 ```powershell
 # BEFORE (PSCustomObject - throws under StrictMode)
 $state = Get-Content $path -Raw | ConvertFrom-Json
@@ -76,6 +78,7 @@ $value = $state['optional_field']  # ✅ Returns $null if missing
 ```
 
 **Step 3: Add Schema Markers to Writers**
+
 ```powershell
 # BEFORE
 $state = @{
@@ -90,6 +93,7 @@ $state = @{
 ```
 
 **Step 4: Handle Schema Version Dispatch (if needed)**
+
 ```powershell
 $schema = $state['schema']
 if (-not $schema) {
@@ -104,6 +108,7 @@ else {
 ```
 
 **Step 5: Test Against Legacy Fixtures**
+
 ```powershell
 # Run Pester tests
 Invoke-Pester -Path tests/integration/Test-LegacyStateReaders.Tests.ps1
@@ -283,6 +288,7 @@ function Test-ReaderTolerance {
 **Cause**: Using PSCustomObject property access (e.g., `$state.field`) instead of hashtable indexer
 
 **Fix**:
+
 ```powershell
 # Change this:
 $value = $state.field
@@ -306,6 +312,7 @@ $value = $state['field']
 **Cause**: Line-ending differences (CRLF vs LF), case-sensitive paths
 
 **Fix**:
+
 - Ensure Git `core.autocrlf` is configured correctly
 - Use `Test-Path -LiteralPath` and `-LiteralPath` parameter consistently
 - Normalize paths with `Join-Path` or `[System.IO.Path]::Combine()`

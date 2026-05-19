@@ -9,6 +9,7 @@
 ## Overview
 
 The `Specrew.psd1` module manifest is the central contract between the Specrew module and PowerShell Gallery / end users. It declares:
+
 - Module metadata (version, author, description)
 - Exported functions (PowerShell commands)
 - Bundled files (scripts, extensions, templates, docs)
@@ -75,6 +76,7 @@ This contract ensures consistent module structure across versions and enables au
 ### Core Metadata
 
 #### `ModuleVersion` (string, required)
+
 - **Format**: Semantic versioning (MAJOR.MINOR.PATCH), e.g., '0.18.0'
 - **Source of Truth**: `.specrew/config.yml` → `specrew_version` field
 - **Stamping Mechanism**: GitHub Actions workflow reads `specrew_version` from config and updates `Specrew.psd1` before `Publish-Module`
@@ -82,6 +84,7 @@ This contract ensures consistent module structure across versions and enables au
 - **Example**: `ModuleVersion = '0.18.0'`
 
 #### `GUID` (string, required)
+
 - **Format**: UUID (e.g., 'a1b2c3d4-e5f6-7890-abcd-ef1234567890')
 - **Generation**: One-time only; use `New-Guid` PowerShell cmdlet during initial manifest creation
 - **Immutability**: **Never changes** across module versions (PSGallery uses GUID for module identity)
@@ -89,12 +92,14 @@ This contract ensures consistent module structure across versions and enables au
 - **Example**: `GUID = 'e8f7a6b5-c4d3-2e1f-0a9b-8c7d6e5f4a3b'`
 
 #### `Author` (string, required)
+
 - **Format**: Human-readable name or organization
 - **Value**: 'Alon Fliess' (feature sponsor and primary maintainer)
 - **Validation**: Non-empty string
 - **Example**: `Author = 'Alon Fliess'`
 
 #### `Description` (string, required)
+
 - **Format**: One-line summary (max 256 characters recommended for PSGallery listing)
 - **Value**: 'Specrew: Specification-driven development workflow for AI-augmented teams'
 - **Purpose**: Appears in PSGallery search results and `Find-Module` output
@@ -106,6 +111,7 @@ This contract ensures consistent module structure across versions and enables au
 ### Compatibility
 
 #### `PowerShellVersion` (string, required)
+
 - **Format**: Minimum PowerShell version (e.g., '7.0')
 - **Value**: '7.0' (enforces cross-platform PowerShell Core)
 - **Purpose**: PSGallery enforces this requirement during `Install-Module`; users on PowerShell 5.1 cannot install
@@ -113,6 +119,7 @@ This contract ensures consistent module structure across versions and enables au
 - **Example**: `PowerShellVersion = '7.0'`
 
 #### `PSEdition` (string, required)
+
 - **Format**: 'Core' or 'Desktop'
 - **Value**: 'Core' (enforces PowerShell 7+ requirement)
 - **Purpose**: Prevents installation on PowerShell 5.1 (Desktop edition)
@@ -124,6 +131,7 @@ This contract ensures consistent module structure across versions and enables au
 ### Exported Functions
 
 #### `FunctionsToExport` (array, required)
+
 - **Format**: Array of function names (strings)
 - **Value**: All Specrew CLI commands (see table below)
 - **Purpose**: Declares which functions are available to users after `Import-Module Specrew`
@@ -150,6 +158,7 @@ This contract ensures consistent module structure across versions and enables au
 **Purpose**: Dot-source the packaged Specrew scripts in a deterministic, reviewed order and export the public command surface defined by FR-002.
 
 **T004 Decision (2026-05-16)**:
+
 - **Approved strategy**: Option A — explicit dot-sourcing for `Specrew.psm1`
 - **Loader root**: set `$ScriptRoot = $PSScriptRoot`
 - **Path construction rule**: use `Join-Path` for every path segment
@@ -196,6 +205,7 @@ Export-ModuleMember -Function @(
 ### Bundled Files
 
 #### `FileList` (array, required)
+
 - **Format**: Array of file paths or glob patterns (relative to module root)
 - **Purpose**: Explicitly declares which files are included in the PSGallery package
 - **Rationale**: Explicit list avoids accidental inclusion of dev artifacts (specs/, tests/, .git/)
@@ -203,6 +213,7 @@ Export-ModuleMember -Function @(
 - **Example**: `FileList = @('Specrew.psd1', 'scripts/*.ps1', 'templates/**/*')`
 
 **T001 Decision (2026-05-16)**:
+
 - **Approved strategy**: Option 1 — explicit `FileList` allowlist for `Specrew.psd1`
 - **Why**: FR-010 requires provable exclusion semantics; an allowlist prevents silent drift and accidental shipping of excluded or sensitive repository surfaces
 - **Allowed pattern style**: per-directory wildcards are acceptable inside the allowlist (for example `scripts/*.ps1`, `templates/**/*`)
@@ -236,6 +247,7 @@ Export-ModuleMember -Function @(
 ### PSGallery Metadata
 
 #### `PrivateData.PSData` (object, required)
+
 - **Format**: Nested hashtable with PSGallery-specific metadata
 - **Purpose**: Provides additional metadata for PSGallery listing (tags, URLs)
 - **Validation**: Each field must be valid URL or array of strings
@@ -243,30 +255,35 @@ Export-ModuleMember -Function @(
 **Sub-fields**:
 
 ##### `Tags` (array)
+
 - **Format**: Array of lowercase strings (e.g., 'specrew', 'governance')
 - **Purpose**: Enables `Find-Module -Tag <tag>` discovery
 - **Value**: `@('specrew', 'specification', 'squad', 'ai-workflow', 'governance')`
 - **Validation**: Each tag must be alphanumeric (hyphens allowed)
 
 ##### `ProjectUri` (string)
+
 - **Format**: URL to GitHub repository
 - **Purpose**: Appears as "Project Site" link on PSGallery listing
 - **Value**: `'https://github.com/alonf/specrew'`
 - **Validation**: Must be valid HTTPS URL
 
 ##### `LicenseUri` (string)
+
 - **Format**: URL to LICENSE file in GitHub repository
 - **Purpose**: Appears as "License" link on PSGallery listing
 - **Value**: `'https://github.com/alonf/specrew/blob/main/LICENSE'`
 - **Validation**: Must be valid HTTPS URL
 
 ##### `ReleaseNotes` (string)
+
 - **Format**: URL to CHANGELOG.md in GitHub repository
 - **Purpose**: Appears as "Release Notes" link on PSGallery listing
 - **Value**: `'https://github.com/alonf/specrew/blob/main/CHANGELOG.md'`
 - **Validation**: Must be valid HTTPS URL
 
 ##### `IconUri` (string, optional)
+
 - **Format**: URL to module icon (PNG or SVG)
 - **Purpose**: Appears as thumbnail in PSGallery listing
 - **Value**: `''` (empty for v1; deferred to post-public-flip)
@@ -415,6 +432,7 @@ function specrew-update {
 ## Backward Compatibility
 
 **Guarantee**: Module manifest schema remains stable across versions. Changes to manifest structure require:
+
 1. Major version bump (e.g., v0.x → v1.x or v1.x → v2.x)
 2. Release notes documenting breaking changes
 3. Migration guide for existing users

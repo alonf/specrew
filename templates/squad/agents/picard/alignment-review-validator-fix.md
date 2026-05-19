@@ -4,6 +4,7 @@
 **Reviewer**: Picard (Spec Steward)
 **Scope**: Verify Spec Kit health validator fix against spec contract
 **Artifacts Reviewed**:
+
 - spec.md (FR-002 bootstrap requirement)
 - scripts/specrew-init.ps1 (bootstrap orchestrator)
 - extensions/specrew-speckit/scripts/validate-versions.ps1 (validator)
@@ -18,12 +19,14 @@
 The validator fix correctly implements the three critical contract boundaries:
 
 ### 1. ✅ Accepts Healthy Current Spec Kit Install
+
 - **Spec Contract**: Bootstrap must accept Spec Kit installations that expose version through `specify version` subcommand.
 - **Implementation**: `validate-versions.ps1` probes both `specify --version` and `specify version` (lines 131-147), returning success if either works.
 - **Test Evidence**: `validate-versions-cli-behavior.ps1` Line 117-132 passes — healthy Spec Kit with only `specify version` support validates as `IsOperational=true`.
 - **Status**: ✅ COMPLIANT
 
 ### 2. ✅ Surfaces Real Dependency Failures
+
 - **Spec Contract**: Bootstrap must fail if dependencies are broken or unhealthy, not silently continue.
 - **Implementation**: `validate-versions.ps1` distinguishes `IsOperational` (healthy command) from `IsCompatible` (version check).
   - `IsOperational = false` when either:
@@ -34,6 +37,7 @@ The validator fix correctly implements the three critical contract boundaries:
 - **Status**: ✅ COMPLIANT
 
 ### 3. ✅ Does NOT Overstate Bootstrap Success If Failures Occur Elsewhere
+
 - **Spec Contract**: Bootstrap can fail early (dependency validation) and must report that failure without masking downstream issues. It must not report "bootstrap succeeded" if critical steps failed.
 - **Implementation**:
   - Lines 1346-1349: Pre-install dependency validation failures exit with code 1 or 4.
@@ -73,6 +77,7 @@ This matches spec intent (R4-Q20-A): "If unavailable or unparseable, mark as una
 ## Documentation Alignment
 
 **getting-started.md** (Lines 142-154):
+
 - Correctly instructs users to check `specify version` manually
 - Matches current validator behavior
 - Provides troubleshooting path for Spec Kit health issues
@@ -83,11 +88,13 @@ This matches spec intent (R4-Q20-A): "If unavailable or unparseable, mark as una
 ## Test Coverage Verification
 
 **validate-versions-cli-behavior.ps1**:
+
 - ✅ Healthy path: Spec Kit `version` subcommand works → IsOperational=true, exact version captured
 - ✅ Broken path: Both `--version` and `version` fail → IsOperational=false, error preserved, version still captured from uv fallback
 - ✅ Fallback chain: uv tool list consulted when command probes fail
 
 **bootstrap-to-iteration.ps1**:
+
 - ✅ Exit code 3 treated as error (non-empty repo without .git)
 - ✅ Exit code 0+ treated as non-fatal (skips assertions when tools unavailable)
 - ✅ Artifact assertions only run if bootstrap succeeds

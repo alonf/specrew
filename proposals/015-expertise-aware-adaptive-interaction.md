@@ -12,6 +12,7 @@ discussion: tbd
 ## Why
 
 Specrew treats all users identically — same gates, same communication style, same hand-holding. This is correct for a methodology-first approach but leaves value on the table:
+
 - Senior users find verbose questioning patronizing
 - Novice users benefit from explicit prompts experts find redundant
 - In team contexts, decision-routing is implicit ("whoever's at the keyboard answers")
@@ -21,6 +22,7 @@ A per-user expertise model drives adaptive interaction across the lifecycle: thr
 ## What
 
 A per-user expertise model in `.specrew/user-profile.yml` with three dimensions:
+
 1. **General seniority** (years / band)
 2. **Per-technology familiarity** (per stack family — senior backend dev may be React novice)
 3. **Per-solution-domain expertise** (distributed systems / embedded / data engineering / etc.)
@@ -28,6 +30,7 @@ A per-user expertise model in `.specrew/user-profile.yml` with three dimensions:
 Hybrid assessment: explicit Q&A at bootstrap (3-5 questions) + contextual inference over time + explicit re-calibration via `specrew profile update`.
 
 Three capabilities unlocked:
+
 1. **Adaptive substantive-content thresholds**: Feature 016's ≥3-identifiers / ≥50-words rules relax for experts (per dimension), stay strict for novices
 2. **Adaptive gate strictness**: redundant checks for experts (e.g., "have you considered idempotency?" auto-resolved for distributed-systems experts) but safety-critical gates (security, spec-fidelity, lifecycle discipline) NEVER relax
 3. **Multi-developer decision routing** (depends on Multi-Developer Reconciliation): "this decision is in @alice's expertise area; want to wait for her input?" — composes with team-tracking infrastructure
@@ -35,6 +38,7 @@ Three capabilities unlocked:
 ## Effort
 
 Two sizings:
+
 - **Lean (~20-25 SP)**: single-user only (Capabilities 1+2)
 - **Full (~35-45 SP)**: single-user + multi-user routing (all three Capabilities)
 

@@ -130,6 +130,7 @@ description: "Tasks for Feature 023: Legacy-State Read-Tolerance + Schema Migrat
 ## Iteration 1 Acceptance
 
 **Delivery Goal**: Iteration 1 complete when:
+
 1. All HIGH-priority state readers migrated to hashtables with legacy schema handling and human-approved dispatch logic (T004-T008, T032, T034)
 2. All state writers include schema: v1 markers (T009-T014)
 3. Legacy fixture corpus (0.18.0-0.23.0) complete and human-reviewed (T015-T020, T033)
@@ -139,6 +140,7 @@ description: "Tasks for Feature 023: Legacy-State Read-Tolerance + Schema Migrat
 **Independent Test**: Run specrew start on a 0.19.0 project (motivating crash repro) after upgrade to 0.23.0 → no crashes, full functionality
 
 **Verification Command**:
+
 ```powershell
 # Run full Iteration 1 test suite
 Invoke-Pester tests/integration/Test-LegacyStateReaders.Tests.ps1 -Output Detailed
@@ -204,6 +206,7 @@ Invoke-Pester tests/integration/Test-LegacyStateReaders.Tests.ps1 -Output Detail
 ## Iteration 2 Acceptance
 
 **Delivery Goal**: Iteration 2 complete when:
+
 1. Validator rule implemented and integrated into CI (T025-T027)
 2. Validator effectiveness confirmed by human audit (T028, SC-004)
 3. Documentation complete and human-approved (T029-T030)
@@ -212,6 +215,7 @@ Invoke-Pester tests/integration/Test-LegacyStateReaders.Tests.ps1 -Output Detail
 **Independent Test**: Create new script with PSCustomObject-based state reader; run validator; verify violation detected and remediation hint clear
 
 **Verification Command**:
+
 ```powershell
 # Run validator with manual test violation
 pwsh -File .specify/extensions/specrew-speckit/scripts/validate-governance.ps1 -ProjectPath .
@@ -225,10 +229,12 @@ pwsh -File .specify/extensions/specrew-speckit/scripts/validate-governance.ps1 -
 ## Dependencies & Execution Order
 
 ### Iteration Dependencies
+
 - **Iteration 1**: No external dependencies; can start immediately after planning
 - **Iteration 2**: Depends on Iteration 1 completion (reader migrations provide validator test cases)
 
 ### Within Iteration 1
+
 1. **Setup (T001-T002)** → **State Reader Audit (T003)** [BLOCKS all reader migrations]
 2. **State Reader Audit (T003)** → **Reader Migrations (T004-T008)** → **Legacy Schema Handling (T032)** → **Dispatch Review (T034)** [HIGH-priority, T004-T008 can run in parallel before T032]
 3. **State Reader Audit (T003)** → **Schema Markers (T009-T014)** [can run in parallel with reader migrations]
@@ -238,6 +244,7 @@ pwsh -File .specify/extensions/specrew-speckit/scripts/validate-governance.ps1 -
 7. **Regression Tests (T023)** → **Linux CI (T024)** [final Iteration 1 task]
 
 ### Within Iteration 2
+
 1. **Validator Rule (T025-T027)** → **Validator Audit (T028)** [BLOCKS Iteration 2 completion]
 2. **Validator Rule (T025-T027)** → **Documentation (T029)** [can run in parallel after T027]
 3. **Documentation (T029)** → **Documentation Review (T030)** [BLOCKS Iteration 2 completion]
@@ -246,6 +253,7 @@ pwsh -File .specify/extensions/specrew-speckit/scripts/validate-governance.ps1 -
 ### Parallel Opportunities
 
 **Iteration 1 Parallelism**:
+
 - After T003 audit completes:
   - T004-T008 (reader migrations) can run in parallel (different files)
   - T032 (legacy schema handling + dispatch comments) follows the reader migrations once affected readers are updated
@@ -255,6 +263,7 @@ pwsh -File .specify/extensions/specrew-speckit/scripts/validate-governance.ps1 -
 - T021-T023 (regression tests) are sequential but T022 and T023 can overlap if T021 partial results available
 
 **Iteration 2 Parallelism**:
+
 - After T027 validator integration:
   - T028 (validator audit) runs independently
   - T029 (documentation) can run in parallel with T031 (closeout template)
@@ -292,6 +301,7 @@ Task T019: "Hand-curate 0.22.0 fixtures"
 ## Implementation Strategy
 
 ### Iteration 1 First (MVP Foundation)
+
 1. Complete Setup (T001-T002)
 2. Complete State Reader Audit (T003) [CRITICAL: blocks all reader migrations]
 3. Complete Reader Migrations (T004-T008) + Schema Markers (T009-T014) in parallel
@@ -301,12 +311,14 @@ Task T019: "Hand-curate 0.22.0 fixtures"
 7. **STOP and VALIDATE**: All fixture tests pass on Windows and Linux; zero crashes from legacy state files
 
 ### Iteration 2 Enforcement and Documentation
+
 1. Complete Validator Rule (T025-T027)
 2. Complete Validator Audit (T028) [human review gate]
 3. Complete Documentation (T029-T030) + Closeout Template (T031) in parallel
 4. **STOP and VALIDATE**: Validator detects all PSCustomObject-based readers; documentation approved
 
 ### Always-in-Flow Evidence Discipline
+
 - **Universal evidence at every boundary** (feedback rule 2026-05-18):
   - After T003: Audit report showing all state readers
   - After T020: Human-approved fixture corpus completeness review
@@ -333,6 +345,7 @@ Task T019: "Hand-curate 0.22.0 fixtures"
 **Total Task Count**: 34 tasks (27 in Iteration 1, 7 in Iteration 2)
 
 **Iteration Split**:
+
 - Iteration 1 (T001-T024 plus T032-T034): ~14.5 SP → Schema markers, reader migrations, fixture corpus, Linux CI
 - Iteration 2 (T025-T031): ~5.5 SP → Validator rule, documentation, closeout template
 

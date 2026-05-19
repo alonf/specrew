@@ -60,12 +60,14 @@
 ## Evidence Collection Plan
 
 **Phase 1 Collection Strategy**:
+
 1. Capture baseline state in plan/state/drift-log artifacts ✓
 2. Document design decisions in contracts/ and plan.md ✓
 3. Populate quality gates as implementation proceeds
 4. Collect integration test evidence when test scenarios are written
 
 **Phase 2 Collection Strategy**:
+
 1. Run feature-scoped hardening gate after phase 1 merge
 2. Validate edge cases and withdrawal/carry-forward flows
 3. Collect trap-reapplication evidence if corpus is enabled

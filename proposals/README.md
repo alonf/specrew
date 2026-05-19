@@ -7,6 +7,7 @@ This directory is Specrew's public design pipeline. Each markdown file is a **pr
 Specrew governs lifecycle through enforced gates (`validate-governance.ps1`, hardening gates, retros, corpus rows). But the **design** of those features — what's coming next, what was considered and deferred, what's being debated — has historically lived in private memory. This directory makes that surface public.
 
 Visitors can:
+
 - See what's coming next without reading commit history
 - Comment on proposed features before they ship
 - Propose new features via PR
@@ -47,11 +48,13 @@ See `_template.md` for the full structure.
 Each proposal links to a discussion thread in this repo's GitHub Discussions under the "Methodology" category. Threads are created on-demand when a proposal reaches `draft` status; `candidate` proposals can skip discussion until they mature.
 
 To comment on a proposal:
+
 1. Open the linked discussion thread
 2. Comment with concrete feedback, alternative designs, or implementation concerns
 3. The maintainer reviews comments before any status transition
 
 To propose changes to an existing proposal:
+
 1. Open a PR with proposed edits to the proposal file
 2. Reference the related discussion thread
 3. The PR review is part of the proposal-evolution record

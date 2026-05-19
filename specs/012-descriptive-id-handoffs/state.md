@@ -11,6 +11,7 @@ Readable descriptive scope for numeric references is now live across Squad-autho
 ## Iterations Delivered
 
 ### Iteration 001: Readable-Reference Rollout
+
 - **Tasks**: T001-T011
 - **Status**: ✅ CLOSED
 - **Closeout Commit**: `92385d3`
@@ -25,6 +26,7 @@ Readable descriptive scope for numeric references is now live across Squad-autho
   - Integration coverage for readable narration and readable stop messages
 
 ### Iteration 002: Replay-Path Integration and Corpus Seeding
+
 - **Tasks**: T012-T020
 - **Status**: ✅ CLOSED
 - **Closeout Commit**: `6193a9e`

@@ -19,6 +19,7 @@ This document records the planning-time test-integrity targets for Feature 023 I
 | **Cross-Platform** | Windows and Linux | Windows CI (existing) + Linux CI lane (T024) | T024 CI integration + PR gate |
 
 ### Test Integrity Expectations
+
 - **No smoke testing**: Fixture tests must exercise error paths, not just happy-path success
 - **Real legacy data**: Fixture corpus drawn from actual Specrew versions 0.18.0-0.23.0
 - **Explicit assertions**: Tests verify correct fallback behavior, not just "no crash"
@@ -41,12 +42,14 @@ Describe "Legacy State Reader - Robustness" {
 ```
 
 ### Test Fixtures Required
+
 - `legacy-versions/0.18.0/`: Real state files from 0.18.0
 - `legacy-versions/0.19.0/`: Real state files from 0.19.0
 - ... (through 0.23.0)
 - Error scenarios: malformed JSON, missing files, etc.
 
 ### Approval Status
+
 - **Planning**: ✅ Complete — hardening-gate.md Section 4 contains full test-integrity targets and approval gates
 - **Test Execution**: ⏳ Deferred — T021-T023 will create and run Pester suite
 - **Coverage Verification**: ⏳ Deferred — T020 human review of fixture corpus completeness
@@ -55,6 +58,7 @@ Describe "Legacy State Reader - Robustness" {
 ## Placeholder for Implementation Evidence
 
 When implementation phase begins, this section will be populated with:
+
 - Pester test suite code and results
 - Legacy fixture corpus with evidence of coverage
 - Cross-platform CI execution logs (Windows + Linux)

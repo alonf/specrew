@@ -135,6 +135,7 @@ Add a human-controlled implementation intent checkpoint inside `/speckit.plan`, 
 ### Post-Phase-1 Re-Evaluation (PLANNED)
 
 After design completion, re-check that:
+
 - `/speckit.plan` guidance consistently places the checkpoint before plan generation.
 - `plan.md` exposes an `Architecture Intent Review` section with required fields.
 - `before-implement` still blocks implementation until the later approval gate is satisfied.

@@ -17,11 +17,13 @@
 **What Happened**: Feature 017 Iteration 001 was initially scoped at approximately 11 story points in the planning phase. During implementation, the actual work grew to 17-19 SP after the repair-cycle scope (FR-034 through FR-041) was added to address findings from external pre-implementation review. This represents ~55-73% variance above the original estimate.
 
 **Root Causes**:
+
 1. **Gap in clarify completion**: Clarify work (`clarify-residual-findings.md`, captured 16 findings across 3 severity tiers) surfaced substantial ambiguities in the spec that did not emerge during the initial planning phase — notably T2-1 (arithmetic inconsistencies in the example dashboard), T2-2 (iteration naming convention variance), T2-3 (unquantified NFR-001 timing budget), and T2-4 (grandfathering chicken-and-egg decision).
 2. **External review triggering mid-implementation fixes**: The clarify-residual-findings document captured findings AFTER plan and tasks were written but BEFORE implementation began. Alon Fliess requested external pre-implementation review (Claude Code session), which surfaced 16 findings. These findings required repair work (FR-034..FR-041 new scope) that was not visible at planning time.
 3. **Boundary discipline cost**: Each finding required either spec repair (T1-x throughT1-5 process fixes: durability carryover, spec-authority cartyover, proposal-surface carryover, artifact co-location, copilot-instructions hygiene) or content repair (T2-x spec-content fixes: trustworthy example math, iteration naming, NFR-001 quantification, grandfathering decision). The repair scope was substantial enough to exceed the original estimate.
 
 **Implication for Iteration 002**:
+
 - Iteration 001's clarify phase was compressed due to time pressure and did NOT include external pre-implementation review as a default workflow step. This worked but was downstream-costly.
 - Iteration 002 should allocate capacity in clarify for external pre-implementation review BEFORE planning locks in. This shifts the 16-finding cost forward to where it can inform estimation rather than surprise it mid-implementation.
 - Revised estimation model for Phase 2 features with similar coordination burden: add 15-20% estimation buffer for external-review repair when clarify scope includes human-facing surfaces, specification examples, or multi-boundary handoff contracts.
@@ -42,6 +44,7 @@
 **Root Cause**: Specrew today does NOT durably track mid-iteration progress or update session-state files at boundary events. The session-state files are updated ONLY at explicit session starts, not when features activate/deactivate. Cross-worktree awareness does not exist. Stale-state detection at startup does not verify whether the named feature is still active before acting on it.
 
 **Implication for Phase 2 — Session-State Durability Feature (Pillar Feature)**:
+
 - This incident directly motivated the session-state-durability spec (`C:\Dev\SpecrewDraft\session-state-durability.md`), which proposes:
   - **Pillar 1: Boundary-event state synchronization** — every lifecycle boundary (specify, planning, implementation, review, retro, closeout) must update `.specrew/last-start-prompt.md` and `.squad/identity/now.md` atomically with the boundary commit.
   - **Pillar 4: Stale-state detection** — when `specrew start` reads session-state, it must verify the named "active feature" has not been merged to main and the claimed boundary's authorization record exists in `.squad/decisions.md` before acting on it.
@@ -65,6 +68,7 @@
 **Status at Review**: All Tier 1 findings were RESOLVED-IN-PROGRESS by the implementation repair cycle (commits `9093f98` + `aac3e6e`). Most Tier 2 findings were RESOLVED-IN-PROGRESS; one (T2-4 grandfathering) was explicitly deferred to feature-closeout decision, and one (T2-6 routing classifier examples) was deferred to Iteration 2 scope. All Tier 3 findings were deferred as non-blocking polish or already-repaired.
 
 **Implication for Process Design**:
+
 - This pattern (clarify → external pre-implementation review → repair → implementation) proved effective at catching spec-integrity issues early. The cost was ~11 SP of repair work (FR-034..FR-041), but the cost of shipping a "trustworthy dashboard" feature with an inconsistent example would have been far higher in credibility loss.
 - **Recommendation for Iteration 2 planning**: Allocate explicit external-review gates into clarify workflows for features with high trust surface or multi-boundary handoff contracts. The pattern works but should be formalized as a default step for "human-facing specification" features rather than an ad-hoc emergency review.
 - **Recommendation for coordination**: Before planning locks in for future Phase 2 features, conduct an external review pass and feed findings back into planning estimation. This shifts the cost forward where it informs estimation rather than surprising implementation.
@@ -83,6 +87,7 @@
 2. **Lifecycle Branch Reconciliation Gap** (Concurrent-edit safety): Specrew's current lifecycle assumes single-stream history (no edits on main while feature works, no hotfixes landing mid-feature, no multi-feature parallel work). Real-world usage violates this assumption. Specrew does NOT reconcile feature-branch state against main at any point. Conflicts only surface at PR-merge time on GitHub, after Squad has committed substantial work. The F-016 commit-reference auth trail becomes a dangling reference after rebase (which is unacceptable for audit). Therefore Specrew MUST merge, never rebase, accumulating merge commits to preserve the audit trail. This decision is locked by F-016's design. Without explicit branch reconciliation, feature branches can become stranded behind un-merged main changes, and boundary commits can become unreachable. Empirical motivation: concurrent-edit safety discussion during F-017 implementation review.
 
 **Classification as Pillar Features**:
+
 - Both are NOT polish items or optional niceness improvements.
 - Both are load-bearing for real-world single-developer adoption (and prerequisites for future multi-developer scaling).
 - Both should ship in Phase 2, after F-017 (Velocity Dashboard), because F-017's roadmap.yml introduces structured project state that these features compose with.
@@ -91,6 +96,7 @@
 - Sequencing recommendation: deliver Branch Reconciliation AFTER Session-State Durability because reconciliation events need to update session state correctly.
 
 **Implication for Product Roadmap**:
+
 - Iteration 002 should NOT include polish scope additions until these two pillar features are planned/clarified in Phase 2 queue.
 - The Phase 2 scope is now: F-017 Iteration 2 closeout integration + 2 new pillar features (Session-State Durability, Branch Reconciliation) + composition work.
 - Estimated Phase 2 span: ~55-75 SP total (F-017 Iter 2: ~8 SP, Session-State Dur: ~25-30 SP, Branch Recon: ~12-15 SP, composition + safety gates: ~10 SP).
@@ -109,6 +115,7 @@ The essence-vs-exhaustive principle (which originated in F-016 substantive-inter
 The choice to enforce this at the retro-facilitation boundary proves that the corpus-row entry is now embedded deeply enough in the workflow that human handoff expectations are shaped by it. This is the desired outcome of a durable corpus row: it does NOT require validator enforcement at first; it becomes a shared expectation so robust that future work assumes it as the default.
 
 **Implication for Corpus-Row Maintenance**:
+
 - Corpus rows are most durable when they become implicit expectations, not explicit rules. F-016's essence-in-console principle is now so embedded that a retro charter written by the team immediately references it as a style guide ("Keep the final human-facing handoff SHORT in the F-016 essence-in-console style").
 - This suggests that the corpus-row table in `.specrew/quality/known-traps.md` is working not because validators enforce it, but because the team has internalized the patterns deeply enough to apply them by default.
 - Implication for validator work: consider measuring corpus-row self-enforcement by analyzing how many future artifacts naturally follow the patterns WITHOUT needing explicit validator gates. High self-enforcement = mature pattern.
@@ -134,6 +141,7 @@ The choice to enforce this at the retro-facilitation boundary proves that the co
 **Validation Result**: Every boundary produced an artifact (spec.md, clarify-residual-findings.md, plan.md, tasks.md, review.md), recorded a decision in `.squad/decisions.md` with commit references, and informed the next boundary's scope. NO boundary was skipped. NO decision was inferred instead of recorded. NO handoff was claimed without a durable artifact.
 
 **Implication for F-016 Maturity**:
+
 - The F-016 machinery (boundary discipline + commit references + decision recording + artifact contracts) proved robust enough to guide Feature 017 through a complex lifecycle with external review, repair cycles, and multi-tier findings.
 - F-016's essence (one boundary at a time, explicit decision for each, audit trail via commit references) is working as designed.
 - F-016 is now validated against a real feature (017) with coordination burden, not just foundational features (013-016 which established the pattern).
@@ -149,17 +157,20 @@ The choice to enforce this at the retro-facilitation boundary proves that the co
 **What Happened**: Feature 017 is a two-iteration feature. Iteration 001 delivered FR-001..FR-018 (command wiring, dashboard core, repair cycle for rendering, derived status, confidence mapping). Iteration 002 scope was always defined in the plan:
 
 **Iteration 002 carries over**:
+
 - **FR-019..FR-033** (original Iteration 2 scope from plan): Closeout integration, validator updates, documentation, fixture coverage. Estimated ~8 SP.
 - **FR-042..FR-046** (repair-cycle new FRs from review.md disposition ledger): Grandfathering decision for feature-closeout, FR-030 classifier examples, stale clarify header repair (already done), NFR-002 restatement polish (deferred), placeholder-vs-fallback polish (deferred).
 
 **Total Iteration 002 scope**: ~18 feature requirements across 16-18 estimated story points.
 
 **Disposition of Deferred Items**:
+
 - **T2-4 (Grandfathering cutover)**: Explicitly deferred to feature-closeout decision (not Iteration 2 implementation scope); decision will be recorded when Feature 017 approaches closeout.
 - **T3-x (Polish items)**: T3-1 (placeholder-vs-fallback), T3-2 (sample reuse), T3-3 (NFR-002 restatement) are deferred as non-blocking polish. Iteration 2 will NOT scope them unless explicitly authorized by the human.
 - **FR-030 classifier examples**: Explicitly deferred to Iteration 2 scope before implementation begins (already listed in review.md).
 
 **Implication for Iteration 2 Planning**:
+
 - Iteration 2 planning must honor the Iteration 002 scope defined in the plan PLUS incorporate the deferred-to-Iteration-2 items from review.md (FR-030, grandfathering decision record).
 - Do NOT re-estimate Iteration 2 from scratch. The 8 SP estimate was made in planning; review.md carries it forward with no adjustment needed (repair scope was Iteration 1, not 2).
 - **Estimation confidence**: Moderate. Iteration 1 grew from 11 to 17-19 SP due to pre-implementation repair. Iteration 2 scope was planned without external pre-implementation review, so variance risk is lower. Allocate 10-15% buffer for unknown polish scope.
@@ -177,6 +188,7 @@ The choice to enforce this at the retro-facilitation boundary proves that the co
 The standard F-016 model says "one boundary at a time, explicit authorization for each boundary." The Feature 017 authorization pattern bundled clarify → plan → tasks into one authorization segment (because the user said "continue" without pausing for intermediate confirmations), but kept implementation, review, and retro as separate authorization boundaries.
 
 **Implication for Boundary Authorization Model**:
+
 - The F-016 standard is: one boundary per authorization. Do not bundle.
 - The Feature 017 pattern is: when the human explicitly says "continue," bundling multiple planning-phase boundaries (clarify → plan → tasks) is acceptable if:
   1. The bundling is explicitly authorized in a single human statement (e.g., "Implement 017. Continue to the end.").

@@ -67,6 +67,7 @@ A scoped one-iteration feature that:
 **Phase 2 — sequenced AFTER Feature 019 Distribution Module (both iterations) closes**.
 
 Rationale:
+
 - F-019 Iter 1 currently in flight; touches many markdown surfaces (templates, docs, retros, decisions ledger)
 - F-019 Iter 2 (Cross-Platform Hardening) will further sweep markdown via `Join-Path` work
 - Running this markdown sweep on main now would create massive merge conflicts when F-019 PRs land

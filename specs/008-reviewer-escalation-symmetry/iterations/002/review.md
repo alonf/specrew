@@ -40,6 +40,7 @@ Iteration 002 successfully delivers the approved User Story 1 slice for reviewer
 **Verdict**: ✅ PASS
 
 **Evidence**:
+
 - Fixtures created at `tests/integration/fixtures/reviewer-regression-event/project/`
 - `iteration-config.yml` defines three reviewer reasoning tiers (copilot:1, claude:2, codex:3) with reviewer_capable=true
 - `role-assignments.yml` defines reviewers for each class:
@@ -58,6 +59,7 @@ Iteration 002 successfully delivers the approved User Story 1 slice for reviewer
 **Verdict**: ✅ PASS
 
 **Evidence**:
+
 - Test file: `tests/integration/reviewer-regression-event.ps1` (188 lines, 4 test cases)
 - Test 1: Stronger-class routing — Validates copilot→claude escalation, correct event ID (RRE-001), decision log recording
 - Test 2: Same-class fallback — Validates codex→codex-reviewer-b selection (independent owner), same class retention
@@ -75,6 +77,7 @@ Iteration 002 successfully delivers the approved User Story 1 slice for reviewer
 **Verdict**: ✅ PASS
 
 **Evidence**:
+
 - Test file: `tests/integration/reviewer-regression-ledger.ps1` (140+ lines, 4 test cases)
 - Test 1: Ledger schema validation — Entries preserve required fields (feature, iteration, slice, prior verdict, prior reasoning class, defect description, source location, escalation action)
 - Test 2: Active-chain readback — Validates strongest unresolved routing outcome preservation, clean-pass threshold tracking
@@ -92,6 +95,7 @@ Iteration 002 successfully delivers the approved User Story 1 slice for reviewer
 **Verdict**: ✅ PASS
 
 **Evidence**:
+
 - Implementation file: `extensions/specrew-speckit/scripts/manage-reviewer-regression.ps1` (940+ lines)
 - Event reporting mode functional:
   - `Get-ReviewerReasoningTiers()` parses reasoning_tiers from iteration-config.yml (line 127-225)
@@ -117,6 +121,7 @@ Iteration 002 successfully delivers the approved User Story 1 slice for reviewer
 **Verdict**: ✅ PASS
 
 **Evidence**:
+
 - Implementation in `manage-reviewer-regression.ps1`:
   - Same-class independent-owner fallback (line 412-424):
     - Queries same-class candidates from role-assignments
@@ -143,6 +148,7 @@ Iteration 002 successfully delivers the approved User Story 1 slice for reviewer
 **Verdict**: ✅ PASS
 
 **Evidence**:
+
 - Reviewer charter updated:
   - File: `extensions/specrew-speckit/squad-templates/agents/reviewer/charter.md`
   - Line 41: Added reviewer-regression handling guidance: "When a human reports a reviewer regression, route the next review to the lowest stronger reviewer class when available, otherwise use an independent same-class reviewer, and if neither exists require explicit human direction before review continues."
@@ -190,6 +196,7 @@ Iteration 002 successfully delivers the approved User Story 1 slice for reviewer
 **Result**: ✅ PASS
 
 **Checks Passed**:
+
 - Iteration plan consistency with approved scope (User Story 1, T008-T013)
 - Task traceability to feature requirements
 - Artifact existence (plan.md, state.md, test fixtures)
@@ -202,12 +209,14 @@ Iteration 002 successfully delivers the approved User Story 1 slice for reviewer
 ## Test Coverage Summary
 
 ### reviewer-regression-event.ps1: 4/4 tests pass
+
 - ✅ Test 1: Stronger-class routing — Copilot→Claude escalation, RRE-001 allocation
 - ✅ Test 2: Same-class fallback — Codex→independent codex-reviewer-b selection
 - ✅ Test 3: Maximum-strength hold — Human-direction hold when no independent codex reviewer
 - ✅ Test 4: Duplicate deduplication — RRE-001 reuse, single ledger entry
 
 ### reviewer-regression-ledger.ps1: 4/4 tests pass
+
 - ✅ Test 1: Ledger schema preservation — v1.0.0 schema with required fields
 - ✅ Test 2: Active-chain projection — Strongest outcome, clean-pass thresholds
 - ✅ Test 3: Project mode — State mirror written to active iteration
@@ -222,6 +231,7 @@ Iteration 002 successfully delivers the approved User Story 1 slice for reviewer
 **Verdict**: ✅ PASS
 
 **Evidence**:
+
 - FR-007 requires reviewer-regression events to be soft-warning governance signals, not hard failures
 - Implementation treats events as routing triggers only, not as blockers
 - `Status` field in routing response distinguishes:
@@ -239,6 +249,7 @@ Iteration 002 successfully delivers the approved User Story 1 slice for reviewer
 **Verdict**: ✅ PASS
 
 **Evidence**:
+
 - FR-013 requires symmetric reviewer-side escalation without changing FR-027 implementer-side behavior
 - `manage-reviewer-regression.ps1` does not import or modify `manage-escalation-state.ps1`
 - Reviewer-regression routing is independent from implementer-escalation logic
@@ -255,6 +266,7 @@ Iteration 002 successfully delivers the approved User Story 1 slice for reviewer
 **Verdict**: ✅ PASS (disabled per US1 scope)
 
 **Evidence**:
+
 - FR-012 requires known-traps integration, but explicitly deferred to US3 per plan.md
 - Fixture iteration-config.yml sets `known_traps_integration: false`
 - No corpus seeding or reapplication logic added in US1 implementation
@@ -270,6 +282,7 @@ Iteration 002 successfully delivers the approved User Story 1 slice for reviewer
 **Verdict**: ✅ PASS (deferred per US1 scope)
 
 **Evidence**:
+
 - FR-014 requires carry-forward behavior for post-close reports, explicitly deferred to US3
 - Iteration 002 fixtures do not test post-closure scenarios
 - `manage-reviewer-regression.ps1` report mode does not implement closed-iteration logic
@@ -285,6 +298,7 @@ Iteration 002 successfully delivers the approved User Story 1 slice for reviewer
 **Verdict**: ✅ NO MATERIAL GAPS
 
 **Assessment**:
+
 - All US1 requirements (FR-001-005, FR-015) are fully implemented, tested, and verified
 - Test coverage includes all four acceptance scenarios from spec.md User Story 1
 - Governance validation passes
@@ -336,11 +350,13 @@ Iteration 002 successfully delivers the approved User Story 1 slice for reviewer
 **Verdict**: ✅ **PASS** — Iteration 002 (User Story 1 slice) is approved for merge.
 
 **Conditions**:
+
 - All deferred work (US2, US3, Polish) must be carried forward with clear dependency documentation (already present in plan.md)
 - Team must preserve the soft-warning semantics when implementing FR-009-012 in US2 and FR-014 in US3
 - Reviewer-regression guidance must remain consistent if future iterations modify reviewer routing rules
 
 **Next Actions**:
+
 1. Merge Iteration 002 implementation branch
 2. Update feature status to reflect US1 delivery completion
 3. Begin Iteration 003 planning for User Story 2 (lockout-chain cap, T014-T019)

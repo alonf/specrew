@@ -20,7 +20,7 @@ Iteration 004 (User Story 3: withdrawal handling, carry-forward, known-traps int
 | Planning Approval | ✅ APPROVED | Alon Fliess authorized US3 (T020–T026, 14 story_points) on 2026-05-10 with explicit replay-path coverage requirement |
 | Implementation | ✅ COMPLETE | All seven tasks (T020–T026) delivered in implementation commit 9d906f0; no scope drift |
 | Review | ✅ ACCEPTED | Review pass on 2026-05-10 returned verdict `accepted`; no gaps remain |
-| Retrospective | ✅ COMPLETE | This document; full validation lane passed on 2026-05-10; all closings finalized
+| Retrospective | ✅ COMPLETE | This document; full validation lane passed on 2026-05-10; all closings finalized |
 
 ---
 

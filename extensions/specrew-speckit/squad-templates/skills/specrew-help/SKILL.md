@@ -47,6 +47,7 @@ The full v1 `/specrew.*` slash-command catalog:
 | `/specrew.version` | Show the installed Specrew version and slash-command compatibility state | |
 
 Next-step guidance:
+
 - New to Specrew? Start with `/specrew.where` to see your project status.
 - Need to set up a project? Use `specrew init` from the terminal.
 - Want to see available Spec Kit lifecycle commands? Use `/speckit.help` (separate namespace).

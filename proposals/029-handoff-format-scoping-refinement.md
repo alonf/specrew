@@ -12,6 +12,7 @@ discussion: tbd
 ## Why
 
 Feature 014 (handoff-format-scoping) ships a three-section format for boundary handoffs. Empirically observed 2026-05-12: Squad applies the three-section format to IN-FLIGHT TRANSITIONS, not just genuine stop points. The format is heavy for transitions (where a single sentence suffices) and produces patterns like:
+
 - "What I need from you: Nothing yet" placeholder
 - "Why I stopped: continuing to next step" non-information
 

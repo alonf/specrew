@@ -18,6 +18,7 @@ Iteration 002 opened per explicit human authorization: "AUTHORIZE Feature 019 It
 **Authorization**: Permissive overnight autonomous run with stop conditions (test/validator/hardening failures, unanswered design questions, human-judgment boundaries, token budget >$80, human interrupt).
 
 **Completed Tasks**:
+
 - T041 (3 SP): Join-Path audit and hardening sweep — Fixed 38 embedded-backslash patterns across 4 scripts, then audited the remaining scope files clean during review repair (commits ef9c27d, 90d4e9d)
 - T054 (3 SP): Cross-platform parity evidence — Created CI validation workflows for Ubuntu/macOS; documented WSL pending-manual-execution, then recorded the human WSL bug findings and repair evidence (commits e77a884, 5986501)
 - T060 (1 SP): Publish-workflow enablement — Removed manual-approval gate; workflow now fires automatically on v*.* tag push (commit 6c271ad)

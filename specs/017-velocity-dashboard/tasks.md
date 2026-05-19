@@ -349,11 +349,13 @@
 ## Task Organization Summary
 
 ### Total Task Count
+
 - **82 tasks** across two iterations
 - **Iteration 1 (Setup through Integration Foundation)**: T001–T043 (~11 SP)
 - **Iteration 2 (Closeout Integration through Readiness)**: T044–T082 (~8 SP)
 
 ### Task Count by User Story
+
 - **User Story 1 (Understand Position)**: T012–T039, T043 (~20 tasks) — Dashboard rendering, modes, command parity
 - **User Story 2 (Trust the Dashboard)**: T026–T033, T052–T057, T070–T076 (~21 tasks) — Resilience, validation, test coverage
 - **User Story 3 (Lifecycle Integration)**: T044–T051, T063–T069, T077–T082 (~26 tasks) — Closeout, docs, discovery
@@ -361,6 +363,7 @@
 ### Parallel Execution Opportunities
 
 **Iteration 1**:
+
 - **Parallel Set 1** (T002–T010): Shared module design, roadmap parser, data aggregator, shipped-progress derivation, example roadmap, drift detection (all independent foundational work)
 - **Parallel Set 2** (T012–T018): Dashboard sections (active work, velocity, shipped, plan-vs-reality, history, roadmap, projection, warnings) can be developed in parallel
 - **Parallel Set 3** (T020–T025): Rendering modes (color, monochrome, compact, team-fallback) independent of section implementations
@@ -368,6 +371,7 @@
 - **Parallel Set 5** (T034–T039): Command-surface testing can run after renderer is stable
 
 **Iteration 2**:
+
 - **Parallel Set 1** (T044–T051): Iteration-closeout hook, feature-closeout hook, notices, immutability check, mirrored scripts, documentation
 - **Parallel Set 2** (T052–T062): Validator integration, known-traps updates, hardening gate, quality evidence, ScriptAnalyzer runs
 - **Parallel Set 3** (T063–T069): Documentation updates and discovery (README, instructions, guides, help text, FAQs)
@@ -377,6 +381,7 @@
 ### Implementation Strategy (MVP First)
 
 **Phase 1 MVP** (Minimum deliverable for Feature 017 Iteration 1):
+
 1. Shared dashboard renderer (T002, T005–T010)
 2. Command wiring (T001, T004)
 3. Core sections (T011–T018)
@@ -401,18 +406,21 @@
 ## Dependencies
 
 ### Hard Dependencies
+
 - **Feature 013 — Validator Hardening**: Soft-warning patterns and validation structure
 - **Feature 014 — Handoff Format Scoping**: Iteration-closeout structure
 - **Feature 015 — Public-Readiness Pass**: Documentation surfaces
 - **Feature 016 — Substantive Interaction Model**: Console-first behavior
 
 ### Within-Feature Dependencies
+
 - Tasks T001–T010 (setup, schema, aggregation) must complete before T011–T025 (rendering)
 - Tasks T011–T025 must stabilize before T026–T039 (resilience, command parity, testing)
 - Tasks T001–T043 (Iteration 1) must complete before T044+ (Iteration 2 integration)
 - Tasks T044–T062 (closeout, validator) can proceed in parallel with T063–T069 (docs) and T070–T077 (tests)
 
 ### Forward-Looking Complements
+
 - **Proposal 013 — Methodology Site**: May reuse dashboard snapshots as showcase material
 - **Multi-Developer Reconciliation**: Will activate the reserved `--Team` path
 

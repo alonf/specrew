@@ -14,6 +14,7 @@
 **Status**: Iteration 001 implementation, review, retrospective, and closeout are complete. All Phase 1 + Phase 2 foundational infrastructure tasks (`T029`-`T042`) have been implemented, integrated, reviewed, and retrospected. The three required integration tests (`specrew-start-change-detector.ps1`, `specrew-start-baseline-tracking.ps1`, `specrew-start-auto-continue-preservation.ps1`) pass with zero failures, and the staged closeout tree passed the full six-script validation lane before the durable closeout commit landed.
 
 **Delivered Surfaces**:
+
 - Change detector implementation via `git diff --name-only` scanning session-loaded paths (T032)
 - Baseline commit hash tracking in `.specrew/last-start-prompt.md` YAML frontmatter (T033)
 - Auto-continue preservation for routine resumes (T034)
@@ -25,6 +26,7 @@
 - Validated test suite with all tests passing (T042)
 
 **Implementation Notes**:
+
 - Detector uses `git diff --name-only` between baseline commit and HEAD for session-loaded paths only
 - Baseline commit hash is stored in YAML frontmatter (`baseline_commit_hash: <40-char SHA>`)
 - Auto-continue behavior is preserved when detector reports zero changes (spec 001 Session 2026-05-04 compliance)

@@ -93,6 +93,7 @@ iterations totalling ≈19 story points
 ## Iteration 002 Planning Authorization
 
 **Iteration 002 Scope** (Authorized 2026-05-13):
+
 - Version reconciliation: `.specrew/config.yml` version bump to `0.15.0` (FR-008)
 - Release documentation: root `CHANGELOG.md` with Features 001-014 entries (FR-009)
 - Release tags: retroactive `v0.13.0` at `21d9e7f`, `v0.14.0` at `3ff32d4`, and `v0.15.0` at `08ed5ca` (FR-010)

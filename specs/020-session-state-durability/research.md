@@ -1,5 +1,6 @@
 # Planning Blocker Resolution Research
-# Feature 020: Session-State Durability & In-Flight Progress Tracking
+
+## Feature 020: Session-State Durability & In-Flight Progress Tracking
 
 **Date**: 2026-05-19  
 **Phase**: Planning (before-plan gate resolution)  
@@ -33,16 +34,19 @@ The spec text at FR-025 explicitly says "against project's `.specify/init-option
 Examined existing codebase patterns:
 
 1. **`.specrew/config.yml` structure** (file: `.specrew/config.yml`):
+
    ```yaml
    specrew_version: "0.19.0"
    speckit_version: "0.8.11"
    squad_version: "0.9.4"
    ```
+
    - `specrew_version`: Specrew module/governance framework version (authoritative for project lifecycle)
    - `speckit_version`: Spec Kit extension version (bundled templates/scripts)
    - `squad_version`: Squad AI agent runtime version
 
 2. **`.specify/init-options.json` structure** (file: `.specify/init-options.json`):
+
    ```json
    {
      "ai": "copilot",
@@ -54,6 +58,7 @@ Examined existing codebase patterns:
      "speckit_version": "0.7.3.dev0"
    }
    ```
+
    - `speckit_version`: bootstrap-time Spec Kit version (immutable after `specrew init`, reflects user's Spec Kit version at project creation time)
 
 3. **Existing update command implementation** (file: `scripts/specrew-update.ps1`, lines 1009-1010, 221):
@@ -103,6 +108,7 @@ Examined existing codebase patterns:
 TG-002 assigns ownership: "Version checks owned by Distribution Owner"
 
 But `.specrew/role-assignments.yml` defines only five baseline roles:
+
 - Spec Steward
 - Planner
 - Implementer
@@ -147,6 +153,7 @@ Examined existing role assignment patterns across completed features:
 **Authoritative answer**: Map "Distribution Owner" to **Implementer** role for planning purposes.
 
 **Detailed mapping**:
+
 - FR-025 through FR-028 (module version check) → Owner: **Implementer**
 - FR-029 through FR-035 (PSGallery check) → Owner: **Implementer**
 
@@ -168,6 +175,7 @@ Examined existing role assignment patterns across completed features:
 5. **Governance simplicity**: Introducing a sixth project-specific role for 11 requirements (out of 35 total in feature) creates unnecessary governance overhead. Baseline roles are sufficient.
 
 **Alternative considered and rejected**: Creating "Distribution Owner" as project-specific role in `.specrew/role-assignments.yml`. Rejected because:
+
 - Adds permanent governance overhead for a single-feature concern
 - No evidence that future features will need this role (F-019 shipped without it)
 - Role name implies publishing authority but scope is runtime checks (misleading)
@@ -184,6 +192,7 @@ Examined existing role assignment patterns across completed features:
 FR-015: "At `specrew start`, system MUST verify that any 'active feature' referenced in session-state files has not been merged to main (check `git log main` for merge commits)"
 
 In a repository with 1000+ commits on `main`, unbounded `git log main` search for a specific feature's merge commit is:
+
 1. **Performance risk**: Could scan entire history back to initial commit (seconds to minutes on large repos)
 2. **Ambiguity**: No clear definition of "recently closed" vs "historical feature that should definitely not be active"
 3. **False-negative risk**: If feature branch name doesn't appear in merge commit message, check may miss the merge
@@ -233,15 +242,18 @@ Spec provides no bounded search strategy (e.g., "last 90 days", "last 500 commit
 **Specific implementation guidance**:
 
 Search command pattern:
+
 ```powershell
 git log main --since="<bootstrap_date>" --merges --grep="<feature-number>" --oneline
 ```
 
 Where:
+
 - `<bootstrap_date>` = `.specrew/config.yml` `bootstrap_date` field (e.g., "2026-05-04")
 - `<feature-number>` = feature identifier from session-state files (e.g., "020", "019")
 
 **Acceptance criteria**:
+
 - If search returns any commits: feature was merged → stale state detected
 - If search returns no commits AND FR-016 (branch exists) passes: feature active but not merged → state valid
 - If search returns no commits AND FR-016 (branch missing) fails: feature branch deleted without merge → investigate (prompt user)
@@ -270,6 +282,7 @@ Where:
 **Edge case: brownfield project bootstrapped into existing repo**:
 
 If a project was "brownfield" bootstrapped (Specrew added to existing repo with pre-existing commit history), `bootstrap_date` still correct bound because:
+
 - Pre-bootstrap features weren't Specrew-managed (no feature branches named `NNN-feature-name`)
 - No session-state files existed pre-bootstrap (nothing to go stale)
 - Any "stale" reference to pre-bootstrap work would fail FR-017 (no authorization record) and FR-018 (no matching session-state), making merge check redundant anyway
@@ -295,6 +308,7 @@ If a project was "brownfield" bootstrapped (Specrew added to existing repo with 
 ## Appendix: Evidence Citations
 
 ### Blocker 1 Evidence
+
 - File: `.specrew/config.yml`, line 1 (`specrew_version: "0.19.0"`)
 - File: `.specify/init-options.json`, line 8 (`"speckit_version": "0.7.3.dev0"`)
 - File: `scripts/specrew-update.ps1`, lines 221, 1009-1010
@@ -302,11 +316,13 @@ If a project was "brownfield" bootstrapped (Specrew added to existing repo with 
 - Feature: 019-specrew-distribution-module (PowerShell Gallery module shipping)
 
 ### Blocker 2 Evidence
+
 - File: `.specrew/role-assignments.yml`, lines 1-54 (five baseline roles only)
 - File: `specs/019-specrew-distribution-module/iterations/001/plan.md` (all distribution tasks → Implementer)
 - Spec: Feature 011, Feature 017, Feature 008 (runtime checks → Implementer/Reviewer)
 
 ### Blocker 3 Evidence
+
 - File: `.specrew/config.yml`, line 4 (`bootstrap_date: "2026-05-04"`)
 - File: `proposals/035-session-state-durability.md`, lines 15-17 (F-016 reboot incident)
 - Spec: `specs/020-session-state-durability/spec.md`, lines 140-146 (FR-015 through FR-020)

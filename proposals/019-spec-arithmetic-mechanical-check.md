@@ -18,6 +18,7 @@ These contradictions are mechanically detectable but require explicit arithmetic
 ## What
 
 A new mechanical-check rule that catches deterministic math contradictions in specs:
+
 - Entropy bits vs character set size and length (regex-based detection)
 - Byte size vs algorithm assumptions (e.g., AES key sizes)
 - Rate-limit math (requests per X timeframe vs realistic throughput)

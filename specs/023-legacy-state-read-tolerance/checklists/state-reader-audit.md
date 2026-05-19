@@ -9,6 +9,7 @@
 ## High-Priority Readers (Causes Crashes or StrictMode Errors)
 
 ### ✅ 1. scripts/specrew-start.ps1
+
 - **Line**: 806, 830 (feature.json parsing)
 - **State File**: `.specify/feature.json`
 - **Current Approach**: `ConvertFrom-Json` (PSCustomObject)
@@ -18,6 +19,7 @@
 - **StrictMode Impact**: HIGH - hotfix crash site per b97a74b
 
 ### ✅ 2. scripts/internal/worktree-awareness.ps1
+
 - **Line**: 60 (feature.json parsing)
 - **State File**: `.specify/feature.json`
 - **Current Approach**: `ConvertFrom-Json` (PSCustomObject)
@@ -27,6 +29,7 @@
 - **StrictMode Impact**: HIGH - property access throws on missing fields
 
 ### ✅ 3. .specify/extensions/specrew-speckit/scripts/scaffold-feature-closeout-dashboard.ps1
+
 - **Line**: 111 (feature.json parsing)
 - **State File**: `.specify/feature.json`
 - **Current Approach**: `ConvertFrom-Json` (PSCustomObject)
@@ -40,6 +43,7 @@
 ## Medium-Priority Readers (Optional Fields + StrictMode, Currently Guarded)
 
 ### ✅ 4. scripts/internal/version-check.ps1
+
 - **Line**: 138 (version-check-cache.json parsing)
 - **State File**: `.specrew/version-check-cache.json`
 - **Current Approach**: `ConvertFrom-Json` (PSCustomObject)
@@ -49,6 +53,7 @@
 - **StrictMode Impact**: MEDIUM - optional fields exist (lines 133-142)
 
 ### ✅ 5. scripts/internal/coordinator-resume.ps1
+
 - **Line**: 43 (last-validator-summary.json parsing)
 - **State File**: `.specrew/last-validator-summary.json`
 - **Current Approach**: `ConvertFrom-Json` (PSCustomObject)
@@ -62,48 +67,56 @@
 ## Already Compliant Readers (No Migration Required)
 
 ### ✅ 6. scripts/specrew-start.ps1
+
 - **Line**: 375 (start-context.json parsing)
 - **State File**: `.specrew/start-context.json`
 - **Current Approach**: `ConvertFrom-Json -AsHashtable -Depth 12` ✅
 - **Migration Status**: ✅ ALREADY COMPLIANT
 
 ### ✅ 7. scripts/specrew-start.ps1
+
 - **Line**: 2324, 2361 (config parsing)
 - **State File**: Various JSON config files
 - **Current Approach**: `ConvertFrom-Json -AsHashtable` ✅
 - **Migration Status**: ✅ ALREADY COMPLIANT
 
 ### ✅ 8. scripts/internal/task-progress.ps1
+
 - **Line**: 125 (feature.json parsing for task progress context)
 - **State File**: `.specify/feature.json`
 - **Current Approach**: `ConvertFrom-Json` (PSCustomObject)
 - **Migration Status**: LOW PRIORITY - Used only for display context, not critical path
 
 ### ✅ 9. scripts/internal/sync-boundary-state.ps1
+
 - **Line**: 422, 460, 612 (various state file parsing)
 - **State File**: Multiple state files
 - **Current Approach**: `ConvertFrom-Json` (PSCustomObject)
 - **Migration Status**: LOW PRIORITY - State writer function, not critical reader path
 
 ### ✅ 10. scripts/internal/dashboard-renderer.ps1
+
 - **Line**: 403 (feature.json parsing)
 - **State File**: `.specify/feature.json`
 - **Current Approach**: `ConvertFrom-Json` (PSCustomObject)
 - **Migration Status**: LOW PRIORITY - Display only, not critical path
 
 ### ✅ 11. .specify/extensions/specrew-speckit/scripts/resolve-quality-profile.ps1
+
 - **Line**: 75 (package.json parsing)
 - **State File**: `package.json` (not a Specrew state file)
 - **Current Approach**: `ConvertFrom-Json -AsHashtable` ✅
 - **Migration Status**: ✅ ALREADY COMPLIANT
 
 ### ✅ 12. .specify/extensions/specrew-speckit/scripts/run-mechanical-checks.ps1
+
 - **Line**: 391, 631 (package.json and finding payload parsing)
 - **State File**: `package.json` (not a Specrew state file)
 - **Current Approach**: `ConvertFrom-Json -AsHashtable` ✅
 - **Migration Status**: ✅ ALREADY COMPLIANT
 
 ### ✅ 13. .specify/extensions/specrew-speckit/scripts/sync-squad-model-overrides.ps1
+
 - **Line**: 48, 181 (config parsing)
 - **State File**: `.specrew/config.json`
 - **Current Approach**: `ConvertFrom-Json -AsHashtable` ✅
@@ -114,21 +127,25 @@
 ## Out of Scope (Not Specrew State Files)
 
 ### ❌ scripts/specrew-init.ps1
+
 - **Line**: 2038 (brownfield report parsing)
 - **Reason**: Temporary analysis output, not persisted state file
 - **Migration Status**: OUT OF SCOPE
 
 ### ❌ scripts/specrew-start.ps1
+
 - **Line**: 1524 (package.json parsing)
 - **Reason**: package.json is not a Specrew state file
 - **Migration Status**: OUT OF SCOPE (already uses -AsHashtable implicitly in some locations)
 
 ### ❌ .specify/extensions/specrew-speckit/scripts/validate-governance.ps1
+
 - **Line**: 1106 (mechanical-findings.json parsing)
 - **Reason**: Tool output, not state file
 - **Migration Status**: OUT OF SCOPE
 
 ### ❌ .specify/extensions/specrew-speckit/scripts/manage-reviewer-regression.ps1
+
 - **Line**: 649, 695, 1248, 1367 (various config parsing)
 - **Reason**: Review tool internal state, not Specrew state files
 - **Migration Status**: OUT OF SCOPE

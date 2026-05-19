@@ -54,6 +54,7 @@ High article/talk value: an empirical autopilot study is a strong July 1 talk to
 ## Phase placement
 
 **Phase 4** (Token Economy + Autopilot Experiment) — composes naturally with [040](040-token-economy-governance.md). HARD PREREQUISITES:
+
 - [040](040-token-economy-governance.md) Token Economy (cost guardrails)
 - [024](024-multi-host-runtime-abstraction.md) Multi-Host CORE (so headless autopilot can run on Claude Code / Codex / other runtimes that support better unattended workflows than Copilot CLI's current REPL-only model)
 

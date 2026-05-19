@@ -18,11 +18,13 @@ This proposal closes that gap by mandating that each declared scenario has a cor
 ## What
 
 Mechanical scenario-to-test mapping:
+
 - Validator scans `spec.md` for scenario declarations (e.g., "Scenario 1: ...", "User Story X: ...", or structured user-story sections)
 - Validator scans `tests/integration/` for tests tagged or named per-scenario
 - Mismatches emit hard-fail: scenarios without tests, or tests not mapped to scenarios
 
 Test format conventions:
+
 - Test file naming: `scenario-NNN-<descriptor>.ps1` (or stack-equivalent)
 - Test frontmatter / docstring includes `scenario-ref: NNN` linkage
 - Scenario sections in `spec.md` include `test-ref:` pointing to the integration test file

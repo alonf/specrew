@@ -26,6 +26,7 @@
 | `last_write_version` | String | No | Specrew version that last wrote the file | `"0.19.0"`, `"0.22.0"` |
 
 **Lifecycle**:
+
 1. **Creation**: Written by Specrew command (e.g., `specrew init`, `specrew start`)
 2. **Reading**: Parsed by subsequent Specrew operations (reader functions)
 3. **Schema Evolution**: May gain new fields in newer Specrew versions (additive changes only in v1)
@@ -33,6 +34,7 @@
 5. **Persistence**: Survives across Specrew version upgrades (backward compatibility required)
 
 **Relationships**:
+
 - **Contains**: 1 State File → 1 Schema Version Marker (optional for v0, required for v1+)
 - **Read by**: 1 State File → N State Reader Functions
 - **Written by**: 1 State File → N State Writer Functions
@@ -52,12 +54,14 @@
 | `tasks-progress.yml` | YAML | v1 (F-020) | Task completion tracking | `scripts/internal/task-progress.ps1:204-238` | `scripts/internal/task-progress.ps1` |
 
 **Invariants**:
+
 - State files MUST be text-based (JSON or YAML); binary formats out of scope
 - State files MUST tolerate missing optional fields (backward compatibility)
 - State files MUST NOT silently override spec authority (Constitution Principle I)
 - Schema evolution MUST be additive within a major version (no breaking field removals/renames)
 
 **Edge Cases**:
+
 - **Corrupted file**: JSON/YAML parse error → clear error message, does not affect other state files
 - **Missing file**: Treated as absent state; defaults applied; no crash
 - **Partial state**: Missing optional fields → safe defaults; no crash under StrictMode
@@ -83,11 +87,13 @@
 | `reader_dispatch_required` | Boolean | Yes | Whether readers need version-aware logic | `false` for v0→v1 (additive only), `true` for breaking changes |
 
 **Lifecycle**:
+
 1. **Absence** (legacy files): Interpreted as schema v0; reader logs "schema-implied-v0" at debug level
 2. **Explicit v1** (new files): Added by writer when state file is created or updated; field `schema: v1` at top level
 3. **Version bump** (future breaking changes): Reader checks schema version; applies version-specific logic; may prompt for migration
 
 **Relationships**:
+
 - **Contained by**: 1 Schema Version Marker → 1 State File
 - **Checked by**: 1 Schema Version Marker → N State Reader Functions (version dispatch logic)
 - **Written by**: 1 Schema Version Marker → N State Writer Functions (always include in v1+)
@@ -95,6 +101,7 @@
 **Format Examples**:
 
 **JSON state file** (`.specrew/start-context.json`):
+
 ```json
 {
   "schema": "v1",
@@ -104,6 +111,7 @@
 ```
 
 **YAML state file** (`.specrew/config.yml`):
+
 ```yaml
 schema: v1
 team_id: example-team
@@ -111,6 +119,7 @@ capacity_unit: story_points
 ```
 
 **Markdown frontmatter** (`.squad/identity/now.md`):
+
 ```markdown
 ---
 schema: v1
@@ -122,6 +131,7 @@ iteration: 001
 ```
 
 **Invariants**:
+
 - Schema version MUST be a top-level field (not nested)
 - Field name MUST be `schema` (lowercase, singular)
 - Value MUST be a string (e.g., `"v1"`, not integer `1`)
@@ -129,6 +139,7 @@ iteration: 001
 - Schema version MUST NOT be used for extension content version (FR-003 distinguishes `extension.version` from `extension.schema`)
 
 **Edge Cases**:
+
 - **Unknown schema version**: Reader encounters `"v99"` → error "unsupported schema version; requires Specrew X.Y.Z or higher"
 - **Invalid schema value**: Non-string or malformed value → treated as v0 with warning log
 - **Schema version in nested object**: Ignored; only top-level `schema` field is authoritative
@@ -153,17 +164,20 @@ iteration: 001
 | `line_ending_normalized` | Boolean | Yes | Whether Git normalized CRLF/LF | `true` (via `core.autocrlf`) |
 
 **Lifecycle**:
+
 1. **Generation** (Iteration 1): Hand-curated from real Specrew projects at versions 0.18.0-0.22.0
 2. **CI Testing** (every PR): All state readers invoked against all fixtures; failures block merge
 3. **Addition** (future versions): New fixture directory created when schema version bumps (per closeout template FR-013)
 4. **Maintenance**: Fixtures remain immutable after creation (represent historical state)
 
 **Relationships**:
+
 - **Exemplifies**: 1 Legacy Fixture → N State Files (one fixture directory contains multiple state file types)
 - **Tested by**: 1 Legacy Fixture → N Pester Test Cases (one test per reader function per fixture)
 - **Version Correspondence**: 1 Legacy Fixture → 1 Specrew Release Version
 
 **Fixture Directory Structure**:
+
 ```
 tests/fixtures/legacy-versions/
 ├── 0.18.0/
@@ -183,6 +197,7 @@ tests/fixtures/legacy-versions/
 ```
 
 **Test Coverage Requirements** (FR-008):
+
 - Pass criteria: No exceptions thrown, no `$null` reference errors, return values structurally consistent
 - Readers in scope:
   - `Get-SpecrewStartContextSessionState`
@@ -192,12 +207,14 @@ tests/fixtures/legacy-versions/
   - All other functions reading from `.specrew/*`, `.specify/*`, `.squad/*`
 
 **Invariants**:
+
 - Fixture directories MUST be immutable after creation (historical snapshots)
 - Fixture names MUST match Specrew version tags (e.g., `0.19.0` not `v0.19.0`)
 - Fixture file sets MUST include all state file types relevant to that version
 - Line endings MUST be normalized via Git `core.autocrlf` (cross-platform compatibility)
 
 **Edge Cases**:
+
 - **Missing fixture file**: Test skips that specific reader test; logs warning (not all state files existed in early versions)
 - **Fixture file with intentional corruption**: Used for negative testing (parse error handling); documented in `edge_cases_covered`
 - **Fixture growth over time**: As new state files added in future versions, older fixtures remain unchanged (only test readers that existed at that version)
@@ -262,6 +279,7 @@ tests/fixtures/legacy-versions/
 ## Schema Evolution Rules
 
 **Version 0 → Version 1** (Iteration 1 scope):
+
 - **Additive changes only**: New optional fields may be added
 - **No breaking changes**: No field removals, no type changes, no field renames
 - **Reader tolerance**: Readers MUST tolerate missing optional fields (return `$null` or safe defaults)
@@ -269,6 +287,7 @@ tests/fixtures/legacy-versions/
 - **No user prompt**: For most files; user-visible configs (e.g., `.specrew/config.yml`) MAY log one-time upgrade notice
 
 **Future Version Bumps** (v1 → v2, deferred):
+
 - **Breaking changes allowed**: Field removals, type changes, semantic shifts
 - **Explicit migration**: Reader detects unsupported schema version → clear error message
 - **Migration commands**: Future proposal may add `specrew migrate-state` command
@@ -303,6 +322,7 @@ tests/fixtures/legacy-versions/
 ## Phase 1 Design Complete
 
 **Next Steps**:
+
 - Generate interface contracts (`contracts/state-file-schema-v1.md`)
 - Generate quickstart guide (`quickstart.md`)
 - Update agent context (run `.specify/scripts/powershell/update-agent-context.ps1 -AgentType copilot`)

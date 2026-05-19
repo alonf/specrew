@@ -3462,10 +3462,28 @@ try {
     }
     $iterationConfig = if ($targets.Count -gt 0) { Get-IterationConfigForValidation -IterationDirectory $targets[0] } else { @{ closeout_packet_required_since_iteration = '' } }
     $reviewerCloseoutEnforcement = Get-ReviewerCloseoutEnforcementMap -Targets $targets -ExplicitTargetsProvided $explicitIterationPathsProvided -RequiredSinceIteration $iterationConfig.closeout_packet_required_since_iteration
+    # Proposal 034: per-iteration progress logging so hangs can be bisected.
+    # Without this, the loop runs silently for minutes and a single pathological
+    # iteration creates a black-hole CI experience. With this, the last printed
+    # line identifies the iteration that started but didn't complete.
+    $iterationIndex = 0
+    $iterationTotal = $targets.Count
+    $iterationStart = Get-Date
     $results = @($targets | ForEach-Object {
             $targetPath = $_
+            $iterationIndex++
+            $stepStart = Get-Date
+            $relativeTarget = try { [System.IO.Path]::GetRelativePath($resolvedProjectPath, $targetPath) } catch { $targetPath }
+            if ($env:SPECREW_VALIDATOR_VERBOSE -eq '1') {
+                Write-Host ("[validator] ({0}/{1}) validating {2}" -f $iterationIndex, $iterationTotal, $relativeTarget)
+            }
             try {
-                Test-IterationGovernance -IterationDirectory $targetPath -ProjectRoot $resolvedProjectPath -TeamRoles $teamRoles -EnforceReviewerCloseout $reviewerCloseoutEnforcement.ContainsKey($targetPath)
+                $result = Test-IterationGovernance -IterationDirectory $targetPath -ProjectRoot $resolvedProjectPath -TeamRoles $teamRoles -EnforceReviewerCloseout $reviewerCloseoutEnforcement.ContainsKey($targetPath)
+                if ($env:SPECREW_VALIDATOR_VERBOSE -eq '1') {
+                    $stepElapsed = [Math]::Round(((Get-Date) - $stepStart).TotalSeconds, 1)
+                    Write-Host ("[validator] ({0}/{1}) {2} -> {3}s" -f $iterationIndex, $iterationTotal, $relativeTarget, $stepElapsed)
+                }
+                $result
             }
             catch {
                 $iterationErrors = New-Object System.Collections.Generic.List[string]
@@ -3476,6 +3494,10 @@ try {
                 }
             }
         })
+    if ($env:SPECREW_VALIDATOR_VERBOSE -eq '1') {
+        $totalElapsed = [Math]::Round(((Get-Date) - $iterationStart).TotalSeconds, 1)
+        Write-Host ("[validator] iteration loop complete: {0} iterations in {1}s" -f $iterationTotal, $totalElapsed)
+    }
     $resultMap = @{}
     foreach ($result in $results) {
         $resultMap[$result.Path] = $result

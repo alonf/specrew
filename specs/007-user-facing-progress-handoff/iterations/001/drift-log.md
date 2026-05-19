@@ -25,11 +25,13 @@ Iteration 001 Foundation & Governance carries Phase 1–2 coordinator guidance a
 ### 1. Coordinator Prompt Clarity (T001)
 
 **What to Monitor**:
+
 - Coordinator prompt update completeness: Are all three handoff scenarios (completion, blocker, lightweight) covered with explicit examples?
 - Plain-language-first principle absorption: Do examples show governance vocabulary deferred to footnotes or subsections?
 - Agent guidability: Can agents understand the prompt without needing clarification?
 
 **Drift Signals**:
+
 - ⚠️ Prompt examples revert to governance-jargon-first phrasing without plain-language lead
 - ⚠️ Missing explicit guidance for lightweight responses or blocker scenarios
 - ⚠️ Coordinator prompt and handoff template (T002) contradict each other on wording patterns
@@ -41,11 +43,13 @@ Iteration 001 Foundation & Governance carries Phase 1–2 coordinator guidance a
 ### 2. Handoff Template Usability (T002)
 
 **What to Monitor**:
+
 - Template completeness: Do all three user stories (US1 completion, US2 blockers, US3 lightweight) have usable patterns?
 - Edge-case coverage: Are patterns provided for read-only answers, fully complete factual answers, and verification gaps?
 - Copy-paste readiness: Can agents use the template as a starting point without significant rewording?
 
 **Drift Signals**:
+
 - ⚠️ Template missing patterns for one or more user stories
 - ⚠️ Edge-case patterns are described but not shown as concrete examples
 - ⚠️ Template examples use governance jargon without plain-language paraphrase
@@ -58,11 +62,13 @@ Iteration 001 Foundation & Governance carries Phase 1–2 coordinator guidance a
 ### 3. Decision Guidance Traceability (T003)
 
 **What to Monitor**:
+
 - Decision tree coverage: Do decision guides address blockers (FR-011), review needs (FR-008), manual testing (FR-009), and verification gaps (FR-010)?
 - Handoff-semantics integration: Do decision trees show how to translate each scenario into a clear progress-status + next-step statement?
 - Ambiguity reduction: Can implementers use the guidance to resolve gray-area decisions without asking follow-up questions?
 
 **Drift Signals**:
+
 - ⚠️ Decision guidance missing guidance for one or more FR-008/FR-009/FR-010/FR-011 scenarios
 - ⚠️ Decision guidance references coordinator prompt but contradicts examples in prompt or template
 - ⚠️ Guidance is descriptive but not decisional (doesn't help resolve actual decisions)
@@ -74,11 +80,13 @@ Iteration 001 Foundation & Governance carries Phase 1–2 coordinator guidance a
 ### 4. Squad.agent.md Durability (T004)
 
 **What to Monitor**:
+
 - Codification completeness: Is the three-section handoff format (What I just did / Why I stopped / What I need from you) formally documented in Squad.agent.md?
 - Session-restart note clarity: Is the session-restart requirement after Squad.agent.md changes clearly visible and accessible to future editors?
 - Survival across updates: Is the guidance placed in a section that survives typical agent-instruction updates and version rolls?
 
 **Drift Signals**:
+
 - ⚠️ Handoff format is mentioned but not formally codified in Squad.agent.md Team Mode section
 - ⚠️ Session-restart note is missing or unclear
 - ⚠️ Changes to `.github/agents/squad.agent.md` are made without documenting the session-restart impact
@@ -90,11 +98,13 @@ Iteration 001 Foundation & Governance carries Phase 1–2 coordinator guidance a
 ### 5. Governance-Acronym Rule Absorption (T001, T002, T005, T006)
 
 **What to Monitor**:
+
 - Plain-language-first pattern enforcement: Are coordinator prompt and handoff template examples showing plain-language lead with governance vocabulary deferred?
 - Governance checklist completeness: Does the checklist surface have a detectable rule for three-or-more-governance-acronyms-in-lead-without-paraphrase?
 - Soft-validator design clarity: Does the soft-validator concept document provide pseudo-code or clear algorithmic description of the detection rule?
 
 **Drift Signals**:
+
 - ⚠️ Coordinator prompt examples start with governance vocabulary (e.g., "before-implement gate, hardening-gate sign-off, Implementation Approval") without plain-language paraphrase
 - ⚠️ Governance checklist rule is stated but hard to operationalize or verify
 - ⚠️ Soft-validator design lacks pseudo-code or algorithmic clarity for detection
@@ -107,11 +117,13 @@ Iteration 001 Foundation & Governance carries Phase 1–2 coordinator guidance a
 ### 6. Governance Integration Readiness (T005, T006)
 
 **What to Monitor**:
+
 - Checklist surface integration: Is the governance checklist registered in the proper governance surfaces?
 - Soft-validator concept completeness: Does the design document provide sufficient implementation target for Iteration 002 without requiring back-and-forth clarification?
 - Known-traps corpus alignment: Is the governance-acronym rule formally traced to the human-handoff trap row (`.specrew/quality/known-traps.md` row 12)?
 
 **Drift Signals**:
+
 - ⚠️ Governance checklist created but not integrated with governance validation surface
 - ⚠️ Soft-validator design references detection rule but provides no operational definition
 - ⚠️ Human-handoff trap is mentioned in planning but not formally codified in coordinator guidance, checklist, or validator design

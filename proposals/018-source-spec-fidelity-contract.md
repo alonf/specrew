@@ -28,6 +28,7 @@ A two-direction fidelity contract:
 **Spec → implementation**: Mechanical extraction of prescribed identifiers from spec.md (protocol message names, library/dependency names, magic-number constants, directory/structural conventions, DOM/UI conventions). Validator scans implementation against the extracted prescriptions; mismatches emit hard-fail.
 
 Five categories of prescription verification:
+
 1. Protocol/identifier (spec.md → implementation source code)
 2. Library/dependency (spec.md → package.json / equivalent)
 3. Magic-number/constant (spec.md → source code constants)

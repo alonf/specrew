@@ -13,23 +13,27 @@ I evaluate each task output against the source requirement and produce explicit 
 ### Iteration 0 → Iteration 1 Review Cycle (2026-04-17 to 2026-04-25)
 
 **Iteration 0 Closure Review (Apr 17-18)**:
+
 - Governance validator implemented; artifact contract identified as binding enforcement mechanism
 - Review closure verified: 23/23 tasks completed; 20.5/20.5 pts exact; zero drift
 - Artifact cleanup: state.md and plan.md refreshed to reflect post-retro closure
 - Key pattern: Review-phase closure requires artifact freshness check (temporal accuracy, role names, gate dependencies updated to final state)
 
 **Iteration 1 Governance Gate (Apr 18-19)**:
+
 - Initial review: NEEDS-WORK (plan.md violations: blank `Started` metadata, missing T-022 `Story`)
 - Picard correction: Both defects fixed on disk
 - Re-review: PASS confirmed (validator clean, contract-safe, execution-ready)
 - Key pattern: Execution-ready means artifact-clean + validator-clean; decisions describe intent but readiness judged from live artifacts
 
 **Iteration 1a Deployment Slices (Apr 19-25)**:
+
 - **Slice 1** (T-005): Extension deployment — PASS (prefer `specify extension add --dev`; fallback registration with source/path metadata; isolation flag for narrow testability)
 - **Slice 2** (T-006): Squad runtime deployment — NEEDS-WORK → PASS (added retro ceremony; excluded deferred skill; dry-run + smoke tests verified)
 - **Status**: Both slices accepted; 6.5/20.5 pts delivered
 
 **FR-020 Brownfield Bootstrap Review (2026-05-03)**:
+
 - Verdict: **NEEDS-WORK** (binding rejection)
 - Blockers: Conflict detection without enforcement; silent charter mutation; dry-run non-reviewable; test coverage gap
 - Constraints: Narrow scope (T-205/T-206 only); La Forge locked out; Data assigned as revision author
@@ -38,59 +42,67 @@ I evaluate each task output against the source requirement and produce explicit 
 ## Recent Updates
 
 📌 **FR-020 Brownfield Bootstrap Review — NEEDS-WORK (2026-05-03)**:
-   - Task: T-205 / T-206 brownfield bootstrap safety review
-   - Revision Author: Data
-   - Verdict: **NEEDS-WORK** (binding rejection)
-   - Rejected artifacts: `scripts\specrew-init.ps1`, `extensions\specrew-speckit\scripts\brownfield-merge.ps1`, `extensions\specrew-speckit\scripts\deploy-squad-runtime.ps1`, `docs\user-guide.md`
-   - Four blocking issues identified: conflict detection without enforcement; silent charter mutation; dry-run not reviewable; test coverage gap
-   - Constraints: Narrow scope (FR-020 / T-205 / T-206); La Forge locked out; conflict-resolution gate mandatory; persistent dry-run artifact required; test coverage mandatory
-   - Revision author (Data) receives complete blockers list and constraint guidance
-   - Status: Rejection binding; orchestration logged; handoff complete
+
+- Task: T-205 / T-206 brownfield bootstrap safety review
+- Revision Author: Data
+- Verdict: **NEEDS-WORK** (binding rejection)
+- Rejected artifacts: `scripts\specrew-init.ps1`, `extensions\specrew-speckit\scripts\brownfield-merge.ps1`, `extensions\specrew-speckit\scripts\deploy-squad-runtime.ps1`, `docs\user-guide.md`
+- Four blocking issues identified: conflict detection without enforcement; silent charter mutation; dry-run not reviewable; test coverage gap
+- Constraints: Narrow scope (FR-020 / T-205 / T-206); La Forge locked out; conflict-resolution gate mandatory; persistent dry-run artifact required; test coverage mandatory
+- Revision author (Data) receives complete blockers list and constraint guidance
+- Status: Rejection binding; orchestration logged; handoff complete
 
 📌 **FR-020 Brownfield Bootstrap Acceptance Re-Review (2026-05-03)**:
-   - Verdict: **PASS** (Acceptance binding)
-   - Revision complete: All four prior blockers resolved by Data
-   - Evidence verified: Conflict detection with enforcement (exit code 5); persistent dry-run artifact; -Force no-bypass rule; full entrypoint test coverage
-   - Scope maintained: Narrow to T-205/T-206 brownfield bootstrap safety only
-   - Status: Acceptance handoff complete; orchestration logged; team histories updated
+
+- Verdict: **PASS** (Acceptance binding)
+- Revision complete: All four prior blockers resolved by Data
+- Evidence verified: Conflict detection with enforcement (exit code 5); persistent dry-run artifact; -Force no-bypass rule; full entrypoint test coverage
+- Scope maintained: Narrow to T-205/T-206 brownfield bootstrap safety only
+- Status: Acceptance handoff complete; orchestration logged; team histories updated
 
 📌 Team confirmed by Alon on 2026-04-17
 
 📌 **Governance fix cycle review verdict (2026-04-19)**:
-  - Iteration 1 plan.md validator status: NEEDS-WORK (real contract failures detected)
-  - Missing `Started` metadata in plan.md (line 7)
-  - Task T-022 missing `Story` reference
-  - Validator repair accepted (La Forge fixed strict-mode collections)
-  - Validator now correctly exposes artifact defects instead of runtime crashing
-  - Next plan owner: Picard (Data locked out from this revision)
-  - Execution status: BLOCKED until metadata populated and story assigned
+
+- Iteration 1 plan.md validator status: NEEDS-WORK (real contract failures detected)
+- Missing `Started` metadata in plan.md (line 7)
+- Task T-022 missing `Story` reference
+- Validator repair accepted (La Forge fixed strict-mode collections)
+- Validator now correctly exposes artifact defects instead of runtime crashing
+- Next plan owner: Picard (Data locked out from this revision)
+- Execution status: BLOCKED until metadata populated and story assigned
 
 📌 **Decision inbox merged (2026-04-19T02:06:00Z)**:
-  - Iteration 1 Governance Re-Review decision recorded and archived
-  - 6 inbox decisions consolidated into decisions.md
+
+- Iteration 1 Governance Re-Review decision recorded and archived
+- 6 inbox decisions consolidated into decisions.md
 
 📌 **Final gate pass (2026-04-19T02:08:48Z)**:
-  - Picard's plan revision verified: Started and T-022 story fields corrected
-  - Worf's gate re-review: Both prior defects confirmed fixed; validator PASS
-  - Iteration 1 execution-ready: Governance gate clear
-  - picard-iteration1-plan-revision.md and worf-iteration1-final-gate.md merged to decisions.md; inbox cleaned
+
+- Picard's plan revision verified: Started and T-022 story fields corrected
+- Worf's gate re-review: Both prior defects confirmed fixed; validator PASS
+- Iteration 1 execution-ready: Governance gate clear
+- picard-iteration1-plan-revision.md and worf-iteration1-final-gate.md merged to decisions.md; inbox cleaned
 
 📌 **Runtime-Surface Drift Review Cycle — COMPLETE (2026-04-19T20:40:24Z)**:
-  - ✅ Initial review: 4 acceptance points evaluated (iter-resume, retro built-in, role language, scope boundaries)
-  - ✅ Initial verdict: NEEDS-WORK (ceremonies README still documents retrospective as appended ceremony)
-  - ✅ Required correction: Fix `extensions\specrew-speckit\squad-templates\ceremonies\README.md`
-  - ✅ Re-review after La Forge narrow revision: PASS (lines 5, 26-32 corrected; prior rejection reason closed)
-  - **Status**: Source-of-truth fully traceable to authoritative spec.md + deploy-squad-runtime.ps1 behavior
+
+- ✅ Initial review: 4 acceptance points evaluated (iter-resume, retro built-in, role language, scope boundaries)
+- ✅ Initial verdict: NEEDS-WORK (ceremonies README still documents retrospective as appended ceremony)
+- ✅ Required correction: Fix `extensions\specrew-speckit\squad-templates\ceremonies\README.md`
+- ✅ Re-review after La Forge narrow revision: PASS (lines 5, 26-32 corrected; prior rejection reason closed)
+- **Status**: Source-of-truth fully traceable to authoritative spec.md + deploy-squad-runtime.ps1 behavior
 
 📌 **Board Sync Fix Re-review (2026-04-23T01:34:00Z)**:
-  - Task: Re-review board sync fix per spawn manifest
-  - Verdict: **PASS**
-  - Key result: T-024 locally ready pending commit/push
-  - Note: drift-log.md must be included in the commit
+
+- Task: Re-review board sync fix per spawn manifest
+- Verdict: **PASS**
+- Key result: T-024 locally ready pending commit/push
+- Note: drift-log.md must be included in the commit
 
 ---
 
 ## Operational Notes
+
 - Governance hardening creates a closed loop: spec defines the state machine (normative), contracts define the artifacts and gates, protocol defines the roles and escalation, validator enforces compliance. All four must be coherent.
 - Final gate review should verify three things: (1) formal closure per lifecycle contract, (2) governance hardening implementation coherent, (3) no blocking issues for next phase. This is the pattern for future iteration closeouts.
 - Iteration 0 closure is the reference implementation of the lifecycle. Future iterations are measured against this baseline.
@@ -108,6 +120,7 @@ I evaluate each task output against the source requirement and produce explicit 
 - **User Directive**: Iteration 0 closure formalized under normative contracts. Governance authority now binding. Team consensus required on operating policy before Iteration 1 execution begins.
 
 **Iteration 1 planning prerequisites** (awaiting before execution):
+
 1. ✅ Governance hardening authority finalized (normative contracts, dogfooding binding, protocol live)
 2. ✅ Closure artifacts complete (state.md, drift-log.md, plan metadata, review.md)
 3. ⏳ Retrospective phase complete (Troi autonomous ceremony, fixed schedule)
@@ -123,6 +136,7 @@ I evaluate each task output against the source requirement and produce explicit 
 **Task**: Re-review live repo state against all reviewer comments to assess which feedback is outdated vs still-live.
 
 **Artifacts Reviewed**:
+
 - `.squad/protocol.md` (board-sync section)
 - `specs/001-specrew-product/spec.md`, `plan.md`
 - `docs/github-project.md`
@@ -159,12 +173,14 @@ I evaluate each task output against the source requirement and produce explicit 
 ✅ **PASS** — Live repo state is coherent against protocol and governance documents.
 
 **Summary**:
+
 - Original protocol drift (custom columns) is fully resolved
 - Secret blocker is cleared; manual sync confirmed working
 - Two remaining items are deployment/cosmetic issues, not governance violations
 - No implementation-governance mismatch remains
 
 **Follow-Up Items** (for implementer, non-blocking):
+
 1. Push `001-specrew-product` branch to activate unattended GitHub Actions sync
 2. Fix PowerShell backtick escaping in sync script (`New-TaskBody`, `New-LifecycleBody`)
 
@@ -173,11 +189,13 @@ I evaluate each task output against the source requirement and produce explicit 
 ---
 
 ## Learnings
+
 ### 2026-04-18 Artifact Cleanup (Review Stale Wording)
 
 **Issue**: External review flagged stale wording in review.md indicating next steps that had already been completed.
 
 **Corrections Applied**:
+
 1. **Line 16** — Updated status from "Ready for Alon sign-off and Iteration 1 planning" to "Review complete. Retrospective closed. Ready for Alon sign-off." (reflects actual post-retro state)
 2. **Line 199** — Updated next phase from "Ready for Alon sign-off and Iteration 1 planning" to "Awaiting Alon sign-off" (acknowledges retrospective already complete)
 3. **Line 207** — Fixed role name from "Alon (Spec Steward)" to "Alon (Chief Architect & Reviewer)" (matches actual team.md designation)
@@ -226,17 +244,19 @@ I evaluate each task output against the source requirement and produce explicit 
 - **2026-05-03 Iteration 002 final-batch review**: Generated report outputs count as delivered when the writer path is live, documented, contract-aligned, and covered by a passing integration test. For T-208, the right review move was to invoke `evaluation\scorers\process-scorer.ps1 -WriteReport`, inspect the rendered `evaluation\report.md`, and confirm it reports only the Iteration 2 process slice while marking outcome quality deferred.
 
 **Cross-Agent Team Update** (2026-04-19):
+
 - **Data (Planner)**: Applied Iteration 1 plan narrow corrections — resume wording, board sync state, effort calibration. Status: recommended. Corrections verified on disk.
 - **Scribe**: Orchestration logged; session documented; decisions merged into decisions.md. Both Data and Worf entries recorded in orchestration-log/; session log written to log/.
 
 - **2026-04-19 Iteration 1 Final Gate**: Re-review against prior rejection reasons must close the loop on the exact cited defects in the live artifact, then confirm the live validator is clean. `specs/001-specrew-product/iterations/001/plan.md` now contains `Started: 2026-04-19`, task `T-022` now maps to `US-2`, and `extensions/specrew-speckit/scripts/validate-governance.ps1` passes for Iteration 001. Verdict: PASS. Broader coordination prerequisites (for example Alon approval or operating-policy consensus) remain separate from artifact-readiness unless they were part of the rejection basis.
 
 📌 **Deployment Slice 2: Bootstrap Guardrails & Review — COMPLETE (2026-04-19T20:24:18Z)**:
-   - ✅ Reviewed Picard's Deployment Guardrails: 8-gate acceptance framework for runtime-surface slice (T-005–T-008)
-   - ✅ Reviewed La Forge's Complete `specrew init` Deployment Slice: All 4 deliverables present (extension deploy, Squad runtime deploy, baseline role merge, bootstrap hardening)
-   - ✅ Worf verdict: PASS on Slice 2 guardrails and implementation
-   - **Status**: Both decisions merged to ledger; Slice 2 cleared for execution gate
-   - **Next**: La Forge executes T-005–T-008 under Picard's 8-gate framework
+
+- ✅ Reviewed Picard's Deployment Guardrails: 8-gate acceptance framework for runtime-surface slice (T-005–T-008)
+- ✅ Reviewed La Forge's Complete `specrew init` Deployment Slice: All 4 deliverables present (extension deploy, Squad runtime deploy, baseline role merge, bootstrap hardening)
+- ✅ Worf verdict: PASS on Slice 2 guardrails and implementation
+- **Status**: Both decisions merged to ledger; Slice 2 cleared for execution gate
+- **Next**: La Forge executes T-005–T-008 under Picard's 8-gate framework
 
 ---
 
@@ -245,17 +265,20 @@ I evaluate each task output against the source requirement and produce explicit 
 **La Forge Delivery**: Runtime-surface deployment slice (Spec Kit extension, Squad ceremonies, baseline role merge)
 
 **Worf Initial Review (NEEDS-WORK)**:
+
 - Defect 1: Retro ceremony surface not deployed (only planning + review/demo)
 - Defect 2: Deferred `specrew-iteration-resume` skill shipped (FR-019 → Iteration 2)
 - **Verdict**: Slice incomplete; unauthorized scope present
 
 **Picard Correction Cycle**:
+
 - Fixed 1: Added `retro.md` to ceremony deployment list (deploy-squad-runtime.ps1 line 323-327)
 - Fixed 2: Added filter to exclude `iteration-resume.md` from skill deployment (line 315)
 - Validation: Dry-run + live smoke bootstrap + governance validator all pass
 - Non-blocking: README.md lag (describes planning+review/demo only) documented for future correction
 
 **Worf Re-Review (PASS)**:
+
 - ✅ Retro ceremony: Dry-run and live smoke confirm deployment of all three ceremonies
 - ✅ Deferred skill: Dry-run shows 3 skills only (capacity-planning, drift-check, traceability-check); smoke confirms `ResumeSkillPresent: False`
 - ✅ Scope validation: Fresh smoke bootstrap successful; governance validator passes iterations 000 and 001
@@ -285,48 +308,54 @@ I evaluate each task output against the source requirement and produce explicit 
 - **Pattern:** In a narrow re-review, prove defect closure by confirming the exact evidence artifacts named in the rejection are present and valid in the working tree. The re-review passes if the defect is removable by a different author's next commit, not if all future commits have already landed. Once those files are versioned, close the defect plainly unless a new issue directly affects the same acceptance basis.
 
 📌 **Bootstrap Gate Review Complete (2026-04-19T21-49-33Z)**:
-   - Reviewed La Forge's bootstrap gate fix (validate-versions.ps1, specrew-init.ps1)
-   - Verified version-line parsing fallback to uv tool list works under shim failure
-   - Verified squad init --help probing from disposable directory with cleanup
-   - Confirmed fix is narrow in scope, no behavior drift
-   - **Verdict**: PASS. Gate fix approved
+
+- Reviewed La Forge's bootstrap gate fix (validate-versions.ps1, specrew-init.ps1)
+- Verified version-line parsing fallback to uv tool list works under shim failure
+- Verified squad init --help probing from disposable directory with cleanup
+- Confirmed fix is narrow in scope, no behavior drift
+- **Verdict**: PASS. Gate fix approved
 
 📌 **Iteration 1 state + spikes re-review cycle (2026-04-20)**:
-   - ✅ Reviewed corrected state.md: V-R7-1 (0.5 pts), T-011 (1.5 pts) marked done with full artifact accounting
-   - ✅ Reviewed spikes.md (V-R7-1): Detection API research findings complete; graceful degradation patterns documented; T-011 unblock confirmed
-   - ✅ Contract validation: state.md schema v1 compliant; phase tracking synchronized (Planning complete; Executing in-progress)
-   - ✅ Execution continuity verified: 20.5-pt Iter 1a baseline with 2.0 pts delivered leaves 18.5 pts execution queued; 3.5 pts Iter 1b deferred post-gate
-   - ✅ Outcome: PASS — no gaps; execution state traceable to plan.md; spikes findings actionable for remaining tasks
+
+- ✅ Reviewed corrected state.md: V-R7-1 (0.5 pts), T-011 (1.5 pts) marked done with full artifact accounting
+- ✅ Reviewed spikes.md (V-R7-1): Detection API research findings complete; graceful degradation patterns documented; T-011 unblock confirmed
+- ✅ Contract validation: state.md schema v1 compliant; phase tracking synchronized (Planning complete; Executing in-progress)
+- ✅ Execution continuity verified: 20.5-pt Iter 1a baseline with 2.0 pts delivered leaves 18.5 pts execution queued; 3.5 pts Iter 1b deferred post-gate
+- ✅ Outcome: PASS — no gaps; execution state traceable to plan.md; spikes findings actionable for remaining tasks
 
 ---
 
 📌 **T-002 Review Complete — PASS (2026-04-22T21:35:46Z)**:
-   - ✅ Reviewed La Forge implementation of missing-dependency install gate
-   - ✅ Validated preserve of validation/dry-run behavior
-   - ✅ Confirmed hard-stop on post-install failures (exit code 4)
-   - ✅ Validated governance compliance and bootstrap preview functionality
-   - **Verdict**: PASS — Implementation meets specification
-   - **Status**: Ready for next acceptance gate
+
+- ✅ Reviewed La Forge implementation of missing-dependency install gate
+- ✅ Validated preserve of validation/dry-run behavior
+- ✅ Confirmed hard-stop on post-install failures (exit code 4)
+- ✅ Validated governance compliance and bootstrap preview functionality
+- **Verdict**: PASS — Implementation meets specification
+- **Status**: Ready for next acceptance gate
 
 📌 **FR-022 Temporal Corrections Applied (2026-04-22T21:35:46Z)**:
-   - ✅ Collaborated with Picard on temporal accuracy fixes
-   - ✅ Corrected git-tracking claims in decisions.md (lines 1074, 1107-1108, 1113)
-   - ✅ Clarified reviewer lockout sequence and defect causality
-   - ✅ Audit trail preserved; event sequence intact
-   - **Status**: FR-022 temporal claims now audit-trail durable
+
+- ✅ Collaborated with Picard on temporal accuracy fixes
+- ✅ Corrected git-tracking claims in decisions.md (lines 1074, 1107-1108, 1113)
+- ✅ Clarified reviewer lockout sequence and defect causality
+- ✅ Audit trail preserved; event sequence intact
+- **Status**: FR-022 temporal claims now audit-trail durable
 
 📌 **Decision Inbox Merged (2026-04-22T21:35:46Z)**:
-   - ✅ 9 inbox decisions consolidated into decisions.md
-   - ✅ Cross-agent history synchronized
-   - **Status**: Session state updated
+
+- ✅ 9 inbox decisions consolidated into decisions.md
+- ✅ Cross-agent history synchronized
+- **Status**: Session state updated
 
 📌 **T-005 Spec Kit Extension Deployment — ACCEPTED (2026-04-23)**:
-   - **Task**: T-005 revision completes MVP extension-deployment path
-   - **Review Verdict**: PASS (extension deployment script fully implements decision binding)
-   - **Decision Binding**: Three requirements recorded in decisions.md (prefer CLI API, fallback metadata, isolation flag)
-   - **Contract Compliance**: Task table marked done with 1.0 pts actual; no undocumented hooks (FR-013 verified)
-   - **Continuity**: T-005 closes successfully; T-006 (Squad runtime deployment) now unblocked
-   - **Iteration Progress**: 6.5/20.5 pts delivered; acceptance gate clear for T-006+ execution
+
+- **Task**: T-005 revision completes MVP extension-deployment path
+- **Review Verdict**: PASS (extension deployment script fully implements decision binding)
+- **Decision Binding**: Three requirements recorded in decisions.md (prefer CLI API, fallback metadata, isolation flag)
+- **Contract Compliance**: Task table marked done with 1.0 pts actual; no undocumented hooks (FR-013 verified)
+- **Continuity**: T-005 closes successfully; T-006 (Squad runtime deployment) now unblocked
+- **Iteration Progress**: 6.5/20.5 pts delivered; acceptance gate clear for T-006+ execution
 
 📌 **T-006 Squad Skill Deployment Review — ACCEPTED (2026-04-25T11:52:30Z)**:
     - **Task**: T-006 implementation and review closeout
@@ -341,11 +370,12 @@ I evaluate each task output against the source requirement and produce explicit 
 ---
 
 📌 **Iteration 1 Remediation Acceptance Review (2026-04-25T17:10:13Z)**:
-   - ✅ Reviewed corrected plan with all carryovers traceable and capacity coherent
-   - ✅ Validated T-006 implementation scope (skills deployment, deferred governance)
-   - ✅ Confirmed T-007, T-008, T-009 remain recorded done status
-   - ✅ Verified plan closure evidence tables aligned with execution artifacts
-   - **Verdict**: PASS — Remediation accepted; ready for delivery
+
+- ✅ Reviewed corrected plan with all carryovers traceable and capacity coherent
+- ✅ Validated T-006 implementation scope (skills deployment, deferred governance)
+- ✅ Confirmed T-007, T-008, T-009 remain recorded done status
+- ✅ Verified plan closure evidence tables aligned with execution artifacts
+- **Verdict**: PASS — Remediation accepted; ready for delivery
 
 📌 **Session Log — FR-020 Brownfield Bootstrap Handoff (2026-05-03)**:
     - **Session:** Brownfield bootstrap implementation → pre-review → reviewer gate

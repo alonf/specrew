@@ -1,4 +1,5 @@
 # Phase 0: Research & Clarification
+
 ## Feature: Legacy-State Read-Tolerance + Schema Migration Discipline
 
 **Branch**: `023-legacy-state-read-tolerance`  
@@ -82,6 +83,7 @@ Resolve all "NEEDS CLARIFICATION" items from Technical Context before proceeding
 **Iteration 1 migration scope** (FR-004, FR-005, FR-006):
 
 **HIGH priority** (causes crashes or StrictMode errors):
+
 1. `scripts/specrew-start.ps1:375` — change `feature.json` parsing to `-AsHashtable`
 2. `scripts/internal/worktree-awareness.ps1:57-75` — change `feature.json` parsing to `-AsHashtable`
 3. `.specify/extensions/specrew-speckit/scripts/scaffold-feature-closeout-dashboard.ps1:106-121` — change to `-AsHashtable` + null-safe access
@@ -91,6 +93,7 @@ Resolve all "NEEDS CLARIFICATION" items from Technical Context before proceeding
 5. `scripts/internal/coordinator-resume.ps1:28-56` — change `last-validator-summary.json` parsing to `-AsHashtable`
 
 **LOW priority** (no structured access or already compliant):
+
 - Manual YAML parsing: already outputs hashtables where needed
 - `.specify/scripts/powershell/common.ps1` — no StrictMode, so not a blocker, but should be migrated for consistency in Iteration 2
 
@@ -152,6 +155,7 @@ Resolve all "NEEDS CLARIFICATION" items from Technical Context before proceeding
 - Future fixtures (0.23.0+) can be generated or hand-curated as needed per closeout template reminder (FR-013)
 
 **Fixture directory structure**:
+
 ```
 tests/fixtures/legacy-versions/
 ├── 0.18.0/
@@ -179,11 +183,13 @@ tests/fixtures/legacy-versions/
 ### Findings
 
 **Validator Framework Architecture**:
+
 - **Location**: `.specify/extensions/specrew-speckit/scripts/validate-governance.ps1` (main entrypoint, ~1700 lines)
 - **Structure**: Single PowerShell script with `Test-*` functions (not a plugin registry)
   - Example rules: `Test-StateArtifact` (line 1562-1615), `Test-ReviewArtifact` (line 1617-1694), `Test-IterationCloseoutEvidence` (line 1794-1860)
   - Rules accumulate failures into `System.Collections.Generic.List[string]` via `Add-RepoStructuredValidationFailure`
 - **Rule interface contract**:
+
   ```powershell
   function Test-RuleName {
       param(
@@ -194,16 +200,19 @@ tests/fixtures/legacy-versions/
       # Read artifact(s), validate, push human-readable failures into $Errors
   }
   ```
+
 - **Error format**: Structured via `Add-RepoStructuredValidationFailure`:
   - `FilePath`, `LineNumber`, `Category`, `Message`, `RemediationHint`
   - Example: `"Function Get-XYZ uses ConvertFrom-Json without -AsHashtable. State readers must use hashtables to tolerate missing fields. Add -AsHashtable parameter."`
 
 **CI/PR Integration**:
+
 - **GitHub Actions**: `.github/workflows/specrew-ci.yml:60-63` runs `validate-governance.ps1 -ProjectPath .`
 - **PR template**: `.github/PULL_REQUEST_TEMPLATE.md:23-29` requires validator pass
 - **Squad coordination**: `.github/agents/squad.agent.md:117-120` instructs Squad to run validator before lifecycle transitions
 
 **Rule Scoping** (from Proposal 059):
+
 - Target functions matching:
   - `Get-Specrew*SessionState`
   - `Get-Specrew*State`
@@ -264,12 +273,15 @@ function Test-ReaderTolerance {
 - Cross-platform line-ending normalization via Git `core.autocrlf` (per Assumptions section in spec)
 
 **Implementation**:
+
 - Add step to `.github/workflows/specrew-ci.yml` after validator step:
+
   ```yaml
   - name: Test Legacy State Readers (Linux)
     run: |
       pwsh -File tests/integration/Test-LegacyStateReaders.Tests.ps1
   ```
+
 - Pester test script (FR-008): `tests/integration/Test-LegacyStateReaders.Tests.ps1` invokes all state readers against all fixtures in `tests/fixtures/legacy-versions/`
 
 ### Alternatives Considered

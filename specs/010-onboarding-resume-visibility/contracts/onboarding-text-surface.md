@@ -30,13 +30,16 @@ This contract does not prescribe exact wording. It specifies required semantic e
 | `README-C3` | MUST include a one-sentence rationale explaining why running `copilot` directly is unsupported (i.e., it bypasses runtime handoff regeneration or equivalent brief explanation) | Same location as README-C2 |
 
 ### Forbidden Content
+
 - MUST NOT imply `specrew start` is only needed on the first session.
 - MUST NOT present running `copilot` directly as a valid or acceptable Specrew launch path.
 
 ### Visibility Constraint
+
 The resume guidance and anti-pattern warning MUST be findable without reading the entire document. If placed in the Recommended flow, they may appear as a follow-on note to step 2. If placed in Notes, they must be the first or second note item.
 
 ### Example (non-normative)
+>
 > **Resuming work on a later day**: Run `specrew start` again — every session, including resumes, begins with `specrew start`. Running `copilot` directly is not supported: it skips the runtime handoff regeneration that `specrew start` performs before launch.
 
 ---
@@ -60,13 +63,16 @@ The resume guidance and anti-pattern warning MUST be findable without reading th
 | `GS-C8` | Subsection SHOULD clarify that resuming means starting a new session, not re-running `specrew start` inside an already-active conversation | Inside the subsection (edge case from spec) |
 
 ### Forbidden Content
+
 - MUST NOT imply `specrew start` is a first-launch-only step anywhere in the document.
 - MUST NOT present running `copilot` directly as a valid or acceptable Specrew launch path.
 
 ### Visibility Constraint
+
 The "Resuming work later" subsection MUST appear as a clearly delineated section findable through standard document navigation (heading in the Markdown table of contents, if present, or visible without full-document read). It must not be buried in an Appendix or Troubleshooting section.
 
 ### Platform Neutrality
+
 All wording must apply equally to Windows, macOS, and Linux. No Windows-only paths or commands in the resume guidance.
 
 ### Example subsection structure (non-normative)
@@ -82,6 +88,7 @@ pwsh -File C:\Dev\Specrew\scripts\specrew.ps1 start
 ```
 
 `specrew start` regenerates the per-machine runtime handoff files before launching Copilot:
+
 - `.specrew/last-start-prompt.md`
 - `.specrew/start-context.json`
 - `.specrew/start-summary.md`
@@ -96,6 +103,7 @@ step and is not a supported Specrew launch path.
 **Active sessions**: If you are already inside a live Squad session launched by `specrew start`,
 do not re-run `specrew start` in the same conversation. Resuming refers to starting a new session
 in a new terminal, not restarting within an active conversation.
+
 ```
 
 ---
@@ -150,10 +158,11 @@ Write-Host ''
 | `UG-R3` | No sentence contradicts the resume contract established in the three primary surfaces | If found: align with contract |
 
 ### Recording Obligation
+
 Regardless of outcome, the reviewer MUST record one of the following in the iteration state notes before closure:
 
 > **Pass**: "FR-005 review of docs/user-guide.md: no contradictory first-launch-only language or anti-pattern endorsement found. No edit required."
-
+>
 > **Edited**: "FR-005 review of docs/user-guide.md: [describe contradiction]. Edit applied: [describe correction]."
 
 ---

@@ -23,6 +23,7 @@ Feature 011 iteration 002 implementation is **ACCEPTED**. All three blocking con
 **Status**: ✅ **PASS**
 
 **Evidence**:
+
 1. ✅ **Change Detector Tests** (`tests\integration\specrew-start-change-detector.ps1`) — PASSED  
    - Detector correctly identifies changed session-loaded paths via `git diff --name-only`
    - Detector returns empty list when no session-loaded files changed
@@ -54,6 +55,7 @@ Feature 011 iteration 002 implementation is **ACCEPTED**. All three blocking con
 **Status**: ✅ **PASS** (with interpretation note)
 
 **Evidence**:
+
 1. ✅ **Scaffold-Replay-Path Visibility Assertions** (`tests\integration\specrew-start-pause-and-confirm.ps1` Tests 1-5)  
    - Tests invoke `specrew-start.ps1` (the scaffold path for this feature) via `& pwsh ... -File $startScript`
    - Tests assert pause-and-confirm messages render correctly in handoff output (Test 1: "PASS: Pause-and-confirm directive present")
@@ -83,6 +85,7 @@ Feature 011 iteration 002 implementation is **ACCEPTED**. All three blocking con
 **Status**: ✅ **PASS**
 
 **Evidence**:
+
 1. ✅ **Corpus Row Exists** (`.specrew\quality\known-traps.md` row 14, line 14)  
    - Category: `governance` ✓
    - Broken Pattern: "`specrew-start.ps1` auto-handoff bypasses the user's ability to issue first-message directives when session-loaded files are committed between restarts. Session-loaded paths include `.github/agents/*`, `.github/copilot-instructions.md`, `extensions/specrew-speckit/squad-templates/coordinator/*`, `.specify/extensions/specrew-speckit/squad-templates/coordinator/*`, and `.squad/agents/*/charter.md`. When the user commits changes to these behavioral files and restarts Copilot to reload them, the existing auto-continue directive in the regenerated `.specrew/last-start-prompt.md` immediately resumes the lifecycle, bypassing the user's chance to inject a post-restart directive (e.g., status clarifications, iteration-plan overrides, or scope reframings)." ✓
@@ -110,6 +113,7 @@ Feature 011 iteration 002 implementation is **ACCEPTED**. All three blocking con
 **Status**: ✅ **PASS**
 
 **Evidence**:
+
 1. ✅ **Parameter Acceptance Tests** (`tests\integration\specrew-start-parameter-handling.ps1` Tests 1-4) — PASSED  
    - `-PostRestartDirective` parameter accepted (Test 1: "PASS: Custom directive prepended correctly")
    - Custom directive prepended verbatim (Test 2: "PASS: Directive text preserved verbatim")
@@ -133,6 +137,7 @@ Feature 011 iteration 002 implementation is **ACCEPTED**. All three blocking con
 **Status**: ✅ **PASS**
 
 **Evidence**:
+
 1. ✅ **Iteration 001 Regression Suite** — PASSED  
    - `tests\integration\specrew-start-change-detector.ps1`: "All change detector tests passed" (2/2 tests)
    - `tests\integration\specrew-start-baseline-tracking.ps1`: "All baseline tracking tests passed" (3/3 tests)

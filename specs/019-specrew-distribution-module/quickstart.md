@@ -9,6 +9,7 @@
 ## Overview
 
 Specrew is a specification-driven development workflow system designed for AI-augmented teams. This guide covers:
+
 - **One-line installation** via PowerShell Gallery
 - **Project bootstrapping** with `specrew init`
 - **Template updates** with `specrew update`
@@ -25,6 +26,7 @@ Specrew is a specification-driven development workflow system designed for AI-au
 Before installing Specrew, ensure your environment meets these requirements:
 
 ✅ **PowerShell 7.0 or higher** (cross-platform support)
+
 - Check version: `$PSVersionTable.PSVersion`
 - Install PowerShell 7: [Download from GitHub](https://github.com/PowerShell/PowerShell/releases)
 
@@ -47,11 +49,13 @@ Install-Module Specrew -Scope CurrentUser
 If the gallery package is not live yet, PowerShell will return "Cannot find module 'Specrew' in the gallery" — that is expected before the first public publish and the fallback path is documented in [Alternative Installation](#alternative-installation-clone-and-path).
 
 **What happens**:
+
 - PowerShell downloads the Specrew module from PowerShell Gallery
 - Module installs to your user profile (no admin privileges required)
 - Specrew commands become available in your PATH
 
 **Verification**:
+
 ```powershell
 # Check that Specrew is installed
 Get-Module -ListAvailable Specrew
@@ -61,6 +65,7 @@ Get-Module -ListAvailable Specrew
 ```
 
 **Expected Output**:
+
 ```
 ModuleType Version    Name                   ExportedCommands
 ---------- -------    ----                   ----------------
@@ -78,6 +83,7 @@ specrew help
 ```
 
 **Expected Output**:
+
 ```
 specrew <command> [options]
 
@@ -106,6 +112,7 @@ specrew init
 ```
 
 **What happens**:
+
 - Specrew detects it's running from an installed module (not a cloned repo)
 - Templates are copied from the module installation directory to your project:
   - `.specify/` — Spec Kit templates (spec, plan, tasks templates)
@@ -119,6 +126,7 @@ specrew init
   - `.specrew/role-assignments.yml` — Runtime role routing
 
 **Verification**:
+
 ```powershell
 # Check that directories were created
 Test-Path .specify/, .squad/, .github/
@@ -140,12 +148,14 @@ specrew start
 ```
 
 **What happens**:
+
 - Specrew loads project state from `.squad/identity/now.md`
 - Specrew writes `.specrew\last-start-prompt.md`, `.specrew\start-context.json`, and `.specrew\start-summary.md`
 - Copilot (or your configured AI agent) receives the generated project context
 - You're prompted to describe what you want to build or change
 
 **Example Session Flow**:
+
 1. You describe a feature: "I want to add user authentication with JWT tokens"
 2. Copilot generates a specification (`specs/001-user-authentication/spec.md`)
 3. You review and approve the spec
@@ -171,16 +181,19 @@ specrew update
 ```
 
 **What happens**:
+
 - `Update-Module Specrew`: Downloads new module version from PowerShell Gallery; new scripts and extensions take effect immediately
 - `specrew update`: Compares your project's templates with new module templates; detects conflicts if you modified templates locally
 
 **Conflict Resolution**:
 If `specrew update` detects conflicts (you modified a template that also changed in the new module version), it:
+
 1. Preserves your local template with conflict markers (Git-style: `<<<<<<<`, `=======`, `>>>>>>>`)
 2. Writes `.specrew/template-conflicts/<filename>.conflict` artifacts with full diff
 3. Next `specrew start` prompts you to resolve conflicts manually
 
 **Resolving Conflicts**:
+
 1. Review diff in `.specrew/template-conflicts/<filename>.conflict`
 2. Edit conflicted template file (e.g., `.specify/templates/spec-template.md`)
 3. Remove conflict markers (`<<<<<<<`, `=======`, `>>>>>>>`)
@@ -200,6 +213,7 @@ specrew where
 ```
 
 **Example Output**:
+
 ```
 Specrew Module Path: C:\Users\YourName\Documents\PowerShell\Modules\Specrew\0.18.0
 Project Root: C:\Projects\MyProject
@@ -212,6 +226,7 @@ Squad Directory: C:\Projects\MyProject\.squad
 ### Re-Bootstrap (Idempotent Init)
 
 Running `specrew init` multiple times in the same project is safe:
+
 - Existing templates are preserved (not overwritten)
 - Missing templates are added
 - User-modified templates are not touched
@@ -241,6 +256,7 @@ Uninstall-Module Specrew
 **Cause**: PowerShell hasn't refreshed its command cache after module installation.
 
 **Solution**: Close and reopen PowerShell, or run:
+
 ```powershell
 Import-Module Specrew -Force
 ```
@@ -276,6 +292,7 @@ Import-Module Specrew -Force
 **Cause**: Module installation may be incomplete or corrupted.
 
 **Solution**: Reinstall module:
+
 ```powershell
 Uninstall-Module Specrew
 Install-Module Specrew -Scope CurrentUser -Force
@@ -288,22 +305,26 @@ Install-Module Specrew -Scope CurrentUser -Force
 If you prefer to run Specrew from a cloned repository (e.g., for development or testing):
 
 1. **Clone Repository**:
+
    ```bash
    git clone https://github.com/alonf/specrew.git
    cd specrew
    ```
 
 2. **Add to PATH** (Windows):
+
    ```powershell
    $env:PATH += ";C:\path\to\specrew\scripts"
    ```
 
    **Add to PATH** (Linux/Mac):
+
    ```bash
    export PATH="$PATH:/path/to/specrew/scripts"
    ```
 
 3. **Bootstrap Project**:
+
    ```powershell
    cd /path/to/your/project
    specrew-init.ps1  # Note: .ps1 extension required for clone-and-PATH

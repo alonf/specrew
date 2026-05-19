@@ -44,6 +44,7 @@ Iteration 0 Foundation execution and review closed cleanly with **zero execution
 | T-023 | 1 | 1 | 0 | GitHub Project board |
 
 **Summary**:
+
 - **Total Planned**: 20.5 story points
 - **Total Actual**: 20.5 story points
 - **Total Variance**: 0 story points (0%)
@@ -63,6 +64,7 @@ Iteration 0 Foundation execution and review closed cleanly with **zero execution
 **Specification drift rate**: 0%
 
 **Key Findings**:
+
 1. No task output deviated from requirement
 2. Architecture decision (Squad-native surfaces, T-017) was properly scoped as a spike, not a mid-execution pivot
 3. Late spec-authority gates caught 4 out-of-scope work proposals, preventing them from becoming executed drift
@@ -73,21 +75,27 @@ Iteration 0 Foundation execution and review closed cleanly with **zero execution
 ## What Went Well
 
 ### 1. Clear Foundation Scope
+
 Iteration 0 constraints (platform validation + scaffolding only, no runtime behavior) created a tight problem space. Foundation work is inherently lower-risk for drift because outputs are mechanical (directory structure, stub files, documented spikes) rather than behavioral (skill implementation, ceremony logic).
 
 ### 2. Strong Spike Process
+
 All 9 platform validation spikes (T-013–T-021) completed with clear Pass/Fail verdicts:
+
 - 4 spikes confirmed compatibility (Spec Kit 0.7.3, Squad 0.9.1, hook availability)
 - 5 spikes explored architecture options and resolved ambiguity (Squad-native surfaces decision)
 - Zero spike dependencies missed; no downstream blocking
 
 ### 3. Proactive Architecture Reconciliation
+
 T-017 (Squad extension discovery spike) triggered mid-execution architecture refinement (2026-04-18) when the original `extensions/specrew-squad/` package structure proved incompatible with Squad's native plugin model. This was caught **within scope** and refactored to Squad-native surfaces. The issue was detected and resolved without creating drift because the spike itself was the investigation task.
 
 ### 4. Requirement Traceability
+
 100% of tasks traced to FR-001 or FR-013 at execution start. Traceability matrix in plan.md drove task selection and prevented hidden scope creep.
 
 ### 5. Team Role Clarity
+
 Implementer (La Forge) and Planner (Data) role boundaries were explicit and respected. No task ownership ambiguity; no rework due to role confusion.
 
 ---
@@ -95,13 +103,16 @@ Implementer (La Forge) and Planner (Data) role boundaries were explicit and resp
 ## What Didn't Go Well
 
 ### 1. Late Spec-Authority Gates (Process Friction)
+
 **Pattern**: 4 plan revisions occurred **after execution started** (2026-04-18 morning through afternoon).
+
 - Revision 1 (Data): Scope math overcommit — 22 pts → justified 20.5 pts
 - Revision 2 (Worf): Traceability audit — caught stale references and missing FR mappings
 - Revision 3 (La Forge): Contract normalization — removed non-spec citations, fixed metadata fields
 - Revision 4 (Final Polish): Resolved final traceability gaps
 
 **Impact**:
+
 - Plan churn mid-execution created uncertainty about final scope
 - 4 plan-driven task re-sequencings or clarifications during execution
 - Team needed to reverify task allocations after each revision
@@ -114,11 +125,14 @@ Implementer (La Forge) and Planner (Data) role boundaries were explicit and resp
 ---
 
 ### 2. Architecture Spike Ran in Parallel with Task Execution (Blocking Risk)
+
 **Pattern**: T-017 (Squad extension discovery) was scheduled **in parallel** with T-003–T-012 (extension scaffolding tasks).
+
 - If T-017 discovered incompatibility, T-003–T-012 outputs would be invalid
 - This created **hidden dependency**: downstream tasks technically weren't blocked (spike was independent effort), but their outputs depended on spike findings
 
 **Impact**:
+
 - T-008–T-012 (Squad template sources) couldn't be finalized until T-017 completed
 - Spike result (Squad-native surfaces decision) cascaded into template structure decisions
 - Minimal actual delay (spike completed same day) but created coordination tension
@@ -130,11 +144,14 @@ Implementer (La Forge) and Planner (Data) role boundaries were explicit and resp
 ---
 
 ### 3. Traceability Checked Post-Execution (Late Detection)
+
 **Pattern**: Traceability audit (plan.md § Traceability Matrix ↔ task table consistency) ran **at review gate** (Worf's review), not in planning ceremony.
+
 - Audit caught 7 traceability issues (stale FR references, missing mappings)
 - All were resolved but after task execution had begun
 
 **Impact**:
+
 - Manual audit work repeated verification already implicit in plan
 - Issues should have surfaced before tasks started
 - Created rework in plan artifacts (revisions 2–3)
@@ -146,11 +163,14 @@ Implementer (La Forge) and Planner (Data) role boundaries were explicit and resp
 ---
 
 ### 4. Retrospective Gated to Human Sign-Off (Ceremony Timing)
+
 **Pattern**: Review verdict was ✅ ACCEPTED on 2026-04-18. Retrospective completed same-day; Alon's final sign-off was recorded (2026-04-18).
+
 - Review phase (Worf) completed same-day
 - Retrospective phase (this document) deferred 1+ day awaiting human decision gate
 
 **Impact**:
+
 - Improvement actions (e.g., process changes for Iteration 1) couldn't be captured until retro closed
 - Process learning was delayed even though execution data was complete
 - Retrospective ceremony couldn't start until gate was explicitly passed by human
@@ -246,6 +266,7 @@ Based on process findings, the following three improvements require **zero new e
 **Hypothesis**: Decoupling retrospective ceremony from human acceptance gate allows retro to run on fixed schedule, improving process learning velocity and allowing improvement actions to be captured and routed immediately.
 
 **Change**: Review verdict (Worf) and Retro ceremony (Troi) are separate phases:
+
 - Review gate closes review (accepts/rejects iteration output)
 - Retro ceremony runs autonomously on fixed schedule (e.g., next business day, 2pm) regardless of sign-off timing
 - Alon's acceptance gate (Chief Architect & Reviewer sign-off) remains a separate decision that can happen before, during, or after retro
@@ -270,6 +291,7 @@ Based on process findings, the following three improvements require **zero new e
 **Limitation**: Foundation work (scaffolding, spikes) is structurally low-variance because outputs are mechanical. Iteration 1+ will implement runtime behavior (skills, ceremony logic), which is higher-discovery and may have higher variance.
 
 **Recommendation**:
+
 1. **Keep point-based model** — it's working well
 2. **Add phase-level tracking** — track effort per phase (planning, execution, review, retro) to identify where tightness exists and where buffer is needed
 3. **Variance target for Iteration 1**: ±10% acceptable (0–1 pt overrun on 20 pt capacity) given higher implementation risk
@@ -281,6 +303,7 @@ Based on process findings, the following three improvements require **zero new e
 **Recommended Iteration 1 Capacity**: **20 pts** (return to standard capacity)
 
 **Rationale**:
+
 - Iteration 1 is MVP implementation (bootstrap script, governance scaffold, drift-check skill, ceremonies), significantly higher complexity than Foundation scaffolding
 - High-uncertainty work benefits from conservative capacity planning
 - Safety buffer in standard 20 pt capacity is appropriate for behavior-change work
@@ -330,6 +353,7 @@ Based on process findings, the following three improvements require **zero new e
 **Closure Gate**: ✅ **Alon final sign-off recorded (2026-04-18) — Iteration 0 moved to `complete`**
 
 **Recorded Follow-On Readiness Signals**:
+
 1. ✅ Governance hardening policy consensus captured as required follow-on work
 2. ✅ Pre-planning spike identification called out for Iteration 1
 3. ✅ Planning ceremony charter gate documented as an improvement action

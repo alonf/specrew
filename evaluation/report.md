@@ -27,18 +27,21 @@
 ## Per-Iteration Breakdown
 
 ### Iteration 000
+
 - Status: `complete`
 - Artifact adherence: **PASS** (missing: none)
 - Phase adherence: **PASS** (issues: none)
 - Expected artifacts: plan.md, state.md, drift-log.md, review.md, retro.md
 
 ### Iteration 001
+
 - Status: `complete`
 - Artifact adherence: **PASS** (missing: none)
 - Phase adherence: **PASS** (issues: none)
 - Expected artifacts: plan.md, state.md, drift-log.md, review.md, retro.md
 
 ### Iteration 002
+
 - Status: `retro`
 - Artifact adherence: **PASS** (missing: none)
 - Phase adherence: **PASS** (issues: none)

@@ -67,6 +67,7 @@ Iteration 002 entered a bounded post-review repair cycle after human WSL Ubuntu 
 - `extensions/specrew-speckit/scripts/*.ps1`
 
 **Acceptance**:
+
 - All embedded-backslash path strings replaced with `Join-Path`
 - Scripts run correctly on Windows (existing behavior preserved)
 - Scripts run correctly on Linux/macOS (no path delimiter failures)
@@ -85,6 +86,7 @@ Iteration 002 entered a bounded post-review repair cycle after human WSL Ubuntu 
 3. **macOS**: Include macOS runner in CI matrix if trivial; otherwise defer to post-merge human follow-up
 
 **Acceptance**:
+
 - CI matrix runs pass on Ubuntu
 - WSL verification documented (or marked pending if unavailable)
 - Test evidence in `test-evidence/us5-cross-platform.md` shows cross-platform parity
@@ -99,6 +101,7 @@ Iteration 002 entered a bounded post-review repair cycle after human WSL Ubuntu 
 **Description**: Remove/configure the manual-approval gate in `.github/workflows/publish-module.yml` so the workflow can fire automatically on release-tag push. This enablement allows T053 (first real publish) to execute later as human post-merge follow-up without requiring workflow changes at that time.
 
 **Acceptance**:
+
 - Manual-approval gate removed or configured as optional
 - Workflow can fire automatically on `v*.*` tag push
 - Workflow still respects secret requirements (PSGALLERY_API_KEY, SIGNING_CERT_BASE64, SIGNING_CERT_PASSWORD)
@@ -114,6 +117,7 @@ Iteration 002 entered a bounded post-review repair cycle after human WSL Ubuntu 
 **Description**: Update README and `docs/getting-started.md` from Windows-only install instructions to Windows + Linux (Ubuntu via WSL) if T041 and T054 evidence supports cross-platform claims. Do NOT overclaim — only update docs if actual evidence validates the claim.
 
 **Acceptance**:
+
 - README mentions Ubuntu/WSL support if evidence validates it
 - `docs/getting-started.md` includes Linux install instructions if supported
 - No false claims about unsupported platforms

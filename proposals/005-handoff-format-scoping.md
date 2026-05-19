@@ -21,6 +21,7 @@ A recurring observation: Squad outputs like "What I need from you: Nothing yet" 
 Introduced a response-type selector distinguishing final-stop messages (full three-section format) from single-line in-flight progress updates (terse).
 
 Added two soft-warning validator rules:
+
 - `empty-user-action-section` — fires when "What I need from you" is empty or a placeholder
 - `transitional-stop-claim` — fires when the three-section format is used for an in-flight transition that should have been terse
 

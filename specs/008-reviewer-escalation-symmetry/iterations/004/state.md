@@ -19,6 +19,7 @@ This iteration carries **User Story 3 (withdrawal handling, carry-forward, known
 
 **Planned Tasks**: `T020`-`T026` (14 story_points)  
 **Deferred to Later Iterations**:
+
 - Polish (`T027`-`T028`) → Iteration 005
 
 ## Decisions and Handoff

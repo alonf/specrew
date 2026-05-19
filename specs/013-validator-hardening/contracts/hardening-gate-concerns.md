@@ -51,6 +51,7 @@ This contract formalizes the corpus trap recorded in `.specrew/quality/known-tra
 ## Change Control
 
 Changes to this contract require:
+
 1. An updated `validate-governance.ps1` rule implementation.
 2. Updated fixture coverage in `tests/integration/validator-hardening-iteration1.ps1`.
 3. Updated corpus row in `.specrew/quality/known-traps.md` if the enforcement citation changes.

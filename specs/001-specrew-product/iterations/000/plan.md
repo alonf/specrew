@@ -105,10 +105,12 @@ Validation that this plan respects Specrew's own governance model and contract t
 ### Task Descriptions
 
 **Phase 1: Repository Structure**
+
 - **T-001**: Create `.github/`, `extensions/`, `tests/`, `evaluation/`, `docs/` directories. Allocate `.github/ISSUE_TEMPLATE/`, `.github/workflows/` stubs.
 - **T-002**: Initialize repo, `.gitignore`, baseline README.md, CODEOWNERS.
 
 **Phase 2: Spec Kit Extension Skeleton**
+
 - **T-003**: Copy official Spec Kit extension starter template into `extensions/specrew-speckit/`. Validate source.
 - **T-004**: Create `hooks/`, `templates/`, `scripts/` (per spec.md clarification: no `commands/` in Iteration 0).
 - **T-005**: Minimal Specrew config entry in `specrew-speckit/config.yml` (version pins, feature flags).
@@ -116,6 +118,7 @@ Validation that this plan respects Specrew's own governance model and contract t
 - **T-007**: Placeholder PowerShell scripts: scaffold-governance.ps1, validate-versions.ps1, brownfield-merge.ps1, collision-detect.ps1, drift-diff.ps1 (stubs with comments, no implementation).
 
 **Phase 3: Squad Template Source Structure**
+
 - **T-008**: Create `extensions/specrew-speckit/squad-templates/` with `skills/`, `ceremonies/`, `directives/` subdirectories per Squad's native deployment structure.
 - **T-009**: Markdown templates for: drift-check.md, capacity-planning.md, traceability-check.md, iteration-resume.md (SKILL.md format + prompt skeletons; no implementation).
 - **T-010**: Markdown templates for: planning.md, review-demo.md (ceremony structure + input/output schema; no implementation).
@@ -123,6 +126,7 @@ Validation that this plan respects Specrew's own governance model and contract t
 - **T-012**: Documentation explaining Squad-native integration architecture, deployment locations, and rationale (based on spike findings).
 
 **Phase 4: Platform Validation & Compatibility Spikes**
+
 - **T-013**: Verify Spec Kit install/update mechanics; document procedure for downstream users. Outcome: documented install command or troubleshooting guide.
 - **T-014**: Verify Squad install/update mechanics; document procedure. Outcome: documented install command or troubleshooting guide.
 - **T-015**: Which before_*/after_* hooks exist and fire? Document available hooks per lifecycle phase.
@@ -134,6 +138,7 @@ Validation that this plan respects Specrew's own governance model and contract t
 - **T-021**: Confirm: do prompt files go in `.github/prompts/` or `.specify/templates/commands/`? Document canonical location.
 
 **Phase 5: Testing Infrastructure**
+
 - **T-022**: Create `.github/workflows/ci.yml`: markdownlint, PSScriptAnalyzer, test runner. Lint on every PR; tests on push.
 - **T-023**: Create GitHub Project board (V2) using Squad's documented default layout. Link to repo; auto-link issues.
 

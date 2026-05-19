@@ -305,23 +305,27 @@ graph TD
 **Critical Path**: Research → Pillar 1/2 (parallel) → Pillar 3 → Pillar 4 → Final Validation
 
 **Parallelization Opportunities**:
+
 - Pillar 1 and Pillar 2 can execute in parallel (independent)
 - Pillar 4 and Pillar 5 can execute in parallel after Pillar 3 completes (independent after init refactor)
 
 ### Governance and Quality Touchpoints
 
 **During Implementation** (`/speckit.implement` boundary):
+
 - Specrew-Speckit validators run on every task completion (traceability checks, spec-to-task alignment)
 - Integration tests run after each pillar completes (incremental validation)
 - Cross-platform verification executes in two slices: Iteration 001 manual Windows-first checklist, then Iteration 002 Ubuntu/macOS/WSL hardening once explicitly authorized.
 
 **Post-Implementation** (before feature closeout):
+
 - Manual User Story acceptance scenario checklist (US-1 through US-5)
 - PSGallery publish dry-run (test gallery or `Publish-Module -WhatIf`)
 - GitHub Actions workflow validation (test tag push, review logs)
 - Success criteria measurement (SC-001 through SC-006)
 
 **Constitution Alignment**:
+
 - **Principle IX (Mandatory Traceability)**: Every task traces to FR, US, and plan track
 - **Principle XVII (Planning Starts From Approved Specs)**: All tracks derived from spec FRs
 - **Principle XXI (Verification Is Mandatory)**: Quality gates defined for each pillar
@@ -409,6 +413,7 @@ graph TD
 **This planning boundary (`/speckit.plan`) is now complete.** The next valid action is `/speckit.tasks` to generate the task breakdown from this plan.
 
 **What Has Been Delivered**:
+
 - ✅ Implementation plan with 5-pillar architecture
 - ✅ Track dependency graph and critical path analysis
 - ✅ Constitution Check (all gates pass)
@@ -419,6 +424,7 @@ graph TD
 - ✅ Governance touchpoints and Squad integration strategy
 
 **What Remains Deferred**:
+
 - ❌ `/speckit.tasks` generation (not authorized at this boundary)
 - ❌ Implementation execution (requires `/speckit.tasks` first)
 - ❌ Code changes to scripts/ or extensions/ (implementation-time work)
@@ -426,11 +432,13 @@ graph TD
 - ❌ PSGallery module publishing (post-implementation work)
 
 **Boundary Commit Requirements** (from user authorization):
+
 - Commit subject: "Feature 019 /speckit.plan boundary complete — 5-pillar distribution architecture"
 - Commit body: Include link to plan.md, track summary, and confirmation that `/speckit.tasks` has NOT started
 - Push to origin/019-specrew-distribution-module
 
 **For Implementation Team**:
+
 - Read `research.md` (Phase 0 output) before starting Phase 2 implementation
 - Review `data-model.md`, `contracts/`, and `quickstart.md` (Phase 1 outputs) as implementation blueprints
 - Follow track dependency order (see Track Dependencies graph above)

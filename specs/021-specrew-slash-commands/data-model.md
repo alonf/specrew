@@ -31,6 +31,7 @@ Feature 021 does not introduce a database or service-side schema. Its design mod
 | `boundary_guard` | string | Statement of lifecycle-boundary behavior | ✓ | Must preserve Feature 016 review-stop discipline |
 
 **Validation Rules**:
+
 - The catalog must contain `/specrew.where`, `/specrew.status`, `/specrew.update`, `/specrew.team`, `/specrew.review`, `/specrew.help`, and `/specrew.version`.
 - Only `/specrew.status` may be modeled as an alias in v1.
 - Discovery policy must always name a fallback path.
@@ -53,6 +54,7 @@ Feature 021 does not introduce a database or service-side schema. Its design mod
 | `boundary_behavior` | string | Lifecycle-boundary guard statement | ✓ | Must not imply approval to advance planning/implementation |
 
 **Validation Rules**:
+
 - `canonical_name` must remain stable once shipped.
 - `backend_route` must preserve the current semantic intent of the underlying command.
 - `supported_args` must be a whitelist, not a passthrough indicator.
@@ -73,6 +75,7 @@ Feature 021 does not introduce a database or service-side schema. Its design mod
 | `dispatch_target` | string/null | Normalized backend invocation target | ✗ | Required when validation is `accepted` |
 
 **Validation Rules**:
+
 - Only `accepted` requests may produce a dispatch target.
 - Rejected requests must emit explicit help/remediation guidance.
 - Invocation handling must preserve raw/native backend output after validation succeeds.
@@ -91,6 +94,7 @@ Feature 021 does not introduce a database or service-side schema. Its design mod
 | `remediation_path` | string | Upgrade/setup guidance | ✓ | Must mention supported init/update path |
 
 **Validation Rules**:
+
 - A degraded discovery host may still be compatible if execution and `/specrew.help` work.
 - A version mismatch must block execution only when the required baseline is missing.
 - Remediation must never be blank when compatibility fails.
@@ -108,6 +112,7 @@ Feature 021 does not introduce a database or service-side schema. Its design mod
 | `expansion_rule` | string | How future commands are added | ✓ | Explicit new catalog entries only |
 
 **Validation Rules**:
+
 - No rule may authorize silent takeover of another namespace.
 - Coexistence rules must remain additive and human-review safe.
 
@@ -146,6 +151,7 @@ planned
 ```
 
 Rules:
+
 - A command cannot become `discoverable` before it is `deployed`.
 - A command cannot be treated as production-ready before it is `validated`.
 

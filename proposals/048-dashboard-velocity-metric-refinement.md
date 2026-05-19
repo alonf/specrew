@@ -64,6 +64,7 @@ No new storage. All metrics derivable from existing iteration history that the d
 **Phase 2, fast follow-up to F-020.** Slots well after Proposal 046 (auto-render dashboard at closeout) since both touch the dashboard renderer. Could combine with 046 as a single ~10-SP feature.
 
 Possible sequencing within the post-F-020 queue:
+
 - **Option A**: 032 (slash commands) → 046 (auto-render) → 048 (velocity refinement) → 047 (governance profile). 048 slots between 046 and 047 since both 046 and 048 touch the dashboard.
 - **Option B**: 032 → 046 + 048 combined → 047. Single shared dashboard-renderer feature.
 

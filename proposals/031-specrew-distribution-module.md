@@ -78,6 +78,7 @@ Rationale for the split: shipping a Windows-only PowerShell module to PSGallery 
 **Phase 2, pre-public-flip priority** — slots between F-006 (Phase 1 trilogy closure) and Branch Reconciliation (state-foundation pillar) in the Quality Hardening Bundle sequencing.
 
 Rationale:
+
 - Small scope fits as a single-day Monday-Tuesday slot
 - Load-bearing for public flip — visitor first-impression equity depends on one-line install working
 - Composes with the Methodology Site (queued) which can link to PSGallery install instructions

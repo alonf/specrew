@@ -81,6 +81,7 @@ Session-State Record is **denormalized** across four files for maximum compatibi
 **Format**: YAML array of task progress entries
 
 **Example**:
+
 ```yaml
 - task_id: "T001"
   status: "complete"
@@ -176,6 +177,7 @@ blocked -> in-progress (blocked_reason cleared)
 **Format**: JSON object
 
 **Example**:
+
 ```json
 {
   "latest_version": "0.8.0",
@@ -250,26 +252,31 @@ Version Check Cache (1) <----shared-by----> (3) Commands
 ## Edge Cases & Failure Modes
 
 ### EC-001: Mid-Sync System Crash
+
 **Scenario**: System crashes after updating `.specrew/last-start-prompt.md` but before updating `.squad/identity/now.md`.  
 **Detection**: Stale-state detection identifies cross-file inconsistency at next `specrew start`.  
 **Recovery**: User prompted to re-anchor or manually fix state; no silent corruption.
 
 ### EC-002: Task ID Renumbering
+
 **Scenario**: `tasks.md` regenerated with tasks renumbered (T001 becomes T005, etc.).  
 **Detection**: `tasks-progress.yml` references task IDs not found in current `tasks.md`.  
 **Recovery**: User prompted to reconcile manually or discard stale progress; old IDs annotated as "task not found".
 
 ### EC-003: Worktree Path Moved
+
 **Scenario**: Git worktree moved on disk but `git worktree list` still references old path.  
 **Detection**: `worktree_exists` check fails (path not found).  
 **Recovery**: `specrew where --worktrees` annotates with "(path not found)" and suggests `git worktree prune`.
 
 ### EC-004: Bootstrap Date Missing
+
 **Scenario**: `.specrew/config.yml` lacks `bootstrap_date` field (brownfield project or legacy project).  
 **Detection**: Stale-state detection merge-check reads bootstrap_date, finds it missing.  
 **Recovery**: Fallback to `git log main --since="90 days ago"` with verbose warning that bounded search used default 90-day window.
 
 ### EC-005: PSGallery Unreachable
+
 **Scenario**: Network offline or PSGallery API down when version check runs.  
 **Detection**: PSGallery query times out (>10s) or returns error.  
 **Recovery**: Version check fails silently with verbose logging; `specrew start` continues without warning; cache file deleted if exists.

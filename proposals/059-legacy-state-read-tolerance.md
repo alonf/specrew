@@ -27,6 +27,7 @@ Root cause: `Get-SpecrewStartContextSessionState` reads `.specrew/start-context.
 This bug class is broader than one function. The same pattern lurks anywhere Specrew reads JSON or YAML written by an older Specrew. **Every schema field that exists today was added at some point; if older state files in the wild don't have it, the reader needs to tolerate that.**
 
 Related historical incidents from this session:
+
 - **F-022 closeout-helper schema mismatch** (commit `94b44d7`): `Set-FeatureCloseoutIdentityNow` wrote human-readable frontmatter without the `session_state_*` machine fields the stale-state validator required. Same class — readers and writers diverged on schema.
 - **Specrew version write-back regression** (also `94b44d7`): `specrew update --spec-kit`/`--squad` was downgrading `specrew_version` from a stale extension.yml pin. Same class — a reader took authority from a file it shouldn't have.
 
@@ -83,6 +84,7 @@ tests/fixtures/legacy-versions/0.19.0/
 Every Specrew reader (`Get-SpecrewStartContextSessionState`, `Get-FeatureJson`, `Get-ConfigMap`, `Get-SpecrewIdentitySessionState`, etc.) is invoked against every fixture in CI. Pass criteria: no throws, no `$null`-reference crashes, return values structurally consistent with the function's declared output contract.
 
 When a new feature bumps a schema:
+
 1. The feature adds a new fixture at the new version (e.g., `0.23.0/`).
 2. The feature's spec must include "reader-tolerance audit" as a closeout requirement.
 3. CI runs all readers against all fixtures; any regression blocks merge.
@@ -103,6 +105,7 @@ Add a validator rule (gap #11 after Proposal 004's nine gaps closed): every Powe
 **Phase 2, HIGH-PRIORITY post-F-022.** Belongs in the same batch as Proposals 030 (Quality Hardening Bundle), 054 (Pre-Merge Lifecycle Gate), 055 (Always-In-Flow Bug-Fix Lifecycle) — all are bug-class-prevention work.
 
 Reasonable sequencing:
+
 - **After** Proposal 035 (Session-State Durability) ships — it defined the most volatile schema. Already shipped as F-020 + F-022.
 - **Before** Proposal 057 (Roadmap Spine) — `roadmap.yml` should ship with schema versioning from day 1, not retrofit later.
 - **Before** Proposal 010 (Multi-Developer Reconciliation) — multi-developer is where schema-version skew gets worst (different devs on different Specrew versions writing the same files).

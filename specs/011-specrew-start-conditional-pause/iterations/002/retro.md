@@ -21,7 +21,7 @@ Iteration 002 (User Story 2: pause-and-confirm + User Story 3: optional paramete
 | Hardening-Gate Sign-Off | ✅ SIGNED-OFF | Hardening-gate signed off by Alon Fliess on 2026-05-11 (commit bd8d3ef) with three blocking concerns identified |
 | Implementation | ✅ COMPLETE | All fourteen tasks (T043–T056) delivered in implementation commit 02b7f7b; one bug discovered and resolved during T049 test execution |
 | Review | ✅ ACCEPTED | Review pass on 2026-05-11 returned verdict `accepted`; no gaps remain |
-| Retrospective | ✅ COMPLETE | This document; full validation lane passed on 2026-05-11; all closings finalized
+| Retrospective | ✅ COMPLETE | This document; full validation lane passed on 2026-05-11; all closings finalized |
 
 ---
 

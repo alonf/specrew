@@ -31,11 +31,13 @@ This is **strictly less ambitious than Proposal 038** (which would make clarify 
 When Squad auto-resolves a clarify question (or any decision) without explicit human input, the resulting artifact entry gets an explicit marker.
 
 **Before (current behavior)**:
+
 ```markdown
 - Q: Maximum ball count for v1 → A: 50 balls max for v1 performance.
 ```
 
 **After (proposed)**:
+
 ```markdown
 - Q: Maximum ball count for v1 → A: 50 balls max for v1 performance.
   **Auto-resolved**: no human input within timeout (default selected from documented performance assumption). Review before locking downstream.
@@ -64,6 +66,7 @@ The summary appears in the user-facing console output, NOT just buried in `.squa
 Every auto-resolved decision logged to `.squad/decisions.md` includes an explicit `auto_resolved: true` flag plus `auto_resolved_reason: timeout` (or `safe-default`, `documented-assumption`, etc.).
 
 This enables:
+
 - Retros: filter decisions.md for `auto_resolved: true` to see what got skipped
 - Validators: future validator rules can warn if N+ auto-resolutions happen in a single feature (signal that human attention is needed)
 - Analytics: count auto-resolution rate over time

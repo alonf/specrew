@@ -55,6 +55,7 @@ Work surfaces in this order to minimize context-switching:
 **Required content** (per contract GS-C1 through GS-C8):
 
 Add a subsection with heading `### Resuming work later` that:
+
 - Names `specrew start` as the command for every resumed session
 - Lists the three transient runtime files: `.specrew/last-start-prompt.md`, `.specrew/start-context.json`, `.specrew/start-summary.md`
 - Explains these files do not travel with git
@@ -73,6 +74,7 @@ Add a subsection with heading `### Resuming work later` that:
 **Target location**: Recommended flow section (add resume note after step 2) and/or Notes section.
 
 **Required content** (per contract README-C1 through README-C3):
+
 - State that resumed sessions also begin with `specrew start`
 - Name `copilot` as the unsupported launch path
 - Include a one-sentence rationale (bypasses runtime handoff regeneration)
@@ -88,6 +90,7 @@ Add a subsection with heading `### Resuming work later` that:
 **Target location**: Inside `Write-PostBootstrapGuidance` function, within the `=== Next Steps ===` block. Add after the existing step 1 ("Start spec authoring") block. The existing step numbering should shift or the new resume guidance can be numbered as a follow-on to step 1.
 
 **Required content** (per contract BANNER-C1 through BANNER-C5):
+
 - A "Resuming work later" item or labeled block
 - States every subsequent session runs through `specrew start`
 - References runtime handoff regeneration before launch
@@ -109,6 +112,7 @@ Add a subsection with heading `### Resuming work later` that:
 **Action**: Read the "Recommended Downstream Entry Point" section and any other section that references `specrew start` or Copilot launch behavior.
 
 **Contradiction checklist** (per contract UG-R1 to UG-R3):
+
 - [ ] Does any sentence imply `specrew start` is only for first launch? → Edit if yes
 - [ ] Does any sentence imply running `copilot` directly is acceptable? → Edit if yes
 - [ ] Does any sentence contradict the resume contract? → Edit if yes

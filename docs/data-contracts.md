@@ -36,6 +36,7 @@ When a feature changes any state-file schema or reader behavior:
 2. Add or refresh the current Specrew version fixture in `tests/fixtures/legacy-versions/<current-version>/`.
 3. Include only representative state artifacts: hand-curated when drift matters, generated when the format is deterministic, snapshot-based when the real lifecycle output is the contract.
 4. Extend both Windows and Linux validation to exercise the new fixture.
+
 - The regression contract that exercises the corpus is `tests/integration/Test-LegacyStateReaders.Tests.ps1`. Any new fixture file or reader migration must be reflected there.
 - See the fixture coverage matrix in `specs/023-legacy-state-read-tolerance/checklists/state-reader-audit.md` for the current per-version presence/absence rationale.
 

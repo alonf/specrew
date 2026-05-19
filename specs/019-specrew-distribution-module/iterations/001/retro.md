@@ -47,11 +47,13 @@ This retrospective captures substantive process learnings, positive patterns, an
 **Why It Matters**: Boundary discipline is load-bearing for feature iteration correctness. If Squad advances automatically without human judgment, we risk skipping essential review gates. Conversely, if Squad stops at every mechanical step, we'll have false blockers. The distinction must be crisp and documented.
 
 **Refined Principle**:
+
 - **human-judgment-required boundaries** (stop here, wait for explicit auth): review-verdict-signoff, iteration-closeout, feature-closeout, retro-boundary when carrying forward design debt or scope deferral
 - **mechanical-execution boundaries** (Squad can advance autonomously): plan-phase completion, tasks-generated, implementation-ready-for-review
 - **strategic-progression boundaries** (engineering discretion, may auto-advance if gated): phase-1-to-phase-2 transitions when all phase-1 gates pass
 
 **Process Improvement Candidates**:
+
 1. Corpus row `boundary-advance-without-explicit-authorization` for known-traps.md
 2. Refinement to Squad 0.9.4 behavior spec to codify the three-class taxonomy
 3. Feature F-016 (Adaptive Boundary Discipline) graduation candidate from this learning
@@ -259,6 +261,7 @@ Based on the process findings above, the following features are candidates for g
 ## Carry-Forward Status
 
 **Preserved Explicitly**:
+
 - **T041** (broad Join-Path audit hardening) → deferred to Iteration 002
 - **T054** (Ubuntu/macOS/WSL validation) → deferred to Iteration 002
 - **T042** (GitHub Actions secrets configuration) → human follow-up post-merge (maintainer-owned)

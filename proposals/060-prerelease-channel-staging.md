@@ -14,6 +14,7 @@ discussion: tbd
 The 2026-05-19 WSL trial surfaced a five-bug cluster (`MakeRelativeUri` crash, `Get-SpecrewInstalledVersion` null, `Get-Item -Force` hidden-file crash, `session_state` StrictMode crash, plus the maintainer's stale-branch confusion) AFTER changes landed on `main`. Every one of these reached `main` without any pre-release surface that would have caught them.
 
 The current Specrew release pipeline (F-019 / Proposal 031):
+
 1. Work happens on `main` or feature branches
 2. Feature-closeout PR merges to `main`
 3. Maintainer occasionally tags `v0.NN.0` on `main`

@@ -33,14 +33,17 @@ This feature is documentation-and-banner-only. There are no application data str
 | `R-README-003` | Warning MUST include a one-sentence rationale (e.g., bypassing `specrew start` skips runtime handoff regeneration) | FR-004 |
 
 ### Placement Guidance
+
 The resume note belongs in the Recommended flow section (step 2 or as a follow-on step) or the Notes section, whichever makes the guidance most visible without reordering the existing steps. The anti-pattern warning MUST be co-located with or immediately adjacent to the resume note so a reader sees both together.
 
 ### Validation Rules
+
 - Content must be visible without requiring readers to search through unrelated content (TG-004).
 - Must not contradict the resume contract in any other sentence.
 - Must remain platform-neutral (no Windows-only wording).
 
 ### State Transitions
+
 N/A — Markdown file, no state machine.
 
 ---
@@ -67,9 +70,11 @@ N/A — Markdown file, no state machine.
 | `R-GS-006` | Anti-pattern warning MUST include a one-sentence rationale | FR-004 |
 
 ### Placement Guidance
+
 The "Resuming work later" subsection MUST appear at the end of the Greenfield Quickstart (after the first-session `specrew start` step) or as a clearly delineated section directly after it. It must be findable without reading the entire document.
 
 ### Validation Rules
+
 - The subsection heading "Resuming work later" (or equivalent) must appear in the rendered output.
 - The three transient file names must be listed explicitly.
 - The cross-machine explanation must distinguish transient per-machine files from tracked project state.
@@ -78,6 +83,7 @@ The "Resuming work later" subsection MUST appear at the end of the Greenfield Qu
 - Must pass visibility check: findable without searching through unrelated content (TG-004).
 
 ### State Transitions
+
 N/A — Markdown file, no state machine.
 
 ---
@@ -104,9 +110,11 @@ N/A — Markdown file, no state machine.
 | `R-BANNER-006` | The resume guidance MUST be visible without scrolling on a standard terminal width of at least 100 columns (SC-005) | SC-005 |
 
 ### Implementation Constraint
+
 Only the `Write-PostBootstrapGuidance` function body may be edited. No logic, parameters, control flow, or other functions in `scripts/specrew-init.ps1` may be changed. The edit is limited to adding `Write-Host` lines within the existing "Next Steps" block.
 
 ### Validation Rules
+
 - Banner text must render within 100 columns (SC-005).
 - Resume guidance must be visible without scrolling past unrelated content.
 - Anti-pattern (`copilot` directly) must be named explicitly.
@@ -114,6 +122,7 @@ Only the `Write-PostBootstrapGuidance` function body may be edited. No logic, pa
 - Platform-neutral wording required.
 
 ### State Transitions
+
 N/A — display-only function.
 
 ---
@@ -137,14 +146,18 @@ N/A — display-only function.
 | Contradicts resume contract | Not present | Any sentence that would cause a user to believe resuming works differently from first launch |
 
 ### Optional Alignment Note
+
 If the review finds neutral (non-contradictory but non-explicit) language — the current state — a one-sentence alignment note MAY be added to the "Recommended Downstream Entry Point" section to confirm `specrew start` applies to both first launch and resumed sessions. This is optional and at implementer discretion.
 
 ### FR-005 Recording Obligation
+
 Regardless of outcome, the review finding MUST be recorded in the iteration state notes before closure:
+
 - **If no edit needed**: "FR-005 review of docs/user-guide.md: no contradictory first-launch-only language found. No edit required."
 - **If edit made**: "FR-005 review of docs/user-guide.md: [describe contradictory language found]. Edit applied: [describe change]."
 
 ### Validation Rules
+
 - Review must happen before closure.
 - Finding must be recorded.
 - If an edit is made, it must not expand scope beyond resolving the contradiction.

@@ -69,12 +69,14 @@ Iteration 0 successfully established the Specrew repository foundation with all 
 All 9 platform validation spikes passed with no blockers identified:
 
 ### ✅ Spec Kit Platform (Spikes 1, 3, 9, 11)
+
 - **Version**: 0.7.3.dev0 meets requirement (>= 0.7.3)
 - **Hooks**: 18 lifecycle hooks available for integration
 - **Extension install**: `specify extension add` command confirmed
 - **Prompt placement**: `.github/prompts/` canonical location confirmed
 
 ### ✅ Squad Platform (Spikes 2, 4, 5, 8, 10)
+
 - **Version**: 0.9.1 meets requirement (>= 0.9.1)
 - **Hook limitations**: No post-task hook; directive + ceremony fallback viable
 - **Extension model**: Squad-native surfaces architecture adopted
@@ -82,7 +84,9 @@ All 9 platform validation spikes passed with no blockers identified:
 - **Deployment**: Native file deployment (no marketplace plugin needed)
 
 ### Architecture Resolution
+
 Squad-native surfaces architecture was adopted during Iteration 0 execution (2026-04-18):
+
 - Skills deployed to `.copilot/skills/specrew-*/SKILL.md`
 - Ceremonies appended to `.squad/ceremonies.md`
 - Directives merged into `.squad/agents/*/charter.md`

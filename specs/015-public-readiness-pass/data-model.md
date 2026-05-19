@@ -33,6 +33,7 @@ public-ready.
 | Version Reference | `docs/versioning.md` | FR-014 | Missing | Present; full versioning policy |
 
 **Validation Rules** (enforced by `Test-PublicReadinessSurfaces` in `validate-governance.ps1`):
+
 - `LICENSE` file must exist at repo root
 - `NOTICE.md` file must exist at repo root
 - `CHANGELOG.md` file must exist at repo root
@@ -41,6 +42,7 @@ public-ready.
   (heuristic staleness check)
 
 **Staleness Detection**:
+
 - Missing file → `WARN [public-readiness] missing-artifact: <path>`
 - README does not contain version string → `WARN [public-readiness] stale-version-in-readme`
 - Missing `docs/versioning.md` → `WARN [public-readiness] missing-artifact: docs/versioning.md`
@@ -66,6 +68,7 @@ upstream-derived Specrew materials.
 | `notice-text` | Required MIT notice text from upstream project | Copy verbatim or reference |
 
 **Structure** (per upstream):
+
 ```markdown
 ## [Upstream Project Name]
 
@@ -109,6 +112,7 @@ Each `CHANGELOG.md` entry for a retroactive feature release:
 | PR reference | Optional | Include only when it adds clarity |
 
 **Example Entry**:
+
 ```markdown
 ## [0.13.0] — 2026-04-XX
 
@@ -129,6 +133,7 @@ Canonical schema enforcement, structured validator failures, and approval-reuse 
 | tag message | `Specrew v0.14.0 — Feature 014 handoff-format-scoping (PR #99)` | |
 
 **State Transitions**:
+
 ```
 [no tags] → v0.13.0 created retroactively at 21d9e7f
            → v0.14.0 created at 3ff32d4 (current HEAD of main)
@@ -190,6 +195,7 @@ update is independently auditable from the artifact.
 public-facing release artifacts during routine `validate-governance.ps1` runs.
 
 **Emitted by**: New function `Test-PublicReadinessSurfaces` in:
+
 - `extensions/specrew-speckit/scripts/validate-governance.ps1`
 - `.specify/extensions/specrew-speckit/scripts/validate-governance.ps1` (mirror copy)
 
@@ -203,6 +209,7 @@ public-facing release artifacts during routine `validate-governance.ps1` runs.
 | `detail` | string | path or description of what is missing/stale |
 
 **Output Format**:
+
 ```
 WARN [public-readiness] missing-artifact: LICENSE
 WARN [public-readiness] missing-artifact: NOTICE.md
@@ -210,6 +217,7 @@ WARN [public-readiness] stale-version-in-readme: README.md does not contain vers
 ```
 
 **Severity Contract**:
+
 - Output colour: Yellow (`Write-Host ... -ForegroundColor Yellow`)
 - Exit code: NOT affected — exit 0 if only soft warnings are present
 - Existing hard-fail paths: unchanged

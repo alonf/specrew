@@ -33,6 +33,7 @@ All mandatory sections are present and complete:
 ### ✅ Requirement Actionability
 
 **Functional Requirements (9 total)**:
+
 - FR-001: Shared Resolve-ProjectPath helper (relative path → PowerShell $PWD; rooted path → GetFullPath)
 - FR-002: Entry-point script adoption (5 scripts: specrew-start.ps1, specrew-update.ps1, specrew-init.ps1, specrew-team.ps1, specrew-review.ps1)
 - FR-003: Internal script audit (extensions/specrew-speckit/scripts/ + .specify/extensions/specrew-speckit/scripts/)
@@ -44,6 +45,7 @@ All mandatory sections are present and complete:
 - FR-009: Mechanical-check mapping (OPTIONAL, Phase 2 dependent)
 
 **Traceability Mappings (5 total)**:
+
 - TG-001: User Story 1 (canonical entry-point) → FR-001, 002, 004, 005
 - TG-002: User Story 2 (consistency) → FR-002, 003
 - TG-003: User Story 3 (regression prevention) → FR-006, 007
@@ -51,6 +53,7 @@ All mandatory sections are present and complete:
 - TG-005: Additive to spec 001 (no breaking changes)
 
 **Success Criteria (5 total)**:
+
 - SC-001: 100% of representative user sessions with entry-point scripts resolve to PowerShell PWD
 - SC-002: 100% of audited call sites migrated or exempted with documented rationale
 - SC-003: Static audit produces zero findings; deterministic regression test exits zero
@@ -60,17 +63,20 @@ All mandatory sections are present and complete:
 ### ✅ Quality Checklist: PASS
 
 **Content Quality**:
+
 - No implementation details (languages, frameworks, specific APIs)
 - Focused on user value (broken workflow, dogfooding loop impact)
 - Written for non-technical stakeholders (concrete error examples with actual error messages)
 
 **Requirement Quality**:
+
 - No clarification markers remain
 - Testable and unambiguous (MUST/SHOULD with quantifiable acceptance criteria)
 - Measurable success criteria (100%, zero, specific corpus fields)
 - Technology-agnostic (describes behavior, not implementation details)
 
 **Completeness**:
+
 - All acceptance scenarios defined for all three user stories
 - Edge cases identified (absolute paths, UNC paths, non-existent paths, wrapper/scheduler scenarios)
 - Scope clearly bounded with explicit non-goals
@@ -78,12 +84,14 @@ All mandatory sections are present and complete:
 ### ✅ Critical Governance Requirements
 
 **Regression Coverage (User Story 3, FR-006/FR-007)**:
+
 - ✓ Deterministic integration test required (FR-006)
 - ✓ Static audit check required (FR-007)
 - ✓ Traceability: TG-003 maps User Story 3 (P2) to FR-006, FR-007
 - ✓ Success validation: SC-003 confirms zero findings and zero regression exit
 
 **Known-Traps Corpus Integration (FR-008)**:
+
 - ✓ Mandatory corpus entry seeding in scope (not optional or deferred)
 - ✓ Five required fields specified: category (path-resolution), concrete pattern, detection method, remediation guidance, discovery date (2026-05-09)
 - ✓ Traceability: TG-004 maps corpus integration to FR-008
@@ -110,6 +118,7 @@ All mandatory sections are present and complete:
    - Validates: SC-003
 
 **Edge cases explicitly covered**:
+
 - Absolute Windows paths (no behavior change)
 - UNC paths (same handling as absolute paths)
 - Non-existent paths (resolve against PWD before checking existence)
@@ -117,6 +126,7 @@ All mandatory sections are present and complete:
 - Script-to-script invocation (no double-resolution)
 
 **Governance assignments**:
+
 - Spec Steward: Alon Fliess (owns policy boundary that "downstream users SHOULD start work with `specrew start`")
 - Iteration Facilitator: Specrew lifecycle and routing maintainers
 

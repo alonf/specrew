@@ -188,6 +188,7 @@ Squad's built-in Retrospective ceremony is used directly — Specrew does not re
 **Decision: Defer Squad SDK (`squad.config.ts`) to post-MVP.**
 
 Rationale:
+
 - v1 can be fully implemented using Squad's native Markdown surfaces (skills in `.copilot/skills/`, ceremonies in `.squad/ceremonies.md`, directives in agent charters).
 - The post-task drift hook is the only feature that may require SDK-level code. During implementation, validate whether Squad's `HookPipeline` can be configured via extension Markdown or requires `squad.config.ts`. If SDK is needed for the hook only, add a minimal `squad.config.ts` with just the hook registration.
 - Full SDK-first mode (`squad build`) is experimental per Squad docs and adds build complexity inappropriate for MVP.

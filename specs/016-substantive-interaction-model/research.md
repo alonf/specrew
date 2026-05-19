@@ -21,6 +21,7 @@ templates. This feature does not introduce a new runtime subsystem or applicatio
 extends the current console-first governance layer.
 
 **Alternatives considered**:
+
 - Model the feature as an application/runtime feature → rejected; the approved scope is prompt,
   validator, corpus, and documentation governance.
 - Treat `package.json` as the primary implementation signal → rejected; the concrete feature
@@ -40,6 +41,7 @@ fits Specrew's existing validator style. This also preserves the clarified rule 
 authorization advances at most one boundary.
 
 **Alternatives considered**:
+
 - Parse artifact bodies to infer lifecycle boundaries → rejected; slower, more brittle, and
   explicitly disallowed by FR-007 / NFR-003.
 - Infer authorization from conversation context or "continue" alone → rejected; violates the
@@ -60,6 +62,7 @@ entries, not one combined multi-boundary record. A canonical field shape keeps t
 mechanical and keeps boundary inspection reviewable and auditable.
 
 **Alternatives considered**:
+
 - Store a single combined authorization entry for adjacent boundaries → rejected; bundled
   authorization is explicitly forbidden.
 - Capture summarized authorization text only → rejected; the spec requires preservation of the
@@ -79,6 +82,7 @@ validation. The chosen thresholds remain mechanical and measurable, matching the
 existing preference for regex/count-based governance checks over semantic inference.
 
 **Alternatives considered**:
+
 - Extend substantive checks to artifact bodies in this feature → rejected; spec marks that out of
   scope and records only a passive `thin-artifact-content` corpus row for future candidacy.
 - Promote Pillar 2 warnings to hard fails in Iteration 2 → rejected; the clarified answer explicitly
@@ -101,6 +105,7 @@ arguments, existing URLs, and project-specific approved extensions recorded in
 `.specrew/config.yml`.
 
 **Alternatives considered**:
+
 - Implement separate Iteration 1 and Iteration 2 rules → rejected; the approved rollout requires a
   config flip, not a new detector.
 - Promote to hard fail immediately in Iteration 1 → rejected; violates the approved rollout and
@@ -118,6 +123,7 @@ model, which validates authored artifacts and assembled user-facing output rathe
 entire chat transcript. It also constrains false positives and keeps the validator mechanical.
 
 **Alternatives considered**:
+
 - Inspect full transcripts for user/agent dialogue patterns → rejected; out of scope and not
   mechanically reliable.
 - Inspect all Markdown indiscriminately → rejected; Feature 016 governs boundary handoffs and
@@ -149,6 +155,7 @@ remain limited to the same validator/doc/template/ledger surfaces rather than ex
 into unrelated work.
 
 **Alternatives considered**:
+
 - Collapse everything into one iteration → rejected; exceeds the approved capacity and removes the
   staged soft-warning/hard-fail safety path.
 - Move README/template/corpus work into Iteration 1 → rejected; the approved split places those in
@@ -171,6 +178,7 @@ matches Specrew's existing practice of publishing focused governance contracts r
 undifferentiated document.
 
 **Alternatives considered**:
+
 - Single umbrella contract only → rejected; too broad for validator consumers and handoff authors.
 - Separate contract for each individual rule → rejected; unnecessary fragmentation for this feature.
 
@@ -186,6 +194,7 @@ and fixture tests. Feature 016's acceptance criteria also depend on user-visible
 fresh-context review remains a necessary complement to mechanical validator tests.
 
 **Alternatives considered**:
+
 - Pure unit-test-only proof → rejected; insufficient for handoff/user-visible acceptance criteria.
 - Manual review only → rejected; insufficient for regression-proof validator rule delivery.
 
@@ -205,6 +214,7 @@ user explicitly asked for truthful carryover evaluation, and the combined slice 
 constitutional 20 SP ceiling and inside the requested 15-19 SP planning target.
 
 **Alternatives considered**:
+
 - Preserve the original ~9 SP Iteration 002 plan unchanged → rejected; would falsely imply the
   carryovers do not materially affect Feature 016 readiness.
 - Pull in every retro idea, including unrelated or weakly grounded items → rejected; would blur
@@ -224,6 +234,7 @@ not need. It is also cheaper to prove, easier to document in contracts and templ
 decisions-ledger contract mechanically inspectable.
 
 **Alternatives considered**:
+
 - Add broad fractional-second parser support now → rejected; valid future work, but unnecessary for
   the bounded Feature 016 follow-through slice.
 - Leave timestamp precision implicit → rejected; this would preserve the ambiguity that produced the
@@ -245,6 +256,7 @@ governed docs/template surfaces lets Iteration 002 close the gap without prematu
 new standalone validator family.
 
 **Alternatives considered**:
+
 - Add a separate stale-reference / post-commit validator family immediately → rejected; possible
   future step, but not required to make the bounded follow-through slice truthful.
 - Leave verification as reviewer folklore → rejected; insufficiently inspectable for a governance

@@ -24,12 +24,14 @@ This iteration closes the remaining FR-003 audit gaps identified during Phase 1 
 **Goal**: Two test/evaluation scripts that accept `-ProjectPath` relative paths and use raw `GetFullPath` must adopt the shared helper to match entry-point parity.
 
 **Success Criteria**:
+
 - `tests/manual/copilot-squad-smoke.ps1` resolves `-ProjectPath` via `Resolve-ProjectPath` imported from shared helper
 - `tests/manual/copilot-squad-confidence-lane.ps1` resolves `-ProjectPath` via `Resolve-ProjectPath` imported from shared helper
 - Both scripts retain existing parameter names, CLI surface, and error-message contract
 - Static-scan finds no residual raw `GetFullPath` usage on the audited path parameters in these files
 
 **Tasks**:
+
 - [T001] Audit `tests/manual/copilot-squad-smoke.ps1` for GetFullPath usage and import/adopt `Resolve-ProjectPath` helper
 - [T002] Audit `tests/manual/copilot-squad-confidence-lane.ps1` for GetFullPath usage and import/adopt `Resolve-ProjectPath` helper
 - [T003] Verify both scripts preserve CLI parameter contract and error semantics
@@ -41,12 +43,14 @@ This iteration closes the remaining FR-003 audit gaps identified during Phase 1 
 **Rationale**: The scope constraint specifies "migrate only if the parameter is truly a user-supplied relative path." The process-scorer has `$ProjectPath = (Get-Location).Path` (already resolved default) and uses `Resolve-Path` (not `GetFullPath`) for the main path parameter, so it does not meet the defect criteria. An exemption entry should explain why.
 
 **Success Criteria**:
+
 - Audit confirms `$ProjectPath` uses `Resolve-Path` (safe semantics) not raw `GetFullPath`
 - `$ReportPath` and other GetFullPath calls are on computed paths, not raw user input
 - Exemption entry recorded in `.specrew/quality/known-traps.md` and `specs/009-project-path-resolution/research.md` research update
 - Static-scan target list extended to include all three files (smoke, confidence-lane, process-scorer) to detect any future reintroduction
 
 **Tasks**:
+
 - [T004] Analyze `evaluation/scorers/process-scorer.ps1` parameter handling and usage of GetFullPath
 - [T005] Record exemption justification in `.specrew/quality/known-traps.md`
 - [T006] Update research.md audit matrix with migration decision
@@ -56,11 +60,13 @@ This iteration closes the remaining FR-003 audit gaps identified during Phase 1 
 **Goal**: Add the three test/evaluation files to the deterministic anti-pattern scan in `tests/integration/project-path-resolution-regression.ps1` so future reintroduction of raw `GetFullPath(${ProjectPath})` is caught mechanically.
 
 **Success Criteria**:
+
 - `$scanTargets` array includes all three files
 - Regression test runs zero-exit after migrations and scan additions
 - Static-scan proves no remaining raw `GetFullPath($ProjectPath/...)` patterns exist in any in-scope file
 
 **Tasks**:
+
 - [T007] Extend `$scanTargets` list in project-path-resolution-regression.ps1 to include:
   - `tests/manual/copilot-squad-smoke.ps1`
   - `tests/manual/copilot-squad-confidence-lane.ps1`
@@ -72,11 +78,13 @@ This iteration closes the remaining FR-003 audit gaps identified during Phase 1 
 ## Dependency and Sequencing
 
 **Pre-requisites**:
+
 - Feature 009 Phase 1 research and audit baseline are green
 - `extensions/specrew-speckit/scripts/shared-governance.ps1` contains the canonical `Resolve-ProjectPath` helper
 - `.specrew/quality/known-traps.md` exists (created during feature 009 Phase 5)
 
 **Execution Order**:
+
 1. T001-T002: Migrate the two scripts in parallel (US-1)
 2. T003: Verify CLI contract preservation (US-1)
 3. T004-T006: Audit and document exemption (US-2)
@@ -84,11 +92,13 @@ This iteration closes the remaining FR-003 audit gaps identified during Phase 1 
 5. T008: Run regression test to close the gap (US-3)
 
 **Parallel Opportunities**:
+
 - T001 and T002 are independent and can run in parallel
 - T004 can run in parallel with T001-T002 (independent audit)
 - T007 can proceed as soon as T001-T002 are ready for validation
 
 **Blocking Gates**:
+
 - T008 (regression test) must run after T001-T002 complete so the test can verify zero findings
 
 ---

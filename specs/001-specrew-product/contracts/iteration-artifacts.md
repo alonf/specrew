@@ -40,6 +40,7 @@ ANY STATE ───────────────────────�
 ### Abandoned Iteration Rule
 
 If an iteration is abandoned at any phase:
+
 1. All incomplete tasks are recorded and become available for the next iteration
 2. `iterations/NNN/state.md` is marked abandoned with explicit reason
 3. Retro ceremony is NOT required (retro phase is skipped)

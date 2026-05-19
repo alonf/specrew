@@ -43,6 +43,7 @@ This retrospective captures the critical process learnings from the repair chain
 **Evidence**: drift-log.md (R10-R20 wrong-direction repairs: flag permutations, bash wrappers, prompt content variations)
 
 **Finding**: The R1-R20 repair chase repeatedly attacked the "shape" of the problem (what the symptom looked like) rather than the "meaning" of the underlying cause. Examples:
+
 - R1: Added bash wrapper for TTY preservation (wrong shape)
 - R11/R12/R13: Added `--mode interactive` and suppressed `--allow-all` (wrong shape)
 - R15/R16: Shortened bootstrap content (wrong shape)
@@ -102,6 +103,7 @@ These repairs captured real runtime observations (e.g., `--mode interactive` is 
 **Why It Matters**: Iteration authorization is predicated on effort estimates and planned capacity. This iteration executed a permissive overnight autonomous run with stop conditions including "test/validator/hardening failures" and "token budget >$80". The repair chain approached the token budget threshold, requiring human validation before continuation.
 
 **Recommendation for Future Work**:
+
 - Strengthen diagnostic discipline (per L1) to prevent future asymmetry
 - Record the cost-benefit analysis in `.specrew/quality/known-traps.md` for corpus inclusion
 - Extend iteration authorization language to include "repair-chase depth limits" if wrong-direction iterations exceed a threshold (e.g., 5 sub-iterations without root cause isolation)
@@ -121,6 +123,7 @@ These repairs captured real runtime observations (e.g., `--mode interactive` is 
 **Why It Matters**: This is a structural failure mode of Specrew's current closeout ceremony, not an execution error. Every iteration-close will face the same cascade until the underlying state-durability problem is solved. The cost compounds with feature complexity (F-019 had 12+ commits during closeout alone), and it consumes Premium quota disproportionate to the boundary's semantic value.
 
 **Recommendation for Future Work**:
+
 - This lesson directly motivates the queued **Session-State Durability & In-Flight Progress Tracking feature** (source spec at `file:///C:/Dev/SpecrewDraft/session-state-durability.md`), specifically Pillar 1 (boundary-event state synchronization). Every boundary commit should atomically update all dependent state files in a single transactional write — eliminating post-hoc reconciliation entirely.
 - Until that feature ships, the workaround is to flatten boundary-by-boundary closeout into a single permissive autonomous run with stop-at-PR-creation. The boundary discipline value (human approval at each strategic-progression boundary) is real but the reconciliation overhead at iteration/feature close erases the discipline benefit.
 
@@ -155,6 +158,7 @@ The following rows are candidates for `.specrew/quality/known-traps.md` (full in
 **Variance**: 0 SP (100% accuracy)
 
 **Task Breakdown**:
+
 - T041 (Join-Path audit): 3 SP planned = 3 SP delivered ✅
 - T054 (Cross-platform evidence): 3 SP planned = 3 SP delivered ✅
 - T060 (Publish-workflow enablement): 1 SP planned = 1 SP delivered ✅
@@ -174,6 +178,7 @@ The following rows are candidates for `.specrew/quality/known-traps.md` (full in
 **Root Cause**: PowerShell on Linux strips TTY for native commands from script-body context; preserves TTY from function-body context.
 
 **Resolution**:
+
 - R-019-V2-R1 through R-019-V2-R20: Wrong-direction workarounds (reverted by R22)
 - R-019-V2-R21 (commit 72d3b51): Actual fix — deferred-launch coordination to module function body (~5 lines)
 - R-019-V2-R22 (commit 6fa14d6): Cleanup of wrong-direction artifacts
@@ -193,11 +198,11 @@ The following rows are candidates for `.specrew/quality/known-traps.md` (full in
 
 ### Future Planning
 
-3. **Behavior-Divergence Test Coverage**: When scoping cross-platform validation features, explicitly partition scope into (1) syntactic/mechanical audits and (2) behavioral audits. Create separate test evidence for each. (Related to L3)
+1. **Behavior-Divergence Test Coverage**: When scoping cross-platform validation features, explicitly partition scope into (1) syntactic/mechanical audits and (2) behavioral audits. Create separate test evidence for each. (Related to L3)
 
-4. **Deferred-Launch Pattern Documentation**: Document the script-to-function-body handoff pattern in the quality corpus for reuse in other Specrew commands that launch interactive child processes. (Related to L4)
+2. **Deferred-Launch Pattern Documentation**: Document the script-to-function-body handoff pattern in the quality corpus for reuse in other Specrew commands that launch interactive child processes. (Related to L4)
 
-5. **Repair-Chase Depth Limits**: Extend iteration authorization language to include stop conditions for repair chains that exceed a diagnostic threshold (e.g., 5+ sub-iterations without root cause isolation). (Related to L5)
+3. **Repair-Chase Depth Limits**: Extend iteration authorization language to include stop conditions for repair chains that exceed a diagnostic threshold (e.g., 5+ sub-iterations without root cause isolation). (Related to L5)
 
 ---
 

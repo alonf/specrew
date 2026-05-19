@@ -14,6 +14,7 @@ discussion: tbd
 This proposal exists because the proposals directory itself needs lifecycle-level integration. The initial promotion (this surface itself) was landed as a chore commit before public flip — fast, but bypassing the Specrew lifecycle. This proposal queues the proper feature work to harden the proposals surface into the lifecycle.
 
 Specifically:
+
 - The status frontmatter is currently informal — no validator enforcement
 - When a feature activates (`feature.json` points at it), the corresponding proposal status should auto-transition from `draft` → `active`
 - When a feature ships, status should auto-transition to `shipped`

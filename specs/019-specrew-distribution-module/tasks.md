@@ -43,6 +43,7 @@
   **Downstream Impact**: Pillar 5 Publishing Workflow certificate generation task depends on validity period decision
 
 **Phase 0 Verification**:
+
 ```powershell
 # Verify all six design-question decisions documented
 Test-Path C:\Dev\Specrew\specs\019-specrew-distribution-module\contracts\Specrew.psd1.contract.md
@@ -71,6 +72,7 @@ Test-Path C:\Dev\Specrew\docs\operations\psgallery-release-credentials.md
 - [x] T009 [assigned_to: Implementation Team] [effort: S] **Validate Module Manifest** — Run Test-ModuleManifest against Specrew.psd1; verify no errors; confirm all FunctionsToExport match actual script files; validate PrivateData structure (Trace: FR-001, Quality Gate: Module manifest validity)
 
 **Pillar 1 Verification**:
+
 ```powershell
 # Validate manifest structure
 Test-ModuleManifest C:\Dev\Specrew\Specrew.psd1
@@ -103,6 +105,7 @@ Get-Content C:\Dev\Specrew\Specrew.psd1 | Select-String -Pattern "FunctionsToExp
 - [x] T014 [assigned_to: Implementation Team] [effort: M] **Validate Exclusions** — Audit FileList in Specrew.psd1; confirm specs/, proposals/, tests/, CHANGELOG.md, LICENSE, README.md, .git/, .vscode/, *.log are excluded; verify module package size estimate under 5 MB (Trace: FR-005, FR-010)
 
 **Pillar 2 Verification**:
+
 ```powershell
 # Verify templates directory structure
 Test-Path C:\Dev\Specrew\templates\specify
@@ -137,6 +140,7 @@ Get-ChildItem -Path C:\Dev\Specrew -Recurse -File | Where-Object { $_.FullName -
 - [x] T019 [assigned_to: Implementation Team] [effort: S] **Add Bootstrap Validation** — Implement post-bootstrap validation in specrew-init.ps1: verify .specify/templates/ exists with expected files, .squad/agents/ exists, .github/workflows/ contains at least one workflow; report success/failure to user (Trace: FR-017)
 
 **Pillar 3 Verification**:
+
 ```powershell
 # Exercise the bundled-module bootstrap path and rerun guard
 pwsh -NoProfile -ExecutionPolicy Bypass -File .\tests\integration\distribution-module-init.ps1
@@ -169,6 +173,7 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File .\tests\integration\distribution-m
 - [x] T035 [assigned_to: Implementation Team] [effort: M] **Integrate Conflict Detection into specrew-start** — Update scripts/specrew-start.ps1 to check for .specrew/template-conflicts/*.conflict artifacts at session start; prompt user to review conflicts if unresolved artifacts exist; surface conflict count and file list (Trace: research.md R3 crew-mediated resolution flow)
 
 **Pillar 4 Verification**:
+
 ```powershell
 # Test update workflow (requires two module versions installed for testing)
 # 1. Init project with v0.21
@@ -211,6 +216,7 @@ Get-Content C:\TestProjects\UpdateTest\.specify\templates\spec-template.md | Sel
 - [ ] T042 [P] [assigned_to: Alon Fliess] [effort: S] **Configure GitHub Actions Secrets** — **Prepared 2026-05-16; human follow-up still required.** Secret names are documented in `.github/workflows/publish-module.yml`, `docs/operations/psgallery-release-credentials.md`, and `specs/019-specrew-distribution-module/test-evidence/us4-publish.md`. No secrets were created or committed during Iteration 001. (Trace: FR-025, FR-028, data-model.md PSGallery API Key, Signing Certificate entities)
 
 **Pillar 5 Verification**:
+
 ```powershell
 # Test workflow on test tag (do not push to origin without verification)
 git tag v0.21.0-test
@@ -249,6 +255,7 @@ git push origin v0.21.0-test
 - [x] T056 [assigned_to: Implementation Team] [effort: S] **Update Quickstart Guide** — Updated `quickstart.md` to reflect the actual `specrew help` command surface, generated bootstrap artifacts, live-publish pending state, and the current clone-and-PATH fallback. (Trace: quickstart.md, US1 through US5)
 
 **Final Validation Verification**:
+
 ```powershell
 # Verify test evidence collected
 Test-Path C:\Dev\Specrew\specs\019-specrew-distribution-module\test-evidence\us1-install.md

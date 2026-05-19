@@ -36,6 +36,7 @@ This document defines the key entities and data structures involved in the archi
 | `approval_status` | enum | Current status: `pending_review`, `approved`, `rejected`, `deferred` | ✓ | Controlled vocabulary |
 
 **Validation Rules**:
+
 - `design_approach` must be non-empty and substantive (not a placeholder like "TBD")
 - `affected_surfaces` must include at least one surface; vague surfaces like "codebase" are not allowed; each entry must include a brief justification
 - `alternatives_considered` may be empty for routine convention-following features where no material architectural choices exist; when present, must include explicit trade-off analysis
@@ -43,6 +44,7 @@ This document defines the key entities and data structures involved in the archi
 - If `approval_status` is `approved` or `deferred`, a corresponding Decision Record must exist (see below)
 
 **Example**:
+
 ```yaml
 feature_id: 006-human-architecture-checkpoint
 generated_at: 2026-05-09T14:30:00Z
@@ -111,6 +113,7 @@ approval_status: pending_review
 | `decision_status` | enum | Current status: `approved`, `active`, `superseded` | ✓ | Controlled vocabulary |
 
 **Validation Rules**:
+
 - `accepted_direction` must be non-empty, substantive, and directly reference the brief
 - `rejected_alternatives` must be populated only when the brief presented alternatives; empty list valid when no alternatives exist (routine features)
 - `human_constraints` are optional; when present, must be specific enough that a linter or person can verify compliance (not vague like "make it good")
@@ -119,10 +122,12 @@ approval_status: pending_review
 - `decision_status` is `active` once recorded in plan.md and remains active until explicitly superseded
 
 **Relationships**:
+
 - **To Brief**: Each Decision Record references the Architecture Intent Brief that prompted it. A brief may have multiple Decision Records if the human approves gradually or in phases.
 - **To Implementation**: Decisions are referenced in task generation and implementation to verify that proposed choices align with the approved direction. A conflict (proposed choice ≠ approved direction) triggers escalation.
 
 **Example**:
+
 ```yaml
 feature_id: 006-human-architecture-checkpoint
 recorded_at: 2026-05-09T15:00:00Z
@@ -177,16 +182,19 @@ decision_status: active
 | `plan_contains_architecture_intent_review` | boolean | Whether plan.md includes the Architecture Intent Review section | ✓ | Drift detector: False = checkpoint was bypassed |
 
 **Validation Rules**:
+
 - If `checkpoint_approved` is True, then `approval_recorded_at` and `approval_recorded_by` must be non-empty
 - If `checkpoint_approved` is False, then `tasks_generation_blocked` must be True
 - If `plan_contains_architecture_intent_review` is False, a drift signal is triggered
 
 **Drift Signals**:
+
 1. `plan_contains_architecture_intent_review` is False → Plan was generated without checkpoint
 2. `tasks_generation_blocked` is False AND `checkpoint_approved` is False → Task generation was allowed without checkpoint approval
 3. Tasks exist in tasks.md but `checkpoint_approved` is False → Checkpoint was bypassed
 
 **Example**:
+
 ```yaml
 feature_id: 006-human-architecture-checkpoint
 checkpoint_approved: true

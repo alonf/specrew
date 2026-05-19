@@ -262,6 +262,7 @@ docs/
 **Scope**: FR-001 through FR-009, FR-014
 
 **Deliverables**:
+
 1. **Schema marker implementation** (FR-001, FR-002, FR-003):
    - Add `schema: v1` to all state file writers:
      - `scripts/specrew-init.ps1` → writes `.specrew/config.yml`
@@ -302,12 +303,14 @@ docs/
    - Validate Git `core.autocrlf` normalization for text fixtures
 
 **Success Criteria**:
+
 - SC-001: Zero crashes from legacy state files (0.18.0-0.22.0) after reader migrations
 - SC-002: 100% pass rate for all reader tests against all fixtures
 - SC-003: 100% schema marker presence in newly written state files
 - SC-006: 100% cross-platform CI evidence (Windows + Linux) for reader changes
 
 **Human Oversight Points**:
+
 - After Iteration 1 closeout: Human review of fixture corpus completeness (verify 0.18.0-0.23.0 fixtures exercise all readers and include the new schema-v1 baseline)
 - During implementation: Human approval of schema version dispatch logic where v0/v1 behavior differs
 
@@ -320,6 +323,7 @@ docs/
 **Scope**: FR-010, FR-011, FR-012, FR-013, FR-014 (continued)
 
 **Deliverables**:
+
 1. **Validator rule implementation** (FR-010, FR-011):
    - Add `Test-ReaderTolerance` function to `.specify/extensions/specrew-speckit/scripts/validate-governance.ps1`
    - Rule scope: PowerShell functions matching:
@@ -351,11 +355,13 @@ docs/
    - Human review before Iteration 2 merge
 
 **Success Criteria**:
+
 - SC-004: Validator rule detects 100% of PSCustomObject-based JSON parsing in state readers (0 false negatives)
 - SC-005: 80% reduction in compatibility issue resolution time (measured via support ticket metrics post-release)
 - Documentation completeness: `docs/data-contracts.md` covers all schema versioning + reader tolerance patterns
 
 **Human Oversight Points**:
+
 - Before Iteration 2 merge: Human review of validator rule to ensure no false positives
 - Final PR merge: Human review of `docs/data-contracts.md` for clarity and completeness
 

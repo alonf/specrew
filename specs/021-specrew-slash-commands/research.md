@@ -13,6 +13,7 @@
 **Rationale**: The existing Squad-native integration contract already defines `.copilot/skills/<skill>/SKILL.md` as the deployed discovery surface and `specrew init` already owns skill deployment there. Reusing that path keeps Feature 021 additive to the current runtime model and composes with Feature 019 distribution/update flows.
 
 **Alternatives considered**:
+
 - Treat `.squad/skills/` as the primary deployed surface — rejected because the established runtime contract in this repo points to `.copilot/skills/` for deployed skill discovery.
 - Introduce a new plugin package or extension-specific runtime — rejected because Specrew already documents a Squad-native deployment model and local bundled plugins are not the supported path.
 
@@ -25,6 +26,7 @@
 **Rationale**: The current repository already has canonical command semantics, alias behavior, and error handling in PowerShell. Reusing those semantics minimizes drift, preserves raw/native command output, and keeps `/specrew.status` aligned as a true alias for the existing `where` workflow.
 
 **Alternatives considered**:
+
 - Build a separate slash-only router with duplicated logic — rejected because command drift would become likely and user trust would suffer.
 - Route everything through natural-language prompts — rejected because the feature exists specifically to avoid natural-language routing as the primary path.
 
@@ -37,6 +39,7 @@
 **Rationale**: `specrew-update.ps1`, `specrew-review.ps1`, and `specrew-where.ps1` already parse documented `--` arguments and throw on unknown inputs. Extending the same discipline to `/specrew.*` satisfies FR-009, keeps failure modes inspectable, and avoids accidental boundary expansion through arbitrary passthrough arguments.
 
 **Alternatives considered**:
+
 - Pass all arguments through to the backend scripts — rejected because it would weaken the contract and make errors harder to distinguish from missing setup or routing faults.
 - Create a slash-only argument vocabulary unrelated to existing scripts — rejected because it would force a second public contract for the same workflows.
 
@@ -49,6 +52,7 @@
 **Rationale**: The feature's primary value is discoverability, but host suggestion surfaces may vary across Copilot/Squad environments and across the PowerShell 7+ platform baseline. A canonical fallback prevents the command surface from feeling broken when inline suggestions are weak or unavailable.
 
 **Alternatives considered**:
+
 - Require inline discovery support before shipping — rejected because it would tie the feature to host behavior Specrew does not fully control.
 - Make broader `/help` the only catalog — rejected because Feature 021 explicitly preserves a distinct Specrew namespace and does not want `/speckit.*` lifecycle commands to be obscured.
 
@@ -61,6 +65,7 @@
 **Rationale**: The specification resolves the policy but does not need a final release stamp before implementation. The current project baseline is `0.20.0`, so planning can safely assume the slash-command surface will pin to the next release that includes this feature, while the actual numeric stamp remains a release-cut responsibility rather than a planning blocker.
 
 **Alternatives considered**:
+
 - Freeze an exact version number inside the plan now — rejected because it would create unnecessary drift risk before release management happens.
 - Leave compatibility fully unspecified until implementation — rejected because the spec already requires clear upgrade/remediation behavior.
 
@@ -73,6 +78,7 @@
 **Rationale**: These defaults are already documented in Feature 020 retro/proposal artifacts and in the Feature 021 spec and hardening scaffold. Making them explicit in the plan prevents them from being treated as informal memory and keeps the planning slice aligned with current Specrew governance.
 
 **Alternatives considered**:
+
 - Re-negotiate governance defaults during implementation — rejected because these settings are now stable enough to be planning-time defaults.
 - Carry only the repair budget and ignore the observability/path/collision rules — rejected because the later retro specifically identified those as recurring failure patterns worth standardizing.
 

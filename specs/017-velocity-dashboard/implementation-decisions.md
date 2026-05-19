@@ -12,11 +12,13 @@
 ### Decision: Mirror existing command structure with switch dispatch
 
 **Rationale**:
+
 - Existing `specrew.ps1` uses switch-based command routing (lines 93-176)
 - Commands follow pattern: `specrew <command>` → `scripts\specrew-<command>.ps1`
 - All commands use `pwsh -NoProfile -ExecutionPolicy Bypass -File <script> @Arguments`
 
 **Implementation**:
+
 ```powershell
 # In scripts\specrew.ps1, add to switch statement:
 'where' {
@@ -42,9 +44,11 @@
 ```
 
 **Alternative considered**:
+
 - Unified alias mechanism in script header → Rejected: adds complexity, current pattern is explicit and consistent
 
 **Evidence**:
+
 - `scripts\specrew.ps1:93-176` (existing dispatch)
 - `scripts\specrew-review.ps1:1-12` (parameter pattern)
 - `scripts\specrew-start.ps1:1-27` (CLI args handling)
@@ -56,11 +60,13 @@
 ### Decision: Multi-layer detection with explicit environment honor
 
 **Rationale**:
+
 - Codebase only checks `[Console]::IsOutputRedirected` in one place (`scaffold-reviewer-artifacts.ps1:2504`)
 - NO_COLOR is mentioned in spec (line 29) but not yet implemented in codebase
 - PowerShell color usage is pervasive but unconditional (43 uses of `-ForegroundColor` in scripts/)
 
 **Implementation**:
+
 ```powershell
 function Test-ShouldUseColor {
     param(
@@ -92,10 +98,12 @@ function Test-ShouldUseColor {
 ```
 
 **Alternative considered**:
+
 - Only check `IsOutputRedirected` → Rejected: too narrow, doesn't honor NO_COLOR standard
 - PowerShell `$PSStyle.OutputRendering` → Rejected: only available PS 7.2+, repo targets 7.0+
 
 **Evidence**:
+
 - Spec requirement FR-006 (line 140): "semantic color...monochrome fallback"
 - Clarification #10 (line 29): "honors NO_COLOR, dumb-terminal detection, non-TTY"
 - `scripts\specrew-init.ps1:54,250-271` (console redirection handling)
@@ -108,6 +116,7 @@ function Test-ShouldUseColor {
 ### Decision: ASCII box-drawing with progress bars, tables, horizontal bars
 
 **Rationale**:
+
 - Existing code uses simple borders: `'=' * 60` in `specrew-review.ps1:342`
 - Table rendering exists in `specrew-team.ps1:465-489` (plain pipe-separated Markdown)
 - No existing sparkline or bar chart implementation
@@ -116,6 +125,7 @@ function Test-ShouldUseColor {
 **Implementation**:
 
 #### Progress Bar
+
 ```powershell
 function Format-ProgressBar {
     param(
@@ -143,6 +153,7 @@ function Format-ProgressBar {
 ```
 
 #### Horizontal Bar Chart (iteration summary)
+
 ```powershell
 function Format-HorizontalBar {
     param(
@@ -167,6 +178,7 @@ function Format-HorizontalBar {
 ```
 
 #### Compact Table (recent iterations variance)
+
 ```powershell
 function Format-IterationTable {
     param(
@@ -199,6 +211,7 @@ function Format-IterationTable {
 ```
 
 #### Tiny Sparkline (optional for velocity trend)
+
 ```powershell
 function Format-MiniSparkline {
     param(
@@ -226,10 +239,12 @@ function Format-MiniSparkline {
 ```
 
 **Alternative considered**:
+
 - Unicode box-drawing characters (`─ │ ┌ ┐ └ ┘`) → Rejected: encoding issues, not universally monochrome-safe
 - Full-width charts → Rejected: conflicts with 24-line compact mode requirement
 
 **Evidence**:
+
 - FR-004 (line 138): "horizontal bars, progress bars, compact tables, at most one tiny sparkline"
 - FR-007 (line 141): "compact rendering mode...24 lines"
 - `scripts\specrew-review.ps1:342-345` (existing border pattern)
@@ -242,6 +257,7 @@ function Format-MiniSparkline {
 ### Decision: Fixed-budget layout with prioritized sections
 
 **Rationale**:
+
 - Spec mandates "fixed maximum budget of 24 lines" (FR-007, line 141)
 - Clarification #2 (line 21): "fixed v1 budget...consistent and testable"
 - Iteration closeout handoffs need stable, reproducible output
@@ -329,10 +345,12 @@ function Write-CompactDashboard {
 ```
 
 **Alternative considered**:
+
 - Dynamic line budget based on terminal height → Rejected: conflicts with "fixed" requirement, breaks closeout reproducibility
 - Pagination → Rejected: defeats "single-screen" user story
 
 **Evidence**:
+
 - FR-007 (line 141): "fixed maximum budget of 24 lines"
 - Clarification #2 (line 21): "fixed v1 budget...stays consistent and testable"
 - User Story 1, Scenario 1 (line 79): "single-screen summary"
@@ -344,6 +362,7 @@ function Write-CompactDashboard {
 ### Decision: Follow specrew-review.ps1 parameter pattern
 
 **Rationale**:
+
 - All existing commands use CmdletBinding + explicit parameter blocks
 - Unix-style argument parsing via Convert-UnixStyleArguments helper
 - Shared governance sourcing for project path resolution
@@ -404,10 +423,12 @@ Examples:
 ```
 
 **Alternative considered**:
+
 - Positional command-line parsing → Rejected: inconsistent with `specrew review` pattern
 - Direct `$PSBoundParameters` usage → Rejected: breaks Unix-style `--option=value` support
 
 **Evidence**:
+
 - `scripts\specrew-review.ps1:1-41` (parameter structure)
 - `scripts\specrew-start.ps1:41-100` (Convert-UnixStyleArguments pattern)
 - `extensions\specrew-speckit\scripts\shared-governance.ps1:1-100` (sourcing pattern)
@@ -419,6 +440,7 @@ Examples:
 ### Decision: Parse iteration state.md + retro.md + config.yml; defer to FR-002 full spec
 
 **Rationale**:
+
 - Existing code already parses iteration artifacts:
   - `specrew-start.ps1:273-343` (Get-MarkdownContent, Get-MarkdownSectionTable)
   - Iteration state, retro, review files under `specs\<feature>\iterations\<NNN>\`
@@ -426,6 +448,7 @@ Examples:
 - Roadmap is new, needs structured YAML or Markdown format (separate decision)
 
 **Implementation outline**:
+
 1. Resolve project path via `Resolve-ProjectPath` (shared-governance.ps1:4-20)
 2. Parse `.specify\feature.json` for active feature (specrew-start.ps1:226-242)
 3. Scan `specs\<feature>\iterations\*\state.md` for completed iterations
@@ -435,10 +458,12 @@ Examples:
 7. Aggregate into dashboard data model
 
 **Alternative considered**:
+
 - SQL-based artifact cache → Rejected: adds infrastructure complexity, out of scope for v1
 - JSON sidecar files → Rejected: introduces duplicate state
 
 **Evidence**:
+
 - FR-002 (line 136): "canonical project records...active-feature pointer, feature specs, iteration state"
 - `scripts\specrew-start.ps1:273-343` (existing Markdown parsing)
 - `scripts\specrew-start.ps1:226-270` (feature directory resolution)
@@ -450,6 +475,7 @@ Examples:
 ### Decision: Bounded warnings with partial rendering (follow FR-008)
 
 **Rationale**:
+
 - Spec mandates "bounded warnings and partial rendering rather than crash" (FR-008, line 142)
 - Existing pattern: validate but continue (validator-hardening surfaces)
 - Dashboard utility degrades gracefully when data incomplete
@@ -507,10 +533,12 @@ function Write-DashboardWithWarnings {
 ```
 
 **Alternative considered**:
+
 - Fail-fast on missing data → Rejected: violates FR-008 resilience requirement
 - Silent data imputation → Rejected: creates trust issues
 
 **Evidence**:
+
 - FR-008 (line 142): "bounded warnings and partial rendering rather than crash"
 - User Story 2 (lines 86-99): "trust the dashboard...resilient when records incomplete"
 
@@ -521,6 +549,7 @@ function Write-DashboardWithWarnings {
 ### Decision: Integration tests + fixture-based validation
 
 **Rationale**:
+
 - Existing integration test pattern: `tests\integration\*.ps1`
 - Validator pattern: `extensions\specrew-speckit\validators\*.ps1`
 - Tests verify both happy path and degraded scenarios
@@ -553,10 +582,12 @@ function Write-DashboardWithWarnings {
    - Roadmap mismatch scenarios
 
 **Alternative considered**:
+
 - Unit tests only → Rejected: dashboard is integration-heavy, needs E2E validation
 - Manual testing only → Rejected: conflicts with "testable" requirement
 
 **Evidence**:
+
 - Clarification #2 (line 21): "stays consistent and testable"
 - Existing test structure: `tests\integration\*.ps1`
 - Validator pattern: `extensions\specrew-speckit\validators\*-validator.ps1`
@@ -568,6 +599,7 @@ function Write-DashboardWithWarnings {
 ### Decision: YAML config at `.specrew\roadmap.yml` with explicit phases
 
 **Rationale**:
+
 - Existing config uses YAML: `.specrew\config.yml`, `.specrew\iteration-config.yml`
 - Roadmap needs phase grouping, SP totals, feature references
 - YAML supports structured data + comments for human editability
@@ -601,15 +633,18 @@ roadmap:
 ```
 
 **Validation**:
+
 - Check feature_id references exist under `specs\<feature_id>\spec.md`
 - Sum of feature story points must equal phase story points
 - Warn on roadmap drift (features exist but not in roadmap)
 
 **Alternative considered**:
+
 - Markdown roadmap with tables → Rejected: harder to parse, less structured
 - Hardcoded roadmap in script → Rejected: not maintainable
 
 **Evidence**:
+
 - FR-002 (line 136): "structured roadmap source introduced by this feature"
 - Existing YAML configs: `.specrew\config.yml`, `.specrew\iteration-config.yml`
 
@@ -620,6 +655,7 @@ roadmap:
 ### Decision: Hook into iteration closeout via Squad coordinator
 
 **Rationale**:
+
 - Feature 014 established handoff format
 - Feature 016 established boundary discipline
 - Dashboard automatically invoked at closeout, stored as iteration artifact
@@ -627,6 +663,7 @@ roadmap:
 **Integration**:
 
 1. **Iteration closeout hook** (in Squad coordinator or `scaffold-reviewer-artifacts.ps1`)
+
    ```powershell
    # After reviewer artifacts generated, before handoff:
    & (Join-Path $scriptsRoot 'specrew-where.ps1') `
@@ -645,10 +682,12 @@ roadmap:
    - Interpretation guidance
 
 **Alternative considered**:
+
 - Git hooks → Rejected: out of scope per spec line 55
 - Manual-only invocation → Rejected: conflicts with User Story 3
 
 **Evidence**:
+
 - FR-010+ (not shown: covers lifecycle integration)
 - User Story 3 (lines 102-115): "dashboard as part of normal lifecycle work"
 - Clarification #6 (line 25): "iteration-closeout and feature-closeout boundaries"

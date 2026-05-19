@@ -16,11 +16,13 @@
 This iteration closes the remaining audit-gap items from feature 009 Phase 1 research that lie outside the primary five user entry points (scripts/specrew-*.ps1) and extended governance governance scripts in extensions/specrew-speckit/scripts/.
 
 The Phase 1 feature implementation (Iteration 001, completed) fixed:
+
 - All five user entry-point scripts (specrew-start, specrew-update, specrew-init, specrew-team, specrew-review)
 - All in-scope internal governance scripts in extensions/specrew-speckit/scripts/ and .specify/extensions/ mirrors
 - Deterministic regression test and static anti-pattern scan
 
 This iteration (Iteration 002) addresses:
+
 - Two test/evaluation scripts that accept user-supplied relative project paths (smoke, confidence-lane)
 - One audit-only candidate (process-scorer) to confirm it does not meet migration criteria
 - Expansion of static-scan coverage to the three new files
@@ -56,6 +58,7 @@ Before T001 task execution can begin:
 ## Known-Traps Corpus Readiness
 
 The `.specrew/quality/known-traps.md` file exists from feature 009 Phase 5. The `path-resolution` trap entry is documented with:
+
 - Broken pattern: raw `[System.IO.Path]::GetFullPath($ProjectPath)`
 - Detection method: static scan for the pattern
 - Remediation: adopt `Resolve-ProjectPath` shared helper

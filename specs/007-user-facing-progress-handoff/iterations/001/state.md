@@ -72,11 +72,13 @@
 ## Handoff Notes
 
 **To Retrospective Lead**:
+
 - Iteration 001 review accepted with all six tasks passing
 - Session restart required before retro due to Squad.agent.md changes
 - Focus retro on: handoff-semantics absorption, plain-language-first principle effectiveness, session-restart discipline, and soft-validator concept clarity for Iteration 002 handoff
 
 **To Iteration 002 Planner**:
+
 - Foundation & Governance phase complete and verified
 - Soft-validator design document (T006) provides clear implementation target
 - Governance checklist and coordinator guidance ready to support runtime validator integration

@@ -95,6 +95,7 @@ All implementation choices remained aligned to the approved spec (spec.md). No s
 **Evidence**: Feature 014 iteration 001 at commit 8e99013 (review-boundary claim) had no retro.md until authorization and retro.md creation occurred in a later session. The review was truthfully accepted, but the iteration state could not transition to the next phase until retro artifacts were explicitly scaffolded.
 
 **Detection Rule** (candidate for future implementation): Before accepting a `-boundary` commit:
+
 1. Verify all artifacts for the current phase are complete and committed.
 2. Verify that either (a) all required artifacts for the next phase exist and are committed, or (b) the next phase is explicitly deferred in state.md/plan.md with a human approval note.
 3. If (a) and (b) both fail, reject the boundary claim and require either retro.md (if retro is authorized) or an explicit defer note (if retro is not yet authorized).

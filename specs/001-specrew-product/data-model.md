@@ -26,6 +26,7 @@ Represents the bootstrap-generated state tying both extensions together.
 **Relationships**: References Downstream Constitution, Iteration Config, Role Assignments.
 
 **Validation**:
+
 - YAML MUST contain the listed top-level scalar fields plus a `governance` mapping.
 - `bootstrap_mode` MUST be either `greenfield` or `brownfield`.
 - `bootstrap_date` MUST be an ISO date recorded at bootstrap time.
@@ -105,6 +106,7 @@ Maps Specrew roles to agents or humans.
 | roles[].responsibilities | string | Brief description of role's responsibilities |
 
 **Baseline roles** (cannot be removed):
+
 1. Spec Steward — Spec integrity, drift detection, reconciliation
 2. Planner — Iteration planning, task decomposition, effort estimation
 3. Implementer — Task execution, code generation
@@ -130,6 +132,7 @@ A delivery cycle with four phases.
 | completed | ISO datetime? | When iteration completed (null if in progress) |
 
 **State transitions**:
+
 ```
 planning → executing → reviewing → retro → complete
     ↓          ↓          ↓         ↓
@@ -274,6 +277,7 @@ Canonical shared ledger for team-binding governance and lifecycle decisions.
 | entries[].next_action | string? | No | Required follow-up action or explicit `none` |
 
 **Append Policy**:
+
 - `.squad/decisions.md` is the canonical shared ledger and MUST remain append-only in normal operation.
 - Specrew-owned scripts MUST write runtime-routing evidence, escalation changes, and approved defers directly to this ledger when those events occur.
 - Agent-authored team decisions MAY stage through `.squad/decisions/inbox/`, but only merged entries in `.squad/decisions.md` are canonical shared truth.

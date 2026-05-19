@@ -62,6 +62,7 @@ Feature 023 Iteration 001 delivered schema versioning discipline and reader tole
 ## Friction Encountered and Resolved
 
 **Bookkeeping-artifact truth lag (resolved via 5-commit repair chain)**:
+
 - At review boundary (173c39b), state.md and plan.md were updated to reflect review completion, but validator checks revealed staleness in task verdict rows (T020, T028, T030, T034 should be consolidated), plan.md execution status (still `executing`, should be `reviewing`), and decision.md integration.
 - Resolution: Commits ee89e71, b36e0f9, 21b4af2 repaired each finding. Commit f1d6c00 normalized all three surfaces (state.md, review.md, decisions.md) to cite the final review-boundary commit. Commit d17a998 recorded the learning in Reviewer history.
 - Lesson captured: Validator-driven artifact verification is essential pre-signoff; missing task verdict rows, stale phase fields, and inconsistent commit references are detectable failures before signoff lands.

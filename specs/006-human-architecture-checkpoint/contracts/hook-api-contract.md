@@ -86,6 +86,7 @@ The Squad agent generates a structured brief (see data-model.md § Entity 1: Arc
 **Format**: Markdown with embedded YAML frontmatter for structured fields
 
 **Validation**:
+
 - Must be substantive (not a placeholder or template)
 - All required sections present
 - Alternatives required only when they materially differ in cost, risk, or reversibility; routine convention-following features may omit alternatives

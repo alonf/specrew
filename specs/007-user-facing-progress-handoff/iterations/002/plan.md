@@ -95,6 +95,7 @@ Iteration 002 carries **Phase 3: Validation & Integration** — soft-validator r
 **Governance-Term Candidate Set**: Start with configurable list from T006 design: `before-implement`, `hardening-gate`, `approval ref`, `implementation approval`, `traceability`, `schema`, `FR-`, `TG-`, `gate`, `validator`. List may expand, but human-handoff trap examples must be detectable without ambiguity.
 
 **Expected Output Shape**:
+
 ```text
 status: warn
 findings:
@@ -113,6 +114,7 @@ summary:
 
 **Owner**: Test maintainer  
 **Files**:
+
 - `tests/integration/handoff-governance-jargon-response-test.ps1`
 - `tests/integration/handoff-governance-plain-language-response-test.ps1`
 
@@ -151,12 +153,14 @@ Expected result: `handoff-governance-validator.ps1` passes without flag
 **Scope**: Register soft-validator command in authorized-commands list and add handoff-governance-validator task to validation-lane execution.
 
 **Validation-Lane-Completeness Requirement**: Document exact authorized soft-validator commands in both:
+
 1. Validation lane task definition (this file or equivalent)
 2. Hardening-gate concern evidence (T010, `specs/007-user-facing-progress-handoff/iterations/002/quality/hardening-gate.md`)
 
 Cross-check authorization against plan.md T007 definition before sign-off to prevent validation-lane-completeness drift (`.specrew/quality/known-traps.md` row 10).
 
 **Authorized Command Example**:
+
 ```powershell
 & '.\extensions\specrew-speckit\validators\handoff-governance-validator.ps1' -ResponseText $coordinatorResponse
 ```
@@ -173,12 +177,14 @@ Cross-check authorization against plan.md T007 definition before sign-off to pre
 **Scope**: Final checklist tuning, review-link guidance updates, template review, and post-implementation hardening-gate evidence recording
 
 **Deliverables**:
+
 1. Final tuning of all governance-checklist wording for clarity and consistency (`extensions/specrew-speckit/checklists/coordinator-handoff-governance.md`)
 2. Final review of handoff template examples for completeness across all three user stories (US1, US2, US3) (`specs/001-specrew-product/contracts/coordinator-handoff-template.md`)
 3. Review-link navigation guidance updated so local file review requests use a `file:///` URI with the absolute Windows path in this Windows environment across prompt, template, and Squad startup guidance
 4. Post-implementation evidence recording in existing hardening-gate.md (`specs/007-user-facing-progress-handoff/iterations/002/quality/hardening-gate.md`)
 
 **Post-Implementation Evidence Requirements**:
+
 - Update `Runtime Evidence Status` fields from `pending-post-implementation` to `recorded` for all applicable concerns
 - Record validation lane execution results (T009 authorized commands)
 - Record integration test pass evidence (T008 fixtures)
@@ -266,7 +272,7 @@ All feature 007 implementation work is scoped to Iterations 001-002. Feature clo
 
 ## Iteration 001 Retro Learnings Carried Forward
 
-### From Iteration 001 Retrospective (2026-05-11):
+### From Iteration 001 Retrospective (2026-05-11)
 
 **Perfect Estimation Accuracy Pattern**: Iteration 001 delivered 10 story points at estimated effort with zero variance. This precision reflects well-defined coordination work and honest task decomposition. Iteration 002 planning maintains this discipline by scoping only Phase 3 runtime work with clear boundaries.
 

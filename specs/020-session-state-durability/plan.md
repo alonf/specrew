@@ -289,11 +289,13 @@ tests/
 **Success Metrics**: Zero Squad-acts-on-stale-state incidents post-deployment; `specrew start` staleness checks complete in <2s; boundary-event sync atomicity 95%+ across 100 events.
 
 **Functional Requirements Delivered**:
+
 - FR-001 through FR-005 (Pillar 1: Boundary-Event State Synchronization)
 - FR-015 through FR-020 (Pillar 4: Stale-State Detection)
 - FR-025 through FR-028 (Scope Addition 1: Module Version Check)
 
 **User Stories Validated**:
+
 - US1: Post-Reboot Recovery (acceptance scenarios 1, 2, 3, 4)
 - US2: Boundary-Event State Synchronization (acceptance scenarios 1, 2, 3, 4, 5)
 - US4: Module Version Mismatch Detection (acceptance scenarios 1, 2, 3)
@@ -353,12 +355,14 @@ tests/
 **Success Metrics**: `specrew where` query <2s for 10 worktrees; recovery prompts include substantive next-step guidance 100% of the time; PSGallery check completes in <5s (cached), fails silently in <10s (offline).
 
 **Functional Requirements Delivered**:
+
 - FR-006 through FR-010 (Pillar 2: Task Progress Tracking)
 - FR-011 through FR-014 (Pillar 3: Cross-Worktree Awareness)
 - FR-021 through FR-024 (Pillar 5: Recovery Prompts)
 - FR-029 through FR-035 (Scope Addition 2: PSGallery Check)
 
 **User Stories Validated**:
+
 - US3: Authoritative Where-Am-I Query (acceptance scenarios 1, 2, 3, 4)
 - US5: PSGallery Latest-Version Check (acceptance scenarios 1, 2, 3, 4, 5)
 

@@ -32,6 +32,7 @@
 ### 2. R21/R22 Repair-Chain Assessment
 
 **R21 (deferred-launch fix, commit 72d3b51)**: Confirmed present and correct.
+
 - `specrew-start.ps1` lines 2526–2545: writes launch args to `$env:SPECREW_DEFERRED_LAUNCH_FILE` on non-Windows; falls back to in-script launch if env var absent.
 - `Specrew.psm1` lines 62–113: `Invoke-SpecrewScript` sets deferred-launch file, invokes script in-process, then executes `& copilot @args` from function body after script returns. `finally` block clears both env vars.
 - Architecture is minimal (~5 lines coordination code) and correct.
@@ -87,6 +88,7 @@ The three Boundary 2 carry-forward gaps were closed in bounded pre-signoff repai
 Iteration 002 delivers cross-platform hardening (T041 Join-Path audit, T054 cross-platform parity evidence) plus PSGallery publish-workflow enablement (T060 remove manual gate), plus the R-019-V2 repair chain (R1-R22 + cleanup + verb-conformance) that resolved the WSL launch issue discovered during human end-to-end verification. Review boundary commit is 7b08dfd (verb-conformance fix, HEAD). Locked to deferred Iteration 001 work; does not include T042 (secret setup) or T053 (real publish) — those remain human post-merge follow-up.
 
 **Review Basis**:
+
 - Feature spec: `file:///C:/Dev/Specrew/specs/019-specrew-distribution-module/spec.md`
 - Feature plan: `file:///C:/Dev/Specrew/specs/019-specrew-distribution-module/plan.md`
 - Feature tasks: `file:///C:/Dev/Specrew/specs/019-specrew-distribution-module/tasks.md`
@@ -248,6 +250,7 @@ Validator execution: `validate-governance.ps1 -IterationPath "specs\019-specrew-
 **Status**: ✅ **RESOLVED**
 
 **Required Actions**:
+
 1. Audit `scripts/specrew-init.ps1`, `scripts/specrew-update.ps1`, `scripts/specrew-team.ps1`, `scripts/specrew-review.ps1` for embedded backslash path strings (patterns like `"$variable\subfolder"` or `'C:\path\to\file'`)
 2. Replace any found patterns with `Join-Path` or forward-slash alternatives (matching the approach in commit ef9c27d)
 3. Verify `scripts/specrew-where.ps1` and `scripts/internal/dashboard-renderer.ps1` have no embedded backslash path strings requiring repair
@@ -267,6 +270,7 @@ Validator execution: `validate-governance.ps1 -IterationPath "specs\019-specrew-
 **Status**: ✅ **RESOLVED**
 
 **Required Actions**:
+
 1. Copy the forward-slash path construction changes from `extensions/specrew-speckit/scripts/validate-governance.ps1` (commit ef9c27d) to `.specify/extensions/specrew-speckit/scripts/validate-governance.ps1`
 2. Verify file hashes match after sync
 3. Commit with message "Sync .specify mirror with cross-platform path hardening from commit ef9c27d"
@@ -285,12 +289,14 @@ Validator execution: `validate-governance.ps1 -IterationPath "specs\019-specrew-
 **Status**: ✅ **RESOLVED**
 
 **Required Actions**:
+
 1. Count actual embedded backslash path strings found and fixed across all files in T041 scope (including R-019-V2-R1 repairs)
 2. Update `test-evidence/us5-cross-platform.md` T041 section to replace "Fixed 34 embedded-backslash patterns" with actual count
 3. Clarify whether "104+ patterns" in iteration 002 plan.md was an initial estimate or if additional patterns remain in out-of-scope files
 4. Add a note explaining the discrepancy if 104+ was an overestimate
 
 **Resolution**: Updated test-evidence/us5-cross-platform.md T041 section to document:
+
 - Actual count: 38 patterns fixed (12+10+14+2 per commit ef9c27d message)
 - Remaining scripts audited: 6 files verified clean
 - Clarified "104+" was an initial overestimate from `.specrew/cross-platform-backlog.md`; focused audit found 38 actual patterns requiring hardening
@@ -324,6 +330,7 @@ Validator execution: `validate-governance.ps1 -IterationPath "specs\019-specrew-
    - README and getting-started.md reflect cross-platform status; WSL now shows ✅ Fully verified
 
 **Repair Summary**:
+
 - R-019-V2-R1: Completed T041 scope audit (6 remaining scripts verified clean)
 - R-019-V2-R2: Synced `.specify/extensions/specrew-speckit/scripts/validate-governance.ps1` with forward-slash path construction
 - R-019-V2-R3: Reconciled evidence claims (104+ overestimate → 38 patterns fixed, now documented)
@@ -345,6 +352,7 @@ The following items are correctly recorded as carry-forward and do NOT block acc
 3. **Validator gap (POSIX path detection)** — `Test-HasWindowsAbsolutePath` in `handoff-governance-validator.ps1` only detects `[A-Z]:[\/]` raw paths; does not detect POSIX-rooted paths like `/home/alon/...`. Pre-existing gap, not introduced by F-019. Queue as follow-up validator-hardening item; does not block F-019 closeout.
 
 Previously-carry-forward item now resolved:
+
 - ~~WSL Ubuntu verification pending human execution~~ — ✅ Resolved 2026-05-18 (native ext4, Alon Fliess)
 
 ---

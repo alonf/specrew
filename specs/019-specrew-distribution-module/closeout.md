@@ -12,6 +12,7 @@
 Feature 019 delivers PowerShell Gallery module packaging for one-line install (`Install-Module Specrew`), removing clone-and-PATH friction before public-flip. The feature shipped across two iterations: Iteration 001 (14 SP, Windows-first distribution slice with module manifest, resource bundling, bootstrap commands, and manual-gated publish workflow) and Iteration 002 (8 SP, cross-platform hardening, automated publish workflow, and documentation updates). Both iterations achieved 100% story-point accuracy (22 SP planned = 22 SP delivered, zero variance).
 
 **Key Delivered Capabilities**:
+
 - PowerShell Gallery module installation via `Install-Module Specrew`
 - Cross-platform compatibility (Windows, Linux/WSL, macOS)
 - Bootstrap command (`specrew init`) for new projects
@@ -32,6 +33,7 @@ Feature 019 delivers PowerShell Gallery module packaging for one-line install (`
 **Key Commits**: `9e2fb30` (R-019-R1/R2 repair), `567c070` (review-boundary acceptance)
 
 **Functional Delivery**:
+
 - Module manifest with explicit `FileList` allowlist (FR-001, FR-003)
 - Bootstrap command `specrew init` detects module context and resolves template paths from `$PSScriptRoot` (FR-010, US2)
 - Template-refresh command `specrew update` preserves user-edited files via preserve-and-flag conflict protocol (FR-012 through FR-016, FR-022, US3)
@@ -41,6 +43,7 @@ Feature 019 delivers PowerShell Gallery module packaging for one-line install (`
 **Review Verdict**: READY-FOR-SIGNOFF (accepted by Alon Fliess after bounded R1/R2 repair)
 
 **Retrospective Highlights** (10 learnings):
+
 1. **Manifest-Allowlist vs Created Files Drift**: Initial integration tests masked form-vs-meaning gap between shipped package surface and created files; validator should cross-check `FileList` against actual created files
 2. **Squad 0.9.4 Boundary-Advance Discipline**: Refined three-class boundary taxonomy (human-judgment-required, mechanical-execution, strategic-progression)
 3. **Dashboard State vs Lifecycle Truth**: Dashboard initially reflected "complete" while lifecycle was still in "review/repair"; empirical meaning-verification should be elevated
@@ -56,6 +59,7 @@ Feature 019 delivers PowerShell Gallery module packaging for one-line install (`
 **Key Commits**: `ef9c27d` (T041 path fixes), `e77a884` (T054 CI matrix), `6c271ad` (T060 auto-publish), `7945261` (T061 docs), `72d3b51` (R21 deferred-launch fix), `6fa14d6` (R22 cleanup), `7b08dfd` (final verb-conformance)
 
 **Functional Delivery**:
+
 - Cross-platform path hardening: 38 embedded-backslash patterns fixed across 4 core scripts (FR-030, T041)
 - Cross-platform CI validation: Ubuntu + macOS runners configured in `.github/workflows/cross-platform-validation.yml` (SC-006, US5, T054)
 - WSL Ubuntu end-to-end verified: `specrew init` and `specrew start` confirmed working identically to Windows (T054)
@@ -67,6 +71,7 @@ Feature 019 delivers PowerShell Gallery module packaging for one-line install (`
 **Review Verdict**: READY-FOR-SIGNOFF (accepted by Alon Fliess after Boundary 2 authorized review and R21/R22 repair)
 
 **Retrospective Highlights** (5 learnings):
+
 1. **Diagnostic Discipline for Cross-Platform Issues**: Asymmetry between diagnosis effort (~22 iterations) and fix complexity (~5 lines); minimal-variable diagnostics upfront cuts search space exponentially
 2. **Form-vs-Meaning Recurrence**: R1-R20 symptom-chasing attacked "shape" of problem rather than root cause; corpus row extended with cross-platform example
 3. **Cross-Platform Sweep Scope Gap**: T041 mechanical path audit missed behavioral divergences; future sweeps should partition syntactic vs behavioral audits explicitly
@@ -100,11 +105,13 @@ Feature 019 delivers PowerShell Gallery module packaging for one-line install (`
 ## Human Follow-Up Items (Deferred Post-Merge)
 
 **T042 — Secret Configuration**:  
+
 - GitHub Actions secrets setup for PSGallery API key and signing certificate  
 - Manual task; documented in `specs/019-specrew-distribution-module/quickstart.md`  
 - Not a blocker for feature-closeout; required before first automated publish
 
 **T053 — First Live Publish**:  
+
 - Manual dispatch or `v*.*` tag push to trigger first live PSGallery publish  
 - Human-owned verification after secret setup completes  
 - Feature ships as ready-to-publish; actual PSGallery listing appears post-merge
@@ -150,6 +157,7 @@ Corpus promotion deferred to Validator Hardening feature per Feature 013 governa
 **Tag Strategy**: `v0.19.0` tag after merge  
 **Publish Workflow**: Automated on `v*.*` tag push (manual-approval gate removed in Iteration 002 T060)  
 **Pre-Merge Checklist**:
+
 - ✅ Feature closeout.md created
 - ✅ Iteration 001 hardening-gate over-claim repaired
 - ✅ Rule 15 version bump applied (0.18.0 → 0.19.0)
@@ -158,6 +166,7 @@ Corpus promotion deferred to Validator Hardening feature per Feature 013 governa
 - ⏳ T042/T053 human follow-up (documented, post-merge)
 
 **Post-Merge Actions**:
+
 1. Create `v0.19.0` tag and push to origin (triggers publish workflow)
 2. Complete T042 secret configuration (PSGallery API key + signing cert)
 3. Verify first automated PSGallery publish completes successfully

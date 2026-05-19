@@ -26,12 +26,14 @@ These four gaps were tightly coupled and bundled into one small feature to avoid
 A two-iteration bundle:
 
 **Iteration 1 (~10 SP)**: Licensing + README
+
 - Added MIT LICENSE file at repo root
 - Added NOTICE.md crediting Squad and Spec Kit upstream projects
 - Rewrote README with Current State, What's working, What's NOT working yet, Roadmap, License, Contributing sections
 - Reconciled product-spec status from `Draft` to `Active 0.14.0`
 
 **Iteration 2 (~9 SP)**: Versioning + closeout template integration
+
 - Bumped `.specrew/config.yml` `specrew_version` from `0.1.0-dev` to `0.14.0`
 - Created `CHANGELOG.md` with retroactive entries for features 001 through 014
 - Tagged release commits as `v0.13.0` and `v0.14.0`
@@ -54,6 +56,7 @@ Phase 1 — HARD PREREQUISITE for public-open. Without licensing, public-open wo
 Rule 15 (version management at feature-closeout) was tested in production on Feature 015's own feature-closeout boundary. The rule fired correctly on load-bearing actions (version bump, CHANGELOG entry, README update, git tag) WITHOUT explicit enumeration in the authorization prompt — empirically validating the codification approach.
 
 This was the first real-world test of Specrew's "codify lifecycle discipline into coordinator prompts to remove manual prompting" pattern. The result strongly supported the approach. Three corpus-row candidates surfaced from the test:
+
 - `auto-correct-cosmetic-vs-pause-and-ask`
 - `template-substitution-failure-on-closeout`
 - `stale-example-wording-on-version-bump`

@@ -14,6 +14,7 @@ discussion: tbd
 Feature 001 (specrew product) has iteration 011 that uses a pre-canonical schema, predating Specrew's current canonical state.md / plan.md format. The iteration is closed but its artifacts aren't aligned with current schema conventions. This creates inconsistency in the project history.
 
 Cleanup options surfaced during F-014 closeout discussion:
+
 1. Schema-migrate the iteration artifacts to canonical format (preserves history with consistency)
 2. Annotate the iteration as grandfathered (preserves history, accepts inconsistency)
 3. Skip — historical artifacts can stay in their original format
@@ -23,6 +24,7 @@ The recommended approach is grandfathering with explicit annotation: a small ref
 ## What
 
 Small focused feature:
+
 - Add `schema-version` field to state.md / plan.md / drift-log.md frontmatter
 - Validator rule: pre-canonical iterations exempt from canonical-schema enforcement
 - Iteration 011's artifacts get the `schema-version: pre-canonical-v0` annotation

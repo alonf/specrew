@@ -34,6 +34,7 @@ No known gaps remain.
 **Verification Basis**: Commit fb926fe on detached HEAD (2026-05-11)
 
 **Evidence Reviewed**:
+
 1. **Implementation**: Examined `scripts/specrew-start.ps1` at commit fb926fe. Confirmed `Get-BaselineCommitHash` function reads YAML frontmatter with 40-char SHA regex matching `^\s*baseline_commit_hash:\s*([0-9a-f]{40})\s*$`. Confirmed `Test-SessionLoadedFilesChanged` function implements `git diff --name-only` scanning session-loaded paths. Confirmed baseline hash written to frontmatter in regenerated handoff.
 2. **Integration Tests**: Executed all three iteration 001 tests on commit fb926fe:
    - `specrew-start-change-detector.ps1`: PASS (Test 1: routine resume returns empty list; Test 2: change detected and baseline updated)
@@ -43,6 +44,7 @@ No known gaps remain.
 4. **Known-Traps Corpus**: Row 17 seeded in `.specrew/quality/known-traps.md` documenting session-restart trigger over-inclusivity trap from feature 011 planning (2026-05-11).
 
 **Iteration 001 Boundary Compliance**:
+
 - ✅ Detector infrastructure and baseline tracking delivered (Phase 1 + Phase 2).
 - ✅ Auto-continue preservation verified (spec 001 Session 2026-05-04 compliance).
 - ✅ Signature stability and error-message preservation verified (no breaking changes).
@@ -51,11 +53,13 @@ No known gaps remain.
 - ✅ Drift-log.md records zero drift events; all tasks aligned to source requirements.
 
 **User Story Coverage**:
+
 - **US1 (Auto-continue preservation for routine resumes)**: ✅ PASS — All three acceptance scenarios verified by `specrew-start-auto-continue-preservation.ps1`.
 - **US2 (Pause-and-confirm for session-loaded file changes)**: ⏳ DEFERRED — Explicitly scoped to Iteration 002 (T043-T049).
 - **US3 (Optional `-PostRestartDirective` parameter)**: ⏳ DEFERRED — Explicitly scoped to Iteration 002 (T050-T054).
 
 **Traceability**:
+
 - FR-001 (Change Detector): T032, T038 ✅
 - FR-002 (Baseline Tracking): T029, T033, T040 ✅
 - FR-004 (Auto-Continue Preservation): T034, T039 ✅

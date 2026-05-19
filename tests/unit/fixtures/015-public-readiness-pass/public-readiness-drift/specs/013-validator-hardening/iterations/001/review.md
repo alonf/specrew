@@ -23,6 +23,7 @@ Feature `013`, validator hardening, iteration `001`, the canonical-schema and gr
 **Status**: ✅ **PASS**
 
 **Evidence**:
+
 1. ✅ **Canonical metadata enforcement** (`extensions\specrew-speckit\scripts\validate-governance.ps1`)  
    - Canonical labels now require exact casing through case-sensitive canonical matching
    - Non-canonical aliases such as `Overall Status:` still fail with explicit `canonical-schema` findings
@@ -42,6 +43,7 @@ Feature `013`, validator hardening, iteration `001`, the canonical-schema and gr
 **Status**: ✅ **PASS**
 
 **Evidence**:
+
 1. ✅ **Structured FAIL surface** (`extensions\specrew-speckit\scripts\shared-governance.ps1`, `extensions\specrew-speckit\scripts\validate-governance.ps1`)  
    - Validator failures now emit file path, line number when known, category, message, and remediation hint
    - Top-level and per-iteration exception wrappers keep unexpected failures out of raw PowerShell exception formatting
@@ -60,6 +62,7 @@ Feature `013`, validator hardening, iteration `001`, the canonical-schema and gr
 **Status**: ✅ **PASS**
 
 **Evidence**:
+
 1. ✅ **Real validator path exercised** (`tests\integration\validator-hardening-iteration1.ps1`)  
    - Builds scratch workspaces with feature-local contracts and fixture-backed iteration artifacts
    - Invokes the real `extensions\specrew-speckit\scripts\validate-governance.ps1` command surface instead of helper-only unit checks
@@ -78,6 +81,7 @@ Feature `013`, validator hardening, iteration `001`, the canonical-schema and gr
 **Status**: ✅ **PASS**
 
 **Evidence**:
+
 1. ✅ **Pre-feature-013 grandfathering preserved**  
    - `validate-governance.ps1 -ProjectPath .` remained green across feature `001`, feature `005`, feature `007`, feature `008`, feature `009`, feature `011`, feature `012`, and feature `013`
 2. ✅ **Existing validator contract preserved**  
@@ -97,6 +101,7 @@ Feature `013`, validator hardening, iteration `001`, the canonical-schema and gr
 **Status**: ✅ **PASS**
 
 **Evidence**:
+
 1. ✅ The validator entrypoint, arguments, PASS/FAIL framing, and exit-code expectations were preserved.
 2. ✅ The review repair tightened label classification without changing the command interface.
 
@@ -107,6 +112,7 @@ Feature `013`, validator hardening, iteration `001`, the canonical-schema and gr
 **Status**: ✅ **PASS**
 
 **Evidence**:
+
 1. ✅ Missing artifacts, malformed input, and unexpected-input scenarios now stay inside structured FAIL output.
 2. ✅ The review-found case-drift gap improved message precision without reopening raw exception leakage.
 
@@ -117,6 +123,7 @@ Feature `013`, validator hardening, iteration `001`, the canonical-schema and gr
 **Status**: ✅ **PASS**
 
 **Validation Results**:
+
 1. ✅ `tests\integration\validator-hardening-iteration1.ps1`
 2. ✅ `extensions\specrew-speckit\scripts\validate-governance.ps1 -ProjectPath .`
 

@@ -91,6 +91,7 @@ Three deferral items were explicitly preserved from this iteration:
    - **Next Owner**: Feature 019+ performance task.
 
 Additionally, one approved deferral from planning was upheld:
+
 - **`self-referential-feature-sp-surcharge`** (explicit deferred task): Planning acknowledged that Feature 016's self-referential governance work would likely exceed standard effort assumptions. This deferral is validated by actual variance (+30-50%), and the pattern should inform future feature estimation.
 
 ---

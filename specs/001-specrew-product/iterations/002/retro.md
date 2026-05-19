@@ -51,6 +51,7 @@ Iteration 002 closed all implementation work (9 tasks, 16 story points) with **1
 ## Drift Summary
 
 ### Total Drift Events: 6
+
 - **Resolved via implementation correction**: 6/6 (100%)
 - **Specification drift detected**: Yes (4 events)
 - **Specification drift accepted**: Yes (all 4 narrow-scope corrections)
@@ -79,13 +80,17 @@ Iteration 002 closed all implementation work (9 tasks, 16 story points) with **1
 ## What Went Well
 
 ### 1. **Zero Estimation Variance**
+
 Iteration 002 achieved perfect task-level accuracy (16/16 planned = actual). Every task closed on estimated effort. This reflects three factors:
+
 - **Planning discipline**: T-201 (FR-007 design spike) and V-R7-2 (FR-021 routing validation) ran pre-execution and eliminated design ambiguity.
 - **Well-scoped tasks**: Each task mapped cleanly to a single requirement slice; no hidden coupling.
 - **No mid-iteration re-scoping**: The plan remained intact from approval through completion.
 
 ### 2. **Drift Detection Automated & Early**
+
 All 6 drift events surfaced within the executing phase through gate-based audits:
+
 - Picard's brownfield audit (FR-020 spec review) caught implementation gaps on day 2 of execution.
 - Planning validation (FR-017/FR-007 checkpoint) caught priority-ranking and snapshot-validation gaps on the final review day.
 - Evaluation audit (FR-015 process scorer) confirmed scorer and report were both required and implemented.
@@ -93,7 +98,9 @@ All 6 drift events surfaced within the executing phase through gate-based audits
 No drift escaped to post-review discovery. This is a direct outcome of Iteration 0's improvement (pre-execution gates) and Iteration 1's refinement (reviewer-gated checkpoints).
 
 ### 3. **Reviewer Gates Worked as Designed**
+
 Worf's 2026-05-03 acceptance reviews (FR-020, FR-017, FR-015 slices) were crisp, high-signal verdicts:
+
 - Each review referenced specific test coverage and acceptance criteria.
 - Each acceptance was binding (no rework loops required).
 - Reviews were batched and synchronized (same-day review, single verdict date).
@@ -101,7 +108,9 @@ Worf's 2026-05-03 acceptance reviews (FR-020, FR-017, FR-015 slices) were crisp,
 This demonstrates that the review gate structure (per-requirement slice, spec-linked, test-backed) is effective at catching issues without friction.
 
 ### 4. **Slice Sequencing Prevented Blocking**
+
 The iteration planned six independent requirement slices (FR-007, FR-015, FR-017, FR-019, FR-020, FR-021) with minimal inter-task coupling:
+
 - FR-020 (brownfield) had no downstream dependencies; T-205/T-206 closed early.
 - FR-019 (resume) ran in parallel with planning tasks (V-R7-2, T-201); no downstream wait time.
 - FR-007/FR-017 (effort model + planning checks) fed into T-203 (planning artifact wiring) but T-201 (design spike) ran pre-execution.
@@ -111,7 +120,9 @@ The iteration planned six independent requirement slices (FR-007, FR-015, FR-017
 No critical path bottlenecks emerged. Parallel slice execution kept the team moving.
 
 ### 5. **Specification Drift Corrections Were Narrow & Accepted**
+
 Of the 6 drift events, 4 represented specification misunderstandings that required narrow clarifications:
+
 - **DR-005** (plan/config alignment): Contract gap, not implementation gap. Adding snapshot validation fixed the governance model.
 - **DR-006** (process scorer report output): Harness specification ambiguity about artifact location. Adding `-WriteReport` clarity fixed both code and docs.
 - **DR-003** (priority-ranked deferral): Spec said "defer," but priority intent was implicit. Implementation added ranking; spec intent confirmed.
@@ -124,7 +135,9 @@ Each correction was a one-way refinement. No contradictions. No rework.
 ## What Didn't Go Well
 
 ### 1. **Initial Spec Gaps in FR-020 & FR-019**
+
 Two drift events (DR-001, DR-002) represented specification ambiguities that implementation surfaced:
+
 - **FR-020**: Spec said "detect and ask how to proceed" but did not enumerate the 7 collision gates (role name, ceremony name, charter conflict, etc.). Implementation discovered these gaps during brownfield audit.
 - **FR-019**: Spec said "resume from last task" but did not clarify whether "last task" meant the task ID or the task metadata. Implementation found that stale `state.md` metadata could drift from the authoritative task table.
 
@@ -135,6 +148,7 @@ Two drift events (DR-001, DR-002) represented specification ambiguities that imp
 **Mitigation**: Iteration 3 should run a full spec-authority gate pre-planning to surface these ambiguities before execution.
 
 ### 2. **Evaluation Harness Scope Drift Latency**
+
 FR-015 (process quality scorer) was split across Iterations 2 and 3 (process slice + outcome scorer). Iteration 002 only built the process scorer; outcome scoring is deferred.
 
 - **Positive**: Clear scope boundary. Process-only slice is complete and testable.
@@ -143,7 +157,9 @@ FR-015 (process quality scorer) was split across Iterations 2 and 3 (process sli
 **Mitigation**: Document slice boundaries explicitly in plan.md when splitting cross-iteration requirements.
 
 ### 3. **No Mid-Iteration Velocity Tracking**
+
 Iteration 002 had zero estimation variance but near-perfect execution (6 drift events, 0 rework loops). This is excellent, but we didn't record velocity checkpoints *within* the iteration.
+
 - **Planned total**: 16 pts
 - **Completed on schedule**: Yes
 - **Velocity at T-205 (day 2)**: Unknown
@@ -162,6 +178,7 @@ This means we hit the milestone on the final day but couldn't course-correct if 
 **Rationale**: Iteration 002 discovered two spec gaps (FR-020, FR-019) during T-205/T-204 audits. These were caught early enough to avoid rework, but running the same gate during planning ceremony (pre-execution) would have eliminated 2 days of drift-detection latency.
 
 **Scope**:
+
 - Iteration 3 planning ceremony will include a "Spec Authority Check" step (10-15 min per requirement slice).
 - Spec Steward will review each planned task's requirement and ask: (1) Does the spec define all acceptance criteria? (2) Are there implicit dependencies or ambiguities? (3) Is the success condition binary or subjective?
 - If gaps are found, add clarification tasks to Iteration 3 planning or defer the requirement to Iteration 4.
@@ -181,6 +198,7 @@ This means we hit the milestone on the final day but couldn't course-correct if 
 **Rationale**: FR-015 (process scorer) was split across Iterations 2 and 3. Iteration 002's plan.md listed it under "In Scope" but didn't clarify that "process slice only; outcome scoring in Iteration 3." Users reading the spec might assume the full harness lands in Iteration 2.
 
 **Scope**:
+
 - Add a "## Scope Clarifications" section to Iteration 3's plan.md.
 - For any multi-iteration requirements, document the slice boundary and why (e.g., "FR-015 process slice: Iteration 2. FR-015 outcome slice: Iteration 3 (lower priority, depends on stable process scorer)").
 
@@ -199,6 +217,7 @@ This means we hit the milestone on the final day but couldn't course-correct if 
 **Rationale**: Iteration 002 hit zero variance but had no visibility into pacing. A 3-point task that runs long on day 8 is caught too late for course correction.
 
 **Scope**:
+
 - Add a "## Checkpoint Schedule" section to Iteration 3's plan.md.
 - Define expected completion dates for each phase: (1) Planning complete by day 2, (2) 50% of implementation by day 4, (3) All implementation by day 6, (4) Review by day 7, (5) Retro by day 8.
 - During execution, update state.md with actual checkpoint dates.
@@ -219,6 +238,7 @@ This means we hit the milestone on the final day but couldn't course-correct if 
 **Rationale**: Iteration 002's drift events were detected by gate audits (spec review, planning validation, evaluation audit), not by per-task implementer checks. This works, but delegating some checks to implementers reduces gate bottlenecks.
 
 **Scope**:
+
 - Update the Implementer charter to include: "After each task closes, log any detected drift in drift-log.md with a requirement citation. Examples: changed assumption, discovered missing acceptance criterion, uncovered hidden coupling."
 - Provide a one-sentence prompt in each task (via task.md or plan.md comments).
 - Retro will tally implementer-logged drift vs. gate-detected drift; if gates catch 80%+, consider expanding implementer checks.
@@ -242,6 +262,7 @@ This means we hit the milestone on the final day but couldn't course-correct if 
 **Recommendation**: Keep capacity at **16 story_points** for Iteration 3.
 
 **Rationale**:
+
 1. Iteration 002 demonstrated that 16 pts is achievable with high precision when pre-planning spikes and spec review gates are in place.
 2. Iteration 1 was foundation work (lower risk, higher accuracy potential). Iteration 2 was post-MVP expansion (medium risk). Iteration 3 will be integration + collision-detection hardening (higher risk, more discovery work). Slightly lower capacity accounts for increased rework likelihood.
 3. Estimation accuracy has been perfect across both executed iterations (0% variance). Conservative calibration is not needed; 16 pts is well-founded.
@@ -268,6 +289,7 @@ All six Iteration 0 operating rules remained effective in Iteration 002:
 ### Governance Hardening & Review Gate Maturity
 
 Iteration 002 demonstrated that governance gates are working as designed:
+
 - **Planning gate** (validate-governance.ps1): Enforces effort-model alignment, capacity checks, traceability validation.
 - **Spec review gate** (Picard FR-020 audit): Catches implementation drift vs. requirement intent early.
 - **Reviewer gate** (Worf 2026-05-03): Binds acceptance verdicts with zero rework loops required.
@@ -277,6 +299,7 @@ The three-gate structure (planning → execution audit → review verdict) has p
 ### Slice Sequencing & Parallel Execution
 
 Iteration 002's six independent requirement slices were sequenced to maximize parallelism:
+
 - **Pre-execution**: V-R7-2 (routing validation) + T-201 (effort model design)
 - **Parallel execution**: FR-020 (3 pts) + FR-019 (3 pts) + FR-007/FR-017 wiring (2 pts) + FR-015 scorer (3 pts)
 - **Serial review**: Batched 2026-05-03 acceptance gate (one reviewer, one date)
@@ -303,11 +326,12 @@ No critical-path bottlenecks emerged. Iteration 3 should continue this pattern: 
 
 ✅ Retrospective ceremony **COMPLETE** — 2026-05-03
 ✅ All mandatory sections complete:
-  - Estimation accuracy (0% variance)
-  - Phase variance (0% variance)
-  - Drift summary (6 events, 100% resolved)
-  - Process observations (rules working, gates effective)
-  - Improvement actions (4 proposed for Iteration 3+)
-  - Calibration suggestion (keep 16 pts)
+
+- Estimation accuracy (0% variance)
+- Phase variance (0% variance)
+- Drift summary (6 events, 100% resolved)
+- Process observations (rules working, gates effective)
+- Improvement actions (4 proposed for Iteration 3+)
+- Calibration suggestion (keep 16 pts)
 
 **Pending**: Alon final sign-off to mark Iteration 002 status as `complete`.

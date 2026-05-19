@@ -27,6 +27,7 @@ Four major components:
 **1. FR-provenance tables**: every functional requirement in every shipped feature gets tagged with its originating feature + iteration. When a new feature claims FR-NNN that conflicts with an existing FR, the validator surfaces the conflict at PR time, not at merge time.
 
 **2. PR-time conflict classifier**: validator pass that runs at PR boundary, identifying:
+
 - Hard conflicts: same FR claimed by two features
 - Soft conflicts: overlapping behavior across features
 - Touched-shared-surfaces: which files are co-modified

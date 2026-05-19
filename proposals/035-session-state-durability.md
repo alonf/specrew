@@ -65,8 +65,8 @@ Source spec drafted at file:///C:/Dev/SpecrewDraft/session-state-durability.md (
 4. Stale-state failure mode: prompt vs auto-correct? (Recommended: user re-anchoring prompt, NEVER silently act)
 5. Companion bug-fix: chore commit vs in-iteration? (Recommended: small chore immediately to touch `.squad/identity/now.md` at feature-closeout; feature formalizes the pattern across all 7 boundaries)
 6-10: full clarify-time question set in the source spec.
-11. Should module-vs-project version check be ALWAYS on or opt-out? (Recommended: always on; check is free + warning non-blocking)
-12. Should `specrew init` perform the PSGallery latest-version check? (Recommended: yes, with shared cache)
+6. Should module-vs-project version check be ALWAYS on or opt-out? (Recommended: always on; check is free + warning non-blocking)
+7. Should `specrew init` perform the PSGallery latest-version check? (Recommended: yes, with shared cache)
 
 ## Risks
 

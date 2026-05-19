@@ -13,6 +13,7 @@
 **Rationale**: The approved spec explicitly narrows the scope of the three-section stop-message format rather than redesigning it. Existing feature 007 guidance already treats progress status and next step as the core semantics; this feature refines when the full stop surface is appropriate without inventing a second multi-section template for in-flight work.
 
 **Alternatives considered**:
+
 - Add a second structured `Action | Status | Next` progress template: rejected — explicitly ruled out by clarification and FR-003.
 - Keep using the three-section format for all coordinator handoffs and rely on softer wording only: rejected — it preserves the current noise problem and does not satisfy FR-001.
 
@@ -25,6 +26,7 @@
 **Rationale**: The repository already centralizes coordinator handoff warnings in the existing PowerShell validator, and feature 012 kept additive handoff governance in the same surface. Reusing the current warning output shape preserves compatibility, keeps the rule discoverable in one place, and matches the spec's additive/non-blocking requirement.
 
 **Alternatives considered**:
+
 - Create a second `handoff-format-scoping` validator script: rejected — splits one governance contract across multiple entrypoints and creates avoidable drift.
 - Put the rule only in prompt/checklist guidance: rejected — FR-004 and FR-005 require detectable warnings, not guidance alone.
 
@@ -37,6 +39,7 @@
 **Rationale**: The approved clarification explicitly rejects a human-extensible configuration surface for this feature. A small literal list is transparent, testable, and easy for reviewers to audit when a warning fires.
 
 **Alternatives considered**:
+
 - YAML-configurable phrase list: rejected — out of scope and unnecessary for the current bounded feature.
 - Semantic/model-based classification of "empty" user action: rejected — conflicts with the repository's deterministic PowerShell governance style.
 
@@ -49,6 +52,7 @@
 **Rationale**: The spec frames the misuse as transitional narration disguised as a stop. The validator already parses handoff sections, so the cleanest extension is a section-aware check that looks for in-flight wait language in the stop rationale and contrasts it with the presence or absence of a real requested human action.
 
 **Alternatives considered**:
+
 - Warn on every mention of waiting or pending: rejected — legitimate stop messages can include waiting language while still requiring human action.
 - Require exact heading text changes alone: rejected — heading choice is not enough; the misuse is semantic.
 
@@ -61,6 +65,7 @@
 **Rationale**: Feature 012 introduced the row to keep authored handoff references readable on first pass. Because feature 014 narrows the stop-message scope, the row must follow the broader coordinator-response contract rather than implicitly attaching only to the three-section surface.
 
 **Alternatives considered**:
+
 - Leave the row scoped only to stop messages: rejected — transitional progress narration would remain ambiguous and drift from FR-007.
 - Copy the row into a second progress-only rule: rejected — duplicates governance meaning without adding clarity.
 
@@ -73,5 +78,6 @@
 **Rationale**: The dependency graph is straightforward. Guidance and warning semantics must exist before proving them through replay fixtures and historical calibration, but the proof work does not need to block the initial selector/contract rollout. That makes the original two-iteration split both truthful and clean.
 
 **Alternatives considered**:
+
 - Collapse to one iteration: rejected — mixes contract definition with proof/corpus follow-through and exceeds the approved bounded rollout.
 - Split into three iterations: rejected — known-traps graduation and calibration are naturally part of the same proof slice and do not justify a third boundary.

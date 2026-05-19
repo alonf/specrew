@@ -18,6 +18,7 @@ only the single Velocity sparkline, and preserved the named deferrals.
 ## Monitoring Areas for Execution
 
 ### 1. **Terminal Capability Decision Precedence**
+
 - **Outcome**: ✅ Verified
 - **Evidence**: renderer precedence now resolves `--ASCII`, `--no-color` / `NO_COLOR`, `NO_UNICODE`,
   redirected output, `TERM=dumb`, UTF-8 capability, and Windows VT eligibility in one shared render-profile path.
@@ -25,30 +26,35 @@ only the single Velocity sparkline, and preserved the named deferrals.
   `scripts/specrew-where.ps1`, and `scripts/internal/dashboard-renderer.ps1`.
 
 ### 2. **Windows VT Fallback Truthfulness**
+
 - **Outcome**: ✅ Verified
 - **Evidence**: Feature 018 monochrome replay and unit coverage proved missing ANSI capability still preserves
   the same semantics, markers, and bounded empty states.
 - **Resolution**: no drift; the fallback remains truthful and ASCII-safe.
 
 ### 3. **Render-Budget Stop-Ship Evidence**
+
 - **Outcome**: ✅ Verified
 - **Evidence**: the representative 16-feature harness passed, and live current-shell `specrew where --no-color`
   measurements on the Specrew repo completed in 1043.86 ms, 1028.64 ms, and 1040.12 ms after one warmup run.
 - **Resolution**: no drift; NFR-001 stayed within the <= 1.5 second limit.
 
 ### 4. **ANSI Stripping with Unicode Preservation**
+
 - **Outcome**: ✅ Verified
 - **Evidence**: unit/integration coverage plus validator updates proved stored dashboard artifacts strip ANSI
   escape sequences while preserving readable Unicode glyphs.
 - **Resolution**: no drift; persisted snapshots stay historically readable without terminal-control noise.
 
 ### 5. **Closeout Dashboard Artifact Rendering**
+
 - **Outcome**: ✅ Verified
 - **Evidence**: closeout scaffold scripts now pass `CaptureKind` only when supported, preserving parity with
   fixture-local older renderer copies while keeping artifact immutability rules intact.
 - **Resolution**: no drift; closeout rendering remains aligned with the live dashboard contract.
 
 ### 6. **Flag Surface and Documentation Alignment**
+
 - **Outcome**: ✅ Verified
 - **Evidence**: help text, dashboard guide, README, manual quickstart, and feature quickstart all now describe
   `--ASCII`, `--RecentCount`, `--BarWidth`, rich/fallback eligibility, and snapshot behavior consistently.

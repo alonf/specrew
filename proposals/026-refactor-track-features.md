@@ -12,6 +12,7 @@ discussion: tbd
 ## Why
 
 Specrew's core scripts have accumulated mass:
+
 - `specrew-start.ps1`: 2,605 lines
 - `specrew-init.ps1`: 1,784 lines
 - `validate-governance.ps1`: 2,867 lines

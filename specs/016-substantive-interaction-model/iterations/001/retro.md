@@ -78,6 +78,7 @@ The initial Iteration 001 scope included three validation pillars (boundary disc
 The original NFR-001 performance budget was estimated as "baseline + 15% overhead." However, when the baseline itself shifts due to adding new validation rules, the "actual vs baseline" comparison becomes ambiguous. The review boundary exposed this: a claimed `113070 ms` pass on the committed tree was not reproducible because the tree itself contained the new validation logic.
 
 **Calibration Fix**: The final NFR-001 acceptance (review-verdict-signoff) includes explicit baseline documentation:
+
 - Pre-refactor baseline (no Feature 016 rules): 109134 ms
 - Post-refactor actual (full Feature 016 rules): 150007 ms  
 - Delta: +40927 ms (+37.5%)
@@ -286,6 +287,7 @@ The Feature 016 spec and Iteration 1 scope explicitly defined what the validator
 **Iteration 001 Status**: RETROSPECTIVE COMPLETE ✅
 
 **Key Metrics**:
+
 - Planned effort: 13.0 story_points
 - Actual effort: 13.0 story_points  
 - Variance: ±0%
@@ -294,6 +296,7 @@ The Feature 016 spec and Iteration 1 scope explicitly defined what the validator
 - Validator status: PASS on HEAD 1db47c3
 
 **Retrospective Completion**:
+
 - Six corpus-row candidates identified and documented (above)
 - Calibration data captured: velocity (13.0 sp/iter), cycle time (~18h), repair shock-absorber recommendation (+5-10 sp buffer for future iterations)
 - Substantive lessons recorded: bundled-boundary commit matching, regex anchoring, timestamp-hash sync, validator scope bounding, NFR measurement baselines

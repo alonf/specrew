@@ -14,6 +14,7 @@ discussion: tbd
 Specrew has substantial state — closed iterations, active feature, queued backlog, roadmap phases — but no consolidated view that answers the developer's question at iteration close: "where am I in the larger project?"
 
 Developers typically have to:
+
 - Open multiple state.md files to track recent closures
 - Mentally compute velocity from commit history
 - Reference scattered memory entries for roadmap phases
@@ -33,6 +34,7 @@ A new command (`specrew where` and standalone `scripts/specrew-where.ps1`) that 
 6. **Effort projection**: working-days to MVP and 1.0
 
 Five pillars:
+
 1. Dashboard rendering — Unicode block characters, ANSI semantic color theme, `--NoColor` and `--Compact` flags
 2. Structured roadmap source — `.specrew/roadmap.yml` replaces hardcoded phase array; auto-detection of shipped SP per phase
 3. Color theme — semantic palette (green = shipped, yellow = active, gray = queued, red = blocked, cyan = identity), single constants block for replacement

@@ -123,6 +123,7 @@
 ## Files Created
 
 ### Repository Structure
+
 - `README.md` - Project overview and structure
 - `CODEOWNERS` - Code ownership assignments
 - `.markdownlintrc` - Markdown linting configuration
@@ -132,6 +133,7 @@
 - `docs/README.md` - Documentation directory placeholder
 
 ### Spec Kit Extension
+
 - `extensions/specrew-speckit/extension.yml` - Extension configuration with feature flags
 - `extensions/specrew-speckit/README.md` - Extension documentation (updated with Squad-native architecture)
 - `extensions/specrew-speckit/hooks/` - Hooks directory (empty)
@@ -147,6 +149,7 @@
   - `drift-diff.ps1` (stub)
 
 ### Squad Template Sources (Squad-Native Architecture)
+
 - `extensions/specrew-speckit/squad-templates/README.md` - Architecture and deployment documentation
 - `extensions/specrew-speckit/squad-templates/skills/` - Skill templates
   - `drift-check.md` (SKILL.md stub)
@@ -165,12 +168,15 @@
   - `README.md` - Directives documentation
 
 ### CI/CD
+
 - `.github/workflows/specrew-ci.yml` - CI pipeline configuration
 
 ### Documentation
+
 - `docs/github-project.md` - GitHub Project board documentation
 
 ### Iteration Artifacts
+
 - `specs/001-specrew-product/iterations/000/spikes.md` - Spike results and findings
 - `specs/001-specrew-product/iterations/000/plan.md` - Updated with task status
 
@@ -196,6 +202,7 @@
 **Issue**: The originally planned `extensions/specrew-squad/` structure was incompatible with Squad's native architecture. Picard resolved this during architecture reconciliation.
 
 **Resolution**: Refactored to Squad-native surfaces (2026-04-18):
+
 - Squad template sources now live in `extensions/specrew-speckit/squad-templates/`
 - `specrew init` will deploy templates to Squad-native locations:
   - Skills → `.copilot/skills/specrew-*/SKILL.md`
@@ -204,17 +211,20 @@
 - Obsolete `extensions/specrew-squad/` package removed from repo
 
 **Impact**:
+
 - T-009, T-010, T-011 (skill/ceremony/directive stubs) completed successfully
 - FR-001 architecture now matches Squad's documented extension model
 - Iteration 0 acceptance criteria #3 updated to reflect Squad-native integration
 
 **References**:
+
 - Contract: `specs/001-specrew-product/contracts/squad-extension.md`
 - Decision: `.squad/decisions/inbox/copilot-squad-native-surfaces-2026-04-18T00-24-57Z.md`
 
 ### ✅ RESOLVED: Platform Validation Spikes
 
 All 9 platform validation spikes completed with findings:
+
 1. **Spec Kit hooks**: 18 lifecycle hooks available for integration
 2. **Squad hooks**: No post-task hook; directive + ceremony fallback viable
 3. **Extension install**: `specify extension add` command available
@@ -225,16 +235,19 @@ All 9 platform validation spikes completed with findings:
 ## Next Steps
 
 ### Immediate Actions
+
 1. ✅ **COMPLETE**: All Iteration 0 tasks finished
 2. ✅ **COMPLETE**: All platform validation spikes documented
 3. ✅ **COMPLETE**: Architecture contracts updated and templates created
 
 ### Required Decisions
+
 1. ✅ **RESOLVED**: Squad extension strategy resolved (Squad-native surfaces)
 2. ✅ **COMPLETE**: Architecture contracts updated (squad-extension.md, specrew-init.md)
 3. ✅ **COMPLETE**: All Planner-owned tasks completed
 
 ### Iteration 0 Acceptance Gate
+
 - **Monorepo scaffold**: ✅ Complete
 - **Spec Kit extension skeleton**: ✅ Complete (with templates and config)
 - **Squad template sources**: ✅ Complete (skills, ceremonies, directives)
@@ -258,12 +271,14 @@ All 9 platform validation spikes completed with findings:
 ## Validation
 
 ### CI Pipeline
+
 - ✅ Created `.github/workflows/specrew-ci.yml`
 - ⏳ Linters not yet installed locally (npm install -g markdownlint-cli, Install-Module PSScriptAnalyzer)
 - ✅ All PowerShell scripts pass basic syntax validation
 - ✅ Directory structure matches iteration plan
 
 ### Spec Compliance
+
 - ✅ All created files use Markdown, YAML, and PowerShell only (per v1 constraints)
 - ✅ No `squad.config.ts` created
 - ✅ No `commands/` folder in Spec Kit extension skeleton

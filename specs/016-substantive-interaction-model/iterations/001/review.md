@@ -140,7 +140,7 @@ Repair the bundled-boundary / implementation-authorization behavior and re-recor
 
 ---
 
-# Re-Review: Implementation Repair (2026-05-15)
+## Re-Review: Implementation Repair (2026-05-15)
 
 **Reviewed By**: Reviewer
 **Reviewed At**: 2026-05-15
@@ -274,11 +274,13 @@ The previous re-review verdict (`accepted`, recorded in Re-Review section above)
 ### Regex Tightening Fix
 
 **Changed Surfaces**:
+
 - `extensions\specrew-speckit\scripts\shared-governance.ps1` lines 341-352 (Get-InteractionModelBoundaryCatalog)
 - `.specify\extensions\specrew-speckit\scripts\shared-governance.ps1` lines 341-352 (mirrored)
 
 **Changes Applied**:
 All canonical boundary regex patterns now include explicit token terminators `(?:\s|$)` to prevent overmatching hyphenated or underscored continuations:
+
 - `planning boundary` → `planning boundary(?:\s|$)`
 - `: implement` → `: implement(?:\s|$)`
 - `: bounded` → `: bounded(?:\s|$)`
@@ -292,6 +294,7 @@ All canonical boundary regex patterns now include explicit token terminators `(?
 
 **Test Coverage**:
 `tests\integration\substantive-interaction-model-boundary-discipline-test.ps1` lines 185-241 now verify:
+
 - ✅ Positive: `Feature 016 substantive-interaction-model iteration 001: implement T001-T015`
 - ✅ Positive: `Feature 016 substantive-interaction-model iteration 001: implementation T001-T020`
 - ❌ Negative: `Feature 016 substantive-interaction-model iteration 001: implementation-repair refactor`
@@ -319,6 +322,7 @@ The new entry provides explicit implementation-boundary authorization for the va
 **Total Delta from Baseline**: `+40927 ms` (`+37.5%`)
 
 The timing increase exceeds the original `+15%` tolerance but is acceptable given:
+
 1. The validator-logic tightening adds regex complexity for all boundary patterns
 2. Commit `37822b6` auth entry adds historical governance coverage
 3. The full validation lane (8 items) remains green post-commit
@@ -347,6 +351,7 @@ Updated in `specs\016-substantive-interaction-model\quickstart.md` line 153-154.
 ### Final Verdict: `accepted` (Post-Regex-Tightening, Post-37822b6-Auth, Post-Commit-Verified)
 
 Feature `016`, substantive interaction model, iteration `001`, including all validator-logic tightening and 37822b6 authorization coverage, is **ACCEPTED** with:
+
 - All FR-001 through FR-019 requirements met
 - All five hardening-gate concerns verified with reproducible runtime evidence
 - NFR-001 performance budget met (150061 ms, +37.5% from baseline, acceptable with justification)

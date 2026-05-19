@@ -46,9 +46,11 @@ This contract specifies two representations of the architecture intent brief:
 
 Example:
 ```
+
 BEFORE: User has single email address; no phone field
 AFTER: User gains phone field (optional string); email becomes multi-valued
 IMPACT: Existing code checking user.email must handle multi-value; migration script needed
+
 ```
 
 ### API or Public Contracts
@@ -57,14 +59,18 @@ IMPACT: Existing code checking user.email must handle multi-value; migration scr
 
 Example:
 ```
+
 NEW ENDPOINT: POST /auth/verify-otp
-  - Input: { user_id, otp_code }
-  - Output: { token, expires_at }
-  - Error: 401 Unauthorized if OTP is invalid
+
+- Input: { user_id, otp_code }
+- Output: { token, expires_at }
+- Error: 401 Unauthorized if OTP is invalid
 
 CHANGED ENDPOINT: POST /auth/login
-  - Old: { email, password } → { token }
-  - New: Supports optional { email_or_phone, password } → { requires_otp: boolean }
+
+- Old: { email, password } → { token }
+- New: Supports optional { email_or_phone, password } → { requires_otp: boolean }
+
 ```
 
 ### Workflow or User-Facing Changes
@@ -73,9 +79,11 @@ CHANGED ENDPOINT: POST /auth/login
 
 Example:
 ```
+
 BEFORE: User logs in with email/password, receives session token
 AFTER: User logs in with email/password, receives OTP via SMS/email, confirms OTP, receives session token
 IMPACT: Two additional round-trips for first-time login
+
 ```
 
 ### Storage or Persistence Changes
@@ -84,13 +92,16 @@ IMPACT: Two additional round-trips for first-time login
 
 Example:
 ```
+
 NEW TABLE: otp_sessions
-  - otp_code (hashed string)
-  - user_id (foreign key)
-  - created_at (timestamp)
-  - expires_at (timestamp)
-  - verified_at (null until confirmed)
-  - attempt_count (integer, max 3)
+
+- otp_code (hashed string)
+- user_id (foreign key)
+- created_at (timestamp)
+- expires_at (timestamp)
+- verified_at (null until confirmed)
+- attempt_count (integer, max 3)
+
 ```
 
 ---
@@ -502,6 +513,7 @@ Example: "Database migration adds otp_sessions table; safe for zero-downtime dep
 **Phase 2**: Brief is generated in both Markdown (for human readability) and JSON (for machine validation). Automated linters can validate JSON schema compliance and enforce struct constraints.
 
 **Phase 2+ Automation**: JSON schema enables:
+
 - Automated validation of brief completeness
 - Machine-readable alternatives and trade-off analysis
 - Automated constraint extraction and enforcement

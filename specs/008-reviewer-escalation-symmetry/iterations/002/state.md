@@ -19,6 +19,7 @@ This iteration carries **User Story 1 (reviewer-regression routing)** only: task
 
 **Planned Tasks**: `T008`-`T013` (13 story_points)  
 **Deferred to Later Iterations**:
+
 - User Story 2 (`T014`-`T019`) → Iteration 003
 - User Story 3 (`T020`-`T026`) → Iteration 004
 - Polish (`T027`-`T028`) → Iteration 005

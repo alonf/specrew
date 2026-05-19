@@ -15,6 +15,7 @@ No specification drift detected during Iteration 0 execution.
 ### Resolution Strategies (Unused)
 
 The following resolution strategies were available but not needed:
+
 - **spec-updated**: Update the spec to reflect implementation choice
 - **implementation-reverted**: Revert implementation to match spec
 - **deferred**: Mark drift as deferred to next iteration

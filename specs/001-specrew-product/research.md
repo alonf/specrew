@@ -17,6 +17,7 @@
 **Rationale**: Using a skill + directive pattern works within documented Squad extension surfaces. It avoids depending on an undocumented hook shape.
 
 **Alternatives considered**:
+
 - `PostToolUseHook` on write operations: Too granular; would fire on every file write, not per logical task.
 - Review-gate-only drift check: Loses the "detect in same iteration" property (SC-003).
 - Custom SDK hook in `squad.config.ts`: Would work but pulls in SDK dependency for MVP — deferred.
@@ -28,6 +29,7 @@
 **Question**: What hook points and command types does the Spec Kit extension starter template support?
 
 **Findings**: Spec Kit extensions support:
+
 - **Commands**: Namespaced commands registered in config.yml, invoked via `/speckit.{namespace}.{command}`
 - **Hooks**: `before_*` and `after_*` for each Spec Kit phase (constitution, specify, clarify, plan, tasks, implement, checklist, analyze, taskstoissues)
 - **Templates**: Markdown templates that can override or extend Spec Kit's built-in templates
@@ -55,6 +57,7 @@ All Specrew governance needs map to available surfaces: `specrew init` as a comm
 **Rationale**: Additive-only merge eliminates data loss risk. User prompt on name conflicts preserves user intent.
 
 **Alternatives considered**:
+
 - Full overwrite: Too destructive (FR-020 requires preservation).
 - Namespace all roles (e.g., "specrew-reviewer"): Adds noise; most projects won't have conflicts.
 - Skip conflicting roles silently: Violates Constitution XI (explicit collision handling).
@@ -68,6 +71,7 @@ All Specrew governance needs map to available surfaces: `specrew init` as a comm
 **Findings**: Spec Kit already uses structured Markdown with consistent heading levels, `**bold-key**: value` patterns, and tables. The evaluation harness and drift-check skill need to extract: task-to-requirement mappings, effort estimates, review verdicts, and drift events.
 
 **Decision**: Use consistent Markdown conventions:
+
 - Headings for sections: `## Tasks`, `## Drift Events`, `## Verdicts`
 - Tables for structured data: `| Task | Requirement | Effort | Owner | Verdict |`
 - Bold key-value pairs for metadata: `**Iteration**: 001`, `**Status**: complete`
@@ -78,6 +82,7 @@ Scripts parse using regex on these patterns. No JSON/YAML front matter required.
 **Rationale**: Stays within the "all Markdown" decision from clarification. Consistent patterns are parseable without introducing a secondary format.
 
 **Alternatives considered**:
+
 - YAML front matter in Markdown: Adds complexity; not used by Spec Kit conventions.
 - Separate JSON sidecar files: Contradicts the "Markdown files" clarification answer.
 
@@ -90,6 +95,7 @@ Scripts parse using regex on these patterns. No JSON/YAML front matter required.
 **Findings**: Squad provides `squad watch` for autonomous polling and an interactive shell. For evaluation, the harness needs to: start an iteration, wait for completion, check artifacts, and score. Squad's CLI can be invoked from scripts. The `@copilot --agent squad` pattern drives work through Copilot.
 
 **Decision**: The evaluation harness operates by:
+
 1. Scaffolding a project and spec via Spec Kit CLI commands (scriptable)
 2. Triggering iteration start by writing the plan and invoking Squad ceremonies via the CLI or file-based triggers
 3. Checking iteration artifacts after each phase (Markdown file existence and content checks)
@@ -100,6 +106,7 @@ The harness does not need to drive the LLM directly — it validates the artifac
 **Rationale**: Artifact-based validation is more stable than trying to script LLM agent behavior. The harness checks outputs, not process internals.
 
 **Alternatives considered**:
+
 - Direct SDK-driven execution: Requires SDK-first mode (experimental, deferred).
 - Mock agents: Would test the harness but not the real crew behavior.
 
@@ -112,6 +119,7 @@ The harness does not need to drive the LLM directly — it validates the artifac
 **Findings**: Both Spec Kit (0.7.3) and Squad (0.9.1) are pre-1.0 and may introduce breaking changes between minor versions. Neither guarantees semver stability.
 
 **Decision**:
+
 - Pin to `>=` minimum versions (Spec Kit >= 0.7.3, Squad >= 0.9.1) rather than exact pins.
 - Maintain a compatibility test suite that runs against the minimum and latest versions.
 - Subscribe to upstream changelogs and release notifications.
@@ -121,6 +129,7 @@ The harness does not need to drive the LLM directly — it validates the artifac
 **Rationale**: `>=` pins allow users to stay current while guaranteeing a known-good baseline. Compatibility test suite catches breakage early.
 
 **Alternatives considered**:
+
 - Exact version pins: Too restrictive; forces users to match exact versions.
 - No version validation: Allows silent breakage (violates FR-002 version validation requirement).
 
@@ -137,6 +146,7 @@ The harness does not need to drive the LLM directly — it validates the artifac
 **Standalone CLIs** (`claude`, `codex`): Direct CLI invocation would create an additional execution path outside Squad's Copilot runtime model. Specrew v1 should not depend on that path.
 
 **Actual probe shape in this environment**:
+
 - `gh copilot` is **not** the active runtime surface here; `gh copilot --help` returns `unknown command "copilot" for "gh"`.
 - The active Copilot runtime surface is the standalone `copilot` CLI. `copilot --version` succeeds (`GitHub Copilot CLI 1.0.31`) and `copilot --help`/`copilot help config` are the documented local metadata surfaces.
 - When `specrew init` runs inside an active Copilot CLI session, environment markers `COPILOT_CLI`, `COPILOT_AGENT_SESSION_ID`, and `COPILOT_CLI_BINARY_VERSION` are present and can confirm that the bootstrap is already running under Copilot.

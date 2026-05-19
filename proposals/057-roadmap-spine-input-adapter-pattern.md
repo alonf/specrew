@@ -24,6 +24,7 @@ Today, the answer is implicit and manual: the maintainer hand-edits `roadmap.yml
 This proposal establishes `roadmap.yml` as the **single canonical source of truth** for dashboard + priority decisions, and defines **a configurable input-adapter pattern** through which various sources can populate it. Multiple adapters can be combined. The project chooses its adapter mix at `specrew init` time (or first `specrew start` if unconfigured).
 
 Without this architecture:
+
 - Every downstream project has to invent its own roadmap-population mechanism
 - The relationship between external tools (Jira, GitHub Projects) and Specrew's lifecycle is undefined
 - Multi-user contribution to the roadmap has no sanctioned pattern
@@ -226,6 +227,7 @@ Other vendor adapters (`adapter-jira`, `adapter-azure-devops`, `bulk-import`) be
 ## Phase placement
 
 **Phase 3 (Runtime Abstraction & Spec Fidelity)**, sibling to:
+
 - [Proposal 024 (Multi-Host Runtime Abstraction)](file:///C:/Dev/Specrew/proposals/024-multi-host-runtime-abstraction.md) — extensibility infrastructure
 - [Proposal 052 (Specrew Profile System)](file:///C:/Dev/Specrew/proposals/052-specrew-profile-system.md) — profile-extensibility pattern (the adapter system rides on top)
 

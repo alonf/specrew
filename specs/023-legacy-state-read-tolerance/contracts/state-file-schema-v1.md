@@ -33,6 +33,7 @@ schema: v1
 ```
 
 **Field Specification**:
+
 - **Name**: `schema` (lowercase, singular)
 - **Type**: String
 - **Position**: Top-level (not nested)
@@ -49,6 +50,7 @@ schema: v1
 All state readers MUST use hashtable-based data structures when parsing JSON and YAML files:
 
 **PowerShell JSON Parsing**:
+
 ```powershell
 $state = Get-Content -LiteralPath $statePath -Raw -Encoding UTF8 | 
          ConvertFrom-Json -AsHashtable -Depth 12
@@ -61,6 +63,7 @@ $state = Get-Content -LiteralPath $statePath -Raw -Encoding UTF8 |
 All state readers MUST NOT throw exceptions when accessing optional fields that don't exist:
 
 **Correct** (hashtable indexer):
+
 ```powershell
 $sessionState = $state['session_state']  # Returns $null if missing, no throw
 if ($sessionState) {
@@ -69,6 +72,7 @@ if ($sessionState) {
 ```
 
 **Incorrect** (PSCustomObject property access):
+
 ```powershell
 $sessionState = $state.session_state  # Throws under StrictMode if missing
 ```
@@ -91,6 +95,7 @@ else {
 ```
 
 **Requirements**:
+
 - Include comments identifying which schema version each code path handles
 - Log "schema-implied-v0" at debug level when reading files without `schema` field
 - Fail fast with clear error message if schema version is unsupported (e.g., `"v2"` when only v1 is implemented)
@@ -104,6 +109,7 @@ else {
 All state writers MUST add an explicit `schema: v1` field when writing state files:
 
 **JSON**:
+
 ```powershell
 $state = @{
     schema = 'v1'
@@ -114,6 +120,7 @@ $state | ConvertTo-Json -Depth 12 | Set-Content -LiteralPath $statePath -Encodin
 ```
 
 **YAML** (manual construction):
+
 ```powershell
 $yamlContent = @"
 schema: v1
@@ -124,6 +131,7 @@ $yamlContent | Set-Content -LiteralPath $statePath -Encoding UTF8
 ```
 
 **Frontmatter** (Markdown files):
+
 ```powershell
 $frontmatter = @"
 ---
@@ -149,6 +157,7 @@ extension:
 ### Silent Upgrade Policy
 
 When a state reader encounters a v0 file (missing `schema` field):
+
 - Reader MUST apply v0-compatible logic
 - Next write by any state writer MUST silently upgrade to `schema: v1`
 - For user-visible config files (e.g., `.specrew/config.yml`), writer MAY log a one-time notice: "Upgraded config.yml to schema v1"
@@ -183,6 +192,7 @@ When a state reader encounters a v0 file (missing `schema` field):
 ### Optional vs Required Fields
 
 **In v1 schema** (additive changes only):
+
 - **All fields are optional** unless explicitly documented as required for a specific state file type
 - Readers MUST provide safe defaults for missing optional fields:
   - String fields: `''` (empty string) or `$null`
@@ -191,6 +201,7 @@ When a state reader encounters a v0 file (missing `schema` field):
   - Object fields: `@{}` (empty hashtable) or `$null`
 
 **Required fields** (enforced by readers):
+
 - `.specify/feature.json`: `feature_directory` (throws if missing per `scaffold-feature-closeout-dashboard.ps1:107-114`)
 - Other required fields to be documented per state file type in future iterations
 
@@ -207,6 +218,7 @@ When a state reader encounters a v0 file (missing `schema` field):
 ### Parse Errors
 
 When a state file contains invalid JSON/YAML syntax:
+
 - Reader MUST throw a clear error message identifying the file path and parse failure
 - Error MUST NOT affect other state files (isolation)
 - Example: `"Failed to parse .specrew/config.yml: invalid YAML syntax at line 23"`
@@ -214,6 +226,7 @@ When a state file contains invalid JSON/YAML syntax:
 ### Missing Files
 
 When a state file does not exist:
+
 - Reader MUST return `$null` or a safe default object (not throw)
 - Caller MUST handle `$null` return gracefully
 - Example: `Get-SpecrewStartContext` returns `$null` if `.specrew/start-context.json` missing
@@ -221,12 +234,14 @@ When a state file does not exist:
 ### Unsupported Schema Versions
 
 When a state reader encounters a schema version it doesn't support (e.g., `"v2"` when only v1 is implemented):
+
 - Reader MUST throw with clear upgrade path
 - Error message format: `"State file {path} requires schema version {version}. This version of Specrew supports up to v1. Upgrade to Specrew X.Y.Z or higher."`
 
 ### Downgrade Scenarios
 
 When an older Specrew version reads a file written by a newer version:
+
 - If schema version is unrecognized: Same error as "Unsupported Schema Versions" above
 - If schema version is v1 but file includes new optional fields unknown to older reader: Older reader MUST ignore unknown fields gracefully (forward compatibility)
 
@@ -241,17 +256,20 @@ All state readers MUST pass tests against legacy fixtures representing Specrew v
 **Fixture Location**: `file:///C:/Dev/Specrew/tests/fixtures/legacy-versions/`
 
 **Pass Criteria**:
+
 - No exceptions thrown
 - No `$null` reference errors (StrictMode compatibility)
 - Return values structurally consistent with function contracts
 
 **Coverage**:
+
 - Each state reader function tested against each fixture version
 - Negative tests for parse errors, missing files, unsupported schema versions
 
 ### CI Integration (FR-014)
 
 Legacy fixture tests MUST run on:
+
 - Windows (GitHub Actions: `windows-latest`)
 - Linux (GitHub Actions: `ubuntu-latest`)
 
@@ -291,11 +309,13 @@ Legacy fixture tests MUST run on:
 ## Compliance Checklist
 
 **For State File Writers**:
+
 - [ ] Add `schema: v1` field to all newly written state files
 - [ ] Distinguish extension content version from schema version (FR-003)
 - [ ] Log one-time upgrade notice for user-visible config files (optional)
 
 **For State File Readers**:
+
 - [ ] Use `ConvertFrom-Json -AsHashtable` for JSON files
 - [ ] Use manual YAML parsing with hashtable output (or equivalent hashtable-based YAML parser)
 - [ ] Access all optional fields via hashtable indexers (not PSCustomObject property access)
@@ -304,6 +324,7 @@ Legacy fixture tests MUST run on:
 - [ ] Throw clear error for unsupported schema versions
 
 **For CI Pipeline**:
+
 - [ ] Run legacy fixture tests on Windows and Linux
 - [ ] Block merge if any fixture test fails
 - [ ] Add new fixture directory when schema version bumps (per closeout template reminder)
