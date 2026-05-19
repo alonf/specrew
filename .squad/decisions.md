@@ -14937,3 +14937,50 @@ User request — captured for team memory to ensure plan authorization respects 
 - **Task ID**: (none)
 - **Auth Commit Hash**: 63768ca231b3cb9ca139336ab80c8c69c90e3310
 - **Recorded At**: 2026-05-19T08:22:26Z
+
+---
+
+## 2026-05-19T14:36:11Z — Decision: Implementer Feature 023 Workflow Hotfix
+
+- **Decision ID**: implementer-f023-workflow-hotfix
+- **Type**: implementation hotfix
+- **Boundary**: post-closeout
+- **Authority**: Implementer
+- **Recorded At**: 2026-05-19T14:36:11Z
+- **Commit Reference**: 17064a0
+- **Feature**: 023-legacy-state-read-tolerance
+
+## Summary
+
+Workflow dispatch real publish modes now treat a non-empty elease_tag as an idempotent lightweight-tag contract.
+
+## Decision
+
+- workflow_dispatch real publish modes fetch tags first, create-and-push the tag only when absent, and fail closed if an existing tag resolves to a different commit than the checked-out SHA
+- Prerelease publish, stable publish, and prerelease promotion all release the exact reviewed commit while staying safe against accidental tag drift
+- GitHub Release creation now covers every real tag-based publish path, with --prerelease reserved for prerelease publishes and --latest for stable baselines/promotions
+
+---
+
+## 2026-05-19T14:36:11Z — Review: Feature 023 Workflow Hotfix
+
+- **Decision ID**: review-f023-workflow-hotfix
+- **Type**: review
+- **Boundary**: post-closeout
+- **Reviewing Agent**: Reviewer
+- **Recorded At**: 2026-05-19T14:36:11Z
+- **Commit Reference**: 17064a0
+- **Feature**: 023-legacy-state-read-tolerance
+- **Verdict**: PASS
+
+## Evidence
+
+- \workflow_dispatch\ real publish paths (\publish-prerelease\, \publish-stable\, \promote-prerelease\) now self-create missing lightweight tags, validate existing tags at \HEAD\, and fail closed on divergent tag targets
+- \create_github_release\ covers every real tag-based publish path, \publish-prerelease\ maps to \--prerelease\, stable/promotion map to \--latest\
+- Dry-run validation passed for no-ref, branch-ref, stable-tag, and prerelease-tag inputs without mutating the reviewed worktree or creating real tags/releases
+- \CHANGELOG.md\, \.specrew\config.yml\, and \Specrew.psd1\ stay aligned on \ .23.0\, with the manifest default prerelease field empty and the changelog accurately describing the hotfix plus Shipping PR #269
+
+## Result
+
+PR #269 remains acceptable to keep open for later human merge authorization.
+
