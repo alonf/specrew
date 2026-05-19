@@ -40,7 +40,7 @@ Proposals with full source-spec content, ready for `/speckit.specify` ingestion 
 | [036](036-branch-reconciliation.md) | Lifecycle Branch Reconciliation | phase-2 | 13 | SDLC pillar; single-developer precursor to [010] multi-developer. MERGE only, never rebase. |
 | [040](040-token-economy-governance.md) | Token Economy as Governance Driver | phase-4 | 38 | 7-layer architecture; two billing modes (metered + quota); model names ONLY in catalog L3-L4 |
 
-## Candidate (35)
+## Candidate (36)
 
 Idea-form proposals not yet developed into full source specs. Open for discussion; may mature to draft or be withdrawn.
 
@@ -82,6 +82,7 @@ Idea-form proposals not yet developed into full source specs. Open for discussio
 | [054](054-pre-merge-lifecycle-verification-gate.md) | Pre-Merge End-to-End Lifecycle Verification Gate | phase-2 | 15 |
 | [055](055-always-in-flow-bug-fix-lifecycle.md) | Always-In-Flow Discipline + Slice-Type Catalog (Including Bug-Fix Lifecycle) | phase-2 | 18 |
 | [057](057-roadmap-spine-input-adapter-pattern.md) | Roadmap Spine + Input Adapter Pattern | phase-3 | 28 |
+| [058](058-plugin-based-multi-host-distribution.md) | Plugin-Based Multi-Host Distribution (Per-Host Plugin Packaging) | phase-3 | 28 |
 
 ---
 
@@ -112,6 +113,7 @@ For roadmap-style viewing, proposals grouped by phase placement:
 - 043 (Structured Question Protocol — could fold into 024)
 - 052 (Specrew Profile System — sibling to 024 Multi-Host; both are extensibility foundations)
 - 057 (Roadmap Spine + Input Adapter Pattern — depends on 052; sibling Phase 3 extensibility)
+- 058 (Plugin-Based Multi-Host Distribution — partner to 024; delivery layer for multi-host)
 
 **Phase 4** (token economy + autopilot experiment):
 - 016 (Outcome Scoring — candidate)
