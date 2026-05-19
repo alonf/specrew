@@ -21,7 +21,6 @@ function Invoke-TestScript {
 }
 
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
-$initScript = Join-Path $repoRoot 'scripts\specrew-init.ps1'
 $startScript = Join-Path $repoRoot 'scripts\specrew-start.ps1'
 $syncScript = Join-Path $repoRoot '.specify\extensions\specrew-speckit\scripts\sync-boundary-state.ps1'
 
@@ -36,13 +35,17 @@ $null = & git -C $projectRoot init --quiet 2>&1
 $null = & git -C $projectRoot config user.email 'test@specrew.local' 2>&1
 $null = & git -C $projectRoot config user.name 'Test User' 2>&1
 
-$initResult = Invoke-TestScript -ScriptPath $initScript -ArgumentList @('-ProjectPath', $projectRoot, '-Force', '-NoAgents')
-if ($initResult.ExitCode -ne 0) {
-    Write-Fail ("Bootstrap failed:`n{0}" -f ($initResult.Output -join [Environment]::NewLine))
-    exit 1
+foreach ($relativeDirectory in @('.specrew', '.specify', '.squad', '.github\agents', 'specs\020-session-state-durability\iterations\001')) {
+    $null = New-Item -ItemType Directory -Path (Join-Path $projectRoot $relativeDirectory) -Force
 }
 
-$null = [System.IO.File]::WriteAllText((Join-Path $projectRoot 'README.md'), "# Test Repo`n", [System.Text.UTF8Encoding]::new($false))
+[System.IO.File]::WriteAllText((Join-Path $projectRoot '.specrew\config.yml'), "project_name: sample`nspecrew_version: `"0.0.0`"`nbootstrap_date: `"2026-01-01`"`n", [System.Text.UTF8Encoding]::new($false))
+[System.IO.File]::WriteAllText((Join-Path $projectRoot '.specify\feature.json'), "{`n  `"feature_directory`": `"specs/020-session-state-durability`"`n}", [System.Text.UTF8Encoding]::new($false))
+[System.IO.File]::WriteAllText((Join-Path $projectRoot '.squad\team.md'), "# Team`n", [System.Text.UTF8Encoding]::new($false))
+[System.IO.File]::WriteAllText((Join-Path $projectRoot '.squad\config.json'), "{}`n", [System.Text.UTF8Encoding]::new($false))
+[System.IO.File]::WriteAllText((Join-Path $projectRoot '.squad\decisions.md'), "# Decisions`n", [System.Text.UTF8Encoding]::new($false))
+[System.IO.File]::WriteAllText((Join-Path $projectRoot '.github\agents\squad.agent.md'), "# Squad Agent`n", [System.Text.UTF8Encoding]::new($false))
+[System.IO.File]::WriteAllText((Join-Path $projectRoot 'README.md'), "# Test Repo`n", [System.Text.UTF8Encoding]::new($false))
 $null = & git -C $projectRoot add -A 2>&1
 $null = & git -C $projectRoot commit -m 'Seed repository' --quiet 2>&1
 $null = & git -C $projectRoot branch -M main 2>&1
@@ -52,7 +55,6 @@ $featureDirectory = Join-Path $projectRoot 'specs\020-session-state-durability'
 $iterationDirectory = Join-Path $featureDirectory 'iterations\001'
 $null = New-Item -ItemType Directory -Path $iterationDirectory -Force
 [System.IO.File]::WriteAllText((Join-Path $featureDirectory 'spec.md'), "# Spec`n", [System.Text.UTF8Encoding]::new($false))
-[System.IO.File]::WriteAllText((Join-Path $projectRoot '.specify\feature.json'), "{`n  `"feature_directory`": `"specs/020-session-state-durability`"`n}", [System.Text.UTF8Encoding]::new($false))
 $null = & git -C $projectRoot add -A 2>&1
 $null = & git -C $projectRoot commit -m 'Seed feature files' --quiet 2>&1
 
@@ -111,10 +113,10 @@ $contextObject = Get-Content -LiteralPath $contextPath -Raw -Encoding UTF8 | Con
 $contextObject.session_state.boundary_type = 'clarify'
 $contextObject | ConvertTo-Json -Depth 12 | Set-Content -LiteralPath $contextPath -Encoding UTF8
 
-$staleResult = Invoke-TestScript -ScriptPath $startScript -ArgumentList @('-ProjectPath', $projectRoot, '-NoLaunch')
+$staleResult = Invoke-TestScript -ScriptPath $startScript -ArgumentList @('-ProjectPath', $projectRoot, '-NoLaunch', '-RecoveryChoice', 'C')
 $staleOutput = $staleResult.Output -join [Environment]::NewLine
-if ($staleResult.ExitCode -eq 0) {
-    Write-Fail 'specrew start should fail when boundary state files disagree.'
+if ($staleResult.ExitCode -ne 0) {
+    Write-Fail 'specrew start should keep stale-state handling recoverable when boundary state files disagree.'
     exit 1
 }
 foreach ($pattern in @('Stale state detected', 'boundary mismatch', 're-anchor', 'create a new feature', 'manually fix state')) {

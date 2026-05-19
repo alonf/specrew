@@ -6,7 +6,11 @@ baseline that each release number represents.
 
 ## Unreleased
 
-- Feature 022 (in flight): F-020 implementation hotfix + schema parity tests. Fixes three production bugs surfaced post-F-021 ship: (1) closeout-helper schema mismatch — `Set-FeatureCloseoutIdentityNow` writes human-readable frontmatter without the `session_state_*` machine-readable fields the stale-state validator requires; (2) boundary-sync hook-coverage gap — `Invoke-SpecrewBoundaryStateSync` not invoked at all 7 lifecycle boundaries (last sync entry for F-021 was at plan-boundary); (3) stale-state recovery UX broken — `specrew start` prints A/B/C options without accepting input. Adds three standalone PowerShell integration tests at `tests/integration/closeout-identity-schema-parity.tests.ps1`, `tests/integration/lifecycle-boundary-sync.tests.ps1`, and `tests/integration/start-recovery-flow.tests.ps1` that compose into Proposal 054's pre-merge gate scenarios.
+## 0.22.0 - F-020 Implementation Hotfix + Schema Parity Tests
+
+- Feature 022: F-020 implementation hotfix + schema parity tests. Fixes three production bugs surfaced post-F-021 ship: (1) closeout-helper schema mismatch — `Set-FeatureCloseoutIdentityNow` writes human-readable frontmatter without the `session_state_*` machine-readable fields the stale-state validator requires; (2) boundary-sync hook-coverage gap — `Invoke-SpecrewBoundaryStateSync` not invoked at all 7 lifecycle boundaries (last sync entry for F-021 was at plan-boundary); (3) stale-state recovery UX broken — `specrew start` prints A/B/C options without accepting input.
+- Adds three standalone PowerShell integration tests at `tests/integration/closeout-identity-schema-parity.tests.ps1`, `tests/integration/lifecycle-boundary-sync.tests.ps1`, and `tests/integration/start-recovery-flow.tests.ps1` that compose into Proposal 054's pre-merge gate scenarios.
+- Shipping PR: #268
 
 ## 0.21.0 - Specrew Slash-Command Surface
 

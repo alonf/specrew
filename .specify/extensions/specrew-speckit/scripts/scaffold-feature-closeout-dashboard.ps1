@@ -71,36 +71,21 @@ function Get-NextRoadmapItemLabel {
     return 'Roadmap update pending'
 }
 
-function Set-FeatureCloseoutIdentityNow {
+function Get-FeatureCloseoutIdentityBody {
     param(
         [Parameter(Mandatory = $true)][string]$ResolvedProjectPath,
         [Parameter(Mandatory = $true)][string]$FeatureRef
     )
 
-    $identityPath = Get-FeatureCloseoutIdentityPath -ResolvedProjectPath $ResolvedProjectPath
-    $identityDirectory = Split-Path -Parent $identityPath
-    if (-not (Test-Path -LiteralPath $identityDirectory -PathType Container)) {
-        $null = New-Item -ItemType Directory -Path $identityDirectory -Force
-    }
-
     $timestamp = (Get-Date).ToUniversalTime().ToString('yyyy-MM-ddTHH:mm:ssZ')
     $featureLabel = Get-FeatureCloseoutNumberLabel -FeatureRef $FeatureRef
     $nextRoadmapItem = Get-NextRoadmapItemLabel -ResolvedProjectPath $ResolvedProjectPath
-    $content = @(
-        '---'
-        ('updated_at: {0}' -f $timestamp)
-        'focus_area: No active feature'
-        'active_issues: []'
-        '---'
-        ''
+    return @(
         '# What We''re Focused On'
         ''
         ('No active feature. Last completed: {0} at {1}. Next roadmap item: {2} (not yet authorized).' -f $featureLabel, $timestamp, $nextRoadmapItem)
         ''
     ) -join [Environment]::NewLine
-
-    [System.IO.File]::WriteAllText($identityPath, $content, [System.Text.UTF8Encoding]::new($false))
-    return $identityPath
 }
 
 $syncBoundaryStateScript = Join-Path $PSScriptRoot 'sync-boundary-state.ps1'
@@ -159,7 +144,7 @@ else {
         Add-ScaffoldAction -Actions $actions -Action 'would-create' -Path $targetPath
     }
     elseif (-not $rendererAvailable) {
-        Write-Host ("WARN [dashboard] Velocity dashboard renderer '{0}' is missing; feature closeout snapshot not generated." -f $rendererPath) -ForegroundColor Yellow
+        Write-Output ("WARN [dashboard] Velocity dashboard renderer '{0}' is missing; feature closeout snapshot not generated." -f $rendererPath)
         Add-ScaffoldAction -Actions $actions -Action 'warning' -Path $targetPath
     }
     else {
@@ -178,16 +163,17 @@ else {
             Add-ScaffoldAction -Actions $actions -Action 'created' -Path $targetPath
         }
         catch {
-            Write-Host ("WARN [dashboard] Unable to generate feature closeout snapshot: {0}" -f $_.Exception.Message) -ForegroundColor Yellow
+            Write-Output ("WARN [dashboard] Unable to generate feature closeout snapshot: {0}" -f $_.Exception.Message)
             Add-ScaffoldAction -Actions $actions -Action 'warning' -Path $targetPath
         }
     }
 }
 
 if (-not $DryRun) {
-    $identityPath = Set-FeatureCloseoutIdentityNow -ResolvedProjectPath $resolvedProjectPath -FeatureRef $featureRef
+    $identityPath = Get-FeatureCloseoutIdentityPath -ResolvedProjectPath $resolvedProjectPath
+    $identityBody = Get-FeatureCloseoutIdentityBody -ResolvedProjectPath $resolvedProjectPath -FeatureRef $featureRef
     Add-ScaffoldAction -Actions $actions -Action 'updated' -Path $identityPath
-    & $syncBoundaryStateScript -ProjectPath $resolvedProjectPath -BoundaryType 'feature-closeout' -FeatureRef $featureRef -PassThru | Out-Null
+    & $syncBoundaryStateScript -ProjectPath $resolvedProjectPath -BoundaryType 'feature-closeout' -FeatureRef $featureRef -IdentityFocusArea 'No active feature' -IdentityActiveIssues '[]' -IdentityBody $identityBody -PassThru | Out-Null
 }
 
 if ($PassThru) {
@@ -196,5 +182,5 @@ if ($PassThru) {
 }
 
 $actions | Select-Object Action, Path | Format-Table -AutoSize
-Write-Host ("Feature closeout dashboard scaffold {0} for {1}" -f ($(if ($DryRun) { 'previewed' } else { 'completed' }), $targetPath)) -ForegroundColor Green
+Write-Output ("Feature closeout dashboard scaffold {0} for {1}" -f ($(if ($DryRun) { 'previewed' } else { 'completed' }), $targetPath))
 exit 0

@@ -37,6 +37,17 @@ Project-specific learnings and patterns discovered during work.
 
 ## Recent Work (2026-05-19)
 
+### 2026-05-19: Feature 022 Durability Reconciliation — Hotfix Schema Tests
+
+**Pattern**: When a specify/clarify artifact set exists locally but was never durably checkpointed, prefer one truthful combined artifact commit and then a follow-up ledger-sync commit instead of guessing at a missing earlier boundary commit.
+
+**Context**: Feature 022 had a clarified `spec.md`, requirements checklist, and `.specify/feature.json` pointer present only in the local worktree. Plan-boundary authorization was explicitly held until the authored artifacts were committed, pushed, and the boundary ledger referenced real git history without rewriting commits.
+
+**Key Learnings**:
+1. **Minimal truthful recovery beats reconstruction**: If the original specify-only snapshot cannot be reconstructed safely, commit the current combined specify+clarify artifact set exactly as it exists. Do not invent a retroactive specify checkpoint.
+2. **Ledger sync is a separate durability step**: After the artifact checkpoint exists, update pending commit references in `.squad/decisions.md` to the real checkpoint hash from git rather than pre-claiming a hash inside the same staged change.
+3. **Plan must stay blocked until origin matches**: For boundary-sensitive feature work, durability is not complete until branch push succeeds, origin matches local HEAD, and the recent remote log visibly contains the governing spec artifacts.
+
 ### 2026-05-19: Feature 020 Specify+Clarify Completion — Session-State Durability
 
 **Pattern**: Batch specify+clarify completion with deferred planning (signoff pause).

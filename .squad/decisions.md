@@ -1,3 +1,196 @@
+## 2026-05-18T23:27:46Z — Authorization: retro-boundary
+
+- **Decision ID**: authorization-feature-022-iter-001-retro-boundary
+- **Type**: authorization
+- **Boundary**: retro-boundary
+- **Approving Human**: Alon Fliess
+- **Recorded At**: 2026-05-18T23:27:46Z
+- **Commit Reference**: 250db74
+- **Authorization Text**:
+  > You are the Retro Facilitator / Iteration Closer for Feature 022 Iteration 001.
+  > Execute the remaining authorized sequence only: retro-boundary, then iteration-closeout. Do not enter feature-closeout.
+
+## 2026-05-18T23:37:34Z — Authorization: iteration-closeout
+
+- **Decision ID**: authorization-feature-022-iter-001-iteration-closeout
+- **Type**: authorization
+- **Boundary**: iteration-closeout
+- **Approving Human**: Alon Fliess
+- **Recorded At**: 2026-05-18T23:37:34Z
+- **Commit Reference**: c8e5417
+- **Authorization Text**:
+  > You are the Retro Facilitator / Iteration Closer for Feature 022 Iteration 001.
+  > After retro-boundary, execute iteration-closeout only, keep feature-closeout unopened, rerun the validator and the same nine required suites, and stop once iteration-closeout is complete.
+
+---
+
+# Decision: Feature 022 Iteration Closeout
+
+**Date**: 2026-05-18T23:37:34Z  
+**Boundary**: iteration-closeout  
+**Feature**: 022-hotfix-schema-tests (Hotfix + Schema Tests)  
+**Iteration**: 001  
+**Authority**: Alon Fliess (retro-boundary and iteration-closeout authorized in sequence)  
+**Decision Type**: Iteration closure and boundary stop
+
+## Evidence Rerun
+
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File .\extensions\specrew-speckit\scripts\validate-governance.ps1 -ProjectPath . -IterationPath .\specs\022-hotfix-schema-tests\iterations\001`
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File .\tests\integration\closeout-identity-schema-parity.tests.ps1`
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File .\tests\integration\lifecycle-boundary-sync.tests.ps1`
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File .\tests\integration\start-recovery-flow.tests.ps1`
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File .\tests\integration\stale-state-detection.tests.ps1`
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File .\tests\integration\boundary-sync-atomicity.tests.ps1`
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File .\tests\integration\specrew-start-end-to-end.ps1`
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File .\tests\integration\review-command.ps1`
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File .\tests\integration\iteration-resume.ps1`
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File .\tests\integration\start-command.ps1`
+
+## Closeout Summary
+
+- Iteration 001 is closed at the iteration layer only; Feature 022 remains bounded to the three confirmed hotfix defects and their regression coverage.
+- `closeout.md`, `dashboard.md`, `code-map.md`, `coverage-evidence.md`, `dependency-report.md`, `reviewer-index.md`, `review-diagrams.md`, `current-architecture.md`, and `quality\trap-reapplication.md` now preserve the canonical closeout packet for this code-touching iteration.
+- Retro lessons are carried forward explicitly: Proposal 054 prevention, integration-test requirement for form-versus-meaning bugs, worktree isolation value, Feature 021 hygiene defaults, CHANGELOG coverage gap, `/speckit.tasks` truth-surface lag, and stewardship-label template drift.
+
+## Boundary Stop
+
+- Iteration-closeout is complete.
+- Feature-closeout remains explicitly unopened and unauthorized.
+
+---
+
+# Decision: Feature 022 Retro Boundary
+
+**Date**: 2026-05-18T23:27:46Z  
+**Boundary**: retro-boundary  
+**Feature**: 022-hotfix-schema-tests (Hotfix + Schema Tests)  
+**Iteration**: 001  
+**Authority**: Alon Fliess (retro + iteration-closeout authorized after review-complete)  
+**Decision Type**: Retrospective completion and boundary stop
+
+## Evidence Rerun
+
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File .\extensions\specrew-speckit\scripts\validate-governance.ps1 -ProjectPath . -IterationPath .\specs\022-hotfix-schema-tests\iterations\001`
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File .\tests\integration\closeout-identity-schema-parity.tests.ps1`
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File .\tests\integration\lifecycle-boundary-sync.tests.ps1`
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File .\tests\integration\start-recovery-flow.tests.ps1`
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File .\tests\integration\stale-state-detection.tests.ps1`
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File .\tests\integration\boundary-sync-atomicity.tests.ps1`
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File .\tests\integration\specrew-start-end-to-end.ps1`
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File .\tests\integration\review-command.ps1`
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File .\tests\integration\iteration-resume.ps1`
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File .\tests\integration\start-command.ps1`
+
+## Retro Outcomes
+
+- Feature 020's intended durability design still allowed the critical bugs to escape until a real post-ship restart; Proposal 054 remains the structural prevention, not optional cleanup.
+- Form-versus-meaning defects need integration coverage, not just unit checks; the CHANGELOG miss belongs to the same failure class.
+- The three standalone Feature 022 suites are the Proposal 054 proof-of-concept lanes: scenario C (`closeout-identity-schema-parity`), scenario A (`lifecycle-boundary-sync`), and scenario B (`start-recovery-flow`).
+- Dedicated worktree isolation avoided concurrent-session friction and should be preserved as a documented hotfix default.
+- Feature 021's retro defaults worked when explicitly enforced here: push hygiene, live bookkeeping, and pre-handoff verification.
+- `/speckit.tasks` still leaves a post-boundary state-transition gap because it does not automatically advance iteration truth surfaces.
+- Stewardship-label template drift is now a recurring governance issue across Features 020, 021, and 022.
+
+## Boundary Stop
+
+- Retro-boundary is complete.
+- Iteration-closeout remains the next authorized boundary.
+- Feature-closeout remains explicitly unopened and unauthorized.
+
+---
+
+# Decision: Feature 022 Review Verdict Signoff
+
+**Date**: 2026-05-19T02:16:37Z  
+**Boundary**: review-verdict-signoff  
+**Feature**: 022-hotfix-schema-tests (Hotfix + Schema Tests)  
+**Iteration**: 001  
+**Authority**: Alon Fliess (review requested on the dedicated worktree/branch)  
+**Decision Type**: Independent review verdict and boundary stop
+
+## Verdict
+
+- **Review Verdict**: APPROVED
+- **Implementation Ref**: `3b5f22bce192246503e1206c9cddd2bae1bf19d2`
+- **Boundary Scope**: FR-001..FR-019, SC-001..SC-005, US1..US3
+
+## Evidence Rerun
+
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File .\extensions\specrew-speckit\scripts\validate-governance.ps1 -ProjectPath . -IterationPath .\specs\022-hotfix-schema-tests\iterations\001`
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File .\tests\integration\closeout-identity-schema-parity.tests.ps1`
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File .\tests\integration\lifecycle-boundary-sync.tests.ps1`
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File .\tests\integration\start-recovery-flow.tests.ps1`
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File .\tests\integration\stale-state-detection.tests.ps1`
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File .\tests\integration\boundary-sync-atomicity.tests.ps1`
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File .\tests\integration\specrew-start-end-to-end.ps1`
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File .\tests\integration\review-command.ps1`
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File .\tests\integration\iteration-resume.ps1`
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File .\tests\integration\start-command.ps1`
+
+## Review Findings
+
+- Closeout identity schema parity is restored without widening scope beyond `.squad\identity\now.md`.
+- All seven lifecycle boundaries record ordered sync evidence and keep late-boundary drift observable.
+- `specrew start` now supports actionable stale-state recovery and explicit `--recover` entry while preserving approval semantics.
+- Hotfix governance remained single-iteration only and kept the broader audit / fourth-bug follow-up explicitly deferred.
+- The validator emitted non-blocking `missing-dashboard-artifact` warnings; review remained authorized to stop without dashboard work.
+
+## Boundary Stop
+
+- Retro-boundary, iteration-closeout, and feature-closeout remain unopened.
+- Stop after recording this review verdict and the corresponding `specs\022-hotfix-schema-tests\iterations\001\review.md` artifact.
+
+---
+
+# Decision: Feature 022 Scope Lock and Repair Map
+
+**Date**: 2026-05-18T21:45:00Z  
+**Boundary**: implementation-slice execution record  
+**Feature**: 022-hotfix-schema-tests (Hotfix + Schema Tests)  
+**Iteration**: 001  
+**Authority**: Alon Fliess (implementation authorized on the dedicated worktree/branch)  
+**Decision Type**: Scope lock, deferred-scope ledger, and approved repair map
+
+## Scope Lock
+
+- Keep Feature 022 bounded to the three confirmed defects only:
+  1. closeout identity schema parity in `.squad\identity\now.md`
+  2. seven-boundary lifecycle synchronization durability
+  3. actionable stale-state recovery in `specrew start`
+- Preserve the serial execution constraint across W002, W003, and W004 because they share session-state, restart, and boundary-sync surfaces.
+- Keep user-visible warnings on the touched PowerShell surfaces on `Write-Output`.
+- Stop at the implementation-complete handoff only; do not open review, retro, iteration-closeout, or feature-closeout as part of this slice.
+
+## Deferred Scope Ledger
+
+- **Deferred**: broader FR-005 schema-audit work outside `.squad\identity\now.md`
+- **Deferred**: Proposal 054 composition beyond keeping the three new regression suites independently runnable
+- **Deferred**: FR-019 fourth-bug follow-up outside the accepted three-bug hotfix scope
+- **Deferred**: any workflow redesign beyond stale-state recovery, ordered boundary sync, and closeout identity parity
+
+## Approved Repair Map
+
+1. **Foundational closeout writer** — `scripts\internal\sync-boundary-state.ps1` remains the single authority for prompt/context/identity/ledger updates, now preserving closeout parser fields, resolving `HEAD` to a durable commit hash, and delaying `.specify\feature.json` cleanup until after state is written.
+2. **Early lifecycle boundaries** — the existing specify / clarify / plan / tasks command wrappers remain the approved injection points and continue to invoke `.specify\extensions\specrew-speckit\scripts\sync-boundary-state.ps1` at boundary completion without widening the command surface.
+3. **Late lifecycle boundaries** — `scripts\specrew-review.ps1`, `extensions\specrew-speckit\scripts\scaffold-feature-closeout-dashboard.ps1`, and the shared sync helper own review-signoff / iteration-closeout / feature-closeout sequencing, including warning ledger entries when late boundaries arrive out of order.
+4. **Restart recovery** — `scripts\specrew-start.ps1` and `scripts\internal\coordinator-resume.ps1` now reuse the shared session-state parser, surface actionable A/B/C stale-state recovery, support `--recover`, and persist `recovery_session` diagnostics into the start artifacts.
+
+## Runtime Evidence Lane
+
+- New standalone regressions:
+  - `tests\integration\closeout-identity-schema-parity.tests.ps1`
+  - `tests\integration\lifecycle-boundary-sync.tests.ps1`
+  - `tests\integration\start-recovery-flow.tests.ps1`
+- Preserved regression coverage re-run for impacted legacy behavior:
+  - `tests\integration\stale-state-detection.tests.ps1`
+  - `tests\integration\boundary-sync-atomicity.tests.ps1`
+  - `tests\integration\specrew-start-end-to-end.ps1`
+  - `tests\integration\review-command.ps1`
+  - `tests\integration\iteration-resume.ps1`
+  - `tests\integration\start-command.ps1`
+
+---
+
 # Decision: Feature 021 Conditional Implementation-Start Authorization Record
 
 **Date**: 2026-05-18T09:48:42Z  
@@ -4907,7 +5100,7 @@ All recommendations are documented with implementation owners and timelines.
 - **Boundary**: review-verdict-signoff
 - **Approving Human**: Alon Fliess
 - **Recorded At**: 2026-05-15T09:58:32Z
-- **Commit Reference**: pending (single-boundary-commit constraint; recorded by canonical boundary subject)
+- **Commit Reference**: pending
 - **Authorization Text**:
   > The human reviewer has already ACCEPTED Feature 017 Iteration 1 and authorized exactly one boundary advance: from review-boundary to review-verdict-signoff.
   > Record the accepted review-verdict-signoff boundary, stop at retro-boundary, and request explicit retro authorization next.
@@ -13921,7 +14114,7 @@ The Reviewer role successfully delivered the independent review boundary pass fo
 - **Boundary**: iteration-closeout
 - **Approving Human**: Alon Fliess
 - **Recorded At**: 2026-05-18T14:25:53Z
-- **Commit Reference**: pending
+- **Commit Reference**: pending (single-boundary-commit constraint; recorded by canonical boundary subject)
 - **Authorization Text**:
 
 > Authorized: Iteration 001 review-boundary → review-verdict-signoff → retro → iteration-closeout. Permissive sequencing; stop at iteration-closeout handoff. Do NOT enter feature-closeout (separate authorization).
@@ -14113,3 +14306,234 @@ Feature-closeout still requires separate explicit human authorization. The next 
 - **Rationale**: Delegated lifecycle routing was applied for role 'Reviewer'.
 
 - **Routing Evidence**: Reviewer | requested=claude | actual=copilot | model=(platform default) | status=fell-back | fallback=preferred agent 'claude' is not enabled
+## 2026-05-18T17:35:05Z — Authorization: planning
+
+- **Decision ID**: authorization-feature-022-planning
+- **Type**: authorization
+- **Boundary**: planning
+- **Approving Human**: Alon Fliess
+- **Recorded At**: 2026-05-18T17:35:05Z
+- **Commit Reference**: pending
+- **Authorization Text**:
+  > Authorized: Run /speckit.plan for Feature 022. Stop at plan-completion boundary for human review.
+  >
+  > Planning constraints:
+  > - keep Feature 022 as a single-iteration hotfix with a 10 SP capacity lock
+  > - treat FR-005 as limited to `.squad/identity/now.md`, keep `--recover` orthogonal to autopilot behavior, and defer the fourth inbox-to-ledger bug
+  > - map stewardship labels descriptively onto baseline Squad roles in planning artifacts
+  > - scaffold the hardening gate and the iteration-start triad up front during planning
+  > - push after every commit, verify `origin/022-hotfix-schema-tests` matches local before the boundary handoff, and do not enter `/speckit.tasks`
+
+---
+
+## 2026-05-18T17:10:53Z — Authorization: clarify
+
+- **Decision ID**: authorization-feature-022-clarify
+- **Type**: authorization
+- **Boundary**: clarify
+- **Approving Human**: Alon Fliess
+- **Recorded At**: 2026-05-18T17:10:53Z
+- **Commit Reference**: a5a7996
+- **Authorization Text**:
+  > Authorized: Run /speckit.clarify for Feature 022. Stop at clarify-completion boundary for human review.
+  >
+  > Clarify boundary scope: resolve FR-005, FR-014, and FR-019 only, using the provided narrow-scope, orthogonal-flag, and follow-up-feature recommendations. Do not enter /speckit.plan, do not expand scope to the fourth-bug investigation, and do not modify the spec beyond resolving those three clarification markers.
+
+---
+
+## 2026-05-18T17:10:53Z — Routing evidence: Spec Steward
+
+- **Decision ID**: routing-evidence-feature-022-clarify
+- **Type**: routing-evidence
+- **Affected Requirement**: Feature 022 clarify boundary
+- **Affected Iteration**: specs/022-hotfix-schema-tests/iterations/001
+- **Approving Human**: Alon Fliess
+- **Recorded At**: 2026-05-18T17:10:53Z
+- **Next Action**: Human review of `file:///C:/Dev/Specrew/specs/022-hotfix-schema-tests/spec.md` before `/speckit.plan`
+- **Rationale**: Delegated lifecycle routing was applied for the Feature 022 clarify boundary.
+
+- **Routing Evidence**: Spec Steward | requested=codex | actual=copilot-backed `speckit.clarify` | model=gpt-5.4 | status=fell-back | fallback=preferred agent `codex` is not enabled
+
+---
+
+# Decision: Feature 022 Clarify Resolution Complete
+
+**Date**: 2026-05-18T17:10:53Z  
+**Boundary**: Clarify-complete  
+**Feature**: 022-hotfix-schema-tests (F-020 Implementation Hotfix + Schema Parity Tests)  
+**Authority**: Alon Fliess  
+**Decision Type**: Clarification resolution and plan-readiness record
+
+## Summary
+
+Feature 022 clarification is complete. The spec now resolves the schema-audit boundary in **FR-005, the closeout-identity-only hotfix scope**, the recovery-flag semantics in **FR-014, the orthogonal `--recover` behavior**, and the follow-up disposition in **FR-019, the deferred inbox-to-ledger symptom**. The spec keeps the hotfix bounded to the three confirmed restart bugs plus their regression coverage, preserves the Proposal 054 follow-through note for broader schema parity auditing, and leaves the stewardship-label mismatch as a planning/governance mapping note rather than a new clarify branch.
+
+## Clarify Evidence
+
+- **Updated spec**: file:///C:/Dev/Specrew/specs/022-hotfix-schema-tests/spec.md
+- **Feature pointer**: file:///C:/Dev/Specrew/.specify/feature.json
+- **Active focus marker**: file:///C:/Dev/Specrew/.squad/identity/now.md
+
+## Resolved Decisions
+
+- **DP-A / FR-005**: Limit schema-parity auditing to `file:///C:/Dev/Specrew/.squad/identity/now.md`; broader state-surface auditing is deferred to Proposal 054 / future durable pre-merge gate work.
+- **DP-B / FR-014**: Keep `--recover` orthogonal to best-guess or autopilot-style confirmation behavior; recovery launch and confirmation behavior remain separately controlled concerns.
+- **DP-C / FR-019**: Record the inbox-to-ledger / Scribe auto-consolidation symptom as follow-up work outside Feature 022 acceptance scope.
+
+## Next Authorized Step
+
+Human review of the clarify-completion artifact set. Only after that review may Feature 022 proceed to `/speckit.plan`.
+
+---
+
+## 2026-05-18T16:57:42Z — Routing evidence: Spec Steward
+
+- **Decision ID**: routing-evidence-feature-022-specify
+- **Type**: routing-evidence
+- **Affected Requirement**: Feature 022 specification boundary
+- **Affected Iteration**: specs/022-hotfix-schema-tests/iterations/001
+- **Approving Human**: (none)
+- **Recorded At**: 2026-05-18T16:57:42Z
+- **Next Action**: Human review of `file:///C:/Dev/Specrew/specs/022-hotfix-schema-tests/spec.md` before `/speckit.clarify`
+- **Rationale**: Delegated lifecycle routing was applied for the Feature 022 specify boundary.
+
+- **Routing Evidence**: Spec Steward | requested=codex | actual=copilot-backed `speckit.specify` | model=gpt-5.4 | status=fell-back | fallback=preferred agent `codex` is not enabled
+
+---
+
+# Decision: Start Feature 022 — F-020 Implementation Hotfix + Schema Parity Tests
+
+**Date**: 2026-05-18T16:57:42Z  
+**Boundary**: Feature-start (specify-completion stop)  
+**Feature**: 022-hotfix-schema-tests (F-020 Implementation Hotfix + Schema Parity Tests)  
+**Authority**: Alon Fliess  
+**Decision Type**: Feature-start authorization with specify-completion boundary
+
+## Summary
+
+Feature 022 is now opened as a brownfield hotfix focused on the restart failures discovered after Feature 021 shipped. The new draft specification captures the three confirmed production bugs, the single-iteration hotfix scope, the required regression surfaces for schema parity, seven-boundary synchronization, and end-to-end restart recovery, and the carry-forward governance defaults inherited from Feature 021. Work stopped at the specify-completion boundary exactly as requested.
+
+## Specification Evidence
+
+- **Spec file**: file:///C:/Dev/Specrew/specs/022-hotfix-schema-tests/spec.md
+- **Requirements checklist**: file:///C:/Dev/Specrew/specs/022-hotfix-schema-tests/checklists/requirements.md
+- **Feature pointer**: file:///C:/Dev/Specrew/.specify/feature.json
+- **Active focus marker**: file:///C:/Dev/Specrew/.squad/identity/now.md
+- **Branch**: `022-hotfix-schema-tests`
+
+## Clarify Items Preserved
+
+- Whether schema-parity auditing should extend beyond the closeout identity surface to other state artifacts
+- Whether `--recover` should remain orthogonal to best-guess confirmation behavior
+- Whether the possible boundary-sync inbox-to-ledger symptom belongs in Feature 022 or a follow-up
+- The current default assumption keeps new regression coverage in `tests/integration` unless planning later justifies a different bundle
+
+## Next Boundary
+
+Human review of the specify-completion artifact set. Only after that review may Feature 022 proceed to `/speckit.clarify`.
+
+---
+
+# Decision: Feature 022 Clarification Authorization
+
+**Date**: 2026-05-18T20:10:53+03:00  
+**Decision Type**: Clarification authorization  
+**Feature**: 022-hotfix-schema-tests  
+**Boundary**: Clarify-completion authorization  
+**Authority**: Alon Fliess (via Copilot directive)
+
+## Authorization
+
+Run `/speckit.clarify` for Feature 022 only. Resolve clarification markers FR-005, FR-014, and FR-019 using the provided narrow-scope, orthogonal-flag, and follow-up-feature recommendations. Stop at clarify-completion for human review. Do not enter `/speckit.plan`. Do not broaden scope to the possible fourth bug. Do not modify the spec beyond resolving those three clarification markers.
+
+## Rationale
+
+User request — captured for team memory per Scribe charter to preserve cross-agent coordination state.
+
+---
+
+### 2026-05-18T20:10:53+03:00: User directive
+**By:** Alon Fliess (via Copilot)
+**What:** Run `/speckit.clarify` for Feature 022 only, resolve FR-005 / FR-014 / FR-019 using the provided narrow-scope, orthogonal-flag, and follow-up-feature recommendations, stop at clarify-completion for human review, do not enter `/speckit.plan`, do not broaden scope to the possible fourth bug, and do not modify the spec beyond resolving those three clarification markers.
+**Why:** User request — captured for team memory
+---
+
+# Decision: Feature 022 Durability Anchor Reconciliation
+
+**Date**: 2026-05-18T17:25:25Z  
+**Decision Type**: Durability anchor decision  
+**Feature**: 022-hotfix-schema-tests  
+**Boundary**: Durable artifact commitment and boundary reconciliation  
+**Authority**: Spec Steward
+
+## Summary
+
+Commit \5a7996\ on branch \ 22-hotfix-schema-tests\ is designated as the truthful durability anchor for Feature 022's combined specify+clarify artifact set. All boundary ledger references to this feature's work shall be reconciled to point to this commit rather than attempting to reconstruct uncommitted specify-only boundaries.
+
+## Rationale
+
+The Feature 022 specification and clarification artifacts existed locally without a durable checkpoint. The user explicitly held plan-boundary authorization until real git/origin durability was restored without history rewriting. This decision establishes the canonical commit reference for all downstream ledger and coordination state.
+
+## Boundary Impact
+
+- Boundary ledger updated to reference \5a7996\ as truthful checkpoint for Feature 022 combined specify+clarify boundary
+- Origin push verification passed: local HEAD == origin/022-hotfix-schema-tests
+- Post-push validation commands green
+
+---
+
+### 2026-05-18T17:25:25Z: Spec Steward durability decision
+
+**By:** Spec Steward  
+**What:** Treat commit \5a7996\ on \ 22-hotfix-schema-tests\ as the truthful durability anchor for the current Feature 022 combined specify+clarify artifact set. Reconcile any pending boundary commit references to that checkpoint rather than reconstructing an uncommitted specify-only boundary.  
+**Why:** Feature 022 artifacts existed locally without a durable checkpoint, and the user explicitly held \/speckit.plan\ authorization until real git/origin durability was restored without history rewriting.
+
+---
+
+# Decision: Plan-Boundary Authorization Hold for Feature 022
+
+**Date**: 2026-05-18T20:22:08Z  
+**Decision Type**: Authorization hold directive  
+**Feature**: 022-hotfix-schema-tests  
+**Authority**: Alon Fliess (via Copilot)
+
+## Summary
+
+Plan-boundary authorization for Feature 022 is held pending durability confirmation. The /speckit.plan command must not be invoked until the specify and clarify artifacts are durably committed and pushed to origin with matching local and origin HEAD commits, all boundary ledger references point to truthful commit references, and post-push verification commands are green.
+
+## Constraints
+
+- Do not enter \/speckit.plan\
+- Do not modify \spec.md\ content
+- Do not amend or rebase commits
+- Do not investigate the deferred fourth bug
+
+## Rationale
+
+User request — captured for team memory to ensure plan authorization respects durability boundaries and post-push validation state before allowing the feature into the planning phase.
+
+---
+
+### 2026-05-18T20:22:08Z: User directive
+
+**By:** Alon Fliess (via Copilot)  
+**What:** Hold plan-boundary authorization for Feature 022 until the specify and clarify artifacts are durably committed and pushed, origin matches local HEAD, the boundary ledger points at truthful commit references, and the post-push verification commands are all green. Do not enter \/speckit.plan\, do not modify \spec.md\ content, do not amend or rebase commits, and do not investigate the deferred fourth bug.  
+**Why:** User request — captured for team memory
+
+## 2026-05-18T18:20:35Z — Boundary sync: plan
+
+- **Boundary Type**: plan
+- **Feature Ref**: 022-hotfix-schema-tests
+- **Iteration Number**: (none)
+- **Task ID**: (none)
+- **Auth Commit Hash**: (none)
+- **Recorded At**: 2026-05-18T18:20:35Z
+
+## 2026-05-18T18:31:15Z — Boundary sync: tasks
+
+- **Boundary Type**: tasks
+- **Feature Ref**: 022-hotfix-schema-tests
+- **Iteration Number**: 001
+- **Task ID**: (none)
+- **Auth Commit Hash**: (none)
+- **Recorded At**: 2026-05-18T18:31:14Z
