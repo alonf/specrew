@@ -365,27 +365,33 @@ function Get-SpecrewStartContextSessionState {
         return $null
     }
 
+    # -AsHashtable is critical here: legacy start-context.json files from
+    # pre-F-020 projects (initialized at 0.19.0 or earlier) do NOT have the
+    # session_state field. With ConvertFrom-Json producing PSCustomObject,
+    # Set-StrictMode -Version Latest throws on the missing-property access.
+    # Hashtable indexer returns $null for missing keys without throwing,
+    # which is the migration-tolerant semantics we want here.
     try {
-        $context = Get-Content -LiteralPath $paths.ContextPath -Raw -Encoding UTF8 | ConvertFrom-Json -Depth 12
+        $context = Get-Content -LiteralPath $paths.ContextPath -Raw -Encoding UTF8 | ConvertFrom-Json -Depth 12 -AsHashtable
     }
     catch {
         return $null
     }
 
-    if ($null -eq $context.session_state) {
+    if ($null -eq $context -or $null -eq $context['session_state']) {
         return $null
     }
 
-    $sessionState = $context.session_state
+    $sessionState = $context['session_state']
     return [pscustomobject]@{
-        active           = if ($sessionState.active) { 'true' } else { 'false' }
-        boundary_type    = [string]$sessionState.boundary_type
-        feature_ref      = [string]$sessionState.feature_ref
-        feature_path     = [string]$sessionState.feature_path
-        iteration_number = [string]$sessionState.iteration_number
-        task_id          = [string]$sessionState.task_id
-        auth_commit_hash = [string]$sessionState.auth_commit_hash
-        recorded_at      = [string]$sessionState.recorded_at
+        active           = if ($sessionState['active']) { 'true' } else { 'false' }
+        boundary_type    = [string]$sessionState['boundary_type']
+        feature_ref      = [string]$sessionState['feature_ref']
+        feature_path     = [string]$sessionState['feature_path']
+        iteration_number = [string]$sessionState['iteration_number']
+        task_id          = [string]$sessionState['task_id']
+        auth_commit_hash = [string]$sessionState['auth_commit_hash']
+        recorded_at      = [string]$sessionState['recorded_at']
     }
 }
 
