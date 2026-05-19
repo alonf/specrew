@@ -11,31 +11,63 @@ discussion: tbd
 
 ## Why
 
-Specrew's proposal and feature corpus has grown to ~40 candidate proposals + 10 draft proposals + 10 shipped feature specs. Cross-references between them are captured in prose only — every proposal has a "Cross-references" section listing related work with informal "composes with", "depends on", "sibling of" language. **There is no machine-readable graph, no reason recorded per dependency, and no propagation when a feature changes.**
+### The AI-agent argument (primary motivation)
 
-The 2026-05-19 WSL trial made this gap concrete in multiple ways:
+Specrew's value proposition increasingly depends on AI agents making code changes safely. Human maintainers carry dependency context in their head — they know which features assume which contracts, why a particular abstraction was introduced, which test was load-bearing for which migration. **AI agents don't carry this context and there's no way to retrofit it.** Every AI-driven code change today is a coin-toss between "agent reads the surrounding code well enough to preserve the implicit contract" and "agent makes a locally-correct change that silently invalidates a contract in a sibling feature nobody is testing for."
 
-1. **F-021 contract assumption hidden**: Proposal 058 (Plugin-Based Distribution) assumed F-021's slash-command surface design was correct. When F-021's deployment path (`.copilot/skills/`) turned out to be wrong, 058's design assumptions were silently invalidated. No system flagged that 058 needed re-review.
+A dependency graph with explicit reasons is the missing surface that lets an AI agent reason about side-effects BEFORE making a change. The workflow becomes:
+
+1. Agent is asked to modify feature X
+2. Agent runs `specrew dep show X` — sees what X depends on (incoming) and what depends on X (outgoing)
+3. Each dependency has a stated reason: "F-Y depends on X because X provides the canonical `Resolve-ProjectPath` API; F-Y assumes the return value is always rooted"
+4. Agent reads X, makes its change, and checks whether the change preserves each declared reason
+5. If a reason is invalidated, the agent surfaces the breakage explicitly: "this change breaks the F-Y assumption that ... — should we (a) preserve the contract, (b) update F-Y too, or (c) propose deprecation?"
+
+This is *exactly* the methodology surface that compounds value with every AI-driven change. Today the contract is invisible. After this proposal, it's a first-class artifact.
+
+### The human-maintainer argument (secondary motivation)
+
+Specrew's proposal and feature corpus has grown to ~40 candidate proposals + 10 draft proposals + 10 shipped feature specs. Cross-references are captured in prose only — every proposal has a "Cross-references" section listing related work with informal "composes with", "depends on", "sibling of" language. **There is no machine-readable graph, no reason recorded per dependency, and no propagation when a feature changes.**
+
+The 2026-05-19 WSL trial made this gap concrete:
+
+1. **F-021 contract assumption hidden**: Proposal 058 (Plugin-Based Distribution) assumed F-021's slash-command surface design was correct. When F-021's deployment path (`.copilot/skills/`) turned out to be wrong, 058's design assumptions were silently invalidated. No system flagged 058 for re-review.
 
 2. **F-019 cross-platform claim load-bearing**: Proposals 042, 044, 045, 054, 058, 060, 061 all assume F-019 produced a cross-platform validation baseline. When the 5-bug Linux cluster surfaced, that baseline was empirically invalid — but no system listed which dependents needed assumption re-validation.
 
-3. **F-020 schema contract proliferation**: Proposal 059 (Legacy-State Read-Tolerance) was authored under the assumption that F-020's session-state schema was stable. Proposals 042, 054, 061 all implicitly depend on that same schema. If F-020's schema is revised (e.g., a future schema v2), no system flags the dependent proposals for re-review.
+3. **F-020 schema contract proliferation**: Proposal 059 (Legacy-State Read-Tolerance) was authored assuming F-020's session-state schema was stable. Proposals 042, 054, 061 all implicitly depend on that same schema. If F-020's schema is revised, no system flags the dependent proposals for re-review.
 
-4. **Reciprocal references partial**: when Proposal 059 was written, it listed 030, 035, 042, 054, 057 as composers. Did those proposals get reverse-edited to list 059 back? Manual check; no validator.
+4. **Reciprocal references partial**: when Proposal 059 was written, it listed 030, 035, 042, 054, 057 as composers. Did those proposals get reverse-edited to list 059? Manual check; no validator.
 
 5. **Reasons missing**: even when proposal X lists "Composes with Y", the *reason* is sometimes spelled out and sometimes not. When future-you reads the cross-reference, the rationale must be reconstructed from memory.
 
 The cost is *invisible drift*: assumptions made by proposal Y about feature X become wrong over time, and there's no mechanism to detect the divergence.
 
-This proposal builds on the work in [028](028-public-proposals-surface.md) (which adds machine-readable metadata) to add the **dependency graph, reason capture, and impact-analysis propagation** layer on top.
-
 ## What
 
-Three coupled components: **(A)** extended frontmatter schema with `reason` per dependency, **(B)** validator + reciprocal-check, **(C)** propagation tooling for impact analysis.
+Three coupled components: **(A)** extended frontmatter schema with `reason` per dependency, **(B)** validator + reciprocal-check, **(C)** propagation tooling for impact analysis. **Proposal-optional by design** — the discipline works for projects that don't use the proposals pattern.
+
+### Proposal optionality (clarified scope)
+
+The dependency graph is anchored in artifacts that exist in *every* Specrew project, with optional sources for projects that use richer planning surfaces:
+
+| Source | When present | Role |
+|---|---|---|
+| `specs/<feature>/spec.md` frontmatter | **Always** (every Specrew project has feature specs once `/speckit.specify` runs) | **Universal anchor.** Feature-to-feature dependencies. The minimum coverage every project gets. |
+| `.specrew/roadmap.yml` entries | When [057](057-roadmap-spine-input-adapter-pattern.md) ships | Project-wide planning-level dependencies. Edges between roadmap entries (e.g., "F-005 is blocked by F-003"). |
+| `proposals/*.md` frontmatter | Only when the `proposal-driven-design` profile (per [052](052-specrew-profile-system.md)) is active | Design-stage dependencies (pre-spec). Edges between proposals before they promote to features. |
+
+`specrew dep` reads from whichever sources exist in the project and merges them into a unified graph:
+
+- **Minimum project** (just feature specs): two-source graph — only feature-to-feature edges. Still highly valuable for AI agents reasoning about feature change impact.
+- **Roadmap-spine project** (specs + roadmap.yml per [057](057-roadmap-spine-input-adapter-pattern.md)): adds planning-level edges and the human-facing roadmap view.
+- **Proposal-driven project** (specs + roadmap + proposals): full coverage including pre-spec design-stage edges.
+
+Specrew itself uses all three sources. Most downstream projects will use one or two. **No downstream project is required to adopt proposals to benefit from this proposal.**
 
 ### A. Extended frontmatter schema
 
-Build on Proposal 028's metadata expansion. Every proposal and feature-spec frontmatter gains a `dependencies:` block:
+Every traced artifact (feature spec; roadmap entry; proposal — in that order of universality) gains a `dependencies:` block with the same schema:
 
 ```yaml
 ---
@@ -64,15 +96,17 @@ dependencies:
 ---
 ```
 
-Dependency object schema:
+Dependency object schema (identical across all three sources):
 
 | Field | Type | Required | Description |
 |---|---|---|---|
-| `target` | string | yes | The proposal-NNN, feature-NNN, or spec-NNN being referenced. Must resolve to an existing artifact. |
+| `target` | string | yes | The proposal-NNN, feature-NNN, spec-NNN, or roadmap-entry-id being referenced. Must resolve to an existing artifact in any of the three sources. |
 | `kind` | enum | yes | Relationship type. v1 enum: `depends-on`, `composes-with`, `blocks`, `superseded-by`, `bundle-with`, `precondition`, `extends`. |
-| `reason` | string | yes | Free-form prose, 1-3 sentences, explaining WHY this dependency exists. Required per the principle "every dependency must justify itself." |
-| `bidirectional` | boolean | no (default `true` for `composes-with`/`extends`, `false` otherwise) | If true, the target proposal must declare the reverse dependency. Validator enforces. |
+| `reason` | string | yes | Free-form prose, 1-3 sentences, explaining WHY this dependency exists. Required per the principle "every dependency must justify itself." This is the field AI agents read to know what invariant they must preserve. |
+| `bidirectional` | boolean | no (default `true` for `composes-with`/`extends`, `false` otherwise) | If true, the target must declare the reverse dependency. Validator enforces. |
 | `as-of-version` | string | no | If the dependency is on a specific shipped version (e.g., "depends on F-019 at v0.19.0 cross-platform claim"), the version pin. Lets us detect when a dependent's assumption is invalidated by a later version. |
+
+**Cross-source references work**: a feature spec can declare a dependency on a roadmap entry, a proposal can declare a dependency on a shipped feature, etc. The validator resolves targets across all available sources.
 
 ### B. Validator (CI gate)
 
@@ -88,15 +122,16 @@ Validator runs on every PR that touches `proposals/*.md` or `specs/*/spec.md`.
 
 ### C. Propagation tooling (`specrew dep` CLI surface)
 
-New CLI subsurface, lives alongside `specrew roadmap`, `specrew proposal`, `specrew feature` (per [033](033-specrew-governance-cli.md)):
+New CLI subsurface, lives alongside `specrew roadmap`, `specrew proposal`, `specrew feature` (per [033](033-specrew-governance-cli.md)). **Reads from whichever sources are present in the project and merges them.**
 
 | Command | Behavior |
 |---|---|
-| `specrew dep graph [--format=mermaid\|dot\|json]` | Emits the full dependency graph in the requested format. Mermaid for embedding in docs; DOT for Graphviz; JSON for tooling. |
-| `specrew dep show <target>` | Lists dependencies of `<target>` (outgoing) and dependents on `<target>` (incoming). Each row shows kind + reason. |
-| `specrew dep impact <target>` | When `<target>` is being modified, lists every dependent that may need re-review. Output format: per-dependent, "this dependent depends on <target> for <reason>; verify the reason still holds after your change." |
+| `specrew dep sources` | Reports which sources are active (feature specs / roadmap.yml / proposals) and how many edges each contributes. Useful for confirming the graph is reading what you expect. |
+| `specrew dep graph [--format=mermaid\|dot\|json] [--source=specs\|roadmap\|proposals\|all]` | Emits the dependency graph in the requested format from the requested source(s). Mermaid for embedding in docs; DOT for Graphviz; JSON for tooling. Default `--source=all`. |
+| `specrew dep show <target>` | Lists dependencies of `<target>` (outgoing) and dependents on `<target>` (incoming). Each row shows kind + reason. Aggregates across all sources. |
+| `specrew dep impact <target>` | When `<target>` is being modified, lists every dependent that may need re-review. Output format: per-dependent, "this dependent depends on <target> for <reason>; verify the reason still holds after your change." **This is the primary surface AI agents call before modifying a feature.** |
 | `specrew dep validate` | Runs the validator rules from component B locally. Useful before pushing a PR. |
-| `specrew dep check-orphans` | Lists proposals/features with no incoming dependencies. Orphans aren't bugs but flag candidate-for-supersession or candidate-for-withdraw. |
+| `specrew dep check-orphans` | Lists features/proposals/roadmap entries with no incoming dependencies. Orphans aren't bugs but flag candidate-for-supersession or candidate-for-withdraw. |
 | `specrew dep transitives <target> [--max-depth=N]` | Lists transitive dependencies (depth-N). Useful for understanding the full assumption chain. |
 
 ### Impact-analysis at feature-update boundary
@@ -111,18 +146,25 @@ The validator enforces presence; the maintainer enforces honesty.
 
 ### Backfill
 
-Walk all ~50 existing proposals + ~10 shipped feature specs. Convert prose "Cross-references" sections into structured `dependencies:` blocks. Maintainer reviews and blesses reasons per row.
+For Specrew itself (which uses all three sources):
 
-Estimated backfill: ~6-10 hours across two evenings (each proposal touched 3-5 references; ~250 dependency rows total).
+- ~50 existing proposals + ~10 shipped feature specs → convert prose "Cross-references" sections into structured `dependencies:` blocks
+- Roadmap.yml entries (when 057 ships) — add `dependencies:` to each entry
+
+Maintainer reviews and blesses reasons per row.
+
+Estimated Specrew backfill: ~6-10 hours across two evenings (each proposal/feature touched 3-5 references; ~250 dependency rows total).
+
+For downstream projects (proposal-optional): the backfill is feature-spec-only and runs as a one-time `specrew dep init` migration that scaffolds empty `dependencies:` blocks for the project's existing spec.md files; the maintainer then fills in reasons over time as features evolve. No prerequisite proposal corpus required.
 
 The prose Cross-references section can stay as a human-readable summary, OR be auto-generated from the structured frontmatter at the time `specrew dep show` is run.
 
 ## Effort
 
-- **Iteration 1 (~10 SP)**: extended frontmatter schema documented; validator rules implemented + tested; backfill of existing proposals + features; documentation in `docs/proposal-metadata.md` and `docs/dependency-graph-discipline.md`.
-- **Iteration 2 (~8 SP)**: `specrew dep` CLI surface implemented (all six subcommands); closeout-template integration with impact ledger; cross-platform CI tests.
+- **Iteration 1 (~10 SP)**: extended frontmatter schema documented (universal — works on specs/roadmap/proposals); validator rules implemented + tested; Specrew-side backfill of existing proposals + features; `specrew dep init` migration for downstream projects; documentation in `docs/dependency-graph-discipline.md`.
+- **Iteration 2 (~10 SP)**: `specrew dep` CLI surface implemented (all seven subcommands including the new `sources`); multi-source merge logic with graceful degradation when sources are absent; closeout-template integration with impact ledger; cross-platform CI tests.
 
-**Total: ~18 SP across two iterations.**
+**Total: ~20 SP across two iterations** (revised up from 18 to account for multi-source merge logic and the `dep init` migration for proposal-optional projects).
 
 ## Phase placement
 
@@ -136,14 +178,10 @@ Recommended sequencing:
 4. F-025 = 061 — Init/Update Convergence Test
 5. F-026 = 042 Iter 1 — Linux Command-Lifecycle E2E
 6. **F-027 = this proposal (062)** — Dependency Metadata + Reason + Propagation
-7. F-028 = 028 (Public Proposals Surface; this proposal's prerequisite for metadata foundation gets folded in here, or 028 ships JUST AHEAD of 062 as its prerequisite)
 
-Note the sequencing tension: 062 depends on 028 (metadata foundation) for its frontmatter. Two options:
+**Proposal 028 is no longer a hard prerequisite.** Because 062 is proposal-optional and carries its own minimal metadata schema (the `dependencies:` block, scoped to feature specs and roadmap entries at minimum), it can ship standalone. If Proposal 028 (Public Proposals Surface) ships first or concurrently, the proposal-source becomes fully covered too; if 028 ships later, 062's proposal-source is degraded but feature-source and roadmap-source remain fully functional.
 
-- **Option A: Ship 028 first.** 028 was sequenced earlier in the candidate queue; bring it forward to before 062.
-- **Option B: 062 carries the minimal metadata schema needed for its own purposes**, defers the rest of 028's expansion. Cleaner separation but more work in 062.
-
-**Recommended Option A** — ship 028 first so 062 has a clean foundation. 028 is ~13 SP; combined with 062 ~18 SP that's ~31 SP across two features, both Phase 2.
+For Specrew itself, ship 028 alongside or just ahead of 062 to get full three-source coverage. For downstream projects that never adopt proposals, 062 ships standalone with feature-source-only (plus roadmap-source if 057 is active in the project).
 
 ## Open questions
 
