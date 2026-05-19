@@ -56,6 +56,7 @@ tests/fixtures/init-snapshots/
 ```
 
 Capture discipline (codified in the release process):
+
 1. On every version-bump PR, the bumping change also captures a new init-snapshot under the new version's directory.
 2. Capture is automated: `tools/capture-init-snapshot.ps1 -Version <N.N.N>` runs `specrew init` against a temp dir, normalizes (strip GUIDs, timestamps, machine-specific paths), and writes to the fixture corpus.
 3. The corpus is git-tracked. Changes to it require explicit PR review.
@@ -75,6 +76,7 @@ Cross-platform: runs on Windows + Ubuntu + macOS lanes. Composes with [042](042-
 ### C. Diff classifier with documented preserve-rules
 
 Not every file should be identical after update vs fresh-init. Some are intentionally user-customizable:
+
 - `.squad/team.md` — users add custom team members; `specrew init` writes the baseline, `specrew update` should preserve the user's edits
 - `.specrew/config.yml` — partially preserves (some fields user-set, some managed)
 - `specs/*` — user lifecycle artifacts; never refreshed by update

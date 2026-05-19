@@ -102,6 +102,7 @@ The discipline is NOT a universal "prerelease every feature" mandate. It's adapt
 Default workflow: git-clone testing → tag stable directly. Prereleases are opt-in per feature.
 
 Use a prerelease when:
+
 - Feature touches the publish workflow itself, signing path, or manifest structure (workflow dress-rehearsal)
 - Schema migration (paired with Proposal 059 reader-tolerance + Proposal 061 init/update convergence)
 - Cross-platform paths or session-state (high regression risk)
@@ -127,6 +128,7 @@ For documentation-only or test-only changes: prerelease still optional.
 #### Trigger for the stage transition
 
 The "solo-maintainer → post-announcement" stage transition happens when:
+
 - A public announcement on Medium / LinkedIn / HN / Twitter / etc. brings ≥1 known external adopter, OR
 - An external contributor opens a PR or substantive Discussion thread, OR
 - The maintainer explicitly decides to invite beta testers via a Discussion post
