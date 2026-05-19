@@ -1,3 +1,92 @@
+## 2026-05-19T11:30:00Z — Decision: Implementer Feature 023 Prerelease Release Primitives
+
+- **Decision ID**: implementer-f023-prerelease
+- **Type**: implementation note
+- **Boundary**: feature-closeout
+- **Authority**: Implementer
+- **Recorded At**: 2026-05-19T11:30:00Z
+- **Commit Reference**: `be3c2b311c30524ebc6a01952d888fa1a656e3f7`, `f119e4aac5ec6ef3d0e91e5b733ffa96ab6712b8`
+- **Feature**: 023-legacy-state-read-tolerance
+
+## Summary
+
+Prerelease release primitives implemented. `promote-prerelease` publishes stable baseline from validated prerelease tag or dispatch; prerelease suffix remains as audit trail, staged manifest clears `PrivateData.PSData.Prerelease` before `Publish-Module`. `invoke-module-release.ps1` stages and signs scratch copy instead of mutating worktree—both dry-runs and live publishes leave worktree unchanged.
+
+---
+
+## 2026-05-19T11:25:00Z — Review: Feature 023 Prerelease Workflow Primitives
+
+- **Decision ID**: review-f023-prerelease
+- **Type**: review
+- **Boundary**: feature-closeout
+- **Reviewing Agent**: Reviewer
+- **Recorded At**: 2026-05-19T11:25:00Z
+- **Commit Reference**: `be3c2b311c30524ebc6a01952d888fa1a656e3f7`, `f119e4aac5ec6ef3d0e91e5b733ffa96ab6712b8`
+- **Feature**: 023-legacy-state-read-tolerance
+- **Verdict**: PASS
+
+## Evidence
+
+- `Specrew.psd1` carries `ModuleVersion = '0.23.0'` and default `PrivateData.PSData.Prerelease = ''`
+- `CHANGELOG.md` truthfully names `Specrew.psd1` in Rule 15 bookkeeping bullet
+- `.github/workflows/publish-module.yml` routes tag pushes to `publish-stable` vs `publish-prerelease` and `workflow_dispatch` exposes `dry-run`, `publish-prerelease`, `publish-stable`, `promote-prerelease`
+- `scripts/internal/invoke-module-release.ps1` correctly resolves prerelease suffixes, clears prerelease on promotion, dry-run verification proved checked-out `Specrew.psd1` hash stays unchanged while staged manifest is stamped
+- Reported closeout evidence is real: scoped governance validation passed and `tests/integration/Test-LegacyStateReaders.Tests.ps1` passed on this tree
+
+## Result
+
+PR #269 is acceptable to keep open for later human merge authorization.
+
+---
+
+## 2026-05-19T10:15:00Z — Decision: Implementer Feature 023 Feature Closeout
+
+- **Decision ID**: implementer-f023-feature-closeout
+- **Type**: feature closeout execution
+- **Boundary**: feature-closeout
+- **Authority**: Implementer (per authorization)
+- **Recorded At**: 2026-05-19T10:15:00Z
+- **Boundary Commit Reference**: `866b6f58573d80bc195ea0792b121af5dd9e0548`
+- **Feature**: 023-legacy-state-read-tolerance
+
+## Authorization Text
+
+> Feature 023 feature-closeout is authorized as a single boundary advance from iteration-closeout. Skip Iteration 2 entirely because T025-T031 are already done. Proceed with feature-closeout only, update product/extension versions to 0.23.0, fix the retro-vs-closeout SP inconsistency by recording honest total delivery, generate the feature closeout dashboard, rerun governance validation on the closeout tree, push the branch, and open a PR to main. Do not merge the PR.
+
+## Execution Notes
+
+- Truth surfaces now record absorbed-slice narrative: `specs/023-legacy-state-read-tolerance/iterations/001/closeout.md` and `specs/023-legacy-state-read-tolerance/iterations/001/retro.md` both reflect **17 SP planned / 17 SP delivered / 0 SP variance** and state that T025-T031 were absorbed instead of deferred
+- Canonical feature-closeout snapshot lives at `specs/023-legacy-state-read-tolerance/closeout-dashboard.md`
+- Version-management updates landed in `.specrew/config.yml`, `extensions/specrew-speckit/extension.yml`, `.specify/extensions/specrew-speckit/extension.yml`, `CHANGELOG.md`, and `README.md`
+
+---
+
+## 2026-05-18T14:00:00Z — Decision: Planner Feature 022 Scaffold Repair
+
+- **Decision ID**: planner-f022-scaffold
+- **Type**: planning prerequisite repair
+- **Boundary**: pre-planning
+- **Authority**: Planner
+- **Recorded At**: 2026-05-18T14:00:00Z
+- **Feature**: 022-hotfix-schema-tests
+
+## Summary
+
+Restored missing Iteration 001 before-plan scaffold for Feature 022 without entering `/speckit.plan`.
+
+## Decision
+
+- Used `extensions/specrew-speckit/scripts/scaffold-iteration-plan.ps1` to create initial `plan.md` stub
+- Did **not** use `scaffold-iteration-artifacts.ps1` because the helper failed on dry-run with error: `scaffold-iteration-artifacts.ps1: The property 'Count' cannot be found on this object. Verify that the property exists.`
+- Created truthful minimal `state.md`, `drift-log.md`, and `quality/hardening-gate.md` scaffolds manually so the before-plan gate can be rerun against real iteration-start artifact set
+
+## Impact
+
+- Feature 022 now has expected `iterations/001` scaffold
+- Planning ceremony remains unopened; these artifacts only repair prerequisite boundary
+
+---
+
 ## 2026-05-19T09:17:00Z — Review: Feature 023 feature-closeout self-review rerun
 
 - **Decision ID**: review-feature-023-feature-closeout-self-review-rerun
