@@ -1,3 +1,16 @@
+## 2026-05-19T07:54:35Z — Authorization: iteration-closeout
+
+- **Decision ID**: authorization-feature-023-iter-001-iteration-closeout
+- **Type**: authorization
+- **Boundary**: iteration-closeout
+- **Approving Human**: Alon Fliess
+- **Recorded At**: 2026-05-19T07:54:35Z
+- **Commit Reference**: 0c5efa3
+- **Authorization Text**:
+  > Advance Feature 023 Iteration 001 from retro to iteration-closeout only. Open specs/023-legacy-state-read-tolerance/iterations/001/dashboard.md and the closeout snapshot per the F-022 pattern, record iteration-closeout decision in .squad/decisions.md, update state.md Current Phase to the closed/closeout-complete standard pattern, update .squad/identity/now.md with the closeout boundary state, run Invoke-SpecrewBoundaryStateSync for the iteration-closeout boundary, rerun the scoped governance validator on the committed tree, and do not open feature-closeout because Iteration 2 is next. Also capture the autopilot loop waste note as a process learning if not already recorded. Commit and push the iteration-closeout artifacts, then report the head SHA plus a concise closeout summary.
+
+---
+
 ## 2026-05-19T11:20:00Z — Sign-off: retro-boundary-signoff
 
 - **Decision ID**: signoff-feature-023-iter-001-retro-boundary

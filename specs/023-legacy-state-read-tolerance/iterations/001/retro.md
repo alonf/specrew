@@ -51,6 +51,8 @@ Feature 023 Iteration 001 delivered schema versioning discipline and reader tole
 
 3. **All 34 tasks delivered at 100% on first review submission with zero rework.** Feature 023 achieved the same friction-free delivery as Feature 018 (visual rendering), despite being infrastructure-heavy and touching 7+ file locations. This suggests the combination of clear scope-locking before execution and honest task decomposition is reproducible.
 
+4. **Autopilot blocked-loop waste surfaced once the single-boundary stop rule was already known.** After retro-boundary completion, autonomous follow-through still spent avoidable cycles revisiting already-accepted bookkeeping truths instead of waiting cleanly for the next explicit authorization. The fix is not more implementation work; it is sharper boundary-stop narration that names the single authorized next step and the exact "stop-for-inspection" fallback so agents do not burn time in blocked loops.
+
 ## Friction Encountered and Resolved
 
 **Bookkeeping-artifact truth lag (resolved via 5-commit repair chain)**:
@@ -72,6 +74,9 @@ Feature 023 Iteration 001 delivered schema versioning discipline and reader tole
 4. **Owner:** Bootstrap-principle auditor | **Phase:** Feature 024+ | **Type:** validation | **Action:** For features that bootstrap their own governance pattern (reader tolerance, schema versioning, validator enforcement), require explicit dogfooding verification: state writers emit markers, state readers accept markers, fixture corpus includes the feature's own version boundary, regression suite exercises the feature's own surfaces.  
    **Expected effect:** Self-consistency becomes auditable and visible in review.md multi-lens acceptance.
 
+5. **Owner:** Lifecycle facilitators + prompt authors | **Phase:** Feature 024+ boundary handoffs | **Type:** process | **Action:** When only one boundary advance is authorized, state the single allowed next boundary and the explicit stop-for-inspection fallback in the handoff and state artifacts so autopilot does not re-enter blocked bookkeeping loops after the accepted stop condition is already true.  
+   **Expected effect:** Less loop waste after review/retro completion and cleaner autonomy around boundary-stop discipline.
+
 ## Lessons for the Corpus
 
 1. **Bootstrap principle dogfooding is the strongest internal validation.** When a feature requires downstream systems to adopt a new pattern (schema v1 readers, hashtable-based parsing, fixture corpus updates), having the feature's own implementation demonstrate the pattern first closes credibility gaps. Feature 023 did this seamlessly because the spec explicitly mandated it; this pattern should be formalized as a required audit in future schema/governance features.
@@ -83,6 +88,8 @@ Feature 023 Iteration 001 delivered schema versioning discipline and reader tole
 4. **Cross-platform CI wiring closes validation gaps immediately.** Feature 023's Linux test lane (T024) runs the same regression suite on ubuntu-latest, preventing WSL-specific regressions. This wiring should be standard for state-management and reader-migration features, not a deferred follow-up.
 
 5. **Strict bookkeeping discipline is necessary but not sufficient for pre-signoff confidence.** Feature 023's implementation was solid, but the bookkeeping (state.md, plan.md, decisions.md) lagged behind. Adding a pre-review checkpoint that runs the validator and repairs artifact staleness before formal signoff would eliminate the 5-commit repair tail. This checkpoint should be captured in implementation process guidance.
+
+6. **Single-boundary authorization must be narrated as a hard stop, not an implied queue.** Once retro-boundary or review-boundary completion is accepted, the next autonomous step must either be the specifically authorized boundary or a stop-for-inspection state. Otherwise, autopilot wastes cycles trying to "help" inside a blocked boundary gap that already has a truthful answer: wait for explicit authorization.
 
 ## Estimation and Capacity
 
