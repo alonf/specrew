@@ -7,13 +7,13 @@
 **Baseline Ref**: 4ff6a949b5d39ebcbe64090fc3487e1073f68d74
 **Updated**: 2026-05-19T09:35:00Z
 **Current Phase**: reviewing
-**Iteration Status**: Review boundary complete at commit 0ae07dd37c53fe8c3d1f812bd8c229a7cb36ec90 with APPROVED verdict; retro-boundary, iteration-closeout, and feature-closeout remain unopened pending explicit human authorization.
+**Iteration Status**: Review boundary complete at commit 173c39b2700dac2936baa72216663db5916e31a4 with APPROVED verdict; retro-boundary, iteration-closeout, and feature-closeout remain unopened pending explicit human authorization.
 
 ## Execution Summary
 
 - AI-owned implementation tasks are complete through T031, including schema-marker writers, tolerant readers, fixture coverage, CI wiring, validator enforcement, and documentation updates.
 - Human Steward verdicts for T020, T028, T030, and T034 are incorporated into `tasks.md`, this state file, and the supporting checklist/documentation repairs requested during implementation.
-- **Review boundary complete**: Reviewer approved iteration at commit 0ae07dd with APPROVED verdict; all 14 FRs in Iteration 1 scope satisfied, all validation evidence passed (governance validator, legacy reader tests, validator unit tests), bootstrap principle verified, cross-platform CI wiring confirmed. See `review.md` for full traceability.
+- **Review boundary complete**: Reviewer approved iteration at commit 173c39b with APPROVED verdict; all 14 FRs in Iteration 1 scope satisfied, all validation evidence passed (governance validator, legacy reader tests, validator unit tests), bootstrap principle verified, cross-platform CI wiring confirmed. Implementation commits (e53a479, d0ac46f, 3ea9d11, 0ae07dd) provide traceability to product changes. See `review.md` for full traceability.
 - The next valid lifecycle action is the retro boundary only; do not advance to iteration-closeout or feature-closeout without separate authorization.
 
 ## Human Steward Decisions Log
