@@ -70,7 +70,11 @@ function Copy-MissingItem {
         [System.Collections.ArrayList]$Actions
     )
 
-    $sourceItem = Get-Item -LiteralPath $SourcePath
+    # -Force needed so Get-Item finds hidden source items (e.g., .gitkeep)
+    # on Linux PowerShell. The recursive Get-ChildItem below uses -Force to
+    # enumerate hidden files; without -Force here, Get-Item then fails to
+    # re-open those exact children, breaking `specrew update` on Linux.
+    $sourceItem = Get-Item -LiteralPath $SourcePath -Force
     if ($sourceItem.PSIsContainer) {
         Ensure-Directory -Path $TargetPath -Actions $Actions
         $children = @(Get-ChildItem -LiteralPath $SourcePath -Force)
