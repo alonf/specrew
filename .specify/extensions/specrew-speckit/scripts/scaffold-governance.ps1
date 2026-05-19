@@ -197,16 +197,23 @@ function Save-ConfigFile {
     }
 
     $existingContent = Get-Content -LiteralPath $TargetPath -Raw
-    if ($existingContent -match '(?m)^quality:\s*$') {
+    $updatedContent = $existingContent
+    if ($updatedContent -notmatch '(?m)^schema:\s*"?(?<value>[^"\r\n]+)"?\s*$') {
+        $updatedContent = ('schema: "v1"' + [Environment]::NewLine + $updatedContent.TrimStart())
+    }
+    if ($updatedContent -match '(?m)^quality:\s*$') {
         $null = $Actions.Add([pscustomobject]@{
                 Path   = $TargetPath
-                Action = 'preserved'
+                Action = $(if ($updatedContent -eq $existingContent) { 'preserved' } else { if ($DryRun) { 'would-update' } else { 'updated' } })
             })
+        if (-not $DryRun -and $updatedContent -ne $existingContent) {
+            [System.IO.File]::WriteAllText($TargetPath, $updatedContent, [System.Text.UTF8Encoding]::new($false))
+        }
         return
     }
 
-    $separator = if ($existingContent.EndsWith("`n")) { '' } else { "`r`n" }
-    $updatedContent = $existingContent.TrimEnd() + $separator + "`r`n" + $QualityBlock
+    $separator = if ($updatedContent.EndsWith("`n")) { '' } else { "`r`n" }
+    $updatedContent = $updatedContent.TrimEnd() + $separator + "`r`n" + $QualityBlock
     $action = if ($DryRun) { 'would-update' } else { 'updated' }
     $null = $Actions.Add([pscustomobject]@{
             Path   = $TargetPath
@@ -260,6 +267,7 @@ quality:
   evidence_directory_name: "quality"
 "@
 $configContent = @"
+schema: "v1"
 specrew_version: "$SpecrewVersion"
 speckit_version: "$SpecKitVersion"
 squad_version: "$SquadVersion"

@@ -28,7 +28,7 @@ if (-not (Test-Path -LiteralPath $boundaryStateHelperPath -PathType Leaf)) {
 function Get-ValidatorSummaryPath {
     param([Parameter(Mandatory = $true)][string]$ProjectRoot)
 
-    return Join-Path (Resolve-ProjectPath -Path $ProjectRoot) '.specrew\last-validator-summary.json'
+    return Get-SpecrewValidatorSummaryPath -ProjectRoot $ProjectRoot
 }
 
 function Get-ValidatorWarningSummary {
@@ -40,17 +40,27 @@ function Get-ValidatorWarningSummary {
     }
 
     try {
-        $summary = Get-Content -LiteralPath $summaryPath -Raw -Encoding UTF8 | ConvertFrom-Json -Depth 6
+        # F-023: Use -AsHashtable for StrictMode compatibility; hashtable indexer tolerates missing fields
+        $summary = Get-Content -LiteralPath $summaryPath -Raw -Encoding UTF8 | ConvertFrom-Json -AsHashtable -Depth 6
+
+        # F-023: Legacy schema handling - missing 'schema' field implies v0
+        $schema = Get-SpecrewStateSchemaVersion -State $summary -Path $summaryPath
+        # v0/v1 behavior: warnings field structure is required in both schemas
+        # v1+ behavior: same as v0 for this summary (no behavioral divergence yet)
+
         return [pscustomobject]@{
-            total      = [int]$summary.warnings.total
-            soft       = [int]$summary.warnings.soft
-            medium     = [int]$summary.warnings.medium
-            hard       = [int]$summary.warnings.hard
-            command    = [string]$summary.command
-            recorded_at = [string]$summary.recorded_at
+            total      = [int]$summary['warnings']['total']
+            soft       = [int]$summary['warnings']['soft']
+            medium     = [int]$summary['warnings']['medium']
+            hard       = [int]$summary['warnings']['hard']
+            command    = [string]$summary['command']
+            recorded_at = [string]$summary['recorded_at']
         }
     }
     catch {
+        if (Test-IsUnsupportedSpecrewSchemaError -ErrorRecord $_) {
+            throw
+        }
         return $null
     }
 }

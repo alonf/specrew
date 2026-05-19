@@ -108,12 +108,18 @@ function Get-ResolvedFeatureDirectory {
         throw "Cannot resolve the feature-closeout dashboard target because '.specify\feature.json' is missing."
     }
 
-    $featureJson = Get-Content -LiteralPath $featureJsonPath -Raw -Encoding UTF8 | ConvertFrom-Json
-    if ([string]::IsNullOrWhiteSpace([string]$featureJson.feature_directory)) {
+    $featureJson = Get-Content -LiteralPath $featureJsonPath -Raw -Encoding UTF8 | ConvertFrom-Json -AsHashtable -Depth 12
+
+    # F-023: Legacy schema handling - missing 'schema' field implies v0
+    $schema = Get-SpecrewStateSchemaVersion -State $featureJson -Path $featureJsonPath
+    # v0 behavior: feature_directory field is required (old closeout scripts expect it)
+    # v1+ behavior: same as v0 for this field (no behavioral divergence yet)
+
+    if ([string]::IsNullOrWhiteSpace([string]$featureJson['feature_directory'])) {
         throw "Cannot resolve the feature-closeout dashboard target because '.specify\feature.json' does not contain feature_directory."
     }
 
-    $candidate = [string]$featureJson.feature_directory
+    $candidate = [string]$featureJson['feature_directory']
     if (-not [System.IO.Path]::IsPathRooted($candidate)) {
         $candidate = Join-Path $ResolvedProjectPath $candidate
     }

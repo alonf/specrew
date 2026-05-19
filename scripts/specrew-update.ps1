@@ -231,6 +231,7 @@ function Update-SpecrewConfig {
     }
 
     $updatedContent = $existingContent
+    $updatedContent = Set-YamlScalarValue -Content $updatedContent -Key 'schema' -Value 'v1'
     if (-not [string]::IsNullOrWhiteSpace($SpecrewVersion)) {
         $updatedContent = Set-YamlScalarValue -Content $updatedContent -Key 'specrew_version' -Value $SpecrewVersion
     }

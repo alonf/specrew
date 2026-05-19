@@ -19,6 +19,89 @@ function Resolve-ProjectPath {
     return [System.IO.Path]::GetFullPath((Join-Path -Path $cwd -ChildPath $Path))
 }
 
+function Get-SpecrewSupportedStateSchemas {
+    return @('v1')
+}
+
+function Get-SpecrewStateSchemaVersion {
+    param(
+        [AllowNull()]
+        [System.Collections.IDictionary]$State,
+
+        [Parameter(Mandatory = $true)]
+        [string]$Path
+    )
+
+    if ($null -eq $State -or -not $State.Contains('schema') -or [string]::IsNullOrWhiteSpace([string]$State['schema'])) {
+        Write-Debug "schema-implied-v0 for $Path"
+        return 'v0'
+    }
+
+    $schema = [string]$State['schema']
+    if ($schema -notin (Get-SpecrewSupportedStateSchemas)) {
+        throw "Unsupported schema '$schema' in '$Path'. Supported schemas: v0 (implied), $((Get-SpecrewSupportedStateSchemas) -join ', ')."
+    }
+
+    return $schema
+}
+
+function Test-IsUnsupportedSpecrewSchemaError {
+    param([AllowNull()][System.Management.Automation.ErrorRecord]$ErrorRecord)
+
+    return $null -ne $ErrorRecord -and
+        $null -ne $ErrorRecord.Exception -and
+        $ErrorRecord.Exception.Message -like "Unsupported schema '*"
+}
+
+function Get-SpecrewValidatorSummaryPath {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$ProjectRoot
+    )
+
+    return Join-Path (Resolve-ProjectPath -Path $ProjectRoot) '.specrew\last-validator-summary.json'
+}
+
+function Write-SpecrewValidatorSummary {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$ProjectRoot,
+
+        [Parameter(Mandatory = $true)]
+        [string]$Command,
+
+        [int]$SoftWarnings = 0,
+        [int]$MediumWarnings = 0,
+        [int]$HardWarnings = 0,
+
+        [AllowNull()]
+        [string]$RecordedAt
+    )
+
+    $summaryPath = Get-SpecrewValidatorSummaryPath -ProjectRoot $ProjectRoot
+    $effectiveRecordedAt = if ([string]::IsNullOrWhiteSpace($RecordedAt)) {
+        (Get-Date).ToUniversalTime().ToString('o')
+    }
+    else {
+        $RecordedAt
+    }
+
+    $summary = [ordered]@{
+        schema     = 'v1'
+        warnings   = [ordered]@{
+            total  = ($SoftWarnings + $MediumWarnings + $HardWarnings)
+            soft   = $SoftWarnings
+            medium = $MediumWarnings
+            hard   = $HardWarnings
+        }
+        command    = $Command
+        recorded_at = $effectiveRecordedAt
+    }
+
+    Write-Utf8FileAtomic -Path $summaryPath -Content (([pscustomobject]$summary | ConvertTo-Json -Depth 6) + [Environment]::NewLine)
+    return $summaryPath
+}
+
 function Invoke-WithFileLock {
     param(
         [Parameter(Mandatory = $true)]
