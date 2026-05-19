@@ -136,7 +136,7 @@ Recommended: **Option B** — sequential, clearer per-feature scope, lowest risk
 
 ## Open questions
 
-1. **Interactive UX**: full step-through prompt during `specrew init` (10 questions), or condensed batch ("repair budget [3]: ___ / validator severity [fail-only]: ___ / ... / accept all? [y/N]")?
+1. **Interactive UX**: full step-through prompt during `specrew init` (10 questions), or condensed batch (`repair budget [3]: <value> / validator severity [fail-only]: <value> / ... / accept all? [y/N]`)?
 2. **Default-changing-on-upgrade semantics**: when a module bumps a default (e.g., `repair_budget` goes from 3 → 5), should existing projects auto-adopt or stay pinned?
 3. **CI fast-path**: how does `specrew init` behave in a CI context where interactive prompts must be skipped? Auto-apply `--use-defaults` if `CI=true` env var present?
 4. **Multi-host implications** (proposal 024): if Specrew runs on Claude Code / Codex via Multi-Host CORE, do they read the same project profile? Likely yes — `.specrew/config.yml` is host-neutral.
