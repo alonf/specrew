@@ -2,7 +2,7 @@
 
 **Schema**: v1
 **Spec**: [../../spec.md](../../spec.md)
-**Status**: reviewing
+**Status**: retro
 **Capacity**: 17/20 story_points
 **Started**: 2026-05-19
 **Completed**:
@@ -80,5 +80,5 @@ This iteration plan now reflects the active execution state for Feature 023 afte
 ## Notes
 
 - This plan was normalized after implementation to reflect the actual execution state of the iteration.
-- Keep `Status: executing` until the remaining human-owned review tasks are resolved and the feature is authorized to advance.
+- Retro boundary reached; Status transitioned from `reviewing` to `retro`. Iteration-closeout and feature-closeout remain unopened.
 - If any human review reopens implementation work, update the task rows and Phase Baseline table before proceeding.

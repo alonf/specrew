@@ -1,3 +1,20 @@
+## 2026-05-19T11:20:00Z — Sign-off: retro-boundary-signoff
+
+- **Decision ID**: signoff-feature-023-iter-001-retro-boundary
+- **Type**: sign-off
+- **Boundary**: retro-boundary-signoff
+- **Approving Agent**: Retro Facilitator
+- **Recorded At**: 2026-05-19T11:20:00Z
+- **Commit Reference**: (pending commit)
+- **Authorization Text**:
+  > Feature 023 Iteration 001 retro boundary is **APPROVED** at retro.md artifact completion on branch `023-legacy-state-read-tolerance`.
+  >
+  > Retrospective findings: Zero-variance delivery (14.5 SP planned = 14.5 SP actual), 100% task acceptance on first review, four-bug WSL trial directly mapped to reader migrations (T004-T008), bootstrap principle dogfooding successful across all feature surfaces, cross-platform CI wiring closed validation gap, pre-planning clarity prevented scope creep. Friction: bookkeeping-artifact truth lag (5-commit repair chain at review boundary, resolved). Lessons captured: validator-driven pre-signoff checkpoint, bootstrap-pattern dogfooding credibility, fixture corpus as permanent CI evidence, deferred FR communication clarity.
+  >
+  > Retro-boundary complete. Iteration-closeout and feature-closeout remain unopened pending explicit human authorization.
+
+---
+
 ## 2026-05-19T09:35:00Z — Sign-off: review-verdict-signoff
 
 - **Decision ID**: signoff-feature-023-iter-001-review-verdict
