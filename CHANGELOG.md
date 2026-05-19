@@ -6,6 +6,8 @@ baseline that each release number represents.
 
 ## Unreleased
 
+- **fix(start)** (commit `c55ec92`): Default `specrew start` to gate-respecting mode. Squad now stops at every lifecycle approval boundary (specify, clarify, plan, tasks, implement, review, retro) and waits for explicit human verdict before advancing. Previously, Specrew auto-enabled Copilot CLI's `--autopilot` flag once feature scope was grounded, which caused Squad to bypass prose-based boundary handoffs without human input. Empirical motivation: three independent boundary-breach incidents over three days (WSL trial 2026-05-18, gym subscription test 2026-05-19, F-024 implementation-approval breach 2026-05-20). New `--autonomous` opt-in flag (or `-Autonomous` PowerShell switch) enables Copilot CLI autopilot mode for unattended runs such as overnight execution. `--allow-all` and `--autonomous` are now independent: the former controls tool-call approval; the latter controls lifecycle-gate advancement. Intake stage stays interactive regardless of `--autonomous` so initial scope is never auto-resolved. Full design rationale at file:///C:/Dev/Specrew/proposals/066-gate-respecting-default.md.
+
 ## 0.23.0 - Legacy State Read Tolerance
 
 - Feature 023: closed the legacy state read-tolerance feature with the full validator, documentation, fixture-corpus, and closeout-template scope delivered on the feature branch. The originally planned Iteration 2 slice (T025-T031) was absorbed into Iteration 001 instead of being deferred, so the truthful delivery total is 17 SP planned / 17 SP delivered / 0 SP variance.

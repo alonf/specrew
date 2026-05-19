@@ -6,7 +6,7 @@ This index is the navigation surface for all proposals in this directory. Sorted
 
 ---
 
-## Shipped (10)
+## Shipped (11)
 
 Proposals whose features have shipped to main and are part of Specrew's current capability.
 
@@ -22,6 +22,7 @@ Proposals whose features have shipped to main and are part of Specrew's current 
 | [009](009-velocity-dashboard.md) | Velocity Dashboard ("Where Am I?") | feature-017 | phase-2 | 19 |
 | [031](031-specrew-distribution-module.md) | Specrew Distribution Module (PowerShell Gallery) | feature-019 | phase-2 | 22 |
 | [032](032-specrew-slash-commands.md) | Specrew Slash-Command Surface | feature-021 | phase-2 | 7 |
+| [066](066-gate-respecting-default.md) | Gate-Respecting Default + `--autonomous` Opt-In | chore `c55ec92` (2026-05-20) | phase-2 | 3 |
 
 ## Draft (11)
 
