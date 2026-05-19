@@ -1,4 +1,4 @@
-# Drift Log: Iteration 1
+# Drift Log: Iteration 001
 
 **Schema**: v1
 
@@ -10,7 +10,7 @@
 
 ## Events
 
-No specification drift detected during Iteration 1 execution to date.
+No specification drift detected during Iteration 001 execution to date.
 
 ### Resolution Strategies (Unused)
 
