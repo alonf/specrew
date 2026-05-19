@@ -75,8 +75,7 @@ The review reran the governance validator, the legacy state readers integration 
 
 ## Gap Ledger
 
-- fixed-now — No blocking defects or scope-interpretation disputes remain inside the authorized Feature 023 Iteration 001 review scope.
-- Note: FR-013 (closeout template reminder) was explicitly planned for Iteration 2 in the original two-iteration phasing; this is not a gap but a planned future delivery per plan.md Iteration 2 scope.
+- fixed-now — No blocking defects or scope-interpretation disputes remain inside the authorized Feature 023 Iteration 001 review scope. FR-013 (closeout template reminder) was explicitly planned for Iteration 2 in the original two-iteration phasing per plan.md; this is not a gap but a planned future delivery in the next iteration scope.
 
 ---
 

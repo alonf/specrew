@@ -36,7 +36,7 @@ This iteration plan now reflects the active execution state for Feature 023 afte
 | T021-T024 | Legacy reader regression lane + Linux CI | FR-002, FR-008, FR-014 | US-1, US-2 | 2.5 | Implementer | `tests/**`, `.github/workflows/**` | done | Implementer | AI | pass |
 | T025-T027 | Reader-tolerance validator rule + CI enforcement | FR-010, FR-011 | US-1 | 2.5 | Implementer | `.specify/extensions/**`, `extensions/**`, `.github/workflows/**` | done | Implementer | AI | pass |
 | T029, T031 | Data-contracts doc + closeout reminder | FR-012, FR-013 | US-3 | 1.5 | Implementer | `docs/**`, `.specify/templates/**`, `templates/specify/**` | done | Implementer | AI | pass |
-| T020, T028, T030, T034 | Fixture / validator / docs / dispatch reviews | FR-006, FR-007, FR-010, FR-012 | US-1, US-2, US-3 | 3.0 | Human Steward | `specs/023-legacy-state-read-tolerance/**`, `docs/**` | planned | Human Steward | pending | pending |
+| T020, T028, T030, T034 | Fixture / validator / docs / dispatch reviews | FR-006, FR-007, FR-010, FR-012 | US-1, US-2, US-3 | 3.0 | Human Steward | `specs/023-legacy-state-read-tolerance/**`, `docs/**` | done | Human Steward | Human | pass |
 
 ## Effort Model
 
