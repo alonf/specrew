@@ -1,3 +1,14 @@
+### 2026-05-19T03:52:45Z: Delegated lifecycle runtime evidence
+**By:** Squad (Coordinator)
+**Role / Work Item:** Planner — Feature 023 Legacy-State Read-Tolerance + Schema Migration Discipline before-implement governance gate
+**Requested Agent:** claude
+**Actual Agent:** copilot
+**Model ID:** claude-haiku-4.5
+**Status:** fell back to enabled agent family
+**Fallback Reason:** preferred agent `claude` is not enabled
+
+---
+
 ## 2026-05-19T03:47:15Z — Authorization: implementation
 
 - **Decision ID**: authorization-feature-023-implementation
