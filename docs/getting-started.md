@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="assets/specrew-logo.png" alt="Specrew — Governed AI SDLC" width="240" />
+</p>
+
 # Specrew Getting Started
 
 Practical quickstart for running Specrew in a new repo (greenfield) and adding it to an existing repo (brownfield).

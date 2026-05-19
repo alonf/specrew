@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="assets/specrew-logo.png" alt="Specrew — Governed AI SDLC" width="240" />
+</p>
+
 # Specrew User Guide
 
 This guide covers the day-to-day Specrew lifecycle: planning, execution, review/demo, retrospective, and drift handling.

@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="docs/assets/specrew-logo.png" alt="Specrew — Governed AI SDLC" width="320" />
+</p>
+
 # Specrew
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
