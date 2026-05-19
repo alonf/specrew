@@ -1,4 +1,70 @@
-## 2026-05-18T23:27:46Z — Authorization: retro-boundary
+### 2026-05-19T02:31:10Z: Delegated lifecycle runtime evidence
+**By:** Squad (Coordinator)
+**Role / Work Item:** Planner — Feature 023 Legacy-State Read-Tolerance + Schema Migration Discipline after-tasks governance gate
+**Requested Agent:** claude
+**Actual Agent:** copilot
+**Model ID:** claude-haiku-4.5
+**Status:** fell back to enabled agent family
+**Fallback Reason:** preferred agent `claude` is not enabled
+
+---
+
+### 2026-05-19T02:27:10Z: Delegated lifecycle runtime evidence
+**By:** Squad (Coordinator)
+**Role / Work Item:** Planner — Feature 023 Legacy-State Read-Tolerance + Schema Migration Discipline task generation
+**Requested Agent:** claude
+**Actual Agent:** copilot
+**Model ID:** claude-sonnet-4.5
+**Status:** fell back to enabled agent family
+**Fallback Reason:** preferred agent `claude` is not enabled
+
+---
+
+### 2026-05-19T02:22:30Z: Delegated lifecycle runtime evidence
+**By:** Squad (Coordinator)
+**Role / Work Item:** Planner — Feature 023 Legacy-State Read-Tolerance + Schema Migration Discipline planning phase
+**Requested Agent:** claude
+**Actual Agent:** copilot
+**Model ID:** claude-sonnet-4.5
+**Status:** fell back to enabled agent family
+**Fallback Reason:** preferred agent `claude` is not enabled
+
+---
+
+### 2026-05-19T02:18:00Z: Delegated lifecycle runtime evidence
+**By:** Squad (Coordinator)
+**Role / Work Item:** Planner — Feature 023 Legacy-State Read-Tolerance + Schema Migration Discipline before-plan governance gate
+**Requested Agent:** claude
+**Actual Agent:** copilot
+**Model ID:** claude-haiku-4.5
+**Status:** fell back to enabled agent family
+**Fallback Reason:** preferred agent `claude` is not enabled
+
+---
+
+### 2026-05-19T02:14:30Z: Delegated lifecycle runtime evidence
+**By:** Squad (Coordinator)
+**Role / Work Item:** Spec Steward — Feature 023 Legacy-State Read-Tolerance + Schema Migration Discipline clarify boundary
+**Requested Agent:** codex
+**Actual Agent:** copilot
+**Model ID:** claude-sonnet-4.5
+**Status:** fell back to enabled agent family
+**Fallback Reason:** preferred agent `codex` is not enabled
+
+---
+
+### 2026-05-19T02:09:55Z: Delegated lifecycle runtime evidence
+**By:** Squad (Coordinator)
+**Role / Work Item:** Spec Steward — Feature 023 Legacy-State Read-Tolerance + Schema Migration Discipline specify boundary
+**Requested Agent:** codex
+**Actual Agent:** copilot
+**Model ID:** claude-sonnet-4.5
+**Status:** fell back to enabled agent family
+**Fallback Reason:** preferred agent `codex` is not enabled
+
+---
+
+ ## 2026-05-18T23:27:46Z — Authorization: retro-boundary
 
 - **Decision ID**: authorization-feature-022-iter-001-retro-boundary
 - **Type**: authorization
@@ -14537,3 +14603,19 @@ User request — captured for team memory to ensure plan authorization respects 
 - **Task ID**: (none)
 - **Auth Commit Hash**: (none)
 - **Recorded At**: 2026-05-18T18:31:14Z
+
+## 2026-05-19T02:36:06Z — Boundary sync warning: plan
+
+- **Boundary Type**: plan
+- **Latest Recorded Boundary**: tasks
+- **Recorded At**: 2026-05-19T02:36:06Z
+- **Warning**: Expected next boundary 'review-signoff' but received 'plan'.
+
+## 2026-05-19T02:36:06Z — Boundary sync: plan
+
+- **Boundary Type**: plan
+- **Feature Ref**: 023-legacy-state-read-tolerance
+- **Iteration Number**: (none)
+- **Task ID**: (none)
+- **Auth Commit Hash**: 91f900a984cd7cc36d70f69c97ae757f12c66138
+- **Recorded At**: 2026-05-19T02:36:06Z

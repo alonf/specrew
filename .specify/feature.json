@@ -1,3 +1,3 @@
 {
-  "feature_directory": "specs/022-hotfix-schema-tests"
+  "feature_directory": "specs/023-legacy-state-read-tolerance"
 }
