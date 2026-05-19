@@ -1,6 +1,9 @@
 <p align="center">
-  <img src="docs/assets/specrew-logo.png" alt="Specrew — Governed AI SDLC" width="320" />
+  <img src="docs/assets/specrew-logo-light.svg#gh-light-mode-only" alt="Specrew — Governed Agentic SDLC" width="420" />
+  <img src="docs/assets/specrew-logo-dark.svg#gh-dark-mode-only" alt="Specrew — Governed Agentic SDLC" width="420" />
 </p>
+
+<p align="center"><strong>Governed Agentic SDLC</strong></p>
 
 # Specrew
 
