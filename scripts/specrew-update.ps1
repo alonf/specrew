@@ -379,6 +379,26 @@ function Get-LatestVersionInfo {
                 }
             }
 
+            # Prefer the actually-installed module's manifest as the "latest known" version.
+            # Git tags lag behind real shipping (we ship 0.22.0 without yet tagging v0.22.0),
+            # so origin-tags drift falsely reports older versions. Module manifest is authoritative.
+            $moduleVersion = $null
+            try {
+                $moduleVersion = Get-SpecrewInstalledVersion -ProjectRoot $RepoRoot
+            }
+            catch {
+                $moduleVersion = $null
+            }
+
+            if ($moduleVersion) {
+                return [pscustomobject]@{
+                    Version = $moduleVersion
+                    Source  = 'module-manifest'
+                    Known   = $true
+                }
+            }
+
+            # Fall back to origin-tags only when no module manifest is reachable.
             $remoteUrl = @(& git -C $RepoRoot remote get-url origin 2>$null)
             $remoteVersion = if ((Get-NativeExitCode) -eq 0 -and $remoteUrl) {
                 Get-LatestGitTagVersion -Repository ([string]$remoteUrl[0])
@@ -545,6 +565,10 @@ function Compare-VersionState {
         $latest = Get-ParsedVersion -Value $LatestVersion -Name 'latest'
         if ($current -lt $latest) {
             return 'update-available'
+        }
+
+        if ($current -gt $latest) {
+            return 'ahead-of-known'
         }
 
         return 'current'
