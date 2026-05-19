@@ -1,3 +1,50 @@
+## 2026-05-19T09:17:00Z — Review: Feature 023 feature-closeout self-review rerun
+
+- **Decision ID**: review-feature-023-feature-closeout-self-review-rerun
+- **Type**: review
+- **Boundary**: feature-closeout-self-review
+- **Reviewing Agent**: Reviewer
+- **Recorded At**: 2026-05-19T09:17:00Z
+- **Commit Reference**: `83b8c764ab2535865136152a24edcbc757a96595`
+- **PR Reference**: #269 (`Feature 023: close legacy state read tolerance at 0.23.0`)
+- **Verdict**: CONDITIONALLY APPROVED — closeout truth surfaces are ready for human inspection; merge authorization remains blocked on failing GitHub checks outside the repository tree
+
+## Findings
+
+- **Resolved defect**: `CHANGELOG.md` now truthfully records `Shipping PR: #269 (`Feature 023: close legacy state read tolerance at 0.23.0`)`, clearing the stale feature-closeout truth-surface issue from the prior review.
+- **Local evidence remains green**: `pwsh -NoProfile -ExecutionPolicy Bypass -File .\extensions\specrew-speckit\scripts\validate-governance.ps1 -ProjectPath . -IterationPath .\specs\023-legacy-state-read-tolerance\iterations\001` exited `0`, and `pwsh -NoProfile -ExecutionPolicy Bypass -File .\tests\integration\Test-LegacyStateReaders.Tests.ps1` exited `0` on the rereview tree.
+- **Remaining blocker is external to the branch contents**: PR #269 shows required GitHub checks in `FAILURE`, but the run annotations state the jobs were not started because recent account payments failed or the spending limit needs to be increased. That prevents human merge authorization even though no new repository defect was found.
+
+## Lockout Consequence
+
+- PR #269 is ready for human inspection.
+- PR #269 is **not** ready for human merge authorization until the required GitHub checks can run successfully.
+
+---
+
+## 2026-05-19T08:57:59Z — Review: Feature 023 feature-closeout self-review
+
+- **Decision ID**: review-feature-023-feature-closeout-self-review
+- **Type**: review
+- **Boundary**: feature-closeout-self-review
+- **Reviewing Agent**: Reviewer
+- **Recorded At**: 2026-05-19T08:57:59Z
+- **Commit Reference**: `db5c2f21ea8f88d304befeca4602828335838834`
+- **PR Reference**: #269 (`Feature 023: close legacy state read tolerance at 0.23.0`)
+- **Verdict**: REJECTED — not ready for human merge authorization
+
+## Findings
+
+- **Blocking defect**: `CHANGELOG.md` still says `Shipping PR: pending PR creation for 023-legacy-state-read-tolerance -> main` even though PR #269 exists and is open. That makes the shipped-closeout truth surface stale on the reviewed tree and breaks the requested "feature-closeout artifacts, version surfaces, and changelog are truthful" acceptance check.
+- **Verified alignment that remains intact**: `.specrew/config.yml`, `extensions/specrew-speckit/extension.yml`, `.specify/extensions/specrew-speckit/extension.yml`, `README.md`, `specs/023-legacy-state-read-tolerance/iterations/001/closeout.md`, `specs/023-legacy-state-read-tolerance/iterations/001/retro.md`, and `specs/023-legacy-state-read-tolerance/closeout-dashboard.md` consistently reflect the absorbed T025-T031 slice as **17 SP planned / 17 SP delivered / 0 SP variance** and preserve the "skip Iteration 2 / feature-closeout only" authorization story.
+- **Evidence rerun on current HEAD**: `tests/integration/Test-LegacyStateReaders.Tests.ps1` passed on the reviewed tree. PR #269 is open and mergeable, which makes the stale changelog line a documentation-truth defect rather than a PR-creation timing issue.
+
+## Lockout Consequence
+
+- PR #269 may proceed to human inspection, but it is **not** ready for human merge authorization until a non-review owner updates the stale changelog PR line and re-presents the closeout tree for re-review.
+
+---
+
 ## 2026-05-19T07:56:35Z — Boundary: Feature 023 Iteration 001 iteration-closeout
 
 - **Decision ID**: boundary-feature-023-iter-001-iteration-closeout
