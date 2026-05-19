@@ -3,10 +3,10 @@
 #   - SIGNING_CERT_BASE64
 #   - SIGNING_CERT_PASSWORD
 #
-# Iteration 002 enablement:
-#   - v*.* tag push now defaults to 'publish' mode (automatic publishing)
-#   - if secrets are not configured, workflow fails with clear error message
-#   - manual dispatch remains available for dry-run testing before secrets exist
+# Release modes:
+#   - push v0.NN.0 tags -> publish-stable
+#   - push v0.NN.0-beta.1 / rc.1 tags -> publish-prerelease
+#   - workflow_dispatch supports dry-run / publish-prerelease / publish-stable / promote-prerelease
 name: Publish Specrew module
 
 on:
@@ -16,13 +16,19 @@ on:
   workflow_dispatch:
     inputs:
       release_mode:
-        description: 'dry-run validates stamp/sign/publish without a live release; publish performs a real PSGallery publish'
+        description: 'dry-run validates stamp/sign/publish without a live release; the publish/promote modes perform a real PSGallery publish'
         required: true
         default: dry-run
         type: choice
         options:
           - dry-run
-          - publish
+          - publish-prerelease
+          - publish-stable
+          - promote-prerelease
+      release_tag:
+        description: 'Optional v0.NN.0 or v0.NN.0-beta.1 tag for workflow_dispatch publish/promote modes'
+        required: false
+        type: string
 
 permissions:
   contents: write  # write needed for gh release create on tag push
@@ -35,28 +41,64 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Resolve release mode
-        id: release_mode
+      - name: Resolve release context
+        id: release_context
         shell: pwsh
         run: |
-          # Default to 'publish' for tag pushes (automatic publishing)
-          # Default to 'dry-run' for manual dispatch unless explicitly set to 'publish'
-          $mode = if ('${{ github.event_name }}' -eq 'push') {
-            'publish'
-          } elseif ('${{ github.event_name }}' -eq 'workflow_dispatch') {
-            '${{ inputs.release_mode }}'
-          } else {
-            'dry-run'
+          $eventName = '${{ github.event_name }}'
+          $dispatchMode = '${{ inputs.release_mode }}'
+          $dispatchTag = '${{ inputs.release_tag }}'
+          $effectiveMode = 'dry-run'
+          $effectiveRefType = '${{ github.ref_type }}'
+          $effectiveRefName = '${{ github.ref_name }}'
+
+          if ($eventName -eq 'push' -and $effectiveRefType -eq 'tag') {
+            $effectiveMode = if ($effectiveRefName -match '^v\d+\.\d+\.\d+-') {
+              'publish-prerelease'
+            }
+            else {
+              'publish-stable'
+            }
+          }
+          elseif ($eventName -eq 'workflow_dispatch') {
+            $effectiveMode = if ([string]::IsNullOrWhiteSpace($dispatchMode)) {
+              'dry-run'
+            }
+            else {
+              $dispatchMode
+            }
+
+            if (-not [string]::IsNullOrWhiteSpace($dispatchTag)) {
+              $effectiveRefType = 'tag'
+              $effectiveRefName = $dispatchTag.Trim()
+            }
+            elseif ($effectiveMode -ne 'dry-run') {
+              throw "workflow_dispatch mode '$effectiveMode' requires inputs.release_tag."
+            }
+            else {
+              $effectiveRefType = ''
+              $effectiveRefName = ''
+            }
           }
 
-          if ([string]::IsNullOrWhiteSpace($mode)) {
-            $mode = 'dry-run'
-          }
+          $createGithubRelease = (
+            $eventName -eq 'push' -and
+            $effectiveRefType -eq 'tag' -and
+            $effectiveMode -eq 'publish-stable'
+          )
 
-          "release_mode=$mode" >> $env:GITHUB_OUTPUT
-          Write-Host "Release mode: $mode"
-          Write-Host "Event: ${{ github.event_name }}"
-          Write-Host "Ref: ${{ github.ref }}"
+          "release_mode=$effectiveMode" >> $env:GITHUB_OUTPUT
+          "release_ref_type=$effectiveRefType" >> $env:GITHUB_OUTPUT
+          "release_ref_name=$effectiveRefName" >> $env:GITHUB_OUTPUT
+          "create_github_release=$createGithubRelease" >> $env:GITHUB_OUTPUT
+          Write-Host "Release mode: $effectiveMode"
+          Write-Host "Event: $eventName"
+          Write-Host "Ref type: $effectiveRefType"
+          Write-Host "Ref name: $effectiveRefName"
+          Write-Host "Create GitHub release: $createGithubRelease"
+          if ($eventName -eq 'workflow_dispatch') {
+            Write-Host "workflow_dispatch release_tag input: $dispatchTag"
+          }
 
       - name: Stamp, sign, and publish
         shell: pwsh
@@ -67,14 +109,14 @@ jobs:
         run: |
           .\scripts\internal\invoke-module-release.ps1 `
             -RepositoryRoot (Get-Location).Path `
-            -ReleaseMode '${{ steps.release_mode.outputs.release_mode }}' `
-            -GitRefType '${{ github.ref_type }}' `
-            -GitRefName '${{ github.ref_name }}' `
+            -ReleaseMode '${{ steps.release_context.outputs.release_mode }}' `
+            -GitRefType '${{ steps.release_context.outputs.release_ref_type }}' `
+            -GitRefName '${{ steps.release_context.outputs.release_ref_name }}' `
             -AllowEphemeralSigningCertificate `
             -SummaryPath $env:GITHUB_STEP_SUMMARY
 
       - name: Build release artifact (module zip)
-        if: steps.release_mode.outputs.release_mode == 'publish' && startsWith(github.ref, 'refs/tags/v')
+        if: steps.release_context.outputs.create_github_release == 'true'
         id: build_artifact
         shell: pwsh
         run: |
@@ -82,7 +124,7 @@ jobs:
           # from the GitHub Release page. Includes everything PSGallery would
           # ship per the manifest FileList, plus repo-level reference files
           # for offline evaluation (LICENSE, NOTICE.md, README.md, CHANGELOG.md, docs/).
-          $version = $env:GITHUB_REF_NAME -replace '^v', ''
+          $version = '${{ steps.release_context.outputs.release_ref_name }}' -replace '^v', ''
           $zipPath = (Join-Path (Get-Location).Path "specrew-$version.zip")
 
           # Use the FileList from the manifest as the canonical module-surface list
@@ -131,14 +173,14 @@ jobs:
           "release_version=$version" >> $env:GITHUB_OUTPUT
 
       - name: Extract changelog entry for release notes
-        if: steps.release_mode.outputs.release_mode == 'publish' && startsWith(github.ref, 'refs/tags/v')
+        if: steps.release_context.outputs.create_github_release == 'true'
         id: extract_changelog
         shell: pwsh
         run: |
           # Extract this version's CHANGELOG entry as release notes.
           # Convention: a section starting with `## [v0.19.0]` or `## v0.19.0` or
           # `## 0.19.0`, ending at the next `## ` or end of file.
-          $version = $env:GITHUB_REF_NAME -replace '^v', ''
+          $version = '${{ steps.release_context.outputs.release_ref_name }}' -replace '^v', ''
           $changelogPath = './CHANGELOG.md'
 
           if (-not (Test-Path $changelogPath)) {
@@ -165,12 +207,12 @@ jobs:
           }
 
       - name: Create GitHub Release with module zip attached
-        if: steps.release_mode.outputs.release_mode == 'publish' && startsWith(github.ref, 'refs/tags/v')
+        if: steps.release_context.outputs.create_github_release == 'true'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         shell: pwsh
         run: |
-          $tag = $env:GITHUB_REF_NAME
+          $tag = '${{ steps.release_context.outputs.release_ref_name }}'
           $zipPath = '${{ steps.build_artifact.outputs.release_zip }}'
           $notesPath = '${{ steps.extract_changelog.outputs.notes_path }}'
 
