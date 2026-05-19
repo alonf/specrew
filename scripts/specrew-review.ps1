@@ -248,15 +248,13 @@ function Get-RelativePath {
         [string]$ToPath
     )
 
-    $directorySeparator = [System.IO.Path]::DirectorySeparatorChar
-    $fromUri = [System.Uri]([System.IO.Path]::GetFullPath($FromDirectory).TrimEnd('\', '/') + $directorySeparator)
-    $toUri = [System.Uri]([System.IO.Path]::GetFullPath($ToPath))
-    $relativePath = [System.Uri]::UnescapeDataString($fromUri.MakeRelativeUri($toUri).ToString())
-    if ($directorySeparator -eq '\') {
-        return $relativePath -replace '/', '\'
-    }
-
-    return $relativePath
+    # System.IO.Path.GetRelativePath is cross-platform safe and uses the platform's
+    # native separator. The previous [System.Uri] MakeRelativeUri approach failed on
+    # Linux because bare absolute paths like "/home/user/foo" are not auto-recognized
+    # as absolute URIs without a "file://" scheme.
+    $fromFull = [System.IO.Path]::GetFullPath($FromDirectory)
+    $toFull = [System.IO.Path]::GetFullPath($ToPath)
+    return [System.IO.Path]::GetRelativePath($fromFull, $toFull)
 }
 
 function Try-OpenPath {

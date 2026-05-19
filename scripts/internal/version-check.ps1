@@ -33,29 +33,53 @@ function Get-SpecrewVersionConfigValue {
 function Get-SpecrewInstalledVersion {
     param([Parameter(Mandatory = $true)][string]$ProjectRoot)
 
-    $module = @(Get-Module -Name Specrew -ListAvailable | Sort-Object Version -Descending | Select-Object -First 1)
-    if ($module.Count -gt 0 -and $module[0].Version) {
-        return $module[0].Version.ToString()
+    # Step 1: Get-Module -ListAvailable. SilentlyContinue + try/catch because on Linux,
+    # PSModulePath often contains directories with malformed modules or permission
+    # issues; without SilentlyContinue, those produce non-terminating errors that
+    # $ErrorActionPreference='Stop' (set at the top of this script) turns into
+    # terminating exceptions, which silently fail the whole function via outer catch.
+    try {
+        $module = @(Get-Module -Name Specrew -ListAvailable -ErrorAction SilentlyContinue |
+            Sort-Object Version -Descending |
+            Select-Object -First 1)
+        if ($module.Count -gt 0 -and $module[0].Version) {
+            return $module[0].Version.ToString()
+        }
+    }
+    catch {
+        # Fall through to manifest check.
     }
 
-    $resolvedProjectRoot = Resolve-ProjectPath -Path $ProjectRoot
+    # Step 2: manifest path search. Always try the repo-root manifest (two parents
+    # up from this script). Add ProjectRoot manifest only if Resolve-ProjectPath
+    # succeeds (it normally does; defensive).
     $manifestCandidates = @(
-        (Join-Path (Split-Path -Parent (Split-Path -Parent $PSScriptRoot)) 'Specrew.psd1'),
-        (Join-Path $resolvedProjectRoot 'Specrew.psd1')
-    ) | Select-Object -Unique
+        (Join-Path (Split-Path -Parent (Split-Path -Parent $PSScriptRoot)) 'Specrew.psd1')
+    )
+
+    try {
+        $resolvedProjectRoot = Resolve-ProjectPath -Path $ProjectRoot
+        $manifestCandidates += (Join-Path $resolvedProjectRoot 'Specrew.psd1')
+    }
+    catch {
+        # ProjectRoot may be unresolvable; the repo-root manifest is still tried.
+    }
+
+    $manifestCandidates = @($manifestCandidates | Select-Object -Unique)
 
     foreach ($manifestPath in $manifestCandidates) {
-        if (-not (Test-Path -LiteralPath $manifestPath -PathType Leaf)) {
-            continue
-        }
-
         try {
+            if (-not (Test-Path -LiteralPath $manifestPath -PathType Leaf)) {
+                continue
+            }
+
             $manifest = Import-PowerShellDataFile -LiteralPath $manifestPath
-            if ($manifest.ContainsKey('ModuleVersion')) {
+            if ($manifest -and $manifest.ContainsKey('ModuleVersion')) {
                 return [string]$manifest.ModuleVersion
             }
         }
         catch {
+            continue
         }
     }
 

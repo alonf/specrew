@@ -105,10 +105,11 @@ function Get-RelativePath {
         [string]$ToPath
     )
 
-    $fromUri = [System.Uri]([System.IO.Path]::GetFullPath($FromDirectory).TrimEnd('\') + '\')
-    $toUri = [System.Uri]([System.IO.Path]::GetFullPath($ToPath))
-    $relative = $fromUri.MakeRelativeUri($toUri).ToString()
-    return [System.Uri]::UnescapeDataString($relative)
+    # Cross-platform safe replacement for the legacy [System.Uri] MakeRelativeUri pattern,
+    # which fails on Linux for bare absolute paths.
+    $fromFull = [System.IO.Path]::GetFullPath($FromDirectory)
+    $toFull = [System.IO.Path]::GetFullPath($ToPath)
+    return ([System.IO.Path]::GetRelativePath($fromFull, $toFull)) -replace '\\', '/'
 }
 
 function Get-RequirementSummaryMap {

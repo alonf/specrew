@@ -1381,15 +1381,14 @@ function Get-RelativeDisplayPath {
         [string]$Path
     )
 
-    $directorySeparator = [System.IO.Path]::DirectorySeparatorChar
-    $rootUri = [System.Uri](([System.IO.Path]::GetFullPath($Root).TrimEnd('\', '/')) + $directorySeparator)
-    $targetUri = [System.Uri]([System.IO.Path]::GetFullPath($Path))
-    $relativePath = [System.Uri]::UnescapeDataString($rootUri.MakeRelativeUri($targetUri).ToString())
-    if ($directorySeparator -eq '\') {
-        return $relativePath.Replace('/', '\')
-    }
-
-    return $relativePath
+    # Use System.IO.Path.GetRelativePath (cross-platform safe on .NET Core 2.0+).
+    # The previous System.Uri / MakeRelativeUri approach failed on Linux because
+    # bare absolute paths like "/home/user/foo" are not auto-recognized as
+    # absolute URIs by the [System.Uri] constructor without a "file://" scheme,
+    # producing "This operation is not supported for a relative URI" exceptions.
+    $rootFull = [System.IO.Path]::GetFullPath($Root)
+    $targetFull = [System.IO.Path]::GetFullPath($Path)
+    return [System.IO.Path]::GetRelativePath($rootFull, $targetFull)
 }
 
 function Get-LanguageNameFromExtension {

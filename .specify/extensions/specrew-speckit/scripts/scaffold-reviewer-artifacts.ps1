@@ -669,9 +669,12 @@ function Get-RelativePath {
         [string]$ToPath
     )
 
-    $fromUri = [System.Uri]([System.IO.Path]::GetFullPath($FromDirectory).TrimEnd('\') + '\')
-    $toUri = [System.Uri]([System.IO.Path]::GetFullPath($ToPath))
-    return [System.Uri]::UnescapeDataString($fromUri.MakeRelativeUri($toUri).ToString()) -replace '/', '\'
+    # Cross-platform safe replacement for the legacy [System.Uri] MakeRelativeUri pattern,
+    # which fails on Linux for bare absolute paths. We then normalize separators to '\'
+    # to preserve the original output shape (callers feed it into '\\'-joined string paths).
+    $fromFull = [System.IO.Path]::GetFullPath($FromDirectory)
+    $toFull = [System.IO.Path]::GetFullPath($ToPath)
+    return ([System.IO.Path]::GetRelativePath($fromFull, $toFull)) -replace '/', '\'
 }
 
 function Get-DriftSummary {

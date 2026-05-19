@@ -29,10 +29,11 @@ function Convert-ToRepoRelativePath {
         [string]$TargetPath
     )
 
-    $baseUri = [System.Uri]([System.IO.Path]::GetFullPath($BasePath).TrimEnd('\') + '\')
-    $targetUri = [System.Uri][System.IO.Path]::GetFullPath($TargetPath)
-    $relativeUri = $baseUri.MakeRelativeUri($targetUri)
-    return [System.Uri]::UnescapeDataString($relativeUri.ToString()).Replace('\', '/')
+    # Cross-platform safe replacement for the legacy [System.Uri] MakeRelativeUri pattern,
+    # which fails on Linux for bare absolute paths.
+    $baseFull = [System.IO.Path]::GetFullPath($BasePath)
+    $targetFull = [System.IO.Path]::GetFullPath($TargetPath)
+    return ([System.IO.Path]::GetRelativePath($baseFull, $targetFull)) -replace '\\', '/'
 }
 
 function Resolve-HardeningContext {
