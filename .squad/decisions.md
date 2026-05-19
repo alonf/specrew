@@ -11,7 +11,6 @@
 
 - `pwsh -NoProfile -ExecutionPolicy Bypass -File .\extensions\specrew-speckit\scripts\validate-governance.ps1 -ProjectPath . -IterationPath .\specs\023-legacy-state-read-tolerance\iterations\001`
 - `pwsh -NoProfile -ExecutionPolicy Bypass -File .\tests\integration\Test-LegacyStateReaders.Tests.ps1`
-- `pwsh -NoProfile -ExecutionPolicy Bypass -File .\tests\unit\validate-governance.reader-tolerance.tests.ps1`
 
 ## Closeout Summary
 

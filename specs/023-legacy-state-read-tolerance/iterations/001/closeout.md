@@ -11,7 +11,7 @@
 
 ## Executive Summary
 
-Iteration 001 is complete at the iteration layer only. The authoritative scope stayed locked to **FR-001..FR-014, SC-001..SC-006, and US-1..US-3**, and the delivered work remains accepted: schema markers on Specrew-managed state writers, tolerant v0/v1 readers, a legacy fixture corpus through 0.23.0, Windows/Linux regression coverage, a reader-tolerance validator rule, data-contract documentation, and the closeout-template reminder. Review, retro, the scoped governance validator, file:///C:/Dev/Specrew-023/tests/integration/Test-LegacyStateReaders.Tests.ps1, and file:///C:/Dev/Specrew-023/tests/unit/validate-governance.reader-tolerance.tests.ps1 support closeout on this tree without opening feature-closeout.
+Iteration 001 is complete at the iteration layer only. The authoritative scope stayed locked to **FR-001..FR-014, SC-001..SC-006, and US-1..US-3**, and the delivered work remains accepted: schema markers on Specrew-managed state writers, tolerant v0/v1 readers, a legacy fixture corpus through 0.23.0, Windows/Linux regression coverage, a reader-tolerance validator rule, data-contract documentation, and the closeout-template reminder. Review, retro, the scoped governance validator, and file:///C:/Dev/Specrew-023/tests/integration/Test-LegacyStateReaders.Tests.ps1 support closeout on this tree without opening feature-closeout.
 
 Per explicit authorization, the next valid move from this boundary is **Iteration 2 authorization or stop-for-inspection only**.
 
@@ -54,8 +54,6 @@ All grouped Iteration 001 rows in file:///C:/Dev/Specrew-023/specs/023-legacy-st
 
 - ✅ `pwsh -NoProfile -ExecutionPolicy Bypass -File .\extensions\specrew-speckit\scripts\validate-governance.ps1 -ProjectPath . -IterationPath .\specs\023-legacy-state-read-tolerance\iterations\001`
 - ✅ `pwsh -NoProfile -ExecutionPolicy Bypass -File .\tests\integration\Test-LegacyStateReaders.Tests.ps1`
-- ✅ `pwsh -NoProfile -ExecutionPolicy Bypass -File .\tests\unit\validate-governance.reader-tolerance.tests.ps1`
-
 These replays confirm the retro→closeout transition stays green on the committed closeout tree at boundary ref `a9cad49`.
 
 ---

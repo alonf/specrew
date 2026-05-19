@@ -7,7 +7,7 @@
 **Baseline Ref**: 4ff6a949b5d39ebcbe64090fc3487e1073f68d74
 **Updated**: 2026-05-19T07:56:35Z
 **Current Phase**: complete
-**Iteration Status**: CLOSED — Iteration 001 iteration-closeout is recorded on branch `023-legacy-state-read-tolerance` at boundary commit `a9cad49`; file:///C:/Dev/Specrew-023/specs/023-legacy-state-read-tolerance/iterations/001/closeout.md, file:///C:/Dev/Specrew-023/specs/023-legacy-state-read-tolerance/iterations/001/dashboard.md, and the reviewer closeout packet are present on this tree, the scoped governance validator plus file:///C:/Dev/Specrew-023/tests/integration/Test-LegacyStateReaders.Tests.ps1 and file:///C:/Dev/Specrew-023/tests/unit/validate-governance.reader-tolerance.tests.ps1 reran green on the closeout tree, and feature-closeout remains unopened because Iteration 2 or stop-for-inspection is next.
+**Iteration Status**: CLOSED — Iteration 001 iteration-closeout is recorded on branch `023-legacy-state-read-tolerance` at boundary commit `a9cad49`; file:///C:/Dev/Specrew-023/specs/023-legacy-state-read-tolerance/iterations/001/closeout.md, file:///C:/Dev/Specrew-023/specs/023-legacy-state-read-tolerance/iterations/001/dashboard.md, and the reviewer closeout packet are present on this tree, the scoped governance validator plus file:///C:/Dev/Specrew-023/tests/integration/Test-LegacyStateReaders.Tests.ps1 reran green on the closeout tree, and feature-closeout remains unopened because Iteration 2 or stop-for-inspection is next.
 
 ## Execution Summary
 
