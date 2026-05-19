@@ -28,13 +28,15 @@ See README.md for current platform validation status.
 
 Specrew ships as a PowerShell module. Pick whichever install path fits your environment:
 
-### Option A — PowerShell Gallery (recommended once published)
-
-After the first live PSGallery publish (T053 post-merge follow-up):
+### Option A — PowerShell Gallery (recommended)
 
 ```powershell
-Install-Module Specrew -Scope CurrentUser
+Install-Module Specrew -Scope CurrentUser -SkipPublisherCheck
 ```
+
+The `-SkipPublisherCheck` flag is required for now because the module is
+signed with a self-signed certificate. It will be removed once a CA-issued
+certificate is in place.
 
 Once installed, the `specrew`, `specrew-init`, `specrew-start`, `specrew-update`,
 `specrew-where`, `specrew-team`, `specrew-review`, and `specrew-version` aliases (plus their
@@ -42,9 +44,17 @@ PowerShell-canonical `Verb-Noun` forms — `Invoke-Specrew`, `Initialize-Specrew
 `Start-Specrew`, `Update-Specrew`, `Show-SpecrewStatus`, `Invoke-SpecrewTeam`,
 `Show-SpecrewReview`, `Show-SpecrewVersion`) are available in any PowerShell session.
 
-### Option B — Local clone (current alpha state)
+**Prerelease channel** — early adopters who want to validate the next version
+before it goes stable can opt into the prerelease channel:
 
-Until the PSGallery publish lands, clone the repo and import the module manifest:
+```powershell
+Install-Module Specrew -AllowPrerelease -Scope CurrentUser -SkipPublisherCheck
+```
+
+### Option B — Local clone (development workflow)
+
+If you're contributing to Specrew or want to track the bleeding edge, clone the
+repo and import the module manifest:
 
 ```powershell
 git clone https://github.com/alonf/specrew.git C:\Dev\Specrew

@@ -13,7 +13,9 @@ baseline that each release number represents.
 - Rule 15 version management: bumped `Specrew.psd1` `ModuleVersion`, `.specrew/config.yml`, and both Specrew Spec Kit extension manifests to `0.23.0`, then reran governance validation and legacy state reader regression evidence on the closeout tree.
 - Added PSGallery prerelease publishing primitives so release automation can stamp `Specrew.psd1` `PrivateData.PSData.Prerelease` for prerelease tags, clear it again when promoting the same baseline to stable, and keep dry-runs/worktree safety scoped to the staged manifest path without mutating the checked-out manifest.
 - Completed the `workflow_dispatch` publishing path so prerelease publish, stable publish, and prerelease promotion can safely resolve/create lightweight tags, detect divergent tag targets before publishing, and open GitHub Releases across all real tag-based publish modes.
-- Shipping PR: #269 (`Feature 023: close legacy state read tolerance at 0.23.0`).
+- Shipped `Specrew.psd1` FileList fix (commit `a77c8e3`): three runtime-required internal helpers (`scripts/internal/coordinator-resume.ps1`, `task-progress.ps1`, `worktree-awareness.ps1`) were missing from the shipped FileList, which broke `specrew where` and `specrew start` in the PSGallery package; caught via the `v0.23.0-beta.1` prerelease channel and fixed in `v0.23.0-beta.2` before promotion to stable. First empirical validation of the prerelease channel design.
+- Repo-wide markdown lint deep cleanup (PR #270): reduced ~4,238 violations to 0, removed unnecessary `.markdownlint.json` rule disables, consolidated `.markdownlintrc` into `.markdownlint.json`, and added per-iteration verbose logging to `Test-IterationGovernance` after diagnosing the apparent CI hang as cumulative slowness across 43+ iterations.
+- Shipping PRs: #269 (`Feature 023: close legacy state read tolerance at 0.23.0`) and #270 (`Proposal 034 markdown lint deep cleanup + validator diagnosis`).
 
 ## 0.22.0 - F-020 Implementation Hotfix + Schema Parity Tests
 

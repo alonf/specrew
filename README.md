@@ -65,16 +65,20 @@ detailed cross-platform validation status.
 - Multi-host runtime support is not yet ready for public promises
 - Just-in-time brownfield cartography for arbitrary inherited repos is still a
   roadmap item
-- PowerShell Gallery module publication is in progress (workflow ready; secrets
-  pending)
+- The module is currently signed with a self-signed certificate, so
+  `Install-Module` must be invoked with `-SkipPublisherCheck` on first install
 - External pull requests are not yet part of the alpha operating model
 
 ## Recommended Lifecycle
 
 1. **Install Specrew** — pick one path:
-   - **PowerShell Gallery** (after the first live publish; T053 post-merge
-     follow-up): `Install-Module Specrew -Scope CurrentUser`
-   - **Local clone** (current alpha state):
+   - **PowerShell Gallery** (recommended): `Install-Module Specrew -Scope CurrentUser -SkipPublisherCheck`
+     (the `-SkipPublisherCheck` flag is required while the module is signed
+     with a self-signed certificate; this will be removed once a CA-issued
+     cert is in place)
+   - **Prerelease channel** for early adopters who want to validate the next
+     version: `Install-Module Specrew -AllowPrerelease -Scope CurrentUser -SkipPublisherCheck`
+   - **Local clone** (development workflow):
      `git clone https://github.com/alonf/specrew && Import-Module specrew/Specrew.psd1`
 2. **Bootstrap a project** with `specrew init` from inside the target directory.
 3. **Start every work session** with `specrew start`; Specrew refreshes runtime
