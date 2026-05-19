@@ -11,7 +11,8 @@ baseline that each release number represents.
 - Feature 023: closed the legacy state read-tolerance feature with the full validator, documentation, fixture-corpus, and closeout-template scope delivered on the feature branch. The originally planned Iteration 2 slice (T025-T031) was absorbed into Iteration 001 instead of being deferred, so the truthful delivery total is 17 SP planned / 17 SP delivered / 0 SP variance.
 - Generated the canonical feature-closeout dashboard snapshot at `specs/023-legacy-state-read-tolerance/closeout-dashboard.md` and cleared active feature identity via the existing feature-closeout scaffold path.
 - Rule 15 version management: bumped `Specrew.psd1` `ModuleVersion`, `.specrew/config.yml`, and both Specrew Spec Kit extension manifests to `0.23.0`, then reran governance validation and legacy state reader regression evidence on the closeout tree.
-- Added PSGallery prerelease publishing primitives so release automation can stamp `Specrew.psd1` `PrivateData.PSData.Prerelease` for prerelease tags, clear it again when promoting the same baseline to stable, and dry-run the full publish path without mutating the checked-out manifest.
+- Added PSGallery prerelease publishing primitives so release automation can stamp `Specrew.psd1` `PrivateData.PSData.Prerelease` for prerelease tags, clear it again when promoting the same baseline to stable, and keep dry-runs/worktree safety scoped to the staged manifest path without mutating the checked-out manifest.
+- Completed the `workflow_dispatch` publishing path so prerelease publish, stable publish, and prerelease promotion can safely resolve/create lightweight tags, detect divergent tag targets before publishing, and open GitHub Releases across all real tag-based publish modes.
 - Shipping PR: #269 (`Feature 023: close legacy state read tolerance at 0.23.0`).
 
 ## 0.22.0 - F-020 Implementation Hotfix + Schema Parity Tests

@@ -40,6 +40,9 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          fetch-tags: true
 
       - name: Resolve release context
         id: release_context
@@ -51,6 +54,7 @@ jobs:
           $effectiveMode = 'dry-run'
           $effectiveRefType = '${{ github.ref_type }}'
           $effectiveRefName = '${{ github.ref_name }}'
+          $requestedDispatchTag = if ([string]::IsNullOrWhiteSpace($dispatchTag)) { '' } else { $dispatchTag.Trim() }
 
           if ($eventName -eq 'push' -and $effectiveRefType -eq 'tag') {
             $effectiveMode = if ($effectiveRefName -match '^v\d+\.\d+\.\d+-') {
@@ -68,9 +72,9 @@ jobs:
               $dispatchMode
             }
 
-            if (-not [string]::IsNullOrWhiteSpace($dispatchTag)) {
+            if (-not [string]::IsNullOrWhiteSpace($requestedDispatchTag)) {
               $effectiveRefType = 'tag'
-              $effectiveRefName = $dispatchTag.Trim()
+              $effectiveRefName = $requestedDispatchTag
             }
             elseif ($effectiveMode -ne 'dry-run') {
               throw "workflow_dispatch mode '$effectiveMode' requires inputs.release_tag."
@@ -82,23 +86,61 @@ jobs:
           }
 
           $createGithubRelease = (
-            $eventName -eq 'push' -and
             $effectiveRefType -eq 'tag' -and
-            $effectiveMode -eq 'publish-stable'
+            $effectiveMode -in @('publish-prerelease', 'publish-stable', 'promote-prerelease')
           )
+          $ensureDispatchTag = (
+            $eventName -eq 'workflow_dispatch' -and
+            $effectiveRefType -eq 'tag' -and
+            $effectiveMode -in @('publish-prerelease', 'publish-stable', 'promote-prerelease')
+          )
+          $releaseFlag = switch ($effectiveMode) {
+            'publish-prerelease' { '--prerelease' }
+            'publish-stable' { '--latest' }
+            'promote-prerelease' { '--latest' }
+            default { '' }
+          }
 
           "release_mode=$effectiveMode" >> $env:GITHUB_OUTPUT
           "release_ref_type=$effectiveRefType" >> $env:GITHUB_OUTPUT
           "release_ref_name=$effectiveRefName" >> $env:GITHUB_OUTPUT
           "create_github_release=$createGithubRelease" >> $env:GITHUB_OUTPUT
+          "ensure_dispatch_tag=$ensureDispatchTag" >> $env:GITHUB_OUTPUT
+          "release_flag=$releaseFlag" >> $env:GITHUB_OUTPUT
           Write-Host "Release mode: $effectiveMode"
           Write-Host "Event: $eventName"
           Write-Host "Ref type: $effectiveRefType"
           Write-Host "Ref name: $effectiveRefName"
           Write-Host "Create GitHub release: $createGithubRelease"
+          Write-Host "Ensure dispatch tag: $ensureDispatchTag"
+          Write-Host "Release flag: $(if ([string]::IsNullOrWhiteSpace($releaseFlag)) { '(none)' } else { $releaseFlag })"
           if ($eventName -eq 'workflow_dispatch') {
             Write-Host "workflow_dispatch release_tag input: $dispatchTag"
+            Write-Host "workflow_dispatch resolved tag input: $requestedDispatchTag"
           }
+
+      - name: Ensure dispatch tag exists at expected SHA
+        if: steps.release_context.outputs.ensure_dispatch_tag == 'true'
+        shell: pwsh
+        run: |
+          $tag = '${{ steps.release_context.outputs.release_ref_name }}'
+          $expectedSha = (git rev-parse HEAD).Trim()
+
+          git fetch --force --tags origin
+          $existingTag = (git tag --list $tag | Select-Object -First 1)
+          if ([string]::IsNullOrWhiteSpace($existingTag)) {
+            git tag $tag $expectedSha
+            git push origin "refs/tags/$tag"
+            Write-Host "Created lightweight tag '$tag' at $expectedSha and pushed it to origin."
+            exit 0
+          }
+
+          $existingSha = (git rev-list -n 1 $tag).Trim()
+          if ($existingSha -ne $expectedSha) {
+            throw "Dispatch tag '$tag' already exists at $existingSha, but this workflow run expects $expectedSha. Refusing to publish divergent content."
+          }
+
+          Write-Host "Dispatch tag '$tag' already exists at expected SHA $expectedSha."
 
       - name: Stamp, sign, and publish
         shell: pwsh
@@ -218,9 +260,13 @@ jobs:
 
           $ghArgs = @(
             'release', 'create', $tag,
-            '--title', "Specrew $tag",
-            '--latest'
+            '--title', "Specrew $tag"
           )
+          $releaseFlag = '${{ steps.release_context.outputs.release_flag }}'
+
+          if (-not [string]::IsNullOrWhiteSpace($releaseFlag)) {
+            $ghArgs += $releaseFlag
+          }
 
           if ($notesPath -and (Test-Path $notesPath)) {
             $ghArgs += @('--notes-file', $notesPath)
