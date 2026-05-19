@@ -4,7 +4,7 @@
 **Feature**: 023-legacy-state-read-tolerance  
 **Iteration**: 001  
 **Closed**: 2026-05-19T10:54:35+03:00  
-**Status**: COMPLETE — iteration-closeout durably recorded on the current tree  
+**Status**: COMPLETE — iteration-closeout durably recorded in commit `a9cad49`  
 **Closer**: Reviewer (authorized iteration-closeout boundary requested by Alon Fliess)
 
 ---
@@ -56,7 +56,7 @@ All grouped Iteration 001 rows in file:///C:/Dev/Specrew-023/specs/023-legacy-st
 - ✅ `pwsh -NoProfile -ExecutionPolicy Bypass -File .\tests\integration\Test-LegacyStateReaders.Tests.ps1`
 - ✅ `pwsh -NoProfile -ExecutionPolicy Bypass -File .\tests\unit\validate-governance.reader-tolerance.tests.ps1`
 
-These replays confirm the retro→closeout transition stays green on the committed closeout tree.
+These replays confirm the retro→closeout transition stays green on the committed closeout tree at boundary ref `a9cad49`.
 
 ---
 
@@ -71,6 +71,7 @@ Feature-closeout remains unopened and unauthorized from this state.
 ## Closure Trail
 
 - **Head before closeout preparation**: `0c5efa3`
+- **Iteration-closeout boundary commit**: `a9cad49`
 - **Iteration state artifact**: file:///C:/Dev/Specrew-023/specs/023-legacy-state-read-tolerance/iterations/001/state.md
 - **Dashboard snapshot**: file:///C:/Dev/Specrew-023/specs/023-legacy-state-read-tolerance/iterations/001/dashboard.md
 - **Reviewer packet**: file:///C:/Dev/Specrew-023/specs/023-legacy-state-read-tolerance/iterations/001/reviewer-index.md

@@ -1,3 +1,32 @@
+## 2026-05-19T07:56:35Z — Boundary: Feature 023 Iteration 001 iteration-closeout
+
+- **Decision ID**: boundary-feature-023-iter-001-iteration-closeout
+- **Type**: boundary
+- **Boundary**: iteration-closeout
+- **Authority**: Alon Fliess (explicit iteration-closeout-only authorization)
+- **Recorded At**: 2026-05-19T07:56:35Z
+- **Boundary Commit Reference**: `a9cad4976e37d266692cc5fdc49da8c0d8052d94`
+
+## Evidence Rerun
+
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File .\extensions\specrew-speckit\scripts\validate-governance.ps1 -ProjectPath . -IterationPath .\specs\023-legacy-state-read-tolerance\iterations\001`
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File .\tests\integration\Test-LegacyStateReaders.Tests.ps1`
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File .\tests\unit\validate-governance.reader-tolerance.tests.ps1`
+
+## Closeout Summary
+
+- Iteration 001 is closed at the iteration layer only; file:///C:/Dev/Specrew-023/specs/023-legacy-state-read-tolerance/iterations/001/closeout.md and the generated reviewer closeout packet preserve the canonical closeout evidence on the current tree.
+- file:///C:/Dev/Specrew-023/.squad/identity/now.md now truthfully reflects the iteration-closeout boundary instead of claiming no active feature or plan.
+- The carry-forward process learning about autopilot blocked-loop waste is now recorded in file:///C:/Dev/Specrew-023/specs/023-legacy-state-read-tolerance/iterations/001/retro.md: when only one boundary advance is authorized, the handoff must name the explicit stop-for-inspection fallback so autonomy does not burn time in a blocked loop.
+
+## Boundary Stop
+
+- Iteration-closeout is complete.
+- The next valid action is explicit Iteration 2 authorization or stop-for-inspection only.
+- Feature-closeout remains explicitly unopened and unauthorized.
+
+---
+
 ## 2026-05-19T07:54:35Z — Authorization: iteration-closeout
 
 - **Decision ID**: authorization-feature-023-iter-001-iteration-closeout
@@ -14748,3 +14777,19 @@ User request — captured for team memory to ensure plan authorization respects 
 - **Task ID**: (none)
 - **Auth Commit Hash**: 91f900a984cd7cc36d70f69c97ae757f12c66138
 - **Recorded At**: 2026-05-19T02:36:06Z
+
+## 2026-05-19T07:56:34Z — Boundary sync warning: iteration-closeout
+
+- **Boundary Type**: iteration-closeout
+- **Latest Recorded Boundary**: plan
+- **Recorded At**: 2026-05-19T07:56:34Z
+- **Warning**: Expected next boundary 'tasks' but received 'iteration-closeout'.
+
+## 2026-05-19T07:56:35Z — Boundary sync: iteration-closeout
+
+- **Boundary Type**: iteration-closeout
+- **Feature Ref**: 023-legacy-state-read-tolerance
+- **Iteration Number**: 001
+- **Task ID**: (none)
+- **Auth Commit Hash**: a9cad4976e37d266692cc5fdc49da8c0d8052d94
+- **Recorded At**: 2026-05-19T07:56:35Z
