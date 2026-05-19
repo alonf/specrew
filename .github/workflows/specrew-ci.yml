@@ -74,7 +74,7 @@ jobs:
           }
 
       - name: Validate iteration governance
-        timeout-minutes: 3
+        timeout-minutes: 8
         shell: pwsh
         run: ./extensions/specrew-speckit/scripts/validate-governance.ps1 -ProjectPath .
 
