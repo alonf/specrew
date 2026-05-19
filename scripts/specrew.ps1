@@ -128,7 +128,7 @@ function Write-MissingArgumentValueError {
 }
 
 function Resolve-ProjectPathFromArguments {
-    param([string[]]$ArgumentList)
+    param([AllowEmptyCollection()][string[]]$ArgumentList)
 
     $normalizedArguments = @($ArgumentList | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
     for ($index = 0; $index -lt $normalizedArguments.Count; $index++) {
@@ -153,7 +153,7 @@ function Resolve-ProjectPathFromArguments {
 function Assert-OptionArguments {
     param(
         [Parameter(Mandatory = $true)][string]$CommandName,
-        [Parameter(Mandatory = $true)][string[]]$ArgumentList,
+        [Parameter(Mandatory = $true)][AllowEmptyCollection()][string[]]$ArgumentList,
         [string[]]$SwitchOptions = @(),
         [string[]]$ValueOptions = @(),
         [int]$MaxPositionals = 0
@@ -198,7 +198,7 @@ function Assert-OptionArguments {
 }
 
 function Assert-TeamArguments {
-    param([string[]]$ArgumentList)
+    param([AllowEmptyCollection()][string[]]$ArgumentList)
 
     $normalizedArguments = @($ArgumentList | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
     if ($normalizedArguments.Count -eq 0) {
@@ -307,7 +307,7 @@ function Assert-TeamArguments {
 function Assert-WhitelistedArguments {
     param(
         [Parameter(Mandatory = $true)][string]$CommandName,
-        [string[]]$ArgumentList
+        [AllowEmptyCollection()][string[]]$ArgumentList
     )
 
     switch ($CommandName) {
@@ -345,7 +345,7 @@ if (-not (Test-Path -LiteralPath $versionCheckHelperPath -PathType Leaf)) {
 function Assert-ProjectSetup {
     param(
         [Parameter(Mandatory = $true)][string]$CommandName,
-        [string[]]$ArgumentList
+        [AllowEmptyCollection()][string[]]$ArgumentList
     )
 
     $projectPath = Resolve-ProjectPathFromArguments -ArgumentList $ArgumentList
@@ -368,7 +368,7 @@ function Assert-ProjectSetup {
 function Assert-SlashCommandCompatibility {
     param(
         [Parameter(Mandatory = $true)][string]$CommandName,
-        [string[]]$ArgumentList
+        [AllowEmptyCollection()][string[]]$ArgumentList
     )
 
     $projectPath = Resolve-ProjectPathFromArguments -ArgumentList $ArgumentList
