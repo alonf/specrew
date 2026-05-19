@@ -31,10 +31,13 @@
     FileList = @(
         'Specrew.psd1',
         'Specrew.psm1',
+        'scripts/internal/coordinator-resume.ps1',
         'scripts/internal/dashboard-renderer.ps1',
         'scripts/internal/version-check.ps1',
         'scripts/internal/sync-boundary-state.ps1',
         'scripts/internal/invoke-module-release.ps1',
+        'scripts/internal/task-progress.ps1',
+        'scripts/internal/worktree-awareness.ps1',
         'scripts/specrew-init.ps1',
         'scripts/specrew-review.ps1',
         'scripts/specrew-start.ps1',
