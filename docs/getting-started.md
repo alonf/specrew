@@ -269,10 +269,22 @@ projection to appear in the dashboard.
 
 The human developer should mainly answer only the unresolved questions Squad cannot safely answer from repo context or existing artifacts. If you start without a request, Squad should inspect current work, continue any in-progress feature, or ask the next intake question and wait for your answer before invoking `speckit.specify`. In a new brownfield repo, Squad should first mine existing code, manifests, docs, and recent git history to seed the starting spec and propose concrete specialist additions when the current team lacks obvious stack/domain expertise. Review and closure now also operate under a **no-gap policy**: if Specrew finds a known gap across spec, implementation, tests, docs, or observability, it should fix it in the current iteration or explicitly defer it with your approval and recorded evidence before claiming the run is complete.
 
-To reduce Copilot CLI blocking on tool prompts, Specrew launches Copilot from the target project directory, reuses the current terminal by default, and auto-loads a compact bootstrap message via `-i` that points Copilot at `.specrew\last-start-prompt.md` and `.specrew\start-context.json`. Intake-first runs stay out of autopilot until the request is grounded; once scope is grounded, Specrew defaults to `--allow-all` to reduce approval blocking. Copilot may still ask you to trust the project directory on first launch. If you prefer Copilot's interactive approval prompts, use:
+Specrew launches Copilot from the target project directory, reuses the current terminal by default, and auto-loads a compact bootstrap message via `-i` that points Copilot at `.specrew\last-start-prompt.md` and `.specrew\start-context.json`. Specrew defaults to **gate-respecting mode**: Squad stops at every lifecycle approval boundary (specify, clarify, plan, tasks, implement, review, retro) and waits for your explicit verdict before advancing. Tool calls between gates run without per-call prompts by default (`--allow-all`); pass `--prompt-approvals` to keep each tool call interactive. Copilot may still ask you to trust the project directory on first launch.
+
+Two flags control independent concerns:
+
+- `--allow-all` (default) vs `--prompt-approvals` — controls **tool-call approval**. Whether each Copilot tool invocation prompts you before running.
+- `--autonomous` (opt-in) — controls **lifecycle-gate advancement**. When passed, Squad advances through approval gates without explicit verdict. Use only for unattended runs such as overnight execution where you have already authorized the entire lifecycle.
 
 ```powershell
-specrew start --prompt-approvals
+# Default (gate-respecting): Squad stops at every approval boundary
+specrew start "build a feature"
+
+# Tool calls are still interactive
+specrew start "build a feature" --prompt-approvals
+
+# Unattended overnight run: Squad advances without explicit gate verdicts
+specrew start "build a feature" --autonomous
 ```
 
 ### Resuming work later

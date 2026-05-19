@@ -20,6 +20,7 @@ param(
     [switch]$SameWindow,
     [switch]$AllowAll,
     [switch]$PromptApprovals,
+    [switch]$Autonomous,
     [switch]$Recover,
     [string]$RecoveryChoice,
     [switch]$SkipUpdateCheck,
@@ -101,6 +102,7 @@ function Convert-UnixStyleArguments {
         SameWindow     = $false
         AllowAll       = $AllowAll
         PromptApprovals = $PromptApprovals
+        Autonomous     = $Autonomous
         Recover        = $Recover
         RecoveryChoice = $RecoveryChoice
         SkipUpdateCheck = $SkipUpdateCheck
@@ -149,6 +151,9 @@ function Convert-UnixStyleArguments {
             }
             '--prompt-approvals' {
                 $result.PromptApprovals = $true
+            }
+            '--autonomous' {
+                $result.Autonomous = $true
             }
             '--recover' {
                 $result.Recover = $true
@@ -206,6 +211,7 @@ $NewWindow = [bool]$parsedArgs.NewWindow
 $SameWindow = [bool]$parsedArgs.SameWindow
 $AllowAll = [bool]$parsedArgs.AllowAll
 $PromptApprovals = [bool]$parsedArgs.PromptApprovals
+$Autonomous = [bool]$parsedArgs.Autonomous
 $Recover = [bool]$parsedArgs.Recover
 $RecoveryChoice = [string]$parsedArgs.RecoveryChoice
 $SkipUpdateCheck = [bool]$parsedArgs.SkipUpdateCheck
@@ -232,8 +238,9 @@ Options:
   -NoLaunch | --no-launch                  Generate handoff prompt/context but do not launch Copilot
   -NewWindow | --new-window                Launch Copilot in a new PowerShell window instead of the current terminal
   -SameWindow | --same-window              Compatibility alias for the default current-terminal launch mode
-  -AllowAll | --allow-all                  Launch Copilot with --allow-all so tool calls run without approval prompts (this is the default)
-  -PromptApprovals | --prompt-approvals    Keep Copilot's interactive approval prompts enabled (disables --allow-all)
+  -AllowAll | --allow-all                  Launch Copilot with --allow-all so tool calls run without approval prompts (this is the default for tool calls)
+  -PromptApprovals | --prompt-approvals    Keep Copilot's interactive tool-approval prompts enabled (disables --allow-all)
+  -Autonomous | --autonomous               Launch Copilot with --autopilot so Squad advances through lifecycle gates without stopping for explicit approval (use for unattended runs such as overnight execution; default is gate-respecting mode where Squad stops at every approval boundary)
   -Recover | --recover                     Bypass stale-state blocking and enter recovery mode directly
   -SkipUpdateCheck | --skip-update-check   Skip the PSGallery latest-version check for this run
   -Help | --help                           Show this help message
@@ -244,7 +251,8 @@ Options:
     - A quoted feature request is optional shorthand for a new feature, not a full spec document.
      - Specrew launches Copilot from the target project directory, reuses the current terminal by default, and only uses --new-window when you explicitly ask for a detached shell.
      - Specrew always auto-loads the bootstrap via -i so Copilot reads the Squad handoff before doing anything else.
-     - Intake-first runs stay out of autopilot until the feature request is grounded; once scope is grounded, Specrew defaults to --allow-all to reduce approval blocking.
+     - The default behavior is gate-respecting: Squad stops at every lifecycle approval boundary (specify, clarify, plan, tasks, implement, review, retro) and waits for explicit human verdict. Pass --autonomous to enable Copilot CLI autopilot mode for unattended runs.
+     - --allow-all (default) and --autonomous are independent: --allow-all controls tool-call approval; --autonomous controls whether Squad advances through lifecycle gates without input. Intake stage stays interactive regardless of --autonomous so initial scope is never auto-resolved.
      - Copilot CLI may still ask you to trust the project directory on first launch.
      - If Copilot CLI is unavailable, Specrew still writes a handoff prompt and context file.
 '@ | Write-Host
@@ -3345,18 +3353,25 @@ $routingPlan = Get-DelegatedRoutingPlan -RoleAssignments $roleAssignments -Agent
 $squadModelOverrides = Set-SquadModelOverrides -Root $resolvedProjectPath -RoutingPlan $routingPlan
 Write-DelegatedRoutingLedgerEntries -ResolvedProjectPath $resolvedProjectPath -RoutingPlan $routingPlan -SquadModelOverrides $squadModelOverrides
 $requiresInteractiveIntake = ($mode -eq 'intake-or-resume' -and -not $FeatureRequest -and -not $resolvedFeaturePath)
-$useAutopilot = -not $requiresInteractiveIntake
+# Default: gate-respecting mode. Squad stops at every lifecycle gate for explicit human approval.
+# Autopilot mode is opt-in via -Autonomous flag (or --autonomous CLI argument) for unattended runs
+# such as overnight execution. Intake stage still requires interactive scope grounding regardless
+# of -Autonomous, so Squad never tries to auto-resolve initial scope decisions.
+$useAutopilot = $Autonomous -and -not $requiresInteractiveIntake
 $requestedAllowAll = if ($PromptApprovals) { $false } else { $true }
 $allowAllRuntimePlan = Get-AllowAllRuntimePlan -AllowAll $requestedAllowAll
 $approvalMode = $allowAllRuntimePlan.ApprovalMode
-$approvalOperatorNote = if (-not $useAutopilot -and $approvalMode -eq 'allow-all') {
-    'allow-all reduces later tool-approval blocking, but intake still remains interactive until the scope is grounded.'
+$approvalOperatorNote = if ($useAutopilot -and $approvalMode -eq 'allow-all') {
+    'autopilot mode is on (Squad advances through lifecycle gates without explicit approval) and allow-all is on (tool calls run without approval prompts). Unattended-run posture.'
+}
+elseif ($useAutopilot) {
+    'autopilot mode is on (Squad advances through lifecycle gates without explicit approval) but prompt-approvals is on (each tool call still prompts).'
 }
 elseif ($approvalMode -eq 'allow-all') {
-    'allow-all reduces tool-approval blocking after the request is grounded.'
+    'gate-respecting mode (default): Squad stops at every lifecycle approval boundary for human verdict. allow-all is on so tool calls between gates run without approval prompts.'
 }
 else {
-    'prompt-approvals keeps Copilot permission prompts interactive throughout the session.'
+    'gate-respecting mode (default) plus prompt-approvals: Squad stops at every lifecycle gate AND Copilot prompts before each tool call.'
 }
 $launchMode = if ($NoLaunch -or $forceNoLaunch) { 'none' } elseif ($NewWindow -and $IsWindows) { 'new-window' } else { 'same-window' }
 $promptContent = Get-StartPrompt `

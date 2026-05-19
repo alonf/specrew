@@ -451,12 +451,12 @@ if ($fakeCopilotArgs -notmatch '--allow-all') {
     Write-Fail 'Live launch should preserve --allow-all on every platform.'
     exit 1
 }
-if ($fakeCopilotArgs -notmatch '--autopilot') {
-    Write-Fail 'Live launch should use autopilot once the request is grounded.'
+if ($fakeCopilotArgs -match '--autopilot') {
+    Write-Fail 'Live launch should default to gate-respecting mode (no --autopilot) unless --autonomous is passed.'
     exit 1
 }
 if ($fakeCopilotArgs -match '--mode interactive') {
-    Write-Fail 'Live launch should not combine --mode interactive with --autopilot.'
+    Write-Fail 'Live launch should not pass --mode interactive in gate-respecting default mode.'
     exit 1
 }
 if ($fakeCopilotArgs -match 'You are Squad running inside a Specrew-bootstrapped repository') {
@@ -536,8 +536,8 @@ if ($startContext.approval_mode -ne 'allow-all') {
     Write-Fail ("New feature flow recorded the wrong approval mode: {0}" -f $startContext.approval_mode)
     exit 1
 }
-if (-not $startContext.copilot_autopilot) {
-    Write-Fail "New feature flow should keep Copilot in autopilot once the request is grounded."
+if ($startContext.copilot_autopilot) {
+    Write-Fail "New feature flow should default to gate-respecting mode (copilot_autopilot=false) so Squad stops at every lifecycle approval boundary unless --autonomous is passed."
     exit 1
 }
 if ($null -eq $startContext.delivery_guidance -or @($startContext.delivery_guidance.quality_attributes).Count -eq 0) {
@@ -560,7 +560,7 @@ if (@($startContext.delivery_guidance.routing_guardrails).Count -eq 0) {
 }
 if ($summaryContent -notmatch 'Review/closure use a no-gap policy' -or
     $summaryContent -notmatch 'Delegated Routing' -or
-    $summaryContent -notmatch 'allow-all reduces tool-approval blocking after the request is grounded') {
+    $summaryContent -notmatch 'gate-respecting mode') {
     Write-Fail 'Start summary is missing the expected launch/no-gap/delegated-routing guidance.'
     exit 1
 }
@@ -589,6 +589,39 @@ if (@($conflictContext.delivery_guidance.same_specialty_pair_hints).Count -ne 0)
     exit 1
 }
 Write-Pass "Conflict-heavy requests suppress same-specialty pair hints"
+
+Write-Host "`nTest 3c: --autonomous flag opts into Copilot autopilot mode (overnight unattended runs)"
+$autonomousRequest = 'Build a sample reporting dashboard with export support'
+$autonomousResult = Invoke-TestScript -ScriptPath $entryScript -ArgumentList @(
+    'start',
+    $autonomousRequest,
+    '--project-path', $projectRoot,
+    '--autonomous',
+    '--no-launch'
+)
+
+if ($autonomousResult.ExitCode -ne 0) {
+    Write-Fail "specrew start failed for --autonomous opt-in flow"
+    foreach ($line in $autonomousResult.Output) {
+        Write-Host $line
+    }
+    exit 1
+}
+
+$autonomousContext = Get-Content -LiteralPath $contextPath -Raw -Encoding UTF8 | ConvertFrom-Json
+if (-not $autonomousContext.copilot_autopilot) {
+    Write-Fail "--autonomous flag should set copilot_autopilot=true so Squad advances through lifecycle gates without explicit approval."
+    exit 1
+}
+if ($autonomousContext.approval_mode -ne 'allow-all') {
+    Write-Fail "--autonomous flow should keep --allow-all as the default tool-approval mode."
+    exit 1
+}
+$autonomousOutput = $autonomousResult.Output -join "`n"
+if (-not (Assert-Contains -Content $autonomousOutput -Pattern '--autopilot' -FailureMessage '--autonomous should propagate to the Copilot CLI --autopilot launch flag.')) {
+    exit 1
+}
+Write-Pass "--autonomous flag opts into Copilot autopilot mode"
 
 Write-Host "`nTest 4: prompt-approvals mode is preserved in start context"
 $promptApprovalResult = Invoke-TestScript -ScriptPath $entryScript -ArgumentList @(
