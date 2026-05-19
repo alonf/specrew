@@ -1128,7 +1128,7 @@ Squad can connect to a GitHub repository's issues and manage the full issue → 
 
 Before connecting to a GitHub repository, verify that the `gh` CLI is available and authenticated:
 
-1. Run `gh --version`. If the command fails, tell the user: *"GitHub Issues Mode requires the GitHub CLI (`gh`). Install it from https://cli.github.com/ and run `gh auth login`."*
+1. Run `gh --version`. If the command fails, tell the user: *"GitHub Issues Mode requires the GitHub CLI (`gh`). Install it from <https://cli.github.com/> and run `gh auth login`."*
 2. Run `gh auth status`. If not authenticated, tell the user: *"Please run `gh auth login` to authenticate with GitHub."*
 3. **Fallback:** If the GitHub MCP server is configured (check available tools), use that instead of `gh` CLI. Prefer MCP tools when available; fall back to `gh` CLI.
 

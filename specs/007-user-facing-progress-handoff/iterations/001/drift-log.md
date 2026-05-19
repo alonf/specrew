@@ -24,7 +24,7 @@ Iteration 001 Foundation & Governance carries Phase 1–2 coordinator guidance a
 
 ### 1. Coordinator Prompt Clarity (T001)
 
-**What to Monitor**: 
+**What to Monitor**:
 - Coordinator prompt update completeness: Are all three handoff scenarios (completion, blocker, lightweight) covered with explicit examples?
 - Plain-language-first principle absorption: Do examples show governance vocabulary deferred to footnotes or subsections?
 - Agent guidability: Can agents understand the prompt without needing clarification?

@@ -56,7 +56,7 @@ Before T001 task execution can begin:
 ## Known-Traps Corpus Readiness
 
 The `.specrew/quality/known-traps.md` file exists from feature 009 Phase 5. The `path-resolution` trap entry is documented with:
-- Broken pattern: raw `[System.IO.Path]::GetFullPath($ProjectPath)` 
+- Broken pattern: raw `[System.IO.Path]::GetFullPath($ProjectPath)`
 - Detection method: static scan for the pattern
 - Remediation: adopt `Resolve-ProjectPath` shared helper
 

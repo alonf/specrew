@@ -113,7 +113,7 @@
   - Test runner placeholder (tests to be added as functionality is implemented)
 
 - **T-023** ✅ Create GitHub Project board (V2) (1 pt)
-  - Created GitHub Projects V2 board: https://github.com/users/alonf/projects/10
+  - Created GitHub Projects V2 board: <https://github.com/users/alonf/projects/10>
   - Uses GitHub's default Status field (Todo, In Progress, Done)
   - Documented in `docs/github-project.md`
   - Linked in main README.md

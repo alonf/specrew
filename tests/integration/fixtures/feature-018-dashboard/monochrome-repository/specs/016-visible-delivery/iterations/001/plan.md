@@ -4,4 +4,3 @@
 **Capacity**: 15
 **Started**: 2026-05-09
 **Review Completed**: 2026-05-10
-

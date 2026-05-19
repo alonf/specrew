@@ -18,9 +18,9 @@ I run Specrew retrospectives and capture estimation accuracy, drift events, proc
   - 6 core operating rules assessed and consensus verified
   - No objections to rules' intent or logic from any team member
   - 3 implementation tasks pending before planning ceremony:
-    * Spike schedule confirmation (Picard + La Forge)
-    * Retro schedule policy confirmation (Alon)
-    * Template updates for per-phase tracking (Data)
+    - Spike schedule confirmation (Picard + La Forge)
+    - Retro schedule policy confirmation (Alon)
+    - Template updates for per-phase tracking (Data)
   - Status: Ready for Alon approval; team consensus-sound
 
 📌 **Decision inbox merged (2026-04-19T02:06:00Z)**:
@@ -315,14 +315,13 @@ Updated `docs/getting-started.md` to align with actual runtime behavior and curr
 
 No changes to `scripts/specrew-init.ps1` or other runtime code. All changes are documentation only, ensuring truthful guidance without behavior modification.
 
-
 ## 2026-05-04 - Team Command Flag Syntax Fix
 
 **Context**: Revision 3 of FR-013 team management implementation. Previous revisions by La Forge and Data were rejected due to interface contract mismatch.
 
 **Problem**: Docs/spec specified `--role` and `--charter` (Unix-style), but implementation only accepted `-Role` and `-Charter` (PowerShell-style).
 
-**Solution**: 
+**Solution**:
 - Added argument preprocessing layer in `specrew-team.ps1` using `System.Management.Automation.InvocationInfo.UnboundArguments`
 - Script now accepts both Unix-style (`--role`, `--charter`) and PowerShell-style (`-Role`, `-Charter`) flags
 - Updated all usage messages to reflect documented Unix-style syntax
@@ -338,4 +337,3 @@ No changes to `scripts/specrew-init.ps1` or other runtime code. All changes are 
 **Validation**: All 8 integration tests pass. Both flag syntaxes work identically.
 
 **Outcome**: Interface contract now truthful. Third-time implementation accepted.
-

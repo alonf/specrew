@@ -11,23 +11,23 @@ Implement schema versioning and reader tolerance for Specrew state files to prev
 
 ## Technical Context
 
-**Language/Version**: PowerShell 7.0+ (per Specrew.psd1 PowerShellVersion requirement)  
-**Primary Dependencies**: PowerShell-Yaml module (for YAML parsing), ConvertFrom-Json -AsHashtable (available in PS 6.0+)  
-**Storage**: Local filesystem state files (JSON, YAML); paths: `.specrew/`, `.specify/`, `.squad/`, `tasks-progress.yml`  
-**Testing**: Pester 5.x for PowerShell unit/integration tests; legacy fixture corpus at `tests/fixtures/legacy-versions/`  
+**Language/Version**: PowerShell 7.0+ (per Specrew.psd1 PowerShellVersion requirement)
+**Primary Dependencies**: PowerShell-Yaml module (for YAML parsing), ConvertFrom-Json -AsHashtable (available in PS 6.0+)
+**Storage**: Local filesystem state files (JSON, YAML); paths: `.specrew/`, `.specify/`, `.squad/`, `tasks-progress.yml`
+**Testing**: Pester 5.x for PowerShell unit/integration tests; legacy fixture corpus at `tests/fixtures/legacy-versions/`
 **Target Platform**: Windows, Linux, macOS (cross-platform PowerShell 7.0+)
-**Project Type**: CLI tooling / development workflow automation (PowerShell module)  
-**Performance Goals**: CI fixture test suite must complete within +2 minutes per PR (acceptable within 10-minute CI budget)  
-**Constraints**: Must preserve backward compatibility with v0 state files (no breaking changes); StrictMode compatibility required; cross-platform line-ending normalization via Git  
+**Project Type**: CLI tooling / development workflow automation (PowerShell module)
+**Performance Goals**: CI fixture test suite must complete within +2 minutes per PR (acceptable within 10-minute CI budget)
+**Constraints**: Must preserve backward compatibility with v0 state files (no breaking changes); StrictMode compatibility required; cross-platform line-ending normalization via Git
 **Scale/Scope**: ~14 state file types across 5 Specrew versions (0.18.0-0.22.0); ~10-15 reader functions to audit and migrate
 
 ## Phase 1 Quality Planning
 
 > Fill this section when the stack-aware quality-bar capability applies to the active feature. Keep it bounded to the implemented Phase 1 slice only.
 
-**Phase Scope**: `phase-1-first-slice`  
-**Inferred Quality Profile**: `quality-profile.custom-composition.v1`  
-**Selected preset ref or explicit custom composition**: None - using bounded custom composition  
+**Phase Scope**: `phase-1-first-slice`
+**Inferred Quality Profile**: `quality-profile.custom-composition.v1`
+**Selected preset ref or explicit custom composition**: None - using bounded custom composition
 **Bounded custom composition**: Repository and feature signals are weak or unsupported for a confident Phase 1 preset match, so this slice falls back to a bounded custom composition with explicit manual review expectations.
 
 ### Stack Surfaces in Scope
@@ -83,9 +83,9 @@ Implement schema versioning and reader tolerance for Specrew state files to prev
 
 > Fill this section when pre-implementation hardening and specialist bug-hunter review planning apply to the active feature. Mirror the bounded Phase 2 planning metadata from quality-profile resolution when available: slice scope, artifact refs, focus-area statuses, lens activation classifications, routing defaults, and explicit later deferrals, plus the planning-time-vs-runtime evidence boundary. Keep it bounded to the currently approved hardening slice; record planning-time analysis, expected controls, rationale, explicit non-applicable reasoning, and any narrow runtime-only deferments instead of implying later execution or runtime proof already happened.
 
-**Phase 2 Slice Scope**: `US-2 hardening-gate planning only; pre-implementation readiness must accept planning-time analysis, expected controls, rationale, and explicit non-applicable reasoning, while runtime-only final proof stays pending until later closure or approved runtime-only deferment.`  
-**Hardening Gate Artifact**: `specs/023-legacy-state-read-tolerance/iterations/<NNN>/quality/hardening-gate.md`  
-**Known-Traps Corpus Location**: `.specrew/quality/known-traps.md`  
+**Phase 2 Slice Scope**: `US-2 hardening-gate planning only; pre-implementation readiness must accept planning-time analysis, expected controls, rationale, and explicit non-applicable reasoning, while runtime-only final proof stays pending until later closure or approved runtime-only deferment.`
+**Hardening Gate Artifact**: `specs/023-legacy-state-read-tolerance/iterations/<NNN>/quality/hardening-gate.md`
+**Known-Traps Corpus Location**: `.specrew/quality/known-traps.md`
 **Trap Reapplication Artifact**: `specs/023-legacy-state-read-tolerance/iterations/<NNN>/quality/trap-reapplication.md`
 
 ### Hardening Focus Areas
@@ -161,7 +161,7 @@ Implement schema versioning and reader tolerance for Specrew state files to prev
   - **3-cycle repair budget**: Enforced at clarify/plan/tasks boundaries per feedback rule 2026-05-18; conflicts escalate to human Spec Steward for reconciliation
 
 - **Verification Gate**: ✅ PASS — Process and outcome verification explicit:
-  - **Process verification**: 
+  - **Process verification**:
     - Legacy fixture corpus completeness audit (FR-007, FR-009) — human review after Iteration 1
     - Validator rule false-positive check (FR-010, FR-011) — human review before Iteration 2 merge
     - Cross-platform CI evidence (FR-014) — automated Linux test lane required for all PRs touching readers
@@ -369,18 +369,18 @@ docs/
 | Iteration 2 | FR-010, FR-011, FR-012, FR-013, FR-014 | ~5.5 SP | 1 week | Validator rule, docs, closeout template updates |
 | **Total** | **FR-001 through FR-014** | **~20 SP** | **2-3 weeks** | **Full feature implementation** |
 
-**Cadence**: Standard Specrew development (1-2 weeks per iteration)  
+**Cadence**: Standard Specrew development (1-2 weeks per iteration)
 **Capacity Model**: Story points (SP) as effort unit; ~14.5 SP for Iteration 1, ~5.5 SP for Iteration 2
 
 ---
 
 ## Planning Complete — Proceed to Task Generation
 
-**Phase 0**: ✅ Research complete (`research.md` generated)  
-**Phase 1**: ✅ Design complete (`data-model.md`, `contracts/state-file-schema-v1.md`, `quickstart.md` generated)  
+**Phase 0**: ✅ Research complete (`research.md` generated)
+**Phase 1**: ✅ Design complete (`data-model.md`, `contracts/state-file-schema-v1.md`, `quickstart.md` generated)
 **Agent Context**: ✅ Updated (`.github/copilot-instructions.md` reflects PowerShell + hashtable patterns)
 
 **Next Command**: `/speckit.tasks` (generates `tasks.md` with dependency-ordered implementation tasks)
 
-**Branch**: `023-legacy-state-read-tolerance`  
+**Branch**: `023-legacy-state-read-tolerance`
 **Implementation Plan**: `file:///C:/Dev/Specrew-023/specs/023-legacy-state-read-tolerance/plan.md`

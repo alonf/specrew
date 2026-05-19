@@ -154,9 +154,9 @@ I evaluate each task output against the source requirement and produce explicit 
    - **Fix**: Use subexpression syntax `$($PlanPath)` in backtick-formatted text
    - **Severity**: Cosmetic (does not affect board Status sync or governance compliance)
 
-**Re-Review Verdict**: 
+**Re-Review Verdict**:
 
-✅ **PASS** — Live repo state is coherent against protocol and governance documents. 
+✅ **PASS** — Live repo state is coherent against protocol and governance documents.
 
 **Summary**:
 - Original protocol drift (custom columns) is fully resolved
@@ -319,7 +319,6 @@ I evaluate each task output against the source requirement and produce explicit 
    - ✅ 9 inbox decisions consolidated into decisions.md
    - ✅ Cross-agent history synchronized
    - **Status**: Session state updated
-
 
 📌 **T-005 Spec Kit Extension Deployment — ACCEPTED (2026-04-23)**:
    - **Task**: T-005 revision completes MVP extension-deployment path

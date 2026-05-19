@@ -41,7 +41,7 @@
 }
 ```
 
-**Alternative considered**: 
+**Alternative considered**:
 - Unified alias mechanism in script header → Rejected: adds complexity, current pattern is explicit and consistent
 
 **Evidence**:

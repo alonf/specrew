@@ -112,7 +112,7 @@ summary:
 ### T008: Create integration tests for handoff validator
 
 **Owner**: Test maintainer  
-**Files**: 
+**Files**:
 - `tests/integration/handoff-governance-jargon-response-test.ps1`
 - `tests/integration/handoff-governance-plain-language-response-test.ps1`
 

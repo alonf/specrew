@@ -1,7 +1,7 @@
 # Coverage Evidence: Iteration 001
 
 **Schema**: v1
-**Reviewed**: 
+**Reviewed**:
 **Overall Verdict**: accepted
 
 ## Test Strategy

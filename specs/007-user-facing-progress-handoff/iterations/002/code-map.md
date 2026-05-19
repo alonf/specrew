@@ -1,7 +1,7 @@
 # Code Map: Iteration 002
 
 **Schema**: v1
-**Reviewed**: 
+**Reviewed**:
 **Baseline Ref**: 47c699db0787f8c925f4972e4800b92d7a2137d4
 **Test-to-Code Ratio**: 4:1
 

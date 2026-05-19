@@ -1,7 +1,7 @@
 # Specification Quality Checklist: Legacy-State Read-Tolerance + Schema Migration Discipline
 
-**Purpose**: Validate specification completeness and quality before proceeding to planning  
-**Created**: 2026-05-19  
+**Purpose**: Validate specification completeness and quality before proceeding to planning
+**Created**: 2026-05-19
 **Feature**: [spec.md](../spec.md)
 
 ## Content Quality
@@ -37,7 +37,7 @@
 
 1. **Content Quality**: All mandatory sections present and complete. Spec is written in terms of user outcomes and system behaviors without prescribing technical implementation (e.g., "System MUST use hashtable-based data structures" describes requirement without specifying exact code structure).
 
-2. **Requirements Completeness**: 
+2. **Requirements Completeness**:
    - No [NEEDS CLARIFICATION] markers present
    - All 14 functional requirements (FR-001 through FR-014) are testable with clear pass/fail criteria
    - Success criteria include specific metrics (e.g., "Zero crashes reported", "100% pass rate", "80% reduction in diagnostic time")

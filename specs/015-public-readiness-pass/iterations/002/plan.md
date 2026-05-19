@@ -88,4 +88,3 @@ Seven authorized scope items representing the remainder of Feature 015 public-re
 - Independent review now accepts the bounded Iteration 002 slice against commit `f170562`; retrospective and closeout remain separately authorized follow-on boundaries.
 - A fresh session restart will be required before future Squad runs can load the updated `.github/agents/squad.agent.md` and `.squad/templates/squad.agent.md` guidance.
 - All authorized scope items are represented with clear FR-traceability and release-truth ownership.
-

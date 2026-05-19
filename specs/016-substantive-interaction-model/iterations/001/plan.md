@@ -90,5 +90,3 @@ Iteration 001 delivered the authorized Feature 016 governance and validator slic
 ## Next Action
 
 Iteration 001 is closed. The next valid action is Iteration 2 planning authorization.
-
-

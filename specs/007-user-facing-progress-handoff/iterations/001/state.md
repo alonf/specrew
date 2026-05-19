@@ -71,7 +71,7 @@
 
 ## Handoff Notes
 
-**To Retrospective Lead**: 
+**To Retrospective Lead**:
 - Iteration 001 review accepted with all six tasks passing
 - Session restart required before retro due to Squad.agent.md changes
 - Focus retro on: handoff-semantics absorption, plain-language-first principle effectiveness, session-restart discipline, and soft-validator concept clarity for Iteration 002 handoff

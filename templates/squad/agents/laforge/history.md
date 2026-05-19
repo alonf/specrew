@@ -229,7 +229,7 @@ Specrew created baseline roles in managed block but didn't populate Squad's reco
 - ✅ Updated `docs/github-project.md` with "Blocker Cleared" status
 - ✅ Committed workflow and script files to git
 
-**Key Finding**: 
+**Key Finding**:
 - Repository secrets are stored but not displayed in `gh secret list` beyond creation timestamp
 - Manual script execution with `gh auth token` piped to `$env:GH_TOKEN` confirms token auth works end-to-end
 - Once workflows are on default branch (`main`), CI dispatch will work automatically
@@ -309,7 +309,7 @@ Pre-slice readiness checkpoint executed successfully. Repository infrastructure 
 
 - **User Directive**: Governance hardening authority now normative and binding. Specrew uses Specrew's own lifecycle. Iteration 1 work will run under binding phase state machine with automated validator gates.
 
-**La Forge role in Iteration 1**: 
+**La Forge role in Iteration 1**:
 - Governance-validator skill (FR-008) deferred to Iteration 1 execution
 - Identify architecture-risk spikes pre-planning (operating rule 2)
 - Validator integration with agent charters and ceremony templates
@@ -359,7 +359,7 @@ Extended `validate-governance.ps1` to detect stale embedded plan-evidence claims
 
 ## Deployment Review Cycle (2026-04-19T20:40:24Z)
 
-**La Forge Delivery Status**: 
+**La Forge Delivery Status**:
 - Delivered runtime-surface deployment slice (T-005–T-008)
 - Includes: Spec Kit extension deployment, Squad skills deployment, ceremonies merge, baseline role merge, directive embedding
 - **Status**: Locked out pending Worf re-review completion
@@ -368,7 +368,7 @@ Extended `validate-governance.ps1` to detect stale embedded plan-evidence claims
 1. **Missing retro ceremony surface**: Only planning + review/demo deployed; retro.md not included
 2. **Deferred skill shipped**: `specrew-iteration-resume` (FR-019, deferred to Iteration 2) included in deployment
 
-**Picard Correction Cycle**: 
+**Picard Correction Cycle**:
 - Addressed both defects with narrowly scoped fixes
 - Fix 1: Added `retro.md` to ceremony deployment list
 - Fix 2: Added filter to exclude `iteration-resume.md`

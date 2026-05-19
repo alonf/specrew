@@ -28,8 +28,8 @@ Iteration 002 closed all implementation work (9 tasks, 16 story points) with **1
 | T-207 | FR-015 | 2 | 2 | 0 | pass |
 | T-208 | FR-015 | 1 | 1 | 0 | pass |
 
-**Total Planned**: 16 story_points  
-**Total Actual**: 16 story_points  
+**Total Planned**: 16 story_points
+**Total Actual**: 16 story_points
 **Average Variance**: ±0.0 (perfect accuracy)
 
 ---
@@ -161,7 +161,7 @@ This means we hit the milestone on the final day but couldn't course-correct if 
 
 **Rationale**: Iteration 002 discovered two spec gaps (FR-020, FR-019) during T-205/T-204 audits. These were caught early enough to avoid rework, but running the same gate during planning ceremony (pre-execution) would have eliminated 2 days of drift-detection latency.
 
-**Scope**: 
+**Scope**:
 - Iteration 3 planning ceremony will include a "Spec Authority Check" step (10-15 min per requirement slice).
 - Spec Steward will review each planned task's requirement and ask: (1) Does the spec define all acceptance criteria? (2) Are there implicit dependencies or ambiguities? (3) Is the success condition binary or subjective?
 - If gaps are found, add clarification tasks to Iteration 3 planning or defer the requirement to Iteration 4.
@@ -235,8 +235,8 @@ This means we hit the milestone on the final day but couldn't course-correct if 
 
 ### Effort Model Adjustment for Iteration 3
 
-**Current Capacity**: 16 story_points / iteration  
-**Iteration 002 Actual**: 16 / 16 (100% utilization, 0% variance)  
+**Current Capacity**: 16 story_points / iteration
+**Iteration 002 Actual**: 16 / 16 (100% utilization, 0% variance)
 **Iteration 001 Actual**: ~20 / 20 (estimated from records)
 
 **Recommendation**: Keep capacity at **16 story_points** for Iteration 3.
@@ -301,7 +301,7 @@ No critical-path bottlenecks emerged. Iteration 3 should continue this pattern: 
 
 ## Retrospective Closure
 
-✅ Retrospective ceremony **COMPLETE** — 2026-05-03  
+✅ Retrospective ceremony **COMPLETE** — 2026-05-03
 ✅ All mandatory sections complete:
   - Estimation accuracy (0% variance)
   - Phase variance (0% variance)

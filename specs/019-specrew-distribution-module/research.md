@@ -26,7 +26,7 @@ Research PSGallery module structure, file list management, and metadata conventi
 
 2. **File List Management**:
    - **Explicit FileList**: Recommended for production modules to avoid accidental inclusions (e.g., test files, dev artifacts)
-   - **Exclusion Pattern**: Exclude specs/, tests/, proposals/, .git/, .vscode/, *.log, *.tmp
+   - **Exclusion Pattern**: Exclude specs/, tests/, proposals/, .git/, .vscode/, *.log,*.tmp
    - **Inclusion Pattern**: Include scripts/, extensions/, templates/, docs/, manifest, module loader
 
 3. **Module Loader (`*.psm1`) Patterns**:

@@ -245,4 +245,3 @@ I1-T006 + I1-T009 -> I1-T010 -> I1-T011 -> I1-T012
 - Preserve Feature 020 carry-forward defaults during execution: 3 repair cycles, 30-minute wall-clock per failing test, live bookkeeping, per-lane drift labels, push after every commit, Write-Output-visible warnings, no case-insensitive PowerShell variable collisions, and file:/// prose-path discipline.
 - Treat stewardship labels as baseline Squad-role mappings only; do not reopen plan/spec ownership artifacts.
 - Do not spend the `0.7 SP` reserve unless a concrete defect or evidence gap is logged against `I1-T001` through `I1-T012`.
-

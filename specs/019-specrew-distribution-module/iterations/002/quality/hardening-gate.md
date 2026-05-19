@@ -61,6 +61,3 @@
 **Rationale**: Cross-platform launch flow verified end-to-end on Windows 11 and WSL Ubuntu (native ext4) 2026-05-18 by Alon Fliess. Root cause isolated and fixed via R-019-V2-R21 deferred-launch pattern. R22 reverted all wrong-direction artifacts from the R1-R20 repair chase. Verb-conformance fix eliminates "unapproved verbs" warning on module import. All legitimate cross-platform fixes (R8, R14, R18/R19, R21) preserved; all wrong-direction artifacts removed.
 
 **Repair Chain Summary**: R-019-V2-R1 through R-019-V2-R22 (22 sub-iterations). Root cause: PowerShell on Linux strips TTY for `& nativeCommand` from script-body context; preserves TTY from function-body context. Fix: deferred launch via temp-file coordination to module function body. Full event record in `specs/019-specrew-distribution-module/iterations/002/drift-log.md`.
-
-
-

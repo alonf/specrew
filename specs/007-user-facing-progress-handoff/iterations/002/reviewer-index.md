@@ -1,7 +1,7 @@
 # Reviewer Index: Iteration 002
 
 **Schema**: v1
-**Reviewed**: 
+**Reviewed**:
 **Overall Verdict**: accepted
 
 ## Summary

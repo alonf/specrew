@@ -406,7 +406,7 @@ Created execution-ready iteration plan for Iteration 001 at `specs/001-specrew-p
 1. Added "Prerequisites for Full Greenfield Flow" section (lines 42-46): Explicitly states Spec Kit CLI and Squad CLI must be operational
 2. Refactored "Verify generated artifacts" step (lines 48-62): Taught users to check for `.specify/` presence as a gate; missing `.specify/` = full flow blocked
 3. Conditional step 4 (line 64): "Only if `.specify/` exists" before iteration scaffolding can run
-4. Rewrote "Known Limitations" section (lines 180-228): 
+4. Rewrote "Known Limitations" section (lines 180-228):
    - Clarified dependency validation (version detection) vs. bootstrap completion (CLI initialization success)
    - Reframed Spec Kit encoding as a **blocker** (not workaround) for greenfield-to-iteration flow
    - Provided 5-step resolution path with terminal fallback
@@ -463,7 +463,7 @@ Created execution-ready iteration plan for Iteration 001 at `specs/001-specrew-p
 
 **Context**: Documentation (plan.md, github-project.md) implied that manual GitHub Projects board management was the *intended* operating mode for Specrew development. This was misleading because local iteration artifacts are always the source of truth, and GitHub board usage should be optional.
 
-**Action**: 
+**Action**:
 - Rewrote `docs/github-project.md` with three-tier source-of-truth hierarchy (authoritative artifacts → derived GitHub Issues → optional visibility board)
 - Updated Section 9 of `specs/001-specrew-product/plan.md` to explicitly state local artifacts are authoritative
 - Removed GitHub Projects V2 API validation from Iteration 0 compatibility spike (board is optional, not a platform requirement)
@@ -473,7 +473,6 @@ Created execution-ready iteration plan for Iteration 001 at `specs/001-specrew-p
 **Key Insight**: Documentation clarity matters as much as code. Wording like "uses GitHub Projects" can imply requirement when it should be "may optionally use." The difference between operational convenience and normative requirement must be explicit, especially in governance documentation.
 
 **Outcome**: Specrew documentation now clearly establishes local artifacts as authoritative, making it safe for teams to choose whether to use GitHub boards at all. Source-of-truth hierarchy is now explicit and binding for future iterations.
-
 
 📌 **Iteration 1 execution state re-review (2026-04-20)**:
    - ✅ Data corrected specs\001-specrew-product\iterations\001\state.md — post-planning completion milestone
@@ -513,7 +512,7 @@ Created execution-ready iteration plan for Iteration 001 at `specs/001-specrew-p
       - Evidence: Created validation report documenting routing architecture, implementation path for T-202/T-203, and risk assessment
       - Blocker status: None — V-R7-2 unblocks T-202/T-203 (overcommit + routing implementation)
       - Artifact: `iterations/002/v-r7-2-validation.md`
-    
+
     - **T-201 Effort Model** (2 pts — FR-007 configurable effort model):
       - Objective: Verify effort-model fields in iteration-config.yml are correct, have proper defaults, and integrate into planning ceremony
       - Finding: ✅ ALL FIELDS COMPLETE — all FR-007 fields present with correct defaults (effort_unit, capacity_per_iteration, overcommit_threshold, calibration_enabled, defer_strategy)
@@ -535,7 +534,6 @@ Created execution-ready iteration plan for Iteration 001 at `specs/001-specrew-p
 - **Per-role configurable surfaces**: The `preferred_agent` pattern (per-role configurable field in role-assignments.yml) is a clean surface for role-specific behavior and can be extended to other role preferences (e.g., preferred tools, approval thresholds, timeout settings).
 - **Artifact-truth in validation**: When validating design surfaces, create explicit validation artifacts (v-r7-2-validation.md, t-201-effort-model-report.md) that document the validation path and findings. These artifacts become part of the decision record and unblock downstream reviewers.
 - **Capacity tracking precision**: When marking tasks complete, update both plan.md (task status) and state.md (last completed, tasks remaining) together. This keeps execution state synchronized and prevents divergence between planning and execution artifacts.
-
 
 📌 **FR-023 Team Command Interface Revision Complete (2026-04-18)**:
    - Initial verdict: REJECTED (command surface drift, bootstrap pattern mismatch, untracked implementation)

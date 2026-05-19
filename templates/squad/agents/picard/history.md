@@ -289,7 +289,7 @@ Proof surfaces:
 - ✅ Alon final sign-off: Recorded across all artifacts (plan.md, state.md, review.md, retro.md); transition from `retro` → `complete` official (2026-04-18T18:15:45Z)
 - ✅ Closure evidence validation: All closure-readiness tables regenerated at final gate time; validator passes cleanly
 
-**Board Sync & GitHub Projects**: 
+**Board Sync & GitHub Projects**:
 - ✅ Resolved board-automation governance (Iteration 0 async completion blocker cleared; SPECREW_PROJECT_TOKEN configured)
 - ✅ Clarified source-of-truth hierarchy: Local artifacts authoritative, GitHub Issues derived, board optional visibility
 - ✅ Board automation decision recorded: Default Status field (Todo/In Progress/Done), no custom columns, Phase labels for lifecycle tracking
@@ -458,7 +458,7 @@ Proof surfaces:
 - Updated line 230: Changed false claim "Line 4 currently reads Status: complete" to accurate "Line 5 currently reads Status: retro"
 - Updated line 231: Changed false claim "Completed: 2026-04-18" to accurate "Completed: (blank, recorded after Alon sign-off)"
 
-**Key Insight**: Review artifacts that contain *evidence tables* (verification gates that claim to validate metadata) can become stale if they were written before execution completed. Must regenerate closure readiness verification after all phase artifacts are finalized, not copy from earlier review drafts. 
+**Key Insight**: Review artifacts that contain *evidence tables* (verification gates that claim to validate metadata) can become stale if they were written before execution completed. Must regenerate closure readiness verification after all phase artifacts are finalized, not copy from earlier review drafts.
 
 **Pattern**: Closure evidence (artifact validation table) must be regenerated at **Final Gate Validation** phase, not carried forward. Recommend template guidance for review.md authors: "Closure readiness table MUST be regenerated from current artifacts at review-complete time, not copied from draft versions."
 
@@ -761,7 +761,7 @@ All three contradicted the corrected rule: **Specrew self-development MUST use G
 - ✅ Scope validation: Fresh smoke bootstrap successful; validator passes iterations 000 and 001
 - **Picard Status**: Slice 2 runtime-surface deployment now meets reviewer standard; execution-ready
 
-**Decisions Merged**: 
+**Decisions Merged**:
 - `worf-deployment-slice-review.md` (initial NEEDS-WORK verdict)
 - `picard-deployment-slice-revision.md` (correction cycle details)
 - `worf-deployment-slice-rereview.md` (PASS verdict)
@@ -811,9 +811,10 @@ All three contradicted the corrected rule: **Specrew self-development MUST use G
 
 **Context**: External review identified artifact drift — Iteration 002 plan.md claimed Status: planning yet showed tasks with execution outcomes (done/rework status, Agent/Actual/Verdict fields populated) without required lifecycle artifacts (state.md, drift-log.md, review.md).
 
-**Issue**: 
+**Issue**:
 - Tasks T-201 through T-204 incorrectly marked done with execution evidence (agent names, actual effort, verdicts)
-- Tasks T-205 and T-206 used invalid status ework (contract requires 
+- Tasks T-205 and T-206 used invalid status
+ework (contract requires
 eeds-rework)
 - Governance validator failed on Iteration 002
 
@@ -893,7 +894,7 @@ All three decision points (greenfield contract, brownfield additive flow, guard 
    - Workaround: use Windows Terminal or VS Code terminal with UTF-8 support
    - Documented what works (validator, corrected flags) vs. what's environment-dependent (CLI banner rendering)
 
-**Validator Fix Preservation**: Verified 	ests/integration/validate-versions-cli-behavior.ps1 still passes (both healthy and broken Spec Kit scenarios).
+**Validator Fix Preservation**: Verified  ests/integration/validate-versions-cli-behavior.ps1 still passes (both healthy and broken Spec Kit scenarios).
 
 **Alignment**: The fix addresses Worf's rejection criteria:
 - Bootstrap flag mismatch is resolved
@@ -904,10 +905,9 @@ All three decision points (greenfield contract, brownfield additive flow, guard 
 **Key Files**:
 - scripts/specrew-init.ps1 (line 1401, 1405): flag correction
 - docs/getting-started.md: Known Limitations section
-- 	ests/integration/validate-versions-cli-behavior.ps1: validator test coverage
+-  ests/integration/validate-versions-cli-behavior.ps1: validator test coverage
 
 **Decision**: Document environment-specific issues honestly rather than promise success that depends on factors outside Specrew's control (upstream CLI rendering bugs, terminal encoding support).
-
 
 ### 2026-04-21: Bootstrap Non-Blocking Requirement Clarification
 
@@ -926,7 +926,6 @@ All three decision points (greenfield contract, brownfield additive flow, guard 
 **Pattern**: Bootstrap must be deterministic and non-blocking for downstream adoption. Interactive casting/interviewing flows belong post-bootstrap, not as gates during initialization.
 
 **Traceability**: This aligns with FR-002 (bootstrap ownership), User Story 1 (bootstrap flow), and Acceptance Scenario 1 & 4 (team configuration without blocking).
-
 
 ## 2026-04-17: Command-Driven Team Management Requirement
 

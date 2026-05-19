@@ -16,12 +16,12 @@
 
 **What Happened**: Feature 017 Iteration 001 was initially scoped at approximately 11 story points in the planning phase. During implementation, the actual work grew to 17-19 SP after the repair-cycle scope (FR-034 through FR-041) was added to address findings from external pre-implementation review. This represents ~55-73% variance above the original estimate.
 
-**Root Causes**: 
+**Root Causes**:
 1. **Gap in clarify completion**: Clarify work (`clarify-residual-findings.md`, captured 16 findings across 3 severity tiers) surfaced substantial ambiguities in the spec that did not emerge during the initial planning phase — notably T2-1 (arithmetic inconsistencies in the example dashboard), T2-2 (iteration naming convention variance), T2-3 (unquantified NFR-001 timing budget), and T2-4 (grandfathering chicken-and-egg decision).
 2. **External review triggering mid-implementation fixes**: The clarify-residual-findings document captured findings AFTER plan and tasks were written but BEFORE implementation began. Alon Fliess requested external pre-implementation review (Claude Code session), which surfaced 16 findings. These findings required repair work (FR-034..FR-041 new scope) that was not visible at planning time.
 3. **Boundary discipline cost**: Each finding required either spec repair (T1-x throughT1-5 process fixes: durability carryover, spec-authority cartyover, proposal-surface carryover, artifact co-location, copilot-instructions hygiene) or content repair (T2-x spec-content fixes: trustworthy example math, iteration naming, NFR-001 quantification, grandfathering decision). The repair scope was substantial enough to exceed the original estimate.
 
-**Implication for Iteration 002**: 
+**Implication for Iteration 002**:
 - Iteration 001's clarify phase was compressed due to time pressure and did NOT include external pre-implementation review as a default workflow step. This worked but was downstream-costly.
 - Iteration 002 should allocate capacity in clarify for external pre-implementation review BEFORE planning locks in. This shifts the 16-finding cost forward to where it can inform estimation rather than surprise it mid-implementation.
 - Revised estimation model for Phase 2 features with similar coordination burden: add 15-20% estimation buffer for external-review repair when clarify scope includes human-facing surfaces, specification examples, or multi-boundary handoff contracts.
@@ -41,7 +41,7 @@
 
 **Root Cause**: Specrew today does NOT durably track mid-iteration progress or update session-state files at boundary events. The session-state files are updated ONLY at explicit session starts, not when features activate/deactivate. Cross-worktree awareness does not exist. Stale-state detection at startup does not verify whether the named feature is still active before acting on it.
 
-**Implication for Phase 2 — Session-State Durability Feature (Pillar Feature)**: 
+**Implication for Phase 2 — Session-State Durability Feature (Pillar Feature)**:
 - This incident directly motivated the session-state-durability spec (`C:\Dev\SpecrewDraft\session-state-durability.md`), which proposes:
   - **Pillar 1: Boundary-event state synchronization** — every lifecycle boundary (specify, planning, implementation, review, retro, closeout) must update `.specrew/last-start-prompt.md` and `.squad/identity/now.md` atomically with the boundary commit.
   - **Pillar 4: Stale-state detection** — when `specrew start` reads session-state, it must verify the named "active feature" has not been merged to main and the claimed boundary's authorization record exists in `.squad/decisions.md` before acting on it.
@@ -82,7 +82,7 @@
 
 2. **Lifecycle Branch Reconciliation Gap** (Concurrent-edit safety): Specrew's current lifecycle assumes single-stream history (no edits on main while feature works, no hotfixes landing mid-feature, no multi-feature parallel work). Real-world usage violates this assumption. Specrew does NOT reconcile feature-branch state against main at any point. Conflicts only surface at PR-merge time on GitHub, after Squad has committed substantial work. The F-016 commit-reference auth trail becomes a dangling reference after rebase (which is unacceptable for audit). Therefore Specrew MUST merge, never rebase, accumulating merge commits to preserve the audit trail. This decision is locked by F-016's design. Without explicit branch reconciliation, feature branches can become stranded behind un-merged main changes, and boundary commits can become unreachable. Empirical motivation: concurrent-edit safety discussion during F-017 implementation review.
 
-**Classification as Pillar Features**: 
+**Classification as Pillar Features**:
 - Both are NOT polish items or optional niceness improvements.
 - Both are load-bearing for real-world single-developer adoption (and prerequisites for future multi-developer scaling).
 - Both should ship in Phase 2, after F-017 (Velocity Dashboard), because F-017's roadmap.yml introduces structured project state that these features compose with.

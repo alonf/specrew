@@ -1,7 +1,7 @@
 # Dependency Report: Iteration 001
 
 **Schema**: v1
-**Reviewed**: 
+**Reviewed**:
 **Baseline Ref**: a135e11dd3ab7983d2f2fa8438303cbd279443ee
 
 ## Dependency Delta

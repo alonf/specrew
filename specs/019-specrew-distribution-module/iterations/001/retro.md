@@ -1,11 +1,11 @@
 # Retrospective: Iteration 001
 
-**Schema**: v1  
-**Iteration**: 001  
-**Feature**: 019-specrew-distribution-module  
-**Facilitated By**: Retro Facilitator  
-**Facilitated At**: 2026-05-16T20:45:00Z  
-**Review Boundary**: review-verdict-signoff at commit `567c070`  
+**Schema**: v1
+**Iteration**: 001
+**Feature**: 019-specrew-distribution-module
+**Facilitated By**: Retro Facilitator
+**Facilitated At**: 2026-05-16T20:45:00Z
+**Review Boundary**: review-verdict-signoff at commit `567c070`
 **Retro Boundary**: This artifact completes the retro-boundary phase
 
 ---
@@ -22,8 +22,8 @@ This retrospective captures substantive process learnings, positive patterns, an
 
 ### L1: Form-vs-Meaning Drift Pattern — Manifest-Allowlist vs Created Files
 
-**Category**: Implementation drift discovery  
-**Severity**: Medium — caught by review, not in-iteration validation  
+**Category**: Implementation drift discovery
+**Severity**: Medium — caught by review, not in-iteration validation
 **Evidence**: drift-log.md Event 2026-05-16 (R-019-R1 and R-019-R2)
 
 **Finding**: The approved `FileList` allowlist strategy in Specrew.psd1 created a form-vs-meaning gap between "what we ship" (the manifest-defined list) and "what actually exists in the repo" (created files). Initial integration tests masked this drift by staging full directory trees instead of respecting the manifest-driven package surface. Review discovered that `scripts\internal\invoke-module-release.ps1`, `templates\github\agents\squad.agent.md`, and extended docs surfaces were missing from `FileList` despite being required by the contract.
@@ -38,20 +38,20 @@ This retrospective captures substantive process learnings, positive patterns, an
 
 ### L2: Squad 0.9.4 Autonomous-Advance Regression & Refined Boundary-Class Taxonomy
 
-**Category**: Squad/process discipline  
-**Severity**: Medium — required manual intervention to enforce boundary discipline  
+**Category**: Squad/process discipline
+**Severity**: Medium — required manual intervention to enforce boundary discipline
 **Evidence**: state.md review-verdict-signoff state; `.squad/identity/now.md` boundary classification
 
 **Finding**: Squad 0.9.4 has an autonomous-advance behavior that attempts to move forward one lifecycle boundary at a time. However, this iteration encountered a case where Squad did not automatically advance from review-verdict-signoff to retro-boundary. This is correct behavior — the retro-boundary requires explicit human authorization and is not a mechanical step. However, the principle underlying this requires clarification: Squad should stop *where human judgment is required*, not at every mechanical execution step.
 
 **Why It Matters**: Boundary discipline is load-bearing for feature iteration correctness. If Squad advances automatically without human judgment, we risk skipping essential review gates. Conversely, if Squad stops at every mechanical step, we'll have false blockers. The distinction must be crisp and documented.
 
-**Refined Principle**: 
+**Refined Principle**:
 - **human-judgment-required boundaries** (stop here, wait for explicit auth): review-verdict-signoff, iteration-closeout, feature-closeout, retro-boundary when carrying forward design debt or scope deferral
 - **mechanical-execution boundaries** (Squad can advance autonomously): plan-phase completion, tasks-generated, implementation-ready-for-review
 - **strategic-progression boundaries** (engineering discretion, may auto-advance if gated): phase-1-to-phase-2 transitions when all phase-1 gates pass
 
-**Process Improvement Candidates**: 
+**Process Improvement Candidates**:
 1. Corpus row `boundary-advance-without-explicit-authorization` for known-traps.md
 2. Refinement to Squad 0.9.4 behavior spec to codify the three-class taxonomy
 3. Feature F-016 (Adaptive Boundary Discipline) graduation candidate from this learning
@@ -62,8 +62,8 @@ This retrospective captures substantive process learnings, positive patterns, an
 
 ### L3: Velocity Dashboard Form-vs-Meaning Bug — Dashboard State vs Lifecycle Truth
 
-**Category**: Observability/dashboard accuracy  
-**Severity**: Medium — misleading signal in real-time status reporting  
+**Category**: Observability/dashboard accuracy
+**Severity**: Medium — misleading signal in real-time status reporting
 **Evidence**: `.squad/identity/now.md` showed "RETRO-READY" state while `specs/019-specrew-distribution-module/iterations/001/state.md` correctly showed "reviewing" phase before retro authorization
 
 **Finding**: The velocity dashboard and status-reporting surfaces initially reflected iteration state as "implementation complete" while the actual lifecycle truth was still in "review/repair" phase (review-verdict-signoff pending). This created a form-vs-meaning gap where stakeholders monitoring the dashboard would think the iteration was further along than it actually was. The drift resolved naturally once review-verdict-signoff was recorded, but the bug exposes a dashboard-state-vs-lifecycle-truth gap.
@@ -78,8 +78,8 @@ This retrospective captures substantive process learnings, positive patterns, an
 
 ### L4: Positive Pattern — Spec Steward as Repair-Cycle Owner Cross-Check
 
-**Category**: Review process effectiveness  
-**Severity**: Positive — validates independent verification approach  
+**Category**: Review process effectiveness
+**Severity**: Positive — validates independent verification approach
 **Evidence**: R-019-R1 and R-019-R2 repair completed, then revalidated independently by reviewer (Alon Fliess)
 
 **Finding**: The review boundary caught the manifest-allowlist drift, repairs were made by the implementation team, then the same reviewer independently re-reviewed the repairs on the green tree before accepting signoff. This dual verification (discovery + independent repair validation) caught a real defect and prevented a silent acceptance of overclaim.
@@ -94,8 +94,8 @@ This retrospective captures substantive process learnings, positive patterns, an
 
 ### L5: Positive Pattern — T001-T006 Within-Implementation Design-Question Pauses Executed Cleanly
 
-**Category**: Implementation discipline  
-**Severity**: Positive — clean decision-making at plan-time  
+**Category**: Implementation discipline
+**Severity**: Positive — clean decision-making at plan-time
 **Evidence**: tasks.md Phase 0 (Design Questions); all six design questions resolved cleanly with approved options before pillar implementation began
 
 **Finding**: Iteration 001 identified six design questions at plan-time (FileList strategy, conflict marker format, cross-platform test automation, module loader structure, API-key rotation guidance, certificate validity period). Rather than deferring these to implementation-time surprises, the team resolved all six before work started. The decisions locked the pillars (Pillar 1-5) into a stable implementation path with no rediscovery surprises.
@@ -110,8 +110,8 @@ This retrospective captures substantive process learnings, positive patterns, an
 
 ### L6: Positive Pattern — Iter 1 / Iter 2 Scope Split Discipline Held; T041/T054 Deferred Cleanly
 
-**Category**: Scope management  
-**Severity**: Positive — preserved boundary integrity  
+**Category**: Scope management
+**Severity**: Positive — preserved boundary integrity
 **Evidence**: cross-platform-backlog.md; state.md carry-forward notes; explicit deferral of Ubuntu/macOS/WSL work and broad Join-Path auditing
 
 **Finding**: Iteration 001 was explicitly scoped as Windows-first. When cross-platform concerns emerged (WSL verification, Ubuntu/macOS runner setup, 104+ embedded-backslash audit sweep), the team resisted scope creep and deferred these items cleanly to Iteration 002 with explicit notation in cross-platform-backlog.md. T041 (broad Join-Path hardening) and T054 (first Ubuntu/macOS validation) were deferred, not silently absorbed.
@@ -126,8 +126,8 @@ This retrospective captures substantive process learnings, positive patterns, an
 
 ### L7: Cost-Per-SP Empirical Baseline — Frontier-Model Tier Token Economy
 
-**Category**: Cost/efficiency calibration  
-**Severity**: Information — calibration seed for future Token Economy work  
+**Category**: Cost/efficiency calibration
+**Severity**: Information — calibration seed for future Token Economy work
 **Evidence**: Not directly captured in Iteration 001 execution artifacts; needs cross-feature aggregation
 
 **Finding**: Iteration 001 did not include explicit token/cost tracking during implementation. The frontier-model tier cost baseline ($5.47/SP) mentioned in planning cannot be verified from visible Iteration 001 artifacts. This represents a gap in empirical cost tracking needed for future Token Economy / cost prediction work.
@@ -142,8 +142,8 @@ This retrospective captures substantive process learnings, positive patterns, an
 
 ### L8: Velocity Delivery — 14 SP Executed at 100% Planned Accuracy
 
-**Category**: Estimation calibration  
-**Severity**: Positive — validates estimation model  
+**Category**: Estimation calibration
+**Severity**: Positive — validates estimation model
 **Evidence**: plan.md capacity = 14 SP; state.md delivery = 14 SP (six task groups: T001-T006, T007-T009, T010-T014, T015-T019, T030-T035, T036-T042, T050-T056); zero variance
 
 **Finding**: Iteration 001 was planned for 14 story points and delivered exactly 14 story points. This represents 100% estimation accuracy with zero over/under delivery. The estimation model used for Feature 019 is validated as sound.
@@ -158,8 +158,8 @@ This retrospective captures substantive process learnings, positive patterns, an
 
 ### L9: Repair Cycle Discipline — R-019-R1 and R-019-R2 Bounded and Revalidated
 
-**Category**: Review/repair workflow  
-**Severity**: Positive — demonstrates effective bounded-repair pattern  
+**Category**: Review/repair workflow
+**Severity**: Positive — demonstrates effective bounded-repair pattern
 **Evidence**: drift-log.md resolved items; review.md repair findings and revalidation; state.md signoff with revalidated tree reference
 
 **Finding**: When review discovered the manifest-allowlist drift (R-019-R1, R-019-R2), the repairs were bounded to three files (`Specrew.psd1`, `distribution-module-init.ps1`, `distribution-module-publish.ps1`), implemented cleanly, and then independently revalidated by the reviewer on the green tree before accepting signoff. This demonstrates effective bounded-repair discipline where scope is tight and secondary impacts are verified.
@@ -174,8 +174,8 @@ This retrospective captures substantive process learnings, positive patterns, an
 
 ### L10: Additional Iteration-Specific Learning — Cross-Platform Evidence Deferral Pattern
 
-**Category**: Evidence/validation strategy  
-**Severity**: Positive — validates manual-first evidence approach  
+**Category**: Evidence/validation strategy
+**Severity**: Positive — validates manual-first evidence approach
 **Evidence**: cross-platform-manual-checklist.md; state.md Windows-first evidence set; T003 design decision
 
 **Finding**: Iteration 001 chose manual Windows-first evidence over GitHub Actions matrix validation for cross-platform work (T003 decision). This allowed Iteration 001 to proceed without CI runner setup while still capturing evidence in human-readable form. The repaired manifest-shaped evidence (distribution-module-init.ps1, distribution-module-publish.ps1) now provides observable proof that the installed-module path works on Windows, with Ubuntu/macOS/WSL hardening explicitly deferred to Iteration 002.
@@ -205,42 +205,42 @@ This retrospective captures substantive process learnings, positive patterns, an
 
 ### R1: Validator Hardening — Manifest-Allowlist Cross-Check
 
-**Priority**: High  
-**Corpus Row Candidate**: `manifest-allowlist-vs-created-files drift`  
-**Rationale**: Iteration 001 allowed the allowlist-vs-created-files gap to reach review. Iteration 002 should implement a pre-review validator that cross-checks `FileList` against actual created files and flags discrepancies.  
-**Effort Estimate**: 2-3 SP (one validator feature component)  
+**Priority**: High
+**Corpus Row Candidate**: `manifest-allowlist-vs-created-files drift`
+**Rationale**: Iteration 001 allowed the allowlist-vs-created-files gap to reach review. Iteration 002 should implement a pre-review validator that cross-checks `FileList` against actual created files and flags discrepancies.
+**Effort Estimate**: 2-3 SP (one validator feature component)
 **Feature Alignment**: Validator Hardening (candidate graduation feature)
 
 ### R2: Quality Hardening Bundle Component 3 — Form-vs-Meaning Drift Prevention
 
-**Priority**: High  
-**Corpus Row Candidate**: `dashboard-state-vs-lifecycle-truth drift`  
-**Rationale**: Two form-vs-meaning bugs surfaced in Iteration 001 (manifest allowlist, dashboard state). Iteration 002+ should systematize form-vs-meaning validation as a distinct concern in the quality hardeningBundle.  
-**Effort Estimate**: 3-4 SP (quality bundle component)  
+**Priority**: High
+**Corpus Row Candidate**: `dashboard-state-vs-lifecycle-truth drift`
+**Rationale**: Two form-vs-meaning bugs surfaced in Iteration 001 (manifest allowlist, dashboard state). Iteration 002+ should systematize form-vs-meaning validation as a distinct concern in the quality hardeningBundle.
+**Effort Estimate**: 3-4 SP (quality bundle component)
 **Feature Alignment**: Quality Hardening Bundle Component 3 (candidate graduation feature)
 
 ### R3: Squad Boundary Discipline Refinement — Three-Class Taxonomy
 
-**Priority**: Medium  
-**Corpus Row Candidate**: `boundary-advance-without-explicit-authorization`  
-**Rationale**: Squad 0.9.4 boundary behavior needs clarification between human-judgment-required vs mechanical-execution vs strategic-progression boundaries. Iteration 002 should codify the taxonomy.  
-**Effort Estimate**: 1-2 SP (Squad/boundary spec refinement)  
+**Priority**: Medium
+**Corpus Row Candidate**: `boundary-advance-without-explicit-authorization`
+**Rationale**: Squad 0.9.4 boundary behavior needs clarification between human-judgment-required vs mechanical-execution vs strategic-progression boundaries. Iteration 002 should codify the taxonomy.
+**Effort Estimate**: 1-2 SP (Squad/boundary spec refinement)
 **Feature Alignment**: F-016 Adaptive Boundary Discipline (candidate graduation feature)
 
 ### R4: Cost-Per-SP Tracking Infrastructure
 
-**Priority**: Medium  
-**Corpus Row Candidate**: `token-economy-cost-tracking-baseline`  
-**Rationale**: Iteration 001 did not capture empirical frontier-model token costs. Iteration 002 should embed token-tracking infrastructure (session token counts, cost aggregation) to establish baseline.  
-**Effort Estimate**: 1-2 SP (token tracking, cost reporting)  
+**Priority**: Medium
+**Corpus Row Candidate**: `token-economy-cost-tracking-baseline`
+**Rationale**: Iteration 001 did not capture empirical frontier-model token costs. Iteration 002 should embed token-tracking infrastructure (session token counts, cost aggregation) to establish baseline.
+**Effort Estimate**: 1-2 SP (token tracking, cost reporting)
 **Feature Alignment**: Learning Loop Closure (candidate graduation feature)
 
 ### R5: Empirical Meaning-Verification Priority in Dashboard
 
-**Priority**: Medium  
-**Corpus Row Candidate**: `dashboard-state-vs-lifecycle-truth drift`  
-**Rationale**: Dashboard rendering should derive state from lifecycle artifacts (state.md, review.md, retro.md), not independent status fields.  
-**Effort Estimate**: 2-3 SP (dashboard hardening)  
+**Priority**: Medium
+**Corpus Row Candidate**: `dashboard-state-vs-lifecycle-truth drift`
+**Rationale**: Dashboard rendering should derive state from lifecycle artifacts (state.md, review.md, retro.md), not independent status fields.
+**Effort Estimate**: 2-3 SP (dashboard hardening)
 **Feature Alignment**: Existing dashboard work (Feature 018 Velocity Dashboard refinement)
 
 ---
@@ -284,13 +284,13 @@ Based on the process findings above, the following features are candidates for g
 
 ## Retro Completion
 
-✅ Retrospective artifact created and authorized.  
-✅ All ten required content learnings captured (L1-L10).  
-✅ Positive patterns documented (L4, L5, L6, L8, L9, L10).  
-✅ Process improvement recommendations recorded (R1-R5).  
-✅ Candidate feature graduations recommended (Validator Hardening, Quality Hardening Component 3, Learning Loop Closure, F-016 Adaptive Boundary Discipline).  
-✅ Carry-forward status preserved and explicit.  
-✅ No new implementation, closeout, or phase-advancement work opened from this boundary.  
+✅ Retrospective artifact created and authorized.
+✅ All ten required content learnings captured (L1-L10).
+✅ Positive patterns documented (L4, L5, L6, L8, L9, L10).
+✅ Process improvement recommendations recorded (R1-R5).
+✅ Candidate feature graduations recommended (Validator Hardening, Quality Hardening Component 3, Learning Loop Closure, F-016 Adaptive Boundary Discipline).
+✅ Carry-forward status preserved and explicit.
+✅ No new implementation, closeout, or phase-advancement work opened from this boundary.
 
 **Status**: RETRO-BOUNDARY COMPLETE.
 

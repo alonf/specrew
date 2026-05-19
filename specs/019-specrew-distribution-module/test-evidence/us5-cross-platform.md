@@ -1,8 +1,8 @@
 # User Story 5: Cross-Platform Parity Test Evidence
 
-**Feature**: 019-specrew-distribution-module  
-**Iteration**: 002  
-**Test Date**: 2026-05-18  
+**Feature**: 019-specrew-distribution-module
+**Iteration**: 002
+**Test Date**: 2026-05-18
 **Tested By**: Autonomous execution (Iteration 002 overnight run) + Alon Fliess (WSL Ubuntu verification)
 
 ---
@@ -98,8 +98,8 @@ PowerShell on Linux strips TTY for `& nativeCommand` when invoked from SCRIPT-bo
 
 ### AS1: Module installs without errors on all platforms
 
-**Given**: A clean machine with PowerShell 7+ installed  
-**When**: User runs `Install-Module Specrew -Scope CurrentUser`  
+**Given**: A clean machine with PowerShell 7+ installed
+**When**: User runs `Install-Module Specrew -Scope CurrentUser`
 **Then**: The module installs without errors and `specrew` command becomes available in PATH
 
 **Status**: ✅ Covered by CI workflow (Ubuntu + macOS runners test module import)
@@ -108,8 +108,8 @@ PowerShell on Linux strips TTY for `& nativeCommand` when invoked from SCRIPT-bo
 
 ### AS2: Templates are copied with correct cross-platform path handling
 
-**Given**: Specrew is installed  
-**When**: User runs `specrew init` in an empty project directory  
+**Given**: Specrew is installed
+**When**: User runs `specrew init` in an empty project directory
 **Then**: `.specify/`, `.squad/`, and `.github/` directories are created with all required template files
 
 **Status**: ✅ Covered by CI workflow Ubuntu runner (tests `specrew-init` in clean directory)
@@ -118,11 +118,11 @@ PowerShell on Linux strips TTY for `& nativeCommand` when invoked from SCRIPT-bo
 
 ### AS3: Module works identically on Windows, Linux, and macOS
 
-**Given**: Specrew is installed on Windows, Linux, and Mac  
-**When**: User runs the same `specrew init`, `specrew start`, `specrew where` sequence  
+**Given**: Specrew is installed on Windows, Linux, and Mac
+**When**: User runs the same `specrew init`, `specrew start`, `specrew where` sequence
 **Then**: No errors occur and identical output is produced
 
-**Status**: 
+**Status**:
 - ✅ Windows: Existing validation on host system (Windows 11)
 - ✅ Ubuntu: CI workflow runner validates module functionality
 - ✅ macOS: CI workflow runner validates module functionality
@@ -168,15 +168,15 @@ PowerShell on Linux strips TTY for `& nativeCommand` when invoked from SCRIPT-bo
 
 ---
 
-**Recorded**: 2026-05-17T03:00:00Z  
+**Recorded**: 2026-05-17T03:00:00Z
 **Updated**: 2026-05-18 (WSL Ubuntu verified; R21/R22 cleanup confirmed)
 
 ---
 
 ## Iteration 002 Repair Cycle (R-019-V2)
 
-**Date**: 2026-05-17  
-**Authority**: Spec Steward (reviewer-regression repair authorized)  
+**Date**: 2026-05-17
+**Authority**: Spec Steward (reviewer-regression repair authorized)
 **Context**: Human-performed WSL Ubuntu manual verification discovered five cross-platform bugs after Iteration 002 /review-verdict-signoff was initially accepted.
 
 ### Bugs Discovered in Human WSL Testing

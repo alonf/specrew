@@ -77,4 +77,3 @@ This iteration carries **Phase 1 (Setup & Core Infrastructure) + Phase 2 (Detect
 - Quality profile: `quality-profile.cli-script-integration-focused.v1` per plan.md.
 - Hardening-gate artifact path: `specs/011-specrew-start-conditional-pause/iterations/001/quality/hardening-gate.md`.
 - Drift-log path: `specs/011-specrew-start-conditional-pause/iterations/001/drift-log.md`.
-

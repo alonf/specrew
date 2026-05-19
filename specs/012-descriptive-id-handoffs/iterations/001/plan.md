@@ -141,4 +141,3 @@ Iteration 001 is considered complete when:
 | Overcommit Threshold | 1.0 | Warn planners when total estimated effort exceeds 20.0 story_points (capacity 20 x threshold 1.0). |
 | Defer Strategy | manual | Any deferral decision must be explicit; US3 explicitly deferred to Iteration 002. |
 | Calibration Enabled | true | Retrospectives should suggest future capacity adjustments when actual variance accumulates. |
-

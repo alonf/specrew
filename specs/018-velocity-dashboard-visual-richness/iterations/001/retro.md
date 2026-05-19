@@ -180,7 +180,7 @@ Feature 018 Iteration 001 is now past review-verdict-signoff and has completed i
 
 This combination of improvements means the dashboard can now appear in README screenshots, blog articles about velocity tracking, onboarding documentation for new contributors, and status reports without needing disclaimer text like "this is a placeholder" or "future versions will improve readability."
 
-**Stakeholder Impact**: The article-visual-evidence milestone has tangible downstream value: 
+**Stakeholder Impact**: The article-visual-evidence milestone has tangible downstream value:
 1. **Documentation**: The quickstart guides (`specs/018-velocity-dashboard-visual-richness/quickstart.md`) can now feature actual dashboard output without needing to de-emphasize or apologize for limitations
 2. **Onboarding**: New contributors to Specrew can use `.\scripts\specrew.ps1 where` as a first-day learning tool to understand project history, velocity trends, and roadmap status without requiring manual explanation
 3. **Communication**: Status reports and retrospectives can embed dashboard screenshots to communicate project health, and the visual density makes the report more credible and self-explanatory

@@ -26,7 +26,7 @@ Iteration 0 successfully established the Specrew repository foundation with all 
 | 3 | Squad template sources exist | ✅ PASS | `squad-templates/skills/` (4 files), `ceremonies/` (2 files), `directives/` (3 files) all present with SKILL.md format stubs |
 | 4 | Compatibility spikes complete | ✅ PASS | All 9 spikes (T-013 through T-021) documented in `spikes.md` with PASS verdicts |
 | 5 | CI pipeline functional | ✅ PASS | `.github/workflows/specrew-ci.yml` configured with markdownlint + PSScriptAnalyzer; all scripts pass syntax validation |
-| 6 | GitHub Project board created | ✅ PASS | V2 board at https://github.com/users/alonf/projects/10 documented in `docs/github-project.md` |
+| 6 | GitHub Project board created | ✅ PASS | V2 board at <https://github.com/users/alonf/projects/10> documented in `docs/github-project.md` |
 | 7 | No integration blockers identified | ✅ PASS | All spikes confirm platform compatibility; architecture resolved to Squad-native surfaces |
 
 ---

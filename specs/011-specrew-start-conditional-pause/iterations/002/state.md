@@ -89,4 +89,3 @@ Before implementation authorization:
 - Drift-log path: `specs/011-specrew-start-conditional-pause/iterations/002/drift-log.md`.
 - Full six-script validation lane passed on closeout tree before durable commit.
 - Iteration 002 is durably closed.
-

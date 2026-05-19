@@ -7,7 +7,8 @@
 ## Test Strategy
 
 - Implementation briefing: (unavailable)
-- Review-time strategy: use eviewer.test_commands when configured; otherwise record 
+- Review-time strategy: use
+eviewer.test_commands when configured; otherwise record
 ot_executed explicitly and keep the signal visible in closeout output.
 
 ## Tests Run

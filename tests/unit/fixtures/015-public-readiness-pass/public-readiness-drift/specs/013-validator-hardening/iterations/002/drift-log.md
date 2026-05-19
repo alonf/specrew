@@ -19,7 +19,7 @@ Monitoring is active for the following areas during planning and design:
 
 **Concern**: Normalization rules for approval-evidence matching must follow the approved spec without silent semantic drift.
 
-**Specification Authority**: 
+**Specification Authority**:
 - `spec.md` § "What counts as duplicated approval evidence?" — "Quotes that match after whitespace normalization and markdown-emphasis stripping, unless the artifact explicitly declares a blanket multi-iteration authorization scope."
 - `FR-003` — Detect reused approval evidence across iterations
 

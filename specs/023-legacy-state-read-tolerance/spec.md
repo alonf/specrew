@@ -1,8 +1,8 @@
 # Feature Specification: Legacy-State Read-Tolerance + Schema Migration Discipline
 
-**Feature Branch**: `023-legacy-state-read-tolerance`  
-**Created**: 2026-05-19  
-**Status**: Draft  
+**Feature Branch**: `023-legacy-state-read-tolerance`
+**Created**: 2026-05-19
+**Status**: Draft
 **Input**: Feature request from file:///C:/Dev/Specrew/proposals/059-legacy-state-read-tolerance.md
 
 ## Clarifications
@@ -99,10 +99,10 @@ A developer observes that their project's state files contain schema version mar
 - **FR-001**: System MUST add an explicit `schema: v1` field to every Specrew-managed state file written after this feature ships
   - Applies to: file:///[project]/.specrew/config.yml, file:///[project]/.specrew/start-context.json, file:///[project]/.specify/feature.json, file:///[project]/.squad/identity/now.md frontmatter, file:///[project]/.specrew/last-validator-summary.json
   - Exception: file:///[project]/tasks-progress.yml and file:///[project]/.specrew/version-check-cache.json already have schema markers (from F-020); reaffirm those
-  
+
 - **FR-002**: System MUST treat any state file lacking a schema field as schema version 0 (v0) for backward compatibility
   - When reading a v0 file, system MUST log "schema-implied-v0" at debug level
-  
+
 - **FR-003**: System MUST distinguish between extension content version and schema version in file:///[project]/.specify/extensions/specrew-speckit/extension.yml
   - Existing `version:` field refers to extension content version
   - Add separate `schema: v1` field for schema version
@@ -112,24 +112,24 @@ A developer observes that their project's state files contain schema version mar
 - **FR-004**: System MUST use hashtable-based data structures (not PSCustomObject) when parsing JSON and YAML state files
   - PowerShell: use `ConvertFrom-Json -AsHashtable` for JSON; use YAML parsers that return hashtables
   - Rationale: Hashtable indexers return `$null` for missing keys; PSCustomObject property access throws under StrictMode
-  
+
 - **FR-005**: System MUST NOT throw exceptions when accessing optional fields that don't exist in a state file
   - All fields are optional unless explicitly documented as required for a specific schema version
   - Missing optional fields MUST default to appropriate null/empty values (`$null`, `''`, `@()`)
-  
+
 - **FR-006**: System MUST provide schema-version-aware dispatch logic when reader behavior differs between v0 and v1+
   - Include comments in code identifying which schema version each code path handles
-  - Example: `if ($schema -eq 'v0') { # Legacy compatibility: field X didn't exist }` 
+  - Example: `if ($schema -eq 'v0') { # Legacy compatibility: field X didn't exist }`
 
 #### Legacy State Fixture Corpus (Iteration 1)
 
 - **FR-007**: System MUST maintain a test fixture corpus under file:///C:/Dev/Specrew/tests/fixtures/legacy-versions/ containing representative state files from each shipped Specrew version (0.18.0, 0.19.0, 0.20.0, 0.21.0, 0.22.0, and future versions)
   - Each fixture directory contains: .specrew/config.yml, .specrew/start-context.json, .specrew/last-validator-summary.json, .specify/feature.json, .specify/extensions/specrew-speckit/extension.yml, .squad/identity/now.md, tasks-progress.yml (if applicable for that version)
-  
+
 - **FR-008**: System MUST execute all state reader functions against all legacy fixtures in continuous integration (CI) on every pull request
   - Pass criteria: no exceptions thrown, no `$null` reference errors, return values structurally consistent with function contracts
   - Readers in scope: `Get-SpecrewStartContextSessionState`, `Get-FeatureJson`, `Get-ConfigMap`, `Get-SpecrewIdentitySessionState`, and any other function reading from file:///[project]/.specrew/*, file:///[project]/.specify/*, or file:///[project]/.squad/*
-  
+
 - **FR-009**: System MUST add a new fixture directory when any feature bumps a schema version
   - Feature closeout requirements must include "add fixture for version X.Y.Z to legacy-versions/"
 
@@ -139,14 +139,14 @@ A developer observes that their project's state files contain schema version mar
   - Rule scope: PowerShell functions whose name matches `Get-Specrew*SessionState`, `Get-Specrew*State`, or any function reading from .specrew/*, .specify/*, .squad/* paths
   - Rule check: if function includes `ConvertFrom-Json`, it MUST use the `-AsHashtable` parameter
   - Violation severity: error (blocks PR merge)
-  
+
 - **FR-011**: Validator rule MUST provide clear violation messages with remediation guidance
   - Example: "Function Get-XYZ uses ConvertFrom-Json without -AsHashtable. State readers must use hashtables to tolerate missing fields. Add -AsHashtable parameter."
 
 #### Documentation & Closeout Template (Iteration 2)
 
 - **FR-012**: System MUST provide documentation at file:///C:/Dev/Specrew/docs/data-contracts.md explaining schema versioning discipline, reader tolerance principles, and how to add new fixtures
-  
+
 - **FR-013**: System MUST update the feature closeout template to include a reminder: "If this feature modified any state file schema, add a legacy fixture for the current Specrew version"
 
 #### Cross-Platform Validation (Both Iterations)
@@ -161,16 +161,16 @@ A developer observes that their project's state files contain schema version mar
   - User Story 1 → FR-001, FR-002, FR-004, FR-005, FR-006, FR-008, FR-014
   - User Story 2 → FR-002, FR-005, FR-006, FR-008
   - User Story 3 → FR-001, FR-002, FR-003, FR-009
-  
+
 - **TG-002**: Each requirement MUST identify expected owner role(s).
   - FR-001 through FR-014: Implementation by AI-driven developer agents (Specrew's normal development model)
   - Schema design decisions: Specrew maintainer (human oversight)
   - Fixture content validation: Specrew maintainer (human oversight at PR merge)
-  
+
 - **TG-003**: Each requirement MUST identify intended iteration or delivery window.
   - Iteration 1 (~14.5 SP): FR-001, FR-002, FR-003, FR-004, FR-005, FR-006, FR-007, FR-008, FR-009, FR-014
   - Iteration 2 (~5.5 SP): FR-010, FR-011, FR-012, FR-013, FR-014 (continued)
-  
+
 - **TG-004**: Any known spec/implementation conflict MUST include an explicit reconciliation path.
   - No known conflicts at specification time
   - Reconciliation process: if conflicts emerge during implementation, apply 3-cycle repair budget pattern at the clarify/plan boundary (feedback rule 2026-05-18)
@@ -180,11 +180,11 @@ A developer observes that their project's state files contain schema version mar
 - **State File**: A persisted JSON or YAML file managed by Specrew that contains configuration, session state, or feature metadata
   - Key attributes: file path (e.g., file:///[project]/.specrew/config.yml), schema version (e.g., v0, v1), content structure (varies by file type)
   - Lifecycle: written by Specrew commands, read by subsequent Specrew operations, may persist across version upgrades
-  
+
 - **Schema Version Marker**: A top-level field in a state file indicating its structural contract version
   - Key attributes: version identifier (e.g., "v1"), format (string), location (top-level field named "schema")
   - Purpose: enables readers to apply version-specific compatibility logic
-  
+
 - **Legacy Fixture**: A test artifact representing the state files from a specific Specrew version
   - Key attributes: Specrew version (e.g., "0.19.0"), file set (config, start-context, feature metadata), location (file:///C:/Dev/Specrew/tests/fixtures/legacy-versions/[version]/)
   - Purpose: exercised by CI to ensure reader tolerance across versions
@@ -195,36 +195,36 @@ A developer observes that their project's state files contain schema version mar
 
 - **SC-001**: Zero crashes reported from legacy state files after upgrade in production use (target: 0 incidents in 3 months post-release)
   - Baseline: 2026-05-19 WSL trial surfaced 1 critical crash from legacy start-context.json
-  
+
 - **SC-002**: All Specrew state readers pass CI tests against legacy fixtures from versions 0.18.0 through 0.22.0 without exceptions (target: 100% pass rate)
-  
+
 - **SC-003**: Schema version markers present in 100% of newly written state files after this feature ships
-  
+
 - **SC-004**: Reader tolerance validator rule detects 100% of PSCustomObject-based JSON parsing in state readers (target: 0 false negatives in manual audit)
-  
+
 - **SC-005**: Developer time to diagnose and resolve state file compatibility issues reduced by 80% (target: from ~30 minutes to ~6 minutes per incident)
   - Measured by support ticket resolution time and session logs
-  
+
 - **SC-006**: All reader changes validated on both Windows and Linux before merge (target: 100% of PRs touching state readers include cross-platform CI evidence)
 
 ## Assumptions
 
 - **Bootstrap Assumption**: This feature's own readers and writers will demonstrate the schema versioning and reader tolerance patterns being established, serving as reference implementations for future features
-  
+
 - **CI Infrastructure**: Specrew's CI pipeline has capacity to run the legacy fixture test suite on every PR without significant performance degradation (estimated: +2 minutes per PR, acceptable within 10-minute CI budget)
-  
+
 - **PowerShell Version**: Specrew requires PowerShell 7.0+ (per Specrew.psd1), so `ConvertFrom-Json -AsHashtable` is available (parameter introduced in PS 6.0)
-  
+
 - **Fixture Maintenance**: Future releases will continue the discipline of adding new fixtures when schemas evolve, per updated closeout template (FR-013)
-  
+
 - **Migration Writer Policy**: When a reader detects a v0 file, it reads in compatibility mode but silently upgrades on next write (no user prompt). User-visible config files may log a one-time upgrade notice; opaque caches upgrade silently.
-  
+
 - **Validator Scope**: Validator rule (FR-010) starts narrow (state readers only) and may widen to all PowerShell scripts in future iterations based on Phase 2 retrospective findings
-  
+
 - **Non-Breaking Change**: This feature introduces additive schema changes (adding `schema: v1` field) but no breaking changes to existing fields. Future breaking changes will require explicit migration strategies.
-  
+
 - **Cross-Platform Line Endings**: Git's `core.autocrlf` setting normalizes line endings for text files, so fixtures committed from Windows or Linux will have consistent content when checked out on either platform
-  
+
 - **Fixture Generation Strategy**: Iteration 1 fixtures (0.18.0 through 0.22.0) will be hand-curated from real project snapshots. Future fixtures (0.23.0+) may be generated by running `specrew init` + recorded lifecycle, or hand-curated for edge cases as appropriate.
 
 ## Scope Boundaries
@@ -244,33 +244,33 @@ A developer observes that their project's state files contain schema version mar
 ### Out of Scope (Explicitly Deferred)
 
 - **F-021 Slash-Command Surface Investigation**: The question of whether Copilot CLI exposes `/specrew.*` commands as first-class remains open and is independent of F-023. No dependency.
-  
+
 - **Breaking Schema Changes**: This feature addresses additive schema evolution only. Breaking changes (e.g., removing or renaming required fields) are deferred to future proposals when needed.
-  
+
 - **Roadmap Spine Schema**: Proposal 057 (Roadmap Spine) will define file:///[project]/.specrew/roadmap.yml schema from day 1 using the discipline established by F-023, but roadmap.yml itself is out of scope for F-023.
-  
+
 - **Multi-Developer Reconciliation**: Proposal 010 addresses merge conflict resolution and concurrent edit handling. F-023 provides schema-version tolerance as a precursor, but multi-developer reconciliation logic is out of scope.
-  
+
 - **Automated Schema Migration UI**: This feature uses silent upgrade-on-write for most files. A future proposal may add explicit migration prompts or commands (e.g., `specrew migrate-state`) but that is deferred.
-  
+
 - **Binary State Files**: All Specrew state files are text (JSON/YAML). Binary state file handling is out of scope.
-  
+
 - **Performance Optimization**: The fixture test suite is designed for correctness, not performance. If CI time grows beyond 10 minutes, optimization is deferred to a future proposal.
 
 ## Governance Alignment *(mandatory)*
 
 - **Spec Steward**: Specrew maintainer (human) — accountable for schema design decisions, fixture content validation, and alignment with Proposals 059/060/042 triad
-  
+
 - **Iteration Facilitator**: AI-driven session orchestrator — accountable for iteration cadence, 3-cycle repair budget enforcement at boundaries, and blocker escalation
-  
+
 - **Capacity Model**: Story points (SP) as effort unit; ~14.5 SP for Iteration 1, ~5.5 SP for Iteration 2. Iteration capacity: standard Specrew development cadence (1-2 weeks per iteration).
-  
-- **Drift Signals**: 
+
+- **Drift Signals**:
   - **Spec-to-plan drift**: Detected by `/speckit.specrew-speckit.before-plan` validator (existing hook)
   - **Plan-to-tasks drift**: Detected by `/speckit.specrew-speckit.after-tasks` validator (existing hook)
   - **Tasks-to-implementation drift**: Detected by PR-time validator runs against legacy fixtures (FR-008); failures block merge
   - **Cross-artifact consistency**: Proposal 030 (Quality Hardening Bundle) patterns apply — form-vs-meaning checks at boundaries
-  
+
 - **Human Oversight Points**:
   - **Before planning**: Human review of clarified spec to confirm schema versioning strategy aligns with long-term roadmap (Proposals 057, 010)
   - **After Iteration 1 closeout**: Human review of fixture corpus completeness (verify 0.18.0-0.22.0 fixtures exercise all readers)

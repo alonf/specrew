@@ -43,4 +43,3 @@
 - Artifact adherence: **PASS** (missing: none)
 - Phase adherence: **PASS** (issues: none)
 - Expected artifacts: plan.md, state.md, drift-log.md, review.md, retro.md
-

@@ -23,6 +23,7 @@ This document records the planning-time robustness analysis for Feature 023 Iter
 - All error paths are documented in code
 
 ### Robustness Profile
+
 | Category | Status | Evidence |
 | --- | --- | --- |
 | **Error Path Coverage** | ⏳ Planned | T021-T023 fixture suite with error scenarios |

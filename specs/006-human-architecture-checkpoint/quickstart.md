@@ -284,7 +284,7 @@ After your approval is recorded, `/speckit.plan` continues:
 
 **Brief proposes**: Use REST API for the new endpoint.
 
-**Your response**: 
+**Your response**:
 ```
 Approved with constraint: Must support gRPC as an alternative endpoint
 (for internal services). REST is the primary, but gRPC layer must be designed upfront.

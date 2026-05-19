@@ -32,4 +32,3 @@ No known gaps remain.
   - `pwsh -NoProfile -ExecutionPolicy Bypass -File .\extensions\specrew-speckit\scripts\validate-governance.ps1 -ProjectPath . -IterationPath .\specs\008-reviewer-escalation-symmetry\iterations\001`
 - The parallel addition of `reviewerRegressionState` without touching `activeEscalation` correctly preserves FR-027 behavior per spec requirement FR-013.
 - Next step: Proceed to Iteration 002 (User Story 1 implementation).
-

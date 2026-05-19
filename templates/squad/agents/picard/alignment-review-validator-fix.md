@@ -3,7 +3,7 @@
 **Date**: 2026-04-18
 **Reviewer**: Picard (Spec Steward)
 **Scope**: Verify Spec Kit health validator fix against spec contract
-**Artifacts Reviewed**: 
+**Artifacts Reviewed**:
 - spec.md (FR-002 bootstrap requirement)
 - scripts/specrew-init.ps1 (bootstrap orchestrator)
 - extensions/specrew-speckit/scripts/validate-versions.ps1 (validator)
@@ -35,12 +35,12 @@ The validator fix correctly implements the three critical contract boundaries:
 
 ### 3. ✅ Does NOT Overstate Bootstrap Success If Failures Occur Elsewhere
 - **Spec Contract**: Bootstrap can fail early (dependency validation) and must report that failure without masking downstream issues. It must not report "bootstrap succeeded" if critical steps failed.
-- **Implementation**: 
+- **Implementation**:
   - Lines 1346-1349: Pre-install dependency validation failures exit with code 1 or 4.
   - Lines 1368-1371: Post-install dependency validation failures exit with code 1 or 4.
   - Lines 1389-1395: **Downstream** failures (agent detection, auth context) log warnings but do NOT exit — this is correct per spec (R4 clarification).
   - Line 1543: Exit 0 only reached if no exceptions thrown (i.e., all critical steps succeeded).
-- **Test Evidence**: 
+- **Test Evidence**:
   - `bootstrap-to-iteration.ps1` Line 125-127: Correctly SKIPS artifact assertions when bootstrap command returns non-zero, exiting 0 (correct behavior for unavailable tooling).
   - `validate-versions-cli-behavior.ps1`: Both tests verify correct exit codes and error detail preservation.
 - **Status**: ✅ COMPLIANT
@@ -50,7 +50,8 @@ The validator fix correctly implements the three critical contract boundaries:
 ## Contract Boundary Verification
 
 ### Dependency Validation Exit Codes (BLOCKING)
-| Scenario | Exit Code | Behavior | 
+
+| Scenario | Exit Code | Behavior |
 |---|---|---|
 | Spec Kit/Squad missing | 4 | Installation attempt triggered |
 | Installation attempt fails | 4 | Bootstrap exits, no further steps |
@@ -58,6 +59,7 @@ The validator fix correctly implements the three critical contract boundaries:
 | Spec Kit/Squad wrong version | 1 | Bootstrap exits, no further steps |
 
 ### Downstream Failure Handling (NON-BLOCKING)
+
 | Scenario | Exit Code | Behavior |
 |---|---|---|
 | Copilot detection unavailable | 0 | Warning logged; bootstrap continues |

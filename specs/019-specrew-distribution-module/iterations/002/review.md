@@ -1,12 +1,12 @@
 # Review: Iteration 002
 
-**Schema**: v1  
-**Feature**: 019-specrew-distribution-module  
-**Iteration**: 002  
-**Reviewer**: Reviewer (Copilot agent) — Boundary 2 authorized review; prior reviews by Alon Fliess  
-**Review Date**: 2026-05-17 (initial); 2026-05-18 (R21/R22/verb-conformance scope); 2026-05-18 (Boundary 2 authorized fresh review)  
-**Review Boundary Commit**: 7b08dfd  
-**Branch**: 019-specrew-distribution-module  
+**Schema**: v1
+**Feature**: 019-specrew-distribution-module
+**Iteration**: 002
+**Reviewer**: Reviewer (Copilot agent) — Boundary 2 authorized review; prior reviews by Alon Fliess
+**Review Date**: 2026-05-17 (initial); 2026-05-18 (R21/R22/verb-conformance scope); 2026-05-18 (Boundary 2 authorized fresh review)
+**Review Boundary Commit**: 7b08dfd
+**Branch**: 019-specrew-distribution-module
 **Overall Verdict**: accepted
 **Lifecycle Readiness**: READY-FOR-SIGNOFF
 
@@ -14,8 +14,8 @@
 
 ## Authorized Review — Boundary 2
 
-**Authorization**: "AUTHORIZE Boundary 2 — /review for Feature 019 Iteration 002" by Alon Fliess  
-**Review Commit**: 7b08dfd (HEAD)  
+**Authorization**: "AUTHORIZE Boundary 2 — /review for Feature 019 Iteration 002" by Alon Fliess
+**Review Commit**: 7b08dfd (HEAD)
 **Review Scope**: T041, T054, T060, T061; R21/R22 repair chain cleanup; cross-platform parity; no-gap policy classification
 
 ### 1. Spec-to-Implementation Traceability
@@ -31,12 +31,12 @@
 
 ### 2. R21/R22 Repair-Chain Assessment
 
-**R21 (deferred-launch fix, commit 72d3b51)**: Confirmed present and correct.  
-- `specrew-start.ps1` lines 2526–2545: writes launch args to `$env:SPECREW_DEFERRED_LAUNCH_FILE` on non-Windows; falls back to in-script launch if env var absent.  
-- `Specrew.psm1` lines 62–113: `Invoke-SpecrewScript` sets deferred-launch file, invokes script in-process, then executes `& copilot @args` from function body after script returns. `finally` block clears both env vars.  
+**R21 (deferred-launch fix, commit 72d3b51)**: Confirmed present and correct.
+- `specrew-start.ps1` lines 2526–2545: writes launch args to `$env:SPECREW_DEFERRED_LAUNCH_FILE` on non-Windows; falls back to in-script launch if env var absent.
+- `Specrew.psm1` lines 62–113: `Invoke-SpecrewScript` sets deferred-launch file, invokes script in-process, then executes `& copilot @args` from function body after script returns. `finally` block clears both env vars.
 - Architecture is minimal (~5 lines coordination code) and correct.
 
-**R22 (wrong-direction cleanup, commit 6fa14d6)**: Confirmed clean.  
+**R22 (wrong-direction cleanup, commit 6fa14d6)**: Confirmed clean.
 Searched `specrew-start.ps1` for all wrong-direction markers from R10–R20. Result: **zero matches** for `--mode interactive`, `bash -c`, `script -q`, `DllImport`, `execvp`, platform-conditional `--allow-all` suppression. The revert was complete.
 
 **Uniform `--allow-all`**: Lines 2481–2483 confirm `--allow-all` is added when `$AllowAll` is true, with no platform fork. The Windows new-window launch script (lines 2490–2500) also applies the same conditional uniformly. Correct per R22 design intent.
@@ -125,7 +125,7 @@ Iteration 002 delivers cross-platform hardening (T041 Join-Path audit, T054 cros
    - `extensions/specrew-speckit/scripts/deploy-squad-runtime.ps1` ✅ Modified (10 path strings fixed)
    - `extensions/specrew-speckit/scripts/validate-governance.ps1` ✅ Modified (14 iteration paths fixed)
    - `extensions/specrew-speckit/scripts/scaffold-reviewer-artifacts.ps1` ✅ Modified (2 patterns fixed)
-   
+
    **Total**: 38 patterns fixed (12+10+14+2)
 
 2. **Review-Phase Audit Completion** (R-019-V2-R1): Verified remaining T041 scope scripts are clean:
@@ -198,7 +198,7 @@ Iteration 002 delivers cross-platform hardening (T041 Join-Path audit, T054 cros
    - Linux (Ubuntu): 🔧 Path handling hardened; CI validation configured (pending first workflow run)
    - macOS: 🔧 Path handling hardened; CI validation configured (pending first workflow run)
    - WSL: ⏳ Manual verification pending (automated validation blocked by sudo requirements)
-   
+
    ✅ Pass — Truthful status reporting without over-claiming
 
 2. **README.md Cross-Platform Status Reference** (line 49): "See `specs/019-specrew-distribution-module/test-evidence/us5-cross-platform.md` for detailed cross-platform validation status." ✅ Pass — Traceability to evidence
@@ -242,9 +242,9 @@ Validator execution: `validate-governance.ps1 -IterationPath "specs\019-specrew-
 
 ### R-019-V2-R1: Complete T041 Scope [mechanical, authorized]
 
-**Category**: scope-incompleteness  
-**Severity**: blocking  
-**Owner**: Reviewer (mechanical repair authorized)  
+**Category**: scope-incompleteness
+**Severity**: blocking
+**Owner**: Reviewer (mechanical repair authorized)
 **Status**: ✅ **RESOLVED**
 
 **Required Actions**:
@@ -261,9 +261,9 @@ Validator execution: `validate-governance.ps1 -IterationPath "specs\019-specrew-
 
 ### R-019-V2-R2: Sync .specify Mirror [mechanical, authorized]
 
-**Category**: artifact-drift  
-**Severity**: blocking  
-**Owner**: Reviewer (mechanical repair authorized)  
+**Category**: artifact-drift
+**Severity**: blocking
+**Owner**: Reviewer (mechanical repair authorized)
 **Status**: ✅ **RESOLVED**
 
 **Required Actions**:
@@ -279,9 +279,9 @@ Validator execution: `validate-governance.ps1 -IterationPath "specs\019-specrew-
 
 ### R-019-V2-R3: Reconcile Evidence Claims [mechanical, authorized]
 
-**Category**: evidence-claim-reconciliation  
-**Severity**: blocking  
-**Owner**: Reviewer (mechanical repair authorized)  
+**Category**: evidence-claim-reconciliation
+**Severity**: blocking
+**Owner**: Reviewer (mechanical repair authorized)
 **Status**: ✅ **RESOLVED**
 
 **Required Actions**:
@@ -349,6 +349,6 @@ Previously-carry-forward item now resolved:
 
 ---
 
-**Review Completed**: 2026-05-17 (initial); updated 2026-05-18 (R-019-V2-R21/R22/verb-conformance scope)  
-**Repair Completed**: 2026-05-18  
+**Review Completed**: 2026-05-17 (initial); updated 2026-05-18 (R-019-V2-R21/R22/verb-conformance scope)
+**Repair Completed**: 2026-05-18
 **Next Boundary**: Review-verdict-signoff (ready for human authorization)
