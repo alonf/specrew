@@ -65,22 +65,18 @@ The review reran the governance validator, the legacy state readers integration 
 | T004-T008 | FR-004, FR-005 | pass | High-priority readers migrated to `-AsHashtable` parsing: specrew-start.ps1, worktree-awareness.ps1, scaffold-feature-closeout-dashboard.ps1, version-check.ps1, coordinator-resume.ps1. |
 | T009-T014 | FR-001, FR-003 | pass | Schema markers added to all state writers: start-context.json, now.md, last-validator-summary.json, feature.json, extension.yml. |
 | T015-T019, T033 | FR-007, FR-009 | pass | Legacy fixture corpus (0.18.0-0.23.0) hand-curated and 0.23.0 v1 fixture added. |
-| T020 | FR-007, FR-009 | pass | Human Steward approved fixture corpus completeness after fixture coverage matrix and absence rationale added to state-reader-audit.md. |
-| T021-T023 | FR-008 | pass | Regression test suite implemented and verified passing on Windows. |
-| T024 | FR-014 | pass | Linux CI lane added to `.github/workflows/specrew-ci.yml` at line 64-66. |
+| T020, T028, T030, T034 | FR-006, FR-007, FR-010, FR-012 | pass | Human Steward approved fixture corpus completeness (T020), validator effectiveness (T028), documentation (T030), and dispatch logic (T034). |
+| T021-T024 | FR-008, FR-014 | pass | Regression test suite implemented, verified passing on Windows (T021-T023), and Linux CI lane added (T024). |
 | T025-T027 | FR-010, FR-011 | pass | Validator rule `reader-tolerance` implemented in both validator copies, unit tests pass. |
-| T028 | FR-010 | pass | Human Steward approved validator effectiveness with explicit v1 acceptance note on hardcoded allowlist approach. |
 | T029, T031 | FR-012 | pass | Documentation at `docs/data-contracts.md` added with schema evolution, writer/reader contracts, fixture maintenance guidance. |
-| T030 | FR-012 | pass | Human Steward approved documentation after schema-helper bullet and regression-contract bullet added. |
 | T032 | FR-002, FR-006 | pass | Legacy schema handling added to migrated readers (v0 treatment, debug logging, dispatch comments). |
-| T034 | FR-006 | pass | Human Steward approved v0/v1 dispatch logic with no further changes required. |
 
 ---
 
 ## Gap Ledger
 
 - fixed-now — No blocking defects or scope-interpretation disputes remain inside the authorized Feature 023 Iteration 001 review scope.
-- deferred-iteration-2 — FR-013 (closeout template reminder) explicitly deferred to Iteration 2 per original plan.md phasing; not a gap, but a planned future delivery.
+- Note: FR-013 (closeout template reminder) was explicitly planned for Iteration 2 in the original two-iteration phasing; this is not a gap but a planned future delivery per plan.md Iteration 2 scope.
 
 ---
 
