@@ -11,9 +11,9 @@
 
 ## Executive Summary
 
-Iteration 001 is complete at the iteration layer only. The authoritative scope stayed locked to **FR-001..FR-014, SC-001..SC-006, and US-1..US-3**, and the delivered work remains accepted: schema markers on Specrew-managed state writers, tolerant v0/v1 readers, a legacy fixture corpus through 0.23.0, Windows/Linux regression coverage, a reader-tolerance validator rule, data-contract documentation, and the closeout-template reminder. Review, retro, the scoped governance validator, and file:///C:/Dev/Specrew-023/tests/integration/Test-LegacyStateReaders.Tests.ps1 support closeout on this tree without opening feature-closeout.
+Iteration 001 closed the full delivered feature slice even though the original planning narrative still described validator/docs/closeout-template work as a later Iteration 2 follow-on. The authoritative scope stayed locked to **FR-001..FR-014, SC-001..SC-006, and US-1..US-3**, and the delivered work remains accepted: schema markers on Specrew-managed state writers, tolerant v0/v1 readers, a legacy fixture corpus through 0.23.0, Windows/Linux regression coverage, a reader-tolerance validator rule, data-contract documentation, and the closeout-template reminder. Review, retro, the scoped governance validator, and file:///C:/Dev/Specrew-023/tests/integration/Test-LegacyStateReaders.Tests.ps1 confirm that T025-T031 were already complete on this tree, so the planned Iteration 2 slice was absorbed into Iteration 001 rather than deferred.
 
-Per explicit authorization, the next valid move from this boundary is **Iteration 2 authorization or stop-for-inspection only**.
+This corrected closeout record preserves the truthful total: **17 SP planned / 17 SP delivered / 0 SP variance** before the later feature-closeout boundary.
 
 ---
 
@@ -36,7 +36,7 @@ Per explicit authorization, the next valid move from this boundary is **Iteratio
 
 ### Task Completion
 
-All grouped Iteration 001 rows in file:///C:/Dev/Specrew-023/specs/023-legacy-state-read-tolerance/iterations/001/plan.md remain **done / pass**. No extra implementation lane was opened during closeout.
+All grouped rows that landed on this tree—including the work originally labeled T025-T031—remain **done / pass** in file:///C:/Dev/Specrew-023/specs/023-legacy-state-read-tolerance/tasks.md. No second implementation lane remained to open once the accepted branch already contained the validator, documentation, and closeout-template updates.
 
 ---
 
@@ -46,7 +46,7 @@ All grouped Iteration 001 rows in file:///C:/Dev/Specrew-023/specs/023-legacy-st
 - **Drift log**: 0 implementation drift events (file:///C:/Dev/Specrew-023/specs/023-legacy-state-read-tolerance/iterations/001/drift-log.md)
 - **Retro outcome**: complete, with the autopilot blocked-loop waste note now captured truthfully as a carry-forward process learning (file:///C:/Dev/Specrew-023/specs/023-legacy-state-read-tolerance/iterations/001/retro.md)
 - **Reviewer closeout packet retained**: file:///C:/Dev/Specrew-023/specs/023-legacy-state-read-tolerance/iterations/001/code-map.md, file:///C:/Dev/Specrew-023/specs/023-legacy-state-read-tolerance/iterations/001/coverage-evidence.md, file:///C:/Dev/Specrew-023/specs/023-legacy-state-read-tolerance/iterations/001/dependency-report.md, file:///C:/Dev/Specrew-023/specs/023-legacy-state-read-tolerance/iterations/001/reviewer-index.md, file:///C:/Dev/Specrew-023/specs/023-legacy-state-read-tolerance/iterations/001/review-diagrams.md, file:///C:/Dev/Specrew-023/specs/023-legacy-state-read-tolerance/iterations/001/dashboard.md, and file:///C:/Dev/Specrew-023/specs/023-legacy-state-read-tolerance/current-architecture.md
-- **Scope discipline**: feature-closeout remains explicitly unopened here because this closeout stops at Iteration 001 and points forward only to Iteration 2 authorization or stop-for-inspection
+- **Scope discipline**: the earlier 'Iteration 2 next' narration was incorrect once T025-T031 were accepted on the same tree; the truthful follow-on after this closeout was feature-closeout when later authorized, not reopening a separate implementation iteration
 
 ---
 
@@ -60,9 +60,7 @@ These replays confirm the retro→closeout transition stays green on the committ
 
 ## Carry-Forward Boundary
 
-No additional work remains inside the authorized Iteration 001 scope. The next possible lifecycle step is **explicit Iteration 2 authorization**, or the team may **stop for inspection**.
-
-Feature-closeout remains unopened and unauthorized from this state.
+No additional implementation work remained after this closeout. The originally planned Iteration 2 scope had already been absorbed into Iteration 001, so the only remaining lifecycle move was a later **feature-closeout** authorization once human approval arrived.
 
 ---
 
@@ -79,4 +77,4 @@ Feature-closeout remains unopened and unauthorized from this state.
 
 ## Next Valid Action
 
-Stop at iteration-closeout. **Do not enter feature-closeout** from this state; only explicit Iteration 2 authorization or stop-for-inspection is valid next.
+Historical correction: after iteration-closeout, the truthful next lifecycle step was **feature-closeout once explicitly authorized**. No separate Iteration 2 reopening was required because T025-T031 were already complete on the accepted tree.

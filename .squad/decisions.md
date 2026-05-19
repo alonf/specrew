@@ -14792,3 +14792,12 @@ User request — captured for team memory to ensure plan authorization respects 
 - **Task ID**: (none)
 - **Auth Commit Hash**: a9cad4976e37d266692cc5fdc49da8c0d8052d94
 - **Recorded At**: 2026-05-19T07:56:35Z
+
+## 2026-05-19T08:22:26Z — Boundary sync: feature-closeout
+
+- **Boundary Type**: feature-closeout
+- **Feature Ref**: 023-legacy-state-read-tolerance
+- **Iteration Number**: (none)
+- **Task ID**: (none)
+- **Auth Commit Hash**: 63768ca231b3cb9ca139336ab80c8c69c90e3310
+- **Recorded At**: 2026-05-19T08:22:26Z

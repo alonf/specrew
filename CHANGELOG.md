@@ -6,6 +6,13 @@ baseline that each release number represents.
 
 ## Unreleased
 
+## 0.23.0 - Legacy State Read Tolerance
+
+- Feature 023: closed the legacy state read-tolerance feature with the full validator, documentation, fixture-corpus, and closeout-template scope delivered on the feature branch. The originally planned Iteration 2 slice (T025-T031) was absorbed into Iteration 001 instead of being deferred, so the truthful delivery total is 17 SP planned / 17 SP delivered / 0 SP variance.
+- Generated the canonical feature-closeout dashboard snapshot at `specs/023-legacy-state-read-tolerance/closeout-dashboard.md` and cleared active feature identity via the existing feature-closeout scaffold path.
+- Rule 15 version management: bumped `.specrew/config.yml` and both Specrew Spec Kit extension manifests to `0.23.0`, then reran governance validation and legacy state reader regression evidence on the closeout tree.
+- Shipping PR: pending PR creation for `023-legacy-state-read-tolerance` -> `main`.
+
 ## 0.22.0 - F-020 Implementation Hotfix + Schema Parity Tests
 
 - Feature 022: F-020 implementation hotfix + schema parity tests. Fixes three production bugs surfaced post-F-021 ship: (1) closeout-helper schema mismatch — `Set-FeatureCloseoutIdentityNow` writes human-readable frontmatter without the `session_state_*` machine-readable fields the stale-state validator requires; (2) boundary-sync hook-coverage gap — `Invoke-SpecrewBoundaryStateSync` not invoked at all 7 lifecycle boundaries (last sync entry for F-021 was at plan-boundary); (3) stale-state recovery UX broken — `specrew start` prints A/B/C options without accepting input.
