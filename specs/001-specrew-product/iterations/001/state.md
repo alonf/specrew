@@ -42,6 +42,7 @@
 - **T-025** (1.0 pts): Task-authoritative worktree/PR execution model codified. Specrew now explicitly documents that local iteration artifacts remain authoritative while Squad issue branches (`squad/{issue-number}-{slug}`), optional worktrees, and standard GitHub PR review provide the execution and human-review path against the active integration branch. Output: `docs\github-project.md`, `.squad\protocol.md`, `specs\001-specrew-product\plan.md`.
 
 **Blocking Resolution**:
+
 - V-R7-1 unblocked T-011 (pre-planning risk reduction on detection API shape achieved).
 - T-001, T-002, and T-010 establish the bootstrap dependency gate for the remaining `specrew init` flow.
 - T-003 and T-004 establish the greenfield initialization path for downstream extension/runtime deployment tasks.
@@ -62,6 +63,7 @@
 - T-025 closes the operating-model gap between local artifact authority and Squad's standard issue branch / worktree / PR review flow.
 
 **Remaining Iter 1a work** (0.0 pts):
+
 - Core MVP slice complete.
 
 **Iter 1b (post-gate follow-through)** (0.0 pts): T-020–T-023 complete — flow documentation, integration/scenario tests, and CI validation are now delivered.

@@ -11,6 +11,7 @@
 I am the spec alignment gate for Specrew. My job is to keep every plan, task, decision, and implementation traceable to the authoritative source requirements.
 
 **Authority Foundation** (Iteration 0):
+
 - Iteration lifecycle is **normative and binding** (spec.md, contracts/iteration-artifacts.md)
 - Four-phase state machine: Planning → Execution → Review/Demo → Retrospective (enforced by validator)
 - Dogfooding obligation: Specrew must follow its own iteration lifecycle (binding per spec.md)
@@ -19,6 +20,7 @@ I am the spec alignment gate for Specrew. My job is to keep every plan, task, de
 - Iteration 0 closure: Complete (2026-04-18), Alon sign-off recorded, all closure artifacts aligned, validator PASS
 
 **Active Work Track** (2026-04-19 Carryover Plan Correction):
+
 - ✅ Filed board-management gap carryover (T-024): `speckit.taskstoissues` + Squad GitHub Project wiring
 - ✅ Filed worktree execution-model carryover (T-025): Squad worktree + branch + PR-per-task execution flow
 - ✅ Repaired Iteration 1 plan.md: Added T-024, T-025 to task table; normalized narrative + capacity math
@@ -54,6 +56,7 @@ I am the spec alignment gate for Specrew. My job is to keep every plan, task, de
 **Task**: Picard defines authoritative scope boundaries for agent-detection slice (V-R7-1 spike + T-011 implementation).
 
 **Scope Decision Delivered**:
+
 - Authoritative requirement boundaries confirmed from spec.md FR-022 and specrew-init.md contract
 - Three detection probes specified (Copilot runtime, auth context, Agent HQ enumeration) with non-fatal failure semantics
 - Interactive consent prompt format finalized (per-agent display, Copilot non-disableable, optional delegates)
@@ -64,6 +67,7 @@ I am the spec alignment gate for Specrew. My job is to keep every plan, task, de
 - V-R7-1 spike research deliverables defined: detection API endpoint, response schema, error cases, edge cases, backwards compatibility
 
 **Artifacts**:
+
 - `.squad/decisions/inbox/picard-fr022-guardrails.md` created (7 sections: boundaries, degradation, out-of-scope, V-R7-1 research, acceptance criteria, decision recording)
 - Decision forwarded to Alon (Coordinator) for team merge
 
@@ -76,10 +80,12 @@ I am the spec alignment gate for Specrew. My job is to keep every plan, task, de
 **Task**: Picard records completed work from Iteration 1a agent-detection slice and brings iteration artifacts into contract compliance.
 
 **Completed Work**:
+
 - ✅ V-R7-1 (0.5 pts): Detection API research spike complete. Validated Copilot runtime detection surface, Agent HQ enumeration, graceful-degradation patterns.
 - ✅ T-011 (1.5 pts): Agent detection + consent implementation complete. Interactive prompt, per-agent flags, config persistence, non-interactive defaults.
 
 **Closure Corrections** (4 artifacts):
+
 1. **plan.md**: Status planning → executing; Capacity 0/24.0 → 20.5/24.0 (Iter 1a baseline); V-R7-1 + T-011 rows: planned → done with Agent/Actual/Verdict filled
 2. **state.md** (created): Contract-compliant execution state. Last Completed Task: T-011; Tasks Remaining: T-001–T-010, T-012–T-025; Phase tracking table
 3. **spikes.md** (created): Iteration 001-scoped spike results for V-R7-1. Objective, findings (runtime/auth/delegated-agent probes), acceptance criteria ✅ 6/6, design decisions for T-011, unresolved questions (FR-021/cost deferred)
@@ -94,6 +100,7 @@ I am the spec alignment gate for Specrew. My job is to keep every plan, task, de
 **Task**: Picard records FR-022 (V-R7-1 + T-011) early-completion closure decision after Worf re-review pass.
 
 **Closure Status**: ✅ COMPLETE
+
 - Iteration 001 state.md and spikes.md prepared in working tree and ready for version control (Worf re-review PASS)
 - Following re-review pass, different author commits both files to git
 - Closure decision merged to .squad/decisions.md (2026-04-20T00:27:10Z)
@@ -108,11 +115,13 @@ I am the spec alignment gate for Specrew. My job is to keep every plan, task, de
 **Task**: Picard updates spec.md to require terminal-based next-step handoff after bootstrap and ensure downstream repos are treated as configured Squad teams.
 
 **User Requirement** (Alon):
+
 - After Specrew initialization, developers should not need to read README/getting-started just to know what to do next
 - Bootstrap should state the next command to run and explain the usage/development flow directly in the terminal
 - Freshly bootstrapped downstream repos should be treated as already-configured Squad teams, not unconfigured scaffolds
 
 **Spec Updates**:
+
 1. **FR-002**: Added two new mandates:
    - "Upon successful completion, `specrew init` MUST output explicit next-step guidance directly in the terminal: (1) the next command(s) to run (e.g., starting spec authoring with Spec Kit workflows), (2) concise flow orientation (baseline crew → specify features → plan iteration → execute), and (3) references to team extension commands without requiring the developer to leave the terminal for baseline orientation or read separate getting-started documentation."
    - "The bootstrapped downstream repository MUST be left in a state recognizable by the Squad coordinator as a configured, operation-ready team (not an unconfigured scaffold requiring fresh team creation)."
@@ -123,6 +132,7 @@ I am the spec alignment gate for Specrew. My job is to keep every plan, task, de
    - Downstream repo left in Squad-coordinator-recognizable configured team state
 
 **Implementation Impact**:
+
 - `scripts/specrew-init.ps1`: Update `Write-PostBootstrapGuidance` function to output next-step commands and workflow summary
 - Validation: Test that Squad coordinator recognizes bootstrapped repos as configured teams (no additional initialization prompts)
 
@@ -133,6 +143,7 @@ I am the spec alignment gate for Specrew. My job is to keep every plan, task, de
 **Traceability**: User input → FR-002 requirement update → US-1 acceptance criteria refinement → implementation guidance. All changes map to explicit user requirement without scope drift.
 
 **Learnings**:
+
 - Reviewer lockout ensures fresh perspectives on rejection reasons; different author breaking the same defect provides confidence
 - Untracked proof artifacts block acceptance even when narrative content is correct — durability matters
 
@@ -143,11 +154,13 @@ I am the spec alignment gate for Specrew. My job is to keep every plan, task, de
 **Audit Scope**: Brownfield merge behavior in `specrew init` and `deploy-squad-runtime.ps1`; dry-run safety hardening.
 
 **Core Spec Requirements (FR-020)**:
+
 - Detect existing Spec Kit specs, governance artifacts, Squad team config, installed extensions
 - Merge Specrew baseline roles/config into existing setup WITHOUT overwriting user data
 - Report conflicts when versions incompatible; suggest upgrade path without proceeding
 
 **Critical Findings** (7 spec-drift traps):
+
 1. **Role-name collision detection missing** — code appends baseline roles without checking for pre-existing "Spec Steward", "Planner", etc. roles
 2. **Ceremony-name collision detection missing** — appends ceremonies.md block without checking for existing `Specrew: Planning` titles
 3. **Agent charter conflict detection missing** — doesn't warn if charter already has `## Directives` section outside managed block
@@ -159,6 +172,7 @@ I am the spec alignment gate for Specrew. My job is to keep every plan, task, de
 **Acceptance Criteria (Reviewer Gates for La Forge)**:
 
 T-205 MUST:
+
 - ✅ Preserve user customizations outside managed blocks (already working)
 - ✅ Create governance files additively (already working)
 - ❌ Implement role-name collision detection + reporting
@@ -167,6 +181,7 @@ T-205 MUST:
 - ⚠️ Clarify non-empty directory behavior (decision needed from Alon)
 
 T-206 MUST:
+
 - ❌ Create `.specrew/bootstrap-dry-run-{timestamp}.md` safety report during --dry-run
 - ❌ Implement interactive conflict-resolution prompts (ALWAYS surface conflicts, even with -Force)
 - ❌ Enforce conflict prompts are mandatory; -Force only skips consent/confirmation, not conflict resolution
@@ -184,6 +199,7 @@ T-206 MUST:
 **Task**: Picard performs spec-drift guard review for Iteration 2 remaining scope while T-204 is completing. Verifies T-204 (FR-019) alignment, identifies sequencing constraints for six remaining tasks, and produces reviewer/spec note for Coordinator.
 
 **T-204 (FR-019) Findings**:
+
 - ✅ **Functionally Aligned**: resume-iteration.ps1 script covers all FR-019 requirement text (persist state, provide resume command, handle interruptions)
 - ✅ **Tests Passing**: Integration test validates 4/4 scenarios (continue, repair-metadata, blocked, abort)
 - ❌ **Delivery Surface Incomplete**: Script exists but missing Squad skill wrapper (.copilot/skills/specrew-iteration-resume/SKILL.md) required by contracts/squad-extension.md
@@ -192,6 +208,7 @@ T-206 MUST:
 **Verdict**: Core logic is production-ready and tested. Recommend **NEEDS-WORK** for review acceptance until Squad skill wrapper and user documentation are in place. Estimated +0.5 pts to complete deliverable surface.
 
 **Remaining Tasks Sequencing** (V-R7-2, T-201, T-202, T-203, T-207, T-208):
+
 - ✅ **No blocking interdependencies** prevent parallel start on most tasks
 - **Explicit sequential**: T-201 → T-203 (effort model schema must exist before wiring), T-207 → T-208 (scorer impl before output)
 - **Implicit integration**: T-202 overcommit logic should feed into T-203 planning output (soft coupling, but natural integration)
@@ -218,6 +235,7 @@ T-206 MUST:
 **Verdict**: ✅ **ALIGNED** — no changes required to spec, docs, or implementation.
 
 **What Proves Alignment**:
+
 1. **Implementation**: `scripts\specrew-team.ps1` exists with all 4 commands (`add`, `update`, `remove`, `list`), atomic operations, baseline protection, edge-case handling
 2. **Spec (FR-023)**: Requires "command-driven team management commands" — satisfied by PowerShell script with subcommands (does NOT require packaged CLI distribution)
 3. **Documentation Pattern**: All four docs show aspirational short form (`specrew team add`) followed by explicit invocation guidance (`.\scripts\specrew-team.ps1` or PATH setup)
@@ -237,12 +255,14 @@ T-206 MUST:
 **Task**: Analyze whether Specrew's documented team-extension workflow is command-driven or requires manual multi-file editing, and determine spec changes needed for alignment.
 
 **Key Findings**:
+
 - **Current documented workflow**: 3-file manual editing (team.md row + charter.md + history.md) per getting-started.md lines 109-112 and user-guide.md lines 114-117
 - **Spec assumption**: FR-002 references "Squad's standard team configuration workflows" without validating whether Squad provides command-driven CRUD
 - **Squad CLI surface**: `squad hire` command exists but returns "full implementation pending" (v0.9.1); no working CRUD surface for team members
 - **Gap classification**: Documented workflow is accurate to current Squad capability, but spec language implies non-manual workflows that don't exist yet
 
 **Spec Delta Required**:
+
 1. **FR-002 Amendment**: Clarify that "Squad's standard team configuration workflows" currently means manual file editing until Squad completes `squad hire`
 2. **New FR-023**: Contingent wrapper command (`specrew team add/remove`) if Squad doesn't deliver native CRUD by Iteration 2
 3. **Documentation precision**: Add "Known Limitation" notes acknowledging Squad's incomplete command surface and Specrew's planned response path
@@ -260,6 +280,7 @@ T-206 MUST:
 **Requirement Verified**: Validator must require mandatory baseline members (Spec Steward, Planner, Implementer, Reviewer, Retro Facilitator) but NOT constrain custom team members added via `specrew team add`.
 
 **Analysis Performed**:
+
 1. FR-023 language review: Command interface, protected baseline roles, atomic operations
 2. Validator scope review: `Get-TeamRoleMap` reads full roster, only validates sign-off role naming
 3. Bootstrap script guidance review: Post-bootstrap command documentation
@@ -268,6 +289,7 @@ T-206 MUST:
 **Verdict**: **ALIGNED**
 
 Proof surfaces:
+
 - Spec FR-023 (line 238): "All operations MUST validate that baseline roles are not modified or removed"
 - Clarifications Q&A (lines 41, 63): "Baseline roles are protected (cannot be removed), but downstream projects can freely add supplemental team members"
 - Validator behavior: Reads all members from team.md, only checks role naming consistency in sign-offs — no team size or membership constraints
@@ -282,6 +304,7 @@ Proof surfaces:
 ## Iteration 0 Closure & Governance Hardening (Archived Details)
 
 **2026-04-18 Work Summary**:
+
 - ✅ Closure artifact drift remediation: Cleared stale "pending sign-off" language from review.md, state.md, retro.md after Alon recorded final sign-off (7 edits, validator PASS)
 - ✅ Governance hardening implementation complete: Added normative lifecycle contract to spec.md, explicit state machine to contracts/iteration-artifacts.md, single coordinator protocol to .squad/protocol.md (3 artifacts updated)
 - ✅ Iteration 0 closure audit: All four phases complete; platform validation passed (9/9 spikes); all closure artifacts aligned and terminal
@@ -289,12 +312,14 @@ Proof surfaces:
 - ✅ Alon final sign-off: Recorded across all artifacts (plan.md, state.md, review.md, retro.md); transition from `retro` → `complete` official (2026-04-18T18:15:45Z)
 - ✅ Closure evidence validation: All closure-readiness tables regenerated at final gate time; validator passes cleanly
 
-**Board Sync & GitHub Projects**: 
+**Board Sync & GitHub Projects**:
+
 - ✅ Resolved board-automation governance (Iteration 0 async completion blocker cleared; SPECREW_PROJECT_TOKEN configured)
 - ✅ Clarified source-of-truth hierarchy: Local artifacts authoritative, GitHub Issues derived, board optional visibility
 - ✅ Board automation decision recorded: Default Status field (Todo/In Progress/Done), no custom columns, Phase labels for lifecycle tracking
 
 **Iteration 1 Planning Prerequisites**:
+
 - ✅ Identified three tier-1 governance improvements for Iteration 1 adoption (spec-authority gate pre-execute, spikes pre-planning, retro autonomous)
 - ✅ Operating policy (6 rules) recorded; awaiting team consensus before planning ceremony
 - ✅ Spec Steward role embedded in planning ceremony (Rule 1: pre-execution gate before task assignment)
@@ -309,6 +334,7 @@ Proof surfaces:
 **Root Cause**: Artifacts were finalized before Alon's sign-off was formally recorded in all closure documents. Language like "pending Alon sign-off" contradicted the actual iteration state when validator checked consistency.
 
 **Fix Applied** (7 edits across 3 artifacts):
+
 1. **review.md line 16**: Changed "Final iteration completion pending Alon sign-off" → "Alon final sign-off recorded (2026-04-18)"
 2. **review.md line 233**: Updated closure evidence table to reflect actual plan.md status = `complete` (not `retro`)
 3. **review.md line 237**: Changed "final completion still awaits Alon sign-off" → "Alon final sign-off recorded (2026-04-18)"
@@ -329,6 +355,7 @@ Proof surfaces:
 **Update**: Final sign-off recorded, governance hardening authority BINDING, Iteration 1 prerequisites clear
 
 **Key Facts**:
+
 - ✅ Alon final sign-off officially recorded (2026-04-18T18:15:45Z) — plan.md Status transitioned from `retro` → `complete`
 - ✅ Post-signoff drift cleared (2026-04-18T18:30:00Z) — all closure language updated to past-tense confirmation
 - ✅ Validator passes cleanly — no blocking issues remain
@@ -344,6 +371,7 @@ Proof surfaces:
 ### 2026-04-18: Iteration 0 Completion & Governance Hardening Analysis
 
 **Iteration 0 Verdict**: ✅ COMPLETE (100%, 0 drift events, all spikes passed)
+
 - 23/23 tasks delivered (20.5/20.5 story points, zero variance)
 - All 9 platform validation spikes PASS — Spec Kit 0.7.3 and Squad 0.9.1 compatible
 - Critical discovery: Squad-native surfaces architecture (skills, ceremonies, directives) refined mid-execution (T-017); architecture documented and decision properly routed
@@ -352,6 +380,7 @@ Proof surfaces:
 **Governance Readiness Assessment**: Foundation iteration proved governance works at precondition-only scope. MVP (Iteration 1) will expose governance gaps at higher complexity.
 
 **Six Normative Hardening Findings**:
+
 1. **Artifact Contracts** — Currently prose documentation; recommend schema validators at ceremony gates (Deferred to Iter 2)
 2. **Iteration State Machine** — Currently semantic; recommend runtime validator blocking phase skips (BLOCKING for Iter 1)
 3. **Dogfooding Governance** — Currently implicit; recommend normative directive formalizing internal compliance (BLOCKING for Iter 1)
@@ -360,6 +389,7 @@ Proof surfaces:
 6. **Coordinator Protocol** — Role responsibilities scattered; recommend `.squad/coordinator.md` centralizing handoffs (BLOCKING for Iter 1)
 
 **Recommended Actions Before Iteration 1 Planning**:
+
 - Accept 6 hardening recommendations (defer artifact schemas to Iter 2)
 - Create pre-implementation artifacts: methodology.yml, coordinator.md, schema definitions
 - Make state machine, dogfooding directive, governance-validator skill, coordinator integration TIER 0 (blocking) tasks in Iter 1 plan
@@ -382,6 +412,7 @@ Proof surfaces:
 - **User Directive**: Governance hardening is TIER 0 before Iteration 1 planning. Normative rules (operating policy) + artifact validators (governance-validator skill) + explicit protocols (coordinator.md) are blocking.
 
 **Picard action items from team**:
+
 1. Embed spec-authority gate logic into planning ceremony (yes/no gate: all tasks trace? all FRs covered?)
 2. Identify Iteration 1 architecture-risk spikes before planning ceremony
 3. Partner with La Forge on pre-planning spike session (2–4 hours, before planning ceremony)
@@ -393,18 +424,21 @@ Proof surfaces:
 **Status**: ✅ COMPLETE
 
 **Four Governance Artifacts Updated/Created**:
+
 1. **spec.md** — Added normative "Iteration Lifecycle Contract" section (phase state machine binding) + "Dogfooding Obligation" (Specrew must use Specrew)
 2. **contracts/iteration-artifacts.md** — Made phase state machine explicit with validation gates per phase; artifact production table; abandoned iteration rule
 3. **Created `.squad/protocol.md`** — Single coordinator protocol: role responsibilities (6 roles), decision-making workflow (routine/tracked/escalation), iteration coordination (4-phase sequence), 6 operating rules, conflict resolution, escalation summary
 4. **`.squad/decisions/inbox/picard-governance-hardening-implementation.md`** — Decision record documenting all changes and alignment with architecture
 
 **Scope Addressed**:
+
 - ✅ Lifecycle contract is now normative (binding, not guidance)
 - ✅ Phase state machine restated as operating rule (in spec + protocol)
 - ✅ Dogfooding obligations clarified (Specrew follows Specrew)
 - ✅ Single coordinator protocol document created
 
 **Deferred to Iteration 1**:
+
 - Governance-validator skill (enforces state machine at gates)
 - `.specrew/methodology.yml` (runtime config)
 
@@ -433,10 +467,12 @@ Proof surfaces:
 3. **.squad/protocol.md**: Single source of truth for roles (6 roles), decision workflows, iteration coordination (4-phase sequence), 6 operating rules, escalation paths
 
 **Governance Scope vs. Implementation Roadmap**:
+
 - ✅ **Iter 0 (Completed)**: Artifact contracts, state machine normative, dogfooding binding, coordinator protocol
 - ⏳ **Iter 1 (Deferred)**: Governance-validator skill (FR-008), methodology.yml runtime config
 
 **Implications for Iteration 1**:
+
 - Phase state machine now has binding authority (not optional guidance); Iteration 1 plan cannot skip phases
 - Dogfooding obligation means Iteration 1 tasks must be traceable to FRs (same discipline as downstream customers)
 - .squad/protocol.md defines Picard's embedding in planning ceremony for spec-authority pre-gate (Rule 1)
@@ -455,10 +491,11 @@ Proof surfaces:
 **Discovery**: Review artifact had snapshot-stale closure evidence. Contract gate (iteration-artifacts.md § Artifact Validation Gates) specifies that "before completing" requires Alon sign-off to transition from `retro` to `complete`. Review.md contained False evidence contradicting the actual plan.md semantics.
 
 **Fix Applied**:
+
 - Updated line 230: Changed false claim "Line 4 currently reads Status: complete" to accurate "Line 5 currently reads Status: retro"
 - Updated line 231: Changed false claim "Completed: 2026-04-18" to accurate "Completed: (blank, recorded after Alon sign-off)"
 
-**Key Insight**: Review artifacts that contain *evidence tables* (verification gates that claim to validate metadata) can become stale if they were written before execution completed. Must regenerate closure readiness verification after all phase artifacts are finalized, not copy from earlier review drafts. 
+**Key Insight**: Review artifacts that contain *evidence tables* (verification gates that claim to validate metadata) can become stale if they were written before execution completed. Must regenerate closure readiness verification after all phase artifacts are finalized, not copy from earlier review drafts.
 
 **Pattern**: Closure evidence (artifact validation table) must be regenerated at **Final Gate Validation** phase, not carried forward. Recommend template guidance for review.md authors: "Closure readiness table MUST be regenerated from current artifacts at review-complete time, not copied from draft versions."
 
@@ -502,6 +539,7 @@ Picard reviewed three governance surfaces ahead of Iteration 1 execution:
 **Single Best Governance Action**: Formalize three tier-1 improvements in Iteration 1 planning charter + `.squad/protocol.md` before execution begins.
 
 **Three Tier-1 Improvements** (zero effort, high ROI):
+
 1. **Spec-Authority Gate Pre-Execution** (planning ceremony) — prevents 80%+ late-stage plan churn
 2. **Architecture-Risk Spikes Pre-Planning** (pre-ceremony) — eliminates hidden blocking dependencies
 3. **Retro Ceremony Autonomous from Sign-Off** (fixed schedule) — improve learning velocity
@@ -519,6 +557,7 @@ Picard reviewed three governance surfaces ahead of Iteration 1 execution:
 **Action**: Record Alon's final governance authority sign-off in all iteration closure artifacts.
 
 **Artifacts Updated**:
+
 1. ✅ **plan.md**: Status transitioned from `retro` → `complete`; Completed date recorded (2026-04-18)
 2. ✅ **state.md**: Current Phase transitioned to `complete`; Final Sign-Off recorded with explicit attribution (Alon, 2026-04-18)
 3. ✅ **review.md**: Verdict Summary updated to reflect `complete` status; Sign-Off Checklist appended with Alon final sign-off; removed pending language
@@ -526,6 +565,7 @@ Picard reviewed three governance surfaces ahead of Iteration 1 execution:
 5. ✅ **.squad/identity/now.md**: Focus area updated to reflect Iteration 0 complete; active issues shifted to Iteration 1 prerequisites
 
 **Closure Semantics Verified**:
+
 - Spec contract (iteration-artifacts.md) gate logic: "Before completing: `retro.md` MUST exist with all mandatory fields, and Alon MUST record final sign-off"
 - ✅ retro.md exists and is complete
 
@@ -534,17 +574,20 @@ Picard reviewed three governance surfaces ahead of Iteration 1 execution:
 - ✅ All four phase artifacts (plan, state, review, retro) are consistent and terminal
 
 **Wording Precision**:
+
 - Used "final governance authority sign-off" (not "pending" or "provisional")
 - Recorded explicit date stamp (2026-04-18) for accountability
 - Noted Chief Architect & Reviewer role for clarity on authority
 
 **Traceability**:
+
 - Iteration 0 closure ties to spec requirement: "Completion gate = Alon must record final sign-off" (contracts/iteration-artifacts.md § Complete phase)
 - Dogfooding obligation satisfied: Specrew used its own governance lifecycle for Iteration 0 (binding proof for Iteration 1+)
 
 **Key Insight**: Closure semantics require precision about *what* is being signed off: governance authority approval (Alon records this), not just task completion verdicts (Worf records these). Sign-off is a separate, deliberate act that gates the state-machine transition to `complete`. Capturing the distinction in artifacts prevents ambiguity in future iterations.
 
 **Implication for Iteration 1**:
+
 - Sign-off is now a normative part of iteration closure (not optional)
 - Review and retro are separate phases that close independently; sign-off is a third gate
 - Iteration 1 planning ceremony charter must embed the understanding that *any iteration* cannot move to `complete` without Alon's final recorded sign-off
@@ -560,11 +603,13 @@ Picard reviewed three governance surfaces ahead of Iteration 1 execution:
 **Task**: Correct `.squad/protocol.md` GitHub Projects V2 board-sync section to align with authoritative default Status-field rule set.
 
 **Findings**:
+
 - `.squad/protocol.md` still described custom board columns (`Backlog`, `In Review`, `Retrospective`, `Closed`)
 - But all authoritative artifacts (spec.md, plan.md, docs/github-project.md, sync script) already standardized on default **Status** field
 - Reviewer correctly identified this drift
 
 **Corrections Applied**:
+
 1. Updated protocol.md board-sync section (lines 450–565) to use default Status field nomenclature only
 2. Mapped iteration phases to Status values:
    - `planning` → `Todo`
@@ -584,6 +629,7 @@ Picard reviewed three governance surfaces ahead of Iteration 1 execution:
 **Task**: Scribe orchestration — merge inbox decisions into decisions.md and propagate team updates to affected agent histories.
 
 **Work Performed** (by Scribe):
+
 1. ✅ Created orchestration-log entries for Picard (board-protocol-sync) and Worf (reviewer-drift-pass)
 2. ✅ Created session-log entry (reviewer-drift-assessment)
 3. ✅ Merged 12 inbox decision files into decisions.md
@@ -591,6 +637,7 @@ Picard reviewed three governance surfaces ahead of Iteration 1 execution:
 5. ✅ Appended team updates to Picard and Worf histories
 
 **Inbox Items Merged**:
+
 - picard-board-protocol-sync.md (protocol drift resolved)
 - picard-board-sot.md (source-of-truth governance)
 - picard-clear-signoff-drift.md (post-signoff language drift)
@@ -634,6 +681,7 @@ Picard reviewed three governance surfaces ahead of Iteration 1 execution:
    - **.squad/decisions/inbox/picard-board-sot.md**: Decision record documenting all changes
 
 **Implications for Iteration 1**:
+
 - Before Iteration 1 planning can approve plan: Squad automation for issue creation must be designed/validated (Spike 10 or equivalent)
 - Board column mapping must be confirmed (planning ↔ Backlog, executing ↔ In Progress, reviewing ↔ In Review, retro ↔ Retrospective, complete ↔ Closed)
 - Fallback procedure must be accessible and documented
@@ -659,10 +707,12 @@ Picard reviewed three governance surfaces ahead of Iteration 1 execution:
 3. **Does NOT Overstate Bootstrap Success**: Pre-install and post-install dependency validation failures both exit with code 1 or 4 (specrew-init.ps1:1346-1371). Downstream failures (agent detection, auth context) log warnings but do NOT exit — correct per spec R4-Q20 clarification. Exit 0 only reached if no exceptions thrown (specrew-init.ps1:1543). Test confirms: bootstrap-to-iteration.ps1 correctly SKIPs assertions when tooling unavailable, exiting 0 (correct for CI environments).
 
 **Exit Code Contract** ✅:
+
 - **BLOCKING** (stop bootstrap): 1 (unhealthy), 4 (missing), 3 (argument error)
 - **NON-BLOCKING** (continue with warning): Copilot detection, GitHub auth, delegated metadata
 
 **Documentation Alignment** ✅:
+
 - `getting-started.md` (Lines 142-154) correctly instructs users to check `specify version` manually
 - Matches current validator behavior
 - Provides troubleshooting path for Spec Kit health issues
@@ -678,6 +728,7 @@ Picard reviewed three governance surfaces ahead of Iteration 1 execution:
 **Root Cause**: Plan.md was authored before the normative source-of-truth correction (board MUST be used, not MAY be used, for Specrew self-development). The phrase "Issue tracking (optional)" and "Project board (optional)" remained in the plan even after spec.md and protocol.md were corrected.
 
 **Drift Evidence** (from Worf review):
+
 - Section 9 line: "Issue tracking (optional): GitHub Issues are *optionally* created..."
 - Section 9 line: "Project board (optional): GitHub Projects V2 may be used for visibility if the team chooses"
 - Iteration 0 deliverables table: "GitHub Project board (optional)"
@@ -702,6 +753,7 @@ All three contradicted the corrected rule: **Specrew self-development MUST use G
 **Key Insight**: Governance drift at the planning artifact level surfaces when upstream (spec) corrects a rule but downstream (plan, tasks) is not automatically refreshed. Plan.md was correct in intent (local artifacts are authoritative) but incorrect in scope (saying board was optional when it was actually required). Remediation required explicit re-alignment with the source spec, not just cascade-down automation. Future reviews should verify that all three layers (spec, plan, tasks) use the same language for governance rules (MUST vs. MAY).
 
 **Traceability**: Fix aligns `plan.md` with:
+
 - `spec.md` § Clarifications (GitHub Projects V2): "Specrew's own development MUST use GitHub Projects V2"
 - `.squad/protocol.md` § Iteration Coordination: "board is a derived operational mirror, manual board management is never normal"
 - `docs/github-project.md` § Overview: "GitHub Issues and Project items are synchronized from local artifacts for visibility, but they are not the authoritative source"
@@ -713,12 +765,14 @@ All three contradicted the corrected rule: **Specrew self-development MUST use G
 **Task**: Remove live drift in `.squad/protocol.md` where the board-sync section still described custom columns instead of the authoritative GitHub Projects V2 default **Status** field.
 
 **Authority Set Checked**:
+
 - `specs/001-specrew-product/spec.md`
 - `specs/001-specrew-product/plan.md`
 - `docs/github-project.md`
 - `.github/scripts/sync-specrew-board.ps1`
 
 **Fix Applied**:
+
 - Replaced stale custom-column references (`Backlog`, `In Review`, `Retrospective`, `Closed`) with default **Status** language
 - Aligned protocol mapping to automation: `planning` → `Todo`; `executing` / `reviewing` / `retro` → `In Progress`; `complete` / `abandoned` → `Done`
 - Clarified that board items use **Status** while mirrored issues close only when authoritative completion warrants it
@@ -728,6 +782,7 @@ All three contradicted the corrected rule: **Specrew self-development MUST use G
 **Reusable Pattern**: When board behavior is questioned, compare protocol wording directly against the authority quartet (spec, plan, operational doc, sync script) and normalize everything to GitHub Projects' default **Status** field before considering broader edits.
 
 **Key Paths**:
+
 - `.squad/protocol.md`
 - `docs/github-project.md`
 - `.github/scripts/sync-specrew-board.ps1`
@@ -737,17 +792,20 @@ All three contradicted the corrected rule: **Specrew self-development MUST use G
 ## Deployment Review Cycle & Slice 2 Guardrails (2026-04-19T20:40:24Z)
 
 **Deployment Guardrails Decision (2026-04-19T20:24:18Z)**:
+
 - Created 8-gate acceptance framework for La Forge's runtime-surface deployment slice (T-005–T-008)
 - Scope: Spec Kit extension deployment, Squad skills deployment, ceremonies merge (all three: planning, review/demo, retro), directive embedding, baseline role merge (5 baseline roles)
 - Deferred: FR-020 (brownfield), FR-007 (configurable effort), FR-012 (collision detector), directive/ceremony logic
 - Blocked no implementation; gates coherent with source requirements
 
 **Initial La Forge Deployment Defects (Worf Initial Review — NEEDS-WORK)**:
+
 - Defect 1: Retro ceremony surface not deployed (only planning + review/demo in deploy-squad-runtime.ps1 lines 323-329)
 - Defect 2: Deferred `specrew-iteration-resume` skill shipped (FR-019 → Iteration 2 explicit deferral)
 - **Picard Action**: Locked out; awaiting revision ownership
 
 **Picard Correction Cycle (2026-04-19T20:40:24Z)**:
+
 - Created narrowly-scoped revision addressing both defects
 - Fix 1: Added `retro.md` to ceremony deployment list (lines 323-327)
 - Fix 2: Added filter to exclude `iteration-resume.md` from skill deployment (line 315)
@@ -756,12 +814,14 @@ All three contradicted the corrected rule: **Specrew self-development MUST use G
 - **Verdict**: Ready for Worf re-review
 
 **Worf Re-Review Acceptance (PASS)**:
+
 - ✅ Retro ceremony: Fresh dry-run and live smoke confirm all three ceremonies deployed
 - ✅ Deferred skill: Dry-run shows 3 skills only; smoke confirms `ResumeSkillPresent: False`
 - ✅ Scope validation: Fresh smoke bootstrap successful; validator passes iterations 000 and 001
 - **Picard Status**: Slice 2 runtime-surface deployment now meets reviewer standard; execution-ready
 
-**Decisions Merged**: 
+**Decisions Merged**:
+
 - `worf-deployment-slice-review.md` (initial NEEDS-WORK verdict)
 - `picard-deployment-slice-revision.md` (correction cycle details)
 - `worf-deployment-slice-rereview.md` (PASS verdict)
@@ -778,26 +838,29 @@ All three contradicted the corrected rule: **Specrew self-development MUST use G
 ---
 
 📌 **FR-022 Audit Timeline Hygiene Leadership (2026-04-22T21:35:46Z)**:
-   - ✅ Identified backdating violations in decisions.md narratives
-   - ✅ Led temporal accuracy corrections with Worf (reviewer)
-   - ✅ Corrected title, date, and author fields for FR-022 re-review
-   - ✅ Enforced "record actual completion date, not planning date" principle
-   - ✅ Clarified git-tracking causality and reviewer lockout trail
-   - **Status**: Timeline hygiene and audit trail durability restored
+
+- ✅ Identified backdating violations in decisions.md narratives
+- ✅ Led temporal accuracy corrections with Worf (reviewer)
+- ✅ Corrected title, date, and author fields for FR-022 re-review
+- ✅ Enforced "record actual completion date, not planning date" principle
+- ✅ Clarified git-tracking causality and reviewer lockout trail
+- **Status**: Timeline hygiene and audit trail durability restored
 
 📌 **Decision Inbox Merged (2026-04-22T21:35:46Z)**:
-   - ✅ 9 inbox decisions consolidated into decisions.md
-   - ✅ Cross-agent history synchronized
-   - **Status**: Session state updated
+
+- ✅ 9 inbox decisions consolidated into decisions.md
+- ✅ Cross-agent history synchronized
+- **Status**: Session state updated
 
 ---
 
 📌 **Remediation Acceptance Review Complete (2026-04-25T17:10:13Z)**:
-   - ✅ T-006 Squad skills deployment implementation reviewed and accepted
-   - ✅ Iteration 1 plan corrections verified (carryover representation, capacity math, task normalization)
-   - ✅ All remediation defects closed (T-007, T-008, T-009 remain recorded done)
-   - ✅ Preferred agent scope discussion deferred to Iteration 2
-   - **Status**: Remediation accepted; ready for delivery
+
+- ✅ T-006 Squad skills deployment implementation reviewed and accepted
+- ✅ Iteration 1 plan corrections verified (carryover representation, capacity math, task normalization)
+- ✅ All remediation defects closed (T-007, T-008, T-009 remain recorded done)
+- ✅ Preferred agent scope discussion deferred to Iteration 2
+- **Status**: Remediation accepted; ready for delivery
 
 📌 **Session Log — FR-020 Brownfield Bootstrap Handoff (2026-05-03)**:
     - **Session:** Brownfield bootstrap implementation → pre-review → reviewer gate
@@ -811,9 +874,11 @@ All three contradicted the corrected rule: **Specrew self-development MUST use G
 
 **Context**: External review identified artifact drift — Iteration 002 plan.md claimed Status: planning yet showed tasks with execution outcomes (done/rework status, Agent/Actual/Verdict fields populated) without required lifecycle artifacts (state.md, drift-log.md, review.md).
 
-**Issue**: 
+**Issue**:
+
 - Tasks T-201 through T-204 incorrectly marked done with execution evidence (agent names, actual effort, verdicts)
-- Tasks T-205 and T-206 used invalid status ework (contract requires 
+- Tasks T-205 and T-206 used invalid status
+ework (contract requires
 eeds-rework)
 - Governance validator failed on Iteration 002
 
@@ -828,6 +893,7 @@ eeds-rework)
 **Context**: Alon requested a drift check on the bootstrap guard fix, specifically whether allowing a folder with only `.git` is consistent with the greenfield bootstrap contract, and whether real brownfield/populated repos stay on the additive review-first path.
 
 **Audit Scope**:
+
 - Spec authority (spec.md line 42: greenfield vs brownfield contract)
 - Docs contract (getting-started.md line 56: ".git-only counts as fresh")
 - Implementation (specrew-init.ps1 lines 1217–1229: guard logic)
@@ -869,6 +935,7 @@ eeds-rework)
    - .git + README + -Force → allowed (greenfield or brownfield path per .specify/.squad status) ✓
 
 **Conclusion**: NO SPEC DRIFT DETECTED. The bootstrap guard implementation, spec, docs, and tests are fully aligned. The guard correctly:
+
 - Allows .git-only repos to proceed as greenfield without -Force (satisfies greenfield contract)
 - Blocks populated greenfield repos without -Force, requiring explicit `-Force` flag (guards against accidental overwrites)
 - Routes populated repos with .specify/.squad to additive brownfield merge (preserves existing governance)
@@ -885,6 +952,7 @@ All three decision points (greenfield contract, brownfield additive flow, guard 
 **Root Cause**: scripts/specrew-init.ps1 used --integration copilot and --offline flags, but the actual Spec Kit CLI (0.7.3) accepts --ai copilot and does not support --offline.
 
 **Fix Applied**:
+
 1. Corrected scripts/specrew-init.ps1 line 1405: --integration copilot → --ai copilot
 2. Removed unsupported --offline flag
 3. Updated docs/getting-started.md with truthful Known Limitations section explaining:
@@ -893,33 +961,36 @@ All three decision points (greenfield contract, brownfield additive flow, guard 
    - Workaround: use Windows Terminal or VS Code terminal with UTF-8 support
    - Documented what works (validator, corrected flags) vs. what's environment-dependent (CLI banner rendering)
 
-**Validator Fix Preservation**: Verified 	ests/integration/validate-versions-cli-behavior.ps1 still passes (both healthy and broken Spec Kit scenarios).
+**Validator Fix Preservation**: Verified  ests/integration/validate-versions-cli-behavior.ps1 still passes (both healthy and broken Spec Kit scenarios).
 
 **Alignment**: The fix addresses Worf's rejection criteria:
+
 - Bootstrap flag mismatch is resolved
 - Documentation no longer overclaims full end-to-end success
 - Truthfully describes the remaining limitation (upstream CLI encoding issue)
 - Preserves the validator fix from the previous slice
 
 **Key Files**:
+
 - scripts/specrew-init.ps1 (line 1401, 1405): flag correction
 - docs/getting-started.md: Known Limitations section
-- 	ests/integration/validate-versions-cli-behavior.ps1: validator test coverage
+- ests/integration/validate-versions-cli-behavior.ps1: validator test coverage
 
 **Decision**: Document environment-specific issues honestly rather than promise success that depends on factors outside Specrew's control (upstream CLI rendering bugs, terminal encoding support).
-
 
 ### 2026-04-21: Bootstrap Non-Blocking Requirement Clarification
 
 **Context**: Alon directed update to spec to reflect product decision on deterministic bootstrap with protected baseline roles, bypassing Squad's team-member casting interview.
 
 **Decision**: Updated spec.md clarification (Session 2026-04-21), FR-002, User Story 1, acceptance criteria, and Key Entities to reflect:
+
 - `specrew init` MUST use `squad init --non-interactive` to deploy five protected baseline roles without blocking
 - Bootstrap completes deterministically without user interaction on team composition
 - Post-bootstrap guidance explicitly directs users to extend team via Squad configuration
 - Baseline roles (Spec Steward, Planner, Implementer, Reviewer, Retro Facilitator) are protected; supplemental members freely addable
 
 **Key File Paths**:
+
 - `specs/001-specrew-product/spec.md` (lines 41, 213, 83, 91, 94, 325, 362)
 - `scripts/specrew-init.ps1` (squad init invocation at lines 1600-1610)
 
@@ -927,12 +998,12 @@ All three decision points (greenfield contract, brownfield additive flow, guard 
 
 **Traceability**: This aligns with FR-002 (bootstrap ownership), User Story 1 (bootstrap flow), and Acceptance Scenario 1 & 4 (team configuration without blocking).
 
-
 ## 2026-04-17: Command-Driven Team Management Requirement
 
 **Context**: User directive mandated that team member management must be command-driven; users should not have to edit multiple .squad files manually.
 
 **Action Taken**:
+
 1. Updated spec.md to replace all references to "Squad's standard team configuration workflows" with "command-driven team management interface"
 2. Added new FR-023 requiring specrew team add/update/remove/list commands with atomicity, validation, and error handling
 3. Updated clarifications (lines 41, 63), user scenarios (line 87), acceptance scenarios (lines 95, 98), FR-002 (line 217), crew composition definition (line 329), command inventory (added team commands), and platform facts (line 371)
@@ -959,12 +1030,14 @@ All three decision points (greenfield contract, brownfield additive flow, guard 
 **Solution**: Re-stage both files (`scripts/specrew-team.ps1`, `tests/integration/team-management.ps1`) to include the Unix-style flag handler. No code changes required; this is a mechanical staging operation.
 
 **Validation**:
+
 - ✅ Unix-style flag handler present in staged artifact (lines 20-62)
 - ✅ Tests validate `--role` and `--charter` syntax (8/8 integration test scenarios pass)
 - ✅ Documentation alignment confirmed (README.md:70-72, getting-started.md:111-113, user-guide.md:116-118 all show Unix-style flags)
 - ✅ Spec contract fulfilled (FR-023, spec.md:238, 296-298 explicitly require `--role` and `--charter` flags)
 
 **Key Learning**: When reviewer rejects for "missing feature X in artifact", first verify if X exists in working tree but is unstaged. Use `git diff --cached` to compare staged vs. working tree. Staging truth gaps are mechanical fixes, not logic rework. This is distinct from:
+
 - **Logic drift** (implementation deviates from spec)
 - **Contract drift** (spec requires feature not implemented)
 - **Documentation drift** (docs contradict implementation)

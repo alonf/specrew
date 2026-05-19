@@ -1,0 +1,5 @@
+schema: v1
+team_id: team-delta
+specrew_version: 0.23.0
+capacity_unit: story_points
+default_iteration_capacity: 20

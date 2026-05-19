@@ -33,7 +33,7 @@
 | Implementation | 7 | 7 | 0 | All Phase 1 + Phase 2 detector and baseline tracking logic (T032-T036, T041) delivered without rework. Clean integration into `specrew-start.ps1`; no blockers or false starts. |
 | Testing | 3 | 3 | 0 | Test fixture scaffolding (T037-T040) and integration test suite (T038-T040) all passing on first run against T041. All three tests deterministically verify detector accuracy, baseline durability, and auto-continue preservation. |
 | Review | 1 | 1 | 0 | Review completed at commit fb926fe with no gaps found. All 14 tasks passed review verdicts; no rework loop required. Review boundary clean and evidence-based. |
-| Rework | 0 | 0 | 0 | No needs-work returned from review; zero rework effort consumed.
+| Rework | 0 | 0 | 0 | No needs-work returned from review; zero rework effort consumed. |
 
 ## Drift Summary
 

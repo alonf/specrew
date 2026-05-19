@@ -13,12 +13,14 @@ I turn Specrew's requirements into iteration plans, task maps, and explicit depe
 ### Iteration 0 → Iteration 1 Transition (2026-04-17 to 2026-04-25)
 
 **Iteration 0 Closure (Apr 17-18)**:
+
 - Execution: 23/23 tasks completed; 20.5/20.5 pts exact (0% variance); zero drift
 - Artifacts: Contract-complete (plan.md, state.md, drift-log.md, review.md verified)
 - Capacity baseline: 100% estimation accuracy established; baseline for all future iterations
 - Retrospective: Autonomous phase on fixed schedule (decoupled from sign-off)
 
 **Iteration 1 Planning (Apr 18-19)**:
+
 - Created 22-task, 20.5-pt execution plan; 100% FR-to-task mapping; MVP scope
 - Pre-execution readiness: Three pivot questions resolved (resume depth, board-sync ops, execution window)
 - Plan contract violations corrected: Picard fixed Started metadata and T-022 story reference
@@ -26,6 +28,7 @@ I turn Specrew's requirements into iteration plans, task maps, and explicit depe
 - Key learning: Plan language must distinguish task artifacts vs. deferred programmatic features
 
 **Iteration 1a Execution (Apr 19-25)**:
+
 - T-005 extension deployment: PASS (binding requirements for specify CLI + fallback registration + isolation flag)
 - T-006 squad skills: PASS (narrow increment isolates skill deployment from ceremonies; unblocks T-007–T-009)
 - Capacity: 6.5/20.5 pts delivered; 14.0 pts execution queued
@@ -34,77 +37,85 @@ I turn Specrew's requirements into iteration plans, task maps, and explicit depe
 ## Recent Updates
 
 📌 **Shell PATH Literal-Safe Check Fix Complete (2026-04-18)**:
-   - Problem: PATH convenience guidance used `-notlike "*{path}*"` which breaks when clone path contains wildcard characters like `[`, `]`, `*`, or `?`
-   - Solution: Replaced wildcard-based checking with literal-safe array tokenization using `$currentPath -split ";"` followed by `-notcontains` operator
-   - Scope: Four surfaces updated consistently (bootstrap output in specrew-init.ps1, README.md, docs/getting-started.md, docs/user-guide.md)
-   - Testing: Existing integration test `bootstrap-to-iteration.ps1` passes; PATH guidance displays correctly in bootstrap output
-   - Rationale: Correctness fix for users cloning to paths with special characters; no new dependencies; maintains backward compatibility
-   - Status: Decision recorded in `.squad\decisions\inbox\data-shell-path-literal-fix.md`
+
+- Problem: PATH convenience guidance used `-notlike "*{path}*"` which breaks when clone path contains wildcard characters like `[`, `]`, `*`, or `?`
+- Solution: Replaced wildcard-based checking with literal-safe array tokenization using `$currentPath -split ";"` followed by `-notcontains` operator
+- Scope: Four surfaces updated consistently (bootstrap output in specrew-init.ps1, README.md, docs/getting-started.md, docs/user-guide.md)
+- Testing: Existing integration test `bootstrap-to-iteration.ps1` passes; PATH guidance displays correctly in bootstrap output
+- Rationale: Correctness fix for users cloning to paths with special characters; no new dependencies; maintains backward compatibility
+- Status: Decision recorded in `.squad\decisions\inbox\data-shell-path-literal-fix.md`
 
 📌 **Baseline Team Validation Fix Complete (2026-05-04)**:
-   - Problem: Validator had no team composition validation; missing baseline roles could go undetected
-   - Solution: Added `Test-BaselineTeamMembers` function to verify all five required baseline roles are present
-   - Scope: Validation checks ONLY for baseline roles (Spec Steward, Planner, Implementer, Reviewer, Retro Facilitator); custom members explicitly ignored
-   - Implementation: Updated `Get-TeamRoleMap` to read from both standard "Members" section and Specrew-managed "Specrew Baseline Roles" section
-   - Testing: Created comprehensive test suite (`tests\integration\validate-baseline-team.ps1`) covering baseline-only, baseline+custom, missing baseline, and multiple custom members
-   - Validation: All existing integration tests still pass (team-management.ps1, bootstrap-to-iteration.ps1)
-   - Status: Decision recorded in `.squad\decisions\inbox\data-baseline-validation-fix.md`
+
+- Problem: Validator had no team composition validation; missing baseline roles could go undetected
+- Solution: Added `Test-BaselineTeamMembers` function to verify all five required baseline roles are present
+- Scope: Validation checks ONLY for baseline roles (Spec Steward, Planner, Implementer, Reviewer, Retro Facilitator); custom members explicitly ignored
+- Implementation: Updated `Get-TeamRoleMap` to read from both standard "Members" section and Specrew-managed "Specrew Baseline Roles" section
+- Testing: Created comprehensive test suite (`tests\integration\validate-baseline-team.ps1`) covering baseline-only, baseline+custom, missing baseline, and multiple custom members
+- Validation: All existing integration tests still pass (team-management.ps1, bootstrap-to-iteration.ps1)
+- Status: Decision recorded in `.squad\decisions\inbox\data-baseline-validation-fix.md`
 
 📌 **FR-020 Brownfield Bootstrap Revision Complete (2026-05-03)**:
-   - Initial verdict: NEEDS-WORK (Worf); rejection binding
-   - Rejected artifacts: `scripts\specrew-init.ps1`, brownfield merge logic, user docs
-   - Blockers resolved:
+
+- Initial verdict: NEEDS-WORK (Worf); rejection binding
+- Rejected artifacts: `scripts\specrew-init.ps1`, brownfield merge logic, user docs
+- Blockers resolved:
      1. Conflicts now force decision path: `scripts\specrew-init.ps1` exits with code 5 before deployment touches any brownfield surfaces
      2. `-Force` does not bypass conflict checks: Conflict resolution mandatory regardless of flags
      3. Dry-run creates reviewable artifact: `.specrew\bootstrap-dry-run-{timestamp}.md` generated with full brownfield analysis report
      4. Full entrypoint coverage added: `tests\integration\brownfield-conflict-handling.ps1` validates all four scenarios (dry-run artifact, conflict blocking, -Force bypass prevention, no-conflict success)
-   - Revisions:
-     - Modified `scripts\specrew-init.ps1` lines 1230-1330: Added conflict detection gate before deployment, dry-run artifact generation, exit code 5 enforcement
-     - Created `tests\integration\brownfield-conflict-handling.ps1`: Comprehensive brownfield conflict handling test suite
-     - Updated `tests\README.md`: Added new test to integration check list
-     - Updated `docs\user-guide.md`: Documented dry-run artifact behavior and -Force conflict enforcement
-   - Validation: All integration tests pass (brownfield-merge.ps1, brownfield-conflict-handling.ps1, bootstrap-to-iteration.ps1)
-   - Iteration tracking: Updated `specs\001-specrew-product\iterations\002\plan.md` to reflect T-205/T-206 rework status
-   - Status: Ready for Worf re-review
+- Revisions:
+  - Modified `scripts\specrew-init.ps1` lines 1230-1330: Added conflict detection gate before deployment, dry-run artifact generation, exit code 5 enforcement
+  - Created `tests\integration\brownfield-conflict-handling.ps1`: Comprehensive brownfield conflict handling test suite
+  - Updated `tests\README.md`: Added new test to integration check list
+  - Updated `docs\user-guide.md`: Documented dry-run artifact behavior and -Force conflict enforcement
+- Validation: All integration tests pass (brownfield-merge.ps1, brownfield-conflict-handling.ps1, bootstrap-to-iteration.ps1)
+- Iteration tracking: Updated `specs\001-specrew-product\iterations\002\plan.md` to reflect T-205/T-206 rework status
+- Status: Ready for Worf re-review
 
 📌 **FR-020 Brownfield Bootstrap Review — NEEDS-WORK (2026-05-03)**:
-   - Verdict: NEEDS-WORK (Worf); rejection binding
-   - Rejected artifacts: `scripts\specrew-init.ps1`, `extensions\specrew-speckit\scripts\brownfield-merge.ps1`, `extensions\specrew-speckit\scripts\deploy-squad-runtime.ps1`, `docs\user-guide.md`
-   - Blockers: Conflicts detected but not enforced; charter mutations silent; dry-run not reviewable; test coverage gap
-   - **Data reassigned as revision author** for narrow FR-020 rework
-   - Constraint: La Forge locked out for this revision cycle
-   - Actions: Add conflict-resolution gate; protect charter mutation; produce persistent dry-run artifact; expand test coverage
-   - Status: Orchestration logged; handoff complete
+
+- Verdict: NEEDS-WORK (Worf); rejection binding
+- Rejected artifacts: `scripts\specrew-init.ps1`, `extensions\specrew-speckit\scripts\brownfield-merge.ps1`, `extensions\specrew-speckit\scripts\deploy-squad-runtime.ps1`, `docs\user-guide.md`
+- Blockers: Conflicts detected but not enforced; charter mutations silent; dry-run not reviewable; test coverage gap
+- **Data reassigned as revision author** for narrow FR-020 rework
+- Constraint: La Forge locked out for this revision cycle
+- Actions: Add conflict-resolution gate; protect charter mutation; produce persistent dry-run artifact; expand test coverage
+- Status: Orchestration logged; handoff complete
 
 📌 **FR-020 Brownfield Bootstrap Acceptance Re-Review (2026-05-03)**:
-   - Verdict: **PASS** (Acceptance binding)
-   - Revision complete: All four prior blockers resolved
-   - Evidence verified:
-     - Conflict detection with enforcement: `scripts\specrew-init.ps1:1230-1324` exits with code 5 before deployment touches brownfield surfaces
-     - Persistent dry-run artifact: `.specrew\bootstrap-dry-run-{timestamp}.md` generated with full brownfield analysis
-     - `-Force` no-bypass rule: Conflict checks mandatory regardless of flags
-     - Full entrypoint test coverage: `tests\integration\brownfield-conflict-handling.ps1` validates all four scenarios
-   - Scope maintained: Narrow to T-205/T-206 brownfield bootstrap safety only
-   - Status: Acceptance handoff complete; orchestration logged
+
+- Verdict: **PASS** (Acceptance binding)
+- Revision complete: All four prior blockers resolved
+- Evidence verified:
+  - Conflict detection with enforcement: `scripts\specrew-init.ps1:1230-1324` exits with code 5 before deployment touches brownfield surfaces
+  - Persistent dry-run artifact: `.specrew\bootstrap-dry-run-{timestamp}.md` generated with full brownfield analysis
+  - `-Force` no-bypass rule: Conflict checks mandatory regardless of flags
+  - Full entrypoint test coverage: `tests\integration\brownfield-conflict-handling.ps1` validates all four scenarios
+- Scope maintained: Narrow to T-205/T-206 brownfield bootstrap safety only
+- Status: Acceptance handoff complete; orchestration logged
 
 📌 Team confirmed by Alon on 2026-04-17
 
 📌 **Iteration 1 plan traceability corrections complete (2026-04-19)**:
-  - Test tasks (T-020, T-021, T-022) mapped to FRs they validate
-  - Phase Baseline section added (Planning 2, Impl 16, Review 1, Rework 1.5)
-  - Target FRs expanded to include FR-013
-  - Governance wording tightened for test task mappings
-  - Status: Ready for validator check
+
+- Test tasks (T-020, T-021, T-022) mapped to FRs they validate
+- Phase Baseline section added (Planning 2, Impl 16, Review 1, Rework 1.5)
+- Target FRs expanded to include FR-013
+- Governance wording tightened for test task mappings
+- Status: Ready for validator check
 
 📌 **Plan governance validation outcome (Worf, 2026-04-19)**:
-  - Verdict: NEEDS-WORK
-  - Blocker: Missing `Started` metadata (plan line 7), blank `Story` in T-022
-  - Next owner: Picard (Data locked out from next revision)
-  - Action: Picard corrects metadata/story, resubmits for validation
+
+- Verdict: NEEDS-WORK
+- Blocker: Missing `Started` metadata (plan line 7), blank `Story` in T-022
+- Next owner: Picard (Data locked out from next revision)
+- Action: Picard corrects metadata/story, resubmits for validation
 
 📌 **Decision inbox merged (2026-04-19T02:06:00Z)**:
-  - Traceability Fix decision recorded and archived
-  - 6 inbox decisions consolidated into decisions.md
+
+- Traceability Fix decision recorded and archived
+- 6 inbox decisions consolidated into decisions.md
 
 ## Learnings
 
@@ -134,23 +145,27 @@ I turn Specrew's requirements into iteration plans, task maps, and explicit depe
 ## Iteration 0 Closure & Iteration 1 Planning (Archived Details)
 
 **2026-04-18 Planning Work Summary**:
+
 - ✅ Iteration 0 execution-phase closure: Created drift-log.md, updated plan.md metadata; all 4 artifacts (plan, state, drift, review) contract-complete
 - ✅ Iteration 0 capacity baseline established: 20.5/20.5 pts with 0% variance; estimation accuracy 100%; platform validation 9/9 spikes passed
 - ✅ Artifact cleanup normalized: Updated state.md and plan.md to reflect terminal closed state (post-retro freshness); clarified phase gates
 - ✅ Closure metadata aligned: Established that iteration remains `retro` status until Alon records final sign-off; `complete` is final state (transition gates)
 
 **Iteration 1 MVP Planning**:
+
 - ✅ Created execution-ready plan: 22 tasks, 20.5 pts (matched Iter 0 proven capacity); MVP-focused scope (bootstrap, governance, ceremonies, support)
 - ✅ Scope validation: 100% task-to-FR mapping; deferred work explicitly marked (FR-007, FR-012, FR-016, FR-020 to Iter 2+)
 - ✅ Spec authority gates verified: All requirements trace to FRs; no orphan tasks; capacity math exact
 - ✅ Board documentation clarified: Established source-of-truth hierarchy (local artifacts authoritative → GitHub Issues derived → board optional visibility)
 
 **Pre-Execution Readiness Assessment** (2026-04-19):
+
 - ✅ Pivot Question 1 — Resume (shallow vs deep): Keep shallow (MVP); defer programmatic resume to Iter 2; update AC wording only
 - ✅ Pivot Question 2 — Board-sync carryover: Add 0.5-pt task for workflow deployment (Iter 0 async completion); new capacity 21/20.5 pts (justified)
 - ✅ Pivot Question 3 — Execution start condition: Recommend gated 2-hour pre-execution window (plan update → board sync → final approval)
 
 **Iteration 1 Plan Narrow Corrections** (2026-04-19):
+
 - ✅ Resume wording clarity: Removed misleading "programmatic resume" language; clarified state.md is task tracking only (FR-019 deferred to Iter 2)
 - ✅ Board-sync operational state: Added clarification that GitHub Project automation is already operational (Iter 0 completion); no carryover task added
 - ✅ Effort re-calibration: Revised task estimates downward to match Iter 0 baseline (20.5 pts, zero-variance proven model); removed "higher estimate" narrative
@@ -160,16 +175,18 @@ I turn Specrew's requirements into iteration plans, task maps, and explicit depe
 **Status**: Iteration 1 plan finalized and ready for execution. All corrections are clarifications to existing scope; no new tasks added, no scope reopened.
 
 📌 **T-005 Spec Kit Extension Deployment — ACCEPTED (2026-04-23)**:
-   - **Task**: T-005 revision completes MVP extension-deployment path
-   - **Decision**: Three binding requirements recorded in decisions.md
+
+- **Task**: T-005 revision completes MVP extension-deployment path
+- **Decision**: Three binding requirements recorded in decisions.md
      1. Prefer `specify extension add --dev` when CLI supports it
      2. Manual fallback registration requires source/path metadata
      3. `-SpecKitExtensionOnly` isolation flag enables narrow slice reviewability
-   - **Verdict**: PASS (Worf acceptance confirmed)
-   - **Continuity**: Unblocks T-006 (Squad runtime deployment)
-   - **Status**: Iteration 1a progress — 6.5/20.5 pts delivered; 14.0 pts execution queued
+- **Verdict**: PASS (Worf acceptance confirmed)
+- **Continuity**: Unblocks T-006 (Squad runtime deployment)
+- **Status**: Iteration 1a progress — 6.5/20.5 pts delivered; 14.0 pts execution queued
 
 **Cross-Agent Team Update** (2026-04-19):
+
 - **Worf (Reviewer)**: Reviewed corrected plan and issued PASS. Confirmed resume wording is aligned, board sync correctly treated as operational, effort estimates grounded in baseline. Plan cleared for planning ceremony.
 - **Scribe**: Orchestration logged; session documented; decisions merged into decisions.md.
 
@@ -180,15 +197,18 @@ I turn Specrew's requirements into iteration plans, task maps, and explicit depe
 **Context**: Iteration 0 execution completed with 100% task delivery (20.5/20.5 pts, zero drift). Review accepted. Retrospective phase blocked on missing state artifacts. Alon directed me to close iteration correctly.
 
 **Actions**:
+
 - ✅ Verified state.md exists (was already created by La Forge during execution)
 - ✅ Created drift-log.md (0 events; per contract requirement)
 - ✅ Updated plan.md metadata: Status → `complete`, Capacity → `20.5/20.5`, Completed → `2026-04-18`
 - ✅ All iteration artifact requirements now met per contracts/iteration-artifacts.md
 
 **Artifacts Created**:
+
 - `specs/001-specrew-product/iterations/000/drift-log.md` (contract compliance)
 
 **Artifacts Updated**:
+
 - `specs/001-specrew-product/iterations/000/plan.md` (terminal metadata)
 
 **Key Insight**: The iteration artifact contract (FR-005, FR-008, FR-009, FR-010) requires all four artifacts (plan.md, state.md, drift-log.md, review.md) in execution phase + planning metadata for the iteration to be contract-complete. Retrospective phase (retro.md) is separate and owned by Troi. The distinction between execution phase completeness and retrospective phase completeness is now explicit.
@@ -198,6 +218,7 @@ I turn Specrew's requirements into iteration plans, task maps, and explicit depe
 ### 2026-04-18: Iteration 0 Capacity Baseline Established
 
 **Observation**: Iteration 0 delivered at exactly planned capacity (20.5/20.5 pts, zero variance), with zero specification drift. This is the foundation data point for calibration:
+
 - Estimation accuracy: 100% (no over/undercommit)
 - Drift detection: 100% (zero drift events means planning fidelity was high)
 - Feasibility: All platform validation spikes passed with no blockers
@@ -207,6 +228,7 @@ I turn Specrew's requirements into iteration plans, task maps, and explicit depe
 ### 2026-04-18: Iteration Lifecycle Clarity
 
 **Realization**: The four-phase iteration lifecycle creates two distinct "complete" states:
+
 1. **Execution Complete** (state.md + plan.md metadata): Tasks done, spikes passed, review verdict recorded
 2. **Retrospective Complete** (retro.md written): Estimation calibration, drift summary, improvement actions documented
 
@@ -221,6 +243,7 @@ This is a planning sequencing gate, not a blocker — but it must remain explici
 **Scribe Summary**: Data's iteration 0 execution-phase closure decision merged into `.squad/decisions.md` under "2026-04-18: Iteration 0 Execution-Phase Closure Complete". Execution-phase artifacts complete and contract-safe:
 
 **Artifacts Created/Verified**:
+
 - ✅ **plan.md**: Metadata updated (Status: complete, Capacity: 20.5/20.5, Completed: 2026-04-18)
 - ✅ **state.md**: Present and verified (La Forge)
 - ✅ **drift-log.md**: Created (0 events; schema compliant)
@@ -228,6 +251,7 @@ This is a planning sequencing gate, not a blocker — but it must remain explici
 - ⏳ **retro.md**: Pending Troi (retrospective phase)
 
 **Execution Verdict**:
+
 - Task Completion: 23/23 (100%)
 - Effort Delivery: 20.5/20.5 (100% exact commitment, 0% variance)
 - Spec Drift: 0 events
@@ -236,6 +260,7 @@ This is a planning sequencing gate, not a blocker — but it must remain explici
 - Artifact Completeness: ✅ Contract-safe for retrospective
 
 **Four-Phase Lifecycle Status**:
+
 1. ✅ Planning Phase (complete 2026-04-17)
 2. ✅ Execution Phase (complete 2026-04-18)
 3. ✅ Review/Demo Phase (complete 2026-04-18, Worf sign-off)
@@ -250,6 +275,7 @@ This is a planning sequencing gate, not a blocker — but it must remain explici
 **Context**: External review identified stale wording in Iteration 0 state and plan artifacts that didn't reflect actual closure state. state.md still said "Awaiting retrospective analysis" even though retro.md was complete. plan.md marked Extension Surfaces as IN PROGRESS despite all spikes passing.
 
 **Actions**:
+
 - ✅ state.md line 15: Updated "Awaiting retrospective analysis" → "Retrospective complete (retro.md, 2026-04-18)"
 - ✅ plan.md line 55 (Governance Consistency Check): Updated Extension Surfaces gate from "✅ IN PROGRESS | Spikes 1–5, 8–11 validate documented surfaces..." → "✅ COMPLETE | Spikes 1–5, 8–11 all PASS; documented surfaces validated. Platform readiness confirmed."
 
@@ -284,6 +310,7 @@ This is a planning sequencing gate, not a blocker — but it must remain explici
 Iteration 0 closure artifacts documentation normalized to match authoritative Squad-native surfaces model and canonical spike sequencing.
 
 **Changes**:
+
 1. **plan.md summary** (line 12): Updated scaffolding description from "both Spec Kit and Squad extension" to "Spec Kit with Squad-native template sources"
 2. **spikes.md**: Normalized non-canonical spike numbers to canonical sequence (1–5, skip 6–7, 8–11) with task IDs preserved
 
@@ -302,9 +329,10 @@ Iteration 0 closure artifacts documentation normalized to match authoritative Sq
 **Session**: Data pre-execution readiness checkpoint (spawned via Copilot CLI)  
 **Status**: ✅ DECISION RECORDED (routing to Alon for confirmation)
 
-#### Three Questions Resolved
+### Three Questions Resolved
 
 **Question 1: Execution-Model Gap as Carryover Task?**
+
 - Issue: Current plan defers FR-019 (task resume) to Iteration 2 but commits to "resumable iteration state" in AC line 48
 - Ambiguity: Does "resume" mean MVP (state.md is a log; user manually reads) or Deep (programmatic resume CLI command)?
 - **Recommendation**: ✅ Keep shallow (MVP), add AC clarification only
@@ -312,6 +340,7 @@ Iteration 0 closure artifacts documentation normalized to match authoritative Sq
 - Rationale: MVP scope intact; defer programmatic resume to Iter 2 as planned
 
 **Question 2: Board-Management Carryover — Drop, Narrow, or Keep?**
+
 - Issue: Plan lists 22 tasks; none explicitly address GitHub Projects V2 board sync deployment
 - Current state: Workflow exists, tested, but NOT deployed; SPECREW_PROJECT_TOKEN now configured (blocker cleared)
 - Options: (1) Drop — risk silent non-operation; (2) Narrow — add 0.5-pt task; (3) Keep deferred — leave as async
@@ -320,6 +349,7 @@ Iteration 0 closure artifacts documentation normalized to match authoritative Sq
 - Result: New plan capacity = 21/20.5 pts (justified as governance-critical precondition)
 
 **Question 3: Iteration 1 Execution Start Condition**
+
 - Question: Immediate after Alon approval, or gated 2-hour pre-execution window?
 - **Recommendation**: ✅ Gated two-hour pre-execution window
 - Sequence:
@@ -363,6 +393,7 @@ Iteration 0 closure artifacts documentation normalized to match authoritative Sq
 5. ✅ Governance hardening prerequisites identified (three tier-1 improvements + operating policy consensus required before planning ceremony)
 
 **Next Actions**:
+
 - Alon confirms plan corrections + governance hardening rationale → Data updates plan → Data syncs board → execution begins
 - Before planning ceremony: Picard finalizes protocol.md with three tier-1 improvements; team reaches consensus on 6 operating rules
 
@@ -386,6 +417,7 @@ Created execution-ready iteration plan for Iteration 001 at `specs/001-specrew-p
 **Finding**: Docs/getting-started.md overclaimed brownfield bootstrap behavior by showing the apply step without `-Force` on populated repos.
 
 **Evidence**:
+
 - Script logic (`scripts/specrew-init.ps1` line 1226): `if ($blockingEntries.Count -gt 0 -and -not $Force -and -not $hadSpecify -and -not $hadSquad)` fails with exit code 3
 - Test validation (`tests/integration/brownfield-conflict-handling.ps1` lines 38-65): Populated directory (non-empty, no .specify/.squad) fails without `-Force`
 - Code pattern: `$blockingEntries = @($existingEntries | Where-Object { $_.Name -ne '.git' })` filters out only .git, treating all other content as blocking
@@ -393,20 +425,23 @@ Created execution-ready iteration plan for Iteration 001 at `specs/001-specrew-p
 ### Greenfield Bootstrap Truthfulness: Dependency Validation vs. Completion (2026-05-04)
 
 **Finding**: Docs/getting-started.md greenfield section overclaimed full bootstrap-to-iteration flow success by not distinguishing between:
+
 1. Dependency validation success (version detection ≠ bootstrap completion)
 2. CLI initialization success (`.specify/` and `.squad/` creation depends on Spec Kit/Squad CLIs succeeding)
 3. The Spec Kit CLI encoding blocker in some Windows environments
 
 **Context**:
+
 - Bootstrap script returns exit code 0 when dependency validation passes + `.specrew/` is created, even if `.specify/` initialization fails
 - Test `bootstrap-to-iteration.ps1` skips entirely if CLIs unavailable (lines 76-79); tests only run in CI with both CLIs operational
 - Spec Kit CLI Unicode encoding issue is documented in "Known Limitations" but positioned as a "workaround" rather than a **blocker for entire greenfield-to-iteration flow**
 
 **Fix Applied** (`docs/getting-started.md`):
+
 1. Added "Prerequisites for Full Greenfield Flow" section (lines 42-46): Explicitly states Spec Kit CLI and Squad CLI must be operational
 2. Refactored "Verify generated artifacts" step (lines 48-62): Taught users to check for `.specify/` presence as a gate; missing `.specify/` = full flow blocked
 3. Conditional step 4 (line 64): "Only if `.specify/` exists" before iteration scaffolding can run
-4. Rewrote "Known Limitations" section (lines 180-228): 
+4. Rewrote "Known Limitations" section (lines 180-228):
    - Clarified dependency validation (version detection) vs. bootstrap completion (CLI initialization success)
    - Reframed Spec Kit encoding as a **blocker** (not workaround) for greenfield-to-iteration flow
    - Provided 5-step resolution path with terminal fallback
@@ -415,6 +450,7 @@ Created execution-ready iteration plan for Iteration 001 at `specs/001-specrew-p
 **Validator and Flag Fixes Preserved**: No runtime code changes; documentation now matches actual behavior tested in CI.
 
 **Correction Applied**:
+
 - Clarified that dry-run also requires `-Force` for truly populated repos (files + no Specrew initialization)
 - Explicit note: "For populated repos (contain files beyond `.git`), `-Force` is required both for dry-run preview and for the actual bootstrap apply step."
 - Flow now matches actual behavior: try dry-run without -Force; if blocked, add -Force to both dry-run and apply
@@ -422,11 +458,13 @@ Created execution-ready iteration plan for Iteration 001 at `specs/001-specrew-p
 **File Updated**: `docs/getting-started.md` (Brownfield Quickstart section, lines 92-131)
 
 **Scope Decision**: 20.5 story points committed — same as Iteration 0 capacity. Rationale:
+
 - Iteration 0 was scaffolding-heavy (predictable, hit exactly at 20.5 pts). Iteration 1 is execution-engine-heavy but scope-disciplined to match proven capacity.
 - Highest-complexity tasks (planning ceremony 2 pts, drift-check 2 pts) are frontloaded; supporting work pruned to keep total near proven capacity.
 - This conservative approach reflects the move from scaffolding to runtime behavior and allows for variance learning.
 
 **Deferred to Iter 2+**:
+
 - Brownfield bootstrap (FR-020) — deferred to allow MVP stability post-Iter 1
 - Configurable effort model (FR-007) — requires calibration data from multiple iterations
 - Five-class collision detector (FR-012) — scope-reduced to hook + role collision check only (in T-010)
@@ -434,6 +472,7 @@ Created execution-ready iteration plan for Iteration 001 at `specs/001-specrew-p
 - Outcome scorer + full eval harness (FR-015) — staged delivery per plan
 
 **Task Sequencing**:
+
 - Phase 1: Bootstrap CLI (T-001–T-010) — orchestration engine + dependency management
 - Phase 2: Governance directives (T-011–T-014) — drift-check skill + three directives
 - Phase 3: Ceremonies (T-015–T-017) — planning, review/demo, retro integration
@@ -441,6 +480,7 @@ Created execution-ready iteration plan for Iteration 001 at `specs/001-specrew-p
 - Phase 5: Testing (T-020–T-022) — integration + scenario tests + CI validation
 
 **Key Planning Insights**:
+
 1. Planning ceremony (T-015) and drift-check skill (T-011) are the two highest-complexity tasks (3 pts and 2.5 pts). Both require LLM reasoning.
 2. Bootstrap orchestration (T-001–T-010) is dependency-heavy but each task is clear and testable in isolation.
 3. Deferred work is explicitly tracked and prioritized for Iter 2 (brownfield, resume, effort model).
@@ -463,7 +503,8 @@ Created execution-ready iteration plan for Iteration 001 at `specs/001-specrew-p
 
 **Context**: Documentation (plan.md, github-project.md) implied that manual GitHub Projects board management was the *intended* operating mode for Specrew development. This was misleading because local iteration artifacts are always the source of truth, and GitHub board usage should be optional.
 
-**Action**: 
+**Action**:
+
 - Rewrote `docs/github-project.md` with three-tier source-of-truth hierarchy (authoritative artifacts → derived GitHub Issues → optional visibility board)
 - Updated Section 9 of `specs/001-specrew-product/plan.md` to explicitly state local artifacts are authoritative
 - Removed GitHub Projects V2 API validation from Iteration 0 compatibility spike (board is optional, not a platform requirement)
@@ -474,22 +515,23 @@ Created execution-ready iteration plan for Iteration 001 at `specs/001-specrew-p
 
 **Outcome**: Specrew documentation now clearly establishes local artifacts as authoritative, making it safe for teams to choose whether to use GitHub boards at all. Source-of-truth hierarchy is now explicit and binding for future iterations.
 
-
 📌 **Iteration 1 execution state re-review (2026-04-20)**:
-   - ✅ Data corrected specs\001-specrew-product\iterations\001\state.md — post-planning completion milestone
-   - ✅ Execution tracking: V-R7-1 (0.5 pts) + T-011 (1.5 pts) marked done; 18.5 pts execution queued; 3.5 pts Iter 1b deferred
-   - ✅ Phase status: Planning → complete; Executing → in_progress; explicit task queue snapshot
-   - ✅ Worf re-review: state.md + spikes.md against contract baseline (iteration-artifacts.md pattern)
-   - ✅ Verdict: PASS — all state artifacts schema-compliant; no contract gaps; execution continuity traceable
+
+- ✅ Data corrected specs\001-specrew-product\iterations\001\state.md — post-planning completion milestone
+- ✅ Execution tracking: V-R7-1 (0.5 pts) + T-011 (1.5 pts) marked done; 18.5 pts execution queued; 3.5 pts Iter 1b deferred
+- ✅ Phase status: Planning → complete; Executing → in_progress; explicit task queue snapshot
+- ✅ Worf re-review: state.md + spikes.md against contract baseline (iteration-artifacts.md pattern)
+- ✅ Verdict: PASS — all state artifacts schema-compliant; no contract gaps; execution continuity traceable
 
 ---
 
 📌 **Plan Corrections Validated in Remediation Review (2026-04-25T17:10:13Z)**:
-   - ✅ Carryover representation complete (T-024, T-025 explicitly added)
-   - ✅ Capacity math validated (total 23.5 pts, Iter 1a 20.0 pts, Iter 1b 3.5 pts)
-   - ✅ Task table normalized to contract-aligned format
-   - ✅ State.md artifact aligned with closure evidence tables
-   - **Status**: Plan corrections accepted; remediation audit PASS
+
+- ✅ Carryover representation complete (T-024, T-025 explicitly added)
+- ✅ Capacity math validated (total 23.5 pts, Iter 1a 20.0 pts, Iter 1b 3.5 pts)
+- ✅ Task table normalized to contract-aligned format
+- ✅ State.md artifact aligned with closure evidence tables
+- **Status**: Plan corrections accepted; remediation audit PASS
 
 ---
 
@@ -513,7 +555,7 @@ Created execution-ready iteration plan for Iteration 001 at `specs/001-specrew-p
       - Evidence: Created validation report documenting routing architecture, implementation path for T-202/T-203, and risk assessment
       - Blocker status: None — V-R7-2 unblocks T-202/T-203 (overcommit + routing implementation)
       - Artifact: `iterations/002/v-r7-2-validation.md`
-    
+
     - **T-201 Effort Model** (2 pts — FR-007 configurable effort model):
       - Objective: Verify effort-model fields in iteration-config.yml are correct, have proper defaults, and integrate into planning ceremony
       - Finding: ✅ ALL FIELDS COMPLETE — all FR-007 fields present with correct defaults (effort_unit, capacity_per_iteration, overcommit_threshold, calibration_enabled, defer_strategy)
@@ -536,29 +578,30 @@ Created execution-ready iteration plan for Iteration 001 at `specs/001-specrew-p
 - **Artifact-truth in validation**: When validating design surfaces, create explicit validation artifacts (v-r7-2-validation.md, t-201-effort-model-report.md) that document the validation path and findings. These artifacts become part of the decision record and unblock downstream reviewers.
 - **Capacity tracking precision**: When marking tasks complete, update both plan.md (task status) and state.md (last completed, tasks remaining) together. This keeps execution state synchronized and prevents divergence between planning and execution artifacts.
 
-
 📌 **FR-023 Team Command Interface Revision Complete (2026-04-18)**:
-   - Initial verdict: REJECTED (command surface drift, bootstrap pattern mismatch, untracked implementation)
-   - Rejected artifacts: Documentation showing `pwsh -File .\scripts\specrew-team.ps1 ...` instead of spec-required `specrew team` interface
-   - Blockers resolved:
+
+- Initial verdict: REJECTED (command surface drift, bootstrap pattern mismatch, untracked implementation)
+- Rejected artifacts: Documentation showing `pwsh -File .\scripts\specrew-team.ps1 ...` instead of spec-required `specrew team` interface
+- Blockers resolved:
      1. Command interface documented as `specrew team add|update|remove|list` with note explaining PowerShell script implementation (`scripts\specrew-team.ps1`)
      2. Bootstrap guidance output revised to match test patterns (`Add extra Squad members after bootstrap`, `Keep the Specrew-managed baseline block intact`)
      3. Implementation script (`scripts\specrew-team.ps1`) now tracked in git
      4. All user-facing docs (README.md, getting-started.md, user-guide.md) show `specrew team` command surface with invocation guidance
-   - Revisions:
-     - Modified `scripts\specrew-init.ps1` post-bootstrap guidance to show `specrew team` commands
-     - Updated `README.md`, `docs\getting-started.md`, `docs\user-guide.md` with `specrew team` command surface
-     - Fixed `tests\integration\bootstrap-to-iteration.ps1` patterns to match actual guidance wording
-     - Staged `scripts\specrew-team.ps1` for git tracking
-   - Validation: All integration tests pass (team-management.ps1, bootstrap-to-iteration.ps1)
-   - Decision recorded: `.squad\decisions\inbox\data-team-command-revision.md`
-   - Key learning: **PowerShell Windows constraints**: Windows PowerShell requires `.ps1` extensions, so command interfaces must be documented logically (`specrew team`) while implemented as PowerShell scripts (`.ps1` files). Documentation shows the conceptual command surface with invocation notes rather than exposing implementation details.
+- Revisions:
+  - Modified `scripts\specrew-init.ps1` post-bootstrap guidance to show `specrew team` commands
+  - Updated `README.md`, `docs\getting-started.md`, `docs\user-guide.md` with `specrew team` command surface
+  - Fixed `tests\integration\bootstrap-to-iteration.ps1` patterns to match actual guidance wording
+  - Staged `scripts\specrew-team.ps1` for git tracking
+- Validation: All integration tests pass (team-management.ps1, bootstrap-to-iteration.ps1)
+- Decision recorded: `.squad\decisions\inbox\data-team-command-revision.md`
+- Key learning: **PowerShell Windows constraints**: Windows PowerShell requires `.ps1` extensions, so command interfaces must be documented logically (`specrew team`) while implemented as PowerShell scripts (`.ps1` files). Documentation shows the conceptual command surface with invocation notes rather than exposing implementation details.
 
 ## Bootstrap Handoff Revision (2026-05-04)
 
 **Pattern:** When contract and tests specify exact terminal output, sync implementation to match contract wording precisely — don't weaken the contract to match partial implementation.
 
 **Context:** Rejected artifact revision required explicit flow orientation, phrase consistency, and Squad readiness signal. Fix succeeded by:
+
 - Adding "=== Usage Flow ===" section with explicit contract flow: "Baseline crew → specify features → plan iteration → execute (review and retro as needed)"
 - Matching exact test pattern: "Baseline Specrew crew installed: [roles]." with trailing period
 - Adding managed block in team.md with **Team Status: configured** metadata — smallest complete signal Squad can recognize

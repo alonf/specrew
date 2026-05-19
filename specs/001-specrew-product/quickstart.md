@@ -22,6 +22,7 @@ specrew init
 ```
 
 This will:
+
 - Detect/install Spec Kit (>= 0.8.4) and Squad (>= 0.9.1)
 - Create `.specrew/` with governance artifacts
 - Configure 5 baseline roles in your Squad team

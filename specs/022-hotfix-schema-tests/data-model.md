@@ -35,6 +35,7 @@ Feature 022 remains file-based. Its design model centers on three runtime entiti
 | `body_markdown` | markdown | Human-readable narrative below frontmatter | ✓ | Must not collapse into machine-only text |
 
 **Validation Rules**:
+
 - The artifact must contain both the human-readable fields and the `session_state_*` fields.
 - `body_markdown` must remain non-empty.
 - Restart parsing must succeed even when the human-readable fields expand.
@@ -54,6 +55,7 @@ Feature 022 remains file-based. Its design model centers on three runtime entiti
 | `state_surface_alignment` | object | Agreement snapshot across prompt/context/identity/ledger | ✓ | Must remain observable when mismatched |
 
 **Validation Rules**:
+
 - A full lifecycle run must yield exactly seven ordered `Boundary sync:` entries.
 - The final boundary must agree across the state surfaces.
 - A missed or malformed event must remain visible to stale-state validation.
@@ -73,6 +75,7 @@ Feature 022 remains file-based. Its design model centers on three runtime entiti
 | `next_action_message` | string | Operator guidance after entry/selection | ✓ | Must explain what happens next |
 
 **Validation Rules**:
+
 - `--recover` must set `bypass_gate = true` while leaving `approval_mode_changed = false`.
 - Interactive stale-state detection must expose A/B/C before exit decisions occur.
 - Recovery must explain why it was entered and what the next step is.

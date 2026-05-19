@@ -1,8 +1,8 @@
 # Feature Specification: Specrew Distribution Module
 
-**Feature Branch**: `019-specrew-distribution-module`  
-**Created**: 2026-05-16  
-**Status**: Draft  
+**Feature Branch**: `019-specrew-distribution-module`
+**Created**: 2026-05-16
+**Status**: Draft
 **Input**: User description: "PowerShell Gallery module packaging for one-line install, removing clone-and-PATH friction before public flip"
 
 ## User Scenarios & Testing *(mandatory)*
@@ -92,7 +92,7 @@ A user installs Specrew on Windows, Linux, and Mac. The module works identically
 - What happens when a user runs `specrew init` in a directory that already contains partial `.specify/` or `.squad/` directories from a previous incomplete initialization?
 - How does `specrew update` handle a conflict where the user deleted a template file that still exists in the new module version?
 - What happens if a user manually modifies `Specrew.psm1` after installation (e.g., to debug an issue)? Does `Update-Module` restore the original, or does it preserve user changes?
-- What happens when PSGallery name `Specrew` is already taken by another author? Do we have a fallback name strategy? _(Resolution: Use SpeckitSpecrew as fallback; pre-flight check via Find-Module Specrew before first publish — clarified 2026-05-16)_
+- What happens when PSGallery name `Specrew` is already taken by another author? Do we have a fallback name strategy? *(Resolution: Use SpeckitSpecrew as fallback; pre-flight check via Find-Module Specrew before first publish — clarified 2026-05-16)*
 - How does the module behave when installed in both `-Scope CurrentUser` and `-Scope AllUsers` simultaneously?
 
 ## Requirements *(mandatory)*
@@ -208,7 +208,7 @@ A user installs Specrew on Windows, Linux, and Mac. The module works identically
 - **Iteration Facilitator**: Alon Fliess (accountable for cadence, blockers, and Phase 2 sequencing)
 - **Capacity Model**: Story Points (SP); estimated 10-15 SP total across 5 pillars; single iteration; fits as a focused Monday-Tuesday slot in Phase 2 Quality Hardening Bundle sequencing
 - **Drift Signals**: Spec-to-implementation drift detected via (1) Specrew-Speckit extension validators during `/speckit.implement`, (2) integration tests for cross-platform module install/init/update workflows, (3) manual review of PSGallery publish logs post-release
-- **Human Oversight Points**: 
+- **Human Oversight Points**:
   - Clarify-time decisions for the 10 open questions (next `/speckit.clarify` boundary)
   - Planning approval after `/speckit.plan` generates design artifacts
   - Pre-release manual test on Windows/Linux/macOS before first `Publish-Module` run
@@ -228,8 +228,6 @@ A user installs Specrew on Windows, Linux, and Mac. The module works identically
 - Q: Cross-Platform Path Handling — How should scripts handle Windows (`\`) vs Linux/Mac (`/`) path delimiters? → A: Use `Join-Path` everywhere for explicit cross-platform correctness, plus dedicated WSL verification task. All path construction in scripts uses `Join-Path` to ensure correct delimiters on all platforms. Implementation plan must include a dedicated task for WSL testing to validate real cross-platform behavior beyond unit tests.
 - Q: Module Version Policy — Should the module version in `Specrew.psd1` be the same as the repo version, or maintained separately? → A: Same version. Module manifest is stamped from `.specrew/config.yml` `specrew_version` at build time. Single source of truth reduces drift risk and eliminates version-sync governance burden. Publishing workflow reads version from config and updates manifest before `Publish-Module`.
 - Q: Alpha-User Migration Path — How should existing alpha users (who cloned the repo) transition to the module-based distribution? → A: README documentation only for migration initially; `specrew update` is the migration path. No automated `specrew migrate-to-module` command in v1. Manual migration guidance in README is sufficient; users run `Install-Module Specrew`, then `specrew update` in their project to refresh templates. Tooling can be added later if friction reports indicate a need, but initial feedback suggests README docs are sufficient.
-
-
 
 ## Cross-References
 

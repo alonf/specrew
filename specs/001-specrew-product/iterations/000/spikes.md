@@ -19,6 +19,7 @@
 ### Installation Method
 
 Spec Kit is already installed in this repository. The `.specify/` directory exists with:
+
 - `feature.json` (feature tracking active)
 - `extensions.yml` (extension hooks configured)
 - `extensions/` directory with Git extension
@@ -28,6 +29,7 @@ The `specify` command is available in PATH.
 ### Recommended Procedure for Downstream Users
 
 For `specrew init` (Iteration 1 implementation):
+
 1. Check if `.specify/` directory exists
 2. If yes, run `specify --version` and parse output
 3. Compare against minimum version `0.7.3`
@@ -51,6 +53,7 @@ For `specrew init` (Iteration 1 implementation):
 ### Installation Method
 
 Squad is already installed in this repository. The `.squad/` directory exists with:
+
 - `config.json` (Squad configuration)
 - `team.md` (team configuration)
 - `agents/` directory with agent charters and history
@@ -60,6 +63,7 @@ The `squad` command is available in PATH and returns version `0.9.1`.
 ### Recommended Procedure for Downstream Users
 
 For `specrew init` (Iteration 1 implementation):
+
 1. Check if `.squad/` directory exists
 2. If yes, run `squad --version` and parse output
 3. Compare against minimum version `0.9.1`
@@ -77,6 +81,7 @@ For `specrew init` (Iteration 1 implementation):
 ### Findings
 
 Squad extensions use the following structure:
+
 - **Skills**: Placed in `.copilot/skills/{skill-name}/SKILL.md`
 - **Ceremonies**: Defined in `.squad/ceremonies.md` (central file)
 - **Directives**: Referenced in agent charters (`.squad/agents/{agent}/charter.md`)
@@ -87,12 +92,14 @@ Squad extensions use the following structure:
 Squad discovers skills from `.copilot/skills/` directory automatically. Each skill is a subdirectory with a `SKILL.md` file.
 
 **Verdict**: Squad does NOT have a separate `extensions/` folder for plugins. Extensions must either:
+
 1. Be distributed as skills in `.copilot/skills/` (for bundled extensions)
 2. Be published to a marketplace and installed via `squad plugin marketplace`
 
 ### Resolution (2026-04-18)
 
 **Architecture refactored to Squad-native surfaces**:
+
 1. Squad template sources moved to `extensions/specrew-speckit/squad-templates/`
 2. `specrew init` will deploy templates to Squad-native locations:
    - Skills → `.copilot/skills/specrew-*/SKILL.md`
@@ -101,6 +108,7 @@ Squad discovers skills from `.copilot/skills/` directory automatically. Each ski
 3. Obsolete `extensions/specrew-squad/` package removed
 
 **References**:
+
 - Contract: `specs/001-specrew-product/contracts/squad-extension.md`
 - Decision: `.squad/decisions/inbox/copilot-squad-native-surfaces-2026-04-18T00-24-57Z.md`
 
@@ -117,6 +125,7 @@ Squad discovers skills from `.copilot/skills/` directory automatically. Each ski
 ### Findings
 
 `squad init` is **idempotent and non-interactive by default**:
+
 - Runs without prompts
 - Skips existing files (reports "already exists — skipping")
 - Creates `.squad/` directory structure if missing
@@ -125,6 +134,7 @@ Squad discovers skills from `.copilot/skills/` directory automatically. Each ski
 ### File Layout
 
 Squad creates the following structure:
+
 ```
 .squad/
   ├── agents/          # Agent charters and history
@@ -155,6 +165,7 @@ Squad creates the following structure:
 ### Findings
 
 Squad's plugin system (`squad plugin marketplace`) is **marketplace-only** (GitHub repos).
+
 - No support for `squad plugin install ./local-path`
 - Plugins must be added via `squad plugin marketplace add {owner/repo}`
 - Local/bundled extensions not supported in current Squad architecture
@@ -164,11 +175,13 @@ Squad's plugin system (`squad plugin marketplace`) is **marketplace-only** (GitH
 ### Resolution (2026-04-18)
 
 **Architecture refactored to Squad-native surfaces**:
+
 - Specrew uses Squad-native deployment model (skills in `.copilot/skills/`, ceremonies in `.squad/ceremonies.md`, directives in agent charters)
 - No Squad plugin marketplace integration needed for v1
 - `specrew init` handles direct file deployment from `extensions/specrew-speckit/squad-templates/`
 
 **References**:
+
 - Contract: `specs/001-specrew-product/contracts/squad-extension.md`
 - Contract: `specs/001-specrew-product/contracts/specrew-init.md`
 
@@ -187,6 +200,7 @@ Squad's plugin system (`squad plugin marketplace`) is **marketplace-only** (GitH
 Spec Kit 0.7.3 provides the following lifecycle hooks (discovered from `.specify/extensions.yml`):
 
 **Before hooks** (fire before workflow step):
+
 - `before_constitution` - Before constitution setup
 - `before_specify` - Before specification creation
 - `before_clarify` - Before spec clarification
@@ -198,6 +212,7 @@ Spec Kit 0.7.3 provides the following lifecycle hooks (discovered from `.specify
 - `before_taskstoissues` - Before tasks-to-issues sync
 
 **After hooks** (fire after workflow step):
+
 - `after_constitution` - After constitution setup
 - `after_specify` - After specification creation
 - `after_clarify` - After spec clarification
@@ -250,6 +265,7 @@ hooks:
 Squad 0.9.1 **does not expose a documented HookPipeline or task-level lifecycle hook system** in the public API.
 
 **Available extension surfaces**:
+
 1. **Skills** - Custom tools invoked by agents (`.copilot/skills/*/SKILL.md`)
 2. **Ceremonies** - Structured workflows with decision gates (`.squad/ceremonies.md`)
 3. **Directives** - Agent charter rules (`.squad/agents/*/charter.md`)
@@ -260,10 +276,12 @@ Squad 0.9.1 **does not expose a documented HookPipeline or task-level lifecycle 
 ### Implications for Specrew
 
 **Drift detection strategy** (per spec.md § Clarifications):
+
 - **Primary**: Agent directive instructs agents to invoke `specrew-drift-check` skill after completing each task
 - **Fallback**: If agents don't self-invoke, Review/Demo ceremony runs drift-check in batch mode
 
 **Implementation approach**:
+
 1. Include drift-reporting directive in all agent charters deployed by `specrew init`
 2. Directive text: "After completing any task, invoke the `specrew-drift-check` skill. Report drift immediately."
 3. Review/Demo ceremony validates drift-log.md and runs batch drift-check if needed
@@ -287,6 +305,7 @@ specify extension add <extension-name>
 ```
 
 **Available extension management commands**:
+
 - `specify extension list` - List installed extensions
 - `specify extension add <name>` - Install an extension
 - `specify extension remove <name>` - Uninstall an extension
@@ -335,6 +354,7 @@ if (-not $installed) {
 Spec Kit uses **`.github/prompts/` directory** for extension prompt files (discovered from inspection of Specrew repo):
 
 **Observed structure**:
+
 ```
 .github/
   └─ prompts/
@@ -362,6 +382,7 @@ Specrew extension prompt files should be placed in:
 ```
 
 **Alternative location** (NOT used by Spec Kit, but documented in some frameworks):
+
 - `.specify/templates/commands/` - NOT the canonical location for Spec Kit extensions
 
 **Deployment**: `specrew init` will copy prompt files from `extensions/specrew-speckit/squad-templates/skills/*.md` to `.github/prompts/specrew.*.prompt.md` during bootstrap.

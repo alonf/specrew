@@ -60,6 +60,7 @@ Deliver the readable-reference rule and user-facing guidance surfaces for descri
 **Primary Files Modified**: `extensions/specrew-speckit/validators/handoff-governance-validator.ps1`, `extensions/specrew-speckit/prompts/coordinator-response.md`, `extensions/specrew-speckit/prompts/coordinator-decision-guidance.md`, `extensions/specrew-speckit/checklists/coordinator-handoff-governance.md`, `specs/001-specrew-product/contracts/coordinator-handoff-template.md`, `.github/agents/squad.agent.md`, `.squad/templates/squad.agent.md`
 
 **Key Constraints**:
+
 - Limit changes to authored narration and stop-message prose only
 - Exclude verbatim/tool-rendered/code/quoted surfaces from the rule
 - Keep the rule as a soft warning only
@@ -67,6 +68,7 @@ Deliver the readable-reference rule and user-facing guidance surfaces for descri
 - Keep `.github/agents/squad.agent.md` and `.squad/templates/squad.agent.md` synchronized
 
 **Regression Baseline**: Run the pre-implementation baseline once before starting implementation:
+
 ```powershell
 tests/integration/handoff-governance-jargon-response-test.ps1
 tests/integration/handoff-governance-plain-language-response-test.ps1
@@ -105,6 +107,7 @@ extensions/specrew-speckit/scripts/validate-governance.ps1 -ProjectPath .
 ## Phase Dependencies
 
 This iteration depends on:
+
 - Planning artifacts from feature 012 being finalized (spec.md, plan.md, research.md, data-model.md, quickstart.md, contracts/descriptive-reference-handoff.md)
 - Pre-implementation baseline from the existing three handoff-governance tests being recorded
 - Fresh authorization from the Spec Steward for Iteration 001 hardening-gate sign-off and implementation start
@@ -141,4 +144,3 @@ Iteration 001 is considered complete when:
 | Overcommit Threshold | 1.0 | Warn planners when total estimated effort exceeds 20.0 story_points (capacity 20 x threshold 1.0). |
 | Defer Strategy | manual | Any deferral decision must be explicit; US3 explicitly deferred to Iteration 002. |
 | Calibration Enabled | true | Retrospectives should suggest future capacity adjustments when actual variance accumulates. |
-

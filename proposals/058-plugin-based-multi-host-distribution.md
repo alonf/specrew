@@ -88,6 +88,7 @@ Codex CLI:      codex plugin install specrew     → same
 ```
 
 Clean separation:
+
 - **Plugin = host integration** (registers Specrew's slash commands, agents, hooks, skills with the host)
 - **PSGallery module = portable project templates + shell entrypoint** (used by `specrew init` to scaffold project files)
 
@@ -98,6 +99,7 @@ This composes with F-019's existing PSGallery distribution rather than replacing
 Alternative considered: plugin install does the whole thing including auto-running `specrew init` on first directory use. More streamlined UX but blurs concerns. Per-host plugin must carry the entire Specrew toolchain.
 
 Rejected because:
+
 - Each host's plugin must include all PSGallery module content (bloat; replication)
 - Updates require coordinated per-host plugin republishes
 - Doesn't compose with F-019's existing distribution model

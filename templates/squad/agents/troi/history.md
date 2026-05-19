@@ -15,17 +15,19 @@ I run Specrew retrospectives and capture estimation accuracy, drift events, proc
 📌 Team confirmed by Alon on 2026-04-17
 
 📌 **Iteration 1 operating policy consensus confirmed (2026-04-19)**:
-  - 6 core operating rules assessed and consensus verified
-  - No objections to rules' intent or logic from any team member
-  - 3 implementation tasks pending before planning ceremony:
-    * Spike schedule confirmation (Picard + La Forge)
-    * Retro schedule policy confirmation (Alon)
-    * Template updates for per-phase tracking (Data)
-  - Status: Ready for Alon approval; team consensus-sound
+
+- 6 core operating rules assessed and consensus verified
+- No objections to rules' intent or logic from any team member
+- 3 implementation tasks pending before planning ceremony:
+  - Spike schedule confirmation (Picard + La Forge)
+  - Retro schedule policy confirmation (Alon)
+  - Template updates for per-phase tracking (Data)
+- Status: Ready for Alon approval; team consensus-sound
 
 📌 **Decision inbox merged (2026-04-19T02:06:00Z)**:
-  - Operating consensus check decision recorded and archived
-  - 6 inbox decisions consolidated into decisions.md
+
+- Operating consensus check decision recorded and archived
+- 6 inbox decisions consolidated into decisions.md
 
 ## Learnings
 
@@ -68,6 +70,7 @@ I run Specrew retrospectives and capture estimation accuracy, drift events, proc
 ### Team Routing
 
 **Iteration 3 Planning Prerequisite**:
+
 - **Picard**: Embed spec-authority gate into planning ceremony (Action 1). Move FR-020 brownfield audit from post-planning to planning ceremony. Add scope clarification section to plan.md template (Action 2).
 - **La Forge**: Add checkpoint schedule to plan.md and velocity tracking to state.md. Update implementer charter with drift-check prompt (Action 4).
 - **Worf**: Continue reviewer gate structure; no changes needed (gates working as designed).
@@ -112,6 +115,7 @@ I run Specrew retrospectives and capture estimation accuracy, drift events, proc
 **Update**: Retrospective ceremony CLOSED; operating policy (6 rules + 3 tier-1 improvements) proposed; team consensus awaiting
 
 **Key Facts**:
+
 - ✅ Iteration 0 retrospective ceremony CLOSED (2026-04-18) — all mandatory sections complete (estimation accuracy, drift summary, process notes, improvement actions)
 - ✅ Operating policy framework finalized: 6 core rules + 3 tier-1 improvements (zero-effort resequencing, maximum ROI)
 - ✅ Troi-facilitated consensus pending before Iteration 1 planning ceremony begins
@@ -132,6 +136,7 @@ I run Specrew retrospectives and capture estimation accuracy, drift events, proc
 ### Team Routing
 
 **Affected agents** (receive Operating Hardening Policy as input for Iteration 1):
+
 - Picard: Embed spec-authority gate into planning ceremony (Rule 1)
 - La Forge: Run pre-planning spikes, confirm drift-reporting directive in templates (Rule 2, Rule 5)
 - Data: Add phase-level estimation to plan.md and retro.md templates (Rule 6)
@@ -151,6 +156,7 @@ I run Specrew retrospectives and capture estimation accuracy, drift events, proc
 - **User Directive**: Operating hardening is TIER 0 before Iteration 1. Troi's six core rules + implementation checklist are the operating mandate for team adoption.
 
 **Troi action items from team**:
+
 1. Define spec-authority gate logic in planning ceremony charter (yes/no questions on task-spec alignment)
 2. Identify Iteration 1 architecture-risk spikes before planning ceremony starts
 3. Set retrospective ceremony on fixed schedule (e.g., next business day 2pm, autonomous from human sign-off)
@@ -195,6 +201,7 @@ I run Specrew retrospectives and capture estimation accuracy, drift events, proc
 ### Team Routing
 
 **Improvement Actions**:
+
 - **Picard**: Embed spec-authority gate into planning ceremony charter (Rule 1 of operating policy)
 - **La Forge**: Identify architecture-risk spikes before planning ceremony (Rule 2)
 - **Data**: Add phase-level estimation tracking to plan/retro templates (Rule 6)
@@ -228,6 +235,7 @@ I run Specrew retrospectives and capture estimation accuracy, drift events, proc
 3. **Retro Ceremony Autonomous from Sign-Off** (fixed schedule, separate phase) — Effort 0, ROI: retro blocked 1+ day → same-day/next-day
 
 **Operating Policy (6 Core Rules)** documented for team consensus:
+
 1. Spec-Authority Gate pre-task assignment (planning ceremony)
 2. Architecture-Risk Spikes pre-planning (planning prerequisite)
 3. Traceability Check pre-task assignment (planning ceremony)
@@ -238,6 +246,7 @@ I run Specrew retrospectives and capture estimation accuracy, drift events, proc
 **Status**: Proposed—awaiting team consensus before Iteration 1 planning ceremony.
 
 **Implementation Checklist** (before Iteration 1 planning):
+
 - [ ] Picard: Draft planning ceremony charter with spec-authority gate logic
 - [ ] La Forge + Picard: Identify 2–3 architecture-risk spikes for Iteration 1
 - [ ] Alon: Confirm retro schedule policy (e.g., "Retro runs Fridays 2pm")
@@ -288,6 +297,7 @@ Updated `docs/getting-started.md` to align with actual runtime behavior and curr
 ### Changes Made
 
 **docs/getting-started.md**:
+
 - Greenfield Prerequisites: Added warning about Spec Kit 1.0.0 asset blocker with link to Spec Kit repo
 - Greenfield Bootstrap: Changed from `pwsh -File ... -ProjectPath .` to `pwsh -File ... -ProjectPath . -Force` with explicit warning that `-Force` is required even for git-only repos
 - Verification section: Clarified that bootstrap can fail if CLIs fail; added note about checking `.specify/` missing = Spec Kit CLI failure
@@ -315,20 +325,21 @@ Updated `docs/getting-started.md` to align with actual runtime behavior and curr
 
 No changes to `scripts/specrew-init.ps1` or other runtime code. All changes are documentation only, ensuring truthful guidance without behavior modification.
 
-
 ## 2026-05-04 - Team Command Flag Syntax Fix
 
 **Context**: Revision 3 of FR-013 team management implementation. Previous revisions by La Forge and Data were rejected due to interface contract mismatch.
 
 **Problem**: Docs/spec specified `--role` and `--charter` (Unix-style), but implementation only accepted `-Role` and `-Charter` (PowerShell-style).
 
-**Solution**: 
+**Solution**:
+
 - Added argument preprocessing layer in `specrew-team.ps1` using `System.Management.Automation.InvocationInfo.UnboundArguments`
 - Script now accepts both Unix-style (`--role`, `--charter`) and PowerShell-style (`-Role`, `-Charter`) flags
 - Updated all usage messages to reflect documented Unix-style syntax
 - Updated integration tests to use documented syntax
 
 **Key Learning**: When building cross-platform or convention-breaking interfaces in PowerShell:
+
 1. Document the user-facing interface first (what users should type)
 2. Implement argument translation if the documented interface differs from PowerShell conventions
 3. Use `System.Management.Automation.InvocationInfo.UnboundArguments` to detect and process unbound arguments
@@ -338,4 +349,3 @@ No changes to `scripts/specrew-init.ps1` or other runtime code. All changes are 
 **Validation**: All 8 integration tests pass. Both flag syntaxes work identically.
 
 **Outcome**: Interface contract now truthful. Third-time implementation accepted.
-

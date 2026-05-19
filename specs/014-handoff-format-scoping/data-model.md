@@ -18,6 +18,7 @@ The selector that classifies the coordinator's top-level human-facing response a
 | `descriptive-id-context_required` | boolean | `true` for both governed response types |
 
 **Validation rules**:
+
 - `final-stop-message` is valid only when `human_is_bottleneck == true`.
 - `in-flight-progress-update` is required when Squad is still working, waiting on background work, or transitioning internally.
 - Session-opening acknowledgements follow the same selector and are not exempt.
@@ -36,6 +37,7 @@ The existing three-section coordinator response used only when a human action is
 | `substantive_action_present` | boolean | `true` when the user-action section contains a real request |
 
 **Validation rules**:
+
 - Must preserve the existing three-section format unchanged.
 - All three sections must contain substantive content.
 - Brevity alone does not make a valid user action non-substantive.
@@ -53,6 +55,7 @@ The concise coordinator response used when work is still in motion and no human 
 | `mentions_transition_or_wait` | boolean | Allowed, because the response is explicitly in-flight |
 
 **Validation rules**:
+
 - Must omit the user-action section.
 - Remains deliberately unstructured single-line prose.
 - Still inherits the readable identifier-context rule when identifiers appear.
@@ -71,6 +74,7 @@ The additive soft warning emitted when a final stop message claims a stop withou
 | `response_type_under_review` | enum | Must be `final-stop-message` |
 
 **Validation rules**:
+
 - Fires when `what_i_need_from_you` is empty or matches a repository-maintained placeholder phrase.
 - Remains advisory and does not block response delivery.
 - Must not fire on a short but substantive approval request.
@@ -89,6 +93,7 @@ The additive soft warning emitted when a stop claim is really transitional narra
 | `response_type_under_review` | enum | Usually a malformed `final-stop-message` |
 
 **Validation rules**:
+
 - Fires when `why_i_stopped` describes waiting, background work, or internal transition instead of a real human blocker.
 - Especially relevant when no substantive user action is identified.
 - Must not fire on a legitimate human-blocked stop message that also mentions waiting.
@@ -106,6 +111,7 @@ The fixed repository-maintained list of non-substantive user-action phrases used
 | `reviewability` | boolean | Humans must be able to see why a phrase matched |
 
 **Initial list**:
+
 - `Nothing yet`
 - `No action needed`
 - `No action required`
@@ -125,6 +131,7 @@ The existing readable-reference rule from feature 012, with applicability extend
 | `excluded_surfaces` | string[] | quoted material, code blocks, raw tool output, Copilot-rendered result blocks |
 
 **Validation rules**:
+
 - Identifier references remain readable on first pass in both response types.
 - The rule stays additive and does not replace stop-vs-progress selection logic.
 

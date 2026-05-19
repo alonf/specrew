@@ -82,6 +82,7 @@ pwsh -File .\.specify\extensions\specrew-speckit\scripts\scaffold-iteration-plan
 ```
 
 Checklist:
+
 - Every task maps to requirement IDs
 - Effort and owner are filled
 - Capacity is explicit
@@ -105,6 +106,7 @@ pwsh -File .\.specify\extensions\specrew-speckit\scripts\scaffold-iteration-arti
 ```
 
 Checklist:
+
 - Update task status in `plan.md`
 - Keep `state.md` current (`Last Completed Task`, `Tasks Remaining`)
 - Log drift events with requirement citations in `drift-log.md`
@@ -131,6 +133,7 @@ pwsh -File .\.specify\extensions\specrew-speckit\scripts\scaffold-review-artifac
 ```
 
 Checklist:
+
 - Verdict for each completed task: `pass`, `needs-work`, or `blocked`
 - Overall verdict recorded
 - Any unresolved drift explicitly called out
@@ -186,6 +189,7 @@ pwsh -File .\.specify\extensions\specrew-speckit\scripts\scaffold-retro-artifact
 ```
 
 Checklist:
+
 - Task and phase variance captured
 - Drift totals and resolutions summarized
 - Improvement actions listed
@@ -228,11 +232,13 @@ Replace `C:\Dev\Specrew` with the actual path where you cloned the Specrew repos
 For convenience, you can add the Specrew scripts directory to your PATH to use short commands like `specrew team list` instead of typing the full path each time.
 
 **Current Session Only** (temporary, lost when shell closes):
+
 ```powershell
 $env:PATH = "$env:PATH;C:\Dev\Specrew\scripts"
 ```
 
 **Persistent** (all future sessions):
+
 ```powershell
 $currentPath = [Environment]::GetEnvironmentVariable("PATH", "User")
 $pathEntries = $currentPath -split ";"
@@ -243,6 +249,7 @@ if ($pathEntries -notcontains "C:\Dev\Specrew\scripts") {
 ```
 
 After adding to PATH persistently, restart your PowerShell session, then use the short form:
+
 ```powershell
 specrew start "Build a REST API for user management"
 specrew team list
@@ -285,6 +292,7 @@ pwsh -File .\extensions\specrew-speckit\scripts\brownfield-merge.ps1 `
 ```
 
 The analysis reports:
+
 - **Preserved artifacts**: Existing specs, roles, and ceremonies that will not be modified
 - **Mergeable content**: Baseline roles and ceremonies that can be safely added
 - **Conflicts**: Naming collisions that require manual resolution
@@ -293,6 +301,7 @@ The analysis reports:
 ### Conflict Resolution
 
 If Specrew detects role name conflicts (e.g., an existing "Implementer" role), it:
+
 1. Reports the conflict in the console output
 2. Exits with code 5 to prevent deployment
 3. Provides guidance to manually merge or rename conflicting roles before re-running bootstrap
@@ -301,10 +310,12 @@ The `-Force` flag does NOT bypass conflict checks. Conflicts must be manually re
 
 1. Record event in `drift-log.md` with exact requirement reference.
 2. Decide one resolution path:
+
 - Update spec (tracked change)
 - Rework implementation
 - Escalate for human decision
-3. Reflect the decision in `review.md` verdict notes and next tasks.
+
+1. Reflect the decision in `review.md` verdict notes and next tasks.
 
 ## Practical Operating Notes
 

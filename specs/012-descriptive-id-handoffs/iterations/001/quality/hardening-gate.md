@@ -57,6 +57,7 @@
 ### Deferral Justification
 
 **Why Iteration 002 defers replay-path and corpus seeding**:
+
 - Iteration 001 establishes the rule and guidance surfaces.
 - Iteration 002 adds replay-path fixtures and corpus seeding once the rule behavior is stable.
 - This split preserves the approved two-iteration plan and allows seeded examples to be based on final guidance.

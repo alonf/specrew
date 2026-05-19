@@ -15,6 +15,7 @@ No specification drift was detected during Feature 021 Iteration 001 implementat
 ### Resolution Strategies (Unused)
 
 The following resolution strategies remain available if drift is detected later in execution:
+
 - **spec-updated**: Update the spec to reflect implementation choice
 - **implementation-reverted**: Revert implementation to match spec
 - **deferred**: Mark drift as deferred to next iteration

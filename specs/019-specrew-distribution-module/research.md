@@ -9,6 +9,7 @@
 ## R1: PSGallery Module Packaging Best Practices
 
 ### Investigation Scope
+
 Research PSGallery module structure, file list management, and metadata conventions to inform Pillar 1 (Module Packaging) and Pillar 2 (Resource Bundling) implementation.
 
 ### Findings
@@ -26,7 +27,7 @@ Research PSGallery module structure, file list management, and metadata conventi
 
 2. **File List Management**:
    - **Explicit FileList**: Recommended for production modules to avoid accidental inclusions (e.g., test files, dev artifacts)
-   - **Exclusion Pattern**: Exclude specs/, tests/, proposals/, .git/, .vscode/, *.log, *.tmp
+   - **Exclusion Pattern**: Exclude specs/, tests/, proposals/, .git/, .vscode/, *.log,*.tmp
    - **Inclusion Pattern**: Include scripts/, extensions/, templates/, docs/, manifest, module loader
 
 3. **Module Loader (`*.psm1`) Patterns**:
@@ -41,6 +42,7 @@ Research PSGallery module structure, file list management, and metadata conventi
 ### Decision: Specrew Module Manifest Structure
 
 **Recommended Fields**:
+
 ```powershell
 @{
     ModuleVersion = '0.18.0'  # Stamped from .specrew/config.yml at build time
@@ -70,6 +72,7 @@ Research PSGallery module structure, file list management, and metadata conventi
 ```
 
 **Rationale**:
+
 - Explicit FileList avoids accidental inclusion of specs/, proposals/, tests/
 - FunctionsToExport lists all Specrew CLI commands for performance and clarity
 - PrivateData.PSData provides PSGallery metadata for discoverability
@@ -79,11 +82,13 @@ Research PSGallery module structure, file list management, and metadata conventi
 ## R2: PowerShell Module Loader Patterns
 
 ### Investigation Scope
+
 Choose between explicit dot-sourcing vs. dynamic discovery for `Specrew.psm1` module loader.
 
 ### Findings
 
 **Pattern A: Explicit Dot-Sourcing**
+
 ```powershell
 # Specrew.psm1
 $ScriptRoot = $PSScriptRoot
@@ -103,6 +108,7 @@ Export-ModuleMember -Function 'specrew', 'specrew-init', 'specrew-start', 'specr
 ```
 
 **Pattern B: Dynamic Discovery**
+
 ```powershell
 # Specrew.psm1
 $PSScriptRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
@@ -128,6 +134,7 @@ Export-ModuleMember -Function '*'
 ### Decision: Approved Iteration 001 Verdict — Explicit Dot-Sourcing
 
 **Approved T004 verdict (2026-05-16)**:
+
 - **Option A selected**: explicit dot-sourcing for `Specrew.psm1`
 - **Loader shape**:
   - `$ScriptRoot = $PSScriptRoot`
@@ -139,6 +146,7 @@ Export-ModuleMember -Function '*'
 - **Future suggestion captured, not implemented now**: add a validator soft warning for top-level `scripts/` files that are not enumerated in both the loader and `FileList`
 
 **Rationale**:
+
 - Composes with T001's explicit `FileList` allowlist philosophy
 - Deterministic load order avoids filesystem-order ambiguity across platforms
 - Line-by-line failures remain auditable and debuggable
@@ -149,6 +157,7 @@ Export-ModuleMember -Function '*'
 ## R3: Template-Refresh Conflict Resolution Protocol
 
 ### Investigation Scope
+
 Define crew-framework-agnostic conflict marker format that Squad coordinator can parse for `specrew update` conflict resolution.
 
 ### Findings
@@ -156,6 +165,7 @@ Define crew-framework-agnostic conflict marker format that Squad coordinator can
 **Conflict Scenario**: User modifies `.specify/templates/spec-template.md` locally. Module v0.22 ships an updated `spec-template.md`. `specrew update` detects the conflict.
 
 **Approved Iteration 001 verdict (T002, 2026-05-16)**:
+
 - **Option A selected**: Git-style markers (`<<<<<<<`, `=======`, `>>>>>>>`)
 - **Why**: universal text-conflict standard; best fit for Iteration 001 text-template-only scope; IDE diff tooling and `git mergetool` compatibility; zero training cost; no custom parser needed in Iteration 001; unresolved artifacts remain plain text
 
@@ -184,6 +194,7 @@ Define crew-framework-agnostic conflict marker format that Squad coordinator can
 ```
 
 **Alternative Formats Considered**:
+
 - Custom markers (`<<<< USER`, `==== MODULE`, `>>>> END`): clearer labels, but requires custom parser behavior and adds training/documentation cost
 - Structured comments (language-aware): powerful in theory, but too complex for Iteration 001
 - Git-style markers: **APPROVED** — universal convention, IDE tooling support, `git mergetool` compatibility, and no Iteration 001 parser design burden
@@ -197,19 +208,23 @@ Define crew-framework-agnostic conflict marker format that Squad coordinator can
 ## R4: Cross-Platform Path Handling Verification
 
 ### Investigation Scope
+
 Resolve the automation depth for FR-030/FR-031 without collapsing the approved Iteration 001 / Iteration 002 split for cross-platform hardening.
 
 ### Findings
 
 **Approved Iteration 001 verdict (T003, 2026-05-16)**:
+
 - **Option A selected**: manual checklist/evidence for Iteration 001
 - **Load-bearing rationale**: preserve the Iteration 001 / Iteration 002 split already captured in commit `12e4cd3` on `main`
 - **Scope guardrail**: Iteration 001 stays Windows-first and must not pull Ubuntu/macOS matrix setup, line-ending validation, case-sensitivity testing, runner setup, or Join-Path audit hardening into this slice
 
 **Iteration 001 manual checklist artifact**:
+
 - `specs/019-specrew-distribution-module/iterations/001/quality/cross-platform-manual-checklist.md`
 
 **Manual checklist deliverables for later execution**:
+
 1. `Test-ModuleManifest` passes for `Specrew.psd1`
 2. `Import-Module ./Specrew.psd1 -Force` succeeds
 3. Exported function set matches FR-002 (`specrew`, `specrew-init`, `specrew-start`, `specrew-where`, `specrew-review`, `specrew-team`, `specrew-update`)
@@ -221,6 +236,7 @@ Resolve the automation depth for FR-030/FR-031 without collapsing the approved I
 9. Publish-Module workflow validates locally in dry-run/manual gate mode and does not perform a real PSGallery publish
 
 **Explicit Iteration 002 deferred scope**:
+
 - `.github/workflows/cross-platform-validation.yml` with `ubuntu-latest` matrix
 - macOS testing
 - 104+ embedded-backslash sweep across existing PowerShell scripts
@@ -229,6 +245,7 @@ Resolve the automation depth for FR-030/FR-031 without collapsing the approved I
 - first real PSGallery publish
 
 **Compose-with note for T004**:
+
 - Loader path construction only needs to be Windows-correct in Iteration 001.
 - Iteration 002 expands loader/resource verification to cross-platform edge cases.
 
@@ -241,6 +258,7 @@ Resolve the automation depth for FR-030/FR-031 without collapsing the approved I
 ## R5: GitHub Actions Publish Workflow Design
 
 ### Investigation Scope
+
 Design GitHub Actions workflow for automated module publishing on `v*.*` tag push.
 
 ### Findings
@@ -292,11 +310,13 @@ jobs:
 ```
 
 **GitHub Actions Secrets Required**:
+
 - `PSGALLERY_API_KEY`: PSGallery API key for authentication
 - `SIGNING_CERT_BASE64`: Base64-encoded self-signed certificate (PFX format)
 - `SIGNING_CERT_PASSWORD`: Password for self-signed certificate
 
 **Error Handling Strategy**:
+
 - Workflow fails visibly if version stamping fails (invalid config.yml)
 - Workflow fails visibly if signing fails (invalid certificate or password)
 - Workflow fails visibly if `Publish-Module` fails (API key expired, version collision, network issue)
@@ -311,6 +331,7 @@ jobs:
 ## R6: Module Signing Strategy
 
 ### Investigation Scope
+
 Design self-signed certificate generation, storage, and validity period for module signing.
 
 ### Findings
@@ -347,12 +368,14 @@ Write-Host $pfxBase64  # Copy to GitHub Actions secret SIGNING_CERT_BASE64
 ### Decision: Approved Iteration 001 Verdict — 1-Year Validity Period
 
 **Approved T006 verdict (2026-05-16)**:
+
 - **Option A selected**: 1-year validity for the self-signed module-signing certificate
 - **Certificate generation rule**: use `-NotAfter (Get-Date).AddYears(1)` when creating the replacement certificate
 - **Compose-with note**: align renewal with T005's annual PSGallery API-key review so the release-credential event stays consolidated
 - **Out-of-scope note**: migration to a real code-signing certificate remains deferred beyond Iteration 001
 
 **Renewal procedure**:
+
 1. Generate a new self-signed certificate with `AddYears(1)`
 2. Export and store the replacement certificate material in GitHub Actions secrets
 3. Run the publish workflow dry-run path to verify signing succeeds
@@ -368,6 +391,7 @@ Write-Host $pfxBase64  # Copy to GitHub Actions secret SIGNING_CERT_BASE64
 **Execution note**: research recommendations exist for all six design questions, but only the human-approved Phase 0 decisions should be treated as binding during implementation.
 
 **Currently approved human decisions**:
+
 1. **T001 — Module Manifest**: Explicit `FileList` allowlist, FunctionsToExport, version stamped from `.specrew/config.yml`
 2. **T002 — Conflict Resolution**: Git-style `.conflict` sidecar artifacts with next-session Squad mediation
 3. **T003 — Cross-Platform Verification Depth**: Iteration 001 uses a Windows-first manual checklist/evidence artifact; Ubuntu/macOS/WSL hardening remains deferred to Iteration 002

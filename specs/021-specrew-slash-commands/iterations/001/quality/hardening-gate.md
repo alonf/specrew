@@ -34,6 +34,7 @@ This scaffold was created at specify completion on 2026-05-18. Planning is now a
 **Authorization Text**: Authorized: Bounded governance-only repair for the 5 before-implement gaps + re-run before-implement validator. Stop at READY-FOR-IMPLEMENTATION verdict (or report new gaps if any).  
 **Implementation Start Condition**: Implementation may proceed once `speckit.specrew-speckit.before-implement` returns `READY-FOR-IMPLEMENTATION`.  
 **Deferred Items**:
+
 - Full line-by-line lens execution evidence and runtime-only final proof remain deferred until the approved implementation/review slice authorizes them.
 - Known-traps corpus additions and trap reapplication remain deferred until implementation reveals a concrete new trap.
 - Requested-versus-effective review-class evidence remains deferred until lens execution actually occurs.

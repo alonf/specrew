@@ -14,6 +14,7 @@ discussion: tbd
 Specrew's existing quality stack is comprehensive but **all conformance-oriented** — every gate asks: "did the declared work conform to the declared design?"
 
 What no current gate provides:
+
 - **Adversarial security perspective**: not "are secrets externalized?" (checklist) but "if I were an attacker, what's my entry point?"
 - **Cross-feature systemic risk**: per-iteration scope misses "what's the systemic risk of a 5000-line validator?"
 - **Architectural assumption auditing**: the Reviewer checks what's declared; no one challenges the declarations
@@ -27,6 +28,7 @@ A Red Team agent fills the design-challenging gap that conformance-checking gate
 A new Squad agent that performs holistic adversarial review at **feature-closeout** (not per-iteration). Reads the entire feature artifact set, adopts four adversarial personas, and produces a `red-team-findings.md` report attached to the feature.
 
 **Four personas**:
+
 1. Security attacker — "how would I abuse this?"
 2. Scale stressor — "what breaks at 100x?"
 3. Supply-chain attacker — "what's the dependency-poisoning surface?"
@@ -35,6 +37,7 @@ A new Squad agent that performs holistic adversarial review at **feature-closeou
 **Findings policy**: non-blocking. Surfaces concerns for human consideration; high-severity findings become corpus-row candidates or next-feature scope items via the established graduation pipeline.
 
 **Composability with existing gates**:
+
 - Hardening gates do predefined per-concern checks; Red Team adversarially probes those concerns + concerns that weren't predefined
 - Reviewer verifies Expected Controls met; Red Team challenges whether the Controls were the right ones
 - Retro Facilitator captures reactive lessons; Red Team does proactive what-could-go-wrong
@@ -49,6 +52,7 @@ A new Squad agent that performs holistic adversarial review at **feature-closeou
 ## Phase placement
 
 Phase 2 slot 2.7+ — after queued graduation candidates (bypass detector, spec-reconciliation detector) and Feature N Learning Loop Closure ship. Reasoning:
+
 - Learning Loop Closure formalizes the corpus-row graduation pipeline that Red Team findings will feed
 - The graduation candidates handle some adversarial-detection patterns mechanically, reducing Red Team's load
 - Red Team's value is highest after the lifecycle stabilizes

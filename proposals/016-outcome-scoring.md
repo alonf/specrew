@@ -18,11 +18,13 @@ Outcome scoring answers: of the FRs declared in each feature's `spec.md`, what f
 ## What
 
 A new scoring harness measuring:
+
 - **Requirement coverage**: per feature, count FRs in `spec.md` with corresponding evidence (tasks in `tasks.md`, test fixtures, validator rules, corpus rows)
 - **Acceptance pass rate**: per iteration, fraction of reviews accepted on first pass vs needing rework
 - **Artifact consistency**: cross-check FRs in spec.md align with tasks.md, test scenarios, corpus rows
 
 Plus:
+
 - Aggregate scoring at repo level (overall coverage, per-feature breakdown)
 - Historical snapshot retention (so trends become possible over time)
 - Integration with iteration-closeout boundary (refresh report at closeout, write `specs/<feature>/iterations/<NNN>/outcome-score.md`)

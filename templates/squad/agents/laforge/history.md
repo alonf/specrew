@@ -15,38 +15,44 @@ I execute planned work for Specrew and produce outputs that remain traceable to 
 📌 Board sync automation blocker cleared on 2026-04-19: Repository secret `SPECREW_PROJECT_TOKEN` configured; sync script validated against live board (23 issues synced). Unattended GitHub Actions workflow now operational.
 
 📌 **Governance validator strict-mode fix complete (2026-04-19)**:
-  - Fixed collection-handling in validate-governance.ps1 under Set-StrictMode
-  - Normalized all array-producing operations to concrete arrays
-  - Result: Validator now exposes real artifact defects instead of runtime crashes
-  - Iteration 000 passes; Iteration 001 now fails for real contract violations (not exceptions)
-  - Status: ACCEPTED by Worf (reviewer)
+
+- Fixed collection-handling in validate-governance.ps1 under Set-StrictMode
+- Normalized all array-producing operations to concrete arrays
+- Result: Validator now exposes real artifact defects instead of runtime crashes
+- Iteration 000 passes; Iteration 001 now fails for real contract violations (not exceptions)
+- Status: ACCEPTED by Worf (reviewer)
 
 📌 **Pre-execution risk assessment complete (2026-04-19)**:
-  - 3 HIGH-priority architecture spikes identified (Directive Mapping, Ceremony Schema, Deployment Safety)
-  - La Forge owns 2 spikes: Directive reference implementation, Extension deployment checklist
-  - Spikes target completion pre-planning ceremony
-  - Status: Scheduled pending Alon approval
+
+- 3 HIGH-priority architecture spikes identified (Directive Mapping, Ceremony Schema, Deployment Safety)
+- La Forge owns 2 spikes: Directive reference implementation, Extension deployment checklist
+- Spikes target completion pre-planning ceremony
+- Status: Scheduled pending Alon approval
 
 📌 **Decision inbox merged (2026-04-19T02:06:00Z)**:
-  - Validator fix decision recorded and archived
-  - Pre-execution risks decision recorded and archived
-  - 6 inbox decisions consolidated into decisions.md
+
+- Validator fix decision recorded and archived
+- Pre-execution risks decision recorded and archived
+- 6 inbox decisions consolidated into decisions.md
 
 📌 **Ceremonies README Runtime Alignment — COMPLETE (2026-04-19T20:40:24Z)**:
-  - ✅ Fixed `extensions\specrew-speckit\squad-templates\ceremonies\README.md` (line 5)
-  - ✅ Stated only `planning.md` and `review-demo.md` are appended ceremonies
-  - ✅ Moved retrospective documentation to guidance section (lines 26-32)
-  - ✅ Removed erroneous `Specrew: Retrospective` appended ceremony claim
-  - ✅ Worf re-review PASS verdict: Prior rejection reason closed
-  - **Status**: Narrow revision under reviewer lockout complete; source-of-truth aligned to runtime
+
+- ✅ Fixed `extensions\specrew-speckit\squad-templates\ceremonies\README.md` (line 5)
+- ✅ Stated only `planning.md` and `review-demo.md` are appended ceremonies
+- ✅ Moved retrospective documentation to guidance section (lines 26-32)
+- ✅ Removed erroneous `Specrew: Retrospective` appended ceremony claim
+- ✅ Worf re-review PASS verdict: Prior rejection reason closed
+- **Status**: Narrow revision under reviewer lockout complete; source-of-truth aligned to runtime
 
 ## 2026-05-04: Bootstrap Terminal Handoff & Squad Configuration Population
 
 **Context**: Two UX issues after `specrew init`:
+
 1. Unclear terminal handoff - developers didn't know what to do next (terminal showed team management commands but no workflow guidance)
 2. Squad coordinator misidentified freshly bootstrapped repos as "partially configured" and prompted unnecessary team recreation
 
 **Root Cause**: Squad checks three surfaces to determine if a repo is configured:
+
 - `.squad/team.md` Members table (was empty - Specrew only populated managed baseline-roles block)
 - `.squad/routing.md` Routing Table (had template placeholders, no agent names)
 - `.squad/casting/registry.json` agents object (was empty)
@@ -56,6 +62,7 @@ Specrew created baseline roles in managed block but didn't populate Squad's reco
 **What I Built**:
 
 **1. Enhanced Terminal Handoff** (`scripts/specrew-init.ps1`):
+
 - Rewrote `Write-PostBootstrapGuidance` with clear 3-step workflow:
   1. Open GitHub Copilot
   2. Choose agent (Squad, Spec Steward, Planner, Implementer, Reviewer)
@@ -64,6 +71,7 @@ Specrew created baseline roles in managed block but didn't populate Squad's reco
 - Removed low-level file location details
 
 **2. Squad Configuration Population** (`extensions/specrew-speckit/scripts/deploy-squad-runtime.ps1`):
+
 - Added `Set-ManagedTableRows` helper function to inject rows into existing Markdown tables
 - Populated all three Squad recognition surfaces:
   - **registry.json**: All 5 baseline roles with complete entries (agentName, role, charterPath, status)
@@ -72,17 +80,20 @@ Specrew created baseline roles in managed block but didn't populate Squad's reco
 - Created `.squad/agents/{role}/history.md` files for each baseline role
 
 **Technical Approach**:
+
 - `Set-ManagedTableRows`: Uses regex to capture table header through separator, injects rows immediately after separator
 - Preserves LF line endings (Squad standard) instead of CRLF
 - Handles table structure: captures `## Section\n...\n|header|\n|-----|\n` and injects after separator
 - Deployment sequence: directories → charters → registry.json → routing.md → team.md → history files
 
 **Validation**:
+
 - `tests/integration/validate-baseline-team.ps1`: ✅ All scenarios pass (baseline-only, baseline+custom, missing baseline rejection, multiple custom)
 - Manual verification: All three Squad surfaces populated correctly after bootstrap
 - Terminal output: Clear next steps displayed
 
 **Technical Gotchas**:
+
 1. **Line endings matter**: Squad files use LF, not CRLF - must preserve when injecting content
 2. **Table structure**: Two blank lines after separator before next section in team.md
 3. **Regex pattern**: `(##\s+Members[^\r\n]*\r?\n(?:.*?\r?\n)*?\|[^\r\n]+\|\r?\n\|[\s\-|]+\|\r?\n)` captures header through separator
@@ -90,6 +101,7 @@ Specrew created baseline roles in managed block but didn't populate Squad's reco
 5. **Template rows**: routing.md keeps template examples for extensibility - acceptable pattern
 
 **Learnings**:
+
 - Bootstrap handoff messages should show **workflow steps** (what to build), not just **config options** (how to customize)
 - Extensions that integrate two systems (Specrew + Squad) must populate **both** system's configuration surfaces, not just managed blocks
 - Squad recognition logic expects Members table AND managed blocks - both must be populated
@@ -101,12 +113,14 @@ Specrew created baseline roles in managed block but didn't populate Squad's reco
 **Context**: Bug report from downstream bootstrap revealed that users were told to run `specrew team ...` commands, but no such command existed on PATH. Only `scripts\specrew-team.ps1` existed, requiring full path invocation.
 
 **What I Built**:
+
 - Created `scripts\specrew.ps1` unified command router (74 lines)
 - Routes `specrew init` → `specrew-init.ps1` and `specrew team` → `specrew-team.ps1`
 - Provides consistent help/usage across all commands
 - Handles missing subcommands gracefully with usage guidance
 
 **What I Fixed**:
+
 - Updated bootstrap output in `scripts\specrew-init.ps1` to show full path: `pwsh -File <specrew-repo>\scripts\specrew.ps1 team ...`
 - Updated `README.md` with full path examples and explanation
 - Updated `docs\getting-started.md` with full path examples
@@ -115,17 +129,20 @@ Specrew created baseline roles in managed block but didn't populate Squad's reco
 - PATH addition mentioned as optional convenience, not requirement
 
 **Technical Approach**:
+
 - Command router pattern: single entry point routes to specialized scripts
 - Maintains existing script functionality unchanged
 - Full path examples ensure commands work immediately after cloning Specrew
 - No assumptions about user PATH configuration
 
 **Validation**:
+
 - All integration tests pass (team-management.ps1, validate-baseline-team.ps1)
 - Manual testing of wrapper commands (help, init, team)
 - Bootstrap guidance shows truthful, validated command path
 
 **Learnings**:
+
 - Command surface claims must be validated against reality - if docs say "run X", X must work
 - PATH assumptions are unreliable - show working full-path commands first
 - Command routers are cheap and valuable - 74-line wrapper unifies command surface
@@ -136,6 +153,7 @@ Specrew created baseline roles in managed block but didn't populate Squad's reco
 **Context**: Implemented brownfield merge analysis to prevent silent overwrites of existing Spec Kit and Squad configuration during `specrew init`.
 
 **What I Built**:
+
 - Rewrote `extensions/specrew-speckit/scripts/brownfield-merge.ps1` from 40-line placeholder to 300-line implementation
 - Added `Get-BrownfieldState` function to detect existing artifacts (Spec Kit specs, Squad roles/ceremonies, governance files)
 - Added conflict detection functions: `Test-HasRoleConflict` and `Test-HasCeremonyConflict`
@@ -145,12 +163,14 @@ Specrew created baseline roles in managed block but didn't populate Squad's reco
 - Updated `docs/user-guide.md` with brownfield bootstrap section and conflict resolution guidance
 
 **Technical Gotchas**:
+
 1. **PowerShell parameter binding**: Empty arrays require `[AllowEmptyCollection()]` attribute to prevent binding errors
 2. **PowerShell object serialization**: Scripts that return PSCustomObjects must use `ConvertTo-Json` / `ConvertFrom-Json` for clean pass-through to callers, as PowerShell auto-formats objects to strings when calling scripts
 3. **Brownfield detection criteria**: Must check for `.specify/` OR `.squad/` to trigger brownfield mode
 4. **Regex patterns**: Used `(?m)^\|\s*([^|]+)\s*\|` for markdown table role parsing and `(?m)^##\s+(.+?)(?:\s*\{[^}]*\})?\s*$` for ceremony heading extraction
 
 **Merge Strategy**:
+
 - Two-phase approach: Detection happens in `brownfield-merge.ps1`, actual merge happens in existing deployment scripts
 - Preservation via `Write-MissingFile` and `Set-ManagedBlock` functions that check existence before writing
 - Conflicts are informational only - Specrew preserves existing definitions and guides manual merge rather than failing bootstrap
@@ -158,10 +178,12 @@ Specrew created baseline roles in managed block but didn't populate Squad's reco
 - Specrew ceremonies preserved: "Specrew: Planning", "Specrew: Review/Demo"
 
 **Validation**:
+
 - All 4 integration tests pass (bootstrap-to-iteration, brownfield-merge, drift-scenario, iteration-resume)
 - Brownfield merge test validates 3 scenarios: greenfield detection, conflict identification, spec preservation
 
 **Learnings**:
+
 - PowerShell parameter validation is strict - always use `[AllowEmptyCollection()]` for array parameters that might be empty
 - When scripts need to return structured data, use JSON serialization to avoid auto-formatting issues
 - For brownfield scenarios, informational conflicts are better than hard failures - guide the user to merge manually
@@ -221,6 +243,7 @@ Specrew created baseline roles in managed block but didn't populate Squad's reco
 **Status**: ✅ COMPLETE — Blocker RESOLVED; unattended sync operational
 
 **Task Execution**:
+
 - ✅ Verified current gh token has `repo` + `project` scopes (required)
 - ✅ Set repository secret `SPECREW_PROJECT_TOKEN` using `gh secret set`
 - ✅ Verified secret creation via `gh secret list`
@@ -229,7 +252,8 @@ Specrew created baseline roles in managed block but didn't populate Squad's reco
 - ✅ Updated `docs/github-project.md` with "Blocker Cleared" status
 - ✅ Committed workflow and script files to git
 
-**Key Finding**: 
+**Key Finding**:
+
 - Repository secrets are stored but not displayed in `gh secret list` beyond creation timestamp
 - Manual script execution with `gh auth token` piped to `$env:GH_TOKEN` confirms token auth works end-to-end
 - Once workflows are on default branch (`main`), CI dispatch will work automatically
@@ -244,6 +268,7 @@ Specrew created baseline roles in managed block but didn't populate Squad's reco
 **Status**: ✅ COMPLETE — Documentation synchronization
 
 **Task Execution**:
+
 - ✅ Identified stale README.md line 62 wording: "Unattended sync still requires the `SPECREW_PROJECT_TOKEN` Actions secret"
 - ✅ Updated README.md to reflect operational state: "The workflow is operational and syncs automatically on push to iteration artifacts"
 - ✅ Verified consistency with `docs/github-project.md` current capability statement
@@ -258,6 +283,7 @@ Specrew created baseline roles in managed block but didn't populate Squad's reco
 **Update**: Readiness assessment COMPLETE; blocker RESOLVED; Iteration 1 execution prerequisites clear
 
 **Key Facts**:
+
 - ✅ Pre-Iteration 1 readiness assessment complete (2026-04-18T19:00:00Z)
 - ✅ Initial blocker identified: stale "pending sign-off" language in closure artifacts contradicting plan.md `complete` status
 - ✅ Blocker resolved by Picard (2026-04-18T18:30:00Z) — all closure language updated; validator re-run: **PASS** (exit 0)
@@ -278,6 +304,7 @@ Specrew created baseline roles in managed block but didn't populate Squad's reco
 Pre-slice readiness checkpoint executed successfully. Repository infrastructure validated operational; governance validator running as designed and catching real semantic drift.
 
 **Key Finding**: Closure artifact evidence alignment blocker detected and RESOLVED.  
+
 - `plan.md` terminal status is `complete` with `Completed: 2026-04-18`
 - `review.md` and `state.md` initially contained "pending sign-off" language (contradiction detected)
 - Validator correctly flagged semantic mismatch (iteration marked complete but closure narrative said pending)
@@ -285,6 +312,7 @@ Pre-slice readiness checkpoint executed successfully. Repository infrastructure 
 - **Impact**: Iteration 1 planning ceremony now unblocked
 
 **Validation Results**:
+
 - ✅ Governance validator operational and detecting stale evidence correctly
 - ✅ Platform compatibility spikes all PASS (Spec Kit 0.7.3, Squad 0.9.1 validated)
 - ✅ CI pipeline functional and wired to validator gates
@@ -309,7 +337,8 @@ Pre-slice readiness checkpoint executed successfully. Repository infrastructure 
 
 - **User Directive**: Governance hardening authority now normative and binding. Specrew uses Specrew's own lifecycle. Iteration 1 work will run under binding phase state machine with automated validator gates.
 
-**La Forge role in Iteration 1**: 
+**La Forge role in Iteration 1**:
+
 - Governance-validator skill (FR-008) deferred to Iteration 1 execution
 - Identify architecture-risk spikes pre-planning (operating rule 2)
 - Validator integration with agent charters and ceremony templates
@@ -326,11 +355,13 @@ Pre-slice readiness checkpoint executed successfully. Repository infrastructure 
 Extended `validate-governance.ps1` to detect stale embedded plan-evidence claims in closure artifacts. Validator now distinguishes real governance drift from incidental prose with context-aware pattern matching.
 
 **Enhancements Applied**:
+
 1. **Status-line stale-language detection**: Catches semantic mismatches (e.g., "complete" paired with "awaiting sign-off")
 2. **Role-name validation scoped**: Targets approval/closure statements only (eliminates false positives on action annotations)
 3. **Cross-reference evidence check**: Compares artifact-embedded plan.md evidence against current state
 
 **Validator Test Results**:
+
 - Iteration 0 closure artifacts: ✅ 0 drift events (PASS)
 - False-positive reduction: ✅ Confirmed (review prose no longer triggers role-name checks)
 - Semantic mismatch detection: ✅ Confirmed (stale evidence now caught)
@@ -341,76 +372,86 @@ Extended `validate-governance.ps1` to detect stale embedded plan-evidence claims
 **CI Status**: squad-ci.yml gate enforcement verified and ready for Iteration 1 execution
 
 📌 **Iteration 1 git tracking finalized (2026-04-19T07:43:21Z)**:
-   - Staged specs/001-specrew-product/iterations/001/plan.md to index
-   - Plan now auditable and execution-ready
-   - Status: Merged to decisions.md, inbox cleared
+
+- Staged specs/001-specrew-product/iterations/001/plan.md to index
+- Plan now auditable and execution-ready
+- Status: Merged to decisions.md, inbox cleared
 
 📌 **Deployment Slice 2: Runtime Surface Deployment — COMPLETE (2026-04-19T20:24:18Z)**:
-   - ✅ Complete `specrew init` deployment slice implemented
-   - Spec Kit extension deployment: `deploy-speckit-extension.ps1` added
-   - Squad runtime-surface deployment: `deploy-squad-runtime.ps1` added
-   - Baseline role merge: Five roles merged into `.squad/team.md` (additive-only)
-   - Bootstrap hardening: Fixed strict-mode native-command exit-code handling
-   - ✅ Validation: Dry-run + smoke test + PSScriptAnalyzer all PASS
-   - **Next**: Slice 2 deployment gates (Picard's 8-gate framework) trigger Worf review
-   - **Status**: Decision merged to ledger; inbox cleaned; deployment ready for execution gate
+
+- ✅ Complete `specrew init` deployment slice implemented
+- Spec Kit extension deployment: `deploy-speckit-extension.ps1` added
+- Squad runtime-surface deployment: `deploy-squad-runtime.ps1` added
+- Baseline role merge: Five roles merged into `.squad/team.md` (additive-only)
+- Bootstrap hardening: Fixed strict-mode native-command exit-code handling
+- ✅ Validation: Dry-run + smoke test + PSScriptAnalyzer all PASS
+- **Next**: Slice 2 deployment gates (Picard's 8-gate framework) trigger Worf review
+- **Status**: Decision merged to ledger; inbox cleaned; deployment ready for execution gate
 
 ---
 
 ## Deployment Review Cycle (2026-04-19T20:40:24Z)
 
-**La Forge Delivery Status**: 
+**La Forge Delivery Status**:
+
 - Delivered runtime-surface deployment slice (T-005–T-008)
 - Includes: Spec Kit extension deployment, Squad skills deployment, ceremonies merge, baseline role merge, directive embedding
 - **Status**: Locked out pending Worf re-review completion
 
 **Worf Initial Review Defects (NEEDS-WORK)**:
+
 1. **Missing retro ceremony surface**: Only planning + review/demo deployed; retro.md not included
 2. **Deferred skill shipped**: `specrew-iteration-resume` (FR-019, deferred to Iteration 2) included in deployment
 
-**Picard Correction Cycle**: 
+**Picard Correction Cycle**:
+
 - Addressed both defects with narrowly scoped fixes
 - Fix 1: Added `retro.md` to ceremony deployment list
 - Fix 2: Added filter to exclude `iteration-resume.md`
 - Validation passed; runtime behavior corrected
 
 **Worf Re-Review Acceptance (PASS)**:
+
 - ✅ Retro ceremony deployed (fresh dry-run + live smoke confirmed)
 - ✅ Deferred skill excluded (3 skills deployed; resume not present)
 - ✅ Slice scope validation passed
 - **La Forge Status**: Deployment slice now execution-ready; lockout lifted
 
 **Decisions Merged**: 3 inbox files consolidated into decisions.md
+
 - `worf-deployment-slice-review.md` (initial NEEDS-WORK)
 - `picard-deployment-slice-revision.md` (correction details)
 - `worf-deployment-slice-rereview.md` (PASS verdict)
 
 📌 **Bootstrap Gate Fix Complete (2026-04-19T21-49-33Z)**:
-   - Fixed validate-versions.ps1 to tolerate specify --version shim failure, fallback to uv tool list
-   - Fixed specrew-init.ps1 to probe squad init --help from disposable directory
-   - All smoke tests and PSScriptAnalyzer validations passed
-   - Worf review verdict: PASS
-   - **Status**: ACCEPTED. Ready for next bootstrap gate action
+
+- Fixed validate-versions.ps1 to tolerate specify --version shim failure, fallback to uv tool list
+- Fixed specrew-init.ps1 to probe squad init --help from disposable directory
+- All smoke tests and PSScriptAnalyzer validations passed
+- Worf review verdict: PASS
+- **Status**: ACCEPTED. Ready for next bootstrap gate action
 
 ---
 
 📌 **T-002 Implementation Complete & Reviewed (2026-04-22T21:35:46Z)**:
-   - ✅ Implemented missing-dependency installation path in scripts/specrew-init.ps1
-   - ✅ Preserved validation/dry-run behavior across all code paths
-   - ✅ Install flow: missing Spec Kit via uv tool install --upgrade "specify-cli>=<min>"
-   - ✅ Install flow: missing Squad via npm install -g "@bradygaster/squad-cli@<min>"
-   - ✅ Post-install re-validation with hard-stop on remaining failures (exit code 4)
-   - ✅ Governance validator (validate-governance.ps1) passes
-   - ✅ Dry-run bootstrap preview functional and accurate
-   - ✅ Worf review verdict: PASS
-   - **Status**: T-002 implementation complete and validated
+
+- ✅ Implemented missing-dependency installation path in scripts/specrew-init.ps1
+- ✅ Preserved validation/dry-run behavior across all code paths
+- ✅ Install flow: missing Spec Kit via uv tool install --upgrade "specify-cli>=<min>"
+- ✅ Install flow: missing Squad via npm install -g "@bradygaster/squad-cli@<min>"
+- ✅ Post-install re-validation with hard-stop on remaining failures (exit code 4)
+- ✅ Governance validator (validate-governance.ps1) passes
+- ✅ Dry-run bootstrap preview functional and accurate
+- ✅ Worf review verdict: PASS
+- **Status**: T-002 implementation complete and validated
 
 📌 **Decision Inbox Merged (2026-04-22T21:35:46Z)**:
-   - ✅ 9 inbox decisions consolidated into decisions.md
-   - ✅ Includes: Bootstrap fixes, deployment ledger alignment, pre-T-002 cleanup, FR-022 temporal corrections
-   - ✅ Inbox cleaned; all files deleted
-   - ✅ Cross-agent history updates (La Forge, Worf, Picard)
-   - **Status**: Session state synchronized; ready for git commit
+
+- ✅ 9 inbox decisions consolidated into decisions.md
+- ✅ Includes: Bootstrap fixes, deployment ledger alignment, pre-T-002 cleanup, FR-022 temporal corrections
+- ✅ Inbox cleaned; all files deleted
+- ✅ Cross-agent history updates (La Forge, Worf, Picard)
+- **Status**: Session state synchronized; ready for git commit
 
 📌 **T-006 Squad Skill Deployment — ACCEPTED (2026-04-25T11:52:30Z)**:
     - **Task**: T-006 completion closes Squad skill deployment path in `specrew init`
@@ -426,11 +467,12 @@ Extended `validate-governance.ps1` to detect stale embedded plan-evidence claims
 ---
 
 📌 **T-006 Implementation Accepted (2026-04-25T17:10:13Z)**:
-   - ✅ Squad skills deployment scoped to narrow increment (T-006 only)
-   - ✅ Deferred ceremonies and governance scaffolding to T-007–T-009
-   - ✅ Narrowed deploy scripts to skill templates only
-   - ✅ Picard and Worf review PASS verdict recorded
-   - **Status**: T-006 complete; Iteration 1a delivery ready
+
+- ✅ Squad skills deployment scoped to narrow increment (T-006 only)
+- ✅ Deferred ceremonies and governance scaffolding to T-007–T-009
+- ✅ Narrowed deploy scripts to skill templates only
+- ✅ Picard and Worf review PASS verdict recorded
+- **Status**: T-006 complete; Iteration 1a delivery ready
 
 ## 2026-05-04: Command-Driven Team Management Implementation
 
@@ -439,6 +481,7 @@ Extended `validate-governance.ps1` to detect stale embedded plan-evidence claims
 **Key Learnings**:
 
 ### Regex Pattern Subtleties in PowerShell
+
 - **Issue**: Initial removal pattern failed to match team.md table rows containing backticks
 - **Root Cause**: Single backtick in regex pattern was being interpreted as escape character
 - **Solution**: Use double backticks (`) to match literal backtick in markdown table
@@ -446,6 +489,7 @@ Extended `validate-governance.ps1` to detect stale embedded plan-evidence claims
 - **Lesson**: Always test regex patterns in isolation before deploying in functions
 
 ### Managed Block Placement Strategy
+
 - **Design**: Domain-specific members placed AFTER managed baseline block
 - **Rationale**: Keeps baseline deterministic across bootstrap re-runs
 - **Alternative Considered**: Placing domain members INSIDE managed block
@@ -453,12 +497,14 @@ Extended `validate-governance.ps1` to detect stale embedded plan-evidence claims
 - **Benefit**: Clear separation between Specrew-controlled and user-controlled content
 
 ### Member Identification Approach
+
 - **Challenge**: Members can be referenced by role name or normalized directory name
 - **Solution**: `Test-MemberExists` checks both role name in table and directory path pattern
 - **Example**: "Security Analyst" (role) vs "security-analyst" (directory)
 - **Benefit**: Flexible user experience (can use either form in commands)
 
 ### Baseline Protection Enforcement
+
 - **Strategy**: Multi-layer protection at different operation points
   1. Normalized name check against baseline role list
   2. Managed block detection for update/remove operations
@@ -466,18 +512,21 @@ Extended `validate-governance.ps1` to detect stale embedded plan-evidence claims
 - **Lesson**: Defense in depth prevents edge cases from bypassing protection
 
 ### UTF-8 Encoding Consistency
+
 - **Approach**: All file writes use `[System.Text.UTF8Encoding]::new($false)`
 - **Rationale**: BOM-less UTF-8 for Git compatibility
 - **Critical**: PowerShell default encoding varies by version and platform
 - **Best Practice**: Always specify encoding explicitly for cross-platform consistency
 
 ### Test-Driven Development Value
+
 - **Process**: Wrote integration test first, then implemented features
 - **Benefit**: Caught regex pattern bugs early through automated validation
 - **Coverage**: 8 test scenarios covering happy path + protection boundaries
 - **Time Saved**: Avoided manual testing cycles for each edge case
 
 ### Bootstrap Integration Pattern
+
 - **Update Location**: `Write-PostBootstrapGuidance` function in `scripts/specrew-init.ps1`
 - **Content**: Explicit command examples with full paths
 - **Design Choice**: Show command paths relative to Specrew clone, not installed location
@@ -485,18 +534,21 @@ Extended `validate-governance.ps1` to detect stale embedded plan-evidence claims
 - **Future**: Update when packaged as npm/pip module
 
 ### Documentation Consistency
+
 - **Files Updated**: README.md, getting-started.md, user-guide.md
 - **Pattern**: Consistent command examples across all docs
 - **Detail Level**: Full commands with all parameters, not just placeholders
 - **User Benefit**: Copy-paste-ready examples reduce friction
 
 ### Error Handling Philosophy
+
 - **Approach**: Fail fast with clear error messages
 - **Example**: "Cannot remove baseline role 'Implementer'. Baseline roles are protected."
 - **Benefit**: Users understand what went wrong and why
 - **Anti-Pattern**: Silent failures or cryptic error codes
 
 ### Future Enhancement Opportunities Identified
+
 1. Bulk operations from manifest files
 2. Pre-commit validation hook for baseline block integrity
 3. Role templates for common domain roles
@@ -504,6 +556,7 @@ Extended `validate-governance.ps1` to detect stale embedded plan-evidence claims
 5. Transactional semantics with rollback on partial failure
 
 **Artifacts Created**:
+
 - `scripts/specrew-team.ps1` (510 lines, 4 commands)
 - `tests/integration/team-management.ps1` (260 lines, 8 scenarios)
 - `.squad/decisions/inbox/laforge-team-command.md` (decision record)
@@ -511,6 +564,7 @@ Extended `validate-governance.ps1` to detect stale embedded plan-evidence claims
 - Updated documentation in 3 files
 
 **Validation**:
+
 - ✅ All 8 test scenarios pass
 - ✅ Bootstrap guidance displays correct commands
 - ✅ Manual add/update/remove cycles work correctly
@@ -525,6 +579,7 @@ Extended `validate-governance.ps1` to detect stale embedded plan-evidence claims
 **Technical Discovery**: PowerShell scripts invoked as `pwsh -File script.ps1` run in a **child process** and cannot modify the parent shell's environment variables. This is a fundamental process boundary constraint, not a PowerShell limitation. Tested and verified: child process `C:\Program Files\PowerShell\7;C:\Program Files\Microsoft\jdk-17.0.16.8-hotspot\bin;C:\Program Files (x86)\Razer Chroma SDK\bin;C:\Program Files\Razer Chroma SDK\bin;C:\Program Files\Microsoft SDKs\Azure\CLI2\wbin;C:\Python313\Scripts\;C:\Python313\;C:\Windows\system32;C:\Windows;C:\Windows\System32\Wbem;C:\Windows\System32\WindowsPowerShell\v1.0\;C:\Windows\System32\OpenSSH\;C:\Program Files\Microsoft SQL Server\Client SDK\ODBC\170\Tools\Binn\;C:\Program Files\Microsoft SQL Server\150\Tools\Binn\;C:\Program Files\NVIDIA Corporation\NVIDIA app\NvDLISR;C:\Program Files (x86)\NVIDIA Corporation\PhysX\Common;C:\Program Files\Git LFS;C:\ProgramData\chocolatey\bin;C:\Program Files\Go\bin;C:\Program Files\PuTTY\;C:\Windows\system32\config\systemprofile\AppData\Local\Microsoft\WindowsApps;C:\Program Files (x86)\Razer\ChromaBroadcast\bin;C:\Program Files\Razer\ChromaBroadcast\bin;C:\Users\alon.HOME\AppData\Local\Microsoft\WindowsApps;C:\Users\alon.HOME\AppData\Local\Programs\Microsoft VS Code\bin;C:\Users\alon.HOME\AppData\Local\Programs\Azure Dev CLI\;C:\Users\alon.HOME\.dotnet\tools;C:\Program Files\JetBrains\JetBrains Rider 2024.3.7\bin;C:\Users\alon.HOME\AppData\Roaming\npm;C:\Users\alon.HOME\go\bin;C:\Users\alon.HOME\AppData\Local\GitHubDesktop\bin;C:\Users\alon.HOME\AppData\Local\Pandoc\;C:\Users\alon.HOME\AppData\Local\Gource\cmd;C:\Program Files (x86)\Windows Kits\10\Windows Performance Toolkit\;C:\Users\alon.HOME\AppData\Roaming\Python\Python313\Scripts;c:\Users\alon.HOME\AppData\Local\Programs\cursor\resources\app\bin;C:\Program Files\GitHub CLI\;C:\Program Files\Microsoft SQL Server\170\Tools\Binn\;C:\Program Files\dotnet\;C:\Program Files\Docker\Docker\resources\bin;C:\Program Files\Warp\bin;C:\Program Files\Git\cmd;C:\Program Files\nodejs\;C:\Users\alon.HOME\.local\bin;C:\Program Files\Amazon\AWSCLIV2\;C:\Program Files\PowerShell\7\;C:\Users\alon.HOME\scoop\shims;C:\Users\alon.HOME\AppData\Local\Microsoft\WindowsApps;C:\Users\alon.HOME\AppData\Local\Programs\Microsoft VS Code\bin;C:\Users\alon.HOME\AppData\Local\Programs\Azure Dev CLI\;C:\Program Files\JetBrains\JetBrains Rider 2024.3.7\bin;C:\Users\alon.HOME\go\bin;C:\Users\alon.HOME\AppData\Local\GitHubDesktop\bin;C:\Users\alon.HOME\AppData\Local\Pandoc\;C:\Users\alon.HOME\AppData\Local\Gource\cmd;C:\Users\alon.HOME\AppData\Local\Programs\cursor\resources\app\bin;C:\Users\alon.HOME\AppData\Local\Programs\Kiro\bin;C:\Users\alon.HOME\AppData\Local\Android\Sdk\platform-tools;C:\Users\alon.HOME\.dotnet\tools;C:\Users\alon.HOME\.dotnet\tools;C:\Users\alon.HOME\AppData\Local\Microsoft\WinGet\Links;C:\Program Files\TTYD;;C:\dapr;C:\Users\alon.HOME\.dotnet\tools;C:\Program Files (x86)\GnuWin32\bin;C:\Users\alon.HOME\AppData\Roaming\npm;C:\Users\alon.HOME\.dotnet\tools;c:\Dev\ZioSlipDispatcher\.dotnet\.dotnet\tools` modifications do NOT affect parent shell.
 
 **What I Built**:
+
 - Enhanced `Write-PostBootstrapGuidance` function in `specrew-init.ps1` with two clear PATH options:
   - **Session-only**: Copy-paste one-liner to add to current shell (temporary)
   - **Persistent**: Copy-paste script block to add to user-level PATH (no admin required)

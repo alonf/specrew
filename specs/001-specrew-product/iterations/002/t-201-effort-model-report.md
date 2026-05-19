@@ -44,6 +44,7 @@ All fields from FR-007 and data-model.md are present with correct defaults.
 **Planning Ceremony Contract** (squad-templates/ceremonies/planning.md):
 
 #### Required Inputs (line 26-34)
+
 ```markdown
 | Input | Source | Description |
 | ----- | ------ | ----------- |
@@ -53,10 +54,12 @@ All fields from FR-007 and data-model.md are present with correct defaults.
 ```
 
 **Validation Result**: ✅ **INTEGRATED**  
+
 - iteration-config.yml is listed as a required input
 - Ceremony explicitly references capacity and effort unit
 
 #### Ceremony Method (line 89-96)
+
 ```markdown
 ### 4. Estimation and phase variance setup
 
@@ -69,10 +72,12 @@ This creates the baseline the retrospective will compare against.
 ```
 
 **Validation Result**: ✅ **INTEGRATED**  
+
 - Planning ceremony requires effort estimation using the configured effort unit
 - Phase-level baseline creation uses iteration-config.yml capacity and unit
 
 #### Ceremony Gates (line 100-107)
+
 ```markdown
 ### 5. Hard governance gates
 
@@ -87,6 +92,7 @@ Use `specrew-capacity-planning` to pressure-test estimates...
 ```
 
 **Validation Result**: ✅ **INTEGRATED**  
+
 - Capacity gate enforces the configured overcommit_threshold
 - capacity-planning skill uses iteration-config.yml data
 
@@ -97,6 +103,7 @@ Use `specrew-capacity-planning` to pressure-test estimates...
 **Location**: `extensions/specrew-speckit/squad-templates/skills/capacity-planning.md`
 
 **Inputs** (from contract):
+
 ```markdown
 **When to use**: During the Planning ceremony.
 **Inputs**: Spec requirements, iteration config (effort unit, capacity limit).
@@ -134,11 +141,13 @@ All fields from data-model.md are present in the template with matching defaults
 **Retrospective Artifact** (squad-templates/ceremonies/retro.md):
 
 **Inputs to Retro Ceremony**:
+
 ```markdown
 **Inputs**: plan.md, state.md, drift-log.md, review.md, plus Specrew retro guidance
 ```
 
 **Retro Output** (data-model.md lines 213-220):
+
 ```markdown
 | estimation_accuracy | object | Planned vs. actual effort summary |
 | calibration_suggestion | object? | Suggested capacity/effort adjustments |
@@ -155,20 +164,24 @@ All fields from data-model.md are present in the template with matching defaults
 ## Integration Path Documentation
 
 ### Phase 1: Bootstrap (specrew init)
+
 1. ✅ Deploy iteration-config.yml to downstream project with defaults
 2. ✅ Planning ceremony checks iteration-config.yml for capacity and effort unit
 
 ### Phase 2: Planning Ceremony (Planning phase)
+
 1. ✅ Planner uses effort_unit from iteration-config.yml for task estimates
 2. ✅ capacity-planning skill pressure-tests total against capacity_per_iteration
 3. ✅ Capacity gate enforces overcommit_threshold
 4. ✅ Plan.md phase-baseline captures task and phase-level estimates
 
 ### Phase 3: Estimation Tracking (Execution phase)
+
 1. ✅ state.md records completed tasks with actual_effort (in configured unit)
 2. ✅ drift-check skill validates effort tracking per task
 
 ### Phase 4: Retrospective (Retro phase)
+
 1. ✅ Retrospective ceremony reviews estimation_accuracy
 2. ✅ If calibration_enabled, suggest capacity adjustments for next iteration
 3. ✅ retro.md documents velocity calibration

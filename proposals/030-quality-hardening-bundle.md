@@ -16,6 +16,7 @@ After Feature 017 (Velocity Dashboard) and Feature 018 (Visual Richness) shipped
 The pattern is **form-correct, meaning-wrong**: tests measure the renderer's output shape given synthetic inputs, but don't measure whether the renderer correctly *interprets* the real environment. Hardening gate items get marked "ready" via self-attestation. Validator checks file shapes. Nothing exercises the actual end-to-end user-visible behavior.
 
 Concrete instances observed across F-017 + F-018:
+
 - Active feature status derivation false-positive ("Shipped" when not merged)
 - Velocity math with "high confidence" label despite implausible numbers
 - Iteration SP reading as 0 because state.md used "~18" approximation marker
@@ -36,6 +37,7 @@ Four-component bundle that gets PRIORITY ELEVATION ahead of other Phase 2 work b
 ### Component 1: Empirical Meaning-Verification at Review Boundary (NEW FEATURE, ~10-15 SP)
 
 A new lifecycle artifact at the review boundary: `meaning-verification.md`. For every feature producing user-visible output, the artifact captures:
+
 - Each FR producing user-visible output or environment-dependent behavior
 - The verification mode performed (Squad self-test / human terminal verification / fixture replay)
 - The verification outcome with concrete evidence (output sample, measurement, screenshot)
@@ -46,6 +48,7 @@ The review boundary's "accepted" verdict requires this artifact to show empirica
 ### Component 2: Validator Hardening scope expansion (~10 SP additional)
 
 Absorbs four corpus rows captured during F-018's lifecycle into the already-queued Validator Hardening feature:
+
 - `is-output-redirected-unreliable-in-powershell-scripts` — flag use as TTY signal
 - `subshell-loses-parent-console-encoding` — flag entry scripts that render Unicode without encoding setup
 - `boundary-commit-not-pushed-at-end-of-boundary` — at `specrew start`, warn when local HEAD differs from origin
@@ -59,6 +62,7 @@ Originally captured in private notes 2026-05-13 as a Phase 2 candidate. F-018 re
 ### Component 4: Process changes via coordinator prompts (~2-3 SP)
 
 Lightweight chore updates to coordinator-prompt files:
+
 - "Boundary completion includes push" — explicit rule that Squad's "stop at boundary" means commit + push, not just commit
 - "PoC-parity audit before /speckit.specify" — when a feature references a PoC as shaping reference, mandate explicit audit before spec ingestion
 - "Form vs meaning at review boundary" — explicit rule distinguishing form-correctness verification from meaning-correctness verification
@@ -76,12 +80,14 @@ Lightweight chore updates to coordinator-prompt files:
 **Phase 2, FIRST priority** — ahead of Session-State Durability, Branch Reconciliation, and other Phase 2 features.
 
 Sequencing:
+
 1. F-018 close + retro + iteration-closeout + feature-closeout (in flight at proposal date)
 2. Stage 1 chore (immediate session-state fix, ~3 hours)
 3. **Quality Hardening Bundle** (this proposal, ~30-40 SP)
 4. Then: Session-State Durability, Branch Reconciliation, etc.
 
 Rationale for priority elevation:
+
 - The form-vs-meaning bug class compounds across features. Catching it early is cheaper than catching it 5+ times.
 - State-foundation features themselves produce environment-dependent behavior — they need the quality machinery.
 - Quality is load-bearing for public flip equity.

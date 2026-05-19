@@ -11,6 +11,7 @@ and PowerShell script entry points, so adding one renderer behind multiple entry
 behavioral parity instead of duplicating formatting logic.
 
 **Alternatives considered**:
+
 - Separate renderers for CLI and conversational routing — rejected because drift between outputs
   would undermine trust.
 - Alias-only support without a dedicated script — rejected because the spec explicitly reserves a
@@ -27,6 +28,7 @@ rendering minimizes terminal compatibility risk and transcript capture issues, w
 24-line budget keeps closeout handoffs consistent and testable.
 
 **Alternatives considered**:
+
 - Unicode-heavy or color-dependent charts — rejected because they degrade in monochrome and non-TTY
   contexts.
 - Configurable compact line budgets — rejected because the spec clarifies a fixed v1 budget.
@@ -43,6 +45,7 @@ but the dashboard needs a predictable, testable policy that preserves meaning wh
 Centralizing the decision keeps future theme changes coherent and prevents scattered rendering logic.
 
 **Alternatives considered**:
+
 - Always render with color when the host supports it — rejected because explicit user and environment
   intent must take precedence.
 - No color support at all — rejected because semantic highlighting is still useful in capable
@@ -60,6 +63,7 @@ derived shipped progress preserves traceability to canonical feature/iteration r
 future expansion without inventing a new database-like artifact.
 
 **Alternatives considered**:
+
 - Manual shipped totals inside the roadmap file — rejected because they create misleading drift.
 - A separate central velocity ledger — rejected because it duplicates data already present in
   canonical iteration artifacts.
@@ -76,6 +80,7 @@ blocker for every workflow. The existing repo already uses validator-driven gove
 known-traps documentation, so soft warnings are the right additive mechanism for drift visibility.
 
 **Alternatives considered**:
+
 - Hard-fail validation for every roadmap inconsistency — rejected because the roadmap is a planning
   aid and should degrade gracefully.
 - No drift checks — rejected because silent misleading output would violate the constitution and
@@ -93,6 +98,7 @@ artifact conventions and avoids introducing a mutable top-level "current dashboa
 drift from closeout history.
 
 **Alternatives considered**:
+
 - A single live `.specrew/where-we-are.md` file — rejected by clarified scope and because it would
   create a second mutable truth surface.
 - Rewriting historical dashboard artifacts on rerun — rejected because it destroys closeout-time
@@ -108,6 +114,7 @@ ScriptAnalyzer checks. Extending that deterministic harness is lower-risk and mo
 introducing a new test runner or relying on manual inspection alone.
 
 **Alternatives considered**:
+
 - Manual validation only — rejected because the spec requires durable trust and non-crashing
   behavior.
 - A new JS/TS test harness — rejected because the existing PowerShell workflow already covers this

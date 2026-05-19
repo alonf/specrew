@@ -20,11 +20,13 @@ Validate that the `preferred_agent` field in `role-assignments.yml` provides a v
 **Location**: `.specrew/role-assignments.yml` (source template: `extensions/specrew-speckit/templates/role-assignments.yml`)
 
 **Field Definition** (data-model.md, line 81):
+
 ```yaml
 preferred_agent: string? | Optional | Preferred Copilot-accessible agent family (e.g., `copilot`, `claude`, `codex`)
 ```
 
 **Current Template State** (as of 2026-04-30):
+
 ```yaml
 roles:
   - name: "Spec Steward"
@@ -47,6 +49,7 @@ roles:
 ```
 
 **Validation Result**: ✅ **VIABLE**  
+
 - Field is present in all baseline roles (Spec Steward, Planner, Implementer, Reviewer, Retro Facilitator)
 - Field is optional (marked as `string?`) — safe for existing consumers to ignore
 - Spec requirement (FR-021) is satisfied: "Agent preference is per-role and configurable in `role-assignments.yml` via a `preferred_agent` field"
@@ -58,10 +61,12 @@ roles:
 **Integration Points** (identified for T-202/T-203):
 
 #### A. **Squad Team Configuration**
+
 - **Where**: `.squad/team.md` (populated by `specrew init`)
 - **How**: The `deploy-squad-runtime.ps1` script (extension/specrew-speckit/scripts/) builds Squad team configuration from `role-assignments.yml`
 - **Action**: Extract `preferred_agent` from each role's entry and configure Squad's agent routing rules
 - **Example**:
+
   ```yaml
   # In .squad/team.md (generated from role-assignments.yml)
   - role: "Spec Steward"
@@ -70,6 +75,7 @@ roles:
   ```
 
 #### B. **Iteration Execution Routing**
+
 - **When**: During task assignment (execution phase)
 - **Where**: Squad's task routing logic (`specrew-iteration-resume` skill and planning ceremony)
 - **How**: When assigning a task owner:
@@ -80,6 +86,7 @@ roles:
 - **Safety Gate**: Independent-reviewer principle only applies when multiple agents are enabled AND the preferred agent is available
 
 #### C. **Ceremony Integration Points**
+
 1. **Planning Ceremony** (specrew-speckit/squad-templates/ceremonies/planning.md)
    - **Inputs**: role-assignments.yml is already listed (line 32)
    - **Action**: Planner reviews preferred_agent assignments during task decomposition
@@ -93,6 +100,7 @@ roles:
 ### 3. Configuration Consistency Check
 
 **Cross-References**:
+
 - ✅ `data-model.md` (line 81): Role Assignments schema includes preferred_agent field
 - ✅ `role-assignments.yml` template: All baseline roles have preferred_agent field
 - ✅ `planning.md` ceremony: Inputs include role-assignments.yml (line 32)
@@ -105,6 +113,7 @@ roles:
 **Prerequisite**: FR-022 (detect available Copilot / Agent HQ selectable agents)
 
 **Implementation Pattern**:
+
 ```powershell
 # In specrew init (detects enabled agents)
 $enabled_agents = Get-EnabledAgents  # From iteration-config.yml agents section (FR-022)
@@ -124,17 +133,20 @@ if ($role.preferred_agent -in $enabled_agents) {
 ## Routing Architecture (Proposed for T-202/T-203)
 
 ### Phase 1: Configuration (T-201, T-203 wiring)
+
 1. `role-assignments.yml` defines preferred agents per role
 2. `iteration-config.yml` agents section lists enabled agents (FR-022)
 3. Planning ceremony uses both files to assign tasks
 
 ### Phase 2: Execution (T-202 implementation)
+
 1. Task routing logic checks preferred_agent for review roles
 2. If preferred agent is enabled, route to that agent
 3. If preferred agent is unavailable/disabled, fall back to Copilot (default)
 4. Log routing decisions to state.md for retrospective analysis
 
 ### Phase 3: Review Integration (built-in to T-202)
+
 1. Reviewer and Spec Steward tasks auto-route to preferred agent
 2. Review ceremony invokes the assigned reviewer agent
 3. Independent-perspective principle maintained across iterations
@@ -155,17 +167,20 @@ if ($role.preferred_agent -in $enabled_agents) {
 ## Implementation Path for FR-021
 
 ### T-202: Implement per-role routing logic (2 pts)
+
 - Add routing decision logic to task assignment in planning ceremony
 - Check preferred_agent from role-assignments.yml
 - Implement fallback to Copilot if preferred agent unavailable
 - Add logging to state.md for routing decisions
 
 ### T-203: Wire effort model + routing into planning artifact (1 pt)
+
 - Update planning.md output to include preferred_agent assignments per task
 - Ensure capacity-planning skill respects role assignment constraints
 - Add routing validation to planning ceremony gates (FR-021 enforcement)
 
 ### Prerequisites
+
 - ✅ V-R7-2: Validate surface is viable (THIS DOCUMENT)
 - FR-022: Agent detection and consent (deferred to Iter 2, but required for execution)
 - T-201: Effort model fields verified and documented

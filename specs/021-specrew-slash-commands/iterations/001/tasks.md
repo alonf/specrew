@@ -147,13 +147,13 @@ Each executable item uses this structure:
 
 - [x] I1-T009 [US3] [assigned_to: Reviewer] [effort: 0.4 SP] Add setup, refresh, and compatibility validation coverage in `tests/integration/slash-command-distribution.tests.ps1` and `tests/integration/slash-command-compatibility.tests.ps1` (Trace: I1-W003; FR-016, FR-017, FR-018, FR-019, FR-020; SC-003, SC-004)
   - **Execution**: Status=done; Agent=Reviewer; Commit(s)=`29a130b`; Actual=0.4 SP; Verdict=PASS
-   - **Title**: Distribution and compatibility validation suite
-   - **FR coverage**: FR-016, FR-017, FR-018, FR-019, FR-020
-   - **SC coverage**: SC-003, SC-004
-   - **User story coverage**: US3
-   - **Owner role**: Reviewer
-   - **Dependencies**: I1-T008
-   - **Before-Implement Repair (GAP-BI-003, GAP-BI-004)**: Setup/refresh delivery outcomes moved from I1-T012 to I1-T009 because they map directly to distribution/compatibility validation.
+  - **Title**: Distribution and compatibility validation suite
+  - **FR coverage**: FR-016, FR-017, FR-018, FR-019, FR-020
+  - **SC coverage**: SC-003, SC-004
+  - **User story coverage**: US3
+  - **Owner role**: Reviewer
+  - **Dependencies**: I1-T008
+  - **Before-Implement Repair (GAP-BI-003, GAP-BI-004)**: Setup/refresh delivery outcomes moved from I1-T012 to I1-T009 because they map directly to distribution/compatibility validation.
 
 **Phase 3 Total**: 3 tasks, 1.5 SP
 
@@ -245,4 +245,3 @@ I1-T006 + I1-T009 -> I1-T010 -> I1-T011 -> I1-T012
 - Preserve Feature 020 carry-forward defaults during execution: 3 repair cycles, 30-minute wall-clock per failing test, live bookkeeping, per-lane drift labels, push after every commit, Write-Output-visible warnings, no case-insensitive PowerShell variable collisions, and file:/// prose-path discipline.
 - Treat stewardship labels as baseline Squad-role mappings only; do not reopen plan/spec ownership artifacts.
 - Do not spend the `0.7 SP` reserve unless a concrete defect or evidence gap is logged against `I1-T001` through `I1-T012`.
-

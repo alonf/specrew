@@ -15,6 +15,7 @@ discussion: tbd
 Specrew's value comes from the interaction model between the human developer and the lifecycle. Three pillars are required at every boundary for that model to deliver value: stop frequency (boundary discipline), stop substance (essence-in-console), and click-through navigation (file:/// links).
 
 External dogfooding on a fresh project surfaced three related observations that together described a broken interaction model:
+
 - The user had to manually open `.md` files to understand state because boundary handoffs were procedurally complete but substantively thin
 - File references in boundary handoffs used bare paths instead of `file:///` URLs, breaking click-through navigation
 - Lifecycle boundaries were bundled into auto-continue cycles, replacing the dogfooding pattern of 7 discrete authorizations per iteration with 2-3
@@ -48,6 +49,7 @@ Phase 1 — the foundation of the interaction model. Subsequent features (Archit
 ## Notable outcomes
 
 This iteration was the first to demonstrate Specrew's adversarial self-testing capability:
+
 - The validator rules introduced in Iteration 1 fired on the iteration's own commits, surfacing multiple design defects
 - Each defect was resolved through repair cycles within the iteration
 - Six corpus-row candidates surfaced; three estimation-discipline learnings captured

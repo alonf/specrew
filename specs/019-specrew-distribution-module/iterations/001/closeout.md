@@ -14,6 +14,7 @@
 This closeout artifact was materialized on 2026-05-17 to reconcile a bookkeeping gap between human authorization and on-disk state. The user explicitly authorized: "Iter 1 closed via the iteration-closeout boundary preceding this authorization" as part of the Feature 019 Iteration 002 overnight autonomous run authorization.
 
 **Truthful timeline**:
+
 - Iteration 001 retro-boundary completed at commit `ee8ea8a` on 2026-05-16T20:45:00Z
 - Human authorization for Iteration 002 opening received 2026-05-17 with explicit statement that Iteration 001 closeout had preceded that authorization
 - This closeout artifact created 2026-05-17 to materialize the missing bookkeeping
@@ -40,10 +41,12 @@ Feature 019 Iteration 001 delivered the Windows-first Phase 0 through Phase 6 im
 ## Carry-Forward Items
 
 ### Deferred to Iteration 002
+
 - **T041**: Broad Join-Path audit/hardening sweep across 104+ embedded backslash path strings in existing PowerShell scripts
 - **T054**: Linux/macOS/WSL cross-platform parity validation with Ubuntu CI matrix and WSL end-to-end verification
 
 ### Human Post-Merge Follow-Up
+
 - **T042**: GitHub Actions secret configuration (`PSGALLERY_API_KEY`, `SIGNING_CERT_BASE64`, `SIGNING_CERT_PASSWORD`) — documented but not configured during Iteration 001
 - **T053**: First real PSGallery publish via tag push and manual workflow dispatch — pending post-merge
 
@@ -52,6 +55,7 @@ Feature 019 Iteration 001 delivered the Windows-first Phase 0 through Phase 6 im
 ## Iteration 002 Authorization
 
 Per explicit human authorization on 2026-05-17:
+
 - Iteration 002 opening is authorized
 - Iteration 002 scope is locked to the deferred cross-platform hardening work (T041, T054) plus PSGallery publish-workflow enablement (remove manual-approval gate)
 - Permissive overnight autonomous run is authorized with strict stop conditions for any test/validator/hardening failures, unanswered design questions, or human-judgment boundaries

@@ -19,6 +19,7 @@ Silence on this point would read as ambiguity to outside readers. The spec clari
 (2026-05-13) resolved this explicitly.
 
 **Alternatives Considered**:
+
 - Accept all external PRs → rejected; operating model not ready; would require review/merge
   governance work not in scope.
 - Complete silence in README → rejected; creates confusion about whether the project is open.
@@ -40,6 +41,7 @@ without needing to navigate into subdirectories. MIT license compliance requires
 text be distributed alongside the software; root placement satisfies this with zero ambiguity.
 
 **Alternatives Considered**:
+
 - `docs/NOTICE.md` → rejected; less discoverable for first-time visitors unfamiliar with the
   project structure.
 - Inline in README → rejected; would make README verbose and harder to scan.
@@ -63,12 +65,14 @@ PR numbers are generally available from the `git log --oneline --all` history an
 where clearly associated.
 
 **Alternatives Considered**:
+
 - Full per-task granularity → rejected; this is retroactive bookkeeping, not a live changelog;
   per-task detail would be speculative and noisy.
 - Ordinal-only, no commit refs → rejected; commit refs are available from git history and add
   genuine traceability at low cost.
 
 **Known Commit/Merge References (from `git log --oneline --all`)**:
+
 - Features 001–006: landed in early bootstrap commits before formal PR merge workflow; reference
   point is the branch tips (`001-specrew-product` through `006-stack-aware-quality-bar`).
 - Feature 007: `f198702` (feature-closeout commit on branch `007`).
@@ -89,6 +93,7 @@ where clearly associated.
 **Question**: Should `v0.13.0` be tagged retroactively or should tagging start only at `v0.14.0`?
 
 **Decision**: Tag both milestones.
+
 - `v0.13.0` → commit `21d9e7f` (Merge PR #79 from `alonf/013-validator-hardening` — the
   historical catch-up merge bringing Features 008–013 to main)
 - `v0.14.0` → commit `3ff32d4` (Merge PR #99 from `alonf/014-handoff-format-scoping` — the
@@ -101,6 +106,7 @@ features. Creating `v0.13.0` retroactively is pure documentary bookkeeping; git 
 do not alter history.
 
 **Tag Creation Commands** (to be executed as part of Iteration 002):
+
 ```sh
 git tag v0.13.0 21d9e7f -m "Specrew v0.13.0 — Features 008-013 catch-up merge (PR #79)"
 git tag v0.14.0 3ff32d4 -m "Specrew v0.14.0 — Feature 014 handoff-format-scoping (PR #99)"
@@ -112,6 +118,7 @@ Earlier releases had no formal merge-PR workflow and their precise ship points a
 commit history; tagging them would be speculative.
 
 **Alternatives Considered**:
+
 - Tag only `v0.14.0` → rejected per spec clarification; removes traceability for the 008–013
   catch-up milestone.
 - Tag every feature → rejected; spec explicitly scopes to just these two anchor points.
@@ -125,10 +132,12 @@ commit history; tagging them would be speculative.
 **Question**: Where should the versioning schema live, and what is the schema?
 
 **Decision**:
+
 - Brief versioning summary in `README.md` (current version + scheme in one paragraph)
 - Full versioning policy at `docs/versioning.md`
 
 **Schema**:
+
 - `0.NN.0` — each shipped feature advances the minor version; NN matches the feature ordinal
 - `0.NN.M` — hotfix patch for feature NN shipped state; M starts at 1
 - Pre-alpha bootstrap-era value (`0.1.0-dev` in `.specrew/config.yml`) is deprecated and replaced
@@ -142,6 +151,7 @@ the `docs/versioning.md` link without wading through policy in the README. The 0
 already implicit in the 14-feature history and becomes explicit and documented here.
 
 **Alternatives Considered**:
+
 - Version only in README → rejected; makes README too long (NFR-001).
 - Separate `VERSIONING.md` at root → rejected; spec explicitly chose `docs/versioning.md` in
   clarification session.
@@ -162,6 +172,7 @@ blocker. Running it on every invocation means drift is surfaced at each lifecycl
 execution, execution → review, review → retro) rather than at closeout only, matching SC-007.
 
 **Implementation Design**:
+
 - New function `Test-PublicReadinessSurfaces` in `validate-governance.ps1` (and mirrored to
   `.specify/extensions/specrew-speckit/scripts/validate-governance.ps1`)
 - Checks for: existence of `LICENSE`, `NOTICE.md`, `CHANGELOG.md`; presence of version line in
@@ -171,6 +182,7 @@ execution, execution → review, review → retro) rather than at closeout only,
 - Called unconditionally at the top of the main validation function before iteration-level checks
 
 **Alternatives Considered**:
+
 - Hard block if any public-readiness file is missing → rejected; NFR-005 and spec clarification
   explicitly prohibit this.
 - Run only at closeout → rejected; SC-007 and the spec clarification session require every
@@ -194,6 +206,7 @@ provides authentic proof. Helper-level Pester tests can cover the validate-gover
 extension independently without needing a full synthetic feature.
 
 **Implications for This Feature**:
+
 - The closeout governance extension is delivered in Iteration 002 of this feature.
 - Validation evidence is recorded as "pending — to be proven at next real feature closeout".
 - The `validate-governance.ps1` soft-warning function is independently testable and provides
@@ -243,11 +256,13 @@ date.
 ## 10. NOTICE.md Attribution Scope
 
 **Decision**: NOTICE.md must identify:
+
 1. **Squad** as an MIT-licensed upstream source — credit the Squad project and its authors
 2. **Spec Kit** as an MIT-licensed upstream source — credit the Spec Kit project and its authors
 3. **Which Specrew directories** contain templates or scripts derived from each upstream
 
 **Directories identified for attribution** (from repo structure review):
+
 - `.specify/` — Spec Kit extension layer templates, scripts, and workflows
 - `.specify/extensions/specrew-speckit/squad-templates/` — Squad-derived ceremony/directive/agent
   templates adapted for Specrew

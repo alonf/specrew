@@ -16,6 +16,7 @@ This tasks file delivers Specrew user-facing progress handoff semantics across t
 - **Iteration 002**: Validation & Integration (Phase 3) — soft-validator implementation, integration tests, validation lane updates, polish & governance integration
 
 Every final Squad user-facing response will explicitly include:
+
 1. **Current progress status** — What is complete, where work stands, what was verified, what remains blocked or open
 2. **Recommended next step** — The single best immediate action for the human user or Squad
 
@@ -121,6 +122,7 @@ The human-handoff trap from `.specrew/quality/known-traps.md` (row 12, 2026-05-1
 2. **Parallel path**: T003 (decision guidance), T004 (Squad.agent.md), T006 (soft-validator concept) — independent of Phases 1–2 content
 
 **Example parallel execution**:
+
 - **Worker A**: Execute T001 → T002 → T005 in series
 - **Worker B**: Execute T003, T004, T006 in parallel with Worker A, with T004 blocked on T001 completion only (to ensure prompt is updated first)
 
@@ -141,6 +143,7 @@ The human-handoff trap from `.specrew/quality/known-traps.md` (row 12, 2026-05-1
 **Independent Test Setup**: Run Squad on a completed implementation request (analysis, implementation, review, or lifecycle work).
 
 **Acceptance Criteria** *(all must pass)*:
+
 1. Final user-facing coordinator response includes explicit current progress status (identifies what changed, what state work is in)
 2. Final user-facing coordinator response includes explicit recommended next step (single, concrete, actionable)
 3. If files were changed, status identifies relevant feature/artifact group
@@ -153,6 +156,7 @@ The human-handoff trap from `.specrew/quality/known-traps.md` (row 12, 2026-05-1
 **Independent Test Setup**: Simulate a blocked gate, failed validation, review finding, or deferred decision.
 
 **Acceptance Criteria** *(all must pass)*:
+
 1. Progress status identifies the blocking condition (blocker name, gate name, decision required)
 2. When human approval required, recommended next step names the approval/review decision
 3. When manual testing required, recommended next step describes test focus (scenario, behavior, risk)
@@ -166,6 +170,7 @@ The human-handoff trap from `.specrew/quality/known-traps.md` (row 12, 2026-05-1
 **Independent Test Setup**: Run Squad on direct factual request, read-only review, and small implementation task.
 
 **Acceptance Criteria** *(all must pass)*:
+
 1. For small requests: progress status and next step expressed in one concise paragraph (no bulky section headings)
 2. For substantial requests: progress status and next step are visually scannable
 3. For obvious next steps: action still stated explicitly (no inference)
@@ -180,6 +185,7 @@ The human-handoff trap from `.specrew/quality/known-traps.md` (row 12, 2026-05-1
 **Suggested MVP = Iteration 001 complete + human sign-off before Iteration 002 starts**
 
 This split allows:
+
 1. Coordinator guidance, template, and decision trees to be reviewed by humans (Alon Fliess, spec steward)
 2. Before-implement gate to validate handoff semantics match spec intent
 3. Iteration 002 soft-validator implementation to proceed with confidence that semantic guidance is solid and durable
@@ -193,6 +199,7 @@ This split allows:
 ### Coordinator Guidance Coherence
 
 The coordinator prompt (T001), template (T002), and decision guidance (T003) must form a single coherent narrative:
+
 - **Prompt** sets the expectation and principle (two-field handoff, plain-language-first)
 - **Template** shows concrete patterns for each scenario type
 - **Decision guidance** shows how to apply the pattern to specific decision points (blockers, reviews, tests)
@@ -202,12 +209,14 @@ The coordinator prompt (T001), template (T002), and decision guidance (T003) mus
 ### Agent Documentation Durability
 
 Squad.agent.md (T004) is a persistent artifact that must survive future agent updates and session restarts. The session-restart warning is **critical**:
+
 - If Squad.agent.md is edited during task execution and not reloaded, Squad will not see the updated guidance until the next session
 - Add explicit warning: *"After editing `.github/agents/squad.agent.md`, a new session is required for Squad to load updated guidance."*
 
 ### Governance Checklist as Soft Safety Net
 
 The coordinator-handoff governance checklist (T005) is a **soft quality warning**, not a hard-blocking gate:
+
 - Missing progress status → flag, suggest clarification, do not block delivery
 - Missing next step → flag, suggest clarification, do not block delivery
 - Three-or-more governance acronyms in lead → flag, suggest plain-language rewrite, do not block delivery
@@ -216,6 +225,7 @@ The coordinator-handoff governance checklist (T005) is a **soft quality warning*
 ### Soft-Validator as Pattern Detector
 
 The soft-validator concept (T006) and implementation (T007) must focus on **detection clarity** for the human-handoff trap:
+
 - **Pattern to detect**: Three or more governance acronyms or schema-field names appearing in the lead sentence of any handoff section without plain-language paraphrase
 - **Example violation**: *"We need before-implement gate approval, hardening-gate sign-off, and Implementation Approval evidence reuse"*
 - **Example compliant**: *"We need three decisions before moving forward: (1) approval to proceed to implementation, (2) sign-off on our governance controls, and (3) confirmation that we can reuse existing approval evidence. [formal references: before-implement gate, hardening-gate sign-off, Implementation Approval evidence reuse]"*
@@ -223,6 +233,7 @@ The soft-validator concept (T006) and implementation (T007) must focus on **dete
 ### Integration Test Coverage Integrity
 
 T008 integration tests (and by extension, T007 soft-validator implementation) must **exercise the actual validation path**:
+
 - Cannot satisfy coverage by only validating governance-checklist artifact content
 - Must invoke the soft-validator runtime itself (not just mocking internal state)
 - Must assert user-visible output and governance surface response
@@ -233,6 +244,7 @@ T008 integration tests (and by extension, T007 soft-validator implementation) mu
 T010 (polish & hardening-gate prep) must draft a hardening gate using the formal pre-sign-off schema:
 
 **Required structure**:
+
 1. **Overall Verdict** field (e.g., `ready`, `deferred-with-approval`, `review-pending`)
 2. **Pending metadata** for pre-sign-off state (e.g., `Reviewed By: *(pending human sign-off)*, Reviewed At: *(pending)*, Approval Ref: *(pending)*)`)
 3. **Concern Review table** with five canonical concerns FIRST:
@@ -314,12 +326,14 @@ Before Iteration 002 implementation begins:
 ## Summary
 
 **Iteration 001 (10 story_points)**:
+
 - Coordinator prompt, template, decision guidance (Phases 1–2)
 - Agent documentation (Squad.agent.md codification)
 - Governance checklist & soft-validator concept design
 - Ready for before-implement review & human validation
 
 **Iteration 002 (~10 story_points)**:
+
 - Soft-validator runtime implementation
 - Integration tests (governance-jargon flag ✓, plain-language pass ✓)
 - Validation lane integration

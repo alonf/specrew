@@ -49,5 +49,3 @@
 - **Resolved At**: (none)
 - **Notes**: (none)
 <!-- <<< specrew-managed escalation-state <<< -->
-
-

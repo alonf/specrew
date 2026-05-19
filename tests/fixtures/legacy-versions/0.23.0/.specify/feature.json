@@ -1,0 +1,7 @@
+{
+  "schema": "v1",
+  "feature_directory": "specs/023-legacy-state-read-tolerance",
+  "feature_number": "023",
+  "feature_name": "legacy-state-read-tolerance",
+  "branch": "023-legacy-state-read-tolerance"
+}

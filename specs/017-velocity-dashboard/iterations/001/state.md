@@ -30,17 +30,20 @@
 ### Key Lessons
 
 **Lesson 1: Estimation Variance from External Pre-Implementation Review**
+
 - Root cause: Clarify phase completed without external pre-implementation review; 16 findings surfaced during implementation, requiring repair-cycle work
 - Implication: Iteration 002 should allocate capacity for external review BEFORE planning locks in; add 15-20% estimation buffer for human-facing spec features
 - Evidence: `clarify-residual-findings.md`, `review.md` disposition ledger
 
 **Lesson 2: Session-State Durability Gap Surfaced**
+
 - Mid-iteration reboot during implementation exposed stale session-state files in main worktree (.specrew/last-start-prompt.md, .squad/identity/now.md)
 - Worktree-local progress survived reboot, but session-state did not sync across features; caused false double-execution risk
 - Phase 2 pillar feature required: Session-State Durability (25-30 SP, 2 iterations)
 - Evidence: Reboot incident timeline, stale-state behavior analysis
 
 **Lesson 3: Lifecycle Branch Reconciliation Gap Identified**
+
 - Concurrent-edit safety not addressed: no reconciliation against main while feature branch is in flight
 - Merge-only (no rebase) design constraint locked by F-016 to preserve audit trail
 - Phase 2 pillar feature required: Branch Reconciliation (12-15 SP, 2 iterations)  

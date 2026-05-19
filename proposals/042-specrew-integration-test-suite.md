@@ -24,6 +24,7 @@ Also strategic: Specrew is a methodology product. A robust integration test suit
 ### MVP scope (~20-25 SP)
 
 - **Linux command-lifecycle E2E test (highest priority)**: a GHA workflow stage that, on Ubuntu and macOS, performs the actual user command sequence against a fresh synthetic project:
+
   ```
   specrew init
   specrew where                 # baseline dashboard
@@ -33,6 +34,7 @@ Also strategic: Specrew is a methodology product. A robust integration test suit
   specrew where --json          # final state
   specrew review --help         # exercises Get-RelativePath
   ```
+
   Each command's exit code is asserted (0 unless the test expects failure). Output is captured to a transcript artifact. **This test would have caught all 5 bugs from the 2026-05-19 WSL trial** without any host-runtime mocking.
 - **Headless lifecycle E2E test**: scripted fixture project that runs the full lifecycle from `specrew init` through `feature-closeout` without human input. Uses scripted Squad/Copilot responses (recorded vs replay) or a minimal mock host runtime.
 - **CI matrix**: Windows + Ubuntu + macOS lanes, each running both the command-lifecycle and headless tests.

@@ -1,8 +1,9 @@
 # Iteration Closeout: Iteration 002
-**Feature**: 019-specrew-distribution-module  
-**Iteration**: 002  
-**Closed**: 2026-05-18T23:59:59Z  
-**Status**: CLOSED — Delivered, Accepted, Repaired  
+
+**Feature**: 019-specrew-distribution-module
+**Iteration**: 002
+**Closed**: 2026-05-18T23:59:59Z
+**Status**: CLOSED — Delivered, Accepted, Repaired
 **Closer**: Spec Steward (authorized iteration-closeout-completion boundary by Alon Fliess)
 
 ---
@@ -16,11 +17,13 @@ Iteration 002 delivered **8 story points** of cross-platform hardening and publi
 ## Delivered Scope & Acceptance Status
 
 ### Story Point Summary
+
 | Planned | Delivered | Variance | Accuracy |
 | --- | --- | --- | --- |
 | **8 SP** | **8 SP** | **0 SP** | **100%** |
 
 ### Task Completion
+
 | Task | Requirement | Delivered | Verdict |
 | --- | --- | --- | --- |
 | **T041** | FR-030 — Cross-platform Join-Path hardening | 3 SP ✅ | PASS |
@@ -29,6 +32,7 @@ Iteration 002 delivered **8 story points** of cross-platform hardening and publi
 | **T061** | US5 — Documentation updates | 1 SP ✅ | PASS |
 
 ### Functional Delivery
+
 - **T041 (Join-Path Audit)**: 38 embedded-backslash patterns fixed in 4 core scripts; 6 remaining scripts verified clean (commit `ef9c27d`). Cross-platform scripts now use `Join-Path` throughout; no backslash path-delimiter issues on Linux/macOS.
 - **T054 (Cross-Platform Parity)**: CI matrix created in `.github/workflows/cross-platform-validation.yml` (Ubuntu + macOS runners). WSL Ubuntu end-to-end verified 2026-05-18 by Alon Fliess — `specrew init` and `specrew start` confirmed working identically to Windows (commits `e77a884`, `5986501`).
 - **T060 (Publish-Workflow Enablement)**: Manual-approval gate removed from `.github/workflows/publish-module.yml`; workflow now fires automatically on `v*.*` tag push (commit `6c271ad`). Secret requirements documented as T042 human follow-up.
@@ -38,27 +42,29 @@ Iteration 002 delivered **8 story points** of cross-platform hardening and publi
 
 ## Review Verdict & Signoff
 
-**Boundary 2 Review Verdict**: **READY-FOR-SIGNOFF**  
-**Reviewer**: Copilot agent (authorized Boundary 2 review by Alon Fliess)  
-**Review Commit**: `7b08dfd` (verb-conformance fix)  
+**Boundary 2 Review Verdict**: **READY-FOR-SIGNOFF**
+**Reviewer**: Copilot agent (authorized Boundary 2 review by Alon Fliess)
+**Review Commit**: `7b08dfd` (verb-conformance fix)
 **Signoff Authority**: Alon Fliess (human sign-off confirming acceptance)
 
 ### Review Outcomes
-✅ Spec-to-implementation traceability complete (all 4 tasks traced to FR/US requirements)  
-✅ R21/R22 repair-chain assessment confirmed (deferred-launch fix present and correct; wrong-direction artifacts fully cleaned)  
-✅ Cross-platform parity verified (Windows 11 and WSL Ubuntu at parity; macOS pending first CI run)  
-✅ No-gap policy satisfied (implemented, enforced, observable, documented)  
-✅ Boundary 2 gap ledger closed (GAP-B2-001, GAP-B2-002, GAP-B2-003 all resolved in commit `6ea8165`)  
-✅ Governance validator passes (exit code 0; pre-existing Iteration 001 hardening-gate over-claim noted as non-blocking for repair closure)  
+
+✅ Spec-to-implementation traceability complete (all 4 tasks traced to FR/US requirements)
+✅ R21/R22 repair-chain assessment confirmed (deferred-launch fix present and correct; wrong-direction artifacts fully cleaned)
+✅ Cross-platform parity verified (Windows 11 and WSL Ubuntu at parity; macOS pending first CI run)
+✅ No-gap policy satisfied (implemented, enforced, observable, documented)
+✅ Boundary 2 gap ledger closed (GAP-B2-001, GAP-B2-002, GAP-B2-003 all resolved in commit `6ea8165`)
+✅ Governance validator passes (exit code 0; pre-existing Iteration 001 hardening-gate over-claim noted as non-blocking for repair closure)
 ✅ Windows integration tests pass (all 12+ checks confirmed live run 2026-05-18)
 
 ---
 
 ## Repair Cycle Disposition
 
-**Repair Chain**: R-019-V2-R1 through R-019-V2-R22 (22 sub-iterations)  
-**Root Cause**: PowerShell on Linux strips TTY for native command children (`& nativeCommand`) from script-body context; preserves TTY from function-body context.  
+**Repair Chain**: R-019-V2-R1 through R-019-V2-R22 (22 sub-iterations)
+**Root Cause**: PowerShell on Linux strips TTY for native command children (`& nativeCommand`) from script-body context; preserves TTY from function-body context.
 **Key Commits**:
+
 - `e559d65` — R1 wrong-direction bash wrapper (reverted)
 - `72d3b51` — R21 deferred-launch fix (actual solution)
 - `6fa14d6` — R22 cleanup (reverted R10-R20 wrong-direction artifacts)
@@ -69,6 +75,7 @@ Iteration 002 delivered **8 story points** of cross-platform hardening and publi
 **Actual Fix Summary**: Deferred-launch coordination pattern — `specrew-start.ps1` writes launch args to `$env:SPECREW_DEFERRED_LAUNCH_FILE` (temp file) instead of invoking `& copilot @args` directly from script body; `Invoke-SpecrewScript` in `Specrew.psm1` (function context) reads and executes from its own function body after script returns. TTY is preserved because invocation site is function body called from user prompt, not script body. Approximately 5 lines of coordination code.
 
 **Legitimate Fixes Preserved** (not reverted):
+
 - R2-R5: Unrelated quality improvements (dashboard empty-state, pre-flight checks, platform guidance)
 - R7-R9: Distribution-module mode detection; `SPECREW_INVOKED_FROM_MODULE` env-var propagation
 - R14: Path-separator fix in `Get-DisplayPathFromProjectRoot` (Linux paths now compute project-relative display paths correctly)
@@ -107,14 +114,18 @@ Iteration 002 delivered **8 story points** of cross-platform hardening and publi
 ## Carry-Forward Items
 
 ### Non-Blocking Human Follow-Up (Preserved from Iteration 001)
+
 1. **T042 GitHub Actions secrets setup** — Remains human follow-up post-merge. PSGALLERY_API_KEY, SIGNING_CERT_BASE64, SIGNING_CERT_PASSWORD must be configured before T053 (live PSGallery publish).
 2. **T053 First live PSGallery publish** — Remains human follow-up post-merge. Requires T042 pre-requisite; workflow enablement (T060) complete and ready.
 
 ### Feature-Level Cleanup (Not Iteration 002 Scope)
+
 - **Pre-existing Iteration 001 hardening-gate over-claim**: Iteration 001 claimed hardening-gate close over 7 commits but recorded only 5 in git; Iteration 002 governance validation reports this discrepancy. This is a feature-level artifact reconciliation issue deferred to feature-closeout (Boundary 6). Not an Iteration 002 blocker; noted for feature-closeout cleanup.
 
 ### Corpus Improvements Identified (Deferred to Quality Steward)
+
 The retrospective identified 5 lessons candidates for `.specrew/quality/known-traps.md`:
+
 1. Diagnostic Discipline for Cross-Platform Behavioral Issues (L1 retro)
 2. Form-vs-Meaning Recurrence in Symptom-Chasing (L2 retro)
 3. Cross-Platform Sweep Scope Partitioning (L3 retro)
@@ -127,11 +138,12 @@ These are recorded in `iterations/002/retro.md` for corpus inclusion decision by
 
 ## Committed Work Trail
 
-**Baseline Ref**: `2992fbc` (Iteration 001 closeout reconciliation boundary)  
-**Closeout Ref**: `dd234d1` (Authorize Iteration 002 closeout for Feature 019)  
+**Baseline Ref**: `2992fbc` (Iteration 001 closeout reconciliation boundary)
+**Closeout Ref**: `dd234d1` (Authorize Iteration 002 closeout for Feature 019)
 **Closure Ref**: `2057d6b` (Spec Steward: Repair Feature 019 Iteration 002 lifecycle artifacts for accurate closure state, HEAD)
 
 **Complete Commit Trail** (Iteration 002 delivery + repair cycle + closure):
+
 ```
 2057d6b — Spec Steward: Repair Feature 019 Iteration 002 lifecycle artifacts for accurate closure state ← Closure Ref
 dd234d1 — Authorize Iteration 002 closeout for Feature 019 ← Closeout Ref
@@ -155,6 +167,7 @@ e559d65 — R1 wrong-direction bash wrapper (reverted by R22)
 ```
 
 **Previous Context** (Iteration 002 opening through T061):
+
 ```
 ...
 ef9c27d — T041 Join-Path audit (38 patterns fixed)
@@ -169,6 +182,7 @@ e77a884 — T054 cross-platform CI + evidence scaffolding
 ## Retrospective Reference
 
 Full retrospective details in `iterations/002/retro.md`:
+
 - Key Learning L1: Diagnostic discipline for cross-platform behavioral issues
 - Key Learning L2: Form-vs-meaning recurrence in symptom-chasing
 - Key Learning L3: Cross-platform sweep scope partitioning
@@ -189,15 +203,15 @@ Full retrospective details in `iterations/002/retro.md`:
 
 ## Acceptance Criteria Met
 
-✅ All planned tasks delivered (8 SP = 8 SP)  
-✅ Implementation traces to spec requirements (FR-030, SC-006, FR-026, US5)  
-✅ Cross-platform parity verified on Windows and WSL Ubuntu  
-✅ Repair cycle complete and verified  
-✅ Drift fully resolved  
-✅ Review verdict: READY-FOR-SIGNOFF  
-✅ Signoff authority: Alon Fliess  
-✅ Retrospective finalized  
-✅ Governance validator passes (iterations/002)  
+✅ All planned tasks delivered (8 SP = 8 SP)
+✅ Implementation traces to spec requirements (FR-030, SC-006, FR-026, US5)
+✅ Cross-platform parity verified on Windows and WSL Ubuntu
+✅ Repair cycle complete and verified
+✅ Drift fully resolved
+✅ Review verdict: READY-FOR-SIGNOFF
+✅ Signoff authority: Alon Fliess
+✅ Retrospective finalized
+✅ Governance validator passes (iterations/002)
 ✅ No carry-forward scope blocker items
 
 ---
@@ -208,7 +222,7 @@ Full retrospective details in `iterations/002/retro.md`:
 
 ---
 
-**Iteration 002 Closed**: 2026-05-18T23:59:59Z  
-**Closing Authority**: Spec Steward (iteration-closeout-completion boundary authorization)  
-**Artifact**: This closeout.md document  
+**Iteration 002 Closed**: 2026-05-18T23:59:59Z
+**Closing Authority**: Spec Steward (iteration-closeout-completion boundary authorization)
+**Artifact**: This closeout.md document
 **Status**: CLOSED — Ready for feature-closeout authorization

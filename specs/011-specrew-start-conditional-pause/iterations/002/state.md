@@ -14,6 +14,7 @@
 **Status**: Iteration 002 implementation, review, retrospective, and closeout are complete. All Phase 4 + Phase 5 + Iteration 002 share of Phase 6 tasks (`T043`-`T057`) have been implemented, integrated, reviewed, retrospected, and closed. The full six-script validation lane passed with zero failures, and project-wide governance validation is green.
 
 **Delivered Surfaces**:
+
 - Pause-and-confirm directive injection when detector reports changed session-loaded files (T047)
 - Detector visibility output in `.specrew/last-start-prompt.md` showing changed-files list (T048)
 - Optional `-PostRestartDirective` parameter for prepending custom directives (T053)
@@ -22,6 +23,7 @@
 - Comprehensive documentation updates in `README.md` and `docs/getting-started.md` (T057)
 
 **Planning Notes**:
+
 - Iteration 002 builds directly on Iteration 001 detector and baseline tracking infrastructure
 - Pause-and-confirm logic injects when detector reports changed session-loaded files
 - Custom directive prepending happens before pause-and-confirm or auto-continue logic
@@ -89,4 +91,3 @@ Before implementation authorization:
 - Drift-log path: `specs/011-specrew-start-conditional-pause/iterations/002/drift-log.md`.
 - Full six-script validation lane passed on closeout tree before durable commit.
 - Iteration 002 is durably closed.
-

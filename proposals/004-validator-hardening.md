@@ -15,6 +15,7 @@ discussion: tbd
 `validate-governance.ps1` had accumulated six categories of validator-rigor gaps where passive corpus guidance (in `.specrew/quality/known-traps.md`) wasn't enforced mechanically. Without enforcement, the gaps recurred across features — relying on attention rather than tooling.
 
 The six gaps:
+
 1. No canonical schema for FAIL/WARN output (each rule formatted findings differently)
 2. Graceful error handling on malformed inputs (crashes leaked stack traces)
 3. Over-claim detection (rules claiming PASS without examining the input)
@@ -29,6 +30,7 @@ A two-iteration overhaul of the validator surface:
 **Iteration 1**: Canonical FAIL/WARN schema + structured output format. Each finding now carries: file path, line number, category, message, remediation hint, severity. Tested against synthetic fixtures.
 
 **Iteration 2**: Five new validator rules graduated from corpus to enforced:
+
 - Over-claim detection: rule must examine input artifacts; emitting PASS without examination → FAIL
 - Approval-reuse detection: single decision ID cited by multiple boundary commits → FAIL
 - Bookkeeping classifier: subagent history commits identified and separated from substantive boundary commits

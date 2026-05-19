@@ -56,7 +56,7 @@ Three output modes:
 
 | Flag | Output | Use |
 |---|---|---|
-| (default) | `Specrew X | Spec Kit Y | Squad Z` | Interactive query |
+| (default) | `Specrew X / Spec Kit Y / Squad Z` | Interactive query |
 | `--json` | Structured JSON | Scripted consumption |
 | `--short` | Just the Specrew version | `$version = specrew version --short` in scripts |
 

@@ -1,0 +1,9 @@
+{
+  "schema": "v1",
+  "session_state": {
+    "iteration_number": 1,
+    "feature_ref": "023-legacy-state-read-tolerance"
+  },
+  "feature_path": "C:/example/specs/023-legacy-state-read-tolerance",
+  "recorded_at": "2026-05-19T12:00:00Z"
+}

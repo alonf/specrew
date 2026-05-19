@@ -57,12 +57,22 @@ function Get-WorktreeFeatureRef {
     $featureJsonPath = Join-Path $WorktreePath '.specify\feature.json'
     if (Test-Path -LiteralPath $featureJsonPath -PathType Leaf) {
         try {
-            $featureJson = Get-Content -LiteralPath $featureJsonPath -Raw -Encoding UTF8 | ConvertFrom-Json
-            if (-not [string]::IsNullOrWhiteSpace([string]$featureJson.feature_directory)) {
-                return Split-Path -Leaf ([string]$featureJson.feature_directory)
+            # F-023: Use -AsHashtable for StrictMode compatibility; hashtable indexer tolerates missing fields
+            $featureJson = Get-Content -LiteralPath $featureJsonPath -Raw -Encoding UTF8 | ConvertFrom-Json -AsHashtable -Depth 12
+
+            # F-023: Legacy schema handling - missing 'schema' field implies v0
+            $schema = Get-SpecrewStateSchemaVersion -State $featureJson -Path $featureJsonPath
+            # v0 behavior: feature_directory field is optional
+            # v1+ behavior: same as v0 for this field (no behavioral divergence yet)
+
+            if (-not [string]::IsNullOrWhiteSpace([string]$featureJson['feature_directory'])) {
+                return Split-Path -Leaf ([string]$featureJson['feature_directory'])
             }
         }
         catch {
+            if (Test-IsUnsupportedSpecrewSchemaError -ErrorRecord $_) {
+                throw
+            }
         }
     }
 

@@ -52,24 +52,27 @@ These rules override generic Squad coordination whenever the repository is boots
    - Preserve both baseline roles and any supplemental members already recorded in the project roster.
 
 10. **Drive intake to grounded scope**
-   - For `greenfield-new` work without a grounded request, ask an explicit interactive question such as "What do you want to build?", wait for the human developer's answer, and continue with one targeted follow-up question at a time until the scope is concrete enough for `speckit.specify`.
-   - For `brownfield-new` work, perform discovery first and then ask targeted follow-up questions about the intended change; discovery alone is never sufficient scope, and unresolved intake still requires a human answer before lifecycle execution begins.
-   - If the human provides a URL, pasted draft, or other source document during intake, extract the relevant scope from it, confirm any remaining behavior questions at intake, and only then invoke `speckit.specify`.
-   - Do not ask about specialist team additions before `speckit.specify` and the clarify outcome make the required stack/domain constraints concrete.
 
-11. **Fail fast on artifact-generation errors**
-   - A lifecycle phase is not complete unless its required artifact exists on disk and the generating agent did not report a file-write or tool-contract failure.
-   - If `speckit.specify`, `speckit.plan`, or `speckit.tasks` reports a write failure or leaves the expected artifact missing, stop and repair that underlying error before invoking the next governance gate.
+- For `greenfield-new` work without a grounded request, ask an explicit interactive question such as "What do you want to build?", wait for the human developer's answer, and continue with one targeted follow-up question at a time until the scope is concrete enough for `speckit.specify`.
+- For `brownfield-new` work, perform discovery first and then ask targeted follow-up questions about the intended change; discovery alone is never sufficient scope, and unresolved intake still requires a human answer before lifecycle execution begins.
+- If the human provides a URL, pasted draft, or other source document during intake, extract the relevant scope from it, confirm any remaining behavior questions at intake, and only then invoke `speckit.specify`.
+- Do not ask about specialist team additions before `speckit.specify` and the clarify outcome make the required stack/domain constraints concrete.
 
-12. **Shape the team after spec clarity**
-   - After `speckit.specify` and the clarify outcome are grounded, analyze the feature, current roster, and technology/domain constraints to decide whether specialists are actually missing and whether the clarified work justifies safe same-specialty parallelism.
-   - Only propose Junior/Senior same-specialty pairs when the work can be partitioned cleanly enough to avoid conflicting execution. Treat Junior/Senior pairs as distinct named members with different task profiles, not as cloned identities.
-   - Preserve any user-added Specrew members, propose only the missing specialists or justified Junior/Senior pairs, and present the resulting team composition clearly before implementation.
-   - If the human approves new specialists or Junior/Senior pairs, materialize them before implementation with `specrew team add ...`.
-   - Route bounded, lower-risk, well-scoped work to Junior roles, but keep the quality bar high: Junior execution must still be careful, responsible, knowledgeable, and review-ready, with explicit checks for correctness, edge cases, tests, and maintainability. Route ambiguous, cross-cutting, integration-heavy, concurrency-sensitive, or reviewer-gated work to Senior roles, whose ownership should reflect deep technical judgment across architecture, systems thinking, computer science depth, tradeoff analysis, and long-range software engineering consequences.
-   - If Junior-owned work hits repeated governance failures, shared-surface conflict, or integration risk, escalate that slice to the Senior role or to an independent reviewer rather than persisting in unsafe parallel loops.
+1. **Fail fast on artifact-generation errors**
 
-13. **Carry requirement-driven quality governance**
+- A lifecycle phase is not complete unless its required artifact exists on disk and the generating agent did not report a file-write or tool-contract failure.
+- If `speckit.specify`, `speckit.plan`, or `speckit.tasks` reports a write failure or leaves the expected artifact missing, stop and repair that underlying error before invoking the next governance gate.
+
+1. **Shape the team after spec clarity**
+
+- After `speckit.specify` and the clarify outcome are grounded, analyze the feature, current roster, and technology/domain constraints to decide whether specialists are actually missing and whether the clarified work justifies safe same-specialty parallelism.
+- Only propose Junior/Senior same-specialty pairs when the work can be partitioned cleanly enough to avoid conflicting execution. Treat Junior/Senior pairs as distinct named members with different task profiles, not as cloned identities.
+- Preserve any user-added Specrew members, propose only the missing specialists or justified Junior/Senior pairs, and present the resulting team composition clearly before implementation.
+- If the human approves new specialists or Junior/Senior pairs, materialize them before implementation with `specrew team add ...`.
+- Route bounded, lower-risk, well-scoped work to Junior roles, but keep the quality bar high: Junior execution must still be careful, responsible, knowledgeable, and review-ready, with explicit checks for correctness, edge cases, tests, and maintainability. Route ambiguous, cross-cutting, integration-heavy, concurrency-sensitive, or reviewer-gated work to Senior roles, whose ownership should reflect deep technical judgment across architecture, systems thinking, computer science depth, tradeoff analysis, and long-range software engineering consequences.
+- If Junior-owned work hits repeated governance failures, shared-surface conflict, or integration risk, escalate that slice to the Senior role or to an independent reviewer rather than persisting in unsafe parallel loops.
+
+1. **Carry requirement-driven quality governance**
     - Derive the applicable production-grade quality attributes from the grounded feature and project context instead of applying a one-size-fits-all checklist.
     - Carry those quality attributes into clarifications, planning, tasks, implementation, and review, including robustness, retries, idempotency, error handling, logging, telemetry, security, maintainability, and semantic correctness when they materially apply.
     - Before `speckit.plan`, run or consult `resolve-quality-profile.ps1` for the active clarified feature so planning receives an explicit Phase 1 / first-slice quality profile with preset refs or bounded custom composition, stack surfaces, risk dimensions, quality tool bundle, required gates, and not-applicable rationale.
@@ -78,7 +81,7 @@ These rules override generic Squad coordination whenever the repository is boots
     - Keep hardening gates, dedicated bug-hunter execution, strongest-class routing enforcement, known-traps workflows, and quality-drift automation explicitly deferred unless the current in-scope slice has actually implemented them.
     - Treat revisions, idempotency keys, retries, conflict detection, locks, and telemetry as incomplete until they have real runtime semantics and review evidence; flag ceremonial sophistication instead of accepting decorative protocol fields.
 
-14. **Require explicit implementation approval**
+2. **Require explicit implementation approval**
      - Before `speckit.implement`, summarize readiness for the human developer: active feature, clarify outcome, quality focus, and final team composition.
      - If the active slice includes Phase 2 hardening-gate scope, include the hardening-gate verdict and any human-approved deferral status in that readiness summary.
      - Ask the human developer to explicitly start implementation, and do not invoke `speckit.implement` until that approval is given.
@@ -93,43 +96,46 @@ These rules override generic Squad coordination whenever the repository is boots
     - Use `file:///` artifact references in authored narration and handoffs outside approved exempt contexts.
     - After each committed boundary handoff, synchronize `Commit Reference` away from `pending`, keep `Recorded At` in UTC seconds precision, run a stale-reference scan on the cited `file:///` targets, and rerun validation on the exact committed tree before claiming readiness.
 
-15. **Carry feature closeout version management**
+1. **Carry feature closeout version management**
     - When a feature closeout is preparing to claim shipped work, treat release-version bookkeeping as required closure work rather than an optional reminder.
     - Update the authoritative product version in `.specrew/config.yml`, the matching `version:` field in `extensions/specrew-speckit/extension.yml` (and the deployed mirror at `.specify/extensions/specrew-speckit/extension.yml`), add the corresponding `CHANGELOG.md` entry, refresh any README version summary or linked versioning references that surfaced the previous version, and create the release tag that anchors the closed feature state.
     - Rerun `validate-governance.ps1` after the version/changelog/tag updates so the closeout evidence reflects the final public-readiness state.
     - If any release-version step is intentionally deferred, keep the feature open until explicit human-approved defer evidence is recorded in the governing artifacts.
 
-16. **Provide a review-ready implementation briefing**
+2. **Provide a review-ready implementation briefing**
     - At the end of implementation and review, provide a developer-facing briefing that summarizes what was built, how it maps to requirements, the main happy path and relevant alternative flows, dependency/package usage including newly introduced packages, the testing strategy, and an explicitly labeled estimate of coverage or confidence.
 
-17. **Honor delegated routing plans**
-   - When Specrew provides an effective delegated routing plan for lifecycle roles, use that plan for planning, implementation, review, spec-governance, and repair work unless the human explicitly overrides it.
-   - Treat review-heavy and problem-solving-heavy work as delegated-routing candidates when enabled agents make that possible: planning/problem-solving work should prefer Planner or Spec Steward delegated routing, while review/governance work should prefer Reviewer or Spec Steward delegated routing.
-   - Materialize that plan into `.squad/config.json` via `agentModelOverrides`, and re-read the config before each lifecycle or repair spawn rather than caching it once at session start.
-   - For every delegated lifecycle, review, governance, or repair spawn, append a short dated runtime-evidence entry to `.squad/decisions.md` with the role or work item, requested agent, actual agent, concrete model ID, whether the assignment was honored or fell back, and any fallback reason.
-   - Keep Reviewer and Spec Steward independent from the Implementer whenever multiple enabled agents make that possible.
+3. **Honor delegated routing plans**
 
-18. **Enforce the no-gap policy**
-   - Do not close a lifecycle-governed run as complete when review, governance, or validation still reveals a known gap across spec, implementation, tests, docs, or observability.
-   - Fix the gap in the current iteration, or obtain explicit human approval to defer it and record that defer in the governing artifacts so it does not roll forward invisibly.
-   - A known gap is not merely review commentary; it becomes tracked work or an approved defer before closure.
+- When Specrew provides an effective delegated routing plan for lifecycle roles, use that plan for planning, implementation, review, spec-governance, and repair work unless the human explicitly overrides it.
+- Treat review-heavy and problem-solving-heavy work as delegated-routing candidates when enabled agents make that possible: planning/problem-solving work should prefer Planner or Spec Steward delegated routing, while review/governance work should prefer Reviewer or Spec Steward delegated routing.
+- Materialize that plan into `.squad/config.json` via `agentModelOverrides`, and re-read the config before each lifecycle or repair spawn rather than caching it once at session start.
+- For every delegated lifecycle, review, governance, or repair spawn, append a short dated runtime-evidence entry to `.squad/decisions.md` with the role or work item, requested agent, actual agent, concrete model ID, whether the assignment was honored or fell back, and any fallback reason.
+- Keep Reviewer and Spec Steward independent from the Implementer whenever multiple enabled agents make that possible.
 
-19. **Run critical evidence-driven review**
-   - During review and final readiness, classify hardened lifecycle/governance requirements as implemented, enforced, observable, and documented.
-   - Emit a gap ledger whenever any one of those dimensions is missing, and make the next repair or defer action explicit.
-   - If review finds an ambiguity, contradiction, or missing decision in the governing spec, stop closure, ask the human targeted clarification question, update the spec, and reconcile the affected plan/tasks/governance artifacts before continuing.
+1. **Enforce the no-gap policy**
 
-20. **Escalate live model tiers**
+- Do not close a lifecycle-governed run as complete when review, governance, or validation still reveals a known gap across spec, implementation, tests, docs, or observability.
+- Fix the gap in the current iteration, or obtain explicit human approval to defer it and record that defer in the governing artifacts so it does not roll forward invisibly.
+- A known gap is not merely review commentary; it becomes tracked work or an approved defer before closure.
+
+1. **Run critical evidence-driven review**
+
+- During review and final readiness, classify hardened lifecycle/governance requirements as implemented, enforced, observable, and documented.
+- Emit a gap ledger whenever any one of those dimensions is missing, and make the next repair or defer action explicit.
+- If review finds an ambiguity, contradiction, or missing decision in the governing spec, stop closure, ask the human targeted clarification question, update the spec, and reconcile the affected plan/tasks/governance artifacts before continuing.
+
+1. **Escalate live model tiers**
     - On repeated governance-gate failures, update `.squad/config.json` so the current repair owner moves from the fast tier to a balanced tier, then to a deep tier if the next repair still fails.
     - Clear any temporary escalation override as soon as the gate passes so normal routing resumes.
 
-21. **Route reviewer regressions conservatively**
+2. **Route reviewer regressions conservatively**
     - When a human reports a concrete defect in Squad-approved or reviewer-ready work, treat it as a reviewer-regression event for the active feature.
     - Route the remaining review work to the lowest strictly stronger reviewer class that is available.
     - If no stronger reviewer class exists, use an independent reviewer owner at the same class.
     - If the strongest reviewer class is already active and no independent same-class reviewer remains, hold the review for explicit human direction.
 
-22. **Recognize the `/specrew.*` slash-command surface (Feature 021)**
+3. **Recognize the `/specrew.*` slash-command surface (Feature 021)**
     - The user may invoke any of seven canonical Specrew slash commands at any time during a session. Treat them as first-class command invocations, not as conversational text. The v1 catalog:
       - `/specrew.where` — show the project status dashboard (backed by `specrew where` / `scripts/specrew-where.ps1`)
       - `/specrew.status` — alias of `/specrew.where`; semantic parity required

@@ -52,6 +52,7 @@
 ## Deferral Note
 
 No deferrals. Iteration 002 is the final authorized iteration and includes all remaining feature scope:
+
 - Approval-reuse detection core implementation and corpus graduation (T014-T017)
 - Over-claim detection core implementation and corpus graduation (T018-T021)
 - Bookkeeping-vs-behavior classifier core implementation (T022-T026)

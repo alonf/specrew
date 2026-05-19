@@ -29,8 +29,8 @@
       - `.squad\identity\now.md`
       - `.squad\decisions.md`
       - `.github\agents\squad.agent.md`
-     - `.github\workflows\specrew-ci.yml`
-     - `.specrew\config.yml`
+      - `.github\workflows\specrew-ci.yml`
+      - `.specrew\config.yml`
 
 ## Iteration 001 Truth Note
 

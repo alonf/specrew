@@ -11,6 +11,7 @@ Conditional pause-and-confirm behavior for `specrew-start.ps1` when session-load
 ## Iterations Delivered
 
 ### Iteration 001: Detector Foundation + Baseline Tracking + Auto-Continue Preservation
+
 - **Tasks**: T029-T042 (10 story_points)
 - **Status**: ✅ CLOSED
 - **Closeout Commit**: `a321039`
@@ -25,6 +26,7 @@ Conditional pause-and-confirm behavior for `specrew-start.ps1` when session-load
   - Integration tests: `specrew-start-change-detector.ps1`, `specrew-start-baseline-tracking.ps1`, `specrew-start-auto-continue-preservation.ps1`
 
 ### Iteration 002: PAUSE-AND-CONFIRM Directive Injection + Parameter Support + Visibility + Corpus Seeding
+
 - **Tasks**: T043-T057 (20 story_points)
 - **Status**: ✅ CLOSED
 - **Closeout Commit**: `58b49bb`

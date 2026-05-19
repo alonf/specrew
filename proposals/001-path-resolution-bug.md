@@ -17,6 +17,7 @@ Specrew's bootstrap (`specrew-init`) and start (`specrew-start`) scripts had pat
 ## What
 
 Hardened path resolution across the Specrew script surface. Normalized handling of:
+
 - Relative vs absolute path inputs
 - Trailing-slash variants
 - Non-ASCII characters in path segments

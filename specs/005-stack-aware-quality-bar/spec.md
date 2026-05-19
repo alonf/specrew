@@ -184,6 +184,7 @@ A human developer wants Specrew to stay flexible when a repository uses multiple
 - **FR-044**: Specrew MAY provide an optional **Reference-Implementation Companion Mode** where a known-good reference implementation (e.g., a prior iteration, a canonical example, or a manually vetted baseline) is stored alongside the active work for comparison purposes. This companion mode is explicitly deferred from the initial delivery slice for this feature and MUST NOT be required to deliver the initial quality-profile, mechanical-check, hardening-gate, or bug-hunter-lens capabilities.
 - **FR-045**: When reference-implementation mode is enabled, Specrew MUST compare the active implementation against the reference for: API contract drift, behavior divergence, quality regression, and missing hardening. Comparison findings MUST be surfaced in review artifacts.
 - **FR-046**: Reference-implementation mode MUST remain optional and companion-only; it MUST NOT become a mandatory requirement for every feature or for the first implementation window of this feature. Projects MAY enable it selectively in a later slice for high-risk or security-critical work.
+
 #### Stack-Aware Profile & Tooling
 
 - **FR-002**: Specrew MUST infer a **Quality Profile** for the active feature from the clarified feature scope, repository signals, chosen stack, and identified risk areas rather than relying only on generic review behavior. The profile MUST reference a versioned stack preset when applicable (e.g., `node-public-ws-service v1.3.0`) or compose a custom profile from available lens checklists when no preset matches.
@@ -201,6 +202,7 @@ A human developer wants Specrew to stay flexible when a repository uses multiple
 - **FR-010**: Specrew MUST record the inferred Quality Profile, chosen Quality Tool Bundle, required quality gates, relevant risk dimensions, versioned lens checklist references, stack preset version (if applicable), and any not-applicable dimensions in planning artifacts for the active feature.
 - **FR-011**: Specrew MUST make the chosen quality toolchain and quality expectations visible and reviewable in lifecycle artifacts so a human reviewer can see what was expected, what was run, and what evidence was produced.
 - **FR-012**: Specrew MUST require explicit review evidence, or an approved justified exception, for each required quality gate before the feature can be presented as meeting its planned quality bar. This includes mechanical check results (FR-030), lens checklist completion status, and test-integrity validation.
+
 #### Overrides & Flexibility
 
 - **FR-013**: Specrew MUST allow project-level overrides to replace, defer, or omit recommended tools or gates, but every such override MUST include explicit justification, the affected quality concern, and any replacement evidence or compensating review expectation.
@@ -257,6 +259,7 @@ A human developer wants Specrew to stay flexible when a repository uses multiple
 This feature is structured for phased delivery to manage complexity and establish foundational capabilities before adding advanced workflows. The recommended implementation sequence is:
 
 **Phase 1: Core Quality Profile & Mechanical Checks (Foundation)**
+
 - FR-002 through FR-004, FR-003a: Infer stack-aware quality profiles from clarified features
 - FR-022 through FR-026: Define and version lens checklists and stack presets; deliver `node-public-ws-service` worked example
 - FR-027 through FR-030, FR-030a: Implement mechanical checks (dead-field, anti-pattern, test-integrity) with demotion workflow
@@ -264,6 +267,7 @@ This feature is structured for phased delivery to manage complexity and establis
 - **Rationale**: Establishes the foundation for stack-aware quality governance and deterministic mechanical checks before layering model-based review.
 
 **Phase 2: Hardening Gate & Bug-Hunter Lenses**
+
 - FR-031 through FR-033a: Implement pre-implementation hardening gate with strongest-class binding and explicit post-implementation runtime-evidence closure
 - FR-016 through FR-019a: Activate bug-hunter review lenses with versioned checklists and row-level execution
 - FR-038 through FR-040: Enforce strongest-class routing policy for lens execution
@@ -271,12 +275,14 @@ This feature is structured for phased delivery to manage complexity and establis
 - **Rationale**: Adds specialist review capabilities and explicit hardening checkpoints after mechanical checks are proven.
 
 **Phase 3: Quality-Drift Detection & Advanced Governance**
+
 - FR-041 through FR-043: Implement quality-drift detection with ledger maintenance
 - FR-013 through FR-015: Implement override and flexibility workflows
 - FR-005 through FR-009: Implement mixed-stack and fallback handling
 - **Rationale**: Adds ongoing quality monitoring and exception governance after core gates are operational.
 
 **Phase 4: Optional Reference-Implementation Mode (Deferred)**
+
 - FR-044 through FR-046: Optional reference-implementation companion mode for high-risk features
 - **Rationale**: Explicitly deferred from initial delivery; only activated selectively after core quality governance is proven.
 

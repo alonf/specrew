@@ -12,6 +12,7 @@ discussion: tbd
 ## Why
 
 Specrew's philosophy and methodology — squad agents, governance, hardening gates, retros, the learning loop, the corpus-row graduation pipeline — needs a landing experience that the in-repo README can't deliver. A cold-arrival visitor to the GitHub repo needs:
+
 - A 30-second elevator pitch
 - The "why Specrew vs raw Spec Kit" answer
 - A conceptual overview of squad agents, governance, hardening gates
@@ -25,6 +26,7 @@ The README is for engaged developers; the methodology site is for the broader au
 A GitHub Pages site published from `docs/site/` or similar:
 
 **Sections**:
+
 1. **Landing page** — elevator pitch, key differentiators
 2. **Why Specrew vs raw Spec Kit** — concrete: governance + lifecycle boundaries + hardening gates + retros + validator-enforced rules
 3. **Methodology overview** — squad agents, hardening gates, retros, corpus row graduation (the meta-framework angle)
@@ -38,6 +40,7 @@ A GitHub Pages site published from `docs/site/` or similar:
 9. **Roadmap** — phase model + current focus + what's next
 
 **Architecture**:
+
 - Tool: MkDocs Material (subject to stack-aware human approval at clarify time)
 - Source: `docs/site/` (separate from internal-developer docs)
 - Build: GitHub Action on push to main; deploys to `gh-pages` branch

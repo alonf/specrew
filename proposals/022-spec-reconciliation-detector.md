@@ -18,6 +18,7 @@ The pattern was visible during Feature 016 Iter 1, where multiple FR-008 / FR-00
 ## What
 
 A new validator rule that compares iteration artifacts (state.md, drift-log.md, review.md, retro.md) against the parent `spec.md` for divergence signals:
+
 - New FR-NNN references in iteration artifacts that aren't in spec.md → fail
 - Drift-log entries declaring "this differs from spec.md X" → require spec.md reconciliation entry
 - Retro lessons that imply spec.md inadequacy → surface for reconciliation review

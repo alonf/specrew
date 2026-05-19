@@ -35,6 +35,7 @@ The architecture intent checkpoint is an **automatic pre-step** in the `/speckit
 ```
 
 **What happens**:
+
 - Speckit loads your spec.md
 - Checkpoint is automatically invoked
 - Squad generates an architecture intent brief
@@ -242,11 +243,13 @@ After your approval is recorded, `/speckit.plan` continues:
 ### When is Checkpoint Approval Required?
 
 **Checkpoint runs for**:
+
 - ✅ Non-trivial features (architectural choices exist)
 - ✅ Features affecting public APIs, data models, persistence, dependencies, or security
 - ✅ Any feature with meaningful trade-offs or alternatives
 
 **Checkpoint may be skipped for**:
+
 - ✓ Small bug fixes (no architectural choices)
 - ✓ Routine refactors (following existing patterns)
 - ✓ Features where the spec already gives clear direction (checkpoint notes this and confirms)
@@ -254,12 +257,14 @@ After your approval is recorded, `/speckit.plan` continues:
 ### What Counts as a Constraint?
 
 **Valid constraints** (specific, testable):
+
 - ✅ "Use PostgreSQL for persistence" (specific, verifiable)
 - ✅ "Do not use ORM; use raw SQL" (clear forbidden path)
 - ✅ "API endpoints must be rate-limited" (verifiable in tasks/code)
 - ✅ "Authentication must support OAuth2 and SAML" (concrete requirement)
 
 **Vague constraints** (rejected):
+
 - ❌ "Keep it simple" (not testable)
 - ❌ "Make it fast" (not measurable without units)
 - ❌ "Use best practices" (not specific)
@@ -284,7 +289,8 @@ After your approval is recorded, `/speckit.plan` continues:
 
 **Brief proposes**: Use REST API for the new endpoint.
 
-**Your response**: 
+**Your response**:
+
 ```
 Approved with constraint: Must support gRPC as an alternative endpoint
 (for internal services). REST is the primary, but gRPC layer must be designed upfront.
@@ -301,6 +307,7 @@ Approved with constraint: Must support gRPC as an alternative endpoint
 **Brief assumes**: "User input is always well-formed; validation happens upstream."
 
 **Your response**:
+
 ```
 I disagree with the assumption that input is always well-formed.
 In practice, we've seen malformed input reach this layer.
@@ -330,6 +337,7 @@ Planning is paused until someone approves the proposed direction.
 ```
 
 **Team's options**:
+
 1. Wait for you to return (if you'll return soon)
 2. Escalate to backup architect (per team policy)
 3. Revisit the spec (if the brief is rejected)
@@ -343,6 +351,7 @@ Planning is paused until someone approves the proposed direction.
 ### Problem: "Spec is too vague to generate meaningful brief"
 
 **Checkpoint output**:
+
 ```
 ❌ Checkpoint failed: Spec is insufficient to generate a meaningful brief.
 
@@ -361,6 +370,7 @@ Returning to spec clarification.
 ### Problem: "Brief proposes something I strongly disagree with"
 
 **Your response**:
+
 ```
 I don't agree with this approach. It couples us to [component] too tightly.
 
@@ -375,6 +385,7 @@ Consider: event-driven architecture or [other pattern].
 ### Problem: "I have questions, but not enough info to decide"
 
 **Your response**:
+
 ```
 Before I approve, I need to understand:
 

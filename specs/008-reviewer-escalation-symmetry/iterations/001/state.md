@@ -27,6 +27,7 @@ This iteration carried **Phase 1 (Setup) + Phase 2 (Foundational)** only—the m
 
 **Completed Tasks**: `T001`-`T007` (12 story_points)  
 **Deferred to Later Iterations**:
+
 - User Story 1 (`T008`-`T013`) → Iteration 002
 - User Story 2 (`T014`-`T019`) → Iteration 003
 - User Story 3 (`T020`-`T026`) → Iteration 004

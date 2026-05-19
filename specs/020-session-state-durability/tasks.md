@@ -165,6 +165,7 @@ I1-T001 → I1-T002 → I1-T003 → I1-T004 → I1-T005
 **Note on User's Expected Critical Path**: The user anticipated `I1-T001 -> I1-T004 -> I1-T007`, but the actual critical path goes through I1-T002 and I1-T003 first (atomic write helper and multi-file orchestration must be implemented before integration at I1-T004). Task I1-T007 (branch-existence check) is part of workstream 1.2 and can proceed in parallel after the companion chore completes.
 
 **Parallel Work (Iteration 1)**:
+
 - Workstream 1.2 (Stale-State Detection): I1-T006, I1-T007, I1-T008, I1-T009 (four tasks marked [P]) can proceed in parallel with each other after Companion Chore completes; I1-T010 depends on all four; I1-T011 depends on I1-T010
 - Workstream 1.3 (Module Version Check): I1-T012 (marked [P]) can start immediately after Companion Chore; I1-T013 depends on I1-T012; I1-T014 depends on I1-T013
 
@@ -177,6 +178,7 @@ I2-T001 → I2-T002 → I2-T003 → I2-T010
 **Explanation**: Task progress tracking (workstream 2.1) feeds into recovery prompts (workstream 2.3). I2-T010 (welcome-back prompt implementation) depends on I2-T003 (coordinator resume logic integration) to read `tasks-progress.yml` and surface in-progress task state.
 
 **Parallel Work (Iteration 2)**:
+
 - Workstream 2.2 (Cross-Worktree Awareness): I2-T005 (marked [P]) can start immediately after Iteration 1 completes; I2-T006, I2-T007, I2-T008 follow sequentially
 - Workstream 2.4 (PSGallery Check): I2-T013 (marked [P]) can start immediately after Iteration 1 completes; I2-T014, I2-T015, I2-T016, I2-T017 follow sequentially
 
@@ -193,9 +195,11 @@ No task in Iteration 2 can begin until Iteration 1 is complete (integration test
 ## Parallel Execution Opportunities
 
 ### Companion Chore
+
 - **Sequential only**: All tasks have dependencies on previous task
 
 ### Iteration 1
+
 - **Parallel streams after Companion Chore**:
   - Stream A (critical path): I1-T001 → I1-T002 → I1-T003 → I1-T004 → I1-T005
   - Stream B (stale-detect): I1-T006, I1-T007, I1-T008, I1-T009 in parallel → I1-T010 → I1-T011
@@ -204,6 +208,7 @@ No task in Iteration 2 can begin until Iteration 1 is complete (integration test
 **Max Parallelization (Iteration 1)**: 5 tasks simultaneously (I1-T006, I1-T007, I1-T008, I1-T009 + one task from Stream A or C)
 
 ### Iteration 2
+
 - **Parallel streams after Iteration 1**:
   - Stream A (critical path): I2-T001 → I2-T002 → I2-T003 → I2-T009 (design) → I2-T010 → I2-T011 → I2-T012
   - Stream B (cross-worktree): I2-T005 → I2-T006 → I2-T007 → I2-T008

@@ -29,7 +29,7 @@ Three components:
    - `.csproj`/`.sln` for .NET (via Roslyn)
    - `CMakeLists.txt`/`Makefile` for C/C++ (via libclang)
    - General code structure via Tree-sitter
-   
+
    Builds the auto-zone content; humans curate the human-zone.
 
 ## Effort

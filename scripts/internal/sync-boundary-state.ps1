@@ -318,7 +318,10 @@ function Update-SpecrewMarkdownStateFile {
         [AllowNull()]
         [string]$PreferredBody,
 
-        [switch]$UsePreferredBody
+        [switch]$UsePreferredBody,
+
+        [AllowNull()]
+        [string]$SchemaVersion
     )
 
     $existingContent = if (Test-Path -LiteralPath $Path -PathType Leaf) {
@@ -346,6 +349,10 @@ function Update-SpecrewMarkdownStateFile {
         foreach ($entry in $AdditionalFrontmatter.GetEnumerator()) {
             $frontmatter[[string]$entry.Key] = $entry.Value
         }
+    }
+
+    if (-not [string]::IsNullOrWhiteSpace($SchemaVersion)) {
+        $frontmatter['schema'] = $SchemaVersion
     }
 
     $frontmatter['updated_at'] = $SessionState.recorded_at
@@ -419,16 +426,22 @@ function Update-SpecrewStartContext {
     $context = [ordered]@{}
     if (Test-Path -LiteralPath $Path -PathType Leaf) {
         try {
-            $existing = Get-Content -LiteralPath $Path -Raw -Encoding UTF8 | ConvertFrom-Json -Depth 12
-            foreach ($property in $existing.PSObject.Properties) {
-                $context[$property.Name] = $property.Value
+            $existing = Get-Content -LiteralPath $Path -Raw -Encoding UTF8 | ConvertFrom-Json -AsHashtable -Depth 12
+            $schema = Get-SpecrewStateSchemaVersion -State $existing -Path $Path
+            # v0/v1 behavior: preserve any unrelated properties before refreshing session_state payload
+            foreach ($entry in $existing.GetEnumerator()) {
+                $context[$entry.Key] = $entry.Value
             }
         }
         catch {
+            if (Test-IsUnsupportedSpecrewSchemaError -ErrorRecord $_) {
+                throw
+            }
             $context = [ordered]@{}
         }
     }
 
+    $context['schema'] = 'v1'
     $context['feature_path'] = if ($SessionState.feature_path) { $SessionState.feature_path } else { $null }
     $context['generated_at_utc'] = $SessionState.recorded_at
     $context['session_state'] = [ordered]@{
@@ -457,19 +470,24 @@ function Clear-SpecrewActiveFeature {
 
     if (Test-Path -LiteralPath $FeatureJsonPath -PathType Leaf) {
         try {
-            $existing = Get-Content -LiteralPath $FeatureJsonPath -Raw -Encoding UTF8 | ConvertFrom-Json -Depth 10
-            foreach ($property in $existing.PSObject.Properties) {
-                if ($property.Name -eq 'feature_directory') {
+            $existing = Get-Content -LiteralPath $FeatureJsonPath -Raw -Encoding UTF8 | ConvertFrom-Json -AsHashtable -Depth 10
+            $schema = Get-SpecrewStateSchemaVersion -State $existing -Path $FeatureJsonPath
+            foreach ($entry in $existing.GetEnumerator()) {
+                if ($entry.Key -eq 'feature_directory') {
                     continue
                 }
 
-                $featureJson[$property.Name] = $property.Value
+                $featureJson[$entry.Key] = $entry.Value
             }
         }
         catch {
+            if (Test-IsUnsupportedSpecrewSchemaError -ErrorRecord $_) {
+                throw
+            }
         }
     }
 
+    $featureJson['schema'] = 'v1'
     Write-FileAtomically -Path $FeatureJsonPath -Content (([pscustomobject]$featureJson | ConvertTo-Json -Depth 10) + [Environment]::NewLine)
 }
 
@@ -609,12 +627,17 @@ function Invoke-SpecrewBoundaryStateSync {
     $effectiveFeatureRef = $FeatureRef
     if ([string]::IsNullOrWhiteSpace($effectiveFeatureRef) -and (Test-Path -LiteralPath $paths.FeatureJsonPath -PathType Leaf)) {
         try {
-            $featureJson = Get-Content -LiteralPath $paths.FeatureJsonPath -Raw -Encoding UTF8 | ConvertFrom-Json
-            if (-not [string]::IsNullOrWhiteSpace([string]$featureJson.feature_directory)) {
-                $effectiveFeatureRef = Split-Path -Leaf ([string]$featureJson.feature_directory)
+            $featureJson = Get-Content -LiteralPath $paths.FeatureJsonPath -Raw -Encoding UTF8 | ConvertFrom-Json -AsHashtable -Depth 12
+            $schema = Get-SpecrewStateSchemaVersion -State $featureJson -Path $paths.FeatureJsonPath
+            # v0/v1 behavior: feature_directory remains the feature-ref source of truth
+            if (-not [string]::IsNullOrWhiteSpace([string]$featureJson['feature_directory'])) {
+                $effectiveFeatureRef = Split-Path -Leaf ([string]$featureJson['feature_directory'])
             }
         }
         catch {
+            if (Test-IsUnsupportedSpecrewSchemaError -ErrorRecord $_) {
+                throw
+            }
         }
     }
 
@@ -659,7 +682,7 @@ function Invoke-SpecrewBoundaryStateSync {
 
     Update-SpecrewMarkdownStateFile -Path $paths.PromptPath -SessionState $sessionState -DefaultBody (Get-SpecrewPromptBody -SessionState $sessionState)
     Update-SpecrewStartContext -Path $paths.ContextPath -SessionState $sessionState
-    Update-SpecrewMarkdownStateFile -Path $paths.IdentityPath -SessionState $sessionState -DefaultBody (Get-SpecrewIdentityBody -SessionState $sessionState) -AdditionalFrontmatter $identityAdditionalFrontmatter -PreferredBody $IdentityBody -UsePreferredBody:(-not [string]::IsNullOrWhiteSpace($IdentityBody))
+    Update-SpecrewMarkdownStateFile -Path $paths.IdentityPath -SessionState $sessionState -DefaultBody (Get-SpecrewIdentityBody -SessionState $sessionState) -AdditionalFrontmatter $identityAdditionalFrontmatter -PreferredBody $IdentityBody -UsePreferredBody:(-not [string]::IsNullOrWhiteSpace($IdentityBody)) -SchemaVersion 'v1'
 
     Add-SpecrewBoundarySyncLedgerEntry -ProjectRoot $paths.ProjectRoot -SessionState $sessionState
 

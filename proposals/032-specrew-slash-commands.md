@@ -14,6 +14,7 @@ discussion: tbd
 Specrew lives inside Squad/Copilot CLI sessions. Spec Kit's lifecycle agents surface as proper slash commands — `/speckit.specify`, `/speckit.clarify`, `/speckit.plan`, and so on. Specrew's own user-facing commands do not. A user typing `/specrew.` in Copilot CLI gets zero suggestions today.
 
 Three workarounds exist:
+
 1. Natural-language routing (`Show me the project status` → `specrew where` via FR-030 from Feature 017)
 2. Asking Squad to run it ("Run specrew where")
 3. `!`-prefix shell escape (`! pwsh -File .\scripts\specrew.ps1 where`)

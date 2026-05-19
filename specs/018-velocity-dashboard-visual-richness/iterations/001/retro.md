@@ -65,6 +65,7 @@ Feature 018 Iteration 001 is now past review-verdict-signoff and has completed i
 ### Lesson 4: Corpus Graduation Candidates — Three New Trap Rows Plus One Deferred Cosmetic Row
 
 **Trap Row A: Terminal-Compatibility Unreliable Detection (NEW)**
+
 - **Category**: terminal-compatibility
 - **Broken Pattern**: Using `[Console]::IsOutputRedirected` inside `Get-SpecrewDashboardRenderProfile` to gate rich-mode eligibility
 - **Detection Method**: Search `scripts\internal\dashboard-renderer.ps1` for `[Console]::IsOutputRedirected` or `OutputRedirected` inside the terminal-capability-check function
@@ -73,6 +74,7 @@ Feature 018 Iteration 001 is now past review-verdict-signoff and has completed i
 - **Reapplication Result**: To be recorded in Feature 018 trap-reapplication.md post-retro
 
 **Trap Row B: Visual-Feature Direct-Evidence Requirement (NEW)**
+
 - **Category**: acceptance-verification
 - **Broken Pattern**: Accepting a feature labeled "richer" or "visually enhanced" based entirely on automated fixture replay and test pass rates, without direct human observation of the user-facing change
 - **Detection Method**: Query the review.md artifact for a visual-enhancement feature and search for explicit statements like "direct-terminal verification", "screenshot captured", or "live rendering confirmed" in the acceptance evidence. If only fixture-based evidence is present, flag as incomplete
@@ -81,6 +83,7 @@ Feature 018 Iteration 001 is now past review-verdict-signoff and has completed i
 - **Reapplication Result**: To be recorded in Feature 018 trap-reapplication.md post-retro
 
 **Trap Row C: Push-Omission Before Boundary-Signoff (NEW)**
+
 - **Category**: governance
 - **Broken Pattern**: Bounded repair commits created locally but not pushed to origin before a lifecycle boundary claim (review-verdict-signoff, retro, closeout) introduce a truthfulness gap where the boundary appears complete in local git log but incomplete in the shared remote history
 - **Detection Method**: Before creating a lifecycle boundary commit, run `git rev-list origin/<branch>..<branch> | wc -l`. If output is > 0, unpushed work exists and must be synchronized before the boundary commit is created
@@ -89,6 +92,7 @@ Feature 018 Iteration 001 is now past review-verdict-signoff and has completed i
 - **Reapplication Result**: To be recorded in Feature 018 trap-reapplication.md post-retro
 
 **Deferred Cosmetic Row (NOT GRADUATED — EXPLICITLY DEFERRED)**
+
 - **Label**: roadmap-phase-status-marker-uniformity
 - **Why Deferred**: The deferred observation (review.md line 39: "Deferred, non-blocking cosmetic observation: roadmap phase status markers should be normalized for richer visual uniformity in a future polish pass; current roadmap meaning and acceptance criteria remain satisfied") does not meet corpus-graduation criteria because it is explicitly cosmetic, low-priority, and would require visual work that is out of scope for Feature 018. The observation is logged in the review.md and deferred in `.squad/decisions.md` (decision ID: `defer-roadmap-phase-status-marker-uniformity-feature-018-iter-001`), but it is not formalized as a reusable trap pattern because it is context-specific to roadmap rendering glyphs and would not generalize to other features.
 
@@ -147,6 +151,7 @@ Feature 018 Iteration 001 is now past review-verdict-signoff and has completed i
 **The Pre-Implementation Review Journey**: Feature 018 Iteration 001 required a formal pre-implementation review (artifact: `specs/018-velocity-dashboard-visual-richness/iterations/001/pre-implementation-review.md`). Before that review could be approved, the iteration planning process encountered a blocker: the hardening gate artifact was missing. The planner initially scaffolded iteration-root planning surfaces (plan.md, state.md, drift-log.md) but omitted the required iteration-scoped hardening-gate.md.
 
 **The Resolver Action**: Alon Fliess (acting as Spec Steward and Pre-Implementation Reviewer) explicitly rejected the incomplete pre-implementation boundary and requested that the planner scaffold the iteration-scoped hardening gate with the exact five concern labels that the reviewer wanted to govern the implementation:
+
 - `terminal-capability-decision-precedence`
 - `windows-vt-fallback-truthfulness`
 - `render-budget-stop-ship-evidence`
@@ -160,6 +165,7 @@ Feature 018 Iteration 001 is now past review-verdict-signoff and has completed i
 **Process Discipline**: This iteration exemplified correct boundary discipline: the reviewer did not lower the bar ("the pre-implementation review passes, so let's proceed without the hardening gate"). Instead, the reviewer held both gates as required, even though it meant asking the planner to do additional scaffolding work before implementation could proceed. This boundary discipline prevented a false start and ensured that the implementation inherited a clear, coherent, and reviewer-signed concern set.
 
 **Artifact Evidence**: The honest value of pre-implementation review is now reflected in the formal record:
+
 - `pre-implementation-review.md` lines 12-15: Records that the missing-artifact blocker was cleared and affirms boundary readiness with preserved watchpoints
 - `pre-implementation-review.md` lines 38-46: Explicitly maps each Authorized Boundary Check topic to the supporting evidence in hardening-gate.md
 - `hardening-gate.md` lines 78-80: The post-implementation verification section confirms that the hardening gate was preserved through implementation and was the governing concern set
@@ -173,6 +179,7 @@ Feature 018 Iteration 001 is now past review-verdict-signoff and has completed i
 **The Milestone Event**: At the conclusion of Feature 018 Iteration 001 and the absorbed R-018-V2 repair, the dashboard rendering achieved a level of visual richness and clarity that made it suitable for use in documentation, blog articles, project status updates, and stakeholder communication. This was explicitly validated during Alon Fliess's direct-terminal verification, where he confirmed not only that rich glyphs and ANSI emphasis render correctly, but that the visual quality and information density are high enough to be used in public-facing communication without additional explanation or apology.
 
 **Why It Matters**: Many feature improvements claim to enhance UX or visual clarity, but few cross the threshold where the improvement is significant enough to be useful in marketing, documentation, or public demonstration. Feature 018 did cross that threshold. The velocity dashboard now surfaces:
+
 - Rich Unicode bars and sparklines that communicate velocity trends visually
 - Active-feature arrows and status markers that make roadmap state immediately obvious
 - Roadmap phase descriptions that eliminate the need to open a separate file to understand roadmap intent
@@ -180,7 +187,8 @@ Feature 018 Iteration 001 is now past review-verdict-signoff and has completed i
 
 This combination of improvements means the dashboard can now appear in README screenshots, blog articles about velocity tracking, onboarding documentation for new contributors, and status reports without needing disclaimer text like "this is a placeholder" or "future versions will improve readability."
 
-**Stakeholder Impact**: The article-visual-evidence milestone has tangible downstream value: 
+**Stakeholder Impact**: The article-visual-evidence milestone has tangible downstream value:
+
 1. **Documentation**: The quickstart guides (`specs/018-velocity-dashboard-visual-richness/quickstart.md`) can now feature actual dashboard output without needing to de-emphasize or apologize for limitations
 2. **Onboarding**: New contributors to Specrew can use `.\scripts\specrew.ps1 where` as a first-day learning tool to understand project history, velocity trends, and roadmap status without requiring manual explanation
 3. **Communication**: Status reports and retrospectives can embed dashboard screenshots to communicate project health, and the visual density makes the report more credible and self-explanatory
@@ -213,6 +221,7 @@ This combination of improvements means the dashboard can now appear in README sc
 No iteration scope items are deferred from Iteration 001 to a future iteration. All approved scope (FR-001 through FR-020, TG-001 through TG-004, User Stories 1-3) was completed.
 
 One cosmetic observation is explicitly deferred as not-blocking:
+
 - **Deferred Item**: roadmap phase status marker uniformity (normalized marker styling for richer visual uniformity)
 - **Reason**: Cosmetic only; current roadmap meaning and acceptance criteria remain satisfied
 - **Decision Record**: `.squad/decisions.md` (2026-05-15T23:30:00Z — `defer-roadmap-phase-status-marker-uniformity-feature-018-iter-001`)

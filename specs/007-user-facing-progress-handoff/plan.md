@@ -23,11 +23,13 @@ The implementation prioritizes **documentation, prompt updates, and soft-validat
 ## Two-Iteration Split (Confirmed)
 
 ### Iteration 001: Foundation & Governance
+
 **Scope**: Phase 1 + Phase 2 coordinator guidance and agent documentation  
 **Effort**: 10 story_points  
 **Deliverables**: Prompt updates, handoff template, coordinator decision guidance, Squad.agent.md codification, soft-validator concept design, governance checklist surface
 
 ### Iteration 002: Validation & Integration
+
 **Scope**: Phase 3 soft-validator implementation + integration tests + polish  
 **Effort**: ~10 story_points (estimated)  
 **Deliverables**: Soft-validator runtime, integration tests (governance-jargon response ▌ flag, plain-language response ▌ pass), validation lane integration, quality polish
@@ -106,6 +108,7 @@ This rule becomes a soft-validator detection pattern in Iteration 002; coordinat
 ### Phase 1: Foundation
 
 **T001** — Update coordinator prompt  
+
 - **Owner**: Coordinator-response maintainer  
 - **File**: `extensions/specrew-speckit/prompts/coordinator-response.md` + optional new `coordinator-final-response-guidance.md`  
 - **Scope**: Reinforce two-field handoff contract with explicit guidance for completion, blocker, and lightweight scenarios  
@@ -117,6 +120,7 @@ This rule becomes a soft-validator detection pattern in Iteration 002; coordinat
 - **Effort**: 3 story_points
 
 **T002** — Create handoff template artifact  
+
 - **Owner**: Prompt maintainer  
 - **File**: `specs/001-specrew-product/contracts/coordinator-handoff-template.md`  
 - **Scope**: Three-section format examples with current-progress and next-step identification rules  
@@ -127,6 +131,7 @@ This rule becomes a soft-validator detection pattern in Iteration 002; coordinat
 ### Phase 2: Decision & Agent Guidance
 
 **T003** — Codify coordinator decision guidance  
+
 - **Owner**: Coordinator-response maintainer  
 - **File**: `extensions/specrew-speckit/prompts/coordinator-decision-guidance.md`  
 - **Scope**: Decision trees for blockers, review needs, manual testing, verification gaps, blocked-vs-continue logic  
@@ -134,6 +139,7 @@ This rule becomes a soft-validator detection pattern in Iteration 002; coordinat
 - **Effort**: 2 story_points
 
 **T004** — Update Squad.agent.md  
+
 - **Owner**: Agent guidance maintainer  
 - **File**: `.github/agents/squad.agent.md`  
 - **Scope**: Formally codify three-section handoff format as standard Squad coordinator final-response structure  
@@ -142,6 +148,7 @@ This rule becomes a soft-validator detection pattern in Iteration 002; coordinat
 - **Effort**: 1 story_point
 
 **T005** — Create coordinator-handoff governance checklist  
+
 - **Owner**: Governance checklist maintainer  
 - **File**: `extensions/specrew-speckit/checklists/coordinator-handoff-governance.md`  
 - **Scope**: Soft-warning logic (not hard-blocking) for handoff validation  
@@ -150,6 +157,7 @@ This rule becomes a soft-validator detection pattern in Iteration 002; coordinat
 - **Effort**: 1 story_point
 
 **T006** — Design soft-validator concept  
+
 - **Owner**: Governance-validator maintainer  
 - **File**: `extensions/specrew-speckit/design/soft-validator-handoff-governance.md`  
 - **Scope**: Detection rule (three-or-more governance acronyms in lead without plain-language paraphrase), integration points, implementation sketch for Iteration 002  
@@ -166,11 +174,13 @@ This rule becomes a soft-validator detection pattern in Iteration 002; coordinat
 ### Phase 3: Validation & Soft Validator
 
 **T007** — Implement soft-validator handoff-governance check  
+
 - **Owner**: Governance-validator maintainer  
 - **Scope**: Runtime detection of missing progress status, missing next step, three-or-more-acronyms rule  
 - **Integration**: Register with governance checklist surface, hook into post-response coordinator output  
 
 **T008** — Create integration tests for handoff validator  
+
 - **Owner**: Test maintainer  
 - **Scope**: Two test fixtures under `tests/integration/`:
   - `handoff-governance-jargon-response-test.ps1` — a response with 3+ governance acronyms in lead → expect flag  
@@ -178,10 +188,12 @@ This rule becomes a soft-validator detection pattern in Iteration 002; coordinat
 - **Acceptance**: Both tests pass against the soft validator
 
 **T009** — Update validation lane  
+
 - **Owner**: Governance-validator maintainer  
 - **Scope**: Register soft-validator command in authorized-commands list, add task to validation-lane execution  
 
 **T010** — Quality polish  
+
 - **Owner**: Feature owner (Alon Fliess)  
 - **Scope**: Final checklist tuning, navigation-ready review-link guidance, hardening-gate sign-off prep, documentation review  
 
@@ -201,15 +213,19 @@ When planning Iteration 003 and beyond, apply the **Iteration 005 pre-sign-off s
 ## Governance Consistency
 
 ### Spec Authority ✅
+
 Scope strictly limited to Phase 1 + Phase 2 coordination guidance and agent documentation from approved spec.md. Soft validator and integration tests explicitly deferred to Iteration 002.
 
 ### Traceability ✅
+
 Every task maps to foundational FRs (FR-001 through FR-016) and user stories (US1, US2, US3). Soft-validator concept design (T006) explicitly bridges Iteration 001 planning to Iteration 002 implementation.
 
 ### Ownership ✅
+
 Task owners align to Specrew roles in spec.md Requirement Ownership & Delivery section. Agent guidance maintainer (T004) has explicit session-restart warning.
 
 ### Capacity ✅
+
 Iteration 001: 10/20 story_points (truthful slice with explicit deferrals).  
 Iteration 002: ~10 story_points (estimated, subject to pre-implementation refinement).
 
@@ -220,12 +236,14 @@ Iteration 002: ~10 story_points (estimated, subject to pre-implementation refine
 **Profile**: `quality-profile.custom-composition.v1`
 
 **Composition**:
+
 - Markdown documentation guidance
 - Coordinator-response prompt structure and examples
 - Agent guidance codification (Squad.agent.md)
 - Soft-validator concept design (pre-implementation)
 
 **Risk Dimensions**:
+
 - **Handoff semantics clarity** — Coordinator prompt and template must be clear enough for agents to consistently produce two-field handoffs (FR-001, FR-002, US1, US3)
 - **Agent guidance durability** — Squad.agent.md codification must survive future agent updates and session restarts (FR-013, FR-014)
 - **Soft-validator concept readiness** — Concept design must be complete and unambiguous so Iteration 002 implementation has a clear target (FR-016)

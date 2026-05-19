@@ -23,6 +23,7 @@ Feature 012 iteration 001 implementation is **ACCEPTED**. Both blocking concerns
 **Status**: ✅ **PASS**
 
 **Evidence**:
+
 1. ✅ **Opaque Reference Detection Tests** (`tests\integration\handoff-governance-descriptive-stop-message-test.ps1`) — PASSED  
    - Validator correctly flags authored prose with three or more opaque numeric references (Test 1: opaque stop-message fixture warns with `soft-warning.opaque-numeric-references`)
    - Validator correctly accepts authored prose with descriptive scope (Test 2: described stop-message fixture passes without warning)
@@ -63,6 +64,7 @@ Feature 012 iteration 001 implementation is **ACCEPTED**. Both blocking concerns
 **Status**: ✅ **PASS**
 
 **Evidence**:
+
 1. ✅ **Feature 007 Regression Suite** — PASSED  
    - `tests\integration\handoff-governance-jargon-response-test.ps1`: "PASS: Handoff governance validator flags jargon-first lead without hard-blocking response delivery"
    - `tests\integration\handoff-governance-plain-language-response-test.ps1`: "PASS: Handoff governance validator accepts plain-language-first handoffs with explicit next steps"
@@ -104,6 +106,7 @@ Feature 012 iteration 001 implementation is **ACCEPTED**. Both blocking concerns
 **Status**: ✅ **PASS**
 
 **Evidence**:
+
 1. ✅ **Startup Guidance Alignment** (`.github\agents\squad.agent.md` and `.squad\templates\squad.agent.md`)  
    - Both files contain identical readable-reference contract text at lines 115-130
    - Both files contain identical restart-boundary warning at line 138
@@ -123,6 +126,7 @@ Feature 012 iteration 001 implementation is **ACCEPTED**. Both blocking concerns
 **Status**: ✅ **PASS**
 
 **Evidence**:
+
 1. ✅ **Validator Rule Implementation** (`handoff-governance-validator.ps1` lines 408-488)  
    - Descriptor detection logic at lines 408-406: `Test-HasMeaningfulDescriptor` confirms shared scope has at least two meaningful words
    - Group pattern detection at line 438: `$groupPattern = "(?<group>$referencePattern(?:$separatorPattern$referencePattern)*)"`
@@ -148,6 +152,7 @@ Feature 012 iteration 001 implementation is **ACCEPTED**. Both blocking concerns
 **Status**: ✅ **PASS**
 
 **Evidence**:
+
 1. ✅ **Validator Rule Implementation** (`handoff-governance-validator.ps1` lines 289-348)  
    - Code block exclusion at lines 305-313: `if ($trimmed -match '^```') { ... $inCodeBlock = -not $inCodeBlock; continue }` and `if ($inCodeBlock) { continue }`
    - Quoted material exclusion at line 328: `if ($trimmed -match $headingPattern -or $trimmed -match $toolOutputPattern -or $trimmed -match '^\s*>') { ... continue }`
@@ -173,6 +178,7 @@ Feature 012 iteration 001 implementation is **ACCEPTED**. Both blocking concerns
 **Status**: ✅ **PASS**
 
 **Test Suite Results**:
+
 1. ✅ `tests\integration\handoff-governance-jargon-response-test.ps1` — PASSED
 2. ✅ `tests\integration\handoff-governance-plain-language-response-test.ps1` — PASSED
 3. ✅ `tests\integration\handoff-governance-review-file-reference-test.ps1` — PASSED

@@ -35,6 +35,7 @@ The branch `017-velocity-dashboard` is at `de84fe9` (= main HEAD). Every artifac
 ### T1-2 🟢 RESOLVED-IN-PROGRESS: Spec self-contradicted on lifecycle status
 
 `file:///C:/Dev/Specrew-017/specs/017-velocity-dashboard/spec.md`:
+
 - Line 5: `**Status**: Approved`
 - Line 375: `planning authorization was granted at the Feature 017 planning boundary on 2026-05-15`
 - Line 269 (TG-004): `this specification does not authorize planning, tasks, or implementation to begin automatically without the next explicit boundary decision.`
@@ -105,6 +106,7 @@ But real Specrew features have multiple iterations (F-001 has 10+, F-016 had 2).
 **Risk**: F-016 had NFR-001 with a quantitative `+15%` tolerance; the validator measured `+64%` and flagged it. F-017's "fast enough to feel natural" is unverifiable — no test fixture can fail it.
 
 **Suggested disposition**: at review (or pre-review during implementation), set a concrete budget. Examples:
+
 - Dashboard rendering ≤ 1.5s on a 16-feature repo
 - ≤ 5% of iteration-closeout workflow duration
 - ≤ N ms per feature scanned
@@ -120,6 +122,7 @@ The dashboard-artifact-contract at `file:///C:/Dev/Specrew-017/specs/017-velocit
 **Risk**: F-017 iteration 1 closes → no dashboard.md → validator warns → repair cycle. OR validator silently accepts a missing artifact and we lose F-017's own dogfood data point.
 
 **Suggested disposition**: at review, lock in the cutover semantics. Options:
+
 - (a) "After feature 017 is merged to main" — F-017 iterations are grandfathered (clean)
 - (b) "After F-017 iteration 2 closeout" — F-017 iteration 2 is the first to produce dashboard.md (eats own dogfood)
 - (c) "After F-017 iteration 1 closeout" — iteration 1 produces it (aggressive, but tests the auto-invocation path)
@@ -139,6 +142,7 @@ Squad created `file:///C:/Dev/Specrew-017/specs/017-velocity-dashboard/data-mode
 FR-030: "Repository/project-status natural-language requests made to Squad ... MUST route to the same dashboard renderer ... Requests asking for other kinds of status MUST remain outside this routing behavior unless they are clearly about repository/project state."
 
 The "clearly about" test is subjective. Squad implementing this needs:
+
 - Positive examples that route: "where are we?", "show project status", "what's shipped recently?", "show repo state"
 - Negative examples that do NOT route: "what's the test suite status?", "is CI passing?", "what's the build status?", "what's the status of the merge conflict?"
 - Uncertain-classification handling: ask back? Default to dashboard with a one-line disclaimer? Refuse?
@@ -150,11 +154,13 @@ The "clearly about" test is subjective. Squad implementing this needs:
 ### T2-7 🟢 RESOLVED-IN-PROGRESS: Data contracts for `roadmap.yml` and `dashboard.md`
 
 Squad created `file:///C:/Dev/Specrew-017/specs/017-velocity-dashboard/contracts/`:
+
 - `roadmap-schema-contract.md` (defines `.specrew/roadmap.yml` schema)
 - `dashboard-artifact-contract.md` (defines `dashboard.md` and `closeout-dashboard.md` artifact semantics)
 - `dashboard-command-contract.md` (defines command surface)
 
 This preemptively addresses the data-contracts gap I flagged. Verify at review that:
+
 - (a) The roadmap schema covers all FR-010 / FR-011 / FR-012 / FR-013 requirements
 - (b) The artifact contract covers FR-020 / FR-021 historical-snapshot + grandfathering rules
 - (c) The command contract covers FR-001 / FR-024 / FR-029 / FR-030 surface alignment
@@ -196,6 +202,7 @@ NFR-002 says "restrained visual vocabulary that survives monochrome rendering an
 ## Recommended review-time checklist
 
 At the review boundary, walk through each finding above and emit a verdict for each:
+
 - ACCEPTED: finding holds, repair pending or actioned
 - DISPUTED: finding doesn't apply, with reasoning
 - DEFERRED: finding holds but disposition is later iteration / future feature

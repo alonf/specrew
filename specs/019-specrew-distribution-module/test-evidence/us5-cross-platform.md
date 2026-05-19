@@ -1,8 +1,8 @@
 # User Story 5: Cross-Platform Parity Test Evidence
 
-**Feature**: 019-specrew-distribution-module  
-**Iteration**: 002  
-**Test Date**: 2026-05-18  
+**Feature**: 019-specrew-distribution-module
+**Iteration**: 002
+**Test Date**: 2026-05-18
 **Tested By**: Autonomous execution (Iteration 002 overnight run) + Alon Fliess (WSL Ubuntu verification)
 
 ---
@@ -20,16 +20,19 @@ This document records cross-platform parity evidence for User Story 5: Specrew m
 ### ✅ T041: Join-Path Audit and Hardening Sweep (Complete)
 
 **What was tested**:
+
 - Audited all PowerShell scripts in the Specrew codebase for embedded-backslash path construction
 - Replaced hardcoded backslashes with cross-platform alternatives (forward slashes or `[\\/]` regex patterns)
 
 **Files hardened**:
+
 1. `scripts/specrew-start.ps1`: 12 exclude patterns now use `[\\/]` to match both path separators
 2. `extensions/specrew-speckit/scripts/deploy-squad-runtime.ps1`: 10 template paths now use forward slashes
 3. `extensions/specrew-speckit/scripts/validate-governance.ps1`: 14 iteration relative paths now use forward slashes for git compatibility
 4. `extensions/specrew-speckit/scripts/scaffold-reviewer-artifacts.ps1`: 2 path normalization and regex patterns now handle both separators
 
 **Pattern Count Reconciliation**:
+
 - **Initial estimate**: 104+ patterns (from `.specrew/cross-platform-backlog.md` deferred work)
 - **Actual findings**: 38 patterns fixed across 4 files (12+10+14+2)
 - **Remaining scripts audited**: `scripts/specrew-init.ps1`, `scripts/specrew-update.ps1`, `scripts/specrew-team.ps1`, `scripts/specrew-review.ps1`, `scripts/specrew-where.ps1`, `scripts/internal/dashboard-renderer.ps1` — all found clean (no embedded backslash path strings)
@@ -44,6 +47,7 @@ This document records cross-platform parity evidence for User Story 5: Specrew m
 ### ✅ T054: CI Matrix with Ubuntu Runner (Complete)
 
 **What was tested**:
+
 - Created `.github/workflows/cross-platform-validation.yml` with Ubuntu and macOS runners
 - CI workflow validates:
   - Module manifest correctness via `Test-ModuleManifest`
@@ -53,6 +57,7 @@ This document records cross-platform parity evidence for User Story 5: Specrew m
   - Path separator handling checks
 
 **Ubuntu validation steps**:
+
 1. Install PowerShell 7.4.1 on Ubuntu runner
 2. Test module manifest validation
 3. Import Specrew module and verify exported commands
@@ -61,6 +66,7 @@ This document records cross-platform parity evidence for User Story 5: Specrew m
 6. Check core scripts for hardcoded backslashes
 
 **macOS validation steps**:
+
 1. Install PowerShell via Homebrew on macOS runner
 2. Test module manifest validation
 3. Import Specrew module and verify exported commands
@@ -74,6 +80,7 @@ This document records cross-platform parity evidence for User Story 5: Specrew m
 ### ✅ T054: WSL Ubuntu End-to-End Verification (Completed 2026-05-18)
 
 **What was verified**:
+
 - WSL Ubuntu (native ext4) end-to-end verification performed by Alon Fliess on 2026-05-18
 - `specrew init` produces correct module-mode messaging — identical to Windows behavior
 - `specrew start` opens Copilot interactive REPL with Squad selected and `--allow-all` enabled
@@ -84,6 +91,7 @@ This document records cross-platform parity evidence for User Story 5: Specrew m
 PowerShell on Linux strips TTY for `& nativeCommand` when invoked from SCRIPT-body context; preserves TTY from FUNCTION-body context. Diagnostic: `function F { & nano }; F` renders TUI correctly; `& nano` in script body does not.
 
 **Fix applied (R-019-V2-R21, commit 72d3b51)**:
+
 - `scripts/specrew-start.ps1` writes launch args to `$env:SPECREW_DEFERRED_LAUNCH_FILE` (temp file)
 - `Invoke-SpecrewScript` in `Specrew.psm1` (function context) reads the file after script returns and invokes `& copilot @args` from function body
 - TTY preserved because invocation site is function body, not script body
@@ -98,8 +106,8 @@ PowerShell on Linux strips TTY for `& nativeCommand` when invoked from SCRIPT-bo
 
 ### AS1: Module installs without errors on all platforms
 
-**Given**: A clean machine with PowerShell 7+ installed  
-**When**: User runs `Install-Module Specrew -Scope CurrentUser`  
+**Given**: A clean machine with PowerShell 7+ installed
+**When**: User runs `Install-Module Specrew -Scope CurrentUser`
 **Then**: The module installs without errors and `specrew` command becomes available in PATH
 
 **Status**: ✅ Covered by CI workflow (Ubuntu + macOS runners test module import)
@@ -108,8 +116,8 @@ PowerShell on Linux strips TTY for `& nativeCommand` when invoked from SCRIPT-bo
 
 ### AS2: Templates are copied with correct cross-platform path handling
 
-**Given**: Specrew is installed  
-**When**: User runs `specrew init` in an empty project directory  
+**Given**: Specrew is installed
+**When**: User runs `specrew init` in an empty project directory
 **Then**: `.specify/`, `.squad/`, and `.github/` directories are created with all required template files
 
 **Status**: ✅ Covered by CI workflow Ubuntu runner (tests `specrew-init` in clean directory)
@@ -118,11 +126,12 @@ PowerShell on Linux strips TTY for `& nativeCommand` when invoked from SCRIPT-bo
 
 ### AS3: Module works identically on Windows, Linux, and macOS
 
-**Given**: Specrew is installed on Windows, Linux, and Mac  
-**When**: User runs the same `specrew init`, `specrew start`, `specrew where` sequence  
+**Given**: Specrew is installed on Windows, Linux, and Mac
+**When**: User runs the same `specrew init`, `specrew start`, `specrew where` sequence
 **Then**: No errors occur and identical output is produced
 
-**Status**: 
+**Status**:
+
 - ✅ Windows: Existing validation on host system (Windows 11)
 - ✅ Ubuntu: CI workflow runner validates module functionality
 - ✅ macOS: CI workflow runner validates module functionality
@@ -140,6 +149,7 @@ PowerShell on Linux strips TTY for `& nativeCommand` when invoked from SCRIPT-bo
 | WSL Ubuntu-24.04 | ✅ | ✅ | ✅ | ✅ | ✅ | Pass (verified 2026-05-18) |
 
 **Legend**:
+
 - ✅ = Verified and passing
 - ✅ CI = Verified in CI workflow (will run on next push)
 - ⏳ = Pending human execution
@@ -168,15 +178,15 @@ PowerShell on Linux strips TTY for `& nativeCommand` when invoked from SCRIPT-bo
 
 ---
 
-**Recorded**: 2026-05-17T03:00:00Z  
+**Recorded**: 2026-05-17T03:00:00Z
 **Updated**: 2026-05-18 (WSL Ubuntu verified; R21/R22 cleanup confirmed)
 
 ---
 
 ## Iteration 002 Repair Cycle (R-019-V2)
 
-**Date**: 2026-05-17  
-**Authority**: Spec Steward (reviewer-regression repair authorized)  
+**Date**: 2026-05-17
+**Authority**: Spec Steward (reviewer-regression repair authorized)
 **Context**: Human-performed WSL Ubuntu manual verification discovered five cross-platform bugs after Iteration 002 /review-verdict-signoff was initially accepted.
 
 ### Bugs Discovered in Human WSL Testing
@@ -412,6 +422,7 @@ PowerShell on Linux strips TTY for `& nativeCommand` when invoked from SCRIPT-bo
 ### Known Traps Added
 
 Three corpus rows added to `.specrew/quality/known-traps.md`:
+
 1. **dashboard-empty-state-not-handled**: Dashboard functions must handle empty feature collections gracefully
 2. **test-on-fresh-project-state**: Always test commands against freshly-initialized empty-state projects
 3. **form-vs-meaning-recurrence**: Platform-aware messaging must check execution context (Windows vs Linux/macOS, clone-repo vs module) before displaying instructions

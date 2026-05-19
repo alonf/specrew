@@ -23,6 +23,7 @@ Feature `012`, descriptive references in handoffs, iteration `002`, the replay-p
 **Status**: ✅ **PASS**
 
 **Evidence**:
+
 1. ✅ **Authored-prose replay script** (`tests\integration\descriptive-reference-authored-prose.ps1`)  
    - Loads fixture-backed narration and stop-message responses from `tests\integration\fixtures\descriptive-reference-authored-prose\**`
    - Invokes the real replay path, `extensions\specrew-speckit\validators\handoff-governance-validator.ps1`, through `Invoke-ReplayFixture`
@@ -46,6 +47,7 @@ Feature `012`, descriptive references in handoffs, iteration `002`, the replay-p
 **Status**: ✅ **PASS**
 
 **Evidence**:
+
 1. ✅ **Known-traps corpus row present** (`.specrew\quality\known-traps.md`)  
    - The `human-handoff-id-context` row exists
    - The row names the new replay commands and preserved regression expectations
@@ -63,6 +65,7 @@ Feature `012`, descriptive references in handoffs, iteration `002`, the replay-p
 **Status**: ✅ **PASS**
 
 **Evidence**:
+
 1. ✅ **Feature `007`, user-facing progress handoff, regression trio** — PASSED  
    - `tests\integration\handoff-governance-jargon-response-test.ps1`
    - `tests\integration\handoff-governance-plain-language-response-test.ps1`
@@ -85,6 +88,7 @@ Feature `012`, descriptive references in handoffs, iteration `002`, the replay-p
 **Status**: ✅ **PASS**
 
 **Evidence**:
+
 1. ✅ The excluded-surface replay lane covers code blocks, quoted tool output, raw tool output, and Copilot-rendered tool-call result blocks.
 2. ✅ Each excluded-surface fixture requires a clean `status: pass` result with no soft warnings.
 
@@ -95,6 +99,7 @@ Feature `012`, descriptive references in handoffs, iteration `002`, the replay-p
 **Status**: ✅ **PASS**
 
 **Evidence**:
+
 1. ✅ `quickstart.md`, the feature plan, and `validation-lane.md` all describe the same replay lane that was executed.
 2. ✅ `specs\012-descriptive-id-handoffs\quality\hardening-gate.md` and `specs\012-descriptive-id-handoffs\quality\trap-reapplication.md` stay bounded to implementation and review evidence without claiming retrospective or closeout.
 
@@ -105,6 +110,7 @@ Feature `012`, descriptive references in handoffs, iteration `002`, the replay-p
 **Status**: ✅ **PASS**
 
 **Evidence**:
+
 1. ✅ `specs\012-descriptive-id-handoffs\iterations\002\plan.md` now records the accepted review boundary, and the current tree carries the completed retrospective separately in `retro.md`.
 2. ✅ `specs\012-descriptive-id-handoffs\iterations\002\state.md` moved the lifecycle to `retro` at review time and now carries the completed retrospective boundary truthfully.
 3. ✅ `specs\012-descriptive-id-handoffs\iterations\002\quality\hardening-gate.md` now records the accepted review boundary without rewriting the planning sign-off.
@@ -117,6 +123,7 @@ Feature `012`, descriptive references in handoffs, iteration `002`, the replay-p
 **Status**: ✅ **PASS**
 
 **Validation Results**:
+
 1. ✅ `tests\integration\descriptive-reference-authored-prose.ps1`
 2. ✅ `tests\integration\descriptive-reference-excluded-surfaces.ps1`
 3. ✅ `tests\integration\handoff-governance-jargon-response-test.ps1`

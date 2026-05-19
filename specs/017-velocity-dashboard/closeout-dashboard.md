@@ -9,7 +9,7 @@
 
 ## Dashboard
 
-`	ext
+` ext
 SPECREW VELOCITY DASHBOARD
 Summary: feature-017 (Implementation Complete) | Velocity 11.77 SP/day (10 closed iterations, high) | ETA: feature implementation complete · phase in-progress · roadmap in-progress
 Repo: Specrew-017 | Branch: 017-velocity-dashboard | Captured: 2026-05-15T15:23:46Z
@@ -63,4 +63,4 @@ WARNINGS
 WARN: Roadmap drift: phase 'Phase 1: Foundations' shipped effort exceeds plan by 14 SP (62.5 / 48 SP).
 WARN: Roadmap drift: phase 'Phase 2: Developer Experience' shipped effort exceeds plan by 17 SP (85.0 / 68 SP).
 WARN: Feature '017-velocity-dashboard' has no active iteration artifact; showing feature-level context only.
-`
+`

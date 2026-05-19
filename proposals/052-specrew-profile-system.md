@@ -51,6 +51,7 @@ Before proposing the architecture, this proposal explicitly records the strategi
 **Specrew core stays narrow. The profile system makes Specrew extensible to broad governance.**
 
 Specifically:
+
 - Specrew core stays focused on methodology pattern: lifecycle, boundaries, validators, decision-logs, retros, substantive-interaction-model
 - A profile system defines extension points that opt-in profiles can plug into
 - Specrew core authors 1-2 anchor profiles (likely `open-source-library` and `psgallery-publishing`) to prove the system works
@@ -166,6 +167,7 @@ The catalog is illustrative, not a commitment. Profiles emerge when real users n
 ### Effort
 
 **Iteration 1 (Profile System Foundation): ~20 SP**
+
 - Profile manifest schema + parser
 - Extension-point definition + invocation engine
 - `specrew init --profile=` and `specrew update --profile=` flag support
@@ -175,6 +177,7 @@ The catalog is illustrative, not a commitment. Profiles emerge when real users n
 - Refactor existing Specrew internal artifacts to NOT depend on profile-specific concerns (separation enforcement)
 
 **Iteration 2 (Anchor Profiles): ~15 SP**
+
 - Author `open-source-library` profile (~10 SP)
 - Author `psgallery-publishing` profile (~6 SP) — composes with `open-source-library`
 - Migrate Specrew's own repo to use both profiles (dogfooding)
@@ -190,6 +193,7 @@ Community profiles add per-profile effort but happen outside this proposal.
 **Phase 3 (Runtime Abstraction & Spec Fidelity).** The profile system is architectural foundation work. It belongs alongside Multi-Host Runtime Abstraction (Proposal 024) as core extensibility infrastructure — both define how Specrew composes with external systems.
 
 Sequencing rationale:
+
 - Phase 2 (current): finish methodology hardening, ship the post-F-020 queue (032, 046+048, 049+050, 047, 051)
 - Phase 3: ship the two big extensibility features (024 Multi-Host CORE, 052 Profile System) together; they share architectural patterns
 - Phase 4+: per-profile features as needed

@@ -179,11 +179,13 @@ module (Option A or B), this is unnecessary — the aliases resolve in any
 PowerShell session that has the module imported.
 
 **Current Session Only** (temporary, lost when shell closes):
+
 ```powershell
 $env:PATH = "$env:PATH;C:\Dev\Specrew\scripts"
 ```
 
 **Persistent** (all future sessions):
+
 ```powershell
 $currentPath = [Environment]::GetEnvironmentVariable("PATH", "User")
 $pathEntries = $currentPath -split ";"
@@ -194,6 +196,7 @@ if ($pathEntries -notcontains "C:\Dev\Specrew\scripts") {
 ```
 
 After adding to PATH persistently, restart your PowerShell session, then use the short form:
+
 ```powershell
 specrew start "Build a REST API for user management"
 specrew team list
@@ -279,6 +282,7 @@ If you are already inside a live session that was launched by `specrew start`, d
 When you restart Copilot/Squad, `specrew start` automatically detects whether you've committed changes to **session-loaded files** (agent charters, Copilot instructions, or Spec Kit extension templates). If changes are detected, the auto-continue behavior pauses and prompts you to confirm or provide additional directives before the lifecycle resumes.
 
 **Session-loaded paths checked**:
+
 - `.github/agents/*`
 - `.github/copilot-instructions.md`
 - `extensions/specrew-speckit/squad-templates/coordinator/*`
@@ -286,12 +290,14 @@ When you restart Copilot/Squad, `specrew start` automatically detects whether yo
 - `.squad/agents/*/charter.md`
 
 **Pause-and-confirm workflow**:
+
 1. You commit changes to one or more session-loaded files (e.g., updating `.github/agents/squad.agent.md` to refine reviewer behavior).
 2. You restart Copilot/Squad and run `specrew start`.
 3. The regenerated `.specrew/last-start-prompt.md` includes a **PAUSE-AND-CONFIRM** message listing the changed files.
 4. You can review the changes and provide directives (e.g., "Focus on reviewer escalation testing") before typing `CONFIRM` or a directive to continue.
 
 **Example pause-and-confirm message**:
+
 ```
 ⚠️ Session-loaded files changed:
 - .github/agents/squad.agent.md
@@ -487,13 +493,13 @@ In some Windows PowerShell environments, the Spec Kit CLI fails with a Unicode e
 specify init --here --ai copilot --script ps --ignore-agent-tools --force
 ```
 
-3. After manually initializing `.specify/`, re-run bootstrap to complete the rest:
+1. After manually initializing `.specify/`, re-run bootstrap to complete the rest:
 
 ```powershell
 specrew init -ProjectPath . -Force
 ```
 
-4. Once `.specify/` exists, you can proceed with the iteration scaffolding steps (plan, artifacts, review, retro).
+1. Once `.specify/` exists, you can proceed with the iteration scaffolding steps (plan, artifacts, review, retro).
 
 #### Other Limitations
 

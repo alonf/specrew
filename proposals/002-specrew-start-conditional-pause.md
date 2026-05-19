@@ -19,6 +19,7 @@ Users wanted Specrew to pause and ask for confirmation when it detects these cha
 ## What
 
 Extended `specrew-start` to detect changes to session-loaded files since the last successful session-resume. When changes are detected:
+
 - The script pauses the auto-continue path
 - Surfaces a summary of which files changed
 - Asks for explicit user confirmation or additional direction before lifecycle work resumes

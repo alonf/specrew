@@ -96,11 +96,13 @@ Idea-form proposals not yet developed into full source specs. Open for discussio
 For roadmap-style viewing, proposals grouped by phase placement:
 
 **Phase 1** (interaction-model foundation):
+
 - 001, 002, 003, 004, 005, 006, 007 (all shipped)
 - 011 (Architecture Intent Checkpoint — draft, on-disk spec exists)
 - 012 (Visual Artifact Extension — candidate)
 
 **Phase 2** (convention enforcement + structural fidelity + distribution + state durability):
+
 - 009 (Velocity Dashboard — shipped as feature-017)
 - 031 (Specrew Distribution Module — shipped as feature-019)
 - 021 (Specrew Slash-Command Surface — shipped as feature-021)
@@ -113,6 +115,7 @@ For roadmap-style viewing, proposals grouped by phase placement:
 - 013, 014, 015, 017, 018, 019, 020, 021, 022, 023, 027, 028, 029, 037, 038, 042, 044, 045, 046, 047, 048, 049, 050, 051, 053, 054, 055, 056, 059, 060, 061, 062 (candidates)
 
 **Phase 3** (refactor + maintainability + upstream reconciliation + extensibility):
+
 - 026 (Refactor Track R1-R5)
 - 039 (Squad Upstream Reconciliation — depends on 024)
 - 043 (Structured Question Protocol — could fold into 024)
@@ -121,21 +124,26 @@ For roadmap-style viewing, proposals grouped by phase placement:
 - 058 (Plugin-Based Multi-Host Distribution — partner to 024; delivery layer for multi-host)
 
 **Phase 4** (token economy + autopilot experiment):
+
 - 016 (Outcome Scoring — candidate)
 - 040 (Token Economy Governance — draft)
 - 041 (Specrew Autopilot — candidate)
 
 **Phase 5** (multi-developer):
+
 - 010 (Multi-Developer Reconciliation — draft)
 - 015 Capability 3 (folds in)
 
 **Phase 6** (multi-host, conditional):
+
 - 024 (Multi-Host Runtime Abstraction — candidate)
 
 **Phase 7** (brownfield, conditional):
+
 - 025 (JIT Codebase Cartography — candidate)
 
 **Phase 8** (packaging + 1.0):
+
 - (not yet proposalized)
 
 ---
@@ -143,9 +151,11 @@ For roadmap-style viewing, proposals grouped by phase placement:
 ## Lifecycle
 
 A proposal's status moves through:
+
 - `candidate` (idea) → `draft` (source spec written) → `active` (in lifecycle) → `shipped` (merged to main)
 
 Or, alternative paths:
+
 - `candidate` → `withdrawn` (decision not to proceed)
 - `draft` → `superseded` (replaced by newer proposal)
 - `shipped` → `superseded` (rare; only when a later feature retires the earlier one)

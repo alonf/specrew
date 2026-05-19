@@ -116,4 +116,3 @@ evidence.
 - Carryover absorption is intentional and bounded. The plan is explicit about what was brought in and
   what remains deferred so the feature does not hide accepted review/retro lessons.
 - Keep `Status: planning` until the human authorizes movement beyond the planning boundary.
-

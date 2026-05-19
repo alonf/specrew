@@ -67,4 +67,3 @@ Areas of elevated risk where drift is more likely to occur during Iteration 002 
 - All drift events must be recorded with date, description, rationale, and resolution status.
 - Monitoring areas identify elevated-risk concerns where drift is more likely; these are not violations unless actual drift occurs.
 - Spec authority violations are a specific subset of drift events where the implementation deviates from requirements defined in `spec.md` without explicit approval.
-

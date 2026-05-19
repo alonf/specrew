@@ -12,6 +12,7 @@ discussion: tbd
 ## Why
 
 Specrew's retro → corpus → enforcement pipeline is human-curated end-to-end. Retros capture lessons, but graduating those lessons to enforced validator rules requires a human to:
+
 1. Read the retro
 2. Identify recurring patterns
 3. Draft a corpus row in `.specrew/quality/known-traps.md`
@@ -26,11 +27,13 @@ This proposal closes the loop with mechanical enforcement of the corpus-row grad
 Two mechanisms ("Mechanism A" + "Mechanism B" per the Feature-005-Phase-2 source):
 
 **Mechanism A — Mandatory corpus-row graduation in retros**:
+
 - Validator rule: every `retro.md` MUST contain a `## Corpus Row Candidates` section with at least one entry
 - Hard-fail on retros without this section
 - Forces the "what should be enforced going forward?" question to be answered explicitly per iteration
 
 **Mechanism B — Pre-implementation corpus consultation**:
+
 - Before each iteration's implementation begins, Squad consults recent retros + known-traps and surfaces relevant traps in the iteration plan
 - Coordinator-prompt rule: "Before implementation, consult `.specrew/quality/known-traps.md` and recent retros; for each relevant trap, document how the implementation avoids it"
 

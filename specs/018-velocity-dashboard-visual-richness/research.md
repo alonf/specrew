@@ -12,6 +12,7 @@ preserves behavioral parity and lowers drift risk while keeping this feature ins
 presentation-only scope.
 
 **Alternatives considered**:
+
 - A separate rich-mode renderer — rejected because it would duplicate section logic and increase drift risk.
 - Rich-only formatting injected at write time — rejected because stored artifacts and tests also need the
   same semantic model.
@@ -28,6 +29,7 @@ The current Feature 017 implementation already centralizes color-mode decisions,
 to widen capability detection rather than assume every console can render Unicode blocks and ANSI safely.
 
 **Alternatives considered**:
+
 - Always render rich mode unless `--ASCII` is set — rejected because non-TTY and incompatible hosts would
   emit broken or misleading output.
 - Never render rich mode by default — rejected because the clarified requirement explicitly wants rich mode
@@ -46,6 +48,7 @@ model where rich mode adds visual density and fallback keeps every state underst
 color.
 
 **Alternatives considered**:
+
 - Color-only enhancement without Unicode glyphs — rejected because it would miss the approved visual
   richness goal and remain weaker for screenshots/readability.
 - Unicode-only enhancement without ASCII substitutes — rejected because fallback comprehension would fail.
@@ -61,6 +64,7 @@ changes such as new velocity-window controls or projection-model changes. Defaul
 preserve PoC scanning density without expanding the feature into a new analytics or configuration project.
 
 **Alternatives considered**:
+
 - Add multiple new dashboard tuning parameters — rejected because the approved scope intentionally excludes
   broader configurability.
 - Hardcode every density choice with no override — rejected because the spec explicitly approves Recent
@@ -77,6 +81,7 @@ Velocity section as its only valid home. Keeping it subordinate to the headline 
 that the dashboard remains explanatory rather than chart-heavy.
 
 **Alternatives considered**:
+
 - Add sparklines to Recent Shipped or Full History — rejected because that exceeds the approved scope.
 - Replace the numeric summary with the sparkline — rejected because the spec requires the sparkline to
   remain secondary.
@@ -92,6 +97,7 @@ text editors, or CI artifacts. ANSI codes create noisy, unreadable artifacts the
 still improve clarity when preserved correctly.
 
 **Alternatives considered**:
+
 - Persist raw ANSI-colored output — rejected because artifact readability and portability would degrade.
 - Downgrade stored snapshots all the way to ASCII — rejected because the spec explicitly allows Unicode to
   remain even after ANSI is stripped.
@@ -108,6 +114,7 @@ repository's trusted contract lane for dashboard behavior, making it the right p
 richness and fallback safety.
 
 **Alternatives considered**:
+
 - Manual visual review only — rejected because the spec requires durable regression coverage.
 - Introduce a new snapshot-testing framework outside PowerShell — rejected because the current harness is
   already aligned with the repository's CLI/governance toolchain.

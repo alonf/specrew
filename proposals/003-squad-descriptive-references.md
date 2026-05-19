@@ -19,10 +19,12 @@ The previous Feature 007 (user-facing progress handoff) introduced soft validati
 ## What
 
 Extended Specrew's soft-validator surface with a `numeric-ID-undescribed` rule that fires when user-facing handoff messages reference identifiers without nearby descriptive context. Examples that pass:
+
 - `FR-013 (validator-hardening)` ✓
 - `T007 — public-readiness drift validation` ✓
 
 Examples that fail:
+
 - Bare `FR-013` without surrounding context ✗
 - Bare `T007` in a sentence ✗
 

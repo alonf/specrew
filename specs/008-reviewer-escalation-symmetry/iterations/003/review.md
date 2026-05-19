@@ -22,7 +22,7 @@ G-001 is fully closed. The rework commit (`a17f6cb`) adds `Get-ReviewerRegressio
 |-----|-----------|---------|----------|
 | FR-009 | Implementer lockout-chain cap | ✅ PASS | `Get-LockoutCapStatus` correctly computes `capActive = chainLength >= 1 + LockoutChainCap` (default 2); fixture validates 3-implementer chain as cap-active; lockout-chain-cap.ps1 6/6 pass |
 | FR-010 | Post-cap ownership rule | ✅ PASS | `report` mode enforces human or approved-alternate routing; decisions.md alternate-owner entry required; no synthesis of additional specialists |
-| FR-011 | Cap and escalation visibility | ✅ PASS | iteration-state managed block ✅; `.squad/decisions.md` ✅; routing.md ✅; `scaffold-reviewer-artifacts.ps1` outputs `Lockout Cap: active | chain=N/M` and `Next Owner:` lines ✅; SPECREW_REVIEW digest includes `cap=active cap_chain=N/M` ✅; `specrew-review.ps1` JSON exposes `cap_active`/`cap_chain` ✅ |
+| FR-011 | Cap and escalation visibility | ✅ PASS | iteration-state managed block ✅; `.squad/decisions.md` ✅; routing.md ✅; `scaffold-reviewer-artifacts.ps1` outputs `Lockout Cap: active / chain=N/M` and `Next Owner:` lines ✅; SPECREW_REVIEW digest includes `cap=active cap_chain=N/M` ✅; `specrew-review.ps1` JSON exposes `cap_active`/`cap_chain` ✅ |
 
 ---
 

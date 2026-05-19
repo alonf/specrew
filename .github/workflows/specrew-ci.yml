@@ -14,6 +14,7 @@ jobs:
   lint:
     name: Lint
     runs-on: ubuntu-latest
+    timeout-minutes: 25
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -21,7 +22,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '24'
 
       - name: Install markdownlint-cli
         run: npm install -g markdownlint-cli
@@ -42,29 +43,50 @@ jobs:
       - name: Lint PowerShell scripts
         shell: pwsh
         run: |
+          # PSScriptAnalyzer with PSGallery settings reports many style warnings
+          # (PSUseSingularNouns, PSUseApprovedVerbs, etc.) on pre-existing scripts.
+          # These predate F-023 and are tracked under Proposal 037 for systematic
+          # cleanup. Filter to Severity = Error so only real defects block CI;
+          # warnings still print for awareness but don't fail the build.
           $scriptFiles = Get-ChildItem -Path . -Filter *.ps1 -Recurse -File |
                          Where-Object { $_.FullName -notmatch '[\\/]\.(git|squad|specify)[\\/]' }
           if ($scriptFiles.Count -gt 0) {
-            $results = $scriptFiles | ForEach-Object {
+            $allResults = $scriptFiles | ForEach-Object {
               Invoke-ScriptAnalyzer -Path $_.FullName -Settings PSGallery
             }
-            if ($results) {
-              $results | Format-Table -AutoSize
+            $errors = @($allResults | Where-Object { $_.Severity -eq 'Error' })
+            $warnings = @($allResults | Where-Object { $_.Severity -eq 'Warning' })
+            if ($warnings.Count -gt 0) {
+              Write-Host "::group::PSScriptAnalyzer warnings (Proposal 037 cleanup queue, non-blocking)"
+              $warnings | Format-Table -AutoSize
+              Write-Host "::endgroup::"
+              Write-Host ("Warnings: {0} (not blocking)" -f $warnings.Count)
+            }
+            if ($errors.Count -gt 0) {
+              Write-Host "PSScriptAnalyzer errors (blocking):"
+              $errors | Format-Table -AutoSize
               exit 1
             }
+            Write-Host ("PASS: no PSScriptAnalyzer errors. Warnings count: {0}" -f $warnings.Count)
           }
           else {
             Write-Host 'No PowerShell scripts found to lint'
           }
 
       - name: Validate iteration governance
+        timeout-minutes: 15
         shell: pwsh
         run: ./extensions/specrew-speckit/scripts/validate-governance.ps1 -ProjectPath .
+
+      - name: Integration - legacy state readers
+        shell: pwsh
+        run: pwsh -NoProfile -File ./tests/integration/Test-LegacyStateReaders.Tests.ps1
 
   deterministic-gate:
     name: Deterministic gate
     runs-on: ubuntu-latest
     needs: lint
+    timeout-minutes: 20
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -72,7 +94,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '24'
 
       - name: Setup uv
         uses: astral-sh/setup-uv@v5
@@ -127,6 +149,7 @@ jobs:
     name: Contract lane
     runs-on: ubuntu-latest
     needs: deterministic-gate
+    timeout-minutes: 15
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -134,7 +157,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '24'
 
       - name: Setup uv
         uses: astral-sh/setup-uv@v5

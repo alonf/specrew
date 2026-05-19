@@ -89,12 +89,14 @@ Options:
 ### Outputs (Brownfield)
 
 Same as greenfield, except:
+
 - Existing `.specify/`, `.squad/` files are preserved (never overwritten)
 - Baseline roles are merged (additive only)
 - Version conflicts are reported and block execution
 - Conflicting role names prompt the user
 
 **Protected Paths** (never overwritten or deleted by `specrew init`):
+
 - `.specify/memory/constitution.md` — User's project constitution
 - `.specify/templates/` — All contents (user-customized templates)
 - `.specify/extensions.yml` — Existing extension registrations

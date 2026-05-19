@@ -30,6 +30,7 @@ This proposal establishes a pre-merge end-to-end lifecycle verification gate tha
 **Scenario A: Full lifecycle ship-and-restart**
 
 Simulate a complete feature lifecycle:
+
 1. Start from a clean post-feature-closeout state (no active feature)
 2. Run `specrew start` — verify it launches cleanly
 3. Initiate a minimal test feature (specify → clarify → plan → tasks → before-implement → implement → review → retro → iteration-closeout → feature-closeout)
@@ -98,6 +99,7 @@ Surface the score on the PR via a comment so reviewers see "this PR has X% cover
 **Phase 2, HIGH-PRIORITY**, post-F-022 (the F-020 bug hotfix). F-022 fixes the three specific bugs that exposed this gap. Proposal 054 prevents the next class of bug from reaching main.
 
 Sequence:
+
 - F-022 (hotfix) ships first — restores Specrew to working state
 - Proposal 054 ships next as a Phase 2 priority — makes the gate the durable enforcement
 - All subsequent features pass through the gate before merge

@@ -64,6 +64,7 @@
 ## Handoff Notes
 
 **From Iteration 001**:
+
 - Foundation & Governance phase complete and verified (T001-T006, 10 sp, zero drift, perfect estimation accuracy)
 - Session restart boundary satisfied (Squad.agent.md changes loaded in current session)
 - T006 soft-validator design document provides clear implementation target for T007
@@ -71,6 +72,7 @@
 - Retro improvement actions carried forward: (1) Session-restart discipline (satisfied), (2) Soft-validator implementation clarity (T006 is implementation contract), (3) Handoff-contract durability validation (deferred to feature closeout)
 
 **To Implementer**:
+
 - T006 design document is the implementation contract for T007; no ambiguity about detection logic
 - T008 integration tests must exercise actual soft-validator runtime path (not just checklist artifact validation)
 - T009 validation lane update must cross-check authorized commands against plan.md task definition and hardening-gate evidence
@@ -78,6 +80,7 @@
 - T010 must also polish review-facing guidance so local file review requests use a `file:///` URI with the absolute Windows path in this Windows workflow
 
 **To Reviewer**:
+
 - T007-T010 are implemented and validated. `tests\integration\validation-contract-lane.ps1` and `extensions\specrew-speckit\scripts\validate-governance.ps1 -ProjectPath . -IterationPath .\specs\007-user-facing-progress-handoff\iterations\002` reran after the FR-017 repair and passed on 2026-05-11.
 - Blank-input validator execution returned soft warnings without crashing, and repeated identical validator runs produced identical output.
 - The required fresh-session review boundary was satisfied before the accepted re-review because T010 updated `.github/agents/squad.agent.md`, which is loaded at startup.

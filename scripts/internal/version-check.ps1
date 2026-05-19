@@ -135,7 +135,18 @@ function Get-SpecrewVersionCheckCacheState {
     }
 
     try {
-        return Get-Content -LiteralPath $cachePath -Raw -Encoding UTF8 | ConvertFrom-Json -Depth 6
+        # F-023: Use -AsHashtable for StrictMode compatibility; hashtable indexer tolerates missing fields
+        $cache = Get-Content -LiteralPath $cachePath -Raw -Encoding UTF8 | ConvertFrom-Json -AsHashtable -Depth 6
+        
+        # F-023: Legacy schema handling - missing 'schema' field implies v0
+        $schema = $cache['schema']
+        if (-not $schema) {
+            Write-Debug "schema-implied-v0 for $cachePath"
+            # v0 behavior: all cache fields are optional
+        }
+        # v1+ behavior: same as v0 for this cache (no behavioral divergence yet)
+        
+        return $cache
     }
     catch {
         return $null

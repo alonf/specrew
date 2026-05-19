@@ -24,6 +24,7 @@ The pattern: surface → default → accept override.
 A three-tier NFR governance model baked into Specrew's lifecycle:
 
 **Tier 1 — Universal baselines** (Reviewer-enforced regardless of stack). Six categories:
+
 - `schema-validation-at-boundaries` (seed entry, already adopted 2026-05-13)
 - `structured-logging`
 - `no-silent-failure-error-handling`
@@ -32,6 +33,7 @@ A three-tier NFR governance model baked into Specrew's lifecycle:
 - `automated-build-and-test-gates`
 
 **Tier 2 — Conditional baselines** (surfaced at clarify time based on spec characteristics). Six categories:
+
 - `distributed-tracing-opentelemetry` (triggers: ≥2 services, async messaging, service mesh)
 - `authn-authz-baseline` (triggers: user/principal/session/auth/token mentions)
 - `pii-handling` (triggers: email/name/phone/address/payment in data model)
@@ -40,6 +42,7 @@ A three-tier NFR governance model baked into Specrew's lifecycle:
 - `deployment-readiness` (triggers: production-bound spec characteristics)
 
 **Tier 3 — Architect's must-ask questions** (required clarify-time questionnaire; `unspecified` is a valid answer). Six categories:
+
 - `hosting-model` (enum from cheat-sheet)
 - `scalability-target`
 - `availability-target`

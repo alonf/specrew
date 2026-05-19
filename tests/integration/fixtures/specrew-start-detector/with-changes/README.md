@@ -13,6 +13,7 @@ This directory contains test fixtures for scenarios where session-loaded files h
 ## Usage
 
 Tests should:
+
 1. Initialize a git repository
 2. Create initial bootstrap state with session-loaded files
 3. Commit baseline

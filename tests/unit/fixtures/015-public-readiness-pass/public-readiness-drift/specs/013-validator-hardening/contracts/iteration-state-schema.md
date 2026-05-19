@@ -68,6 +68,7 @@ When the canonical schema check fails, the validator MUST emit a `Structured Val
 ## Change Control
 
 Changes to this contract require:
+
 1. An updated `validate-governance.ps1` rule implementation.
 2. Updated fixture coverage in `tests/integration/validator-hardening-iteration1.ps1`.
 3. A revision note in this file naming the change, the requirement, and the date.

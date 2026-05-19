@@ -35,6 +35,7 @@ A host-neutral governance layer above multiple AI runtimes:
 - **Full (M0-M5 with all major hosts)**: ~125 SP
 
 Phased delivery:
+
 - M0: canonical state + Copilot projection (existing as baseline)
 - M1: CAO projection (first non-Squad provider)
 - M2: validator + governance host-neutrality

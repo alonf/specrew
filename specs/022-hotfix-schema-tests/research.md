@@ -11,6 +11,7 @@
 **Rationale**: The current helper contract expects parser-readable frontmatter, while the closeout dashboard scaffolder also owns human-facing identity content. The hotfix therefore has to reconcile the two writers instead of choosing one audience over the other. This resolves FR-001 through FR-004 without broadening the schema audit beyond the closeout identity surface.
 
 **Alternatives considered**:
+
 - Replace the closeout identity body with a machine-only template — rejected because it would violate FR-003.
 - Audit every state artifact for parity in this hotfix — rejected because FR-005 explicitly defers that work.
 
@@ -21,6 +22,7 @@
 **Rationale**: Each confirmed bug needs its own durable regression surface, and the user explicitly directed the plan to keep these suites standalone so Proposal 054 can compose them later. Separate scripts also keep debugging and evidence review narrow when one lane fails.
 
 **Alternatives considered**:
+
 - One monolithic restart hotfix suite — rejected because it would blur which bug regressed and would block later Proposal 054 composition.
 - Unit-only coverage — rejected because the failures are lifecycle/integration defects.
 
@@ -31,6 +33,7 @@
 **Rationale**: Existing brownfield evidence already shows early-boundary sync surfaces, but Feature 022 was opened because later-boundary synchronization drifted or never landed durably. The planned recovery evidence must therefore prove both wiring and observability, not merely re-run a single plan-boundary sync.
 
 **Alternatives considered**:
+
 - Re-test only the plan boundary because the helper exists — rejected because FR-006 through FR-010 explicitly scope all seven boundaries.
 - Defer late-boundary verification to a future audit — rejected because the current restart defect is production-facing now.
 
@@ -41,6 +44,7 @@
 **Rationale**: The clarified spec explicitly keeps `--recover` orthogonal to autopilot or approval behavior. Planning must therefore treat recovery intent, stale-state explanation, and approval behavior as separate controls so the hotfix fixes the production blocker without widening policy behavior.
 
 **Alternatives considered**:
+
 - Fold recovery into existing approval flags — rejected because it would violate FR-014.
 - Skip the interactive flow and rely only on `--recover` — rejected because FR-011 requires the operator-facing A/B/C path.
 
@@ -51,5 +55,6 @@
 **Rationale**: FR-017 requires Feature 021 operating defaults to carry forward. Because this task ends at plan completion, those defaults must already appear in the plan, iteration plan, and hardening gate instead of waiting for implementation.
 
 **Alternatives considered**:
+
 - Assume the defaults are implied by precedent — rejected because the user explicitly required them to remain visible in planning/governance surfaces.
 - Re-open a broader governance redesign for restart workflows — rejected because it exceeds the hotfix scope lock.

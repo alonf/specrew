@@ -240,24 +240,29 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File .\extensions\specrew-speckit\scrip
 **Before-implement readiness**: PASS — explicit human approval is recorded above; the six-command baseline validation lane was rerun on the repaired planning commit and remained green before implementation; Phase 2 hardening-gate requirements do not apply to this documentation-only feature.
 
 **Phase 0 Research**: Complete — research.md created. All three NEEDS CLARIFICATION items resolved:
+
 1. Docs-only boundary confirmed (Markdown + pure-display function; no runtime impact possible)
 2. User-guide review-only handling confirmed (review against contradiction checklist; FR-005 recording obligation defined)
 3. Six-command validation lane role confirmed (regression guard for path-resolution and governance; manual review covers prose and banner visibility)
 
 **Phase 1 Design**: Complete — data-model.md, contracts/onboarding-text-surface.md, quickstart.md created.
+
 - Four documentation surface entities defined with required content fields and validation rules
 - Text surface content contract defines minimum required semantic elements per surface (not exact wording)
 - Quickstart captures bounded implementation order and full closure checklist
 - Post-Phase-1 constitution check: all gates PASS
 
 **FR-005 user-guide review**: Complete.
+
 - Finding: FR-005 review of docs/user-guide.md: no contradictory first-launch-only language or anti-pattern endorsement found. No edit required.
 
 **SC-006 lane results**: Complete.
+
 - Baseline (pre-edit): PASS — reran the full six-command validation lane in this implementation session before any feature-010 edits; all six commands passed, including `project-path-resolution-regression.ps1` and `validate-governance.ps1`.
 - Post-implementation: PASS — reran the full six-command validation lane after the documentation and banner-text edits; all six commands passed again, so the path-resolution regression suite behavior remained unchanged.
 
 **Manual visibility and scope review**: Complete.
+
 - README, getting-started, and the bootstrap banner now all state that resumed sessions still begin with `specrew start` and warn against running `copilot` directly.
 - The new banner resume lines are 23, 77, 64, and 92 characters wide, satisfying the ≤100-column visibility requirement for the added guidance.
 - Scope audit confirmed no edits to `specs/008-*` or `specs/009-*`, no runtime logic changes, and no `docs/user-guide.md` change was required.

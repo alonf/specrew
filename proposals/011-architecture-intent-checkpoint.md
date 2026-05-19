@@ -22,6 +22,7 @@ Adding a checkpoint inside `/speckit.plan` that explicitly captures architectura
 ## What
 
 A new sub-phase within `/speckit.plan`:
+
 1. Spec ingestion (existing)
 2. **Architecture Intent Checkpoint** (new) — explicit prose statement of:
    - Primary architectural pattern (monolith / microservice / serverless / etc.)

@@ -61,17 +61,20 @@ Replace the current `Current >= LatestKnown → "current"` with proper three-way
 ### `specrew update --info` output change
 
 Before:
+
 ```
 Specrew  0.19.0  0.18.0      current origin-tags
 ```
 
 After (Moment20 example):
+
 ```
 Specrew  0.19.0  0.20.0      outdated  module-manifest
                                        → run 'specrew update --spec-kit' to upgrade
 ```
 
 After (Specrew dev repo example, post-bump but pre-tag):
+
 ```
 Specrew  0.20.0  0.20.0      current   module-manifest
 ```
@@ -79,6 +82,7 @@ Specrew  0.20.0  0.20.0      current   module-manifest
 ### Composition with proposal 047 (Project Governance Profile)
 
 Add a `version_check_source_preference` dial to the governance profile:
+
 - `auto` (default) — use the precedence chain above
 - `psgallery-only` — fail if PSGallery unreachable (strict downstream consumer)
 - `manifest-only` — only consult loaded module's manifest (dev / offline use)
@@ -100,6 +104,7 @@ This integrates cleanly with proposal 047's other dials.
 **Phase 2, fast follow-up to F-020.** Slots into the post-F-020 queue alongside 032, 046+048, 047. Smallest of the queued items, could ship as a hotfix before public flip.
 
 Sequencing options:
+
 - **Option A (separate small feature)**: ship as F-024 or wherever the queue lands. ~3 SP, half-day work.
 - **Option B (combine with 047)**: roll into Proposal 047's governance profile work since it includes the `version_check_source_preference` dial anyway. Adds ~2 SP to 047 (the fix itself counts toward 047's scope, only the dial is new).
 - **Option C (hotfix now)**: ship as a tactical fix before public flip, outside the proposal queue. Reasonable if the public flip is in days, not weeks.

@@ -18,6 +18,7 @@ The corpus row "no direct idea-to-code bypass" exists in the prompt but isn't va
 ## What
 
 A new validator rule that, when files under tracked source surfaces are modified in a commit, checks that:
+
 - An active iteration directory exists (e.g., `specs/<feature>/iterations/<NNN>/`)
 - The active iteration's `plan.md` references a task whose owner-file-globs match the modified file paths
 - The task is in `planned` or `in-progress` status

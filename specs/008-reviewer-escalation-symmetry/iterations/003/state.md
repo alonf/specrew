@@ -19,6 +19,7 @@ This iteration carries **User Story 2 (implementer lockout-chain cap)** only: ta
 
 **Planned Tasks**: `T014`-`T019` (12 story_points)  
 **Deferred to Later Iterations**:
+
 - User Story 3 (`T020`-`T026`) → Iteration 004
 - Polish (`T027`-`T028`) → Iteration 005
 

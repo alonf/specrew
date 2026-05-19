@@ -1,0 +1,7 @@
+schema: v1
+iteration: 1
+tasks:
+  - id: t001
+    status: done
+  - id: t002
+    status: in_progress

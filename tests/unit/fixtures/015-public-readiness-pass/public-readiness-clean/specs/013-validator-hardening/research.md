@@ -13,6 +13,7 @@
 **Rationale**: FR-010 explicitly requires preserving the existing command surface. The validator already uses `shared-governance.ps1` as a shared helper, so adding new helper functions there is consistent with the established pattern. Introducing a second entrypoint would split the validator surface and break FR-010 compatibility.
 
 **Alternatives considered**:
+
 - Separate `validate-governance-v2.ps1`: rejected — breaks FR-010 command-surface preservation.
 - Inline all new logic directly in the entrypoint without helpers: rejected — reduces testability and increases coupling between unrelated checks.
 
@@ -25,6 +26,7 @@
 **Rationale**: The existing `Get-MarkdownMetadataValue` helper already implements this pattern for current checks. The spec clarification (2026-05-12) confirms the eight field names and allows pending values as long as canonical field names are present. Extra narrative sections are allowed.
 
 **Alternatives considered**:
+
 - YAML front-matter for `state.md`: rejected — the repository uses the `**Field**:` Markdown convention throughout.
 - Looser heading-based detection: rejected — headings are not the canonical pattern and would accept non-canonical field names silently.
 
@@ -37,6 +39,7 @@
 **Rationale**: The spec (FR-002, clarification 2026-05-12) and the known-traps corpus entry (governance trap: "hardening gate missing canonical concerns") confirm the canonical five as the required first-five rows. The existing `Get-MarkdownSectionTableAnyLevel` helper parses Markdown tables and is sufficient for extracting concern rows.
 
 **Alternatives considered**:
+
 - Check only that the five concerns appear anywhere in any order: rejected — the known-traps corpus documents canonical ordering as required; order enforcement is part of FR-002.
 - Require all five concerns to appear in a strict schema column: rejected — the validator reads existing Markdown tables; imposing a new required column format would break backward compatibility for compliant existing artifacts.
 
@@ -49,6 +52,7 @@
 **Rationale**: The spec clarification defines duplicate evidence as "quotes that match after whitespace normalization and markdown-emphasis stripping." The blanket-authorization exception is explicit. A per-feature scan across sibling iterations is required because duplicates appear in different artifact files.
 
 **Alternatives considered**:
+
 - Hash-based deduplication without normalization: rejected — minor formatting differences would evade detection; the spec requires normalized comparison.
 - Requiring a separate approval ledger file: rejected — the spec says detection must operate on existing `plan.md` / `state.md` without requiring new artifact format changes.
 
@@ -61,6 +65,7 @@
 **Rationale**: The spec clarification (2026-05-12) is explicit: "Dirty-tree enforcement is limited to the iteration directory's canonical artifacts." Scoping to the iteration directory prevents false positives from normal in-flight governance trace files.
 
 **Alternatives considered**:
+
 - Repo-wide dirty-tree check: rejected — creates false positives for governance traces outside the iteration; spec clarification explicitly disallows this.
 - No dirty-tree check at all: rejected — FR-004 explicitly requires it for the iteration directory.
 
@@ -73,6 +78,7 @@
 **Rationale**: The spec clarification explicitly states "restart-policy ownership must stay outside the validator entrypoint." A reusable helper keeps the classifier testable independently and allows `specrew-start.ps1` to own the policy decision.
 
 **Alternatives considered**:
+
 - Embedding classifier logic inline in `validate-governance.ps1`: rejected — the spec explicitly requires a separate reusable helper consumed by `specrew-start.ps1`.
 - Adding a new command-line flag to the validator for restart classification: rejected — changes the validator command surface, violating FR-010.
 
@@ -81,11 +87,13 @@
 ### R7: What iteration split best fits the dependency graph?
 
 **Decision**: Adopt the preferred two-iteration split from the spec:
+
 - **Iteration 1**: FR-001 (canonical schema), FR-002 (canonical concerns), FR-005 (graceful errors), FR-008 slice 1 (Iteration 1 fixtures), FR-009 (contracts), FR-010 slice 1.
 - **Iteration 2**: FR-003 (approval reuse), FR-004 (over-claim), FR-006 (bookkeeping classifier), FR-007 (corpus graduation), FR-008 slice 2, FR-010 slice 2.
 
 **Rationale**: FR-009 (contracts) must precede FR-001 and FR-002 enforcement because the contracts define the authoritative normative reference for the rules. FR-005 is a shared foundation for all structured FAIL output and must land in Iteration 1 so Iteration 2 rules inherit it. FR-003 and FR-004 are independent of FR-001/FR-002 but depend on the FAIL output infrastructure from FR-005. FR-006 (classifier) can be deferred to Iteration 2 because it does not block FR-001/FR-002. FR-007 (corpus graduation) naturally closes after all rules are implemented.
 
 **Alternatives considered**:
+
 - Three iterations with corpus graduation as a standalone: rejected — FR-007 is bounded enough to fit Iteration 2 and does not justify a separate iteration boundary.
 - Single iteration: rejected — the combined surface (six rules + contracts + corpus graduation + classifier) exceeds a bounded deliverable unit and risks scope overload.

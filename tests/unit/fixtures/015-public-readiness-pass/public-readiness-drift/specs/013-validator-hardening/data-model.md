@@ -26,6 +26,7 @@ The normative set of eight metadata fields required in every newly created or ma
 | `Iteration Status` | `**Iteration Status**:` | Free-form status description; inspected for closure keywords |
 
 **Validation rules**:
+
 - Each field must appear as `**<FieldName>**:` (bold label + colon) on its own line.
 - Pending/placeholder values are valid as long as the canonical field name is present.
 - Additional narrative sections beyond the canonical fields are allowed and must not cause false positives.
@@ -50,6 +51,7 @@ The five required concern rows that must appear as the first five rows of the `C
 | 5 | `operational-resilience-concerns` | `operational` |
 
 **Validation rules**:
+
 - The validator checks that concern identifiers in positions 1–5 match this list exactly, in order.
 - Feature-specific additional concerns may follow after position 5.
 - Missing or reordered canonical concerns produce a structured FAIL naming the missing concern and expected position.
@@ -70,6 +72,7 @@ A normalized text excerpt from the `Implementation Approval` block in `plan.md` 
 | `blanket_scope_declared` | boolean | Whether the artifact contains an explicit blanket multi-iteration authorization declaration |
 
 **Validation rules**:
+
 - Two quotes are considered duplicated when their `normalized_text` values are identical after whitespace collapse and stripping of `*` and `_` emphasis markers.
 - Duplication is a FAIL condition unless `blanket_scope_declared` is true for at least one of the matching artifacts.
 - `blanket_scope_declared` is detected by a line containing both `blanket` and `multi-iteration authorization` (case-insensitive) within the approval block.
@@ -90,6 +93,7 @@ The required set of artifacts and conditions that must all be satisfied before a
 | Working tree cleanliness | No uncommitted changes to files inside the iteration directory's canonical artifact set | Uncommitted iteration-directory changes |
 
 **Validation rules**:
+
 - The `Iteration Status` field is inspected for closure-oriented keywords (e.g., `closed`, `closeout complete`).
 - Dirty-tree check uses `git status --porcelain` and filters to paths under the iteration directory.
 - Repo-level governance traces such as `.squad/decisions.md` and `.squad/identity/now.md` are excluded from the dirty-tree failure condition.
@@ -108,6 +112,7 @@ The result of classifying a diff or before/after pair of `.github/copilot-instru
 | `requires_restart` | boolean | `true` when `classification == behavior` |
 
 **Validation rules**:
+
 - A change is `bookkeeping` when all changed content falls within the timestamp line, `## Active Technologies` section, or `## Recent Changes` section.
 - Any change outside those sections makes the classification `behavior`.
 - When bookkeeping-only edits are mixed with behavior edits in a single change set, the more conservative `behavior` classification wins.
@@ -127,6 +132,7 @@ The normalized error record emitted for every validator failure, replacing raw P
 | `remediation_hint` | string | Actionable guidance for fixing the violation |
 
 **Validation rules**:
+
 - Every new and existing check function must produce output conforming to this structure.
 - The validator must complete the full validation pass even when individual checks fail; errors are accumulated and reported together.
 - The validator must exit with a non-zero exit code when any FAIL is emitted.

@@ -243,4 +243,3 @@ When PSGallery has a newer Specrew version available, Squad warns at `specrew st
 - **Extends Proposal 002 (Specrew Start Conditional Pause)**: Original proposal was file-change detection; this feature generalizes to content-consistency validation
 - **Predecessor to Phase 5 Multi-Developer Reconciliation (Proposal 010)**: Multi-developer state reconciliation requires reliable single-developer state durability first; this feature is the foundation
 - **Source artifacts**: Proposal 035 (`proposals/035-session-state-durability.md`), source-draft (`file:///C:/Dev/SpecrewDraft/session-state-durability.md`)
-

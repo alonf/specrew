@@ -206,10 +206,12 @@ tests/
 **Two-Iteration Plan**: This feature is planned as two bounded iterations reflecting the dependency graph and prioritization of user-facing behavior.
 
 ### Iteration 001: Foundation + Core Detector + Signature Preservation
+
 **Scope**: FR-001, FR-002, FR-004, FR-006, FR-007  
 **Focus**: Detector logic, baseline tracking, auto-continue preservation, signature stability, error fidelity  
 **Approximate Effort**: ~10-12 story points  
 **Deliverables**:
+
 - Change detector logic in `specrew-start.ps1` (FR-001: runs `git diff --name-only` against baseline, detects session-loaded path changes)
 - Baseline commit tracking in `.specrew/last-start-prompt.md` YAML frontmatter (FR-002: `baseline_commit_hash` field)
 - Auto-continue preservation when no changes detected (FR-004: regenerated handoff includes auto-continue directive per spec 001)
@@ -219,6 +221,7 @@ tests/
 - **Planning artifact**: `specs/011-specrew-start-conditional-pause/plan.md` (this document, created during feature planning)
 
 **Quality Gates (Iteration 001)**:
+
 - Detector correctly identifies session-loaded file changes via `git diff --name-only`
 - Baseline commit hash is correctly serialized and deserialized in YAML frontmatter
 - Auto-continue behavior is preserved for routine resumes (no changes = auto-continue)
@@ -228,10 +231,12 @@ tests/
 **Pre-Implementation Readiness**: After Iteration 001 planning is approved, Phase 1 design artifacts (research.md, data-model.md, quickstart.md) will be generated. Iteration 001 implementation will not begin until explicit authorization is recorded in `.squad/decisions.md`.
 
 ### Iteration 002: User-Facing Features + Visibility + Comprehensive Testing + Corpus Seeding
+
 **Scope**: FR-003, FR-005, FR-008, FR-009, FR-010  
 **Focus**: Pause-and-confirm injection, optional -PostRestartDirective parameter, visibility output, comprehensive tests, known-traps corpus seeding  
 **Approximate Effort**: ~8-10 story points  
 **Deliverables**:
+
 - Pause-and-confirm directive injection when session-loaded files change (FR-003: clear message, file list, user confirmation prompt)
 - `-PostRestartDirective` parameter support (FR-005: optional string parameter, prepended to handoff, appears verbatim)
 - Detector visibility in regenerated handoff (FR-009: structured field showing which files changed)
@@ -240,6 +245,7 @@ tests/
 - **Planning artifact**: `specs/011-specrew-start-conditional-pause/iterations/002/quality/hardening-gate.md` (to be created during Iteration 002 planning)
 
 **Quality Gates (Iteration 002)**:
+
 - Pause-and-confirm message clearly states which files changed and requests user confirmation
 - `-PostRestartDirective` parameter prepends user directive verbatim to handoff
 - Visibility output is testable via scaffold-replay-path assertions (not just runtime state inspection)
@@ -269,6 +275,7 @@ Rationale: Feature 011 is a focused PowerShell CLI script modification with clea
 ## Feature Plan Approval and Boundary
 
 **Planning Completion**: This feature plan document constitutes the feature-level planning boundary. It includes:
+
 - ✅ Feature summary and technical context
 - ✅ Phase 1 quality planning (risk dimensions, quality gates, tooling)
 - ✅ Phase 2 hardening planning outline (deferred to Iteration 002)
@@ -278,6 +285,7 @@ Rationale: Feature 011 is a focused PowerShell CLI script modification with clea
 - ✅ Planning-time decisions with traceability
 
 **Next Steps**:
+
 1. **Phase 0 Research** (if needed): Generate `research.md` to resolve any NEEDS CLARIFICATION entries. For this feature, all technical context is clear; research.md may be minimal or omitted.
 2. **Phase 1 Design**: Generate `data-model.md` (entities: Change Detector, Session-Loaded Paths, Baseline Commit, PAUSE-AND-CONFIRM Directive) and `quickstart.md`.
 3. ✅ **Iteration 001 Planning**: `specs/011-specrew-start-conditional-pause/iterations/001/plan.md` created with explicit task breakdown (detector logic, baseline tracking, preservation, tests, error handling); hardening-gate.md created at `specs/011-specrew-start-conditional-pause/iterations/001/quality/hardening-gate.md`.
