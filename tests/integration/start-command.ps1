@@ -458,7 +458,7 @@ if ($IsWindows -and ($fakeCopilotArgs -notmatch 'last-start-prompt\.md' -or $fak
     Write-Fail 'Live launch did not pass the bootstrap handoff file references to Copilot.'
     exit 1
 }
-if ($fakeCopilotArgs -notmatch '(^| )-i( |$)') {
+if ($fakeCopilotArgs -notmatch '(^|\s)-i(\s|$)') {
     Write-Fail 'Live launch should auto-load the bootstrap prompt with -i.'
     exit 1
 }
