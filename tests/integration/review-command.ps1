@@ -164,7 +164,8 @@ if ($jsonResult.ExitCode -ne 0) {
 }
 
 $jsonOutput = $jsonResult.Output -join "`n"
-foreach ($pattern in @('"feature":\s*"001-sample"', '"iteration":\s*"001"', '"digest":\s*"SPECREW_REVIEW schema=v1 iter=001 feature=001-sample verdict=accepted tasks=2/3 reqs=3 files=4 new_deps=1 vuln=unscanned cov=not_executed escalations=1 drift=1/1 index=specs\\\\001-sample\\\\iterations\\\\001\\\\reviewer-index.md"', '"summary_lines":\s*\[', '"reviewer_index":\s*"specs\\\\001-sample\\\\iterations\\\\001\\\\reviewer-index.md"')) {
+$reviewerIndexJsonPattern = '"reviewer_index":\s*"specs(?:\\\\|/)001-sample(?:\\\\|/)iterations(?:\\\\|/)001(?:\\\\|/)reviewer-index.md"'
+foreach ($pattern in @('"feature":\s*"001-sample"', '"iteration":\s*"001"', '"digest":\s*"SPECREW_REVIEW schema=v1 iter=001 feature=001-sample verdict=accepted tasks=2/3 reqs=3 files=4 new_deps=1 vuln=unscanned cov=not_executed escalations=1 drift=1/1 index=specs\\\\001-sample\\\\iterations\\\\001\\\\reviewer-index.md"', '"summary_lines":\s*\[', $reviewerIndexJsonPattern)) {
     if (-not (Assert-Contains -Content $jsonOutput -Pattern $pattern -FailureMessage ("JSON output is missing '{0}'." -f $pattern))) {
         exit 1
     }
