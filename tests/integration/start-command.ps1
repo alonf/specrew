@@ -250,8 +250,9 @@ if ($defaultPathResult.ExitCode -ne 0) {
     exit 1
 }
 
-$defaultPromptPath = Join-Path -Path $defaultPathProjectRoot -ChildPath '.specrew\last-start-prompt.md'
-$defaultContextPath = Join-Path -Path $defaultPathProjectRoot -ChildPath '.specrew\start-context.json'
+$defaultSpecrewRoot = Join-Path -Path $defaultPathProjectRoot -ChildPath '.specrew'
+$defaultPromptPath = Join-Path -Path $defaultSpecrewRoot -ChildPath 'last-start-prompt.md'
+$defaultContextPath = Join-Path -Path $defaultSpecrewRoot -ChildPath 'start-context.json'
 if (-not (Test-Path -LiteralPath $defaultPromptPath -PathType Leaf)) {
     Write-Fail "Wrapper default project-path flow did not create the prompt artifact in the caller project"
     exit 1
@@ -266,7 +267,7 @@ if ($defaultContext.prompt_path -ne $defaultPromptPath) {
     Write-Fail "Wrapper default project-path flow recorded the wrong prompt path in start-context.json"
     exit 1
 }
-if ($defaultContext.team_roster.team_path -ne (Join-Path -Path $defaultPathProjectRoot -ChildPath '.squad\team.md')) {
+if ($defaultContext.team_roster.team_path -ne (Join-Path -Path (Join-Path -Path $defaultPathProjectRoot -ChildPath '.squad') -ChildPath 'team.md')) {
     Write-Fail "Wrapper default project-path flow recorded the wrong team roster path in start-context.json"
     exit 1
 }
