@@ -292,7 +292,7 @@ function Write-PostBootstrapGuidance {
     Write-Host '         ╲─────────────────╱' -ForegroundColor Blue
     Write-Host ''
     Write-Host '         S  P  E  C  R  E  W' -ForegroundColor White
-    Write-Host ' ─── GOVERNED AGENTIC SDLC ───' -ForegroundColor DarkGray
+    Write-Host '    ─── GOVERNED AGENTIC SDLC ───' -ForegroundColor DarkGray
     Write-Host ''
     Write-Host '         Bootstrap Complete' -ForegroundColor Green
     Write-Host ''
