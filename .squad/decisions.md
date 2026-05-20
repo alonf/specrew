@@ -1,3 +1,27 @@
+## 2026-05-20T01:11:37Z — Decision: Implementer Feature 024 Feature Closeout
+
+- **Decision ID**: implementer-f024-feature-closeout
+- **Type**: feature closeout execution
+- **Boundary**: feature-closeout
+- **Authority**: Implementer (per authorization)
+- **Recorded At**: 2026-05-20T01:11:37Z
+- **Feature**: 024-slash-command-multi-host-correctness
+
+## Authorization Text
+
+> Approved. Open feature-closeout for Feature 024. Proceed with the feature-closeout workflow per the PR-at-feature-close SDLC contract: generate closeout artifacts, sign feature-closeout in `.squad/decisions.md`, push the branch, open the PR, and stop at the next human-authorization boundary before tag-and-publish.
+
+## Execution Notes
+
+- Merged `origin/main` into `024-slash-command-multi-host-correctness` before closeout so the canonical snapshot and PR reflect the current branding, proposal-index, gate-respecting-default, and cost-reduction proposal surfaces without leaving additive merge conflicts for review time.
+- Generated the canonical feature-closeout dashboard snapshot at `specs/024-slash-command-multi-host-correctness/closeout-dashboard.md` on the merged tree; the snapshot records **7 SP planned / 7 SP delivered / 0 SP variance** and preserves Feature 024 in the recent shipped history.
+- Verified Rule 15 version surfaces remain aligned at `0.24.0` in `Specrew.psd1`, `.specrew/config.yml`, `extensions/specrew-speckit/extension.yml`, and `.specify/extensions/specrew-speckit/extension.yml`.
+- Replayed the full Feature 024 validation lane on the merged closeout tree: the ten slash-command regression scripts plus the scoped governance validator all returned exit code `0`.
+- Cleared the active-feature session-state surfaces via the canonical closeout hook: `.specify/feature.json` is now empty, `.squad/identity/now.md` records `feature-closeout`, and the runtime handoff files now show no active feature.
+- The remaining authorized operational work after this closeout record is the PR-at-feature-close step on the same branch; release tagging remains blocked pending later human authorization.
+
+---
+
 ## 2026-05-20T00:50:00Z — Decision: Retro Facilitator Feature 024 Iteration-Closeout Boundary
 
 - **Decision ID**: retro-f024-iteration-closeout
@@ -15353,3 +15377,12 @@ The post-merge identity correction was necessary and aligned with Feature 022 cl
 ## Summary
 
 Review-verdict-signoff is complete for Feature 024 Iteration 001. The approved review covers the current working tree; retro remains blocked pending fresh human authorization.
+
+## 2026-05-20T01:11:38Z — Boundary sync: feature-closeout
+
+- **Boundary Type**: feature-closeout
+- **Feature Ref**: 024-slash-command-multi-host-correctness
+- **Iteration Number**: (none)
+- **Task ID**: (none)
+- **Auth Commit Hash**: a2fb22cea5c450aaa4cda58bcd786638f9a47b1e
+- **Recorded At**: 2026-05-20T01:11:37Z
