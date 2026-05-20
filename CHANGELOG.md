@@ -6,6 +6,20 @@ baseline that each release number represents.
 
 ## Unreleased
 
+### Added
+
+### Changed
+
+### Fixed
+
+### Deprecated
+
+### Removed
+
+### Security
+
+## [0.24.0] - 2026-05-20
+
 - **docs(init-banner)**: Center-align the "GOVERNED AGENTIC SDLC" tagline under the wordmark on the `specrew init` ASCII banner. Tagline previously rendered at 1-space leading indent (left of center by 3 cols); now at 4-space leading indent so both wordmark and tagline center on col 18.5, aligned with the hexagon's vertical axis. Pure presentation fix in `scripts/specrew-init.ps1`. Small-fix slice per Proposal 067.
 - **ci(deterministic-gate)**: Skip Linux-incompatible `validate-versions-cli-behavior` step; `.cmd` shim scripts require Windows. Pre-existing limitation; full multi-platform bootstrap shimming queued post-F-024.
 - **ci(deterministic-gate)**: Skip Linux-incompatible `bootstrap-asset-blocker-recovery` step; `.cmd` shim scripts require Windows. Pre-existing limitation; full multi-platform bootstrap shimming queued post-F-024.
