@@ -2,7 +2,7 @@
 
 ## Overview
 
-This directory contains Squad skill templates for Specrew runtime deployment. The bootstrap/runtime scripts copy the active skills to `.copilot/skills/specrew-*/SKILL.md`.
+This directory contains Squad skill templates for Specrew runtime deployment. The bootstrap/runtime scripts copy the active slash-command skills content-identically to `.claude/skills/specrew-*/SKILL.md`, `.github/skills/specrew-*/SKILL.md`, and `.agents/skills/specrew-*/SKILL.md`.
 
 ## Skills
 

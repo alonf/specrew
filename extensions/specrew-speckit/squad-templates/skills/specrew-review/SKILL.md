@@ -1,10 +1,15 @@
+---
+name: specrew-review
+description: Replay the persisted reviewer closeout packet for a completed iteration.
+---
+
 # specrew-review
 
 **Type**: Operational Skill
 **Schema**: v1
 **Status**: Active
 **Namespace**: `/specrew`
-**Canonical command**: `/specrew.review`
+**Canonical command**: `/specrew-review`
 
 ## Purpose
 
@@ -18,19 +23,19 @@ Trigger or inspect the Specrew review-oriented workflow — replay the persisted
 
 ## Boundary Safety
 
-This skill **supports review work** but does **not** bypass the required human decision point. A human reviewer must still explicitly approve lifecycle advancement. Invoking `/specrew.review` is not equivalent to approving an iteration for closure or advancement.
+This skill **supports review work** but does **not** bypass the required human decision point. A human reviewer must still explicitly approve lifecycle advancement. Invoking `/specrew-review` is not equivalent to approving an iteration for closure or advancement.
 
 **Feature 016 rule**: Humans remain the approval authority for major boundary transitions. This command may not imply authorization to advance from any lifecycle boundary.
 
 ## Coexistence Contract
 
-This skill is part of the `/specrew.*` namespace. It coexists with `/speckit.*` review-related commands without collision or shadow. Using `/specrew.review` does not substitute for `/speckit.*` lifecycle actions that require explicit human authorization.
+This skill is part of the `/specrew-*` command surface. It coexists with `/speckit.*` review-related commands without collision or shadow. Using `/specrew-review` does not substitute for `/speckit.*` lifecycle actions that require explicit human authorization.
 
 ## Invocation
 
 ```text
-/specrew.review [<iteration>] [--project-path <path>] [--feature <id>]
-                [--iteration <NNN>] [--quiet] [--json] [--open]
+/specrew-review [<iteration>] [--project-path <path>] [--feature <id>]
+                 [--iteration <NNN>] [--quiet] [--json] [--open]
 ```
 
 Backed by: `specrew review` / `scripts/specrew-review.ps1`
@@ -66,5 +71,5 @@ Only the arguments listed above are accepted in v1. Unknown arguments are reject
 
 ## See Also
 
-- `/specrew.where` — current project status (live, not review replay)
-- `/specrew.help` — catalog fallback and full command list
+- `/specrew-where` — current project status (live, not review replay)
+- `/specrew-help` — catalog fallback and full command list

@@ -172,9 +172,10 @@ Write-Pass "Help output includes specrew start"
 
 Write-Host "`nTest 1aa: display-path helpers trim both path separators"
 Invoke-Expression ((Get-FunctionDefinitionsText -Path $startScript -FunctionNames @('Get-DisplayRelativePath', 'Get-DisplayPathFromProjectRoot')) -join "`n`n")
+$projectRelativeDisplayPath = '.specrew{0}last-start-prompt.md' -f [System.IO.Path]::DirectorySeparatorChar
 $windowsDisplayPath = Get-DisplayPathFromProjectRoot -ResolvedProjectPath $projectRoot -Path (Join-Path -Path $projectRoot -ChildPath '.specrew\last-start-prompt.md')
-if ($windowsDisplayPath -ne '.specrew\last-start-prompt.md') {
-    Write-Fail ("Get-DisplayPathFromProjectRoot returned the wrong Windows-relative path: {0}" -f $windowsDisplayPath)
+if ($windowsDisplayPath -ne $projectRelativeDisplayPath) {
+    Write-Fail ("Get-DisplayPathFromProjectRoot returned the wrong project-relative path: {0}" -f $windowsDisplayPath)
     exit 1
 }
 $linuxDisplayPath = Get-DisplayRelativePath -ProjectRoot '/repo/project/' -ResolvedPath '/repo/project/.specrew/last-start-prompt.md'
@@ -249,8 +250,9 @@ if ($defaultPathResult.ExitCode -ne 0) {
     exit 1
 }
 
-$defaultPromptPath = Join-Path -Path $defaultPathProjectRoot -ChildPath '.specrew\last-start-prompt.md'
-$defaultContextPath = Join-Path -Path $defaultPathProjectRoot -ChildPath '.specrew\start-context.json'
+$defaultSpecrewRoot = Join-Path -Path $defaultPathProjectRoot -ChildPath '.specrew'
+$defaultPromptPath = Join-Path -Path $defaultSpecrewRoot -ChildPath 'last-start-prompt.md'
+$defaultContextPath = Join-Path -Path $defaultSpecrewRoot -ChildPath 'start-context.json'
 if (-not (Test-Path -LiteralPath $defaultPromptPath -PathType Leaf)) {
     Write-Fail "Wrapper default project-path flow did not create the prompt artifact in the caller project"
     exit 1
@@ -265,13 +267,13 @@ if ($defaultContext.prompt_path -ne $defaultPromptPath) {
     Write-Fail "Wrapper default project-path flow recorded the wrong prompt path in start-context.json"
     exit 1
 }
-if ($defaultContext.team_roster.team_path -ne (Join-Path -Path $defaultPathProjectRoot -ChildPath '.squad\team.md')) {
+if ($defaultContext.team_roster.team_path -ne (Join-Path -Path (Join-Path -Path $defaultPathProjectRoot -ChildPath '.squad') -ChildPath 'team.md')) {
     Write-Fail "Wrapper default project-path flow recorded the wrong team roster path in start-context.json"
     exit 1
 }
 
 $defaultPathOutput = $defaultPathResult.Output -join "`n"
-if (-not (Assert-Contains -Content $defaultPathOutput -Pattern ([regex]::Escape($defaultPromptPath)) -FailureMessage 'Wrapper default project-path flow reported the wrong prompt artifact path.')) {
+if (-not (Assert-Contains -Content $defaultPathOutput -Pattern ([regex]::Escape($projectRelativeDisplayPath)) -FailureMessage 'Wrapper default project-path flow reported the wrong prompt artifact path.')) {
     exit 1
 }
 Write-Pass "Entry wrapper defaults project-path to the caller project root"
@@ -398,19 +400,32 @@ Write-Host "`nTest 2b: default launch reuses the current terminal and passes the
 $fakeBinRoot = Join-Path -Path $scratchRoot -ChildPath 'fake-bin'
 $null = New-Item -Path $fakeBinRoot -ItemType Directory -Force
 $fakeCopilotLog = Join-Path -Path $scratchRoot -ChildPath 'fake-copilot.log'
-$fakeCopilotPath = Join-Path -Path $fakeBinRoot -ChildPath 'copilot.cmd'
-$fakeCopilotScript = @"
+$fakeCopilotPath = Join-Path -Path $fakeBinRoot -ChildPath $(if ($IsWindows) { 'copilot.cmd' } else { 'copilot' })
+$fakeCopilotScript = if ($IsWindows) {
+@"
 @echo off
 setlocal
 echo %*>>"$fakeCopilotLog"
 powershell -NoProfile -ExecutionPolicy Bypass -Command "Start-Sleep -Seconds 2"
 exit /b 0
 "@
+}
+else {
+@"
+#!/usr/bin/env bash
+printf '%s\n' "`$@" >> '$fakeCopilotLog'
+sleep 2
+exit 0
+"@
+}
 [System.IO.File]::WriteAllText($fakeCopilotPath, $fakeCopilotScript, [System.Text.UTF8Encoding]::new($false))
+if (-not $IsWindows) {
+    & chmod +x $fakeCopilotPath
+}
 
 $launchCommand = @'
 $sw = [System.Diagnostics.Stopwatch]::StartNew()
-$env:PATH = "{0};" + $env:PATH
+$env:PATH = "{0}" + [System.IO.Path]::PathSeparator + $env:PATH
 & "{1}" start "Launch a tiny clipboard utility" --project-path "{2}"
 $sw.Stop()
 Write-Output ("__ELAPSED__=" + [math]::Round($sw.Elapsed.TotalSeconds, 2))
@@ -439,11 +454,17 @@ if (-not (Test-Path -LiteralPath $fakeCopilotLog -PathType Leaf)) {
     exit 1
 }
 $fakeCopilotArgs = Get-Content -LiteralPath $fakeCopilotLog -Raw -Encoding UTF8
-if ($fakeCopilotArgs -notmatch 'last-start-prompt\.md' -or $fakeCopilotArgs -notmatch 'start-context\.json') {
+$fakeCopilotArgLines = @(
+    $fakeCopilotArgs -split "\r?\n" |
+    ForEach-Object { $_.Trim().Trim('"').Trim("'") } |
+    Where-Object { -not [string]::IsNullOrWhiteSpace($_) }
+)
+if ($IsWindows -and ($fakeCopilotArgs -notmatch 'last-start-prompt\.md' -or $fakeCopilotArgs -notmatch 'start-context\.json')) {
     Write-Fail 'Live launch did not pass the bootstrap handoff file references to Copilot.'
     exit 1
 }
-if ($fakeCopilotArgs -notmatch '(^| )-i( |$)') {
+$hasInputFlag = ($fakeCopilotArgLines -contains '-i') -or ($fakeCopilotArgs -match '(^|[ \t])-i([ \t]|$)')
+if (-not $hasInputFlag) {
     Write-Fail 'Live launch should auto-load the bootstrap prompt with -i.'
     exit 1
 }

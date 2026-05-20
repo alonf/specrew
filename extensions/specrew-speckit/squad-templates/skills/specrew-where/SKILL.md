@@ -1,10 +1,15 @@
+---
+name: specrew-where
+description: Show the current Specrew project status dashboard for the active feature and iteration.
+---
+
 # specrew-where
 
 **Type**: Operational Skill
 **Schema**: v1
 **Status**: Active
 **Namespace**: `/specrew`
-**Canonical command**: `/specrew.where`
+**Canonical command**: `/specrew-where`
 
 ## Purpose
 
@@ -19,14 +24,14 @@ Show the current Specrew project status dashboard — the "where am I?" velocity
 
 ## Boundary Safety
 
-This skill provides **read-only status information only**. Invoking `/specrew.where` does **not** authorize or imply approval to advance any lifecycle boundary. Human review is still required for lifecycle transitions.
+This skill provides **read-only status information only**. Invoking `/specrew-where` does **not** authorize or imply approval to advance any lifecycle boundary. Human review is still required for lifecycle transitions.
 
 ## Invocation
 
 ```text
-/specrew.where [--project-path <path>] [--feature <id>] [--iteration <NNN>]
-               [--compact] [--ascii] [--no-color] [--json]
-               [--team] [--worktrees] [--recentcount <N>] [--barwidth <N>]
+/specrew-where [--project-path <path>] [--feature <id>] [--iteration <NNN>]
+                [--compact] [--ascii] [--no-color] [--json]
+                [--team] [--worktrees] [--recentcount <N>] [--barwidth <N>]
 ```
 
 Backed by: `specrew where` / `scripts/specrew-where.ps1`
@@ -60,16 +65,16 @@ Only the arguments listed above are accepted. Unsupported or unknown arguments w
 
 | Failure mode | Behavior |
 | --- | --- |
-| Unsupported argument | Rejected immediately; see `/specrew.help` for the allowed argument list |
+| Unsupported argument | Rejected immediately; see `/specrew-help` for the allowed argument list |
 | Missing project setup | Stop with `specrew init` remediation |
 | Outdated compatibility baseline | Stop with upgrade guidance (`specrew update`) |
 
 ## Coexistence
 
-This skill is part of the `/specrew.*` namespace. It coexists with `/speckit.*` commands without collision. Neither namespace shadows the other.
+This skill is part of the `/specrew-*` command surface. It coexists with `/speckit.*` commands without collision. Neither namespace shadows the other.
 
 ## See Also
 
-- `/specrew.status` — alias for this command; produces the same semantic result
-- `/specrew.help` — catalog fallback and full command list
-- `/specrew.version` — show installed Specrew version and compatibility state
+- `/specrew-status` — alias for this command; produces the same semantic result
+- `/specrew-help` — catalog fallback and full command list
+- `/specrew-version` — show installed Specrew version and compatibility state

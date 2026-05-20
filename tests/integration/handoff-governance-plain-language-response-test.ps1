@@ -16,11 +16,16 @@ function Write-Fail {
 
 $repoRoot = (Resolve-Path (Join-Path -Path $PSScriptRoot -ChildPath '..\..')).Path
 $validatorScript = Join-Path $repoRoot 'extensions\specrew-speckit\validators\handoff-governance-validator.ps1'
+$specPath = Join-Path $repoRoot 'specs\007-user-facing-progress-handoff\spec.md'
 
-if (-not (Test-Path -LiteralPath $validatorScript -PathType Leaf)) {
-    Write-Fail "Missing validator script: $validatorScript"
-    exit 1
+foreach ($requiredPath in @($validatorScript, $specPath)) {
+    if (-not (Test-Path -LiteralPath $requiredPath -PathType Leaf)) {
+        Write-Fail "Missing required file: $requiredPath"
+        exit 1
+    }
 }
+
+$specUri = [System.Uri]::new([System.IO.Path]::GetFullPath($specPath)).AbsoluteUri
 
 $responseText = @'
 ## What I just did
@@ -30,8 +35,8 @@ Completed the review guidance update and verified the affected files were update
 This slice is complete, and no blockers remain in the current scope.
 
 ## What I need from you
-Review the updated handoff wording in `file:///C:/Dev/Specrew/specs/007-user-facing-progress-handoff/spec.md`. Next step: confirm the wording is acceptable for rollout.
-'@
+Review the updated handoff wording in `{0}`. Next step: confirm the wording is acceptable for rollout.
+'@ -f $specUri
 
 $output = @(& $validatorScript -ResponseText $responseText 2>&1)
 if ($LASTEXITCODE -ne 0) {

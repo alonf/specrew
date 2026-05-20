@@ -39,7 +39,7 @@ Outputs:
 
 Compatibility baseline:
   Minimum version for the slash-command surface is the first published Specrew
-  release that ships Feature 021. Projects on 0.20.0 or earlier must upgrade.
+  release that ships Feature 024. Projects on a pre-v0.24.0 baseline must upgrade.
 
 Examples:
   specrew version
@@ -91,7 +91,7 @@ function Convert-UnixStyleVersionArguments {
                 if (-not $isKnown) {
                     Write-Output "WARNING: Unsupported argument '$arg' for 'specrew version'. Run 'specrew version --help' for usage."
                     Write-Host "ERROR: Unsupported argument '$arg'." -ForegroundColor Red
-                    Write-Host "Run 'specrew version --help' for usage or '/specrew.help' for the full Specrew catalog." -ForegroundColor Yellow
+                    Write-Host "Run 'specrew version --help' for usage or '/specrew-help' for the full Specrew catalog." -ForegroundColor Yellow
                     exit 1
                 }
             }
@@ -122,7 +122,7 @@ if ([string]::IsNullOrWhiteSpace($projectBaselineVersion)) {
 }
 
 # --- Slash-command minimum version ---
-# Feature 021 slash-command minimum version: 0.21.0
+# Feature 024 slash-command minimum version: 0.24.0
 $slashCommandMinVersionText = Get-SpecrewSlashCommandMinVersion
 $slashCommandMinVersion = ConvertTo-SpecrewSemanticVersion -Value $slashCommandMinVersionText
 
@@ -196,7 +196,7 @@ switch ($compatibilityVerdict) {
             Write-Host "  $detail"
         }
         Write-Host ''
-        Write-Output "WARNING: Specrew slash-command surface requires version $slashCommandMinVersionText or later."
+        Write-Output "WARNING: Specrew multi-host slash-command surface requires version $slashCommandMinVersionText or later."
         Write-Host 'Remediation:' -ForegroundColor Yellow
         Write-Host "  To upgrade the installed module : Update-Module Specrew"
         Write-Host "  To refresh project assets       : specrew update"

@@ -40,7 +40,7 @@ specrew start --readonly
 Or, post-Proposal 058 (Plugin-Based Distribution):
 
 ```text
-/specrew.start --readonly
+/specrew-start --readonly
 ```
 
 Or as a configurable governance dial (Proposal 047): `governance.default_mode: readonly`.
@@ -90,7 +90,7 @@ This is what makes readonly safe for concurrent-session use: the primary session
 |---|---|
 | Dashboard | `specrew where`, `specrew where --worktrees`, `specrew status` |
 | Version info | `specrew update --info`, `specrew version` (when Proposal 050 ships) |
-| Help / catalog | `specrew help`, `/specrew.help` |
+| Help / catalog | `specrew help`, `/specrew-help` |
 | File reads | Read any spec, plan, retro, closeout, decisions, proposal, code, memory |
 | Validators | `validate-governance.ps1` invoked with `--observe-only` flag (no evidence writes) |
 | Git inspection | `git log`, `git diff`, `git status`, `git blame`, `git show` |
@@ -106,7 +106,7 @@ This is what makes readonly safe for concurrent-session use: the primary session
 | File mutations | Any Edit / Write / NotebookEdit |
 | Git mutations | commit, push, branch creation, merge, checkout that creates state |
 | Lifecycle commands | `/speckit.specify`, `/speckit.clarify`, `/speckit.plan`, `/speckit.tasks`, `/speckit.implement`, `/speckit.review`, etc. |
-| Write-mode slash commands | `/specrew.update --apply` (read-only `--info` permitted), `/specrew.team add`, `/specrew.review --create-artifact` |
+| Write-mode slash commands | `/specrew-update --apply` (read-only `--info` permitted), `/specrew-team add`, `/specrew-review --create-artifact` |
 | Decision-ledger writes | No `.squad/decisions.md` appends |
 | Session-state writes | No `last-start-prompt.md`, `start-context.json`, `now.md` updates |
 | Boundary-sync | No `Invoke-SpecrewBoundaryStateSync` calls |
@@ -152,7 +152,7 @@ This is what makes readonly safe for concurrent-session use: the primary session
 | **Proposal 052 (Specrew Profile System)** | Profile-specific readonly modes (e.g., docs profile defaults to readonly except for doc files). |
 | **Proposal 054 (Pre-Merge Lifecycle Verification Gate)** | CI runs the gate in readonly mode by default. Readonly is the right substrate for verification work. |
 | **Proposal 055 (Always-In-Flow + Bug-Fix Lifecycle)** | Readonly is the "no flow needed" case — no change is being made; no slice required. Compose without overlap. |
-| **Proposal 058 (Plugin-Based Distribution)** | Plugin install registers `--readonly` semantics per host. Slash command `/specrew.start --readonly` works in the plugin model. |
+| **Proposal 058 (Plugin-Based Distribution)** | Plugin install registers `--readonly` semantics per host. Slash command `/specrew-start --readonly` works in the plugin model. |
 
 ## Open questions
 

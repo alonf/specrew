@@ -90,9 +90,15 @@ function Get-MarkdownContent {
 
 function Get-MarkdownSectionTable {
     param(
+        [AllowNull()]
+        [AllowEmptyCollection()]
         [string[]]$Lines,
         [string]$Heading
     )
+
+    if ($null -eq $Lines -or $Lines.Count -eq 0) {
+        return @()
+    }
 
     $headingPattern = '^#{2,3}\s+' + [regex]::Escape($Heading) + '\b'
     $startIndex = -1

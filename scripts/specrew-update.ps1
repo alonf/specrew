@@ -1169,7 +1169,7 @@ if ($scopes -contains 'Specrew') {
         $null = $summary.Add([pscustomobject]@{
                 Platform = 'Specrew'
                 Action   = 'slash-surface-refreshed'
-                Detail   = '/specrew.where, /specrew.status, /specrew.update, /specrew.team, /specrew.review, /specrew.help, /specrew.version'
+                Detail   = '/specrew-where, /specrew-status, /specrew-update, /specrew-team, /specrew-review, /specrew-help, /specrew-version across .claude/skills, .github/skills, and .agents/skills'
             })
     }
     else {

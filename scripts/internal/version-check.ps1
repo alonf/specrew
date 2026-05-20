@@ -107,7 +107,7 @@ function ConvertTo-SpecrewSemanticVersion {
 }
 
 function Get-SpecrewSlashCommandMinVersion {
-    return '0.21.0'
+    return '0.24.0'
 }
 
 function Get-SpecrewVersionCheckCachePath {

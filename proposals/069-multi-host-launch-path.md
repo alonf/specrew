@@ -52,7 +52,7 @@ codex:    codex --workdir <project> [other flags TBD per Codex CLI semantics]
 
 The bootstrap context (`last-start-prompt.md` + `start-context.json`) is the same; only the host-CLI invocation differs. The host adapts to Specrew's contract, not the other way around.
 
-If the requested host isn't installed, Specrew prints actionable guidance ("Claude Code CLI not found on PATH; install per https://docs.anthropic.com/en/docs/claude-code/installation") and exits without launching.
+If the requested host isn't installed, Specrew prints actionable guidance ("Claude Code CLI not found on PATH; install per <https://docs.anthropic.com/en/docs/claude-code/installation>") and exits without launching.
 
 ### Pillar 3: Per-host slash-command + skill validation (~1-2 SP)
 

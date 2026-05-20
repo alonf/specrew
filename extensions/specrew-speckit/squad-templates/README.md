@@ -8,7 +8,7 @@ This directory contains Squad-native template sources that are deployed by `spec
 
 Specrew v1 integrates with Squad using Squad's native runtime surfaces:
 
-- **Skills**: Deployed to `.copilot/skills/specrew-*/` (per-skill subdirectory with `SKILL.md`)
+- **Skills**: Deployed to `.claude/skills/`, `.github/skills/`, and `.agents/skills/`; slash-command skills use per-skill subdirectories with content-identical `SKILL.md` files across all three roots
 - **Ceremonies**: Only Specrew-defined ceremonies (`planning`, `review-demo`) are appended to `.squad/ceremonies.md`
 - **Retrospective**: Uses Squad's built-in ceremony; `ceremonies\retro.md` is source guidance, not an appended runtime definition
 - **Directives**: Merged into `.squad/agents/*/charter.md`
@@ -47,7 +47,7 @@ squad-templates/
 
 When `specrew init` runs:
 
-1. **Skills deployment**: Active Specrew skills (`drift-check`, `capacity-planning`, `traceability-check`, `iteration-resume`) are copied to `.copilot/skills/specrew-{skill-name}/SKILL.md` in the target project
+1. **Skills deployment**: Active Specrew skills are copied to the supported project skill roots (`.claude/skills/`, `.github/skills/`, `.agents/skills/`). The slash-command runtime skills (`specrew-where`, `specrew-status`, `specrew-update`, `specrew-team`, `specrew-review`, `specrew-help`, `specrew-version`) are written content-identically as `specrew-*/SKILL.md` in all three roots.
 2. **Ceremonies deployment**: `ceremonies/planning.md` and `ceremonies/review-demo.md` are appended to `.squad/ceremonies.md`
 3. **Built-in retro guidance**: `ceremonies/retro.md` informs Squad's built-in retrospective flow and is not appended as a separate Specrew ceremony
 4. **Role deployment**: `agents/*/charter.md` templates seed the five baseline Squad roles in downstream `.squad/agents/`

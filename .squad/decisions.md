@@ -1,3 +1,103 @@
+## 2026-05-20T01:11:37Z — Decision: Implementer Feature 024 Feature Closeout
+
+- **Decision ID**: implementer-f024-feature-closeout
+- **Type**: feature closeout execution
+- **Boundary**: feature-closeout
+- **Authority**: Implementer (per authorization)
+- **Recorded At**: 2026-05-20T01:11:37Z
+- **Feature**: 024-slash-command-multi-host-correctness
+
+## Authorization Text
+
+> Approved. Open feature-closeout for Feature 024. Proceed with the feature-closeout workflow per the PR-at-feature-close SDLC contract: generate closeout artifacts, sign feature-closeout in `.squad/decisions.md`, push the branch, open the PR, and stop at the next human-authorization boundary before tag-and-publish.
+
+## Execution Notes
+
+- Merged `origin/main` into `024-slash-command-multi-host-correctness` before closeout so the canonical snapshot and PR reflect the current branding, proposal-index, gate-respecting-default, and cost-reduction proposal surfaces without leaving additive merge conflicts for review time.
+- Generated the canonical feature-closeout dashboard snapshot at `specs/024-slash-command-multi-host-correctness/closeout-dashboard.md` on the merged tree; the snapshot records **7 SP planned / 7 SP delivered / 0 SP variance** and preserves Feature 024 in the recent shipped history.
+- Verified Rule 15 version surfaces remain aligned at `0.24.0` in `Specrew.psd1`, `.specrew/config.yml`, `extensions/specrew-speckit/extension.yml`, and `.specify/extensions/specrew-speckit/extension.yml`.
+- Replayed the full Feature 024 validation lane on the merged closeout tree: the ten slash-command regression scripts plus the scoped governance validator all returned exit code `0`.
+- Cleared the active-feature session-state surfaces via the canonical closeout hook: `.specify/feature.json` is now empty, `.squad/identity/now.md` records `feature-closeout`, and the runtime handoff files now show no active feature.
+- The remaining authorized operational work after this closeout record is the PR-at-feature-close step on the same branch; release tagging remains blocked pending later human authorization.
+
+---
+
+## 2026-05-20T00:50:00Z — Decision: Retro Facilitator Feature 024 Iteration-Closeout Boundary
+
+- **Decision ID**: retro-f024-iteration-closeout
+- **Type**: iteration-closeout boundary completion
+- **Boundary**: iteration-closeout
+- **Authority**: Retro Facilitator (Alon Fliess authorization)
+- **Recorded At**: 2026-05-20T00:50:00Z
+- **Feature**: 024-slash-command-multi-host-correctness
+- **Iteration**: 001
+
+## Authorization Context
+
+User-authorized boundary advance: "Open iteration-closeout for Feature 024 Iteration 001, generate the iteration dashboard snapshot, sync the lifecycle state, and stop before feature-closeout authorization."
+
+## Execution Summary
+
+Iteration-closeout boundary opened for Feature 024 Iteration 001 with the following artifacts created and updated:
+
+- **Dashboard artifact**: Created `specs/024-slash-command-multi-host-correctness/iterations/001/dashboard.md` capturing iteration-closeout snapshot at 2026-05-20T00:50:00Z with 7 SP delivered (zero variance), reflecting recent shipped artifacts and velocity metrics
+
+- **State artifact**: Updated `specs/024-slash-command-multi-host-correctness/iterations/001/state.md` to record `iteration-closeout` phase status and clarify that feature-closeout remains unopened
+
+- **Plan artifact**: Updated `specs/024-slash-command-multi-host-correctness/iterations/001/plan.md` to advance status from `retro` to `iteration-closeout`
+
+- **Session state files**: Updated to reflect iteration-closeout completion:
+  - `.squad/identity/now.md`: recorded iteration-closeout-complete status
+  - `.specrew/last-start-prompt.md`: updated boundary to `iteration-closeout-complete`
+  - `.specrew/start-context.json`: updated session_state_boundary to reflect iteration-closeout completion
+
+## Methodology Note: Proposal 066 Cumulative Evidence
+
+Feature 024 Iteration 001 is the **first feature where every human-input boundary (implementation approval, review approval, retro authorization, iteration-closeout authorization) has been respected end-to-end without autopilot bypass under Proposal 066 / commit c55ec92**. This empirical confirmation validates that the gate-respecting default can reliably hold autonomous systems at correct lifecycle boundaries. The Squad runtime did not attempt to advance beyond each approved gate, and no manual workaround was required to enforce boundary discipline.
+
+## Result
+
+Iteration-closeout is complete. Feature-closeout remains unopened pending fresh human authorization. Feature 024 Iteration 001 is fully closed with truthful lifecycle artifacts.
+
+---
+
+## 2026-05-20T00:40:00Z — Decision: Retro Facilitator Feature 024 Retro Boundary
+
+- **Decision ID**: retro-f024-retro-boundary
+- **Type**: retro boundary completion
+- **Boundary**: retro
+- **Authority**: Retro Facilitator (Alon Fliess authorization)
+- **Recorded At**: 2026-05-20T00:40:00Z
+- **Feature**: 024-slash-command-multi-host-correctness
+- **Iteration**: 001
+
+## Authorization Context
+
+User-authorized boundary advance: "Open the retro boundary for Feature 024 Iteration 001 and make the lifecycle artifacts truthful, then stop short of iteration-closeout."
+
+## Execution Summary
+
+Retro boundary opened for Feature 024 Iteration 001 with the following artifacts created and updated:
+
+- **Retro artifact**: Created `specs/024-slash-command-multi-host-correctness/iterations/001/retro.md` capturing:
+  - Form-vs-meaning bug class motivation: slash commands appeared to exist on disk but were non-discoverable on any host; this feature restores true end-to-end discoverability
+  - Gate-respecting default validation (Proposal 066, commit c55ec92): Squad respected all three lifecycle boundaries (implementation approved → review-signoff complete → retro authorized, with iteration-closeout explicitly forbidden) without autopilot bypass
+  - Methodology evidence (Proposal 067): small-fix slices (logo asset restructure, banner ASCII, gate-respecting default) shipped in parallel with Feature 024 without disrupting feature delivery
+  - Sequencing-impact note: Copilot pricing pivot ~2026-05-30 reshuffles queue; cost-reduction bundle (Proposals 068, 069, 070) jumps ahead of Feature 025; Feature 024 PR should land just before bundle starts
+  
+- **State artifact**: Updated `specs/024-slash-command-multi-host-correctness/iterations/001/state.md` to record `retro-complete` phase status and clarify that iteration-closeout remains unopened
+
+- **Session state files**: Updated to reflect retro-boundary completion:
+  - `.squad/identity/now.md`: recorded retro-boundary status
+  - `.specrew/last-start-prompt.md`: updated boundary to `retro-boundary-complete`
+  - `.specrew/start-context.json`: updated session_state_boundary to reflect retro completion
+
+## Result
+
+Retro-boundary-signoff is complete. Iteration-closeout and feature-closeout remain unopened pending fresh human authorization. Feature 024 Iteration 001 is ready for iteration-closeout when that boundary receives explicit authorization.
+
+---
+
 ## 2026-05-19T11:30:00Z — Decision: Implementer Feature 023 Prerelease Release Primitives
 
 - **Decision ID**: implementer-f023-prerelease
@@ -14984,3 +15084,305 @@ Workflow dispatch real publish modes now treat a non-empty elease_tag as an ide
 
 PR #269 remains acceptable to keep open for later human merge authorization.
 
+## 2026-05-19T22:19:44Z — Boundary sync: plan
+
+- **Boundary Type**: plan
+- **Feature Ref**: 024-slash-command-multi-host-correctness
+- **Iteration Number**: (none)
+- **Task ID**: (none)
+- **Auth Commit Hash**: a8adac0e7bff42577b2bcc744d7f259c2f494531
+- **Recorded At**: 2026-05-19T22:19:43Z
+
+
+# Feature 021 Closeout: Phase A Complete
+
+**Schema**: v1  
+**Date**: 2026-05-18T18:00:00Z  
+**Authority**: Spec Steward (Alon Fliess)  
+**Status**: Recorded for merge to main
+**Decision Category**: Feature-Level Lifecycle  
+**Tags**: feature-021, phase-a-closeout, version-0.21.0
+
+---
+
+## Decision
+
+Feature 021 (Specrew Slash-Command Surface) completes Phase A feature-closeout governance work. All required documents, version updates, and roadmap adjustments are finalized per the feature specification and this feature's iteration closeout artifact.
+
+### Scope
+
+Phase A addresses only governance, documentation, and version bookkeeping work. No code changes are made beyond version updates that are already tracked in `.specrew/config.yml`, `Specrew.psd1`, extension manifests, and changelog documentation.
+
+### Artifacts Finalized
+
+1. **Spec Status Update** — `specs/021-specrew-slash-commands/spec.md` marked as "Shipped" with feature-closeout Phase A annotation and placeholder note for PR citation (to be filled after PR creation).
+
+2. **Feature-Closeout State Surfaces** — feature-closeout helper replayed on the supported repository path:
+   - `.squad/identity/now.md` now records **No active feature** and names Feature 021 as the last completed feature
+   - `specs/021-specrew-slash-commands/closeout-dashboard.md` captured the feature-closeout dashboard snapshot
+
+3. **Version Bumps** — 0.20.0 → 0.21.0 across all required surfaces:
+   - `.specrew/config.yml` — `specrew_version`
+   - `Specrew.psd1` — `ModuleVersion`
+   - `extensions/specrew-speckit/extension.yml` — `version`
+   - `.specify/extensions/specrew-speckit/extension.yml` — `version`
+
+4. **Changelog** — `CHANGELOG.md` entry added documenting Feature 021 capabilities, command catalog, distribution integration, and phase-a-closeout status with shipping PR citation placeholder.
+
+5. **Roadmap Updates** — `.specrew/roadmap.yml` adjusted per specification:
+   - `phase-2-experience.planned_effort_sp` bumped 247 → 254 to reflect 7 SP delivered by Feature 021.
+   - `phase-2-experience.feature_refs` extended to include `021-specrew-slash-commands`.
+   - `phase-3-runtime-abstraction.description` updated to remove Proposal 032 reference (now shipped as Feature 021).
+
+6. **Proposals Index** — `proposals/INDEX.md` updated:
+   - Proposal 032 moved from Draft to Shipped section with shipping reference as `feature-021`.
+   - Shipped proposals count bumped 9 → 10.
+   - Draft proposals count bumped 10 → 9.
+   - Phase 2 breakdown updated to reflect Proposal 032 shipped status.
+
+7. **README and Getting-Started Documentation**:
+   - `README.md`: Version badge updated 0.20.0 → 0.21.0; Current State bumped 20 → 21 features; What's Working section expanded with full slash-command catalog listing.
+   - `docs/getting-started.md`: Key Capabilities updated v0.20.0 → v0.21.0 with slash-command surface and alias mention; install path documentation updated to list all slash-command aliases.
+
+### Validation
+
+No validation failures encountered during Phase A:
+- Governance validator run on Phase A changes produced 0 critical failures.
+- Feature 021 integration test suite (6 suites) remains green:
+  - ✅ `slash-command-routing.tests.ps1`
+  - ✅ `slash-command-distribution.tests.ps1`
+  - ✅ `slash-command-compatibility.tests.ps1`
+  - ✅ `slash-command-discovery.tests.ps1`
+  - ✅ `slash-command-coexistence.tests.ps1`
+  - ✅ `slash-command-arg-whitelist.tests.ps1`
+
+### Placeholders
+
+**Shipping PR Citation**: The spec status and CHANGELOG entry include placeholder language indicating that the shipping PR number will be filled in after PR creation. This is truthful interim documentation pending publication; placeholder text reads: "Shipped PR citation pending publication; see `.squad/decisions/inbox/` for closure trail."
+
+### Next Steps
+
+1. **Commit Phase A changes** to branch `021-specrew-slash-commands` (this work).
+2. **Create PR** to `main` with all Phase A artifacts and code from Iteration 001.
+3. **Update PR Citation** in `specs/021-specrew-slash-commands/spec.md` and `CHANGELOG.md` with actual PR number after PR creation.
+4. **Merge** PR to `main` with a merge commit and verify `origin/main` reflects it.
+5. **Stop after merge verification**; release tagging and PowerShell Gallery publication remain separate human decisions.
+
+### Governance Trail
+
+- **Iteration Closeout**: `specs/021-specrew-slash-commands/iterations/001/closeout.md` (2026-05-18)
+- **Iteration 001 Complete**: All FR/SC/US requirements delivered and accepted per review artifact.
+- **Feature-Closeout Authorization**: Explicitly requested via this Spec Steward charter invocation (2026-05-18).
+
+### Risk and Open Items
+
+**No blocking issues detected.**
+
+Minor clarification: shipping PR citation fill-in remains the only intentional placeholder. Feature-closeout identity state has already been updated on the branch via the repository helper.
+
+---
+
+## Rationale
+
+The Feature 021 specification directs a complete, comprehensive feature-closeout process that includes version updates, roadmap reconciliation, and documentation expansion. Phase A satisfies all governance and documentation requirements, leaving only the PR-creation and merge steps to finalize the feature. Deferring PR citation fill-in to post-publication is a documented, truthful approach that avoids invented references.
+
+## Approval Authority
+
+Spec Steward (Alon Fliess) — authorized per charter to approve feature-level lifecycle decisions and record them in `.squad/decisions.md` for team visibility.
+
+
+---
+
+# Decision Inbox — 2026-05-18
+
+- **Context**: Feature 021 governance reconciliation uncovered untracked slash-command assets while the tracked dispatcher/runtime surfaces still reflected the pre-slash implementation.
+- **Decision**: Reconcile the runtime by landing the tracked dispatcher/module/deployment updates together with the already-authored `specrew-*` skill templates and validation suites.
+- **Rationale**: The slash-command catalog only becomes truthful when the tracked runtime surfaces and the distributed skill templates advance together; pushing only the untracked assets would leave `/specrew.*` behavior and audit evidence out of sync.
+
+
+---
+
+# Decision Inbox — 2026-05-24
+
+- **Context**: Feature 020 Iteration 002 bounded repair for the stale-state/task-progress regression.
+- **Decision**: Treat missing iteration `plan.md` as non-fatal for resume-only task-progress summaries; preserve strict plan requirements for task mutations.
+- **Rationale**: `specrew start` needs advisory recovery context, but stale-state detection fixtures and closed iterations can legitimately lack a task catalog.
+
+
+---
+
+# Decision Inbox — 2026-05-24T00:13:00Z
+## Feature 020 Iteration 002 Review-Boundary Authorization
+
+- **Context**: Feature 020 Iteration 002 transitions from bounded repair (PSGallery warning) to review-boundary authorization sequence.
+- **Authorization Source**: Alon Fliess (Requested by field in SPAWN MANIFEST)
+- **Decision**: Authorize Scribe (Session Logger, Memory Manager & Decision Merger) for review-boundary → verdict-signoff → retro-boundary → iteration-closeout sequence, with scope authority locked to `specs/020-session-state-durability/iterations/002/plan.md`.
+- **Scope Lock**: Iterations/002/plan.md (lines 1–100+; authoritative scope baseline; no drift permitted in plan mutations, task list changes, or acceptance criteria edits).
+- **Guardrails Enforced**:
+  - ✗ No feature-level spec/plan/tasks edits
+  - ✗ No Iteration 001 edits
+  - ✗ No production code changes unless bug found (task stops after single fix)
+  - ✗ No feature-closeout or Iteration 003 auto-advancement
+- **Sequence Authorized**:
+  1. review-boundary (entry + artifact generation)
+  2. review-verdict-signoff (conditional on approval)
+  3. retro-boundary (entry + retro planning)
+  4. iteration-closeout (entry + state snapshot)
+  5. stop (hand off to next authorized agent)
+- **Rationale**: Iteration 002 implementation + repair cycles complete; review gate requires boundary records, verdict signoff, and closeout artifacts before transition to next work item.
+
+
+---
+
+### 2026-05-18T15:10:21Z: User directive
+**By:** Alon Fliess (via Copilot)
+**What:** Do NOT tag v0.21.0 or any release tag during Feature 021 feature-closeout; stop after PR merge and leave tagging for a separate human decision.
+**Why:** User request — captured for team memory
+
+
+---
+
+### 2026-05-18T20:35:05+03:00: User directive
+**By:** Alon Fliess (via Copilot)
+**What:** Run `/speckit.plan` for Feature 022 only after honoring the carry-forward planning notes: map stewardship labels to baseline Squad roles descriptively in plan artifacts, lock a 10 SP single-iteration capacity with 1 SP repair reserve, author the three standalone integration test scripts so they compose into Proposal 054 gate scenarios later, scaffold the hardening-gate and iteration-start triad upfront, push after every commit, verify origin matches local before the boundary handoff, and stop at the plan-completion boundary without entering `/speckit.tasks`.
+**Why:** User request — captured for team memory
+
+
+---
+
+# Decision Inbox — 2026-05-24
+
+- **Context**: Feature 020 Iteration 002 bounded repair for the PSGallery warning regression in `specrew init`.
+- **Decision**: Resolve the bundled version manifest for PSGallery checks from the repository root rather than `scripts\Specrew.psd1`.
+- **Rationale**: The helper lives under `scripts\internal\`, so a single-parent lookup misses `Specrew.psd1`, prevents version comparison, and suppresses the shared warning/cache path across init/start/update.
+
+
+---
+
+# Planner Decision: Feature 024 Task Metadata Assignment
+
+**Date**: 2026-05-19  
+**Role**: Planner  
+**Status**: Recorded for team visibility  
+**Feature**: 024-slash-command-multi-host-correctness
+
+## Summary
+
+Added explicit task-level owner and effort metadata to `specs/024-slash-command-multi-host-correctness/tasks.md` without changing task IDs, phase ordering, user-story grouping, or the narrowed host-discoverability constraint.
+
+## Decision
+
+- Use only the current baseline roster names as task owners: `planner`, `implementer`, `reviewer`, and `spec-steward`.
+- Reserve `Alon` for genuinely human-only work; no current Feature 024 task required a human-only owner at planning time.
+- Keep execution-heavy runtime, test, and migration work with `implementer`.
+- Keep prerelease evidence capture and final validation lane execution with `reviewer`.
+- Keep release/governance truth-surface edits with `spec-steward`.
+- Keep setup scaffolding ownership with `planner`.
+- Use lightweight relative effort estimates (`S`, `M`, `L`) so the generated task list stays readable and comparable without reworking existing sequencing.
+
+## Rationale
+
+The task file already had stable sequencing and story-level traceability, but it still required explicit ownership and sizing to satisfy planning-governance expectations. Assigning owners from the baseline roster keeps the backlog executable by the existing team without introducing project-specific roles or implying human-only work where the spec does not require it.
+
+## Constraints Preserved
+
+- Public discoverability claims remain limited to Claude Code and GitHub Copilot CLI for v0.24.0.
+- `.agents/skills/` remains a host-neutral deployment path, not a current Codex CLI discoverability claim.
+- Task numbering, dependency order, and story grouping remain unchanged.
+
+
+---
+
+# Feature 022 Merge Verification & Identity Correction
+
+**Date**: 2026-05-19  
+**Role**: Spec Steward  
+**Status**: Completed with post-merge correction  
+
+## Summary
+
+Feature 022 (F-020 Implementation Hotfix + Schema Parity Tests) merged via PR #268 with merge commit `e1c3eb9`. Post-merge verification revealed that the identity state had regressed to show Feature 022 as active (session_state_active: true, session_state_boundary: tasks) instead of the required completed state.
+
+## Issue Detected
+
+The feature branch included session-state setup commits that set `.squad/identity/now.md` to track Feature 022 as the current active feature (at the tasks boundary). When merged into main, this overwrote main's post-Feature-021 "no active feature" state, creating a requirement violation.
+
+**Requirement**: After merge, identity should show `session_state_active: false` + `focus_area: No active feature` + `last completed: Feature 022`.
+
+**Actual (post-merge)**: `session_state_active: true` + `session_state_boundary: tasks` + `session_state_feature: 022-hotfix-schema-tests`.
+
+## Resolution
+
+Corrected identity state in post-merge commit `83f2144`:
+- Set `session_state_active: false`
+- Set `session_state_boundary: feature-closeout`
+- Set `session_state_feature: "(none)"`
+- Updated `focus_area` to `No active feature`
+- Updated `last_completed` reference to `Feature 022 at 2026-05-19T03:24:43Z`
+
+## Verification Passed
+
+✓ Merge commit present on origin/main  
+✓ `.specrew/config.yml` contains `specrew_version: "0.22.0"`  
+✓ `.squad/identity/now.md` reflects no active feature + Feature 022 last completed  
+✓ No additional active features or boundaries present  
+
+## Decision
+
+The post-merge identity correction was necessary and aligned with Feature 022 closeout contract. The feature branch setup state correctly captured the in-progress Feature 022 work, but the merge required explicit clearing of that state to restore the "no active feature" invariant on main.
+
+**Action taken**: Identity state normalized post-merge. Merge verification now complete.
+
+## 2026-05-20T00:35:41Z — Boundary sync warning: review-signoff
+
+- **Boundary Type**: review-signoff
+- **Latest Recorded Boundary**: plan
+- **Recorded At**: 2026-05-20T00:35:41Z
+- **Warning**: Expected next boundary 'tasks' but received 'review-signoff'.
+
+## 2026-05-20T00:35:41Z — Boundary sync: review-signoff
+
+- **Boundary Type**: review-signoff
+- **Feature Ref**: 024-slash-command-multi-host-correctness
+- **Iteration Number**: 001
+- **Task ID**: (none)
+- **Auth Commit Hash**: 5f826f8d2d6e33889a99e4710e11a252eb21e4e7
+- **Recorded At**: 2026-05-20T00:35:41Z
+
+## 2026-05-20T00:35:41Z — Sign-off: review-verdict-signoff
+
+- **Decision ID**: signoff-feature-024-iter-001-review-verdict
+- **Type**: sign-off
+- **Boundary**: review-verdict-signoff
+- **Approving Human**: Alon Fliess
+- **Recorded At**: 2026-05-20T00:35:41Z
+- **Commit Reference**: pending
+- **Authorization Text**:
+  > Approved. Open the review boundary for Feature 024.
+  >
+  > Independent verification confirms:
+  >   - 25/25 tasks complete
+  >   - 11 integration scripts + governance validator all returned exit 0
+  >   - Multi-host deployment correctly implemented at deploy-squad-runtime.ps1 lines 381-383 (.claude\skills, .github\skills, .agents\skills)
+  >   - Legacy migration at line 517-522 only removes Specrew-managed specrew-* directories; unmanaged content (user-modified or third-party) is preserved as legacy-unmanaged-skill
+  >   - YAML frontmatter on all SKILL.md templates with hyphenated /specrew-*
+  >   - Version bumped to 0.24.0 in Specrew.psd1 and .specrew/config.yml
+  >
+  > Proceed with /speckit.review and the post-review boundary per the lifecycle. Stop at the next human-authorization boundary (review verdict → retro authorization).
+  >
+  > Note for the F-024 retro: Squad's coordinator correctly stopped at the implementation→review boundary this time, per the gate-respecting default shipped at c55ec92 (Proposal 066). This is the first empirical confirmation that the boundary fix is working as designed.
+  >
+  > Reference: implementation-complete boundary, branch 024-slash-command-multi-host-correctness.
+
+## Summary
+
+Review-verdict-signoff is complete for Feature 024 Iteration 001. The approved review covers the current working tree; retro remains blocked pending fresh human authorization.
+
+## 2026-05-20T01:11:38Z — Boundary sync: feature-closeout
+
+- **Boundary Type**: feature-closeout
+- **Feature Ref**: 024-slash-command-multi-host-correctness
+- **Iteration Number**: (none)
+- **Task ID**: (none)
+- **Auth Commit Hash**: a2fb22cea5c450aaa4cda58bcd786638f9a47b1e
+- **Recorded At**: 2026-05-20T01:11:37Z

@@ -135,19 +135,19 @@ These rules override generic Squad coordination whenever the repository is boots
     - If no stronger reviewer class exists, use an independent reviewer owner at the same class.
     - If the strongest reviewer class is already active and no independent same-class reviewer remains, hold the review for explicit human direction.
 
-3. **Recognize the `/specrew.*` slash-command surface (Feature 021)**
+3. **Recognize the `/specrew-*` slash-command surface (Feature 024)**
     - The user may invoke any of seven canonical Specrew slash commands at any time during a session. Treat them as first-class command invocations, not as conversational text. The v1 catalog:
-      - `/specrew.where` — show the project status dashboard (backed by `specrew where` / `scripts/specrew-where.ps1`)
-      - `/specrew.status` — alias of `/specrew.where`; semantic parity required
-      - `/specrew.update` — refresh Specrew-managed assets and platform baselines (backed by `specrew update`)
-      - `/specrew.team` — manage Squad team members and baseline roster (backed by `specrew team`)
-      - `/specrew.review` — trigger or inspect the review workflow (backed by `specrew review`)
-      - `/specrew.help` — show the full Specrew slash-command catalog and next-step guidance
-      - `/specrew.version` — show the installed Specrew version and slash-command compatibility state
-    - Each slash command has a corresponding skill at `.copilot/skills/specrew-<name>/SKILL.md` with full per-command argument whitelist, failure semantics, and invocation contract. Load that skill content when routing a slash invocation.
-    - When the user types `/specrew.<command>` (full canonical form OR partial form that you can unambiguously normalize), route to the matching skill and the underlying `specrew <command>` shell entry point.
-    - **Discovery fallback**: if host-native `/specrew.` prefix autocomplete is unavailable in this environment, `/specrew.help` is the canonical catalog fallback. The user can always type `/specrew.help` to see the catalog even when other commands aren't surfaced by the host UI.
-    - **Boundary safety**: no `/specrew.*` command authorizes lifecycle advancement. `/specrew.where`, `/specrew.status`, and `/specrew.version` are read-only. `/specrew.update`, `/specrew.team`, and `/specrew.review` can modify state but never advance a Spec-Kit lifecycle boundary on their own. Explicit human approval per Rule 14A still governs every boundary transition.
-    - **Coexistence with `/speckit.*`**: both namespaces are additive. Neither shadows the other. `/specrew.help` shows the Specrew catalog; `/speckit.*` discovery comes from Spec Kit. Use both freely in the same session.
+      - `/specrew-where` — show the project status dashboard (backed by `specrew where` / `scripts/specrew-where.ps1`)
+      - `/specrew-status` — alias of `/specrew-where`; semantic parity required
+      - `/specrew-update` — refresh Specrew-managed assets and platform baselines (backed by `specrew update`)
+      - `/specrew-team` — manage Squad team members and baseline roster (backed by `specrew team`)
+      - `/specrew-review` — trigger or inspect the review workflow (backed by `specrew review`)
+      - `/specrew-help` — show the full Specrew slash-command catalog and next-step guidance
+      - `/specrew-version` — show the installed Specrew version and slash-command compatibility state
+    - Each slash command has a corresponding skill at `.claude/skills/specrew-<name>/SKILL.md`, `.github/skills/specrew-<name>/SKILL.md`, and `.agents/skills/specrew-<name>/SKILL.md` with full per-command argument whitelist, failure semantics, and invocation contract. Load that skill content when routing a slash invocation.
+    - When the user types `/specrew-<command>` (or a legacy `/specrew.<command>` form that can be safely normalized), route to the matching skill and the underlying `specrew <command>` shell entry point.
+    - **Discovery fallback**: if host-native `/specrew-` prefix autocomplete is unavailable in this environment, `/specrew-help` is the canonical catalog fallback. The user can always type `/specrew-help` to see the catalog even when other commands aren't surfaced by the host UI.
+    - **Boundary safety**: no `/specrew-*` command authorizes lifecycle advancement. `/specrew-where`, `/specrew-status`, and `/specrew-version` are read-only. `/specrew-update`, `/specrew-team`, and `/specrew-review` can modify state but never advance a Spec-Kit lifecycle boundary on their own. Explicit human approval per Rule 14A still governs every boundary transition.
+    - **Coexistence with `/speckit.*`**: both namespaces are additive. Neither shadows the other. `/specrew-help` shows the Specrew catalog; `/speckit.*` discovery comes from Spec Kit. Use both freely in the same session.
     - **Argument whitelist enforcement**: the underlying PowerShell scripts reject unsupported arguments with a `WARNING:` prefix and `--help` guidance. Pass through user arguments as-is rather than silently filtering — let the backend reject, surface the rejection to the human, then offer help guidance.
-    - **Compatibility gate**: minimum compatibility is Specrew 0.21.0 (the version that shipped F-021). If the project's `.specrew/config.yml` `specrew_version` is older, the command may emit an upgrade hint; do not silently no-op.
+    - **Compatibility gate**: minimum compatibility is Specrew 0.24.0 (the version that shipped the multi-host slash-command surface). If the project's `.specrew/config.yml` `specrew_version` is older, the command may emit an upgrade hint; do not silently no-op.

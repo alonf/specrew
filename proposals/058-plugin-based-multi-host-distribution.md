@@ -1,6 +1,6 @@
 ---
 proposal: 058
-title: Plugin-Based Multi-Host Distribution (Per-Host Plugin Packaging)
+title: Plugin-Based Multi-Host Distribution (Non-Skill Host Packaging)
 status: candidate
 phase: phase-3
 estimated-sp: 28
@@ -24,7 +24,7 @@ Specrew today distributes via PowerShell Gallery (`Install-Module Specrew`). The
 
 Eight steps, three context switches, three runtime ecosystems. Real adoption friction.
 
-Meanwhile, every major AI agent host (Claude Code, GitHub Copilot CLI, Codex CLI) has a plugin or extension mechanism that's literally designed for the kind of work Specrew does — registering commands, agents, hooks, skills, and MCP servers with the host. Specrew's capabilities map cleanly to plugin extension points.
+Meanwhile, every major AI agent host (Claude Code, GitHub Copilot CLI, Codex CLI) has a plugin or extension mechanism that's literally designed for the kind of work Specrew does — registering commands, agents, hooks, instruction files, and MCP servers with the host. After Feature 024, the slash-command skill payload itself is already host-neutral and project-local; Proposal 058 now focuses on the remaining non-skill host packaging.
 
 This proposal packages Specrew as a per-host plugin so the bootstrap UX collapses to:
 
@@ -32,7 +32,7 @@ This proposal packages Specrew as a per-host plugin so the bootstrap UX collapse
 2. `/plugin install specrew`
 3. [first run prompts for missing dependencies — user confirms]
 4. Navigate to a project
-5. `/specrew.init` (slash command, in-host)
+5. `/specrew-init` (slash command, in-host)
 6. Start working
 
 Six steps, ONE context (the agent host throughout). User never leaves the agent session.
@@ -48,7 +48,7 @@ Per-host plugin packages register Specrew's host-facing capabilities with each a
 ```text
 Per-host plugin (installed in the agent host)
        ↓ registers
-   Slash commands + agents + hooks + skills + MCP servers
+   Slash commands + agents + hooks + instruction files + MCP servers
        ↓ which invoke
    PSGallery-distributed Specrew module (project bootstrap + templates)
        ↓ which produces
@@ -59,10 +59,10 @@ Per-host plugin (installed in the agent host)
 
 | Specrew capability | Plugin extension point |
 |---|---|
-| `/speckit.*` + `/specrew.*` slash commands | Plugin **commands** |
+| `/speckit.*` + `/specrew-*` slash commands | Plugin **commands** |
 | Spec Steward, Planner, Implementer, Reviewer, Retro Facilitator agents | Plugin **agents** |
 | Validator hooks at lifecycle boundaries | Plugin **hooks** |
-| Specrew governance skills (Squad-native skill definitions) | Plugin **skills** |
+| Host instruction files (`AGENTS.md`, `copilot-instructions.md`, `CLAUDE.md`) | Plugin **resources / host config** |
 | Vendor adapters (per Proposal 057): GitHub Projects, Linear, Jira | Plugin **MCP servers** |
 | Closeout artifact templates, ceremony prompts | Plugin **resources** |
 
@@ -126,7 +126,7 @@ Checking dependencies...
   • Squad: not found.                Install via npm? [Y/n]
   • Specrew module: not found.       Install via Install-Module? [Y/n]
 
-All set! Run /specrew.init in any project to get started.
+All set! Run /specrew-init in any project to get started.
 ```
 
 - Plugin first-run script checks each dependency
@@ -141,17 +141,17 @@ All set! Run /specrew.init in any project to get started.
 
 Recommend Pattern A as the universal fallback; Pattern B as opportunistic when the host supports it.
 
-### `/specrew.init` and `/specrew.start` reintroduced as slash commands
+### `/specrew-init` and `/specrew-start` reintroduced as slash commands
 
-[Proposal 032 (Slash-Command Surface, shipped as F-021)](file:///C:/Dev/Specrew/proposals/032-specrew-slash-commands.md) deliberately EXCLUDED `/specrew.init` and `/specrew.start` from its v1 catalog. Reasoning at the time:
+[Proposal 032 (Slash-Command Surface, shipped as F-021)](file:///C:/Dev/Specrew/proposals/032-specrew-slash-commands.md) deliberately EXCLUDED `/specrew-init` and `/specrew-start` from its v1 catalog. Reasoning at the time:
 
-- `/specrew.init` was circular — slash commands require a Specrew-bootstrapped project, but init bootstraps the project
-- `/specrew.start` was circular — you're already in an agent session if you can invoke slash commands
+- `/specrew-init` was circular — slash commands require a Specrew-bootstrapped project, but init bootstraps the project
+- `/specrew-start` was circular — you're already in an agent session if you can invoke slash commands
 
 **Plugin distribution changes this calculus**. Plugins are HOST-LEVEL (installed in Claude Code / Copilot CLI / Codex CLI itself), not project-level. So:
 
-- `/specrew.init` slash command is available BEFORE any project bootstrap. User opens a directory, runs `/specrew.init` → bootstraps the project. **Coherent.**
-- `/specrew.start` reframes from "launch session" to "load Specrew context for current project". Useful if the user opened a new project AFTER the agent session started. **Coherent with reframing.**
+- `/specrew-init` slash command is available BEFORE any project bootstrap. User opens a directory, runs `/specrew-init` → bootstraps the project. **Coherent.**
+- `/specrew-start` reframes from "launch session" to "load Specrew context for current project". Useful if the user opened a new project AFTER the agent session started. **Coherent with reframing.**
 
 Proposal 058 adds both commands to the plugin's command catalog. The exclusion from F-021's v1 catalog was correct for the shell-install model; plugin distribution changes the assumptions.
 
@@ -161,18 +161,18 @@ Per-host plugin ships these slash commands:
 
 | Slash command | Source | Description |
 |---|---|---|
-| `/specrew.init` | NEW (plugin-enabled) | Bootstrap a project from inside the agent |
-| `/specrew.start` | NEW (plugin-enabled) | Load Specrew context for current project |
-| `/specrew.where` | F-021 (shipped) | Render velocity dashboard |
-| `/specrew.status` | F-021 (alias) | Alias for `/specrew.where` |
-| `/specrew.update` | F-021 (shipped) | Update Specrew templates and config |
-| `/specrew.team` | F-021 (shipped) | Manage Squad team roster |
-| `/specrew.review` | F-021 (shipped) | Trigger or inspect Specrew review session |
-| `/specrew.help` | F-021 (shipped) | Show full Specrew slash-command catalog |
-| `/specrew.version` | Proposal 050 (queued) | Show installed Specrew version |
-| `/specrew.config` | Proposal 047 (queued) | View / edit governance profile |
+| `/specrew-init` | NEW (plugin-enabled) | Bootstrap a project from inside the agent |
+| `/specrew-start` | NEW (plugin-enabled) | Load Specrew context for current project |
+| `/specrew-where` | F-021/F-024 | Render velocity dashboard |
+| `/specrew-status` | F-021/F-024 alias | Alias for `/specrew-where` |
+| `/specrew-update` | F-021/F-024 | Update Specrew templates and config |
+| `/specrew-team` | F-021/F-024 | Manage Squad team roster |
+| `/specrew-review` | F-021/F-024 | Trigger or inspect Specrew review session |
+| `/specrew-help` | F-021/F-024 | Show full Specrew slash-command catalog |
+| `/specrew-version` | Proposal 050 (queued) | Show installed Specrew version |
+| `/specrew-config` | Proposal 047 (queued) | View / edit governance profile |
 
-Plus the `/speckit.*` commands (Spec Kit's slash command surface) — these continue to come from Spec Kit's own distribution; the plugin just ensures they coexist cleanly with `/specrew.*`.
+Plus the `/speckit.*` commands (Spec Kit's slash command surface) — these continue to come from Spec Kit's own distribution; the plugin just ensures they coexist cleanly with `/specrew-*`.
 
 ### "Without leaving Copilot" UX comparison
 
@@ -198,7 +198,7 @@ Plugin-install model (post-Proposal 058):
 2. /plugin install specrew
 3. [first-run prompts: install Spec Kit? Squad? — user confirms]
 4. cd my-project (or open project)
-5. /specrew.init
+5. /specrew-init
 6. Do work
 ```
 
@@ -215,7 +215,7 @@ Six steps, ONE context (the agent host throughout). User never leaves the sessio
 - Claude Code plugin package format definition + manifest schema (~2 SP)
 - Map Specrew capabilities to Claude Code extension points: commands, agents, hooks, skills (~4 SP)
 - Plugin first-run dependency detection + install prompts (Pattern A) (~3 SP)
-- `/specrew.init` and `/specrew.start` slash-command implementations + their host-level semantics (~2 SP)
+- `/specrew-init` and `/specrew-start` slash-command implementations + their host-level semantics (~2 SP)
 - Update story: `claude plugin update specrew` + version-check coupling per Proposal 049 refinements (~1 SP)
 - Marketplace listing strategy + author docs (~1 SP)
 - Tests + documentation (~1 SP)
@@ -248,9 +248,9 @@ Both proposals are needed for genuine multi-host capability. Ship together as a 
 |---|---|
 | **F-019 / Proposal 031 (PSGallery Distribution, shipped)** | Plugin COMPLEMENTS PSGallery — doesn't replace. Module = project bootstrap; plugin = agent-host integration. Clean layering. |
 | **Proposal 024 (Multi-Host Runtime Abstraction CORE)** | PARTNER proposal — 024 is runtime, 058 is delivery. Both needed for multi-host. Recommended bundle as a combined Phase 3 feature. |
-| **F-021 / Proposal 032 (Slash-Command Surface, shipped)** | F-021's slash commands become plugin commands. F-021 work reusable. F-021 deliberately excluded `/specrew.init` and `/specrew.start`; 058 reintroduces them under plugin model. |
-| **Proposal 050 (Version Surface Discoverability)** | `/specrew.version` is one of the plugin's commands; composes naturally. |
-| **Proposal 047 (Project Governance Profile)** | `/specrew.config` plugin command surfaces the governance profile; composes naturally. |
+| **F-021 / Proposal 032 (Slash-Command Surface, shipped)** | F-021's slash commands become plugin commands. F-024 already made the skill payload host-neutral; 058 now layers non-skill host packaging and the new `/specrew-init` / `/specrew-start` commands on top. |
+| **Proposal 050 (Version Surface Discoverability)** | `/specrew-version` is one of the plugin's commands; composes naturally. |
+| **Proposal 047 (Project Governance Profile)** | `/specrew-config` plugin command surfaces the governance profile; composes naturally. |
 | **Proposal 052 (Specrew Profile System)** | Profiles are Specrew-specific extension points; plugins are host-specific delivery mechanisms. Compose without overlap. |
 | **Proposal 057 (Roadmap Spine + Adapters)** | Vendor adapters (GitHub Projects, Linear, Jira) can ship as separate small plugins OR bundled into the main plugin. Decided per-adapter. |
 | **Proposal 049 (Version-Check Source Unification, partly fixed)** | Plugin version + module version coupling check at runtime; composes with version-check refinements. |
@@ -259,7 +259,7 @@ Both proposals are needed for genuine multi-host capability. Ship together as a 
 ## Open questions
 
 1. **Plugin install + PSGallery install ordering** — does the plugin install also pull the PSGallery module automatically, or are they fully independent? Recommend: plugin's first-run dependency check handles PSGallery install via Pattern A.
-2. **Per-project `specrew init` flow** — auto-trigger on first directory, or require explicit `/specrew.init` invocation? Recommend: explicit invocation; auto-triggering risks accidental bootstrap of unintended directories.
+2. **Per-project `specrew init` flow** — auto-trigger on first directory, or require explicit `/specrew-init` invocation? Recommend: explicit invocation; auto-triggering risks accidental bootstrap of unintended directories.
 3. **Squad / Spec Kit bundling** — should the plugin bundle them, or rely on Pattern A's detect-and-install? Recommend: rely on detect-and-install. Bundling is bloat + update-coordination burden.
 4. **Per-host update story** — `claude plugin update specrew` cascades to which dependencies? Recommend: plugin update updates the plugin itself only; user is prompted if dependency versions are stale (similar to first-run check).
 5. **Marketplace gating** — Claude Code marketplace may require verification; vendor plugins may need approval. Mitigation strategy?
@@ -284,9 +284,9 @@ Both proposals are needed for genuine multi-host capability. Ship together as a 
 - **[Proposal 024 (Multi-Host Runtime Abstraction CORE)](file:///C:/Dev/Specrew/proposals/024-multi-host-runtime-abstraction.md)** — partner proposal; ship together
 - **[Proposal 031 / F-019 (Specrew Distribution Module)](file:///C:/Dev/Specrew/proposals/031-specrew-distribution-module.md)** — current PSGallery distribution; complement
 - **[Proposal 032 / F-021 (Slash-Command Surface)](file:///C:/Dev/Specrew/proposals/032-specrew-slash-commands.md)** — slash commands reused; init/start exclusion reverted under plugin model
-- **[Proposal 047 (Project Governance Profile)](file:///C:/Dev/Specrew/proposals/047-project-governance-profile.md)** — `/specrew.config` command surface
+- **[Proposal 047 (Project Governance Profile)](file:///C:/Dev/Specrew/proposals/047-project-governance-profile.md)** — `/specrew-config` command surface
 - **[Proposal 049 (Version-Check Source Unification)](file:///C:/Dev/Specrew/proposals/049-version-check-source-unification.md)** — plugin + module version coupling
-- **[Proposal 050 (Version Surface Discoverability)](file:///C:/Dev/Specrew/proposals/050-version-surface-discoverability.md)** — `/specrew.version` command
+- **[Proposal 050 (Version Surface Discoverability)](file:///C:/Dev/Specrew/proposals/050-version-surface-discoverability.md)** — `/specrew-version` command
 - **[Proposal 052 (Specrew Profile System)](file:///C:/Dev/Specrew/proposals/052-specrew-profile-system.md)** — profiles vs plugins distinct concerns
 - **[Proposal 055 (Always-In-Flow + Bug-Fix Lifecycle)](file:///C:/Dev/Specrew/proposals/055-always-in-flow-bug-fix-lifecycle.md)** — slice types as plugin extensibility
 - **[Proposal 057 (Roadmap Spine + Adapters)](file:///C:/Dev/Specrew/proposals/057-roadmap-spine-input-adapter-pattern.md)** — vendor adapters distributable as separate plugins

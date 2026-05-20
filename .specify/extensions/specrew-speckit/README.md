@@ -21,7 +21,7 @@ Quality-governance source assets for the stack-aware quality-bar foundation live
 
 Specrew v1 integrates with Squad using **Squad's native runtime surfaces**, not a separate packaged plugin:
 
-- **Skills**: Templates in `squad-templates/skills/` are deployed to `.copilot/skills/specrew-*/SKILL.md` in downstream projects
+- **Skills**: Templates in `squad-templates/skills/` are deployed to `.claude/skills/`, `.github/skills/`, and `.agents/skills/` in downstream projects; the seven slash-command skills use `specrew-*/SKILL.md` content-identically across all three roots
 - **Ceremonies**: Planning and Review/Demo templates in `squad-templates/ceremonies/` are appended to `.squad/ceremonies.md`
 - **Role charters**: Templates in `squad-templates/agents/` seed the five baseline Specrew roles under `.squad/agents/`
 - **Directives**: Templates in `squad-templates/directives/` are merged into `.squad/agents/*/charter.md`

@@ -65,6 +65,6 @@ See full AC1–AC10 in the source spec. Headline acceptance: a developer runs `s
 - F-021 proposal: `file:///C:/Dev/Specrew/proposals/032-specrew-slash-commands.md`
 - Memory: `[[project-f021-slash-command-path-fix-post-f023]]` — earlier capture (estimated ~3 SP; reality 5–7 SP)
 - Memory: `[[project-prerelease-channel-first-empirical-win-2026-05-19]]` — proven validation cycle
-- Claude Code skills: https://code.claude.com/docs/en/skills.md
-- GitHub Copilot CLI add-skills: https://docs.github.com/en/copilot/how-tos/copilot-cli/customize-copilot/add-skills
+- Claude Code skills: <https://code.claude.com/docs/en/skills.md>
+- GitHub Copilot CLI add-skills: <https://docs.github.com/en/copilot/how-tos/copilot-cli/customize-copilot/add-skills>
 - INDEX: `file:///C:/Dev/Specrew/proposals/INDEX.md`

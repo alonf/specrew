@@ -47,13 +47,17 @@ function Assert-Contains {
 $repoRoot = (Resolve-Path (Join-Path -Path $PSScriptRoot -ChildPath '..\..')).Path
 $entryScript = Join-Path $repoRoot 'scripts\specrew.ps1'
 $reviewScript = Join-Path $repoRoot 'scripts\specrew-review.ps1'
+$manifestPath = Join-Path $repoRoot 'Specrew.psd1'
 
-foreach ($requiredPath in @($entryScript, $reviewScript)) {
+foreach ($requiredPath in @($entryScript, $reviewScript, $manifestPath)) {
     if (-not (Test-Path -LiteralPath $requiredPath -PathType Leaf)) {
         Write-Fail "Missing required file: $requiredPath"
         exit 1
     }
 }
+
+$manifest = Import-PowerShellDataFile -LiteralPath $manifestPath
+$currentSpecrewVersion = [string]$manifest.ModuleVersion
 
 $scratchRoot = Join-Path $repoRoot '.scratch\review-command'
 $projectRoot = Join-Path $scratchRoot 'project'
@@ -164,7 +168,8 @@ if ($jsonResult.ExitCode -ne 0) {
 }
 
 $jsonOutput = $jsonResult.Output -join "`n"
-foreach ($pattern in @('"feature":\s*"001-sample"', '"iteration":\s*"001"', '"digest":\s*"SPECREW_REVIEW schema=v1 iter=001 feature=001-sample verdict=accepted tasks=2/3 reqs=3 files=4 new_deps=1 vuln=unscanned cov=not_executed escalations=1 drift=1/1 index=specs\\\\001-sample\\\\iterations\\\\001\\\\reviewer-index.md"', '"summary_lines":\s*\[', '"reviewer_index":\s*"specs\\\\001-sample\\\\iterations\\\\001\\\\reviewer-index.md"')) {
+$reviewerIndexJsonPattern = '"reviewer_index":\s*"specs(?:\\\\|/)001-sample(?:\\\\|/)iterations(?:\\\\|/)001(?:\\\\|/)reviewer-index.md"'
+foreach ($pattern in @('"feature":\s*"001-sample"', '"iteration":\s*"001"', '"digest":\s*"SPECREW_REVIEW schema=v1 iter=001 feature=001-sample verdict=accepted tasks=2/3 reqs=3 files=4 new_deps=1 vuln=unscanned cov=not_executed escalations=1 drift=1/1 index=specs\\\\001-sample\\\\iterations\\\\001\\\\reviewer-index.md"', '"summary_lines":\s*\[', $reviewerIndexJsonPattern)) {
     if (-not (Assert-Contains -Content $jsonOutput -Pattern $pattern -FailureMessage ("JSON output is missing '{0}'." -f $pattern))) {
         exit 1
     }
@@ -180,7 +185,7 @@ if (-not (Test-Path -LiteralPath $capFixturePath -PathType Container)) {
 
 $capProjectRoot = Join-Path $scratchRoot 'lockout-chain-cap-project'
 Copy-Item -LiteralPath $capFixturePath -Destination $capProjectRoot -Recurse -Force
-[System.IO.File]::WriteAllText((Join-Path $capProjectRoot '.specrew\config.yml'), "project_name: cap-fixture`nspecrew_version: `"0.21.0`"`nbootstrap_date: `"2026-01-01`"`n", [System.Text.UTF8Encoding]::new($false))
+[System.IO.File]::WriteAllText((Join-Path $capProjectRoot '.specrew\config.yml'), ("project_name: cap-fixture`nspecrew_version: `"{0}`"`nbootstrap_date: `"2026-01-01`"`n" -f $currentSpecrewVersion), [System.Text.UTF8Encoding]::new($false))
 
 # Scaffold reviewer artifacts for the cap fixture to generate reviewer-index.md with cap state
 $capIterationDirectory = Join-Path $capProjectRoot 'specs\008-sample\iterations\001'

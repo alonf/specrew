@@ -1,0 +1,238 @@
+{
+  "mode": "resume-feature",
+  "feature_request": "",
+  "feature_path": "C:\\Dev\\Specrew\\specs\\024-slash-command-multi-host-correctness",
+  "agent": "Squad",
+  "approval_mode": "allow-all",
+  "launch_mode": "same-window",
+  "copilot_autopilot": true,
+  "project_state": {
+    "state": "existing-continue",
+    "detected_entries": [
+      ".claude",
+      ".scratch",
+      ".vscode",
+      "docs",
+      "evaluation",
+      "extensions",
+      "proposals",
+      "scripts",
+      "specs",
+      "templates",
+      "tests",
+      ".markdownlint.json",
+      ".markdownlintrc",
+      "0.7.3",
+      "CHANGELOG.md",
+      "CODE_OF_CONDUCT.md",
+      "CODEOWNERS",
+      "CONTRIBUTING.md",
+      "LICENSE",
+      "NOTICE.md",
+      "package.json",
+      "README.md",
+      "SECURITY.md",
+      "Specrew.psd1",
+      "Specrew.psm1",
+      "validator-output.log",
+      "validator-stderr.log",
+      "validator-stdout.log"
+    ],
+    "has_brownfield_indicators": true,
+    "has_specs_directory": true,
+    "spec_directories": [
+      "001-specrew-product",
+      "002-planning-flow-hardening",
+      "003-post-planning-review",
+      "004-default-specialty-pairing",
+      "005-stack-aware-quality-bar",
+      "006-human-architecture-checkpoint",
+      "007-user-facing-progress-handoff",
+      "008-reviewer-escalation-symmetry",
+      "009-project-path-resolution",
+      "010-onboarding-resume-visibility",
+      "011-specrew-start-conditional-pause",
+      "012-descriptive-id-handoffs",
+      "013-validator-hardening",
+      "014-handoff-format-scoping",
+      "015-public-readiness-pass",
+      "016-substantive-interaction-model",
+      "017-velocity-dashboard",
+      "018-velocity-dashboard-visual-richness",
+      "019-specrew-distribution-module",
+      "020-session-state-durability",
+      "021-specrew-slash-commands",
+      "022-hotfix-schema-tests"
+    ]
+  },
+  "brownfield_discovery": null,
+  "delivery_guidance": {
+    "specialist_hints": [
+      {
+        "role": "Security Specialist",
+        "member_name": "security-specialist",
+        "charter": "Own authentication, authorization, secrets handling, and security hardening decisions for this feature.",
+        "reason": "The request or repo context indicates auth, security, or privacy-sensitive behavior."
+      }
+    ],
+    "same_specialty_pair_hints": [],
+    "parallelism_signals": [],
+    "routing_guardrails": [],
+    "quality_attributes": [
+      {
+        "name": "Maintainability & Testability",
+        "reason": "Every feature should stay reviewable, modular, and covered by meaningful verification rather than only compiling or passing a happy-path test.",
+        "validation_focus": "Keep responsibilities clear, avoid speculative complexity, and explain how tests exercise the requirement-critical paths."
+      },
+      {
+        "name": "Security & Privacy",
+        "reason": "The requested behavior touches auth, secrets, permissions, or privacy-sensitive data.",
+        "validation_focus": "Validate authentication and authorization flows, secret handling, and abuse-resistant failure behavior."
+      }
+    ],
+    "semantics_watchouts": [
+      "Validate authn/authz and secret handling end to end rather than treating schemas, guards, or token fields as sufficient proof of security."
+    ]
+  },
+  "team_roster": {
+    "team_path": "C:\\Dev\\Specrew\\.squad\\team.md",
+    "mode": "specrew-managed",
+    "team_status_configured": true,
+    "baseline_roles": [
+      {
+        "role": "Spec Steward",
+        "charter": "`.squad/agents/spec-steward/charter.md`",
+        "status": "baseline",
+        "type": "baseline"
+      },
+      {
+        "role": "Planner",
+        "charter": "`.squad/agents/planner/charter.md`",
+        "status": "baseline",
+        "type": "baseline"
+      },
+      {
+        "role": "Implementer",
+        "charter": "`.squad/agents/implementer/charter.md`",
+        "status": "baseline",
+        "type": "baseline"
+      },
+      {
+        "role": "Reviewer",
+        "charter": "`.squad/agents/reviewer/charter.md`",
+        "status": "baseline",
+        "type": "baseline"
+      },
+      {
+        "role": "Retro Facilitator",
+        "charter": "`.squad/agents/retro-facilitator/charter.md`",
+        "status": "baseline",
+        "type": "baseline"
+      }
+    ],
+    "supplemental_members": []
+  },
+  "delegated_routing": {
+    "enabled_agents": [
+      "copilot"
+    ],
+    "independent_oversight_active": false,
+    "roles": {
+      "Implementer": {
+        "role": "Implementer",
+        "requested_agent": "copilot",
+        "effective_agent": "copilot",
+        "delegated": false,
+        "access_path": "copilot_default",
+        "fallback_reason": null
+      },
+      "Spec Steward": {
+        "role": "Spec Steward",
+        "requested_agent": "codex",
+        "effective_agent": "copilot",
+        "delegated": false,
+        "access_path": "copilot_default",
+        "fallback_reason": "preferred agent 'codex' is not enabled"
+      },
+      "Planner": {
+        "role": "Planner",
+        "requested_agent": "claude",
+        "effective_agent": "copilot",
+        "delegated": false,
+        "access_path": "copilot_default",
+        "fallback_reason": "preferred agent 'claude' is not enabled"
+      },
+      "Reviewer": {
+        "role": "Reviewer",
+        "requested_agent": "claude",
+        "effective_agent": "copilot",
+        "delegated": false,
+        "access_path": "copilot_default",
+        "fallback_reason": "preferred agent 'claude' is not enabled"
+      },
+      "Retro Facilitator": {
+        "role": "Retro Facilitator",
+        "requested_agent": "copilot",
+        "effective_agent": "copilot",
+        "delegated": false,
+        "access_path": "copilot_default",
+        "fallback_reason": null
+      }
+    },
+    "fallback_events": [
+      {
+        "role": "Spec Steward",
+        "requested_agent": "codex",
+        "actual_agent": "copilot",
+        "reason": "preferred agent 'codex' is not enabled"
+      },
+      {
+        "role": "Planner",
+        "requested_agent": "claude",
+        "actual_agent": "copilot",
+        "reason": "preferred agent 'claude' is not enabled"
+      },
+      {
+        "role": "Reviewer",
+        "requested_agent": "claude",
+        "actual_agent": "copilot",
+        "reason": "preferred agent 'claude' is not enabled"
+      }
+    ]
+  },
+  "delegated_routing_evidence": {
+    "ledger_path": ".squad\\decisions.md",
+    "required_fields": [
+      "role_or_work_item",
+      "requested_agent",
+      "actual_agent",
+      "model_id",
+      "status",
+      "fallback_reason"
+    ]
+  },
+  "session_state": {
+    "active": false,
+    "boundary_type": "feature-closeout",
+    "feature_ref": "024-slash-command-multi-host-correctness",
+    "feature_path": "C:\\Dev\\Specrew\\specs\\024-slash-command-multi-host-correctness",
+    "iteration_number": null,
+    "task_id": null,
+    "auth_commit_hash": "a2fb22cea5c450aaa4cda58bcd786638f9a47b1e",
+    "recorded_at": "2026-05-20T01:11:37Z"
+  },
+  "recovery_session": {
+    "entry_mode": "resume-feature",
+    "stale_reasons": [],
+    "choice_set": [],
+    "selected_choice": null,
+    "bypass_gate": false,
+    "approval_mode_changed": false,
+    "next_action_message": "Feature 024 is closed at feature-closeout on this branch. Open or review the PR-at-feature-close workflow, then wait for human merge and tag-and-publish authorization before any release tagging."
+  },
+  "squad_model_overrides": {},
+  "prompt_path": "C:\\Dev\\Specrew\\.specrew\\last-start-prompt.md",
+  "summary_path": "C:\\Dev\\Specrew\\.specrew\\start-summary.md",
+  "generated_at_utc": "2026-05-20T01:11:37Z",
+  "schema": "v1"
+}
