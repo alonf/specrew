@@ -1,6 +1,10 @@
 <p align="center">
-  <img src="assets/specrew-logo-light.svg#gh-light-mode-only" alt="Specrew — Governed Agentic SDLC" width="340" />
-  <img src="assets/specrew-logo-dark.svg#gh-dark-mode-only" alt="Specrew — Governed Agentic SDLC" width="340" />
+  <img src="assets/specrew-icon.png" alt="Specrew" height="90" />
+</p>
+
+<p align="center">
+  <img src="assets/specrew-wordmark-light.svg#gh-light-mode-only" alt="Specrew — Governed Agentic SDLC" height="64" />
+  <img src="assets/specrew-wordmark-dark.svg#gh-dark-mode-only" alt="Specrew — Governed Agentic SDLC" height="64" />
 </p>
 
 # Specrew User Guide
