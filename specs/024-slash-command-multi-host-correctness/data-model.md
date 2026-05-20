@@ -30,18 +30,27 @@ This data model defines the key entities, their attributes, relationships, valid
 | `aliasOf` | string | No | Must reference another valid `commandName` | If `isAlias` is true, the canonical command this aliases |
 
 **Relationships**:
+
 - A Slash Command Definition is deployed to **three Deployment Targets** (one-to-many).
+
 - A Slash Command Definition may have **zero or one Alias Relationship** (one-to-one optional).
 
 **Validation Rules**:
+
 - `yamlFrontmatterName` MUST match `directoryName` (e.g., directory `specrew-where/` requires `name: specrew-where`).
+
 - `yamlFrontmatterDescription` MUST be non-empty and derived from Feature 021's "Purpose" section guidance.
+
 - `bodyGuidance` MUST replace all `/specrew.X` references with `/specrew-X` hyphenated form.
+
 - If `isAlias` is true, `aliasOf` MUST reference a canonical command (e.g., `specrew-status` aliases `specrew-where`).
 
 **State Transitions**:
+
 - **Template State**: Source template exists in repo, not yet deployed.
+
 - **Deployed State**: Content-identical `SKILL.md` files exist in all three Deployment Targets.
+
 - **Migrated State**: Legacy `.copilot/skills/{directoryName}/` deployment removed if managed.
 
 ---
@@ -60,17 +69,25 @@ This data model defines the key entities, their attributes, relationships, valid
 | `deployedCommandCount` | integer | No | Must equal 7 when `deploymentStatus` is `deployed` | Number of commands successfully deployed to this target |
 
 **Relationships**:
+
 - A Deployment Target receives **seven Slash Command Definitions** (one-to-many from Slash Command Definition).
+
 - A Deployment Target is managed by **one Deployment Operation** (many-to-one).
 
 **Validation Rules**:
+
 - All three Deployment Targets MUST contain content-identical `SKILL.md` files for each command (byte-for-byte match).
+
 - If `deploymentStatus` is `deployed`, `deployedCommandCount` MUST equal 7 (all seven commands present).
+
 - Each Deployment Target directory MUST exist or be created during deployment.
 
 **State Transitions**:
+
 - **Pending**: Target path identified, deployment not yet executed.
+
 - **Deployed**: All seven commands successfully written to target path with valid frontmatter.
+
 - **Failed**: Deployment attempted but failed (e.g., filesystem permission error, invalid template content).
 
 ---
@@ -90,19 +107,29 @@ This data model defines the key entities, their attributes, relationships, valid
 | `migrationStatus` | enum | Yes | One of: `not-started`, `in-progress`, `completed`, `failed` | Current migration state |
 
 **Relationships**:
+
 - A Legacy Skill Directory may correspond to **one Slash Command Definition** (one-to-one optional).
+
 - A Legacy Skill Directory is processed by **one Migration Operation** (many-to-one).
 
 **Validation Rules**:
+
 - If `isManagedBySpecrew` is true, `migrationAction` MUST be `remove`.
+
 - If `isManagedBySpecrew` is false, `migrationAction` MUST be `preserve`.
+
 - Managed-marker detection MUST use existing `Set-ManagedFile` tracking logic from deploy-squad-runtime.ps1.
+
 - Unmanaged content MUST NOT be silently deleted; it MUST be preserved and surfaced as leftover non-discoverable content.
 
 **State Transitions**:
+
 - **Not Started**: Legacy directory discovered, migration action determined, not yet executed.
+
 - **In Progress**: Migration action (remove or preserve) currently executing.
+
 - **Completed**: Migration action successfully executed (managed content removed, unmanaged content preserved).
+
 - **Failed**: Migration action attempted but failed (e.g., filesystem permission error).
 
 ---
@@ -121,19 +148,29 @@ This data model defines the key entities, their attributes, relationships, valid
 | `isValid` | boolean | Derived | True if `name` and `description` pass validation | Frontmatter validity status |
 
 **Relationships**:
+
 - A YAML Frontmatter Block belongs to **one Slash Command Definition** (one-to-one).
+
 - A YAML Frontmatter Block is validated by **Frontmatter Validation Rules** (many-to-one).
 
 **Validation Rules**:
+
 - YAML frontmatter MUST be delimited by `---` at start and end.
+
 - `name` field MUST be present and match the directory name (case-sensitive).
+
 - `description` field MUST be present and non-empty.
+
 - YAML syntax MUST be valid (parseable by standard YAML parsers).
+
 - If `allowedTools` is present, it MUST be a valid YAML array of strings.
 
 **State Transitions**:
+
 - **Missing**: No frontmatter present in `SKILL.md` (invalid state).
+
 - **Invalid**: Frontmatter present but fails validation (e.g., missing `name`, empty `description`, invalid YAML syntax).
+
 - **Valid**: Frontmatter present and passes all validation rules.
 
 ---
@@ -154,18 +191,27 @@ This data model defines the key entities, their attributes, relationships, valid
 | `errorMessages` | array[string] | No | Populated if `operationStatus` is `failed` | Error details if deployment fails |
 
 **Relationships**:
+
 - A Deployment Operation manages **three Deployment Targets** (one-to-many).
+
 - A Deployment Operation may trigger **one Migration Operation** if `operationType` is `update` (one-to-one optional).
 
 **Validation Rules**:
+
 - `projectPath` MUST be a valid Git repository with `.squad/` directory present (Specrew initialized).
+
 - All seven commands MUST be deployed to all three targets for operation to be marked `completed`.
+
 - If any target deployment fails, `operationStatus` MUST be `failed` and `errorMessages` MUST contain diagnostic information.
 
 **State Transitions**:
+
 - **Pending**: Operation queued, not yet started.
+
 - **In Progress**: Deployment logic executing, writing `SKILL.md` files to targets.
+
 - **Completed**: All seven commands deployed to all three targets with valid frontmatter.
+
 - **Failed**: Deployment encountered error (filesystem issue, invalid template content, permission denied).
 
 ---
@@ -188,19 +234,29 @@ This data model defines the key entities, their attributes, relationships, valid
 | `errorMessages` | array[string] | No | Populated if `operationStatus` is `failed` | Error details if migration fails |
 
 **Relationships**:
+
 - A Migration Operation is triggered by **one Deployment Operation** (one-to-one).
+
 - A Migration Operation processes **multiple Legacy Skill Directories** (one-to-many).
 
 **Validation Rules**:
+
 - `legacyPathScanned` MUST be `.copilot/skills/` under `projectPath`.
+
 - Managed-marker detection MUST be authoritative for `isManagedBySpecrew` determination.
+
 - Unmanaged content MUST NOT be deleted; it MUST be preserved and reported in `unmanagedPreserveCount`.
+
 - If migration fails partway through, `operationStatus` MUST be `failed` and rollback or partial-state handling MUST be documented in `errorMessages`.
 
 **State Transitions**:
+
 - **Pending**: Migration queued, not yet started.
+
 - **In Progress**: Scanning legacy directories, applying managed-marker detection, removing/preserving content.
+
 - **Completed**: All legacy directories processed; managed content removed, unmanaged content preserved.
+
 - **Failed**: Migration encountered error (filesystem issue, permission denied, managed-marker detection failed).
 
 ---
@@ -236,27 +292,39 @@ Migration Operation (1) ──── processes ──── (0..N) Legacy Skill 
 ## State Transition Summary
 
 ### Slash Command Definition
+
 - **Template** → **Deployed** (after Deployment Operation completes)
+
 - **Deployed** → **Migrated** (after Migration Operation removes legacy `.copilot/skills/` copy)
 
 ### Deployment Target
+
 - **Pending** → **Deployed** (all seven commands written with valid frontmatter)
+
 - **Pending** → **Failed** (deployment error)
 
 ### Legacy Skill Directory
+
 - **Not Started** → **In Progress** → **Completed** (migration action executed)
+
 - **In Progress** → **Failed** (migration error)
 
 ### YAML Frontmatter Block
+
 - **Missing** → **Valid** (frontmatter added during template refresh)
+
 - **Invalid** → **Valid** (frontmatter corrected during template refresh)
 
 ### Deployment Operation
+
 - **Pending** → **In Progress** → **Completed** (all targets deployed)
+
 - **In Progress** → **Failed** (deployment error)
 
 ### Migration Operation
+
 - **Pending** → **In Progress** → **Completed** (all legacy directories processed)
+
 - **In Progress** → **Failed** (migration error)
 
 ---
@@ -264,7 +332,11 @@ Migration Operation (1) ──── processes ──── (0..N) Legacy Skill 
 ## Next Steps
 
 Proceed to create **contracts/** artifacts:
+
 - `multi-host-deployment.md` — Contract for content-identical deployment to three target paths
+
 - `frontmatter-validity.md` — Contract for YAML frontmatter structure and validation
+
 - `migration-safety.md` — Contract for safe managed/unmanaged legacy directory handling
+
 - `discovery-contract.md` — Contract for Claude Code + GitHub Copilot CLI + host-neutral discoverability claims

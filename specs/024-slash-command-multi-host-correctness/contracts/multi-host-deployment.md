@@ -27,11 +27,15 @@ Specrew slash commands MUST be deployed to **three supported project skill locat
 All three deployment targets MUST contain **content-identical `SKILL.md` files** for each slash command. Content identity is defined as:
 
 - **Byte-for-byte match**: The same file content (including line endings, whitespace, YAML frontmatter, markdown body) across all three target paths.
+
 - **No host-specific divergence**: The v0.24.0 deployment logic MUST NOT introduce host-specific variations in command metadata, body guidance, or tool constraints.
+
 - **Synchronized updates**: When `specrew init` or `specrew update` runs, all three targets MUST be updated together with the same command definitions from the source templates.
 
 **Validation**:
+
 - Automated tests MUST verify byte-for-byte content identity across all three target paths for each command.
+
 - If any target contains different content, the deployment operation MUST fail with a clear diagnostic message identifying which command and which target diverged.
 
 ---
@@ -48,6 +52,7 @@ When a new Specrew project is initialized:
 4. Deployment is atomic: if any target fails, the entire deployment operation MUST be marked as failed.
 
 **Acceptance criteria**:
+
 - AC1: Fresh bootstrap deploys every existing slash command to `.claude/skills/`, `.github/skills/`, and `.agents/skills/`, with content-identical `SKILL.md` files across the three paths.
 
 ### Refresh/Update (`specrew update`)
@@ -60,7 +65,9 @@ When a Specrew project is updated:
 4. Update is atomic: if any target fails, the entire update operation MUST be marked as failed.
 
 **Acceptance criteria**:
+
 - AC2: `specrew update` refreshes all seven commands to all three target paths with content-identical `SKILL.md` files.
+
 - AC4: `specrew update` removes Specrew-managed legacy `.copilot/skills/specrew-*` directories but preserves non-Specrew content.
 
 ---
@@ -81,8 +88,11 @@ extensions/specrew-speckit/squad-templates/skills/
 ```
 
 **Rules**:
+
 - The deployment logic in `deploy-squad-runtime.ps1` MUST read from these source templates and write content-identical copies to all three target paths.
+
 - No transformation, substitution, or host-specific customization is permitted during deployment.
+
 - Manual edits to deployed `SKILL.md` files are **not supported** and will be overwritten on the next `specrew update`.
 
 ---
@@ -105,13 +115,17 @@ extensions/specrew-speckit/squad-templates/skills/
 ### Namespace Coexistence
 
 - Slash commands deployed to `.claude/skills/`, `.github/skills/`, and `.agents/skills/` MUST NOT conflict with other project skills in those directories.
+
 - Directory naming (`specrew-*`) provides namespace isolation from other project skills.
+
 - Host discovery MUST present Specrew commands alongside other project skills without shadowing or collision.
 
 ### Compatibility with Legacy Deployments
 
 - Legacy `.copilot/skills/specrew-*` deployments from pre-v0.24.0 installations are considered **deprecated**.
+
 - The multi-host deployment logic MUST NOT write to `.copilot/skills/` (legacy path is migration-only, not active deployment).
+
 - Projects upgrading from pre-v0.24.0 MUST run `specrew update` to trigger legacy migration and new multi-host deployment.
 
 ---
@@ -141,7 +155,9 @@ extensions/specrew-speckit/squad-templates/skills/
 ## Open Questions and Deferrals
 
 - **Host-specific metadata extensions**: If future hosts require additional YAML frontmatter fields (e.g., `allowed-tools`, `cost-tier`), how will content identity be preserved? → Deferred to post-v0.24.0 feature when evidence of host-specific requirements surfaces.
+
 - **Selective deployment**: Should `specrew init` support deploying to a subset of target paths (e.g., only `.claude/skills/` for Claude Code-only projects)? → Deferred to post-v0.24.0 feature; v0.24.0 always deploys to all three paths.
+
 - **Discovery priority**: If a host recognizes multiple target paths (e.g., GitHub Copilot CLI recognizes `.github/skills/`, `.claude/skills/`, `.agents/skills/`), which path takes precedence? → Host-specific behavior, outside Specrew control; Specrew ensures content identity so precedence does not affect user experience.
 
 ---

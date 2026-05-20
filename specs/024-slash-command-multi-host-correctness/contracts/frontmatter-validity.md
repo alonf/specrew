@@ -48,7 +48,8 @@ description: Show the current Specrew project status dashboard — the "where am
 
 ### 2. `name` Field Validation
 
-**Rules**:
+**Required Fields**:
+
 - MUST be present (missing `name` field is a validation error).
 - MUST match the parent directory name exactly (case-sensitive).
   - Example: Directory `specrew-where/` requires `name: specrew-where`.
@@ -61,6 +62,7 @@ description: Show the current Specrew project status dashboard — the "where am
 ### 3. `description` Field Validation
 
 **Rules**:
+
 - MUST be present (missing `description` field is a validation error).
 - MUST be non-empty (empty string or whitespace-only is invalid).
 - SHOULD be a single-line summary suitable for discovery menu display (max 200 characters recommended).
@@ -71,6 +73,7 @@ description: Show the current Specrew project status dashboard — the "where am
 ### 4. YAML Syntax Validation
 
 **Rules**:
+
 - The frontmatter block MUST be valid YAML syntax (parseable by standard YAML 1.2 parsers).
 - Common YAML pitfalls to avoid:
   - Unquoted strings containing colons (e.g., `description: Show: status` is invalid; use `description: "Show: status"`).
@@ -110,6 +113,7 @@ This ensures slash commands are discoverable in both hosts without host-specific
 After the closing `---` delimiter, the `SKILL.md` file MUST retain the markdown body guidance from Feature 021:
 
 **Required sections** (from Feature 021 templates):
+
 - **Purpose**: High-level description of what the command does.
 - **When to Use**: Scenarios and user prompts that should trigger this command.
 - **Invocation**: Command syntax and argument examples.

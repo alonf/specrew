@@ -20,6 +20,7 @@ Specrew v0.24.0 **publicly claims slash-command discoverability** for:
 2. **GitHub Copilot CLI** (via `.github/skills/` and `.agents/skills/` deployment paths)
 
 **Evidence required for support claim**:
+
 - Host officially documents project-skill discovery in the claimed deployment path.
 - Prerelease validation (v0.24.0-beta.1) includes manual smoke test confirming `/specrew-where` appears in the host's slash-command discovery menu.
 - Automated tests validate deployment to the claimed paths with valid YAML frontmatter.
@@ -29,11 +30,13 @@ Specrew v0.24.0 **publicly claims slash-command discoverability** for:
 Specrew v0.24.0 **deploys to `.agents/skills/`** as a host-neutral future-proof path, but does **not publicly claim discoverability guarantees** for hosts beyond Claude Code and GitHub Copilot CLI in the v0.24.0 release messaging.
 
 **Rationale**:
+
 - `.agents/skills/` is recognized by GitHub Copilot CLI today (covered by Copilot CLI support claim).
 - Deploying to `.agents/skills/` provides future-proofing for other AI coding agents (e.g., Codex CLI) when their project-skill guidance stabilizes.
 - Public v0.24.0 messaging limits discoverability claims to Claude Code + GitHub Copilot CLI only, avoiding overpromise until other hosts provide stable project-skill documentation.
 
 **Deferred host coverage**:
+
 - **Codex CLI**: `.agents/skills/` deployment path is present in v0.24.0, but Codex CLI discoverability is not a v0.24.0 acceptance guarantee. Discoverability claims for Codex CLI are deferred until its project-skill guidance stabilizes and can be validated in prerelease smoke testing.
 
 ---
@@ -45,11 +48,13 @@ Specrew v0.24.0 **deploys to `.agents/skills/`** as a host-neutral future-proof 
 **Discovery path**: `.claude/skills/`
 
 **Discovery behavior**:
+
 - Claude Code scans `.claude/skills/` for subdirectories containing `SKILL.md` files.
 - `description` field in YAML frontmatter is used for skill discovery menu display.
 - `name` field is optional but recommended for parity with other hosts.
 
 **Validation requirement**:
+
 - Manual smoke test during v0.24.0-beta.1 prerelease: Open Claude Code, invoke slash-command discovery menu, confirm `/specrew-where` appears with correct description.
 
 ### GitHub Copilot CLI
@@ -57,11 +62,13 @@ Specrew v0.24.0 **deploys to `.agents/skills/`** as a host-neutral future-proof 
 **Discovery path**: `.github/skills/`, `.claude/skills/`, or `.agents/skills/` (GitHub Copilot CLI recognizes all three)
 
 **Discovery behavior**:
+
 - GitHub Copilot CLI scans `.github/skills/`, `.claude/skills/`, and `.agents/skills/` for subdirectories containing `SKILL.md` files.
 - Both `name` (mandatory, must match directory) and `description` (mandatory, non-empty) fields in YAML frontmatter are required for discovery.
 - If multiple paths contain the same skill (e.g., `specrew-where/` in both `.github/skills/` and `.claude/skills/`), host-specific precedence applies (outside Specrew control; content-identical deployment ensures consistent behavior).
 
 **Validation requirement**:
+
 - Manual smoke test during v0.24.0-beta.1 prerelease: Open GitHub Copilot CLI, invoke slash-command discovery menu, confirm `/specrew-where` appears with correct description.
 
 ### Host-Neutral Path (`.agents/skills/`)
@@ -69,9 +76,11 @@ Specrew v0.24.0 **deploys to `.agents/skills/`** as a host-neutral future-proof 
 **Discovery path**: `.agents/skills/`
 
 **Current coverage**:
+
 - GitHub Copilot CLI recognizes `.agents/skills/` (covered by Copilot CLI support claim above).
 
 **Future-proof coverage**:
+
 - Codex CLI and other AI coding agents may recognize `.agents/skills/` when their project-skill guidance stabilizes.
 - v0.24.0 deploys to `.agents/skills/` today, but public discoverability claims are limited to Claude Code + GitHub Copilot CLI until other hosts provide stable evidence.
 
@@ -90,6 +99,7 @@ All active user-facing, operational, and governance references to the slash-comm
 - Documentation, changelog, test assertions, governance artifacts: Use `/specrew-*` form.
 
 **Historical preservation**:
+
 - Pre-v0.24.0 artifacts (Feature 021 spec, archived proposals, older changelog entries) retain their original `/specrew.X` dot-notation as historical record.
 - No rewriting of historical artifacts is permitted (preserves audit trail).
 
@@ -114,6 +124,7 @@ All active user-facing, operational, and governance references to the slash-comm
 | `/specrew-version` | — | Version/baseline display using installed/runtime and project config state | Show the installed Specrew version and slash-command compatibility state | Claude Code, GitHub Copilot CLI |
 
 **Alias semantics**:
+
 - `/specrew-status` is the **only** alias in v1.
 - Alias behavior is **semantic parity**, not "similar output."
 - Alias routing MUST preserve the same validation, diagnostics, and dashboard semantics as `/specrew-where`.
@@ -125,10 +136,12 @@ All active user-facing, operational, and governance references to the slash-comm
 ### Form vs. Meaning Distinction
 
 Feature 024 exists to repair the **form-vs-meaning failure** from Feature 021:
+
 - **Form**: Slash-command `SKILL.md` files exist on disk.
 - **Meaning**: Slash commands are discoverable in AI coding host UI and have valid metadata.
 
 **v0.24.0 acceptance criteria**:
+
 - Slash commands MUST be discoverable in Claude Code or GitHub Copilot CLI (manual smoke test during prerelease validation).
 - Slash commands MUST have valid YAML frontmatter (automated test coverage).
 - Slash commands MUST be deployed to all three target paths with content-identical files (automated test coverage).
@@ -195,6 +208,7 @@ Feature 024 exists to repair the **form-vs-meaning failure** from Feature 021:
    - Confirm `/specrew-where` appears with description: "Show the current Specrew project status dashboard — the 'where am I?' velocity view for the active feature and iteration."
 
 **Blocking requirement**:
+
 - Stable v0.24.0 promotion is **blocked** until at least one of the two smoke tests passes (Claude Code or GitHub Copilot CLI discoverability confirmed).
 - If both hosts are unavailable during prerelease validation, automated test coverage + deployment path validation is accepted as provisional evidence, but manual smoke test must be completed before public release announcement.
 

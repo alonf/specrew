@@ -13,14 +13,21 @@ This contract defines the safe migration behavior for legacy `.copilot/skills/sp
 ## Legacy Deployment Context
 
 **Pre-v0.24.0 behavior** (Feature 021):
+
 - Specrew slash commands were deployed to `.copilot/skills/specrew-*/SKILL.md`.
+
 - Directory naming used hyphenated form (`specrew-where/`, `specrew-status/`, etc.).
+
 - Command references in body guidance used dot-notation (`/specrew.where`, `/specrew.status`, etc.).
+
 - No YAML frontmatter was present in `SKILL.md` files.
 
 **v0.24.0+ behavior** (Feature 024):
+
 - Specrew slash commands are deployed to `.claude/skills/`, `.github/skills/`, `.agents/skills/`.
+
 - Legacy `.copilot/skills/specrew-*` path is **deprecated** and considered migration-only.
+
 - `specrew update` MUST safely remove Specrew-managed legacy content while preserving unmanaged content.
 
 ---
@@ -30,7 +37,9 @@ This contract defines the safe migration behavior for legacy `.copilot/skills/sp
 ### In Scope for Migration
 
 **Managed Legacy Directories**:
+
 - Directories under `.copilot/skills/` matching the pattern `specrew-*` (e.g., `specrew-where/`, `specrew-status/`, etc.).
+
 - Directories confirmed to be **Specrew-managed** via managed-marker detection from `Set-ManagedFile` tracking.
 
 **Migration action**: **Remove** managed legacy directories during `specrew update`.
@@ -38,13 +47,17 @@ This contract defines the safe migration behavior for legacy `.copilot/skills/sp
 ### Out of Scope for Migration (Must Preserve)
 
 **Unmanaged Legacy Directories**:
+
 - Directories under `.copilot/skills/` matching the pattern `specrew-*` but **not** confirmed as Specrew-managed.
+
 - User-created content, third-party skills, or experimental skills that happen to use the `specrew-*` naming pattern.
 
 **Migration action**: **Preserve** unmanaged directories and surface them as leftover non-discoverable content in migration logs or reports.
 
 **Other Legacy Content**:
+
 - Directories under `.copilot/skills/` that do **not** match the `specrew-*` pattern (e.g., `my-custom-skill/`, `third-party-integration/`).
+
 - These are outside migration scope and MUST remain untouched.
 
 ---
@@ -56,11 +69,15 @@ This contract defines the safe migration behavior for legacy `.copilot/skills/sp
 Feature 024 requires an **explicit Specrew ownership signal** before any legacy `.copilot/skills/specrew-*` directory may be removed.
 
 - Deletion by directory name alone is forbidden.
+
 - The implementation may reuse or extract a repo-consistent managed-artifact ownership check during the migration work.
+
 - During migration, the logic MUST check for that explicit ownership signal to determine whether a directory is Specrew-managed.
 
 **Rules**:
+
 - If an explicit Specrew ownership signal is **present**: Directory is Specrew-managed → **safe to remove**.
+
 - If that signal is **absent**: Directory is unmanaged → **must preserve**.
 
 ### Detection Implementation
@@ -93,11 +110,13 @@ For each discovered `specrew-*` directory:
 ### Step 3: Execute Migration Actions
 
 **For managed directories**:
+
 1. Remove the directory and all its contents recursively.
 2. Increment `managedRemovalCount` metric.
 3. Log removal action (e.g., "Removed managed legacy directory: `.copilot/skills/specrew-where/`").
 
 **For unmanaged directories**:
+
 1. Preserve the directory and all its contents (no deletion).
 2. Increment `unmanagedPreserveCount` metric.
 3. Log preservation action (e.g., "Preserved unmanaged legacy directory: `.copilot/skills/specrew-custom/`").
@@ -118,6 +137,7 @@ Migration Summary:
 ```
 
 **User guidance for preserved content**:
+
 - "The following directories under `.copilot/skills/` were preserved because they are not Specrew-managed. They will not be discovered by AI coding hosts in this location. Consider moving them to `.agents/skills/` or another supported path if you want to retain them."
 
 ---
@@ -172,8 +192,11 @@ Migration MUST occur **before** or **alongside** multi-host deployment during `s
 2. **Deploy slash commands to new multi-host paths** (`.claude/skills/`, `.github/skills/`, `.agents/skills/`).
 
 The order ensures:
+
 - No orphaned legacy directories remain after update.
+
 - New multi-host deployment is populated with current source templates.
+
 - Users see a clean migration experience with no manual cleanup required (except for unmanaged preserved content, which is surfaced in migration report).
 
 ---
@@ -205,7 +228,9 @@ If migration removes content incorrectly (e.g., unmanaged directory deleted due 
 ## Open Questions and Deferrals
 
 - **Pre-migration backup option**: Should `specrew update` include a `--backup-legacy` flag to automatically backup `.copilot/skills/` before migration? → Deferred to post-v0.24.0 feature if user feedback indicates demand.
+
 - **Migration dry-run mode**: Should `specrew update` support a `--dry-run` flag to preview migration actions without executing them? → Deferred to post-v0.24.0 feature; v0.24.0 migration is non-reversible except via Git restore.
+
 - **Legacy path cleanup after N updates**: Should Specrew automatically delete the entire `.copilot/skills/` directory after it has been empty for N consecutive updates? → Deferred to post-v0.24.0 feature; v0.24.0 leaves empty `.copilot/skills/` in place if all `specrew-*` content is removed.
 
 ---

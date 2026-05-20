@@ -72,7 +72,7 @@
 ## Traceability Summary
 
 - Requirement scope for this iteration: FR-001, FR-002, FR-003, FR-004, FR-005, FR-006, FR-007, FR-008, FR-009, FR-010, FR-011, FR-012
-- User stories represented in current scope: 
+- User stories represented in current scope:
 - Detailed execution remains source-controlled in `specs/024-slash-command-multi-host-correctness/tasks.md`; the task rows above summarize the approved work packets for Iteration 001.
 - The iteration stays within capacity with the refined 7 SP estimate carried from the approved Feature 024 intake.
 - No deferral is approved at implementation start; all FR-001 through FR-012 remain in Iteration 001 scope.

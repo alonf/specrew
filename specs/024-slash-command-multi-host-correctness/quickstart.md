@@ -51,7 +51,9 @@ rg '^---$|^name: |^description: ' extensions/specrew-speckit/squad-templates/ski
 Update `extensions/specrew-speckit/scripts/deploy-squad-runtime.ps1` so slash-command skills are deployed as one logical set to:
 
 - `.claude/skills/`
+
 - `.github/skills/`
+
 - `.agents/skills/`
 
 Implementation expectations:
@@ -77,14 +79,19 @@ During `specrew update`:
 Update these existing scripts to the corrected surface:
 
 - `tests/integration/slash-command-distribution.tests.ps1`
+
 - `tests/integration/slash-command-discovery.tests.ps1`
+
 - `tests/integration/slash-command-compatibility.tests.ps1`
+
 - `tests/integration/slash-command-coexistence.tests.ps1` (only where active slash-command spelling needs adjustment)
 
 Expected migration themes:
 
 - `.copilot/skills/` assumptions become three-path assertions
+
 - `/specrew.*` assertions become `/specrew-*`
+
 - active docs/contracts under test point to Feature 024 artifacts rather than Feature 021’s historical single-path contract
 
 ## Step 5: Add three new standalone integration scripts
@@ -92,7 +99,9 @@ Expected migration themes:
 Create:
 
 - `tests/integration/slash-command-multi-path.tests.ps1`
+
 - `tests/integration/slash-command-frontmatter.tests.ps1`
+
 - `tests/integration/slash-command-legacy-migration.tests.ps1`
 
 Each should follow the repo’s existing standalone PowerShell test-script style (`Set-StrictMode`, custom `Write-Pass` / `Write-Fail`, explicit `exit 1` on failure), not a new Pester-only harness.
@@ -157,11 +166,15 @@ Task generation should produce work packages for:
 4. existing-test migration
 5. three new standalone integration scripts
 6. release/proposal/changelog truthfulness updates
+
 7. prerelease smoke and evidence capture
+
 - If hashes differ, inspect file content with `Compare-Object` to identify divergence.
 
 **Remediation**:
+
 - Report issue to Specrew maintainers (indicates deployment logic bug).
+
 - Re-run `specrew update` to re-deploy from single source template.
 
 ### Legacy migration deletes unmanaged content
@@ -169,12 +182,17 @@ Task generation should produce work packages for:
 **Symptom**: User-created `.copilot/skills/specrew-custom/` directory is deleted after `specrew update`.
 
 **Diagnosis**:
+
 - Check if managed-marker detection incorrectly classified unmanaged content as managed.
+
 - Review deployment logs for `removed-legacy-managed-skill` action against the unmanaged directory.
 
 **Remediation**:
+
 - Report critical issue to Specrew maintainers (violates safe-migration contract).
+
 - Restore content from Git history or manual backup.
+
 - Patch managed-marker detection logic and release hotfix.
 
 ---
