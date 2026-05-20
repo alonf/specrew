@@ -24,7 +24,7 @@ For `v0.24.1`, remove Authenticode signing from the active PSGallery release pat
 
 ## Rationale
 
-This bug-fix slice was pre-resolved by the human before handoff: the urgent need is to restore installability, not to re-open certificate strategy design. Unsigned packages are the safest immediate default because they remove the untrusted self-signed certificate failure without introducing any new trust-distribution requirement for users.
+This bug-fix slice was pre-resolved by the human before handoff: the urgent need is to restore installability, not to re-open certificate strategy design. Unsigned packages match the prevailing open-source PowerShell Gallery norm and are the safest immediate default because they remove the untrusted self-signed certificate failure without introducing any new trust-distribution requirement for users.
 
 ## Out of scope
 
@@ -41,7 +41,7 @@ This bug-fix slice was pre-resolved by the human before handoff: the urgent need
 - `.github/workflows/publish-module.yml`
 - `scripts/internal/invoke-module-release.ps1`
 - `file:///C:/Dev/Specrew/proposals/031-specrew-distribution-module.md`
-- `file:///C:/Dev/Specrew/proposals/055-always-in-flow-bug-fix-lifecycle.md`
 - `file:///C:/Dev/Specrew/proposals/060-prerelease-channel-staging.md`
+- `file:///C:/Dev/Specrew/proposals/066-gate-respecting-default.md`
 - `file:///C:/Dev/Specrew/proposals/067-small-fix-slice-type.md`
 - `file:///C:/Dev/Specrew/proposals/INDEX.md`

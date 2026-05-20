@@ -22,7 +22,7 @@ baseline that each release number represents.
 
 ### Fixed
 
-- Removed Authenticode signing from the PowerShell Gallery release path so Specrew 0.24.1 ships unsigned by default and no longer fails installation behind an untrusted self-signed certificate chain.
+- Authenticode trust-chain failure on default-trust clients. The release flow previously signed modules with a self-signed publisher certificate whose root was not in any default client trust store, causing `Install-Module Specrew` to fail without `-SkipPublisherCheck`. The release flow no longer signs the module; modules ship unsigned per the OSS PowerShell Gallery norm. CA-signed releases for corporate and enterprise consumers are tracked as future work. See Proposal 072.
 
 ## [0.24.0] - 2026-05-20
 
