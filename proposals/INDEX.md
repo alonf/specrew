@@ -25,7 +25,7 @@ Proposals whose features have shipped to main and are part of Specrew's current 
 | [066](066-gate-respecting-default.md) | Gate-Respecting Default + `--autonomous` Opt-In | chore `c55ec92` (2026-05-20) | phase-2 | 3 |
 | [072](072-psgallery-unsigned-default.md) | PowerShell Gallery Unsigned Default | bug-fix slice `v0.24.1` (2026-05-20) | phase-2 | 2 |
 
-## Draft (15)
+## Draft (16)
 
 Proposals with full source-spec content, ready for `/speckit.specify` ingestion when prioritized.
 
@@ -47,6 +47,7 @@ Proposals with full source-spec content, ready for `/speckit.specify` ingestion 
 | [068](068-cost-aware-model-routing.md) | Cost-Aware Model Routing with Agent-Discovered Model Catalog | phase-2 | 6-8 | **URGENT — 10-day Copilot pricing deadline.** Discovery skill (`/specrew-research-models`) writes `.specrew/model-catalog.yml`; coordinator-governance routes Junior/Implementer tasks to cheap models, Senior/Reviewer to strong; `cost_profile: lean` in `.specrew/config.yml`. Slice of Proposal 040; precedes full Multi-Host CORE (024). Agent-driven discovery — no hardcoded model names. |
 | [069](069-multi-host-launch-path.md) | Multi-Host Launch Path (Claude Code + Codex) | phase-2 | 7 | **URGENT — cost-reduction bundle.** `specrew start --host claude` / `--host codex` launches the alternate CLI with Specrew's bootstrap context. Tactical MVP of Proposal 024 (Multi-Host CORE) — hard-coded per-host launch commands, no deep abstraction. Composes with 068 (model catalog) and 070 (cost tracking). |
 | [070](070-token-economy-mvp.md) | Token Economy MVP (Cost-per-Iteration Tracking + Dashboard Surfacing) | phase-2 | 5 | **URGENT — cost-reduction bundle.** `specs/<feature>/iterations/<N>/cost.yml` records per-boundary token consumption + cost estimate from Proposal 068's catalog; `specrew where` dashboard gains COST section; `specrew cost summary/add/recompute` CLI. MVP slice of Proposal 040 (Token Economy as Governance Driver) — measurement only, no governance layer. |
+| [073](073-review-evidence-integrity.md) | Review Evidence Integrity (Pre-Review Commit Gate + Form-vs-Meaning Detection) | phase-2 | 15-20 | **First concrete sub-slice of Proposal 030 (form-vs-meaning bundle).** Pre-review commit gate detects when `state.md` declares completed tasks but git diff is empty; reviewer scaffolders emit loud warnings instead of silent "below threshold" omissions; review-evidence artifacts become re-runnable post-commit. Empirical motivation: 2026-05-21 smoke trial where `review-diagrams.md` silently emitted "0 modules touched" while iteration declared T001-T011 complete. **Implements immediately after F-027 /skills slice ships.** |
 
 ## Candidate (42)
 
@@ -123,6 +124,7 @@ For roadmap-style viewing, proposals grouped by phase placement:
 - 034 (Markdown Lint Cleanup — draft, post-F-019)
 - 035 (Session-State Durability — draft, NEXT UP)
 - 036 (Branch Reconciliation — draft, SDLC pillar)
+- 073 (Review Evidence Integrity — draft, **NEXT UP after F-027 /skills**)
 - 013, 014, 015, 017, 018, 019, 020, 021, 022, 023, 027, 028, 029, 037, 038, 042, 044, 045, 046, 047, 048, 049, 050, 051, 053, 054, 055, 056, 059, 060, 061, 062, 071 (candidates)
 
 **Phase 3** (refactor + maintainability + upstream reconciliation + extensibility):
