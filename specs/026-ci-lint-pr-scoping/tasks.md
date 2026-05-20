@@ -1,6 +1,6 @@
 # Tasks: PR Lint Scoping
 
-**Input**: Design documents from `/specs/026-ci-lint-pr-scoping/`  
+**Input**: Design documents from `/specs/026-ci-lint-pr-scoping/`
 **Prerequisites**: plan.md (required), spec.md (required)
 
 **Organization**: Single chore phase with sequential milestones.
