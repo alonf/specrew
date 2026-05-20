@@ -1,10 +1,15 @@
+---
+name: specrew-update
+description: Refresh Specrew-managed assets and supported platform baselines in the current project.
+---
+
 # specrew-update
 
 **Type**: Operational Skill
 **Schema**: v1
 **Status**: Active
 **Namespace**: `/specrew`
-**Canonical command**: `/specrew.update`
+**Canonical command**: `/specrew-update`
 
 ## Purpose
 
@@ -28,8 +33,8 @@ This skill is additive. Refreshing Specrew assets does not remove or shadow `/sp
 ## Invocation
 
 ```text
-/specrew.update [--project-path <path>] [--info] [--all]
-                [--specrew] [--squad] [--spec-kit] [--skip-update-check]
+/specrew-update [--project-path <path>] [--info] [--all]
+                 [--specrew] [--squad] [--spec-kit] [--skip-update-check]
 ```
 
 Backed by: `specrew update` / `scripts/specrew-update.ps1`
@@ -66,5 +71,5 @@ Only the arguments listed above are accepted in v1. Unknown or unsupported argum
 
 ## See Also
 
-- `/specrew.version` — inspect the current version and compatibility state before updating
-- `/specrew.help` — catalog fallback and full command list
+- `/specrew-version` — inspect the current version and compatibility state before updating
+- `/specrew-help` — catalog fallback and full command list

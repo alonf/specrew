@@ -29,7 +29,7 @@ Each surface has a distinct best-use:
 | `specrew init --<flag>` non-interactive | Automation, CI, dotfile-driven setup | `specrew init --repair-budget 5 --use-defaults` |
 | `specrew start --<flag>` session override | Temporary deviation from configured defaults | `specrew start --repair-budget 1` |
 | `specrew config` standalone CLI | Inspect, change, reset, export/import | `specrew config repair-budget 5` |
-| `/specrew.config` slash command | View/edit from inside Squad session | `/specrew.config repair-budget 5` (depends on 032) |
+| `/specrew-config` slash command | View/edit from inside Squad session | `/specrew-config repair-budget 5` (depends on 032) |
 
 ### Precedence chain
 
@@ -116,7 +116,7 @@ Two iterations, ~18-22 SP total.
 
 - **Iteration 2** (~8-12 SP):
   - Interactive prompts during `specrew init` (with "skip and use defaults" fast path)
-  - `/specrew.config` slash command integration (depends on proposal 032)
+  - `/specrew-config` slash command integration (depends on proposal 032)
   - Squad coordinator-prompt updates to consume project profile as governance default
   - Drift-log integration (cite effective governance value)
   - End-to-end integration tests
@@ -126,9 +126,9 @@ Two iterations, ~18-22 SP total.
 
 **Phase 2**, post-F-020. Three sequencing options:
 
-- **Option A (combined with 032)**: ship as 25-30 SP combined feature with proposal 032 (slash commands). Composition tight — `/specrew.config` is one of the slash commands. Single narrative: "Specrew becomes installable, surfaces as first-class tool, AND captures your governance preferences."
+- **Option A (combined with 032)**: ship as 25-30 SP combined feature with proposal 032 (slash commands). Composition tight — `/specrew-config` is one of the slash commands. Single narrative: "Specrew becomes installable, surfaces as first-class tool, AND captures your governance preferences."
 
-- **Option B (sequential after 032 + 046)**: 032 ships first (slash command surface), 046 ships (auto-render), then 047 ships and the `/specrew.config` integration just works. Cleaner per-feature scope.
+- **Option B (sequential after 032 + 046)**: 032 ships first (slash command surface), 046 ships (auto-render), then 047 ships and the `/specrew-config` integration just works. Cleaner per-feature scope.
 
 - **Option C (parallel with 032)**: 047 Iter 1 (config + standalone CLI) ships independently; 047 Iter 2 ships after 032 closes (slash command tie-in).
 
@@ -152,13 +152,13 @@ Recommended: **Option B** — sequential, clearer per-feature scope, lowest risk
 - **Decision fatigue**: 10 prompts at init time is friction. Mitigation: "skip and use defaults" fast path; defaults chosen carefully to fit the majority case.
 - **Schema migration bugs**: a botched migration on `specrew update` could corrupt existing projects. Mitigation: dry-run mode, automatic backup of pre-migration config, `--rollback` flag.
 - **Authorization-pastes becoming opaque**: if Squad always consumes the profile, the user can't see at a glance what governance is in effect. Mitigation: every authorization session prints "Effective governance: <summary>" at start; `specrew config --show` displays current state.
-- **Slash-command dependency on 032**: if 032 slips, the `/specrew.config` integration ships incomplete. Mitigation: design 047 Iter 1 to be useful standalone (without slash commands); 047 Iter 2 layers the slash command on top.
+- **Slash-command dependency on 032**: if 032 slips, the `/specrew-config` integration ships incomplete. Mitigation: design 047 Iter 1 to be useful standalone (without slash commands); 047 Iter 2 layers the slash command on top.
 - **Multi-host divergence**: if `.specrew/config.yml` semantics differ between Squad / Claude Code / Codex hosts, the profile becomes per-host instead of project-level. Mitigation: lock the schema as host-neutral; hosts that need host-specific config use a separate file.
 
 ## Cross-references
 
 - **Proposal 015 (Expertise-Aware Adaptive Interaction)** — complementary: 015 *infers* preferences from observed user behavior; 047 lets the user *declare* them explicitly. Both should coexist; explicit declarations override inferred ones.
-- **Proposal 032 (Slash-Command Surface)** — composes tightly: `/specrew.config` is one of the slash commands in 032's V1 catalog.
+- **Proposal 032 (Slash-Command Surface)** — composes tightly: `/specrew-config` is one of the slash commands in 032's V1 catalog.
 - **Proposal 038 (Adaptive Boundary Discipline)** — the `boundary_tightness` dial IS the form-vs-meaning slider 038 wants to make explicit. 038's three-class taxonomy (human-judgment / mechanical-execution / strategic-progression) maps cleanly to dial values.
 - **Proposal 046 (Auto-Render Dashboard)** — the `dashboard_auto_render` dial controls 046's behavior.
 - **Proposal 035 / F-020 (Session-State Durability)** — `.specrew/config.yml` durability is established by F-020; this proposal extends what lives there.

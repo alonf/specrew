@@ -75,14 +75,14 @@ For detailed command help:
   specrew version --help
   specrew team --help (shows usage when no subcommand provided)
 
-Slash-command catalog (`/specrew.help` fallback):
-  /specrew.where    Current Specrew project dashboard
-  /specrew.status   Alias for /specrew.where
-  /specrew.update   Refresh Specrew-managed assets and runtime surfaces
-  /specrew.team     Manage Squad team members
-  /specrew.review   Replay reviewer closeout state without approving a boundary
-  /specrew.help     Canonical catalog/help fallback
-  /specrew.version  Installed version and compatibility state
+Slash-command catalog (`/specrew-help` fallback):
+  /specrew-where    Current Specrew project dashboard
+  /specrew-status   Alias for /specrew-where
+  /specrew-update   Refresh Specrew-managed assets and runtime surfaces
+  /specrew-team     Manage Squad team members
+  /specrew-review   Replay reviewer closeout state without approving a boundary
+  /specrew-help     Canonical catalog/help fallback
+  /specrew-version  Installed version and compatibility state
 '@ | Write-Host
 }
 
@@ -111,7 +111,7 @@ function Write-UnsupportedArgumentError {
 
     Write-Output "WARNING: Unsupported argument '$Argument' for 'specrew $CommandName'."
     Write-Host ("ERROR: Unsupported argument '{0}'." -f $Argument) -ForegroundColor Red
-    Write-Host ("Run 'specrew {0} --help' for usage or '/specrew.help' for the full Specrew catalog." -f $CommandName) -ForegroundColor Yellow
+    Write-Host ("Run 'specrew {0} --help' for usage or '/specrew-help' for the full Specrew catalog." -f $CommandName) -ForegroundColor Yellow
     exit 1
 }
 
@@ -123,7 +123,7 @@ function Write-MissingArgumentValueError {
 
     Write-Output "WARNING: Missing value for '$OptionName' in 'specrew $CommandName'."
     Write-Host ("ERROR: '{0}' requires a value." -f $OptionName) -ForegroundColor Red
-    Write-Host ("Run 'specrew {0} --help' for usage or '/specrew.help' for the full Specrew catalog." -f $CommandName) -ForegroundColor Yellow
+    Write-Host ("Run 'specrew {0} --help' for usage or '/specrew-help' for the full Specrew catalog." -f $CommandName) -ForegroundColor Yellow
     exit 1
 }
 
@@ -545,7 +545,7 @@ switch ($Command) {
     
     default {
         Write-Host "ERROR: Unknown command '$Command'" -ForegroundColor Red
-        Write-Host "Run 'specrew help' or '/specrew.help' to see the supported Specrew command catalog." -ForegroundColor Yellow
+        Write-Host "Run 'specrew help' or '/specrew-help' to see the supported Specrew command catalog." -ForegroundColor Yellow
         Write-Host ""
         Show-Usage
         exit 1

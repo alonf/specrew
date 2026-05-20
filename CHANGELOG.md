@@ -6,6 +6,10 @@ baseline that each release number represents.
 
 ## Unreleased
 
+- Feature 024: corrected the slash-command surface to the hyphenated `/specrew-*` catalog, deployed the managed skills set to `.claude/skills/`, `.github/skills/`, and `.agents/skills/`, and added YAML frontmatter to every shipped slash-command `SKILL.md`.
+- Added migration-safe cleanup for legacy project-local `.copilot/skills/specrew-*` content, preserving unmanaged leftovers while repopulating the active multi-host roots.
+- Added the Feature 024 regression lane: migrated slash-command distribution/discovery/compatibility/coexistence coverage, added multi-path/frontmatter/legacy-migration integration tests, and aligned runtime messaging and forward-looking governance docs with the corrected multi-host surface.
+
 ## 0.23.0 - Legacy State Read Tolerance
 
 - Feature 023: closed the legacy state read-tolerance feature with the full validator, documentation, fixture-corpus, and closeout-template scope delivered on the feature branch. The originally planned Iteration 2 slice (T025-T031) was absorbed into Iteration 001 instead of being deferred, so the truthful delivery total is 17 SP planned / 17 SP delivered / 0 SP variance.

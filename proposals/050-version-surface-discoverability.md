@@ -60,9 +60,9 @@ Three output modes:
 | `--json` | Structured JSON | Scripted consumption |
 | `--short` | Just the Specrew version | `$version = specrew version --short` in scripts |
 
-### Pillar 3: `/specrew.version` slash command
+### Pillar 3: `/specrew-version` slash command
 
-Already in Proposal 032's catalog. This proposal does not change 032's scope; once 032 ships, `/specrew.version` invokes the new `specrew version` shell command. Listed here for cross-reference only.
+Already in Proposal 032's catalog. This proposal does not change 032's scope; once 032 ships, `/specrew-version` invokes the new `specrew version` shell command. Listed here for cross-reference only.
 
 ### Why a separate command instead of aliasing `specrew update --info`
 
@@ -93,7 +93,7 @@ Sequencing options:
 
 - **Option A**: ship as standalone small feature (~3 SP) immediately after F-020 — quick win, low risk.
 - **Option B (recommended)**: combine with proposal 049 into a single "Version surface refresh" feature (~6 SP). Both touch the same version-check helper; combining minimizes code-touching churn.
-- **Option C**: combine with proposal 032 (slash commands) — the `/specrew.version` slash command is already in 032's catalog; if this ships first, 032 wires it up; if 032 ships first, this proposal becomes purely shell-side.
+- **Option C**: combine with proposal 032 (slash commands) — the `/specrew-version` slash command is already in 032's catalog; if this ships first, 032 wires it up; if 032 ships first, this proposal becomes purely shell-side.
 
 Recommended: **Option B** (combine with 049). Together ~6 SP, all version-display work in one feature.
 
@@ -121,7 +121,7 @@ Recommended: **Option B** (combine with 049). Together ~6 SP, all version-displa
 - **Proposal 035 / F-020 (Session-State Durability)** — extracted the version-check helper this proposal builds on
 - **Proposal 049 (Version-Check Source Unification)** — recommended combination target; shares the same helper
 - **Proposal 047 (Project Governance Profile)** — `ci_suppress_prompts` dial composes with banner suppression
-- **Proposal 032 (Specrew Slash-Command Surface)** — `/specrew.version` slash command is already in 032's catalog; this proposal makes the shell-side command it wraps
+- **Proposal 032 (Specrew Slash-Command Surface)** — `/specrew-version` slash command is already in 032's catalog; this proposal makes the shell-side command it wraps
 - **Proposal 046 (Auto-Render Dashboard)** — dashboard rendering at closeout could include the version banner; complementary not competing
 - **Proposal 048 (Dashboard Velocity Metric Refinement)** — composes; the dashboard renderer already touched by 046+048 can include the version banner
 

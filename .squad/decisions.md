@@ -1,3 +1,79 @@
+## 2026-05-20T00:50:00Z — Decision: Retro Facilitator Feature 024 Iteration-Closeout Boundary
+
+- **Decision ID**: retro-f024-iteration-closeout
+- **Type**: iteration-closeout boundary completion
+- **Boundary**: iteration-closeout
+- **Authority**: Retro Facilitator (Alon Fliess authorization)
+- **Recorded At**: 2026-05-20T00:50:00Z
+- **Feature**: 024-slash-command-multi-host-correctness
+- **Iteration**: 001
+
+## Authorization Context
+
+User-authorized boundary advance: "Open iteration-closeout for Feature 024 Iteration 001, generate the iteration dashboard snapshot, sync the lifecycle state, and stop before feature-closeout authorization."
+
+## Execution Summary
+
+Iteration-closeout boundary opened for Feature 024 Iteration 001 with the following artifacts created and updated:
+
+- **Dashboard artifact**: Created `specs/024-slash-command-multi-host-correctness/iterations/001/dashboard.md` capturing iteration-closeout snapshot at 2026-05-20T00:50:00Z with 7 SP delivered (zero variance), reflecting recent shipped artifacts and velocity metrics
+
+- **State artifact**: Updated `specs/024-slash-command-multi-host-correctness/iterations/001/state.md` to record `iteration-closeout` phase status and clarify that feature-closeout remains unopened
+
+- **Plan artifact**: Updated `specs/024-slash-command-multi-host-correctness/iterations/001/plan.md` to advance status from `retro` to `iteration-closeout`
+
+- **Session state files**: Updated to reflect iteration-closeout completion:
+  - `.squad/identity/now.md`: recorded iteration-closeout-complete status
+  - `.specrew/last-start-prompt.md`: updated boundary to `iteration-closeout-complete`
+  - `.specrew/start-context.json`: updated session_state_boundary to reflect iteration-closeout completion
+
+## Methodology Note: Proposal 066 Cumulative Evidence
+
+Feature 024 Iteration 001 is the **first feature where every human-input boundary (implementation approval, review approval, retro authorization, iteration-closeout authorization) has been respected end-to-end without autopilot bypass under Proposal 066 / commit c55ec92**. This empirical confirmation validates that the gate-respecting default can reliably hold autonomous systems at correct lifecycle boundaries. The Squad runtime did not attempt to advance beyond each approved gate, and no manual workaround was required to enforce boundary discipline.
+
+## Result
+
+Iteration-closeout is complete. Feature-closeout remains unopened pending fresh human authorization. Feature 024 Iteration 001 is fully closed with truthful lifecycle artifacts.
+
+---
+
+## 2026-05-20T00:40:00Z — Decision: Retro Facilitator Feature 024 Retro Boundary
+
+- **Decision ID**: retro-f024-retro-boundary
+- **Type**: retro boundary completion
+- **Boundary**: retro
+- **Authority**: Retro Facilitator (Alon Fliess authorization)
+- **Recorded At**: 2026-05-20T00:40:00Z
+- **Feature**: 024-slash-command-multi-host-correctness
+- **Iteration**: 001
+
+## Authorization Context
+
+User-authorized boundary advance: "Open the retro boundary for Feature 024 Iteration 001 and make the lifecycle artifacts truthful, then stop short of iteration-closeout."
+
+## Execution Summary
+
+Retro boundary opened for Feature 024 Iteration 001 with the following artifacts created and updated:
+
+- **Retro artifact**: Created `specs/024-slash-command-multi-host-correctness/iterations/001/retro.md` capturing:
+  - Form-vs-meaning bug class motivation: slash commands appeared to exist on disk but were non-discoverable on any host; this feature restores true end-to-end discoverability
+  - Gate-respecting default validation (Proposal 066, commit c55ec92): Squad respected all three lifecycle boundaries (implementation approved → review-signoff complete → retro authorized, with iteration-closeout explicitly forbidden) without autopilot bypass
+  - Methodology evidence (Proposal 067): small-fix slices (logo asset restructure, banner ASCII, gate-respecting default) shipped in parallel with Feature 024 without disrupting feature delivery
+  - Sequencing-impact note: Copilot pricing pivot ~2026-05-30 reshuffles queue; cost-reduction bundle (Proposals 068, 069, 070) jumps ahead of Feature 025; Feature 024 PR should land just before bundle starts
+  
+- **State artifact**: Updated `specs/024-slash-command-multi-host-correctness/iterations/001/state.md` to record `retro-complete` phase status and clarify that iteration-closeout remains unopened
+
+- **Session state files**: Updated to reflect retro-boundary completion:
+  - `.squad/identity/now.md`: recorded retro-boundary status
+  - `.specrew/last-start-prompt.md`: updated boundary to `retro-boundary-complete`
+  - `.specrew/start-context.json`: updated session_state_boundary to reflect retro completion
+
+## Result
+
+Retro-boundary-signoff is complete. Iteration-closeout and feature-closeout remain unopened pending fresh human authorization. Feature 024 Iteration 001 is ready for iteration-closeout when that boundary receives explicit authorization.
+
+---
+
 ## 2026-05-19T11:30:00Z — Decision: Implementer Feature 023 Prerelease Release Primitives
 
 - **Decision ID**: implementer-f023-prerelease
@@ -15233,5 +15309,47 @@ The post-merge identity correction was necessary and aligned with Feature 022 cl
 
 **Action taken**: Identity state normalized post-merge. Merge verification now complete.
 
+## 2026-05-20T00:35:41Z — Boundary sync warning: review-signoff
 
+- **Boundary Type**: review-signoff
+- **Latest Recorded Boundary**: plan
+- **Recorded At**: 2026-05-20T00:35:41Z
+- **Warning**: Expected next boundary 'tasks' but received 'review-signoff'.
 
+## 2026-05-20T00:35:41Z — Boundary sync: review-signoff
+
+- **Boundary Type**: review-signoff
+- **Feature Ref**: 024-slash-command-multi-host-correctness
+- **Iteration Number**: 001
+- **Task ID**: (none)
+- **Auth Commit Hash**: 5f826f8d2d6e33889a99e4710e11a252eb21e4e7
+- **Recorded At**: 2026-05-20T00:35:41Z
+
+## 2026-05-20T00:35:41Z — Sign-off: review-verdict-signoff
+
+- **Decision ID**: signoff-feature-024-iter-001-review-verdict
+- **Type**: sign-off
+- **Boundary**: review-verdict-signoff
+- **Approving Human**: Alon Fliess
+- **Recorded At**: 2026-05-20T00:35:41Z
+- **Commit Reference**: pending
+- **Authorization Text**:
+  > Approved. Open the review boundary for Feature 024.
+  >
+  > Independent verification confirms:
+  >   - 25/25 tasks complete
+  >   - 11 integration scripts + governance validator all returned exit 0
+  >   - Multi-host deployment correctly implemented at deploy-squad-runtime.ps1 lines 381-383 (.claude\skills, .github\skills, .agents\skills)
+  >   - Legacy migration at line 517-522 only removes Specrew-managed specrew-* directories; unmanaged content (user-modified or third-party) is preserved as legacy-unmanaged-skill
+  >   - YAML frontmatter on all SKILL.md templates with hyphenated /specrew-*
+  >   - Version bumped to 0.24.0 in Specrew.psd1 and .specrew/config.yml
+  >
+  > Proceed with /speckit.review and the post-review boundary per the lifecycle. Stop at the next human-authorization boundary (review verdict → retro authorization).
+  >
+  > Note for the F-024 retro: Squad's coordinator correctly stopped at the implementation→review boundary this time, per the gate-respecting default shipped at c55ec92 (Proposal 066). This is the first empirical confirmation that the boundary fix is working as designed.
+  >
+  > Reference: implementation-complete boundary, branch 024-slash-command-multi-host-correctness.
+
+## Summary
+
+Review-verdict-signoff is complete for Feature 024 Iteration 001. The approved review covers the current working tree; retro remains blocked pending fresh human authorization.

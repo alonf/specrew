@@ -312,8 +312,9 @@ function Write-PostBootstrapGuidance {
     Write-Host '   - Run validate-governance.ps1 before phase transitions' -ForegroundColor White
     Write-Host ''
     Write-Host 'Slash-command surface provisioned:' -ForegroundColor Green
-    Write-Host '   - /specrew.where, /specrew.status, /specrew.update, /specrew.team, /specrew.review, /specrew.help, /specrew.version' -ForegroundColor White
-    Write-Host '   - If host-native /specrew. discovery is unavailable, use /specrew.help as the catalog fallback' -ForegroundColor White
+    Write-Host '   - /specrew-where, /specrew-status, /specrew-update, /specrew-team, /specrew-review, /specrew-help, /specrew-version' -ForegroundColor White
+    Write-Host '   - Deployed to .claude/skills/, .github/skills/, and .agents/skills/ with identical SKILL.md content' -ForegroundColor White
+    Write-Host '   - If host-native /specrew- discovery is unavailable, use /specrew-help as the catalog fallback' -ForegroundColor White
     Write-Host ''
     Write-Host '4. (Optional) Add domain-specific team members:' -ForegroundColor Yellow
     Write-Host '   Add extra Squad members after bootstrap with Security Analyst, UX Designer,' -ForegroundColor White
@@ -2355,7 +2356,7 @@ if (-not $SpecKitExtensionOnly) {
             Add-Action -Actions $actions -Step 'squad-runtime' -Outcome ("{0}: {1}" -f $deploymentAction.Action, $deploymentAction.Path)
         }
 
-        Add-Action -Actions $actions -Step 'slash-surface' -Outcome 'provisioned /specrew.where, /specrew.status, /specrew.update, /specrew.team, /specrew.review, /specrew.help, /specrew.version'
+        Add-Action -Actions $actions -Step 'slash-surface' -Outcome 'provisioned /specrew-where, /specrew-status, /specrew-update, /specrew-team, /specrew-review, /specrew-help, /specrew-version across .claude/skills, .github/skills, and .agents/skills'
     }
     else {
         Add-Action -Actions $actions -Step 'squad-runtime' -Outcome 'skipped: .squad is absent in brownfield workspace'

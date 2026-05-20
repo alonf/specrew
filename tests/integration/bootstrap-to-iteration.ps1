@@ -174,14 +174,17 @@ foreach ($relativePath in $requiredBootstrapPaths) {
     }
 }
 
-$skillPath = Join-Path -Path $projectRoot -ChildPath '.copilot\skills'
-$hasSpecrewSkills = $false
-if (Test-Path -Path $skillPath -PathType Container) {
-    $hasSpecrewSkills = [bool](Get-ChildItem -Path $skillPath -Directory -ErrorAction SilentlyContinue | Where-Object { $_.Name -like 'specrew-*' } | Select-Object -First 1)
-}
+$skillRoots = @('.claude\skills', '.github\skills', '.agents\skills')
+foreach ($skillRoot in $skillRoots) {
+    $skillPath = Join-Path -Path $projectRoot -ChildPath $skillRoot
+    $hasSpecrewSkills = $false
+    if (Test-Path -Path $skillPath -PathType Container) {
+        $hasSpecrewSkills = [bool](Get-ChildItem -Path $skillPath -Directory -ErrorAction SilentlyContinue | Where-Object { $_.Name -like 'specrew-*' } | Select-Object -First 1)
+    }
 
-if (-not $hasSpecrewSkills) {
-    $missingPaths += '.copilot\skills\specrew-*'
+    if (-not $hasSpecrewSkills) {
+        $missingPaths += "$skillRoot\specrew-*"
+    }
 }
 
 if ($missingPaths.Count -gt 0) {
@@ -244,7 +247,7 @@ $hardeningGatePath = Join-Path -Path $iterationDirectory -ChildPath 'quality\har
 $qualityLensesPath = Join-Path -Path $iterationDirectory -ChildPath 'quality\lenses'
 $trapReapplicationPath = Join-Path -Path $iterationDirectory -ChildPath 'quality\trap-reapplication.md'
 $specPath = Join-Path -Path $specDirectory -ChildPath 'spec.md'
-$resumeSkillPath = Join-Path -Path $projectRoot -ChildPath '.copilot\skills\specrew-iteration-resume\SKILL.md'
+$resumeSkillPath = Join-Path -Path $projectRoot -ChildPath '.agents\skills\specrew-iteration-resume\SKILL.md'
 $implementerCharterPath = Join-Path -Path $projectRoot -ChildPath '.squad\agents\implementer\charter.md'
 $reviewerCharterPath = Join-Path -Path $projectRoot -ChildPath '.squad\agents\reviewer\charter.md'
 $coordinatorPromptPath = Join-Path -Path $projectRoot -ChildPath '.github\agents\squad.agent.md'

@@ -1,7 +1,7 @@
 # Specrew
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![Version](https://img.shields.io/badge/version-0.23.0-blue.svg)](.specrew/config.yml)
+[![Version](https://img.shields.io/badge/version-0.24.0-blue.svg)](.specrew/config.yml)
 [![Status: Alpha](https://img.shields.io/badge/status-alpha-orange.svg)](#current-state)
 
 Specrew combines Spec Kit and Squad into a spec-governed operating model for
@@ -9,10 +9,12 @@ AI-assisted software delivery.
 
 ## Current State
 
-- Public shipped baseline: **0.23.0**, backed by 23 implementing features
+- Active development line on this branch: **0.24.0**
+- Latest shipped stable baseline: **0.23.0**, backed by 23 implementing features
 - Alpha software, validated through dogfooding in this repository
-- Built today for a single developer running on a single host
-- Not yet ready for multi-developer coordination or multi-host operation
+- Built today for a single developer
+- Slash-command discovery is now aligned for **Claude Code** and **GitHub Copilot CLI**, with `.agents/skills/` shipped as a host-neutral future-proof path
+- Not yet ready for multi-developer coordination; Codex slash-command discoverability remains deferred
 - Release truth now has public-facing surfaces in `CHANGELOG.md`,
   `docs\versioning.md`, and the `v0.15.0` / `v0.16.0` / `v0.17.0` / `v0.18.0` / `v0.19.0` / `v0.20.0` tags
 
@@ -24,14 +26,14 @@ AI-assisted software delivery.
 - `specrew where` / `specrew status` render the repository's velocity dashboard
   from canonical feature, iteration, and roadmap artifacts, using richer default
   rendering when the terminal can truthfully support it
-- **Feature 021 slash-command surface**: seven-command `/specrew.*` surface with discovery and help
-  - `/specrew.where` — velocity dashboard ("Where am I?")
-  - `/specrew.status` — alias for `/specrew.where`
-  - `/specrew.update` — update Specrew assets
-  - `/specrew.team` — show team context
-  - `/specrew.review` — enter the review workflow
-  - `/specrew.help` — show the command catalog (fallback when host-native discovery is unavailable)
-  - `/specrew.version` — display version info
+- **Feature 024 slash-command surface correction**: seven-command `/specrew-*` surface with multi-host deployment, YAML frontmatter, and truthful discovery/help
+  - `/specrew-where` — velocity dashboard ("Where am I?")
+  - `/specrew-status` — alias for `/specrew-where`
+  - `/specrew-update` — update Specrew assets
+  - `/specrew-team` — show team context
+  - `/specrew-review` — enter the review workflow
+  - `/specrew-help` — show the command catalog (fallback when host-native discovery is unavailable)
+  - `/specrew-version` — display version info
 - Session-state durability and in-flight progress tracking across system reboots,
   worktree switches, and boundary events (Feature 020)
 - Iteration closeout and feature closeout capture immutable dashboard snapshots
@@ -150,9 +152,9 @@ Specrew currently uses a merge-at-close rhythm:
 ## Versioning
 
 - `.specrew\config.yml` is the canonical source for the active version and now
-  declares **0.23.0**.
+  declares **0.24.0** on this branch.
 - Feature releases use `0.NN.0`, where `NN` tracks the shipped feature ordinal
-  (`0.23.0` = Feature 023).
+  (`0.24.0` = Feature 024).
 - `0.NN.M` is reserved for hotfixes against an existing shipped feature
   baseline.
 - See `docs\versioning.md` for the policy details and `CHANGELOG.md` for the

@@ -39,7 +39,7 @@ Proposals with full source-spec content, ready for `/speckit.specify` ingestion 
 | [035](035-session-state-durability.md) | Session-State Durability & In-Flight Progress Tracking | phase-2 | 30 | Next up after F-019. Source spec at file:///C:/Dev/SpecrewDraft/session-state-durability.md. Addresses L6 closeout-cascade lesson. |
 | [036](036-branch-reconciliation.md) | Lifecycle Branch Reconciliation | phase-2 | 13 | SDLC pillar; single-developer precursor to [010] multi-developer. MERGE only, never rebase. |
 | [040](040-token-economy-governance.md) | Token Economy as Governance Driver | phase-4 | 38 | 7-layer architecture; two billing modes (metered + quota); model names ONLY in catalog L3-L4 |
-| [064](064-slash-command-multi-host-correctness.md) | Slash-Command Multi-Host Correctness (F-021 Surface Restoration) | phase-2 | 7 | Restores F-021's non-functional `/specrew.*` surface; multi-deploy to `.claude/skills/`, `.github/skills/`, `.agents/skills/`; YAML frontmatter; drop dot-namespace. Source spec at file:///C:/Dev/SpecrewDraft/slash-command-multi-host-correctness.md |
+| [064](064-slash-command-multi-host-correctness.md) | Slash-Command Multi-Host Correctness (F-021 Surface Restoration) | phase-2 | 7 | Restores F-021's non-functional `/specrew-*` surface; multi-deploy to `.claude/skills/`, `.github/skills/`, `.agents/skills/`; YAML frontmatter; drop dotted command forms. Source spec at file:///C:/Dev/SpecrewDraft/slash-command-multi-host-correctness.md |
 
 ## Candidate (42)
 

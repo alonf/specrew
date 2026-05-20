@@ -2,7 +2,7 @@
 
 ## Overview
 
-This directory contains Squad skill templates for Specrew runtime deployment. The bootstrap/runtime scripts copy the active skills to `.copilot/skills/specrew-*/SKILL.md`.
+This directory contains Squad skill templates for Specrew runtime deployment. The bootstrap/runtime scripts copy the active slash-command skills content-identically to `.claude/skills/specrew-*/SKILL.md`, `.github/skills/specrew-*/SKILL.md`, and `.agents/skills/specrew-*/SKILL.md`.
 
 ## Skills
 
@@ -45,17 +45,17 @@ This directory contains Squad skill templates for Specrew runtime deployment. Th
 
 ## Slash-Command Runtime Skills
 
-These subdirectory skills are deployed directly to `.copilot/skills/specrew-*/SKILL.md` and back the Feature 021 `/specrew.*` surface:
+These subdirectory skills are deployed directly to the three active project skill roots and back the Feature 024 `/specrew-*` surface:
 
 | Skill directory | Slash command | Purpose |
 | --- | --- | --- |
-| `specrew-where` | `/specrew.where` | Current Specrew project dashboard |
-| `specrew-status` | `/specrew.status` | Alias for `/specrew.where` |
-| `specrew-update` | `/specrew.update` | Refresh Specrew-managed assets |
-| `specrew-team` | `/specrew.team` | Manage Squad team members |
-| `specrew-review` | `/specrew.review` | Replay review state without approving a boundary |
-| `specrew-help` | `/specrew.help` | Canonical catalog fallback |
-| `specrew-version` | `/specrew.version` | Version and compatibility inspection |
+| `specrew-where` | `/specrew-where` | Current Specrew project dashboard |
+| `specrew-status` | `/specrew-status` | Alias for `/specrew-where` |
+| `specrew-update` | `/specrew-update` | Refresh Specrew-managed assets |
+| `specrew-team` | `/specrew-team` | Manage Squad team members |
+| `specrew-review` | `/specrew-review` | Replay review state without approving a boundary |
+| `specrew-help` | `/specrew-help` | Canonical catalog fallback |
+| `specrew-version` | `/specrew-version` | Version and compatibility inspection |
 
 ## References
 

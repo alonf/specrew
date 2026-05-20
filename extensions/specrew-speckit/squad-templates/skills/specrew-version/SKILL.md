@@ -1,10 +1,15 @@
+---
+name: specrew-version
+description: Show the installed Specrew version and the slash-command compatibility state.
+---
+
 # specrew-version
 
 **Type**: Informational Skill
 **Schema**: v1
 **Status**: Active
 **Namespace**: `/specrew`
-**Canonical command**: `/specrew.version`
+**Canonical command**: `/specrew-version`
 
 ## Purpose
 
@@ -24,7 +29,7 @@ This skill provides **version and compatibility information only**. It does **no
 ## Invocation
 
 ```text
-/specrew.version [--project-path <path>]
+/specrew-version [--project-path <path>]
 ```
 
 Backed by: `specrew version` / `scripts/specrew-version.ps1`
@@ -40,8 +45,8 @@ Backed by: `specrew version` / `scripts/specrew-version.ps1`
 - Installed Specrew version (from module or `Specrew.psd1`)
 - Project baseline version (from `.specrew/config.yml`)
 - Slash-command compatibility state:
-  - `compatible` — the installed version ships the Feature 021 slash-command surface
-  - `incompatible` — the installed version predates the slash-command surface; upgrade guidance is shown
+  - `compatible` — the installed version ships the Feature 024 multi-host slash-command surface
+  - `incompatible` — the installed version predates the multi-host slash-command surface; upgrade guidance is shown
   - `unknown` — the installed version cannot be determined
 - Remediation guidance when compatibility is not met:
   - For outdated installed version: `Update-Module Specrew` or equivalent
@@ -62,13 +67,13 @@ Only `--project-path` is accepted in v1. Unknown arguments are rejected with exp
 
 ## Compatibility Baseline
 
-The minimum compatible version is the **first published Specrew release that ships Feature 021** (the slash-command surface). Projects running on a pre-slash-command baseline (`0.20.0` or earlier) must upgrade to access the full `/specrew.*` command surface.
+The minimum compatible version is the **first published Specrew release that ships Feature 024** (the multi-host slash-command surface). Projects running on a pre-v0.24.0 baseline must upgrade to access the full `/specrew-*` command surface.
 
 ## Coexistence
 
-Part of the `/specrew.*` namespace. Coexists with `/speckit.*` without collision.
+Part of the `/specrew-*` command surface. Coexists with `/speckit.*` without collision.
 
 ## See Also
 
-- `/specrew.update` — refresh Specrew assets and compatibility baseline
-- `/specrew.help` — catalog fallback and full command list
+- `/specrew-update` — refresh Specrew assets and compatibility baseline
+- `/specrew-help` — catalog fallback and full command list

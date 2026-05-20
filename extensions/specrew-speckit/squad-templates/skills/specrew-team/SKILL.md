@@ -1,10 +1,15 @@
+---
+name: specrew-team
+description: Manage Squad team members and baseline-role composition in the current Specrew project.
+---
+
 # specrew-team
 
 **Type**: Operational Skill
 **Schema**: v1
 **Status**: Active
 **Namespace**: `/specrew`
-**Canonical command**: `/specrew.team`
+**Canonical command**: `/specrew-team`
 
 ## Purpose
 
@@ -22,15 +27,15 @@ This skill manages **team configuration only**. It does **not** authorize or imp
 
 ## Coexistence Contract
 
-This skill is part of the `/specrew.*` namespace and does not collide with `/speckit.*` commands.
+This skill is part of the `/specrew-*` command surface and does not collide with `/speckit.*` commands.
 
 ## Invocation
 
 ```text
-/specrew.team list [--project-path <path>]
-/specrew.team add <member-name> --role <role> --charter <text> [--project-path <path>]
-/specrew.team update <member-name> [--role <role>] [--charter <text>] [--project-path <path>]
-/specrew.team remove <member-name> [--project-path <path>]
+/specrew-team list [--project-path <path>]
+/specrew-team add <member-name> --role <role> --charter <text> [--project-path <path>]
+/specrew-team update <member-name> [--role <role>] [--charter <text>] [--project-path <path>]
+/specrew-team remove <member-name> [--project-path <path>]
 ```
 
 Backed by: `specrew team` / `scripts/specrew-team.ps1`
@@ -73,11 +78,11 @@ Only the subcommands and options listed above are accepted in v1. Unknown subcom
 | Failure mode | Behavior |
 | --- | --- |
 | Unknown subcommand | Rejected with usage guidance |
-| Missing required option (e.g., `--role` for `add`) | Rejected with command-specific help |
+| Missing required option (for example `--role` for `add`) | Rejected with command-specific help |
 | Attempt to remove a baseline role | Blocked with explanation that baseline roles are managed by Specrew |
 | Missing project setup | Stop with `specrew init` remediation |
 
 ## See Also
 
-- `/specrew.help` — catalog fallback and full command list
-- `/specrew.where` — project status dashboard (includes team view with `--team`)
+- `/specrew-help` — catalog fallback and full command list
+- `/specrew-where` — project status dashboard (includes team view with `--team`)

@@ -26,98 +26,67 @@ function Assert-True {
     Write-Pass $Message
 }
 
-function Assert-Contains {
-    param(
-        [Parameter(Mandatory = $true)][string]$Text,
-        [Parameter(Mandatory = $true)][string]$Substring,
-        [Parameter(Mandatory = $true)][string]$Message
-    )
-    if ($Text -notlike "*$Substring*") {
-        Write-Fail "$Message (expected '$Substring' in text)"
-        exit 1
-    }
-    Write-Pass $Message
-}
-
-$repoRoot = (Resolve-Path (Join-Path -Path $PSScriptRoot -ChildPath '..\..')).Path
+$repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
 $skillsRoot = Join-Path $repoRoot 'extensions\specrew-speckit\squad-templates\skills'
+$commands = @(
+    [pscustomobject]@{ Dir = 'specrew-where'; Command = '/specrew-where' }
+    [pscustomobject]@{ Dir = 'specrew-status'; Command = '/specrew-status' }
+    [pscustomobject]@{ Dir = 'specrew-update'; Command = '/specrew-update' }
+    [pscustomobject]@{ Dir = 'specrew-team'; Command = '/specrew-team' }
+    [pscustomobject]@{ Dir = 'specrew-review'; Command = '/specrew-review' }
+    [pscustomobject]@{ Dir = 'specrew-help'; Command = '/specrew-help' }
+    [pscustomobject]@{ Dir = 'specrew-version'; Command = '/specrew-version' }
+)
 
 Write-Host ''
 Write-Host '=== Slash-Command Discovery Validation Tests ===' -ForegroundColor Cyan
 Write-Host "Repo root: $repoRoot"
 Write-Host ''
 
-# v1 command catalog
-$v1Commands = @(
-    [pscustomobject]@{ Command = 'where';   DirName = 'specrew-where';   SlashForm = '/specrew.where' },
-    [pscustomobject]@{ Command = 'status';  DirName = 'specrew-status';  SlashForm = '/specrew.status' },
-    [pscustomobject]@{ Command = 'update';  DirName = 'specrew-update';  SlashForm = '/specrew.update' },
-    [pscustomobject]@{ Command = 'team';    DirName = 'specrew-team';    SlashForm = '/specrew.team' },
-    [pscustomobject]@{ Command = 'review';  DirName = 'specrew-review';  SlashForm = '/specrew.review' },
-    [pscustomobject]@{ Command = 'version'; DirName = 'specrew-version'; SlashForm = '/specrew.version' },
-    [pscustomobject]@{ Command = 'help';    DirName = 'specrew-help';    SlashForm = '/specrew.help' }
-)
-
-# --- Test 1: All 7 skill SKILL.md files exist ---
-Write-Host '--- Test 1: All 7 v1 SKILL.md files exist in skill subdirectories ---'
-foreach ($entry in $v1Commands) {
-    $path = Join-Path $skillsRoot "$($entry.DirName)\SKILL.md"
-    Assert-True -Condition (Test-Path -LiteralPath $path -PathType Leaf) -Message "SKILL.md exists: $($entry.DirName)"
-}
-
-# --- Test 2: Each SKILL.md references its own slash-command form ---
-Write-Host ''
-Write-Host '--- Test 2: Each SKILL.md contains its own slash-command identifier ---'
-foreach ($entry in $v1Commands) {
-    $path = Join-Path $skillsRoot "$($entry.DirName)\SKILL.md"
+Write-Host '--- Test 1: each SKILL.md begins with YAML frontmatter ---'
+foreach ($entry in $commands) {
+    $path = Join-Path $skillsRoot "$($entry.Dir)\SKILL.md"
     $content = Get-Content -LiteralPath $path -Raw
-    $slashRef = $entry.SlashForm -replace '/', ''  # match without leading slash too
-    # Accept either /specrew.X or specrew.X in the content
-    $found = ($content -like "*$($entry.SlashForm)*") -or ($content -like "*$slashRef*")
-    Assert-True -Condition $found -Message "SKILL.md for $($entry.DirName) references $($entry.SlashForm)"
+    Assert-True -Condition ($content.StartsWith("---`n") -or $content.StartsWith("---`r`n")) -Message "$($entry.Dir) starts with YAML frontmatter"
+    Assert-True -Condition ($content -match "(?m)^name:\s+$([regex]::Escape($entry.Dir))\r?$") -Message "$($entry.Dir) frontmatter name matches directory"
+    Assert-True -Condition ($content -match '(?m)^description:\s+\S+') -Message "$($entry.Dir) frontmatter has non-empty description"
 }
 
-# --- Test 3: specrew-help SKILL.md catalogs all 7 commands ---
 Write-Host ''
-Write-Host '--- Test 3: /specrew.help SKILL.md catalogs all v1 commands ---'
-$helpSkillContent = Get-Content -LiteralPath (Join-Path $skillsRoot 'specrew-help\SKILL.md') -Raw
-foreach ($entry in $v1Commands) {
-    $found = ($helpSkillContent -like "*$($entry.SlashForm)*") -or ($helpSkillContent -like "*$($entry.Command)*")
-    Assert-True -Condition $found -Message "/specrew.help SKILL.md references $($entry.Command)"
+Write-Host '--- Test 2: each SKILL.md references its own hyphenated slash-command form ---'
+foreach ($entry in $commands) {
+    $content = Get-Content -LiteralPath (Join-Path $skillsRoot "$($entry.Dir)\SKILL.md") -Raw
+    Assert-True -Condition ($content -like "*$($entry.Command)*") -Message "$($entry.Dir) references $($entry.Command)"
+    Assert-True -Condition ($content -notmatch '`/specrew\.') -Message "$($entry.Dir) does not use deprecated dot-form slash commands"
 }
 
-# --- Test 4: specrew-status SKILL.md identifies it as alias for /specrew.where ---
 Write-Host ''
-Write-Host '--- Test 4: /specrew.status SKILL.md identifies alias relationship ---'
-$statusContent = Get-Content -LiteralPath (Join-Path $skillsRoot 'specrew-status\SKILL.md') -Raw
-$isAlias = ($statusContent -like '*alias*') -or ($statusContent -like '*same as*') -or ($statusContent -like '*equivalent*') -or ($statusContent -like '*maps to*')
-Assert-True -Condition $isAlias -Message '/specrew.status SKILL.md documents alias relationship'
-Assert-Contains -Text $statusContent -Substring 'where' -Message '/specrew.status SKILL.md references /specrew.where'
-
-# --- Test 5: skills/README.md documents all 7 commands ---
-Write-Host ''
-Write-Host '--- Test 5: skills/README.md documents all 7 v1 slash commands ---'
-$readmePath = Join-Path $skillsRoot 'README.md'
-Assert-True -Condition (Test-Path -LiteralPath $readmePath -PathType Leaf) -Message 'skills/README.md exists'
-$readmeContent = Get-Content -LiteralPath $readmePath -Raw
-foreach ($entry in $v1Commands) {
-    Assert-Contains -Text $readmeContent -Substring $entry.Command -Message "skills/README.md documents $($entry.Command)"
-}
-
-# --- Test 6: /specrew.help SKILL.md points to /specrew.help as fallback surface ---
-Write-Host ''
-Write-Host '--- Test 6: /specrew.help SKILL.md establishes discovery fallback ---'
+Write-Host '--- Test 3: specrew-help catalogs all seven hyphenated commands ---'
 $helpContent = Get-Content -LiteralPath (Join-Path $skillsRoot 'specrew-help\SKILL.md') -Raw
-Assert-Contains -Text $helpContent -Substring '/specrew.help' -Message '/specrew.help SKILL.md self-references /specrew.help as fallback'
+foreach ($entry in $commands) {
+    Assert-True -Condition ($helpContent -like "*$($entry.Command)*") -Message "specrew-help catalogs $($entry.Command)"
+}
 
-# --- Test 7: quickstart.md validates discovery step is documented ---
 Write-Host ''
-Write-Host '--- Test 7: quickstart.md validates /specrew.help discovery step ---'
-$quickstartPath = Join-Path $repoRoot 'specs\021-specrew-slash-commands\quickstart.md'
-Assert-True -Condition (Test-Path -LiteralPath $quickstartPath -PathType Leaf) -Message 'quickstart.md exists'
-$quickstartContent = Get-Content -LiteralPath $quickstartPath -Raw
-Assert-Contains -Text $quickstartContent -Substring '/specrew.help' -Message 'quickstart.md references /specrew.help as discovery fallback'
-Assert-Contains -Text $quickstartContent -Substring 'specrew-*' -Message 'quickstart.md references specrew-* deployed skill directories'
+Write-Host '--- Test 4: specrew-status documents alias parity with specrew-where ---'
+$statusContent = Get-Content -LiteralPath (Join-Path $skillsRoot 'specrew-status\SKILL.md') -Raw
+Assert-True -Condition ($statusContent -like '*/specrew-where*') -Message 'specrew-status references /specrew-where'
+Assert-True -Condition ($statusContent -like '*alias*' -or $statusContent -like '*identical output*') -Message 'specrew-status documents alias parity'
+
+Write-Host ''
+Write-Host '--- Test 5: skills README documents the three active roots and the hyphenated catalog ---'
+$readmeContent = Get-Content -LiteralPath (Join-Path $skillsRoot 'README.md') -Raw
+Assert-True -Condition ($readmeContent -like '*.claude/skills*' -or $readmeContent -like '*.claude\skills*') -Message 'skills README mentions .claude/skills'
+Assert-True -Condition ($readmeContent -like '*.github/skills*' -or $readmeContent -like '*.github\skills*') -Message 'skills README mentions .github/skills'
+Assert-True -Condition ($readmeContent -like '*.agents/skills*' -or $readmeContent -like '*.agents\skills*') -Message 'skills README mentions .agents/skills'
+Assert-True -Condition ($readmeContent -like '*/specrew-help*') -Message 'skills README documents /specrew-help'
+
+Write-Host ''
+Write-Host '--- Test 6: Feature 024 quickstart documents the hyphenated discovery form ---'
+$quickstartContent = Get-Content -LiteralPath (Join-Path $repoRoot 'specs\024-slash-command-multi-host-correctness\quickstart.md') -Raw
+Assert-True -Condition ($quickstartContent -like '*/specrew-help*') -Message 'Feature 024 quickstart references /specrew-help'
+Assert-True -Condition ($quickstartContent -like '*.claude/skills*' -or $quickstartContent -like '*.claude\skills*') -Message 'Feature 024 quickstart documents .claude/skills'
+Assert-True -Condition ($quickstartContent -like '*.agents/skills*' -or $quickstartContent -like '*.agents\skills*') -Message 'Feature 024 quickstart documents .agents/skills'
 
 Write-Host ''
 Write-Host '=== All discovery validation tests passed ===' -ForegroundColor Green

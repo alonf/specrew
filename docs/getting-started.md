@@ -13,14 +13,14 @@ Practical quickstart for running Specrew in a new repo (greenfield) and adding i
 for Linux and macOS is in progress (path handling hardened; CI validation configured).
 See README.md for current platform validation status.
 
-## Key Capabilities (v0.21.0)
+## Key Capabilities (v0.24.0 line)
 
 - **Session-State Durability**: Squad accurately resumes work after system reboots,
   detecting stale state and multi-worktree status.
 - **In-Flight Progress Tracking**: Task progress, completed tasks, and active
   boundaries persist through all lifecycle events.
-- **Slash-Command Surface**: First-class `/specrew.*` commands for key workflows.
-  `/specrew.help` shows the full catalog; `/specrew.status` is an alias for `/specrew.where`.
+- **Slash-Command Surface**: First-class `/specrew-*` commands for key workflows.
+  `/specrew-help` shows the full catalog; `/specrew-status` is an alias for `/specrew-where`.
 - **Full Workflow Governance**: Spec Kit integration, Squad orchestration, and
   Specrew version stability across Phase 2 feature delivery.
 
@@ -396,7 +396,8 @@ specrew init -ProjectPath . -Force
 - `.specrew/*` governance files
 - `.squad/team.md` baseline role merge
 - `.squad/ceremonies.md` Specrew ceremony entries
-- `.copilot/skills/specrew-*` skills
+- `.claude/skills/specrew-*`, `.github/skills/specrew-*`, and `.agents/skills/specrew-*` skills
+- Legacy `.copilot/skills/specrew-*` directories only when you are reviewing an upgrade migration
 - Any custom members you maintain outside the Specrew-managed baseline block in `.squad/team.md`
 
 1. After resolving any conflicts or making adjustments, re-run with `-Force` to complete the merge.

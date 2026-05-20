@@ -1,4 +1,4 @@
 {
-  "feature_directory": "",
+  "feature_directory": "specs/024-slash-command-multi-host-correctness",
   "schema": "v1"
 }

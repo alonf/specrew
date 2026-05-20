@@ -69,7 +69,7 @@ Assert-Contains -Text $helpOutput -Substring 'update' -Message 'Help includes sp
 Assert-Contains -Text $helpOutput -Substring 'team' -Message 'Help includes specrew team'
 Assert-Contains -Text $helpOutput -Substring 'review' -Message 'Help includes specrew review'
 Assert-Contains -Text $helpOutput -Substring 'version' -Message 'Help includes specrew version'
-Assert-Contains -Text $helpOutput -Substring '/specrew.' -Message 'Help includes slash-command surface section'
+Assert-Contains -Text $helpOutput -Substring '/specrew-' -Message 'Help includes slash-command surface section'
 
 # --- Test 2: unknown command exits 1 with guidance ---
 Write-Host ''

@@ -371,10 +371,126 @@ function Get-BaselineRoleDefinitions {
     )
 }
 
+function Get-ActiveSkillRoots {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$ProjectPath
+    )
+
+    return @(
+        [pscustomobject]@{ Name = 'claude'; Path = Join-Path $ProjectPath '.claude\skills' }
+        [pscustomobject]@{ Name = 'github'; Path = Join-Path $ProjectPath '.github\skills' }
+        [pscustomobject]@{ Name = 'agents'; Path = Join-Path $ProjectPath '.agents\skills' }
+    )
+}
+
+function Get-SlashCommandSkillCatalog {
+    return @(
+        [pscustomobject]@{ Directory = 'specrew-help'; Name = 'help'; LegacySlashCommand = '/specrew.help' }
+        [pscustomobject]@{ Directory = 'specrew-review'; Name = 'review'; LegacySlashCommand = '/specrew.review' }
+        [pscustomobject]@{ Directory = 'specrew-status'; Name = 'status'; LegacySlashCommand = '/specrew.status' }
+        [pscustomobject]@{ Directory = 'specrew-team'; Name = 'team'; LegacySlashCommand = '/specrew.team' }
+        [pscustomobject]@{ Directory = 'specrew-update'; Name = 'update'; LegacySlashCommand = '/specrew.update' }
+        [pscustomobject]@{ Directory = 'specrew-version'; Name = 'version'; LegacySlashCommand = '/specrew.version' }
+        [pscustomobject]@{ Directory = 'specrew-where'; Name = 'where'; LegacySlashCommand = '/specrew.where' }
+    )
+}
+
+function Get-ManagedSkillMarkerContent {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$SkillDirectory
+    )
+
+    return @(
+        'schema: v1'
+        'owner: specrew'
+        'kind: project-skill'
+        ('directory: {0}' -f $SkillDirectory)
+    ) -join [Environment]::NewLine
+}
+
+function Get-LegacySpecrewSkillDefinitions {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$SkillsTemplateRoot
+    )
+
+    $definitions = New-Object System.Collections.Generic.List[object]
+
+    $genericSkillFiles = @(Get-ChildItem -LiteralPath $SkillsTemplateRoot -Filter '*.md' | Where-Object { $_.Name -ne 'README.md' } | Sort-Object Name)
+    foreach ($skillFile in $genericSkillFiles) {
+        $definitions.Add([pscustomobject]@{
+                Directory      = 'specrew-{0}' -f $skillFile.BaseName
+                CurrentContent = Get-Content -LiteralPath $skillFile.FullName -Raw
+                Kind           = 'generic'
+                LegacyContent  = Get-Content -LiteralPath $skillFile.FullName -Raw
+            })
+    }
+
+    foreach ($slashSkill in Get-SlashCommandSkillCatalog) {
+        $skillSourcePath = Join-Path (Join-Path $SkillsTemplateRoot $slashSkill.Directory) 'SKILL.md'
+        if (-not (Test-Path -LiteralPath $skillSourcePath -PathType Leaf)) {
+            continue
+        }
+
+        $definitions.Add([pscustomobject]@{
+                Directory          = $slashSkill.Directory
+                CurrentContent     = Get-Content -LiteralPath $skillSourcePath -Raw
+                Kind               = 'slash-command'
+                LegacySlashCommand = $slashSkill.LegacySlashCommand
+            })
+    }
+
+    return $definitions.ToArray()
+}
+
+function Test-IsManagedLegacySkillDirectory {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$SkillDirectoryPath,
+
+        [Parameter(Mandatory = $true)]
+        [psobject]$Definition
+    )
+
+    $managedMarkerPath = Join-Path $SkillDirectoryPath '.specrew-managed'
+    if (Test-Path -LiteralPath $managedMarkerPath -PathType Leaf) {
+        return $true
+    }
+
+    $skillPath = Join-Path $SkillDirectoryPath 'SKILL.md'
+    if (-not (Test-Path -LiteralPath $skillPath -PathType Leaf)) {
+        return $false
+    }
+
+    $content = Get-Content -LiteralPath $skillPath -Raw
+    if ([string]::IsNullOrWhiteSpace($content)) {
+        return $false
+    }
+
+    if ($content.TrimStart().StartsWith('---', [System.StringComparison]::Ordinal)) {
+        return $false
+    }
+
+    if ($Definition.Kind -eq 'generic') {
+        return $content -eq $Definition.LegacyContent
+    }
+
+    $legacyNamespaceLine = '**Namespace**: ' + [char]96 + '/specrew' + [char]96
+    $legacyCommandLine = '**Canonical command**: ' + [char]96 + $Definition.LegacySlashCommand + [char]96
+
+    return (
+        $content.StartsWith('# {0}' -f $Definition.Directory, [System.StringComparison]::Ordinal) -and
+        $content.Contains($legacyNamespaceLine) -and
+        $content.Contains($legacyCommandLine)
+    )
+}
+
 $resolvedProjectPath = Resolve-ProjectPath -Path $ProjectPath
 $extensionRoot = Split-Path -Parent $PSScriptRoot
 $templateRoot = Join-Path $extensionRoot 'squad-templates'
-$copilotSkillsRoot = Join-Path $resolvedProjectPath '.copilot\skills'
+$legacySkillsRoot = Join-Path $resolvedProjectPath '.copilot\skills'
 $squadRoot = Join-Path $resolvedProjectPath '.squad'
 $squadAgentsRoot = Join-Path $squadRoot 'agents'
 $coordinatorPromptPath = Join-Path $resolvedProjectPath '.github\agents\squad.agent.md'
@@ -390,30 +506,43 @@ if ($DryRun -and -not (Test-Path -LiteralPath $squadRoot)) {
     Add-DeploymentAction -Actions $actions -Action 'would-create-directory' -Path $squadRoot
 }
 
-Ensure-Directory -Path $copilotSkillsRoot -Actions $actions
 Ensure-Directory -Path $squadAgentsRoot -Actions $actions
 Ensure-Directory -Path (Join-Path $squadRoot 'casting') -Actions $actions
 
 $skillsTemplateRoot = Join-Path $templateRoot 'skills'
-$skillFiles = @(Get-ChildItem -LiteralPath $skillsTemplateRoot -Filter '*.md' | Where-Object { $_.Name -ne 'README.md' } | Sort-Object Name)
-foreach ($skillFile in $skillFiles) {
-    $skillName = 'specrew-{0}' -f $skillFile.BaseName
-    $skillDir = Join-Path $copilotSkillsRoot $skillName
-    Ensure-Directory -Path $skillDir -Actions $actions
-    Set-ManagedFile -TargetPath (Join-Path $skillDir 'SKILL.md') -Content (Get-Content -LiteralPath $skillFile.FullName -Raw) -Actions $actions
+$activeSkillRoots = @(Get-ActiveSkillRoots -ProjectPath $resolvedProjectPath)
+$managedSkillDefinitions = @(Get-LegacySpecrewSkillDefinitions -SkillsTemplateRoot $skillsTemplateRoot)
+
+if (Test-Path -LiteralPath $legacySkillsRoot -PathType Container) {
+    $legacySkillDirectories = @(Get-ChildItem -LiteralPath $legacySkillsRoot -Directory | Where-Object { $_.Name -like 'specrew-*' } | Sort-Object Name)
+    foreach ($legacySkillDirectory in $legacySkillDirectories) {
+        $definition = $managedSkillDefinitions | Where-Object { $_.Directory -eq $legacySkillDirectory.Name } | Select-Object -First 1
+        if ($null -eq $definition) {
+            Add-DeploymentAction -Actions $actions -Action 'preserved-legacy-unmanaged-skill' -Path $legacySkillDirectory.FullName
+            continue
+        }
+
+        if (Test-IsManagedLegacySkillDirectory -SkillDirectoryPath $legacySkillDirectory.FullName -Definition $definition) {
+            Add-DeploymentAction -Actions $actions -Action $(if ($DryRun) { 'would-remove-legacy-managed-skill' } else { 'removed-legacy-managed-skill' }) -Path $legacySkillDirectory.FullName
+            if (-not $DryRun) {
+                Remove-Item -LiteralPath $legacySkillDirectory.FullName -Recurse -Force
+            }
+            continue
+        }
+
+        Add-DeploymentAction -Actions $actions -Action 'preserved-legacy-unmanaged-skill' -Path $legacySkillDirectory.FullName
+    }
 }
 
-# Subdirectory-style skills (for example the slash-command runtime surfaces) deploy as-is.
-$skillDirectories = @(Get-ChildItem -LiteralPath $skillsTemplateRoot -Directory | Sort-Object Name)
-foreach ($skillDirectory in $skillDirectories) {
-    $skillSourcePath = Join-Path $skillDirectory.FullName 'SKILL.md'
-    if (-not (Test-Path -LiteralPath $skillSourcePath -PathType Leaf)) {
-        continue
-    }
+foreach ($activeSkillRoot in $activeSkillRoots) {
+    Ensure-Directory -Path $activeSkillRoot.Path -Actions $actions
 
-    $skillDir = Join-Path $copilotSkillsRoot $skillDirectory.Name
-    Ensure-Directory -Path $skillDir -Actions $actions
-    Set-ManagedFile -TargetPath (Join-Path $skillDir 'SKILL.md') -Content (Get-Content -LiteralPath $skillSourcePath -Raw) -Actions $actions
+    foreach ($definition in $managedSkillDefinitions) {
+        $skillDirectoryPath = Join-Path $activeSkillRoot.Path $definition.Directory
+        Ensure-Directory -Path $skillDirectoryPath -Actions $actions
+        Set-ManagedFile -TargetPath (Join-Path $skillDirectoryPath 'SKILL.md') -Content $definition.CurrentContent -Actions $actions
+        Set-ManagedFile -TargetPath (Join-Path $skillDirectoryPath '.specrew-managed') -Content (Get-ManagedSkillMarkerContent -SkillDirectory $definition.Directory) -Actions $actions
+    }
 }
 
 $coordinatorGovernancePath = Join-Path $templateRoot 'coordinator\specrew-governance.md'
