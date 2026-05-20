@@ -123,7 +123,12 @@ jobs:
         run: ./tests/integration/brownfield-conflict-handling.ps1
 
       - name: Integration - validate versions cli behavior
+        if: runner.os != 'Linux'
         shell: pwsh
+        # .cmd shim scripts (validate-versions-cli-behavior.ps1 invokes .cmd-based tooling)
+        # are not portable to Linux; native sh/bash equivalents not yet available.
+        # Real fix (multi-platform bootstrap shimming) is queued for post-F-024 work.
+        # See: validate-versions-cli-behavior.ps1 for context.
         run: ./tests/integration/validate-versions-cli-behavior.ps1
 
       - name: Integration - drift scenario
