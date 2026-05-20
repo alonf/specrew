@@ -413,7 +413,7 @@ exit /b 0
 else {
 @"
 #!/usr/bin/env bash
-printf '%s\n' "\$*" >> '$fakeCopilotLog'
+printf '%s\n' "\$@" >> '$fakeCopilotLog'
 sleep 2
 exit 0
 "@
