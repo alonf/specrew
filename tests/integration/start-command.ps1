@@ -273,7 +273,7 @@ if ($defaultContext.team_roster.team_path -ne (Join-Path -Path (Join-Path -Path 
 }
 
 $defaultPathOutput = $defaultPathResult.Output -join "`n"
-if (-not (Assert-Contains -Content $defaultPathOutput -Pattern ([regex]::Escape($defaultPromptPath)) -FailureMessage 'Wrapper default project-path flow reported the wrong prompt artifact path.')) {
+if (-not (Assert-Contains -Content $defaultPathOutput -Pattern ([regex]::Escape($projectRelativeDisplayPath)) -FailureMessage 'Wrapper default project-path flow reported the wrong prompt artifact path.')) {
     exit 1
 }
 Write-Pass "Entry wrapper defaults project-path to the caller project root"
