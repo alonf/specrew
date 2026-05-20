@@ -45,7 +45,7 @@ function Invoke-ValidationWithShimPath {
 
     $originalPath = $env:PATH
     try {
-        $env:PATH = "{0};{1}" -f $ShimPath, $originalPath
+        $env:PATH = "{0}{1}{2}" -f $ShimPath, [System.IO.Path]::PathSeparator, $originalPath
         return @(& $ValidateScript -PassThru)
     }
     finally {
