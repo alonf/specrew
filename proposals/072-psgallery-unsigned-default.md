@@ -16,7 +16,7 @@ Specrew `0.24.0` shipped to PowerShell Gallery with Authenticode signatures prod
 
 ## Root cause
 
-The live release path in `.github/workflows/publish-module.yml` and `scripts/internal/invoke-module-release.ps1` always signed the staged module payload. The configured certificate source was self-signed and absent from customer trust stores, so signing converted an otherwise installable package into a failing one. The detailed diagnosis is recorded in `SIGNATURE_VALIDATION_ROOT_CAUSE_ANALYSIS.md`.
+The live release path in `.github/workflows/publish-module.yml` and `scripts/internal/invoke-module-release.ps1` always signed the staged module payload. The configured certificate source was self-signed and absent from customer trust stores, so signing converted an otherwise installable package into a failing one.
 
 ## Decision
 
@@ -35,7 +35,6 @@ This bug-fix slice was pre-resolved by the human before handoff: the urgent need
 
 ## Cross-references
 
-- `SIGNATURE_VALIDATION_ROOT_CAUSE_ANALYSIS.md`
 - `CHANGELOG.md`
 - `Specrew.psd1`
 - `.github/workflows/publish-module.yml`

@@ -342,3 +342,13 @@ pwsh -File .\evaluation\scorers\process-scorer.ps1 -ProjectPath . -WriteReport
 ```
 
 `-WriteReport` produces `evaluation\report.md` with the current process-quality summary plus an explicit Outcome Quality placeholder until the Iteration 3 scorer lands.
+
+## Troubleshooting
+
+### Copilot CLI "Failed to load N skills" warning at startup
+
+If you see this warning after `specrew init`, it is an upstream Copilot CLI behavior, not a Specrew issue. Copilot CLI scans `~/.claude/skills` and `~/.agents/skills` in your home directory. If you also use Claude Code or OpenCode, those directories may contain skills with colon-delimited names such as `ck:foo`; Copilot CLI's parser rejects those names because it only accepts letters, numbers, hyphens, underscores, dots, and spaces.
+
+Specrew's own slash-command surface (`/specrew-where`, `/specrew-help`, `/specrew-version`, `/specrew-update`, `/specrew-team`, `/specrew-review`, `/specrew-status`) uses hyphenated names and is unaffected. To confirm a Specrew skill loaded correctly, run `/skills info specrew-help` inside the Copilot CLI session and verify that Copilot reports the expected Specrew skill path and metadata.
+
+Upstream tracking: <https://github.com/github/copilot-cli/issues/2689>. Copilot CLI does not currently provide a config switch to exclude those directories from scanning. The warning is cosmetic and does not block Specrew's own skills from working.
