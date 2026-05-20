@@ -47,7 +47,7 @@ Proposals with full source-spec content, ready for `/speckit.specify` ingestion 
 | [069](069-multi-host-launch-path.md) | Multi-Host Launch Path (Claude Code + Codex) | phase-2 | 7 | **URGENT — cost-reduction bundle.** `specrew start --host claude` / `--host codex` launches the alternate CLI with Specrew's bootstrap context. Tactical MVP of Proposal 024 (Multi-Host CORE) — hard-coded per-host launch commands, no deep abstraction. Composes with 068 (model catalog) and 070 (cost tracking). |
 | [070](070-token-economy-mvp.md) | Token Economy MVP (Cost-per-Iteration Tracking + Dashboard Surfacing) | phase-2 | 5 | **URGENT — cost-reduction bundle.** `specs/<feature>/iterations/<N>/cost.yml` records per-boundary token consumption + cost estimate from Proposal 068's catalog; `specrew where` dashboard gains COST section; `specrew cost summary/add/recompute` CLI. MVP slice of Proposal 040 (Token Economy as Governance Driver) — measurement only, no governance layer. |
 
-## Candidate (41)
+## Candidate (42)
 
 Idea-form proposals not yet developed into full source specs. Open for discussion; may mature to draft or be withdrawn.
 
@@ -95,6 +95,7 @@ Idea-form proposals not yet developed into full source specs. Open for discussio
 | [060](060-prerelease-channel-staging.md) | PSGallery Prerelease Channel + Staging Discipline | phase-2 | 10 |
 | [061](061-init-update-convergence-test.md) | Init/Update Convergence Test (Frozen-Snapshot Replay) | phase-2 | 13 |
 | [062](062-dependency-metadata-reason-propagation.md) | Dependency Metadata + Reason Mapping + Impact-Analysis Propagation | phase-2 | 18 |
+| [071](071-vscode-copilot-chat-host.md) | VS Code Copilot Chat as a First-Class Specrew Host | phase-2 | 10-12 |
 
 ---
 
@@ -119,7 +120,7 @@ For roadmap-style viewing, proposals grouped by phase placement:
 - 034 (Markdown Lint Cleanup — draft, post-F-019)
 - 035 (Session-State Durability — draft, NEXT UP)
 - 036 (Branch Reconciliation — draft, SDLC pillar)
-- 013, 014, 015, 017, 018, 019, 020, 021, 022, 023, 027, 028, 029, 037, 038, 042, 044, 045, 046, 047, 048, 049, 050, 051, 053, 054, 055, 056, 059, 060, 061, 062 (candidates)
+- 013, 014, 015, 017, 018, 019, 020, 021, 022, 023, 027, 028, 029, 037, 038, 042, 044, 045, 046, 047, 048, 049, 050, 051, 053, 054, 055, 056, 059, 060, 061, 062, 071 (candidates)
 
 **Phase 3** (refactor + maintainability + upstream reconciliation + extensibility):
 
