@@ -58,10 +58,10 @@ before it goes stable can opt into the prerelease channel:
 Install-Module Specrew -AllowPrerelease -Scope CurrentUser -SkipPublisherCheck
 ```
 
-### Option B — Local clone (development workflow)
+### Option B — Local clone, direct import (development workflow)
 
 If you're contributing to Specrew or want to track the bleeding edge, clone the
-repo and import the module manifest:
+repo and import the module manifest by path:
 
 ```powershell
 git clone https://github.com/alonf/specrew.git C:\Dev\Specrew
@@ -71,7 +71,43 @@ Import-Module C:\Dev\Specrew\Specrew.psd1
 The module-import path exposes the same `specrew` / `specrew-init` / `specrew-start` / `specrew-version` /
 `specrew-where` / `specrew-team` / `specrew-review` / `specrew-update` aliases as the PSGallery install, so the rest of this guide works identically.
 
-### Option C — Direct script invocation (fallback for non-module scenarios)
+This is the lightest-weight development loop, but the module is only discoverable when you import it by full path. For an installed-equivalent experience from a clone, use Option C below.
+
+### Option C — Install from a local clone (installed-equivalent from a clone)
+
+Use this when you want the module to behave as if installed (so `Import-Module Specrew` works without a path in any PowerShell session, and `Get-Module Specrew -ListAvailable` lists it) but you're working from a local clone rather than PSGallery. Copy the cloned module into your PowerShell user-module path:
+
+```powershell
+# From inside the cloned repo
+$version = (Import-PowerShellDataFile .\Specrew.psd1).ModuleVersion
+$userModulePath = ($env:PSModulePath -split [System.IO.Path]::PathSeparator |
+    Where-Object { $_ -like "*$HOME*Modules*" } | Select-Object -First 1)
+$dest = Join-Path $userModulePath "Specrew\$version"
+
+# Clear any prior install at this version
+if (Test-Path $dest) { Remove-Item -Path $dest -Recurse -Force }
+New-Item -ItemType Directory -Path $dest -Force | Out-Null
+
+# Copy the module's runtime surface
+Copy-Item -Path .\Specrew.psd1, .\Specrew.psm1, .\scripts, .\extensions, .\templates `
+    -Destination $dest -Recurse -Force
+
+# Verify
+Get-Module Specrew -ListAvailable
+Import-Module Specrew
+```
+
+After this, the module behaves identically to a PSGallery install at the same version: `Import-Module Specrew` resolves without a path, and the aliases work everywhere.
+
+For continuous syncing (clone changes immediately reflected as installed-module changes), use a symbolic link instead of copy. This requires Windows Developer Mode enabled, or running PowerShell as administrator:
+
+```powershell
+New-Item -ItemType SymbolicLink -Path $dest -Target $PWD.Path -Force
+```
+
+**Tradeoffs versus Option A (PSGallery)**: Option C copies the source tree verbatim and does not exercise the FileList machinery that `Install-Module` from PSGallery runs. To catch FileList regressions (missing internal helpers in the shipped package) before they reach PSGallery, validate via the PSGallery prerelease channel in Option A.
+
+### Option D — Direct script invocation (fallback for non-module scenarios)
 
 If you can't or don't want to load the module, every command is also reachable via
 direct script invocation against the cloned repository:
@@ -84,13 +120,13 @@ This is the lowest-friction fallback if your environment blocks module imports.
 
 ## Bootstrap Help
 
-Once the module is loaded (Option A or B), view the bootstrap help:
+Once the module is loaded (Option A, B, or C), view the bootstrap help:
 
 ```powershell
 specrew init --help
 ```
 
-If you're on Option C (direct-script), the equivalent is:
+If you're on Option D (direct-script), the equivalent is:
 
 ```powershell
 pwsh -File C:\Dev\Specrew\scripts\specrew-init.ps1 -Help
@@ -125,7 +161,7 @@ specrew init -ProjectPath .
 
 For a fresh git-only repo, `-Force` is **not** required. Add `-Force` only when you want non-interactive default selections or when the repo already contains files beyond `.git`.
 
-> Direct-script equivalent (Option C, no module): `pwsh -File C:\Dev\Specrew\scripts\specrew-init.ps1 -ProjectPath .`
+> Direct-script equivalent (Option D, no module): `pwsh -File C:\Dev\Specrew\scripts\specrew-init.ps1 -ProjectPath .`
 
 1. Verify bootstrap succeeded (essential before proceeding).
 
@@ -185,14 +221,14 @@ specrew team update security-analyst `
 specrew team remove security-analyst
 ```
 
-> Direct-script equivalents (Option C, no module): replace `specrew` with
+> Direct-script equivalents (Option D, no module): replace `specrew` with
 > `pwsh -File C:\Dev\Specrew\scripts\specrew.ps1` — same arguments otherwise.
 
-### Optional: Adding Specrew to PATH (only needed for Option C)
+### Optional: Adding Specrew to PATH (only needed for Option D)
 
-If you're using Option C (direct-script invocation) and want the short `specrew`
+If you're using Option D (direct-script invocation) and want the short `specrew`
 command without `pwsh -File`, add the scripts directory to your PATH. With the
-module (Option A or B), this is unnecessary — the aliases resolve in any
+module (Option A, B, or C), this is unnecessary — the aliases resolve in any
 PowerShell session that has the module imported.
 
 **Current Session Only** (temporary, lost when shell closes):
@@ -238,7 +274,7 @@ Optionally, you can provide a short plain-language request up front:
 specrew start "Build a REST API for user management"
 ```
 
-> Direct-script equivalent (Option C, no module): `pwsh -File C:\Dev\Specrew\scripts\specrew.ps1 start [optional-request]`
+> Direct-script equivalent (Option D, no module): `pwsh -File C:\Dev\Specrew\scripts\specrew.ps1 start [optional-request]`
 
 `specrew start` should launch or hand off to Squad and have Squad drive the full Spec Kit lifecycle for you:
 
@@ -262,7 +298,7 @@ specrew where --no-color
 specrew status --compact
 ```
 
-> Direct-script equivalent (Option C, no module): replace `specrew` with
+> Direct-script equivalent (Option D, no module): replace `specrew` with
 > `pwsh -NoProfile -File C:\Dev\Specrew\scripts\specrew.ps1` — same arguments.
 
 For a sample output and section-by-section guide, see `docs/dashboard-guide.md`.
