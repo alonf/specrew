@@ -400,19 +400,32 @@ Write-Host "`nTest 2b: default launch reuses the current terminal and passes the
 $fakeBinRoot = Join-Path -Path $scratchRoot -ChildPath 'fake-bin'
 $null = New-Item -Path $fakeBinRoot -ItemType Directory -Force
 $fakeCopilotLog = Join-Path -Path $scratchRoot -ChildPath 'fake-copilot.log'
-$fakeCopilotPath = Join-Path -Path $fakeBinRoot -ChildPath 'copilot.cmd'
-$fakeCopilotScript = @"
+$fakeCopilotPath = Join-Path -Path $fakeBinRoot -ChildPath $(if ($IsWindows) { 'copilot.cmd' } else { 'copilot' })
+$fakeCopilotScript = if ($IsWindows) {
+@"
 @echo off
 setlocal
 echo %*>>"$fakeCopilotLog"
 powershell -NoProfile -ExecutionPolicy Bypass -Command "Start-Sleep -Seconds 2"
 exit /b 0
 "@
+}
+else {
+@"
+#!/usr/bin/env bash
+printf '%s\n' "\$*" >> '$fakeCopilotLog'
+sleep 2
+exit 0
+"@
+}
 [System.IO.File]::WriteAllText($fakeCopilotPath, $fakeCopilotScript, [System.Text.UTF8Encoding]::new($false))
+if (-not $IsWindows) {
+    & chmod +x $fakeCopilotPath
+}
 
 $launchCommand = @'
 $sw = [System.Diagnostics.Stopwatch]::StartNew()
-$env:PATH = "{0};" + $env:PATH
+$env:PATH = "{0}" + [System.IO.Path]::PathSeparator + $env:PATH
 & "{1}" start "Launch a tiny clipboard utility" --project-path "{2}"
 $sw.Stop()
 Write-Output ("__ELAPSED__=" + [math]::Round($sw.Elapsed.TotalSeconds, 2))
