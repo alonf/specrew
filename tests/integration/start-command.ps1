@@ -172,9 +172,10 @@ Write-Pass "Help output includes specrew start"
 
 Write-Host "`nTest 1aa: display-path helpers trim both path separators"
 Invoke-Expression ((Get-FunctionDefinitionsText -Path $startScript -FunctionNames @('Get-DisplayRelativePath', 'Get-DisplayPathFromProjectRoot')) -join "`n`n")
+$projectRelativeDisplayPath = '.specrew{0}last-start-prompt.md' -f [System.IO.Path]::DirectorySeparatorChar
 $windowsDisplayPath = Get-DisplayPathFromProjectRoot -ResolvedProjectPath $projectRoot -Path (Join-Path -Path $projectRoot -ChildPath '.specrew\last-start-prompt.md')
-if ($windowsDisplayPath -ne '.specrew\last-start-prompt.md') {
-    Write-Fail ("Get-DisplayPathFromProjectRoot returned the wrong Windows-relative path: {0}" -f $windowsDisplayPath)
+if ($windowsDisplayPath -ne $projectRelativeDisplayPath) {
+    Write-Fail ("Get-DisplayPathFromProjectRoot returned the wrong project-relative path: {0}" -f $windowsDisplayPath)
     exit 1
 }
 $linuxDisplayPath = Get-DisplayRelativePath -ProjectRoot '/repo/project/' -ResolvedPath '/repo/project/.specrew/last-start-prompt.md'
