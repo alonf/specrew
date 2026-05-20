@@ -42,9 +42,10 @@ function Get-RelativePathSafe {
         return $null
     }
 
-    $fromUri = [System.Uri]([System.IO.Path]::GetFullPath($BasePath).TrimEnd('\') + '\')
-    $toUri = [System.Uri]([System.IO.Path]::GetFullPath($TargetPath))
-    return [System.Uri]::UnescapeDataString($fromUri.MakeRelativeUri($toUri).ToString()) -replace '/', '\'
+    return [System.IO.Path]::GetRelativePath(
+        [System.IO.Path]::GetFullPath($BasePath),
+        [System.IO.Path]::GetFullPath($TargetPath)
+    )
 }
 
 $repoRoot = (Resolve-Path (Join-Path -Path $PSScriptRoot -ChildPath '..\..')).Path

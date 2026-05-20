@@ -233,8 +233,8 @@ if ($summaryContent -notmatch 'Review/closure use a no-gap policy' -or
     exit 1
 }
 
-if (-not $startContext.copilot_autopilot) {
-    Write-Fail 'Smoke harness context should record autopilot mode for grounded feature requests.'
+if ($startContext.copilot_autopilot) {
+    Write-Fail 'Smoke harness context should preserve gate-respecting default mode unless autonomous launch is explicitly requested.'
     exit 1
 }
 
