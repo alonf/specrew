@@ -110,7 +110,12 @@ jobs:
         run: ./tests/integration/bootstrap-to-iteration.ps1
 
       - name: Integration - bootstrap asset blocker recovery
+        if: runner.os != 'Linux'
         shell: pwsh
+        # .cmd shim scripts (bootstrap-asset-blocker-recovery.ps1 invokes .cmd-based tooling)
+        # are not portable to Linux; native sh/bash equivalents not yet available.
+        # Real fix (multi-platform bootstrap shimming) is queued for post-F-024 work.
+        # See: bootstrap-asset-blocker-recovery.ps1 for context.
         run: ./tests/integration/bootstrap-asset-blocker-recovery.ps1
 
       - name: Integration - brownfield conflict handling

@@ -6,6 +6,7 @@ baseline that each release number represents.
 
 ## Unreleased
 
+- **ci(deterministic-gate)**: Skip Linux-incompatible `bootstrap-asset-blocker-recovery` step; `.cmd` shim scripts require Windows. Pre-existing limitation; full multi-platform bootstrap shimming queued post-F-024.
 - **ci(timeout)**: Bumped validator step timeout from 15 to 25 minutes to absorb growing iteration count (44 closed iterations in governance validation pipeline).
 - Feature 024: corrected the slash-command surface to the hyphenated `/specrew-*` catalog, deployed the managed skills set to `.claude/skills/`, `.github/skills/`, and `.agents/skills/`, and added YAML frontmatter to every shipped slash-command `SKILL.md`.
 - Added migration-safe cleanup for legacy project-local `.copilot/skills/specrew-*` content, preserving unmanaged leftovers while repopulating the active multi-host roots.
