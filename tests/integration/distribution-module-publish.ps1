@@ -87,6 +87,8 @@ $workspaceParent = Join-Path -Path $scratchRoot -ChildPath 'workspace'
 $workspaceRoot = Join-Path -Path $workspaceParent -ChildPath 'Specrew'
 $summaryPath = Join-Path -Path $scratchRoot -ChildPath 'release-summary.md'
 $releaseScript = Join-Path -Path $workspaceRoot -ChildPath 'scripts\internal\invoke-module-release.ps1'
+$expectedVersion = [string](Import-PowerShellDataFile -Path (Join-Path -Path $repoRoot -ChildPath 'Specrew.psd1')).ModuleVersion
+$expectedTag = 'v{0}' -f $expectedVersion
 
 if (Test-Path -LiteralPath $scratchRoot) {
     Remove-Item -LiteralPath $scratchRoot -Recurse -Force
@@ -104,8 +106,7 @@ $dryRunOutput = @(
         -RepositoryRoot $workspaceRoot `
         -ReleaseMode dry-run `
         -GitRefType tag `
-        -GitRefName v0.18.0 `
-        -AllowEphemeralSigningCertificate `
+        -GitRefName $expectedTag `
         -SummaryPath $summaryPath 2>&1
 )
 $dryRunExitCode = $LASTEXITCODE
@@ -116,7 +117,7 @@ if ($dryRunExitCode -ne 0) {
 }
 
 $manifestContent = Get-Content -LiteralPath (Join-Path -Path $workspaceRoot -ChildPath 'Specrew.psd1') -Raw -Encoding UTF8
-if ($manifestContent -notmatch "ModuleVersion = '0\.18\.0'") {
+if ($manifestContent -notmatch ("ModuleVersion = '{0}'" -f [regex]::Escape($expectedVersion))) {
     Write-Fail 'Dry-run release flow did not stamp Specrew.psd1 to the config version.'
     exit 1
 }
@@ -124,17 +125,17 @@ Write-Pass 'Dry-run release flow stamps Specrew.psd1 from .specrew/config.yml.'
 
 foreach ($file in @('Specrew.psd1', 'Specrew.psm1')) {
     $signature = Get-AuthenticodeSignature -FilePath (Join-Path -Path $workspaceRoot -ChildPath $file)
-    if ($null -eq $signature.SignerCertificate) {
-        Write-Fail ("Dry-run release flow did not record a signer certificate for '{0}'." -f $file)
+    if ($null -ne $signature.SignerCertificate) {
+        Write-Fail ("Dry-run release flow unexpectedly signed '{0}'." -f $file)
         exit 1
     }
 
-    if ($signature.Status -notin @('Valid', 'NotTrusted', 'UnknownError')) {
-        Write-Fail ("Dry-run release flow did not sign '{0}' successfully (status: {1})." -f $file, $signature.Status)
+    if ($signature.Status -ne 'NotSigned') {
+        Write-Fail ("Dry-run release flow should leave '{0}' unsigned (status: {1})." -f $file, $signature.Status)
         exit 1
     }
 }
-Write-Pass 'Dry-run release flow signs the manifest and module entry point.'
+Write-Pass 'Dry-run release flow leaves the manifest and module entry point unsigned.'
 
 if (-not (Test-Path -LiteralPath $summaryPath -PathType Leaf)) {
     Write-Fail 'Dry-run release flow did not write a release summary artifact.'
@@ -144,7 +145,7 @@ if (-not (Test-Path -LiteralPath $summaryPath -PathType Leaf)) {
 $summaryContent = Get-Content -LiteralPath $summaryPath -Raw -Encoding UTF8
 foreach ($pattern in @(
         'Mode: `dry-run`',
-        'Signing source: `ephemeral-dry-run`',
+        'Signing: `disabled (unsigned release default)`',
         'Publish action: `Publish-Module -WhatIf only`'
     )) {
     if ($summaryContent -notmatch [regex]::Escape($pattern)) {
@@ -158,7 +159,7 @@ Reset-ReleaseWorkspace -SourceRoot $repoRoot -DestinationRoot $workspaceRoot
 $publishModeOutput = @(
     & pwsh -NoProfile -ExecutionPolicy Bypass -File $releaseScript `
         -RepositoryRoot $workspaceRoot `
-        -ReleaseMode publish `
+        -ReleaseMode publish-stable `
         -GitRefType branch `
         -GitRefName 019-specrew-distribution-module 2>&1
 )
@@ -170,51 +171,24 @@ if ($publishModeExitCode -eq 0) {
 }
 
 $publishModeText = $publishModeOutput -join [Environment]::NewLine
-if ($publishModeText -notmatch 'Live publish requires a tag ref') {
+if ($publishModeText -notmatch 'requires a tag ref') {
     Write-Fail 'Publish mode failure did not explain the tag-scoped manual gate.'
     exit 1
 }
 Write-Pass 'Publish mode refuses to run outside the tagged manual gate.'
 
 Reset-ReleaseWorkspace -SourceRoot $repoRoot -DestinationRoot $workspaceRoot
-$exportPassword = ConvertTo-SecureString -String 'SpecrewTest123!' -AsPlainText -Force
-$exportedCertPath = Join-Path -Path $scratchRoot -ChildPath 'publish-mode-test-cert.pfx'
-$exportedCert = $null
 $publishNoKeyOutput = @()
 $publishNoKeyExitCode = 0
 
-try {
-    $exportedCert = New-SelfSignedCertificate `
-        -Subject 'CN=Specrew Publish Test' `
-        -Type CodeSigningCert `
-        -CertStoreLocation 'Cert:\CurrentUser\My' `
-        -NotAfter (Get-Date).AddYears(1)
-    Export-PfxCertificate -Cert $exportedCert -FilePath $exportedCertPath -Password $exportPassword | Out-Null
-    $certBase64 = [Convert]::ToBase64String([System.IO.File]::ReadAllBytes($exportedCertPath))
-
-    $publishNoKeyOutput = @(
-        & pwsh -NoProfile -ExecutionPolicy Bypass -File $releaseScript `
-            -RepositoryRoot $workspaceRoot `
-            -ReleaseMode publish `
-            -GitRefType tag `
-            -GitRefName v0.18.0 `
-            -SigningCertBase64 $certBase64 `
-            -SigningCertPassword 'SpecrewTest123!' 2>&1
-    )
-    $publishNoKeyExitCode = $LASTEXITCODE
-}
-finally {
-    if ($null -ne $exportedCert) {
-        $certPath = 'Cert:\CurrentUser\My\{0}' -f $exportedCert.Thumbprint
-        if (Test-Path -LiteralPath $certPath) {
-            Remove-Item -LiteralPath $certPath -Force -ErrorAction SilentlyContinue
-        }
-    }
-
-    if (Test-Path -LiteralPath $exportedCertPath) {
-        Remove-Item -LiteralPath $exportedCertPath -Force -ErrorAction SilentlyContinue
-    }
-}
+$publishNoKeyOutput = @(
+    & pwsh -NoProfile -ExecutionPolicy Bypass -File $releaseScript `
+        -RepositoryRoot $workspaceRoot `
+        -ReleaseMode publish-stable `
+        -GitRefType tag `
+        -GitRefName $expectedTag 2>&1
+)
+$publishNoKeyExitCode = $LASTEXITCODE
 
 if ($publishNoKeyExitCode -eq 0) {
     Write-Fail 'Publish mode unexpectedly succeeded without PSGALLERY_API_KEY.'

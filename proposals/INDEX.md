@@ -6,7 +6,7 @@ This index is the navigation surface for all proposals in this directory. Sorted
 
 ---
 
-## Shipped (11)
+## Shipped (12)
 
 Proposals whose features have shipped to main and are part of Specrew's current capability.
 
@@ -23,6 +23,7 @@ Proposals whose features have shipped to main and are part of Specrew's current 
 | [031](031-specrew-distribution-module.md) | Specrew Distribution Module (PowerShell Gallery) | feature-019 | phase-2 | 22 |
 | [032](032-specrew-slash-commands.md) | Specrew Slash-Command Surface | feature-021 | phase-2 | 7 |
 | [066](066-gate-respecting-default.md) | Gate-Respecting Default + `--autonomous` Opt-In | chore `c55ec92` (2026-05-20) | phase-2 | 3 |
+| [072](072-psgallery-unsigned-default.md) | PowerShell Gallery Unsigned Default | bug-fix slice `v0.24.1` (2026-05-20) | phase-2 | 2 |
 
 ## Draft (15)
 
@@ -114,6 +115,8 @@ For roadmap-style viewing, proposals grouped by phase placement:
 - 009 (Velocity Dashboard — shipped as feature-017)
 - 031 (Specrew Distribution Module — shipped as feature-019)
 - 021 (Specrew Slash-Command Surface — shipped as feature-021)
+- 066 (Gate-Respecting Default + `--autonomous` Opt-In — shipped as chore `c55ec92`)
+- 072 (PowerShell Gallery Unsigned Default — shipped as bug-fix slice `v0.24.1`)
 - 008 (NFR Governance — draft)
 - 030 (Quality Hardening Bundle — draft, HIGH-PRIORITY in queue)
 - 033 (Specrew Governance CLI — draft, absorbs 028)

@@ -1,7 +1,5 @@
-# Secrets required for publishing (T042 human-owned follow-up):
+# Secrets required for publishing:
 #   - PSGALLERY_API_KEY
-#   - SIGNING_CERT_BASE64
-#   - SIGNING_CERT_PASSWORD
 #
 # Release modes:
 #   - push v0.NN.0 tags -> publish-stable
@@ -16,7 +14,7 @@ on:
   workflow_dispatch:
     inputs:
       release_mode:
-        description: 'dry-run validates stamp/sign/publish without a live release; the publish/promote modes perform a real PSGallery publish'
+        description: 'dry-run validates stamp/publish without a live release; the publish/promote modes perform a real PSGallery publish'
         required: true
         default: dry-run
         type: choice
@@ -142,19 +140,16 @@ jobs:
 
           Write-Host "Dispatch tag '$tag' already exists at expected SHA $expectedSha."
 
-      - name: Stamp, sign, and publish
+      - name: Stamp and publish
         shell: pwsh
         env:
           PSGALLERY_API_KEY: ${{ secrets.PSGALLERY_API_KEY }}
-          SIGNING_CERT_BASE64: ${{ secrets.SIGNING_CERT_BASE64 }}
-          SIGNING_CERT_PASSWORD: ${{ secrets.SIGNING_CERT_PASSWORD }}
         run: |
           .\scripts\internal\invoke-module-release.ps1 `
             -RepositoryRoot (Get-Location).Path `
             -ReleaseMode '${{ steps.release_context.outputs.release_mode }}' `
             -GitRefType '${{ steps.release_context.outputs.release_ref_type }}' `
             -GitRefName '${{ steps.release_context.outputs.release_ref_name }}' `
-            -AllowEphemeralSigningCertificate `
             -SummaryPath $env:GITHUB_STEP_SUMMARY
 
       - name: Build release artifact (module zip)

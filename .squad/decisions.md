@@ -1,3 +1,19 @@
+## 2026-05-20T18:33:06Z — Decision: Proposal 072 Clarify Skip
+
+- **Decision ID**: proposal-072-clarify-skip
+- **Type**: clarify skip
+- **Boundary**: clarify
+- **Authority**: Human pre-resolution
+- **Recorded At**: 2026-05-20T18:33:06Z
+- **Slice**: 025-psgallery-unsigned-default
+- **Branch**: `proposal-072-unsigned-default`
+
+## Rationale
+
+Bug-fix slice; diagnosis + fix pre-resolved by human prior to handoff; nothing material to clarify.
+
+---
+
 ## 2026-05-20T01:11:37Z — Decision: Implementer Feature 024 Feature Closeout
 
 - **Decision ID**: implementer-f024-feature-closeout

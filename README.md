@@ -8,7 +8,7 @@
 # Specrew
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![Version](https://img.shields.io/badge/version-0.24.0-blue.svg)](.specrew/config.yml)
+[![Version](https://img.shields.io/badge/version-0.24.1-blue.svg)](.specrew/config.yml)
 [![Status: Alpha](https://img.shields.io/badge/status-alpha-orange.svg)](#current-state)
 
 Specrew combines Spec Kit and Squad into a spec-governed operating model for
@@ -16,7 +16,7 @@ AI-assisted software delivery.
 
 ## Current State
 
-- Active development line on this branch: **0.24.0**
+- Active development line on this branch: **0.24.1**
 - Latest shipped stable baseline: **0.23.0**, backed by 23 implementing features
 - Alpha software, validated through dogfooding in this repository
 - Built today for a single developer
@@ -159,7 +159,7 @@ Specrew currently uses a merge-at-close rhythm:
 ## Versioning
 
 - `.specrew\config.yml` is the canonical source for the active version and now
-  declares **0.24.0** on this branch.
+  declares **0.24.1** on this branch.
 - Feature releases use `0.NN.0`, where `NN` tracks the shipped feature ordinal
   (`0.24.0` = Feature 024).
 - `0.NN.M` is reserved for hotfixes against an existing shipped feature

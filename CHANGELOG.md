@@ -18,6 +18,12 @@ baseline that each release number represents.
 
 ### Security
 
+## [0.24.1] - 2026-05-20
+
+### Fixed
+
+- Authenticode trust-chain failure on default-trust clients. The release flow previously signed modules with a self-signed publisher certificate whose root was not in any default client trust store, causing `Install-Module Specrew` to fail without `-SkipPublisherCheck`. The release flow no longer signs the module; modules ship unsigned per the OSS PowerShell Gallery norm. CA-signed releases for corporate and enterprise consumers are tracked as future work. See Proposal 072.
+
 ## [0.24.0] - 2026-05-20
 
 - **docs(init-banner)**: Center-align the "GOVERNED AGENTIC SDLC" tagline under the wordmark on the `specrew init` ASCII banner. Tagline previously rendered at 1-space leading indent (left of center by 3 cols); now at 4-space leading indent so both wordmark and tagline center on col 18.5, aligned with the hexagon's vertical axis. Pure presentation fix in `scripts/specrew-init.ps1`. Small-fix slice per Proposal 067.
