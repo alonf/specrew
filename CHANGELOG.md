@@ -6,6 +6,7 @@ baseline that each release number represents.
 
 ## Unreleased
 
+- **ci(timeout)**: Bumped validator step timeout from 15 to 25 minutes to absorb growing iteration count (44 closed iterations in governance validation pipeline).
 - Feature 024: corrected the slash-command surface to the hyphenated `/specrew-*` catalog, deployed the managed skills set to `.claude/skills/`, `.github/skills/`, and `.agents/skills/`, and added YAML frontmatter to every shipped slash-command `SKILL.md`.
 - Added migration-safe cleanup for legacy project-local `.copilot/skills/specrew-*` content, preserving unmanaged leftovers while repopulating the active multi-host roots.
 - Added the Feature 024 regression lane: migrated slash-command distribution/discovery/compatibility/coexistence coverage, added multi-path/frontmatter/legacy-migration integration tests, and aligned runtime messaging and forward-looking governance docs with the corrected multi-host surface.
