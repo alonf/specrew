@@ -13,12 +13,12 @@
 
 - Implementation is complete on the branch and all planned setup, foundational, story, and polish tasks in `tasks.md` are marked done.
 - Review is approved for the current working tree; the only blocking review issue was stale identity/session-state bookkeeping, and that was corrected before signoff.
-- The lifecycle is intentionally paused at the next human-authorization boundary: iteration-closeout.
+- The lifecycle is intentionally paused at the next human-authorization boundary: feature-closeout.
 
 ## Notes
 
 - Keep task identifiers aligned to plan.md and the checked state in `tasks.md`.
-- Do not advance beyond iteration-closeout authorization without explicit human approval.
+- Do not advance beyond feature-closeout authorization without explicit human approval.
 
 <!-- >>> specrew-managed escalation-state >>> -->
 ## Repair Escalation

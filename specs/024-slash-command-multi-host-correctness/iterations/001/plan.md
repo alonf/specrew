@@ -65,7 +65,8 @@
 | Discovery/Spikes | complete | Host-doc/frontmatter research and migration-safety analysis are already captured in planning artifacts |
 | Implementation | complete | Runtime, template, migration, and truth-surface work completed on the current review tree |
 | Review | complete | Validation lane, evidence capture, and governance verdict recording are complete |
-| Retro | complete | Retrospective recorded; iteration-closeout remains the next human-authorization boundary |
+| Retro | complete | Retrospective recorded before iteration-closeout |
+| Iteration Closeout | complete | Dashboard snapshot and canonical iteration-closeout state are recorded; feature-closeout remains unopened |
 | Rework | 0.0 SP reserved | No approved rework slice is open at implementation start |
 
 ## Traceability Summary
@@ -83,7 +84,7 @@
 - **Recorded Evidence**: current session explicit instruction to "Approved. Start implementation for Feature 024." with ratified Clarifications scope and stop-at-review-boundary constraint
 - **Recorded At**: 2026-05-20T00:00:00Z
 - **Scope Approved for Execution**: Iteration 001 active slice (`T003`-`T025`) only
-- **Gate Effect**: implementation authority was consumed; review-verdict-signoff and retro-boundary are complete, and iteration-closeout is now the next human-authorization boundary
+- **Gate Effect**: implementation authority was consumed; review-verdict-signoff, retro-boundary, and iteration-closeout are complete, and feature-closeout is now the next human-authorization boundary
 
 ## Notes
 
