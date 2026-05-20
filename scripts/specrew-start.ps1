@@ -3409,9 +3409,12 @@ $artifactPaths = Save-StartArtifacts `
     -PostRestartDirective $recoveryDirective
 
 Write-Success "Prepared Specrew start context."
-Write-Info ("Prompt:  {0}" -f $artifactPaths.PromptPath)
-Write-Info ("Context: {0}" -f $artifactPaths.ContextPath)
-Write-Info ("Summary: {0}" -f $artifactPaths.SummaryPath)
+$promptDisplayPath = Get-DisplayPathFromProjectRoot -ResolvedProjectPath $resolvedProjectPath -Path $artifactPaths.PromptPath
+$contextDisplayPath = Get-DisplayPathFromProjectRoot -ResolvedProjectPath $resolvedProjectPath -Path $artifactPaths.ContextPath
+$summaryDisplayPath = Get-DisplayPathFromProjectRoot -ResolvedProjectPath $resolvedProjectPath -Path $artifactPaths.SummaryPath
+Write-Info ("Prompt:  {0}" -f $promptDisplayPath)
+Write-Info ("Context: {0}" -f $contextDisplayPath)
+Write-Info ("Summary: {0}" -f $summaryDisplayPath)
 Write-Info ("Copilot approval mode: {0}" -f $allowAllRuntimePlan.DisplayMode)
 if ($artifactPaths.TemplateRefreshArtifacts.Count -gt 0) {
     Write-Info ("Unresolved template-refresh artifacts detected: {0}" -f $artifactPaths.TemplateRefreshArtifacts.Count)
