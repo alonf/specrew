@@ -1,3 +1,10 @@
+<p align="center">
+  <img src="assets/specrew-icon.png" alt="Specrew" height="100" align="middle" />
+  &nbsp;&nbsp;
+  <img src="assets/specrew-wordmark-light.svg#gh-light-mode-only" alt="Specrew — Governed Agentic SDLC" height="84" align="middle" />
+  <img src="assets/specrew-wordmark-dark.svg#gh-dark-mode-only" alt="Specrew — Governed Agentic SDLC" height="84" align="middle" />
+</p>
+
 # Specrew User Guide
 
 This guide covers the day-to-day Specrew lifecycle: planning, execution, review/demo, retrospective, and drift handling.
@@ -21,7 +28,7 @@ It prepares the Squad handoff, launches Copilot CLI when available, and tells Sq
 
 For new brownfield projects, the handoff includes discovery from existing code, manifests, docs, and recent git history so Squad can reconstruct the current system baseline, seed the starting spec, and propose concrete stack/domain specialists before it asks broad intake questions. If you start without a grounded request, Specrew keeps Copilot out of autopilot so Squad can ask the next intake question and wait for your answer before it invokes `speckit.specify`.
 
-Once the scope is grounded, Specrew launches from the project directory, reuses the current terminal by default, and auto-loads a compact bootstrap message via `-i` that points Copilot at `.specrew\last-start-prompt.md`, `.specrew\start-context.json`, and the human-readable `.specrew\start-summary.md`. Specrew defaults to `--allow-all` to reduce tool-approval blocking after the scope is grounded. Use `--prompt-approvals` for interactive permission prompts or `--new-window` if you explicitly want a detached PowerShell window.
+Once the scope is grounded, Specrew launches from the project directory, reuses the current terminal by default, and auto-loads a compact bootstrap message via `-i` that points Copilot at `.specrew\last-start-prompt.md`, `.specrew\start-context.json`, and the human-readable `.specrew\start-summary.md`. Specrew defaults to **gate-respecting mode** — Squad stops at every lifecycle approval boundary (specify, clarify, plan, tasks, implement, review, retro) and waits for explicit human verdict before advancing. Specrew also defaults to `--allow-all` for tool-call approval (tool invocations between gates run without per-call prompts); use `--prompt-approvals` to keep each tool call interactive. The two flags are independent: `--allow-all` controls tool-call approval; `--autonomous` controls whether Squad advances through lifecycle gates without human input. Pass `--autonomous` only for unattended runs such as overnight execution where you have already authorized the full lifecycle. Pass `--new-window` if you explicitly want a detached PowerShell window.
 
 Copilot remains the mandatory host runtime in v1; optional delegated agents such as Claude and Codex are additive routing choices used for review-heavy and problem-solving-heavy work when enabled. Specrew expects delegated lifecycle runs to leave visible evidence in `.squad\decisions.md`, including the requested agent family, effective agent family, concrete model ID, and fallback reason when routing is not honored. Specrew also applies a **no-gap policy** at review/closure time: known gaps across spec, implementation, tests, docs, or observability must be fixed in the current iteration or explicitly deferred with your approval and recorded evidence before the run is claimed complete. Copilot may still ask you to trust the project directory on first launch.
 

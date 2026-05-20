@@ -6,7 +6,7 @@ This index is the navigation surface for all proposals in this directory. Sorted
 
 ---
 
-## Shipped (10)
+## Shipped (11)
 
 Proposals whose features have shipped to main and are part of Specrew's current capability.
 
@@ -22,8 +22,9 @@ Proposals whose features have shipped to main and are part of Specrew's current 
 | [009](009-velocity-dashboard.md) | Velocity Dashboard ("Where Am I?") | feature-017 | phase-2 | 19 |
 | [031](031-specrew-distribution-module.md) | Specrew Distribution Module (PowerShell Gallery) | feature-019 | phase-2 | 22 |
 | [032](032-specrew-slash-commands.md) | Specrew Slash-Command Surface | feature-021 | phase-2 | 7 |
+| [066](066-gate-respecting-default.md) | Gate-Respecting Default + `--autonomous` Opt-In | chore `c55ec92` (2026-05-20) | phase-2 | 3 |
 
-## Draft (10)
+## Draft (15)
 
 Proposals with full source-spec content, ready for `/speckit.specify` ingestion when prioritized.
 
@@ -39,9 +40,14 @@ Proposals with full source-spec content, ready for `/speckit.specify` ingestion 
 | [035](035-session-state-durability.md) | Session-State Durability & In-Flight Progress Tracking | phase-2 | 30 | Next up after F-019. Source spec at file:///C:/Dev/SpecrewDraft/session-state-durability.md. Addresses L6 closeout-cascade lesson. |
 | [036](036-branch-reconciliation.md) | Lifecycle Branch Reconciliation | phase-2 | 13 | SDLC pillar; single-developer precursor to [010] multi-developer. MERGE only, never rebase. |
 | [040](040-token-economy-governance.md) | Token Economy as Governance Driver | phase-4 | 38 | 7-layer architecture; two billing modes (metered + quota); model names ONLY in catalog L3-L4 |
+| [063](063-substantive-intake-questioning.md) | Substantive Intake Questioning at /speckit.specify and /speckit.clarify | phase-2 | 25-30 | **F-025 (next-after-F-024 per 2026-05-20 sequencing decision)**. Persona-driven adaptive intake (PM 🧠 / UX 🎨 / Architect 🏗️ / PM 📋 + AI Researcher 🔬); 12-category catalog; input-quality assessment → Mode A/B/C; fires at specify + clarify + iteration kickoff + mid-feature pivot. Source spec at file:///C:/Dev/SpecrewDraft/substantive-intake-questioning.md |
 | [064](064-slash-command-multi-host-correctness.md) | Slash-Command Multi-Host Correctness (F-021 Surface Restoration) | phase-2 | 7 | Restores F-021's non-functional `/specrew-*` surface; multi-deploy to `.claude/skills/`, `.github/skills/`, `.agents/skills/`; YAML frontmatter; drop dotted command forms. Source spec at file:///C:/Dev/SpecrewDraft/slash-command-multi-host-correctness.md |
+| [067](067-small-fix-slice-type.md) | Small-Fix Slice Type (Lightweight Lifecycle for 2-3 SP Changes) | phase-2 | 5 | Formalizes the 2-3 SP slice between raw chore commits and full feature lifecycle. Required artifacts: code + tests + CHANGELOG + proposal + INDEX. Composes with Proposal 055 (slice-type catalog). Empirical motivation: commits `d288286`, `1838034`, `c55ec92`, `ecd7b6d`. |
+| [068](068-cost-aware-model-routing.md) | Cost-Aware Model Routing with Agent-Discovered Model Catalog | phase-2 | 6-8 | **URGENT — 10-day Copilot pricing deadline.** Discovery skill (`/specrew-research-models`) writes `.specrew/model-catalog.yml`; coordinator-governance routes Junior/Implementer tasks to cheap models, Senior/Reviewer to strong; `cost_profile: lean` in `.specrew/config.yml`. Slice of Proposal 040; precedes full Multi-Host CORE (024). Agent-driven discovery — no hardcoded model names. |
+| [069](069-multi-host-launch-path.md) | Multi-Host Launch Path (Claude Code + Codex) | phase-2 | 7 | **URGENT — cost-reduction bundle.** `specrew start --host claude` / `--host codex` launches the alternate CLI with Specrew's bootstrap context. Tactical MVP of Proposal 024 (Multi-Host CORE) — hard-coded per-host launch commands, no deep abstraction. Composes with 068 (model catalog) and 070 (cost tracking). |
+| [070](070-token-economy-mvp.md) | Token Economy MVP (Cost-per-Iteration Tracking + Dashboard Surfacing) | phase-2 | 5 | **URGENT — cost-reduction bundle.** `specs/<feature>/iterations/<N>/cost.yml` records per-boundary token consumption + cost estimate from Proposal 068's catalog; `specrew where` dashboard gains COST section; `specrew cost summary/add/recompute` CLI. MVP slice of Proposal 040 (Token Economy as Governance Driver) — measurement only, no governance layer. |
 
-## Candidate (42)
+## Candidate (41)
 
 Idea-form proposals not yet developed into full source specs. Open for discussion; may mature to draft or be withdrawn.
 
@@ -89,7 +95,6 @@ Idea-form proposals not yet developed into full source specs. Open for discussio
 | [060](060-prerelease-channel-staging.md) | PSGallery Prerelease Channel + Staging Discipline | phase-2 | 10 |
 | [061](061-init-update-convergence-test.md) | Init/Update Convergence Test (Frozen-Snapshot Replay) | phase-2 | 13 |
 | [062](062-dependency-metadata-reason-propagation.md) | Dependency Metadata + Reason Mapping + Impact-Analysis Propagation | phase-2 | 18 |
-| [063](063-substantive-intake-questioning.md) | Substantive Intake Questioning at /speckit.specify and /speckit.clarify | phase-2 | 20-25 |
 
 ---
 
