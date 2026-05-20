@@ -10,6 +10,8 @@ baseline that each release number represents.
 
 ### Changed
 
+- ci(lint-scoping): PR-CI Lint job now scopes markdownlint, PSScriptAnalyzer, and `validate-governance.ps1` to files changed in the current PR diff. Typical PR Lint job time drops from ~15 min to <1 min (~15x speedup). Push-to-main events still run full-repo lint as the truth check. Validator gains a `-ChangedOnly` switch + `Get-ChangedIterations` helper that falls back to full validation when `.specrew/`, `.squad/identity/`, or `.specify/feature.json` changes. Empirical motivation: F-024 PR #306 burned ~80 min of CI runtime over 5+ iterative cycles; the cost-reduction bundle (F-068/F-070/F-069) would pay the same tax without this fix. Chore-shaped slice; no proposal entry per the project-validator-scoping-chore decision.
+
 ### Fixed
 
 ### Deprecated

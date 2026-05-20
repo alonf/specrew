@@ -2,6 +2,7 @@
 param(
     [string]$ProjectPath = (Get-Location).Path,
     [string[]]$IterationPath,
+    [switch]$ChangedOnly,
     [AllowEmptyString()][string]$ResponseText = '',
     [string]$BoundaryName,
     [ValidateSet('auto', 'boundary-handoff', 'narration')][string]$ResponseScope = 'auto',
@@ -3106,10 +3107,15 @@ function Get-ReviewerCloseoutEnforcementMap {
 
 function Add-ApprovalReuseValidationErrors {
     param(
+        [AllowEmptyCollection()]
         [string[]]$Targets,
         [string]$ProjectRoot,
         [hashtable]$ResultMap
     )
+
+    if (@($Targets).Count -eq 0) {
+        return
+    }
 
     $groupedTargets = @{}
     foreach ($target in @($Targets | Where-Object { Test-IterationRequiresCanonicalStateSchema -IterationDirectory $_ })) {
@@ -3232,10 +3238,15 @@ function Get-InteractionModelGitBoundaryCommits {
 
 function Add-InteractionModelValidationErrors {
     param(
+        [AllowEmptyCollection()]
         [Parameter(Mandatory = $true)][string[]]$Targets,
         [Parameter(Mandatory = $true)][string]$ProjectRoot,
         [Parameter(Mandatory = $true)][hashtable]$ResultMap
     )
+
+    if (@($Targets).Count -eq 0) {
+        return
+    }
 
     $boundaryCommits = @(Get-InteractionModelGitBoundaryCommits -ProjectRoot $ProjectRoot)
     foreach ($target in $Targets) {
@@ -3455,7 +3466,23 @@ try {
     $explicitIterationPathsProvided = ($null -ne $IterationPath) -and @(
         $IterationPath | Where-Object { -not [string]::IsNullOrWhiteSpace([string]$_) }
     ).Count -gt 0
-    $targets = @(Resolve-IterationTarget -ResolvedProjectPath $resolvedProjectPath -ExplicitIterationPaths $IterationPath)
+    $targets = @()
+    if ($ChangedOnly -and -not $explicitIterationPathsProvided) {
+        $changedIterations = Get-ChangedIterations -ProjectRoot $resolvedProjectPath
+        if ($changedIterations.UseScopedTargets) {
+            $targets = @($changedIterations.IterationPaths)
+        }
+        else {
+            if ($env:SPECREW_VALIDATOR_VERBOSE -eq '1') {
+                $resolvedBase = if ([string]::IsNullOrWhiteSpace([string]$changedIterations.BaseRef)) { '(unresolved)' } else { [string]$changedIterations.BaseRef }
+                Write-Host ("[validator] -ChangedOnly fallback to full validation: {0} (base {1})" -f $changedIterations.Reason, $resolvedBase)
+            }
+            $targets = @(Resolve-IterationTarget -ResolvedProjectPath $resolvedProjectPath -ExplicitIterationPaths $IterationPath)
+        }
+    }
+    else {
+        $targets = @(Resolve-IterationTarget -ResolvedProjectPath $resolvedProjectPath -ExplicitIterationPaths $IterationPath)
+    }
     if (-not [string]::IsNullOrWhiteSpace($ResponseText)) {
         $responseValidationExitCode = Invoke-InteractionModelResponseValidation -ProjectRoot $resolvedProjectPath -ResponseText $ResponseText -IterationTargets $targets -BoundaryName $BoundaryName -ResponseScope $ResponseScope -BarePathBoundaryHandoffSeverity $BarePathBoundaryHandoffSeverity
         Write-ValidatorSummaryAndExit -ProjectRoot $resolvedProjectPath -ExitCode $responseValidationExitCode -HardWarnings $(if ($responseValidationExitCode -eq 0) { 0 } else { 1 })

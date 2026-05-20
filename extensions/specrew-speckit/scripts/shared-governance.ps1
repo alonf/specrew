@@ -253,6 +253,126 @@ function Get-DecisionsLedgerPath {
     return Join-Path (Resolve-ProjectPath -Path $ProjectRoot) '.squad\decisions.md'
 }
 
+function Get-ValidatorGlobalStatePathspecs {
+    return @(
+        '.specrew/'
+        '.specrew/**'
+        '.squad/identity/'
+        '.squad/identity/**'
+        '.specify/feature.json'
+    )
+}
+
+function Get-ChangedIterations {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$ProjectRoot,
+
+        [AllowNull()]
+        [string]$BaseBranch
+    )
+
+    $resolvedProjectRoot = Resolve-ProjectPath -Path $ProjectRoot
+    $baseCandidates = @(
+        @(
+            $BaseBranch
+            $env:GITHUB_BASE_REF
+        ) | Where-Object { -not [string]::IsNullOrWhiteSpace([string]$_) } | Select-Object -Unique
+    )
+
+    if ($baseCandidates.Count -eq 0) {
+        return [pscustomobject]@{
+            UseScopedTargets = $false
+            BaseRef          = $null
+            IterationPaths   = @()
+            Reason           = 'base-ref-missing'
+        }
+    }
+
+    $resolvedBaseRef = $null
+    foreach ($baseCandidate in $baseCandidates) {
+        $candidateRef = if ([string]$baseCandidate -match '^origin\/') {
+            [string]$baseCandidate
+        }
+        else {
+            "origin/$baseCandidate"
+        }
+
+        $null = @(& git -C $resolvedProjectRoot rev-parse --verify $candidateRef 2>$null)
+        if ($LASTEXITCODE -eq 0) {
+            $resolvedBaseRef = $candidateRef
+            break
+        }
+    }
+
+    if ([string]::IsNullOrWhiteSpace($resolvedBaseRef)) {
+        return [pscustomobject]@{
+            UseScopedTargets = $false
+            BaseRef          = $null
+            IterationPaths   = @()
+            Reason           = 'base-ref-unresolved'
+        }
+    }
+
+    $globalStateArgs = @('diff', '--name-only', "$resolvedBaseRef...HEAD", '--') + @(Get-ValidatorGlobalStatePathspecs)
+    $globalStateChanges = @(
+        & git -C $resolvedProjectRoot @globalStateArgs 2>$null |
+            ForEach-Object { [string]$_ } |
+            Where-Object { -not [string]::IsNullOrWhiteSpace($_) }
+    )
+    if ($LASTEXITCODE -ne 0) {
+        return [pscustomobject]@{
+            UseScopedTargets = $false
+            BaseRef          = $resolvedBaseRef
+            IterationPaths   = @()
+            Reason           = 'global-state-diff-failed'
+        }
+    }
+
+    if ($globalStateChanges.Count -gt 0) {
+        return [pscustomobject]@{
+            UseScopedTargets = $false
+            BaseRef          = $resolvedBaseRef
+            IterationPaths   = @()
+            Reason           = 'global-state-changed'
+        }
+    }
+
+    $changedIterationFiles = @(
+        & git -C $resolvedProjectRoot diff --name-only "$resolvedBaseRef...HEAD" -- 'specs/*/iterations/' 'specs/*/iterations/**' 2>$null |
+            ForEach-Object { [string]$_ } |
+            Where-Object { -not [string]::IsNullOrWhiteSpace($_) }
+    )
+    if ($LASTEXITCODE -ne 0) {
+        return [pscustomobject]@{
+            UseScopedTargets = $false
+            BaseRef          = $resolvedBaseRef
+            IterationPaths   = @()
+            Reason           = 'iteration-diff-failed'
+        }
+    }
+
+    $iterationPaths = New-Object System.Collections.Generic.List[string]
+    foreach ($changedFile in $changedIterationFiles) {
+        $match = [regex]::Match($changedFile.Trim(), '^(specs/[^/]+/iterations/[^/]+)(?:/|$)')
+        if (-not $match.Success) {
+            continue
+        }
+
+        $iterationPath = Join-Path $resolvedProjectRoot ($match.Groups[1].Value -replace '/', '\')
+        if ((Test-Path -LiteralPath $iterationPath -PathType Container) -and -not $iterationPaths.Contains($iterationPath)) {
+            $null = $iterationPaths.Add($iterationPath)
+        }
+    }
+
+    return [pscustomobject]@{
+        UseScopedTargets = $true
+        BaseRef          = $resolvedBaseRef
+        IterationPaths   = @($iterationPaths | Sort-Object)
+        Reason           = 'scoped'
+    }
+}
+
 function Add-DecisionsLedgerEntry {
     param(
         [Parameter(Mandatory = $true)]

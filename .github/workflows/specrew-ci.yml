@@ -18,6 +18,8 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -28,7 +30,28 @@ jobs:
         run: npm install -g markdownlint-cli
 
       - name: Lint Markdown files
+        if: github.event_name != 'pull_request'
         run: markdownlint '**/*.md' --ignore node_modules --ignore .squad --ignore .specify
+
+      - name: Lint changed Markdown files
+        if: github.event_name == 'pull_request'
+        shell: bash
+        run: |
+          set -euo pipefail
+          base="origin/${{ github.event.pull_request.base.ref }}"
+          if ! git rev-parse --verify "$base" >/dev/null 2>&1; then
+            echo "Base ref $base unavailable; falling back to full Markdown lint."
+            markdownlint '**/*.md' --ignore node_modules --ignore .squad --ignore .specify
+            exit 0
+          fi
+
+          mapfile -t files < <(git diff --name-only --diff-filter=d "$base"...HEAD -- '*.md' | grep -vE '^(node_modules/|\.squad/|\.specify/)' || true)
+          if [ "${#files[@]}" -eq 0 ]; then
+            echo 'No changed Markdown files to lint'
+            exit 0
+          fi
+
+          markdownlint "${files[@]}"
 
       - name: Setup PowerShell
         if: runner.os == 'Linux'
@@ -41,6 +64,7 @@ jobs:
         run: Install-Module -Name PSScriptAnalyzer -Force -Scope CurrentUser
 
       - name: Lint PowerShell scripts
+        if: github.event_name != 'pull_request'
         shell: pwsh
         run: |
           # PSScriptAnalyzer with PSGallery settings reports many style warnings
@@ -73,7 +97,62 @@ jobs:
             Write-Host 'No PowerShell scripts found to lint'
           }
 
-      - name: Validate iteration governance
+      - name: Lint changed PowerShell scripts
+        if: github.event_name == 'pull_request'
+        shell: pwsh
+        run: |
+          # PSScriptAnalyzer with PSGallery settings reports many style warnings
+          # (PSUseSingularNouns, PSUseApprovedVerbs, etc.) on pre-existing scripts.
+          # These predate F-023 and are tracked under Proposal 037 for systematic
+          # cleanup. Filter to Severity = Error so only real defects block CI;
+          # warnings still print for awareness but don't fail the build.
+          $baseRef = "origin/${{ github.event.pull_request.base.ref }}"
+          $null = & git rev-parse --verify $baseRef 2>$null
+          if ($LASTEXITCODE -eq 0) {
+            $scriptFiles = @(
+              & git diff --name-only --diff-filter=d "$baseRef...HEAD" -- '*.ps1' 2>$null |
+                ForEach-Object { [string]$_ } |
+                Where-Object { -not [string]::IsNullOrWhiteSpace($_) } |
+                Where-Object { $_ -notmatch '^(?:\.git|\.squad|\.specify)(?:/|$)' }
+            )
+            if ($scriptFiles.Count -eq 0) {
+              Write-Host 'No changed PowerShell scripts found to lint'
+              exit 0
+            }
+          }
+          else {
+            Write-Host "Base ref $baseRef unavailable; falling back to full PowerShell lint"
+            $scriptFiles = Get-ChildItem -Path . -Filter *.ps1 -Recurse -File |
+                           Where-Object { $_.FullName -notmatch '[\\/]\.(git|squad|specify)[\\/]' } |
+                           Select-Object -ExpandProperty FullName
+          }
+
+          $allResults = $scriptFiles | ForEach-Object {
+            Invoke-ScriptAnalyzer -Path $_ -Settings PSGallery
+          }
+          $errors = @($allResults | Where-Object { $_.Severity -eq 'Error' })
+          $warnings = @($allResults | Where-Object { $_.Severity -eq 'Warning' })
+          if ($warnings.Count -gt 0) {
+            Write-Host "::group::PSScriptAnalyzer warnings (Proposal 037 cleanup queue, non-blocking)"
+            $warnings | Format-Table -AutoSize
+            Write-Host "::endgroup::"
+            Write-Host ("Warnings: {0} (not blocking)" -f $warnings.Count)
+          }
+          if ($errors.Count -gt 0) {
+            Write-Host "PSScriptAnalyzer errors (blocking):"
+            $errors | Format-Table -AutoSize
+            exit 1
+          }
+          Write-Host ("PASS: no PSScriptAnalyzer errors. Warnings count: {0}" -f $warnings.Count)
+
+      - name: Validate iteration governance (PR)
+        if: github.event_name == 'pull_request'
+        timeout-minutes: 25
+        shell: pwsh
+        run: ./extensions/specrew-speckit/scripts/validate-governance.ps1 -ProjectPath . -ChangedOnly
+
+      - name: Validate iteration governance (push)
+        if: github.event_name != 'pull_request'
         timeout-minutes: 25
         shell: pwsh
         run: ./extensions/specrew-speckit/scripts/validate-governance.ps1 -ProjectPath .
@@ -90,6 +169,8 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -163,6 +244,8 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
