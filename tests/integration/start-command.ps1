@@ -454,11 +454,17 @@ if (-not (Test-Path -LiteralPath $fakeCopilotLog -PathType Leaf)) {
     exit 1
 }
 $fakeCopilotArgs = Get-Content -LiteralPath $fakeCopilotLog -Raw -Encoding UTF8
+$fakeCopilotArgLines = @(
+    $fakeCopilotArgs -split "\r?\n" |
+    ForEach-Object { $_.Trim().Trim('"').Trim("'") } |
+    Where-Object { -not [string]::IsNullOrWhiteSpace($_) }
+)
 if ($IsWindows -and ($fakeCopilotArgs -notmatch 'last-start-prompt\.md' -or $fakeCopilotArgs -notmatch 'start-context\.json')) {
     Write-Fail 'Live launch did not pass the bootstrap handoff file references to Copilot.'
     exit 1
 }
-if ($fakeCopilotArgs -notmatch '(^|\s)-i(\s|$)') {
+$hasInputFlag = ($fakeCopilotArgLines -contains '-i') -or ($fakeCopilotArgs -match '(^|[ \t])-i([ \t]|$)')
+if (-not $hasInputFlag) {
     Write-Fail 'Live launch should auto-load the bootstrap prompt with -i.'
     exit 1
 }
