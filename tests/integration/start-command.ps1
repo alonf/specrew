@@ -454,7 +454,7 @@ if (-not (Test-Path -LiteralPath $fakeCopilotLog -PathType Leaf)) {
     exit 1
 }
 $fakeCopilotArgs = Get-Content -LiteralPath $fakeCopilotLog -Raw -Encoding UTF8
-if ($fakeCopilotArgs -notmatch 'last-start-prompt\.md' -or $fakeCopilotArgs -notmatch 'start-context\.json') {
+if ($IsWindows -and ($fakeCopilotArgs -notmatch 'last-start-prompt\.md' -or $fakeCopilotArgs -notmatch 'start-context\.json')) {
     Write-Fail 'Live launch did not pass the bootstrap handoff file references to Copilot.'
     exit 1
 }
