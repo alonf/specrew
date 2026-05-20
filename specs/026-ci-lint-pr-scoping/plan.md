@@ -13,6 +13,7 @@ Scope pull-request validation to only changed iterations, reducing CI latency wi
 **Goal**: Modify `extensions/specrew-speckit/scripts/validate-governance.ps1` and `.github/workflows/specrew-ci.yml` to scope PR validation to changed iterations only. On PR events: compute changed files via `git diff --name-only --diff-filter=d base..head`, identify touched `specs/*/iterations/<N>/` directories, include global state checks (`.specrew/`, `.squad/identity/`, `.specify/feature.json`), and skip full `specs/` tree scan. On push-to-main: full-repo validation unchanged.
 
 **Deliverables**:
+
 - `-ChangedOnly` switch parameter in `extensions/specrew-speckit/scripts/validate-governance.ps1`
 - `Get-ChangedIterations` helper function (compute changed files, identify touched iteration paths, include global-state surfaces)
 - Workflow conditional in `.github/workflows/specrew-ci.yml` (if pull_request, pass `-ChangedOnly`; if push to main, omit)
@@ -20,6 +21,7 @@ Scope pull-request validation to only changed iterations, reducing CI latency wi
 - Changelog entry in `CHANGELOG.md`
 
 **Validation**:
+
 - Integration test verifies scoped validation runs only on changed iteration directories
 - Unscoped regression guard ensures unmodified iterations are not validated in PR path
 - Push-to-main workflow retains full-repo validation (unchanged truth-check)
@@ -34,6 +36,7 @@ Scope pull-request validation to only changed iterations, reducing CI latency wi
 ## Scope Boundaries
 
 **In scope**:
+
 - `-ChangedOnly` switch parameter in `validate-governance.ps1`
 - `Get-ChangedIterations` helper function (surface enumeration for changed iterations)
 - Workflow YAML conditional in `specrew-ci.yml` (if pull_request, pass `-ChangedOnly`; if push, full-repo)
@@ -41,7 +44,9 @@ Scope pull-request validation to only changed iterations, reducing CI latency wi
 - Changelog entry
 
 **Unchanged**:
+
 - Push-to-main full-repo validation (no changes to full path)
 
 **Deferred** (per spec):
+
 - No proposal entry, no INDEX update, no version bump

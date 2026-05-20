@@ -44,14 +44,17 @@
 ## Dependencies & Execution Order
 
 ### Parallelizable (no blocking deps)
+
 - T001, T002: Validator modifications (different files, no inter-dependency)
 - T004, T005: Integration test and changelog (independent content)
 
 ### Sequential
+
 - T003: Depends on T001, T002 (workflow conditional routes to updated scripts)
 - T006, T007: Validation milestone after all implementation tasks complete
 
 ### Execution Path
+
 1. Start T001 + T002 + T004 + T005 in parallel
 2. Await T001 + T002 completion
 3. Execute T003 (workflow update)

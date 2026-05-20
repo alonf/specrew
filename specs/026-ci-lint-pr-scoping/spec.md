@@ -7,6 +7,7 @@ The CI lint job in `.github/workflows/specrew-ci.yml` runs full-repository check
 ## Fixed Design
 
 Scope pull-request linting in `.github/workflows/specrew-ci.yml` to changed files only:
+
 - **markdownlint:** on PR events, check only changed `*.md` files (via `git diff --name-only --diff-filter=d base..head -- '*.md'`)
 - **PSScriptAnalyzer:** on PR events, check only changed `*.ps1` files (via `git diff --name-only --diff-filter=d base..head -- '*.ps1'`)
 - **validate-governance.ps1:** on PR events, check only changed iteration directories under `specs/*/iterations/` plus the always-checked global state surface (`.specrew/`, `.squad/identity/`, `.specify/feature.json`); skip full `specs/` tree scan.

@@ -359,7 +359,7 @@ function Get-ChangedIterations {
             continue
         }
 
-        $iterationPath = Join-Path $resolvedProjectRoot ($match.Groups[1].Value -replace '/', '\')
+        $iterationPath = Join-Path $resolvedProjectRoot $match.Groups[1].Value
         if ((Test-Path -LiteralPath $iterationPath -PathType Container) -and -not $iterationPaths.Contains($iterationPath)) {
             $null = $iterationPaths.Add($iterationPath)
         }
