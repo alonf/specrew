@@ -7,5 +7,6 @@
     "hard": 0
   },
   "command": "validate-governance",
-  "recorded_at": "2026-05-20T01:15:19.7264475Z"
+  "duration_ms": 8499,
+  "recorded_at": "2026-05-21T20:22:47.3649566Z"
 }

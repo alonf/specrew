@@ -1,4 +1,3 @@
 {
-  "feature_directory": "",
-  "schema": "v1"
+  "feature_directory": "specs/030-validator-speedup"
 }

@@ -16900,3 +16900,37 @@ All findings are complete and evidence-based. Recommendations are actionable and
 - **Task ID**: (none)
 - **Auth Commit Hash**: 08b14a17129880caa48c8f2835e052dbfb2b709e
 - **Recorded At**: 2026-05-21T19:11:11Z
+
+## 2026-05-21T20:03:04Z — Boundary sync: specify
+
+- **Boundary Type**: specify
+- **Feature Ref**: 001-validator-speedup
+- **Iteration Number**: (none)
+- **Task ID**: (none)
+- **Auth Commit Hash**: 85972f69dd96a220a5700c95bb429ff3231f9a2e
+- **Recorded At**: 2026-05-21T20:03:04Z
+
+## 2026-05-21T20:18:11Z — Boundary sync warning: plan
+
+- **Boundary Type**: plan
+- **Latest Recorded Boundary**: specify
+- **Recorded At**: 2026-05-21T20:18:11Z
+- **Warning**: Expected next boundary 'clarify' but received 'plan'.
+
+## 2026-05-21T20:18:12Z — Boundary sync: plan
+
+- **Boundary Type**: plan
+- **Feature Ref**: 030-validator-speedup
+- **Iteration Number**: (none)
+- **Task ID**: (none)
+- **Auth Commit Hash**: 85972f69dd96a220a5700c95bb429ff3231f9a2e
+- **Recorded At**: 2026-05-21T20:18:12Z
+
+## 2026-05-21T20:26:24Z — Boundary sync: tasks
+
+- **Boundary Type**: tasks
+- **Feature Ref**: 030-validator-speedup
+- **Iteration Number**: (none)
+- **Task ID**: (none)
+- **Auth Commit Hash**: 85972f69dd96a220a5700c95bb429ff3231f9a2e
+- **Recorded At**: 2026-05-21T20:26:24Z
