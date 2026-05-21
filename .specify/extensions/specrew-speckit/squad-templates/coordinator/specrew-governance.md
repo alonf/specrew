@@ -30,7 +30,9 @@ These rules override generic Squad coordination whenever the repository is boots
 5. **Gate phase transitions**
    - Run `validate-governance.ps1` before moving from planning -> execution, execution -> review, and review -> retrospective when iteration artifacts are present.
    - A failed governance check blocks the transition; do not work around it with a narrative summary.
-   - The validator supports a `-ChangedOnly` switch for local iteration-scoped checks (used in CI for PR diffs). When `.specrew/`, `.squad/identity/`, `.squad/decisions.md`, `.squad/team.md`, `.squad/config.json`, `extensions/specrew-speckit/`, `.specify/feature.json`, or `.specify/extensions/specrew-speckit/` changes are detected, the validator automatically falls back to full validation. Interactive lifecycle gates typically run without `-ChangedOnly` to validate the complete artifact tree.
+   - Local validator runs on feature branches now auto-scope by default: the validator resolves the local base ref and applies the equivalent of `-ChangedOnly` unless the Crew explicitly passes `-FullRun` for a deliberate full-repo check.
+   - When `.specrew/`, `.squad/identity/`, `.squad/decisions.md`, `.squad/team.md`, `.squad/config.json`, `extensions/specrew-speckit/`, `.specify/feature.json`, or `.specify/extensions/specrew-speckit/` changes are detected, the validator automatically falls back to full validation even during an auto-scoped or explicit `-ChangedOnly` run.
+   - Interactive lifecycle gates typically still run without `-FullRun` so the complete artifact tree is checked when the boundary calls for full validation.
 
 6. **Process-claim discipline**
    - Only say the team followed Spec-Kit or Specrew end-to-end when the work was actually routed through the canonical lifecycle and the artifact chain exists on disk.

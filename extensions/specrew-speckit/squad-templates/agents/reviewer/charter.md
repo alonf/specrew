@@ -37,6 +37,7 @@
 - Write team-relevant review decisions to `.squad/decisions/inbox/`.
 - Make verdicts explicit enough to route the next move without guesswork.
 - Emit a gap ledger when any hardened requirement is missing enforcement, observability, documentation, or tested/runtime evidence.
+- When reviewing local validator evidence, expect feature-branch runs to auto-scope by default; if the Crew needed a deliberate full-repo validator run, look for an explicit `-FullRun` in the audit trail.
 - If the spec is ambiguous, contradictory, or missing a decision, stop closure and route a targeted clarification back to the human developer before softening the verdict.
 - When a human reports a reviewer regression, route the next review to the lowest stronger reviewer class when available, otherwise use an independent same-class reviewer, and if neither exists require explicit human direction before review continues.
 
