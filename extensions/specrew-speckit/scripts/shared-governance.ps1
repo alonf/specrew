@@ -75,7 +75,9 @@ function Write-SpecrewValidatorSummary {
         [int]$HardWarnings = 0,
 
         [AllowNull()]
-        [string]$RecordedAt
+        [string]$RecordedAt,
+
+        [int]$DurationMs = 0
     )
 
     $summaryPath = Get-SpecrewValidatorSummaryPath -ProjectRoot $ProjectRoot
@@ -87,14 +89,15 @@ function Write-SpecrewValidatorSummary {
     }
 
     $summary = [ordered]@{
-        schema     = 'v1'
-        warnings   = [ordered]@{
+        schema      = 'v1'
+        warnings    = [ordered]@{
             total  = ($SoftWarnings + $MediumWarnings + $HardWarnings)
             soft   = $SoftWarnings
             medium = $MediumWarnings
             hard   = $HardWarnings
         }
-        command    = $Command
+        command     = $Command
+        duration_ms = $DurationMs
         recorded_at = $effectiveRecordedAt
     }
 
@@ -259,7 +262,14 @@ function Get-ValidatorGlobalStatePathspecs {
         '.specrew/**'
         '.squad/identity/'
         '.squad/identity/**'
+        '.squad/decisions.md'
+        '.squad/team.md'
+        '.squad/config.json'
+        'extensions/specrew-speckit/'
+        'extensions/specrew-speckit/**'
         '.specify/feature.json'
+        '.specify/extensions/specrew-speckit/'
+        '.specify/extensions/specrew-speckit/**'
     )
 }
 
@@ -371,6 +381,58 @@ function Get-ChangedIterations {
         IterationPaths   = @($iterationPaths | Sort-Object)
         Reason           = 'scoped'
     }
+}
+
+function Get-NormalizedKeyword {
+    param([AllowNull()][string]$Value)
+
+    if ([string]::IsNullOrWhiteSpace($Value)) {
+        return $null
+    }
+
+    $normalized = $Value.ToLowerInvariant()
+    if ($normalized -match '(planning|executing|reviewing|retro|complete|abandoned)') {
+        return $Matches[1]
+    }
+
+    if ($normalized -match '(accepted|needs-rework|blocked)') {
+        return $Matches[1]
+    }
+
+    return $normalized.Trim()
+}
+
+function Get-DeclaredCompletedTaskCount {
+    param(
+        [AllowEmptyCollection()]
+        [AllowEmptyString()]
+        [string[]]$PlanLines,
+
+        [AllowEmptyCollection()]
+        [AllowEmptyString()]
+        [string[]]$StateLines
+    )
+
+    $planTasks = @(Get-MarkdownSectionTable -Lines $PlanLines -Heading 'Tasks')
+    if ($planTasks.Count -gt 0) {
+        return @(
+            $planTasks |
+                Where-Object { (Normalize-MarkdownCell ([string]$_.Status)).ToLowerInvariant() -eq 'done' }
+        ).Count
+    }
+
+    $stateTasks = @(Get-MarkdownSectionTable -Lines $StateLines -Heading 'Task Status')
+    if ($stateTasks.Count -eq 0) {
+        $stateTasks = @(Get-MarkdownSectionTable -Lines $StateLines -Heading 'Tasks')
+    }
+
+    return @(
+        $stateTasks |
+            Where-Object {
+                $normalizedStatus = Get-NormalizedKeyword ([string]$_.Status)
+                $normalizedStatus -in @('done', 'pass')
+            }
+    ).Count
 }
 
 function Add-DecisionsLedgerEntry {

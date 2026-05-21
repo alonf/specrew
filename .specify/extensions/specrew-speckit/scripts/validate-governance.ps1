@@ -2,6 +2,7 @@
 param(
     [string]$ProjectPath = (Get-Location).Path,
     [string[]]$IterationPath,
+    [switch]$ChangedOnly,
     [AllowEmptyString()][string]$ResponseText = '',
     [string]$BoundaryName,
     [ValidateSet('auto', 'boundary-handoff', 'narration')][string]$ResponseScope = 'auto',
@@ -20,6 +21,7 @@ if (-not (Test-Path -LiteralPath $sharedGovernancePath -PathType Leaf)) {
 $script:ValidatorCommand = 'validate-governance'
 $script:ValidatorSoftWarnings = 0
 $script:ValidatorMediumWarnings = 0
+$script:ValidatorStartTime = [System.Diagnostics.Stopwatch]::StartNew()
 
 function Write-ValidatorSummaryAndExit {
     param(
@@ -34,12 +36,20 @@ function Write-ValidatorSummaryAndExit {
 
     if (-not [string]::IsNullOrWhiteSpace($ProjectRoot)) {
         try {
+            $durationMs = if ($null -ne $script:ValidatorStartTime) {
+                [int]$script:ValidatorStartTime.ElapsedMilliseconds
+            }
+            else {
+                0
+            }
+
             Write-SpecrewValidatorSummary `
                 -ProjectRoot $ProjectRoot `
                 -Command $script:ValidatorCommand `
                 -SoftWarnings $script:ValidatorSoftWarnings `
                 -MediumWarnings $script:ValidatorMediumWarnings `
-                -HardWarnings $HardWarnings | Out-Null
+                -HardWarnings $HardWarnings `
+                -DurationMs $durationMs | Out-Null
         }
         catch {
         }
@@ -2859,6 +2869,118 @@ function Test-IsEarlyPlanningStub {
         ($planText -match 'stub captures the planned scope')
 }
 
+<#
+.SYNOPSIS
+Tests form-vs-meaning parity for pre-review commit gate validation.
+
+.DESCRIPTION
+Validates that declared task completion in state.md matches observed committed changes
+in git diff. Blocks review boundary advancement when form-vs-meaning gap is detected.
+
+.PARAMETER IterationDirectory
+Path to iteration directory (e.g., C:\Dev\Specrew\specs\028-review-evidence-integrity).
+
+.PARAMETER Baseline
+Git baseline reference to compare against HEAD (e.g., 'main', commit SHA).
+Must be resolvable in the current repository.
+
+.OUTPUTS
+PSCustomObject with ValidationResult structure when violation detected, $null otherwise.
+Returns error severity when declared >= 1 tasks but git diff is empty.
+
+.NOTES
+Feature: F-028 (Review Evidence Integrity)
+Contract: specs/028-review-evidence-integrity/contracts/validator-rule-contract.md
+RuleID: pre-review-commit-gate
+Category: review-evidence-integrity
+#>
+function Test-PreReviewCommitGate {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory=$true)]
+        [string]$IterationDirectory,
+
+        [Parameter(Mandatory=$true)]
+        [string]$ProjectRoot,
+
+        [AllowEmptyCollection()]
+        [AllowEmptyString()]
+        [string[]]$PlanLines = @(),
+
+        [AllowEmptyCollection()]
+        [AllowEmptyString()]
+        [string[]]$StateLines = @(),
+        
+        [Parameter(Mandatory=$true)]
+        [string]$Baseline
+    )
+    
+    $statePath = Join-Path -Path $IterationDirectory -ChildPath 'state.md'
+    if ($StateLines.Count -eq 0) {
+        if (-not (Test-Path -LiteralPath $statePath -PathType Leaf)) {
+            return $null
+        }
+
+        $StateLines = Get-MarkdownContent -Path $statePath
+    }
+
+    if ($PlanLines.Count -eq 0) {
+        $planPath = Join-Path -Path $IterationDirectory -ChildPath 'plan.md'
+        if (Test-Path -LiteralPath $planPath -PathType Leaf) {
+            $PlanLines = Get-MarkdownContent -Path $planPath
+        }
+    }
+
+    $completedTaskCount = Get-DeclaredCompletedTaskCount -PlanLines $PlanLines -StateLines $StateLines
+    if ($completedTaskCount -lt 0) {
+        $completedTaskCount = 0
+    }
+    
+    $observedFileCount = 0
+    try {
+        $resolvedBaseline = @(& git -C $ProjectRoot rev-parse --verify "$Baseline" 2>$null)
+        if ($LASTEXITCODE -ne 0) {
+            return $null
+        }
+        
+        $diffFiles = @(& git -C $ProjectRoot diff --name-only "$Baseline...HEAD" -- 2>$null)
+        if ($LASTEXITCODE -eq 0) {
+            $observedFileCount = @(
+                $diffFiles |
+                    ForEach-Object { [string]$_ } |
+                    Where-Object { -not [string]::IsNullOrWhiteSpace($_) }
+            ).Count
+        }
+    }
+    catch {
+        return $null
+    }
+    
+    $parityResult = Test-FormMeaningParity -Declared $completedTaskCount -Observed $observedFileCount
+    
+    if ($parityResult.Gap -and $parityResult.Severity -eq 'error') {
+        $message = "Form-vs-meaning gap detected: iteration artifacts declare $($parityResult.Declared) completed task(s) but git diff $Baseline...HEAD is empty (0 files changed)"
+        $remediationHint = "Commit implementation work before review. Verify with ``git diff $Baseline...HEAD --stat``, then rerun validate-governance.ps1 before advancing to review."
+        
+        return [PSCustomObject]@{
+            RuleID = 'pre-review-commit-gate'
+            Category = 'review-evidence-integrity'
+            Severity = 'error'
+            Message = $message
+            RemediationHint = $remediationHint
+            Evidence = @{
+                DeclaredTaskCount = $parityResult.Declared
+                CommittedFileCount = $parityResult.Observed
+                Baseline = $Baseline
+                IterationPath = "file:///$($IterationDirectory -replace '\\', '/')"
+            }
+        }
+    }
+    
+    # No violation detected
+    return $null
+}
+
 function Test-IterationGovernance {
     param(
         [string]$IterationDirectory,
@@ -2997,6 +3119,18 @@ function Test-IterationGovernance {
             if ($hasNonTerminalTasks) {
                 $errors.Add('Reviewing iterations require all tasks to be in terminal states')
             }
+            
+            # F-028: Pre-review commit gate - validate form-vs-meaning parity
+            if ($stateLines.Count -gt 0) {
+                $baselineRef = Get-MarkdownMetadataValue -Lines $stateLines -Label 'Baseline Ref'
+                if (-not [string]::IsNullOrWhiteSpace($baselineRef)) {
+                    $preReviewGateResult = Test-PreReviewCommitGate -IterationDirectory $IterationDirectory -ProjectRoot $ProjectRoot -PlanLines $planLines -StateLines $stateLines -Baseline $baselineRef
+                    if ($null -ne $preReviewGateResult -and $preReviewGateResult.Severity -eq 'error') {
+                        $errors.Add("[$($preReviewGateResult.Category)] $($preReviewGateResult.Message)`n    Remediation: $($preReviewGateResult.RemediationHint)")
+                    }
+                }
+            }
+            
             Test-ReviewArtifact -ReviewPath $reviewPath -ProjectRoot $ProjectRoot -IterationDirectory $IterationDirectory -IterationStatus $status -PlanTasks $tasks -Errors $errors
         }
         'retro' {
@@ -3106,10 +3240,15 @@ function Get-ReviewerCloseoutEnforcementMap {
 
 function Add-ApprovalReuseValidationErrors {
     param(
+        [AllowEmptyCollection()]
         [string[]]$Targets,
         [string]$ProjectRoot,
         [hashtable]$ResultMap
     )
+
+    if (@($Targets).Count -eq 0) {
+        return
+    }
 
     $groupedTargets = @{}
     foreach ($target in @($Targets | Where-Object { Test-IterationRequiresCanonicalStateSchema -IterationDirectory $_ })) {
@@ -3232,10 +3371,15 @@ function Get-InteractionModelGitBoundaryCommits {
 
 function Add-InteractionModelValidationErrors {
     param(
+        [AllowEmptyCollection()]
         [Parameter(Mandatory = $true)][string[]]$Targets,
         [Parameter(Mandatory = $true)][string]$ProjectRoot,
         [Parameter(Mandatory = $true)][hashtable]$ResultMap
     )
+
+    if (@($Targets).Count -eq 0) {
+        return
+    }
 
     $boundaryCommits = @(Get-InteractionModelGitBoundaryCommits -ProjectRoot $ProjectRoot)
     foreach ($target in $Targets) {
@@ -3455,17 +3599,51 @@ try {
     $explicitIterationPathsProvided = ($null -ne $IterationPath) -and @(
         $IterationPath | Where-Object { -not [string]::IsNullOrWhiteSpace([string]$_) }
     ).Count -gt 0
-    $targets = @(Resolve-IterationTarget -ResolvedProjectPath $resolvedProjectPath -ExplicitIterationPaths $IterationPath)
+    $targets = @()
+    if ($ChangedOnly -and -not $explicitIterationPathsProvided) {
+        $changedIterations = Get-ChangedIterations -ProjectRoot $resolvedProjectPath
+        if ($changedIterations.UseScopedTargets) {
+            $targets = @($changedIterations.IterationPaths)
+        }
+        else {
+            if ($env:SPECREW_VALIDATOR_VERBOSE -eq '1') {
+                $resolvedBase = if ([string]::IsNullOrWhiteSpace([string]$changedIterations.BaseRef)) { '(unresolved)' } else { [string]$changedIterations.BaseRef }
+                Write-Host ("[validator] -ChangedOnly fallback to full validation: {0} (base {1})" -f $changedIterations.Reason, $resolvedBase)
+            }
+            $targets = @(Resolve-IterationTarget -ResolvedProjectPath $resolvedProjectPath -ExplicitIterationPaths $IterationPath)
+        }
+    }
+    else {
+        $targets = @(Resolve-IterationTarget -ResolvedProjectPath $resolvedProjectPath -ExplicitIterationPaths $IterationPath)
+    }
     if (-not [string]::IsNullOrWhiteSpace($ResponseText)) {
         $responseValidationExitCode = Invoke-InteractionModelResponseValidation -ProjectRoot $resolvedProjectPath -ResponseText $ResponseText -IterationTargets $targets -BoundaryName $BoundaryName -ResponseScope $ResponseScope -BarePathBoundaryHandoffSeverity $BarePathBoundaryHandoffSeverity
         Write-ValidatorSummaryAndExit -ProjectRoot $resolvedProjectPath -ExitCode $responseValidationExitCode -HardWarnings $(if ($responseValidationExitCode -eq 0) { 0 } else { 1 })
     }
     $iterationConfig = if ($targets.Count -gt 0) { Get-IterationConfigForValidation -IterationDirectory $targets[0] } else { @{ closeout_packet_required_since_iteration = '' } }
     $reviewerCloseoutEnforcement = Get-ReviewerCloseoutEnforcementMap -Targets $targets -ExplicitTargetsProvided $explicitIterationPathsProvided -RequiredSinceIteration $iterationConfig.closeout_packet_required_since_iteration
+    # Proposal 034: per-iteration progress logging so hangs can be bisected.
+    # Without this, the loop runs silently for minutes and a single pathological
+    # iteration creates a black-hole CI experience. With this, the last printed
+    # line identifies the iteration that started but didn't complete.
+    $iterationIndex = 0
+    $iterationTotal = $targets.Count
+    $iterationStart = Get-Date
     $results = @($targets | ForEach-Object {
             $targetPath = $_
+            $iterationIndex++
+            $stepStart = Get-Date
+            $relativeTarget = try { [System.IO.Path]::GetRelativePath($resolvedProjectPath, $targetPath) } catch { $targetPath }
+            if ($env:SPECREW_VALIDATOR_VERBOSE -eq '1') {
+                Write-Host ("[validator] ({0}/{1}) validating {2}" -f $iterationIndex, $iterationTotal, $relativeTarget)
+            }
             try {
-                Test-IterationGovernance -IterationDirectory $targetPath -ProjectRoot $resolvedProjectPath -TeamRoles $teamRoles -EnforceReviewerCloseout $reviewerCloseoutEnforcement.ContainsKey($targetPath)
+                $result = Test-IterationGovernance -IterationDirectory $targetPath -ProjectRoot $resolvedProjectPath -TeamRoles $teamRoles -EnforceReviewerCloseout $reviewerCloseoutEnforcement.ContainsKey($targetPath)
+                if ($env:SPECREW_VALIDATOR_VERBOSE -eq '1') {
+                    $stepElapsed = [Math]::Round(((Get-Date) - $stepStart).TotalSeconds, 1)
+                    Write-Host ("[validator] ({0}/{1}) {2} -> {3}s" -f $iterationIndex, $iterationTotal, $relativeTarget, $stepElapsed)
+                }
+                $result
             }
             catch {
                 $iterationErrors = New-Object System.Collections.Generic.List[string]
@@ -3476,6 +3654,10 @@ try {
                 }
             }
         })
+    if ($env:SPECREW_VALIDATOR_VERBOSE -eq '1') {
+        $totalElapsed = [Math]::Round(((Get-Date) - $iterationStart).TotalSeconds, 1)
+        Write-Host ("[validator] iteration loop complete: {0} iterations in {1}s" -f $iterationTotal, $totalElapsed)
+    }
     $resultMap = @{}
     foreach ($result in $results) {
         $resultMap[$result.Path] = $result

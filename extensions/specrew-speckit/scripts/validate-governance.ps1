@@ -21,6 +21,7 @@ if (-not (Test-Path -LiteralPath $sharedGovernancePath -PathType Leaf)) {
 $script:ValidatorCommand = 'validate-governance'
 $script:ValidatorSoftWarnings = 0
 $script:ValidatorMediumWarnings = 0
+$script:ValidatorStartTime = [System.Diagnostics.Stopwatch]::StartNew()
 
 function Write-ValidatorSummaryAndExit {
     param(
@@ -35,12 +36,20 @@ function Write-ValidatorSummaryAndExit {
 
     if (-not [string]::IsNullOrWhiteSpace($ProjectRoot)) {
         try {
+            $durationMs = if ($null -ne $script:ValidatorStartTime) {
+                [int]$script:ValidatorStartTime.ElapsedMilliseconds
+            }
+            else {
+                0
+            }
+
             Write-SpecrewValidatorSummary `
                 -ProjectRoot $ProjectRoot `
                 -Command $script:ValidatorCommand `
                 -SoftWarnings $script:ValidatorSoftWarnings `
                 -MediumWarnings $script:ValidatorMediumWarnings `
-                -HardWarnings $HardWarnings | Out-Null
+                -HardWarnings $HardWarnings `
+                -DurationMs $durationMs | Out-Null
         }
         catch {
         }
@@ -2858,39 +2867,6 @@ function Test-IsEarlyPlanningStub {
     return ($titleLine -match '\(stub\)\s*$') -or
         ($planText -match 'pending detailed planning') -or
         ($planText -match 'stub captures the planned scope')
-}
-
-function Get-DeclaredCompletedTaskCount {
-    param(
-        [AllowEmptyCollection()]
-        [AllowEmptyString()]
-        [string[]]$PlanLines,
-
-        [AllowEmptyCollection()]
-        [AllowEmptyString()]
-        [string[]]$StateLines
-    )
-
-    $planTasks = @(Get-MarkdownSectionTable -Lines $PlanLines -Heading 'Tasks')
-    if ($planTasks.Count -gt 0) {
-        return @(
-            $planTasks |
-                Where-Object { (Normalize-MarkdownCell ([string]$_.Status)).ToLowerInvariant() -eq 'done' }
-        ).Count
-    }
-
-    $stateTasks = @(Get-MarkdownSectionTable -Lines $StateLines -Heading 'Task Status')
-    if ($stateTasks.Count -eq 0) {
-        $stateTasks = @(Get-MarkdownSectionTable -Lines $StateLines -Heading 'Tasks')
-    }
-
-    return @(
-        $stateTasks |
-            Where-Object {
-                $normalizedStatus = Get-NormalizedKeyword ([string]$_.Status)
-                $normalizedStatus -in @('done', 'pass')
-            }
-    ).Count
 }
 
 <#

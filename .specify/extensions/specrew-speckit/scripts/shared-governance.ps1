@@ -75,7 +75,9 @@ function Write-SpecrewValidatorSummary {
         [int]$HardWarnings = 0,
 
         [AllowNull()]
-        [string]$RecordedAt
+        [string]$RecordedAt,
+
+        [int]$DurationMs = 0
     )
 
     $summaryPath = Get-SpecrewValidatorSummaryPath -ProjectRoot $ProjectRoot
@@ -87,14 +89,15 @@ function Write-SpecrewValidatorSummary {
     }
 
     $summary = [ordered]@{
-        schema     = 'v1'
-        warnings   = [ordered]@{
+        schema      = 'v1'
+        warnings    = [ordered]@{
             total  = ($SoftWarnings + $MediumWarnings + $HardWarnings)
             soft   = $SoftWarnings
             medium = $MediumWarnings
             hard   = $HardWarnings
         }
-        command    = $Command
+        command     = $Command
+        duration_ms = $DurationMs
         recorded_at = $effectiveRecordedAt
     }
 
@@ -251,6 +254,185 @@ function Get-DecisionsLedgerPath {
     )
 
     return Join-Path (Resolve-ProjectPath -Path $ProjectRoot) '.squad\decisions.md'
+}
+
+function Get-ValidatorGlobalStatePathspecs {
+    return @(
+        '.specrew/'
+        '.specrew/**'
+        '.squad/identity/'
+        '.squad/identity/**'
+        '.squad/decisions.md'
+        '.squad/team.md'
+        '.squad/config.json'
+        'extensions/specrew-speckit/'
+        'extensions/specrew-speckit/**'
+        '.specify/feature.json'
+        '.specify/extensions/specrew-speckit/'
+        '.specify/extensions/specrew-speckit/**'
+    )
+}
+
+function Get-ChangedIterations {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$ProjectRoot,
+
+        [AllowNull()]
+        [string]$BaseBranch
+    )
+
+    $resolvedProjectRoot = Resolve-ProjectPath -Path $ProjectRoot
+    $baseCandidates = @(
+        @(
+            $BaseBranch
+            $env:GITHUB_BASE_REF
+        ) | Where-Object { -not [string]::IsNullOrWhiteSpace([string]$_) } | Select-Object -Unique
+    )
+
+    if ($baseCandidates.Count -eq 0) {
+        return [pscustomobject]@{
+            UseScopedTargets = $false
+            BaseRef          = $null
+            IterationPaths   = @()
+            Reason           = 'base-ref-missing'
+        }
+    }
+
+    $resolvedBaseRef = $null
+    foreach ($baseCandidate in $baseCandidates) {
+        $candidateRef = if ([string]$baseCandidate -match '^origin\/') {
+            [string]$baseCandidate
+        }
+        else {
+            "origin/$baseCandidate"
+        }
+
+        $null = @(& git -C $resolvedProjectRoot rev-parse --verify $candidateRef 2>$null)
+        if ($LASTEXITCODE -eq 0) {
+            $resolvedBaseRef = $candidateRef
+            break
+        }
+    }
+
+    if ([string]::IsNullOrWhiteSpace($resolvedBaseRef)) {
+        return [pscustomobject]@{
+            UseScopedTargets = $false
+            BaseRef          = $null
+            IterationPaths   = @()
+            Reason           = 'base-ref-unresolved'
+        }
+    }
+
+    $globalStateArgs = @('diff', '--name-only', "$resolvedBaseRef...HEAD", '--') + @(Get-ValidatorGlobalStatePathspecs)
+    $globalStateChanges = @(
+        & git -C $resolvedProjectRoot @globalStateArgs 2>$null |
+            ForEach-Object { [string]$_ } |
+            Where-Object { -not [string]::IsNullOrWhiteSpace($_) }
+    )
+    if ($LASTEXITCODE -ne 0) {
+        return [pscustomobject]@{
+            UseScopedTargets = $false
+            BaseRef          = $resolvedBaseRef
+            IterationPaths   = @()
+            Reason           = 'global-state-diff-failed'
+        }
+    }
+
+    if ($globalStateChanges.Count -gt 0) {
+        return [pscustomobject]@{
+            UseScopedTargets = $false
+            BaseRef          = $resolvedBaseRef
+            IterationPaths   = @()
+            Reason           = 'global-state-changed'
+        }
+    }
+
+    $changedIterationFiles = @(
+        & git -C $resolvedProjectRoot diff --name-only "$resolvedBaseRef...HEAD" -- 'specs/*/iterations/' 'specs/*/iterations/**' 2>$null |
+            ForEach-Object { [string]$_ } |
+            Where-Object { -not [string]::IsNullOrWhiteSpace($_) }
+    )
+    if ($LASTEXITCODE -ne 0) {
+        return [pscustomobject]@{
+            UseScopedTargets = $false
+            BaseRef          = $resolvedBaseRef
+            IterationPaths   = @()
+            Reason           = 'iteration-diff-failed'
+        }
+    }
+
+    $iterationPaths = New-Object System.Collections.Generic.List[string]
+    foreach ($changedFile in $changedIterationFiles) {
+        $match = [regex]::Match($changedFile.Trim(), '^(specs/[^/]+/iterations/[^/]+)(?:/|$)')
+        if (-not $match.Success) {
+            continue
+        }
+
+        $iterationPath = Join-Path $resolvedProjectRoot $match.Groups[1].Value
+        if ((Test-Path -LiteralPath $iterationPath -PathType Container) -and -not $iterationPaths.Contains($iterationPath)) {
+            $null = $iterationPaths.Add($iterationPath)
+        }
+    }
+
+    return [pscustomobject]@{
+        UseScopedTargets = $true
+        BaseRef          = $resolvedBaseRef
+        IterationPaths   = @($iterationPaths | Sort-Object)
+        Reason           = 'scoped'
+    }
+}
+
+function Get-NormalizedKeyword {
+    param([AllowNull()][string]$Value)
+
+    if ([string]::IsNullOrWhiteSpace($Value)) {
+        return $null
+    }
+
+    $normalized = $Value.ToLowerInvariant()
+    if ($normalized -match '(planning|executing|reviewing|retro|complete|abandoned)') {
+        return $Matches[1]
+    }
+
+    if ($normalized -match '(accepted|needs-rework|blocked)') {
+        return $Matches[1]
+    }
+
+    return $normalized.Trim()
+}
+
+function Get-DeclaredCompletedTaskCount {
+    param(
+        [AllowEmptyCollection()]
+        [AllowEmptyString()]
+        [string[]]$PlanLines,
+
+        [AllowEmptyCollection()]
+        [AllowEmptyString()]
+        [string[]]$StateLines
+    )
+
+    $planTasks = @(Get-MarkdownSectionTable -Lines $PlanLines -Heading 'Tasks')
+    if ($planTasks.Count -gt 0) {
+        return @(
+            $planTasks |
+                Where-Object { (Normalize-MarkdownCell ([string]$_.Status)).ToLowerInvariant() -eq 'done' }
+        ).Count
+    }
+
+    $stateTasks = @(Get-MarkdownSectionTable -Lines $StateLines -Heading 'Task Status')
+    if ($stateTasks.Count -eq 0) {
+        $stateTasks = @(Get-MarkdownSectionTable -Lines $StateLines -Heading 'Tasks')
+    }
+
+    return @(
+        $stateTasks |
+            Where-Object {
+                $normalizedStatus = Get-NormalizedKeyword ([string]$_.Status)
+                $normalizedStatus -in @('done', 'pass')
+            }
+    ).Count
 }
 
 function Add-DecisionsLedgerEntry {
@@ -2136,4 +2318,96 @@ function Get-RoutingEvidenceRecords {
                 }
             }
     )
+}
+
+<#
+.SYNOPSIS
+Tests form-vs-meaning parity by comparing declared and observed metrics.
+
+.DESCRIPTION
+Compares a declared count/metric (form) against an observed count/metric (meaning) 
+and returns structured result indicating gap and severity level.
+
+This is a purely functional helper with no I/O side effects, designed for composition
+by validator rules and governance scripts.
+
+.PARAMETER Declared
+Count/metric from declared state (form). Must be >= 0.
+Example: Number of tasks marked complete in state.md.
+
+.PARAMETER Observed
+Count/metric from observed reality (meaning). Must be >= 0.
+Example: Number of files in git diff baseline...HEAD.
+
+.OUTPUTS
+PSCustomObject with fields:
+- Declared [int]: Echo of Declared parameter
+- Observed [int]: Echo of Observed parameter  
+- Gap [bool]: $true if Declared != Observed; $false otherwise
+- Severity [string]: 'error' | 'warning' | 'info'
+
+Severity Logic:
+- 'error': Declared > 0 AND Observed = 0 (zero-diff, hard failure boundary)
+- 'warning': Declared != Observed AND both > 0 (partial mismatch, non-blocking)
+- 'info': Declared = Observed (no gap detected)
+
+.EXAMPLE
+$result = Test-FormMeaningParity -Declared 11 -Observed 0
+# Returns: @{ Declared=11; Observed=0; Gap=$true; Severity='error' }
+
+.EXAMPLE
+$result = Test-FormMeaningParity -Declared 5 -Observed 3
+# Returns: @{ Declared=5; Observed=3; Gap=$true; Severity='warning' }
+
+.EXAMPLE
+$result = Test-FormMeaningParity -Declared 0 -Observed 0
+# Returns: @{ Declared=0; Observed=0; Gap=$false; Severity='info' }
+
+.NOTES
+Feature: F-028 (Review Evidence Integrity)
+Contract: specs/028-review-evidence-integrity/contracts/test-formmeaningparity-contract.md
+API Version: 1.0 (immutable per Q6 decision)
+#>
+function Test-FormMeaningParity {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory=$true)]
+        [int]$Declared,
+        
+        [Parameter(Mandatory=$true)]
+        [int]$Observed
+    )
+    
+    # Determine gap presence
+    $gap = $Declared -ne $Observed
+    
+    # Determine severity level per Q1 resolution
+    $severity = if (-not $gap) {
+        # No gap: declared matches observed
+        'info'
+    }
+    elseif ($Declared -gt 0 -and $Observed -eq 0) {
+        # Zero-diff: declared work but nothing observed (hard failure)
+        'error'
+    }
+    elseif ($Declared -gt $Observed -and $Observed -gt 0) {
+        # Partial implementation: both > 0 but mismatch (non-blocking)
+        'warning'
+    }
+    elseif ($Declared -eq 0 -and $Observed -eq 0) {
+        # Legitimate empty state (no gap, spec-only iteration)
+        'info'
+    }
+    else {
+        # Other mismatches (e.g., over-delivery: observed > declared)
+        'warning'
+    }
+    
+    # Return structured result per contract
+    return [PSCustomObject]@{
+        Declared = $Declared
+        Observed = $Observed
+        Gap = $gap
+        Severity = $severity
+    }
 }
