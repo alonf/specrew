@@ -34,6 +34,7 @@
         'scripts/internal/coordinator-resume.ps1',
         'scripts/internal/dashboard-renderer.ps1',
         'scripts/internal/version-check.ps1',
+        'scripts/internal/supported-versions.yml',
         'scripts/internal/sync-boundary-state.ps1',
         'scripts/internal/invoke-module-release.ps1',
         'scripts/internal/task-progress.ps1',

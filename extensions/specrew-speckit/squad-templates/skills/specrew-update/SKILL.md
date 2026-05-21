@@ -35,6 +35,7 @@ This skill is additive. Refreshing Specrew assets does not remove or shadow `/sp
 ```text
 /specrew-update [--project-path <path>] [--info] [--all]
                  [--specrew] [--squad] [--spec-kit] [--skip-update-check]
+                 [--upstream-latest]
 ```
 
 Backed by: `specrew update` / `scripts/specrew-update.ps1`
@@ -50,10 +51,14 @@ Backed by: `specrew update` / `scripts/specrew-update.ps1`
 | `--squad` | flag | No | Update Squad-managed assets only |
 | `--spec-kit` | flag | No | Update Spec Kit extension only |
 | `--skip-update-check` | flag | No | Skip the PSGallery version-available check |
+| `--upstream-latest` | flag | No | Target upstream-latest versions instead of Specrew-validated max_tested (use with care; see Outputs) |
 
 ## Outputs
 
 - Update report showing which assets were refreshed, skipped, or newly provisioned.
+- `--info` table shows Current / **LatestSupported** (the highest version Specrew has validated against) / **UpstreamLatest** (advisory) / Status / Source for Specrew, Spec Kit, and Squad. Four-state Status: `current`, `update-available-supported`, `ahead-of-supported` (current is beyond Specrew-validated max_tested), `behind-supported` (current is below the floor).
+- Advisory line surfaces when upstream-latest exceeds LatestSupported, explaining "Specrew has validated only through X.Y.Z" so the user does not silently adopt untested upstream versions.
+- Default upgrade target is `LatestSupported`. The `--upstream-latest` flag opts into the historical behavior (upgrade to upstream-latest), at the user's own risk.
 - Slash-command surface status after the update.
 - Version availability notice if a newer Specrew version is available on PSGallery.
 

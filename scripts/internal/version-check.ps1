@@ -110,6 +110,107 @@ function Get-SpecrewSlashCommandMinVersion {
     return '0.24.0'
 }
 
+function Get-SpecrewSupportedVersionsPath {
+    return Join-Path $PSScriptRoot 'supported-versions.yml'
+}
+
+function Get-SpecrewSupportedVersions {
+    param(
+        [string]$Path = (Get-SpecrewSupportedVersionsPath)
+    )
+
+    if (-not (Test-Path -LiteralPath $Path -PathType Leaf)) {
+        return $null
+    }
+
+    try {
+        $result = [ordered]@{
+            Schema  = $null
+            Speckit = [ordered]@{ Min = $null; MaxTested = $null; Notes = '' }
+            Squad   = [ordered]@{ Min = $null; MaxTested = $null; Notes = '' }
+        }
+
+        $currentSection = $null
+        foreach ($line in (Get-Content -LiteralPath $Path -Encoding UTF8)) {
+            if ($line -match '^\s*(?:#.*)?$') { continue }
+
+            if ($line -match '^schema:\s*"?(?<value>[^"#\r\n]+?)"?\s*(?:#.*)?$') {
+                $result.Schema = $Matches['value'].Trim()
+                $currentSection = $null
+                continue
+            }
+
+            if ($line -match '^(?<section>speckit|squad):\s*(?:#.*)?$') {
+                $currentSection = $Matches['section']
+                continue
+            }
+
+            if ($currentSection -and ($line -match '^\s+(?<key>min|max_tested|notes):\s*"?(?<value>[^"#\r\n]*?)"?\s*(?:#.*)?$')) {
+                $key = $Matches['key']
+                $value = $Matches['value'].Trim()
+
+                $sectionMap = if ($currentSection -eq 'speckit') { $result.Speckit } else { $result.Squad }
+                switch ($key) {
+                    'min'        { $sectionMap.Min = $value }
+                    'max_tested' { $sectionMap.MaxTested = $value }
+                    'notes'      { $sectionMap.Notes = $value }
+                }
+            }
+        }
+
+        if ([string]::IsNullOrWhiteSpace($result.Speckit.Min) -or
+            [string]::IsNullOrWhiteSpace($result.Speckit.MaxTested) -or
+            [string]::IsNullOrWhiteSpace($result.Squad.Min) -or
+            [string]::IsNullOrWhiteSpace($result.Squad.MaxTested)) {
+            return $null
+        }
+
+        if (-not [string]::IsNullOrWhiteSpace($env:SPECREW_SUPPORTED_MAX_SPECKIT)) {
+            $result.Speckit.MaxTested = $env:SPECREW_SUPPORTED_MAX_SPECKIT.Trim()
+        }
+        if (-not [string]::IsNullOrWhiteSpace($env:SPECREW_SUPPORTED_MAX_SQUAD)) {
+            $result.Squad.MaxTested = $env:SPECREW_SUPPORTED_MAX_SQUAD.Trim()
+        }
+
+        return $result
+    }
+    catch {
+        return $null
+    }
+}
+
+function Get-SpecrewVersionStatus {
+    param(
+        [AllowNull()][string]$Current,
+        [AllowNull()][string]$Min,
+        [AllowNull()][string]$MaxTested
+    )
+
+    if ([string]::IsNullOrWhiteSpace($Current)) {
+        return 'not-installed'
+    }
+
+    $currentVersion = ConvertTo-SpecrewSemanticVersion -Value $Current
+    if ($null -eq $currentVersion) {
+        return 'unknown'
+    }
+
+    $minVersion = ConvertTo-SpecrewSemanticVersion -Value $Min
+    $maxTestedVersion = ConvertTo-SpecrewSemanticVersion -Value $MaxTested
+
+    if (($null -ne $minVersion) -and ($currentVersion -lt $minVersion)) {
+        return 'behind-supported'
+    }
+
+    if ($null -ne $maxTestedVersion) {
+        if ($currentVersion -eq $maxTestedVersion) { return 'current' }
+        if ($currentVersion -lt $maxTestedVersion) { return 'update-available-supported' }
+        if ($currentVersion -gt $maxTestedVersion) { return 'ahead-of-supported' }
+    }
+
+    return 'unknown'
+}
+
 function Get-SpecrewVersionCheckCachePath {
     param([Parameter(Mandatory = $true)][string]$ProjectRoot)
 
