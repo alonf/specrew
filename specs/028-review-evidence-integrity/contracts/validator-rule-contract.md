@@ -35,6 +35,7 @@ function Test-PreReviewCommitGate {
 **Returns**: `[PSCustomObject]` or `$null`
 
 #### When violation is detected:
+
 ```powershell
 @{
     RuleID = 'pre-review-commit-gate'
@@ -52,6 +53,7 @@ function Test-PreReviewCommitGate {
 ```
 
 #### When no violation:
+
 ```powershell
 $null  # No output; validator treats as success
 ```

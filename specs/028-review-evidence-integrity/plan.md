@@ -10,6 +10,7 @@
 Feature 028 hardens the review boundary by adding a pre-review commit gate validator rule that detects form-vs-meaning gaps (declared task completion vs. committed file changes). It provides a reusable `Test-FormMeaningParity` helper for form-vs-meaning verification, enables idempotent scaffolder re-runs via `-Force` switch with interactive confirmation, and emits defensive warnings in review artifacts when gaps are detected. This is the foundational slice for Proposal 030's broader quality hardening bundle.
 
 **Five Pillars**:
+
 1. Pre-review commit gate (validator rule)
 2. Form-vs-meaning detection helper (`Test-FormMeaningParity`)
 3. Scaffolder defensive warnings
@@ -33,6 +34,7 @@ Feature 028 hardens the review boundary by adding a pre-review commit gate valid
 **Phase Scope**: `phase-1-governance-hardening`  
 **Inferred Quality Profile**: `quality-profile.governance-software.v1` (test-integrity, drift-detection, validator-correctness)  
 **Selected preset ref**: Governance software quality profile with emphasis on:
+
 - Correctness of form-vs-meaning detection logic
 - No false positives against existing validated iterations
 - Regression prevention in validation chain
@@ -100,18 +102,21 @@ Feature 028 hardens the review boundary by adding a pre-review commit gate valid
 ✅ **Spec Authority Gate**: Feature spec (spec.md) is approved and authoritative. All design questions (Q1–Q6) have been resolved in clarify phase. Spec defines user stories, functional requirements, success criteria, and empirical motivation (2026-05-21 smoke trial).
 
 ✅ **Layering Gate**: Feature is classified as **Spec Kit layer** (governance extension). Implementation includes:
+
 - PowerShell governance scripts in `extensions/specrew-speckit/scripts/`
 - Integration test in `tests/integration/`
 - Documentation in `docs/`
 - No changes to Squad layer or team configuration
 
 ✅ **Traceability Gate**: Each planned deliverable traces to user stories and requirements:
+
 - Validator rule → US-2 (Validator gate blocks incomplete iterations) → FR-001–FR-004
 - Form-vs-meaning helper → US-3 (Helper enables broader checks) → FR-008
 - Scaffolder warnings → US-1 (Reviewer detects uncommitted work) → FR-005–FR-007
 - Idempotent re-run → US-4 (Artifact regeneration) → FR-009–FR-012
 
 ✅ **Ownership Gate**: Explicit role ownership defined in spec (Governance Alignment section):
+
 - **Spec Steward**: Alon Fliess
 - **Iteration Facilitator**: Squad (Specrew engineering team)
 - **Capacity Model**: 15–20 story points, one feature iteration
@@ -120,12 +125,14 @@ Feature 028 hardens the review boundary by adding a pre-review commit gate valid
 ✅ **Capacity Gate**: Effort unit = story points (15–20 estimated per Proposal 073). Specrew team operates with explicit iteration capacity model.
 
 ✅ **Drift/Reconciliation Gate**: Drift detection mechanisms defined:
+
 - Validator rule detects form-vs-meaning gaps and blocks advancement
 - Scaffolder warnings emit loud signals when gaps detected
 - Integration test suite validates all scenarios
 - Proposal 030 composition: `Test-FormMeaningParity` API must be immutable and composable
 
 ✅ **Verification Gate**: Multiple verification activities required:
+
 - AC1–AC9 from spec must be validated
 - Integration test covers gap detection, no false positives, re-runnability
 - Regression test: existing iterations (F-009 through F-072) validate cleanly
@@ -185,6 +192,7 @@ INDEX.md                        # MODIFY: Update feature status after feature cl
 ```
 
 **Structure Decision**: Spec Kit layer extension with four primary modification areas:
+
 1. Shared governance helpers (`shared-governance.ps1`)
 2. Validator governance plane (`validate-governance.ps1`)
 3. Review artifact scaffolder (`scaffold-reviewer-artifacts.ps1`)

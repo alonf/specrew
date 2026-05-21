@@ -30,6 +30,7 @@
 - [x] Dependencies and assumptions identified
 
 **Notes**:
+
 - All six design questions (Q1–Q6) have been resolved in clarify phase
 - Three inline markers in User Stories now reflect accepted decisions
 - All requirements tie back to the five pillars from Proposal 073
@@ -45,6 +46,7 @@
 - [x] No implementation details leak into specification
 
 **Notes**:
+
 - P1 scenarios (Reviewer detects uncommitted work, Validator gate blocks) map to immediate user value
 - P2 scenarios (Form-vs-meaning helper, idempotent regeneration) map to design extensibility and fallback mechanisms
 - All eight acceptance signals from Proposal 073 are captured in success criteria
@@ -57,31 +59,37 @@
 The following have been resolved in clarify phase and are now ready for planning:
 
 ### ✅ Design Q1: Severity Level for Partial Completion
+
 - **Status**: **Resolved** → Option 3 (threshold-based severity)
 - **Decision**: Zero-diff (declared ≥1 task complete AND git diff empty) is a hard failure (`error`). Partial mismatches (declared > observed, but both > 0) degrade to `warning`.
 - **Trace**: FR-003, FR-004
 
 ### ✅ Design Q2: Baseline Ref Flexibility
+
 - **Status**: **Resolved** → Option 1 (Fixed to declared baseline)
 - **Decision**: Validator must always use the baseline recorded in iteration metadata. No override flags or auto-detection allowed.
 - **Trace**: FR-001, FR-002
 
 ### ✅ Design Q3: Human Annotation Preservation on Re-run
+
 - **Status**: **Resolved** → Option 1 (Overwrite and warn)
 - **Decision**: Generated artifacts are overwritten cleanly. Default flow is interactive confirmation (`-Confirm:$true`); non-interactive contexts use `-Confirm:$false`. Human annotations belong in `review.md` (separate artifact).
 - **Trace**: FR-009, FR-010
 
 ### ✅ Design Q4: Handling Empty Iterations (Spec/Clarify Only)
+
 - **Status**: **Resolved** → Option 3 (Declared-task count only)
 - **Decision**: If declared task count = 0 AND git diff is empty, treat iteration as legitimate (spec/clarify only). If declared ≥1 AND diff empty, treat as form-vs-meaning gap.
 - **Trace**: AC3, FR-001–FR-004
 
 ### ✅ Design Q5: Optional CLI Integration (Pillar 4 / Proposal 033)
+
 - **Status**: **Resolved** → Defer to Proposal 033
 - **Decision**: Feature 028 implements only the scaffolder `-Force` re-run mechanism. The optional `specrew review-evidence regenerate` CLI command is deferred to Proposal 033.
 - **Trace**: FR-009, User Story 4
 
 ### ✅ Design Q6: Test-FormMeaningParity API Stability (030 Composition)
+
 - **Status**: **Resolved** → Immutable API with generic-comparator constraint
 - **Decision**: Helper signature and return shape are frozen as v1 contract. Proposal 030 must compose around this contract rather than reshape it.
 - **Trace**: FR-008, User Story 3
@@ -131,6 +139,7 @@ The following have been resolved in clarify phase and are now ready for planning
 **Live Design Questions**: 0 — all resolved and documented in decisions.md
 
 **Approval**:
+
 - **Spec Steward**: Alon Fliess  
 - **Clarify Approver**: Alon Fliess  
 - **Checklist Author**: Specification validation (automated check)  

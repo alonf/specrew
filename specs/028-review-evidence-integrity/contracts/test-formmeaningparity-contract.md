@@ -72,6 +72,7 @@ function Test-FormMeaningParity {
 ### Example Compositions
 
 #### Use Case 1: Pre-review commit gate (Feature 028)
+
 ```powershell
 $result = Test-FormMeaningParity -Declared $declaredTaskCount -Observed $committedFileCount
 if ($result.Severity -eq 'error') {
@@ -80,6 +81,7 @@ if ($result.Severity -eq 'error') {
 ```
 
 #### Use Case 2: Iteration scope validation (Proposal 030)
+
 ```powershell
 $result = Test-FormMeaningParity -Declared $declaredSP -Observed $completedSP
 if ($result.Gap) {
@@ -88,6 +90,7 @@ if ($result.Gap) {
 ```
 
 #### Use Case 3: Test coverage verification (Proposal 030)
+
 ```powershell
 $result = Test-FormMeaningParity -Declared $specScenarioCount -Observed $implementedTestCount
 if ($result.Severity -eq 'error') {
@@ -124,11 +127,13 @@ if ($result.Severity -eq 'error') {
 ## Error Handling
 
 ### Input Validation
+
 - `$Declared` must be integer ≥ 0; non-negative values are assumed
 - `$Observed` must be integer ≥ 0; non-negative values are assumed
 - Function must not throw on valid inputs; invalid inputs may throw with clear message
 
 ### Example Error Cases
+
 ```powershell
 # Valid: returns { Declared: -1, Observed: 5, Gap: $true, Severity: 'warning' }
 # Note: Negative inputs are accepted but treated as unusual; severity logic still applies
@@ -157,6 +162,7 @@ if ($result.Severity -eq 'error') {
 | Over-delivery | 5 | 8 | `$true` | warning | Unusual: more observed than declared |
 
 ### Composition Test Cases
+
 - Proposal 030 validators must consume this helper without modification
 - Multiple validators can invoke helper with different Declared/Observed pairs
 - Results must be correct regardless of calling context
@@ -166,11 +172,13 @@ if ($result.Severity -eq 'error') {
 ## Documentation
 
 **For Implementers**:
+
 - Function is located in `extensions/specrew-speckit/scripts/shared-governance.ps1`
 - Documented with inline comment explaining parameters and return value
 - Example invocations in quickstart.md
 
 **For Consumers (Proposal 030)**:
+
 - See `docs/api-reference.md` for usage examples
 - See `specs/028-review-evidence-integrity/quickstart.md` for integration patterns
 - This contract is the source of truth; no modifications permitted
