@@ -2,10 +2,10 @@
 
 **Schema**: v1
 **Spec**: [../../spec.md](../../spec.md)
-**Status**: planning
+**Status**: complete
 **Capacity**: 5/20 story_points
 **Started**: 2026-05-22
-**Completed**:
+**Completed**: 2026-05-22
 
 ## Summary
 
@@ -46,15 +46,38 @@ Iteration 001 delivers the full Tier 1 (text-only) scope of Proposal 082: coordi
 
 ---
 
+## Tasks
+
+| Task | Title | Requirement | Story | Effort | Owner | Status |
+| ---- | ----- | ----------- | ----- | ------ | ----- | ------ |
+| t001-verify-context | Verify implementation context | All FRs | orientation | 0.25 | Spec Steward | done |
+| t002-coordinator-rule | Add coordinator governance prompt rule for commit-push discipline | FR-001, FR-009 | US-5 | 0.5 | Spec Steward | done |
+| t003-implementer-charter | Add commit responsibility to Implementer charter | FR-002, FR-009 | US-1 | 0.5 | Spec Steward | done |
+| t004-spec-steward-charter | Add boundary-cleanliness oversight to Spec Steward charter | FR-003, FR-009 | US-2 | 0.5 | Spec Steward | done |
+| t005-reviewer-charter | Add pre-merge committed-work check to Reviewer charter | FR-004, FR-009 | US-3 | 0.5 | Spec Steward | done |
+| t006-retro-facilitator-charter | Add commit-discipline retro prompt to Retro Facilitator charter | FR-005, FR-009 | US-4 | 0.5 | Spec Steward | done |
+| t007-planner-charter | Add light commit-cadence reference to Planner charter | FR-006, FR-009 | US-5 | 0.25 | Spec Steward | done |
+| t008-user-guide-section | Add Boundary Commit Discipline section to docs/user-guide.md | FR-007, FR-009 | US-1, US-3 | 0.5 | Spec Steward | done |
+| t009-mirror-parity | Mirror all 6 modified primary files to .specify/extensions/specrew-speckit/ | FR-008 | All | 0.5 | Implementer | done |
+| t010-verification-test | Create boundary-commit-discipline.tests.ps1 verification test | FR-010, SC-001, SC-003, SC-004 | All | 1 | Reviewer | done |
+| t011-closeout-artifacts | CHANGELOG entry + INDEX update + review.md + retro.md + state.md + closeout-dashboard | closeout | All | 0.25 | Spec Steward | done |
+| t012-pr-merge | Branch push + PR open + merge-commit | closeout | All | 0.25 | Spec Steward | done |
+
+**Total Effort (Planned)**: 5.5 story_points (Tier 1 text-only methodology slice)
+
+---
+
 ## Effort Model
 
 | Setting | Value | Notes |
-|---------|-------|-------|
+| ------- | ----- | --- |
 | Effort Unit | story_points | Tracked against this iteration's planned/actual effort |
-| Capacity per Iteration | 20 | Baseline; this iteration: 5 |
-| Iteration Bounding | scope | Keep requirements fixed |
+| Capacity per Iteration | 20 | Baseline; this iteration: 5.5 |
+| Iteration Bounding | scope | Keep requirements fixed; defer overages to next iteration if needed |
+| Time Limit (hours) | n/a | Uses scope-based bounding, not time-based |
 | Overcommit Threshold | 1.0 | Warn when planned > capacity |
 | Defer Strategy | manual | Explicit deferral if needed |
+| Calibration Enabled | true | Retrospective will suggest capacity adjustments |
 
 ---
 

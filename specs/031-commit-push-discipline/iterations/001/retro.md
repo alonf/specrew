@@ -18,6 +18,30 @@ Proposal 082 Tier 1 Iteration 001 delivered a text-only methodology integrity sl
 
 ---
 
+## Estimation Accuracy
+
+| Metric | Value | Notes |
+|---|---|---|
+| **Planned Effort** | 5 SP | Per Tier 1 small-fix-slice estimate in Proposal 067 |
+| **Actual Effort** | ~5.5 SP | Slight overrun on T010 (test had a regex bug requiring a fix); acceptable |
+| **Variance** | +10% | Within tolerance for first-pass small-fix slice |
+| **Capacity Utilization** | 28% of 20 SP | Well within iteration capacity |
+| **Overcommit Risk** | None | No tasks deferred or marked blocked |
+
+Estimation was accurate within +10% variance. Tier 1 scope of "text-only methodology surface" mapped cleanly to story points; the small overrun came from one test regex bug detected during T010 implementation, not from misestimating the surface itself.
+
+---
+
+## Drift Summary
+
+**Total drift events**: 0
+**Resolution rate**: 100% (0/0 resolved)
+**Specification drift**: None detected
+
+All 10 functional requirements (FR-001 through FR-010) delivered as specified in `spec.md`. No out-of-scope changes were introduced during implementation. The boundary commit + push discipline this slice introduces was applied to the slice itself with zero violations. Post-review CI surfaced documentation-only follow-ups (MD032 markdown lint + iteration schema completeness) that did not alter the methodology surface or the implementation under review.
+
+---
+
 ## What Went Well
 
 ### Specification Clarity & Authority
@@ -51,7 +75,7 @@ Proposal 082 Tier 1 Iteration 001 delivered a text-only methodology integrity sl
 
 ---
 
-## What Could Be Improved
+## What Didn't Go Well
 
 ### Acting-as-all-roles concentration
 
@@ -105,6 +129,18 @@ Proposal 082 Tier 1 Iteration 001 delivered a text-only methodology integrity sl
 | Mid-cycle methodology change disrupts in-flight Crew work | Mitigated | The Crew on 083 has cached charters from session-start; updated charters affect NEXT agent invocation within that session. Risk is minimal because charter changes are additive. |
 | Merge conflict with concurrent 083 slice | Acknowledged | 083 also edits coordinator/specrew-governance.md + reviewer charter. Whichever slice lands first, the other rebases. Conflicts are small text-edits. |
 | Empirical SC-002 metric fails (rejection cycles persist post-082-T1) | Acknowledged | If the next feature still has rejection cycles, Tier 2 (validator rule) priority increases. |
+
+---
+
+## Improvement Actions
+
+| Action | Owner | When | Trace |
+|---|---|---|---|
+| Capture empirical violation count at next feature lifecycle (post-082-T1) | Retro Facilitator | Next feature's retro | SC-002 |
+| For Tier 2/Tier 3 work, use separate `mirror(...)` commits if scope grows | Implementer | Future 082-related slices | This retro's "What Didn't Go Well" item 2 |
+| When the Crew is available and quota allows, prefer multi-agent role separation over single-author concentration | Coordinator | Future slices | This retro's "What Didn't Go Well" item 1 |
+| Add a Specrew-toolchain pre-commit hook that auto-syncs `extensions/specrew-speckit/squad-templates/` → `.specify/extensions/specrew-speckit/squad-templates/` | Future small-fix slice | Post-v0.24.2 | This retro's "Process Improvements > For the Specrew Toolchain" |
+| Add a terminology lint rule (or custom validator) that flags "Squad" in new prose unless tagged as product/path/binary reference | Future feature (composes with Proposal 081 Pillar 6) | TBD | This retro's "Process Improvements > For the Specrew Toolchain" |
 
 ---
 

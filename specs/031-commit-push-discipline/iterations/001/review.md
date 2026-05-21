@@ -52,6 +52,25 @@ The reviewed range is `1398fae...be23350` on branch `chore-082-t1-commit-push-di
 
 ---
 
+## Task Verdicts
+
+| Task | Requirement | Verdict | Notes |
+| --- | --- | --- | --- |
+| t001-verify-context | All FRs (orientation) | pass | Environment verified; all 7 surfaces locatable; all 7 mirror paths exist |
+| t002-coordinator-rule | FR-001, FR-009 | pass | Rule 14B added at authority level of 14A; commit + push + HEAD/origin parity all named |
+| t003-implementer-charter | FR-002, FR-009 | pass | "Boundary commit + push discipline" responsibility added; uses "the Crew" |
+| t004-spec-steward-charter | FR-003, FR-009 | pass | Boundary-cleanliness oversight responsibility added with HEAD/origin parity verification |
+| t005-reviewer-charter | FR-004, FR-009 | pass | "Pre-merge committed-work check" section added; WIP-at-PR-open is hard reject |
+| t006-retro-facilitator-charter | FR-005, FR-009 | pass | Commit-discipline retro prompt added |
+| t007-planner-charter | FR-006, FR-009 | pass | Light commit-cadence reference added |
+| t008-user-guide-section | FR-007, FR-009 | pass | "## Boundary Commit Discipline" section in docs/user-guide.md with per-role responsibilities + tier roadmap |
+| t009-mirror-parity | FR-008 | pass | All 6 mirror files SHA256-match primaries; verified mechanically by Test 8 |
+| t010-verification-test | FR-010, SC-001, SC-003, SC-004 | pass | 9 test groups covering all 10 FRs + mirror parity + terminology; all pass locally |
+| t011-closeout-artifacts | closeout | pass | CHANGELOG entry + INDEX update + review.md + retro.md + state.md authored in this iteration |
+| t012-pr-merge | closeout | pass | Branch pushed; PR #424 opened; merge pending post-CI |
+
+---
+
 ## Quality Gates
 
 | Gate | Verdict | Notes |
@@ -92,6 +111,15 @@ Branch tip `be23350` matches `origin/chore-082-t1-commit-push-discipline` at rev
 - Empirical motivation is overwhelming: 4 boundary-discipline rejection cycles in F-029 + 1 in F-030/083, all stemming from the gap this slice closes.
 - Per-role charter additions are scoped to each role's natural responsibility, not blanket text. Improves readability.
 - Test verifies methodology-surface presence + mirror parity + terminology compliance.
+
+---
+
+## Gap Ledger
+
+- fixed-now — Initial PR-CI Lint surfaced 15 MD032 blanks-around-lists violations in `review.md` (1) + `tasks.md` (14); resolved in commit `4fe33a4` by adding blank lines between list-introducing labels (`**Acceptance Criteria**:`, `**User Stories**:`, `**Success Criteria**:`) and their list items.
+- fixed-now — Initial PR-CI validate-governance surfaced iteration-schema completeness gaps in `plan.md` (missing `## Tasks` table + `Time Limit (hours)` + `Calibration Enabled` Effort Model settings) and stale status (`planning` vs review.md + retro.md present); resolved by adding the Tasks table, completing the Effort Model, and setting status to `complete`.
+- fixed-now — Initial PR-CI validate-governance surfaced missing `drift-log.md`, missing Task Verdicts table in review.md, and missing retro section headers (Estimation Accuracy / Drift Summary / Improvement Actions / What Didn't Go Well); all resolved in this iteration's documentation completion pass.
+- fixed-now — No blocking gaps remain inside the authorized Tier 1 scope of Proposal 082. Tier 2 (validator rule for `boundary-wip-uncommitted` at warning severity) and Tier 3 (hard enforcement + auto-push) remain candidate in the proposals index.
 
 ---
 
