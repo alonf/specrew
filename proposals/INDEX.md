@@ -50,7 +50,7 @@ Proposals with full source-spec content, ready for `/speckit.specify` ingestion 
 | [073](073-review-evidence-integrity.md) | Review Evidence Integrity (Pre-Review Commit Gate + Form-vs-Meaning Detection) | phase-2 | 15-20 | **First concrete sub-slice of Proposal 030 (form-vs-meaning bundle).** Pre-review commit gate detects when `state.md` declares completed tasks but git diff is empty; reviewer scaffolders emit loud warnings instead of silent "below threshold" omissions; review-evidence artifacts become re-runnable post-commit. Empirical motivation: 2026-05-21 smoke trial where `review-diagrams.md` silently emitted "0 modules touched" while iteration declared T001-T011 complete. **Implements immediately after F-027 /skills slice ships.** |
 | [074](074-code-commentary-standards.md) | Code Commentary Standards (Multi-Level Convention + Preference Dial) | phase-2 | 12-15 | Replaces the current "default to no comments" Implementer instruction with a four-category taxonomy (contract / why-rationale / concept / inline narration), a four-level preference dial (`minimalist` / `standard` / `educational` / `textbook`), and a language-idiomatic convention catalog (C# XML doc, JSDoc, docstring, Javadoc, godoc, rustdoc, PowerShell comment-based help, etc.). Reviewer agent gains a contract-docs verification check. Empirical motivation: 2026-05-21 smoke trial produced a complete .NET 8 snake-game solution with **zero XML doc comments on public APIs** — IntelliSense silently empty. Composes with Proposals 047 / 052 / 015 (dials, profiles, expertise). |
 
-## Candidate (42)
+## Candidate (43)
 
 Idea-form proposals not yet developed into full source specs. Open for discussion; may mature to draft or be withdrawn.
 
@@ -99,6 +99,7 @@ Idea-form proposals not yet developed into full source specs. Open for discussio
 | [061](061-init-update-convergence-test.md) | Init/Update Convergence Test (Frozen-Snapshot Replay) | phase-2 | 13 |
 | [062](062-dependency-metadata-reason-propagation.md) | Dependency Metadata + Reason Mapping + Impact-Analysis Propagation | phase-2 | 18 |
 | [071](071-vscode-copilot-chat-host.md) | VS Code Copilot Chat as a First-Class Specrew Host | phase-2 | 10-12 |
+| [075](075-update-artifact-backfill-discipline.md) | Specrew Update Artifact Backfill Discipline | phase-2 | 10-15 |
 
 ---
 
@@ -127,7 +128,7 @@ For roadmap-style viewing, proposals grouped by phase placement:
 - 036 (Branch Reconciliation — draft, SDLC pillar)
 - 073 (Review Evidence Integrity — draft, **NEXT UP after F-027 /skills**)
 - 074 (Code Commentary Standards — draft, queue after 073)
-- 013, 014, 015, 017, 018, 019, 020, 021, 022, 023, 027, 028, 029, 037, 038, 042, 044, 045, 046, 047, 048, 049, 050, 051, 053, 054, 055, 056, 059, 060, 061, 062, 071 (candidates)
+- 013, 014, 015, 017, 018, 019, 020, 021, 022, 023, 027, 028, 029, 037, 038, 042, 044, 045, 046, 047, 048, 049, 050, 051, 053, 054, 055, 056, 059, 060, 061, 062, 071, 075 (candidates)
 
 **Phase 3** (refactor + maintainability + upstream reconciliation + extensibility):
 
