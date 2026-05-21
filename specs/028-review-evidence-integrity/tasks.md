@@ -10,6 +10,7 @@
 ## Organization & Phasing
 
 This feature implements **four pillars** (five design points):
+
 1. **Pillar 1**: Pre-review commit gate validator rule (US-2)
 2. **Pillar 2**: Form-vs-meaning parity helper (US-3)
 3. **Pillar 3**: Scaffolder defensive warnings (US-1)
@@ -36,6 +37,7 @@ This feature implements **four pillars** (five design points):
 **Independent Test**: Running scaffolder on an iteration with declared completion but empty git diff produces a prominent warning at the top of all review artifacts. Reviewer can read the artifact and immediately understand the issue.
 
 **Acceptance Criteria**:
+
 - SC-003: Warning ⚠️ is emitted at top of every review artifact when gap detected
 - FR-005, FR-006, FR-007: Scaffolder continues producing output (non-blocking) with warning message
 
@@ -59,6 +61,7 @@ This feature implements **four pillars** (five design points):
 **Independent Test**: Running `validate-governance.ps1` against an iteration with declared ≥1 completed task but empty git diff produces a validation failure with category `review-evidence-integrity` and severity `error` that blocks advancement. Running same validator on clean iterations (both declared and observed match) produces no false positives.
 
 **Acceptance Criteria**:
+
 - SC-001: Pre-review validator blocks advancement on form-vs-meaning gap
 - SC-008: Existing iterations F-009–F-072 continue to validate cleanly (no regressions)
 - FR-001 through FR-004: Validator reads state.md, computes git diff, emits error with remediation
@@ -84,6 +87,7 @@ This feature implements **four pillars** (five design points):
 **Independent Test**: Calling `Test-FormMeaningParity -Declared <count> -Observed <count>` returns a PSCustomObject with Declared, Observed, Gap (bool), Severity (error|warning|info) fields. Helper works independently with test-case inputs without side effects.
 
 **Acceptance Criteria**:
+
 - SC-002: `Test-FormMeaningParity` is production-ready and composable by other rules
 - FR-008: Helper accepts Declared and Observed parameters; returns structured object
 - Contracts: Function signature matches `test-formmeaningparity-contract.md` immutable API v1
@@ -109,6 +113,7 @@ This feature implements **four pillars** (five design points):
 **Independent Test**: Running `scaffold-reviewer-artifacts.ps1 -Force` twice on the same iteration produces identical output without duplicates or errors. Subsequent runs with updated git history reflect new diff accurately. `-Confirm:$true` shows prompt; `-Confirm:$false` bypasses.
 
 **Acceptance Criteria**:
+
 - SC-004: Scaffolder `-Force` flag safely re-runs with confirmation prompt (default) and `-Confirm:$false` escape hatch
 - SC-005: Documentation confirms human annotations belong in `review.md`, not generated artifacts
 - FR-009 through FR-012: `-Force` switch, confirmation logic, idempotency, annotation convention
@@ -217,16 +222,19 @@ Phase 8 (Validation) [T052–T061]
 ### Parallel Execution Opportunities
 
 **Parallel Group A** (after Phase 1 & Phase 2/3 validators ready):
+
 - T017–T023 (US-3 helper implementation)
 - T024–T031 (US-4 scaffolder flag implementation)
 - These are independent; one group doesn't block the other
 
 **Parallel Group B** (after all implementation complete):
+
 - T032–T045 (Integration tests) [can run in parallel with T046–T051 (Documentation)]
 
 ### Suggested MVP Scope
 
 **Phase 1 MVP** (Minimum for first review):
+
 - Phase 1: Setup (T001–T003)
 - Phase 2: US-1 Warnings (T004–T009) ✅ **Reviewer sees loud signals**
 - Phase 3: US-2 Validator (T010–T016) ✅ **Gate blocks incomplete iterations**
@@ -235,6 +243,7 @@ Phase 8 (Validation) [T052–T061]
 This MVP delivers the core form-vs-meaning detection and blocks incomplete iterations at the review boundary—satisfying the primary user-facing outcome (SC-001, SC-003).
 
 **Phase 2 Follow-up** (after MVP merges):
+
 - Phase 4: US-3 Helper (T017–T023) - feeds Proposal 030
 - Phase 5: US-4 Idempotent (T024–T031) - enables re-run after late commits
 - Phase 7: Documentation (T046–T051) - full user/API docs
@@ -281,6 +290,7 @@ foreach ($it in $iterations) {
 ## Constitution Alignment
 
 ✅ **All gates from plan.md (Constitution Check) passed**:
+
 - Spec Authority: Feature spec approved; all Q1–Q6 resolved
 - Layering: Spec Kit layer extension (no Squad layer changes)
 - Traceability: Each deliverable traces to user stories and requirements

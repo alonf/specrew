@@ -12,6 +12,7 @@
 The Specrew review phase produces evidence artifacts (`review-diagrams.md`, `code-map.md`, `dependency-report.md`, `coverage-evidence.md`) that downstream reviewers rely on to understand what changed in an iteration. These artifacts are computed via `git diff baseline...HEAD`, which assumes implementation work is committed by review time. **That assumption is currently not enforced**, creating a form-vs-meaning gap where an iteration can declare tasks complete but contain zero committed changes—making review evidence silently empty while reviewer-facing signals show "work complete."
 
 This feature hardens the review boundary by:
+
 1. Adding a pre-review commit gate validator rule
 2. Providing a reusable form-vs-meaning parity helper for other validators
 3. Emitting defensive warnings when review evidence is incomplete
@@ -217,6 +218,7 @@ The following design questions have been identified and must be resolved during 
 **Context**: In the `Test-FormMeaningParity` helper, when some tasks are declared complete but the diff shows fewer (or zero) committed changes.
 
 **Resolution** (Session 2025-03-19): Threshold-based severity with zero-diff as hard failure boundary.
+
 - **Zero-diff case** (declared ≥1 task, observed = 0): `error` (hard failure, blocks advancement)
 - **Partial mismatch** (declared > observed, but observed > 0): `warning` (logged, non-blocking)
 - **Full match** (declared = observed): `info` (no gap)
@@ -230,6 +232,7 @@ This satisfies the form-vs-meaning integrity requirement while allowing graceful
 **Status**: ✓ **RESOLVED** (see Clarifications → Q2)
 
 **Decision**: Fixed to declared baseline. The pre-review validator MUST always use the iteration's declared baseline reference, with no override flexibility.
+
 - Baseline ref is read from iteration metadata (e.g., `state.md`) and is non-negotiable
 - No `validate-governance.ps1 -Baseline <custom>` override flag
 - No auto-detection from git history
@@ -246,6 +249,7 @@ This satisfies the form-vs-meaning integrity requirement while allowing graceful
 **Context**: Pillar 4 (Idempotent scaffolder) allows review artifacts to be regenerated after late commits. Humans may have added notes or annotations to existing artifacts.
 
 **Decision**: Overwrite and warn with interactive confirmation.
+
 - Default behavior: scaffolder prompts with `-Confirm:$true` before overwriting, warning that human annotations will be lost
 - Non-interactive escape hatch: `-Confirm:$false` bypasses the prompt (for CI/CD and automation)
 - Artifacts are cleanly regenerated with current git diff data
@@ -260,6 +264,7 @@ This satisfies the form-vs-meaning integrity requirement while allowing graceful
 **Status**: ✓ **RESOLVED** (see Clarifications → Q4)
 
 **Decision**: Use null context check based on declared task count only.
+
 - If declared task count = 0 AND `git diff baseline...HEAD` is empty → iteration is legitimate (spec/clarify phase). No validation failure.
 - If declared task count ≥ 1 AND `git diff baseline...HEAD` is empty → form-vs-meaning gap detected. Raise `error`-level failure.
 
@@ -284,6 +289,7 @@ This satisfies the form-vs-meaning integrity requirement while allowing graceful
 **Context**: The `Test-FormMeaningParity` helper defined in Pillar 2 is the seed for Proposal 030's broader form-vs-meaning bundle. Other rules will depend on this API.
 
 **Decision**: Immutable API (v1) with generic-comparator design constraint.
+
 - The helper's signature and return structure are frozen; 030 adds new helpers, not modify this one
 - Design follows a generic-comparator pattern that allows specialization without signature breakage
 - Simple for consumers; extensibility is via composition, not modification

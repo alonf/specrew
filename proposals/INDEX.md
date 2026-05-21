@@ -125,7 +125,7 @@ For roadmap-style viewing, proposals grouped by phase placement:
 - 034 (Markdown Lint Cleanup — draft, post-F-019)
 - 035 (Session-State Durability — draft, NEXT UP)
 - 036 (Branch Reconciliation — draft, SDLC pillar)
-- 073 (Review Evidence Integrity — draft, **NEXT UP after F-027 /skills**)
+- 073 (Review Evidence Integrity — shipped as feature-028)
 - 074 (Code Commentary Standards — draft, queue after 073)
 - 013, 014, 015, 017, 018, 019, 020, 021, 022, 023, 027, 028, 029, 037, 038, 042, 044, 045, 046, 047, 048, 049, 050, 051, 053, 054, 055, 056, 059, 060, 061, 062, 071 (candidates)
 

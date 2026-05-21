@@ -21,11 +21,13 @@ Feature 028 provides four components for hardening the review boundary:
 ## Component 1: Using the Test-FormMeaningParity Helper
 
 ### Location
+
 ```
 extensions/specrew-speckit/scripts/shared-governance.ps1
 ```
 
 ### Function Signature
+
 ```powershell
 function Test-FormMeaningParity {
     [CmdletBinding()]
@@ -37,6 +39,7 @@ function Test-FormMeaningParity {
 ```
 
 ### Return Value
+
 ```powershell
 @{
     Declared = [int]       # Echoed from parameter
@@ -114,14 +117,17 @@ function Test-MyCustomRule {
 ## Component 2: Pre-Review Commit Gate Validator
 
 ### Location
+
 ```
 extensions/specrew-speckit/scripts/validate-governance.ps1
 ```
 
 ### When It Runs
+
 At review boundary advance (implement → review transition), `validate-governance.ps1` invokes the pre-review commit gate rule.
 
 ### What It Does
+
 1. Reads `state.md` → extracts CompletedTaskCount
 2. Executes `git diff --name-only <baseline>...HEAD` → counts files
 3. Invokes `Test-FormMeaningParity -Declared $taskCount -Observed $fileCount`
@@ -149,12 +155,15 @@ The validator is automatically invoked at the review boundary. No manual invocat
 ## Component 3: Scaffolder Warnings
 
 ### Location
+
 ```
 extensions/specrew-speckit/scripts/scaffold-reviewer-artifacts.ps1
 ```
 
 ### What It Does
+
 When scaffolding review artifacts (diagrams, code-map, etc.), the script:
+
 1. Checks if form-vs-meaning gap exists (declared > 0, diff empty)
 2. If gap detected → emits warning at top of artifact
 3. Warning explains the gap and provides context
@@ -162,6 +171,7 @@ When scaffolding review artifacts (diagrams, code-map, etc.), the script:
 ### Example Warning Message
 
 In `review-diagrams.md`:
+
 ```markdown
 <!-- Generated: 2025-03-19T14:30:00Z -->
 <!-- Baseline: main | Diff: 0 files | Declared Tasks: 11 -->
@@ -187,6 +197,7 @@ In `review-diagrams.md`:
 ## Component 4: Idempotent Re-Run with `-Force`
 
 ### Location
+
 ```
 extensions/specrew-speckit/scripts/scaffold-reviewer-artifacts.ps1 -Force
 ```
@@ -194,6 +205,7 @@ extensions/specrew-speckit/scripts/scaffold-reviewer-artifacts.ps1 -Force
 ### Usage
 
 #### Interactive (Default)
+
 ```powershell
 # Prompts user before overwriting
 & '.\extensions\specrew-speckit\scripts\scaffold-reviewer-artifacts.ps1' `
@@ -207,6 +219,7 @@ extensions/specrew-speckit/scripts/scaffold-reviewer-artifacts.ps1 -Force
 ```
 
 #### Non-Interactive (CI/CD)
+
 ```powershell
 # Bypasses prompt; overwrites unconditionally
 & '.\extensions\specrew-speckit\scripts\scaffold-reviewer-artifacts.ps1' `
@@ -216,6 +229,7 @@ extensions/specrew-speckit/scripts/scaffold-reviewer-artifacts.ps1 -Force
 ```
 
 ### Idempotency Guarantee
+
 Running the scaffolder multiple times with `-Force` produces identical output (no duplicates, no side effects).
 
 ### Preserving Human Annotations
@@ -223,6 +237,7 @@ Running the scaffolder multiple times with `-Force` produces identical output (n
 **Key Convention**: Human annotations belong in `review.md`, NOT in generated review artifacts.
 
 **Workflow**:
+
 1. Review artifacts are generated: `review-diagrams.md`, `code-map.md`, etc.
 2. Humans add notes directly to `review.md` (separate file)
 3. If artifacts need to be regenerated (after late commits):
@@ -232,6 +247,7 @@ Running the scaffolder multiple times with `-Force` produces identical output (n
 4. After overwrite, re-integrate annotations from `review.md` into artifacts if needed
 
 **Example**:
+
 ```
 Directory structure:
   iteration/
@@ -249,6 +265,7 @@ Directory structure:
 ### Scenario: Implementation is Late-Committed
 
 **Phase 1: Incomplete Iteration**
+
 ```
 1. Developer finishes implementation but forgets to commit
 2. Reviews "ready for review" checkbox in state.md
@@ -258,6 +275,7 @@ Directory structure:
 ```
 
 **Phase 2: Remediation**
+
 ```
 6. Developer commits work: `git add . && git commit -m "Implementation complete"`
 7. Re-runs validator: `validate-governance.ps1`
@@ -266,6 +284,7 @@ Directory structure:
 ```
 
 **Phase 3: Review Artifacts (Late Regeneration)**
+
 ```
 10. Review happens; reviewer wants fresh diagrams after late commit
 11. Runs scaffolder with -Force: `scaffold-reviewer-artifacts.ps1 -Force`
@@ -280,21 +299,27 @@ Directory structure:
 ## FAQ & Troubleshooting
 
 ### Q: What if I see "git diff is empty" warning?
+
 **A**: You're in the form-vs-meaning gap. Go back to implement phase, commit your work with `git add . && git commit`, then re-run the scaffolder or validator.
 
 ### Q: Can I disable the confirmation prompt for automation?
+
 **A**: Yes, use `-Confirm:$false`. Example:
+
 ```powershell
 scaffold-reviewer-artifacts.ps1 -Force -Confirm:$false
 ```
 
 ### Q: Where should I put reviewer notes?
+
 **A**: In `review.md` (separate from generated artifacts). When artifacts are regenerated with `-Force`, your notes in `review.md` are safe.
 
 ### Q: What counts as "committed"?
+
 **A**: Files tracked by git and visible in `git diff baseline...HEAD`. Working-tree changes (not committed) do not count.
 
 ### Q: How do I know if the validator is blocking for a legitimate reason?
+
 **A**: Check the remediation hint in the error message. If it says "no files committed since baseline", go commit your work. If it's confusing, check the git history: `git log --oneline baseline...HEAD` and `git diff --stat baseline...HEAD`.
 
 ---
