@@ -348,6 +348,43 @@ The `-Force` flag does NOT bypass conflict checks. Conflicts must be manually re
 
 1. Reflect the decision in `review.md` verdict notes and next tasks.
 
+## Boundary Commit Discipline
+
+Specrew lifecycle work flows through several boundaries — specify, clarify, plan, tasks, implementation, review-signoff, retro, iteration-closeout, and feature-closeout. At each boundary, the Crew (the agent team executing the lifecycle) produces artifacts: spec.md, plan.md, code, tests, review.md, retro.md, closeout-dashboard.md, decisions ledger entries, and more.
+
+**Commit at every boundary. Push after every commit.** This is the methodology's commit discipline:
+
+- At every lifecycle boundary, the Crew commits the boundary-phase work in semantic commit groups BEFORE invoking `Invoke-SpecrewBoundaryStateSync` or signaling boundary readiness. Working-tree-only changes are not durable boundary evidence — a power loss, working-tree corruption, or `git clean -fd` would erase them.
+- After every commit, the Crew pushes the feature branch to `origin/<feature-branch>` immediately. Local-only commits are not upstream-backed-up; a workstation failure loses them.
+- The Crew verifies `git rev-parse HEAD` equals `git rev-parse origin/<feature-branch>` BEFORE signaling boundary readiness. The committed evidence reference (commit SHA or hash range) appears in the boundary handoff's `What I just did` section.
+- If no `origin` remote is configured (e.g., a local-only project), push silently skips. Commit discipline still applies.
+
+### Why it matters
+
+Without this discipline:
+
+- Boundary-sync's validator passes because it reads working-tree content, but anyone cloning the branch from origin sees no work. The methodology claims discipline it doesn't deliver.
+- Premium agent quota is wasted on rejection-redo cycles when boundary signals are issued before the work is committed.
+- Audit trail (`.squad/decisions.md`, scribe logs, retro evidence) drifts from actual git history, making methodology evolution decisions harder.
+
+### Per-role responsibilities
+
+- **Implementer** is the primary committer for implementation work. Commits in semantic groups before invoking boundary-sync at implementation → review-signoff.
+- **Spec Steward** oversees boundary-commit discipline at every advancement decision. Verifies push parity before signing off.
+- **Reviewer** rejects PRs containing WIP at PR-open time as a hard reject. Commit + push first, then re-request review.
+- **Retro Facilitator** evaluates commit-discipline at retro and records `boundary-commit-discipline-violations` count as a standard signal.
+- **Planner** anticipates commit cadence in plan.md output; each boundary's tasks map to a semantic commit group.
+
+### Enforcement layers
+
+This discipline ships in three tiers:
+
+- **Tier 1 (text-only, this release)**: explicit instructions in the Coordinator governance prompt + all 5 baseline agent charters + this section. The discipline is conveyed; the Crew applies it.
+- **Tier 2 (future)**: a validator rule (`boundary-wip-uncommitted` at warning severity) flags WIP-at-boundary in `validate-governance.ps1` output. Surfaces violations without blocking.
+- **Tier 3 (future)**: `Invoke-SpecrewBoundaryStateSync` refuses to advance if WIP is present. Auto-push hook after every commit (configurable via `iteration-config.yml`).
+
+Each tier is its own slice; Tier 1 ships first as a methodology-text addition, Tier 2/Tier 3 follow as later releases when empirical data justifies the additional enforcement weight.
+
 ## Practical Operating Notes
 
 - Treat the spec as source of truth.
