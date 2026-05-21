@@ -1,7 +1,8 @@
 ---
 proposal: 073
 title: Review Evidence Integrity (Pre-Review Commit Gate + Form-vs-Meaning Detection)
-status: draft
+status: shipped
+shipped-as: feature-028 (2026-05-21)
 phase: phase-2
 estimated-sp: 15-20
 discussion: tbd
@@ -46,10 +47,10 @@ Specrew's value proposition is **substantive, evidence-grounded review**. If rev
 
 Add a new validator rule that runs at the implement→review transition (or as part of `before-review` governance gate when 011's checkpoint pattern is generalized):
 
-- Read `state.md` to find the list of completed tasks in the current iteration
+- Read the iteration task tables (`plan.md` first, `state.md` as legacy fallback) to find declared completed work in the current iteration
 - Run `git diff --name-only <baseline_ref>...HEAD` for the iteration
-- If `state.md` declares one or more tasks completed AND the diff is empty → emit a HARD validation failure with category `review-evidence-integrity` and severity `error`
-- Failure message must include the file:/// URL of `state.md`, the baseline ref, and a remediation hint: "Implementation tasks were marked complete but no files have been committed since the baseline. Commit the implementation work before review can produce meaningful evidence."
+- If iteration artifacts declare one or more tasks completed AND the diff is empty → emit a HARD validation failure with category `review-evidence-integrity` and severity `error`
+- Failure message must include the baseline ref and a remediation hint: "Implementation tasks were marked complete but no files have been committed since the baseline. Commit the implementation work before review can produce meaningful evidence."
 
 This gate composes with the existing validator hardening (Proposal 004) and runs at the same governance plane.
 
@@ -68,9 +69,9 @@ This is the empirical seed for Proposal 030's broader form-vs-meaning bundle.
 
 In `scaffold-reviewer-artifacts.ps1`, when computing review evidence:
 
-- If `git diff baseline...HEAD` returns empty BUT `state.md` declares any task complete → emit a LOUD warning at the top of every review artifact:
+- If `git diff baseline...HEAD` returns empty BUT the iteration artifacts declare any task complete → emit a LOUD warning at the top of every review artifact:
 
-  > ⚠️ **Review evidence may be misleading**: this iteration's `state.md` declares completed tasks but the git diff against baseline is empty. Implementation work may be uncommitted. See Proposal 073 and the pre-review commit gate.
+  > ⚠️ **Review evidence may be misleading**: this iteration declares completed tasks but the git diff against baseline is empty. Implementation work may be uncommitted. See Proposal 073 and the pre-review commit gate.
 
 - Continue to emit the artifact (don't block — the scaffolder is downstream of the validator gate), but make the gap visually obvious to any human reviewer who reads the artifact
 - Replace the current silent "below threshold" omission text with the explicit warning when the gap is detected

@@ -201,6 +201,30 @@ Checklist:
 - Drift totals and resolutions summarized
 - Improvement actions listed
 
+## Troubleshooting
+
+### Review boundary fails with a form-vs-meaning gap
+
+If `validate-governance.ps1` reports a `review-evidence-integrity` failure, the
+iteration artifacts declare completed work but the committed git diff since the
+iteration baseline is empty. In practice, that usually means implementation was
+not committed before review started.
+
+Fix it in this order:
+
+1. Commit the implementation work.
+2. Re-run the validator.
+3. Rebuild reviewer artifacts if review evidence was already scaffolded.
+
+When you re-run `scaffold-reviewer-artifacts.ps1` with `-Force`, Specrew
+overwrites the generated review artifacts after confirmation. Use
+`-Confirm:$false` only for non-interactive automation.
+
+**Important**: put human annotations and reviewer notes in `review.md`, not in
+generated artifacts such as `code-map.md`, `dependency-report.md`,
+`coverage-evidence.md`, or `review-diagrams.md`. Generated artifacts are
+regenerated from git state and are expected to be disposable.
+
 ## Extending the Team After Bootstrap
 
 Specrew bootstrap always installs and protects the same five baseline governance roles:

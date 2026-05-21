@@ -1,11 +1,12 @@
 {
+  "schema": "v1",
   "mode": "resume-feature",
   "feature_request": "",
-  "feature_path": "C:\\Dev\\Specrew\\specs\\024-slash-command-multi-host-correctness",
+  "feature_path": "C:\\Dev\\Specrew\\specs\\028-review-evidence-integrity",
   "agent": "Squad",
   "approval_mode": "allow-all",
   "launch_mode": "same-window",
-  "copilot_autopilot": true,
+  "copilot_autopilot": false,
   "project_state": {
     "state": "existing-continue",
     "detected_entries": [
@@ -21,7 +22,6 @@
       "templates",
       "tests",
       ".markdownlint.json",
-      ".markdownlintrc",
       "0.7.3",
       "CHANGELOG.md",
       "CODE_OF_CONDUCT.md",
@@ -34,6 +34,7 @@
       "SECURITY.md",
       "Specrew.psd1",
       "Specrew.psm1",
+      "validator-output-f024.log",
       "validator-output.log",
       "validator-stderr.log",
       "validator-stdout.log"
@@ -62,7 +63,9 @@
       "019-specrew-distribution-module",
       "020-session-state-durability",
       "021-specrew-slash-commands",
-      "022-hotfix-schema-tests"
+      "022-hotfix-schema-tests",
+      "023-legacy-state-read-tolerance",
+      "024-slash-command-multi-host-correctness"
     ]
   },
   "brownfield_discovery": null,
@@ -214,25 +217,16 @@
   "session_state": {
     "active": false,
     "boundary_type": "feature-closeout",
-    "feature_ref": "024-slash-command-multi-host-correctness",
-    "feature_path": "C:\\Dev\\Specrew\\specs\\024-slash-command-multi-host-correctness",
+    "feature_ref": "028-review-evidence-integrity",
+    "feature_path": "C:\\Dev\\Specrew\\specs\\028-review-evidence-integrity",
     "iteration_number": null,
     "task_id": null,
-    "auth_commit_hash": "a2fb22cea5c450aaa4cda58bcd786638f9a47b1e",
-    "recorded_at": "2026-05-20T01:11:37Z"
+    "auth_commit_hash": "aa654510f22bce82e23f21baa1ced85abc97a3b8",
+    "recorded_at": "2026-05-21T07:23:17Z"
   },
-  "recovery_session": {
-    "entry_mode": "resume-feature",
-    "stale_reasons": [],
-    "choice_set": [],
-    "selected_choice": null,
-    "bypass_gate": false,
-    "approval_mode_changed": false,
-    "next_action_message": "Feature 024 is closed at feature-closeout on this branch. Open or review the PR-at-feature-close workflow, then wait for human merge and tag-and-publish authorization before any release tagging."
-  },
+  "recovery_session": null,
   "squad_model_overrides": {},
   "prompt_path": "C:\\Dev\\Specrew\\.specrew\\last-start-prompt.md",
   "summary_path": "C:\\Dev\\Specrew\\.specrew\\start-summary.md",
-  "generated_at_utc": "2026-05-20T01:11:37Z",
-  "schema": "v1"
+  "generated_at_utc": "2026-05-21T07:23:17Z"
 }

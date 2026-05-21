@@ -6,7 +6,7 @@ This index is the navigation surface for all proposals in this directory. Sorted
 
 ---
 
-## Shipped (12)
+## Shipped (13)
 
 Proposals whose features have shipped to main and are part of Specrew's current capability.
 
@@ -24,8 +24,9 @@ Proposals whose features have shipped to main and are part of Specrew's current 
 | [032](032-specrew-slash-commands.md) | Specrew Slash-Command Surface | feature-021 | phase-2 | 7 |
 | [066](066-gate-respecting-default.md) | Gate-Respecting Default + `--autonomous` Opt-In | chore `c55ec92` (2026-05-20) | phase-2 | 3 |
 | [072](072-psgallery-unsigned-default.md) | PowerShell Gallery Unsigned Default | bug-fix slice `v0.24.1` (2026-05-20) | phase-2 | 2 |
+| [073](073-review-evidence-integrity.md) | Review Evidence Integrity (Pre-Review Commit Gate + Form-vs-Meaning Detection) | feature-028 | phase-2 | 18 |
 
-## Draft (17)
+## Draft (16)
 
 Proposals with full source-spec content, ready for `/speckit.specify` ingestion when prioritized.
 
@@ -47,7 +48,6 @@ Proposals with full source-spec content, ready for `/speckit.specify` ingestion 
 | [068](068-cost-aware-model-routing.md) | Cost-Aware Model Routing with Agent-Discovered Model Catalog | phase-2 | 6-8 | **URGENT — 10-day Copilot pricing deadline.** Discovery skill (`/specrew-research-models`) writes `.specrew/model-catalog.yml`; coordinator-governance routes Junior/Implementer tasks to cheap models, Senior/Reviewer to strong; `cost_profile: lean` in `.specrew/config.yml`. Slice of Proposal 040; precedes full Multi-Host CORE (024). Agent-driven discovery — no hardcoded model names. |
 | [069](069-multi-host-launch-path.md) | Multi-Host Launch Path + Per-Host Flag Pass-Through (Claude Code + Codex) | phase-2 | 9-10 | **URGENT — cost-reduction bundle.** `specrew start --host claude` / `--host codex` launches the alternate CLI with Specrew's bootstrap context. **Expanded 2026-05-21: also adds `--remote` flag pass-through with per-host translation** (Copilot `--remote`, Claude `--remote-control`/`--rc`, Codex warn-and-continue). First instance of the per-host flag-translation framework. Tactical MVP of Proposal 024 (Multi-Host CORE) — hard-coded per-host launch commands, no deep abstraction. Composes with 068 (model catalog) and 070 (cost tracking). |
 | [070](070-token-economy-mvp.md) | Token Economy MVP (Cost-per-Iteration Tracking + Dashboard Surfacing) | phase-2 | 5 | **URGENT — cost-reduction bundle.** `specs/<feature>/iterations/<N>/cost.yml` records per-boundary token consumption + cost estimate from Proposal 068's catalog; `specrew where` dashboard gains COST section; `specrew cost summary/add/recompute` CLI. MVP slice of Proposal 040 (Token Economy as Governance Driver) — measurement only, no governance layer. |
-| [073](073-review-evidence-integrity.md) | Review Evidence Integrity (Pre-Review Commit Gate + Form-vs-Meaning Detection) | phase-2 | 15-20 | **First concrete sub-slice of Proposal 030 (form-vs-meaning bundle).** Pre-review commit gate detects when `state.md` declares completed tasks but git diff is empty; reviewer scaffolders emit loud warnings instead of silent "below threshold" omissions; review-evidence artifacts become re-runnable post-commit. Empirical motivation: 2026-05-21 smoke trial where `review-diagrams.md` silently emitted "0 modules touched" while iteration declared T001-T011 complete. **Implements immediately after F-027 /skills slice ships.** |
 | [074](074-code-commentary-standards.md) | Code Commentary Standards (Multi-Level Convention + Preference Dial) | phase-2 | 12-15 | Replaces the current "default to no comments" Implementer instruction with a four-category taxonomy (contract / why-rationale / concept / inline narration), a four-level preference dial (`minimalist` / `standard` / `educational` / `textbook`), and a language-idiomatic convention catalog (C# XML doc, JSDoc, docstring, Javadoc, godoc, rustdoc, PowerShell comment-based help, etc.). Reviewer agent gains a contract-docs verification check. Empirical motivation: 2026-05-21 smoke trial produced a complete .NET 8 snake-game solution with **zero XML doc comments on public APIs** — IntelliSense silently empty. Composes with Proposals 047 / 052 / 015 (dials, profiles, expertise). |
 
 ## Candidate (43)
@@ -126,7 +126,7 @@ For roadmap-style viewing, proposals grouped by phase placement:
 - 034 (Markdown Lint Cleanup — draft, post-F-019)
 - 035 (Session-State Durability — draft, NEXT UP)
 - 036 (Branch Reconciliation — draft, SDLC pillar)
-- 073 (Review Evidence Integrity — draft, **NEXT UP after F-027 /skills**)
+- 073 (Review Evidence Integrity — shipped as feature-028)
 - 074 (Code Commentary Standards — draft, queue after 073)
 - 013, 014, 015, 017, 018, 019, 020, 021, 022, 023, 027, 028, 029, 037, 038, 042, 044, 045, 046, 047, 048, 049, 050, 051, 053, 054, 055, 056, 059, 060, 061, 062, 071, 075 (candidates)
 

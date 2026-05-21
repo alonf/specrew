@@ -1,3 +1,146 @@
+## 2026-05-21T00:13:32Z — Clarify: Feature 028 Q3 Reviewer-Artifact Regeneration Behavior
+
+- **Decision ID**: clarify-feature-028-q3-review-artifact-regeneration
+- **Type**: clarify
+- **Boundary**: clarify
+- **Approving Human**: Alon Fliess
+- **Recorded At**: 2026-05-21T00:13:32Z
+- **Feature**: 028-review-evidence-integrity
+- **Question**: When `scaffold-reviewer-artifacts.ps1 -Force` regenerates review artifacts after late commits, what should happen to existing human annotations?
+
+## Resolution
+
+- **Accepted Option**: Option 1 — overwrite and warn
+- **Meaning**:
+  - Generated reviewer artifacts are overwritten, not merged or preserved side-by-side
+  - The default flow is interactive confirmation before overwrite
+  - Non-interactive contexts may use `-Confirm:$false`
+  - Human annotations belong in `review.md`, not in generated reviewer artifacts, and the user guide must document that convention
+
+## Authorization Text
+
+> Option 1 — Overwrite and warn. Interactive confirmation prompt by default; -Confirm:$false for non-interactive contexts. Document the "annotations go in review.md, not in generated artifacts" convention in user-guide. Clarify is complete; planning can begin.
+
+---
+
+## 2026-05-21T00:08:40Z — Clarify: Feature 028 Q6 Test-FormMeaningParity API Contract
+
+- **Decision ID**: clarify-feature-028-q6-api-contract
+- **Type**: clarify
+- **Boundary**: clarify
+- **Approving Human**: Alon Fliess
+- **Recorded At**: 2026-05-21T00:08:40Z
+- **Feature**: 028-review-evidence-integrity
+- **Question**: What API contract should Feature 028 commit to for `Test-FormMeaningParity` as Proposal 030's seed?
+
+## Resolution
+
+- **Accepted Option**: Option 1 — immutable API with the generic-comparator design constraint
+- **Meaning**:
+  - Feature 028 freezes the helper signature and return shape as the v1 contract
+  - Proposal 030 must add new helpers or compose around this contract rather than reshape it
+  - Plan phase must sketch the signature and confirm it covers 2-3 anticipated Proposal 030 use cases before implementation starts
+
+## Authorization Text
+
+> Option 1 — immutable API with the generic-comparator design constraint. Sketch the signature during plan phase and verify it covers 2-3 anticipated 030 use cases before implementation. Continue to the next clarify question.
+
+---
+
+## 2026-05-20T23:43:34Z — Clarify: Feature 028 Q2 Baseline Ref Flexibility
+
+- **Decision ID**: clarify-feature-028-q2-baseline-ref
+- **Type**: clarify
+- **Boundary**: clarify
+- **Approving Human**: Alon Fliess
+- **Recorded At**: 2026-05-20T23:43:34Z
+- **Feature**: 028-review-evidence-integrity
+- **Question**: Should the pre-review validator always use the iteration's declared baseline, or allow override / auto-detection behavior?
+
+## Resolution
+
+- **Accepted Option**: Option 1 — fixed to the declared iteration baseline
+- **Meaning**:
+  - The validator must always read the baseline from iteration metadata
+  - No custom baseline override flag is allowed for this gate
+  - No git-history auto-detection is allowed for this gate
+  - The declared baseline is part of the iteration contract and remains the audit source of truth
+
+## Authorization Text
+
+> Option 1 confirmed. Continue to the next clarify question. If Squad wants to acknowledge the merge-masking limitation explicitly in the spec's "known limitations" or "deferred behaviors" section, that's reasonable; it composes with Proposal 030's eventual scope
+
+---
+
+## 2026-05-20T23:37:38Z — Clarify: Feature 028 Q5 Review-Evidence CLI Scope
+
+- **Decision ID**: clarify-feature-028-q5-review-evidence-cli-scope
+- **Type**: clarify
+- **Boundary**: clarify
+- **Approving Human**: Alon Fliess
+- **Recorded At**: 2026-05-20T23:37:38Z
+- **Feature**: 028-review-evidence-integrity
+- **Question**: Should Feature 028 include the optional `specrew review-evidence regenerate` CLI command or stop at the scaffolder re-run mechanism?
+
+## Resolution
+
+- **Accepted Option**: Option 1 — defer the CLI surface to Proposal 033
+- **Meaning**:
+  - Feature 028 implements only the scaffolder `-Force` re-run mechanism
+  - The optional `specrew review-evidence regenerate` CLI command remains out of scope here and is deferred to Proposal 033
+
+## Authorization Text
+
+> Option 1 — defer CLI to 033. Continue to the next clarify question.
+
+---
+
+## 2026-05-20T23:34:25Z — Clarify: Feature 028 Q4 Empty Iteration Handling
+
+- **Decision ID**: clarify-feature-028-q4-empty-iteration
+- **Type**: clarify
+- **Boundary**: clarify
+- **Approving Human**: Alon Fliess
+- **Recorded At**: 2026-05-20T23:34:25Z
+- **Feature**: 028-review-evidence-integrity
+- **Question**: How should the pre-review validator distinguish a legitimate empty iteration from an uncommitted-implementation gap?
+
+## Resolution
+
+- **Accepted Option**: Option 3 — declared-task count only
+- **Meaning**:
+  - If declared task count is `0` and the diff is empty, treat the iteration as legitimate spec/clarify-only work
+  - If declared task count is `1` or more and the diff is empty, treat it as the form-vs-meaning gap
+
+## Authorization Text
+
+> Option 3 (declared-task count only). Continue to the next clarify question.
+
+---
+
+## 2026-05-20T23:31:12Z — Clarify: Feature 028 Q1 Severity Threshold
+
+- **Decision ID**: clarify-feature-028-q1-severity-threshold
+- **Type**: clarify
+- **Boundary**: clarify
+- **Approving Human**: Alon Fliess
+- **Recorded At**: 2026-05-20T23:31:12Z
+- **Feature**: 028-review-evidence-integrity
+- **Question**: How should `Test-FormMeaningParity` treat partial implementation mismatches where declared completion exceeds the observed committed diff?
+
+## Resolution
+
+- **Accepted Option**: Option 3 — threshold-based severity with the zero-diff threshold as the hard-failure boundary
+- **Meaning**:
+  - Zero observed diff against the iteration baseline remains a blocking `error`
+  - Partial mismatches where observed changes exist but do not fully match declared completion degrade to `warning`
+
+## Authorization Text
+
+> Option 3 with the zero-diff threshold as defined above. Continue to the next clarify question.
+
+---
+
 ## 2026-05-20T18:33:06Z — Decision: Proposal 072 Clarify Skip
 
 - **Decision ID**: proposal-072-clarify-skip
@@ -15402,3 +15545,62 @@ Review-verdict-signoff is complete for Feature 024 Iteration 001. The approved r
 - **Task ID**: (none)
 - **Auth Commit Hash**: a2fb22cea5c450aaa4cda58bcd786638f9a47b1e
 - **Recorded At**: 2026-05-20T01:11:37Z
+
+## 2026-05-20T08:47:30Z — Delegated routing plan
+
+- **Enabled Agents**: copilot
+- **Independent Oversight Active**: False
+- **Roles**:
+  - Implementer | requested=copilot | actual=copilot | model=(platform default) | status=honored | fallback=(none)
+  - Spec Steward | requested=codex | actual=copilot | model=(platform default) | status=fell-back | fallback=preferred agent 'codex' is not enabled
+  - Planner | requested=claude | actual=copilot | model=(platform default) | status=fell-back | fallback=preferred agent 'claude' is not enabled
+  - Reviewer | requested=claude | actual=copilot | model=(platform default) | status=fell-back | fallback=preferred agent 'claude' is not enabled
+  - Retro Facilitator | requested=copilot | actual=copilot | model=(platform default) | status=honored | fallback=(none)
+
+## 2026-05-20T08:47:30Z — Routing evidence: Spec Steward
+
+- **Decision ID**: routing-evidence-d1c31de5489d
+- **Type**: routing-evidence
+- **Affected Requirement**: FR-043
+- **Affected Iteration**: (none)
+- **Approving Human**: (none)
+- **Recorded At**: 2026-05-20T08:47:30Z
+- **Next Action**: none
+- **Rationale**: Delegated lifecycle routing was applied for role 'Spec Steward'.
+
+- **Routing Evidence**: Spec Steward | requested=codex | actual=copilot | model=(platform default) | status=fell-back | fallback=preferred agent 'codex' is not enabled
+
+## 2026-05-20T08:47:30Z — Routing evidence: Planner
+
+- **Decision ID**: routing-evidence-7191fb70a850
+- **Type**: routing-evidence
+- **Affected Requirement**: FR-043
+- **Affected Iteration**: (none)
+- **Approving Human**: (none)
+- **Recorded At**: 2026-05-20T08:47:30Z
+- **Next Action**: none
+- **Rationale**: Delegated lifecycle routing was applied for role 'Planner'.
+
+- **Routing Evidence**: Planner | requested=claude | actual=copilot | model=(platform default) | status=fell-back | fallback=preferred agent 'claude' is not enabled
+
+## 2026-05-20T08:47:30Z — Routing evidence: Reviewer
+
+- **Decision ID**: routing-evidence-db7dba35b3b8
+- **Type**: routing-evidence
+- **Affected Requirement**: FR-043
+- **Affected Iteration**: (none)
+- **Approving Human**: (none)
+- **Recorded At**: 2026-05-20T08:47:30Z
+- **Next Action**: none
+- **Rationale**: Delegated lifecycle routing was applied for role 'Reviewer'.
+
+- **Routing Evidence**: Reviewer | requested=claude | actual=copilot | model=(platform default) | status=fell-back | fallback=preferred agent 'claude' is not enabled
+
+## 2026-05-21T07:23:17Z — Boundary sync: feature-closeout
+
+- **Boundary Type**: feature-closeout
+- **Feature Ref**: 028-review-evidence-integrity
+- **Iteration Number**: (none)
+- **Task ID**: (none)
+- **Auth Commit Hash**: aa654510f22bce82e23f21baa1ced85abc97a3b8
+- **Recorded At**: 2026-05-21T07:23:17Z
