@@ -3,6 +3,7 @@ param(
     [string]$ProjectPath = (Get-Location).Path,
     [string[]]$IterationPath,
     [switch]$ChangedOnly,
+    [switch]$FullRun,
     [AllowEmptyString()][string]$ResponseText = '',
     [string]$BoundaryName,
     [ValidateSet('auto', 'boundary-handoff', 'narration')][string]$ResponseScope = 'auto',
@@ -60,6 +61,90 @@ function Write-ValidatorSummaryAndExit {
 
     Write-Output ("[validator-timing] mode={0} elapsed_ms={1} iterations_validated={2} trigger_source={3}" -f $script:ValidatorMode, $durationMs, $script:ValidatorIterationsValidated, $script:ValidatorTriggerSource)
     exit $ExitCode
+}
+
+function Get-GitCurrentBranchName {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$ProjectRoot
+    )
+
+    $resolvedProjectRoot = Resolve-ProjectPath -Path $ProjectRoot
+    $branchOutput = @(& git -C $resolvedProjectRoot branch --show-current 2>$null)
+    if ($branchOutput.Count -eq 0) {
+        return $null
+    }
+
+    $branchName = [string]$branchOutput[0]
+    if ([string]::IsNullOrWhiteSpace($branchName)) {
+        return $null
+    }
+
+    return $branchName.Trim()
+}
+
+function Get-ValidatorScopeReasonText {
+    param(
+        [AllowNull()]
+        [string]$Reason,
+
+        [AllowNull()]
+        [string]$CurrentBranch
+    )
+
+    switch ($Reason) {
+        'on-main' {
+            if ($CurrentBranch -eq 'master') {
+                return 'on master'
+            }
+
+            return 'on main'
+        }
+        'base-ref-undetectable' {
+            return 'base-undetectable'
+        }
+        default {
+            return $Reason
+        }
+    }
+}
+
+function Get-ValidatorScopeBanner {
+    param(
+        [Parameter(Mandatory = $true)]
+        [ValidateSet('explicit-targets', 'changed-only', 'auto-scoped', 'full-repo')]
+        [string]$Mode,
+
+        [Parameter(Mandatory = $true)]
+        [int]$IterationCount,
+
+        [AllowNull()]
+        [string]$BaseRef,
+
+        [int]$DiffFileCount = 0,
+
+        [AllowNull()]
+        [string]$Reason,
+
+        [AllowNull()]
+        [string]$CurrentBranch
+    )
+
+    switch ($Mode) {
+        'explicit-targets' {
+            return "[validator-scope] explicit-targets ($IterationCount iterations)"
+        }
+        'changed-only' {
+            return "[validator-scope] changed-only to $BaseRef...HEAD ($IterationCount iterations, $DiffFileCount files in diff)"
+        }
+        'auto-scoped' {
+            return "[validator-scope] auto-scoped to $BaseRef...HEAD ($IterationCount iterations, $DiffFileCount files in diff)"
+        }
+        'full-repo' {
+            $reasonText = Get-ValidatorScopeReasonText -Reason $Reason -CurrentBranch $CurrentBranch
+            return "[validator-scope] full-repo ($reasonText; $IterationCount iterations)"
+        }
+    }
 }
 
 $copilotInstructionsClassifierPath = Join-Path $PSScriptRoot 'Test-CopilotInstructionsChangeType.ps1'
@@ -3574,6 +3659,83 @@ function Invoke-InteractionModelResponseValidation {
 
 try {
     $resolvedProjectPath = (Resolve-Path -Path (Resolve-ProjectPath -Path $ProjectPath)).Path
+    if ($FullRun -and $ChangedOnly) {
+        throw '-FullRun and -ChangedOnly are mutually exclusive. Use -FullRun for a deliberate full-repo run or -ChangedOnly for explicit changed-only scope.'
+    }
+
+    $explicitIterationPathsProvided = ($null -ne $IterationPath) -and @(
+        $IterationPath | Where-Object { -not [string]::IsNullOrWhiteSpace([string]$_) }
+    ).Count -gt 0
+    $targets = @()
+    $validatorScoped = $false
+    $scopeChangedIterations = $null
+    $scopeFallbackVerboseMessage = $null
+    $currentBranch = Get-GitCurrentBranchName -ProjectRoot $resolvedProjectPath
+
+    if ($explicitIterationPathsProvided) {
+        $targets = @(Resolve-IterationTarget -ResolvedProjectPath $resolvedProjectPath -ExplicitIterationPaths $IterationPath)
+        $validatorScoped = $true
+        $scopeBanner = Get-ValidatorScopeBanner -Mode 'explicit-targets' -IterationCount $targets.Count
+    }
+    elseif ($FullRun) {
+        $targets = @(Resolve-IterationTarget -ResolvedProjectPath $resolvedProjectPath -ExplicitIterationPaths $IterationPath)
+        $scopeBanner = Get-ValidatorScopeBanner -Mode 'full-repo' -IterationCount $targets.Count -Reason '-FullRun override' -CurrentBranch $currentBranch
+    }
+    elseif ($ChangedOnly) {
+        $scopeChangedIterations = Get-ChangedIterations -ProjectRoot $resolvedProjectPath
+        if ($scopeChangedIterations.UseScopedTargets) {
+            $targets = @($scopeChangedIterations.IterationPaths)
+            $validatorScoped = $true
+            $scopeBanner = Get-ValidatorScopeBanner -Mode 'changed-only' -IterationCount $targets.Count -BaseRef $scopeChangedIterations.BaseRef -DiffFileCount $scopeChangedIterations.DiffFileCount
+        }
+        else {
+            $targets = @(Resolve-IterationTarget -ResolvedProjectPath $resolvedProjectPath -ExplicitIterationPaths $IterationPath)
+            $scopeReason = if ($scopeChangedIterations.Reason -in @('base-ref-undetectable', 'base-ref-unresolved')) {
+                'base-ref-undetectable'
+            }
+            else {
+                $scopeChangedIterations.Reason
+            }
+            $scopeBanner = Get-ValidatorScopeBanner -Mode 'full-repo' -IterationCount $targets.Count -Reason $scopeReason -CurrentBranch $currentBranch
+            if ($env:SPECREW_VALIDATOR_VERBOSE -eq '1') {
+                $resolvedBase = if ([string]::IsNullOrWhiteSpace([string]$scopeChangedIterations.BaseRef)) { '(unresolved)' } else { [string]$scopeChangedIterations.BaseRef }
+                $scopeFallbackVerboseMessage = "[validator] -ChangedOnly fallback to full validation: {0} (base {1})" -f $scopeChangedIterations.Reason, $resolvedBase
+            }
+        }
+    }
+    else {
+        if ($currentBranch -in @('main', 'master')) {
+            $targets = @(Resolve-IterationTarget -ResolvedProjectPath $resolvedProjectPath -ExplicitIterationPaths $IterationPath)
+            $scopeBanner = Get-ValidatorScopeBanner -Mode 'full-repo' -IterationCount $targets.Count -Reason 'on-main' -CurrentBranch $currentBranch
+        }
+        else {
+            $scopeChangedIterations = Get-ChangedIterations -ProjectRoot $resolvedProjectPath
+            if ($scopeChangedIterations.UseScopedTargets) {
+                $targets = @($scopeChangedIterations.IterationPaths)
+                $validatorScoped = $true
+                $scopeBanner = Get-ValidatorScopeBanner -Mode 'auto-scoped' -IterationCount $targets.Count -BaseRef $scopeChangedIterations.BaseRef -DiffFileCount $scopeChangedIterations.DiffFileCount
+            }
+            else {
+                $targets = @(Resolve-IterationTarget -ResolvedProjectPath $resolvedProjectPath -ExplicitIterationPaths $IterationPath)
+                $scopeReason = if ($scopeChangedIterations.Reason -in @('base-ref-undetectable', 'base-ref-unresolved')) {
+                    'base-ref-undetectable'
+                }
+                else {
+                    $scopeChangedIterations.Reason
+                }
+                $scopeBanner = Get-ValidatorScopeBanner -Mode 'full-repo' -IterationCount $targets.Count -Reason $scopeReason -CurrentBranch $currentBranch
+                if ($env:SPECREW_VALIDATOR_VERBOSE -eq '1') {
+                    $resolvedBase = if ([string]::IsNullOrWhiteSpace([string]$scopeChangedIterations.BaseRef)) { '(unresolved)' } else { [string]$scopeChangedIterations.BaseRef }
+                    $scopeFallbackVerboseMessage = "[validator] Auto-scope fallback to full validation: {0} (base {1})" -f $scopeChangedIterations.Reason, $resolvedBase
+                }
+            }
+        }
+    }
+
+    Write-Host $scopeBanner
+    $script:ValidatorMode = if ($validatorScoped) { 'scoped' } else { 'unscoped' }
+    $script:ValidatorIterationsValidated = $targets.Count
+
     $teamRoles = Get-TeamRoleMap -ResolvedProjectPath $resolvedProjectPath
 
     $teamValidationErrors = New-Object System.Collections.Generic.List[string]
@@ -3600,30 +3762,9 @@ try {
     Test-PublicReadinessSurfaces -ProjectRoot $resolvedProjectPath
     Test-DashboardGovernanceSurfaces -ProjectRoot $resolvedProjectPath
 
-    $explicitIterationPathsProvided = ($null -ne $IterationPath) -and @(
-        $IterationPath | Where-Object { -not [string]::IsNullOrWhiteSpace([string]$_) }
-    ).Count -gt 0
-    $targets = @()
-    $changedOnlyScoped = $false
-    if ($ChangedOnly -and -not $explicitIterationPathsProvided) {
-        $changedIterations = Get-ChangedIterations -ProjectRoot $resolvedProjectPath
-        if ($changedIterations.UseScopedTargets) {
-            $targets = @($changedIterations.IterationPaths)
-            $changedOnlyScoped = $true
-        }
-        else {
-            if ($env:SPECREW_VALIDATOR_VERBOSE -eq '1') {
-                $resolvedBase = if ([string]::IsNullOrWhiteSpace([string]$changedIterations.BaseRef)) { '(unresolved)' } else { [string]$changedIterations.BaseRef }
-                Write-Host ("[validator] -ChangedOnly fallback to full validation: {0} (base {1})" -f $changedIterations.Reason, $resolvedBase)
-            }
-            $targets = @(Resolve-IterationTarget -ResolvedProjectPath $resolvedProjectPath -ExplicitIterationPaths $IterationPath)
-        }
+    if (-not [string]::IsNullOrWhiteSpace($scopeFallbackVerboseMessage)) {
+        Write-Host $scopeFallbackVerboseMessage
     }
-    else {
-        $targets = @(Resolve-IterationTarget -ResolvedProjectPath $resolvedProjectPath -ExplicitIterationPaths $IterationPath)
-    }
-    $script:ValidatorMode = if ($explicitIterationPathsProvided -or $changedOnlyScoped) { 'scoped' } else { 'unscoped' }
-    $script:ValidatorIterationsValidated = $targets.Count
     if (-not [string]::IsNullOrWhiteSpace($ResponseText)) {
         $responseValidationExitCode = Invoke-InteractionModelResponseValidation -ProjectRoot $resolvedProjectPath -ResponseText $ResponseText -IterationTargets $targets -BoundaryName $BoundaryName -ResponseScope $ResponseScope -BarePathBoundaryHandoffSeverity $BarePathBoundaryHandoffSeverity
         Write-ValidatorSummaryAndExit -ProjectRoot $resolvedProjectPath -ExitCode $responseValidationExitCode -HardWarnings $(if ($responseValidationExitCode -eq 0) { 0 } else { 1 })
