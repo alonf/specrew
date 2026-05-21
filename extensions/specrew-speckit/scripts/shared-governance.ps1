@@ -258,18 +258,17 @@ function Get-DecisionsLedgerPath {
 
 function Get-ValidatorGlobalStatePathspecs {
     return @(
-        '.specrew/'
-        '.specrew/**'
-        '.squad/identity/'
-        '.squad/identity/**'
-        '.squad/decisions.md'
-        '.squad/team.md'
-        '.squad/config.json'
-        'extensions/specrew-speckit/'
-        'extensions/specrew-speckit/**'
+        '.specrew/config.yml'
+        '.specrew/constitution.md'
+        '.specrew/iteration-config.yml'
+        '.specrew/role-assignments.yml'
+        '.specrew/presets/'
+        '.specrew/presets/**'
+        '.specrew/lenses/'
+        '.specrew/lenses/**'
+        '.specrew/roadmap.yml'
+        '.squad/identity/wisdom.md'
         '.specify/feature.json'
-        '.specify/extensions/specrew-speckit/'
-        '.specify/extensions/specrew-speckit/**'
     )
 }
 
