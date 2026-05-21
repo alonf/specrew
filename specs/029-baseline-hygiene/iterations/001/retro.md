@@ -18,6 +18,24 @@ Feature 029 Iteration 001 successfully delivered baseline hygiene fixes for sess
 
 ---
 
+## Estimation Accuracy
+
+| Task | Estimated | Actual | Delta |
+| --- | --- | --- | --- |
+| Feature 029 Iteration 001 baseline-hygiene slice | 3.6 | 3.6 | 0 |
+
+**Average variance**: 0
+
+## Drift Summary
+
+- Total drift events: 0
+- Resolved via spec update: 0
+- Resolved via revert: 0
+- Deferred: 0
+- Escalated to human decision: 0
+
+---
+
 ## What Went Well
 
 ### Specification Clarity & Authority
@@ -44,20 +62,16 @@ Feature 029 Iteration 001 successfully delivered baseline hygiene fixes for sess
 - Feature-closeout invalidation (E1) was already implemented in the codebase; iteration added validation testing without disrupting that prior work.
 - Integration with F-011's existing pause-and-confirm logic required no changes to F-011 itself, only to the baseline reference point.
 
----
-
-## What Could Be Improved
+## What Didn't Go Well
 
 ### Scaffolding & Artifact Generation
 - The retro-artifact scaffolder (`scaffold-retro-artifact.ps1`) expects a Phase Baseline table in the iteration plan.md that was not present. This iteration's plan is well-formed for its scope, but the scaffolder's dependency on that specific table structure created a minor friction point. **Action**: Consider making the Phase Baseline table optional in the scaffolder or clarifying its role in the plan template for small-fix slices.
 
 ### Baseline Drift Recovery
-- If a developer forgets to call `Invoke-SpecrewBoundaryStateSync` at a boundary, the baseline will not refresh, and stale baseline misfire can re-occur. The current implementation is correct, but the reliance on human discipline at every boundary is a potential friction point. **Action**: Document or automate boundary-sync invocation as part of the standard boundary-close workflow to reduce human error.
+- If the Crew forgets to call `Invoke-SpecrewBoundaryStateSync` at a boundary, the baseline will not refresh, and stale baseline misfire can re-occur. The current implementation is correct, but the reliance on human discipline at every boundary is a potential friction point. **Action**: Document or automate boundary-sync invocation as part of the standard boundary-close workflow to reduce human error.
 
 ### Test Environment Isolation
 - Integration tests that exercise full lifecycle boundaries are comprehensive but require careful setup and teardown to avoid polluting the active Specrew state. **Action**: Consider a test-isolation wrapper or fixture pattern to further reduce risk of accidental state mutation during test runs.
-
----
 
 ## Retrospective Findings
 
@@ -96,6 +110,12 @@ Feature 029 Iteration 001 successfully delivered baseline hygiene fixes for sess
 | Baseline refresh forgotten at boundary | Mitigated | Implementation complete; boundary-sync automatically invoked at managed lifecycle points; user-forgetfulness is still a risk for manual boundary work |
 | False-positive misfires persist | Eliminated | Integration tests confirm F-011 behavior is correct with refreshed baseline |
 | Feature-closeout regression | Avoided | E1 closeout-invalidation was already implemented; iteration validation confirmed it still works |
+
+## Improvement Actions
+
+1. Owner: Specrew toolchain maintainers | Phase: next governance scaffolder repair | Type: process | Expected effect: make `scaffold-retro-artifact.ps1` tolerate small-fix plans that do not carry a Phase Baseline table.
+2. Owner: Planner / Implementer | Phase: next boundary-heavy feature | Type: process | Expected effect: automate or document boundary-sync invocation so the Crew does not rely on memory to keep `baseline_commit_hash` fresh.
+3. Owner: Reviewer / Test author | Phase: next integration-lane slice | Type: testing | Expected effect: reduce accidental state pollution by standardizing a test-isolation wrapper for lifecycle-heavy integration tests.
 
 ---
 

@@ -16892,3 +16892,11 @@ All findings are complete and evidence-based. Recommendations are actionable and
 **What:** Push every new boundary-phase commit to origin before any further validator run or boundary advancement; for Feature 029, push local-only commit 2e6ee0e first, then produce retro-boundary artifacts, commit and push them before signaling retro-verdict-signoff, and do not start feature-closeout or T010b until retro is signed off. Also surface the exact dashboard warning text in the next handoff instead of acting on it early.
 **Why:** User request — captured for team memory
 
+## 2026-05-21T19:11:11Z — Boundary sync: feature-closeout
+
+- **Boundary Type**: feature-closeout
+- **Feature Ref**: 029-baseline-hygiene
+- **Iteration Number**: (none)
+- **Task ID**: (none)
+- **Auth Commit Hash**: 08b14a17129880caa48c8f2835e052dbfb2b709e
+- **Recorded At**: 2026-05-21T19:11:11Z
