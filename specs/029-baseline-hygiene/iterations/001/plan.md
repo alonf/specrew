@@ -2,9 +2,9 @@
 
 **Schema**: v1  
 **Spec**: [../../spec.md](../../spec.md)  
-**Status**: planning  
+**Status**: reviewing  
 **Capacity**: 3.6/20 story_points  
-**Started**: (pending iteration kickoff)  
+**Started**: 2026-05-21  
 **Completed**:  
 
 ## Summary
@@ -46,13 +46,13 @@ Iteration 001 covers the core implementation of baseline hygiene to fix false-po
 
 | Task | Title | Requirement | Story | Effort | Owner | Status |
 | ---- | ----- | ----------- | ----- | ------ | ----- | ------ |
-| baseline-update-boundary | Update baseline at each lifecycle boundary (specify, clarify, plan, tasks, review-signoff, iteration-closeout, feature-closeout) | FR-001, FR-002 | US-1 | 1 | Implementer | planned |
-| closeout-invalidation | Invalidate session state at feature-closeout (delete or mark `session_state_active: false`) | FR-003 | US-3 | 0.5 | Implementer | planned |
-| git-integration | Integrate `git rev-parse HEAD` calls and ensure correct sequencing post-Squad-work | FR-002 | US-1 | 0.5 | Implementer | planned |
-| idempotency-test | Verify re-running boundary sync at same boundary does not corrupt state | FR-005 | US-1 | 0.3 | Reviewer | planned |
-| error-handling | Implement error handling for git failures and file I/O errors | FR-006 | US-1 | 0.3 | Implementer | planned |
-| f011-integration-test | Validate F-011 uses updated baseline; zero false positives (no genuine changes), correct detection (genuine changes) | FR-004 | US-2 | 0.5 | Spec Steward | planned |
-| full-lifecycle-test | Execute complete feature lifecycle (specify through feature-closeout) with Squad commits at each boundary | SC-001, SC-002, SC-003 | US-1, US-2, US-3 | 0.5 | Reviewer | planned |
+| baseline-update-boundary | Update baseline at each lifecycle boundary (specify, clarify, plan, tasks, review-signoff, iteration-closeout, feature-closeout) | FR-001, FR-002 | US-1 | 1 | Implementer | done |
+| closeout-invalidation | Invalidate session state at feature-closeout (delete or mark `session_state_active: false`) | FR-003 | US-3 | 0.5 | Implementer | done |
+| git-integration | Integrate `git rev-parse HEAD` calls and ensure correct sequencing post-Squad-work | FR-002 | US-1 | 0.5 | Implementer | done |
+| idempotency-test | Verify re-running boundary sync at same boundary does not corrupt state | FR-005 | US-1 | 0.3 | Reviewer | done |
+| error-handling | Implement error handling for git failures and file I/O errors | FR-006 | US-1 | 0.3 | Implementer | done |
+| f011-integration-test | Validate F-011 uses updated baseline; zero false positives (no genuine changes), correct detection (genuine changes) | FR-004 | US-2 | 0.5 | Spec Steward | done |
+| full-lifecycle-test | Execute complete feature lifecycle (specify through feature-closeout) with Squad commits at each boundary | SC-001, SC-002, SC-003 | US-1, US-2, US-3 | 0.5 | Reviewer | done |
 
 **Total Effort (Planned)**: 3.6 story_points (scope-reduced per 2026-05-21 planning repair; E1 validation-only)
 
@@ -82,9 +82,9 @@ Iteration 001 covers the core implementation of baseline hygiene to fix false-po
 
 | Required Quality Gate | Category | Evidence Source | Status |
 | --- | --- | --- | --- |
-| `baseline-update-mechanism` | implementation | `scripts/internal/sync-boundary-state.ps1` | pending |
-| `f011-false-positive-elimination` | integration | Full lifecycle test results | pending |
-| `session-state-integrity` | integration | State validation in tests | pending |
+| `baseline-update-mechanism` | implementation | `scripts/internal/sync-boundary-state.ps1` | pass |
+| `f011-false-positive-elimination` | integration | Full lifecycle test results | pass |
+| `session-state-integrity` | integration | State validation in tests | pass |
 
 ---
 
