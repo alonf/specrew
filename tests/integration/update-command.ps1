@@ -156,11 +156,16 @@ $currentSquadVersion = Get-ConfigValue -ConfigPath $configPath -Key 'squad_versi
 $originalSpecrewOverride = [Environment]::GetEnvironmentVariable('SPECREW_UPDATE_LATEST_SPECREW', 'Process')
 $originalSpecKitOverride = [Environment]::GetEnvironmentVariable('SPECREW_UPDATE_LATEST_SPECKIT', 'Process')
 $originalSquadOverride = [Environment]::GetEnvironmentVariable('SPECREW_UPDATE_LATEST_SQUAD', 'Process')
+$originalSpecKitMaxOverride = [Environment]::GetEnvironmentVariable('SPECREW_SUPPORTED_MAX_SPECKIT', 'Process')
+$originalSquadMaxOverride = [Environment]::GetEnvironmentVariable('SPECREW_SUPPORTED_MAX_SQUAD', 'Process')
 
 try {
     [Environment]::SetEnvironmentVariable('SPECREW_UPDATE_LATEST_SPECREW', $sourceSpecrewVersion, 'Process')
     [Environment]::SetEnvironmentVariable('SPECREW_UPDATE_LATEST_SPECKIT', '99.0.0', 'Process')
     [Environment]::SetEnvironmentVariable('SPECREW_UPDATE_LATEST_SQUAD', '99.0.0', 'Process')
+    # Proposal 079: align supported-max with upstream-latest so tests exercise the "supported update available" path.
+    [Environment]::SetEnvironmentVariable('SPECREW_SUPPORTED_MAX_SPECKIT', '99.0.0', 'Process')
+    [Environment]::SetEnvironmentVariable('SPECREW_SUPPORTED_MAX_SQUAD', '99.0.0', 'Process')
 
     Write-Host "`nTest 1: update help advertises the command surface"
     $helpResult = Invoke-TestScript -ScriptPath $entryScript -ArgumentList @('update', '--help')
@@ -242,6 +247,9 @@ try {
     Write-Host "`nTest 4: --all honors explicit scopes without upgrading already-current platforms"
     [Environment]::SetEnvironmentVariable('SPECREW_UPDATE_LATEST_SPECKIT', $currentSpecKitVersion, 'Process')
     [Environment]::SetEnvironmentVariable('SPECREW_UPDATE_LATEST_SQUAD', $currentSquadVersion, 'Process')
+    # Proposal 079: realign max-tested to current so status is 'current' (no upgrade needed).
+    [Environment]::SetEnvironmentVariable('SPECREW_SUPPORTED_MAX_SPECKIT', $currentSpecKitVersion, 'Process')
+    [Environment]::SetEnvironmentVariable('SPECREW_SUPPORTED_MAX_SQUAD', $currentSquadVersion, 'Process')
 
     $allResult = Invoke-TestScript -ScriptPath $entryScript -ArgumentList @('update', '--project-path', $projectRoot, '--all')
     if ($allResult.ExitCode -ne 0) {
@@ -298,11 +306,69 @@ try {
         exit 1
     }
     Write-Pass '--squad preserves specrew_version (no-mutation contract holds)'
+
+    Write-Host "`nTest 7: --info --upstream-latest suppresses advisory and uses two-state status (Proposal 079 AC5)"
+    # Restore upstream-latest > max_tested scenario (current behind upstream)
+    [Environment]::SetEnvironmentVariable('SPECREW_UPDATE_LATEST_SPECKIT', '99.0.0', 'Process')
+    [Environment]::SetEnvironmentVariable('SPECREW_UPDATE_LATEST_SQUAD', '99.0.0', 'Process')
+    # Set max_tested BELOW upstream so default --info shows 'ahead-of-supported' + advisory
+    [Environment]::SetEnvironmentVariable('SPECREW_SUPPORTED_MAX_SPECKIT', $currentSpecKitVersion, 'Process')
+    [Environment]::SetEnvironmentVariable('SPECREW_SUPPORTED_MAX_SQUAD', $currentSquadVersion, 'Process')
+
+    $defaultInfoResult = Invoke-TestScript -ScriptPath $entryScript -ArgumentList @('update', '--project-path', $projectRoot, '--info')
+    if ($defaultInfoResult.ExitCode -ne 0) {
+        Write-Fail 'specrew update --info (default) failed'
+        exit 1
+    }
+    $defaultInfoOutput = $defaultInfoResult.Output -join "`n"
+    if (-not (Assert-Contains -Content $defaultInfoOutput -Pattern 'Specrew has validated only through' -FailureMessage 'Default --info should surface advisory line when upstream > max_tested')) {
+        exit 1
+    }
+    Write-Pass 'Default --info surfaces advisory when upstream beyond max_tested'
+
+    $upstreamInfoResult = Invoke-TestScript -ScriptPath $entryScript -ArgumentList @('update', '--project-path', $projectRoot, '--info', '--upstream-latest')
+    if ($upstreamInfoResult.ExitCode -ne 0) {
+        Write-Fail 'specrew update --info --upstream-latest failed'
+        foreach ($line in $upstreamInfoResult.Output) {
+            Write-Host $line
+        }
+        exit 1
+    }
+    $upstreamInfoOutput = $upstreamInfoResult.Output -join "`n"
+    if ($upstreamInfoOutput -match 'Specrew has validated only through') {
+        Write-Fail '--info --upstream-latest should NOT surface the advisory (user opted into upstream view)'
+        exit 1
+    }
+    if (-not (Assert-Contains -Content $upstreamInfoOutput -Pattern 'update-available' -FailureMessage '--info --upstream-latest should show two-state update-available status')) {
+        exit 1
+    }
+    if ($upstreamInfoOutput -match 'update-available-supported') {
+        Write-Fail '--info --upstream-latest should NOT show four-state update-available-supported status'
+        exit 1
+    }
+    Write-Pass '--info --upstream-latest suppresses advisory + uses two-state status'
+
+    Write-Host "`nTest 8: --upstream-latest is in the slash-command argument whitelist"
+    $whitelistResult = Invoke-TestScript -ScriptPath $entryScript -ArgumentList @('update', '--info', '--upstream-latest', '--skip-update-check', '--project-path', $projectRoot)
+    if ($whitelistResult.ExitCode -ne 0) {
+        Write-Fail 'specrew update --info --upstream-latest --skip-update-check failed (whitelist rejection?)'
+        foreach ($line in $whitelistResult.Output) {
+            Write-Host $line
+        }
+        exit 1
+    }
+    if (($whitelistResult.Output -join "`n") -match 'Unsupported argument') {
+        Write-Fail '--upstream-latest should be in the update-command whitelist'
+        exit 1
+    }
+    Write-Pass '--upstream-latest passes whitelist check'
 }
 finally {
     [Environment]::SetEnvironmentVariable('SPECREW_UPDATE_LATEST_SPECREW', $originalSpecrewOverride, 'Process')
     [Environment]::SetEnvironmentVariable('SPECREW_UPDATE_LATEST_SPECKIT', $originalSpecKitOverride, 'Process')
     [Environment]::SetEnvironmentVariable('SPECREW_UPDATE_LATEST_SQUAD', $originalSquadOverride, 'Process')
+    [Environment]::SetEnvironmentVariable('SPECREW_SUPPORTED_MAX_SPECKIT', $originalSpecKitMaxOverride, 'Process')
+    [Environment]::SetEnvironmentVariable('SPECREW_SUPPORTED_MAX_SQUAD', $originalSquadMaxOverride, 'Process')
 }
 
 Write-Host "`nAll update command tests passed." -ForegroundColor Green

@@ -318,7 +318,7 @@ function Assert-WhitelistedArguments {
             Assert-OptionArguments -CommandName $CommandName -ArgumentList $ArgumentList -SwitchOptions @('--compact', '--ascii', '--no-color', '--json', '--team', '--worktrees', '--help', '-h') -ValueOptions @('--project-path', '--feature', '--iteration', '--recentcount', '--barwidth')
         }
         'update' {
-            Assert-OptionArguments -CommandName $CommandName -ArgumentList $ArgumentList -SwitchOptions @('--info', '--all', '--specrew', '--squad', '--spec-kit', '--skip-update-check', '--help', '-h') -ValueOptions @('--project-path')
+            Assert-OptionArguments -CommandName $CommandName -ArgumentList $ArgumentList -SwitchOptions @('--info', '--all', '--specrew', '--squad', '--spec-kit', '--skip-update-check', '--upstream-latest', '--help', '-h') -ValueOptions @('--project-path')
         }
         'review' {
             Assert-OptionArguments -CommandName $CommandName -ArgumentList $ArgumentList -SwitchOptions @('--quiet', '--json', '--open', '--help', '-h') -ValueOptions @('--project-path', '--feature', '--iteration') -MaxPositionals 1

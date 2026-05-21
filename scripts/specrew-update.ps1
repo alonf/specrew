@@ -6,6 +6,7 @@ param(
     [switch]$Squad,
     [switch]$SpecKit,
     [switch]$SkipUpdateCheck,
+    [switch]$UpstreamLatest,
     [switch]$Help,
     [Parameter(ValueFromRemainingArguments = $true)]
     [string[]]$CliArgs
@@ -43,19 +44,21 @@ function Convert-UnixStyleArguments {
         [bool]$Squad,
         [bool]$SpecKit,
         [bool]$SkipUpdateCheck,
+        [bool]$UpstreamLatest,
         [bool]$Help,
         [string[]]$CliArgs
     )
 
     $result = [ordered]@{
-        ProjectPath = $ProjectPath
-        InfoMode    = $InfoMode
-        All         = $All
-        Specrew     = $Specrew
-        Squad       = $Squad
-        SpecKit     = $SpecKit
+        ProjectPath     = $ProjectPath
+        InfoMode        = $InfoMode
+        All             = $All
+        Specrew         = $Specrew
+        Squad           = $Squad
+        SpecKit         = $SpecKit
         SkipUpdateCheck = $SkipUpdateCheck
-        Help        = $Help
+        UpstreamLatest  = $UpstreamLatest
+        Help            = $Help
     }
 
     if (-not $CliArgs -or $CliArgs.Count -eq 0) {
@@ -92,6 +95,9 @@ function Convert-UnixStyleArguments {
             '--skip-update-check' {
                 $result.SkipUpdateCheck = $true
             }
+            '--upstream-latest' {
+                $result.UpstreamLatest = $true
+            }
             '--help' {
                 $result.Help = $true
             }
@@ -120,11 +126,19 @@ Options:
   -SpecKit | --spec-kit  Upgrade Spec Kit to the latest known compatible version
   -SkipUpdateCheck | --skip-update-check
                          Skip the PSGallery latest-version check for this run
+  -UpstreamLatest | --upstream-latest
+                         Target upstream-latest versions instead of Specrew-validated
+                         max_tested versions. Use this when you accept the risk of
+                         running dependencies Specrew has not yet validated against.
   -Help | --help         Show usage
 
 Behavior:
   - Bare `specrew update` refreshes Specrew-managed project assets only.
-  - `specrew update --info` reports current and latest known versions for Specrew, Spec Kit, and Squad.
+  - `specrew update --info` reports current versions alongside both LatestSupported
+    (the highest version Specrew has validated against) and UpstreamLatest (advisory).
+    Default upgrade targets the LatestSupported version.
+  - `--upstream-latest` switches the upgrade target to UpstreamLatest. Use with care:
+    Specrew may not have validated against versions beyond max_tested.
   - When Specrew-only update completes, the command still notifies you if newer Squad or Spec Kit versions are available.
 '@ | Write-Host
 }
@@ -988,6 +1002,7 @@ $parsedArgs = Convert-UnixStyleArguments `
     -Squad $Squad.IsPresent `
     -SpecKit $SpecKit.IsPresent `
     -SkipUpdateCheck $SkipUpdateCheck.IsPresent `
+    -UpstreamLatest $UpstreamLatest.IsPresent `
     -Help $Help.IsPresent `
     -CliArgs $CliArgs
 
@@ -998,6 +1013,7 @@ $Specrew = [bool]$parsedArgs.Specrew
 $Squad = [bool]$parsedArgs.Squad
 $SpecKit = [bool]$parsedArgs.SpecKit
 $SkipUpdateCheck = [bool]$parsedArgs.SkipUpdateCheck
+$UpstreamLatest = [bool]$parsedArgs.UpstreamLatest
 $Help = [bool]$parsedArgs.Help
 
 if ($Help) {
@@ -1012,8 +1028,20 @@ $specrewManifestPath = Join-Path $repoRoot 'extensions\specrew-speckit\extension
 $validateVersionsScript = Join-Path $repoRoot 'extensions\specrew-speckit\scripts\validate-versions.ps1'
 $deploySpeckitExtensionScript = Join-Path $repoRoot 'extensions\specrew-speckit\scripts\deploy-speckit-extension.ps1'
 $deploySquadRuntimeScript = Join-Path $repoRoot 'extensions\specrew-speckit\scripts\deploy-squad-runtime.ps1'
-$minimumSpecKitVersion = '0.8.4'
-$minimumSquadVersion = '0.9.1'
+
+# Load module-side supported-versions declaration (Proposal 079). Maintainer-managed
+# data shipped with the module. Falls back to historical hardcoded mins if the file
+# is missing or malformed (graceful degradation; warns the user).
+$supportedVersions = Get-SpecrewSupportedVersions
+if ($null -ne $supportedVersions) {
+    $minimumSpecKitVersion = $supportedVersions.Speckit.Min
+    $minimumSquadVersion = $supportedVersions.Squad.Min
+}
+else {
+    Write-Warning "Could not load module-side scripts/internal/supported-versions.yml. Falling back to historical minimums (Spec Kit 0.8.4 / Squad 0.9.1); --info status will use two-state model."
+    $minimumSpecKitVersion = '0.8.4'
+    $minimumSquadVersion = '0.9.1'
+}
 
 foreach ($requiredPath in @($specrewManifestPath, $validateVersionsScript, $deploySpeckitExtensionScript, $deploySquadRuntimeScript)) {
     if (-not (Test-Path -LiteralPath $requiredPath -PathType Leaf)) {
@@ -1074,33 +1102,107 @@ $latestByPlatform = @{
     'Squad'    = Get-LatestVersionInfo -Platform 'Squad' -RepoRoot $repoRoot -SpecrewVersion $sourceSpecrewVersion
 }
 
+$specKitCurrent = if ($validationByPlatform.ContainsKey('Spec Kit') -and $validationByPlatform['Spec Kit'].Version) {
+    [string]$validationByPlatform['Spec Kit'].Version
+} elseif ($projectConfig.ContainsKey('speckit_version')) {
+    [string]$projectConfig['speckit_version']
+} else {
+    $null
+}
+
+$squadCurrent = if ($validationByPlatform.ContainsKey('Squad') -and $validationByPlatform['Squad'].Version) {
+    [string]$validationByPlatform['Squad'].Version
+} elseif ($projectConfig.ContainsKey('squad_version')) {
+    [string]$projectConfig['squad_version']
+} else {
+    $null
+}
+
+$specKitUpstream = if ($latestByPlatform['Spec Kit'].Known) { [string]$latestByPlatform['Spec Kit'].Version } else { $null }
+$squadUpstream = if ($latestByPlatform['Squad'].Known) { [string]$latestByPlatform['Squad'].Version } else { $null }
+
+# Proposal 079: LatestSupported = max_tested from supported-versions.yml; UpstreamLatest = upstream-latest (advisory).
+# For Specrew itself, the supported-versions matrix does not apply (Specrew defines itself); LatestSupported mirrors UpstreamLatest.
+$specKitMaxTested = if ($null -ne $supportedVersions) { [string]$supportedVersions.Speckit.MaxTested } else { $null }
+$squadMaxTested = if ($null -ne $supportedVersions) { [string]$supportedVersions.Squad.MaxTested } else { $null }
+
+# Proposal 079 AC5: --upstream-latest opts into the historical two-state model.
+# Status reflects current-vs-upstream comparison (not current-vs-max_tested).
+$specKitStatus = if ($null -ne $supportedVersions -and -not $UpstreamLatest) {
+    Get-SpecrewVersionStatus -Current $specKitCurrent -Min $supportedVersions.Speckit.Min -MaxTested $specKitMaxTested
+} else {
+    Compare-VersionState -CurrentVersion $specKitCurrent -LatestVersion $specKitUpstream
+}
+
+$squadStatus = if ($null -ne $supportedVersions -and -not $UpstreamLatest) {
+    Get-SpecrewVersionStatus -Current $squadCurrent -Min $supportedVersions.Squad.Min -MaxTested $squadMaxTested
+} else {
+    Compare-VersionState -CurrentVersion $squadCurrent -LatestVersion $squadUpstream
+}
+
 $infoRows = @(
     [pscustomobject]@{
-        Platform    = 'Specrew'
-        Current     = if ($currentSpecrewVersion) { $currentSpecrewVersion } else { 'not-recorded' }
-        LatestKnown = if ($latestByPlatform['Specrew'].Known) { $latestByPlatform['Specrew'].Version } else { 'unavailable' }
-        Status      = Compare-VersionState -CurrentVersion $currentSpecrewVersion -LatestVersion $latestByPlatform['Specrew'].Version
-        Source      = $latestByPlatform['Specrew'].Source
+        Platform        = 'Specrew'
+        Current         = if ($currentSpecrewVersion) { $currentSpecrewVersion } else { 'not-recorded' }
+        LatestSupported = if ($latestByPlatform['Specrew'].Known) { $latestByPlatform['Specrew'].Version } else { 'unavailable' }
+        UpstreamLatest  = if ($latestByPlatform['Specrew'].Known) { $latestByPlatform['Specrew'].Version } else { 'unavailable' }
+        Status          = Compare-VersionState -CurrentVersion $currentSpecrewVersion -LatestVersion $latestByPlatform['Specrew'].Version
+        Source          = $latestByPlatform['Specrew'].Source
     }
     [pscustomobject]@{
-        Platform    = 'Spec Kit'
-        Current     = if ($validationByPlatform.ContainsKey('Spec Kit') -and $validationByPlatform['Spec Kit'].Version) { $validationByPlatform['Spec Kit'].Version } elseif ($projectConfig.ContainsKey('speckit_version')) { [string]$projectConfig['speckit_version'] } else { 'not-installed' }
-        LatestKnown = if ($latestByPlatform['Spec Kit'].Known) { $latestByPlatform['Spec Kit'].Version } else { 'unavailable' }
-        Status      = Compare-VersionState -CurrentVersion $(if ($validationByPlatform.ContainsKey('Spec Kit')) { $validationByPlatform['Spec Kit'].Version } else { $null }) -LatestVersion $latestByPlatform['Spec Kit'].Version
-        Source      = $latestByPlatform['Spec Kit'].Source
+        Platform        = 'Spec Kit'
+        Current         = if ($specKitCurrent) { $specKitCurrent } else { 'not-installed' }
+        LatestSupported = if ($specKitMaxTested) { $specKitMaxTested } else { 'unavailable' }
+        UpstreamLatest  = if ($specKitUpstream) { $specKitUpstream } else { 'unavailable' }
+        Status          = $specKitStatus
+        Source          = $latestByPlatform['Spec Kit'].Source
     }
     [pscustomobject]@{
-        Platform    = 'Squad'
-        Current     = if ($validationByPlatform.ContainsKey('Squad') -and $validationByPlatform['Squad'].Version) { $validationByPlatform['Squad'].Version } elseif ($projectConfig.ContainsKey('squad_version')) { [string]$projectConfig['squad_version'] } else { 'not-installed' }
-        LatestKnown = if ($latestByPlatform['Squad'].Known) { $latestByPlatform['Squad'].Version } else { 'unavailable' }
-        Status      = Compare-VersionState -CurrentVersion $(if ($validationByPlatform.ContainsKey('Squad')) { $validationByPlatform['Squad'].Version } else { $null }) -LatestVersion $latestByPlatform['Squad'].Version
-        Source      = $latestByPlatform['Squad'].Source
+        Platform        = 'Squad'
+        Current         = if ($squadCurrent) { $squadCurrent } else { 'not-installed' }
+        LatestSupported = if ($squadMaxTested) { $squadMaxTested } else { 'unavailable' }
+        UpstreamLatest  = if ($squadUpstream) { $squadUpstream } else { 'unavailable' }
+        Status          = $squadStatus
+        Source          = $latestByPlatform['Squad'].Source
     }
 )
 
 if ($InfoMode) {
     Write-Host ("Version info for {0}" -f $resolvedProjectPath) -ForegroundColor Green
     $infoRows | Format-Table -AutoSize
+
+    # Proposal 079 AC5: when --upstream-latest is set, the user has opted into upstream-prominent display.
+    # Suppress the advisory text (no need to warn about something the user explicitly chose to see).
+    # Proposal 079: Advisory line when upstream beyond max_tested OR notes set on the supported declaration.
+    if ($null -ne $supportedVersions -and -not $UpstreamLatest) {
+        $advisoryLines = @()
+        foreach ($advisoryRow in @(
+            [pscustomobject]@{ Platform = 'Spec Kit'; Current = $specKitCurrent; MaxTested = $specKitMaxTested; Upstream = $specKitUpstream; Notes = $supportedVersions.Speckit.Notes; Status = $specKitStatus }
+            [pscustomobject]@{ Platform = 'Squad';    Current = $squadCurrent;   MaxTested = $squadMaxTested;   Upstream = $squadUpstream;   Notes = $supportedVersions.Squad.Notes;   Status = $squadStatus }
+        )) {
+            $upstreamBeyond = $false
+            if ($advisoryRow.MaxTested -and $advisoryRow.Upstream) {
+                $maxParsed = ConvertTo-SpecrewSemanticVersion -Value $advisoryRow.MaxTested
+                $upstreamParsed = ConvertTo-SpecrewSemanticVersion -Value $advisoryRow.Upstream
+                if ($maxParsed -and $upstreamParsed -and ($upstreamParsed -gt $maxParsed)) {
+                    $upstreamBeyond = $true
+                }
+            }
+
+            if ($upstreamBeyond) {
+                $advisoryLines += ("Note: {0} {1} is available upstream but Specrew has validated only through {2}. Status '{3}' reflects this. Upgrading beyond {2} is at your own risk; consider waiting for a Specrew release that validates against {1}." -f $advisoryRow.Platform, $advisoryRow.Upstream, $advisoryRow.MaxTested, $advisoryRow.Status)
+            }
+
+            if (-not [string]::IsNullOrWhiteSpace($advisoryRow.Notes)) {
+                $advisoryLines += ("Note ({0}): {1}" -f $advisoryRow.Platform, $advisoryRow.Notes)
+            }
+        }
+
+        foreach ($advisoryLine in $advisoryLines) {
+            Write-Host $advisoryLine -ForegroundColor Yellow
+        }
+    }
+
     exit 0
 }
 
@@ -1204,8 +1306,26 @@ foreach ($platform in @('Spec Kit', 'Squad')) {
     }
 
     $latestInfo = $latestByPlatform[$platform]
-    if (-not $latestInfo.Known) {
-        Write-Error ("Cannot update {0} because the latest known version could not be determined." -f $platform)
+    $platformMaxTested = if ($platform -eq 'Spec Kit') { $specKitMaxTested } else { $squadMaxTested }
+
+    # Proposal 079: default upgrade target is LatestSupported (max_tested).
+    # --upstream-latest opts into the historical behavior (upstream-latest).
+    # Fall back to upstream-latest if max_tested is unavailable (supported-versions.yml missing).
+    $upgradeTarget = if ($UpstreamLatest -and $latestInfo.Known) {
+        [string]$latestInfo.Version
+    }
+    elseif ($platformMaxTested) {
+        $platformMaxTested
+    }
+    elseif ($latestInfo.Known) {
+        [string]$latestInfo.Version
+    }
+    else {
+        $null
+    }
+
+    if (-not $upgradeTarget) {
+        Write-Error ("Cannot update {0} because no upgrade target could be determined (supported-versions.yml missing and upstream-latest unavailable)." -f $platform)
         exit 1
     }
 
@@ -1216,22 +1336,34 @@ foreach ($platform in @('Spec Kit', 'Squad')) {
         $null
     }
 
-    $state = Compare-VersionState -CurrentVersion $currentVersion -LatestVersion $latestInfo.Version
-    if ($state -eq 'current') {
+    $platformStatus = if ($platform -eq 'Spec Kit') { $specKitStatus } else { $squadStatus }
+
+    # Skip upgrade when already current OR ahead of supported (user intentionally beyond max_tested).
+    # ahead-of-supported requires --upstream-latest to actually do anything (and even then, upstream might equal current).
+    if ($platformStatus -eq 'current') {
         $null = $summary.Add([pscustomobject]@{
                 Platform = $platform
                 Action   = 'already-current'
-                Detail   = $latestInfo.Version
+                Detail   = $upgradeTarget
+            })
+        continue
+    }
+
+    if ($platformStatus -eq 'ahead-of-supported' -and -not $UpstreamLatest) {
+        $null = $summary.Add([pscustomobject]@{
+                Platform = $platform
+                Action   = 'ahead-of-supported'
+                Detail   = ("Current {0} is beyond Specrew-validated max_tested {1}. Use --upstream-latest to target upstream. No action taken." -f $currentVersion, $platformMaxTested)
             })
         continue
     }
 
     try {
-        Install-PlatformVersion -Platform $platform -Version $latestInfo.Version
+        Install-PlatformVersion -Platform $platform -Version $upgradeTarget
         $null = $summary.Add([pscustomobject]@{
                 Platform = $platform
                 Action   = 'upgraded'
-                Detail   = $latestInfo.Version
+                Detail   = $upgradeTarget
             })
     }
     catch {
@@ -1274,11 +1406,11 @@ $null = $summary.Add([pscustomobject]@{
 Write-Host ("Update summary for {0}" -f $resolvedProjectPath) -ForegroundColor Green
 $summary | Format-Table -AutoSize
 
-$otherUpdates = @($infoRows | Where-Object { $scopes -notcontains $_.Platform -and $_.Status -eq 'update-available' })
+$otherUpdates = @($infoRows | Where-Object { $scopes -notcontains $_.Platform -and ($_.Status -eq 'update-available' -or $_.Status -eq 'update-available-supported') })
 if ($otherUpdates.Count -gt 0) {
     Write-Host ''
     Write-Host 'Additional platform updates are available:' -ForegroundColor Yellow
-    $otherUpdates | Select-Object Platform, Current, LatestKnown | Format-Table -AutoSize
+    $otherUpdates | Select-Object Platform, Current, LatestSupported, UpstreamLatest | Format-Table -AutoSize
 }
 
 $psGalleryUpdateWarning = Get-PSGalleryUpdateWarning -ProjectRoot $resolvedProjectPath -SkipCheck:$SkipUpdateCheck

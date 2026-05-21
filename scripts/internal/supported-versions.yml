@@ -1,0 +1,27 @@
+# Specrew supported-versions declaration (module-side, maintainer-managed).
+#
+# Source of truth for the `min` and `max_tested` versions Specrew supports
+# against its dependencies. Read by scripts/internal/version-check.ps1 and
+# scripts/specrew-update.ps1 to compute four-state status for `specrew update --info`.
+#
+# Update `max_tested` whenever a new Specrew release validates against a higher
+# upstream dependency version (per Rule 15 version-management discipline).
+#
+# Schema:
+#   schema: v1
+#   <platform>:
+#     min:         <semver>   # absolute floor; Specrew refuses below this
+#     max_tested:  <semver>   # latest version Specrew validated against this release
+#     notes:       <string>   # optional; surfaces in `--info` (e.g. "X.Y.Z released; adoption pending")
+
+schema: v1
+
+speckit:
+  min: "0.8.4"
+  max_tested: "0.8.11"
+  notes: ""
+
+squad:
+  min: "0.9.1"
+  max_tested: "0.9.4"
+  notes: ""
