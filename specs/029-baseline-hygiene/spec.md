@@ -14,6 +14,7 @@ The `baseline_commit_hash` value is read from `.specrew/last-start-prompt.md` fr
 **Observed Impact**: Since F-024+ work began, the false-positive misfire rate is the rule, not the exception. Users must repeatedly confirm that Squad's internal boundary work (not user-facing session-loaded changes) should not trigger a pause, adding workflow friction and reducing confidence in the detection mechanism.
 
 **Example Scenario**:
+
 1. User runs `specrew start` at feature-start. `.specrew/last-start-prompt.md` is created with `baseline_commit_hash: abc123...`.
 2. Squad progresses through specify → clarify → plan. At each boundary, `Invoke-SpecrewBoundaryStateSync` commits updates to `.squad/agents/*/charter.md`, `.github/copilot-instructions.md`, etc.
 3. User runs `specrew start` again. F-011 compares `git diff abc123...HEAD` and finds the Squad-committed changes still in the diff.
@@ -144,7 +145,7 @@ At feature-closeout, `.specrew/last-start-prompt.md` is either deleted or invali
 - **Spec Steward**: Alon Fliess (Specrew maintainer).
 - **Iteration Facilitator**: Alon Fliess.
 - **Capacity Model**: ~3-4 story points (small-fix slice per Proposal 067). E1 (~1 SP), E2 (~2-3 SP). Core implementation in `scripts/internal/sync-boundary-state.ps1` and tested via integration tests.
-- **Drift Signals**: 
+- **Drift Signals**:
   - F-011's pause-and-confirm prompt fires more than once per feature lifecycle for the same unchanged session-loaded file (sign of baseline staleness).
   - Integration tests for `Invoke-SpecrewBoundaryStateSync` show baseline values that do not match the current boundary commit (sign of drift).
   - `.specrew/last-start-prompt.md` is present after feature-closeout with `session_state_active: true` (sign of closeout invalidation failure).

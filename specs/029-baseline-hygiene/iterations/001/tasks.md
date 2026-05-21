@@ -20,11 +20,13 @@ This iteration delivers two focused enhancements (E1 & E2) to eliminate false-po
 - **E2 (Boundary-Based Baseline Updates, P1)**: Implement and validate baseline update mechanism that refreshes `baseline_commit_hash` to current HEAD at each of the seven lifecycle boundaries
 
 **User Stories**:
+
 - **US-1** (P1): Lifecycle baseline hygiene — baseline updated at each boundary, no false positives across full feature lifecycle
 - **US-2** (P1): Out-of-band user changes still trigger pause correctly — genuine changes are still detected after baseline updates
 - **US-3** (P2): Feature-closeout clears session state — closed features do not resume
 
 **Success Criteria**:
+
 - SC-001: Zero false positives across 5+ lifecycle boundaries with Squad commits at each
 - SC-002: Genuine out-of-band user changes to session-loaded files are correctly detected
 - SC-003: Feature-closeout invalidates session; next `specrew start` does not resume closed feature
@@ -39,6 +41,7 @@ This iteration delivers two focused enhancements (E1 & E2) to eliminate false-po
 **Objective**: Establish baseline understanding of current implementation and prepare environment.
 
 **Acceptance Criteria**:
+
 - [ ] Review `scripts/internal/sync-boundary-state.ps1` lines 601–690 to understand boundary-sync flow
 - [ ] Review `scripts/specrew-start.ps1` functions `Get-BaselineCommitHash` (line 2466) and `Test-SessionLoadedFilesChanged` (line 2492); confirm no changes needed
 - [ ] Review `.specrew/last-start-prompt.md` frontmatter schema; confirm baseline_commit_hash, session_state_active, session_state_boundary, session_state_recorded_at fields match spec
@@ -55,6 +58,7 @@ This iteration delivers two focused enhancements (E1 & E2) to eliminate false-po
 **Objective**: Create the core baseline update mechanism.
 
 **Acceptance Criteria**:
+
 - [ ] Create helper function in `scripts/internal/sync-boundary-state.ps1` that:
   - Accepts parameters: `$ProjectRoot`, `$PromptPath`, `$NewBaselineHash`
   - Reads existing `.specrew/last-start-prompt.md` frontmatter
@@ -79,6 +83,7 @@ This iteration delivers two focused enhancements (E1 & E2) to eliminate false-po
 **Objective**: Validate baseline update function behavior at the unit level.
 
 **Acceptance Criteria**:
+
 - [ ] **UT-001**: Test `Update-BaselineCommitHashInFrontmatter`:
   - Create `.specrew/last-start-prompt.md` with existing frontmatter
   - Call function with new baseline hash
@@ -105,6 +110,7 @@ This iteration delivers two focused enhancements (E1 & E2) to eliminate false-po
 **Objective**: Validate baseline updates at each of the 7 lifecycle boundaries.
 
 **Acceptance Criteria**:
+
 - [ ] **IT-001**: Test baseline update sequence:
   - Initialize test git repo with Specrew structure
   - Run `specrew start` at feature-start → capture baseline_V1 = current HEAD
@@ -126,6 +132,7 @@ This iteration delivers two focused enhancements (E1 & E2) to eliminate false-po
 **Objective**: Validate that Squad's boundary work no longer triggers F-011's pause prompt.
 
 **Acceptance Criteria**:
+
 - [ ] **IT-002**: Test false-positive elimination:
   - After Squad boundary work and `Invoke-SpecrewBoundaryStateSync -BoundaryType 'clarify'`:
   - User runs `specrew start` (no new user changes)
@@ -155,6 +162,7 @@ This iteration delivers two focused enhancements (E1 & E2) to eliminate false-po
 **Objective**: Validate feature-closeout invalidation and error scenarios.
 
 **Acceptance Criteria**:
+
 - [ ] **IT-005**: Test feature-closeout invalidation:
   - After feature-closeout boundary-sync:
   - Verify `.specrew/last-start-prompt.md` has `session_state_active: false`
@@ -177,6 +185,7 @@ This iteration delivers two focused enhancements (E1 & E2) to eliminate false-po
 **Objective**: Validate all user stories through manual execution of complete feature lifecycle.
 
 **Acceptance Criteria**:
+
 - [ ] Execute complete feature lifecycle (specify → feature-closeout) with test feature
 - [ ] At each boundary (clarify, plan, tasks):
   - Simulate Squad boundary work (modify charter)
@@ -201,6 +210,7 @@ This iteration delivers two focused enhancements (E1 & E2) to eliminate false-po
 **Objective**: Ensure no regressions in existing Specrew functionality.
 
 **Acceptance Criteria**:
+
 - [ ] Execute existing Specrew test suite
 - [ ] Verify all tests pass (focus on F-011-related tests, boundary-sync tests, session state tests)
 - [ ] Verify no new failures introduced
@@ -215,6 +225,7 @@ This iteration delivers two focused enhancements (E1 & E2) to eliminate false-po
 **Objective**: Verify implementation meets quality and correctness standards.
 
 **Acceptance Criteria**:
+
 - [ ] Verify `Update-BaselineCommitHashInFrontmatter` function follows Specrew conventions
 - [ ] Verify idempotency: re-running at same boundary produces stable state
 - [ ] Verify error handling: graceful failures, clear logging
@@ -235,6 +246,7 @@ This iteration delivers two focused enhancements (E1 & E2) to eliminate false-po
 **Objective**: Finish implementation discipline by landing semantic commits locally and pushing the branch before review-boundary evidence is generated.
 
 **Acceptance Criteria**:
+
 - [ ] Verify T001–T009 complete and validation evidence is fresh
 - [ ] Commit implementation work in semantic groups (spec artifacts, bug fix, boundary-sync helpers, boundary integration, tests, changelog as needed)
 - [ ] Push feature branch `029-baseline-hygiene` to remote before entering review-boundary
@@ -250,6 +262,7 @@ This iteration delivers two focused enhancements (E1 & E2) to eliminate false-po
 **Objective**: Open the PR at review-boundary, then merge only after review sign-off.
 
 **Acceptance Criteria**:
+
 - [ ] Open pull request on GitHub at review-boundary with:
   - Title: "Feature 029: Baseline Hygiene for Session-Loaded File Change Detection"
   - Description: Reference spec.md and cite requirements FR-001–FR-006

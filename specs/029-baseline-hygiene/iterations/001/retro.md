@@ -39,38 +39,46 @@ Feature 029 Iteration 001 successfully delivered baseline hygiene fixes for sess
 ## What Went Well
 
 ### Specification Clarity & Authority
+
 - The expanded Pillar E scope from the 2026-05-21 planning repair provided clear, focused requirements (FR-001–FR-006).
 - Root-cause analysis was well-established before iteration planning, reducing ambiguity.
 - User stories (US-1, US-2, US-3) mapped cleanly to acceptance scenarios and test coverage.
 
 ### Implementation Discipline
+
 - Semantic commit discipline was maintained throughout: implementation grouped into logical changesets with clear messages.
 - Boundary-sync integration point was correctly identified and implemented in `sync-boundary-state.ps1` without scope creep.
 - Test coverage was comprehensive: unit tests, integration tests across all 7 lifecycle boundaries, error handling scenarios, and idempotency validation.
 
 ### Review Readiness
+
 - Implementation was pushed upstream (`T010a`) before review-boundary evidence was generated, supporting honest baseline capture.
 - Review-boundary baseline was corrected (regenerated against truthful pre-implementation commit `8f4f7e9`) when initial metadata was misaligned; that correction was transparent and did not change the reviewed scope.
 - Review signoff was clean: no needs-work verdicts, all scope coverage findings marked pass.
 
 ### Quality & Traceability
+
 - No drift events detected during execution or review-signoff.
 - All four files in the committed diff (`CHANGELOG.md`, `scripts/internal/sync-boundary-state.ps1`, `tests/integration/baseline-hygiene.tests.ps1`, `tests/integration/closeout-identity-schema-parity.tests.ps1`) remain within the authorized feature scope.
 - Governance validator confirms compliance at review-boundary.
 
 ### Process Consistency
+
 - Feature-closeout invalidation (E1) was already implemented in the codebase; iteration added validation testing without disrupting that prior work.
 - Integration with F-011's existing pause-and-confirm logic required no changes to F-011 itself, only to the baseline reference point.
 
 ## What Didn't Go Well
 
 ### Scaffolding & Artifact Generation
+
 - The retro-artifact scaffolder (`scaffold-retro-artifact.ps1`) expects a Phase Baseline table in the iteration plan.md that was not present. This iteration's plan is well-formed for its scope, but the scaffolder's dependency on that specific table structure created a minor friction point. **Action**: Consider making the Phase Baseline table optional in the scaffolder or clarifying its role in the plan template for small-fix slices.
 
 ### Baseline Drift Recovery
+
 - If the Crew forgets to call `Invoke-SpecrewBoundaryStateSync` at a boundary, the baseline will not refresh, and stale baseline misfire can re-occur. The current implementation is correct, but the reliance on human discipline at every boundary is a potential friction point. **Action**: Document or automate boundary-sync invocation as part of the standard boundary-close workflow to reduce human error.
 
 ### Test Environment Isolation
+
 - Integration tests that exercise full lifecycle boundaries are comprehensive but require careful setup and teardown to avoid polluting the active Specrew state. **Action**: Consider a test-isolation wrapper or fixture pattern to further reduce risk of accidental state mutation during test runs.
 
 ## Retrospective Findings
@@ -122,12 +130,13 @@ Feature 029 Iteration 001 successfully delivered baseline hygiene fixes for sess
 ## Deferred & Future Work
 
 ### Deferred to Next Iteration (if applicable)
+
 - None identified at retro-boundary. T010b (Review Boundary PR + Post-Signoff Merge) remains deferred until after feature-closeout per the approved 2026-05-21 lifecycle ordering.
 
 ### Recommendations for Future Features
 
 1. **Baseline Drift Prevention**: Consider automating boundary-sync invocation as part of the standard boundary-close workflow (e.g., in `specrew-boundary-close` command) to reduce human error.
-   
+
 2. **Retro Scaffolder Enhancement**: Update `scaffold-retro-artifact.ps1` to make the Phase Baseline table optional for small-fix slices that may not populate that section. Document the table's role clearly in the plan template.
 
 3. **Test Isolation Pattern**: If integration tests continue to exercise live Specrew state, establish a formal test-isolation fixture to prevent accidental state mutation during test runs.
@@ -154,10 +163,12 @@ Feature 029 Iteration 001 successfully delivered baseline hygiene fixes for sess
 ## Captured Learnings
 
 ### Technical Insight
+
 - Boundary hygiene is critical for detecting genuine user changes in session-loaded files. Keeping `baseline_commit_hash` current at each managed boundary ensures F-011's pause-and-confirm prompt remains a reliable signal, not a false-alarm source.
 - The fix is non-invasive: it updates only the baseline reference point, not the detection logic, reducing regression risk.
 
 ### Process Insight
+
 - Transparent baseline regeneration (when metadata misaligns) strengthens review credibility. Reviewers appreciate seeing corrections made in the open.
 - Comprehensive integration test coverage across all 7 lifecycle boundaries provides strong confidence that a boundary-related feature works end-to-end.
 

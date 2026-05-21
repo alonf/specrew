@@ -12,6 +12,7 @@
 Feature 029 fixes false-positive session-loaded file change detection (F-011) caused by `baseline_commit_hash` remaining frozen at feature-start instead of being refreshed at each lifecycle boundary. As Squad commits internal governance work at boundaries (specify, clarify, plan, tasks, review-signoff, iteration-closeout, feature-closeout), those changes accumulate in `git diff baseline..HEAD` indefinitely, triggering repeated pause-and-confirm prompts even though no user changes were made.
 
 **Solution**: Two focused pillars:
+
 - **E1 (Feature-Closeout Invalidation, P2)**: Mark `.specrew/last-start-prompt.md` as inactive at feature-closeout so closed features do not resume
 - **E2 (Boundary-Based Baseline Updates, P1)**: Update `baseline_commit_hash` to current HEAD at each of the 7 lifecycle boundaries so Squad's governance work is "behind" the baseline
 
@@ -35,12 +36,14 @@ Feature 029 fixes false-positive session-loaded file change detection (F-011) ca
 ## Design
 
 ### Architecture
+
 - **Primary change site**: `scripts/internal/sync-boundary-state.ps1`
 - **New helper function**: `Update-BaselineCommitHashInFrontmatter`
 - **No changes to F-011**: Detection logic untouched; only baseline input is refreshed
 - **No user education needed**: Fix is transparent; boundary-sync already called by framework
 
 ### Data Model
+
 ```yaml
 # .specrew/last-start-prompt.md frontmatter
 baseline_commit_hash: <40-char SHA-1 hash>  # Updated at each boundary (currently frozen)
@@ -51,6 +54,7 @@ session_state_recorded_at: <ISO8601>         # Timestamp of last boundary record
 ```
 
 ### Lifecycle Flow
+
 1. **feature-start (specify boundary)**: baseline = current HEAD (set by `specrew start`)
 2. **clarify/plan/tasks boundaries**: baseline updated to current HEAD after Squad commits
 3. **review-signoff, iteration-closeout**: baseline updated (same pattern)
@@ -61,6 +65,7 @@ session_state_recorded_at: <ISO8601>         # Timestamp of last boundary record
 ## Iterations
 
 ### Iteration 001 (E1 Validation + E2 Core)
+
 - **Effort**: 3-4 story points (reduced scope: E1 already implemented; focus on E2 and validation)
 - **Status**: planning
 - **Scope**:
@@ -72,6 +77,7 @@ session_state_recorded_at: <ISO8601>         # Timestamp of last boundary record
   - Core integration + manual tests
 
 **Tasks** (11 total, collapsed scope, ~3.6 SP):
+
 | Task | Title | Requirement | Effort | Owner |
 |------|-------|-------------|--------|-------|
 | `context-verify` | Verify implementation context: review sync-boundary-state.ps1, specrew-start.ps1, frontmatter schema, E1 existing impl | FR-001–FR-006 | 0.5 SP | Implementer |
