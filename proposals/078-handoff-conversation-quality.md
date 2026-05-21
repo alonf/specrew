@@ -67,26 +67,48 @@ Replace internal boundary identifiers in user-facing prose:
 
 Internal names remain in `state.md`, `decisions.md`, audit trails, and validator-error categories. They MUST NOT appear in the prose Squad speaks to the user, except as a parenthetical for audit traceability if absolutely needed: "Awaiting your signoff (boundary: REVIEW-VERDICT-SIGNOFF)".
 
-### Pillar 3: Multiple-choice options with explicit verbs
+### Pillar 3: Multiple-choice options with explicit verbs + escape routes
 
-Every user-facing pause offers a menu of verbs the user can type, OR a free-form "Other (specify)" escape. Example transformations:
+Every user-facing pause offers a menu structured for both quick decisions AND richer input when needed:
 
-**Before** (current behavior, smoke log):
+```text
+What I need from you:
+
+  1. <option A — boundary-specific verb>
+  2. <option B>
+  3. <option C>
+  4. Other (specify) — type a short answer for this specific question
+  5. More chat instructions — return to standard prompt for richer input
+
+Type 1-5, a verb, or a longer directive.
+```
+
+The two escape routes matter:
+
+- **"Other (specify)"** handles the case where the user's answer doesn't fit the offered options but IS short enough for the constrained input slot. They pick "Other" and type the brief alternative.
+- **"More chat instructions"** handles the case where the user needs to provide a richer/longer response than the constrained input slot accepts. Squad acknowledges and **returns to the standard conversational prompt** — the same Copilot CLI prompt the user gets at session start, which accepts arbitrary-length input. No file-pointer hacks, no session restart, no information loss.
+
+Example transformation:
+
+**Before** (current v0.24.0 behavior, observed in 2026-05-21 smoke log):
 
 > Next boundary: REVIEW-VERDICT-SIGNOFF and it still requires explicit human authorization.
 
 **After** (this proposal):
 
-> What I need from you:
+> **What I need from you**:
 >
-> 1. **approve** — accept the verdict and advance to retro
-> 2. **reject** — return to implementation with specific concerns
-> 3. **request changes** — accept conditionally with notes
-> 4. **provide context** — your free-form directive
->
-> Type 1-4, the verb, or a longer directive.
+>   1. **approve** — accept the verdict and advance to retro
+>   2. **reject** — return to implementation with specific concerns
+>   3. **request changes** — accept conditionally with notes
+>   4. **Other (specify)** — short alternative answer
+>   5. **More chat instructions** — back to standard prompt for richer input
 
-The exact verb-set depends on the boundary; the structural pattern is consistent.
+The "More chat instructions" path is the **methodological replacement for the file-pointer workaround** documented in memory `[[feedback-long-handoff-via-file-pointer]]`. When 078 ships, that workaround becomes unnecessary — the user picks option 5 and the prompt widens back to rich-input mode.
+
+**Composes with Proposal 063 (Substantive Intake Questioning)**: Squad's preference is to ask multiple short MCQs rather than one giant free-form question, matching the intake interview pattern. When rich input IS needed, the "More chat instructions" escape is available without losing the structured conversation flow.
+
+The exact verb-set depends on the boundary; the structural pattern (1-3 boundary options + Other + More-instructions) is consistent.
 
 ### Pillar 4: Substance-first prose ordering
 
