@@ -25,19 +25,33 @@ The fix is to declare a SUPPORTED versions matrix per Specrew release, and have 
 
 ### Pillar 1: Supported-versions declaration
 
-Add a new top-level key to `.specrew/config.yml` (or a sibling file if config.yml shouldn't grow):
+Create a new MODULE-side file `scripts/internal/supported-versions.yml` that ships with the Specrew module (added to `Specrew.psd1` FileList). This is maintainer-managed data, not downstream-project state.
 
 ```yaml
-supported_versions:
-  speckit:
-    min: "0.8.4"            # absolute floor — Specrew refuses to operate below
-    max_tested: "0.8.11"    # latest version Specrew validated against this release
-    notes: "0.8.12 released 2026-05-21 — Specrew adoption pending"
-  squad:
-    min: "0.9.0"
-    max_tested: "0.9.4"
-    notes: ""
+# scripts/internal/supported-versions.yml
+schema: v1
+speckit:
+  min: "0.8.4"            # absolute floor — Specrew refuses to operate below
+  max_tested: "0.8.4"     # latest version Specrew validated against this release
+  notes: ""               # surfaces in --info when set (e.g. "0.8.12 released; adoption pending")
+squad:
+  min: "0.9.1"
+  max_tested: "0.9.4"
+  notes: ""
 ```
+
+**Why module-side, not `.specrew/config.yml`** (deviation from original proposal draft, decided 2026-05-21):
+
+- The data is MAINTAINER-managed (updated when each Specrew release validates against new dependency versions). It is NOT project-state.
+- If it lived in downstream `.specrew/config.yml`, every project would carry a duplicate of the same values, and Specrew updates would need a migration step to propagate corrections. That muddies the project-state/module-state boundary.
+- Module-side: the maintainer edits one file at each Specrew release; downstream projects automatically get the updated supported-version data via `Update-Module Specrew`.
+
+**Relationship to existing `extensions/specrew-speckit/extension.yml` `versions:` block** (which currently carries `min_speckit: "0.8.4"` and `min_squad: "0.9.1"`):
+
+- `extension.yml` retains its existing `versions.min_*` keys for Spec Kit extension-loader contract compatibility.
+- `scripts/internal/supported-versions.yml` becomes the SINGLE source of truth for Specrew code paths (`version-check.ps1`, `specrew-update.ps1`).
+- The hardcoded `$minimumSpecKitVersion = '0.8.4'` and `$minimumSquadVersion = '0.9.1'` in `scripts/specrew-update.ps1` are removed and replaced with reads from the new file.
+- Drift between `extension.yml` and `supported-versions.yml` is a Rule-15 candidate validator (out of scope for this slice; future Quality Hardening Bundle work).
 
 The `max_tested` value is updated by the Specrew maintainer when each Specrew release validates against a new dependency version. It's part of the Rule-15 version-management discipline at each Specrew release.
 
@@ -92,14 +106,14 @@ This is a small feature (~5 SP). Could ship as a chore-shaped small-fix slice pe
 
 | Step | File | Effort |
 |---|---|---|
-| Add `supported_versions` declaration to `.specrew/config.yml` template (or new file `.specrew/supported-versions.yml`) | `.specrew/config.yml` + `scripts/specrew-init.ps1` (write template at bootstrap) | 1 SP |
-| Update `scripts/internal/version-check.ps1` to read the declaration + compute four-state status | `scripts/internal/version-check.ps1` | 1.5 SP |
-| Update `scripts/specrew-update.ps1` to render the new table format with `LatestSupported` + advisory notes | `scripts/specrew-update.ps1` | 1 SP |
-| Migration: existing `.specrew/config.yml` files without `supported_versions` get a sensible default (use existing `speckit_version` and infer `max_tested`) | `scripts/internal/version-check.ps1` defensive read | 0.5 SP |
-| Tests: four-state status logic; missing-declaration migration | `tests/integration/version-info-states.tests.ps1` (new) | 1 SP |
-| Update user-guide with the new status semantics | `docs/user-guide.md` | 0.5 SP |
+| Create module-side declaration with initial min + max_tested values | `scripts/internal/supported-versions.yml` (new) | 0.5 SP |
+| Add new file to module manifest FileList for PSGallery shipment | `Specrew.psd1` | 0.25 SP |
+| Add `Get-SpecrewSupportedVersions` + four-state status helper | `scripts/internal/version-check.ps1` | 1.5 SP |
+| Update `--info` table format with `LatestSupported` column + advisory notes; remove hardcoded `$minimumSpecKitVersion`/`$minimumSquadVersion` constants; add `--upstream-latest` flag | `scripts/specrew-update.ps1` | 1.5 SP |
+| Tests: four-state status logic; missing-file fallback; advisory rendering | `tests/integration/version-info-states.tests.ps1` (new) | 1 SP |
+| Update user-guide with the new status semantics | `docs/user-guide.md` | 0.25 SP |
 
-Total: ~5 SP.
+Total: ~5 SP. Module-side location eliminates per-project migration; downstream projects auto-receive the supported-version data via `Update-Module Specrew`.
 
 ## Composition with other proposals
 
@@ -113,13 +127,14 @@ Total: ~5 SP.
 
 ## Acceptance signals
 
-- **AC1**: `.specrew/config.yml` (or sibling file) carries a `supported_versions` declaration with `min`, `max_tested`, `notes` fields for both `speckit` and `squad`
+- **AC1**: Module ships `scripts/internal/supported-versions.yml` with `min`, `max_tested`, `notes` fields for both `speckit` and `squad`; file present in `Specrew.psd1` FileList
 - **AC2**: `specrew update --info` shows a "LatestSupported" column in addition to (or replacing prominence of) "LatestKnown"
 - **AC3**: When upstream has a version beyond `max_tested`, an advisory line surfaces explaining "Specrew adoption pending" and the user is NOT pushed toward upgrade
 - **AC4**: Four-state status (`current`, `update-available-supported`, `ahead-of-supported`, `behind-supported`) is computed correctly for all combinations
 - **AC5**: `specrew update --info --upstream-latest` opts into the old behavior (upstream-latest displayed prominently)
-- **AC6**: Existing `.specrew/config.yml` files without `supported_versions` declaration fall back to sensible defaults (use the existing `speckit_version` field as `max_tested`); no breaking change for downstream users
-- **AC7**: Tests cover all four states + migration
+- **AC6**: Hardcoded `$minimumSpecKitVersion` and `$minimumSquadVersion` constants in `scripts/specrew-update.ps1` are removed; min/max are sourced from `scripts/internal/supported-versions.yml`
+- **AC7**: Defensive fallback when `supported-versions.yml` is missing or malformed (degrades to today's two-state behavior with a warning, not a crash)
+- **AC8**: Tests cover all four states + missing-file fallback + `--upstream-latest` opt-in
 
 ## Out of scope
 
