@@ -48,6 +48,11 @@ Also strategic: Specrew is a methodology product. A robust integration test suit
 - **Codespaces dev environment**: pre-configured Codespace with all dependencies (pwsh 7, uv, Node.js 24, Copilot CLI) so contributors can run the test suite without local setup.
 - **Recorded Squad/Copilot fixture**: replayable Squad sessions for deterministic E2E testing without burning Premium quota on every CI run.
 - **Property-based testing**: for path-handling, manifest parsing, validator rules — generate random inputs, check invariants.
+- **Contract lane parallelization** (~3-5 SP): `tests/integration/validation-contract-lane.ps1` runs SIX integration-test scripts sequentially (`start-command`, `review-command`, `lifecycle-trace-contract`, three `handoff-governance-*` scripts). Each scaffolds its own scratch directory and is independent. Parallelize via `ForEach-Object -Parallel -ThrottleLimit 6` (PowerShell 7+) to drop Contract lane wall-clock from ~1m20s to ~15-20s.
+    - **Empirical motivation (2026-05-21)**: PR #386 (F-029 closeout) had Contract lane as the lone slow check at ~80s while every other CI lane finished under 2 min (Lint dropped to 1m19s from the historical ~15 min via the `ci(lint-scoping)` chore). Contract lane is the next obvious speedup since the lint-scoping work doesn't apply to runtime-behavior integration tests.
+    - **Approach A (chosen 2026-05-21)**: parallelize-in-place. Independent scratch dirs make parallelization safe; `ForEach-Object -Parallel` with `-ThrottleLimit 6` is the minimum implementation.
+    - **Alternatives considered + deferred**: (B) cached scratch baseline — pre-build a Specrew template repo and clone from cache to skip per-test `specrew init` cost (~5 SP, riskier because cache staleness becomes a regression vector); (C) selective lane invocation by PR diff — only run lane scripts whose surfaces are in the diff (~8 SP, risky because cross-cutting integration regressions could be missed).
+    - **Ship target**: Iteration 3 (Full scope), after MVP iterations land. Could ship earlier as a stand-alone small-fix slice if CI wall-clock pain returns before Iteration 3 starts.
 
 ### Out of scope
 
@@ -59,9 +64,9 @@ Also strategic: Specrew is a methodology product. A robust integration test suit
 
 - **Iteration 1 — Linux command-lifecycle E2E** (~8-10 SP): the new highest-priority scope. GHA workflow stage; assert-exit-code helper; command-lifecycle scenarios for `init → start --dry-run → update → where → review`. Catches the 2026-05-19 WSL trial bug class. **Recommend shipping this as its own iteration ahead of the rest of 042** so the bug-prevention return is realized fast.
 - **Iteration 2 — Headless lifecycle E2E + CI matrix** (~10-12 SP): headless full-lifecycle test + Windows/Ubuntu/macOS matrix + behavioral-divergence + flakiness handling. Bulk of the original MVP scope.
-- **Iteration 3 — Full scope** (~10 SP): Codespaces + recorded fixtures + property-based tests + cross-version migration tests (composes with [059](059-legacy-state-read-tolerance.md)).
+- **Iteration 3 — Full scope** (~13-15 SP): Codespaces + recorded fixtures + property-based tests + cross-version migration tests (composes with [059](059-legacy-state-read-tolerance.md)) + Contract lane parallelization (~3-5 SP, parallelize-in-place via `ForEach-Object -Parallel`).
 
-**Total**: ~28-32 SP (revised up from ~25 to account for the explicit command-lifecycle scope and cross-version migration testing).
+**Total**: ~31-37 SP (revised up from ~28-32 to absorb Contract lane parallelization as part of Iteration 3).
 
 ## Phase placement
 
@@ -95,3 +100,4 @@ Recommend sequencing **after** [035](035-session-state-durability.md) (so state 
 
 - 2026-05-16: captured as memory; promoted to candidate proposal 2026-05-18 during consolidation
 - 2026-05-19: expanded scope to add Linux command-lifecycle E2E as Iteration 1 (highest priority), motivated by the 5-bug WSL trial cluster that F-019's existing cross-platform workflow failed to catch. Total SP revised from 25 to ~30.
+- 2026-05-21: absorbed Contract lane parallelization into Iteration 3 (~3-5 SP). Empirical motivation: PR #386 had Contract lane as the lone slow check at ~1m20s while every other lane finished under 2 min after the `ci(lint-scoping)` chore landed. Approach A (parallelize-in-place via `ForEach-Object -Parallel -ThrottleLimit 6`) chosen over B (cached scratch baseline) and C (diff-selective invocation) per 2026-05-21 design conversation. Total SP revised from ~28-32 to ~31-37.
