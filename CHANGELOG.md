@@ -22,6 +22,7 @@ baseline that each release number represents.
 ### Fixed
 
 - **fix(frontmatter)**: `ConvertFrom-SpecrewFrontmatter` now captures the outer regex groups into local variables before iterating through per-line `-match` operations. This prevents PowerShell's ambient `$Matches` reuse from corrupting the preserved markdown body when frontmatter parsing succeeds and later line-level matches overwrite the original capture groups.
+- **Feature 029 (Baseline Hygiene)**: `Invoke-SpecrewBoundaryStateSync` now refreshes `.specrew\last-start-prompt.md` `baseline_commit_hash` to the current `HEAD` at every managed lifecycle boundary (`specify`, `clarify`, `plan`, `tasks`, `review-signoff`, `iteration-closeout`, `feature-closeout`). This keeps F-011's session-loaded file detector anchored to the latest boundary commit so Specrew-managed governance edits no longer trigger repeat false-positive pause prompts, while genuine out-of-band watched-file changes still surface immediately. Feature-closeout coverage now also verifies the inactive session sentinel and refreshed baseline remain durable through the closeout path.
 
 ### Deprecated
 

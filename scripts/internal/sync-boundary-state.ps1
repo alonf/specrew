@@ -750,6 +750,19 @@ function Invoke-SpecrewBoundaryStateSync {
     }
 
     Update-SpecrewMarkdownStateFile -Path $paths.PromptPath -SessionState $sessionState -DefaultBody (Get-SpecrewPromptBody -SessionState $sessionState)
+    try {
+        $baselineCommitHash = Get-SpecrewCurrentHeadCommitHash -ProjectRoot $paths.ProjectRoot
+        Update-BaselineCommitHashInFrontmatter -PromptPath $paths.PromptPath -NewBaselineHash $baselineCommitHash
+    }
+    catch {
+        # Brittle coupling: keep this thrown-message literal aligned with the catch-condition match below.
+        if ($_.Exception.Message -eq 'Failed to resolve the current HEAD commit hash.') {
+            Write-Warning ("Boundary sync '{0}' could not refresh baseline_commit_hash because the current HEAD commit hash could not be resolved." -f $BoundaryType)
+        }
+        else {
+            throw "Failed to refresh baseline_commit_hash in '$($paths.PromptPath)': $($_.Exception.Message)"
+        }
+    }
     Update-SpecrewStartContext -Path $paths.ContextPath -SessionState $sessionState
     Update-SpecrewMarkdownStateFile -Path $paths.IdentityPath -SessionState $sessionState -DefaultBody (Get-SpecrewIdentityBody -SessionState $sessionState) -AdditionalFrontmatter $identityAdditionalFrontmatter -PreferredBody $IdentityBody -UsePreferredBody:(-not [string]::IsNullOrWhiteSpace($IdentityBody)) -SchemaVersion 'v1'
 
