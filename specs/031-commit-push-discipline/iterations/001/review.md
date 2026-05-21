@@ -25,6 +25,7 @@ Proposal 082 Tier 1 (Boundary Commit + Upstream Push Discipline) is **APPROVED**
 Test coverage: `tests/integration/boundary-commit-discipline.tests.ps1` with 9 test groups verifying all FR-001 through FR-010 acceptance criteria. Test passes locally.
 
 The reviewed range is `1398fae...be23350` on branch `chore-082-t1-commit-push-discipline`. The committed diff contains:
+
 - `specs/031-commit-push-discipline/` (spec, plan, iteration plan, tasks)
 - `extensions/specrew-speckit/squad-templates/coordinator/specrew-governance.md`
 - `extensions/specrew-speckit/squad-templates/agents/<5 roles>/charter.md`

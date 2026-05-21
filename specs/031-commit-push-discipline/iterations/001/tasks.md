@@ -17,6 +17,7 @@ description: "Actionable tasks for Boundary Commit + Upstream Push Discipline (P
 Tier 1 of Proposal 082 closes the empirically-validated methodology gap: zero explicit instructions in any Crew-governing surface tell the Crew to commit at every boundary or push after every commit. F-029 had 4 boundary-discipline rejection cycles for this reason; F-030/083 has 1 so far.
 
 **User Stories**:
+
 - US-1 (P1): Implementer commits implementation work before signaling review-boundary
 - US-2 (P1): Spec Steward oversees boundary cleanliness across the lifecycle
 - US-3 (P1): Reviewer rejects PRs containing WIP at PR-open time
@@ -24,6 +25,7 @@ Tier 1 of Proposal 082 closes the empirically-validated methodology gap: zero ex
 - US-5 (P1): Coordinator governance prompt enforces commit-push at every gate
 
 **Success Criteria**:
+
 - SC-001: instructions visible in 6 files
 - SC-002: empirical reduction in rejection cycles for next feature
 - SC-003: mirror parity preserved
@@ -38,6 +40,7 @@ Tier 1 of Proposal 082 closes the empirically-validated methodology gap: zero ex
 **Objective**: Confirm environment + locate all surfaces.
 
 **Acceptance Criteria**:
+
 - [ ] On branch `chore-082-t1-commit-push-discipline` off main
 - [ ] All 7 surfaces locatable: coordinator/specrew-governance.md + 5 charters + docs/user-guide.md
 - [ ] All 7 mirror paths exist at `.specify/extensions/specrew-speckit/...`
@@ -52,6 +55,7 @@ Tier 1 of Proposal 082 closes the empirically-validated methodology gap: zero ex
 **Objective**: Add explicit commit-at-boundary + push-after-commit rule to the coordinator governance prompt.
 
 **Acceptance Criteria**:
+
 - [ ] Edit `extensions/specrew-speckit/squad-templates/coordinator/specrew-governance.md`
 - [ ] Add new numbered rule at the same authority level as existing 14A rule
 - [ ] Rule text uses "the Crew" (proper noun)
@@ -67,6 +71,7 @@ Tier 1 of Proposal 082 closes the empirically-validated methodology gap: zero ex
 **Objective**: Implementer takes explicit commit responsibility.
 
 **Acceptance Criteria**:
+
 - [ ] Edit `extensions/specrew-speckit/squad-templates/agents/implementer/charter.md`
 - [ ] Add responsibility: "Commits implementation work in semantic groups BEFORE invoking boundary-sync at the review-boundary transition. Pushes to origin AFTER each commit. Verifies HEAD == origin/HEAD before signaling readiness."
 - [ ] Text uses "the Crew" terminology where the team-of-agents role is referenced
@@ -81,6 +86,7 @@ Tier 1 of Proposal 082 closes the empirically-validated methodology gap: zero ex
 **Objective**: Spec Steward takes explicit oversight responsibility for boundary-commit discipline.
 
 **Acceptance Criteria**:
+
 - [ ] Edit `extensions/specrew-speckit/squad-templates/agents/spec-steward/charter.md`
 - [ ] Add responsibility: "Verifies boundary handoffs include a non-`pending` commit reference. Confirms `git rev-parse HEAD == git rev-parse origin/<branch>` at every boundary advancement decision. Flags WIP-in-working-tree as a boundary-discipline violation."
 - [ ] Text uses "the Crew" terminology
@@ -95,6 +101,7 @@ Tier 1 of Proposal 082 closes the empirically-validated methodology gap: zero ex
 **Objective**: Reviewer rejects PRs containing WIP at PR-open time.
 
 **Acceptance Criteria**:
+
 - [ ] Edit `extensions/specrew-speckit/squad-templates/agents/reviewer/charter.md`
 - [ ] Add a "Pre-merge committed-work check" section
 - [ ] Reviewer's pre-merge audit confirms no WIP files exist on the branch at PR-open time. WIP at PR-open is a hard reject.
@@ -110,6 +117,7 @@ Tier 1 of Proposal 082 closes the empirically-validated methodology gap: zero ex
 **Objective**: Retro Facilitator includes commit-discipline as a standard retro prompt.
 
 **Acceptance Criteria**:
+
 - [ ] Edit `extensions/specrew-speckit/squad-templates/agents/retro-facilitator/charter.md`
 - [ ] Add a standard retro prompt: "Were commits made at every boundary? Were pushes durable? Did any boundary signal with WIP present? Record `boundary-commit-discipline-violations: N` as a retro finding."
 - [ ] Text uses "the Crew" terminology
@@ -124,6 +132,7 @@ Tier 1 of Proposal 082 closes the empirically-validated methodology gap: zero ex
 **Objective**: Planner anticipates commit cadence in plan.md output.
 
 **Acceptance Criteria**:
+
 - [ ] Edit `extensions/specrew-speckit/squad-templates/agents/planner/charter.md`
 - [ ] Add light reference: "When authoring iteration plans, anticipate the boundary-commit cadence — each boundary's tasks should map to a semantic commit group, not a single mega-commit at the end."
 - [ ] Text uses "the Crew" terminology
@@ -138,6 +147,7 @@ Tier 1 of Proposal 082 closes the empirically-validated methodology gap: zero ex
 **Objective**: Downstream-user-facing documentation of boundary commit discipline.
 
 **Acceptance Criteria**:
+
 - [ ] Edit `docs/user-guide.md`
 - [ ] Add a new `## Boundary Commit Discipline` section (or `### Boundary Commit Discipline` under an existing top-level section, whichever fits the existing structure)
 - [ ] Section explains: what boundary-commit discipline is, why it matters (avoids resume-confusion + audit-trail drift), how the Crew enforces it (per Tier 1 charter additions), and when Tier 2/Tier 3 hard enforcement ships in later releases
@@ -153,6 +163,7 @@ Tier 1 of Proposal 082 closes the empirically-validated methodology gap: zero ex
 **Objective**: Copy all 6 modified primary files to `.specify/extensions/specrew-speckit/` mirror.
 
 **Acceptance Criteria**:
+
 - [ ] `.specify/extensions/specrew-speckit/squad-templates/coordinator/specrew-governance.md` matches primary
 - [ ] `.specify/extensions/specrew-speckit/squad-templates/agents/implementer/charter.md` matches primary
 - [ ] `.specify/extensions/specrew-speckit/squad-templates/agents/spec-steward/charter.md` matches primary
@@ -171,6 +182,7 @@ Tier 1 of Proposal 082 closes the empirically-validated methodology gap: zero ex
 **Objective**: Mechanical verification that the new methodology content exists in the right files.
 
 **Acceptance Criteria**:
+
 - [ ] Create `tests/integration/boundary-commit-discipline.tests.ps1`
 - [ ] Test 1: Coordinator governance prompt has commit-at-boundary rule
 - [ ] Test 2: Implementer charter has commit responsibility
@@ -195,6 +207,7 @@ Tier 1 of Proposal 082 closes the empirically-validated methodology gap: zero ex
 **Objective**: Final polish before PR-at-feature-close.
 
 **Acceptance Criteria**:
+
 - [ ] CHANGELOG.md entry under `### Added` describing Tier 1 scope
 - [ ] proposals/INDEX.md updated: 082 transitions from candidate to shipped (or keeps candidate with Tier 1 portion noted) — TBD per maintainer judgment at closeout
 - [ ] specs/031-commit-push-discipline/iterations/001/review.md (self-review)
@@ -212,6 +225,7 @@ Tier 1 of Proposal 082 closes the empirically-validated methodology gap: zero ex
 **Objective**: Complete feature delivery through PR-at-feature-close.
 
 **Acceptance Criteria**:
+
 - [ ] Branch `chore-082-t1-commit-push-discipline` pushed to origin
 - [ ] PR opened on GitHub with:
   - Title referencing Proposal 082 Tier 1
