@@ -47,9 +47,10 @@ function Assert-Contains {
 $repoRoot = (Resolve-Path (Join-Path -Path $PSScriptRoot -ChildPath '..\..')).Path
 $entryScript = Join-Path $repoRoot 'scripts\specrew.ps1'
 $reviewScript = Join-Path $repoRoot 'scripts\specrew-review.ps1'
+$sharedGovernancePath = Join-Path $repoRoot 'extensions\specrew-speckit\scripts\shared-governance.ps1'
 $manifestPath = Join-Path $repoRoot 'Specrew.psd1'
 
-foreach ($requiredPath in @($entryScript, $reviewScript, $manifestPath)) {
+foreach ($requiredPath in @($entryScript, $reviewScript, $sharedGovernancePath, $manifestPath)) {
     if (-not (Test-Path -LiteralPath $requiredPath -PathType Leaf)) {
         Write-Fail "Missing required file: $requiredPath"
         exit 1
@@ -186,9 +187,18 @@ if (-not (Test-Path -LiteralPath $capFixturePath -PathType Container)) {
 $capProjectRoot = Join-Path $scratchRoot 'lockout-chain-cap-project'
 Copy-Item -LiteralPath $capFixturePath -Destination $capProjectRoot -Recurse -Force
 [System.IO.File]::WriteAllText((Join-Path $capProjectRoot '.specrew\config.yml'), ("project_name: cap-fixture`nspecrew_version: `"{0}`"`nbootstrap_date: `"2026-01-01`"`n" -f $currentSpecrewVersion), [System.Text.UTF8Encoding]::new($false))
+$capIterationDirectory = Join-Path $capProjectRoot 'specs\008-sample\iterations\001'
+
+. $sharedGovernancePath
+$capPlanLines = Get-Content -LiteralPath (Join-Path $capIterationDirectory 'plan.md') -Encoding UTF8
+$capStateLines = Get-Content -LiteralPath (Join-Path $capIterationDirectory 'state.md') -Encoding UTF8
+$completedTaskCount = Get-DeclaredCompletedTaskCount -PlanLines $capPlanLines -StateLines $capStateLines
+if ($completedTaskCount -ne 0) {
+    Write-Fail "Expected Get-DeclaredCompletedTaskCount to treat the cap fixture plan table as status-less and return 0, got $completedTaskCount"
+    exit 1
+}
 
 # Scaffold reviewer artifacts for the cap fixture to generate reviewer-index.md with cap state
-$capIterationDirectory = Join-Path $capProjectRoot 'specs\008-sample\iterations\001'
 $scaffoldScript = Join-Path $repoRoot 'extensions\specrew-speckit\scripts\scaffold-reviewer-artifacts.ps1'
 if (-not (Test-Path -LiteralPath $scaffoldScript -PathType Leaf)) {
     Write-Fail "Missing scaffold script: $scaffoldScript"

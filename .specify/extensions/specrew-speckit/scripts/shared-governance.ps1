@@ -416,7 +416,10 @@ function Get-DeclaredCompletedTaskCount {
     if ($planTasks.Count -gt 0) {
         return @(
             $planTasks |
-                Where-Object { (Normalize-MarkdownCell ([string]$_.Status)).ToLowerInvariant() -eq 'done' }
+                Where-Object {
+                    $_.PSObject.Properties['Status'] -and
+                    (Normalize-MarkdownCell ([string]$_.Status)).ToLowerInvariant() -eq 'done'
+                }
         ).Count
     }
 
@@ -428,6 +431,7 @@ function Get-DeclaredCompletedTaskCount {
     return @(
         $stateTasks |
             Where-Object {
+                if (-not $_.PSObject.Properties['Status']) { return $false }
                 $normalizedStatus = Get-NormalizedKeyword ([string]$_.Status)
                 $normalizedStatus -in @('done', 'pass')
             }
