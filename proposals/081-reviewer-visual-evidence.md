@@ -1,9 +1,9 @@
 ---
 proposal: 081
-title: Reviewer Visual Evidence — Multi-Type Diagrams + Explanatory Omissions
+title: Reviewer Visual Evidence — Multi-Type Diagrams + Explanatory Omissions + Mermaid Mandate
 status: candidate
 phase: phase-2
-estimated-sp: 30-40
+estimated-sp: 33-43
 discussion: tbd
 ---
 
@@ -116,6 +116,74 @@ classDiagram
 
 This is metadata derived from change-detection results (e.g., "X new classes added", "Y dependencies added") plus the change's shape ("in-place enhancement to shared module", "new entrypoint added to public surface").
 
+### Pillar 6: Mermaid-First Diagram Format Mandate
+
+ALL Specrew artifacts that show visual or structural information MUST use `mermaid` fenced code blocks. Bare ` ``` ` fenced blocks are reserved for content that is genuinely code/text (CLI invocations, file contents, raw output, sample configurations) — they are FORBIDDEN as a wrapper for content that is diagrammatic in intent.
+
+#### Empirical motivation (2026-05-21)
+
+F-029's `specs/029-baseline-hygiene/iterations/001/review.md` lines 165-222 contains FOUR sections labeled "Happy Path," "Alternative Flow 1," "Alternative Flow 2," and "Error Flow." All four are wrapped in bare ` ``` ` fenced blocks with arrow-notation styling (`→ step X`). They LOOK like diagrams. They render in VS Code's markdown preview as monospace text. The maintainer opened the file expecting visual flow diagrams and got text.
+
+This is the universal pattern this pillar mandates against.
+
+#### Format evaluation
+
+| Format | VS Code native | GitHub native | GitLab native | Verdict |
+|---|---|---|---|---|
+| **Mermaid** | ✅ since VS Code 1.79 (2023) | ✅ since 2022 | ✅ | **MANDATED** as primary |
+| PlantUML | ❌ requires extension | ❌ | ❌ | Opt-in escape valve only via Proposal 047 governance dial |
+| D2 | ❌ extension | ❌ | ❌ | Not approved |
+| DOT / Graphviz | ❌ extension | ❌ | ❌ | Not approved |
+| Excalidraw / draw.io | ❌ (GUI editors, embedded SVG/PNG) | ❌ | ❌ | Not approved as in-markdown diagram source |
+| Bare ` ``` ` styled to look diagrammatic | Renders as monospace text only | Same | Same | **FORBIDDEN** for diagram-purpose content |
+
+Mermaid is the only format that renders natively in VS Code AND GitHub AND GitLab without setup. Specrew artifacts are reviewed across all three surfaces; mandating a non-universal format would mean diagrams that render in one place but not another. PlantUML is more powerful for some specialized diagrams (deployment, complex sequences with notes, archimate-style architecture) but its extension-coupling makes it wrong as the default.
+
+#### Required mermaid diagram-type mapping
+
+Per content shape, the convention is:
+
+| Content shape | Mermaid type | Used in |
+|---|---|---|
+| Actor-to-actor interactions over time | `sequenceDiagram` | review.md flows, spec.md user stories, retro.md cause-effect chains |
+| Decision tree, conditional branching, algorithm flow | `flowchart TD` or `flowchart LR` | plan.md architecture, control-flow documentation |
+| Inheritance, composition, type relationships | `classDiagram` | code-map.md, review-diagrams.md when classes change |
+| Module-to-module dependencies | `flowchart LR` (or `graph LR`) | code-map.md, review-diagrams.md when imports/usings change |
+| Database entities and relationships | `erDiagram` | spec.md data model, review-diagrams.md when schema changes |
+| Lifecycle state machine | `stateDiagram-v2` | spec.md state transitions, retro.md status flows |
+| Iteration / release timeline | `gantt` | iteration plans, release planning |
+| Hierarchical decomposition | `mindmap` | retro.md cause-effect, decomposition exercises |
+
+#### Where this applies in Specrew
+
+This is NOT just a scaffolder rule. It applies to:
+
+- Reviewer-authored content (`review.md`, `retro.md`, `closeout.md`) — the Reviewer and Retro Facilitator agents use mermaid blocks when showing flows/diagrams
+- Scaffolder-generated content (`code-map.md`, `dependency-report.md`, `review-diagrams.md`, `coverage-evidence.md`) — the scaffolder emits mermaid, never bare diagram-styled text
+- Spec author content (`spec.md`, `plan.md`, iteration plans) — humans + Spec Steward use mermaid blocks for any visual/structural information
+- Proposal documents (`proposals/*.md`) — going forward, proposal authors (humans + LLMs) use mermaid blocks when showing flows
+- User-facing documentation (`docs/user-guide.md`, `docs/getting-started.md`, etc.) — mermaid for any visual
+
+#### Allowed bare ` ``` ` usage (not diagram-purpose)
+
+The mandate does NOT forbid bare code blocks universally. They remain correct for:
+
+- CLI invocations: ` ```powershell `, ` ```bash `, ` ```pwsh `, or bare ` ``` ` for shell sessions
+- File content samples: configuration files, YAML/JSON snippets (` ```yaml `, ` ```json `, or bare ` ``` `)
+- Raw command output (` ```text `)
+- Code snippets
+- Path lists in plain text
+
+The distinction: **is the content's intent to convey visual structure or sequencing?** If yes → mermaid. If the intent is to convey literal text/code/commands → bare or language-tagged code block.
+
+#### Governance enforcement
+
+- Coordinator governance prompt gains a rule: "Any artifact that shows a flow, structure, hierarchy, dependency, schema, or state machine MUST use a mermaid fenced block of the appropriate type. Bare code blocks styled to look diagrammatic are forbidden."
+- Reviewer charter gains: "When authoring flows in review.md or retro.md, use mermaid `sequenceDiagram`, `flowchart`, or appropriate type. Verify diagrams render in VS Code's markdown preview before claiming readiness."
+- Spec Steward charter gains: "When the spec requires showing structural relationships (data model, user-story flow), use mermaid. Reject specs that use bare code blocks for diagram-purpose content."
+- Scaffolder (per Pillars 1-3 of this proposal): emits only mermaid blocks for diagram surfaces.
+- Future Tier 3 work could add a markdownlint custom rule that flags bare ` ``` ` blocks containing arrow notation (`→` or `-->`) or numbered-step-with-indent patterns common to text-styled-diagrams.
+
 ## How (phased implementation plan)
 
 ### Phase 1 — Explanatory Omissions (Tier 1, ~5 SP)
@@ -131,6 +199,20 @@ Drop-in improvement. Replaces `_omitted_` everywhere with structured per-type re
 | Mirror parity (extensions/ + .specify/extensions/) | both mirrors | 0.5 SP |
 
 **Ship target**: composes with v0.25.0 or v0.25.1 (post-v0.24.2 bundle).
+
+### Phase 1b — Pillar 6 Mermaid Mandate (text-only, ~3 SP)
+
+Independent of Phase 1's scaffolder work. Pure methodology-text addition. Can ship as small-fix slice in v0.24.2 bundle alongside Proposal 082 Tier 1 (both text-only methodology integrity fixes).
+
+| Step | File | Effort |
+|---|---|---|
+| Add Pillar-6 rule to coordinator governance prompt | `extensions/specrew-speckit/squad-templates/coordinator/specrew-governance.md` (+ mirror) | 0.5 SP |
+| Add mermaid responsibility to Reviewer + Spec Steward + Retro Facilitator + Planner charters | `agents/{reviewer,spec-steward,retro-facilitator,planner}/charter.md` (+ mirror) | 1 SP |
+| Add `## Diagram Format Convention` section to user-guide with the mermaid-type catalog | `docs/user-guide.md` | 0.5 SP |
+| Update existing proposals/specs that have bare-` ``` ` diagram-styled content as a one-pass cleanup (F-029 `review.md` is the immediate instance; spot-check `proposals/*.md` for similar) | various | 0.5 SP |
+| Mirror parity sweep | both mirrors | 0.5 SP |
+
+**Ship target**: v0.24.2 bundle as small-fix slice per Proposal 067.
 
 ### Phase 2 — Two Most-Universal New Diagram Types (Tier 2, ~12 SP)
 
@@ -166,7 +248,7 @@ Tie everything together; add the per-diagram "what to look at" hints.
 | Reviewer pointer derivation from detection metadata | 2 SP |
 | Documentation in `docs/user-guide.md` explaining the multi-type evidence | 1 SP |
 
-**Total across phases**: ~37 SP. Phase 1 alone (5 SP) addresses the immediate "no explanation" concern; subsequent phases add visual surface incrementally.
+**Total across phases**: ~40 SP. Phase 1b alone (~3 SP, Pillar 6 mermaid mandate) is text-only and ships as a small-fix slice in v0.24.2. Phase 1 (~5 SP, scaffolder explanatory omissions) ships in v0.25.0. Phases 2-4 (~32 SP, multi-type diagram catalog + adaptive selection) ship later or fold into Proposal 030.
 
 ## Composition with other proposals
 
@@ -181,6 +263,8 @@ Tie everything together; add the per-diagram "what to look at" hints.
 
 ## Acceptance signals
 
+- **AC0 (Pillar 6 — Phase 1b)**: Specrew artifacts (`spec.md`, `plan.md`, `review.md`, `retro.md`, `closeout.md`, scaffolder outputs, proposals, user-facing docs) contain no bare ` ``` ` fenced blocks for diagram-purpose content. Diagrammatic intent → mermaid block of the appropriate type. Verified by spot-check across F-029 and recent proposals + a one-pass cleanup of existing offenders.
+- **AC0b (Pillar 6 — Phase 1b)**: Coordinator governance prompt and Reviewer/Spec Steward/Planner/Retro Facilitator charters explicitly require mermaid for diagrams. `docs/user-guide.md` has a "Diagram Format Convention" section with the mermaid-type catalog.
 - **AC1**: `review-diagrams.md` no longer contains the bare token `_omitted_` anywhere. Every section either renders a diagram or explains why it doesn't, in human-readable text. (Tier 1)
 - **AC2**: Six diagram types implemented: Structure, Flow, Class Hierarchy, Dependency Graph, DB Schema, Sequence (Before/After). (Tiers 1-3)
 - **AC3**: Each diagram type has a deterministic detection rule that fires only when confidence is high; otherwise the section explains the skip per Pillar 1. (Tiers 1-3)

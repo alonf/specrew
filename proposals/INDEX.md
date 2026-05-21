@@ -104,7 +104,7 @@ Idea-form proposals not yet developed into full source specs. Open for discussio
 | [077](077-session-resume-ux.md) | Session Resume UX for Downstream Specrew Users | phase-2 | 10-15 |
 | [078](078-handoff-conversation-quality.md) | Handoff Conversation Quality at All Boundary Stops | phase-2 | 10-15 |
 | [080](080-specrew-file-reference.md) | Specrew File Reference (Lifecycle Catalog for All Specrew-Managed Files) | phase-2 | 10-15 |
-| [081](081-reviewer-visual-evidence.md) | Reviewer Visual Evidence — Multi-Type Diagrams + Explanatory Omissions | phase-2 | 30-40 |
+| [081](081-reviewer-visual-evidence.md) | Reviewer Visual Evidence — Multi-Type Diagrams + Explanatory Omissions + Mermaid Mandate | phase-2 | 33-43 |
 | [082](082-boundary-commit-and-upstream-push-discipline.md) | Boundary Commit + Upstream Push Discipline | phase-2 | 21 |
 
 ---
