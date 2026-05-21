@@ -8,7 +8,7 @@ This index is the navigation surface for all proposals in this directory. Sorted
 
 ---
 
-## Shipped (14)
+## Shipped (15)
 
 Proposals whose features have shipped to main and are part of Specrew's current capability.
 
@@ -28,6 +28,7 @@ Proposals whose features have shipped to main and are part of Specrew's current 
 | [072](072-psgallery-unsigned-default.md) | PowerShell Gallery Unsigned Default | bug-fix slice `v0.24.1` (2026-05-20) | phase-2 | 2 |
 | [073](073-review-evidence-integrity.md) | Review Evidence Integrity (Pre-Review Commit Gate + Form-vs-Meaning Detection) | feature-028 | phase-2 | 18 |
 | [079](079-version-info-supported-vs-latest.md) | Version Information — Supported vs Latest Distinction | small-fix slice (v0.24.2 bundle) | phase-2 | 5 |
+| [082](082-boundary-commit-and-upstream-push-discipline.md) | Boundary Commit + Upstream Push Discipline (Tier 1 only) | small-fix slice feature-031 (v0.24.2 bundle) — Tier 2 + Tier 3 remain candidate | phase-2 | 5 (Tier 1) |
 
 ## Draft (16)
 
@@ -107,7 +108,7 @@ Idea-form proposals not yet developed into full source specs. Open for discussio
 | [078](078-handoff-conversation-quality.md) | Handoff Conversation Quality at All Boundary Stops | phase-2 | 10-15 |
 | [080](080-specrew-file-reference.md) | Specrew File Reference (Lifecycle Catalog for All Specrew-Managed Files) | phase-2 | 10-15 |
 | [081](081-reviewer-visual-evidence.md) | Reviewer Visual Evidence — Multi-Type Diagrams + Explanatory Omissions + Mermaid Mandate | phase-2 | 33-43 |
-| [082](082-boundary-commit-and-upstream-push-discipline.md) | Boundary Commit + Upstream Push Discipline | phase-2 | 21 |
+| [082](082-boundary-commit-and-upstream-push-discipline.md) | Boundary Commit + Upstream Push Discipline (Tiers 2 + 3 only; Tier 1 shipped) | phase-2 | 16 (Tier 2 ~6 + Tier 3 ~10) |
 
 ---
 
