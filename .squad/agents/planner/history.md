@@ -10,6 +10,8 @@ Project-specific learnings and patterns discovered during work.
 
 ## Learnings
 
+- 2026-06-24: Feature 029 (baseline-hygiene) feature-level `plan.md` artifact repair completed. Spec and detailed iteration planning artifacts (PLANNING_SUMMARY.md, IMPLEMENTATION_PLAN.md, DATA_MODEL.md, TEST_STRATEGY.md, DELIVERABLES.md) existed under `iterations/001/` but feature-root `plan.md` was missing, blocking formal lifecycle continuation. Planner synthesized concise feature-level plan.md from approved spec.md and iteration artifacts, preserving all requirement traceability and governance consistency without rewriting unrelated iteration artifacts. Pattern: feature-level plan is a navigable bridge between spec and iteration planning details; when detailed planning is complete but feature-plan is missing, synthesize bridge from authoritative sources (spec.md, iteration plan.md, summary documents) without re-planning.
+
 - 2026-05-07: Feature `specs\005-stack-aware-quality-bar\` had no active iteration artifacts; execution readiness was repaired by first scaffolding `iterations\001\plan.md` and then `state.md`/`drift-log.md` with the Specrew helpers before replacing the stub with a capacity-bounded execution slice.
 - 2026-05-07: For this feature, the executable Iteration 001 slice is `T001`-`T011` (20 story points, Slices A-B / US-1). `T012`-`T018` stay in the approved Phase 1 boundary but are deferred to Iteration 002 to respect `.specrew\iteration-config.yml` capacity.
 - 2026-05-07: The execution-readiness gate for this repair was satisfied by recording Alon's explicit session approval text ("OK, continue implementation") in `specs\005-stack-aware-quality-bar\iterations\001\plan.md` and setting the iteration status to `executing`.
