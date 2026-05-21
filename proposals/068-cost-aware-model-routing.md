@@ -22,7 +22,15 @@ Refinement (same session):
 
 > "There are free models and since we do not know which is which and which model is best for what, but our agents knows to search the web and official document, we can instruct them when creating the team or in general to find out each model, its abilities (match the task to a model) and its cost."
 
-The biggest single cost-reduction lever is **routing Junior/Implementer-class work to cheaper models** while keeping Senior/Reviewer/Spec-Steward-class work on strong models. The infrastructure for per-role routing already exists in `.squad/config.json` (`roleAgentFamilies` and `baselineAgentModelOverrides`); it just isn't populated with cost-conscious defaults.
+### Refinement (2026-05-21 session): multiply budget, don't replace hosts
+
+The cost-reduction strategy is NOT "abandon Copilot for cheaper hosts." It is **multiply usable budget by alternating across hosts.** The user holds a $200/mo Claude Max subscription in addition to Copilot quota. After Proposal 069 (Multi-Host Launch Path) ships, Squad can alternate between Copilot CLI and Claude Code (and eventually Codex CLI) within a project's lifecycle, drawing on both budgets in turn. The eventual concurrent-execution future — different agents in the same Squad team running on different hosts simultaneously — is its own architectural lift (likely a separate Phase 3+ proposal), but **alternation is sufficient to multiply effective runway in the near term**.
+
+This refinement does not change the design surface — Pillar 1's catalog already enumerates multiple hosts as peers; Pillar 2's routing already references per-host model preferences via the `cost_profile` mechanism. It does sharpen the **WHY** framing: this proposal is **not a Copilot-replacement plan**; it is a **multi-host budget-optimization plan** that happens to address the May 2026 Copilot pricing pivot as one specific cost vector. The savings come from "$200/mo Claude + remaining Copilot quota" being a larger combined pool than "$2,000/mo Copilot alone."
+
+### Core routing lever (unchanged)
+
+The biggest single cost-reduction lever is **routing Junior/Implementer-class work to cheaper models** while keeping Senior/Reviewer/Spec-Steward-class work on strong models. The infrastructure for per-role routing already exists in `.squad/config.json` (`roleAgentFamilies` and `baselineAgentModelOverrides`); it just isn't populated with cost-conscious defaults. Crucially, "cheap" and "strong" tiers can come from **either** host's catalog: a "cheap" tier might be Claude Haiku on one project and Copilot's free tier on another, depending on availability and current pricing — the routing logic stays the same.
 
 Hardcoding specific model names is the wrong approach — pricing and lineups shift constantly (the upcoming Copilot pivot is a perfect example). Specrew agents already have web-search and document-fetch capabilities. **Let them discover available models, classify by cost + capability, and route accordingly.**
 
@@ -173,7 +181,8 @@ catalog:
 
 | Proposal | Relationship |
 |---|---|
-| **024 (Multi-Host Runtime CORE)** | This proposal lays the cost-routing groundwork inside the current Copilot-primary architecture. When 024 ships, the catalog naturally extends to per-host abstraction. |
+| **069 (Multi-Host Launch Path)** | **Hard prerequisite for the 2026-05-21 multi-host budget-optimization framing.** Without 069, the catalog still works for a single host but the budget-multiplication thesis is unrealized. 069 should ship before or alongside this proposal. |
+| **024 (Multi-Host Runtime CORE)** | The deeper architectural follow-up to 069. This proposal lays the cost-routing groundwork inside whatever host topology exists; when 024 ships, the catalog naturally extends to richer per-host abstraction. |
 | **010 (Multi-Developer Reconciliation)** | Phase 5 work for true multi-user. This proposal does not solve multi-user cost attribution; it ships the per-developer routing first. |
 | **040 (Token Economy as Governance Driver)** | This proposal is a slice of 040's larger architecture. Specifically: the catalog (Pillar 1) maps to 040's L3-L4 model catalog. Profile-driven routing (Pillar 3) is the seed of 040's billing-mode separation. When 040 ships, this proposal's outputs feed it. |
 | **014 (Red Team Agent)** | Holistic adversarial review at feature-closeout; ensures cost-savings don't compromise spec fidelity. Composes naturally. |

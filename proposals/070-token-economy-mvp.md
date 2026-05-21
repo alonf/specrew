@@ -16,7 +16,11 @@ User direction (2026-05-20):
 
 > "Token economy — how much each SP cost. Allow priority by cost."
 
-Specrew today has no per-iteration cost visibility. The 2026-05-16 cost-baseline memory recorded $5.47/SP empirical cost, but that figure came from manual reconciliation of GitHub's premium-request reports against shipped story points. There's no in-repo surface that says "this iteration cost X, this feature cost Y."
+### Refinement (2026-05-21 session): per-host attribution is required
+
+The cost-visibility surface must be **per-host from the start.** Specrew's strategy is to alternate between hosts (Copilot, Claude, Codex) to multiply usable budget — not to replace one host with another. The dashboard COST section and `cost.yml` artifact must therefore distinguish "which host ran each boundary" so that per-host spend, host-share, and per-host cost-per-SP all become visible. Without per-host attribution, the user can't tell whether one host's quota is being exhausted faster than the other, and the alternation strategy can't be tuned.
+
+Specrew today has no per-iteration cost visibility. The 2026-05-16 cost-baseline memory recorded $5.47/SP empirical cost, but that figure came from manual reconciliation of GitHub's premium-request reports against shipped story points. There's no in-repo surface that says "this iteration cost X, this feature cost Y, this host carried Z% of the work."
 
 Without this visibility:
 
@@ -87,14 +91,15 @@ v1 ships estimated-only. Reported + manual are follow-up scope.
 ```text
 COST
 Recent iterations:
-  F-024 / 001 — $1.31 ($0.19/SP, 7 SP, copilot-cli)
-  F-023 / 001 — $3.84 ($0.23/SP, 17 SP, copilot-cli)
-  F-022 / 001 — $2.41 ($0.34/SP, 7 SP, copilot-cli)
+  F-028 / 001 — $1.18 ($0.07/SP, 18 SP, copilot-cli 60% / claude-code 40%)
+  F-026 / 001 — $0.84 ($0.10/SP, 8 SP, claude-code 100%)
+  F-024 / 001 — $1.31 ($0.19/SP, 7 SP, copilot-cli 100%)
 Last 10 closed: $11.42 total / $0.21/SP average
+By host: copilot-cli $7.14 (63%) / claude-code $4.28 (37%)
 Trend: improving (cost-per-SP down 22% over last 5 iterations)
 ```
 
-Trend math: simple comparison of last-5-iterations cost-per-SP vs prior-5-iterations. No advanced statistics in v1.
+Trend math: simple comparison of last-5-iterations cost-per-SP vs prior-5-iterations. The per-host split shows budget distribution so the user can tune the alternation strategy (e.g., shift more Implementer work to whichever host has spare quota). No advanced statistics in v1.
 
 Dashboard renderer at `scripts/internal/dashboard-renderer.ps1` gains a Cost block that reads `cost.yml` files from iteration directories.
 
@@ -134,6 +139,7 @@ Total: ~5 SP
 | AC5 | Cost-per-SP for a known iteration (F-024 iteration 001 once shipped) is within 30% of manually-computed baseline (estimation accuracy bar) |
 | AC6 | The `source: estimated` mark is honest — the dashboard explicitly notes "estimated from artifact tokens" when no reported/manual records exist |
 | AC7 | Manual entry via `specrew cost add` produces a `source: manual` record that overrides the estimate for that boundary |
+| AC8 | When an iteration runs on multiple hosts (alternation), `cost.yml`'s `aggregates.by_host` block reports each host's share; the dashboard's COST section surfaces a per-host split as a single summary line. Single-host iterations show `host 100%` cleanly without noise |
 
 ## Out of scope
 
