@@ -15921,3 +15921,85 @@ During closeout, review and evidence artifacts noted a small optimization opport
 
 ---
 
+
+---
+
+## 2026-05-21T23:59:00Z — Reviewer Decision: Proposal 067 (validator-perf-dedupe) Repair Revision — PASS
+
+- **Decision ID**: repair-review-proposal-067-validator-slice-pass
+- **Type**: repair-review-pass
+- **Boundary**: repair-review
+- **Authority**: Proposal 067 small-fix slice, human-directed repair cycle
+- **Recorded At**: 2026-05-21T23:59:00Z
+- **Prior History**: First implementation rejected for mirror drift, dedupe regression, and missing runtime evidence
+- **Independent Repair Owner**: Assigned after original implementer lockout
+
+## Verdict: **PASS**
+
+The independent repair owner successfully addressed all blocking findings from the first rejection.
+
+## Evidence Summary
+
+### 1. Global-State List Refinement ✓
+
+The Get-ValidatorGlobalStatePathspecs function now includes the complete set of surfaces:
+- .specrew/ + .specrew/**
+- .squad/identity/ + .squad/identity/**
+- .squad/decisions.md ← **added**
+- .squad/team.md ← **added**
+- .squad/config.json ← **added**
+- xtensions/specrew-speckit/ + xtensions/specrew-speckit/** ← **added**
+- .specify/feature.json
+- .specify/extensions/specrew-speckit/ + .specify/extensions/specrew-speckit/** ← **added**
+
+**Verification:** Both xtensions/specrew-speckit/scripts/shared-governance.ps1 and .specify/extensions/specrew-speckit/scripts/shared-governance.ps1 contain identical pathspec lists (confirmed via SHA256 hash match).
+
+### 2. Coordinator Local-Validator Scoping Wording ✓
+
+The Squad coordinator governance prompt (specrew-governance.md rule 5) now explicitly documents the validator's -ChangedOnly behavior and correctly names the complete global-state surface.
+
+**Verification:** Both mirrors of specrew-governance.md are identical.
+
+### 3. Safe Dedupe of Get-DeclaredCompletedTaskCount ✓
+
+The helper is now consolidated into shared-governance.ps1 and removed from duplicate locations. Semantics preserved:
+- **Plan.md parsing:** Uses Normalize-MarkdownCell to strip whitespace/backticks
+- **State.md parsing:** Uses Get-NormalizedKeyword to extract keywords via regex
+
+This matches the original validator behavior exactly. The CHANGELOG correctly documents preservation.
+
+### 4. Lightweight Timing Instrumentation with Real Evidence ✓
+
+**Implementation:**
+- alidate-governance.ps1 starts [System.Diagnostics.Stopwatch]::StartNew() at line 24
+- Write-ValidatorSummaryAndExit captures elapsed milliseconds
+- Passes DurationMs to Write-SpecrewValidatorSummary
+- Runtime evidence at .specrew\last-validator-summary.json contains "duration_ms": 80131 (80.1 seconds)
+
+### 5. Mirror Parity ✓
+
+All changed mirrored files verified identical via SHA256 hash. Mirror parity preserved across xtensions/specrew-speckit/ and .specify/extensions/specrew-speckit/ for all modified scripts.
+
+## Strongest Evidence
+
+The **real validator timing evidence** at .specrew\last-validator-summary.json with duration_ms: 80131 and matching file timestamp is proof of a live validator run. The 80-second duration is plausible for a full governance validation of 44+ closed iterations.
+
+## Final Assessment
+
+All four pillars are present and correct. The repair owner addressed every blocking finding from the first rejection:
+1. ✓ Global-state list is complete and refined
+2. ✓ Coordinator prompt documents the scoping behavior
+3. ✓ Dedupe is safe and semantics-preserving
+4. ✓ Timing instrumentation is real and evidenced
+
+**The slice deserves PASS.**
+
+## Repair Cycle Context
+
+**Original Implementer:** Blocked for artifact access during review cycle
+**Independent Repair Owner:** Assigned to complete second revision
+**Repair Timeline:** Feature 028 shipped; repair owner completed revision; reviewer issued PASS verdict
+
+**Next Action:** Merge the worktree branch after staging and committing .squad changes.
+
+---
