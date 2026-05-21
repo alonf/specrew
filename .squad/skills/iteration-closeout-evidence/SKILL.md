@@ -21,6 +21,7 @@ Use this when a closeout or acceptance note says work is complete because plan/s
 - After content review, confirm the proving artifacts are actually tracked in git. Closure evidence must be durable.
 - Treat scripts and their proving artifacts as one acceptance set: if the script is tracked but the state or spike proof is untracked, the closeout is still incomplete.
 - Separate substantive correctness from persistence. It is possible for an artifact to be well-written and still fail acceptance because it is untracked.
+- Generate historical dashboard snapshots only after plan/state truth surfaces have moved to the closeout boundary. Otherwise the artifact can freeze a stale live phase (for example `reviewing`) into what claims to be closeout evidence.
 - On rejection, name the exact files that must be versioned and lock out the original closeout author for the next revision cycle.
 - For narrow re-reviews, judge only the cited defect. If the exact evidence files named in the rejection are now tracked, close that defect directly instead of reopening already-cleared content questions.
 

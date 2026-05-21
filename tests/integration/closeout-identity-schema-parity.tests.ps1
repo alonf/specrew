@@ -66,8 +66,13 @@ if ($closeoutResult.ExitCode -ne 0) {
 }
 
 $identityPath = Join-Path $projectRoot '.squad\identity\now.md'
+$promptPath = Join-Path $projectRoot '.specrew\last-start-prompt.md'
 if (-not (Test-Path -LiteralPath $identityPath -PathType Leaf)) {
     Write-Fail "Closeout identity file was not created: $identityPath"
+    exit 1
+}
+if (-not (Test-Path -LiteralPath $promptPath -PathType Leaf)) {
+    Write-Fail "Closeout prompt file was not created: $promptPath"
     exit 1
 }
 
@@ -90,6 +95,21 @@ foreach ($pattern in @(
 }
 
 Write-Pass 'Closeout identity file preserves both machine-readable and human-readable state'
+
+$promptContent = Get-Content -LiteralPath $promptPath -Raw -Encoding UTF8
+$closeoutHead = (@(& git -C $projectRoot rev-parse HEAD 2>&1))[0].ToString().Trim()
+foreach ($pattern in @(
+        ("baseline_commit_hash:\s*{0}" -f [regex]::Escape($closeoutHead)),
+        'session_state_active:\s*false',
+        'session_state_boundary:\s*feature-closeout'
+    )) {
+    if ($promptContent -notmatch $pattern) {
+        Write-Fail "Closeout prompt output is missing expected content: $pattern"
+        exit 1
+    }
+}
+
+Write-Pass 'Feature closeout prompt preserves inactive session state and refreshed baseline hash'
 
 $startResult = Invoke-TestScript -ScriptPath $startScript -ArgumentList @('-ProjectPath', $projectRoot, '-NoLaunch')
 if ($startResult.ExitCode -ne 0) {

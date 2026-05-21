@@ -55,7 +55,9 @@ function ConvertFrom-SpecrewFrontmatter {
         }
     }
 
-    foreach ($line in ($Matches[1] -split '\r?\n')) {
+    $frontmatterBlock = [string]$Matches[1]
+    $bodyContent = [string]$Matches[2]
+    foreach ($line in ($frontmatterBlock -split '\r?\n')) {
         if ($line -notmatch '^\s*([^:]+):\s*(.*?)\s*$') {
             continue
         }
@@ -71,7 +73,7 @@ function ConvertFrom-SpecrewFrontmatter {
 
     return [pscustomobject]@{
         Frontmatter = $frontmatter
-        Body        = $Matches[2]
+        Body        = $bodyContent
     }
 }
 
@@ -414,6 +416,73 @@ function Write-FileAtomically {
     }
 }
 
+function Get-SpecrewCurrentHeadCommitHash {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$ProjectRoot
+    )
+
+    $resolvedHead = @(& git -C $ProjectRoot rev-parse --verify HEAD 2>$null)
+    if ($LASTEXITCODE -ne 0 -or $resolvedHead.Count -eq 0) {
+        throw "Failed to resolve the current HEAD commit hash."
+    }
+
+    $candidateHead = $resolvedHead[0].ToString().Trim()
+    if ($candidateHead -notmatch '^[0-9a-f]{40}$') {
+        throw "Failed to resolve the current HEAD commit hash."
+    }
+
+    return $candidateHead
+}
+
+function Update-BaselineCommitHashInFrontmatter {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$PromptPath,
+
+        [Parameter(Mandatory = $true)]
+        [string]$NewBaselineHash
+    )
+
+    if ([string]::IsNullOrWhiteSpace($NewBaselineHash) -or $NewBaselineHash -notmatch '^[0-9a-f]{40}$') {
+        throw "Baseline commit hash must be a full 40-character git commit hash."
+    }
+
+    $existingContent = if (Test-Path -LiteralPath $PromptPath -PathType Leaf) {
+        Get-Content -LiteralPath $PromptPath -Raw -Encoding UTF8
+    }
+    else {
+        ''
+    }
+
+    $parsed = ConvertFrom-SpecrewFrontmatter -Content $existingContent
+    $frontmatter = [ordered]@{}
+    $baselineUpdated = $false
+    foreach ($entry in $parsed.Frontmatter.GetEnumerator()) {
+        if ($entry.Key -eq 'baseline_commit_hash') {
+            $frontmatter['baseline_commit_hash'] = $NewBaselineHash
+            $baselineUpdated = $true
+        }
+        else {
+            $frontmatter[[string]$entry.Key] = $entry.Value
+        }
+    }
+
+    if (-not $baselineUpdated) {
+        $updatedFrontmatter = [ordered]@{
+            baseline_commit_hash = $NewBaselineHash
+        }
+        foreach ($entry in $frontmatter.GetEnumerator()) {
+            $updatedFrontmatter[[string]$entry.Key] = $entry.Value
+        }
+        $frontmatter = $updatedFrontmatter
+    }
+
+    $lineEnding = if ($existingContent -match "`r`n") { "`r`n" } else { [Environment]::NewLine }
+    $updatedContent = New-SpecrewMarkdownContent -Frontmatter $frontmatter -Body $parsed.Body
+    Write-FileAtomically -Path $PromptPath -Content ($updatedContent.TrimEnd() + $lineEnding)
+}
+
 function Update-SpecrewStartContext {
     param(
         [Parameter(Mandatory = $true)]
@@ -681,6 +750,19 @@ function Invoke-SpecrewBoundaryStateSync {
     }
 
     Update-SpecrewMarkdownStateFile -Path $paths.PromptPath -SessionState $sessionState -DefaultBody (Get-SpecrewPromptBody -SessionState $sessionState)
+    try {
+        $baselineCommitHash = Get-SpecrewCurrentHeadCommitHash -ProjectRoot $paths.ProjectRoot
+        Update-BaselineCommitHashInFrontmatter -PromptPath $paths.PromptPath -NewBaselineHash $baselineCommitHash
+    }
+    catch {
+        # Brittle coupling: keep this thrown-message literal aligned with the catch-condition match below.
+        if ($_.Exception.Message -eq 'Failed to resolve the current HEAD commit hash.') {
+            Write-Warning ("Boundary sync '{0}' could not refresh baseline_commit_hash because the current HEAD commit hash could not be resolved." -f $BoundaryType)
+        }
+        else {
+            throw "Failed to refresh baseline_commit_hash in '$($paths.PromptPath)': $($_.Exception.Message)"
+        }
+    }
     Update-SpecrewStartContext -Path $paths.ContextPath -SessionState $sessionState
     Update-SpecrewMarkdownStateFile -Path $paths.IdentityPath -SessionState $sessionState -DefaultBody (Get-SpecrewIdentityBody -SessionState $sessionState) -AdditionalFrontmatter $identityAdditionalFrontmatter -PreferredBody $IdentityBody -UsePreferredBody:(-not [string]::IsNullOrWhiteSpace($IdentityBody)) -SchemaVersion 'v1'
 

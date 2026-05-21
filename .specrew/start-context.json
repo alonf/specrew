@@ -2,7 +2,7 @@
   "schema": "v1",
   "mode": "resume-feature",
   "feature_request": "",
-  "feature_path": "C:\\Dev\\Specrew\\specs\\028-review-evidence-integrity",
+  "feature_path": "C:\\Dev\\Specrew\\specs\\029-baseline-hygiene",
   "agent": "Squad",
   "approval_mode": "allow-all",
   "launch_mode": "same-window",
@@ -217,16 +217,16 @@
   "session_state": {
     "active": false,
     "boundary_type": "feature-closeout",
-    "feature_ref": "028-review-evidence-integrity",
-    "feature_path": "C:\\Dev\\Specrew\\specs\\028-review-evidence-integrity",
+    "feature_ref": "029-baseline-hygiene",
+    "feature_path": "C:\\Dev\\Specrew\\specs\\029-baseline-hygiene",
     "iteration_number": null,
     "task_id": null,
-    "auth_commit_hash": "aa654510f22bce82e23f21baa1ced85abc97a3b8",
-    "recorded_at": "2026-05-21T07:23:17Z"
+    "auth_commit_hash": "08b14a17129880caa48c8f2835e052dbfb2b709e",
+    "recorded_at": "2026-05-21T19:11:11Z"
   },
   "recovery_session": null,
   "squad_model_overrides": {},
   "prompt_path": "C:\\Dev\\Specrew\\.specrew\\last-start-prompt.md",
   "summary_path": "C:\\Dev\\Specrew\\.specrew\\start-summary.md",
-  "generated_at_utc": "2026-05-21T07:23:17Z"
+  "generated_at_utc": "2026-05-21T19:11:11Z"
 }
