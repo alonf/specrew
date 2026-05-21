@@ -1126,13 +1126,15 @@ $squadUpstream = if ($latestByPlatform['Squad'].Known) { [string]$latestByPlatfo
 $specKitMaxTested = if ($null -ne $supportedVersions) { [string]$supportedVersions.Speckit.MaxTested } else { $null }
 $squadMaxTested = if ($null -ne $supportedVersions) { [string]$supportedVersions.Squad.MaxTested } else { $null }
 
-$specKitStatus = if ($null -ne $supportedVersions) {
+# Proposal 079 AC5: --upstream-latest opts into the historical two-state model.
+# Status reflects current-vs-upstream comparison (not current-vs-max_tested).
+$specKitStatus = if ($null -ne $supportedVersions -and -not $UpstreamLatest) {
     Get-SpecrewVersionStatus -Current $specKitCurrent -Min $supportedVersions.Speckit.Min -MaxTested $specKitMaxTested
 } else {
     Compare-VersionState -CurrentVersion $specKitCurrent -LatestVersion $specKitUpstream
 }
 
-$squadStatus = if ($null -ne $supportedVersions) {
+$squadStatus = if ($null -ne $supportedVersions -and -not $UpstreamLatest) {
     Get-SpecrewVersionStatus -Current $squadCurrent -Min $supportedVersions.Squad.Min -MaxTested $squadMaxTested
 } else {
     Compare-VersionState -CurrentVersion $squadCurrent -LatestVersion $squadUpstream
@@ -1169,8 +1171,10 @@ if ($InfoMode) {
     Write-Host ("Version info for {0}" -f $resolvedProjectPath) -ForegroundColor Green
     $infoRows | Format-Table -AutoSize
 
+    # Proposal 079 AC5: when --upstream-latest is set, the user has opted into upstream-prominent display.
+    # Suppress the advisory text (no need to warn about something the user explicitly chose to see).
     # Proposal 079: Advisory line when upstream beyond max_tested OR notes set on the supported declaration.
-    if ($null -ne $supportedVersions) {
+    if ($null -ne $supportedVersions -and -not $UpstreamLatest) {
         $advisoryLines = @()
         foreach ($advisoryRow in @(
             [pscustomobject]@{ Platform = 'Spec Kit'; Current = $specKitCurrent; MaxTested = $specKitMaxTested; Upstream = $specKitUpstream; Notes = $supportedVersions.Speckit.Notes; Status = $specKitStatus }

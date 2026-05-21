@@ -113,6 +113,10 @@ $result = Invoke-Specrew -CommandArgs @('update', '--info', '--skip-update-check
 # --info and --skip-update-check are both in the whitelist; should not produce whitelist rejection
 Assert-True -Condition (-not ($result.Output -like '*Unsupported argument*')) -Message 'specrew update --info --skip-update-check passes whitelist check'
 
+# Proposal 079: --upstream-latest is in the update whitelist
+$result = Invoke-Specrew -CommandArgs @('update', '--info', '--upstream-latest', '--skip-update-check')
+Assert-True -Condition (-not ($result.Output -like '*Unsupported argument*')) -Message 'specrew update --info --upstream-latest passes whitelist check'
+
 # --- Test 9: help guidance includes /specrew-help reference ---
 Write-Host ''
 Write-Host '--- Test 9: whitelist rejection references /specrew-help catalog ---'

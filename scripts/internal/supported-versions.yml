@@ -18,7 +18,7 @@ schema: v1
 
 speckit:
   min: "0.8.4"
-  max_tested: "0.8.4"
+  max_tested: "0.8.11"
   notes: ""
 
 squad:
