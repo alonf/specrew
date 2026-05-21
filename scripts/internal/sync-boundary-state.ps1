@@ -55,7 +55,9 @@ function ConvertFrom-SpecrewFrontmatter {
         }
     }
 
-    foreach ($line in ($Matches[1] -split '\r?\n')) {
+    $frontmatterBlock = [string]$Matches[1]
+    $bodyContent = [string]$Matches[2]
+    foreach ($line in ($frontmatterBlock -split '\r?\n')) {
         if ($line -notmatch '^\s*([^:]+):\s*(.*?)\s*$') {
             continue
         }
@@ -71,7 +73,7 @@ function ConvertFrom-SpecrewFrontmatter {
 
     return [pscustomobject]@{
         Frontmatter = $frontmatter
-        Body        = $Matches[2]
+        Body        = $bodyContent
     }
 }
 

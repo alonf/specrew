@@ -21,6 +21,8 @@ baseline that each release number represents.
 
 ### Fixed
 
+- **fix(frontmatter)**: `ConvertFrom-SpecrewFrontmatter` now captures the outer regex groups into local variables before iterating through per-line `-match` operations. This prevents PowerShell's ambient `$Matches` reuse from corrupting the preserved markdown body when frontmatter parsing succeeds and later line-level matches overwrite the original capture groups.
+
 ### Deprecated
 
 ### Removed
