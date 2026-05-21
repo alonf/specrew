@@ -4,6 +4,8 @@ This index is the navigation surface for all proposals in this directory. Sorted
 
 **Note**: this file is currently human-maintained. The lifecycle-hardening feature (Proposal 028) will eventually auto-generate it from per-proposal frontmatter.
 
+> **Terminology note (2026-05-21)**: This index uses **"the Crew"** to mean the agent team executing Specrew's lifecycle (Spec Steward, Planner, Implementer, Reviewer, Retro Facilitator + supplemental specialists). **"Squad"** refers specifically to the [squad-cli](https://www.npmjs.com/package/@bradygaster/squad-cli) npm product — currently the only Crew runtime, but the multi-host work in Proposals [024](024-multi-host-runtime-abstraction.md) and [069](069-multi-host-launch-path.md) will add Claude Code, Codex, and VS Code Chat as alternative runtimes. Older proposals (pre-2026-05-21) often use "Squad" where "the Crew" would now be more accurate; the term will appear in both roles until a future cleanup chore lands (or until proposals are opportunistically renamed when touched for other reasons). New proposals should use "the Crew" for the team-role and reserve "Squad" for the npm product, file paths (`.squad/`), CLI binary references, and historical accuracy.
+
 ---
 
 ## Shipped (14)
