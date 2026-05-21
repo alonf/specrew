@@ -26,9 +26,9 @@
 
 **Purpose**: Validate environment and establish readiness for implementation
 
-- [ ] T001 [assigned_to: Implementer] [effort: S] Verify PowerShell 5.1+, git availability, and validate prerequisite infrastructure (ci(lint-scoping), PR #384 narrowed pathspec list) per plan.md (Trace: FR-001, FR-002)
-- [ ] T002 [P] [assigned_to: Implementer] [effort: S] Review existing `-ChangedIterations` helper and narrowed global-state pathspec list in `scripts/internal/shared-governance.ps1` (Trace: plan.md prerequisites section)
-- [ ] T003 [P] [assigned_to: Test Owner] [effort: S] Locate and review existing test suite at `tests/integration/validate-governance-changed-only.tests.ps1` for extension points (Trace: FR-010)
+- [X] T001 [assigned_to: Implementer] [effort: S] Verify PowerShell 5.1+, git availability, and validate prerequisite infrastructure (ci(lint-scoping), PR #384 narrowed pathspec list) per plan.md (Trace: FR-001, FR-002)
+- [X] T002 [P] [assigned_to: Implementer] [effort: S] Review existing `-ChangedIterations` helper and narrowed global-state pathspec list in `scripts/internal/shared-governance.ps1` (Trace: plan.md prerequisites section)
+- [X] T003 [P] [assigned_to: Test Owner] [effort: S] Locate and review existing test suite at `tests/integration/validate-governance-changed-only.tests.ps1` for extension points (Trace: FR-010)
 
 **Independent Test**: Verify environment can execute PowerShell scripts and run git commands; confirm existing test infrastructure is accessible.
 
@@ -46,15 +46,15 @@
 
 ### User Story 1: Maintainer Invokes Validator Locally on Feature Branch (Auto-Scope Default)
 
-- [ ] T004 [US1] [assigned_to: Implementer] [effort: M] Implement `Get-SpecrewLocalScopeBaseRef` helper function in `scripts/internal/shared-governance.ps1` with priority chain: (1) `$env:GITHUB_BASE_REF` if set, (2) `git symbolic-ref refs/remotes/origin/HEAD`, (3) `git for-each-ref refs/remotes/origin/main refs/remotes/origin/master`, (4) return `$null` on failure (Trace: FR-001, AC1)
+- [X] T004 [US1] [assigned_to: Implementer] [effort: M] Implement `Get-SpecrewLocalScopeBaseRef` helper function in `scripts/internal/shared-governance.ps1` with priority chain: (1) `$env:GITHUB_BASE_REF` if set, (2) `git symbolic-ref refs/remotes/origin/HEAD`, (3) `git for-each-ref refs/remotes/origin/main refs/remotes/origin/master`, (4) return `$null` on failure (Trace: FR-001, AC1)
 
-- [ ] T005 [US1] [assigned_to: Implementer] [effort: M] Modify `validate-governance.ps1` to detect current branch and implement auto-scope default logic: on feature branch with detectable base + no explicit flags → auto-apply `-ChangedOnly` against detected base; on main/master → full-repo; edge cases → full-repo with info banner (Trace: FR-002, FR-005, FR-007, AC2, AC5)
+- [X] T005 [US1] [assigned_to: Implementer] [effort: M] Modify `validate-governance.ps1` to detect current branch and implement auto-scope default logic: on feature branch with detectable base + no explicit flags → auto-apply `-ChangedOnly` against detected base; on main/master → full-repo; edge cases → full-repo with info banner (Trace: FR-002, FR-005, FR-007, AC2, AC5)
 
-- [ ] T006 [P] [US1] [assigned_to: Implementer] [effort: S] Implement `[validator-scope]` stdout banner output for all execution paths: auto-scoped runs, full-repo on main, base-undetectable fallback, `-FullRun` override; emit as first informational line with scope type, iteration count, and file count (if scoped) (Trace: FR-006, AC6)
+- [X] T006 [P] [US1] [assigned_to: Implementer] [effort: S] Implement `[validator-scope]` stdout banner output for all execution paths: auto-scoped runs, full-repo on main, base-undetectable fallback, `-FullRun` override; emit as first informational line with scope type, iteration count, and file count (if scoped) (Trace: FR-006, AC6)
 
 ### User Story 4: Explicit Flags Preserve Existing Behavior (Backward Compatibility)
 
-- [ ] T007 [P] [US4] [assigned_to: Implementer] [effort: S] Verify and document that explicit `-ChangedOnly` flag (with or without `-BaseBranch`) preserves current behavior and takes precedence over auto-scope logic (Trace: FR-004, AC4)
+- [X] T007 [P] [US4] [assigned_to: Implementer] [effort: S] Verify and document that explicit `-ChangedOnly` flag (with or without `-BaseBranch`) preserves current behavior and takes precedence over auto-scope logic (Trace: FR-004, AC4)
 
 **Checkpoint**: Core implementation complete; `-ChangedOnly` auto-applied on feature branches; explicit flags honored; scope banner emitted. Backward compatibility verified.
 
@@ -68,7 +68,7 @@
 
 **Independent Test**: Passing `-FullRun` on feature branch forces full-repo validation and emits appropriate `[validator-scope]` banner.
 
-- [ ] T008 [US2] [assigned_to: Implementer] [effort: S] Add `-FullRun` boolean flag to `validate-governance.ps1` parameter set; verify flag takes precedence over auto-scope logic when passed (Trace: FR-003, AC3)
+- [X] T008 [US2] [assigned_to: Implementer] [effort: S] Add `-FullRun` boolean flag to `validate-governance.ps1` parameter set; verify flag takes precedence over auto-scope logic when passed (Trace: FR-003, AC3)
 
 **Checkpoint**: `-FullRun` flag works correctly; auto-scope can be explicitly overridden.
 
@@ -82,7 +82,7 @@
 
 **Independent Test**: Running validator with no detectable base ref (detached HEAD, no remote) falls back to full-repo cleanly and emits informational banner.
 
-- [ ] T009 [US3] [assigned_to: Implementer] [effort: S] Implement graceful fallback logic: when base ref is undetectable, validator runs full-repo and emits `[validator-scope] full-repo (base-undetectable; <iteration-count> iterations)` info banner (Trace: FR-007, AC7)
+- [X] T009 [US3] [assigned_to: Implementer] [effort: S] Implement graceful fallback logic: when base ref is undetectable, validator runs full-repo and emits `[validator-scope] full-repo (base-undetectable; <iteration-count> iterations)` info banner (Trace: FR-007, AC7)
 
 **Checkpoint**: Edge cases handled gracefully; no failures in detached HEAD or no-remote scenarios.
 
@@ -96,11 +96,11 @@
 
 **Independent Test**: Coordinator governance prompt and Reviewer charter clearly document auto-scope default, `-FullRun` opt-out, and encourage use of auto-scoped default without explicit flags.
 
-- [ ] T010 [assigned_to: Squad Steward] [effort: S] Update Squad coordinator governance prompt in `extensions/specrew-speckit/squad-templates/coordinator/specrew-governance.md` to document that local validator runs now auto-scope by default on feature branches and that `-FullRun` is the explicit opt-out for deliberate full-repo runs (Trace: FR-008, AC8)
+- [X] T010 [assigned_to: Squad Steward] [effort: S] Update Squad coordinator governance prompt in `extensions/specrew-speckit/squad-templates/coordinator/specrew-governance.md` to document that local validator runs now auto-scope by default on feature branches and that `-FullRun` is the explicit opt-out for deliberate full-repo runs (Trace: FR-008, AC8)
 
-- [ ] T011 [P] [assigned_to: Squad Steward] [effort: S] Update Reviewer charter in `extensions/specrew-speckit/squad-templates/agents/reviewer/charter.md` to note the auto-scope default and `-FullRun` opt-out for clarity when the Crew validates locally (Trace: FR-009, AC8)
+- [X] T011 [P] [assigned_to: Squad Steward] [effort: S] Update Reviewer charter in `extensions/specrew-speckit/squad-templates/agents/reviewer/charter.md` to note the auto-scope default and `-FullRun` opt-out for clarity when the Crew validates locally (Trace: FR-009, AC8)
 
-- [ ] T012 [assigned_to: Release Coordinator] [effort: S] Add CHANGELOG.md entry under `Changed` section documenting Proposal 083, empirical motivation from F-029 (validator speedup during boundary lifecycle), and `-FullRun` availability as explicit opt-out (Trace: FR-011, AC9)
+- [X] T012 [assigned_to: Release Coordinator] [effort: S] Add CHANGELOG.md entry under `Changed` section documenting Proposal 083, empirical motivation from F-029 (validator speedup during boundary lifecycle), and `-FullRun` availability as explicit opt-out (Trace: FR-011, AC9)
 
 **Checkpoint**: Documentation updated; the Crew understands auto-scope default and `-FullRun` opt-out.
 
@@ -114,7 +114,7 @@
 
 **Independent Test**: Compare all modified files across three locations; verify byte-for-byte parity (or documented intentional variations); audit trail captures verification.
 
-- [ ] T013 [assigned_to: Implementer] [effort: M] Mirror parity verification sweep across all modified locations:
+- [X] T013 [assigned_to: Implementer] [effort: M] Mirror parity verification sweep across all modified locations:
   - `scripts/internal/shared-governance.ps1` ↔ `extensions/specrew-speckit/scripts/shared-governance.ps1` ↔ `.specify/extensions/specrew-speckit/scripts/shared-governance.ps1`
   - `scripts/internal/validate-governance.ps1` ↔ `extensions/specrew-speckit/scripts/validate-governance.ps1` ↔ `.specify/extensions/specrew-speckit/scripts/validate-governance.ps1`
   - `extensions/specrew-speckit/squad-templates/coordinator/specrew-governance.md` ↔ `.specify/extensions/specrew-speckit/squad-templates/coordinator/specrew-governance.md`
@@ -133,7 +133,7 @@
 
 **Independent Test**: All test cases pass; empirical speedup measured and logged; edge cases handled gracefully; banners accurate.
 
-- [ ] T014 [assigned_to: Test Owner] [effort: L] Extend integration test suite in `tests/integration/validate-governance-changed-only.tests.ps1` to cover:
+- [X] T014 [assigned_to: Test Owner] [effort: L] Extend integration test suite in `tests/integration/validate-governance-changed-only.tests.ps1` to cover:
   - **On main branch, no flags**: Verify full-repo validation (`[validator-scope] full-repo (on main; <count> iterations)`)
   - **On feature branch, detectable base, no flags**: Verify auto-scope (`[validator-scope] auto-scoped to origin/main...HEAD (<count> iterations, <files> files in diff)`)
   - **No remote configured, no flags**: Verify graceful fallback (`[validator-scope] full-repo (base-undetectable; <count> iterations)`)
