@@ -309,6 +309,36 @@ function Normalize-MarkdownCell {
     return $Value.Trim().Trim('`')
 }
 
+function Get-DeclaredCompletedTaskCount {
+    param(
+        [AllowEmptyCollection()]
+        [AllowEmptyString()]
+        [string[]]$PlanLines,
+
+        [AllowEmptyCollection()]
+        [AllowEmptyString()]
+        [string[]]$StateLines
+    )
+
+    $planTasks = @(Get-MarkdownSectionTable -Lines $PlanLines -Heading 'Tasks')
+    if (@($planTasks | Where-Object { $_.PSObject.Properties['Status'] }).Count -gt 0) {
+        return @(
+            $planTasks |
+                Where-Object { (Normalize-MarkdownCell ([string]$_.Status)).ToLowerInvariant() -eq 'done' }
+        ).Count
+    }
+
+    $stateTasks = @(Get-MarkdownSectionTable -Lines $StateLines -Heading 'Task Status')
+    if ($stateTasks.Count -eq 0) {
+        $stateTasks = @(Get-MarkdownSectionTable -Lines $StateLines -Heading 'Tasks')
+    }
+
+    return @(
+        $stateTasks |
+            Where-Object { (Normalize-MarkdownCell ([string]$_.Status)).ToLowerInvariant() -in @('done', 'pass') }
+    ).Count
+}
+
 function Get-GateRowId {
     param([object]$Row)
 
@@ -2036,10 +2066,7 @@ $reviewerConfig = (Get-ReviewerConfig -ProjectRoot $projectRoot).reviewer
 $diffArtifacts = Get-DiffArtifacts -ProjectRoot $projectRoot -BaselineRef $baselineRef
 
 # F-028: Form-vs-meaning gap detection
-$declaredTaskCount = @(
-    $planTasks |
-        Where-Object { ([string]$_.Status).Trim().ToLowerInvariant() -eq 'done' }
-).Count
+$declaredTaskCount = Get-DeclaredCompletedTaskCount -PlanLines $planLines -StateLines $stateLines
 
 $observedFileCount = @($diffArtifacts.Files).Count
 $gapDetectionResult = Test-FormMeaningParity -Declared $declaredTaskCount -Observed $observedFileCount
