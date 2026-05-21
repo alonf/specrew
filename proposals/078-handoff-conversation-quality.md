@@ -23,6 +23,7 @@ Empirical evidence from a 2026-05-21 snake-game smoke test running v0.24.0 shows
 | "Next boundary: REVIEW-BOUNDARY." | Same — bare boundary name. User has to guess what to type |
 | "Iteration 005 implementation is complete. ... Next boundary: REVIEW-BOUNDARY." | Has "what was done" but lacks "what I need from you" with verbs |
 | "Feature closeout is blocked. ... Blockers: 1. tasks.md still has T035-T038 open ..." | Substance is buried in a list; user had to ask "explain what is the blocker" because the prose led with the boundary name |
+| (2026-05-21 F-029 post-merge) "Feature 029 is merged. PR #386 landed on main with merge commit ... Scribe is done. The merge outcome is now recorded in `.squad/log/`..." | Reports "I'm done" but provides NO "what comes next" — user had to ask explicitly what the next slice should be. No three-section structure at the post-merge completion state. User's words: "the way it answers requires the user to think or to ask what coming next" |
 
 The user had to **infer what to type** at each pause — typing `approved`, `signed`, `continue`, `close it`, `explain what is the blocker` — by trial and error. A downstream developer using Specrew will hit this same friction repeatedly. The "substantive interaction model" F-016 established is undercut when the prose at each pause is opaque.
 
@@ -43,8 +44,10 @@ Generalize F-014's scope from "three primary approval handoffs" to "every Squad 
 - retro→iteration-closeout
 - iteration-closeout→feature-closeout
 - feature-closeout (when blocked)
+- **feature-merged-to-main → next-slice-authorization** (post-merge completion state — added 2026-05-21)
 - Mid-implementation clarify questions (already partially covered)
 - Conditional pause from F-011 on session resume
+- **Any voluntary pause-to-report state** — when the Crew completes work and reports back, even if no formal lifecycle gate fired (e.g., scribe-agent completion, validator-warning surfacing, "I'm done with what you asked, what next?")
 
 Every pause must include all three sections:
 
@@ -64,6 +67,8 @@ Replace internal boundary identifiers in user-facing prose:
 | `ITERATION-CLOSEOUT` | "Closing out this iteration" |
 | `FEATURE-CLOSEOUT` | "Closing the feature" |
 | `IMPLEMENTATION-APPROVAL` / `BEFORE-IMPLEMENT` | "Ready to start implementation; needs your approval" |
+| `POST-MERGE` / `FEATURE-MERGED` (implicit) | "Feature merged to main; ready for next slice" |
+| `SCRIBE-COMPLETE` / `AGENT-IDLE` (implicit) | "Background work logged; ready for direction" |
 
 Internal names remain in `state.md`, `decisions.md`, audit trails, and validator-error categories. They MUST NOT appear in the prose Squad speaks to the user, except as a parenthetical for audit traceability if absolutely needed: "Awaiting your signoff (boundary: REVIEW-VERDICT-SIGNOFF)".
 
