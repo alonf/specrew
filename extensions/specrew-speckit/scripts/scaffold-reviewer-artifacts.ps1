@@ -1,11 +1,12 @@
-[CmdletBinding()]
+[CmdletBinding(SupportsShouldProcess=$true, ConfirmImpact='High')]
 param(
     [Parameter(Mandatory = $true)]
     [string]$IterationDirectory,
 
     [switch]$DryRun,
     [switch]$PassThru,
-    [switch]$SummaryOnly
+    [switch]$SummaryOnly,
+    [switch]$Force
 )
 
 Set-StrictMode -Version Latest
@@ -2033,6 +2034,45 @@ $featureId = Split-Path -Leaf $specDirectory
 $currentArchitecturePath = Join-Path $specDirectory 'current-architecture.md'
 $reviewerConfig = (Get-ReviewerConfig -ProjectRoot $projectRoot).reviewer
 $diffArtifacts = Get-DiffArtifacts -ProjectRoot $projectRoot -BaselineRef $baselineRef
+
+# F-028: Form-vs-meaning gap detection
+$declaredTaskCount = @(
+    $planTasks |
+        Where-Object { ([string]$_.Status).Trim().ToLowerInvariant() -eq 'done' }
+).Count
+
+$observedFileCount = @($diffArtifacts.Files).Count
+$gapDetectionResult = Test-FormMeaningParity -Declared $declaredTaskCount -Observed $observedFileCount
+$gapWarningText = if ($gapDetectionResult.Gap -and $gapDetectionResult.Severity -in @('error', 'warning')) {
+    @"
+> **⚠️ Review Evidence Warning** _(Form-vs-Meaning Gap Detected)_
+> 
+> This iteration's task tracking declares **$($gapDetectionResult.Declared) completed task(s)**, but the git diff against baseline ``$baselineRef`` contains **$($gapDetectionResult.Observed) file(s)**.
+> 
+> **Severity**: $($gapDetectionResult.Severity.ToUpper())  
+> **Implication**: Review evidence may be incomplete or misleading.
+> 
+> **Possible causes**:
+> - Implementation work was not committed before scaffolding review artifacts
+> - Task status markers in plan.md or review.md do not match actual progress
+> - Baseline reference in state.md is stale or incorrect
+> 
+> **Remediation**: 
+> 1. Verify implementation is committed: ``git diff $baselineRef...HEAD --stat``
+> 2. If uncommitted work exists: ``git add . && git commit -m "Implementation complete"``
+> 3. Re-run scaffolder with ``-Force`` flag to regenerate review artifacts after commit
+> 4. Re-run ``validate-governance.ps1`` to clear pre-review commit gate error
+> 
+> _See Proposal 073 (Review Evidence Integrity) for background on this validation._
+
+---
+
+"@
+}
+else {
+    $null
+}
+
 $qualityGateRows = @(Get-MarkdownSectionTable -Lines $planLines -Heading 'Required Quality Gates')
 $qualityContractPath = Join-Path $specDirectory 'contracts\quality-governance-artifacts.md'
 if ($qualityGateRows.Count -eq 0 -and (Test-Path -LiteralPath $qualityContractPath -PathType Leaf)) {
@@ -2201,6 +2241,7 @@ $codeMapContent = @"
 **Baseline Ref**: $(if ($diffArtifacts.BaselineResolved) { $baselineRef } elseif ($baselineRef) { "$baselineRef (unresolved)" } else { 'unknown' })
 **Test-to-Code Ratio**: $testToCodeRatio
 
+$(if ($gapWarningText) { $gapWarningText } else { '' })
 ## Files Touched
 
 $($codeMapRows -join [Environment]::NewLine)
@@ -2217,6 +2258,7 @@ $dependencyReportContent = @"
 **Reviewed**: $reviewedDate
 **Baseline Ref**: $(if ($diffArtifacts.BaselineResolved) { $baselineRef } elseif ($baselineRef) { "$baselineRef (unresolved)" } else { 'unknown' })
 
+$(if ($gapWarningText) { $gapWarningText } else { '' })
 ## Dependency Delta
 
 $($dependencyRows -join [Environment]::NewLine)
@@ -2263,6 +2305,7 @@ $coverageEvidenceContent = @"
 **Reviewed**: $reviewedDate
 **Overall Verdict**: $overallVerdict
 
+$(if ($gapWarningText) { $gapWarningText } else { '' })
 ## Test Strategy
 
 - Implementation briefing: $implementationBriefingRelative
@@ -2316,6 +2359,7 @@ $reviewDiagramsContent = @"
 **Schema**: v1
 **Diagram Format**: $($reviewerConfig.diagram_format)
 
+$(if ($gapWarningText) { $gapWarningText } else { '' })
 ## Structure Diagram
 
 $(if ($diagramEvidence.StructureDiagram) { $diagramEvidence.StructureDiagram } else { '_omitted_' })
@@ -2491,6 +2535,31 @@ $digestLine
 "@
 
 if (-not $SummaryOnly) {
+    # F-028: Handle -Force flag with interactive confirmation
+    if ($Force) {
+        # Check if review artifacts exist
+        $existingArtifacts = @($codeMapPath, $dependencyReportPath, $coverageEvidencePath, $reviewDiagramsPath) | Where-Object { Test-Path -LiteralPath $_ -PathType Leaf }
+        
+        if ($existingArtifacts.Count -gt 0) {
+            $confirmMessage = @"
+Re-running with -Force will overwrite existing review artifacts:
+- code-map.md
+- dependency-report.md
+- coverage-evidence.md
+- review-diagrams.md
+
+Human annotations in these files will be lost. Preserve annotations in review.md instead.
+"@
+            $confirmCaption = "Overwrite Review Artifacts?"
+            
+            # ShouldProcess handles -Confirm parameter automatically
+            if (-not $PSCmdlet.ShouldProcess($confirmMessage, $confirmCaption, "Confirm")) {
+                Write-Host "Scaffold operation cancelled by user. Existing artifacts preserved." -ForegroundColor Yellow
+                return
+            }
+        }
+    }
+    
     if ($hasQualityEvidenceContract -or $phaseTwoQualityArtifactsRequired) {
         $hardeningGatePath = Join-Path $qualityDirectory 'hardening-gate.md'
         $lensesDirectory = Join-Path $qualityDirectory 'lenses'

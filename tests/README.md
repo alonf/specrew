@@ -42,6 +42,7 @@ pwsh -NoProfile -File tests/integration/planning-overcommit.ps1
 pwsh -NoProfile -File tests/integration/process-quality-report.ps1
 pwsh -NoProfile -File tests/integration/process-quality-scorer.ps1
 pwsh -NoProfile -File tests/integration/feature-017-dashboard-core.ps1
+pwsh -NoProfile -File tests/integration/review-evidence-integrity.tests.ps1
 pwsh -NoProfile -File tests/integration/slash-command-routing.tests.ps1
 pwsh -NoProfile -File tests/integration/slash-command-distribution.tests.ps1
 pwsh -NoProfile -File tests/integration/slash-command-compatibility.tests.ps1

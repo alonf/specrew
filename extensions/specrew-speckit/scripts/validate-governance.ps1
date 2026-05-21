@@ -2860,6 +2860,151 @@ function Test-IsEarlyPlanningStub {
         ($planText -match 'stub captures the planned scope')
 }
 
+function Get-DeclaredCompletedTaskCount {
+    param(
+        [AllowEmptyCollection()]
+        [AllowEmptyString()]
+        [string[]]$PlanLines,
+
+        [AllowEmptyCollection()]
+        [AllowEmptyString()]
+        [string[]]$StateLines
+    )
+
+    $planTasks = @(Get-MarkdownSectionTable -Lines $PlanLines -Heading 'Tasks')
+    if ($planTasks.Count -gt 0) {
+        return @(
+            $planTasks |
+                Where-Object { (Normalize-MarkdownCell ([string]$_.Status)).ToLowerInvariant() -eq 'done' }
+        ).Count
+    }
+
+    $stateTasks = @(Get-MarkdownSectionTable -Lines $StateLines -Heading 'Task Status')
+    if ($stateTasks.Count -eq 0) {
+        $stateTasks = @(Get-MarkdownSectionTable -Lines $StateLines -Heading 'Tasks')
+    }
+
+    return @(
+        $stateTasks |
+            Where-Object {
+                $normalizedStatus = Get-NormalizedKeyword ([string]$_.Status)
+                $normalizedStatus -in @('done', 'pass')
+            }
+    ).Count
+}
+
+<#
+.SYNOPSIS
+Tests form-vs-meaning parity for pre-review commit gate validation.
+
+.DESCRIPTION
+Validates that declared task completion in state.md matches observed committed changes
+in git diff. Blocks review boundary advancement when form-vs-meaning gap is detected.
+
+.PARAMETER IterationDirectory
+Path to iteration directory (e.g., C:\Dev\Specrew\specs\028-review-evidence-integrity).
+
+.PARAMETER Baseline
+Git baseline reference to compare against HEAD (e.g., 'main', commit SHA).
+Must be resolvable in the current repository.
+
+.OUTPUTS
+PSCustomObject with ValidationResult structure when violation detected, $null otherwise.
+Returns error severity when declared >= 1 tasks but git diff is empty.
+
+.NOTES
+Feature: F-028 (Review Evidence Integrity)
+Contract: specs/028-review-evidence-integrity/contracts/validator-rule-contract.md
+RuleID: pre-review-commit-gate
+Category: review-evidence-integrity
+#>
+function Test-PreReviewCommitGate {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory=$true)]
+        [string]$IterationDirectory,
+
+        [Parameter(Mandatory=$true)]
+        [string]$ProjectRoot,
+
+        [AllowEmptyCollection()]
+        [AllowEmptyString()]
+        [string[]]$PlanLines = @(),
+
+        [AllowEmptyCollection()]
+        [AllowEmptyString()]
+        [string[]]$StateLines = @(),
+        
+        [Parameter(Mandatory=$true)]
+        [string]$Baseline
+    )
+    
+    $statePath = Join-Path -Path $IterationDirectory -ChildPath 'state.md'
+    if ($StateLines.Count -eq 0) {
+        if (-not (Test-Path -LiteralPath $statePath -PathType Leaf)) {
+            return $null
+        }
+
+        $StateLines = Get-MarkdownContent -Path $statePath
+    }
+
+    if ($PlanLines.Count -eq 0) {
+        $planPath = Join-Path -Path $IterationDirectory -ChildPath 'plan.md'
+        if (Test-Path -LiteralPath $planPath -PathType Leaf) {
+            $PlanLines = Get-MarkdownContent -Path $planPath
+        }
+    }
+
+    $completedTaskCount = Get-DeclaredCompletedTaskCount -PlanLines $PlanLines -StateLines $StateLines
+    if ($completedTaskCount -lt 0) {
+        $completedTaskCount = 0
+    }
+    
+    $observedFileCount = 0
+    try {
+        $resolvedBaseline = @(& git -C $ProjectRoot rev-parse --verify "$Baseline" 2>$null)
+        if ($LASTEXITCODE -ne 0) {
+            return $null
+        }
+        
+        $diffFiles = @(& git -C $ProjectRoot diff --name-only "$Baseline...HEAD" -- 2>$null)
+        if ($LASTEXITCODE -eq 0) {
+            $observedFileCount = @(
+                $diffFiles |
+                    ForEach-Object { [string]$_ } |
+                    Where-Object { -not [string]::IsNullOrWhiteSpace($_) }
+            ).Count
+        }
+    }
+    catch {
+        return $null
+    }
+    
+    $parityResult = Test-FormMeaningParity -Declared $completedTaskCount -Observed $observedFileCount
+    
+    if ($parityResult.Gap -and $parityResult.Severity -eq 'error') {
+        $message = "Form-vs-meaning gap detected: iteration artifacts declare $($parityResult.Declared) completed task(s) but git diff $Baseline...HEAD is empty (0 files changed)"
+        $remediationHint = "Commit implementation work before review. Verify with ``git diff $Baseline...HEAD --stat``, then rerun validate-governance.ps1 before advancing to review."
+        
+        return [PSCustomObject]@{
+            RuleID = 'pre-review-commit-gate'
+            Category = 'review-evidence-integrity'
+            Severity = 'error'
+            Message = $message
+            RemediationHint = $remediationHint
+            Evidence = @{
+                DeclaredTaskCount = $parityResult.Declared
+                CommittedFileCount = $parityResult.Observed
+                Baseline = $Baseline
+                IterationPath = "file:///$($IterationDirectory -replace '\\', '/')"
+            }
+        }
+    }
+    
+    # No violation detected
+    return $null
+}
+
 function Test-IterationGovernance {
     param(
         [string]$IterationDirectory,
@@ -2998,6 +3143,18 @@ function Test-IterationGovernance {
             if ($hasNonTerminalTasks) {
                 $errors.Add('Reviewing iterations require all tasks to be in terminal states')
             }
+            
+            # F-028: Pre-review commit gate - validate form-vs-meaning parity
+            if ($stateLines.Count -gt 0) {
+                $baselineRef = Get-MarkdownMetadataValue -Lines $stateLines -Label 'Baseline Ref'
+                if (-not [string]::IsNullOrWhiteSpace($baselineRef)) {
+                    $preReviewGateResult = Test-PreReviewCommitGate -IterationDirectory $IterationDirectory -ProjectRoot $ProjectRoot -PlanLines $planLines -StateLines $stateLines -Baseline $baselineRef
+                    if ($null -ne $preReviewGateResult -and $preReviewGateResult.Severity -eq 'error') {
+                        $errors.Add("[$($preReviewGateResult.Category)] $($preReviewGateResult.Message)`n    Remediation: $($preReviewGateResult.RemediationHint)")
+                    }
+                }
+            }
+            
             Test-ReviewArtifact -ReviewPath $reviewPath -ProjectRoot $ProjectRoot -IterationDirectory $IterationDirectory -IterationStatus $status -PlanTasks $tasks -Errors $errors
         }
         'retro' {

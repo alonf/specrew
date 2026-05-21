@@ -2257,3 +2257,95 @@ function Get-RoutingEvidenceRecords {
             }
     )
 }
+
+<#
+.SYNOPSIS
+Tests form-vs-meaning parity by comparing declared and observed metrics.
+
+.DESCRIPTION
+Compares a declared count/metric (form) against an observed count/metric (meaning) 
+and returns structured result indicating gap and severity level.
+
+This is a purely functional helper with no I/O side effects, designed for composition
+by validator rules and governance scripts.
+
+.PARAMETER Declared
+Count/metric from declared state (form). Must be >= 0.
+Example: Number of tasks marked complete in state.md.
+
+.PARAMETER Observed
+Count/metric from observed reality (meaning). Must be >= 0.
+Example: Number of files in git diff baseline...HEAD.
+
+.OUTPUTS
+PSCustomObject with fields:
+- Declared [int]: Echo of Declared parameter
+- Observed [int]: Echo of Observed parameter  
+- Gap [bool]: $true if Declared != Observed; $false otherwise
+- Severity [string]: 'error' | 'warning' | 'info'
+
+Severity Logic:
+- 'error': Declared > 0 AND Observed = 0 (zero-diff, hard failure boundary)
+- 'warning': Declared != Observed AND both > 0 (partial mismatch, non-blocking)
+- 'info': Declared = Observed (no gap detected)
+
+.EXAMPLE
+$result = Test-FormMeaningParity -Declared 11 -Observed 0
+# Returns: @{ Declared=11; Observed=0; Gap=$true; Severity='error' }
+
+.EXAMPLE
+$result = Test-FormMeaningParity -Declared 5 -Observed 3
+# Returns: @{ Declared=5; Observed=3; Gap=$true; Severity='warning' }
+
+.EXAMPLE
+$result = Test-FormMeaningParity -Declared 0 -Observed 0
+# Returns: @{ Declared=0; Observed=0; Gap=$false; Severity='info' }
+
+.NOTES
+Feature: F-028 (Review Evidence Integrity)
+Contract: specs/028-review-evidence-integrity/contracts/test-formmeaningparity-contract.md
+API Version: 1.0 (immutable per Q6 decision)
+#>
+function Test-FormMeaningParity {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory=$true)]
+        [int]$Declared,
+        
+        [Parameter(Mandatory=$true)]
+        [int]$Observed
+    )
+    
+    # Determine gap presence
+    $gap = $Declared -ne $Observed
+    
+    # Determine severity level per Q1 resolution
+    $severity = if (-not $gap) {
+        # No gap: declared matches observed
+        'info'
+    }
+    elseif ($Declared -gt 0 -and $Observed -eq 0) {
+        # Zero-diff: declared work but nothing observed (hard failure)
+        'error'
+    }
+    elseif ($Declared -gt $Observed -and $Observed -gt 0) {
+        # Partial implementation: both > 0 but mismatch (non-blocking)
+        'warning'
+    }
+    elseif ($Declared -eq 0 -and $Observed -eq 0) {
+        # Legitimate empty state (no gap, spec-only iteration)
+        'info'
+    }
+    else {
+        # Other mismatches (e.g., over-delivery: observed > declared)
+        'warning'
+    }
+    
+    # Return structured result per contract
+    return [PSCustomObject]@{
+        Declared = $Declared
+        Observed = $Observed
+        Gap = $gap
+        Severity = $severity
+    }
+}
