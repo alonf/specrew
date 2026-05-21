@@ -78,7 +78,7 @@ Idea-form proposals not yet developed into full source specs. Open for discussio
 | [038](038-adaptive-boundary-discipline.md) | F-016 Adaptive Boundary Discipline (Boundary-Class Refinement) | phase-2 | 10 |
 | [039](039-squad-upstream-reconciliation.md) | Squad Upstream Reconciliation | phase-3 | 22 |
 | [041](041-specrew-autopilot.md) | Specrew Autopilot (Experiment + Production Feature) | phase-4 | 28 |
-| [042](042-specrew-integration-test-suite.md) | Specrew Integration Test Suite | phase-2 | 25 |
+| [042](042-specrew-integration-test-suite.md) | Specrew Integration Test Suite | phase-2 | 31-37 |
 | [043](043-structured-question-protocol.md) | Structured Question Protocol | phase-3 | 10 |
 | [044](044-downstream-quality-baseline-bootstrap.md) | Downstream Quality Baseline Bootstrap | phase-2 | 10 |
 | [045](045-ci-watchdog-recurrence-prevention.md) | CI Watchdog & Recurrence Prevention | phase-2 | 8 |
