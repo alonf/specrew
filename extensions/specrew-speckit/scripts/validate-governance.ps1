@@ -21,6 +21,10 @@ if (-not (Test-Path -LiteralPath $sharedGovernancePath -PathType Leaf)) {
 $script:ValidatorCommand = 'validate-governance'
 $script:ValidatorSoftWarnings = 0
 $script:ValidatorMediumWarnings = 0
+$script:ValidatorStartTime = [System.Diagnostics.Stopwatch]::StartNew()
+$script:ValidatorMode = 'unscoped'
+$script:ValidatorIterationsValidated = 0
+$script:ValidatorTriggerSource = if ($env:CI) { 'ci' } else { 'local' }
 
 function Write-ValidatorSummaryAndExit {
     param(
@@ -33,6 +37,13 @@ function Write-ValidatorSummaryAndExit {
         [int]$HardWarnings = 0
     )
 
+    $durationMs = if ($null -ne $script:ValidatorStartTime) {
+        [int]$script:ValidatorStartTime.ElapsedMilliseconds
+    }
+    else {
+        0
+    }
+
     if (-not [string]::IsNullOrWhiteSpace($ProjectRoot)) {
         try {
             Write-SpecrewValidatorSummary `
@@ -40,12 +51,14 @@ function Write-ValidatorSummaryAndExit {
                 -Command $script:ValidatorCommand `
                 -SoftWarnings $script:ValidatorSoftWarnings `
                 -MediumWarnings $script:ValidatorMediumWarnings `
-                -HardWarnings $HardWarnings | Out-Null
+                -HardWarnings $HardWarnings `
+                -DurationMs $durationMs | Out-Null
         }
         catch {
         }
     }
 
+    Write-Output ("[validator-timing] mode={0} elapsed_ms={1} iterations_validated={2} trigger_source={3}" -f $script:ValidatorMode, $durationMs, $script:ValidatorIterationsValidated, $script:ValidatorTriggerSource)
     exit $ExitCode
 }
 
@@ -2860,39 +2873,6 @@ function Test-IsEarlyPlanningStub {
         ($planText -match 'stub captures the planned scope')
 }
 
-function Get-DeclaredCompletedTaskCount {
-    param(
-        [AllowEmptyCollection()]
-        [AllowEmptyString()]
-        [string[]]$PlanLines,
-
-        [AllowEmptyCollection()]
-        [AllowEmptyString()]
-        [string[]]$StateLines
-    )
-
-    $planTasks = @(Get-MarkdownSectionTable -Lines $PlanLines -Heading 'Tasks')
-    if ($planTasks.Count -gt 0) {
-        return @(
-            $planTasks |
-                Where-Object { (Normalize-MarkdownCell ([string]$_.Status)).ToLowerInvariant() -eq 'done' }
-        ).Count
-    }
-
-    $stateTasks = @(Get-MarkdownSectionTable -Lines $StateLines -Heading 'Task Status')
-    if ($stateTasks.Count -eq 0) {
-        $stateTasks = @(Get-MarkdownSectionTable -Lines $StateLines -Heading 'Tasks')
-    }
-
-    return @(
-        $stateTasks |
-            Where-Object {
-                $normalizedStatus = Get-NormalizedKeyword ([string]$_.Status)
-                $normalizedStatus -in @('done', 'pass')
-            }
-    ).Count
-}
-
 <#
 .SYNOPSIS
 Tests form-vs-meaning parity for pre-review commit gate validation.
@@ -3624,10 +3604,12 @@ try {
         $IterationPath | Where-Object { -not [string]::IsNullOrWhiteSpace([string]$_) }
     ).Count -gt 0
     $targets = @()
+    $changedOnlyScoped = $false
     if ($ChangedOnly -and -not $explicitIterationPathsProvided) {
         $changedIterations = Get-ChangedIterations -ProjectRoot $resolvedProjectPath
         if ($changedIterations.UseScopedTargets) {
             $targets = @($changedIterations.IterationPaths)
+            $changedOnlyScoped = $true
         }
         else {
             if ($env:SPECREW_VALIDATOR_VERBOSE -eq '1') {
@@ -3640,6 +3622,8 @@ try {
     else {
         $targets = @(Resolve-IterationTarget -ResolvedProjectPath $resolvedProjectPath -ExplicitIterationPaths $IterationPath)
     }
+    $script:ValidatorMode = if ($explicitIterationPathsProvided -or $changedOnlyScoped) { 'scoped' } else { 'unscoped' }
+    $script:ValidatorIterationsValidated = $targets.Count
     if (-not [string]::IsNullOrWhiteSpace($ResponseText)) {
         $responseValidationExitCode = Invoke-InteractionModelResponseValidation -ProjectRoot $resolvedProjectPath -ResponseText $ResponseText -IterationTargets $targets -BoundaryName $BoundaryName -ResponseScope $ResponseScope -BarePathBoundaryHandoffSeverity $BarePathBoundaryHandoffSeverity
         Write-ValidatorSummaryAndExit -ProjectRoot $resolvedProjectPath -ExitCode $responseValidationExitCode -HardWarnings $(if ($responseValidationExitCode -eq 0) { 0 } else { 1 })

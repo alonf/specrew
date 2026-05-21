@@ -169,10 +169,19 @@ function Touch-IterationForDiff {
         [Parameter(Mandatory = $true)][string]$RelativeIterationFile
     )
 
-    $targetPath = Join-Path $WorkspaceRoot $RelativeIterationFile
+    Touch-RelativeFileForDiff -WorkspaceRoot $WorkspaceRoot -RelativePath $RelativeIterationFile
+}
+
+function Touch-RelativeFileForDiff {
+    param(
+        [Parameter(Mandatory = $true)][string]$WorkspaceRoot,
+        [Parameter(Mandatory = $true)][string]$RelativePath
+    )
+
+    $targetPath = Join-Path $WorkspaceRoot $RelativePath
     $content = Get-Content -LiteralPath $targetPath -Raw -Encoding UTF8
     Set-ContentUtf8 -Path $targetPath -Content ($content.TrimEnd() + [Environment]::NewLine + [Environment]::NewLine + '<!-- changed-only fixture touch -->' + [Environment]::NewLine)
-    Commit-Workspace -WorkspaceRoot $WorkspaceRoot -Message "Touch $RelativeIterationFile"
+    Commit-Workspace -WorkspaceRoot $WorkspaceRoot -Message "Touch $RelativePath"
 }
 
 function Remove-UntouchedStateArtifact {
@@ -260,24 +269,63 @@ $scopedChecksPassed = $true
 if (-not (Assert-True -Condition ($scopedResult.ExitCode -eq 0) -FailureMessage 'Changed-only validation should pass when only the touched iteration remains in scope.')) { $allChecksPassed = $false; $scopedChecksPassed = $false }
 if (-not (Assert-Match -Text $scopedResult.Text -Pattern '\[validator\] \(1/1\) validating .*iterations[/\\]001' -FailureMessage 'Changed-only validation should still validate the touched iteration.')) { $allChecksPassed = $false; $scopedChecksPassed = $false }
 if (-not (Assert-NotMatch -Text $scopedResult.Text -Pattern 'iterations\\002' -FailureMessage 'Changed-only validation should skip untouched iterations.')) { $allChecksPassed = $false; $scopedChecksPassed = $false }
+if (-not (Assert-Match -Text $scopedResult.Text -Pattern '\[validator-timing\] mode=scoped elapsed_ms=\d+ iterations_validated=1 trigger_source=local' -FailureMessage 'Changed-only scoped iteration validation should emit scoped timing output.')) { $allChecksPassed = $false; $scopedChecksPassed = $false }
 if ($scopedChecksPassed) {
     Write-Pass 'Changed-only mode validates only the touched iteration and skips untouched invalid iterations.'
 }
 
-$globalWorkspace = New-Workspace -WorkspaceName 'global-state'
-Initialize-GitWorkspace -WorkspaceRoot $globalWorkspace
-$identityPath = Join-Path $globalWorkspace '.squad\identity\now.md'
-$identityContent = Get-Content -LiteralPath $identityPath -Raw -Encoding UTF8
-Set-ContentUtf8 -Path $identityPath -Content ($identityContent.TrimEnd() + [Environment]::NewLine + [Environment]::NewLine + 'Global state fixture touch.' + [Environment]::NewLine)
-Commit-Workspace -WorkspaceRoot $globalWorkspace -Message 'Touch global state surface'
-Remove-UntouchedStateArtifact -WorkspaceRoot $globalWorkspace
-$globalResult = Invoke-Validator -ProjectPath $globalWorkspace -ChangedOnly -BaseBranch 'main'
-$globalChecksPassed = $true
-if (-not (Assert-True -Condition ($globalResult.ExitCode -ne 0) -FailureMessage 'Changed-only validation should fall back to unscoped validation when global state changes.')) { $allChecksPassed = $false; $globalChecksPassed = $false }
-if (-not (Assert-Match -Text $globalResult.Text -Pattern 'FAIL .*iterations[/\\]002' -FailureMessage 'Global-state changes should still validate untouched iterations and surface their failures.')) { $allChecksPassed = $false; $globalChecksPassed = $false }
-if (-not (Assert-Match -Text $globalResult.Text -Pattern '\[validator\] -ChangedOnly fallback to full validation: global-state-changed' -FailureMessage 'Global-state changes should emit the expected full-validation fallback reason.')) { $allChecksPassed = $false; $globalChecksPassed = $false }
-if ($globalChecksPassed) {
-    Write-Pass 'Global state changes force unscoped validation so untouched iteration failures still surface.'
+$sessionStateWorkspace = New-Workspace -WorkspaceName 'session-state-only'
+Initialize-GitWorkspace -WorkspaceRoot $sessionStateWorkspace
+Touch-RelativeFileForDiff -WorkspaceRoot $sessionStateWorkspace -RelativePath '.specrew\last-start-prompt.md'
+Remove-UntouchedStateArtifact -WorkspaceRoot $sessionStateWorkspace
+$sessionStateResult = Invoke-Validator -ProjectPath $sessionStateWorkspace -ChangedOnly -BaseBranch 'main'
+$sessionStateChecksPassed = $true
+if (-not (Assert-True -Condition ($sessionStateResult.ExitCode -eq 0) -FailureMessage 'Changed-only validation should stay scoped when only .specrew\last-start-prompt.md changes.')) { $allChecksPassed = $false; $sessionStateChecksPassed = $false }
+if (-not (Assert-NotMatch -Text $sessionStateResult.Text -Pattern '\[validator\] -ChangedOnly fallback to full validation:' -FailureMessage 'Session-state prompt changes should not trigger full-validation fallback.')) { $allChecksPassed = $false; $sessionStateChecksPassed = $false }
+if (-not (Assert-Match -Text $sessionStateResult.Text -Pattern '\[validator-timing\] mode=scoped elapsed_ms=\d+ iterations_validated=0 trigger_source=local' -FailureMessage 'Session-state prompt changes should emit scoped timing output with zero validated iterations.')) { $allChecksPassed = $false; $sessionStateChecksPassed = $false }
+if ($sessionStateChecksPassed) {
+    Write-Pass 'Session-state prompt changes stay scoped and do not trigger full-validation fallback.'
+}
+
+$identityNowWorkspace = New-Workspace -WorkspaceName 'identity-now-only'
+Initialize-GitWorkspace -WorkspaceRoot $identityNowWorkspace
+Touch-RelativeFileForDiff -WorkspaceRoot $identityNowWorkspace -RelativePath '.squad\identity\now.md'
+Remove-UntouchedStateArtifact -WorkspaceRoot $identityNowWorkspace
+$identityNowResult = Invoke-Validator -ProjectPath $identityNowWorkspace -ChangedOnly -BaseBranch 'main'
+$identityNowChecksPassed = $true
+if (-not (Assert-True -Condition ($identityNowResult.ExitCode -eq 0) -FailureMessage 'Changed-only validation should stay scoped when only .squad\identity\now.md changes.')) { $allChecksPassed = $false; $identityNowChecksPassed = $false }
+if (-not (Assert-NotMatch -Text $identityNowResult.Text -Pattern '\[validator\] -ChangedOnly fallback to full validation:' -FailureMessage '.squad\identity\now.md changes should not trigger full-validation fallback.')) { $allChecksPassed = $false; $identityNowChecksPassed = $false }
+if (-not (Assert-Match -Text $identityNowResult.Text -Pattern '\[validator-timing\] mode=scoped elapsed_ms=\d+ iterations_validated=0 trigger_source=local' -FailureMessage '.squad\identity\now.md changes should emit scoped timing output with zero validated iterations.')) { $allChecksPassed = $false; $identityNowChecksPassed = $false }
+if ($identityNowChecksPassed) {
+    Write-Pass '.squad\identity\now.md changes stay scoped and do not trigger full-validation fallback.'
+}
+
+$configWorkspace = New-Workspace -WorkspaceName 'config-global-state'
+Initialize-GitWorkspace -WorkspaceRoot $configWorkspace
+Touch-RelativeFileForDiff -WorkspaceRoot $configWorkspace -RelativePath '.specrew\config.yml'
+Remove-UntouchedStateArtifact -WorkspaceRoot $configWorkspace
+$configResult = Invoke-Validator -ProjectPath $configWorkspace -ChangedOnly -BaseBranch 'main'
+$configChecksPassed = $true
+if (-not (Assert-True -Condition ($configResult.ExitCode -ne 0) -FailureMessage 'Changed-only validation should fall back to unscoped validation when .specrew\config.yml changes.')) { $allChecksPassed = $false; $configChecksPassed = $false }
+if (-not (Assert-Match -Text $configResult.Text -Pattern 'FAIL .*iterations[/\\]002' -FailureMessage '.specrew\config.yml changes should still validate untouched iterations and surface their failures.')) { $allChecksPassed = $false; $configChecksPassed = $false }
+if (-not (Assert-Match -Text $configResult.Text -Pattern '\[validator\] -ChangedOnly fallback to full validation: global-state-changed' -FailureMessage '.specrew\config.yml changes should emit the expected full-validation fallback reason.')) { $allChecksPassed = $false; $configChecksPassed = $false }
+if (-not (Assert-Match -Text $configResult.Text -Pattern '\[validator-timing\] mode=unscoped elapsed_ms=\d+ iterations_validated=2 trigger_source=local' -FailureMessage '.specrew\config.yml changes should emit unscoped timing output.')) { $allChecksPassed = $false; $configChecksPassed = $false }
+if ($configChecksPassed) {
+    Write-Pass '.specrew\config.yml changes force unscoped validation so untouched iteration failures still surface.'
+}
+
+$wisdomWorkspace = New-Workspace -WorkspaceName 'wisdom-global-state'
+Initialize-GitWorkspace -WorkspaceRoot $wisdomWorkspace
+Touch-RelativeFileForDiff -WorkspaceRoot $wisdomWorkspace -RelativePath '.squad\identity\wisdom.md'
+Remove-UntouchedStateArtifact -WorkspaceRoot $wisdomWorkspace
+$wisdomResult = Invoke-Validator -ProjectPath $wisdomWorkspace -ChangedOnly -BaseBranch 'main'
+$wisdomChecksPassed = $true
+if (-not (Assert-True -Condition ($wisdomResult.ExitCode -ne 0) -FailureMessage 'Changed-only validation should fall back to unscoped validation when .squad\identity\wisdom.md changes.')) { $allChecksPassed = $false; $wisdomChecksPassed = $false }
+if (-not (Assert-Match -Text $wisdomResult.Text -Pattern 'FAIL .*iterations[/\\]002' -FailureMessage '.squad\identity\wisdom.md changes should still validate untouched iterations and surface their failures.')) { $allChecksPassed = $false; $wisdomChecksPassed = $false }
+if (-not (Assert-Match -Text $wisdomResult.Text -Pattern '\[validator\] -ChangedOnly fallback to full validation: global-state-changed' -FailureMessage '.squad\identity\wisdom.md changes should emit the expected full-validation fallback reason.')) { $allChecksPassed = $false; $wisdomChecksPassed = $false }
+if (-not (Assert-Match -Text $wisdomResult.Text -Pattern '\[validator-timing\] mode=unscoped elapsed_ms=\d+ iterations_validated=2 trigger_source=local' -FailureMessage '.squad\identity\wisdom.md changes should emit unscoped timing output.')) { $allChecksPassed = $false; $wisdomChecksPassed = $false }
+if ($wisdomChecksPassed) {
+    Write-Pass '.squad\identity\wisdom.md changes force unscoped validation so untouched iteration failures still surface.'
 }
 
 $fullWorkspace = New-Workspace -WorkspaceName 'full-unscoped'
@@ -288,6 +336,7 @@ $fullResult = Invoke-Validator -ProjectPath $fullWorkspace
 $fullChecksPassed = $true
 if (-not (Assert-True -Condition ($fullResult.ExitCode -ne 0) -FailureMessage 'Unscoped validation should continue to validate every iteration.')) { $allChecksPassed = $false; $fullChecksPassed = $false }
 if (-not (Assert-Match -Text $fullResult.Text -Pattern 'FAIL .*iterations[/\\]002' -FailureMessage 'Unscoped validation should report failures from untouched iterations.')) { $allChecksPassed = $false; $fullChecksPassed = $false }
+if (-not (Assert-Match -Text $fullResult.Text -Pattern '\[validator-timing\] mode=unscoped elapsed_ms=\d+ iterations_validated=2 trigger_source=local' -FailureMessage 'Unscoped validation should emit unscoped timing output.')) { $allChecksPassed = $false; $fullChecksPassed = $false }
 if ($fullChecksPassed) {
     Write-Pass 'Unscoped validation still evaluates all iterations.'
 }
@@ -302,6 +351,7 @@ if (-not (Assert-True -Condition ($fallbackResult.ExitCode -ne 0) -FailureMessag
 if (-not (Assert-Match -Text $fallbackResult.Text -Pattern 'iterations[/\\]001' -FailureMessage 'Base-resolution fallback should validate the touched iteration through the unscoped path.')) { $allChecksPassed = $false; $fallbackChecksPassed = $false }
 if (-not (Assert-Match -Text $fallbackResult.Text -Pattern 'iterations[/\\]002' -FailureMessage 'Base-resolution fallback should validate untouched iterations through the unscoped path.')) { $allChecksPassed = $false; $fallbackChecksPassed = $false }
 if (-not (Assert-Match -Text $fallbackResult.Text -Pattern '\[validator\] -ChangedOnly fallback to full validation: base-ref-unresolved' -FailureMessage 'Base-resolution fallback should emit the expected fallback reason.')) { $allChecksPassed = $false; $fallbackChecksPassed = $false }
+if (-not (Assert-Match -Text $fallbackResult.Text -Pattern '\[validator-timing\] mode=unscoped elapsed_ms=\d+ iterations_validated=2 trigger_source=local' -FailureMessage 'Base-resolution fallback should emit unscoped timing output.')) { $allChecksPassed = $false; $fallbackChecksPassed = $false }
 if ($fallbackChecksPassed) {
     Write-Pass 'Changed-only mode falls back to full validation when the PR base ref cannot be resolved.'
 }
