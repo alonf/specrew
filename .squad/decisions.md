@@ -16955,3 +16955,11 @@ Feature 030 Iteration 001 meets FR-001 through FR-012 on the locked implementati
 - `validate-governance.ps1` scoped to `specs/030-validator-speedup/iterations/001` passes on the review-boundary tree.
 - The human directive not to rerun the Pester implementation suite was preserved because implementation is locked at `eeeb90e`.
 - Retro and later closeout boundaries remain unopened.
+## 2026-05-21T23:49:09Z — Boundary sync: review-signoff
+
+- **Boundary Type**: review-signoff
+- **Feature Ref**: 030-validator-speedup
+- **Iteration Number**: 001
+- **Task ID**: (none)
+- **Auth Commit Hash**: 5498bef442c210d2efc4efde4ff4edfe2cc4c1fd
+- **Recorded At**: 2026-05-21T23:49:09Z
