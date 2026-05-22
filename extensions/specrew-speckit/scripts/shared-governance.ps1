@@ -20,7 +20,7 @@ function Resolve-ProjectPath {
 }
 
 function Get-SpecrewSupportedStateSchemas {
-    return @('v1')
+    return @('v1', 'v2')
 }
 
 function Get-SpecrewStateSchemaVersion {
@@ -859,7 +859,7 @@ function Get-SpecrewCanonicalBoundaryTypes {
     # detect non-canonical strings like 'feature-closed' or 'iteration-closed'
     # that the Crew has been writing into state files when bypassing the canonical
     # Invoke-SpecrewBoundaryStateSync script.
-    return @('specify', 'clarify', 'plan', 'tasks', 'review-signoff', 'retro', 'iteration-closeout', 'feature-closeout')
+    return @('specify', 'clarify', 'plan', 'tasks', 'before-implement', 'review-signoff', 'retro', 'iteration-closeout', 'feature-closeout')
 }
 
 function Get-SpecrewClosureBoundaryTypes {
@@ -870,6 +870,916 @@ function Get-SpecrewClosureBoundaryTypes {
     # active across iteration closeouts (only feature-closeout sets active=false
     # per sync-boundary-state.ps1 line 253).
     return @('feature-closeout')
+}
+
+function Get-SpecrewBoundaryOrder {
+    return @(Get-SpecrewCanonicalBoundaryTypes)
+}
+
+function Normalize-SpecrewCanonicalBoundaryType {
+    param([AllowNull()][string]$Boundary)
+
+    if ([string]::IsNullOrWhiteSpace($Boundary)) {
+        return $null
+    }
+
+    $normalized = $Boundary.Trim().ToLowerInvariant()
+    $normalized = $normalized -replace '\s+', '-'
+    $normalized = $normalized -replace '[^a-z0-9\-]+', '-'
+    $normalized = $normalized.Trim('-')
+
+    switch -Regex ($normalized) {
+        '^specify(?:-boundary)?$' { return 'specify' }
+        '^clarify(?:-boundary)?$' { return 'clarify' }
+        '^plan(?:ning)?(?:-boundary)?$' { return 'plan' }
+        '^tasks?(?:-boundary(?:-entry)?)?$' { return 'tasks' }
+        '^before-implement(?:-boundary(?:-entry)?)?$' { return 'before-implement' }
+        '^implementation(?:-boundary(?:-entry)?)?$' { return 'before-implement' }
+        '^review(?:-boundary)?$' { return 'review-signoff' }
+        '^review-signoff(?:-boundary)?$' { return 'review-signoff' }
+        '^retro(?:spective)?(?:-boundary)?$' { return 'retro' }
+        '^iteration-closeout(?:-boundary)?$' { return 'iteration-closeout' }
+        '^feature-closeout(?:-boundary)?$' { return 'feature-closeout' }
+        default { return $normalized }
+    }
+}
+
+function Test-SpecrewCanonicalBoundaryType {
+    param([AllowNull()][string]$Boundary)
+
+    $normalized = Normalize-SpecrewCanonicalBoundaryType -Boundary $Boundary
+    return (-not [string]::IsNullOrWhiteSpace($normalized) -and $normalized -in (Get-SpecrewCanonicalBoundaryTypes))
+}
+
+function Resolve-SpecrewCanonicalBoundaryType {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Boundary,
+
+        [string]$ParameterName = 'Boundary'
+    )
+
+    $normalized = Normalize-SpecrewCanonicalBoundaryType -Boundary $Boundary
+    if (-not (Test-SpecrewCanonicalBoundaryType -Boundary $normalized)) {
+        throw "$ParameterName value '$Boundary' is not a canonical Specrew boundary. Canonical: $((Get-SpecrewCanonicalBoundaryTypes) -join ', ')."
+    }
+
+    return $normalized
+}
+
+function Get-SpecrewBoundaryEnforcementRecognizedVerdicts {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$RequestedBoundary
+    )
+
+    $canonicalBoundary = Resolve-SpecrewCanonicalBoundaryType -Boundary $RequestedBoundary -ParameterName 'RequestedBoundary'
+    return @(
+        "approved for $canonicalBoundary-boundary entry"
+        "approved for $canonicalBoundary"
+        "rejected for $canonicalBoundary"
+        'parked'
+    )
+}
+
+function Get-SpecrewBoundaryEnforcementSnippet {
+    param([AllowNull()][string]$Value)
+
+    if ([string]::IsNullOrWhiteSpace($Value)) {
+        return $null
+    }
+
+    $normalized = (($Value -replace '\s+', ' ').Trim())
+    if ($normalized.Length -le 200) {
+        return $normalized
+    }
+
+    return $normalized.Substring(0, 200)
+}
+
+function Test-SpecrewBoundaryBypassAttemptSnippet {
+    param([AllowNull()][string]$Snippet)
+
+    if ([string]::IsNullOrWhiteSpace($Snippet)) {
+        return $false
+    }
+
+    $normalized = $Snippet.ToLowerInvariant()
+    return (
+        $normalized -match 'approved\s+for' -or
+        $normalized -match '/speckit\.' -or
+        $normalized -match '\bcontinue\b' -or
+        $normalized -match '\bproceed\b' -or
+        $normalized -match '->'
+    )
+}
+
+function Get-SpecrewStartContextPath {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$ProjectRoot
+    )
+
+    return Join-Path (Resolve-ProjectPath -Path $ProjectRoot) '.specrew\start-context.json'
+}
+
+function Get-SpecrewStartContextState {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$ProjectRoot
+    )
+
+    $path = Get-SpecrewStartContextPath -ProjectRoot $ProjectRoot
+    if (-not (Test-Path -LiteralPath $path -PathType Leaf)) {
+        return [pscustomobject]@{
+            Path    = $path
+            Exists  = $false
+            Schema  = 'v0'
+            Context = [ordered]@{}
+        }
+    }
+
+    $context = Get-Content -LiteralPath $path -Raw -Encoding UTF8 | ConvertFrom-Json -AsHashtable -Depth 24
+    return [pscustomobject]@{
+        Path    = $path
+        Exists  = $true
+        Schema  = Get-SpecrewStateSchemaVersion -State $context -Path $path
+        Context = $context
+    }
+}
+
+function New-SpecrewBoundaryEnforcementState {
+    param(
+        [AllowNull()]
+        [string]$CurrentBoundary
+    )
+
+    $normalizedCurrentBoundary = if ([string]::IsNullOrWhiteSpace($CurrentBoundary)) {
+        $null
+    }
+    else {
+        Resolve-SpecrewCanonicalBoundaryType -Boundary $CurrentBoundary -ParameterName 'CurrentBoundary'
+    }
+
+    return [ordered]@{
+        enabled                  = $true
+        last_authorized_boundary = $normalizedCurrentBoundary
+        pending_next_boundary    = $null
+        verdict_history          = @()
+        bypass_history           = @()
+    }
+}
+
+function Test-SpecrewBoundaryEnforcementStateShape {
+    param(
+        [AllowNull()]
+        [object]$BoundaryEnforcement
+    )
+
+    $issues = New-Object System.Collections.Generic.List[string]
+    if ($null -eq $BoundaryEnforcement) {
+        $issues.Add('boundary_enforcement section is missing.') | Out-Null
+        return $issues.ToArray()
+    }
+
+    $state = if ($BoundaryEnforcement -is [System.Collections.IDictionary]) {
+        $BoundaryEnforcement
+    }
+    else {
+        try {
+            $BoundaryEnforcement | ConvertTo-Json -Depth 24 | ConvertFrom-Json -AsHashtable -Depth 24
+        }
+        catch {
+            $issues.Add('boundary_enforcement section is not object-shaped.') | Out-Null
+            return $issues.ToArray()
+        }
+    }
+
+    foreach ($requiredKey in @('enabled', 'last_authorized_boundary', 'pending_next_boundary', 'verdict_history', 'bypass_history')) {
+        if (-not $state.Contains($requiredKey)) {
+            $issues.Add("boundary_enforcement.$requiredKey is missing.") | Out-Null
+        }
+    }
+
+    if ($issues.Count -gt 0) {
+        return $issues.ToArray()
+    }
+
+    if ($state['enabled'] -isnot [bool]) {
+        $issues.Add('boundary_enforcement.enabled must be a boolean.') | Out-Null
+    }
+
+    foreach ($boundaryField in @('last_authorized_boundary', 'pending_next_boundary')) {
+        $value = $state[$boundaryField]
+        if ($null -ne $value -and -not [string]::IsNullOrWhiteSpace([string]$value)) {
+            $normalized = Normalize-SpecrewCanonicalBoundaryType -Boundary ([string]$value)
+            if ($normalized -notin (Get-SpecrewCanonicalBoundaryTypes)) {
+                $issues.Add("boundary_enforcement.$boundaryField value '$value' is not canonical.") | Out-Null
+            }
+        }
+    }
+
+    foreach ($arrayField in @('verdict_history', 'bypass_history')) {
+        if ($null -eq $state[$arrayField] -or $state[$arrayField] -is [string]) {
+            $issues.Add("boundary_enforcement.$arrayField must be an array.") | Out-Null
+        }
+    }
+
+    foreach ($verdict in @($state['verdict_history'])) {
+        $verdictMap = if ($verdict -is [System.Collections.IDictionary]) {
+            $verdict
+        }
+        else {
+            $verdict | ConvertTo-Json -Depth 12 | ConvertFrom-Json -AsHashtable -Depth 12
+        }
+
+        foreach ($field in @('from_boundary', 'to_boundary', 'verdict_text', 'authorizing_human', 'recorded_at', 'auth_commit_hash')) {
+            if (-not $verdictMap.Contains($field)) {
+                $issues.Add("boundary_enforcement.verdict_history entry is missing '$field'.") | Out-Null
+            }
+        }
+
+        foreach ($field in @('from_boundary', 'to_boundary')) {
+            if ($verdictMap.Contains($field) -and -not [string]::IsNullOrWhiteSpace([string]$verdictMap[$field])) {
+                $normalized = Normalize-SpecrewCanonicalBoundaryType -Boundary ([string]$verdictMap[$field])
+                if ($normalized -notin (Get-SpecrewCanonicalBoundaryTypes)) {
+                    $issues.Add("boundary_enforcement.verdict_history.$field value '$($verdictMap[$field])' is not canonical.") | Out-Null
+                }
+            }
+        }
+    }
+
+    foreach ($bypass in @($state['bypass_history'])) {
+        $bypassMap = if ($bypass -is [System.Collections.IDictionary]) {
+            $bypass
+        }
+        else {
+            $bypass | ConvertTo-Json -Depth 12 | ConvertFrom-Json -AsHashtable -Depth 12
+        }
+
+        foreach ($field in @('session_id', 'reason', 'recorded_at', 'boundary', 'launch_mode', 'agent_response_snippet', 'auth_commit_hash')) {
+            if (-not $bypassMap.Contains($field)) {
+                $issues.Add("boundary_enforcement.bypass_history entry is missing '$field'.") | Out-Null
+            }
+        }
+
+        if ($bypassMap.Contains('reason') -and [string]::IsNullOrWhiteSpace([string]$bypassMap['reason'])) {
+            $issues.Add('boundary_enforcement.bypass_history.reason cannot be blank.') | Out-Null
+        }
+
+        if ($bypassMap.Contains('boundary') -and -not [string]::IsNullOrWhiteSpace([string]$bypassMap['boundary'])) {
+            $normalized = Normalize-SpecrewCanonicalBoundaryType -Boundary ([string]$bypassMap['boundary'])
+            if ($normalized -notin (Get-SpecrewCanonicalBoundaryTypes)) {
+                $issues.Add("boundary_enforcement.bypass_history.boundary value '$($bypassMap['boundary'])' is not canonical.") | Out-Null
+            }
+        }
+
+        if ($bypassMap.Contains('agent_response_snippet') -and -not [string]::IsNullOrWhiteSpace([string]$bypassMap['agent_response_snippet']) -and ([string]$bypassMap['agent_response_snippet']).Length -gt 200) {
+            $issues.Add('boundary_enforcement.bypass_history.agent_response_snippet must be 200 chars or fewer.') | Out-Null
+        }
+    }
+
+    return $issues.ToArray()
+}
+
+function Get-SpecrewBoundaryEnforcementState {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$ProjectRoot
+    )
+
+    $contextState = Get-SpecrewStartContextState -ProjectRoot $ProjectRoot
+    $context = $contextState.Context
+    $boundaryEnforcement = if ($context.Contains('boundary_enforcement')) { $context['boundary_enforcement'] } else { $null }
+    $shapeIssues = @(Test-SpecrewBoundaryEnforcementStateShape -BoundaryEnforcement $boundaryEnforcement)
+
+    return [pscustomobject]@{
+        Path           = $contextState.Path
+        Exists         = $contextState.Exists
+        Schema         = $contextState.Schema
+        Context        = $context
+        State          = $boundaryEnforcement
+        NeedsMigration = ($contextState.Exists -and $contextState.Schema -in @('v0', 'v1') -and $null -eq $boundaryEnforcement)
+        Issues         = $shapeIssues
+    }
+}
+
+function Set-SpecrewBoundaryEnforcementState {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$ProjectRoot,
+
+        [Parameter(Mandatory = $true)]
+        [System.Collections.IDictionary]$BoundaryEnforcement,
+
+        [AllowNull()]
+        [System.Collections.IDictionary]$Context
+    )
+
+    $contextState = Get-SpecrewStartContextState -ProjectRoot $ProjectRoot
+    $effectiveContext = [ordered]@{}
+    if ($null -ne $Context) {
+        foreach ($entry in $Context.GetEnumerator()) {
+            $effectiveContext[$entry.Key] = $entry.Value
+        }
+    }
+    else {
+        foreach ($entry in $contextState.Context.GetEnumerator()) {
+            $effectiveContext[$entry.Key] = $entry.Value
+        }
+    }
+
+    $effectiveContext['schema'] = 'v2'
+    $effectiveContext['boundary_enforcement'] = [ordered]@{
+        enabled                  = [bool]$BoundaryEnforcement['enabled']
+        last_authorized_boundary = if ([string]::IsNullOrWhiteSpace([string]$BoundaryEnforcement['last_authorized_boundary'])) { $null } else { Resolve-SpecrewCanonicalBoundaryType -Boundary ([string]$BoundaryEnforcement['last_authorized_boundary']) -ParameterName 'last_authorized_boundary' }
+        pending_next_boundary    = if ([string]::IsNullOrWhiteSpace([string]$BoundaryEnforcement['pending_next_boundary'])) { $null } else { Resolve-SpecrewCanonicalBoundaryType -Boundary ([string]$BoundaryEnforcement['pending_next_boundary']) -ParameterName 'pending_next_boundary' }
+        verdict_history          = @($BoundaryEnforcement['verdict_history'])
+        bypass_history           = @($BoundaryEnforcement['bypass_history'])
+    }
+
+    if (-not $effectiveContext.Contains('generated_at_utc') -or [string]::IsNullOrWhiteSpace([string]$effectiveContext['generated_at_utc'])) {
+        $effectiveContext['generated_at_utc'] = (Get-Date).ToUniversalTime().ToString('o')
+    }
+
+    Write-Utf8FileAtomic -Path $contextState.Path -Content (([pscustomobject]$effectiveContext | ConvertTo-Json -Depth 24) + [Environment]::NewLine)
+    return $contextState.Path
+}
+
+function Initialize-SpecrewBoundaryEnforcementState {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$ProjectRoot,
+
+        [AllowNull()]
+        [string]$CurrentBoundary
+    )
+
+    $contextState = Get-SpecrewStartContextState -ProjectRoot $ProjectRoot
+    $effectiveCurrentBoundary = if (-not [string]::IsNullOrWhiteSpace($CurrentBoundary)) {
+        $CurrentBoundary
+    }
+    elseif ($contextState.Context.Contains('session_state') -and $null -ne $contextState.Context['session_state'] -and -not [string]::IsNullOrWhiteSpace([string]$contextState.Context['session_state']['boundary_type'])) {
+        [string]$contextState.Context['session_state']['boundary_type']
+    }
+    else {
+        $null
+    }
+
+    $initialized = New-SpecrewBoundaryEnforcementState -CurrentBoundary $effectiveCurrentBoundary
+    Set-SpecrewBoundaryEnforcementState -ProjectRoot $ProjectRoot -BoundaryEnforcement $initialized -Context $contextState.Context | Out-Null
+    return $initialized
+}
+
+function Get-SpecrewBoundaryPolicyClass {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$ProjectRoot,
+
+        [Parameter(Mandatory = $true)]
+        [string]$Boundary
+    )
+
+    $defaultPolicy = 'human-judgment-required'
+    $canonicalBoundary = Resolve-SpecrewCanonicalBoundaryType -Boundary $Boundary -ParameterName 'Boundary'
+    $configPath = Join-Path (Resolve-ProjectPath -Path $ProjectRoot) '.specrew\config.yml'
+    if (-not (Test-Path -LiteralPath $configPath -PathType Leaf)) {
+        return $defaultPolicy
+    }
+
+    try {
+        $lines = @(Get-Content -LiteralPath $configPath -Encoding UTF8)
+    }
+    catch {
+        return $defaultPolicy
+    }
+
+    $inBoundaryEnforcement = $false
+    $inPolicyClasses = $false
+    foreach ($line in $lines) {
+        if ($line -match '^\S') {
+            $inPolicyClasses = $false
+        }
+
+        if ($line -match '^\s*boundary_enforcement:\s*$') {
+            $inBoundaryEnforcement = $true
+            $inPolicyClasses = $false
+            continue
+        }
+
+        if (-not $inBoundaryEnforcement) {
+            continue
+        }
+
+        if ($line -match '^\s{2}policy_classes:\s*$') {
+            $inPolicyClasses = $true
+            continue
+        }
+
+        if (-not $inPolicyClasses) {
+            continue
+        }
+
+        if ($line -match ('^\s{4}' + [regex]::Escape($canonicalBoundary) + ':\s*"?(?<value>[^"#]+?)"?\s*$')) {
+            $value = $Matches['value'].Trim()
+            if ($value -in @('human-judgment-required', 'future-policy')) {
+                return $value
+            }
+
+            return $defaultPolicy
+        }
+    }
+
+    return $defaultPolicy
+}
+
+function Add-SpecrewBoundaryEnforcementLedgerEntry {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$ProjectRoot,
+
+        [Parameter(Mandatory = $true)]
+        [string]$Boundary,
+
+        [Parameter(Mandatory = $true)]
+        [ValidateSet('blocked', 'authorized', 'bypassed', 'migration')]
+        [string]$EnforcementAction,
+
+        [AllowNull()]
+        [string]$CurrentBoundary,
+
+        [AllowNull()]
+        [string]$RequestedBoundary,
+
+        [AllowNull()]
+        [string]$LaunchMode,
+
+        [AllowNull()]
+        [string]$AgentResponseSnippet,
+
+        [AllowNull()]
+        [string]$Reason
+    )
+
+    $featureRef = $null
+    $contextState = Get-SpecrewStartContextState -ProjectRoot $ProjectRoot
+    if ($contextState.Context.Contains('session_state') -and $null -ne $contextState.Context['session_state']) {
+        $featureRef = [string]$contextState.Context['session_state']['feature_ref']
+    }
+
+    $lines = @(
+        ('- **Feature**: {0}' -f (Get-DecisionLedgerOptionalValue -Value $featureRef))
+        ('- **Boundary Type**: {0}' -f (Resolve-SpecrewCanonicalBoundaryType -Boundary $Boundary -ParameterName 'Boundary'))
+        ('- **Current Boundary**: {0}' -f (Get-DecisionLedgerOptionalValue -Value $CurrentBoundary))
+        ('- **Requested Boundary**: {0}' -f (Get-DecisionLedgerOptionalValue -Value $RequestedBoundary))
+        ('- **Enforcement Action**: {0}' -f $EnforcementAction)
+        ('- **Launch Mode**: {0}' -f (Get-DecisionLedgerOptionalValue -Value $LaunchMode))
+        ('- **Agent Response Snippet**: {0}' -f (Get-DecisionLedgerOptionalValue -Value (Get-SpecrewBoundaryEnforcementSnippet -Value $AgentResponseSnippet)))
+        ('- **Reason**: {0}' -f (Get-DecisionLedgerOptionalValue -Value $Reason))
+    )
+
+    Add-DecisionsLedgerEntry -ProjectRoot $ProjectRoot -Title ('Boundary enforcement: {0}' -f (Resolve-SpecrewCanonicalBoundaryType -Boundary $Boundary -ParameterName 'Boundary')) -Lines $lines | Out-Null
+}
+
+function Parse-SpecrewBoundaryVerdict {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$VerdictText,
+
+        [string[]]$CanonicalBoundaries = @(Get-SpecrewCanonicalBoundaryTypes)
+    )
+
+    $trimmedVerdict = if ($null -eq $VerdictText) { '' } else { $VerdictText.Trim() }
+    $lowerVerdict = $trimmedVerdict.ToLowerInvariant()
+
+    if ([string]::IsNullOrWhiteSpace($trimmedVerdict)) {
+        return [pscustomobject]@{
+            Authorized        = $false
+            Action            = 'unrecognized'
+            Boundaries        = @()
+            NormalizedVerdict = $null
+            DirectiveSentinel = 'SPECREW_BOUNDARY_VERDICT_UNRECOGNIZED'
+            FailureReason     = 'Verdict did not match a recognized boundary authorization shape.'
+        }
+    }
+
+    if ($lowerVerdict -eq 'parked') {
+        return [pscustomobject]@{
+            Authorized        = $false
+            Action            = 'parked'
+            Boundaries        = @()
+            NormalizedVerdict = 'parked'
+            DirectiveSentinel = 'SPECREW_BOUNDARY_BLOCKED'
+            FailureReason     = 'Verdict parked the boundary instead of authorizing it.'
+        }
+    }
+
+    if ($lowerVerdict -match '^rejected\s+for\s+(.+)$') {
+        $boundary = Normalize-SpecrewCanonicalBoundaryType -Boundary $Matches[1]
+        if ($boundary -in $CanonicalBoundaries) {
+            return [pscustomobject]@{
+                Authorized        = $false
+                Action            = 'rejected'
+                Boundaries        = @($boundary)
+                NormalizedVerdict = "rejected for $boundary"
+                DirectiveSentinel = 'SPECREW_BOUNDARY_BLOCKED'
+                FailureReason     = 'Verdict explicitly rejected the requested boundary.'
+            }
+        }
+    }
+
+    if ($lowerVerdict -match '^approved\s+for\s+(.+)$') {
+        $payload = $Matches[1].Trim()
+        if ($payload -match '\band\b') {
+            $parts = @($payload -split '\s+and\s+' | ForEach-Object { $_.Trim() } | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
+            $normalizedParts = New-Object System.Collections.Generic.List[string]
+            foreach ($part in $parts) {
+                $normalizedBoundary = Normalize-SpecrewCanonicalBoundaryType -Boundary $part
+                if ($normalizedBoundary -notin $CanonicalBoundaries) {
+                    return [pscustomobject]@{
+                        Authorized        = $false
+                        Action            = 'unrecognized'
+                        Boundaries        = @()
+                        NormalizedVerdict = $null
+                        DirectiveSentinel = 'SPECREW_BOUNDARY_VERDICT_UNRECOGNIZED'
+                        FailureReason     = 'Verdict did not match a recognized boundary authorization shape.'
+                    }
+                }
+
+                if ($normalizedBoundary -notin $normalizedParts) {
+                    $normalizedParts.Add($normalizedBoundary) | Out-Null
+                }
+            }
+
+            return [pscustomobject]@{
+                Authorized        = $true
+                Action            = 'approved'
+                Boundaries        = @($normalizedParts.ToArray())
+                NormalizedVerdict = ('approved for ' + ($normalizedParts -join ' AND '))
+                DirectiveSentinel = 'SPECREW_BOUNDARY_AUTHORIZED'
+                FailureReason     = $null
+            }
+        }
+
+        $boundary = Normalize-SpecrewCanonicalBoundaryType -Boundary $payload
+        if ($boundary -in $CanonicalBoundaries) {
+            return [pscustomobject]@{
+                Authorized        = $true
+                Action            = 'approved'
+                Boundaries        = @($boundary)
+                NormalizedVerdict = "approved for $boundary-boundary entry"
+                DirectiveSentinel = 'SPECREW_BOUNDARY_AUTHORIZED'
+                FailureReason     = $null
+            }
+        }
+    }
+
+    return [pscustomobject]@{
+        Authorized        = $false
+        Action            = 'unrecognized'
+        Boundaries        = @()
+        NormalizedVerdict = $null
+        DirectiveSentinel = 'SPECREW_BOUNDARY_VERDICT_UNRECOGNIZED'
+        FailureReason     = 'Verdict did not match a recognized boundary authorization shape.'
+    }
+}
+
+function Test-SpecrewBoundaryAuthorization {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$ProjectRoot,
+
+        [Parameter(Mandatory = $true)]
+        [string]$CurrentBoundary,
+
+        [Parameter(Mandatory = $true)]
+        [string]$RequestedBoundary,
+
+        [AllowNull()]
+        [string]$SessionId,
+
+        [AllowNull()]
+        [string]$AgentResponseSnippet,
+
+        [switch]$EmergencyBypassActive
+    )
+
+    $currentCanonical = Resolve-SpecrewCanonicalBoundaryType -Boundary $CurrentBoundary -ParameterName 'CurrentBoundary'
+    $requestedCanonical = Resolve-SpecrewCanonicalBoundaryType -Boundary $RequestedBoundary -ParameterName 'RequestedBoundary'
+    $contextState = Get-SpecrewStartContextState -ProjectRoot $ProjectRoot
+    $policyClass = Get-SpecrewBoundaryPolicyClass -ProjectRoot $ProjectRoot -Boundary $requestedCanonical
+    $launchMode = if ($contextState.Context.Contains('launch_mode')) { [string]$contextState.Context['launch_mode'] } else { $null }
+    $snippet = Get-SpecrewBoundaryEnforcementSnippet -Value $AgentResponseSnippet
+    $bypassAttemptDetected = Test-SpecrewBoundaryBypassAttemptSnippet -Snippet $snippet
+
+    $enforcementState = Get-SpecrewBoundaryEnforcementState -ProjectRoot $ProjectRoot
+    if ($enforcementState.NeedsMigration) {
+        throw "Boundary enforcement state is missing from '$($enforcementState.Path)'. Run the migration flow from specrew start before crossing '$requestedCanonical'."
+    }
+
+    if ($enforcementState.Issues.Count -gt 0) {
+        throw "Boundary enforcement state is malformed: $($enforcementState.Issues -join '; ')"
+    }
+
+    if ($EmergencyBypassActive) {
+        Add-SpecrewBoundaryEnforcementLedgerEntry -ProjectRoot $ProjectRoot -Boundary $requestedCanonical -EnforcementAction 'bypassed' -CurrentBoundary $currentCanonical -RequestedBoundary $requestedCanonical -LaunchMode $launchMode -AgentResponseSnippet $snippet -Reason 'Emergency bypass is active for this session.'
+        return [pscustomobject]@{
+            Authorized            = $true
+            Decision              = 'bypassed'
+            CurrentBoundary       = $currentCanonical
+            RequestedBoundary     = $requestedCanonical
+            MatchedVerdict        = $null
+            DirectiveSentinel     = 'SPECREW_BOUNDARY_BYPASS_ACTIVE'
+            BypassAttemptDetected = $bypassAttemptDetected
+            Reason                = 'Emergency bypass is active for this session.'
+            PolicyClass           = $policyClass
+        }
+    }
+
+    $matchedVerdict = $null
+    foreach ($verdict in @($enforcementState.State['verdict_history'])) {
+        $verdictMap = if ($verdict -is [System.Collections.IDictionary]) { $verdict } else { $verdict | ConvertTo-Json -Depth 12 | ConvertFrom-Json -AsHashtable -Depth 12 }
+        $fromBoundary = Normalize-SpecrewCanonicalBoundaryType -Boundary ([string]$verdictMap['from_boundary'])
+        $toBoundary = Normalize-SpecrewCanonicalBoundaryType -Boundary ([string]$verdictMap['to_boundary'])
+        if ($fromBoundary -eq $currentCanonical -and $toBoundary -eq $requestedCanonical) {
+            $matchedVerdict = $verdictMap
+        }
+    }
+
+    if ($null -ne $matchedVerdict) {
+        Add-SpecrewBoundaryEnforcementLedgerEntry -ProjectRoot $ProjectRoot -Boundary $requestedCanonical -EnforcementAction 'authorized' -CurrentBoundary $currentCanonical -RequestedBoundary $requestedCanonical -LaunchMode $launchMode -AgentResponseSnippet $snippet -Reason 'Persisted authorization matched the requested boundary.'
+        return [pscustomobject]@{
+            Authorized            = $true
+            Decision              = 'authorized'
+            CurrentBoundary       = $currentCanonical
+            RequestedBoundary     = $requestedCanonical
+            MatchedVerdict        = [pscustomobject]$matchedVerdict
+            DirectiveSentinel     = 'SPECREW_BOUNDARY_AUTHORIZED'
+            BypassAttemptDetected = $bypassAttemptDetected
+            Reason                = 'Persisted authorization matched the requested boundary.'
+            PolicyClass           = $policyClass
+        }
+    }
+
+    $mutableState = [ordered]@{
+        enabled                  = [bool]$enforcementState.State['enabled']
+        last_authorized_boundary = $enforcementState.State['last_authorized_boundary']
+        pending_next_boundary    = $requestedCanonical
+        verdict_history          = @($enforcementState.State['verdict_history'])
+        bypass_history           = @($enforcementState.State['bypass_history'])
+    }
+    Set-SpecrewBoundaryEnforcementState -ProjectRoot $ProjectRoot -BoundaryEnforcement $mutableState -Context $enforcementState.Context | Out-Null
+    Add-SpecrewBoundaryEnforcementLedgerEntry -ProjectRoot $ProjectRoot -Boundary $requestedCanonical -EnforcementAction 'blocked' -CurrentBoundary $currentCanonical -RequestedBoundary $requestedCanonical -LaunchMode $launchMode -AgentResponseSnippet $snippet -Reason "No persisted authorization matched $currentCanonical -> $requestedCanonical."
+    return [pscustomobject]@{
+        Authorized            = $false
+        Decision              = 'blocked'
+        CurrentBoundary       = $currentCanonical
+        RequestedBoundary     = $requestedCanonical
+        MatchedVerdict        = $null
+        DirectiveSentinel     = 'SPECREW_BOUNDARY_BLOCKED'
+        BypassAttemptDetected = $bypassAttemptDetected
+        Reason                = "No persisted authorization matched $currentCanonical -> $requestedCanonical."
+        PolicyClass           = $policyClass
+    }
+}
+
+function Add-SpecrewBoundaryAuthorization {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$ProjectRoot,
+
+        [Parameter(Mandatory = $true)]
+        [string]$CurrentBoundary,
+
+        [Parameter(Mandatory = $true)]
+        [string]$AuthorizedBoundary,
+
+        [Parameter(Mandatory = $true)]
+        [string]$AuthorizingHuman,
+
+        [Parameter(Mandatory = $true)]
+        [string]$VerdictText,
+
+        [AllowNull()]
+        [string]$AuthCommitHash,
+
+        [AllowNull()]
+        [string]$RecordedAt
+    )
+
+    $currentCanonical = Resolve-SpecrewCanonicalBoundaryType -Boundary $CurrentBoundary -ParameterName 'CurrentBoundary'
+    $authorizedCanonical = Resolve-SpecrewCanonicalBoundaryType -Boundary $AuthorizedBoundary -ParameterName 'AuthorizedBoundary'
+    $boundaryOrder = @(Get-SpecrewBoundaryOrder)
+    $currentIndex = [Array]::IndexOf($boundaryOrder, $currentCanonical)
+    $authorizedIndex = [Array]::IndexOf($boundaryOrder, $authorizedCanonical)
+    if ($authorizedIndex -lt $currentIndex) {
+        throw "Cannot authorize '$authorizedCanonical' from '$currentCanonical' because it moves backward in the canonical order."
+    }
+
+    $parseResult = Parse-SpecrewBoundaryVerdict -VerdictText $VerdictText
+    if (-not $parseResult.Authorized) {
+        throw "Verdict '$VerdictText' did not parse into an authorized boundary verdict."
+    }
+
+    $effectiveRecordedAt = if ([string]::IsNullOrWhiteSpace($RecordedAt)) { (Get-Date).ToUniversalTime().ToString('yyyy-MM-ddTHH:mm:ssZ') } else { $RecordedAt.Trim() }
+    $effectiveAuthCommitHash = if ([string]::IsNullOrWhiteSpace($AuthCommitHash)) {
+        $resolvedHead = @(& git -C (Resolve-ProjectPath -Path $ProjectRoot) rev-parse --verify HEAD 2>$null)
+        if ($LASTEXITCODE -eq 0 -and $resolvedHead.Count -gt 0) { [string]$resolvedHead[0] } else { $null }
+    }
+    else {
+        $AuthCommitHash.Trim()
+    }
+
+    $enforcementState = Get-SpecrewBoundaryEnforcementState -ProjectRoot $ProjectRoot
+    if ($enforcementState.NeedsMigration) {
+        Initialize-SpecrewBoundaryEnforcementState -ProjectRoot $ProjectRoot -CurrentBoundary $currentCanonical | Out-Null
+        $enforcementState = Get-SpecrewBoundaryEnforcementState -ProjectRoot $ProjectRoot
+    }
+
+    if ($enforcementState.Issues.Count -gt 0) {
+        throw "Boundary enforcement state is malformed: $($enforcementState.Issues -join '; ')"
+    }
+
+    $verdictHistory = New-Object System.Collections.Generic.List[object]
+    foreach ($entry in @($enforcementState.State['verdict_history'])) {
+        $verdictHistory.Add($entry) | Out-Null
+    }
+    $verdictHistory.Add([ordered]@{
+        from_boundary     = $currentCanonical
+        to_boundary       = $authorizedCanonical
+        verdict_text      = $VerdictText
+        authorizing_human = $AuthorizingHuman.Trim()
+        recorded_at       = $effectiveRecordedAt
+        auth_commit_hash  = $effectiveAuthCommitHash
+    }) | Out-Null
+
+    $updatedState = [ordered]@{
+        enabled                  = [bool]$enforcementState.State['enabled']
+        last_authorized_boundary = $authorizedCanonical
+        pending_next_boundary    = if ((Normalize-SpecrewCanonicalBoundaryType -Boundary ([string]$enforcementState.State['pending_next_boundary'])) -eq $authorizedCanonical) { $null } else { $enforcementState.State['pending_next_boundary'] }
+        verdict_history          = @($verdictHistory.ToArray())
+        bypass_history           = @($enforcementState.State['bypass_history'])
+    }
+    Set-SpecrewBoundaryEnforcementState -ProjectRoot $ProjectRoot -BoundaryEnforcement $updatedState -Context $enforcementState.Context | Out-Null
+
+    return [pscustomobject]@{
+        AuthorizedBoundary = $authorizedCanonical
+        StoredVerdict      = $VerdictText
+        RecordedAt         = $effectiveRecordedAt
+        DirectiveSentinel  = 'SPECREW_BOUNDARY_AUTHORIZED'
+    }
+}
+
+function Write-SpecrewBoundaryAuthorizationDirective {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$CurrentBoundary,
+
+        [Parameter(Mandatory = $true)]
+        [string]$RequestedBoundary,
+
+        [Parameter(Mandatory = $true)]
+        [string]$DirectiveSentinel,
+
+        [AllowNull()]
+        [pscustomobject]$ParseResult,
+
+        [AllowNull()]
+        [string]$BypassReason
+    )
+
+    $currentCanonical = Resolve-SpecrewCanonicalBoundaryType -Boundary $CurrentBoundary -ParameterName 'CurrentBoundary'
+    $requestedCanonical = Resolve-SpecrewCanonicalBoundaryType -Boundary $RequestedBoundary -ParameterName 'RequestedBoundary'
+    $sentinel = $DirectiveSentinel.Trim()
+    if ($sentinel -notin @('SPECREW_BOUNDARY_BLOCKED', 'SPECREW_BOUNDARY_AUTHORIZED', 'SPECREW_BOUNDARY_BYPASS_ACTIVE', 'SPECREW_BOUNDARY_VERDICT_UNRECOGNIZED')) {
+        throw "DirectiveSentinel '$DirectiveSentinel' is not recognized."
+    }
+
+    switch ($sentinel) {
+        'SPECREW_BOUNDARY_AUTHORIZED' {
+            return @(
+                'SPECREW_BOUNDARY_AUTHORIZED'
+                "Boundary `$currentCanonical -> $requestedCanonical` is authorized."
+            ) -join [Environment]::NewLine
+        }
+        'SPECREW_BOUNDARY_BYPASS_ACTIVE' {
+            return @(
+                'SPECREW_BOUNDARY_BYPASS_ACTIVE'
+                'Boundary enforcement is bypassed for this session.'
+                ('Reason: {0}' -f (Get-DecisionLedgerOptionalValue -Value $BypassReason))
+            ) -join [Environment]::NewLine
+        }
+        'SPECREW_BOUNDARY_VERDICT_UNRECOGNIZED' {
+            return @(
+                'SPECREW_BOUNDARY_VERDICT_UNRECOGNIZED'
+                "Boundary `$currentCanonical -> $requestedCanonical` still requires explicit human authorization."
+                'Recognized verdicts:'
+            ) + @(Get-SpecrewBoundaryEnforcementRecognizedVerdicts -RequestedBoundary $requestedCanonical | ForEach-Object { "- $_" }) -join [Environment]::NewLine
+        }
+        default {
+            return @(
+                'SPECREW_BOUNDARY_BLOCKED'
+                "Boundary `$currentCanonical -> $requestedCanonical` requires explicit human authorization."
+                'Recognized verdicts:'
+            ) + @(Get-SpecrewBoundaryEnforcementRecognizedVerdicts -RequestedBoundary $requestedCanonical | ForEach-Object { "- $_" }) -join [Environment]::NewLine
+        }
+    }
+}
+
+function Add-SpecrewBoundaryBypassRecord {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$ProjectRoot,
+
+        [Parameter(Mandatory = $true)]
+        [string]$SessionId,
+
+        [Parameter(Mandatory = $true)]
+        [string]$Reason,
+
+        [AllowNull()]
+        [string]$Boundary,
+
+        [AllowNull()]
+        [string]$LaunchMode,
+
+        [AllowNull()]
+        [string]$AgentResponseSnippet,
+
+        [AllowNull()]
+        [string]$AuthCommitHash
+    )
+
+    $enforcementState = Get-SpecrewBoundaryEnforcementState -ProjectRoot $ProjectRoot
+    if ($enforcementState.NeedsMigration) {
+        Initialize-SpecrewBoundaryEnforcementState -ProjectRoot $ProjectRoot -CurrentBoundary $null | Out-Null
+        $enforcementState = Get-SpecrewBoundaryEnforcementState -ProjectRoot $ProjectRoot
+    }
+
+    if ($enforcementState.Issues.Count -gt 0) {
+        throw "Boundary enforcement state is malformed: $($enforcementState.Issues -join '; ')"
+    }
+
+    $bypassHistory = New-Object System.Collections.Generic.List[object]
+    foreach ($entry in @($enforcementState.State['bypass_history'])) {
+        $bypassHistory.Add($entry) | Out-Null
+    }
+
+    $canonicalBoundary = if ([string]::IsNullOrWhiteSpace($Boundary)) { $null } else { Resolve-SpecrewCanonicalBoundaryType -Boundary $Boundary -ParameterName 'Boundary' }
+    $bypassHistory.Add([ordered]@{
+        session_id              = $SessionId
+        reason                  = $Reason.Trim()
+        recorded_at             = (Get-Date).ToUniversalTime().ToString('yyyy-MM-ddTHH:mm:ssZ')
+        boundary                = $canonicalBoundary
+        launch_mode             = $LaunchMode
+        agent_response_snippet  = Get-SpecrewBoundaryEnforcementSnippet -Value $AgentResponseSnippet
+        auth_commit_hash        = $AuthCommitHash
+    }) | Out-Null
+
+    $updatedState = [ordered]@{
+        enabled                  = [bool]$enforcementState.State['enabled']
+        last_authorized_boundary = $enforcementState.State['last_authorized_boundary']
+        pending_next_boundary    = $enforcementState.State['pending_next_boundary']
+        verdict_history          = @($enforcementState.State['verdict_history'])
+        bypass_history           = @($bypassHistory.ToArray())
+    }
+    Set-SpecrewBoundaryEnforcementState -ProjectRoot $ProjectRoot -BoundaryEnforcement $updatedState -Context $enforcementState.Context | Out-Null
+    return $updatedState
+}
+
+function Get-SpecrewBoundaryEnforcementSummary {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$ProjectRoot
+    )
+
+    $state = Get-SpecrewBoundaryEnforcementState -ProjectRoot $ProjectRoot
+    if ($state.NeedsMigration -or $state.Issues.Count -gt 0 -or $null -eq $state.State) {
+        return [pscustomobject]@{
+            Enabled                = $false
+            LastAuthorizedBoundary = $null
+            PendingNextBoundary    = $null
+            LastEnforcementAt      = $null
+            EnforcementEventCount  = 0
+            BypassEventCount       = 0
+        }
+    }
+
+    $verdictHistory = @($state.State['verdict_history'])
+    $bypassHistory = @($state.State['bypass_history'])
+    $latestTimestamp = @(
+        $verdictHistory | ForEach-Object { [string]($_.recorded_at) }
+        $bypassHistory | ForEach-Object { [string]($_.recorded_at) }
+    ) | Where-Object { -not [string]::IsNullOrWhiteSpace($_) } | Sort-Object | Select-Object -Last 1
+
+    return [pscustomobject]@{
+        Enabled                = [bool]$state.State['enabled']
+        LastAuthorizedBoundary = $state.State['last_authorized_boundary']
+        PendingNextBoundary    = $state.State['pending_next_boundary']
+        LastEnforcementAt      = $latestTimestamp
+        EnforcementEventCount  = ($verdictHistory.Count + $bypassHistory.Count)
+        BypassEventCount       = $bypassHistory.Count
+    }
 }
 
 function Get-ValidatorGlobalStatePathspecs {

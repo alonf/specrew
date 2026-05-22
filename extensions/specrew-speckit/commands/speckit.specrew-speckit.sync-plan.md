@@ -4,6 +4,19 @@ description: "Persist session-state metadata after /speckit.plan"
 
 # Sync Plan Boundary State
 
+## Boundary authorization gate
+
+Before any boundary-advancing work, run:
+
+```powershell
+. .\.specify\extensions\specrew-speckit\scripts\shared-governance.ps1
+$authorization = Test-SpecrewBoundaryAuthorization -ProjectRoot . -CurrentBoundary 'clarify' -RequestedBoundary 'plan'
+if (-not $authorization.Authorized) {
+  Write-Output (Write-SpecrewBoundaryAuthorizationDirective -CurrentBoundary $authorization.CurrentBoundary -RequestedBoundary $authorization.RequestedBoundary -DirectiveSentinel $authorization.DirectiveSentinel)
+  throw $authorization.Reason
+}
+```
+
 After `/speckit.plan` updates `plan.md`, run:
 
 ```powershell

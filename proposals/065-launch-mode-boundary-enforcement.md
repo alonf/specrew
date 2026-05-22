@@ -1,9 +1,11 @@
 ---
 proposal: 065
 title: Launch-Mode Boundary Enforcement (Tool-Call-Layer Intercept for Lifecycle Boundaries)
-status: candidate
+status: shipped
+shipped_as: feature-039
 phase: phase-2
 estimated-sp: 5-7
+completed-sp: 7.0
 discussion: ad-hoc 2026-05-22 session
 ---
 
@@ -155,9 +157,9 @@ This proposal ships as F-039 (the in-flight feature). Sequencing:
 | 1 | Schema extension | `.specrew/start-context.json` schema, validator rule (Proposal 090's Test-SessionStateBoundaryCanonical) | 0.5 SP |
 | 2 | Authorization helpers | `extensions/specrew-speckit/scripts/shared-governance.ps1` (+ mirror): `Test-SpecrewBoundaryAuthorization`, `Add-SpecrewBoundaryAuthorization`, `Get-SpecrewBoundaryAuthorizationHistory`, `Write-SpecrewBoundaryAuthorizationDirective` | 1.5 SP |
 | 3 | Verdict parser | `extensions/specrew-speckit/scripts/shared-governance.ps1` (+ mirror): `Parse-SpecrewBoundaryVerdict` recognizes the verdict shapes; returns structured `{Action, Boundary, Authorized}` object | 0.75 SP |
-| 4 | Skill-level gate insertion | All 8 sync-* command files + the 4 upstream `/speckit.*` commands. Gate is identical across skills; pre-existing Get-SpecrewBoundaryOrder dictates which boundary comes next | 1.5 SP |
+| 4 | Skill-level gate insertion | All 9 Specrew-managed boundary command files (`sync-specify`, `sync-clarify`, `sync-plan`, `sync-tasks`, `before-implement`, `sync-review-signoff`, `sync-retro`, `sync-iteration-closeout`, `sync-feature-closeout`). Gate is identical across skills; pre-existing Get-SpecrewBoundaryOrder dictates which boundary comes next | 1.5 SP |
 | 5 | Bypass mechanism | `scripts/specrew-start.ps1`: parse `--bypass-boundary-enforcement` + `--reason`; persist bypass state; write audit-trail entries to `.squad/decisions.md` | 1.0 SP |
-| 6 | Tests | `tests/integration/boundary-enforcement.tests.ps1`: every verdict shape recognized; every skill blocks without authorization; bypass requires reason; audit trail integrity; schema-version drift detection | 1.5 SP |
+| 6 | Tests | `tests/integration/launch-mode-boundary-enforcement.tests.ps1`, `tests/integration/session-state-boundary-canonical.tests.ps1`, and `tests/integration/start-command.ps1`: every verdict shape recognized; every skill blocks without authorization; bypass requires reason; audit trail integrity; schema-version drift detection; 2026-05-22 replay evidence | 1.5 SP |
 | 7 | Mirror parity + CHANGELOG + INDEX | both mirrors; entry under `### Added`; proposal status → shipped | 0.5 SP |
 
 **Total**: ~7 SP. Single iteration.
@@ -240,3 +242,7 @@ This composes with **Proposal 069** (Multi-Host Launch Path) — F-039's skill g
 - **Hard-prerequisite-for**: Proposal 063 (F-040), Proposal 069 (Multi-Host Launch Path)
 - **Composes-with**: Proposals 038, 090, 015
 - **INDEX**: file:///C:/Dev/Specrew/proposals/INDEX.md
+
+### Implementation status (2026-05-22)
+
+Implementation-boundary work for F-039 / Iteration 001 is now in progress and review-ready evidence is being prepared on the current tree. This proposal remains **not shipped** until the later review/retro/closeout lifecycle boundaries complete.

@@ -1,3 +1,61 @@
+## 2026-05-22T17:54:24Z — Iteration-Closeout Boundary Sync: F-039 Iteration 001 Complete
+
+- **Decision ID**: iteration-closeout-sync-2026-05-22-f039-001
+- **Type**: boundary state synchronization
+- **Feature**: 039-launch-mode-boundary-enforcement
+- **Iteration**: 001
+- **Authority**: Automatic sync (human authorization at 2026-05-22T17:52:40Z)
+- **Recorded At**: 2026-05-22T17:54:24Z
+- **Commit Hash**: 3a53c46ce4a4154e03c3b9dc802233ddeb1b97aa
+
+### Sync Result
+
+**Status**: ✅ SUCCESSFUL
+
+Iteration 001 advanced to `iteration-closeout` boundary via canonical `sync-boundary-state.ps1`. Session state, boundary enforcement ledger, and iteration artifacts all synchronized successfully.
+
+**Session State Updates**:
+
+- boundary_type: retro → iteration-closeout
+- last_authorized_boundary: review-signoff → iteration-closeout
+- pending_next_boundary: iteration-closeout → null
+- verdict_history: Added retro→iteration-closeout verdict
+
+**Iteration Artifact Updates**:
+
+- Updated `iterations/001/state.md` with iteration-closeout phase
+- Canonical boundary vocabulary updated: iteration-closeout is now active boundary
+- Timestamp updated to 2026-05-22T17:54:24Z
+
+**Validation Result**: PASS
+
+- Scoped governance validation completed successfully
+- No blocker findings
+- Iteration-closeout state is truthful and complete
+
+### Next Action
+
+Feature-closeout remains unopened. A fresh human authorization is required to advance beyond iteration-closeout boundary.
+
+---
+
+## 2026-05-22T17:52:40Z - User Verdict: F-039 Iteration-Closeout-Boundary Authorization
+
+- **Decision ID**: user-verdict-2026-05-22-f039-iteration-closeout-boundary
+- **Type**: boundary authorization
+- **Authority**: Alon Fliess
+- **Recorded At**: 2026-05-22T17:52:40Z
+- **Feature**: 039-launch-mode-boundary-enforcement
+- **Iteration**: 001
+
+### Verdict
+
+approved for iteration-closeout-boundary entry
+
+Feature 039 Iteration 001 delivered the approved Proposal 065 implementation slice with accepted review verdict. Retrospective is complete with three elevated improvement actions. Ready to advance to iteration-closeout boundary for state synchronization. Feature-closeout remains unopened and requires separate authorization.
+
+---
+
 ## 2026-05-22T12:15:20Z — Incident Response: F-039 Unauthorized Boundary Crossing Halt
 
 - **Incident Type**: Unauthorized boundary advancement
@@ -57,6 +115,7 @@ User explicitly requested clarification integration for F-039 (Launch-Mode Bound
 - Spec ready for `/speckit.specrew-speckit.before-plan` validation gate
 
 ---
+
 ## 2026-05-22T00:17:45Z — User Verdict: Feature 030 Iteration 001 Iteration-Closeout Authorization
 
 - **Decision ID**: user-verdict-2026-05-22-feature-030-iter-closeout
@@ -876,6 +935,7 @@ Restored missing Iteration 001 before-plan scaffold for Feature 022 without ente
 ---
 
 ### 2026-05-19T03:58:30Z: Delegated lifecycle runtime evidence
+
 **By:** Squad (Coordinator)
 **Role / Work Item:** Implementer — Feature 023 Legacy-State Read-Tolerance + Schema Migration Discipline implementation phase
 **Requested Agent:** copilot
@@ -927,6 +987,7 @@ Restored missing Iteration 001 before-plan scaffold for Feature 022 without ente
 ---
 
 ### 2026-05-19T03:52:45Z: Delegated lifecycle runtime evidence
+
 **By:** Squad (Coordinator)
 **Role / Work Item:** Planner — Feature 023 Legacy-State Read-Tolerance + Schema Migration Discipline before-implement governance gate
 **Requested Agent:** claude
@@ -958,6 +1019,7 @@ Restored missing Iteration 001 before-plan scaffold for Feature 022 without ente
 ---
 
 ### 2026-05-19T02:31:10Z: Delegated lifecycle runtime evidence
+
 **By:** Squad (Coordinator)
 **Role / Work Item:** Planner — Feature 023 Legacy-State Read-Tolerance + Schema Migration Discipline after-tasks governance gate
 **Requested Agent:** claude
@@ -969,6 +1031,7 @@ Restored missing Iteration 001 before-plan scaffold for Feature 022 without ente
 ---
 
 ### 2026-05-19T02:27:10Z: Delegated lifecycle runtime evidence
+
 **By:** Squad (Coordinator)
 **Role / Work Item:** Planner — Feature 023 Legacy-State Read-Tolerance + Schema Migration Discipline task generation
 **Requested Agent:** claude
@@ -980,6 +1043,7 @@ Restored missing Iteration 001 before-plan scaffold for Feature 022 without ente
 ---
 
 ### 2026-05-19T02:22:30Z: Delegated lifecycle runtime evidence
+
 **By:** Squad (Coordinator)
 **Role / Work Item:** Planner — Feature 023 Legacy-State Read-Tolerance + Schema Migration Discipline planning phase
 **Requested Agent:** claude
@@ -991,6 +1055,7 @@ Restored missing Iteration 001 before-plan scaffold for Feature 022 without ente
 ---
 
 ### 2026-05-19T02:18:00Z: Delegated lifecycle runtime evidence
+
 **By:** Squad (Coordinator)
 **Role / Work Item:** Planner — Feature 023 Legacy-State Read-Tolerance + Schema Migration Discipline before-plan governance gate
 **Requested Agent:** claude
@@ -1002,6 +1067,7 @@ Restored missing Iteration 001 before-plan scaffold for Feature 022 without ente
 ---
 
 ### 2026-05-19T02:14:30Z: Delegated lifecycle runtime evidence
+
 **By:** Squad (Coordinator)
 **Role / Work Item:** Spec Steward — Feature 023 Legacy-State Read-Tolerance + Schema Migration Discipline clarify boundary
 **Requested Agent:** codex
@@ -1013,6 +1079,7 @@ Restored missing Iteration 001 before-plan scaffold for Feature 022 without ente
 ---
 
 ### 2026-05-19T02:09:55Z: Delegated lifecycle runtime evidence
+
 **By:** Squad (Coordinator)
 **Role / Work Item:** Spec Steward — Feature 023 Legacy-State Read-Tolerance + Schema Migration Discipline specify boundary
 **Requested Agent:** codex
@@ -1023,7 +1090,48 @@ Restored missing Iteration 001 before-plan scaffold for Feature 022 without ente
 
 ---
 
- ## 2026-05-18T23:27:46Z — Authorization: retro-boundary
+## 2026-05-22T17:34:04Z — Agent Routing Evidence: F-039 Retro Boundary
+
+- **Work Item**: F-039 retro-boundary
+- **Requested Agent**: copilot
+- **Actual Agent**: retro-facilitator (GitHub Copilot CLI)
+- **Model ID**: claude-sonnet-4.5
+- **Status**: honored
+- **Fallback Reason**: N/A (preferred copilot path active through retro-facilitator-owned retrospective work)
+- **Recorded At**: 2026-05-22T17:34:04Z
+
+### Context
+
+User explicitly authorized retro-boundary entry for Feature 039 Iteration 001. The retrospective must elevate three F-039-specific lessons into concrete improvement actions: the chain-past-plan meta-irony during feature delivery, the multi-round clarify-reconciliation loop and its done-condition lockdown, and the mid-stream pivot to lean prompts. Retro must stop before iteration-closeout.
+
+---
+
+## 2026-05-22T17:34:04Z - User Verdict: F-039 Retro-Boundary Authorization
+
+- **Decision ID**: user-verdict-2026-05-22-f039-retro-boundary
+- **Type**: boundary authorization
+- **Authority**: Alon Fliess
+- **Recorded At**: 2026-05-22T17:34:04Z
+- **Feature**: 039-launch-mode-boundary-enforcement
+- **Iteration**: 001
+
+### Verdict
+
+approved for retro-boundary entry
+
+Worth elevating from drift-log into improvement actions: the meta-irony of F-039 chain-past-plan happening mid-implementation, the multi-round clarify-reconciliation pattern (and the done-condition lockdown that closed it), and the mid-stream pivot to lean prompts - all three are F-039-specific lessons that don't fit a generic retro template but are the most actionable evidence this iteration produced.
+
+---
+
+## 2026-05-22T17:34:04Z: User directive
+
+**By:** Alon Fliess (via Copilot)
+**What:** Elevate three F-039-specific lessons into retro improvement actions: the meta-irony of the chain-past-plan incident occurring mid-implementation, the multi-round clarify-reconciliation pattern and its done-condition lockdown, and the mid-stream pivot to lean prompts.
+**Why:** User request - captured for team memory
+
+---
+
+## 2026-05-18T23:27:46Z — Authorization: retro-boundary
 
 - **Decision ID**: authorization-feature-022-iter-001-retro-boundary
 - **Type**: authorization
@@ -1254,11 +1362,13 @@ Human authorization granted by Alon Fliess to run the combined `/speckit.specrew
 **Status**: 11/12 tasks have valid traceability; 1 task has ambiguous requirements mapping
 
 **Task I1-T012 (Hardening evidence and final traceability review)** flagged for:
+
 - **Issue**: `FR-025` traces to governance decision recording in `.squad/decisions.md`, but the task targets only `hardening-gate.md`
 - **Issue**: `FR-026` traces to pre-planning scaffold creation, but `hardening-gate.md` already exists and the task is a post-test evidence activity
 - **Issue**: `SC-003` and `SC-004` (setup/refresh delivery outcomes) map more directly to `I1-T008`/`I1-T009` than to an evidence-recording task
 
 **Validator recommendation**: Correct `I1-T012` traceability before execution by:
+
 - Either retargeting the task to explicitly include `.squad/decisions.md` updates if `FR-025` is intended
 - Or removing `FR-025` from the Trace field
 - Remove or restate `FR-026` as pre-planning scope
@@ -1273,10 +1383,12 @@ Human authorization granted by Alon Fliess to run the combined `/speckit.specrew
 **Finding**: The active iteration artifacts remain at the "tasks-complete boundary", not the "implementation authorization boundary".
 
 **Blocker**: `.squad/decisions.md` currently records only `/speckit.tasks` authorization and explicitly states:
+
 - "Human review of the tasks-complete artifact set before implementation"
 - "No implementation boundary has been opened"
 
 **What is ready**:
+
 - Active iteration is correctly scoped to Iteration 001 only
 - Phase 1 distinction confirmed (no Phase 2 scope)
 - Hardening gate exists and covers Phase 1 quality bar with `ready` verdict
@@ -1286,6 +1398,7 @@ Human authorization granted by Alon Fliess to run the combined `/speckit.specrew
 ## Validator Gaps Observed
 
 Per the human authorization scope:
+
 1. **Feature-level vs iteration-level tasks.md location** ✅ Verified — only iteration-scoped `tasks.md` exists; no competing feature-level artifact
 2. **Baseline role alignment** ✅ Verified — Spec Steward, Implementer, Reviewer mappings consistent with governance table
 3. **FR/SC traceability completeness** ⚠ One task (`I1-T012`) has ambiguous mapping requiring human disposition
@@ -1476,6 +1589,7 @@ Feature 021 is authorized to begin. Specification phase completed. All artifacts
 ## Specification Content
 
 Seven user stories across five pillars:
+
 - US-001: SKILL.md slash-command definitions
 - US-002: Squad invocation routing (/specrew.where, /specrew.status, etc.)
 - US-003: Discovery and help integration (/specrew.help catalog)
@@ -1485,6 +1599,7 @@ Seven user stories across five pillars:
 - US-007: Cross-platform PowerShell compatibility (Linux/Mac)
 
 Seven decision points preserved from proposal (DP-001 through DP-007):
+
 - DP-001: Full 7-command catalog or subset?
 - DP-002: Raw vs Squad-summarized output handling?
 - DP-003: Naming convention (/specrew.where vs /specrew-where)?
@@ -1496,6 +1611,7 @@ Seven decision points preserved from proposal (DP-001 through DP-007):
 ## Governance Carryforward from Feature 020
 
 Applied Feature 020 governance defaults:
+
 - Repair budget: ~10% iteration capacity for quality assurance
 - Bookkeeping discipline: structured decision recording in .squad/decisions.md
 - Drift labeling: explicit 021- branch prefix + feature ID in all artifacts
@@ -1565,6 +1681,7 @@ Feature 020 officially shipped via PR #225 and merge commit `7ee90d5`. PR #259 i
 ## Summary
 
 Feature 020 closeout is complete. All three phases executed successfully:
+
 - **Phase A**: Feature-level governance artifacts updated, version bumped 0.19.0 → 0.20.0, committed and pushed
 - **Phase B**: PR #225 created, self-reviewed (no unexpected diffs), merged to main using merge commit
 - **Phase C**: Merge verified on main at commit 7ee90d5
@@ -1572,6 +1689,7 @@ Feature 020 closeout is complete. All three phases executed successfully:
 ## Shipped Capability
 
 Session-state durability and in-flight progress tracking enable Squad to:
+
 - Resume accurately after system reboot
 - Track in-flight task progress across boundary events
 - Detect stale session state and alert
@@ -1761,12 +1879,14 @@ Feature 020 Iteration 002 review-boundary has received CHANGES-REQUESTED feedbac
 ### Governance Repair Scope
 
 **Allowed Actions**:
+
 - Repair governance artifacts (decision records, session logs, identity state)
 - Update review-boundary state & transition artifacts
 - Update iteration state documentation
 - Document all changes in `.squad/log/` with timestamps
 
 **Guardrails (DO NOT)**:
+
 - **Production code edits** (none authorized for this repair)
 - **Iteration 001 edits** (locked scope - no modifications)
 - **Feature-level spec/plan/tasks edits** (scope isolation enforced)
@@ -1884,7 +2004,6 @@ Repair Attempt N (Test Identity: <test_id>)
 
 ---
 
-
 # Decision: Scribe Feature 020 Iteration 002 3-Cycle Repair Budget & Drift-Log Policy
 
 **Date**: 2026-05-24T00:11:00Z  
@@ -1955,7 +2074,6 @@ Repair Attempt N (Test Identity: <test_id>)
 
 ---
 
-
 # Decision: Implementer Feature 020 Iteration 002 Bounded Repair for Cross-Worktree Switch-Parameter Failure
 
 **Date**: 2026-05-24T00:10:00Z  
@@ -1973,12 +2091,14 @@ Feature 020 Iteration 002 is currently in active authorized implementation under
 **Authorize bounded repair for cross-worktree switch-parameter failure within Iteration 002 execution lane.**
 
 ### Primary Work Authorization
+
 - Push current in-flight work to origin first (establish truth baseline before repair)
 - Repair cross-worktree parameter-binding bug blocking switch-parameter invocation
 - Rerun required test suites after repair
 - Continue authorized Iteration 002 permissive implementation run
 
 ### Guardrails (Scope Boundaries)
+
 - **Do NOT edit** Iteration 001 artifacts or scope
 - **Do NOT edit** feature-level spec/plan/tasks files
 - **Do NOT enter** Iteration 002 review/closeout boundary (stop at execution completion)
@@ -2008,7 +2128,6 @@ Feature 020 Iteration 002 is currently in active authorized implementation under
 
 ---
 
-
 # Decision: Reviewer Feature 020 Iteration 001 Scope-Correction Reauthorization for Review-Verdict-Signoff Rerun
 
 **Date**: 2026-05-22  
@@ -2026,11 +2145,13 @@ Feature 020 Iteration 001 review cycle hit a scope mismatch when the prior Revie
 **Re-authorize Feature 020 Iteration 1 review-verdict-signoff with corrected scope boundary and runtime evidence.**
 
 Iteration 1 Authoritative Scope: FR-001..005, FR-015..020, FR-025..028
+
 - **Pillar 1** (boundary-event state sync): FR-001, FR-002, FR-015, FR-016, FR-017
 - **Pillar 4** (stale-state detection): FR-003, FR-004, FR-018, FR-019, FR-020
 - **Scope Addition 1** (module-vs-project version check): FR-025, FR-026, FR-027, FR-028
 
 Explicitly Deferred to Iteration 2:
+
 - FR-006..014 (design, planning, and infrastructure features)
 - FR-021..024 (welcome-back prompt flow)
 - FR-029 (PSGallery latest-version check)
@@ -2063,7 +2184,6 @@ The prior Reviewer's catch was correct. The human has now repaired the authoriza
 
 ---
 
-
 # Decision: Implementer Phase 0 Chore—Feature Closeout Dashboard Update
 
 **Date**: 2026-05-17  
@@ -2079,6 +2199,7 @@ The Implementer role manages `.squad\identity\now.md` updates across feature lif
 **Treat `extensions\specrew-speckit\scripts\scaffold-feature-closeout-dashboard.ps1` (plus the mirrored `.specify` copy) as the canonical feature-closeout update point for `.squad\identity\now.md`.**
 
 For all future feature closeouts:
+
 - Post-closeout `.squad\identity\now.md` update → trigger at `scaffold-feature-closeout-dashboard.ps1` execution
 - Rationale: Existing dashboard docs and integration coverage already define this script as the feature-closeout scaffold
 
@@ -2112,6 +2233,7 @@ Feature 020 spec TG-002 assigns task ownership to "Distribution Owner" for versi
 **Map "Distribution Owner" responsibility to existing Implementer baseline role.**
 
 For Feature 020 planning and all future planning:
+
 - Tasks assigned to "Distribution Owner" in spec text → assigned to **Implementer** in iteration plans
 - No new role added to `.specrew/role-assignments.yml`
 
@@ -2127,6 +2249,7 @@ For Feature 020 planning and all future planning:
 ## Implementation Guidance for Planner
 
 When generating iteration plans for Feature 020:
+
 - User Story 4 (module version check): assign all tasks to **Implementer**
 - User Story 5 (PSGallery check): assign all tasks to **Implementer**
 - Do NOT create "Distribution Owner" role in role-assignments.yml
@@ -2143,7 +2266,6 @@ When generating iteration plans for Feature 020:
 - Role definitions: `.specrew/role-assignments.yml` (five baseline roles)
 - Precedent: Feature 019 iteration plans (`specs/019-specrew-distribution-module/iterations/001/plan.md`)
 - Related spec requirements: FR-025 through FR-035 (version checks), TG-002 (ownership statement)
-
 
 # Decision: Feature 020 Before-Implement Repair Runtime Evidence
 
@@ -2179,7 +2301,6 @@ Apply the bounded repair set for GAP-BI-001 through GAP-BI-006 without widening 
 
 Request explicit human authorization to rerun `speckit.specrew-speckit.before-implement` on the repaired tree.
 
-
 # Decision: Feature 019 T006 Self-Signed Certificate Validity Period
 
 **Date**: 2026-05-16T16:23:58Z  
@@ -2198,11 +2319,13 @@ Resolve T006: choose the self-signed certificate validity period so the future p
 **Approved option**: **Option A — 1-year validity for the self-signed module-signing certificate**
 
 **Approved certificate rule**:
+
 - Generate the certificate with `-NotAfter (Get-Date).AddYears(1)`.
 - Store the replacement PFX material in GitHub Actions secrets (`SIGNING_CERT_BASE64`, `SIGNING_CERT_PASSWORD`).
 - Keep migration to a real code-signing certificate explicitly out of scope for Iteration 001.
 
 **Approved renewal procedure**:
+
 1. Generate a new self-signed code-signing certificate with `AddYears(1)`.
 2. Export it, Base64-encode it, and update the GitHub Actions signing secrets.
 3. Run the publish workflow's dry-run path to verify signing succeeds without performing a real publish.
@@ -2210,6 +2333,7 @@ Resolve T006: choose the self-signed certificate validity period so the future p
 5. Record the renewal date and calendar reminder.
 
 **Compose-with note for T005**:
+
 - Pair certificate renewal with the annual PSGallery API-key review in one release-credential operations event.
 
 ## Rationale
@@ -2272,7 +2396,6 @@ The earlier review-boundary request pasted an FR range from memory that was wide
 
 Preserve in retro context: the prior authorization paste had an FR-range memory error, and the reviewer correctly caught the authorization-versus-plan drift instead of softening the verdict.
 
-
 # Decision: Feature 019 T005 API-Key Rotation Guidance
 
 **Date**: 2026-05-16T16:10:41Z  
@@ -2291,19 +2414,23 @@ Resolve T005: capture the approved PSGallery API-key rotation cadence and lightw
 **Approved option**: **Option A — document lightweight PSGallery API-key rotation cadence now**
 
 **Approved cadence**:
+
 - **Routine rotation**: annual review/rotation at the calendar anniversary of key creation
 - **Triggered rotation**: maintainer transition, suspected leak, unexplained publish-auth failure, or an annual review finding that the key is older than 12 months
 
 **Approved lightweight procedure**:
+
 1. Generate a new API key on PowerShellGallery.com scoped to the Specrew module with an appropriate expiration.
 2. Update the GitHub Actions secret (`PSGALLERY_API_KEY` or equivalent) to the new value.
 3. Trigger a dry-run publish through the workflow's manual-dispatch path to confirm authentication without performing a real publish.
 4. Revoke the old API key only after step 3 confirms the new key works.
 
 **Compose-with note for T006**:
+
 - Pair the annual API-key review with certificate renewal review in a single annual operations event.
 
 **Non-blocking status**:
+
 - T005 remains documentation-only and does **not** block downstream implementation.
 
 ## Rationale
@@ -2333,7 +2460,6 @@ T005 is now complete for Iteration 001 and anchored in the maintainer docs. Down
 
 Present the T006 human-decision handoff, including the validity-period options, recommendation, tradeoffs, and blocked downstream work, then pause without auto-deciding T006.
 
-
 # Decision: Feature 019 T004 Module Loader Structure
 
 **Date**: 2026-05-16T16:03:28Z  
@@ -2352,12 +2478,14 @@ Resolve T004: choose the `Specrew.psm1` loader structure so Pillar 1 can impleme
 **Approved option**: **Option A — explicit dot-sourcing for `Specrew.psm1`**
 
 **Approved loader shape**:
+
 - `$ScriptRoot = $PSScriptRoot`
 - Load internal helpers first, then entry-point commands in an explicit reviewed order
 - Use `Join-Path` for every path segment
 - Export the FR-002 public command surface; alias bindings are allowed if the implementation convention needs them
 
 **Approved ordering guidance**:
+
 1. `scripts/internal/dashboard-renderer.ps1`
 2. `scripts/specrew.ps1`
 3. `scripts/specrew-init.ps1`
@@ -2368,10 +2496,12 @@ Resolve T004: choose the `Specrew.psm1` loader structure so Pillar 1 can impleme
 8. `scripts/specrew-where.ps1`
 
 **Compose-with note**:
+
 - Loader-level path construction is cross-platform-safe now because it uses `Join-Path`.
 - The scripts themselves still have broader embedded `\` cleanup deferred to Iteration 002.
 
 **Future suggestion captured, not implemented now**:
+
 - Add a validator soft warning for top-level `scripts/` files that are not enumerated in both the loader and `FileList`.
 
 ## Rationale
@@ -2402,7 +2532,6 @@ T004 is now resolved for Iteration 001. Pillar 1 has an approved deterministic l
 
 Present the T005 human-decision handoff, keeping its documentation-only / non-blocking status explicit and leaving T006 unresolved.
 
-
 # Decision: Feature 019 T003 Cross-Platform Test Automation Depth
 
 **Date**: 2026-05-16T15:54:03Z  
@@ -2423,6 +2552,7 @@ Resolve T003: choose the Iteration 001 cross-platform verification depth for FR-
 **Approved Iteration 001 manual checklist artifact**: `specs/019-specrew-distribution-module/iterations/001/quality/cross-platform-manual-checklist.md`
 
 **Checklist deliverables to capture later (not yet executed in this decision step)**:
+
 1. `Test-ModuleManifest` passes for `Specrew.psd1`
 2. `Import-Module ./Specrew.psd1 -Force` succeeds
 3. Exported function set matches FR-002 (`specrew`, `specrew-init`, `specrew-start`, `specrew-where`, `specrew-review`, `specrew-team`, `specrew-update`)
@@ -2434,6 +2564,7 @@ Resolve T003: choose the Iteration 001 cross-platform verification depth for FR-
 9. Publish-Module workflow validates locally in dry-run/manual gate mode and does not perform a real PSGallery publish
 
 **Explicit Iteration 002 deferrals**:
+
 - `.github/workflows/cross-platform-validation.yml` with `ubuntu-latest` matrix
 - macOS testing
 - 104+ embedded-backslash sweep across existing PowerShell scripts
@@ -2468,7 +2599,6 @@ T003 is now resolved for Iteration 001. The feature keeps its full cross-platfor
 
 Present the T004 human-decision handoff, keeping the compose-with constraint explicit: loader path construction only needs to be Windows-correct in Iteration 001; Iteration 002 expands that surface to cross-platform edge cases.
 
-
 # Decision: Feature 019 T002 Conflict-Marker Format
 
 **Date**: 2026-05-16T15:45:15Z  
@@ -2497,11 +2627,13 @@ Resolve T002: choose the conflict-marker format for template-refresh conflicts s
 ```
 
 **Compose-with note for later implementation**:
+
 - After `specrew update` detects conflicts, the next `specrew start` should parse `.conflict` artifacts.
 - Squad should walk the user through each conflict interactively with `accept-new`, `keep-user`, or `manual-resolve`.
 - After resolution, Squad should write the resolved destination file and remove the corresponding `.conflict` artifact.
 
 **Iteration 2 follow-up**:
+
 - Verify Linux/macOS clean reading with LF and no BOM during the cross-platform hardening pass.
 
 ## Rationale
@@ -2533,7 +2665,6 @@ T002 is now resolved for Iteration 001. Pillar 4 conflict artifacts now have an 
 
 Present the T003 human-decision handoff, then pause without starting T040/T041 or any wider cross-platform work.
 
-
 # Decision: Feature 019 T001 Module Manifest File-List Strategy
 
 **Date**: 2026-05-16T15:38:37Z  
@@ -2552,6 +2683,7 @@ Resolve T001: decide the `Specrew.psd1` `FileList` strategy for bundled module c
 **Approved option**: **Option 1 — Explicit `FileList` allowlist for `Specrew.psd1`**
 
 **Allowed composition sketch for later implementation**:
+
 - `Specrew.psd1`
 - `Specrew.psm1`
 - `scripts/*.ps1`
@@ -2588,7 +2720,6 @@ T001 is now resolved for Iteration 001. Pillar 1 and Pillar 2 can rely on an exp
 
 Stop at T002 and obtain a human decision on conflict-marker format before continuing Phase 0.
 
-
 # Decision: Feature 019 Before-Implement Quality Gate
 
 **Date**: 2026-05-16  
@@ -2602,6 +2733,7 @@ Stop at T002 and obtain a human decision on conflict-marker format before contin
 Executed before-implement quality gate for Feature 019 Specrew Distribution Module. Applied 6 required quality lenses to spec.md, plan.md, and tasks.md artifacts.
 
 **Artifacts Evaluated**:
+
 - Spec: C:\Dev\Specrew\specs\019-specrew-distribution-module\spec.md (5 User Stories, 32 Functional Requirements)
 - Plan: C:\Dev\Specrew\specs\019-specrew-distribution-module\plan.md (5-pillar architecture, 14 SP estimate)
 - Tasks: C:\Dev\Specrew\specs\019-specrew-distribution-module\tasks.md (39 tasks across 6 phases)
@@ -2610,6 +2742,7 @@ Executed before-implement quality gate for Feature 019 Specrew Distribution Modu
 ## Quality Lens Verdicts
 
 ### Lens 1: Constitution Alignment — ✅ PASS
+
 - Principle I (Spec Is Authoritative): Plan tracks back to approved spec FRs; no ad-hoc scope detected
 - Principle II (Layered System): All changes are Spec Kit layer (module packaging, scripts); no Squad layer violations
 - Principle IX (Mandatory Traceability): All 39 tasks have explicit FR/US traceability; tasks.md Traceability Map complete
@@ -2619,6 +2752,7 @@ Executed before-implement quality gate for Feature 019 Specrew Distribution Modu
 - Principle XXI (Verification Is Mandatory): Phase 1 quality gates defined; user story acceptance scenarios planned
 
 ### Lens 2: Traceability Completeness — ✅ PASS
+
 - All 5 User Stories map to specific FRs with bidirectional traceability
 - All 32 Functional Requirements have task coverage across 6 phases (Phase 0-5, Final Validation)
 - All 39 tasks include explicit FR/US trace annotations in parenthetical (Trace: ...) format
@@ -2627,6 +2761,7 @@ Executed before-implement quality gate for Feature 019 Specrew Distribution Modu
 - Success criteria SC-001 through SC-006 map to specific user stories and validation tasks T050-T056
 
 ### Lens 3: Cross-Platform Coverage — ✅ PASS
+
 - FR-030 mandates Join-Path for all path construction; WSL verification task explicitly planned
 - FR-031 requires testing on Windows, Linux (Ubuntu), and macOS before every release
 - FR-032 mandates PSEdition = Core to enforce PowerShell 7+ cross-platform requirement
@@ -2636,6 +2771,7 @@ Executed before-implement quality gate for Feature 019 Specrew Distribution Modu
 - US5 includes specific acceptance scenarios for forward-slash paths on Linux, macOS path display, and PS 5.1 install failure
 
 ### Lens 4: Test Strategy Coverage — ✅ PASS
+
 - Pillar 1 (Module Packaging): T009 validates manifest with Test-ModuleManifest; manual test checklist planned
 - Pillar 2 (Resource Bundling): T014 validates exclusions and size estimate; directory structure verification planned
 - Pillar 3 (Init Refactor): T019 implements bootstrap validation; integration test for module-path init planned
@@ -2646,6 +2782,7 @@ Executed before-implement quality gate for Feature 019 Specrew Distribution Modu
 - Plan Phase 1 Quality Planning documents 6 required quality gates with evidence sources and status
 
 ### Lens 5: Validator Integration Sketch — ✅ PASS
+
 - Plan defines drift detection via Specrew-Speckit validators during /speckit.implement boundary
 - Drift-detection mechanism includes: (1) Specrew-Speckit validators, (2) integration test failures, (3) manual PSGallery publish log review
 - Validators will check spec-to-task traceability on every task completion during implementation
@@ -2653,6 +2790,7 @@ Executed before-implement quality gate for Feature 019 Specrew Distribution Modu
 - Plan Phase 2 Quality Planning explicitly defers hardening gate and specialist review; rationale documented (distribution infrastructure focus)
 
 ### Lens 6: Security Baseline — ✅ PASS
+
 - FR-028 mandates PSGallery API key stored as GitHub Actions secret (name: PSGALLERY_API_KEY)
 - FR-025 mandates self-signed certificate stored as GitHub Actions secret; T038 implements signing step
 - T042 explicitly plans GitHub Actions secrets configuration (PSGALLERY_API_KEY, SIGNING_CERT_BASE64, SIGNING_CERT_PASSWORD)
@@ -2664,11 +2802,13 @@ Executed before-implement quality gate for Feature 019 Specrew Distribution Modu
 ## Artifact Polishing Applied
 
 **T002 (Conflict-Marker Format)**:
+
 - Added explicit options: (A) Git-style, (B) Custom, (C) Structured comments
 - Added implications: Squad coordinator parser dependency, T031 implementation impact
 - Rationale: Ensures design-question task has clear options and implications for human decision-making
 
 **T005 (API-Key Rotation Guidance)**:
+
 - Added explicit non-blocking statement: "This is a documentation-only task that does not block any implementation work"
 - Clarified parallel execution capability with Pillars 1-5 or post-v1 deferral option
 - Rationale: Removes ambiguity about blocking behavior for design-question task
@@ -2692,7 +2832,8 @@ All 6 design-question tasks (Phase 0) properly framed:
 
 **Overall Verdict**: ✅ **READY** (with deferral)
 
-**Rationale**: 
+**Rationale**:
+
 - Feature 019 focuses on distribution infrastructure (module packaging, install/update mechanics, CI/CD automation) rather than runtime business logic or security-sensitive data processing
 - Plan Phase 2 Hardening and Specialist Review Planning explicitly documents deferral rationale: "This feature focuses on distribution infrastructure... rather than runtime business logic or security-sensitive data processing. Hardening focus will return in future features that introduce complex state machines, external integrations, or user-data handling."
 - Phase 1 quality gates are sufficient for v1: manual cross-platform verification, integration test scenarios, PSGallery test-gallery dry-run, GitHub Actions workflow validation
@@ -2710,6 +2851,7 @@ All 6 design-question tasks (Phase 0) properly framed:
 ## Confirmation of Scope Boundaries
 
 **In Scope** (completed at this boundary):
+
 - ✅ Applied 6 pre-implementation quality lenses to spec.md, plan.md, tasks.md
 - ✅ Evaluated hardening-gate readiness and produced explicit READY recommendation
 - ✅ Performed necessary artifact polishing (T002 options/implications, T005 non-blocking clarification)
@@ -2718,6 +2860,7 @@ All 6 design-question tasks (Phase 0) properly framed:
 - ✅ Appended dated decisions.md entry with runtime evidence and lens verdicts
 
 **Out of Scope** (explicitly not started):
+
 - ❌ Hardening-gate-and-implementation-auth boundary (not authorized)
 - ❌ Implementation work (no code changes to scripts/ or extensions/)
 - ❌ Validator additions (no changes to specrew-speckit extension)
@@ -2730,7 +2873,6 @@ Feature 019 before-implement quality gate passed with READY verdict. All 6 quali
 ## Next Action
 
 **Do not advance to hardening-gate-and-implementation-auth or implementation**. Boundary commit will be created and pushed to origin/019-specrew-distribution-module. Await explicit human authorization before advancing to the next boundary.
-
 
 # Decision: Feature 019 Hardening-Gate and Implementation Authorization
 
@@ -2748,10 +2890,12 @@ Human approver **Alon Fliess** explicitly authorized the hardening-gate-and-impl
 **Authorized scope**: Feature 019 Iteration 001 — the 39 tasks in tasks.md across Phase 0 T001-T006 + Pillars 1-5 + final validation
 
 **Authorized actions**:
+
 1. Hardening-gate sign-off for Feature 019 Iteration 001 pre-implementation readiness
 2. Implementation authorization to proceed with task execution via `/speckit.implement`
 
 **Critical constraints**:
+
 - T001-T006 (Phase 0 design-question tasks) remain **unresolved by design** and MUST surface during implementation via pause-for-decision handling
 - Implementer agent must NOT auto-decide T001-T006; each requires explicit human decision with options and implications review
 - Implementation must stop after this boundary completion; do NOT advance to `/speckit.implement` without separate explicit authorization
@@ -2806,10 +2950,12 @@ All 6 pre-implementation quality lenses carried forward from before-implement bo
 ## Runtime Evidence
 
 **Hardening-gate artifacts created**:
+
 - `specs/019-specrew-distribution-module/iterations/001/quality/hardening-gate.md` — pre-implementation hardening gate with READY verdict, 6 quality lens verdicts carried forward, Phase 0 design-question constraints, risk-tier verification focus, stack-ready analysis, and explicit Phase 2 hardening deferral
 - Iteration directory structure scaffolded: `specs/019-specrew-distribution-module/iterations/001/quality/`
 
 **State updates**:
+
 - `.squad/identity/now.md` — updated to reflect hardening-gate-and-implementation-auth boundary complete, next action requires explicit human authorization for `/speckit.implement`
 - `.squad/decisions.md` — this authorization record appended
 
@@ -2827,9 +2973,8 @@ All 6 pre-implementation quality lenses carried forward from before-implement bo
 Feature 019 hardening-gate-and-implementation-auth boundary complete. Pre-implementation readiness confirmed with READY verdict. Implementation authorization audit record exists with human approver, timestamp, scope, and constraints. T001-T006 design-question tasks remain unresolved by design and will surface during implementation execution. Boundary artifacts committed and pushed to origin/019-specrew-distribution-module (fa56928). /speckit.implement has NOT started and requires separate explicit human authorization before task execution.
 
 ## Next Action
- 
- Hardening-gate-and-implementation-auth boundary is complete. Await explicit human authorization for /speckit.implement only to begin task execution.
 
+ Hardening-gate-and-implementation-auth boundary is complete. Await explicit human authorization for /speckit.implement only to begin task execution.
 
 # Decision: Feature 019 Boundary 6 Feature-Closeout Authorization
 
@@ -2846,12 +2991,14 @@ Human approver **Alon Fliess** explicitly authorized **Boundary 6 — feature-cl
 **Authorized starting ref**: `f2d77ee` — the iteration-closeout finalization commit on branch `019-specrew-distribution-module`
 
 **Authorized execution sequence**:
+
 1. Repair the pre-existing Iteration 001 hardening-gate over-claim so `iterations/001` transitions to PASS.
 2. Apply the Rule 15 version bump from `0.18.0` to `0.19.0` across all required version-tracked files.
 3. Create the feature-level closeout artifact and update `.squad/identity/now.md` plus `.squad/decisions.md` to reflect the feature-closed state.
 4. Create the PR from `019-specrew-distribution-module` to `main` and stop after surfacing the PR URL.
 
 **Hard-stop conditions**:
+
 - Validator fail after a fix attempt
 - Test failure in the executed validation lanes
 - Missing Rule 15 version target file
@@ -2860,6 +3007,7 @@ Human approver **Alon Fliess** explicitly authorized **Boundary 6 — feature-cl
 - More than 10 consecutive reconciliation edits without resolution
 
 **Out of scope**:
+
 - Script or module logic changes outside the required Rule 15 version field updates
 - Corpus graduation into `.specrew/quality/known-traps.md`
 - PR merge
@@ -2874,7 +3022,6 @@ Human approver **Alon Fliess** explicitly authorized **Boundary 6 — feature-cl
 ## Next Action
 
 Execute the Boundary 6 feature-closeout pass in sequence under the authorized stop-at-PR-creation discipline, then report the phase commit hashes, validator transitions, final validator result, and PR URL.
-
 
 # Decision: Feature 015 Review-Boundary Commit
 
@@ -2918,7 +3065,6 @@ The review boundary is now durably persisted to git with explicit verify-and-han
 
 Do not open retrospective or claim iteration closeout from this accepted review boundary alone. Await separate human authorization before opening the retrospective for Feature 015, iteration 002 (per review.md Next Action section).
 
-
 # Implementer Decision: Feature 015 release-boundary handling
 
 **Date**: 2026-05-13  
@@ -2937,7 +3083,6 @@ advisory-only and preserves the existing tag target without any rewrite.
 - This keeps FR-010 aligned with the no-force / no-history-rewrite constraint.
 - It preserves historical documentary value for retroactive tags.
 - It gives future release work a concrete rule for duplicate-tag scenarios.
-
 
 # Planning Artifact Repair: Feature 015 Consistency
 
@@ -2976,7 +3121,6 @@ advisory-only and preserves the existing tag target without any rewrite.
 
 Feature 015 planning artifacts are now repair-complete and ready for implementation authorization (when approved by human reviewer).
 
-
 # Planning Decision: Feature 015 Iteration 002 Scaffold
 
 **Decision ID**: planner-feature015-iteration002-plan  
@@ -3012,12 +3156,14 @@ All seven scope items are represented in the task decomposition with explicit FR
 ## Artifacts Created
 
 Planning boundary artifacts:
+
 - `specs/015-public-readiness-pass/iterations/002/plan.md` — canonical iteration plan with 15 tasks, concurrency rationale, effort model
 - `specs/015-public-readiness-pass/iterations/002/state.md` — iteration state artifact with planning-phase posture
 - `specs/015-public-readiness-pass/iterations/002/drift-log.md` — zero-drift planning assessment with seven execution-monitoring areas
 - `specs/015-public-readiness-pass/iterations/002/quality/hardening-gate.md` — pre-implementation quality concerns with canonical + iteration-specific schema
 
 Governance updates:
+
 - `.squad/identity/now.md` — updated to reflect Iteration 002 planning boundary complete, execution authorization pending
 
 ---
@@ -3025,6 +3171,7 @@ Governance updates:
 ## Key Planning Decisions
 
 ### 1. Effort Scoping: 11.5 Story Points
+
 - Total estimated effort for Iteration 002 is 11.5 story_points
 - Approximately 58% of the 20 story_point capacity ceiling
 - Leaves 8.5 story_points of post-execution buffer for rework if needed
@@ -3032,6 +3179,7 @@ Governance updates:
 - Aligns with the original plan.md estimate of "≈8 story points" with additional reserve for test scaffolding and human verification phases
 
 ### 2. Task Decomposition: 15 Tasks Across Three Workstreams
+
 - **Validator Coverage (T010-T011, T016, T023)**: Test fixtures, Pester coverage, implementation, fixture validation
 - **Release-Truth (T012-T015, T017-T019)**: Version bump, docs, changelog, tags, spec status
 - **Governance Carry-Forward (T020-T021)**: Feature closeout templates and proof deferral
@@ -3040,17 +3188,20 @@ Governance updates:
 Decomposition respects the planning principle of clear ownership and separable workstreams.
 
 ### 3. Hardening-Gate Status: `blocked` Pending Implementation Authorization
+
 - Pre-implementation concerns are mapped to execution-evidence targets
 - All canonical concerns (security, error-handling, idempotency, test-integrity, resilience) are addressed
 - Iteration-specific concerns (changelog-completeness, version-tag-integrity, coordinator-prompt-correctness, status-field-consistency, version-surface-alignment, validator-non-invasiveness) are explicitly monitored
 - Sign-off is reserved for post-implementation; planning-time verdict is `blocked` (procedurally correct; no implementation evidence yet)
 
 ### 4. No Specification Drift
+
 - Planning boundary assessment confirms zero drift between authorized scope (plan.md) and task decomposition
 - All seven FR items appear in task requirements
 - No orphan tasks; all 15 tasks trace to explicit FR or planning-boundary work
 
 ### 5. Iteration 001 Closure is Preserved
+
 - Iteration 001 is marked `complete` in state.md and plan.md; no changes are made to closed iteration artifacts
 - Iteration 002 stands alone as a new planning boundary
 - Feature 015 remains open for future separately authorized work (e.g., public visibility changes)
@@ -3078,15 +3229,19 @@ Decomposition respects the planning principle of clear ownership and separable w
 ## Risk Mitigation
 
 ### Test-Driven Validator Development (T010-T011 → T016)
+
 Validator test fixtures and Pester coverage are planned before implementation to reduce risk of validator behavior deviations. Rationale: Public-readiness detection is a new surface; early test scaffolding ensures fitness before code.
 
 ### Version-Truth Baseline Lock (T012-T013 First)
+
 Version bump and README sync are scheduled before changelog/docs/tags to establish a shared baseline. Rationale: Downstream artifacts (CHANGELOG, tags, docs) reference the canonical version; locking early reduces coordination risk.
 
 ### Human Reviewer Gates (T018, T023)
+
 Two explicit human verification points are scheduled: post-US2 implementation (T018: Pester/analyzer/tags) and pre-polish-close (T023: validator fixture run). Rationale: Complex version/tag/validator work benefits from independent verification.
 
 ### Governance Carry-Forward Proof Deferral (T021)
+
 The Feature Closeout Version Management guidance (T020) is documented as proof-deferred to the next real feature closeout (T021 notes). Rationale: Synthetic proof is less valuable than real feature-close evidence; deferral is explicit in quickstart.md.
 
 ---
@@ -3096,6 +3251,7 @@ The Feature Closeout Version Management guidance (T020) is documented as proof-d
 **For the Coordinator**:
 
 Before granting implementation authorization, verify:
+
 1. ✅ Iteration 002 scope is explicitly authorized in `.squad/identity/now.md`
 2. ✅ All 15 tasks (T010-T024) are present in `plan.md` task table with FR traceability
 3. ✅ Effort total (9.0 story_points) is within capacity
@@ -3112,7 +3268,6 @@ Before granting implementation authorization, verify:
 - Iteration 002 remains in `planning` status until explicit implementation authorization is granted.
 - No `review.md` or `retro.md` placeholders are created; those artifacts are reserved for post-execution phases.
 - All traceability is recorded in the canonical iteration plan (plan.md); this document is a summary for coordination visibility.
-
 
 # Spec Steward Decision: Feature 015 Iteration 002 Planning Authorization and Shipped-Feature Status Reconciliation
 
@@ -3142,6 +3297,7 @@ Align the authoritative Feature 015 planning surfaces (spec.md, plan.md, tasks.m
 **Decision**: Use status label `Complete` as the canonical shipped-feature spec status, aligning with spec 013 (validator hardening) as the standard label for shipped and fully delivered features.
 
 **Rationale**:
+
 - Spec 013 (validator hardening) uses `Status: Complete` to indicate a shipped and fully delivered feature
 - Four previously shipped features (007, 009, 011, 012) currently carry the stale `Draft` status that does not reflect their delivered and implemented state
 - Status `Complete` signals that the feature is shipped, implemented, and ready for production use
@@ -3187,6 +3343,7 @@ Align the authoritative Feature 015 planning surfaces (spec.md, plan.md, tasks.m
 Feature 015 spec.md FR-015 and FR-017 establish planning and execution boundaries. FR-015 requires that planning artifacts preserve the authorization boundary, and FR-017 (new) requires reconciliation of stale shipped-feature spec status labels.
 
 The user directive delivered on 2026-05-13 explicitly authorizes these seven scope items for Iteration 002 planning and execution. Without updating the planning surfaces, a Planner or Coordinator reviewing the artifacts would encounter:
+
 1. Apparent ambiguity about whether Iteration 002 is deferred or authorized
 2. Missing traceability from the new stale-status-reconciliation work back to a specification requirement
 3. Stale governance records (spec.md scope, plan.md phase planning, .squad/identity/now.md next-valid-action) that would mislead decision-making
@@ -3194,6 +3351,7 @@ The user directive delivered on 2026-05-13 explicitly authorizes these seven sco
 ### Canonical Status Label Alignment
 
 The four shipped specs (007, 009, 011, 012) currently carry `Draft` status despite being:
+
 - Completed and shipped features
 - Delivered to production in Specrew's alpha release
 - Referenced in Feature 015 FR-011 as part of "14 shipped features"
@@ -3202,6 +3360,7 @@ The four shipped specs (007, 009, 011, 012) currently carry `Draft` status despi
 Using `Draft` for shipped features creates a governance signal misalignment: outside readers would see "Draft" status and infer these features are incomplete or intentionally unfinished, when in fact they are delivered. This contradicts the public-readiness goal of Feature 015 to accurately represent project state.
 
 Status `Complete` is the correct terminal state because:
+
 1. It aligns with spec 013 (validator-hardening) which uses `Complete` for a delivered feature
 2. It signals that the feature is shipped and ready for use
 3. It allows future status evolution (e.g., if a shipped feature later enters a "Deprecated" state)
@@ -3237,7 +3396,6 @@ Status `Complete` is the correct terminal state because:
 **Decision Date**: 2026-05-13  
 **Status**: Active — Planner may begin scaffolding Iteration 002 planning artifacts per this decision.
 
-
 # Decision: Shipped Feature Spec Status Reconciliation (Feature 015 FR-017)
 
 **Date**: 2026-05-13  
@@ -3270,6 +3428,7 @@ Reconciled the Status field across four shipped feature specifications from the 
 ## Verification
 
 All four files verified after edit:
+
 - `specs/007-user-facing-progress-handoff/spec.md` line 5: ✅ `Status: Complete`
 - `specs/009-project-path-resolution/spec.md` line 5: ✅ `Status: Complete`
 - `specs/011-specrew-start-conditional-pause/spec.md` line 5: ✅ `Status: Complete`
@@ -3283,7 +3442,6 @@ All four files verified after edit:
 ---
 
 This decision closes FR-017 (T019) for Feature 015 Iteration 002.
-
 
 # Retrospective Decision: Feature 014 Iteration 001
 
@@ -3372,8 +3530,8 @@ The following candidate rows should be added to `.specrew/quality/known-traps.md
 
 **Status**: Awaiting Alon Fliess's separate authorization before closing the retrospective boundary and opening the closeout phase.
 
-
 ### 2026-05-14T00:00:00Z: Delegated lifecycle runtime evidence
+
 **By:** Squad (Coordinator)  
 **Role / Work Item:** Planner — Feature 016 Iteration 002 task generation  
 **Requested agent:** claude  
@@ -3381,7 +3539,6 @@ The following candidate rows should be added to `.specrew/quality/known-traps.md
 **Model ID:** unknown (same-window Copilot session)  
 **Status:** fell back  
 **Fallback reason:** preferred agent `claude` is not enabled in the active Specrew routing plan
-
 
 # Retro Facilitator Inbox: Feature 015 Iteration 001 Retro Boundary
 
@@ -3433,32 +3590,32 @@ The mistaken orphan branch `016-public-readiness-pass` required cleanup plus rep
 No validator rule currently checks branch name against feature directory before the planning boundary
 is committed.
 
-
 ### 2026-05-12T23:17:38+03:00: User directive
+
 **By:** Alon Fliess (via Copilot)
 **What:** Before retrospective, commit the Feature 014 Iteration 001 review-boundary artifacts (`review.md`, `state.md`, and `plan.md`) as a single dedicated commit with message `Feature 014 handoff-format-scoping iteration 001 review boundary`, push it to `origin/014-handoff-format-scoping`, then report the new commit hash and clean tree state without opening retrospective.
 **Why:** User request — captured for team memory
 
-
 ### 2026-05-12T23:21:39+03:00: User directive
+
 **By:** Alon Fliess (via Copilot)
 **What:** Sign off on the accepted review verdict for Feature 014, handoff-format scoping, Iteration 001, as recorded in `specs/014-handoff-format-scoping/iterations/001/review.md` and commit `8e99013`; authorize the retrospective boundary against implementation commit `f02688f`; produce `retro.md` with actual-vs-planned calibration across T001-T015, surfaced lessons including the review-boundary-without-commit pattern and any planning-output drift, and corpus-row candidates including a future `boundary-claim-without-commit` detection rule; stop before the iteration-closeout boundary for separate authorization.
 **Why:** User request — captured for team memory
 
-
 ### 2026-05-12T23:48:37+03:00: User directive
+
 **By:** Alon Fliess (via Copilot)
 **What:** Sign off on the accepted retrospective for Feature 014 handoff-format-scoping Iteration 001, treat commit `a5fcb90` as the retro-boundary model for future boundary-commit messages, authorize the iteration-closeout boundary, and as part of the same closeout commit add a canonical defer entry for the pre-existing iteration-011 gap in `.squad/decisions.md` so repo-wide governance returns green without folding unrelated cleanup into Feature 014 scope.
 **Why:** User request — captured for team memory
 
-
 ### 2026-05-13T00:23:50+03:00: User directive
+
 **By:** Alon Fliess (via Copilot)
 **What:** Sign off on the Feature 014 Iteration 001 closeout boundary, authorize the Feature 014 feature-closeout boundary including PR creation, self-review, merge to main, and use the high-rigor boundary-commit pattern established by `a5fcb90` for the feature-closeout commit.
 **Why:** User request — captured for team memory
 
-
 ### 2026-05-13T23:40:30+03:00: Delegated lifecycle runtime evidence
+
 **By:** Squad (Coordinator)
 **Role / Work Item:** Implementer — Feature 015 Public-Readiness Pass feature-closeout boundary
 **Requested Agent:** copilot
@@ -3470,6 +3627,7 @@ is committed.
 ---
 
 ### 2026-05-13T23:31:40+03:00: Delegated lifecycle runtime evidence
+
 **By:** Squad (Coordinator)
 **Role / Work Item:** Implementer — Feature 015 Public-Readiness Pass Iteration 002 closeout truth-state repair
 **Requested Agent:** copilot
@@ -3481,6 +3639,7 @@ is committed.
 ---
 
 ### 2026-05-13T23:24:40+03:00: Delegated lifecycle runtime evidence
+
 **By:** Squad (Coordinator)
 **Role / Work Item:** Implementer — Feature 015 Public-Readiness Pass Iteration 002 iteration-closeout boundary
 **Requested Agent:** copilot
@@ -3492,6 +3651,7 @@ is committed.
 ---
 
 ### 2026-05-13T22:52:17+03:00: Delegated lifecycle runtime evidence
+
 **By:** Squad (Coordinator)
 **Role / Work Item:** Retro Facilitator — Feature 015 Public-Readiness Pass Iteration 002 retrospective boundary
 **Requested Agent:** copilot
@@ -3503,6 +3663,7 @@ is committed.
 ---
 
 ### 2026-05-13T20:39:39+03:00: Delegated lifecycle runtime evidence
+
 **By:** Squad (Coordinator)
 **Role / Work Item:** Reviewer — Feature 015 Public-Readiness Pass Iteration 002 independent review boundary
 **Requested Agent:** claude
@@ -3516,6 +3677,7 @@ is committed.
 ---
 
 ### 2026-05-12T23:59:59+03:00: Deferred gap - Feature 001 iteration 011
+
 **By:** Alon Fliess (via Copilot)
 **Type:** deferred-gap
 **Iteration Reference**: specs/001-specrew-product/iterations/011
@@ -3541,10 +3703,10 @@ is committed.
 ---
 
 ### 2026-05-12T22:49:40+03:00: User directive
+
 **By:** Alon Fliess (via Copilot)
 **What:** Authorize the independent review boundary for Feature 014, handoff-format scoping, Iteration 001, the bounded stop-vs-progress selector and additive soft-warning rollout, against implementation commit `f02688f`; the reviewer must evaluate the canonical and iteration-specific concerns, run the five preserved handoff-governance regressions plus the two new soft-warning rules on compliant and violating fixtures, confirm the Feature 012 `human-handoff-id-context` scope-of-applicability update does not regress its existing detection, confirm repo-wide `validate-governance.ps1` stays green, emit `review.md` with an explicit verdict, dogfood the new format-scoping rules in the review output itself, repair any blocking gap in the current iteration instead of deferring it, and stop before retrospective for separate human sign-off on the review verdict.
 **Why:** User request — captured for team memory
-
 
 ---
 
@@ -3581,7 +3743,6 @@ Accept the review boundary for feature `014`, handoff format scoping, iteration 
 
 Await Alon Fliess's separate authorization before opening retrospective or closeout work for feature `014`, iteration `001`.
 
-
 ---
 
 # Spec Steward Inbox: Feature 013 Iteration 002 closeout boundary
@@ -3607,8 +3768,8 @@ Treat iteration `002` as truthfully closed once all six canonical iteration arti
 - `specs/013-validator-hardening/iterations/002/quality/hardening-gate.md`
 - `specs/013-validator-hardening/iterations/002/retro.md`
 
-
 ### 2026-05-11T22:18:50+03:00: User directive
+
 **By:** Alon Fliess (via Copilot)
 **What:** Keep using the plain-language three-section handoff format, apply descriptive scope alongside numeric IDs in Squad-authored narration and stop messages during feature 012 iteration 001, require the reviewer to verify the two blocking concerns explicitly, run the full six-script validation lane before closeout, do not claim iteration closeout unless validation is green and git status is clean except for `.claude/settings.local.json`, and treat edits to `.github/agents/squad.agent.md` or `.squad/templates/squad.agent.md` as a session-restart trigger that requires an iteration-boundary commit and restart before closeout sign-off.
 **Why:** User request — captured for team memory
@@ -3625,6 +3786,7 @@ Treat iteration `002` as truthfully closed once all six canonical iteration arti
 **The pre-implementation hardening gate for Feature 012 (Descriptive-ID-Handoffs) Iteration 001 is SIGNED OFF and implementation is AUTHORIZED to proceed.**
 
 Alon Fliess explicitly authorizes:
+
 - Iteration 001 implementation (T001–T011, 8 story points)
 - Iteration 001 review phase
 - Iteration 001 retrospective and closeout
@@ -3650,6 +3812,7 @@ This decision locks the scope of Iteration 001 to the planned 11 tasks (T001–T
 | **Phase 4: US2 (Stop Messages)** | 3 | T009–T011 |
 
 Iteration 002 explicitly defers:
+
 - Replay-path integration tests (T012–T014)
 - Corpus seeding in `known-traps.md` (T015)
 - Quality artifacts and hardening-gate updates (T016)
@@ -3685,7 +3848,9 @@ The hardening gate assessment (see `specs/012-descriptive-id-handoffs/iterations
 **This decision is effective immediately. Implementation may begin with T001.**
 
 ## 2026-05-11-reviewer-feature012-iter001-review
+
 ### 2026-05-11T00:00:00Z: Reviewer decision - Iteration 001 review acceptance
+
 **By:** Reviewer (Copilot)
 **Type:** review-approval
 **What:** Accept Iteration 001 review boundary for feature `012-descriptive-id-handoffs`.
@@ -3694,6 +3859,7 @@ The hardening gate assessment (see `specs/012-descriptive-id-handoffs/iterations
 **Next Action:** Proceed to retrospective and closeout.
 
 ### 2026-05-12T00:17:00+03:00: User directive
+
 **By:** Alon Fliess (via Copilot)
 **What:** For feature 012 iteration 002, scaffold and commit planning artifacts only; use the canonical state.md schema, draft the nine-column hardening gate with the specified blocking concerns, do not start implementation, do not scaffold iteration 003, and stop for fresh hardening-gate sign-off plus implementation authorization after planning.
 **Why:** User request — captured for team memory
@@ -3721,6 +3887,7 @@ Feature `012-descriptive-id-handoffs` iteration `002` planning keeps the canonic
 - Preserve the distinction between planning-time gate creation and post-implementation evidence recording when task tables mention quality artifacts.
 
 ### 2026-05-12T01:24:17+03:00: User directive
+
 **By:** Alon Fliess (via Copilot)
 **What:** For feature 012 iteration 002, record hardening-gate sign-off with the requested metadata repair (`error-handling-expectations` Blocking=false), then proceed with implementation, review, retrospective, and closeout for tasks T012-T020 while preserving replay-path evidence, corpus seeding, regression checks, the six-script closeout lane, readable-reference narration, and startup-guidance restart handling.
 **Why:** User request — captured for team memory
@@ -4082,9 +4249,10 @@ Feature 013 iteration 002 hit all three patterns in a bounded way: planner-outpu
 - When a slice touches closure truth or dirt filtering, require the evidence-only pass fixture in the plan, not just the dirty fail fixture.
 - When a lifecycle commit includes local noise, either isolate it or label it explicitly so review/retro/closeout boundaries stay readable.
 
-
 ## 2026-05-11-implementer-iter005-implementation
+
 ### 2026-05-10T22:12:33Z: Iteration 005 implementation boundary
+
 **By:** Implementer (Copilot)
 **Type:** implementation-scope
 **What:** Keep Polish execution aligned to the authorized six-command validation lane and verify any user-facing replay example against real reviewer replay output before documenting it.
@@ -4092,7 +4260,9 @@ Feature 013 iteration 002 hit all three patterns in a bounded way: planner-outpu
 **Evidence:** Validation lane passed with: `tests\integration\reviewer-regression-event.ps1`, `tests\integration\lockout-chain-cap.ps1`, `tests\integration\reviewer-regression-ledger.ps1`, `tests\integration\reviewer-regression-withdrawal.ps1`, `tests\integration\carry-forward-closed-iteration.ps1`, and `extensions\specrew-speckit\scripts\validate-governance.ps1 -ProjectPath .`. Documentation examples in `docs\user-guide.md` were checked against live output from `extensions\specrew-speckit\scripts\scaffold-reviewer-artifacts.ps1` and `scripts\specrew.ps1 review` on the lockout-cap fixture.
 
 ## 2026-05-11-reviewer-iter005-review
+
 ### 2026-05-11T00:00:00Z: Reviewer decision - Iteration 005 review acceptance
+
 **By:** Reviewer (Copilot)
 **Type:** review-approval
 **What:** Accept Iteration 005 review boundary for `008-reviewer-escalation-symmetry`.
@@ -4101,7 +4271,9 @@ Feature 013 iteration 002 hit all three patterns in a bounded way: planner-outpu
 **Next Action:** Run the Iteration 005 retrospective, then perform closeout without reopening implementation unless new contradictory runtime evidence appears.
 
 ## 2026-05-11-retro-facilitator-iter005-retro
+
 ### 2026-05-11T00:00:00Z: Team decision - Iteration 005 retrospective findings
+
 **By:** Retro Facilitator (Copilot)
 **Type:** process-governance
 **What:** Iteration 005 retrospective extracted three core governance lessons and formalized them as enforced baselines for future hardening gates.
@@ -4109,49 +4281,60 @@ Feature 013 iteration 002 hit all three patterns in a bounded way: planner-outpu
 ### Core Findings
 
 **1. Richer Hardening-Gate Schema is Preferred Baseline**
+
 - Iteration 005 hardening-gate was authored with Overall Verdict `ready` and explicit pending fields (`Reviewed By`, `Reviewed At` marked pending). At sign-off, governance fields updated atomically without blocking.
 - This schema prevents approval-inheritance drift by signaling planning readiness while explicitly showing which governance fields remain pending.
 - **Action:** Spec Steward (Alon Fliess) will update Spec 005 Phase 2 hardening-gate enforcement to require this schema for all new iterations.
 
 **2. Approval Scope Must Tether to Active Iteration Slice**
+
 - Iteration 004 review identified approval-recording gaps where scope was inherited from prior cycles without explicit revalidation.
 - Iteration 005 corrected this by having Alon Fliess sign off on 2026-05-11 with explicit scope refresh: Polish slice (T027–T028, 3 story_points).
 - **Action:** Encode this as a validation rule in Spec 008 governance-trap corpus and propagate to feature portfolio approval-gate checklists.
 
 **3. Staged Validation Discipline Prevents Late-Found Gaps**
+
 - Iteration 005 applied this discipline explicitly: T027 ran the authorized six-command validation lane; T028 verified documentation against live `scaffold-reviewer-artifacts.ps1` and `specrew review` output.
 - Result: zero rework, zero review findings, zero reviewer-regression events.
 - **Action:** Continue enforcing replay-path coverage mandate in all Polish and handoff-facing iterations.
 
 ## 2026-05-11-spec-steward-iter005-governance
+
 ### 2026-05-11T00:00:00Z: Spec steward decision - Feature 008 Iteration 005 pre-sign-off governance schema
+
 **By:** Spec Steward (Copilot)
 **Type:** governance-pattern
 **What:** Accepted the pre-sign-off hardening-gate schema convention established by iteration 005 sign-off protocol. This convention formalizes the lifecycle transition from planning-phase readiness to signed-off authorization.
 
 **Governance Pattern Formalized:**
+
 - **Pre-Sign-Off State:** Overall Verdict: `ready`, Pending metadata fields explicitly marked, Evidence Basis: `planning-time-analysis`, Runtime Evidence Status: `pending-post-implementation`
 - **Post-Sign-Off State:** Overall Verdict updated to reflect signed status, Reviewed By/Reviewed At updated with actual values, Sign-Off Evidence section added
 
 **Two-Artifact Traceability:** When human approval changes authorized scope (e.g., reducing validation commands):
+
 1. Update plan.md task definition with new scope
 2. Update hardening-gate concern evidence to name exact authorized command set
 3. Re-run validation to confirm both artifacts align
 4. Record scope change in Sign-Off Evidence section
 
 **Known-Traps Seeded:**
+
 1. `pre-sign-off-schema-convention-drift` — Detects hardening gates losing pending-metadata notation
 2. `validation-lane-concern-scope-drift` — Detects when concern documentation and plan.md task definitions diverge
 
 **Applicability:** This pattern is baseline for pre-implementation hardening-gate sign-off workflows across all features. Future iteration 005+ slices follow this schema unless explicitly overridden.
 
 ## 2026-05-11-planner-iter005-approval-boundary-repair
+
 ### 2026-05-11T00:00:00Z: Planner decision - Iteration 005 approval-recording boundary repair
+
 **By:** Planner (Copilot)
 **Type:** governance-repair
 **What:** Reviewer flagged four concrete governance gaps in Iteration 005's approval-recording boundary. All four gaps have been repaired.
 
 **Repairs Applied:**
+
 1. **state.md Sign-Off Status Alignment:** Updated `Hardening-Gate Sign-Off` to ✅ **SIGNED** (2026-05-11) and `Implementation Authorization` to ✅ **AUTHORIZED** (2026-05-11)
 2. **plan.md Distinct Implementation Authorization Record:** Added new `Implementation Authorization` section (hardening-gate-triggered authorization to implement, 2026-05-11), distinct from planning-level approval (2026-05-10)
 3. **hardening-gate.md Sign-Off Readiness Concern Count:** Updated concern count from four to six polish-specific concerns to match Concern Review table
@@ -4160,17 +4343,21 @@ Feature 013 iteration 002 hit all three patterns in a bounded way: planner-outpu
 **Verification:** Ran governance validation script — ✅ **PASS** — All governance checks passed.
 
 **Learnings for Future Iterations:**
+
 1. Distinguish planning-level approval (to prepare hardening gate) from hardening-gate-triggered implementation authorization (to execute after gate sign-off)
 2. Validate concern counts match Concern Review table row counts
 3. Governance traps document best practices but do not supersede explicit direction from approval authorities
 
 ## 2026-05-11-planner-iter005-retro-repair
+
 ### 2026-05-11T00:00:00Z: Planner decision - Iteration 005 retrospective truthfulness boundary repair
+
 **By:** Planner (Copilot)
 **Type:** governance-repair
 **What:** Iteration 005 retrospective failed independent audit gate because it mischaracterized governance friction by framing the approval-recording boundary rejection and repair cycle as a "success story" while claiming zero friction occurred.
 
 **Changes Made:**
+
 1. **Retrospective (retro.md):** Separated friction from resolution with explicit "Friction Encountered and Resolved" section; corrected Approval Ref claim; reframed "What Didn't Go Well"
 2. **State (state.md):** Updated Current Phase to `retrospective-in-progress`; updated Iteration Status to clarify retrospective repair in progress
 
@@ -4179,23 +4366,29 @@ Feature 013 iteration 002 hit all three patterns in a bounded way: planner-outpu
 **Approval Status:** Retrospective truthfulness repair recorded. Closeout may proceed after human re-review confirms repaired retrospective satisfies truthfulness boundary. Retro facilitator locked out of further revisions.
 
 ## 2026-05-11-retro-facilitator-iter002-amendment
+
 ### 2026-05-10T00:00:00Z: Retro facilitator decision - Iteration 002 retrospective amendment
+
 **By:** Retro Facilitator (Copilot)
 **Type:** process-governance
 **What:** Iteration 002 retrospective amended to capture three real governance lessons.
 
 **Decisions Captured:**
+
 1. **Approval Scope Must Be Tethered to Active Iteration Slice:** When a plan is resliced or deferred, approval scope must be refreshed. Do not reuse approval evidence from prior iteration boundaries.
 2. **Human-Direction Hold Messages Must Follow Three-Section Rule:** All hold messages must include: (1) Why we stopped, (2) What you can do, (3) Who to escalate to.
 3. **Startup-Loaded Configuration Requires Iteration-Boundary Commits:** Files loaded at session startup (`.github/agents/squad.agent.md`, `.specify/extensions/specrew-speckit/squad-templates/*`) require explicit iteration-boundary commits and session restart via `specrew-start.ps1` to take effect.
 
 **Team Action Items:**
+
 - Planner: Update Iteration 003 plan approval section to include explicit scope certification
 - Coordinator handoff maintainer: Ensure all future human-direction holds follow the three-section rule
 - Review-operations maintainer: Document startup-loaded file boundaries in the next planning ceremony
 
 ## 2026-05-11-reviewer-iter005-retro-reaudit
+
 ### 2026-05-11T00:00:00Z: Reviewer decision - Iteration 005 retrospective truthfulness re-audit
+
 **By:** Reviewer (Copilot)
 **Type:** review-audit
 **What:** Re-audit of Iteration 005 retrospective repair confirmed it satisfies all three truthfulness boundaries.
@@ -4205,7 +4398,9 @@ Feature 013 iteration 002 hit all three patterns in a bounded way: planner-outpu
 **Findings:**
 
 ## 2026-05-11-runtime-evidence-feature011-iter002-signoff
+
 ### 2026-05-11T17:13:13+03:00: Runtime evidence - Feature 011 Iteration 002 hardening-gate sign-off routing
+
 **By:** Squad (Coordinator)
 **Type:** runtime-evidence
 **Work Item:** Hardening-gate sign-off recording and planning -> execution boundary update for feature `011-specrew-start-conditional-pause` iteration 002
@@ -4216,7 +4411,9 @@ Feature 013 iteration 002 hit all three patterns in a bounded way: planner-outpu
 **Fallback Reason:** none
 
 ## 2026-05-11-runtime-evidence-feature011-iter002-boundary-repair
+
 ### 2026-05-11T17:13:13+03:00: Runtime evidence - Feature 011 Iteration 002 execution-boundary truthfulness repair routing
+
 **By:** Squad (Coordinator)
 **Type:** runtime-evidence
 **Work Item:** Repair stale pre-sign-off wording in feature `011-specrew-start-conditional-pause` iteration 002 execution-boundary artifacts after sign-off was recorded
@@ -4227,7 +4424,9 @@ Feature 013 iteration 002 hit all three patterns in a bounded way: planner-outpu
 **Fallback Reason:** none
 
 ## 2026-05-11-runtime-evidence-feature011-iter002-state-tail-repair
+
 ### 2026-05-11T17:13:13+03:00: Runtime evidence - Feature 011 Iteration 002 state tail repair routing
+
 **By:** Squad (Coordinator)
 **Type:** runtime-evidence
 **Work Item:** Repair the final stale pre-sign-off line remaining in `state.md` after execution-boundary updates
@@ -4238,7 +4437,9 @@ Feature 013 iteration 002 hit all three patterns in a bounded way: planner-outpu
 **Fallback Reason:** none
 
 ## 2026-05-11-runtime-evidence-feature011-iter002-implementation
+
 ### 2026-05-11T17:13:13+03:00: Runtime evidence - Feature 011 Iteration 002 implementation routing
+
 **By:** Squad (Coordinator)
 **Type:** runtime-evidence
 **Work Item:** Execute feature `011-specrew-start-conditional-pause` iteration 002 tasks T043-T056
@@ -4249,7 +4450,9 @@ Feature 013 iteration 002 hit all three patterns in a bounded way: planner-outpu
 **Fallback Reason:** none
 
 ## 2026-05-11-runtime-evidence-feature011-iter002-review-prep
+
 ### 2026-05-11T17:13:13+03:00: Runtime evidence - Feature 011 Iteration 002 review-prep routing
+
 **By:** Squad (Coordinator)
 **Type:** runtime-evidence
 **Work Item:** Prepare the independent review checklist for the three blocking concerns before implementation lands
@@ -4260,7 +4463,9 @@ Feature 013 iteration 002 hit all three patterns in a bounded way: planner-outpu
 **Fallback Reason:** none
 
 ## 2026-05-11-runtime-evidence-feature011-iter002-review
+
 ### 2026-05-11T17:13:13+03:00: Runtime evidence - Feature 011 Iteration 002 review routing
+
 **By:** Squad (Coordinator)
 **Type:** runtime-evidence
 **Work Item:** Independently review feature `011-specrew-start-conditional-pause` iteration 002 implementation against the approved blocking concerns and issue the review verdict
@@ -4271,7 +4476,9 @@ Feature 013 iteration 002 hit all three patterns in a bounded way: planner-outpu
 **Fallback Reason:** none
 
 ## 2026-05-11-runtime-evidence-feature011-iter002-retro
+
 ### 2026-05-11T17:13:13+03:00: Runtime evidence - Feature 011 Iteration 002 retrospective routing
+
 **By:** Squad (Coordinator)
 **Type:** runtime-evidence
 **Work Item:** Facilitate the retrospective for feature `011-specrew-start-conditional-pause` iteration 002 after accepted review
@@ -4282,7 +4489,9 @@ Feature 013 iteration 002 hit all three patterns in a bounded way: planner-outpu
 **Fallback Reason:** none
 
 ## 2026-05-11-runtime-evidence-feature011-iter002-closeout
+
 ### 2026-05-11T17:13:13+03:00: Runtime evidence - Feature 011 Iteration 002 closeout routing
+
 **By:** Squad (Coordinator)
 **Type:** runtime-evidence
 **Work Item:** Complete feature `011-specrew-start-conditional-pause` iteration 002 closeout, including T057 documentation updates, staged validation lane, and closure boundary
@@ -4293,7 +4502,9 @@ Feature 013 iteration 002 hit all three patterns in a bounded way: planner-outpu
 **Fallback Reason:** none
 
 ## 2026-05-11-runtime-evidence-feature011-feature-closeout
+
 ### 2026-05-11T18:36:08+03:00: Runtime evidence - Feature 011 feature-level closeout routing
+
 **By:** Squad (Coordinator)
 **Type:** runtime-evidence
 **Work Item:** Record the feature-level closure for `011-specrew-start-conditional-pause`, refresh stale focus pointers, rerun the six-script lane, and commit the feature closure boundary
@@ -4304,7 +4515,9 @@ Feature 013 iteration 002 hit all three patterns in a bounded way: planner-outpu
 **Fallback Reason:** none
 
 ## 2026-05-17-runtime-evidence-feature019-iter002-review
+
 ### 2026-05-17T17:10:35+03:00: Runtime evidence - Feature 019 Iteration 002 review routing
+
 **By:** Squad (Coordinator)
 **Type:** runtime-evidence
 **Work Item:** Independently review feature `019-specrew-distribution-module` iteration 002 against the repaired cross-platform scope, R-019-V2-R1 through R22 repair history, and the Boundary 1 governance scaffold, then issue the review verdict
@@ -4315,7 +4528,9 @@ Feature 013 iteration 002 hit all three patterns in a bounded way: planner-outpu
 **Fallback Reason:** none
 
 ## 2026-05-11-runtime-evidence-feature012-tasks
+
 ### 2026-05-11T19:26:29+03:00: Runtime evidence - Feature 012 task generation routing
+
 **By:** Squad (Coordinator)
 **Type:** runtime-evidence
 **Work Item:** Generate `tasks.md` for feature `012-descriptive-id-handoffs` from the approved spec and plan, then continue to the post-task governance readiness check
@@ -4326,7 +4541,9 @@ Feature 013 iteration 002 hit all three patterns in a bounded way: planner-outpu
 **Fallback Reason:** none
 
 ## 2026-05-11-runtime-evidence-feature012-after-tasks
+
 ### 2026-05-11T19:26:29+03:00: Runtime evidence - Feature 012 after-tasks governance routing
+
 **By:** Squad (Coordinator)
 **Type:** runtime-evidence
 **Work Item:** Run the post-task governance validation for `012-descriptive-id-handoffs` immediately after task generation
@@ -4337,7 +4554,9 @@ Feature 013 iteration 002 hit all three patterns in a bounded way: planner-outpu
 **Fallback Reason:** none
 
 ## 2026-05-11-runtime-evidence-feature012-authorization-boundary-repair
+
 ### 2026-05-11T19:50:26+03:00: Runtime evidence - Feature 012 iteration 001 authorization-boundary repair routing
+
 **By:** Squad (Coordinator)
 **Type:** runtime-evidence
 **Work Item:** Commit the generated task backlog boundary, scaffold iteration 001 planning artifacts with a canonical pre-implementation hardening gate, refine the feature plan's iteration-scaffolding constraint, and stop for fresh sign-off plus implementation authorization
@@ -4348,7 +4567,9 @@ Feature 013 iteration 002 hit all three patterns in a bounded way: planner-outpu
 **Fallback Reason:** none
 
 ## 2026-05-11-runtime-evidence-feature012-state-schema-repair
+
 ### 2026-05-11T20:06:05+03:00: Runtime evidence - Feature 012 iteration 001 state-schema repair routing
+
 **By:** Squad (Coordinator)
 **Type:** runtime-evidence
 **Work Item:** Align iteration `001` state metadata to the canonical schema, rerun governance validation until the crash is gone and zero FAIL lines remain, then seed the canonical state-schema trap row
@@ -4359,7 +4580,9 @@ Feature 013 iteration 002 hit all three patterns in a bounded way: planner-outpu
 **Fallback Reason:** none
 
 ## 2026-05-11-runtime-evidence-feature012-before-implement
+
 ### 2026-05-11T22:18:50+03:00: Runtime evidence - Feature 012 iteration 001 before-implement routing
+
 **By:** Squad (Coordinator)
 **Type:** runtime-evidence
 **Work Item:** Record the human hardening-gate sign-off and implementation authorization for feature `012-descriptive-id-handoffs` iteration `001`, then run the pre-implementation governance gate
@@ -4370,7 +4593,9 @@ Feature 013 iteration 002 hit all three patterns in a bounded way: planner-outpu
 **Fallback Reason:** none
 
 ## 2026-05-11-runtime-evidence-feature012-review
+
 ### 2026-05-11T23:20:48+03:00: Runtime evidence - Feature 012 iteration 001 review routing
+
 **By:** Squad (Coordinator)
 **Type:** runtime-evidence
 **Work Item:** Run T008 narration validation for feature `012-descriptive-id-handoffs` iteration `001`, scaffold the missing review artifact, verify the blocking concerns, and record the review verdict for the readable-reference rollout
@@ -4381,7 +4606,9 @@ Feature 013 iteration 002 hit all three patterns in a bounded way: planner-outpu
 **Fallback Reason:** none
 
 ## 2026-05-11-runtime-evidence-feature012-review-followthrough
+
 ### 2026-05-11T23:20:48+03:00: Runtime evidence - Feature 012 iteration 001 review follow-through routing
+
 **By:** Squad (Coordinator)
 **Type:** runtime-evidence
 **Work Item:** Convert the iteration `001` hardening gate to post-implementation recorded state and normalize the review-phase artifact fields so retrospective can start cleanly
@@ -4392,7 +4619,9 @@ Feature 013 iteration 002 hit all three patterns in a bounded way: planner-outpu
 **Fallback Reason:** none
 
 ## 2026-05-11-runtime-evidence-feature012-retro
+
 ### 2026-05-11T23:55:00+03:00: Runtime evidence - Feature 012 iteration 001 retrospective routing
+
 **By:** Squad (Coordinator)
 **Type:** runtime-evidence
 **Work Item:** Author the iteration `001` retrospective for the readable-reference rollout, update lifecycle artifacts for the retro boundary, and keep closeout as the next step
@@ -4403,7 +4632,9 @@ Feature 013 iteration 002 hit all three patterns in a bounded way: planner-outpu
 **Fallback Reason:** none
 
 ## 2026-05-12-runtime-evidence-feature012-iter002-planning
+
 ### 2026-05-12T00:22:00+03:00: Runtime evidence - Feature 012 iteration 002 planning routing
+
 **By:** Squad (Coordinator)
 **Type:** runtime-evidence
 **Work Item:** Scaffold iteration `002`, the replay-path integration and corpus follow-through planning slice, validate governance, and commit the planning boundary without starting implementation
@@ -4414,7 +4645,9 @@ Feature 013 iteration 002 hit all three patterns in a bounded way: planner-outpu
 **Fallback Reason:** none
 
 ## 2026-05-11-runtime-evidence-feature012-specify
+
 ### 2026-05-11T18:39:12+03:00: Runtime evidence - Feature 012 opening routing
+
 **By:** Squad (Coordinator)
 **Type:** runtime-evidence
 **Work Item:** Open the next approved feature from `C:\Temp\squad-descriptive-references.md` and establish the repository feature pointer for descriptive-reference validation work
@@ -4425,7 +4658,9 @@ Feature 013 iteration 002 hit all three patterns in a bounded way: planner-outpu
 **Fallback Reason:** none
 
 ## 2026-05-11-runtime-evidence-feature012-clarify
+
 ### 2026-05-11T18:41:37+03:00: Runtime evidence - Feature 012 clarification routing
+
 **By:** Squad (Coordinator)
 **Type:** runtime-evidence
 **Work Item:** Tighten the descriptive-reference spec around the numeric-ID threshold, grouped-list handling, and exclusion of tool-rendered output from the detector
@@ -4436,7 +4671,9 @@ Feature 013 iteration 002 hit all three patterns in a bounded way: planner-outpu
 **Fallback Reason:** none
 
 ## 2026-05-11-runtime-evidence-feature012-plan
+
 ### 2026-05-11T18:44:02+03:00: Runtime evidence - Feature 012 planning routing
+
 **By:** Squad (Coordinator)
 **Type:** runtime-evidence
 **Work Item:** Build the feature plan for descriptive-reference handoffs, including iteration scoping across coordinator guidance and later governance/test enforcement
@@ -4445,11 +4682,13 @@ Feature 013 iteration 002 hit all three patterns in a bounded way: planner-outpu
 **Model:** claude-sonnet-4.5
 **Assignment:** honored
 **Fallback Reason:** none
+
 1. **Rejection/Repair Cycle — No Smoothing Detected:** Retrospective now contains explicit "Friction Encountered and Resolved" section. New friction section isolates rejection event and names it explicitly before explaining resolution.
 2. **Approval Ref Traceability — Accurate Language Confirmed:** Language now correctly states "Approval Ref remains `—`" and grounds traceability in timestamp records per governance discipline.
 3. **State.md Retrospective Status — Consistent Fields:** All three status fields (Current Phase, Iteration Status, Retrospective Verdict) tell the same story: review complete, retrospective repaired, closure awaits re-approval.
 
 **Governance Principles Confirmed:**
+
 1. Honest friction naming — retro explicitly names rejection and repair cycle as governance correction
 2. Approval Ref exception is auditable — decision inbox entry documents rationale
 3. Staged validation discipline preserved — distinct positive item separate from friction event
@@ -4457,14 +4696,18 @@ Feature 013 iteration 002 hit all three patterns in a bounded way: planner-outpu
 **Approval Status:** Repaired retrospective passes truthfulness boundary. Iteration 005 closeout may proceed.
 
 ## 2026-05-10T12-05-33Z-copilot-directive
+
 ### 2026-05-10T12:05:33+03:00: User directive - Final user-facing response format
+
 **By:** Alon Fliess (via Copilot)
 **Type:** process-directive
 **What:** Final user-facing responses must lead with plain English in three named sections: What I just did / Why I stopped / What I need from you. Governance vocabulary should appear only as cross-references.
 **Why:** User request — captured for team memory
 
 ## 2026-05-11-runtime-evidence-feature007-iter002-implementation
+
 ### 2026-05-11T04:10:06+03:00: Runtime evidence - Feature 007 Iteration 002 implementation
+
 **By:** Squad (Coordinator)
 **Type:** implementation-evidence
 **What:** Iteration 002 implementation completed T007-T010 for feature `007-user-facing-progress-handoff`: the soft validator landed, two validator integration tests landed, the validation lane was registered, and the review-file navigation rule was rolled into all durable guidance surfaces.
@@ -4476,19 +4719,23 @@ Feature 013 iteration 002 hit all three patterns in a bounded way: planner-outpu
 # Decision Ledger
 
 ## 2026-05-09-runtime-evidence-009
+
 ### 2026-05-09T22:09:00+03:00: Feature 009 lifecycle and repair evidence
+
 **By:** Alon Fliess (via Copilot)
 **What:** Feature `specs/009-project-path-resolution` was run through specify, clarify, planning, tasks, hardening-gate approval, implementation, reviewer repair, and final validation. The final outcome included audited path-resolution fixes across entry-point and internal scripts, a deterministic regression lane, static anti-pattern coverage, known-traps seeding, trap reapplication evidence, and a return of `.specify\feature.json` to `specs/008-reviewer-escalation-symmetry` after closure.
 **Why:** Preserve a compact lifecycle record that feature 009 completed ahead of feature 008, including the reviewer-enforced repair cycle that expanded runtime coverage and closed the remaining audit gaps.
 
 ## copilot-decision-2026-05-07T22-12-30+03-00
+
 ### 2026-05-07T22:12:30+03:00: Clarify skip rationale for 005 Phase 1
+
 **By:** Alon Fliess (via Copilot)
 **What:** Resume `specs/005-stack-aware-quality-bar` at Phase 1 planning without re-running clarify because the hardened spec is unchanged, reviewer-approved, and materially complete for phase-scoped planning.
 **Why:** Existing feature resume — proceed through the formal lifecycle with plan/tasks/before-implement for the first slice.
 
-
 ## 2026-05-08-spec-005-clarifications-applied
+
 # Decision: Spec 005 Clarifications Applied - Planning Ready
 
 **Date**: 2026-05-08  
@@ -4537,7 +4784,9 @@ These clarifications resolve critical implementation ambiguities that would othe
 1. Proceed to `/speckit.plan` to generate implementation plan artifacts
 
 ## 2026-05-11-runtime-evidence-feature007-iter001-review
+
 ### 2026-05-11T03:01:19+03:00: Runtime evidence - Feature 007 Iteration 001 review routing
+
 **By:** Squad (Coordinator)
 **Role / Work Item:** Reviewer - review iteration `specs/007-user-facing-progress-handoff/iterations/001`
 **Requested Agent:** claude
@@ -4547,7 +4796,9 @@ These clarifications resolve critical implementation ambiguities that would othe
 **Fallback Reason:** preferred agent `claude` is not enabled in the delegated routing plan; routed through Copilot task execution
 
 ## 2026-05-11-runtime-evidence-feature007-iter001-retro
+
 ### 2026-05-11T03:01:19+03:00: Runtime evidence - Feature 007 Iteration 001 retrospective routing
+
 **By:** Squad (Coordinator)
 **Role / Work Item:** Retro Facilitator - retrospective for `specs/007-user-facing-progress-handoff/iterations/001`
 **Requested Agent:** copilot
@@ -4557,7 +4808,9 @@ These clarifications resolve critical implementation ambiguities that would othe
 **Fallback Reason:** none
 
 ## 2026-05-11-runtime-evidence-feature007-iter002-planning
+
 ### 2026-05-11T03:01:19+03:00: Runtime evidence - Feature 007 Iteration 002 planning routing
+
 **By:** Squad (Coordinator)
 **Role / Work Item:** Planner - plan `specs/007-user-facing-progress-handoff/iterations/002`
 **Requested Agent:** claude
@@ -4567,7 +4820,9 @@ These clarifications resolve critical implementation ambiguities that would othe
 **Fallback Reason:** preferred agent `claude` is not enabled in the delegated routing plan; routed through Copilot task execution
 
 ## 2026-05-11-runtime-evidence-feature007-iter002-plan-repair
+
 ### 2026-05-11T03:28:32+03:00: Runtime evidence - Feature 007 Iteration 002 planning structure repair
+
 **By:** Squad (Coordinator)
 **Role / Work Item:** Planner - repair iteration 002 planning artifacts and draft planning-time hardening gate
 **Requested Agent:** claude
@@ -4577,7 +4832,9 @@ These clarifications resolve critical implementation ambiguities that would othe
 **Fallback Reason:** preferred agent `claude` is not enabled in the delegated routing plan; routed through Copilot task execution
 
 ## 2026-05-11-runtime-evidence-feature007-scaffolding-corpus-repair
+
 ### 2026-05-11T03:28:32+03:00: Runtime evidence - Feature 007 scaffolding-authorization corpus repair
+
 **By:** Squad (Coordinator)
 **Role / Work Item:** Spec Steward - clarify trap coverage for unauthorized iteration scaffolding
 **Requested Agent:** codex
@@ -4587,7 +4844,9 @@ These clarifications resolve critical implementation ambiguities that would othe
 **Fallback Reason:** preferred agent `codex` is not enabled in the delegated routing plan; routed through Copilot task execution
 
 ## 2026-05-11-runtime-evidence-feature007-iter001-retro-repair
+
 ### 2026-05-11T03:01:19+03:00: Runtime evidence - Feature 007 Iteration 001 retro boundary repair
+
 **By:** Squad (Coordinator)
 **Role / Work Item:** Retro Facilitator - repair stale restart-boundary messaging in iteration 001 retrospective/state
 **Requested Agent:** copilot
@@ -4599,8 +4858,8 @@ These clarifications resolve critical implementation ambiguities that would othe
 3. Implement strongest-class routing policy with explicit override tracking
 4. Design hardening-gate approval workflow with human sign-off capture
 
-
 ## 2026-05-08-spec-005-concrete-mechanisms
+
 # Decision: Spec 005 Updated with Concrete Quality Mechanisms
 
 **Date**: 2026-05-08  
@@ -4654,43 +4913,48 @@ The user's diagnosis showed that category-level quality language helps but does 
 2. Implementation phase: build mechanical checks for dead-field detection and anti-pattern heuristics
 3. Validation phase: test hardening gate workflow and quality-drift detection against representative features
 
-
 ## copilot-directive-2026-05-04T11-28-23
+
 ### 2026-05-04T11:28:23+03:00: User directive
+
 **By:** Alon Fliess (via Copilot)
 **What:** Team member management must be command-driven; users should not have to edit multiple `.squad/` files manually. If Squad has no CRUD command surface for team members, Specrew must provide one.
 **Why:** User request — captured for team memory
 
-
 ## copilot-directive-2026-05-04T12-28-01
+
 ### 2026-05-04T12:28:01+03:00: User directive
+
 **By:** Alon Fliess (via Copilot)
 **What:** Validation should require the mandatory baseline Specrew team members to exist, but must not reject or validate any other additional custom team members.
 **Why:** User request — captured for team memory
 
-
 ## copilot-directive-2026-05-07T21-05-27+03-00
+
 ### 2026-05-07T21:05:27+03:00: User directive
+
 **By:** Alon Fliess (via Copilot)
 **What:** Quality drift should compare against the active feature's planned quality baseline first, then prior iteration baselines when present, and the quality bar should enforce technology-specific software quality best practices even when the human developer lacks deep quality expertise.
 **Why:** User request — captured for team memory
 
-
 ## copilot-directive-2026-05-07T21-27-52+03-00
+
 ### 2026-05-07T21:27:52.819+03:00: User directive
+
 **By:** Alon Fliess (via Copilot)
 **What:** Agents must not "fix" warnings by adding them to a warning-disable or suppression list instead of addressing the underlying problem. The default policy is to fix the root cause. Only when disabling or suppressing the warning is genuinely reasonable or necessary may that path be taken, and it requires explicit human user approval first.
 **Why:** User request — captured for team memory
 
-
 ## copilot-directive-2026-05-07T22-03-31+03-00
+
 ### 2026-05-07T22:03:31+03:00: User directive
+
 **By:** Alon Fliess (via Copilot)
 **What:** Keep GitHub lifecycle issues aligned with the authoritative local iteration artifacts; update source artifacts first and rely on sync rather than manual issue drift.
 **Why:** User request — captured for team memory
 
-
 ## data-baseline-validation-fix
+
 # Decision: Baseline Team Validation Fix
 
 **Date**: 2026-05-04  
@@ -4722,10 +4986,12 @@ Added `Test-BaselineTeamMembers` function that:
 3. **Ignores any additional custom members** (does not validate or reject them)
 
 Also updated `Get-TeamRoleMap` to read from **both** team formats:
+
 - Standard Squad "Members" section (Name → Role mapping)
 - Specrew-managed "Specrew Baseline Roles" section (Role-only entries in managed block)
 
 This dual-format support is necessary because:
+
 - The Specrew repo itself uses the Members section with named members
 - Bootstrapped projects use the managed baseline-roles block
 
@@ -4739,6 +5005,7 @@ Created comprehensive test suite (`tests/integration/validate-baseline-team.ps1`
 4. ✅ Baseline + multiple custom members (should pass)
 
 All existing integration tests still pass:
+
 - ✅ `tests/integration/team-management.ps1`
 - ✅ `tests/integration/bootstrap-to-iteration.ps1` (implied via scaffold paths)
 - ✅ Main project validation (`validate-governance.ps1 -ProjectPath .`)
@@ -4760,8 +5027,8 @@ All existing integration tests still pass:
 
 None required. Validation is complete and tested.
 
-
 ## data-bootstrap-handoff-revision
+
 # Decision: Bootstrap Handoff Terminal Output and Squad Readiness Signal
 
 **Date**: 2026-05-04  
@@ -4782,12 +5049,14 @@ Picard updated the bootstrap contract to require explicit next-step guidance. La
 Fixed all three issues with minimal, complete changes:
 
 ### 1. Terminal Output Flow (Issue 1 & 2)
+
 - Added "=== Usage Flow ===" section with explicit: "Baseline crew → specify features → plan iteration → execute (review and retro as needed)"
 - Changed output phrase from "Baseline crew installed:" to "Baseline Specrew crew installed:" with trailing period to match contract and test expectations
 - Restructured "Next Steps" to clearly separate: (1) Start spec authoring, (2) Run iteration lifecycle, (3) Optional team extension
 - Added explicit references: "Add extra Squad members after bootstrap" and "Keep the Specrew-managed baseline block intact"
 
 ### 2. Squad Readiness Metadata (Issue 3)
+
 - Added explicit team status block to `.squad/team.md` via `deploy-squad-runtime.ps1`
 - Metadata includes:
   - `**Team Status**: configured` — explicit recognizable state
@@ -4817,8 +5086,8 @@ Fixed all three issues with minimal, complete changes:
 
 None required. All three rejection issues resolved.
 
-
 ## data-greenfield-bootstrap-truthfulness
+
 # Decision: Greenfield Bootstrap Documentation Truthfulness
 
 **Date**: 2026-05-04  
@@ -4850,6 +5119,7 @@ The greenfield bootstrap documentation (`docs/getting-started.md`) overclaimed w
 3. **Greenfield-to-Iteration Flow Success** (full path): ⚠️ Requires dependency validation + CLI initialization + manual Spec Kit init if CLI failed
 
 **Document this truthfully by**:
+
 - Adding prerequisites section: Explicitly state Spec Kit CLI and Squad CLI must be operational
 - Making `.specify/` existence a gate: Users must check for it before proceeding to iteration scaffolding
 - Reframing Spec Kit encoding issue as a blocker (not optional workaround)
@@ -4889,8 +5159,8 @@ The greenfield bootstrap documentation (`docs/getting-started.md`) overclaimed w
 2. Team review: Confirm truthfulness acceptable for published docs
 3. No implementation work: This is doc-only; no runtime changes
 
-
 ## data-iter002-execution-update
+
 # Data: Iteration 002 Execution Lifecycle Correction
 
 **Date**: 2026-05-03
@@ -4900,6 +5170,7 @@ The greenfield bootstrap documentation (`docs/getting-started.md`) overclaimed w
 ## Finding
 
 Iteration 002 planning artifacts (plan.md) were still in `planning` status with Started=TBD, but substantial execution work had already commenced:
+
 - FR-019 resume command implementation (resume-iteration.ps1 complete; integration tests present)
 - FR-020 brownfield merge implementation (brownfield-merge.ps1 heavily modified; integration tests created)
 - T-204, T-205, T-206 actively in development
@@ -5076,10 +5347,10 @@ Iteration 002 planning artifacts (plan.md) were still in `planning` status with 
   > implement` or `Feature 016 substantive-interaction-model iteration 001: bounded T001-TNNN scope`). Push.
   >
   > Step 5: STOP at the implementation boundary commit. Do NOT advance to review work — that requires separate authorization. Present a substantive three-section boundary handoff per Pillar 2 modeling the discipline being shipped:
-  >   - What I just did: enumerate the FR coverage delivered, commit hashes for hardening-gate-and-implementation-auth + implementation, specific file:/// paths for new validator rules + coordinator-prompt updates, test coverage status, baseline-vs-actual measurements
+  > - What I just did: enumerate the FR coverage delivered, commit hashes for hardening-gate-and-implementation-auth + implementation, specific file:/// paths for new validator rules + coordinator-prompt updates, test coverage status, baseline-vs-actual measurements
   > against NFR-001/NFR-002 budgets
-  >   - Why I stopped: name the review boundary as next; explain that the review boundary requires separate authorization per per-boundary discipline (FR-002/FR-003)
-  >   - What I need from you: specific review of the implementation against the hardening-gate concerns' Expected Controls, plus authorization to advance to review boundary
+  > - Why I stopped: name the review boundary as next; explain that the review boundary requires separate authorization per per-boundary discipline (FR-002/FR-003)
+  > - What I need from you: specific review of the implementation against the hardening-gate concerns' Expected Controls, plus authorization to advance to review boundary
   >
   > Step 6: Do NOT touch the working-tree out-of-scope files (.claude/settings.local.json, scripts/specrew-where.ps1, subagent history). They remain unstaged. Do NOT modify SpecrewDraft or SpecrewManualTestProjects folders.
   >
@@ -5117,10 +5388,10 @@ Iteration 002 planning artifacts (plan.md) were still in `planning` status with 
   > implement` or `Feature 016 substantive-interaction-model iteration 001: bounded T001-TNNN scope`). Push.
   >
   > Step 5: STOP at the implementation boundary commit. Do NOT advance to review work — that requires separate authorization. Present a substantive three-section boundary handoff per Pillar 2 modeling the discipline being shipped:
-  >   - What I just did: enumerate the FR coverage delivered, commit hashes for hardening-gate-and-implementation-auth + implementation, specific file:/// paths for new validator rules + coordinator-prompt updates, test coverage status, baseline-vs-actual measurements
+  > - What I just did: enumerate the FR coverage delivered, commit hashes for hardening-gate-and-implementation-auth + implementation, specific file:/// paths for new validator rules + coordinator-prompt updates, test coverage status, baseline-vs-actual measurements
   > against NFR-001/NFR-002 budgets
-  >   - Why I stopped: name the review boundary as next; explain that the review boundary requires separate authorization per per-boundary discipline (FR-002/FR-003)
-  >   - What I need from you: specific review of the implementation against the hardening-gate concerns' Expected Controls, plus authorization to advance to review boundary
+  > - Why I stopped: name the review boundary as next; explain that the review boundary requires separate authorization per per-boundary discipline (FR-002/FR-003)
+  > - What I need from you: specific review of the implementation against the hardening-gate concerns' Expected Controls, plus authorization to advance to review boundary
   >
   > Step 6: Do NOT touch the working-tree out-of-scope files (.claude/settings.local.json, scripts/specrew-where.ps1, subagent history). They remain unstaged. Do NOT modify SpecrewDraft or SpecrewManualTestProjects folders.
   >
@@ -5177,6 +5448,7 @@ Iteration 002 planning artifacts (plan.md) were still in `planning` status with 
   > This authorization covers the validator-logic refinements only; it does NOT authorize any new Feature 016 scope expansion, any retrospective or closeout work, or any change outside the validator/test surfaces needed to harden boundary detection and paired-auth matching.
 
 ---
+
 ## 2026-05-14T09:26:39Z — Authorization: review-verdict-signoff
 
 - **Decision ID**: authorization-feature-016-iter-001-review-verdict-signoff
@@ -5244,22 +5516,23 @@ Iteration 002 planning artifacts (plan.md) were still in `planning` status with 
 - **Authorization Text**:
   > I authorize the iteration-closeout boundary for Feature 016 Iteration 001.
   >
-  > **Deliverables Summary**: 
+  > **Deliverables Summary**:
   > - FR-001 through FR-019 delivered and accepted via review-verdict-signoff on 2026-05-14
   > - Six named corpus-row candidates identified during iteration execution: fr-008-pending-commit-reference-vs-validator-hash-match, nfr-budget-calibrated-against-pre-refactor-baseline, regex-boundary-patterns-require-anchoring, validator-idempotency-requires-immutable-data-sources, authorization-text-capture-preserves-human-intent-without-leakage, single-boundary-authorization-discipline-prevents-creeping-scope
   > - Three estimation learnings recorded in retro.md: effort-calibration stable at 13.0 points, velocity sustainable at 13.0 points per iteration, quality shock-absorber recommendation of 5-10 point reserve for discovery-time defects
   >
-  > **Iteration Completion State**: 
+  > **Iteration Completion State**:
   > - All authorized implementation tasks T001-T008, T011-T013, T018-T020 complete with accepted review verdict (post-repair)
   > - Retrospective boundary completed on 2026-05-14T10:13:30Z with substantive lessons and corpus-row candidates recorded in retro.md
   > - NFR-001 +37.5% delta accepted with documented performance rationale; performance optimization deferred to future optimization work
   >
-  > **Scope Clarity for Iteration 2**: 
+  > **Scope Clarity for Iteration 2**:
   > - Iteration 2 FR-020 through FR-024 remains separately authorized
   > - No portion of Iteration 1 scope carries over pending
   > - Carryover items for post-commit automation planning: pending→post-commit automation, validator performance optimization, fractional-second timestamp support or format requirement, post-commit verification formalization, stale-reference scan mandate
 
 ---
+
 # Reviewer Decision: Feature 015 Iteration 002 Review
 
 **Date**: 2026-05-13
@@ -5306,7 +5579,6 @@ Facilitate and complete the retrospective for Feature 017 (Velocity Dashboard), 
      6. F-016 machinery validation: boundary discipline held across all 8 lifecycle boundaries
      7. Iteration 002 carryover: FR-042..FR-046 + FR-019..FR-033 remain scope; ~16-18 SP total
      8. Bundled multi-boundary authorization pattern: clarify→plan→tasks bundled under single authorization, but implementation/review/retro remain separate
-
 
 2. **Corpus-row candidates identified**: Three candidates proposed for `.specrew/quality/known-traps.md`:
    - Bundled planning-phase boundary authorization (permissible variant of one-boundary-at-a-time rule)
@@ -5361,7 +5633,6 @@ Request explicit iteration-closeout authorization before the iteration-closeout 
 ## Next Action
 
 Await Alon Fliess's separate authorization before opening retrospective or closeout work for feature `015`, iteration `002`.
-
 
 # Runtime Evidence: Feature 015 post-closeout corpus-row addition
 
@@ -5465,6 +5736,7 @@ Feature 015 (public-readiness-pass) is now completely closed and shipped to main
 ## Verification
 
 ✅ All Rule 15 requirements satisfied:
+
 - Authoritative version updated in `.specrew/config.yml` (0.14.0 → 0.15.0)
 - CHANGELOG.md entry created for Feature 015 release
 - README version summary and reference tags refreshed
@@ -5472,6 +5744,7 @@ Feature 015 (public-readiness-pass) is now completely closed and shipped to main
 - `validate-governance.ps1` rerun and passed after version/changelog/tag updates
 
 ✅ Feature closure state:
+
 - Feature 015 spec status: Complete
 - Feature 015 plan: completion documented
 - Active feature: cleared from .specify/feature.json
@@ -5490,7 +5763,6 @@ No active feature. Future work requires a new feature specification request and 
 
 The v0.15.0 release tag is durable on origin and serves as a public bookmark for the public-readiness-pass completion milestone.
 
-
 ---
 
 # Implementation Decision: Rule 15 Corpus-Row Addition
@@ -5506,11 +5778,13 @@ Add three new passive-guidance rows to `.specrew/quality/known-traps.md` capturi
 ## Rationale
 
 Rule 15 (Feature Closeout) specified a forward-only execution pattern with three verifiable milestones:
+
 1. Version bump (config, CHANGELOG, README, tags)
 2. Boundary commit on main (merged PR with cleanup)
 3. Release tag creation and push
 
 During Feature 015 closeout, three real-world execution observations emerged:
+
 - **Cosmetic-fix authorization boundary**: Squad offered surface-truth corrections (typos, stale examples, placeholder substitution) without pausing for human re-authorization; clarification needed on which cosmetic fixes require pause-and-ask vs auto-correct.
 - **Template-substitution failure**: Literal `{merge_commit_hash}` placeholder remained in `.squad/identity/now.md` after substitution failed silently; detection and remediation path needed.
 - **Stale-example wording**: Documentation (docs/versioning.md, plan.md) retained old version numbers and Feature 014 references after v0.15.0 bump; documentation-example refresh pass needed.
@@ -5538,10 +5812,10 @@ These three patterns are now reusable corpus knowledge for future feature closeo
 
 Feature 016 (Substantive Interaction Model) requires separate authorization.
 
-
 ---
 
 ---
+
 decision_date: 2026-05-13T22:00:00Z
 decision_type: planning-metadata-pattern
 affected_feature: Feature 016 — Substantive Interaction Model
@@ -5559,6 +5833,7 @@ Added an "Ownership Rationale" section to `specs/016-substantive-interaction-mod
 The Traceability Governance directive requires that all tasks have complete metadata, including explicit mapping of `task_id → requirement_ref`. Feature 016's tasks.md had owner role assignments but lacked explicit documentation linking those roles back to their governing FRs in the spec.
 
 This visibility gap made it difficult for reviewers and implementers to:
+
 1. Verify that ownership assignments are justified by spec authority (not arbitrary)
 2. Trace ownership decisions back to the original FR definitions when auditing task assignments
 3. Understand the scope boundaries for each owner role without reading individual task traces
@@ -5584,6 +5859,7 @@ Each role includes a concise description of responsibilities tied to the impleme
 ## Boundary
 
 This decision is **metadata-scoping only**; it does not change:
+
 - Task IDs, effort estimates, or dependencies
 - The approved two-iteration split or task count
 - Implementation scope or success criteria
@@ -5597,10 +5873,10 @@ Teams implementing future features should consider including Ownership Rationale
 
 **Co-authored-by**: Copilot <223556219+Copilot@users.noreply.github.com>
 
-
 ---
 
 ---
+
 decision_date: 2026-05-14T09:30:00Z
 decision_type: review-boundary-finding
 affected_feature: Feature 016 — Substantive Interaction Model
@@ -5635,7 +5911,6 @@ This decision does **not** change the verified clean areas from the same review:
 ---
 
 **Co-authored-by**: Copilot <223556219+Copilot@users.noreply.github.com>
-
 
 ---
 
@@ -5796,14 +6071,13 @@ All recommendations are documented with implementation owners and timelines.
 
 **Next Review**: These decisions should be reviewed and prioritized during the next planning ceremony before Feature 016 Iteration 001 begins.
 
-
 ---
 
 ### 2026-05-13T23:52:36+03:00: User directive
+
 **By:** Alon Fliess (via Copilot)
 **What:** Forward-only repair only for Feature 015 closeout; do not rewrite `main` history, preserve `77db7ce` and all subsequent commits, and make truth-surface fixes as additional commits on `main`.
 **Why:** User request — captured for team memory
-
 
 ---
 
@@ -5830,7 +6104,9 @@ All recommendations are documented with implementation owners and timelines.
 - Feature 017 remains explicitly out of scope.
 
 ## 2026-05-14-runtime-evidence-feature016-iter002-planning-prep
+
 ### 2026-05-14T12:02:39Z: Runtime evidence - Feature 016 Iteration 002 planning preparation
+
 **By:** Squad (Coordinator)
 **Role / Work Item:** Planner - open `specs/016-substantive-interaction-model/iterations/002` and scaffold planning artifacts for the authorized Iteration 002 slice
 **Requested Agent:** claude
@@ -5840,13 +6116,17 @@ All recommendations are documented with implementation owners and timelines.
 **Fallback Reason:** preferred agent `claude` is not enabled in the delegated routing plan; routed through Copilot task execution
 
 ## copilot-decision-2026-05-14T12-02-39Z-feature016-iter002-clarify-skip
+
 ### 2026-05-14T12:02:39Z: Clarify skip rationale for Feature 016 Iteration 002 planning
+
 **By:** Alon Fliess (via Copilot)
 **What:** Open `specs/016-substantive-interaction-model/iterations/002` planning without re-running clarify because Feature 016 already has an approved, materially complete spec with all ten clarify-time questions resolved in `spec.md`, and the authorized Iteration 002 scope is already grounded as FR-020 through FR-024 plus the Iteration 2 promotion half of FR-016.
 **Why:** Iteration 001 is closed, its plan/state/retro artifacts explicitly defer the Iteration 002 proof, corpus, documentation, template, and severity-promotion work, and the carryover planning decisions are already concrete: preserve the validator scope boundary to Squad-authored artifacts/handoffs only, keep commit-reference synchronization explicit in authorization records, carry the repair-escalation pathway forward, and treat the README/template/public-doc work as the bounded follow-through slice rather than new clarify work.
 
 ## 2026-05-14-runtime-evidence-feature016-iter002-before-plan-hook
+
 ### 2026-05-14T12:14:00Z: Runtime evidence - Feature 016 Iteration 002 mandatory before-plan validation
+
 **By:** Squad (Coordinator)
 **Role / Work Item:** Planner - run `speckit.specrew-speckit.before-plan` for Feature 016 Iteration 002 before continuing planning
 **Requested Agent:** claude
@@ -5856,13 +6136,17 @@ All recommendations are documented with implementation owners and timelines.
 **Fallback Reason:** preferred agent `claude` is not enabled in the delegated routing plan; routed through Copilot task execution
 
 ## copilot-decision-2026-05-14T12-35-00Z-feature016-iter002-carryover-triage
+
 ### 2026-05-14T12:35:00Z: Iteration 002 carryover triage for Feature 016
+
 **By:** Alon Fliess (via Copilot)
 **What:** Treat Iteration 002 as the original FR-020 through FR-024 + FR-016 graduation slice **plus** the accepted feature-local carryovers that materially affect Feature 016 truth surfaces: FR-008 pending -> post-commit Commit Reference synchronization, canonical UTC seconds-precision `Recorded At` formatting, post-commit verification protocol formalization, stale-reference scan mandate after boundary commits, and graduation of the feature-local passive-guidance rows grounded by Iteration 001 review/retro evidence.
 **Why:** This keeps the resumed plan truthful to accepted Iteration 001 learnings while staying below the 20 SP constitutional cap and inside the requested 15-19 SP planning target. Explicitly deferred from this plan are standalone fractional-second parser support, standalone stale-reference soft-validator support, validator performance optimization, `self-referential-feature-sp-surcharge`, and `decisions-ledger-parser-fractional-second-timestamp-incompatibility`.
 
 ## 2026-05-14-runtime-evidence-feature016-iter002-delegated-plan
+
 ### 2026-05-14T12:36:00Z: Runtime evidence - Feature 016 Iteration 002 delegated planning run
+
 **By:** Squad (Coordinator)
 **Role / Work Item:** Planner - run delegated iteration-002 planning for `specs/016-substantive-interaction-model/iterations/002` and update the Speckit planning artifacts only
 **Requested Agent:** claude
@@ -5871,9 +6155,10 @@ All recommendations are documented with implementation owners and timelines.
 **Status:** fallback
 **Fallback Reason:** preferred agent `claude` is not enabled in the delegated routing plan; the planning run was executed through the Copilot-backed `speckit.plan` agent instead
 
-
 ## 2026-05-14-runtime-evidence-feature016-iter002-after-tasks
+
 ### 2026-05-14T12:40:00Z: Runtime evidence - Feature 016 Iteration 002 after-tasks governance pass
+
 **By:** Squad (Coordinator)
 **Role / Work Item:** Reviewer - run `speckit.specrew-speckit.after-tasks` for Feature 016 Iteration 002 and stop at the planning boundary
 **Requested Agent:** claude
@@ -5934,7 +6219,9 @@ All recommendations are documented with implementation owners and timelines.
   > Implementation authorization applies to the full Iteration 002 scope: FR-020 through FR-024, the Iteration 2 graduation portion of FR-016, and the accepted Iteration 001 carryovers affecting Feature 016 truth surfaces.
 
 ## 2026-05-14-runtime-evidence-feature016-iter002-planning-boundary
+
 ### 2026-05-14T12:37:40Z: Runtime evidence - Feature 016 Iteration 002 planning boundary
+
 **By:** Squad (Coordinator)
 **Role / Work Item:** Planner - finalize the Iteration 002 planning boundary and stop before hardening-gate or implementation
 **Requested Agent:** claude
@@ -5942,7 +6229,9 @@ All recommendations are documented with implementation owners and timelines.
 **Model ID:** unknown (same-window Copilot CLI session)
 **Status:** fallback
 **Fallback Reason:** preferred agent `claude` is not enabled in the delegated routing plan; this planning-boundary run used the available Copilot agent
+
 ## 2026-05-14-runtime-evidence-feature016-iter002-planning-repair
+
 ### 2026-05-14T12:58:12Z: Runtime evidence - Feature 016 Iteration 002 planning boundary Commit Reference correction
 
 **By:** Planner (delegated to Copilot)
@@ -5956,6 +6245,7 @@ All recommendations are documented with implementation owners and timelines.
 **Root Cause:** Stale hash from Iteration 2 FR-008 carryover scope (post-commit Commit Reference synchronization requirement)
 
 ## 2026-05-14-runtime-evidence-feature016-iter002-hardening-gate-truth-repair
+
 ### 2026-05-14T13:55:03Z: Runtime evidence - Feature 016 Iteration 002 hardening-gate truth repair
 
 **By:** Squad (Coordinator)
@@ -5969,6 +6259,7 @@ All recommendations are documented with implementation owners and timelines.
 **Root Cause:** Commit 1c3d91d recorded paired authorization before the truthful ready-state hardening-gate artifact was committed, so before-implement correctly treated the authorization evidence as untruthful against the cited tree
 
 ## 2026-05-14-runtime-evidence-feature016-iter002-implementation-reference-repair
+
 ### 2026-05-14T15:15:58Z: Runtime evidence - Feature 016 Iteration 002 implementation authorization Commit Reference repair
 
 **By:** Squad (Coordinator)
@@ -5991,22 +6282,22 @@ All recommendations are documented with implementation owners and timelines.
 - **Commit Reference**: 9201489
 - **Authorization Text**:
   > You are Reviewer, the review and governance specialist for this project.
-  > 
+  >
   > TEAM_ROOT: C:\Dev\Specrew-review
   > All `.squad/` paths are relative to this root.
   > WORKTREE_PATH: C:\Dev\Specrew-review
   > WORKTREE_MODE: true
   > **Requested by:** Alon Fliess
-  > 
+  >
   > WORKTREE: You are working in a dedicated worktree at `C:\Dev\Specrew-review`.
   > - All file operations should be relative to this path
   > - Do NOT switch branches — the worktree is your branch (`feature016-review-boundary`)
   > - Build and test in this worktree, not the main repo
   > - Push to the canonical branch with: `git push origin HEAD:refs/heads/016-substantive-interaction-model`
-  > 
+  >
   > Read `.squad/decisions.md` before starting.
   > Read `specs/016-substantive-interaction-model/iterations/002/plan.md`, `state.md`, `quality/hardening-gate.md`, `tasks.md`, and `quickstart.md` before starting.
-  > 
+  >
   > Context:
   > - Feature 016 Iteration 002 implementation is complete on commit `6da2582`, the implementation boundary commit.
   > - Two bounded follow-up repairs are already on the pushed branch:
@@ -6016,7 +6307,7 @@ All recommendations are documented with implementation owners and timelines.
   > - Repo validator previously passed on the implementation tree.
   > - The user has now explicitly authorized advancing to the review boundary.
   > - Out-of-scope main-checkout files must remain untouched: `.claude/settings.local.json`, `.github/copilot-instructions.md`, `scripts/specrew-where.ps1`.
-  > 
+  >
   > User-authorized review-boundary workflow:
   > 1. Evaluate the Iteration 002 implementation against the five hardening-gate Expected Controls at `specs/016-substantive-interaction-model/iterations/002/quality/hardening-gate.md`.
   >    - For each concern (`security-surface`, `error-handling-expectations`, `retry-idempotency-requirements`, `test-integrity-targets`, `operational-resilience-concerns`), update `Runtime Evidence Status` from `pending-post-implementation` to `verified` with specific citations (test paths, validator output, NFR-001 measurement) or `not-verified` with rationale.
@@ -6041,21 +6332,21 @@ All recommendations are documented with implementation owners and timelines.
   > 8. Post-commit verification: run `pwsh -NoProfile -ExecutionPolicy Bypass -File .\extensions\specrew-speckit\scripts\validate-governance.ps1 -ProjectPath .` and confirm PASS on Feature 016 Iteration 002.
   > 9. STOP at the review boundary. Do NOT advance to review-verdict-signoff.
   > 10. If defects requiring rework are found, the verdict must be `needs-work`, not `accepted`, with explicit defect descriptions.
-  > 
+  >
   > Important review requirements:
   > - Be critical and evidence-driven. Classify the hardening-gate concerns as implemented, enforced, observable, and documented through actual runtime evidence.
   > - Re-measure NFR-001 on the green tree and cite the measurement in `hardening-gate.md` and `review.md`.
   > - Ensure the review remains truthful: if review and retro artifacts must exist now, create/update only the review artifact. Do not open retro.
   > - If the review-boundary authorization auto-generation or post-commit synchronization fails, repair it explicitly and report the exact behavior.
   > - Verify that the pushed branch state matches origin after push; call out any drift if found.
-  > 
+  >
   > At the end, provide a concise boundary handoff including:
   > - What changed and the review verdict
   > - Review-boundary commit hash and any follow-up bookkeeping commit hash
   > - Whether the validator passed post-push
   > - Whether FR-008 automation worked cleanly or needed manual repair
   > - Why you stopped and what exact next human authorization is required
-  > 
+  >
   > ⚠️ OUTPUT: Report outcomes in human terms. Never expose tool internals or SQL.
   > ⚠️ RESPONSE ORDER: After ALL tool calls, write a 2-3 sentence plain text summary as FINAL output. No tool calls after this summary.
 
@@ -6092,7 +6383,6 @@ All recommendations are documented with implementation owners and timelines.
 - **Authorization Text**:
   > I authorize feature-closeout for Feature 016 Substantive Interaction Model. Iteration 002 is closed and merged to feature branch. All hardening-gate concerns verified post-FR-008-repair, review verdict accepted, and retro complete with corpus capture and durability learnings. Authorized to proceed with Rule 15 version-management boundary commit (0.15.0 → 0.16.0), feature-closeout PR creation and merge to main, tag push, and final validator confirmation. Two chore commits (Feature 017, Feature 020) remain separately authorized.
 
-
 ## 2026-05-15T09:35:00Z — Authorization: implementation-repair
 
 - **Decision ID**: authorization-feature-017-iter-001-implementation-repair
@@ -6108,6 +6398,7 @@ All recommendations are documented with implementation owners and timelines.
 ---
 
 ### 2026-05-15T12:58:32+03:00: Delegated lifecycle runtime evidence
+
 **By:** Squad (Coordinator)
 **Role / Work Item:** Reviewer — Feature 017 Velocity Dashboard Iteration 001 review-verdict-signoff boundary
 **Requested Agent:** copilot (Reviewer family)
@@ -6133,6 +6424,7 @@ All recommendations are documented with implementation owners and timelines.
 ---
 
 ### 2026-05-16T18:30:00Z: Delegated lifecycle runtime evidence
+
 **By:** Squad (Coordinator)
 **Role / Work Item:** Reviewer — Feature 017 Velocity Dashboard Iteration 002 pre-implementation self-review and hardening-gate signoff surface
 **Requested Agent:** copilot (Reviewer family)
@@ -6218,6 +6510,7 @@ Iteration 002's pre-implementation review is complete. No material blocker preve
 ---
 
 ### 2026-05-15T11:36:20Z: Delegated lifecycle runtime evidence
+
 **By:** Squad (Coordinator)  
 **Role / Work Item:** Implementer — Feature 017 Velocity Dashboard Iteration 002 implementation boundary  
 **Requested Agent:** copilot  
@@ -6286,6 +6579,7 @@ Completed the Iteration 002 implementation slice: closeout dashboard scaffolds n
 ---
 
 ### 2026-05-15T13:30:59Z: Delegated lifecycle runtime evidence
+
 **By:** Squad (Coordinator)
 **Role / Work Item:** Retro Facilitator — Feature 017 Velocity Dashboard Iteration 002 retro-boundary
 **Requested Agent:** copilot
@@ -6373,6 +6667,7 @@ Feature 017 (velocity-dashboard) is closed and shipped to main with Rule 15 vers
 Feature 017 (Velocity Dashboard) is now closed and shipped. Version 0.17.0 is the active baseline, and no feature is currently open without explicit authorization.
 
 ## 2026-05-15T16:10:40Z — Delegated routing plan
+
 ## 2026-05-15T00:01:57Z — Delegated routing plan
 
 - **Enabled Agents**: copilot
@@ -6387,6 +6682,7 @@ Feature 017 (Velocity Dashboard) is now closed and shipped. Version 0.17.0 is th
 ## 2026-05-15T16:10:40Z — Routing evidence: Spec Steward
 
 - **Decision ID**: routing-evidence-206ce5416f23
+
 ## 2026-05-15T00:01:57Z — Routing evidence: Spec Steward
 
 - **Decision ID**: routing-evidence-1f62e5e6f73f
@@ -6404,6 +6700,7 @@ Feature 017 (Velocity Dashboard) is now closed and shipped. Version 0.17.0 is th
 ## 2026-05-15T16:10:40Z — Routing evidence: Planner
 
 - **Decision ID**: routing-evidence-cc6d58bdf628
+
 ## 2026-05-15T00:01:57Z — Routing evidence: Planner
 
 - **Decision ID**: routing-evidence-d9ede0be4802
@@ -6421,6 +6718,7 @@ Feature 017 (Velocity Dashboard) is now closed and shipped. Version 0.17.0 is th
 ## 2026-05-15T16:10:40Z — Routing evidence: Reviewer
 
 - **Decision ID**: routing-evidence-7692f5bf7c1e
+
 ## 2026-05-15T00:01:57Z — Routing evidence: Reviewer
 
 - **Decision ID**: routing-evidence-a4888e001342
@@ -6434,7 +6732,6 @@ Feature 017 (Velocity Dashboard) is now closed and shipped. Version 0.17.0 is th
 - **Rationale**: Delegated lifecycle routing was applied for role 'Reviewer'.
 
 - **Routing Evidence**: Reviewer | requested=claude | actual=copilot | model=(platform default) | status=fell-back | fallback=preferred agent 'claude' is not enabled
-
 
 # Implementer Decision: Feature 018 bounded repair R-018-V2
 
@@ -6465,7 +6762,6 @@ This decision is limited to Feature 018 review repair `R-018-V2a` / `R-018-V2b` 
 `R-018-V2c`. It does not authorize review acceptance, retro opening, or any broader
 terminal-capability redesign beyond the bounded repair.
 
-
 # Implementer decision: Feature 018 review repair
 
 - **Date**: 2026-05-15
@@ -6481,7 +6777,6 @@ terminal-capability redesign beyond the bounded repair.
    roadmap, projection, or retro surfaces.
 3. The same label needs to flow through both rich and monochrome render paths so validator-backed snapshots and
    operator reruns stay consistent.
-
 
 # Planner Decision Inbox: Feature 018 Hardening Scaffold
 
@@ -6519,7 +6814,6 @@ Execution can stay paused at the correct boundary: plan/state/drift plus iterati
 exist, review/retro remain unopened, and implementation can start later only if the before-implement gate
 accepts this package.
 
-
 # Reviewer decision: Feature 018 pre-implementation refresh
 
 - **Date**: 2026-05-15
@@ -6542,7 +6836,6 @@ iteration package passes governance validation.
 3. Render-budget proof (`<= 1.5s`) remains stop-ship evidence, not polish.
 4. Stored dashboard artifacts must strip ANSI while preserving readable Unicode.
 5. Iteration-closeout and feature-closeout dashboard rendering must stay parity-safe and immutable.
-
 
 # Reviewer Decision Inbox: Feature 018 Pre-Implementation Review
 
@@ -6575,7 +6868,6 @@ Create the hardening-gate artifact and carry these explicit concerns into it bef
 ## Scope Discipline
 
 No planning-package rewrite is required once the hardening gate exists. Do not widen scope beyond the approved five pillars.
-
 
 # Reviewer decision: Feature 018 visual terminal check
 
@@ -6643,6 +6935,7 @@ Do not sign off the visual-richness claim until a direct PowerShell terminal run
 ---
 
 ### 2026-05-16T00:45:00Z: Delegated lifecycle runtime evidence
+
 **By:** Squad (Coordinator)
 **Role / Work Item:** Implementer — Feature 018 Velocity Dashboard Visual Richness Iteration 001 iteration-closeout boundary
 **Requested Agent:** copilot
@@ -6713,6 +7006,7 @@ sequencing inputs, and leaves feature-closeout explicitly unopened.
   > AUTHORIZE feature-closeout for Feature 018 Velocity Dashboard Visual Richness + PoC-Parity Restoration. Rule 15 fires.
 
 ## 2026-05-16T10:26:39Z — Delegated routing plan
+
 ## 2026-05-15T08:26:18Z — Delegated routing plan
 
 - **Enabled Agents**: copilot
@@ -6727,6 +7021,7 @@ sequencing inputs, and leaves feature-closeout explicitly unopened.
 ## 2026-05-16T10:26:39Z — Routing evidence: Spec Steward
 
 - **Decision ID**: routing-evidence-3572bde54970
+
 ## 2026-05-15T08:26:18Z — Routing evidence: Spec Steward
 
 - **Decision ID**: routing-evidence-4d0b4770c019
@@ -6744,6 +7039,7 @@ sequencing inputs, and leaves feature-closeout explicitly unopened.
 ## 2026-05-16T10:26:39Z — Routing evidence: Planner
 
 - **Decision ID**: routing-evidence-a9458cb47f3b
+
 ## 2026-05-15T08:26:18Z — Routing evidence: Planner
 
 - **Decision ID**: routing-evidence-25ffa0f363af
@@ -6800,6 +7096,7 @@ Implement boundary-state durability by centralizing the write-temp-then-rename l
 ## Decision
 
 Reviewer issued CHANGES-REQUESTED after discovering authorization scope mismatch:
+
 - FR-006..014 not implemented, enforced, observable, or documented
 - FR-021..024 welcome-back prompt requirements not implemented  
 - FR-029 PSGallery latest-version check not implemented
@@ -6898,6 +7195,7 @@ Prior reviewer correctly identified authorization-vs-plan drift (positive signal
 ## Next Move
 
 Execute review-verdict-signoff against corrected scope on Iteration 1 deliverables:
+
 - Pillar 1: boundary-event state sync  
 - Pillar 4: stale-state detection  
 - Scope Addition 1: module-vs-project version check
@@ -6935,6 +7233,7 @@ Feature 020 Iteration 001 now has truthful closeout bookkeeping without widening
 ## Iteration 002 Status
 
 Unopened and awaiting separate human authorization before opening.
+
 ## 2026-05-15T08:26:18Z — Routing evidence: Reviewer
 
 - **Decision ID**: routing-evidence-0c44ee8ff01f
@@ -6999,7 +7298,6 @@ Unopened and awaiting separate human authorization before opening.
 
 - **Routing Evidence**: Reviewer | requested=claude | actual=copilot | model=(platform default) | status=fell-back | fallback=preferred agent 'claude' is not enabled
 
-
 # Clarification Decision: Feature 019 Distribution Module
 
 **Date**: 2026-05-16
@@ -7018,6 +7316,7 @@ Feature 019 Draft spec contained 10 open clarification questions (Q1-Q10) that r
 All 10 clarification questions have been resolved via explicit human authorization on 2026-05-16. Final verdicts integrated into spec.md:
 
 ### Q1: Update Story Pattern
+
 **Decision**: Pattern B (Template-Refresh with preserve-and-flag conflict resolution)
 
 **Rationale**: Specrew templates carry evolving methodology guidance. If templates can never be updated post-init, downstream projects cannot adopt Specrew evolution without manual re-bootstrap. Pattern B enables `specrew update` to refresh templates safely, with conflict resolution mediated by the protocol chosen in Q7.
@@ -7025,42 +7324,51 @@ All 10 clarification questions have been resolved via explicit human authorizati
 **Extended by Q7**: The conflict-resolution protocol is designed to remain crew-framework-agnostic (not hard-coded only to Squad) to align with future Proposal 024 Multi-Host Runtime Abstraction, while naming Squad as the current provider in user-facing behavior.
 
 ### Q2: Distribution Channel Scope
+
 **Decision**: PowerShell Gallery only for v1 (already resolved in prior session)
 
 ### Q3: Module Name on PSGallery
+
 **Decision**: Specrew (canonical name; fallback SpeckitSpecrew if claimed) (already resolved in prior session)
 
 ### Q4: PSGallery API Key Management
+
 **Decision**: GitHub Actions secret (name: `PSGALLERY_API_KEY`)
 
 **Rationale**: Provides security (no local/codebase exposure), automation (tag-triggered publish), and Rule 15 integration without manual steps.
 
 ### Q5: Module Signing Strategy
+
 **Decision**: Self-sign for v1, integrated into GitHub Action
 
 **Rationale**: Quick setup, reduces trust warnings, avoids certificate acquisition lead time. Signing logic runs in publish workflow; cert material stored as GitHub Actions secret. Real codesign cert can be acquired post-v1 if user feedback indicates trust warnings are a blocker.
 
 ### Q6: Backward Compatibility with Clone-and-PATH
+
 **Decision**: Support indefinitely (both distribution models coexist)
 
 **Rationale**: Alpha users can continue clone-and-PATH workflow; new users can use `Install-Module`. README documents both paths; no forced migration.
 
 ### Q7: Template-Update Conflict Resolution
+
 **Decision**: Preserve-and-flag with crew-mediated merge protocol (crew-framework-agnostic design)
 
 **Rationale**: User-modified templates preserved with conflict markers (`<<<< USER / ==== / >>>> MODULE-v0.22`) and `.specrew/template-conflicts/<filename>.conflict` artifacts written for next-session review. Protocol designed to remain crew-framework-agnostic (not Squad-only) to align with future Proposal 024, but Squad is current provider for user-facing behavior.
 
 ### Q8: Cross-Platform Path Handling
+
 **Decision**: Join-Path everywhere plus dedicated WSL verification task
 
 **Rationale**: All path construction uses `Join-Path` for correct delimiters on all platforms. Implementation plan must include dedicated WSL verification task to validate real cross-platform behavior.
 
 ### Q9: Module Version Policy
+
 **Decision**: Same version (manifest stamped from `.specrew/config.yml` at build time)
 
 **Rationale**: Single source of truth reduces drift risk. Publishing workflow reads version from config and updates manifest before `Publish-Module`.
 
 ### Q10: Alpha-User Migration Path
+
 **Decision**: README documentation only; `specrew update` is the migration path
 
 **Rationale**: No automated migration command in v1. README docs sufficient; users run `Install-Module Specrew`, then `specrew update` in project to refresh templates. Tooling can be added later if friction reports indicate need.
@@ -7070,17 +7378,20 @@ All 10 clarification questions have been resolved via explicit human authorizati
 ## Spec Updates Made
 
 ### Requirements Updated
+
 - **FR-020 through FR-023**: Made Template-Refresh pattern unconditional (removed "if Pattern B" conditional language)
 - **FR-021**: Extended to specify crew-framework-agnostic conflict resolution protocol
 - **FR-024 through FR-028**: Updated for GitHub Actions secret strategy and self-signing
 - **FR-030**: Made Join-Path and WSL verification explicit
 
 ### User Stories Updated
+
 - **US3**: Removed "pattern selection pending" note; specified preserve-and-flag conflict protocol
 - **US4**: Updated to reflect GitHub Actions secret, self-signing, and manifest version stamping
 - **US5**: Removed "cross-platform path handling strategy pending" note; specified WSL verification
 
 ### Other Sections Updated
+
 - **Clarifications**: Added Q1 with full rationale; existing Q2-Q3 preserved; added Q4-Q10 with full rationale
 - **Clarifications Pending**: Entire section removed (all questions resolved)
 - **Assumptions**: Updated to reflect all resolved clarifications and crew-agnostic protocol design
@@ -7092,6 +7403,7 @@ All 10 clarification questions have been resolved via explicit human authorizati
 ## Artifacts Updated
 
 Files modified:
+
 1. `specs/019-specrew-distribution-module/spec.md` — all 10 clarifications integrated, Clarifications Pending removed, Status remains Draft
 2. `.squad/identity/now.md` — updated to reflect clarify-complete status, next action is await plan authorization
 3. `.squad/decisions.md` — this decision entry appended
@@ -7128,7 +7440,6 @@ Template-Refresh pattern (Pattern B) is confirmed with crew-framework-agnostic c
 Do not advance to `/speckit.plan` from this clarify-complete boundary alone. Await separate explicit human authorization before opening the planning boundary for Feature 019.
 
 Authorization runtime: Feature 019 clarify completion authorized by Alon Fliess on 2026-05-16 at commit edd1ded (with local spec.md clarify edits present before boundary closeout).
-
 
 # Planning Decision: Feature 019 /speckit.plan Boundary Complete
 
@@ -7219,6 +7530,7 @@ Phase 0 (Research) → [Pillar 1 ∥ Pillar 2] → Pillar 3 → [Pillar 4 ∥ Pi
 **Critical Path**: Phase 0 → Pillar 1/2 → Pillar 3 → Pillar 4 → Final Validation
 
 **Parallelization Opportunities**:
+
 - Pillar 1 + Pillar 2 (independent; both feed into Pillar 3)
 - Pillar 4 + Pillar 5 (independent after Pillar 3 completes)
 
@@ -7258,17 +7570,21 @@ All questions assigned to Phase 0 research tasks (R1-R6) or implementation-time 
 ## Artifacts Generated
 
 **Phase 0 (Research)**:
+
 - `specs/019-specrew-distribution-module/research.md` (6 research tasks; all design unknowns resolved)
 
 **Phase 1 (Design)**:
+
 - `specs/019-specrew-distribution-module/data-model.md` (11 entities, relationships, state machines)
 - `specs/019-specrew-distribution-module/contracts/Specrew.psd1.contract.md` (module manifest schema, exported function signatures)
 - `specs/019-specrew-distribution-module/quickstart.md` (user-facing installation and usage guide)
 
 **Planning Artifact**:
+
 - `specs/019-specrew-distribution-module/plan.md` (5-pillar strategy, track dependencies, Constitution Check, quality gates, implementation strategy)
 
 **Squad State Updates**:
+
 - `.squad/identity/now.md` (updated to reflect /speckit.plan complete; next valid action: /speckit.tasks authorization)
 - `.squad/decisions.md` (this decision appended)
 
@@ -7277,6 +7593,7 @@ All questions assigned to Phase 0 research tasks (R1-R6) or implementation-time 
 ## Boundary Verification
 
 **Pre-Commit Checklist**:
+
 - ✅ plan.md complete with all template sections filled
 - ✅ research.md complete with 6 research tasks documented
 - ✅ data-model.md complete with 11 entities and relationships
@@ -7291,6 +7608,7 @@ All questions assigned to Phase 0 research tasks (R1-R6) or implementation-time 
 - ✅ .squad/decisions.md updated (this decision appended)
 
 **NOT Delivered** (scope boundaries respected):
+
 - ❌ /speckit.tasks generation (not authorized at this boundary)
 - ❌ Implementation execution (requires /speckit.tasks first)
 - ❌ Code changes to scripts/ or extensions/ (implementation-time work)
@@ -7302,11 +7620,13 @@ All questions assigned to Phase 0 research tasks (R1-R6) or implementation-time 
 ## Next Action
 
 **For Spec Steward (Alon Fliess)**:
+
 - Review planning artifacts (plan.md, research.md, data-model.md, contracts/, quickstart.md)
 - Verify Constitution Check passes and track dependencies are sound
 - Authorize `/speckit.tasks` boundary if planning is acceptable
 
 **For Implementation Team** (after /speckit.tasks authorization):
+
 - Read research.md (Phase 0 output) before starting implementation
 - Review data-model.md, contracts/, quickstart.md as implementation blueprints
 - Follow track dependency order (see plan.md Track Dependencies graph)
@@ -7330,7 +7650,6 @@ All questions assigned to Phase 0 research tasks (R1-R6) or implementation-time 
 - Feature 019 remains in `planning-complete` status until /speckit.tasks authorization is granted.
 - All traceability is recorded in the canonical plan (plan.md); this document is a summary for coordination visibility.
 - Phase 2 hardening gate is explicitly deferred (distribution infrastructure focus; no complex security surface or runtime business logic).
-
 
 # Decision: Feature 019 /speckit.tasks Boundary Complete
 
@@ -7402,11 +7721,13 @@ The /speckit.tasks boundary completion enables implementation authorization by p
 ## Runtime Evidence
 
 **Files Changed**:
+
 - Created: specs/019-specrew-distribution-module/tasks.md (26,676 characters, 39 tasks)
 - Updated: .squad/identity/now.md (lifecycle stage: TASKS-COMPLETE)
 - Updated: .squad/decisions.md (this entry)
 
 **Task-Count-Per-Pillar Summary**:
+
 - Phase 0 (Design Questions): 6 tasks
 - Pillar 1 (Module Packaging): 3 tasks
 - Pillar 2 (Resource Bundling): 5 tasks
@@ -7419,14 +7740,19 @@ The /speckit.tasks boundary completion enables implementation authorization by p
 **Verification**:
 `powershell
 Test-Path C:\Dev\Specrew\specs\019-specrew-distribution-module\tasks.md
+
 # Expected: True (file exists)
+
 Get-Content C:\Dev\Specrew\specs\019-specrew-distribution-module\tasks.md | Select-String -Pattern "^- \[ \] T\d{3}"
+
 # Expected: 39 matches (all 39 tasks present)
+
 `
 
 ## Scope Confirmation
 
 **Scope In**:
+
 - ✅ Generated tasks.md from plan.md + spec.md
 - ✅ Six design-question resolution tasks explicitly enumerated with blocking annotations
 - ✅ Ordered, concrete, actionable tasks with per-task scope, owner, dependencies, acceptance criteria, and explicit FR references
@@ -7435,6 +7761,7 @@ Get-Content C:\Dev\Specrew\specs\019-specrew-distribution-module\tasks.md | Sele
 - ✅ Appended decisions.md entry for tasks-boundary runtime evidence
 
 **Scope Out**:
+
 - ❌ No code changes under scripts/ or extensions/
 - ❌ No validator additions beyond task planning language
 - ❌ No /speckit.specrew-speckit.before-implement work
@@ -7443,11 +7770,11 @@ Get-Content C:\Dev\Specrew\specs\019-specrew-distribution-module\tasks.md | Sele
 ## Next Action
 
 Await explicit authorization before advancing to:
+
 - /speckit.specrew-speckit.before-implement (hardening gate, if applicable)
 - Implementation (if hardening gate skipped or passed)
 
 Per user directive: "Do NOT advance to /speckit.specrew-speckit.before-implement. Do NOT advance to hardening-gate-and-implementation-auth."
-
 
 # Repair: Feature 019 Before-Implement Lifecycle State Artifact
 
@@ -7458,6 +7785,7 @@ Per user directive: "Do NOT advance to /speckit.specrew-speckit.before-implement
 ## What
 
 The state artifact `.squad/identity/now.md` contained stale lifecycle information after the Feature 019 before-implement boundary was crossed:
+
 - **Top lines (correct)**: Reported `/speckit.specrew-speckit.before-implement` completed with READY verdict
 - **Lifecycle section (stale)**: Reported `/speckit.tasks` complete and listed authorization for before-implement as next action
 
@@ -7477,8 +7805,6 @@ This mismatch created boundary-state confusion: the top and bottom of the artifa
 Lifecycle artifacts must be consistent at all points to avoid automation, planner, or coordinator tools making incorrect routing decisions based on stale phase information. The boundary was crossed and verified; the state record must reflect that fact durably.
 
 No lifecycle boundary advancement applied; only state artifact corrected to match the actual completed boundary.
-
-
 
 ## 2026-05-16T19:07:46Z — Canonical defer entry (Feature 019 iteration 001 cross-platform carry-forward)
 
@@ -7574,9 +7900,11 @@ No lifecycle boundary advancement applied; only state artifact corrected to matc
 - **Rationale**: Delegated lifecycle routing was applied for role 'Reviewer'.
 
 - **Routing Evidence**: Reviewer | requested=claude | actual=copilot | model=(platform default) | status=fell-back | fallback=preferred agent 'claude' is not enabled
+
 ---
 
 ### 2026-05-17T05:29:37Z: Delegated lifecycle runtime evidence
+
 **By:** Squad (Coordinator)
 **Role / Work Item:** Implementer — Feature 019 Iteration 002 R-019-V2-R13 bounded micro-repair cycle
 **Requested Agent:** copilot
@@ -7584,7 +7912,6 @@ No lifecycle boundary advancement applied; only state artifact corrected to matc
 **Model ID:** claude-sonnet-4.5
 **Status:** honored
 **Fallback Reason:** none
-
 
 # Implementer Decision: R-018-V3 visual alignment
 
@@ -7602,7 +7929,6 @@ Keep the repair strictly inside the live full-dashboard renderer by reordering o
 - Updating the shared full renderer preserves the live `specrew where` contract without widening scope into unrelated surfaces.
 - Fixture and regression coverage can lock the new alignment without mutating historical closeout dashboards.
 
-
 # Implementer R13 Repair Decision
 
 - **Date:** 2026-05-17
@@ -7610,7 +7936,6 @@ Keep the repair strictly inside the live full-dashboard renderer by reordering o
 - **Decision:** `specrew start` now treats Copilot non-autopilot launch flags as platform-conditional: Windows keeps `--mode interactive` (plus `--allow-all` when allowed), while Linux/macOS rely on the default REPL behavior for `-i` and suppress both `--mode interactive` and `--allow-all`.
 - **Why:** Runtime evidence for Copilot CLI v1.0.48 showed the inverse behavior across platforms: Windows still needs `--mode interactive` to stay in the REPL, but Linux/macOS already stay interactive without it and actively break when `--mode interactive` is added.
 - **Files to keep aligned:** `scripts\specrew-start.ps1`, `tests\integration\start-command.ps1`, `specs\019-specrew-distribution-module\test-evidence\us5-cross-platform.md`
-
 
 # Reviewer Decision Inbox: Feature 018 Review Signoff
 
@@ -7640,7 +7965,6 @@ Accept Feature 018 Iteration 001 at review-verdict-signoff with `R-018-V1` and `
 
 Stop at accepted pre-retro state and request explicit retro-boundary authorization before opening retrospective work.
 
-
 # Reviewer Decision Inbox: Feature 019 Iteration 001 Re-Review
 
 **Date**: 2026-05-16  
@@ -7666,7 +7990,6 @@ iteration is now READY-FOR-SIGNOFF.
 
 Open the separate `review-verdict-signoff` boundary with human authorization when ready. Do not start retrospective,
 closeout, or later lifecycle boundaries from this re-review decision alone.
-
 
 # Reviewer Decision Inbox: Feature 019 Iteration 001 Review
 
@@ -7698,7 +8021,6 @@ the package-shaped evidence before re-review.
 Authorize bounded repair items `R-019-R1` and `R-019-R2`, then return the iteration to independent review. Do not
 open review-verdict-signoff, retro, or closeout from this boundary.
 
-
 # Reviewer Decision Inbox: Feature 019 Review Signoff
 
 **Date**: 2026-05-16  
@@ -7726,7 +8048,6 @@ Accept Feature 019 Iteration 001 at review-verdict-signoff against accepted revi
 ## Next Move
 
 Stop at accepted pre-retro state and request explicit retro-boundary authorization before opening retrospective work.
-
 
 # User Directive: Feature 018 Final Pre-Rule-15 Polish
 
@@ -7760,10 +8081,10 @@ This is the **FINAL pre-Rule-15 polish** for Feature 018. After R-018-V4 lands a
 
 Upon R-018-V4 verification success, await explicit feature-closeout authorization before proceeding to closeout boundary.
 
-
 ---
 
 ### 2026-05-17T07:19:22Z: Delegated lifecycle runtime evidence
+
 **By:** Squad (Coordinator)
 **Role / Work Item:** Implementer — Feature 019 Iteration 002 R-019-V2-R14 bounded micro-repair cycle
 **Requested Agent:** copilot
@@ -7883,6 +8204,7 @@ Upon R-018-V4 verification success, await explicit feature-closeout authorizatio
 - **Rationale**: Delegated bounded repair cycle was requested and assigned to Implementer role for targeted micro-repairs on the three identified gaps before proceeding to review-verdict-signoff boundary.
 
 ## 2026-05-17T14:15:30Z — Runtime evidence: Feature 019 Iteration 002 retrospective finalization
+
 - **Decision ID**: runtime-evidence-f019-i002-retro
 - **Type**: runtime-evidence
 - **Work Item**: Feature 019 Iteration 002 retrospective finalization after accepted review-verdict-signoff
@@ -7986,7 +8308,6 @@ Boundary 6 — Feature Closeout (not started; requires human authorization from 
 ---
 
 ## Decision: retro-facilitator-f019-iter002.md
-
 
 # Decision: Feature 019 Iteration 002 Retrospective — Process Learnings
 
@@ -8092,6 +8413,7 @@ The following five lessons from Iteration 002 are approved for inclusion in `.sp
 ## Governance Validation Status
 
 **Baseline**: Iteration 002 governance validation produces expected warnings only:
+
 - Roadmap drift for Phase 1 and Phase 2 (pre-existing, not caused by this iteration)
 - Missing dashboard.md artifacts for Iteration 001 and 002 (deferred per prior planning)
 
@@ -8131,7 +8453,6 @@ The following five lessons from Iteration 002 are approved for inclusion in `.sp
 ---
 
 ## Decision: reviewer-f019-iter2-review.md
-
 
 # Reviewer Decision: Feature 019 Iteration 002 Boundary 2 Review
 
@@ -8176,8 +8497,8 @@ All four Iteration 002 tasks (T041, T054, T060, T061) are complete and correctly
 
 ## Decision: spec-steward-f019-iter2-boundary1.md
 
-
 ---
+
 date: 2026-05-18T00:00:00Z
 from: Spec Steward
 subject: F-019 Iteration 002 Boundary 1 Completion — Governance Artifact Scaffold Decisions
@@ -8195,7 +8516,8 @@ Feature 019 (Specrew Distribution Module) Iteration 002 Boundary 1 (governance a
 
 **Decision**: Create iterations/002/retro.md as a mechanically scaffolded artifact (not stub) to satisfy governance validator requirements, capturing learnings extracted from drift-log.md and review.md without requiring human retro facilitation upfront.
 
-**Rationale**: 
+**Rationale**:
+
 - Validator fails if retro.md is missing (required artifact)
 - Human retro facilitation is Boundary 2 work, deferred per user instruction
 - Extraction of learnings from existing drift-log.md and review.md is mechanical and does not require human facilitation
@@ -8212,6 +8534,7 @@ Feature 019 (Specrew Distribution Module) Iteration 002 Boundary 1 (governance a
 ### D3: Cross-Platform Evidence Finalization
 
 **Decision**: Append R-019-V2-R15 through R22 evidence and verb-conformance fix to test-evidence/us5-cross-platform.md, documenting:
+
 - Wrong-direction repairs (R15/R16, R17, R20) with reverted-by classification
 - Load-bearing repairs (R18/R19, R21)
 - Cleanup phase (R22)
@@ -8235,8 +8558,8 @@ Boundary 2 (retro facilitation, iteration closeout) awaits explicit human author
 
 ## Decision: spec-steward-f019-runtime-evidence.md
 
-
 ---
+
 date: 2026-05-18T00:00:00Z
 from: Spec Steward
 subject: F-019 Iteration 002 Boundary 1 — Delegated Work Summary
@@ -8303,11 +8626,13 @@ WARN [dashboard] missing-dashboard-artifact: Closed iteration missing dashboard.
 ## Scope Boundaries
 
 **Boundary 1 (Completed)**:
+
 - ✅ Governance artifact updates (hardening-gate, drift-log, review, test-evidence)
 - ✅ Retro.md scaffold
 - ✅ Validator passing
 
 **Boundary 2 (Deferred)**:
+
 - ❌ Full retro facilitation
 - ❌ Iteration closeout
 - ❌ Feature closeout
@@ -8327,6 +8652,7 @@ WARN [dashboard] missing-dashboard-artifact: Closed iteration missing dashboard.
 Updated `.squad/agents/spec-steward/history.md` with 2026-05-18 pattern entry: Feature 019 Iteration 002 Boundary 1 Governance Artifact Scaffold and Diagnostic Discipline.
 
 Key learnings:
+
 1. Diagnostic discipline for cross-platform behavioral issues (22:1 iteration:fix asymmetry)
 2. Form-vs-meaning recurrence in symptom-chasing
 3. Cross-platform sweep scope partitioning
@@ -8383,7 +8709,6 @@ Key learnings:
 
 - **Routing Evidence**: Reviewer | requested=claude | actual=copilot | model=(platform default) | status=fell-back | fallback=preferred agent 'claude' is not enabled
 
-
 # Decision: Feature 020 After-Tasks Validation PASS
 
 **Date**: 2026-05-17T20-00-10Z  
@@ -8403,45 +8728,54 @@ Feature 020 task generation completed. Spec Steward validates tasks.md, plan.md,
 ## Validation Results
 
 ### ✅ Task Count & Story Points
+
 - Total tasks: 35 (4 companion chore + 18 Iteration 1 + 13 Iteration 2)
 - Total story points: 33 SP (2 + 16 + 15) — matches plan capacity
 - All tasks present and well-formatted
 
 ### ✅ Requirement Traceability
+
 - All 35 tasks trace to functional requirements FR-001 through FR-035
 - User stories US1–US5 fully covered
 - No orphaned tasks; no missing requirements
 - Scope coverage: 100%
 
 ### ✅ Role Assignment
+
 - All tasks assigned to defined roles: Implementer, Reviewer
 - No undefined or unknown roles
 - Role load balanced across phases
 
 ### ✅ Effort Estimation
+
 - Companion Chore: 2 SP (pre-work, isolated)
 - Iteration 1: 16 SP (parallel delivery capacity confirmed)
 - Iteration 2: 15 SP (parallel delivery capacity confirmed)
 - Totals verified: 2 + 16 + 15 = 33 SP
 
 ### ✅ Acceptance Criteria
+
 All task acceptance criteria verified as concrete and testable:
+
 - Sample: "Implement atomic .squad/identity/now.md update; verify no intermediate states" (T001) ✓ concrete
 - Sample: "Add staleness time-window validation; confirm <2s completion" (T010) ✓ measurable
 - Sample: "Document Squad recovery flow; add decision ledger metadata; verify via integration tests" (T018) ✓ testable
 
 ### ✅ Dependency Graph
+
 - No circular dependencies detected
 - Critical path identified: Phase 0 → T001/T002/T003 → Iteration 1 parallel groups → T028 (feature-release)
 - Acyclicity verified across all 35 tasks
 
 ### ✅ Companion Chore Isolation
+
 - Phase 0 tasks (CHORE-001–CHORE-004) correctly marked as pre-work
 - Stated prerequisite: "must merge to main BEFORE F-020 Iteration 1 begins"
 - Does NOT count against Iteration capacity
 - Scope properly separated
 
 ### ✅ Artifact Integrity
+
 - tasks.md: present, complete, well-formatted
 - plan.md: present, requirement mapping comprehensive
 - spec.md: present, functional requirements complete
@@ -8493,24 +8827,28 @@ Feature 020 (Session-State Durability & In-Flight Progress Tracking) has **faile
 ### Verified Blockers
 
 #### 1. Specification Status: Draft
+
 - **Gate Requirement**: Feature spec must reach RFC or Active status before implementation authorization
 - **Current State**: `specs/020-session-state-durability/spec.md` remains Draft
 - **Impact**: Cannot authorize Phase 1 task execution against incomplete requirements
 - **Repair Action**: Upgrade spec status through explicit governance transition
 
 #### 2. FR-025 Drift
+
 - **Gate Requirement**: Functional requirements must align across specification and planning artifacts
 - **Issue**: Inconsistency between `spec.md` and `plan.md` / `tasks.md` (module-vs-project version check authoritative source)
 - **Impact**: Task decomposition may diverge from actual requirements
 - **Repair Action**: Trigger `speckit.clarify` to resolve drift; reconcile plan/tasks with clarified spec
 
 #### 3. Role Governance Drift
+
 - **Gate Requirement**: Role assignments must align with feature governance metadata
 - **Issue**: Mismatch between labels in `spec.md` and baseline `role-assignments.yml`
 - **Impact**: Ceremony assignments and authority chains unclear
 - **Repair Action**: Verify role-assignments.yml consistency with all spec governance labels
 
 #### 4. Missing Phase 1 Task Coverage for Quality Gates
+
 - **Gate Requirement**: All planned quality gates must have corresponding Phase 1 tasks
 - **Missing Gates**:
   - `performance-baseline`
@@ -8519,6 +8857,7 @@ Feature 020 (Session-State Durability & In-Flight Progress Tracking) has **faile
 - **Repair Action**: Add explicit Phase 1 tasks for all planned quality gates
 
 #### 5. Environment Issue: Pester 5.x Not Available
+
 - **Gate Requirement**: PowerShell testing infrastructure must match feature tech stack
 - **Current Environment**: Pester 3.4.0 only
 - **Feature Requirement**: Pester 5.x for unit and integration tests (per `plan.md` Phase 1 Quality Planning)
@@ -8526,6 +8865,7 @@ Feature 020 (Session-State Durability & In-Flight Progress Tracking) has **faile
 - **Repair Action**: Upgrade test environment to Pester 5.x OR establish Pester 3.4.0 compatibility shim
 
 #### 6. Total Capacity Drift
+
 - **Gate Requirement**: Total SP across all tasks must match spec estimates and plan commitments
 - **Current State**: Unreconciled capacity mismatch across spec/plan/tasks
 - **Impact**: Velocity tracking and iteration planning are unreliable
@@ -8540,6 +8880,7 @@ The gate reaffirmed a critical sequencing constraint that remains active:
 This prerequisite is **not blocking the before-implement gate validation itself**, but **will block the begin-implementation gate** if not satisfied at that time.
 
 **Prerequisite Status**:
+
 - CHORE-001: [Pending main merge]
 - CHORE-002: [Pending main merge]
 - CHORE-003: [Pending main merge]
@@ -8650,8 +8991,8 @@ Implement boundary-state durability by **centralizing the write-temp-then-rename
 
 ## Repair Scope Migration
 
-**Previous blocker**: Integration test failure in 	ests/integration/stale-state-detection.tests.ps1  
-**Current blocker**: Integration test failure in 	ests/integration/version-checks.tests.ps1  
+**Previous blocker**: Integration test failure in  ests/integration/stale-state-detection.tests.ps1  
+**Current blocker**: Integration test failure in  ests/integration/version-checks.tests.ps1  
 **Repair status**: Stale-state-detection blocker resolved (commit e3e941e). Feature advancement blocked by version-check test suite failure.  
 
 ## Authorization Context
@@ -8669,7 +9010,7 @@ Implement boundary-state durability by **centralizing the write-temp-then-rename
 
 ## Repair Tasks
 
-1. Diagnose root cause in 	ests/integration/version-checks.tests.ps1
+1. Diagnose root cause in  ests/integration/version-checks.tests.ps1
 2. Apply targeted fix to restore test pass state
 3. Rerun version-check test suite to confirm pass
 4. Rerun stale-state-detection test suite (preserve progress)
@@ -8680,12 +9021,14 @@ Implement boundary-state durability by **centralizing the write-temp-then-rename
 ## Continuation Criteria
 
 **If repair succeeds:**
+
 - Feature 020 Iteration 1 implementation continues (I1-T001 through I1-T014, 16 SP)
 - Proceed with implementation until next stop condition
 - Stop at iteration-completion handoff (not auto-advance to Iter 2)
 - Coverage: Pillar 1 (boundary-event state sync), Pillar 4 (stale-state detection), Scope Addition 1 (module-vs-project version check)
 
 **If repair fails:**
+
 - Document failure and preserve blocker evidence
 - Halt iteration work pending human re-authorization
 - Report back to Alon for next decision
@@ -8693,6 +9036,7 @@ Implement boundary-state durability by **centralizing the write-temp-then-rename
 ## Stop Conditions Preserved
 
 Feature 020 Iteration 1 implementation will stop if any of these occur:
+
 - New validator FAIL
 - New test failure (beyond version-check repair scope)
 - >10 consecutive reconciliation edits
@@ -8701,7 +9045,7 @@ Feature 020 Iteration 1 implementation will stop if any of these occur:
 
 ## Evidence Artifacts
 
-**Test suite**: 	ests/integration/version-checks.tests.ps1  
+**Test suite**:  ests/integration/version-checks.tests.ps1  
 **Branch**:  20-session-state-durability  
 **Session log**: .squad/log/20260518T011443Z-feature020-iteration1-version-check-repair.md  
 **Prior blocker context**: .squad/log/20260522T120000Z-feature020-iteration1-test-failure-boundary.md  
@@ -8744,10 +9088,12 @@ This authorization permits opening Iteration 002 for implementation and establis
 **Authorize Feature 020 Iteration 002 implementation run with source-of-truth scope boundary from Iteration 002 plan.md.**
 
 ### Iteration 002 Authorized Scope (to be validated against plan.md)
+
 - **Pillar 2** (welcome-back prompt and user guidance): FR-006..014, FR-021..024
 - **Scope Addition 2** (PSGallery latest-version check): FR-029
 
 ### Scope Authority Rule
+
 **Iteration 002 plan.md (created at iteration-start) is the authoritative source of truth for all subsequent review scope validation. Do not use memory-based FR lists for later review scope verification.**
 
 ## Runtime Evidence
@@ -8797,6 +9143,7 @@ Implementation will stop at **iteration-completion handoff only**. Do not open r
 - **Task ID**: (none)
 - **Auth Commit Hash**: 06fee69
 - **Recorded At**: 2026-05-18T01:21:57Z
+
 # Decision: Feature 019 T006 Self-Signed Certificate Validity Period
 
 **Date**: 2026-05-16T16:23:58Z  
@@ -8815,11 +9162,13 @@ Resolve T006: choose the self-signed certificate validity period so the future p
 **Approved option**: **Option A — 1-year validity for the self-signed module-signing certificate**
 
 **Approved certificate rule**:
+
 - Generate the certificate with `-NotAfter (Get-Date).AddYears(1)`.
 - Store the replacement PFX material in GitHub Actions secrets (`SIGNING_CERT_BASE64`, `SIGNING_CERT_PASSWORD`).
 - Keep migration to a real code-signing certificate explicitly out of scope for Iteration 001.
 
 **Approved renewal procedure**:
+
 1. Generate a new self-signed code-signing certificate with `AddYears(1)`.
 2. Export it, Base64-encode it, and update the GitHub Actions signing secrets.
 3. Run the publish workflow's dry-run path to verify signing succeeds without performing a real publish.
@@ -8827,6 +9176,7 @@ Resolve T006: choose the self-signed certificate validity period so the future p
 5. Record the renewal date and calendar reminder.
 
 **Compose-with note for T005**:
+
 - Pair certificate renewal with the annual PSGallery API-key review in one release-credential operations event.
 
 ## Rationale
@@ -8855,7 +9205,6 @@ T006 is now complete for Iteration 001. Phase 0 design questions are fully resol
 
 Execute Pillar 1 and Pillar 2 in dependency order, validate the new module packaging surfaces, then hand off to Pillar 3 without widening into publish execution.
 
-
 # Decision: Feature 019 T005 API-Key Rotation Guidance
 
 **Date**: 2026-05-16T16:10:41Z  
@@ -8874,19 +9223,23 @@ Resolve T005: capture the approved PSGallery API-key rotation cadence and lightw
 **Approved option**: **Option A — document lightweight PSGallery API-key rotation cadence now**
 
 **Approved cadence**:
+
 - **Routine rotation**: annual review/rotation at the calendar anniversary of key creation
 - **Triggered rotation**: maintainer transition, suspected leak, unexplained publish-auth failure, or an annual review finding that the key is older than 12 months
 
 **Approved lightweight procedure**:
+
 1. Generate a new API key on PowerShellGallery.com scoped to the Specrew module with an appropriate expiration.
 2. Update the GitHub Actions secret (`PSGALLERY_API_KEY` or equivalent) to the new value.
 3. Trigger a dry-run publish through the workflow's manual-dispatch path to confirm authentication without performing a real publish.
 4. Revoke the old API key only after step 3 confirms the new key works.
 
 **Compose-with note for T006**:
+
 - Pair the annual API-key review with certificate renewal review in a single annual operations event.
 
 **Non-blocking status**:
+
 - T005 remains documentation-only and does **not** block downstream implementation.
 
 ## Rationale
@@ -8916,7 +9269,6 @@ T005 is now complete for Iteration 001 and anchored in the maintainer docs. Down
 
 Present the T006 human-decision handoff, including the validity-period options, recommendation, tradeoffs, and blocked downstream work, then pause without auto-deciding T006.
 
-
 # Decision: Feature 019 T004 Module Loader Structure
 
 **Date**: 2026-05-16T16:03:28Z  
@@ -8935,12 +9287,14 @@ Resolve T004: choose the `Specrew.psm1` loader structure so Pillar 1 can impleme
 **Approved option**: **Option A — explicit dot-sourcing for `Specrew.psm1`**
 
 **Approved loader shape**:
+
 - `$ScriptRoot = $PSScriptRoot`
 - Load internal helpers first, then entry-point commands in an explicit reviewed order
 - Use `Join-Path` for every path segment
 - Export the FR-002 public command surface; alias bindings are allowed if the implementation convention needs them
 
 **Approved ordering guidance**:
+
 1. `scripts/internal/dashboard-renderer.ps1`
 2. `scripts/specrew.ps1`
 3. `scripts/specrew-init.ps1`
@@ -8951,10 +9305,12 @@ Resolve T004: choose the `Specrew.psm1` loader structure so Pillar 1 can impleme
 8. `scripts/specrew-where.ps1`
 
 **Compose-with note**:
+
 - Loader-level path construction is cross-platform-safe now because it uses `Join-Path`.
 - The scripts themselves still have broader embedded `\` cleanup deferred to Iteration 002.
 
 **Future suggestion captured, not implemented now**:
+
 - Add a validator soft warning for top-level `scripts/` files that are not enumerated in both the loader and `FileList`.
 
 ## Rationale
@@ -8985,7 +9341,6 @@ T004 is now resolved for Iteration 001. Pillar 1 has an approved deterministic l
 
 Present the T005 human-decision handoff, keeping its documentation-only / non-blocking status explicit and leaving T006 unresolved.
 
-
 # Decision: Feature 019 T003 Cross-Platform Test Automation Depth
 
 **Date**: 2026-05-16T15:54:03Z  
@@ -9006,6 +9361,7 @@ Resolve T003: choose the Iteration 001 cross-platform verification depth for FR-
 **Approved Iteration 001 manual checklist artifact**: `specs/019-specrew-distribution-module/iterations/001/quality/cross-platform-manual-checklist.md`
 
 **Checklist deliverables to capture later (not yet executed in this decision step)**:
+
 1. `Test-ModuleManifest` passes for `Specrew.psd1`
 2. `Import-Module ./Specrew.psd1 -Force` succeeds
 3. Exported function set matches FR-002 (`specrew`, `specrew-init`, `specrew-start`, `specrew-where`, `specrew-review`, `specrew-team`, `specrew-update`)
@@ -9017,6 +9373,7 @@ Resolve T003: choose the Iteration 001 cross-platform verification depth for FR-
 9. Publish-Module workflow validates locally in dry-run/manual gate mode and does not perform a real PSGallery publish
 
 **Explicit Iteration 002 deferrals**:
+
 - `.github/workflows/cross-platform-validation.yml` with `ubuntu-latest` matrix
 - macOS testing
 - 104+ embedded-backslash sweep across existing PowerShell scripts
@@ -9051,7 +9408,6 @@ T003 is now resolved for Iteration 001. The feature keeps its full cross-platfor
 
 Present the T004 human-decision handoff, keeping the compose-with constraint explicit: loader path construction only needs to be Windows-correct in Iteration 001; Iteration 002 expands that surface to cross-platform edge cases.
 
-
 # Decision: Feature 019 T002 Conflict-Marker Format
 
 **Date**: 2026-05-16T15:45:15Z  
@@ -9080,11 +9436,13 @@ Resolve T002: choose the conflict-marker format for template-refresh conflicts s
 ```
 
 **Compose-with note for later implementation**:
+
 - After `specrew update` detects conflicts, the next `specrew start` should parse `.conflict` artifacts.
 - Squad should walk the user through each conflict interactively with `accept-new`, `keep-user`, or `manual-resolve`.
 - After resolution, Squad should write the resolved destination file and remove the corresponding `.conflict` artifact.
 
 **Iteration 2 follow-up**:
+
 - Verify Linux/macOS clean reading with LF and no BOM during the cross-platform hardening pass.
 
 ## Rationale
@@ -9116,7 +9474,6 @@ T002 is now resolved for Iteration 001. Pillar 4 conflict artifacts now have an 
 
 Present the T003 human-decision handoff, then pause without starting T040/T041 or any wider cross-platform work.
 
-
 # Decision: Feature 019 T001 Module Manifest File-List Strategy
 
 **Date**: 2026-05-16T15:38:37Z  
@@ -9135,6 +9492,7 @@ Resolve T001: decide the `Specrew.psd1` `FileList` strategy for bundled module c
 **Approved option**: **Option 1 — Explicit `FileList` allowlist for `Specrew.psd1`**
 
 **Allowed composition sketch for later implementation**:
+
 - `Specrew.psd1`
 - `Specrew.psm1`
 - `scripts/*.ps1`
@@ -9171,7 +9529,6 @@ T001 is now resolved for Iteration 001. Pillar 1 and Pillar 2 can rely on an exp
 
 Stop at T002 and obtain a human decision on conflict-marker format before continuing Phase 0.
 
-
 # Decision: Feature 019 Before-Implement Quality Gate
 
 **Date**: 2026-05-16  
@@ -9185,6 +9542,7 @@ Stop at T002 and obtain a human decision on conflict-marker format before contin
 Executed before-implement quality gate for Feature 019 Specrew Distribution Module. Applied 6 required quality lenses to spec.md, plan.md, and tasks.md artifacts.
 
 **Artifacts Evaluated**:
+
 - Spec: C:\Dev\Specrew\specs\019-specrew-distribution-module\spec.md (5 User Stories, 32 Functional Requirements)
 - Plan: C:\Dev\Specrew\specs\019-specrew-distribution-module\plan.md (5-pillar architecture, 14 SP estimate)
 - Tasks: C:\Dev\Specrew\specs\019-specrew-distribution-module\tasks.md (39 tasks across 6 phases)
@@ -9193,6 +9551,7 @@ Executed before-implement quality gate for Feature 019 Specrew Distribution Modu
 ## Quality Lens Verdicts
 
 ### Lens 1: Constitution Alignment — ✅ PASS
+
 - Principle I (Spec Is Authoritative): Plan tracks back to approved spec FRs; no ad-hoc scope detected
 - Principle II (Layered System): All changes are Spec Kit layer (module packaging, scripts); no Squad layer violations
 - Principle IX (Mandatory Traceability): All 39 tasks have explicit FR/US traceability; tasks.md Traceability Map complete
@@ -9202,6 +9561,7 @@ Executed before-implement quality gate for Feature 019 Specrew Distribution Modu
 - Principle XXI (Verification Is Mandatory): Phase 1 quality gates defined; user story acceptance scenarios planned
 
 ### Lens 2: Traceability Completeness — ✅ PASS
+
 - All 5 User Stories map to specific FRs with bidirectional traceability
 - All 32 Functional Requirements have task coverage across 6 phases (Phase 0-5, Final Validation)
 - All 39 tasks include explicit FR/US trace annotations in parenthetical (Trace: ...) format
@@ -9210,6 +9570,7 @@ Executed before-implement quality gate for Feature 019 Specrew Distribution Modu
 - Success criteria SC-001 through SC-006 map to specific user stories and validation tasks T050-T056
 
 ### Lens 3: Cross-Platform Coverage — ✅ PASS
+
 - FR-030 mandates Join-Path for all path construction; WSL verification task explicitly planned
 - FR-031 requires testing on Windows, Linux (Ubuntu), and macOS before every release
 - FR-032 mandates PSEdition = Core to enforce PowerShell 7+ cross-platform requirement
@@ -9219,6 +9580,7 @@ Executed before-implement quality gate for Feature 019 Specrew Distribution Modu
 - US5 includes specific acceptance scenarios for forward-slash paths on Linux, macOS path display, and PS 5.1 install failure
 
 ### Lens 4: Test Strategy Coverage — ✅ PASS
+
 - Pillar 1 (Module Packaging): T009 validates manifest with Test-ModuleManifest; manual test checklist planned
 - Pillar 2 (Resource Bundling): T014 validates exclusions and size estimate; directory structure verification planned
 - Pillar 3 (Init Refactor): T019 implements bootstrap validation; integration test for module-path init planned
@@ -9229,6 +9591,7 @@ Executed before-implement quality gate for Feature 019 Specrew Distribution Modu
 - Plan Phase 1 Quality Planning documents 6 required quality gates with evidence sources and status
 
 ### Lens 5: Validator Integration Sketch — ✅ PASS
+
 - Plan defines drift detection via Specrew-Speckit validators during /speckit.implement boundary
 - Drift-detection mechanism includes: (1) Specrew-Speckit validators, (2) integration test failures, (3) manual PSGallery publish log review
 - Validators will check spec-to-task traceability on every task completion during implementation
@@ -9236,6 +9599,7 @@ Executed before-implement quality gate for Feature 019 Specrew Distribution Modu
 - Plan Phase 2 Quality Planning explicitly defers hardening gate and specialist review; rationale documented (distribution infrastructure focus)
 
 ### Lens 6: Security Baseline — ✅ PASS
+
 - FR-028 mandates PSGallery API key stored as GitHub Actions secret (name: PSGALLERY_API_KEY)
 - FR-025 mandates self-signed certificate stored as GitHub Actions secret; T038 implements signing step
 - T042 explicitly plans GitHub Actions secrets configuration (PSGALLERY_API_KEY, SIGNING_CERT_BASE64, SIGNING_CERT_PASSWORD)
@@ -9247,11 +9611,13 @@ Executed before-implement quality gate for Feature 019 Specrew Distribution Modu
 ## Artifact Polishing Applied
 
 **T002 (Conflict-Marker Format)**:
+
 - Added explicit options: (A) Git-style, (B) Custom, (C) Structured comments
 - Added implications: Squad coordinator parser dependency, T031 implementation impact
 - Rationale: Ensures design-question task has clear options and implications for human decision-making
 
 **T005 (API-Key Rotation Guidance)**:
+
 - Added explicit non-blocking statement: "This is a documentation-only task that does not block any implementation work"
 - Clarified parallel execution capability with Pillars 1-5 or post-v1 deferral option
 - Rationale: Removes ambiguity about blocking behavior for design-question task
@@ -9275,7 +9641,8 @@ All 6 design-question tasks (Phase 0) properly framed:
 
 **Overall Verdict**: ✅ **READY** (with deferral)
 
-**Rationale**: 
+**Rationale**:
+
 - Feature 019 focuses on distribution infrastructure (module packaging, install/update mechanics, CI/CD automation) rather than runtime business logic or security-sensitive data processing
 - Plan Phase 2 Hardening and Specialist Review Planning explicitly documents deferral rationale: "This feature focuses on distribution infrastructure... rather than runtime business logic or security-sensitive data processing. Hardening focus will return in future features that introduce complex state machines, external integrations, or user-data handling."
 - Phase 1 quality gates are sufficient for v1: manual cross-platform verification, integration test scenarios, PSGallery test-gallery dry-run, GitHub Actions workflow validation
@@ -9293,6 +9660,7 @@ All 6 design-question tasks (Phase 0) properly framed:
 ## Confirmation of Scope Boundaries
 
 **In Scope** (completed at this boundary):
+
 - ✅ Applied 6 pre-implementation quality lenses to spec.md, plan.md, tasks.md
 - ✅ Evaluated hardening-gate readiness and produced explicit READY recommendation
 - ✅ Performed necessary artifact polishing (T002 options/implications, T005 non-blocking clarification)
@@ -9301,6 +9669,7 @@ All 6 design-question tasks (Phase 0) properly framed:
 - ✅ Appended dated decisions.md entry with runtime evidence and lens verdicts
 
 **Out of Scope** (explicitly not started):
+
 - ❌ Hardening-gate-and-implementation-auth boundary (not authorized)
 - ❌ Implementation work (no code changes to scripts/ or extensions/)
 - ❌ Validator additions (no changes to specrew-speckit extension)
@@ -9313,7 +9682,6 @@ Feature 019 before-implement quality gate passed with READY verdict. All 6 quali
 ## Next Action
 
 **Do not advance to hardening-gate-and-implementation-auth or implementation**. Boundary commit will be created and pushed to origin/019-specrew-distribution-module. Await explicit human authorization before advancing to the next boundary.
-
 
 # Decision: Feature 019 Hardening-Gate and Implementation Authorization
 
@@ -9331,10 +9699,12 @@ Human approver **Alon Fliess** explicitly authorized the hardening-gate-and-impl
 **Authorized scope**: Feature 019 Iteration 001 — the 39 tasks in tasks.md across Phase 0 T001-T006 + Pillars 1-5 + final validation
 
 **Authorized actions**:
+
 1. Hardening-gate sign-off for Feature 019 Iteration 001 pre-implementation readiness
 2. Implementation authorization to proceed with task execution via `/speckit.implement`
 
 **Critical constraints**:
+
 - T001-T006 (Phase 0 design-question tasks) remain **unresolved by design** and MUST surface during implementation via pause-for-decision handling
 - Implementer agent must NOT auto-decide T001-T006; each requires explicit human decision with options and implications review
 - Implementation must stop after this boundary completion; do NOT advance to `/speckit.implement` without separate explicit authorization
@@ -9389,10 +9759,12 @@ All 6 pre-implementation quality lenses carried forward from before-implement bo
 ## Runtime Evidence
 
 **Hardening-gate artifacts created**:
+
 - `specs/019-specrew-distribution-module/iterations/001/quality/hardening-gate.md` — pre-implementation hardening gate with READY verdict, 6 quality lens verdicts carried forward, Phase 0 design-question constraints, risk-tier verification focus, stack-ready analysis, and explicit Phase 2 hardening deferral
 - Iteration directory structure scaffolded: `specs/019-specrew-distribution-module/iterations/001/quality/`
 
 **State updates**:
+
 - `.squad/identity/now.md` — updated to reflect hardening-gate-and-implementation-auth boundary complete, next action requires explicit human authorization for `/speckit.implement`
 - `.squad/decisions.md` — this authorization record appended
 
@@ -9410,9 +9782,8 @@ All 6 pre-implementation quality lenses carried forward from before-implement bo
 Feature 019 hardening-gate-and-implementation-auth boundary complete. Pre-implementation readiness confirmed with READY verdict. Implementation authorization audit record exists with human approver, timestamp, scope, and constraints. T001-T006 design-question tasks remain unresolved by design and will surface during implementation execution. Boundary artifacts committed and pushed to origin/019-specrew-distribution-module (fa56928). /speckit.implement has NOT started and requires separate explicit human authorization before task execution.
 
 ## Next Action
- 
- Hardening-gate-and-implementation-auth boundary is complete. Await explicit human authorization for /speckit.implement only to begin task execution.
 
+ Hardening-gate-and-implementation-auth boundary is complete. Await explicit human authorization for /speckit.implement only to begin task execution.
 
 # Decision: Feature 019 Boundary 6 Feature-Closeout Authorization
 
@@ -9429,12 +9800,14 @@ Human approver **Alon Fliess** explicitly authorized **Boundary 6 — feature-cl
 **Authorized starting ref**: `f2d77ee` — the iteration-closeout finalization commit on branch `019-specrew-distribution-module`
 
 **Authorized execution sequence**:
+
 1. Repair the pre-existing Iteration 001 hardening-gate over-claim so `iterations/001` transitions to PASS.
 2. Apply the Rule 15 version bump from `0.18.0` to `0.19.0` across all required version-tracked files.
 3. Create the feature-level closeout artifact and update `.squad/identity/now.md` plus `.squad/decisions.md` to reflect the feature-closed state.
 4. Create the PR from `019-specrew-distribution-module` to `main` and stop after surfacing the PR URL.
 
 **Hard-stop conditions**:
+
 - Validator fail after a fix attempt
 - Test failure in the executed validation lanes
 - Missing Rule 15 version target file
@@ -9443,6 +9816,7 @@ Human approver **Alon Fliess** explicitly authorized **Boundary 6 — feature-cl
 - More than 10 consecutive reconciliation edits without resolution
 
 **Out of scope**:
+
 - Script or module logic changes outside the required Rule 15 version field updates
 - Corpus graduation into `.specrew/quality/known-traps.md`
 - PR merge
@@ -9457,7 +9831,6 @@ Human approver **Alon Fliess** explicitly authorized **Boundary 6 — feature-cl
 ## Next Action
 
 Execute the Boundary 6 feature-closeout pass in sequence under the authorized stop-at-PR-creation discipline, then report the phase commit hashes, validator transitions, final validator result, and PR URL.
-
 
 # Decision: Feature 015 Review-Boundary Commit
 
@@ -9501,7 +9874,6 @@ The review boundary is now durably persisted to git with explicit verify-and-han
 
 Do not open retrospective or claim iteration closeout from this accepted review boundary alone. Await separate human authorization before opening the retrospective for Feature 015, iteration 002 (per review.md Next Action section).
 
-
 # Implementer Decision: Feature 015 release-boundary handling
 
 **Date**: 2026-05-13  
@@ -9520,7 +9892,6 @@ advisory-only and preserves the existing tag target without any rewrite.
 - This keeps FR-010 aligned with the no-force / no-history-rewrite constraint.
 - It preserves historical documentary value for retroactive tags.
 - It gives future release work a concrete rule for duplicate-tag scenarios.
-
 
 # Planning Artifact Repair: Feature 015 Consistency
 
@@ -9559,7 +9930,6 @@ advisory-only and preserves the existing tag target without any rewrite.
 
 Feature 015 planning artifacts are now repair-complete and ready for implementation authorization (when approved by human reviewer).
 
-
 # Planning Decision: Feature 015 Iteration 002 Scaffold
 
 **Decision ID**: planner-feature015-iteration002-plan  
@@ -9595,12 +9965,14 @@ All seven scope items are represented in the task decomposition with explicit FR
 ## Artifacts Created
 
 Planning boundary artifacts:
+
 - `specs/015-public-readiness-pass/iterations/002/plan.md` — canonical iteration plan with 15 tasks, concurrency rationale, effort model
 - `specs/015-public-readiness-pass/iterations/002/state.md` — iteration state artifact with planning-phase posture
 - `specs/015-public-readiness-pass/iterations/002/drift-log.md` — zero-drift planning assessment with seven execution-monitoring areas
 - `specs/015-public-readiness-pass/iterations/002/quality/hardening-gate.md` — pre-implementation quality concerns with canonical + iteration-specific schema
 
 Governance updates:
+
 - `.squad/identity/now.md` — updated to reflect Iteration 002 planning boundary complete, execution authorization pending
 
 ---
@@ -9608,6 +9980,7 @@ Governance updates:
 ## Key Planning Decisions
 
 ### 1. Effort Scoping: 11.5 Story Points
+
 - Total estimated effort for Iteration 002 is 11.5 story_points
 - Approximately 58% of the 20 story_point capacity ceiling
 - Leaves 8.5 story_points of post-execution buffer for rework if needed
@@ -9615,6 +9988,7 @@ Governance updates:
 - Aligns with the original plan.md estimate of "≈8 story points" with additional reserve for test scaffolding and human verification phases
 
 ### 2. Task Decomposition: 15 Tasks Across Three Workstreams
+
 - **Validator Coverage (T010-T011, T016, T023)**: Test fixtures, Pester coverage, implementation, fixture validation
 - **Release-Truth (T012-T015, T017-T019)**: Version bump, docs, changelog, tags, spec status
 - **Governance Carry-Forward (T020-T021)**: Feature closeout templates and proof deferral
@@ -9623,17 +9997,20 @@ Governance updates:
 Decomposition respects the planning principle of clear ownership and separable workstreams.
 
 ### 3. Hardening-Gate Status: `blocked` Pending Implementation Authorization
+
 - Pre-implementation concerns are mapped to execution-evidence targets
 - All canonical concerns (security, error-handling, idempotency, test-integrity, resilience) are addressed
 - Iteration-specific concerns (changelog-completeness, version-tag-integrity, coordinator-prompt-correctness, status-field-consistency, version-surface-alignment, validator-non-invasiveness) are explicitly monitored
 - Sign-off is reserved for post-implementation; planning-time verdict is `blocked` (procedurally correct; no implementation evidence yet)
 
 ### 4. No Specification Drift
+
 - Planning boundary assessment confirms zero drift between authorized scope (plan.md) and task decomposition
 - All seven FR items appear in task requirements
 - No orphan tasks; all 15 tasks trace to explicit FR or planning-boundary work
 
 ### 5. Iteration 001 Closure is Preserved
+
 - Iteration 001 is marked `complete` in state.md and plan.md; no changes are made to closed iteration artifacts
 - Iteration 002 stands alone as a new planning boundary
 - Feature 015 remains open for future separately authorized work (e.g., public visibility changes)
@@ -9661,15 +10038,19 @@ Decomposition respects the planning principle of clear ownership and separable w
 ## Risk Mitigation
 
 ### Test-Driven Validator Development (T010-T011 → T016)
+
 Validator test fixtures and Pester coverage are planned before implementation to reduce risk of validator behavior deviations. Rationale: Public-readiness detection is a new surface; early test scaffolding ensures fitness before code.
 
 ### Version-Truth Baseline Lock (T012-T013 First)
+
 Version bump and README sync are scheduled before changelog/docs/tags to establish a shared baseline. Rationale: Downstream artifacts (CHANGELOG, tags, docs) reference the canonical version; locking early reduces coordination risk.
 
 ### Human Reviewer Gates (T018, T023)
+
 Two explicit human verification points are scheduled: post-US2 implementation (T018: Pester/analyzer/tags) and pre-polish-close (T023: validator fixture run). Rationale: Complex version/tag/validator work benefits from independent verification.
 
 ### Governance Carry-Forward Proof Deferral (T021)
+
 The Feature Closeout Version Management guidance (T020) is documented as proof-deferred to the next real feature closeout (T021 notes). Rationale: Synthetic proof is less valuable than real feature-close evidence; deferral is explicit in quickstart.md.
 
 ---
@@ -9679,6 +10060,7 @@ The Feature Closeout Version Management guidance (T020) is documented as proof-d
 **For the Coordinator**:
 
 Before granting implementation authorization, verify:
+
 1. ✅ Iteration 002 scope is explicitly authorized in `.squad/identity/now.md`
 2. ✅ All 15 tasks (T010-T024) are present in `plan.md` task table with FR traceability
 3. ✅ Effort total (9.0 story_points) is within capacity
@@ -9695,7 +10077,6 @@ Before granting implementation authorization, verify:
 - Iteration 002 remains in `planning` status until explicit implementation authorization is granted.
 - No `review.md` or `retro.md` placeholders are created; those artifacts are reserved for post-execution phases.
 - All traceability is recorded in the canonical iteration plan (plan.md); this document is a summary for coordination visibility.
-
 
 # Spec Steward Decision: Feature 015 Iteration 002 Planning Authorization and Shipped-Feature Status Reconciliation
 
@@ -9725,6 +10106,7 @@ Align the authoritative Feature 015 planning surfaces (spec.md, plan.md, tasks.m
 **Decision**: Use status label `Complete` as the canonical shipped-feature spec status, aligning with spec 013 (validator hardening) as the standard label for shipped and fully delivered features.
 
 **Rationale**:
+
 - Spec 013 (validator hardening) uses `Status: Complete` to indicate a shipped and fully delivered feature
 - Four previously shipped features (007, 009, 011, 012) currently carry the stale `Draft` status that does not reflect their delivered and implemented state
 - Status `Complete` signals that the feature is shipped, implemented, and ready for production use
@@ -9770,6 +10152,7 @@ Align the authoritative Feature 015 planning surfaces (spec.md, plan.md, tasks.m
 Feature 015 spec.md FR-015 and FR-017 establish planning and execution boundaries. FR-015 requires that planning artifacts preserve the authorization boundary, and FR-017 (new) requires reconciliation of stale shipped-feature spec status labels.
 
 The user directive delivered on 2026-05-13 explicitly authorizes these seven scope items for Iteration 002 planning and execution. Without updating the planning surfaces, a Planner or Coordinator reviewing the artifacts would encounter:
+
 1. Apparent ambiguity about whether Iteration 002 is deferred or authorized
 2. Missing traceability from the new stale-status-reconciliation work back to a specification requirement
 3. Stale governance records (spec.md scope, plan.md phase planning, .squad/identity/now.md next-valid-action) that would mislead decision-making
@@ -9777,6 +10160,7 @@ The user directive delivered on 2026-05-13 explicitly authorizes these seven sco
 ### Canonical Status Label Alignment
 
 The four shipped specs (007, 009, 011, 012) currently carry `Draft` status despite being:
+
 - Completed and shipped features
 - Delivered to production in Specrew's alpha release
 - Referenced in Feature 015 FR-011 as part of "14 shipped features"
@@ -9785,6 +10169,7 @@ The four shipped specs (007, 009, 011, 012) currently carry `Draft` status despi
 Using `Draft` for shipped features creates a governance signal misalignment: outside readers would see "Draft" status and infer these features are incomplete or intentionally unfinished, when in fact they are delivered. This contradicts the public-readiness goal of Feature 015 to accurately represent project state.
 
 Status `Complete` is the correct terminal state because:
+
 1. It aligns with spec 013 (validator-hardening) which uses `Complete` for a delivered feature
 2. It signals that the feature is shipped and ready for use
 3. It allows future status evolution (e.g., if a shipped feature later enters a "Deprecated" state)
@@ -9820,7 +10205,6 @@ Status `Complete` is the correct terminal state because:
 **Decision Date**: 2026-05-13  
 **Status**: Active — Planner may begin scaffolding Iteration 002 planning artifacts per this decision.
 
-
 # Decision: Shipped Feature Spec Status Reconciliation (Feature 015 FR-017)
 
 **Date**: 2026-05-13  
@@ -9853,6 +10237,7 @@ Reconciled the Status field across four shipped feature specifications from the 
 ## Verification
 
 All four files verified after edit:
+
 - `specs/007-user-facing-progress-handoff/spec.md` line 5: ✅ `Status: Complete`
 - `specs/009-project-path-resolution/spec.md` line 5: ✅ `Status: Complete`
 - `specs/011-specrew-start-conditional-pause/spec.md` line 5: ✅ `Status: Complete`
@@ -9866,7 +10251,6 @@ All four files verified after edit:
 ---
 
 This decision closes FR-017 (T019) for Feature 015 Iteration 002.
-
 
 # Retrospective Decision: Feature 014 Iteration 001
 
@@ -9955,8 +10339,8 @@ The following candidate rows should be added to `.specrew/quality/known-traps.md
 
 **Status**: Awaiting Alon Fliess's separate authorization before closing the retrospective boundary and opening the closeout phase.
 
-
 ### 2026-05-14T00:00:00Z: Delegated lifecycle runtime evidence
+
 **By:** Squad (Coordinator)  
 **Role / Work Item:** Planner — Feature 016 Iteration 002 task generation  
 **Requested agent:** claude  
@@ -9964,7 +10348,6 @@ The following candidate rows should be added to `.specrew/quality/known-traps.md
 **Model ID:** unknown (same-window Copilot session)  
 **Status:** fell back  
 **Fallback reason:** preferred agent `claude` is not enabled in the active Specrew routing plan
-
 
 # Retro Facilitator Inbox: Feature 015 Iteration 001 Retro Boundary
 
@@ -10016,32 +10399,32 @@ The mistaken orphan branch `016-public-readiness-pass` required cleanup plus rep
 No validator rule currently checks branch name against feature directory before the planning boundary
 is committed.
 
-
 ### 2026-05-12T23:17:38+03:00: User directive
+
 **By:** Alon Fliess (via Copilot)
 **What:** Before retrospective, commit the Feature 014 Iteration 001 review-boundary artifacts (`review.md`, `state.md`, and `plan.md`) as a single dedicated commit with message `Feature 014 handoff-format-scoping iteration 001 review boundary`, push it to `origin/014-handoff-format-scoping`, then report the new commit hash and clean tree state without opening retrospective.
 **Why:** User request — captured for team memory
 
-
 ### 2026-05-12T23:21:39+03:00: User directive
+
 **By:** Alon Fliess (via Copilot)
 **What:** Sign off on the accepted review verdict for Feature 014, handoff-format scoping, Iteration 001, as recorded in `specs/014-handoff-format-scoping/iterations/001/review.md` and commit `8e99013`; authorize the retrospective boundary against implementation commit `f02688f`; produce `retro.md` with actual-vs-planned calibration across T001-T015, surfaced lessons including the review-boundary-without-commit pattern and any planning-output drift, and corpus-row candidates including a future `boundary-claim-without-commit` detection rule; stop before the iteration-closeout boundary for separate authorization.
 **Why:** User request — captured for team memory
 
-
 ### 2026-05-12T23:48:37+03:00: User directive
+
 **By:** Alon Fliess (via Copilot)
 **What:** Sign off on the accepted retrospective for Feature 014 handoff-format-scoping Iteration 001, treat commit `a5fcb90` as the retro-boundary model for future boundary-commit messages, authorize the iteration-closeout boundary, and as part of the same closeout commit add a canonical defer entry for the pre-existing iteration-011 gap in `.squad/decisions.md` so repo-wide governance returns green without folding unrelated cleanup into Feature 014 scope.
 **Why:** User request — captured for team memory
 
-
 ### 2026-05-13T00:23:50+03:00: User directive
+
 **By:** Alon Fliess (via Copilot)
 **What:** Sign off on the Feature 014 Iteration 001 closeout boundary, authorize the Feature 014 feature-closeout boundary including PR creation, self-review, merge to main, and use the high-rigor boundary-commit pattern established by `a5fcb90` for the feature-closeout commit.
 **Why:** User request — captured for team memory
 
-
 ### 2026-05-13T23:40:30+03:00: Delegated lifecycle runtime evidence
+
 **By:** Squad (Coordinator)
 **Role / Work Item:** Implementer — Feature 015 Public-Readiness Pass feature-closeout boundary
 **Requested Agent:** copilot
@@ -10053,6 +10436,7 @@ is committed.
 ---
 
 ### 2026-05-13T23:31:40+03:00: Delegated lifecycle runtime evidence
+
 **By:** Squad (Coordinator)
 **Role / Work Item:** Implementer — Feature 015 Public-Readiness Pass Iteration 002 closeout truth-state repair
 **Requested Agent:** copilot
@@ -10064,6 +10448,7 @@ is committed.
 ---
 
 ### 2026-05-13T23:24:40+03:00: Delegated lifecycle runtime evidence
+
 **By:** Squad (Coordinator)
 **Role / Work Item:** Implementer — Feature 015 Public-Readiness Pass Iteration 002 iteration-closeout boundary
 **Requested Agent:** copilot
@@ -10075,6 +10460,7 @@ is committed.
 ---
 
 ### 2026-05-13T22:52:17+03:00: Delegated lifecycle runtime evidence
+
 **By:** Squad (Coordinator)
 **Role / Work Item:** Retro Facilitator — Feature 015 Public-Readiness Pass Iteration 002 retrospective boundary
 **Requested Agent:** copilot
@@ -10086,6 +10472,7 @@ is committed.
 ---
 
 ### 2026-05-13T20:39:39+03:00: Delegated lifecycle runtime evidence
+
 **By:** Squad (Coordinator)
 **Role / Work Item:** Reviewer — Feature 015 Public-Readiness Pass Iteration 002 independent review boundary
 **Requested Agent:** claude
@@ -10099,6 +10486,7 @@ is committed.
 ---
 
 ### 2026-05-12T23:59:59+03:00: Deferred gap - Feature 001 iteration 011
+
 **By:** Alon Fliess (via Copilot)
 **Type:** deferred-gap
 **Iteration Reference**: specs/001-specrew-product/iterations/011
@@ -10124,10 +10512,10 @@ is committed.
 ---
 
 ### 2026-05-12T22:49:40+03:00: User directive
+
 **By:** Alon Fliess (via Copilot)
 **What:** Authorize the independent review boundary for Feature 014, handoff-format scoping, Iteration 001, the bounded stop-vs-progress selector and additive soft-warning rollout, against implementation commit `f02688f`; the reviewer must evaluate the canonical and iteration-specific concerns, run the five preserved handoff-governance regressions plus the two new soft-warning rules on compliant and violating fixtures, confirm the Feature 012 `human-handoff-id-context` scope-of-applicability update does not regress its existing detection, confirm repo-wide `validate-governance.ps1` stays green, emit `review.md` with an explicit verdict, dogfood the new format-scoping rules in the review output itself, repair any blocking gap in the current iteration instead of deferring it, and stop before retrospective for separate human sign-off on the review verdict.
 **Why:** User request — captured for team memory
-
 
 ---
 
@@ -10164,7 +10552,6 @@ Accept the review boundary for feature `014`, handoff format scoping, iteration 
 
 Await Alon Fliess's separate authorization before opening retrospective or closeout work for feature `014`, iteration `001`.
 
-
 ---
 
 # Spec Steward Inbox: Feature 013 Iteration 002 closeout boundary
@@ -10190,8 +10577,8 @@ Treat iteration `002` as truthfully closed once all six canonical iteration arti
 - `specs/013-validator-hardening/iterations/002/quality/hardening-gate.md`
 - `specs/013-validator-hardening/iterations/002/retro.md`
 
-
 ### 2026-05-11T22:18:50+03:00: User directive
+
 **By:** Alon Fliess (via Copilot)
 **What:** Keep using the plain-language three-section handoff format, apply descriptive scope alongside numeric IDs in Squad-authored narration and stop messages during feature 012 iteration 001, require the reviewer to verify the two blocking concerns explicitly, run the full six-script validation lane before closeout, do not claim iteration closeout unless validation is green and git status is clean except for `.claude/settings.local.json`, and treat edits to `.github/agents/squad.agent.md` or `.squad/templates/squad.agent.md` as a session-restart trigger that requires an iteration-boundary commit and restart before closeout sign-off.
 **Why:** User request — captured for team memory
@@ -10208,6 +10595,7 @@ Treat iteration `002` as truthfully closed once all six canonical iteration arti
 **The pre-implementation hardening gate for Feature 012 (Descriptive-ID-Handoffs) Iteration 001 is SIGNED OFF and implementation is AUTHORIZED to proceed.**
 
 Alon Fliess explicitly authorizes:
+
 - Iteration 001 implementation (T001–T011, 8 story points)
 - Iteration 001 review phase
 - Iteration 001 retrospective and closeout
@@ -10233,6 +10621,7 @@ This decision locks the scope of Iteration 001 to the planned 11 tasks (T001–T
 | **Phase 4: US2 (Stop Messages)** | 3 | T009–T011 |
 
 Iteration 002 explicitly defers:
+
 - Replay-path integration tests (T012–T014)
 - Corpus seeding in `known-traps.md` (T015)
 - Quality artifacts and hardening-gate updates (T016)
@@ -10268,7 +10657,9 @@ The hardening gate assessment (see `specs/012-descriptive-id-handoffs/iterations
 **This decision is effective immediately. Implementation may begin with T001.**
 
 ## 2026-05-11-reviewer-feature012-iter001-review
+
 ### 2026-05-11T00:00:00Z: Reviewer decision - Iteration 001 review acceptance
+
 **By:** Reviewer (Copilot)
 **Type:** review-approval
 **What:** Accept Iteration 001 review boundary for feature `012-descriptive-id-handoffs`.
@@ -10277,6 +10668,7 @@ The hardening gate assessment (see `specs/012-descriptive-id-handoffs/iterations
 **Next Action:** Proceed to retrospective and closeout.
 
 ### 2026-05-12T00:17:00+03:00: User directive
+
 **By:** Alon Fliess (via Copilot)
 **What:** For feature 012 iteration 002, scaffold and commit planning artifacts only; use the canonical state.md schema, draft the nine-column hardening gate with the specified blocking concerns, do not start implementation, do not scaffold iteration 003, and stop for fresh hardening-gate sign-off plus implementation authorization after planning.
 **Why:** User request — captured for team memory
@@ -10304,6 +10696,7 @@ Feature `012-descriptive-id-handoffs` iteration `002` planning keeps the canonic
 - Preserve the distinction between planning-time gate creation and post-implementation evidence recording when task tables mention quality artifacts.
 
 ### 2026-05-12T01:24:17+03:00: User directive
+
 **By:** Alon Fliess (via Copilot)
 **What:** For feature 012 iteration 002, record hardening-gate sign-off with the requested metadata repair (`error-handling-expectations` Blocking=false), then proceed with implementation, review, retrospective, and closeout for tasks T012-T020 while preserving replay-path evidence, corpus seeding, regression checks, the six-script closeout lane, readable-reference narration, and startup-guidance restart handling.
 **Why:** User request — captured for team memory
@@ -10665,9 +11058,10 @@ Feature 013 iteration 002 hit all three patterns in a bounded way: planner-outpu
 - When a slice touches closure truth or dirt filtering, require the evidence-only pass fixture in the plan, not just the dirty fail fixture.
 - When a lifecycle commit includes local noise, either isolate it or label it explicitly so review/retro/closeout boundaries stay readable.
 
-
 ## 2026-05-11-implementer-iter005-implementation
+
 ### 2026-05-10T22:12:33Z: Iteration 005 implementation boundary
+
 **By:** Implementer (Copilot)
 **Type:** implementation-scope
 **What:** Keep Polish execution aligned to the authorized six-command validation lane and verify any user-facing replay example against real reviewer replay output before documenting it.
@@ -10675,7 +11069,9 @@ Feature 013 iteration 002 hit all three patterns in a bounded way: planner-outpu
 **Evidence:** Validation lane passed with: `tests\integration\reviewer-regression-event.ps1`, `tests\integration\lockout-chain-cap.ps1`, `tests\integration\reviewer-regression-ledger.ps1`, `tests\integration\reviewer-regression-withdrawal.ps1`, `tests\integration\carry-forward-closed-iteration.ps1`, and `extensions\specrew-speckit\scripts\validate-governance.ps1 -ProjectPath .`. Documentation examples in `docs\user-guide.md` were checked against live output from `extensions\specrew-speckit\scripts\scaffold-reviewer-artifacts.ps1` and `scripts\specrew.ps1 review` on the lockout-cap fixture.
 
 ## 2026-05-11-reviewer-iter005-review
+
 ### 2026-05-11T00:00:00Z: Reviewer decision - Iteration 005 review acceptance
+
 **By:** Reviewer (Copilot)
 **Type:** review-approval
 **What:** Accept Iteration 005 review boundary for `008-reviewer-escalation-symmetry`.
@@ -10684,7 +11080,9 @@ Feature 013 iteration 002 hit all three patterns in a bounded way: planner-outpu
 **Next Action:** Run the Iteration 005 retrospective, then perform closeout without reopening implementation unless new contradictory runtime evidence appears.
 
 ## 2026-05-11-retro-facilitator-iter005-retro
+
 ### 2026-05-11T00:00:00Z: Team decision - Iteration 005 retrospective findings
+
 **By:** Retro Facilitator (Copilot)
 **Type:** process-governance
 **What:** Iteration 005 retrospective extracted three core governance lessons and formalized them as enforced baselines for future hardening gates.
@@ -10692,49 +11090,60 @@ Feature 013 iteration 002 hit all three patterns in a bounded way: planner-outpu
 ### Core Findings
 
 **1. Richer Hardening-Gate Schema is Preferred Baseline**
+
 - Iteration 005 hardening-gate was authored with Overall Verdict `ready` and explicit pending fields (`Reviewed By`, `Reviewed At` marked pending). At sign-off, governance fields updated atomically without blocking.
 - This schema prevents approval-inheritance drift by signaling planning readiness while explicitly showing which governance fields remain pending.
 - **Action:** Spec Steward (Alon Fliess) will update Spec 005 Phase 2 hardening-gate enforcement to require this schema for all new iterations.
 
 **2. Approval Scope Must Tether to Active Iteration Slice**
+
 - Iteration 004 review identified approval-recording gaps where scope was inherited from prior cycles without explicit revalidation.
 - Iteration 005 corrected this by having Alon Fliess sign off on 2026-05-11 with explicit scope refresh: Polish slice (T027–T028, 3 story_points).
 - **Action:** Encode this as a validation rule in Spec 008 governance-trap corpus and propagate to feature portfolio approval-gate checklists.
 
 **3. Staged Validation Discipline Prevents Late-Found Gaps**
+
 - Iteration 005 applied this discipline explicitly: T027 ran the authorized six-command validation lane; T028 verified documentation against live `scaffold-reviewer-artifacts.ps1` and `specrew review` output.
 - Result: zero rework, zero review findings, zero reviewer-regression events.
 - **Action:** Continue enforcing replay-path coverage mandate in all Polish and handoff-facing iterations.
 
 ## 2026-05-11-spec-steward-iter005-governance
+
 ### 2026-05-11T00:00:00Z: Spec steward decision - Feature 008 Iteration 005 pre-sign-off governance schema
+
 **By:** Spec Steward (Copilot)
 **Type:** governance-pattern
 **What:** Accepted the pre-sign-off hardening-gate schema convention established by iteration 005 sign-off protocol. This convention formalizes the lifecycle transition from planning-phase readiness to signed-off authorization.
 
 **Governance Pattern Formalized:**
+
 - **Pre-Sign-Off State:** Overall Verdict: `ready`, Pending metadata fields explicitly marked, Evidence Basis: `planning-time-analysis`, Runtime Evidence Status: `pending-post-implementation`
 - **Post-Sign-Off State:** Overall Verdict updated to reflect signed status, Reviewed By/Reviewed At updated with actual values, Sign-Off Evidence section added
 
 **Two-Artifact Traceability:** When human approval changes authorized scope (e.g., reducing validation commands):
+
 1. Update plan.md task definition with new scope
 2. Update hardening-gate concern evidence to name exact authorized command set
 3. Re-run validation to confirm both artifacts align
 4. Record scope change in Sign-Off Evidence section
 
 **Known-Traps Seeded:**
+
 1. `pre-sign-off-schema-convention-drift` — Detects hardening gates losing pending-metadata notation
 2. `validation-lane-concern-scope-drift` — Detects when concern documentation and plan.md task definitions diverge
 
 **Applicability:** This pattern is baseline for pre-implementation hardening-gate sign-off workflows across all features. Future iteration 005+ slices follow this schema unless explicitly overridden.
 
 ## 2026-05-11-planner-iter005-approval-boundary-repair
+
 ### 2026-05-11T00:00:00Z: Planner decision - Iteration 005 approval-recording boundary repair
+
 **By:** Planner (Copilot)
 **Type:** governance-repair
 **What:** Reviewer flagged four concrete governance gaps in Iteration 005's approval-recording boundary. All four gaps have been repaired.
 
 **Repairs Applied:**
+
 1. **state.md Sign-Off Status Alignment:** Updated `Hardening-Gate Sign-Off` to ✅ **SIGNED** (2026-05-11) and `Implementation Authorization` to ✅ **AUTHORIZED** (2026-05-11)
 2. **plan.md Distinct Implementation Authorization Record:** Added new `Implementation Authorization` section (hardening-gate-triggered authorization to implement, 2026-05-11), distinct from planning-level approval (2026-05-10)
 3. **hardening-gate.md Sign-Off Readiness Concern Count:** Updated concern count from four to six polish-specific concerns to match Concern Review table
@@ -10743,17 +11152,21 @@ Feature 013 iteration 002 hit all three patterns in a bounded way: planner-outpu
 **Verification:** Ran governance validation script — ✅ **PASS** — All governance checks passed.
 
 **Learnings for Future Iterations:**
+
 1. Distinguish planning-level approval (to prepare hardening gate) from hardening-gate-triggered implementation authorization (to execute after gate sign-off)
 2. Validate concern counts match Concern Review table row counts
 3. Governance traps document best practices but do not supersede explicit direction from approval authorities
 
 ## 2026-05-11-planner-iter005-retro-repair
+
 ### 2026-05-11T00:00:00Z: Planner decision - Iteration 005 retrospective truthfulness boundary repair
+
 **By:** Planner (Copilot)
 **Type:** governance-repair
 **What:** Iteration 005 retrospective failed independent audit gate because it mischaracterized governance friction by framing the approval-recording boundary rejection and repair cycle as a "success story" while claiming zero friction occurred.
 
 **Changes Made:**
+
 1. **Retrospective (retro.md):** Separated friction from resolution with explicit "Friction Encountered and Resolved" section; corrected Approval Ref claim; reframed "What Didn't Go Well"
 2. **State (state.md):** Updated Current Phase to `retrospective-in-progress`; updated Iteration Status to clarify retrospective repair in progress
 
@@ -10762,23 +11175,29 @@ Feature 013 iteration 002 hit all three patterns in a bounded way: planner-outpu
 **Approval Status:** Retrospective truthfulness repair recorded. Closeout may proceed after human re-review confirms repaired retrospective satisfies truthfulness boundary. Retro facilitator locked out of further revisions.
 
 ## 2026-05-11-retro-facilitator-iter002-amendment
+
 ### 2026-05-10T00:00:00Z: Retro facilitator decision - Iteration 002 retrospective amendment
+
 **By:** Retro Facilitator (Copilot)
 **Type:** process-governance
 **What:** Iteration 002 retrospective amended to capture three real governance lessons.
 
 **Decisions Captured:**
+
 1. **Approval Scope Must Be Tethered to Active Iteration Slice:** When a plan is resliced or deferred, approval scope must be refreshed. Do not reuse approval evidence from prior iteration boundaries.
 2. **Human-Direction Hold Messages Must Follow Three-Section Rule:** All hold messages must include: (1) Why we stopped, (2) What you can do, (3) Who to escalate to.
 3. **Startup-Loaded Configuration Requires Iteration-Boundary Commits:** Files loaded at session startup (`.github/agents/squad.agent.md`, `.specify/extensions/specrew-speckit/squad-templates/*`) require explicit iteration-boundary commits and session restart via `specrew-start.ps1` to take effect.
 
 **Team Action Items:**
+
 - Planner: Update Iteration 003 plan approval section to include explicit scope certification
 - Coordinator handoff maintainer: Ensure all future human-direction holds follow the three-section rule
 - Review-operations maintainer: Document startup-loaded file boundaries in the next planning ceremony
 
 ## 2026-05-11-reviewer-iter005-retro-reaudit
+
 ### 2026-05-11T00:00:00Z: Reviewer decision - Iteration 005 retrospective truthfulness re-audit
+
 **By:** Reviewer (Copilot)
 **Type:** review-audit
 **What:** Re-audit of Iteration 005 retrospective repair confirmed it satisfies all three truthfulness boundaries.
@@ -10788,7 +11207,9 @@ Feature 013 iteration 002 hit all three patterns in a bounded way: planner-outpu
 **Findings:**
 
 ## 2026-05-11-runtime-evidence-feature011-iter002-signoff
+
 ### 2026-05-11T17:13:13+03:00: Runtime evidence - Feature 011 Iteration 002 hardening-gate sign-off routing
+
 **By:** Squad (Coordinator)
 **Type:** runtime-evidence
 **Work Item:** Hardening-gate sign-off recording and planning -> execution boundary update for feature `011-specrew-start-conditional-pause` iteration 002
@@ -10799,7 +11220,9 @@ Feature 013 iteration 002 hit all three patterns in a bounded way: planner-outpu
 **Fallback Reason:** none
 
 ## 2026-05-11-runtime-evidence-feature011-iter002-boundary-repair
+
 ### 2026-05-11T17:13:13+03:00: Runtime evidence - Feature 011 Iteration 002 execution-boundary truthfulness repair routing
+
 **By:** Squad (Coordinator)
 **Type:** runtime-evidence
 **Work Item:** Repair stale pre-sign-off wording in feature `011-specrew-start-conditional-pause` iteration 002 execution-boundary artifacts after sign-off was recorded
@@ -10810,7 +11233,9 @@ Feature 013 iteration 002 hit all three patterns in a bounded way: planner-outpu
 **Fallback Reason:** none
 
 ## 2026-05-11-runtime-evidence-feature011-iter002-state-tail-repair
+
 ### 2026-05-11T17:13:13+03:00: Runtime evidence - Feature 011 Iteration 002 state tail repair routing
+
 **By:** Squad (Coordinator)
 **Type:** runtime-evidence
 **Work Item:** Repair the final stale pre-sign-off line remaining in `state.md` after execution-boundary updates
@@ -10821,7 +11246,9 @@ Feature 013 iteration 002 hit all three patterns in a bounded way: planner-outpu
 **Fallback Reason:** none
 
 ## 2026-05-11-runtime-evidence-feature011-iter002-implementation
+
 ### 2026-05-11T17:13:13+03:00: Runtime evidence - Feature 011 Iteration 002 implementation routing
+
 **By:** Squad (Coordinator)
 **Type:** runtime-evidence
 **Work Item:** Execute feature `011-specrew-start-conditional-pause` iteration 002 tasks T043-T056
@@ -10832,7 +11259,9 @@ Feature 013 iteration 002 hit all three patterns in a bounded way: planner-outpu
 **Fallback Reason:** none
 
 ## 2026-05-11-runtime-evidence-feature011-iter002-review-prep
+
 ### 2026-05-11T17:13:13+03:00: Runtime evidence - Feature 011 Iteration 002 review-prep routing
+
 **By:** Squad (Coordinator)
 **Type:** runtime-evidence
 **Work Item:** Prepare the independent review checklist for the three blocking concerns before implementation lands
@@ -10843,7 +11272,9 @@ Feature 013 iteration 002 hit all three patterns in a bounded way: planner-outpu
 **Fallback Reason:** none
 
 ## 2026-05-11-runtime-evidence-feature011-iter002-review
+
 ### 2026-05-11T17:13:13+03:00: Runtime evidence - Feature 011 Iteration 002 review routing
+
 **By:** Squad (Coordinator)
 **Type:** runtime-evidence
 **Work Item:** Independently review feature `011-specrew-start-conditional-pause` iteration 002 implementation against the approved blocking concerns and issue the review verdict
@@ -10854,7 +11285,9 @@ Feature 013 iteration 002 hit all three patterns in a bounded way: planner-outpu
 **Fallback Reason:** none
 
 ## 2026-05-11-runtime-evidence-feature011-iter002-retro
+
 ### 2026-05-11T17:13:13+03:00: Runtime evidence - Feature 011 Iteration 002 retrospective routing
+
 **By:** Squad (Coordinator)
 **Type:** runtime-evidence
 **Work Item:** Facilitate the retrospective for feature `011-specrew-start-conditional-pause` iteration 002 after accepted review
@@ -10865,7 +11298,9 @@ Feature 013 iteration 002 hit all three patterns in a bounded way: planner-outpu
 **Fallback Reason:** none
 
 ## 2026-05-11-runtime-evidence-feature011-iter002-closeout
+
 ### 2026-05-11T17:13:13+03:00: Runtime evidence - Feature 011 Iteration 002 closeout routing
+
 **By:** Squad (Coordinator)
 **Type:** runtime-evidence
 **Work Item:** Complete feature `011-specrew-start-conditional-pause` iteration 002 closeout, including T057 documentation updates, staged validation lane, and closure boundary
@@ -10876,7 +11311,9 @@ Feature 013 iteration 002 hit all three patterns in a bounded way: planner-outpu
 **Fallback Reason:** none
 
 ## 2026-05-11-runtime-evidence-feature011-feature-closeout
+
 ### 2026-05-11T18:36:08+03:00: Runtime evidence - Feature 011 feature-level closeout routing
+
 **By:** Squad (Coordinator)
 **Type:** runtime-evidence
 **Work Item:** Record the feature-level closure for `011-specrew-start-conditional-pause`, refresh stale focus pointers, rerun the six-script lane, and commit the feature closure boundary
@@ -10887,7 +11324,9 @@ Feature 013 iteration 002 hit all three patterns in a bounded way: planner-outpu
 **Fallback Reason:** none
 
 ## 2026-05-17-runtime-evidence-feature019-iter002-review
+
 ### 2026-05-17T17:10:35+03:00: Runtime evidence - Feature 019 Iteration 002 review routing
+
 **By:** Squad (Coordinator)
 **Type:** runtime-evidence
 **Work Item:** Independently review feature `019-specrew-distribution-module` iteration 002 against the repaired cross-platform scope, R-019-V2-R1 through R22 repair history, and the Boundary 1 governance scaffold, then issue the review verdict
@@ -10898,7 +11337,9 @@ Feature 013 iteration 002 hit all three patterns in a bounded way: planner-outpu
 **Fallback Reason:** none
 
 ## 2026-05-11-runtime-evidence-feature012-tasks
+
 ### 2026-05-11T19:26:29+03:00: Runtime evidence - Feature 012 task generation routing
+
 **By:** Squad (Coordinator)
 **Type:** runtime-evidence
 **Work Item:** Generate `tasks.md` for feature `012-descriptive-id-handoffs` from the approved spec and plan, then continue to the post-task governance readiness check
@@ -10909,7 +11350,9 @@ Feature 013 iteration 002 hit all three patterns in a bounded way: planner-outpu
 **Fallback Reason:** none
 
 ## 2026-05-11-runtime-evidence-feature012-after-tasks
+
 ### 2026-05-11T19:26:29+03:00: Runtime evidence - Feature 012 after-tasks governance routing
+
 **By:** Squad (Coordinator)
 **Type:** runtime-evidence
 **Work Item:** Run the post-task governance validation for `012-descriptive-id-handoffs` immediately after task generation
@@ -10920,7 +11363,9 @@ Feature 013 iteration 002 hit all three patterns in a bounded way: planner-outpu
 **Fallback Reason:** none
 
 ## 2026-05-11-runtime-evidence-feature012-authorization-boundary-repair
+
 ### 2026-05-11T19:50:26+03:00: Runtime evidence - Feature 012 iteration 001 authorization-boundary repair routing
+
 **By:** Squad (Coordinator)
 **Type:** runtime-evidence
 **Work Item:** Commit the generated task backlog boundary, scaffold iteration 001 planning artifacts with a canonical pre-implementation hardening gate, refine the feature plan's iteration-scaffolding constraint, and stop for fresh sign-off plus implementation authorization
@@ -10931,7 +11376,9 @@ Feature 013 iteration 002 hit all three patterns in a bounded way: planner-outpu
 **Fallback Reason:** none
 
 ## 2026-05-11-runtime-evidence-feature012-state-schema-repair
+
 ### 2026-05-11T20:06:05+03:00: Runtime evidence - Feature 012 iteration 001 state-schema repair routing
+
 **By:** Squad (Coordinator)
 **Type:** runtime-evidence
 **Work Item:** Align iteration `001` state metadata to the canonical schema, rerun governance validation until the crash is gone and zero FAIL lines remain, then seed the canonical state-schema trap row
@@ -10942,7 +11389,9 @@ Feature 013 iteration 002 hit all three patterns in a bounded way: planner-outpu
 **Fallback Reason:** none
 
 ## 2026-05-11-runtime-evidence-feature012-before-implement
+
 ### 2026-05-11T22:18:50+03:00: Runtime evidence - Feature 012 iteration 001 before-implement routing
+
 **By:** Squad (Coordinator)
 **Type:** runtime-evidence
 **Work Item:** Record the human hardening-gate sign-off and implementation authorization for feature `012-descriptive-id-handoffs` iteration `001`, then run the pre-implementation governance gate
@@ -10953,7 +11402,9 @@ Feature 013 iteration 002 hit all three patterns in a bounded way: planner-outpu
 **Fallback Reason:** none
 
 ## 2026-05-11-runtime-evidence-feature012-review
+
 ### 2026-05-11T23:20:48+03:00: Runtime evidence - Feature 012 iteration 001 review routing
+
 **By:** Squad (Coordinator)
 **Type:** runtime-evidence
 **Work Item:** Run T008 narration validation for feature `012-descriptive-id-handoffs` iteration `001`, scaffold the missing review artifact, verify the blocking concerns, and record the review verdict for the readable-reference rollout
@@ -10964,7 +11415,9 @@ Feature 013 iteration 002 hit all three patterns in a bounded way: planner-outpu
 **Fallback Reason:** none
 
 ## 2026-05-11-runtime-evidence-feature012-review-followthrough
+
 ### 2026-05-11T23:20:48+03:00: Runtime evidence - Feature 012 iteration 001 review follow-through routing
+
 **By:** Squad (Coordinator)
 **Type:** runtime-evidence
 **Work Item:** Convert the iteration `001` hardening gate to post-implementation recorded state and normalize the review-phase artifact fields so retrospective can start cleanly
@@ -10975,7 +11428,9 @@ Feature 013 iteration 002 hit all three patterns in a bounded way: planner-outpu
 **Fallback Reason:** none
 
 ## 2026-05-11-runtime-evidence-feature012-retro
+
 ### 2026-05-11T23:55:00+03:00: Runtime evidence - Feature 012 iteration 001 retrospective routing
+
 **By:** Squad (Coordinator)
 **Type:** runtime-evidence
 **Work Item:** Author the iteration `001` retrospective for the readable-reference rollout, update lifecycle artifacts for the retro boundary, and keep closeout as the next step
@@ -10986,7 +11441,9 @@ Feature 013 iteration 002 hit all three patterns in a bounded way: planner-outpu
 **Fallback Reason:** none
 
 ## 2026-05-12-runtime-evidence-feature012-iter002-planning
+
 ### 2026-05-12T00:22:00+03:00: Runtime evidence - Feature 012 iteration 002 planning routing
+
 **By:** Squad (Coordinator)
 **Type:** runtime-evidence
 **Work Item:** Scaffold iteration `002`, the replay-path integration and corpus follow-through planning slice, validate governance, and commit the planning boundary without starting implementation
@@ -10997,7 +11454,9 @@ Feature 013 iteration 002 hit all three patterns in a bounded way: planner-outpu
 **Fallback Reason:** none
 
 ## 2026-05-11-runtime-evidence-feature012-specify
+
 ### 2026-05-11T18:39:12+03:00: Runtime evidence - Feature 012 opening routing
+
 **By:** Squad (Coordinator)
 **Type:** runtime-evidence
 **Work Item:** Open the next approved feature from `C:\Temp\squad-descriptive-references.md` and establish the repository feature pointer for descriptive-reference validation work
@@ -11008,7 +11467,9 @@ Feature 013 iteration 002 hit all three patterns in a bounded way: planner-outpu
 **Fallback Reason:** none
 
 ## 2026-05-11-runtime-evidence-feature012-clarify
+
 ### 2026-05-11T18:41:37+03:00: Runtime evidence - Feature 012 clarification routing
+
 **By:** Squad (Coordinator)
 **Type:** runtime-evidence
 **Work Item:** Tighten the descriptive-reference spec around the numeric-ID threshold, grouped-list handling, and exclusion of tool-rendered output from the detector
@@ -11019,7 +11480,9 @@ Feature 013 iteration 002 hit all three patterns in a bounded way: planner-outpu
 **Fallback Reason:** none
 
 ## 2026-05-11-runtime-evidence-feature012-plan
+
 ### 2026-05-11T18:44:02+03:00: Runtime evidence - Feature 012 planning routing
+
 **By:** Squad (Coordinator)
 **Type:** runtime-evidence
 **Work Item:** Build the feature plan for descriptive-reference handoffs, including iteration scoping across coordinator guidance and later governance/test enforcement
@@ -11028,11 +11491,13 @@ Feature 013 iteration 002 hit all three patterns in a bounded way: planner-outpu
 **Model:** claude-sonnet-4.5
 **Assignment:** honored
 **Fallback Reason:** none
+
 1. **Rejection/Repair Cycle — No Smoothing Detected:** Retrospective now contains explicit "Friction Encountered and Resolved" section. New friction section isolates rejection event and names it explicitly before explaining resolution.
 2. **Approval Ref Traceability — Accurate Language Confirmed:** Language now correctly states "Approval Ref remains `—`" and grounds traceability in timestamp records per governance discipline.
 3. **State.md Retrospective Status — Consistent Fields:** All three status fields (Current Phase, Iteration Status, Retrospective Verdict) tell the same story: review complete, retrospective repaired, closure awaits re-approval.
 
 **Governance Principles Confirmed:**
+
 1. Honest friction naming — retro explicitly names rejection and repair cycle as governance correction
 2. Approval Ref exception is auditable — decision inbox entry documents rationale
 3. Staged validation discipline preserved — distinct positive item separate from friction event
@@ -11040,14 +11505,18 @@ Feature 013 iteration 002 hit all three patterns in a bounded way: planner-outpu
 **Approval Status:** Repaired retrospective passes truthfulness boundary. Iteration 005 closeout may proceed.
 
 ## 2026-05-10T12-05-33Z-copilot-directive
+
 ### 2026-05-10T12:05:33+03:00: User directive - Final user-facing response format
+
 **By:** Alon Fliess (via Copilot)
 **Type:** process-directive
 **What:** Final user-facing responses must lead with plain English in three named sections: What I just did / Why I stopped / What I need from you. Governance vocabulary should appear only as cross-references.
 **Why:** User request — captured for team memory
 
 ## 2026-05-11-runtime-evidence-feature007-iter002-implementation
+
 ### 2026-05-11T04:10:06+03:00: Runtime evidence - Feature 007 Iteration 002 implementation
+
 **By:** Squad (Coordinator)
 **Type:** implementation-evidence
 **What:** Iteration 002 implementation completed T007-T010 for feature `007-user-facing-progress-handoff`: the soft validator landed, two validator integration tests landed, the validation lane was registered, and the review-file navigation rule was rolled into all durable guidance surfaces.
@@ -11059,19 +11528,23 @@ Feature 013 iteration 002 hit all three patterns in a bounded way: planner-outpu
 # Decision Ledger
 
 ## 2026-05-09-runtime-evidence-009
+
 ### 2026-05-09T22:09:00+03:00: Feature 009 lifecycle and repair evidence
+
 **By:** Alon Fliess (via Copilot)
 **What:** Feature `specs/009-project-path-resolution` was run through specify, clarify, planning, tasks, hardening-gate approval, implementation, reviewer repair, and final validation. The final outcome included audited path-resolution fixes across entry-point and internal scripts, a deterministic regression lane, static anti-pattern coverage, known-traps seeding, trap reapplication evidence, and a return of `.specify\feature.json` to `specs/008-reviewer-escalation-symmetry` after closure.
 **Why:** Preserve a compact lifecycle record that feature 009 completed ahead of feature 008, including the reviewer-enforced repair cycle that expanded runtime coverage and closed the remaining audit gaps.
 
 ## copilot-decision-2026-05-07T22-12-30+03-00
+
 ### 2026-05-07T22:12:30+03:00: Clarify skip rationale for 005 Phase 1
+
 **By:** Alon Fliess (via Copilot)
 **What:** Resume `specs/005-stack-aware-quality-bar` at Phase 1 planning without re-running clarify because the hardened spec is unchanged, reviewer-approved, and materially complete for phase-scoped planning.
 **Why:** Existing feature resume — proceed through the formal lifecycle with plan/tasks/before-implement for the first slice.
 
-
 ## 2026-05-08-spec-005-clarifications-applied
+
 # Decision: Spec 005 Clarifications Applied - Planning Ready
 
 **Date**: 2026-05-08  
@@ -11120,7 +11593,9 @@ These clarifications resolve critical implementation ambiguities that would othe
 1. Proceed to `/speckit.plan` to generate implementation plan artifacts
 
 ## 2026-05-11-runtime-evidence-feature007-iter001-review
+
 ### 2026-05-11T03:01:19+03:00: Runtime evidence - Feature 007 Iteration 001 review routing
+
 **By:** Squad (Coordinator)
 **Role / Work Item:** Reviewer - review iteration `specs/007-user-facing-progress-handoff/iterations/001`
 **Requested Agent:** claude
@@ -11130,7 +11605,9 @@ These clarifications resolve critical implementation ambiguities that would othe
 **Fallback Reason:** preferred agent `claude` is not enabled in the delegated routing plan; routed through Copilot task execution
 
 ## 2026-05-11-runtime-evidence-feature007-iter001-retro
+
 ### 2026-05-11T03:01:19+03:00: Runtime evidence - Feature 007 Iteration 001 retrospective routing
+
 **By:** Squad (Coordinator)
 **Role / Work Item:** Retro Facilitator - retrospective for `specs/007-user-facing-progress-handoff/iterations/001`
 **Requested Agent:** copilot
@@ -11140,7 +11617,9 @@ These clarifications resolve critical implementation ambiguities that would othe
 **Fallback Reason:** none
 
 ## 2026-05-11-runtime-evidence-feature007-iter002-planning
+
 ### 2026-05-11T03:01:19+03:00: Runtime evidence - Feature 007 Iteration 002 planning routing
+
 **By:** Squad (Coordinator)
 **Role / Work Item:** Planner - plan `specs/007-user-facing-progress-handoff/iterations/002`
 **Requested Agent:** claude
@@ -11150,7 +11629,9 @@ These clarifications resolve critical implementation ambiguities that would othe
 **Fallback Reason:** preferred agent `claude` is not enabled in the delegated routing plan; routed through Copilot task execution
 
 ## 2026-05-11-runtime-evidence-feature007-iter002-plan-repair
+
 ### 2026-05-11T03:28:32+03:00: Runtime evidence - Feature 007 Iteration 002 planning structure repair
+
 **By:** Squad (Coordinator)
 **Role / Work Item:** Planner - repair iteration 002 planning artifacts and draft planning-time hardening gate
 **Requested Agent:** claude
@@ -11160,7 +11641,9 @@ These clarifications resolve critical implementation ambiguities that would othe
 **Fallback Reason:** preferred agent `claude` is not enabled in the delegated routing plan; routed through Copilot task execution
 
 ## 2026-05-11-runtime-evidence-feature007-scaffolding-corpus-repair
+
 ### 2026-05-11T03:28:32+03:00: Runtime evidence - Feature 007 scaffolding-authorization corpus repair
+
 **By:** Squad (Coordinator)
 **Role / Work Item:** Spec Steward - clarify trap coverage for unauthorized iteration scaffolding
 **Requested Agent:** codex
@@ -11170,7 +11653,9 @@ These clarifications resolve critical implementation ambiguities that would othe
 **Fallback Reason:** preferred agent `codex` is not enabled in the delegated routing plan; routed through Copilot task execution
 
 ## 2026-05-11-runtime-evidence-feature007-iter001-retro-repair
+
 ### 2026-05-11T03:01:19+03:00: Runtime evidence - Feature 007 Iteration 001 retro boundary repair
+
 **By:** Squad (Coordinator)
 **Role / Work Item:** Retro Facilitator - repair stale restart-boundary messaging in iteration 001 retrospective/state
 **Requested Agent:** copilot
@@ -11182,8 +11667,8 @@ These clarifications resolve critical implementation ambiguities that would othe
 3. Implement strongest-class routing policy with explicit override tracking
 4. Design hardening-gate approval workflow with human sign-off capture
 
-
 ## 2026-05-08-spec-005-concrete-mechanisms
+
 # Decision: Spec 005 Updated with Concrete Quality Mechanisms
 
 **Date**: 2026-05-08  
@@ -11237,43 +11722,48 @@ The user's diagnosis showed that category-level quality language helps but does 
 2. Implementation phase: build mechanical checks for dead-field detection and anti-pattern heuristics
 3. Validation phase: test hardening gate workflow and quality-drift detection against representative features
 
-
 ## copilot-directive-2026-05-04T11-28-23
+
 ### 2026-05-04T11:28:23+03:00: User directive
+
 **By:** Alon Fliess (via Copilot)
 **What:** Team member management must be command-driven; users should not have to edit multiple `.squad/` files manually. If Squad has no CRUD command surface for team members, Specrew must provide one.
 **Why:** User request — captured for team memory
 
-
 ## copilot-directive-2026-05-04T12-28-01
+
 ### 2026-05-04T12:28:01+03:00: User directive
+
 **By:** Alon Fliess (via Copilot)
 **What:** Validation should require the mandatory baseline Specrew team members to exist, but must not reject or validate any other additional custom team members.
 **Why:** User request — captured for team memory
 
-
 ## copilot-directive-2026-05-07T21-05-27+03-00
+
 ### 2026-05-07T21:05:27+03:00: User directive
+
 **By:** Alon Fliess (via Copilot)
 **What:** Quality drift should compare against the active feature's planned quality baseline first, then prior iteration baselines when present, and the quality bar should enforce technology-specific software quality best practices even when the human developer lacks deep quality expertise.
 **Why:** User request — captured for team memory
 
-
 ## copilot-directive-2026-05-07T21-27-52+03-00
+
 ### 2026-05-07T21:27:52.819+03:00: User directive
+
 **By:** Alon Fliess (via Copilot)
 **What:** Agents must not "fix" warnings by adding them to a warning-disable or suppression list instead of addressing the underlying problem. The default policy is to fix the root cause. Only when disabling or suppressing the warning is genuinely reasonable or necessary may that path be taken, and it requires explicit human user approval first.
 **Why:** User request — captured for team memory
 
-
 ## copilot-directive-2026-05-07T22-03-31+03-00
+
 ### 2026-05-07T22:03:31+03:00: User directive
+
 **By:** Alon Fliess (via Copilot)
 **What:** Keep GitHub lifecycle issues aligned with the authoritative local iteration artifacts; update source artifacts first and rely on sync rather than manual issue drift.
 **Why:** User request — captured for team memory
 
-
 ## data-baseline-validation-fix
+
 # Decision: Baseline Team Validation Fix
 
 **Date**: 2026-05-04  
@@ -11305,10 +11795,12 @@ Added `Test-BaselineTeamMembers` function that:
 3. **Ignores any additional custom members** (does not validate or reject them)
 
 Also updated `Get-TeamRoleMap` to read from **both** team formats:
+
 - Standard Squad "Members" section (Name → Role mapping)
 - Specrew-managed "Specrew Baseline Roles" section (Role-only entries in managed block)
 
 This dual-format support is necessary because:
+
 - The Specrew repo itself uses the Members section with named members
 - Bootstrapped projects use the managed baseline-roles block
 
@@ -11322,6 +11814,7 @@ Created comprehensive test suite (`tests/integration/validate-baseline-team.ps1`
 4. ✅ Baseline + multiple custom members (should pass)
 
 All existing integration tests still pass:
+
 - ✅ `tests/integration/team-management.ps1`
 - ✅ `tests/integration/bootstrap-to-iteration.ps1` (implied via scaffold paths)
 - ✅ Main project validation (`validate-governance.ps1 -ProjectPath .`)
@@ -11343,8 +11836,8 @@ All existing integration tests still pass:
 
 None required. Validation is complete and tested.
 
-
 ## data-bootstrap-handoff-revision
+
 # Decision: Bootstrap Handoff Terminal Output and Squad Readiness Signal
 
 **Date**: 2026-05-04  
@@ -11365,12 +11858,14 @@ Picard updated the bootstrap contract to require explicit next-step guidance. La
 Fixed all three issues with minimal, complete changes:
 
 ### 1. Terminal Output Flow (Issue 1 & 2)
+
 - Added "=== Usage Flow ===" section with explicit: "Baseline crew → specify features → plan iteration → execute (review and retro as needed)"
 - Changed output phrase from "Baseline crew installed:" to "Baseline Specrew crew installed:" with trailing period to match contract and test expectations
 - Restructured "Next Steps" to clearly separate: (1) Start spec authoring, (2) Run iteration lifecycle, (3) Optional team extension
 - Added explicit references: "Add extra Squad members after bootstrap" and "Keep the Specrew-managed baseline block intact"
 
 ### 2. Squad Readiness Metadata (Issue 3)
+
 - Added explicit team status block to `.squad/team.md` via `deploy-squad-runtime.ps1`
 - Metadata includes:
   - `**Team Status**: configured` — explicit recognizable state
@@ -11400,8 +11895,8 @@ Fixed all three issues with minimal, complete changes:
 
 None required. All three rejection issues resolved.
 
-
 ## data-greenfield-bootstrap-truthfulness
+
 # Decision: Greenfield Bootstrap Documentation Truthfulness
 
 **Date**: 2026-05-04  
@@ -11433,6 +11928,7 @@ The greenfield bootstrap documentation (`docs/getting-started.md`) overclaimed w
 3. **Greenfield-to-Iteration Flow Success** (full path): ⚠️ Requires dependency validation + CLI initialization + manual Spec Kit init if CLI failed
 
 **Document this truthfully by**:
+
 - Adding prerequisites section: Explicitly state Spec Kit CLI and Squad CLI must be operational
 - Making `.specify/` existence a gate: Users must check for it before proceeding to iteration scaffolding
 - Reframing Spec Kit encoding issue as a blocker (not optional workaround)
@@ -11472,8 +11968,8 @@ The greenfield bootstrap documentation (`docs/getting-started.md`) overclaimed w
 2. Team review: Confirm truthfulness acceptable for published docs
 3. No implementation work: This is doc-only; no runtime changes
 
-
 ## data-iter002-execution-update
+
 # Data: Iteration 002 Execution Lifecycle Correction
 
 **Date**: 2026-05-03
@@ -11483,6 +11979,7 @@ The greenfield bootstrap documentation (`docs/getting-started.md`) overclaimed w
 ## Finding
 
 Iteration 002 planning artifacts (plan.md) were still in `planning` status with Started=TBD, but substantial execution work had already commenced:
+
 - FR-019 resume command implementation (resume-iteration.ps1 complete; integration tests present)
 - FR-020 brownfield merge implementation (brownfield-merge.ps1 heavily modified; integration tests created)
 - T-204, T-205, T-206 actively in development
@@ -11659,10 +12156,10 @@ Iteration 002 planning artifacts (plan.md) were still in `planning` status with 
   > implement` or `Feature 016 substantive-interaction-model iteration 001: bounded T001-TNNN scope`). Push.
   >
   > Step 5: STOP at the implementation boundary commit. Do NOT advance to review work — that requires separate authorization. Present a substantive three-section boundary handoff per Pillar 2 modeling the discipline being shipped:
-  >   - What I just did: enumerate the FR coverage delivered, commit hashes for hardening-gate-and-implementation-auth + implementation, specific file:/// paths for new validator rules + coordinator-prompt updates, test coverage status, baseline-vs-actual measurements
+  > - What I just did: enumerate the FR coverage delivered, commit hashes for hardening-gate-and-implementation-auth + implementation, specific file:/// paths for new validator rules + coordinator-prompt updates, test coverage status, baseline-vs-actual measurements
   > against NFR-001/NFR-002 budgets
-  >   - Why I stopped: name the review boundary as next; explain that the review boundary requires separate authorization per per-boundary discipline (FR-002/FR-003)
-  >   - What I need from you: specific review of the implementation against the hardening-gate concerns' Expected Controls, plus authorization to advance to review boundary
+  > - Why I stopped: name the review boundary as next; explain that the review boundary requires separate authorization per per-boundary discipline (FR-002/FR-003)
+  > - What I need from you: specific review of the implementation against the hardening-gate concerns' Expected Controls, plus authorization to advance to review boundary
   >
   > Step 6: Do NOT touch the working-tree out-of-scope files (.claude/settings.local.json, scripts/specrew-where.ps1, subagent history). They remain unstaged. Do NOT modify SpecrewDraft or SpecrewManualTestProjects folders.
   >
@@ -11700,10 +12197,10 @@ Iteration 002 planning artifacts (plan.md) were still in `planning` status with 
   > implement` or `Feature 016 substantive-interaction-model iteration 001: bounded T001-TNNN scope`). Push.
   >
   > Step 5: STOP at the implementation boundary commit. Do NOT advance to review work — that requires separate authorization. Present a substantive three-section boundary handoff per Pillar 2 modeling the discipline being shipped:
-  >   - What I just did: enumerate the FR coverage delivered, commit hashes for hardening-gate-and-implementation-auth + implementation, specific file:/// paths for new validator rules + coordinator-prompt updates, test coverage status, baseline-vs-actual measurements
+  > - What I just did: enumerate the FR coverage delivered, commit hashes for hardening-gate-and-implementation-auth + implementation, specific file:/// paths for new validator rules + coordinator-prompt updates, test coverage status, baseline-vs-actual measurements
   > against NFR-001/NFR-002 budgets
-  >   - Why I stopped: name the review boundary as next; explain that the review boundary requires separate authorization per per-boundary discipline (FR-002/FR-003)
-  >   - What I need from you: specific review of the implementation against the hardening-gate concerns' Expected Controls, plus authorization to advance to review boundary
+  > - Why I stopped: name the review boundary as next; explain that the review boundary requires separate authorization per per-boundary discipline (FR-002/FR-003)
+  > - What I need from you: specific review of the implementation against the hardening-gate concerns' Expected Controls, plus authorization to advance to review boundary
   >
   > Step 6: Do NOT touch the working-tree out-of-scope files (.claude/settings.local.json, scripts/specrew-where.ps1, subagent history). They remain unstaged. Do NOT modify SpecrewDraft or SpecrewManualTestProjects folders.
   >
@@ -11760,6 +12257,7 @@ Iteration 002 planning artifacts (plan.md) were still in `planning` status with 
   > This authorization covers the validator-logic refinements only; it does NOT authorize any new Feature 016 scope expansion, any retrospective or closeout work, or any change outside the validator/test surfaces needed to harden boundary detection and paired-auth matching.
 
 ---
+
 ## 2026-05-14T09:26:39Z — Authorization: review-verdict-signoff
 
 - **Decision ID**: authorization-feature-016-iter-001-review-verdict-signoff
@@ -11827,22 +12325,23 @@ Iteration 002 planning artifacts (plan.md) were still in `planning` status with 
 - **Authorization Text**:
   > I authorize the iteration-closeout boundary for Feature 016 Iteration 001.
   >
-  > **Deliverables Summary**: 
+  > **Deliverables Summary**:
   > - FR-001 through FR-019 delivered and accepted via review-verdict-signoff on 2026-05-14
   > - Six named corpus-row candidates identified during iteration execution: fr-008-pending-commit-reference-vs-validator-hash-match, nfr-budget-calibrated-against-pre-refactor-baseline, regex-boundary-patterns-require-anchoring, validator-idempotency-requires-immutable-data-sources, authorization-text-capture-preserves-human-intent-without-leakage, single-boundary-authorization-discipline-prevents-creeping-scope
   > - Three estimation learnings recorded in retro.md: effort-calibration stable at 13.0 points, velocity sustainable at 13.0 points per iteration, quality shock-absorber recommendation of 5-10 point reserve for discovery-time defects
   >
-  > **Iteration Completion State**: 
+  > **Iteration Completion State**:
   > - All authorized implementation tasks T001-T008, T011-T013, T018-T020 complete with accepted review verdict (post-repair)
   > - Retrospective boundary completed on 2026-05-14T10:13:30Z with substantive lessons and corpus-row candidates recorded in retro.md
   > - NFR-001 +37.5% delta accepted with documented performance rationale; performance optimization deferred to future optimization work
   >
-  > **Scope Clarity for Iteration 2**: 
+  > **Scope Clarity for Iteration 2**:
   > - Iteration 2 FR-020 through FR-024 remains separately authorized
   > - No portion of Iteration 1 scope carries over pending
   > - Carryover items for post-commit automation planning: pending→post-commit automation, validator performance optimization, fractional-second timestamp support or format requirement, post-commit verification formalization, stale-reference scan mandate
 
 ---
+
 # Reviewer Decision: Feature 015 Iteration 002 Review
 
 **Date**: 2026-05-13
@@ -11889,7 +12388,6 @@ Facilitate and complete the retrospective for Feature 017 (Velocity Dashboard), 
      6. F-016 machinery validation: boundary discipline held across all 8 lifecycle boundaries
      7. Iteration 002 carryover: FR-042..FR-046 + FR-019..FR-033 remain scope; ~16-18 SP total
      8. Bundled multi-boundary authorization pattern: clarify→plan→tasks bundled under single authorization, but implementation/review/retro remain separate
-
 
 2. **Corpus-row candidates identified**: Three candidates proposed for `.specrew/quality/known-traps.md`:
    - Bundled planning-phase boundary authorization (permissible variant of one-boundary-at-a-time rule)
@@ -11944,7 +12442,6 @@ Request explicit iteration-closeout authorization before the iteration-closeout 
 ## Next Action
 
 Await Alon Fliess's separate authorization before opening retrospective or closeout work for feature `015`, iteration `002`.
-
 
 # Runtime Evidence: Feature 015 post-closeout corpus-row addition
 
@@ -12048,6 +12545,7 @@ Feature 015 (public-readiness-pass) is now completely closed and shipped to main
 ## Verification
 
 ✅ All Rule 15 requirements satisfied:
+
 - Authoritative version updated in `.specrew/config.yml` (0.14.0 → 0.15.0)
 - CHANGELOG.md entry created for Feature 015 release
 - README version summary and reference tags refreshed
@@ -12055,6 +12553,7 @@ Feature 015 (public-readiness-pass) is now completely closed and shipped to main
 - `validate-governance.ps1` rerun and passed after version/changelog/tag updates
 
 ✅ Feature closure state:
+
 - Feature 015 spec status: Complete
 - Feature 015 plan: completion documented
 - Active feature: cleared from .specify/feature.json
@@ -12073,7 +12572,6 @@ No active feature. Future work requires a new feature specification request and 
 
 The v0.15.0 release tag is durable on origin and serves as a public bookmark for the public-readiness-pass completion milestone.
 
-
 ---
 
 # Implementation Decision: Rule 15 Corpus-Row Addition
@@ -12089,11 +12587,13 @@ Add three new passive-guidance rows to `.specrew/quality/known-traps.md` capturi
 ## Rationale
 
 Rule 15 (Feature Closeout) specified a forward-only execution pattern with three verifiable milestones:
+
 1. Version bump (config, CHANGELOG, README, tags)
 2. Boundary commit on main (merged PR with cleanup)
 3. Release tag creation and push
 
 During Feature 015 closeout, three real-world execution observations emerged:
+
 - **Cosmetic-fix authorization boundary**: Squad offered surface-truth corrections (typos, stale examples, placeholder substitution) without pausing for human re-authorization; clarification needed on which cosmetic fixes require pause-and-ask vs auto-correct.
 - **Template-substitution failure**: Literal `{merge_commit_hash}` placeholder remained in `.squad/identity/now.md` after substitution failed silently; detection and remediation path needed.
 - **Stale-example wording**: Documentation (docs/versioning.md, plan.md) retained old version numbers and Feature 014 references after v0.15.0 bump; documentation-example refresh pass needed.
@@ -12121,10 +12621,10 @@ These three patterns are now reusable corpus knowledge for future feature closeo
 
 Feature 016 (Substantive Interaction Model) requires separate authorization.
 
-
 ---
 
 ---
+
 decision_date: 2026-05-13T22:00:00Z
 decision_type: planning-metadata-pattern
 affected_feature: Feature 016 — Substantive Interaction Model
@@ -12142,6 +12642,7 @@ Added an "Ownership Rationale" section to `specs/016-substantive-interaction-mod
 The Traceability Governance directive requires that all tasks have complete metadata, including explicit mapping of `task_id → requirement_ref`. Feature 016's tasks.md had owner role assignments but lacked explicit documentation linking those roles back to their governing FRs in the spec.
 
 This visibility gap made it difficult for reviewers and implementers to:
+
 1. Verify that ownership assignments are justified by spec authority (not arbitrary)
 2. Trace ownership decisions back to the original FR definitions when auditing task assignments
 3. Understand the scope boundaries for each owner role without reading individual task traces
@@ -12167,6 +12668,7 @@ Each role includes a concise description of responsibilities tied to the impleme
 ## Boundary
 
 This decision is **metadata-scoping only**; it does not change:
+
 - Task IDs, effort estimates, or dependencies
 - The approved two-iteration split or task count
 - Implementation scope or success criteria
@@ -12180,10 +12682,10 @@ Teams implementing future features should consider including Ownership Rationale
 
 **Co-authored-by**: Copilot <223556219+Copilot@users.noreply.github.com>
 
-
 ---
 
 ---
+
 decision_date: 2026-05-14T09:30:00Z
 decision_type: review-boundary-finding
 affected_feature: Feature 016 — Substantive Interaction Model
@@ -12218,7 +12720,6 @@ This decision does **not** change the verified clean areas from the same review:
 ---
 
 **Co-authored-by**: Copilot <223556219+Copilot@users.noreply.github.com>
-
 
 ---
 
@@ -12379,14 +12880,13 @@ All recommendations are documented with implementation owners and timelines.
 
 **Next Review**: These decisions should be reviewed and prioritized during the next planning ceremony before Feature 016 Iteration 001 begins.
 
-
 ---
 
 ### 2026-05-13T23:52:36+03:00: User directive
+
 **By:** Alon Fliess (via Copilot)
 **What:** Forward-only repair only for Feature 015 closeout; do not rewrite `main` history, preserve `77db7ce` and all subsequent commits, and make truth-surface fixes as additional commits on `main`.
 **Why:** User request — captured for team memory
-
 
 ---
 
@@ -12413,7 +12913,9 @@ All recommendations are documented with implementation owners and timelines.
 - Feature 017 remains explicitly out of scope.
 
 ## 2026-05-14-runtime-evidence-feature016-iter002-planning-prep
+
 ### 2026-05-14T12:02:39Z: Runtime evidence - Feature 016 Iteration 002 planning preparation
+
 **By:** Squad (Coordinator)
 **Role / Work Item:** Planner - open `specs/016-substantive-interaction-model/iterations/002` and scaffold planning artifacts for the authorized Iteration 002 slice
 **Requested Agent:** claude
@@ -12423,13 +12925,17 @@ All recommendations are documented with implementation owners and timelines.
 **Fallback Reason:** preferred agent `claude` is not enabled in the delegated routing plan; routed through Copilot task execution
 
 ## copilot-decision-2026-05-14T12-02-39Z-feature016-iter002-clarify-skip
+
 ### 2026-05-14T12:02:39Z: Clarify skip rationale for Feature 016 Iteration 002 planning
+
 **By:** Alon Fliess (via Copilot)
 **What:** Open `specs/016-substantive-interaction-model/iterations/002` planning without re-running clarify because Feature 016 already has an approved, materially complete spec with all ten clarify-time questions resolved in `spec.md`, and the authorized Iteration 002 scope is already grounded as FR-020 through FR-024 plus the Iteration 2 promotion half of FR-016.
 **Why:** Iteration 001 is closed, its plan/state/retro artifacts explicitly defer the Iteration 002 proof, corpus, documentation, template, and severity-promotion work, and the carryover planning decisions are already concrete: preserve the validator scope boundary to Squad-authored artifacts/handoffs only, keep commit-reference synchronization explicit in authorization records, carry the repair-escalation pathway forward, and treat the README/template/public-doc work as the bounded follow-through slice rather than new clarify work.
 
 ## 2026-05-14-runtime-evidence-feature016-iter002-before-plan-hook
+
 ### 2026-05-14T12:14:00Z: Runtime evidence - Feature 016 Iteration 002 mandatory before-plan validation
+
 **By:** Squad (Coordinator)
 **Role / Work Item:** Planner - run `speckit.specrew-speckit.before-plan` for Feature 016 Iteration 002 before continuing planning
 **Requested Agent:** claude
@@ -12439,13 +12945,17 @@ All recommendations are documented with implementation owners and timelines.
 **Fallback Reason:** preferred agent `claude` is not enabled in the delegated routing plan; routed through Copilot task execution
 
 ## copilot-decision-2026-05-14T12-35-00Z-feature016-iter002-carryover-triage
+
 ### 2026-05-14T12:35:00Z: Iteration 002 carryover triage for Feature 016
+
 **By:** Alon Fliess (via Copilot)
 **What:** Treat Iteration 002 as the original FR-020 through FR-024 + FR-016 graduation slice **plus** the accepted feature-local carryovers that materially affect Feature 016 truth surfaces: FR-008 pending -> post-commit Commit Reference synchronization, canonical UTC seconds-precision `Recorded At` formatting, post-commit verification protocol formalization, stale-reference scan mandate after boundary commits, and graduation of the feature-local passive-guidance rows grounded by Iteration 001 review/retro evidence.
 **Why:** This keeps the resumed plan truthful to accepted Iteration 001 learnings while staying below the 20 SP constitutional cap and inside the requested 15-19 SP planning target. Explicitly deferred from this plan are standalone fractional-second parser support, standalone stale-reference soft-validator support, validator performance optimization, `self-referential-feature-sp-surcharge`, and `decisions-ledger-parser-fractional-second-timestamp-incompatibility`.
 
 ## 2026-05-14-runtime-evidence-feature016-iter002-delegated-plan
+
 ### 2026-05-14T12:36:00Z: Runtime evidence - Feature 016 Iteration 002 delegated planning run
+
 **By:** Squad (Coordinator)
 **Role / Work Item:** Planner - run delegated iteration-002 planning for `specs/016-substantive-interaction-model/iterations/002` and update the Speckit planning artifacts only
 **Requested Agent:** claude
@@ -12454,9 +12964,10 @@ All recommendations are documented with implementation owners and timelines.
 **Status:** fallback
 **Fallback Reason:** preferred agent `claude` is not enabled in the delegated routing plan; the planning run was executed through the Copilot-backed `speckit.plan` agent instead
 
-
 ## 2026-05-14-runtime-evidence-feature016-iter002-after-tasks
+
 ### 2026-05-14T12:40:00Z: Runtime evidence - Feature 016 Iteration 002 after-tasks governance pass
+
 **By:** Squad (Coordinator)
 **Role / Work Item:** Reviewer - run `speckit.specrew-speckit.after-tasks` for Feature 016 Iteration 002 and stop at the planning boundary
 **Requested Agent:** claude
@@ -12517,7 +13028,9 @@ All recommendations are documented with implementation owners and timelines.
   > Implementation authorization applies to the full Iteration 002 scope: FR-020 through FR-024, the Iteration 2 graduation portion of FR-016, and the accepted Iteration 001 carryovers affecting Feature 016 truth surfaces.
 
 ## 2026-05-14-runtime-evidence-feature016-iter002-planning-boundary
+
 ### 2026-05-14T12:37:40Z: Runtime evidence - Feature 016 Iteration 002 planning boundary
+
 **By:** Squad (Coordinator)
 **Role / Work Item:** Planner - finalize the Iteration 002 planning boundary and stop before hardening-gate or implementation
 **Requested Agent:** claude
@@ -12525,7 +13038,9 @@ All recommendations are documented with implementation owners and timelines.
 **Model ID:** unknown (same-window Copilot CLI session)
 **Status:** fallback
 **Fallback Reason:** preferred agent `claude` is not enabled in the delegated routing plan; this planning-boundary run used the available Copilot agent
+
 ## 2026-05-14-runtime-evidence-feature016-iter002-planning-repair
+
 ### 2026-05-14T12:58:12Z: Runtime evidence - Feature 016 Iteration 002 planning boundary Commit Reference correction
 
 **By:** Planner (delegated to Copilot)
@@ -12539,6 +13054,7 @@ All recommendations are documented with implementation owners and timelines.
 **Root Cause:** Stale hash from Iteration 2 FR-008 carryover scope (post-commit Commit Reference synchronization requirement)
 
 ## 2026-05-14-runtime-evidence-feature016-iter002-hardening-gate-truth-repair
+
 ### 2026-05-14T13:55:03Z: Runtime evidence - Feature 016 Iteration 002 hardening-gate truth repair
 
 **By:** Squad (Coordinator)
@@ -12552,6 +13068,7 @@ All recommendations are documented with implementation owners and timelines.
 **Root Cause:** Commit 1c3d91d recorded paired authorization before the truthful ready-state hardening-gate artifact was committed, so before-implement correctly treated the authorization evidence as untruthful against the cited tree
 
 ## 2026-05-14-runtime-evidence-feature016-iter002-implementation-reference-repair
+
 ### 2026-05-14T15:15:58Z: Runtime evidence - Feature 016 Iteration 002 implementation authorization Commit Reference repair
 
 **By:** Squad (Coordinator)
@@ -12574,22 +13091,22 @@ All recommendations are documented with implementation owners and timelines.
 - **Commit Reference**: 9201489
 - **Authorization Text**:
   > You are Reviewer, the review and governance specialist for this project.
-  > 
+  >
   > TEAM_ROOT: C:\Dev\Specrew-review
   > All `.squad/` paths are relative to this root.
   > WORKTREE_PATH: C:\Dev\Specrew-review
   > WORKTREE_MODE: true
   > **Requested by:** Alon Fliess
-  > 
+  >
   > WORKTREE: You are working in a dedicated worktree at `C:\Dev\Specrew-review`.
   > - All file operations should be relative to this path
   > - Do NOT switch branches — the worktree is your branch (`feature016-review-boundary`)
   > - Build and test in this worktree, not the main repo
   > - Push to the canonical branch with: `git push origin HEAD:refs/heads/016-substantive-interaction-model`
-  > 
+  >
   > Read `.squad/decisions.md` before starting.
   > Read `specs/016-substantive-interaction-model/iterations/002/plan.md`, `state.md`, `quality/hardening-gate.md`, `tasks.md`, and `quickstart.md` before starting.
-  > 
+  >
   > Context:
   > - Feature 016 Iteration 002 implementation is complete on commit `6da2582`, the implementation boundary commit.
   > - Two bounded follow-up repairs are already on the pushed branch:
@@ -12599,7 +13116,7 @@ All recommendations are documented with implementation owners and timelines.
   > - Repo validator previously passed on the implementation tree.
   > - The user has now explicitly authorized advancing to the review boundary.
   > - Out-of-scope main-checkout files must remain untouched: `.claude/settings.local.json`, `.github/copilot-instructions.md`, `scripts/specrew-where.ps1`.
-  > 
+  >
   > User-authorized review-boundary workflow:
   > 1. Evaluate the Iteration 002 implementation against the five hardening-gate Expected Controls at `specs/016-substantive-interaction-model/iterations/002/quality/hardening-gate.md`.
   >    - For each concern (`security-surface`, `error-handling-expectations`, `retry-idempotency-requirements`, `test-integrity-targets`, `operational-resilience-concerns`), update `Runtime Evidence Status` from `pending-post-implementation` to `verified` with specific citations (test paths, validator output, NFR-001 measurement) or `not-verified` with rationale.
@@ -12624,21 +13141,21 @@ All recommendations are documented with implementation owners and timelines.
   > 8. Post-commit verification: run `pwsh -NoProfile -ExecutionPolicy Bypass -File .\extensions\specrew-speckit\scripts\validate-governance.ps1 -ProjectPath .` and confirm PASS on Feature 016 Iteration 002.
   > 9. STOP at the review boundary. Do NOT advance to review-verdict-signoff.
   > 10. If defects requiring rework are found, the verdict must be `needs-work`, not `accepted`, with explicit defect descriptions.
-  > 
+  >
   > Important review requirements:
   > - Be critical and evidence-driven. Classify the hardening-gate concerns as implemented, enforced, observable, and documented through actual runtime evidence.
   > - Re-measure NFR-001 on the green tree and cite the measurement in `hardening-gate.md` and `review.md`.
   > - Ensure the review remains truthful: if review and retro artifacts must exist now, create/update only the review artifact. Do not open retro.
   > - If the review-boundary authorization auto-generation or post-commit synchronization fails, repair it explicitly and report the exact behavior.
   > - Verify that the pushed branch state matches origin after push; call out any drift if found.
-  > 
+  >
   > At the end, provide a concise boundary handoff including:
   > - What changed and the review verdict
   > - Review-boundary commit hash and any follow-up bookkeeping commit hash
   > - Whether the validator passed post-push
   > - Whether FR-008 automation worked cleanly or needed manual repair
   > - Why you stopped and what exact next human authorization is required
-  > 
+  >
   > ⚠️ OUTPUT: Report outcomes in human terms. Never expose tool internals or SQL.
   > ⚠️ RESPONSE ORDER: After ALL tool calls, write a 2-3 sentence plain text summary as FINAL output. No tool calls after this summary.
 
@@ -12675,7 +13192,6 @@ All recommendations are documented with implementation owners and timelines.
 - **Authorization Text**:
   > I authorize feature-closeout for Feature 016 Substantive Interaction Model. Iteration 002 is closed and merged to feature branch. All hardening-gate concerns verified post-FR-008-repair, review verdict accepted, and retro complete with corpus capture and durability learnings. Authorized to proceed with Rule 15 version-management boundary commit (0.15.0 → 0.16.0), feature-closeout PR creation and merge to main, tag push, and final validator confirmation. Two chore commits (Feature 017, Feature 020) remain separately authorized.
 
-
 ## 2026-05-15T09:35:00Z — Authorization: implementation-repair
 
 - **Decision ID**: authorization-feature-017-iter-001-implementation-repair
@@ -12691,6 +13207,7 @@ All recommendations are documented with implementation owners and timelines.
 ---
 
 ### 2026-05-15T12:58:32+03:00: Delegated lifecycle runtime evidence
+
 **By:** Squad (Coordinator)
 **Role / Work Item:** Reviewer — Feature 017 Velocity Dashboard Iteration 001 review-verdict-signoff boundary
 **Requested Agent:** copilot (Reviewer family)
@@ -12716,6 +13233,7 @@ All recommendations are documented with implementation owners and timelines.
 ---
 
 ### 2026-05-16T18:30:00Z: Delegated lifecycle runtime evidence
+
 **By:** Squad (Coordinator)
 **Role / Work Item:** Reviewer — Feature 017 Velocity Dashboard Iteration 002 pre-implementation self-review and hardening-gate signoff surface
 **Requested Agent:** copilot (Reviewer family)
@@ -12801,6 +13319,7 @@ Iteration 002's pre-implementation review is complete. No material blocker preve
 ---
 
 ### 2026-05-15T11:36:20Z: Delegated lifecycle runtime evidence
+
 **By:** Squad (Coordinator)  
 **Role / Work Item:** Implementer — Feature 017 Velocity Dashboard Iteration 002 implementation boundary  
 **Requested Agent:** copilot  
@@ -12869,6 +13388,7 @@ Completed the Iteration 002 implementation slice: closeout dashboard scaffolds n
 ---
 
 ### 2026-05-15T13:30:59Z: Delegated lifecycle runtime evidence
+
 **By:** Squad (Coordinator)
 **Role / Work Item:** Retro Facilitator — Feature 017 Velocity Dashboard Iteration 002 retro-boundary
 **Requested Agent:** copilot
@@ -12956,6 +13476,7 @@ Feature 017 (velocity-dashboard) is closed and shipped to main with Rule 15 vers
 Feature 017 (Velocity Dashboard) is now closed and shipped. Version 0.17.0 is the active baseline, and no feature is currently open without explicit authorization.
 
 ## 2026-05-15T16:10:40Z — Delegated routing plan
+
 ## 2026-05-15T00:01:57Z — Delegated routing plan
 
 - **Enabled Agents**: copilot
@@ -12970,6 +13491,7 @@ Feature 017 (Velocity Dashboard) is now closed and shipped. Version 0.17.0 is th
 ## 2026-05-15T16:10:40Z — Routing evidence: Spec Steward
 
 - **Decision ID**: routing-evidence-206ce5416f23
+
 ## 2026-05-15T00:01:57Z — Routing evidence: Spec Steward
 
 - **Decision ID**: routing-evidence-1f62e5e6f73f
@@ -12987,6 +13509,7 @@ Feature 017 (Velocity Dashboard) is now closed and shipped. Version 0.17.0 is th
 ## 2026-05-15T16:10:40Z — Routing evidence: Planner
 
 - **Decision ID**: routing-evidence-cc6d58bdf628
+
 ## 2026-05-15T00:01:57Z — Routing evidence: Planner
 
 - **Decision ID**: routing-evidence-d9ede0be4802
@@ -13004,6 +13527,7 @@ Feature 017 (Velocity Dashboard) is now closed and shipped. Version 0.17.0 is th
 ## 2026-05-15T16:10:40Z — Routing evidence: Reviewer
 
 - **Decision ID**: routing-evidence-7692f5bf7c1e
+
 ## 2026-05-15T00:01:57Z — Routing evidence: Reviewer
 
 - **Decision ID**: routing-evidence-a4888e001342
@@ -13017,7 +13541,6 @@ Feature 017 (Velocity Dashboard) is now closed and shipped. Version 0.17.0 is th
 - **Rationale**: Delegated lifecycle routing was applied for role 'Reviewer'.
 
 - **Routing Evidence**: Reviewer | requested=claude | actual=copilot | model=(platform default) | status=fell-back | fallback=preferred agent 'claude' is not enabled
-
 
 # Implementer Decision: Feature 018 bounded repair R-018-V2
 
@@ -13048,7 +13571,6 @@ This decision is limited to Feature 018 review repair `R-018-V2a` / `R-018-V2b` 
 `R-018-V2c`. It does not authorize review acceptance, retro opening, or any broader
 terminal-capability redesign beyond the bounded repair.
 
-
 # Implementer decision: Feature 018 review repair
 
 - **Date**: 2026-05-15
@@ -13064,7 +13586,6 @@ terminal-capability redesign beyond the bounded repair.
    roadmap, projection, or retro surfaces.
 3. The same label needs to flow through both rich and monochrome render paths so validator-backed snapshots and
    operator reruns stay consistent.
-
 
 # Planner Decision Inbox: Feature 018 Hardening Scaffold
 
@@ -13102,7 +13623,6 @@ Execution can stay paused at the correct boundary: plan/state/drift plus iterati
 exist, review/retro remain unopened, and implementation can start later only if the before-implement gate
 accepts this package.
 
-
 # Reviewer decision: Feature 018 pre-implementation refresh
 
 - **Date**: 2026-05-15
@@ -13125,7 +13645,6 @@ iteration package passes governance validation.
 3. Render-budget proof (`<= 1.5s`) remains stop-ship evidence, not polish.
 4. Stored dashboard artifacts must strip ANSI while preserving readable Unicode.
 5. Iteration-closeout and feature-closeout dashboard rendering must stay parity-safe and immutable.
-
 
 # Reviewer Decision Inbox: Feature 018 Pre-Implementation Review
 
@@ -13158,7 +13677,6 @@ Create the hardening-gate artifact and carry these explicit concerns into it bef
 ## Scope Discipline
 
 No planning-package rewrite is required once the hardening gate exists. Do not widen scope beyond the approved five pillars.
-
 
 # Reviewer decision: Feature 018 visual terminal check
 
@@ -13226,6 +13744,7 @@ Do not sign off the visual-richness claim until a direct PowerShell terminal run
 ---
 
 ### 2026-05-16T00:45:00Z: Delegated lifecycle runtime evidence
+
 **By:** Squad (Coordinator)
 **Role / Work Item:** Implementer — Feature 018 Velocity Dashboard Visual Richness Iteration 001 iteration-closeout boundary
 **Requested Agent:** copilot
@@ -13296,6 +13815,7 @@ sequencing inputs, and leaves feature-closeout explicitly unopened.
   > AUTHORIZE feature-closeout for Feature 018 Velocity Dashboard Visual Richness + PoC-Parity Restoration. Rule 15 fires.
 
 ## 2026-05-16T10:26:39Z — Delegated routing plan
+
 ## 2026-05-15T08:26:18Z — Delegated routing plan
 
 - **Enabled Agents**: copilot
@@ -13310,6 +13830,7 @@ sequencing inputs, and leaves feature-closeout explicitly unopened.
 ## 2026-05-16T10:26:39Z — Routing evidence: Spec Steward
 
 - **Decision ID**: routing-evidence-3572bde54970
+
 ## 2026-05-15T08:26:18Z — Routing evidence: Spec Steward
 
 - **Decision ID**: routing-evidence-4d0b4770c019
@@ -13327,6 +13848,7 @@ sequencing inputs, and leaves feature-closeout explicitly unopened.
 ## 2026-05-16T10:26:39Z — Routing evidence: Planner
 
 - **Decision ID**: routing-evidence-a9458cb47f3b
+
 ## 2026-05-15T08:26:18Z — Routing evidence: Planner
 
 - **Decision ID**: routing-evidence-25ffa0f363af
@@ -13344,6 +13866,7 @@ sequencing inputs, and leaves feature-closeout explicitly unopened.
 ## 2026-05-16T10:26:39Z — Routing evidence: Reviewer
 
 - **Decision ID**: routing-evidence-072e9e4d12b7
+
 ## 2026-05-15T08:26:18Z — Routing evidence: Reviewer
 
 - **Decision ID**: routing-evidence-0c44ee8ff01f
@@ -13408,7 +13931,6 @@ sequencing inputs, and leaves feature-closeout explicitly unopened.
 
 - **Routing Evidence**: Reviewer | requested=claude | actual=copilot | model=(platform default) | status=fell-back | fallback=preferred agent 'claude' is not enabled
 
-
 # Clarification Decision: Feature 019 Distribution Module
 
 **Date**: 2026-05-16
@@ -13427,6 +13949,7 @@ Feature 019 Draft spec contained 10 open clarification questions (Q1-Q10) that r
 All 10 clarification questions have been resolved via explicit human authorization on 2026-05-16. Final verdicts integrated into spec.md:
 
 ### Q1: Update Story Pattern
+
 **Decision**: Pattern B (Template-Refresh with preserve-and-flag conflict resolution)
 
 **Rationale**: Specrew templates carry evolving methodology guidance. If templates can never be updated post-init, downstream projects cannot adopt Specrew evolution without manual re-bootstrap. Pattern B enables `specrew update` to refresh templates safely, with conflict resolution mediated by the protocol chosen in Q7.
@@ -13434,42 +13957,51 @@ All 10 clarification questions have been resolved via explicit human authorizati
 **Extended by Q7**: The conflict-resolution protocol is designed to remain crew-framework-agnostic (not hard-coded only to Squad) to align with future Proposal 024 Multi-Host Runtime Abstraction, while naming Squad as the current provider in user-facing behavior.
 
 ### Q2: Distribution Channel Scope
+
 **Decision**: PowerShell Gallery only for v1 (already resolved in prior session)
 
 ### Q3: Module Name on PSGallery
+
 **Decision**: Specrew (canonical name; fallback SpeckitSpecrew if claimed) (already resolved in prior session)
 
 ### Q4: PSGallery API Key Management
+
 **Decision**: GitHub Actions secret (name: `PSGALLERY_API_KEY`)
 
 **Rationale**: Provides security (no local/codebase exposure), automation (tag-triggered publish), and Rule 15 integration without manual steps.
 
 ### Q5: Module Signing Strategy
+
 **Decision**: Self-sign for v1, integrated into GitHub Action
 
 **Rationale**: Quick setup, reduces trust warnings, avoids certificate acquisition lead time. Signing logic runs in publish workflow; cert material stored as GitHub Actions secret. Real codesign cert can be acquired post-v1 if user feedback indicates trust warnings are a blocker.
 
 ### Q6: Backward Compatibility with Clone-and-PATH
+
 **Decision**: Support indefinitely (both distribution models coexist)
 
 **Rationale**: Alpha users can continue clone-and-PATH workflow; new users can use `Install-Module`. README documents both paths; no forced migration.
 
 ### Q7: Template-Update Conflict Resolution
+
 **Decision**: Preserve-and-flag with crew-mediated merge protocol (crew-framework-agnostic design)
 
 **Rationale**: User-modified templates preserved with conflict markers (`<<<< USER / ==== / >>>> MODULE-v0.22`) and `.specrew/template-conflicts/<filename>.conflict` artifacts written for next-session review. Protocol designed to remain crew-framework-agnostic (not Squad-only) to align with future Proposal 024, but Squad is current provider for user-facing behavior.
 
 ### Q8: Cross-Platform Path Handling
+
 **Decision**: Join-Path everywhere plus dedicated WSL verification task
 
 **Rationale**: All path construction uses `Join-Path` for correct delimiters on all platforms. Implementation plan must include dedicated WSL verification task to validate real cross-platform behavior.
 
 ### Q9: Module Version Policy
+
 **Decision**: Same version (manifest stamped from `.specrew/config.yml` at build time)
 
 **Rationale**: Single source of truth reduces drift risk. Publishing workflow reads version from config and updates manifest before `Publish-Module`.
 
 ### Q10: Alpha-User Migration Path
+
 **Decision**: README documentation only; `specrew update` is the migration path
 
 **Rationale**: No automated migration command in v1. README docs sufficient; users run `Install-Module Specrew`, then `specrew update` in project to refresh templates. Tooling can be added later if friction reports indicate need.
@@ -13479,17 +14011,20 @@ All 10 clarification questions have been resolved via explicit human authorizati
 ## Spec Updates Made
 
 ### Requirements Updated
+
 - **FR-020 through FR-023**: Made Template-Refresh pattern unconditional (removed "if Pattern B" conditional language)
 - **FR-021**: Extended to specify crew-framework-agnostic conflict resolution protocol
 - **FR-024 through FR-028**: Updated for GitHub Actions secret strategy and self-signing
 - **FR-030**: Made Join-Path and WSL verification explicit
 
 ### User Stories Updated
+
 - **US3**: Removed "pattern selection pending" note; specified preserve-and-flag conflict protocol
 - **US4**: Updated to reflect GitHub Actions secret, self-signing, and manifest version stamping
 - **US5**: Removed "cross-platform path handling strategy pending" note; specified WSL verification
 
 ### Other Sections Updated
+
 - **Clarifications**: Added Q1 with full rationale; existing Q2-Q3 preserved; added Q4-Q10 with full rationale
 - **Clarifications Pending**: Entire section removed (all questions resolved)
 - **Assumptions**: Updated to reflect all resolved clarifications and crew-agnostic protocol design
@@ -13501,6 +14036,7 @@ All 10 clarification questions have been resolved via explicit human authorizati
 ## Artifacts Updated
 
 Files modified:
+
 1. `specs/019-specrew-distribution-module/spec.md` — all 10 clarifications integrated, Clarifications Pending removed, Status remains Draft
 2. `.squad/identity/now.md` — updated to reflect clarify-complete status, next action is await plan authorization
 3. `.squad/decisions.md` — this decision entry appended
@@ -13537,7 +14073,6 @@ Template-Refresh pattern (Pattern B) is confirmed with crew-framework-agnostic c
 Do not advance to `/speckit.plan` from this clarify-complete boundary alone. Await separate explicit human authorization before opening the planning boundary for Feature 019.
 
 Authorization runtime: Feature 019 clarify completion authorized by Alon Fliess on 2026-05-16 at commit edd1ded (with local spec.md clarify edits present before boundary closeout).
-
 
 # Planning Decision: Feature 019 /speckit.plan Boundary Complete
 
@@ -13628,6 +14163,7 @@ Phase 0 (Research) → [Pillar 1 ∥ Pillar 2] → Pillar 3 → [Pillar 4 ∥ Pi
 **Critical Path**: Phase 0 → Pillar 1/2 → Pillar 3 → Pillar 4 → Final Validation
 
 **Parallelization Opportunities**:
+
 - Pillar 1 + Pillar 2 (independent; both feed into Pillar 3)
 - Pillar 4 + Pillar 5 (independent after Pillar 3 completes)
 
@@ -13667,17 +14203,21 @@ All questions assigned to Phase 0 research tasks (R1-R6) or implementation-time 
 ## Artifacts Generated
 
 **Phase 0 (Research)**:
+
 - `specs/019-specrew-distribution-module/research.md` (6 research tasks; all design unknowns resolved)
 
 **Phase 1 (Design)**:
+
 - `specs/019-specrew-distribution-module/data-model.md` (11 entities, relationships, state machines)
 - `specs/019-specrew-distribution-module/contracts/Specrew.psd1.contract.md` (module manifest schema, exported function signatures)
 - `specs/019-specrew-distribution-module/quickstart.md` (user-facing installation and usage guide)
 
 **Planning Artifact**:
+
 - `specs/019-specrew-distribution-module/plan.md` (5-pillar strategy, track dependencies, Constitution Check, quality gates, implementation strategy)
 
 **Squad State Updates**:
+
 - `.squad/identity/now.md` (updated to reflect /speckit.plan complete; next valid action: /speckit.tasks authorization)
 - `.squad/decisions.md` (this decision appended)
 
@@ -13686,6 +14226,7 @@ All questions assigned to Phase 0 research tasks (R1-R6) or implementation-time 
 ## Boundary Verification
 
 **Pre-Commit Checklist**:
+
 - ✅ plan.md complete with all template sections filled
 - ✅ research.md complete with 6 research tasks documented
 - ✅ data-model.md complete with 11 entities and relationships
@@ -13700,6 +14241,7 @@ All questions assigned to Phase 0 research tasks (R1-R6) or implementation-time 
 - ✅ .squad/decisions.md updated (this decision appended)
 
 **NOT Delivered** (scope boundaries respected):
+
 - ❌ /speckit.tasks generation (not authorized at this boundary)
 - ❌ Implementation execution (requires /speckit.tasks first)
 - ❌ Code changes to scripts/ or extensions/ (implementation-time work)
@@ -13711,11 +14253,13 @@ All questions assigned to Phase 0 research tasks (R1-R6) or implementation-time 
 ## Next Action
 
 **For Spec Steward (Alon Fliess)**:
+
 - Review planning artifacts (plan.md, research.md, data-model.md, contracts/, quickstart.md)
 - Verify Constitution Check passes and track dependencies are sound
 - Authorize `/speckit.tasks` boundary if planning is acceptable
 
 **For Implementation Team** (after /speckit.tasks authorization):
+
 - Read research.md (Phase 0 output) before starting implementation
 - Review data-model.md, contracts/, quickstart.md as implementation blueprints
 - Follow track dependency order (see plan.md Track Dependencies graph)
@@ -13739,7 +14283,6 @@ All questions assigned to Phase 0 research tasks (R1-R6) or implementation-time 
 - Feature 019 remains in `planning-complete` status until /speckit.tasks authorization is granted.
 - All traceability is recorded in the canonical plan (plan.md); this document is a summary for coordination visibility.
 - Phase 2 hardening gate is explicitly deferred (distribution infrastructure focus; no complex security surface or runtime business logic).
-
 
 # Decision: Feature 019 /speckit.tasks Boundary Complete
 
@@ -13811,11 +14354,13 @@ The /speckit.tasks boundary completion enables implementation authorization by p
 ## Runtime Evidence
 
 **Files Changed**:
+
 - Created: specs/019-specrew-distribution-module/tasks.md (26,676 characters, 39 tasks)
 - Updated: .squad/identity/now.md (lifecycle stage: TASKS-COMPLETE)
 - Updated: .squad/decisions.md (this entry)
 
 **Task-Count-Per-Pillar Summary**:
+
 - Phase 0 (Design Questions): 6 tasks
 - Pillar 1 (Module Packaging): 3 tasks
 - Pillar 2 (Resource Bundling): 5 tasks
@@ -13828,14 +14373,19 @@ The /speckit.tasks boundary completion enables implementation authorization by p
 **Verification**:
 `powershell
 Test-Path C:\Dev\Specrew\specs\019-specrew-distribution-module\tasks.md
+
 # Expected: True (file exists)
+
 Get-Content C:\Dev\Specrew\specs\019-specrew-distribution-module\tasks.md | Select-String -Pattern "^- \[ \] T\d{3}"
+
 # Expected: 39 matches (all 39 tasks present)
+
 `
 
 ## Scope Confirmation
 
 **Scope In**:
+
 - ✅ Generated tasks.md from plan.md + spec.md
 - ✅ Six design-question resolution tasks explicitly enumerated with blocking annotations
 - ✅ Ordered, concrete, actionable tasks with per-task scope, owner, dependencies, acceptance criteria, and explicit FR references
@@ -13844,6 +14394,7 @@ Get-Content C:\Dev\Specrew\specs\019-specrew-distribution-module\tasks.md | Sele
 - ✅ Appended decisions.md entry for tasks-boundary runtime evidence
 
 **Scope Out**:
+
 - ❌ No code changes under scripts/ or extensions/
 - ❌ No validator additions beyond task planning language
 - ❌ No /speckit.specrew-speckit.before-implement work
@@ -13852,11 +14403,11 @@ Get-Content C:\Dev\Specrew\specs\019-specrew-distribution-module\tasks.md | Sele
 ## Next Action
 
 Await explicit authorization before advancing to:
+
 - /speckit.specrew-speckit.before-implement (hardening gate, if applicable)
 - Implementation (if hardening gate skipped or passed)
 
 Per user directive: "Do NOT advance to /speckit.specrew-speckit.before-implement. Do NOT advance to hardening-gate-and-implementation-auth."
-
 
 # Repair: Feature 019 Before-Implement Lifecycle State Artifact
 
@@ -13867,6 +14418,7 @@ Per user directive: "Do NOT advance to /speckit.specrew-speckit.before-implement
 ## What
 
 The state artifact `.squad/identity/now.md` contained stale lifecycle information after the Feature 019 before-implement boundary was crossed:
+
 - **Top lines (correct)**: Reported `/speckit.specrew-speckit.before-implement` completed with READY verdict
 - **Lifecycle section (stale)**: Reported `/speckit.tasks` complete and listed authorization for before-implement as next action
 
@@ -13886,8 +14438,6 @@ This mismatch created boundary-state confusion: the top and bottom of the artifa
 Lifecycle artifacts must be consistent at all points to avoid automation, planner, or coordinator tools making incorrect routing decisions based on stale phase information. The boundary was crossed and verified; the state record must reflect that fact durably.
 
 No lifecycle boundary advancement applied; only state artifact corrected to match the actual completed boundary.
-
-
 
 ## 2026-05-16T19:07:46Z — Canonical defer entry (Feature 019 iteration 001 cross-platform carry-forward)
 
@@ -13983,9 +14533,11 @@ No lifecycle boundary advancement applied; only state artifact corrected to matc
 - **Rationale**: Delegated lifecycle routing was applied for role 'Reviewer'.
 
 - **Routing Evidence**: Reviewer | requested=claude | actual=copilot | model=(platform default) | status=fell-back | fallback=preferred agent 'claude' is not enabled
+
 ---
 
 ### 2026-05-17T05:29:37Z: Delegated lifecycle runtime evidence
+
 **By:** Squad (Coordinator)
 **Role / Work Item:** Implementer — Feature 019 Iteration 002 R-019-V2-R13 bounded micro-repair cycle
 **Requested Agent:** copilot
@@ -13993,7 +14545,6 @@ No lifecycle boundary advancement applied; only state artifact corrected to matc
 **Model ID:** claude-sonnet-4.5
 **Status:** honored
 **Fallback Reason:** none
-
 
 # Implementer Decision: R-018-V3 visual alignment
 
@@ -14011,7 +14562,6 @@ Keep the repair strictly inside the live full-dashboard renderer by reordering o
 - Updating the shared full renderer preserves the live `specrew where` contract without widening scope into unrelated surfaces.
 - Fixture and regression coverage can lock the new alignment without mutating historical closeout dashboards.
 
-
 # Implementer R13 Repair Decision
 
 - **Date:** 2026-05-17
@@ -14019,7 +14569,6 @@ Keep the repair strictly inside the live full-dashboard renderer by reordering o
 - **Decision:** `specrew start` now treats Copilot non-autopilot launch flags as platform-conditional: Windows keeps `--mode interactive` (plus `--allow-all` when allowed), while Linux/macOS rely on the default REPL behavior for `-i` and suppress both `--mode interactive` and `--allow-all`.
 - **Why:** Runtime evidence for Copilot CLI v1.0.48 showed the inverse behavior across platforms: Windows still needs `--mode interactive` to stay in the REPL, but Linux/macOS already stay interactive without it and actively break when `--mode interactive` is added.
 - **Files to keep aligned:** `scripts\specrew-start.ps1`, `tests\integration\start-command.ps1`, `specs\019-specrew-distribution-module\test-evidence\us5-cross-platform.md`
-
 
 # Reviewer Decision Inbox: Feature 018 Review Signoff
 
@@ -14049,7 +14598,6 @@ Accept Feature 018 Iteration 001 at review-verdict-signoff with `R-018-V1` and `
 
 Stop at accepted pre-retro state and request explicit retro-boundary authorization before opening retrospective work.
 
-
 # Reviewer Decision Inbox: Feature 019 Iteration 001 Re-Review
 
 **Date**: 2026-05-16  
@@ -14075,7 +14623,6 @@ iteration is now READY-FOR-SIGNOFF.
 
 Open the separate `review-verdict-signoff` boundary with human authorization when ready. Do not start retrospective,
 closeout, or later lifecycle boundaries from this re-review decision alone.
-
 
 # Reviewer Decision Inbox: Feature 019 Iteration 001 Review
 
@@ -14107,7 +14654,6 @@ the package-shaped evidence before re-review.
 Authorize bounded repair items `R-019-R1` and `R-019-R2`, then return the iteration to independent review. Do not
 open review-verdict-signoff, retro, or closeout from this boundary.
 
-
 # Reviewer Decision Inbox: Feature 019 Review Signoff
 
 **Date**: 2026-05-16  
@@ -14135,7 +14681,6 @@ Accept Feature 019 Iteration 001 at review-verdict-signoff against accepted revi
 ## Next Move
 
 Stop at accepted pre-retro state and request explicit retro-boundary authorization before opening retrospective work.
-
 
 # User Directive: Feature 018 Final Pre-Rule-15 Polish
 
@@ -14169,10 +14714,10 @@ This is the **FINAL pre-Rule-15 polish** for Feature 018. After R-018-V4 lands a
 
 Upon R-018-V4 verification success, await explicit feature-closeout authorization before proceeding to closeout boundary.
 
-
 ---
 
 ### 2026-05-17T07:19:22Z: Delegated lifecycle runtime evidence
+
 **By:** Squad (Coordinator)
 **Role / Work Item:** Implementer — Feature 019 Iteration 002 R-019-V2-R14 bounded micro-repair cycle
 **Requested Agent:** copilot
@@ -14292,6 +14837,7 @@ Upon R-018-V4 verification success, await explicit feature-closeout authorizatio
 - **Rationale**: Delegated bounded repair cycle was requested and assigned to Implementer role for targeted micro-repairs on the three identified gaps before proceeding to review-verdict-signoff boundary.
 
 ## 2026-05-17T14:15:30Z — Runtime evidence: Feature 019 Iteration 002 retrospective finalization
+
 - **Decision ID**: runtime-evidence-f019-i002-retro
 - **Type**: runtime-evidence
 - **Work Item**: Feature 019 Iteration 002 retrospective finalization after accepted review-verdict-signoff
@@ -14395,7 +14941,6 @@ Boundary 6 — Feature Closeout (not started; requires human authorization from 
 ---
 
 ## Decision: retro-facilitator-f019-iter002.md
-
 
 # Decision: Feature 019 Iteration 002 Retrospective — Process Learnings
 
@@ -14501,6 +15046,7 @@ The following five lessons from Iteration 002 are approved for inclusion in `.sp
 ## Governance Validation Status
 
 **Baseline**: Iteration 002 governance validation produces expected warnings only:
+
 - Roadmap drift for Phase 1 and Phase 2 (pre-existing, not caused by this iteration)
 - Missing dashboard.md artifacts for Iteration 001 and 002 (deferred per prior planning)
 
@@ -14540,7 +15086,6 @@ The following five lessons from Iteration 002 are approved for inclusion in `.sp
 ---
 
 ## Decision: reviewer-f019-iter2-review.md
-
 
 # Reviewer Decision: Feature 019 Iteration 002 Boundary 2 Review
 
@@ -14585,8 +15130,8 @@ All four Iteration 002 tasks (T041, T054, T060, T061) are complete and correctly
 
 ## Decision: spec-steward-f019-iter2-boundary1.md
 
-
 ---
+
 date: 2026-05-18T00:00:00Z
 from: Spec Steward
 subject: F-019 Iteration 002 Boundary 1 Completion — Governance Artifact Scaffold Decisions
@@ -14604,7 +15149,8 @@ Feature 019 (Specrew Distribution Module) Iteration 002 Boundary 1 (governance a
 
 **Decision**: Create iterations/002/retro.md as a mechanically scaffolded artifact (not stub) to satisfy governance validator requirements, capturing learnings extracted from drift-log.md and review.md without requiring human retro facilitation upfront.
 
-**Rationale**: 
+**Rationale**:
+
 - Validator fails if retro.md is missing (required artifact)
 - Human retro facilitation is Boundary 2 work, deferred per user instruction
 - Extraction of learnings from existing drift-log.md and review.md is mechanical and does not require human facilitation
@@ -14621,6 +15167,7 @@ Feature 019 (Specrew Distribution Module) Iteration 002 Boundary 1 (governance a
 ### D3: Cross-Platform Evidence Finalization
 
 **Decision**: Append R-019-V2-R15 through R22 evidence and verb-conformance fix to test-evidence/us5-cross-platform.md, documenting:
+
 - Wrong-direction repairs (R15/R16, R17, R20) with reverted-by classification
 - Load-bearing repairs (R18/R19, R21)
 - Cleanup phase (R22)
@@ -14644,8 +15191,8 @@ Boundary 2 (retro facilitation, iteration closeout) awaits explicit human author
 
 ## Decision: spec-steward-f019-runtime-evidence.md
 
-
 ---
+
 date: 2026-05-18T00:00:00Z
 from: Spec Steward
 subject: F-019 Iteration 002 Boundary 1 — Delegated Work Summary
@@ -14712,11 +15259,13 @@ WARN [dashboard] missing-dashboard-artifact: Closed iteration missing dashboard.
 ## Scope Boundaries
 
 **Boundary 1 (Completed)**:
+
 - ✅ Governance artifact updates (hardening-gate, drift-log, review, test-evidence)
 - ✅ Retro.md scaffold
 - ✅ Validator passing
 
 **Boundary 2 (Deferred)**:
+
 - ❌ Full retro facilitation
 - ❌ Iteration closeout
 - ❌ Feature closeout
@@ -14736,11 +15285,13 @@ WARN [dashboard] missing-dashboard-artifact: Closed iteration missing dashboard.
 Updated `.squad/agents/spec-steward/history.md` with 2026-05-18 pattern entry: Feature 019 Iteration 002 Boundary 1 Governance Artifact Scaffold and Diagnostic Discipline.
 
 Key learnings:
+
 1. Diagnostic discipline for cross-platform behavioral issues (22:1 iteration:fix asymmetry)
 2. Form-vs-meaning recurrence in symptom-chasing
 3. Cross-platform sweep scope partitioning
 4. Deferred-launch pattern reusability
 5. Governance artifact scaffolding and validator coupling
+
 # Decision: Feature 020 Phase 0 Companion Chore
 
 **Date**: 2026-05-17  
@@ -14759,7 +15310,7 @@ Treat xtensions\specrew-speckit\scripts\scaffold-feature-closeout-dashboard.ps1
 
 ## Rationale
 
-Existing dashboard docs and integration coverage already define scaffold-feature-closeout-dashboard.ps1 as the feature-closeout scaffold. Updating 
+Existing dashboard docs and integration coverage already define scaffold-feature-closeout-dashboard.ps1 as the feature-closeout scaffold. Updating
 ow.md here keeps the post-closeout session anchor aligned with the same lifecycle hook that persists closeout-dashboard.md.
 
 ## Implementation Evidence
@@ -14772,7 +15323,6 @@ ow.md here keeps the post-closeout session anchor aligned with the same lifecycl
 ## Impact
 
 Feature 020 Phase 0 companion chore is now complete. The closeout pattern is established and documented. Execution can proceed to Feature 020 Phase 1 implementation.
-
 
 ---
 
@@ -14795,12 +15345,14 @@ PR #259 closed without merge. Remote branch 020-session-state-durability deleted
 ## Rationale
 
 **Audit Trail Evidence**:
+
 1. PR #225 successfully merged Feature 020 to main as commit 7ee90d5
 2. PR #259 contains three commits on top of already-shipped state: 1f083f9, 25d4759, 275f457
 3. Self-review correctly identified out-of-scope proposal-048 commit as blocking merge
 4. Cleanest disposition: treat 020 branch as completed work, close PR #259 without merge
 
 **Scope & Out-of-Scope**:
+
 - ✅ PR #259 closed via gh pr close 259 with audit comment
 - ✅ Remote 020-session-state-durability branch deleted via git push origin --delete
 - ✅ Closeout decision recorded in .squad/decisions.md
@@ -14863,7 +15415,6 @@ Feature 020 closeout is now officially complete and recorded in authorization ar
 - **Auth Commit Hash**: (none)
 - **Recorded At**: 2026-05-18T08:13:44Z
 
-
 # Decision: Feature 021 Iteration 001 Review Boundary Accepted
 
 **Date**: 2026-05-18T17:13:50+03:00  
@@ -14917,7 +15468,6 @@ Retro-boundary sequence now available for separate authorization. This decision 
 
 The Reviewer role successfully delivered the independent review boundary pass for Feature 021 Iteration 001 within the authorized scope. Retro-boundary sequence may proceed with separate authorization.
 
-
 ---
 
 # Decision: Feature 021 Iteration 001 Review-Boundary Authorization
@@ -14933,61 +15483,64 @@ The Reviewer role successfully delivered the independent review boundary pass fo
 ## Authorization Text
 
 > Authorized: Iteration 001 review-boundary → review-verdict-signoff → retro → iteration-closeout. Permissive sequencing; stop at iteration-closeout handoff. Do NOT enter feature-closeout (separate authorization).
-> 
+>
 > Iteration 001 implementation complete at commit 29a130b; bookkeeping reconciled at d582a7e. Verified:
-> 
+>
 > - All 12 tasks: I1-T001 through I1-T011 marked [x] done with 29a130b commit refs, baseline-role agents, zero variance, PASS verdicts. I1-T012 (review-evidence task) remains [ ] for the Reviewer to complete
 > during review.
 > - state.md: Current Phase: implementation-complete, Last Completed Task: I1-T011, Tasks Remaining: I1-T012 only.
 > - hardening-gate.md: Verified At: 2026-05-18T13:44:25Z, Post-Implementation Verification: repaired-and-revalidated with all 6 green suites + governance validator cited.
 > - Origin tip: d582a7e aligned with local.
-> 
+>
 > Sequence (4 sequential boundaries, permissive run, no human gate between):
-> 
+>
 > 1. Review-boundary — Reviewer agent runs independent review of Iteration 001 against the iteration plan's scope (FR-001..026 + SC-001..006; US1-US5). Verify the implementation commit 29a130b delivers the
 > authorized scope; verify the 6 test suites + governance validator are green; complete I1-T012 by recording final review evidence in iterations/001/quality/hardening-gate.md. Produce review verdict.
 > 2. Review-verdict-signoff — record verdict in .squad/decisions.md and iterations/001/review.md. If APPROVED, continue. If CHANGES-REQUESTED, stop with specific change list (and be precise about
 > scope-interpretation vs substance per Iter-1-of-F-020 lesson).
 > 3. Retro-boundary — Retro Facilitator captures lessons. Mandatory retro content for F-021 (these are high-value lessons, do not skip):
-> 
+>
 >     - F-020 carry-forward defaults worked when honored, didn't when not — the 3-cycle repair budget didn't get tested (clean implementation); push-after-every-commit WASN'T honored (single-commit landing
->   required separate push-hygiene reconciliation); live bookkeeping WASN'T honored (required separate bookkeeping repair after handoff).
+> required separate push-hygiene reconciliation); live bookkeeping WASN'T honored (required separate bookkeeping repair after handoff).
 >     - Inbox-vs-ledger consolidation gap — Squad's pre-restart session wrote authorization records to .squad/decisions/inbox/ but never merged them into .squad/decisions.md. Restart triggered consolidation.
->   Worth a validator rule (absorb into Proposal 004 as gap #10).
+> Worth a validator rule (absorb into Proposal 004 as gap #10).
 >     - Iteration-start triad gap — state.md was missing at iteration-start; caught only at before-implement. The iteration-start scaffolding should produce plan.md + state.md + drift-log.md atomically. Worth a
->   validator rule (absorb into Proposal 004 as gap #11).
+> validator rule (absorb into Proposal 004 as gap #11).
 >     - Push-hygiene declared but not mechanically enforced — F-020 retro lesson #5 made push-after-every-commit a default. F-021 implementation didn't honor it. Worth absorbing into Proposal 004 as gap #12 or
->   into Proposal 030's quality-hardening scope.
+> into Proposal 030's quality-hardening scope.
 >     - Pre-handoff claim verification gap — Squad's "implementation complete" handoff falsely claimed tasks were marked done. Mechanical pre-handoff verification (artifact-vs-claim check) would have caught this
->   at source. Worth absorbing into Proposal 030 as a new sub-component (Gap D from the gap analysis).
+> at source. Worth absorbing into Proposal 030 as a new sub-component (Gap D from the gap analysis).
 >     - Stewardship-label-vs-baseline-role drift — same pattern as F-020 GAP-BI-003. Spec template generates "Product steward / Runtime steward / etc." labels that always need disposition. Template fix or
->   pre-clarify documentation could close this.
+> pre-clarify documentation could close this.
 >     - Restart-after-Specrew-update is critical — confirmed empirically. Squad's session predated F-020 merge; new mechanisms didn't fire until restart. Worth a banner warning when Specrew version has changed
->   since session start (composes with Proposal 050 Version Surface).
+> since session start (composes with Proposal 050 Version Surface).
 >     - Multi-session coordination — proposals from concurrent sessions cooperated cleanly on INDEX.md (both 052 + 053 integrated); but Squad's F-021 work was in a separate session checkout requiring explicit
->   push-hygiene reconciliation. Cross-references Proposal 010 (Multi-Developer Reconciliation) — same coordination problem manifests in multi-session work.
+> push-hygiene reconciliation. Cross-references Proposal 010 (Multi-Developer Reconciliation) — same coordination problem manifests in multi-session work.
 > 4. Iteration-closeout — finalize iterations/001/closeout.md, update dashboards, write iteration-completion record. F-021 has only one iteration, so iteration-closeout opens the feature-closeout question (do
 > NOT auto-enter).
-> 
+>
 > Stop conditions:
+>
 > - Review verdict = CHANGES-REQUESTED → stop with specific change list
 > - Any validator FAIL
 > - Test regression on the 6 suites (rerun at each boundary; must stay green)
 > - >10 consecutive reconciliation file-edits
 > - git push failure
 > - Iteration-closeout handoff reached
-> 
+>
 > Out of scope:
+>
 > - Do NOT enter feature-closeout (separate authorization will follow iteration-closeout handoff)
 > - Do NOT modify Implementation commit 29a130b content (CLOSED)
 > - Do NOT modify spec.md, plan.md, tasks.md content beyond task-table updates that the Reviewer naturally produces (T012 PASS marking)
 > - Do NOT open Iteration 002 (F-021 is single-iteration; no Iter 2)
-> 
+>
 > Push hygiene (carried forward — and given this iteration's track record, treat as critical):
+>
 > - Push after EVERY commit (review-rerun signoff, retro, closeout — separate commits, separate pushes)
 > - No local-only state allowed; origin must reflect truth continuously
 > - Before each handoff, verify git rev-parse HEAD == git rev-parse origin/021-specrew-slash-commands
-> 
+>
 > Proceed.
 
 ---
@@ -15003,61 +15556,64 @@ The Reviewer role successfully delivered the independent review boundary pass fo
 - **Authorization Text**:
 
 > Authorized: Iteration 001 review-boundary → review-verdict-signoff → retro → iteration-closeout. Permissive sequencing; stop at iteration-closeout handoff. Do NOT enter feature-closeout (separate authorization).
-> 
+>
 > Iteration 001 implementation complete at commit 29a130b; bookkeeping reconciled at d582a7e. Verified:
-> 
+>
 > - All 12 tasks: I1-T001 through I1-T011 marked [x] done with 29a130b commit refs, baseline-role agents, zero variance, PASS verdicts. I1-T012 (review-evidence task) remains [ ] for the Reviewer to complete
 > during review.
 > - state.md: Current Phase: implementation-complete, Last Completed Task: I1-T011, Tasks Remaining: I1-T012 only.
 > - hardening-gate.md: Verified At: 2026-05-18T13:44:25Z, Post-Implementation Verification: repaired-and-revalidated with all 6 green suites + governance validator cited.
 > - Origin tip: d582a7e aligned with local.
-> 
+>
 > Sequence (4 sequential boundaries, permissive run, no human gate between):
-> 
+>
 > 1. Review-boundary — Reviewer agent runs independent review of Iteration 001 against the iteration plan's scope (FR-001..026 + SC-001..006; US1-US5). Verify the implementation commit 29a130b delivers the
 > authorized scope; verify the 6 test suites + governance validator are green; complete I1-T012 by recording final review evidence in iterations/001/quality/hardening-gate.md. Produce review verdict.
 > 2. Review-verdict-signoff — record verdict in .squad/decisions.md and iterations/001/review.md. If APPROVED, continue. If CHANGES-REQUESTED, stop with specific change list (and be precise about
 > scope-interpretation vs substance per Iter-1-of-F-020 lesson).
 > 3. Retro-boundary — Retro Facilitator captures lessons. Mandatory retro content for F-021 (these are high-value lessons, do not skip):
-> 
+>
 >     - F-020 carry-forward defaults worked when honored, didn't when not — the 3-cycle repair budget didn't get tested (clean implementation); push-after-every-commit WASN'T honored (single-commit landing
->   required separate push-hygiene reconciliation); live bookkeeping WASN'T honored (required separate bookkeeping repair after handoff).
+> required separate push-hygiene reconciliation); live bookkeeping WASN'T honored (required separate bookkeeping repair after handoff).
 >     - Inbox-vs-ledger consolidation gap — Squad's pre-restart session wrote authorization records to .squad/decisions/inbox/ but never merged them into .squad/decisions.md. Restart triggered consolidation.
->   Worth a validator rule (absorb into Proposal 004 as gap #10).
+> Worth a validator rule (absorb into Proposal 004 as gap #10).
 >     - Iteration-start triad gap — state.md was missing at iteration-start; caught only at before-implement. The iteration-start scaffolding should produce plan.md + state.md + drift-log.md atomically. Worth a
->   validator rule (absorb into Proposal 004 as gap #11).
+> validator rule (absorb into Proposal 004 as gap #11).
 >     - Push-hygiene declared but not mechanically enforced — F-020 retro lesson #5 made push-after-every-commit a default. F-021 implementation didn't honor it. Worth absorbing into Proposal 004 as gap #12 or
->   into Proposal 030's quality-hardening scope.
+> into Proposal 030's quality-hardening scope.
 >     - Pre-handoff claim verification gap — Squad's "implementation complete" handoff falsely claimed tasks were marked done. Mechanical pre-handoff verification (artifact-vs-claim check) would have caught this
->   at source. Worth absorbing into Proposal 030 as a new sub-component (Gap D from the gap analysis).
+> at source. Worth absorbing into Proposal 030 as a new sub-component (Gap D from the gap analysis).
 >     - Stewardship-label-vs-baseline-role drift — same pattern as F-020 GAP-BI-003. Spec template generates "Product steward / Runtime steward / etc." labels that always need disposition. Template fix or
->   pre-clarify documentation could close this.
+> pre-clarify documentation could close this.
 >     - Restart-after-Specrew-update is critical — confirmed empirically. Squad's session predated F-020 merge; new mechanisms didn't fire until restart. Worth a banner warning when Specrew version has changed
->   since session start (composes with Proposal 050 Version Surface).
+> since session start (composes with Proposal 050 Version Surface).
 >     - Multi-session coordination — proposals from concurrent sessions cooperated cleanly on INDEX.md (both 052 + 053 integrated); but Squad's F-021 work was in a separate session checkout requiring explicit
->   push-hygiene reconciliation. Cross-references Proposal 010 (Multi-Developer Reconciliation) — same coordination problem manifests in multi-session work.
+> push-hygiene reconciliation. Cross-references Proposal 010 (Multi-Developer Reconciliation) — same coordination problem manifests in multi-session work.
 > 4. Iteration-closeout — finalize iterations/001/closeout.md, update dashboards, write iteration-completion record. F-021 has only one iteration, so iteration-closeout opens the feature-closeout question (do
 > NOT auto-enter).
-> 
+>
 > Stop conditions:
+>
 > - Review verdict = CHANGES-REQUESTED → stop with specific change list
 > - Any validator FAIL
 > - Test regression on the 6 suites (rerun at each boundary; must stay green)
 > - >10 consecutive reconciliation file-edits
 > - git push failure
 > - Iteration-closeout handoff reached
-> 
+>
 > Out of scope:
+>
 > - Do NOT enter feature-closeout (separate authorization will follow iteration-closeout handoff)
 > - Do NOT modify Implementation commit 29a130b content (CLOSED)
 > - Do NOT modify spec.md, plan.md, tasks.md content beyond task-table updates that the Reviewer naturally produces (T012 PASS marking)
 > - Do NOT open Iteration 002 (F-021 is single-iteration; no Iter 2)
-> 
+>
 > Push hygiene (carried forward — and given this iteration's track record, treat as critical):
+>
 > - Push after EVERY commit (review-rerun signoff, retro, closeout — separate commits, separate pushes)
 > - No local-only state allowed; origin must reflect truth continuously
 > - Before each handoff, verify git rev-parse HEAD == git rev-parse origin/021-specrew-slash-commands
-> 
+>
 > Proceed.
 
 ---
@@ -15073,61 +15629,64 @@ The Reviewer role successfully delivered the independent review boundary pass fo
 - **Authorization Text**:
 
 > Authorized: Iteration 001 review-boundary → review-verdict-signoff → retro → iteration-closeout. Permissive sequencing; stop at iteration-closeout handoff. Do NOT enter feature-closeout (separate authorization).
-> 
+>
 > Iteration 001 implementation complete at commit 29a130b; bookkeeping reconciled at d582a7e. Verified:
-> 
+>
 > - All 12 tasks: I1-T001 through I1-T011 marked [x] done with 29a130b commit refs, baseline-role agents, zero variance, PASS verdicts. I1-T012 (review-evidence task) remains [ ] for the Reviewer to complete
 > during review.
 > - state.md: Current Phase: implementation-complete, Last Completed Task: I1-T011, Tasks Remaining: I1-T012 only.
 > - hardening-gate.md: Verified At: 2026-05-18T13:44:25Z, Post-Implementation Verification: repaired-and-revalidated with all 6 green suites + governance validator cited.
 > - Origin tip: d582a7e aligned with local.
-> 
+>
 > Sequence (4 sequential boundaries, permissive run, no human gate between):
-> 
+>
 > 1. Review-boundary — Reviewer agent runs independent review of Iteration 001 against the iteration plan's scope (FR-001..026 + SC-001..006; US1-US5). Verify the implementation commit 29a130b delivers the
 > authorized scope; verify the 6 test suites + governance validator are green; complete I1-T012 by recording final review evidence in iterations/001/quality/hardening-gate.md. Produce review verdict.
 > 2. Review-verdict-signoff — record verdict in .squad/decisions.md and iterations/001/review.md. If APPROVED, continue. If CHANGES-REQUESTED, stop with specific change list (and be precise about
 > scope-interpretation vs substance per Iter-1-of-F-020 lesson).
 > 3. Retro-boundary — Retro Facilitator captures lessons. Mandatory retro content for F-021 (these are high-value lessons, do not skip):
-> 
+>
 >     - F-020 carry-forward defaults worked when honored, didn't when not — the 3-cycle repair budget didn't get tested (clean implementation); push-after-every-commit WASN'T honored (single-commit landing
->   required separate push-hygiene reconciliation); live bookkeeping WASN'T honored (required separate bookkeeping repair after handoff).
+> required separate push-hygiene reconciliation); live bookkeeping WASN'T honored (required separate bookkeeping repair after handoff).
 >     - Inbox-vs-ledger consolidation gap — Squad's pre-restart session wrote authorization records to .squad/decisions/inbox/ but never merged them into .squad/decisions.md. Restart triggered consolidation.
->   Worth a validator rule (absorb into Proposal 004 as gap #10).
+> Worth a validator rule (absorb into Proposal 004 as gap #10).
 >     - Iteration-start triad gap — state.md was missing at iteration-start; caught only at before-implement. The iteration-start scaffolding should produce plan.md + state.md + drift-log.md atomically. Worth a
->   validator rule (absorb into Proposal 004 as gap #11).
+> validator rule (absorb into Proposal 004 as gap #11).
 >     - Push-hygiene declared but not mechanically enforced — F-020 retro lesson #5 made push-after-every-commit a default. F-021 implementation didn't honor it. Worth absorbing into Proposal 004 as gap #12 or
->   into Proposal 030's quality-hardening scope.
+> into Proposal 030's quality-hardening scope.
 >     - Pre-handoff claim verification gap — Squad's "implementation complete" handoff falsely claimed tasks were marked done. Mechanical pre-handoff verification (artifact-vs-claim check) would have caught this
->   at source. Worth absorbing into Proposal 030 as a new sub-component (Gap D from the gap analysis).
+> at source. Worth absorbing into Proposal 030 as a new sub-component (Gap D from the gap analysis).
 >     - Stewardship-label-vs-baseline-role drift — same pattern as F-020 GAP-BI-003. Spec template generates "Product steward / Runtime steward / etc." labels that always need disposition. Template fix or
->   pre-clarify documentation could close this.
+> pre-clarify documentation could close this.
 >     - Restart-after-Specrew-update is critical — confirmed empirically. Squad's session predated F-020 merge; new mechanisms didn't fire until restart. Worth a banner warning when Specrew version has changed
->   since session start (composes with Proposal 050 Version Surface).
+> since session start (composes with Proposal 050 Version Surface).
 >     - Multi-session coordination — proposals from concurrent sessions cooperated cleanly on INDEX.md (both 052 + 053 integrated); but Squad's F-021 work was in a separate session checkout requiring explicit
->   push-hygiene reconciliation. Cross-references Proposal 010 (Multi-Developer Reconciliation) — same coordination problem manifests in multi-session work.
+> push-hygiene reconciliation. Cross-references Proposal 010 (Multi-Developer Reconciliation) — same coordination problem manifests in multi-session work.
 > 4. Iteration-closeout — finalize iterations/001/closeout.md, update dashboards, write iteration-completion record. F-021 has only one iteration, so iteration-closeout opens the feature-closeout question (do
 > NOT auto-enter).
-> 
+>
 > Stop conditions:
+>
 > - Review verdict = CHANGES-REQUESTED → stop with specific change list
 > - Any validator FAIL
 > - Test regression on the 6 suites (rerun at each boundary; must stay green)
 > - >10 consecutive reconciliation file-edits
 > - git push failure
 > - Iteration-closeout handoff reached
-> 
+>
 > Out of scope:
+>
 > - Do NOT enter feature-closeout (separate authorization will follow iteration-closeout handoff)
 > - Do NOT modify Implementation commit 29a130b content (CLOSED)
 > - Do NOT modify spec.md, plan.md, tasks.md content beyond task-table updates that the Reviewer naturally produces (T012 PASS marking)
 > - Do NOT open Iteration 002 (F-021 is single-iteration; no Iter 2)
-> 
+>
 > Push hygiene (carried forward — and given this iteration's track record, treat as critical):
+>
 > - Push after EVERY commit (review-rerun signoff, retro, closeout — separate commits, separate pushes)
 > - No local-only state allowed; origin must reflect truth continuously
 > - Before each handoff, verify git rev-parse HEAD == git rev-parse origin/021-specrew-slash-commands
-> 
+>
 > Proceed.
 
 ---
@@ -15143,61 +15702,64 @@ The Reviewer role successfully delivered the independent review boundary pass fo
 - **Authorization Text**:
 
 > Authorized: Iteration 001 review-boundary → review-verdict-signoff → retro → iteration-closeout. Permissive sequencing; stop at iteration-closeout handoff. Do NOT enter feature-closeout (separate authorization).
-> 
+>
 > Iteration 001 implementation complete at commit 29a130b; bookkeeping reconciled at d582a7e. Verified:
-> 
+>
 > - All 12 tasks: I1-T001 through I1-T011 marked [x] done with 29a130b commit refs, baseline-role agents, zero variance, PASS verdicts. I1-T012 (review-evidence task) remains [ ] for the Reviewer to complete
 > during review.
 > - state.md: Current Phase: implementation-complete, Last Completed Task: I1-T011, Tasks Remaining: I1-T012 only.
 > - hardening-gate.md: Verified At: 2026-05-18T13:44:25Z, Post-Implementation Verification: repaired-and-revalidated with all 6 green suites + governance validator cited.
 > - Origin tip: d582a7e aligned with local.
-> 
+>
 > Sequence (4 sequential boundaries, permissive run, no human gate between):
-> 
+>
 > 1. Review-boundary — Reviewer agent runs independent review of Iteration 001 against the iteration plan's scope (FR-001..026 + SC-001..006; US1-US5). Verify the implementation commit 29a130b delivers the
 > authorized scope; verify the 6 test suites + governance validator are green; complete I1-T012 by recording final review evidence in iterations/001/quality/hardening-gate.md. Produce review verdict.
 > 2. Review-verdict-signoff — record verdict in .squad/decisions.md and iterations/001/review.md. If APPROVED, continue. If CHANGES-REQUESTED, stop with specific change list (and be precise about
 > scope-interpretation vs substance per Iter-1-of-F-020 lesson).
 > 3. Retro-boundary — Retro Facilitator captures lessons. Mandatory retro content for F-021 (these are high-value lessons, do not skip):
-> 
+>
 >     - F-020 carry-forward defaults worked when honored, didn't when not — the 3-cycle repair budget didn't get tested (clean implementation); push-after-every-commit WASN'T honored (single-commit landing
->   required separate push-hygiene reconciliation); live bookkeeping WASN'T honored (required separate bookkeeping repair after handoff).
+> required separate push-hygiene reconciliation); live bookkeeping WASN'T honored (required separate bookkeeping repair after handoff).
 >     - Inbox-vs-ledger consolidation gap — Squad's pre-restart session wrote authorization records to .squad/decisions/inbox/ but never merged them into .squad/decisions.md. Restart triggered consolidation.
->   Worth a validator rule (absorb into Proposal 004 as gap #10).
+> Worth a validator rule (absorb into Proposal 004 as gap #10).
 >     - Iteration-start triad gap — state.md was missing at iteration-start; caught only at before-implement. The iteration-start scaffolding should produce plan.md + state.md + drift-log.md atomically. Worth a
->   validator rule (absorb into Proposal 004 as gap #11).
+> validator rule (absorb into Proposal 004 as gap #11).
 >     - Push-hygiene declared but not mechanically enforced — F-020 retro lesson #5 made push-after-every-commit a default. F-021 implementation didn't honor it. Worth absorbing into Proposal 004 as gap #12 or
->   into Proposal 030's quality-hardening scope.
+> into Proposal 030's quality-hardening scope.
 >     - Pre-handoff claim verification gap — Squad's "implementation complete" handoff falsely claimed tasks were marked done. Mechanical pre-handoff verification (artifact-vs-claim check) would have caught this
->   at source. Worth absorbing into Proposal 030 as a new sub-component (Gap D from the gap analysis).
+> at source. Worth absorbing into Proposal 030 as a new sub-component (Gap D from the gap analysis).
 >     - Stewardship-label-vs-baseline-role drift — same pattern as F-020 GAP-BI-003. Spec template generates "Product steward / Runtime steward / etc." labels that always need disposition. Template fix or
->   pre-clarify documentation could close this.
+> pre-clarify documentation could close this.
 >     - Restart-after-Specrew-update is critical — confirmed empirically. Squad's session predated F-020 merge; new mechanisms didn't fire until restart. Worth a banner warning when Specrew version has changed
->   since session start (composes with Proposal 050 Version Surface).
+> since session start (composes with Proposal 050 Version Surface).
 >     - Multi-session coordination — proposals from concurrent sessions cooperated cleanly on INDEX.md (both 052 + 053 integrated); but Squad's F-021 work was in a separate session checkout requiring explicit
->   push-hygiene reconciliation. Cross-references Proposal 010 (Multi-Developer Reconciliation) — same coordination problem manifests in multi-session work.
+> push-hygiene reconciliation. Cross-references Proposal 010 (Multi-Developer Reconciliation) — same coordination problem manifests in multi-session work.
 > 4. Iteration-closeout — finalize iterations/001/closeout.md, update dashboards, write iteration-completion record. F-021 has only one iteration, so iteration-closeout opens the feature-closeout question (do
 > NOT auto-enter).
-> 
+>
 > Stop conditions:
+>
 > - Review verdict = CHANGES-REQUESTED → stop with specific change list
 > - Any validator FAIL
 > - Test regression on the 6 suites (rerun at each boundary; must stay green)
 > - >10 consecutive reconciliation file-edits
 > - git push failure
 > - Iteration-closeout handoff reached
-> 
+>
 > Out of scope:
+>
 > - Do NOT enter feature-closeout (separate authorization will follow iteration-closeout handoff)
 > - Do NOT modify Implementation commit 29a130b content (CLOSED)
 > - Do NOT modify spec.md, plan.md, tasks.md content beyond task-table updates that the Reviewer naturally produces (T012 PASS marking)
 > - Do NOT open Iteration 002 (F-021 is single-iteration; no Iter 2)
-> 
+>
 > Push hygiene (carried forward — and given this iteration's track record, treat as critical):
+>
 > - Push after EVERY commit (review-rerun signoff, retro, closeout — separate commits, separate pushes)
 > - No local-only state allowed; origin must reflect truth continuously
 > - Before each handoff, verify git rev-parse HEAD == git rev-parse origin/021-specrew-slash-commands
-> 
+>
 > Proceed.
 
 ---
@@ -15220,6 +15782,7 @@ Feature 021 Iteration 001 reached the authorized iteration-closeout boundary aft
 **Record Iteration 001 as complete on the current tree, preserve only the truthful closeout packet artifacts required for validator compliance, and stop before feature-closeout.**
 
 ### Retained Closeout Artifacts
+
 - `iterations\001\closeout.md` — iteration completion summary, deliverables evidence, validation replay, and carry-forward boundary statement
 - `iterations\001\dashboard.md` — updated snapshot of iteration metrics and completion status
 - `iterations\001\code-map.md` — reviewed artifact cross-reference for closeout boundary
@@ -15228,6 +15791,7 @@ Feature 021 Iteration 001 reached the authorized iteration-closeout boundary aft
 - `iterations\001\review-diagrams.md` — visual context for closure
 
 ### Omitted Artifacts (Truthfulness Rationale)
+
 - `dependency-report.md` — omitted because no dependency manifest files changed relative to baseline ref `d80fd4b`; nothing truthful to report
 - `current-architecture.md` — omitted because it adds no new truthful closeout signal beyond the iteration-local packet already retained
 
@@ -15331,6 +15895,7 @@ Feature-closeout still requires separate explicit human authorization. The next 
 - **Rationale**: Delegated lifecycle routing was applied for role 'Reviewer'.
 
 - **Routing Evidence**: Reviewer | requested=claude | actual=copilot | model=(platform default) | status=fell-back | fallback=preferred agent 'claude' is not enabled
+
 ## 2026-05-18T17:35:05Z — Authorization: planning
 
 - **Decision ID**: authorization-feature-022-planning
@@ -15478,6 +16043,7 @@ User request — captured for team memory per Scribe charter to preserve cross-a
 ---
 
 ### 2026-05-18T20:10:53+03:00: User directive
+
 **By:** Alon Fliess (via Copilot)
 **What:** Run `/speckit.clarify` for Feature 022 only, resolve FR-005 / FR-014 / FR-019 using the provided narrow-scope, orthogonal-flag, and follow-up-feature recommendations, stop at clarify-completion for human review, do not enter `/speckit.plan`, do not broaden scope to the possible fourth bug, and do not modify the spec beyond resolving those three clarification markers.
 **Why:** User request — captured for team memory
@@ -15618,7 +16184,8 @@ User request — captured for team memory to ensure plan authorization respects 
 
 ## Summary
 
-Workflow dispatch real publish modes now treat a non-empty elease_tag as an idempotent lightweight-tag contract.
+Workflow dispatch real publish modes now treat a non-empty
+elease_tag as an idempotent lightweight-tag contract.
 
 ## Decision
 
@@ -15658,7 +16225,6 @@ PR #269 remains acceptable to keep open for later human merge authorization.
 - **Task ID**: (none)
 - **Auth Commit Hash**: a8adac0e7bff42577b2bcc744d7f259c2f494531
 - **Recorded At**: 2026-05-19T22:19:43Z
-
 
 # Feature 021 Closeout: Phase A Complete
 
@@ -15713,6 +16279,7 @@ Phase A addresses only governance, documentation, and version bookkeeping work. 
 ### Validation
 
 No validation failures encountered during Phase A:
+
 - Governance validator run on Phase A changes produced 0 critical failures.
 - Feature 021 integration test suite (6 suites) remains green:
   - ✅ `slash-command-routing.tests.ps1`
@@ -15756,7 +16323,6 @@ The Feature 021 specification directs a complete, comprehensive feature-closeout
 
 Spec Steward (Alon Fliess) — authorized per charter to approve feature-level lifecycle decisions and record them in `.squad/decisions.md` for team visibility.
 
-
 ---
 
 # Decision Inbox — 2026-05-18
@@ -15764,7 +16330,6 @@ Spec Steward (Alon Fliess) — authorized per charter to approve feature-level l
 - **Context**: Feature 021 governance reconciliation uncovered untracked slash-command assets while the tracked dispatcher/runtime surfaces still reflected the pre-slash implementation.
 - **Decision**: Reconcile the runtime by landing the tracked dispatcher/module/deployment updates together with the already-authored `specrew-*` skill templates and validation suites.
 - **Rationale**: The slash-command catalog only becomes truthful when the tracked runtime surfaces and the distributed skill templates advance together; pushing only the untracked assets would leave `/specrew.*` behavior and audit evidence out of sync.
-
 
 ---
 
@@ -15774,10 +16339,10 @@ Spec Steward (Alon Fliess) — authorized per charter to approve feature-level l
 - **Decision**: Treat missing iteration `plan.md` as non-fatal for resume-only task-progress summaries; preserve strict plan requirements for task mutations.
 - **Rationale**: `specrew start` needs advisory recovery context, but stale-state detection fixtures and closed iterations can legitimately lack a task catalog.
 
-
 ---
 
 # Decision Inbox — 2026-05-24T00:13:00Z
+
 ## Feature 020 Iteration 002 Review-Boundary Authorization
 
 - **Context**: Feature 020 Iteration 002 transitions from bounded repair (PSGallery warning) to review-boundary authorization sequence.
@@ -15797,22 +16362,21 @@ Spec Steward (Alon Fliess) — authorized per charter to approve feature-level l
   5. stop (hand off to next authorized agent)
 - **Rationale**: Iteration 002 implementation + repair cycles complete; review gate requires boundary records, verdict signoff, and closeout artifacts before transition to next work item.
 
-
 ---
 
 ### 2026-05-18T15:10:21Z: User directive
+
 **By:** Alon Fliess (via Copilot)
 **What:** Do NOT tag v0.21.0 or any release tag during Feature 021 feature-closeout; stop after PR merge and leave tagging for a separate human decision.
 **Why:** User request — captured for team memory
 
-
 ---
 
 ### 2026-05-18T20:35:05+03:00: User directive
+
 **By:** Alon Fliess (via Copilot)
 **What:** Run `/speckit.plan` for Feature 022 only after honoring the carry-forward planning notes: map stewardship labels to baseline Squad roles descriptively in plan artifacts, lock a 10 SP single-iteration capacity with 1 SP repair reserve, author the three standalone integration test scripts so they compose into Proposal 054 gate scenarios later, scaffold the hardening-gate and iteration-start triad upfront, push after every commit, verify origin matches local before the boundary handoff, and stop at the plan-completion boundary without entering `/speckit.tasks`.
 **Why:** User request — captured for team memory
-
 
 ---
 
@@ -15821,7 +16385,6 @@ Spec Steward (Alon Fliess) — authorized per charter to approve feature-level l
 - **Context**: Feature 020 Iteration 002 bounded repair for the PSGallery warning regression in `specrew init`.
 - **Decision**: Resolve the bundled version manifest for PSGallery checks from the repository root rather than `scripts\Specrew.psd1`.
 - **Rationale**: The helper lives under `scripts\internal\`, so a single-parent lookup misses `Specrew.psd1`, prevents version comparison, and suppresses the shared warning/cache path across init/start/update.
-
 
 ---
 
@@ -15856,7 +16419,6 @@ The task file already had stable sequencing and story-level traceability, but it
 - `.agents/skills/` remains a host-neutral deployment path, not a current Codex CLI discoverability claim.
 - Task numbering, dependency order, and story grouping remain unchanged.
 
-
 ---
 
 # Feature 022 Merge Verification & Identity Correction
@@ -15880,6 +16442,7 @@ The feature branch included session-state setup commits that set `.squad/identit
 ## Resolution
 
 Corrected identity state in post-merge commit `83f2144`:
+
 - Set `session_state_active: false`
 - Set `session_state_boundary: feature-closeout`
 - Set `session_state_feature: "(none)"`
@@ -15927,12 +16490,12 @@ The post-merge identity correction was necessary and aligned with Feature 022 cl
   > Approved. Open the review boundary for Feature 024.
   >
   > Independent verification confirms:
-  >   - 25/25 tasks complete
-  >   - 11 integration scripts + governance validator all returned exit 0
-  >   - Multi-host deployment correctly implemented at deploy-squad-runtime.ps1 lines 381-383 (.claude\skills, .github\skills, .agents\skills)
-  >   - Legacy migration at line 517-522 only removes Specrew-managed specrew-* directories; unmanaged content (user-modified or third-party) is preserved as legacy-unmanaged-skill
-  >   - YAML frontmatter on all SKILL.md templates with hyphenated /specrew-*
-  >   - Version bumped to 0.24.0 in Specrew.psd1 and .specrew/config.yml
+  > - 25/25 tasks complete
+  > - 11 integration scripts + governance validator all returned exit 0
+  > - Multi-host deployment correctly implemented at deploy-squad-runtime.ps1 lines 381-383 (.claude\skills, .github\skills, .agents\skills)
+  > - Legacy migration at line 517-522 only removes Specrew-managed specrew-* directories; unmanaged content (user-modified or third-party) is preserved as legacy-unmanaged-skill
+  > - YAML frontmatter on all SKILL.md templates with hyphenated /specrew-*
+  > - Version bumped to 0.24.0 in Specrew.psd1 and .specrew/config.yml
   >
   > Proceed with /speckit.review and the post-review boundary per the lifecycle. Stop at the next human-authorization boundary (review verdict → retro authorization).
   >
@@ -16029,6 +16592,7 @@ Local pre-push validation must mirror CI's full-repo scope. Feature 024 iteratio
 ### Lesson
 
 When development validation is narrower than CI's validation:
+
 - Local gates provide false confidence (my validation passed)
 - CI gates catch real breakage (but the full repo has a problem)
 - Developers don't learn the full-repo impact until review or merge
@@ -16038,6 +16602,7 @@ Validation tooling and pre-push hooks should adopt CI's validation scope, not a 
 ### Team Action
 
 When designing validators, pre-push hooks, or CI gates going forward:
+
 - Audit whether local validation covers the same scope as CI validation
 - If local scope is narrower, document the asymmetry and adjust
 - If asymmetry is intentional (for speed), ensure reduced local scope doesn't mask real issues
@@ -16056,6 +16621,7 @@ When designing validators, pre-push hooks, or CI gates going forward:
 ### Summary
 
 The \Validate iteration governance\ step in \.github/workflows/specrew-ci.yml\ was timing out at 15 minutes while processing 44 closed iterations. Applied Proposal 067 small-fix slice pattern:
+
 - Bumped timeout from 15 to 25 minutes
 - Added CHANGELOG.md entry
 - Committed: \ci: bump validator timeout 15→25min to absorb growing iteration count (44 closed)\
@@ -16162,6 +16728,7 @@ A partial test suite or incomplete validation gate can be silently skipped while
 ### Proposal 045 Implication
 
 Governance enhancement should treat skipped checks as suspect rather than green. When a workflow marks a job as skipped due to a dependency, the workflow status should either:
+
 1. Propagate the dependency failure up, marking the workflow as failed/incomplete (not green), **or**
 2. Record the skipped job as "unverified" in the workflow summary, preventing the workflow from claiming full success.
 
@@ -16288,6 +16855,7 @@ User request captured for team memory.
 ### Summary
 
 Feature 028 closeout task sequence completed:
+
 - PR #345 (\eat(028): harden review evidence integrity\) was approved by reviewer
 - Merged to main using merge commit strategy (not squash) via \gh pr merge 345 --merge --admin\
 - Merge commit \ 30a5a3\ recorded in main history with full changeset (37 files, 4284 insertions)
@@ -16300,7 +16868,7 @@ Feature 028 closeout task sequence completed:
 - Feature 028 specification (\specs/028-review-evidence-integrity/\)
 - Review evidence integrity requirements and contracts
 - Quality hardening gate and iteration closeout artifacts
-- Integration test suite (\	ests/integration/review-evidence-integrity.tests.ps1\)
+- Integration test suite (\ ests/integration/review-evidence-integrity.tests.ps1\)
 - API reference documentation update
 - Changelog entry (1 line added)
 - Proposal clarifications (\proposals/073-review-evidence-integrity.md\)
@@ -16328,7 +16896,6 @@ During closeout, review and evidence artifacts noted a small optimization opport
 
 ---
 
-
 ---
 
 ## 2026-05-21T23:59:00Z — Reviewer Decision: Proposal 067 (validator-perf-dedupe) Repair Revision — PASS
@@ -16350,6 +16917,7 @@ The independent repair owner successfully addressed all blocking findings from t
 ### 1. Global-State List Refinement ✓
 
 The Get-ValidatorGlobalStatePathspecs function now includes the complete set of surfaces:
+
 - .specrew/ + .specrew/**
 - .squad/identity/ + .squad/identity/**
 - .squad/decisions.md ← **added**
@@ -16370,6 +16938,7 @@ The Squad coordinator governance prompt (specrew-governance.md rule 5) now expli
 ### 3. Safe Dedupe of Get-DeclaredCompletedTaskCount ✓
 
 The helper is now consolidated into shared-governance.ps1 and removed from duplicate locations. Semantics preserved:
+
 - **Plan.md parsing:** Uses Normalize-MarkdownCell to strip whitespace/backticks
 - **State.md parsing:** Uses Get-NormalizedKeyword to extract keywords via regex
 
@@ -16378,6 +16947,7 @@ This matches the original validator behavior exactly. The CHANGELOG correctly do
 ### 4. Lightweight Timing Instrumentation with Real Evidence ✓
 
 **Implementation:**
+
 - alidate-governance.ps1 starts [System.Diagnostics.Stopwatch]::StartNew() at line 24
 - Write-ValidatorSummaryAndExit captures elapsed milliseconds
 - Passes DurationMs to Write-SpecrewValidatorSummary
@@ -16394,6 +16964,7 @@ The **real validator timing evidence** at .specrew\last-validator-summary.json w
 ## Final Assessment
 
 All four pillars are present and correct. The repair owner addressed every blocking finding from the first rejection:
+
 1. ✓ Global-state list is complete and refined
 2. ✓ Coordinator prompt documents the scoping behavior
 3. ✓ Dedupe is safe and semantics-preserving
@@ -16410,6 +16981,7 @@ All four pillars are present and correct. The repair owner addressed every block
 **Next Action:** Merge the worktree branch after staging and committing .squad changes.
 
 ---
+
 ## 2026-05-21T11:30:43Z — Delegated routing plan
 
 - **Enabled Agents**: copilot
@@ -16611,6 +17183,7 @@ All four pillars are present and correct. The repair owner addressed every block
 - **Routing Evidence**: Reviewer | requested=claude | actual=copilot | model=(platform default) | status=fell-back | fallback=preferred agent 'claude' is not enabled
 
 ### 2026-05-21T15:40:32Z: Runtime evidence
+
 - **role_or_work_item:** speckit.specify for expanded Pillar E baseline hygiene small-fix slice
 - **requested_agent:** copilot
 - **actual_agent:** copilot
@@ -16619,6 +17192,7 @@ All four pillars are present and correct. The repair owner addressed every block
 - **fallback_reason:** none
 
 ### 2026-05-21T15:41:04Z: Runtime evidence
+
 - **role_or_work_item:** speckit.clarify for feature 029 baseline hygiene
 - **requested_agent:** copilot
 - **actual_agent:** copilot
@@ -16627,6 +17201,7 @@ All four pillars are present and correct. The repair owner addressed every block
 - **fallback_reason:** none
 
 ### 2026-05-21T15:42:59Z: Runtime evidence
+
 - **role_or_work_item:** speckit.before-plan for feature 029 baseline hygiene
 - **requested_agent:** copilot
 - **actual_agent:** copilot
@@ -16635,6 +17210,7 @@ All four pillars are present and correct. The repair owner addressed every block
 - **fallback_reason:** none
 
 ### 2026-05-21T15:48:51Z: Runtime evidence
+
 - **role_or_work_item:** speckit.plan for feature 029 baseline hygiene
 - **requested_agent:** copilot
 - **actual_agent:** copilot
@@ -16643,6 +17219,7 @@ All four pillars are present and correct. The repair owner addressed every block
 - **fallback_reason:** none
 
 ### 2026-05-21T15:54:32Z: Runtime evidence
+
 - **role_or_work_item:** planner repair for missing feature-level plan.md in feature 029 baseline hygiene
 - **requested_agent:** copilot
 - **actual_agent:** copilot
@@ -16651,6 +17228,7 @@ All four pillars are present and correct. The repair owner addressed every block
 - **fallback_reason:** none
 
 ### 2026-05-21T15:55:56Z: Runtime evidence
+
 - **role_or_work_item:** speckit.tasks for feature 029 baseline hygiene
 - **requested_agent:** copilot
 - **actual_agent:** copilot
@@ -16659,6 +17237,7 @@ All four pillars are present and correct. The repair owner addressed every block
 - **fallback_reason:** none
 
 ### 2026-05-21T15:58:16Z: Runtime evidence
+
 - **role_or_work_item:** speckit.after-tasks for feature 029 baseline hygiene
 - **requested_agent:** copilot
 - **actual_agent:** copilot
@@ -16667,6 +17246,7 @@ All four pillars are present and correct. The repair owner addressed every block
 - **fallback_reason:** none
 
 ### 2026-05-21T16:20:57Z: Runtime evidence
+
 - **role_or_work_item:** branch setup for feature 029 baseline hygiene rework
 - **requested_agent:** copilot
 - **actual_agent:** copilot
@@ -16675,6 +17255,7 @@ All four pillars are present and correct. The repair owner addressed every block
 - **fallback_reason:** none
 
 ### 2026-05-21T16:22:24Z: Runtime evidence
+
 - **role_or_work_item:** independent planning-artifact repair for feature 029 baseline hygiene after rejection
 - **requested_agent:** copilot
 - **actual_agent:** copilot
@@ -16683,6 +17264,7 @@ All four pillars are present and correct. The repair owner addressed every block
 - **fallback_reason:** none
 
 ### 2026-05-21T16:27:58Z: Runtime evidence
+
 - **role_or_work_item:** validator-gap repair for feature 029 iteration 001 planning consistency
 - **requested_agent:** copilot
 - **actual_agent:** copilot
@@ -16691,6 +17273,7 @@ All four pillars are present and correct. The repair owner addressed every block
 - **fallback_reason:** none
 
 ### 2026-05-21T16:36:03Z: Human authorization
+
 - **boundary:** implementation
 - **by:** Alon Fliess
 - **verbatim:** Verdict: START IMPLEMENTATION on branch 029-baseline-hygiene.
@@ -16702,6 +17285,7 @@ All four pillars are present and correct. The repair owner addressed every block
   Otherwise: proceed with T001 through T010. I'll review the implementation at the next boundary (implement → review).
 
 ### 2026-05-21T16:36:03Z: Runtime evidence
+
 - **role_or_work_item:** speckit.before-implement for feature 029 baseline hygiene
 - **requested_agent:** copilot
 - **actual_agent:** copilot
@@ -16710,13 +17294,13 @@ All four pillars are present and correct. The repair owner addressed every block
 - **fallback_reason:** none
 
 ### 2026-05-21T16:39:34Z: Runtime evidence
+
 - **role_or_work_item:** speckit.implement for feature 029 baseline hygiene
 - **requested_agent:** copilot
 - **actual_agent:** copilot
 - **model_id:** claude-sonnet-4.5
 - **status:** honored
 - **fallback_reason:** none
-
 
 ---
 
@@ -16759,12 +17343,12 @@ The two-commit split keeps reviewer artifacts (evidence surface) separate from p
 
 HOLD boundary advancement. Await human authorization before proceeding to retro-boundary.
 
-
 ---
 
 ## 2026-05-21T21:43:43Z — Decision: Reviewer Feature 029 Signoff
 
 ---
+
 decision_date: 2026-05-21
 decision_owner: Reviewer (Alon Fliess)
 decision_type: review-verdict
@@ -16780,6 +17364,7 @@ status: blocked-on-form-vs-meaning-gap
 **Blocker**: Form-vs-meaning gap detected by governance validator. Iteration artifacts declare 7 completed tasks and all task verdicts pass in review.md, but git diff shows zero committed implementation files. This is a governance-enforced requirement, not a quality defect.
 
 **Evidence of Acceptance**:
+
 - All 9 task verdict rows in review.md pass (baseline-update-boundary, closeout-invalidation, git-integration, idempotency-test, error-handling, f011-integration-test, full-lifecycle-test)
 - Integration test suite fully green (UT-001–UT-003, IT-001–IT-006, T007 manual, T008 regression): 100% pass rate
 - Gap Ledger: fixed-now (all five lenses satisfied)
@@ -16792,12 +17377,14 @@ The feature branch `029-baseline-hygiene` exists with `plan.md`, `tasks.md`, and
 
 **Next Action Required**:
 Implementer must commit the following to the feature branch `029-baseline-hygiene` before re-running governance validation:
+
 1. `scripts/internal/sync-boundary-state.ps1` with `Update-BaselineCommitHashInFrontmatter` function (baseline update helper)
 2. `tests/integration/baseline-hygiene.tests.ps1` (integration test suite)
 3. `CHANGELOG.md` entry documenting the fix
 4. Any other source files modified for Feature 029 Iteration 001 implementation
 
 **After Commits**:
+
 - Re-run `pwsh -NoProfile -ExecutionPolicy Bypass -File extensions\specrew-speckit\scripts\validate-governance.ps1 -IterationPath "specs\029-baseline-hygiene\iterations\001"`
 - Form-vs-meaning gap should clear once implementation files are committed
 - Review verdict automatically transitions from BLOCKED to PASS
@@ -16806,6 +17393,7 @@ Implementer must commit the following to the feature branch `029-baseline-hygien
 This decision records that the review verdict is substantively ACCEPTED by the Reviewer on all technical grounds. The governance validator's form-vs-meaning detection is functioning correctly and is not a quality complaint, but a requirement that implementation code must be committed before review-verdict-signoff is complete. This is a lifecycle requirement, not a scope or quality defect.
 
 **Timeline**:
+
 - Review completed: 2026-05-21 (this decision)
 - Blocker identified: form-vs-meaning gap (implementation not committed)
 - Expected resolution: After implementer commits and T010a/T010b (PR and merge workflow) complete
@@ -16816,7 +17404,6 @@ This decision records that the review verdict is substantively ACCEPTED by the R
 **Decision Owner**: Reviewer (Alon Fliess)  
 **Date**: 2026-05-21  
 **Status**: Recorded (review verdict ACCEPTED; awaiting implementation commits to clear form-vs-meaning blocker)
-
 
 ---
 
@@ -16829,7 +17416,6 @@ This decision records that the review verdict is substantively ACCEPTED by the R
 - **Decision**: Treat commit-backed evidence as a hard review-boundary prerequisite. Implementation commits and upstream push must complete before review-boundary; PR opening belongs at review-boundary; merge belongs after review sign-off.
 - **Rationale**: The rejected artifact revision claimed passing evidence while the actual F-029 surface work was still uncommitted. Reordering T010 into T010a/T010b keeps spec, plan, and execution discipline aligned with the review-evidence integrity gate.
 - **Operational Impact**: Future review-boundary repairs should update the iteration task ordering before re-presenting evidence, then rerun scoped governance and feature-local tests against the committed branch head.
-
 
 ---
 
@@ -16867,6 +17453,7 @@ This decision records that the review verdict is substantively ACCEPTED by the R
 ## Improvements Identified
 
 ### Issue 1: Retro Scaffolder Flexibility
+
 **Observation**: The `scaffold-retro-artifact.ps1` script requires a Phase Baseline table in the iteration plan.md. For small-fix slices (like Feature 029), this table may not be present, creating friction.
 
 **Recommendation**: Update the scaffolder to make the Phase Baseline table optional, or clarify its role in the plan template for different iteration types.
@@ -16876,6 +17463,7 @@ This decision records that the review verdict is substantively ACCEPTED by the R
 ---
 
 ### Issue 2: Baseline Drift Forgetting Risk
+
 **Observation**: Baseline hygiene relies on `Invoke-SpecrewBoundaryStateSync` being called at every managed boundary. If a developer forgets, the baseline will not refresh, and stale baseline misfires can re-occur.
 
 **Recommendation**: Automate boundary-sync invocation as part of the standard boundary-close workflow (e.g., in `specrew-boundary-close` command or a pre-commit hook). Document that baseline is not refreshed for manual out-of-band boundary commits.
@@ -16885,6 +17473,7 @@ This decision records that the review verdict is substantively ACCEPTED by the R
 ---
 
 ### Issue 3: Integration Test Isolation
+
 **Observation**: Integration tests that exercise full lifecycle boundaries are comprehensive but require careful setup and teardown to avoid polluting the active Specrew state.
 
 **Recommendation**: Consider a test-isolation fixture or wrapper pattern (e.g., temporary test repos, isolated state snapshots) to further reduce risk of accidental state mutation.
@@ -16896,11 +17485,13 @@ This decision records that the review verdict is substantively ACCEPTED by the R
 ## Process Insights
 
 ### What to Repeat
+
 - **Transparent Baseline Regeneration**: When review metadata misaligns, regenerate evidence openly. Reviewers appreciate seeing corrections in the open rather than hidden.
 - **Boundary-Comprehensive Testing**: For features that touch multiple lifecycle boundaries, exercise all boundaries in integration tests. This pattern proved highly effective.
 - **Semantic Commit Discipline**: Maintain clear, traceable commit messages grouped by logical change. The 4-commit semantic stack was easy to review.
 
 ### What to Improve
+
 - **Scaffolder Robustness**: Reduce assumptions about required sections in iteration artifacts. Make templates flexible.
 - **Baseline Monitoring**: Add a governance check to warn if `baseline_commit_hash` is older than a threshold (e.g., >N commits), catching stale baselines proactively.
 - **Documentation Clarity**: Clarify that baseline hygiene is automatic at **managed** boundaries but not for **manual** boundary work. Update user guide with expected behavior.
@@ -16944,10 +17535,10 @@ All findings are complete and evidence-based. Recommendations are actionable and
 ---
 
 **Next Steps**:
+
 1. Team review of findings and recommendations
 2. Prioritize recommendations for incorporation into Specrew governance or future feature scope
 3. Document lessons learned in .squad/wisdom.md if applicable
-
 
 ---
 
@@ -16968,7 +17559,6 @@ All findings are complete and evidence-based. Recommendations are actionable and
 - Verification: `git rev-parse HEAD` matched `git rev-parse origin/029-baseline-hygiene` at `2e6ee0ec0979c98bc8f64bb72962ad74c07f52cf`.
 - Constraints honored: validator not run; no lifecycle boundary advanced.
 
-
 ---
 
 ## 2026-05-21T18:59:00Z — Decision: User Directive Push-First & Retro Sequence
@@ -16979,6 +17569,7 @@ All findings are complete and evidence-based. Recommendations are actionable and
 **Recorded At**: 2026-05-21T18:59:00Z  
 
 ### 2026-05-21T18:49:56Z: User directive
+
 **By:** Alon Fliess (via Copilot)
 **What:** Push every new boundary-phase commit to origin before any further validator run or boundary advancement; for Feature 029, push local-only commit 2e6ee0e first, then produce retro-boundary artifacts, commit and push them before signaling retro-verdict-signoff, and do not start feature-closeout or T010b until retro is signed off. Also surface the exact dashboard warning text in the next handoff instead of acting on it early.
 **Why:** User request — captured for team memory
@@ -17046,6 +17637,7 @@ Feature 030 Iteration 001 meets FR-001 through FR-012 on the locked implementati
 - `validate-governance.ps1` scoped to `specs/030-validator-speedup/iterations/001` passes on the review-boundary tree.
 - The human directive not to rerun the Pester implementation suite was preserved because implementation is locked at `eeeb90e`.
 - Retro and later closeout boundaries remain unopened.
+
 ## 2026-05-21T23:49:09Z — Boundary sync: review-signoff
 
 - **Boundary Type**: review-signoff
@@ -17106,6 +17698,7 @@ Feature 030 Iteration 001 meets FR-001 through FR-012 on the locked implementati
 - **Routing Evidence**: Reviewer | requested=claude | actual=copilot | model=(platform default) | status=fell-back | fallback=preferred agent 'claude' is not enabled
 
 ## Delegated Routing Decision - F-039 before-plan
+
 - **Timestamp**: 2026-05-22T15:03:02+03:00
 - **Work Item**: F-039 before-plan
 - **Requested Agent**: copilot
@@ -17114,7 +17707,6 @@ Feature 030 Iteration 001 meets FR-001 through FR-012 on the locked implementati
 - **Status**: honored
 - **Fallback Reason**: N/A (requested agent is active)
 - **Context**: Formal before-plan readiness gate for F-039 (Launch-Mode Boundary Enforcement)
-
 
 ## 2026-05-22T12:14:28Z — Agent Routing Evidence: F-039 Plan
 
@@ -17166,6 +17758,7 @@ Planning phase executed for F-039 (Launch-Mode Boundary Enforcement) per user re
 ---
 
 ### 2026-05-21T22:23:18+03:00: User directive
+
 **By:** Alon Fliess (via Copilot)
 **What:** T010b is approved for Feature 029: open the PR from `029-baseline-hygiene` to `main`, wait for CI green across all checks, self-review the PR diff against approved scope, merge with merge-commit, delete the feature branch after merge, and keep the version bump deferred until the later release-tag boundary.
 **Why:** User approval and boundary authorization for the final PR-and-merge step of Feature 029.
@@ -17173,12 +17766,14 @@ Planning phase executed for F-039 (Launch-Mode Boundary Enforcement) per user re
 ---
 
 ### 2026-05-21T19:04:23Z: User directive
+
 **By:** Alon Fliess (via Copilot)
 **What:** Advance only to Feature 029 feature-closeout; generate the closeout dashboard and closeout artifact per repo convention, preserve the Fixed changelog entry, treat the dashboard warning as expected until closeout, optionally pick up Crew terminology cleanups if natural, commit and push all closeout-phase work before signaling readiness, and do not start T010b until feature-closeout is signed off.
 **Why:** User request — captured for team memory
 ---
 
 ### 2026-05-22T11:26:23Z: User directive
+
 **By:** Alon Fliess (via Copilot)
 **What:** For this session, run F-039 only from Proposal 065 through the full Specrew lifecycle; do not touch F-040; require explicit human authorization at every approval boundary; preserve mirror parity for touched `extensions/specrew-speckit/` and `.specify/` mirrors; do not commit markdown-lint violations; avoid redundant unchanged validator reruns; keep PR-open blocked on GitHub Copilot review findings.
 **Why:** User request — captured for team memory
@@ -17186,6 +17781,7 @@ Planning phase executed for F-039 (Launch-Mode Boundary Enforcement) per user re
 ---
 
 ### 2026-05-22T12:26:37Z: User directive
+
 **By:** Alon Fliess (via Copilot)
 **What:** Keep F-039 parked at the plan boundary while Proposal 065 is authored and merged; do not re-run plan research or execute tasks or later boundaries until Proposal 065 exists on disk and the user gives an explicit follow-up verdict.
 **Why:** User request — captured for team memory
@@ -17256,7 +17852,6 @@ The semantic review-boundary evidence for Feature 030 Iteration 001 was already 
 
 ---
 
-
 ---
 
 ## 2026-05-22T16:20:58Z — User Directive: Feature 039 Review-Boundary Evidence Standard
@@ -17309,14 +17904,13 @@ Implementation of Feature 039 Iteration 001 is authorized to cross the plan → 
 
 User explicitly authorized the implementation boundary for Feature 039 Iteration 001. Implementation must execute the approved task bundle, carry the T011 AC1-AC10 evidence-density concern into review readiness, and stop at the review boundary rather than crossing it.
 
-
 ## 2026-05-22T16:20:58Z — User Directive: T011 AC1-AC10 Evidence Density Review Flag
 
 ### 2026-05-22T16:20:58Z: User directive
+
 **By:** Alon Fliess (via Copilot)
 **What:** T011's AC1-AC10 density stays a Reviewer concern; flag it at review-boundary if the test evidence ends up thin per acceptance criterion, otherwise carry it forward.
 **Why:** User request - captured for team memory
-
 
 ---
 
@@ -17337,7 +17931,6 @@ approved for implementation-boundary entry
 
 T011's AC1-AC10 density stays a Reviewer concern - flag it at review-boundary if the test evidence ends up thin per AC, otherwise carry forward.
 
-
 ---
 
 ## 2026-05-22T16:21:00Z — Agent Routing Evidence: Feature 039 Implementation
@@ -17356,7 +17949,6 @@ T011's AC1-AC10 density stays a Reviewer concern - flag it at review-boundary if
 
 User explicitly authorized the implementation boundary for Feature 039 Iteration 001. Implementation must execute the approved task bundle, carry the T011 AC1-AC10 evidence-density concern into review readiness, and stop at the review boundary rather than crossing it.
 
-
 ---
 
 ## 2026-05-22T17:00:00Z — User Verdict: Feature 039 Review-Boundary Authorization
@@ -17373,6 +17965,7 @@ User explicitly authorized the implementation boundary for Feature 039 Iteration
 **approved for review-boundary entry**
 
 Spot-check confirmed:
+
 - Four helpers present (validate-governance, launch-mode-boundary-enforcement, session-state-boundary-canonical, start-command)
 - SHA-equivalent mirror parity verified
 - Bypass flag wired through \specrew-start.ps1\
@@ -17395,8 +17988,215 @@ Spot-check confirmed:
 ### Context
 
 User explicitly authorized review-boundary entry for Feature 039 Iteration 001. Review work must:
+
 1. Validate implemented, enforced, observable, and documented dimensions
 2. Create the missing review artifact
 3. Assess the T011 AC1-AC10 evidence-density watch item
 4. Stop before review-signoff boundary
+
+---
+
+## 2026-05-22T17:08:54Z — Reviewer Inbox: Feature 039 Iteration 001 Review Boundary Completion
+
+- **Recorded At**: 2026-05-22T17:08:54Z
+- **Feature**: 039-launch-mode-boundary-enforcement
+- **Iteration**: 001
+- **Verdict**: pass
+- **Scope**: Review-boundary only; review-signoff not entered
+
+### Summary
+
+- Scoped governance validation passed after repairing review-boundary bookkeeping truth to keep canonical lifecycle state at `before-implement`.
+- `launch-mode-boundary-enforcement`, `session-state-boundary-canonical`, `start-command`, and `lifecycle-boundary-sync` all passed on the current tree.
+- T011 AC1-AC10 evidence density is explicitly judged **partially fixture-shaped but acceptable**, not a blocker.
+- Review artifact path: `specs/039-launch-mode-boundary-enforcement/iterations/001/review.md`
+
+---
+
+## 2026-05-22T17:19:01Z — User Verdict: F-039 Review-Signoff Authorization
+
+- **Decision ID**: user-verdict-2026-05-22-f039-review-signoff
+- **Type**: boundary authorization
+- **Authority**: Alon Fliess
+- **Recorded At**: 2026-05-22T17:19:01Z
+- **Feature**: 039-launch-mode-boundary-enforcement
+- **Iteration**: 001
+
+## Verdict
+
+approved for review-signoff entry
+
+T011 resolution accepted - fixture-shaped AC1-AC10 evidence is the right call given AC11's chain-past-plan replay carries the empirical weight independently.
+
+---
+
+## 2026-05-22T17:19:05Z — Agent Routing Evidence: F-039 Review-Signoff
+
+- **Work Item**: F-039 review-signoff
+- **Requested Agent**: copilot
+- **Actual Agent**: reviewer (GitHub Copilot CLI)
+- **Model ID**: claude-sonnet-4.5
+- **Status**: honored
+- **Fallback Reason**: N/A (preferred copilot path active through reviewer-owned signoff work)
+- **Recorded At**: 2026-05-22T17:19:05Z
+
+### Context
+
+User explicitly authorized review-signoff entry for Feature 039 Iteration 001. Reviewer must persist the accepted signoff state, use the canonical sync-review-signoff boundary path, carry the accepted T011 evidence rationale into the artifact trail, and stop before retro-boundary.
+
+## 2026-05-22T17:25:43Z — Boundary enforcement: review-signoff
+
+- **Feature**: 039-launch-mode-boundary-enforcement
+- **Boundary Type**: review-signoff
+- **Current Boundary**: before-implement
+- **Requested Boundary**: review-signoff
+- **Enforcement Action**: authorized
+- **Launch Mode**: same-window
+- **Agent Response Snippet**: (none)
+- **Reason**: Persisted authorization matched the requested boundary.
+
+## 2026-05-22T17:29:22Z — Boundary sync warning: review-signoff
+
+- **Boundary Type**: review-signoff
+- **Latest Recorded Boundary**: plan
+- **Recorded At**: 2026-05-22T17:29:22Z
+- **Warning**: Expected next boundary 'tasks' but received 'review-signoff'.
+
+## 2026-05-22T17:29:23Z — Boundary sync: review-signoff
+
+- **Boundary Type**: review-signoff
+- **Feature Ref**: 039-launch-mode-boundary-enforcement
+- **Iteration Number**: 001
+- **Task ID**: (none)
+- **Auth Commit Hash**: 5458564904bc376f3f8edaa5339610fd40c9144c
+- **Recorded At**: 2026-05-22T17:29:23Z
+
+## 2026-05-22T17:41:06Z — Boundary sync: retro
+
+- **Boundary Type**: retro
+- **Feature Ref**: 039-launch-mode-boundary-enforcement
+- **Iteration Number**: 001
+- **Task ID**: (none)
+- **Auth Commit Hash**: 5458564904bc376f3f8edaa5339610fd40c9144c
+- **Recorded At**: 2026-05-22T17:41:05Z
+
+## 2026-05-22T17:51:12Z — Boundary enforcement: iteration-closeout
+
+- **Feature**: 039-launch-mode-boundary-enforcement
+- **Boundary Type**: iteration-closeout
+- **Current Boundary**: retro
+- **Requested Boundary**: iteration-closeout
+- **Enforcement Action**: blocked
+- **Launch Mode**: same-window
+- **Agent Response Snippet**: (none)
+- **Reason**: No persisted authorization matched retro -> iteration-closeout.
+
+## 2026-05-22T17:52:51Z — Boundary enforcement: iteration-closeout
+
+- **Feature**: 039-launch-mode-boundary-enforcement
+- **Boundary Type**: iteration-closeout
+- **Current Boundary**: retro
+- **Requested Boundary**: iteration-closeout
+- **Enforcement Action**: blocked
+- **Launch Mode**: same-window
+- **Agent Response Snippet**: (none)
+- **Reason**: No persisted authorization matched retro -> iteration-closeout.
+
+## 2026-05-22T17:53:59Z — Boundary enforcement: iteration-closeout
+
+- **Feature**: 039-launch-mode-boundary-enforcement
+- **Boundary Type**: iteration-closeout
+- **Current Boundary**: retro
+- **Requested Boundary**: iteration-closeout
+- **Enforcement Action**: authorized
+- **Launch Mode**: same-window
+- **Agent Response Snippet**: (none)
+- **Reason**: Persisted authorization matched the requested boundary.
+
+## 2026-05-22T17:54:24Z — Boundary sync: iteration-closeout
+
+- **Boundary Type**: iteration-closeout
+- **Feature Ref**: 039-launch-mode-boundary-enforcement
+- **Iteration Number**: 001
+- **Task ID**: (none)
+- **Auth Commit Hash**: 3a53c46ce4a4154e03c3b9dc802233ddeb1b97aa
+- **Recorded At**: 2026-05-22T17:54:24Z
+
+## 2026-05-22T17:55:28Z — Boundary enforcement: feature-closeout
+
+- **Feature**: 039-launch-mode-boundary-enforcement
+- **Boundary Type**: feature-closeout
+- **Current Boundary**: iteration-closeout
+- **Requested Boundary**: feature-closeout
+- **Enforcement Action**: blocked
+- **Launch Mode**: same-window
+- **Agent Response Snippet**: (none)
+- **Reason**: No persisted authorization matched iteration-closeout -> feature-closeout.
+
+## 2026-05-22T18:03:23Z — Boundary enforcement: feature-closeout
+
+- **Feature**: 039-launch-mode-boundary-enforcement
+- **Boundary Type**: feature-closeout
+- **Current Boundary**: iteration-closeout
+- **Requested Boundary**: feature-closeout
+- **Enforcement Action**: blocked
+- **Launch Mode**: same-window
+- **Agent Response Snippet**: (none)
+- **Reason**: No persisted authorization matched iteration-closeout -> feature-closeout.
+
+## 2026-05-22T18:06:58Z — Boundary sync: feature-closeout
+
+- **Boundary Type**: feature-closeout
+- **Feature Ref**: 039-launch-mode-boundary-enforcement
+- **Iteration Number**: 001
+- **Task ID**: (none)
+- **Auth Commit Hash**: 8e1063b98566aa95fd0371c363cf5ea802474b5f
+- **Recorded At**: 2026-05-22T18:06:58Z
+
+## 2026-05-22T18:12:38Z — Boundary sync: feature-closeout
+
+- **Boundary Type**: feature-closeout
+- **Feature Ref**: 039-launch-mode-boundary-enforcement
+- **Iteration Number**: (none)
+- **Task ID**: (none)
+- **Auth Commit Hash**: b21c17b92540e951d5de48ff7352fc1390315ca6
+- **Recorded At**: 2026-05-22T18:12:38Z
+
+### 2026-05-22T17:34:04Z: User directive
+**By:** Alon Fliess (via Copilot)
+**What:** Elevate three F-039-specific lessons into retro improvement actions: the meta-irony of the chain-past-plan incident occurring mid-implementation, the multi-round clarify-reconciliation pattern and its done-condition lockdown, and the mid-stream pivot to lean prompts.
+**Why:** User request - captured for team memory
+
+
+
+## 2026-05-22T17:34:04Z - User Verdict: F-039 Retro-Boundary Authorization
+
+- **Decision ID**: user-verdict-2026-05-22-f039-retro-boundary
+- **Type**: boundary authorization
+- **Authority**: Alon Fliess
+- **Recorded At**: 2026-05-22T17:34:04Z
+- **Feature**: 039-launch-mode-boundary-enforcement
+- **Iteration**: 001
+
+## Verdict
+
+approved for retro-boundary entry
+
+Worth elevating from drift-log into improvement actions: the meta-irony of F-039 chain-past-plan happening mid-implementation, the multi-round clarify-reconciliation pattern (and the done-condition lockdown that closed it), and the mid-stream pivot to lean prompts - all three are F-039-specific lessons that don't fit a generic retro template but are the most actionable evidence this iteration produced.
+
+
+## 2026-05-22T17:34:04Z - Agent Routing Evidence: F-039 Retro Boundary
+
+- **Work Item**: F-039 retro-boundary
+- **Requested Agent**: copilot
+- **Actual Agent**: retro-facilitator (GitHub Copilot CLI)
+- **Model ID**: claude-sonnet-4.5
+- **Status**: honored
+- **Fallback Reason**: N/A (preferred copilot path active through retro-facilitator-owned retrospective work)
+- **Recorded At**: 2026-05-22T17:34:04Z
+
+### Context
+
+User explicitly authorized retro-boundary entry for Feature 039 Iteration 001. The retrospective must elevate three F-039-specific lessons into concrete improvement actions: the chain-past-plan meta-irony during feature delivery, the multi-round clarify-reconciliation loop and its done-condition lockdown, and the mid-stream pivot to lean prompts. Retro must stop before iteration-closeout.
+
 

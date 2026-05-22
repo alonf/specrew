@@ -1,5 +1,5 @@
 ---
-proposal: 100
+proposal: 103
 title: Agent-Class Threat Surface (Concrete Threat Catalog + Prevention + Detection)
 status: candidate
 discussion-status: ad-hoc
@@ -19,7 +19,7 @@ As Specrew governs increasingly autonomous AI agents in real codebases, the atta
 - **Proposal 097 (Coupling Surface Catalog)** — handles *dependency-level* threats (CVEs, license issues, version-currency). An agent-introduced backdoor in a dependency upgrade PR has a *dependency* dimension that 097 catches, but the *agent-introduced-without-human-review* dimension is invisible to 097.
 - **Proposal 008 (NFR Governance)** — handles security as a non-functional requirement at spec time. Cannot react to threats that emerge during execution from agent behavior.
 - **Proposal 073 (Review Evidence Integrity)** — handles reviewer-bypass and form-not-meaning. Adjacent but doesn't catalog the underlying attack vectors.
-- **Proposal 099 (Cross-Model Reviewer)** — adds reviewer independence. Helps catch some agent threats but isn't designed around the agent-class threat taxonomy.
+- **Proposal 102 (Cross-Model Reviewer)** — adds reviewer independence. Helps catch some agent threats but isn't designed around the agent-class threat taxonomy.
 
 There is currently no Specrew artifact that **enumerates concrete agent-class attack scenarios with named CVEs/incident patterns, classifies them by severity and blast radius, and specifies preventive controls**. The research document received 2026-05-22 named three categories ("prompt injection, capability creep, supply chain via CI/CD") — useful as a starting taxonomy but too abstract to act on.
 
@@ -45,7 +45,7 @@ Catalog lives at `.specrew/security/agent-threats.md` — schema parallel to Pro
 
 | ID | Scenario | Severity | Blast radius | Current detection | Proposed control |
 |---|---|---|---|---|---|
-| AT-001 | Agent inserts backdoor in dependency upgrade PR | Critical | Production | None (097 catches CVEs, not novel backdoors) | Require human approval for any PR that modifies dependency manifests; reviewer-LLM (Proposal 099) cross-checks dependency PRs |
+| AT-001 | Agent inserts backdoor in dependency upgrade PR | Critical | Production | None (097 catches CVEs, not novel backdoors) | Require human approval for any PR that modifies dependency manifests; reviewer-LLM (Proposal 102) cross-checks dependency PRs |
 | AT-002 | Agent writes CI workflow that exfiltrates secrets to attacker URL | Critical | Production + future builds | None | Require human approval for any change under `.github/workflows/`, `.gitlab-ci.yml`, `azure-pipelines.yml`, etc. — even in `--autonomous` mode |
 | AT-003 | Prompt injection via README of copied OSS project causes agent to commit malicious code | High | Single feature, potentially production | None | Content-quarantine: external content (README, issues, comments) loaded into context is flagged as untrusted; agents instructed to never execute instructions found in untrusted content |
 | AT-004 | Agent tool-use access broadens over time as user clicks "allow" repeatedly | Medium-High | Local + future sessions | None | Capability allow-list per project + per-session; periodic capability audit at retro |
@@ -54,7 +54,7 @@ Catalog lives at `.specrew/security/agent-threats.md` — schema parallel to Pro
 | AT-007 | Agent merges PR into protected branch by exploiting overprovisioned token | Critical | Production | None | Token scopes minimized at provisioning; merge-protected branches require human approval |
 | AT-008 | Agent commits to wrong repository via path-traversal in user-prompted file paths | High | Cross-project | None | File-write paths validated against project root; symlink detection |
 | AT-009 | Agent serializes secrets into commit message or PR body | High | Public if repo is public | None | Pre-commit / pre-PR scan for credential patterns in commit messages + PR bodies (composes with secret-scanning tools) |
-| AT-010 | Agent generates code containing intentionally-obfuscated backdoor in response to prompt injection | Critical | Production | None | Cross-model reviewer (Proposal 099 L2/L3) cross-checks generated code; static analysis for obfuscation patterns |
+| AT-010 | Agent generates code containing intentionally-obfuscated backdoor in response to prompt injection | Critical | Production | None | Cross-model reviewer (Proposal 102 L2/L3) cross-checks generated code; static analysis for obfuscation patterns |
 | AT-011 | Agent disables hooks / validators / pre-commit / tests as "fix" for failing CI | Medium-High | Quality erosion + future incidents | None | Validator detects deletions or weakenings of governance files; reviewer-LLM flags any change to `.specrew/`, `.husky/`, `.github/workflows/`, etc. |
 | AT-012 | Agent reads developer machine state outside project root (env vars, ssh keys, browser profiles) | High | Local secrets | None | Tool-use sandboxing; explicit filesystem-scope per session |
 
@@ -82,7 +82,7 @@ Iteration 1 ships prevention for all four "shipped first for prevention" scenari
 | CI/CD-change approval | Soft warning | **Hard block; same fallthrough** |
 | Protected-branch merge | Manual | **Hard block; human-required** |
 | External-service tool-use (network calls) | Per-call confirmation | **Allow-list only; non-allow-listed calls hard-block** |
-| Cross-model reviewer (Proposal 099) | Optional per profile | **Mandatory at L2+ for high-blast-radius PRs in autonomous mode** |
+| Cross-model reviewer (Proposal 102) | Optional per profile | **Mandatory at L2+ for high-blast-radius PRs in autonomous mode** |
 
 These constitute the **autonomous-mode security envelope**: a set of hard gates that `--autonomous` cannot bypass. Their existence is what makes `--autonomous` safe enough to ship.
 
@@ -119,7 +119,7 @@ Three tiers determine response:
 | Tier | Examples | Response when control fires |
 |---|---|---|
 | **Tier 1 — Critical** | AT-001, AT-002, AT-007, AT-010 | Hard block; human override required; audit log entry; retro discussion mandatory |
-| **Tier 2 — High** | AT-003, AT-005, AT-006, AT-008, AT-009, AT-011, AT-012 | Soft warning; logged; reviewer (human or Proposal 099) must address before boundary advances |
+| **Tier 2 — High** | AT-003, AT-005, AT-006, AT-008, AT-009, AT-011, AT-012 | Soft warning; logged; reviewer (human or Proposal 102) must address before boundary advances |
 | **Tier 3 — Medium-High** | AT-004 | Logged; surfaced at retro; trend-tracked; no immediate gate |
 
 Tier 1 is non-negotiable, profile cannot disable. Tier 2 + 3 are profile-configurable. This prevents "we disabled the annoying gates" pattern from undermining the highest-stakes controls.
@@ -137,14 +137,14 @@ Tier 1 is non-negotiable, profile cannot disable. Tier 2 + 3 are profile-configu
 - **FR-009**: Audit log entry for every Tier 1 / Tier 2 control fire with timestamp + outcome + commit reference
 - **FR-010**: Dashboard (Proposal 092) section: threats fired this iteration, controls bypassed, top-frequency scenarios
 - **FR-011**: Composition with Proposal 097: dependency-CVE findings cross-reference AT-001 (agent-introduced dependency change context)
-- **FR-012**: Composition with Proposal 099: cross-model reviewer mandatory at L2+ for Tier 1 affected PRs in `--autonomous`
-- **FR-013**: Composition with Proposal 100 (`--autonomous` mode discipline) — security envelope as described in Pillar 3
+- **FR-012**: Composition with Proposal 102: cross-model reviewer mandatory at L2+ for Tier 1 affected PRs in `--autonomous`
+- **FR-013**: Composition with Proposal 103 (`--autonomous` mode discipline) — security envelope as described in Pillar 3
 - **FR-014**: Retro template gains a `## Security Events` section: which controls fired, which were bypassed, recommendation for next iteration
 - **FR-015**: Self-applied dogfooding: Specrew adopts the catalog for its own development; first month's findings populate the empirical-incident record
 
 ## Out of scope
 
-- **Replacing existing security tools** (Snyk, Socket, OWASP scanners, SAST/DAST) — 100 aggregates their signals into agent-class context, doesn't replace them
+- **Replacing existing security tools** (Snyk, Socket, OWASP scanners, SAST/DAST) — 103 aggregates their signals into agent-class context, doesn't replace them
 - **General application security** (XSS, SQL injection, etc.) — that's Proposal 008 NFR territory
 - **Real-time threat-feed subscriptions** — out of scope at MVP; catalog is static + community-contributed initially
 - **Agent forensics post-incident** (which agent did what, when, why) — composes with future dashboard work (Proposal 092 event stream); not this proposal's responsibility to architect
@@ -169,7 +169,7 @@ Tier 1 is non-negotiable, profile cannot disable. Tier 2 + 3 are profile-configu
 
 ## Phase placement
 
-**Phase 3 — security + governance maturity**. Composes with Proposal 099 (cross-model reviewer) and Proposal 097 (coupling surface). Trigger condition for prioritization: **ship after observing a near-miss in our own dev OR when the broader ecosystem produces enough incident data to justify investment**.
+**Phase 3 — security + governance maturity**. Composes with Proposal 102 (cross-model reviewer) and Proposal 097 (coupling surface). Trigger condition for prioritization: **ship after observing a near-miss in our own dev OR when the broader ecosystem produces enough incident data to justify investment**.
 
 Sequencing recommendation:
 
@@ -212,7 +212,7 @@ Sequencing recommendation:
   - [089 PR Review Integration](089-pr-review-integration-address-pr-review-gate.md) — reviewer findings feed agent-class threat detection
   - [092 Specrew Dashboard Web App](092-specrew-dashboard-web-app.md) — security view consumer
   - [097 Coupling Surface Catalog](097-coupling-surface-catalog.md) — dependency-level findings cross-reference agent-class catalog (AT-001 specifically)
-  - [099 Cross-Model Independent Reviewer](099-cross-model-independent-reviewer.md) — mandatory at L2+ for Tier 1 affected PRs in `--autonomous`
+  - [102 Cross-Model Independent Reviewer](102-cross-model-independent-reviewer.md) — mandatory at L2+ for Tier 1 affected PRs in `--autonomous`
 - **Trigger conditions**:
   - Near-miss observed in Specrew's own development → bump to Phase 2 immediate
   - Ecosystem incident matching scenarios in catalog → bump to Phase 2 with iteration 1 focused on that pattern

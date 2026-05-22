@@ -1,8 +1,8 @@
 {
-  "schema": "v1",
+  "schema": "v2",
   "mode": "resume-feature",
   "feature_request": "",
-  "feature_path": "C:\\Dev\\Specrew-083\\specs\\030-validator-speedup",
+  "feature_path": "C:\\Dev\\Specrew\\specs\\039-launch-mode-boundary-enforcement",
   "agent": "Squad",
   "approval_mode": "allow-all",
   "launch_mode": "same-window",
@@ -12,6 +12,8 @@
     "detected_entries": [
       ".claude",
       ".scratch",
+      ".specrew-squad-probe-14e2200829f2405cb359497a32762765",
+      ".specrew-squad-probe-eeb3bc53b8734ce4ac0e8abe9c2e8768",
       ".vscode",
       "docs",
       "evaluation",
@@ -65,7 +67,21 @@
       "021-specrew-slash-commands",
       "022-hotfix-schema-tests",
       "023-legacy-state-read-tolerance",
-      "024-slash-command-multi-host-correctness"
+      "024-slash-command-multi-host-correctness",
+      "025-psgallery-unsigned-default",
+      "026-ci-lint-pr-scoping",
+      "027-skills-loading-troubleshoot",
+      "028-review-evidence-integrity",
+      "029-baseline-hygiene",
+      "030-validator-speedup",
+      "031-commit-push-discipline",
+      "032-closeout-lifecycle-sync",
+      "033-markdown-lint-pre-boundary",
+      "034-validator-memoization",
+      "035-validator-iteration-parallelization",
+      "036-closed-iteration-index",
+      "037-validator-repetition-detector",
+      "038-pr-review-integration"
     ]
   },
   "brownfield_discovery": null,
@@ -217,16 +233,62 @@
   "session_state": {
     "active": false,
     "boundary_type": "feature-closeout",
-    "feature_ref": "030-validator-speedup",
-    "feature_path": "C:\\Dev\\Specrew-083\\specs\\030-validator-speedup",
-    "iteration_number": "001",
+    "feature_ref": "039-launch-mode-boundary-enforcement",
+    "feature_path": "C:\\Dev\\Specrew\\specs\\039-launch-mode-boundary-enforcement",
+    "iteration_number": null,
     "task_id": null,
-    "auth_commit_hash": "716aed86cce27e38e8d6bd02b27c2e91c38a69ca",
-    "recorded_at": "2026-05-22T00:17:45Z"
+    "auth_commit_hash": "b21c17b92540e951d5de48ff7352fc1390315ca6",
+    "recorded_at": "2026-05-22T18:12:38Z"
   },
-  "recovery_session": null,
+  "recovery_session": {
+    "entry_mode": "detected-stale-state",
+    "stale_reasons": [
+      "Session-state boundary mismatch detected: feature-closeout, review-signoff"
+    ],
+    "choice_set": [
+      "A",
+      "B",
+      "C"
+    ],
+    "selected_choice": "B",
+    "bypass_gate": false,
+    "approval_mode_changed": false,
+    "next_action_message": "Recovery will bypass the stale feature state and return you to fresh feature intake."
+  },
   "squad_model_overrides": {},
   "prompt_path": "C:\\Dev\\Specrew\\.specrew\\last-start-prompt.md",
   "summary_path": "C:\\Dev\\Specrew\\.specrew\\start-summary.md",
-  "generated_at_utc": "2026-05-22T00:10:18Z"
+  "generated_at_utc": "2026-05-22T18:12:38Z",
+  "boundary_enforcement": {
+    "enabled": true,
+    "last_authorized_boundary": "feature-closeout",
+    "pending_next_boundary": null,
+    "verdict_history": [
+      {
+        "from_boundary": "before-implement",
+        "to_boundary": "review-signoff",
+        "verdict_text": "approved for review-signoff",
+        "authorizing_human": "Alon Fliess",
+        "recorded_at": "2026-05-22T17:19:01Z",
+        "auth_commit_hash": "5458564904bc376f3f8edaa5339610fd40c9144c"
+      },
+      {
+        "from_boundary": "retro",
+        "to_boundary": "iteration-closeout",
+        "verdict_text": "approved for iteration-closeout",
+        "authorizing_human": "Alon Fliess",
+        "recorded_at": "2026-05-22T17:52:40Z",
+        "auth_commit_hash": "3a53c46ce4a4154e03c3b9dc802233ddeb1b97aa"
+      },
+      {
+        "authorizing_human": "Alon Fliess",
+        "auth_commit_hash": "b21c17b92540e951d5de48ff7352fc1390315ca6",
+        "verdict_text": "approved for feature-closeout",
+        "from_boundary": "iteration-closeout",
+        "to_boundary": "feature-closeout",
+        "recorded_at": "2026-05-22T18:13:13Z"
+      }
+    ],
+    "bypass_history": []
+  }
 }

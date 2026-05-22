@@ -36,8 +36,9 @@ Proposals whose features have shipped to main and are part of Specrew's current 
 | [085](085-skip-closed-iterations-in-validator.md) | Skip Closed Iterations in Validator (Fallback-Path Optimization via Closed-Iteration Index) | feature-036 (v0.24.3 bundle) | phase-2 | 5 |
 | [089](089-pr-review-integration-address-pr-review-gate.md) | PR Review Integration — Address-PR-Review Lifecycle Gate (Multi-Host Aware) — minimal viable slice | feature-038 (v0.24.3 bundle) — hard-blocking gate + multi-host expansion remain candidate | phase-2 | 3.25 (minimal slice) |
 | [090](090-closeout-lifecycle-sync-commands.md) | Closeout Lifecycle Sync Commands (Structural Fix for Crew-Bypass Bug Class) | feature-032 (v0.24.3 bundle) | phase-2 | 6.5 |
+| [065](065-launch-mode-boundary-enforcement.md) | Launch-Mode Boundary Enforcement (Tool-Call-Layer Intercept for Lifecycle Boundaries) | feature-039 (v0.25.0) | phase-2 | 7.0 |
 
-## Draft (17)
+## Draft (16)
 
 Proposals with full source-spec content, ready for `/speckit.specify` ingestion when prioritized.
 
@@ -55,7 +56,6 @@ Proposals with full source-spec content, ready for `/speckit.specify` ingestion 
 | [040](040-token-economy-governance.md) | Token Economy as Governance Driver | phase-4 | 38 | 7-layer architecture; two billing modes (metered + quota); model names ONLY in catalog L3-L4 |
 | [063](063-substantive-intake-questioning.md) | Substantive Intake Questioning at /speckit.specify and /speckit.clarify | phase-2 | 25-30 | **F-025 (next-after-F-024 per 2026-05-20 sequencing decision)**. Persona-driven adaptive intake (PM 🧠 / UX 🎨 / Architect 🏗️ / PM 📋 + AI Researcher 🔬); 12-category catalog; input-quality assessment → Mode A/B/C; fires at specify + clarify + iteration kickoff + mid-feature pivot. Source spec at file:///C:/Dev/SpecrewDraft/substantive-intake-questioning.md |
 | [064](064-slash-command-multi-host-correctness.md) | Slash-Command Multi-Host Correctness (F-021 Surface Restoration) | phase-2 | 7 | Restores F-021's non-functional `/specrew-*` surface; multi-deploy to `.claude/skills/`, `.github/skills/`, `.agents/skills/`; YAML frontmatter; drop dotted command forms. Source spec at file:///C:/Dev/SpecrewDraft/slash-command-multi-host-correctness.md |
-| [065](065-launch-mode-boundary-enforcement.md) | Launch-Mode Boundary Enforcement (Tool-Call-Layer Intercept for Lifecycle Boundaries) | phase-2 | 5-7 | **Hard prerequisite for F-040 (Proposal 063 Substantive Intake).** Per-tool-call mechanical enforcement of lifecycle boundary contracts via skill-level authorization gates, independent of agent prose and host autopilot mode. Predecessor: Proposal 066 (gate-respecting default, shipped 2026-05-20). 4-incident empirical motivation including 2026-05-22 F-039 in-flight chain-past-plan. **Current state:** F-039 implementation-boundary work is active / review-ready on the current tree; later lifecycle boundaries remain unopened, so the proposal is not shipped yet. |
 | [067](067-small-fix-slice-type.md) | Small-Fix Slice Type (Lightweight Lifecycle for 2-3 SP Changes) | phase-2 | 5 | Formalizes the 2-3 SP slice between raw chore commits and full feature lifecycle. Required artifacts: code + tests + CHANGELOG + proposal + INDEX. Composes with Proposal 055 (slice-type catalog). Empirical motivation: commits `d288286`, `1838034`, `c55ec92`, `ecd7b6d`. |
 | [068](068-cost-aware-model-routing.md) | Cost-Aware Model Routing with Agent-Discovered Model Catalog | phase-2 | 6-8 | **URGENT — 10-day Copilot pricing deadline.** Discovery skill (`/specrew-research-models`) writes `.specrew/model-catalog.yml`; coordinator-governance routes Junior/Implementer tasks to cheap models, Senior/Reviewer to strong; `cost_profile: lean` in `.specrew/config.yml`. Slice of Proposal 040; precedes full Multi-Host CORE (024). Agent-driven discovery — no hardcoded model names. |
 | [069](069-multi-host-launch-path.md) | Multi-Host Launch Path + Per-Host Flag Pass-Through (Claude Code + Codex) | phase-2 | 9-10 | **URGENT — cost-reduction bundle.** `specrew start --host claude` / `--host codex` launches the alternate CLI with Specrew's bootstrap context. **Expanded 2026-05-21: also adds `--remote` flag pass-through with per-host translation** (Copilot `--remote`, Claude `--remote-control`/`--rc`, Codex warn-and-continue). First instance of the per-host flag-translation framework. Tactical MVP of Proposal 024 (Multi-Host CORE) — hard-coded per-host launch commands, no deep abstraction. Composes with 068 (model catalog) and 070 (cost tracking). |
@@ -127,9 +127,9 @@ Idea-form proposals not yet developed into full source specs. Open for discussio
 | [096](096-proposal-driven-design-profile.md) | Proposal-Driven Design Profile (Opt-In Umbrella for 028/062/091-promote/093/095) | phase-3 | 8-12 |
 | [097](097-coupling-surface-catalog.md) | Coupling Surface Catalog (Mandatory Dependency Inventory + Hygiene + Risk Surface) | phase-2 | 18-25 (MVP); 30-40 (full vision) |
 | [098](098-strategic-positioning-public-architecture-docs.md) | Strategic Positioning + Public Architecture Documentation | phase-2 | 10-15 |
-| [099](099-cross-model-independent-reviewer.md) | Cross-Model Independent Reviewer (Structural Author-Reviewer Independence) | phase-3 | 15-25 |
-| [100](100-agent-class-threat-surface.md) | Agent-Class Threat Surface (Concrete Threat Catalog + Prevention + Detection) | phase-3 | 12-18 |
 | [101](101-external-tracker-sync-provider.md) | External Tracker Sync Provider Abstraction (GitHub Projects / Azure DevOps / Jira / Linear) | phase-2 | 20-30 |
+| [102](102-cross-model-independent-reviewer.md) | Cross-Model Independent Reviewer (Structural Author-Reviewer Independence) | phase-3 | 15-25 |
+| [103](103-agent-class-threat-surface.md) | Agent-Class Threat Surface (Concrete Threat Catalog + Prevention + Detection) | phase-3 | 12-18 |
 
 ---
 

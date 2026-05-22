@@ -4,6 +4,19 @@ description: "Persist session-state metadata after iteration-closeout boundary w
 
 # Sync Iteration Closeout Boundary State
 
+## Boundary authorization gate
+
+Before any boundary-advancing work, run:
+
+```powershell
+. .\.specify\extensions\specrew-speckit\scripts\shared-governance.ps1
+$authorization = Test-SpecrewBoundaryAuthorization -ProjectRoot . -CurrentBoundary 'retro' -RequestedBoundary 'iteration-closeout'
+if (-not $authorization.Authorized) {
+  Write-Output (Write-SpecrewBoundaryAuthorizationDirective -CurrentBoundary $authorization.CurrentBoundary -RequestedBoundary $authorization.RequestedBoundary -DirectiveSentinel $authorization.DirectiveSentinel)
+  throw $authorization.Reason
+}
+```
+
 After iteration-closeout artifacts are committed to the feature branch, run:
 
 ```powershell
