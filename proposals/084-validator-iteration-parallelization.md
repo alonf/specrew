@@ -1,9 +1,12 @@
 ---
 proposal: 084
 title: Validator Iteration Parallelization (PowerShell ForEach-Object -Parallel)
-status: candidate
+status: shipped
+shipped-as: feature-035
+shipped-at: 2026-05-22
 phase: phase-2
-estimated-sp: 5-8
+estimated-sp: 7
+actual-sp: 7
 discussion: tbd
 ---
 

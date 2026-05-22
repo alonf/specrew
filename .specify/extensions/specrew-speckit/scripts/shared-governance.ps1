@@ -446,56 +446,56 @@ function Set-ValidatorCacheEntry {
         $null = New-Item -ItemType Directory -Path $cacheDir -Force
     }
 
-    $cache = $null
-    if (Test-Path -LiteralPath $cachePath -PathType Leaf) {
+    # Proposal 084: file lock protects concurrent writes from parallel subprocesses.
+    # Read → mutate → write happens atomically inside the lock so no entries get lost.
+    # Reuses the existing Invoke-WithFileLock helper (defined earlier in this file).
+    Invoke-WithFileLock -Path $cachePath -ScriptBlock {
+        $cache = $null
+        if (Test-Path -LiteralPath $cachePath -PathType Leaf) {
+            try {
+                $cache = Get-Content -LiteralPath $cachePath -Raw -Encoding UTF8 | ConvertFrom-Json -AsHashtable -Depth 10
+            }
+            catch {
+                $cache = $null
+            }
+        }
+        if ($null -eq $cache) {
+            $cache = @{
+                schema             = 'v1'
+                validator_code_hash = $ValidatorCodeHash
+                entries            = @{}
+            }
+        }
+
+        if (-not $cache.ContainsKey('validator_code_hash') -or $cache['validator_code_hash'] -ne $ValidatorCodeHash) {
+            $cache = @{
+                schema             = 'v1'
+                validator_code_hash = $ValidatorCodeHash
+                entries            = @{}
+            }
+        }
+
+        $now = (Get-Date -AsUTC -Format 'yyyy-MM-ddTHH:mm:ss.fffZ')
+        $cache['entries'][$CacheKey] = @{
+            errors       = @($Errors)
+            validated_at = $now
+        }
+
+        # LRU eviction at 500 entries (validated_at write timestamp as LRU key per Copilot review PR #594)
+        if ($cache['entries'].Keys.Count -gt 500) {
+            $sortedKeys = $cache['entries'].GetEnumerator() | Sort-Object { $_.Value['validated_at'] } | Select-Object -ExpandProperty Key
+            $excess = $cache['entries'].Keys.Count - 500
+            for ($i = 0; $i -lt $excess; $i++) {
+                $null = $cache['entries'].Remove($sortedKeys[$i])
+            }
+        }
+
         try {
-            $cache = Get-Content -LiteralPath $cachePath -Raw -Encoding UTF8 | ConvertFrom-Json -AsHashtable -Depth 10
+            ConvertTo-Json -InputObject $cache -Depth 10 | Set-Content -LiteralPath $cachePath -Encoding UTF8
         }
         catch {
-            $cache = $null
+            # Cache write failure is non-fatal — validation continues
         }
-    }
-    if ($null -eq $cache) {
-        $cache = @{
-            schema             = 'v1'
-            validator_code_hash = $ValidatorCodeHash
-            entries            = @{}
-        }
-    }
-
-    # If validator code hash changed, wipe the cache (correctness over performance)
-    if (-not $cache.ContainsKey('validator_code_hash') -or $cache['validator_code_hash'] -ne $ValidatorCodeHash) {
-        $cache = @{
-            schema             = 'v1'
-            validator_code_hash = $ValidatorCodeHash
-            entries            = @{}
-        }
-    }
-
-    $now = (Get-Date -AsUTC -Format 'yyyy-MM-ddTHH:mm:ss.fffZ')
-    $cache['entries'][$CacheKey] = @{
-        errors       = @($Errors)
-        validated_at = $now
-    }
-
-    # LRU eviction at 500 entries. Uses validated_at (write timestamp) as the
-    # LRU key. Get-ValidatorCacheEntry no longer updates last_access_at on read
-    # (per Copilot review PR #594; concurrent reads would corrupt the file).
-    # Validated_at is functionally equivalent because we re-validate cache
-    # misses, so "least-recently-validated" tracks usage frequency closely.
-    if ($cache['entries'].Keys.Count -gt 500) {
-        $sortedKeys = $cache['entries'].GetEnumerator() | Sort-Object { $_.Value['validated_at'] } | Select-Object -ExpandProperty Key
-        $excess = $cache['entries'].Keys.Count - 500
-        for ($i = 0; $i -lt $excess; $i++) {
-            $null = $cache['entries'].Remove($sortedKeys[$i])
-        }
-    }
-
-    try {
-        ConvertTo-Json -InputObject $cache -Depth 10 | Set-Content -LiteralPath $cachePath -Encoding UTF8
-    }
-    catch {
-        # Cache write failure is non-fatal — validation continues
     }
 }
 
