@@ -33,6 +33,18 @@ provides:
     - name: speckit.specrew-speckit.sync-tasks
       file: commands/speckit.specrew-speckit.sync-tasks.md
       description: "Persist session-state metadata after task generation"
+    - name: speckit.specrew-speckit.sync-review-signoff
+      file: commands/speckit.specrew-speckit.sync-review-signoff.md
+      description: "Persist session-state metadata after review-signoff (Proposal 090)"
+    - name: speckit.specrew-speckit.sync-retro
+      file: commands/speckit.specrew-speckit.sync-retro.md
+      description: "Persist session-state metadata after retro (Proposal 090)"
+    - name: speckit.specrew-speckit.sync-iteration-closeout
+      file: commands/speckit.specrew-speckit.sync-iteration-closeout.md
+      description: "Persist session-state metadata after iteration-closeout (Proposal 090)"
+    - name: speckit.specrew-speckit.sync-feature-closeout
+      file: commands/speckit.specrew-speckit.sync-feature-closeout.md
+      description: "Persist session-state metadata after feature-closeout (Proposal 090)"
 
 hooks:
   before_plan:
