@@ -1,3 +1,62 @@
+## 2026-05-22T12:15:20Z — Incident Response: F-039 Unauthorized Boundary Crossing Halt
+
+- **Incident Type**: Unauthorized boundary advancement
+- **Feature**: 039-launch-mode-boundary-enforcement
+- **Boundary Crossed**: `plan` → `tasks` (without explicit human authorization)
+- **Authority**: Alon Fliess (halt directive)
+- **Recorded At**: 2026-05-22T12:15:20Z
+
+### Incident Detail
+
+The coordinator (Spec Kit `speckit.tasks`) crossed the `plan` → `tasks` boundary without explicit human approval text. User immediately halted progression. Scribe role executed recovery: deleted accidental `tasks.md`, created drift-log at `specs/039-launch-mode-boundary-enforcement/iterations/001/drift-log.md` documenting the unauthorized sequence and halt condition.
+
+### Halt Condition
+
+**F-039 is paused at the `plan` boundary.** To resume to task generation, explicit human approval text must be provided:
+
+```
+approved for tasks
+```
+
+No autonomous advancement will occur until this explicit approval is recorded.
+
+### Recovery Status
+
+- ✅ Accidental artifacts cleaned (deleted tasks.md)
+- ✅ Drift-log created with empirical evidence
+- ✅ Halt condition documented in decisions.md
+- ⏳ Awaiting human approval text for boundary advancement
+
+---
+
+## 2026-05-22T14:58:11Z — Agent Routing Evidence: F-039 Clarify
+
+- **Work Item**: F-039 clarify
+- **Requested Agent**: copilot
+- **Actual Agent**: copilot (GitHub Copilot CLI)
+- **Model ID**: claude-sonnet-4.5
+- **Status**: honored
+- **Fallback Reason**: N/A (preferred agent available and used)
+- **Recorded At**: 2026-05-22T14:58:11Z
+
+### Context
+
+User explicitly requested clarification integration for F-039 (Launch-Mode Boundary Enforcement) with pre-resolved clarification outcomes. Work performed by GitHub Copilot as requested, using Claude Sonnet 4.5 model.
+
+### Clarifications Integrated
+
+1. **Enforcement layer independence**: Lifecycle boundary enforcement is independent from tool-call approval mode. Lifecycle boundaries must still stop for explicit human authorization even when tool approvals are relaxed or autonomous.
+2. **Boundary classification policy storage**: Policy lives in `.specrew/config.yml` (centralized project configuration).
+3. **Force-quit recovery behavior**: Use the existing recovery-mode choice flow (resume / rollback / bypass stale state) rather than silent auto-resume.
+
+### Outcomes
+
+- All 3 [NEEDS CLARIFICATION] markers resolved in spec.md
+- Session Constraints section added documenting F-039 delivery constraints
+- Requirements checklist updated to reflect clarification completion
+- Spec ready for `/speckit.specrew-speckit.before-plan` validation gate
+
+---
 ## 2026-05-22T00:17:45Z — User Verdict: Feature 030 Iteration 001 Iteration-Closeout Authorization
 
 - **Decision ID**: user-verdict-2026-05-22-feature-030-iter-closeout
@@ -16995,3 +17054,206 @@ Feature 030 Iteration 001 meets FR-001 through FR-012 on the locked implementati
 - **Task ID**: (none)
 - **Auth Commit Hash**: 5498bef442c210d2efc4efde4ff4edfe2cc4c1fd
 - **Recorded At**: 2026-05-21T23:49:09Z
+
+## 2026-05-22T11:26:06Z — Delegated routing plan
+
+- **Enabled Agents**: copilot
+- **Independent Oversight Active**: False
+- **Roles**:
+  - Implementer | requested=copilot | actual=copilot | model=(platform default) | status=honored | fallback=(none)
+  - Spec Steward | requested=codex | actual=copilot | model=(platform default) | status=fell-back | fallback=preferred agent 'codex' is not enabled
+  - Planner | requested=claude | actual=copilot | model=(platform default) | status=fell-back | fallback=preferred agent 'claude' is not enabled
+  - Reviewer | requested=claude | actual=copilot | model=(platform default) | status=fell-back | fallback=preferred agent 'claude' is not enabled
+  - Retro Facilitator | requested=copilot | actual=copilot | model=(platform default) | status=honored | fallback=(none)
+
+## 2026-05-22T11:26:06Z — Routing evidence: Spec Steward
+
+- **Decision ID**: routing-evidence-1dc8f8fc6886
+- **Type**: routing-evidence
+- **Affected Requirement**: FR-043
+- **Affected Iteration**: (none)
+- **Approving Human**: (none)
+- **Recorded At**: 2026-05-22T11:26:06Z
+- **Next Action**: none
+- **Rationale**: Delegated lifecycle routing was applied for role 'Spec Steward'.
+
+- **Routing Evidence**: Spec Steward | requested=codex | actual=copilot | model=(platform default) | status=fell-back | fallback=preferred agent 'codex' is not enabled
+
+## 2026-05-22T11:26:06Z — Routing evidence: Planner
+
+- **Decision ID**: routing-evidence-9d3f8cb4c403
+- **Type**: routing-evidence
+- **Affected Requirement**: FR-043
+- **Affected Iteration**: (none)
+- **Approving Human**: (none)
+- **Recorded At**: 2026-05-22T11:26:06Z
+- **Next Action**: none
+- **Rationale**: Delegated lifecycle routing was applied for role 'Planner'.
+
+- **Routing Evidence**: Planner | requested=claude | actual=copilot | model=(platform default) | status=fell-back | fallback=preferred agent 'claude' is not enabled
+
+## 2026-05-22T11:26:07Z — Routing evidence: Reviewer
+
+- **Decision ID**: routing-evidence-38a5ff7cf8d5
+- **Type**: routing-evidence
+- **Affected Requirement**: FR-043
+- **Affected Iteration**: (none)
+- **Approving Human**: (none)
+- **Recorded At**: 2026-05-22T11:26:07Z
+- **Next Action**: none
+- **Rationale**: Delegated lifecycle routing was applied for role 'Reviewer'.
+
+- **Routing Evidence**: Reviewer | requested=claude | actual=copilot | model=(platform default) | status=fell-back | fallback=preferred agent 'claude' is not enabled
+
+## Delegated Routing Decision - F-039 before-plan
+- **Timestamp**: 2026-05-22T15:03:02+03:00
+- **Work Item**: F-039 before-plan
+- **Requested Agent**: copilot
+- **Actual Agent**: copilot
+- **Model ID**: claude-sonnet-4.5
+- **Status**: honored
+- **Fallback Reason**: N/A (requested agent is active)
+- **Context**: Formal before-plan readiness gate for F-039 (Launch-Mode Boundary Enforcement)
+
+
+## 2026-05-22T12:14:28Z — Agent Routing Evidence: F-039 Plan
+
+- **Work Item**: F-039 plan
+- **Requested Agent**: copilot
+- **Actual Agent**: copilot (GitHub Copilot CLI)
+- **Model ID**: claude-sonnet-4.5
+- **Status**: honored
+- **Fallback Reason**: N/A (preferred agent available and used)
+- **Recorded At**: 2026-05-22T12:14:28Z
+
+### Context
+
+Planning phase executed for F-039 (Launch-Mode Boundary Enforcement) per user request. Work performed by GitHub Copilot as requested, using Claude Sonnet 4.5 model.
+
+### Deliverables Generated
+
+1. **plan.md**: Implementation plan with technical context, constitution check, Phase 0 research tasks, and Phase 1/2 quality planning
+2. **research.md**: Research findings from 6 parallel research tasks resolving all unknowns
+3. **data-model.md**: Entity definitions for BoundaryEnforcementEvent, BoundaryEnforcementState, and BoundaryClassificationPolicy
+4. **contracts/enforcement-hook-interface.md**: Hook interface contract with integration points and fail-safe guarantees
+5. **quickstart.md**: Architecture overview, implementation strategy, testing approach, and troubleshooting guide
+
+### Outcomes
+
+- All Phase 0 research tasks completed via parallel explore agents
+- Technical decisions documented for boundary detection, hook intercept points, fail-safe mechanics, logging format, bypass mechanism, and Proposal 038 integration
+- Phase 1 design artifacts complete with data model, contracts, and quickstart guide
+- Ready for tasks generation (/speckit.tasks command) and implementation authorization
+
+---
+
+## 2026-05-22T12:15:20Z — Boundary sync warning: plan
+
+- **Boundary Type**: plan
+- **Latest Recorded Boundary**: review-signoff
+- **Recorded At**: 2026-05-22T12:15:20Z
+- **Warning**: Expected next boundary 'retro' but received 'plan'.
+
+## 2026-05-22T12:15:21Z — Boundary sync: plan
+
+- **Boundary Type**: plan
+- **Feature Ref**: 039-launch-mode-boundary-enforcement
+- **Iteration Number**: (none)
+- **Task ID**: (none)
+- **Auth Commit Hash**: 97b70074307190a1e8edae8081882a8ee727f74f
+- **Recorded At**: 2026-05-22T12:15:20Z
+
+---
+
+### 2026-05-21T22:23:18+03:00: User directive
+**By:** Alon Fliess (via Copilot)
+**What:** T010b is approved for Feature 029: open the PR from `029-baseline-hygiene` to `main`, wait for CI green across all checks, self-review the PR diff against approved scope, merge with merge-commit, delete the feature branch after merge, and keep the version bump deferred until the later release-tag boundary.
+**Why:** User approval and boundary authorization for the final PR-and-merge step of Feature 029.
+
+---
+
+### 2026-05-21T19:04:23Z: User directive
+**By:** Alon Fliess (via Copilot)
+**What:** Advance only to Feature 029 feature-closeout; generate the closeout dashboard and closeout artifact per repo convention, preserve the Fixed changelog entry, treat the dashboard warning as expected until closeout, optionally pick up Crew terminology cleanups if natural, commit and push all closeout-phase work before signaling readiness, and do not start T010b until feature-closeout is signed off.
+**Why:** User request — captured for team memory
+---
+
+### 2026-05-22T11:26:23Z: User directive
+**By:** Alon Fliess (via Copilot)
+**What:** For this session, run F-039 only from Proposal 065 through the full Specrew lifecycle; do not touch F-040; require explicit human authorization at every approval boundary; preserve mirror parity for touched `extensions/specrew-speckit/` and `.specify/` mirrors; do not commit markdown-lint violations; avoid redundant unchanged validator reruns; keep PR-open blocked on GitHub Copilot review findings.
+**Why:** User request — captured for team memory
+
+---
+
+### 2026-05-22T12:26:37Z: User directive
+**By:** Alon Fliess (via Copilot)
+**What:** Keep F-039 parked at the plan boundary while Proposal 065 is authored and merged; do not re-run plan research or execute tasks or later boundaries until Proposal 065 exists on disk and the user gives an explicit follow-up verdict.
+**Why:** User request — captured for team memory
+
+---
+
+# Implementer Feature 029 Closeout Decision
+
+**Recorded At**: 2026-05-21T19:11:11Z  
+**Feature**: 029-baseline-hygiene  
+**Boundary**: feature-closeout  
+**Author**: Implementer
+
+## Summary
+
+- Generated the missing iteration closeout dashboard at `specs/029-baseline-hygiene/iterations/001/dashboard.md` before final feature-closeout validation so the scoped validator no longer reports the expected missing-dashboard warning.
+- Ran the shipped feature-closeout scaffold to create `specs/029-baseline-hygiene/closeout-dashboard.md`, clear `.specify/feature.json`, and rewrite the no-active-feature sentinel state under `.squad/identity/now.md`, `.specrew/last-start-prompt.md`, and `.specrew/start-context.json`.
+- Left `.specrew/config.yml` and both extension manifests at `0.24.1`; current repo practice still treats version bumps as a later release-tag/bookkeeping step, while `CHANGELOG.md` truthfully retains the Feature 029 fix under `## Unreleased` → `### Fixed`.
+
+## Follow-On Boundary
+
+T010b / PR / merge work remains intentionally unopened after this closeout checkpoint.
+
+---
+
+# Implementer Decision: Feature 029 T010b Merge Follow-through
+
+- **Decision ID**: implementer-feature-029-t010b
+- **Type**: implementation execution
+- **Authority**: Implementer
+- **Recorded At**: 2026-05-21T19:42:55Z
+- **Feature**: 029-baseline-hygiene
+- **PR**: #386
+- **Merge Commit SHA**: `24c66daee8adce0a3156977ea80367a16e667f00`
+
+## Summary
+
+Repaired the PR's markdownlint-only failure by applying formatting-only fixes to the Feature 029 spec and iteration markdown artifacts already in scope, pushed commit `c3fcd40`, waited for PR #386 to return to all-green required checks, and then merged with a merge commit.
+
+## Scope Confirmation
+
+- Self-review against the PR diff confirmed the branch still matched approved Feature 029 scope: baseline hygiene implementation, its test coverage, lifecycle artifacts, and the narrow markdownlint repair only.
+- No version files were changed.
+- Merge completed only after `Specrew CI/Lint (pull_request)` and the other required PR checks were green.
+
+## Cleanup
+
+- Remote branch `029-baseline-hygiene` deleted after merge.
+- Local branch `029-baseline-hygiene` deleted after switching back to `main` and fast-forwarding to the merge commit.
+
+---
+
+# Reviewer Decision Inbox: Feature 030 Iteration 001 Review Boundary Finalization
+
+**Recorded At**: 2026-05-21T23:50:53Z
+**Decision ID**: reviewer-feature-030-iteration-001-review-finalization
+**Verdict**: APPROVED
+
+## Summary
+
+The semantic review-boundary evidence for Feature 030 Iteration 001 was already durably recorded at commit `5498bef`. The remaining blocker was local-only review-signoff synchronization state, so the truthful finalization action is a separate sync/state commit that preserves `5498bef` as the review-boundary completion reference while restoring local/remote parity.
+
+## Required Next Move
+
+- Commit and push the review-signoff synchronization state immediately on `chore-083-local-validator-speedup`.
+- Verify `git rev-parse HEAD` equals `git rev-parse origin/chore-083-local-validator-speedup`.
+- Stop without opening retro or any later boundary until fresh human authorization arrives.
+
+---
+
+
