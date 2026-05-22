@@ -268,6 +268,167 @@ function Get-ValidatorCachePath {
     return Join-Path -Path $cacheDir -ChildPath 'validator-cache.json'
 }
 
+function Get-SpecrewClosedIterationIndexPath {
+    # Proposal 085: returns the path to the closed-iteration index file.
+    # Lives under .specrew/ and is COMMITTED to the repo (not gitignored).
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$ProjectRoot
+    )
+    $resolvedProjectRoot = Resolve-ProjectPath -Path $ProjectRoot
+    return Join-Path -Path $resolvedProjectRoot -ChildPath '.specrew\closed-iterations.yml'
+}
+
+function Get-SpecrewClosedIterationIndex {
+    # Proposal 085: reads .specrew/closed-iterations.yml; returns a hashtable
+    # keyed by "<feature>/<iteration>" with values @{ closed_at = '<ISO8601>' }.
+    # Returns an empty hashtable when the file is missing or empty.
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$ProjectRoot
+    )
+    $indexPath = Get-SpecrewClosedIterationIndexPath -ProjectRoot $ProjectRoot
+    $result = @{}
+    if (-not (Test-Path -LiteralPath $indexPath -PathType Leaf)) {
+        return $result
+    }
+    $content = Get-Content -LiteralPath $indexPath -Raw -Encoding UTF8
+    if ([string]::IsNullOrWhiteSpace($content)) {
+        return $result
+    }
+    # Lightweight YAML parser: lines like
+    #   - feature: 034
+    #     iteration: 001
+    #     closed_at: 2026-05-22T07:05:00Z
+    $current = $null
+    foreach ($rawLine in ($content -split "`r?`n")) {
+        $line = $rawLine.TrimEnd()
+        if ([string]::IsNullOrWhiteSpace($line) -or $line.TrimStart().StartsWith('#')) { continue }
+        if ($line -match '^\s*-\s+feature:\s*(.+?)\s*$') {
+            if ($null -ne $current -and $current.ContainsKey('feature') -and $current.ContainsKey('iteration')) {
+                $key = "$($current['feature'])/$($current['iteration'])"
+                $result[$key] = @{ closed_at = $current['closed_at'] }
+            }
+            $current = @{ feature = $Matches[1].Trim('"').Trim("'") }
+            continue
+        }
+        if ($null -eq $current) { continue }
+        if ($line -match '^\s*iteration:\s*(.+?)\s*$') {
+            $current['iteration'] = $Matches[1].Trim('"').Trim("'")
+            continue
+        }
+        if ($line -match '^\s*closed_at:\s*(.+?)\s*$') {
+            $current['closed_at'] = $Matches[1].Trim('"').Trim("'")
+            continue
+        }
+    }
+    if ($null -ne $current -and $current.ContainsKey('feature') -and $current.ContainsKey('iteration')) {
+        $key = "$($current['feature'])/$($current['iteration'])"
+        $result[$key] = @{ closed_at = $current['closed_at'] }
+    }
+    return $result
+}
+
+function Test-SpecrewIterationClosed {
+    # Proposal 085: returns $true if the (feature, iteration) tuple is recorded
+    # in the closed-iteration index.
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$ProjectRoot,
+
+        [Parameter(Mandatory = $true)]
+        [string]$Feature,
+
+        [Parameter(Mandatory = $true)]
+        [string]$Iteration
+    )
+    $index = Get-SpecrewClosedIterationIndex -ProjectRoot $ProjectRoot
+    $key = "$Feature/$Iteration"
+    return $index.ContainsKey($key)
+}
+
+function Add-SpecrewClosedIterationEntry {
+    # Proposal 085: appends a {feature, iteration, closed_at} entry to the index.
+    # Idempotent: if an entry already exists, no-op. Uses Invoke-WithFileLock to
+    # serialize concurrent writes (multi-dev safety).
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$ProjectRoot,
+
+        [Parameter(Mandatory = $true)]
+        [string]$Feature,
+
+        [Parameter(Mandatory = $true)]
+        [string]$Iteration,
+
+        [string]$ClosedAt
+    )
+    if ([string]::IsNullOrWhiteSpace($ClosedAt)) {
+        $ClosedAt = (Get-Date -AsUTC -Format 'yyyy-MM-ddTHH:mm:ssZ')
+    }
+    $indexPath = Get-SpecrewClosedIterationIndexPath -ProjectRoot $ProjectRoot
+    $indexDir = Split-Path -Parent $indexPath
+    if (-not (Test-Path -LiteralPath $indexDir -PathType Container)) {
+        $null = New-Item -ItemType Directory -Path $indexDir -Force
+    }
+
+    Invoke-WithFileLock -Path $indexPath -ScriptBlock {
+        $existing = Get-SpecrewClosedIterationIndex -ProjectRoot $ProjectRoot
+        $key = "$Feature/$Iteration"
+        if ($existing.ContainsKey($key)) {
+            return
+        }
+        $newEntryLines = @(
+            "  - feature: $Feature",
+            "    iteration: $Iteration",
+            "    closed_at: $ClosedAt"
+        )
+        $needsHeader = -not (Test-Path -LiteralPath $indexPath -PathType Leaf) -or [string]::IsNullOrWhiteSpace((Get-Content -LiteralPath $indexPath -Raw -Encoding UTF8))
+        if ($needsHeader) {
+            $header = @(
+                '# Specrew closed-iteration index (Proposal 085).',
+                '# Append-only. Append at iteration-closeout boundary via Add-SpecrewClosedIterationEntry.',
+                '# Regenerate from state.md walk via: validate-governance.ps1 -RebuildClosedIndex',
+                'closed:'
+            )
+            $combined = ($header + $newEntryLines) -join [Environment]::NewLine
+            Set-Content -LiteralPath $indexPath -Value $combined -Encoding UTF8
+        }
+        else {
+            Add-Content -LiteralPath $indexPath -Value ($newEntryLines -join [Environment]::NewLine) -Encoding UTF8
+        }
+    }
+}
+
+function Get-SpecrewClosedIterationFromStateFile {
+    # Proposal 085: heuristic detector — given a state.md path, returns
+    # @{ feature, iteration, closed_at } if the iteration is closed, else $null.
+    # Closed signals: phase=feature-closeout|iteration-closeout, or status=complete,
+    # or body contains 'RETRO COMPLETE'.
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$StatePath
+    )
+    if (-not (Test-Path -LiteralPath $StatePath -PathType Leaf)) { return $null }
+    $content = Get-Content -LiteralPath $StatePath -Raw -Encoding UTF8
+    $isClosed = $false
+    if ($content -match 'Current Phase[*\s]*:\s*(feature-closeout|iteration-closeout|complete|closed)') { $isClosed = $true }
+    elseif ($content -match 'RETRO COMPLETE') { $isClosed = $true }
+    elseif ($content -match '\bStatus[*\s]*:\s*complete\b') { $isClosed = $true }
+    elseif ($content -match 'iteration[\s-]*closed\b') { $isClosed = $true }
+    elseif ($content -match 'Retrospective complete') { $isClosed = $true }
+    if (-not $isClosed) { return $null }
+
+    # Path pattern: specs/<feature>/iterations/<iteration>/state.md
+    # Use a portable separator pattern. Resolve to absolute paths to be safe.
+    $normalized = $StatePath -replace '\\', '/'
+    if ($normalized -notmatch 'specs/([^/]+)/iterations/([^/]+)/state\.md$') { return $null }
+    $feature = $Matches[1]
+    $iteration = $Matches[2]
+    # Strip leading numeric prefix from feature (e.g., "034-validator-memoization" → keep full slug)
+    return @{ feature = $feature; iteration = $iteration; closed_at = (Get-Date -AsUTC -Format 'yyyy-MM-ddTHH:mm:ssZ') }
+}
+
 function Get-ValidatorCodeHash {
     # Proposal 086 Pillar 1: SHA256 hash of validator scripts + governance config
     # files. Per Copilot review on PR #594: governance config files (e.g.,

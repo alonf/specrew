@@ -1,0 +1,127 @@
+# Specrew closed-iteration index (Proposal 085).
+# Append-only. Append at iteration-closeout boundary via Add-SpecrewClosedIterationEntry.
+# Regenerate from state.md walk via: validate-governance.ps1 -RebuildClosedIndex
+closed:
+  - feature: 001-specrew-product
+    iteration: 000
+    closed_at: 2026-05-22T09:26:25Z
+  - feature: 001-specrew-product
+    iteration: 001
+    closed_at: 2026-05-22T09:26:25Z
+  - feature: 005-stack-aware-quality-bar
+    iteration: 003
+    closed_at: 2026-05-22T09:26:25Z
+  - feature: 005-stack-aware-quality-bar
+    iteration: 004
+    closed_at: 2026-05-22T09:26:25Z
+  - feature: 007-user-facing-progress-handoff
+    iteration: 001
+    closed_at: 2026-05-22T09:26:25Z
+  - feature: 008-reviewer-escalation-symmetry
+    iteration: 001
+    closed_at: 2026-05-22T09:26:25Z
+  - feature: 008-reviewer-escalation-symmetry
+    iteration: 002
+    closed_at: 2026-05-22T09:26:25Z
+  - feature: 008-reviewer-escalation-symmetry
+    iteration: 003
+    closed_at: 2026-05-22T09:26:25Z
+  - feature: 008-reviewer-escalation-symmetry
+    iteration: 004
+    closed_at: 2026-05-22T09:26:25Z
+  - feature: 008-reviewer-escalation-symmetry
+    iteration: 005
+    closed_at: 2026-05-22T09:26:25Z
+  - feature: 009-project-path-resolution
+    iteration: 002
+    closed_at: 2026-05-22T09:26:25Z
+  - feature: 011-specrew-start-conditional-pause
+    iteration: 001
+    closed_at: 2026-05-22T09:26:25Z
+  - feature: 011-specrew-start-conditional-pause
+    iteration: 002
+    closed_at: 2026-05-22T09:26:25Z
+  - feature: 012-descriptive-id-handoffs
+    iteration: 001
+    closed_at: 2026-05-22T09:26:25Z
+  - feature: 012-descriptive-id-handoffs
+    iteration: 002
+    closed_at: 2026-05-22T09:26:25Z
+  - feature: 013-validator-hardening
+    iteration: 001
+    closed_at: 2026-05-22T09:26:25Z
+  - feature: 013-validator-hardening
+    iteration: 002
+    closed_at: 2026-05-22T09:26:25Z
+  - feature: 014-handoff-format-scoping
+    iteration: 001
+    closed_at: 2026-05-22T09:26:25Z
+  - feature: 015-public-readiness-pass
+    iteration: 001
+    closed_at: 2026-05-22T09:26:25Z
+  - feature: 015-public-readiness-pass
+    iteration: 002
+    closed_at: 2026-05-22T09:26:25Z
+  - feature: 016-substantive-interaction-model
+    iteration: 001
+    closed_at: 2026-05-22T09:26:25Z
+  - feature: 016-substantive-interaction-model
+    iteration: 002
+    closed_at: 2026-05-22T09:26:25Z
+  - feature: 017-velocity-dashboard
+    iteration: 001
+    closed_at: 2026-05-22T09:26:25Z
+  - feature: 017-velocity-dashboard
+    iteration: 002
+    closed_at: 2026-05-22T09:26:25Z
+  - feature: 018-velocity-dashboard-visual-richness
+    iteration: 001
+    closed_at: 2026-05-22T09:26:25Z
+  - feature: 019-specrew-distribution-module
+    iteration: 001
+    closed_at: 2026-05-22T09:26:25Z
+  - feature: 019-specrew-distribution-module
+    iteration: 002
+    closed_at: 2026-05-22T09:26:25Z
+  - feature: 020-session-state-durability
+    iteration: 001
+    closed_at: 2026-05-22T09:26:25Z
+  - feature: 020-session-state-durability
+    iteration: 002
+    closed_at: 2026-05-22T09:26:25Z
+  - feature: 021-specrew-slash-commands
+    iteration: 001
+    closed_at: 2026-05-22T09:26:25Z
+  - feature: 022-hotfix-schema-tests
+    iteration: 001
+    closed_at: 2026-05-22T09:26:25Z
+  - feature: 023-legacy-state-read-tolerance
+    iteration: 001
+    closed_at: 2026-05-22T09:26:25Z
+  - feature: 024-slash-command-multi-host-correctness
+    iteration: 001
+    closed_at: 2026-05-22T09:26:25Z
+  - feature: 028-review-evidence-integrity
+    iteration: 001
+    closed_at: 2026-05-22T09:26:25Z
+  - feature: 029-baseline-hygiene
+    iteration: 001
+    closed_at: 2026-05-22T09:26:25Z
+  - feature: 030-validator-speedup
+    iteration: 001
+    closed_at: 2026-05-22T09:26:25Z
+  - feature: 031-commit-push-discipline
+    iteration: 001
+    closed_at: 2026-05-22T09:26:25Z
+  - feature: 032-closeout-lifecycle-sync
+    iteration: 001
+    closed_at: 2026-05-22T09:26:25Z
+  - feature: 033-markdown-lint-pre-boundary
+    iteration: 001
+    closed_at: 2026-05-22T09:26:25Z
+  - feature: 034-validator-memoization
+    iteration: 001
+    closed_at: 2026-05-22T09:26:25Z
+  - feature: 035-validator-iteration-parallelization
+    iteration: 001
+    closed_at: 2026-05-22T09:26:25Z
