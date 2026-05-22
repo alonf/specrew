@@ -730,6 +730,129 @@ function Invoke-PreBoundaryMarkdownLintGate {
     }
 }
 
+function Invoke-PreFeatureCloseoutWorkingTreeGate {
+    # Closes the Rule 14B / Proposal 099 gap exposed by F-039: at feature-closeout
+    # boundary, the git working tree must NOT contain unstaged or untracked
+    # feature-implementation files. The 2026-05-22 F-039 release shipped its
+    # closeout declaration ("F-039 shipped as v0.25.0") while ~1900 lines of
+    # implementation code (helpers, ValidateSet additions, bypass flag, gate
+    # preambles, tests) sat uncommitted in the working tree. Closeout should
+    # not have advanced. This gate prevents the same failure class.
+    #
+    # Triggered only at feature-closeout boundary (not earlier boundaries — those
+    # are governed by Rule 14B at every-boundary cadence; feature-closeout is
+    # the last enforcement point before the audit trail goes immutable).
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$ProjectPath,
+
+        [Parameter(Mandatory = $true)]
+        [string]$BoundaryType
+    )
+
+    if ($BoundaryType -ne 'feature-closeout') { return }
+
+    $resolvedProjectRoot = Resolve-ProjectPath -Path $ProjectPath
+
+    Push-Location -LiteralPath $resolvedProjectRoot
+    try {
+        $statusOutput = @(& git status --porcelain 2>&1)
+        $statusExitCode = $LASTEXITCODE
+    }
+    catch {
+        Write-Warning ("[feature-closeout-working-tree-gate] git status raised: {0}; skipping gate." -f $_.Exception.Message)
+        return
+    }
+    finally {
+        Pop-Location -ErrorAction SilentlyContinue
+    }
+
+    if ($statusExitCode -ne 0) {
+        Write-Warning ("[feature-closeout-working-tree-gate] git status non-zero exit ({0}); skipping gate." -f $statusExitCode)
+        return
+    }
+
+    if ($null -eq $statusOutput -or $statusOutput.Count -eq 0) { return }
+
+    # Session-state paths that legitimately churn during boundary work.
+    # These are written by canonical sync helpers and expected to be
+    # mid-update at boundary-sync time. Excluded from the gate.
+    $excludePathPatterns = @(
+        '\.specrew/last-validator-summary\.json'
+        '\.specrew/last-start-prompt\.md'
+        '\.specrew/start-context\.json'
+        '\.specrew/version-check-cache\.json'
+        '\.specrew/\.cache/'
+        '\.squad/identity/now\.md'
+        '\.squad/decisions\.md'
+        '\.specify/feature\.json'
+    )
+
+    # Feature-implementation surfaces that MUST be committed before closeout.
+    $featureRelevantPathPatterns = @(
+        '^scripts/'
+        '^extensions/'
+        '^\.specify/extensions/'
+        '^tests/'
+        '^docs/'
+        '^proposals/'
+        '^specs/'
+        '^README'
+        '^CHANGELOG'
+        '^NOTICE'
+        '^Specrew\.psd1'
+    )
+
+    $relevantUncommitted = New-Object System.Collections.Generic.List[string]
+    foreach ($line in $statusOutput) {
+        if ([string]::IsNullOrWhiteSpace($line)) { continue }
+        # Status line format: 'XY path' where XY is the 2-char status code.
+        # Strip the leading 3 chars (status + space) to get the path.
+        $path = if ($line.Length -gt 3) { $line.Substring(3) } else { '' }
+        if ([string]::IsNullOrWhiteSpace($path)) { continue }
+        # Normalize path separators for pattern matching
+        $normalizedPath = $path -replace '\\', '/'
+
+        $isExcluded = $false
+        foreach ($p in $excludePathPatterns) {
+            if ($normalizedPath -match $p) { $isExcluded = $true; break }
+        }
+        if ($isExcluded) { continue }
+
+        $isRelevant = $false
+        foreach ($p in $featureRelevantPathPatterns) {
+            if ($normalizedPath -match $p) { $isRelevant = $true; break }
+        }
+        if ($isRelevant) {
+            $null = $relevantUncommitted.Add($line.Trim())
+        }
+    }
+
+    if ($relevantUncommitted.Count -eq 0) { return }
+
+    $fileList = ($relevantUncommitted | ForEach-Object { "  - $_" }) -join "`n"
+    $messageLines = @(
+        ("[feature-closeout-working-tree-gate] {0} feature-implementation file(s) are unstaged or uncommitted at feature-closeout boundary:" -f $relevantUncommitted.Count)
+        $fileList
+        ''
+        'Feature-closeout requires ALL implementation work to be committed AND pushed.'
+        'This gate exists because the F-039 / Proposal 065 closeout on 2026-05-22 declared'
+        '"shipped as v0.25.0" while ~1900 lines of implementation code sat uncommitted in'
+        'the working tree. The closeout boundary advanced under that hollow state.'
+        ''
+        'Per Coordinator governance Rule 14B + memory feedback-pr-at-feature-close-sdlc:'
+        ''
+        '  1. Review the unstaged surfaces: git status'
+        '  2. Stage them: git add <files>'
+        "  3. Commit: git commit -m 'feat(F-NNN): <description>'"
+        '  4. Push: git push'
+        '  5. Re-invoke /speckit.specrew-speckit.sync-feature-closeout'
+        ''
+        'Boundary-sync HALTED until the working tree contains no uncommitted feature-implementation surfaces.'
+    )
+    throw ($messageLines -join "`n")
+}
+
 function Invoke-SpecrewBoundaryStateSync {
     param(
         [Parameter(Mandatory = $true)]
@@ -766,6 +889,7 @@ function Invoke-SpecrewBoundaryStateSync {
     # cycle. Runs BEFORE any state-file writes; if violations are found, throws
     # with a clear directive instead of half-syncing.
     Invoke-PreBoundaryMarkdownLintGate -ProjectPath $ProjectPath
+    Invoke-PreFeatureCloseoutWorkingTreeGate -ProjectPath $ProjectPath -BoundaryType $BoundaryType
 
     $paths = Get-SpecrewSessionStatePaths -ProjectRoot $ProjectPath
     $effectiveFeatureRef = $FeatureRef

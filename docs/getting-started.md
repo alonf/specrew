@@ -66,7 +66,7 @@ That single command:
 
 1. Refreshes the runtime handoff artifacts (`.specrew/last-start-prompt.md`, `.specrew/start-context.json`, `.specrew/start-summary.md`)
 2. Launches GitHub Copilot CLI in the current terminal
-3. Hands Squad the feature description and tells it to drive the canonical lifecycle: `specify → clarify → plan → tasks → implement → review → retro → iteration-closeout → feature-closeout`
+3. Hands Squad the feature description and tells it to drive the canonical lifecycle: `specify → clarify → plan → tasks → before-implement → implement → review-signoff → retro → iteration-closeout → feature-closeout`
 4. Stops at every approval boundary and waits for your explicit verdict before advancing (gate-respecting mode is the default since Proposal 066)
 
 When Squad surfaces a clarify question, answer it. When it surfaces a planning artifact, review it. When it asks for an implementation verdict, type one of the recognized verdict shapes (e.g. `approved for implementation-boundary entry`). The lifecycle then continues to the next boundary.
