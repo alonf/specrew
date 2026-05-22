@@ -1,21 +1,22 @@
 ---
-baseline_commit_hash: 08b14a17129880caa48c8f2835e052dbfb2b709e
+baseline_commit_hash: 716aed86cce27e38e8d6bd02b27c2e91c38a69ca
 session_loaded_files_changed: "(none)"
-updated_at: 2026-05-21T19:11:11Z
-session_state_active: false
-session_state_boundary: feature-closeout
-session_state_feature: 029-baseline-hygiene
-session_state_feature_path: "C:\Dev\Specrew\specs\029-baseline-hygiene"
-session_state_iteration: "(none)"
+updated_at: 2026-05-22T00:17:45Z
+session_state_active: true
+session_state_boundary: feature-closed
+session_state_feature: 030-validator-speedup
+session_state_feature_path: "C:\Dev\Specrew-083\specs\030-validator-speedup"
+session_state_iteration: 001
 session_state_task: "(none)"
-session_state_auth_commit: 08b14a17129880caa48c8f2835e052dbfb2b709e
-session_state_recorded_at: 2026-05-21T19:11:11Z
+session_state_auth_commit: 716aed86cce27e38e8d6bd02b27c2e91c38a69ca
+session_state_recorded_at: 2026-05-22T00:17:45Z
 ---
 
 # Specrew Session State
 
-- No active feature.
-- Last feature: 029-baseline-hygiene
-- Last boundary: feature-closeout
-- Recorded at: 2026-05-21T19:11:11Z
-- Authorization commit: 08b14a17129880caa48c8f2835e052dbfb2b709e
+- Active feature: 030-validator-speedup
+- Current boundary: feature-closed
+- Iteration: 001
+- Recorded at: 2026-05-22T00:17:45Z
+- Authorization commit: 716aed86cce27e38e8d6bd02b27c2e91c38a69ca
+- Feature-closeout work (through PR-open) is complete. Awaiting PR merge by maintainer.

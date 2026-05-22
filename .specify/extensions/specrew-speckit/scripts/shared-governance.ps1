@@ -277,6 +277,108 @@ function Get-ValidatorGlobalStatePathspecs {
     )
 }
 
+function Resolve-SpecrewGitBaseRefCandidate {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$ProjectRoot,
+
+        [AllowNull()]
+        [string]$Candidate
+    )
+
+    if ([string]::IsNullOrWhiteSpace($Candidate)) {
+        return $null
+    }
+
+    $resolvedProjectRoot = Resolve-ProjectPath -Path $ProjectRoot
+    $normalizedCandidate = [string]$Candidate
+    $normalizedCandidate = $normalizedCandidate.Trim()
+
+    if ($normalizedCandidate -match '^refs/remotes/') {
+        $normalizedCandidate = $normalizedCandidate -replace '^refs/remotes/', ''
+    }
+    elseif ($normalizedCandidate -match '^refs/heads/') {
+        $normalizedCandidate = 'origin/{0}' -f ($normalizedCandidate -replace '^refs/heads/', '')
+    }
+    elseif ($normalizedCandidate -notmatch '^origin/' -and
+        $normalizedCandidate -notmatch '^[0-9a-fA-F]{7,40}$' -and
+        $normalizedCandidate -notmatch '^HEAD(?:[~^].*)?$') {
+        $normalizedCandidate = "origin/$normalizedCandidate"
+    }
+
+    $null = @(& git -C $resolvedProjectRoot rev-parse --verify "$normalizedCandidate" 2>$null)
+    if ($LASTEXITCODE -ne 0) {
+        return $null
+    }
+
+    return $normalizedCandidate
+}
+
+function Get-SpecrewLocalScopeBaseRef {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$ProjectRoot
+    )
+
+    $resolvedProjectRoot = Resolve-ProjectPath -Path $ProjectRoot
+
+    # Guard: only auto-scope when the project root IS a git repo's top-level.
+    # If $ProjectRoot is a subdirectory of a different git repo (e.g., a test
+    # fixture under .scratch/, or a nested working tree), the surrounding repo's
+    # diff doesn't reflect the fixture's iteration state — auto-scoping against
+    # it returns zero changed iterations and the validator silently skips work.
+    # Refuse to auto-scope in that case; caller falls back to full-repo.
+    $gitTopLevelOutput = & git -C $resolvedProjectRoot rev-parse --show-toplevel 2>$null
+    if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace([string]$gitTopLevelOutput)) {
+        return $null
+    }
+
+    try {
+        $gitTopLevelNormalized = (Resolve-Path -LiteralPath ([string]$gitTopLevelOutput).Trim()).Path
+        $projectRootNormalized = (Resolve-Path -LiteralPath $resolvedProjectRoot).Path
+    }
+    catch {
+        return $null
+    }
+
+    if (-not [string]::Equals($gitTopLevelNormalized, $projectRootNormalized, [System.StringComparison]::OrdinalIgnoreCase)) {
+        return $null
+    }
+
+    $candidates = New-Object System.Collections.Generic.List[string]
+
+    if (-not [string]::IsNullOrWhiteSpace($env:GITHUB_BASE_REF)) {
+        $null = $candidates.Add([string]$env:GITHUB_BASE_REF)
+    }
+
+    $originHeadRefs = @(
+        & git -C $resolvedProjectRoot symbolic-ref refs/remotes/origin/HEAD 2>$null |
+            ForEach-Object { [string]$_ } |
+            Where-Object { -not [string]::IsNullOrWhiteSpace($_) }
+    )
+    foreach ($originHeadRef in $originHeadRefs) {
+        $null = $candidates.Add($originHeadRef)
+    }
+
+    $originFallbackRefs = @(
+        & git -C $resolvedProjectRoot for-each-ref --format='%(refname:short)' refs/remotes/origin/main refs/remotes/origin/master 2>$null |
+            ForEach-Object { [string]$_ } |
+            Where-Object { -not [string]::IsNullOrWhiteSpace($_) }
+    )
+    foreach ($originFallbackRef in $originFallbackRefs) {
+        $null = $candidates.Add($originFallbackRef)
+    }
+
+    foreach ($candidate in @($candidates | Select-Object -Unique)) {
+        $resolvedCandidate = Resolve-SpecrewGitBaseRefCandidate -ProjectRoot $resolvedProjectRoot -Candidate $candidate
+        if (-not [string]::IsNullOrWhiteSpace($resolvedCandidate)) {
+            return $resolvedCandidate
+        }
+    }
+
+    return $null
+}
+
 function Get-ChangedIterations {
     param(
         [Parameter(Mandatory = $true)]
@@ -287,36 +389,12 @@ function Get-ChangedIterations {
     )
 
     $resolvedProjectRoot = Resolve-ProjectPath -Path $ProjectRoot
-    $baseCandidates = @(
-        @(
-            $BaseBranch
-            $env:GITHUB_BASE_REF
-        ) | Where-Object { -not [string]::IsNullOrWhiteSpace([string]$_) } | Select-Object -Unique
-    )
-
-    if ($baseCandidates.Count -eq 0) {
-        return [pscustomobject]@{
-            UseScopedTargets = $false
-            BaseRef          = $null
-            IterationPaths   = @()
-            Reason           = 'base-ref-missing'
-        }
+    $explicitBaseRequested = -not [string]::IsNullOrWhiteSpace($BaseBranch)
+    $resolvedBaseRef = if ($explicitBaseRequested) {
+        Resolve-SpecrewGitBaseRefCandidate -ProjectRoot $resolvedProjectRoot -Candidate $BaseBranch
     }
-
-    $resolvedBaseRef = $null
-    foreach ($baseCandidate in $baseCandidates) {
-        $candidateRef = if ([string]$baseCandidate -match '^origin\/') {
-            [string]$baseCandidate
-        }
-        else {
-            "origin/$baseCandidate"
-        }
-
-        $null = @(& git -C $resolvedProjectRoot rev-parse --verify $candidateRef 2>$null)
-        if ($LASTEXITCODE -eq 0) {
-            $resolvedBaseRef = $candidateRef
-            break
-        }
+    else {
+        Get-SpecrewLocalScopeBaseRef -ProjectRoot $resolvedProjectRoot
     }
 
     if ([string]::IsNullOrWhiteSpace($resolvedBaseRef)) {
@@ -324,10 +402,27 @@ function Get-ChangedIterations {
             UseScopedTargets = $false
             BaseRef          = $null
             IterationPaths   = @()
-            Reason           = 'base-ref-unresolved'
+            DiffFileCount    = 0
+            Reason           = if ($explicitBaseRequested) { 'base-ref-unresolved' } else { 'base-ref-undetectable' }
         }
     }
 
+    $allDiffFiles = @(
+        & git -C $resolvedProjectRoot diff --name-only "$resolvedBaseRef...HEAD" -- 2>$null |
+            ForEach-Object { [string]$_ } |
+            Where-Object { -not [string]::IsNullOrWhiteSpace($_) }
+    )
+    if ($LASTEXITCODE -ne 0) {
+        return [pscustomobject]@{
+            UseScopedTargets = $false
+            BaseRef          = $resolvedBaseRef
+            IterationPaths   = @()
+            DiffFileCount    = 0
+            Reason           = 'diff-failed'
+        }
+    }
+
+    $diffFileCount = $allDiffFiles.Count
     $globalStateArgs = @('diff', '--name-only', "$resolvedBaseRef...HEAD", '--') + @(Get-ValidatorGlobalStatePathspecs)
     $globalStateChanges = @(
         & git -C $resolvedProjectRoot @globalStateArgs 2>$null |
@@ -339,6 +434,7 @@ function Get-ChangedIterations {
             UseScopedTargets = $false
             BaseRef          = $resolvedBaseRef
             IterationPaths   = @()
+            DiffFileCount    = $diffFileCount
             Reason           = 'global-state-diff-failed'
         }
     }
@@ -348,23 +444,15 @@ function Get-ChangedIterations {
             UseScopedTargets = $false
             BaseRef          = $resolvedBaseRef
             IterationPaths   = @()
+            DiffFileCount    = $diffFileCount
             Reason           = 'global-state-changed'
         }
     }
 
     $changedIterationFiles = @(
-        & git -C $resolvedProjectRoot diff --name-only "$resolvedBaseRef...HEAD" -- 'specs/*/iterations/' 'specs/*/iterations/**' 2>$null |
-            ForEach-Object { [string]$_ } |
-            Where-Object { -not [string]::IsNullOrWhiteSpace($_) }
+        $allDiffFiles |
+            Where-Object { $_ -match '^specs/[^/]+/iterations/' }
     )
-    if ($LASTEXITCODE -ne 0) {
-        return [pscustomobject]@{
-            UseScopedTargets = $false
-            BaseRef          = $resolvedBaseRef
-            IterationPaths   = @()
-            Reason           = 'iteration-diff-failed'
-        }
-    }
 
     $iterationPaths = New-Object System.Collections.Generic.List[string]
     foreach ($changedFile in $changedIterationFiles) {
@@ -383,6 +471,7 @@ function Get-ChangedIterations {
         UseScopedTargets = $true
         BaseRef          = $resolvedBaseRef
         IterationPaths   = @($iterationPaths | Sort-Object)
+        DiffFileCount    = $diffFileCount
         Reason           = 'scoped'
     }
 }

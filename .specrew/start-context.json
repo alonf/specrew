@@ -2,7 +2,7 @@
   "schema": "v1",
   "mode": "resume-feature",
   "feature_request": "",
-  "feature_path": "C:\\Dev\\Specrew\\specs\\029-baseline-hygiene",
+  "feature_path": "C:\\Dev\\Specrew-083\\specs\\030-validator-speedup",
   "agent": "Squad",
   "approval_mode": "allow-all",
   "launch_mode": "same-window",
@@ -215,18 +215,18 @@
     ]
   },
   "session_state": {
-    "active": false,
-    "boundary_type": "feature-closeout",
-    "feature_ref": "029-baseline-hygiene",
-    "feature_path": "C:\\Dev\\Specrew\\specs\\029-baseline-hygiene",
-    "iteration_number": null,
+    "active": true,
+    "boundary_type": "feature-closed",
+    "feature_ref": "030-validator-speedup",
+    "feature_path": "C:\\Dev\\Specrew-083\\specs\\030-validator-speedup",
+    "iteration_number": "001",
     "task_id": null,
-    "auth_commit_hash": "08b14a17129880caa48c8f2835e052dbfb2b709e",
-    "recorded_at": "2026-05-21T19:11:11Z"
+    "auth_commit_hash": "716aed86cce27e38e8d6bd02b27c2e91c38a69ca",
+    "recorded_at": "2026-05-22T00:17:45Z"
   },
   "recovery_session": null,
   "squad_model_overrides": {},
   "prompt_path": "C:\\Dev\\Specrew\\.specrew\\last-start-prompt.md",
   "summary_path": "C:\\Dev\\Specrew\\.specrew\\start-summary.md",
-  "generated_at_utc": "2026-05-21T19:11:11Z"
+  "generated_at_utc": "2026-05-22T00:10:18Z"
 }
