@@ -17400,3 +17400,53 @@ User explicitly authorized review-boundary entry for Feature 039 Iteration 001. 
 3. Assess the T011 AC1-AC10 evidence-density watch item
 4. Stop before review-signoff boundary
 
+---
+
+## 2026-05-22T17:08:54Z — Reviewer Inbox: Feature 039 Iteration 001 Review Boundary Completion
+
+- **Recorded At**: 2026-05-22T17:08:54Z
+- **Feature**: 039-launch-mode-boundary-enforcement
+- **Iteration**: 001
+- **Verdict**: pass
+- **Scope**: Review-boundary only; review-signoff not entered
+
+### Summary
+
+- Scoped governance validation passed after repairing review-boundary bookkeeping truth to keep canonical lifecycle state at `before-implement`.
+- `launch-mode-boundary-enforcement`, `session-state-boundary-canonical`, `start-command`, and `lifecycle-boundary-sync` all passed on the current tree.
+- T011 AC1-AC10 evidence density is explicitly judged **partially fixture-shaped but acceptable**, not a blocker.
+- Review artifact path: `specs/039-launch-mode-boundary-enforcement/iterations/001/review.md`
+
+---
+
+## 2026-05-22T17:19:01Z — User Verdict: F-039 Review-Signoff Authorization
+
+- **Decision ID**: user-verdict-2026-05-22-f039-review-signoff
+- **Type**: boundary authorization
+- **Authority**: Alon Fliess
+- **Recorded At**: 2026-05-22T17:19:01Z
+- **Feature**: 039-launch-mode-boundary-enforcement
+- **Iteration**: 001
+
+## Verdict
+
+approved for review-signoff entry
+
+T011 resolution accepted - fixture-shaped AC1-AC10 evidence is the right call given AC11's chain-past-plan replay carries the empirical weight independently.
+
+---
+
+## 2026-05-22T17:19:05Z — Agent Routing Evidence: F-039 Review-Signoff
+
+- **Work Item**: F-039 review-signoff
+- **Requested Agent**: copilot
+- **Actual Agent**: reviewer (GitHub Copilot CLI)
+- **Model ID**: claude-sonnet-4.5
+- **Status**: honored
+- **Fallback Reason**: N/A (preferred copilot path active through reviewer-owned signoff work)
+- **Recorded At**: 2026-05-22T17:19:05Z
+
+### Context
+
+User explicitly authorized review-signoff entry for Feature 039 Iteration 001. Reviewer must persist the accepted signoff state, use the canonical sync-review-signoff boundary path, carry the accepted T011 evidence rationale into the artifact trail, and stop before retro-boundary.
+
