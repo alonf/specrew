@@ -1,13 +1,13 @@
 # Iteration State: 001
 
 **Schema**: v1
-**Last Completed Task**: (in progress — implementation work next)
-**Tasks Remaining**: T002 through T008
-**In Progress**: implementation
-**Baseline Ref**: (pending first commit)
-**Updated**: 2026-05-22T06:00:00Z
-**Current Phase**: implementation
-**Iteration Status**: Iteration 001 is in implementation phase. Spec/plan/tasks artifacts authored; helpers + boundary-sync integration + tests next.
+**Last Completed Task**: T007 — closeout artifacts authored
+**Tasks Remaining**: T008 (PR open + Copilot review + merge)
+**In Progress**: (none)
+**Baseline Ref**: 81df3ae
+**Updated**: 2026-05-22T06:35:00Z
+**Current Phase**: iteration-closeout
+**Iteration Status**: Iteration 001 is closed. Feature-closeout (CHANGELOG + INDEX) artifacts authored. Next: PR open + Copilot review + merge.
 
 ## Notes
 

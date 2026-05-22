@@ -1,9 +1,12 @@
 ---
 proposal: 088
 title: Markdown Lint Pre-Boundary Auto-Fix Discipline (Boundary-State-Sync Integration)
-status: candidate
+status: shipped
+shipped-as: feature-033
+shipped-in: v0.24.3
 phase: phase-2
 estimated-sp: 5-8
+actual-sp: 5.25
 discussion: tbd
 ---
 
