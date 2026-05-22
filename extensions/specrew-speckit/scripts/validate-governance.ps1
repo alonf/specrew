@@ -664,6 +664,168 @@ function Get-ExtensionManifestVersion {
     return $null
 }
 
+function Test-SessionStateBoundaryCanonical {
+    # Proposal 090: catches non-canonical boundary strings (e.g., 'feature-closed',
+    # 'iteration-closed') and active=true + boundary=feature-closeout contradiction.
+    # Both failure modes manifest when the Crew bypasses Invoke-SpecrewBoundaryStateSync
+    # and manually edits state files. See Proposal 090 for empirical motivation.
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$ProjectRoot
+    )
+
+    $canonicalSet = Get-SpecrewCanonicalBoundaryTypes
+    $closureSet = Get-SpecrewClosureBoundaryTypes
+    $failures = New-Object System.Collections.Generic.List[string]
+
+    # Check 1: .specrew/start-context.json
+    $startContextPath = Join-Path -Path $ProjectRoot -ChildPath '.specrew\start-context.json'
+    if (Test-Path -LiteralPath $startContextPath -PathType Leaf) {
+        try {
+            $startContext = Get-Content -LiteralPath $startContextPath -Raw -Encoding UTF8 | ConvertFrom-Json
+            if ($null -ne $startContext.session_state) {
+                $boundary = [string]$startContext.session_state.boundary_type
+                $active = $startContext.session_state.active
+                if (-not [string]::IsNullOrWhiteSpace($boundary) -and $boundary -notin $canonicalSet) {
+                    $null = $failures.Add("$startContextPath`: session_state.boundary_type value '$boundary' is not in the canonical set. Canonical: $($canonicalSet -join ', '). Use the appropriate /speckit.specrew-speckit.sync-<phase> command (Proposal 090) instead of manual edits.")
+                }
+                if ($active -eq $true -and $boundary -in $closureSet) {
+                    $null = $failures.Add("$startContextPath`: session_state.active=true is contradictory with session_state.boundary_type='$boundary' (closure boundaries imply inactive state). Invoke /speckit.specrew-speckit.sync-feature-closeout to canonicalize.")
+                }
+            }
+        }
+        catch {
+            # Skip parse failures; other validator rules handle malformed JSON
+        }
+    }
+
+    # Check 2: .specrew/last-start-prompt.md frontmatter
+    $promptPath = Join-Path -Path $ProjectRoot -ChildPath '.specrew\last-start-prompt.md'
+    if (Test-Path -LiteralPath $promptPath -PathType Leaf) {
+        try {
+            $promptLines = @(Get-Content -LiteralPath $promptPath -Encoding UTF8)
+            $promptBoundary = $null
+            $promptActive = $null
+            $inFrontmatter = $false
+            $frontmatterDelimiterCount = 0
+            for ($i = 0; $i -lt $promptLines.Count; $i++) {
+                $line = $promptLines[$i]
+                if ($line.Trim() -eq '---') {
+                    $frontmatterDelimiterCount++
+                    $inFrontmatter = ($frontmatterDelimiterCount -eq 1)
+                    if ($frontmatterDelimiterCount -ge 2) { break }
+                    continue
+                }
+                if (-not $inFrontmatter) { continue }
+                if ($line -match '^session_state_boundary:\s*(.+?)\s*$') {
+                    $promptBoundary = $matches[1].Trim().Trim('"').Trim("'")
+                }
+                elseif ($line -match '^session_state_active:\s*(.+?)\s*$') {
+                    $promptActive = $matches[1].Trim().ToLower()
+                }
+            }
+            if (-not [string]::IsNullOrWhiteSpace($promptBoundary) -and $promptBoundary -notin $canonicalSet) {
+                $null = $failures.Add("$promptPath`: session_state_boundary value '$promptBoundary' is not in the canonical set. Canonical: $($canonicalSet -join ', '). Use the appropriate /speckit.specrew-speckit.sync-<phase> command (Proposal 090) instead of manual edits.")
+            }
+            if ($promptActive -eq 'true' -and $promptBoundary -in $closureSet) {
+                $null = $failures.Add("$promptPath`: session_state_active=true is contradictory with session_state_boundary='$promptBoundary' (closure boundaries imply inactive state). Invoke /speckit.specrew-speckit.sync-feature-closeout to canonicalize.")
+            }
+        }
+        catch {
+            # Skip parse failures
+        }
+    }
+
+    # Check 3: .squad/identity/now.md frontmatter
+    $nowPath = Join-Path -Path $ProjectRoot -ChildPath '.squad\identity\now.md'
+    if (Test-Path -LiteralPath $nowPath -PathType Leaf) {
+        try {
+            $nowLines = @(Get-Content -LiteralPath $nowPath -Encoding UTF8)
+            $nowBoundary = $null
+            $nowActive = $null
+            $inFrontmatter = $false
+            $frontmatterDelimiterCount = 0
+            for ($i = 0; $i -lt $nowLines.Count; $i++) {
+                $line = $nowLines[$i]
+                if ($line.Trim() -eq '---') {
+                    $frontmatterDelimiterCount++
+                    $inFrontmatter = ($frontmatterDelimiterCount -eq 1)
+                    if ($frontmatterDelimiterCount -ge 2) { break }
+                    continue
+                }
+                if (-not $inFrontmatter) { continue }
+                if ($line -match '^session_state_boundary:\s*(.+?)\s*$') {
+                    $nowBoundary = $matches[1].Trim().Trim('"').Trim("'")
+                }
+                elseif ($line -match '^session_state_active:\s*(.+?)\s*$') {
+                    $nowActive = $matches[1].Trim().ToLower()
+                }
+            }
+            if (-not [string]::IsNullOrWhiteSpace($nowBoundary) -and $nowBoundary -notin $canonicalSet) {
+                $null = $failures.Add("$nowPath`: session_state_boundary value '$nowBoundary' is not in the canonical set. Canonical: $($canonicalSet -join ', '). Use the appropriate /speckit.specrew-speckit.sync-<phase> command (Proposal 090) instead of manual edits.")
+            }
+            if ($nowActive -eq 'true' -and $nowBoundary -in $closureSet) {
+                $null = $failures.Add("$nowPath`: session_state_active=true is contradictory with session_state_boundary='$nowBoundary' (closure boundaries imply inactive state). Invoke /speckit.specrew-speckit.sync-feature-closeout to canonicalize.")
+            }
+        }
+        catch {
+            # Skip parse failures
+        }
+    }
+
+    # Check 4: iteration state.md Current Phase value — scoped to the ACTIVE
+    # iteration only (per session_state in start-context.json). Legacy historical
+    # iterations with non-canonical Current Phase values (e.g., 'complete',
+    # 'closed') are out of scope here per Proposal 090 — they're addressed by
+    # a separate one-time migration chore. The point of this check is to catch
+    # the bug class in NEWLY-active iterations, not retroactively across history.
+    $activeFeatureRef = $null
+    $activeIterationNumber = $null
+    if (Test-Path -LiteralPath $startContextPath -PathType Leaf) {
+        try {
+            $startContext = Get-Content -LiteralPath $startContextPath -Raw -Encoding UTF8 | ConvertFrom-Json
+            if ($null -ne $startContext.session_state -and $startContext.session_state.active -eq $true) {
+                $activeFeatureRef = [string]$startContext.session_state.feature_ref
+                $activeIterationNumber = [string]$startContext.session_state.iteration_number
+            }
+        }
+        catch {
+            # Skip parse failures
+        }
+    }
+
+    if (-not [string]::IsNullOrWhiteSpace($activeFeatureRef) -and -not [string]::IsNullOrWhiteSpace($activeIterationNumber)) {
+        $activeIterationStatePath = Join-Path -Path $ProjectRoot -ChildPath ("specs\{0}\iterations\{1}\state.md" -f $activeFeatureRef, $activeIterationNumber)
+        if (Test-Path -LiteralPath $activeIterationStatePath -PathType Leaf) {
+            try {
+                $stateLines = @(Get-Content -LiteralPath $activeIterationStatePath -Encoding UTF8)
+                for ($i = 0; $i -lt $stateLines.Count; $i++) {
+                    if ($stateLines[$i] -match '^\*\*Current Phase\*\*:\s*(.+?)\s*$') {
+                        $value = $matches[1].Trim().Trim('"').Trim("'")
+                        if (-not [string]::IsNullOrWhiteSpace($value) -and $value -notin $canonicalSet) {
+                            $null = $failures.Add(("{0}:{1}: 'Current Phase' value '{2}' is not in the canonical set. Canonical: {3}. Use the canonical sync command (Proposal 090) instead of manual edits." -f $activeIterationStatePath, ($i + 1), $value, ($canonicalSet -join ', ')))
+                        }
+                        break
+                    }
+                }
+            }
+            catch {
+                # Skip parse failures
+            }
+        }
+    }
+
+    if ($failures.Count -gt 0) {
+        Write-Host 'FAIL Test-SessionStateBoundaryCanonical' -ForegroundColor Red
+        foreach ($failure in $failures) {
+            Write-Host "  - $failure" -ForegroundColor Red
+        }
+        return $failures.Count
+    }
+
+    return 0
+}
+
 function Test-PublicReadinessSurfaces {
     param(
         [Parameter(Mandatory = $true)]
@@ -3761,6 +3923,15 @@ try {
 
     Test-PublicReadinessSurfaces -ProjectRoot $resolvedProjectPath
     Test-DashboardGovernanceSurfaces -ProjectRoot $resolvedProjectPath
+
+    # Proposal 090: session-state boundary canonical-string + active/boundary
+    # contradiction rule. Catches the Crew-bypass bug class that bit F-030/083
+    # four separate times (feature-closed string, iteration-closed string,
+    # active=true post-closeout, etc.).
+    $boundaryCanonicalFailureCount = Test-SessionStateBoundaryCanonical -ProjectRoot $resolvedProjectPath
+    if ($boundaryCanonicalFailureCount -gt 0) {
+        Write-ValidatorSummaryAndExit -ProjectRoot $resolvedProjectPath -ExitCode 1 -HardWarnings $boundaryCanonicalFailureCount
+    }
 
     if (-not [string]::IsNullOrWhiteSpace($scopeFallbackVerboseMessage)) {
         Write-Host $scopeFallbackVerboseMessage

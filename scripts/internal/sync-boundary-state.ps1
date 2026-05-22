@@ -185,7 +185,7 @@ function Get-SpecrewFeatureNumber {
 }
 
 function Get-SpecrewBoundaryOrder {
-    return @('specify', 'clarify', 'plan', 'tasks', 'review-signoff', 'iteration-closeout', 'feature-closeout')
+    return @('specify', 'clarify', 'plan', 'tasks', 'review-signoff', 'retro', 'iteration-closeout', 'feature-closeout')
 }
 
 function Resolve-SpecrewBoundaryAuthCommitHash {
@@ -219,7 +219,7 @@ function Resolve-SpecrewBoundaryAuthCommitHash {
 function New-SpecrewSessionState {
     param(
         [Parameter(Mandatory = $true)]
-        [ValidateSet('specify', 'clarify', 'plan', 'tasks', 'review-signoff', 'iteration-closeout', 'feature-closeout')]
+        [ValidateSet('specify', 'clarify', 'plan', 'tasks', 'review-signoff', 'retro', 'iteration-closeout', 'feature-closeout')]
         [string]$BoundaryType,
 
         [Parameter(Mandatory = $true)]
@@ -667,7 +667,7 @@ function Invoke-SpecrewBoundaryStateSync {
         [string]$ProjectPath,
 
         [Parameter(Mandatory = $true)]
-        [ValidateSet('specify', 'clarify', 'plan', 'tasks', 'review-signoff', 'iteration-closeout', 'feature-closeout')]
+        [ValidateSet('specify', 'clarify', 'plan', 'tasks', 'review-signoff', 'retro', 'iteration-closeout', 'feature-closeout')]
         [string]$BoundaryType,
 
         [AllowNull()]

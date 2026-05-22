@@ -33,6 +33,15 @@ I am the primary committer for implementation work and the role most often at bo
 
 This discipline operates at the same authority level as the Crew's three-section handoff format (per Coordinator governance prompt rule 14B).
 
+### Closeout-phase sync commands (Proposal 090)
+
+At every closeout-phase boundary I invoke the canonical sync slash command instead of editing state files by hand:
+
+- `/speckit.specrew-speckit.sync-iteration-closeout` at iteration-closeout
+- `/speckit.specrew-speckit.sync-feature-closeout` at feature-closeout
+
+The canonical sync clears `.specify/feature.json.feature_directory`, sets `session_state_active = false` at feature-closeout, and writes canonical boundary strings (`iteration-closeout`, `feature-closeout` — NOT `iteration-closed` or `feature-closed`). Manual edits bypass this logic and produce contradictory state that the `Test-SessionStateBoundaryCanonical` validator rule will hard-fail on.
+
 ## Boundaries
 
 **I handle:** implementation, refactors, asset changes, and execution follow-through.
