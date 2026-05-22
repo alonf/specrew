@@ -1,0 +1,40 @@
+name: Specrew Nightly Truth-Check
+
+# Full-repo governance validation truth-check.
+#
+# Purpose: routine pushes and PRs validate only changed iterations (per
+# Proposal 087 + ci(lint-scoping)). This scheduled workflow exists as
+# the safety net that catches drift in closed iterations — e.g., if a
+# new validator rule was added that should apply retroactively, or if
+# closed-iteration artifacts were accidentally modified.
+#
+# Cadence: daily at 06:00 UTC. Wall-clock doesn't matter for an
+# overnight audit; what matters is that any drift surfaces within ~24
+# hours of landing.
+#
+# Manual trigger: workflow_dispatch is enabled for ad-hoc audits
+# (e.g., after shipping a schema-migration commit that adds a new
+# validator rule, or for pre-release sanity checks before tagging).
+
+on:
+  schedule:
+    - cron: '0 6 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  full-repo-validator:
+    name: Full-repo governance validation
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Validate full repo
+        shell: pwsh
+        run: ./extensions/specrew-speckit/scripts/validate-governance.ps1 -ProjectPath .

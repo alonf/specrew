@@ -155,7 +155,9 @@ jobs:
         if: github.event_name != 'pull_request'
         timeout-minutes: 25
         shell: pwsh
-        run: ./extensions/specrew-speckit/scripts/validate-governance.ps1 -ProjectPath .
+        env:
+          GITHUB_BASE_REF: ${{ github.event.before }}
+        run: ./extensions/specrew-speckit/scripts/validate-governance.ps1 -ProjectPath . -ChangedOnly
 
       - name: Integration - legacy state readers
         shell: pwsh
