@@ -4253,6 +4253,31 @@ try {
         Write-ValidatorSummaryAndExit -ProjectRoot $resolvedProjectPath -ExitCode 1 -HardWarnings $hardFailureCount
     }
 
+    # Proposal 089: PR review integration soft-warning. NOT counted toward exit
+    # code; informational only. Fires when host has automated review AND any
+    # target iteration past pr-open boundary is missing the resolution artifact.
+    # Wrapped in try/catch to keep validator robust if helpers misbehave.
+    try {
+        $prHostInfo = Test-HostProvidesAutomatedPrReview -ProjectRoot $resolvedProjectPath
+        if ($null -ne $prHostInfo -and $prHostInfo.Active) {
+            foreach ($iter in $targets) {
+                $statePath = Join-Path -Path $iter -ChildPath 'state.md'
+                if (-not (Test-Path -LiteralPath $statePath -PathType Leaf)) { continue }
+                $stateContent = Get-Content -LiteralPath $statePath -Raw -Encoding UTF8
+                # Heuristic: iteration mentions PR / pr-open / pr-merge / Copilot review
+                if ($stateContent -notmatch '\b(pr-open|pr-merge|PR open|Copilot review|Copilot PR review|pr-review-resolution)\b') { continue }
+                $artifactPath = Get-SpecrewPrReviewResolutionPath -IterationPath $iter
+                if (-not (Test-Path -LiteralPath $artifactPath -PathType Leaf)) {
+                    $relIter = try { [System.IO.Path]::GetRelativePath($resolvedProjectPath, $iter) } catch { $iter }
+                    Write-Host ("[pr-review-soft-warning] Iteration '{0}' mentions PR/Copilot but is missing pr-review-resolution.md. Host '{1}' provides automated review ({2}). Author the artifact to record findings + outcome/root-cause fixes before merging." -f $relIter, $prHostInfo.Host, $prHostInfo.Reviewer)
+                }
+            }
+        }
+    }
+    catch {
+        # Soft warning failure must not affect validation outcome
+    }
+
     Write-ValidatorSummaryAndExit -ProjectRoot $resolvedProjectPath -ExitCode 0 -HardWarnings 0
 }
 catch {
