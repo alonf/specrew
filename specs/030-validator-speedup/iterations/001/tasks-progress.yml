@@ -1,0 +1,29 @@
+schema: "v1"
+feature: "030-validator-speedup"
+iteration: "001"
+updated_at: "2026-05-22T11:26:07.5421500Z"
+tasks:
+  validator-auto-scope-core:
+    title: "Deliver local base-ref detection, auto-scope default, `-FullRun`, and banner behavior"
+    status: "pending"
+    started_at: ""
+    completed_at: ""
+    blocked_reason: ""
+  governance-doc-sync:
+    title: "Update coordinator guidance, Reviewer charter wording, and CHANGELOG evidence"
+    status: "pending"
+    started_at: ""
+    completed_at: ""
+    blocked_reason: ""
+  integration-regression-coverage:
+    title: "Extend locked integration coverage for local auto-scope, explicit flags, and fallback paths"
+    status: "pending"
+    started_at: ""
+    completed_at: ""
+    blocked_reason: ""
+  mirror-parity-audit:
+    title: "Confirm mirror parity across `extensions/` and `.specify/extensions/` review surfaces"
+    status: "pending"
+    started_at: ""
+    completed_at: ""
+    blocked_reason: ""
