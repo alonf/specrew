@@ -2,9 +2,10 @@
 
 **Schema**: v1
 **Spec**: [../../spec.md](../../spec.md)
-**Status**: in-progress
+**Status**: complete
 **Capacity**: 7/20 story_points
 **Started**: 2026-05-22
+**Completed**: 2026-05-22
 
 ## Summary
 
@@ -50,14 +51,14 @@ Iteration 001 delivers Proposal 084 — Validator Iteration Parallelization. Col
 | Task | Title | Requirement | Story | Effort | Owner | Status |
 | ---- | ----- | ----------- | ----- | ------ | ----- | ------ |
 | t001-context | Verify implementation context | All FRs (orientation) | All US | 0.25 | Spec Steward | done |
-| t002-file-lock-helper | Add Invoke-WithFileLock helper | FR-001 | US-4 | 1.0 | Implementer | pending |
-| t003-cache-lock-wrap | Wrap Set-ValidatorCacheEntry in file lock | FR-002 | US-4 | 0.5 | Implementer | pending |
-| t004-validator-params | Add -NoParallel + -ThrottleLimit parameters | FR-003 | US-3, US-5 | 0.5 | Implementer | pending |
-| t005-parallel-loop | Pre-pass + parallel misses path | FR-004..FR-008 | US-1, US-2, US-3, US-4 | 2.5 | Implementer | pending |
-| t006-tests | Integration tests | FR-010 | All US | 1.5 | Test Owner | pending |
-| t007-mirror-changelog | Mirror parity + CHANGELOG | FR-009, FR-011 | All | 0.5 | Spec Steward | pending |
-| t008-closeout | INDEX + closeout artifacts | All | All | 0.25 | Spec Steward | pending |
-| t009-pr-merge | PR + Copilot review + merge | closeout | All | 0.25 | Spec Steward | pending |
+| t002-file-lock-helper | Add Invoke-WithFileLock helper | FR-001 | US-4 | 1.0 | Implementer | done |
+| t003-cache-lock-wrap | Wrap Set-ValidatorCacheEntry in file lock | FR-002 | US-4 | 0.5 | Implementer | done |
+| t004-validator-params | Add -NoParallel + -ThrottleLimit parameters | FR-003 | US-3, US-5 | 0.5 | Implementer | done |
+| t005-parallel-loop | Pre-pass + parallel misses path | FR-004..FR-008 | US-1, US-2, US-3, US-4 | 2.5 | Implementer | done |
+| t006-tests | Integration tests | FR-010 | All US | 1.5 | Test Owner | done |
+| t007-mirror-changelog | Mirror parity + CHANGELOG | FR-009, FR-011 | All | 0.5 | Spec Steward | done |
+| t008-closeout | INDEX + closeout artifacts | All | All | 0.25 | Spec Steward | done |
+| t009-pr-merge | PR + Copilot review + merge | closeout | All | 0.25 | Spec Steward | done |
 
 **Total Effort (Planned)**: 7.0 SP
 
@@ -87,12 +88,12 @@ Iteration 001 delivers Proposal 084 — Validator Iteration Parallelization. Col
 
 | Required Quality Gate | Category | Evidence Source | Status |
 |---|---|---|---|
-| Invoke-WithFileLock helper present (+ mirror) | structural | `extensions/specrew-speckit/scripts/shared-governance.ps1` | pending |
-| -NoParallel + -ThrottleLimit params | structural | `extensions/specrew-speckit/scripts/validate-governance.ps1` | pending |
-| Pre-pass + parallel path implementation | structural | same | pending |
-| Concurrent cache write integrity | integration | `tests/integration/validator-parallelization.tests.ps1` | pending |
-| -NoParallel opt-out works | integration | same | pending |
-| Mirror parity preserved | structural | `Compare-Object` between primary and mirror | pending |
+| Invoke-WithFileLock helper present (+ mirror) | structural | `extensions/specrew-speckit/scripts/shared-governance.ps1` | done |
+| -NoParallel + -ThrottleLimit params | structural | `extensions/specrew-speckit/scripts/validate-governance.ps1` | done |
+| Pre-pass + parallel path implementation | structural | same | done |
+| Concurrent cache write integrity | integration | `tests/integration/validator-parallelization.tests.ps1` | done |
+| -NoParallel opt-out works | integration | same | done |
+| Mirror parity preserved | structural | `Compare-Object` between primary and mirror | done |
 
 ---
 

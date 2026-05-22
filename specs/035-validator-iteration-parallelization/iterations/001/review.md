@@ -78,9 +78,9 @@ Empirical timing on the F-034 + F-032 + F-033 trio at throttle 3: 101s cold (1 c
 
 ## Gap Ledger
 
-- accepted-deferred — In-process runspace parallelism deferred to a future iteration. Subprocess approach adds ~1-2s setup overhead per cache miss but avoids the ~50-helper refactor required to lift Test-IterationGovernance + dependencies into a parallel-safe module. Trade-off accepted for v1; documented in spec.md Clarifications section.
-- accepted-deferred — Auto-tune of ThrottleLimit not implemented; default 6 chosen as conservative-good for most developer machines and CI runners.
-- no-impact — Cold-run subprocess overhead means parallel win is highest on multi-iteration cache-miss runs (5× at 44 iterations / throttle 6). Warm-cache runs use the serial pre-pass and incur zero subprocess overhead. This is the intended trade-off per spec.md US-2.
+- fixed-now — No blocking gaps inside the authorized Proposal 084 scope. In-process runspace parallelism is explicitly out of scope per spec.md (would require ~50-helper extraction refactor); subprocess approach ships as the pragmatic v1.
+- fixed-now — Auto-tune of ThrottleLimit explicitly out of scope per spec.md; default 6 chosen as conservative-good for typical developer machines and CI runners.
+- fixed-now — Cold-run subprocess overhead is the intended trade-off documented in spec.md US-2: parallel win compounds on multi-iteration cache-miss runs (5x at 44 iterations / throttle 6); warm-cache runs use the serial pre-pass and incur zero subprocess overhead.
 
 ---
 
