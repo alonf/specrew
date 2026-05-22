@@ -3,8 +3,8 @@ proposal: 068
 title: Cost-Aware Model Routing with Agent-Discovered Model Catalog
 status: draft
 phase: phase-2
-estimated-sp: 6-8
-discussion: ad-hoc 2026-05-20 session
+estimated-sp: 7-9
+discussion: ad-hoc 2026-05-20 session; enriched 2026-05-23 with per-host model-selection mechanisms + Antigravity additions
 release-urgency: immediate
 ---
 
@@ -24,9 +24,26 @@ Refinement (same session):
 
 ### Refinement (2026-05-21 session): multiply budget, don't replace hosts
 
-The cost-reduction strategy is NOT "abandon Copilot for cheaper hosts." It is **multiply usable budget by alternating across hosts.** The user holds a $200/mo Claude Max subscription in addition to Copilot quota. After Proposal 069 (Multi-Host Launch Path) ships, Squad can alternate between Copilot CLI and Claude Code (and eventually Codex CLI) within a project's lifecycle, drawing on both budgets in turn. The eventual concurrent-execution future — different agents in the same Squad team running on different hosts simultaneously — is its own architectural lift (likely a separate Phase 3+ proposal), but **alternation is sufficient to multiply effective runway in the near term**.
+The cost-reduction strategy is NOT "abandon Copilot for cheaper hosts." It is **multiply usable budget by alternating across hosts.** The user holds a $200/mo Claude Max subscription in addition to Copilot quota. After Proposal 069 (Multi-Host Launch Path) ships, Squad can alternate between Copilot CLI and Claude Code (and eventually Codex CLI + Antigravity) within a project's lifecycle, drawing on multiple budgets in turn. The eventual concurrent-execution future — different agents in the same Crew team running on different hosts simultaneously — is its own architectural lift (likely a separate Phase 3+ proposal), but **alternation is sufficient to multiply effective runway in the near term**.
 
 This refinement does not change the design surface — Pillar 1's catalog already enumerates multiple hosts as peers; Pillar 2's routing already references per-host model preferences via the `cost_profile` mechanism. It does sharpen the **WHY** framing: this proposal is **not a Copilot-replacement plan**; it is a **multi-host budget-optimization plan** that happens to address the May 2026 Copilot pricing pivot as one specific cost vector. The savings come from "$200/mo Claude + remaining Copilot quota" being a larger combined pool than "$2,000/mo Copilot alone."
+
+### Enrichment (2026-05-23 research): per-host model-selection mechanisms
+
+The 2026-05-23 multi-host research wave verified that **each host has its own per-role model-selection primitive**. The cost-routing logic (Pillar 2) writes through these primitives rather than a single Specrew-only abstraction:
+
+| Host | Per-role model selection mechanism | Built-in cost-routing primitives |
+|---|---|---|
+| **Copilot CLI** | `.squad/config.json` `agentModelOverrides` + `baselineAgentModelOverrides` (already implemented in Specrew) | None native — pure manual routing |
+| **Claude Code** | `model:` field in per-subagent `.claude/agents/*.md` YAML frontmatter | **`opusplan` alias** (Opus for `/speckit.plan`, Sonnet for execution) is a built-in cost-routing primitive Specrew should record in the catalog |
+| **Codex CLI** | Per-agent `model = "<name>"` in `.codex/agents/*.toml` | None native |
+| **Antigravity CLI** | `-m <model-name>` CLI flag (e.g., `agy -m gemini-3.5-flash`); also dropdown in desktop app | Defaults shifting — research found Wikipedia listed Gemini 3.1 Pro; MarkTechPost says 3.5 Flash is the new default. Catalog must capture both default + override surface. |
+
+The Pillar 2 routing logic gains a per-host **selector strategy**: when assigning a model to a role, Specrew uses the catalog's per-host selector field (`squad_config_field` for Copilot, `subagent_frontmatter` for Claude, `agent_toml_field` for Codex, `cli_flag` for Antigravity) to know HOW to inject the choice. The routing decision stays single-sourced in `.squad/decisions.md` (or its per-host equivalent per Proposal 024); the injection mechanism is per-host.
+
+### Critical date (2026-05-23 research finding)
+
+**Gemini CLI free tier stops serving requests on 2026-06-18** (~4 weeks from this enrichment date). After that, Antigravity-host users need Google AI Pro / Ultra ($100/mo) or enterprise Gemini Agent Platform API keys. Catalog refresh must surface this deadline as a `pricing_change_alerts` entry on the `antigravity` host so users opting into `--host antigravity` see the warning before the deadline lapses.
 
 ### Core routing lever (unchanged)
 
@@ -42,13 +59,15 @@ Three lightweight pillars composed into a single small-fix-shaped slice:
 
 A new skill that any Squad agent can invoke. When invoked:
 
-1. Identifies the currently active host runtime(s): Copilot CLI, Claude Code, Codex CLI (whichever are available/configured)
+1. Identifies the currently active host runtime(s): Copilot CLI, Claude Code, Codex CLI, Antigravity CLI (whichever are available/configured per Proposal 104's `host-history.yml`)
 2. For each host, web-searches and reads official documentation to enumerate:
    - Available model identifiers (current names — these change)
    - Cost per million input/output tokens (or per-request pricing where applicable)
    - Capability tags (e.g., `reasoning-deep`, `code`, `fast`, `cheap`, `vision`, `long-context`)
-   - Best-for hints (matched to Squad roles: Junior/Implementer, Senior/Reviewer, Architect/Spec Steward)
-   - Any active pricing-change announcements (with effective date)
+   - Best-for hints (matched to Crew roles: Junior/Implementer, Senior/Reviewer, Architect/Spec Steward)
+   - **Per-host selector strategy** (how to inject the choice — `squad_config_field` / `subagent_frontmatter` / `agent_toml_field` / `cli_flag`)
+   - **Built-in routing primitives** the host provides (e.g., Claude's `opusplan` alias)
+   - Any active pricing-change announcements (with effective date — including the **2026-06-18 Gemini CLI free-tier deadline** for Antigravity)
 3. Writes findings to `.specrew/model-catalog.yml` with a `last_refreshed_at` timestamp and a `confidence` field reflecting how authoritative the discovered information was
 4. Outputs a short briefing the user can review
 
@@ -107,16 +126,18 @@ The exact model mapping comes from the catalog (Pillar 1), not hardcoded names. 
   - Pricing-change-alert capture format
 - Source-of-truth references: `gh copilot --help` output, github.com/features/copilot/plans, docs.anthropic.com/en/docs/about-claude/models, developers.openai.com/codex/cli (and any model-listing endpoints these provide)
 
-Output catalog format (illustrative):
+Output catalog format (illustrative, schema enriched 2026-05-23):
 
 ```yaml
 catalog:
-  version: 1
-  last_refreshed_at: 2026-05-20T15:00:00Z
+  version: 2
+  last_refreshed_at: 2026-05-23T15:00:00Z
   confidence: high   # high | medium | low
   hosts:
     copilot-cli:
       available: true
+      selector_strategy: squad_config_field   # writes .squad/config.json agentModelOverrides
+      built_in_routing_primitives: []
       pricing_change_alerts:
         - effective_date: 2026-05-30
           summary: "Premium tier becomes metered; previously-free models remain"
@@ -136,15 +157,34 @@ catalog:
           best_for: [Spec Steward, Reviewer, Planner]
     claude-code:
       available: true
+      selector_strategy: subagent_frontmatter   # writes model: field in .claude/agents/*.md
+      built_in_routing_primitives:
+        - name: opusplan
+          description: "Opus for /speckit.plan, Sonnet for execution — built-in cost-routing alias"
+          enabled_by_default: false
       models:
         - id: "claude-opus-4-7"
           tier: premium
-          ...
+          best_for: [Spec Steward, Reviewer]
+        - id: "claude-sonnet-4-6"
+          tier: balanced
+          best_for: [Planner, Implementer]
         - id: "claude-haiku-4-5"
           tier: cheap
-          ...
+          best_for: [Implementer, Retro Facilitator]
     codex-cli:
       available: <true/false>
+      selector_strategy: agent_toml_field   # writes model = "<name>" in .codex/agents/*.toml
+      built_in_routing_primitives: []
+      models: [...]
+    antigravity:
+      available: <true/false>
+      selector_strategy: cli_flag   # uses -m <model-name> per invocation
+      built_in_routing_primitives: []
+      pricing_change_alerts:
+        - effective_date: 2026-06-18
+          summary: "Gemini CLI free tier stops; requires Google AI Pro / Ultra ($100/mo) or enterprise API key"
+          source_url: https://developers.googleblog.com/an-important-update-transitioning-gemini-cli-to-antigravity-cli/
       models: [...]
 ```
 

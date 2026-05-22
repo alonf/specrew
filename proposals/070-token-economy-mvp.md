@@ -4,7 +4,7 @@ title: Token Economy MVP (Cost-per-Iteration Tracking + Dashboard Surfacing)
 status: draft
 phase: phase-2
 estimated-sp: 5
-discussion: ad-hoc 2026-05-20 session
+discussion: ad-hoc 2026-05-20 session; enriched 2026-05-23 with Antigravity host + per-host token-reporting findings
 release-urgency: immediate
 ---
 
@@ -71,6 +71,10 @@ cost:
       copilot-cli:
         cost_usd: 1.31
         share: 1.00
+      # other hosts populated when alternation occurs:
+      # claude-code: { cost_usd: 0, share: 0 }
+      # codex-cli: { cost_usd: 0, share: 0 }
+      # antigravity: { cost_usd: 0, share: 0 }
     by_role:
       planner: { cost_usd: 0.42, share: 0.32 }
       implementer: { cost_usd: 0.89, share: 0.68 }
@@ -83,6 +87,19 @@ Capture mechanism (v1, simplest):
 - **Manual** (escape hatch): user can `specrew cost add --feature ... --iteration ... --tokens-in N --tokens-out N` to enter from a billing-page reconciliation. Mark `source: manual`.
 
 v1 ships estimated-only. Reported + manual are follow-up scope.
+
+#### Per-host reported-token surface (2026-05-23 research findings)
+
+The `source: reported` follow-up needs per-host knowledge of how each host exposes token totals. Findings:
+
+| Host | Reported-token surface | Notes |
+|---|---|---|
+| **Copilot CLI** | Not surfaced in `copilot -i` stdout; available in github.com/settings/billing premium-request reports (post-hoc, daily granularity). | Reported-mode integration needs API access to GitHub's usage endpoint or screen-scraping from the billing page. |
+| **Claude Code** | `claude -p --output-format json` emits `usage.input_tokens` + `usage.output_tokens` per turn. Native, real-time. | Strongest reported-token surface of all four hosts. Specrew can capture per-boundary cost authoritatively when host = claude. |
+| **Codex CLI** | `codex exec --json` emits per-request token usage. | Native. |
+| **Antigravity CLI** | `agy -p --output-format json` is the verified surface for headless runs (per 2026-05-23 research); token-emission shape not yet documented but the `--output-format json` envelope suggests structured fields. | Empirical verification needed before relying on reported mode. |
+
+Reported-mode v2 should land first for **Claude Code** (richest native surface), then Codex, then Antigravity, then Copilot (likely API-based). This sequencing aligns with the host-priority recommendation in Proposal 069.
 
 ### Pillar 2: Cost section in `specrew where` dashboard (~2 SP)
 
@@ -173,5 +190,6 @@ Once Proposal 068's catalog is populated with current Copilot pricing, expect th
 - file:///C:/Dev/Specrew/proposals/040-token-economy-governance.md
 - file:///C:/Dev/Specrew/proposals/068-cost-aware-model-routing.md
 - file:///C:/Dev/Specrew/proposals/069-multi-host-launch-path.md
+- file:///C:/Dev/Specrew/proposals/104-multi-host-onboarding-and-selection-flow.md
 - file:///C:/Dev/Specrew/proposals/048-dashboard-velocity-metric-refinement.md
 - file:///C:/Dev/Specrew/proposals/INDEX.md

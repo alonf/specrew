@@ -1,10 +1,10 @@
 ---
 proposal: 069
-title: Multi-Host Launch Path + Per-Host Flag Pass-Through (Claude Code + Codex)
+title: Multi-Host Launch Path + Per-Host Flag Pass-Through (Claude Code + Codex + Antigravity)
 status: draft
 phase: phase-2
-estimated-sp: 9-10
-discussion: ad-hoc 2026-05-20 session; expanded 2026-05-21 to include --remote flag pass-through
+estimated-sp: 10-12
+discussion: ad-hoc 2026-05-20 session; expanded 2026-05-21 to include --remote flag pass-through; enriched 2026-05-23 with verified per-host CLI surfaces and Antigravity added as third target
 release-urgency: immediate
 ---
 
@@ -42,25 +42,38 @@ The detection is informational; no behavior change without explicit `--host` fla
 - `--host codex` — launches Codex CLI instead
 - `--host auto` — picks the first available based on a preference order in `.specrew/config.yml`
 
-For each host, the launch command is host-specific:
+For each host, the launch command is host-specific. The shapes below come from the **2026-05-23 multi-host research wave** (verified against current CLI documentation as of the research date):
 
 ```text
-copilot:  copilot --agent Squad --add-dir <project> -i <bootstrap-prompt> [--allow-all] [--autopilot]
-claude:   claude --working-directory <project> [other flags TBD per Claude Code CLI semantics]
-codex:    codex --workdir <project> [other flags TBD per Codex CLI semantics]
+copilot:    copilot --agent 'Squad' --add-dir '<project>' -i '<bootstrap-prompt>' [--allow-all] [--autopilot]
+claude:     claude -p '<bootstrap-prompt>' --add-dir '<project>' [--dangerously-skip-permissions] [--permission-mode bypassPermissions]
+codex:      codex exec --cd '<project>' [--full-auto] '<bootstrap-prompt>'
+antigravity: agy -p '<bootstrap-prompt>' [--cwd '<project>'] [--output-format json]
 ```
 
-The bootstrap context (`last-start-prompt.md` + `start-context.json`) is the same; only the host-CLI invocation differs. The host adapts to Specrew's contract, not the other way around.
+Per-host surface notes (research findings):
+
+| Host | Bootstrap surface | Working-dir flag | Permission/autonomy flag | Notes |
+|---|---|---|---|---|
+| **Copilot CLI** | `-i <prompt>` (current) | `--add-dir <path>` | `--allow-all`, `--autopilot` | Baseline; no change |
+| **Claude Code** | `-p <prompt>` (one-shot); `--bare -p` (hermetic clean session) | `--add-dir <path>` (**same flag name as Copilot**) | `--dangerously-skip-permissions` or `--permission-mode {default\|acceptEdits\|plan\|auto\|dontAsk\|bypassPermissions}` | Subagent system via `.claude/agents/*.md` with YAML frontmatter; `model:` field per-agent enables direct cost routing |
+| **Codex CLI** | `codex exec <prompt>` (non-interactive) or `codex -i <prompt>` | `--cd <path>` (in `codex exec`) | `--full-auto`, `--yolo` (auto-approve dangerous) | Subagent system via `.codex/agents/*.toml`; AGENTS.md as memory; no user-defined slash commands |
+| **Antigravity CLI (`agy`)** | `agy -p <prompt> --output-format json` | **Undocumented** as of 2026-05-23 research; needs empirical test | `ANTIGRAVITY_API_KEY` env var for headless; no autopilot flag verified | Skill catalog at `.agents/skills/*.md` (which Specrew already deploys to per F-021/F-024); MCP first-class via `mcp_config.json`; Gemini CLI free tier ends **2026-06-18** |
+
+The bootstrap context (`last-start-prompt.md` + `start-context.json`) is the same; only the host-CLI invocation differs. The host adapts to Specrew's contract, not the other way around. Notably, **Specrew's "Read `.specrew/last-start-prompt.md` and `.specrew/start-context.json` from the project root before doing anything else" handshake is already host-portable verbatim** — only the body of `last-start-prompt.md` contains host-coupled content (the coordinator-governance directives; see Proposal 024's Category D for the surgery scope).
 
 If the requested host isn't installed, Specrew prints actionable guidance ("Claude Code CLI not found on PATH; install per <https://docs.anthropic.com/en/docs/claude-code/installation>") and exits without launching.
+
+**Open question (Antigravity-specific)**: `agy --print` does not currently emit the assigned conversation ID, so headless callers can't reliably resume specific sessions. This is tracked as a known limitation at [antigravity-cli#7](https://github.com/google-antigravity/antigravity-cli/issues/7). Specrew's session-resume model (Proposal 077) will need to either wait for that or fall back to a Specrew-side session ID. Same caveat applies to working-directory flag — verify empirically before committing.
 
 ### Pillar 3: Per-host slash-command + skill validation (~1-2 SP)
 
 F-024 deploys skills to `.claude/skills/`, `.github/skills/`, `.agents/skills/`. This proposal verifies the deployed skills are discoverable on the actual host being launched:
 
-- `--host claude` smoke: after init, confirm `.claude/skills/specrew-where/SKILL.md` is present and frontmatter parses; warn if missing
+- `--host claude` smoke: after init, confirm `.claude/skills/specrew-where/SKILL.md` is present and frontmatter parses; warn if missing. Per 2026-05-23 research, Claude Code uses the agentskills.io open standard for skill discovery.
 - `--host copilot` smoke: confirm `.github/skills/specrew-where/SKILL.md` is present
-- `--host codex` smoke: deferred per F-024's discoverability-claim limitation; deploy to `.agents/skills/` and log "future-proof path; no current Codex discoverability guarantee"
+- `--host codex` smoke: deferred per F-024's discoverability-claim limitation — Codex CLI has no user-defined slash-command surface per 2026-05-23 research; skills land at `.agents/skills/` as a future-proof path with no current Codex discoverability guarantee
+- `--host antigravity` smoke: confirm `.agents/skills/specrew-where/SKILL.md` is present — per 2026-05-23 research, **Antigravity's native skill directory IS `.agents/skills/`**, so Specrew's existing multi-host deploy is already Antigravity-compatible
 
 ### Pillar 4: `--remote` flag pass-through with per-host translation (~2-3 SP)
 
@@ -69,8 +82,9 @@ Added 2026-05-21 per user direction. Both Copilot CLI and Claude Code support re
 | Host | Remote-control flag | Notes |
 |---|---|---|
 | Copilot CLI | `--remote` | Generally available 2026-05-18 — stream to GitHub Mobile / github.com / VS Code; steer, approve, respond remotely. See <https://docs.github.com/en/copilot/concepts/agents/copilot-cli/about-remote-control> |
-| Claude Code | `--remote-control` (or `--rc`) | Stream to claude.ai / Claude app. See <https://code.claude.com/docs/en/remote-control> |
-| Codex CLI | (none verified) | Defer — no current remote-control surface verified at proposal-draft time |
+| Claude Code | `--remote-control` (or `--rc`) | Stream to claude.ai / Claude app. Confirmed in 2026-05-23 research. See <https://code.claude.com/docs/en/remote-control> |
+| Codex CLI | (none verified) | Confirmed absent in 2026-05-23 research — no current remote-control surface |
+| Antigravity CLI | (unknown) | Not surfaced in 2026-05-23 research; treat as same warn-and-continue path as Codex until verified |
 
 `specrew start` gains a single `-Remote` (or `--remote`) switch parameter that translates to the host-appropriate flag:
 
@@ -128,9 +142,11 @@ Total: ~9-10 SP
 
 - **Host-neutral protocol abstraction** (Proposal 024 — 60+ SP). This proposal hard-codes the per-host launch commands; the deep abstraction comes later.
 - **Mid-session host switching** — can't change host mid-session in v1. User must end the session and restart with a different `--host`.
-- **Multi-host parallel execution** — only one host runs per session.
-- **Codex discoverability guarantee** — `.agents/skills/` is deployed but no Codex CLI discoverability is claimed (consistent with F-024).
+- **Multi-host parallel execution** — only one host runs per session. Concurrent execution = Scenario B of Proposal 024.
+- **Onboarding + selection UX** — Proposal 104 owns first-run host probe + `host-history.yml` + `specrew host` command. This proposal owns the launch dispatch; 104 owns the user flow that selects which host to dispatch on.
+- **Codex discoverability guarantee** — `.agents/skills/` is deployed but no Codex CLI discoverability is claimed (consistent with F-024 and 2026-05-23 research finding that Codex has no user-defined slash-command surface).
 - **Codex remote control** — Codex CLI doesn't expose a remote-control surface today; `--remote --host codex` warns and continues without remote wiring (AC11). When Codex ships a remote surface, that gets folded into Pillar 4's translation table as a follow-up small-fix.
+- **Antigravity working-directory + session-ID** — empirical verification of `agy` cwd flag + session-ID-from-`--print` resolution at [antigravity-cli#7](https://github.com/google-antigravity/antigravity-cli/issues/7) are prerequisites for full Antigravity GA; until then, Antigravity ships as preview with documented caveats.
 - **Cost reporting per host** — that's Proposal 070 (Token Economy MVP).
 - **Per-role host routing** — e.g., "use Claude for review, Copilot for implementation" — needs Proposal 024's protocol abstraction.
 - **Other per-host flag pass-through** — `--allow-all`, `--autopilot`, etc. are already host-specific but handled inline today. Pillar 4 establishes the pattern via the translation helper; future flags can compose in via small-fix slices when needed.
@@ -139,10 +155,11 @@ Total: ~9-10 SP
 
 | Proposal | Relationship |
 |---|---|
-| **024 (Multi-Host Runtime CORE)** | Architectural endgame; this proposal is its tactical MVP. When 024 ships, this proposal's host-CLI invocations get refactored into 024's protocol. |
-| **068 (Cost-Aware Model Routing)** | Catalog (in 068) covers per-host models; routing (in 068) makes assumptions about which host is active. 069 + 068 together = "pick host, pick model within host, route tasks." |
-| **070 (Token Economy MVP)** | Cost tracking needs to know which host is active to compute cost. Both proposals add host-awareness to artifacts. |
-| **F-024 (in flight)** | Deploys skills to `.claude/`, `.github/`, `.agents/`. Without F-024, this proposal's per-host skill verification (Pillar 3) has no skills to verify. F-024 is a prerequisite. |
+| **024 (Multi-Host Runtime CORE)** | Architectural endgame; this proposal is its tactical MVP. 2026-05-23 internal coupling audit (see 024's Abstraction Surface Inventory) identified `scripts/specrew-start.ps1:3131` as the single load-bearing literal this proposal needs to dispatch on. When 024 ships, this proposal's host-CLI invocations get refactored into 024's protocol. |
+| **068 (Cost-Aware Model Routing)** | Catalog (in 068) covers per-host models; routing (in 068) makes assumptions about which host is active. 069 + 068 together = "pick host, pick model within host, route tasks." Note 2026-05-23 research finding: Claude Code's `opusplan` is a built-in cost-routing primitive (Opus for plan, Sonnet for execution) — 068's catalog should record per-host built-in primitives like this. |
+| **070 (Token Economy MVP)** | Cost tracking needs to know which host is active to compute cost. Both proposals add host-awareness to artifacts. 070's `cost.yml` host enum extends with `antigravity` alongside `copilot-cli` / `claude-code` / `codex-cli`. |
+| **104 (Multi-Host Onboarding + Selection Flow)** | **New 2026-05-23.** Owns the user-facing host-selection UX (first-run probe, `host-history.yml`, `specrew host` command). This proposal owns the launch-invocation dispatcher that 104 hands off to. The 4-slice ladder in 104 places this proposal as Slice 0. |
+| **F-024 (in flight)** | Deploys skills to `.claude/`, `.github/`, `.agents/`. Without F-024, this proposal's per-host skill verification (Pillar 3) has no skills to verify. F-024 is a prerequisite. 2026-05-23 finding: Antigravity's native skill directory IS `.agents/skills/`, so F-024's deploys are already Antigravity-compatible. |
 | **067 (Small-Fix Slice)** | This proposal's ship cycle uses the 067 contract: code + tests + CHANGELOG + proposal-entry + INDEX update at ship time. |
 
 ## Cross-references
