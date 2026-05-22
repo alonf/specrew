@@ -125,3 +125,6 @@ closed:
   - feature: 035-validator-iteration-parallelization
     iteration: 001
     closed_at: 2026-05-22T09:26:25Z
+  - feature: 039-launch-mode-boundary-enforcement
+    iteration: 001
+    closed_at: 2026-05-22T17:54:25Z

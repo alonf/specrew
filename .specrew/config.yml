@@ -1,5 +1,5 @@
-specrew_version: "0.24.1"
-speckit_version: "0.8.11"
+specrew_version: "0.25.0"
+speckit_version: "0.8.13"
 squad_version: "0.9.4"
 bootstrap_date: "2026-05-04"
 bootstrap_mode: "brownfield"
@@ -19,3 +19,15 @@ quality:
     approval_required: true
 interaction_model:
   bare_path_boundary_handoff_severity: "validation-fail"
+boundary_enforcement:
+  policy_classes:
+    specify: "human-judgment-required"
+    clarify: "human-judgment-required"
+    plan: "human-judgment-required"
+    tasks: "human-judgment-required"
+    before-implement: "human-judgment-required"
+    review-signoff: "human-judgment-required"
+    retro: "human-judgment-required"
+    iteration-closeout: "human-judgment-required"
+    feature-closeout: "human-judgment-required"
+schema: "v1"

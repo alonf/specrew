@@ -4,9 +4,11 @@ Retroactive alpha release history for shipped Specrew features. `.specrew\config
 is the canonical source for the active version; this file records the feature
 baseline that each release number represents.
 
-## Unreleased
+## [0.25.0] - 2026-05-22
 
 ### Added
+
+- **Feature 039 (Launch-Mode Boundary Enforcement)**: Delivered the complete Proposal 065 implementation slice advancing the nine-boundary enforcement architecture from spec to production via integration testing and review. Added schema-v2 `boundary_enforcement` helpers, canonical nine-boundary normalization (including `before-implement`), deterministic authorization directives/sentinels, session-scoped bypass activation with mandatory `--reason`, enforcement-event ledger writes, `specrew where` enforcement summary lines, nine boundary-command authorization gates, AC1-AC11 integration coverage (including the 2026-05-22 clarify→plan→tasks replay incident), Proposal 090 closeout-lifecycle-sync integration, and mirror-parity updates across `extensions/` + `.specify/`. Iteration 001 delivery: 7.0 SP planned / 7.0 SP actual / 0.0 SP variance. Review-approved; retro complete; feature-closeout authorized 2026-05-22 per user verdict. Ships as v0.25.0 feature baseline per Proposal 001 version-numbering discipline.
 
 - **chore(speckit-max-tested-bump-0.8.13)**: Bumped `scripts/internal/supported-versions.yml` `speckit.max_tested` from `0.8.12` → `0.8.13`. Spec Kit 0.8.13 (released 2026-05-21) was assessed SAFE per static-evidence review of the release notes: bug fixes (while-loop iteration-0 stale step #2662, catalog reader boolean priority #2589, CLI exception diagnostics #2602), docs corrections (README directory hierarchy #2639), a Spec-Kit-managed Agent Governance extension bump (v1.2.0 — Specrew's own extension hooks unaffected), and Spec-Kit-internal CI additions (community-catalog workflows #2655, diff whitespace check #2572). No changes to the extension hook contract (`before_plan` / `after_tasks` / `before_implement`), no changes to the `extension.yml` schema, no changes to the `/speckit.*` slash-command interface. Declares Spec Kit 0.8.13 as Specrew-validated per Rule 15 version-management discipline. Chore commit; no proposal entry; ships ahead of the v0.25.0 bundle so it starts from a clean baseline.
 
