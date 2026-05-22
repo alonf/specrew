@@ -216,17 +216,17 @@
   },
   "session_state": {
     "active": true,
-    "boundary_type": "review-signoff",
+    "boundary_type": "retro-signoff",
     "feature_ref": "030-validator-speedup",
     "feature_path": "C:\\Dev\\Specrew-083\\specs\\030-validator-speedup",
     "iteration_number": "001",
     "task_id": null,
-    "auth_commit_hash": "5498bef442c210d2efc4efde4ff4edfe2cc4c1fd",
-    "recorded_at": "2026-05-21T23:49:09Z"
+    "auth_commit_hash": "67b73ebb2272486cb46e7729fd6a970506d03c78",
+    "recorded_at": "2026-05-22T00:10:18Z"
   },
   "recovery_session": null,
   "squad_model_overrides": {},
   "prompt_path": "C:\\Dev\\Specrew\\.specrew\\last-start-prompt.md",
   "summary_path": "C:\\Dev\\Specrew\\.specrew\\start-summary.md",
-  "generated_at_utc": "2026-05-21T23:49:09Z"
+  "generated_at_utc": "2026-05-22T00:10:18Z"
 }
