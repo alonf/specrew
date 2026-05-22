@@ -215,8 +215,8 @@
     ]
   },
   "session_state": {
-    "active": true,
-    "boundary_type": "feature-closed",
+    "active": false,
+    "boundary_type": "feature-closeout",
     "feature_ref": "030-validator-speedup",
     "feature_path": "C:\\Dev\\Specrew-083\\specs\\030-validator-speedup",
     "iteration_number": "001",
