@@ -3830,6 +3830,32 @@ try {
         throw '-FullRun and -ChangedOnly are mutually exclusive. Use -FullRun for a deliberate full-repo run or -ChangedOnly for explicit changed-only scope.'
     }
 
+    # Proposal 086 Pillar 5: repetition detector. Log the invocation; if the
+    # last 2 invocations have the same (target_hash, code_hash), this is the 3rd
+    # consecutive run against unchanged code — emit a diagnostic warning.
+    # Wrapped in try/catch so the detector never blocks validation (FR-005).
+    try {
+        $detectorTargetSig = if ($null -ne $IterationPath) {
+            ($IterationPath | Sort-Object) -join '|'
+        } else { '<all>' }
+        $detectorTargetHash = [System.BitConverter]::ToString(
+            [System.Security.Cryptography.SHA256]::Create().ComputeHash(
+                [System.Text.Encoding]::UTF8.GetBytes($detectorTargetSig)
+            )
+        ).Replace('-', '').ToLowerInvariant()
+        $detectorCodeHash = Get-ValidatorCodeHash -ProjectRoot $resolvedProjectPath
+        if (-not [string]::IsNullOrWhiteSpace($detectorCodeHash)) {
+            $repetitionCount = Test-SpecrewCommandRepetition -ProjectRoot $resolvedProjectPath -TargetHash $detectorTargetHash -CodeHash $detectorCodeHash
+            if ($repetitionCount -ge 2) {
+                Write-Host ("[validator-repetition-warning] Detected {0}-consecutive invocation against unchanged code (target_hash={1}). Cache served prior runs; re-running is unlikely to surface new findings. To force fresh validation: -NoCacheRead." -f ($repetitionCount + 1), $detectorTargetHash.Substring(0, 8))
+            }
+            Add-SpecrewCommandInvocation -ProjectRoot $resolvedProjectPath -Command 'validate-governance.ps1' -TargetHash $detectorTargetHash -CodeHash $detectorCodeHash
+        }
+    }
+    catch {
+        # Detector failure must not block validation (FR-005)
+    }
+
     # Proposal 085: -RebuildClosedIndex is a special early-exit mode. Walks every
     # specs/<feature>/iterations/<iter>/state.md, detects closed iterations, and
     # regenerates .specrew/closed-iterations.yml from scratch. Use after the index

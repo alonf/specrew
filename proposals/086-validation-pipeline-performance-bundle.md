@@ -5,9 +5,12 @@ status: partially-shipped
 pillar-1-shipped-as: feature-034
 pillar-1-shipped-in: v0.24.3
 pillar-1-actual-sp: 7.0
+pillar-5-shipped-as: feature-037
+pillar-5-shipped-in: v0.24.3
+pillar-5-actual-sp: 4.0
 phase: phase-2
 estimated-sp: 18-26
-remaining-pillars: 2-5
+remaining-pillars: 2-4
 discussion: tbd
 ---
 
