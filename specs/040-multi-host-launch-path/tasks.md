@@ -2,7 +2,7 @@
 
 **Feature**: F-040 / Proposal 069 | **Spec**: [spec.md](./spec.md) | **Plan**: [plan.md](./plan.md) | **Research**: [research.md](./research.md)
 **Iteration**: 001 (target: cover full feature scope in single iteration)
-**Total SP**: ~14.5 SP (within 12-15 SP spec range)
+**Total SP**: ~15.25 SP (slightly over the 12-15 SP spec range due to FR-014/FR-015 additions for Option A — cooperative-enforcement documentation + Codex pwsh-form boundary-advance instructions)
 
 ## Task list
 
@@ -17,7 +17,8 @@
 | T007 | Add `Test-HostSkillRoot -Host <kind>` to `scripts\internal\detect-hosts.ps1`; verifies per-host skill directory presence + parses each `SKILL.md` frontmatter; emits non-fatal warnings naming missing/malformed skills | Implementer | 1 | T002 | skill-warning tests: missing skill on each host triggers warning; warning text names the missing skill path |
 | T008 | Extend `.specrew/start-context.json` write path in `scripts\specrew-start.ps1` to include additive fields `selected_host`, `available_hosts`, `crew_runtime_status` | Implementer | 0.5 | T002, T006 | start-context persistence test: fields written; existing fields untouched; schema v2 still validates |
 | T009 | Create `tests\integration\multi-host-launch-path.tests.ps1` covering all 6 verification-evidence categories from plan.md Quality Planning section | Implementer | 2 | T001-T008 | 25+ assertions in the new file; CI passes on Windows + Linux |
-| T010 | Update `docs\getting-started.md` and `docs\user-guide.md` with `--host` usage examples + flag-translation matrix + skill-warning expectations | Implementer | 0.5 | T001-T008 | docs render; example commands runnable |
+| T010 | Update `docs\getting-started.md` and `docs\user-guide.md` with `--host` usage examples + flag-translation matrix + skill-warning expectations + **host-enforcement asymmetry section** (per FR-015) documenting cooperative-vs-runtime distinction and pointing to Proposal 105 | Implementer | 0.75 | T001-T008 | docs render; example commands runnable; FR-015 user-guide section explains cooperative enforcement honestly |
+| T010a | Extend FR-012 directive surgery in `coordinator-prompt-surgery.ps1` with Codex-specific boundary-advance instructions (FR-014): for Codex, replace any `/speckit.specrew-speckit.sync-<boundary>` reference with `pwsh -File .specify/extensions/specrew-speckit/scripts/sync-boundary-state.ps1 -BoundaryType <boundary>` form | Implementer | 0.5 | T004 | Codex prompt surgery test: slash-command references replaced with pwsh-form for Codex; other hosts unchanged |
 | T011 | Bump version to 0.26.0 across the four manifests (`Specrew.psd1` ModuleVersion, `.specrew\config.yml` specrew_version, `extensions\specrew-speckit\extension.yml` version, `.specify\extensions\specrew-speckit\extension.yml` version) | Implementer | 0.25 | - | version-consistency validator passes |
 | T012 | Update `CHANGELOG.md` with F-040 entry under v0.26.0 | Implementer | 0.25 | T011 | CHANGELOG renders; entry references Proposal 069 + Proposal 024 4-slice ladder |
 | T013 | Flip `proposals\069-multi-host-launch-path.md` `status: draft` → `status: shipped`; add `shipped-as: feature-040`, `shipped-version: 0.26.0` | Implementer | 0.25 | T011 | proposal frontmatter validates |
@@ -59,8 +60,10 @@ Tied to FRs in spec.md:
 | AC11 | FR-011 (universal coordinator-prompt header for ALL hosts) | T004, T005 |
 | AC12 | FR-012 (Squad-runtime-path rule strip for non-Copilot hosts) | T004, T005 |
 | AC13 | FR-013 (Codex no-slash-command informational note) | T007 |
-| AC14 | Antigravity + `--host auto` deferred-guidance rejection | T001 |
-| AC15 | Cross-platform parity (Windows + Linux) | T006, T009 |
+| AC14 | FR-014 (Codex pwsh-form boundary-advance instructions in coordinator prompt) | T010a |
+| AC15 | FR-015 (user-guide host-enforcement-asymmetry documentation) | T010 |
+| AC16 | Antigravity + `--host auto` deferred-guidance rejection | T001 |
+| AC17 | Cross-platform parity (Windows + Linux) | T006, T009 |
 
 ## Out of iteration
 
