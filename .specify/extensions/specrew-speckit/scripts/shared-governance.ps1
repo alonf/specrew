@@ -344,6 +344,8 @@ function Add-SpecrewCommandInvocation {
 function Get-SpecrewRecentCommandInvocations {
     # Proposal 086 Pillar 5: reads last-commands.log and returns the N most-recent
     # entries (default 5). Returns empty array if file missing or corrupt.
+    # Per Copilot review on PR #695: read inside Invoke-WithFileLock so concurrent
+    # writers (Set-Content rewrites the whole file) can't observe partial state.
     param(
         [Parameter(Mandatory = $true)]
         [string]$ProjectRoot,
@@ -351,19 +353,25 @@ function Get-SpecrewRecentCommandInvocations {
         [int]$Last = 5
     )
     $logPath = Get-SpecrewCommandLogPath -ProjectRoot $ProjectRoot
-    if (-not (Test-Path -LiteralPath $logPath -PathType Leaf)) { return @() }
+    if (-not (Test-Path -LiteralPath $logPath -PathType Leaf)) { return ,@() }
+
     $entries = New-Object System.Collections.Generic.List[hashtable]
-    try {
-        foreach ($line in (Get-Content -LiteralPath $logPath -Encoding UTF8)) {
-            if ([string]::IsNullOrWhiteSpace($line)) { continue }
-            try {
-                $entry = $line | ConvertFrom-Json -AsHashtable -Depth 4
-                if ($null -ne $entry) { $null = $entries.Add($entry) }
+    Invoke-WithFileLock -Path $logPath -ScriptBlock {
+        try {
+            foreach ($line in (Get-Content -LiteralPath $logPath -Encoding UTF8)) {
+                if ([string]::IsNullOrWhiteSpace($line)) { continue }
+                try {
+                    $entry = $line | ConvertFrom-Json -AsHashtable -Depth 4
+                    if ($null -ne $entry) { $null = $entries.Add($entry) }
+                }
+                catch { continue }
             }
-            catch { continue }
+        }
+        catch {
+            $entries.Clear()
         }
     }
-    catch { return ,@() }
+
     # Leading comma prevents PowerShell auto-unrolling when there's a single entry
     if ($entries.Count -le $Last) { return ,@($entries.ToArray()) }
     return ,@($entries.GetRange($entries.Count - $Last, $Last).ToArray())

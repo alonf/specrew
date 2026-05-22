@@ -3834,9 +3834,22 @@ try {
     # last 2 invocations have the same (target_hash, code_hash), this is the 3rd
     # consecutive run against unchanged code — emit a diagnostic warning.
     # Wrapped in try/catch so the detector never blocks validation (FR-005).
+    # Per Copilot review PR #695: target signature normalizes each IterationPath
+    # to its absolute resolved form (when the file exists) so different relative
+    # vs absolute spellings for the same iteration hash identically.
     try {
-        $detectorTargetSig = if ($null -ne $IterationPath) {
-            ($IterationPath | Sort-Object) -join '|'
+        $detectorTargetSig = if ($null -ne $IterationPath -and @($IterationPath | Where-Object { -not [string]::IsNullOrWhiteSpace([string]$_) }).Count -gt 0) {
+            $normalized = foreach ($p in $IterationPath) {
+                if ([string]::IsNullOrWhiteSpace([string]$p)) { continue }
+                try {
+                    $resolved = (Resolve-Path -LiteralPath $p -ErrorAction Stop).Path
+                    $resolved.Replace('\', '/').ToLowerInvariant()
+                }
+                catch {
+                    ([string]$p).Replace('\', '/').ToLowerInvariant()
+                }
+            }
+            (@($normalized) | Sort-Object) -join '|'
         } else { '<all>' }
         $detectorTargetHash = [System.BitConverter]::ToString(
             [System.Security.Cryptography.SHA256]::Create().ComputeHash(
