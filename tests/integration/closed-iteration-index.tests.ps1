@@ -13,14 +13,15 @@ $validatorScript = Join-Path -Path $repoRoot -ChildPath 'extensions\specrew-spec
 $mirrorShared = Join-Path -Path $repoRoot -ChildPath '.specify\extensions\specrew-speckit\scripts\shared-governance.ps1'
 $mirrorValidator = Join-Path -Path $repoRoot -ChildPath '.specify\extensions\specrew-speckit\scripts\validate-governance.ps1'
 
-# Test 1: All 4 helpers present in shared-governance.ps1
+# Test 1: All 5 helpers present in shared-governance.ps1
+# Per Copilot review PR #661: also verify Get-SpecrewClosedIterationFromStateFile.
 $sharedContent = Get-Content -LiteralPath $sharedGovernance -Raw -Encoding UTF8
-foreach ($fn in @('Get-SpecrewClosedIterationIndexPath', 'Get-SpecrewClosedIterationIndex', 'Test-SpecrewIterationClosed', 'Add-SpecrewClosedIterationEntry')) {
+foreach ($fn in @('Get-SpecrewClosedIterationIndexPath', 'Get-SpecrewClosedIterationIndex', 'Test-SpecrewIterationClosed', 'Add-SpecrewClosedIterationEntry', 'Get-SpecrewClosedIterationFromStateFile')) {
     if ($sharedContent -notmatch ('function ' + [regex]::Escape($fn) + '\b')) {
         Write-Fail "Helper $fn not found in shared-governance.ps1"
     }
 }
-Write-Pass 'All 4 closed-iteration-index helpers present in shared-governance.ps1'
+Write-Pass 'All 5 closed-iteration-index helpers present in shared-governance.ps1'
 
 # Test 2: Mirror parity for shared-governance.ps1
 $primaryHash = (Get-FileHash -LiteralPath $sharedGovernance -Algorithm SHA256).Hash
@@ -109,6 +110,53 @@ if ($boundarySyncContent -notmatch "BoundaryType -eq 'iteration-closeout'[\s\S]*
     Write-Fail 'sync-boundary-state.ps1 does not call Add-SpecrewClosedIterationEntry at iteration-closeout boundary'
 }
 Write-Pass 'Boundary sync calls Add-SpecrewClosedIterationEntry at iteration-closeout'
+
+# Test 11: -RebuildClosedIndex against scratch tree produces populated index
+# Per Copilot review PR #661: verify rebuild end-to-end.
+$rebuildTest = @"
+. '$sharedGovernance'
+`$pr = '$repoRoot' + '\.scratch\rebuild-test'
+if (Test-Path -LiteralPath `$pr) { Remove-Item -Recurse -Force -LiteralPath `$pr }
+`$null = New-Item -ItemType Directory -Path (Join-Path `$pr 'specs\042-fake\iterations\001') -Force
+`$state = "# Iteration State`n`n**Current Phase**: iteration-closeout`n"
+Set-Content -LiteralPath (Join-Path `$pr 'specs\042-fake\iterations\001\state.md') -Value `$state -Encoding UTF8
+`$entry = Get-SpecrewClosedIterationFromStateFile -StatePath (Join-Path `$pr 'specs\042-fake\iterations\001\state.md')
+if (`$null -ne `$entry -and `$entry.feature -eq '042-fake' -and `$entry.iteration -eq '001') {
+    Write-Host 'DETECTOR_OK'
+}
+Remove-Item -Recurse -Force -LiteralPath `$pr
+"@
+$rebuildResult = pwsh -NoProfile -Command $rebuildTest 2>&1 | Out-String
+if ($rebuildResult -notmatch 'DETECTOR_OK') {
+    Write-Fail "Get-SpecrewClosedIterationFromStateFile did not detect a fake closed iteration. Result:`n$rebuildResult"
+}
+Write-Pass 'Get-SpecrewClosedIterationFromStateFile detects closed iteration from state.md heuristic'
+
+# Test 12: validate-governance.ps1 -RebuildClosedIndex against a scratch project
+# produces a non-empty index containing the expected feature/iteration keys.
+$rebuildE2ETest = @"
+`$scratchRoot = '$repoRoot' + '\.scratch\rebuild-e2e-test'
+if (Test-Path -LiteralPath `$scratchRoot) { Remove-Item -Recurse -Force -LiteralPath `$scratchRoot }
+`$null = New-Item -ItemType Directory -Path (Join-Path `$scratchRoot 'specs\044-stub\iterations\001') -Force
+`$null = New-Item -ItemType Directory -Path (Join-Path `$scratchRoot 'specs\045-stub\iterations\002') -Force
+Set-Content -LiteralPath (Join-Path `$scratchRoot 'specs\044-stub\iterations\001\state.md') -Value "**Current Phase**: iteration-closeout`n" -Encoding UTF8
+Set-Content -LiteralPath (Join-Path `$scratchRoot 'specs\045-stub\iterations\002\state.md') -Value "**Current Phase**: complete`n" -Encoding UTF8
+& pwsh -NoProfile -NoLogo -File '$validatorScript' -ProjectPath `$scratchRoot -RebuildClosedIndex 2>&1 | Out-Null
+`$indexPath = Join-Path `$scratchRoot '.specrew\closed-iterations.yml'
+if (-not (Test-Path -LiteralPath `$indexPath -PathType Leaf)) { Write-Host 'NO_INDEX'; return }
+`$content = Get-Content -LiteralPath `$indexPath -Raw -Encoding UTF8
+if (`$content -match '044-stub' -and `$content -match '045-stub' -and `$content -match '001' -and `$content -match '002') {
+    Write-Host 'E2E_OK'
+} else {
+    Write-Host ("E2E_FAIL content=" + `$content)
+}
+Remove-Item -Recurse -Force -LiteralPath `$scratchRoot
+"@
+$rebuildE2EResult = pwsh -NoProfile -Command $rebuildE2ETest 2>&1 | Out-String
+if ($rebuildE2EResult -notmatch 'E2E_OK') {
+    Write-Fail "-RebuildClosedIndex end-to-end did not produce expected index. Result:`n$rebuildE2EResult"
+}
+Write-Pass '-RebuildClosedIndex end-to-end produces index with expected feature/iteration entries'
 
 Write-Host ''
 Write-Host 'Closed-iteration index integration: all assertions pass'

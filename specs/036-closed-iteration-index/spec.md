@@ -78,7 +78,7 @@ A developer deletes the index or wants to recover from a stale state. `-RebuildC
 
 - **FR-007**: Validator's full-repo target enumeration MUST filter out closed iterations unless `-IncludeClosed` is set. Composes with `-ChangedOnly` (Proposal 083): -ChangedOnly path is unaffected because closed iterations naturally aren't in the diff.
 
-- **FR-008**: `[validator-scope]` banner MUST be extended to show `(M closed-skipped)` when applicable. Format: `[validator-scope] full-repo (N iterations, M closed-skipped)`.
+- **FR-008**: `[validator-scope]` banner MUST be extended to surface the closed-skip count when applicable. The shipped behavior emits a secondary banner BEFORE the main scope banner: `[validator-scope] closed-iteration filter: M closed iterations skipped (use -IncludeClosed to validate them)`. (A future small-fix may refactor Get-ValidatorScopeBanner to fold the count into the main banner for a single-line presentation — explicitly out of scope here.)
 
 - **FR-009**: Initial backfill: `.specrew/closed-iterations.yml` MUST be populated with all currently-closed iterations (one-time data migration via `-RebuildClosedIndex` run during F-036 implementation).
 
