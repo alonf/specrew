@@ -492,6 +492,7 @@ try {
         -BarWidth $parsed.BarWidth `
         -CaptureKind $parsed.CaptureKind `
         -Team:$parsed.Team
+    $boundaryEnforcementSummary = Get-SpecrewBoundaryEnforcementSummary -ProjectRoot $parsed.ProjectPath
 
     $lines = if ($parsed.Compact) {
         ConvertTo-SpecrewCompactDashboardLines -Snapshot $snapshot
@@ -499,6 +500,15 @@ try {
     else {
         ConvertTo-SpecrewDashboardLines -Snapshot $snapshot
     }
+
+    $enforcementLines = @(
+        ('Boundary enforcement: {0}' -f $(if ($boundaryEnforcementSummary.Enabled) { 'enabled' } else { 'unavailable' }))
+        ('Last authorized boundary: {0}' -f $(if ([string]::IsNullOrWhiteSpace([string]$boundaryEnforcementSummary.LastAuthorizedBoundary)) { '(none)' } else { [string]$boundaryEnforcementSummary.LastAuthorizedBoundary }))
+        ('Pending next boundary: {0}' -f $(if ([string]::IsNullOrWhiteSpace([string]$boundaryEnforcementSummary.PendingNextBoundary)) { '(none)' } else { [string]$boundaryEnforcementSummary.PendingNextBoundary }))
+        ('Last enforcement timestamp: {0}' -f $(if ([string]::IsNullOrWhiteSpace([string]$boundaryEnforcementSummary.LastEnforcementAt)) { '(none)' } else { [string]$boundaryEnforcementSummary.LastEnforcementAt }))
+        ('Total enforcement events: {0}' -f [int]$boundaryEnforcementSummary.EnforcementEventCount)
+    )
+    $lines = @($enforcementLines + @('') + $lines)
 
     if (-not [string]::IsNullOrWhiteSpace($parsed.OutputPath)) {
         $resolvedOutputPath = Resolve-ProjectPath -Path $parsed.OutputPath
@@ -514,8 +524,9 @@ try {
 
     if ($parsed.Json) {
         $payload = [pscustomobject]@{
-            snapshot = $snapshot
-            lines    = $lines
+            snapshot             = $snapshot
+            boundary_enforcement = $boundaryEnforcementSummary
+            lines                = $lines
         }
         $payload | ConvertTo-Json -Depth 8
         exit 0

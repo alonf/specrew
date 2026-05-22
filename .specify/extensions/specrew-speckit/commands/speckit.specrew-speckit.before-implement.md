@@ -4,6 +4,19 @@ description: "Validate execution readiness before implementation"
 
 # Validate Execution Readiness
 
+## Boundary authorization gate
+
+Before any boundary-advancing work, run:
+
+```powershell
+. .\.specify\extensions\specrew-speckit\scripts\shared-governance.ps1
+$authorization = Test-SpecrewBoundaryAuthorization -ProjectRoot . -CurrentBoundary 'tasks' -RequestedBoundary 'before-implement'
+if (-not $authorization.Authorized) {
+  Write-Output (Write-SpecrewBoundaryAuthorizationDirective -CurrentBoundary $authorization.CurrentBoundary -RequestedBoundary $authorization.RequestedBoundary -DirectiveSentinel $authorization.DirectiveSentinel)
+  throw $authorization.Reason
+}
+```
+
 Before implementation starts, confirm the active iteration artifacts are approved and execution-ready.
 
 ## Required checks

@@ -21,6 +21,8 @@ param(
     [switch]$AllowAll,
     [switch]$PromptApprovals,
     [switch]$Autonomous,
+    [switch]$BypassBoundaryEnforcement,
+    [string]$Reason,
     [switch]$Recover,
     [string]$RecoveryChoice,
     [switch]$SkipUpdateCheck,
@@ -84,6 +86,8 @@ function Convert-UnixStyleArguments {
         [bool]$SameWindow,
         [bool]$AllowAll,
         [bool]$PromptApprovals,
+        [bool]$BypassBoundaryEnforcement,
+        [AllowNull()][string]$Reason,
         [bool]$Recover,
         [AllowNull()][string]$RecoveryChoice,
         [bool]$SkipUpdateCheck,
@@ -103,6 +107,8 @@ function Convert-UnixStyleArguments {
         AllowAll       = $AllowAll
         PromptApprovals = $PromptApprovals
         Autonomous     = $Autonomous
+        BypassBoundaryEnforcement = $BypassBoundaryEnforcement
+        Reason         = $Reason
         Recover        = $Recover
         RecoveryChoice = $RecoveryChoice
         SkipUpdateCheck = $SkipUpdateCheck
@@ -155,6 +161,13 @@ function Convert-UnixStyleArguments {
             '--autonomous' {
                 $result.Autonomous = $true
             }
+            '--bypass-boundary-enforcement' {
+                $result.BypassBoundaryEnforcement = $true
+            }
+            '--reason' {
+                $i++
+                if ($i -lt $CliArgs.Count) { $result.Reason = $CliArgs[$i] }
+            }
             '--recover' {
                 $result.Recover = $true
             }
@@ -195,6 +208,8 @@ $parsedArgs = Convert-UnixStyleArguments `
     -SameWindow $SameWindow.IsPresent `
     -AllowAll $AllowAll.IsPresent `
     -PromptApprovals $PromptApprovals.IsPresent `
+    -BypassBoundaryEnforcement $BypassBoundaryEnforcement.IsPresent `
+    -Reason $Reason `
     -Recover $Recover.IsPresent `
     -RecoveryChoice $RecoveryChoice `
     -SkipUpdateCheck $SkipUpdateCheck.IsPresent `
@@ -212,6 +227,8 @@ $SameWindow = [bool]$parsedArgs.SameWindow
 $AllowAll = [bool]$parsedArgs.AllowAll
 $PromptApprovals = [bool]$parsedArgs.PromptApprovals
 $Autonomous = [bool]$parsedArgs.Autonomous
+$BypassBoundaryEnforcement = [bool]$parsedArgs.BypassBoundaryEnforcement
+$Reason = [string]$parsedArgs.Reason
 $Recover = [bool]$parsedArgs.Recover
 $RecoveryChoice = [string]$parsedArgs.RecoveryChoice
 $SkipUpdateCheck = [bool]$parsedArgs.SkipUpdateCheck
@@ -241,6 +258,8 @@ Options:
   -AllowAll | --allow-all                  Launch Copilot with --allow-all so tool calls run without approval prompts (this is the default for tool calls)
   -PromptApprovals | --prompt-approvals    Keep Copilot's interactive tool-approval prompts enabled (disables --allow-all)
   -Autonomous | --autonomous               Launch Copilot with --autopilot so Squad advances through lifecycle gates without stopping for explicit approval (use for unattended runs such as overnight execution; default is gate-respecting mode where Squad stops at every approval boundary)
+  --bypass-boundary-enforcement            Suspend boundary enforcement for this session only; requires --reason
+  --reason "<text>"                        Required justification for --bypass-boundary-enforcement
   -Recover | --recover                     Bypass stale-state blocking and enter recovery mode directly
   -SkipUpdateCheck | --skip-update-check   Skip the PSGallery latest-version check for this run
   -Help | --help                           Show this help message
@@ -251,7 +270,7 @@ Options:
     - A quoted feature request is optional shorthand for a new feature, not a full spec document.
      - Specrew launches Copilot from the target project directory, reuses the current terminal by default, and only uses --new-window when you explicitly ask for a detached shell.
      - Specrew always auto-loads the bootstrap via -i so Copilot reads the Squad handoff before doing anything else.
-     - The default behavior is gate-respecting: Squad stops at every lifecycle approval boundary (specify, clarify, plan, tasks, implement, review, retro) and waits for explicit human verdict. Pass --autonomous to enable Copilot CLI autopilot mode for unattended runs.
+     - The default behavior is gate-respecting: Squad stops at every lifecycle approval boundary (specify, clarify, plan, tasks, before-implement, review-signoff, retro, iteration-closeout, feature-closeout) and waits for explicit human verdict. Pass --autonomous to enable Copilot CLI autopilot mode for unattended runs.
      - --allow-all (default) and --autonomous are independent: --allow-all controls tool-call approval; --autonomous controls whether Squad advances through lifecycle gates without input. Intake stage stays interactive regardless of --autonomous so initial scope is never auto-resolved.
      - Copilot CLI may still ask you to trust the project directory on first launch.
      - If Copilot CLI is unavailable, Specrew still writes a handoff prompt and context file.
@@ -2817,13 +2836,17 @@ function Save-StartArtifacts {
         [string]$ApprovalOperatorNote,
         [AllowNull()][pscustomobject]$SessionState,
         [AllowNull()][pscustomobject]$RecoverySession,
-        [string]$PostRestartDirective = ''
+        [string]$PostRestartDirective = '',
+        [bool]$BypassBoundaryEnforcement = $false,
+        [AllowNull()][string]$BoundaryBypassReason
     )
 
     $specrewRoot = Join-Path $ResolvedProjectPath '.specrew'
     $promptPath = Join-Path $specrewRoot 'last-start-prompt.md'
     $contextPath = Join-Path $specrewRoot 'start-context.json'
     $summaryPath = Join-Path $specrewRoot 'start-summary.md'
+    $existingStartContextState = Get-SpecrewStartContextState -ProjectRoot $ResolvedProjectPath
+    $existingBoundaryEnforcement = if ($existingStartContextState.Context.Contains('boundary_enforcement')) { $existingStartContextState.Context['boundary_enforcement'] } else { $null }
 
     # Get current HEAD for baseline tracking
     $currentHead = $null
@@ -2881,6 +2904,16 @@ $PostRestartDirective
 "@
     }
 
+    if ($BypassBoundaryEnforcement) {
+        $directiveBlocks += @"
+
+## Boundary Enforcement Bypass
+
+[BYPASS ACTIVE] Boundary enforcement is bypassed for this session.
+Reason: $BoundaryBypassReason
+"@
+    }
+
     $recoveryPromptBlock = Get-CoordinatorRecoveryPromptBlock -RecoverySession $RecoverySession
     if (-not [string]::IsNullOrWhiteSpace($recoveryPromptBlock)) {
         $directiveBlocks += ([Environment]::NewLine + $recoveryPromptBlock)
@@ -2927,7 +2960,7 @@ $artifactListFormatted
     Write-Utf8FileAtomic -Path $promptPath -Content $promptContentWithFrontmatter
 
     $context = [ordered]@{
-        schema           = 'v1'
+        schema           = if ($null -ne $existingBoundaryEnforcement) { 'v2' } else { 'v1' }
         mode             = $Mode
         feature_request  = $FeatureRequest
         feature_path     = $ResolvedFeaturePath
@@ -2977,7 +3010,13 @@ $artifactListFormatted
         prompt_path      = $promptPath
         summary_path     = $summaryPath
         generated_at_utc = [DateTime]::UtcNow.ToString('o')
-    } | ConvertTo-Json -Depth 7
+    }
+
+    if ($null -ne $existingBoundaryEnforcement) {
+        $context['boundary_enforcement'] = $existingBoundaryEnforcement
+    }
+
+    $context = $context | ConvertTo-Json -Depth 12
 
     Write-Utf8FileAtomic -Path $contextPath -Content $context
     Write-Utf8FileAtomic -Path $summaryPath -Content (Get-StartSummaryContent `
@@ -2995,6 +3034,21 @@ $artifactListFormatted
             -SquadModelOverrides $SquadModelOverrides `
             -ApprovalOperatorNote $ApprovalOperatorNote `
             -RecoverySession $RecoverySession)
+
+    if ($null -ne $SessionState) {
+        $effectiveBoundaryEnforcement = Get-SpecrewBoundaryEnforcementState -ProjectRoot $ResolvedProjectPath
+        if ($effectiveBoundaryEnforcement.NeedsMigration) {
+            Initialize-SpecrewBoundaryEnforcementState -ProjectRoot $ResolvedProjectPath -CurrentBoundary $SessionState.boundary_type | Out-Null
+            Add-SpecrewBoundaryEnforcementLedgerEntry -ProjectRoot $ResolvedProjectPath -Boundary $SessionState.boundary_type -EnforcementAction 'migration' -CurrentBoundary $SessionState.boundary_type -RequestedBoundary $null -LaunchMode $LaunchMode -Reason 'Migrated start-context.json to schema v2 boundary_enforcement state.'
+        }
+    }
+
+    if ($BypassBoundaryEnforcement) {
+        $runtimeContextState = Get-SpecrewStartContextState -ProjectRoot $ResolvedProjectPath
+        $runtimeSessionId = if ($runtimeContextState.Context.Contains('generated_at_utc')) { [string]$runtimeContextState.Context['generated_at_utc'] } else { [guid]::NewGuid().ToString() }
+        Add-SpecrewBoundaryBypassRecord -ProjectRoot $ResolvedProjectPath -SessionId $runtimeSessionId -Reason $BoundaryBypassReason -Boundary $(if ($null -ne $SessionState) { $SessionState.boundary_type } else { $null }) -LaunchMode $LaunchMode -AgentResponseSnippet '[BYPASS ACTIVE] specrew start session bootstrap' -AuthCommitHash $(if ($null -ne $SessionState) { $SessionState.auth_commit_hash } else { $null }) | Out-Null
+        Add-SpecrewBoundaryEnforcementLedgerEntry -ProjectRoot $ResolvedProjectPath -Boundary $(if ($null -ne $SessionState) { $SessionState.boundary_type } else { 'before-implement' }) -EnforcementAction 'bypassed' -CurrentBoundary $(if ($null -ne $SessionState) { $SessionState.boundary_type } else { $null }) -RequestedBoundary $(if ($null -ne $SessionState) { $SessionState.boundary_type } else { $null }) -LaunchMode $LaunchMode -AgentResponseSnippet '[BYPASS ACTIVE] specrew start session bootstrap' -Reason $BoundaryBypassReason
+    }
 
     return [pscustomobject]@{
         PromptPath               = $promptPath
@@ -3227,6 +3281,16 @@ if ($AllowAll -and $PromptApprovals) {
     exit 1
 }
 
+if ($BypassBoundaryEnforcement -and [string]::IsNullOrWhiteSpace($Reason)) {
+    Write-Error-Message 'Boundary enforcement bypass requires --reason "<text>".'
+    exit 1
+}
+
+if (-not $BypassBoundaryEnforcement -and -not [string]::IsNullOrWhiteSpace($Reason)) {
+    Write-Error-Message "Use --reason only together with --bypass-boundary-enforcement."
+    exit 1
+}
+
 if (-not [string]::IsNullOrWhiteSpace($RecoveryChoice) -and $RecoveryChoice -notin @('A', 'B', 'C')) {
     Write-Error-Message "Recovery choice must be A, B, or C."
     exit 1
@@ -3406,7 +3470,9 @@ $artifactPaths = Save-StartArtifacts `
     -ApprovalOperatorNote $approvalOperatorNote `
     -SessionState $validatedSessionState `
     -RecoverySession $recoverySession `
-    -PostRestartDirective $recoveryDirective
+    -PostRestartDirective $recoveryDirective `
+    -BypassBoundaryEnforcement $BypassBoundaryEnforcement `
+    -BoundaryBypassReason $Reason
 
 Write-Success "Prepared Specrew start context."
 $promptDisplayPath = Get-DisplayPathFromProjectRoot -ResolvedProjectPath $resolvedProjectPath -Path $artifactPaths.PromptPath
@@ -3433,6 +3499,9 @@ if (-not $useAutopilot) {
 }
 elseif ($approvalMode -eq 'allow-all') {
     Write-Info 'allow-all reduces tool-approval blocking after the request is grounded.'
+}
+if ($BypassBoundaryEnforcement) {
+    Write-Info ("[BYPASS ACTIVE] Boundary enforcement is bypassed for this session only. Reason: {0}" -f $Reason)
 }
 if (-not [string]::IsNullOrWhiteSpace($allowAllRuntimePlan.SuppressionNote)) {
     Write-Info $allowAllRuntimePlan.SuppressionNote

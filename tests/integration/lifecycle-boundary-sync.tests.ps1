@@ -49,7 +49,6 @@ function New-MinimalProject {
 
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
 $syncScript = Join-Path $repoRoot '.specify\extensions\specrew-speckit\scripts\sync-boundary-state.ps1'
-$closeoutScript = Join-Path $repoRoot 'extensions\specrew-speckit\scripts\scaffold-feature-closeout-dashboard.ps1'
 $startScript = Join-Path $repoRoot 'scripts\specrew-start.ps1'
 
 $scratchRoot = Join-Path $repoRoot '.scratch\lifecycle-boundary-sync'
@@ -58,10 +57,10 @@ if (Test-Path -LiteralPath $scratchRoot) {
 }
 $null = New-Item -ItemType Directory -Path $scratchRoot -Force
 
-# Ordered seven-boundary sync scenario
+# Ordered nine-boundary sync scenario
 $orderedProject = Join-Path $scratchRoot 'ordered'
 New-MinimalProject -ProjectRoot $orderedProject
-foreach ($boundary in @('specify', 'clarify', 'plan', 'tasks', 'review-signoff', 'iteration-closeout')) {
+foreach ($boundary in @('specify', 'clarify', 'plan', 'tasks', 'before-implement', 'review-signoff', 'retro', 'iteration-closeout')) {
     $syncResult = Invoke-TestScript -ScriptPath $syncScript -ArgumentList @('-ProjectPath', $orderedProject, '-BoundaryType', $boundary, '-FeatureRef', '022-hotfix-schema-tests', '-IterationNumber', '001')
     if ($syncResult.ExitCode -ne 0) {
         Write-Fail ("Boundary sync failed for '{0}':`n{1}" -f $boundary, ($syncResult.Output -join [Environment]::NewLine))
@@ -69,16 +68,16 @@ foreach ($boundary in @('specify', 'clarify', 'plan', 'tasks', 'review-signoff',
     }
 }
 
-$closeoutResult = Invoke-TestScript -ScriptPath $closeoutScript -ArgumentList @('-ProjectPath', $orderedProject, '-FeatureId', '022-hotfix-schema-tests')
-if ($closeoutResult.ExitCode -ne 0) {
-    Write-Fail ("Feature closeout scaffold failed:`n{0}" -f ($closeoutResult.Output -join [Environment]::NewLine))
+$featureCloseoutResult = Invoke-TestScript -ScriptPath $syncScript -ArgumentList @('-ProjectPath', $orderedProject, '-BoundaryType', 'feature-closeout', '-FeatureRef', '022-hotfix-schema-tests', '-IterationNumber', '001')
+if ($featureCloseoutResult.ExitCode -ne 0) {
+    Write-Fail ("Feature closeout sync failed:`n{0}" -f ($featureCloseoutResult.Output -join [Environment]::NewLine))
     exit 1
 }
 
 $decisionsContent = Get-Content -LiteralPath (Join-Path $orderedProject '.squad\decisions.md') -Raw -Encoding UTF8
-$boundaryMatches = [regex]::Matches($decisionsContent, 'Boundary sync:\s*(specify|clarify|plan|tasks|review-signoff|iteration-closeout|feature-closeout)')
+$boundaryMatches = [regex]::Matches($decisionsContent, 'Boundary sync:\s*(specify|clarify|plan|tasks|before-implement|review-signoff|retro|iteration-closeout|feature-closeout)')
 $actualOrder = @($boundaryMatches | ForEach-Object { $_.Groups[1].Value })
-$expectedOrder = @('specify', 'clarify', 'plan', 'tasks', 'review-signoff', 'iteration-closeout', 'feature-closeout')
+$expectedOrder = @('specify', 'clarify', 'plan', 'tasks', 'before-implement', 'review-signoff', 'retro', 'iteration-closeout', 'feature-closeout')
 if ($actualOrder.Count -ne $expectedOrder.Count -or (($actualOrder -join ',') -ne ($expectedOrder -join ','))) {
     Write-Fail ("Expected ordered boundary sync entries '{0}' but found '{1}'." -f ($expectedOrder -join ', '), ($actualOrder -join ', '))
     exit 1
@@ -95,7 +94,7 @@ if (-not [string]::IsNullOrWhiteSpace([string]$featureJson.feature_directory)) {
     exit 1
 }
 
-Write-Pass 'All seven lifecycle boundaries recorded ordered sync entries with durable commit hashes'
+Write-Pass 'All nine lifecycle boundaries recorded ordered sync entries with durable commit hashes'
 
 # Drift visibility scenario
 $driftProject = Join-Path $scratchRoot 'drift'
@@ -129,7 +128,7 @@ if ($warningResult.ExitCode -ne 0) {
 }
 
 $warningContent = Get-Content -LiteralPath (Join-Path $driftProject '.squad\decisions.md') -Raw -Encoding UTF8
-if ($warningContent -notmatch 'Boundary sync warning:\s*iteration-closeout' -or $warningContent -notmatch 'Expected next boundary ''review-signoff''') {
+if ($warningContent -notmatch 'Boundary sync warning:\s*iteration-closeout' -or $warningContent -notmatch 'Expected next boundary ''before-implement''') {
     Write-Fail 'Lifecycle evidence did not record the out-of-order late-boundary warning.'
     exit 1
 }

@@ -396,6 +396,56 @@ if ($freshOutput -match '/\.specrew/') {
 }
 Write-Pass "Fresh repo start enters intake-or-resume mode"
 
+Write-Host "`nTest 2aa: boundary enforcement bypass requires an explicit reason"
+$missingReasonResult = Invoke-TestScript -ScriptPath $entryScript -ArgumentList @(
+    'start',
+    '--project-path', $projectRoot,
+    '--bypass-boundary-enforcement',
+    '--no-launch'
+)
+if ($missingReasonResult.ExitCode -eq 0) {
+    Write-Fail 'Boundary enforcement bypass should fail when --reason is omitted.'
+    exit 1
+}
+if (-not (Assert-Contains -Content ($missingReasonResult.Output -join "`n") -Pattern '--reason "<text>"' -FailureMessage 'Missing-reason bypass flow did not explain the required --reason syntax.')) {
+    exit 1
+}
+Write-Pass 'Boundary enforcement bypass rejects missing reasons'
+
+Write-Host "`nTest 2ab: boundary enforcement bypass with a reason records activation evidence"
+$bypassResult = Invoke-TestScript -ScriptPath $entryScript -ArgumentList @(
+    'start',
+    '--project-path', $projectRoot,
+    '--bypass-boundary-enforcement',
+    '--reason', 'schema migration replay',
+    '--no-launch'
+)
+if ($bypassResult.ExitCode -ne 0) {
+    Write-Fail 'Boundary enforcement bypass with --reason should succeed.'
+    foreach ($line in $bypassResult.Output) {
+        Write-Host $line
+    }
+    exit 1
+}
+$bypassContext = Get-Content -LiteralPath $freshContextPath -Raw -Encoding UTF8 | ConvertFrom-Json -Depth 12
+if ($bypassContext.schema -ne 'v2' -or $null -eq $bypassContext.boundary_enforcement) {
+    Write-Fail 'Bypass start flow did not upgrade start-context.json to schema v2 with boundary_enforcement.'
+    exit 1
+}
+if (@($bypassContext.boundary_enforcement.bypass_history).Count -lt 1) {
+    Write-Fail 'Bypass start flow did not append a bypass activation row.'
+    exit 1
+}
+$latestBypass = @($bypassContext.boundary_enforcement.bypass_history)[-1]
+if ($latestBypass.reason -ne 'schema migration replay') {
+    Write-Fail 'Bypass activation row recorded the wrong reason.'
+    exit 1
+}
+if (-not (Assert-Contains -Content ($bypassResult.Output -join "`n") -Pattern '\[BYPASS ACTIVE\]' -FailureMessage 'Bypass start flow did not surface the active bypass marker.')) {
+    exit 1
+}
+Write-Pass 'Boundary enforcement bypass with a reason is recorded and surfaced'
+
 Write-Host "`nTest 2b: default launch reuses the current terminal and passes the bootstrap handoff"
 $fakeBinRoot = Join-Path -Path $scratchRoot -ChildPath 'fake-bin'
 $null = New-Item -Path $fakeBinRoot -ItemType Directory -Force

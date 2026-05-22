@@ -11,19 +11,19 @@ $repoRoot = (Resolve-Path (Join-Path -Path $PSScriptRoot -ChildPath '..\..')).Pa
 $validatorScript = Join-Path -Path $repoRoot -ChildPath 'extensions\specrew-speckit\scripts\validate-governance.ps1'
 $sharedGovernance = Join-Path -Path $repoRoot -ChildPath 'extensions\specrew-speckit\scripts\shared-governance.ps1'
 
-# Test 1: Get-SpecrewCanonicalBoundaryTypes includes all 8 canonical values
+# Test 1: Get-SpecrewCanonicalBoundaryTypes includes all 9 canonical values
 $sharedContent = Get-Content -LiteralPath $sharedGovernance -Raw -Encoding UTF8
 $canonicalFuncMatch = [regex]::Match($sharedContent, "function Get-SpecrewCanonicalBoundaryTypes \{[\s\S]*?\}")
 if (-not $canonicalFuncMatch.Success) {
     Write-Fail "Get-SpecrewCanonicalBoundaryTypes function not found in shared-governance.ps1"
 }
 $canonicalBody = $canonicalFuncMatch.Value
-foreach ($expected in @('specify', 'clarify', 'plan', 'tasks', 'review-signoff', 'retro', 'iteration-closeout', 'feature-closeout')) {
+foreach ($expected in @('specify', 'clarify', 'plan', 'tasks', 'before-implement', 'review-signoff', 'retro', 'iteration-closeout', 'feature-closeout')) {
     if ($canonicalBody -notmatch ("'" + [regex]::Escape($expected) + "'")) {
         Write-Fail "Get-SpecrewCanonicalBoundaryTypes is missing canonical value: $expected"
     }
 }
-Write-Pass 'Get-SpecrewCanonicalBoundaryTypes contains all 8 canonical boundary values'
+Write-Pass 'Get-SpecrewCanonicalBoundaryTypes contains all 9 canonical boundary values'
 
 # Test 2: Get-SpecrewClosureBoundaryTypes return list contains feature-closeout but NOT iteration-closeout
 # (scope the regex to just the return @(...) line; the function body includes a comment that mentions
@@ -147,6 +147,17 @@ if ($resultE -match 'FAIL Test-SessionStateBoundaryCanonical') {
     Write-Fail "Rule falsely flagged active=true + boundary=iteration-closeout (iteration-closeout is not in closure set). Output:`n$resultE"
 }
 Write-Pass "Rule passes active=true + boundary=iteration-closeout (iteration-closeout is not in closure set)"
+
+# Fixture F: active=true + boundary=before-implement is canonical and valid
+[IO.File]::WriteAllText((Join-Path $fixtureRoot '.specrew\start-context.json'), '{ "schema": "v2", "session_state": { "active": true, "boundary_type": "before-implement", "feature_ref": "001-test", "feature_path": "x", "iteration_number": "001", "task_id": null, "auth_commit_hash": null, "recorded_at": "2026-05-22T05:00:00Z" }, "boundary_enforcement": { "enabled": true, "last_authorized_boundary": "tasks", "pending_next_boundary": "before-implement", "verdict_history": [], "bypass_history": [] } }', [System.Text.UTF8Encoding]::new($false))
+[IO.File]::WriteAllText((Join-Path $fixtureRoot '.specrew\last-start-prompt.md'), "---`nsession_state_active: true`nsession_state_boundary: before-implement`n---`n", [System.Text.UTF8Encoding]::new($false))
+[IO.File]::WriteAllText((Join-Path $fixtureRoot '.squad\identity\now.md'), "---`nsession_state_active: true`nsession_state_boundary: before-implement`n---`n", [System.Text.UTF8Encoding]::new($false))
+
+$resultF = Invoke-BoundaryRule -ProjectRoot $fixtureRoot
+if ($resultF -match 'FAIL Test-SessionStateBoundaryCanonical') {
+    Write-Fail "Rule falsely flagged active=true + boundary=before-implement. Output:`n$resultF"
+}
+Write-Pass "Rule passes active=true + boundary=before-implement"
 
 # Cleanup
 Remove-Item -LiteralPath $fixtureRoot -Recurse -Force -ErrorAction SilentlyContinue

@@ -185,7 +185,7 @@ function Get-SpecrewFeatureNumber {
 }
 
 function Get-SpecrewBoundaryOrder {
-    return @('specify', 'clarify', 'plan', 'tasks', 'review-signoff', 'retro', 'iteration-closeout', 'feature-closeout')
+    return @(Get-SpecrewCanonicalBoundaryTypes)
 }
 
 function Resolve-SpecrewBoundaryAuthCommitHash {
@@ -219,7 +219,7 @@ function Resolve-SpecrewBoundaryAuthCommitHash {
 function New-SpecrewSessionState {
     param(
         [Parameter(Mandatory = $true)]
-        [ValidateSet('specify', 'clarify', 'plan', 'tasks', 'review-signoff', 'retro', 'iteration-closeout', 'feature-closeout')]
+        [ValidateSet('specify', 'clarify', 'plan', 'tasks', 'before-implement', 'review-signoff', 'retro', 'iteration-closeout', 'feature-closeout')]
         [string]$BoundaryType,
 
         [Parameter(Mandatory = $true)]
@@ -510,7 +510,12 @@ function Update-SpecrewStartContext {
         }
     }
 
-    $context['schema'] = 'v1'
+    if ($context.Contains('boundary_enforcement') -and $null -ne $context['boundary_enforcement']) {
+        $context['schema'] = 'v2'
+    }
+    else {
+        $context['schema'] = 'v1'
+    }
     $context['feature_path'] = if ($SessionState.feature_path) { $SessionState.feature_path } else { $null }
     $context['generated_at_utc'] = $SessionState.recorded_at
     $context['session_state'] = [ordered]@{
@@ -731,7 +736,7 @@ function Invoke-SpecrewBoundaryStateSync {
         [string]$ProjectPath,
 
         [Parameter(Mandatory = $true)]
-        [ValidateSet('specify', 'clarify', 'plan', 'tasks', 'review-signoff', 'retro', 'iteration-closeout', 'feature-closeout')]
+        [ValidateSet('specify', 'clarify', 'plan', 'tasks', 'before-implement', 'review-signoff', 'retro', 'iteration-closeout', 'feature-closeout')]
         [string]$BoundaryType,
 
         [AllowNull()]
