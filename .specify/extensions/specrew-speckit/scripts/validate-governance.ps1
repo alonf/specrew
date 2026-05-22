@@ -4003,12 +4003,18 @@ try {
         $effectiveThrottle = [Math]::Max(1, $ThrottleLimit)
         Write-Host ("[validator-parallelism] {0} targets, {1} cache hits served from pre-pass, {2} misses validated in parallel (throttle={3})" -f $iterationTotal, $script:cacheHitCount, $missTargets.Count, $effectiveThrottle)
 
+        # Propagate -NoCacheRead through to subprocesses so parallel mode preserves
+        # the same cache-bypass semantics as the serial path (per Copilot review PR #627).
+        $propagatedNoCacheRead = $NoCacheRead.IsPresent
         $parallelOutputs = $missTargets | ForEach-Object -Parallel {
             $iter = $_
             $script = $using:validatorScriptPath
             $proj = $using:resolvedProjectPath
+            $passNoCacheRead = $using:propagatedNoCacheRead
             try {
-                $out = & pwsh -NoProfile -NoLogo -File $script -ProjectPath $proj -IterationPath $iter -NoParallel 2>&1 | Out-String
+                $argList = @('-NoProfile', '-NoLogo', '-File', $script, '-ProjectPath', $proj, '-IterationPath', $iter, '-NoParallel')
+                if ($passNoCacheRead) { $argList += '-NoCacheRead' }
+                $out = & pwsh @argList 2>&1 | Out-String
                 [pscustomobject]@{
                     Path     = $iter
                     ExitCode = $LASTEXITCODE

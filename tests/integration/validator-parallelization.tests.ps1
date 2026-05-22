@@ -105,7 +105,12 @@ Set-Content -LiteralPath `$writerPath -Value `$writerScript -Encoding UTF8
 
 `$procs = @()
 for (`$i = 0; `$i -lt 8; `$i++) {
-    `$procs += Start-Process -FilePath 'pwsh' -ArgumentList @('-NoProfile', '-File', `$writerPath, '-ProjectRoot', `$pr, '-Key', ("key-{0:D2}" -f `$i), '-Shared', '$sharedGovernance') -PassThru -WindowStyle Hidden
+    `$args = @('-NoProfile', '-File', `$writerPath, '-ProjectRoot', `$pr, '-Key', ("key-{0:D2}" -f `$i), '-Shared', '$sharedGovernance')
+    if (`$IsWindows) {
+        `$procs += Start-Process -FilePath 'pwsh' -ArgumentList `$args -PassThru -WindowStyle Hidden
+    } else {
+        `$procs += Start-Process -FilePath 'pwsh' -ArgumentList `$args -PassThru
+    }
 }
 `$procs | Wait-Process
 
