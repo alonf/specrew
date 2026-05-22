@@ -268,6 +268,146 @@ function Get-ValidatorCachePath {
     return Join-Path -Path $cacheDir -ChildPath 'validator-cache.json'
 }
 
+function Get-SpecrewCommandLogPath {
+    # Proposal 086 Pillar 5: returns the path to the command invocation log.
+    # Lives under .specrew/.cache/ (gitignored, per-developer; same parent as
+    # validator memoization cache from Pillar 1).
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$ProjectRoot
+    )
+    $resolvedProjectRoot = Resolve-ProjectPath -Path $ProjectRoot
+    $cacheDir = Join-Path -Path $resolvedProjectRoot -ChildPath '.specrew\.cache'
+    return Join-Path -Path $cacheDir -ChildPath 'last-commands.log'
+}
+
+function Add-SpecrewCommandInvocation {
+    # Proposal 086 Pillar 5: appends {target_hash, code_hash, invoked_at, command}
+    # to last-commands.log (JSON Lines). FIFO eviction at 20 entries. File-locked
+    # for concurrent safety across parallel subprocesses.
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$ProjectRoot,
+
+        [Parameter(Mandatory = $true)]
+        [string]$Command,
+
+        [Parameter(Mandatory = $true)]
+        [string]$TargetHash,
+
+        [Parameter(Mandatory = $true)]
+        [string]$CodeHash
+    )
+    $logPath = Get-SpecrewCommandLogPath -ProjectRoot $ProjectRoot
+    $logDir = Split-Path -Parent $logPath
+    if (-not (Test-Path -LiteralPath $logDir -PathType Container)) {
+        $null = New-Item -ItemType Directory -Path $logDir -Force
+    }
+
+    Invoke-WithFileLock -Path $logPath -ScriptBlock {
+        $entries = New-Object System.Collections.Generic.List[hashtable]
+        if (Test-Path -LiteralPath $logPath -PathType Leaf) {
+            try {
+                foreach ($line in (Get-Content -LiteralPath $logPath -Encoding UTF8)) {
+                    if ([string]::IsNullOrWhiteSpace($line)) { continue }
+                    try {
+                        $entry = $line | ConvertFrom-Json -AsHashtable -Depth 4
+                        if ($null -ne $entry) { $null = $entries.Add($entry) }
+                    }
+                    catch { continue }
+                }
+            }
+            catch {
+                # Corrupt log file — start fresh; non-fatal per FR-005
+                $entries.Clear()
+            }
+        }
+
+        $newEntry = @{
+            command     = $Command
+            target_hash = $TargetHash
+            code_hash   = $CodeHash
+            invoked_at  = (Get-Date -AsUTC -Format 'yyyy-MM-ddTHH:mm:ss.fffZ')
+        }
+        $null = $entries.Add($newEntry)
+
+        # FIFO eviction at 20 entries
+        while ($entries.Count -gt 20) {
+            $entries.RemoveAt(0)
+        }
+
+        $serialized = ($entries | ForEach-Object { ConvertTo-Json -InputObject $_ -Depth 4 -Compress }) -join [Environment]::NewLine
+        Set-Content -LiteralPath $logPath -Value $serialized -Encoding UTF8
+    }
+}
+
+function Get-SpecrewRecentCommandInvocations {
+    # Proposal 086 Pillar 5: reads last-commands.log and returns the N most-recent
+    # entries (default 5). Returns empty array if file missing or corrupt.
+    # Per Copilot review on PR #695: read inside Invoke-WithFileLock so concurrent
+    # writers (Set-Content rewrites the whole file) can't observe partial state.
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$ProjectRoot,
+
+        [int]$Last = 5
+    )
+    $logPath = Get-SpecrewCommandLogPath -ProjectRoot $ProjectRoot
+    if (-not (Test-Path -LiteralPath $logPath -PathType Leaf)) { return ,@() }
+
+    $entries = New-Object System.Collections.Generic.List[hashtable]
+    Invoke-WithFileLock -Path $logPath -ScriptBlock {
+        try {
+            foreach ($line in (Get-Content -LiteralPath $logPath -Encoding UTF8)) {
+                if ([string]::IsNullOrWhiteSpace($line)) { continue }
+                try {
+                    $entry = $line | ConvertFrom-Json -AsHashtable -Depth 4
+                    if ($null -ne $entry) { $null = $entries.Add($entry) }
+                }
+                catch { continue }
+            }
+        }
+        catch {
+            $entries.Clear()
+        }
+    }
+
+    # Leading comma prevents PowerShell auto-unrolling when there's a single entry
+    if ($entries.Count -le $Last) { return ,@($entries.ToArray()) }
+    return ,@($entries.GetRange($entries.Count - $Last, $Last).ToArray())
+}
+
+function Test-SpecrewCommandRepetition {
+    # Proposal 086 Pillar 5: counts CONSECUTIVE most-recent invocations matching
+    # the given (target_hash, code_hash). Returns 0 if streak broken (different
+    # hashes appeared between this call and the most recent same-hash invocation).
+    # Use to detect "user ran validator N times against unchanged code."
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$ProjectRoot,
+
+        [Parameter(Mandatory = $true)]
+        [string]$TargetHash,
+
+        [Parameter(Mandatory = $true)]
+        [string]$CodeHash
+    )
+    $recent = Get-SpecrewRecentCommandInvocations -ProjectRoot $ProjectRoot -Last 10
+    if ($recent.Count -eq 0) { return 0 }
+    # Walk from most-recent backwards; count matches until first mismatch.
+    $count = 0
+    for ($i = $recent.Count - 1; $i -ge 0; $i--) {
+        $e = $recent[$i]
+        if ([string]$e.target_hash -eq $TargetHash -and [string]$e.code_hash -eq $CodeHash) {
+            $count++
+        }
+        else {
+            break
+        }
+    }
+    return $count
+}
+
 function Get-SpecrewClosedIterationIndexPath {
     # Proposal 085: returns the path to the closed-iteration index file.
     # Lives under .specrew/ and is COMMITTED to the repo (not gitignored).
