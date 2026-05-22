@@ -287,29 +287,29 @@ try {
     $null = New-Item -ItemType Directory -Path (Join-Path $unsupportedFeatureWorkspace '.specify') -Force
     @'
 {
-  "schema": "v2",
+  "schema": "v3",
   "feature_directory": "specs/999-test"
 }
 '@ | Set-Content -LiteralPath (Join-Path $unsupportedFeatureWorkspace '.specify\feature.json') -Encoding UTF8
-    Assert-ThrowsLike -ScriptBlock { Get-WorktreeFeatureRef -WorktreePath $unsupportedFeatureWorkspace | Out-Null } -Pattern "Unsupported schema 'v2'" -Message 'Unsupported feature.json schema should fail fast.'
+    Assert-ThrowsLike -ScriptBlock { Get-WorktreeFeatureRef -WorktreePath $unsupportedFeatureWorkspace | Out-Null } -Pattern "Unsupported schema 'v3'" -Message 'Unsupported feature.json schema should fail fast.'
 
     $unsupportedContextWorkspace = Join-Path $scratchRoot 'unsupported-context'
     $null = New-Item -ItemType Directory -Path (Join-Path $unsupportedContextWorkspace '.specrew') -Force
     @'
 {
-  "schema": "v2",
+  "schema": "v3",
   "session_state": {
     "feature_ref": "999-test"
   }
 }
 '@ | Set-Content -LiteralPath (Join-Path $unsupportedContextWorkspace '.specrew\start-context.json') -Encoding UTF8
-    Assert-ThrowsLike -ScriptBlock { Get-SpecrewStartContextSessionState -ProjectRoot $unsupportedContextWorkspace | Out-Null } -Pattern "Unsupported schema 'v2'" -Message 'Unsupported start-context schema should fail fast.'
+    Assert-ThrowsLike -ScriptBlock { Get-SpecrewStartContextSessionState -ProjectRoot $unsupportedContextWorkspace | Out-Null } -Pattern "Unsupported schema 'v3'" -Message 'Unsupported start-context schema should fail fast.'
 
     $unsupportedSummaryWorkspace = Join-Path $scratchRoot 'unsupported-summary'
     $null = New-Item -ItemType Directory -Path (Join-Path $unsupportedSummaryWorkspace '.specrew') -Force
     @'
 {
-  "schema": "v2",
+  "schema": "v3",
   "warnings": {
     "total": 1,
     "soft": 1,
@@ -320,7 +320,7 @@ try {
   "recorded_at": "2026-05-19T12:00:00Z"
 }
 '@ | Set-Content -LiteralPath (Join-Path $unsupportedSummaryWorkspace '.specrew\last-validator-summary.json') -Encoding UTF8
-    Assert-ThrowsLike -ScriptBlock { Get-ValidatorWarningSummary -ProjectRoot $unsupportedSummaryWorkspace | Out-Null } -Pattern "Unsupported schema 'v2'" -Message 'Unsupported validator summary schema should fail fast.'
+    Assert-ThrowsLike -ScriptBlock { Get-ValidatorWarningSummary -ProjectRoot $unsupportedSummaryWorkspace | Out-Null } -Pattern "Unsupported schema 'v3'" -Message 'Unsupported validator summary schema should fail fast.'
 }
 catch {
     Write-Fail $_.Exception.Message
