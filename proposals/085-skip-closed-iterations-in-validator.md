@@ -1,9 +1,12 @@
 ---
 proposal: 085
 title: Skip Closed Iterations in Validator (Fallback-Path Optimization via Closed-Iteration Index)
-status: candidate
+status: shipped
+shipped-as: feature-036
+shipped-at: 2026-05-22
 phase: phase-2
-estimated-sp: 3-5
+estimated-sp: 5
+actual-sp: 5
 discussion: tbd
 ---
 

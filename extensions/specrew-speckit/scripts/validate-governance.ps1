@@ -7,6 +7,8 @@ param(
     [switch]$NoCacheRead,
     [switch]$NoParallel,
     [int]$ThrottleLimit = 6,
+    [switch]$IncludeClosed,
+    [switch]$RebuildClosedIndex,
     [AllowEmptyString()][string]$ResponseText = '',
     [string]$BoundaryName,
     [ValidateSet('auto', 'boundary-handoff', 'narration')][string]$ResponseScope = 'auto',
@@ -3828,6 +3830,32 @@ try {
         throw '-FullRun and -ChangedOnly are mutually exclusive. Use -FullRun for a deliberate full-repo run or -ChangedOnly for explicit changed-only scope.'
     }
 
+    # Proposal 085: -RebuildClosedIndex is a special early-exit mode. Walks every
+    # specs/<feature>/iterations/<iter>/state.md, detects closed iterations, and
+    # regenerates .specrew/closed-iterations.yml from scratch. Use after the index
+    # is deleted or appears stale.
+    if ($RebuildClosedIndex) {
+        $indexPath = Get-SpecrewClosedIterationIndexPath -ProjectRoot $resolvedProjectPath
+        if (Test-Path -LiteralPath $indexPath -PathType Leaf) {
+            Remove-Item -LiteralPath $indexPath -Force
+        }
+        $specsRoot = Join-Path -Path $resolvedProjectPath -ChildPath 'specs'
+        $stateFiles = if (Test-Path -LiteralPath $specsRoot -PathType Container) {
+            Get-ChildItem -Path $specsRoot -Filter 'state.md' -Recurse -File -ErrorAction SilentlyContinue
+        }
+        else { @() }
+        $added = 0
+        foreach ($sf in $stateFiles) {
+            $entry = Get-SpecrewClosedIterationFromStateFile -StatePath $sf.FullName
+            if ($null -ne $entry) {
+                Add-SpecrewClosedIterationEntry -ProjectRoot $resolvedProjectPath -Feature $entry.feature -Iteration $entry.iteration -ClosedAt $entry.closed_at
+                $added++
+            }
+        }
+        Write-Host ("[closed-iteration-index] rebuilt: {0} closed iterations indexed at {1}" -f $added, $indexPath)
+        exit 0
+    }
+
     $explicitIterationPathsProvided = ($null -ne $IterationPath) -and @(
         $IterationPath | Where-Object { -not [string]::IsNullOrWhiteSpace([string]$_) }
     ).Count -gt 0
@@ -3897,6 +3925,32 @@ try {
         }
     }
 
+    # Proposal 085: on full-repo paths, filter out closed iterations unless
+    # -IncludeClosed. Scoped paths (changed-only / auto-scoped / explicit-targets)
+    # are unaffected — closed iterations naturally aren't in those sets.
+    $closedSkippedCount = 0
+    if (-not $IncludeClosed -and -not $validatorScoped -and $targets.Count -gt 0) {
+        $closedIndex = Get-SpecrewClosedIterationIndex -ProjectRoot $resolvedProjectPath
+        if ($closedIndex.Count -gt 0) {
+            $filtered = New-Object System.Collections.Generic.List[string]
+            foreach ($tp in $targets) {
+                $normalized = $tp -replace '\\', '/'
+                if ($normalized -match 'specs/([^/]+)/iterations/([^/]+)$') {
+                    $feature = $Matches[1]
+                    $iteration = $Matches[2]
+                    if ($closedIndex.ContainsKey("$feature/$iteration")) {
+                        $closedSkippedCount++
+                        continue
+                    }
+                }
+                $null = $filtered.Add($tp)
+            }
+            $targets = @($filtered.ToArray())
+            if ($closedSkippedCount -gt 0) {
+                Write-Host ("[validator-scope] closed-iteration filter: {0} closed iterations skipped (use -IncludeClosed to validate them)" -f $closedSkippedCount)
+            }
+        }
+    }
     Write-Host $scopeBanner
     $script:ValidatorMode = if ($validatorScoped) { 'scoped' } else { 'unscoped' }
     $script:ValidatorIterationsValidated = $targets.Count

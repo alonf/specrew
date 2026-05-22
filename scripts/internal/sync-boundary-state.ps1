@@ -848,6 +848,18 @@ function Invoke-SpecrewBoundaryStateSync {
 
     Add-SpecrewBoundarySyncLedgerEntry -ProjectRoot $paths.ProjectRoot -SessionState $sessionState
 
+    # Proposal 085: append to the closed-iteration index at iteration-closeout
+    # boundary (idempotent on re-sync). Validator full-repo path uses this to
+    # skip closed iterations unless -IncludeClosed is set.
+    if ($BoundaryType -eq 'iteration-closeout' -and -not [string]::IsNullOrWhiteSpace($effectiveFeatureRef) -and -not [string]::IsNullOrWhiteSpace($IterationNumber)) {
+        try {
+            Add-SpecrewClosedIterationEntry -ProjectRoot $paths.ProjectRoot -Feature $effectiveFeatureRef -Iteration $IterationNumber
+        }
+        catch {
+            Write-Warning ("Boundary sync 'iteration-closeout' could not append to closed-iteration index: {0}" -f $_.Exception.Message)
+        }
+    }
+
     if ($BoundaryType -eq 'feature-closeout') {
         Clear-SpecrewActiveFeature -FeatureJsonPath $paths.FeatureJsonPath
     }
