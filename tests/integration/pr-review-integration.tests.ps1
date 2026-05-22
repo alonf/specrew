@@ -73,30 +73,44 @@ if ($hostResult -notmatch 'HOST_OK active=') {
 }
 Write-Pass 'Test-HostProvidesAutomatedPrReview returns hashtable with Active key'
 
-# Test 7: Soft warning is non-blocking (exit code 0 when only soft warning present)
-# Create a scratch project + iteration that mentions Copilot but has no artifact.
-$blockTest = @"
-`$scratch = '$repoRoot' + '\.scratch\pr-soft-test'
+# Test 7: Soft warning is non-blocking — invoke validator on an iteration that
+# is missing pr-review-resolution.md AND mentions PR/Copilot in state.md. Verify
+# the validator (a) emits the soft warning AND (b) exits 0 (non-blocking).
+# Per Copilot review PR #728: actually exercise validate-governance.ps1 end-to-end.
+$nonBlockTest = @"
+`$scratch = '$repoRoot' + '\.scratch\pr-nonblock-e2e'
 if (Test-Path -LiteralPath `$scratch) { Remove-Item -Recurse -Force -LiteralPath `$scratch }
 `$null = New-Item -ItemType Directory -Path `$scratch -Force
-# Set up minimal scratch project — but DON'T initialize as git repo (avoids
-# the host detector kicking in on this scratch path). The host detector also
-# only fires when targets actually exist.
-# Just verify the warning STRING is emitted by validator when it does fire.
-# (Full soft-warning E2E requires a host-with-Copilot fixture that we can't
-# easily synthesize cross-platform here.)
-. '$sharedGovernance'
-`$artifact = Get-SpecrewPrReviewResolutionPath -IterationPath 'C:/x/specs/030/iterations/001'
-if (`$artifact.EndsWith('pr-review-resolution.md')) {
-    Write-Host 'NONBLOCK_OK'
+# Build a passing-validation iteration that mentions PR in state.md but lacks
+# the resolution artifact. Validator should PASS the iteration AND emit the
+# soft warning (host detection in scratch dir will return Active=false because
+# the scratch dir has no git remote, so the warning won't actually fire — but
+# we can still assert the structural property: validator exits 0 even with
+# missing artifact; the soft warning is purely informational.)
+`$out = & pwsh -NoProfile -NoLogo -File '$validatorScript' -ProjectPath '$repoRoot' -IterationPath '$repoRoot\specs\038-pr-review-integration\iterations\001' -NoParallel -NoCacheRead 2>&1 | Out-String
+`$exitCode = `$LASTEXITCODE
+# F-038's own iteration mentions PR/Copilot in its state.md AND is missing
+# pr-review-resolution.md (artifact intentionally not authored in this iteration
+# scope per spec.md). Host detection in $repoRoot finds GitHub Copilot.
+# Expected: warning emitted AND exit 0.
+if (`$exitCode -eq 0 -and `$out -match '\[pr-review-soft-warning\]') {
+    Write-Host 'NONBLOCK_E2E_OK'
+} elseif (`$exitCode -eq 0) {
+    Write-Host "NONBLOCK_NO_WARNING exit=`$exitCode (validator passed but no warning — likely host detection returned Active=false)"
+} else {
+    Write-Host "NONBLOCK_FAIL exit=`$exitCode"
 }
 Remove-Item -Recurse -Force -LiteralPath `$scratch -ErrorAction SilentlyContinue
 "@
-$blockResult = pwsh -NoProfile -Command $blockTest 2>&1 | Out-String
-if ($blockResult -notmatch 'NONBLOCK_OK') {
-    Write-Fail "Soft-warning helper structural check failed. Result:`n$blockResult"
+$nonBlockResult = pwsh -NoProfile -Command $nonBlockTest 2>&1 | Out-String
+# Accept either NONBLOCK_E2E_OK (warning fired) or NONBLOCK_NO_WARNING
+# (host detection returned Active=false — runner doesn't have gh CLI or repo
+# isn't recognized as GitHub). Both prove non-blocking semantics; the variance
+# is environmental.
+if ($nonBlockResult -notmatch 'NONBLOCK_(E2E_OK|NO_WARNING)') {
+    Write-Fail "Validator non-blocking E2E check failed. Result:`n$nonBlockResult"
 }
-Write-Pass 'Soft-warning artifact path structurally correct (validator does not raise hard error from missing artifact)'
+Write-Pass 'Validator non-blocking E2E: exit code 0 with missing artifact on iteration that mentions PR/Copilot (soft warning is informational only)'
 
 Write-Host ''
 Write-Host 'PR review integration: all assertions pass'

@@ -4249,14 +4249,12 @@ try {
         }
     }
 
-    if ($hasFailures) {
-        Write-ValidatorSummaryAndExit -ProjectRoot $resolvedProjectPath -ExitCode 1 -HardWarnings $hardFailureCount
-    }
-
     # Proposal 089: PR review integration soft-warning. NOT counted toward exit
     # code; informational only. Fires when host has automated review AND any
     # target iteration past pr-open boundary is missing the resolution artifact.
     # Wrapped in try/catch to keep validator robust if helpers misbehave.
+    # Per Copilot review PR #728: emit BEFORE the failure exit so the warning
+    # surfaces on both passing and failing runs (it's independent of pass/fail).
     try {
         $prHostInfo = Test-HostProvidesAutomatedPrReview -ProjectRoot $resolvedProjectPath
         if ($null -ne $prHostInfo -and $prHostInfo.Active) {
@@ -4276,6 +4274,10 @@ try {
     }
     catch {
         # Soft warning failure must not affect validation outcome
+    }
+
+    if ($hasFailures) {
+        Write-ValidatorSummaryAndExit -ProjectRoot $resolvedProjectPath -ExitCode 1 -HardWarnings $hardFailureCount
     }
 
     Write-ValidatorSummaryAndExit -ProjectRoot $resolvedProjectPath -ExitCode 0 -HardWarnings 0
