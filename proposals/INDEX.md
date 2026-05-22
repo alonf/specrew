@@ -55,14 +55,14 @@ Proposals with full source-spec content, ready for `/speckit.specify` ingestion 
 | [040](040-token-economy-governance.md) | Token Economy as Governance Driver | phase-4 | 38 | 7-layer architecture; two billing modes (metered + quota); model names ONLY in catalog L3-L4 |
 | [063](063-substantive-intake-questioning.md) | Substantive Intake Questioning at /speckit.specify and /speckit.clarify | phase-2 | 25-30 | **F-025 (next-after-F-024 per 2026-05-20 sequencing decision)**. Persona-driven adaptive intake (PM 🧠 / UX 🎨 / Architect 🏗️ / PM 📋 + AI Researcher 🔬); 12-category catalog; input-quality assessment → Mode A/B/C; fires at specify + clarify + iteration kickoff + mid-feature pivot. Source spec at file:///C:/Dev/SpecrewDraft/substantive-intake-questioning.md |
 | [064](064-slash-command-multi-host-correctness.md) | Slash-Command Multi-Host Correctness (F-021 Surface Restoration) | phase-2 | 7 | Restores F-021's non-functional `/specrew-*` surface; multi-deploy to `.claude/skills/`, `.github/skills/`, `.agents/skills/`; YAML frontmatter; drop dotted command forms. Source spec at file:///C:/Dev/SpecrewDraft/slash-command-multi-host-correctness.md |
-| [065](065-launch-mode-boundary-enforcement.md) | Launch-Mode Boundary Enforcement (Tool-Call-Layer Intercept for Lifecycle Boundaries) | phase-2 | 5-7 | **Hard prerequisite for F-040 (Proposal 063 Substantive Intake).** Per-tool-call mechanical enforcement of lifecycle boundary contracts via skill-level authorization gates, independent of agent prose and host autopilot mode. Predecessor: Proposal 066 (gate-respecting default, shipped 2026-05-20). 4-incident empirical motivation including 2026-05-22 F-039 in-flight chain-past-plan. Currently in-flight as F-039 (parked at plan boundary awaiting this proposal). |
+| [065](065-launch-mode-boundary-enforcement.md) | Launch-Mode Boundary Enforcement (Tool-Call-Layer Intercept for Lifecycle Boundaries) | phase-2 | 5-7 | **Hard prerequisite for F-040 (Proposal 063 Substantive Intake).** Per-tool-call mechanical enforcement of lifecycle boundary contracts via skill-level authorization gates, independent of agent prose and host autopilot mode. Predecessor: Proposal 066 (gate-respecting default, shipped 2026-05-20). 4-incident empirical motivation including 2026-05-22 F-039 in-flight chain-past-plan. **Current state:** F-039 implementation-boundary work is active / review-ready on the current tree; later lifecycle boundaries remain unopened, so the proposal is not shipped yet. |
 | [067](067-small-fix-slice-type.md) | Small-Fix Slice Type (Lightweight Lifecycle for 2-3 SP Changes) | phase-2 | 5 | Formalizes the 2-3 SP slice between raw chore commits and full feature lifecycle. Required artifacts: code + tests + CHANGELOG + proposal + INDEX. Composes with Proposal 055 (slice-type catalog). Empirical motivation: commits `d288286`, `1838034`, `c55ec92`, `ecd7b6d`. |
 | [068](068-cost-aware-model-routing.md) | Cost-Aware Model Routing with Agent-Discovered Model Catalog | phase-2 | 6-8 | **URGENT — 10-day Copilot pricing deadline.** Discovery skill (`/specrew-research-models`) writes `.specrew/model-catalog.yml`; coordinator-governance routes Junior/Implementer tasks to cheap models, Senior/Reviewer to strong; `cost_profile: lean` in `.specrew/config.yml`. Slice of Proposal 040; precedes full Multi-Host CORE (024). Agent-driven discovery — no hardcoded model names. |
 | [069](069-multi-host-launch-path.md) | Multi-Host Launch Path + Per-Host Flag Pass-Through (Claude Code + Codex) | phase-2 | 9-10 | **URGENT — cost-reduction bundle.** `specrew start --host claude` / `--host codex` launches the alternate CLI with Specrew's bootstrap context. **Expanded 2026-05-21: also adds `--remote` flag pass-through with per-host translation** (Copilot `--remote`, Claude `--remote-control`/`--rc`, Codex warn-and-continue). First instance of the per-host flag-translation framework. Tactical MVP of Proposal 024 (Multi-Host CORE) — hard-coded per-host launch commands, no deep abstraction. Composes with 068 (model catalog) and 070 (cost tracking). |
 | [070](070-token-economy-mvp.md) | Token Economy MVP (Cost-per-Iteration Tracking + Dashboard Surfacing) | phase-2 | 5 | **URGENT — cost-reduction bundle.** `specs/<feature>/iterations/<N>/cost.yml` records per-boundary token consumption + cost estimate from Proposal 068's catalog; `specrew where` dashboard gains COST section; `specrew cost summary/add/recompute` CLI. MVP slice of Proposal 040 (Token Economy as Governance Driver) — measurement only, no governance layer. |
 | [074](074-code-commentary-standards.md) | Code Commentary Standards (Multi-Level Convention + Preference Dial) | phase-2 | 12-15 | Replaces the current "default to no comments" Implementer instruction with a four-category taxonomy (contract / why-rationale / concept / inline narration), a four-level preference dial (`minimalist` / `standard` / `educational` / `textbook`), and a language-idiomatic convention catalog (C# XML doc, JSDoc, docstring, Javadoc, godoc, rustdoc, PowerShell comment-based help, etc.). Reviewer agent gains a contract-docs verification check. Empirical motivation: 2026-05-21 smoke trial produced a complete .NET 8 snake-game solution with **zero XML doc comments on public APIs** — IntelliSense silently empty. Composes with Proposals 047 / 052 / 015 (dials, profiles, expertise). |
 
-## Candidate (58)
+## Candidate (62)
 
 Idea-form proposals not yet developed into full source specs. Open for discussion; may mature to draft or be withdrawn.
 
@@ -126,6 +126,10 @@ Idea-form proposals not yet developed into full source specs. Open for discussio
 | [095](095-proposal-lifecycle-state-richness.md) | Proposal Lifecycle State Richness (component of 096) | phase-2 | 8-12 |
 | [096](096-proposal-driven-design-profile.md) | Proposal-Driven Design Profile (Opt-In Umbrella for 028/062/091-promote/093/095) | phase-3 | 8-12 |
 | [097](097-coupling-surface-catalog.md) | Coupling Surface Catalog (Mandatory Dependency Inventory + Hygiene + Risk Surface) | phase-2 | 18-25 (MVP); 30-40 (full vision) |
+| [098](098-strategic-positioning-public-architecture-docs.md) | Strategic Positioning + Public Architecture Documentation | phase-2 | 10-15 |
+| [099](099-cross-model-independent-reviewer.md) | Cross-Model Independent Reviewer (Structural Author-Reviewer Independence) | phase-3 | 15-25 |
+| [100](100-agent-class-threat-surface.md) | Agent-Class Threat Surface (Concrete Threat Catalog + Prevention + Detection) | phase-3 | 12-18 |
+| [101](101-external-tracker-sync-provider.md) | External Tracker Sync Provider Abstraction (GitHub Projects / Azure DevOps / Jira / Linear) | phase-2 | 20-30 |
 
 ---
 
@@ -155,7 +159,7 @@ For roadmap-style viewing, proposals grouped by phase placement:
 - 073 (Review Evidence Integrity — shipped as feature-028)
 - 079 (Version Information Supported-vs-Latest — shipped as small-fix slice in v0.24.2 bundle)
 - 074 (Code Commentary Standards — draft, queue after 073)
-- 013, 014, 015, 017, 018, 019, 020, 021, 022, 023, 027, 028, 029, 037, 038, 042, 044, 045, 046, 047, 048, 049, 050, 051, 053, 054, 055, 056, 059, 060, 061, 062, 071, 075, 077, 078, 080, 081, 082, 091, 093, 094, 095, 097 (candidates)
+- 013, 014, 015, 017, 018, 019, 020, 021, 022, 023, 027, 028, 029, 037, 038, 042, 044, 045, 046, 047, 048, 049, 050, 051, 053, 054, 055, 056, 059, 060, 061, 062, 071, 075, 077, 078, 080, 081, 082, 091, 093, 094, 095, 097, 098, 101 (candidates)
 
 **Phase 3** (refactor + maintainability + upstream reconciliation + extensibility):
 
@@ -166,6 +170,8 @@ For roadmap-style viewing, proposals grouped by phase placement:
 - 057 (Roadmap Spine + Input Adapter Pattern — depends on 052; sibling Phase 3 extensibility)
 - 058 (Plugin-Based Multi-Host Distribution — partner to 024; delivery layer for multi-host)
 - 096 (Proposal-Driven Design Profile — opt-in anchor profile bundling 028/062/091-promote/093/095; depends on 052)
+- 099 (Cross-Model Independent Reviewer — structural author-reviewer independence; composes with 089)
+- 100 (Agent-Class Threat Surface — concrete threat catalog with prevention + detection; composes with 097/099)
 
 **Phase 4** (token economy + autopilot experiment):
 
