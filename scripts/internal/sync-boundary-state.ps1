@@ -661,6 +661,64 @@ function Get-LatestSpecrewBoundarySyncState {
     }
 }
 
+function Invoke-PreBoundaryMarkdownLintGate {
+    # Proposal 088: runs `markdownlint-cli --fix` on changed .md files BEFORE
+    # boundary-sync writes any state. If auto-fixes were applied, throws with a
+    # directive to commit the fixes and re-run sync. If unfixable violations
+    # remain, throws with file:line messages. If markdownlint-cli is unavailable,
+    # emits a warning and proceeds.
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$ProjectPath
+    )
+
+    $resolvedProjectRoot = Resolve-ProjectPath -Path $ProjectPath
+
+    # Step 1: identify changed .md files via Proposal 083's base-ref helper
+    $changedFiles = @(Get-ChangedMarkdownFiles -ProjectRoot $resolvedProjectRoot)
+    if ($changedFiles.Count -eq 0) {
+        # No .md files in diff — gate is a no-op
+        return
+    }
+
+    # Step 2: invoke markdownlint --fix on the scoped files
+    $result = Invoke-MarkdownLintAutoFix -MarkdownFiles $changedFiles -ProjectRoot $resolvedProjectRoot
+
+    # Step 3: handle each outcome
+    if ($result.MarkdownLintUnavailable) {
+        Write-Host '[markdownlint-gate] markdownlint-cli unavailable; skipping gate (warning)' -ForegroundColor Yellow
+        return
+    }
+
+    if ($result.AutoFixedFiles.Count -gt 0) {
+        $fileList = ($result.AutoFixedFiles | ForEach-Object { "  - $_" }) -join "`n"
+        throw @"
+[markdownlint-gate] Auto-fixed markdownlint violations in $($result.AutoFixedFiles.Count) file(s):
+$fileList
+
+Please:
+  1. Review the diff: git diff
+  2. Stage the fixes: git add <files>
+  3. Commit: git commit -m 'chore(lint): auto-fix markdownlint violations'
+  4. Push: git push
+  5. Re-run boundary-sync
+
+Boundary-sync HALTED until the lint fixes are committed.
+"@
+    }
+
+    if ($result.UnfixableViolations.Count -gt 0) {
+        $violationList = ($result.UnfixableViolations | ForEach-Object { "  - $_" }) -join "`n"
+        throw @"
+[markdownlint-gate] Unfixable markdownlint violations remain in changed .md files:
+$violationList
+
+These violations are semantic (e.g., MD013 line-length, MD024 duplicate-heading)
+and require manual editing. Boundary-sync HALTED.
+"@
+    }
+}
+
 function Invoke-SpecrewBoundaryStateSync {
     param(
         [Parameter(Mandatory = $true)]
@@ -691,6 +749,12 @@ function Invoke-SpecrewBoundaryStateSync {
         [AllowNull()]
         [string]$IdentityBody
     )
+
+    # Proposal 088: pre-sync markdownlint gate. Catches lint violations at
+    # boundary-time so they never reach PR-CI Lint and cause the catch-fix-retry
+    # cycle. Runs BEFORE any state-file writes; if violations are found, throws
+    # with a clear directive instead of half-syncing.
+    Invoke-PreBoundaryMarkdownLintGate -ProjectPath $ProjectPath
 
     $paths = Get-SpecrewSessionStatePaths -ProjectRoot $ProjectPath
     $effectiveFeatureRef = $FeatureRef

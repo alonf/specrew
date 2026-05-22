@@ -277,6 +277,125 @@ function Get-ValidatorGlobalStatePathspecs {
     )
 }
 
+function Get-ChangedMarkdownFiles {
+    # Proposal 088: identifies .md files in the current git diff scoped via
+    # Proposal 083's base-ref resolution. Returns an empty array if base ref
+    # is undetectable (caller handles the no-op case).
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$ProjectRoot
+    )
+
+    $resolvedProjectRoot = Resolve-ProjectPath -Path $ProjectRoot
+
+    $baseRef = Get-SpecrewLocalScopeBaseRef -ProjectRoot $resolvedProjectRoot
+    if ([string]::IsNullOrWhiteSpace($baseRef)) {
+        return @()
+    }
+
+    $diffOutput = @(& git -C $resolvedProjectRoot diff --name-only --diff-filter=d "$baseRef...HEAD" -- '*.md' 2>$null)
+    if ($LASTEXITCODE -ne 0) {
+        return @()
+    }
+
+    $markdownFiles = New-Object System.Collections.Generic.List[string]
+    foreach ($relPath in $diffOutput) {
+        $trimmed = [string]$relPath
+        if ([string]::IsNullOrWhiteSpace($trimmed)) { continue }
+        $absPath = Join-Path -Path $resolvedProjectRoot -ChildPath $trimmed.Trim()
+        if (Test-Path -LiteralPath $absPath -PathType Leaf) {
+            $null = $markdownFiles.Add($absPath)
+        }
+    }
+
+    return ,@($markdownFiles.ToArray())
+}
+
+function Invoke-MarkdownLintAutoFix {
+    # Proposal 088: runs `markdownlint-cli --fix` against the supplied .md files,
+    # detects which were auto-fixed (via `git diff --quiet`), and collects any
+    # remaining unfixable violations via a follow-up no-fix pass.
+    #
+    # Returns:
+    #   AutoFixedFiles       array of file paths modified by --fix
+    #   UnfixableViolations  array of "file:line: rule" strings
+    #   MarkdownLintUnavailable  boolean — true when npx/markdownlint-cli can't launch
+    param(
+        [Parameter(Mandatory = $true)]
+        [AllowEmptyCollection()]
+        [string[]]$MarkdownFiles,
+
+        [Parameter(Mandatory = $true)]
+        [string]$ProjectRoot
+    )
+
+    $result = [pscustomobject]@{
+        AutoFixedFiles          = @()
+        UnfixableViolations     = @()
+        MarkdownLintUnavailable = $false
+    }
+
+    if (-not $MarkdownFiles -or $MarkdownFiles.Count -eq 0) {
+        return $result
+    }
+
+    $resolvedProjectRoot = Resolve-ProjectPath -Path $ProjectRoot
+
+    if ($null -eq (Get-Command npx -ErrorAction SilentlyContinue)) {
+        $result.MarkdownLintUnavailable = $true
+        return $result
+    }
+
+    # Capture SHA256 hashes BEFORE invoking --fix so we can detect content
+    # changes from --fix (regardless of git tracking state).
+    $hashesBefore = @{}
+    foreach ($file in $MarkdownFiles) {
+        if (Test-Path -LiteralPath $file -PathType Leaf) {
+            $hashesBefore[$file] = (Get-FileHash -LiteralPath $file -Algorithm SHA256).Hash
+        }
+    }
+
+    # Pass 1: invoke markdownlint-cli --fix
+    $fixArgs = @('--yes', 'markdownlint-cli', '--fix') + $MarkdownFiles
+    $fixOutput = & npx @fixArgs 2>&1
+    $fixOutputText = ($fixOutput | ForEach-Object { [string]$_ }) -join "`n"
+
+    # Detect "command not found" / launch failure (graceful degradation)
+    if ($fixOutputText -match 'ENOENT|command not found|is not recognized|cannot find') {
+        $result.MarkdownLintUnavailable = $true
+        return $result
+    }
+
+    # Detect auto-fixed files by comparing content hash before/after --fix.
+    $autoFixed = New-Object System.Collections.Generic.List[string]
+    foreach ($file in $MarkdownFiles) {
+        if (-not (Test-Path -LiteralPath $file -PathType Leaf)) { continue }
+        $hashAfter = (Get-FileHash -LiteralPath $file -Algorithm SHA256).Hash
+        if ($hashesBefore.ContainsKey($file) -and $hashesBefore[$file] -ne $hashAfter) {
+            $null = $autoFixed.Add($file)
+        }
+    }
+    $result.AutoFixedFiles = @($autoFixed.ToArray())
+
+    # Pass 2: run markdownlint-cli without --fix to detect unfixable violations
+    $checkArgs = @('--yes', 'markdownlint-cli') + $MarkdownFiles
+    $checkOutput = & npx @checkArgs 2>&1
+    $checkExit = $LASTEXITCODE
+
+    if ($checkExit -ne 0) {
+        $checkText = ($checkOutput | ForEach-Object { [string]$_ }) -join "`n"
+        $violations = New-Object System.Collections.Generic.List[string]
+        foreach ($line in ($checkText -split "`r?`n")) {
+            if ($line -match '^(.+\.md):(\d+)(?::\d+)?\s+(MD\d+/\S+)') {
+                $null = $violations.Add(("{0}:{1}: {2}" -f $matches[1], $matches[2], $matches[3]))
+            }
+        }
+        $result.UnfixableViolations = @($violations.ToArray())
+    }
+
+    return $result
+}
+
 function Resolve-SpecrewGitBaseRefCandidate {
     param(
         [Parameter(Mandatory = $true)]
