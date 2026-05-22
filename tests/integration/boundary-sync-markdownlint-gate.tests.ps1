@@ -105,7 +105,7 @@ else {
     if ($dirtyResult -notmatch '"AutoFixCount":\s*[1-9]') {
         # In some environments the auto-fix may not detect; still verify the file is now valid
         $afterContent = [IO.File]::ReadAllText($dirtyPath)
-        if ($afterContent -notmatch '\n\n- item one') {
+        if ($afterContent -notmatch '\r?\n\r?\n- item one') {
             Write-Fail "Auto-fix did not apply blank line before list. Result:`n$dirtyResult`nFile content:`n$afterContent"
         }
         Write-Pass 'Auto-fix applied blank line (verified via file content; AutoFixCount detection deferred)'

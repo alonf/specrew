@@ -67,7 +67,7 @@
 - [X] Add `Invoke-MarkdownLintAutoFix` to `extensions/specrew-speckit/scripts/shared-governance.ps1`
 - [X] Accepts: `-MarkdownFiles` (array of paths) and `-ProjectRoot`
 - [X] Invokes `npx --yes markdownlint-cli --fix` against the files
-- [X] Detects which files were modified via `git diff --quiet <file>` after `--fix`
+- [X] Detects which files were modified via SHA256 hash comparison (before vs after `--fix`); hash-based detection avoids false positives on untracked files compared to `git diff --quiet`
 - [X] Runs a SECOND pass (no `--fix`) to collect remaining unfixable violations as `file:line: rule` strings
 - [X] If `npx`/`markdownlint-cli` fails to launch (exit code indicating "not found"), returns `MarkdownLintUnavailable=$true` flag
 - [X] Returns `[pscustomobject]@{ AutoFixedFiles = @(); UnfixableViolations = @(); MarkdownLintUnavailable = $false }`

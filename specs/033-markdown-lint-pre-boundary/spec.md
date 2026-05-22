@@ -82,7 +82,7 @@ The gate only checks `.md` files in the current diff (per `Get-SpecrewLocalScope
 - **FR-002**: System MUST add a helper function `Invoke-MarkdownLintAutoFix` to `extensions/specrew-speckit/scripts/shared-governance.ps1` (+ mirror) that:
   - Accepts a list of `.md` file paths
   - Invokes `npx --yes markdownlint-cli --fix` against those files
-  - Detects which files (if any) were modified by `--fix` via `git diff --quiet <file>`
+  - Detects which files (if any) were modified by `--fix` via SHA256 hash comparison (before vs after). Hash-based detection is more robust than `git diff --quiet` because it handles untracked files correctly.
   - Returns a structured result with `AutoFixedFiles` (array of modified file paths) and `UnfixableViolations` (array of `file:line: rule` strings from a follow-up no-fix pass) (AC1, AC4).
 
 - **FR-003**: `Invoke-SpecrewBoundaryStateSync` (in `scripts/internal/sync-boundary-state.ps1`) MUST invoke a new pre-sync gate function `Invoke-PreBoundaryMarkdownLintGate` BEFORE writing any state files (AC1, AC3).

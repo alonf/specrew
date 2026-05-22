@@ -327,7 +327,7 @@ function Get-ChangedMarkdownFiles {
         }
     }
 
-    return ,@($markdownFiles.ToArray())
+    return @($markdownFiles.ToArray())
 }
 
 function Invoke-MarkdownLintAutoFix {
