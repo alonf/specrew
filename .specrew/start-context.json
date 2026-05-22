@@ -216,13 +216,13 @@
   },
   "session_state": {
     "active": true,
-    "boundary_type": "retro-signoff",
+    "boundary_type": "iteration-closed",
     "feature_ref": "030-validator-speedup",
     "feature_path": "C:\\Dev\\Specrew-083\\specs\\030-validator-speedup",
     "iteration_number": "001",
     "task_id": null,
     "auth_commit_hash": "67b73ebb2272486cb46e7729fd6a970506d03c78",
-    "recorded_at": "2026-05-22T00:10:18Z"
+    "recorded_at": "2026-05-22T00:17:45Z"
   },
   "recovery_session": null,
   "squad_model_overrides": {},
