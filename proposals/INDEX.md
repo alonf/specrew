@@ -55,7 +55,7 @@ Proposals with full source-spec content, ready for `/speckit.specify` ingestion 
 | [070](070-token-economy-mvp.md) | Token Economy MVP (Cost-per-Iteration Tracking + Dashboard Surfacing) | phase-2 | 5 | **URGENT — cost-reduction bundle.** `specs/<feature>/iterations/<N>/cost.yml` records per-boundary token consumption + cost estimate from Proposal 068's catalog; `specrew where` dashboard gains COST section; `specrew cost summary/add/recompute` CLI. MVP slice of Proposal 040 (Token Economy as Governance Driver) — measurement only, no governance layer. |
 | [074](074-code-commentary-standards.md) | Code Commentary Standards (Multi-Level Convention + Preference Dial) | phase-2 | 12-15 | Replaces the current "default to no comments" Implementer instruction with a four-category taxonomy (contract / why-rationale / concept / inline narration), a four-level preference dial (`minimalist` / `standard` / `educational` / `textbook`), and a language-idiomatic convention catalog (C# XML doc, JSDoc, docstring, Javadoc, godoc, rustdoc, PowerShell comment-based help, etc.). Reviewer agent gains a contract-docs verification check. Empirical motivation: 2026-05-21 smoke trial produced a complete .NET 8 snake-game solution with **zero XML doc comments on public APIs** — IntelliSense silently empty. Composes with Proposals 047 / 052 / 015 (dials, profiles, expertise). |
 
-## Candidate (55)
+## Candidate (56)
 
 Idea-form proposals not yet developed into full source specs. Open for discussion; may mature to draft or be withdrawn.
 
@@ -116,6 +116,7 @@ Idea-form proposals not yet developed into full source specs. Open for discussio
 | [087](087-push-to-main-validator-scoping-and-nightly-truth-check.md) | Push-to-Main Validator Scoping + Nightly Truth-Check (Stop O(corpus) Cost on Every Push) | phase-2 | 3 |
 | [088](088-markdown-lint-pre-boundary-auto-fix-discipline.md) | Markdown Lint Pre-Boundary Auto-Fix Discipline (Boundary-State-Sync Integration) | phase-2 | 5-8 |
 | [089](089-pr-review-integration-address-pr-review-gate.md) | PR Review Integration — Address-PR-Review Lifecycle Gate (Multi-Host Aware) | phase-2 | 5-8 |
+| [090](090-closeout-lifecycle-sync-commands.md) | Closeout Lifecycle Sync Commands (Structural Fix for Crew-Bypass Bug Class) | phase-2 | 5-8 |
 
 ---
 
