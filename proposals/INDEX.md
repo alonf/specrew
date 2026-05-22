@@ -8,7 +8,7 @@ This index is the navigation surface for all proposals in this directory. Sorted
 
 ---
 
-## Shipped (21)
+## Shipped (22)
 
 Proposals whose features have shipped to main and are part of Specrew's current capability.
 
@@ -34,6 +34,7 @@ Proposals whose features have shipped to main and are part of Specrew's current 
 | [088](088-markdown-lint-pre-boundary-auto-fix-discipline.md) | Markdown Lint Pre-Boundary Auto-Fix Discipline (Boundary-State-Sync Integration) | feature-033 (v0.24.3 bundle) | phase-2 | 5.25 |
 | [084](084-validator-iteration-parallelization.md) | Validator Iteration Parallelization (PowerShell `ForEach-Object -Parallel`) | feature-035 (v0.24.3 bundle) | phase-2 | 7 |
 | [085](085-skip-closed-iterations-in-validator.md) | Skip Closed Iterations in Validator (Fallback-Path Optimization via Closed-Iteration Index) | feature-036 (v0.24.3 bundle) | phase-2 | 5 |
+| [089](089-pr-review-integration-address-pr-review-gate.md) | PR Review Integration — Address-PR-Review Lifecycle Gate (Multi-Host Aware) — minimal viable slice | feature-038 (v0.24.3 bundle) — hard-blocking gate + multi-host expansion remain candidate | phase-2 | 3.25 (minimal slice) |
 | [090](090-closeout-lifecycle-sync-commands.md) | Closeout Lifecycle Sync Commands (Structural Fix for Crew-Bypass Bug Class) | feature-032 (v0.24.3 bundle) | phase-2 | 6.5 |
 
 ## Draft (16)
@@ -60,7 +61,7 @@ Proposals with full source-spec content, ready for `/speckit.specify` ingestion 
 | [070](070-token-economy-mvp.md) | Token Economy MVP (Cost-per-Iteration Tracking + Dashboard Surfacing) | phase-2 | 5 | **URGENT — cost-reduction bundle.** `specs/<feature>/iterations/<N>/cost.yml` records per-boundary token consumption + cost estimate from Proposal 068's catalog; `specrew where` dashboard gains COST section; `specrew cost summary/add/recompute` CLI. MVP slice of Proposal 040 (Token Economy as Governance Driver) — measurement only, no governance layer. |
 | [074](074-code-commentary-standards.md) | Code Commentary Standards (Multi-Level Convention + Preference Dial) | phase-2 | 12-15 | Replaces the current "default to no comments" Implementer instruction with a four-category taxonomy (contract / why-rationale / concept / inline narration), a four-level preference dial (`minimalist` / `standard` / `educational` / `textbook`), and a language-idiomatic convention catalog (C# XML doc, JSDoc, docstring, Javadoc, godoc, rustdoc, PowerShell comment-based help, etc.). Reviewer agent gains a contract-docs verification check. Empirical motivation: 2026-05-21 smoke trial produced a complete .NET 8 snake-game solution with **zero XML doc comments on public APIs** — IntelliSense silently empty. Composes with Proposals 047 / 052 / 015 (dials, profiles, expertise). |
 
-## Candidate (58)
+## Candidate (57)
 
 Idea-form proposals not yet developed into full source specs. Open for discussion; may mature to draft or be withdrawn.
 
@@ -117,7 +118,6 @@ Idea-form proposals not yet developed into full source specs. Open for discussio
 | [082](082-boundary-commit-and-upstream-push-discipline.md) | Boundary Commit + Upstream Push Discipline (Tiers 2 + 3 only; Tier 1 shipped) | phase-2 | 16 (Tier 2 ~6 + Tier 3 ~10) |
 | [086](086-validation-pipeline-performance-bundle.md) | Validation Pipeline Performance Bundle (Memoization, Rule-Applicability, Process-Level Optimization) | phase-2 | 18-26 |
 | [087](087-push-to-main-validator-scoping-and-nightly-truth-check.md) | Push-to-Main Validator Scoping + Nightly Truth-Check (Stop O(corpus) Cost on Every Push) | phase-2 | 3 |
-| [089](089-pr-review-integration-address-pr-review-gate.md) | PR Review Integration — Address-PR-Review Lifecycle Gate (Multi-Host Aware) | phase-2 | 5-8 |
 | [091](091-tech-debt-control.md) | Technology Debt Control (Ledger, Aging, Repayment Pathways, Awareness) | phase-2 | 17-22 |
 | [092](092-specrew-dashboard-web-app.md) | Specrew Dashboard Web App (Observability, Insights, Multi-Developer SDLC View) | phase-4 | 80-120 |
 | [093](093-proposal-discussion-field-discipline.md) | Proposal Discussion-Field Discipline (component of 096) | phase-2 | 2-3 |

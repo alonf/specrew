@@ -268,6 +268,59 @@ function Get-ValidatorCachePath {
     return Join-Path -Path $cacheDir -ChildPath 'validator-cache.json'
 }
 
+function Get-SpecrewPrReviewResolutionPath {
+    # Proposal 089: returns the conventional path for the PR review resolution
+    # artifact for a given iteration.
+    # Example: specs/030-validator-speedup/iterations/001/pr-review-resolution.md
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$IterationPath
+    )
+    return Join-Path -Path $IterationPath -ChildPath 'pr-review-resolution.md'
+}
+
+function Test-HostProvidesAutomatedPrReview {
+    # Proposal 089: detects whether the current repo has automated PR review
+    # (e.g., GitHub Copilot reviewer). Returns @{ Active, Host, Reviewer }.
+    # Detection: `gh` CLI on PATH AND git remote URL contains 'github.com'.
+    # Other hosts (GitLab, Bitbucket) fall through to Active = $false until their
+    # detection is added in a future PR.
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$ProjectRoot
+    )
+    $resolvedRoot = Resolve-ProjectPath -Path $ProjectRoot
+
+    $ghAvailable = $false
+    try {
+        $ghCmd = Get-Command -Name 'gh' -ErrorAction Stop
+        if ($null -ne $ghCmd) { $ghAvailable = $true }
+    }
+    catch { $ghAvailable = $false }
+
+    $remoteIsGitHub = $false
+    try {
+        Push-Location -LiteralPath $resolvedRoot
+        $remoteUrl = (& git remote get-url origin 2>$null) -join ''
+        if (-not [string]::IsNullOrWhiteSpace($remoteUrl) -and $remoteUrl -match 'github\.com') {
+            $remoteIsGitHub = $true
+        }
+    }
+    catch { }
+    finally {
+        Pop-Location -ErrorAction SilentlyContinue
+    }
+
+    if ($ghAvailable -and $remoteIsGitHub) {
+        return @{
+            Active   = $true
+            Host     = 'github'
+            Reviewer = 'copilot-pull-request-reviewer'
+        }
+    }
+    return @{ Active = $false }
+}
+
 function Get-SpecrewCommandLogPath {
     # Proposal 086 Pillar 5: returns the path to the command invocation log.
     # Lives under .specrew/.cache/ (gitignored, per-developer; same parent as

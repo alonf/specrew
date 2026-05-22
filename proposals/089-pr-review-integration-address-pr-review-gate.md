@@ -1,9 +1,13 @@
 ---
 proposal: 089
 title: PR Review Integration — Address-PR-Review Lifecycle Gate (Multi-Host Aware)
-status: candidate
+status: partially-shipped
+minimal-slice-shipped-as: feature-038
+minimal-slice-shipped-in: v0.24.3
+minimal-slice-actual-sp: 3.25
 phase: phase-2
 estimated-sp: 5-8
+remaining-work: hard-blocking-gate, multi-host-detection, automated-finding-extraction
 discussion: tbd
 ---
 
