@@ -17357,3 +17357,46 @@ T011's AC1-AC10 density stays a Reviewer concern - flag it at review-boundary if
 User explicitly authorized the implementation boundary for Feature 039 Iteration 001. Implementation must execute the approved task bundle, carry the T011 AC1-AC10 evidence-density concern into review readiness, and stop at the review boundary rather than crossing it.
 
 
+---
+
+## 2026-05-22T17:00:00Z — User Verdict: Feature 039 Review-Boundary Authorization
+
+- **Decision ID**: user-verdict-2026-05-22-f039-review-boundary
+- **Type**: boundary authorization
+- **Authority**: Alon Fliess
+- **Recorded At**: 2026-05-22T17:00:00Z
+- **Feature**: 039-launch-mode-boundary-enforcement
+- **Iteration**: 001
+
+## Verdict
+
+**approved for review-boundary entry**
+
+Spot-check confirmed:
+- Four helpers present (validate-governance, launch-mode-boundary-enforcement, session-state-boundary-canonical, start-command)
+- SHA-equivalent mirror parity verified
+- Bypass flag wired through \specrew-start.ps1\
+- Integration test suite green including AC11 replay of the 2026-05-22 chain-past-plan incident
+
+**Watch item (T011):** AC1-AC10 evidence density carries forward to review boundary. Reviewer must explicitly assess whether AC1-AC10 evidence is end-to-end host-level or fixture-shaped.
+
+---
+
+## 2026-05-22T17:00:05Z — Agent Routing Evidence: Feature 039 Review-Boundary
+
+- **Work Item**: Feature 039 review-boundary
+- **Requested Agent**: copilot
+- **Actual Agent**: reviewer (GitHub Copilot CLI)
+- **Model ID**: claude-sonnet-4.5
+- **Status**: honored
+- **Fallback Reason**: N/A (preferred copilot path active through the reviewer-owned review workflow)
+- **Recorded At**: 2026-05-22T17:00:05Z
+
+### Context
+
+User explicitly authorized review-boundary entry for Feature 039 Iteration 001. Review work must:
+1. Validate implemented, enforced, observable, and documented dimensions
+2. Create the missing review artifact
+3. Assess the T011 AC1-AC10 evidence-density watch item
+4. Stop before review-signoff boundary
+
