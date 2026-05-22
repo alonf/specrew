@@ -1,7 +1,7 @@
 # Feature Specification: Local Validator Auto-Scope for Feature-Branch Invocations
 
 **Feature Branch**: `chore-083-local-validator-speedup`  
-**Proposal**: [Proposal 083](file:///C:/Dev/Specrew-083/proposals/083-local-validator-speedup.md)  
+**Proposal**: [Proposal 083](../../proposals/083-local-validator-speedup.md)  
 **Created**: 2026-05-21  
 **Status**: Draft  
 **Version**: v0.24.2 small-fix slice
@@ -85,7 +85,7 @@ Users who already pass `-ChangedOnly` explicitly (with or without `-BaseBranch`)
 
 ### Functional Requirements
 
-- **FR-001**: System MUST implement `Get-SpecrewLocalScopeBaseRef` helper function in `scripts/internal/shared-governance.ps1` and mirrored locations with the documented priority chain: (1) `$env:GITHUB_BASE_REF` if set, (2) `git symbolic-ref refs/remotes/origin/HEAD`, (3) `git for-each-ref refs/remotes/origin/main refs/remotes/origin/master`, (4) return `$null` if none resolve (AC1).
+- **FR-001**: System MUST implement `Get-SpecrewLocalScopeBaseRef` helper function in `extensions/specrew-speckit/scripts/shared-governance.ps1` and mirrored locations with the documented priority chain: (1) `$env:GITHUB_BASE_REF` if set, (2) `git symbolic-ref refs/remotes/origin/HEAD`, (3) `git for-each-ref refs/remotes/origin/main refs/remotes/origin/master`, (4) return `$null` if none resolve (AC1).
 
 - **FR-002**: `validate-governance.ps1` MUST detect when invoked on a feature branch (not on main/master) with a detectable base ref and auto-apply `-ChangedOnly` against that base if neither `-ChangedOnly`, `-FullRun`, nor `-BaseBranch` are explicitly passed (AC2).
 
@@ -112,8 +112,8 @@ Users who already pass `-ChangedOnly` explicitly (with or without `-BaseBranch`)
 - **FR-011**: CHANGELOG.md MUST contain an entry under `Changed` section referencing Proposal 083, empirical motivation from F-029 (validator speedup during boundary lifecycle), and documentation of `-FullRun` as the opt-out for deliberate full-repo runs (AC9).
 
 - **FR-012**: All modified scripts and templates MUST maintain mirror parity across primary and mirror locations:
-  - `scripts/internal/shared-governance.ps1` ↔ `extensions/specrew-speckit/scripts/shared-governance.ps1`
-  - `scripts/internal/validate-governance.ps1` ↔ `extensions/specrew-speckit/scripts/validate-governance.ps1`
+  - `extensions/specrew-speckit/scripts/shared-governance.ps1` ↔ `.specify/extensions/specrew-speckit/scripts/shared-governance.ps1`
+  - `extensions/specrew-speckit/scripts/validate-governance.ps1` ↔ `.specify/extensions/specrew-speckit/scripts/validate-governance.ps1`
   - `extensions/specrew-speckit/squad-templates/coordinator/specrew-governance.md` ↔ `.specify/extensions/specrew-speckit/squad-templates/coordinator/specrew-governance.md`
   - `extensions/specrew-speckit/squad-templates/agents/reviewer/charter.md` ↔ `.specify/extensions/specrew-speckit/squad-templates/agents/reviewer/charter.md` (AC8).
 

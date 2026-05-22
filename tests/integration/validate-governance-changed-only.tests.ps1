@@ -267,9 +267,7 @@ function Invoke-Validator {
 
         $env:SPECREW_VALIDATOR_VERBOSE = '1'
 
-        $stopwatch = [System.Diagnostics.Stopwatch]::StartNew()
         $output = @(& pwsh @arguments 2>&1)
-        $stopwatch.Stop()
         $exitCode = $LASTEXITCODE
     }
     finally {
@@ -289,9 +287,8 @@ function Invoke-Validator {
     }
 
     return [pscustomobject]@{
-        ExitCode  = $exitCode
-        Text      = ($output -join "`n")
-        ElapsedMs = [int]$stopwatch.ElapsedMilliseconds
+        ExitCode = $exitCode
+        Text     = ($output -join "`n")
     }
 }
 

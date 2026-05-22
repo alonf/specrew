@@ -129,16 +129,16 @@ if ( on feature branch AND base undetectable )
 
 ### Mirror Parity Requirements
 
-**Decision**: Four mirror parity locations must be kept in sync:
+**Decision**: Four mirror parity locations must be kept in sync (two for the validator scripts plus two for the governance documentation):
 
-| Primary | Mirror 1 | Mirror 2 |
-|---------|----------|----------|
-| `scripts/internal/shared-governance.ps1` | `extensions/specrew-speckit/scripts/shared-governance.ps1` | `.specify/extensions/specrew-speckit/scripts/shared-governance.ps1` |
-| `scripts/internal/validate-governance.ps1` | `extensions/specrew-speckit/scripts/validate-governance.ps1` | `.specify/extensions/specrew-speckit/scripts/validate-governance.ps1` |
-| N/A (documentation) | `extensions/specrew-speckit/squad-templates/coordinator/specrew-governance.md` | `.specify/extensions/specrew-speckit/squad-templates/coordinator/specrew-governance.md` |
-| N/A (documentation) | `extensions/specrew-speckit/squad-templates/agents/reviewer/charter.md` | `.specify/extensions/specrew-speckit/squad-templates/agents/reviewer/charter.md` |
+| Primary | Mirror |
+|---------|--------|
+| `extensions/specrew-speckit/scripts/shared-governance.ps1` | `.specify/extensions/specrew-speckit/scripts/shared-governance.ps1` |
+| `extensions/specrew-speckit/scripts/validate-governance.ps1` | `.specify/extensions/specrew-speckit/scripts/validate-governance.ps1` |
+| `extensions/specrew-speckit/squad-templates/coordinator/specrew-governance.md` | `.specify/extensions/specrew-speckit/squad-templates/coordinator/specrew-governance.md` |
+| `extensions/specrew-speckit/squad-templates/agents/reviewer/charter.md` | `.specify/extensions/specrew-speckit/squad-templates/agents/reviewer/charter.md` |
 
-**Rationale**: Specrew maintains three code branches (primary, extension, and mirrored extension). Changes must be applied to all three to avoid drift. Task T-009 includes mirror parity verification sweep.
+**Rationale**: Specrew maintains two code locations for each script: the primary at `extensions/specrew-speckit/` and the mirror at `.specify/extensions/specrew-speckit/`. Changes must be applied to both to avoid drift. Task T-009 includes mirror parity verification sweep.
 
 **Alternatives Considered**:
 

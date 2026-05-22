@@ -165,7 +165,7 @@ If base branch is detectable, auto-scope applies. If not, the validator graceful
 - Full-repo runs on `main` still work exactly as before
 - Any invocation with explicit flags is honored as-is
 
-No breaking changes. The auto-scope default only applies when **no flags are passed**, which is the new conveniente default for feature branches.
+No breaking changes. The auto-scope default only applies when **no flags are passed**, which is the new convenient default for feature branches.
 
 ---
 

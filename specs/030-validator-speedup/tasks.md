@@ -27,7 +27,7 @@
 **Purpose**: Validate environment and establish readiness for implementation
 
 - [X] T001 [assigned_to: Implementer] [effort: S] Verify PowerShell 5.1+, git availability, and validate prerequisite infrastructure (ci(lint-scoping), PR #384 narrowed pathspec list) per plan.md (Trace: FR-001, FR-002)
-- [X] T002 [P] [assigned_to: Implementer] [effort: S] Review existing `-ChangedIterations` helper and narrowed global-state pathspec list in `scripts/internal/shared-governance.ps1` (Trace: plan.md prerequisites section)
+- [X] T002 [P] [assigned_to: Implementer] [effort: S] Review existing `-ChangedIterations` helper and narrowed global-state pathspec list in `extensions/specrew-speckit/scripts/shared-governance.ps1` (Trace: plan.md prerequisites section)
 - [X] T003 [P] [assigned_to: Test Owner] [effort: S] Locate and review existing test suite at `tests/integration/validate-governance-changed-only.tests.ps1` for extension points (Trace: FR-010)
 
 **Independent Test**: Verify environment can execute PowerShell scripts and run git commands; confirm existing test infrastructure is accessible.
@@ -46,7 +46,7 @@
 
 ### User Story 1: Maintainer Invokes Validator Locally on Feature Branch (Auto-Scope Default)
 
-- [X] T004 [US1] [assigned_to: Implementer] [effort: M] Implement `Get-SpecrewLocalScopeBaseRef` helper function in `scripts/internal/shared-governance.ps1` with priority chain: (1) `$env:GITHUB_BASE_REF` if set, (2) `git symbolic-ref refs/remotes/origin/HEAD`, (3) `git for-each-ref refs/remotes/origin/main refs/remotes/origin/master`, (4) return `$null` on failure (Trace: FR-001, AC1)
+- [X] T004 [US1] [assigned_to: Implementer] [effort: M] Implement `Get-SpecrewLocalScopeBaseRef` helper function in `extensions/specrew-speckit/scripts/shared-governance.ps1` with priority chain: (1) `$env:GITHUB_BASE_REF` if set, (2) `git symbolic-ref refs/remotes/origin/HEAD`, (3) `git for-each-ref refs/remotes/origin/main refs/remotes/origin/master`, (4) return `$null` on failure (Trace: FR-001, AC1)
 
 - [X] T005 [US1] [assigned_to: Implementer] [effort: M] Modify `validate-governance.ps1` to detect current branch and implement auto-scope default logic: on feature branch with detectable base + no explicit flags → auto-apply `-ChangedOnly` against detected base; on main/master → full-repo; edge cases → full-repo with info banner (Trace: FR-002, FR-005, FR-007, AC2, AC5)
 
@@ -115,8 +115,8 @@
 **Independent Test**: Compare all modified files across three locations; verify byte-for-byte parity (or documented intentional variations); audit trail captures verification.
 
 - [X] T013 [assigned_to: Implementer] [effort: M] Mirror parity verification sweep across all modified locations:
-  - `scripts/internal/shared-governance.ps1` ↔ `extensions/specrew-speckit/scripts/shared-governance.ps1` ↔ `.specify/extensions/specrew-speckit/scripts/shared-governance.ps1`
-  - `scripts/internal/validate-governance.ps1` ↔ `extensions/specrew-speckit/scripts/validate-governance.ps1` ↔ `.specify/extensions/specrew-speckit/scripts/validate-governance.ps1`
+  - `extensions/specrew-speckit/scripts/shared-governance.ps1` ↔ `.specify/extensions/specrew-speckit/scripts/shared-governance.ps1`
+  - `extensions/specrew-speckit/scripts/validate-governance.ps1` ↔ `.specify/extensions/specrew-speckit/scripts/validate-governance.ps1`
   - `extensions/specrew-speckit/squad-templates/coordinator/specrew-governance.md` ↔ `.specify/extensions/specrew-speckit/squad-templates/coordinator/specrew-governance.md`
   - `extensions/specrew-speckit/squad-templates/agents/reviewer/charter.md` ↔ `.specify/extensions/specrew-speckit/squad-templates/agents/reviewer/charter.md`
   - Verify parity; document any intentional variations; create audit trail (Trace: FR-012, AC8)
@@ -405,7 +405,7 @@
 
 - **Preserve Terminology**: Use "the Crew" for references to agent teams; "Squad" is reserved for product and agent system references (per Proposal INDEX guidance).
 - **Scope Reporting**: The `[validator-scope]` banner is primary observational output; no runtime timeouts or timeout fallback behavior added (performance thresholds are acceptance signals only).
-- **Mirror Parity**: All changes must be applied to three locations: primary (`scripts/internal/`), extensions (`extensions/specrew-speckit/`), and `.specify/` mirror. Task T013 verifies parity.
+- **Mirror Parity**: All changes must be applied to two locations: primary (`extensions/specrew-speckit/`) and mirror (`.specify/extensions/specrew-speckit/`). Task T013 verifies parity.
 - **Backward Compatibility**: Existing `-ChangedOnly` and `-BaseBranch` flags must continue to work unchanged. Any script passing explicit flags should see no behavior change.
 - **Edge Cases**: Graceful fallback (full-repo + info banner) is the strategy for undetectable base ref; never fail due to missing remote or detached HEAD.
 - **Empirical Speedup**: Performance thresholds (< 5 seconds for 1-iteration branch) are acceptance signals for QA, not enforced runtime limits. Integration tests measure actual runtime and log evidence.

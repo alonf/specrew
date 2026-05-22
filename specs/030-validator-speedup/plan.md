@@ -111,12 +111,12 @@ Every run emits `[validator-scope]` as the first informational line:
 
 | Phase | Effort | Tasks |
 |---|---|---|
-| Core helpers & logic | 3.0 SP | T-001, T-002, T-003, T-004 |
-| Documentation & governance | 1.25 SP | T-005, T-006, T-008 |
-| Testing & validation | 1 SP | T-007 |
-| Mirror parity & close-out | 1.25 SP | T-009, T-010 |
+| Core helpers & logic | 2.0 SP | T-001, T-002, T-003, T-004 |
+| Documentation & governance | 1.0 SP | T-005, T-006, T-008 |
+| Testing & validation | 1.0 SP | T-007 |
+| Mirror parity & close-out | 1.0 SP | T-009, T-010 |
 
-**Note**: Capacity math verified: 3.0 + 1.25 + 1.0 + 1.25 = 6.5 SP planned effort against 5 SP estimated. This plan stages integration/QA sign-off and mirror parity oversight as shared load across T-009 and T-010 to optimize concurrent review lanes. The core implementation (T-001–T-004) is scoped at 3 SP and can ship independently; documentation/testing (T-005–T-008) adds 1.75 SP; oversight (T-009–T-010) adds 1.25 SP for review and sign-off.
+**Note**: Capacity math verified: 2.0 + 1.0 + 1.0 + 1.0 = 5.0 SP planned effort, matching the Proposal 083 scope estimate. The core implementation (T-001–T-004) is scoped at 2 SP and can ship independently; documentation/testing (T-005–T-008) adds 2 SP; mirror parity + close-out (T-009–T-010) adds 1 SP.
 
 ---
 

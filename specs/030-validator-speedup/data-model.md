@@ -45,7 +45,7 @@ This document defines the **control flow model**, **parameter schema**, and **st
 
 ### `Get-SpecrewLocalScopeBaseRef` (New; FR-001)
 
-**Location**: `scripts/internal/shared-governance.ps1` (+ mirrors in `extensions/specrew-speckit/scripts/shared-governance.ps1` and `.specify/extensions/specrew-speckit/scripts/shared-governance.ps1`)
+**Location**: `extensions/specrew-speckit/scripts/shared-governance.ps1` (mirrored at `.specify/extensions/specrew-speckit/scripts/shared-governance.ps1`)
 
 **Signature**
 
@@ -204,12 +204,12 @@ else
 
 ### Primary-to-Mirror Sync Requirements
 
-Three locations must be kept in sync (FR-012):
+Two locations must be kept in sync (FR-012) for the validator scripts; coordinator governance prompt and reviewer charter follow the same two-location mirror pattern:
 
 | Component | Primary | Mirror 1 | Mirror 2 | Sync Strategy |
 |-----------|---------|----------|----------|---------------|
-| Base-ref helper | `scripts/internal/shared-governance.ps1` | `extensions/specrew-speckit/scripts/shared-governance.ps1` | `.specify/extensions/specrew-speckit/scripts/shared-governance.ps1` | Identical copies; manual sync |
-| Validator script | `scripts/internal/validate-governance.ps1` | `extensions/specrew-speckit/scripts/validate-governance.ps1` | `.specify/extensions/specrew-speckit/scripts/validate-governance.ps1` | Identical copies; manual sync |
+| Base-ref helper | N/A | `extensions/specrew-speckit/scripts/shared-governance.ps1` | `.specify/extensions/specrew-speckit/scripts/shared-governance.ps1` | Identical copies; manual sync |
+| Validator script | N/A | `extensions/specrew-speckit/scripts/validate-governance.ps1` | `.specify/extensions/specrew-speckit/scripts/validate-governance.ps1` | Identical copies; manual sync |
 | Coordinator governance prompt | N/A | `extensions/specrew-speckit/squad-templates/coordinator/specrew-governance.md` | `.specify/extensions/specrew-speckit/squad-templates/coordinator/specrew-governance.md` | Identical copies; manual sync |
 | Reviewer charter | N/A | `extensions/specrew-speckit/squad-templates/agents/reviewer/charter.md` | `.specify/extensions/specrew-speckit/squad-templates/agents/reviewer/charter.md` | Identical copies; manual sync |
 
