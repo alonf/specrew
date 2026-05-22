@@ -62,7 +62,7 @@ Proposals with full source-spec content, ready for `/speckit.specify` ingestion 
 | [070](070-token-economy-mvp.md) | Token Economy MVP (Cost-per-Iteration Tracking + Dashboard Surfacing) | phase-2 | 5 | **URGENT — cost-reduction bundle.** `specs/<feature>/iterations/<N>/cost.yml` records per-boundary token consumption + cost estimate from Proposal 068's catalog; `specrew where` dashboard gains COST section; `specrew cost summary/add/recompute` CLI. MVP slice of Proposal 040 (Token Economy as Governance Driver) — measurement only, no governance layer. |
 | [074](074-code-commentary-standards.md) | Code Commentary Standards (Multi-Level Convention + Preference Dial) | phase-2 | 12-15 | Replaces the current "default to no comments" Implementer instruction with a four-category taxonomy (contract / why-rationale / concept / inline narration), a four-level preference dial (`minimalist` / `standard` / `educational` / `textbook`), and a language-idiomatic convention catalog (C# XML doc, JSDoc, docstring, Javadoc, godoc, rustdoc, PowerShell comment-based help, etc.). Reviewer agent gains a contract-docs verification check. Empirical motivation: 2026-05-21 smoke trial produced a complete .NET 8 snake-game solution with **zero XML doc comments on public APIs** — IntelliSense silently empty. Composes with Proposals 047 / 052 / 015 (dials, profiles, expertise). |
 
-## Candidate (62)
+## Candidate (63)
 
 Idea-form proposals not yet developed into full source specs. Open for discussion; may mature to draft or be withdrawn.
 
@@ -125,6 +125,7 @@ Idea-form proposals not yet developed into full source specs. Open for discussio
 | [094](094-documentation-update-discipline.md) | Documentation Update Discipline (Plan-Time Impact Declaration, Closeout Verification) | phase-2 | 8-12 |
 | [095](095-proposal-lifecycle-state-richness.md) | Proposal Lifecycle State Richness (component of 096) | phase-2 | 8-12 |
 | [096](096-proposal-driven-design-profile.md) | Proposal-Driven Design Profile (Opt-In Umbrella for 028/062/091-promote/093/095) | phase-3 | 8-12 |
+| [099](099-installed-file-sdlc-instruction-audit.md) | Installed-File SDLC Instruction Audit (close the dogfooding deficit between maintainer paste-prompts and installed methodology files) | phase-2 | 5-8 |
 | [097](097-coupling-surface-catalog.md) | Coupling Surface Catalog (Mandatory Dependency Inventory + Hygiene + Risk Surface) | phase-2 | 18-25 (MVP); 30-40 (full vision) |
 | [098](098-strategic-positioning-public-architecture-docs.md) | Strategic Positioning + Public Architecture Documentation | phase-2 | 10-15 |
 | [101](101-external-tracker-sync-provider.md) | External Tracker Sync Provider Abstraction (GitHub Projects / Azure DevOps / Jira / Linear) | phase-2 | 20-30 |
@@ -170,8 +171,8 @@ For roadmap-style viewing, proposals grouped by phase placement:
 - 057 (Roadmap Spine + Input Adapter Pattern — depends on 052; sibling Phase 3 extensibility)
 - 058 (Plugin-Based Multi-Host Distribution — partner to 024; delivery layer for multi-host)
 - 096 (Proposal-Driven Design Profile — opt-in anchor profile bundling 028/062/091-promote/093/095; depends on 052)
-- 099 (Cross-Model Independent Reviewer — structural author-reviewer independence; composes with 089)
-- 100 (Agent-Class Threat Surface — concrete threat catalog with prevention + detection; composes with 097/099)
+- 102 (Cross-Model Independent Reviewer — structural author-reviewer independence; composes with 089)
+- 103 (Agent-Class Threat Surface — concrete threat catalog with prevention + detection; composes with 097/102)
 
 **Phase 4** (token economy + autopilot experiment):
 
