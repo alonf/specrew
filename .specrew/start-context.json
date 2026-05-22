@@ -235,10 +235,10 @@
     "boundary_type": "feature-closeout",
     "feature_ref": "039-launch-mode-boundary-enforcement",
     "feature_path": "C:\\Dev\\Specrew\\specs\\039-launch-mode-boundary-enforcement",
-    "iteration_number": "001",
+    "iteration_number": null,
     "task_id": null,
-    "auth_commit_hash": "8e1063b98566aa95fd0371c363cf5ea802474b5f",
-    "recorded_at": "2026-05-22T18:06:58Z"
+    "auth_commit_hash": "b21c17b92540e951d5de48ff7352fc1390315ca6",
+    "recorded_at": "2026-05-22T18:12:38Z"
   },
   "recovery_session": {
     "entry_mode": "detected-stale-state",
@@ -258,11 +258,11 @@
   "squad_model_overrides": {},
   "prompt_path": "C:\\Dev\\Specrew\\.specrew\\last-start-prompt.md",
   "summary_path": "C:\\Dev\\Specrew\\.specrew\\start-summary.md",
-  "generated_at_utc": "2026-05-22T18:06:58Z",
+  "generated_at_utc": "2026-05-22T18:12:38Z",
   "boundary_enforcement": {
     "enabled": true,
-    "last_authorized_boundary": "iteration-closeout",
-    "pending_next_boundary": "feature-closeout",
+    "last_authorized_boundary": "feature-closeout",
+    "pending_next_boundary": null,
     "verdict_history": [
       {
         "from_boundary": "before-implement",
@@ -279,6 +279,14 @@
         "authorizing_human": "Alon Fliess",
         "recorded_at": "2026-05-22T17:52:40Z",
         "auth_commit_hash": "3a53c46ce4a4154e03c3b9dc802233ddeb1b97aa"
+      },
+      {
+        "authorizing_human": "Alon Fliess",
+        "auth_commit_hash": "b21c17b92540e951d5de48ff7352fc1390315ca6",
+        "verdict_text": "approved for feature-closeout",
+        "from_boundary": "iteration-closeout",
+        "to_boundary": "feature-closeout",
+        "recorded_at": "2026-05-22T18:13:13Z"
       }
     ],
     "bypass_history": []
