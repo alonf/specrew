@@ -242,6 +242,7 @@ This composes with **Proposal 069** (Multi-Host Launch Path) — F-039's skill g
 - **Hard-prerequisite-for**: Proposal 063 (F-040), Proposal 069 (Multi-Host Launch Path)
 - **Composes-with**: Proposals 038, 090, 015
 - **INDEX**: file:///C:/Dev/Specrew/proposals/INDEX.md
+
 ### Implementation status (2026-05-22)
 
 Implementation-boundary work for F-039 / Iteration 001 is now in progress and review-ready evidence is being prepared on the current tree. This proposal remains **not shipped** until the later review/retro/closeout lifecycle boundaries complete.
