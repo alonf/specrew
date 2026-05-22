@@ -13,12 +13,12 @@
 
 - The locked implementation scope remains the three-commit range `edf4104...eeeb90e`: validator core behavior (`8f01c9b`), governance/docs alignment (`afe2292`), and integration coverage (`eeeb90e`).
 - Review approved the committed implementation against FR-001 through FR-012 without reopening any implementation work.
-- Iteration-local review artifacts, retrospective findings, and retro-complete lifecycle truth are now present on this tree; iteration-closeout has not started.
+- Iteration-local review artifacts, retrospective findings, retro-complete lifecycle truth, and iteration-closeout dashboard snapshot are now committed on this tree; iteration-closeout is complete.
 
 ## Notes
 
 - Keep grouped task identifiers aligned to `iterations/001/plan.md` and `iterations/001/tasks.md`.
-- Do not advance beyond the completed retrospective without fresh human authorization for iteration-closeout or later boundaries.
+- Iteration 001 is closed. Feature-closeout requires fresh human authorization before opening.
 
 <!-- >>> specrew-managed escalation-state >>> -->
 ## Repair Escalation
