@@ -8,7 +8,7 @@ This index is the navigation surface for all proposals in this directory. Sorted
 
 ---
 
-## Shipped (16)
+## Shipped (17)
 
 Proposals whose features have shipped to main and are part of Specrew's current capability.
 
@@ -30,6 +30,7 @@ Proposals whose features have shipped to main and are part of Specrew's current 
 | [079](079-version-info-supported-vs-latest.md) | Version Information — Supported vs Latest Distinction | small-fix slice (v0.24.2 bundle) | phase-2 | 5 |
 | [082](082-boundary-commit-and-upstream-push-discipline.md) | Boundary Commit + Upstream Push Discipline (Tier 1 only) | small-fix slice feature-031 (v0.24.2 bundle) — Tier 2 + Tier 3 remain candidate | phase-2 | 5 (Tier 1) |
 | [083](083-local-validator-speedup.md) | Local Validator Auto-Scope for Feature-Branch Invocations | feature-030 (v0.24.2 bundle) | phase-2 | 5 |
+| [090](090-closeout-lifecycle-sync-commands.md) | Closeout Lifecycle Sync Commands (Structural Fix for Crew-Bypass Bug Class) | feature-032 (v0.24.3 bundle) | phase-2 | 6.5 |
 
 ## Draft (16)
 

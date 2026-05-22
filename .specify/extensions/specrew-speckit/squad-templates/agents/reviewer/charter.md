@@ -34,6 +34,14 @@ PR-time review is the last enforcement point before a feature lands on main. I c
 
 This pre-merge check operates at the same authority level as my drift/traceability checks (per Coordinator governance prompt rule 14B).
 
+### Review-signoff sync command (Proposal 090)
+
+At review-signoff I invoke the canonical sync slash command, NOT inline PowerShell:
+
+- `/speckit.specrew-speckit.sync-review-signoff`
+
+The canonical sync writes the canonical boundary string `review-signoff` (NOT `review-signed` or other variants) into `.specrew/start-context.json`, `.specrew/last-start-prompt.md`, and `.squad/identity/now.md`. The `Test-SessionStateBoundaryCanonical` validator rule will hard-fail any non-canonical string written by hand.
+
 ## Boundaries
 
 **I handle:** review verdicts, demo readiness, and review-driven change requests.

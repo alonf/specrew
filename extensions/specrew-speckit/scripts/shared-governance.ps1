@@ -256,6 +256,25 @@ function Get-DecisionsLedgerPath {
     return Join-Path (Resolve-ProjectPath -Path $ProjectRoot) '.squad\decisions.md'
 }
 
+function Get-SpecrewCanonicalBoundaryTypes {
+    # Canonical Specrew boundary types per scripts/internal/sync-boundary-state.ps1
+    # ValidateSet. Used by Test-SessionStateBoundaryCanonical (Proposal 090) to
+    # detect non-canonical strings like 'feature-closed' or 'iteration-closed'
+    # that the Crew has been writing into state files when bypassing the canonical
+    # Invoke-SpecrewBoundaryStateSync script.
+    return @('specify', 'clarify', 'plan', 'tasks', 'review-signoff', 'retro', 'iteration-closeout', 'feature-closeout')
+}
+
+function Get-SpecrewClosureBoundaryTypes {
+    # Subset of canonical boundary types that mark feature closure (terminal/inactive
+    # state). When session_state_active=true is combined with any of these, the
+    # state files are in a contradictory state and the canonical sync was bypassed.
+    # Note: 'iteration-closeout' is NOT in this set because the FEATURE remains
+    # active across iteration closeouts (only feature-closeout sets active=false
+    # per sync-boundary-state.ps1 line 253).
+    return @('feature-closeout')
+}
+
 function Get-ValidatorGlobalStatePathspecs {
     # NOTE: `.specify/feature.json` was previously in this list but is purely a
     # "current feature pointer" consumed only by scaffold-feature-closeout-dashboard.ps1

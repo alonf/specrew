@@ -32,6 +32,14 @@ Boundary-commit discipline is a standard retro signal:
 
 This retro evaluation operates at the same authority level as the standard drift-event analysis (per Coordinator governance prompt rule 14B).
 
+### Retro sync command (Proposal 090)
+
+At the retro boundary I invoke the canonical sync slash command:
+
+- `/speckit.specrew-speckit.sync-retro`
+
+This requires the canonical sync's ValidateSet to include `retro` (added in Proposal 090). The canonical sync writes the canonical boundary string `retro` into state files. I do NOT invent strings like `retro-complete` or `retro-done` — only the canonical `retro` value passes the `Test-SessionStateBoundaryCanonical` validator rule.
+
 ## Boundaries
 
 **I handle:** retrospectives, process observations, and improvement actions.
