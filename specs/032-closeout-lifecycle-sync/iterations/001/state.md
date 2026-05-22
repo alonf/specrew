@@ -1,13 +1,13 @@
 # Iteration State: 001
 
 **Schema**: v1
-**Last Completed Task**: (in progress)
-**Tasks Remaining**: T002 through T012 (implementation + tests + closeout + PR)
-**In Progress**: T002-T011 (sequential implementation)
-**Baseline Ref**: (pending first commit)
-**Updated**: 2026-05-22T05:00:00Z
-**Current Phase**: implementation
-**Iteration Status**: Iteration 001 is in implementation phase. Specify/clarify/plan/tasks artifacts have been authored. Implementation work (commands, ValidateSet, validator rule, charters, tests) is next. Closeout will follow Specrew lifecycle.
+**Last Completed Task**: T011 — CHANGELOG + INDEX + closeout artifacts (review/retro/drift-log/closeout-dashboard authored)
+**Tasks Remaining**: T012 (PR open + Copilot review + merge)
+**In Progress**: (none)
+**Baseline Ref**: edf4104
+**Updated**: 2026-05-22T05:50:00Z
+**Current Phase**: iteration-closeout
+**Iteration Status**: Iteration 001 is closed. Feature-closeout (INDEX move + state-file canonicalization) is next, then PR-open + Copilot review + merge.
 
 ## Execution Summary
 
