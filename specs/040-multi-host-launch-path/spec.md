@@ -14,7 +14,16 @@
 - Q: Antigravity host scope — ship in F-040 or defer to a follow-up slice? → A: **Defer to follow-up slice.** F-040 ships copilot/claude/codex only. Antigravity's working-directory flag is undocumented; remote-control surface unverified; 2026-06-18 Gemini free-tier deadline adds risk. Antigravity stays in Proposal 069's scope but ships as a separate small-fix slice after F-040 proves the dispatch pattern.
 - Q: `--host auto` behavior — simple loop in F-040 or defer to Proposal 104? → A: **Defer to Proposal 104.** F-040 supports explicit `--host copilot|claude|codex`. No `--host` flag means current Copilot default. First-run probe + last-host history is a UX concern owned by Proposal 104 (F-043).
 - Q: Per-host skill verification — fatal, warning, or silent? → A: **Non-fatal warning.** Log a warning naming each missing skill but launch the host anyway. Matches current Copilot behavior; user recovers via `specrew init` re-run.
-- Q: Coordinator prompt on non-Squad hosts — leave as-is or minimal directive surgery? → A: **Minimal surgery in F-040.** Add per-host prompt-header swap (`You are <Crew Name>...`) and strip the most Squad-specific lines (rules 12, 35, 37, 42-44) for non-Squad hosts. Cleaner external-tester UX. Scope-bump from ~10-12 SP to ~12-15 SP. Proposal 024 Slice 2 still owns the full directive-surgery work; F-040's surgery is a targeted subset.
+- Q: Coordinator prompt on non-Squad hosts — leave as-is or minimal directive surgery? → A: **Minimal surgery in F-040.** Two concerns separated:
+  - **Universal header swap** (ALL hosts, including Copilot): replace `"You are Squad running inside a Specrew-bootstrapped repository."` with `"You are the Crew team coordinator running inside a Specrew-bootstrapped repository."` — aligns with the INDEX.md 2026-05-21 terminology note ("the Crew" = team role; "Squad" = npm runtime product). Single literal string change, no per-host branching.
+  - **Squad-runtime-path directive strip** (NON-Copilot hosts only): strip rules 12, 35, 37, 42-44 that reference `.squad/decisions.md`, `.squad/config.json`, `agentModelOverrides`, `sync-squad-model-overrides.ps1`. For Copilot+Squad these rules stay (accurate). For Claude/Codex these paths don't exist; stripping prevents false instructions.
+
+  Proposal 024 Slice 2 still owns the full directive-surgery work; F-040's surgery is a targeted subset. Scope still ~12-15 SP (the unified header is simpler than per-host headers).
+
+- Q: How should Specrew handle host-specific capabilities — hooks, skills, slash commands? → A: **F-040 manages SKILLS + SLASH COMMANDS via existing F-021 multi-deploy; defers HOOKS to a future proposal.** Detailed capability comparison in research.md Task 5. Key findings affecting F-040:
+  - All three hosts have skill directories already populated by F-021 (`.github/skills/`, `.claude/skills/`, `.agents/skills/`). FR-009 non-fatal warning applies uniformly.
+  - **Codex has NO user-defined slash commands** — skill files at `.agents/skills/` are deployed for future-proof but NOT invokable on Codex today. FR-009 logs an informational note on Codex (not a warning, since it's not a regression — just a host limitation).
+  - **Claude has rich hooks (PreToolUse, PostToolUse, SubagentStart, Stop, TaskCreated, TaskCompleted, etc.) — Copilot has none.** Future opportunity: F-039 boundary enforcement could move from skill-side gates to Claude's native hook layer (mechanically more robust). Out-of-scope for F-040; flagged as a future-proposal candidate.
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -54,19 +63,19 @@ The user wants `--remote` (mobile/web steering) and `--allow-all`/`--autonomous`
 
 ---
 
-### User Story 3 — Per-host skill discoverability verification (Priority: P3)
+### User Story 3 — Per-host skill discoverability verification with host-capability awareness (Priority: P3)
 
-Specrew already deploys slash-command skills to `.claude/skills/`, `.github/skills/`, `.agents/skills/` per F-021 / Proposal 064. When launching on a specific host, Specrew verifies the host-appropriate skill directory is populated so the user gets actionable feedback if skills are missing.
+Specrew already deploys slash-command skills to `.claude/skills/`, `.github/skills/`, `.agents/skills/` per F-021 / Proposal 064. When launching on a specific host, Specrew verifies the host-appropriate skill directory is populated AND surfaces host-capability differences so the user has accurate expectations (skills + slash-command invocation work on Copilot/Claude but NOT on Codex per 2026-05-23 research).
 
-**Why this priority**: A user launching `--host claude` after init expects `/specrew-where` to work inside the Claude session. If the skill files are missing or malformed, the user discovers the failure only when they try the skill mid-session.
+**Why this priority**: A user launching `--host claude` after init expects `/specrew-where` to work inside the Claude session. If the skill files are missing or malformed, the user discovers the failure only when they try the skill mid-session. A user launching `--host codex` needs to know upfront that slash commands aren't supported on Codex regardless of skill deployment status.
 
-**Independent Test**: Delete `.claude/skills/specrew-where/SKILL.md` from a fresh project, then run `specrew start --host claude`. Verify Specrew logs a warning naming the missing skill before launching the host CLI.
+**Independent Test**: Delete `.claude/skills/specrew-where/SKILL.md` from a fresh project, then run `specrew start --host claude`. Verify Specrew logs a warning naming the missing skill before launching the host CLI. Separately: run `specrew start --host codex` on a fresh project and verify the informational note about Codex's no-slash-command limitation is logged.
 
 **Acceptance Scenarios**:
 
 1. **Given** `specrew start --host claude`, **When** Specrew checks the skill catalog, **Then** missing or malformed files under `.claude/skills/` trigger a non-fatal warning naming each missing skill
 2. **Given** `specrew start --host copilot`, **When** Specrew checks the skill catalog, **Then** the corresponding check runs against `.github/skills/`
-3. **Given** `specrew start --host codex`, **When** Specrew checks the skill catalog, **Then** Specrew skips deep skill verification (Codex has no user-defined slash-command surface per 2026-05-23 research) and logs an informational note that `.agents/skills/` is deployed as a future-proof path
+3. **Given** `specrew start --host codex`, **When** Specrew checks the skill catalog, **Then** Specrew skips deep skill verification (Codex has no user-defined slash-command surface per 2026-05-23 research) AND logs an informational note explaining that `.agents/skills/*` is deployed as a future-proof path but NOT invokable as slash commands on Codex today (per FR-013)
 
 ---
 
@@ -94,7 +103,9 @@ Specrew already deploys slash-command skills to `.claude/skills/`, `.github/skil
 | FR-008 | Specrew MUST accept `--allow-all`, `--autopilot`, `--autonomous` switches and translate per-host: copilot keeps `--allow-all`/`--autopilot` natively; claude maps `--allow-all` → `--dangerously-skip-permissions`; codex maps to `--full-auto`. `--autonomous` (Specrew's own flag per Proposal 066) stays as a Specrew-side concept routed to lifecycle boundary enforcement and is NOT translated per-host |
 | FR-009 | Specrew MUST perform per-host skill-discoverability verification before launch and log NON-FATAL warnings if expected skill files are missing or malformed on the active host's skill root; launch proceeds anyway |
 | FR-010 | The bootstrap context (`.specrew/last-start-prompt.md` + `.specrew/start-context.json`) MUST remain unchanged in shape across hosts; only the invocation command differs. The bootstrap-context body (`last-start-prompt.md`) MUST be regenerated per-host to apply FR-011's minimal coordinator-prompt surgery |
-| FR-011 | When the selected host is NOT copilot, Specrew MUST apply minimal coordinator-prompt surgery to the body of `last-start-prompt.md`: (a) replace the opening line `"You are Squad running inside a Specrew-bootstrapped repository."` with a host-appropriate header (`"You are the Crew running inside a Specrew-bootstrapped repository, hosted by <kind>."`); (b) strip directives that reference `.squad/decisions.md`, `.squad/config.json`, `agentModelOverrides`, `sync-squad-model-overrides.ps1` (rules 12, 35, 37, 42-44 per Proposal 024's Category D taxonomy). Other directives stay verbatim; full per-host directive surgery is Proposal 024 Slice 2 |
+| FR-011 | Specrew MUST apply a **universal header rewrite** to the body of `last-start-prompt.md` for ALL hosts (including Copilot): replace `"You are Squad running inside a Specrew-bootstrapped repository."` with `"You are the Crew team coordinator running inside a Specrew-bootstrapped repository."`. This aligns with the INDEX.md 2026-05-21 terminology note ("the Crew" = team role; "Squad" = npm runtime product). Single literal string change; no per-host branching at the header layer |
+| FR-012 | When the selected host is NOT copilot, Specrew MUST additionally strip directives that reference `.squad/decisions.md`, `.squad/config.json`, `agentModelOverrides`, `sync-squad-model-overrides.ps1` (rules 12, 35, 37, 42-44 per Proposal 024's Category D taxonomy). For copilot+Squad these rules stay (the referenced paths exist and are accurate). For claude/codex these paths don't exist; stripping prevents false instructions. Other directives stay verbatim; full per-host directive surgery is Proposal 024 Slice 2 |
+| FR-013 | When the selected host is Codex, Specrew MUST log an informational note (not warning) that `.agents/skills/*` files are deployed but NOT invokable as slash commands on Codex (Codex has no user-defined slash-command surface per 2026-05-23 research). This is a host limitation, not a Specrew regression |
 
 ## Out of Scope
 
@@ -104,8 +115,11 @@ This feature explicitly does NOT include:
 - **`.specrew/host-history.yml` persistence + `specrew host` command** — Proposal 104
 - **`--host auto` smart selection** — explicit `auto` is rejected with guidance in F-040; reserved for Proposal 104
 - **Antigravity host** — explicit `antigravity` is rejected with guidance in F-040; reserved for a Proposal 069 follow-up small-fix slice once `agy` working-directory + session-ID issues clear
-- **Full coordinator-prompt directive surgery** (all 45 directives per Proposal 024's Category D taxonomy) — Proposal 024 Slice 2. F-040 only does the minimum surgery (header swap + strip rules 12, 35, 37, 42-44) per FR-011
-- **Per-host Crew runtime install for Claude/Codex** (subagent files, `.codex/agents/*.toml`, etc.) — Proposal 024 Slice 3. F-040 launches non-Squad hosts in bootstrap-context-only mode
+- **Full coordinator-prompt directive surgery** (all 45 directives per Proposal 024's Category D taxonomy) — Proposal 024 Slice 2. F-040 only does the minimum surgery (universal header + strip rules 12/35/37/42-44 for non-Squad hosts) per FR-011/FR-012
+- **Host-native HOOKS deployment** — Claude Code has rich hooks (PreToolUse, PostToolUse, SubagentStart, Stop, TaskCreated, TaskCompleted) configured in `.claude/settings.json`. Antigravity has hooks too. Copilot has none. F-040 does NOT deploy host-native hooks. **Future opportunity**: F-039 boundary enforcement could move from skill-side gates to Claude's hook layer (mechanically more robust). Flagged as a future-proposal candidate (likely a Proposal 024 Slice 3 sub-component or a new Proposal addressing host-native hook deployment). For F-040, boundary enforcement stays at the Specrew-authored slash-command + on-disk-state layer, which works uniformly across all hosts
+- **MCP server wiring per host** — Each host has its own MCP convention (`.mcp.json` for Claude, `.codex/mcp.toml` for Codex, recent Copilot MCP additions). F-040 does not deploy MCP servers; out-of-scope
+- **`CLAUDE.md` / `AGENTS.md` project memory files** — Claude Code uses `CLAUDE.md`; Codex uses `AGENTS.md`; Antigravity also uses `AGENTS.md`. F-040 does not write these. Out-of-scope (future Proposal 024 Slice 3 candidate)
+- **Subagent / agent-team deployment per host** — `.claude/agents/*.md`, `.codex/agents/*.toml`. F-040 launches non-Squad hosts in bootstrap-context-only mode. Per-host Crew runtime install is Proposal 024 Slice 3
 - **Cost-aware model routing** — Proposal 068 / F-041 (next feature)
 - **Token economy + cost.yml dashboard surface** — Proposal 070 / F-042
 - **Mid-session host switching** — must end session and restart with different `--host` flag

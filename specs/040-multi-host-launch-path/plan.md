@@ -32,7 +32,8 @@ Antigravity and `--host auto` are accepted by the parser but rejected with expli
 | Working-directory flag | claude `--add-dir <path>` (same name as Copilot, confirmed); codex `--cd <path>` (in `codex exec` subcommand) | research.md Task 1 |
 | Permission-flag translation | `--allow-all` → copilot `--allow-all`, claude `--dangerously-skip-permissions`, codex `--full-auto` | research.md Task 2 |
 | Remote-control translation | `--remote` → copilot `--remote`, claude `--remote-control`, codex warn-and-continue | research.md Task 2 |
-| Coordinator-prompt surgery scope | Minimum viable: header swap + strip rules 12, 35, 37, 42-44 only | clarify decision Q4 |
+| Coordinator-prompt surgery scope | Two separate concerns: (a) **universal header rewrite** for ALL hosts (`"You are the Crew team coordinator..."` replaces the Squad-specific opening line — per FR-011 + INDEX.md 2026-05-21 terminology note); (b) **Squad-runtime-path strip** for non-Copilot hosts only (rules 12/35/37/42-44 per FR-012) | clarify decision Q4 (refined 2026-05-23) |
+| Host capability handling | F-040 manages skills + slash-commands (uniformly via existing F-021 deploy); defers hooks/MCP/CLAUDE.md/AGENTS.md/subagents | research.md Task 5 |
 | Skill-verification policy | Non-fatal warning naming each missing skill; launch proceeds | clarify decision Q3 |
 | Antigravity / `--host auto` posture | Accept in parser, reject with "deferred" guidance | clarify decisions Q1 + Q2 |
 | Host validation timing | Validate host kind before any other Specrew work; missing CLI = exit-1 with install guidance | research.md Task 3 |
@@ -41,7 +42,7 @@ Antigravity and `--host auto` are accepted by the parser but rejected with expli
 
 ## Phase 1 Design Artifacts
 
-- [research.md](./research.md) — four research tasks: verified CLI surfaces, flag-translation evidence, host-validation flow, cross-platform launch parity
+- [research.md](./research.md) — five research tasks: verified CLI surfaces, flag-translation evidence, host-validation flow, cross-platform launch parity, host capability comparison (hooks/skills/slash-commands/subagents/MCP/project-memory)
 - [data-model.md](./data-model.md) — additive fields on `.specrew/start-context.json` schema v2
 - [contracts/host-launch-interface.md](./contracts/host-launch-interface.md) — per-host invocation builders, flag-translation helper, skill-verification helper signatures
 - [quickstart.md](./quickstart.md) — exact rehearsal commands for each host + each flag-translation matrix cell + missing-host guidance + skill-warning surface
@@ -55,7 +56,7 @@ Antigravity and `--host auto` are accepted by the parser but rejected with expli
 | `scripts\specrew-start.ps1` | Add `-Host <kind>` parameter + `--host` CLI alias parser; introduce `Get-SpecrewHostKind`, `Get-SpecrewHostLaunchInvocation`, `Test-SpecrewHostAvailable`, `Get-HostFlagTranslation` helpers; rewrite line 3131 dispatch | Single load-bearing literal per 2026-05-23 coupling audit |
 | `scripts\internal\detect-hosts.ps1` (new) | Probe PATH for `copilot`, `claude`, `codex`; return availability map; populate `available_hosts` in start-context.json | Encapsulates the detection logic; testable in isolation |
 | `scripts\internal\host-flag-translation.ps1` (new) | Per-host `--remote`, `--allow-all`, `--autopilot` translation map; warn-and-continue helper for unsupported flags | First instance of the per-host flag-translation framework; future flags compose in |
-| `scripts\internal\coordinator-prompt-surgery.ps1` (new) | For non-Squad hosts: header rewrite + strip Squad-specific directives (rules 12, 35, 37, 42-44) | Minimum viable per FR-011 / clarify Q4 |
+| `scripts\internal\coordinator-prompt-surgery.ps1` (new) | (a) Universal header rewrite for ALL hosts (`"You are Squad..."` → `"You are the Crew team coordinator..."`) per FR-011; (b) For non-Copilot hosts only: strip Squad-runtime-path directives (rules 12/35/37/42-44) per FR-012 | Minimum viable per clarify Q4 (refined 2026-05-23) |
 | `extensions\specrew-speckit\scripts\shared-governance.ps1` | No changes expected; bootstrap-context handshake already host-portable. If skill-verification helper is needed in shared-governance, add `Test-HostSkillRoot -Host <kind>` | Mirror parity preserved automatically (no edits → no mirror sync needed) |
 | `.specrew\start-context.json` schema | Additive fields `selected_host`, `available_hosts`, `crew_runtime_status` — backwards-compatible with v2 | No schema bump; F-039's schema v2 already accommodates additive fields |
 | `tests\integration\multi-host-launch-path.tests.ps1` (new) | Per-host invocation shape; flag translation matrix; missing-host guidance; skill warnings; persistence | Standalone test suite per Proposal 042 conventions |
@@ -76,7 +77,7 @@ Antigravity and `--host auto` are accepted by the parser but rejected with expli
 
 | Risk | Why it matters | Planned control |
 |---|---|---|
-| Copilot regression | F-040's primary contract is "no change to default flow" | Integration test asserts byte-identical Copilot invocation; `--host copilot` and no-`--host` paths both checked |
+| Copilot regression | F-040's primary contract is "no change to default flow" (behavioral) — the universal header swap is a deliberate behavioral change per FR-011 + INDEX.md 2026-05-21 terminology, but launch CLI invocation stays argv-identical for `--host copilot` and no-`--host` paths | Integration test asserts argv-identical Copilot invocation (launch path); separate test asserts header rewrite happened in body of `last-start-prompt.md` |
 | Per-host invocation shape errors | Wrong flag name = silent broken launch | research.md Task 1 cites every flag with primary-doc URL; integration tests assert exact argv shape |
 | Cross-platform parity | Windows uses `Start-Process pwsh`; Linux uses `SPECREW_DEFERRED_LAUNCH_FILE` | research.md Task 4 documents both paths; integration tests exercise both pattern via `$IsWindows` switch |
 | Coordinator-prompt surgery missing terminology | "Squad" still appears in 40+ directives even after rule strip | Mitigation: FR-011 is documented as "minimum viable"; Proposal 024 Slice 2 is the full fix; visual diff in test suite ensures the four targeted rules are stripped and nothing else |
@@ -91,7 +92,7 @@ Antigravity and `--host auto` are accepted by the parser but rejected with expli
 - Skill-warning surface: 3 cases (missing skill on each host triggers warning)
 - `.specrew/start-context.json` schema additive-field validation
 - Cross-platform branches: Windows + Linux launch paths both verified (CI matrix already exists)
-- Coordinator-prompt surgery: header swap verified + 4 rules stripped + everything else unchanged
+- Coordinator-prompt surgery: universal header rewrite verified on all 3 hosts + 4 rules stripped on non-Copilot hosts only + everything else unchanged
 - Antigravity / `--host auto` rejection: explicit deferred-guidance text + exit code 1
 
 ---
@@ -122,7 +123,7 @@ Iteration 001 (target: this single iteration covers full feature scope):
 2. **Host detection + PATH probe** (~1 SP) — `scripts\internal\detect-hosts.ps1`, parallel probe, `available_hosts` in start-context
 3. **Per-host launch invocations** (~3 SP) — three dispatch arms in `Get-SpecrewHostLaunchInvocation`; cross-platform parity
 4. **Flag translation helper** (~2 SP) — `scripts\internal\host-flag-translation.ps1`; remote / allow-all / autopilot per host
-5. **Coordinator-prompt surgery** (~2 SP) — `scripts\internal\coordinator-prompt-surgery.ps1`; render-time rewrite for non-Squad hosts
+5. **Coordinator-prompt surgery** (~2 SP) — `scripts\internal\coordinator-prompt-surgery.ps1`; (a) universal header rewrite for ALL hosts; (b) Squad-runtime-path strip for non-Copilot hosts only
 6. **Skill-discoverability verification** (~1 SP) — `Test-HostSkillRoot` per host; non-fatal warnings
 7. **start-context.json persistence** (~0.5 SP) — additive fields: `selected_host`, `available_hosts`, `crew_runtime_status`
 8. **Integration test suite** (~2 SP) — `tests\integration\multi-host-launch-path.tests.ps1` covering all 6 verification-evidence categories

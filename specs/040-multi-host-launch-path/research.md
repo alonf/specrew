@@ -155,6 +155,45 @@ The existing CI matrix at `.github/workflows/specrew-ci.yml` already runs on Win
 
 ---
 
+## Task 5: Host capability comparison (hooks, skills, slash commands, subagents, MCP, project memory)
+
+**Decision**: F-040 manages SKILLS + SLASH COMMANDS (uniformly via existing F-021 multi-host deploy) and applies a **universal coordinator-prompt header** for all hosts. F-040 EXPLICITLY DEFERS hook deployment, MCP wiring, project-memory files, and subagent files to future proposals — those are not blockers for the launch-path MVP but are real divergences worth documenting.
+
+### Capability matrix
+
+| Capability | Copilot CLI | Claude Code | Codex CLI | F-040 treatment |
+|---|---|---|---|---|
+| **User-defined slash commands** | ✅ `.github/skills/<name>.md` → `/specrew-<name>` | ✅ `.claude/skills/<name>/SKILL.md` (agentskills.io standard) → `/specrew-<name>` | ❌ **NOT SUPPORTED** | F-040 deploys skill files per F-021; FR-013 logs informational note on Codex |
+| **Skills as reusable behaviors** | ✅ Same as slash commands | ✅ Same; richer YAML frontmatter | ⚠️ No skill surface; subagents in `.codex/agents/*.toml` cover some overlap | Skills already deployed; F-040 verifies discoverability per host (FR-009) |
+| **Hooks (lifecycle interceptors)** | ❌ **None** | ✅ Rich: `PreToolUse`, `PostToolUse`, `SubagentStart`, `Stop`, `TaskCreated`, `TaskCompleted`, more — configured in `.claude/settings.json` | ⚠️ Unclear; subagents have lifecycle but hook surface undocumented at research time | **Out-of-scope.** Future opportunity: F-039 boundary enforcement could move from skill-side gates to Claude's hook layer |
+| **Subagents (multi-agent teams)** | ⚠️ Via `--agent <name>` (Squad) | ✅ `.claude/agents/*.md` with YAML frontmatter; `model:` field per-agent | ✅ `.codex/agents/*.toml`; per-agent `model = "..."` | **Out-of-scope.** Proposal 024 Slice 3 owns per-host Crew runtime install |
+| **MCP support** | ⚠️ Limited (recent addition) | ✅ First-class via `.mcp.json` project-scope | ✅ First-class via `.codex/mcp.toml` | **Out-of-scope.** Not deployed by F-040 |
+| **Per-subagent model override** | ✅ `agentModelOverrides` in `.squad/config.json` | ✅ `model:` in subagent frontmatter | ✅ `model = "..."` in agent .toml | Proposal 068 / F-041 — per-host `selector_strategy` enum |
+| **Project memory** | ⚠️ None native | ✅ `CLAUDE.md` at project root | ✅ `AGENTS.md` at project root | **Out-of-scope.** Future Proposal 024 Slice 3 candidate |
+| **Working-directory flag** | `--add-dir <path>` | **`--add-dir <path>` (SAME NAME!)** | `--cd <path>` (in `codex exec`) | FR-003/FR-004; per-host invocation builders |
+| **Permission bypass** | `--allow-all` | `--dangerously-skip-permissions` | `--full-auto` / `--yolo` | FR-008 flag-translation |
+| **Remote control** | `--remote` | `--remote-control` / `--rc` | None | FR-007 flag-translation with Codex warn-and-continue |
+| **Bootstrap prompt input** | `-i <prompt>` | `-p <prompt>` (or `--bare -p` hermetic) | `codex exec <prompt>` | FR-003/FR-004; per-host invocation builders |
+| **Coordinator persona** | "Squad" via `--agent Squad` | Implicit via `.claude/agents/*.md` deployment + per-launch prompt | Implicit via `.codex/agents/*.toml` + per-launch prompt | **Universal header (FR-011)**: "You are the Crew team coordinator running inside a Specrew-bootstrapped repository." |
+
+### Sources
+
+- Copilot CLI: <https://docs.github.com/en/copilot/how-tos/copilot-cli>; existing `scripts\specrew-start.ps1` baseline
+- Claude Code: <https://code.claude.com/docs/en/cli-reference>, <https://code.claude.com/docs/en/hooks>, <https://code.claude.com/docs/en/subagents>, [agentskills.io](https://agentskills.io); 2026-05-23 research agent
+- Codex CLI: <https://developers.openai.com/codex/cli>; AGENTS.md convention; 2026-05-23 research agent
+
+### Key findings affecting F-040 scope
+
+1. **Universal header is correct**: per the INDEX.md 2026-05-21 terminology note, "the Crew" is the team role; "Squad" is the npm runtime product. The coordinator persona is the same role regardless of host runtime. Single header line `"You are the Crew team coordinator running inside a Specrew-bootstrapped repository."` works for all three hosts. The Squad-specific runtime paths (rules 12, 35, 37, 42-44) are a separate concern and get stripped only for non-Squad hosts (FR-012).
+
+2. **Codex's no-slash-command limitation is real**: F-021 deploys skill files to `.agents/skills/` (which is also Antigravity's native directory by coincidence), but Codex itself doesn't expose user-defined slash commands. The skill files sit there for future-proof but aren't invokable. FR-013 surfaces this honestly to users running `--host codex`.
+
+3. **Claude's hooks are a major upgrade opportunity for F-039**: F-039's launch-mode boundary enforcement is implemented as Specrew-authored slash-command-layer gates (skill-side). Claude's `PreToolUse` hook could enforce the same boundaries at the host's tool-call layer — mechanically more robust because the host runtime itself refuses the call, not the agent's prose interpretation. This is queued as a future-proposal candidate (likely a new proposal addressing host-native hook deployment, or a Proposal 024 Slice 3 sub-component). Specifically: when F-040 + Proposal 068 + Proposal 070 ship and a non-trivial percentage of work runs on Claude, the case for porting F-039 enforcement to hooks becomes concrete.
+
+4. **MCP wiring + project memory + subagents are all out-of-scope for F-040**: each is a real divergence per-host but none blocks the launch-path MVP. They become important when downstream projects start using non-Copilot hosts at scale — coupled with Proposal 024 Slice 3 (per-host Crew runtime install).
+
+---
+
 ## Cross-references
 
 - file:///C:/Dev/Specrew/proposals/069-multi-host-launch-path.md (source proposal, enriched 2026-05-23)
