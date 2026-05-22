@@ -749,7 +749,17 @@ function Invoke-SpecrewBoundaryStateSync {
         }
     }
 
-    Update-SpecrewMarkdownStateFile -Path $paths.PromptPath -SessionState $sessionState -DefaultBody (Get-SpecrewPromptBody -SessionState $sessionState)
+    # Post-F-029 corrigendum: at feature-closeout, force body refresh so the
+    # resume directive does not persist into the next session and trick the Crew
+    # into re-investigating the closed feature. Other boundaries preserve any
+    # human-edited body via the existing "preserve existing body" path.
+    $promptBody = Get-SpecrewPromptBody -SessionState $sessionState
+    Update-SpecrewMarkdownStateFile `
+        -Path $paths.PromptPath `
+        -SessionState $sessionState `
+        -DefaultBody $promptBody `
+        -PreferredBody $promptBody `
+        -UsePreferredBody:($BoundaryType -eq 'feature-closeout')
     try {
         $baselineCommitHash = Get-SpecrewCurrentHeadCommitHash -ProjectRoot $paths.ProjectRoot
         Update-BaselineCommitHashInFrontmatter -PromptPath $paths.PromptPath -NewBaselineHash $baselineCommitHash

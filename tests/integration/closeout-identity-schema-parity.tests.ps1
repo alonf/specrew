@@ -111,6 +111,37 @@ foreach ($pattern in @(
 
 Write-Pass 'Feature closeout prompt preserves inactive session state and refreshed baseline hash'
 
+# Post-F-029 corrigendum (2026-05-21): at feature-closeout, the prompt body
+# must reflect the inactive-session state ("No active feature" template from
+# Get-SpecrewPromptBody's active='false' branch). Before the fix, the body
+# retained "Mode: resume-feature" + Welcome Back Snapshot from earlier
+# boundaries, tricking the Crew into re-investigating the closed feature on
+# next specrew start.
+foreach ($pattern in @(
+        '# Specrew Session State',
+        'No active feature',
+        ("Last feature:\s*{0}" -f [regex]::Escape('022-hotfix-schema-tests'))
+    )) {
+    if ($promptContent -notmatch $pattern) {
+        Write-Fail "Closeout prompt body did not refresh to 'No active feature' template: missing $pattern"
+        exit 1
+    }
+}
+
+foreach ($antiPattern in @(
+        'Mode:\s*resume-feature',
+        '## Welcome Back Snapshot',
+        'Active feature directory:\s*',
+        '### Suggested Next Actions'
+    )) {
+    if ($promptContent -match $antiPattern) {
+        Write-Fail "Closeout prompt body still contains stale resume-feature content: $antiPattern"
+        exit 1
+    }
+}
+
+Write-Pass 'Feature closeout prompt body refreshes to inactive-session template (post-F-029 corrigendum)'
+
 $startResult = Invoke-TestScript -ScriptPath $startScript -ArgumentList @('-ProjectPath', $projectRoot, '-NoLaunch')
 if ($startResult.ExitCode -ne 0) {
     Write-Fail ("specrew start should accept closeout identity state without a special parser path:`n{0}" -f ($startResult.Output -join [Environment]::NewLine))

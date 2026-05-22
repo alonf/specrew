@@ -103,11 +103,11 @@ Example transformation:
 
 > **What I need from you**:
 >
->   1. **approve** — accept the verdict and advance to retro
->   2. **reject** — return to implementation with specific concerns
->   3. **request changes** — accept conditionally with notes
->   4. **Other (specify)** — short alternative answer
->   5. **More chat instructions** — back to standard prompt for richer input
+> 1. **approve** — accept the verdict and advance to retro
+> 2. **reject** — return to implementation with specific concerns
+> 3. **request changes** — accept conditionally with notes
+> 4. **Other (specify)** — short alternative answer
+> 5. **More chat instructions** — back to standard prompt for richer input
 
 The "More chat instructions" path is the **methodological replacement for the file-pointer workaround** documented in memory `[[feedback-long-handoff-via-file-pointer]]`. When 078 ships, that workaround becomes unnecessary — the user picks option 5 and the prompt widens back to rich-input mode.
 
@@ -124,6 +124,7 @@ Squad's prose must lead with **the substantive outcome of the work**, not the pr
 > Feature closeout is blocked. The feature cannot be closed truthfully yet.
 > Files changed: .squad\decisions.md, .squad\agents\spec-steward\history.md.
 > Blockers:
+>
 > 1. tasks.md still has T035-T038 open.
 > ...
 
@@ -149,6 +150,7 @@ Add a validator rule (composes with Proposal 030 Quality Hardening Bundle) that 
 - Substance-lead ordering (leads with outcome before ceremony)?
 
 Grades severity:
+
 - HARD-FAIL when all three sections are missing
 - WARNING when internal gate names leak into user prose
 - WARNING when no options offered

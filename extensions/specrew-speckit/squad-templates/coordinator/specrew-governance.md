@@ -99,6 +99,15 @@ These rules override generic Squad coordination whenever the repository is boots
     - Use `file:///` artifact references in authored narration and handoffs outside approved exempt contexts.
     - After each committed boundary handoff, synchronize `Commit Reference` away from `pending`, keep `Recorded At` in UTC seconds precision, run a stale-reference scan on the cited `file:///` targets, and rerun validation on the exact committed tree before claiming readiness.
 
+14B. **Enforce boundary commit + upstream push discipline (Proposal 082 Tier 1)**
+    - At EVERY lifecycle boundary (specify, clarify, plan, tasks, implementation, review-signoff, retro, iteration-closeout, feature-closeout), the Crew MUST commit the boundary-phase work in semantic commit groups BEFORE invoking `Invoke-SpecrewBoundaryStateSync` or emitting the boundary handoff. Working-tree-only changes are not boundary-durable evidence.
+    - After every commit, the Crew MUST push the feature branch to `origin/<feature-branch>` immediately. Local-only commits are not upstream-backed-up and are subject to working-tree corruption / force-quit loss.
+    - The Crew MUST verify `git rev-parse HEAD` equals `git rev-parse origin/<feature-branch>` BEFORE signaling boundary readiness in the three-section handoff. Mention the committed evidence reference (commit SHA or hash range) in `What I just did`.
+    - Boundary-sync's validator passes when working-tree content matches expected state. That is NOT sufficient — the Crew's commit and push discipline is the durable evidence boundary readiness requires. Any boundary signal without committed-and-pushed evidence is a violation and the next coordinator audit MUST reject it.
+    - Conditional skip: if `git remote` returns empty (no `origin` configured), push silently skips. Commit discipline still applies.
+    - When commits at a boundary land trivially small or status-only (e.g., a status-tracking-only update to plan.md), commit them anyway. The rule is "commit-and-push at every boundary," not "produce substantial code at every boundary."
+    - This rule operates at the same authority level as 14A and applies to every Crew role (Implementer, Planner, Reviewer, Spec Steward, Retro Facilitator). Per-role responsibilities are detailed in each agent's charter.
+
 1. **Carry feature closeout version management**
     - When a feature closeout is preparing to claim shipped work, treat release-version bookkeeping as required closure work rather than an optional reminder.
     - Update the authoritative product version in `.specrew/config.yml`, the matching `version:` field in `extensions/specrew-speckit/extension.yml` (and the deployed mirror at `.specify/extensions/specrew-speckit/extension.yml`), add the corresponding `CHANGELOG.md` entry, refresh any README version summary or linked versioning references that surfaced the previous version, and create the release tag that anchors the closed feature state.

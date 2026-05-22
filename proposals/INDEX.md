@@ -8,7 +8,7 @@ This index is the navigation surface for all proposals in this directory. Sorted
 
 ---
 
-## Shipped (14)
+## Shipped (15)
 
 Proposals whose features have shipped to main and are part of Specrew's current capability.
 
@@ -28,6 +28,7 @@ Proposals whose features have shipped to main and are part of Specrew's current 
 | [072](072-psgallery-unsigned-default.md) | PowerShell Gallery Unsigned Default | bug-fix slice `v0.24.1` (2026-05-20) | phase-2 | 2 |
 | [073](073-review-evidence-integrity.md) | Review Evidence Integrity (Pre-Review Commit Gate + Form-vs-Meaning Detection) | feature-028 | phase-2 | 18 |
 | [079](079-version-info-supported-vs-latest.md) | Version Information — Supported vs Latest Distinction | small-fix slice (v0.24.2 bundle) | phase-2 | 5 |
+| [082](082-boundary-commit-and-upstream-push-discipline.md) | Boundary Commit + Upstream Push Discipline (Tier 1 only) | small-fix slice feature-031 (v0.24.2 bundle) — Tier 2 + Tier 3 remain candidate | phase-2 | 5 (Tier 1) |
 
 ## Draft (16)
 
@@ -53,7 +54,7 @@ Proposals with full source-spec content, ready for `/speckit.specify` ingestion 
 | [070](070-token-economy-mvp.md) | Token Economy MVP (Cost-per-Iteration Tracking + Dashboard Surfacing) | phase-2 | 5 | **URGENT — cost-reduction bundle.** `specs/<feature>/iterations/<N>/cost.yml` records per-boundary token consumption + cost estimate from Proposal 068's catalog; `specrew where` dashboard gains COST section; `specrew cost summary/add/recompute` CLI. MVP slice of Proposal 040 (Token Economy as Governance Driver) — measurement only, no governance layer. |
 | [074](074-code-commentary-standards.md) | Code Commentary Standards (Multi-Level Convention + Preference Dial) | phase-2 | 12-15 | Replaces the current "default to no comments" Implementer instruction with a four-category taxonomy (contract / why-rationale / concept / inline narration), a four-level preference dial (`minimalist` / `standard` / `educational` / `textbook`), and a language-idiomatic convention catalog (C# XML doc, JSDoc, docstring, Javadoc, godoc, rustdoc, PowerShell comment-based help, etc.). Reviewer agent gains a contract-docs verification check. Empirical motivation: 2026-05-21 smoke trial produced a complete .NET 8 snake-game solution with **zero XML doc comments on public APIs** — IntelliSense silently empty. Composes with Proposals 047 / 052 / 015 (dials, profiles, expertise). |
 
-## Candidate (48)
+## Candidate (53)
 
 Idea-form proposals not yet developed into full source specs. Open for discussion; may mature to draft or be withdrawn.
 
@@ -107,7 +108,11 @@ Idea-form proposals not yet developed into full source specs. Open for discussio
 | [078](078-handoff-conversation-quality.md) | Handoff Conversation Quality at All Boundary Stops | phase-2 | 10-15 |
 | [080](080-specrew-file-reference.md) | Specrew File Reference (Lifecycle Catalog for All Specrew-Managed Files) | phase-2 | 10-15 |
 | [081](081-reviewer-visual-evidence.md) | Reviewer Visual Evidence — Multi-Type Diagrams + Explanatory Omissions + Mermaid Mandate | phase-2 | 33-43 |
-| [082](082-boundary-commit-and-upstream-push-discipline.md) | Boundary Commit + Upstream Push Discipline | phase-2 | 21 |
+| [082](082-boundary-commit-and-upstream-push-discipline.md) | Boundary Commit + Upstream Push Discipline (Tiers 2 + 3 only; Tier 1 shipped) | phase-2 | 16 (Tier 2 ~6 + Tier 3 ~10) |
+| [084](084-validator-iteration-parallelization.md) | Validator Iteration Parallelization (PowerShell `ForEach-Object -Parallel`) | phase-2 | 5-8 |
+| [085](085-skip-closed-iterations-in-validator.md) | Skip Closed Iterations in Validator (Fallback-Path Optimization via Closed-Iteration Index) | phase-2 | 3-5 |
+| [086](086-validation-pipeline-performance-bundle.md) | Validation Pipeline Performance Bundle (Memoization, Rule-Applicability, Process-Level Optimization) | phase-2 | 18-26 |
+| [087](087-push-to-main-validator-scoping-and-nightly-truth-check.md) | Push-to-Main Validator Scoping + Nightly Truth-Check (Stop O(corpus) Cost on Every Push) | phase-2 | 3 |
 
 ---
 
