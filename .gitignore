@@ -19,6 +19,7 @@
 .specrew/start-context.json
 .specrew/start-summary.md
 .specrew/bootstrap-dry-run-*.md
+.specrew/.cache/
 
 # Local scratch/test leftovers
 .scratch/

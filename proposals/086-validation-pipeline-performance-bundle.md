@@ -1,9 +1,13 @@
 ---
 proposal: 086
 title: Validation Pipeline Performance Bundle (Memoization, Rule-Applicability, Process-Level Optimization)
-status: candidate
+status: partially-shipped
+pillar-1-shipped-as: feature-034
+pillar-1-shipped-in: v0.24.3
+pillar-1-actual-sp: 7.0
 phase: phase-2
 estimated-sp: 18-26
+remaining-pillars: 2-5
 discussion: tbd
 ---
 

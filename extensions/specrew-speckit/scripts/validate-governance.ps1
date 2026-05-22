@@ -4,6 +4,7 @@ param(
     [string[]]$IterationPath,
     [switch]$ChangedOnly,
     [switch]$FullRun,
+    [switch]$NoCacheRead,
     [AllowEmptyString()][string]$ResponseText = '',
     [string]$BoundaryName,
     [ValidateSet('auto', 'boundary-handoff', 'narration')][string]$ResponseScope = 'auto',
@@ -3942,6 +3943,11 @@ try {
     }
     $iterationConfig = if ($targets.Count -gt 0) { Get-IterationConfigForValidation -IterationDirectory $targets[0] } else { @{ closeout_packet_required_since_iteration = '' } }
     $reviewerCloseoutEnforcement = Get-ReviewerCloseoutEnforcementMap -Targets $targets -ExplicitTargetsProvided $explicitIterationPathsProvided -RequiredSinceIteration $iterationConfig.closeout_packet_required_since_iteration
+    # Proposal 086 Pillar 1: precompute validator code hash for memoization cache.
+    # When this hash changes (developer edits validate-governance.ps1 or shared-
+    # governance.ps1), the entire cache is invalidated by Set-ValidatorCacheEntry.
+    $validatorCodeHash = Get-ValidatorCodeHash -ProjectRoot $resolvedProjectPath
+    $cacheEnabled = -not [string]::IsNullOrWhiteSpace($validatorCodeHash)
     # Proposal 034: per-iteration progress logging so hangs can be bisected.
     # Without this, the loop runs silently for minutes and a single pathological
     # iteration creates a black-hole CI experience. With this, the last printed
@@ -3949,6 +3955,7 @@ try {
     $iterationIndex = 0
     $iterationTotal = $targets.Count
     $iterationStart = Get-Date
+    $script:cacheHitCount = 0
     $results = @($targets | ForEach-Object {
             $targetPath = $_
             $iterationIndex++
@@ -3957,11 +3964,40 @@ try {
             if ($env:SPECREW_VALIDATOR_VERBOSE -eq '1') {
                 Write-Host ("[validator] ({0}/{1}) validating {2}" -f $iterationIndex, $iterationTotal, $relativeTarget)
             }
+            # Proposal 086 Pillar 1: try cache first (unless -NoCacheRead)
+            $cacheKey = $null
+            if ($cacheEnabled) {
+                $cacheKey = Get-ValidatorCacheKey -IterationPath $targetPath -ValidatorCodeHash $validatorCodeHash
+                if (-not $NoCacheRead -and -not [string]::IsNullOrWhiteSpace($cacheKey)) {
+                    $cachedEntry = Get-ValidatorCacheEntry -ProjectRoot $resolvedProjectPath -CacheKey $cacheKey
+                    if ($null -ne $cachedEntry) {
+                        $script:cacheHitCount++
+                        $cachedErrors = New-Object System.Collections.Generic.List[string]
+                        foreach ($e in @($cachedEntry['errors'])) {
+                            if (-not [string]::IsNullOrWhiteSpace([string]$e)) {
+                                $null = $cachedErrors.Add([string]$e)
+                            }
+                        }
+                        if ($env:SPECREW_VALIDATOR_VERBOSE -eq '1') {
+                            Write-Host ("[validator] ({0}/{1}) {2} -> CACHE HIT" -f $iterationIndex, $iterationTotal, $relativeTarget)
+                        }
+                        return [pscustomobject]@{
+                            Path   = $targetPath
+                            Errors = $cachedErrors
+                        }
+                    }
+                }
+            }
             try {
                 $result = Test-IterationGovernance -IterationDirectory $targetPath -ProjectRoot $resolvedProjectPath -TeamRoles $teamRoles -EnforceReviewerCloseout $reviewerCloseoutEnforcement.ContainsKey($targetPath)
                 if ($env:SPECREW_VALIDATOR_VERBOSE -eq '1') {
                     $stepElapsed = [Math]::Round(((Get-Date) - $stepStart).TotalSeconds, 1)
                     Write-Host ("[validator] ({0}/{1}) {2} -> {3}s" -f $iterationIndex, $iterationTotal, $relativeTarget, $stepElapsed)
+                }
+                # Proposal 086 Pillar 1: write result to cache
+                if ($cacheEnabled -and -not [string]::IsNullOrWhiteSpace($cacheKey)) {
+                    $errorsArray = @($result.Errors | ForEach-Object { [string]$_ })
+                    Set-ValidatorCacheEntry -ProjectRoot $resolvedProjectPath -CacheKey $cacheKey -Errors $errorsArray -ValidatorCodeHash $validatorCodeHash
                 }
                 $result
             }
@@ -3974,6 +4010,9 @@ try {
                 }
             }
         })
+    if ($env:SPECREW_VALIDATOR_VERBOSE -eq '1' -and $script:cacheHitCount -gt 0) {
+        Write-Host ("[validator-cache] {0} of {1} iterations served from memoization cache" -f $script:cacheHitCount, $iterationTotal)
+    }
     if ($env:SPECREW_VALIDATOR_VERBOSE -eq '1') {
         $totalElapsed = [Math]::Round(((Get-Date) - $iterationStart).TotalSeconds, 1)
         Write-Host ("[validator] iteration loop complete: {0} iterations in {1}s" -f $iterationTotal, $totalElapsed)

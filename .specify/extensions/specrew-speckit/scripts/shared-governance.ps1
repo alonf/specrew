@@ -256,6 +256,249 @@ function Get-DecisionsLedgerPath {
     return Join-Path (Resolve-ProjectPath -Path $ProjectRoot) '.squad\decisions.md'
 }
 
+function Get-ValidatorCachePath {
+    # Proposal 086 Pillar 1: returns the path to the validator memoization cache file.
+    # Lives under .specrew/.cache/ (gitignored, per-developer).
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$ProjectRoot
+    )
+    $resolvedProjectRoot = Resolve-ProjectPath -Path $ProjectRoot
+    $cacheDir = Join-Path -Path $resolvedProjectRoot -ChildPath '.specrew\.cache'
+    return Join-Path -Path $cacheDir -ChildPath 'validator-cache.json'
+}
+
+function Get-ValidatorCodeHash {
+    # Proposal 086 Pillar 1: SHA256 hash of validator scripts + governance config
+    # files. Per Copilot review on PR #594: governance config files (e.g.,
+    # .specrew/iteration-config.yml) are included because rules invoked by
+    # validator depend on them. Without folding them into the hash, changing
+    # those files would yield stale cache hits.
+    #
+    # Validator scripts must exist (return $null otherwise). Governance config
+    # files are optional — missing files contribute the literal 'missing' marker,
+    # which is still deterministic and shifts when the file appears/disappears.
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$ProjectRoot
+    )
+    $resolvedProjectRoot = Resolve-ProjectPath -Path $ProjectRoot
+    $hashSources = @(
+        (Join-Path -Path $resolvedProjectRoot -ChildPath 'extensions\specrew-speckit\scripts\validate-governance.ps1'),
+        (Join-Path -Path $resolvedProjectRoot -ChildPath 'extensions\specrew-speckit\scripts\shared-governance.ps1'),
+        (Join-Path -Path $resolvedProjectRoot -ChildPath '.specrew\iteration-config.yml'),
+        (Join-Path -Path $resolvedProjectRoot -ChildPath '.specrew\config.yml'),
+        (Join-Path -Path $resolvedProjectRoot -ChildPath '.specrew\constitution.md'),
+        (Join-Path -Path $resolvedProjectRoot -ChildPath '.specrew\role-assignments.yml'),
+        (Join-Path -Path $resolvedProjectRoot -ChildPath '.specrew\roadmap.yml'),
+        (Join-Path -Path $resolvedProjectRoot -ChildPath '.squad\identity\wisdom.md')
+    )
+
+    $validatorPath = $hashSources[0]
+    $sharedPath = $hashSources[1]
+    if (-not (Test-Path -LiteralPath $validatorPath -PathType Leaf) -or
+        -not (Test-Path -LiteralPath $sharedPath -PathType Leaf)) {
+        return $null
+    }
+
+    $componentHashes = New-Object System.Collections.Generic.List[string]
+    foreach ($source in $hashSources) {
+        if (Test-Path -LiteralPath $source -PathType Leaf) {
+            $null = $componentHashes.Add((Get-FileHash -LiteralPath $source -Algorithm SHA256).Hash)
+        }
+        else {
+            $null = $componentHashes.Add('missing')
+        }
+    }
+    $combinedHashInput = $componentHashes -join ':'
+    $bytes = [System.Text.Encoding]::UTF8.GetBytes($combinedHashInput)
+    $sha = [System.Security.Cryptography.SHA256]::Create()
+    try {
+        $hashBytes = $sha.ComputeHash($bytes)
+        return -join ($hashBytes | ForEach-Object { $_.ToString('x2') })
+    }
+    finally {
+        $sha.Dispose()
+    }
+}
+
+function Get-ValidatorCacheKey {
+    # Proposal 086 Pillar 1: computes the cache key for a given iteration path.
+    # Key = SHA256(iteration content hash + validator code hash). Iteration content
+    # hash is composed from SHA256 of every regular file under the iteration
+    # directory. Validator code hash invalidates the whole cache when scripts
+    # change, so we fold it into the per-iteration key for transparency.
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$IterationPath,
+
+        [Parameter(Mandatory = $true)]
+        [string]$ValidatorCodeHash
+    )
+
+    if (-not (Test-Path -LiteralPath $IterationPath -PathType Container)) {
+        return $null
+    }
+
+    $files = @(Get-ChildItem -LiteralPath $IterationPath -Recurse -File -ErrorAction SilentlyContinue | Sort-Object FullName)
+    if ($files.Count -eq 0) {
+        $contentHash = 'empty'
+    }
+    else {
+        $perFileHashes = New-Object System.Collections.Generic.List[string]
+        foreach ($file in $files) {
+            try {
+                $fileHash = (Get-FileHash -LiteralPath $file.FullName -Algorithm SHA256).Hash
+                $relPath = $file.FullName.Substring($IterationPath.Length).TrimStart('\','/')
+                $null = $perFileHashes.Add(("{0}:{1}" -f $relPath, $fileHash))
+            }
+            catch {
+                # Skip unreadable files
+            }
+        }
+        $combined = ($perFileHashes -join "`n")
+        $bytes = [System.Text.Encoding]::UTF8.GetBytes($combined)
+        $sha = [System.Security.Cryptography.SHA256]::Create()
+        try {
+            $hashBytes = $sha.ComputeHash($bytes)
+            $contentHash = -join ($hashBytes | ForEach-Object { $_.ToString('x2') })
+        }
+        finally {
+            $sha.Dispose()
+        }
+    }
+
+    $keyInput = "$contentHash`:$ValidatorCodeHash"
+    $bytes = [System.Text.Encoding]::UTF8.GetBytes($keyInput)
+    $sha = [System.Security.Cryptography.SHA256]::Create()
+    try {
+        $hashBytes = $sha.ComputeHash($bytes)
+        return -join ($hashBytes | ForEach-Object { $_.ToString('x2') })
+    }
+    finally {
+        $sha.Dispose()
+    }
+}
+
+function Get-ValidatorCacheEntry {
+    # Proposal 086 Pillar 1: returns the cached entry for the given key, or $null
+    # if absent. The entry shape is { errors: @(...), validated_at: '...' }.
+    #
+    # Per Copilot review on PR #594: this function is READ-ONLY. It does NOT
+    # update last_access_at or rewrite the cache file. Concurrent reads from
+    # parallel validator runs would corrupt the cache if we wrote on read.
+    # LRU eviction bookkeeping uses validated_at (write timestamp) on Set; that
+    # gives us "least-recently-validated" semantics which is functionally
+    # equivalent for our use case (we re-validate cache misses, so "validated"
+    # tracks usage).
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$ProjectRoot,
+
+        [Parameter(Mandatory = $true)]
+        [string]$CacheKey
+    )
+
+    $cachePath = Get-ValidatorCachePath -ProjectRoot $ProjectRoot
+    if (-not (Test-Path -LiteralPath $cachePath -PathType Leaf)) {
+        return $null
+    }
+
+    try {
+        $cache = Get-Content -LiteralPath $cachePath -Raw -Encoding UTF8 | ConvertFrom-Json -AsHashtable -Depth 10
+    }
+    catch {
+        return $null
+    }
+
+    if ($null -eq $cache -or -not $cache.ContainsKey('entries')) {
+        return $null
+    }
+
+    if (-not $cache['entries'].ContainsKey($CacheKey)) {
+        return $null
+    }
+
+    return $cache['entries'][$CacheKey]
+}
+
+function Set-ValidatorCacheEntry {
+    # Proposal 086 Pillar 1: writes an entry to the cache file with LRU eviction
+    # at 500 entries. Creates .specrew/.cache/ if missing.
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$ProjectRoot,
+
+        [Parameter(Mandatory = $true)]
+        [string]$CacheKey,
+
+        [Parameter(Mandatory = $true)]
+        [AllowEmptyCollection()]
+        [string[]]$Errors,
+
+        [Parameter(Mandatory = $true)]
+        [string]$ValidatorCodeHash
+    )
+
+    $cachePath = Get-ValidatorCachePath -ProjectRoot $ProjectRoot
+    $cacheDir = Split-Path -Parent $cachePath
+    if (-not (Test-Path -LiteralPath $cacheDir -PathType Container)) {
+        $null = New-Item -ItemType Directory -Path $cacheDir -Force
+    }
+
+    $cache = $null
+    if (Test-Path -LiteralPath $cachePath -PathType Leaf) {
+        try {
+            $cache = Get-Content -LiteralPath $cachePath -Raw -Encoding UTF8 | ConvertFrom-Json -AsHashtable -Depth 10
+        }
+        catch {
+            $cache = $null
+        }
+    }
+    if ($null -eq $cache) {
+        $cache = @{
+            schema             = 'v1'
+            validator_code_hash = $ValidatorCodeHash
+            entries            = @{}
+        }
+    }
+
+    # If validator code hash changed, wipe the cache (correctness over performance)
+    if (-not $cache.ContainsKey('validator_code_hash') -or $cache['validator_code_hash'] -ne $ValidatorCodeHash) {
+        $cache = @{
+            schema             = 'v1'
+            validator_code_hash = $ValidatorCodeHash
+            entries            = @{}
+        }
+    }
+
+    $now = (Get-Date -AsUTC -Format 'yyyy-MM-ddTHH:mm:ss.fffZ')
+    $cache['entries'][$CacheKey] = @{
+        errors       = @($Errors)
+        validated_at = $now
+    }
+
+    # LRU eviction at 500 entries. Uses validated_at (write timestamp) as the
+    # LRU key. Get-ValidatorCacheEntry no longer updates last_access_at on read
+    # (per Copilot review PR #594; concurrent reads would corrupt the file).
+    # Validated_at is functionally equivalent because we re-validate cache
+    # misses, so "least-recently-validated" tracks usage frequency closely.
+    if ($cache['entries'].Keys.Count -gt 500) {
+        $sortedKeys = $cache['entries'].GetEnumerator() | Sort-Object { $_.Value['validated_at'] } | Select-Object -ExpandProperty Key
+        $excess = $cache['entries'].Keys.Count - 500
+        for ($i = 0; $i -lt $excess; $i++) {
+            $null = $cache['entries'].Remove($sortedKeys[$i])
+        }
+    }
+
+    try {
+        ConvertTo-Json -InputObject $cache -Depth 10 | Set-Content -LiteralPath $cachePath -Encoding UTF8
+    }
+    catch {
+        # Cache write failure is non-fatal — validation continues
+    }
+}
+
 function Get-SpecrewCanonicalBoundaryTypes {
     # Canonical Specrew boundary types per scripts/internal/sync-boundary-state.ps1
     # ValidateSet. Used by Test-SessionStateBoundaryCanonical (Proposal 090) to
