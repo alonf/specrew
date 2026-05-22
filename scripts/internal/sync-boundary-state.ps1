@@ -661,6 +661,70 @@ function Get-LatestSpecrewBoundarySyncState {
     }
 }
 
+function Invoke-PreBoundaryMarkdownLintGate {
+    # Proposal 088: runs `markdownlint-cli --fix` on changed .md files BEFORE
+    # boundary-sync writes any state. If auto-fixes were applied, throws with a
+    # directive to commit the fixes and re-run sync. If unfixable violations
+    # remain, throws with file:line messages. If markdownlint-cli is unavailable,
+    # emits a warning and proceeds.
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$ProjectPath
+    )
+
+    $resolvedProjectRoot = Resolve-ProjectPath -Path $ProjectPath
+
+    # Step 1: identify changed .md files via Proposal 083's base-ref helper
+    $changedFiles = @(Get-ChangedMarkdownFiles -ProjectRoot $resolvedProjectRoot)
+    if ($changedFiles.Count -eq 0) {
+        # No .md files in diff — gate is a no-op
+        return
+    }
+
+    # Step 2: invoke markdownlint --fix on the scoped files
+    $result = Invoke-MarkdownLintAutoFix -MarkdownFiles $changedFiles -ProjectRoot $resolvedProjectRoot
+
+    # Step 3: handle each outcome
+    if ($result.MarkdownLintUnavailable) {
+        Write-Warning '[markdownlint-gate] markdownlint-cli unavailable; skipping gate'
+        return
+    }
+
+    # Surface both auto-fix and unfixable findings in a single halt message
+    # (per Copilot review feedback) so the Crew sees the full picture and can
+    # address both classes of issue before re-running, rather than discovering
+    # the unfixable ones in a second pass after committing the auto-fixes.
+    if ($result.AutoFixedFiles.Count -gt 0 -or $result.UnfixableViolations.Count -gt 0) {
+        $messageLines = New-Object System.Collections.Generic.List[string]
+        if ($result.AutoFixedFiles.Count -gt 0) {
+            $fileList = ($result.AutoFixedFiles | ForEach-Object { "  - $_" }) -join "`n"
+            $null = $messageLines.Add(("[markdownlint-gate] Auto-fixed markdownlint violations in {0} file(s):" -f $result.AutoFixedFiles.Count))
+            $null = $messageLines.Add($fileList)
+            $null = $messageLines.Add('')
+            $null = $messageLines.Add('Please:')
+            $null = $messageLines.Add('  1. Review the diff: git diff')
+            $null = $messageLines.Add('  2. Stage the fixes: git add <files>')
+            $null = $messageLines.Add("  3. Commit: git commit -m 'chore(lint): auto-fix markdownlint violations'")
+            $null = $messageLines.Add('  4. Push: git push')
+            $null = $messageLines.Add('')
+        }
+
+        if ($result.UnfixableViolations.Count -gt 0) {
+            $violationList = ($result.UnfixableViolations | ForEach-Object { "  - $_" }) -join "`n"
+            $null = $messageLines.Add(("[markdownlint-gate] Unfixable markdownlint violations remain in {0} location(s):" -f $result.UnfixableViolations.Count))
+            $null = $messageLines.Add($violationList)
+            $null = $messageLines.Add('')
+            $null = $messageLines.Add('These violations are semantic (e.g., MD013 line-length, MD024 duplicate-heading)')
+            $null = $messageLines.Add('and require manual editing. Edit those file:line locations.')
+            $null = $messageLines.Add('')
+        }
+
+        $null = $messageLines.Add('Boundary-sync HALTED until the lint findings are resolved and committed. Re-run boundary-sync after committing the fixes.')
+
+        throw ($messageLines -join "`n")
+    }
+}
+
 function Invoke-SpecrewBoundaryStateSync {
     param(
         [Parameter(Mandatory = $true)]
@@ -691,6 +755,12 @@ function Invoke-SpecrewBoundaryStateSync {
         [AllowNull()]
         [string]$IdentityBody
     )
+
+    # Proposal 088: pre-sync markdownlint gate. Catches lint violations at
+    # boundary-time so they never reach PR-CI Lint and cause the catch-fix-retry
+    # cycle. Runs BEFORE any state-file writes; if violations are found, throws
+    # with a clear directive instead of half-syncing.
+    Invoke-PreBoundaryMarkdownLintGate -ProjectPath $ProjectPath
 
     $paths = Get-SpecrewSessionStatePaths -ProjectRoot $ProjectPath
     $effectiveFeatureRef = $FeatureRef
