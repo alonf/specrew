@@ -65,7 +65,7 @@ Write-Pass 'Set-ValidatorCacheEntry wrapped in Invoke-WithFileLock'
 
 # Functional tests via direct invocation
 
-# Test 9: Invoke-WithFileLock acquires and releases lock; nested call retries
+# Test 9: Invoke-WithFileLock acquires and releases lock (pre-existing helper, -Path param)
 $lockTest = @"
 . '$sharedGovernance'
 `$lockDir = '$repoRoot' + '\.scratch\file-lock-test'
@@ -73,15 +73,12 @@ if (Test-Path -LiteralPath `$lockDir) { Remove-Item -Recurse -Force -LiteralPath
 `$null = New-Item -ItemType Directory -Path `$lockDir -Force
 `$target = Join-Path `$lockDir 'shared.txt'
 `$null = New-Item -ItemType File -Path `$target -Force
-
-# Single acquire/release
 `$insideRan = `$false
-Invoke-WithFileLock -FilePath `$target -ScriptBlock {
+Invoke-WithFileLock -Path `$target -ScriptBlock {
     `$script:insideRan = `$true
 }
 if (-not `$insideRan) { throw 'ScriptBlock did not execute inside lock' }
 Write-Host 'SINGLE_LOCK_OK'
-
 Remove-Item -Recurse -Force -LiteralPath `$lockDir
 "@
 $lockResult = pwsh -NoProfile -Command $lockTest 2>&1 | Out-String

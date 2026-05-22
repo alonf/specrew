@@ -256,57 +256,6 @@ function Get-DecisionsLedgerPath {
     return Join-Path (Resolve-ProjectPath -Path $ProjectRoot) '.squad\decisions.md'
 }
 
-function Invoke-WithFileLock {
-    # Proposal 084: cross-process file lock. Acquires an exclusive lock on
-    # <FilePath>.lock via [System.IO.FileStream] with FileShare::None, invokes
-    # the script block, releases the lock in finally. Retries up to 10 times
-    # with 100ms backoff if contended (concurrent writers). Used to serialize
-    # validator cache writes across parallel subprocess invocations.
-    param(
-        [Parameter(Mandatory = $true)]
-        [string]$FilePath,
-
-        [Parameter(Mandatory = $true)]
-        [scriptblock]$ScriptBlock
-    )
-
-    $lockPath = "$FilePath.lock"
-    $lockDir = Split-Path -Parent $lockPath
-    if (-not (Test-Path -LiteralPath $lockDir -PathType Container)) {
-        $null = New-Item -ItemType Directory -Path $lockDir -Force
-    }
-
-    $maxAttempts = 10
-    $backoffMs = 100
-    $stream = $null
-    $attempt = 0
-    while ($null -eq $stream -and $attempt -lt $maxAttempts) {
-        try {
-            $stream = [System.IO.FileStream]::new(
-                $lockPath,
-                [System.IO.FileMode]::OpenOrCreate,
-                [System.IO.FileAccess]::ReadWrite,
-                [System.IO.FileShare]::None
-            )
-        }
-        catch [System.IO.IOException] {
-            Start-Sleep -Milliseconds $backoffMs
-            $attempt++
-        }
-    }
-
-    if ($null -eq $stream) {
-        throw "Invoke-WithFileLock: failed to acquire lock on $lockPath after $maxAttempts attempts"
-    }
-
-    try {
-        & $ScriptBlock
-    }
-    finally {
-        $stream.Dispose()
-    }
-}
-
 function Get-ValidatorCachePath {
     # Proposal 086 Pillar 1: returns the path to the validator memoization cache file.
     # Lives under .specrew/.cache/ (gitignored, per-developer).
@@ -499,7 +448,8 @@ function Set-ValidatorCacheEntry {
 
     # Proposal 084: file lock protects concurrent writes from parallel subprocesses.
     # Read → mutate → write happens atomically inside the lock so no entries get lost.
-    Invoke-WithFileLock -FilePath $cachePath -ScriptBlock {
+    # Reuses the existing Invoke-WithFileLock helper (defined earlier in this file).
+    Invoke-WithFileLock -Path $cachePath -ScriptBlock {
         $cache = $null
         if (Test-Path -LiteralPath $cachePath -PathType Leaf) {
             try {
