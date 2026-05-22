@@ -34,6 +34,56 @@ Copilot remains the mandatory host runtime in v1; optional delegated agents such
 
 If you want a repeatable mission-completion smoke check of the real handoff boundary, run `tests\manual\copilot-squad-smoke.ps1`. It provisions a fresh repo, runs `specrew init`, runs `specrew start`, and can optionally launch the real Copilot+Squad session for operator-observed end-to-end validation. When launched, the smoke harness now defaults to same-window monitoring so the live session can be observed directly; use its `-NewWindow` switch only when you intentionally want a detached window.
 
+## Boundary Enforcement (v0.25.0)
+
+Starting in v0.25.0, Specrew enforces lifecycle boundary discipline **mechanically** at the tool-call layer, not just by prose convention. Proposal 065 (Feature 039) ships skill-level authorization gates inside every boundary-advancing skill. The Crew cannot chain past a boundary without an explicit, recognized verdict from you.
+
+### Recognized verdict shapes
+
+When the Crew surfaces a boundary handoff and asks for your verdict, the parser accepts exact shapes only. Ambiguous prose (`looks good`, `yep`, `continue`, `fine`, `okay`) is rejected and re-prompted. The canonical forms:
+
+- `approved for <boundary>-boundary entry` — authorize advance INTO the named boundary
+- `approved for <boundary>` — shorter equivalent
+- `approved for review-boundary AND review-signoff` — compound, for legitimate two-boundary progression where a substantive review covers both at once
+- `rejected for <boundary>` — explicit refusal; Crew returns to clarify or re-plan
+- `parked` — hold the current state; no advancement
+
+The full nine boundaries are: `specify`, `clarify`, `plan`, `tasks`, `before-implement`, `review-signoff`, `retro`, `iteration-closeout`, `feature-closeout`.
+
+### Emergency bypass
+
+For migration replays, debugging stuck enforcement, or batch lifecycle work where every-boundary authorization would create unsafe friction:
+
+```powershell
+specrew start --bypass-boundary-enforcement --reason "schema migration replay"
+```
+
+The `--reason` flag is **mandatory**. Session-scoped (not per-boundary) — one bypass disables enforcement for the whole session, which discourages casual use. Every bypassed boundary writes an audit-trail entry to `.squad/decisions.md`.
+
+### How this composes with `--autonomous`
+
+`--autonomous` (Proposal 066, shipped 2026-05-20) controls whether the host runtime advances **between agent turns** without user input. Boundary enforcement (F-039) controls whether the agent can chain **across boundaries within a single turn**. They are independent:
+
+- `--autonomous` alone: agent advances turn-by-turn but still hits skill-level gates at every boundary
+- Boundary enforcement alone (default): gates always fire; turns wait for input
+- Both: gates still fire; turns advance without input but every boundary surfaces a directive
+- `--bypass-boundary-enforcement`: suspends gates; `--autonomous` still controls turn advancement
+
+## What's New (v0.24.3 + v0.25.0 release bundle)
+
+The v0.24.3 process-optimization bundle and v0.25.0 boundary-enforcement release together shipped substantial discipline and performance improvements. Headline items:
+
+- **F-039 / Proposal 065 — Launch-Mode Boundary Enforcement** (v0.25.0): the section above
+- **F-032 / Proposal 090 — Closeout Lifecycle Sync Commands**: `/speckit.specrew-speckit.sync-review-signoff`, `sync-retro`, `sync-iteration-closeout`, `sync-feature-closeout` — canonical sync slash commands that wrap `Invoke-SpecrewBoundaryStateSync` and prevent the non-canonical boundary-string bug class (`feature-closed`, `iteration-closed`, etc.). Use these instead of inline PowerShell at every closeout boundary.
+- **F-033 / Proposal 088 — Markdown Lint Pre-Boundary Auto-Fix**: every `Invoke-SpecrewBoundaryStateSync` invocation runs `markdownlint-cli --fix` on changed `.md` files BEFORE any state-file writes. Auto-fixable violations get fixed and surface a directive to commit the fixes as `chore(lint):`. Unfixable violations halt boundary sync with file:line:rule diagnostics.
+- **F-034 / Proposal 086 Pillar 1 — Validator Result Memoization**: per-iteration validator results cached at `.specrew/.cache/validator-cache.json` (gitignored). Edit-validate-edit loops drop from ~30s to <100ms on cache hits. Use `-NoCacheRead` to force fresh validation.
+- **F-035 / Proposal 084 — Validator Iteration Parallelization**: `validate-governance.ps1` parallelizes iteration validation via `ForEach-Object -Parallel`. Cold-cache 44-iteration runs project ~5× speedup at default throttle 6. `-NoParallel` falls back to serial; `-ThrottleLimit <N>` tunes concurrency.
+- **F-036 / Proposal 085 — Closed-Iteration Index**: `.specrew/closed-iterations.yml` records every closed iteration. Validator's full-repo path skips them unless `-IncludeClosed` is set. Use `-RebuildClosedIndex` to regenerate from state.md walk.
+- **F-037 / Proposal 086 Pillar 5 — Repetition Detector**: logs validator invocations to `.specrew/.cache/last-commands.log` (FIFO at 20); emits `[validator-repetition-warning]` on the 3rd consecutive identical run against unchanged code. Diagnostic only — non-blocking.
+- **F-038 / Proposal 089 minimal slice — PR Review Integration**: validator soft-warning surfaces when host has automated review available (e.g., GitHub Copilot reviewer detected via `gh` CLI + github.com remote) and `pr-review-resolution.md` artifact is missing. Captures Copilot's PR findings into a structured per-iteration artifact.
+- **F-031 / Proposal 082 Tier 1 — Boundary Commit + Upstream Push Discipline**: methodology text additions across coordinator-governance.md + all 5 agent charters mandating semantic commit groups before boundary sync and immediate push after each commit. See the "Boundary Commit Discipline" section below.
+- **F-030 / Proposal 083 — Local Validator Auto-Scope**: feature-branch `validate-governance.ps1` runs auto-detect the base ref and default to changed-only scope. Use `-FullRun` to force a complete sweep.
+
 ## Lifecycle at a Glance
 
 1. Planning
@@ -384,6 +434,19 @@ This discipline ships in three tiers:
 - **Tier 3 (future)**: `Invoke-SpecrewBoundaryStateSync` refuses to advance if WIP is present. Auto-push hook after every commit (configurable via `iteration-config.yml`).
 
 Each tier is its own slice; Tier 1 ships first as a methodology-text addition, Tier 2/Tier 3 follow as later releases when empirical data justifies the additional enforcement weight.
+
+## What's Coming
+
+The next release queue focuses on intake quality, expert-developer ergonomics, and multi-host expansion. Active proposals worth tracking:
+
+- **F-040 / Proposal 063 — Substantive Intake Questioning**: persona-driven adaptive intake (PM / UX / Architect / Researcher), 12-category catalog, Mode A/B/C input-quality assessment. Fires at `/speckit.specify`, `/speckit.clarify`, iteration kickoff, mid-feature pivot. The intake interview that stops Squad from auto-resolving scope decisions silently. Source: [Proposal 063](../proposals/063-substantive-intake-questioning.md).
+- **Proposal 099 — Installed-File SDLC Instruction Audit**: closes the dogfooding deficit between paste-prompt scaffolding and the discipline carried by installed instruction files (coordinator-governance.md, agent charters, sync command docs). Three small-fix closure slices identified: recognized verdict shapes catalog, reconciliation directive, smaller refinements bundle. Source: [Proposal 099](../proposals/099-installed-file-sdlc-instruction-audit.md).
+- **Proposal 100 — Friction Dial**: three canonical modes (strict / default / autonomous) controlling verdict-parser acceptance, reconciliation posture, drift-log granularity, and compound-verdict eligibility. Composes Proposals 015 + 047 + 066 into a coherent surface. Persistence in `.specrew/config.yml`; session override via `specrew start --friction <mode>`. Source: [Proposal 100](../proposals/100-friction-dial.md).
+- **Proposal 069 — Multi-Host Launch Path**: `specrew start --host claude|codex|copilot|auto` launches the alternate CLI with the Specrew bootstrap context. Tactical MVP of Proposal 024 (Multi-Host Runtime Abstraction). Composes with Proposals 068 (cost-aware model routing) and 070 (token economy MVP). Source: [Proposal 069](../proposals/069-multi-host-launch-path.md).
+- **Proposal 068 — Cost-Aware Model Routing** + **Proposal 070 — Token Economy MVP**: agent-discovered model catalog routes Junior/Implementer tasks to cheap models, Senior/Reviewer tasks to strong. `cost.yml` per iteration tracks token consumption + cost estimate; `specrew where` dashboard gains a COST section.
+- **Proposal 098 — Launch Posture Visibility (candidate)**: surfaces enforcement state (`[BYPASS ACTIVE]` indicator, active friction mode) at `specrew start` banner. Companion to Proposal 100 and Proposal 065.
+
+Full proposal catalog with status (Shipped / Draft / Candidate) lives at [proposals/INDEX.md](../proposals/INDEX.md).
 
 ## Practical Operating Notes
 

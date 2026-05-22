@@ -8,202 +8,116 @@
 # Specrew
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![Version](https://img.shields.io/badge/version-0.24.1-blue.svg)](.specrew/config.yml)
-[![Status: Alpha](https://img.shields.io/badge/status-alpha-orange.svg)](#current-state)
+[![Version](https://img.shields.io/badge/version-0.25.0-blue.svg)](.specrew/config.yml)
+[![Status: Alpha](https://img.shields.io/badge/status-alpha-orange.svg)](#status)
 
-Specrew combines Spec Kit and Squad into a spec-governed operating model for
-AI-assisted software delivery.
+Specrew is a **methodology** for AI-assisted software delivery — a governance layer that runs on top of [GitHub Spec Kit](https://github.com/github/spec-kit) and [Squad CLI](https://www.npmjs.com/package/@bradygaster/squad-cli) and enforces the SDLC discipline that those tools alone don't enforce.
 
-## Current State
+It is **not** a multi-agent framework, **not** an autopilot tool, and **not** another code generator. It is the layer that keeps the human in the loop at every decision boundary while letting agents do the work between boundaries.
 
-- Active development line on this branch: **0.24.1**
-- Latest shipped stable baseline: **0.23.0**, backed by 23 implementing features
-- Alpha software, validated through dogfooding in this repository
-- Built today for a single developer
-- Slash-command discovery is now aligned for **Claude Code** and **GitHub Copilot CLI**, with `.agents/skills/` shipped as a host-neutral future-proof path
-- Not yet ready for multi-developer coordination; Codex slash-command discoverability remains deferred
-- Release truth now has public-facing surfaces in `CHANGELOG.md`,
-  `docs\versioning.md`, and the `v0.15.0` / `v0.16.0` / `v0.17.0` / `v0.18.0` / `v0.19.0` / `v0.20.0` tags
+## Why Specrew exists
 
-## What's working
+Modern AI-assisted code tools optimize for **throughput** — finish more in less time. That works until the AI quietly decides things the human would have decided differently:
 
-- `specrew init` bootstraps Spec Kit, Squad, and Specrew governance into a repo
-- `specrew start` is the canonical entrypoint and refreshes runtime handoff
-  artifacts before launch, with full session-state durability and recovery
-- `specrew where` / `specrew status` render the repository's velocity dashboard
-  from canonical feature, iteration, and roadmap artifacts, using richer default
-  rendering when the terminal can truthfully support it
-- **Feature 024 slash-command surface correction**: seven-command `/specrew-*` surface with multi-host deployment, YAML frontmatter, and truthful discovery/help
-  - `/specrew-where` — velocity dashboard ("Where am I?")
-  - `/specrew-status` — alias for `/specrew-where`
-  - `/specrew-update` — update Specrew assets
-  - `/specrew-team` — show team context
-  - `/specrew-review` — enter the review workflow
-  - `/specrew-help` — show the command catalog (fallback when host-native discovery is unavailable)
-  - `/specrew-version` — display version info
-- Session-state durability and in-flight progress tracking across system reboots,
-  worktree switches, and boundary events (Feature 020)
-- Iteration closeout and feature closeout capture immutable dashboard snapshots
-  under `specs/<feature>/iterations/<NNN>/dashboard.md` and
-  `specs/<feature>/closeout-dashboard.md`
-- Squad drives the lifecycle from `speckit.specify` through
-  `speckit.implement`, with an explicit clarify gate
-- Iteration planning, execution, review, and retrospective artifacts are
-  treated as first-class governance surfaces
-- Reviewer-regression routing and session-loaded file change detection are
-  already built into the operating model
-- Optional delegated-agent routing can extend the Copilot-hosted baseline when
-  Claude or Codex lanes are configured
+- Picks a database without asking
+- Resolves an ambiguous requirement by guessing
+- Skips a clarifying question to save a turn
+- Crosses a planning-to-implementation boundary without authorization
+- Ships work that "looks correct" but isn't traceable to a spec
 
-## Platform Support
+Specrew was built after observing these failures empirically and concluding that **the gap is not in the agent's capability; it is in the discipline around the agent.** The same agent that auto-resolves a scope decision under one tool will surface it as a question under another. The difference is the methodology layer.
 
-Specrew is developed and validated on **Windows 11** with PowerShell 7.x and runs on
-Linux/macOS via the same PowerShell module:
+Specrew encodes that methodology as four guarantees:
 
-- **Windows**: ✅ Fully validated (primary development platform)
-- **WSL (Ubuntu)**: ✅ Manually validated — `specrew init` + `specrew start` launch Copilot's interactive REPL with Squad selected
-- **Linux (Ubuntu)**: ✅ Path handling cross-platform; CI matrix configured
-- **macOS**: 🔧 Path handling cross-platform; CI matrix configured (no in-house validation runs yet)
+1. **Boundary discipline.** The lifecycle has explicit approval boundaries (`specify`, `clarify`, `plan`, `tasks`, `before-implement`, `review-signoff`, `retro`, `iteration-closeout`, `feature-closeout`). One human authorization advances at most one boundary. No agent prose can simulate authorization. Enforcement is moving from prose to code (see [Proposal 065](proposals/065-launch-mode-boundary-enforcement.md), in flight as Feature 039).
+2. **Substantive interaction.** Every boundary handoff is reviewable in the console with the essence of "what I just did / why I stopped / what I need from you" visible without opening files. Status pings are not enough.
+3. **Audit-trail durability.** Every verdict, decision, drift event, and bypass lives in `.squad/decisions.md` with timestamps, commit hashes, and recognized verdict shapes. Sessions can be reconstructed after the fact; methodology lives in artifacts, not in agent memory.
+4. **Methodology survives the host.** Specrew runs on GitHub Copilot CLI today. Claude Code, Codex CLI, and VS Code Chat are roadmap items ([Proposal 069](proposals/069-multi-host-launch-path.md)). The skill-level enforcement gates are host-agnostic by design — switching hosts must not weaken the methodology.
 
-See `specs/019-specrew-distribution-module/test-evidence/us5-cross-platform.md` for
-detailed cross-platform validation status.
+## What Specrew is not
 
-## What's NOT working yet
+| If you want… | …use this instead |
+|---|---|
+| A multi-agent code library (orchestrate agents in Python) | [CrewAI](https://www.crewai.com/), [AutoGen](https://github.com/microsoft/autogen), [LangGraph](https://www.langchain.com/langgraph) |
+| Autopilot coding (let the agent run; check the output) | [Devin](https://devin.ai/), [OpenInterpreter](https://www.openinterpreter.com/), [Aider](https://aider.chat/) |
+| The spec-driven command surface alone (`/speckit.specify`, `/speckit.plan`, …) | [Spec Kit](https://github.com/github/spec-kit) directly |
+| The multi-agent runtime alone (specialist teams, agent charters) | [Squad CLI](https://www.npmjs.com/package/@bradygaster/squad-cli) directly |
+| A code generator | None of these — Specrew is governance over agent-driven work, not a code generator |
 
-- Multi-developer reconciliation is not yet a polished default workflow
-- Multi-host runtime support is not yet ready for public promises
-- Just-in-time brownfield cartography for arbitrary inherited repos is still a
-  roadmap item
-- The module is currently signed with a self-signed certificate, so
-  `Install-Module` must be invoked with `-SkipPublisherCheck` on first install
-- External pull requests are not yet part of the alpha operating model
+Specrew composes Spec Kit + Squad into a **methodology layer with enforced discipline**. It is the smallest layer that keeps the human in control when agents are doing the typing.
 
-## Recommended Lifecycle
+## How it differs in one paragraph
 
-1. **Install Specrew** — pick one path:
-   - **PowerShell Gallery** (recommended): `Install-Module Specrew -Scope CurrentUser -SkipPublisherCheck`
-     (the `-SkipPublisherCheck` flag is required while the module is signed
-     with a self-signed certificate; this will be removed once a CA-issued
-     cert is in place)
-   - **Prerelease channel** for early adopters who want to validate the next
-     version: `Install-Module Specrew -AllowPrerelease -Scope CurrentUser -SkipPublisherCheck`
-   - **Local clone** (development workflow):
-     `git clone https://github.com/alonf/specrew && Import-Module specrew/Specrew.psd1`
-2. **Bootstrap a project** with `specrew init` from inside the target directory.
-3. **Start every work session** with `specrew start`; Specrew refreshes runtime
-   handoff artifacts before launching Copilot + Squad.
-4. **Check status** anytime with `specrew where` (alias: `specrew status`) —
-   the velocity dashboard. Use `--ASCII`, `--RecentCount <N>`, and
-   `--BarWidth <N>` to force fallback or tune the Recent Shipped density
-   without changing lifecycle data.
-5. Let Squad drive `specify -> clarify -> plan -> tasks -> implement` from the
-   generated feature artifacts.
-6. Keep iteration evidence current under `specs\<feature>\iterations\<NNN>\`.
-7. Move through planning, implementing, review, and retro in order without
-   skipping governance gates or bundling boundary advances.
+Vanilla Spec Kit ships the slash-command surface but has no orchestration or boundary enforcement. Vanilla Squad runs multi-agent teams but doesn't drive a spec-driven lifecycle. Autopilot tools and multi-agent libraries optimize for throughput by letting the agent decide. Specrew goes the other direction: **the spec is authoritative, drift is a first-class event, every boundary requires explicit human authorization, and the audit trail is durable.** Different design point. Same agents.
 
-> **Direct-script invocation** (no module load) still works against a cloned
-> repo: `pwsh -File scripts/specrew.ps1 <command>`. The module aliases
-> (`specrew`, `specrew-init`, `specrew-start`, `specrew-update`, `specrew-where`,
-> `specrew-team`, `specrew-review`, `specrew-version`) are the recommended path because they
-> survive PowerShell Gallery installation without any path-dependent
-> gymnastics.
+## Status
 
-## Feature 016 Interaction Model
+- **Active development line**: 0.25.0
+- **Latest stable baseline**: 0.24.3 (process-optimization bundle: closeout sync commands, markdown lint pre-boundary, validator memoization/parallelization/closed-iteration-index, repetition detector, PR-review integration)
+- **Alpha software**, validated through dogfooding in this repository
+- **Built for a single developer today.** Multi-developer reconciliation is a roadmap item ([Proposal 010](proposals/010-multi-developer-reconciliation.md)).
+- Release truth lives in [CHANGELOG.md](CHANGELOG.md), [docs/versioning.md](docs/versioning.md), and the `v0.NN.0` tags.
 
-Feature 016 makes the delivery contract explicit across three linked pillars:
+## What's working today
 
-1. **Boundary discipline** — one human authorization advances at most one
-   lifecycle boundary.
-2. **Essence in console** — boundary handoffs stay substantive enough to review
-   without opening files first.
-3. **Click-through navigation** — authored review targets use `file:///` URIs
-   instead of bare paths.
+- `specrew init` bootstraps Spec Kit, Squad, and Specrew governance into a fresh or existing repo
+- `specrew start` launches the canonical lifecycle session with handoff artifacts refreshed
+- `specrew where` renders the velocity dashboard from canonical artifacts
+- The full lifecycle: `specify → clarify → plan → tasks → implement → review-signoff → retro → iteration-closeout → feature-closeout` — with gate-respecting boundary stops by default ([Proposal 066](proposals/066-gate-respecting-default.md), shipped)
+- Session-state durability across reboots, worktree switches, and boundary events
+- Slash-command catalog deployed to `.claude/skills/`, `.github/skills/`, and `.agents/skills/` ([Feature 024](specs/024-slash-command-multi-host-correctness/spec.md))
+- Validator memoization, parallelization, closed-iteration index, repetition detector — the v0.24.3 process-optimization bundle keeps the discipline cheap to enforce
+- Reviewer-regression routing, session-loaded file change detection, drift-log integrity
+- Pre-boundary markdown-lint auto-fix gate prevents lint round-trips at every boundary commit
+- PR-review-integration soft warning surfaces missing `pr-review-resolution.md` when host has automated review available
 
-### Post-Commit Verification Protocol
+## What's coming (roadmap highlights)
 
-After every boundary commit that ends with a human-blocked handoff:
+- **F-039** [Launch-Mode Boundary Enforcement](proposals/065-launch-mode-boundary-enforcement.md) — mechanical refusal of agent boundary chaining (in flight, parked at iteration-closeout)
+- **F-040** [Substantive Intake Questioning](proposals/063-substantive-intake-questioning.md) — persona-driven adaptive intake (next after F-039)
+- **Friction Dial** ([Proposal 100](proposals/100-friction-dial.md)) — strict/default/autonomous modes for expert developers; composes [Proposals 015](proposals/015-expertise-aware-adaptive-interaction.md) + [047](proposals/047-project-governance-profile.md) + 066
+- **Installed-File SDLC Audit** ([Proposal 099](proposals/099-installed-file-sdlc-instruction-audit.md)) — close the dogfooding deficit between maintainer paste-prompts and installed methodology files
+- **Multi-host launch** ([Proposal 069](proposals/069-multi-host-launch-path.md)) — Claude Code and Codex CLI as alternatives to Copilot CLI
+- **Cost-aware model routing** ([Proposal 068](proposals/068-cost-aware-model-routing.md)) + [Token Economy MVP](proposals/070-token-economy-mvp.md) — Junior tasks to cheap models, Senior tasks to strong models
 
-1. synchronize any matching `.squad/decisions.md` authorization entries from
-   `Commit Reference: pending` to the real boundary hash
-2. keep `Recorded At` in canonical UTC seconds precision
-   (`YYYY-MM-DDTHH:MM:SSZ`)
-3. run a stale-reference scan over the cited `file:///` inspection targets
-4. rerun the governed validation lane on the exact committed tree before
-   claiming the boundary is ready
-5. disclose any remaining defers or gaps instead of implying post-commit work
-   already happened
+See [proposals/INDEX.md](proposals/INDEX.md) for the full proposal catalog (Shipped / Draft / Candidate).
 
-Short and full commit hashes are both accepted once they point at the exact
-committed boundary tree.
+## Quickstart
 
-## PR-at-feature-close Workflow
+Five minutes from zero to a running lifecycle session:
 
-Specrew currently uses a merge-at-close rhythm:
+```powershell
+Install-Module Specrew -Scope CurrentUser -SkipPublisherCheck
+mkdir C:\Dev\calculator && cd C:\Dev\calculator && git init
+specrew init
+specrew start "Build a web based calculator with only the + - * / MR MC M+ M- operations"
+```
 
-1. Do the work on a feature branch.
-2. Keep the spec, plan, tasks, and iteration evidence current while the branch
-   is open.
-3. Open or refresh the pull request when the feature is ready for closeout
-   review, not as the day-to-day control surface.
-4. Merge only after the bounded slice has passing evidence or an explicit
-   human-approved deferral.
+See [docs/getting-started.md](docs/getting-started.md) for the full quickstart, install variants, and known limitations. See [docs/user-guide.md](docs/user-guide.md) for day-to-day usage.
 
-## Roadmap
+## Platform support
 
-- Harden multi-developer and multi-host workflows
-- Improve brownfield discovery and packaging for broader reuse
-- Keep future feature closeout governance strict enough that release truth stays
-  synchronized by default
+| Platform | Status |
+|---|---|
+| Windows 11 (primary) | ✅ Fully validated |
+| WSL Ubuntu | ✅ Manually validated end-to-end |
+| Linux native (Ubuntu) | ✅ Path handling cross-platform; CI matrix configured |
+| macOS | 🔧 Path handling cross-platform; CI matrix configured; no in-house validation yet |
 
-## Versioning
+## Key documents
 
-- `.specrew\config.yml` is the canonical source for the active version and now
-  declares **0.24.1** on this branch.
-- Feature releases use `0.NN.0`, where `NN` tracks the shipped feature ordinal
-  (`0.24.0` = Feature 024).
-- `0.NN.M` is reserved for hotfixes against an existing shipped feature
-  baseline.
-- See `docs\versioning.md` for the policy details and `CHANGELOG.md` for the
-  retroactive release history.
-
-## License
-
-Specrew is released under the MIT License. See `LICENSE` for the repository
-license and `NOTICE.md` for upstream attribution covering derived Squad and Spec
-Kit materials.
+- [docs/getting-started.md](docs/getting-started.md) — bootstrap + minimal flow
+- [docs/user-guide.md](docs/user-guide.md) — day-to-day lifecycle usage
+- [docs/dashboard-guide.md](docs/dashboard-guide.md) — dashboard sections, flags, closeout snapshots
+- [docs/versioning.md](docs/versioning.md) — release-numbering policy and tag/changelog rules
+- [CHANGELOG.md](CHANGELOG.md) — retroactive feature-release history
+- [proposals/INDEX.md](proposals/INDEX.md) — full proposal catalog (candidates, drafts, shipped)
+- [docs/roadmap-maintenance.md](docs/roadmap-maintenance.md) — `.specrew/roadmap.yml` maintenance
 
 ## Contributing
 
-Specrew is still alpha. Reading, issues, and discussion are welcome now.
-External pull requests are intentionally deferred until the operating model and
-review boundaries stabilize.
+Specrew is alpha. Reading, issues, and discussion are welcome now. External pull requests are intentionally deferred until the operating model and review boundaries stabilize. The dogfooding loop on this repository is the validation surface for every methodology change.
 
-## Key Documents
+## License
 
-- `docs\getting-started.md` - bootstrap and quickstart guidance
-- `docs\dashboard-guide.md` - dashboard sections, rich/fallback rules, flags, and closeout snapshots
-- `docs\roadmap-maintenance.md` - `.specrew/roadmap.yml` maintenance guidance
-- `docs\user-guide.md` - day-to-day lifecycle usage
-- `docs\github-project.md` - Specrew self-development board guidance
-- `docs\versioning.md` - release-numbering policy and tag/changelog rules
-- `CHANGELOG.md` - retroactive feature-release history
-- `tests\README.md` - integration and smoke-test entrypoints
-
-## Reviewer-regression Governance Highlights
-
-- A human-found defect in work the Squad reviewer already approved or marked
-  ready creates a Reviewer Regression Event.
-- The next review escalates to the lowest stronger reviewer class that is
-  actually available, falls back to an independent reviewer at the same class
-  when needed, and pauses for human direction only when neither path is safe.
-- Implementer rotation remains capped at two extra owners beyond the original
-  implementer unless a human explicitly records a justified exception.
-
-## Session-loaded File Change Detection
-
-When you restart Copilot or Squad, `specrew start` checks whether you committed
-changes to session-loaded files such as agent charters, Copilot instructions,
-or Spec Kit extension templates. If changes are detected, Specrew pauses the
-auto-continue path and asks for confirmation or extra direction before the
-lifecycle resumes.
+Specrew is released under the MIT License. See [LICENSE](LICENSE) for the repository license and [NOTICE.md](NOTICE.md) for upstream attribution covering derived Squad and Spec Kit materials.
