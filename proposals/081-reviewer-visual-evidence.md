@@ -91,6 +91,7 @@ The scaffolder runs all six detectors (Structure, Flow, Class Hierarchy, Depende
 When a control flow change is detected (sequence diagram type), emit BOTH the before-state and the after-state side-by-side. This is the highest-value diagram for reviewer comprehension — it lets the reviewer SEE the change as a delta rather than reading two versions of the same function and inferring the diff mentally.
 
 Use cases:
+
 - Adding/removing a conditional branch
 - Adding a new call site to an existing function
 - Adding a new failure path

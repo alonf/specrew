@@ -84,6 +84,7 @@ Set-ValidatorCacheEntry -Key $cacheKey -Result $result
 ```
 
 **Invalidation triggers**:
+
 - Any file content change in iteration directory → invalidates that iteration's entry
 - Any change to validator code (`validate-governance.ps1`, `shared-governance.ps1`) → wipes entire cache
 - Any change to rules definition → wipes entire cache
@@ -94,6 +95,7 @@ Set-ValidatorCacheEntry -Key $cacheKey -Result $result
 **Cache size discipline**: cap at 500 entries; LRU eviction. Cache lives in `.specrew/.cache/` which is gitignored (not committed; per-developer).
 
 **Expected impact**:
+
 - First validator run on iteration N: same as today
 - Subsequent runs with unchanged iteration N: ~1 ms (cache hit)
 - For the Crew's edit-validate-edit loop on 083: would have cut ~71 min of redundant test work to ~seconds
