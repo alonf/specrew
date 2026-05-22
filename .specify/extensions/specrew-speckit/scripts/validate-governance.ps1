@@ -5,6 +5,8 @@ param(
     [switch]$ChangedOnly,
     [switch]$FullRun,
     [switch]$NoCacheRead,
+    [switch]$NoParallel,
+    [int]$ThrottleLimit = 6,
     [AllowEmptyString()][string]$ResponseText = '',
     [string]$BoundaryName,
     [ValidateSet('auto', 'boundary-handoff', 'narration')][string]$ResponseScope = 'auto',
@@ -3944,72 +3946,142 @@ try {
     $iterationConfig = if ($targets.Count -gt 0) { Get-IterationConfigForValidation -IterationDirectory $targets[0] } else { @{ closeout_packet_required_since_iteration = '' } }
     $reviewerCloseoutEnforcement = Get-ReviewerCloseoutEnforcementMap -Targets $targets -ExplicitTargetsProvided $explicitIterationPathsProvided -RequiredSinceIteration $iterationConfig.closeout_packet_required_since_iteration
     # Proposal 086 Pillar 1: precompute validator code hash for memoization cache.
-    # When this hash changes (developer edits validate-governance.ps1 or shared-
-    # governance.ps1), the entire cache is invalidated by Set-ValidatorCacheEntry.
     $validatorCodeHash = Get-ValidatorCodeHash -ProjectRoot $resolvedProjectPath
     $cacheEnabled = -not [string]::IsNullOrWhiteSpace($validatorCodeHash)
-    # Proposal 034: per-iteration progress logging so hangs can be bisected.
-    # Without this, the loop runs silently for minutes and a single pathological
-    # iteration creates a black-hole CI experience. With this, the last printed
-    # line identifies the iteration that started but didn't complete.
-    $iterationIndex = 0
     $iterationTotal = $targets.Count
     $iterationStart = Get-Date
     $script:cacheHitCount = 0
-    $results = @($targets | ForEach-Object {
-            $targetPath = $_
-            $iterationIndex++
+
+    # Proposal 084: parallel iteration validation.
+    # 1) Pre-pass (serial, fast): identify cache hits and cache misses.
+    # 2) Parallel pass: subprocesses validate misses; each writes to the
+    #    file-locked cache (FR-002). Skipped if -NoParallel, PS < 7, or only
+    #    one miss (overhead not worth it).
+    # 3) Post-pass: re-read cache for all targets; render in sorted order.
+    $parallelAvailable = (-not $NoParallel) -and ($PSVersionTable.PSVersion.Major -ge 7) -and $cacheEnabled
+    $cacheHitResults = @{}
+    $missTargets = New-Object System.Collections.Generic.List[string]
+    $cacheKeysByTarget = @{}
+
+    $preIndex = 0
+    foreach ($targetPath in $targets) {
+        $preIndex++
+        $relativeTarget = try { [System.IO.Path]::GetRelativePath($resolvedProjectPath, $targetPath) } catch { $targetPath }
+        $cacheKey = $null
+        if ($cacheEnabled) {
+            $cacheKey = Get-ValidatorCacheKey -IterationPath $targetPath -ValidatorCodeHash $validatorCodeHash
+            $cacheKeysByTarget[$targetPath] = $cacheKey
+        }
+        if (-not $NoCacheRead -and $cacheEnabled -and -not [string]::IsNullOrWhiteSpace($cacheKey)) {
+            $cachedEntry = Get-ValidatorCacheEntry -ProjectRoot $resolvedProjectPath -CacheKey $cacheKey
+            if ($null -ne $cachedEntry) {
+                $script:cacheHitCount++
+                $cachedErrors = New-Object System.Collections.Generic.List[string]
+                foreach ($e in @($cachedEntry['errors'])) {
+                    if (-not [string]::IsNullOrWhiteSpace([string]$e)) {
+                        $null = $cachedErrors.Add([string]$e)
+                    }
+                }
+                $cacheHitResults[$targetPath] = [pscustomobject]@{
+                    Path   = $targetPath
+                    Errors = $cachedErrors
+                }
+                if ($env:SPECREW_VALIDATOR_VERBOSE -eq '1') {
+                    Write-Host ("[validator] ({0}/{1}) {2} -> CACHE HIT" -f $preIndex, $iterationTotal, $relativeTarget)
+                }
+                continue
+            }
+        }
+        $null = $missTargets.Add($targetPath)
+    }
+
+    $useParallel = $parallelAvailable -and ($missTargets.Count -gt 1)
+    $missResults = @{}
+
+    if ($useParallel) {
+        $validatorScriptPath = $PSCommandPath
+        $effectiveThrottle = [Math]::Max(1, $ThrottleLimit)
+        Write-Host ("[validator-parallelism] {0} targets, {1} cache hits served from pre-pass, {2} misses validated in parallel (throttle={3})" -f $iterationTotal, $script:cacheHitCount, $missTargets.Count, $effectiveThrottle)
+
+        $parallelOutputs = $missTargets | ForEach-Object -Parallel {
+            $iter = $_
+            $script = $using:validatorScriptPath
+            $proj = $using:resolvedProjectPath
+            try {
+                $out = & pwsh -NoProfile -NoLogo -File $script -ProjectPath $proj -IterationPath $iter -NoParallel 2>&1 | Out-String
+                [pscustomobject]@{
+                    Path     = $iter
+                    ExitCode = $LASTEXITCODE
+                    Output   = $out
+                }
+            }
+            catch {
+                [pscustomobject]@{
+                    Path     = $iter
+                    ExitCode = -1
+                    Output   = "[validator-parallel-launch-error] $($_.Exception.Message)"
+                }
+            }
+        } -ThrottleLimit $effectiveThrottle
+
+        # After parallel pass, re-read cache for each miss target. Subprocesses
+        # populate the cache (file-locked) so the parent reads results uniformly.
+        foreach ($po in $parallelOutputs) {
+            $missCacheKey = $cacheKeysByTarget[$po.Path]
+            $cacheEntry = $null
+            if (-not [string]::IsNullOrWhiteSpace($missCacheKey)) {
+                $cacheEntry = Get-ValidatorCacheEntry -ProjectRoot $resolvedProjectPath -CacheKey $missCacheKey
+            }
+            if ($null -ne $cacheEntry) {
+                $errs = New-Object System.Collections.Generic.List[string]
+                foreach ($e in @($cacheEntry['errors'])) {
+                    if (-not [string]::IsNullOrWhiteSpace([string]$e)) { $null = $errs.Add([string]$e) }
+                }
+                $missResults[$po.Path] = [pscustomobject]@{ Path = $po.Path; Errors = $errs }
+            }
+            else {
+                $errs = New-Object System.Collections.Generic.List[string]
+                Add-RepoStructuredValidationFailure -Errors $errs -ProjectRoot $resolvedProjectPath -TargetPath $po.Path -LineNumber $null -Category 'parallel-subprocess-error' -Message ("Parallel subprocess exited with code {0} and did not populate cache. Output: {1}" -f $po.ExitCode, $po.Output) -RemediationHint 'Re-run validate-governance.ps1 with -NoParallel for direct diagnostic output.'
+                $missResults[$po.Path] = [pscustomobject]@{ Path = $po.Path; Errors = $errs }
+            }
+        }
+    }
+    else {
+        # Serial path: original behavior (PS < 7, -NoParallel, single miss, or cache disabled).
+        $serialIndex = $script:cacheHitCount
+        foreach ($targetPath in $missTargets) {
+            $serialIndex++
             $stepStart = Get-Date
             $relativeTarget = try { [System.IO.Path]::GetRelativePath($resolvedProjectPath, $targetPath) } catch { $targetPath }
             if ($env:SPECREW_VALIDATOR_VERBOSE -eq '1') {
-                Write-Host ("[validator] ({0}/{1}) validating {2}" -f $iterationIndex, $iterationTotal, $relativeTarget)
+                Write-Host ("[validator] ({0}/{1}) validating {2}" -f $serialIndex, $iterationTotal, $relativeTarget)
             }
-            # Proposal 086 Pillar 1: try cache first (unless -NoCacheRead)
-            $cacheKey = $null
-            if ($cacheEnabled) {
-                $cacheKey = Get-ValidatorCacheKey -IterationPath $targetPath -ValidatorCodeHash $validatorCodeHash
-                if (-not $NoCacheRead -and -not [string]::IsNullOrWhiteSpace($cacheKey)) {
-                    $cachedEntry = Get-ValidatorCacheEntry -ProjectRoot $resolvedProjectPath -CacheKey $cacheKey
-                    if ($null -ne $cachedEntry) {
-                        $script:cacheHitCount++
-                        $cachedErrors = New-Object System.Collections.Generic.List[string]
-                        foreach ($e in @($cachedEntry['errors'])) {
-                            if (-not [string]::IsNullOrWhiteSpace([string]$e)) {
-                                $null = $cachedErrors.Add([string]$e)
-                            }
-                        }
-                        if ($env:SPECREW_VALIDATOR_VERBOSE -eq '1') {
-                            Write-Host ("[validator] ({0}/{1}) {2} -> CACHE HIT" -f $iterationIndex, $iterationTotal, $relativeTarget)
-                        }
-                        return [pscustomobject]@{
-                            Path   = $targetPath
-                            Errors = $cachedErrors
-                        }
-                    }
-                }
-            }
+            $cacheKey = $cacheKeysByTarget[$targetPath]
             try {
                 $result = Test-IterationGovernance -IterationDirectory $targetPath -ProjectRoot $resolvedProjectPath -TeamRoles $teamRoles -EnforceReviewerCloseout $reviewerCloseoutEnforcement.ContainsKey($targetPath)
                 if ($env:SPECREW_VALIDATOR_VERBOSE -eq '1') {
                     $stepElapsed = [Math]::Round(((Get-Date) - $stepStart).TotalSeconds, 1)
-                    Write-Host ("[validator] ({0}/{1}) {2} -> {3}s" -f $iterationIndex, $iterationTotal, $relativeTarget, $stepElapsed)
+                    Write-Host ("[validator] ({0}/{1}) {2} -> {3}s" -f $serialIndex, $iterationTotal, $relativeTarget, $stepElapsed)
                 }
-                # Proposal 086 Pillar 1: write result to cache
                 if ($cacheEnabled -and -not [string]::IsNullOrWhiteSpace($cacheKey)) {
                     $errorsArray = @($result.Errors | ForEach-Object { [string]$_ })
                     Set-ValidatorCacheEntry -ProjectRoot $resolvedProjectPath -CacheKey $cacheKey -Errors $errorsArray -ValidatorCodeHash $validatorCodeHash
                 }
-                $result
+                $missResults[$targetPath] = $result
             }
             catch {
                 $iterationErrors = New-Object System.Collections.Generic.List[string]
                 Add-RepoStructuredValidationFailure -Errors $iterationErrors -ProjectRoot $resolvedProjectPath -TargetPath $targetPath -LineNumber $null -Category 'unexpected-validator-error' -Message $_.Exception.Message -RemediationHint 'Repair the malformed governance artifact or validator input for this iteration and rerun validate-governance.ps1.'
-                [pscustomobject]@{
-                    Path   = $targetPath
-                    Errors = $iterationErrors
-                }
+                $missResults[$targetPath] = [pscustomobject]@{ Path = $targetPath; Errors = $iterationErrors }
             }
-        })
+        }
+    }
+
+    # Merge results in target order (deterministic; AC2).
+    $results = @($targets | ForEach-Object {
+        if ($cacheHitResults.ContainsKey($_)) { $cacheHitResults[$_] } else { $missResults[$_] }
+    })
+
     if ($env:SPECREW_VALIDATOR_VERBOSE -eq '1' -and $script:cacheHitCount -gt 0) {
         Write-Host ("[validator-cache] {0} of {1} iterations served from memoization cache" -f $script:cacheHitCount, $iterationTotal)
     }
