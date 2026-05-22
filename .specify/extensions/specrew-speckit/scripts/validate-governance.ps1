@@ -3955,7 +3955,7 @@ try {
     $iterationIndex = 0
     $iterationTotal = $targets.Count
     $iterationStart = Get-Date
-    $cacheHitCount = 0
+    $script:cacheHitCount = 0
     $results = @($targets | ForEach-Object {
             $targetPath = $_
             $iterationIndex++

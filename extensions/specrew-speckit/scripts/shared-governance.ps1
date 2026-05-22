@@ -269,23 +269,48 @@ function Get-ValidatorCachePath {
 }
 
 function Get-ValidatorCodeHash {
-    # Proposal 086 Pillar 1: SHA256 hash of the validator scripts. When this hash
-    # changes (e.g., a developer modifies validate-governance.ps1), the entire
-    # cache should be considered stale. Used as the cache-wide invalidation key.
+    # Proposal 086 Pillar 1: SHA256 hash of validator scripts + governance config
+    # files. Per Copilot review on PR #594: governance config files (e.g.,
+    # .specrew/iteration-config.yml) are included because rules invoked by
+    # validator depend on them. Without folding them into the hash, changing
+    # those files would yield stale cache hits.
+    #
+    # Validator scripts must exist (return $null otherwise). Governance config
+    # files are optional — missing files contribute the literal 'missing' marker,
+    # which is still deterministic and shifts when the file appears/disappears.
     param(
         [Parameter(Mandatory = $true)]
         [string]$ProjectRoot
     )
     $resolvedProjectRoot = Resolve-ProjectPath -Path $ProjectRoot
-    $validatorPath = Join-Path -Path $resolvedProjectRoot -ChildPath 'extensions\specrew-speckit\scripts\validate-governance.ps1'
-    $sharedPath = Join-Path -Path $resolvedProjectRoot -ChildPath 'extensions\specrew-speckit\scripts\shared-governance.ps1'
+    $hashSources = @(
+        (Join-Path -Path $resolvedProjectRoot -ChildPath 'extensions\specrew-speckit\scripts\validate-governance.ps1'),
+        (Join-Path -Path $resolvedProjectRoot -ChildPath 'extensions\specrew-speckit\scripts\shared-governance.ps1'),
+        (Join-Path -Path $resolvedProjectRoot -ChildPath '.specrew\iteration-config.yml'),
+        (Join-Path -Path $resolvedProjectRoot -ChildPath '.specrew\config.yml'),
+        (Join-Path -Path $resolvedProjectRoot -ChildPath '.specrew\constitution.md'),
+        (Join-Path -Path $resolvedProjectRoot -ChildPath '.specrew\role-assignments.yml'),
+        (Join-Path -Path $resolvedProjectRoot -ChildPath '.specrew\roadmap.yml'),
+        (Join-Path -Path $resolvedProjectRoot -ChildPath '.squad\identity\wisdom.md')
+    )
 
+    $validatorPath = $hashSources[0]
+    $sharedPath = $hashSources[1]
     if (-not (Test-Path -LiteralPath $validatorPath -PathType Leaf) -or
         -not (Test-Path -LiteralPath $sharedPath -PathType Leaf)) {
         return $null
     }
 
-    $combinedHashInput = (Get-FileHash -LiteralPath $validatorPath -Algorithm SHA256).Hash + ':' + (Get-FileHash -LiteralPath $sharedPath -Algorithm SHA256).Hash
+    $componentHashes = New-Object System.Collections.Generic.List[string]
+    foreach ($source in $hashSources) {
+        if (Test-Path -LiteralPath $source -PathType Leaf) {
+            $null = $componentHashes.Add((Get-FileHash -LiteralPath $source -Algorithm SHA256).Hash)
+        }
+        else {
+            $null = $componentHashes.Add('missing')
+        }
+    }
+    $combinedHashInput = $componentHashes -join ':'
     $bytes = [System.Text.Encoding]::UTF8.GetBytes($combinedHashInput)
     $sha = [System.Security.Cryptography.SHA256]::Create()
     try {
@@ -358,6 +383,14 @@ function Get-ValidatorCacheKey {
 function Get-ValidatorCacheEntry {
     # Proposal 086 Pillar 1: returns the cached entry for the given key, or $null
     # if absent. The entry shape is { errors: @(...), validated_at: '...' }.
+    #
+    # Per Copilot review on PR #594: this function is READ-ONLY. It does NOT
+    # update last_access_at or rewrite the cache file. Concurrent reads from
+    # parallel validator runs would corrupt the cache if we wrote on read.
+    # LRU eviction bookkeeping uses validated_at (write timestamp) on Set; that
+    # gives us "least-recently-validated" semantics which is functionally
+    # equivalent for our use case (we re-validate cache misses, so "validated"
+    # tracks usage).
     param(
         [Parameter(Mandatory = $true)]
         [string]$ProjectRoot,
@@ -386,19 +419,7 @@ function Get-ValidatorCacheEntry {
         return $null
     }
 
-    # Update LRU last_access timestamp on read for eviction tracking
-    $entry = $cache['entries'][$CacheKey]
-    $entry['last_access_at'] = (Get-Date -AsUTC -Format 'yyyy-MM-ddTHH:mm:ss.fffZ')
-
-    try {
-        $cache['entries'][$CacheKey] = $entry
-        ConvertTo-Json -InputObject $cache -Depth 10 | Set-Content -LiteralPath $cachePath -Encoding UTF8
-    }
-    catch {
-        # Cache update is best-effort; reading the entry is the priority
-    }
-
-    return $entry
+    return $cache['entries'][$CacheKey]
 }
 
 function Set-ValidatorCacheEntry {
@@ -453,14 +474,17 @@ function Set-ValidatorCacheEntry {
 
     $now = (Get-Date -AsUTC -Format 'yyyy-MM-ddTHH:mm:ss.fffZ')
     $cache['entries'][$CacheKey] = @{
-        errors          = @($Errors)
-        validated_at    = $now
-        last_access_at  = $now
+        errors       = @($Errors)
+        validated_at = $now
     }
 
-    # LRU eviction at 500 entries
+    # LRU eviction at 500 entries. Uses validated_at (write timestamp) as the
+    # LRU key. Get-ValidatorCacheEntry no longer updates last_access_at on read
+    # (per Copilot review PR #594; concurrent reads would corrupt the file).
+    # Validated_at is functionally equivalent because we re-validate cache
+    # misses, so "least-recently-validated" tracks usage frequency closely.
     if ($cache['entries'].Keys.Count -gt 500) {
-        $sortedKeys = $cache['entries'].GetEnumerator() | Sort-Object { $_.Value['last_access_at'] } | Select-Object -ExpandProperty Key
+        $sortedKeys = $cache['entries'].GetEnumerator() | Sort-Object { $_.Value['validated_at'] } | Select-Object -ExpandProperty Key
         $excess = $cache['entries'].Keys.Count - 500
         for ($i = 0; $i -lt $excess; $i++) {
             $null = $cache['entries'].Remove($sortedKeys[$i])
