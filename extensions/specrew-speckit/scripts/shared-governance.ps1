@@ -316,6 +316,30 @@ function Get-SpecrewLocalScopeBaseRef {
     )
 
     $resolvedProjectRoot = Resolve-ProjectPath -Path $ProjectRoot
+
+    # Guard: only auto-scope when the project root IS a git repo's top-level.
+    # If $ProjectRoot is a subdirectory of a different git repo (e.g., a test
+    # fixture under .scratch/, or a nested working tree), the surrounding repo's
+    # diff doesn't reflect the fixture's iteration state — auto-scoping against
+    # it returns zero changed iterations and the validator silently skips work.
+    # Refuse to auto-scope in that case; caller falls back to full-repo.
+    $gitTopLevelOutput = & git -C $resolvedProjectRoot rev-parse --show-toplevel 2>$null
+    if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace([string]$gitTopLevelOutput)) {
+        return $null
+    }
+
+    try {
+        $gitTopLevelNormalized = (Resolve-Path -LiteralPath ([string]$gitTopLevelOutput).Trim()).Path
+        $projectRootNormalized = (Resolve-Path -LiteralPath $resolvedProjectRoot).Path
+    }
+    catch {
+        return $null
+    }
+
+    if (-not [string]::Equals($gitTopLevelNormalized, $projectRootNormalized, [System.StringComparison]::OrdinalIgnoreCase)) {
+        return $null
+    }
+
     $candidates = New-Object System.Collections.Generic.List[string]
 
     if (-not [string]::IsNullOrWhiteSpace($env:GITHUB_BASE_REF)) {
