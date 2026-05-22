@@ -257,6 +257,12 @@ function Get-DecisionsLedgerPath {
 }
 
 function Get-ValidatorGlobalStatePathspecs {
+    # NOTE: `.specify/feature.json` was previously in this list but is purely a
+    # "current feature pointer" consumed only by scaffold-feature-closeout-dashboard.ps1
+    # for path resolution — no validator rule depends on it. Including it forced
+    # every feature-transitioning PR (e.g., feature-closeout PRs) to fall back to
+    # full-repo validation, multiplying the wait time on PR-CI. Removed per the
+    # 2026-05-22 push-to-main scoping work (companion to Proposal 087).
     return @(
         '.specrew/config.yml'
         '.specrew/constitution.md'
@@ -268,7 +274,6 @@ function Get-ValidatorGlobalStatePathspecs {
         '.specrew/lenses/**'
         '.specrew/roadmap.yml'
         '.squad/identity/wisdom.md'
-        '.specify/feature.json'
     )
 }
 
