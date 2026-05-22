@@ -188,15 +188,18 @@
 ### Parallelization Opportunities
 
 **After Phase 1 (Setup)**:
+
 - Phase 2 (T004–T007): Implementer works on core helpers and logic
 - Parallel with Phase 2: Phase 5 can draft documentation changes (T010–T012) but final updates require Phase 2 completion
 
 **After Phase 2 complete**:
+
 - Phase 3 (T008) and Phase 4 (T009) can run in parallel: both extend Phase 2 logic independently
 - Phase 5 (T010–T012) and Phase 6 (T013) can run in parallel: both are post-implementation activities
 - Phase 7 (T014) depends on Phase 2, 3, 4, 6 complete; then can run independently
 
 **Recommended Parallel Execution**:
+
 1. Phase 1 (setup) — sequential baseline
 2. Phase 2 (core) — single implementer, sequential tasks within phase
 3. *After Phase 2*: Phase 3, 4, 5, 6 can overlap:

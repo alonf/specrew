@@ -171,6 +171,7 @@ else
 **Definition**: Validator runs against all iterations and global-state pathspecs in the repository
 
 **When Applied**:
+
 - User on main/master branch with no flags
 - `-FullRun` flag explicitly passed
 - Base ref undetectable (graceful fallback)
@@ -184,6 +185,7 @@ else
 **Definition**: Validator runs only against files and iterations that differ between base ref and HEAD
 
 **When Applied**:
+
 - User on feature branch, base ref detectable, no explicit flags
 
 **Iteration Set**: Only iterations containing changed files in the diff between base and HEAD
@@ -191,6 +193,7 @@ else
 **File Set**: Only files matching global-state pathspecs that appear in the diff
 
 **Diff Computation**:
+
 - Uses existing `Get-ChangedIterations` helper from `ci(lint-scoping)`
 - Computes diff as `git diff <base-ref>...HEAD --name-only`
 - Handles Windows path normalization (backslash → forward slash)
@@ -211,6 +214,7 @@ Three locations must be kept in sync (FR-012):
 | Reviewer charter | N/A | `extensions/specrew-speckit/squad-templates/agents/reviewer/charter.md` | `.specify/extensions/specrew-speckit/squad-templates/agents/reviewer/charter.md` | Identical copies; manual sync |
 
 **Parity Verification** (Task T-009):
+
 - Byte-for-byte comparison of primary vs. mirrors
 - Fail if any mirror diverges from primary
 - Document sync date and verifier

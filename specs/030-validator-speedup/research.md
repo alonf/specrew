@@ -1,7 +1,7 @@
 # Research Notes: Local Validator Auto-Scope for Feature-Branch Invocations
 
-**Status**: Complete (all clarifications resolved in spec)  
-**Session**: 2026-05-21  
+**Status**: Complete (all clarifications resolved in spec)
+**Session**: 2026-05-21
 **Reviewed**: spec.md (lines 1–200), proposal.md (lines 1–161)
 
 ---
@@ -14,8 +14,8 @@
 
 **A1**: No. Performance thresholds are observational validation guidance for planning/review only. No timeout warnings, timeout fallback behavior, or runtime timeout semantics are added to the validator itself. The speedup is measured empirically as an acceptance signal for QA sign-off and documented in CHANGELOG evidence only.
 
-**Decision**: Performance is measured empirically; thresholds are observational, not enforced.  
-**Rationale**: Keeps implementation focused on scoping logic, not timeout semantics. Accepts runtime measurement risk: if speedup doesn't materialize, integration tests will capture it; operators can adjust scoping strategy in future iterations.  
+**Decision**: Performance is measured empirically; thresholds are observational, not enforced.
+**Rationale**: Keeps implementation focused on scoping logic, not timeout semantics. Accepts runtime measurement risk: if speedup doesn't materialize, integration tests will capture it; operators can adjust scoping strategy in future iterations.
 **Alternatives Considered**: (1) Add runtime timeouts with fallback—rejected as scope creep; (2) Make thresholds hard gates—rejected as over-engineered for a local observational metric.
 
 ---
@@ -35,7 +35,8 @@
 
 **Rationale**: Mirrors `ci(lint-scoping)` for consistency; handles CI path, standard git config, and fallback to conventional names. Edge cases (detached HEAD, no remote, non-origin upstreams) are handled gracefully without error.
 
-**Alternatives Considered**: 
+**Alternatives Considered**:
+
 - (Rejected) Hard-fail if base undetectable: Would break in detached HEAD or no-remote scenarios.
 - (Rejected) Prompt user interactively: Out of scope for local validator (no user interaction expected).
 - (Rejected) Scan multiple remotes: v1 assumes conventional `origin`; users with non-standard remotes can pass `-BaseBranch` explicitly.
@@ -59,13 +60,15 @@ if ( on feature branch AND base undetectable )
   → Full-repo + info banner explaining why
 ```
 
-**Rationale**: 
+**Rationale**:
+
 - Feature branches get speedup by default: addresses the primary user journey (US-1).
 - Truth branches never auto-scoped: prevents accidental unscoped runs on main/master.
 - Explicit flags honored: preserves backward compatibility (US-4) and supports deliberate override (US-2).
 - Edge cases fall back gracefully: prevents failures in detached HEAD or no-remote scenarios (US-3).
 
 **Alternatives Considered**:
+
 - (Rejected) Auto-scope everywhere: Would break truth-branch validation discipline.
 - (Rejected) Require explicit `-ChangedOnly`: Defeats the speedup goal for local invocations.
 - (Rejected) Fail on undetectable base: Breaks in detached HEAD or no-remote environments.
@@ -86,6 +89,7 @@ if ( on feature branch AND base undetectable )
 **Rationale**: Transparent reporting without ceremony. Users see scope at a glance; audit trails capture scope decision automatically. Composes naturally with existing `[validator-timing]` line from PR #384.
 
 **Alternatives Considered**:
+
 - (Rejected) Require `-Verbose` flag: Scope reporting should be always-on for observability.
 - (Rejected) Log to file only: Scope reporting in stdout allows immediate user feedback.
 
@@ -108,12 +112,13 @@ if ( on feature branch AND base undetectable )
 
 ### v0.24.2 Bundle Composition
 
-**Proposal 083 (this slice)**: Local validator auto-scope (~5 SP)  
-**Proposal 082**: Boundary Commit + Upstream Push Discipline (~5 SP)  
-**Proposal 081**: Reviewer Visual Evidence (~3 SP)  
+**Proposal 083 (this slice)**: Local validator auto-scope (~5 SP)
+**Proposal 082**: Boundary Commit + Upstream Push Discipline (~5 SP)
+**Proposal 081**: Reviewer Visual Evidence (~3 SP)
 **Proposed Pairing**: Ship Proposals 082 + 083 + 081 together in v0.24.2 if F-029 closes in time.
 
 **Composition Rationale**:
+
 - 082 (boundary discipline) + 083 (fast validator) together make per-boundary cost low enough for discipline to be sustainable.
 - 081 (visual evidence) is orthogonal; complements both.
 - All three are small-fix slices (~13 SP total) fitting v0.24.2 reliability bundle scope.
@@ -136,6 +141,7 @@ if ( on feature branch AND base undetectable )
 **Rationale**: Specrew maintains three code branches (primary, extension, and mirrored extension). Changes must be applied to all three to avoid drift. Task T-009 includes mirror parity verification sweep.
 
 **Alternatives Considered**:
+
 - (Rejected) Maintain only primary: Extensions would lag, breaking Squad governance.
 - (Rejected) Automate sync: Would require CI infrastructure change (out of scope v1).
 

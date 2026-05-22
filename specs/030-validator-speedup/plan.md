@@ -169,6 +169,7 @@ Every run emits `[validator-scope]` as the first informational line:
 **Capacity Model**: Small-fix slice (~5 SP) per Proposal 067  
 
 **Drift Signals**:
+
 - Auto-scope applies on main/master → implementation error
 - `-FullRun` flag exists but doesn't bypass auto-scope → logic error
 - Feature branch run > 10 seconds → scoping not applied or regressed

@@ -119,6 +119,7 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File .\scripts\internal\validate-govern
 Pass `-FullRun` to bypass auto-scope and force full-repository validation.
 
 **When to use**:
+
 - Feature-closeout validation (ensure no cross-feature drift)
 - After major refactoring (need full validation confidence)
 - Explicit override for Squad governance workflows
@@ -134,6 +135,7 @@ Every validator run now emits a **scope banner** as the first informational line
 ```
 
 This banner shows:
+
 - **Scope type**: `auto-scoped`, `full-repo`, or reason why full-repo
 - **Iteration count**: How many iterations are being validated
 - **File count** (if scoped): How many changed files in the diff
