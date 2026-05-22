@@ -17257,3 +17257,55 @@ The semantic review-boundary evidence for Feature 030 Iteration 001 was already 
 ---
 
 
+---
+
+## 2026-05-22T16:20:58Z — User Directive: Feature 039 Review-Boundary Evidence Standard
+
+- **Decision ID**: user-directive-2026-05-22-f039-ac-density
+- **Type**: user directive  
+- **Authority**: Alon Fliess
+- **Recorded At**: 2026-05-22T16:20:58Z
+
+## Directive
+
+T011's AC1-AC10 test-evidence density stays a **Reviewer concern**. Flag it at review-boundary if the test evidence ends up thin per acceptance criterion; otherwise carry it forward as acceptable depth.
+
+**Context**: This directive establishes the review-boundary expectation for evidence density review on Feature 039 Iteration 001. If test evidence is explicit per acceptance criterion, density concern is dismissed. If thin, flag as a review finding but do not block implementation progress.
+
+---
+
+## 2026-05-22T16:20:58Z — User Verdict: Feature 039 Implementation Boundary Authorization
+
+- **Decision ID**: user-verdict-2026-05-22-f039-implementation
+- **Type**: boundary authorization
+- **Authority**: Alon Fliess
+- **Recorded At**: 2026-05-22T16:20:58Z
+- **Feature**: 039-launch-mode-boundary-enforcement
+- **Iteration**: 001
+
+## Verdict
+
+**approved for implementation-boundary entry**
+
+Implementation of Feature 039 Iteration 001 is authorized to cross the plan → implementation boundary and execute the scoped task bundle. Implementation must:
+
+1. Execute all approved tasks in the task bundle
+2. Carry the T011 AC1-AC10 evidence-density concern into review readiness
+3. Stop at the review boundary and not cross into review or later lifecycle boundaries
+
+---
+
+## 2026-05-22T16:21:00Z — Agent Routing Evidence: Feature 039 Implementation
+
+- **Work Item**: Feature 039 implementation  
+- **Requested Agent**: copilot
+- **Actual Agent**: speckit.implement (GitHub Copilot CLI)
+- **Model ID**: claude-sonnet-4.5
+- **Status**: honored
+- **Fallback Reason**: N/A (preferred copilot path active through the Speckit implementation workflow)
+- **Recorded At**: 2026-05-22T16:21:00Z
+
+### Context
+
+User explicitly authorized the implementation boundary for Feature 039 Iteration 001. Implementation must execute the approved task bundle, carry the T011 AC1-AC10 evidence-density concern into review readiness, and stop at the review boundary rather than crossing it.
+
