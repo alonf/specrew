@@ -157,7 +157,7 @@
 
 **Independent Test**: Code review approved; QA sign-off complete; drift signals clear; deployment checklist verified.
 
-- [ ] T015 [assigned_to: All Roles] [effort: M] Code review, QA sign-off, and governance closeout:
+- [X] T015 [assigned_to: All Roles] [effort: M] Code review, QA sign-off, and governance closeout:
   - **Code review gate** (Implementer + Spec Steward): Verify implementation matches spec; FR-001–FR-007 correctly implemented; mirror parity verified
   - **QA sign-off** (Test Owner): Verify all integration tests pass; empirical speedup confirmed (SC-001); acceptance criteria AC1–AC9 all signed off
   - **Squad steward review** (Squad Steward): Verify governance documentation (coordinator prompt, reviewer charter) updated and aligned; the Crew understands auto-scope default

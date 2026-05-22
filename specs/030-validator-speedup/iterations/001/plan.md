@@ -2,9 +2,10 @@
 
 **Schema**: v1  
 **Spec**: [../../spec.md](../../spec.md)  
-**Status**: reviewing  
+**Status**: retro  
 **Capacity**: 6/20 story_points  
 **Started**: 2026-05-21  
+**Completed**: 2026-05-22
 
 ## Summary
 
@@ -47,13 +48,24 @@ Iteration 001 captures the locked implementation review scope for Proposal 083. 
 | Iteration Bounding | scope | Review-boundary work cannot widen implementation beyond the locked tree. |
 | Time Limit (hours) | n/a | Scope-bound review packet, not a time-boxed execution lane. |
 | Overcommit Threshold | 1.0 | Any widening requires explicit human re-authorization, not silent carryover. |
-| Defer Strategy | manual | Retro or later lifecycle work stays unopened until separately authorized. |
-| Calibration Enabled | true | Repository iteration-config keeps retrospective calibration enabled even though retro remains unopened here. |
+| Defer Strategy | manual | Iteration-closeout and later lifecycle work stay unopened until separately authorized. |
+| Calibration Enabled | true | Repository iteration-config keeps retrospective calibration enabled for future capacity adjustments after this completed retro. |
+
+## Phase Baseline
+
+| Phase | Estimated Effort | Notes |
+| ----- | ---------------- | ----- |
+| Planning | 0.5 | Review-scope iteration repair, traceability packaging, and governance alignment for the locked implementation range. |
+| Discovery/Spikes | 0 | No separate spike was authorized for this review-boundary slice. |
+| Implementation | 0 | Implementation was already locked at `edf4104...eeeb90e`; this iteration plan does not reopen code changes. |
+| Review | 6 | Review-boundary evidence, governance validation, and retrospective preparation for the locked Proposal 083 slice. |
+| Rework | 0 | The review verdict accepted the locked implementation without reopening implementation work. |
+
 ## Review Boundary Notes
 
-- Review is constrained to the committed implementation tree `edf4104...eeeb90e`; no new implementation work is authorized here.
-- Per the human directive, review-boundary work does not rerun the Pester implementation suite unless review-boundary bookkeeping itself requires it.
-- Retro, iteration-closeout, and feature-closeout remain unopened.
+- Review remained constrained to the committed implementation tree `edf4104...eeeb90e`; no new implementation work was authorized in this iteration plan.
+- Per the human directive, review-boundary work did not rerun the Pester implementation suite while implementation evidence stayed locked.
+- Retrospective is complete; iteration-closeout and feature-closeout remain unopened.
 
 ---
 

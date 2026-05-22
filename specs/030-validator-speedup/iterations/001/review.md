@@ -9,7 +9,7 @@
 **Review Boundary Completion Ref**: commit `5498bef` (`docs(validator): add review-boundary evidence packet`)
 **Overall Verdict**: accepted
 **Explicit Reviewer Verdict**: APPROVED
-**Review Boundary**: Authorized review-boundary work is complete for Iteration 001 only; retro, iteration-closeout, and feature-closeout remain unopened.
+**Review Boundary**: Authorized review-boundary work is complete for Iteration 001; retrospective is now complete, and iteration-closeout plus feature-closeout remain unopened.
 
 ---
 
@@ -61,4 +61,4 @@ This review stayed requirement-bound. It judged the committed implementation ran
 
 ## Next Action
 
-**APPROVED** — The semantic review-boundary evidence is durably recorded at `5498bef`, review-signoff synchronization is now durably captured on this branch, and retro plus all later boundaries remain unopened pending fresh authorization.
+**APPROVED** — The semantic review-boundary evidence is durably recorded at `5498bef`, review-signoff synchronization remains durably captured on this branch, retrospective is complete, and iteration-closeout plus all later boundaries remain unopened pending fresh authorization.
