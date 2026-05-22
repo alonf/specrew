@@ -10,7 +10,7 @@
 
 ### Session 2026-05-22
 
-- **Q: Should `retro` become a first-class canonical boundary alongside `iteration-closeout`, or stay implicit?** → **A: First-class. Add `retro` to the ValidateSet at `sync-boundary-state.ps1` lines 188, 222, 253, 670. The new `sync-retro` command needs an explicit boundary target. Keeping `retro` implicit (rolled into `iteration-closeout`) would conflate two distinct lifecycle activities.**
+- **Q: Should `retro` become a first-class canonical boundary alongside `iteration-closeout`, or stay implicit?** → **A: First-class. Add `retro` to the canonical boundary enumeration in `sync-boundary-state.ps1`: `Get-SpecrewBoundaryOrder` return list (line 188), `New-SpecrewSessionState` parameter `ValidateSet` (line 222), and `Invoke-SpecrewBoundaryStateSync` parameter `ValidateSet` (line 670). Line 253 is the `active = if ($BoundaryType -eq 'feature-closeout') { 'false' } else { 'true' }` ternary — NOT a ValidateSet — and needs no change because `retro` falls into the `else` branch and stays `active=true` (the feature continues across retro). The new `sync-retro` command needs an explicit boundary target. Keeping `retro` implicit (rolled into `iteration-closeout`) would conflate two distinct lifecycle activities.**
 
 - **Q: Do hooks fire automatically for the new sync commands?** → **A: No. Spec Kit's hook system (`before_plan`, `after_tasks`, `before_implement`) fires only on `/speckit.*` lifecycle commands. The closeout phases have no `/speckit.*` upstream commands, so we can't add hooks at the Spec Kit level. The new sync commands are explicit slash-command targets the Crew invokes manually — but they bake the canonical enum string in, so the bypass bug class can't recur as long as the Crew uses the new commands instead of inline PowerShell.**
 
@@ -105,7 +105,7 @@ Agent charters for Implementer, Spec Steward, Reviewer, Retro Facilitator explic
 
 - **FR-002**: `extensions/specrew-speckit/extension.yml` (+ mirror) MUST list the 4 new commands in `provides.commands` (AC2).
 
-- **FR-003**: `scripts/internal/sync-boundary-state.ps1` ValidateSet MUST be extended to include `retro` at lines 188, 222, 253 (the `active=` ternary), and 670 (AC3).
+- **FR-003**: `scripts/internal/sync-boundary-state.ps1` canonical boundary enumeration MUST be extended to include `retro` at lines 188 (Get-SpecrewBoundaryOrder return list), 222 (New-SpecrewSessionState ValidateSet), and 670 (Invoke-SpecrewBoundaryStateSync ValidateSet). Line 253 is the `active = if ($BoundaryType -eq 'feature-closeout') { 'false' } else { 'true' }` ternary and needs no change — retro falls into the `else` branch and stays `active=true` correctly (AC3).
 
 - **FR-004**: Each new sync command file MUST follow the template established by `sync-tasks.md` (the existing pattern), with the canonical `-BoundaryType` enum value baked in (AC2).
 

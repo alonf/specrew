@@ -70,15 +70,9 @@ $null = New-Item -ItemType Directory -Path (Join-Path $fixtureRoot '.squad\ident
 
 function Invoke-BoundaryRule {
     param([string]$ProjectRoot)
-    # Dot-source dependencies then directly invoke the rule function; return its stdout + exit code
-    $cmd = @"
-. '$sharedGovernance'
-. '$validatorScript' -ProjectPath '$ProjectRoot' -SkipReportOutput 2>&1 | Out-Null
-`$count = Test-SessionStateBoundaryCanonical -ProjectRoot '$ProjectRoot'
-[pscustomobject]@{ Count = `$count }
-"@
-    # Note: we can't actually invoke the validator's main flow because it requires full project structure.
-    # Instead, we'll just dot-source shared-governance + extract the function bodies and test directly.
+    # We can't invoke the validator's main flow because it requires full project structure
+    # (team.md, iteration plan.md, etc.). Instead, dot-source shared-governance + extract
+    # Test-SessionStateBoundaryCanonical from the validator script and invoke it directly.
     $directCmd = @"
 . '$sharedGovernance'
 
