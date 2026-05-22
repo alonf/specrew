@@ -18152,3 +18152,51 @@ User explicitly authorized review-signoff entry for Feature 039 Iteration 001. R
 - **Task ID**: (none)
 - **Auth Commit Hash**: 8e1063b98566aa95fd0371c363cf5ea802474b5f
 - **Recorded At**: 2026-05-22T18:06:58Z
+
+## 2026-05-22T18:12:38Z — Boundary sync: feature-closeout
+
+- **Boundary Type**: feature-closeout
+- **Feature Ref**: 039-launch-mode-boundary-enforcement
+- **Iteration Number**: (none)
+- **Task ID**: (none)
+- **Auth Commit Hash**: b21c17b92540e951d5de48ff7352fc1390315ca6
+- **Recorded At**: 2026-05-22T18:12:38Z
+
+### 2026-05-22T17:34:04Z: User directive
+**By:** Alon Fliess (via Copilot)
+**What:** Elevate three F-039-specific lessons into retro improvement actions: the meta-irony of the chain-past-plan incident occurring mid-implementation, the multi-round clarify-reconciliation pattern and its done-condition lockdown, and the mid-stream pivot to lean prompts.
+**Why:** User request - captured for team memory
+
+
+
+## 2026-05-22T17:34:04Z - User Verdict: F-039 Retro-Boundary Authorization
+
+- **Decision ID**: user-verdict-2026-05-22-f039-retro-boundary
+- **Type**: boundary authorization
+- **Authority**: Alon Fliess
+- **Recorded At**: 2026-05-22T17:34:04Z
+- **Feature**: 039-launch-mode-boundary-enforcement
+- **Iteration**: 001
+
+## Verdict
+
+approved for retro-boundary entry
+
+Worth elevating from drift-log into improvement actions: the meta-irony of F-039 chain-past-plan happening mid-implementation, the multi-round clarify-reconciliation pattern (and the done-condition lockdown that closed it), and the mid-stream pivot to lean prompts - all three are F-039-specific lessons that don't fit a generic retro template but are the most actionable evidence this iteration produced.
+
+
+## 2026-05-22T17:34:04Z - Agent Routing Evidence: F-039 Retro Boundary
+
+- **Work Item**: F-039 retro-boundary
+- **Requested Agent**: copilot
+- **Actual Agent**: retro-facilitator (GitHub Copilot CLI)
+- **Model ID**: claude-sonnet-4.5
+- **Status**: honored
+- **Fallback Reason**: N/A (preferred copilot path active through retro-facilitator-owned retrospective work)
+- **Recorded At**: 2026-05-22T17:34:04Z
+
+### Context
+
+User explicitly authorized retro-boundary entry for Feature 039 Iteration 001. The retrospective must elevate three F-039-specific lessons into concrete improvement actions: the chain-past-plan meta-irony during feature delivery, the multi-round clarify-reconciliation loop and its done-condition lockdown, and the mid-stream pivot to lean prompts. Retro must stop before iteration-closeout.
+
+
