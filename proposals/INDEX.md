@@ -127,9 +127,9 @@ Idea-form proposals not yet developed into full source specs. Open for discussio
 | [096](096-proposal-driven-design-profile.md) | Proposal-Driven Design Profile (Opt-In Umbrella for 028/062/091-promote/093/095) | phase-3 | 8-12 |
 | [097](097-coupling-surface-catalog.md) | Coupling Surface Catalog (Mandatory Dependency Inventory + Hygiene + Risk Surface) | phase-2 | 18-25 (MVP); 30-40 (full vision) |
 | [098](098-strategic-positioning-public-architecture-docs.md) | Strategic Positioning + Public Architecture Documentation | phase-2 | 10-15 |
-| [099](099-cross-model-independent-reviewer.md) | Cross-Model Independent Reviewer (Structural Author-Reviewer Independence) | phase-3 | 15-25 |
-| [100](100-agent-class-threat-surface.md) | Agent-Class Threat Surface (Concrete Threat Catalog + Prevention + Detection) | phase-3 | 12-18 |
 | [101](101-external-tracker-sync-provider.md) | External Tracker Sync Provider Abstraction (GitHub Projects / Azure DevOps / Jira / Linear) | phase-2 | 20-30 |
+| [102](102-cross-model-independent-reviewer.md) | Cross-Model Independent Reviewer (Structural Author-Reviewer Independence) | phase-3 | 15-25 |
+| [103](103-agent-class-threat-surface.md) | Agent-Class Threat Surface (Concrete Threat Catalog + Prevention + Detection) | phase-3 | 12-18 |
 
 ---
 

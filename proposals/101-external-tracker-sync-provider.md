@@ -258,7 +258,7 @@ Alternative ordering: 101 ships before 057 if the input-adapter pattern in 057 i
 2. **Tracker API changes break adapters silently** — providers change auth scopes, deprecate endpoints. *Mitigation*: integration tests; adapter version-locks to tracker API version; explicit deprecation warning when adapter is on aging API.
 3. **Bidirectional sync conflicts cause data loss** — canonical-ownership map silently overwrites a field the user expected to be canonical elsewhere. *Mitigation*: audit log preserves every overwrite with full context; retro surfaces frequent overwrites; canonical-ownership map is profile-configurable.
 4. **Tracker rate limits block sync at scale** — large team + frequent sync → API throttling. *Mitigation*: per-adapter rate-limit awareness; exponential backoff; batch sync where API supports.
-5. **Credentials leakage** — `.specrew/credentials.yml` accidentally committed. *Mitigation*: gitignore + pre-commit secret-scanning (composes with Proposal 100 AT-005/AT-009); credentials.yml.example tracked instead.
+5. **Credentials leakage** — `.specrew/credentials.yml` accidentally committed. *Mitigation*: gitignore + pre-commit secret-scanning (composes with Proposal 103 AT-005/AT-009); credentials.yml.example tracked instead.
 6. **Specrew lifecycle gates depend on tracker availability** — tracker down → can't complete iteration closeout. *Mitigation*: tracker sync is non-fatal at boundaries; can be re-tried; degraded mode (`local-only-temporarily`) when tracker unreachable; explicit reconnect step.
 7. **Provider lock-in via custom-field usage** — heavy use of Jira custom fields makes switching providers harder. *Mitigation*: portability checker reports custom-field usage; warn users when adopting provider-specific features.
 8. **Canonical-ownership map disagreement at team level** — different team members have different mental models. *Mitigation*: profile-level commit to canonical-ownership; document the decision; retro for ongoing tuning.
@@ -275,8 +275,8 @@ Alternative ordering: 101 ships before 057 if the input-adapter pattern in 057 i
   - [092 Specrew Dashboard Web App](092-specrew-dashboard-web-app.md) — dashboard consumes tracker data alongside Specrew local state
   - [096 Proposal-Driven Design Profile](096-proposal-driven-design-profile.md) — sibling profile; both can be active in the same project (e.g., Specrew itself)
   - [097 Coupling Surface Catalog](097-coupling-surface-catalog.md) — each enabled provider is a coupling-surface entry (`category: service-api`)
-  - [099 Cross-Model Independent Reviewer](099-cross-model-independent-reviewer.md) — reviewer findings surface in the tracker (when integration shipped)
-  - [100 Agent-Class Threat Surface](100-agent-class-threat-surface.md) — credentials leakage scenarios (AT-005, AT-009) apply
+  - [102 Cross-Model Independent Reviewer](102-cross-model-independent-reviewer.md) — reviewer findings surface in the tracker (when integration shipped)
+  - [103 Agent-Class Threat Surface](103-agent-class-threat-surface.md) — credentials leakage scenarios (AT-005, AT-009) apply
 - **Memory motivation**:
   - `project_proposals_pattern_as_opt_in_profile_2026_05_19` — Pattern A: external trackers default for downstream; this proposal implements it
   - `project_github_coupling_investigation_2026_05_22` — provider abstraction is the primary mechanism for reducing GitHub-specific coupling

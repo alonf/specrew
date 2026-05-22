@@ -1,5 +1,5 @@
 ---
-proposal: 099
+proposal: 102
 title: Cross-Model Independent Reviewer (Structural Author-Reviewer Independence)
 status: candidate
 discussion-status: ad-hoc
@@ -194,7 +194,7 @@ Sequencing: ships after 069 enables practical multi-host execution. Plausible Q3
 6. **Reviewer prompt becomes its own debt** — long, brittle, requires retuning. *Mitigation*: small core prompt; per-model templates; composes with Proposal 015 (expertise-aware) for tone tuning.
 7. **Synthetic-catalog rot** — bugs become unrepresentative of real defects. *Mitigation*: catalog refresh policy; pulls real defects from retro / PR-review-resolution history.
 8. **Dual-reviewer creates contradictions** — reviewer says "fix this", implementer (or human) disagrees. *Mitigation*: explicit conflict-resolution flow at boundary; reviewer findings don't unilaterally block; human-or-implementer can dispute with reason.
-9. **Reviewer's findings become a target for prompt-injection** — malicious code attempts to suppress reviewer comments. *Mitigation*: composes with Proposal 100 (Agent-Class Threat Surface).
+9. **Reviewer's findings become a target for prompt-injection** — malicious code attempts to suppress reviewer comments. *Mitigation*: composes with Proposal 103 (Agent-Class Threat Surface).
 10. **Per-project model pair selection is hard** — users don't know which models pair well. *Mitigation*: Specrew core publishes recommended pairings; default is sensible; advanced users override.
 
 ## Cross-references
@@ -211,7 +211,7 @@ Sequencing: ships after 069 enables practical multi-host execution. Plausible Q3
   - [086 Validation Pipeline Performance Bundle](086-validation-pipeline-performance-bundle.md) — caching pattern for reviewer outputs
   - [089 PR Review Integration](089-pr-review-integration-address-pr-review-gate.md) — primary composition; 099 extends 089's adapter machinery rather than parallel system
   - [092 Specrew Dashboard Web App](092-specrew-dashboard-web-app.md) — reviewer-pair effectiveness view
-  - [100 Agent-Class Threat Surface](100-agent-class-threat-surface.md) — protects against reviewer-suppression attacks
+  - [103 Agent-Class Threat Surface](103-agent-class-threat-surface.md) — protects against reviewer-suppression attacks
 - **Possibly subsumes** (at clarify time):
   - 014 Red Team Agent — if 099's L2/L3 reviewer covers the adversarial-review use case
 - **Sources**:
