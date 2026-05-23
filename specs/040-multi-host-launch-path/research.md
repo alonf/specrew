@@ -22,34 +22,37 @@ Source: existing `scripts\specrew-start.ps1:3131` literal (current production be
 ### Claude Code
 
 ```text
-claude -p '<bootstrap-prompt>' --add-dir '<project>' [--dangerously-skip-permissions] [--remote-control]
+claude --add-dir '<project>' [--dangerously-skip-permissions] [--remote-control] '<bootstrap-prompt>'
 ```
 
-Optional `--bare` flag preceding `-p` provides hermetic clean session (no prior conversation memory).
+Optional `--bare` flag preceding the positional prompt provides hermetic clean session (no prior conversation memory, no hook/skill discovery).
 
-Sources: <https://code.claude.com/docs/en/cli-reference>, <https://code.claude.com/docs/en/headless>, <https://code.claude.com/docs/en/remote-control>. Hands-on confirmation: 2026-05-23 Claude Code research agent.
+Sources: <https://code.claude.com/docs/en/cli-reference>, <https://code.claude.com/docs/en/headless>, <https://code.claude.com/docs/en/remote-control>. Hands-on confirmation: 2026-05-23 Claude Code research agent. **Correction 2026-05-24**: shipped F-040 code launches Claude interactively with the prompt as a positional argument (NOT `-p`); `-p`/`--print` is the headless one-shot mode and would not give the user an interactive session. The launch invocation in `scripts/specrew-start.ps1` `Get-SpecrewHostLaunchInvocation` (Claude arm) uses positional prompt; this block is updated to match.
 
 Key findings:
 
 - `--add-dir <path>` IS the same flag name as Copilot CLI (load-bearing for the dispatch — no flag-name translation needed for working-dir)
 - `--dangerously-skip-permissions` is the equivalent of Copilot's `--allow-all` (and Claude's permission system has six modes: `default|acceptEdits|plan|auto|dontAsk|bypassPermissions` via `--permission-mode`)
-- `-p` (or `--print`) is the headless one-shot prompt entry — direct equivalent of Copilot's `-i`
+- Prompt is positional (interactive launch). `-p`/`--print` is the headless non-interactive form and is NOT used by F-040.
 - Per-subagent `model:` field in `.claude/agents/*.md` frontmatter enables direct per-role cost routing (relevant for Proposal 068 / F-041)
 - `--remote-control` (or `--rc`) is the remote-control flag — streams to claude.ai / Claude app
 
 ### Codex CLI
 
 ```text
-codex exec --cd '<project>' [--full-auto | --yolo] '<bootstrap-prompt>'
+codex --cd '<project>' [--dangerously-bypass-approvals-and-sandbox] '<bootstrap-prompt>'
 ```
 
-Sources: <https://developers.openai.com/codex/cli>, AGENTS.md convention. Hands-on confirmation: 2026-05-23 Codex CLI research agent.
+Sources: <https://developers.openai.com/codex/cli/reference>, AGENTS.md convention. Hands-on confirmation: 2026-05-23 Codex CLI research agent. **Correction 2026-05-24**: shipped F-040 code uses interactive `codex` (NOT `codex exec`) with `--dangerously-bypass-approvals-and-sandbox` (NOT the deprecated `--full-auto`). Two corrections since the original research:
+
+1. `codex exec` is the BATCH/non-interactive subcommand; users running `specrew start` expect an interactive Crew session, so the interactive `codex` form is correct.
+2. `--full-auto` is documented as "Deprecated compatibility flag. Prefer `--sandbox workspace-write`; Codex prints a warning when this flag is used" and is `codex exec`-only. The actual full-equivalent of Claude's `--dangerously-skip-permissions` is `--dangerously-bypass-approvals-and-sandbox` (long form of `--yolo`), which works on interactive `codex`.
 
 Key findings:
 
-- `codex exec` is the non-interactive subcommand (analogous to `copilot -i`)
+- Interactive `codex` (no subcommand) is the analog of `copilot -i` + `claude` (positional prompt). The prompt is a positional argument.
 - `--cd <path>` is Codex's working-directory flag (different from Copilot's `--add-dir`)
-- `--full-auto` is the unattended-execution flag; `--yolo` auto-approves dangerous operations
+- `--dangerously-bypass-approvals-and-sandbox` skips approval prompts AND sandbox; the milder `-a never` / `--ask-for-approval never` skips approvals but keeps sandbox; `-s workspace-write` is a graduated sandbox.
 - AGENTS.md at project root provides persistent memory across sessions
 - Per-agent `.codex/agents/*.toml` files support per-role `model = "<name>"` override
 - No user-defined slash commands today (constrains skill-discoverability surface in FR-009 / User Story 3)
