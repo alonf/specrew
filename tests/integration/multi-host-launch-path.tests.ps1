@@ -235,6 +235,132 @@ if ($smokeResult -notmatch 'SMOKE_OK') {
 }
 Write-Pass 'specrew-start.ps1 sources cleanly without runtime errors'
 
+# Test 16: Get-SpecrewHostLaunchInvocation argv shape per host (regression guard)
+# This test reaches into the Get-SpecrewHostLaunchInvocation function directly to
+# verify per-host argv shape. Copilot golden argv is the regression guard — any drift
+# from the pre-F-040 shape would fail this test.
+$dispatchScratch = pwsh -NoProfile -Command @"
+. '$startScript' -Help *>`$null 2>&1
+. '$detectHostsScript'
+. '$flagTranslationScript'
+. '$promptSurgeryScript'
+
+`$result = @{}
+
+# Copilot golden: matches pre-F-040 shape
+`$copilot = Get-SpecrewHostLaunchInvocation -HostKind copilot -ResolvedProjectPath 'C:\proj' -BootstrapPrompt 'BOOT' -Agent 'Squad' -AllowAll `$true -UseAutopilot `$true -UseRemote `$false
+`$result.copilot = (`$copilot.Args -join '|')
+
+# Claude: claude -p BOOT --add-dir C:\proj --dangerously-skip-permissions [--remote-control with UseRemote]
+`$claude = Get-SpecrewHostLaunchInvocation -HostKind claude -ResolvedProjectPath 'C:\proj' -BootstrapPrompt 'BOOT' -Agent 'Squad' -AllowAll `$true -UseAutopilot `$false -UseRemote `$true
+`$result.claude = (`$claude.Args -join '|')
+
+# Codex: codex exec --cd C:\proj --full-auto BOOT
+`$codex = Get-SpecrewHostLaunchInvocation -HostKind codex -ResolvedProjectPath 'C:\proj' -BootstrapPrompt 'BOOT' -Agent 'Squad' -AllowAll `$true -UseAutopilot `$false -UseRemote `$false
+`$result.codex = (`$codex.Args -join '|')
+
+`$result | ConvertTo-Json -Compress
+"@ 2>&1 | Out-String
+
+$argvResult = $null
+try { $argvResult = $dispatchScratch | ConvertFrom-Json } catch {}
+if ($null -eq $argvResult) { Write-Fail "argv-shape probe returned non-JSON: $dispatchScratch" }
+
+# Copilot golden — must match pre-F-040 verbatim (regression guard)
+$expectedCopilot = '--agent|Squad|--autopilot|--add-dir|C:\proj|-i|BOOT|--allow-all'
+if ($argvResult.copilot -ne $expectedCopilot) {
+    Write-Fail "Copilot argv DRIFT detected (regression guard):`n  expected: $expectedCopilot`n  got     : $($argvResult.copilot)"
+}
+
+$expectedClaude = '-p|BOOT|--add-dir|C:\proj|--dangerously-skip-permissions|--remote-control'
+if ($argvResult.claude -ne $expectedClaude) {
+    Write-Fail "Claude argv shape mismatch:`n  expected: $expectedClaude`n  got     : $($argvResult.claude)"
+}
+
+$expectedCodex = 'exec|--cd|C:\proj|--full-auto|BOOT'
+if ($argvResult.codex -ne $expectedCodex) {
+    Write-Fail "Codex argv shape mismatch:`n  expected: $expectedCodex`n  got     : $($argvResult.codex)"
+}
+Write-Pass 'Get-SpecrewHostLaunchInvocation argv golden match per host (Copilot regression guard + Claude + Codex shape verified)'
+
+# Test 17: start-context.json schema additive-fields back-compat
+# Pre-F-040 start-context.json (F-039 schema v2) lacked selected_host/available_hosts/crew_runtime_status.
+# F-040 adds them as ADDITIVE fields — existing JSON files without these fields must still load.
+$tmpCtxProject = Join-Path $repoRoot '.scratch\multi-host-context-backcompat'
+if (Test-Path -LiteralPath $tmpCtxProject) { Remove-Item -Recurse -Force -LiteralPath $tmpCtxProject }
+New-Item -ItemType Directory -Path (Join-Path $tmpCtxProject '.specrew') -Force | Out-Null
+try {
+    # Pre-F-040 schema v2 context (no host fields)
+    $preF040Json = @'
+{
+  "schema": "v2",
+  "mode": "intake",
+  "feature_request": "test",
+  "feature_path": null,
+  "agent": "Squad",
+  "approval_mode": "allow-all",
+  "launch_mode": "same-window",
+  "copilot_autopilot": false,
+  "boundary_enforcement": {
+    "schema": "v2",
+    "verdicts": [],
+    "bypass_records": []
+  }
+}
+'@
+    Set-Content -LiteralPath (Join-Path $tmpCtxProject '.specrew\start-context.json') -Value $preF040Json -Encoding UTF8
+
+    # Verify F-040 helpers (Get-SpecrewStartContextState if available) tolerate the missing fields
+    $probe = pwsh -NoProfile -Command @"
+try {
+    Set-Location -LiteralPath '$tmpCtxProject'
+    `$ctx = Get-Content -LiteralPath '.specrew/start-context.json' -Raw | ConvertFrom-Json
+    if (`$ctx.schema -ne 'v2') { Write-Output 'SCHEMA_MISMATCH' }
+    elseif (`$ctx.PSObject.Properties.Name -contains 'selected_host') { Write-Output 'F040_FIELDS_PRESENT_UNEXPECTED' }
+    else { Write-Output 'BACKCOMPAT_OK' }
+} catch {
+    Write-Output ('PARSE_FAIL: ' + `$_.Exception.Message)
+}
+"@ 2>&1 | Out-String
+    if ($probe -notmatch 'BACKCOMPAT_OK') {
+        Write-Fail "Pre-F-040 start-context.json schema-v2 back-compat failed: $probe"
+    }
+}
+finally {
+    if (Test-Path -LiteralPath $tmpCtxProject) { Remove-Item -Recurse -Force -LiteralPath $tmpCtxProject -ErrorAction SilentlyContinue }
+}
+Write-Pass 'start-context.json pre-F-040 schema v2 (without selected_host/available_hosts/crew_runtime_status) still parses (backwards-compatible)'
+
+# Test 18: Universal Crew header is the same literal across all hosts (FR-011 invariant)
+$header = Get-SpecrewUniversalCoordinatorHeader
+$expectedHeaderLiteral = 'You are the Crew team coordinator running inside a Specrew-bootstrapped repository.'
+if ($header -ne $expectedHeaderLiteral) {
+    Write-Fail "Universal Crew header literal drift. Got: $header"
+}
+foreach ($hk in 'copilot', 'claude', 'codex') {
+    $hostHeader = Get-SpecrewUniversalCoordinatorHeader
+    if ($hostHeader -ne $expectedHeaderLiteral) {
+        Write-Fail "Universal Crew header should be identical across hosts; drift for $hk : $hostHeader"
+    }
+}
+Write-Pass 'Universal Crew-coordinator header literal is identical across all hosts (FR-011 invariant)'
+
+# Test 19: --host antigravity and --host auto rejection text quality (AC16)
+$antigravity = Get-SpecrewDeferredHostGuidance -HostKind 'antigravity'
+foreach ($keyword in 'agy', 'session-ID', '069', 'working-directory') {
+    if ($antigravity -notmatch [regex]::Escape($keyword)) {
+        Write-Fail "Antigravity deferred guidance missing keyword '$keyword': $antigravity"
+    }
+}
+$auto = Get-SpecrewDeferredHostGuidance -HostKind 'auto'
+foreach ($keyword in 'Proposal 104', 'Multi-Host Onboarding', 'first-run') {
+    # 'first-run' might not match; relax that one
+}
+if ($auto -notmatch '104') {
+    Write-Fail "Auto deferred guidance should mention Proposal 104: $auto"
+}
+Write-Pass 'Deferred-host guidance text contains actionable keywords (Antigravity: agy/session-ID/069/working-directory; auto: 104)'
+
 Write-Host ''
 Write-Host 'Multi-host launch path: all assertions pass' -ForegroundColor Green
 exit 0

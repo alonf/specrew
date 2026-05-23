@@ -282,7 +282,7 @@ Options:
   -ProjectPath | --project-path <path>     Target project directory (defaults to current directory)
   -ResumeFeature | --resume-feature <path|auto>
                                            Resume an existing feature directory, or use "auto"
-  -Agent | --agent <name>                  Crew runtime agent label (default: Squad — used by Copilot host)
+  -Agent | --agent <name>                  Crew runtime agent label (default: Squad — required by Copilot host's --agent flag; non-Squad hosts ignore this since they don't have a host-side --agent surface)
   -HostKind | --host <copilot|claude|codex>
                                            Select the agent host runtime (default: copilot). 'antigravity' and
                                            'auto' are reserved but rejected with deferred-guidance pointing to
@@ -2810,7 +2810,7 @@ function Get-StartSummaryContent {
     $summaryLines.Add('## Launch Contract') | Out-Null
     $summaryLines.Add(("- **Approval Mode**: {0}" -f $ApprovalMode)) | Out-Null
     $summaryLines.Add(("- **Launch Mode**: {0}" -f $LaunchMode)) | Out-Null
-    $summaryLines.Add(("- **Copilot Autopilot**: {0}" -f $UseAutopilot)) | Out-Null
+    $summaryLines.Add(("- **Host Autopilot** (Copilot --autopilot / Codex --full-auto; Claude has no equivalent): {0}" -f $UseAutopilot)) | Out-Null
     $summaryLines.Add(("- **Operator Note**: {0}" -f $ApprovalOperatorNote)) | Out-Null
     $summaryLines.Add('') | Out-Null
     if ($null -ne $RecoverySession) {
@@ -3321,7 +3321,7 @@ function Get-AllowAllRuntimePlan {
             'allow-all reduces tool-approval blocking after the request is grounded.'
         }
         else {
-            'prompt-approvals keeps Copilot permission prompts interactive throughout the session.'
+            'prompt-approvals keeps the host CLI permission prompts interactive throughout the session.'
         }
     }
 }
