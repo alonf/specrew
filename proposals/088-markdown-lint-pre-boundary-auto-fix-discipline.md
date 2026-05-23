@@ -2,15 +2,33 @@
 proposal: 088
 title: Markdown Lint Pre-Boundary Auto-Fix Discipline (Boundary-State-Sync Integration)
 status: shipped
-shipped-as: feature-033
-shipped-in: v0.24.3
+shipped-as: feature-033 (initial) + fix-bundle a45232af (brownfield gap closure, 2026-05-23)
+shipped-in: v0.24.3 + v0.26.0
 phase: phase-2
 estimated-sp: 5-8
-actual-sp: 5.25
+actual-sp: 5.25 (initial) + 0.5 (brownfield gap closure)
 discussion: tbd
 ---
 
 # Markdown Lint Pre-Boundary Auto-Fix Discipline (Boundary-State-Sync Integration)
+
+## 2026-05-23 — Brownfield gap closure (commit `a45232af`)
+
+F-040 calc-v2 dogfooding surfaced a real gap in the original F-033 implementation:
+`Get-ChangedMarkdownFiles` used `git diff $baseRef...HEAD -- '*.md'` and went no-op
+when the base ref couldn't resolve OR when HEAD didn't exist. Both conditions trigger
+simultaneously on greenfield-new projects (no remote, no commits), so the gate was a
+permanent no-op for the entire pre-first-commit scaffolding phase — the exact phase
+where the model writes the most markdown.
+
+The fix added a working-tree fallback (`git ls-files -m -o --exclude-standard -- '*.md'`)
+that fires when (a) base-ref or HEAD is unavailable OR (b) the diff path returned empty
+but uncommitted edits may exist. The original committed-diff path is preserved for
+normal feature-branch iterations.
+
+The same root-cause pattern was found in `Get-ReviewerCloseoutDiffArtifacts`
+(see `proposals/INDEX.md` reference to the reviewer-artifact gate) and fixed in commit
+`162bcdb9` with the same working-tree-union pattern.
 
 ## Why
 

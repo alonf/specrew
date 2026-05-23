@@ -1,13 +1,32 @@
 ---
 proposal: 057
 title: Roadmap Spine + Input Adapter Pattern (Configurable Roadmap Population)
-status: candidate
+status: partially-shipped
+shipped-as: fix-bundle 162bcdb9 — stub-bootstrap slice only (scaffold-governance.ps1 writes a minimal `.specrew/roadmap.yml` with a single 'Phase 1: Initial Delivery' planning row at `specrew init`). Does NOT implement the input-adapter system (manual / GitHub Issues / Linear / etc.) — that scope stays candidate. Inline-shipped during F-040 calc-v2 dogfooding 2026-05-23.
+shipped-in: v0.26.0
 phase: phase-3
 estimated-sp: 28
+actual-sp: 1  # stub-bootstrap slice only; remaining 27 SP scope below stays candidate
 discussion: tbd
 ---
 
 # Roadmap Spine + Input Adapter Pattern
+
+## Status notes (2026-05-23)
+
+The stub-bootstrap slice shipped inline as part of the F-040 dogfooding fix bundle
+(commit `162bcdb9`). `specrew init` now writes a minimal `.specrew/roadmap.yml` so the
+dashboard's ROADMAP section has content in fresh projects. The remaining 27 SP of the
+full proposal stays candidate:
+
+- Input adapters: manual / GitHub Issues / Linear / Jira / Azure DevOps / iteration-end auto-sync
+- Init-time adapter configuration wizard
+- Dashboard renderer integration (read roadmap.yml as canonical source for ROADMAP section)
+- Per-adapter pull-and-merge semantics
+- Conflict resolution when an adapter and a manual edit collide
+
+The stub-bootstrap unblocks dashboard rendering in fresh projects today without locking
+in any adapter contract. The full proposal can resume from this state.
 
 ## Why
 

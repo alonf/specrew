@@ -1,9 +1,12 @@
 ---
 proposal: 107
 title: Host-Aware Routing Plan Fallback (F-040 Follow-Up)
-status: candidate
+status: shipped
+shipped-as: fix-bundle a45232af (function side on main) + b1486f4c (callsite update on 040-multi-host-launch-path) — F-040 calc-v2 dogfooding 2026-05-23
+shipped-in: v0.26.0
 phase: phase-2
 estimated-sp: 3-5
+actual-sp: 3
 slice-type: small-fix
 discussion: empirical 2026-05-23 — F-040 real-launch test caught role-routing falling back to copilot inside a Claude-host session
 depends-on:
