@@ -29,7 +29,15 @@ If any are missing:
 - **Node.js + npm**: [https://nodejs.org/](https://nodejs.org/) (LTS)
 - **GitHub CLI**: [https://cli.github.com/](https://cli.github.com/) — used for the PR-creation lifecycle gates
 
-You also need **GitHub Copilot CLI** as the agent host runtime. Specrew calls `copilot` to launch the lifecycle. Install: [https://docs.github.com/en/copilot/how-tos/copilot-cli](https://docs.github.com/en/copilot/how-tos/copilot-cli). Claude Code and Codex hosts are roadmap items (see [Proposal 069](../proposals/069-multi-host-launch-path.md)).
+You need one of the supported **agent host CLIs** to launch the lifecycle. As of v0.26.0, three hosts are supported via `specrew start --host <kind>`:
+
+| Host | CLI | Install URL |
+|---|---|---|
+| GitHub Copilot (default) | `copilot` | [docs.github.com/en/copilot/how-tos/copilot-cli](https://docs.github.com/en/copilot/how-tos/copilot-cli) |
+| Claude Code | `claude` | [docs.anthropic.com/en/docs/claude-code/installation](https://docs.anthropic.com/en/docs/claude-code/installation) |
+| Codex CLI | `codex` | [developers.openai.com/codex/cli](https://developers.openai.com/codex/cli) |
+
+Copilot is the default host when no `--host` flag is specified. Antigravity (`agy`) is reserved in the parser but deferred to a follow-up slice (see [Proposal 069](../proposals/069-multi-host-launch-path.md) follow-up); `--host auto` is reserved for [Proposal 104](../proposals/104-multi-host-onboarding-and-selection-flow.md).
 
 ### 2. Install Specrew from PowerShell Gallery
 
@@ -192,7 +200,7 @@ When `specrew start` runs without a feature description in an existing project, 
 
 ## Known Limitations
 
-- **Multi-host runtime**: Copilot CLI is the validated host today. Claude Code, Codex CLI, and VS Code Chat are roadmap items per [Proposal 069](../proposals/069-multi-host-launch-path.md).
+- **Multi-host runtime**: Copilot CLI, Claude Code, and Codex CLI are all supported as of v0.26.0 via `specrew start --host <kind>` (see [docs/user-guide.md](user-guide.md) for the full per-host flag-translation matrix). Antigravity, `--host auto`, and VS Code Chat are roadmap items per [Proposal 069](../proposals/069-multi-host-launch-path.md), [Proposal 104](../proposals/104-multi-host-onboarding-and-selection-flow.md), [Proposal 071](../proposals/071-vscode-copilot-chat-host.md).
 - **Multi-developer coordination**: single-developer workflow only. [Proposal 010](../proposals/010-multi-developer-reconciliation.md) covers the eventual model.
 - **Brownfield cartography**: discovery covers the obvious surfaces (manifests, configs, docs) but JIT codebase cartography for arbitrary inherited repos is a future item ([Proposal 025](../proposals/025-jit-codebase-cartography.md)).
 - **Module signing**: the `-SkipPublisherCheck` flag is required on `Install-Module` until a CA-signed release lands. See [Proposal 072](../proposals/072-psgallery-unsigned-default.md) for the decision context.

@@ -476,3 +476,71 @@ If you see this warning after `specrew init`, it is an upstream Copilot CLI beha
 Specrew's own slash-command surface (`/specrew-where`, `/specrew-help`, `/specrew-version`, `/specrew-update`, `/specrew-team`, `/specrew-review`, `/specrew-status`) uses hyphenated names and is unaffected. To confirm a Specrew skill loaded correctly, run `/skills info specrew-help` inside the Copilot CLI session and verify that Copilot reports the expected Specrew skill path and metadata.
 
 Upstream tracking: <https://github.com/github/copilot-cli/issues/2689>. Copilot CLI does not currently provide a config switch to exclude those directories from scanning. The warning is cosmetic and does not block Specrew's own skills from working.
+
+## Multi-Host Launch (v0.26.0+)
+
+`specrew start --host <kind>` launches the lifecycle on the named CLI runtime instead of the Copilot default. Supported kinds: `copilot` (default), `claude`, `codex`.
+
+```powershell
+specrew start --host claude "Build a TODO list app"
+specrew start --host codex "Fix the auth bug"
+specrew start --host copilot           # Equivalent to no --host flag
+```
+
+### Per-host flag translation matrix
+
+Specrew translates user-facing Specrew flags to host-appropriate CLI flags. The user-facing surface stays uniform across hosts.
+
+| Specrew flag | Copilot | Claude Code | Codex CLI |
+|---|---|---|---|
+| `--remote` | `--remote` | `--remote-control` | (warn-and-continue, no remote wiring) |
+| `--allow-all` | `--allow-all` | `--dangerously-skip-permissions` | `--full-auto` |
+| `--autopilot` | `--autopilot` | (drop with notice — Claude has no equivalent; use `--autonomous` for unattended runs) | `--full-auto` (folds into `--allow-all`) |
+| `--autonomous` | (Specrew-side only — handled by lifecycle boundary enforcement per F-039; not translated per-host) | | |
+
+### Per-host launch invocation shape
+
+The bootstrap-context handshake ("Read `.specrew/last-start-prompt.md` and `.specrew/start-context.json`") is identical across all hosts. Only the host-CLI invocation differs.
+
+```text
+copilot:  copilot --agent Squad --add-dir <project> -i <bootstrap-prompt> [--allow-all] [--autopilot] [--remote]
+claude:   claude -p <bootstrap-prompt> --add-dir <project> [--dangerously-skip-permissions] [--remote-control]
+codex:    codex exec --cd <project> [--full-auto] <bootstrap-prompt>
+```
+
+### Coordinator-prompt rewrite per host (FR-011 / FR-012)
+
+The opening line of the coordinator prompt is universal across all hosts: `"You are the Crew team coordinator running inside a Specrew-bootstrapped repository."` This aligns with the project terminology: **"the Crew"** is the team role (Spec Steward, Planner, Implementer, Reviewer, Retro Facilitator); **"Squad"** is the npm runtime product (one of several possible Crew runtimes).
+
+For non-Copilot hosts, Specrew additionally strips directives that reference Squad-specific runtime paths (`.squad/decisions.md`, `.squad/config.json`, `agentModelOverrides`, `sync-squad-model-overrides.ps1`) since those paths don't exist when running on Claude or Codex.
+
+For Codex specifically, Specrew rewrites slash-command boundary-advance references (e.g., `/speckit.specrew-speckit.sync-plan`) to direct PowerShell invocations (`pwsh -File .specify/extensions/specrew-speckit/scripts/sync-boundary-state.ps1 -BoundaryType plan`) because Codex has no user-defined slash-command surface.
+
+### Host-enforcement asymmetry (FR-015)
+
+F-039 (Launch-Mode Boundary Enforcement) is **cooperative**, not runtime-enforced. The boundary-authorization gate fires only when the agent invokes Specrew's canonical sync path:
+
+- **Copilot, Claude**: Slash command `/speckit.specrew-speckit.sync-<boundary>` → boundary-state-sync script → authorization helper. Discoverable, mechanical.
+- **Codex**: Direct `pwsh -File ...` invocation (per FR-014 rewrite) → boundary-state-sync script → authorization helper. Less discoverable, but functionally equivalent.
+
+In all cases, if an agent writes directly to `.specrew/start-context.json` boundary_enforcement section without going through the canonical path, no gate fires. Runtime enforcement (host-layer interception of any write to boundary state) is **out of scope for F-040** and tracked as [Proposal 105](../proposals/105-host-native-hook-deployment.md). When Proposal 105 ships, Claude Code's PreToolUse hook layer can elevate F-039 from cooperative to runtime enforcement.
+
+**Recommendation**: strict-mode users should prefer Copilot or Claude over Codex until Proposal 105 ships, because Copilot/Claude's slash-command surface makes the canonical path easier for agents to discover and invoke. Codex still works correctly when the agent follows the FR-014 pwsh-form instructions in the coordinator prompt.
+
+### Per-host capability differences (research.md Task 5)
+
+| Capability | Copilot | Claude | Codex |
+|---|---|---|---|
+| User-defined slash commands | ✅ `.github/skills/<name>.md` | ✅ `.claude/skills/<name>/SKILL.md` | ❌ **Not supported** |
+| Hooks (PreToolUse, etc.) | ❌ None | ✅ Rich, configured in `.claude/settings.json` | ⚠️ Unclear at v0.26.0 research time |
+| Subagents (multi-agent teams) | ⚠️ Via `--agent <name>` (Squad) | ✅ `.claude/agents/*.md` | ✅ `.codex/agents/*.toml` |
+| MCP server config | ⚠️ Limited (recent) | ✅ `.mcp.json` first-class | ✅ `.codex/mcp.toml` first-class |
+| Project memory | ⚠️ None native | ✅ `CLAUDE.md` | ✅ `AGENTS.md` |
+
+F-040 manages skills + slash commands (uniformly via existing F-021 multi-host deploy). F-040 explicitly defers hooks, MCP, project memory, and subagents to future proposals (Proposal 105 for hooks; Proposal 024 Slice 3 for the rest).
+
+### Missing-host guidance
+
+If you invoke `specrew start --host claude` but Claude Code is not installed on PATH, Specrew exits with the install URL for that host and a non-zero exit code. No CLI is launched. Same behavior for `--host codex` when Codex CLI is missing.
+
+`--host antigravity` and `--host auto` are accepted by the parser but rejected with explicit "deferred to follow-up" guidance pointing to the relevant proposal (Proposal 069 follow-up slice for Antigravity; Proposal 104 for auto-selection).

@@ -8,7 +8,7 @@ This index is the navigation surface for all proposals in this directory. Sorted
 
 ---
 
-## Shipped (22)
+## Shipped (23)
 
 Proposals whose features have shipped to main and are part of Specrew's current capability.
 
@@ -37,8 +37,9 @@ Proposals whose features have shipped to main and are part of Specrew's current 
 | [089](089-pr-review-integration-address-pr-review-gate.md) | PR Review Integration — Address-PR-Review Lifecycle Gate (Multi-Host Aware) — minimal viable slice | feature-038 (v0.24.3 bundle) — hard-blocking gate + multi-host expansion remain candidate | phase-2 | 3.25 (minimal slice) |
 | [090](090-closeout-lifecycle-sync-commands.md) | Closeout Lifecycle Sync Commands (Structural Fix for Crew-Bypass Bug Class) | feature-032 (v0.24.3 bundle) | phase-2 | 6.5 |
 | [065](065-launch-mode-boundary-enforcement.md) | Launch-Mode Boundary Enforcement (Tool-Call-Layer Intercept for Lifecycle Boundaries) | feature-039 (v0.25.0) | phase-2 | 7.0 |
+| [069](069-multi-host-launch-path.md) | Multi-Host Launch Path + Per-Host Flag Pass-Through (Claude Code + Codex) | feature-040 (v0.26.0) | phase-2 | 15.25 |
 
-## Draft (16)
+## Draft (15)
 
 Proposals with full source-spec content, ready for `/speckit.specify` ingestion when prioritized.
 
@@ -58,7 +59,6 @@ Proposals with full source-spec content, ready for `/speckit.specify` ingestion 
 | [064](064-slash-command-multi-host-correctness.md) | Slash-Command Multi-Host Correctness (F-021 Surface Restoration) | phase-2 | 7 | Restores F-021's non-functional `/specrew-*` surface; multi-deploy to `.claude/skills/`, `.github/skills/`, `.agents/skills/`; YAML frontmatter; drop dotted command forms. Source spec at file:///C:/Dev/SpecrewDraft/slash-command-multi-host-correctness.md |
 | [067](067-small-fix-slice-type.md) | Small-Fix Slice Type (Lightweight Lifecycle for 2-3 SP Changes) | phase-2 | 5 | Formalizes the 2-3 SP slice between raw chore commits and full feature lifecycle. Required artifacts: code + tests + CHANGELOG + proposal + INDEX. Composes with Proposal 055 (slice-type catalog). Empirical motivation: commits `d288286`, `1838034`, `c55ec92`, `ecd7b6d`. |
 | [068](068-cost-aware-model-routing.md) | Cost-Aware Model Routing with Agent-Discovered Model Catalog | phase-2 | 6-8 | **URGENT — 10-day Copilot pricing deadline.** Discovery skill (`/specrew-research-models`) writes `.specrew/model-catalog.yml`; coordinator-governance routes Junior/Implementer tasks to cheap models, Senior/Reviewer to strong; `cost_profile: lean` in `.specrew/config.yml`. Slice of Proposal 040; precedes full Multi-Host CORE (024). Agent-driven discovery — no hardcoded model names. |
-| [069](069-multi-host-launch-path.md) | Multi-Host Launch Path + Per-Host Flag Pass-Through (Claude Code + Codex) | phase-2 | 9-10 | **URGENT — cost-reduction bundle.** `specrew start --host claude` / `--host codex` launches the alternate CLI with Specrew's bootstrap context. **Expanded 2026-05-21: also adds `--remote` flag pass-through with per-host translation** (Copilot `--remote`, Claude `--remote-control`/`--rc`, Codex warn-and-continue). First instance of the per-host flag-translation framework. Tactical MVP of Proposal 024 (Multi-Host CORE) — hard-coded per-host launch commands, no deep abstraction. Composes with 068 (model catalog) and 070 (cost tracking). |
 | [070](070-token-economy-mvp.md) | Token Economy MVP (Cost-per-Iteration Tracking + Dashboard Surfacing) | phase-2 | 5 | **URGENT — cost-reduction bundle.** `specs/<feature>/iterations/<N>/cost.yml` records per-boundary token consumption + cost estimate from Proposal 068's catalog; `specrew where` dashboard gains COST section; `specrew cost summary/add/recompute` CLI. MVP slice of Proposal 040 (Token Economy as Governance Driver) — measurement only, no governance layer. |
 | [074](074-code-commentary-standards.md) | Code Commentary Standards (Multi-Level Convention + Preference Dial) | phase-2 | 12-15 | Replaces the current "default to no comments" Implementer instruction with a four-category taxonomy (contract / why-rationale / concept / inline narration), a four-level preference dial (`minimalist` / `standard` / `educational` / `textbook`), and a language-idiomatic convention catalog (C# XML doc, JSDoc, docstring, Javadoc, godoc, rustdoc, PowerShell comment-based help, etc.). Reviewer agent gains a contract-docs verification check. Empirical motivation: 2026-05-21 smoke trial produced a complete .NET 8 snake-game solution with **zero XML doc comments on public APIs** — IntelliSense silently empty. Composes with Proposals 047 / 052 / 015 (dials, profiles, expertise). |
 

@@ -1,10 +1,12 @@
 ---
 proposal: 069
-title: Multi-Host Launch Path + Per-Host Flag Pass-Through (Claude Code + Codex + Antigravity)
-status: draft
+title: Multi-Host Launch Path + Per-Host Flag Pass-Through (Claude Code + Codex)
+status: shipped
+shipped-as: feature-040
+shipped-version: 0.26.0
 phase: phase-2
-estimated-sp: 10-12
-discussion: ad-hoc 2026-05-20 session; expanded 2026-05-21 to include --remote flag pass-through; enriched 2026-05-23 with verified per-host CLI surfaces and Antigravity added as third target
+estimated-sp: 15.25
+discussion: ad-hoc 2026-05-20 session; expanded 2026-05-21 to include --remote flag pass-through; enriched 2026-05-23 with verified per-host CLI surfaces; shipped as F-040 on 2026-05-23 with Antigravity deferred to follow-up slice
 release-urgency: immediate
 ---
 

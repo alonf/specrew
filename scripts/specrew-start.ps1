@@ -13,6 +13,9 @@ param(
     [string]$Agent = 'Squad',
 
     [Parameter(Mandatory = $false)]
+    [string]$HostKind = '',
+
+    [Parameter(Mandatory = $false)]
     [string]$PostRestartDirective = '',
 
     [switch]$NoLaunch,
@@ -74,12 +77,31 @@ if (-not (Test-Path -LiteralPath $versionCheckHelperPath -PathType Leaf)) {
 }
 . $versionCheckHelperPath
 
+$detectHostsHelperPath = Join-Path $PSScriptRoot 'internal\detect-hosts.ps1'
+if (-not (Test-Path -LiteralPath $detectHostsHelperPath -PathType Leaf)) {
+    throw "Missing detect-hosts helper '$detectHostsHelperPath'."
+}
+. $detectHostsHelperPath
+
+$hostFlagTranslationHelperPath = Join-Path $PSScriptRoot 'internal\host-flag-translation.ps1'
+if (-not (Test-Path -LiteralPath $hostFlagTranslationHelperPath -PathType Leaf)) {
+    throw "Missing host-flag-translation helper '$hostFlagTranslationHelperPath'."
+}
+. $hostFlagTranslationHelperPath
+
+$coordinatorPromptSurgeryHelperPath = Join-Path $PSScriptRoot 'internal\coordinator-prompt-surgery.ps1'
+if (-not (Test-Path -LiteralPath $coordinatorPromptSurgeryHelperPath -PathType Leaf)) {
+    throw "Missing coordinator-prompt-surgery helper '$coordinatorPromptSurgeryHelperPath'."
+}
+. $coordinatorPromptSurgeryHelperPath
+
 function Convert-UnixStyleArguments {
     param(
         [string]$FeatureRequest,
         [string]$ProjectPath,
         [string]$ResumeFeature,
         [string]$Agent,
+        [string]$HostKind,
         [string]$PostRestartDirective,
         [bool]$NoLaunch,
         [bool]$NewWindow,
@@ -100,6 +122,7 @@ function Convert-UnixStyleArguments {
         ProjectPath    = $ProjectPath
         ResumeFeature  = $ResumeFeature
         Agent          = $Agent
+        HostKind       = $HostKind
         PostRestartDirective = $PostRestartDirective
         NoLaunch       = $NoLaunch
         NewWindow      = $false
@@ -138,6 +161,10 @@ function Convert-UnixStyleArguments {
             '--agent' {
                 $i++
                 if ($i -lt $CliArgs.Count) { $result.Agent = $CliArgs[$i] }
+            }
+            '--host' {
+                $i++
+                if ($i -lt $CliArgs.Count) { $result.HostKind = $CliArgs[$i] }
             }
             '--post-restart-directive' {
                 $i++
@@ -202,6 +229,7 @@ $parsedArgs = Convert-UnixStyleArguments `
     -ProjectPath $ProjectPath `
     -ResumeFeature $ResumeFeature `
     -Agent $Agent `
+    -HostKind $HostKind `
     -PostRestartDirective $PostRestartDirective `
     -NoLaunch $NoLaunch.IsPresent `
     -NewWindow $NewWindow.IsPresent `
@@ -220,6 +248,7 @@ $FeatureRequest = $parsedArgs.FeatureRequest
 $ProjectPath = $parsedArgs.ProjectPath
 $ResumeFeature = $parsedArgs.ResumeFeature
 $Agent = $parsedArgs.Agent
+$HostKind = $parsedArgs.HostKind
 $PostRestartDirective = $parsedArgs.PostRestartDirective
 $NoLaunch = [bool]$parsedArgs.NoLaunch
 $NewWindow = [bool]$parsedArgs.NewWindow
@@ -279,7 +308,7 @@ Options:
 
 function Write-Success {
     param([string]$Message)
-    Write-Host $Message -ForegroundColor Green
+    Write-HostKind $Message -ForegroundColor Green
 }
 
 function Write-Error-Message {
@@ -289,7 +318,7 @@ function Write-Error-Message {
 
 function Write-Info {
     param([string]$Message)
-    Write-Host $Message -ForegroundColor Cyan
+    Write-HostKind $Message -ForegroundColor Cyan
 }
 
 function Get-SpecrewConfigValue {
@@ -2838,7 +2867,9 @@ function Save-StartArtifacts {
         [AllowNull()][pscustomobject]$RecoverySession,
         [string]$PostRestartDirective = '',
         [bool]$BypassBoundaryEnforcement = $false,
-        [AllowNull()][string]$BoundaryBypassReason
+        [AllowNull()][string]$BoundaryBypassReason,
+        [AllowNull()][string]$SelectedHost,
+        [AllowNull()][System.Collections.IDictionary]$AvailableHostsMap
     )
 
     $specrewRoot = Join-Path $ResolvedProjectPath '.specrew'
@@ -3010,6 +3041,22 @@ $artifactListFormatted
         prompt_path      = $promptPath
         summary_path     = $summaryPath
         generated_at_utc = [DateTime]::UtcNow.ToString('o')
+        # F-040: per-host launch metadata (FR-006)
+        selected_host    = if ([string]::IsNullOrWhiteSpace($SelectedHost)) { 'copilot' } else { $SelectedHost.ToLowerInvariant() }
+        available_hosts  = if ($null -ne $AvailableHostsMap) {
+            $hostsOrdered = [ordered]@{}
+            foreach ($key in $AvailableHostsMap.Keys) { $hostsOrdered[$key] = [bool]$AvailableHostsMap[$key] }
+            $hostsOrdered
+        }
+        else {
+            $null
+        }
+        crew_runtime_status = if ([string]::IsNullOrWhiteSpace($SelectedHost) -or $SelectedHost.ToLowerInvariant() -eq 'copilot') {
+            'squad-runtime'
+        }
+        else {
+            'bootstrap_only'
+        }
     }
 
     if ($null -ne $existingBoundaryEnforcement) {
@@ -3111,7 +3158,123 @@ function Get-CopilotBootstrapInput {
     return $lines -join ' '
 }
 
+function Get-SpecrewHostLaunchInvocation {
+    <#
+    .SYNOPSIS
+    Build the per-host launch invocation (Binary + Args) for the selected host.
+    Per F-040 research.md Task 1 (verified per-host CLI surfaces).
+
+    .DESCRIPTION
+    Returns @{ Binary = '<path-or-name>'; Args = @(<argv-tokens>) } for the host.
+    Callers compose this into Start-Process or & invocations.
+    #>
+    param(
+        [Parameter(Mandatory = $true)]
+        [ValidateSet('copilot', 'claude', 'codex')]
+        [string]$HostKind,
+
+        [Parameter(Mandatory = $true)]
+        [string]$ResolvedProjectPath,
+
+        [Parameter(Mandatory = $true)]
+        [string]$BootstrapPrompt,
+
+        [Parameter(Mandatory = $true)]
+        [string]$Agent,
+
+        [bool]$AllowAll = $false,
+
+        [bool]$UseAutopilot = $false,
+
+        [bool]$UseRemote = $false
+    )
+
+    $hostBinary = Get-SpecrewHostBinary -HostKind $HostKind
+    $hostCmd = Get-Command $hostBinary -ErrorAction SilentlyContinue
+    $resolvedBinary = if ($null -ne $hostCmd) { $hostCmd.Source } else { $hostBinary }
+
+    $args = New-Object System.Collections.Generic.List[string]
+    $notices = New-Object System.Collections.Generic.List[string]
+
+    switch ($HostKind.ToLowerInvariant()) {
+        'copilot' {
+            $args.Add('--agent') | Out-Null
+            $args.Add($Agent) | Out-Null
+            if ($UseAutopilot) {
+                $t = Get-HostFlagTranslation -HostKind 'copilot' -SpecrewFlag '--autopilot'
+                foreach ($a in $t.Args) { $args.Add($a) | Out-Null }
+            }
+            $args.Add('--add-dir') | Out-Null
+            $args.Add($ResolvedProjectPath) | Out-Null
+            $args.Add('-i') | Out-Null
+            $args.Add($BootstrapPrompt) | Out-Null
+            if ($AllowAll) {
+                $t = Get-HostFlagTranslation -HostKind 'copilot' -SpecrewFlag '--allow-all'
+                foreach ($a in $t.Args) { $args.Add($a) | Out-Null }
+            }
+            if ($UseRemote) {
+                $t = Get-HostFlagTranslation -HostKind 'copilot' -SpecrewFlag '--remote'
+                foreach ($a in $t.Args) { $args.Add($a) | Out-Null }
+            }
+        }
+        'claude' {
+            $args.Add('-p') | Out-Null
+            $args.Add($BootstrapPrompt) | Out-Null
+            $args.Add('--add-dir') | Out-Null
+            $args.Add($ResolvedProjectPath) | Out-Null
+            if ($AllowAll) {
+                $t = Get-HostFlagTranslation -HostKind 'claude' -SpecrewFlag '--allow-all'
+                foreach ($a in $t.Args) { $args.Add($a) | Out-Null }
+                if (-not [string]::IsNullOrWhiteSpace($t.Notice)) { $notices.Add($t.Notice) | Out-Null }
+            }
+            if ($UseAutopilot) {
+                $t = Get-HostFlagTranslation -HostKind 'claude' -SpecrewFlag '--autopilot'
+                foreach ($a in $t.Args) { $args.Add($a) | Out-Null }
+                if (-not [string]::IsNullOrWhiteSpace($t.Notice)) { $notices.Add($t.Notice) | Out-Null }
+            }
+            if ($UseRemote) {
+                $t = Get-HostFlagTranslation -HostKind 'claude' -SpecrewFlag '--remote'
+                foreach ($a in $t.Args) { $args.Add($a) | Out-Null }
+                if (-not [string]::IsNullOrWhiteSpace($t.Notice)) { $notices.Add($t.Notice) | Out-Null }
+            }
+        }
+        'codex' {
+            $args.Add('exec') | Out-Null
+            $args.Add('--cd') | Out-Null
+            $args.Add($ResolvedProjectPath) | Out-Null
+            if ($AllowAll) {
+                $t = Get-HostFlagTranslation -HostKind 'codex' -SpecrewFlag '--allow-all'
+                foreach ($a in $t.Args) { $args.Add($a) | Out-Null }
+                if (-not [string]::IsNullOrWhiteSpace($t.Notice)) { $notices.Add($t.Notice) | Out-Null }
+            }
+            if ($UseAutopilot) {
+                $t = Get-HostFlagTranslation -HostKind 'codex' -SpecrewFlag '--autopilot'
+                foreach ($a in $t.Args) { $args.Add($a) | Out-Null }
+                if (-not [string]::IsNullOrWhiteSpace($t.Notice)) { $notices.Add($t.Notice) | Out-Null }
+            }
+            if ($UseRemote) {
+                $t = Get-HostFlagTranslation -HostKind 'codex' -SpecrewFlag '--remote'
+                # Codex has no remote-control wiring; notice surfaced, no args added
+                if (-not [string]::IsNullOrWhiteSpace($t.Notice)) { $notices.Add($t.Notice) | Out-Null }
+            }
+            $args.Add($BootstrapPrompt) | Out-Null
+        }
+    }
+
+    return [pscustomobject]@{
+        Binary  = $resolvedBinary
+        Args    = $args.ToArray()
+        Notices = $notices.ToArray()
+        HostKind = $HostKind.ToLowerInvariant()
+    }
+}
+
 function Get-ManualCopilotCommand {
+    <#
+    .SYNOPSIS
+    Generate a printable, host-aware manual launch command string.
+    Name retained for back-compat — covers all hosts now.
+    #>
     param(
         [string]$ResolvedProjectPath,
         [string]$PromptPath,
@@ -3119,16 +3282,25 @@ function Get-ManualCopilotCommand {
         [string]$Agent,
         [bool]$AllowAll,
         [bool]$UseAutopilot,
-        [bool]$RequireInteractiveIntake
+        [bool]$RequireInteractiveIntake,
+        [string]$HostKind = 'copilot'
     )
 
-    $quotedProjectPath = $ResolvedProjectPath.Replace("'", "''")
-    $quotedAgent = $Agent.Replace("'", "''")
-    $quotedBootstrap = (Get-CopilotBootstrapInput -ResolvedProjectPath $ResolvedProjectPath -PromptPath $PromptPath -ContextPath $ContextPath -RequireInteractiveIntake $RequireInteractiveIntake).Replace("'", "''")
-    $autopilotSegment = if ($UseAutopilot) { ' --autopilot' } else { '' }
-    $allowAllSegment = if ($AllowAll) { ' --allow-all' } else { '' }
+    $bootstrapInput = Get-CopilotBootstrapInput -ResolvedProjectPath $ResolvedProjectPath -PromptPath $PromptPath -ContextPath $ContextPath -RequireInteractiveIntake $RequireInteractiveIntake
 
-    return 'copilot --agent ''{0}''{1} --add-dir ''{2}'' -i ''{3}''{4}' -f $quotedAgent, $autopilotSegment, $quotedProjectPath, $quotedBootstrap, $allowAllSegment
+    $invocation = Get-SpecrewHostLaunchInvocation `
+        -HostKind $HostKind `
+        -ResolvedProjectPath $ResolvedProjectPath `
+        -BootstrapPrompt $bootstrapInput `
+        -Agent $Agent `
+        -AllowAll $AllowAll `
+        -UseAutopilot $UseAutopilot
+
+    $binary = Get-SpecrewHostBinary -HostKind $HostKind
+    $quotedArgs = $invocation.Args | ForEach-Object {
+        if ($_ -match '\s|''') { "'" + $_.Replace("'", "''") + "'" } else { $_ }
+    }
+    return "$binary $($quotedArgs -join ' ')"
 }
 
 function Get-AllowAllRuntimePlan {
@@ -3149,6 +3321,12 @@ function Get-AllowAllRuntimePlan {
 }
 
 function Start-CopilotSession {
+    <#
+    .SYNOPSIS
+    Launch the selected host (copilot/claude/codex) with Specrew's bootstrap context.
+    Per F-040: dispatcher uses Get-SpecrewHostLaunchInvocation to build per-host argv.
+    Name retained for back-compat — handles all three hosts now.
+    #>
     param(
         [string]$ResolvedProjectPath,
         [string]$PromptPath,
@@ -3157,43 +3335,46 @@ function Start-CopilotSession {
         [bool]$AllowAll,
         [bool]$SameWindow,
         [bool]$UseAutopilot,
-        [bool]$RequireInteractiveIntake
+        [bool]$RequireInteractiveIntake,
+        [string]$HostKind = 'copilot'
     )
 
-    $copilotCommand = Get-Command copilot -ErrorAction SilentlyContinue
-    if (-not $copilotCommand) {
+    $hostBinary = Get-SpecrewHostBinary -HostKind $HostKind
+    $hostCommand = Get-Command $hostBinary -ErrorAction SilentlyContinue
+    if (-not $hostCommand) {
         return $false
     }
 
     $bootstrapInput = Get-CopilotBootstrapInput -ResolvedProjectPath $ResolvedProjectPath -PromptPath $PromptPath -ContextPath $ContextPath -RequireInteractiveIntake $RequireInteractiveIntake
-    $copilotArgs = @('--agent', $Agent)
 
-    if ($UseAutopilot) {
-        $copilotArgs += '--autopilot'
+    $invocation = Get-SpecrewHostLaunchInvocation `
+        -HostKind $HostKind `
+        -ResolvedProjectPath $ResolvedProjectPath `
+        -BootstrapPrompt $bootstrapInput `
+        -Agent $Agent `
+        -AllowAll $AllowAll `
+        -UseAutopilot $UseAutopilot
+
+    foreach ($notice in $invocation.Notices) {
+        if (-not [string]::IsNullOrWhiteSpace($notice)) {
+            Write-Info ("[host-flag] {0}" -f $notice)
+        }
     }
 
-    $copilotArgs += @('--add-dir', $ResolvedProjectPath, '-i', $bootstrapInput)
-
-    if ($AllowAll) {
-        $copilotArgs += '--allow-all'
-    }
+    $launchArgs = @($invocation.Args)
+    $resolvedBinary = $invocation.Binary
 
     if ($IsWindows) {
         $quotedProjectPath = $ResolvedProjectPath.Replace("'", "''")
-        $quotedAgent = $Agent.Replace("'", "''")
-        $quotedCopilotSource = $copilotCommand.Source.Replace("'", "''")
-        $quotedBootstrap = $bootstrapInput.Replace("'", "''")
-        $autopilotSnippet = if ($UseAutopilot) { '$args += ''--autopilot''' } else { '' }
-        $allowAllSnippet = if ($AllowAll) { '$args += ''--allow-all''' } else { '' }
+        $quotedBinary = $resolvedBinary.Replace("'", "''")
+        $launchArgsLiteral = ($launchArgs | ForEach-Object {
+            "'" + ($_.ToString().Replace("'", "''")) + "'"
+        }) -join ', '
         $launchScript = @'
 Set-Location -LiteralPath '{0}'
-$bootstrapInput = '{1}'
-$args = @('--agent', '{2}')
-{3}
-$args += @('--add-dir', '{0}', '-i', $bootstrapInput)
-{4}
-& '{5}' @args
-'@ -f $quotedProjectPath, $quotedBootstrap, $quotedAgent, $autopilotSnippet, $allowAllSnippet, $quotedCopilotSource
+$launchArgs = @({1})
+& '{2}' @launchArgs
+'@ -f $quotedProjectPath, $launchArgsLiteral, $quotedBinary
 
         if ($SameWindow) {
             $process = Start-Process -FilePath 'pwsh' -ArgumentList @('-NoLogo', '-NoProfile', '-ExecutionPolicy', 'Bypass', '-Command', $launchScript) -WorkingDirectory $ResolvedProjectPath -NoNewWindow -PassThru -Wait
@@ -3204,28 +3385,17 @@ $args += @('--add-dir', '{0}', '-i', $bootstrapInput)
         return $true
     }
 
-    # Linux/macOS: defer the actual `copilot` launch to the Specrew module
-    # function so it happens in PowerShell FUNCTION context (which preserves
-    # TTY on Linux) instead of SCRIPT context (which strips TTY for native
-    # command children, regardless of in-process vs subprocess invocation).
-    #
-    # Empirical evidence: PowerShell function bodies called from prompt
-    # render TUIs correctly; PowerShell script bodies do not — even nano
-    # fails to render. This is a Linux pwsh I/O handling difference between
-    # function and script execution contexts that we cannot work around
-    # from within a script.
-    #
-    # Mechanism: write the launch args to a deferred-launch file. The
-    # module's Invoke-SpecrewScript reads it after the script returns and
-    # invokes `& copilot @args` from its own function body, which is
-    # function context and preserves TTY.
+    # Linux/macOS: defer the actual launch to the Specrew module function so
+    # it happens in PowerShell FUNCTION context (which preserves TTY on Linux)
+    # instead of SCRIPT context (which strips TTY for native command children).
+    # Mechanism unchanged from pre-F-040; only the args list is now per-host.
     $deferredLaunchPath = $env:SPECREW_DEFERRED_LAUNCH_FILE
     if ([string]::IsNullOrWhiteSpace($deferredLaunchPath)) {
         # Direct script invocation (not via the module proxy). Fall back to
         # in-script launch — TUI won't render but the command will run.
         Push-Location -LiteralPath $ResolvedProjectPath
         try {
-            & $copilotCommand.Source @copilotArgs
+            & $resolvedBinary @launchArgs
             return $true
         }
         finally {
@@ -3234,9 +3404,10 @@ $args += @('--add-dir', '{0}', '-i', $bootstrapInput)
     }
 
     $launchInfo = [pscustomobject]@{
-        CopilotPath      = $copilotCommand.Source
-        CopilotArgs      = @($copilotArgs)
+        CopilotPath      = $resolvedBinary
+        CopilotArgs      = @($launchArgs)
         WorkingDirectory = $ResolvedProjectPath
+        HostKind         = $HostKind.ToLowerInvariant()
     }
     $launchInfo | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath $deferredLaunchPath -Encoding UTF8
     return $true
@@ -3279,6 +3450,41 @@ if ($missingBootstrapPaths.Count -gt 0) {
 if ($AllowAll -and $PromptApprovals) {
     Write-Error-Message "Use either --allow-all or --prompt-approvals, not both."
     exit 1
+}
+
+# F-040: Host selection + validation (FR-001, FR-002, FR-005)
+$selectedHost = if ([string]::IsNullOrWhiteSpace($HostKind)) { 'copilot' } else { $HostKind.ToLowerInvariant() }
+$availableHostsMap = Get-SpecrewAvailableHosts
+
+# Reject deferred hosts with explicit guidance per research.md Task 3
+if ($selectedHost -in (Get-SpecrewDeferredHostKinds)) {
+    Write-Error-Message (Get-SpecrewDeferredHostGuidance -HostKind $selectedHost)
+    exit 1
+}
+
+# Validate the host kind is supported
+if ($selectedHost -notin (Get-SpecrewSupportedHostKinds)) {
+    $supported = (Get-SpecrewSupportedHostKinds) -join ', '
+    $deferred = (Get-SpecrewDeferredHostKinds) -join ', '
+    Write-Error-Message ("Unsupported --host '{0}'. Supported: {1}. Reserved-but-deferred: {2}." -f $selectedHost, $supported, $deferred)
+    exit 1
+}
+
+# Probe PATH for selected host; missing CLI = install guidance + exit
+if (-not $availableHostsMap[$selectedHost]) {
+    Write-Error-Message (Get-SpecrewHostInstallGuidance -HostKind $selectedHost)
+    exit 1
+}
+
+# Per-host skill verification (FR-009 non-fatal warning; FR-013 Codex informational note)
+$skillCheck = Test-HostSkillRoot -HostKind $selectedHost -ProjectPath $resolvedProjectPath
+foreach ($warning in $skillCheck.Warnings) {
+    if ($warning -like 'INFO:*') {
+        Write-Info $warning
+    }
+    else {
+        Write-Info ("WARN: {0}" -f $warning)
+    }
 }
 
 if ($BypassBoundaryEnforcement -and [string]::IsNullOrWhiteSpace($Reason)) {
@@ -3451,6 +3657,10 @@ $promptContent = Get-StartPrompt `
     -SessionState $validatedSessionState `
     -RecoverySession $recoverySession
 
+# F-040: apply per-host coordinator-prompt surgery (FR-011 universal header for all hosts;
+# FR-012 Squad-runtime-path strip for non-Copilot; FR-014 Codex pwsh-form rewrite)
+$promptContent = Invoke-SpecrewCoordinatorPromptSurgery -Prompt $promptContent -HostKind $selectedHost
+
 $artifactPaths = Save-StartArtifacts `
     -ResolvedProjectPath $resolvedProjectPath `
     -PromptContent $promptContent `
@@ -3472,9 +3682,14 @@ $artifactPaths = Save-StartArtifacts `
     -RecoverySession $recoverySession `
     -PostRestartDirective $recoveryDirective `
     -BypassBoundaryEnforcement $BypassBoundaryEnforcement `
-    -BoundaryBypassReason $Reason
+    -BoundaryBypassReason $Reason `
+    -SelectedHost $selectedHost `
+    -AvailableHostsMap $availableHostsMap
 
 Write-Success "Prepared Specrew start context."
+if ($selectedHost -ne 'copilot') {
+    Write-Info ("Selected host: {0} (non-Squad runtime; coordinator prompt rewritten per FR-011/FR-012)" -f $selectedHost)
+}
 $promptDisplayPath = Get-DisplayPathFromProjectRoot -ResolvedProjectPath $resolvedProjectPath -Path $artifactPaths.PromptPath
 $contextDisplayPath = Get-DisplayPathFromProjectRoot -ResolvedProjectPath $resolvedProjectPath -Path $artifactPaths.ContextPath
 $summaryDisplayPath = Get-DisplayPathFromProjectRoot -ResolvedProjectPath $resolvedProjectPath -Path $artifactPaths.SummaryPath
@@ -3509,7 +3724,7 @@ if (-not [string]::IsNullOrWhiteSpace($allowAllRuntimePlan.SuppressionNote)) {
 
 if ($NoLaunch -or $forceNoLaunch) {
     Write-Info "Launch skipped by --no-launch."
-    Write-Info ("Manual launch command (run from the project root; Copilot auto-loads the bootstrap via -i): {0}" -f (Get-ManualCopilotCommand -ResolvedProjectPath $resolvedProjectPath -PromptPath $artifactPaths.PromptPath -ContextPath $artifactPaths.ContextPath -Agent $Agent -AllowAll $allowAllRuntimePlan.PassAllowAll -UseAutopilot $useAutopilot -RequireInteractiveIntake $requiresInteractiveIntake))
+    Write-Info ("Manual launch command (run from the project root; bootstrap is auto-loaded): {0}" -f (Get-ManualCopilotCommand -ResolvedProjectPath $resolvedProjectPath -PromptPath $artifactPaths.PromptPath -ContextPath $artifactPaths.ContextPath -Agent $Agent -AllowAll $allowAllRuntimePlan.PassAllowAll -UseAutopilot $useAutopilot -RequireInteractiveIntake $requiresInteractiveIntake -HostKind $selectedHost))
     exit 0
 }
 
@@ -3528,11 +3743,12 @@ $copilotStarted = Start-CopilotSession `
     -AllowAll $allowAllRuntimePlan.PassAllowAll `
     -SameWindow ($launchMode -eq 'same-window') `
     -UseAutopilot $useAutopilot `
-    -RequireInteractiveIntake $requiresInteractiveIntake
+    -RequireInteractiveIntake $requiresInteractiveIntake `
+    -HostKind $selectedHost
 
 if (-not $copilotStarted) {
-    Write-Info "Copilot CLI was not available, so Specrew wrote a resume-safe handoff prompt instead."
-    Write-Info ("Manual launch command (run from {0}; Copilot auto-loads the bootstrap via -i): {1}" -f $resolvedProjectPath, (Get-ManualCopilotCommand -ResolvedProjectPath $resolvedProjectPath -PromptPath $artifactPaths.PromptPath -ContextPath $artifactPaths.ContextPath -Agent $Agent -AllowAll $allowAllRuntimePlan.PassAllowAll -UseAutopilot $useAutopilot -RequireInteractiveIntake $requiresInteractiveIntake))
+    Write-Info ("{0} CLI was not available, so Specrew wrote a resume-safe handoff prompt instead." -f $selectedHost)
+    Write-Info ("Manual launch command (run from {0}; bootstrap is auto-loaded): {1}" -f $resolvedProjectPath, (Get-ManualCopilotCommand -ResolvedProjectPath $resolvedProjectPath -PromptPath $artifactPaths.PromptPath -ContextPath $artifactPaths.ContextPath -Agent $Agent -AllowAll $allowAllRuntimePlan.PassAllowAll -UseAutopilot $useAutopilot -RequireInteractiveIntake $requiresInteractiveIntake -HostKind $selectedHost))
     exit 0
 }
 
