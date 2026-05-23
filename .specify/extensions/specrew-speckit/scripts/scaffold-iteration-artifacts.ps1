@@ -393,20 +393,43 @@ function Get-HardeningGateContent {
     $null = $lines.Add('**Reviewed By**: Reviewer (pending)')
     $null = $lines.Add(('**Reviewed At**: ' + $ReviewedAt))
     $null = $lines.Add('')
+    $null = $lines.Add('<!--')
+    $null = $lines.Add('  Concern Review schema (validator-enforced):')
+    $null = $lines.Add('  - Status MUST be one of: `addressed` | `not-applicable` | `deferred-with-approval`. The validator')
+    $null = $lines.Add('    rejects placeholder values like `tbd`. Pick a real status per concern before implementation.')
+    $null = $lines.Add('  - When Status is `addressed`: EvidenceBasis = `planning-time-analysis`, RuntimeEvidenceStatus =')
+    $null = $lines.Add('    `pending-post-implementation`, ExpectedControls = concrete controls you will enforce.')
+    $null = $lines.Add('  - When Status is `not-applicable`: EvidenceBasis = `not-applicable`, RuntimeEvidenceStatus =')
+    $null = $lines.Add('    `not-needed`, ExpectedControls = `—`. Rationale must explain WHY this concern does not apply.')
+    $null = $lines.Add('  - When Status is `deferred-with-approval`: same evidence fields as `addressed`, AND the Approval')
+    $null = $lines.Add('    column must reference an approval record (decision or defer) with a recorded human approval.')
+    $null = $lines.Add('  - Overall Verdict is computed: `ready` when every concern is addressed/not-applicable/deferred-')
+    $null = $lines.Add('    with-approval; `blocked` otherwise. Update the metadata above when you change the table.')
+    $null = $lines.Add('-->')
+    $null = $lines.Add('')
     $null = $lines.Add('## Concern Review')
     $null = $lines.Add('')
-    $null = $lines.Add('| Concern | Category | Status | Blocking | Rationale | Approval |')
-    $null = $lines.Add('| --- | --- | --- | --- | --- | --- |')
-    $null = $lines.Add('| `security-surface` | `security` | `tbd` | `true` | Scaffolded placeholder. Review trust boundaries, privilege changes, and sensitive flows before implementation proceeds. | `—` |')
-    $null = $lines.Add('| `error-handling-expectations` | `error-handling` | `tbd` | `true` | Scaffolded placeholder. Record expected failure semantics and incomplete-state handling before implementation proceeds. | `—` |')
-    $null = $lines.Add('| `retry-idempotency-requirements` | `retry-idempotency` | `tbd` | `true` | Scaffolded placeholder. Confirm whether retries/idempotency are required or explicitly not applicable. | `—` |')
-    $null = $lines.Add('| `test-integrity-targets` | `test-integrity` | `tbd` | `true` | Scaffolded placeholder. Tie negative-path expectations to observable test evidence before implementation proceeds. | `—` |')
-    $null = $lines.Add('| `operational-resilience-concerns` | `operational` | `tbd` | `true` | Scaffolded placeholder. Review runtime resilience, fallback, and operator-facing failure signals before implementation proceeds. | `—` |')
+    $null = $lines.Add('| Concern | Category | Status | Evidence Basis | Runtime Evidence Status | Expected Controls | Blocking | Rationale | Approval |')
+    $null = $lines.Add('| --- | --- | --- | --- | --- | --- | --- | --- | --- |')
+    $null = $lines.Add('| `security-surface` | `security` | `addressed` | `planning-time-analysis` | `pending-post-implementation` | `<list concrete controls: input validation, allowlists, no eval/innerHTML on user data, no persistence APIs unless required, etc.>` | `true` | `<describe the trust boundary, privilege model, and sensitive flows in this iteration>` | `—` |')
+    $null = $lines.Add('| `error-handling-expectations` | `robustness` | `addressed` | `planning-time-analysis` | `pending-post-implementation` | `<list failure modes and the single transition path that handles them, plus positive + negative test coverage you will assert>` | `true` | `<describe expected failure semantics, incomplete-state handling, and recovery preservation rules>` | `—` |')
+    $null = $lines.Add('| `retry-idempotency-requirements` | `resilience` | `not-applicable` | `not-applicable` | `not-needed` | `—` | `false` | `<flip to `addressed` and fill in if this iteration has retries, idempotency keys, transactional state, or shared resources. Otherwise record the rationale for why those primitives have no surface here.>` | `—` |')
+    $null = $lines.Add('| `test-integrity-targets` | `verification` | `addressed` | `planning-time-analysis` | `pending-post-implementation` | `<list the FR → named-test mapping, the negative-path requirements, and which evidence artifacts will record empirical results>` | `true` | `<describe coverage strategy: positive + negative per FR; smoke-only is disallowed for failure-mode FRs>` | `—` |')
+    $null = $lines.Add('| `operational-resilience-concerns` | `operability` | `not-applicable` | `not-applicable` | `not-needed` | `—` | `false` | `<flip to `addressed` and fill in if this iteration ships server, SLO, telemetry pipeline, oncall surface, or operational dependencies. Otherwise record the rationale for why those primitives have no surface here.>` | `—` |')
+    $null = $lines.Add('')
+    $null = $lines.Add('## Lens Activation (Planning Baseline)')
+    $null = $lines.Add('')
+    $null = $lines.Add('| Lens Ref | Activation | Planned Evidence Path |')
+    $null = $lines.Add('| --- | --- | --- |')
+    $null = $lines.Add(('| `security-baseline@v1.0.0` | required | `' + $IterationRef + '/quality/lenses/security-baseline.md` |'))
+    $null = $lines.Add(('| `robustness-baseline@v1.0.0` | required | `' + $IterationRef + '/quality/lenses/robustness-baseline.md` |'))
+    $null = $lines.Add(('| `test-integrity@v1.0.0` | required | `' + $IterationRef + '/quality/lenses/test-integrity.md` |'))
     $null = $lines.Add('')
     $null = $lines.Add('## Notes')
     $null = $lines.Add('')
-    $null = $lines.Add('- This artifact was scaffolded before the hardening review ran.')
-    $null = $lines.Add('- Replace placeholder statuses with reviewed outcomes before marking implementation readiness.')
+    $null = $lines.Add('- Replace every `<placeholder>` and every angle-bracketed instruction with iteration-specific content before crossing the `before-implement` boundary.')
+    $null = $lines.Add('- After every row in the table is filled in with a canonical Status, flip the metadata `Overall Verdict` to `ready` (if every concern is `addressed` / `not-applicable` / `deferred-with-approval`) or keep `blocked`.')
+    $null = $lines.Add('- Runtime evidence (lens execution, test counts, mechanical-findings results) is collected after implementation lands; the gate is a PLANNING-time artifact and that deferral is intentional.')
     return ($lines -join [Environment]::NewLine) + [Environment]::NewLine
 }
 
@@ -566,6 +589,24 @@ $driftLogContent = @"
 
 **Schema**: v1
 
+<!--
+  Markdown authoring note (Specrew lifecycle convention):
+
+  When you add new drift events to this file, watch for MD032 (blanks-around-lists).
+  A sentence ending with a colon, immediately followed by a bullet list, is the most
+  common violation. Always put a BLANK LINE between the colon line and the list:
+
+      BAD:                              GOOD:
+      Resolution steps:                 Resolution steps:
+      - Step one                        <— blank line here
+      - Step two                        - Step one
+                                        - Step two
+
+  The F-033 pre-boundary markdownlint gate runs `markdownlint-cli --fix` on .md
+  changes before every boundary-sync write, so most violations auto-fix — but the
+  blank line you write in the first place avoids the cleanup churn.
+-->
+
 ## Summary
 
 **Total drift events**: 0
@@ -579,6 +620,7 @@ No specification drift detected during Iteration $IterationNumber execution to d
 ### Resolution Strategies (Unused)
 
 The following resolution strategies remain available if drift is detected later in execution:
+
 - **spec-updated**: Update the spec to reflect implementation choice
 - **implementation-reverted**: Revert implementation to match spec
 - **deferred**: Mark drift as deferred to next iteration

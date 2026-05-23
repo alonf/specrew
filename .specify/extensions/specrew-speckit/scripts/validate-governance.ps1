@@ -191,7 +191,14 @@ function Resolve-IterationTarget {
         Select-Object -ExpandProperty FullName
 
     if (-not $targets) {
-        throw "No iteration directories with plan.md found under $specsPath"
+        # Pre-implement / pre-iteration-scaffold state: the spec exists but no iteration plan.md
+        # has been written yet (T005 in the typical task plan creates it). This is NORMAL during
+        # /speckit.specrew-speckit.after-tasks and the before-implement gate, so we emit a clear
+        # INFO line and return zero iterations rather than throwing an "unexpected-validator-error".
+        # Downstream checks see zero iterations and skip iteration-scoped work cleanly; the
+        # script exits 0 with the summary "0 iterations validated", which is the truth.
+        Write-Host ('[validator-info] No iteration directories with plan.md yet under {0}. This is expected pre-implementation; the iteration plan is scaffolded as the first implement task.' -f $specsPath) -ForegroundColor DarkYellow
+        return @()
     }
 
     return @($targets)

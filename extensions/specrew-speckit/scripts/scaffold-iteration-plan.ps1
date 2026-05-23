@@ -457,6 +457,18 @@ $planContent = @"
 **Started**: $startedDate
 **Completed**:
 
+<!--
+  Validator schema (canonical, enforced by validate-governance.ps1):
+  - Iteration Status MUST be one of:
+      planning | executing | reviewing | retro | complete | abandoned
+    (Common mistakes the validator REJECTS: ``approved``, ``in-progress``, ``done``, ``ready``.)
+  - Capacity format MUST be ``<consumed>/<cap> <effort_unit>`` with NO trailing prose on that line.
+    Append explanatory notes in the Notes section at the bottom instead.
+  - Task Status (in the Tasks table) MUST be one of:
+      planned | in-progress | done | needs-rework | deferred | blocked
+    (Note ``in-progress`` uses a hyphen, not an underscore. ``done`` not ``completed``.)
+-->
+
 ## Scope Summary
 
 $($scopeRows -join [Environment]::NewLine)

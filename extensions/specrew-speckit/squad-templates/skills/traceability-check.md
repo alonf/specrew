@@ -1,3 +1,11 @@
+---
+name: "specrew-traceability-check"
+description: "Verify every task in tasks.md maps to at least one FR/SC and every FR/SC has at least one task; surface gaps before implementation begins."
+domain: "lifecycle-after-tasks"
+confidence: "high"
+source: "Specrew governance pillar — after-tasks ceremony helper"
+---
+
 # specrew-traceability-check
 
 **Type**: Analysis Skill  
