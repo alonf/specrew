@@ -1,11 +1,12 @@
-[CmdletBinding()]
+[CmdletBinding(SupportsShouldProcess=$true, ConfirmImpact='High')]
 param(
     [Parameter(Mandatory = $true)]
     [string]$IterationDirectory,
 
     [switch]$DryRun,
     [switch]$PassThru,
-    [switch]$SummaryOnly
+    [switch]$SummaryOnly,
+    [switch]$Force
 )
 
 Set-StrictMode -Version Latest
@@ -995,7 +996,7 @@ function Resolve-ModuleReference {
     }
 
     $candidatePath = [System.IO.Path]::GetFullPath((Join-Path 'C:\' $combinedPath)).Substring(3)
-    $candidateKey = $candidatePath.Replace('/', '\')
+    $candidateKey = $candidatePath.Replace('\', '/')
     $candidateModuleId = Get-ModuleIdFromPath -Path $candidateKey
 
     if ($ModuleLookup.ContainsKey($candidateModuleId)) {
@@ -1113,13 +1114,29 @@ function Get-SecurityTriggerContext {
         [string[]]$PlanLines
     )
 
+    # Security trigger: any team role flagged as security-focused, OR an iteration plan
+    # task whose Title contains "security" / "auth" / "secret" / "encrypt" / "vuln" /
+    # "csrf" / "xss" / "sandbox" / "permission" (case-insensitive). The original
+    # implementation also matched the literal FR-048 in the Requirement column, which
+    # was a leak from Specrew's OWN spec (FR-048 is Specrew's product's security FR)
+    # into every downstream scaffold — removed 2026-05-24 after tip-calc-v2 dogfooding
+    # surfaced "no FR-048/security-scoped plan task were found" in unrelated projects.
     $securityRoles = @(Get-SecurityRoles -ProjectRoot $ProjectRoot)
     $planTaskRows = @(Get-MarkdownSectionTable -Lines $PlanLines -Heading 'Tasks')
-    $taskTriggered = @($planTaskRows | Where-Object { ([string]$_.Requirement) -match '\bFR-048\b' -or ([string]$_.Title) -match '(?i)\bsecurity\b' }).Count -gt 0
+    $securityKeywordPattern = '(?i)\b(security|auth(?:entication|orization)?|secret|encrypt(?:ion)?|vuln(?:erab|er)|csrf|xss|sandbox|permission)\b'
+    $taskTriggered = @($planTaskRows | Where-Object { ([string]$_.Title) -match $securityKeywordPattern }).Count -gt 0
 
     return [pscustomobject]@{
         Enabled       = ($securityRoles.Count -gt 0) -or $taskTriggered
-        Reason        = if ($securityRoles.Count -gt 0) { 'Security-focused team role present.' } elseif ($taskTriggered) { 'Iteration plan scopes security work.' } else { 'No security-focused role and no FR-048/security-scoped plan task were found.' }
+        Reason        = if ($securityRoles.Count -gt 0) {
+            'Security-focused team role present.'
+        }
+        elseif ($taskTriggered) {
+            'Iteration plan has a security-keyword task title.'
+        }
+        else {
+            'No security-focused team role and no security-keyword task title were found in the iteration plan.'
+        }
         SecurityRoles = $securityRoles
     }
 }
@@ -1494,7 +1511,7 @@ function Get-ManifestDiffRows {
     $unknownLicenses = New-Object System.Collections.Generic.List[string]
 
     foreach ($manifestFile in $ManifestFiles) {
-        if ($manifestFile.Path -notmatch '(?:^|\\)package\.json$') {
+        if ($manifestFile.Path -notmatch '(?:^|[\\/])package\.json$') {
             continue
         }
 
@@ -1957,9 +1974,33 @@ function Write-ReviewerSummary {
 }
 
 function Get-DashboardRendererScriptPath {
+    # Resolves the velocity dashboard renderer path. Two layouts supported (same pattern
+    # as the sync-boundary-state wrapper after F-040 dogfooding 2026-05-23):
+    #   1) Dev-tree dogfooding: <project>/scripts/internal/dashboard-renderer.ps1
+    #   2) Downstream project: the renderer lives in the installed Specrew module at
+    #      <module-base>/scripts/internal/dashboard-renderer.ps1 (discovered via
+    #      Get-Module -Name Specrew -ListAvailable). The downstream project itself has
+    #      no scripts/internal/ directory.
+    # Returns the first path that exists; if neither resolves, returns the dev-tree path
+    # (preserves the existing throw-with-clear-message behavior in callers).
     param([Parameter(Mandatory = $true)][string]$ProjectRoot)
 
-    return Join-Path $ProjectRoot 'scripts\internal\dashboard-renderer.ps1'
+    $devTreePath = Join-Path $ProjectRoot 'scripts\internal\dashboard-renderer.ps1'
+    if (Test-Path -LiteralPath $devTreePath -PathType Leaf) {
+        return $devTreePath
+    }
+
+    $specrewModule = Get-Module -Name 'Specrew' -ListAvailable -ErrorAction SilentlyContinue |
+        Sort-Object Version -Descending |
+        Select-Object -First 1
+    if ($null -ne $specrewModule) {
+        $modulePath = Join-Path $specrewModule.ModuleBase 'scripts\internal\dashboard-renderer.ps1'
+        if (Test-Path -LiteralPath $modulePath -PathType Leaf) {
+            return $modulePath
+        }
+    }
+
+    return $devTreePath
 }
 
 function Get-IterationDashboardArtifactContent {
@@ -2033,6 +2074,42 @@ $featureId = Split-Path -Leaf $specDirectory
 $currentArchitecturePath = Join-Path $specDirectory 'current-architecture.md'
 $reviewerConfig = (Get-ReviewerConfig -ProjectRoot $projectRoot).reviewer
 $diffArtifacts = Get-DiffArtifacts -ProjectRoot $projectRoot -BaselineRef $baselineRef
+
+# F-028: Form-vs-meaning gap detection
+$declaredTaskCount = Get-DeclaredCompletedTaskCount -PlanLines $planLines -StateLines $stateLines
+
+$observedFileCount = @($diffArtifacts.Files).Count
+$gapDetectionResult = Test-FormMeaningParity -Declared $declaredTaskCount -Observed $observedFileCount
+$gapWarningText = if ($gapDetectionResult.Gap -and $gapDetectionResult.Severity -in @('error', 'warning')) {
+    @"
+> **⚠️ Review Evidence Warning** _(Form-vs-Meaning Gap Detected)_
+> 
+> This iteration's task tracking declares **$($gapDetectionResult.Declared) completed task(s)**, but the git diff against baseline ``$baselineRef`` contains **$($gapDetectionResult.Observed) file(s)**.
+> 
+> **Severity**: $($gapDetectionResult.Severity.ToUpper())  
+> **Implication**: Review evidence may be incomplete or misleading.
+> 
+> **Possible causes**:
+> - Implementation work was not committed before scaffolding review artifacts
+> - Task status markers in plan.md or review.md do not match actual progress
+> - Baseline reference in state.md is stale or incorrect
+> 
+> **Remediation**: 
+> 1. Verify implementation is committed: ``git diff $baselineRef...HEAD --stat``
+> 2. If uncommitted work exists: ``git add . && git commit -m "Implementation complete"``
+> 3. Re-run scaffolder with ``-Force`` flag to regenerate review artifacts after commit
+> 4. Re-run ``validate-governance.ps1`` to clear pre-review commit gate error
+> 
+> _See Proposal 073 (Review Evidence Integrity) for background on this validation._
+
+---
+
+"@
+}
+else {
+    $null
+}
+
 $qualityGateRows = @(Get-MarkdownSectionTable -Lines $planLines -Heading 'Required Quality Gates')
 $qualityContractPath = Join-Path $specDirectory 'contracts\quality-governance-artifacts.md'
 if ($qualityGateRows.Count -eq 0 -and (Test-Path -LiteralPath $qualityContractPath -PathType Leaf)) {
@@ -2201,6 +2278,7 @@ $codeMapContent = @"
 **Baseline Ref**: $(if ($diffArtifacts.BaselineResolved) { $baselineRef } elseif ($baselineRef) { "$baselineRef (unresolved)" } else { 'unknown' })
 **Test-to-Code Ratio**: $testToCodeRatio
 
+$(if ($gapWarningText) { $gapWarningText } else { '' })
 ## Files Touched
 
 $($codeMapRows -join [Environment]::NewLine)
@@ -2217,6 +2295,7 @@ $dependencyReportContent = @"
 **Reviewed**: $reviewedDate
 **Baseline Ref**: $(if ($diffArtifacts.BaselineResolved) { $baselineRef } elseif ($baselineRef) { "$baselineRef (unresolved)" } else { 'unknown' })
 
+$(if ($gapWarningText) { $gapWarningText } else { '' })
 ## Dependency Delta
 
 $($dependencyRows -join [Environment]::NewLine)
@@ -2263,6 +2342,7 @@ $coverageEvidenceContent = @"
 **Reviewed**: $reviewedDate
 **Overall Verdict**: $overallVerdict
 
+$(if ($gapWarningText) { $gapWarningText } else { '' })
 ## Test Strategy
 
 - Implementation briefing: $implementationBriefingRelative
@@ -2316,6 +2396,7 @@ $reviewDiagramsContent = @"
 **Schema**: v1
 **Diagram Format**: $($reviewerConfig.diagram_format)
 
+$(if ($gapWarningText) { $gapWarningText } else { '' })
 ## Structure Diagram
 
 $(if ($diagramEvidence.StructureDiagram) { $diagramEvidence.StructureDiagram } else { '_omitted_' })
@@ -2491,6 +2572,31 @@ $digestLine
 "@
 
 if (-not $SummaryOnly) {
+    # F-028: Handle -Force flag with interactive confirmation
+    if ($Force) {
+        # Check if review artifacts exist
+        $existingArtifacts = @($codeMapPath, $dependencyReportPath, $coverageEvidencePath, $reviewDiagramsPath) | Where-Object { Test-Path -LiteralPath $_ -PathType Leaf }
+        
+        if ($existingArtifacts.Count -gt 0) {
+            $confirmMessage = @"
+Re-running with -Force will overwrite existing review artifacts:
+- code-map.md
+- dependency-report.md
+- coverage-evidence.md
+- review-diagrams.md
+
+Human annotations in these files will be lost. Preserve annotations in review.md instead.
+"@
+            $confirmCaption = "Overwrite Review Artifacts?"
+            
+            # ShouldProcess handles -Confirm parameter automatically
+            if (-not $PSCmdlet.ShouldProcess($confirmMessage, $confirmCaption, "Confirm")) {
+                Write-Host "Scaffold operation cancelled by user. Existing artifacts preserved." -ForegroundColor Yellow
+                return
+            }
+        }
+    }
+    
     if ($hasQualityEvidenceContract -or $phaseTwoQualityArtifactsRequired) {
         $hardeningGatePath = Join-Path $qualityDirectory 'hardening-gate.md'
         $lensesDirectory = Join-Path $qualityDirectory 'lenses'

@@ -943,9 +943,30 @@ function Test-PublicReadinessSurfaces {
 }
 
 function Get-DashboardRendererPath {
+    # Resolve the velocity dashboard renderer path. Two layouts supported (same pattern as
+    # the sync-boundary-state wrapper after F-040 dogfooding 2026-05-23):
+    #   1) Dev-tree: <project>/scripts/internal/dashboard-renderer.ps1
+    #   2) Downstream: <installed-Specrew-module-base>/scripts/internal/dashboard-renderer.ps1
+    # Returns the first that exists; if neither, returns the dev-tree path so callers'
+    # Test-Path checks fail in a predictable way.
     param([Parameter(Mandatory = $true)][string]$ProjectRoot)
 
-    return Join-Path $ProjectRoot 'scripts\internal\dashboard-renderer.ps1'
+    $devTreePath = Join-Path $ProjectRoot 'scripts\internal\dashboard-renderer.ps1'
+    if (Test-Path -LiteralPath $devTreePath -PathType Leaf) {
+        return $devTreePath
+    }
+
+    $specrewModule = Get-Module -Name 'Specrew' -ListAvailable -ErrorAction SilentlyContinue |
+        Sort-Object Version -Descending |
+        Select-Object -First 1
+    if ($null -ne $specrewModule) {
+        $modulePath = Join-Path $specrewModule.ModuleBase 'scripts\internal\dashboard-renderer.ps1'
+        if (Test-Path -LiteralPath $modulePath -PathType Leaf) {
+            return $modulePath
+        }
+    }
+
+    return $devTreePath
 }
 
 function Get-FeatureOrdinalFromRef {

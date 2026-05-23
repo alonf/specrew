@@ -1114,13 +1114,29 @@ function Get-SecurityTriggerContext {
         [string[]]$PlanLines
     )
 
+    # Security trigger: any team role flagged as security-focused, OR an iteration plan
+    # task whose Title contains "security" / "auth" / "secret" / "encrypt" / "vuln" /
+    # "csrf" / "xss" / "sandbox" / "permission" (case-insensitive). The original
+    # implementation also matched the literal FR-048 in the Requirement column, which
+    # was a leak from Specrew's OWN spec (FR-048 is Specrew's product's security FR)
+    # into every downstream scaffold — removed 2026-05-24 after tip-calc-v2 dogfooding
+    # surfaced "no FR-048/security-scoped plan task were found" in unrelated projects.
     $securityRoles = @(Get-SecurityRoles -ProjectRoot $ProjectRoot)
     $planTaskRows = @(Get-MarkdownSectionTable -Lines $PlanLines -Heading 'Tasks')
-    $taskTriggered = @($planTaskRows | Where-Object { ([string]$_.Requirement) -match '\bFR-048\b' -or ([string]$_.Title) -match '(?i)\bsecurity\b' }).Count -gt 0
+    $securityKeywordPattern = '(?i)\b(security|auth(?:entication|orization)?|secret|encrypt(?:ion)?|vuln(?:erab|er)|csrf|xss|sandbox|permission)\b'
+    $taskTriggered = @($planTaskRows | Where-Object { ([string]$_.Title) -match $securityKeywordPattern }).Count -gt 0
 
     return [pscustomobject]@{
         Enabled       = ($securityRoles.Count -gt 0) -or $taskTriggered
-        Reason        = if ($securityRoles.Count -gt 0) { 'Security-focused team role present.' } elseif ($taskTriggered) { 'Iteration plan scopes security work.' } else { 'No security-focused role and no FR-048/security-scoped plan task were found.' }
+        Reason        = if ($securityRoles.Count -gt 0) {
+            'Security-focused team role present.'
+        }
+        elseif ($taskTriggered) {
+            'Iteration plan has a security-keyword task title.'
+        }
+        else {
+            'No security-focused team role and no security-keyword task title were found in the iteration plan.'
+        }
         SecurityRoles = $securityRoles
     }
 }
@@ -1958,9 +1974,33 @@ function Write-ReviewerSummary {
 }
 
 function Get-DashboardRendererScriptPath {
+    # Resolves the velocity dashboard renderer path. Two layouts supported (same pattern
+    # as the sync-boundary-state wrapper after F-040 dogfooding 2026-05-23):
+    #   1) Dev-tree dogfooding: <project>/scripts/internal/dashboard-renderer.ps1
+    #   2) Downstream project: the renderer lives in the installed Specrew module at
+    #      <module-base>/scripts/internal/dashboard-renderer.ps1 (discovered via
+    #      Get-Module -Name Specrew -ListAvailable). The downstream project itself has
+    #      no scripts/internal/ directory.
+    # Returns the first path that exists; if neither resolves, returns the dev-tree path
+    # (preserves the existing throw-with-clear-message behavior in callers).
     param([Parameter(Mandatory = $true)][string]$ProjectRoot)
 
-    return Join-Path $ProjectRoot 'scripts\internal\dashboard-renderer.ps1'
+    $devTreePath = Join-Path $ProjectRoot 'scripts\internal\dashboard-renderer.ps1'
+    if (Test-Path -LiteralPath $devTreePath -PathType Leaf) {
+        return $devTreePath
+    }
+
+    $specrewModule = Get-Module -Name 'Specrew' -ListAvailable -ErrorAction SilentlyContinue |
+        Sort-Object Version -Descending |
+        Select-Object -First 1
+    if ($null -ne $specrewModule) {
+        $modulePath = Join-Path $specrewModule.ModuleBase 'scripts\internal\dashboard-renderer.ps1'
+        if (Test-Path -LiteralPath $modulePath -PathType Leaf) {
+            return $modulePath
+        }
+    }
+
+    return $devTreePath
 }
 
 function Get-IterationDashboardArtifactContent {
