@@ -135,6 +135,7 @@ Idea-form proposals not yet developed into full source specs. Open for discussio
 | [104](104-multi-host-onboarding-and-selection-flow.md) | Multi-Host Onboarding + Selection Flow (Init Timing, Host Detection, State Location) | phase-2 | 8-12 |
 | [105](105-host-native-hook-deployment.md) | Host-Native Hook Deployment for Runtime Boundary Enforcement (elevates F-039 from cooperative to runtime on Claude/Antigravity hosts via PreToolUse/SubagentStart/Stop hooks) | phase-2 | 12-18 |
 | [106](106-provider-billing-reconciliation-and-estimator-calibration.md) | Provider Billing Reconciliation + Estimator Calibration (closed-loop cost accuracy: multi-provider billing CSV/JSON import, calibration factor computation, calibration-aware estimator, dashboard surfacing of the closed loop) | phase-2 | 12-18 |
+| [107](107-host-aware-routing-plan-fallback.md) | Host-Aware Routing Plan Fallback (F-040 follow-up: route every role to the launch host when claude/codex aren't otherwise enabled; promotes `--host` selection into the routing plan instead of always falling back to copilot) | phase-2 | 3-5 |
 
 ---
 
