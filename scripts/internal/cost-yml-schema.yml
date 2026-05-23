@@ -1,0 +1,90 @@
+# Specrew Per-Iteration Cost Schema v1 (F-042 / Proposal 070)
+#
+# Canonical schema for `specs/<feature>/iterations/<NNN>/cost.yml`. One file
+# per iteration. Records accumulate at each boundary advance; aggregates block
+# computed at write time + recomputed when source records change.
+#
+# Schema versioning per Proposal 059 read-tolerance pattern.
+
+cost:
+  schema_version: 1
+
+  # Identifying metadata
+  feature: "<feature-slug>"       # e.g., "040-multi-host-launch-path"
+  iteration: "001"                # zero-padded iteration number
+  story_points: 7                 # from tasks.md; used for cost_per_sp_usd
+  iteration_status: "in-progress" # in-progress | closed | rolled-over
+
+  # Per-boundary, per-role records. Each entry is appended on a boundary advance.
+  records:
+    - timestamp: "<ISO8601>"      # when this record was written
+      boundary: "plan"            # canonical 9-boundary name from F-039
+      role: "planner"             # Crew role (planner / implementer / reviewer / spec-steward / retro-facilitator / specialist)
+      task_id: "T002"             # optional — tasks.md task id when applicable
+
+      # Host attribution (from F-040 selected_host at record-write time)
+      host: "claude-code"         # canonical host kind: copilot-cli | claude-code | codex-cli | antigravity
+
+      # Model identity (from F-041 routing decision)
+      model: "claude-sonnet-4-6"  # model id from .specrew/model-catalog.yml
+
+      # Token measurements
+      tokens_in: 12450
+      tokens_out: 3210
+
+      # Cost computation
+      estimated_cost_usd: 0.42    # computed: tokens × per-million-cost / 1e6; null if catalog incomplete
+      cost_estimate_confidence: "medium"  # high (per-model tokenizer) / medium (vendor pricing) / low (naive estimate or missing catalog)
+
+      # Provenance
+      source: "estimated"         # estimated | reported | manual
+      tokenizer_method: "naive_byte_4"   # naive_byte_4 | tiktoken-cl100k | claude-tokenizer | gemini-tokenizer
+      catalog_refresh_at: "<ISO8601>"    # last_refreshed_at from the catalog used for this estimate
+
+      # Currency normalization (per F-041 FR-015)
+      pricing_unit: "usd"         # usd | credits
+      credit_value_usd: null      # for credit-based hosts; null for USD
+
+      # Optional notes / overrides
+      manual_note: null           # set when source == manual (e.g., "from billing-page reconciliation 2026-06-15")
+
+    # Additional records accumulate over the iteration lifecycle...
+
+  # Aggregates block — recomputed every time a record is added/modified.
+  aggregates:
+    total_tokens_in: 40550
+    total_tokens_out: 11750
+    total_cost_usd: 1.31
+    cost_per_sp_usd: 0.19         # total_cost_usd / story_points
+
+    # Per-host breakdown (sum-of-records per host)
+    by_host:
+      copilot-cli:
+        cost_usd: 0.85
+        share: 0.65               # cost_usd / total_cost_usd, formatted as fraction
+        record_count: 4
+      claude-code:
+        cost_usd: 0.46
+        share: 0.35
+        record_count: 2
+
+    # Per-role breakdown
+    by_role:
+      planner:
+        cost_usd: 0.42
+        share: 0.32
+        record_count: 1
+      implementer:
+        cost_usd: 0.65
+        share: 0.50
+        record_count: 4
+      reviewer:
+        cost_usd: 0.24
+        share: 0.18
+        record_count: 1
+
+    # Iteration-level confidence
+    cost_estimate_confidence: "medium"  # min of per-record confidences
+
+    # Last update
+    aggregates_recomputed_at: "<ISO8601>"
