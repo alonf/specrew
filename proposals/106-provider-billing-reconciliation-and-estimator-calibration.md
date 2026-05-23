@@ -38,7 +38,7 @@ Each provider gets a parser at `scripts/internal/cost-actuals-{provider}.ps1`. A
 
 ### Pillar 2: Calibration factor computation + write-back (~5-7 SP)
 
-After reconciliation, the user can apply suggested calibration factors:
+After reconciliation, the user can apply suggested calibration factors. **Two independent calibration knobs** (per F-041 FR-021 reasoning-effort dimension):
 
 ```text
 $ specrew cost reconcile --month 2026-05
@@ -48,21 +48,34 @@ Apply calibration factors? [y/n/r=review-first]
 > r
 
 Suggested .specrew/calibration.yml entries:
+
+Token estimator (naive_byte_4):
   claude-haiku-4-5      naive_byte_4_multiplier: 1.087     (95% confidence; 47 data points)
   claude-sonnet-4-6     naive_byte_4_multiplier: 0.952     (98% confidence; 28 data points)
   gpt-5-mini            naive_byte_4_multiplier: 1.000     (no change; estimator was correct)
   gpt-5.4               naive_byte_4_multiplier: 0.998     (no change; <1% drift)
+
+Effort token-multipliers (calibrating F-041 catalog approximations):
+  claude-opus-4-7 @ low      catalog: 1.0  actual: 1.0   delta: 0%   no change
+  claude-opus-4-7 @ medium   catalog: 2.5  actual: 2.3   delta: -8%  suggest update
+  claude-opus-4-7 @ high     catalog: 5.0  actual: 4.7   delta: -6%  suggest update
+  claude-opus-4-7 @ xhigh    catalog: 7.5  actual: 8.2   delta: +9%  suggest update
+  claude-opus-4-7 @ max      catalog: 10.0 actual: 11.4  delta: +14% suggest update
 
 Confidence interpretation:
   >90% = strong signal; safe to apply
   50-90% = moderate; review the underlying records
   <50% = weak; gather more data before applying
 
-Apply? [y/n/per-model]
+Apply? [y/n/per-model/per-knob]
 > y
 Wrote .specrew/calibration.yml; effective from 2026-06-01.
-Next estimate per model multiplies the naive byte/4 estimate by the calibration factor.
+  - Token estimator: 4 models calibrated
+  - Effort multipliers: claude-opus-4-7 [4 levels] refined
+Next estimate uses BOTH calibrated tokenizer multipliers AND calibrated effort multipliers.
 ```
+
+**Why two knobs**: token-counting accuracy is one source of estimator drift; effort-multiplier accuracy is a separate one. F-041's fixture catalog uses approximate multipliers (low:1.0, medium:2.5, high:5.0, xhigh:7.5, max:10.0) derived from Anthropic's docs. Real-world data may show your specific workload's prompts have different effort-vs-cost behavior. Calibrating both independently means cost estimates converge on truth faster.
 
 `.specrew/calibration.yml` is gitignored by default (similar to pricing-overrides) so per-project calibration doesn't leak between developers.
 
@@ -108,6 +121,7 @@ Total: ~12-18 SP
 | AC4 | `specrew cost calibrate --review` computes per-model calibration factors from reconciliation deltas; shows confidence percentages + data-point counts; does NOT write yet |
 | AC5 | `specrew cost calibrate --apply` writes `.specrew/calibration.yml`; factors take effect at the configured `effective_from` date (default: next iteration boundary) |
 | AC6 | Calibration-aware estimator: when `.specrew/calibration.yml` has a factor for the model being estimated AND confidence ≥ configured threshold (default 80%), the naive byte/4 estimate gets multiplied by the factor; estimator returns `tokenizer_method: 'naive_byte_4_calibrated'` and `confidence: 'medium'` |
+| AC6b | Effort-multiplier calibration (per F-041 FR-021 reasoning-effort dimension): `.specrew/calibration.yml` MAY include `effort_multipliers_calibrated[<model>][<level>]: <ratio>` entries that override the catalog's `effort_token_multipliers` values for that model/level pair. When applied AND confidence ≥ threshold, the cost-tracking estimator multiplies BY the calibrated value (not the catalog approximation). Reconciliation report (per AC4) shows BOTH suggested tokenizer factors AND effort-multiplier factors as independent knobs the user can accept per-knob (FR text: `--per-knob` flag at the apply prompt) |
 | AC7 | Confidence threshold for auto-application is configurable in `.specrew/config.yml` (`calibration.minimum_confidence_pct: 80` default); user can opt into riskier auto-apply (e.g., 50%) or require manual approval (100%, never auto-apply) |
 | AC8 | `specrew where` dashboard COST section shows "Calibration: ACTIVE" line when `.specrew/calibration.yml` exists, with summary of which models are calibrated + direction (+/-%) |
 | AC9 | `specrew where` dashboard COST section shows "Reconciliation: last reconcile YYYY-MM-DD against <month> actuals; confidence %" when reconcile has run |
