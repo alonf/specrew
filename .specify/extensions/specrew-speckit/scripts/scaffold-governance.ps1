@@ -287,6 +287,28 @@ Save-ConfigFile -TargetPath (Join-Path $specrewRoot 'config.yml') -Content $conf
 Save-ManagedTemplateTree -SourceRoot $presetTemplateRoot -TargetRoot $presetRoot -Actions $actions
 Save-ManagedTemplateTree -SourceRoot $lensTemplateRoot -TargetRoot $lensRoot -Actions $actions
 
+# Bootstrap a minimal `.specrew/roadmap.yml` stub. Proposal 057 (Roadmap Spine + Input
+# Adapter Pattern) is still draft, so we do NOT implement the full adapter system here —
+# this is a one-row scaffold so the dashboard has a roadmap section to render even
+# before downstream projects build out their own phase plans. Downstream maintainers
+# can edit this freely; Specrew never overwrites it on update (managed-content rule).
+# Empirical motivation: F-040 calc-v2 dogfooding 2026-05-23 surfaced that the dashboard
+# has no roadmap surface in fresh projects, making the "where am I?" view feel hollow.
+$roadmapContent = @"
+# Downstream project roadmap.
+# This stub is bootstrapped by `specrew init`. Edit freely — Specrew never overwrites it.
+# When Proposal 057 ships, this file will be read by the dashboard renderer and by
+# input adapters (manual / GitHub Issues / Linear / etc.) to drive feature sequencing.
+phases:
+  - id: phase-1-initial
+    name: "Phase 1: Initial Delivery"
+    description: "First slice of work in this project. Replace this stub with your real phase plan."
+    planned_effort_sp: 0
+    status: planning
+    feature_refs: []
+"@
+Save-ManagedFile -TargetPath (Join-Path $specrewRoot 'roadmap.yml') -Content $roadmapContent -Actions $actions
+
 if ($PassThru) {
     $actions
     return

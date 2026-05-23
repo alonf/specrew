@@ -853,6 +853,67 @@ function Invoke-PreFeatureCloseoutWorkingTreeGate {
     throw ($messageLines -join "`n")
 }
 
+function Invoke-SpecrewAutoRenderDashboard {
+    # Proposal 046 (auto-render at iteration + feature closeout) — inlined as part of the
+    # F-040 dogfooding fix bundle (2026-05-23). Shells out to specrew-where.ps1 with the
+    # appropriate --capture-kind and --output-path so the per-iteration dashboard.md and
+    # per-feature closeout-dashboard.md artifacts exist without manual invocation.
+    #
+    # Errors are caller-wrapped (try/catch with Write-Warning) so a renderer failure
+    # never blocks the boundary-sync — boundary state writes already happened above.
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$ProjectRoot,
+
+        [Parameter(Mandatory = $true)]
+        [string]$OutputPath,
+
+        [Parameter(Mandatory = $true)]
+        [ValidateSet('iteration-closeout', 'feature-closeout')]
+        [string]$CaptureKind,
+
+        [AllowNull()]
+        [string]$FeatureRef,
+
+        [AllowNull()]
+        [string]$IterationNumber
+    )
+
+    # Locate specrew-where.ps1 in the same scripts/ root that holds this file.
+    $scriptsRoot = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
+    $whereScript = Join-Path $scriptsRoot 'scripts\specrew-where.ps1'
+    if (-not (Test-Path -LiteralPath $whereScript -PathType Leaf)) {
+        # Module-installed layout: scripts/internal/sync-boundary-state.ps1 sits beside
+        # scripts/specrew-where.ps1 at the module root.
+        $whereScript = Join-Path (Split-Path -Parent $PSScriptRoot) 'specrew-where.ps1'
+    }
+    if (-not (Test-Path -LiteralPath $whereScript -PathType Leaf)) {
+        Write-Warning "[auto-dashboard] specrew-where.ps1 not found near sync-boundary-state.ps1; skipping render."
+        return
+    }
+
+    $whereArgs = @(
+        '-ProjectPath', $ProjectRoot,
+        '-OutputPath', $OutputPath,
+        '-CaptureKind', $CaptureKind,
+        '-NoColor',
+        '-PreserveExistingArtifact'
+    )
+    if (-not [string]::IsNullOrWhiteSpace($FeatureRef)) {
+        $whereArgs += @('-FeatureId', $FeatureRef)
+    }
+    if (-not [string]::IsNullOrWhiteSpace($IterationNumber)) {
+        $whereArgs += @('-IterationNumber', $IterationNumber)
+    }
+
+    & pwsh -NoProfile -ExecutionPolicy Bypass -File $whereScript @whereArgs *>&1 | Out-Null
+    $whereExit = $LASTEXITCODE
+    $global:LASTEXITCODE = 0
+    if ($whereExit -ne 0) {
+        Write-Warning ("[auto-dashboard] specrew-where exited with code {0}; '{1}' may be missing or stale." -f $whereExit, $OutputPath)
+    }
+}
+
 function Invoke-SpecrewBoundaryStateSync {
     param(
         [Parameter(Mandatory = $true)]
@@ -987,10 +1048,35 @@ function Invoke-SpecrewBoundaryStateSync {
         catch {
             Write-Warning ("Boundary sync 'iteration-closeout' could not append to closed-iteration index: {0}" -f $_.Exception.Message)
         }
+
+        # Proposal 046 (inline-ship per F-040 dogfooding 2026-05-23): auto-render the iteration
+        # dashboard snapshot to specs/<feature>/iterations/<NNN>/dashboard.md so the historical
+        # velocity / boundary / verdict view exists without the human having to invoke
+        # `specrew where --capture-kind iteration-closeout` manually. Calc-v2 closed iteration
+        # 001 without ever producing dashboard.md, which is the empirical motivation.
+        try {
+            $iterationDashboardPath = Join-Path $paths.ProjectRoot ("specs\{0}\iterations\{1}\dashboard.md" -f $effectiveFeatureRef, $IterationNumber)
+            Invoke-SpecrewAutoRenderDashboard -ProjectRoot $paths.ProjectRoot -OutputPath $iterationDashboardPath -CaptureKind 'iteration-closeout' -FeatureRef $effectiveFeatureRef -IterationNumber $IterationNumber
+        }
+        catch {
+            Write-Warning ("Boundary sync 'iteration-closeout' could not auto-render iteration dashboard: {0}" -f $_.Exception.Message)
+        }
     }
 
     if ($BoundaryType -eq 'feature-closeout') {
         Clear-SpecrewActiveFeature -FeatureJsonPath $paths.FeatureJsonPath
+
+        # Proposal 046 feature-level companion: auto-render specs/<feature>/closeout-dashboard.md
+        # so the feature-wide rollup exists at feature-closeout without manual invocation.
+        if (-not [string]::IsNullOrWhiteSpace($effectiveFeatureRef)) {
+            try {
+                $featureDashboardPath = Join-Path $paths.ProjectRoot ("specs\{0}\closeout-dashboard.md" -f $effectiveFeatureRef)
+                Invoke-SpecrewAutoRenderDashboard -ProjectRoot $paths.ProjectRoot -OutputPath $featureDashboardPath -CaptureKind 'feature-closeout' -FeatureRef $effectiveFeatureRef -IterationNumber $null
+            }
+            catch {
+                Write-Warning ("Boundary sync 'feature-closeout' could not auto-render closeout dashboard: {0}" -f $_.Exception.Message)
+            }
+        }
     }
 
     return [pscustomobject]@{

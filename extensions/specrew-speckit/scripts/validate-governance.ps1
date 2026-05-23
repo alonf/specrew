@@ -191,7 +191,14 @@ function Resolve-IterationTarget {
         Select-Object -ExpandProperty FullName
 
     if (-not $targets) {
-        throw "No iteration directories with plan.md found under $specsPath"
+        # Pre-implement / pre-iteration-scaffold state: the spec exists but no iteration plan.md
+        # has been written yet (T005 in the typical task plan creates it). This is NORMAL during
+        # /speckit.specrew-speckit.after-tasks and the before-implement gate, so we emit a clear
+        # INFO line and return zero iterations rather than throwing an "unexpected-validator-error".
+        # Downstream checks see zero iterations and skip iteration-scoped work cleanly; the
+        # script exits 0 with the summary "0 iterations validated", which is the truth.
+        Write-Host ('[validator-info] No iteration directories with plan.md yet under {0}. This is expected pre-implementation; the iteration plan is scaffolded as the first implement task.' -f $specsPath) -ForegroundColor DarkYellow
+        return @()
     }
 
     return @($targets)
@@ -2294,6 +2301,27 @@ function Test-IterationCloseoutEvidence {
 }
 
 function Get-ReviewerCloseoutDiffArtifacts {
+    # Determine which files this iteration touched, for the reviewer-closeout artifact gate.
+    #
+    # Resolution order (Fix following F-040 calc-v2 dogfooding 2026-05-23 — same pattern as the
+    # F-033 markdownlint gate fix in shared-governance.ps1):
+    #   1. If BaselineRef resolves: include `git diff $BaselineRef -- ` (committed delta).
+    #   2. ALWAYS additionally include working-tree state via:
+    #        `git ls-files -m`                 (modified tracked files)
+    #        `git ls-files --others --exclude-standard`  (untracked, not gitignored)
+    #      Union with the diff results; dedupe by path.
+    #
+    # The fallback is necessary because:
+    #   - Greenfield-new projects (zero commits) cannot resolve BaselineRef = 'iteration-baseline'
+    #     OR HEAD, which used to make this function return @() and silently disable the entire
+    #     reviewer-artifact requirement check. That's exactly how calc-v2 produced a code-touching
+    #     iteration with zero reviewer artifacts (code-map / coverage-evidence / reviewer-index /
+    #     review-diagrams / dependency-report) and still passed validation.
+    #   - Even in brownfield iterations with a resolvable BaselineRef, in-progress uncommitted edits
+    #     should count toward "what this iteration touched" — otherwise the validator sees stale data.
+    #
+    # BaselineResolved is true when EITHER the diff path OR the working-tree path returned anything,
+    # so downstream callers (Test-ReviewerCloseoutArtifacts) can proceed to file-level requirements.
     param(
         [string]$ProjectRoot,
         [AllowNull()][string]$BaselineRef
@@ -2304,32 +2332,58 @@ function Get-ReviewerCloseoutDiffArtifacts {
         Files            = @()
     }
 
-    if ([string]::IsNullOrWhiteSpace($BaselineRef)) {
-        return [pscustomobject]$result
-    }
-
     $gitCommand = Get-Command -Name 'git' -ErrorAction SilentlyContinue
     if ($null -eq $gitCommand) {
         return [pscustomobject]$result
     }
 
-    $revParseOutput = @(& git -C $ProjectRoot rev-parse --verify $BaselineRef 2>$null)
-    if ($LASTEXITCODE -ne 0) {
-        return [pscustomobject]$result
+    $pathsCollected = New-Object System.Collections.Generic.HashSet[string]
+    $addPath = {
+        param([string]$rawPath)
+        $trimmed = ([string]$rawPath).Trim()
+        if ([string]::IsNullOrWhiteSpace($trimmed)) { return }
+        if (-not $pathsCollected.Add($trimmed)) { return }
+        $result.Files += [pscustomobject]@{
+            Path       = $trimmed
+            IsManifest = Test-IsManifestPath -Path $trimmed
+            IsSource   = Test-IsReviewerSourcePath -Path $trimmed
+        }
     }
 
-    $result.BaselineResolved = $true
-    foreach ($line in @(& git -C $ProjectRoot diff --name-only $BaselineRef -- 2>$null)) {
-        $path = ([string]$line).Trim()
-        if ([string]::IsNullOrWhiteSpace($path)) {
-            continue
+    # Path 1: committed diff against BaselineRef (preserves existing semantics when ref resolves).
+    if (-not [string]::IsNullOrWhiteSpace($BaselineRef)) {
+        $null = & git -C $ProjectRoot rev-parse --verify $BaselineRef 2>$null
+        $baselineExit = $LASTEXITCODE
+        $global:LASTEXITCODE = 0
+        if ($baselineExit -eq 0) {
+            $result.BaselineResolved = $true
+            $diffLines = @(& git -C $ProjectRoot diff --name-only $BaselineRef -- 2>$null)
+            $global:LASTEXITCODE = 0
+            foreach ($line in $diffLines) {
+                & $addPath $line
+            }
         }
+    }
 
-        $result.Files += [pscustomobject]@{
-            Path       = $path
-            IsManifest = Test-IsManifestPath -Path $path
-            IsSource    = Test-IsReviewerSourcePath -Path $path
-        }
+    # Path 2: working-tree state — modified tracked files + untracked-not-ignored.
+    # Always runs so brownfield WIP edits + greenfield first-commit-pending state both surface.
+    $modifiedLines = @(& git -C $ProjectRoot ls-files -m 2>$null)
+    $global:LASTEXITCODE = 0
+    foreach ($line in $modifiedLines) {
+        & $addPath $line
+    }
+
+    $untrackedLines = @(& git -C $ProjectRoot ls-files --others --exclude-standard 2>$null)
+    $global:LASTEXITCODE = 0
+    foreach ($line in $untrackedLines) {
+        & $addPath $line
+    }
+
+    # Treat fallback-only success as "baseline resolved enough to proceed". The caller's error
+    # message about Baseline Ref still fires when nothing at all could be enumerated (no git, no
+    # working tree changes, no resolvable ref). That's the genuinely-broken-state case.
+    if (-not $result.BaselineResolved -and $result.Files.Count -gt 0) {
+        $result.BaselineResolved = $true
     }
 
     return [pscustomobject]$result

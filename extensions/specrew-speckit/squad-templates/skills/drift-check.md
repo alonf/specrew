@@ -1,3 +1,11 @@
+---
+name: "specrew-drift-check"
+description: "Detect drift between the spec, plan, tasks, and implementation; record findings to drift-log.md before review concludes."
+domain: "lifecycle-review"
+confidence: "high"
+source: "Specrew governance pillar — review/closeout ceremony helper"
+---
+
 # specrew-drift-check
 
 **Type**: Analysis Skill  

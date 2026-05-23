@@ -1,3 +1,11 @@
+---
+name: "specrew-capacity-planning"
+description: "Analyze in-scope requirements, produce a taskable effort model, and make overcommit visible before the plan is approved."
+domain: "lifecycle-planning"
+confidence: "high"
+source: "Specrew governance pillar — planning ceremony helper"
+---
+
 # specrew-capacity-planning
 
 **Type**: Planning Skill  
