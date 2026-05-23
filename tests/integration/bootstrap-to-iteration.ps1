@@ -536,7 +536,7 @@ foreach ($check in @(
 
 foreach ($check in @(
         @{ Content = $hardeningGateContent; Pattern = '\*\*Gate ID\*\*:\s*`pre-implementation-hardening`'; Failure = 'Hardening gate scaffold is missing the gate identifier.' },
-        @{ Content = $hardeningGateContent; Pattern = '\| `security-surface` \| `security` \| `tbd` \| `true` \|'; Failure = 'Hardening gate scaffold is missing the security concern placeholder row.' },
+        @{ Content = $hardeningGateContent; Pattern = '\| `security-surface` \| `security` \| `addressed` \|'; Failure = 'Hardening gate scaffold is missing the security concern row (expected canonical status `addressed` since Wave A3 2026-05-24).' },
         @{ Content = $trapReapplicationContent; Pattern = '\*\*Scan ID\*\*:\s*`trap-reapplication\.pending`'; Failure = 'Trap reapplication scaffold is missing the scan identifier.' },
         @{ Content = $trapReapplicationContent; Pattern = '\| `\(pending trap refs\)` \| `\(pending scan scope\)` \| `skipped-with-rationale` \|'; Failure = 'Trap reapplication scaffold is missing the placeholder scan row.' }
     )) {
