@@ -19,6 +19,8 @@ quality:
     approval_required: true
 interaction_model:
   bare_path_boundary_handoff_severity: "validation-fail"
+public_readiness:
+  enabled: true
 boundary_enforcement:
   policy_classes:
     specify: "human-judgment-required"
