@@ -6,11 +6,19 @@
 #
 # Translation table (per research.md Task 2):
 #
-#  | Specrew-side flag | Copilot                    | Claude                              | Codex                       |
-#  |-------------------|----------------------------|-------------------------------------|-----------------------------|
-#  | --remote          | --remote                   | --remote-control                    | warn-and-continue, drop     |
-#  | --allow-all       | --allow-all                | --dangerously-skip-permissions      | --full-auto                 |
-#  | --autopilot       | --autopilot                | drop with informational notice      | --full-auto (folds into --allow-all) |
+#  | Specrew-side flag | Copilot                    | Claude                              | Codex                                              |
+#  |-------------------|----------------------------|-------------------------------------|----------------------------------------------------|
+#  | --remote          | --remote                   | --remote-control                    | warn-and-continue, drop                            |
+#  | --allow-all       | --allow-all                | --dangerously-skip-permissions      | --dangerously-bypass-approvals-and-sandbox         |
+#  | --autopilot       | --autopilot                | drop with informational notice      | folds into --dangerously-bypass-approvals-and-sandbox |
+#
+# Codex flag note (verified 2026-05-24 via `codex --help`): the original F-040 research
+# referenced `--full-auto` which Codex CLI does NOT accept ("error: unexpected argument
+# '--full-auto' found"). The actual full-bypass flag is
+# `--dangerously-bypass-approvals-and-sandbox` (matches Claude's `--dangerously-skip-permissions`
+# in spirit — both opt out of per-call approval AND sandboxing). A milder alternative is
+# `-a never` / `--ask-for-approval=never` (skip approval prompts but keep sandbox). We pick the
+# bypass form for `--allow-all` parity because that's what Specrew's `--allow-all` means: full trust.
 #  | --autonomous      | (Specrew-side only — handled by lifecycle boundary enforcement; not translated per-host)        |
 #
 # Each translation arm returns:
@@ -66,8 +74,8 @@ function Get-HostFlagTranslation {
         }
         'codex|--allow-all' {
             return [pscustomobject]@{
-                Args = @('--full-auto')
-                Notice = "Translated --allow-all to Codex's --full-auto flag."
+                Args = @('--dangerously-bypass-approvals-and-sandbox')
+                Notice = "Translated --allow-all to Codex's --dangerously-bypass-approvals-and-sandbox flag (full equivalent of Claude's --dangerously-skip-permissions)."
                 SuppressWarning = $true
             }
         }
@@ -84,10 +92,11 @@ function Get-HostFlagTranslation {
             }
         }
         'codex|--autopilot' {
-            # Folds into --full-auto (the Codex --allow-all equivalent); avoid double-injection
+            # Folds into --dangerously-bypass-approvals-and-sandbox (the Codex --allow-all equivalent);
+            # avoid double-injection.
             return [pscustomobject]@{
                 Args = @()
-                Notice = "Codex's autopilot equivalent is --full-auto, which is already mapped from --allow-all. --autopilot is a no-op when --allow-all is also set."
+                Notice = "Codex's autopilot equivalent is --dangerously-bypass-approvals-and-sandbox, which is already mapped from --allow-all. --autopilot is a no-op when --allow-all is also set."
                 SuppressWarning = $true
             }
         }

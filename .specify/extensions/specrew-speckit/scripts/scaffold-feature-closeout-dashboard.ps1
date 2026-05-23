@@ -135,7 +135,23 @@ if (-not (Test-Path -LiteralPath $featureDirectory -PathType Container)) {
 
 $featureRef = Split-Path -Leaf $featureDirectory
 $targetPath = Join-Path $featureDirectory 'closeout-dashboard.md'
+
+# Resolve the velocity dashboard renderer. Two layouts supported (same pattern as the
+# sync-boundary-state wrapper after F-040 dogfooding 2026-05-23):
+#   1) Dev-tree: <project>/scripts/internal/dashboard-renderer.ps1
+#   2) Downstream: <installed-Specrew-module-base>/scripts/internal/dashboard-renderer.ps1
 $rendererPath = Join-Path $resolvedProjectPath 'scripts\internal\dashboard-renderer.ps1'
+if (-not (Test-Path -LiteralPath $rendererPath -PathType Leaf)) {
+    $specrewModule = Get-Module -Name 'Specrew' -ListAvailable -ErrorAction SilentlyContinue |
+        Sort-Object Version -Descending |
+        Select-Object -First 1
+    if ($null -ne $specrewModule) {
+        $candidate = Join-Path $specrewModule.ModuleBase 'scripts\internal\dashboard-renderer.ps1'
+        if (Test-Path -LiteralPath $candidate -PathType Leaf) {
+            $rendererPath = $candidate
+        }
+    }
+}
 $rendererAvailable = Test-Path -LiteralPath $rendererPath -PathType Leaf
 if ($rendererAvailable) {
     . $rendererPath

@@ -79,7 +79,7 @@ $matrix = @{
     'codex|--remote'       = @{ ExpectArgs = @(); ExpectNotice = $true }
     'copilot|--allow-all'  = @{ ExpectArgs = @('--allow-all'); ExpectNotice = $false }
     'claude|--allow-all'   = @{ ExpectArgs = @('--dangerously-skip-permissions'); ExpectNotice = $true }
-    'codex|--allow-all'    = @{ ExpectArgs = @('--full-auto'); ExpectNotice = $true }
+    'codex|--allow-all'    = @{ ExpectArgs = @('--dangerously-bypass-approvals-and-sandbox'); ExpectNotice = $true }
     'copilot|--autopilot'  = @{ ExpectArgs = @('--autopilot'); ExpectNotice = $false }
     'claude|--autopilot'   = @{ ExpectArgs = @(); ExpectNotice = $true }
     'codex|--autopilot'    = @{ ExpectArgs = @(); ExpectNotice = $true }
@@ -255,7 +255,7 @@ $dispatchScratch = pwsh -NoProfile -Command @"
 `$claude = Get-SpecrewHostLaunchInvocation -HostKind claude -ResolvedProjectPath 'C:\proj' -BootstrapPrompt 'BOOT' -Agent 'Squad' -AllowAll `$true -UseAutopilot `$false -UseRemote `$true
 `$result.claude = (`$claude.Args -join '|')
 
-# Codex: codex exec --cd C:\proj --full-auto BOOT
+# Codex: codex --cd C:\proj --dangerously-bypass-approvals-and-sandbox BOOT
 `$codex = Get-SpecrewHostLaunchInvocation -HostKind codex -ResolvedProjectPath 'C:\proj' -BootstrapPrompt 'BOOT' -Agent 'Squad' -AllowAll `$true -UseAutopilot `$false -UseRemote `$false
 `$result.codex = (`$codex.Args -join '|')
 
@@ -281,7 +281,7 @@ if ($argvResult.claude -ne $expectedClaude) {
 
 # Codex: interactive REPL with positional initial prompt (NOT `codex exec` which is non-interactive).
 # Same bug class as Claude -p fix.
-$expectedCodex = '--cd|C:\proj|--full-auto|BOOT'
+$expectedCodex = '--cd|C:\proj|--dangerously-bypass-approvals-and-sandbox|BOOT'
 if ($argvResult.codex -ne $expectedCodex) {
     Write-Fail "Codex argv shape mismatch:`n  expected: $expectedCodex`n  got     : $($argvResult.codex)"
 }

@@ -346,6 +346,98 @@ function Get-MechanicalFindingsScaffoldJson {
         } | ConvertTo-Json -Depth 8)
 }
 
+function Get-MechanicalFindingsSchemaJson {
+    # JSON Schema for `iterations/<NNN>/quality/mechanical-findings.json` as written by
+    # `run-mechanical-checks.ps1`. Lives at the FEATURE level (`<feature>/contracts/
+    # mechanical-findings.schema.json`) because it's a stable contract across iterations.
+    #
+    # Empirical motivation: tip-calc-v2 dogfooding 2026-05-23 caught
+    # `run-mechanical-checks.ps1` throwing "Mechanical findings schema not found at
+    # '<feature>/contracts/mechanical-findings.schema.json'" because the scaffold
+    # never created it. Claude hand-authored it to match the runner's documented v1
+    # output (logged as drift D-001). Now the scaffold writes it proactively so the
+    # runner works on first invocation.
+    return @'
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Specrew Mechanical Findings (v1)",
+  "description": "Schema for iterations/<NNN>/quality/mechanical-findings.json emitted by run-mechanical-checks.ps1 (dead-field, anti-pattern, test-integrity lenses).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "featureRef",
+    "iterationRef",
+    "generatedAt",
+    "generator",
+    "findings"
+  ],
+  "properties": {
+    "schemaVersion": { "type": "string", "enum": ["v1"] },
+    "featureRef": { "type": "string" },
+    "iterationRef": { "type": "string" },
+    "generatedAt": { "type": "string" },
+    "generator": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "version"],
+      "properties": {
+        "name": { "type": "string" },
+        "version": { "type": "string" }
+      }
+    },
+    "findings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": true,
+        "required": [
+          "findingId",
+          "gateId",
+          "ruleId",
+          "surfaceId",
+          "severity",
+          "message",
+          "remediation",
+          "source",
+          "requirementRefs",
+          "demoted"
+        ],
+        "properties": {
+          "findingId": { "type": "string" },
+          "gateId": {
+            "type": "string",
+            "enum": ["dead-field", "anti-pattern", "test-integrity"]
+          },
+          "ruleId": { "type": "string" },
+          "surfaceId": { "type": "string" },
+          "severity": { "type": "string" },
+          "message": { "type": "string" },
+          "remediation": { "type": "string" },
+          "source": {
+            "type": "object",
+            "additionalProperties": true,
+            "required": ["path", "line"],
+            "properties": {
+              "path": { "type": "string" },
+              "line": { "type": "integer" },
+              "column": { "type": "integer" }
+            }
+          },
+          "requirementRefs": {
+            "type": "array",
+            "items": { "type": "string" }
+          },
+          "demoted": { "type": "boolean" },
+          "dispositionRef": { "type": "string" }
+        }
+      }
+    }
+  }
+}
+'@
+}
+
 function Test-PhaseTwoQualityArtifactScaffold {
     param(
         [AllowEmptyCollection()]
@@ -641,6 +733,15 @@ $planLines = if (Test-Path -LiteralPath $planPath -PathType Leaf) {
 else {
     @()
 }
+
+# F-040 dogfooding fix (tip-calc-v2 + codex-test, 2026-05-24): unconditionally write the
+# feature-level contracts/mechanical-findings.schema.json so run-mechanical-checks.ps1
+# works on first invocation. Previously Claude had to hand-author this on encountering
+# the runner's "Mechanical findings schema not found" error (logged as drift D-001).
+$featureContractsDirectory = Join-Path $resolvedSpecDirectory 'contracts'
+Ensure-Directory -Path $featureContractsDirectory -Actions $actions
+$mechanicalSchemaPath = Join-Path $featureContractsDirectory 'mechanical-findings.schema.json'
+Write-MissingFile -TargetPath $mechanicalSchemaPath -Content (Get-MechanicalFindingsSchemaJson) -Actions $actions
 
 $qualityContractPath = Join-Path $resolvedSpecDirectory 'contracts\quality-governance-artifacts.md'
 $qualityGateRows = @(Get-MarkdownSectionTable -Lines $planLines -Heading 'Required Quality Gates')

@@ -290,7 +290,7 @@ Options:
   -NoLaunch | --no-launch                  Generate handoff prompt/context but do not launch the host CLI
   -NewWindow | --new-window                Launch the host CLI in a new PowerShell window instead of the current terminal
   -SameWindow | --same-window              Compatibility alias for the default current-terminal launch mode
-  -AllowAll | --allow-all                  Launch the host with its tool-approval-bypass flag (Copilot --allow-all, Claude --dangerously-skip-permissions, Codex --full-auto). Default for tool calls.
+  -AllowAll | --allow-all                  Launch the host with its tool-approval-bypass flag (Copilot --allow-all, Claude --dangerously-skip-permissions, Codex --dangerously-bypass-approvals-and-sandbox). Default for tool calls.
   -PromptApprovals | --prompt-approvals    Keep the host's interactive tool-approval prompts enabled (disables --allow-all translation)
   -Autonomous | --autonomous               Specrew-side flag (independent of any host autopilot): the Crew advances through lifecycle gates without stopping for explicit approval. Use for unattended runs such as overnight execution; default is gate-respecting mode where the Crew stops at every approval boundary.
   --bypass-boundary-enforcement            Suspend boundary enforcement for this session only; requires --reason
@@ -2945,7 +2945,7 @@ function Get-StartSummaryContent {
     $summaryLines.Add('## Launch Contract') | Out-Null
     $summaryLines.Add(("- **Approval Mode**: {0}" -f $ApprovalMode)) | Out-Null
     $summaryLines.Add(("- **Launch Mode**: {0}" -f $LaunchMode)) | Out-Null
-    $summaryLines.Add(("- **Host Autopilot** (Copilot --autopilot / Codex --full-auto; Claude has no equivalent): {0}" -f $UseAutopilot)) | Out-Null
+    $summaryLines.Add(("- **Host Autopilot** (Copilot --autopilot / Codex --dangerously-bypass-approvals-and-sandbox; Claude has no equivalent): {0}" -f $UseAutopilot)) | Out-Null
     $summaryLines.Add(("- **Operator Note**: {0}" -f $ApprovalOperatorNote)) | Out-Null
     $summaryLines.Add('') | Out-Null
     if ($null -ne $RecoverySession) {

@@ -309,6 +309,39 @@ phases:
 "@
 Save-ManagedFile -TargetPath (Join-Path $specrewRoot 'roadmap.yml') -Content $roadmapContent -Actions $actions
 
+# Bootstrap a downstream-friendly `.markdownlint.json` at the PROJECT ROOT (not under
+# .specrew/) so editors auto-discover it. Empirical motivation: tip-calc-v2 dogfooding
+# 2026-05-24 produced 335 lint violations on a clean, high-quality run because
+# downstream projects don't get this config — 290× MD013 line-length alone. The
+# F-033 pre-boundary markdownlint gate is intentionally a no-op under that noise floor.
+#
+# Default rule set mirrors Specrew's own dev tree (MD013 off for line-length is the
+# big one; MD024/MD025/MD026/MD029/MD033/MD036/MD040/MD041 also relaxed because
+# they conflict with how Specrew's templates structure prose-heavy artifacts). Keep
+# MD032 (blanks-around-lists) and MD047 (single-trailing-newline) enabled — those
+# are the real signal that the F-033 gate catches.
+#
+# This is a managed-content rule: never overwritten on update — downstream maintainers
+# can tighten or relax further as their project matures.
+$markdownlintContent = @'
+{
+  "default": true,
+  "MD007": false,
+  "MD013": false,
+  "MD024": false,
+  "MD025": { "front_matter_title": "" },
+  "MD026": false,
+  "MD029": false,
+  "MD033": false,
+  "MD036": false,
+  "MD040": false,
+  "MD041": false,
+  "MD052": false,
+  "MD060": false
+}
+'@
+Save-ManagedFile -TargetPath (Join-Path $resolvedProjectPath '.markdownlint.json') -Content $markdownlintContent -Actions $actions
+
 if ($PassThru) {
     $actions
     return
