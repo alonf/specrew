@@ -198,24 +198,41 @@ if ($entryScriptContent -match $nestedStartDispatchPattern) {
 }
 Write-Pass "Entry wrapper dispatches start in-process"
 
-Write-Host "`nTest 1bb: start command avoids inline native Copilot invocation on Windows"
+Write-Host "`nTest 1bb: start command avoids inline native host invocation on Windows + applies --allow-all via the per-host flag-translation layer (F-040)"
 $startScriptContent = Get-Content -LiteralPath $startScript -Raw -Encoding UTF8
+
+# Pattern 1: Same-window launch still wraps in pwsh process (unchanged by F-040)
 $sameWindowProcessLaunchPattern = 'if \(\$SameWindow\)\s*\{\s*\$process = Start-Process -FilePath ''pwsh''.*-NoNewWindow -PassThru -Wait'
 if ($startScriptContent -notmatch $sameWindowProcessLaunchPattern) {
-    Write-Fail "specrew-start.ps1 does not use a separate pwsh process for same-window Copilot launch on Windows."
+    Write-Fail "specrew-start.ps1 does not use a separate pwsh process for same-window host launch on Windows."
     exit 1
 }
-$uniformAllowAllPattern = 'if \(\$AllowAll\) \{\s*\$copilotArgs \+= ''--allow-all'''
-if ($startScriptContent -notmatch $uniformAllowAllPattern) {
-    Write-Fail "specrew-start.ps1 no longer applies --allow-all uniformly when AllowAll is true."
+
+# Pattern 2 (F-040 update): --allow-all is now applied via the per-host flag-translation layer.
+# Verify the Copilot --allow-all → --allow-all mapping exists in scripts/internal/host-flag-translation.ps1
+# (the load-bearing literal moved from specrew-start.ps1 into the helper).
+$flagTranslationContent = Get-Content -LiteralPath (Join-Path (Split-Path $startScript -Parent) 'internal\host-flag-translation.ps1') -Raw -Encoding UTF8
+$copilotAllowAllMapping = "(?ms)'copilot\|--allow-all'\s*\{\s*return\s+\[pscustomobject\]@\{\s*Args\s*=\s*@\('--allow-all'\)"
+if ($flagTranslationContent -notmatch $copilotAllowAllMapping) {
+    Write-Fail "scripts/internal/host-flag-translation.ps1 no longer applies --allow-all uniformly when AllowAll is true for Copilot (per-host flag-translation layer broken)."
     exit 1
 }
-$windowsAllowAllSnippetPattern = '\$allowAllSnippet = if \(\$AllowAll\) \{ ''\$args \+= ''''--allow-all'''''' \} else \{ '''' \}'
-if ($startScriptContent -notmatch $windowsAllowAllSnippetPattern) {
-    Write-Fail "specrew-start.ps1 no longer preserves the Windows embedded launch-script --allow-all behavior."
+
+# Pattern 3 (F-040 update): the Windows embedded launchScript template now uses a $launchArgs
+# array passed to the resolved host binary, not an inline $allowAllSnippet. Verify the new shape.
+$windowsLaunchArgsPattern = "(?ms)\`$launchArgsLiteral\s*=.*?\`$launchArgs\s*=\s*@\(\{1\}\).*?&\s*'\{2\}'\s*@launchArgs"
+if ($startScriptContent -notmatch $windowsLaunchArgsPattern) {
+    Write-Fail "specrew-start.ps1 Windows launchScript template no longer embeds the host launch args array (regression of F-040 per-host dispatch)."
     exit 1
 }
-Write-Pass "Start command uses a separate pwsh process for same-window launch on Windows"
+
+# Pattern 4 (F-040 new): Get-SpecrewHostLaunchInvocation is the canonical builder
+if ($startScriptContent -notmatch 'function Get-SpecrewHostLaunchInvocation') {
+    Write-Fail "specrew-start.ps1 missing Get-SpecrewHostLaunchInvocation (F-040 per-host dispatcher)."
+    exit 1
+}
+
+Write-Pass "Start command uses a separate pwsh process for same-window launch on Windows + per-host flag-translation layer applies --allow-all for Copilot"
 
 Write-Host "`nTest 1c: entry wrapper defaults start project-path to the caller location"
 $defaultPathProjectRoot = Join-Path -Path $scratchRoot -ChildPath 'default-project'

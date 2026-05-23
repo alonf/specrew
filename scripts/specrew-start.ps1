@@ -314,7 +314,7 @@ Options:
 
 function Write-Success {
     param([string]$Message)
-    Write-HostKind $Message -ForegroundColor Green
+    Write-Host $Message -ForegroundColor Green
 }
 
 function Write-Error-Message {
@@ -324,7 +324,7 @@ function Write-Error-Message {
 
 function Write-Info {
     param([string]$Message)
-    Write-HostKind $Message -ForegroundColor Cyan
+    Write-Host $Message -ForegroundColor Cyan
 }
 
 function Get-SpecrewConfigValue {
@@ -3303,8 +3303,18 @@ function Get-ManualLaunchCommand {
         -UseAutopilot $UseAutopilot
 
     $binary = Get-SpecrewHostBinary -HostKind $HostKind
-    $quotedArgs = $invocation.Args | ForEach-Object {
-        if ($_ -match '\s|''') { "'" + $_.Replace("'", "''") + "'" } else { $_ }
+    # Quote every arg whose preceding token introduces a value (`--agent`, `--add-dir`, `-i`, `-p`, `--cd`).
+    # Flag tokens (start with `-`) stay unquoted; value tokens stay quoted for unambiguous copy-paste.
+    $quotedArgs = @()
+    $argList = @($invocation.Args)
+    for ($i = 0; $i -lt $argList.Count; $i++) {
+        $arg = $argList[$i]
+        if ($arg.StartsWith('-')) {
+            $quotedArgs += $arg
+        }
+        else {
+            $quotedArgs += "'" + $arg.Replace("'", "''") + "'"
+        }
     }
     return "$binary $($quotedArgs -join ' ')"
 }
