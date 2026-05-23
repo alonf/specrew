@@ -6,18 +6,31 @@
 **Input**: User direction (2026-05-20 ad-hoc session): "We have 10 days until Copilot changes the pricing model. I do not want to pay 1500usd for what was free before. We need to: fix fast and small problems; promote features that reduce cost: use of Claude Code and Codex; use free models in Copilot — the strong model creates a much detailed spec so free model can carry it, can run tests. Validation is still done by a strong model (Senior/Junior proposal); ... token economy — how much each SP cost. Allow priority by cost."
 **Source proposal**: file:///C:/Dev/Specrew/proposals/068-cost-aware-model-routing.md (enriched 2026-05-23 with per-host selector_strategy + Gemini deadline + catalog v2)
 **Composes with**: F-040 Multi-Host Launch Path (host enum), F-042 Token Economy MVP (cost.yml measurement), Proposal 100 Friction Dial (lean ↔ premium profile selection), Proposal 053 Autopilot Decision Transparency (routing-decision logging)
-**Release urgency**: high — Copilot pricing pivot 2026-05-30 (~7 days from spec date)
+**Release urgency**: high — Copilot pricing pivot **2026-06-01** (date corrected from earlier "2026-05-30" via empirical discovery; ~9 days from spec date)
 
 ## Clarifications
 
 ### Session 2026-05-23
 
-Spec drafted overnight while user was offline. Spec uses default assumptions documented inline; the four open questions below are queued for user review at the clarify-boundary in the morning. Default assumption is the recommendation; user can override any of them before plan-boundary approval.
+Spec drafted overnight while user was offline. Spec uses default assumptions documented inline; user reviews + overrides at clarify-boundary. Six open questions captured below — Q1-Q4 from initial draft, Q5-Q6 added after empirical discovery test against real provider docs (see Empirical Discovery Findings).
 
-- Q1: Should F-041 ship `balanced` cost-profile semantics alongside `lean`, or defer? → **Default A: Defer.** F-041 ships `lean` only; `balanced`/`premium`/`custom` are reserved enum values with semantics shipping in follow-up slices. Lean is the highest-value default and the simplest to validate; other profiles can land once lean is empirically tested against the 2026-05-30 pricing pivot. (User may override to ship balanced if they want a "best of both worlds" mode in v1.)
+- Q1: Should F-041 ship `balanced` cost-profile semantics alongside `lean`, or defer? → **Default A: Defer.** F-041 ships `lean` only; `balanced`/`premium`/`custom` are reserved enum values with semantics shipping in follow-up slices. Lean is the highest-value default and the simplest to validate; other profiles can land once lean is empirically tested against the **2026-06-01 Copilot pricing pivot** (date corrected from earlier "2026-05-30" — see Empirical Discovery Findings below). User may override to ship balanced if they want a "best of both worlds" mode in v1.
 - Q2: Should `.specrew/model-catalog.yml` carry a schema_version field? → **Default A: Yes, schema_version: 2 (matching Proposal 068 enrichment).** Readers can branch on schema_version when future migrations happen. Adds ~5 lines; pays off the first time we change the catalog shape.
 - Q3: `/specrew-research-models` discovery — should the skill require an explicit `--refresh` flag when the catalog is fresh, or always re-discover when invoked? → **Default A: Always re-discover when explicitly invoked.** The freshness threshold (30/90 days) is for AUTO-refresh triggers; explicit invocation always refreshes. Adds friction-budget guidance: re-discovery costs tokens, so manual invocation should be intentional.
 - Q4: Without F-042 measurement, can F-041 verify the "30% cost reduction" success criterion? → **Default A: No — F-041 routes; F-042 measures.** F-041's success criterion is empirically measurable only after F-042 ships. Document the dependency; rely on manual reconciliation against the 2026-05-16 baseline ($5.47/SP) for the F-041-only ship period.
+- Q5 (added 2026-05-23 after empirical discovery): Should the catalog handle **cross-host model availability** via per-host duplication (Option A — same model listed under both Copilot and Claude hosts with potentially different effective costs) or via normalized models[] index with `available_via[hosts]` (Option B — cleaner data model)? → **Default A: per-host duplication.** Each host block self-contains its accessible models; simpler reader logic; accepts that Copilot routing to Claude Opus 4.7 may have a different effective cost than direct Claude API access.
+- Q6 (added 2026-05-23 after empirical discovery): Should the catalog include a per-host `pricing_unit` field (`usd` / `credits`) plus `credit_value_usd` for normalization? → **Default A: Yes.** Anthropic prices in USD; Codex prices in credits; Copilot transitions to AI Credits June 1. F-042 cost estimator normalizes to USD via these fields.
+
+### Empirical Discovery Findings (2026-05-23)
+
+After spec drafting, ran the `/specrew-research-models` skill design against real provider docs to verify the discovery primitive actually retrieves the data the catalog needs. **Result: discovery design works** — agent successfully extracted exact model IDs, per-MTok pricing, capability tags, and pricing-change alerts from all three supported hosts. Findings:
+
+1. **Date correction**: The "Copilot pricing pivot" cited earlier as 2026-05-30 is actually **2026-06-01** (June 1 — usage-based billing transition). Gives 9 days from F-041 ship target, not 7.
+2. **Cross-host availability** — Copilot can route to Claude AND Gemini AND OpenAI models. Same `claude-opus-4-7` is accessible via `--host claude` (direct Anthropic API) AND `--host copilot` (Copilot routes to it). Addressed via Q5 Option A (per-host duplication).
+3. **Currency-unit mismatch** — Anthropic in USD; Codex in credits; Copilot hybrid (premium-requests until June 1, AI Credits after). Addressed via Q6 (new `pricing_unit` + `credit_value_usd` fields).
+4. **`best_for` Crew-role mapping is Specrew judgment** — no vendor doc says "this model is best for Implementer." The SKILL.md applies heuristics over vendor data (premium tier → Reviewer/Spec-Steward; cheap → Implementer/Retro-Facilitator). Documented as Specrew overlay; not a vendor-extracted field.
+
+Also: F-041 ships with a **fixture catalog** at `templates/model-catalog-fixture.yml` populated from the 2026-05-23 discovery output. Users get usable starter data on greenfield projects without having to run `/specrew-research-models` before their first iteration. See FR-014 below.
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -101,6 +114,9 @@ Different hosts inject the chosen model differently — Copilot uses `agentModel
 | FR-011 | Host-native built-in routing primitives (e.g., Claude's `opusplan` alias which routes Opus for plan, Sonnet for execution) MUST be honored when they align with the active cost_profile. The catalog v2 `built_in_routing_primitives` field is the source of truth for what each host provides natively |
 | FR-012 | The Specrew Friction Dial (Proposal 100) `friction.mode` MUST influence routing posture: `strict` requires human approval on every model-tier-change decision; `default` requires human approval only when tier changes from strong→cheap on a non-Implementer role; `autonomous` allows automatic tier changes without human approval but logs them prominently |
 | FR-013 | When the active host is non-Copilot (i.e., `crew_runtime_status: bootstrap_only` per F-040), routing decisions MUST be persisted in `.squad/decisions.md` (the canonical ledger location) regardless of host, since the per-host equivalent does not yet exist (waits for Proposal 104's Category A migration + Proposal 024 Slice 3) |
+| FR-014 | F-041 MUST ship a **fixture catalog** at `templates/model-catalog-fixture.yml` populated from the 2026-05-23 discovery output (real data verified against vendor docs). `specrew init` MAY copy this fixture to `.specrew/model-catalog.yml` on greenfield bootstrap (only if no catalog exists), with `confidence: medium` + `last_refreshed_at` set to the F-041 ship date. Fixture is overwritten on first explicit `/specrew-research-models` invocation. Per empirical discovery finding |
+| FR-015 | Catalog v2 schema MUST include per-host `pricing_unit` (`usd` / `credits`) and `credit_value_usd` (defaults to 0.01 for credit-based hosts; null for USD-priced hosts). F-042 cost estimator uses these to normalize all per-model costs to USD before computing cost.yml records. Per empirical discovery finding 3 (Q6 clarify default) |
+| FR-016 | Catalog v2 schema MUST support **cross-host model duplication** — the same model id (e.g., `claude-opus-4-7`) may appear under multiple `hosts.<kind>.models[]` blocks with potentially different effective costs reflecting the access path. Per empirical discovery finding 2 (Q5 clarify default Option A) |
 
 ## Out of Scope
 

@@ -1,0 +1,251 @@
+# Specrew Model Catalog v2 — Fixture
+#
+# Populated from the 2026-05-23 empirical discovery run against vendor docs:
+#   - https://platform.claude.com/docs/en/docs/about-claude/models/overview
+#   - https://docs.github.com/en/copilot/reference/copilot-billing/models-and-pricing
+#   - https://developers.openai.com/codex/pricing
+#
+# This fixture ships with F-041 as a starter catalog. `specrew init` copies it
+# to `.specrew/model-catalog.yml` on greenfield bootstrap (only when no catalog
+# exists). Replaced on first explicit `/specrew-research-models` invocation,
+# which captures current data from the same vendor sources.
+#
+# Confidence: medium (data extracted 2026-05-23; users should refresh after the
+# 2026-06-01 Copilot pricing pivot — already captured below as a pricing_change_alert).
+
+catalog:
+  schema_version: 2
+  last_refreshed_at: "2026-05-23T00:00:00Z"
+  confidence: medium
+  fixture_origin: "F-041 ship-date fixture from vendor docs; refresh via /specrew-research-models for current data"
+
+  hosts:
+
+    copilot-cli:
+      available: false   # auto-set true at runtime if PATH probe finds copilot
+      selector_strategy: squad_config_field
+      pricing_unit: usd
+      credit_value_usd: 0.01   # Copilot AI Credits: 1 credit = $0.01 USD (post-2026-06-01)
+
+      built_in_routing_primitives: []
+
+      pricing_change_alerts:
+        - effective_date: "2026-06-01"
+          summary: "Copilot Pro/Pro+ transition to AI Credits + usage-based billing. Code completions stay free; chat/agent/manual model selection consume credits at $0.01/credit."
+          source_url: "https://github.blog/news-insights/company-news/github-copilot-is-moving-to-usage-based-billing/"
+
+      # Copilot's model catalog is exceptional — it lists OpenAI + Anthropic + Google models
+      # all consumable via Copilot. Discovery captures the full set; routing logic can
+      # consider any of these for the active task (subject to subscription tier).
+      models:
+        # OpenAI family (Copilot's native models)
+        - id: gpt-5-mini
+          tier: cheap
+          cost_per_million_input: 0.25
+          cost_per_million_output: 2.00
+          context_window_tokens: null   # not in source doc
+          capability_tags: [code, fast, cheap]
+          best_for: [Implementer, Retro Facilitator]
+          tokenizer_method: null   # OpenAI; tiktoken family — exact encoder TBD
+          note: "Lightweight; included in free tier"
+
+        - id: gpt-4.1
+          tier: balanced
+          cost_per_million_input: 2.00
+          cost_per_million_output: 8.00
+          context_window_tokens: null
+          capability_tags: [code, reasoning-fast, versatile]
+          best_for: [Planner, Implementer]
+          tokenizer_method: null
+
+        - id: gpt-5.4-mini
+          tier: cheap
+          cost_per_million_input: 0.75
+          cost_per_million_output: 4.50
+          context_window_tokens: null
+          capability_tags: [code, fast]
+          best_for: [Implementer]
+          tokenizer_method: null
+
+        - id: gpt-5.4
+          tier: premium
+          cost_per_million_input: 2.50
+          cost_per_million_output: 15.00
+          context_window_tokens: null
+          capability_tags: [code, reasoning-deep, versatile]
+          best_for: [Reviewer, Spec Steward, Planner]
+          tokenizer_method: null
+
+        - id: gpt-5.5
+          tier: premium
+          cost_per_million_input: 5.00
+          cost_per_million_output: 30.00
+          context_window_tokens: null
+          capability_tags: [code, reasoning-deep, powerful]
+          best_for: [Reviewer, Spec Steward]
+          tokenizer_method: null
+
+        # Anthropic family (accessible via Copilot routing)
+        - id: claude-haiku-4-5
+          tier: cheap
+          cost_per_million_input: 1.00
+          cost_per_million_output: 5.00
+          context_window_tokens: 200000
+          capability_tags: [code, fast, extended-thinking, vision]
+          best_for: [Implementer, Retro Facilitator]
+          tokenizer_method: null
+
+        - id: claude-sonnet-4-6
+          tier: balanced
+          cost_per_million_input: 3.00
+          cost_per_million_output: 15.00
+          context_window_tokens: 1000000
+          capability_tags: [code, extended-thinking, adaptive-thinking, long-context, vision]
+          best_for: [Planner, Implementer]
+          tokenizer_method: null
+
+        - id: claude-opus-4-7
+          tier: premium
+          cost_per_million_input: 5.00
+          cost_per_million_output: 25.00
+          context_window_tokens: 1000000
+          capability_tags: [reasoning-deep, agentic-coding, adaptive-thinking, vision, long-context]
+          best_for: [Spec Steward, Reviewer]
+          tokenizer_method: null
+
+        # Google family (accessible via Copilot routing)
+        - id: gemini-3-flash
+          tier: cheap
+          cost_per_million_input: 0.50
+          cost_per_million_output: 3.00
+          context_window_tokens: null
+          capability_tags: [code, fast]
+          best_for: [Implementer]
+          tokenizer_method: null
+
+        - id: gemini-3.1-pro
+          tier: premium
+          cost_per_million_input: 2.00
+          cost_per_million_output: 12.00
+          context_window_tokens: null
+          capability_tags: [code, reasoning-deep, powerful]
+          best_for: [Reviewer, Planner]
+          tokenizer_method: null
+
+    claude-code:
+      available: false   # auto-set true at runtime if PATH probe finds claude
+      selector_strategy: subagent_frontmatter
+      pricing_unit: usd
+      credit_value_usd: null
+
+      built_in_routing_primitives:
+        - name: opusplan
+          description: "Opus for /speckit.plan, Sonnet for execution — built-in cost-routing alias. Aligns with F-041 lean profile intent when plan-quality matters."
+          enabled_by_default: false
+          documentation_url: "https://code.claude.com/docs/en/opusplan"
+
+      pricing_change_alerts:
+        - effective_date: "2026-06-15"
+          summary: "Claude Sonnet 4 and Claude Opus 4 retire; migrate to Claude Sonnet 4.6 / Claude Opus 4.7"
+          source_url: "https://docs.anthropic.com/en/docs/about-claude/model-deprecations"
+
+      models:
+        - id: claude-opus-4-7
+          tier: premium
+          cost_per_million_input: 5.00
+          cost_per_million_output: 25.00
+          context_window_tokens: 1000000
+          max_output_tokens: 128000
+          capability_tags: [reasoning-deep, agentic-coding, adaptive-thinking, vision, long-context]
+          best_for: [Spec Steward, Reviewer]
+          tokenizer_method: null
+          knowledge_cutoff: "2026-01"
+
+        - id: claude-sonnet-4-6
+          tier: balanced
+          cost_per_million_input: 3.00
+          cost_per_million_output: 15.00
+          context_window_tokens: 1000000
+          max_output_tokens: 64000
+          capability_tags: [code, extended-thinking, adaptive-thinking, long-context, vision]
+          best_for: [Planner, Implementer]
+          tokenizer_method: null
+          knowledge_cutoff: "2025-08"
+
+        - id: claude-haiku-4-5
+          tier: cheap
+          cost_per_million_input: 1.00
+          cost_per_million_output: 5.00
+          context_window_tokens: 200000
+          max_output_tokens: 64000
+          capability_tags: [code, fast, extended-thinking, vision]
+          best_for: [Implementer, Retro Facilitator]
+          tokenizer_method: null
+          knowledge_cutoff: "2025-02"
+
+    codex-cli:
+      available: false   # auto-set true at runtime if PATH probe finds codex
+      selector_strategy: agent_toml_field
+      pricing_unit: credits
+      credit_value_usd: 0.01   # OpenAI credits convention
+
+      built_in_routing_primitives: []
+
+      pricing_change_alerts:
+        - effective_date: "2026-04-02"
+          summary: "Codex switched to token-based billing for Plus/Pro/Business plans (already in effect as of fixture date)"
+          source_url: "https://help.openai.com/en/articles/20001106-codex-rate-card"
+
+      models:
+        - id: gpt-5.5
+          tier: premium
+          cost_per_million_input: 125    # credits — multiply by credit_value_usd for USD
+          cost_per_million_output: 750
+          context_window_tokens: null
+          capability_tags: [code, reasoning-deep, powerful, fast]
+          best_for: [Reviewer, Spec Steward]
+          tokenizer_method: null
+          note: "Most efficient per output token; uses fewer tokens for comparable results"
+
+        - id: gpt-5.4
+          tier: balanced
+          cost_per_million_input: 62.50
+          cost_per_million_output: 375
+          context_window_tokens: null
+          capability_tags: [code, versatile]
+          best_for: [Planner, Implementer]
+          tokenizer_method: null
+
+        - id: gpt-5.4-mini
+          tier: cheap
+          cost_per_million_input: 18.75
+          cost_per_million_output: 113
+          context_window_tokens: null
+          capability_tags: [code, fast]
+          best_for: [Implementer, Retro Facilitator]
+          tokenizer_method: null
+
+        - id: gpt-5.3-codex
+          tier: balanced
+          cost_per_million_input: 43.75
+          cost_per_million_output: 350
+          context_window_tokens: null
+          capability_tags: [code, code-review-specialist]
+          best_for: [Reviewer]
+          tokenizer_method: null
+          note: "Powers Codex's automated code review"
+
+    antigravity:
+      available: false   # not active until Antigravity follow-up slice ships
+      selector_strategy: cli_flag
+      pricing_unit: usd
+      credit_value_usd: null
+
+      built_in_routing_primitives: []
+
+      pricing_change_alerts:
+        - effective_date: "2026-06-18"
+          summary: "Gemini CLI free tier stops; Antigravity requires Google AI Pro/Ultra ($100/mo) or enterprise Gemini Agent Platform API keys after this date."
+          source_url: "https://developers.googleblog.com/an-important-update-transitioning-gemini-cli-to-antigravity-cli/"
+
+      models: []   # populated by discovery when Antigravity slice ships
