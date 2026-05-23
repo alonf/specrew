@@ -27,7 +27,7 @@ Set-StrictMode -Version Latest
 function Get-HostFlagTranslation {
     param(
         [Parameter(Mandatory = $true)]
-        [ValidateSet('copilot', 'claude', 'codex')]
+        [ValidateSet('copilot', 'claude', 'codex', 'antigravity')]
         [string]$HostKind,
 
         [Parameter(Mandatory = $true)]
@@ -89,6 +89,29 @@ function Get-HostFlagTranslation {
                 Args = @()
                 Notice = "Codex's autopilot equivalent is --full-auto, which is already mapped from --allow-all. --autopilot is a no-op when --allow-all is also set."
                 SuppressWarning = $true
+            }
+        }
+
+        # Antigravity arms — per Antigravity follow-up slice
+        'antigravity|--remote' {
+            return [pscustomobject]@{
+                Args = @()
+                Notice = "Antigravity CLI does not expose a verified remote-control flag today; continuing launch without remote-control wiring."
+                SuppressWarning = $false
+            }
+        }
+        'antigravity|--allow-all' {
+            return [pscustomobject]@{
+                Args = @()
+                Notice = "Antigravity --allow-all mapping is unverified; launching without a host-side permission-bypass flag. Use ANTIGRAVITY_API_KEY env var for headless authentication."
+                SuppressWarning = $false
+            }
+        }
+        'antigravity|--autopilot' {
+            return [pscustomobject]@{
+                Args = @()
+                Notice = "Antigravity has no verified autopilot equivalent; for unattended runs, use Specrew's --autonomous flag for lifecycle boundary control."
+                SuppressWarning = $false
             }
         }
 
