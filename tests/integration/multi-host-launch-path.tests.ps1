@@ -272,12 +272,16 @@ if ($argvResult.copilot -ne $expectedCopilot) {
     Write-Fail "Copilot argv DRIFT detected (regression guard):`n  expected: $expectedCopilot`n  got     : $($argvResult.copilot)"
 }
 
-$expectedClaude = '-p|BOOT|--add-dir|C:\proj|--dangerously-skip-permissions|--remote-control'
+# Claude: interactive REPL with positional initial prompt (NOT -p which is one-shot).
+# Bug discovered in 2026-05-23 real-launch test: claude -p exits after first response.
+$expectedClaude = '--add-dir|C:\proj|--dangerously-skip-permissions|--remote-control|BOOT'
 if ($argvResult.claude -ne $expectedClaude) {
     Write-Fail "Claude argv shape mismatch:`n  expected: $expectedClaude`n  got     : $($argvResult.claude)"
 }
 
-$expectedCodex = 'exec|--cd|C:\proj|--full-auto|BOOT'
+# Codex: interactive REPL with positional initial prompt (NOT `codex exec` which is non-interactive).
+# Same bug class as Claude -p fix.
+$expectedCodex = '--cd|C:\proj|--full-auto|BOOT'
 if ($argvResult.codex -ne $expectedCodex) {
     Write-Fail "Codex argv shape mismatch:`n  expected: $expectedCodex`n  got     : $($argvResult.codex)"
 }

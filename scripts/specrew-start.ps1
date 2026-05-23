@@ -3224,8 +3224,12 @@ function Get-SpecrewHostLaunchInvocation {
             }
         }
         'claude' {
-            $args.Add('-p') | Out-Null
-            $args.Add($BootstrapPrompt) | Out-Null
+            # Claude Code: interactive REPL with initial prompt is the
+            # positional-arg form (`claude "<prompt>" --add-dir <path>`).
+            # The `-p` / `--print` flag is the one-shot/headless mode
+            # which exits after printing — wrong for lifecycle work.
+            # Bug found in 2026-05-23 real-launch test: -p caused session
+            # to exit after Claude's first response.
             $args.Add('--add-dir') | Out-Null
             $args.Add($ResolvedProjectPath) | Out-Null
             if ($AllowAll) {
@@ -3243,9 +3247,15 @@ function Get-SpecrewHostLaunchInvocation {
                 foreach ($a in $t.Args) { $args.Add($a) | Out-Null }
                 if (-not [string]::IsNullOrWhiteSpace($t.Notice)) { $notices.Add($t.Notice) | Out-Null }
             }
+            # Initial prompt as positional arg — last position
+            $args.Add($BootstrapPrompt) | Out-Null
         }
         'codex' {
-            $args.Add('exec') | Out-Null
+            # Codex CLI: interactive REPL with initial prompt is the
+            # positional-arg form (`codex "<prompt>" --cd <path>`).
+            # `codex exec` is non-interactive batch mode — wrong for
+            # lifecycle work.
+            # Same bug class as Claude `-p` (fixed 2026-05-23 real-launch test).
             $args.Add('--cd') | Out-Null
             $args.Add($ResolvedProjectPath) | Out-Null
             if ($AllowAll) {
@@ -3263,6 +3273,7 @@ function Get-SpecrewHostLaunchInvocation {
                 # Codex has no remote-control wiring; notice surfaced, no args added
                 if (-not [string]::IsNullOrWhiteSpace($t.Notice)) { $notices.Add($t.Notice) | Out-Null }
             }
+            # Initial prompt as positional arg — last position
             $args.Add($BootstrapPrompt) | Out-Null
         }
     }
@@ -3751,10 +3762,22 @@ if ($NoLaunch -or $forceNoLaunch) {
 }
 
 if ($launchMode -eq 'same-window') {
-    Write-Info ("Delegating to Copilot + {0} in the current terminal with auto-loaded bootstrap..." -f $Agent)
+    $hostLabel = switch ($selectedHost) {
+        'copilot' { "Copilot + $Agent" }
+        'claude'  { 'Claude Code' }
+        'codex'   { 'Codex CLI' }
+        default   { $selectedHost }
+    }
+    Write-Info ("Delegating to {0} in the current terminal with auto-loaded bootstrap..." -f $hostLabel)
 }
 else {
-    Write-Info ("Delegating to Copilot + {0} in a new PowerShell window with auto-loaded bootstrap..." -f $Agent)
+    $hostLabel = switch ($selectedHost) {
+        'copilot' { "Copilot + $Agent" }
+        'claude'  { 'Claude Code' }
+        'codex'   { 'Codex CLI' }
+        default   { $selectedHost }
+    }
+    Write-Info ("Delegating to {0} in a new PowerShell window with auto-loaded bootstrap..." -f $hostLabel)
 }
 
 $hostStarted = Start-HostSession `
