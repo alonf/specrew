@@ -1,0 +1,88 @@
+# Specrew Pricing Overrides v1 — Example Template
+#
+# Copy this file to .specrew/pricing-overrides.yml when your organization has
+# negotiated rates that differ from the public list pricing in
+# .specrew/model-catalog.yml.
+#
+# Read precedence at cost-computation time (F-041 / Proposal 068):
+#   1. pricing_overrides.hosts[host].model_overrides[model] — exact-model match WINS
+#   2. pricing_overrides.hosts[host].input_discount_factor — host-level multiplier
+#   3. .specrew/model-catalog.yml public rate — fallback when no override applies
+#
+# Each cost record written by F-042 will carry:
+#   - effective_cost_usd:    what was actually charged (with override applied)
+#   - public_cost_usd:       what the catalog says (for audit)
+#   - pricing_source:        public-list | org-negotiated | manual-override
+#   - override_contract_id:  e.g., "ATC-2026-Q1" when org-negotiated rate applied
+#
+# RECOMMENDED: add .specrew/pricing-overrides.yml to .gitignore to keep
+# negotiated rates out of public repositories. The fixture template here is
+# documentation only — it ships with Specrew but is NOT copied to your project
+# by `specrew init`.
+
+pricing_overrides:
+  schema_version: 1
+
+  # Source attribution — used in cost.yml records' pricing_source field
+  source: org-negotiated         # public-list-correction | org-negotiated | manual
+
+  # Organization metadata (optional but recommended for audit)
+  org_name: "Example Corp"
+  contract_id: "EXAMPLE-2026-Q1" # appears in cost.yml record override_contract_id
+
+  # Contract validity window (optional)
+  # When current date is within 14 days of expiry_date, `specrew where`
+  # dashboard surfaces a warning (FR-019).
+  effective_date: "2026-01-01"
+  expiry_date: "2026-12-31"
+
+  notes: "Example organization with negotiated rates. Replace all values with your actual contract."
+
+  # Per-host override blocks. Only list hosts where you have negotiated rates.
+  # Hosts not present here fall through to catalog public rates.
+  hosts:
+
+    claude-code:
+      # Whole-host discount factor (applied to all models on this host that
+      # don't have a more-specific model_overrides entry).
+      # 1.0 = no discount; 0.85 = 15% off list; 0.5 = 50% off
+      input_discount_factor: 0.85
+      output_discount_factor: 0.85
+
+      # Optional contract-id attribution at host level
+      contract_id: "ATC-2026-Q1"
+
+      # Per-model overrides win over the host-level discount factor
+      model_overrides:
+        - id: claude-opus-4-7
+          # Negotiated rates (override the catalog's public $5/$25)
+          cost_per_million_input: 4.00
+          cost_per_million_output: 20.00
+          # Optional: per-model contract attribution
+          contract_id: "ATC-2026-Q1-Opus-Tier"
+          notes: "Premium-tier negotiated rate; reviews + spec authoring"
+
+        - id: claude-haiku-4-5
+          # Haiku at deeper discount (committed-spend on Implementer-class work)
+          cost_per_million_input: 0.50
+          cost_per_million_output: 2.50
+          notes: "Committed-spend tier; 50% off list for Implementer routing"
+
+    copilot-cli:
+      # Org's Copilot Enterprise plan includes 500 free premium-requests/month
+      # F-042 cost estimator deducts this allowance before billing for overages
+      included_credits_per_month: 500
+      input_discount_factor: 1.0      # no per-token discount beyond the included allowance
+      output_discount_factor: 1.0
+      contract_id: "COPILOT-ENT-2026"
+      notes: "Copilot Enterprise plan; 500 free premium-requests/month included"
+
+    codex-cli:
+      # Codex committed-spend agreement: $10K commit = 20% off the public $0.01/credit rate
+      credit_value_usd: 0.008       # was 0.01 in public catalog
+      contract_id: "OPENAI-ENT-COMMIT-10K"
+      notes: "OpenAI committed-spend contract; 20% off list credit value"
+
+    # antigravity: not active until Antigravity follow-up slice ships
+    # When the slice lands, the same override pattern applies for Google AI
+    # Pro/Ultra/enterprise rates.

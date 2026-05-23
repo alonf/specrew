@@ -278,3 +278,203 @@ function Add-SpecrewRoutingDecisionEntry {
         Timestamp      = $timestamp
     }
 }
+
+# ============================================================================
+# Pricing-overrides overlay (F-041 FR-017 / FR-018 / FR-019 / FR-020)
+# Per Q7 clarify default — org-negotiated rates layer on top of public catalog.
+# ============================================================================
+
+function Get-SpecrewPricingOverridesPath {
+    param([Parameter(Mandatory = $true)][string]$ProjectPath)
+    return (Join-Path $ProjectPath '.specrew\pricing-overrides.yml')
+}
+
+function Get-SpecrewPricingOverrides {
+    <#
+    .SYNOPSIS
+    Read .specrew/pricing-overrides.yml. Returns $null if missing (current
+    behavior preserved — falls through to public catalog rates).
+    Per Proposal 059 read-tolerance: corruption returns $null + warning.
+    #>
+    param([Parameter(Mandatory = $true)][string]$ProjectPath)
+
+    $path = Get-SpecrewPricingOverridesPath -ProjectPath $ProjectPath
+    if (-not (Test-Path -LiteralPath $path -PathType Leaf)) {
+        return $null
+    }
+
+    try {
+        $raw = Get-Content -LiteralPath $path -Raw -Encoding UTF8
+        if ([string]::IsNullOrWhiteSpace($raw)) { return $null }
+        if (Get-Command ConvertFrom-Yaml -ErrorAction SilentlyContinue) {
+            return (ConvertFrom-Yaml -Yaml $raw)
+        }
+        throw "ConvertFrom-Yaml not available; F-041 wiring requires the codebase YAML parser"
+    }
+    catch {
+        Write-Warning "pricing-overrides.yml corrupted: $($_.Exception.Message). Falling back to public catalog rates."
+        return $null
+    }
+}
+
+function Get-SpecrewEffectivePricing {
+    <#
+    .SYNOPSIS
+    Resolve effective per-MTok pricing for (host, model) accounting for
+    pricing-overrides overlay. Returns BOTH effective rate AND public rate
+    so cost.yml records can carry both for audit (FR-018).
+
+    Read precedence per FR-017:
+      1. pricing_overrides.hosts[host].model_overrides[model] — exact match
+      2. pricing_overrides.hosts[host].input_discount_factor x catalog rate
+      3. catalog public rate (no override applies)
+
+    .OUTPUTS
+    PSCustomObject with EffectiveInputCost, EffectiveOutputCost, PublicInputCost,
+    PublicOutputCost, PricingSource, OverrideContractId, PricingUnit, CreditValueUsd.
+    #>
+    param(
+        [Parameter(Mandatory = $true)][object]$Catalog,
+        [object]$Overrides,
+        [Parameter(Mandatory = $true)][string]$Host,
+        [Parameter(Mandatory = $true)][string]$Model
+    )
+
+    $catalogBlock = if ($Catalog -is [hashtable] -and $Catalog.ContainsKey('catalog')) { $Catalog['catalog'] } else { $Catalog }
+    $hostBlock = $catalogBlock['hosts'][$Host]
+    if ($null -eq $hostBlock) {
+        return [pscustomobject]@{
+            EffectiveInputCost  = $null
+            EffectiveOutputCost = $null
+            PublicInputCost     = $null
+            PublicOutputCost    = $null
+            PricingSource       = 'public-list'
+            OverrideContractId  = $null
+            PricingUnit         = 'usd'
+            CreditValueUsd      = $null
+        }
+    }
+
+    $modelEntry = $hostBlock['models'] | Where-Object { $_['id'] -eq $Model } | Select-Object -First 1
+    if ($null -eq $modelEntry) {
+        return [pscustomobject]@{
+            EffectiveInputCost  = $null
+            EffectiveOutputCost = $null
+            PublicInputCost     = $null
+            PublicOutputCost    = $null
+            PricingSource       = 'public-list'
+            OverrideContractId  = $null
+            PricingUnit         = [string]($hostBlock['pricing_unit'] ?? 'usd')
+            CreditValueUsd      = $hostBlock['credit_value_usd']
+        }
+    }
+
+    $publicInput  = [double]($modelEntry['cost_per_million_input']  ?? 0.0)
+    $publicOutput = [double]($modelEntry['cost_per_million_output'] ?? 0.0)
+    $pricingUnit  = [string]($hostBlock['pricing_unit'] ?? 'usd')
+    $creditValueUsd = $hostBlock['credit_value_usd']
+
+    $effectiveInput  = $publicInput
+    $effectiveOutput = $publicOutput
+    $source          = 'public-list'
+    $contractId      = $null
+
+    if ($null -ne $Overrides) {
+        $overridesBlock = if ($Overrides -is [hashtable] -and $Overrides.ContainsKey('pricing_overrides')) { $Overrides['pricing_overrides'] } else { $Overrides }
+        $orgSource = [string]($overridesBlock['source'] ?? 'org-negotiated')
+        $orgContractId = [string]($overridesBlock['contract_id'] ?? $null)
+
+        $hostOverride = $overridesBlock['hosts'][$Host]
+        if ($null -ne $hostOverride) {
+            if ($hostOverride.ContainsKey('credit_value_usd') -and $null -ne $hostOverride['credit_value_usd']) {
+                $creditValueUsd = $hostOverride['credit_value_usd']
+                $source = $orgSource
+                $contractId = [string]($hostOverride['contract_id'] ?? $orgContractId)
+            }
+
+            $modelOverride = $null
+            if ($hostOverride.ContainsKey('model_overrides') -and $null -ne $hostOverride['model_overrides']) {
+                $modelOverride = $hostOverride['model_overrides'] | Where-Object { $_['id'] -eq $Model } | Select-Object -First 1
+            }
+
+            if ($null -ne $modelOverride) {
+                if ($modelOverride.ContainsKey('cost_per_million_input'))  { $effectiveInput  = [double]$modelOverride['cost_per_million_input']  }
+                if ($modelOverride.ContainsKey('cost_per_million_output')) { $effectiveOutput = [double]$modelOverride['cost_per_million_output'] }
+                $source = $orgSource
+                $contractId = [string]($modelOverride['contract_id'] ?? $hostOverride['contract_id'] ?? $orgContractId)
+            }
+            else {
+                $inputDiscount  = if ($hostOverride.ContainsKey('input_discount_factor'))  { [double]$hostOverride['input_discount_factor']  } else { 1.0 }
+                $outputDiscount = if ($hostOverride.ContainsKey('output_discount_factor')) { [double]$hostOverride['output_discount_factor'] } else { 1.0 }
+                if ($inputDiscount -ne 1.0 -or $outputDiscount -ne 1.0) {
+                    $effectiveInput  = $publicInput  * $inputDiscount
+                    $effectiveOutput = $publicOutput * $outputDiscount
+                    $source = $orgSource
+                    $contractId = [string]($hostOverride['contract_id'] ?? $orgContractId)
+                }
+            }
+        }
+    }
+
+    return [pscustomobject]@{
+        EffectiveInputCost  = $effectiveInput
+        EffectiveOutputCost = $effectiveOutput
+        PublicInputCost     = $publicInput
+        PublicOutputCost    = $publicOutput
+        PricingSource       = $source
+        OverrideContractId  = $contractId
+        PricingUnit         = $pricingUnit
+        CreditValueUsd      = $creditValueUsd
+    }
+}
+
+function Test-SpecrewPricingOverridesExpiry {
+    <#
+    .SYNOPSIS
+    Check if active pricing-overrides contract approaches expiry.
+    Per FR-019: warning fires when current date is within 14 days of expiry_date.
+    #>
+    param(
+        [Parameter(Mandatory = $true)][string]$ProjectPath,
+        [DateTime]$CurrentDate = [DateTime]::UtcNow
+    )
+
+    $overrides = Get-SpecrewPricingOverrides -ProjectPath $ProjectPath
+    if ($null -eq $overrides) {
+        return [pscustomobject]@{ ShouldWarn = $false; DaysUntilExpiry = $null; ContractId = $null; Message = $null }
+    }
+
+    $block = if ($overrides -is [hashtable] -and $overrides.ContainsKey('pricing_overrides')) { $overrides['pricing_overrides'] } else { $overrides }
+    $expiry = $block['expiry_date']
+    $contractId = [string]($block['contract_id'] ?? 'pricing-overrides')
+
+    if ([string]::IsNullOrWhiteSpace($expiry)) {
+        return [pscustomobject]@{ ShouldWarn = $false; DaysUntilExpiry = $null; ContractId = $contractId; Message = $null }
+    }
+
+    try {
+        $expiryDate = [DateTime]::Parse($expiry, [System.Globalization.CultureInfo]::InvariantCulture)
+        $daysUntil = [int]($expiryDate - $CurrentDate.Date).TotalDays
+
+        if ($daysUntil -gt 14) {
+            return [pscustomobject]@{ ShouldWarn = $false; DaysUntilExpiry = $daysUntil; ContractId = $contractId; Message = $null }
+        }
+
+        $msg = if ($daysUntil -ge 0) {
+            "$contractId contract expires in $daysUntil day$(if ($daysUntil -ne 1) { 's' }) ($expiry); renew or rates revert to public list."
+        } else {
+            "$contractId contract EXPIRED $([Math]::Abs($daysUntil)) day$(if ([Math]::Abs($daysUntil) -ne 1) { 's' }) ago ($expiry). Rates reverted to public list — update or remove .specrew/pricing-overrides.yml."
+        }
+
+        return [pscustomobject]@{
+            ShouldWarn      = $true
+            DaysUntilExpiry = $daysUntil
+            ContractId      = $contractId
+            Message         = $msg
+        }
+    }
+    catch {
+        Write-Warning "Could not parse pricing-overrides.yml expiry_date '$expiry': $($_.Exception.Message)"
+        return [pscustomobject]@{ ShouldWarn = $false; DaysUntilExpiry = $null; ContractId = $contractId; Message = $null }
+    }
+}
