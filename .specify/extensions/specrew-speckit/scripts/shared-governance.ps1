@@ -1804,9 +1804,20 @@ function Get-ValidatorGlobalStatePathspecs {
 }
 
 function Get-ChangedMarkdownFiles {
-    # Proposal 088: identifies .md files in the current git diff scoped via
-    # Proposal 083's base-ref resolution. Returns an empty array if base ref
-    # is undetectable (caller handles the no-op case).
+    # Proposal 088: identifies .md files that the lint gate should check at boundary-sync time.
+    #
+    # Resolution order (Fix following F-040 calc-v2 dogfooding 2026-05-23):
+    #   1. If a base ref AND HEAD are available, return `git diff <baseRef>...HEAD -- '*.md'`
+    #      (committed changes since the branch diverged).
+    #   2. Otherwise fall back to working-tree status: `git ls-files -m -o --exclude-standard -- '*.md'`
+    #      (uncommitted modified + untracked-but-not-ignored .md files).
+    #
+    # The fallback is necessary because the original implementation went no-op when:
+    #   - the repo has zero commits (greenfield-new), so `git rev-parse HEAD` fails AND
+    #     `git diff baseRef...HEAD` has no HEAD to diff against;
+    #   - the repo has no remote/origin (so `Get-SpecrewLocalScopeBaseRef` returns null).
+    # Both conditions ride on top of any fresh-project run, defeating the lint gate during the
+    # entire pre-first-commit scaffolding phase — exactly when the model writes the most markdown.
     param(
         [Parameter(Mandatory = $true)]
         [string]$ProjectRoot
@@ -1814,23 +1825,54 @@ function Get-ChangedMarkdownFiles {
 
     $resolvedProjectRoot = Resolve-ProjectPath -Path $ProjectRoot
 
-    $baseRef = Get-SpecrewLocalScopeBaseRef -ProjectRoot $resolvedProjectRoot
-    if ([string]::IsNullOrWhiteSpace($baseRef)) {
-        return @()
-    }
-
-    $diffOutput = @(& git -C $resolvedProjectRoot diff --name-only --diff-filter=d "$baseRef...HEAD" -- '*.md' 2>$null)
-    if ($LASTEXITCODE -ne 0) {
-        return @()
-    }
-
     $markdownFiles = New-Object System.Collections.Generic.List[string]
-    foreach ($relPath in $diffOutput) {
-        $trimmed = [string]$relPath
-        if ([string]::IsNullOrWhiteSpace($trimmed)) { continue }
-        $absPath = Join-Path -Path $resolvedProjectRoot -ChildPath $trimmed.Trim()
-        if (Test-Path -LiteralPath $absPath -PathType Leaf) {
-            $null = $markdownFiles.Add($absPath)
+
+    $baseRef = Get-SpecrewLocalScopeBaseRef -ProjectRoot $resolvedProjectRoot
+    $usedDiffPath = $false
+    if (-not [string]::IsNullOrWhiteSpace($baseRef)) {
+        # Confirm HEAD exists before attempting the two-dot diff. Greenfield repos have a branch
+        # ref but no commits, in which case `git diff baseRef...HEAD` fails fatally (128).
+        $null = & git -C $resolvedProjectRoot rev-parse --verify --quiet HEAD 2>$null
+        $headExists = ($LASTEXITCODE -eq 0)
+        $global:LASTEXITCODE = 0
+
+        if ($headExists) {
+            $diffOutput = @(& git -C $resolvedProjectRoot diff --name-only --diff-filter=d "$baseRef...HEAD" -- '*.md' 2>$null)
+            $diffExit = $LASTEXITCODE
+            $global:LASTEXITCODE = 0
+            if ($diffExit -eq 0) {
+                $usedDiffPath = $true
+                foreach ($relPath in $diffOutput) {
+                    $trimmed = [string]$relPath
+                    if ([string]::IsNullOrWhiteSpace($trimmed)) { continue }
+                    $absPath = Join-Path -Path $resolvedProjectRoot -ChildPath $trimmed.Trim()
+                    if (Test-Path -LiteralPath $absPath -PathType Leaf) {
+                        $null = $markdownFiles.Add($absPath)
+                    }
+                }
+            }
+        }
+    }
+
+    # Fallback: include working-tree changes (modified, added-but-uncommitted, untracked-not-ignored).
+    # Activates when base-ref or HEAD is unavailable, OR when the diff path returned zero matches and
+    # there might still be uncommitted edits the model just wrote.
+    if (-not $usedDiffPath -or $markdownFiles.Count -eq 0) {
+        $statusOutput = @(& git -C $resolvedProjectRoot ls-files -m -o --exclude-standard -- '*.md' 2>$null)
+        $statusExit = $LASTEXITCODE
+        $global:LASTEXITCODE = 0
+        if ($statusExit -eq 0) {
+            foreach ($relPath in $statusOutput) {
+                $trimmed = [string]$relPath
+                if ([string]::IsNullOrWhiteSpace($trimmed)) { continue }
+                $absPath = Join-Path -Path $resolvedProjectRoot -ChildPath $trimmed.Trim()
+                if (Test-Path -LiteralPath $absPath -PathType Leaf) {
+                    # Dedupe against anything already collected from the diff path.
+                    if ($markdownFiles -notcontains $absPath) {
+                        $null = $markdownFiles.Add($absPath)
+                    }
+                }
+            }
         }
     }
 

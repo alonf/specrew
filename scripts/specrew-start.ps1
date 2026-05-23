@@ -1206,10 +1206,12 @@ function Resolve-RoleAgentPlan {
         [System.Collections.IDictionary]$AgentLookup,
         [string[]]$EnabledAgents,
         [string]$ImplementerAgent,
+        [string]$SelectedHost,
         [switch]$RequireIndependentOversight
     )
 
     $requestedAgent = if ([string]::IsNullOrWhiteSpace($PreferredAgent)) { 'copilot' } else { $PreferredAgent.Trim().ToLowerInvariant() }
+    $resolvedHost = if ([string]::IsNullOrWhiteSpace($SelectedHost)) { 'copilot' } else { $SelectedHost.Trim().ToLowerInvariant() }
     $fallbackReasons = New-Object System.Collections.Generic.List[string]
     $effectiveAgent = $null
 
@@ -1222,20 +1224,26 @@ function Resolve-RoleAgentPlan {
 
     if ($RequireIndependentOversight -and $EnabledAgents.Count -gt 1 -and $effectiveAgent -eq $ImplementerAgent) {
         $null = $fallbackReasons.Add('independent oversight requires a different agent than Implementer')
-        $effectiveAgent = Get-PreferredEnabledAgent -EnabledAgents $EnabledAgents -Priority @('claude', 'codex', 'copilot') -Exclude $ImplementerAgent
+        # Proposal 107: host-first oversight priority (prefer the launch host over copilot when it can play
+        # both implementer and reviewer-of-record). The constraint that follows still requires the agent to
+        # differ from the Implementer for true independence — that's a separate gap tracked in Proposal 102.
+        $oversightPriority = @($resolvedHost, 'claude', 'codex', 'copilot') | Select-Object -Unique
+        $effectiveAgent = Get-PreferredEnabledAgent -EnabledAgents $EnabledAgents -Priority $oversightPriority -Exclude $ImplementerAgent
     }
 
     if (-not $effectiveAgent) {
+        # Proposal 107: host-first fallback. The launch host is the only agent we know is runnable in this
+        # session — copilot can't be invoked from inside Claude/Codex — so we prefer it before copilot.
         $fallbackPriority = if ($RequireIndependentOversight -and $EnabledAgents.Count -gt 1) {
-            @('claude', 'codex', 'copilot')
+            @($resolvedHost, 'claude', 'codex', 'copilot') | Select-Object -Unique
         }
         else {
-            @('copilot', 'claude', 'codex')
+            @($resolvedHost, 'copilot', 'claude', 'codex') | Select-Object -Unique
         }
 
         $effectiveAgent = Get-PreferredEnabledAgent -EnabledAgents $EnabledAgents -Priority $fallbackPriority -Exclude $(if ($RequireIndependentOversight -and $EnabledAgents.Count -gt 1) { $ImplementerAgent } else { $null })
         if (-not $effectiveAgent) {
-            $effectiveAgent = Get-PreferredEnabledAgent -EnabledAgents $EnabledAgents -Priority @('copilot', 'claude', 'codex') -Exclude $null
+            $effectiveAgent = Get-PreferredEnabledAgent -EnabledAgents $EnabledAgents -Priority (@($resolvedHost, 'copilot', 'claude', 'codex') | Select-Object -Unique) -Exclude $null
         }
     }
 
@@ -1253,13 +1261,16 @@ function Resolve-RoleAgentPlan {
 function Get-DelegatedRoutingPlan {
     param(
         [object[]]$RoleAssignments,
-        [System.Collections.IDictionary]$AgentLookup
+        [System.Collections.IDictionary]$AgentLookup,
+        [string]$SelectedHost = 'copilot'
     )
 
     $roleLookup = @{}
     foreach ($roleAssignment in $RoleAssignments) {
         $roleLookup[$roleAssignment.name] = $roleAssignment
     }
+
+    $resolvedHost = if ([string]::IsNullOrWhiteSpace($SelectedHost)) { 'copilot' } else { $SelectedHost.Trim().ToLowerInvariant() }
 
     $enabledAgents = @(
         foreach ($agentName in @('copilot', 'claude', 'codex')) {
@@ -1268,6 +1279,12 @@ function Get-DelegatedRoutingPlan {
             }
         }
     )
+    # Proposal 107: the launch host is always enabled-for-routing, even when iteration-config.yml marks
+    # it disabled. The user explicitly chose to run in this host, so it IS the runnable process — any role
+    # routing to it is literally the same process serving multiple slots.
+    if (-not [string]::IsNullOrWhiteSpace($resolvedHost) -and ($enabledAgents -notcontains $resolvedHost)) {
+        $enabledAgents = @($resolvedHost) + $enabledAgents
+    }
     if ($enabledAgents.Count -eq 0) {
         $enabledAgents = @('copilot')
     }
@@ -1279,7 +1296,7 @@ function Get-DelegatedRoutingPlan {
     }
 
     $implementerPreference = if ($roleLookup.ContainsKey('Implementer')) { $roleLookup['Implementer'].preferred_agent } else { 'copilot' }
-    $implementerPlan = Resolve-RoleAgentPlan -RoleName 'Implementer' -PreferredAgent $implementerPreference -AgentLookup $AgentLookup -EnabledAgents $enabledAgents -ImplementerAgent $null
+    $implementerPlan = Resolve-RoleAgentPlan -RoleName 'Implementer' -PreferredAgent $implementerPreference -AgentLookup $AgentLookup -EnabledAgents $enabledAgents -ImplementerAgent $null -SelectedHost $resolvedHost
     $routingRoles['Implementer'] = $implementerPlan
 
     foreach ($roleName in @('Spec Steward', 'Planner', 'Reviewer', 'Retro Facilitator')) {
@@ -1290,6 +1307,7 @@ function Get-DelegatedRoutingPlan {
             -AgentLookup $AgentLookup `
             -EnabledAgents $enabledAgents `
             -ImplementerAgent $implementerPlan.effective_agent `
+            -SelectedHost $resolvedHost `
             -RequireIndependentOversight:($roleName -in @('Spec Steward', 'Reviewer'))
     }
 
@@ -1303,7 +1321,8 @@ function Get-DelegatedRoutingPlan {
             -PreferredAgent $roleAssignment.preferred_agent `
             -AgentLookup $AgentLookup `
             -EnabledAgents $enabledAgents `
-            -ImplementerAgent $implementerPlan.effective_agent
+            -ImplementerAgent $implementerPlan.effective_agent `
+            -SelectedHost $resolvedHost
     }
 
     $fallbackEvents = @(
@@ -2716,6 +2735,23 @@ Then follow the formal Specrew + Spec Kit lifecycle end to end:
 42. Before spawning lifecycle agents, read .squad\config.json and honor any "agentModelOverrides". Re-read it before each repair spawn instead of caching it once for the entire session.
 43. When a governance-gate failure activates or resolves repair escalation, run `.specify\extensions\specrew-speckit\scripts\sync-squad-model-overrides.ps1 -IterationDirectory <active-iteration>` so `.squad\config.json` is updated immediately from the current escalation state.
 44. On repeated governance-gate failures, use that sync helper to raise the failing repair owner's model tier (balanced -> deep) and clear the temporary override after the gate passes.
+45. **Boundary-commit discipline.** After every lifecycle artifact write that closes a boundary (spec.md after specify, plan.md after plan, tasks.md after tasks, iteration plan + hardening-gate after before-implement, source/tests after implement, review.md after review, retro.md after retro), stage and commit the affected files with a focused message like ``boundary(specify): write spec.md`` or ``boundary(implement): T013 reducer + tests``. Without these commits the F-033 markdownlint gate, F-039 boundary discipline, and the git-history audit trail cannot function — the lifecycle silently bypasses every commit-scoped guardrail.
+46. **End-of-turn handoff block (mandatory).** At every boundary-stop where you wait for the human developer, AND at lifecycle-end, after any prose summary you produce, append this exact fenced block as the LAST thing in your turn:
+
+``````text
+=== SPECREW HANDOFF ===
+STOPPED AT: <canonical boundary name from F-039 or 'lifecycle-end'>
+STATUS: <one line — e.g. 'iteration 001 reviewing; 6 manual items deferred'>
+WHY STOPPED: <one line — e.g. 'need human verification of browser/AT items'>
+HUMAN ACTION NEEDED:
+  - <concrete step 1>
+  - <concrete step 2>
+RESUME WITH: <exact phrase to type, or 'no further action'>
+=== END SPECREW HANDOFF ===
+``````
+
+Do not omit this block even if you also produced a longer developer-facing briefing. The handoff block is what tells the human exactly where you stopped, why, and how to continue — without it the session ends ambiguously and momentum is lost.
+47. The handoff block must use the canonical F-039 boundary names (``specify``, ``clarify``, ``plan``, ``tasks``, ``before-implement``, ``implement``, ``review``, ``retro``, ``feature-closeout``) or the literal string ``lifecycle-end``. Do not invent boundary labels.
 
 Your goal is to let the human developer primarily answer unresolved questions while Squad handles the rest of the lifecycle automatically.
 "@
@@ -3088,12 +3124,21 @@ $artifactListFormatted
             -ApprovalOperatorNote $ApprovalOperatorNote `
             -RecoverySession $RecoverySession)
 
-    if ($null -ne $SessionState) {
-        $effectiveBoundaryEnforcement = Get-SpecrewBoundaryEnforcementState -ProjectRoot $ResolvedProjectPath
-        if ($effectiveBoundaryEnforcement.NeedsMigration) {
-            Initialize-SpecrewBoundaryEnforcementState -ProjectRoot $ResolvedProjectPath -CurrentBoundary $SessionState.boundary_type | Out-Null
+    # Bootstrap boundary_enforcement on every start (Fix following F-040 calc-v2 dogfooding 2026-05-23).
+    # Previously this was gated on $SessionState -ne $null, which meant greenfield-new projects never
+    # got the boundary_enforcement block written. Any subsequent Test-SpecrewBoundaryAuthorization call
+    # then threw "Boundary enforcement state is missing from '<context>'. Run the migration flow from
+    # specrew start before crossing '<boundary>'." — even though the user HAD run specrew start.
+    $effectiveBoundaryEnforcement = Get-SpecrewBoundaryEnforcementState -ProjectRoot $ResolvedProjectPath
+    if ($effectiveBoundaryEnforcement.NeedsMigration) {
+        $boundaryTypeForInit = if ($null -ne $SessionState) { $SessionState.boundary_type } else { $null }
+        Initialize-SpecrewBoundaryEnforcementState -ProjectRoot $ResolvedProjectPath -CurrentBoundary $boundaryTypeForInit | Out-Null
+        if ($null -ne $SessionState) {
+            # Real schema-migration from a session that pre-dates schema v2 — record it in the ledger.
             Add-SpecrewBoundaryEnforcementLedgerEntry -ProjectRoot $ResolvedProjectPath -Boundary $SessionState.boundary_type -EnforcementAction 'migration' -CurrentBoundary $SessionState.boundary_type -RequestedBoundary $null -LaunchMode $LaunchMode -Reason 'Migrated start-context.json to schema v2 boundary_enforcement state.'
         }
+        # Greenfield-new: no migration ledger entry needed — the block is being written for the
+        # first time in a brand-new project, which is normal lifecycle initialization, not a fix-up.
     }
 
     if ($BypassBoundaryEnforcement) {

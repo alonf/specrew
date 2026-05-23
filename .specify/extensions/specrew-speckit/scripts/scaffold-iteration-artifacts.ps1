@@ -492,7 +492,12 @@ function Get-BaselineRef {
     }
 
     $headRef = @(& git -C $projectRoot rev-parse HEAD 2>$null)
-    if ($LASTEXITCODE -eq 0 -and $headRef.Count -gt 0 -and -not [string]::IsNullOrWhiteSpace($headRef[0])) {
+    $gitExit = $LASTEXITCODE
+    # Reset $LASTEXITCODE so the caller doesn't inherit our git exit code. In greenfield-new projects
+    # `git rev-parse HEAD` returns 128 (no commits yet); without this reset the surrounding script
+    # exits 128 even though we successfully fell back to the default baseline ref.
+    $global:LASTEXITCODE = 0
+    if ($gitExit -eq 0 -and $headRef.Count -gt 0 -and -not [string]::IsNullOrWhiteSpace($headRef[0])) {
         return [string]$headRef[0]
     }
 
