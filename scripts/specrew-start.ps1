@@ -478,12 +478,20 @@ function Get-SpecrewSessionStateSnapshot {
         }
     )
 
+    # File paths surfaced so Test-SpecrewSessionStateConsistency can distinguish
+    # "file absent on disk" from "file present but stale/unparseable" — fixes the
+    # misleading "missing or unreadable" message from tip-calc-v2 dogfooding 2026-05-23.
+    $resolvedProjectRoot = Resolve-ProjectPath -Path $ProjectRoot
+
     return [pscustomobject]@{
-        prompt    = $promptState
-        context   = $contextState
-        identity  = $identityState
-        decisions = $decisionsState
-        session_state = if ($states.Count -gt 0) { $states[0] } else { $null }
+        prompt         = $promptState
+        prompt_path    = Join-Path $resolvedProjectRoot '.specrew\last-start-prompt.md'
+        context        = $contextState
+        context_path   = Join-Path $resolvedProjectRoot '.specrew\start-context.json'
+        identity       = $identityState
+        identity_path  = Join-Path $resolvedProjectRoot '.squad\identity\now.md'
+        decisions      = $decisionsState
+        session_state  = if ($states.Count -gt 0) { $states[0] } else { $null }
     }
 }
 
@@ -569,17 +577,31 @@ function Test-SpecrewSessionStateConsistency {
     param([Parameter(Mandatory = $true)][pscustomobject]$Snapshot)
 
     $issues = New-Object System.Collections.Generic.List[string]
+    # Each entry now optionally carries a Path so we can distinguish "file absent on disk"
+    # from "file present but unparseable / stale frontmatter". Wording fix following
+    # tip-calc-v2 dogfooding 2026-05-23/24: the prior "missing or unreadable" message
+    # fired even when the file was present and readable, just stale relative to the git
+    # log — that misled the human into thinking the file had been deleted.
     $namedStates = @(
-        @{ Name = 'last-start-prompt.md'; State = $Snapshot.prompt }
-        @{ Name = 'start-context.json'; State = $Snapshot.context }
-        @{ Name = 'identity/now.md'; State = $Snapshot.identity }
+        @{ Name = 'last-start-prompt.md'; State = $Snapshot.prompt;   Path = $Snapshot.prompt_path }
+        @{ Name = 'start-context.json';   State = $Snapshot.context;  Path = $Snapshot.context_path }
+        @{ Name = 'identity/now.md';      State = $Snapshot.identity; Path = $Snapshot.identity_path }
     )
 
     $existingCount = @($namedStates | Where-Object { $null -ne $_.State }).Count
     if ($existingCount -gt 0) {
         foreach ($entry in $namedStates) {
             if ($null -eq $entry.State) {
-                $issues.Add(("Session-state file missing or unreadable: {0}" -f $entry.Name)) | Out-Null
+                $fileOnDisk = $false
+                if (-not [string]::IsNullOrWhiteSpace([string]$entry.Path)) {
+                    $fileOnDisk = Test-Path -LiteralPath ([string]$entry.Path) -PathType Leaf
+                }
+                if ($fileOnDisk) {
+                    $issues.Add(("Session-state file is present but stale or unparseable: {0} (file is on disk but its frontmatter / JSON could not be loaded; re-anchor or recreate to refresh)" -f $entry.Name)) | Out-Null
+                }
+                else {
+                    $issues.Add(("Session-state file missing on disk: {0} (re-anchor will recreate it from the current spec)" -f $entry.Name)) | Out-Null
+                }
             }
         }
     }
@@ -2720,10 +2742,10 @@ This is the authoritative map of Specrew's lifecycle and governance machinery as
 | ``.specify/extensions/specrew-speckit/scripts/scaffold-iteration-plan.ps1 -SpecPath <spec> -IterationNumber <NNN>`` | Scaffolds iterations/<NNN>/plan.md stub | Before /speckit.implement |
 | ``.specify/extensions/specrew-speckit/scripts/run-hardening-gate.ps1`` | OPTIONAL gate-regeneration helper. Takes a seed file with concern rows + computes the canonical Concern Review table + verdict. Useful only when you've edited concerns externally and want the gate file regenerated. **For normal lifecycle execution, skip this — the scaffold above already emits a ready gate.** | Rarely; only when regenerating from a seed |
 | ``.specify/extensions/specrew-speckit/scripts/run-mechanical-checks.ps1`` | Runs the dead-field / anti-pattern / test-integrity mechanical lenses; writes findings to quality/mechanical-findings.json | After implement; before review |
-| ``.specify/extensions/specrew-speckit/scripts/scaffold-review-artifact.ps1`` | Scaffolds review.md stub for the active iteration | At the start of review phase |
-| ``.specify/extensions/specrew-speckit/scripts/scaffold-retro-artifact.ps1`` | Scaffolds retro.md stub for the active iteration | At the start of retro phase |
-| ``.specify/extensions/specrew-speckit/scripts/scaffold-reviewer-artifacts.ps1`` | Scaffolds code-map / coverage-evidence / reviewer-index / review-diagrams / dependency-report | After implement, before /specrew-review |
-| ``.specify/extensions/specrew-speckit/scripts/scaffold-feature-closeout-dashboard.ps1`` | Scaffolds the closeout-dashboard.md at feature-closeout boundary. **Note: auto-render at feature-closeout is now wired into sync-boundary-state.ps1 (F-040 dogfooding Fix B), so you don't normally invoke this directly.** | Rarely; only for manual re-render |
+| ``.specify/extensions/specrew-speckit/scripts/scaffold-review-artifact.ps1 -IterationDirectory <dir>`` | Scaffolds review.md stub for the active iteration. **Param is ``-IterationDirectory``, NOT ``-SpecDirectory``** (latter is only on scaffold-iteration-artifacts). | At the start of review phase |
+| ``.specify/extensions/specrew-speckit/scripts/scaffold-retro-artifact.ps1 -IterationDirectory <dir>`` | Scaffolds retro.md stub for the active iteration | At the start of retro phase |
+| ``.specify/extensions/specrew-speckit/scripts/scaffold-reviewer-artifacts.ps1 -IterationDirectory <dir>`` | Scaffolds code-map / coverage-evidence / reviewer-index / review-diagrams / dependency-report. **Param is ``-IterationDirectory``, NOT ``-SpecDirectory``.** | After implement, before /specrew-review |
+| ``.specify/extensions/specrew-speckit/scripts/scaffold-feature-closeout-dashboard.ps1 -ProjectPath . -FeatureId <NNN>`` | Scaffolds the closeout-dashboard.md at feature-closeout boundary. **Note: auto-render at feature-closeout is now wired into sync-boundary-state.ps1 (F-040 dogfooding Fix B), so you don't normally invoke this directly.** | Rarely; only for manual re-render |
 | ``.specify/extensions/specrew-speckit/scripts/validate-governance.ps1 -ProjectPath .`` | Runs the full validator; emits PASS/WARN/FAIL findings | Before each boundary commit and at iteration close |
 | ``.specify/extensions/specrew-speckit/scripts/sync-boundary-state.ps1`` | Advances the boundary cursor in ``.specrew/start-context.json``; auto-renders dashboard.md at iteration-closeout + closeout-dashboard.md at feature-closeout. Use this WRAPPER path from downstream projects — it discovers the installed Specrew module and loads the actual implementation from there. | Called by sync-* agents; invoke directly via ``pwsh -File`` after each boundary commit when the sync-* agents aren't available |
 
@@ -2740,11 +2762,13 @@ This is the authoritative map of Specrew's lifecycle and governance machinery as
 
 The ``crew_runtime_status`` field tells you whether the downstream sync-* agents are wired up. If ``bootstrap_only``, those agents may not be available — invoke the deployed wrapper directly via ``pwsh -File .specify/extensions/specrew-speckit/scripts/sync-boundary-state.ps1 -ProjectPath . -BoundaryType <boundary> -FeatureRef <feature> -AuthCommitHash <hash>`` for boundary advances. The wrapper auto-resolves the actual implementation from the installed Specrew module, so this works in any downstream project. Iteration / feature closeout auto-renders dashboards (F-040 dogfooding Fix B).
 
-**Common pitfalls (already-fixed gaps from F-040 calc-v2 dogfooding 2026-05-23):**
+**Common pitfalls (already-fixed gaps from F-040 multi-host dogfooding 2026-05-23/24):**
 
 - ``Status: approved`` / ``in_progress`` are INVALID iteration / task statuses. Canonical iteration statuses: ``planning | executing | reviewing | retro | complete | abandoned``. Canonical task statuses: ``planned | in-progress | done | needs-rework | deferred | blocked`` (hyphens, not underscores).
 - Hardening-gate concern ``Status: tbd`` is rejected. Use ``addressed | not-applicable | deferred-with-approval``.
 - ``Capacity: <consumed>/<cap> <effort_unit>`` with NO trailing prose. Notes go in the Notes section.
+- **Web-form feature pitfall:** for any feature whose deliverable is an HTML form (calculator, registration, search box, etc.), browsers submit the form on **Enter key inside any ``<input>``** — which triggers a full page reload to the form's ``action`` URL and wipes computed output. If the form is rendered by your app and you want Enter to compute-without-reload, either (a) bind a ``submit`` handler that calls ``event.preventDefault()`` or (b) use ``<input type="button">`` (not ``submit``) for the action and avoid the form's default submission. Cover this in the test plan: a Cypress / Playwright test that types into the field and presses Enter must verify the computed value appears AND the URL does not change. This pitfall was the dominant bug class in F-040 tip-calc-v2 + calc-v2 dogfooding.
+- **Web-feature acceptance evidence:** for browser features, the review-time evidence must include a screenshot or recorded interaction showing the golden-path AND Enter-key behavior — running ``Invoke-WebRequest`` against the static HTML proves the file deployed, NOT that the feature works. Lighthouse / DOM-inspection MCPs (or manual browser steps documented in quickstart.md) are the canonical evidence layer.
 
 Follow this conversational sequence before implementation work:
 1. Preserve the roster snapshot first. Treat the operational roster above as active project state, do not recast it, and defer specialist additions until the spec and clarify outcome are grounded.
@@ -2837,6 +2861,100 @@ When resuming an existing feature, swap the opening line for ``"Welcome back —
 50. **Narration discipline (mandatory).** Reserve prose for: (a) the orientation block (once, per Rule 48), (b) clarify questions, (c) the HANDOFF block at boundary stops, (d) genuine decisions that affect the spec/plan, (e) ONE short progress sentence per major step ("Spec written.", "Iteration plan scaffolded.", "Tests passing — 51/51."), (f) status when the human asks. Avoid forever: "Let me read X", "Now let me check Y", "I'll gather Z context", "Let me orient myself", "I now have a complete picture", "Let me reconcile with the advisor", "Let me verify before committing". Use TaskList updates to show progress between boundaries — that's what the task pane is for. If you find yourself writing a narration sentence that says what you're ABOUT to do rather than what you JUST DID, delete it.
 51. **Advisor calls are for strategic decisions, not mechanical execution.** Call ``advisor()`` only when you have a genuine strategic decision: a contested architectural choice, an unclear scope-vs-cost tradeoff, a stuck loop on real errors. Mechanical lifecycle execution on small slices (<=2 user stories, <=5 FRs, no architectural ambiguity) proceeds without consulting. You do NOT need to "confirm the approach" before writing a spec.md or a plan.md for a 3-FR feature. Default to no. When in doubt: do the work, get the artifact on disk, and only call advisor if the work surfaces a real disagreement with the spec or a real architectural fork. The user is paying for both tokens and wall-clock on every advisor call.
 52. **File references in user-visible output must be clickable** (this prompt's host renders markdown). When you mention an artifact, source file, directory, or any other file-system path in ANY user-visible prose — orientation block (Rule 48), one-sentence progress updates (Rule 50), HANDOFF blocks (Rule 46), clarify questions, decisions, developer briefings, retro notes — wrap the reference in markdown-link syntax with a ``file:///`` URL built from the Project root URL above. Use forward slashes (the URL form is supplied for you at the top of this prompt as ``Project root (file:// URL form for clickable references): file:///...``). Apply this to directory references too (link the folder, the URL ending with ``/``). Example: instead of writing ``"the spec at specs/001-tip-calculator/spec.md"`` write ``"the [spec.md](file:///C:/Temp/specrew-tip-calc-v2/specs/001-tip-calculator/spec.md)"``. This applies even inside the HANDOFF block — the ``HUMAN ACTION NEEDED:`` bullets that reference files should be clickable. Tool outputs and code blocks where Claude Code already shows file paths are exempt; this rule only governs PROSE Claude writes.
+54. **Mandatory pre-implementation review artifact set (Wave B).** After ``/speckit.plan`` produces ``plan.md``, you MUST ensure all four of the following artifacts exist under ``specs/<feature>/`` BEFORE proceeding to ``/speckit.tasks``. They give the human reviewer a coherent view of WHAT will be built and HOW, BEFORE any code lands. If the Spec Kit plan agent did not emit a particular file, author it yourself from the templates below:
+
+  (a) **``specs/<feature>/data-model.md``** — domain entities + attributes + validation rules + relationships, even for simple features (a minimal "no persisted state; transient inputs only" note + 1-2 entity descriptions is fine for a stateless calculator). Format:
+
+``````markdown
+# Data Model: <Feature Name>
+
+**Feature**: <feature-ref>
+**Date**: <YYYY-MM-DD>
+**Purpose**: Define entities, attributes, relationships, and validation rules for <feature>.
+
+## Entity: <EntityName>
+
+**Purpose**: <one line>
+
+### Attributes
+| Attribute | Type | Required | Validation Rules | Description |
+| --- | --- | --- | --- | --- |
+| ... | ... | ... | ... | ... |
+
+### Lifecycle / Relationships
+<one-paragraph: how it's created, mutated, destroyed; what links to it>
+``````
+
+For state-free features, include a short "No persisted data" note + transient-input entities (CalculatorInput / CalculatorResult pattern).
+
+  (b) **``specs/<feature>/quickstart.md``** — "how to try this feature in 5 minutes" walkthrough. Covers: run command(s), canonical happy-path input, expected output, one acceptance scenario the human can replay by hand. Format:
+
+``````markdown
+# Quickstart: <Feature Name>
+
+**Feature**: <feature-ref>
+**Last verified**: <YYYY-MM-DD>
+
+## Run it
+<exact commands — `npm test` / `python -m http.server` / `pwsh -File ...`>
+
+## Try the canonical scenario
+<numbered steps + expected result per step>
+
+## Verify the edge cases
+<2-3 short edge-case scenarios from spec.md acceptance criteria>
+``````
+
+  (c) **``specs/<feature>/contracts/<feature-name>.md``** — document the feature's public API surface (function signatures, command-line surface, file format, IPC schema). Even code-only features have a contract: the exported functions of any pure module, the on-disk format produced, the CLI flags. Format:
+
+``````markdown
+# Contract: <Feature Name> Public Surface
+
+**Feature**: <feature-ref>
+**Stability**: <pre-1.0 | stable | deprecated>
+
+## <Module / Component Name>
+<one-paragraph description of what it does>
+
+### Exported API
+| Symbol | Signature | Purpose | Errors |
+| --- | --- | --- | --- |
+| `parseAmount(value): number` | normalize raw input → 0 on bad input | never throws, never NaN |
+
+### Invariants
+<bullet list of guarantees this contract makes — e.g., "perPerson * people >= total">
+``````
+
+  (d) **``specs/<feature>/review-diagrams.md``** — at least one Mermaid component diagram + one Mermaid sequence diagram for the canonical user flow. Even simple features benefit. Format:
+
+``````markdown
+# Review Diagrams: <Feature Name>
+
+**Feature**: <feature-ref>
+**Phase**: pre-implementation (planning artifact for reviewer)
+
+## Component diagram
+\`\`\`mermaid
+flowchart LR
+  Inputs[User Inputs] --> Engine[Pure Calc Module]
+  Engine --> Render[DOM Renderer]
+  Render --> UI[Page]
+\`\`\`
+
+## Sequence: <canonical user flow>
+\`\`\`mermaid
+sequenceDiagram
+  participant User
+  participant UI
+  participant Engine
+  User->>UI: types bill amount
+  UI->>Engine: calculate(input)
+  Engine-->>UI: {tip, total, perPerson}
+  UI-->>User: renders formatted result
+\`\`\`
+``````
+
+These four artifacts together address the empirical complaint from tip-calc-v2 dogfooding (2026-05-24): "I see only some of the md files compared to what we have in Specrew itself ... some should be there to assist the review after plan before implement." After ``/speckit.plan`` runs, verify each file exists and has substantive (not template-placeholder) content; commit them with the plan boundary. They become the foundation the human reviews to approve the ``before-implement`` gate.
 53. **Structured verdict menu at every human-approval boundary stop (mandatory).** Immediately AFTER you emit the HANDOFF block at a human-verdict gate (``before-implement``, ``review-signoff``, ``iteration-closeout``, ``feature-closeout``, or any other point where you need the human to choose between continue / send-back / something-else), call your host's interactive-question primitive to present this canonical menu:
 
 ``````text

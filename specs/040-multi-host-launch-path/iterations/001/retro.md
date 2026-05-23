@@ -137,3 +137,123 @@ re-using for any future template that the model edits.
 - Proposal 057's full input-adapter system remains the next move on the dashboard /
   roadmap front; the stub-bootstrap unblocked dogfooding but the full proposal still
   needs implementation
+
+---
+
+## Addendum: Post-Ship Dogfooding (tip-calc-v2 + codex-test, 2026-05-23/24)
+
+Second round of dogfooding ran two parallel sessions: `specrew start --host claude`
+against `C:\Temp\specrew-tip-calc-v2` (tip-calculator feature, Claude session) and
+`specrew start --host codex` against `C:\Temp\codex-test` (small calculator feature,
+Codex session). Both sessions surfaced fresh issues. All fix-now per F-040-not-shipped
+no-backward-compat directive. **Wave A** (single commit) addressed 7 mechanical fixes;
+**Waves B+C+D** (this addendum) added 7 methodology / UX fixes.
+
+### Wave A (commit `5d731060`, F-040 branch; subset `e12f9561` on main): 7 fixes
+
+- **A1** — Codex `--full-auto` flag rejected by Codex CLI with `error: unexpected
+  argument '--full-auto' found`. Real flag (verified via `codex --help`):
+  `--dangerously-bypass-approvals-and-sandbox` (full-equivalent of Claude's
+  `--dangerously-skip-permissions`). Fixed in `scripts/internal/host-flag-translation.ps1`,
+  `scripts/specrew-start.ps1` (usage + start-summary lines), and the multi-host integration
+  test (expected argv golden + matrix row). F-040 Codex support was completely broken
+  before this fix.
+- **A2** — `scaffold-iteration-artifacts.ps1` now writes `contracts/mechanical-findings.schema.json`
+  unconditionally at iteration scaffold. Empirical: tip-calc-v2 hand-authored this when
+  `run-mechanical-checks.ps1` threw `Mechanical findings schema not found` (drift D-001).
+- **A3** — `scaffold-iteration-artifacts.ps1` security-surface row now seeds canonical
+  `addressed` status instead of `tbd` (which the validator already rejected). Same fix
+  applied to all three default concern rows (security-surface, error-handling-expectations,
+  retry-idempotency-requirements). Test
+  `tests/integration/bootstrap-to-iteration.ps1` updated to match.
+- **A4** — `scaffold-review-artifact.ps1` Gap Ledger now seeds canonical `fixed-now`
+  placeholder line + HTML comment dialect block ("fixed-now / deferred only"). Empirical:
+  tip-calc-v2 saw the prior "Replace this reminder" placeholder rejected by the validator
+  because it didn't carry a fixed-now/deferred token.
+- **A5** — `scaffold-governance.ps1` now writes `.markdownlint.json` at `specrew init`
+  with Specrew's own dev-tree relaxations (MD013/MD024/MD025/MD026/MD029/MD033/MD036/MD040/MD041
+  disabled; MD032/MD047 kept). Closes the boundary-time markdownlint failures that hit
+  every greenfield project's first commit.
+- **A6** — `scaffold-reviewer-artifacts.ps1` dropped the `\bFR-048\b` hardcode (a
+  Specrew product-spec leak) for security-surface emission. Replaced with a generic
+  task-title security-keyword regex (`(?i)\b(security|auth|secret|encrypt|vuln|csrf|xss|sandbox|permission)\b`).
+- **A7** — Dashboard renderer discovery: three separate scripts had the same path-resolution
+  bug for `scripts/internal/dashboard-renderer.ps1`. Each now does dev-tree-first /
+  installed-module-fallback lookup via `Get-Module Specrew -ListAvailable`. Also added
+  three missing F-040 internal scripts to `Specrew.psd1` `FileList` (detect-hosts,
+  host-flag-translation, coordinator-prompt-surgery) so the v0.26.0 PSGallery release
+  ships them.
+
+### Waves B + C + D (this addendum): 7 fixes
+
+- **B (rule 54 — mandatory pre-implementation review artifact set)** — Embedded in the
+  coordinator prompt (`scripts/specrew-start.ps1`). After `/speckit.plan` produces
+  `plan.md`, the Crew MUST ensure all four of `data-model.md`, `quickstart.md`,
+  `contracts/<feature>.md`, and `review-diagrams.md` exist under `specs/<feature>/`
+  BEFORE proceeding to `/speckit.tasks`. Each carries an embedded markdown template
+  with example shape for state-free / Mermaid-component cases. Closes the empirical
+  complaint from tip-calc-v2 dogfooding 2026-05-24: "I see only some of the md files
+  compared to what we have in Specrew itself ... some should be there to assist the
+  review after plan before implement." After `/speckit.plan` runs, the Crew now writes
+  these proactively rather than waiting for the validator to demand them at
+  before-implement.
+- **C1 (validator messages list canonical token sets)** — `validate-governance.ps1`
+  (+ mirror) error text now includes the full allowed-token list for iteration `Status`
+  and task `Status` validation failures. Hyphen-vs-underscore confusion now visible
+  in the failure message itself, e.g. `Task 'T001' uses invalid status 'in_progress'
+  (expected one of: planned | in-progress | done | needs-rework | deferred | blocked —
+  note hyphens, e.g.` `` `in-progress` `` `not` `` `in_progress` `` `)`. Empirical
+  motivation: tip-calc-v2 Crew hit the underscore form repeatedly.
+- **C2 (stale-state recovery wording fix)** — `Get-SpecrewSessionStateSnapshot` now
+  returns `prompt_path` / `context_path` / `identity_path` so
+  `Test-SpecrewSessionStateConsistency` can call `Test-Path` and pick between two
+  messages: "Session-state file missing on disk: X (re-anchor will recreate it from
+  the current spec)" when the file is absent, vs "Session-state file is present but
+  stale or unparseable: X (file is on disk but its frontmatter / JSON could not be
+  loaded; re-anchor or recreate to refresh)" when the file exists but failed to parse.
+  Closes the misleading "missing or unreadable" message that fired even when the file
+  was present but had stale frontmatter.
+- **C3 (Quick Reference shows canonical script parameters)** — Coordinator prompt's
+  "Governance scripts" table now includes parameter names with each row. The four
+  reviewer/retro/review scaffolders show `-IterationDirectory <dir>`; the closeout
+  dashboard scaffolder shows `-ProjectPath . -FeatureId <NNN>`. Inline "Param is
+  `-IterationDirectory`, NOT `-SpecDirectory`" disambiguator clarifies that
+  `-SpecDirectory` is only used by `scaffold-iteration-artifacts.ps1` (which itself
+  uses `-SpecDirectory` for the parent feature dir, not the iteration dir). Empirical
+  motivation: multiple Crew runs called the reviewer scaffolders with `-SpecDirectory`
+  by analogy to scaffold-iteration-artifacts.
+- **D (web-form feature pitfall + acceptance-evidence note)** — Common pitfalls
+  section in the coordinator prompt gains two bullets. **(1) HTML form Enter-key
+  semantics**: browsers submit the form on Enter inside any `<input>`, triggering a
+  full page reload to the form's `action` URL and wiping computed output. Fix is
+  either `event.preventDefault()` on submit or `<input type="button">` instead of
+  `submit`. Test coverage must include "type into field + press Enter →
+  verify-computed-value-AND-URL-unchanged." **(2) Web-feature acceptance evidence**:
+  for browser features, the review-time evidence must include a screenshot or
+  recorded interaction showing golden-path AND Enter-key behavior — running
+  `Invoke-WebRequest` against the static HTML proves the file deployed, NOT that the
+  feature works. Lighthouse / DOM-inspection MCPs (or manual browser steps documented
+  in quickstart.md) are the canonical evidence layer. Both pitfalls were dominant
+  bug classes across tip-calc-v2 + calc-v2 dogfooding.
+
+### Cross-cutting lesson #2: methodology lives in the prompt, not the validator
+
+Waves B + C3 + D are all coordinator-prompt additions, not new validator rules. The
+shipping cost is one rule append in a single file; the value is the Crew sees the
+guidance at the moment it would otherwise improvise. Validator rules catch outcomes;
+prompt rules shape behavior before the outcome happens. Pattern: when an empirical
+gap is "the Crew didn't know to do X," prefer adding the rule to the coordinator
+prompt over adding a validator rule. Validator rules retain their role for things
+the Crew can't easily check itself (e.g., manifest-version consistency, file-on-disk
+existence, structural lint).
+
+### Status (Wave B + C + D)
+
+- **Wave B + C + D**: this commit (planned squash on F-040 branch + cherry-pick to main)
+- **CHANGELOG**: `### Fixed` subsection under `[0.26.0]` updated with the 7-fix bundle
+- **Integration tests**: `tests/integration/multi-host-launch-path.tests.ps1` (Wave A
+  golden test, regression guard) + `tests/integration/bootstrap-to-iteration.ps1`
+  (security-surface row pattern updated to match A3) + `tests/integration/drift-scenario.ps1`
+  (no change needed, regression guard) all PASS locally
+- **Proposal pointers**: no new proposals — all fixes are F-040 follow-on slices of
+  the dogfooding-driven fix bundle
