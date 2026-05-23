@@ -3486,8 +3486,14 @@ if ($selectedHost -notin (Get-SpecrewSupportedHostKinds)) {
     exit 1
 }
 
-# Probe PATH for selected host; missing CLI = install guidance + exit
-if (-not $availableHostsMap[$selectedHost]) {
+# Probe PATH for selected host. With --no-launch we still want to write the
+# handoff prompt/context/summary artifacts (the user may install the host CLI
+# later and run the printed manual launch command), so the missing-host check
+# is enforced ONLY when an actual launch is requested. Pre-F-040 behavior:
+# Start-CopilotSession returned $false on missing copilot, then the no-launch
+# path printed the manual command anyway. F-040 preserves that contract by
+# deferring the missing-host fail-fast to the launch path below.
+if (-not $availableHostsMap[$selectedHost] -and -not $NoLaunch) {
     Write-Error-Message (Get-SpecrewHostInstallGuidance -HostKind $selectedHost)
     exit 1
 }

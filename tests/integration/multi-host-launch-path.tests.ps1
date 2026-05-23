@@ -345,6 +345,17 @@ foreach ($hk in 'copilot', 'claude', 'codex') {
 }
 Write-Pass 'Universal Crew-coordinator header literal is identical across all hosts (FR-011 invariant)'
 
+# Test 19a: --no-launch + missing host generates artifacts (back-compat with pre-F-040)
+# Pre-F-040 behavior: Start-CopilotSession returned $false on missing copilot,
+# then specrew-start.ps1 still printed the manual launch command and exited 0.
+# F-040 must preserve this contract so `specrew init` + `specrew start --no-launch`
+# works on a fresh machine before any host CLI is installed.
+$startScriptText = Get-Content -LiteralPath $startScript -Raw -Encoding UTF8
+if ($startScriptText -notmatch '-not \$availableHostsMap\[\$selectedHost\] -and -not \$NoLaunch') {
+    Write-Fail '--no-launch should bypass the missing-host fail-fast (regression of pre-F-040 no-launch artifact-generation contract)'
+}
+Write-Pass '--no-launch path bypasses missing-host fail-fast (artifacts still generated when host CLI is absent)'
+
 # Test 19: --host antigravity and --host auto rejection text quality (AC16)
 $antigravity = Get-SpecrewDeferredHostGuidance -HostKind 'antigravity'
 foreach ($keyword in 'agy', 'session-ID', '069', 'working-directory') {

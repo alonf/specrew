@@ -29,15 +29,17 @@ If any are missing:
 - **Node.js + npm**: [https://nodejs.org/](https://nodejs.org/) (LTS)
 - **GitHub CLI**: [https://cli.github.com/](https://cli.github.com/) — used for the PR-creation lifecycle gates
 
-You need one of the supported **agent host CLIs** to launch the lifecycle. As of v0.26.0, three hosts are supported via `specrew start --host <kind>`:
+#### Pick at least one host CLI
 
-| Host | CLI | Install URL |
-|---|---|---|
-| GitHub Copilot (default) | `copilot` | [docs.github.com/en/copilot/how-tos/copilot-cli](https://docs.github.com/en/copilot/how-tos/copilot-cli) |
-| Claude Code | `claude` | [docs.anthropic.com/en/docs/claude-code/installation](https://docs.anthropic.com/en/docs/claude-code/installation) |
-| Codex CLI | `codex` | [developers.openai.com/codex/cli](https://developers.openai.com/codex/cli) |
+Specrew needs one of the supported **agent host CLIs** to actually run a lifecycle session. As of v0.26.0 there are three supported hosts — install at least one. You select which one at launch time via `specrew start --host <kind>` (default: `copilot`).
 
-Copilot is the default host when no `--host` flag is specified. Antigravity (`agy`) is reserved in the parser but deferred to a follow-up slice (see [Proposal 069](../proposals/069-multi-host-launch-path.md) follow-up); `--host auto` is reserved for [Proposal 104](../proposals/104-multi-host-onboarding-and-selection-flow.md).
+| Host | `--host` value | CLI binary | Install URL | Notes |
+|---|---|---|---|---|
+| **GitHub Copilot** *(default)* | `copilot` | `copilot` | [docs.github.com/en/copilot/how-tos/copilot-cli](https://docs.github.com/en/copilot/how-tos/copilot-cli) | Most-tested host; default if `--host` is omitted |
+| **Claude Code** | `claude` | `claude` | [docs.anthropic.com/en/docs/claude-code/installation](https://docs.anthropic.com/en/docs/claude-code/installation) | Headless `claude -p` invocation; rich subagent + hook surface (see [Proposal 105](../proposals/105-host-native-hook-deployment.md) for the hook-deployment follow-up) |
+| **Codex CLI** | `codex` | `codex` | [developers.openai.com/codex/cli](https://developers.openai.com/codex/cli) | `codex exec --cd` invocation; no user-defined slash commands so the Crew uses pwsh-form boundary-advance instructions instead |
+
+Reserved-but-deferred kinds: `antigravity` (follow-up slice once `agy` working-directory + session-ID issues clear), `auto` (reserved for [Proposal 104](../proposals/104-multi-host-onboarding-and-selection-flow.md) first-run probe). Specrew rejects these with explicit "deferred" guidance rather than silently falling back.
 
 ### 2. Install Specrew from PowerShell Gallery
 
@@ -66,18 +68,30 @@ specrew init
 
 ### 4. Start the first feature
 
+Pick the host at launch time via `--host`. The default (no flag) is `copilot`:
+
 ```powershell
+# Default: GitHub Copilot host
 specrew start "Build a web based calculator with only the + - * / MR MC M+ M- operations"
+
+# Or with Claude Code
+specrew start --host claude "Build a web based calculator with only the + - * / MR MC M+ M- operations"
+
+# Or with Codex CLI
+specrew start --host codex "Build a web based calculator with only the + - * / MR MC M+ M- operations"
 ```
 
 That single command:
 
 1. Refreshes the runtime handoff artifacts (`.specrew/last-start-prompt.md`, `.specrew/start-context.json`, `.specrew/start-summary.md`)
-2. Launches the selected host CLI in the current terminal (GitHub Copilot by default; `--host claude` or `--host codex` available since v0.26.0 — see [docs/user-guide.md "Multi-Host Launch"](user-guide.md#multi-host-launch-v0260) for the full flag-translation matrix)
-3. Hands Squad the feature description and tells it to drive the canonical lifecycle: `specify → clarify → plan → tasks → before-implement → implement → review-signoff → retro → iteration-closeout → feature-closeout`
-4. Stops at every approval boundary and waits for your explicit verdict before advancing (gate-respecting mode is the default since Proposal 066)
+2. Validates the selected host is installed on PATH (otherwise exits with the install URL for that host — see step 1's host table)
+3. Launches the selected host CLI in the current terminal with Specrew's bootstrap context. Per-host flag translation makes `--remote` / `--allow-all` / `--autopilot` uniform regardless of host (see [docs/user-guide.md "Multi-Host Launch"](user-guide.md#multi-host-launch-v0260) for the full flag-translation matrix)
+4. Hands the Crew the feature description and tells it to drive the canonical lifecycle: `specify → clarify → plan → tasks → before-implement → implement → review-signoff → retro → iteration-closeout → feature-closeout`
+5. Stops at every approval boundary and waits for your explicit verdict before advancing (gate-respecting mode is the default since Proposal 066)
 
-When Squad surfaces a clarify question, answer it. When it surfaces a planning artifact, review it. When it asks for an implementation verdict, type one of the recognized verdict shapes (e.g. `approved for implementation-boundary entry`). The lifecycle then continues to the next boundary.
+When the Crew surfaces a clarify question, answer it. When it surfaces a planning artifact, review it. When it asks for an implementation verdict, type one of the recognized verdict shapes (e.g. `approved for implementation-boundary entry`). The lifecycle then continues to the next boundary.
+
+> **Switching hosts on the same project** is supported: end the session and restart `specrew start --host <other>`. Mid-session switching requires you to end and restart — by design. (Concurrent multi-host execution is Scenario B of [Proposal 024](../proposals/024-multi-host-runtime-abstraction.md), not in F-040's scope.)
 
 That is the full minimal flow. Everything else on this page is optional — covered in the sections below.
 
