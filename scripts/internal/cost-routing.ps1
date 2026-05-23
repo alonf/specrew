@@ -478,3 +478,152 @@ function Test-SpecrewPricingOverridesExpiry {
         return [pscustomobject]@{ ShouldWarn = $false; DaysUntilExpiry = $null; ContractId = $contractId; Message = $null }
     }
 }
+
+# ============================================================================
+# Reasoning-effort routing (F-041 FR-021..FR-025)
+# Per Q8 clarify default — lean profile routes TWO dimensions per role:
+# model tier + reasoning effort. Empirically validated 2026-05-23 against
+# Claude/Codex/Copilot CLI docs. Cost impact ~10x at max vs low.
+# ============================================================================
+
+function Resolve-SpecrewEffortForRole {
+    <#
+    .SYNOPSIS
+    Determine reasoning effort for a role under the active cost profile,
+    respecting human overrides.
+
+    Read precedence per FR-025:
+      1. .squad/config.json roleEffortOverrides.<role> (human-config)
+      2. cost_profile_definitions[profile][role].effort (lean-profile-default)
+      3. model's default_effort (model-default)
+      4. silent skip when model doesn't support reasoning_effort (unsupported)
+
+    .OUTPUTS
+    PSCustomObject with Effort (string or $null when unsupported) and
+    Source attribution.
+    #>
+    param(
+        [Parameter(Mandatory = $true)][object]$Catalog,
+        [Parameter(Mandatory = $true)][string]$Host,
+        [Parameter(Mandatory = $true)][string]$Model,
+        [Parameter(Mandatory = $true)][string]$Role,
+        [string]$CostProfile = 'lean',
+        [object]$SquadConfigOverrides
+    )
+
+    $catalogBlock = if ($Catalog -is [hashtable] -and $Catalog.ContainsKey('catalog')) { $Catalog['catalog'] } else { $Catalog }
+    $hostBlock = $catalogBlock['hosts'][$Host]
+    if ($null -eq $hostBlock) {
+        return [pscustomobject]@{ Effort = $null; Source = 'unsupported' }
+    }
+    $modelEntry = $hostBlock['models'] | Where-Object { $_['id'] -eq $Model } | Select-Object -First 1
+    if ($null -eq $modelEntry) {
+        return [pscustomobject]@{ Effort = $null; Source = 'unsupported' }
+    }
+
+    $supports = $false
+    if ($modelEntry.ContainsKey('supports_reasoning_effort')) {
+        $supports = [bool]$modelEntry['supports_reasoning_effort']
+    }
+    if (-not $supports) {
+        return [pscustomobject]@{ Effort = $null; Source = 'unsupported' }
+    }
+
+    # Precedence 1: explicit human override
+    if ($null -ne $SquadConfigOverrides -and $SquadConfigOverrides.ContainsKey('roleEffortOverrides')) {
+        $overrides = $SquadConfigOverrides['roleEffortOverrides']
+        if ($overrides.ContainsKey($Role)) {
+            return [pscustomobject]@{ Effort = [string]$overrides[$Role]; Source = 'human-config' }
+        }
+    }
+
+    # Precedence 2: cost-profile default
+    if ($catalogBlock.ContainsKey('cost_profile_definitions') -and $catalogBlock['cost_profile_definitions'].ContainsKey($CostProfile)) {
+        $profile = $catalogBlock['cost_profile_definitions'][$CostProfile]
+        $roleKey = (Get-Culture).TextInfo.ToTitleCase($Role.ToLower()) -replace '\s+', '_'
+        if ($profile.ContainsKey($roleKey) -and $profile[$roleKey].ContainsKey('effort')) {
+            return [pscustomobject]@{ Effort = [string]$profile[$roleKey]['effort']; Source = 'lean-profile-default' }
+        }
+    }
+
+    # Precedence 3: model default
+    if ($modelEntry.ContainsKey('default_effort')) {
+        return [pscustomobject]@{ Effort = [string]$modelEntry['default_effort']; Source = 'model-default' }
+    }
+
+    return [pscustomobject]@{ Effort = 'medium'; Source = 'safe-fallback' }
+}
+
+function Get-SpecrewEffortInjectionForHost {
+    <#
+    .SYNOPSIS
+    Per FR-023: dispatch on host's native primitive to inject reasoning
+    effort at launch. Returns the injection mechanism + args/config-update.
+    #>
+    param(
+        [Parameter(Mandatory = $true)]
+        [ValidateSet('copilot', 'claude', 'codex', 'antigravity')]
+        [string]$HostKind,
+
+        [Parameter(Mandatory = $true)]
+        [ValidateSet('low', 'medium', 'high', 'xhigh', 'max')]
+        [string]$Effort
+    )
+
+    switch ($HostKind.ToLowerInvariant()) {
+        'claude' {
+            return [pscustomobject]@{
+                InjectionType = 'launch-flag'
+                Args          = @('--effort', $Effort)
+                ConfigUpdate  = $null
+                Notes         = "Claude Code: --effort $Effort applied at launch. Override mid-session with /effort <level>."
+            }
+        }
+        'codex' {
+            return [pscustomobject]@{
+                InjectionType = 'launch-flag'
+                Args          = @('--config', "model_reasoning_effort=`"$Effort`"")
+                ConfigUpdate  = $null
+                Notes         = "Codex CLI: --config model_reasoning_effort=$Effort at launch. Permanent setting goes in ~/.codex/config.toml."
+            }
+        }
+        'copilot' {
+            return [pscustomobject]@{
+                InjectionType = 'documented-only'
+                Args          = @()
+                ConfigUpdate  = $null
+                Notes         = "Copilot CLI: reasoning effort selected per model in the model picker; cannot inject via launch flag in F-041 v1. Decision recorded in .squad/decisions.md."
+            }
+        }
+        'antigravity' {
+            return [pscustomobject]@{
+                InjectionType = 'deferred'
+                Args          = @()
+                ConfigUpdate  = $null
+                Notes         = "Antigravity host effort injection deferred to Antigravity follow-up slice."
+            }
+        }
+    }
+}
+
+function Get-SpecrewEffortAdjustedCost {
+    <#
+    .SYNOPSIS
+    Apply the effort-token multiplier to a base cost computation.
+    Used by F-042 cost.yml estimator (per FR-024).
+    #>
+    param(
+        [Parameter(Mandatory = $true)][object]$ModelEntry,
+        [Parameter(Mandatory = $true)][double]$BaseCostUsd,
+        [Parameter(Mandatory = $true)][string]$EffortLevel
+    )
+
+    if (-not $ModelEntry.ContainsKey('effort_token_multipliers')) {
+        return $BaseCostUsd
+    }
+    $multipliers = $ModelEntry['effort_token_multipliers']
+    if (-not $multipliers.ContainsKey($EffortLevel)) {
+        return $BaseCostUsd
+    }
+    return [Math]::Round($BaseCostUsd * [double]$multipliers[$EffortLevel], 6)
+}
