@@ -73,7 +73,7 @@ specrew start "Build a web based calculator with only the + - * / MR MC M+ M- op
 That single command:
 
 1. Refreshes the runtime handoff artifacts (`.specrew/last-start-prompt.md`, `.specrew/start-context.json`, `.specrew/start-summary.md`)
-2. Launches GitHub Copilot CLI in the current terminal
+2. Launches the selected host CLI in the current terminal (GitHub Copilot by default; `--host claude` or `--host codex` available since v0.26.0 — see [docs/user-guide.md "Multi-Host Launch"](user-guide.md#multi-host-launch-v0260) for the full flag-translation matrix)
 3. Hands Squad the feature description and tells it to drive the canonical lifecycle: `specify → clarify → plan → tasks → before-implement → implement → review-signoff → retro → iteration-closeout → feature-closeout`
 4. Stops at every approval boundary and waits for your explicit verdict before advancing (gate-respecting mode is the default since Proposal 066)
 
@@ -212,7 +212,7 @@ When `specrew start` runs without a feature description in an existing project, 
 | Platform | Status |
 |---|---|
 | Windows 11 (primary) | ✅ Fully validated |
-| WSL Ubuntu | ✅ Manually validated end-to-end (specrew init + specrew start launch Copilot REPL with Squad selected) |
+| WSL Ubuntu | ✅ Manually validated end-to-end (specrew init + specrew start launch the host CLI; Copilot+Squad validated through F-019; Claude/Codex hosts added in v0.26.0 and parser-tested) |
 | Linux native (Ubuntu) | ✅ Path handling cross-platform; CI matrix configured |
 | macOS | 🔧 Path handling cross-platform; CI matrix configured; no in-house validation runs yet |
 

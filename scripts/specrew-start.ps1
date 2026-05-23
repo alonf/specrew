@@ -268,25 +268,31 @@ $ErrorActionPreference = 'Stop'
 
 function Show-Usage {
     @'
-specrew start - Start or resume the Squad-driven Spec Kit lifecycle
+specrew start - Start or resume the Crew-driven Spec Kit lifecycle
 
 Usage:
   specrew start
   specrew start "Build a reporting dashboard"
   specrew start --feature-request "Add SSO login"
   specrew start --resume-feature auto
+  specrew start --host claude "Build a TODO app"
+  specrew start --host codex --resume-feature auto
 
 Options:
   -ProjectPath | --project-path <path>     Target project directory (defaults to current directory)
   -ResumeFeature | --resume-feature <path|auto>
                                            Resume an existing feature directory, or use "auto"
-  -Agent | --agent <name>                  Copilot agent to launch (default: Squad)
-  -NoLaunch | --no-launch                  Generate handoff prompt/context but do not launch Copilot
-  -NewWindow | --new-window                Launch Copilot in a new PowerShell window instead of the current terminal
+  -Agent | --agent <name>                  Crew runtime agent label (default: Squad — used by Copilot host)
+  -HostKind | --host <copilot|claude|codex>
+                                           Select the agent host runtime (default: copilot). 'antigravity' and
+                                           'auto' are reserved but rejected with deferred-guidance pointing to
+                                           Proposal 069 follow-up / Proposal 104 respectively.
+  -NoLaunch | --no-launch                  Generate handoff prompt/context but do not launch the host CLI
+  -NewWindow | --new-window                Launch the host CLI in a new PowerShell window instead of the current terminal
   -SameWindow | --same-window              Compatibility alias for the default current-terminal launch mode
-  -AllowAll | --allow-all                  Launch Copilot with --allow-all so tool calls run without approval prompts (this is the default for tool calls)
-  -PromptApprovals | --prompt-approvals    Keep Copilot's interactive tool-approval prompts enabled (disables --allow-all)
-  -Autonomous | --autonomous               Launch Copilot with --autopilot so Squad advances through lifecycle gates without stopping for explicit approval (use for unattended runs such as overnight execution; default is gate-respecting mode where Squad stops at every approval boundary)
+  -AllowAll | --allow-all                  Launch the host with its tool-approval-bypass flag (Copilot --allow-all, Claude --dangerously-skip-permissions, Codex --full-auto). Default for tool calls.
+  -PromptApprovals | --prompt-approvals    Keep the host's interactive tool-approval prompts enabled (disables --allow-all translation)
+  -Autonomous | --autonomous               Specrew-side flag (independent of any host autopilot): the Crew advances through lifecycle gates without stopping for explicit approval. Use for unattended runs such as overnight execution; default is gate-respecting mode where the Crew stops at every approval boundary.
   --bypass-boundary-enforcement            Suspend boundary enforcement for this session only; requires --reason
   --reason "<text>"                        Required justification for --bypass-boundary-enforcement
   -Recover | --recover                     Bypass stale-state blocking and enter recovery mode directly
@@ -297,12 +303,12 @@ Options:
     - Running specrew start with no arguments launches Squad in intake/resume mode.
     - Squad should continue any in-progress feature when possible, or gather the missing feature/fix details from the human developer.
     - A quoted feature request is optional shorthand for a new feature, not a full spec document.
-     - Specrew launches Copilot from the target project directory, reuses the current terminal by default, and only uses --new-window when you explicitly ask for a detached shell.
-     - Specrew always auto-loads the bootstrap via -i so Copilot reads the Squad handoff before doing anything else.
-     - The default behavior is gate-respecting: Squad stops at every lifecycle approval boundary (specify, clarify, plan, tasks, before-implement, review-signoff, retro, iteration-closeout, feature-closeout) and waits for explicit human verdict. Pass --autonomous to enable Copilot CLI autopilot mode for unattended runs.
-     - --allow-all (default) and --autonomous are independent: --allow-all controls tool-call approval; --autonomous controls whether Squad advances through lifecycle gates without input. Intake stage stays interactive regardless of --autonomous so initial scope is never auto-resolved.
-     - Copilot CLI may still ask you to trust the project directory on first launch.
-     - If Copilot CLI is unavailable, Specrew still writes a handoff prompt and context file.
+     - Specrew launches the selected host CLI (--host copilot|claude|codex, default copilot) from the target project directory, reuses the current terminal by default, and only uses --new-window when you explicitly ask for a detached shell.
+     - Specrew auto-loads the bootstrap so the host reads the Crew handoff at `.specrew/last-start-prompt.md` and `.specrew/start-context.json` before doing anything else.
+     - The default behavior is gate-respecting: the Crew stops at every lifecycle approval boundary (specify, clarify, plan, tasks, before-implement, review-signoff, retro, iteration-closeout, feature-closeout) and waits for explicit human verdict. Pass --autonomous to advance through gates without stopping (unattended runs).
+     - --allow-all (default) and --autonomous are independent: --allow-all controls tool-call approval (translated per host); --autonomous controls whether the Crew advances through lifecycle gates without input. Intake stage stays interactive regardless of --autonomous so initial scope is never auto-resolved.
+     - The selected host may still ask you to trust the project directory on first launch.
+     - If the selected host CLI is unavailable, Specrew still writes a handoff prompt and context file.
 '@ | Write-Host
 }
 
@@ -812,7 +818,7 @@ function Resolve-SpecrewRecoverySelection {
                 SkipAutoResume        = $true
                 ForceNoLaunch         = $true
                 NextActionMessage     = 'Recovery will stop after writing diagnostics so you can manually fix or document the stale state before restarting.'
-                Directive             = 'Recovery choice C selected: do not launch Copilot automatically. Review the recorded stale-state evidence, repair the session-state artifacts manually, then rerun specrew start.'
+                Directive             = 'Recovery choice C selected: do not launch the host CLI automatically. Review the recorded stale-state evidence, repair the session-state artifacts manually, then rerun specrew start.'
             }
         }
     }
@@ -3133,7 +3139,7 @@ function Get-DisplayPathFromProjectRoot {
     return Get-DisplayRelativePath -ProjectRoot $projectRoot -ResolvedPath $resolvedPath
 }
 
-function Get-CopilotBootstrapInput {
+function Get-HostBootstrapInput {
     param(
         [string]$ResolvedProjectPath,
         [string]$PromptPath,
@@ -3269,7 +3275,7 @@ function Get-SpecrewHostLaunchInvocation {
     }
 }
 
-function Get-ManualCopilotCommand {
+function Get-ManualLaunchCommand {
     <#
     .SYNOPSIS
     Generate a printable, host-aware manual launch command string.
@@ -3286,7 +3292,7 @@ function Get-ManualCopilotCommand {
         [string]$HostKind = 'copilot'
     )
 
-    $bootstrapInput = Get-CopilotBootstrapInput -ResolvedProjectPath $ResolvedProjectPath -PromptPath $PromptPath -ContextPath $ContextPath -RequireInteractiveIntake $RequireInteractiveIntake
+    $bootstrapInput = Get-HostBootstrapInput -ResolvedProjectPath $ResolvedProjectPath -PromptPath $PromptPath -ContextPath $ContextPath -RequireInteractiveIntake $RequireInteractiveIntake
 
     $invocation = Get-SpecrewHostLaunchInvocation `
         -HostKind $HostKind `
@@ -3320,7 +3326,7 @@ function Get-AllowAllRuntimePlan {
     }
 }
 
-function Start-CopilotSession {
+function Start-HostSession {
     <#
     .SYNOPSIS
     Launch the selected host (copilot/claude/codex) with Specrew's bootstrap context.
@@ -3345,7 +3351,7 @@ function Start-CopilotSession {
         return $false
     }
 
-    $bootstrapInput = Get-CopilotBootstrapInput -ResolvedProjectPath $ResolvedProjectPath -PromptPath $PromptPath -ContextPath $ContextPath -RequireInteractiveIntake $RequireInteractiveIntake
+    $bootstrapInput = Get-HostBootstrapInput -ResolvedProjectPath $ResolvedProjectPath -PromptPath $PromptPath -ContextPath $ContextPath -RequireInteractiveIntake $RequireInteractiveIntake
 
     $invocation = Get-SpecrewHostLaunchInvocation `
         -HostKind $HostKind `
@@ -3724,7 +3730,7 @@ if (-not [string]::IsNullOrWhiteSpace($allowAllRuntimePlan.SuppressionNote)) {
 
 if ($NoLaunch -or $forceNoLaunch) {
     Write-Info "Launch skipped by --no-launch."
-    Write-Info ("Manual launch command (run from the project root; bootstrap is auto-loaded): {0}" -f (Get-ManualCopilotCommand -ResolvedProjectPath $resolvedProjectPath -PromptPath $artifactPaths.PromptPath -ContextPath $artifactPaths.ContextPath -Agent $Agent -AllowAll $allowAllRuntimePlan.PassAllowAll -UseAutopilot $useAutopilot -RequireInteractiveIntake $requiresInteractiveIntake -HostKind $selectedHost))
+    Write-Info ("Manual launch command (run from the project root; bootstrap is auto-loaded): {0}" -f (Get-ManualLaunchCommand -ResolvedProjectPath $resolvedProjectPath -PromptPath $artifactPaths.PromptPath -ContextPath $artifactPaths.ContextPath -Agent $Agent -AllowAll $allowAllRuntimePlan.PassAllowAll -UseAutopilot $useAutopilot -RequireInteractiveIntake $requiresInteractiveIntake -HostKind $selectedHost))
     exit 0
 }
 
@@ -3735,7 +3741,7 @@ else {
     Write-Info ("Delegating to Copilot + {0} in a new PowerShell window with auto-loaded bootstrap..." -f $Agent)
 }
 
-$copilotStarted = Start-CopilotSession `
+$hostStarted = Start-HostSession `
     -ResolvedProjectPath $resolvedProjectPath `
     -PromptPath $artifactPaths.PromptPath `
     -ContextPath $artifactPaths.ContextPath `
@@ -3746,9 +3752,9 @@ $copilotStarted = Start-CopilotSession `
     -RequireInteractiveIntake $requiresInteractiveIntake `
     -HostKind $selectedHost
 
-if (-not $copilotStarted) {
+if (-not $hostStarted) {
     Write-Info ("{0} CLI was not available, so Specrew wrote a resume-safe handoff prompt instead." -f $selectedHost)
-    Write-Info ("Manual launch command (run from {0}; bootstrap is auto-loaded): {1}" -f $resolvedProjectPath, (Get-ManualCopilotCommand -ResolvedProjectPath $resolvedProjectPath -PromptPath $artifactPaths.PromptPath -ContextPath $artifactPaths.ContextPath -Agent $Agent -AllowAll $allowAllRuntimePlan.PassAllowAll -UseAutopilot $useAutopilot -RequireInteractiveIntake $requiresInteractiveIntake -HostKind $selectedHost))
+    Write-Info ("Manual launch command (run from {0}; bootstrap is auto-loaded): {1}" -f $resolvedProjectPath, (Get-ManualLaunchCommand -ResolvedProjectPath $resolvedProjectPath -PromptPath $artifactPaths.PromptPath -ContextPath $artifactPaths.ContextPath -Agent $Agent -AllowAll $allowAllRuntimePlan.PassAllowAll -UseAutopilot $useAutopilot -RequireInteractiveIntake $requiresInteractiveIntake -HostKind $selectedHost))
     exit 0
 }
 
