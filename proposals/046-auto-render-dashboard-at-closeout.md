@@ -1,13 +1,33 @@
 ---
 proposal: 046
 title: Auto-Render Dashboard at Iteration & Feature Closeout
-status: candidate
+status: partially-shipped
+shipped-as: fix-bundle 162bcdb9 — auto-render slice (Invoke-SpecrewAutoRenderDashboard in sync-boundary-state.ps1; writes iterations/<NNN>/dashboard.md at iteration-closeout and closeout-dashboard.md at feature-closeout). Inline-shipped during F-040 calc-v2 dogfooding 2026-05-23.
+shipped-in: v0.26.0
 phase: phase-2
 estimated-sp: 5
+actual-sp: 2  # shipped slice only; remaining scope below stays candidate
 discussion: tbd
 ---
 
 # Auto-Render Dashboard at Iteration & Feature Closeout
+
+## Status notes (2026-05-23)
+
+The minimal auto-render slice (boundary-sync writes dashboard.md / closeout-dashboard.md
+via `specrew where --capture-kind iteration-closeout` / `--capture-kind feature-closeout`
+with `--preserve-existing-artifact`) shipped inline as part of the F-040 dogfooding fix
+bundle (commit `162bcdb9`). The remaining scope below stays candidate:
+
+- Roadmap-aware velocity drill-down at feature-closeout
+- Trap-reapplication summary integration
+- Dashboard diff vs. baseline iteration (across iterations)
+- Optional auto-render on `review-signoff` boundary (additional capture-kind beyond
+  iteration-closeout + feature-closeout)
+
+A future iteration of this proposal can pick up those items; the most-impactful slice
+(the one that prevented calc-v2 from producing any dashboard at all) is already in
+production.
 
 ## Why
 

@@ -8,7 +8,7 @@ This index is the navigation surface for all proposals in this directory. Sorted
 
 ---
 
-## Shipped (23)
+## Shipped (26)
 
 Proposals whose features have shipped to main and are part of Specrew's current capability.
 
@@ -38,6 +38,9 @@ Proposals whose features have shipped to main and are part of Specrew's current 
 | [090](090-closeout-lifecycle-sync-commands.md) | Closeout Lifecycle Sync Commands (Structural Fix for Crew-Bypass Bug Class) | feature-032 (v0.24.3 bundle) | phase-2 | 6.5 |
 | [065](065-launch-mode-boundary-enforcement.md) | Launch-Mode Boundary Enforcement (Tool-Call-Layer Intercept for Lifecycle Boundaries) | feature-039 (v0.25.0) | phase-2 | 7.0 |
 | [069](069-multi-host-launch-path.md) | Multi-Host Launch Path + Per-Host Flag Pass-Through (Claude Code + Codex) | feature-040 (v0.26.0) | phase-2 | 15.25 |
+| [107](107-host-aware-routing-plan-fallback.md) | Host-Aware Routing Plan Fallback (F-040 follow-up: promote `--host` selection into the routing plan; host-first fallback instead of always copilot-first) | fix-bundle `a45232af` + `b1486f4c` (v0.26.0 — F-040 calc-v2 dogfooding 2026-05-23) | phase-2 | 3 |
+| [046](046-auto-render-dashboard-at-closeout.md) | Auto-Render Dashboard at Iteration & Feature Closeout — auto-render slice ONLY (boundary-sync writes `iterations/<NNN>/dashboard.md` + `closeout-dashboard.md`); roadmap-aware drill-down + trap-reapplication summary + cross-iteration diff remain candidate | fix-bundle `162bcdb9` (v0.26.0 — partially-shipped) | phase-2 | 2 (shipped slice) |
+| [057](057-roadmap-spine-input-adapter-pattern.md) | Roadmap Spine + Input Adapter Pattern — stub-bootstrap slice ONLY (`specrew init` writes minimal `.specrew/roadmap.yml`); full input-adapter system (manual / GitHub Issues / Linear / etc.) remains candidate | fix-bundle `162bcdb9` (v0.26.0 — partially-shipped) | phase-3 | 1 (shipped slice) |
 
 ## Draft (15)
 
@@ -62,7 +65,7 @@ Proposals with full source-spec content, ready for `/speckit.specify` ingestion 
 | [070](070-token-economy-mvp.md) | Token Economy MVP (Cost-per-Iteration Tracking + Dashboard Surfacing) | phase-2 | 5 | **URGENT — cost-reduction bundle.** `specs/<feature>/iterations/<N>/cost.yml` records per-boundary token consumption + cost estimate from Proposal 068's catalog; `specrew where` dashboard gains COST section; `specrew cost summary/add/recompute` CLI. MVP slice of Proposal 040 (Token Economy as Governance Driver) — measurement only, no governance layer. |
 | [074](074-code-commentary-standards.md) | Code Commentary Standards (Multi-Level Convention + Preference Dial) | phase-2 | 12-15 | Replaces the current "default to no comments" Implementer instruction with a four-category taxonomy (contract / why-rationale / concept / inline narration), a four-level preference dial (`minimalist` / `standard` / `educational` / `textbook`), and a language-idiomatic convention catalog (C# XML doc, JSDoc, docstring, Javadoc, godoc, rustdoc, PowerShell comment-based help, etc.). Reviewer agent gains a contract-docs verification check. Empirical motivation: 2026-05-21 smoke trial produced a complete .NET 8 snake-game solution with **zero XML doc comments on public APIs** — IntelliSense silently empty. Composes with Proposals 047 / 052 / 015 (dials, profiles, expertise). |
 
-## Candidate (67)
+## Candidate (66)
 
 Idea-form proposals not yet developed into full source specs. Open for discussion; may mature to draft or be withdrawn.
 
@@ -93,7 +96,7 @@ Idea-form proposals not yet developed into full source specs. Open for discussio
 | [043](043-structured-question-protocol.md) | Structured Question Protocol | phase-3 | 10 |
 | [044](044-downstream-quality-baseline-bootstrap.md) | Downstream Quality Baseline Bootstrap | phase-2 | 10 |
 | [045](045-ci-watchdog-recurrence-prevention.md) | CI Watchdog & Recurrence Prevention | phase-2 | 8 |
-| [046](046-auto-render-dashboard-at-closeout.md) | Auto-Render Dashboard at Iteration & Feature Closeout | phase-2 | 5 |
+| [046](046-auto-render-dashboard-at-closeout.md) | Auto-Render Dashboard at Iteration & Feature Closeout — remaining scope (roadmap-aware velocity drill-down, trap-reapplication summary, cross-iteration diff, optional review-signoff capture-kind); auto-render slice already shipped in v0.26.0 | phase-2 | 3 (remaining) |
 | [047](047-project-governance-profile.md) | Project Governance Profile (Init-Time Preference Capture) | phase-2 | 20 |
 | [048](048-dashboard-velocity-metric-refinement.md) | Dashboard Velocity Metric Refinement | phase-2 | 5 |
 | [049](049-version-check-source-unification.md) | Version-Check Source Unification | phase-2 | 3 |
@@ -104,7 +107,7 @@ Idea-form proposals not yet developed into full source specs. Open for discussio
 | [054](054-pre-merge-lifecycle-verification-gate.md) | Pre-Merge End-to-End Lifecycle Verification Gate | phase-2 | 15 |
 | [055](055-always-in-flow-bug-fix-lifecycle.md) | Always-In-Flow Discipline + Slice-Type Catalog (Including Bug-Fix Lifecycle) | phase-2 | 18 |
 | [056](056-specrew-readonly-mode.md) | Specrew Readonly Mode (Concurrent-Session Inspection Safety) | phase-2 | 12 |
-| [057](057-roadmap-spine-input-adapter-pattern.md) | Roadmap Spine + Input Adapter Pattern | phase-3 | 28 |
+| [057](057-roadmap-spine-input-adapter-pattern.md) | Roadmap Spine + Input Adapter Pattern — remaining scope (input adapters: manual / GitHub Issues / Linear / Jira / Azure DevOps / iteration-end auto-sync; dashboard renderer integration; conflict resolution); stub-bootstrap slice already shipped in v0.26.0 | phase-3 | 27 (remaining) |
 | [058](058-plugin-based-multi-host-distribution.md) | Plugin-Based Multi-Host Distribution (Per-Host Plugin Packaging) | phase-3 | 28 |
 | [059](059-legacy-state-read-tolerance.md) | Legacy-State Read-Tolerance + Schema Migration Discipline | phase-2 | 15 |
 | [060](060-prerelease-channel-staging.md) | PSGallery Prerelease Channel + Staging Discipline | phase-2 | 10 |
@@ -135,7 +138,6 @@ Idea-form proposals not yet developed into full source specs. Open for discussio
 | [104](104-multi-host-onboarding-and-selection-flow.md) | Multi-Host Onboarding + Selection Flow (Init Timing, Host Detection, State Location) | phase-2 | 8-12 |
 | [105](105-host-native-hook-deployment.md) | Host-Native Hook Deployment for Runtime Boundary Enforcement (elevates F-039 from cooperative to runtime on Claude/Antigravity hosts via PreToolUse/SubagentStart/Stop hooks) | phase-2 | 12-18 |
 | [106](106-provider-billing-reconciliation-and-estimator-calibration.md) | Provider Billing Reconciliation + Estimator Calibration (closed-loop cost accuracy: multi-provider billing CSV/JSON import, calibration factor computation, calibration-aware estimator, dashboard surfacing of the closed loop) | phase-2 | 12-18 |
-| [107](107-host-aware-routing-plan-fallback.md) | Host-Aware Routing Plan Fallback (F-040 follow-up: route every role to the launch host when claude/codex aren't otherwise enabled; promotes `--host` selection into the routing plan instead of always falling back to copilot) | phase-2 | 3-5 |
 
 ---
 
