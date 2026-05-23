@@ -2539,7 +2539,7 @@ function Test-PlanTaskSet {
 
         $normalizedTaskStatus = $task.Status.Trim().ToLowerInvariant()
         if ($normalizedTaskStatus -notin $allowedTaskStatuses) {
-            $Errors.Add("Task '$($task.Task)' uses invalid status '$($task.Status)' (expected one of: $($allowedTaskStatuses -join ' | ') — note hyphens, e.g. ``in-progress`` not ``in_progress``)")
+            $Errors.Add("Task '$($task.Task)' uses invalid status '$($task.Status)'")
         }
     }
 }
@@ -3389,7 +3389,7 @@ function Test-IterationGovernance {
 
     $status = Get-NormalizedKeyword (Get-MarkdownMetadataValue -Lines $planLines -Label 'Status')
     if ($status -notin $allowedIterationStatuses) {
-        $errors.Add("plan.md has invalid iteration status '$status' (expected one of: $($allowedIterationStatuses -join ' | '))")
+        $errors.Add("plan.md has invalid iteration status '$status'")
     }
 
     $completed = Get-MarkdownMetadataValue -Lines $planLines -Label 'Completed'
