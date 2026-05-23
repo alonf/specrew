@@ -2896,7 +2896,7 @@ For state-free features, include a short "No persisted data" note + transient-in
 **Last verified**: <YYYY-MM-DD>
 
 ## Run it
-<exact commands — `npm test` / `python -m http.server` / `pwsh -File ...`>
+<exact commands — ``npm test`` / ``python -m http.server`` / ``pwsh -File ...``>
 
 ## Try the canonical scenario
 <numbered steps + expected result per step>
@@ -2919,30 +2919,30 @@ For state-free features, include a short "No persisted data" note + transient-in
 ### Exported API
 | Symbol | Signature | Purpose | Errors |
 | --- | --- | --- | --- |
-| `parseAmount(value): number` | normalize raw input → 0 on bad input | never throws, never NaN |
+| ``parseAmount`` | ``(value): number`` | normalize raw input → 0 on bad input | never throws, never NaN |
 
 ### Invariants
 <bullet list of guarantees this contract makes — e.g., "perPerson * people >= total">
 ``````
 
-  (d) **``specs/<feature>/review-diagrams.md``** — at least one Mermaid component diagram + one Mermaid sequence diagram for the canonical user flow. Even simple features benefit. Format:
+  (d) **``specs/<feature>/review-diagrams.md``** — at least one Mermaid component diagram + one Mermaid sequence diagram for the canonical user flow. Even simple features benefit. Format (outer fence uses 4 backticks so the inner Mermaid 3-backtick fences nest cleanly):
 
-``````markdown
+````````markdown
 # Review Diagrams: <Feature Name>
 
 **Feature**: <feature-ref>
 **Phase**: pre-implementation (planning artifact for reviewer)
 
 ## Component diagram
-\`\`\`mermaid
+``````mermaid
 flowchart LR
   Inputs[User Inputs] --> Engine[Pure Calc Module]
   Engine --> Render[DOM Renderer]
   Render --> UI[Page]
-\`\`\`
+``````
 
 ## Sequence: <canonical user flow>
-\`\`\`mermaid
+``````mermaid
 sequenceDiagram
   participant User
   participant UI
@@ -2951,8 +2951,8 @@ sequenceDiagram
   UI->>Engine: calculate(input)
   Engine-->>UI: {tip, total, perPerson}
   UI-->>User: renders formatted result
-\`\`\`
 ``````
+````````
 
 These four artifacts together address the empirical complaint from tip-calc-v2 dogfooding (2026-05-24): "I see only some of the md files compared to what we have in Specrew itself ... some should be there to assist the review after plan before implement." After ``/speckit.plan`` runs, verify each file exists and has substantive (not template-placeholder) content; commit them with the plan boundary. They become the foundation the human reviews to approve the ``before-implement`` gate.
 53. **Structured verdict menu at every human-approval boundary stop (mandatory).** Immediately AFTER you emit the HANDOFF block at a human-verdict gate (``before-implement``, ``review-signoff``, ``iteration-closeout``, ``feature-closeout``, or any other point where you need the human to choose between continue / send-back / something-else), call your host's interactive-question primitive to present this canonical menu:
