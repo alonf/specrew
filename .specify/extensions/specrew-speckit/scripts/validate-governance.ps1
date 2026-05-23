@@ -838,11 +838,60 @@ function Test-SessionStateBoundaryCanonical {
     return 0
 }
 
+function Get-PublicReadinessEnabled {
+    # Reads `.specrew/config.yml` for `public_readiness.enabled: true|false`.
+    # Default false — new projects start private and only opt in to public-readiness
+    # checks (LICENSE / NOTICE.md / CHANGELOG.md / docs/versioning.md / README-version-
+    # sync) when the user explicitly classifies the project as public-facing. F-025
+    # intake (Proposal 063) will flip this to true based on the project-classification
+    # question; until then it stays off so new projects don't get noisy WARNs.
+    param([string]$ProjectRoot)
+
+    $configPath = Join-Path $ProjectRoot '.specrew\config.yml'
+    if (-not (Test-Path -LiteralPath $configPath -PathType Leaf)) {
+        return $false
+    }
+
+    $insidePublicReadinessBlock = $false
+    try {
+        foreach ($line in Get-MarkdownContent -Path $configPath) {
+            if ($line -match '^public_readiness:\s*$') {
+                $insidePublicReadinessBlock = $true
+                continue
+            }
+            if ($insidePublicReadinessBlock) {
+                if ($line -match '^\s{2}enabled:\s*"?(true|false)"?\s*$') {
+                    return [bool]::Parse($Matches[1])
+                }
+                if ($line -match '^[^\s]') {
+                    # Hit the next top-level key — stop scanning the public_readiness block
+                    break
+                }
+            }
+        }
+    }
+    catch {
+        return $false
+    }
+
+    return $false
+}
+
 function Test-PublicReadinessSurfaces {
     param(
         [Parameter(Mandatory = $true)]
         [string]$ProjectRoot
     )
+
+    # F-040 dogfooding fix (tip-calc-v2 2026-05-23): public-readiness checks are now
+    # opt-in via `.specrew/config.yml#public_readiness.enabled`. New projects default
+    # to false — they only fire when the project owner has classified the project as
+    # public-facing (intake F-025 will write this from the project-classification
+    # answer). Specrew's own dogfooding tree DOES have `public_readiness.enabled: true`
+    # in its config so the warnings continue to surface there.
+    if (-not (Get-PublicReadinessEnabled -ProjectRoot $ProjectRoot)) {
+        return
+    }
 
     try {
         foreach ($artifact in @('LICENSE', 'NOTICE.md', 'CHANGELOG.md')) {
