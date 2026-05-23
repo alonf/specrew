@@ -32,8 +32,15 @@ cost:
       tokens_in: 12450
       tokens_out: 3210
 
+      # Reasoning effort (F-041 FR-024 — second cost-routing dimension)
+      effort_level: "medium"      # low | medium | high | xhigh | max | null (when model doesn't support effort)
+      effort_multiplier_applied: 2.5  # the multiplier read from catalog effort_token_multipliers; 1.0 when null effort
+
       # Cost computation
-      estimated_cost_usd: 0.42    # computed: tokens × per-million-cost / 1e6; null if catalog incomplete
+      estimated_cost_usd: 0.42    # computed: tokens × per-million-cost × effort_multiplier_applied / 1e6
+      public_cost_usd: 0.50       # F-041 FR-018: what the public catalog rate would have charged (audit)
+      pricing_source: "org-negotiated"   # F-041 FR-018: public-list | org-negotiated | manual-override
+      override_contract_id: "ATC-2026-Q1"  # F-041 FR-018: when pricing_source != public-list
       cost_estimate_confidence: "medium"  # high (per-model tokenizer) / medium (vendor pricing) / low (naive estimate or missing catalog)
 
       # Provenance

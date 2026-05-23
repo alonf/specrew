@@ -250,7 +250,10 @@ function Add-SpecrewCostRecord {
         [ValidateSet('estimated', 'reported', 'manual')]
         [string]$Source = 'estimated',
         [string]$TaskId,
-        [string]$ManualNote
+        [string]$ManualNote,
+        # F-041 FR-024: effort dimension recorded per cost record
+        [ValidateSet('low', 'medium', 'high', 'xhigh', 'max', '')]
+        [string]$EffortLevel = ''
     )
 
     $path = Get-SpecrewCostYmlPath -ProjectPath $ProjectPath -Feature $Feature -Iteration $Iteration
@@ -258,31 +261,39 @@ function Add-SpecrewCostRecord {
         $null = Initialize-SpecrewCostYml -ProjectPath $ProjectPath -Feature $Feature -Iteration $Iteration
     }
 
-    # Read catalog for cost-per-token + currency normalization
+    # Read catalog + pricing-overrides for cost-per-token + currency normalization + effort multiplier
     $catalog = Get-SpecrewModelCatalog -ProjectPath $ProjectPath
-    $costMetrics = Compute-CostFromCatalog -Catalog $catalog -Model $Model -Host $Host -TokensIn $TokensIn -TokensOut $TokensOut
+    $overrides = Get-SpecrewPricingOverrides -ProjectPath $ProjectPath -ErrorAction SilentlyContinue
+    $costMetrics = Compute-CostFromCatalog -Catalog $catalog -Overrides $overrides -Model $Model -Host $Host -TokensIn $TokensIn -TokensOut $TokensOut -EffortLevel $EffortLevel
 
     # Read current cost.yml
     $cost = Get-SpecrewCostYml -ProjectPath $ProjectPath -Feature $Feature -Iteration $Iteration
 
     $now = [DateTime]::UtcNow.ToString('o')
     $newRecord = @{
-        timestamp                = $now
-        boundary                 = $Boundary
-        role                     = $Role
-        task_id                  = $TaskId
-        host                     = $Host
-        model                    = $Model
-        tokens_in                = $TokensIn
-        tokens_out               = $TokensOut
-        estimated_cost_usd       = $costMetrics.CostUsd
-        cost_estimate_confidence = $costMetrics.Confidence
-        source                   = $Source
-        tokenizer_method         = $costMetrics.TokenizerMethod
-        catalog_refresh_at       = $costMetrics.CatalogRefreshedAt
-        pricing_unit             = $costMetrics.PricingUnit
-        credit_value_usd         = $costMetrics.CreditValueUsd
-        manual_note              = $ManualNote
+        timestamp                  = $now
+        boundary                   = $Boundary
+        role                       = $Role
+        task_id                    = $TaskId
+        host                       = $Host
+        model                      = $Model
+        tokens_in                  = $TokensIn
+        tokens_out                 = $TokensOut
+        # F-041 FR-024: effort dimension + multiplier applied
+        effort_level               = if ([string]::IsNullOrWhiteSpace($EffortLevel)) { $null } else { $EffortLevel }
+        effort_multiplier_applied  = $costMetrics.EffortMultiplierApplied
+        # F-041 FR-018: dual-rate audit fields
+        estimated_cost_usd         = $costMetrics.CostUsd
+        public_cost_usd            = $costMetrics.PublicCostUsd
+        pricing_source             = $costMetrics.PricingSource
+        override_contract_id       = $costMetrics.OverrideContractId
+        cost_estimate_confidence   = $costMetrics.Confidence
+        source                     = $Source
+        tokenizer_method           = $costMetrics.TokenizerMethod
+        catalog_refresh_at         = $costMetrics.CatalogRefreshedAt
+        pricing_unit               = $costMetrics.PricingUnit
+        credit_value_usd           = $costMetrics.CreditValueUsd
+        manual_note                = $ManualNote
     }
 
     if ($null -eq $cost.cost.records) { $cost.cost.records = @() }
@@ -371,25 +382,36 @@ function Get-SpecrewCostAggregates {
 function Compute-CostFromCatalog {
     <#
     .SYNOPSIS
-    Compute USD cost for given tokens_in/out + model id + host, using catalog rates.
-    Handles currency normalization (credits → USD via credit_value_usd).
+    Compute USD cost for (tokens_in, tokens_out, model, host), applying:
+      - currency normalization (credits → USD via credit_value_usd)
+      - F-041 FR-017 pricing-overrides overlay (per-model OR per-host discount)
+      - F-041 FR-024 effort_token_multiplier (from catalog effort_token_multipliers)
+
+    Returns BOTH the effective cost (with all overrides + effort applied) AND
+    the public cost (catalog list price, no effort applied) for FR-018 audit.
     #>
     param(
         [object]$Catalog,
+        [object]$Overrides,
         [Parameter(Mandatory = $true)][string]$Model,
         [Parameter(Mandatory = $true)][string]$Host,
         [Parameter(Mandatory = $true)][int]$TokensIn,
-        [Parameter(Mandatory = $true)][int]$TokensOut
+        [Parameter(Mandatory = $true)][int]$TokensOut,
+        [string]$EffortLevel = ''
     )
 
     if ($null -eq $Catalog) {
         return @{
-            CostUsd            = $null
-            Confidence         = 'low'
-            TokenizerMethod    = 'naive_byte_4'
-            CatalogRefreshedAt = $null
-            PricingUnit        = $null
-            CreditValueUsd     = $null
+            CostUsd                 = $null
+            PublicCostUsd           = $null
+            PricingSource           = 'public-list'
+            OverrideContractId      = $null
+            EffortMultiplierApplied = 1.0
+            Confidence              = 'low'
+            TokenizerMethod         = 'naive_byte_4'
+            CatalogRefreshedAt      = $null
+            PricingUnit             = $null
+            CreditValueUsd          = $null
         }
     }
 
@@ -398,54 +420,74 @@ function Compute-CostFromCatalog {
     $hostBlock = $catalogBlock['hosts'][$Host]
     if ($null -eq $hostBlock) {
         return @{
-            CostUsd            = $null
-            Confidence         = 'low'
-            TokenizerMethod    = 'naive_byte_4'
-            CatalogRefreshedAt = $catalogRefreshedAt
-            PricingUnit        = $null
-            CreditValueUsd     = $null
+            CostUsd                 = $null
+            PublicCostUsd           = $null
+            PricingSource           = 'public-list'
+            OverrideContractId      = $null
+            EffortMultiplierApplied = 1.0
+            Confidence              = 'low'
+            TokenizerMethod         = 'naive_byte_4'
+            CatalogRefreshedAt      = $catalogRefreshedAt
+            PricingUnit             = $null
+            CreditValueUsd          = $null
         }
     }
-
-    $pricingUnit = [string]($hostBlock['pricing_unit'] ?? 'usd')
-    $creditValueUsd = $hostBlock['credit_value_usd']
 
     $modelEntry = $hostBlock['models'] | Where-Object { $_['id'] -eq $Model } | Select-Object -First 1
     if ($null -eq $modelEntry) {
         return @{
-            CostUsd            = $null
-            Confidence         = 'low'
-            TokenizerMethod    = 'naive_byte_4'
-            CatalogRefreshedAt = $catalogRefreshedAt
-            PricingUnit        = $pricingUnit
-            CreditValueUsd     = $creditValueUsd
+            CostUsd                 = $null
+            PublicCostUsd           = $null
+            PricingSource           = 'public-list'
+            OverrideContractId      = $null
+            EffortMultiplierApplied = 1.0
+            Confidence              = 'low'
+            TokenizerMethod         = 'naive_byte_4'
+            CatalogRefreshedAt      = $catalogRefreshedAt
+            PricingUnit             = [string]($hostBlock['pricing_unit'] ?? 'usd')
+            CreditValueUsd          = $hostBlock['credit_value_usd']
         }
     }
 
-    $inputRate  = [double]($modelEntry['cost_per_million_input']  ?? 0.0)
-    $outputRate = [double]($modelEntry['cost_per_million_output'] ?? 0.0)
+    # Resolve effective pricing (public + override layer)
+    $effective = Get-SpecrewEffectivePricing -Catalog $Catalog -Overrides $Overrides -Host $Host -Model $Model
 
-    # Compute raw cost in the host's pricing unit
-    $rawCost = ($TokensIn / 1e6) * $inputRate + ($TokensOut / 1e6) * $outputRate
+    $pricingUnit = $effective.PricingUnit
+    $creditValueUsd = $effective.CreditValueUsd
 
-    # Normalize to USD (credits-based hosts: multiply by credit_value_usd)
-    $costUsd = if ($pricingUnit -eq 'credits' -and $null -ne $creditValueUsd) {
-        $rawCost * [double]$creditValueUsd
+    # Compute base raw costs (public list AND effective)
+    $publicRaw    = ($TokensIn / 1e6) * $effective.PublicInputCost    + ($TokensOut / 1e6) * $effective.PublicOutputCost
+    $effectiveRaw = ($TokensIn / 1e6) * $effective.EffectiveInputCost + ($TokensOut / 1e6) * $effective.EffectiveOutputCost
+
+    # Normalize to USD (credits-based hosts)
+    $publicCostUsd    = if ($pricingUnit -eq 'credits' -and $null -ne $creditValueUsd) { $publicRaw * [double]$creditValueUsd } else { $publicRaw }
+    $effectiveCostUsd = if ($pricingUnit -eq 'credits' -and $null -ne $creditValueUsd) { $effectiveRaw * [double]$creditValueUsd } else { $effectiveRaw }
+
+    # Apply effort multiplier (FR-024) to BOTH public and effective for fair comparison
+    $effortMultiplier = 1.0
+    if (-not [string]::IsNullOrWhiteSpace($EffortLevel) -and $modelEntry.ContainsKey('effort_token_multipliers')) {
+        $multipliers = $modelEntry['effort_token_multipliers']
+        if ($multipliers.ContainsKey($EffortLevel)) {
+            $effortMultiplier = [double]$multipliers[$EffortLevel]
+        }
     }
-    else {
-        $rawCost
-    }
+    $publicCostUsd    = $publicCostUsd    * $effortMultiplier
+    $effectiveCostUsd = $effectiveCostUsd * $effortMultiplier
 
-    $confidence = if ($inputRate -gt 0 -and $outputRate -gt 0) { 'medium' } else { 'low' }
+    $confidence = if ($effective.PublicInputCost -gt 0 -and $effective.PublicOutputCost -gt 0) { 'medium' } else { 'low' }
     $tokenizerMethod = [string]($modelEntry['tokenizer_method'] ?? 'naive_byte_4')
 
     return @{
-        CostUsd            = [Math]::Round($costUsd, 6)
-        Confidence         = $confidence
-        TokenizerMethod    = $tokenizerMethod
-        CatalogRefreshedAt = $catalogRefreshedAt
-        PricingUnit        = $pricingUnit
-        CreditValueUsd     = $creditValueUsd
+        CostUsd                 = [Math]::Round($effectiveCostUsd, 6)
+        PublicCostUsd           = [Math]::Round($publicCostUsd, 6)
+        PricingSource           = $effective.PricingSource
+        OverrideContractId      = $effective.OverrideContractId
+        EffortMultiplierApplied = $effortMultiplier
+        Confidence              = $confidence
+        TokenizerMethod         = $tokenizerMethod
+        CatalogRefreshedAt      = $catalogRefreshedAt
+        PricingUnit             = $pricingUnit
+        CreditValueUsd          = $creditValueUsd
     }
 }
 
