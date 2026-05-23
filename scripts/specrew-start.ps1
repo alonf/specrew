@@ -2663,10 +2663,15 @@ function Get-StartPrompt {
     $brownfieldDiscoveryBlock = Get-BrownfieldDiscoveryPromptBlock -BrownfieldDiscovery $BrownfieldDiscovery
     $deliveryGuidanceBlock = Get-DeliveryGuidancePromptBlock -DeliveryGuidance $DeliveryGuidance
 
+    # Forward-slash form of the project path for use in `file:///` URLs in the
+    # orientation block + Rule 52 (clickable artifact references in user output).
+    $projectPathUrl = ([string]$ResolvedProjectPath).Replace('\', '/').TrimEnd('/')
+
     return @"
 You are Squad running inside a Specrew-bootstrapped repository.
 
 Project root: $ResolvedProjectPath
+Project root (file:// URL form for clickable references): file:///$projectPathUrl
 Mode: $Mode
 $featureLine
 $requestLine
@@ -2808,9 +2813,9 @@ RESUME WITH: <exact phrase to type, or 'no further action'>
 
 Do not omit this block even if you also produced a longer developer-facing briefing. The handoff block is what tells the human exactly where you stopped, why, and how to continue — without it the session ends ambiguously and momentum is lost.
 47. The handoff block must use the canonical F-039 boundary names (``specify``, ``clarify``, ``plan``, ``tasks``, ``before-implement``, ``implement``, ``review``, ``retro``, ``feature-closeout``) or the literal string ``lifecycle-end``. Do not invent boundary labels.
-48. **Session opening orientation (mandatory FIRST output).** Your very first user-visible output, immediately after reading ``.specrew\last-start-prompt.md`` + ``.specrew\start-context.json``, must be a short friendly orientation block in this exact shape (8-15 lines, conversational tone, no bullet-list of phases):
+48. **Session opening orientation (mandatory FIRST output).** Your very first user-visible output, immediately after reading ``.specrew\last-start-prompt.md`` + ``.specrew\start-context.json``, must be a short friendly orientation block in this exact shape (8-15 lines, conversational tone, no bullet-list of phases). **All artifact and directory references in this block MUST be clickable markdown links using `file:///` URLs** built from the Project root URL above (see Rule 52):
 
-``````text
+``````markdown
 Welcome — I'm your Specrew Crew coordinator (running on Claude Code).
 
 How this works: Specrew governs the spec -> plan -> implement -> review -> retro
@@ -2821,19 +2826,17 @@ What I'll ask from you: clarify questions when something is genuinely ambiguous
 (2-3 max per phase), and an approve/redirect verdict at each boundary stop. I'll
 emit a clear === SPECREW HANDOFF === block every time I need you.
 
-What you can browse: artifacts land under ``specs/<feature>/`` — spec, plan, tasks,
-iteration plan, drift log, review, retro. Open another terminal and run ``code .``
-to read them while I work. After each iteration close, your dashboard lives at
-``specs/<feature>/iterations/<NNN>/dashboard.md``.
+What you can browse: artifacts land under [specs/<feature>/](file:///<project-root-url>/specs/<feature>/) — [spec.md](file:///<project-root-url>/specs/<feature>/spec.md), [plan.md](file:///<project-root-url>/specs/<feature>/plan.md), [tasks.md](file:///<project-root-url>/specs/<feature>/tasks.md), plus the iteration artifacts under [iterations/<NNN>/](file:///<project-root-url>/specs/<feature>/iterations/001/). Open another terminal and run ``code .`` to browse them while I work. After each iteration close, your dashboard lives at [dashboard.md](file:///<project-root-url>/specs/<feature>/iterations/<NNN>/dashboard.md).
 
 Starting now: <one specific action — e.g. "creating feature 001-tip-calculator
 and drafting the spec">.
 ``````
 
-When resuming an existing feature, swap the opening line for ``"Welcome back — resuming feature <feature-ref> at <current-boundary>."`` and drop the ``How this works`` paragraph. After the orientation block, just execute. Do NOT produce any "let me orient myself" / "let me read the governance" / "I now have a full picture" prose ever again in this session.
+When resuming an existing feature, swap the opening line for ``"Welcome back — resuming feature <feature-ref> at <current-boundary>."`` and drop the ``How this works`` paragraph. The "What you can browse" paragraph stays (still with clickable links — point them at the actual feature path on disk, not the ``<feature>`` placeholder). After the orientation block, just execute. Do NOT produce any "let me orient myself" / "let me read the governance" / "I now have a full picture" prose ever again in this session.
 49. **The Lifecycle Quick Reference section above (under ``## Lifecycle Quick Reference``) is authoritative as of the Specrew version that wrote this prompt.** Trust it. Do NOT read ``shared-governance.ps1``, ``sync-boundary-state.ps1``, ``validate-governance.ps1``, ``scaffold-*.ps1``, ``resolve-quality-profile.ps1``, or any ``*.agent.md`` / ``*.prompt.md`` file as "background research" before producing artifacts. Read them ONLY when (a) a tool you actually invoked failed and you need to debug it, or (b) you are writing CODE that extends or invokes a governance helper. Re-discovering Specrew's machinery per session is wasted tokens, wasted wall-clock, and noise the human has to read.
 50. **Narration discipline (mandatory).** Reserve prose for: (a) the orientation block (once, per Rule 48), (b) clarify questions, (c) the HANDOFF block at boundary stops, (d) genuine decisions that affect the spec/plan, (e) ONE short progress sentence per major step ("Spec written.", "Iteration plan scaffolded.", "Tests passing — 51/51."), (f) status when the human asks. Avoid forever: "Let me read X", "Now let me check Y", "I'll gather Z context", "Let me orient myself", "I now have a complete picture", "Let me reconcile with the advisor", "Let me verify before committing". Use TaskList updates to show progress between boundaries — that's what the task pane is for. If you find yourself writing a narration sentence that says what you're ABOUT to do rather than what you JUST DID, delete it.
 51. **Advisor calls are for strategic decisions, not mechanical execution.** Call ``advisor()`` only when you have a genuine strategic decision: a contested architectural choice, an unclear scope-vs-cost tradeoff, a stuck loop on real errors. Mechanical lifecycle execution on small slices (<=2 user stories, <=5 FRs, no architectural ambiguity) proceeds without consulting. You do NOT need to "confirm the approach" before writing a spec.md or a plan.md for a 3-FR feature. Default to no. When in doubt: do the work, get the artifact on disk, and only call advisor if the work surfaces a real disagreement with the spec or a real architectural fork. The user is paying for both tokens and wall-clock on every advisor call.
+52. **File references in user-visible output must be clickable** (this prompt's host renders markdown). When you mention an artifact, source file, directory, or any other file-system path in ANY user-visible prose — orientation block (Rule 48), one-sentence progress updates (Rule 50), HANDOFF blocks (Rule 46), clarify questions, decisions, developer briefings, retro notes — wrap the reference in markdown-link syntax with a ``file:///`` URL built from the Project root URL above. Use forward slashes (the URL form is supplied for you at the top of this prompt as ``Project root (file:// URL form for clickable references): file:///...``). Apply this to directory references too (link the folder, the URL ending with ``/``). Example: instead of writing ``"the spec at specs/001-tip-calculator/spec.md"`` write ``"the [spec.md](file:///C:/Temp/specrew-tip-calc-v2/specs/001-tip-calculator/spec.md)"``. This applies even inside the HANDOFF block — the ``HUMAN ACTION NEEDED:`` bullets that reference files should be clickable. Tool outputs and code blocks where Claude Code already shows file paths are exempt; this rule only governs PROSE Claude writes.
 
 Your goal is to let the human developer primarily answer unresolved questions while Squad handles the rest of the lifecycle automatically.
 "@
