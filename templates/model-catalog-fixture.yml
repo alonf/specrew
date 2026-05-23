@@ -19,6 +19,23 @@ catalog:
   confidence: medium
   fixture_origin: "F-041 ship-date fixture from vendor docs; refresh via /specrew-research-models for current data"
 
+  # FR-022: lean profile routes TWO dimensions per role — model tier AND reasoning effort.
+  # The mapping below is the F-041 v1 default lean profile.
+  # Users can override per-role at runtime via .squad/config.json agentModelOverrides
+  # (model) and roleEffortOverrides (effort) — see FR-025.
+  cost_profile_definitions:
+    lean:
+      Implementer:        { tier: cheap,    effort: low }
+      Retro_Facilitator:  { tier: cheap,    effort: low }
+      Planner:            { tier: balanced, effort: medium }
+      Reviewer:           { tier: premium,  effort: high }
+      Spec_Steward:       { tier: premium,  effort: high }
+      AI_Researcher:      { tier: balanced, effort: medium }
+      # Intake tasks ALWAYS route to premium/high regardless of profile
+      # (per FR-005; intake quality determines downstream spec quality).
+      _intake_override:   { tier: premium,  effort: high }
+    # balanced/premium/custom profiles are reserved enum values; semantics in follow-up slices
+
   hosts:
 
     copilot-cli:
@@ -160,6 +177,16 @@ catalog:
           best_for: [Spec Steward, Reviewer]
           tokenizer_method: null
           knowledge_cutoff: "2026-01"
+          # FR-021: reasoning-effort metadata
+          supports_reasoning_effort: true
+          effort_levels: [low, medium, high, xhigh, max]
+          default_effort: medium   # Changed from "high" in March 2026 per Anthropic blog
+          effort_token_multipliers:
+            low: 1.0
+            medium: 2.5
+            high: 5.0
+            xhigh: 7.5
+            max: 10.0
 
         - id: claude-sonnet-4-6
           tier: balanced
@@ -171,6 +198,15 @@ catalog:
           best_for: [Planner, Implementer]
           tokenizer_method: null
           knowledge_cutoff: "2025-08"
+          supports_reasoning_effort: true
+          effort_levels: [low, medium, high, xhigh, max]
+          default_effort: medium
+          effort_token_multipliers:
+            low: 1.0
+            medium: 2.5
+            high: 5.0
+            xhigh: 7.5
+            max: 10.0
 
         - id: claude-haiku-4-5
           tier: cheap
@@ -182,6 +218,15 @@ catalog:
           best_for: [Implementer, Retro Facilitator]
           tokenizer_method: null
           knowledge_cutoff: "2025-02"
+          # Haiku supports extended-thinking but typically used at lower effort
+          # to keep its speed advantage. Lean profile defaults to low effort here.
+          supports_reasoning_effort: true
+          effort_levels: [low, medium, high]
+          default_effort: low
+          effort_token_multipliers:
+            low: 1.0
+            medium: 2.0
+            high: 3.5
 
     codex-cli:
       available: false   # auto-set true at runtime if PATH probe finds codex
@@ -206,6 +251,15 @@ catalog:
           best_for: [Reviewer, Spec Steward]
           tokenizer_method: null
           note: "Most efficient per output token; uses fewer tokens for comparable results"
+          # FR-021: reasoning-effort metadata (Codex GPT family supports)
+          supports_reasoning_effort: true
+          effort_levels: [low, medium, high, xhigh]
+          default_effort: medium
+          effort_token_multipliers:
+            low: 1.0
+            medium: 2.5
+            high: 5.0
+            xhigh: 7.5
 
         - id: gpt-5.4
           tier: balanced
@@ -215,6 +269,14 @@ catalog:
           capability_tags: [code, versatile]
           best_for: [Planner, Implementer]
           tokenizer_method: null
+          supports_reasoning_effort: true
+          effort_levels: [low, medium, high, xhigh]
+          default_effort: medium
+          effort_token_multipliers:
+            low: 1.0
+            medium: 2.5
+            high: 5.0
+            xhigh: 7.5
 
         - id: gpt-5.4-mini
           tier: cheap
