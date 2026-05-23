@@ -14,11 +14,11 @@
 Set-StrictMode -Version Latest
 
 function Get-SpecrewSupportedHostKinds {
-    return @('copilot', 'claude', 'codex')
+    return @('copilot', 'claude', 'codex', 'antigravity')
 }
 
 function Get-SpecrewDeferredHostKinds {
-    return @('antigravity', 'auto')
+    return @('auto')
 }
 
 function Get-SpecrewHostBinary {
@@ -28,10 +28,11 @@ function Get-SpecrewHostBinary {
     )
 
     switch ($HostKind.ToLowerInvariant()) {
-        'copilot' { return 'copilot' }
-        'claude'  { return 'claude' }
-        'codex'   { return 'codex' }
-        default   {
+        'copilot'     { return 'copilot' }
+        'claude'      { return 'claude' }
+        'codex'       { return 'codex' }
+        'antigravity' { return 'agy' }
+        default       {
             throw "Unsupported host kind '$HostKind'. Supported: $((Get-SpecrewSupportedHostKinds) -join ', ')."
         }
     }
@@ -47,10 +48,11 @@ function Get-SpecrewHostSkillRoot {
     )
 
     switch ($HostKind.ToLowerInvariant()) {
-        'copilot' { return (Join-Path $ProjectPath '.github\skills') }
-        'claude'  { return (Join-Path $ProjectPath '.claude\skills') }
-        'codex'   { return (Join-Path $ProjectPath '.agents\skills') }
-        default   {
+        'copilot'     { return (Join-Path $ProjectPath '.github\skills') }
+        'claude'      { return (Join-Path $ProjectPath '.claude\skills') }
+        'codex'       { return (Join-Path $ProjectPath '.agents\skills') }
+        'antigravity' { return (Join-Path $ProjectPath '.agents\skills') }   # Antigravity's native skill convention
+        default       {
             throw "Unsupported host kind '$HostKind' for skill root lookup."
         }
     }
@@ -72,6 +74,9 @@ function Get-SpecrewHostInstallGuidance {
         'codex' {
             return 'Codex CLI not found on PATH. Install: https://developers.openai.com/codex/cli'
         }
+        'antigravity' {
+            return 'Antigravity CLI (agy) not found on PATH. Install via: irm https://antigravity.google/cli/install.ps1 | iex (Windows) or curl -fsSL https://antigravity.google/cli/install.sh | bash (macOS/Linux). See: https://antigravity.google/'
+        }
         default {
             throw "Unsupported host kind '$HostKind' for install guidance."
         }
@@ -85,17 +90,10 @@ function Get-SpecrewDeferredHostGuidance {
     )
 
     switch ($HostKind.ToLowerInvariant()) {
-        'antigravity' {
-            return @(
-                'Antigravity host is deferred to a follow-up slice in F-040.',
-                "Reason: 'agy' working-directory flag is undocumented and the session-ID emission from --print is an open issue (antigravity-cli#7).",
-                'Empirical verification required before enablement. See file:///C:/Dev/Specrew/proposals/069-multi-host-launch-path.md.'
-            ) -join ' '
-        }
         'auto' {
             return @(
                 'Auto-selection is deferred to Proposal 104 (Multi-Host Onboarding + Selection Flow).',
-                'Use --host copilot|claude|codex explicitly until F-043 ships.',
+                'Use --host copilot|claude|codex|antigravity explicitly until F-043 ships.',
                 'See file:///C:/Dev/Specrew/proposals/104-multi-host-onboarding-and-selection-flow.md.'
             ) -join ' '
         }
@@ -103,6 +101,48 @@ function Get-SpecrewDeferredHostGuidance {
             throw "Unsupported deferred-host kind '$HostKind'."
         }
     }
+}
+
+function Test-AntigravityGeminiDeadlineWarning {
+    <#
+    .SYNOPSIS
+    Determine whether to emit a 2026-06-18 Gemini free-tier deadline warning.
+
+    .DESCRIPTION
+    Per Antigravity follow-up slice FR-009: warning fires when --host antigravity
+    is invoked AND current date is on or after 2026-06-01 (two weeks before
+    deadline) AND no Google AI Pro/Ultra subscription evidence is configured.
+
+    .OUTPUTS
+    PSCustomObject with ShouldWarn (bool) + Message (string or null).
+    #>
+    param(
+        [Parameter(Mandatory = $true)][string]$ProjectPath,
+        [DateTime]$CurrentDate = [DateTime]::UtcNow
+    )
+
+    $deadlineDate = [DateTime]::Parse('2026-06-18', [System.Globalization.CultureInfo]::InvariantCulture)
+    $warningStartDate = $deadlineDate.AddDays(-17)   # two weeks + 3-day buffer
+
+    if ($CurrentDate -lt $warningStartDate) {
+        return [pscustomobject]@{ ShouldWarn = $false; Message = $null }
+    }
+
+    # Check if user has configured Google AI Pro/Ultra subscription evidence
+    # in .specrew/config.yml. Field name TBD; for now look for an env var.
+    if (-not [string]::IsNullOrWhiteSpace($env:GOOGLE_AI_SUBSCRIPTION_TIER) -or
+        -not [string]::IsNullOrWhiteSpace($env:ANTIGRAVITY_API_KEY)) {
+        return [pscustomobject]@{ ShouldWarn = $false; Message = $null }
+    }
+
+    $daysUntil = ($deadlineDate - $CurrentDate.Date).Days
+    $msg = if ($daysUntil -gt 0) {
+        "Antigravity uses Google's Gemini infrastructure. The Gemini CLI free tier stops on 2026-06-18 ($daysUntil day$(if ($daysUntil -ne 1) { 's' }) from now). Configure Google AI Pro/Ultra subscription or set ANTIGRAVITY_API_KEY environment variable to continue using Antigravity after that date."
+    } else {
+        "Antigravity uses Google's Gemini infrastructure. The Gemini CLI free tier ended on 2026-06-18 ($([Math]::Abs($daysUntil)) day$(if ([Math]::Abs($daysUntil) -ne 1) { 's' }) ago). Configure Google AI Pro/Ultra subscription or set ANTIGRAVITY_API_KEY environment variable; you may have already hit usage limits."
+    }
+
+    return [pscustomobject]@{ ShouldWarn = $true; Message = $msg }
 }
 
 function Test-SpecrewHostAvailable {

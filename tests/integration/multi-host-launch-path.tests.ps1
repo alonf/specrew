@@ -23,26 +23,26 @@ Write-Pass 'detect-hosts.ps1 exports all expected functions'
 
 # Test 2: Supported / deferred host kinds match spec
 $supported = Get-SpecrewSupportedHostKinds
-if (@($supported) -join ',' -ne 'copilot,claude,codex') {
-    Write-Fail "Supported host kinds drift. Got: $($supported -join ',') Expected: copilot,claude,codex"
+if (@($supported) -join ',' -ne 'copilot,claude,codex,antigravity') {
+    Write-Fail "Supported host kinds drift. Got: $($supported -join ',') Expected: copilot,claude,codex,antigravity (Antigravity follow-up slice graduated antigravity from deferred to supported)"
 }
 $deferred = Get-SpecrewDeferredHostKinds
-if (@($deferred) -join ',' -ne 'antigravity,auto') {
-    Write-Fail "Deferred host kinds drift. Got: $($deferred -join ',') Expected: antigravity,auto"
+if (@($deferred) -join ',' -ne 'auto') {
+    Write-Fail "Deferred host kinds drift. Got: $($deferred -join ',') Expected: auto (Antigravity graduated; only auto remains deferred)"
 }
-Write-Pass 'Host-kind enums match spec (supported: copilot,claude,codex; deferred: antigravity,auto)'
+Write-Pass 'Host-kind enums match spec (supported: copilot,claude,codex,antigravity; deferred: auto only)'
 
 # Test 3: Host binary names are correct
-foreach ($pair in @{ copilot = 'copilot'; claude = 'claude'; codex = 'codex' }.GetEnumerator()) {
+foreach ($pair in @{ copilot = 'copilot'; claude = 'claude'; codex = 'codex'; antigravity = 'agy' }.GetEnumerator()) {
     $bin = Get-SpecrewHostBinary -HostKind $pair.Key
     if ($bin -ne $pair.Value) {
         Write-Fail "Host binary mismatch for $($pair.Key): got $bin"
     }
 }
-Write-Pass 'Get-SpecrewHostBinary returns correct binary names for all three hosts'
+Write-Pass 'Get-SpecrewHostBinary returns correct binary names for all four hosts (antigravity -> agy)'
 
 # Test 4: Install guidance for each host contains a URL
-foreach ($hk in 'copilot', 'claude', 'codex') {
+foreach ($hk in 'copilot', 'claude', 'codex', 'antigravity') {
     $guidance = Get-SpecrewHostInstallGuidance -HostKind $hk
     if ($guidance -notmatch 'https?://') {
         Write-Fail "Install guidance for $hk has no URL: $guidance"
@@ -50,26 +50,67 @@ foreach ($hk in 'copilot', 'claude', 'codex') {
 }
 Write-Pass 'Install guidance for each host contains a documentation URL'
 
-# Test 5: Deferred host guidance mentions the right follow-up
-$antigravityGuidance = Get-SpecrewDeferredHostGuidance -HostKind 'antigravity'
-if ($antigravityGuidance -notmatch 'follow-up' -or $antigravityGuidance -notmatch '069') {
-    Write-Fail "Antigravity deferred guidance should mention follow-up + Proposal 069. Got: $antigravityGuidance"
-}
+# Test 5: Deferred host guidance — only auto remains deferred post-Antigravity-slice
 $autoGuidance = Get-SpecrewDeferredHostGuidance -HostKind 'auto'
 if ($autoGuidance -notmatch '104' -or $autoGuidance -notmatch 'Onboarding') {
     Write-Fail "Auto deferred guidance should mention Proposal 104 + Onboarding. Got: $autoGuidance"
 }
-Write-Pass 'Deferred-host guidance text references correct follow-up proposals (069 + 104)'
+# Antigravity is now supported; calling Get-SpecrewDeferredHostGuidance for it should THROW
+$threw = $false
+try { Get-SpecrewDeferredHostGuidance -HostKind 'antigravity' | Out-Null } catch { $threw = $true }
+if (-not $threw) {
+    Write-Fail "Antigravity is now SUPPORTED (not deferred); Get-SpecrewDeferredHostGuidance should throw for it"
+}
+Write-Pass 'Deferred-host guidance text contracts to auto only (antigravity is supported)'
+
+# Test 5b (new): Antigravity Gemini deadline warning helper exists and fires appropriately
+$preDeadline = [DateTime]::Parse('2026-05-15')
+$postDeadline = [DateTime]::Parse('2026-06-20')
+$nearDeadline = [DateTime]::Parse('2026-06-02')
+
+$envBackupSubTier = $env:GOOGLE_AI_SUBSCRIPTION_TIER
+$envBackupKey = $env:ANTIGRAVITY_API_KEY
+try {
+    $env:GOOGLE_AI_SUBSCRIPTION_TIER = $null
+    $env:ANTIGRAVITY_API_KEY = $null
+    Remove-Item -LiteralPath Env:\GOOGLE_AI_SUBSCRIPTION_TIER -ErrorAction SilentlyContinue
+    Remove-Item -LiteralPath Env:\ANTIGRAVITY_API_KEY -ErrorAction SilentlyContinue
+
+    $earlyResult = Test-AntigravityGeminiDeadlineWarning -ProjectPath 'C:\nope' -CurrentDate $preDeadline
+    if ($earlyResult.ShouldWarn) {
+        Write-Fail "Antigravity deadline warning fired too early ($preDeadline) -- should be silent before 2026-06-01"
+    }
+
+    $nearResult = Test-AntigravityGeminiDeadlineWarning -ProjectPath 'C:\nope' -CurrentDate $nearDeadline
+    if (-not $nearResult.ShouldWarn) {
+        Write-Fail "Antigravity deadline warning failed to fire near deadline ($nearDeadline)"
+    }
+
+    $postResult = Test-AntigravityGeminiDeadlineWarning -ProjectPath 'C:\nope' -CurrentDate $postDeadline
+    if (-not $postResult.ShouldWarn) {
+        Write-Fail "Antigravity deadline warning failed to fire post-deadline ($postDeadline)"
+    }
+    if ($postResult.Message -notmatch 'ended') {
+        Write-Fail "Post-deadline warning should say 'ended'; got: $($postResult.Message)"
+    }
+}
+finally {
+    if ($null -ne $envBackupSubTier) { $env:GOOGLE_AI_SUBSCRIPTION_TIER = $envBackupSubTier }
+    if ($null -ne $envBackupKey) { $env:ANTIGRAVITY_API_KEY = $envBackupKey }
+}
+Write-Pass 'Antigravity Gemini-deadline warning fires correctly (silent before 2026-06-01; warns near and after 2026-06-18)'
 
 # Test 6: Get-SpecrewHostSkillRoot returns correct paths per host
 $projectRoot = 'C:\fake\project'
 $copilotRoot = Get-SpecrewHostSkillRoot -HostKind 'copilot' -ProjectPath $projectRoot
 $claudeRoot = Get-SpecrewHostSkillRoot -HostKind 'claude' -ProjectPath $projectRoot
 $codexRoot = Get-SpecrewHostSkillRoot -HostKind 'codex' -ProjectPath $projectRoot
+$antigravityRoot = Get-SpecrewHostSkillRoot -HostKind 'antigravity' -ProjectPath $projectRoot
 if ($copilotRoot -notlike '*\.github\skills*') { Write-Fail "Copilot skill root wrong: $copilotRoot" }
 if ($claudeRoot -notlike '*\.claude\skills*') { Write-Fail "Claude skill root wrong: $claudeRoot" }
 if ($codexRoot -notlike '*\.agents\skills*') { Write-Fail "Codex skill root wrong: $codexRoot" }
-Write-Pass 'Per-host skill roots resolve to .github/skills, .claude/skills, .agents/skills respectively'
+if ($antigravityRoot -notlike '*\.agents\skills*') { Write-Fail "Antigravity skill root wrong (should be .agents/skills like Codex): $antigravityRoot" }
+Write-Pass 'Per-host skill roots resolve correctly (antigravity uses .agents/skills like Codex)'
 
 # Test 7: flag-translation matrix for all 9 cells per research.md Task 2
 . $flagTranslationScript
@@ -360,21 +401,17 @@ if ($startScriptText -notmatch '-not \$availableHostsMap\[\$selectedHost\] -and 
 }
 Write-Pass '--no-launch path bypasses missing-host fail-fast (artifacts still generated when host CLI is absent)'
 
-# Test 19: --host antigravity and --host auto rejection text quality (AC16)
-$antigravity = Get-SpecrewDeferredHostGuidance -HostKind 'antigravity'
-foreach ($keyword in 'agy', 'session-ID', '069', 'working-directory') {
-    if ($antigravity -notmatch [regex]::Escape($keyword)) {
-        Write-Fail "Antigravity deferred guidance missing keyword '$keyword': $antigravity"
-    }
-}
+# Test 19: --host auto rejection text quality (AC16)
+# Note: antigravity used to be tested here as deferred; Antigravity follow-up
+# slice graduated it to supported. Only auto remains in the deferred set.
 $auto = Get-SpecrewDeferredHostGuidance -HostKind 'auto'
-foreach ($keyword in 'Proposal 104', 'Multi-Host Onboarding', 'first-run') {
-    # 'first-run' might not match; relax that one
-}
 if ($auto -notmatch '104') {
     Write-Fail "Auto deferred guidance should mention Proposal 104: $auto"
 }
-Write-Pass 'Deferred-host guidance text contains actionable keywords (Antigravity: agy/session-ID/069/working-directory; auto: 104)'
+if ($auto -notmatch 'antigravity') {
+    Write-Fail "Auto deferred guidance should now list antigravity as a valid explicit host: $auto"
+}
+Write-Pass 'Deferred-host guidance — auto-only contracts; mentions all four explicit hosts (copilot|claude|codex|antigravity)'
 
 Write-Host ''
 Write-Host 'Multi-host launch path: all assertions pass' -ForegroundColor Green
