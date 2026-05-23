@@ -1,0 +1,126 @@
+# Specrew Model Catalog Schema v2
+#
+# Canonical schema definition for `.specrew/model-catalog.yml`. The catalog is
+# populated by the `/specrew-research-models` discovery skill (F-041 / Proposal
+# 068) and read by F-041's cost-routing logic and F-042's cost.yml estimator.
+#
+# Schema versioning per Proposal 059 read-tolerance pattern:
+#   - schema_version: 2 is the F-041 / Proposal 068 enrichment baseline
+#   - Future migrations bump schema_version; readers tolerate older versions
+#     for one minor-release window
+#
+# This file is the documentation. The validator function
+# `Test-SpecrewModelCatalogSchema` in cost-routing.ps1 enforces it at runtime.
+
+# Top-level structure
+catalog:
+  # Schema version. Incremented when the catalog shape changes incompatibly.
+  schema_version: 2
+
+  # ISO8601 timestamp when the catalog was last refreshed.
+  # Discovery skill writes this on every invocation.
+  last_refreshed_at: "<ISO8601 timestamp>"
+
+  # Confidence level for the discovery output.
+  # high | medium | low — discovery skill self-assesses based on how
+  # authoritative the sources it consumed were (official docs > hands-on guides > inferred).
+  confidence: high
+
+  # Per-host catalogs. Keyed by canonical host kind from F-040
+  # (copilot-cli / claude-code / codex-cli / antigravity).
+  # Each host block has the same schema; missing host entries mean "not
+  # currently active on this project per F-040 host-history".
+  hosts:
+
+    copilot-cli:
+      # Whether the host CLI was available on PATH at discovery time.
+      available: true
+
+      # Per-host selector strategy — tells routing logic HOW to inject
+      # the chosen model. Values match F-041's per-host-model-injection.ps1
+      # dispatcher names:
+      #   - squad_config_field    → writes .squad/config.json agentModelOverrides (Copilot only)
+      #   - subagent_frontmatter  → writes model: in .claude/agents/*.md YAML frontmatter (Claude)
+      #   - agent_toml_field      → writes model = "..." in .codex/agents/*.toml (Codex)
+      #   - cli_flag              → uses -m <model> per invocation (Antigravity)
+      selector_strategy: squad_config_field
+
+      # Host-native cost-routing primitives that Specrew may use when the
+      # active cost_profile aligns with the primitive's intent.
+      # Example: Claude's opusplan alias routes Opus for /speckit.plan,
+      # Sonnet for execution — matches lean profile when intake/plan-quality
+      # matters more than execution cost.
+      built_in_routing_primitives:
+        - name: "<primitive-name>"
+          description: "<what it does>"
+          enabled_by_default: false  # whether Specrew turns it on automatically
+
+      # Pricing-change announcements with effective dates.
+      # Discovery skill surfaces these prominently in the dashboard.
+      pricing_change_alerts:
+        - effective_date: "<YYYY-MM-DD>"
+          summary: "<one-line summary>"
+          source_url: "<URL to provider's announcement>"
+
+      # Available models for this host.
+      models:
+        # Model identifier as published by the provider.
+        # NEVER hardcoded in Specrew code — always read from this catalog.
+        - id: "<model-id>"
+
+          # Cost tier — used by routing decisions to match task class to model.
+          # Values: free | cheap | balanced | premium
+          # Routing logic: Junior/Implementer → cheap; Senior/Reviewer/Spec-Steward → strong/premium;
+          # intake → strong regardless of cost_profile.
+          tier: premium
+
+          # Cost per million tokens. May be null if provider doesn't publish.
+          # F-042 cost estimator uses these; null marks cost_estimate_confidence: low.
+          cost_per_million_input: 0.0
+          cost_per_million_output: 0.0
+
+          # Capability tags used for routing fitness checks.
+          # Standard tags: code | reasoning-deep | reasoning-fast | fast | long-context | vision | cheap
+          # Custom tags allowed for emerging capabilities.
+          capability_tags:
+            - code
+
+          # Hint for which Crew roles this model is best suited for.
+          # Routing logic uses this when multiple models in the same tier qualify.
+          best_for:
+            - Implementer
+
+          # Tokenizer hint for F-042 cost estimator.
+          # Values: tiktoken-cl100k | tiktoken-o200k | claude-tokenizer | gemini-tokenizer | null
+          # null → F-042 falls back to naive byte/4 estimate with confidence: low
+          tokenizer_method: null
+
+    claude-code:
+      available: true
+      selector_strategy: subagent_frontmatter
+      built_in_routing_primitives:
+        - name: opusplan
+          description: "Opus for /speckit.plan, Sonnet for execution — built-in cost-routing alias"
+          enabled_by_default: false
+      pricing_change_alerts: []
+      models: []  # populated by discovery skill
+
+    codex-cli:
+      available: false
+      selector_strategy: agent_toml_field
+      built_in_routing_primitives: []
+      pricing_change_alerts: []
+      models: []
+
+    antigravity:
+      available: false
+      selector_strategy: cli_flag
+      built_in_routing_primitives: []
+      pricing_change_alerts:
+        # Static alert documenting the 2026-06-18 Gemini free-tier deadline.
+        # Discovery skill refreshes this with current status; the deadline
+        # is well-known and shipped as part of F-041 baseline knowledge.
+        - effective_date: "2026-06-18"
+          summary: "Gemini CLI free tier stops; requires Google AI Pro / Ultra ($100/mo) or enterprise API key"
+          source_url: "https://developers.googleblog.com/an-important-update-transitioning-gemini-cli-to-antigravity-cli/"
+      models: []
