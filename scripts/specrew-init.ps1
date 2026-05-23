@@ -2372,6 +2372,33 @@ if (-not $SpecKitExtensionOnly) {
     }
 }
 
+Write-Step 'Configuring git for boundary-commit hygiene'
+# F-040 dogfooding fix (calc-v2 + tip-calc 2026-05-23): when the project is in a git repo,
+# silence the LF/CRLF warning wall that otherwise dumps 150+ lines on the user during
+# `git add` for the very first boundary commit. Use `core.safecrlf=false` (warnings off) +
+# `core.autocrlf=true` on Windows / `input` on POSIX (right normalization). Both are scoped
+# to THIS repo only via `git config --local`, so we don't touch the user's global config.
+$gitRepoCheck = Test-Path -LiteralPath (Join-Path $resolvedProjectPath '.git') -PathType Container
+if ($gitRepoCheck -and -not $DryRun) {
+    try {
+        & git -C $resolvedProjectPath config --local core.safecrlf false 2>$null
+        $global:LASTEXITCODE = 0
+        $autocrlfValue = if ($IsWindows -or $env:OS -eq 'Windows_NT') { 'true' } else { 'input' }
+        & git -C $resolvedProjectPath config --local core.autocrlf $autocrlfValue 2>$null
+        $global:LASTEXITCODE = 0
+        Add-Action -Actions $actions -Step 'git-config' -Outcome ("set local core.safecrlf=false + core.autocrlf={0} to suppress harmless CRLF warnings on first commit" -f $autocrlfValue)
+    }
+    catch {
+        Add-Action -Actions $actions -Step 'git-config' -Outcome ("skipped (git config failed: {0})" -f $_.Exception.Message)
+    }
+}
+elseif ($gitRepoCheck -and $DryRun) {
+    Add-Action -Actions $actions -Step 'git-config' -Outcome 'would set local core.safecrlf + core.autocrlf to suppress CRLF warnings'
+}
+else {
+    Add-Action -Actions $actions -Step 'git-config' -Outcome 'skipped (no .git directory found; this is not a git repo yet)'
+}
+
 Write-Step 'Validating bootstrapped project state'
 if ($DryRun) {
     Add-Action -Actions $actions -Step 'bootstrap-validation' -Outcome 'would validate .specify templates, .squad agents, .github workflows, and .github/agents/squad.agent.md'
