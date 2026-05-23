@@ -3697,7 +3697,7 @@ $brownfieldDiscovery = Get-BrownfieldDiscoverySnapshot -Root $resolvedProjectPat
 $deliveryGuidance = Get-DeliveryGuidanceSnapshot -FeatureRequest $FeatureRequest -ProjectState $projectState -BrownfieldDiscovery $brownfieldDiscovery -TeamRoster $teamRoster
 $agentConfig = Get-IterationAgentConfig -Root $resolvedProjectPath
 $roleAssignments = @(Get-RoleAssignments -Root $resolvedProjectPath)
-$routingPlan = Get-DelegatedRoutingPlan -RoleAssignments $roleAssignments -AgentLookup $agentConfig
+$routingPlan = Get-DelegatedRoutingPlan -RoleAssignments $roleAssignments -AgentLookup $agentConfig -SelectedHost $HostKind
 $squadModelOverrides = Set-SquadModelOverrides -Root $resolvedProjectPath -RoutingPlan $routingPlan
 Write-DelegatedRoutingLedgerEntries -ResolvedProjectPath $resolvedProjectPath -RoutingPlan $routingPlan -SquadModelOverrides $squadModelOverrides
 $requiresInteractiveIntake = ($mode -eq 'intake-or-resume' -and -not $FeatureRequest -and -not $resolvedFeaturePath)
