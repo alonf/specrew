@@ -2715,7 +2715,7 @@ This is the authoritative map of Specrew's lifecycle and governance machinery as
 | ``.specify/extensions/specrew-speckit/scripts/scaffold-iteration-plan.ps1 -SpecPath <spec> -IterationNumber <NNN>`` | Scaffolds iterations/<NNN>/plan.md stub | Before /speckit.implement |
 | ``.specify/extensions/specrew-speckit/scripts/scaffold-reviewer-artifacts.ps1`` | Scaffolds code-map / coverage-evidence / reviewer-index / review-diagrams / dependency-report | After implement, before /specrew-review |
 | ``.specify/extensions/specrew-speckit/scripts/validate-governance.ps1 -ProjectPath .`` | Runs the full validator; emits PASS/WARN/FAIL findings | Before each boundary commit and at iteration close |
-| ``scripts/internal/sync-boundary-state.ps1`` | Advances the boundary cursor in ``.specrew/start-context.json``; auto-renders dashboard.md at iteration-closeout + closeout-dashboard.md at feature-closeout | Called by sync-* agents; usually invoked automatically |
+| ``.specify/extensions/specrew-speckit/scripts/sync-boundary-state.ps1`` | Advances the boundary cursor in ``.specrew/start-context.json``; auto-renders dashboard.md at iteration-closeout + closeout-dashboard.md at feature-closeout. Use this WRAPPER path from downstream projects — it discovers the installed Specrew module and loads the actual implementation from there. | Called by sync-* agents; invoke directly via ``pwsh -File`` after each boundary commit when the sync-* agents aren't available |
 
 **Boundary authorization (what hard-blocks vs what warns):**
 
@@ -2726,7 +2726,7 @@ This is the authoritative map of Specrew's lifecycle and governance machinery as
 
 **What's deployed in this project (read from start-context.json):**
 
-The ``crew_runtime_status`` field tells you whether ``sync-boundary-state.ps1`` is wired up. If ``bootstrap_only``, the sync helper exists in the running Specrew module but downstream sync-* agents may not be available — invoke the helper script directly via ``pwsh -File scripts/internal/sync-boundary-state.ps1 ...`` for boundary advances. Iteration / feature closeout auto-renders dashboards (F-040 dogfooding Fix B).
+The ``crew_runtime_status`` field tells you whether the downstream sync-* agents are wired up. If ``bootstrap_only``, those agents may not be available — invoke the deployed wrapper directly via ``pwsh -File .specify/extensions/specrew-speckit/scripts/sync-boundary-state.ps1 -ProjectPath . -BoundaryType <boundary> -FeatureRef <feature> -AuthCommitHash <hash>`` for boundary advances. The wrapper auto-resolves the actual implementation from the installed Specrew module, so this works in any downstream project. Iteration / feature closeout auto-renders dashboards (F-040 dogfooding Fix B).
 
 **Common pitfalls (already-fixed gaps from F-040 calc-v2 dogfooding 2026-05-23):**
 
