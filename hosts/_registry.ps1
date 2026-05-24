@@ -173,20 +173,84 @@ function Get-SpecrewHostsByStatus {
     )
 }
 
-# Phase B: handler dispatch (stubs reserved for next phase)
+# Phase B: handler dispatch
+# Contract function => actual per-host PowerShell function-name template.
+# To add a new contract function, add an entry here AND export it from each hosts/<kind>/handlers.ps1.
+$script:HostContractFunctionMap = @{
+    'NewLaunchInvocation'    = 'New-{0}LaunchInvocation'
+    'ConvertFlag'            = 'ConvertTo-{0}Flag'
+    'TestRuntimeInstalled'   = 'Test-{0}RuntimeInstalled'
+    'GetSignals'             = 'Get-{0}Signals'
+}
+$script:HostHandlersDotSourced = @{}
+
 function Resolve-HostHandler {
+    <#
+    .SYNOPSIS
+    Returns the per-host function name for a given contract slot.
+    Does NOT verify the function exists — that's Invoke-HostHandler's job.
+    .EXAMPLE
+    Resolve-HostHandler -Kind claude -ContractFunction NewLaunchInvocation
+    # Returns 'New-ClaudeLaunchInvocation'
+    #>
     param(
         [Parameter(Mandatory = $true)][string]$Kind,
         [Parameter(Mandatory = $true)][string]$ContractFunction
     )
-    throw "Resolve-HostHandler is a Phase B stub. Use legacy scripts for now."
+
+    if (-not $script:HostContractFunctionMap.ContainsKey($ContractFunction)) {
+        throw "Unknown contract function '$ContractFunction'. Registered: $($script:HostContractFunctionMap.Keys -join ', ')."
+    }
+
+    # Verify Kind exists (will throw if not)
+    $null = Get-HostManifest -Kind $Kind
+
+    # Pascal-case the Kind for the function name
+    $kindLower = $Kind.ToLowerInvariant()
+    $pascalKind = $kindLower.Substring(0, 1).ToUpperInvariant() + $kindLower.Substring(1)
+    return [string]::Format($script:HostContractFunctionMap[$ContractFunction], $pascalKind)
 }
 
 function Invoke-HostHandler {
+    <#
+    .SYNOPSIS
+    Dispatch a contract function for a given host with the supplied arguments.
+    Requires the host's handlers.ps1 to be dot-sourced (done eagerly at the end of _registry.ps1).
+    .EXAMPLE
+    Invoke-HostHandler -Kind claude -ContractFunction NewLaunchInvocation -Arguments @{
+        ProjectPath = 'C:\proj'; Prompt = 'BOOT'; Agent = 'Squad'; AllowAll = $true
+    }
+    .OUTPUTS
+    Whatever the per-host contract function returns
+    #>
     param(
         [Parameter(Mandatory = $true)][string]$Kind,
         [Parameter(Mandatory = $true)][string]$ContractFunction,
-        [hashtable]$Args = @{}
+        [hashtable]$Arguments = @{}
     )
-    throw "Invoke-HostHandler is a Phase B stub. Use legacy scripts for now."
+
+    $functionName = Resolve-HostHandler -Kind $Kind -ContractFunction $ContractFunction
+
+    $cmd = Get-Command $functionName -ErrorAction SilentlyContinue
+    if ($null -eq $cmd) {
+        throw "Handler '$functionName' is not defined. Ensure hosts/_registry.ps1 was dot-sourced (which eagerly loads all hosts/<kind>/handlers.ps1)."
+    }
+
+    return & $functionName @Arguments
 }
+
+# Eagerly dot-source all hosts' handlers.ps1 at the script level so the functions
+# they define land in the SAME scope that's dot-sourcing _registry.ps1 (typically
+# the caller's script scope). Lazy loading inside a function dot-sources into the
+# function's scope only, which doesn't help dispatch.
+#
+# Performance: loading 4 small files (~100-150 lines each) is cheap. The alternative —
+# in-memory modules via New-Module — adds complexity for no measurable benefit at this scale.
+foreach ($_hostDir in (Get-ChildItem -Path $script:SpecrewHostsRoot -Directory -ErrorAction SilentlyContinue | Where-Object { -not $_.Name.StartsWith('_') })) {
+    $_handlersPath = Join-Path $_hostDir.FullName 'handlers.ps1'
+    if (Test-Path -LiteralPath $_handlersPath -PathType Leaf) {
+        . $_handlersPath
+        $script:HostHandlersDotSourced[$_hostDir.Name.ToLowerInvariant()] = $_handlersPath
+    }
+}
+Remove-Variable -Name _hostDir, _handlersPath -ErrorAction SilentlyContinue
