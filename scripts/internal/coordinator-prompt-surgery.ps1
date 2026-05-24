@@ -148,28 +148,7 @@ function Invoke-SpecrewCoordinatorPromptSurgery {
     return $result
 }
 
-# Back-compat helpers (preserved for callers + tests that import these names directly)
-function Get-SpecrewSquadRuntimePathDirectivePatterns {
-    # Aggregate from non-Copilot hosts' declarative rules so existing introspection callsites keep working.
-    $patterns = New-Object System.Collections.Generic.HashSet[string]
-    foreach ($kind in Get-RegisteredHostKinds) {
-        if ($kind -eq 'copilot') { continue }
-        foreach ($rule in (Get-SpecrewHostCoordinatorRules -HostKind $kind)) {
-            if ($rule.Kind -eq 'Strip' -and $rule.ContainsKey('Pattern')) {
-                $null = $patterns.Add([string]$rule.Pattern)
-            }
-        }
-    }
-    return @($patterns)
-}
-
-function Get-SpecrewSlashCommandToPwshFormMap {
-    # Aggregate from Codex (the only host with FR-014 Replace rules) so existing introspection callsites keep working.
-    $maps = New-Object System.Collections.Generic.List[hashtable]
-    foreach ($rule in (Get-SpecrewHostCoordinatorRules -HostKind 'codex')) {
-        if ($rule.Kind -eq 'Replace' -and $rule.ContainsKey('Pattern') -and $rule.ContainsKey('Replacement')) {
-            $maps.Add(@{ Pattern = [string]$rule.Pattern; Replacement = [string]$rule.Replacement }) | Out-Null
-        }
-    }
-    return @($maps)
-}
+# Phase D cleanup 2026-05-24: removed back-compat helpers Get-SpecrewSquadRuntimePathDirectivePatterns
+# and Get-SpecrewSlashCommandToPwshFormMap — both had zero callers across scripts/, hosts/, extensions/,
+# Specrew.psm1, and tests (verified via deep-review agent). Introspection of per-host rules now goes
+# directly through Get-SpecrewHostCoordinatorRules -HostKind <kind>.

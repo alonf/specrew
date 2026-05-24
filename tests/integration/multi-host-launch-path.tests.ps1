@@ -21,16 +21,18 @@ foreach ($fn in 'Get-SpecrewSupportedHostKinds', 'Get-SpecrewDeferredHostKinds',
 }
 Write-Pass 'detect-hosts.ps1 exports all expected functions'
 
-# Test 2: Supported / deferred host kinds match spec
-$supported = Get-SpecrewSupportedHostKinds
-if (@($supported) -join ',' -ne 'copilot,claude,codex,antigravity') {
-    Write-Fail "Supported host kinds drift. Got: $($supported -join ',') Expected: copilot,claude,codex,antigravity (Antigravity follow-up slice graduated antigravity from deferred to supported)"
+# Test 2: Supported / deferred host kinds match spec (set membership; order is registry-driven and may sort)
+$supported = @(Get-SpecrewSupportedHostKinds | Sort-Object)
+$expectedSupported = @('antigravity', 'claude', 'codex', 'copilot')   # sorted alphabetically — registry-driven order
+if (($supported -join ',') -ne ($expectedSupported -join ',')) {
+    Write-Fail "Supported host kinds drift. Got: $($supported -join ',') Expected: $($expectedSupported -join ',') (Antigravity follow-up slice graduated antigravity from deferred to supported)"
 }
-$deferred = Get-SpecrewDeferredHostKinds
-if (@($deferred) -join ',' -ne 'auto') {
-    Write-Fail "Deferred host kinds drift. Got: $($deferred -join ',') Expected: auto (Antigravity graduated; only auto remains deferred)"
+$deferred = @(Get-SpecrewDeferredHostKinds | Sort-Object)
+$expectedDeferred = @('auto')   # only synthetic 'auto' remains deferred — registry-driven from manifest Status='deferred' + synthetic 'auto'
+if (($deferred -join ',') -ne ($expectedDeferred -join ',')) {
+    Write-Fail "Deferred host kinds drift. Got: $($deferred -join ',') Expected: $($expectedDeferred -join ',') (Antigravity graduated; only synthetic 'auto' remains deferred)"
 }
-Write-Pass 'Host-kind enums match spec (supported: copilot,claude,codex,antigravity; deferred: auto only)'
+Write-Pass 'Host-kind enums match spec (supported: antigravity,claude,codex,copilot; deferred: auto only)'
 
 # Test 3: Host binary names are correct
 foreach ($pair in @{ copilot = 'copilot'; claude = 'claude'; codex = 'codex'; antigravity = 'agy' }.GetEnumerator()) {

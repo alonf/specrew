@@ -6,8 +6,9 @@
     SchemaVersion = 1
 
     # Binary detection
-    Binary        = 'claude'
-    InstallUrl    = 'https://docs.anthropic.com/en/docs/claude-code/installation'
+    Binary           = 'claude'
+    InstallUrl       = 'https://docs.anthropic.com/en/docs/claude-code/installation'
+    InstallGuidance  = 'Claude Code CLI not found on PATH. Install: https://docs.anthropic.com/en/docs/claude-code/installation'
 
     # Runtime layout
     SkillRoot                  = '.claude/skills'

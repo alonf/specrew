@@ -6,8 +6,9 @@
     SchemaVersion = 1
 
     # Binary detection
-    Binary        = 'codex'
-    InstallUrl    = 'https://developers.openai.com/codex/cli'
+    Binary           = 'codex'
+    InstallUrl       = 'https://developers.openai.com/codex/cli'
+    InstallGuidance  = 'Codex CLI not found on PATH. Install: https://developers.openai.com/codex/cli'
 
     # Runtime layout
     SkillRoot                  = '.agents/skills'

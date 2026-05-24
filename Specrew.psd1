@@ -36,6 +36,8 @@
         'scripts/internal/dashboard-renderer.ps1',
         'scripts/internal/detect-hosts.ps1',
         'scripts/internal/host-flag-translation.ps1',
+        'scripts/internal/host-history.ps1',
+        'scripts/internal/host-runtime-inventory.ps1',
         'scripts/internal/invoke-module-release.ps1',
         'scripts/internal/supported-versions.yml',
         'scripts/internal/sync-boundary-state.ps1',

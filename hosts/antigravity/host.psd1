@@ -6,15 +6,17 @@
     SchemaVersion = 1
 
     # Binary detection
-    Binary         = 'agy'
-    BinaryAliases  = @()             # agy is the only binary name (Antigravity is the brand)
-    InstallUrl     = 'https://antigravity.google/'
+    Binary           = 'agy'
+    BinaryAliases    = @()             # agy is the only binary name (Antigravity is the brand)
+    InstallUrl       = 'https://antigravity.google/'
+    InstallGuidance  = 'Antigravity CLI (agy) not found on PATH. Install via: irm https://antigravity.google/cli/install.ps1 | iex (Windows) or curl -fsSL https://antigravity.google/cli/install.sh | bash (macOS/Linux). See: https://antigravity.google/'
 
     # Runtime layout
     SkillRoot                  = '.agents/skills'
     HasUserSlashCommandSurface = $true
     SharedSkillRootWith        = @('codex')
     AgentDir                   = '.agents/agents/'
+    InstructionsFile           = 'AGENTS.md'   # Antigravity reads same root-level convention as Codex
 
     # Spec-kit + Squad coupling
     SpeckitAiFlag  = $null           # spec-kit's --ai flag does not accept antigravity (yet)

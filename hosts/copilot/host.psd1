@@ -6,8 +6,9 @@
     SchemaVersion = 1
 
     # Binary detection
-    Binary        = 'copilot'
-    InstallUrl    = 'https://docs.github.com/en/copilot/how-tos/copilot-cli'
+    Binary           = 'copilot'
+    InstallUrl       = 'https://docs.github.com/en/copilot/how-tos/copilot-cli'
+    InstallGuidance  = 'GitHub Copilot CLI not found on PATH. Install: https://docs.github.com/en/copilot/how-tos/copilot-cli'
 
     # Runtime layout
     SkillRoot                  = '.github/skills'
