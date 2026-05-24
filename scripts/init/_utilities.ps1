@@ -200,7 +200,25 @@ function Ensure-DirectoryExists {
 }
 
 function Get-SpecrewExecutionLayout {
-    $distributionRoot = Split-Path -Parent $PSScriptRoot
+    # Walk up from this file's location until we find the Specrew distribution root
+    # (marked by Specrew.psd1). This is robust against file relocation — when this
+    # function lived in scripts/specrew-init.ps1 the root was 1 level up; after the
+    # Proposal 108 Slice 1 extraction to scripts/init/_utilities.ps1 the root is
+    # 2 levels up. The marker-file walk works in both cases + any future relocation.
+    $distributionRoot = $PSScriptRoot
+    for ($i = 0; $i -lt 5; $i++) {
+        if (Test-Path -LiteralPath (Join-Path $distributionRoot 'Specrew.psd1') -PathType Leaf) {
+            break
+        }
+        $parent = Split-Path -Parent $distributionRoot
+        if ([string]::IsNullOrWhiteSpace($parent) -or $parent -eq $distributionRoot) {
+            # Reached filesystem root without finding the marker — fall back to legacy 1-up resolution
+            $distributionRoot = Split-Path -Parent $PSScriptRoot
+            break
+        }
+        $distributionRoot = $parent
+    }
+
     $templateRoot = Join-Path -Path $distributionRoot -ChildPath 'templates'
     $isModuleLayout = $env:SPECREW_INVOKED_FROM_MODULE -eq '1'
 

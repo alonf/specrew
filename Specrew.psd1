@@ -59,6 +59,7 @@
         'hosts/copilot/handlers.ps1',
         'hosts/copilot/coordinator-rules.psd1',
         'scripts/init/_utilities.ps1',
+        'scripts/init/dependency-install.ps1',
         'scripts/init/preflight.ps1',
         'scripts/init/spec-kit-deploy.ps1',
         'scripts/init/template-deploy.ps1',
