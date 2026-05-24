@@ -21,8 +21,7 @@
 
 ## Gap Ledger
 
-- No in-scope requirement (FR/SC) gaps: all 4 user-surfaced bugs closed: fixed-now.
-- Agent autonomy boundary (should Specrew forbid agents from editing deployed `.specify/...`?) is out-of-scope methodology question; tracked in [scope.md](./scope.md).
+- No in-scope requirement (FR/SC) gaps: all 4 user-surfaced bugs closed: fixed-now. (The agent-autonomy boundary question — should Specrew forbid agents from editing deployed `.specify/...`? — is a methodology question tracked in [scope.md](./scope.md), not a feature-branch gap.)
 
 ## Verification Evidence
 
