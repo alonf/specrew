@@ -9,8 +9,16 @@
 # Status: PROMOTED from deferred to supported via this Phase B extraction
 # (per user directive 2026-05-24 Q3: antigravity-followup slice folds into refactor).
 #
-# Launch shape (per antigravity-followup spec FR-005): `agy -p '<prompt>' --output-format json [--cwd <path>]`
-# Hands-on confirmation pending; flag set is canonical per Antigravity public docs.
+# Launch shape (verified 2026-05-24 from `agy --help` in user dogfood):
+#   `agy -i '<prompt>' --add-dir '<path>' [--dangerously-skip-permissions]`
+# The earlier antigravity-followup spec FR-005 shape (`-p ... --output-format json --cwd`)
+# was wrong: agy CLI rejects `-output-format` and `--cwd`. Actual flag set per the
+# user's `agy --help` output:
+#   --add-dir       Add a directory to the workspace (repeatable)
+#   -i              Short alias for --prompt-interactive
+#   -p              Short alias for --print (non-interactive; not used by specrew start)
+#   --dangerously-skip-permissions   Auto-approve all tool permission requests
+# Interactive shape (`-i`) matches Claude's launch convention and is what specrew start expects.
 
 Set-StrictMode -Version Latest
 
@@ -36,12 +44,10 @@ function New-AntigravityLaunchInvocation {
     $argList = New-Object System.Collections.Generic.List[string]
     $notices = New-Object System.Collections.Generic.List[string]
 
-    # Per antigravity-followup spec FR-005: `agy -p '<prompt>' --output-format json [--cwd <path>]`
-    $argList.Add('-p') | Out-Null
+    # Interactive launch shape (verified from agy --help): `agy -i '<prompt>' --add-dir '<path>'`
+    $argList.Add('-i') | Out-Null
     $argList.Add($Prompt) | Out-Null
-    $argList.Add('--output-format') | Out-Null
-    $argList.Add('json') | Out-Null
-    $argList.Add('--cwd') | Out-Null
+    $argList.Add('--add-dir') | Out-Null
     $argList.Add($ProjectPath) | Out-Null
 
     if ($AllowAll) {
@@ -92,9 +98,9 @@ function ConvertTo-AntigravityFlag {
         }
         '--allow-all' {
             return [pscustomobject]@{
-                Args            = @()
-                Notice          = 'Antigravity --allow-all mapping is unverified; launching without a host-side permission-bypass flag. Use ANTIGRAVITY_API_KEY env var for headless authentication.'
-                SuppressWarning = $false
+                Args            = @('--dangerously-skip-permissions')
+                Notice          = "Translated --allow-all to Antigravity's --dangerously-skip-permissions flag (matches Claude's convention; verified from agy --help)."
+                SuppressWarning = $true
             }
         }
         '--autopilot' {

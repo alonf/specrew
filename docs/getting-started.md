@@ -31,15 +31,16 @@ If any are missing:
 
 #### Pick at least one host CLI
 
-Specrew needs one of the supported **agent host CLIs** to actually run a lifecycle session. As of v0.26.0 there are three supported hosts — install at least one. You select which one at launch time via `specrew start --host <kind>` (default: `copilot`).
+Specrew needs one of the supported **agent host CLIs** to actually run a lifecycle session. As of v0.27.0 there are four supported hosts — install at least one. You select which one at launch time via `specrew start --host <kind>` (default: `copilot`); without `--host` Specrew shows an interactive numbered menu of installed hosts (plus an "(not installed)" group with install URLs for the rest).
 
 | Host | `--host` value | CLI binary | Install URL | Notes |
 |---|---|---|---|---|
 | **GitHub Copilot** *(default)* | `copilot` | `copilot` | [docs.github.com/en/copilot/how-tos/copilot-cli](https://docs.github.com/en/copilot/how-tos/copilot-cli) | Most-tested host; default if `--host` is omitted |
 | **Claude Code** | `claude` | `claude` | [docs.anthropic.com/en/docs/claude-code/installation](https://docs.anthropic.com/en/docs/claude-code/installation) | Headless `claude -p` invocation; rich subagent + hook surface (see [Proposal 105](../proposals/105-host-native-hook-deployment.md) for the hook-deployment follow-up) |
 | **Codex CLI** | `codex` | `codex` | [developers.openai.com/codex/cli](https://developers.openai.com/codex/cli) | `codex exec --cd` invocation; no user-defined slash commands so the Crew uses pwsh-form boundary-advance instructions instead |
+| **Antigravity** | `antigravity` | `agy` | [antigravity.google](https://antigravity.google/) | `agy -i <prompt> --add-dir <path>` invocation; `--dangerously-skip-permissions` maps from `--allow-all`. Graduated from deferred to supported in v0.27.0 (F-044 iter-005) |
 
-Reserved-but-deferred kinds: `antigravity` (follow-up slice once `agy` working-directory + session-ID issues clear), `auto` (reserved for [Proposal 104](../proposals/104-multi-host-onboarding-and-selection-flow.md) first-run probe). Specrew rejects these with explicit "deferred" guidance rather than silently falling back.
+Reserved-but-deferred kind: `auto` (reserved for [Proposal 104](../proposals/104-multi-host-onboarding-and-selection-flow.md) first-run probe — partially implemented via the F-043 first-run menu but `auto` literal still rejected). Specrew rejects this with explicit "deferred" guidance rather than silently falling back.
 
 ### 2. Install Specrew from PowerShell Gallery
 
@@ -214,7 +215,7 @@ When `specrew start` runs without a feature description in an existing project, 
 
 ## Known Limitations
 
-- **Multi-host runtime**: Copilot CLI, Claude Code, and Codex CLI are all supported as of v0.26.0 via `specrew start --host <kind>` (see [docs/user-guide.md](user-guide.md) for the full per-host flag-translation matrix). Antigravity, `--host auto`, and VS Code Chat are roadmap items per [Proposal 069](../proposals/069-multi-host-launch-path.md), [Proposal 104](../proposals/104-multi-host-onboarding-and-selection-flow.md), [Proposal 071](../proposals/071-vscode-copilot-chat-host.md).
+- **Multi-host runtime**: Copilot CLI, Claude Code, Codex CLI, and Antigravity (`agy`) are all supported as of v0.27.0 via `specrew start --host <kind>` or the interactive menu when `--host` is omitted (see [docs/user-guide.md](user-guide.md) for the full per-host flag-translation matrix). `--host auto` and VS Code Chat are roadmap items per [Proposal 104](../proposals/104-multi-host-onboarding-and-selection-flow.md) and [Proposal 071](../proposals/071-vscode-copilot-chat-host.md).
 - **Multi-developer coordination**: single-developer workflow only. [Proposal 010](../proposals/010-multi-developer-reconciliation.md) covers the eventual model.
 - **Brownfield cartography**: discovery covers the obvious surfaces (manifests, configs, docs) but JIT codebase cartography for arbitrary inherited repos is a future item ([Proposal 025](../proposals/025-jit-codebase-cartography.md)).
 - **Module signing**: the `-SkipPublisherCheck` flag is required on `Install-Module` until a CA-signed release lands. See [Proposal 072](../proposals/072-psgallery-unsigned-default.md) for the decision context.
@@ -226,7 +227,7 @@ When `specrew start` runs without a feature description in an existing project, 
 | Platform | Status |
 |---|---|
 | Windows 11 (primary) | ✅ Fully validated |
-| WSL Ubuntu | ✅ Manually validated end-to-end (specrew init + specrew start launch the host CLI; Copilot+Squad validated through F-019; Claude/Codex hosts added in v0.26.0 and parser-tested) |
+| WSL Ubuntu | ✅ Manually validated end-to-end (specrew init + specrew start launch the host CLI; Copilot+Squad validated through F-019; Claude/Codex hosts added in v0.26.0 and parser-tested; Antigravity host added in v0.27.0) |
 | Linux native (Ubuntu) | ✅ Path handling cross-platform; CI matrix configured |
 | macOS | 🔧 Path handling cross-platform; CI matrix configured; no in-house validation runs yet |
 

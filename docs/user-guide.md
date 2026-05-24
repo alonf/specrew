@@ -552,4 +552,4 @@ F-040 manages skills + slash commands (uniformly via existing F-021 multi-host d
 
 If you invoke `specrew start --host claude` but Claude Code is not installed on PATH, Specrew exits with the install URL for that host and a non-zero exit code. No CLI is launched. Same behavior for `--host codex` when Codex CLI is missing.
 
-`--host antigravity` and `--host auto` are accepted by the parser but rejected with explicit "deferred to follow-up" guidance pointing to the relevant proposal (Proposal 069 follow-up slice for Antigravity; Proposal 104 for auto-selection).
+`--host antigravity` is now supported as of v0.27.0 (F-044 iter-005). Launch shape: `agy -i <prompt> --add-dir <path> [--dangerously-skip-permissions]`. `--host auto` is still accepted by the parser but rejected with explicit "deferred to follow-up" guidance pointing to [Proposal 104](../proposals/104-multi-host-onboarding-and-selection-flow.md) (auto-selection logic). When `--host` is omitted entirely, Specrew shows an interactive numbered menu listing installed hosts first and "(not installed)" hosts with install URLs.
