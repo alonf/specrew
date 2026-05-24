@@ -368,7 +368,7 @@ $specLines = @(Get-MarkdownContent -Path $resolvedSpecPath)
 $requirementSummaries = Get-RequirementSummaryMap -Lines $specLines
 $requirementStories = Get-RequirementStoryMap -Lines $specLines
 
-$scopeList = if ($RequirementScope -and $RequirementScope.Count -gt 0) {
+$scopeList = if ($null -ne $RequirementScope -and $RequirementScope.Count -gt 0) {
     @($RequirementScope | ForEach-Object { $_.Trim() } | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
 }
 else {
@@ -376,7 +376,12 @@ else {
 }
 
 if ($scopeList.Count -eq 0) {
-    throw "No functional requirements were found in '$resolvedSpecPath'."
+    # iter-006 T003: degrade gracefully when spec has no canonical-format FRs (`- **FR-NNN**: ...`).
+    # Older spec.md drafts (and some non-Squad-host agent outputs) may produce FRs in prose form;
+    # the iteration plan still scaffolds with a TBD requirement so retro + variance can land.
+    Write-Warning "No canonical FRs (`- **FR-NNN**: ...`) found in '$resolvedSpecPath'. Iteration plan will scaffold with a placeholder requirement; populate the spec with canonical FRs and re-run for full traceability."
+    $scopeList = @('FR-PLACEHOLDER')
+    $requirementSummaries['FR-PLACEHOLDER'] = '(placeholder — spec lacked canonical FR format; populate the Functional Requirements section with `- **FR-NNN**: ...` bullets and re-run)'
 }
 
 $missingRequirements = @($scopeList | Where-Object { -not $requirementSummaries.Contains($_) })

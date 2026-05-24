@@ -25,8 +25,7 @@
 
 ## Gap Ledger
 
-- No in-scope requirement (FR/SC) gaps: all 5 user-surfaced concerns closed: fixed-now.
-- T007 INDEX.md entries documented as on-main work (not feature-branch deferral); not Gap-Ledger-tracked here.
+- No in-scope requirement (FR/SC) gaps: all 5 user-surfaced concerns closed: fixed-now. T007 INDEX.md entries are scheduled as an on-main post-PR-merge chore per the "proposals always commit to main" rule — not a feature-branch gap.
 
 ## Verification Evidence
 
