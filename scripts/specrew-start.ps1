@@ -3430,16 +3430,17 @@ function Get-HostBootstrapInput {
 function Get-SpecrewHostLaunchInvocation {
     <#
     .SYNOPSIS
-    Build the per-host launch invocation (Binary + Args) for the selected host.
+    Build the per-host launch invocation (Binary + Args) for the selected host — registry-driven (Phase C refactor).
     Per F-040 research.md Task 1 (verified per-host CLI surfaces).
 
     .DESCRIPTION
-    Returns @{ Binary = '<path-or-name>'; Args = @(<argv-tokens>) } for the host.
-    Callers compose this into Start-Process or & invocations.
+    Delegates to hosts/<kind>/handlers.ps1 New-<Kind>LaunchInvocation via Invoke-HostHandler.
+    Adding a new host = creating hosts/<kind>/ — no edits to this function. The ValidateSet
+    accepts every registered host kind; the legacy 3-host limitation is removed.
     #>
     param(
         [Parameter(Mandatory = $true)]
-        [ValidateSet('copilot', 'claude', 'codex')]
+        [ValidateSet('copilot', 'claude', 'codex', 'antigravity')]
         [string]$HostKind,
 
         [Parameter(Mandatory = $true)]
@@ -3458,94 +3459,13 @@ function Get-SpecrewHostLaunchInvocation {
         [bool]$UseRemote = $false
     )
 
-    $hostBinary = Get-SpecrewHostBinary -HostKind $HostKind
-    $hostCmd = Get-Command $hostBinary -ErrorAction SilentlyContinue
-    $resolvedBinary = if ($null -ne $hostCmd) { $hostCmd.Source } else { $hostBinary }
-
-    $args = New-Object System.Collections.Generic.List[string]
-    $notices = New-Object System.Collections.Generic.List[string]
-
-    switch ($HostKind.ToLowerInvariant()) {
-        'copilot' {
-            $args.Add('--agent') | Out-Null
-            $args.Add($Agent) | Out-Null
-            if ($UseAutopilot) {
-                $t = Get-HostFlagTranslation -HostKind 'copilot' -SpecrewFlag '--autopilot'
-                foreach ($a in $t.Args) { $args.Add($a) | Out-Null }
-            }
-            $args.Add('--add-dir') | Out-Null
-            $args.Add($ResolvedProjectPath) | Out-Null
-            $args.Add('-i') | Out-Null
-            $args.Add($BootstrapPrompt) | Out-Null
-            if ($AllowAll) {
-                $t = Get-HostFlagTranslation -HostKind 'copilot' -SpecrewFlag '--allow-all'
-                foreach ($a in $t.Args) { $args.Add($a) | Out-Null }
-            }
-            if ($UseRemote) {
-                $t = Get-HostFlagTranslation -HostKind 'copilot' -SpecrewFlag '--remote'
-                foreach ($a in $t.Args) { $args.Add($a) | Out-Null }
-            }
-        }
-        'claude' {
-            # Claude Code: interactive REPL with initial prompt is the
-            # positional-arg form (`claude "<prompt>" --add-dir <path>`).
-            # The `-p` / `--print` flag is the one-shot/headless mode
-            # which exits after printing — wrong for lifecycle work.
-            # Bug found in 2026-05-23 real-launch test: -p caused session
-            # to exit after Claude's first response.
-            $args.Add('--add-dir') | Out-Null
-            $args.Add($ResolvedProjectPath) | Out-Null
-            if ($AllowAll) {
-                $t = Get-HostFlagTranslation -HostKind 'claude' -SpecrewFlag '--allow-all'
-                foreach ($a in $t.Args) { $args.Add($a) | Out-Null }
-                if (-not [string]::IsNullOrWhiteSpace($t.Notice)) { $notices.Add($t.Notice) | Out-Null }
-            }
-            if ($UseAutopilot) {
-                $t = Get-HostFlagTranslation -HostKind 'claude' -SpecrewFlag '--autopilot'
-                foreach ($a in $t.Args) { $args.Add($a) | Out-Null }
-                if (-not [string]::IsNullOrWhiteSpace($t.Notice)) { $notices.Add($t.Notice) | Out-Null }
-            }
-            if ($UseRemote) {
-                $t = Get-HostFlagTranslation -HostKind 'claude' -SpecrewFlag '--remote'
-                foreach ($a in $t.Args) { $args.Add($a) | Out-Null }
-                if (-not [string]::IsNullOrWhiteSpace($t.Notice)) { $notices.Add($t.Notice) | Out-Null }
-            }
-            # Initial prompt as positional arg — last position
-            $args.Add($BootstrapPrompt) | Out-Null
-        }
-        'codex' {
-            # Codex CLI: interactive REPL with initial prompt is the
-            # positional-arg form (`codex "<prompt>" --cd <path>`).
-            # `codex exec` is non-interactive batch mode — wrong for
-            # lifecycle work.
-            # Same bug class as Claude `-p` (fixed 2026-05-23 real-launch test).
-            $args.Add('--cd') | Out-Null
-            $args.Add($ResolvedProjectPath) | Out-Null
-            if ($AllowAll) {
-                $t = Get-HostFlagTranslation -HostKind 'codex' -SpecrewFlag '--allow-all'
-                foreach ($a in $t.Args) { $args.Add($a) | Out-Null }
-                if (-not [string]::IsNullOrWhiteSpace($t.Notice)) { $notices.Add($t.Notice) | Out-Null }
-            }
-            if ($UseAutopilot) {
-                $t = Get-HostFlagTranslation -HostKind 'codex' -SpecrewFlag '--autopilot'
-                foreach ($a in $t.Args) { $args.Add($a) | Out-Null }
-                if (-not [string]::IsNullOrWhiteSpace($t.Notice)) { $notices.Add($t.Notice) | Out-Null }
-            }
-            if ($UseRemote) {
-                $t = Get-HostFlagTranslation -HostKind 'codex' -SpecrewFlag '--remote'
-                # Codex has no remote-control wiring; notice surfaced, no args added
-                if (-not [string]::IsNullOrWhiteSpace($t.Notice)) { $notices.Add($t.Notice) | Out-Null }
-            }
-            # Initial prompt as positional arg — last position
-            $args.Add($BootstrapPrompt) | Out-Null
-        }
-    }
-
-    return [pscustomobject]@{
-        Binary  = $resolvedBinary
-        Args    = $args.ToArray()
-        Notices = $notices.ToArray()
-        HostKind = $HostKind.ToLowerInvariant()
+    return Invoke-HostHandler -Kind $HostKind -ContractFunction NewLaunchInvocation -Arguments @{
+        ProjectPath  = $ResolvedProjectPath
+        Prompt       = $BootstrapPrompt
+        Agent        = $Agent
+        AllowAll     = $AllowAll
+        UseAutopilot = $UseAutopilot
+        UseRemote    = $UseRemote
     }
 }
 
