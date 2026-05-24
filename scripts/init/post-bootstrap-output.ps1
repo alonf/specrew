@@ -8,10 +8,11 @@
 #   - Write-BootstrapSummary       final action-table summary (single-line outcomes per step)
 #
 # Host-coupling notes (Phase D / Slice 9+ follow-up):
-# Write-PostBootstrapGuidance currently has Squad-only strings (".squad/team.md", "Run squad to start.").
-# These stay Squad-specific because the post-bootstrap message is Copilot-host-default. When non-Copilot
-# Crew runtimes ship (Slice 9 / Proposal 024 Slice 3), this function gains a host-aware variant or is
-# split into per-host messages dispatched via the registry.
+# Write-PostBootstrapGuidance is now Crew-generic — "the Crew" instead of "Squad" — since F-044
+# Slice 9 ships per-host Crew runtimes for Claude, Codex, and Antigravity in addition to Copilot.
+# Host-specific runtime paths (.squad/team.md customization, /specrew-* surface availability per
+# host) remain Copilot-default at init time; per-host runtime team customization is queued behind
+# the `specrew team` CLI rewire follow-up (see specs/044-per-host-architecture-refactor/spec.md).
 
 Set-StrictMode -Version Latest
 
@@ -22,7 +23,7 @@ function Write-PostBootstrapGuidance {
     )
 
     $baselineRoles = 'Spec Steward, Planner, Implementer, Reviewer, Retro Facilitator'
-    $teamPath = Join-Path $ProjectPath '.squad\team.md'
+    $canonicalTeamPath = Join-Path $ProjectPath '.specrew\team\agents\'
     # Use the execution layout's scripts dir (one level below RootPath), NOT $PSScriptRoot.
     # After Slice 8, $PSScriptRoot here is scripts/init/, but the PATH guidance must point to
     # scripts/ (where specrew.ps1 lives). Resolve from the layout to stay location-independent.
@@ -48,15 +49,15 @@ function Write-PostBootstrapGuidance {
     Write-Host ''
     Write-Host '=== Usage Flow ===' -ForegroundColor Cyan
     Write-Host ''
-    Write-Host 'Baseline crew → specrew start → Squad drives specify → clarify for new specs (or recorded skip on resumed clarified work) → plan → tasks → implement → review → retro' -ForegroundColor Yellow
+    Write-Host 'Baseline Crew → specrew start → the Crew drives specify → clarify for new specs (or recorded skip on resumed clarified work) → plan → tasks → implement → review → retro' -ForegroundColor Yellow
     Write-Host ''
     Write-Host '=== Next Steps ===' -ForegroundColor Cyan
     Write-Host ''
     Write-Host '1. Start spec authoring (Spec Kit workflows):' -ForegroundColor Yellow
     Write-Host '   - Run specrew start from the project root (optionally add a short feature request)' -ForegroundColor White
-    Write-Host '   - Specrew launches the selected host CLI (default: Copilot; `--host claude` or `--host codex` available since v0.26.0) from the project directory in the current terminal by default, stays out of autopilot until intake is grounded, and supports --new-window or --prompt-approvals when you want them' -ForegroundColor White
-    Write-Host '   - Specrew will launch or hand off to the Squad agent with lifecycle context' -ForegroundColor White
-    Write-Host '   - Squad should drive specify -> clarify -> plan -> tasks -> implement (skip clarify only for resumed clarified work with a recorded rationale)' -ForegroundColor White
+    Write-Host '   - Specrew launches the selected host CLI (default: Copilot; `--host claude`, `--host codex`, or `--host antigravity` available) from the project directory in the current terminal by default, stays out of autopilot until intake is grounded, and supports --new-window or --prompt-approvals when you want them' -ForegroundColor White
+    Write-Host '   - Specrew hands off to the selected host CLI with full lifecycle context auto-loaded' -ForegroundColor White
+    Write-Host '   - The Crew drives specify -> clarify -> plan -> tasks -> implement (skip clarify only for resumed clarified work with a recorded rationale)' -ForegroundColor White
     Write-Host ''
     Write-Host '2. Resuming work later:' -ForegroundColor Yellow
     Write-Host '   - Every later session also starts with specrew start from the project root' -ForegroundColor White
@@ -74,8 +75,10 @@ function Write-PostBootstrapGuidance {
     Write-Host '   - If host-native /specrew- discovery is unavailable, use /specrew-help as the catalog fallback' -ForegroundColor White
     Write-Host ''
     Write-Host '4. (Optional) Add domain-specific team members:' -ForegroundColor Yellow
-    Write-Host '   Add extra Squad members after bootstrap with Security Analyst, UX Designer,' -ForegroundColor White
-    Write-Host '   DBA, or other specialists using Specrew team management commands:' -ForegroundColor White
+    Write-Host '   Add extra Crew members (Security Analyst, UX Designer, DBA, or other specialists)' -ForegroundColor White
+    Write-Host '   using Specrew team management commands. Custom agents are stored at the canonical' -ForegroundColor White
+    Write-Host ('   location ({0}) and re-translated to each host' -f $canonicalTeamPath) -ForegroundColor White
+    Write-Host '   on the next `specrew start`:' -ForegroundColor White
     Write-Host ''
 
     if ($isModuleContext) {
@@ -93,7 +96,9 @@ function Write-PostBootstrapGuidance {
     }
 
     Write-Host ''
-    Write-Host '   Keep the Specrew-managed baseline block intact in .squad/team.md.' -ForegroundColor Yellow
+    Write-Host ('   Keep the Specrew-managed baseline charters intact under {0}.' -f $canonicalTeamPath) -ForegroundColor Yellow
+    Write-Host '   (Generated host-native files under .squad/, .claude/, .codex/, .agents/ are re-synced' -ForegroundColor DarkGray
+    Write-Host '   from canonical on every specrew start; delete the .specrew-managed sidecar to opt out.)' -ForegroundColor DarkGray
     Write-Host ''
 
     if (-not $isModuleContext) {

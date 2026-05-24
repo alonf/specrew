@@ -3,17 +3,17 @@
 **Feature**: F-044 Per-Host Architecture Refactor
 **Source proposal**: Proposal 108 (specrew-init refactor + per-host Crew-runtime abstraction)
 **Shipped on branch**: `multi-host-integration-refactor` (bundled with F-043 per architectural co-evolution; merges to main as one PR)
-**Closeout date**: 2026-05-24
+**Closeout date**: 2026-05-24 (pending iter-004 manual-test verification round before final feature-closeout)
 
 ## Delivery summary
 
 | Metric | Planned (Proposal 108) | Actual | Variance |
 |---|---|---|---|
-| Story points | 22-25 SP | ~28 SP (iter-001 ~22 + iter-002 ~6 cleanup) | +3 SP via review-driven cleanup |
-| Iterations | 1 (Proposal 108 implicit) | 2 (architectural payoff + bug-fix slice) | +1 (methodology shape — see retros) |
+| Story points | 22-25 SP | ~32 SP (iter-001 ~22 + iter-002 ~6 + iter-003 ~4) | +7 SP via review-driven + manual-test-driven cleanup |
+| Iterations | 1 (Proposal 108 implicit) | 3 (architectural payoff + deep-review fix + manual-test fix) | +2 (methodology shape — see retros) |
 | FRs delivered | 13 | 13 | 0 |
 | ACs verified | 12 | 12 PASS (5 PASS in iter-001; 7 closed in iter-002) | 0 |
-| Implementation commits | ~10 | ~24 commits in iter-001 (Phase A-D + Slices 1-9 + finalization) + 1 commit in iter-002 | n/a |
+| Implementation commits | ~10 | ~24 in iter-001 (Phase A-D + Slices 1-9) + 1 in iter-002 + 1 in iter-003 | n/a |
 
 ## FR scoreboard
 
@@ -53,7 +53,7 @@ This feature shipped on the same PR as **F-043 Multi-Host Onboarding** because t
 | Bundle component | Spec | Iteration artifacts |
 |---|---|---|
 | F-043 (sibling) | [`../043-multi-host-onboarding/spec.md`](../043-multi-host-onboarding/spec.md) | [`../043-multi-host-onboarding/iterations/001/`](../043-multi-host-onboarding/iterations/001/) |
-| F-044 (this) | [`spec.md`](./spec.md) | [`iterations/001/`](./iterations/001/) + [`iterations/002/`](./iterations/002/) |
+| F-044 (this) | [`spec.md`](./spec.md) | [`iterations/001/`](./iterations/001/) + [`iterations/002/`](./iterations/002/) + [`iterations/003/`](./iterations/003/) |
 
 ## Architecture + design references
 

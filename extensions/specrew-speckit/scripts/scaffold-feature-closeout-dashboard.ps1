@@ -100,7 +100,24 @@ function Get-ResolvedFeatureDirectory {
     )
 
     if (-not [string]::IsNullOrWhiteSpace($FeatureId)) {
-        return Join-Path $ResolvedProjectPath ('specs\' + $FeatureId)
+        $exactPath = Join-Path $ResolvedProjectPath ('specs\' + $FeatureId)
+        if (Test-Path -LiteralPath $exactPath -PathType Container) {
+            return $exactPath
+        }
+        # Tolerate numeric-only IDs like "001" → prefix-match "specs/001-*"
+        if ($FeatureId -match '^\d+$') {
+            $specsRoot = Join-Path $ResolvedProjectPath 'specs'
+            if (Test-Path -LiteralPath $specsRoot -PathType Container) {
+                $match = @(Get-ChildItem -LiteralPath $specsRoot -Directory -ErrorAction SilentlyContinue |
+                    Where-Object { $_.Name -match ('^' + [regex]::Escape($FeatureId) + '-') } |
+                    Sort-Object Name |
+                    Select-Object -First 1)
+                if ($match.Count -eq 1) {
+                    return $match[0].FullName
+                }
+            }
+        }
+        return $exactPath
     }
 
     $featureJsonPath = Join-Path $ResolvedProjectPath '.specify\feature.json'
@@ -195,7 +212,7 @@ if (-not $DryRun) {
     $identityPath = Get-FeatureCloseoutIdentityPath -ResolvedProjectPath $resolvedProjectPath
     $identityBody = Get-FeatureCloseoutIdentityBody -ResolvedProjectPath $resolvedProjectPath -FeatureRef $featureRef
     Add-ScaffoldAction -Actions $actions -Action 'updated' -Path $identityPath
-    & $syncBoundaryStateScript -ProjectPath $resolvedProjectPath -BoundaryType 'feature-closeout' -FeatureRef $featureRef -IdentityFocusArea 'No active feature' -IdentityActiveIssues '[]' -IdentityBody $identityBody -PassThru | Out-Null
+    & $syncBoundaryStateScript -ProjectPath $resolvedProjectPath -BoundaryType 'feature-closeout' -FeatureRef $featureRef -IdentityFocusArea 'No active feature' -IdentityActiveIssues '[]' -IdentityBody $identityBody | Out-Null
 }
 
 if ($PassThru) {
