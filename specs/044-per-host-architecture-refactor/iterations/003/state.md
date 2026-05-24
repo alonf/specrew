@@ -1,11 +1,19 @@
-# Iteration 003 State
+# Iteration State: 003
+
+**Schema**: v1
+**Last Completed Task**: T005 (Bug 7d PassThru + FeatureId prefix-match)
+**Tasks Remaining**: (none)
+**In Progress**: (none)
+**Baseline Ref**: dcc4beb7
+**Updated**: 2026-05-24T22:00:00Z
+**Current Phase**: iteration-closeout
+**Iteration Status**: complete
 
 **Feature**: F-044 Per-Host Architecture Refactor
+**Branch**: `multi-host-integration-refactor` (commit `18bfaeab`)
 **Iteration**: 003 — Manual-Test Repair Slice
-**Status**: closed
 **Started**: 2026-05-24
 **Closed**: 2026-05-24
-**Branch**: `multi-host-integration-refactor`
 
 ## Scope
 

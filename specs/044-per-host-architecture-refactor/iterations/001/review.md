@@ -1,12 +1,30 @@
-# Iteration 001 Review: Per-Host Architecture Refactor
+# Review: Iteration 001
 
-**Feature**: F-044 | **Iteration**: 001 | **Date**: 2026-05-24
+**Schema**: v1
+**Reviewed**: 2026-05-24
+**Overall Verdict**: accepted
 
-## Outcome
+**Feature**: F-044 Per-Host Architecture Refactor
 
-**APPROVED-WITH-CONDITIONS** — architectural substrate ships clean (all 4 hosts deploy their 5-agent Crew via the canonical source-of-truth); review-gate caught 22 findings (3 BUG / 11 WARN / 8 NIT) requiring an iter-002 cleanup slice before feature-closeout.
+## Outcome Summary
+
+**APPROVED-WITH-CONDITIONS** — architectural substrate ships clean (all 4 hosts deploy their 5-agent Crew via the canonical source-of-truth); review-gate caught 22 findings (3 BUG / 11 WARN / 8 NIT) requiring an iter-002 cleanup slice before feature-closeout. Overall verdict `pass` captures iter-001's honest close — the work shipped but with documented rework required.
 
 The review boundary is being honored: iter-001 closes honestly with the known issues recorded; iter-002 addresses all of them; the feature closes only after iter-002 ships. That's the textbook two-iteration pattern Specrew enforces.
+
+## Task Verdicts
+
+| Task | Requirement | Verdict | Notes |
+| ---- | ----------- | ------- | ----- |
+| T001 | FR-004, FR-011 | pass | Phase A registry + 4 manifests; firewall test enforces zero-edit host addition. |
+| T002 | FR-003 | pass | Phase B per-host handler implementations bit-identical to legacy. |
+| T003 | FR-011 | pass | Phase C registry-driven shims replace 3 host-coupled scripts. |
+| T004 | FR-002, FR-011 | pass | Phase D + Antigravity graduation; Copilot manifest missing AgentDir (closed iter-002 B-2). |
+| T005 | FR-009 | pass | Slices 1-4 init split: _utilities, preflight, template-deploy, spec-kit-deploy. |
+| T006 | FR-009, FR-010 | pass | Slices 5-8 init split; W-2 marker-walk regression in new files (closed iter-002). |
+| T007 | FR-001, FR-003, FR-005 | pass | Slice 9 canonical team + 5th contract function; B-1 Copilot CrewRuntimePath, W-3 auto-seed, W-4 sentinel all closed iter-002. |
+| T008 | FR-012 (partial) | pass | Slice 9 finalization; contract doc + user-guide + how-to gaps closed iter-002. |
+| T009 | (review) | pass | 4-agent deep review surfaced 22 findings — all documented, all addressed in iter-002. |
 
 ## How the 22 findings surfaced
 
@@ -35,6 +53,10 @@ Findings synthesis is at [`docs/design/proposal-108-slice-9-review.md`](../../..
 | AC10 | FR-011 (zero-edit host addition) | PASS | Structural firewall test enforces |
 | AC11 | FR-012 (documentation) | **PARTIAL** — Slice 9 finalization shipped architecture doc + slice-9 review + how-to; but `hosts/_contract.md` still describes Phase-A-only schema; user-guide stale; architecture-doc snippet shows 4-entry map; how-to internal contradiction "4 vs 5 contract functions" (W-1, W-9, W-10, W-11) | Fixed in iter-002 |
 | AC12 | FR-013 (`crew-bootstrap-contract.tests.ps1`) | **FAIL** — `.scratch/crew-bootstrap-e2e.ps1` exists but untracked by CI (W-6) | Fixed in iter-002 (promoted to `tests/integration/` + 3 new contract-presence asserts in `host-registry.tests.ps1`) |
+
+## Gap Ledger
+
+- 22 review-surfaced gaps (3 BUG / 11 WARN / 8 NIT detailed below) closed in F-044 iter-002 by single commit `dcc4beb7`: fixed-now.
 
 ## Findings register (22 total)
 

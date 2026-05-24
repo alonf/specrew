@@ -1,10 +1,27 @@
-# Iteration 002 Review: Deep-Analysis Bug-Fix Slice
+# Review: Iteration 002
 
-**Feature**: F-044 | **Iteration**: 002 | **Date**: 2026-05-24
+**Schema**: v1
+**Reviewed**: 2026-05-24
+**Overall Verdict**: accepted
 
-## Outcome
+**Feature**: F-044 Per-Host Architecture Refactor
+
+## Outcome Summary
 
 **APPROVED** — all 22 iter-001 findings closed; verification gates all green; advisor-flagged Squad CLI parse risk addressed via the sidecar marker pattern.
+
+## Task Verdicts
+
+| Task | Requirement | Verdict | Notes |
+| ---- | ----------- | ------- | ----- |
+| T001 | FR-002 | pass | BUG tier closed — B-1 Copilot CrewRuntimePath, B-2 + B-3 AgentDir Open-Closed seam, A-1 cross-feature host-gate fix. |
+| T002 | FR-006, FR-007, FR-008, FR-010, FR-012 | pass | WARN tier — W-1 contract rewrite, W-3 auto-seed canonical, W-4 sentinel + sidecar pattern (advisor-corrected mid-iteration), W-2 marker-walk in 2 sites. |
+| T003 | FR-013 | pass | WARN tier — W-5 Antigravity filter, W-6 contract-presence tests + new crew-bootstrap-contract.tests.ps1, W-9/W-10/W-11 doc fixes. |
+| T004 | (cleanup) | pass | NIT cleanup — dedup helpers, dead code removal, stale comment scrubbing, validator gap closed (advisor catch). |
+
+## Gap Ledger
+
+- No requirement (FR/SC) gaps: all 22 iter-001 findings closed in iter-002: fixed-now. W-7 (Proposal 108 file) and W-8 (INDEX entry) are on-main chore work per the "proposals always commit to main" policy — they're not feature-branch gaps and not Gap-Ledger-tracked here.
 
 ## Finding closure scoreboard
 

@@ -1,10 +1,28 @@
-# Iteration 003 Review: Manual-Test Repair Slice
+# Review: Iteration 003
 
-**Feature**: F-044 | **Iteration**: 003 | **Date**: 2026-05-24
+**Schema**: v1
+**Reviewed**: 2026-05-24
+**Overall Verdict**: accepted
 
-## Outcome
+**Feature**: F-044 Per-Host Architecture Refactor
+
+## Outcome Summary
 
 **APPROVED with deferred functional verification** — 5 code fixes ship, all 4 touched files parse-check OK, root causes traced and documented. The actual functional verification (do the bugs stay fixed?) happens on the user's next manual test round, since this iteration's review boundary IS that round.
+
+## Task Verdicts
+
+| Task | Requirement | Verdict | Notes |
+| ---- | ----------- | ------- | ----- |
+| T001 | FR-007 | pass | Bug 2 — YAML frontmatter added to `iteration-resume` skill template. |
+| T002 | FR-012 | pass | Bug 5 — bootstrap message rewritten Crew-neutral; canonical team path surfaced. |
+| T003 | FR-013 | pass | Bug 7c — `run-hardening-gate.ps1` defensive null handling for empty ExistingLines on first run. |
+| T004 | FR-013 | pass | Bug 7b — `scaffold-retro-artifact.ps1` graceful Phase Baseline fallback (warn + TBD-row instead of throw). |
+| T005 | FR-013 | pass | Bug 7d — `scaffold-feature-closeout-dashboard.ps1` stray PassThru removed + numeric-only FeatureId prefix-match added. |
+
+## Gap Ledger
+
+- No in-scope requirement (FR/SC) gaps: all 5 Tier A bugs targeted by iter-003 are closed: fixed-now. Bug 7a was a stale-install false positive (no-op). Bugs 1, 3, 4, 6, 7e, 8 and the dual-install detection were explicit out-of-scope items documented in [`scope.md`](./scope.md); tracked as follow-up work against standing proposals (063 / 065 / 024 / 068 / 060) — not Gap-Ledger-tracked here.
 
 ## Bug closure scoreboard
 

@@ -1,12 +1,30 @@
-# Iteration 001 Review: Multi-Host Onboarding + Selection Flow
+# Review: Iteration 001
 
-**Feature**: F-043 | **Iteration**: 001 | **Date**: 2026-05-24 (retroactive backfill of 2026-05-24 implementation)
+**Schema**: v1
+**Reviewed**: 2026-05-24 (retroactive backfill of 2026-05-24 implementation)
+**Overall Verdict**: accepted
 
-## Outcome
+**Feature**: F-043 Multi-Host Onboarding + Selection Flow
+
+## Outcome Summary
 
 **APPROVED with deferred scope** — 9 of 13 FRs shipped and verified; 4 FRs (Category A coordinator-content migration) deferred to a follow-up slice with explicit rationale in [`scope.md`](./scope.md).
 
 Verification evidence: integration tests pass against the host-selection chain; manual exercise via `specrew host list/use/status` confirms CLI surface works end-to-end against all 3 supported runtime hosts (Copilot, Claude, Codex).
+
+## Task Verdicts
+
+| Task | Requirement | Verdict | Notes |
+| ---- | ----------- | ------- | ----- |
+| T001 | (intake) | pass | Spec + plan boundary artifacts committed at `487c653f`. |
+| T002 | FR-001, FR-003 | pass | host-history schema + draft helpers (`d9868035`); JSON instead of YAML per Drift #1. |
+| T003 | FR-005, FR-006, FR-007 | pass | `specrew host` CLI surface (`39b4e48d`); all 3 subcommands work end-to-end. |
+| T004 | FR-004 | pass | `Update-SpecrewHostHistory` persists on every selection. |
+| T005 | FR-002, FR-012, FR-013 | pass | Host-selection priority chain wired in `specrew-start.ps1` (`755c87f1`); A-1 bug introduced and fixed in F-044 iter-002 cross-feature (Drift #4). |
+
+## Gap Ledger
+
+- No in-scope requirement (FR/SC) gaps: all 9 in-scope FRs (FR-001..007, FR-012, FR-013) verified: fixed-now. FR-008/009/010/011 were explicit out-of-scope scope cuts at spec time, not iteration gaps — documented in [`scope.md`](./scope.md) and queued as a follow-up small-fix slice; not Gap-Ledger-tracked.
 
 ## Acceptance criteria
 

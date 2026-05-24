@@ -1,11 +1,19 @@
-# Iteration 001 State
+# Iteration State: 001
+
+**Schema**: v1
+**Last Completed Task**: T009 (4-agent deep review identifying 22 findings)
+**Tasks Remaining**: (none — 22 findings deferred to iter-002 fix slice)
+**In Progress**: (none)
+**Baseline Ref**: 35cf87f26c0b8f28a6dd89c56a3449e28268a687
+**Updated**: 2026-05-24T22:00:00Z
+**Current Phase**: iteration-closeout
+**Iteration Status**: complete
 
 **Feature**: F-044 Per-Host Architecture Refactor
-**Iteration**: 001 — Phases A-D + Proposal 108 Slices 1-9 (architectural payoff)
-**Status**: closed-with-known-issues (review-gate identified 22 findings → iter-002 cleanup slice)
-**Started**: 2026-05-23
-**Closed**: 2026-05-24
 **Branch**: `multi-host-integration-refactor` (bundled with F-043 PR)
+**Iteration**: 001 — Phases A-D + Proposal 108 Slices 1-9 (architectural payoff)
+**Started**: 2026-05-23
+**Closed**: 2026-05-24 (closed-with-known-issues — 22 findings → iter-002)
 
 ## Scope
 
