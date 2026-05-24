@@ -61,6 +61,7 @@
         'scripts/init/_utilities.ps1',
         'scripts/init/agent-detection.ps1',
         'scripts/init/dependency-install.ps1',
+        'scripts/init/post-bootstrap-output.ps1',
         'scripts/init/preflight.ps1',
         'scripts/init/spec-kit-deploy.ps1',
         'scripts/init/squad-deploy.ps1',
