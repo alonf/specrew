@@ -140,3 +140,80 @@ function Get-AntigravitySignals {
     }
     return $signals
 }
+
+function ConvertTo-AntigravityAgentDescription {
+    param([string]$Charter, [string]$Role)
+    $lines = @($Charter -split "`r?`n" | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
+    foreach ($line in $lines) {
+        if ($line -match '^>\s*(.+?)\s*$') {
+            return $Matches[1]
+        }
+    }
+    return ("Specrew Crew specialist: {0}." -f $Role)
+}
+
+function Install-AntigravityCrewRuntime {
+    <#
+    .SYNOPSIS
+    Deploy Specrew's Crew runtime to .agents/agents/<role>.md from canonical .specrew/team/agents/<role>.md.
+    Proposal 108 Slice 9 contract function.
+    .DESCRIPTION
+    Antigravity inherits Gemini CLI's subagent file format: .agents/agents/<role>.md with YAML frontmatter
+    (name, description required; tools optional with wildcard support). Translates each canonical role-charter
+    accordingly. Reference: https://geminicli.com/docs/core/subagents/
+
+    Confidence: medium — Antigravity is still preview-grade as of 2026-05-24 and the public-spec coverage
+    of the agent-file format is thinner than Claude/Codex. Smoke-test the result on first use and adjust.
+    .OUTPUTS
+    pscustomobject @{ Actions[]; CrewRuntimePath; Notices[] }
+    #>
+    param(
+        [Parameter(Mandatory = $true)][string]$ProjectPath,
+        [switch]$DryRun
+    )
+
+    $actions = New-Object System.Collections.Generic.List[hashtable]
+    $notices = New-Object System.Collections.Generic.List[string]
+    $antigravityAgentsRoot = Join-Path $ProjectPath '.agents\agents'
+    if (-not (Test-Path -LiteralPath $antigravityAgentsRoot -PathType Container) -and -not $DryRun) {
+        New-Item -ItemType Directory -Path $antigravityAgentsRoot -Force | Out-Null
+    }
+
+    foreach ($role in (Get-SpecrewCanonicalAgentRoles -ProjectPath $ProjectPath)) {
+        $content = Get-SpecrewCanonicalCharterContent -ProjectPath $ProjectPath -RoleName $role
+        if ([string]::IsNullOrWhiteSpace($content)) {
+            $notices.Add("Skipping role '$role': no canonical charter found.") | Out-Null
+            continue
+        }
+
+        $description = ConvertTo-AntigravityAgentDescription -Charter $content -Role $role
+        $frontmatterLines = @(
+            '---',
+            ('name: {0}' -f $role),
+            ('description: {0}' -f ($description -replace '"', '\"')),
+            'tools: "*"',
+            ('# Specrew-managed: this subagent file is generated from .specrew/team/agents/{0}.md' -f $role),
+            ('# DO NOT EDIT HERE. Edit the canonical file at .specrew/team/agents/{0}.md instead.' -f $role),
+            '---',
+            ''
+        )
+        $frontmatter = $frontmatterLines -join "`n"
+
+        $target = Join-Path $antigravityAgentsRoot ("{0}.md" -f $role)
+        $finalContent = $frontmatter + $content
+
+        if ($DryRun) {
+            $actions.Add(@{ Action = 'would-write'; Path = $target; Role = $role }) | Out-Null
+        }
+        else {
+            [System.IO.File]::WriteAllText($target, $finalContent, [System.Text.UTF8Encoding]::new($false))
+            $actions.Add(@{ Action = 'written'; Path = $target; Role = $role }) | Out-Null
+        }
+    }
+
+    return [pscustomobject]@{
+        Actions          = $actions.ToArray()
+        CrewRuntimePath  = (Join-Path $ProjectPath '.agents\agents')
+        Notices          = $notices.ToArray()
+    }
+}

@@ -142,3 +142,86 @@ function Get-ClaudeSignals {
     }
     return $signals
 }
+
+function ConvertTo-ClaudeAgentDescription {
+    <#
+    .SYNOPSIS
+    Derive Claude Code's `description:` frontmatter field from a charter's first prose line.
+    The description should explain when to invoke this subagent — Claude uses it for routing.
+    #>
+    param([string]$Charter, [string]$Role)
+
+    # Try to find the first paragraph after the title (typically a "> blockquote" tagline)
+    $lines = @($Charter -split "`r?`n" | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
+    foreach ($line in $lines) {
+        if ($line -match '^>\s*(.+?)\s*$') {
+            return $Matches[1]
+        }
+    }
+    return ("Specrew Crew specialist: {0}." -f $Role)
+}
+
+function Install-ClaudeCrewRuntime {
+    <#
+    .SYNOPSIS
+    Deploy Specrew's Crew runtime to .claude/agents/<role>.md from canonical .specrew/team/agents/<role>.md.
+    Proposal 108 Slice 9 contract function.
+    .DESCRIPTION
+    Translates each canonical role-charter (host-neutral markdown) into Claude Code's
+    subagent file format: .claude/agents/<role>.md with YAML frontmatter declaring
+    `name:` and `description:` (required by Claude Code), followed by the charter body
+    as the subagent's system prompt.
+    Reference: https://docs.anthropic.com/en/docs/claude-code/sub-agents
+    .OUTPUTS
+    pscustomobject @{ Actions[]; CrewRuntimePath; Notices[] }
+    #>
+    param(
+        [Parameter(Mandatory = $true)][string]$ProjectPath,
+        [switch]$DryRun
+    )
+
+    $actions = New-Object System.Collections.Generic.List[hashtable]
+    $notices = New-Object System.Collections.Generic.List[string]
+    $claudeAgentsRoot = Join-Path $ProjectPath '.claude\agents'
+    if (-not (Test-Path -LiteralPath $claudeAgentsRoot -PathType Container) -and -not $DryRun) {
+        New-Item -ItemType Directory -Path $claudeAgentsRoot -Force | Out-Null
+    }
+
+    foreach ($role in (Get-SpecrewCanonicalAgentRoles -ProjectPath $ProjectPath)) {
+        $content = Get-SpecrewCanonicalCharterContent -ProjectPath $ProjectPath -RoleName $role
+        if ([string]::IsNullOrWhiteSpace($content)) {
+            $notices.Add("Skipping role '$role': no canonical charter found.") | Out-Null
+            continue
+        }
+
+        $description = ConvertTo-ClaudeAgentDescription -Charter $content -Role $role
+        $frontmatterLines = @(
+            '---',
+            ('name: {0}' -f $role),
+            ('description: {0}' -f ($description -replace '"', '\"')),
+            'tools: "*"',
+            ('# Specrew-managed: this subagent file is generated from .specrew/team/agents/{0}.md' -f $role),
+            ('# DO NOT EDIT HERE. Edit the canonical file at .specrew/team/agents/{0}.md instead.' -f $role),
+            '---',
+            ''
+        )
+        $frontmatter = $frontmatterLines -join "`n"
+
+        $target = Join-Path $claudeAgentsRoot ("{0}.md" -f $role)
+        $finalContent = $frontmatter + $content
+
+        if ($DryRun) {
+            $actions.Add(@{ Action = 'would-write'; Path = $target; Role = $role }) | Out-Null
+        }
+        else {
+            [System.IO.File]::WriteAllText($target, $finalContent, [System.Text.UTF8Encoding]::new($false))
+            $actions.Add(@{ Action = 'written'; Path = $target; Role = $role }) | Out-Null
+        }
+    }
+
+    return [pscustomobject]@{
+        Actions          = $actions.ToArray()
+        CrewRuntimePath  = (Join-Path $ProjectPath '.claude\agents')
+        Notices          = $notices.ToArray()
+    }
+}

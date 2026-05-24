@@ -14,6 +14,12 @@ Set-StrictMode -Version Latest
 $script:SpecrewHostsRoot = $PSScriptRoot   # hosts/ directory
 $script:HostManifestCache = $null          # ordered dictionary, Kind => manifest hashtable
 
+# Dot-source the canonical team-location helpers (Proposal 108 Slice 9)
+$_teamCanonicalPath = Join-Path $script:SpecrewHostsRoot '_team-canonical.ps1'
+if (Test-Path -LiteralPath $_teamCanonicalPath -PathType Leaf) {
+    . $_teamCanonicalPath
+}
+
 function Get-SpecrewHostsRoot {
     return $script:SpecrewHostsRoot
 }
@@ -181,6 +187,11 @@ $script:HostContractFunctionMap = @{
     'ConvertFlag'            = 'ConvertTo-{0}Flag'
     'TestRuntimeInstalled'   = 'Test-{0}RuntimeInstalled'
     'GetSignals'             = 'Get-{0}Signals'
+    # Proposal 108 Slice 9: per-host Crew runtime install (5-agent baseline deployment).
+    # Each host's Install-<Kind>CrewRuntime writes the agent charters in that host's
+    # native format (Copilot: .squad/agents/*/charter.md, Claude: .claude/agents/*.md,
+    # Codex: .codex/agents/*.toml, Antigravity: .agents/agents/*.md).
+    'InstallCrewRuntime'     = 'Install-{0}CrewRuntime'
 }
 $script:HostHandlersDotSourced = @{}
 

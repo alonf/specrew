@@ -3676,6 +3676,13 @@ if (Test-Path -LiteralPath $hostRuntimeInventoryHelperPath -PathType Leaf) {
     . $hostRuntimeInventoryHelperPath
 }
 
+# Proposal 108 Slice 9: crew-bootstrap dispatcher (translates .specrew/team/agents/<role>.md
+# to selected host's native location every launch — keeps per-host views in sync with the canonical).
+$crewBootstrapHelperPath = Join-Path $PSScriptRoot 'init\crew-bootstrap.ps1'
+if (Test-Path -LiteralPath $crewBootstrapHelperPath -PathType Leaf) {
+    . $crewBootstrapHelperPath
+}
+
 $hostResolution = $null   # tracks how the host was resolved, for FR-012 start-context.json
 
 if (-not [string]::IsNullOrWhiteSpace($HostKind)) {
@@ -3998,6 +4005,24 @@ if (Get-Command Update-SpecrewHostHistory -ErrorAction SilentlyContinue) {
     }
     catch {
         Write-Info ("WARN: Failed to update .specrew/host-history.json: {0}" -f $_.Exception.Message)
+    }
+}
+
+# Proposal 108 Slice 9: deploy the selected host's Crew runtime from the canonical .specrew/team/.
+# Translation runs every launch — cheap (~50ms for 5-7 files), keeps per-host view in sync.
+if (Get-Command Invoke-CrewBootstrap -ErrorAction SilentlyContinue) {
+    try {
+        $crewResult = Invoke-CrewBootstrap -ProjectPath $resolvedProjectPath -HostKind $selectedHost
+        $writeCount = @($crewResult.Actions | Where-Object { $_.Action -eq 'written' }).Count
+        if ($writeCount -gt 0) {
+            Write-Info ("Crew runtime synced: {0} agent file(s) written to {1}." -f $writeCount, $crewResult.CrewRuntimePath)
+        }
+        foreach ($notice in $crewResult.Notices) {
+            Write-Info ("Crew runtime: {0}" -f $notice)
+        }
+    }
+    catch {
+        Write-Info ("WARN: Crew runtime sync failed for host '{0}': {1}" -f $selectedHost, $_.Exception.Message)
     }
 }
 

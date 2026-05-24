@@ -114,3 +114,55 @@ function Get-CopilotSignals {
     }
     return $signals
 }
+
+function Install-CopilotCrewRuntime {
+    <#
+    .SYNOPSIS
+    Deploy the Crew runtime to .squad/agents/<role>/charter.md from canonical .specrew/team/agents/<role>.md.
+    Proposal 108 Slice 9 contract function.
+    .DESCRIPTION
+    Squad CLI reads from .squad/agents/<role>/charter.md as its native location. This function
+    TRANSLATES the canonical .specrew/team/agents/<role>.md charters to that location.
+    Squad's other state (config.json, team.md, ceremonies.md) is bootstrapped by 'squad init'
+    or Initialize-SquadFallbackScaffold and is OUTSIDE this function's scope — only the per-role
+    charter.md files (= the team identity) are translated here.
+    .OUTPUTS
+    pscustomobject @{ Actions[]; CrewRuntimePath; Notices[] }
+    #>
+    param(
+        [Parameter(Mandatory = $true)][string]$ProjectPath,
+        [switch]$DryRun
+    )
+
+    $actions = New-Object System.Collections.Generic.List[hashtable]
+    $notices = New-Object System.Collections.Generic.List[string]
+    $squadAgentsRoot = Join-Path $ProjectPath '.squad\agents'
+
+    foreach ($role in (Get-SpecrewCanonicalAgentRoles -ProjectPath $ProjectPath)) {
+        $roleDir = Join-Path $squadAgentsRoot $role
+        if (-not (Test-Path -LiteralPath $roleDir -PathType Container) -and -not $DryRun) {
+            New-Item -ItemType Directory -Path $roleDir -Force | Out-Null
+        }
+
+        $content = Get-SpecrewCanonicalCharterContent -ProjectPath $ProjectPath -RoleName $role
+        if ([string]::IsNullOrWhiteSpace($content)) {
+            $notices.Add("Skipping role '$role': no canonical charter at .specrew/team/agents/$role.md and no shipped baseline.") | Out-Null
+            continue
+        }
+
+        $charterPath = Join-Path $roleDir 'charter.md'
+        if ($DryRun) {
+            $actions.Add(@{ Action = 'would-write'; Path = $charterPath; Role = $role }) | Out-Null
+        }
+        else {
+            [System.IO.File]::WriteAllText($charterPath, $content, [System.Text.UTF8Encoding]::new($false))
+            $actions.Add(@{ Action = 'written'; Path = $charterPath; Role = $role }) | Out-Null
+        }
+    }
+
+    return [pscustomobject]@{
+        Actions          = $actions.ToArray()
+        CrewRuntimePath  = (Join-Path $ProjectPath '.squad')
+        Notices          = $notices.ToArray()
+    }
+}

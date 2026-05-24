@@ -83,6 +83,12 @@ if (-not (Test-Path -LiteralPath $initPostBootstrapPath -PathType Leaf)) {
 }
 . $initPostBootstrapPath
 
+$initCrewBootstrapPath = Join-Path $PSScriptRoot 'init\crew-bootstrap.ps1'
+if (-not (Test-Path -LiteralPath $initCrewBootstrapPath -PathType Leaf)) {
+    throw "Missing init/crew-bootstrap.ps1 helper at '$initCrewBootstrapPath'."
+}
+. $initCrewBootstrapPath
+
 function Get-ManagedAgentsBlock {
     param(
         [Parameter(Mandatory = $true)]
@@ -738,6 +744,18 @@ if (-not $SpecKitExtensionOnly) {
     }
     else {
         Add-Action -Actions $actions -Step 'squad-runtime' -Outcome 'skipped: .squad is absent in brownfield workspace'
+    }
+}
+
+Write-Step 'Seeding canonical Crew team at .specrew/team/'
+# Proposal 108 Slice 9: .specrew/team/agents/<role>.md is the SINGLE SOURCE OF TRUTH for
+# the 5-agent baseline + user-added specialists. Each host's Install-<Kind>CrewRuntime reads
+# from here at `specrew start --host <kind>` time and translates to the host's native location.
+if (Get-Command Initialize-SpecrewTeam -ErrorAction SilentlyContinue) {
+    $teamSeed = Initialize-SpecrewTeam -ProjectPath $resolvedProjectPath -DryRun:$DryRun
+    foreach ($action in $teamSeed.Actions) {
+        $stepName = if ($action.Action -eq 'preserved') { 'team-canonical-preserved' } else { 'team-canonical' }
+        Add-Action -Actions $actions -Step $stepName -Outcome ("{0}: {1}" -f $action.Action, $action.Path)
     }
 }
 

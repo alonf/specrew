@@ -146,3 +146,85 @@ function Get-CodexSignals {
     }
     return $signals
 }
+
+function ConvertTo-CodexAgentDescription {
+    param([string]$Charter, [string]$Role)
+    $lines = @($Charter -split "`r?`n" | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
+    foreach ($line in $lines) {
+        if ($line -match '^>\s*(.+?)\s*$') {
+            return $Matches[1]
+        }
+    }
+    return ("Specrew Crew specialist: {0}." -f $Role)
+}
+
+function ConvertTo-CodexTomlString {
+    # Minimal TOML triple-quoted string with backslash + triple-quote escaping
+    param([string]$Value)
+    $escaped = $Value -replace '\\', '\\\\'
+    $escaped = $escaped -replace '"""', '\"\"\"'
+    return ('"""{0}{1}{0}"""' -f [Environment]::NewLine, $escaped)
+}
+
+function Install-CodexCrewRuntime {
+    <#
+    .SYNOPSIS
+    Deploy Specrew's Crew runtime to .codex/agents/<role>.toml from canonical .specrew/team/agents/<role>.md.
+    Proposal 108 Slice 9 contract function.
+    .DESCRIPTION
+    Translates each canonical role-charter into Codex CLI's subagent file format:
+    .codex/agents/<role>.toml with required `name`, `description`, `developer_instructions` fields.
+    The charter markdown body becomes the developer_instructions multi-line TOML string.
+    Reference: https://developers.openai.com/codex/subagents
+    .OUTPUTS
+    pscustomobject @{ Actions[]; CrewRuntimePath; Notices[] }
+    #>
+    param(
+        [Parameter(Mandatory = $true)][string]$ProjectPath,
+        [switch]$DryRun
+    )
+
+    $actions = New-Object System.Collections.Generic.List[hashtable]
+    $notices = New-Object System.Collections.Generic.List[string]
+    $codexAgentsRoot = Join-Path $ProjectPath '.codex\agents'
+    if (-not (Test-Path -LiteralPath $codexAgentsRoot -PathType Container) -and -not $DryRun) {
+        New-Item -ItemType Directory -Path $codexAgentsRoot -Force | Out-Null
+    }
+
+    foreach ($role in (Get-SpecrewCanonicalAgentRoles -ProjectPath $ProjectPath)) {
+        $content = Get-SpecrewCanonicalCharterContent -ProjectPath $ProjectPath -RoleName $role
+        if ([string]::IsNullOrWhiteSpace($content)) {
+            $notices.Add("Skipping role '$role': no canonical charter found.") | Out-Null
+            continue
+        }
+
+        $description = ConvertTo-CodexAgentDescription -Charter $content -Role $role
+        $developerInstructions = ConvertTo-CodexTomlString -Value $content
+        # Codex TOML: name + description + developer_instructions required
+        $tomlLines = @(
+            ('# Specrew-managed: this Codex subagent file is generated from .specrew/team/agents/{0}.md' -f $role),
+            ('# DO NOT EDIT HERE. Edit the canonical file at .specrew/team/agents/{0}.md instead.' -f $role),
+            '',
+            ('name = "{0}"' -f $role),
+            ('description = "{0}"' -f ($description -replace '\\', '\\\\' -replace '"', '\"')),
+            ('developer_instructions = {0}' -f $developerInstructions),
+            ''
+        )
+        $toml = $tomlLines -join "`n"
+
+        $target = Join-Path $codexAgentsRoot ("{0}.toml" -f $role)
+        if ($DryRun) {
+            $actions.Add(@{ Action = 'would-write'; Path = $target; Role = $role }) | Out-Null
+        }
+        else {
+            [System.IO.File]::WriteAllText($target, $toml, [System.Text.UTF8Encoding]::new($false))
+            $actions.Add(@{ Action = 'written'; Path = $target; Role = $role }) | Out-Null
+        }
+    }
+
+    return [pscustomobject]@{
+        Actions          = $actions.ToArray()
+        CrewRuntimePath  = (Join-Path $ProjectPath '.codex\agents')
+        Notices          = $notices.ToArray()
+    }
+}
