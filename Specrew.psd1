@@ -56,6 +56,7 @@
         'hosts/copilot/host.psd1',
         'hosts/copilot/handlers.ps1',
         'hosts/copilot/coordinator-rules.psd1',
+        'scripts/specrew-host.ps1',
         'scripts/specrew-init.ps1',
         'scripts/specrew-review.ps1',
         'scripts/specrew-start.ps1',

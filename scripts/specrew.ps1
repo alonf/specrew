@@ -542,7 +542,21 @@ switch ($Command) {
         & pwsh -NoProfile -ExecutionPolicy Bypass -File $versionScript @Arguments
         exit $LASTEXITCODE
     }
-    
+
+    'host' {
+        # F-043 multi-host inspection + selection command (Proposal 104)
+        # No Assert-WhitelistedArguments — host command takes positional subcommand + kind, not flags
+        $hostScript = Join-Path $scriptRoot 'specrew-host.ps1'
+        if (-not (Test-Path -LiteralPath $hostScript)) {
+            Write-Host "ERROR: specrew-host.ps1 not found at $hostScript" -ForegroundColor Red
+            exit 1
+        }
+
+        # Forward positional args: <subcommand> [<kind>] [--project-path <path>]
+        & pwsh -NoProfile -ExecutionPolicy Bypass -File $hostScript @Arguments
+        exit $LASTEXITCODE
+    }
+
     default {
         Write-Host "ERROR: Unknown command '$Command'" -ForegroundColor Red
         Write-Host "Run 'specrew help' or '/specrew-help' to see the supported Specrew command catalog." -ForegroundColor Yellow

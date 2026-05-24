@@ -1,28 +1,41 @@
 # Host-history persistence (F-043 / Proposal 104)
 #
-# Helpers for reading/writing .specrew/host-history.yml. Schema v1 per spec
-# data-model.md. Per spec FR-001 through FR-004 + FR-012.
+# Helpers for reading/writing .specrew/host-history.json (registry-driven).
+# Per spec FR-001 through FR-004 + FR-012.
 #
-# DRAFT — pre-staged 2026-05-23. Pending F-040 + F-041 + F-042 merge +
-# F-043 plan-boundary verdict before production wiring.
+# Spec note: FR-001 originally mandated host-history.yml. Implementation uses
+# .json (built-in ConvertFrom-Json / ConvertTo-Json) to avoid the powershell-yaml
+# external dependency. JSON also matches the existing pattern (.specrew/start-context.json,
+# .specrew/feature-status.json). Schema fields are spec-conformant; only the
+# serialization format differs.
 #
-# Functions in this file have no clarify-decision dependency — they're pure
-# persistence helpers. The host-selection LOGIC (probe → prompt → exit) lives
-# in specrew-start.ps1 and needs plan-boundary approval before wiring.
+# Architecture: host enum NOT hardcoded — initial host entries come from
+# hosts/_registry.ps1 Get-RegisteredHostKinds so adding hosts/<new-kind>/
+# automatically extends the history schema.
 
 Set-StrictMode -Version Latest
 
+$script:RegistryPath = Join-Path (Split-Path -Parent $PSScriptRoot) 'hosts\_registry.ps1'
+if (-not (Test-Path -LiteralPath $script:RegistryPath -PathType Leaf)) {
+    $script:RegistryPath = Join-Path (Split-Path -Parent (Split-Path -Parent $PSScriptRoot)) 'hosts\_registry.ps1'
+}
+if (-not (Test-Path -LiteralPath $script:RegistryPath -PathType Leaf)) {
+    throw "Host registry not found. Searched: $script:RegistryPath"
+}
+. $script:RegistryPath
+
 function Get-SpecrewHostHistoryPath {
     param([Parameter(Mandatory = $true)][string]$ProjectPath)
-    return (Join-Path $ProjectPath '.specrew\host-history.yml')
+    return (Join-Path $ProjectPath '.specrew\host-history.json')
 }
 
 function Get-SpecrewHostHistory {
     <#
     .SYNOPSIS
-    Read .specrew/host-history.yml. Returns $null if missing.
-    Tolerates corruption per Proposal 059 read-tolerance pattern — regenerates
-    via re-probe on next selection if corruption detected.
+    Read .specrew/host-history.json. Returns $null if missing or corrupted.
+    Tolerates corruption per Proposal 059 read-tolerance pattern.
+    .OUTPUTS
+    pscustomobject or $null
     #>
     param([Parameter(Mandatory = $true)][string]$ProjectPath)
 
@@ -34,23 +47,18 @@ function Get-SpecrewHostHistory {
     try {
         $raw = Get-Content -LiteralPath $path -Raw -Encoding UTF8
         if ([string]::IsNullOrWhiteSpace($raw)) {
-            Write-Warning "host-history.yml is empty; regenerating from probe"
+            Write-Warning "host-history.json is empty; treating as missing"
             return $null
         }
-        if (Get-Command ConvertFrom-Yaml -ErrorAction SilentlyContinue) {
-            $content = ConvertFrom-Yaml -Yaml $raw
-        }
-        else {
-            throw "ConvertFrom-Yaml not available; F-043 wiring requires the codebase YAML parser"
-        }
+        $content = $raw | ConvertFrom-Json
         if (-not (Test-SpecrewHostHistorySchema -Content $content)) {
-            Write-Warning "host-history.yml schema invalid; regenerating from probe"
+            Write-Warning "host-history.json schema invalid; regenerating from probe"
             return $null
         }
         return $content
     }
     catch {
-        Write-Warning "host-history.yml corrupted: $($_.Exception.Message). Regenerating from probe."
+        Write-Warning "host-history.json corrupted: $($_.Exception.Message). Regenerating from probe."
         return $null
     }
 }
@@ -58,29 +66,28 @@ function Get-SpecrewHostHistory {
 function Test-SpecrewHostHistorySchema {
     <#
     .SYNOPSIS
-    Validate a parsed host-history.yml against schema v1.
-    Returns $true if valid; $false otherwise (with specific warnings).
+    Validate a parsed host-history.json against schema v1.
+    .OUTPUTS
+    bool
     #>
     param([Parameter(Mandatory = $true)][object]$Content)
 
     if ($null -eq $Content) { return $false }
 
-    $root = if ($Content -is [hashtable] -and $Content.ContainsKey('host_history')) { $Content['host_history'] } else { $Content }
+    # Accept either flat root or { host_history: {...} } nesting (spec syntax)
+    $root = if ($Content.PSObject.Properties.Name -contains 'host_history') { $Content.host_history } else { $Content }
 
-    if (-not ($root -is [hashtable])) {
-        Write-Warning "host_history root is not a hashtable"
-        return $false
-    }
+    if ($null -eq $root) { return $false }
 
     foreach ($required in 'schema_version', 'hosts') {
-        if (-not $root.ContainsKey($required)) {
+        if ($null -eq $root.PSObject.Properties[$required]) {
             Write-Warning "host_history missing required field: $required"
             return $false
         }
     }
 
-    if ($root['schema_version'] -ne 1) {
-        Write-Warning "host_history schema_version is $($root['schema_version']); expected 1"
+    if ($root.schema_version -ne 1) {
+        Write-Warning "host_history schema_version is $($root.schema_version); expected 1"
         return $false
     }
 
@@ -90,20 +97,29 @@ function Test-SpecrewHostHistorySchema {
 function New-SpecrewHostHistory {
     <#
     .SYNOPSIS
-    Construct a fresh host-history hashtable with all known host kinds + null timestamps.
+    Construct a fresh host-history hashtable.
+    Host entries are initialized from the registry — adding hosts/<new-kind>/
+    extends the schema automatically with no edits to this function.
+    .OUTPUTS
+    hashtable
     #>
     param()
 
-    return @{
-        host_history = @{
+    $hosts = [ordered]@{}
+    foreach ($kind in Get-RegisteredHostKinds) {
+        $hosts[$kind] = [ordered]@{
+            first_used_at          = $null
+            last_used_at           = $null
+            crew_runtime_installed = $false
+            crew_runtime_path      = $null
+        }
+    }
+
+    return [ordered]@{
+        host_history = [ordered]@{
             schema_version     = 1
             last_selected_host = $null
-            hosts              = @{
-                copilot     = @{ first_used_at = $null; last_used_at = $null; crew_runtime_installed = $false; crew_runtime_path = $null }
-                claude      = @{ first_used_at = $null; last_used_at = $null; crew_runtime_installed = $false; crew_runtime_path = $null }
-                codex       = @{ first_used_at = $null; last_used_at = $null; crew_runtime_installed = $false; crew_runtime_path = $null }
-                antigravity = @{ first_used_at = $null; last_used_at = $null; crew_runtime_installed = $false; crew_runtime_path = $null }
-            }
+            hosts              = $hosts
         }
     }
 }
@@ -111,23 +127,7 @@ function New-SpecrewHostHistory {
 function Update-SpecrewHostHistory {
     <#
     .SYNOPSIS
-    Update host-history after a host selection. Per FR-004:
-      - Set last_selected_host
-      - Set last_used_at
-      - Set first_used_at if not already set
-      - Refresh crew_runtime_installed + crew_runtime_path
-
-    .PARAMETER ProjectPath
-    Project root.
-
-    .PARAMETER SelectedHost
-    The host kind that was just selected (copilot / claude / codex / antigravity).
-
-    .PARAMETER CrewRuntimeInstalled
-    Whether the per-host Crew runtime is deployed for this project.
-
-    .PARAMETER CrewRuntimePath
-    Path to the Crew runtime root (.squad/, .claude/agents/, .codex/agents/).
+    Update host-history after a host selection. Per FR-004.
     #>
     param(
         [Parameter(Mandatory = $true)][string]$ProjectPath,
@@ -136,35 +136,64 @@ function Update-SpecrewHostHistory {
         [string]$CrewRuntimePath
     )
 
+    $selectedHostLower = $SelectedHost.ToLowerInvariant()
     $history = Get-SpecrewHostHistory -ProjectPath $ProjectPath
     if ($null -eq $history) {
         $history = New-SpecrewHostHistory
+    }
+    else {
+        # Convert ConvertFrom-Json output (pscustomobject) to an editable hashtable form
+        $history = ConvertTo-EditableHashtable -InputObject $history
     }
 
     $now = [DateTime]::UtcNow.ToString('o')
     $hostsBlock = $history['host_history']['hosts']
 
-    if (-not $hostsBlock.ContainsKey($SelectedHost)) {
-        $hostsBlock[$SelectedHost] = @{ first_used_at = $null; last_used_at = $null; crew_runtime_installed = $false; crew_runtime_path = $null }
+    if (-not $hostsBlock.Contains($selectedHostLower)) {
+        $hostsBlock[$selectedHostLower] = [ordered]@{
+            first_used_at          = $null
+            last_used_at           = $null
+            crew_runtime_installed = $false
+            crew_runtime_path      = $null
+        }
     }
 
-    if ([string]::IsNullOrWhiteSpace($hostsBlock[$SelectedHost]['first_used_at'])) {
-        $hostsBlock[$SelectedHost]['first_used_at'] = $now
+    if ([string]::IsNullOrWhiteSpace([string]$hostsBlock[$selectedHostLower]['first_used_at'])) {
+        $hostsBlock[$selectedHostLower]['first_used_at'] = $now
     }
-    $hostsBlock[$SelectedHost]['last_used_at'] = $now
-    $hostsBlock[$SelectedHost]['crew_runtime_installed'] = $CrewRuntimeInstalled
-    $hostsBlock[$SelectedHost]['crew_runtime_path'] = $CrewRuntimePath
+    $hostsBlock[$selectedHostLower]['last_used_at'] = $now
+    $hostsBlock[$selectedHostLower]['crew_runtime_installed'] = $CrewRuntimeInstalled
+    $hostsBlock[$selectedHostLower]['crew_runtime_path'] = $CrewRuntimePath
 
-    $history['host_history']['last_selected_host'] = $SelectedHost
+    $history['host_history']['last_selected_host'] = $selectedHostLower
 
     Write-SpecrewHostHistory -ProjectPath $ProjectPath -History $history
     return $history
 }
 
+function ConvertTo-EditableHashtable {
+    # Recursively convert PSCustomObject (from ConvertFrom-Json) to ordered hashtable
+    param([Parameter(ValueFromPipeline = $true)]$InputObject)
+
+    if ($null -eq $InputObject) { return $null }
+    if ($InputObject -is [System.Collections.IDictionary]) { return $InputObject }
+    if ($InputObject -is [PSCustomObject]) {
+        $result = [ordered]@{}
+        foreach ($prop in $InputObject.PSObject.Properties) {
+            $result[$prop.Name] = ConvertTo-EditableHashtable -InputObject $prop.Value
+        }
+        return $result
+    }
+    if ($InputObject -is [System.Collections.IEnumerable] -and -not ($InputObject -is [string])) {
+        return @(foreach ($item in $InputObject) { ConvertTo-EditableHashtable -InputObject $item })
+    }
+    return $InputObject
+}
+
 function Write-SpecrewHostHistory {
     <#
     .SYNOPSIS
-    Serialize and atomically write the host-history.yml.
+    Serialize and write the host-history.json (UTF-8, no BOM, atomic via temp+rename).
     #>
     param(
         [Parameter(Mandatory = $true)][string]$ProjectPath,
@@ -177,12 +206,20 @@ function Write-SpecrewHostHistory {
         $null = New-Item -ItemType Directory -Path $dir -Force
     }
 
-    if (Get-Command ConvertTo-Yaml -ErrorAction SilentlyContinue) {
-        $yaml = ConvertTo-Yaml -Data $History
-        Write-Utf8FileAtomic -Path $path -Content $yaml
+    $json = ConvertTo-Json -InputObject $History -Depth 10
+    $tempPath = "$path.tmp"
+    try {
+        [System.IO.File]::WriteAllText($tempPath, $json, [System.Text.UTF8Encoding]::new($false))
+        if (Test-Path -LiteralPath $path -PathType Leaf) {
+            Remove-Item -LiteralPath $path -Force
+        }
+        Move-Item -LiteralPath $tempPath -Destination $path -Force
     }
-    else {
-        throw "ConvertTo-Yaml not available; F-043 wiring requires the codebase YAML serializer"
+    catch {
+        if (Test-Path -LiteralPath $tempPath -PathType Leaf) {
+            Remove-Item -LiteralPath $tempPath -Force -ErrorAction SilentlyContinue
+        }
+        throw
     }
 }
 
@@ -191,11 +228,11 @@ function Resolve-SpecrewHostFromHistory {
     .SYNOPSIS
     Determine the host to use based on FR-002 priority order:
       1. --host flag (if provided)
-      2. host-history.yml last_selected_host (if present)
+      2. host-history.json last_selected_host (if present)
       3. (null — caller should fall through to first-run probe or exit)
 
     .OUTPUTS
-    PSCustomObject with Host (string or null) and Source ('flag' / 'last-selected' / 'unresolved').
+    pscustomobject @{ Host = <string or $null>; Source = 'flag' | 'last-selected' | 'unresolved' }
     #>
     param(
         [Parameter(Mandatory = $true)][string]$ProjectPath,
@@ -208,11 +245,82 @@ function Resolve-SpecrewHostFromHistory {
 
     $history = Get-SpecrewHostHistory -ProjectPath $ProjectPath
     if ($null -ne $history) {
-        $last = $history['host_history']['last_selected_host']
-        if (-not [string]::IsNullOrWhiteSpace($last)) {
-            return [pscustomobject]@{ Host = $last; Source = 'last-selected' }
+        $root = if ($history.PSObject.Properties.Name -contains 'host_history') { $history.host_history } else { $history }
+        $last = $root.last_selected_host
+        if (-not [string]::IsNullOrWhiteSpace([string]$last)) {
+            return [pscustomobject]@{ Host = [string]$last; Source = 'last-selected' }
         }
     }
 
     return [pscustomobject]@{ Host = $null; Source = 'unresolved' }
+}
+
+function Invoke-SpecrewFirstRunHostProbe {
+    <#
+    .SYNOPSIS
+    Per FR-003: probe PATH for supported hosts, exclude deferred, auto-select if 1,
+    prompt the user if multiple, exit with install guidance if 0.
+
+    .DESCRIPTION
+    Returns a pscustomobject @{ Host = <string-or-null>; Source = 'auto-single-available' | 'first-run-prompt' | 'no-hosts-available'; Available[] }.
+    When Source = 'no-hosts-available', caller should print install guidance + exit non-zero.
+    When stdin is non-TTY and multiple hosts available, returns @{ Host = $null; Source = 'non-interactive-no-default' } per FR-013.
+
+    .PARAMETER NonInteractive
+    Force non-interactive behavior (for tests). Auto-detected via [Console]::IsInputRedirected when not specified.
+    #>
+    param(
+        [bool]$NonInteractive = [Console]::IsInputRedirected
+    )
+
+    # Get supported (non-deferred) hosts from registry, filter to those available on PATH
+    $supportedKinds = @(Get-SpecrewHostsByStatus -Status supported)
+    $availableMap = [ordered]@{}
+    foreach ($kind in $supportedKinds) {
+        $manifest = Get-HostManifest -Kind $kind
+        $binary = $manifest.Binary
+        $availableMap[$kind] = ($null -ne (Get-Command $binary -ErrorAction SilentlyContinue))
+    }
+    $availableKinds = @($availableMap.Keys | Where-Object { $availableMap[$_] })
+
+    if ($availableKinds.Count -eq 0) {
+        return [pscustomobject]@{
+            Host      = $null
+            Source    = 'no-hosts-available'
+            Available = @()
+        }
+    }
+
+    if ($availableKinds.Count -eq 1) {
+        return [pscustomobject]@{
+            Host      = $availableKinds[0]
+            Source    = 'auto-single-available'
+            Available = $availableKinds
+        }
+    }
+
+    # Multiple available — interactive prompt or non-TTY exit per FR-013
+    if ($NonInteractive) {
+        return [pscustomobject]@{
+            Host      = $null
+            Source    = 'non-interactive-no-default'
+            Available = $availableKinds
+        }
+    }
+
+    # Interactive prompt
+    Write-Host ''
+    Write-Host "Available hosts: $($availableKinds -join ', ')" -ForegroundColor Cyan
+    Write-Host 'No --host flag and no last-selected host on file.' -ForegroundColor Yellow
+    while ($true) {
+        $choice = (Read-Host "Select a host ($($availableKinds -join ' / '))").Trim().ToLowerInvariant()
+        if ($availableKinds -contains $choice) {
+            return [pscustomobject]@{
+                Host      = $choice
+                Source    = 'first-run-prompt'
+                Available = $availableKinds
+            }
+        }
+        Write-Host ("Invalid choice '{0}'. Pick one of: {1}" -f $choice, ($availableKinds -join ', ')) -ForegroundColor Red
+    }
 }
