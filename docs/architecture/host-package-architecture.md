@@ -30,6 +30,72 @@ hosts/
 
 Each host directory is **self-contained**: everything needed to support the host lives inside its folder, except for the contract definition and the dispatcher.
 
+## Visual overview
+
+The architecture follows Open-Closed Principle: host-neutral core code dispatches through the registry; per-host packages declare and translate everything host-specific.
+
+```mermaid
+flowchart TB
+    subgraph "Canonical Source of Truth (Specrew-owned)"
+        TEAM[".specrew/team/agents/&lt;role&gt;.md<br/>5 baseline + user-added specialists<br/><i>(host-neutral markdown charters)</i>"]
+    end
+
+    subgraph "Host Registry (hosts/_registry.ps1)"
+        REG{{"Get-RegisteredHostKinds<br/>Get-HostManifest<br/>Invoke-HostHandler"}}
+        CONTRACT["Contract function map:<br/>NewLaunchInvocation<br/>ConvertFlag<br/>TestRuntimeInstalled<br/>GetSignals<br/>InstallCrewRuntime"]
+        REG -.uses.-> CONTRACT
+    end
+
+    subgraph "Per-host Packages (hosts/&lt;kind&gt;/)"
+        direction LR
+        COP["copilot/<br/>host.psd1<br/>handlers.ps1<br/>coordinator-rules.psd1"]
+        CLA["claude/<br/>host.psd1<br/>handlers.ps1<br/>coordinator-rules.psd1"]
+        COD["codex/<br/>host.psd1<br/>handlers.ps1<br/>coordinator-rules.psd1"]
+        AGY["antigravity/<br/>host.psd1<br/>handlers.ps1<br/>coordinator-rules.psd1"]
+    end
+
+    subgraph "Generated Host-Native Views (regenerated every specrew start)"
+        direction LR
+        SQUAD[".squad/agents/&lt;role&gt;/charter.md<br/><i>(Squad CLI reads)</i>"]
+        CLD_NAT[".claude/agents/&lt;role&gt;.md<br/><i>(YAML frontmatter)</i>"]
+        CDX_NAT[".codex/agents/&lt;role&gt;.toml<br/><i>(name/description/developer_instructions)</i>"]
+        AGY_NAT[".agents/agents/&lt;role&gt;.md<br/><i>(YAML frontmatter)</i>"]
+    end
+
+    USER[("User runs<br/>specrew start --host &lt;kind&gt;")] --> START
+    START["scripts/specrew-start.ps1"] -->|"1. resolve selected host<br/>(flag → history → probe)"| REG
+    START -->|"2. Invoke-CrewBootstrap<br/>(translate canonical → host-native)"| REG
+    REG -->|"dispatch InstallCrewRuntime"| COP
+    REG -->|"dispatch InstallCrewRuntime"| CLA
+    REG -->|"dispatch InstallCrewRuntime"| COD
+    REG -->|"dispatch InstallCrewRuntime"| AGY
+    TEAM ==>|"read canonical"| COP
+    TEAM ==>|"read canonical"| CLA
+    TEAM ==>|"read canonical"| COD
+    TEAM ==>|"read canonical"| AGY
+    COP -->|"write"| SQUAD
+    CLA -->|"write"| CLD_NAT
+    COD -->|"write"| CDX_NAT
+    AGY -->|"write"| AGY_NAT
+    START -->|"3. launch host CLI"| LAUNCH[("Host CLI<br/>copilot / claude / codex / agy")]
+
+    style TEAM fill:#e1f5ff,stroke:#0288d1,stroke-width:2px
+    style REG fill:#fff3e0,stroke:#f57c00,stroke-width:2px
+    style SQUAD fill:#f3e5f5,stroke:#7b1fa2
+    style CLD_NAT fill:#f3e5f5,stroke:#7b1fa2
+    style CDX_NAT fill:#f3e5f5,stroke:#7b1fa2
+    style AGY_NAT fill:#f3e5f5,stroke:#7b1fa2
+```
+
+**Reading the diagram:**
+
+- **Blue (canonical):** `.specrew/team/` is the SINGLE source of truth. User edits ONLY here.
+- **Orange (registry):** The dispatcher. Discovers hosts/, validates manifests, routes contract-function calls.
+- **Per-host packages:** Each has a manifest (identity), handlers (4+1 contract functions), and coordinator-rules (per-host prompt surgery).
+- **Purple (generated views):** Each host's native subagent location. **Regenerated on every `specrew start`** — drift is structurally impossible.
+
+**Adding a new host (e.g., Cursor) = adding `hosts/cursor/` with manifest + handlers + rules.** Every flow in the diagram picks up the new host via the registry without touching existing files.
+
 ## The three artifacts per host
 
 ### 1. `host.psd1` — declarative manifest
@@ -58,7 +124,7 @@ PowerShell data file (hashtable) that declares what the host IS:
 
 Full schema: see [_contract.md](../../hosts/_contract.md).
 
-### 2. `handlers.ps1` — 4 contract functions
+### 2. `handlers.ps1` — 5 contract functions
 
 PowerShell script that implements what the host DOES. Naming uses the manifest `Kind` in PascalCase:
 
@@ -68,6 +134,9 @@ PowerShell script that implements what the host DOES. Naming uses the manifest `
 | `ConvertTo-<Kind>Flag` | Translate a Specrew-side flag (`--remote`, `--allow-all`, `--autopilot`) to host-specific flags | `pscustomobject @{ Args[]; Notice; SuppressWarning }` |
 | `Test-<Kind>RuntimeInstalled` | Is the host's Crew runtime deployed in this project? | `bool` |
 | `Get-<Kind>Signals` | Detect host-set environment variables (run-time host context) | `string[]` of env-var names that are set |
+| `Install-<Kind>CrewRuntime` *(Proposal 108 Slice 9)* | Read canonical `.specrew/team/agents/<role>.md` files and write to this host's native subagent location (`.squad/agents/<role>/charter.md`, `.claude/agents/<role>.md`, `.codex/agents/<role>.toml`, `.agents/agents/<role>.md`). Idempotent; runs on every `specrew start --host <kind>`. | `pscustomobject @{ Actions[]; CrewRuntimePath; Notices[] }` |
+
+**The 5th function deserves its own architectural note.** `Install-<Kind>CrewRuntime` is the contract function that closes the user-observed gap "Claude has no team of agents like Copilot+Squad." Each host's body reads from the canonical Specrew-owned location and translates to the host's native subagent format. The translation is host-specific (Codex uses TOML with `developer_instructions =`; Claude/Antigravity use markdown with YAML frontmatter; Copilot's Squad CLI uses `.md` charter files), but the **CONTENT — the actual charters defining each role's identity, expertise, and discipline — is identical across all 4 hosts** because they all derive from the same canonical source.
 
 ### 3. `coordinator-rules.psd1` — declarative coordinator-prompt surgery
 

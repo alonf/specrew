@@ -81,9 +81,19 @@ Before writing any code, gather these facts from the host's official docs (write
 
 Full field reference: see [`hosts/_contract.md`](../../hosts/_contract.md).
 
-### Step 4 — implement the 4 contract functions (`hosts/cursor/handlers.ps1`)
+### Step 4 — implement the 5 contract functions (`hosts/cursor/handlers.ps1`)
 
-Each handler is a small function (~10-50 lines). Copy from an existing host (e.g., `hosts/claude/handlers.ps1`) as a starting template.
+Each handler is a small function (~10-80 lines). Copy from an existing host (e.g., `hosts/claude/handlers.ps1`) as a starting template. The functions to export:
+
+| Function | Purpose |
+|---|---|
+| `New-CursorLaunchInvocation` | Build argv to launch Cursor with Specrew's bootstrap |
+| `ConvertTo-CursorFlag` | Translate Specrew-side flags (`--remote`, `--allow-all`, `--autopilot`) to Cursor's equivalents |
+| `Test-CursorRuntimeInstalled` | Check if Cursor's Crew runtime is already deployed in this project |
+| `Get-CursorSignals` | Detect Cursor-set env vars (when running INSIDE a Cursor session) |
+| `Install-CursorCrewRuntime` *(Proposal 108 Slice 9)* | Read `.specrew/team/agents/<role>.md` and write to Cursor's native subagent location (per Cursor's docs) |
+
+The 5th function is what makes `specrew start --host cursor` actually deploy the 5-agent Crew. **Skipping it means Cursor launches with NO team** — same problem the user observed with Claude pre-Slice 9. So this is required for `Status: 'supported'`.
 
 ```powershell
 # Cursor host package — handler implementations
@@ -159,6 +169,45 @@ function Get-CursorSignals {
     }
     return $signals
 }
+
+function Install-CursorCrewRuntime {
+    # Per Proposal 108 Slice 9: read canonical .specrew/team/agents/<role>.md
+    # and translate to Cursor's native subagent location + format.
+    # Reference an existing host for the translation pattern (Claude is closest if Cursor uses md+YAML).
+    param([Parameter(Mandatory = $true)][string]$ProjectPath, [switch]$DryRun)
+
+    $actions = New-Object System.Collections.Generic.List[hashtable]
+    $notices = New-Object System.Collections.Generic.List[string]
+    $cursorAgentsRoot = Join-Path $ProjectPath '.cursor\agents'   # adjust to Cursor's actual subagent dir
+    if (-not (Test-Path -LiteralPath $cursorAgentsRoot -PathType Container) -and -not $DryRun) {
+        New-Item -ItemType Directory -Path $cursorAgentsRoot -Force | Out-Null
+    }
+
+    foreach ($role in (Get-SpecrewCanonicalAgentRoles -ProjectPath $ProjectPath)) {
+        $content = Get-SpecrewCanonicalCharterContent -ProjectPath $ProjectPath -RoleName $role
+        if ([string]::IsNullOrWhiteSpace($content)) {
+            $notices.Add("Skipping role '$role': no canonical charter found.") | Out-Null
+            continue
+        }
+
+        # Translate $content to Cursor's native format here.
+        # IMPORTANT: parenthesize each + concatenation OR use -f format strings inside @() literals;
+        # see "Common pitfalls" below for why.
+        $target = Join-Path $cursorAgentsRoot ("{0}.md" -f $role)
+        if ($DryRun) {
+            $actions.Add(@{ Action = 'would-write'; Path = $target; Role = $role }) | Out-Null
+        } else {
+            [System.IO.File]::WriteAllText($target, $content, [System.Text.UTF8Encoding]::new($false))
+            $actions.Add(@{ Action = 'written'; Path = $target; Role = $role }) | Out-Null
+        }
+    }
+
+    return [pscustomobject]@{
+        Actions          = $actions.ToArray()
+        CrewRuntimePath  = $cursorAgentsRoot
+        Notices          = $notices.ToArray()
+    }
+}
 ```
 
 **Important:** the function names MUST follow `<Verb>-<PascalKind><Suffix>` exactly — this is how the registry's `Resolve-HostHandler` finds them. For `Kind=cursor`:
@@ -167,6 +216,7 @@ function Get-CursorSignals {
 - `ConvertTo-CursorFlag`
 - `Test-CursorRuntimeInstalled`
 - `Get-CursorSignals`
+- `Install-CursorCrewRuntime` (Proposal 108 Slice 9)
 
 ### Step 5 — declare coordinator-prompt rules (`hosts/cursor/coordinator-rules.psd1`)
 
@@ -290,6 +340,37 @@ A deferred host:
 - **Per-host wrapper functions in shim files.** Do NOT define a wrapper like `Test-CursorRuntimeInstalled` in a shim file (e.g., `host-runtime-inventory.ps1`) — it'll collide with the handler in the same scope and cause infinite recursion. The shim files use the host-neutral iterator pattern instead. (Lesson learned the hard way in the Phase C refactor.)
 - **Forgetting `coordinator-rules.psd1`.** Empty `@{ Rules = @() }` is valid — Copilot uses it. But the FILE must exist if the manifest's `CoordinatorRulesFile` field points to it (default `coordinator-rules.psd1`). If the file is missing, the engine treats it as zero rules (graceful).
 - **Skipping Step 7 ValidateSet updates.** Tests will fail with "ValidateSet doesn't allow value 'cursor'" — the error is clear; just add the value.
+- **PowerShell `,` binds tighter than `+` inside `@(...)` literals** (lesson from Slice 9 implementation):
+
+  ```powershell
+  # WRONG — parses as one big concat string, not a 2-element array:
+  $arr = @(
+      'a' + $role + '.md',
+      'b' + $role + '.md'
+  )
+  # Result: $arr.Count == 1; PowerShell parsed it as 'a' + ('.md', 'b') + $role + '.md'
+
+  # CORRECT — parenthesize each element OR use -f format:
+  $arr = @(
+      ('a{0}.md' -f $role),
+      ('b{0}.md' -f $role)
+  )
+  ```
+
+  This bit me on all 3 non-Copilot Install-<Kind>CrewRuntime bodies during Slice 9. The fix is a habit: use `-f` format strings inside array literals when interpolating variables.
+
+- **`@(...) -join "`n"` on a single expression returns ZERO LFs.** Use the two-step form:
+
+  ```powershell
+  # WRONG — silent: joined string has no LF separators
+  $x = @('a', 'b', 'c') -join "`n"
+
+  # CORRECT — explicit:
+  $lines = @('a', 'b', 'c')
+  $x = $lines -join "`n"
+  ```
+
+  Same root cause as the previous gotcha — PowerShell's comma-vs-plus precedence inside the single expression. Two-step pattern dodges it.
 
 ## When Phase D lands
 
