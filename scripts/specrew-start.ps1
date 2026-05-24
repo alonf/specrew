@@ -3129,7 +3129,8 @@ function Save-StartArtifacts {
         [bool]$BypassBoundaryEnforcement = $false,
         [AllowNull()][string]$BoundaryBypassReason,
         [AllowNull()][string]$SelectedHost,
-        [AllowNull()][System.Collections.IDictionary]$AvailableHostsMap
+        [AllowNull()][System.Collections.IDictionary]$AvailableHostsMap,
+        [AllowNull()][string]$HostResolution
     )
 
     $specrewRoot = Join-Path $ResolvedProjectPath '.specrew'
@@ -3317,6 +3318,8 @@ $artifactListFormatted
         else {
             'bootstrap_only'
         }
+        # F-043 FR-012: record HOW the host was resolved + the alternatives at probe time
+        host_resolution = if (-not [string]::IsNullOrWhiteSpace($HostResolution)) { $HostResolution } else { $null }
     }
 
     if ($null -ne $existingBoundaryEnforcement) {
@@ -3662,8 +3665,79 @@ if ($AllowAll -and $PromptApprovals) {
     exit 1
 }
 
-# F-040: Host selection + validation (FR-001, FR-002, FR-005)
-$selectedHost = if ([string]::IsNullOrWhiteSpace($HostKind)) { 'copilot' } else { $HostKind.ToLowerInvariant() }
+# F-040 + F-043: Host selection chain (per F-043 spec FR-002)
+#   priority order: --host flag → host-history last_selected_host → first-run probe → exit-with-guidance (non-TTY)
+$hostHistoryHelperPath = Join-Path $PSScriptRoot 'internal\host-history.ps1'
+if (Test-Path -LiteralPath $hostHistoryHelperPath -PathType Leaf) {
+    . $hostHistoryHelperPath
+}
+$hostRuntimeInventoryHelperPath = Join-Path $PSScriptRoot 'internal\host-runtime-inventory.ps1'
+if (Test-Path -LiteralPath $hostRuntimeInventoryHelperPath -PathType Leaf) {
+    . $hostRuntimeInventoryHelperPath
+}
+
+$hostResolution = $null   # tracks how the host was resolved, for FR-012 start-context.json
+
+if (-not [string]::IsNullOrWhiteSpace($HostKind)) {
+    # 1. --host flag explicitly provided
+    $selectedHost = $HostKind.ToLowerInvariant()
+    $hostResolution = 'flag'
+}
+else {
+    # 2. Try host-history.json last_selected_host (F-043 FR-002)
+    $historyResult = $null
+    if (Get-Command Resolve-SpecrewHostFromHistory -ErrorAction SilentlyContinue) {
+        $historyResult = Resolve-SpecrewHostFromHistory -ProjectPath $resolvedProjectPath
+    }
+
+    if ($null -ne $historyResult -and $historyResult.Source -eq 'last-selected') {
+        $selectedHost = $historyResult.Host
+        $hostResolution = 'last-selected'
+        Write-Info ("Host resolved from .specrew/host-history.json: {0} (use --host to override)" -f $selectedHost)
+    }
+    elseif (Get-Command Invoke-SpecrewFirstRunHostProbe -ErrorAction SilentlyContinue) {
+        # 3. First-run probe (FR-003 + FR-013)
+        $probe = Invoke-SpecrewFirstRunHostProbe
+        switch ($probe.Source) {
+            'auto-single-available' {
+                $selectedHost = $probe.Host
+                $hostResolution = 'auto-single-available'
+                Write-Info ("Auto-selected the only available host: {0}" -f $selectedHost)
+            }
+            'first-run-prompt' {
+                $selectedHost = $probe.Host
+                $hostResolution = 'first-run-prompt'
+                # Probe already wrote the selection to console; no extra log line needed
+            }
+            'non-interactive-no-default' {
+                # FR-013 non-TTY exit with actionable guidance
+                Write-Error-Message ("Non-interactive run with no --host flag and no last-selected host on file.")
+                Write-Error-Message ("Available hosts on PATH: {0}" -f ($probe.Available -join ', '))
+                Write-Error-Message ("Pass --host <kind> explicitly (e.g., 'specrew start --host copilot') or run interactively to pick a host.")
+                exit 1
+            }
+            'no-hosts-available' {
+                # FR-003 zero-hosts case
+                Write-Error-Message 'No supported host CLIs found on PATH.'
+                foreach ($k in Get-SpecrewSupportedHostKinds) {
+                    Write-Error-Message ("  " + (Get-SpecrewHostInstallGuidance -HostKind $k))
+                }
+                exit 1
+            }
+            default {
+                # Defensive fallback: shouldn't reach here; fall back to copilot
+                $selectedHost = 'copilot'
+                $hostResolution = 'fallback-copilot'
+            }
+        }
+    }
+    else {
+        # Legacy path (host-history helper not loaded; pre-F-043 behavior)
+        $selectedHost = 'copilot'
+        $hostResolution = 'legacy-default'
+    }
+}
+
 $availableHostsMap = Get-SpecrewAvailableHosts
 
 # Reject deferred hosts with explicit guidance per research.md Task 3
@@ -3900,7 +3974,32 @@ $artifactPaths = Save-StartArtifacts `
     -BypassBoundaryEnforcement $BypassBoundaryEnforcement `
     -BoundaryBypassReason $Reason `
     -SelectedHost $selectedHost `
-    -AvailableHostsMap $availableHostsMap
+    -AvailableHostsMap $availableHostsMap `
+    -HostResolution $hostResolution
+
+# F-043 FR-004: update host-history.json after host selection (any source)
+if (Get-Command Update-SpecrewHostHistory -ErrorAction SilentlyContinue) {
+    try {
+        $hostInventory = $null
+        if (Get-Command Get-SpecrewHostRuntimeInventory -ErrorAction SilentlyContinue) {
+            $hostInventory = Get-SpecrewHostRuntimeInventory -ProjectPath $resolvedProjectPath
+        }
+        $crewInstalled = $false
+        $crewPath = ''
+        if ($null -ne $hostInventory -and $hostInventory.Contains($selectedHost)) {
+            $crewInstalled = [bool]$hostInventory[$selectedHost].installed
+            $crewPath = [string]$hostInventory[$selectedHost].path
+        }
+        $null = Update-SpecrewHostHistory `
+            -ProjectPath $resolvedProjectPath `
+            -SelectedHost $selectedHost `
+            -CrewRuntimeInstalled $crewInstalled `
+            -CrewRuntimePath $crewPath
+    }
+    catch {
+        Write-Info ("WARN: Failed to update .specrew/host-history.json: {0}" -f $_.Exception.Message)
+    }
+}
 
 Write-Success "Prepared Specrew start context."
 if ($selectedHost -ne 'copilot') {
