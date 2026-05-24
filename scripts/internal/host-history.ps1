@@ -255,16 +255,52 @@ function Resolve-SpecrewHostFromHistory {
     return [pscustomobject]@{ Host = $null; Source = 'unresolved' }
 }
 
+function Test-SpecrewHostBinaryAvailable {
+    <#
+    .SYNOPSIS
+    Probes the host's primary Binary + every entry in BinaryAliases. Returns the
+    actual command-name that resolved (for diagnostics), or $null if none on PATH.
+    .OUTPUTS
+    string (resolved binary name) or $null
+    #>
+    param([Parameter(Mandatory = $true)][string]$Kind)
+
+    $manifest = Get-HostManifest -Kind $Kind
+    $candidates = @([string]$manifest.Binary)
+    if ($manifest.ContainsKey('BinaryAliases') -and $null -ne $manifest.BinaryAliases) {
+        foreach ($alias in @($manifest.BinaryAliases)) {
+            if (-not [string]::IsNullOrWhiteSpace([string]$alias)) {
+                $candidates += [string]$alias
+            }
+        }
+    }
+    foreach ($binary in $candidates) {
+        if ($null -ne (Get-Command $binary -ErrorAction SilentlyContinue)) {
+            return $binary
+        }
+    }
+    return $null
+}
+
 function Invoke-SpecrewFirstRunHostProbe {
     <#
     .SYNOPSIS
-    Per FR-003: probe PATH for supported hosts, exclude deferred, auto-select if 1,
-    prompt the user if multiple, exit with install guidance if 0.
+    Per FR-003: probe PATH for supported hosts (Binary + BinaryAliases), present
+    a numbered menu of installed hosts plus a "not installed" group, auto-select
+    if exactly 1 is installed, exit with guidance if 0.
 
     .DESCRIPTION
     Returns a pscustomobject @{ Host = <string-or-null>; Source = 'auto-single-available' | 'first-run-prompt' | 'no-hosts-available'; Available[] }.
     When Source = 'no-hosts-available', caller should print install guidance + exit non-zero.
     When stdin is non-TTY and multiple hosts available, returns @{ Host = $null; Source = 'non-interactive-no-default' } per FR-013.
+
+    Interactive menu (when multiple installed hosts):
+      1. copilot   — GitHub Copilot CLI
+      2. claude    — Claude Code CLI
+      3. codex     — OpenAI Codex CLI
+      Other supported (not installed on this PATH):
+       - antigravity — Google Antigravity CLI (install: https://antigravity.google/)
+      Select 1-3 (number) or kind name [default 1]:
 
     .PARAMETER NonInteractive
     Force non-interactive behavior (for tests). Auto-detected via [Console]::IsInputRedirected when not specified.
@@ -273,15 +309,18 @@ function Invoke-SpecrewFirstRunHostProbe {
         [bool]$NonInteractive = [Console]::IsInputRedirected
     )
 
-    # Get supported (non-deferred) hosts from registry, filter to those available on PATH
+    # Get supported (non-deferred) hosts from registry; probe each for Binary + BinaryAliases
     $supportedKinds = @(Get-SpecrewHostsByStatus -Status supported)
-    $availableMap = [ordered]@{}
+    $availableKinds = @()
+    $unavailableKinds = @()
     foreach ($kind in $supportedKinds) {
-        $manifest = Get-HostManifest -Kind $kind
-        $binary = $manifest.Binary
-        $availableMap[$kind] = ($null -ne (Get-Command $binary -ErrorAction SilentlyContinue))
+        if ($null -ne (Test-SpecrewHostBinaryAvailable -Kind $kind)) {
+            $availableKinds += $kind
+        }
+        else {
+            $unavailableKinds += $kind
+        }
     }
-    $availableKinds = @($availableMap.Keys | Where-Object { $availableMap[$_] })
 
     if ($availableKinds.Count -eq 0) {
         return [pscustomobject]@{
@@ -299,7 +338,7 @@ function Invoke-SpecrewFirstRunHostProbe {
         }
     }
 
-    # Multiple available — interactive prompt or non-TTY exit per FR-013
+    # Multiple available — interactive menu or non-TTY exit per FR-013
     if ($NonInteractive) {
         return [pscustomobject]@{
             Host      = $null
@@ -308,19 +347,61 @@ function Invoke-SpecrewFirstRunHostProbe {
         }
     }
 
-    # Interactive prompt
+    # Interactive numbered menu
     Write-Host ''
-    Write-Host "Available hosts: $($availableKinds -join ', ')" -ForegroundColor Cyan
-    Write-Host 'No --host flag and no last-selected host on file.' -ForegroundColor Yellow
+    Write-Host 'Select host for this Specrew session:' -ForegroundColor Cyan
+    Write-Host ''
+    Write-Host 'Installed on this machine:' -ForegroundColor Green
+    $menuIndex = 0
+    foreach ($kind in $availableKinds) {
+        $menuIndex++
+        $manifest = Get-HostManifest -Kind $kind
+        Write-Host ('  {0}. {1,-12} — {2}' -f $menuIndex, $kind, [string]$manifest.DisplayName)
+    }
+    if ($unavailableKinds.Count -gt 0) {
+        Write-Host ''
+        Write-Host 'Other supported hosts (not installed on this PATH):' -ForegroundColor DarkGray
+        foreach ($kind in $unavailableKinds) {
+            $manifest = Get-HostManifest -Kind $kind
+            $installUrl = if ($manifest.ContainsKey('InstallUrl')) { [string]$manifest.InstallUrl } else { '' }
+            $urlHint = if (-not [string]::IsNullOrWhiteSpace($installUrl)) { " (install: $installUrl)" } else { '' }
+            Write-Host ('   - {0,-12} — {1}{2}' -f $kind, [string]$manifest.DisplayName, $urlHint) -ForegroundColor DarkGray
+        }
+    }
+    Write-Host ''
     while ($true) {
-        $choice = (Read-Host "Select a host ($($availableKinds -join ' / '))").Trim().ToLowerInvariant()
-        if ($availableKinds -contains $choice) {
+        $rawInput = (Read-Host ("Select 1-{0} (number) or kind name [default 1]" -f $availableKinds.Count)).Trim()
+        if ([string]::IsNullOrWhiteSpace($rawInput)) {
+            $rawInput = '1'
+        }
+        # Numeric selection
+        $asInt = 0
+        if ([int]::TryParse($rawInput, [ref]$asInt)) {
+            if ($asInt -ge 1 -and $asInt -le $availableKinds.Count) {
+                return [pscustomobject]@{
+                    Host      = $availableKinds[$asInt - 1]
+                    Source    = 'first-run-prompt'
+                    Available = $availableKinds
+                }
+            }
+            Write-Host ("Invalid number '{0}'. Pick 1-{1}." -f $rawInput, $availableKinds.Count) -ForegroundColor Red
+            continue
+        }
+        # Kind-name selection (backwards-compat)
+        $choiceLower = $rawInput.ToLowerInvariant()
+        if ($availableKinds -contains $choiceLower) {
             return [pscustomobject]@{
-                Host      = $choice
+                Host      = $choiceLower
                 Source    = 'first-run-prompt'
                 Available = $availableKinds
             }
         }
-        Write-Host ("Invalid choice '{0}'. Pick one of: {1}" -f $choice, ($availableKinds -join ', ')) -ForegroundColor Red
+        if ($unavailableKinds -contains $choiceLower) {
+            $manifest = Get-HostManifest -Kind $choiceLower
+            $installUrl = if ($manifest.ContainsKey('InstallUrl')) { [string]$manifest.InstallUrl } else { 'see host docs' }
+            Write-Host ("Host '{0}' is supported but not installed on this PATH. Install: {1}" -f $choiceLower, $installUrl) -ForegroundColor Yellow
+            continue
+        }
+        Write-Host ("Invalid choice '{0}'. Pick 1-{1} or one of: {2}" -f $rawInput, $availableKinds.Count, ($availableKinds -join ', ')) -ForegroundColor Red
     }
 }

@@ -158,9 +158,23 @@ function Test-SpecrewHostAvailable {
         [string]$HostKind
     )
 
-    $binary = Get-SpecrewHostBinary -HostKind $HostKind
-    $cmd = Get-Command $binary -ErrorAction SilentlyContinue
-    return ($null -ne $cmd)
+    # Probe primary Binary + BinaryAliases per manifest contract.
+    # Pre-iter-004 implementation only checked Binary, ignoring BinaryAliases.
+    $manifest = Get-HostManifest -Kind $HostKind
+    $candidates = @([string]$manifest.Binary)
+    if ($manifest.ContainsKey('BinaryAliases') -and $null -ne $manifest.BinaryAliases) {
+        foreach ($alias in @($manifest.BinaryAliases)) {
+            if (-not [string]::IsNullOrWhiteSpace([string]$alias)) {
+                $candidates += [string]$alias
+            }
+        }
+    }
+    foreach ($binary in $candidates) {
+        if ($null -ne (Get-Command $binary -ErrorAction SilentlyContinue)) {
+            return $true
+        }
+    }
+    return $false
 }
 
 function Get-SpecrewAvailableHosts {

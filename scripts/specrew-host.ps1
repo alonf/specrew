@@ -53,11 +53,30 @@ function Invoke-SpecrewHostList {
     Write-Host 'Hosts' -ForegroundColor Cyan
     Write-Host '-----' -ForegroundColor Cyan
 
-    $rows = foreach ($kind in $registered) {
+    $installedRows = @()
+    $notInstalledRows = @()
+    foreach ($kind in $registered) {
         $manifest = Get-HostManifest -Kind $kind
-        $binary = $manifest.Binary
-        $available = ($null -ne (Get-Command $binary -ErrorAction SilentlyContinue))
-        $status = $manifest.Status
+        $binary = [string]$manifest.Binary
+        # Probe Binary + BinaryAliases (matches first-run probe semantics)
+        $resolved = $null
+        $candidates = @($binary)
+        if ($manifest.ContainsKey('BinaryAliases') -and $null -ne $manifest.BinaryAliases) {
+            foreach ($alias in @($manifest.BinaryAliases)) {
+                if (-not [string]::IsNullOrWhiteSpace([string]$alias)) {
+                    $candidates += [string]$alias
+                }
+            }
+        }
+        foreach ($cand in $candidates) {
+            if ($null -ne (Get-Command $cand -ErrorAction SilentlyContinue)) {
+                $resolved = $cand
+                break
+            }
+        }
+        $available = ($null -ne $resolved)
+        $effectiveBinary = if ($available) { $resolved } else { $binary }
+        $status = [string]$manifest.Status
 
         $statusMark = switch ($status) {
             'supported'    { '' }
@@ -67,27 +86,50 @@ function Invoke-SpecrewHostList {
         }
 
         $selectedMark = if ($kind -eq $selected) { '  *selected' } else { '' }
-        $availableMark = if ($available) { 'available' } else { 'not on PATH' }
 
-        [pscustomobject]@{
+        $row = [pscustomobject]@{
             Kind        = $kind
-            DisplayName = $manifest.DisplayName
-            Binary      = $binary
-            Available   = $availableMark
+            DisplayName = [string]$manifest.DisplayName
+            Binary      = $effectiveBinary
+            Available   = $available
             Status      = $status
             Selected    = ($kind -eq $selected)
-            Line        = "{0,-12} {1,-30} bin={2,-12} {3}{4}{5}" -f $kind, $manifest.DisplayName, $binary, $availableMark, $statusMark, $selectedMark
+            InstallUrl  = if ($manifest.ContainsKey('InstallUrl')) { [string]$manifest.InstallUrl } else { '' }
+            StatusMark  = $statusMark
+            SelectedMark = $selectedMark
         }
-    }
-    foreach ($row in $rows) {
-        if ($row.Selected) {
-            Write-Host $row.Line -ForegroundColor Green
-        } elseif ($row.Status -ne 'supported') {
-            Write-Host $row.Line -ForegroundColor DarkGray
+
+        if ($available) {
+            $installedRows += $row
         } else {
-            Write-Host $row.Line
+            $notInstalledRows += $row
         }
     }
+
+    if ($installedRows.Count -gt 0) {
+        Write-Host 'Installed on this machine:' -ForegroundColor Green
+        foreach ($row in $installedRows) {
+            $line = "  {0,-12} {1,-30} bin={2,-12} installed{3}{4}" -f $row.Kind, $row.DisplayName, $row.Binary, $row.StatusMark, $row.SelectedMark
+            if ($row.Selected) {
+                Write-Host $line -ForegroundColor Green
+            } elseif ($row.Status -ne 'supported') {
+                Write-Host $line -ForegroundColor DarkGray
+            } else {
+                Write-Host $line
+            }
+        }
+    }
+
+    if ($notInstalledRows.Count -gt 0) {
+        Write-Host ''
+        Write-Host 'Other supported hosts (not installed on this PATH):' -ForegroundColor DarkGray
+        foreach ($row in $notInstalledRows) {
+            $urlHint = if (-not [string]::IsNullOrWhiteSpace($row.InstallUrl)) { "  (install: $($row.InstallUrl))" } else { '' }
+            $line = "  {0,-12} {1,-30} bin={2,-12} (not installed){3}{4}" -f $row.Kind, $row.DisplayName, $row.Binary, $row.StatusMark, $urlHint
+            Write-Host $line -ForegroundColor DarkGray
+        }
+    }
+
     Write-Host ''
     if ([string]::IsNullOrWhiteSpace($selected)) {
         Write-Host "No host selected. Use 'specrew host use <kind>' to set one, or pass --host on 'specrew start'." -ForegroundColor Yellow
