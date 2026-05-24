@@ -35,35 +35,11 @@ if (-not (Test-Path -LiteralPath $versionCheckHelperPath -PathType Leaf)) {
 }
 . $versionCheckHelperPath
 
-function Get-NativeExitCode {
-    if (Get-Variable -Name LASTEXITCODE -Scope Global -ErrorAction SilentlyContinue) {
-        return $global:LASTEXITCODE
-    }
-
-    return 0
+$initUtilitiesPath = Join-Path $PSScriptRoot 'init\_utilities.ps1'
+if (-not (Test-Path -LiteralPath $initUtilitiesPath -PathType Leaf)) {
+    throw "Missing init/_utilities.ps1 helper at '$initUtilitiesPath'."
 }
-
-function ConvertTo-YamlBoolean {
-    param(
-        [Parameter(Mandatory = $true)]
-        [bool]$Value
-    )
-
-    if ($Value) {
-        return 'true'
-    }
-
-    return 'false'
-}
-
-function Test-ConsoleInputRedirected {
-    try {
-        return [Console]::IsInputRedirected
-    }
-    catch {
-        return $true
-    }
-}
+. $initUtilitiesPath
 
 function Test-PreFlightDependencies {
     param(
@@ -261,15 +237,6 @@ Options:
 '@ | Write-Host
 }
 
-function Write-Step {
-    param(
-        [Parameter(Mandatory = $true)]
-        [string]$Message
-    )
-
-    Write-Host ("==> {0}" -f $Message) -ForegroundColor Cyan
-}
-
 function Write-PostBootstrapGuidance {
     param(
         [Parameter(Mandatory = $true)]
@@ -402,128 +369,6 @@ function Write-PostBootstrapGuidance {
     Write-Host ''
 }
 
-function Invoke-NativeCommand {
-    param(
-        [Parameter(Mandatory = $true)]
-        [string]$FilePath,
-
-        [Parameter(Mandatory = $true)]
-        [string[]]$ArgumentList,
-
-        [Parameter(Mandatory = $true)]
-        [string]$WorkingDirectory
-    )
-
-    Push-Location $WorkingDirectory
-    try {
-        Invoke-WithNativeCommandEncoding -FilePath $FilePath -ScriptBlock {
-            & $FilePath @ArgumentList
-            if ((Get-NativeExitCode) -ne 0) {
-                throw ("Command failed: {0} {1}" -f $FilePath, ($ArgumentList -join ' '))
-            }
-        }
-    }
-    finally {
-        Pop-Location
-    }
-}
-
-function Invoke-NativeCommandForOutput {
-    param(
-        [Parameter(Mandatory = $true)]
-        [string]$FilePath,
-
-        [Parameter(Mandatory = $true)]
-        [string[]]$ArgumentList,
-
-        [Parameter(Mandatory = $true)]
-        [string]$WorkingDirectory
-    )
-
-    Push-Location $WorkingDirectory
-    try {
-        $output = Invoke-WithNativeCommandEncoding -FilePath $FilePath -ScriptBlock {
-            @(& $FilePath @ArgumentList 2>&1)
-        }
-        return [pscustomobject]@{
-            ExitCode = Get-NativeExitCode
-            Output   = @($output | ForEach-Object { [string]$_ })
-        }
-    }
-    finally {
-        Pop-Location
-    }
-}
-
-function Invoke-WithNativeCommandEncoding {
-    param(
-        [Parameter(Mandatory = $true)]
-        [string]$FilePath,
-
-        [Parameter(Mandatory = $true)]
-        [scriptblock]$ScriptBlock
-    )
-
-    $shouldForceUtf8 = $IsWindows -and $FilePath -eq 'specify'
-    if (-not $shouldForceUtf8) {
-        return & $ScriptBlock
-    }
-
-    $utf8 = [System.Text.UTF8Encoding]::new($false)
-    $previousOutputEncoding = $null
-    $previousInputEncoding = $null
-    $previousPipelineEncoding = $OutputEncoding
-    $previousPythonUtf8 = [Environment]::GetEnvironmentVariable('PYTHONUTF8', 'Process')
-    $previousPythonIoEncoding = [Environment]::GetEnvironmentVariable('PYTHONIOENCODING', 'Process')
-
-    try {
-        $previousOutputEncoding = [Console]::OutputEncoding
-        $previousInputEncoding = [Console]::InputEncoding
-    }
-    catch {
-        $shouldForceUtf8 = $false
-    }
-
-    if (-not $shouldForceUtf8) {
-        return & $ScriptBlock
-    }
-
-    try {
-        [Console]::OutputEncoding = $utf8
-        [Console]::InputEncoding = $utf8
-        $script:OutputEncoding = $utf8
-        [Environment]::SetEnvironmentVariable('PYTHONUTF8', '1', 'Process')
-        [Environment]::SetEnvironmentVariable('PYTHONIOENCODING', 'utf-8', 'Process')
-        return & $ScriptBlock
-    }
-    finally {
-        [Console]::OutputEncoding = $previousOutputEncoding
-        [Console]::InputEncoding = $previousInputEncoding
-        $script:OutputEncoding = $previousPipelineEncoding
-        [Environment]::SetEnvironmentVariable('PYTHONUTF8', $previousPythonUtf8, 'Process')
-        [Environment]::SetEnvironmentVariable('PYTHONIOENCODING', $previousPythonIoEncoding, 'Process')
-    }
-}
-
-function Add-Action {
-    param(
-        [AllowEmptyCollection()]
-        [Parameter(Mandatory = $true)]
-        [System.Collections.ArrayList]$Actions,
-
-        [Parameter(Mandatory = $true)]
-        [string]$Step,
-
-        [Parameter(Mandatory = $true)]
-        [string]$Outcome
-    )
-
-    $null = $Actions.Add([pscustomobject]@{
-            Step    = $Step
-            Outcome = $Outcome
-        })
-}
-
 function Write-BootstrapSummary {
     param(
         [AllowEmptyCollection()]
@@ -552,38 +397,6 @@ function Write-BootstrapSummary {
     Write-Host ("Bootstrap completed for {0}." -f $ProjectPath) -ForegroundColor Green
     if ($ShowGuidance) {
         Write-PostBootstrapGuidance -ProjectPath $ProjectPath
-    }
-}
-
-function Ensure-DirectoryExists {
-    param(
-        [Parameter(Mandatory = $true)]
-        [string]$Path,
-
-        [Parameter(Mandatory = $true)]
-        [switch]$PreviewOnly
-    )
-
-    if (Test-Path -LiteralPath $Path) {
-        return
-    }
-
-    if ($PreviewOnly) {
-        return
-    }
-
-    New-Item -ItemType Directory -Path $Path -Force | Out-Null
-}
-
-function Get-SpecrewExecutionLayout {
-    $distributionRoot = Split-Path -Parent $PSScriptRoot
-    $templateRoot = Join-Path -Path $distributionRoot -ChildPath 'templates'
-    $isModuleLayout = $env:SPECREW_INVOKED_FROM_MODULE -eq '1'
-
-    return [pscustomobject]@{
-        RootPath     = $distributionRoot
-        Mode         = $(if ($isModuleLayout) { 'module' } else { 'clone' })
-        TemplateRoot = $(if (Test-Path -LiteralPath $templateRoot -PathType Container) { $templateRoot } else { $null })
     }
 }
 
@@ -738,35 +551,6 @@ function Invoke-BundledTemplateDeployment {
         $verb = if ($PreviewOnly) { 'would-sync' } else { 'synced' }
         Add-Action -Actions $Actions -Step 'template-copy' -Outcome ("{0} {1} from {2} ({3} new, {4} updated, {5} preserved)" -f $verb, $deployment.Name, $deployment.SourceRoot, $result.Copied, $result.Updated, $result.Preserved)
     }
-}
-
-function Write-MissingUtf8File {
-    param(
-        [Parameter(Mandatory = $true)]
-        [string]$Path,
-
-        [AllowEmptyString()]
-        [Parameter(Mandatory = $true)]
-        [string]$Content,
-
-        [Parameter(Mandatory = $true)]
-        [switch]$PreviewOnly
-    )
-
-    if (Test-Path -LiteralPath $Path) {
-        return
-    }
-
-    if ($PreviewOnly) {
-        return
-    }
-
-    $parent = Split-Path -Parent $Path
-    if (-not [string]::IsNullOrWhiteSpace($parent) -and -not (Test-Path -LiteralPath $parent)) {
-        New-Item -ItemType Directory -Path $parent -Force | Out-Null
-    }
-
-    [System.IO.File]::WriteAllText($Path, $Content, [System.Text.UTF8Encoding]::new($false))
 }
 
 function Test-BootstrappedProjectState {
