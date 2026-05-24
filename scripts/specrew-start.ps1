@@ -13,6 +13,9 @@ param(
     [string]$Agent = 'Squad',
 
     [Parameter(Mandatory = $false)]
+    [string]$HostKind = '',
+
+    [Parameter(Mandatory = $false)]
     [string]$PostRestartDirective = '',
 
     [switch]$NoLaunch,
@@ -74,12 +77,31 @@ if (-not (Test-Path -LiteralPath $versionCheckHelperPath -PathType Leaf)) {
 }
 . $versionCheckHelperPath
 
+$detectHostsHelperPath = Join-Path $PSScriptRoot 'internal\detect-hosts.ps1'
+if (-not (Test-Path -LiteralPath $detectHostsHelperPath -PathType Leaf)) {
+    throw "Missing detect-hosts helper '$detectHostsHelperPath'."
+}
+. $detectHostsHelperPath
+
+$hostFlagTranslationHelperPath = Join-Path $PSScriptRoot 'internal\host-flag-translation.ps1'
+if (-not (Test-Path -LiteralPath $hostFlagTranslationHelperPath -PathType Leaf)) {
+    throw "Missing host-flag-translation helper '$hostFlagTranslationHelperPath'."
+}
+. $hostFlagTranslationHelperPath
+
+$coordinatorPromptSurgeryHelperPath = Join-Path $PSScriptRoot 'internal\coordinator-prompt-surgery.ps1'
+if (-not (Test-Path -LiteralPath $coordinatorPromptSurgeryHelperPath -PathType Leaf)) {
+    throw "Missing coordinator-prompt-surgery helper '$coordinatorPromptSurgeryHelperPath'."
+}
+. $coordinatorPromptSurgeryHelperPath
+
 function Convert-UnixStyleArguments {
     param(
         [string]$FeatureRequest,
         [string]$ProjectPath,
         [string]$ResumeFeature,
         [string]$Agent,
+        [string]$HostKind,
         [string]$PostRestartDirective,
         [bool]$NoLaunch,
         [bool]$NewWindow,
@@ -100,6 +122,7 @@ function Convert-UnixStyleArguments {
         ProjectPath    = $ProjectPath
         ResumeFeature  = $ResumeFeature
         Agent          = $Agent
+        HostKind       = $HostKind
         PostRestartDirective = $PostRestartDirective
         NoLaunch       = $NoLaunch
         NewWindow      = $false
@@ -138,6 +161,10 @@ function Convert-UnixStyleArguments {
             '--agent' {
                 $i++
                 if ($i -lt $CliArgs.Count) { $result.Agent = $CliArgs[$i] }
+            }
+            '--host' {
+                $i++
+                if ($i -lt $CliArgs.Count) { $result.HostKind = $CliArgs[$i] }
             }
             '--post-restart-directive' {
                 $i++
@@ -202,6 +229,7 @@ $parsedArgs = Convert-UnixStyleArguments `
     -ProjectPath $ProjectPath `
     -ResumeFeature $ResumeFeature `
     -Agent $Agent `
+    -HostKind $HostKind `
     -PostRestartDirective $PostRestartDirective `
     -NoLaunch $NoLaunch.IsPresent `
     -NewWindow $NewWindow.IsPresent `
@@ -220,6 +248,7 @@ $FeatureRequest = $parsedArgs.FeatureRequest
 $ProjectPath = $parsedArgs.ProjectPath
 $ResumeFeature = $parsedArgs.ResumeFeature
 $Agent = $parsedArgs.Agent
+$HostKind = $parsedArgs.HostKind
 $PostRestartDirective = $parsedArgs.PostRestartDirective
 $NoLaunch = [bool]$parsedArgs.NoLaunch
 $NewWindow = [bool]$parsedArgs.NewWindow
@@ -239,25 +268,31 @@ $ErrorActionPreference = 'Stop'
 
 function Show-Usage {
     @'
-specrew start - Start or resume the Squad-driven Spec Kit lifecycle
+specrew start - Start or resume the Crew-driven Spec Kit lifecycle
 
 Usage:
   specrew start
   specrew start "Build a reporting dashboard"
   specrew start --feature-request "Add SSO login"
   specrew start --resume-feature auto
+  specrew start --host claude "Build a TODO app"
+  specrew start --host codex --resume-feature auto
 
 Options:
   -ProjectPath | --project-path <path>     Target project directory (defaults to current directory)
   -ResumeFeature | --resume-feature <path|auto>
                                            Resume an existing feature directory, or use "auto"
-  -Agent | --agent <name>                  Copilot agent to launch (default: Squad)
-  -NoLaunch | --no-launch                  Generate handoff prompt/context but do not launch Copilot
-  -NewWindow | --new-window                Launch Copilot in a new PowerShell window instead of the current terminal
+  -Agent | --agent <name>                  Crew runtime agent label (default: Squad — required by Copilot host's --agent flag; non-Squad hosts ignore this since they don't have a host-side --agent surface)
+  -HostKind | --host <copilot|claude|codex>
+                                           Select the agent host runtime (default: copilot). 'antigravity' and
+                                           'auto' are reserved but rejected with deferred-guidance pointing to
+                                           Proposal 069 follow-up / Proposal 104 respectively.
+  -NoLaunch | --no-launch                  Generate handoff prompt/context but do not launch the host CLI
+  -NewWindow | --new-window                Launch the host CLI in a new PowerShell window instead of the current terminal
   -SameWindow | --same-window              Compatibility alias for the default current-terminal launch mode
-  -AllowAll | --allow-all                  Launch Copilot with --allow-all so tool calls run without approval prompts (this is the default for tool calls)
-  -PromptApprovals | --prompt-approvals    Keep Copilot's interactive tool-approval prompts enabled (disables --allow-all)
-  -Autonomous | --autonomous               Launch Copilot with --autopilot so Squad advances through lifecycle gates without stopping for explicit approval (use for unattended runs such as overnight execution; default is gate-respecting mode where Squad stops at every approval boundary)
+  -AllowAll | --allow-all                  Launch the host with its tool-approval-bypass flag (Copilot --allow-all, Claude --dangerously-skip-permissions, Codex --dangerously-bypass-approvals-and-sandbox). Default for tool calls.
+  -PromptApprovals | --prompt-approvals    Keep the host's interactive tool-approval prompts enabled (disables --allow-all translation)
+  -Autonomous | --autonomous               Specrew-side flag (independent of any host autopilot): the Crew advances through lifecycle gates without stopping for explicit approval. Use for unattended runs such as overnight execution; default is gate-respecting mode where the Crew stops at every approval boundary.
   --bypass-boundary-enforcement            Suspend boundary enforcement for this session only; requires --reason
   --reason "<text>"                        Required justification for --bypass-boundary-enforcement
   -Recover | --recover                     Bypass stale-state blocking and enter recovery mode directly
@@ -268,12 +303,12 @@ Options:
     - Running specrew start with no arguments launches Squad in intake/resume mode.
     - Squad should continue any in-progress feature when possible, or gather the missing feature/fix details from the human developer.
     - A quoted feature request is optional shorthand for a new feature, not a full spec document.
-     - Specrew launches Copilot from the target project directory, reuses the current terminal by default, and only uses --new-window when you explicitly ask for a detached shell.
-     - Specrew always auto-loads the bootstrap via -i so Copilot reads the Squad handoff before doing anything else.
-     - The default behavior is gate-respecting: Squad stops at every lifecycle approval boundary (specify, clarify, plan, tasks, before-implement, review-signoff, retro, iteration-closeout, feature-closeout) and waits for explicit human verdict. Pass --autonomous to enable Copilot CLI autopilot mode for unattended runs.
-     - --allow-all (default) and --autonomous are independent: --allow-all controls tool-call approval; --autonomous controls whether Squad advances through lifecycle gates without input. Intake stage stays interactive regardless of --autonomous so initial scope is never auto-resolved.
-     - Copilot CLI may still ask you to trust the project directory on first launch.
-     - If Copilot CLI is unavailable, Specrew still writes a handoff prompt and context file.
+     - Specrew launches the selected host CLI (--host copilot|claude|codex, default copilot) from the target project directory, reuses the current terminal by default, and only uses --new-window when you explicitly ask for a detached shell.
+     - Specrew auto-loads the bootstrap so the host reads the Crew handoff at `.specrew/last-start-prompt.md` and `.specrew/start-context.json` before doing anything else.
+     - The default behavior is gate-respecting: the Crew stops at every lifecycle approval boundary (specify, clarify, plan, tasks, before-implement, review-signoff, retro, iteration-closeout, feature-closeout) and waits for explicit human verdict. Pass --autonomous to advance through gates without stopping (unattended runs).
+     - --allow-all (default) and --autonomous are independent: --allow-all controls tool-call approval (translated per host); --autonomous controls whether the Crew advances through lifecycle gates without input. Intake stage stays interactive regardless of --autonomous so initial scope is never auto-resolved.
+     - The selected host may still ask you to trust the project directory on first launch.
+     - If the selected host CLI is unavailable, Specrew still writes a handoff prompt and context file.
 '@ | Write-Host
 }
 
@@ -443,12 +478,20 @@ function Get-SpecrewSessionStateSnapshot {
         }
     )
 
+    # File paths surfaced so Test-SpecrewSessionStateConsistency can distinguish
+    # "file absent on disk" from "file present but stale/unparseable" — fixes the
+    # misleading "missing or unreadable" message from tip-calc-v2 dogfooding 2026-05-23.
+    $resolvedProjectRoot = Resolve-ProjectPath -Path $ProjectRoot
+
     return [pscustomobject]@{
-        prompt    = $promptState
-        context   = $contextState
-        identity  = $identityState
-        decisions = $decisionsState
-        session_state = if ($states.Count -gt 0) { $states[0] } else { $null }
+        prompt         = $promptState
+        prompt_path    = Join-Path $resolvedProjectRoot '.specrew\last-start-prompt.md'
+        context        = $contextState
+        context_path   = Join-Path $resolvedProjectRoot '.specrew\start-context.json'
+        identity       = $identityState
+        identity_path  = Join-Path $resolvedProjectRoot '.squad\identity\now.md'
+        decisions      = $decisionsState
+        session_state  = if ($states.Count -gt 0) { $states[0] } else { $null }
     }
 }
 
@@ -534,17 +577,31 @@ function Test-SpecrewSessionStateConsistency {
     param([Parameter(Mandatory = $true)][pscustomobject]$Snapshot)
 
     $issues = New-Object System.Collections.Generic.List[string]
+    # Each entry now optionally carries a Path so we can distinguish "file absent on disk"
+    # from "file present but unparseable / stale frontmatter". Wording fix following
+    # tip-calc-v2 dogfooding 2026-05-23/24: the prior "missing or unreadable" message
+    # fired even when the file was present and readable, just stale relative to the git
+    # log — that misled the human into thinking the file had been deleted.
     $namedStates = @(
-        @{ Name = 'last-start-prompt.md'; State = $Snapshot.prompt }
-        @{ Name = 'start-context.json'; State = $Snapshot.context }
-        @{ Name = 'identity/now.md'; State = $Snapshot.identity }
+        @{ Name = 'last-start-prompt.md'; State = $Snapshot.prompt;   Path = $Snapshot.prompt_path }
+        @{ Name = 'start-context.json';   State = $Snapshot.context;  Path = $Snapshot.context_path }
+        @{ Name = 'identity/now.md';      State = $Snapshot.identity; Path = $Snapshot.identity_path }
     )
 
     $existingCount = @($namedStates | Where-Object { $null -ne $_.State }).Count
     if ($existingCount -gt 0) {
         foreach ($entry in $namedStates) {
             if ($null -eq $entry.State) {
-                $issues.Add(("Session-state file missing or unreadable: {0}" -f $entry.Name)) | Out-Null
+                $fileOnDisk = $false
+                if (-not [string]::IsNullOrWhiteSpace([string]$entry.Path)) {
+                    $fileOnDisk = Test-Path -LiteralPath ([string]$entry.Path) -PathType Leaf
+                }
+                if ($fileOnDisk) {
+                    $issues.Add(("Session-state file is present but stale or unparseable: {0} (file is on disk but its frontmatter / JSON could not be loaded; re-anchor or recreate to refresh)" -f $entry.Name)) | Out-Null
+                }
+                else {
+                    $issues.Add(("Session-state file missing on disk: {0} (re-anchor will recreate it from the current spec)" -f $entry.Name)) | Out-Null
+                }
             }
         }
     }
@@ -783,7 +840,7 @@ function Resolve-SpecrewRecoverySelection {
                 SkipAutoResume        = $true
                 ForceNoLaunch         = $true
                 NextActionMessage     = 'Recovery will stop after writing diagnostics so you can manually fix or document the stale state before restarting.'
-                Directive             = 'Recovery choice C selected: do not launch Copilot automatically. Review the recorded stale-state evidence, repair the session-state artifacts manually, then rerun specrew start.'
+                Directive             = 'Recovery choice C selected: do not launch the host CLI automatically. Review the recorded stale-state evidence, repair the session-state artifacts manually, then rerun specrew start.'
             }
         }
     }
@@ -2685,10 +2742,10 @@ This is the authoritative map of Specrew's lifecycle and governance machinery as
 | ``.specify/extensions/specrew-speckit/scripts/scaffold-iteration-plan.ps1 -SpecPath <spec> -IterationNumber <NNN>`` | Scaffolds iterations/<NNN>/plan.md stub | Before /speckit.implement |
 | ``.specify/extensions/specrew-speckit/scripts/run-hardening-gate.ps1`` | OPTIONAL gate-regeneration helper. Takes a seed file with concern rows + computes the canonical Concern Review table + verdict. Useful only when you've edited concerns externally and want the gate file regenerated. **For normal lifecycle execution, skip this — the scaffold above already emits a ready gate.** | Rarely; only when regenerating from a seed |
 | ``.specify/extensions/specrew-speckit/scripts/run-mechanical-checks.ps1`` | Runs the dead-field / anti-pattern / test-integrity mechanical lenses; writes findings to quality/mechanical-findings.json | After implement; before review |
-| ``.specify/extensions/specrew-speckit/scripts/scaffold-review-artifact.ps1`` | Scaffolds review.md stub for the active iteration | At the start of review phase |
-| ``.specify/extensions/specrew-speckit/scripts/scaffold-retro-artifact.ps1`` | Scaffolds retro.md stub for the active iteration | At the start of retro phase |
-| ``.specify/extensions/specrew-speckit/scripts/scaffold-reviewer-artifacts.ps1`` | Scaffolds code-map / coverage-evidence / reviewer-index / review-diagrams / dependency-report | After implement, before /specrew-review |
-| ``.specify/extensions/specrew-speckit/scripts/scaffold-feature-closeout-dashboard.ps1`` | Scaffolds the closeout-dashboard.md at feature-closeout boundary. **Note: auto-render at feature-closeout is now wired into sync-boundary-state.ps1 (F-040 dogfooding Fix B), so you don't normally invoke this directly.** | Rarely; only for manual re-render |
+| ``.specify/extensions/specrew-speckit/scripts/scaffold-review-artifact.ps1 -IterationDirectory <dir>`` | Scaffolds review.md stub for the active iteration. **Param is ``-IterationDirectory``, NOT ``-SpecDirectory``** (latter is only on scaffold-iteration-artifacts). | At the start of review phase |
+| ``.specify/extensions/specrew-speckit/scripts/scaffold-retro-artifact.ps1 -IterationDirectory <dir>`` | Scaffolds retro.md stub for the active iteration | At the start of retro phase |
+| ``.specify/extensions/specrew-speckit/scripts/scaffold-reviewer-artifacts.ps1 -IterationDirectory <dir>`` | Scaffolds code-map / coverage-evidence / reviewer-index / review-diagrams / dependency-report. **Param is ``-IterationDirectory``, NOT ``-SpecDirectory``.** | After implement, before /specrew-review |
+| ``.specify/extensions/specrew-speckit/scripts/scaffold-feature-closeout-dashboard.ps1 -ProjectPath . -FeatureId <NNN>`` | Scaffolds the closeout-dashboard.md at feature-closeout boundary. **Note: auto-render at feature-closeout is now wired into sync-boundary-state.ps1 (F-040 dogfooding Fix B), so you don't normally invoke this directly.** | Rarely; only for manual re-render |
 | ``.specify/extensions/specrew-speckit/scripts/validate-governance.ps1 -ProjectPath .`` | Runs the full validator; emits PASS/WARN/FAIL findings | Before each boundary commit and at iteration close |
 | ``.specify/extensions/specrew-speckit/scripts/sync-boundary-state.ps1`` | Advances the boundary cursor in ``.specrew/start-context.json``; auto-renders dashboard.md at iteration-closeout + closeout-dashboard.md at feature-closeout. Use this WRAPPER path from downstream projects — it discovers the installed Specrew module and loads the actual implementation from there. | Called by sync-* agents; invoke directly via ``pwsh -File`` after each boundary commit when the sync-* agents aren't available |
 
@@ -2705,11 +2762,13 @@ This is the authoritative map of Specrew's lifecycle and governance machinery as
 
 The ``crew_runtime_status`` field tells you whether the downstream sync-* agents are wired up. If ``bootstrap_only``, those agents may not be available — invoke the deployed wrapper directly via ``pwsh -File .specify/extensions/specrew-speckit/scripts/sync-boundary-state.ps1 -ProjectPath . -BoundaryType <boundary> -FeatureRef <feature> -AuthCommitHash <hash>`` for boundary advances. The wrapper auto-resolves the actual implementation from the installed Specrew module, so this works in any downstream project. Iteration / feature closeout auto-renders dashboards (F-040 dogfooding Fix B).
 
-**Common pitfalls (already-fixed gaps from F-040 calc-v2 dogfooding 2026-05-23):**
+**Common pitfalls (already-fixed gaps from F-040 multi-host dogfooding 2026-05-23/24):**
 
 - ``Status: approved`` / ``in_progress`` are INVALID iteration / task statuses. Canonical iteration statuses: ``planning | executing | reviewing | retro | complete | abandoned``. Canonical task statuses: ``planned | in-progress | done | needs-rework | deferred | blocked`` (hyphens, not underscores).
 - Hardening-gate concern ``Status: tbd`` is rejected. Use ``addressed | not-applicable | deferred-with-approval``.
 - ``Capacity: <consumed>/<cap> <effort_unit>`` with NO trailing prose. Notes go in the Notes section.
+- **Web-form feature pitfall:** for any feature whose deliverable is an HTML form (calculator, registration, search box, etc.), browsers submit the form on **Enter key inside any ``<input>``** — which triggers a full page reload to the form's ``action`` URL and wipes computed output. If the form is rendered by your app and you want Enter to compute-without-reload, either (a) bind a ``submit`` handler that calls ``event.preventDefault()`` or (b) use ``<input type="button">`` (not ``submit``) for the action and avoid the form's default submission. Cover this in the test plan: a Cypress / Playwright test that types into the field and presses Enter must verify the computed value appears AND the URL does not change. This pitfall was the dominant bug class in F-040 tip-calc-v2 + calc-v2 dogfooding.
+- **Web-feature acceptance evidence:** for browser features, the review-time evidence must include a screenshot or recorded interaction showing the golden-path AND Enter-key behavior — running ``Invoke-WebRequest`` against the static HTML proves the file deployed, NOT that the feature works. Lighthouse / DOM-inspection MCPs (or manual browser steps documented in quickstart.md) are the canonical evidence layer.
 
 Follow this conversational sequence before implementation work:
 1. Preserve the roster snapshot first. Treat the operational roster above as active project state, do not recast it, and defer specialist additions until the spec and clarify outcome are grounded.
@@ -2802,6 +2861,101 @@ When resuming an existing feature, swap the opening line for ``"Welcome back —
 50. **Narration discipline (mandatory).** Reserve prose for: (a) the orientation block (once, per Rule 48), (b) clarify questions, (c) the HANDOFF block at boundary stops, (d) genuine decisions that affect the spec/plan, (e) ONE short progress sentence per major step ("Spec written.", "Iteration plan scaffolded.", "Tests passing — 51/51."), (f) status when the human asks. Avoid forever: "Let me read X", "Now let me check Y", "I'll gather Z context", "Let me orient myself", "I now have a complete picture", "Let me reconcile with the advisor", "Let me verify before committing". Use TaskList updates to show progress between boundaries — that's what the task pane is for. If you find yourself writing a narration sentence that says what you're ABOUT to do rather than what you JUST DID, delete it.
 51. **Advisor calls are for strategic decisions, not mechanical execution.** Call ``advisor()`` only when you have a genuine strategic decision: a contested architectural choice, an unclear scope-vs-cost tradeoff, a stuck loop on real errors. Mechanical lifecycle execution on small slices (<=2 user stories, <=5 FRs, no architectural ambiguity) proceeds without consulting. You do NOT need to "confirm the approach" before writing a spec.md or a plan.md for a 3-FR feature. Default to no. When in doubt: do the work, get the artifact on disk, and only call advisor if the work surfaces a real disagreement with the spec or a real architectural fork. The user is paying for both tokens and wall-clock on every advisor call.
 52. **File references in user-visible output must be clickable** (this prompt's host renders markdown). When you mention an artifact, source file, directory, or any other file-system path in ANY user-visible prose — orientation block (Rule 48), one-sentence progress updates (Rule 50), HANDOFF blocks (Rule 46), clarify questions, decisions, developer briefings, retro notes — wrap the reference in markdown-link syntax with a ``file:///`` URL built from the Project root URL above. Use forward slashes (the URL form is supplied for you at the top of this prompt as ``Project root (file:// URL form for clickable references): file:///...``). Apply this to directory references too (link the folder, the URL ending with ``/``). Example: instead of writing ``"the spec at specs/001-tip-calculator/spec.md"`` write ``"the [spec.md](file:///C:/Temp/specrew-tip-calc-v2/specs/001-tip-calculator/spec.md)"``. This applies even inside the HANDOFF block — the ``HUMAN ACTION NEEDED:`` bullets that reference files should be clickable. Tool outputs and code blocks where Claude Code already shows file paths are exempt; this rule only governs PROSE Claude writes.
+54. **Mandatory pre-implementation review artifact set (Wave B).** After ``/speckit.plan`` produces ``plan.md``, you MUST ensure all four of the following artifacts exist under ``specs/<feature>/`` BEFORE proceeding to ``/speckit.tasks``. They give the human reviewer a coherent view of WHAT will be built and HOW, BEFORE any code lands. If the Spec Kit plan agent did not emit a particular file, author it yourself from the templates below:
+
+  (a) **``specs/<feature>/data-model.md``** — domain entities + attributes + validation rules + relationships, even for simple features (a minimal "no persisted state; transient inputs only" note + 1-2 entity descriptions is fine for a stateless calculator). Format:
+
+``````markdown
+# Data Model: <Feature Name>
+
+**Feature**: <feature-ref>
+**Date**: <YYYY-MM-DD>
+**Purpose**: Define entities, attributes, relationships, and validation rules for <feature>.
+
+## Entity: <EntityName>
+
+**Purpose**: <one line>
+
+### Attributes
+| Attribute | Type | Required | Validation Rules | Description |
+| --- | --- | --- | --- | --- |
+| ... | ... | ... | ... | ... |
+
+### Lifecycle / Relationships
+<one-paragraph: how it's created, mutated, destroyed; what links to it>
+``````
+
+For state-free features, include a short "No persisted data" note + transient-input entities (CalculatorInput / CalculatorResult pattern).
+
+  (b) **``specs/<feature>/quickstart.md``** — "how to try this feature in 5 minutes" walkthrough. Covers: run command(s), canonical happy-path input, expected output, one acceptance scenario the human can replay by hand. Format:
+
+``````markdown
+# Quickstart: <Feature Name>
+
+**Feature**: <feature-ref>
+**Last verified**: <YYYY-MM-DD>
+
+## Run it
+<exact commands — ``npm test`` / ``python -m http.server`` / ``pwsh -File ...``>
+
+## Try the canonical scenario
+<numbered steps + expected result per step>
+
+## Verify the edge cases
+<2-3 short edge-case scenarios from spec.md acceptance criteria>
+``````
+
+  (c) **``specs/<feature>/contracts/<feature-name>.md``** — document the feature's public API surface (function signatures, command-line surface, file format, IPC schema). Even code-only features have a contract: the exported functions of any pure module, the on-disk format produced, the CLI flags. Format:
+
+``````markdown
+# Contract: <Feature Name> Public Surface
+
+**Feature**: <feature-ref>
+**Stability**: <pre-1.0 | stable | deprecated>
+
+## <Module / Component Name>
+<one-paragraph description of what it does>
+
+### Exported API
+| Symbol | Signature | Purpose | Errors |
+| --- | --- | --- | --- |
+| ``parseAmount`` | ``(value): number`` | normalize raw input → 0 on bad input | never throws, never NaN |
+
+### Invariants
+<bullet list of guarantees this contract makes — e.g., "perPerson * people >= total">
+``````
+
+  (d) **``specs/<feature>/review-diagrams.md``** — at least one Mermaid component diagram + one Mermaid sequence diagram for the canonical user flow. Even simple features benefit. Format (outer fence uses 4 backticks so the inner Mermaid 3-backtick fences nest cleanly):
+
+````````markdown
+# Review Diagrams: <Feature Name>
+
+**Feature**: <feature-ref>
+**Phase**: pre-implementation (planning artifact for reviewer)
+
+## Component diagram
+``````mermaid
+flowchart LR
+  Inputs[User Inputs] --> Engine[Pure Calc Module]
+  Engine --> Render[DOM Renderer]
+  Render --> UI[Page]
+``````
+
+## Sequence: <canonical user flow>
+``````mermaid
+sequenceDiagram
+  participant User
+  participant UI
+  participant Engine
+  User->>UI: types bill amount
+  UI->>Engine: calculate(input)
+  Engine-->>UI: {tip, total, perPerson}
+  UI-->>User: renders formatted result
+``````
+````````
+
+These four artifacts together address the empirical complaint from tip-calc-v2 dogfooding (2026-05-24): "I see only some of the md files compared to what we have in Specrew itself ... some should be there to assist the review after plan before implement." After ``/speckit.plan`` runs, verify each file exists and has substantive (not template-placeholder) content; commit them with the plan boundary. They become the foundation the human reviews to approve the ``before-implement`` gate.
+
 53. **Structured verdict menu at every human-approval boundary stop (mandatory).** Immediately AFTER you emit the HANDOFF block at a human-verdict gate (``before-implement``, ``review-signoff``, ``iteration-closeout``, ``feature-closeout``, or any other point where you need the human to choose between continue / send-back / something-else), call your host's interactive-question primitive to present this canonical menu:
 
 ``````text
@@ -2910,7 +3064,7 @@ function Get-StartSummaryContent {
     $summaryLines.Add('## Launch Contract') | Out-Null
     $summaryLines.Add(("- **Approval Mode**: {0}" -f $ApprovalMode)) | Out-Null
     $summaryLines.Add(("- **Launch Mode**: {0}" -f $LaunchMode)) | Out-Null
-    $summaryLines.Add(("- **Copilot Autopilot**: {0}" -f $UseAutopilot)) | Out-Null
+    $summaryLines.Add(("- **Host Autopilot** (Copilot --autopilot / Codex --dangerously-bypass-approvals-and-sandbox; Claude has no equivalent): {0}" -f $UseAutopilot)) | Out-Null
     $summaryLines.Add(("- **Operator Note**: {0}" -f $ApprovalOperatorNote)) | Out-Null
     $summaryLines.Add('') | Out-Null
     if ($null -ne $RecoverySession) {
@@ -2973,7 +3127,9 @@ function Save-StartArtifacts {
         [AllowNull()][pscustomobject]$RecoverySession,
         [string]$PostRestartDirective = '',
         [bool]$BypassBoundaryEnforcement = $false,
-        [AllowNull()][string]$BoundaryBypassReason
+        [AllowNull()][string]$BoundaryBypassReason,
+        [AllowNull()][string]$SelectedHost,
+        [AllowNull()][System.Collections.IDictionary]$AvailableHostsMap
     )
 
     $specrewRoot = Join-Path $ResolvedProjectPath '.specrew'
@@ -3145,6 +3301,22 @@ $artifactListFormatted
         prompt_path      = $promptPath
         summary_path     = $summaryPath
         generated_at_utc = [DateTime]::UtcNow.ToString('o')
+        # F-040: per-host launch metadata (FR-006)
+        selected_host    = if ([string]::IsNullOrWhiteSpace($SelectedHost)) { 'copilot' } else { $SelectedHost.ToLowerInvariant() }
+        available_hosts  = if ($null -ne $AvailableHostsMap) {
+            $hostsOrdered = [ordered]@{}
+            foreach ($key in $AvailableHostsMap.Keys) { $hostsOrdered[$key] = [bool]$AvailableHostsMap[$key] }
+            $hostsOrdered
+        }
+        else {
+            $null
+        }
+        crew_runtime_status = if ([string]::IsNullOrWhiteSpace($SelectedHost) -or $SelectedHost.ToLowerInvariant() -eq 'copilot') {
+            'squad-runtime'
+        }
+        else {
+            'bootstrap_only'
+        }
     }
 
     if ($null -ne $existingBoundaryEnforcement) {
@@ -3230,7 +3402,7 @@ function Get-DisplayPathFromProjectRoot {
     return Get-DisplayRelativePath -ProjectRoot $projectRoot -ResolvedPath $resolvedPath
 }
 
-function Get-CopilotBootstrapInput {
+function Get-HostBootstrapInput {
     param(
         [string]$ResolvedProjectPath,
         [string]$PromptPath,
@@ -3255,7 +3427,134 @@ function Get-CopilotBootstrapInput {
     return $lines -join ' '
 }
 
-function Get-ManualCopilotCommand {
+function Get-SpecrewHostLaunchInvocation {
+    <#
+    .SYNOPSIS
+    Build the per-host launch invocation (Binary + Args) for the selected host.
+    Per F-040 research.md Task 1 (verified per-host CLI surfaces).
+
+    .DESCRIPTION
+    Returns @{ Binary = '<path-or-name>'; Args = @(<argv-tokens>) } for the host.
+    Callers compose this into Start-Process or & invocations.
+    #>
+    param(
+        [Parameter(Mandatory = $true)]
+        [ValidateSet('copilot', 'claude', 'codex')]
+        [string]$HostKind,
+
+        [Parameter(Mandatory = $true)]
+        [string]$ResolvedProjectPath,
+
+        [Parameter(Mandatory = $true)]
+        [string]$BootstrapPrompt,
+
+        [Parameter(Mandatory = $true)]
+        [string]$Agent,
+
+        [bool]$AllowAll = $false,
+
+        [bool]$UseAutopilot = $false,
+
+        [bool]$UseRemote = $false
+    )
+
+    $hostBinary = Get-SpecrewHostBinary -HostKind $HostKind
+    $hostCmd = Get-Command $hostBinary -ErrorAction SilentlyContinue
+    $resolvedBinary = if ($null -ne $hostCmd) { $hostCmd.Source } else { $hostBinary }
+
+    $args = New-Object System.Collections.Generic.List[string]
+    $notices = New-Object System.Collections.Generic.List[string]
+
+    switch ($HostKind.ToLowerInvariant()) {
+        'copilot' {
+            $args.Add('--agent') | Out-Null
+            $args.Add($Agent) | Out-Null
+            if ($UseAutopilot) {
+                $t = Get-HostFlagTranslation -HostKind 'copilot' -SpecrewFlag '--autopilot'
+                foreach ($a in $t.Args) { $args.Add($a) | Out-Null }
+            }
+            $args.Add('--add-dir') | Out-Null
+            $args.Add($ResolvedProjectPath) | Out-Null
+            $args.Add('-i') | Out-Null
+            $args.Add($BootstrapPrompt) | Out-Null
+            if ($AllowAll) {
+                $t = Get-HostFlagTranslation -HostKind 'copilot' -SpecrewFlag '--allow-all'
+                foreach ($a in $t.Args) { $args.Add($a) | Out-Null }
+            }
+            if ($UseRemote) {
+                $t = Get-HostFlagTranslation -HostKind 'copilot' -SpecrewFlag '--remote'
+                foreach ($a in $t.Args) { $args.Add($a) | Out-Null }
+            }
+        }
+        'claude' {
+            # Claude Code: interactive REPL with initial prompt is the
+            # positional-arg form (`claude "<prompt>" --add-dir <path>`).
+            # The `-p` / `--print` flag is the one-shot/headless mode
+            # which exits after printing — wrong for lifecycle work.
+            # Bug found in 2026-05-23 real-launch test: -p caused session
+            # to exit after Claude's first response.
+            $args.Add('--add-dir') | Out-Null
+            $args.Add($ResolvedProjectPath) | Out-Null
+            if ($AllowAll) {
+                $t = Get-HostFlagTranslation -HostKind 'claude' -SpecrewFlag '--allow-all'
+                foreach ($a in $t.Args) { $args.Add($a) | Out-Null }
+                if (-not [string]::IsNullOrWhiteSpace($t.Notice)) { $notices.Add($t.Notice) | Out-Null }
+            }
+            if ($UseAutopilot) {
+                $t = Get-HostFlagTranslation -HostKind 'claude' -SpecrewFlag '--autopilot'
+                foreach ($a in $t.Args) { $args.Add($a) | Out-Null }
+                if (-not [string]::IsNullOrWhiteSpace($t.Notice)) { $notices.Add($t.Notice) | Out-Null }
+            }
+            if ($UseRemote) {
+                $t = Get-HostFlagTranslation -HostKind 'claude' -SpecrewFlag '--remote'
+                foreach ($a in $t.Args) { $args.Add($a) | Out-Null }
+                if (-not [string]::IsNullOrWhiteSpace($t.Notice)) { $notices.Add($t.Notice) | Out-Null }
+            }
+            # Initial prompt as positional arg — last position
+            $args.Add($BootstrapPrompt) | Out-Null
+        }
+        'codex' {
+            # Codex CLI: interactive REPL with initial prompt is the
+            # positional-arg form (`codex "<prompt>" --cd <path>`).
+            # `codex exec` is non-interactive batch mode — wrong for
+            # lifecycle work.
+            # Same bug class as Claude `-p` (fixed 2026-05-23 real-launch test).
+            $args.Add('--cd') | Out-Null
+            $args.Add($ResolvedProjectPath) | Out-Null
+            if ($AllowAll) {
+                $t = Get-HostFlagTranslation -HostKind 'codex' -SpecrewFlag '--allow-all'
+                foreach ($a in $t.Args) { $args.Add($a) | Out-Null }
+                if (-not [string]::IsNullOrWhiteSpace($t.Notice)) { $notices.Add($t.Notice) | Out-Null }
+            }
+            if ($UseAutopilot) {
+                $t = Get-HostFlagTranslation -HostKind 'codex' -SpecrewFlag '--autopilot'
+                foreach ($a in $t.Args) { $args.Add($a) | Out-Null }
+                if (-not [string]::IsNullOrWhiteSpace($t.Notice)) { $notices.Add($t.Notice) | Out-Null }
+            }
+            if ($UseRemote) {
+                $t = Get-HostFlagTranslation -HostKind 'codex' -SpecrewFlag '--remote'
+                # Codex has no remote-control wiring; notice surfaced, no args added
+                if (-not [string]::IsNullOrWhiteSpace($t.Notice)) { $notices.Add($t.Notice) | Out-Null }
+            }
+            # Initial prompt as positional arg — last position
+            $args.Add($BootstrapPrompt) | Out-Null
+        }
+    }
+
+    return [pscustomobject]@{
+        Binary  = $resolvedBinary
+        Args    = $args.ToArray()
+        Notices = $notices.ToArray()
+        HostKind = $HostKind.ToLowerInvariant()
+    }
+}
+
+function Get-ManualLaunchCommand {
+    <#
+    .SYNOPSIS
+    Generate a printable, host-aware manual launch command string.
+    Name retained for back-compat — covers all hosts now.
+    #>
     param(
         [string]$ResolvedProjectPath,
         [string]$PromptPath,
@@ -3263,16 +3562,35 @@ function Get-ManualCopilotCommand {
         [string]$Agent,
         [bool]$AllowAll,
         [bool]$UseAutopilot,
-        [bool]$RequireInteractiveIntake
+        [bool]$RequireInteractiveIntake,
+        [string]$HostKind = 'copilot'
     )
 
-    $quotedProjectPath = $ResolvedProjectPath.Replace("'", "''")
-    $quotedAgent = $Agent.Replace("'", "''")
-    $quotedBootstrap = (Get-CopilotBootstrapInput -ResolvedProjectPath $ResolvedProjectPath -PromptPath $PromptPath -ContextPath $ContextPath -RequireInteractiveIntake $RequireInteractiveIntake).Replace("'", "''")
-    $autopilotSegment = if ($UseAutopilot) { ' --autopilot' } else { '' }
-    $allowAllSegment = if ($AllowAll) { ' --allow-all' } else { '' }
+    $bootstrapInput = Get-HostBootstrapInput -ResolvedProjectPath $ResolvedProjectPath -PromptPath $PromptPath -ContextPath $ContextPath -RequireInteractiveIntake $RequireInteractiveIntake
 
-    return 'copilot --agent ''{0}''{1} --add-dir ''{2}'' -i ''{3}''{4}' -f $quotedAgent, $autopilotSegment, $quotedProjectPath, $quotedBootstrap, $allowAllSegment
+    $invocation = Get-SpecrewHostLaunchInvocation `
+        -HostKind $HostKind `
+        -ResolvedProjectPath $ResolvedProjectPath `
+        -BootstrapPrompt $bootstrapInput `
+        -Agent $Agent `
+        -AllowAll $AllowAll `
+        -UseAutopilot $UseAutopilot
+
+    $binary = Get-SpecrewHostBinary -HostKind $HostKind
+    # Quote every arg whose preceding token introduces a value (`--agent`, `--add-dir`, `-i`, `-p`, `--cd`).
+    # Flag tokens (start with `-`) stay unquoted; value tokens stay quoted for unambiguous copy-paste.
+    $quotedArgs = @()
+    $argList = @($invocation.Args)
+    for ($i = 0; $i -lt $argList.Count; $i++) {
+        $arg = $argList[$i]
+        if ($arg.StartsWith('-')) {
+            $quotedArgs += $arg
+        }
+        else {
+            $quotedArgs += "'" + $arg.Replace("'", "''") + "'"
+        }
+    }
+    return "$binary $($quotedArgs -join ' ')"
 }
 
 function Get-AllowAllRuntimePlan {
@@ -3287,12 +3605,18 @@ function Get-AllowAllRuntimePlan {
             'allow-all reduces tool-approval blocking after the request is grounded.'
         }
         else {
-            'prompt-approvals keeps Copilot permission prompts interactive throughout the session.'
+            'prompt-approvals keeps the host CLI permission prompts interactive throughout the session.'
         }
     }
 }
 
-function Start-CopilotSession {
+function Start-HostSession {
+    <#
+    .SYNOPSIS
+    Launch the selected host (copilot/claude/codex) with Specrew's bootstrap context.
+    Per F-040: dispatcher uses Get-SpecrewHostLaunchInvocation to build per-host argv.
+    Name retained for back-compat — handles all three hosts now.
+    #>
     param(
         [string]$ResolvedProjectPath,
         [string]$PromptPath,
@@ -3301,43 +3625,46 @@ function Start-CopilotSession {
         [bool]$AllowAll,
         [bool]$SameWindow,
         [bool]$UseAutopilot,
-        [bool]$RequireInteractiveIntake
+        [bool]$RequireInteractiveIntake,
+        [string]$HostKind = 'copilot'
     )
 
-    $copilotCommand = Get-Command copilot -ErrorAction SilentlyContinue
-    if (-not $copilotCommand) {
+    $hostBinary = Get-SpecrewHostBinary -HostKind $HostKind
+    $hostCommand = Get-Command $hostBinary -ErrorAction SilentlyContinue
+    if (-not $hostCommand) {
         return $false
     }
 
-    $bootstrapInput = Get-CopilotBootstrapInput -ResolvedProjectPath $ResolvedProjectPath -PromptPath $PromptPath -ContextPath $ContextPath -RequireInteractiveIntake $RequireInteractiveIntake
-    $copilotArgs = @('--agent', $Agent)
+    $bootstrapInput = Get-HostBootstrapInput -ResolvedProjectPath $ResolvedProjectPath -PromptPath $PromptPath -ContextPath $ContextPath -RequireInteractiveIntake $RequireInteractiveIntake
 
-    if ($UseAutopilot) {
-        $copilotArgs += '--autopilot'
+    $invocation = Get-SpecrewHostLaunchInvocation `
+        -HostKind $HostKind `
+        -ResolvedProjectPath $ResolvedProjectPath `
+        -BootstrapPrompt $bootstrapInput `
+        -Agent $Agent `
+        -AllowAll $AllowAll `
+        -UseAutopilot $UseAutopilot
+
+    foreach ($notice in $invocation.Notices) {
+        if (-not [string]::IsNullOrWhiteSpace($notice)) {
+            Write-Info ("[host-flag] {0}" -f $notice)
+        }
     }
 
-    $copilotArgs += @('--add-dir', $ResolvedProjectPath, '-i', $bootstrapInput)
-
-    if ($AllowAll) {
-        $copilotArgs += '--allow-all'
-    }
+    $launchArgs = @($invocation.Args)
+    $resolvedBinary = $invocation.Binary
 
     if ($IsWindows) {
         $quotedProjectPath = $ResolvedProjectPath.Replace("'", "''")
-        $quotedAgent = $Agent.Replace("'", "''")
-        $quotedCopilotSource = $copilotCommand.Source.Replace("'", "''")
-        $quotedBootstrap = $bootstrapInput.Replace("'", "''")
-        $autopilotSnippet = if ($UseAutopilot) { '$args += ''--autopilot''' } else { '' }
-        $allowAllSnippet = if ($AllowAll) { '$args += ''--allow-all''' } else { '' }
+        $quotedBinary = $resolvedBinary.Replace("'", "''")
+        $launchArgsLiteral = ($launchArgs | ForEach-Object {
+            "'" + ($_.ToString().Replace("'", "''")) + "'"
+        }) -join ', '
         $launchScript = @'
 Set-Location -LiteralPath '{0}'
-$bootstrapInput = '{1}'
-$args = @('--agent', '{2}')
-{3}
-$args += @('--add-dir', '{0}', '-i', $bootstrapInput)
-{4}
-& '{5}' @args
-'@ -f $quotedProjectPath, $quotedBootstrap, $quotedAgent, $autopilotSnippet, $allowAllSnippet, $quotedCopilotSource
+$launchArgs = @({1})
+& '{2}' @launchArgs
+'@ -f $quotedProjectPath, $launchArgsLiteral, $quotedBinary
 
         if ($SameWindow) {
             $process = Start-Process -FilePath 'pwsh' -ArgumentList @('-NoLogo', '-NoProfile', '-ExecutionPolicy', 'Bypass', '-Command', $launchScript) -WorkingDirectory $ResolvedProjectPath -NoNewWindow -PassThru -Wait
@@ -3348,28 +3675,17 @@ $args += @('--add-dir', '{0}', '-i', $bootstrapInput)
         return $true
     }
 
-    # Linux/macOS: defer the actual `copilot` launch to the Specrew module
-    # function so it happens in PowerShell FUNCTION context (which preserves
-    # TTY on Linux) instead of SCRIPT context (which strips TTY for native
-    # command children, regardless of in-process vs subprocess invocation).
-    #
-    # Empirical evidence: PowerShell function bodies called from prompt
-    # render TUIs correctly; PowerShell script bodies do not — even nano
-    # fails to render. This is a Linux pwsh I/O handling difference between
-    # function and script execution contexts that we cannot work around
-    # from within a script.
-    #
-    # Mechanism: write the launch args to a deferred-launch file. The
-    # module's Invoke-SpecrewScript reads it after the script returns and
-    # invokes `& copilot @args` from its own function body, which is
-    # function context and preserves TTY.
+    # Linux/macOS: defer the actual launch to the Specrew module function so
+    # it happens in PowerShell FUNCTION context (which preserves TTY on Linux)
+    # instead of SCRIPT context (which strips TTY for native command children).
+    # Mechanism unchanged from pre-F-040; only the args list is now per-host.
     $deferredLaunchPath = $env:SPECREW_DEFERRED_LAUNCH_FILE
     if ([string]::IsNullOrWhiteSpace($deferredLaunchPath)) {
         # Direct script invocation (not via the module proxy). Fall back to
         # in-script launch — TUI won't render but the command will run.
         Push-Location -LiteralPath $ResolvedProjectPath
         try {
-            & $copilotCommand.Source @copilotArgs
+            & $resolvedBinary @launchArgs
             return $true
         }
         finally {
@@ -3378,9 +3694,10 @@ $args += @('--add-dir', '{0}', '-i', $bootstrapInput)
     }
 
     $launchInfo = [pscustomobject]@{
-        CopilotPath      = $copilotCommand.Source
-        CopilotArgs      = @($copilotArgs)
+        CopilotPath      = $resolvedBinary
+        CopilotArgs      = @($launchArgs)
         WorkingDirectory = $ResolvedProjectPath
+        HostKind         = $HostKind.ToLowerInvariant()
     }
     $launchInfo | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath $deferredLaunchPath -Encoding UTF8
     return $true
@@ -3423,6 +3740,47 @@ if ($missingBootstrapPaths.Count -gt 0) {
 if ($AllowAll -and $PromptApprovals) {
     Write-Error-Message "Use either --allow-all or --prompt-approvals, not both."
     exit 1
+}
+
+# F-040: Host selection + validation (FR-001, FR-002, FR-005)
+$selectedHost = if ([string]::IsNullOrWhiteSpace($HostKind)) { 'copilot' } else { $HostKind.ToLowerInvariant() }
+$availableHostsMap = Get-SpecrewAvailableHosts
+
+# Reject deferred hosts with explicit guidance per research.md Task 3
+if ($selectedHost -in (Get-SpecrewDeferredHostKinds)) {
+    Write-Error-Message (Get-SpecrewDeferredHostGuidance -HostKind $selectedHost)
+    exit 1
+}
+
+# Validate the host kind is supported
+if ($selectedHost -notin (Get-SpecrewSupportedHostKinds)) {
+    $supported = (Get-SpecrewSupportedHostKinds) -join ', '
+    $deferred = (Get-SpecrewDeferredHostKinds) -join ', '
+    Write-Error-Message ("Unsupported --host '{0}'. Supported: {1}. Reserved-but-deferred: {2}." -f $selectedHost, $supported, $deferred)
+    exit 1
+}
+
+# Probe PATH for selected host. With --no-launch we still want to write the
+# handoff prompt/context/summary artifacts (the user may install the host CLI
+# later and run the printed manual launch command), so the missing-host check
+# is enforced ONLY when an actual launch is requested. Pre-F-040 behavior:
+# Start-CopilotSession returned $false on missing copilot, then the no-launch
+# path printed the manual command anyway. F-040 preserves that contract by
+# deferring the missing-host fail-fast to the launch path below.
+if (-not $availableHostsMap[$selectedHost] -and -not $NoLaunch) {
+    Write-Error-Message (Get-SpecrewHostInstallGuidance -HostKind $selectedHost)
+    exit 1
+}
+
+# Per-host skill verification (FR-009 non-fatal warning; FR-013 Codex informational note)
+$skillCheck = Test-HostSkillRoot -HostKind $selectedHost -ProjectPath $resolvedProjectPath
+foreach ($warning in $skillCheck.Warnings) {
+    if ($warning -like 'INFO:*') {
+        Write-Info $warning
+    }
+    else {
+        Write-Info ("WARN: {0}" -f $warning)
+    }
 }
 
 if ($BypassBoundaryEnforcement -and [string]::IsNullOrWhiteSpace($Reason)) {
@@ -3557,7 +3915,7 @@ $brownfieldDiscovery = Get-BrownfieldDiscoverySnapshot -Root $resolvedProjectPat
 $deliveryGuidance = Get-DeliveryGuidanceSnapshot -FeatureRequest $FeatureRequest -ProjectState $projectState -BrownfieldDiscovery $brownfieldDiscovery -TeamRoster $teamRoster
 $agentConfig = Get-IterationAgentConfig -Root $resolvedProjectPath
 $roleAssignments = @(Get-RoleAssignments -Root $resolvedProjectPath)
-$routingPlan = Get-DelegatedRoutingPlan -RoleAssignments $roleAssignments -AgentLookup $agentConfig
+$routingPlan = Get-DelegatedRoutingPlan -RoleAssignments $roleAssignments -AgentLookup $agentConfig -SelectedHost $HostKind
 $squadModelOverrides = Set-SquadModelOverrides -Root $resolvedProjectPath -RoutingPlan $routingPlan
 Write-DelegatedRoutingLedgerEntries -ResolvedProjectPath $resolvedProjectPath -RoutingPlan $routingPlan -SquadModelOverrides $squadModelOverrides
 $requiresInteractiveIntake = ($mode -eq 'intake-or-resume' -and -not $FeatureRequest -and -not $resolvedFeaturePath)
@@ -3595,6 +3953,10 @@ $promptContent = Get-StartPrompt `
     -SessionState $validatedSessionState `
     -RecoverySession $recoverySession
 
+# F-040: apply per-host coordinator-prompt surgery (FR-011 universal header for all hosts;
+# FR-012 Squad-runtime-path strip for non-Copilot; FR-014 Codex pwsh-form rewrite)
+$promptContent = Invoke-SpecrewCoordinatorPromptSurgery -Prompt $promptContent -HostKind $selectedHost
+
 $artifactPaths = Save-StartArtifacts `
     -ResolvedProjectPath $resolvedProjectPath `
     -PromptContent $promptContent `
@@ -3616,9 +3978,14 @@ $artifactPaths = Save-StartArtifacts `
     -RecoverySession $recoverySession `
     -PostRestartDirective $recoveryDirective `
     -BypassBoundaryEnforcement $BypassBoundaryEnforcement `
-    -BoundaryBypassReason $Reason
+    -BoundaryBypassReason $Reason `
+    -SelectedHost $selectedHost `
+    -AvailableHostsMap $availableHostsMap
 
 Write-Success "Prepared Specrew start context."
+if ($selectedHost -ne 'copilot') {
+    Write-Info ("Selected host: {0} (non-Squad runtime; coordinator prompt rewritten per FR-011/FR-012)" -f $selectedHost)
+}
 $promptDisplayPath = Get-DisplayPathFromProjectRoot -ResolvedProjectPath $resolvedProjectPath -Path $artifactPaths.PromptPath
 $contextDisplayPath = Get-DisplayPathFromProjectRoot -ResolvedProjectPath $resolvedProjectPath -Path $artifactPaths.ContextPath
 $summaryDisplayPath = Get-DisplayPathFromProjectRoot -ResolvedProjectPath $resolvedProjectPath -Path $artifactPaths.SummaryPath
@@ -3653,18 +4020,30 @@ if (-not [string]::IsNullOrWhiteSpace($allowAllRuntimePlan.SuppressionNote)) {
 
 if ($NoLaunch -or $forceNoLaunch) {
     Write-Info "Launch skipped by --no-launch."
-    Write-Info ("Manual launch command (run from the project root; Copilot auto-loads the bootstrap via -i): {0}" -f (Get-ManualCopilotCommand -ResolvedProjectPath $resolvedProjectPath -PromptPath $artifactPaths.PromptPath -ContextPath $artifactPaths.ContextPath -Agent $Agent -AllowAll $allowAllRuntimePlan.PassAllowAll -UseAutopilot $useAutopilot -RequireInteractiveIntake $requiresInteractiveIntake))
+    Write-Info ("Manual launch command (run from the project root; bootstrap is auto-loaded): {0}" -f (Get-ManualLaunchCommand -ResolvedProjectPath $resolvedProjectPath -PromptPath $artifactPaths.PromptPath -ContextPath $artifactPaths.ContextPath -Agent $Agent -AllowAll $allowAllRuntimePlan.PassAllowAll -UseAutopilot $useAutopilot -RequireInteractiveIntake $requiresInteractiveIntake -HostKind $selectedHost))
     exit 0
 }
 
 if ($launchMode -eq 'same-window') {
-    Write-Info ("Delegating to Copilot + {0} in the current terminal with auto-loaded bootstrap..." -f $Agent)
+    $hostLabel = switch ($selectedHost) {
+        'copilot' { "Copilot + $Agent" }
+        'claude'  { 'Claude Code' }
+        'codex'   { 'Codex CLI' }
+        default   { $selectedHost }
+    }
+    Write-Info ("Delegating to {0} in the current terminal with auto-loaded bootstrap..." -f $hostLabel)
 }
 else {
-    Write-Info ("Delegating to Copilot + {0} in a new PowerShell window with auto-loaded bootstrap..." -f $Agent)
+    $hostLabel = switch ($selectedHost) {
+        'copilot' { "Copilot + $Agent" }
+        'claude'  { 'Claude Code' }
+        'codex'   { 'Codex CLI' }
+        default   { $selectedHost }
+    }
+    Write-Info ("Delegating to {0} in a new PowerShell window with auto-loaded bootstrap..." -f $hostLabel)
 }
 
-$copilotStarted = Start-CopilotSession `
+$hostStarted = Start-HostSession `
     -ResolvedProjectPath $resolvedProjectPath `
     -PromptPath $artifactPaths.PromptPath `
     -ContextPath $artifactPaths.ContextPath `
@@ -3672,11 +4051,12 @@ $copilotStarted = Start-CopilotSession `
     -AllowAll $allowAllRuntimePlan.PassAllowAll `
     -SameWindow ($launchMode -eq 'same-window') `
     -UseAutopilot $useAutopilot `
-    -RequireInteractiveIntake $requiresInteractiveIntake
+    -RequireInteractiveIntake $requiresInteractiveIntake `
+    -HostKind $selectedHost
 
-if (-not $copilotStarted) {
-    Write-Info "Copilot CLI was not available, so Specrew wrote a resume-safe handoff prompt instead."
-    Write-Info ("Manual launch command (run from {0}; Copilot auto-loads the bootstrap via -i): {1}" -f $resolvedProjectPath, (Get-ManualCopilotCommand -ResolvedProjectPath $resolvedProjectPath -PromptPath $artifactPaths.PromptPath -ContextPath $artifactPaths.ContextPath -Agent $Agent -AllowAll $allowAllRuntimePlan.PassAllowAll -UseAutopilot $useAutopilot -RequireInteractiveIntake $requiresInteractiveIntake))
+if (-not $hostStarted) {
+    Write-Info ("{0} CLI was not available, so Specrew wrote a resume-safe handoff prompt instead." -f $selectedHost)
+    Write-Info ("Manual launch command (run from {0}; bootstrap is auto-loaded): {1}" -f $resolvedProjectPath, (Get-ManualLaunchCommand -ResolvedProjectPath $resolvedProjectPath -PromptPath $artifactPaths.PromptPath -ContextPath $artifactPaths.ContextPath -Agent $Agent -AllowAll $allowAllRuntimePlan.PassAllowAll -UseAutopilot $useAutopilot -RequireInteractiveIntake $requiresInteractiveIntake -HostKind $selectedHost))
     exit 0
 }
 

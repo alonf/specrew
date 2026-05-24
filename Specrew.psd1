@@ -1,6 +1,6 @@
 @{
     RootModule = 'Specrew.psm1'
-    ModuleVersion = '0.24.1'
+    ModuleVersion = '0.26.0'
     GUID = '8ad5b7b5-c4c6-4df4-b9bd-700a8533dcc4'
     Author = 'Alon Fliess'
     Description = 'Specrew: specification-driven development workflow for AI-augmented teams'
@@ -31,13 +31,16 @@
     FileList = @(
         'Specrew.psd1',
         'Specrew.psm1',
+        'scripts/internal/coordinator-prompt-surgery.ps1',
         'scripts/internal/coordinator-resume.ps1',
         'scripts/internal/dashboard-renderer.ps1',
-        'scripts/internal/version-check.ps1',
+        'scripts/internal/detect-hosts.ps1',
+        'scripts/internal/host-flag-translation.ps1',
+        'scripts/internal/invoke-module-release.ps1',
         'scripts/internal/supported-versions.yml',
         'scripts/internal/sync-boundary-state.ps1',
-        'scripts/internal/invoke-module-release.ps1',
         'scripts/internal/task-progress.ps1',
+        'scripts/internal/version-check.ps1',
         'scripts/internal/worktree-awareness.ps1',
         'scripts/specrew-init.ps1',
         'scripts/specrew-review.ps1',

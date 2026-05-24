@@ -32,7 +32,7 @@ Specrew encodes that methodology as four guarantees:
 1. **Boundary discipline.** The lifecycle has explicit approval boundaries (`specify`, `clarify`, `plan`, `tasks`, `before-implement`, `review-signoff`, `retro`, `iteration-closeout`, `feature-closeout`). One human authorization advances at most one boundary. No agent prose can simulate authorization. Enforcement is moving from prose to code (see [Proposal 065](proposals/065-launch-mode-boundary-enforcement.md), in flight as Feature 039).
 2. **Substantive interaction.** Every boundary handoff is reviewable in the console with the essence of "what I just did / why I stopped / what I need from you" visible without opening files. Status pings are not enough.
 3. **Audit-trail durability.** Every verdict, decision, drift event, and bypass lives in `.squad/decisions.md` with timestamps, commit hashes, and recognized verdict shapes. Sessions can be reconstructed after the fact; methodology lives in artifacts, not in agent memory.
-4. **Methodology survives the host.** Specrew runs on GitHub Copilot CLI today. Claude Code, Codex CLI, and VS Code Chat are roadmap items ([Proposal 069](proposals/069-multi-host-launch-path.md)). The skill-level enforcement gates are host-agnostic by design — switching hosts must not weaken the methodology.
+4. **Methodology survives the host.** As of v0.26.0 Specrew runs on **GitHub Copilot CLI (default), Claude Code, or Codex CLI** via `specrew start --host <kind>` — VS Code Chat remains a roadmap item ([Proposal 071](proposals/071-vscode-copilot-chat-host.md)). Per-host flag translation keeps `--remote` / `--allow-all` / `--autopilot` uniform at the Specrew surface. The skill-level enforcement gates are host-agnostic by design — switching hosts must not weaken the methodology.
 
 ## What Specrew is not
 
@@ -73,12 +73,15 @@ Vanilla Spec Kit ships the slash-command surface but has no orchestration or bou
 
 ## What's coming (roadmap highlights)
 
-- **F-039** [Launch-Mode Boundary Enforcement](proposals/065-launch-mode-boundary-enforcement.md) — mechanical refusal of agent boundary chaining (in flight, parked at iteration-closeout)
-- **F-040** [Substantive Intake Questioning](proposals/063-substantive-intake-questioning.md) — persona-driven adaptive intake (next after F-039)
-- **Friction Dial** ([Proposal 100](proposals/100-friction-dial.md)) — strict/default/autonomous modes for expert developers; composes [Proposals 015](proposals/015-expertise-aware-adaptive-interaction.md) + [047](proposals/047-project-governance-profile.md) + 066
+- **F-039** [Launch-Mode Boundary Enforcement](proposals/065-launch-mode-boundary-enforcement.md) — mechanical refusal of agent boundary chaining (shipped v0.25.0)
+- **F-040** [Multi-Host Launch Path](proposals/069-multi-host-launch-path.md) — `specrew start --host claude|codex|copilot` (shipped v0.26.0)
+- **F-041** [Cost-Aware Model Routing](proposals/068-cost-aware-model-routing.md) — discovery skill + lean cost-profile + Junior→cheap-model auto-routing (next; addresses 2026-05-30 Copilot pricing pivot)
+- **F-042** [Token Economy MVP](proposals/070-token-economy-mvp.md) — cost.yml + dashboard COST section so per-iteration spend is measurable
+- **F-043** [Multi-Host Onboarding + Selection Flow](proposals/104-multi-host-onboarding-and-selection-flow.md) — first-run host probe + `host-history.yml` + `specrew host` command
+- **Substantive Intake Questioning** ([Proposal 063](proposals/063-substantive-intake-questioning.md)) — persona-driven adaptive intake at specify + clarify boundaries
+- **Friction Dial** ([Proposal 100](proposals/100-friction-dial.md)) — strict/default/autonomous modes for expert developers
+- **Host-Native Hook Deployment** ([Proposal 105](proposals/105-host-native-hook-deployment.md)) — Claude Code PreToolUse hooks elevate F-039 from cooperative to runtime enforcement
 - **Installed-File SDLC Audit** ([Proposal 099](proposals/099-installed-file-sdlc-instruction-audit.md)) — close the dogfooding deficit between maintainer paste-prompts and installed methodology files
-- **Multi-host launch** ([Proposal 069](proposals/069-multi-host-launch-path.md)) — Claude Code and Codex CLI as alternatives to Copilot CLI
-- **Cost-aware model routing** ([Proposal 068](proposals/068-cost-aware-model-routing.md)) + [Token Economy MVP](proposals/070-token-economy-mvp.md) — Junior tasks to cheap models, Senior tasks to strong models
 
 See [proposals/INDEX.md](proposals/INDEX.md) for the full proposal catalog (Shipped / Draft / Candidate).
 

@@ -253,8 +253,8 @@ Options:
                          Minimum Spec Kit version (default: 0.8.4)
   -SquadVersion | --squad-version
                          Minimum Squad version (default: 0.9.1)
-  -Agents | --agents      Optional delegated agents: claude | codex | comma list | all (Copilot host stays enabled)
-  -NoAgents | --no-agents Disable optional delegated agents (Copilot host stays enabled)
+  -Agents | --agents      Optional DELEGATED agents (orthogonal to --host launch selection): claude | codex | comma list | all. The launch host stays as selected via `specrew start --host <kind>` (default: copilot)
+  -NoAgents | --no-agents Disable optional delegated agents. The launch host stays as selected via `specrew start --host <kind>`
   -SkipUpdateCheck | --skip-update-check
                          Skip the PSGallery latest-version check for this run
   -Help | --help          Show usage
@@ -306,14 +306,14 @@ function Write-PostBootstrapGuidance {
     Write-Host ''
     Write-Host '1. Start spec authoring (Spec Kit workflows):' -ForegroundColor Yellow
     Write-Host '   - Run specrew start from the project root (optionally add a short feature request)' -ForegroundColor White
-    Write-Host '   - Specrew launches Copilot from the project directory in the current terminal by default, stays out of autopilot until intake is grounded, and supports --new-window or --prompt-approvals when you want them' -ForegroundColor White
+    Write-Host '   - Specrew launches the selected host CLI (default: Copilot; `--host claude` or `--host codex` available since v0.26.0) from the project directory in the current terminal by default, stays out of autopilot until intake is grounded, and supports --new-window or --prompt-approvals when you want them' -ForegroundColor White
     Write-Host '   - Specrew will launch or hand off to the Squad agent with lifecycle context' -ForegroundColor White
     Write-Host '   - Squad should drive specify -> clarify -> plan -> tasks -> implement (skip clarify only for resumed clarified work with a recorded rationale)' -ForegroundColor White
     Write-Host ''
     Write-Host '2. Resuming work later:' -ForegroundColor Yellow
     Write-Host '   - Every later session also starts with specrew start from the project root' -ForegroundColor White
     Write-Host '   - specrew start regenerates the runtime handoff before launch' -ForegroundColor White
-    Write-Host '   - Do not run copilot directly; it skips that refresh and leaves the launch contract stale' -ForegroundColor White
+    Write-Host '   - Do not run the host CLI directly (e.g., `copilot ...` / `claude ...` / `codex ...`); going around `specrew start` skips the bootstrap refresh and leaves the launch contract stale' -ForegroundColor White
     Write-Host ''
     Write-Host '3. Run the iteration lifecycle:' -ForegroundColor Yellow
     Write-Host '   - Materialize iteration artifacts under specs/<feature>/iterations/<NNN>/' -ForegroundColor White

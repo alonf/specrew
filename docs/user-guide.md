@@ -24,13 +24,13 @@ Specrew -Scope CurrentUser -SkipPublisherCheck`, or via
 that can't load the module, the direct-script fallback is
 `pwsh -File C:\Dev\Specrew\scripts\specrew.ps1 start` — same arguments otherwise.
 
-It prepares the Squad handoff, launches Copilot CLI when available, and tells Squad to drive the full Spec Kit lifecycle with an explicit clarify gate: `specify`, then `clarify`, then `plan`, `tasks`, and `implement`, with skip rationale reserved for resumed specs that are already clarified and materially unchanged. The intended human role is to answer only the unresolved questions Squad cannot safely answer from repo context or current artifacts. You can optionally pass a short plain-language request if you already know the next feature or fix.
+It prepares the Crew handoff, launches the selected host CLI (`--host copilot|claude|codex`, default `copilot`) when available, and tells the Crew to drive the full Spec Kit lifecycle with an explicit clarify gate: `specify`, then `clarify`, then `plan`, `tasks`, and `implement`, with skip rationale reserved for resumed specs that are already clarified and materially unchanged. The intended human role is to answer only the unresolved questions the Crew cannot safely answer from repo context or current artifacts. You can optionally pass a short plain-language request if you already know the next feature or fix.
 
-For new brownfield projects, the handoff includes discovery from existing code, manifests, docs, and recent git history so Squad can reconstruct the current system baseline, seed the starting spec, and propose concrete stack/domain specialists before it asks broad intake questions. If you start without a grounded request, Specrew keeps Copilot out of autopilot so Squad can ask the next intake question and wait for your answer before it invokes `speckit.specify`.
+For new brownfield projects, the handoff includes discovery from existing code, manifests, docs, and recent git history so the Crew can reconstruct the current system baseline, seed the starting spec, and propose concrete stack/domain specialists before it asks broad intake questions. If you start without a grounded request, Specrew keeps the host out of autopilot so the Crew can ask the next intake question and wait for your answer before it invokes `speckit.specify`.
 
-Once the scope is grounded, Specrew launches from the project directory, reuses the current terminal by default, and auto-loads a compact bootstrap message via `-i` that points Copilot at `.specrew\last-start-prompt.md`, `.specrew\start-context.json`, and the human-readable `.specrew\start-summary.md`. Specrew defaults to **gate-respecting mode** — Squad stops at every lifecycle approval boundary (specify, clarify, plan, tasks, implement, review, retro) and waits for explicit human verdict before advancing. Specrew also defaults to `--allow-all` for tool-call approval (tool invocations between gates run without per-call prompts); use `--prompt-approvals` to keep each tool call interactive. The two flags are independent: `--allow-all` controls tool-call approval; `--autonomous` controls whether Squad advances through lifecycle gates without human input. Pass `--autonomous` only for unattended runs such as overnight execution where you have already authorized the full lifecycle. Pass `--new-window` if you explicitly want a detached PowerShell window.
+Once the scope is grounded, Specrew launches from the project directory, reuses the current terminal by default, and auto-loads a compact bootstrap message that points the host at `.specrew\last-start-prompt.md`, `.specrew\start-context.json`, and the human-readable `.specrew\start-summary.md`. Specrew defaults to **gate-respecting mode** — the Crew stops at every lifecycle approval boundary (specify, clarify, plan, tasks, implement, review, retro) and waits for explicit human verdict before advancing. Specrew also defaults to `--allow-all` for tool-call approval (translated per host: Copilot `--allow-all`, Claude `--dangerously-skip-permissions`, Codex `--full-auto`); use `--prompt-approvals` to keep each tool call interactive. The two flags are independent: `--allow-all` controls tool-call approval; `--autonomous` controls whether the Crew advances through lifecycle gates without human input. Pass `--autonomous` only for unattended runs such as overnight execution where you have already authorized the full lifecycle. Pass `--new-window` if you explicitly want a detached PowerShell window.
 
-Copilot remains the mandatory host runtime in v1; optional delegated agents such as Claude and Codex are additive routing choices used for review-heavy and problem-solving-heavy work when enabled. Specrew expects delegated lifecycle runs to leave visible evidence in `.squad\decisions.md`, including the requested agent family, effective agent family, concrete model ID, and fallback reason when routing is not honored. Specrew also applies a **no-gap policy** at review/closure time: known gaps across spec, implementation, tests, docs, or observability must be fixed in the current iteration or explicitly deferred with your approval and recorded evidence before the run is claimed complete. Copilot may still ask you to trust the project directory on first launch.
+As of v0.26.0, three host runtimes are supported — Copilot CLI (default + most-tested), Claude Code, and Codex CLI. Each launches with the same Specrew bootstrap context but uses host-native CLI flags via Specrew's per-host translation layer (see the "Multi-Host Launch" section below for the per-host flag matrix). Optional delegated agents such as Claude and Codex are *also* available as additive routing choices for review-heavy and problem-solving-heavy work when enabled — that's an orthogonal concern from `--host` (which picks the launching CLI), captured in `.squad\decisions.md` as the requested agent family, effective agent family, concrete model ID, and fallback reason when routing is not honored. Specrew applies a **no-gap policy** at review/closure time: known gaps across spec, implementation, tests, docs, or observability must be fixed in the current iteration or explicitly deferred with your approval and recorded evidence before the run is claimed complete. The selected host may still ask you to trust the project directory on first launch.
 
 If you want a repeatable mission-completion smoke check of the real handoff boundary, run `tests\manual\copilot-squad-smoke.ps1`. It provisions a fresh repo, runs `specrew init`, runs `specrew start`, and can optionally launch the real Copilot+Squad session for operator-observed end-to-end validation. When launched, the smoke harness now defaults to same-window monitoring so the live session can be observed directly; use its `-NewWindow` switch only when you intentionally want a detached window.
 
@@ -439,11 +439,13 @@ Each tier is its own slice; Tier 1 ships first as a methodology-text addition, T
 
 The next release queue focuses on intake quality, expert-developer ergonomics, and multi-host expansion. Active proposals worth tracking:
 
-- **F-040 / Proposal 063 — Substantive Intake Questioning**: persona-driven adaptive intake (PM / UX / Architect / Researcher), 12-category catalog, Mode A/B/C input-quality assessment. Fires at `/speckit.specify`, `/speckit.clarify`, iteration kickoff, mid-feature pivot. The intake interview that stops Squad from auto-resolving scope decisions silently. Source: [Proposal 063](../proposals/063-substantive-intake-questioning.md).
+- **F-040 / Proposal 069 — Multi-Host Launch Path (SHIPPED v0.26.0)**: `specrew start --host claude|codex|copilot` launches the alternate CLI with Specrew's bootstrap context. Per-host flag translation (`--remote`, `--allow-all`, `--autopilot`) + universal Crew-coordinator prompt header + Squad-runtime-path directive strip for non-Copilot + Codex pwsh-form boundary-advance instructions. Tactical MVP slice of [Proposal 024](../proposals/024-multi-host-runtime-abstraction.md) (Multi-Host Runtime Abstraction). Composes with Proposals 068 (cost-aware model routing) and 070 (token economy MVP). See "Multi-Host Launch" section below for the per-host flag matrix.
+- **Proposal 063 — Substantive Intake Questioning**: persona-driven adaptive intake (PM / UX / Architect / Researcher), 12-category catalog, Mode A/B/C input-quality assessment. Fires at `/speckit.specify`, `/speckit.clarify`, iteration kickoff, mid-feature pivot. The intake interview that stops the Crew from auto-resolving scope decisions silently. Source: [Proposal 063](../proposals/063-substantive-intake-questioning.md).
 - **Proposal 099 — Installed-File SDLC Instruction Audit**: closes the dogfooding deficit between paste-prompt scaffolding and the discipline carried by installed instruction files (coordinator-governance.md, agent charters, sync command docs). Three small-fix closure slices identified: recognized verdict shapes catalog, reconciliation directive, smaller refinements bundle. Source: [Proposal 099](../proposals/099-installed-file-sdlc-instruction-audit.md).
 - **Proposal 100 — Friction Dial**: three canonical modes (strict / default / autonomous) controlling verdict-parser acceptance, reconciliation posture, drift-log granularity, and compound-verdict eligibility. Composes Proposals 015 + 047 + 066 into a coherent surface. Persistence in `.specrew/config.yml`; session override via `specrew start --friction <mode>`. Source: [Proposal 100](../proposals/100-friction-dial.md).
-- **Proposal 069 — Multi-Host Launch Path**: `specrew start --host claude|codex|copilot|auto` launches the alternate CLI with the Specrew bootstrap context. Tactical MVP of Proposal 024 (Multi-Host Runtime Abstraction). Composes with Proposals 068 (cost-aware model routing) and 070 (token economy MVP). Source: [Proposal 069](../proposals/069-multi-host-launch-path.md).
-- **Proposal 068 — Cost-Aware Model Routing** + **Proposal 070 — Token Economy MVP**: agent-discovered model catalog routes Junior/Implementer tasks to cheap models, Senior/Reviewer tasks to strong. `cost.yml` per iteration tracks token consumption + cost estimate; `specrew where` dashboard gains a COST section.
+- **Proposal 068 — Cost-Aware Model Routing** + **Proposal 070 — Token Economy MVP**: agent-discovered model catalog routes Junior/Implementer tasks to cheap models, Senior/Reviewer tasks to strong. `cost.yml` per iteration tracks token consumption + cost estimate; `specrew where` dashboard gains a COST section. Sequenced as F-041 + F-042 (next features after F-040).
+- **Proposal 104 — Multi-Host Onboarding + Selection Flow**: first-run host probe + `.specrew/host-history.yml` for last-host default + `specrew host` command. UX layer on top of F-040. Sequenced as F-043. Source: [Proposal 104](../proposals/104-multi-host-onboarding-and-selection-flow.md).
+- **Proposal 105 — Host-Native Hook Deployment**: elevate F-039 boundary enforcement from cooperative to runtime on hook-supporting hosts (Claude PreToolUse hooks; Antigravity later). Drafted alongside F-040 on 2026-05-23. Source: [Proposal 105](../proposals/105-host-native-hook-deployment.md).
 - **Proposal 098 — Launch Posture Visibility (candidate)**: surfaces enforcement state (`[BYPASS ACTIVE]` indicator, active friction mode) at `specrew start` banner. Companion to Proposal 100 and Proposal 065.
 
 Full proposal catalog with status (Shipped / Draft / Candidate) lives at [proposals/INDEX.md](../proposals/INDEX.md).
@@ -476,3 +478,71 @@ If you see this warning after `specrew init`, it is an upstream Copilot CLI beha
 Specrew's own slash-command surface (`/specrew-where`, `/specrew-help`, `/specrew-version`, `/specrew-update`, `/specrew-team`, `/specrew-review`, `/specrew-status`) uses hyphenated names and is unaffected. To confirm a Specrew skill loaded correctly, run `/skills info specrew-help` inside the Copilot CLI session and verify that Copilot reports the expected Specrew skill path and metadata.
 
 Upstream tracking: <https://github.com/github/copilot-cli/issues/2689>. Copilot CLI does not currently provide a config switch to exclude those directories from scanning. The warning is cosmetic and does not block Specrew's own skills from working.
+
+## Multi-Host Launch (v0.26.0+)
+
+`specrew start --host <kind>` launches the lifecycle on the named CLI runtime instead of the Copilot default. Supported kinds: `copilot` (default), `claude`, `codex`.
+
+```powershell
+specrew start --host claude "Build a TODO list app"
+specrew start --host codex "Fix the auth bug"
+specrew start --host copilot           # Equivalent to no --host flag
+```
+
+### Per-host flag translation matrix
+
+Specrew translates user-facing Specrew flags to host-appropriate CLI flags. The user-facing surface stays uniform across hosts.
+
+| Specrew flag | Copilot | Claude Code | Codex CLI |
+|---|---|---|---|
+| `--remote` | `--remote` | `--remote-control` | (warn-and-continue, no remote wiring) |
+| `--allow-all` | `--allow-all` | `--dangerously-skip-permissions` | `--full-auto` |
+| `--autopilot` | `--autopilot` | (drop with notice — Claude has no equivalent; use `--autonomous` for unattended runs) | `--full-auto` (folds into `--allow-all`) |
+| `--autonomous` | (Specrew-side only — handled by lifecycle boundary enforcement per F-039; not translated per-host) | | |
+
+### Per-host launch invocation shape
+
+The bootstrap-context handshake ("Read `.specrew/last-start-prompt.md` and `.specrew/start-context.json`") is identical across all hosts. Only the host-CLI invocation differs.
+
+```text
+copilot:  copilot --agent Squad --add-dir <project> -i <bootstrap-prompt> [--allow-all] [--autopilot] [--remote]
+claude:   claude -p <bootstrap-prompt> --add-dir <project> [--dangerously-skip-permissions] [--remote-control]
+codex:    codex exec --cd <project> [--full-auto] <bootstrap-prompt>
+```
+
+### Coordinator-prompt rewrite per host (FR-011 / FR-012)
+
+The opening line of the coordinator prompt is universal across all hosts: `"You are the Crew team coordinator running inside a Specrew-bootstrapped repository."` This aligns with the project terminology: **"the Crew"** is the team role (Spec Steward, Planner, Implementer, Reviewer, Retro Facilitator); **"Squad"** is the npm runtime product (one of several possible Crew runtimes).
+
+For non-Copilot hosts, Specrew additionally strips directives that reference Squad-specific runtime paths (`.squad/decisions.md`, `.squad/config.json`, `agentModelOverrides`, `sync-squad-model-overrides.ps1`) since those paths don't exist when running on Claude or Codex.
+
+For Codex specifically, Specrew rewrites slash-command boundary-advance references (e.g., `/speckit.specrew-speckit.sync-plan`) to direct PowerShell invocations (`pwsh -File .specify/extensions/specrew-speckit/scripts/sync-boundary-state.ps1 -BoundaryType plan`) because Codex has no user-defined slash-command surface.
+
+### Host-enforcement asymmetry (FR-015)
+
+F-039 (Launch-Mode Boundary Enforcement) is **cooperative**, not runtime-enforced. The boundary-authorization gate fires only when the agent invokes Specrew's canonical sync path:
+
+- **Copilot, Claude**: Slash command `/speckit.specrew-speckit.sync-<boundary>` → boundary-state-sync script → authorization helper. Discoverable, mechanical.
+- **Codex**: Direct `pwsh -File ...` invocation (per FR-014 rewrite) → boundary-state-sync script → authorization helper. Less discoverable, but functionally equivalent.
+
+In all cases, if an agent writes directly to `.specrew/start-context.json` boundary_enforcement section without going through the canonical path, no gate fires. Runtime enforcement (host-layer interception of any write to boundary state) is **out of scope for F-040** and tracked as [Proposal 105](../proposals/105-host-native-hook-deployment.md). When Proposal 105 ships, Claude Code's PreToolUse hook layer can elevate F-039 from cooperative to runtime enforcement.
+
+**Recommendation**: strict-mode users should prefer Copilot or Claude over Codex until Proposal 105 ships, because Copilot/Claude's slash-command surface makes the canonical path easier for agents to discover and invoke. Codex still works correctly when the agent follows the FR-014 pwsh-form instructions in the coordinator prompt.
+
+### Per-host capability differences (research.md Task 5)
+
+| Capability | Copilot | Claude | Codex |
+|---|---|---|---|
+| User-defined slash commands | ✅ `.github/skills/<name>.md` | ✅ `.claude/skills/<name>/SKILL.md` | ❌ **Not supported** |
+| Hooks (PreToolUse, etc.) | ❌ None | ✅ Rich, configured in `.claude/settings.json` | ⚠️ Unclear at v0.26.0 research time |
+| Subagents (multi-agent teams) | ⚠️ Via `--agent <name>` (Squad) | ✅ `.claude/agents/*.md` | ✅ `.codex/agents/*.toml` |
+| MCP server config | ⚠️ Limited (recent) | ✅ `.mcp.json` first-class | ✅ `.codex/mcp.toml` first-class |
+| Project memory | ⚠️ None native | ✅ `CLAUDE.md` | ✅ `AGENTS.md` |
+
+F-040 manages skills + slash commands (uniformly via existing F-021 multi-host deploy). F-040 explicitly defers hooks, MCP, project memory, and subagents to future proposals (Proposal 105 for hooks; Proposal 024 Slice 3 for the rest).
+
+### Missing-host guidance
+
+If you invoke `specrew start --host claude` but Claude Code is not installed on PATH, Specrew exits with the install URL for that host and a non-zero exit code. No CLI is launched. Same behavior for `--host codex` when Codex CLI is missing.
+
+`--host antigravity` and `--host auto` are accepted by the parser but rejected with explicit "deferred to follow-up" guidance pointing to the relevant proposal (Proposal 069 follow-up slice for Antigravity; Proposal 104 for auto-selection).

@@ -3,8 +3,37 @@
 ## Schema evolution
 
 - `v0` is implicit legacy state: the file omits a top-level `schema` marker.
-- `v1` is the current explicit contract: new state writers must emit `schema: v1` (YAML/frontmatter) or `"schema": "v1"` (JSON).
+- `v1` is the explicit baseline contract: state writers may emit `schema: v1` (YAML/frontmatter) or `"schema": "v1"` (JSON).
+- `v2` is the current explicit contract introduced by F-039 (Launch-Mode Boundary Enforcement, v0.25.0). State writers must emit `schema: v2` when the artifact carries F-039's `boundary_enforcement` section.
 - Future schema upgrades must preserve reader tolerance for older fixtures and add a new current-version fixture under `tests/fixtures/legacy-versions/`.
+
+## `.specrew/start-context.json` field inventory (schema v2)
+
+The start-context.json artifact written by `specrew start` has grown additive fields across F-039 (v2 boundary_enforcement section) and F-040 (v0.26.0 multi-host launch path). All fields below are part of schema v2:
+
+| Field | Type | Source | Notes |
+|---|---|---|---|
+| `schema` | string | Set by writer | `"v2"` since F-039 |
+| `mode` | string | Set by writer | `intake` / `feature` / `resume` |
+| `feature_request` | string | --feature-request flag | nullable |
+| `feature_path` | string | resolved path | nullable |
+| `agent` | string | --agent flag | Crew runtime agent label (default `Squad`); required for Copilot --agent surface; non-Squad hosts ignore |
+| `approval_mode` | string | runtime computed | `allow-all` / `prompt-approvals` |
+| `launch_mode` | string | --new-window/--same-window | `same-window` (default) / `new-window` / `none` |
+| `copilot_autopilot` | bool | --autopilot flag | Backwards-compat field name; reflects Specrew's --autonomous lifecycle-gate posture (historical naming) |
+| `boundary_enforcement` | object | F-039 schema v2 | Per-boundary verdict + bypass-record history |
+| `selected_host` | string | **F-040 (v0.26.0)** | `copilot` / `claude` / `codex`; reflects the active --host kind (default copilot) |
+| `available_hosts` | object | **F-040 (v0.26.0)** | Map of host kind → bool (PATH probe result) |
+| `crew_runtime_status` | string | **F-040 (v0.26.0)** | `squad-runtime` (Copilot+Squad) or `bootstrap_only` (non-Copilot host without per-host Crew runtime deployed yet) |
+| `host_resolution` | object | **F-043 (planned)** | Records HOW the host was resolved (flag / last-selected / first-run-prompt / auto-single-available) plus alternatives available at probe time |
+| `delegated_routing` / `delegated_routing_evidence` | object | runtime computed | Delegated-agent routing plan (orthogonal to --host launch selection) |
+| `squad_model_overrides` | object | runtime computed | F-019 `Set-SquadModelOverrides` snapshot (Copilot host's per-role model selection) |
+| `prompt_path`, `summary_path` | string | runtime computed | Resolved paths to companion artifacts |
+| `generated_at_utc` | string | runtime computed | ISO8601 timestamp |
+| `session_state` | object | runtime computed | Last-known boundary + feature + iteration state from `.squad/identity/now.md` |
+| `recovery_session` | object | runtime computed | Active recovery-mode metadata (nullable) |
+
+**Field additivity contract**: F-040's `selected_host`/`available_hosts`/`crew_runtime_status` were added without bumping schema beyond v2 because they are purely additive — pre-F-040 readers that don't know about these fields keep working (reader tolerance per Proposal 059). New readers should treat them as optional with defaults: `selected_host` defaults to `copilot`, `available_hosts` defaults to `null`, `crew_runtime_status` defaults to `squad-runtime`.
 
 ## Writer contract
 
