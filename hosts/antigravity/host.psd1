@@ -22,5 +22,5 @@
 
     # Phase B handler file (not yet present)
     HandlersFile         = 'handlers.ps1'
-    CoordinatorRulesFile = 'coordinator-rules.md'
+    CoordinatorRulesFile = 'coordinator-rules.psd1'
 }
