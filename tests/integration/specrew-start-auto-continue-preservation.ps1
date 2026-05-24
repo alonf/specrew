@@ -83,9 +83,11 @@ if (-not (Test-Path -LiteralPath $promptPath)) {
 
 $promptContent = Get-Content -LiteralPath $promptPath -Raw -Encoding UTF8
 
-# The prompt should contain the standard Squad handoff content (auto-continue behavior)
-# Iteration 001 does NOT implement pause-and-confirm, so we just verify the prompt exists and has baseline tracking
-if ($promptContent -notmatch 'You are Squad running inside a Specrew-bootstrapped repository') {
+# The prompt should contain the standard Crew handoff content (auto-continue behavior)
+# Sentinel string survives the F-040 coordinator-prompt surgery rewrite that replaces
+# "You are Squad running..." with "You are the Crew team coordinator running...".
+$promptSentinel = 'running inside a Specrew-bootstrapped repository'
+if ($promptContent -notmatch $promptSentinel) {
     Write-Fail "Auto-continue prompt content is missing or malformed"
     exit 1
 }
@@ -99,7 +101,7 @@ $null = & pwsh -NoProfile -ExecutionPolicy Bypass -File $startScript -ProjectPat
 
 $promptContent2 = Get-Content -LiteralPath $promptPath -Raw -Encoding UTF8
 
-if ($promptContent2 -notmatch 'You are Squad running inside a Specrew-bootstrapped repository') {
+if ($promptContent2 -notmatch $promptSentinel) {
     Write-Fail "Auto-continue prompt content is missing after second run"
     exit 1
 }
@@ -124,7 +126,7 @@ $null = & pwsh -NoProfile -ExecutionPolicy Bypass -File $startScript -ProjectPat
 
 $promptContent3 = Get-Content -LiteralPath $promptPath -Raw -Encoding UTF8
 
-if ($promptContent3 -notmatch 'You are Squad running inside a Specrew-bootstrapped repository') {
+if ($promptContent3 -notmatch $promptSentinel) {
     Write-Fail "Auto-continue prompt content is missing with uncommitted changes"
     exit 1
 }

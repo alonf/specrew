@@ -285,7 +285,14 @@ Specrew bootstrap always installs and protects the same five baseline governance
 - Reviewer
 - Retro Facilitator
 
-Those roles live in the Specrew-managed baseline block inside `.squad\team.md`. They are intentionally deterministic, so do not remove or rewrite that managed block as your customization mechanism.
+Each baseline role's charter is the canonical source-of-truth at `.specrew/team/agents/<role>.md` (e.g., `.specrew/team/agents/reviewer.md`). Every `specrew start --host <kind>` translates these canonical charters to the selected host's native subagent format:
+
+- **Copilot** → `.squad/agents/<role>/charter.md` (raw markdown, consumed by Squad CLI)
+- **Claude** → `.claude/agents/<role>.md` (YAML frontmatter + body)
+- **Codex** → `.codex/agents/<role>.toml` (TOML manifest)
+- **Antigravity** → `.agents/agents/<role>.md` (YAML frontmatter + body)
+
+The generated host-native files carry a `Specrew-managed` marker comment. Edits to the canonical charters propagate to all hosts on the next `specrew start`. Edits to a generated host-native file are preserved only if you also delete the `Specrew-managed` marker (in which case Specrew leaves the file alone). The baseline 5 are intentionally deterministic; do not remove or rewrite the canonical charters as your customization mechanism.
 
 To add domain-specific help after bootstrap, use Specrew's command-driven team management interface:
 

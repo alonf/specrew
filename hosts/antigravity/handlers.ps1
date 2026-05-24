@@ -120,7 +120,7 @@ function Test-AntigravityRuntimeInstalled {
     if (-not (Test-Path -LiteralPath $agentsDir -PathType Container)) {
         return $false
     }
-    $agentFiles = Get-ChildItem -Path $agentsDir -ErrorAction SilentlyContinue
+    $agentFiles = Get-ChildItem -Path $agentsDir -Filter '*.md' -ErrorAction SilentlyContinue
     return ([bool]$agentFiles) -and ($agentFiles.Count -gt 0)
 }
 
@@ -143,13 +143,7 @@ function Get-AntigravitySignals {
 
 function ConvertTo-AntigravityAgentDescription {
     param([string]$Charter, [string]$Role)
-    $lines = @($Charter -split "`r?`n" | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
-    foreach ($line in $lines) {
-        if ($line -match '^>\s*(.+?)\s*$') {
-            return $Matches[1]
-        }
-    }
-    return ("Specrew Crew specialist: {0}." -f $Role)
+    return (Get-SpecrewCharterTagline -Charter $Charter -Role $Role)
 }
 
 function Install-AntigravityCrewRuntime {
@@ -174,7 +168,7 @@ function Install-AntigravityCrewRuntime {
 
     $actions = New-Object System.Collections.Generic.List[hashtable]
     $notices = New-Object System.Collections.Generic.List[string]
-    $antigravityAgentsRoot = Join-Path $ProjectPath '.agents\agents'
+    $antigravityAgentsRoot = Get-SpecrewHostAgentRoot -HostKind 'antigravity' -ProjectPath $ProjectPath
     if (-not (Test-Path -LiteralPath $antigravityAgentsRoot -PathType Container) -and -not $DryRun) {
         New-Item -ItemType Directory -Path $antigravityAgentsRoot -Force | Out-Null
     }
@@ -200,6 +194,11 @@ function Install-AntigravityCrewRuntime {
         $frontmatter = $frontmatterLines -join "`n"
 
         $target = Join-Path $antigravityAgentsRoot ("{0}.md" -f $role)
+        if (-not (Test-SpecrewManagedFile -Path $target)) {
+            $notices.Add("Preserving user-edited file '$target' (no Specrew-managed marker; delete the file to re-sync from canonical).") | Out-Null
+            $actions.Add(@{ Action = 'preserved'; Path = $target; Role = $role }) | Out-Null
+            continue
+        }
         $finalContent = $frontmatter + $content
 
         if ($DryRun) {
@@ -213,7 +212,7 @@ function Install-AntigravityCrewRuntime {
 
     return [pscustomobject]@{
         Actions          = $actions.ToArray()
-        CrewRuntimePath  = (Join-Path $ProjectPath '.agents\agents')
+        CrewRuntimePath  = $antigravityAgentsRoot
         Notices          = $notices.ToArray()
     }
 }

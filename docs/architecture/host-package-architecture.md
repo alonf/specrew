@@ -192,10 +192,11 @@ The contract-function map is a small hashtable:
 
 ```powershell
 $script:HostContractFunctionMap = @{
-    'NewLaunchInvocation'    = 'New-{0}LaunchInvocation'
-    'ConvertFlag'            = 'ConvertTo-{0}Flag'
-    'TestRuntimeInstalled'   = 'Test-{0}RuntimeInstalled'
-    'GetSignals'             = 'Get-{0}Signals'
+    'NewLaunchInvocation'  = 'New-{0}LaunchInvocation'
+    'ConvertFlag'          = 'ConvertTo-{0}Flag'
+    'TestRuntimeInstalled' = 'Test-{0}RuntimeInstalled'
+    'GetSignals'           = 'Get-{0}Signals'
+    'InstallCrewRuntime'   = 'Install-{0}CrewRuntime'
 }
 ```
 

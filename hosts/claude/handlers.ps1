@@ -144,21 +144,8 @@ function Get-ClaudeSignals {
 }
 
 function ConvertTo-ClaudeAgentDescription {
-    <#
-    .SYNOPSIS
-    Derive Claude Code's `description:` frontmatter field from a charter's first prose line.
-    The description should explain when to invoke this subagent — Claude uses it for routing.
-    #>
     param([string]$Charter, [string]$Role)
-
-    # Try to find the first paragraph after the title (typically a "> blockquote" tagline)
-    $lines = @($Charter -split "`r?`n" | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
-    foreach ($line in $lines) {
-        if ($line -match '^>\s*(.+?)\s*$') {
-            return $Matches[1]
-        }
-    }
-    return ("Specrew Crew specialist: {0}." -f $Role)
+    return (Get-SpecrewCharterTagline -Charter $Charter -Role $Role)
 }
 
 function Install-ClaudeCrewRuntime {
@@ -182,7 +169,7 @@ function Install-ClaudeCrewRuntime {
 
     $actions = New-Object System.Collections.Generic.List[hashtable]
     $notices = New-Object System.Collections.Generic.List[string]
-    $claudeAgentsRoot = Join-Path $ProjectPath '.claude\agents'
+    $claudeAgentsRoot = Get-SpecrewHostAgentRoot -HostKind 'claude' -ProjectPath $ProjectPath
     if (-not (Test-Path -LiteralPath $claudeAgentsRoot -PathType Container) -and -not $DryRun) {
         New-Item -ItemType Directory -Path $claudeAgentsRoot -Force | Out-Null
     }
@@ -208,6 +195,11 @@ function Install-ClaudeCrewRuntime {
         $frontmatter = $frontmatterLines -join "`n"
 
         $target = Join-Path $claudeAgentsRoot ("{0}.md" -f $role)
+        if (-not (Test-SpecrewManagedFile -Path $target)) {
+            $notices.Add("Preserving user-edited file '$target' (no Specrew-managed marker; delete the file to re-sync from canonical).") | Out-Null
+            $actions.Add(@{ Action = 'preserved'; Path = $target; Role = $role }) | Out-Null
+            continue
+        }
         $finalContent = $frontmatter + $content
 
         if ($DryRun) {
@@ -221,7 +213,7 @@ function Install-ClaudeCrewRuntime {
 
     return [pscustomobject]@{
         Actions          = $actions.ToArray()
-        CrewRuntimePath  = (Join-Path $ProjectPath '.claude\agents')
+        CrewRuntimePath  = $claudeAgentsRoot
         Notices          = $notices.ToArray()
     }
 }

@@ -136,7 +136,7 @@ function Install-CopilotCrewRuntime {
 
     $actions = New-Object System.Collections.Generic.List[hashtable]
     $notices = New-Object System.Collections.Generic.List[string]
-    $squadAgentsRoot = Join-Path $ProjectPath '.squad\agents'
+    $squadAgentsRoot = Get-SpecrewHostAgentRoot -HostKind 'copilot' -ProjectPath $ProjectPath
 
     foreach ($role in (Get-SpecrewCanonicalAgentRoles -ProjectPath $ProjectPath)) {
         $roleDir = Join-Path $squadAgentsRoot $role
@@ -151,18 +151,27 @@ function Install-CopilotCrewRuntime {
         }
 
         $charterPath = Join-Path $roleDir 'charter.md'
+        if (-not (Test-SpecrewManagedFile -Path $charterPath)) {
+            $notices.Add("Preserving user-edited file '$charterPath' (no Specrew-managed marker; delete it OR delete the sidecar '$charterPath.specrew-managed' to re-sync from canonical).") | Out-Null
+            $actions.Add(@{ Action = 'preserved'; Path = $charterPath; Role = $role }) | Out-Null
+            continue
+        }
+
+        # Copilot consumes charter.md as the charter body verbatim (no frontmatter / comment header).
+        # Use a sidecar marker file instead of an inline comment so Squad CLI parsing isn't affected.
         if ($DryRun) {
             $actions.Add(@{ Action = 'would-write'; Path = $charterPath; Role = $role }) | Out-Null
         }
         else {
             [System.IO.File]::WriteAllText($charterPath, $content, [System.Text.UTF8Encoding]::new($false))
+            Write-SpecrewManagedSidecar -Path $charterPath
             $actions.Add(@{ Action = 'written'; Path = $charterPath; Role = $role }) | Out-Null
         }
     }
 
     return [pscustomobject]@{
         Actions          = $actions.ToArray()
-        CrewRuntimePath  = (Join-Path $ProjectPath '.squad')
+        CrewRuntimePath  = $squadAgentsRoot
         Notices          = $notices.ToArray()
     }
 }

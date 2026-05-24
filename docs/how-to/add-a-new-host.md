@@ -12,7 +12,7 @@ Adding a host means creating one new directory with 3 small files:
 hosts/
 └── <kind>/                          # NEW — folder name is the canonical kind (lowercase)
     ├── host.psd1                    # Declarative manifest
-    ├── handlers.ps1                 # 4 contract functions
+    ├── handlers.ps1                 # 5 contract functions
     └── coordinator-rules.psd1       # Per-host coordinator-prompt surgery (may be empty Rules = @())
 ```
 

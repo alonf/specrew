@@ -38,21 +38,15 @@ function Get-SpecrewHostRuntimeInventory {
     foreach ($kind in Get-RegisteredHostKinds) {
         $installed = [bool](Invoke-HostHandler -Kind $kind -ContractFunction TestRuntimeInstalled -Arguments @{ ProjectPath = $ProjectPath })
 
-        # Path for the "installed" case is per-host convention. Derive from manifest where
-        # available; fall back to known per-host conventions otherwise. (Phase D consolidates
-        # this into a manifest CrewRuntimePath field; for now we keep behavior parity.)
+        # Path for the "installed" case derives from the manifest's AgentDir field.
+        # Open-Closed: every supported host declares AgentDir; adding a new host adds
+        # one manifest line, no edits to this iterator.
         $path = $null
         if ($installed) {
             $manifest = Get-HostManifest -Kind $kind
-            $candidatePaths = @()
             if ($manifest.ContainsKey('AgentDir') -and -not [string]::IsNullOrWhiteSpace([string]$manifest.AgentDir)) {
-                $candidatePaths += (Join-Path $ProjectPath (([string]$manifest.AgentDir) -replace '/', [System.IO.Path]::DirectorySeparatorChar).TrimEnd([System.IO.Path]::DirectorySeparatorChar))
+                $path = (Join-Path $ProjectPath (([string]$manifest.AgentDir) -replace '/', [System.IO.Path]::DirectorySeparatorChar).TrimEnd([System.IO.Path]::DirectorySeparatorChar))
             }
-            # Copilot's crew runtime is .squad/, not an AgentDir — special case for backwards compat
-            if ($kind -eq 'copilot') {
-                $candidatePaths = @(Join-Path $ProjectPath '.squad')
-            }
-            $path = $candidatePaths | Where-Object { $_ } | Select-Object -First 1
         }
 
         $result[$kind] = @{ installed = $installed; path = $path }

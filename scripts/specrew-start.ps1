@@ -3717,19 +3717,34 @@ else {
                 # Probe already wrote the selection to console; no extra log line needed
             }
             'non-interactive-no-default' {
-                # FR-013 non-TTY exit with actionable guidance
-                Write-Error-Message ("Non-interactive run with no --host flag and no last-selected host on file.")
-                Write-Error-Message ("Available hosts on PATH: {0}" -f ($probe.Available -join ', '))
-                Write-Error-Message ("Pass --host <kind> explicitly (e.g., 'specrew start --host copilot') or run interactively to pick a host.")
-                exit 1
+                # FR-013 non-TTY exit with actionable guidance, BUT dry-run (-NoLaunch)
+                # callers still need the host gate to fall through to a default so that
+                # baseline-tracking + start-prompt artifacts are still written. Same
+                # rationale as the missing-host check below (lines ~3771).
+                if ($NoLaunch) {
+                    $selectedHost = 'copilot'
+                    $hostResolution = 'no-launch-default'
+                }
+                else {
+                    Write-Error-Message ("Non-interactive run with no --host flag and no last-selected host on file.")
+                    Write-Error-Message ("Available hosts on PATH: {0}" -f ($probe.Available -join ', '))
+                    Write-Error-Message ("Pass --host <kind> explicitly (e.g., 'specrew start --host copilot') or run interactively to pick a host.")
+                    exit 1
+                }
             }
             'no-hosts-available' {
-                # FR-003 zero-hosts case
-                Write-Error-Message 'No supported host CLIs found on PATH.'
-                foreach ($k in Get-SpecrewSupportedHostKinds) {
-                    Write-Error-Message ("  " + (Get-SpecrewHostInstallGuidance -HostKind $k))
+                # FR-003 zero-hosts case; same -NoLaunch carve-out as above
+                if ($NoLaunch) {
+                    $selectedHost = 'copilot'
+                    $hostResolution = 'no-launch-default'
                 }
-                exit 1
+                else {
+                    Write-Error-Message 'No supported host CLIs found on PATH.'
+                    foreach ($k in Get-SpecrewSupportedHostKinds) {
+                        Write-Error-Message ("  " + (Get-SpecrewHostInstallGuidance -HostKind $k))
+                    }
+                    exit 1
+                }
             }
             default {
                 # Defensive fallback: shouldn't reach here; fall back to copilot

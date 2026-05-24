@@ -197,9 +197,9 @@ From audit's "surprising/risky" list:
 To add Cursor support:
 
 1. `mkdir hosts/cursor/`
-2. Write `hosts/cursor/host.psd1` with manifest fields
-3. Write `hosts/cursor/handlers.ps1` exporting the 4 contract functions
-4. Write `hosts/cursor/coordinator-rules.md` with per-host surgery rules
+2. Write `hosts/cursor/host.psd1` with manifest fields (including `AgentDir = '.cursor/agents/'` per host docs)
+3. Write `hosts/cursor/handlers.ps1` exporting the 5 contract functions (incl. `Install-CursorCrewRuntime`)
+4. Write `hosts/cursor/coordinator-rules.psd1` with per-host surgery rules
 5. Write `hosts/cursor/docs/install.md` with prose install guidance
 6. Add `hosts/cursor/*` to `Specrew.psd1` FileList
 7. Done — `specrew start --host cursor` works; `specrew where`, `specrew help`, `specrew host list` all show Cursor; validator works; tests use Cursor fixture; no existing file edited

@@ -15,6 +15,7 @@
     LegacySkillRoots           = @('.copilot/skills')
     HasUserSlashCommandSurface = $true
     InstructionsFile           = '.github/copilot-instructions.md'
+    AgentDir                   = '.squad/agents/'
 
     # Spec-kit + Squad coupling
     SpeckitAiFlag  = 'copilot'

@@ -149,13 +149,7 @@ function Get-CodexSignals {
 
 function ConvertTo-CodexAgentDescription {
     param([string]$Charter, [string]$Role)
-    $lines = @($Charter -split "`r?`n" | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
-    foreach ($line in $lines) {
-        if ($line -match '^>\s*(.+?)\s*$') {
-            return $Matches[1]
-        }
-    }
-    return ("Specrew Crew specialist: {0}." -f $Role)
+    return (Get-SpecrewCharterTagline -Charter $Charter -Role $Role)
 }
 
 function ConvertTo-CodexTomlString {
@@ -186,7 +180,7 @@ function Install-CodexCrewRuntime {
 
     $actions = New-Object System.Collections.Generic.List[hashtable]
     $notices = New-Object System.Collections.Generic.List[string]
-    $codexAgentsRoot = Join-Path $ProjectPath '.codex\agents'
+    $codexAgentsRoot = Get-SpecrewHostAgentRoot -HostKind 'codex' -ProjectPath $ProjectPath
     if (-not (Test-Path -LiteralPath $codexAgentsRoot -PathType Container) -and -not $DryRun) {
         New-Item -ItemType Directory -Path $codexAgentsRoot -Force | Out-Null
     }
@@ -213,6 +207,11 @@ function Install-CodexCrewRuntime {
         $toml = $tomlLines -join "`n"
 
         $target = Join-Path $codexAgentsRoot ("{0}.toml" -f $role)
+        if (-not (Test-SpecrewManagedFile -Path $target)) {
+            $notices.Add("Preserving user-edited file '$target' (no Specrew-managed marker; delete the file to re-sync from canonical).") | Out-Null
+            $actions.Add(@{ Action = 'preserved'; Path = $target; Role = $role }) | Out-Null
+            continue
+        }
         if ($DryRun) {
             $actions.Add(@{ Action = 'would-write'; Path = $target; Role = $role }) | Out-Null
         }
@@ -224,7 +223,7 @@ function Install-CodexCrewRuntime {
 
     return [pscustomobject]@{
         Actions          = $actions.ToArray()
-        CrewRuntimePath  = (Join-Path $ProjectPath '.codex\agents')
+        CrewRuntimePath  = $codexAgentsRoot
         Notices          = $notices.ToArray()
     }
 }

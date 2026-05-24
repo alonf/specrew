@@ -210,4 +210,29 @@ catch {
 }
 Write-Pass "Resolve-HostHandler throws on unknown contract function"
 
+# Test 14: InstallCrewRuntime is in HostContractFunctionMap (Slice 9 contract slot)
+$installSlot = Resolve-HostHandler -Kind copilot -ContractFunction InstallCrewRuntime
+if ($installSlot -ne 'Install-CopilotCrewRuntime') {
+    Write-Fail "InstallCrewRuntime contract slot missing or wrong: '$installSlot' (expected 'Install-CopilotCrewRuntime')"
+}
+Write-Pass "HostContractFunctionMap exposes InstallCrewRuntime → Install-{0}CrewRuntime"
+
+# Test 15: Every supported host exports Install-<Kind>CrewRuntime
+foreach ($kind in @(Get-SpecrewHostsByStatus -Status supported)) {
+    $resolved = Resolve-HostHandler -Kind $kind -ContractFunction InstallCrewRuntime
+    if (-not (Get-Command $resolved -ErrorAction SilentlyContinue)) {
+        Write-Fail "Host '$kind' does not export $resolved — required for Status='supported'."
+    }
+}
+Write-Pass "All supported hosts export Install-<Kind>CrewRuntime"
+
+# Test 16: Every supported host declares AgentDir in its manifest (required for Crew runtime deploy)
+foreach ($kind in @(Get-SpecrewHostsByStatus -Status supported)) {
+    $manifest = Get-HostManifest -Kind $kind
+    if (-not $manifest.ContainsKey('AgentDir') -or [string]::IsNullOrWhiteSpace([string]$manifest.AgentDir)) {
+        Write-Fail "Supported host '$kind' missing manifest AgentDir field — Install-<Kind>CrewRuntime resolves the agent root via Get-SpecrewHostAgentRoot which reads this field."
+    }
+}
+Write-Pass "All supported hosts populate manifest AgentDir field"
+
 Write-Host "`nHost registry: all assertions pass" -ForegroundColor Green

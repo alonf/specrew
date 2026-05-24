@@ -4,10 +4,8 @@
 #
 # Discovers per-host packages under hosts/<kind>/host.psd1, loads their manifests,
 # and dispatches to per-host handler functions via the contract defined in hosts/_contract.md.
-#
-# Phase A (current): manifest discovery + validation only. Handler dispatch arrives in Phase B.
-# Core code continues to call legacy host-coupled scripts; this registry runs in parallel
-# for parity verification (see Test-RegistryParityWithLegacy).
+# Phases A-D + Slice 9 are shipped: manifest discovery, validation, dispatch, registry-driven
+# launch path, and per-host Crew-runtime install (5th contract function).
 
 Set-StrictMode -Version Latest
 
@@ -138,6 +136,13 @@ function Test-HostManifestValid {
                 if (-not $Manifest.ContainsKey($deferredField) -or [string]::IsNullOrWhiteSpace([string]$Manifest[$deferredField])) {
                     $errors.Add("Status='deferred' requires '$deferredField' to be set") | Out-Null
                 }
+            }
+        }
+        if ($Manifest.Status -eq 'supported') {
+            # Install-<Kind>CrewRuntime resolves the agent root via Get-SpecrewHostAgentRoot,
+            # which reads AgentDir. A supported host without AgentDir cannot deploy its Crew runtime.
+            if (-not $Manifest.ContainsKey('AgentDir') -or [string]::IsNullOrWhiteSpace([string]$Manifest['AgentDir'])) {
+                $errors.Add("Status='supported' requires 'AgentDir' to be set (consumed by Install-<Kind>CrewRuntime)") | Out-Null
             }
         }
     }

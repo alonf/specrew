@@ -15,28 +15,35 @@
 #   - Format-AgentSummary          one-line summary for action log
 #
 # Slice 6 host-coupling notes (Phase D follow-up — NOT addressed in this slice):
-# - Get-AgentSelectionMode (line ~1642 of original specrew-init.ps1): @('copilot','claude','codex')
-#   hardcoded as the valid --agents catalog. Should derive from Get-RegisteredHostKinds filtered by
-#   Status='supported'. Deferred because iteration-config.yml currently has only 3 agent slots —
-#   adding antigravity to the validator without first adding the slot to the YAML schema causes
-#   downstream init mismatches. Tracked for a dedicated host-coupling slice.
-# - Get-AgentDetection seeds @(copilot/claude/codex) records on line ~550. Same issue. Same deferral.
+# - Get-AgentSelectionMode: @('copilot','claude','codex') hardcoded as the valid --agents catalog.
+#   Should derive from Get-RegisteredHostKinds filtered by Status='supported'. Deferred because
+#   iteration-config.yml currently has only 3 agent slots — adding antigravity to the validator
+#   without first adding the slot to the YAML schema causes downstream init mismatches.
+# - Get-AgentDetection seeds @(copilot/claude/codex) records. Same issue. Same deferral.
 # - Resolve-AgentSelection default-enables 'copilot' as the host fallback. Will derive from
 #   Get-SpecrewDefaultHost (registry-driven) when iteration-config.yml schema migration lands.
-# - Get-CopilotSignals (original lines 1452-1463) was DUPLICATED here and in hosts/copilot/handlers.ps1.
-#   This slice DELETES the specrew-init.ps1 copy and rewires Get-AgentDetection to call the registry:
-#     Invoke-HostHandler -Kind copilot -ContractFunction GetSignals
-#   The hosts/copilot/handlers.ps1 copy is now the single source of truth.
+# - Get-CopilotSignals lives in hosts/copilot/handlers.ps1 only. Get-AgentDetection dispatches
+#   via the registry: Invoke-HostHandler -Kind copilot -ContractFunction GetSignals.
 
 Set-StrictMode -Version Latest
 
-# Dot-source the host registry so Invoke-HostHandler is available (used by Get-AgentDetection)
-$_registryFromInit = Join-Path (Split-Path -Parent (Split-Path -Parent $PSScriptRoot)) 'hosts\_registry.ps1'
+# Locate the host registry via a marker-file walk so this file is relocation-independent.
+# Same lesson Slice 5/8 memorialized in _utilities.ps1::Get-SpecrewExecutionLayout.
+$_agentDetectionDistRoot = $PSScriptRoot
+for ($_i = 0; $_i -lt 5; $_i++) {
+    if (Test-Path -LiteralPath (Join-Path $_agentDetectionDistRoot 'Specrew.psd1') -PathType Leaf) {
+        break
+    }
+    $_agentDetectionParent = Split-Path -Parent $_agentDetectionDistRoot
+    if ([string]::IsNullOrWhiteSpace($_agentDetectionParent) -or $_agentDetectionParent -eq $_agentDetectionDistRoot) {
+        break
+    }
+    $_agentDetectionDistRoot = $_agentDetectionParent
+}
+$_registryFromInit = Join-Path $_agentDetectionDistRoot 'hosts\_registry.ps1'
 if (Test-Path -LiteralPath $_registryFromInit -PathType Leaf) {
     . $_registryFromInit
 }
-
-Set-StrictMode -Version Latest
 
 function New-AgentRecord {
     param(
@@ -156,13 +163,9 @@ function Get-AgentDetection {
         (New-AgentRecord -Name 'codex' -AccessPath 'copilot_agent_hq')
     )
     $lookup = Get-AgentLookup -Agents $agents
-    # Slice 6 rewire: dispatch Copilot env-var detection through the host-package registry.
-    # Falls back to legacy Get-CopilotSignals if it still exists in scope (transition safety).
+    # Dispatch Copilot env-var detection through the host-package registry.
     if (Get-Command Invoke-HostHandler -ErrorAction SilentlyContinue) {
         $copilotSignals = @(Invoke-HostHandler -Kind copilot -ContractFunction GetSignals)
-    }
-    elseif (Get-Command Get-CopilotSignals -ErrorAction SilentlyContinue) {
-        $copilotSignals = @(Get-CopilotSignals)
     }
     else {
         $copilotSignals = @()

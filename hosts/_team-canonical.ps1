@@ -112,6 +112,99 @@ function Get-SpecrewCanonicalAgentRoles {
     return @($files | ForEach-Object { [System.IO.Path]::GetFileNameWithoutExtension($_.Name) })
 }
 
+function Get-SpecrewCharterTagline {
+    <#
+    .SYNOPSIS
+    Extract a one-line description from a charter's markdown — the first blockquote line
+    after the title, which by convention is the role's tagline. Used by per-host handlers
+    to derive `description:` frontmatter / TOML fields when translating canonical charters
+    to host-native subagent formats.
+    .OUTPUTS
+    string — the tagline if found, otherwise a generic "Specrew Crew specialist: <role>." fallback.
+    #>
+    param(
+        [Parameter(Mandatory = $true)][string]$Charter,
+        [Parameter(Mandatory = $true)][string]$Role
+    )
+
+    $lines = @($Charter -split "`r?`n" | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
+    foreach ($line in $lines) {
+        if ($line -match '^>\s*(.+?)\s*$') {
+            return $Matches[1]
+        }
+    }
+    return ("Specrew Crew specialist: {0}." -f $Role)
+}
+
+function Test-SpecrewManagedFile {
+    <#
+    .SYNOPSIS
+    Decide whether a host-native subagent file at $Path is safe for Install-<Kind>CrewRuntime to overwrite.
+    .DESCRIPTION
+    Returns $true if any of the following hold:
+      - The file is missing (safe to create).
+      - A sidecar marker exists at `$Path + '.specrew-managed'`. Used for hosts whose native
+        format does not tolerate an inline comment header (e.g., Copilot's `.squad/agents/<role>/charter.md`
+        which Squad CLI parses as the charter body itself).
+      - The file contains a "Specrew-managed" comment (`#`, `--`, or `<!--` syntax).
+    Returns $false if the file exists without any of those markers, indicating user customization.
+    .OUTPUTS
+    [bool]
+    #>
+    param([Parameter(Mandatory = $true)][string]$Path)
+
+    if (-not (Test-Path -LiteralPath $Path -PathType Leaf)) {
+        return $true
+    }
+    if (Test-Path -LiteralPath ("{0}.specrew-managed" -f $Path) -PathType Leaf) {
+        return $true
+    }
+    $content = Get-Content -LiteralPath $Path -Raw -Encoding UTF8 -ErrorAction SilentlyContinue
+    if ([string]::IsNullOrEmpty($content)) {
+        return $true
+    }
+    return ($content -match '(?m)^\s*(#|--|<!--)\s*Specrew-managed')
+}
+
+function Write-SpecrewManagedSidecar {
+    <#
+    .SYNOPSIS
+    Write a sidecar marker (`<Path>.specrew-managed`) signaling that $Path is Specrew-managed
+    without modifying $Path's content. Used by Install-CopilotCrewRuntime so `charter.md`
+    stays byte-identical to the canonical charter (Squad CLI consumes the file as the body).
+    #>
+    param([Parameter(Mandatory = $true)][string]$Path)
+    $marker = "{0}.specrew-managed" -f $Path
+    [System.IO.File]::WriteAllText($marker, "Generated from .specrew/team/agents/. Delete this file to retain a user-customized $Path on next specrew start.`n", [System.Text.UTF8Encoding]::new($false))
+}
+
+function Get-SpecrewHostAgentRoot {
+    <#
+    .SYNOPSIS
+    Resolve the per-host agent-root directory from the manifest's AgentDir field.
+    Open-Closed: every supported host declares AgentDir in its manifest, so adding
+    a new host adds one manifest line, no edits to the Install-<Kind>CrewRuntime
+    handlers or the host-runtime-inventory iterator.
+    .OUTPUTS
+    string (absolute path with platform-native separators, trailing separator stripped)
+    .NOTES
+    Throws if the manifest is missing or doesn't declare AgentDir — by design.
+    A "supported" host without AgentDir cannot deploy its Crew runtime.
+    #>
+    param(
+        [Parameter(Mandatory = $true)][string]$HostKind,
+        [Parameter(Mandatory = $true)][string]$ProjectPath
+    )
+
+    $manifest = Get-HostManifest -Kind $HostKind
+    if (-not $manifest.ContainsKey('AgentDir') -or [string]::IsNullOrWhiteSpace([string]$manifest.AgentDir)) {
+        throw "Host '$HostKind' manifest is missing required AgentDir field. Add AgentDir to hosts/$HostKind/host.psd1."
+    }
+
+    $rel = ([string]$manifest.AgentDir) -replace '/', [System.IO.Path]::DirectorySeparatorChar
+    return (Join-Path $ProjectPath $rel.TrimEnd([System.IO.Path]::DirectorySeparatorChar))
+}
+
 function Initialize-SpecrewTeamCanonical {
     <#
     .SYNOPSIS

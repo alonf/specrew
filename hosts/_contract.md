@@ -1,18 +1,18 @@
 # Host Package Contract
 
-> **Status**: Phase A schema (manifests only). Phase B will add handlers.
+> **Status**: Phases A-D + Slice 9 shipped. Stable. To add a new host see [docs/how-to/add-a-new-host.md](../docs/how-to/add-a-new-host.md).
 
-Each `hosts/<kind>/` directory defines a host package. To register a new host, create the directory and the manifest below. The host-neutral core auto-discovers all packages via `hosts/_registry.ps1`. No existing file edits.
+Each `hosts/<kind>/` directory defines a host package. To register a new host, create the directory and three files (manifest, handlers, coordinator-rules). The host-neutral core auto-discovers all packages via `hosts/_registry.ps1`. No existing core-script edits.
 
 ## Files per host package
 
-| File | Purpose | Required in Phase A? |
+| File | Purpose | Required? |
 |---|---|---|
 | `host.psd1` | Declarative manifest (this contract) | **Yes** |
-| `handlers.ps1` | Function implementations (next phase) | No (Phase B) |
-| `coordinator-rules.md` | Declarative coordinator-prompt surgery directives | No (Phase C) |
-| `docs/install.md` | Per-host install guidance prose | No (Phase E or later) |
-| `docs/deferred.md` | Required when `Status = 'deferred'`; explains why + follow-up pointer | Only if deferred |
+| `handlers.ps1` | 5 contract-function implementations (Phase B + Slice 9) | **Yes** for `Status: supported` |
+| `coordinator-rules.psd1` | Declarative coordinator-prompt surgery directives | **Yes** (may declare `Rules = @()` if no host-specific surgery) |
+| `docs/install.md` | Per-host install guidance prose | Optional |
+| `docs/deferred.md` | Required when `Status = 'deferred'`; explains why + follow-up pointer | Only if `Status = 'deferred'` |
 
 ## Manifest schema (`host.psd1`)
 
@@ -27,7 +27,7 @@ Top-level: a PowerShell hashtable consumed via `Import-PowerShellDataFile`.
 | `Status` | enum: `supported` \| `deferred` \| `experimental` | `'supported'` | Drives validator + UX |
 | `SchemaVersion` | int | `1` | Manifest schema version (bump on breaking changes) |
 | `Binary` | string | `'copilot'` | Command name on PATH used for detection |
-| `InstallUrl` | string (URL) | `'https://docs.github.com/en/copilot/how-tos/copilot-cli'` | Surface in install guidance |
+| `InstallUrl` | string (URL) | `'https://docs.github.com/en/copilot/how-tos/copilot-cli'` | Surfaced in install guidance |
 | `SkillRoot` | string (relative path) | `'.github/skills'` | Where this host expects skill catalog |
 | `HasUserSlashCommandSurface` | bool | `$true` | False for Codex (per F-040 FR-013) |
 
@@ -35,52 +35,72 @@ Top-level: a PowerShell hashtable consumed via `Import-PowerShellDataFile`.
 
 | Field | Type | Default | Notes |
 |---|---|---|---|
-| `BinaryAliases` | string[] | `@()` | Alternate command names; e.g., Antigravity uses `agy` not `antigravity` |
+| `BinaryAliases` | string[] | `@()` | Alternate command names; e.g., Antigravity uses `agy` |
 | `LegacySkillRoots` | string[] | `@()` | Old paths to migrate from (e.g., `.copilot/skills`) |
-| `SharedSkillRootWith` | string[] | `@()` | Other host kinds that share the same SkillRoot (e.g., Antigravity shares `.agents/skills` with Codex) |
-| `SettingsPath` | string | `$null` | Per-host settings file path (e.g., `.claude/settings.json`); `$null` if N/A |
-| `AgentDir` | string | `$null` | Per-host agent directory (e.g., `.claude/agents/`); `$null` if not applicable |
-| `InstructionsFile` | string | `$null` | Per-host top-level instructions file (e.g., `.github/copilot-instructions.md` for Copilot, `CLAUDE.md` for Claude); `$null` if none |
+| `SharedSkillRootWith` | string[] | `@()` | Other hosts sharing this SkillRoot (e.g., Antigravity shares `.agents/skills` with Codex) |
+| `SettingsPath` | string | `$null` | Per-host settings file (e.g., `.claude/settings.json`) |
+| `AgentDir` | string | `$null` | Per-host agent directory (`.claude/agents/`, `.squad/agents/`, `.codex/agents/`, `.agents/agents/`). **Required** for `Status: 'supported'` — consumed by `Install-<Kind>CrewRuntime` + `Get-SpecrewHostRuntimeInventory` |
+| `InstructionsFile` | string | `$null` | Per-host top-level instructions file (e.g., `.github/copilot-instructions.md`, `CLAUDE.md`) |
 | `SpeckitAiFlag` | string | `$null` | What `--ai <flag>` value to pass to `specify init`; `$null` if spec-kit doesn't support this host |
-| `PreferredAgent` | string | `$null` | Default value for `preferred_agent` in `role-assignments.yml`; usually same as `Kind`. `$null` means "don't auto-prefer" |
+| `PreferredAgent` | string | `$null` | Default value for `preferred_agent` in `role-assignments.yml`; usually same as `Kind` |
+| `InstallGuidance` | string | `$null` | One-line text shown when the host CLI is missing on PATH (e.g., `'Install: https://...'`). Surfaced by `Get-SpecrewHostInstallGuidance` |
 | `DeferredReason` | string | `$null` | REQUIRED if `Status = 'deferred'`. Short explanation + follow-up pointer |
 | `DeferredGuidance` | string | `$null` | REQUIRED if `Status = 'deferred'`. User-facing guidance when they try to use the host |
-| `HandlersFile` | string | `'handlers.ps1'` | Phase B; file containing function implementations |
-| `CoordinatorRulesFile` | string | `'coordinator-rules.md'` | Phase C; declarative surgery rules |
+| `HandlersFile` | string | `'handlers.ps1'` | Path to file containing the 5 contract functions |
+| `CoordinatorRulesFile` | string | `'coordinator-rules.psd1'` | Path to declarative surgery rules file |
 
-### Phase B contract functions
+## Contract functions (handlers.ps1)
 
-When `handlers.ps1` exists (Phase B and later), it MUST export these functions. Naming convention uses the `Kind` field in PascalCase:
+`handlers.ps1` MUST export these 5 functions. Naming convention uses the `Kind` field in PascalCase (e.g., `copilot` → `Copilot`, `antigravity` → `Antigravity`):
 
 | Function name (template) | Signature | Returns | Used by |
 |---|---|---|---|
-| `New-<PascalKind>LaunchInvocation` | `-ProjectPath <p> -Prompt <s> -Flags <hashtable>` | `[pscustomobject]@{Binary; Args[]; Notice}` | `Invoke-HostLaunch` in core |
-| `ConvertTo-<PascalKind>Flag` | `-SpecrewFlag <flag>` | `[pscustomobject]@{Args[]; Notice; SuppressWarning}` | `Build-HostLaunchArgs` in core |
-| `Test-<PascalKind>RuntimeInstalled` | `-ProjectPath <p>` | `[bool]` (+ optional details object) | `Get-HostRuntimeInventory` in core |
-| `Get-<PascalKind>Signals` | (no params; reads env vars) | `[pscustomobject]@{IsActive; SessionId; Version}` | `Get-CurrentHostContext` in core |
+| `New-<PascalKind>LaunchInvocation` | `-ProjectPath <p> -Prompt <s> -Agent <s> [-AllowAll <bool>] [-UseAutopilot <bool>] [-UseRemote <bool>]` | `[pscustomobject]@{Binary; Args[]; Notice}` | `Get-SpecrewHostLaunchInvocation` in `specrew-start.ps1` |
+| `ConvertTo-<PascalKind>Flag` | `-SpecrewFlag <flag>` | `[pscustomobject]@{Args[]; Notice; SuppressWarning}` | `Get-HostFlagTranslation` in `scripts/internal/host-flag-translation.ps1` |
+| `Test-<PascalKind>RuntimeInstalled` | `-ProjectPath <p>` | `[bool]` | `Get-SpecrewHostRuntimeInventory` in `scripts/internal/host-runtime-inventory.ps1` |
+| `Get-<PascalKind>Signals` | (no params; reads env vars) | `string[]` (env-var names that are set when running INSIDE this host) | `Get-CurrentHostContext` / `agent-detection.ps1` |
+| `Install-<PascalKind>CrewRuntime` | `-ProjectPath <p> [-DryRun]` | `[pscustomobject]@{Actions[]; CrewRuntimePath; Notices[]}` | `Invoke-CrewBootstrap` in `scripts/init/crew-bootstrap.ps1`; called by `specrew start` to translate `.specrew/team/agents/*.md` → host-native subagent format |
+
+### Registry public API
 
 The registry (`_registry.ps1`) exposes:
 
 - `Get-RegisteredHostKinds` — enumerates `hosts/*/host.psd1`
-- `Get-HostManifest -Kind <kind>` — loads + validates manifest
+- `Get-HostManifest -Kind <kind>` — loads + caches + validates manifest
+- `Get-SpecrewHostsByStatus -Status supported|deferred|experimental` — filtered list
 - `Resolve-HostHandler -Kind <kind> -ContractFunction <name>` — returns the per-host function name
-- `Invoke-HostHandler -Kind <kind> -ContractFunction <name> -Args <hashtable>` — convenience dispatcher
+- `Invoke-HostHandler -Kind <kind> -ContractFunction <name> -Arguments <hashtable>` — convenience dispatcher
 
-## Validator rules (Phase A enforces)
+The `$script:HostContractFunctionMap` maps contract slot → function template:
+
+```powershell
+$script:HostContractFunctionMap = @{
+    'NewLaunchInvocation'  = 'New-{0}LaunchInvocation'
+    'ConvertFlag'          = 'ConvertTo-{0}Flag'
+    'TestRuntimeInstalled' = 'Test-{0}RuntimeInstalled'
+    'GetSignals'           = 'Get-{0}Signals'
+    'InstallCrewRuntime'   = 'Install-{0}CrewRuntime'
+}
+```
+
+To add a new contract slot (e.g., `Get-<Kind>CostCatalogUrl` for F-041), add one entry here AND export the function from each handlers.ps1. The dispatcher itself stays unchanged.
+
+### Canonical-team helpers (`_team-canonical.ps1`)
+
+`_registry.ps1` dot-sources `_team-canonical.ps1`, which exposes the canonical source-of-truth for Crew identity. `Install-<Kind>CrewRuntime` reads from these helpers:
+
+- `Get-SpecrewTeamAgentsPath -ProjectPath <p>` — returns `<p>/.specrew/team/agents`
+- `Get-SpecrewCanonicalAgentRoles -ProjectPath <p>` — enumerates roles (baseline 5 + user-added)
+- `Get-SpecrewCanonicalCharterContent -ProjectPath <p> -RoleName <r>` — reads the canonical charter, falls back to shipped baseline if missing
+- `Get-SpecrewHostAgentRoot -HostKind <k> -ProjectPath <p>` — resolves the per-host agent directory from `$manifest.AgentDir`
+- `Initialize-SpecrewTeamCanonical -ProjectPath <p>` — seeds `.specrew/team/agents/` from shipped baseline (idempotent)
+
+## Validator rules (`Test-HostManifestValid`)
 
 - Every `hosts/<kind>/host.psd1` is loadable via `Import-PowerShellDataFile`
-- All required fields are present + non-empty
+- All 8 required fields are present + non-empty
 - `Kind` matches the folder name (lowercase)
 - `Status = 'deferred'` requires `DeferredReason` AND `DeferredGuidance` to be set
-- `Specrew.psd1` `FileList` includes every `hosts/*/host.psd1`
-
-## Adding a new host (Phase A only)
-
-Today, in Phase A, "adding a host" creates the manifest + folder structure. No runtime behavior change — host-neutral core still calls the existing scripts. Phase B wires the manifests into runtime.
-
-Example: to add Cursor today:
-
-1. `mkdir hosts/cursor/`
-2. Create `hosts/cursor/host.psd1` with `Status = 'deferred'`, `DeferredReason = 'Phase B not yet implemented for Cursor'`, `DeferredGuidance = 'Cursor support arrives when handlers.ps1 is added to hosts/cursor/'`
-3. Add `hosts/cursor/host.psd1` to `Specrew.psd1` FileList
-4. Done — registry discovers Cursor, validator passes, but `specrew start --host cursor` fails with the deferred guidance (until Phase B handlers ship)
+- `Status = 'supported'` requires `AgentDir` to be set (so the Crew runtime can deploy)
+- `Specrew.psd1` `FileList` includes every `hosts/<kind>/host.psd1`, `handlers.ps1`, and `coordinator-rules.psd1`
+- The structural firewall test (`tests/integration/host-coupling-firewall.tests.ps1`) ensures no production `.ps1` outside `hosts/` hardcodes a host-enum tuple (allow-list documented in the test itself)

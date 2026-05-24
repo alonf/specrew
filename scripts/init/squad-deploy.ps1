@@ -8,13 +8,14 @@
 #   - Get-SquadInitPlan                     pick "squad init" arg list per CLI capability
 #   - Initialize-SquadFallbackScaffold      write the .squad/ 5-agent skeleton when Squad CLI is missing
 #
-# TRANSITION NOTE (Proposal 108 Slice 9 follow-up):
-# This entire file is Squad-only — every function deploys to .squad/ paths and invokes the Squad CLI.
-# When Slice 9 introduces the 5th contract function (Install-<Kind>CrewRuntime) on each host package,
-# Initialize-SquadFallbackScaffold becomes the body of Install-CopilotCrewRuntime in
-# hosts/copilot/handlers.ps1. Test-SquadInitSupportsNonInteractive + Get-SquadInitPlan become
-# Copilot-specific helpers within that host package. After Slice 9, this file shrinks to a
-# 3-function delegating shim or disappears entirely.
+# POST-SLICE-9 SCOPE NOTE:
+# Slice 9 introduced Install-CopilotCrewRuntime in hosts/copilot/handlers.ps1 with a narrow
+# scope: translate canonical .specrew/team/agents/<role>.md → .squad/agents/<role>/charter.md.
+# Initialize-SquadFallbackScaffold in this file STAYS as the source-of-truth for the broader
+# .squad/ skeleton (config.json, team.md, decisions.md, ceremonies.md) — that scaffold lives
+# OUTSIDE Install-CopilotCrewRuntime's per-charter scope and is still invoked from specrew-init.ps1.
+# Test-SquadInitSupportsNonInteractive + Get-SquadInitPlan probe the Squad CLI itself and remain
+# init-time concerns, not per-launch concerns.
 
 Set-StrictMode -Version Latest
 
