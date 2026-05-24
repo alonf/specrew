@@ -147,22 +147,26 @@ The following surfaces no longer have per-host switches; they iterate the regist
 
 ## What changed vs the pre-refactor architecture
 
-| Metric | Before (F-040 merged) | After (Phase A-C complete) | Delta |
+| Metric | Before (F-040 merged) | After (Phase A-D complete) | Delta |
 |---|---|---|---|
-| Files with hardcoded host enum | 4+ | 0 (all use registry) | -4 |
-| Lines of per-host switch statements | ~400 across 5 clusters in specrew-start.ps1 + 12 cells in host-flag-translation.ps1 + 3 cells in coordinator-prompt-surgery.ps1 | 0 | -~415 |
-| Per-host launch dispatch | 80-line switch in specrew-start.ps1 with 3 hosts (Antigravity missing) | 8-line delegate; all 4 hosts | -90% + closed latent bug |
+| Files with hardcoded 4-host enum tuple | 4+ in active dispatch paths | 1 (`scripts/specrew-init.ps1` — agent-enable validator + iteration-config.yml template; documented Phase D follow-up; allow-listed in firewall test) | -3 from active dispatch |
+| Files with hardcoded 3-host enum tuple | several | 1 (`tests/manual/multi-host-smoke.ps1` — intentional smoke-test fixture) + allow-listed | -several |
+| Per-host switch statements in active dispatch | ~5 clusters in specrew-start.ps1 + 12-arm in host-flag-translation.ps1 + 3-rule surgery in coordinator-prompt-surgery.ps1 + 4-arm × 4 in detect-hosts.ps1 | 0 (all registry-driven) | structurally impossible to drift |
+| Per-host launch dispatch | 80-line switch in specrew-start.ps1 with 3 hosts (Antigravity missing — latent bug) | 8-line delegate; all 4 hosts via registry | -90% + closed bug |
 | Per-host flag translation | 121-line file with 12-arm switch | 55-line shim; 4 small handler files | -55% on shim, +data-driven |
-| Coordinator-prompt surgery | 123-line file with hardcoded patterns | 130-line rules engine + 4 declarative rule files | data-driven |
-| Cost to add a new host | Edit ~28 files | `mkdir hosts/<kind>/` + 3 files; possibly 1 ValidateSet update | ~95% reduction |
-| Latent bugs from drift | 2 (audit-flagged: Antigravity missing from launch switch AND coordinator-surgery ValidateSet) | 0 | structurally impossible |
+| Coordinator-prompt surgery | 123-line file with hardcoded patterns | 130-line rules engine + 4 declarative `coordinator-rules.psd1` files | data-driven |
+| `detect-hosts.ps1` 4 lookup functions | Hardcoded switches duplicating manifest data | 1-line manifest reads via `Get-HostManifest` | -150 lines / +manifest source-of-truth |
+| Cost to add a new host (e.g., Cursor) | Edit ~28 files | `mkdir hosts/<kind>/` + 3 files + 3 ValidateSet updates + 2 entries in Specrew.psd1 = ~8 edits, none to existing core logic | ~70% reduction |
+| Latent bugs from drift | 2 audit-flagged (Antigravity missing from launch switch + coordinator-surgery ValidateSet); 1 found in deep-review (Antigravity missing `InstructionsFile`) | 0 (structural firewall test catches new violations on every CI run) | structurally impossible |
+| Structural test for "no hardcoded host enums outside hosts/" | none | `tests/integration/host-coupling-firewall.tests.ps1` (157 files scanned, allow-list documented) | new safety net |
 
 ## Test coverage
 
 - **`tests/integration/host-registry.tests.ps1`** — 14 assertions: registry discovery, manifest validation, kind/folder parity, legacy parity (registry matches `Get-SpecrewSupportedHostKinds`), per-host Binary + SkillRoot parity, status filter, unknown-host throw, contract-function resolution, dispatch correctness, launch-invocation argv parity across 12 permutations (3 hosts × 4 flag combinations), flag-translation parity across 12 cells (4 hosts × 3 flags).
 - **`tests/integration/multi-host-launch-path.tests.ps1`** — 21 assertions: full F-040 multi-host integration suite (host enums, binary names, install guidance, deferred guidance, Antigravity Gemini-deadline warning, skill-root resolution, flag-translation matrix, coordinator-prompt-surgery FR-011/012/014 invariants, launch-shape goldens, schema-v2 back-compat).
+- **`tests/integration/host-coupling-firewall.tests.ps1`** — structural test that scans all production `.ps1` files outside `hosts/` for hardcoded host-enum patterns. Allow-list contains 9 known exceptions (this test itself, the registry, two integration tests, the 3 remaining ValidateSet sites pending registry-driven validators, and 2 pre-refactor files documented as Phase D follow-up). Plus: asserts every supported host populates the manifest `InstructionsFile` field. Catches new violations on every CI run — drift becomes a CI-blocking failure, not a quiet regression.
 
-Both test suites green on the refactored architecture.
+All three test suites green on the refactored architecture (49+ assertions total).
 
 ## Open work (Phase D + F)
 
