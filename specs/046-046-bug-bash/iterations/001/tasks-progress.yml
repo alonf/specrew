@@ -1,0 +1,87 @@
+schema: "v1"
+feature: "046-046-bug-bash"
+iteration: "001"
+updated_at: "2026-05-26T00:00:00Z"
+# Reconciled 2026-05-26 at feature-closeout: all 13 tasks were completed in implement
+# commit e37f8686 (2026-05-25) and independently re-verified during the review-repair
+# (review.md / state.md, 2026-05-26). The prior all-pending content was a stale
+# `specrew start` regeneration that contradicted tasks.md ([x]) and state.md.
+tasks:
+  T001:
+    title: "Create stale-state allow-list regression fixtures in tests/integration/stale-state-retro.tests.ps1"
+    status: "done"
+    started_at: ""
+    completed_at: "2026-05-26T00:00:00Z"
+    blocked_reason: ""
+  T002:
+    title: "Map retro as an allowed boundary in scripts/specrew-start.ps1 and scripts/specrew-review.ps1 allow-lists"
+    status: "done"
+    started_at: ""
+    completed_at: "2026-05-26T00:00:00Z"
+    blocked_reason: ""
+  T003:
+    title: "Create atomic boundary sync validation fixtures in tests/integration/boundary-sync-atomic.tests.ps1"
+    status: "done"
+    started_at: ""
+    completed_at: "2026-05-26T00:00:00Z"
+    blocked_reason: ""
+  T004:
+    title: "Implement inline verdict writer and Add-SpecrewBoundaryAuthorization call in scripts/internal/sync-boundary-state.ps1"
+    status: "done"
+    started_at: ""
+    completed_at: "2026-05-26T00:00:00Z"
+    blocked_reason: ""
+  T005:
+    title: "Create artifact protection validation tests in tests/integration/scaffolder-protection.tests.ps1"
+    status: "done"
+    started_at: ""
+    completed_at: "2026-05-26T00:00:00Z"
+    blocked_reason: ""
+  T006:
+    title: "Implement Test-SpecrewFileHasPopulatedVerdict check and pending-redirect logic in scaffolders"
+    status: "done"
+    started_at: ""
+    completed_at: "2026-05-26T00:00:00Z"
+    blocked_reason: ""
+  T007:
+    title: "Mirror scaffolder changes to .specify/extensions/specrew-speckit/scripts/ counterparts"
+    status: "done"
+    started_at: ""
+    completed_at: "2026-05-26T00:00:00Z"
+    blocked_reason: ""
+  T008:
+    title: "Create prose alias translation fixtures in tests/integration/prose-alias-sync.tests.ps1"
+    status: "done"
+    started_at: ""
+    completed_at: "2026-05-26T00:00:00Z"
+    blocked_reason: ""
+  T009:
+    title: "Remove parameter [ValidateSet] and implement dynamic alias mapping in sync wrappers and internal handlers"
+    status: "done"
+    started_at: ""
+    completed_at: "2026-05-26T00:00:00Z"
+    blocked_reason: ""
+  T010:
+    title: "Mirror boundary-sync alias changes to .specify/extensions/specrew-speckit/scripts/sync-boundary-state.ps1 wrapper"
+    status: "done"
+    started_at: ""
+    completed_at: "2026-05-26T00:00:00Z"
+    blocked_reason: ""
+  T011:
+    title: "Complete specs/046-046-bug-bash/findings.md logging all repro, root cause, and validation evidence"
+    status: "done"
+    started_at: ""
+    completed_at: "2026-05-26T00:00:00Z"
+    blocked_reason: ""
+  T012:
+    title: "Run mechanical checks via .specify/extensions/specrew-speckit/scripts/run-mechanical-checks.ps1 and validate outputs"
+    status: "done"
+    started_at: ""
+    completed_at: "2026-05-26T00:00:00Z"
+    blocked_reason: ""
+  T013:
+    title: "Execute governance validation via .specify/extensions/specrew-speckit/scripts/validate-governance.ps1 and record results"
+    status: "done"
+    started_at: ""
+    completed_at: "2026-05-26T00:00:00Z"
+    blocked_reason: ""
