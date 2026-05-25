@@ -1,12 +1,11 @@
 ---
-baseline_commit_hash: d01845bcef172322ae506e5bfe59ea3c4ae1d771
-updated_at: 2026-05-25T17:02:06Z
+baseline_commit_hash: c515b67b27d37047e143ecaf7adab1eca5e3af98
 session_state_active: true
 session_state_boundary: before-implement
 session_state_feature: 045-v0271-bugfix-bundle
-session_state_feature_path: "C:\Dev\Specrew\specs\045-v0271-bugfix-bundle"
+session_state_feature_path: C:\Dev\Specrew\specs\045-v0271-bugfix-bundle
 session_state_iteration: 002
-session_state_task: "(none)"
+session_state_task: (none)
 session_state_auth_commit: d01845bcef172322ae506e5bfe59ea3c4ae1d771
 session_state_recorded_at: 2026-05-25T17:02:06Z
 ---
@@ -24,18 +23,17 @@ User feature request: (not provided yet; gather or confirm during intake)
 - Active feature: 045-v0271-bugfix-bundle
 - Feature path: C:\Dev\Specrew\specs\045-v0271-bugfix-bundle
 - Worktree: C:\Dev\Specrew
-- Current boundary: tasks
+- Current boundary: before-implement
 - Current task: (none)
 - Last completed task: (none)
-- Last completed boundary: d5b2c431455dd13146ea4e3393c78f04ceede4dd at 2026-05-25T13:24:47Z
-- Task progress: 0 complete, 0 in-progress, 14 pending, 0 blocked
-- Pending: T001, T003, T004
-- Validator state: 10 warnings: 10 soft, 0 medium, 0 hard
+- Last completed boundary: d01845bcef172322ae506e5bfe59ea3c4ae1d771 at 2026-05-25T17:02:06Z
+- Task progress: 0 complete, 0 in-progress, 16 pending, 0 blocked
+- Pending: T002, T016, T017
+- Validator state: no recorded warnings
 
 ### Suggested Next Actions
 
-- Start T001 — Create patch finding ledger for F1-F7 actionable-vs-stale tracking
-- Review validator warnings with: validate-governance
+- Start T002 — Create iteration 002 traceability matrix mapping US1-US3 to FR-001..FR-008 and SC-001..SC-006
 
 Operational Specrew roster snapshot:
 
@@ -48,7 +46,7 @@ Project state snapshot:
 
 - State: existing-continue
 - Existing feature directories: 001-specrew-product, 002-planning-flow-hardening, 003-post-planning-review, 004-default-specialty-pairing, 005-stack-aware-quality-bar, 006-human-architecture-checkpoint, 007-user-facing-progress-handoff, 008-reviewer-escalation-symmetry, 009-project-path-resolution, 010-onboarding-resume-visibility, 011-specrew-start-conditional-pause, 012-descriptive-id-handoffs, 013-validator-hardening, 014-handoff-format-scoping, 015-public-readiness-pass, 016-substantive-interaction-model, 017-velocity-dashboard, 018-velocity-dashboard-visual-richness, 019-specrew-distribution-module, 020-session-state-durability, 021-specrew-slash-commands, 022-hotfix-schema-tests, 023-legacy-state-read-tolerance, 024-slash-command-multi-host-correctness, 025-psgallery-unsigned-default, 026-ci-lint-pr-scoping, 027-skills-loading-troubleshoot, 028-review-evidence-integrity, 029-baseline-hygiene, 030-validator-speedup, 031-commit-push-discipline, 032-closeout-lifecycle-sync, 033-markdown-lint-pre-boundary, 034-validator-memoization, 035-validator-iteration-parallelization, 036-closed-iteration-index, 037-validator-repetition-detector, 038-pr-review-integration, 039-launch-mode-boundary-enforcement, 040-multi-host-launch-path, 041-cost-aware-model-routing, 042-token-economy-mvp, 043-multi-host-onboarding, 044-per-host-architecture-refactor, 045-v0271-bugfix-bundle, antigravity-host-followup
-- Non-bootstrap top-level entries: .claude, .scratch, .specrew-squad-probe-14e2200829f2405cb359497a32762765, .specrew-squad-probe-eeb3bc53b8734ce4ac0e8abe9c2e8768, .vscode, docs, evaluation, extensions, hosts, proposals, scripts, specs, templates, tests, .markdownlint.json, 0.7.3, CHANGELOG.md, CODE_OF_CONDUCT.md, CODEOWNERS, CONTRIBUTING.md, LICENSE, NOTICE.md, package.json, README.md, SECURITY.md, Specrew.psd1, Specrew.psm1, validator-output-f024.log, validator-output.log, validator-stderr.log, validator-stdout.log
+- Non-bootstrap top-level entries: .claude, .codex, .scratch, .specrew-squad-probe-14e2200829f2405cb359497a32762765, .specrew-squad-probe-eeb3bc53b8734ce4ac0e8abe9c2e8768, .vscode, docs, evaluation, extensions, hosts, proposals, scripts, specs, templates, tests, .markdownlint.json, 0.7.3, CHANGELOG.md, CODE_OF_CONDUCT.md, CODEOWNERS, CONTRIBUTING.md, LICENSE, NOTICE.md, package.json, README.md, SECURITY.md, Specrew.psd1, Specrew.psm1, validator-output-f024.log, validator-output.log, validator-stderr.log, validator-stdout.log
 
 Implementation readiness hints:
 
