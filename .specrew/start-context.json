@@ -2,7 +2,7 @@
   "schema": "v2",
   "mode": "resume-feature",
   "feature_request": "",
-  "feature_path": "C:\\Dev\\Specrew\\specs\\045-v0271-bugfix-bundle",
+  "feature_path": "C:\\Dev\\Specrew\\specs\\046-046-bug-bash",
   "agent": "Squad",
   "approval_mode": "allow-all",
   "launch_mode": "same-window",
@@ -255,20 +255,20 @@
     ]
   },
   "session_state": {
-    "active": false,
-    "boundary_type": "feature-closeout",
-    "feature_ref": "045-v0271-bugfix-bundle",
-    "feature_path": "C:\\Dev\\Specrew\\specs\\045-v0271-bugfix-bundle",
+    "active": true,
+    "boundary_type": "tasks",
+    "feature_ref": "046-046-bug-bash",
+    "feature_path": "C:\\Dev\\Specrew\\specs\\046-046-bug-bash",
     "iteration_number": null,
     "task_id": null,
-    "auth_commit_hash": "6ed9a2f64bb6d552940ccd97645856815305dbe5",
-    "recorded_at": "2026-05-25T19:12:50Z"
+    "auth_commit_hash": "b8789834",
+    "recorded_at": "2026-05-25T20:53:07Z"
   },
   "recovery_session": null,
   "squad_model_overrides": {},
   "prompt_path": "C:\\Dev\\Specrew\\.specrew\\last-start-prompt.md",
   "summary_path": "C:\\Dev\\Specrew\\.specrew\\start-summary.md",
-  "generated_at_utc": "2026-05-25T20:29:13.5513280Z",
+  "generated_at_utc": "2026-05-25T20:53:07Z",
   "selected_host": "antigravity",
   "available_hosts": {
     "claude": true,
@@ -280,7 +280,7 @@
   "host_resolution": "flag",
   "boundary_enforcement": {
     "enabled": true,
-    "last_authorized_boundary": "feature-closeout",
+    "last_authorized_boundary": "before-implement",
     "pending_next_boundary": null,
     "verdict_history": [
       {
@@ -330,6 +330,14 @@
         "authorizing_human": "Alon Fliess",
         "recorded_at": "2026-05-25T19:13:03Z",
         "auth_commit_hash": "6ed9a2f64bb6d552940ccd97645856815305dbe5"
+      },
+      {
+        "from_boundary": "tasks",
+        "to_boundary": "before-implement",
+        "verdict_text": "approved for before-implement",
+        "authorizing_human": "Alon Fliess",
+        "recorded_at": "2026-05-25T21:08:40Z",
+        "auth_commit_hash": "8f4af40a"
       }
     ],
     "bypass_history": []
