@@ -80,6 +80,29 @@ Replace internal boundary identifiers in user-facing prose:
 
 Internal names remain in `state.md`, `decisions.md`, audit trails, and validator-error categories. They MUST NOT appear in the prose Squad speaks to the user, except as a parenthetical for audit traceability if absolutely needed: "Awaiting your signoff (boundary: REVIEW-VERDICT-SIGNOFF)".
 
+### Pillar 2b: No internal Specrew feature/proposal references in downstream-project user-facing prose (added 2026-05-26)
+
+The same principle generalizes from internal gate names to **internal Specrew implementation identifiers**. Downstream-project users do not know (and should not need to know) what "Feature 016" or "Proposal 105" refers to. These are Specrew development artifacts; they have no place in the prose a downstream-project user reads when their agent emits a handoff block.
+
+Replace internal Specrew identifiers with the methodology concept being referenced:
+
+| Bad (leaks Specrew internals) | Good (methodology concept) |
+|---|---|
+| "Feature 016 only allows one human approval to advance one boundary" | "The methodology allows one human approval to advance one boundary at a time — so the next boundary needs a fresh verdict from you" |
+| "Per Proposal 065, this gate requires explicit boundary authorization" | "This gate requires your explicit boundary authorization" |
+| "Proposal 055's slice-type catalog says this is a bug-fix-repair slice" | "This is a bug-fix repair (one of the standard slice types in this methodology)" |
+| "F-039 Launch-Mode Boundary Enforcement requires…" | "Boundary enforcement requires…" |
+| "Per F-046's bug-bash retro lesson…" | "Per the bug-bash retro lesson…" or just drop the citation entirely |
+| "Refer to Proposal 119's effort-convention table" | "Refer to the methodology's effort-convention table" |
+
+**Why this matters**: Specrew's downstream users are running THEIR project through Specrew. They don't read Specrew's own roadmap. References like "Feature 016" are accidental noise that erodes trust — the user perceives Specrew as leaking implementation details into their workflow, contradicting the "methodology is the product" promise.
+
+**Where the leak happens**: typically in installed instruction files (per Proposal 099 Installed-File SDLC Instruction Audit) and in coordinator-prompt rules. Auditing + rewriting those files to use methodology-concept language instead of Specrew-internal references is the corrective work.
+
+**Empirical motivation**: 2026-05-26 PlanningPoC downstream-project handoff block emitted "I stopped at the retro boundary because Feature 016 only allows one human approval to advance one boundary." The user has no idea what Feature 016 is and shouldn't need to. The agent should have said "The methodology only allows one human approval to advance one boundary at a time — review-signoff is done, and starting the retrospective needs a fresh verdict from you."
+
+**Exception** — Specrew's OWN repo (this one) is its own downstream project, but the maintainer (the same person developing Specrew) DOES know what Feature 016 is. The rule applies to **downstream-project user-facing prose**, not to internal Specrew development sessions where the audience knows the lineage. The way to distinguish: would a user who installed Specrew via `Install-Module Specrew` and is running their own project benefit from this reference? If no → drop the reference and use the methodology concept.
+
 ### Pillar 3: Multiple-choice options with explicit verbs + escape routes
 
 Every user-facing pause offers a menu structured for both quick decisions AND richer input when needed:
@@ -160,7 +183,8 @@ Add a validator rule (composes with Proposal 030 Quality Hardening Bundle) that 
 Grades severity:
 
 - HARD-FAIL when all three sections are missing
-- WARNING when internal gate names leak into user prose
+- WARNING when internal gate names leak into user prose (Pillar 2)
+- WARNING when internal Specrew feature/proposal references leak into downstream-project user prose (Pillar 2b — regex check for `\bF-\d{3,}\b` or `\bProposal \d{3,}\b` or `\bFeature \d{3,}\b` patterns)
 - WARNING when no options offered
 - INFO when prose is structured but could be sharper
 
@@ -197,7 +221,8 @@ Estimated: 10-15 SP. Phase 2. Could be staged into a v0.24.x patch release or ro
 
 - **AC1**: A `specrew start` session resuming after a shipped feature surfaces prose like "Feature F-NNN was shipped; no active feature now — what would you like to do?" rather than the internal `feature-closeout` boundary name with bare "continue?" prompt
 - **AC2**: Every Squad boundary pause emits all three sections (What I did / Why I stopped / What I need)
-- **AC3**: No internal gate names (`REVIEW-BOUNDARY`, `RETRO-BOUNDARY`, `ITERATION-CLOSEOUT`, etc.) appear in user-facing prose — confirmed by validator grader
+- **AC3**: No internal gate names (`REVIEW-BOUNDARY`, `RETRO-BOUNDARY`, `ITERATION-CLOSEOUT`, etc.) appear in user-facing prose — confirmed by validator grader (Pillar 2)
+- **AC3b**: No internal Specrew feature/proposal references (`F-016`, `Proposal 065`, `Feature 046`, etc.) appear in downstream-project user-facing prose — confirmed by validator grader's regex check (Pillar 2b); installed instruction files audit per Proposal 099 ensures source language is methodology-concept-based
 - **AC4**: Every user-facing pause offers at least one verb/option the user can type — confirmed by validator grader
 - **AC5**: The smoke project's iteration-005 review boundary, replayed under this proposal, produces prose matching the "approve / reject / request changes / provide context" pattern with substantive "what I just did" leading the message
 - **AC6**: Validator grader emits HARD-FAIL when handoff prose violates form (missing all three sections); WARNING when internal-name leak or no-options detected
