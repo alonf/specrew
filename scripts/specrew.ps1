@@ -8,6 +8,9 @@ param(
     [Alias('info')]
     [switch]$InfoRequested,
 
+    [Alias('version', 'v')]
+    [switch]$VersionRequested,
+
     [Parameter(ValueFromRemainingArguments = $true)]
     [string[]]$Arguments
 )
@@ -23,6 +26,10 @@ if ($HelpRequested.IsPresent) {
 
 if ($InfoRequested.IsPresent) {
     $Arguments = @($Arguments) + '--info'
+}
+
+if ($VersionRequested.IsPresent) {
+    $Command = 'version'
 }
 
 function Show-Usage {

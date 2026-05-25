@@ -41,15 +41,15 @@
 | T004 | Wire shared helper into start bootstrap import path | FR-004, FR-008, TG-004 | Foundational | 1 | Implementer | `scripts/specrew-start.ps1` | done |
 | T005 | Wire shared helper into init bootstrap import path | FR-005, FR-008, TG-004 | Foundational | 1 | Implementer | `scripts/specrew-init.ps1` | done |
 | T006 | Validate governance mirror parity for helper imports across mirrored loaders | FR-008, TG-004 | Foundational | 1 | Reviewer | `extensions/specrew-speckit/scripts/*.ps1`, `.specify/extensions/specrew-speckit/scripts/*.ps1` | done |
-| T007 | Extend version CLI regression coverage for alias parity and warning suppression | FR-001, FR-002, SC-001, SC-002, SC-006, TG-001 | US1 | 2 | Implementer | `tests/integration/validate-versions-cli-behavior.ps1` | in-progress |
-| T008 | Extend start/init recovery regression coverage for missing catalog behaviors | FR-004, FR-005, SC-003, SC-006, TG-001 | US1 | 2 | Implementer | `tests/integration/start-recovery-flow.tests.ps1` | planned |
-| T009 | Add top-level `--version` and `-v` routing parity through canonical behavior | FR-001, SC-001, TG-001 | US1 | 1 | Implementer | `scripts/specrew.ps1` | planned |
-| T010 | Gate version warning emission to true unknown states only | FR-002, SC-002, TG-001 | US1 | 1 | Implementer | `scripts/specrew-version.ps1` | planned |
-| T011 | Implement start missing skill-catalog auto-repair continuation flow | FR-004, SC-003, TG-001 | US1 | 2 | Implementer | `scripts/specrew-start.ps1`, `scripts/internal/skill-catalog-state.ps1` | planned |
-| T012 | Implement init non-force deployable-gap continuation flow | FR-005, SC-003, TG-001 | US1 | 2 | Implementer | `scripts/specrew-init.ps1`, `scripts/internal/skill-catalog-state.ps1` | planned |
-| T013 | Implement init force deployable-gap continuation without false success | FR-005, SC-003, TG-001 | US1 | 2 | Implementer | `scripts/specrew-init.ps1`, `scripts/internal/skill-catalog-state.ps1` | planned |
-| T014 | Update CLI behavior contract for implemented command expectations | FR-001, FR-002, FR-004, FR-005, SC-001, SC-002, SC-003, TG-001 | US1 | 1 | Reviewer | `specs/045-v0271-bugfix-bundle/contracts/cli-behavior-contract.md` | planned |
-| T015 | Run version/start regression suites and record quality evidence | SC-001, SC-002, SC-003, SC-006, TG-001 | US1 | 1 | Reviewer | `tests/integration/validate-versions-cli-behavior.ps1`, `tests/integration/start-recovery-flow.tests.ps1`, `specs/045-v0271-bugfix-bundle/iterations/001/quality/quality-evidence.md` | planned |
+| T007 | Extend version CLI regression coverage for alias parity and warning suppression | FR-001, FR-002, SC-001, SC-002, SC-006, TG-001 | US1 | 2 | Implementer | `tests/integration/validate-versions-cli-behavior.ps1` | done |
+| T008 | Extend start/init recovery regression coverage for missing catalog behaviors | FR-004, FR-005, SC-003, SC-006, TG-001 | US1 | 2 | Implementer | `tests/integration/start-recovery-flow.tests.ps1` | done |
+| T009 | Add top-level `--version` and `-v` routing parity through canonical behavior | FR-001, SC-001, TG-001 | US1 | 1 | Implementer | `scripts/specrew.ps1` | done |
+| T010 | Gate version warning emission to true unknown states only | FR-002, SC-002, TG-001 | US1 | 1 | Implementer | `scripts/specrew-version.ps1` | done |
+| T011 | Implement start missing skill-catalog auto-repair continuation flow | FR-004, SC-003, TG-001 | US1 | 2 | Implementer | `scripts/specrew-start.ps1`, `scripts/internal/skill-catalog-state.ps1` | done |
+| T012 | Implement init non-force deployable-gap continuation flow | FR-005, SC-003, TG-001 | US1 | 2 | Implementer | `scripts/specrew-init.ps1`, `scripts/internal/skill-catalog-state.ps1` | done |
+| T013 | Implement init force deployable-gap continuation without false success | FR-005, SC-003, TG-001 | US1 | 2 | Implementer | `scripts/specrew-init.ps1`, `scripts/internal/skill-catalog-state.ps1` | done |
+| T014 | Update CLI behavior contract for implemented command expectations | FR-001, FR-002, FR-004, FR-005, SC-001, SC-002, SC-003, TG-001 | US1 | 1 | Reviewer | `specs/045-v0271-bugfix-bundle/contracts/cli-behavior-contract.md` | done |
+| T015 | Run version/start regression suites and record quality evidence | SC-001, SC-002, SC-003, SC-006, TG-001 | US1 | 1 | Reviewer | `tests/integration/validate-versions-cli-behavior.ps1`, `tests/integration/start-recovery-flow.tests.ps1`, `specs/045-v0271-bugfix-bundle/iterations/001/quality/quality-evidence.md` | done |
 
 ## Effort Model
 

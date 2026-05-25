@@ -53,11 +53,39 @@ function Invoke-ValidationWithShimPath {
     }
 }
 
+function Invoke-SpecrewCli {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$ScriptPath,
+
+        [Parameter(Mandatory = $true)]
+        [string]$WorkingDirectory,
+
+        [string[]]$ArgumentList = @()
+    )
+
+    $output = @(
+        & pwsh -NoProfile -ExecutionPolicy Bypass -File $ScriptPath @ArgumentList 2>&1
+    )
+
+    return [pscustomobject]@{
+        ExitCode = $LASTEXITCODE
+        Output   = @($output | ForEach-Object { [string]$_ })
+        Text     = (@($output | ForEach-Object { [string]$_ }) -join [Environment]::NewLine)
+    }
+}
+
 $repoRoot = (Resolve-Path (Join-Path -Path $PSScriptRoot -ChildPath '..\..')).Path
 $validateScript = Join-Path -Path $repoRoot -ChildPath 'extensions\specrew-speckit\scripts\validate-versions.ps1'
+$specrewScript = Join-Path -Path $repoRoot -ChildPath 'scripts\specrew.ps1'
 
 if (-not (Test-Path -LiteralPath $validateScript -PathType Leaf)) {
     Write-Fail "Missing validator script: $validateScript"
+    exit 1
+}
+
+if (-not (Test-Path -LiteralPath $specrewScript -PathType Leaf)) {
+    Write-Fail "Missing Specrew CLI script: $specrewScript"
     exit 1
 }
 
@@ -208,6 +236,63 @@ exit /b 9
     }
 
     Write-Pass 'Broken Spec Kit installs still fail validation even when uv inventory can report a version'
+
+    $nonProjectRoot = Join-Path $scratchRoot 'non-project'
+    $null = New-Item -Path $nonProjectRoot -ItemType Directory -Force
+
+    Push-Location $nonProjectRoot
+    try {
+        $canonicalVersion = Invoke-SpecrewCli -ScriptPath $specrewScript -WorkingDirectory $nonProjectRoot -ArgumentList @('version')
+        $longAliasVersion = Invoke-SpecrewCli -ScriptPath $specrewScript -WorkingDirectory $nonProjectRoot -ArgumentList @('--version')
+        $shortAliasVersion = Invoke-SpecrewCli -ScriptPath $specrewScript -WorkingDirectory $nonProjectRoot -ArgumentList @('-v')
+        $canonicalVersionWithProjectPath = Invoke-SpecrewCli -ScriptPath $specrewScript -WorkingDirectory $nonProjectRoot -ArgumentList @('version', '--project-path', $nonProjectRoot)
+        $longAliasVersionWithProjectPath = Invoke-SpecrewCli -ScriptPath $specrewScript -WorkingDirectory $nonProjectRoot -ArgumentList @('--version', '--project-path', $nonProjectRoot)
+        $shortAliasVersionWithProjectPath = Invoke-SpecrewCli -ScriptPath $specrewScript -WorkingDirectory $nonProjectRoot -ArgumentList @('-v', '--project-path', $nonProjectRoot)
+    }
+    finally {
+        Pop-Location
+    }
+
+    if ($canonicalVersion.ExitCode -ne 0) {
+        Write-Fail ("Canonical 'specrew version' should succeed outside a project:`n{0}" -f $canonicalVersion.Text)
+        exit 1
+    }
+
+    if ($longAliasVersion.ExitCode -ne 0) {
+        Write-Fail ("Top-level 'specrew --version' should route to canonical version behavior:`n{0}" -f $longAliasVersion.Text)
+        exit 1
+    }
+
+    if ($shortAliasVersion.ExitCode -ne 0) {
+        Write-Fail ("Top-level 'specrew -v' should route to canonical version behavior:`n{0}" -f $shortAliasVersion.Text)
+        exit 1
+    }
+
+    foreach ($aliasResult in @($longAliasVersion, $shortAliasVersion)) {
+        if ($aliasResult.Text -ne $canonicalVersion.Text) {
+            Write-Fail ("Version alias output must match canonical output.`nCanonical:`n{0}`nAlias:`n{1}" -f $canonicalVersion.Text, $aliasResult.Text)
+            exit 1
+        }
+    }
+
+    foreach ($aliasResult in @($longAliasVersionWithProjectPath, $shortAliasVersionWithProjectPath)) {
+        if ($aliasResult.ExitCode -ne 0) {
+            Write-Fail ("Version aliases should preserve --project-path routing:`n{0}" -f $aliasResult.Text)
+            exit 1
+        }
+
+        if ($aliasResult.Text -ne $canonicalVersionWithProjectPath.Text) {
+            Write-Fail ("Version alias --project-path output must match canonical output.`nCanonical:`n{0}`nAlias:`n{1}" -f $canonicalVersionWithProjectPath.Text, $aliasResult.Text)
+            exit 1
+        }
+    }
+
+    if ($canonicalVersion.Text -match 'WARNING: Specrew version could not be determined') {
+        Write-Fail "'specrew version' outside a project should not warn that version is undetermined when installed/module metadata is available."
+        exit 1
+    }
+
+    Write-Pass 'Top-level --version and -v aliases match canonical version output outside a project without false warning noise'
     exit 0
 }
 finally {

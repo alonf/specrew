@@ -206,11 +206,14 @@ switch ($compatibilityVerdict) {
         foreach ($detail in $compatibilityDetails) {
             Write-Host "  $detail"
         }
-        Write-Host ''
-        Write-Output "WARNING: Specrew version could not be determined."
-        Write-Host 'Remediation:' -ForegroundColor Yellow
-        Write-Host "  Verify Specrew is installed : Get-Module -Name Specrew -ListAvailable"
-        Write-Host "  To install                  : Install-Module Specrew"
+
+        if ($null -eq $installedVersion) {
+            Write-Host ''
+            Write-Output "WARNING: Specrew version could not be determined."
+            Write-Host 'Remediation:' -ForegroundColor Yellow
+            Write-Host "  Verify Specrew is installed : Get-Module -Name Specrew -ListAvailable"
+            Write-Host "  To install                  : Install-Module Specrew"
+        }
     }
 }
 

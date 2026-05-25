@@ -20,6 +20,35 @@ function Invoke-TestScript {
     }
 }
 
+function New-CliShim {
+    param(
+        [Parameter(Mandatory = $true)][string]$DirectoryPath,
+        [Parameter(Mandatory = $true)][string]$CommandName,
+        [Parameter(Mandatory = $true)][string]$Content
+    )
+
+    $shimPath = Join-Path -Path $DirectoryPath -ChildPath ("{0}.cmd" -f $CommandName)
+    [System.IO.File]::WriteAllText($shimPath, $Content, [System.Text.UTF8Encoding]::new($false))
+    return $shimPath
+}
+
+function Invoke-TestScriptWithShimPath {
+    param(
+        [Parameter(Mandatory = $true)][string]$ScriptPath,
+        [Parameter(Mandatory = $true)][string[]]$ArgumentList,
+        [Parameter(Mandatory = $true)][string]$ShimPath
+    )
+
+    $originalPath = $env:PATH
+    try {
+        $env:PATH = "{0}{1}{2}" -f $ShimPath, [System.IO.Path]::PathSeparator, $originalPath
+        return Invoke-TestScript -ScriptPath $ScriptPath -ArgumentList $ArgumentList
+    }
+    finally {
+        $env:PATH = $originalPath
+    }
+}
+
 function Invoke-InteractiveStart {
     param(
         [Parameter(Mandatory = $true)][string]$ScriptPath,
@@ -56,6 +85,45 @@ function Invoke-InteractiveStart {
     }
 }
 
+function Add-BootstrapValidationSurface {
+    param([Parameter(Mandatory = $true)][string]$ProjectRoot)
+
+    $templatesRoot = Join-Path $ProjectRoot '.specify\templates'
+    $workflowsRoot = Join-Path $ProjectRoot '.github\workflows'
+    foreach ($path in @((Join-Path $ProjectRoot '.squad\agents'), (Join-Path $ProjectRoot '.github\agents'), $templatesRoot, $workflowsRoot)) {
+        $null = New-Item -ItemType Directory -Path $path -Force
+    }
+
+    foreach ($templateName in @('agent-file-template.md', 'checklist-template.md', 'constitution-template.md', 'plan-template.md', 'spec-template.md', 'tasks-template.md')) {
+        [System.IO.File]::WriteAllText((Join-Path $templatesRoot $templateName), "# $templateName`n", [System.Text.UTF8Encoding]::new($false))
+    }
+
+    [System.IO.File]::WriteAllText((Join-Path $workflowsRoot 'specrew.yml'), "name: specrew`n", [System.Text.UTF8Encoding]::new($false))
+}
+
+function Remove-SkillCatalogRoots {
+    param([Parameter(Mandatory = $true)][string]$ProjectRoot)
+
+    foreach ($relativeDirectory in @('.claude\skills', '.github\skills', '.agents\skills')) {
+        $path = Join-Path $ProjectRoot $relativeDirectory
+        if (Test-Path -LiteralPath $path) {
+            Remove-Item -LiteralPath $path -Recurse -Force
+        }
+    }
+}
+
+function Assert-SkillCatalogRootsExist {
+    param([Parameter(Mandatory = $true)][string]$ProjectRoot)
+
+    foreach ($relativeDirectory in @('.claude\skills', '.github\skills', '.agents\skills')) {
+        $path = Join-Path $ProjectRoot $relativeDirectory
+        if (-not (Test-Path -LiteralPath $path -PathType Container)) {
+            Write-Fail "Expected repaired skill catalog directory: $path"
+            exit 1
+        }
+    }
+}
+
 function New-MinimalProject {
     param([Parameter(Mandatory = $true)][string]$ProjectRoot)
 
@@ -64,7 +132,7 @@ function New-MinimalProject {
     $null = & git -C $ProjectRoot config user.email 'test@specrew.local' 2>&1
     $null = & git -C $ProjectRoot config user.name 'Test User' 2>&1
 
-    foreach ($relativeDirectory in @('.specrew', '.specify', '.squad', '.github\agents', 'specs\022-hotfix-schema-tests\iterations\001')) {
+    foreach ($relativeDirectory in @('.specrew', '.specify', '.squad', '.github\agents', '.github\skills', '.claude\skills', '.agents\skills', 'specs\022-hotfix-schema-tests\iterations\001')) {
         $null = New-Item -ItemType Directory -Path (Join-Path $ProjectRoot $relativeDirectory) -Force
     }
 
@@ -86,12 +154,64 @@ function New-MinimalProject {
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
 $syncScript = Join-Path $repoRoot '.specify\extensions\specrew-speckit\scripts\sync-boundary-state.ps1'
 $startScript = Join-Path $repoRoot 'scripts\specrew-start.ps1'
+$initScript = Join-Path $repoRoot 'scripts\specrew-init.ps1'
 
 $scratchRoot = Join-Path $repoRoot '.scratch\start-recovery-flow'
 if (Test-Path -LiteralPath $scratchRoot) {
     Remove-Item -LiteralPath $scratchRoot -Recurse -Force
 }
 $null = New-Item -ItemType Directory -Path $scratchRoot -Force
+
+$shimRoot = Join-Path $scratchRoot 'path-shims'
+$null = New-Item -ItemType Directory -Path $shimRoot -Force
+New-CliShim -DirectoryPath $shimRoot -CommandName 'uv' -Content @'
+@echo off
+if /I "%~1 %~2"=="tool list" (
+  echo specify-cli v1.0.0
+  echo - specify
+  exit /b 0
+)
+echo uv 0.7.0
+exit /b 0
+'@ | Out-Null
+New-CliShim -DirectoryPath $shimRoot -CommandName 'node' -Content @'
+@echo off
+echo v24.0.0
+exit /b 0
+'@ | Out-Null
+New-CliShim -DirectoryPath $shimRoot -CommandName 'npm' -Content @'
+@echo off
+echo 10.0.0
+exit /b 0
+'@ | Out-Null
+New-CliShim -DirectoryPath $shimRoot -CommandName 'gh' -Content @'
+@echo off
+echo gh version 2.0.0
+exit /b 0
+'@ | Out-Null
+New-CliShim -DirectoryPath $shimRoot -CommandName 'specify' -Content @'
+@echo off
+if /I "%~1"=="--version" (
+  echo Usage: specify [OPTIONS] COMMAND [ARGS]...
+  echo No such option: --version
+  exit /b 2
+)
+if /I "%~1"=="version" (
+  echo GitHub Spec Kit - Spec-Driven Development Toolkit
+  echo CLI Version    1.0.0
+  echo Template Version    0.8.4
+  exit /b 0
+)
+exit /b 0
+'@ | Out-Null
+New-CliShim -DirectoryPath $shimRoot -CommandName 'squad' -Content @'
+@echo off
+if /I "%~1"=="--version" (
+  echo 0.9.1
+  exit /b 0
+)
+exit /b 0
+'@ | Out-Null
 
 function New-StaleProject {
     param([Parameter(Mandatory = $true)][string]$ProjectRoot)
@@ -156,4 +276,55 @@ if (($recoverResult.Output -join [Environment]::NewLine) -notmatch 'Prepared Spe
 }
 
 Write-Pass '--recover bypasses stale-state blocking without changing approval behavior'
+
+# specrew start missing skill-catalog auto-repair
+$startGapProject = Join-Path $scratchRoot 'start-skill-gap'
+New-MinimalProject -ProjectRoot $startGapProject
+Remove-SkillCatalogRoots -ProjectRoot $startGapProject
+$startGapResult = Invoke-TestScript -ScriptPath $startScript -ArgumentList @('-ProjectPath', $startGapProject, '-NoLaunch', '-HostKind', 'codex', '-SkipUpdateCheck')
+if ($startGapResult.ExitCode -ne 0) {
+    Write-Fail ("specrew start should auto-repair missing skill catalog roots:`n{0}" -f ($startGapResult.Output -join [Environment]::NewLine))
+    exit 1
+}
+
+if (($startGapResult.Output -join [Environment]::NewLine) -notmatch 'Skill catalog auto-repair completed') {
+    Write-Fail 'specrew start did not report skill catalog auto-repair completion.'
+    exit 1
+}
+
+Assert-SkillCatalogRootsExist -ProjectRoot $startGapProject
+Write-Pass 'specrew start auto-repairs missing skill catalog roots before normal continuation'
+
+# specrew init non-force missing skill-catalog deployable-gap repair
+$initGapProject = Join-Path $scratchRoot 'init-skill-gap'
+New-MinimalProject -ProjectRoot $initGapProject
+Add-BootstrapValidationSurface -ProjectRoot $initGapProject
+Remove-SkillCatalogRoots -ProjectRoot $initGapProject
+$initGapResult = Invoke-TestScriptWithShimPath -ScriptPath $initScript -ArgumentList @('-ProjectPath', $initGapProject, '-SkipUpdateCheck') -ShimPath $shimRoot
+if ($initGapResult.ExitCode -ne 0) {
+    Write-Fail ("specrew init should repair missing skill catalog roots on non-force path:`n{0}" -f ($initGapResult.Output -join [Environment]::NewLine))
+    exit 1
+}
+
+if (($initGapResult.Output -join [Environment]::NewLine) -notmatch 'skill catalog directories are missing') {
+    Write-Fail 'specrew init non-force path did not surface the skill catalog deployment gap.'
+    exit 1
+}
+
+Assert-SkillCatalogRootsExist -ProjectRoot $initGapProject
+Write-Pass 'specrew init non-force path treats missing skill catalog roots as a deployable gap'
+
+# specrew init -Force must also leave no missing skill-catalog roots
+$forceInitGapProject = Join-Path $scratchRoot 'init-force-skill-gap'
+New-MinimalProject -ProjectRoot $forceInitGapProject
+Add-BootstrapValidationSurface -ProjectRoot $forceInitGapProject
+Remove-SkillCatalogRoots -ProjectRoot $forceInitGapProject
+$forceInitGapResult = Invoke-TestScriptWithShimPath -ScriptPath $initScript -ArgumentList @('-ProjectPath', $forceInitGapProject, '-Force', '-SkipUpdateCheck') -ShimPath $shimRoot
+if ($forceInitGapResult.ExitCode -ne 0) {
+    Write-Fail ("specrew init -Force should repair missing skill catalog roots:`n{0}" -f ($forceInitGapResult.Output -join [Environment]::NewLine))
+    exit 1
+}
+
+Assert-SkillCatalogRootsExist -ProjectRoot $forceInitGapProject
+Write-Pass 'specrew init -Force validates repaired skill catalog roots before success'
 exit 0
