@@ -11,9 +11,24 @@
 [![Version](https://img.shields.io/badge/version-0.27.0-blue.svg)](.specrew/config.yml)
 [![Status: Alpha](https://img.shields.io/badge/status-alpha-orange.svg)](#status)
 
-Specrew is a **methodology** for AI-assisted software delivery — a governance layer that runs on top of [GitHub Spec Kit](https://github.com/github/spec-kit) and [Squad CLI](https://www.npmjs.com/package/@bradygaster/squad-cli) and enforces the SDLC discipline that those tools alone don't enforce.
+**Governed agentic SDLC. Agents type — you decide.** Specrew is a methodology layer over [GitHub Spec Kit](https://github.com/github/spec-kit) that keeps the human in the loop at every decision boundary while letting AI agents do the work between boundaries. Works with GitHub Copilot, Claude Code, OpenAI Codex CLI, and Google Antigravity.
 
-It is **not** a multi-agent framework, **not** an autopilot tool, and **not** another code generator. It is the layer that keeps the human in the loop at every decision boundary while letting agents do the work between boundaries.
+## ⚡ Try it now (5 min)
+
+```powershell
+Install-Module Specrew -Scope CurrentUser -SkipPublisherCheck
+mkdir C:\Dev\hello-specrew; cd C:\Dev\hello-specrew; git init
+specrew init
+specrew start "Build a tip calculator with a web UI"
+```
+
+That's it. Specrew now drives you through the spec-driven lifecycle: you'll co-author a spec with the AI, sign off on a plan, and end with working code traceable to every decision.
+
+**Prerequisites** (one-time): PowerShell 7+, git, and one AI host CLI — [GitHub Copilot](https://docs.github.com/en/copilot/how-tos/copilot-cli), [Claude Code](https://docs.anthropic.com/en/docs/claude-code/installation), [Codex CLI](https://developers.openai.com/codex/cli), or [Antigravity](https://antigravity.google/). On macOS / Linux, replace the `mkdir`/`cd` line with the platform equivalent. See [docs/getting-started.md](docs/getting-started.md) for full install steps, dependency notes (uv, npm), and brownfield-project bootstrap.
+
+## What just happened
+
+Specrew gated the agent at every decision boundary: `specify` → `clarify` → `plan` → `tasks` → `implement` → `review-signoff` → `iteration-closeout`. At each boundary, the agent stopped and asked you to authorize before advancing. The artifacts on disk (`.specrew/`, `specs/<feature>/`) form a complete, host-independent audit trail. You can resume the same feature tomorrow from a different AI host — the methodology lives in files, not in the agent's memory.
 
 ## Why Specrew exists
 
@@ -29,9 +44,9 @@ Specrew was built after observing these failures empirically and concluding that
 
 Specrew encodes that methodology as four guarantees:
 
-1. **Boundary discipline.** The lifecycle has explicit approval boundaries (`specify`, `clarify`, `plan`, `tasks`, `before-implement`, `review-signoff`, `retro`, `iteration-closeout`, `feature-closeout`). One human authorization advances at most one boundary. No agent prose can simulate authorization. Enforcement is moving from prose to code (see [Proposal 065](proposals/065-launch-mode-boundary-enforcement.md), in flight as Feature 039).
+1. **Boundary discipline.** The lifecycle has explicit approval boundaries (`specify`, `clarify`, `plan`, `tasks`, `before-implement`, `review-signoff`, `retro`, `iteration-closeout`, `feature-closeout`). One human authorization advances at most one boundary. No agent prose can simulate authorization. Enforcement is moving from prose to code (see [Proposal 065](proposals/065-launch-mode-boundary-enforcement.md), shipped as Feature 039).
 2. **Substantive interaction.** Every boundary handoff is reviewable in the console with the essence of "what I just did / why I stopped / what I need from you" visible without opening files. Status pings are not enough.
-3. **Audit-trail durability.** Every verdict, decision, drift event, and bypass lives in `.squad/decisions.md` with timestamps, commit hashes, and recognized verdict shapes. Sessions can be reconstructed after the fact; methodology lives in artifacts, not in agent memory.
+3. **Audit-trail durability.** Every verdict, decision, drift event, and bypass lives in `.squad/decisions.md` (Copilot host) or the host-native decisions ledger with timestamps, commit hashes, and recognized verdict shapes. Sessions can be reconstructed after the fact; methodology lives in artifacts, not in agent memory.
 4. **Methodology survives the host.** As of v0.27.0 Specrew runs on **GitHub Copilot CLI (default), Claude Code, Codex CLI, or Antigravity (`agy`)** via `specrew start --host <kind>` or the interactive numbered menu when `--host` is omitted — VS Code Chat remains a roadmap item ([Proposal 071](proposals/071-vscode-copilot-chat-host.md)). Per-host flag translation keeps `--remote` / `--allow-all` / `--autopilot` uniform at the Specrew surface; canonical Crew identity lives at `.specrew/team/agents/<role>.md` and translates to each host's native subagent format on every `specrew start`. The skill-level enforcement gates are host-agnostic by design — switching hosts must not weaken the methodology.
 
 ## Switch your AI host mid-feature — without losing your place
@@ -68,30 +83,29 @@ The methodology is what makes this practical. Without governed boundaries + dura
 
 | If you want… | …use this instead |
 |---|---|
-| A multi-agent code library (orchestrate agents in Python) | [CrewAI](https://www.crewai.com/), [AutoGen](https://github.com/microsoft/autogen), [LangGraph](https://www.langchain.com/langgraph) |
-| Autopilot coding (let the agent run; check the output) | [Devin](https://devin.ai/), [OpenInterpreter](https://www.openinterpreter.com/), [Aider](https://aider.chat/) |
+| A multi-agent code library (orchestrate agents in code) | [CrewAI](https://www.crewai.com/), [AutoGen](https://github.com/microsoft/autogen), [LangGraph](https://www.langchain.com/langgraph), [Microsoft Agent Framework](https://learn.microsoft.com/en-us/agent-framework/) |
+| Autopilot coding (let the agent run; check the output) | [GitHub Copilot Coding Agent](https://docs.github.com/copilot/concepts/agents/coding-agent/about-coding-agent), [OpenAI Codex (cloud app)](https://openai.com/index/introducing-the-codex-app/), [Claude Code autonomous mode](https://www.anthropic.com/news/enabling-claude-code-to-work-more-autonomously) |
 | The spec-driven command surface alone (`/speckit.specify`, `/speckit.plan`, …) | [Spec Kit](https://github.com/github/spec-kit) directly |
-| The multi-agent runtime alone (specialist teams, agent charters) | [Squad CLI](https://www.npmjs.com/package/@bradygaster/squad-cli) directly |
+| A code-agent team runtime on its own (specialist agents, agent charters) — without spec-driven governance | [Squad CLI](https://www.npmjs.com/package/@bradygaster/squad-cli) directly (Copilot host only), or each host's native subagent system (`.claude/agents/`, etc.) |
 | A code generator | None of these — Specrew is governance over agent-driven work, not a code generator |
 
-Specrew composes Spec Kit + Squad into a **methodology layer with enforced discipline**. It is the smallest layer that keeps the human in control when agents are doing the typing.
+Specrew composes Spec Kit + your host's native code-agent teams into a **methodology layer with enforced discipline**. It is the smallest layer that keeps the human in control when agents are doing the typing.
 
 ## How it differs in one paragraph
 
-Vanilla Spec Kit ships the slash-command surface but has no orchestration or boundary enforcement. Vanilla Squad runs multi-agent teams but doesn't drive a spec-driven lifecycle. Autopilot tools and multi-agent libraries optimize for throughput by letting the agent decide. Specrew goes the other direction: **the spec is authoritative, drift is a first-class event, every boundary requires explicit human authorization, and the audit trail is durable.** Different design point. Same agents.
+Vanilla Spec Kit ships the slash-command surface but has no orchestration or boundary enforcement. Vanilla code-agent-team runners (Squad CLI, host-native subagent systems) run multi-agent teams but don't drive a spec-driven lifecycle. Autopilot tools and multi-agent libraries optimize for throughput by letting the agent decide. Specrew goes the other direction: **the spec is authoritative, drift is a first-class event, every boundary requires explicit human authorization, and the audit trail is durable.** Different design point. Same agents.
 
 ## Status
 
 - **Active development line**: 0.27.0
-- **Latest stable baseline**: 0.26.0 (F-040 Multi-Host Launch Path)
-- **Pending PR-to-main**: v0.27.0 bundle — F-043 Multi-Host Onboarding + F-044 Per-Host Architecture Refactor (5 iterations including Antigravity host graduation, canonical `.specrew/team/` source-of-truth, interactive host menu)
+- **Latest stable baseline**: 0.27.0 (F-043 Multi-Host Onboarding + F-044 Per-Host Architecture Refactor)
 - **Alpha software**, validated through dogfooding in this repository
-- **Built for a single developer today.** Multi-developer reconciliation is a roadmap item ([Proposal 010](proposals/010-multi-developer-reconciliation.md)).
+- **Built for a single developer today.** Multi-developer reconciliation is a roadmap item ([Proposal 010](proposals/010-multi-developer-reconciliation.md)); a leaner spec-first concurrent model is queued as [Proposal 115](proposals/115-spec-first-concurrent-development-workflow.md).
 - Release truth lives in [CHANGELOG.md](CHANGELOG.md), [docs/versioning.md](docs/versioning.md), and the `v0.NN.0` tags.
 
 ## What's working today
 
-- `specrew init` bootstraps Spec Kit, Squad, and Specrew governance into a fresh or existing repo
+- `specrew init` bootstraps Spec Kit + Specrew governance (and installs Squad CLI when Copilot is the chosen host) into a fresh or existing repo
 - `specrew start` launches the canonical lifecycle session with handoff artifacts refreshed
 - `specrew where` renders the velocity dashboard from canonical artifacts
 - The full lifecycle: `specify → clarify → plan → tasks → implement → review-signoff → retro → iteration-closeout → feature-closeout` — with gate-respecting boundary stops by default ([Proposal 066](proposals/066-gate-respecting-default.md), shipped). The last two boundaries (iteration-closeout, feature-closeout) are not decoration: they produce the per-iteration `dashboard.md` + per-feature `closeout-dashboard.md` artifacts, mark the work durably "done", and gate the next iteration / next feature from starting. Skipping them leaves the project in an in-flight state — see [docs/user-guide.md "Closing iterations + features"](docs/user-guide.md#closing-iterations--features) for what these boundaries produce and the verdict shapes that advance them.
@@ -111,24 +125,13 @@ Vanilla Spec Kit ships the slash-command surface but has no orchestration or bou
 - **F-041** [Cost-Aware Model Routing](proposals/068-cost-aware-model-routing.md) — discovery skill + lean cost-profile + Junior→cheap-model auto-routing (next; addresses 2026-05-30 Copilot pricing pivot)
 - **F-042** [Token Economy MVP](proposals/070-token-economy-mvp.md) — cost.yml + dashboard COST section so per-iteration spend is measurable
 - **Substantive Intake Questioning** ([Proposal 063](proposals/063-substantive-intake-questioning.md)) — persona-driven adaptive intake at specify + clarify boundaries
+- **Iteration-Level Lifecycle Enforcement** ([Proposal 117](proposals/117-iteration-level-lifecycle-enforcement.md)) — populate state.md / review.md / retro.md per iteration (closes the empty-iteration-dir gap surfaced by 2026-05-25 dice re-audit)
+- **Host Autopilot Quality Profiles** ([Proposal 118](proposals/118-host-autopilot-quality-profiles.md)) — surface per-host quality-defaults at selection time + per-feature overrides
 - **Friction Dial** ([Proposal 100](proposals/100-friction-dial.md)) — strict/default/autonomous modes for expert developers
 - **Host-Native Hook Deployment** ([Proposal 105](proposals/105-host-native-hook-deployment.md)) — Claude Code PreToolUse hooks elevate F-039 from cooperative to runtime enforcement
 - **Installed-File SDLC Audit** ([Proposal 099](proposals/099-installed-file-sdlc-instruction-audit.md)) — close the dogfooding deficit between maintainer paste-prompts and installed methodology files
 
 See [proposals/INDEX.md](proposals/INDEX.md) for the full proposal catalog (Shipped / Draft / Candidate).
-
-## Quickstart
-
-Five minutes from zero to a running lifecycle session:
-
-```powershell
-Install-Module Specrew -Scope CurrentUser -SkipPublisherCheck
-mkdir C:\Dev\calculator && cd C:\Dev\calculator && git init
-specrew init
-specrew start "Build a web based calculator with only the + - * / MR MC M+ M- operations"
-```
-
-See [docs/getting-started.md](docs/getting-started.md) for the full quickstart, install variants, and known limitations. See [docs/user-guide.md](docs/user-guide.md) for day-to-day usage.
 
 ## Platform support
 
