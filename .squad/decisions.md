@@ -18586,3 +18586,19 @@ User explicitly authorized retro-boundary entry for Feature 039 Iteration 001. T
 - **Task ID**: (none)
 - **Auth Commit Hash**: a0172fb1a67ce3911e5d2e14e11d2ef8d2616b8c
 - **Recorded At**: 2026-05-25T18:29:55Z
+
+## 2026-05-25T18:36:32Z — Boundary sync warning: retro
+
+- **Boundary Type**: retro
+- **Latest Recorded Boundary**: retro
+- **Recorded At**: 2026-05-25T18:36:32Z
+- **Warning**: Expected next boundary 'iteration-closeout' but received 'retro'.
+
+## 2026-05-25T18:36:32Z — Boundary sync: retro
+
+- **Boundary Type**: retro
+- **Feature Ref**: 045-v0271-bugfix-bundle
+- **Iteration Number**: 002
+- **Task ID**: (none)
+- **Auth Commit Hash**: ebffb87b870d7f8d30b593c6bd77bd45239ea23a
+- **Recorded At**: 2026-05-25T18:36:32Z
