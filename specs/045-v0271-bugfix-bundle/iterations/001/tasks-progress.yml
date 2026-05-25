@@ -1,7 +1,7 @@
 schema: "v1"
 feature: "045-v0271-bugfix-bundle"
 iteration: "001"
-updated_at: "2026-05-25T15:26:27Z"
+updated_at: "2026-05-25T15:49:55Z"
 tasks:
   T001:
     title: "Create patch finding ledger for F1-F7 actionable-vs-stale tracking"
