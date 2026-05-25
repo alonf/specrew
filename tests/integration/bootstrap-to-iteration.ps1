@@ -144,8 +144,8 @@ $bootstrapOutputValid = $true
 $bootstrapOutputChecks = @(
     @{ Pattern = 'Baseline Specrew crew installed:\s*Spec Steward,\s*Planner,\s*Implementer,\s*Reviewer,\s*Retro Facilitator\.'; Failure = 'Bootstrap output did not explain the installed baseline Specrew crew.' },
     @{ Pattern = 'specrew start'; Failure = 'Bootstrap output did not guide the user to specrew start.' },
-    @{ Pattern = 'Add extra Squad members after bootstrap'; Failure = 'Bootstrap output did not explain how to extend the Squad team after bootstrap.' },
-    @{ Pattern = 'Keep the Specrew-managed baseline block intact'; Failure = 'Bootstrap output did not protect the managed baseline roles from removal.' }
+    @{ Pattern = 'Add extra Crew members'; Failure = 'Bootstrap output did not explain how to extend the Crew after bootstrap.' },
+    @{ Pattern = 'Keep the Specrew-managed baseline charters intact'; Failure = 'Bootstrap output did not protect the managed baseline charters from removal.' }
 )
 
 foreach ($check in $bootstrapOutputChecks) {

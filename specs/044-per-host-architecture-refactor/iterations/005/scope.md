@@ -50,6 +50,7 @@ Matches Claude's invocation convention (which uses the same `--dangerously-skip-
 ## Verification
 
 Empirically verified — all 7 host-related integration tests pass:
+
 - `host-registry.tests.ps1`
 - `crew-bootstrap-contract.tests.ps1`
 - `host-coupling-firewall.tests.ps1`

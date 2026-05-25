@@ -25,6 +25,7 @@
 ## Verification
 
 Smoke test (`.scratch/iter004-smoke.ps1`):
+
 - `Test-SpecrewHostBinaryAvailable` returns correct binary name or `$null` for each host on the user's PATH.
 - `Test-SpecrewHostAvailable` (detect-hosts) matches `Test-SpecrewHostBinaryAvailable` (host-history) for every host — no consumer-vs-helper divergence.
 - First-run probe non-interactive: returns `non-interactive-no-default` when ≥2 hosts available + no TTY (matches FR-013).

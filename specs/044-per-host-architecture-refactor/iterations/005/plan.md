@@ -12,6 +12,7 @@
 ## Scope Summary
 
 Pre-PR readiness slice. User-surfaced concerns from iter-004 dogfood:
+
 1. **Antigravity launch fails** — `agy` rejects `-output-format` and `--cwd` flags. Per actual `agy --help` output: shape is `agy -i '<prompt>' --add-dir '<path>' [--dangerously-skip-permissions]`. The Spec FR-005 reference was wrong (or agy CLI evolved).
 2. **Version bump to v0.27.0** — user picked option (a) status quo from the drift analysis.
 3. **Test coverage** — iter-003 + iter-004 added code without automated tests; smoke tests live in `.scratch/` only.

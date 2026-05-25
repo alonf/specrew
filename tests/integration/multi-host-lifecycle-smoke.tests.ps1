@@ -67,4 +67,32 @@ foreach ($file in @('Specrew.psm1', 'extensions\specrew-speckit\scripts\sync-bou
 }
 Write-Pass "All 3 iter-006-touched files parse cleanly"
 
-Write-Host "`nMulti-host lifecycle smoke (iter-006): all assertions pass" -ForegroundColor Green
+# Test 8: scaffold-reviewer-artifacts.ps1 is Linux-portable (iter-007 T001 — canonicalized from Antigravity's empirical WSL patch)
+# The hardcoded 'C:\' root prefix broke on Linux; iter-007 fix uses DirectorySeparatorChar to detect platform.
+$reviewerScaffoldContent = Get-Content -LiteralPath (Join-Path $repoRoot 'extensions\specrew-speckit\scripts\scaffold-reviewer-artifacts.ps1') -Raw -Encoding UTF8
+if ($reviewerScaffoldContent -match "Join-Path 'C:\\\\' \`$combinedPath") {
+    Write-Fail "scaffold-reviewer-artifacts.ps1 still hardcodes 'C:\\' root prefix — breaks on Linux/WSL (iter-007 T001)."
+}
+if ($reviewerScaffoldContent -notmatch '\[System\.IO\.Path\]::DirectorySeparatorChar') {
+    Write-Fail "scaffold-reviewer-artifacts.ps1 must use [System.IO.Path]::DirectorySeparatorChar for cross-platform path resolution (iter-007 T001)."
+}
+Write-Pass "scaffold-reviewer-artifacts.ps1 is Linux-portable (iter-007 T001 — canonicalized from Antigravity's WSL empirical patch)"
+
+# Test 9: evaluation/process-scorer.ps1 uses forward-slash literal for cross-platform Join-Path (iter-007 T002 — sibling-bug audit fix)
+$processScorerContent = Get-Content -LiteralPath (Join-Path $repoRoot 'evaluation\scorers\process-scorer.ps1') -Raw -Encoding UTF8
+if ($processScorerContent -match "ChildPath 'evaluation\\\\report\.md'") {
+    Write-Fail "evaluation/scorers/process-scorer.ps1 still uses 'evaluation\\report.md' backslash literal — Linux Join-Path treats '\\' as part of filename (iter-007 T002)."
+}
+Write-Pass "evaluation/scorers/process-scorer.ps1 uses forward-slash path literal (iter-007 T002 — sibling-bug audit)"
+
+# Test 10: Linux-portability parse-check on iter-007-touched files
+foreach ($file in @('extensions\specrew-speckit\scripts\scaffold-reviewer-artifacts.ps1', 'evaluation\scorers\process-scorer.ps1')) {
+    $errs = $null
+    [System.Management.Automation.Language.Parser]::ParseFile((Join-Path $repoRoot $file), [ref]$null, [ref]$errs) | Out-Null
+    if ($null -ne $errs -and $errs.Count -gt 0) {
+        Write-Fail "Parse error in iter-007 file '$file': $($errs[0].Message)"
+    }
+}
+Write-Pass "All iter-007-touched files parse cleanly"
+
+Write-Host "`nMulti-host lifecycle smoke (iter-006 + iter-007): all assertions pass" -ForegroundColor Green

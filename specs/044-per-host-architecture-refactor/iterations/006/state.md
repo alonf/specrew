@@ -26,6 +26,7 @@
 ## Empirical motivation captured
 
 Antigravity's iter-005 dogfood log is the empirical basis for iter-006:
+
 - It demonstrated Specrew working on Gemini 3.5 Flash (host-agnostic methodology ✅)
 - It demonstrated Specrew dispatch failures dispatching to stale 0.25.0 PSGallery install ❌
 - It demonstrated Antigravity autonomously patching deployed Specrew scaffolders to make them work locally ❌

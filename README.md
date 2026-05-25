@@ -8,7 +8,7 @@
 # Specrew
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![Version](https://img.shields.io/badge/version-0.25.0-blue.svg)](.specrew/config.yml)
+[![Version](https://img.shields.io/badge/version-0.27.0-blue.svg)](.specrew/config.yml)
 [![Status: Alpha](https://img.shields.io/badge/status-alpha-orange.svg)](#status)
 
 Specrew is a **methodology** for AI-assisted software delivery — a governance layer that runs on top of [GitHub Spec Kit](https://github.com/github/spec-kit) and [Squad CLI](https://www.npmjs.com/package/@bradygaster/squad-cli) and enforces the SDLC discipline that those tools alone don't enforce.
@@ -33,6 +33,36 @@ Specrew encodes that methodology as four guarantees:
 2. **Substantive interaction.** Every boundary handoff is reviewable in the console with the essence of "what I just did / why I stopped / what I need from you" visible without opening files. Status pings are not enough.
 3. **Audit-trail durability.** Every verdict, decision, drift event, and bypass lives in `.squad/decisions.md` with timestamps, commit hashes, and recognized verdict shapes. Sessions can be reconstructed after the fact; methodology lives in artifacts, not in agent memory.
 4. **Methodology survives the host.** As of v0.27.0 Specrew runs on **GitHub Copilot CLI (default), Claude Code, Codex CLI, or Antigravity (`agy`)** via `specrew start --host <kind>` or the interactive numbered menu when `--host` is omitted — VS Code Chat remains a roadmap item ([Proposal 071](proposals/071-vscode-copilot-chat-host.md)). Per-host flag translation keeps `--remote` / `--allow-all` / `--autopilot` uniform at the Specrew surface; canonical Crew identity lives at `.specrew/team/agents/<role>.md` and translates to each host's native subagent format on every `specrew start`. The skill-level enforcement gates are host-agnostic by design — switching hosts must not weaken the methodology.
+
+## Switch your AI host mid-feature — without losing your place
+
+This is what governance buys you that raw CLI usage cannot.
+
+Every AI coding host has a context window. When that window fills — or you simply close the terminal — the agent's memory of "what we just decided, why we stopped here, what the gates are, which iteration is open" is gone. Picking back up means rebuilding context in prose, paying the token cost of recap, and trusting the agent to faithfully reconstruct decisions it never explicitly recorded.
+
+Specrew sidesteps this by treating the **artifact on disk** as the source of truth, not the agent's memory. The spec, plan, tasks, iteration plan, decisions ledger, drift log, and current boundary state all live in files inside your project. Any host — Copilot, Claude, Codex, Antigravity — can be started against the same project, read the same artifacts, and continue from the exact same boundary.
+
+A real workflow this makes possible:
+
+```text
+Monday  — specrew start --host copilot     "specify a tip calculator"
+                                              → spec.md committed, /speckit.clarify queued
+Tuesday — specrew start --host claude       (no prompt — resumes at clarify)
+                                              → clarifications.md committed, /speckit.plan queued
+Wednesday — specrew start --host codex      (no prompt — resumes at plan)
+                                              → plan.md committed, /speckit.tasks queued
+Thursday — specrew start --host antigravity (no prompt — resumes at iteration scaffold)
+                                              → iter-001/plan.md, ready for /speckit.implement
+```
+
+Each `specrew start` on a different host:
+
+- Resolves to the same canonical Crew at `.specrew/team/agents/<role>.md` (translated to host-native format on the fly)
+- Reads the same boundary state from `.specrew/state.yml` and resumes at the next gate
+- Picks up the same decisions ledger, drift log, and audit trail
+- Honors the same enforcement gates (no boundary auto-advance, no scope creep, no host-specific shortcuts)
+
+The methodology is what makes this practical. Without governed boundaries + durable artifacts, switching host mid-feature means context loss and silent decision divergence between sessions. With them, the host is interchangeable — you can chase the cheapest model, the strongest reasoner, or the host that's loaded on the machine you happen to be at, and the project doesn't care.
 
 ## What Specrew is not
 
@@ -80,7 +110,6 @@ Vanilla Spec Kit ships the slash-command surface but has no orchestration or bou
 - **F-044** [Per-Host Architecture Refactor](specs/044-per-host-architecture-refactor/spec.md) — Open-Closed host extension (registry + 4 host packages); 5th contract function `Install-<Kind>CrewRuntime`; canonical `.specrew/team/agents/<role>.md` source-of-truth; Antigravity host graduated to supported (shipped v0.27.0)
 - **F-041** [Cost-Aware Model Routing](proposals/068-cost-aware-model-routing.md) — discovery skill + lean cost-profile + Junior→cheap-model auto-routing (next; addresses 2026-05-30 Copilot pricing pivot)
 - **F-042** [Token Economy MVP](proposals/070-token-economy-mvp.md) — cost.yml + dashboard COST section so per-iteration spend is measurable
-- **F-043** [Multi-Host Onboarding + Selection Flow](proposals/104-multi-host-onboarding-and-selection-flow.md) — first-run host probe + `host-history.yml` + `specrew host` command
 - **Substantive Intake Questioning** ([Proposal 063](proposals/063-substantive-intake-questioning.md)) — persona-driven adaptive intake at specify + clarify boundaries
 - **Friction Dial** ([Proposal 100](proposals/100-friction-dial.md)) — strict/default/autonomous modes for expert developers
 - **Host-Native Hook Deployment** ([Proposal 105](proposals/105-host-native-hook-deployment.md)) — Claude Code PreToolUse hooks elevate F-039 from cooperative to runtime enforcement

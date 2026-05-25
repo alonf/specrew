@@ -49,6 +49,7 @@ PASS multi-host-lifecycle-smoke
 ## Real-world verification (deferred to user)
 
 The canonical empirical test is to re-run Antigravity dogfood against this fixed branch:
+
 1. Remove stale 0.25.0 PSGallery install (per iter-003 pre-test step)
 2. Fresh greenfield project
 3. `specrew start --host antigravity "<some request>"`

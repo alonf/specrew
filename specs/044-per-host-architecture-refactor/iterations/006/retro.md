@@ -64,6 +64,7 @@
 ## Notes
 
 F-044's 6-iteration arc is now complete:
+
 - iter-001: architectural payoff (18 SP, retroactive)
 - iter-002: deep-review cleanup (6 SP, retroactive)
 - iter-003: manual-test repair (4 SP, retroactive)

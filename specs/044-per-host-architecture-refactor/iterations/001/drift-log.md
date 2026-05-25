@@ -9,6 +9,7 @@ The single largest drift in this iteration: the spec did not exist at implementa
 **Why it happened**: User explicitly authorized a fast-moving multi-host integration push. The conversation thread is the de facto requirements doc; Proposal 108 captured the design after the first ~half of the work was already committed.
 
 **Methodology impact**: Severe. Without an upfront spec:
+
 - Clarify-boundary never happened — user reviewed scope decisions only at conversational checkpoints
 - Plan-boundary never happened — phases A→B→C→D were declared mid-execution
 - The standing review-gate ALMOST didn't happen either — 4-agent deep review was dispatched only because the user explicitly asked for it at closeout

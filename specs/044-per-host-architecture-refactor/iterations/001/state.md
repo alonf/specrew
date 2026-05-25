@@ -18,6 +18,7 @@
 ## Scope
 
 iter-001 ships:
+
 - Per-host package registry (Phase A) + 4 host manifests
 - Per-host handler implementations (Phase B) — 4 contract functions × 4 hosts = 16 functions
 - Registry-driven shims replacing 3 host-coupled scripts (Phase C)
