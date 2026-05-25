@@ -47,7 +47,7 @@
 
 ## Improvement Actions
 
-1. Owner: Planner | Phase: iteration 002 planning | Type: process | Expected effect: Do not treat numeric Effort values from iteration 001 as a new convention. Proposal 117 (`proposals/117-validator-effort-convention-parser.md`) documents the temporary workaround; once Slice 1 ships, iteration 002 may use t-shirt letters directly or remain numeric, because both forms should validate.
+1. Owner: Planner | Phase: iteration 002 planning | Type: process | Expected effect: Do not treat numeric Effort values from iteration 001 as a new convention. Proposal 119 (`proposals/119-effort-convention-conversion-table.md`) documents the temporary workaround; once Slice 1 ships, iteration 002 may use t-shirt letters directly or remain numeric, because both forms should validate.
 2. Owner: Implementer | Phase: iteration 002 or governance hardening | Type: tooling | Expected effect: Make `scaffold-retro-artifact.ps1` tolerate plans without an `Actual` task column, or add a canonical actual-effort capture field before retro.
 3. Owner: Reviewer | Phase: review scaffolding | Type: evidence | Expected effect: Treat scaffolded review warnings as prompts, not facts; replace them with artifact-specific evidence before validation.
 
@@ -60,4 +60,4 @@
 
 - Start with T002 traceability if still needed by the canonical plan, then proceed to the approved US2/US3 work.
 - FR-006 brownfield ownership work and FR-007 operator documentation must remain explicitly traceable to SC-004 and SC-005.
-- Carry forward the Proposal 117 transition note so the Planner does not preserve the numeric-effort workaround as policy.
+- Carry forward the Proposal 119 transition note so the Planner does not preserve the numeric-effort workaround as policy.
