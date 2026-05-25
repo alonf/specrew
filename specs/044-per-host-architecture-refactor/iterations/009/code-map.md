@@ -1,40 +1,93 @@
 # Code Map: Iteration 009
 
-**Feature**: F-044 | **Iteration**: 009 — Bare file:/// URI Enforcement (Smoke-Test Regression Fix)
+**Schema**: v1
+**Reviewed**: 2026-05-25
+**Baseline Ref**: 7773aa12
+**Test-to-Code Ratio**: 1:1
 
-## Production code touched (canonical templates — deployed to downstream projects)
+> **⚠️ Review Evidence Warning** _(Form-vs-Meaning Gap Detected)_
+>
+> This iteration's task tracking declares **4 completed task(s)**, but the git diff against baseline `7773aa12` contains **43 file(s)**.
+>
+> **Severity**: WARNING  
+> **Implication**: Review evidence may be incomplete or misleading.
+>
+> **Possible causes**:
+>
+> - Implementation work was not committed before scaffolding review artifacts
+> - Task status markers in plan.md or review.md do not match actual progress
+> - Baseline reference in state.md is stale or incorrect
+>
+> **Remediation**:
+>
+> 1. Verify implementation is committed: `git diff 7773aa12...HEAD --stat`
+> 2. If uncommitted work exists: `git add . && git commit -m "Implementation complete"`
+> 3. Re-run scaffolder with `-Force` flag to regenerate review artifacts after commit
+> 4. Re-run `validate-governance.ps1` to clear pre-review commit gate error
+>
+> _See Proposal 073 (Review Evidence Integrity) for background on this validation._
 
-| File | Change | Why |
-|---|---|---|
-| `extensions/specrew-speckit/squad-templates/coordinator/specrew-governance.md` | Rule 14A: explicit "BARE `file:///` URIs, NOT markdown-link form `[name](file:///...)`" mandate inside the canonical template + welcoming-tone block. 2 supporting bullets updated to say BARE | T001 — close wording gap |
-| `extensions/specrew-speckit/squad-templates/agents/spec-steward/charter.md` | Existing What I just did bullet says BARE; new bold "Bare URI, not markdown link form" paragraph | T002 — close wording gap |
-| `extensions/specrew-speckit/squad-templates/agents/planner/charter.md` | Same | T002 |
-| `extensions/specrew-speckit/squad-templates/agents/reviewer/charter.md` | Same | T002 |
-| `extensions/specrew-speckit/squad-templates/agents/retro-facilitator/charter.md` | Same | T002 |
-| `extensions/specrew-speckit/squad-templates/agents/implementer/charter.md` | Same | T002 |
-| `.specify/.../specrew-governance.md` | Same as canonical | T001 — mirror discipline |
-| `.specify/.../agents/{5 charters}/charter.md` | Same as canonical | T002 — mirror discipline |
-| `docs/user-guide.md` "What you'll see at every boundary" | Updated example block + new paragraph explaining bare-URI requirement + re-prompt guidance | T003 — user-facing docs |
+---
 
-## Iteration artifacts produced
+## Files Touched
 
-- `iterations/009/plan.md` (authored at iter-009 start)
-- `iterations/009/state.md` (canonical-schema end-of-iteration summary)
-- `iterations/009/scope.md` (bug-by-bug closure)
-- `iterations/009/drift-log.md` (no drift events)
-- `iterations/009/code-map.md` (this file)
-- `iterations/009/review.md` (task verdicts + verification evidence)
-- `iterations/009/retro.md` (canonical-schema retro)
-- `iterations/009/pr-review-resolution.md` (placeholder for Copilot PR review findings)
+| Path | Lines Added | Lines Removed | Owning Task ID(s) | Owning Role |
+| ---- | ----------- | ------------- | ----------------- | ----------- |
+| .specify/extensions/specrew-speckit/squad-templates/agents/implementer/charter.md | 3 | 1 | T001, T002, T003, T004 | Implementer |
+| .specify/extensions/specrew-speckit/squad-templates/agents/planner/charter.md | 3 | 1 | T001, T002, T003, T004 | Implementer |
+| .specify/extensions/specrew-speckit/squad-templates/agents/retro-facilitator/charter.md | 3 | 1 | T001, T002, T003, T004 | Implementer |
+| .specify/extensions/specrew-speckit/squad-templates/agents/reviewer/charter.md | 3 | 1 | T001, T002, T003, T004 | Implementer |
+| .specify/extensions/specrew-speckit/squad-templates/agents/spec-steward/charter.md | 3 | 1 | T001, T002, T003, T004 | Implementer |
+| .specify/extensions/specrew-speckit/squad-templates/coordinator/specrew-governance.md | 3 | 2 | T001, T002, T003, T004 | Implementer |
+| docs/getting-started.md | 8 | 3 | T001, T002, T003, T004 | Implementer |
+| docs/user-guide.md | 8 | 5 | T001, T002, T003, T004 | Implementer |
+| extensions/specrew-speckit/squad-templates/agents/implementer/charter.md | 3 | 1 | T001, T002, T003, T004 | Implementer |
+| extensions/specrew-speckit/squad-templates/agents/planner/charter.md | 3 | 1 | T001, T002, T003, T004 | Implementer |
+| extensions/specrew-speckit/squad-templates/agents/retro-facilitator/charter.md | 3 | 1 | T001, T002, T003, T004 | Implementer |
+| extensions/specrew-speckit/squad-templates/agents/reviewer/charter.md | 3 | 1 | T001, T002, T003, T004 | Implementer |
+| extensions/specrew-speckit/squad-templates/agents/spec-steward/charter.md | 3 | 1 | T001, T002, T003, T004 | Implementer |
+| extensions/specrew-speckit/squad-templates/coordinator/specrew-governance.md | 3 | 2 | T001, T002, T003, T004 | Implementer |
+| hosts/_registry.ps1 | 19 | 4 | T001, T002, T003, T004 | Implementer |
+| hosts/antigravity/host.psd1 | 1 | 0 | T001, T002, T003, T004 | Implementer |
+| hosts/claude/host.psd1 | 1 | 0 | T001, T002, T003, T004 | Implementer |
+| hosts/codex/host.psd1 | 1 | 0 | T001, T002, T003, T004 | Implementer |
+| hosts/copilot/host.psd1 | 1 | 0 | T001, T002, T003, T004 | Implementer |
+| specs/044-per-host-architecture-refactor/closeout-dashboard.md | 4 | 4 | T001, T002, T003, T004 | Implementer |
+| specs/044-per-host-architecture-refactor/current-architecture.md | 15 | 0 | T001, T002, T003, T004 | Implementer |
+| specs/044-per-host-architecture-refactor/iterations/009/code-map.md | 40 | 0 | T001, T002, T003, T004 | Implementer |
+| specs/044-per-host-architecture-refactor/iterations/009/drift-log.md | 12 | 0 | T001, T002, T003, T004 | Implementer |
+| specs/044-per-host-architecture-refactor/iterations/009/plan.md | 76 | 0 | T001, T002, T003, T004 | Implementer |
+| specs/044-per-host-architecture-refactor/iterations/009/pr-review-resolution.md | 20 | 0 | T001, T002, T003, T004 | Implementer |
+| specs/044-per-host-architecture-refactor/iterations/009/retro.md | 79 | 0 | T001, T002, T003, T004 | Implementer |
+| specs/044-per-host-architecture-refactor/iterations/009/review.md | 44 | 0 | T001, T002, T003, T004 | Implementer |
+| specs/044-per-host-architecture-refactor/iterations/009/scope.md | 35 | 0 | T001, T002, T003, T004 | Implementer |
+| specs/044-per-host-architecture-refactor/iterations/009/state.md | 48 | 0 | T001, T002, T003, T004 | Implementer |
+| specs/044-per-host-architecture-refactor/iterations/011/code-map.md | 51 | 0 | T001, T002, T003, T004 | Implementer |
+| specs/044-per-host-architecture-refactor/iterations/011/coverage-evidence.md | 58 | 0 | T001, T002, T003, T004 | Implementer |
+| specs/044-per-host-architecture-refactor/iterations/011/dashboard.md | 38 | 0 | T001, T002, T003, T004 | Implementer |
+| specs/044-per-host-architecture-refactor/iterations/011/dependency-report.md | 48 | 0 | T001, T002, T003, T004 | Implementer |
+| specs/044-per-host-architecture-refactor/iterations/011/drift-log.md | 13 | 0 | T001, T002, T003, T004 | Implementer |
+| specs/044-per-host-architecture-refactor/iterations/011/plan.md | 80 | 0 | T001, T002, T003, T004 | Implementer |
+| specs/044-per-host-architecture-refactor/iterations/011/pr-review-resolution.md | 20 | 0 | T001, T002, T003, T004 | Implementer |
+| specs/044-per-host-architecture-refactor/iterations/011/retro.md | 76 | 0 | T001, T002, T003, T004 | Implementer |
+| specs/044-per-host-architecture-refactor/iterations/011/review-diagrams.md | 45 | 0 | T001, T002, T003, T004 | Implementer |
+| specs/044-per-host-architecture-refactor/iterations/011/review.md | 46 | 0 | T001, T002, T003, T004 | Implementer |
+| specs/044-per-host-architecture-refactor/iterations/011/reviewer-index.md | 53 | 0 | T001, T002, T003, T004 | Implementer |
+| specs/044-per-host-architecture-refactor/iterations/011/scope.md | 35 | 0 | T001, T002, T003, T004 | Implementer |
+| specs/044-per-host-architecture-refactor/iterations/011/state.md | 50 | 0 | T001, T002, T003, T004 | Implementer |
+| tests/integration/host-registry.tests.ps1 | 15 | 2 | T001 | Implementer |
 
-## Tests run + verdicts
+## Public-API Delta
 
-- Markdownlint: 0 violations across 13 touched files
-- Validator (governance): iter-009 directory passes canonical-schema lens
+### Added
 
-## What this iteration did NOT change
+- none
 
-- No production .ps1 code (only template + docs text)
-- No new tests added (the validator + markdownlint sweep + user smoke-test are the verification surface)
-- No proposal status changes
-- No INDEX.md changes
+### Removed
+
+- none
+
+## Module Hotspots
+
+- Threshold: 250 changed lines per file
+- none
