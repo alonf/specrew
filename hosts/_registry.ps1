@@ -42,11 +42,14 @@ function Get-RegisteredHostKinds {
         return @($script:HostManifestCache.Keys)
     }
 
-    $cache = [ordered]@{}
+    # iter-011: load manifests first, then sort by MenuPriority (then Kind for
+    # stable ordering when priorities tie or are missing). Hosts without a
+    # MenuPriority field sort last (default 999) — keeps new hosts visible but
+    # not surprising users with reordering.
     $hostDirs = Get-ChildItem -Path $script:SpecrewHostsRoot -Directory -ErrorAction SilentlyContinue |
-        Where-Object { -not $_.Name.StartsWith('_') } |
-        Sort-Object Name
+        Where-Object { -not $_.Name.StartsWith('_') }
 
+    $loaded = [System.Collections.Generic.List[object]]::new()
     foreach ($dir in $hostDirs) {
         $manifestPath = Join-Path $dir.FullName 'host.psd1'
         if (-not (Test-Path -LiteralPath $manifestPath -PathType Leaf)) {
@@ -71,7 +74,19 @@ function Get-RegisteredHostKinds {
             continue
         }
 
-        $cache[$manifest.Kind] = $manifest
+        $priority = if ($manifest.ContainsKey('MenuPriority')) { [int]$manifest.MenuPriority } else { 999 }
+        $loaded.Add([pscustomobject]@{
+            Kind     = $manifest.Kind
+            Priority = $priority
+            Manifest = $manifest
+        })
+    }
+
+    $sorted = $loaded | Sort-Object Priority, Kind
+
+    $cache = [ordered]@{}
+    foreach ($entry in $sorted) {
+        $cache[$entry.Kind] = $entry.Manifest
     }
 
     $script:HostManifestCache = $cache

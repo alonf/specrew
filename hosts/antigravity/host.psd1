@@ -4,6 +4,7 @@
     DisplayName   = 'Google Antigravity CLI'
     Status        = 'supported'      # Promoted from deferred via antigravity-followup slice
     SchemaVersion = 1
+    MenuPriority  = 4  # Interactive host-selection menu priority (iter-011)
 
     # Binary detection
     Binary           = 'agy'

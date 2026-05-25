@@ -4,6 +4,7 @@
     DisplayName   = 'Claude Code CLI'
     Status        = 'supported'
     SchemaVersion = 1
+    MenuPriority  = 1  # Highest priority in interactive host-selection menu (iter-011)
 
     # Binary detection
     Binary           = 'claude'

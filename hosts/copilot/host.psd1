@@ -4,6 +4,7 @@
     DisplayName   = 'GitHub Copilot CLI'
     Status        = 'supported'
     SchemaVersion = 1
+    MenuPriority  = 3  # Interactive host-selection menu priority (iter-011). Note: `--host` flag non-interactive default REMAINS `copilot` (specrew-start.ps1) for predictability in CI/automation.
 
     # Binary detection
     Binary           = 'copilot'

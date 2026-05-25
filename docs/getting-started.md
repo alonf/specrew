@@ -31,11 +31,16 @@ If any are missing:
 
 #### Pick at least one host CLI
 
-Specrew needs one of the supported **agent host CLIs** to actually run a lifecycle session. As of v0.27.0 there are four supported hosts — install at least one. You select which one at launch time via `specrew start --host <kind>` (default: `copilot`); without `--host` Specrew shows an interactive numbered menu of installed hosts (plus an "(not installed)" group with install URLs for the rest).
+Specrew needs one of the supported **agent host CLIs** to actually run a lifecycle session. As of v0.27.0 there are four supported hosts — install at least one. You select which one at launch time via `specrew start --host <kind>`. **Two defaults to keep in mind:**
+
+- **`--host` flag default (non-interactive / CI / automation)**: `copilot` — most-tested host, predictable for headless runs
+- **Interactive menu default (TTY, multiple installed hosts)**: highest-priority installed host in the order **Claude → Codex → Copilot → Antigravity**. The interactive menu shows installed hosts in priority order; `[default 1]` selects the highest-priority one
+
+When `--host` is omitted in interactive mode, Specrew shows a numbered menu of installed hosts (plus an "(not installed)" group with install URLs).
 
 | Host | `--host` value | CLI binary | Install URL | Notes |
 |---|---|---|---|---|
-| **GitHub Copilot** *(default)* | `copilot` | `copilot` | [docs.github.com/en/copilot/how-tos/copilot-cli](https://docs.github.com/en/copilot/how-tos/copilot-cli) | Most-tested host; default if `--host` is omitted |
+| **GitHub Copilot** *(`--host` flag default)* | `copilot` | `copilot` | [docs.github.com/en/copilot/how-tos/copilot-cli](https://docs.github.com/en/copilot/how-tos/copilot-cli) | Most-tested host; the `--host` flag falls back to `copilot` in non-interactive contexts. Interactive menu priority: 3 of 4 |
 | **Claude Code** | `claude` | `claude` | [docs.anthropic.com/en/docs/claude-code/installation](https://docs.anthropic.com/en/docs/claude-code/installation) | Headless `claude -p` invocation; rich subagent + hook surface (see [Proposal 105](../proposals/105-host-native-hook-deployment.md) for the hook-deployment follow-up) |
 | **Codex CLI** | `codex` | `codex` | [developers.openai.com/codex/cli](https://developers.openai.com/codex/cli) | `codex exec --cd` invocation; no user-defined slash commands so the Crew uses pwsh-form boundary-advance instructions instead |
 | **Antigravity** | `antigravity` | `agy` | [antigravity.google](https://antigravity.google/) | `agy -i <prompt> --add-dir <path>` invocation; `--dangerously-skip-permissions` maps from `--allow-all`. Graduated from deferred to supported in v0.27.0 (F-044 iter-005) |
@@ -69,7 +74,7 @@ specrew init
 
 ### 4. Start the first feature
 
-Pick the host at launch time via `--host`. The default (no flag) is `copilot`:
+Pick the host at launch time via `--host`. The non-interactive default (no flag, no TTY) is `copilot`; the interactive-menu default is the highest-priority installed host (Claude → Codex → Copilot → Antigravity):
 
 ```powershell
 # Default: GitHub Copilot host

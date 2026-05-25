@@ -27,11 +27,24 @@ $registered = @(Get-RegisteredHostKinds)
 if ($registered.Count -ne 4) {
     Write-Fail "Expected 4 registered hosts; got $($registered.Count): $($registered -join ',')"
 }
-$expectedKinds = @('antigravity', 'claude', 'codex', 'copilot')   # sorted by Get-RegisteredHostKinds
+$expectedKinds = @('claude', 'codex', 'copilot', 'antigravity')   # iter-011: priority-sorted (MenuPriority 1, 2, 3, 4)
 if (($registered -join ',') -ne ($expectedKinds -join ',')) {
     Write-Fail "Registered host kinds drift. Got: $($registered -join ','). Expected: $($expectedKinds -join ',')"
 }
-Write-Pass "Registry discovers all 4 host packages (copilot, claude, codex, antigravity)"
+Write-Pass "Registry discovers all 4 host packages in MenuPriority order (claude, codex, copilot, antigravity)"
+
+# Test 1b (iter-011): every supported host declares a MenuPriority field
+$expectedPriorities = @{ claude = 1; codex = 2; copilot = 3; antigravity = 4 }
+foreach ($kind in $expectedPriorities.Keys) {
+    $manifest = Get-HostManifest -Kind $kind
+    if (-not $manifest.ContainsKey('MenuPriority')) {
+        Write-Fail "Host '$kind' manifest is missing required MenuPriority field (iter-011)."
+    }
+    if ([int]$manifest.MenuPriority -ne $expectedPriorities[$kind]) {
+        Write-Fail "Host '$kind' MenuPriority is $($manifest.MenuPriority); expected $($expectedPriorities[$kind])."
+    }
+}
+Write-Pass "All 4 hosts declare correct MenuPriority (claude=1, codex=2, copilot=3, antigravity=4)"
 
 # Test 2: every registered host has a valid manifest
 foreach ($kind in $registered) {

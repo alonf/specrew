@@ -4,6 +4,7 @@
     DisplayName   = 'OpenAI Codex CLI'
     Status        = 'supported'
     SchemaVersion = 1
+    MenuPriority  = 2  # Interactive host-selection menu priority (iter-011)
 
     # Binary detection
     Binary           = 'codex'
