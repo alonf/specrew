@@ -18536,3 +18536,28 @@ User explicitly authorized retro-boundary entry for Feature 039 Iteration 001. T
 - **Rationale**: Delegated lifecycle routing was applied for role 'Retro Facilitator'.
 
 - **Routing Evidence**: Retro Facilitator | requested=copilot | actual=codex | model=gpt-5.2-codex | status=fell-back | fallback=preferred agent 'copilot' is not enabled
+
+## 2026-05-25T18:04:50Z — Boundary sync: review-signoff
+
+- **Boundary Type**: review-signoff
+- **Feature Ref**: 045-v0271-bugfix-bundle
+- **Iteration Number**: (none)
+- **Task ID**: (none)
+- **Auth Commit Hash**: 040a02cb2df0bac829095ce8fd9e391a2a81645c
+- **Recorded At**: 2026-05-25T18:04:49Z
+
+## 2026-05-25T18:05:46Z — Boundary sync warning: review-signoff
+
+- **Boundary Type**: review-signoff
+- **Latest Recorded Boundary**: review-signoff
+- **Recorded At**: 2026-05-25T18:05:46Z
+- **Warning**: Expected next boundary 'retro' but received 'review-signoff'.
+
+## 2026-05-25T18:05:47Z — Boundary sync: review-signoff
+
+- **Boundary Type**: review-signoff
+- **Feature Ref**: 045-v0271-bugfix-bundle
+- **Iteration Number**: 002
+- **Task ID**: (none)
+- **Auth Commit Hash**: 040a02cb2df0bac829095ce8fd9e391a2a81645c
+- **Recorded At**: 2026-05-25T18:05:47Z

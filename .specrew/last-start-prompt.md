@@ -1,13 +1,14 @@
 ---
-baseline_commit_hash: c515b67b27d37047e143ecaf7adab1eca5e3af98
+baseline_commit_hash: 040a02cb2df0bac829095ce8fd9e391a2a81645c
+updated_at: 2026-05-25T18:05:47Z
 session_state_active: true
-session_state_boundary: before-implement
+session_state_boundary: review-signoff
 session_state_feature: 045-v0271-bugfix-bundle
-session_state_feature_path: C:\Dev\Specrew\specs\045-v0271-bugfix-bundle
+session_state_feature_path: "C:\Dev\Specrew\specs\045-v0271-bugfix-bundle"
 session_state_iteration: 002
-session_state_task: (none)
-session_state_auth_commit: d01845bcef172322ae506e5bfe59ea3c4ae1d771
-session_state_recorded_at: 2026-05-25T17:02:06Z
+session_state_task: "(none)"
+session_state_auth_commit: 040a02cb2df0bac829095ce8fd9e391a2a81645c
+session_state_recorded_at: 2026-05-25T18:05:47Z
 ---
 
 You are the Crew team coordinator running inside a Specrew-bootstrapped repository.
