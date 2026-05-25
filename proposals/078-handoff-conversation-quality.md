@@ -43,11 +43,19 @@ Generalize F-014's scope from "three primary approval handoffs" to "every Squad 
 - signoff→retro
 - retro→iteration-closeout
 - iteration-closeout→feature-closeout
+- **feature-closeout normal path (added 2026-05-26)** — HANDOFF must emit push + PR + Copilot review + merge as `HUMAN ACTION NEEDED` per the PR-at-feature-close SDLC pattern (memory `[[feedback-pr-at-feature-close-sdlc]]`). Not just "approve to advance the boundary." Empirical motivation: 2026-05-26 F-046 Antigravity emitted feature-closeout handoff with "Review the dashboard and findings" as the only human action — no awareness of the PR cycle, missing the entire SDLC pattern. F-045 Codex at the same gate correctly emitted the push/PR/merge sequence. Host-inconsistency in operational awareness is itself a Pillar 1 gap.
 - feature-closeout (when blocked)
 - **feature-merged-to-main → next-slice-authorization** (post-merge completion state — added 2026-05-21)
 - Mid-implementation clarify questions (already partially covered)
 - Conditional pause from F-011 on session resume
 - **Any voluntary pause-to-report state** — when the Crew completes work and reports back, even if no formal lifecycle gate fired (e.g., scribe-agent completion, validator-warning surfacing, "I'm done with what you asked, what next?")
+- **Operational waits (added 2026-05-26)** — when the agent is waiting on a long-running tool, background task, polling external state, or another non-lifecycle resource. Four sub-cases, each with required third-section text:
+  - **Background task awaiting completion** (e.g., test runner started in background): "No action needed — I will re-emit when X completes (~N sec/min). You may interrupt with Ctrl+C."
+  - **Synchronous wait the user must trigger** (e.g., manual command in another terminal): "Action required: run `<command>` in another terminal, then type 'done'."
+  - **External-state polling** (e.g., waiting for PR merge, CI completion, file upload): "Polling X every N sec. Will report when status changes. You may interrupt with Ctrl+C."
+  - **Agent self-paused without clear reason** (the worst flavor — agent emits no continuation): this is the failure mode this pillar prevents; should never occur if rules above are honored.
+
+Empirical motivation for operational-pause taxonomy: 2026-05-26 F-046 Antigravity session emitted "I am pausing to let the updated integration test run" and then continued autonomously after the test completed — agent didn't actually need user input but communicated like it was waiting. The user wasted cycles wondering whether to intervene. Captured in detail at [[f046-operational-pause-gap-2026-05-26]] memory; classification as four sub-cases is the durable resolution.
 
 Every pause must include all three sections:
 
