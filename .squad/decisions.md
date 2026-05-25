@@ -18737,3 +18737,12 @@ User explicitly authorized retro-boundary entry for Feature 039 Iteration 001. T
 - **Rationale**: Delegated lifecycle routing was applied for role 'Reviewer'.
 
 - **Routing Evidence**: Reviewer | requested=claude | actual=copilot | model=(platform default) | status=fell-back | fallback=preferred agent 'claude' is not enabled
+
+## 2026-05-25T19:12:50Z — Boundary sync: feature-closeout
+
+- **Boundary Type**: feature-closeout
+- **Feature Ref**: 045-v0271-bugfix-bundle
+- **Iteration Number**: (none)
+- **Task ID**: (none)
+- **Auth Commit Hash**: 6ed9a2f64bb6d552940ccd97645856815305dbe5
+- **Recorded At**: 2026-05-25T19:12:50Z

@@ -242,20 +242,20 @@
     ]
   },
   "session_state": {
-    "active": true,
-    "boundary_type": "iteration-closeout",
+    "active": false,
+    "boundary_type": "feature-closeout",
     "feature_ref": "045-v0271-bugfix-bundle",
     "feature_path": "C:\\Dev\\Specrew\\specs\\045-v0271-bugfix-bundle",
     "iteration_number": null,
     "task_id": null,
-    "auth_commit_hash": "9ca2b19f614e7b1c310543162f1d37675afab090",
-    "recorded_at": "2026-05-25T18:56:59Z"
+    "auth_commit_hash": "6ed9a2f64bb6d552940ccd97645856815305dbe5",
+    "recorded_at": "2026-05-25T19:12:50Z"
   },
   "recovery_session": null,
   "squad_model_overrides": {},
   "prompt_path": "C:\\Dev\\Specrew\\.specrew\\last-start-prompt.md",
   "summary_path": "C:\\Dev\\Specrew\\.specrew\\start-summary.md",
-  "generated_at_utc": "2026-05-25T19:00:31.6073483Z",
+  "generated_at_utc": "2026-05-25T19:12:50Z",
   "selected_host": "claude",
   "available_hosts": {
     "claude": true,
@@ -267,7 +267,7 @@
   "host_resolution": "last-selected",
   "boundary_enforcement": {
     "enabled": true,
-    "last_authorized_boundary": "iteration-closeout",
+    "last_authorized_boundary": "feature-closeout",
     "pending_next_boundary": null,
     "verdict_history": [
       {
@@ -309,6 +309,14 @@
         "authorizing_human": "Alon Fliess",
         "recorded_at": "2026-05-25T19:00:15Z",
         "auth_commit_hash": "9ca2b19f614e7b1c310543162f1d37675afab090"
+      },
+      {
+        "from_boundary": "iteration-closeout",
+        "to_boundary": "feature-closeout",
+        "verdict_text": "approved for feature-closeout",
+        "authorizing_human": "Alon Fliess",
+        "recorded_at": "2026-05-25T19:13:03Z",
+        "auth_commit_hash": "6ed9a2f64bb6d552940ccd97645856815305dbe5"
       }
     ],
     "bypass_history": []
