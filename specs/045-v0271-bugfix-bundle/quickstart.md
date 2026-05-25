@@ -39,7 +39,7 @@ Expected answers:
 - Rerun `specrew init` when release notes mention runtime/extension/template/skill-catalog changes, when `.specify/extensions/specrew-speckit/` is missing or stale, when `/specrew-*` skills are missing, or when `specrew start` reports a missing skill-catalog/runtime deployment gap.
 - `specrew init -Force` intentionally refreshes managed Specrew project surfaces, but it does not approve lifecycle gates or bypass brownfield conflict checks.
 
-## 5) Produce Phase 1 mechanical + quality evidence artifacts
+## 5) Produce iteration 002 mechanical + quality evidence artifacts
 
 ```powershell
 pwsh -NoProfile -File .specify/extensions/specrew-speckit/scripts/run-mechanical-checks.ps1 -ProjectPath C:/Dev/Specrew -IterationPath specs/045-v0271-bugfix-bundle/iterations/002

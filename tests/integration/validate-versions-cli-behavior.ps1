@@ -64,12 +64,19 @@ function Invoke-SpecrewCli {
         [string[]]$ArgumentList = @()
     )
 
-    $output = @(
-        & pwsh -NoProfile -ExecutionPolicy Bypass -File $ScriptPath @ArgumentList 2>&1
-    )
+    Push-Location -LiteralPath $WorkingDirectory
+    try {
+        $output = @(
+            & pwsh -NoProfile -ExecutionPolicy Bypass -File $ScriptPath @ArgumentList 2>&1
+        )
+        $exitCode = $LASTEXITCODE
+    }
+    finally {
+        Pop-Location
+    }
 
     return [pscustomobject]@{
-        ExitCode = $LASTEXITCODE
+        ExitCode = $exitCode
         Output   = @($output | ForEach-Object { [string]$_ })
         Text     = (@($output | ForEach-Object { [string]$_ }) -join [Environment]::NewLine)
     }
@@ -240,18 +247,14 @@ exit /b 9
     $nonProjectRoot = Join-Path $scratchRoot 'non-project'
     $null = New-Item -Path $nonProjectRoot -ItemType Directory -Force
 
-    Push-Location $nonProjectRoot
-    try {
-        $canonicalVersion = Invoke-SpecrewCli -ScriptPath $specrewScript -WorkingDirectory $nonProjectRoot -ArgumentList @('version')
-        $longAliasVersion = Invoke-SpecrewCli -ScriptPath $specrewScript -WorkingDirectory $nonProjectRoot -ArgumentList @('--version')
-        $shortAliasVersion = Invoke-SpecrewCli -ScriptPath $specrewScript -WorkingDirectory $nonProjectRoot -ArgumentList @('-v')
-        $canonicalVersionWithProjectPath = Invoke-SpecrewCli -ScriptPath $specrewScript -WorkingDirectory $nonProjectRoot -ArgumentList @('version', '--project-path', $nonProjectRoot)
-        $longAliasVersionWithProjectPath = Invoke-SpecrewCli -ScriptPath $specrewScript -WorkingDirectory $nonProjectRoot -ArgumentList @('--version', '--project-path', $nonProjectRoot)
-        $shortAliasVersionWithProjectPath = Invoke-SpecrewCli -ScriptPath $specrewScript -WorkingDirectory $nonProjectRoot -ArgumentList @('-v', '--project-path', $nonProjectRoot)
-    }
-    finally {
-        Pop-Location
-    }
+    # Invoke-SpecrewCli scopes each call to -WorkingDirectory internally, so no
+    # caller-level Push-Location is required to exercise the non-project context.
+    $canonicalVersion = Invoke-SpecrewCli -ScriptPath $specrewScript -WorkingDirectory $nonProjectRoot -ArgumentList @('version')
+    $longAliasVersion = Invoke-SpecrewCli -ScriptPath $specrewScript -WorkingDirectory $nonProjectRoot -ArgumentList @('--version')
+    $shortAliasVersion = Invoke-SpecrewCli -ScriptPath $specrewScript -WorkingDirectory $nonProjectRoot -ArgumentList @('-v')
+    $canonicalVersionWithProjectPath = Invoke-SpecrewCli -ScriptPath $specrewScript -WorkingDirectory $nonProjectRoot -ArgumentList @('version', '--project-path', $nonProjectRoot)
+    $longAliasVersionWithProjectPath = Invoke-SpecrewCli -ScriptPath $specrewScript -WorkingDirectory $nonProjectRoot -ArgumentList @('--version', '--project-path', $nonProjectRoot)
+    $shortAliasVersionWithProjectPath = Invoke-SpecrewCli -ScriptPath $specrewScript -WorkingDirectory $nonProjectRoot -ArgumentList @('-v', '--project-path', $nonProjectRoot)
 
     if ($canonicalVersion.ExitCode -ne 0) {
         Write-Fail ("Canonical 'specrew version' should succeed outside a project:`n{0}" -f $canonicalVersion.Text)
