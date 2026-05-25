@@ -1,10 +1,11 @@
 ---
 proposal: 075
 title: Specrew Update Artifact Backfill Discipline
-status: candidate
+status: draft
+priority: high
 phase: phase-2
 estimated-sp: 10-15
-discussion: tbd
+discussion: promoted candidate → draft + priority:high on 2026-05-25 — empirical motivation expanded by F-044 closeout dashboard-backfill cleanup (10 closed iterations missing `dashboard.md` because their closeouts were orchestrated by a non-Specrew session that bypassed the `sync-boundary-state.ps1` auto-render trigger). Pattern recurs for any project where non-Specrew sessions produce Specrew-shaped artifacts (multi-host expansion makes this universal). User direction "do we need a process that auto-fixes it" answered: Yes — Proposal 075 IS that process; promote and ship.
 ---
 
 # Specrew Update Artifact Backfill Discipline

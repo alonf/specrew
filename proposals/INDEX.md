@@ -44,7 +44,7 @@ Proposals whose features have shipped to main and are part of Specrew's current 
 | [046](046-auto-render-dashboard-at-closeout.md) | Auto-Render Dashboard at Iteration & Feature Closeout — auto-render slice ONLY (boundary-sync writes `iterations/<NNN>/dashboard.md` + `closeout-dashboard.md`); roadmap-aware drill-down + trap-reapplication summary + cross-iteration diff remain candidate | fix-bundle `162bcdb9` (v0.26.0 — partially-shipped) | phase-2 | 2 (shipped slice) |
 | [057](057-roadmap-spine-input-adapter-pattern.md) | Roadmap Spine + Input Adapter Pattern — stub-bootstrap slice ONLY (`specrew init` writes minimal `.specrew/roadmap.yml`); full input-adapter system (manual / GitHub Issues / Linear / etc.) remains candidate | fix-bundle `162bcdb9` (v0.26.0 — partially-shipped) | phase-3 | 1 (shipped slice) |
 
-## Draft (15)
+## Draft (16)
 
 Proposals with full source-spec content, ready for `/speckit.specify` ingestion when prioritized.
 
@@ -66,8 +66,9 @@ Proposals with full source-spec content, ready for `/speckit.specify` ingestion 
 | [068](068-cost-aware-model-routing.md) | Cost-Aware Model Routing with Agent-Discovered Model Catalog | phase-2 | 6-8 | **URGENT — 10-day Copilot pricing deadline.** Discovery skill (`/specrew-research-models`) writes `.specrew/model-catalog.yml`; coordinator-governance routes Junior/Implementer tasks to cheap models, Senior/Reviewer to strong; `cost_profile: lean` in `.specrew/config.yml`. Slice of Proposal 040; precedes full Multi-Host CORE (024). Agent-driven discovery — no hardcoded model names. |
 | [070](070-token-economy-mvp.md) | Token Economy MVP (Cost-per-Iteration Tracking + Dashboard Surfacing) | phase-2 | 5 | **URGENT — cost-reduction bundle.** `specs/<feature>/iterations/<N>/cost.yml` records per-boundary token consumption + cost estimate from Proposal 068's catalog; `specrew where` dashboard gains COST section; `specrew cost summary/add/recompute` CLI. MVP slice of Proposal 040 (Token Economy as Governance Driver) — measurement only, no governance layer. |
 | [074](074-code-commentary-standards.md) | Code Commentary Standards (Multi-Level Convention + Preference Dial) | phase-2 | 12-15 | Replaces the current "default to no comments" Implementer instruction with a four-category taxonomy (contract / why-rationale / concept / inline narration), a four-level preference dial (`minimalist` / `standard` / `educational` / `textbook`), and a language-idiomatic convention catalog (C# XML doc, JSDoc, docstring, Javadoc, godoc, rustdoc, PowerShell comment-based help, etc.). Reviewer agent gains a contract-docs verification check. Empirical motivation: 2026-05-21 smoke trial produced a complete .NET 8 snake-game solution with **zero XML doc comments on public APIs** — IntelliSense silently empty. Composes with Proposals 047 / 052 / 015 (dials, profiles, expertise). |
+| [075](075-update-artifact-backfill-discipline.md) | Specrew Update Artifact Backfill Discipline | phase-2 | 10-15 | **HIGH PRIORITY** — promoted candidate → draft 2026-05-25. Sanctioned auto-fix mechanism for missing iteration artifacts (dashboard.md, review-diagrams.md, code-map.md, etc.) when iterations were closed outside Specrew runtime OR predate the artifact's introduction. Empirical motivation: 2026-05-25 F-044 closeout cleanup — 10 closed iterations missing dashboard.md because the original closeouts were orchestrated by a non-Specrew session bypassing the `sync-boundary-state.ps1` auto-render trigger. Pattern is universal across multi-host expansion. Composes with Proposal 030 (form-vs-meaning) and Proposal 067 (small-fix slice). |
 
-## Candidate (76)
+## Candidate (75)
 
 Idea-form proposals not yet developed into full source specs. Open for discussion; may mature to draft or be withdrawn.
 
@@ -116,7 +117,6 @@ Idea-form proposals not yet developed into full source specs. Open for discussio
 | [061](061-init-update-convergence-test.md) | Init/Update Convergence Test (Frozen-Snapshot Replay) | phase-2 | 13 |
 | [062](062-dependency-metadata-reason-propagation.md) | Dependency Metadata + Reason Mapping + Impact-Analysis Propagation | phase-2 | 18 |
 | [071](071-vscode-copilot-chat-host.md) | VS Code Copilot Chat as a First-Class Specrew Host | phase-2 | 10-12 |
-| [075](075-update-artifact-backfill-discipline.md) | Specrew Update Artifact Backfill Discipline | phase-2 | 10-15 |
 | [077](077-session-resume-ux.md) | Session Resume UX for Downstream Specrew Users | phase-2 | 10-15 |
 | [078](078-handoff-conversation-quality.md) | Handoff Conversation Quality at All Boundary Stops | phase-2 | 10-15 |
 | [080](080-specrew-file-reference.md) | Specrew File Reference (Lifecycle Catalog for All Specrew-Managed Files) | phase-2 | 10-15 |
