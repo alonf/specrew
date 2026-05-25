@@ -1,16 +1,36 @@
 ---
-baseline_commit_hash: ebffb87b870d7f8d30b593c6bd77bd45239ea23a
-updated_at: 2026-05-25T18:36:32Z
+baseline_commit_hash: cf0372a24d79e574e567a69091efa7090bc1dbbf
 session_state_active: true
 session_state_boundary: retro
 session_state_feature: 045-v0271-bugfix-bundle
-session_state_feature_path: "C:\Dev\Specrew\specs\045-v0271-bugfix-bundle"
+session_state_feature_path: C:\Dev\Specrew\specs\045-v0271-bugfix-bundle
 session_state_iteration: 002
-session_state_task: "(none)"
+session_state_task: (none)
 session_state_auth_commit: ebffb87b870d7f8d30b593c6bd77bd45239ea23a
 session_state_recorded_at: 2026-05-25T18:36:32Z
 ---
 
+## Post-Restart Directive
+
+Recovery choice A selected: re-anchor to the last known feature, inspect the stale-state evidence, and continue with an explicit repair or resume plan.
+
+## Recovery Mode
+
+- Entry mode: detected-stale-state
+- Selected choice: A
+- Bypass stale-state gate: False
+- Approval behavior changed: False
+- Next action: Recovery will re-anchor to 'C:\Dev\Specrew\specs\045-v0271-bugfix-bundle' so you can repair or continue the last known feature state.
+
+### Recovery Reasons
+
+- Late boundary sync mismatch: review.md is accepted in iteration 002, but the recorded boundary is 'retro' instead of review-signoff or later.
+
+### Available Recovery Choices
+
+- A
+- B
+- C
 You are the Crew team coordinator running inside a Specrew-bootstrapped repository.
 
 Project root: C:\Dev\Specrew
@@ -24,10 +44,10 @@ User feature request: (not provided yet; gather or confirm during intake)
 - Active feature: 045-v0271-bugfix-bundle
 - Feature path: C:\Dev\Specrew\specs\045-v0271-bugfix-bundle
 - Worktree: C:\Dev\Specrew
-- Current boundary: before-implement
+- Current boundary: retro
 - Current task: (none)
 - Last completed task: (none)
-- Last completed boundary: d01845bcef172322ae506e5bfe59ea3c4ae1d771 at 2026-05-25T17:02:06Z
+- Last completed boundary: ebffb87b870d7f8d30b593c6bd77bd45239ea23a at 2026-05-25T18:36:32Z
 - Task progress: 0 complete, 0 in-progress, 16 pending, 0 blocked
 - Pending: T002, T016, T017
 - Validator state: no recorded warnings
@@ -35,6 +55,24 @@ User feature request: (not provided yet; gather or confirm during intake)
 ### Suggested Next Actions
 
 - Start T002 — Create iteration 002 traceability matrix mapping US1-US3 to FR-001..FR-008 and SC-001..SC-006
+
+## Recovery Mode
+
+- Entry mode: detected-stale-state
+- Selected choice: A
+- Bypass stale-state gate: False
+- Approval behavior changed: False
+- Next action: Recovery will re-anchor to 'C:\Dev\Specrew\specs\045-v0271-bugfix-bundle' so you can repair or continue the last known feature state.
+
+### Recovery Reasons
+
+- Late boundary sync mismatch: review.md is accepted in iteration 002, but the recorded boundary is 'retro' instead of review-signoff or later.
+
+### Available Recovery Choices
+
+- A
+- B
+- C
 
 Operational Specrew roster snapshot:
 
@@ -60,12 +98,12 @@ Implementation readiness hints:
 
 Effective delegated agent routing plan:
 
-- Enabled agents: codex
-- Implementer -> codex (preferred: copilot; access path: copilot_agent_hq; fallback: preferred agent 'copilot' is not enabled)
-- Spec Steward -> codex (preferred: codex; access path: copilot_agent_hq)
-- Planner -> codex (preferred: claude; access path: copilot_agent_hq; fallback: preferred agent 'claude' is not enabled)
-- Reviewer -> codex (preferred: claude; access path: copilot_agent_hq; fallback: preferred agent 'claude' is not enabled)
-- Retro Facilitator -> codex (preferred: copilot; access path: copilot_agent_hq; fallback: preferred agent 'copilot' is not enabled)
+- Enabled agents: claude
+- Implementer -> claude (preferred: copilot; access path: copilot_agent_hq; fallback: preferred agent 'copilot' is not enabled)
+- Spec Steward -> claude (preferred: codex; access path: copilot_agent_hq; fallback: preferred agent 'codex' is not enabled)
+- Planner -> claude (preferred: claude; access path: copilot_agent_hq)
+- Reviewer -> claude (preferred: claude; access path: copilot_agent_hq)
+- Retro Facilitator -> claude (preferred: copilot; access path: copilot_agent_hq; fallback: preferred agent 'copilot' is not enabled)
 - Start-time fallback events were detected; preserve them in lifecycle logging if they recur.
 
 ## Lifecycle Quick Reference
