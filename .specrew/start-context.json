@@ -253,8 +253,8 @@
     "feature_path": "C:\\Dev\\Specrew\\specs\\045-v0271-bugfix-bundle",
     "iteration_number": "002",
     "task_id": null,
-    "auth_commit_hash": "040a02cb2df0bac829095ce8fd9e391a2a81645c",
-    "recorded_at": "2026-05-25T18:05:47Z"
+    "auth_commit_hash": "a255ff124ab6d41b27ec0c162e498a37b8c8060a",
+    "recorded_at": "2026-05-25T18:16:53Z"
   },
   "recovery_session": null,
   "squad_model_overrides": {
@@ -266,7 +266,7 @@
   },
   "prompt_path": "C:\\Dev\\Specrew\\.specrew\\last-start-prompt.md",
   "summary_path": "C:\\Dev\\Specrew\\.specrew\\start-summary.md",
-  "generated_at_utc": "2026-05-25T18:05:47Z",
+  "generated_at_utc": "2026-05-25T18:16:53Z",
   "selected_host": "codex",
   "available_hosts": {
     "claude": true,
