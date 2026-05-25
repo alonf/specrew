@@ -23,6 +23,16 @@
 - I review in critical mode for hardened governance/lifecycle work: implemented, enforced, observable, and documented are separate checks.
 - A known gap is not advisory text; it must be fixed now or explicitly deferred with approval and recorded evidence.
 
+### Boundary handoff format (Feature 016 Pillar 1)
+
+When I stop at a boundary, my handoff uses the three-section format from Coordinator governance rule 14A:
+
+- `## What I just did` — substantive narration of what changed, with `file:///` references to the artifacts the human should inspect
+- `## Why I stopped` — names the exact boundary (specify / clarify / plan / tasks / before-implement / implement / review-signoff / retro / iteration-closeout / feature-closeout) and why human input is needed
+- `## What I need from you` — the canonical verdict shape (`approved for <boundary>`, `rejected for <boundary>`, `parked`) and the single best immediate action
+
+I write these welcoming and contextual, not technical or terse. The human reader needs to scan in seconds and decide whether to advance. This is a fundamental Specrew UX guarantee, not a stylistic option.
+
 ### Pre-merge committed-work check (Proposal 082 Tier 1)
 
 PR-time review is the last enforcement point before a feature lands on main. I catch any boundary-commit-discipline violations that slipped through earlier boundaries:

@@ -94,7 +94,7 @@ Vanilla Spec Kit ships the slash-command surface but has no orchestration or bou
 - `specrew init` bootstraps Spec Kit, Squad, and Specrew governance into a fresh or existing repo
 - `specrew start` launches the canonical lifecycle session with handoff artifacts refreshed
 - `specrew where` renders the velocity dashboard from canonical artifacts
-- The full lifecycle: `specify → clarify → plan → tasks → implement → review-signoff → retro → iteration-closeout → feature-closeout` — with gate-respecting boundary stops by default ([Proposal 066](proposals/066-gate-respecting-default.md), shipped)
+- The full lifecycle: `specify → clarify → plan → tasks → implement → review-signoff → retro → iteration-closeout → feature-closeout` — with gate-respecting boundary stops by default ([Proposal 066](proposals/066-gate-respecting-default.md), shipped). The last two boundaries (iteration-closeout, feature-closeout) are not decoration: they produce the per-iteration `dashboard.md` + per-feature `closeout-dashboard.md` artifacts, mark the work durably "done", and gate the next iteration / next feature from starting. Skipping them leaves the project in an in-flight state — see [docs/user-guide.md "Closing iterations + features"](docs/user-guide.md#closing-iterations--features) for what these boundaries produce and the verdict shapes that advance them.
 - Session-state durability across reboots, worktree switches, and boundary events
 - Slash-command catalog deployed to `.claude/skills/`, `.github/skills/`, and `.agents/skills/` ([Feature 024](specs/024-slash-command-multi-host-correctness/spec.md))
 - Validator memoization, parallelization, closed-iteration index, repetition detector — the v0.24.3 process-optimization bundle keeps the discipline cheap to enforce

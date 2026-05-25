@@ -94,6 +94,17 @@ When the Crew surfaces a clarify question, answer it. When it surfaces a plannin
 
 > **Switching hosts on the same project** is supported: end the session and restart `specrew start --host <other>`. Mid-session switching requires you to end and restart — by design. (Concurrent multi-host execution is Scenario B of [Proposal 024](../proposals/024-multi-host-runtime-abstraction.md), not in F-040's scope.)
 
+### 5. Close the iteration (and the feature)
+
+The lifecycle does not end at `implement`. Two more boundaries finish the work:
+
+- **`iteration-closeout`** — after the Crew passes review-signoff and writes `retro.md`, you approve the iteration close. Boundary-sync generates `specs/<feature>/iterations/<NNN>/dashboard.md` (per-iteration snapshot: variance, drift count, FR scoreboard) and appends the iteration to `.specrew/closed-iteration-index.yml`. Verdict shape: `approved for iteration-closeout`.
+- **`feature-closeout`** — after the final iteration of a feature is closed, you approve the feature close. Boundary-sync generates `specs/<feature>/closeout-dashboard.md` (cross-iteration FR scoreboard + velocity + delivery summary) and marks the feature complete. Verdict shape: `approved for feature-closeout`.
+
+**Why this matters**: these two boundaries are what mark the work durably "done". Until you authorize them, the feature is **in flight** — `specrew where` will list it as active, and starting a new `specrew start "<other feature>"` will resume the in-flight feature instead of starting fresh. The artifacts produced at closeout (dashboard.md per iteration + closeout-dashboard.md per feature) are also the canonical input that future iterations and features read for velocity calibration. Skipping closeout silently degrades both your project's state-tracking and Specrew's own estimation accuracy.
+
+> If you only want to take a break (not finish), close your terminal — Specrew preserves session state in `.specrew/start-context.json`. The next `specrew start` resumes at the same boundary. Closeout is the explicit "this is done" gate, not the "I'm pausing" gate.
+
 That is the full minimal flow. Everything else on this page is optional — covered in the sections below.
 
 ---

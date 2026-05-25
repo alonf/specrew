@@ -69,6 +69,247 @@ The `--reason` flag is **mandatory**. Session-scoped (not per-boundary) — one 
 - Both: gates still fire; turns advance without input but every boundary surfaces a directive
 - `--bypass-boundary-enforcement`: suspends gates; `--autonomous` still controls turn advancement
 
+## What you'll see at every boundary
+
+Every time the Crew stops at a boundary, the console shows a **three-section handoff** in this exact shape:
+
+```text
+## What I just did
+
+[Substantive narration of what changed — features advanced, artifacts written, tests run, decisions
+ captured. Numeric references are paired with plain-language scope phrases (`FR-007, the sin/cos
+ extension`). The committed-evidence reference (commit SHA range) appears here too.]
+
+## Why I stopped
+
+I stopped at the <boundary> boundary because <reason the next step needs you>.
+
+## What I need from you
+
+[The single best immediate action. Review targets are linked via `file:///` URIs so you can click
+ through to the artifact. Names the canonical verdict shape you should type.]
+```
+
+The three sections are not stylistic — they are a methodology guarantee from Feature 016 (Substantive Interaction Model, Pillar 1). The format lets you scan a handoff in seconds and decide whether to advance, even when you have been away from the session.
+
+**What to do**:
+
+1. Read all three sections. The flow is intentional: what happened → why you matter now → what to type.
+2. Open any `file:///` link the Crew shows you in `What I need from you` — those are the artifacts the verdict applies to.
+3. Type one of the canonical verdict shapes from the "Recognized verdict shapes" section above. Ambiguous prose (`looks good`, `continue`) is rejected and re-prompted.
+
+**If you see a handoff that doesn't follow this format** — for example, a bare technical status line, a pile of tool output, or a question without context — that is a methodology regression. Re-prompt the Crew with `please use the three-section boundary handoff format` and the Crew should regenerate the handoff. If it persists across hosts (Copilot / Claude / Codex / Antigravity), open an issue — the canonical templates govern this UX promise.
+
+> Mid-task progress updates are NOT three-section handoffs. When the Crew is still actively working (writing a file, running a test, waiting on a background process), it uses single-line prose without the user-action section. The three-section format is reserved for boundary stops where you are the immediate blocker.
+
+## Closing iterations + features
+
+The lifecycle does not end at `implement`. Two more boundaries close the work: **iteration-closeout** and **feature-closeout**. They are not ceremonial — they are what produces the final artifacts, marks the work durably "done", and gates the next iteration / next feature from starting.
+
+### Iteration-closeout
+
+Fires after the Crew passes review-signoff and writes `retro.md`. Your verdict (`approved for iteration-closeout`) triggers `Invoke-SpecrewBoundaryStateSync -BoundaryType iteration-closeout`, which:
+
+1. **Generates `specs/<feature>/iterations/<NNN>/dashboard.md`** — per-iteration snapshot with task verdicts, phase variance, drift summary, FR scoreboard, velocity.
+2. **Appends the iteration to `.specrew/closed-iteration-index.yml`** — the closed-iteration index is what the validator uses to skip already-finished iterations on later runs (Proposal 085, F-036). Without this entry the validator re-validates the iteration on every future run.
+3. **Updates the feature's iteration `Status` to `complete`** in `iterations/<NNN>/plan.md`.
+4. **Sets `session_state_boundary: iteration-closeout`** in `.specrew/start-context.json` so the next `specrew start` knows the iteration is done.
+
+The next iteration cannot start until this one closes. If you skip iteration-closeout and just start typing about iter-002 work, the Crew will resume the open iter-001 because that is what session-state says is in flight.
+
+### Feature-closeout
+
+Fires after the LAST iteration of a feature is closed. Your verdict (`approved for feature-closeout`) triggers the same sync script with `-BoundaryType feature-closeout`, which:
+
+1. **Generates `specs/<feature>/closeout-dashboard.md`** — cross-iteration FR scoreboard, pillars-delivered table, cross-feature bundle disclosure (if any), velocity snapshot.
+2. **Marks the feature complete** in `.specrew/roadmap.yml` (if the feature appears there).
+3. **Sets `session_state_boundary: feature-closeout`** — the next `specrew start` knows this feature is done and can start a new one.
+
+The next feature cannot start until this one closes. Same mechanic as iteration-closeout: in-flight features stay in flight until you say "done".
+
+### Verdict shapes
+
+The canonical forms (other parser-recognized shapes are listed in the "Boundary Enforcement" section above):
+
+- `approved for iteration-closeout`
+- `approved for feature-closeout`
+- `approved for iteration-closeout AND feature-closeout` — compound, when the closing iteration is also the feature's last iteration
+
+### When you should NOT close
+
+Closeout is the explicit "this is done" gate, not the "I'm pausing" gate.
+
+- If you only want to stop for the day, close the terminal. Session state in `.specrew/start-context.json` resumes you at the same boundary on next `specrew start`.
+- If you discover unfinished work after starting closeout, type `rejected for iteration-closeout` (or `parked`) — the Crew returns to plan, you can add another iteration, and re-attempt close later.
+- If a feature genuinely never finishes (long-running spike, abandoned exploration, deferred-to-rewrite), the methodology stance is still to close — with a feature-closeout artifact that explicitly records the abandonment reason. **Never-closing is not a state Specrew supports**; it pollutes the session-state machinery and the closed-iteration index. Use `rejected for feature-closeout` only if you genuinely intend to continue the feature later.
+
+### What closeout produces, at a glance
+
+| Boundary | Files written | State changes |
+|---|---|---|
+| `iteration-closeout` | `iterations/<NNN>/dashboard.md` | `closed-iteration-index.yml` += this iter; `plan.md` Status = complete |
+| `feature-closeout` | `closeout-dashboard.md` (one per feature, at feature root) | `roadmap.yml` feature status = complete; `start-context.json` session_state_boundary = feature-closeout |
+
+These artifacts are the canonical input for future estimation calibration (velocity reads them) and for any historical reconstruction of "what did this feature ship?". If you skip closeout, you keep the work but lose the index entry, the dashboard rendering, and the calibration data.
+
+## Walkthrough: a two-iteration calculator
+
+A narrative-only worked example showing how a real two-iteration feature flows end-to-end. The first iteration builds the calculator MVP. The second iteration adds scientific functions. Read this once before trying it — it is the shortest path to understanding what Specrew does at each boundary.
+
+### Setup
+
+```powershell
+mkdir C:\Dev\calculator-walkthrough
+cd C:\Dev\calculator-walkthrough
+git init
+specrew init
+```
+
+`specrew init` deploys the governance scaffold, slash-command catalog, and canonical Crew agents to `.specrew/team/agents/`. Same as the Quickstart in [getting-started.md](getting-started.md#3-bootstrap-a-project).
+
+---
+
+### Iteration 1 — Calculator MVP (+ − × ÷ and memory)
+
+#### Start the feature
+
+```powershell
+specrew start "Build a web-based calculator with only the + - * / MR MC M+ M- operations"
+```
+
+Specrew refreshes the runtime handoff, picks the default host (Copilot CLI), and launches with bootstrap context auto-loaded. The Crew (Spec Steward, Planner, Implementer, Reviewer, Retro Facilitator) reads the canonical agents from `.specrew/team/agents/`.
+
+#### Boundary 1: `specify`
+
+The Spec Steward asks for any clarifications it cannot answer from the prompt + repo, then proposes `specs/001-calculator/spec.md` with:
+
+- 6 functional requirements (FR-001 four arithmetic operations / FR-002 memory store/recall/add/subtract / FR-003 input validation / FR-004 division-by-zero handling / FR-005 keyboard support / FR-006 form-submit prevention)
+- 4 acceptance criteria
+- Stack pick: vanilla HTML/CSS/JS (no framework — the prompt is small)
+
+You see a handoff in the console: "Spec ready. What I just did: drafted spec.md with 6 FRs. Why I stopped: spec needs your sign-off before clarify. What I need from you: `approved for specify` to advance."
+
+Type: `approved for specify`.
+
+#### Boundary 2: `clarify`
+
+The Crew surfaces 2 questions: should division-by-zero throw, display `Error`, or display `Infinity`? Should sin/cos/etc. be in scope?
+
+You answer "display `Error`" + "no — out of scope for this iteration".
+
+The Crew commits `specs/001-calculator/clarifications.md` and asks for `approved for clarify`. Type it.
+
+#### Boundary 3: `plan`
+
+The Planner writes `specs/001-calculator/plan.md` with:
+
+- Phase plan: Discovery (0.5) / Implementation (4) / Review (1) / Rework (0.5) = 6 SP
+- File map: `calculator.html` / `calculator.css` / `calculator.js` / `calculator.test.js`
+- Routing policy: standard reasoning class for the implementer
+
+Type: `approved for plan`.
+
+#### Boundary 4: `tasks`
+
+The Planner writes `specs/001-calculator/tasks.md` and the iteration plan `specs/001-calculator/iterations/001/plan.md` with 4-6 tasks bounded by FRs.
+
+Type: `approved for tasks`.
+
+#### Boundary 5: `before-implement`
+
+The Implementer surfaces a short pre-flight: scaffolds will write to these files, here is the testing strategy, here is the validation criterion.
+
+Type: `approved for before-implement`.
+
+#### Implement → Review → Retro
+
+The Implementer writes the four files + 11 unit tests. Tests run; all 11 pass. The Reviewer reads the implementation, runs the validator, writes `iterations/001/review.md` with task verdicts.
+
+Type: `approved for review-signoff`.
+
+The Retro Facilitator writes `iterations/001/retro.md` with Phase Variance, Drift Summary (0 drift events), What Went Well / What Didn't Go Well, Improvement Actions.
+
+Type: `approved for retro`.
+
+#### Boundary 9: `iteration-closeout`
+
+The Crew runs `sync-iteration-closeout`, which generates `iterations/001/dashboard.md` and appends iter-001 to `.specrew/closed-iteration-index.yml`. The Spec Steward summarizes: "iter-001 complete. 6 SP delivered. 11 tests green. 0 drift events. Velocity: 6 SP / 1 day."
+
+Type: `approved for iteration-closeout`.
+
+The Crew now asks: "More iterations on this feature, or feature-closeout?" — this is the **explicit decision point** where you either continue with iter-002 (which we will, below) or end the feature.
+
+---
+
+### Iteration 2 — Scientific functions (sin, cos, atan, sqrt)
+
+You have a working calculator. Now you want to add scientific operations. **This is a NEW iteration of the SAME feature** — the spec scope changes, but the feature identity does not.
+
+#### Re-open the feature
+
+```powershell
+specrew start "Add sin, cos, atan, and sqrt to the calculator"
+```
+
+Specrew sees `session_state_boundary: iteration-closeout` (last state from iter-001) and the same feature 001-calculator still open. Instead of starting a new feature, it offers iter-002 on the existing feature. You accept.
+
+#### Boundary 1: re-`specify` (scope extension)
+
+The Spec Steward re-reads `spec.md` and proposes 4 additional FRs (FR-007 sin / FR-008 cos / FR-009 atan / FR-010 sqrt) and 2 new ACs. It also flags a small drift candidate: the original FR-005 said "keyboard support" — should `s`, `c`, `t`, `r` shortcuts now bind to the new functions? You decide: yes.
+
+Type: `approved for specify`.
+
+#### Boundary 2: `clarify`
+
+The Crew asks: angle mode for trig functions — radians, degrees, or user-toggle? `sqrt` of a negative number — `Error`, `NaN`, or display `i` (imaginary unit)?
+
+You answer: "radians (no toggle in this iter)" + "display `Error` (match div-by-zero handling)".
+
+Type: `approved for clarify`.
+
+#### Boundary 3-4: `plan` + `tasks`
+
+The Planner extends `iterations/002/plan.md` with 3-4 tasks for the 4 new operations + keyboard binding update + 8 new unit tests. Phase plan: Implementation (3) / Review (0.5) / Rework (0.5) = 4 SP.
+
+The Crew notes in `plan.md` Phase Baseline: "Cross-iteration velocity calibration: iter-001 was 6 SP / 1 day. iter-002 estimated at 4 SP." This is what the iter-001 `dashboard.md` made possible.
+
+Type each: `approved for plan`, `approved for tasks`.
+
+#### Implement → Review → Retro
+
+The Implementer adds 4 button handlers + 8 unit tests + updates keyboard event listener. All 19 tests (11 old + 8 new) pass. Reviewer signs off. Retro records the variance: actual 4.5 SP vs estimated 4 SP, +0.5 SP from `sqrt(-1)` edge case requiring an extra unit test.
+
+Type: `approved for review-signoff`, `approved for retro`.
+
+#### Boundary 9: `iteration-closeout`
+
+`iterations/002/dashboard.md` written; iter-002 appended to closed-iteration-index. Velocity now reads as 4.5 SP / 1 day for iter-002, cross-iteration average 5.25 SP/day. Future iterations on this feature will use that figure for calibration.
+
+Type: `approved for iteration-closeout`.
+
+#### Boundary 10: `feature-closeout`
+
+You decide iter-002 is the last iteration of this feature. The Crew runs `sync-feature-closeout`, which:
+
+- Generates `specs/001-calculator/closeout-dashboard.md` with the cross-iteration FR scoreboard (FR-001 through FR-010 all ✅ shipped), Pillars delivered, velocity table (iter-001 6 SP / iter-002 4.5 SP).
+- Marks the feature complete in `.specrew/roadmap.yml`.
+- Sets `session_state_boundary: feature-closeout` in `.specrew/start-context.json`.
+
+Type: `approved for feature-closeout`.
+
+The next `specrew start "<new feature description>"` now starts a fresh feature, because session-state says calculator is done.
+
+---
+
+### What this walkthrough demonstrates
+
+- **The lifecycle has a defined end.** `feature-closeout` is the canonical "this is done" gate. Until you authorize it, the feature is in flight.
+- **Iterations are scoped, not chunked.** Each iteration extends or refines the feature's spec. The spec is the durable artifact; iterations are how you grow it.
+- **Velocity calibration is a closeout side-effect.** `dashboard.md` from iter-001 made iter-002's estimate land more accurately. This compounds — features with many iterations get better calibration over time.
+- **Session-state preserves your place.** Closing the terminal between iter-001 and iter-002 (or in the middle of an iteration) is safe. The next `specrew start` resumes where you left off.
+
+If you want to try the walkthrough yourself, run the commands above against your own machine. The exact wording of Crew handoffs will vary by host (Copilot / Claude / Codex / Antigravity) and by model, but the boundary sequence and the artifacts produced are identical.
+
 ## What's New (v0.24.3 + v0.25.0 release bundle)
 
 The v0.24.3 process-optimization bundle and v0.25.0 boundary-enforcement release together shipped substantial discipline and performance improvements. Headline items:
