@@ -1,6 +1,6 @@
 # Implementation Plan: Specrew v0.27.1 Bug-Fix Bundle
 
-**Branch**: `046-create-spec-branch` | **Date**: 2026-05-25 | **Spec**: `specs/045-v0271-bugfix-bundle/spec.md`  
+**Branch**: `045-v0271-bugfix-bundle` | **Date**: 2026-05-25 | **Spec**: `specs/045-v0271-bugfix-bundle/spec.md`  
 **Input**: Feature specification from `specs/045-v0271-bugfix-bundle/spec.md`
 
 ## Summary

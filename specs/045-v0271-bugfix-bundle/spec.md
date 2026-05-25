@@ -1,6 +1,6 @@
 # Feature Specification: Specrew v0.27.1 Bug-Fix Bundle
 
-**Feature Branch**: `046-create-spec-branch`  
+**Feature Branch**: `045-v0271-bugfix-bundle`  
 **Created**: 2026-05-25  
 **Status**: Draft  
 **Input**: User description: "Specrew v0.27.1 patch — bug-fix bundle for 7 post-release findings from the 2026-05-25 v0.27.0 release work... Composes with Proposal 110 and Proposal 116."

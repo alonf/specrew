@@ -1,0 +1,11 @@
+{
+  "schemaVersion": "v1",
+  "featureRef": "specs/045-v0271-bugfix-bundle/spec.md",
+  "iterationRef": "specs/045-v0271-bugfix-bundle/iterations/001",
+  "generatedAt": "2026-05-25T00:00:00Z",
+  "generator": {
+    "name": "specrew-iteration-scaffold",
+    "version": "1.0.0"
+  },
+  "findings": []
+}
