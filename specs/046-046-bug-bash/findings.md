@@ -52,7 +52,20 @@ Running `sync-boundary-state.ps1 -BoundaryType iteration-closeout` updates BOTH 
 
 ### Status
 
-Closed (Fixed)
+Closed (Fixed) — with one acknowledged limitation, see Post-Review Note below.
+
+### Post-Review Note (added 2026-05-26 in response to PR #934 Copilot review)
+
+Copilot's PR review correctly identified that the implementation in `scripts/internal/sync-boundary-state.ps1:1103-1109` performs TWO file writes to `.specrew/start-context.json` (one by `Add-SpecrewBoundaryAuthorization` for `boundary_enforcement`, one by `Update-SpecrewStartContext` for `session_state`) rather than one true single-write merged-document update. The spec's "Option A atomicity" goal is therefore achieved as **near-atomic sequential** rather than **strict single-write atomic**.
+
+This is a real architectural limitation. The mitigations in place:
+
+- Each individual write uses `Write-Utf8FileAtomic` (write-temp-then-rename), so each write is filesystem-atomic in isolation.
+- The two writes happen sequentially on the same process, same OS, milliseconds apart — the failure window is narrow.
+- Both functions carry idempotency guards: `Add-SpecrewBoundaryAuthorization` rejects backward moves (`shared-governance.ps1:1575`), and `sync-boundary-state.ps1:1085` checks `$lastAuthIndex -lt $targetIndex` before invoking the writer. Re-running `sync-boundary-state.ps1` after a crash mid-sequence converges to the correct state.
+- The change is still a substantial improvement over the pre-F-046 behavior, where `verdict_history` did not advance at all unless `specrew start` was re-invoked between boundary commits.
+
+True single-write atomicity (compute both deltas in one in-memory context, then `Write-Utf8FileAtomic` once) requires refactoring `Add-SpecrewBoundaryAuthorization`'s public signature to return the modified context instead of persisting itself, plus updating all other callers. That's out of scope for F-046 (a bug-bash bundle). **Queued as a follow-up small-fix slice** for a future iteration to land alongside Proposal 105 (Host-Native Hook Deployment) work.
 
 ---
 

@@ -5,10 +5,20 @@
 
 ## Run it
 
-All validation checks can be executed in one pass via:
+All F-046 regression coverage runs as four independent integration test files (no single bundled runner exists):
 
 ```powershell
-pwsh -File tests/integration/validate-bug-bash.ps1
+pwsh -File tests/integration/stale-state-retro.tests.ps1
+pwsh -File tests/integration/boundary-sync-atomic.tests.ps1
+pwsh -File tests/integration/scaffolder-protection.tests.ps1
+pwsh -File tests/integration/prose-alias-sync.tests.ps1
+```
+
+Plus two legacy regression suites to confirm no regression:
+
+```powershell
+pwsh -File tests/integration/boundary-sync-atomicity.tests.ps1
+pwsh -File tests/integration/reviewer-artifacts.ps1
 ```
 
 ## Try the canonical scenarios

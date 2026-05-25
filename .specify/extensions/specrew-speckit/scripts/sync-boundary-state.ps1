@@ -64,7 +64,6 @@ if ([string]::IsNullOrWhiteSpace($internalScriptPath)) {
         $candidate = Join-Path $searchRoot 'scripts\internal\sync-boundary-state.ps1'
         $configExists = Test-Path -LiteralPath (Join-Path $searchRoot '.specrew\config.yml') -PathType Leaf
         $candidateExists = Test-Path -LiteralPath $candidate -PathType Leaf
-        Write-Host "DEBUG: searchRoot = $searchRoot, configExists = $configExists, candidateExists = $candidateExists" -ForegroundColor Cyan
         if ($configExists -and $candidateExists) {
             $internalScriptPath = $candidate
             $resolvedModuleBase = $searchRoot
