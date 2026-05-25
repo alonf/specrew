@@ -67,7 +67,7 @@ Proposals with full source-spec content, ready for `/speckit.specify` ingestion 
 | [070](070-token-economy-mvp.md) | Token Economy MVP (Cost-per-Iteration Tracking + Dashboard Surfacing) | phase-2 | 5 | **URGENT — cost-reduction bundle.** `specs/<feature>/iterations/<N>/cost.yml` records per-boundary token consumption + cost estimate from Proposal 068's catalog; `specrew where` dashboard gains COST section; `specrew cost summary/add/recompute` CLI. MVP slice of Proposal 040 (Token Economy as Governance Driver) — measurement only, no governance layer. |
 | [074](074-code-commentary-standards.md) | Code Commentary Standards (Multi-Level Convention + Preference Dial) | phase-2 | 12-15 | Replaces the current "default to no comments" Implementer instruction with a four-category taxonomy (contract / why-rationale / concept / inline narration), a four-level preference dial (`minimalist` / `standard` / `educational` / `textbook`), and a language-idiomatic convention catalog (C# XML doc, JSDoc, docstring, Javadoc, godoc, rustdoc, PowerShell comment-based help, etc.). Reviewer agent gains a contract-docs verification check. Empirical motivation: 2026-05-21 smoke trial produced a complete .NET 8 snake-game solution with **zero XML doc comments on public APIs** — IntelliSense silently empty. Composes with Proposals 047 / 052 / 015 (dials, profiles, expertise). |
 
-## Candidate (66)
+## Candidate (67)
 
 Idea-form proposals not yet developed into full source specs. Open for discussion; may mature to draft or be withdrawn.
 
@@ -140,6 +140,7 @@ Idea-form proposals not yet developed into full source specs. Open for discussio
 | [105](105-host-native-hook-deployment.md) | Host-Native Hook Deployment for Runtime Boundary Enforcement (elevates F-039 from cooperative to runtime on Claude/Antigravity hosts via PreToolUse/SubagentStart/Stop hooks) | phase-2 | 12-18 |
 | [106](106-provider-billing-reconciliation-and-estimator-calibration.md) | Provider Billing Reconciliation + Estimator Calibration (closed-loop cost accuracy: multi-provider billing CSV/JSON import, calibration factor computation, calibration-aware estimator, dashboard surfacing of the closed loop) | phase-2 | 12-18 |
 | [109](109-open-feature-awareness-and-multi-feature-switching.md) | Open-Feature Awareness + Multi-Feature Switching Discipline + Long-Running Feature Methodology (probe + surface open features at session start; `specrew feature` CLI for park/resume/abandon/indefinite-park; closeout variants for abandoned/indefinite features) | phase-2 | 15-22 |
+| [110](110-quality-tier-routing-runtime-verification-bundle.md) | Quality-Tier Routing + Runtime Verification + Domain Specialists + Bug-Test-First + Canonical Verdict Menu + Token Budget Awareness — 6 pillars empirically motivated by 2026-05-25 4-host smoke test (Antigravity / Codex / Claude / Copilot) on C++ DirectX dice-app prompt | phase-2 | 35-50 |
 
 ---
 
