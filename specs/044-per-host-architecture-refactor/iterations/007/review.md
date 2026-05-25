@@ -24,7 +24,7 @@
 
 ## Gap Ledger
 
-- No in-scope requirement (FR/SC) gaps: all user-surfaced concerns (Linux portability + README host-switching narrative) closed: fixed-now. Pre-existing test failures (`baseline-hygiene`, `lifecycle-boundary-sync`) and dashboard.md missing-artifact warnings recorded in [drift-log.md](./drift-log.md) as deferred; neither is iter-007 scope nor in the CI pipeline that gates this PR.
+- No in-scope requirement (FR/SC) gaps: all user-surfaced concerns (Linux portability + README host-switching narrative) closed: fixed-now. (Pre-existing test failures `baseline-hygiene` + `lifecycle-boundary-sync` and dashboard.md missing-artifact warnings are pre-existing on origin/main and not in the CI gate that this PR runs against — they are not iter-007 deferrals; they are out-of-scope items captured in [drift-log.md](./drift-log.md) for traceability.)
 
 ## Verification Evidence
 

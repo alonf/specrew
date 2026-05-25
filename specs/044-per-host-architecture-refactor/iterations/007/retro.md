@@ -1,21 +1,51 @@
 # Iteration Retrospective: 007
 
-**Feature**: F-044 | **Iteration**: 007 — Linux Portability + Docs Sweep + PR Readiness (LIVE-TRACKED)
-**Closed**: 2026-05-25
-**Status**: complete
+**Schema**: v1
+**Date**: 2026-05-25
+
+**Feature**: F-044 Per-Host Architecture Refactor
+
+> Fourth LIVE-TRACKED iteration of F-044. plan.md authored before code; actuals at task close.
+
+## Estimation Accuracy
+
+| Task | Estimated | Actual | Delta |
+| ---- | --------- | ------ | ----- |
+| T001 | 1.5 | 1.5 | 0 |
+| T002 | 1 | 1 | 0 |
+| T003 | 1.5 | 1.5 | 0 |
+| T004 | 1 | 1 | 0 |
+| T005 | 1 | 1 | 0 |
+| T006 | 0.5 | 0.5 | 0 |
+| T007 | 0.5 | 0.5 | 0 |
+
+**Average variance**: 0 SP at the task level. But see Phase Variance below — T007's 1 SP rework buffer absorbed an unplanned test-assertion repair (drift #1), so the 0-variance reading is **buffer-cushioned**, not zero-surprise.
 
 ## Phase Variance
 
-| Phase | Estimated | Actual | Variance |
-| ----- | --------- | ------ | -------- |
-| Planning | 0.5 | 0.5 | 0 |
-| Discovery/Spikes | 0.5 | 0.5 | 0 (audit grep clean — found one sibling) |
-| Implementation | 4.5 | 4.5 | 0 |
-| Review | 0.5 | 0.5 | 0 |
-| Rework | 1 | 1 | 0 (bootstrap-to-iteration assertion repair filled the buffer) |
-| **Total** | **7** | **7** | **0** |
+| Phase | Estimated | Actual | Delta | Notes |
+| ----- | --------- | ------ | ----- | ----- |
+| Planning | 0.5 | 0.5 | 0 | plan.md authored from clear user scope. |
+| Discovery/Spikes | 0.5 | 0.5 | 0 | Audit grep found 1 sibling bug. |
+| Implementation | 4.5 | 4.5 | 0 | T001 + T002 + T003 + T004 + T005 + T006. |
+| Review | 0.5 | 0.5 | 0 | All test suites + validator green locally. |
+| Rework | 1 | 1 | 0 | Buffer absorbed bootstrap-to-iteration assertion repair (drift #1). |
 
-Estimation accuracy: 0 SP variance at the iteration level — but the 0-variance reading is **buffer-cushioned**, not zero-surprise. T007's 1 SP rework buffer absorbed the bootstrap-to-iteration test-assertion repair (drift #1) which was unplanned. Without that buffer line item, the variance would have been +0.5-1 SP. Calibration insight: when the iteration starts from a user-stated scope ("fix X, audit Y, add Z, verify W"), the iteration-level SP estimate lands hard *because* the rework buffer absorbs the small surprises. When the iteration starts from "we'll see what we find" (iter-006), the buffer is insufficient because the surprises are bigger.
+Without the 1 SP rework buffer, variance would have been +0.5-1 SP. Calibration insight: when the iteration starts from a user-stated scope ("fix X, audit Y, add Z, verify W"), the iteration-level SP estimate lands hard *because* the rework buffer absorbs the small surprises.
+
+## Drift Summary
+
+- Total drift events: 2 (see [drift-log.md](./drift-log.md))
+- Resolved via spec update: 0
+- Resolved via revert: 0
+- Deferred: 0 in iter-007 scope (baseline-hygiene + dashboard.md + INDEX.md are out-of-scope, not iter-007 deferrals)
+- Resolved during this iteration: 2 (drift #1 bootstrap-to-iteration test-assertion repair; drift #2 process-scorer sibling-bug fix)
+
+## Improvement Actions
+
+- **Calibration data**: log the rework-buffer cushion pattern in future plans. When the buffer line item is non-zero, treat that as latent variance and budget accordingly.
+- **Validate iter artifacts via full-repo validator before push**: local `--ChangedOnly` skipped the canonical-schema lens on iter-007 because the iteration directory was untracked. Future live-tracked iterations should run `validate-governance.ps1 -ProjectPath .` (no -ChangedOnly) at iter-close before commit.
+- **Pre-existing test failure detection**: institutionalize the stash + checkout pattern used here. Mental rule: "is the failing file in my diff?" — if not, verify on origin/main before chasing. Worth a small-fix `tests/integration/lib/test-helpers.ps1` helper for future iterations.
 
 ## What Went Well
 
@@ -25,7 +55,7 @@ Estimation accuracy: 0 SP variance at the iteration level — but the 0-variance
 - **iter-007 hit exactly on plan** (7 SP, 0 variance). First time in F-044's 7-iteration arc.
 - **Pre-existing test failures correctly identified as pre-existing**. Used stash + checkout pattern to verify on origin/main directly. Avoided false-alarm scope creep into iter-007.
 
-## What Was Hard
+## What Didn't Go Well
 
 - **Pre-existing test failures look identical to regressions in the first glance**. The 30-second mental rule was "is the failing file in my diff?" — if not, stash + checkout main to verify pre-existing. Without that discipline, I would have spent significant time chasing baseline-hygiene's markdownlint-gate cascade.
 - **Two separate `.specify/` vs `extensions/` files needed identical fixes**. The `.specify/` copy is git-tracked (in-repo dogfooding for Specrew itself). This is a known Specrew architecture wrinkle — fixed by mirroring T001's edit to both copies. Could be addressed by a `bin/sync-specify-mirror.ps1` script as a future small-fix; not iter-007 scope.
