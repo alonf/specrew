@@ -8,7 +8,7 @@ This index is the navigation surface for all proposals in this directory. Sorted
 
 ---
 
-## Shipped (26)
+## Shipped (28)
 
 Proposals whose features have shipped to main and are part of Specrew's current capability.
 
@@ -39,6 +39,8 @@ Proposals whose features have shipped to main and are part of Specrew's current 
 | [065](065-launch-mode-boundary-enforcement.md) | Launch-Mode Boundary Enforcement (Tool-Call-Layer Intercept for Lifecycle Boundaries) | feature-039 (v0.25.0) | phase-2 | 7.0 |
 | [069](069-multi-host-launch-path.md) | Multi-Host Launch Path + Per-Host Flag Pass-Through (Claude Code + Codex) | feature-040 (v0.26.0) | phase-2 | 15.25 |
 | [107](107-host-aware-routing-plan-fallback.md) | Host-Aware Routing Plan Fallback (F-040 follow-up: promote `--host` selection into the routing plan; host-first fallback instead of always copilot-first) | fix-bundle `a45232af` + `b1486f4c` (v0.26.0 — F-040 calc-v2 dogfooding 2026-05-23) | phase-2 | 3 |
+| [104](104-multi-host-onboarding-and-selection-flow.md) | Multi-Host Onboarding + Selection Flow (host probe + `host-history.yml` + interactive numbered menu + `specrew host list/use/status` CLI surface) | feature-043 (v0.27.0) | phase-2 | 11 |
+| [108](108-specrew-init-refactor-and-crew-runtime-abstraction.md) | specrew-init Refactor + Per-Host Crew-Runtime Abstraction (per-host package registry; 5-function contract; canonical `.specrew/team/agents/` source-of-truth; Antigravity host graduated to supported) | feature-044 (v0.27.0) | phase-2 | 50 (7 iterations) |
 | [046](046-auto-render-dashboard-at-closeout.md) | Auto-Render Dashboard at Iteration & Feature Closeout — auto-render slice ONLY (boundary-sync writes `iterations/<NNN>/dashboard.md` + `closeout-dashboard.md`); roadmap-aware drill-down + trap-reapplication summary + cross-iteration diff remain candidate | fix-bundle `162bcdb9` (v0.26.0 — partially-shipped) | phase-2 | 2 (shipped slice) |
 | [057](057-roadmap-spine-input-adapter-pattern.md) | Roadmap Spine + Input Adapter Pattern — stub-bootstrap slice ONLY (`specrew init` writes minimal `.specrew/roadmap.yml`); full input-adapter system (manual / GitHub Issues / Linear / etc.) remains candidate | fix-bundle `162bcdb9` (v0.26.0 — partially-shipped) | phase-3 | 1 (shipped slice) |
 
@@ -65,7 +67,7 @@ Proposals with full source-spec content, ready for `/speckit.specify` ingestion 
 | [070](070-token-economy-mvp.md) | Token Economy MVP (Cost-per-Iteration Tracking + Dashboard Surfacing) | phase-2 | 5 | **URGENT — cost-reduction bundle.** `specs/<feature>/iterations/<N>/cost.yml` records per-boundary token consumption + cost estimate from Proposal 068's catalog; `specrew where` dashboard gains COST section; `specrew cost summary/add/recompute` CLI. MVP slice of Proposal 040 (Token Economy as Governance Driver) — measurement only, no governance layer. |
 | [074](074-code-commentary-standards.md) | Code Commentary Standards (Multi-Level Convention + Preference Dial) | phase-2 | 12-15 | Replaces the current "default to no comments" Implementer instruction with a four-category taxonomy (contract / why-rationale / concept / inline narration), a four-level preference dial (`minimalist` / `standard` / `educational` / `textbook`), and a language-idiomatic convention catalog (C# XML doc, JSDoc, docstring, Javadoc, godoc, rustdoc, PowerShell comment-based help, etc.). Reviewer agent gains a contract-docs verification check. Empirical motivation: 2026-05-21 smoke trial produced a complete .NET 8 snake-game solution with **zero XML doc comments on public APIs** — IntelliSense silently empty. Composes with Proposals 047 / 052 / 015 (dials, profiles, expertise). |
 
-## Candidate (66)
+## Candidate (68)
 
 Idea-form proposals not yet developed into full source specs. Open for discussion; may mature to draft or be withdrawn.
 
@@ -135,9 +137,11 @@ Idea-form proposals not yet developed into full source specs. Open for discussio
 | [101](101-external-tracker-sync-provider.md) | External Tracker Sync Provider Abstraction (GitHub Projects / Azure DevOps / Jira / Linear) | phase-2 | 20-30 |
 | [102](102-cross-model-independent-reviewer.md) | Cross-Model Independent Reviewer (Structural Author-Reviewer Independence) | phase-3 | 15-25 |
 | [103](103-agent-class-threat-surface.md) | Agent-Class Threat Surface (Concrete Threat Catalog + Prevention + Detection) | phase-3 | 12-18 |
-| [104](104-multi-host-onboarding-and-selection-flow.md) | Multi-Host Onboarding + Selection Flow (Init Timing, Host Detection, State Location) | phase-2 | 8-12 |
 | [105](105-host-native-hook-deployment.md) | Host-Native Hook Deployment for Runtime Boundary Enforcement (elevates F-039 from cooperative to runtime on Claude/Antigravity hosts via PreToolUse/SubagentStart/Stop hooks) | phase-2 | 12-18 |
 | [106](106-provider-billing-reconciliation-and-estimator-calibration.md) | Provider Billing Reconciliation + Estimator Calibration (closed-loop cost accuracy: multi-provider billing CSV/JSON import, calibration factor computation, calibration-aware estimator, dashboard surfacing of the closed loop) | phase-2 | 12-18 |
+| [109](109-open-feature-awareness-and-multi-feature-switching.md) | Open-Feature Awareness + Multi-Feature Switching Discipline + Long-Running Feature Methodology (probe + surface open features at session start; `specrew feature` CLI for park/resume/abandon/indefinite-park; closeout variants for abandoned/indefinite features) | phase-2 | 15-22 |
+| [110](110-quality-tier-routing-runtime-verification-bundle.md) | Quality-Tier Routing + Runtime Verification + Domain Specialists + Bug-Test-First + Canonical Verdict Menu + Token Budget Awareness — 6 pillars empirically motivated by 2026-05-25 4-host smoke test (Antigravity / Codex / Claude / Copilot) on C++ DirectX dice-app prompt | phase-2 | 35-50 |
+| [111](111-git-hook-markdownlint-enforcement.md) | Git-Hook-Level Markdownlint Enforcement (Pre-Commit + Pre-Push) — complements Proposal 088 boundary-sync gate with commit-time hook coverage for ad-hoc commits; closes the gap that caused iter-011 CI lint cascade | phase-2 | 5-8 |
 
 ---
 
