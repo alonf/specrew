@@ -187,3 +187,39 @@ These references make the proposal's empirical motivation auditable and concrete
 - **Specific model selection within tiers**: this proposal mandates the tier (cheap-fast / balanced / strong-strict) but not the specific model (Haiku vs Gemini Flash vs GPT-4o-mini). Model selection within tier is project preference.
 - **Hardware-resource budgeting**: out of scope. Only token/$$ budget addressed.
 - **Multi-host concurrent execution**: Proposal 024 territory. This proposal's per-role routing is single-host multi-model.
+
+## Pivots
+
+### 2026-05-25 — Pillar 1 (Quality-Tier Routing) empirically refuted by AntigravityStrong re-audit
+
+The dice-projects re-audit with the AntigravityStrong stronger-model data point added produced evidence that **invalidates Pillar 1's central premise** that routing higher-quality work to stronger models closes the host-quality gap.
+
+Specifically:
+
+- AntigravityStrong (Antigravity host running a stronger model) did NOT close the quality gap vs Claude or Codex
+- AntigravityStrong actually **regressed** on tests: eliminated the `tests/` directory entirely; absorbed test code into `src/Tests.cpp` with bare asserts
+- All other quality dimensions (build system strictness, code organization, iteration ceremony) tracked Antigravity's pre-existing host autopilot defaults — model upgrade had minimal impact
+
+**Refined framing**: model strength is necessary-but-insufficient for lifecycle quality. The binding constraint is **host autopilot defaults**, which are independent of model tier and largely invisible to the user at host-selection time.
+
+**This proposal's Pillar 1 is reframed**: instead of "route higher-quality work to stronger models", the pillar's new framing is:
+
+1. **Profile each host's autopilot defaults** (test framework, build strictness, scaffold preferences, iteration-ceremony adherence) — see Proposal 118 (Host Autopilot Quality Profiles) for the standalone surface that captures this
+2. **Surface profile at host-selection time** so the user sees the trade-off before committing
+3. **Provide explicit per-feature overrides** (`--quality-overrides`, `--quality-profile production`) so high-stakes features can compensate for weak defaults
+4. **Apply model-tier routing WITHIN a chosen host** for per-role dispatch (the original Pillar 1 idea, now scoped to within-host)
+
+The work shifts to Proposal 118 (where the visibility + override layer lives); this proposal's Pillar 1 retains within-host per-role routing only. Pillars 2-6 of this proposal are unaffected by the dice-audit findings — their empirical evidence holds.
+
+### Pillars unchanged (still validated by dice audit)
+
+- **Pillar 2 (Runtime Verification)**: validated — Codex's `--smoke-test` flag remains the gold-standard pattern; other hosts lack it
+- **Pillar 3 (Domain Specialists)**: validated — Claude's no-penetration property-based test (driven by physics specialist) remains the differentiator
+- **Pillar 4 (Bug-Report → Regression-Test FIRST)**: validated — same pattern observed in re-audit; Antigravity post-closeout hotfixes still landed without regression tests
+- **Pillar 5 (Canonical Verdict Menu)**: validated — independent of routing question
+- **Pillar 6 (Token Budget Awareness)**: partially validated — no smoking gun in re-audit but AntigravityStrong's test removal could be token-pressure correlated; needs telemetry to confirm
+
+## Status History
+
+- **2026-05-25** — Drafted from 4-host smoke test; 6 pillars proposed
+- **2026-05-25 (later)** — Re-audit added AntigravityStrong data point. Pillar 1 empirically refuted. Pivots section added explaining refined framing. Host-profiling work spun out as Proposal 118 (Host Autopilot Quality Profiles); this proposal's Pillar 1 retains within-host per-role routing only. Pillars 2-6 unaffected.
