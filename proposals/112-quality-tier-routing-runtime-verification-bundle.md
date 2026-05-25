@@ -1,5 +1,5 @@
 ---
-proposal: 110
+proposal: 112
 title: Quality-Tier Routing + Runtime Verification + Domain Specialists + Bug-Test-First + Canonical Verdict Menu + Token Budget Awareness
 status: candidate
 phase: phase-2

@@ -85,6 +85,9 @@ specrew start --host claude "Build a web based calculator with only the + - * / 
 
 # Or with Codex CLI
 specrew start --host codex "Build a web based calculator with only the + - * / MR MC M+ M- operations"
+
+# Or with Antigravity (agy)
+specrew start --host antigravity "Build a web based calculator with only the + - * / MR MC M+ M- operations"
 ```
 
 That single command:
@@ -232,6 +235,8 @@ When `specrew start` runs without a feature description in an existing project, 
 ## Known Limitations
 
 - **Multi-host runtime**: Copilot CLI, Claude Code, Codex CLI, and Antigravity (`agy`) are all supported as of v0.27.0 via `specrew start --host <kind>` or the interactive menu when `--host` is omitted (see [docs/user-guide.md](user-guide.md) for the full per-host flag-translation matrix). `--host auto` and VS Code Chat are roadmap items per [Proposal 104](../proposals/104-multi-host-onboarding-and-selection-flow.md) and [Proposal 071](../proposals/071-vscode-copilot-chat-host.md).
+- **Antigravity host caveats** (v0.27.0): Antigravity at the Gemini Flash tier was observed during the 2026-05-25 4-host smoke test skipping the plan-approval boundary and accepting bug fixes outside the iteration lifecycle. Specrew's gate-respecting mode is **cooperative**, not runtime-enforced — weaker models can chase delivery past gates. Mitigations: (a) pair Antigravity with a higher-tier model when available, or (b) prefer Claude / Copilot for methodology-critical work, or (c) wait for [Proposal 105](../proposals/105-host-native-hook-deployment.md) (host-native PreToolUse hooks) to ship for runtime enforcement. The Antigravity launch shape (`agy -i <prompt> --add-dir <path>`) is empirically verified on WSL Linux; Windows-native smoke is pending broader user testing.
+- **Per-host coordinator overlay** (v0.27.0): Copilot users get a `.squad/coordinator-overlay.md` file materialized at init. Claude / Codex / Antigravity users get the same coordination behavior via the bootstrap prompt, but no overlay file is created (less discoverable). Functionally equivalent today; a future iteration may unify this.
 - **Multi-developer coordination**: single-developer workflow only. [Proposal 010](../proposals/010-multi-developer-reconciliation.md) covers the eventual model.
 - **Brownfield cartography**: discovery covers the obvious surfaces (manifests, configs, docs) but JIT codebase cartography for arbitrary inherited repos is a future item ([Proposal 025](../proposals/025-jit-codebase-cartography.md)).
 - **Module signing**: the `-SkipPublisherCheck` flag is required on `Install-Module` until a CA-signed release lands. See [Proposal 072](../proposals/072-psgallery-unsigned-default.md) for the decision context.
