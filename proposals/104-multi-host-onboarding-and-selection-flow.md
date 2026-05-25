@@ -1,9 +1,13 @@
 ---
 proposal: 104
 title: Multi-Host Onboarding + Selection Flow (Init Timing, Host Detection, State Location)
-status: candidate
+status: shipped
+shipped-as: feature-043
+shipped-in-version: 0.27.0
 phase: phase-2
 estimated-sp: 8-12
+actual-sp: 11
+spec: specs/043-multi-host-onboarding/spec.md
 discussion: ad-hoc 2026-05-23 multi-host research session
 ---
 

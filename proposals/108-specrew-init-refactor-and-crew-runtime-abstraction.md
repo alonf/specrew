@@ -1,9 +1,13 @@
 ---
 proposal: 108
 title: specrew-init Refactor + Per-Host Crew-Runtime Abstraction
-status: candidate
+status: shipped
+shipped-as: feature-044
+shipped-in-version: 0.27.0
 phase: phase-2
 estimated-sp: 22-25
+actual-sp: 50  # 7 iterations: 18 (architectural payoff) + 6 (deep-analysis cleanup) + 4 (manual-test repair) + 3 (UX) + 8 (Antigravity launch fix + release prep) + 4 (dispatch hardening) + 7 (Linux portability + PR readiness)
+spec: specs/044-per-host-architecture-refactor/spec.md
 discussion: 2026-05-24 multi-host integration refactor closeout + user observation that --host claude lacks the 5-agent Crew that Squad provides under Copilot
 depends-on:
   - 069  # F-040 Multi-Host Launch Path (host registry + 4 contract functions exist)
