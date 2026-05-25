@@ -44,7 +44,7 @@ Proposals whose features have shipped to main and are part of Specrew's current 
 | [046](046-auto-render-dashboard-at-closeout.md) | Auto-Render Dashboard at Iteration & Feature Closeout — auto-render slice ONLY (boundary-sync writes `iterations/<NNN>/dashboard.md` + `closeout-dashboard.md`); roadmap-aware drill-down + trap-reapplication summary + cross-iteration diff remain candidate | fix-bundle `162bcdb9` (v0.26.0 — partially-shipped) | phase-2 | 2 (shipped slice) |
 | [057](057-roadmap-spine-input-adapter-pattern.md) | Roadmap Spine + Input Adapter Pattern — stub-bootstrap slice ONLY (`specrew init` writes minimal `.specrew/roadmap.yml`); full input-adapter system (manual / GitHub Issues / Linear / etc.) remains candidate | fix-bundle `162bcdb9` (v0.26.0 — partially-shipped) | phase-3 | 1 (shipped slice) |
 
-## Draft (17)
+## Draft (18)
 
 Proposals with full source-spec content, ready for `/speckit.specify` ingestion when prioritized.
 
@@ -68,8 +68,9 @@ Proposals with full source-spec content, ready for `/speckit.specify` ingestion 
 | [074](074-code-commentary-standards.md) | Code Commentary Standards (Multi-Level Convention + Preference Dial) | phase-2 | 12-15 | Replaces the current "default to no comments" Implementer instruction with a four-category taxonomy (contract / why-rationale / concept / inline narration), a four-level preference dial (`minimalist` / `standard` / `educational` / `textbook`), and a language-idiomatic convention catalog (C# XML doc, JSDoc, docstring, Javadoc, godoc, rustdoc, PowerShell comment-based help, etc.). Reviewer agent gains a contract-docs verification check. Empirical motivation: 2026-05-21 smoke trial produced a complete .NET 8 snake-game solution with **zero XML doc comments on public APIs** — IntelliSense silently empty. Composes with Proposals 047 / 052 / 015 (dials, profiles, expertise). |
 | [075](075-update-artifact-backfill-discipline.md) | Specrew Update Artifact Backfill Discipline | phase-2 | 10-15 | **HIGH PRIORITY** — promoted candidate → draft 2026-05-25. Sanctioned auto-fix mechanism for missing iteration artifacts (dashboard.md, review-diagrams.md, code-map.md, etc.) when iterations were closed outside Specrew runtime OR predate the artifact's introduction. Empirical motivation: 2026-05-25 F-044 closeout cleanup — 10 closed iterations missing dashboard.md because the original closeouts were orchestrated by a non-Specrew session bypassing the `sync-boundary-state.ps1` auto-render trigger. Pattern is universal across multi-host expansion. Composes with Proposal 030 (form-vs-meaning) and Proposal 067 (small-fix slice). |
 | [105](105-host-native-hook-deployment.md) | Host-Native Hook Deployment for Runtime Boundary Enforcement | phase-2 | 12-18 | **HIGH PRIORITY (Tier 1)** — promoted candidate → draft 2026-05-26 after F-046 v0.27.2 Antigravity incident bypassed 4 sequential human-approval gates (commits `0857e319 → f6155e54`) in a single session despite F-039 cooperative enforcement being active. Hooks at PreToolUse / SubagentStart / Stop on Claude + Antigravity elevate F-039 from cooperative-prose-based to runtime-enforced. Codex hook deployment deferred until Codex hook surface is documented; Copilot has no hook surface. Composes with 065 / 069 / 100 / 104 / 024. |
+| [055](055-always-in-flow-bug-fix-lifecycle.md) | Always-In-Flow Discipline + Slice-Type Catalog (Including Bug-Fix Lifecycle) | phase-2 | 22 | **HIGH PRIORITY (Tier 1)** — promoted candidate → draft 2026-05-26 after 4 empirical instances (2026-05-18 trial-project + 2026-05-25 Antigravity dice-app + 2026-05-25 Copilot dice-app + 2026-05-26 F-046 bug-bash). Catalog extended 7→9 slice types: added **bug-bash** (formalizing F-046 pattern with running `findings.md` + per-bug commits + retro discussing bug-classes) and **enabler** (formalizing 2026-05-26 PlanningPoC DWG-anonymizer mid-feature discovery with pause / extend / defer-with-workaround decision framework). Interim 4-pattern default (chore / small-fix / bug-bash / emergency) documented for use-until-ships. Comparative-methodology research targets (Scrum, SAFe, Kanban, XP, DA, Lean) queued for v2 catalog refinement. |
 
-## Candidate (74)
+## Candidate (73)
 
 Idea-form proposals not yet developed into full source specs. Open for discussion; may mature to draft or be withdrawn.
 
@@ -109,7 +110,6 @@ Idea-form proposals not yet developed into full source specs. Open for discussio
 | [052](052-specrew-profile-system.md) | Specrew Profile System (Methodology Core + Domain Profile Composition) | phase-3 | 35 |
 | [053](053-autopilot-decision-transparency.md) | Autopilot Decision Transparency (Surface Auto-Resolutions in Artifacts) | phase-2 | 3 |
 | [054](054-pre-merge-lifecycle-verification-gate.md) | Pre-Merge End-to-End Lifecycle Verification Gate | phase-2 | 15 |
-| [055](055-always-in-flow-bug-fix-lifecycle.md) | Always-In-Flow Discipline + Slice-Type Catalog (Including Bug-Fix Lifecycle) | phase-2 | 18 |
 | [056](056-specrew-readonly-mode.md) | Specrew Readonly Mode (Concurrent-Session Inspection Safety) | phase-2 | 12 |
 | [057](057-roadmap-spine-input-adapter-pattern.md) | Roadmap Spine + Input Adapter Pattern — remaining scope (input adapters: manual / GitHub Issues / Linear / Jira / Azure DevOps / iteration-end auto-sync; dashboard renderer integration; conflict resolution); stub-bootstrap slice already shipped in v0.26.0 | phase-3 | 27 (remaining) |
 | [058](058-plugin-based-multi-host-distribution.md) | Plugin-Based Multi-Host Distribution (Per-Host Plugin Packaging) | phase-3 | 28 |
@@ -179,7 +179,7 @@ For roadmap-style viewing, proposals grouped by phase placement:
 - 073 (Review Evidence Integrity — shipped as feature-028)
 - 079 (Version Information Supported-vs-Latest — shipped as small-fix slice in v0.24.2 bundle)
 - 074 (Code Commentary Standards — draft, queue after 073)
-- 013, 014, 015, 017, 018, 019, 020, 021, 022, 023, 027, 028, 029, 037, 038, 042, 044, 045, 046, 047, 048, 049, 050, 051, 053, 054, 055, 056, 059, 060, 061, 062, 071, 077, 078, 080, 081, 082, 091, 093, 094, 095, 097, 098, 101, 104, 106 (candidates)
+- 013, 014, 015, 017, 018, 019, 020, 021, 022, 023, 027, 028, 029, 037, 038, 042, 044, 045, 046, 047, 048, 049, 050, 051, 053, 054, 056, 059, 060, 061, 062, 071, 077, 078, 080, 081, 082, 091, 093, 094, 095, 097, 098, 101, 104, 106 (candidates)
 
 **Phase 3** (refactor + maintainability + upstream reconciliation + extensibility):
 

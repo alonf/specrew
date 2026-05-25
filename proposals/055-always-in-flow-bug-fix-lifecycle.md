@@ -1,9 +1,11 @@
 ---
 proposal: 055
 title: Always-In-Flow Discipline + Slice-Type Catalog (Including Bug-Fix Lifecycle)
-status: candidate
+status: draft
 phase: phase-2
-estimated-sp: 18
+estimated-sp: 22
+priority-tier: 1
+priority-note: HIGH PRIORITY — promoted candidate→draft 2026-05-26 after 4 empirical instances (2026-05-18 trial-project, 2026-05-25 Antigravity + Copilot dice-app, 2026-05-26 F-046 bug-bash) confirmed the methodology gap is universal post-feature-closeout
 discussion: tbd
 ---
 
@@ -60,19 +62,32 @@ There is no "ad-hoc work" path. Whether the request is a new feature, a bug fix,
 
 ### The slice-type catalog (v1)
 
-Seven slice types. Each has a defined flow shape, minimum boundaries, evidence bundle, capacity model, and retro requirement.
+Nine slice types. Each has a defined flow shape, minimum boundaries, evidence bundle, capacity model, and retro requirement.
 
 | Slice | Use case | Boundaries | Min evidence | Capacity model |
 |---|---|---|---|---|
 | **new-feature** | A new capability not yet specified | specify → clarify → plan → tasks → implement → review → retro → iteration-closeout → feature-closeout (current 7-boundary, unchanged) | Full lifecycle artifacts | SP-based, multi-iteration |
 | **bug-fix-repair** | Bug in a shipped feature | diagnose → fix-with-guard-test → verify → retro+close | Bug context (root-cause analysis); fix commit; guard test; spec amendment if behavior changed; retro entry | SP-bounded (default ≤8 SP per slice; escalate to new-feature if larger) |
+| **bug-bash** (added 2026-05-26) | Exploration session that surfaces multiple related bugs (3+ in one sitting) | specify (bundle-shape) → plan → tasks → implement-per-bug → review → retro → iteration-closeout → feature-closeout | Running `findings.md` ledger (one section per bug with repro / root-cause / validation / commit-SHA / status); per-bug fix commits with `fix(bug-N):` prefix; drift-log accumulates one entry per bug classified `fixed-now`; retro discusses **classes of bugs found** + **what does prevention look like** (this is where bug-bash retros generate proposals); CHANGELOG entry listing each bug with its fix commit SHA | SP-bounded (default ≤20 SP single iteration; if scope exceeds, decompose into per-bug small-fix slices instead) |
 | **test-add** | Adding test coverage for existing behavior | scope → write → verify → close | Coverage scope statement; test file commits; passing run; brief lessons-learned | SP-bounded (default ≤5 SP) |
 | **refactor** | Restructuring without behavior change | justify → execute → verify-no-regression → close | Justification (why refactor; what changes); diff; passing test suite; brief impact note | SP-bounded (default ≤8 SP; >8 SP escalates to new-feature) |
 | **doc-update** | Documentation-only changes | scope → write → review-by-human → close | Scope; commit; brief review confirmation | SP-bounded (default ≤3 SP) |
 | **dependency-upgrade** | External tool/library version bump | assess → upgrade → test → close | Upgrade rationale; lockfile/version-pin diff; passing test suite; security/breaking-change notes | SP-bounded (default ≤5 SP) |
+| **enabler** (added 2026-05-26) | Infrastructure tooling discovered mid-feature (script, fixture, helper, transformation tool) not in any feature's user-facing scope but needed to make primary work shippable, repeatable, or CI-viable | scope (cost + blast-radius assessment) → choose-strategy (pause / extend-current-feature / defer-with-workaround) → execute → retire-workaround-if-deferred → close | Strategy decision with justification (cost ≤1d / 1-3d / >3d × blast radius small/large × spec-fidelity tangential/core × CI-needed/author-only); enabler code commits; if deferred: workaround code + explicit retirement-criterion + backlog entry visible to dashboard; brief retro on which strategy was chosen and why | SP-bounded (default ≤8 SP; if enabler is itself >8 SP, promote to new-feature) |
 | **hot-fix** | Urgent production issue | diagnose (compressed) → fix → close → mandatory-post-hoc-retro | Bug context; fix commit; mandatory retro within 48 hours; spec amendment if needed | Time-bounded (≤4 hours wall-clock; no SP cap) |
 
 The catalog is extensible — community-contributed slices can extend it per Proposal 052's profile architecture (see "Composition" below).
+
+### Comparative-methodology research targets for slice catalog refinement (2026-05-26)
+
+Before the next slice-type addition (v2 catalog), survey adjacent methodologies for naming + ceremony patterns. Sources to consult:
+
+- **Scrum**: tech-spike / enabler-story patterns; sprint-goal protection rules; "if discovered mid-sprint, pull to next sprint vs. PO-approved scope adjustment." How is mid-sprint discovery formally tracked?
+- **SAFe (Scaled Agile Framework)**: "Enabler" work-item types — Architecture, Infrastructure, Exploration, Compliance. Lives alongside features in the backlog. Has its own acceptance criteria. The SAFe vocabulary may be the cleanest source for naming (the **enabler** slice type added in v1 above adopts SAFe terminology directly).
+- **Kanban**: WIP limits + expedite / standard / fixed-date classes; how does flow-based methodology handle mid-flow discovery of dependent work?
+- **XP (Extreme Programming)**: spike solutions, refactor-as-separate-activity. Continuous design discovery is baked in.
+- **Disciplined Agile (DA)**: enabler concept similar to SAFe; may add nuance worth incorporating.
+- **Lean / MVP discipline**: defer-and-document is a standard tactic; how do they avoid the "deferred work never ships" trap? This question is load-bearing for the enabler slice's workaround-retirement criterion.
 
 ### Intake routing
 
@@ -238,6 +253,19 @@ Sequencing: ship after the consolidation pass + Phase A first-priority items, be
 - **Memory: [Always-in-flow + universal-evidence](file:///C:/Users/alon.HOME/.claude/projects/C--Dev-Specrew/memory/feedback_always_in_flow_universal_evidence.md)** — the principle this proposal formalizes
 - **Trial-project case study (sphere-rendering "balls are black", 2026-05-18)** — motivating empirical evidence
 
+## Interim 4-pattern bug-handling default (use this until 055 ships)
+
+Surfaced in 2026-05-24 user direction ("If I find a bug in Specrew, how do I report/track/spec/implement/validate?"). Use until this proposal ships and the full slice-type catalog is installed in coordinator-governance:
+
+- **Pattern 1 — Trivial chore commit**: typo, broken path reference, single-line obvious fix. No regression test. `fix(<scope>): <one-line>` + CHANGELOG entry under `### Fixed`. Optional `.squad/decisions.md` audit entry if surfaced inside an active iteration.
+- **Pattern 2 — Small-fix slice with bug-shaped spec** (~2-5 SP): non-trivial bug needing a regression test. Follows Proposal 067 small-fix slice shape augmented with bug-specific fields (Repro / Expected-vs-Actual / Root cause / Affected versions / Fix approach / Validation criterion / Related issue). Full Specrew lifecycle. CHANGELOG entry. This is the **default for any bug worth thinking about**.
+- **Pattern 3 — Bug-bash iteration** (~10-20 SP): 3+ related bugs surfaced in one session (post-feature smoke test, demo prep, external-tester onboarding). Single bug-bash feature directory with running `findings.md`. Each fix is its own commit with `fix(bug-N):` prefix. Retro discusses bug-classes + prevention. F-046 v0.27.2 is the canonical empirical instance.
+- **Pattern 4 — Emergency bypass (production fire)**: F-039 emergency bypass + mandatory follow-up small-fix slice within 7 days. Without the follow-up, the bypass discipline degrades.
+
+Decision: weight + reversibility + observation timing → pattern. If you find 1 bug and stop → Pattern 2. If you find 3+ in a sitting → Pattern 3. If production is on fire → Pattern 4. If it's a typo → Pattern 1.
+
+When 055 ships, this interim catalog is absorbed into the formal slice-type catalog above + installed into coordinator-governance + Squad's intake-routing prompt.
+
 ## Status history
 
 - 2026-05-18: candidate captured after trial-project bug-fix analysis surfaced the methodology gap. User directive: Specrew must govern ALL user requests through a sanctioned flow with evidence. Slice-type catalog (7 types) + intake routing + universal evidence rule + override discipline drafted as the resolution.
@@ -248,3 +276,4 @@ Sequencing: ship after the consolidation pass + Phase A first-priority items, be
   - **Pattern strengthening**: this is no longer a one-off observation. The 2026-05-18 trial-project case + the 2026-05-25 Antigravity case + the 2026-05-25 Copilot case = three independent empirical instances across three hosts. The post-closeout out-of-lifecycle pattern is **the default agent behavior**, not an aberration. Specrew's methodology layer ends at feature-closeout and provides no signal/governance for anything afterward.
   - **Ship-priority**: with three empirical instances and a fresh smoke-test-validated empirical motivation, this proposal moves from "important methodology evolution" to "tactical fix the methodology has been waiting for." Promote to Phase 2 ship-next queue.
   - **Composes empirically validated with [Proposal 113 (Empirical User-Acceptance Gate)](113-empirical-user-acceptance-gate.md)**: 113 prevents the upstream cause (closeout reached without user-verified deliverable), 055 governs the downstream effect (any post-closeout change must enter a sanctioned slice). The pair closes the loop.
+- 2026-05-26: **PROMOTED candidate → draft** with priority-tier 1 (HIGH PRIORITY). Fourth empirical instance: F-046 v0.27.2 bug-bash bundle (PR #934, merge `fd312ba1`) was the canonical bug-bash slice — 5 lifecycle-tooling defects bundled in one iteration with running `findings.md`, per-bug commits, retro discussing bug-class prevention, CHANGELOG entry per bug. Catalog extended from 7 to 9 slice types: added **bug-bash** (formalizing the F-046 pattern) and **enabler** (formalizing the 2026-05-26 PlanningPoC DWG-anonymizer mid-feature discovery + three-strategy decision framework: pause / extend / defer-with-workaround). Capacity adjusted 18 SP → 22 SP to cover the 2 new slice types' implementation. Comparative-methodology research section added queuing Scrum/SAFe/Kanban/XP/DA/Lean survey before next catalog refinement. The interim 4-pattern default (Pattern 1 chore / Pattern 2 small-fix slice / Pattern 3 bug-bash / Pattern 4 emergency) is documented as the use-until-ships guidance.
