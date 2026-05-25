@@ -10,6 +10,7 @@
   "project_state": {
     "state": "existing-continue",
     "detected_entries": [
+      ".agents",
       ".claude",
       ".codex",
       ".scratch",
@@ -163,75 +164,69 @@
   },
   "delegated_routing": {
     "enabled_agents": [
-      "codex"
+      "copilot"
     ],
     "independent_oversight_active": false,
     "roles": {
       "Implementer": {
         "role": "Implementer",
         "requested_agent": "copilot",
-        "effective_agent": "codex",
-        "delegated": true,
-        "access_path": "copilot_agent_hq",
-        "fallback_reason": "preferred agent 'copilot' is not enabled"
+        "effective_agent": "copilot",
+        "delegated": false,
+        "access_path": "copilot_default",
+        "fallback_reason": null
       },
       "Spec Steward": {
         "role": "Spec Steward",
         "requested_agent": "codex",
-        "effective_agent": "codex",
-        "delegated": true,
-        "access_path": "copilot_agent_hq",
-        "fallback_reason": null
+        "effective_agent": "copilot",
+        "delegated": false,
+        "access_path": "copilot_default",
+        "fallback_reason": "preferred agent 'codex' is not enabled"
       },
       "Planner": {
         "role": "Planner",
         "requested_agent": "claude",
-        "effective_agent": "codex",
-        "delegated": true,
-        "access_path": "copilot_agent_hq",
+        "effective_agent": "copilot",
+        "delegated": false,
+        "access_path": "copilot_default",
         "fallback_reason": "preferred agent 'claude' is not enabled"
       },
       "Reviewer": {
         "role": "Reviewer",
         "requested_agent": "claude",
-        "effective_agent": "codex",
-        "delegated": true,
-        "access_path": "copilot_agent_hq",
+        "effective_agent": "copilot",
+        "delegated": false,
+        "access_path": "copilot_default",
         "fallback_reason": "preferred agent 'claude' is not enabled"
       },
       "Retro Facilitator": {
         "role": "Retro Facilitator",
         "requested_agent": "copilot",
-        "effective_agent": "codex",
-        "delegated": true,
-        "access_path": "copilot_agent_hq",
-        "fallback_reason": "preferred agent 'copilot' is not enabled"
+        "effective_agent": "copilot",
+        "delegated": false,
+        "access_path": "copilot_default",
+        "fallback_reason": null
       }
     },
     "fallback_events": [
       {
-        "role": "Implementer",
-        "requested_agent": "copilot",
-        "actual_agent": "codex",
-        "reason": "preferred agent 'copilot' is not enabled"
+        "role": "Spec Steward",
+        "requested_agent": "codex",
+        "actual_agent": "copilot",
+        "reason": "preferred agent 'codex' is not enabled"
       },
       {
         "role": "Planner",
         "requested_agent": "claude",
-        "actual_agent": "codex",
+        "actual_agent": "copilot",
         "reason": "preferred agent 'claude' is not enabled"
       },
       {
         "role": "Reviewer",
         "requested_agent": "claude",
-        "actual_agent": "codex",
+        "actual_agent": "copilot",
         "reason": "preferred agent 'claude' is not enabled"
-      },
-      {
-        "role": "Retro Facilitator",
-        "requested_agent": "copilot",
-        "actual_agent": "codex",
-        "reason": "preferred agent 'copilot' is not enabled"
       }
     ]
   },
@@ -248,26 +243,20 @@
   },
   "session_state": {
     "active": true,
-    "boundary_type": "retro",
+    "boundary_type": "iteration-closeout",
     "feature_ref": "045-v0271-bugfix-bundle",
     "feature_path": "C:\\Dev\\Specrew\\specs\\045-v0271-bugfix-bundle",
-    "iteration_number": "002",
+    "iteration_number": null,
     "task_id": null,
-    "auth_commit_hash": "ebffb87b870d7f8d30b593c6bd77bd45239ea23a",
-    "recorded_at": "2026-05-25T18:36:32Z"
+    "auth_commit_hash": "9ca2b19f614e7b1c310543162f1d37675afab090",
+    "recorded_at": "2026-05-25T18:56:59Z"
   },
   "recovery_session": null,
-  "squad_model_overrides": {
-    "Implementer": "gpt-5.2-codex",
-    "Spec Steward": "gpt-5.2-codex",
-    "Planner": "gpt-5.2-codex",
-    "Reviewer": "gpt-5.2-codex",
-    "Retro Facilitator": "gpt-5.2-codex"
-  },
+  "squad_model_overrides": {},
   "prompt_path": "C:\\Dev\\Specrew\\.specrew\\last-start-prompt.md",
   "summary_path": "C:\\Dev\\Specrew\\.specrew\\start-summary.md",
-  "generated_at_utc": "2026-05-25T18:36:32Z",
-  "selected_host": "codex",
+  "generated_at_utc": "2026-05-25T19:00:31.6073483Z",
+  "selected_host": "claude",
   "available_hosts": {
     "claude": true,
     "codex": true,
@@ -275,10 +264,10 @@
     "antigravity": true
   },
   "crew_runtime_status": "bootstrap_only",
-  "host_resolution": "flag",
+  "host_resolution": "last-selected",
   "boundary_enforcement": {
     "enabled": true,
-    "last_authorized_boundary": "clarify",
+    "last_authorized_boundary": "iteration-closeout",
     "pending_next_boundary": null,
     "verdict_history": [
       {
@@ -312,6 +301,14 @@
         "authorizing_human": "Alon Fliess",
         "recorded_at": "2026-05-25T12:49:15Z",
         "auth_commit_hash": "1c219f1e2931004cab0a24f890bedb4c9ef7375e"
+      },
+      {
+        "from_boundary": "retro",
+        "to_boundary": "iteration-closeout",
+        "verdict_text": "approved for iteration-closeout",
+        "authorizing_human": "Alon Fliess",
+        "recorded_at": "2026-05-25T19:00:15Z",
+        "auth_commit_hash": "9ca2b19f614e7b1c310543162f1d37675afab090"
       }
     ],
     "bypass_history": []
