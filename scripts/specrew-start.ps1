@@ -700,7 +700,7 @@ function Get-SpecrewLateBoundaryIssues {
     if ($null -ne $latestIterationDirectory) {
         $reviewPath = Join-Path $latestIterationDirectory.FullName 'review.md'
         $reviewVerdict = Get-SpecrewMetadataValueFromFile -Path $reviewPath -Label 'Overall Verdict'
-        if ($reviewVerdict -match '^(?i)accepted$' -and [string]$SessionState.boundary_type -notin @('review-signoff', 'iteration-closeout', 'feature-closeout')) {
+        if ($reviewVerdict -match '^(?i)accepted$' -and [string]$SessionState.boundary_type -notin @('review-signoff', 'retro', 'iteration-closeout', 'feature-closeout')) {
             $issues.Add(("Late boundary sync mismatch: review.md is accepted in iteration {0}, but the recorded boundary is '{1}' instead of review-signoff or later." -f $latestIterationDirectory.Name, $SessionState.boundary_type)) | Out-Null
         }
     }

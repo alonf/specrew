@@ -2,7 +2,6 @@
 param(
     [string]$ProjectPath = '.',
     [Parameter(Mandatory = $true)]
-    [ValidateSet('specify', 'clarify', 'plan', 'tasks', 'before-implement', 'review-signoff', 'retro', 'iteration-closeout', 'feature-closeout')]
     [string]$BoundaryType,
     [string]$FeatureRef,
     [string]$IterationNumber,
@@ -63,8 +62,10 @@ if ([string]::IsNullOrWhiteSpace($internalScriptPath)) {
     $searchRoot = $PSScriptRoot
     while (-not [string]::IsNullOrWhiteSpace($searchRoot)) {
         $candidate = Join-Path $searchRoot 'scripts\internal\sync-boundary-state.ps1'
-        if ((Test-Path -LiteralPath (Join-Path $searchRoot '.specrew\config.yml') -PathType Leaf) -and
-            (Test-Path -LiteralPath $candidate -PathType Leaf)) {
+        $configExists = Test-Path -LiteralPath (Join-Path $searchRoot '.specrew\config.yml') -PathType Leaf
+        $candidateExists = Test-Path -LiteralPath $candidate -PathType Leaf
+        Write-Host "DEBUG: searchRoot = $searchRoot, configExists = $configExists, candidateExists = $candidateExists" -ForegroundColor Cyan
+        if ($configExists -and $candidateExists) {
             $internalScriptPath = $candidate
             $resolvedModuleBase = $searchRoot
             $resolvedModuleVersion = _Read-SpecrewVersionFromPsd1 -ModuleBase $searchRoot
@@ -142,12 +143,9 @@ Fix one of:
         } catch [System.Management.Automation.RuntimeException] {
             # Re-throw our own stale-install error
             throw
-        } catch {
-            # Non-parseable specrew_version — skip the version check silently.
         }
     }
 }
-
 . $internalScriptPath
 
 $result = Invoke-SpecrewBoundaryStateSync `

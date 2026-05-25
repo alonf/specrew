@@ -28,7 +28,7 @@ A fixture where boundary state is `retro` and `review.md` has `Overall Verdict: 
 
 ### Status
 
-Pending Implementation
+Closed (Fixed)
 
 ---
 
@@ -52,7 +52,7 @@ Running `sync-boundary-state.ps1 -BoundaryType iteration-closeout` updates BOTH 
 
 ### Status
 
-Pending Implementation
+Closed (Fixed)
 
 ---
 
@@ -76,7 +76,7 @@ Compare-before-write. If the target file has populated verdict text or non-stub 
 
 ### Status
 
-Pending Implementation
+Closed (Fixed)
 
 ---
 
@@ -100,7 +100,7 @@ Remove `[ValidateSet(...)]` from parameters, and map prose aliases dynamically i
 
 ### Status
 
-Pending Implementation
+Closed (Fixed)
 
 ---
 

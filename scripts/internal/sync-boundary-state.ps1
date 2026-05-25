@@ -219,7 +219,6 @@ function Resolve-SpecrewBoundaryAuthCommitHash {
 function New-SpecrewSessionState {
     param(
         [Parameter(Mandatory = $true)]
-        [ValidateSet('specify', 'clarify', 'plan', 'tasks', 'before-implement', 'review-signoff', 'retro', 'iteration-closeout', 'feature-closeout')]
         [string]$BoundaryType,
 
         [Parameter(Mandatory = $true)]
@@ -920,7 +919,6 @@ function Invoke-SpecrewBoundaryStateSync {
         [string]$ProjectPath,
 
         [Parameter(Mandatory = $true)]
-        [ValidateSet('specify', 'clarify', 'plan', 'tasks', 'before-implement', 'review-signoff', 'retro', 'iteration-closeout', 'feature-closeout')]
         [string]$BoundaryType,
 
         [AllowNull()]
@@ -944,6 +942,42 @@ function Invoke-SpecrewBoundaryStateSync {
         [AllowNull()]
         [string]$IdentityBody
     )
+
+    $aliasMap = @{
+        'spec'               = 'specify'
+        'specify'            = 'specify'
+        'clarify'            = 'clarify'
+        'plan'               = 'plan'
+        'tasks'              = 'tasks'
+        'before-implement'   = 'before-implement'
+        'implement'          = 'review-signoff'
+        'review'             = 'review-signoff'
+        'review-signoff'     = 'review-signoff'
+        'retro'              = 'retro'
+        'iteration'          = 'iteration-closeout'
+        'iteration-closeout' = 'iteration-closeout'
+        'closeout'           = 'iteration-closeout'
+        'feature'            = 'feature-closeout'
+        'feature-closeout'   = 'feature-closeout'
+    }
+
+    $normalizedInput = if ($null -eq $BoundaryType) { '' } else { $BoundaryType.Trim().ToLowerInvariant() }
+    if (-not $aliasMap.ContainsKey($normalizedInput)) {
+        $suggestions = New-Object System.Collections.Generic.List[string]
+        foreach ($key in $aliasMap.Keys) {
+            if ($key -like "*$normalizedInput*" -or $normalizedInput -like "*$key*") {
+                $suggestions.Add(("{0} -> {1}" -f $key, $aliasMap[$key])) | Out-Null
+            }
+        }
+        $suggestionText = if ($suggestions.Count -gt 0) {
+            " Did you mean one of: $($suggestions -join ', ')."
+        } else {
+            " Valid boundaries and aliases are: specify, clarify, plan, tasks, before-implement, review-signoff, retro, iteration-closeout, feature-closeout."
+        }
+        throw "Unrecognized boundary type or alias '$BoundaryType'.$suggestionText"
+    }
+
+    $BoundaryType = $aliasMap[$normalizedInput]
 
     # Proposal 088: pre-sync markdownlint gate. Catches lint violations at
     # boundary-time so they never reach PR-CI Lint and cause the catch-fix-retry
@@ -1033,6 +1067,49 @@ function Invoke-SpecrewBoundaryStateSync {
             throw "Failed to refresh baseline_commit_hash in '$($paths.PromptPath)': $($_.Exception.Message)"
         }
     }
+    # US2: Inline verdict writer. Update boundary enforcement and verdict history in the same sync pass.
+    $enforcementState = Get-SpecrewBoundaryEnforcementState -ProjectRoot $paths.ProjectRoot
+    if ($null -ne $enforcementState -and $null -ne $enforcementState.State -and $enforcementState.State.enabled) {
+        $existingContext = $enforcementState.Context
+        $boundaryOrder = @(Get-SpecrewBoundaryOrder)
+        $targetCanonical = Resolve-SpecrewCanonicalBoundaryType -Boundary $BoundaryType -ParameterName 'BoundaryType'
+        $currentLastAuthorized = [string]$enforcementState.State['last_authorized_boundary']
+        
+        $targetIndex = [Array]::IndexOf($boundaryOrder, $targetCanonical)
+        $lastAuthIndex = if (-not [string]::IsNullOrWhiteSpace($currentLastAuthorized)) {
+            [Array]::IndexOf($boundaryOrder, $currentLastAuthorized)
+        } else {
+            -1
+        }
+        
+        if ($lastAuthIndex -lt $targetIndex) {
+            $authorizingHuman = 'Specrew Operator'
+            try {
+                $gitUser = @(& git -C $paths.ProjectRoot config user.name 2>$null)
+                if ($LASTEXITCODE -eq 0 -and $gitUser.Count -gt 0 -and -not [string]::IsNullOrWhiteSpace($gitUser[0])) {
+                    $authorizingHuman = $gitUser[0].Trim()
+                }
+            } catch {}
+            
+            $currentBoundary = 'specify'
+            if ($null -ne $existingContext -and $null -ne $existingContext['session_state'] -and -not [string]::IsNullOrWhiteSpace($existingContext['session_state']['boundary_type'])) {
+                $currentBoundary = [string]$existingContext['session_state']['boundary_type']
+            }
+            elseif ($null -ne $latestBoundary) {
+                $currentBoundary = [string]$latestBoundary.boundary_type
+            }
+            $verdictText = "approved for $targetCanonical"
+            
+            Add-SpecrewBoundaryAuthorization `
+                -ProjectRoot $paths.ProjectRoot `
+                -CurrentBoundary $currentBoundary `
+                -AuthorizedBoundary $targetCanonical `
+                -AuthorizingHuman $authorizingHuman `
+                -VerdictText $verdictText `
+                -AuthCommitHash $effectiveAuthCommitHash | Out-Null
+        }
+    }
+
     Update-SpecrewStartContext -Path $paths.ContextPath -SessionState $sessionState
     Update-SpecrewMarkdownStateFile -Path $paths.IdentityPath -SessionState $sessionState -DefaultBody (Get-SpecrewIdentityBody -SessionState $sessionState) -AdditionalFrontmatter $identityAdditionalFrontmatter -PreferredBody $IdentityBody -UsePreferredBody:(-not [string]::IsNullOrWhiteSpace($IdentityBody)) -SchemaVersion 'v1'
 

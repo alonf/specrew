@@ -31,6 +31,41 @@ function Add-ScaffoldAction {
         })
 }
 
+function Test-SpecrewFileHasPopulatedVerdict {
+    param([string]$TargetPath)
+
+    if (-not (Test-Path -LiteralPath $TargetPath -PathType Leaf)) {
+        return $false
+    }
+
+    $content = Get-Content -LiteralPath $TargetPath -Raw -Encoding UTF8
+    if ($content -match '(?m)^\s*\*\*Overall Verdict\*\*:\s*accepted\s*$' -or
+        $content -match 'Overall Verdict:\s*accepted' -or
+        $content -match '\|\s*(pass|blocked)\s*\|') {
+        return $true
+    }
+
+    $iterationDir = Split-Path -Parent $TargetPath
+    $reviewPath = Join-Path $iterationDir 'review.md'
+    $retroPath = Join-Path $iterationDir 'retro.md'
+    
+    if (Test-Path -LiteralPath $reviewPath -PathType Leaf) {
+        $reviewContent = Get-Content -LiteralPath $reviewPath -Raw -Encoding UTF8
+        if ($reviewContent -match 'Overall Verdict\*\*?:\s*accepted') {
+            return $true
+        }
+    }
+    
+    if (Test-Path -LiteralPath $retroPath -PathType Leaf) {
+        $retroContent = Get-Content -LiteralPath $retroPath -Raw -Encoding UTF8
+        if ($retroContent -match 'Overall Verdict\*\*?:\s*accepted') {
+            return $true
+        }
+    }
+
+    return $false
+}
+
 function Write-MissingFile {
     param(
         [Parameter(Mandatory = $true)]
@@ -44,19 +79,25 @@ function Write-MissingFile {
         [System.Collections.ArrayList]$Actions
     )
 
-    if (Test-Path -LiteralPath $TargetPath) {
-        Add-ScaffoldAction -Actions $Actions -Action 'preserved' -Path $TargetPath
+    $finalPath = $TargetPath
+    if (Test-SpecrewFileHasPopulatedVerdict -TargetPath $TargetPath) {
+        $finalPath = "$TargetPath.pending"
+        Write-Host "WARN: Protected existing accepted artifact '$TargetPath'. Emitting template default to sibling '$finalPath' instead." -ForegroundColor Yellow
+    }
+
+    if (Test-Path -LiteralPath $finalPath) {
+        Add-ScaffoldAction -Actions $Actions -Action 'preserved' -Path $finalPath
         return
     }
 
-    Add-ScaffoldAction -Actions $Actions -Action $(if ($DryRun) { 'would-create' } else { 'created' }) -Path $TargetPath
+    Add-ScaffoldAction -Actions $Actions -Action $(if ($DryRun) { 'would-create' } else { 'created' }) -Path $finalPath
     if (-not $DryRun) {
-        $parent = Split-Path -Parent $TargetPath
+        $parent = Split-Path -Parent $finalPath
         if (-not (Test-Path -LiteralPath $parent)) {
             New-Item -ItemType Directory -Path $parent -Force | Out-Null
         }
 
-        [System.IO.File]::WriteAllText($TargetPath, $Content, [System.Text.UTF8Encoding]::new($false))
+        [System.IO.File]::WriteAllText($finalPath, $Content, [System.Text.UTF8Encoding]::new($false))
     }
 }
 
