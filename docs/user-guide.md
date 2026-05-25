@@ -592,6 +592,43 @@ The `add` command creates all required Squad artifacts atomically: (1) adds a ro
 
 Use this path for additive specialization only. Specrew still expects the baseline governance crew to remain present.
 
+## Updating and Redeploying Specrew
+
+Use `Update-Module Specrew` for the normal installed-module update path, then reload the module and verify the version:
+
+```powershell
+Update-Module Specrew
+Import-Module Specrew -Force
+specrew --version
+```
+
+If the module needs a clean reinstall from the trusted Gallery source, use:
+
+```powershell
+Install-Module Specrew -Scope CurrentUser -Force -SkipPublisherCheck
+Import-Module Specrew -Force
+specrew --version
+```
+
+`-Force` in `Install-Module`/`Update-Module` is package-manager force: it refreshes or overwrites the installed module copy. It does not approve Specrew lifecycle boundaries, does not bypass brownfield conflicts, and does not make project-local edits safe by itself. `-SkipPublisherCheck` bypasses publisher validation; use it only for the official Specrew Gallery package or a package source you trust. If the source is unknown, stop and verify the package instead of bypassing the check.
+
+After updating the module, rerun `specrew init` from each project that needs refreshed project-local assets:
+
+```powershell
+cd C:\Dev\your-project
+specrew init
+```
+
+Run init again when any of these are true:
+
+- The release notes mention runtime, extension, template, governance, or skill-catalog deployment changes.
+- `.specify\extensions\specrew-speckit\` is missing or stale compared with the installed module.
+- `.claude\skills\`, `.github\skills\`, or `.agents\skills\` is missing `/specrew-*` skills.
+- `specrew start` reports a missing skill-catalog or runtime deployment gap.
+- You intentionally want to refresh managed Specrew project files after a module update.
+
+`specrew start` repairs missing skill catalogs on the normal launch path. Use `specrew init` when you want the explicit redeploy pass for the whole project-local Specrew surface, especially after a module update. Use `specrew init -Force` only when you intentionally want a forced redeploy of managed surfaces; it still preserves conflict checks and brownfield safety rules.
+
 ## Brownfield Bootstrap
 
 When `specrew init` detects an existing `.specify/` or `.squad/` directory in the project, it operates in brownfield mode:
@@ -628,6 +665,7 @@ The analysis reports:
 - **Preserved artifacts**: Existing specs, roles, and ceremonies that will not be modified
 - **Mergeable content**: Baseline roles and ceremonies that can be safely added
 - **Conflicts**: Naming collisions that require manual resolution
+- **Canonical roles**: Existing `.squad\agents\` baseline roles preserved as project source when the project itself contains `extensions\specrew-speckit\`
 - **Warnings**: Partial platform installations or other non-blocking issues
 
 ### Conflict Resolution
@@ -639,6 +677,8 @@ If Specrew detects role name conflicts (e.g., an existing "Implementer" role), i
 3. Provides guidance to manually merge or rename conflicting roles before re-running bootstrap
 
 The `-Force` flag does NOT bypass conflict checks. Conflicts must be manually resolved before bootstrap can proceed.
+
+Self-hosting Specrew repositories are the exception to the baseline-role conflict rule. When a project contains `extensions\specrew-speckit\` and existing `.squad\agents\`, those baseline agent directories are treated as canonical project source, not conflicts to overwrite. Non-self-hosting projects keep the normal protection behavior.
 
 1. Record event in `drift-log.md` with exact requirement reference.
 2. Decide one resolution path:

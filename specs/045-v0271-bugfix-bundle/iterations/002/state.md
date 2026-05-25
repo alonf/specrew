@@ -2,12 +2,12 @@
 
 **Schema**: v1
 **Current Phase**: before-implement
-**Iteration Status**: ready
-**Last Completed Task**: (none)
-**Tasks Remaining**: T002, T016, T017, T018, T019, T020, T021, T022, T023, T024, T025, T026, T027, T028, T029, T030
-**In Progress**: none
+**Iteration Status**: executing
+**Last Completed Task**: T030
+**Tasks Remaining**: (none)
+**In Progress**: (none)
 **Baseline Ref**: 878516254576723e93666610d7002da419f2d58a
-**Updated**: 2026-05-25T17:05:00Z
+**Updated**: 2026-05-25T17:58:14Z
 
 ## Execution Summary
 
@@ -18,7 +18,23 @@
 - US3 covers FR-007 operator update and redeploy guidance.
 - Polish covers mechanical checks, governance validation, full patch regression replay, and CHANGELOG update.
 - Proposal 119 is the canonical effort-convention follow-up; Proposal 117 references are not carried forward.
-- Implementation has not started.
+- Implementation execution approved for iteration 002.
+- T002 traceability matrix is complete.
+- T016 brownfield regression coverage is complete.
+- T017 primary brownfield classification implementation is complete.
+- T018 mirror parity implementation is complete.
+- T019 finding ledger update is complete.
+- T020 brownfield regression evidence is complete.
+- T021 update-guidance review rubric is complete.
+- T022 update-path guidance is complete.
+- T023 redeploy-trigger guidance is complete.
+- T024 stale-finding closure narrative is complete.
+- T025 quickstart verification refresh is complete.
+- T026 guided documentation review passed in 2m05s.
+- T027 mechanical checks passed with an empty findings array.
+- T028 governance validation passed after correcting a non-canonical phase label.
+- T029 full patch regression replay passed with 0 failing P0/P1 tests.
+- T030 changelog update is complete.
 
 ## Notes
 

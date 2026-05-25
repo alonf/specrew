@@ -61,6 +61,28 @@ Verify:
 specrew --version
 ```
 
+### Updating Specrew later
+
+For an existing PowerShell Gallery install, use the normal module update path first:
+
+```powershell
+Update-Module Specrew
+Import-Module Specrew -Force
+specrew --version
+```
+
+If PowerShellGet cannot update the installed copy in place, reinstall from the trusted Gallery source:
+
+```powershell
+Install-Module Specrew -Scope CurrentUser -Force -SkipPublisherCheck
+Import-Module Specrew -Force
+specrew --version
+```
+
+`-Force` here belongs to PowerShellGet: it intentionally overwrites or reinstalls the module package. It does not bypass Specrew lifecycle gates and it does not make brownfield project conflicts safe to ignore. `-SkipPublisherCheck` bypasses publisher validation, so use it only for the official PowerShell Gallery Specrew package or a package source you already trust. Do not copy this flag into unrelated module installs as a default habit.
+
+After a module update, run `specrew init` again inside each existing Specrew project when the release notes mention runtime, extension, template, or skill-catalog changes, or when `specrew start` reports missing runtime surfaces. Re-running init is idempotent and redeploys managed project files from the updated module; add `-Force` only when you intentionally want to refresh managed surfaces even if the project is not empty.
+
 ### 3. Bootstrap a project
 
 ```powershell
@@ -227,6 +249,8 @@ cd C:\Dev\existing-project
 specrew init
 specrew start
 ```
+
+Use `specrew init -Force` only when you have decided to redeploy managed Specrew surfaces in that existing project. It does not bypass brownfield conflict checks; conflicts must still be resolved or intentionally preserved by the self-hosting ownership rules.
 
 When `specrew start` runs without a feature description in an existing project, the Crew runs brownfield discovery first and asks targeted intake questions before invoking `/speckit.specify`.
 

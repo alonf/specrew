@@ -4,6 +4,12 @@ Retroactive alpha release history for shipped Specrew features. `.specrew\config
 is the canonical source for the active version; this file records the feature
 baseline that each release number represents.
 
+## [0.27.1] - 2026-05-25
+
+### Fixed
+
+- **Feature 045 (v0.27.1 Bug-Fix Bundle)**: Closes the 7-item post-v0.27.0 patch set across two iterations. CLI version handling now accepts top-level `specrew --version` and `specrew -v` aliases with parity to `specrew version`, and suppresses the version-warning path when the installed version is determinable. `specrew start` now auto-repairs missing managed skill-catalog roots before normal continuation, while `specrew init` treats missing skill catalogs as a deployable gap on the non-force path and validates repaired roots on the force path. Brownfield bootstrap now treats existing baseline `.squad/agents/` roles as canonical project source only for self-hosting projects that also contain `extensions/specrew-speckit/`; non-self-hosting projects still report those managed-role collisions as conflicts. Operator docs now cover normal update, package-manager `-Force`, `-SkipPublisherCheck` risk boundaries, and when to rerun `specrew init` or `specrew init -Force` after an update. Stale findings F6-F7 are closed through the iteration 002 finding ledger without adding runtime behavior. Evidence: `specs/045-v0271-bugfix-bundle/iterations/001/` and `specs/045-v0271-bugfix-bundle/iterations/002/`.
+
 ## [0.27.0] - 2026-05-24
 
 ### Added

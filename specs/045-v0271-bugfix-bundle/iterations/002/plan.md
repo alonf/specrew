@@ -2,7 +2,7 @@
 
 **Schema**: v1
 **Spec**: [../../spec.md](../../spec.md)
-**Status**: planning
+**Status**: executing
 **Capacity**: 20/20 story_points
 **Started**: 2026-05-25
 **Completed**:
@@ -36,22 +36,22 @@
 
 | Task | Title | Requirement | Story | Effort | Owner | Owner File Globs | Status | Agent | Actual | Verdict |
 | ---- | ----- | ----------- | ----- | ------ | ----- | ---------------- | ------ | ----- | ------ | ------- |
-| T002 | Create iteration 002 traceability matrix mapping US1-US3 to FR-001..FR-008 and SC-001..SC-006 | TG-001, TG-002, TG-003, TG-004 | Setup | 1 | Reviewer | `specs/045-v0271-bugfix-bundle/iterations/002/traceability-matrix.md` | planned | Codex |  |  |
-| T016 | Extend brownfield ownership regression fixtures for self-hosting and non-self-hosting `.squad/agents/` classification | FR-006, SC-004, SC-006, TG-002 | US2 tests | 2 | Implementer | `tests/integration/brownfield-conflict-handling.ps1` | planned | Codex |  |  |
-| T017 | Update canonical-source classification logic for `.squad/agents/` when `extensions/specrew-speckit/` signal exists | FR-006, SC-004, TG-002 | US2 implementation | 2 | Implementer | `extensions/specrew-speckit/scripts/brownfield-merge.ps1` | planned | Codex |  |  |
-| T018 | Mirror brownfield classification change in deployed governance copy | FR-006, FR-008, SC-004, TG-002, TG-004 | US2 implementation | 1 | Implementer | `.specify/extensions/specrew-speckit/scripts/brownfield-merge.ps1` | planned | Codex |  |  |
-| T019 | Record F5/F6 closure disposition and evidence pointers in iteration 002 finding ledger | FR-003, FR-006, TG-002, TG-007 | US2 evidence | 1 | Reviewer | `specs/045-v0271-bugfix-bundle/iterations/002/finding-disposition.md` | planned | Codex |  |  |
-| T020 | Execute brownfield regression suite and append pass evidence | SC-004, SC-006, TG-002 | US2 evidence | 1 | Reviewer | `tests/integration/brownfield-conflict-handling.ps1`, `specs/045-v0271-bugfix-bundle/iterations/002/quality/quality-evidence.md` | planned | Codex |  |  |
-| T021 | Create doc validation checklist and timing rubric for SC-005 measurement | FR-007, SC-005, TG-003 | US3 tests | 1 | Doc Steward | `specs/045-v0271-bugfix-bundle/iterations/002/quality/update-guidance-review.md` | planned | Codex |  |  |
-| T022 | Update update-path guidance covering normal update, `-Force`, and publisher-check bypass safety boundaries | FR-007, SC-005, TG-003 | US3 implementation | 2 | Doc Steward | `docs/getting-started.md` | planned | Codex |  |  |
-| T023 | Update operator guidance with explicit init re-deployment triggers for missing skill-catalog/runtime gaps | FR-007, SC-005, TG-003 | US3 implementation | 2 | Doc Steward | `docs/user-guide.md` | planned | Codex |  |  |
-| T024 | Add stale-finding closure narrative and bounded-scope note for v0.27.1 bundle | FR-003, FR-007, TG-003, TG-007 | US3 evidence | 1 | Doc Steward | `specs/045-v0271-bugfix-bundle/iterations/002/finding-disposition.md` | planned | Codex |  |  |
-| T025 | Refresh verification walkthrough with post-update redeploy decision checks | FR-007, SC-005, TG-003 | US3 evidence | 1 | Doc Steward | `specs/045-v0271-bugfix-bundle/quickstart.md` | planned | Codex |  |  |
-| T026 | Execute guided doc review and capture under-3-minute decision evidence | SC-005, TG-003 | US3 evidence | 1 | Reviewer | `specs/045-v0271-bugfix-bundle/iterations/002/quality/update-guidance-review.md` | planned | Codex |  |  |
-| T027 | Run mechanical checks and confirm iteration 002 outputs | FR-008, SC-006, TG-004 | Polish | 1 | Reviewer | `specs/045-v0271-bugfix-bundle/iterations/002/quality/mechanical-findings.json`, `specs/045-v0271-bugfix-bundle/iterations/002/quality/quality-evidence.md` | planned | Codex |  |  |
-| T028 | Execute governance validation and record result | FR-008, TG-004 | Polish | 1 | Reviewer | `specs/045-v0271-bugfix-bundle/iterations/002/quality/quality-evidence.md` | planned | Codex |  |  |
-| T029 | Verify all patch regression suites pass and summarize zero failing P0/P1 status | SC-006, TG-001, TG-002, TG-003 | Polish | 1 | Reviewer | `tests/integration/validate-versions-cli-behavior.ps1`, `tests/integration/start-recovery-flow.tests.ps1`, `tests/integration/brownfield-conflict-handling.ps1`, `specs/045-v0271-bugfix-bundle/iterations/002/quality/quality-evidence.md` | planned | Codex |  |  |
-| T030 | Update v0.27.1 patch notes with bundle closure summary and stale-finding disposition references | FR-003, FR-008, TG-006, TG-007 | Polish | 1 | Doc Steward | `CHANGELOG.md` | planned | Codex |  |  |
+| T002 | Create iteration 002 traceability matrix mapping US1-US3 to FR-001..FR-008 and SC-001..SC-006 | TG-001, TG-002, TG-003, TG-004 | Setup | 1 | Reviewer | `specs/045-v0271-bugfix-bundle/iterations/002/traceability-matrix.md` | done | Codex | 1 | Traceability matrix covers US1 carried-forward regression, US2, US3, polish, FR-001..FR-008, and SC-001..SC-006. |
+| T016 | Extend brownfield ownership regression fixtures for self-hosting and non-self-hosting `.squad/agents/` classification | FR-006, SC-004, SC-006, TG-002 | US2 tests | 2 | Implementer | `tests/integration/brownfield-conflict-handling.ps1` | done | Codex | 2 | Tests-first run failed on the intended self-hosting false-conflict gap, then passed after implementation. |
+| T017 | Update canonical-source classification logic for `.squad/agents/` when `extensions/specrew-speckit/` signal exists | FR-006, SC-004, TG-002 | US2 implementation | 2 | Implementer | `extensions/specrew-speckit/scripts/brownfield-merge.ps1` | done | Codex | 2 | Primary brownfield merge now treats self-hosting `.squad/agents` baseline roles as canonical and non-mergeable, not conflicts. |
+| T018 | Mirror brownfield classification change in deployed governance copy | FR-006, FR-008, SC-004, TG-002, TG-004 | US2 implementation | 1 | Implementer | `.specify/extensions/specrew-speckit/scripts/brownfield-merge.ps1` | done | Codex | 1 | Mirror copy updated with the same state fields and canonical-role classification logic. |
+| T019 | Record F5/F6 closure disposition and evidence pointers in iteration 002 finding ledger | FR-003, FR-006, TG-002, TG-007 | US2 evidence | 1 | Reviewer | `specs/045-v0271-bugfix-bundle/iterations/002/finding-disposition.md` | done | Codex | 1 | Finding ledger marks F5 implemented and F6 stale/closed, with F7 pending US3. |
+| T020 | Execute brownfield regression suite and append pass evidence | SC-004, SC-006, TG-002 | US2 evidence | 1 | Reviewer | `tests/integration/brownfield-conflict-handling.ps1`, `specs/045-v0271-bugfix-bundle/iterations/002/quality/quality-evidence.md` | done | Codex | 1 | Brownfield conflict-handling and lower-level brownfield-merge regression suites passed. |
+| T021 | Create doc validation checklist and timing rubric for SC-005 measurement | FR-007, SC-005, TG-003 | US3 tests | 1 | Doc Steward | `specs/045-v0271-bugfix-bundle/iterations/002/quality/update-guidance-review.md` | done | Codex | 1 | Rubric requires three operator decisions under 3 minutes with source-backed trigger/risk answers. |
+| T022 | Update update-path guidance covering normal update, `-Force`, and publisher-check bypass safety boundaries | FR-007, SC-005, TG-003 | US3 implementation | 2 | Doc Steward | `docs/getting-started.md` | done | Codex | 2 | Getting Started now documents normal update, reinstall/force semantics, publisher-check bypass risk, and post-update init triggers. |
+| T023 | Update operator guidance with explicit init re-deployment triggers for missing skill-catalog/runtime gaps | FR-007, SC-005, TG-003 | US3 implementation | 2 | Doc Steward | `docs/user-guide.md` | done | Codex | 2 | User Guide now has an update/redeploy decision section plus self-hosting brownfield ownership guidance. |
+| T024 | Add stale-finding closure narrative and bounded-scope note for v0.27.1 bundle | FR-003, FR-007, TG-003, TG-007 | US3 evidence | 1 | Doc Steward | `specs/045-v0271-bugfix-bundle/iterations/002/finding-disposition.md` | done | Codex | 1 | F7 is closed as docs-only with bounded-scope note; no runtime behavior added. |
+| T025 | Refresh verification walkthrough with post-update redeploy decision checks | FR-007, SC-005, TG-003 | US3 evidence | 1 | Doc Steward | `specs/045-v0271-bugfix-bundle/quickstart.md` | done | Codex | 1 | Quickstart now includes update/redeploy decision checks and iteration 002 evidence paths. |
+| T026 | Execute guided doc review and capture under-3-minute decision evidence | SC-005, TG-003 | US3 evidence | 1 | Reviewer | `specs/045-v0271-bugfix-bundle/iterations/002/quality/update-guidance-review.md` | done | Codex | 1 | Guided documentation review passed in 2m05s with all required operator decisions answered from docs and quickstart material. |
+| T027 | Run mechanical checks and confirm iteration 002 outputs | FR-008, SC-006, TG-004 | Polish | 1 | Reviewer | `specs/045-v0271-bugfix-bundle/iterations/002/quality/mechanical-findings.json`, `specs/045-v0271-bugfix-bundle/iterations/002/quality/quality-evidence.md` | done | Codex | 1 | Mechanical checks passed and generated an empty findings array for iteration 002. |
+| T028 | Execute governance validation and record result | FR-008, TG-004 | Polish | 1 | Reviewer | `specs/045-v0271-bugfix-bundle/iterations/002/quality/quality-evidence.md` | done | Codex | 1 | Targeted governance validation passed with `-NoCacheRead` after correcting the state phase to the canonical boundary label. |
+| T029 | Verify all patch regression suites pass and summarize zero failing P0/P1 status | SC-006, TG-001, TG-002, TG-003 | Polish | 1 | Reviewer | `tests/integration/validate-versions-cli-behavior.ps1`, `tests/integration/start-recovery-flow.tests.ps1`, `tests/integration/brownfield-conflict-handling.ps1`, `specs/045-v0271-bugfix-bundle/iterations/002/quality/quality-evidence.md` | done | Codex | 1 | Version CLI, start-recovery, and brownfield conflict-handling regression suites passed with 0 failing P0/P1 tests. |
+| T030 | Update v0.27.1 patch notes with bundle closure summary and stale-finding disposition references | FR-003, FR-008, TG-006, TG-007 | Polish | 1 | Doc Steward | `CHANGELOG.md` | done | Codex | 1 | `CHANGELOG.md` contains the v0.27.1 bundle closure summary, operator update guidance note, brownfield fix summary, and F6-F7 stale-finding disposition references. |
 
 ## Effort Model
 
@@ -105,7 +105,7 @@
   - SC-005: T021, T022, T023, T025, T026
   - SC-006: T016, T020, T027, T029
 - Carried-forward US1 behavior is covered by T029 regression replay; no new FR-001, FR-002, FR-004, or FR-005 implementation is planned.
-- T002 will produce the full US1-US3 to FR/SC traceability matrix before implementation tasks start.
+- T002 produced the full US1-US3 to FR/SC traceability matrix before implementation tasks started.
 
 ## Proposal 119 Note
 
@@ -132,4 +132,4 @@
 ## Notes
 
 - Iteration 002 scope: T002 (1 SP) + T016-T020 (7 SP) + T021-T026 (8 SP) + T027-T030 (4 SP) = 20 SP exactly.
-- Plan status remains `planning` until a human before-implement verdict authorizes execution; at execution start, flip Status to `executing`.
+- Human before-implement approval was received on 2026-05-25; Status is `executing` and T002 is the first active task.
