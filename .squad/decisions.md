@@ -18385,3 +18385,12 @@ User explicitly authorized retro-boundary entry for Feature 039 Iteration 001. T
 - **Task ID**: (none)
 - **Auth Commit Hash**: 259b1f4f3fba7884bb85a33d5d3aecd0794b9235
 - **Recorded At**: 2026-05-25T14:50:23Z
+
+## 2026-05-25T15:28:41Z — Boundary sync: review-signoff
+
+- **Boundary Type**: review-signoff
+- **Feature Ref**: 045-v0271-bugfix-bundle
+- **Iteration Number**: 001
+- **Task ID**: (none)
+- **Auth Commit Hash**: 99eb985b88f6489fe4ea462a8f9acbf8025c1915
+- **Recorded At**: 2026-05-25T15:28:40Z
