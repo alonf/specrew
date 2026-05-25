@@ -161,6 +161,55 @@ To avoid breaking existing in-flight iterations:
 
 Phased rollout lets existing projects migrate without rework.
 
+### Closeout-commit evidence requirements (added 2026-05-25 after dice re-audit)
+
+The dice-projects re-audit revealed that even hosts that DO populate evidence in `review.md` don't always surface it in the **closeout commit message**. The commit message is the most visible audit-trail surface — when a reviewer reads `git log` they see commit messages, not review.md content. Without commit-message evidence, the audit trail loses signal.
+
+Required closeout-commit content (review-signoff / iteration-closeout / feature-closeout commits):
+
+```text
+feat(F-NNN iter-NNN): <summary>
+
+Acceptance Evidence:
+- Verification mode: <verified | deferred | delegated>
+- Tests: <PASS-count>/<TOTAL> passing
+- Runtime evidence: <path or URL — screenshot, --smoke-test exit, CI log link>
+- Captured by: <user-name>
+- Captured at: <ISO-8601>
+
+[For deferred mode, also include:]
+- Re-verify by: <date or milestone>
+- Risk if untested: <one-line>
+
+[Standard commit body + co-author footer]
+```
+
+Pre-commit hook validates closeout-direction commit messages contain the `Acceptance Evidence:` block with structured fields. Detects keywords:
+
+- `Verification mode:` (required; one of three values)
+- `Tests:` or `Runtime evidence:` (at least one required for verified/delegated modes)
+- `Captured by:` (required; non-empty)
+- `Captured at:` (required; ISO-8601 parsable)
+- `Re-verify by:` + `Risk if untested:` (required for deferred mode)
+
+Missing or malformed fields → commit rejected with diagnostic naming the missing field. Hook installed via `specrew init` (composes with Proposal 111 git-hook enforcement pattern).
+
+#### Empirical motivation for commit-message evidence requirement
+
+The 2026-05-25 dice re-audit showed:
+
+| Host | review.md has Acceptance Evidence? | Commit message has Acceptance Evidence? |
+|---|---|---|
+| Claude | YES (defer-001 with desktop screenshot) | NO — commit body just says "Implementation Complete" |
+| Copilot | YES (63/63 tests passing) | PARTIAL — git log mentions test count but not structured fields |
+| Codex | YES (--smoke-test exit code captured) | NO — commit body lacks evidence block |
+| Antigravity | PARTIAL (some artifacts mention runtime state) | NO |
+| AntigravityStrong | PARTIAL | NO |
+
+A reviewer browsing `git log` for any of these features sees a "Closeout" commit message that asserts completion without evidence — the audit trail is in `review.md` but the commit message gives no pointer. This is form-vs-meaning at the commit-history layer: form (closeout commit exists) satisfied, meaning (evidence in the visible audit trail) absent.
+
+The commit-message integration closes this gap. It composes with Proposal 111's git-hook-level enforcement pattern (already candidate for v0.28.x).
+
 ## Why this is genuinely new (not absorbed by existing proposals)
 
 | Existing proposal | What it covers | Why it doesn't subsume this proposal |
