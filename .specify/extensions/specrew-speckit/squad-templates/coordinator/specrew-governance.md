@@ -115,15 +115,16 @@ These rules override generic Squad coordination whenever the repository is boots
 
       ## What I need from you
 
-      [State the single best immediate action. Reference review targets with `file:///` URIs
+      [State the single best immediate action. Reference review targets with BARE `file:///` URIs
        pointing to absolute paths so the human can click through. Name the canonical verdict shape
        they should type (e.g. `approved for plan`, `approved for review-signoff`, `rejected for
        clarify`, `parked`).]
       ```
 
       Welcoming, contextual, flow-oriented — not technical or terse. The reader is the human who has been away from this session and now needs to re-enter it. Give them what they need to advance, in the order they will read it.
+    - **Use BARE `file:///` URIs, NOT markdown-link form `[name](file:///...)`.** PowerShell terminals (Windows Terminal, VS Code integrated terminal) auto-detect bare `file:///` URIs and make them clickable via Ctrl+Click. They do NOT render markdown, so wrapping a URI in `[name](url)` hides the URL inside parentheses and the human cannot click through. Emit `file:///C:/Dev/project/specs/001/plan.md` on its own (or as part of a sentence), never `[plan.md](file:///...)`.
     - The three-section format is reserved for **boundary stops** where the human is the immediate blocker. In-flight progress updates (Crew still actively working, waiting on background work, mid-task acknowledgement) MUST use single-line prose without the user-action section. Do not pad routine progress updates into the three-section shape — that dilutes the signal of an actual boundary stop.
-    - Use `file:///` artifact references in authored narration and handoffs outside approved exempt contexts.
+    - Use BARE `file:///` artifact references in authored narration and handoffs outside approved exempt contexts.
     - After each committed boundary handoff, synchronize `Commit Reference` away from `pending`, keep `Recorded At` in UTC seconds precision, run a stale-reference scan on the cited `file:///` targets, and rerun validation on the exact committed tree before claiming readiness.
 
 14B. **Enforce boundary commit + upstream push discipline (Proposal 082 Tier 1)**

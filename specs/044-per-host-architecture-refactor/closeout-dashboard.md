@@ -9,11 +9,11 @@
 
 | Metric | Planned (Proposal 108) | Actual | Variance |
 |---|---|---|---|
-| Story points | 22-25 SP | ~60 SP (iter-001 18 + iter-002 6 + iter-003 4 + iter-004 3 + iter-005 8 + iter-006 4 + iter-007 7 + iter-008 10) | +35 SP via review-driven + manual-test-driven + UX-driven + release-prep + dispatch-hardening + Linux-portability + closeout-docs + three-section-format-regression-fix cleanup |
-| Iterations | 1 (Proposal 108 implicit) | 8 (architectural payoff + deep-review + manual-test + UX + release prep + dispatch hardening + Linux portability + closeout-docs/handoff-format) | +7 (methodology shape — see retros) |
+| Story points | 22-25 SP | ~62.5 SP (iter-001 18 + iter-002 6 + iter-003 4 + iter-004 3 + iter-005 8 + iter-006 4 + iter-007 7 + iter-008 10 + iter-009 2.5) | +37.5 SP via review-driven + manual-test-driven + UX-driven + release-prep + dispatch-hardening + Linux-portability + closeout-docs + three-section-format + bare-URI cleanup |
+| Iterations | 1 (Proposal 108 implicit) | 9 (architectural payoff + deep-review + manual-test + UX + release prep + dispatch hardening + Linux portability + closeout-docs + bare-URI wording) | +8 (methodology shape — see retros) |
 | FRs delivered | 13 | 13 | 0 |
 | ACs verified | 12 | 12 PASS (5 PASS in iter-001; 7 closed in iter-002) | 0 |
-| Implementation commits | ~10 | ~24 in iter-001 (Phase A-D + Slices 1-9) + 1 each in iter-002..006 + iter-007 closeout commit + iter-008 closeout commit | n/a |
+| Implementation commits | ~10 | ~24 in iter-001 (Phase A-D + Slices 1-9) + 1 each in iter-002..006 + iter-007 closeout commit + iter-008 closeout commit + iter-009 closeout commit | n/a |
 
 ## FR scoreboard
 
@@ -53,7 +53,7 @@ This feature shipped on the same PR as **F-043 Multi-Host Onboarding** because t
 | Bundle component | Spec | Iteration artifacts |
 |---|---|---|
 | F-043 (sibling) | [`../043-multi-host-onboarding/spec.md`](../043-multi-host-onboarding/spec.md) | [`../043-multi-host-onboarding/iterations/001/`](../043-multi-host-onboarding/iterations/001/) |
-| F-044 (this) | [`spec.md`](./spec.md) | [`iterations/001/`](./iterations/001/) + [`iterations/002/`](./iterations/002/) + [`iterations/003/`](./iterations/003/) + [`iterations/004/`](./iterations/004/) + [`iterations/005/`](./iterations/005/) + [`iterations/006/`](./iterations/006/) + [`iterations/007/`](./iterations/007/) + [`iterations/008/`](./iterations/008/) |
+| F-044 (this) | [`spec.md`](./spec.md) | [`iterations/001/`](./iterations/001/) + [`iterations/002/`](./iterations/002/) + [`iterations/003/`](./iterations/003/) + [`iterations/004/`](./iterations/004/) + [`iterations/005/`](./iterations/005/) + [`iterations/006/`](./iterations/006/) + [`iterations/007/`](./iterations/007/) + [`iterations/008/`](./iterations/008/) + [`iterations/009/`](./iterations/009/) |
 
 ## Architecture + design references
 

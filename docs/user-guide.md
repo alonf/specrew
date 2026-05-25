@@ -86,16 +86,19 @@ I stopped at the <boundary> boundary because <reason the next step needs you>.
 
 ## What I need from you
 
-[The single best immediate action. Review targets are linked via `file:///` URIs so you can click
- through to the artifact. Names the canonical verdict shape you should type.]
+[The single best immediate action. Review targets are linked via BARE `file:///` URIs (NOT
+ markdown-link form `[name](url)`) so you can Ctrl+Click through to the artifact. Names the
+ canonical verdict shape you should type.]
 ```
 
 The three sections are not stylistic — they are a methodology guarantee from Feature 016 (Substantive Interaction Model, Pillar 1). The format lets you scan a handoff in seconds and decide whether to advance, even when you have been away from the session.
 
+**Bare `file:///` URIs, not markdown link form.** Modern PowerShell terminals (Windows Terminal, VS Code integrated terminal) auto-detect bare `file:///` URIs and make them Ctrl+Clickable. They do NOT render markdown — so if the Crew emits `[plan.md](file:///C:/foo/plan.md)`, the URL is hidden inside the parentheses and you cannot click through. If you see markdown-link form in a handoff, that is the regression: re-prompt the Crew with `please emit bare file:/// URIs, not markdown-link form`.
+
 **What to do**:
 
 1. Read all three sections. The flow is intentional: what happened → why you matter now → what to type.
-2. Open any `file:///` link the Crew shows you in `What I need from you` — those are the artifacts the verdict applies to.
+2. Ctrl+Click any bare `file:///` link the Crew shows you in `What I need from you` — those are the artifacts the verdict applies to.
 3. Type one of the canonical verdict shapes from the "Recognized verdict shapes" section above. Ambiguous prose (`looks good`, `continue`) is rejected and re-prompted.
 
 **If you see a handoff that doesn't follow this format** — for example, a bare technical status line, a pile of tool output, or a question without context — that is a methodology regression. Re-prompt the Crew with `please use the three-section boundary handoff format` and the Crew should regenerate the handoff. If it persists across hosts (Copilot / Claude / Codex / Antigravity), open an issue — the canonical templates govern this UX promise.
