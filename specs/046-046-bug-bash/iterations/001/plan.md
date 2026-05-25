@@ -2,10 +2,10 @@
 
 **Schema**: v1
 **Spec**: [../../spec.md](../../spec.md)
-**Status**: planning
+**Status**: complete
 **Capacity**: 18/20 story_points
 **Started**: 2026-05-25
-**Completed**:
+**Completed**: 2026-05-26
 
 <!--
   Validator schema (canonical, enforced by validate-governance.ps1):
@@ -35,19 +35,19 @@
 
 | Task | Title | Requirement | Story | Effort | Owner | Owner File Globs | Status | Agent | Actual | Verdict |
 | ---- | ----- | ----------- | ----- | ------ | ----- | ---------------- | ------ | ----- | ------ | ------- |
-| T001 | Create stale-state allow-list regression fixtures in tests/integration/stale-state-retro.tests.ps1 | FR-001 | US1 tests | 1 | Implementer | `tests/integration/stale-state-retro.tests.ps1` | planned | Codex | | |
-| T002 | Map retro as an allowed boundary in scripts/specrew-start.ps1 and scripts/specrew-review.ps1 allow-lists | FR-001 | US1 implementation | 1 | Implementer | `scripts/specrew-start.ps1`, `scripts/specrew-review.ps1` | planned | Codex | | |
-| T003 | Create atomic boundary sync validation fixtures in tests/integration/boundary-sync-atomic.tests.ps1 | FR-002, FR-003 | US2 tests | 2 | Implementer | `tests/integration/boundary-sync-atomic.tests.ps1` | planned | Codex | | |
-| T004 | Implement inline verdict writer and Add-SpecrewBoundaryAuthorization call in scripts/internal/sync-boundary-state.ps1 | FR-002, FR-003 | US2 implementation | 2 | Implementer | `scripts/internal/sync-boundary-state.ps1` | planned | Codex | | |
-| T005 | Create artifact protection validation tests in tests/integration/scaffolder-protection.tests.ps1 | FR-004 | US3 tests | 2 | Reviewer | `tests/integration/scaffolder-protection.tests.ps1` | planned | Codex | | |
-| T006 | Implement Test-SpecrewFileHasPopulatedVerdict check and pending-redirect logic in scaffolders | FR-004 | US3 implementation | 2 | Reviewer | `extensions/specrew-speckit/scripts/scaffold-reviewer-artifacts.ps1`, `scaffold-review-artifact.ps1`, `scaffold-retro-artifact.ps1` | planned | Codex | | |
-| T007 | Mirror scaffolder changes to .specify/extensions/specrew-speckit/scripts/ counterparts | FR-004, FR-007 | US3 implementation | 1 | Reviewer | `.specify/extensions/specrew-speckit/scripts/*` | planned | Codex | | |
-| T008 | Create prose alias translation fixtures in tests/integration/prose-alias-sync.tests.ps1 | FR-005 | US4 tests | 1 | Implementer | `tests/integration/prose-alias-sync.tests.ps1` | planned | Codex | | |
-| T009 | Remove parameter [ValidateSet] and implement dynamic alias mapping in sync wrappers and internal handlers | FR-005 | US4 implementation | 2 | Implementer | `extensions/specrew-speckit/scripts/sync-boundary-state.ps1`, `scripts/internal/sync-boundary-state.ps1` | planned | Codex | | |
-| T010 | Mirror boundary-sync alias changes to .specify/extensions/specrew-speckit/scripts/sync-boundary-state.ps1 wrapper | FR-005, FR-007 | US4 implementation | 1 | Implementer | `.specify/extensions/specrew-speckit/scripts/sync-boundary-state.ps1` | planned | Codex | | |
-| T011 | Complete specs/046-046-bug-bash/findings.md logging all repro, root cause, and validation evidence | FR-006 | US5 documentation | 1 | Doc Steward | `specs/046-046-bug-bash/findings.md` | planned | Codex | | |
-| T012 | Run mechanical checks via .specify/extensions/specrew-speckit/scripts/run-mechanical-checks.ps1 and validate outputs | FR-007 | Polish | 1 | Reviewer | `specs/046-046-bug-bash/iterations/001/quality/mechanical-findings.json` | planned | Codex | | |
-| T013 | Execute governance validation via .specify/extensions/specrew-speckit/scripts/validate-governance.ps1 and record results | FR-007 | Polish | 1 | Reviewer | `specs/046-046-bug-bash/iterations/001/quality/quality-evidence.md` | planned | Codex | | |
+| T001 | Create stale-state allow-list regression fixtures in tests/integration/stale-state-retro.tests.ps1 | FR-001 | US1 tests | 1 | Implementer | `tests/integration/stale-state-retro.tests.ps1` | done | Codex | 1 | pass |
+| T002 | Map retro as an allowed boundary in scripts/specrew-start.ps1 and scripts/specrew-review.ps1 allow-lists | FR-001 | US1 implementation | 1 | Implementer | `scripts/specrew-start.ps1`, `scripts/specrew-review.ps1` | done | Codex | 1 | pass |
+| T003 | Create atomic boundary sync validation fixtures in tests/integration/boundary-sync-atomic.tests.ps1 | FR-002, FR-003 | US2 tests | 2 | Implementer | `tests/integration/boundary-sync-atomic.tests.ps1` | done | Codex | 2 | pass |
+| T004 | Implement inline verdict writer and Add-SpecrewBoundaryAuthorization call in scripts/internal/sync-boundary-state.ps1 | FR-002, FR-003 | US2 implementation | 2 | Implementer | `scripts/internal/sync-boundary-state.ps1` | done | Codex | 2 | pass |
+| T005 | Create artifact protection validation tests in tests/integration/scaffolder-protection.tests.ps1 | FR-004 | US3 tests | 2 | Reviewer | `tests/integration/scaffolder-protection.tests.ps1` | done | Codex | 2 | pass |
+| T006 | Implement Test-SpecrewFileHasPopulatedVerdict check and pending-redirect logic in scaffolders | FR-004 | US3 implementation | 2 | Reviewer | `extensions/specrew-speckit/scripts/scaffold-reviewer-artifacts.ps1`, `scaffold-review-artifact.ps1`, `scaffold-retro-artifact.ps1` | done | Codex | 2 | pass |
+| T007 | Mirror scaffolder changes to .specify/extensions/specrew-speckit/scripts/ counterparts | FR-004, FR-007 | US3 implementation | 1 | Reviewer | `.specify/extensions/specrew-speckit/scripts/*` | done | Codex | 1 | pass |
+| T008 | Create prose alias translation fixtures in tests/integration/prose-alias-sync.tests.ps1 | FR-005 | US4 tests | 1 | Implementer | `tests/integration/prose-alias-sync.tests.ps1` | done | Codex | 1 | pass |
+| T009 | Remove parameter [ValidateSet] and implement dynamic alias mapping in sync wrappers and internal handlers | FR-005 | US4 implementation | 2 | Implementer | `extensions/specrew-speckit/scripts/sync-boundary-state.ps1`, `scripts/internal/sync-boundary-state.ps1` | done | Codex | 2 | pass |
+| T010 | Mirror boundary-sync alias changes to .specify/extensions/specrew-speckit/scripts/sync-boundary-state.ps1 wrapper | FR-005, FR-007 | US4 implementation | 1 | Implementer | `.specify/extensions/specrew-speckit/scripts/sync-boundary-state.ps1` | done | Codex | 1 | pass |
+| T011 | Complete specs/046-046-bug-bash/findings.md logging all repro, root cause, and validation evidence | FR-006 | US5 documentation | 1 | Doc Steward | `specs/046-046-bug-bash/findings.md` | done | Codex | 1 | pass |
+| T012 | Run mechanical checks via .specify/extensions/specrew-speckit/scripts/run-mechanical-checks.ps1 and validate outputs | FR-007 | Polish | 1 | Reviewer | `specs/046-046-bug-bash/iterations/001/quality/mechanical-findings.json` | done | Codex | 1 | pass |
+| T013 | Execute governance validation via .specify/extensions/specrew-speckit/scripts/validate-governance.ps1 and record results | FR-007 | Polish | 1 | Reviewer | `specs/046-046-bug-bash/iterations/001/quality/quality-evidence.md` | done | Codex | 1 | pass |
 
 ## Effort Model
 
