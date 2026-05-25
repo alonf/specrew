@@ -18394,3 +18394,19 @@ User explicitly authorized retro-boundary entry for Feature 039 Iteration 001. T
 - **Task ID**: (none)
 - **Auth Commit Hash**: 99eb985b88f6489fe4ea462a8f9acbf8025c1915
 - **Recorded At**: 2026-05-25T15:28:40Z
+
+## 2026-05-25T15:53:11Z — Boundary sync warning: review-signoff
+
+- **Boundary Type**: review-signoff
+- **Latest Recorded Boundary**: review-signoff
+- **Recorded At**: 2026-05-25T15:53:11Z
+- **Warning**: Expected next boundary 'retro' but received 'review-signoff'.
+
+## 2026-05-25T15:53:12Z — Boundary sync: review-signoff
+
+- **Boundary Type**: review-signoff
+- **Feature Ref**: 045-v0271-bugfix-bundle
+- **Iteration Number**: 001
+- **Task ID**: (none)
+- **Auth Commit Hash**: df1e036d6b124cb3f278e5862524736e57f732e6
+- **Recorded At**: 2026-05-25T15:53:11Z
