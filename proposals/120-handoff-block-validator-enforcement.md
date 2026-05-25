@@ -18,9 +18,12 @@ Empirically observed during the 2026-05-25 dogfooding wave as part of a broader 
 
 1. **Trigger bypass** — agent writes structural artifacts but skips trigger-driven side effects. F-044 implemented by standalone Claude session: all 8 iteration directories got plan/state/review/retro/scope/code-map/drift-log but ZERO got `dashboard.md` because the auto-render path runs through `sync-boundary-state.ps1` which was never invoked. F-043 iter 001 same shape. 10 soft warnings, all `missing-dashboard-artifact`.
 2. **Wrong location** — agent writes canonical artifacts to its ephemeral session-scratch folder. Antigravity F-046 specify-phase wrote `implementation_plan.md` to `C:/Users/alon.HOME/.gemini/antigravity-cli/brain/<session-id>/` instead of `specs/046-046-bug-bash/plan.md`. Doesn't survive sessions, isn't version-controlled, isn't discoverable by other agents.
-3. **Handoff-block dropped** — agent stops at boundary or lifecycle-end without emitting the structured `=== SPECREW HANDOFF ===` block. Squad+Copilot PlanningPoC silence after Scribe completion (commits `32a4a74` + `903714e`); Antigravity F-046 question-prompt substitution; F-046 v0.27.2 4-gate autopilot bypass.
+3. **Handoff-block dropped** — agent stops at boundary or lifecycle-end without emitting the structured `=== SPECREW HANDOFF ===` block. Three observed sub-triggers:
+   - **3a. Mid-flow agent-completion silence** — when a sub-agent (Scribe, Reviewer, etc.) finishes its task, the coordinator drops to silence instead of emitting the handoff. Squad+Copilot PlanningPoC after Scribe completion (commits `32a4a74` + `903714e`).
+   - **3b. Host-native question-prompt substitution** — host-native UI primitives replace the handoff block. Antigravity F-046 specify-phase emitted a structured-question-prompt instead of the `=== SPECREW HANDOFF ===` sentinel.
+   - **3c. Post-compaction discipline drop (added 2026-05-26)** — coordinator's discipline degrades after conversation compaction. The PRIOR stop (pre-compaction) correctly emitted the three-section handoff; the IMMEDIATE NEXT stop (post-compaction) drops to plain prose without the structured block. Empirical: 2026-05-26 PlanningPoC review-rerun acceptance — pre-compaction stop after DR-004 fix commit had proper handoff; post-compaction stop after review-rerun acceptance commit `f06491e5` dropped to "Review rerun passed. The packet is now accepted..." with no structured block. Recurring within the same dogfooding session counts the gap as universal across compaction boundaries. Adjacent to but distinct from F-024 autopilot-override (which is host-runtime-level); this is agent-discipline-level degradation that the same agent instance exhibits within a single host. Runtime hook enforcement (Proposal 105) catches sub-cases 3b + 3c that prose discipline cannot.
 
-All three shapes share the same root cause: **prose-based runtime convention that the coordinator prompt prescribes is not mechanically enforced.** Multi-host expansion (F-040 onward) makes the pattern universal — every host that doesn't 100% honor coordinator-prompt prescriptions falls back to model-natural behavior.
+All three shapes share the same root cause: **prose-based runtime convention that the coordinator prompt prescribes is not mechanically enforced.** Multi-host expansion (F-040 onward) makes the pattern universal across hosts — every host that doesn't 100% honor coordinator-prompt prescriptions falls back to model-natural behavior. Compaction expansion (long sessions) makes it universal within hosts — even agents that honor the rules pre-compaction may drop them post-compaction.
 
 ## What
 
@@ -103,8 +106,9 @@ Total ~3-5 SP single iteration:
 - 2026-05-25 Squad+Copilot PlanningPoC iter-001 repair (commits `32a4a74` + `903714e`) — handoff-block dropped after Scribe completion
 - 2026-05-25 Antigravity F-046 specify-phase — handoff-block substituted by host-native question-prompt UI
 - 2026-05-26 F-046 v0.27.2 — 4-gate autopilot bypass with zero handoff blocks emitted between boundary commits `0857e319 → f6155e54`
+- 2026-05-26 PlanningPoC review-rerun post-compaction discipline drop (Sub-trigger 3c) — within a SINGLE Squad+Copilot dogfooding session, the stop immediately BEFORE compaction emitted the proper three-section handoff; the stop immediately AFTER compaction (review-rerun acceptance commit `f06491e5`) dropped to plain prose ("Review rerun passed. The packet is now accepted...") with no structured block. The same agent instance exhibited inconsistent discipline within a single session boundary. Second incident within the same dogfooding session (after the earlier Scribe-bookkeeping silence) — confirms compaction-related variant as a recurring sub-axis.
 
-Pattern recurs across multiple hosts, multiple sessions, multiple shapes. Universal across multi-host expansion.
+Pattern recurs across multiple hosts, multiple sessions, multiple shapes, and **multiple compaction boundaries within a single session**. Universal across multi-host expansion AND across long-session execution.
 
 ## Cross-references
 
