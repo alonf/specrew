@@ -8,6 +8,7 @@
 The `sync-boundary-state.ps1` script is the primary automation surface for advancing boundary cursors and recording audit verdicts.
 
 ### Input Parameters
+
 | Parameter | Type | Required | Description |
 | --- | --- | --- | --- |
 | ProjectPath | String | No | Defaults to current directory `.` |
@@ -17,6 +18,7 @@ The `sync-boundary-state.ps1` script is the primary automation surface for advan
 | AuthCommitHash | String | No | The Git commit hash that authorized this boundary crossing |
 
 ### Supported Aliases
+
 | Input | Translated Canonical Name | Notes |
 | --- | --- | --- |
 | `spec` | `specify` | |
@@ -36,5 +38,6 @@ The `sync-boundary-state.ps1` script is the primary automation surface for advan
 | `feature-closeout` | `feature-closeout` | Canonical |
 
 ### Behavior Guarantees (Invariants)
+
 - **Atomicity**: Any call to `sync-boundary-state.ps1` with an active boundary enforcement context MUST update BOTH `session_state.boundary_type` and `boundary_enforcement.last_authorized_boundary` in `start-context.json` atomically in the same write pass.
 - **Idempotency**: Multiple calls to `sync-boundary-state.ps1` for the same or backward boundaries MUST NOT write duplicate entries or throw errors about moving backward.

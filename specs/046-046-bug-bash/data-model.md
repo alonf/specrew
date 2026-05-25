@@ -9,6 +9,7 @@
 **Purpose**: Represents the transition between boundaries during a sync operation.
 
 ### Attributes
+
 | Attribute | Type | Required | Validation Rules | Description |
 | --- | --- | --- | --- | --- |
 | ProjectRoot | String | Yes | Must resolve to a valid path | Path to project root |
@@ -25,6 +26,7 @@
 **Purpose**: Represents the protection evaluation results for a target scaffold file.
 
 ### Attributes
+
 | Attribute | Type | Required | Validation Rules | Description |
 | --- | --- | --- | --- | --- |
 | TargetPath | String | Yes | Valid file path | Destination file to write |

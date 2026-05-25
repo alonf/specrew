@@ -14,11 +14,13 @@ An operator or agent runs `specrew start` or `specrew review` at the `retro` bou
 **Why this priority**: Stale-state false positives block normal iteration progression and lead to manual state workarounds.
 
 **Independent Test**:
+
 - Create a test fixture where `session_state.boundary_type` in `start-context.json` is set to `retro` and `review.md` has `Overall Verdict: accepted`.
 - Run `specrew-start.ps1` and assert that no warning is emitted.
 - Run negative test where `session_state.boundary_type` is set to `tasks` but `review.md` is accepted, and assert that the warning STILL fires.
 
 **Acceptance Scenarios**:
+
 1. **Given** a project has its boundary type at `retro` and `review.md` is accepted, **When** stale-state check runs, **Then** no warning is emitted.
 2. **Given** a project has its boundary type at `tasks` and `review.md` is accepted, **When** stale-state check runs, **Then** a warning is emitted.
 
@@ -31,11 +33,13 @@ An agent or developer runs `sync-boundary-state.ps1` to advance a boundary (e.g.
 **Why this priority**: Prevents cursor-to-audit-trail drift which breaks downstream governance validation.
 
 **Independent Test**:
+
 - Run `sync-boundary-state.ps1 -BoundaryType iteration-closeout` against a mock `start-context.json`.
 - Verify that both `session_state.boundary_type` and `boundary_enforcement.last_authorized_boundary` have advanced to `iteration-closeout`.
 - Verify that `boundary_enforcement.verdict_history` has a new, fully formed audit row.
 
 **Acceptance Scenarios**:
+
 1. **Given** a project has boundary enforcement enabled, **When** `sync-boundary-state.ps1` is invoked, **Then** both `session_state` and `boundary_enforcement` sections are updated atomically.
 
 ---
@@ -47,10 +51,12 @@ A developer or agent re-runs `scaffold-review-artifact.ps1`, `scaffold-retro-art
 **Why this priority**: Prevents loss of human-annotated review evidence during subsequent runs.
 
 **Independent Test**:
+
 - Create an existing `review.md` with `Overall Verdict: accepted`.
 - Run `scaffold-review-artifact.ps1` and verify that the original `review.md` is unchanged, a `review.md.pending` is created, and a clear console warning is printed.
 
 **Acceptance Scenarios**:
+
 1. **Given** a target markdown file exists with a populated verdict or task pass/fail evidence, **When** any scaffolder is re-run, **Then** the existing file is preserved and scaffolding outputs to a `.pending` file.
 
 ---
@@ -62,10 +68,12 @@ An operator runs `sync-boundary-state.ps1` with a common prose boundary alias (s
 **Why this priority**: Simplifies user interaction and prevents script failures due to minor nomenclature variances.
 
 **Independent Test**:
+
 - Invoke `sync-boundary-state.ps1 -BoundaryType implement` and verify it succeeds and synchronizes to `review-signoff`.
 - Invoke `sync-boundary-state.ps1 -BoundaryType invalid` and verify it throws a clean error listing all valid canonical boundaries and aliases.
 
 **Acceptance Scenarios**:
+
 1. **Given** an operator provides a common prose alias, **When** boundary sync runs, **Then** the alias is mapped to the canonical boundary name.
 
 ---
@@ -77,6 +85,7 @@ The team records a running `findings.md` log detailing all Repros, Root Causes, 
 **Why this priority**: Maintains alignment and prevents re-discovery of known non-defects.
 
 **Independent Test**:
+
 - Confirm `findings.md` is fully populated and checked.
 
 ---

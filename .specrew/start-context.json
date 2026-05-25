@@ -11,6 +11,7 @@
     "state": "existing-continue",
     "detected_entries": [
       ".agents",
+      ".antigravitycli",
       ".claude",
       ".codex",
       ".scratch",
@@ -164,69 +165,81 @@
   },
   "delegated_routing": {
     "enabled_agents": [
-      "copilot"
+      "antigravity"
     ],
     "independent_oversight_active": false,
     "roles": {
       "Implementer": {
         "role": "Implementer",
         "requested_agent": "copilot",
-        "effective_agent": "copilot",
-        "delegated": false,
-        "access_path": "copilot_default",
-        "fallback_reason": null
+        "effective_agent": "antigravity",
+        "delegated": true,
+        "access_path": null,
+        "fallback_reason": "preferred agent 'copilot' is not enabled"
       },
       "Spec Steward": {
         "role": "Spec Steward",
         "requested_agent": "codex",
-        "effective_agent": "copilot",
-        "delegated": false,
-        "access_path": "copilot_default",
+        "effective_agent": "antigravity",
+        "delegated": true,
+        "access_path": null,
         "fallback_reason": "preferred agent 'codex' is not enabled"
       },
       "Planner": {
         "role": "Planner",
         "requested_agent": "claude",
-        "effective_agent": "copilot",
-        "delegated": false,
-        "access_path": "copilot_default",
+        "effective_agent": "antigravity",
+        "delegated": true,
+        "access_path": null,
         "fallback_reason": "preferred agent 'claude' is not enabled"
       },
       "Reviewer": {
         "role": "Reviewer",
         "requested_agent": "claude",
-        "effective_agent": "copilot",
-        "delegated": false,
-        "access_path": "copilot_default",
+        "effective_agent": "antigravity",
+        "delegated": true,
+        "access_path": null,
         "fallback_reason": "preferred agent 'claude' is not enabled"
       },
       "Retro Facilitator": {
         "role": "Retro Facilitator",
         "requested_agent": "copilot",
-        "effective_agent": "copilot",
-        "delegated": false,
-        "access_path": "copilot_default",
-        "fallback_reason": null
+        "effective_agent": "antigravity",
+        "delegated": true,
+        "access_path": null,
+        "fallback_reason": "preferred agent 'copilot' is not enabled"
       }
     },
     "fallback_events": [
       {
+        "role": "Implementer",
+        "requested_agent": "copilot",
+        "actual_agent": "antigravity",
+        "reason": "preferred agent 'copilot' is not enabled"
+      },
+      {
         "role": "Spec Steward",
         "requested_agent": "codex",
-        "actual_agent": "copilot",
+        "actual_agent": "antigravity",
         "reason": "preferred agent 'codex' is not enabled"
       },
       {
         "role": "Planner",
         "requested_agent": "claude",
-        "actual_agent": "copilot",
+        "actual_agent": "antigravity",
         "reason": "preferred agent 'claude' is not enabled"
       },
       {
         "role": "Reviewer",
         "requested_agent": "claude",
-        "actual_agent": "copilot",
+        "actual_agent": "antigravity",
         "reason": "preferred agent 'claude' is not enabled"
+      },
+      {
+        "role": "Retro Facilitator",
+        "requested_agent": "copilot",
+        "actual_agent": "antigravity",
+        "reason": "preferred agent 'copilot' is not enabled"
       }
     ]
   },
@@ -255,8 +268,8 @@
   "squad_model_overrides": {},
   "prompt_path": "C:\\Dev\\Specrew\\.specrew\\last-start-prompt.md",
   "summary_path": "C:\\Dev\\Specrew\\.specrew\\start-summary.md",
-  "generated_at_utc": "2026-05-25T19:12:50Z",
-  "selected_host": "claude",
+  "generated_at_utc": "2026-05-25T20:29:13.5513280Z",
+  "selected_host": "antigravity",
   "available_hosts": {
     "claude": true,
     "codex": true,
@@ -264,7 +277,7 @@
     "antigravity": true
   },
   "crew_runtime_status": "bootstrap_only",
-  "host_resolution": "last-selected",
+  "host_resolution": "flag",
   "boundary_enforcement": {
     "enabled": true,
     "last_authorized_boundary": "feature-closeout",

@@ -1,7 +1,7 @@
 schema: "v1"
 feature: "045-v0271-bugfix-bundle"
 iteration: "002"
-updated_at: "2026-05-25T17:58:14Z"
+updated_at: "2026-05-25T20:29:12.2668871Z"
 tasks:
   T002:
     title: "Create iteration 002 traceability matrix mapping US1-US3 to FR-001..FR-008 and SC-001..SC-006"
