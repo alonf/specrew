@@ -90,7 +90,7 @@ A maintainer updating an installed module can quickly choose the correct update 
   - **Implementer**: Command behavior fixes, startup/init flow corrections, conflict logic updates
   - **Reviewer**: Regression verification, stale-comment closure validation, patch-scope integrity checks
   - **Doc Steward**: Update guidance completeness and operator-facing clarity
-- **TG-006**: Intended delivery window: single patch iteration for v0.27.1, with regression verification before release cut.
+- **TG-006**: Intended delivery window: two patch iterations (iter 001 = US1 + foundational; iter 002 = US2 + US3 + polish); v0.27.1 release tag follows iter 002 closeout.
 - **TG-007**: Known reconciliation path: patch scope composes with Proposal 110 and Proposal 116; any overlap must preserve proposal intent while prioritizing this patch’s user-visible bug-fix outcomes.
 
 ### Key Entities *(include if feature involves data)*

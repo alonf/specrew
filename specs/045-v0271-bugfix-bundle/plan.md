@@ -5,7 +5,17 @@
 
 ## Summary
 
-Deliver a single-patch, 7-item bug-fix bundle for v0.27.1 that restores expected CLI behavior (`--version` / `-v`, `version` warning correctness, `start`/`init` skill-catalog recovery, brownfield ownership classification), preserves governance/mirror integrity, and updates operator guidance for safe update + re-deployment decisions.
+Deliver a two-iteration v0.27.1 patch bundle that restores expected CLI behavior (`--version` / `-v`, `version` warning correctness, `start`/`init` skill-catalog recovery, brownfield ownership classification), preserves governance/mirror integrity, and updates operator guidance for safe update + re-deployment decisions.
+
+### Two-Iteration Sequencing
+
+- **Iteration 001 (20 SP)**: Foundational + User Story 1 (CLI defects, version/start/init behavior fixes, regression tests) — closes F1-F5
+  - Exit gate: standard implement → review → retro → iteration-closeout
+  - Human checkpoint: explicit iteration-001 closeout approval before iter-002 authorization
+- **Iteration 002 (20 SP)**: User Story 2 + User Story 3 + Polish (brownfield ownership, operator docs, traceability finalization, governance checks) — closes F6-F7 + feature-closeout
+  - Exit gate: standard implement → review → retro → iteration-closeout → feature-closeout
+
+Rationale: The split enforces human verification that US1 (CLI surface fixes) lands cleanly before authorizing US2+US3+docs (deeper scope change + documentation). Both bundles maintain v0.27.1 release identity; split is delivery checkpoint, not scope fragmentation.
 
 ## Technical Context
 

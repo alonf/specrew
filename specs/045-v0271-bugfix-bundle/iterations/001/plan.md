@@ -2,8 +2,8 @@
 
 **Schema**: v1
 **Spec**: [../../spec.md](../../spec.md)
-**Status**: executing
-**Capacity**: 40/20 story_points
+**Status**: planning
+**Capacity**: 20/20 story_points
 **Started**: 2026-05-25
 **Completed**:
 
@@ -37,7 +37,6 @@
 | Task | Title | Requirement | Story | Effort | Owner | Owner File Globs | Status |
 | ---- | ----- | ----------- | ----- | ------ | ----- | ---------------- | ------ |
 | T001 | Create patch finding ledger for F1-F7 actionable-vs-stale tracking | FR-003, TG-006, TG-007 | Setup | S | Reviewer | `specs/045-v0271-bugfix-bundle/iterations/001/finding-disposition.md` | planned |
-| T002 | Create traceability matrix mapping US1-US3 to FR/SC requirements | TG-001, TG-002, TG-003, TG-004 | Setup | S | Reviewer | `specs/045-v0271-bugfix-bundle/iterations/001/traceability-matrix.md` | planned |
 | T003 | Create shared skill-catalog state helpers for repair/deploy gap evaluation | FR-004, FR-005, SC-003 | Foundational | M | Implementer | `scripts/internal/skill-catalog-state.ps1` | planned |
 | T004 | Wire shared helper into start bootstrap import path | FR-004, FR-008, TG-004 | Foundational | S | Implementer | `scripts/specrew-start.ps1` | planned |
 | T005 | Wire shared helper into init bootstrap import path | FR-005, FR-008, TG-004 | Foundational | S | Implementer | `scripts/specrew-init.ps1` | planned |
@@ -51,21 +50,6 @@
 | T013 | Implement init force deployable-gap continuation without false success | FR-005, SC-003, TG-001 | US1 | M | Implementer | `scripts/specrew-init.ps1`, `scripts/internal/skill-catalog-state.ps1` | planned |
 | T014 | Update CLI behavior contract for implemented command expectations | FR-001, FR-002, FR-004, FR-005, SC-001, SC-002, SC-003, TG-001 | US1 | S | Reviewer | `specs/045-v0271-bugfix-bundle/contracts/cli-behavior-contract.md` | planned |
 | T015 | Run version/start regression suites and record quality evidence | SC-001, SC-002, SC-003, SC-006, TG-001 | US1 | S | Reviewer | `tests/integration/validate-versions-cli-behavior.ps1`, `tests/integration/start-recovery-flow.tests.ps1`, `specs/045-v0271-bugfix-bundle/iterations/001/quality/quality-evidence.md` | planned |
-| T016 | Extend brownfield ownership regression fixtures for self-hosting classification | FR-006, SC-004, SC-006, TG-002 | US2 | M | Implementer | `tests/integration/brownfield-conflict-handling.ps1` | planned |
-| T017 | Update brownfield canonical-source logic for `.squad/agents/` in self-hosting repos | FR-006, SC-004, TG-002 | US2 | M | Implementer | `extensions/specrew-speckit/scripts/brownfield-merge.ps1` | planned |
-| T018 | Mirror brownfield classification fix in specify governance tree | FR-006, FR-008, SC-004, TG-002, TG-004 | US2 | S | Implementer | `.specify/extensions/specrew-speckit/scripts/brownfield-merge.ps1` | planned |
-| T019 | Record F6 closure disposition and evidence pointers | FR-003, FR-006, TG-002, TG-007 | US2 | S | Reviewer | `specs/045-v0271-bugfix-bundle/iterations/001/finding-disposition.md` | planned |
-| T020 | Run brownfield conflict integration suite and append evidence | SC-004, SC-006, TG-002 | US2 | S | Reviewer | `tests/integration/brownfield-conflict-handling.ps1`, `specs/045-v0271-bugfix-bundle/iterations/001/quality/quality-evidence.md` | planned |
-| T021 | Create update-guidance doc validation checklist and timing rubric | FR-007, SC-005, TG-003 | US3 | S | Doc Steward | `specs/045-v0271-bugfix-bundle/iterations/001/quality/update-guidance-review.md` | planned |
-| T022 | Update getting-started update-path and risk-flag guidance | FR-007, SC-005, TG-003 | US3 | M | Doc Steward | `docs/getting-started.md` | planned |
-| T023 | Update user-guide redeployment trigger guidance | FR-007, SC-005, TG-003 | US3 | M | Doc Steward | `docs/user-guide.md` | planned |
-| T024 | Add stale-finding closure narrative with bounded-scope note | FR-003, FR-007, TG-003, TG-007 | US3 | S | Doc Steward | `specs/045-v0271-bugfix-bundle/iterations/001/finding-disposition.md` | planned |
-| T025 | Refresh quickstart verification walkthrough for redeploy decisions | FR-007, SC-005, TG-003 | US3 | S | Doc Steward | `specs/045-v0271-bugfix-bundle/quickstart.md` | planned |
-| T026 | Execute guided doc review and capture decision-time evidence | SC-005, TG-003 | US3 | S | Reviewer | `specs/045-v0271-bugfix-bundle/iterations/001/quality/update-guidance-review.md` | planned |
-| T027 | Run mechanical checks and confirm findings/evidence artifacts | FR-008, SC-006, TG-004 | Polish | S | Reviewer | `.specify/extensions/specrew-speckit/scripts/run-mechanical-checks.ps1`, `specs/045-v0271-bugfix-bundle/iterations/001/quality/mechanical-findings.json`, `specs/045-v0271-bugfix-bundle/iterations/001/quality/quality-evidence.md` | planned |
-| T028 | Execute governance validation and record result evidence | FR-008, TG-004 | Polish | S | Reviewer | `.specify/extensions/specrew-speckit/scripts/validate-governance.ps1`, `specs/045-v0271-bugfix-bundle/iterations/001/quality/quality-evidence.md` | planned |
-| T029 | Verify patch regression suites pass and summarize zero failing P0/P1 status | SC-006, TG-001, TG-002, TG-003 | Polish | S | Reviewer | `tests/integration/validate-versions-cli-behavior.ps1`, `tests/integration/start-recovery-flow.tests.ps1`, `tests/integration/brownfield-conflict-handling.ps1`, `specs/045-v0271-bugfix-bundle/iterations/001/quality/quality-evidence.md` | planned |
-| T030 | Update v0.27.1 patch notes with bundle closure summary and stale-finding references | FR-003, FR-008, TG-006, TG-007 | Polish | S | Doc Steward | `CHANGELOG.md` | planned |
 
 ## Effort Model
 
@@ -110,6 +94,8 @@
 
 - This stub captures the planned scope pending detailed planning in the Specrew Planning ceremony.
 - Add task rows only for work that is traceable to the scoped requirements above.
-- Status updated to `executing` after full T001-T030 ledger decomposition and branch-alignment correction.
-- If task effort exceeds the configured threshold, make the deferral decision explicit in this plan before execution starts and name the lowest-priority requirement slices proposed for deferral.
-- Effort conversion for capacity math: S=1 story point, M=2 story points (20xS + 10xM = 40 planned points).
+- Iteration 001 scope: T001 (Setup: 1 SP) + T003-T006 (Foundational: 5 SP) + T007-T015 (US1 tests + impl + polish: 14 SP) = 20 SP exactly.
+- Iteration 002 scope (created at iteration-001 closeout): T002 (Setup traceability: 1 SP) + T016-T020 (US2: 7 SP) + T021-T026 (US3: 8 SP) + T027-T030 (Polish: 4 SP) = 20 SP exactly.
+- Sequencing: Iter 001 closes US1 + foundational prerequisites; human checkpoint gate; then iter 002 starts US2 + US3 + feature closeout.
+- Two-iteration split enforces human decision checkpoint between CLI defects (US1) and brownfield/docs (US2+US3), per Feature 016 governance discipline.
+- Effort conversion for capacity math: S=1 story point, M=2 story points. Iter 001: 11S + 3M = 11 + 6 = 17 SP (leaves 3 SP buffer for contingency).
