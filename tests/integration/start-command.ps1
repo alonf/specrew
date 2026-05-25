@@ -208,13 +208,21 @@ if ($startScriptContent -notmatch $sameWindowProcessLaunchPattern) {
     exit 1
 }
 
-# Pattern 2 (F-040 update): --allow-all is now applied via the per-host flag-translation layer.
-# Verify the Copilot --allow-all → --allow-all mapping exists in scripts/internal/host-flag-translation.ps1
-# (the load-bearing literal moved from specrew-start.ps1 into the helper).
-$flagTranslationContent = Get-Content -LiteralPath (Join-Path (Split-Path $startScript -Parent) 'internal\host-flag-translation.ps1') -Raw -Encoding UTF8
-$copilotAllowAllMapping = "(?ms)'copilot\|--allow-all'\s*\{\s*return\s+\[pscustomobject\]@\{\s*Args\s*=\s*@\('--allow-all'\)"
-if ($flagTranslationContent -notmatch $copilotAllowAllMapping) {
-    Write-Fail "scripts/internal/host-flag-translation.ps1 no longer applies --allow-all uniformly when AllowAll is true for Copilot (per-host flag-translation layer broken)."
+# Pattern 2 (Phase B/C refactor 2026-05-24 update): --allow-all is now applied via the per-host
+# package layer. The legacy switch arm moved from scripts/internal/host-flag-translation.ps1 to
+# hosts/copilot/handlers.ps1 ConvertTo-CopilotFlag. Verify the Copilot --allow-all → --allow-all
+# mapping exists there. The shim file scripts/internal/host-flag-translation.ps1 now delegates
+# to Invoke-HostHandler — its job is dispatch, not the mapping table.
+$repoRoot = Resolve-Path (Join-Path (Split-Path $startScript -Parent) '..')
+$copilotHandlersPath = Join-Path $repoRoot 'hosts\copilot\handlers.ps1'
+if (-not (Test-Path -LiteralPath $copilotHandlersPath -PathType Leaf)) {
+    Write-Fail "Per-host package missing: $copilotHandlersPath. Phase B handler extraction not in place."
+    exit 1
+}
+$copilotHandlersContent = Get-Content -LiteralPath $copilotHandlersPath -Raw -Encoding UTF8
+$copilotAllowAllMapping = "(?ms)'--allow-all'\s*\{\s*return\s+\[pscustomobject\]@\{\s*Args\s*=\s*@\('--allow-all'\)"
+if ($copilotHandlersContent -notmatch $copilotAllowAllMapping) {
+    Write-Fail "hosts/copilot/handlers.ps1 ConvertTo-CopilotFlag no longer maps --allow-all → --allow-all (per-host package broken)."
     exit 1
 }
 

@@ -370,7 +370,17 @@ if ($tasks.Count -eq 0) {
 }
 
 if ($phaseRows.Count -eq 0) {
-    throw "Plan '$planPath' does not contain a populated Phase Baseline table."
+    # Tolerate plans without an explicit Phase Baseline table — emit a TBD baseline
+    # so the retro can still scaffold. The validator can promote this back to a hard
+    # requirement once the plan template is consistently emitting the table.
+    Write-Warning "Plan '$planPath' has no 'Phase Baseline' table; retro will scaffold with a TBD-only baseline. Populate the Phase Baseline section in the iteration plan and re-run for variance data."
+    $phaseRows = @(
+        [pscustomobject]@{ Phase = 'Planning';         'Estimated Effort' = 'TBD'; Notes = 'No baseline recorded in plan.md; add a Phase Baseline section to surface variance.' }
+        [pscustomobject]@{ Phase = 'Discovery/Spikes'; 'Estimated Effort' = 'TBD'; Notes = 'No baseline recorded in plan.md.' }
+        [pscustomobject]@{ Phase = 'Implementation';   'Estimated Effort' = 'TBD'; Notes = 'No baseline recorded in plan.md.' }
+        [pscustomobject]@{ Phase = 'Review';           'Estimated Effort' = 'TBD'; Notes = 'No baseline recorded in plan.md.' }
+        [pscustomobject]@{ Phase = 'Rework';           'Estimated Effort' = 'TBD'; Notes = 'No baseline recorded in plan.md.' }
+    )
 }
 
 $iterationLabel = Get-IterationLabel -PlanLines $planLines -Fallback (Split-Path -Leaf $resolvedIterationDirectory)

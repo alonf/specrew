@@ -8,7 +8,7 @@
 # Specrew
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![Version](https://img.shields.io/badge/version-0.25.0-blue.svg)](.specrew/config.yml)
+[![Version](https://img.shields.io/badge/version-0.27.0-blue.svg)](.specrew/config.yml)
 [![Status: Alpha](https://img.shields.io/badge/status-alpha-orange.svg)](#status)
 
 Specrew is a **methodology** for AI-assisted software delivery — a governance layer that runs on top of [GitHub Spec Kit](https://github.com/github/spec-kit) and [Squad CLI](https://www.npmjs.com/package/@bradygaster/squad-cli) and enforces the SDLC discipline that those tools alone don't enforce.
@@ -32,7 +32,37 @@ Specrew encodes that methodology as four guarantees:
 1. **Boundary discipline.** The lifecycle has explicit approval boundaries (`specify`, `clarify`, `plan`, `tasks`, `before-implement`, `review-signoff`, `retro`, `iteration-closeout`, `feature-closeout`). One human authorization advances at most one boundary. No agent prose can simulate authorization. Enforcement is moving from prose to code (see [Proposal 065](proposals/065-launch-mode-boundary-enforcement.md), in flight as Feature 039).
 2. **Substantive interaction.** Every boundary handoff is reviewable in the console with the essence of "what I just did / why I stopped / what I need from you" visible without opening files. Status pings are not enough.
 3. **Audit-trail durability.** Every verdict, decision, drift event, and bypass lives in `.squad/decisions.md` with timestamps, commit hashes, and recognized verdict shapes. Sessions can be reconstructed after the fact; methodology lives in artifacts, not in agent memory.
-4. **Methodology survives the host.** As of v0.26.0 Specrew runs on **GitHub Copilot CLI (default), Claude Code, or Codex CLI** via `specrew start --host <kind>` — VS Code Chat remains a roadmap item ([Proposal 071](proposals/071-vscode-copilot-chat-host.md)). Per-host flag translation keeps `--remote` / `--allow-all` / `--autopilot` uniform at the Specrew surface. The skill-level enforcement gates are host-agnostic by design — switching hosts must not weaken the methodology.
+4. **Methodology survives the host.** As of v0.27.0 Specrew runs on **GitHub Copilot CLI (default), Claude Code, Codex CLI, or Antigravity (`agy`)** via `specrew start --host <kind>` or the interactive numbered menu when `--host` is omitted — VS Code Chat remains a roadmap item ([Proposal 071](proposals/071-vscode-copilot-chat-host.md)). Per-host flag translation keeps `--remote` / `--allow-all` / `--autopilot` uniform at the Specrew surface; canonical Crew identity lives at `.specrew/team/agents/<role>.md` and translates to each host's native subagent format on every `specrew start`. The skill-level enforcement gates are host-agnostic by design — switching hosts must not weaken the methodology.
+
+## Switch your AI host mid-feature — without losing your place
+
+This is what governance buys you that raw CLI usage cannot.
+
+Every AI coding host has a context window. When that window fills — or you simply close the terminal — the agent's memory of "what we just decided, why we stopped here, what the gates are, which iteration is open" is gone. Picking back up means rebuilding context in prose, paying the token cost of recap, and trusting the agent to faithfully reconstruct decisions it never explicitly recorded.
+
+Specrew sidesteps this by treating the **artifact on disk** as the source of truth, not the agent's memory. The spec, plan, tasks, iteration plan, decisions ledger, drift log, and current boundary state all live in files inside your project. Any host — Copilot, Claude, Codex, Antigravity — can be started against the same project, read the same artifacts, and continue from the exact same boundary.
+
+A real workflow this makes possible:
+
+```text
+Monday  — specrew start --host copilot     "specify a tip calculator"
+                                              → spec.md committed, /speckit.clarify queued
+Tuesday — specrew start --host claude       (no prompt — resumes at clarify)
+                                              → clarifications.md committed, /speckit.plan queued
+Wednesday — specrew start --host codex      (no prompt — resumes at plan)
+                                              → plan.md committed, /speckit.tasks queued
+Thursday — specrew start --host antigravity (no prompt — resumes at iteration scaffold)
+                                              → iter-001/plan.md, ready for /speckit.implement
+```
+
+Each `specrew start` on a different host:
+
+- Resolves to the same canonical Crew at `.specrew/team/agents/<role>.md` (translated to host-native format on the fly)
+- Reads the same boundary state from `.specrew/state.yml` and resumes at the next gate
+- Picks up the same decisions ledger, drift log, and audit trail
+- Honors the same enforcement gates (no boundary auto-advance, no scope creep, no host-specific shortcuts)
+
+The methodology is what makes this practical. Without governed boundaries + durable artifacts, switching host mid-feature means context loss and silent decision divergence between sessions. With them, the host is interchangeable — you can chase the cheapest model, the strongest reasoner, or the host that's loaded on the machine you happen to be at, and the project doesn't care.
 
 ## What Specrew is not
 
@@ -52,8 +82,9 @@ Vanilla Spec Kit ships the slash-command surface but has no orchestration or bou
 
 ## Status
 
-- **Active development line**: 0.25.0
-- **Latest stable baseline**: 0.24.3 (process-optimization bundle: closeout sync commands, markdown lint pre-boundary, validator memoization/parallelization/closed-iteration-index, repetition detector, PR-review integration)
+- **Active development line**: 0.27.0
+- **Latest stable baseline**: 0.26.0 (F-040 Multi-Host Launch Path)
+- **Pending PR-to-main**: v0.27.0 bundle — F-043 Multi-Host Onboarding + F-044 Per-Host Architecture Refactor (5 iterations including Antigravity host graduation, canonical `.specrew/team/` source-of-truth, interactive host menu)
 - **Alpha software**, validated through dogfooding in this repository
 - **Built for a single developer today.** Multi-developer reconciliation is a roadmap item ([Proposal 010](proposals/010-multi-developer-reconciliation.md)).
 - Release truth lives in [CHANGELOG.md](CHANGELOG.md), [docs/versioning.md](docs/versioning.md), and the `v0.NN.0` tags.
@@ -63,7 +94,7 @@ Vanilla Spec Kit ships the slash-command surface but has no orchestration or bou
 - `specrew init` bootstraps Spec Kit, Squad, and Specrew governance into a fresh or existing repo
 - `specrew start` launches the canonical lifecycle session with handoff artifacts refreshed
 - `specrew where` renders the velocity dashboard from canonical artifacts
-- The full lifecycle: `specify → clarify → plan → tasks → implement → review-signoff → retro → iteration-closeout → feature-closeout` — with gate-respecting boundary stops by default ([Proposal 066](proposals/066-gate-respecting-default.md), shipped)
+- The full lifecycle: `specify → clarify → plan → tasks → implement → review-signoff → retro → iteration-closeout → feature-closeout` — with gate-respecting boundary stops by default ([Proposal 066](proposals/066-gate-respecting-default.md), shipped). The last two boundaries (iteration-closeout, feature-closeout) are not decoration: they produce the per-iteration `dashboard.md` + per-feature `closeout-dashboard.md` artifacts, mark the work durably "done", and gate the next iteration / next feature from starting. Skipping them leaves the project in an in-flight state — see [docs/user-guide.md "Closing iterations + features"](docs/user-guide.md#closing-iterations--features) for what these boundaries produce and the verdict shapes that advance them.
 - Session-state durability across reboots, worktree switches, and boundary events
 - Slash-command catalog deployed to `.claude/skills/`, `.github/skills/`, and `.agents/skills/` ([Feature 024](specs/024-slash-command-multi-host-correctness/spec.md))
 - Validator memoization, parallelization, closed-iteration index, repetition detector — the v0.24.3 process-optimization bundle keeps the discipline cheap to enforce
@@ -75,9 +106,10 @@ Vanilla Spec Kit ships the slash-command surface but has no orchestration or bou
 
 - **F-039** [Launch-Mode Boundary Enforcement](proposals/065-launch-mode-boundary-enforcement.md) — mechanical refusal of agent boundary chaining (shipped v0.25.0)
 - **F-040** [Multi-Host Launch Path](proposals/069-multi-host-launch-path.md) — `specrew start --host claude|codex|copilot` (shipped v0.26.0)
+- **F-043** [Multi-Host Onboarding + Selection Flow](proposals/104-multi-host-onboarding-and-selection-flow.md) — `specrew host list/use/status` CLI surface + host-history persistence + interactive numbered menu (shipped v0.27.0)
+- **F-044** [Per-Host Architecture Refactor](specs/044-per-host-architecture-refactor/spec.md) — Open-Closed host extension (registry + 4 host packages); 5th contract function `Install-<Kind>CrewRuntime`; canonical `.specrew/team/agents/<role>.md` source-of-truth; Antigravity host graduated to supported (shipped v0.27.0)
 - **F-041** [Cost-Aware Model Routing](proposals/068-cost-aware-model-routing.md) — discovery skill + lean cost-profile + Junior→cheap-model auto-routing (next; addresses 2026-05-30 Copilot pricing pivot)
 - **F-042** [Token Economy MVP](proposals/070-token-economy-mvp.md) — cost.yml + dashboard COST section so per-iteration spend is measurable
-- **F-043** [Multi-Host Onboarding + Selection Flow](proposals/104-multi-host-onboarding-and-selection-flow.md) — first-run host probe + `host-history.yml` + `specrew host` command
 - **Substantive Intake Questioning** ([Proposal 063](proposals/063-substantive-intake-questioning.md)) — persona-driven adaptive intake at specify + clarify boundaries
 - **Friction Dial** ([Proposal 100](proposals/100-friction-dial.md)) — strict/default/autonomous modes for expert developers
 - **Host-Native Hook Deployment** ([Proposal 105](proposals/105-host-native-hook-deployment.md)) — Claude Code PreToolUse hooks elevate F-039 from cooperative to runtime enforcement

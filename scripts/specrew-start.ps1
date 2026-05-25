@@ -3129,7 +3129,8 @@ function Save-StartArtifacts {
         [bool]$BypassBoundaryEnforcement = $false,
         [AllowNull()][string]$BoundaryBypassReason,
         [AllowNull()][string]$SelectedHost,
-        [AllowNull()][System.Collections.IDictionary]$AvailableHostsMap
+        [AllowNull()][System.Collections.IDictionary]$AvailableHostsMap,
+        [AllowNull()][string]$HostResolution
     )
 
     $specrewRoot = Join-Path $ResolvedProjectPath '.specrew'
@@ -3317,6 +3318,8 @@ $artifactListFormatted
         else {
             'bootstrap_only'
         }
+        # F-043 FR-012: record HOW the host was resolved + the alternatives at probe time
+        host_resolution = if (-not [string]::IsNullOrWhiteSpace($HostResolution)) { $HostResolution } else { $null }
     }
 
     if ($null -ne $existingBoundaryEnforcement) {
@@ -3430,16 +3433,17 @@ function Get-HostBootstrapInput {
 function Get-SpecrewHostLaunchInvocation {
     <#
     .SYNOPSIS
-    Build the per-host launch invocation (Binary + Args) for the selected host.
+    Build the per-host launch invocation (Binary + Args) for the selected host — registry-driven (Phase C refactor).
     Per F-040 research.md Task 1 (verified per-host CLI surfaces).
 
     .DESCRIPTION
-    Returns @{ Binary = '<path-or-name>'; Args = @(<argv-tokens>) } for the host.
-    Callers compose this into Start-Process or & invocations.
+    Delegates to hosts/<kind>/handlers.ps1 New-<Kind>LaunchInvocation via Invoke-HostHandler.
+    Adding a new host = creating hosts/<kind>/ — no edits to this function. The ValidateSet
+    accepts every registered host kind; the legacy 3-host limitation is removed.
     #>
     param(
         [Parameter(Mandatory = $true)]
-        [ValidateSet('copilot', 'claude', 'codex')]
+        [ValidateSet('copilot', 'claude', 'codex', 'antigravity')]
         [string]$HostKind,
 
         [Parameter(Mandatory = $true)]
@@ -3458,94 +3462,13 @@ function Get-SpecrewHostLaunchInvocation {
         [bool]$UseRemote = $false
     )
 
-    $hostBinary = Get-SpecrewHostBinary -HostKind $HostKind
-    $hostCmd = Get-Command $hostBinary -ErrorAction SilentlyContinue
-    $resolvedBinary = if ($null -ne $hostCmd) { $hostCmd.Source } else { $hostBinary }
-
-    $args = New-Object System.Collections.Generic.List[string]
-    $notices = New-Object System.Collections.Generic.List[string]
-
-    switch ($HostKind.ToLowerInvariant()) {
-        'copilot' {
-            $args.Add('--agent') | Out-Null
-            $args.Add($Agent) | Out-Null
-            if ($UseAutopilot) {
-                $t = Get-HostFlagTranslation -HostKind 'copilot' -SpecrewFlag '--autopilot'
-                foreach ($a in $t.Args) { $args.Add($a) | Out-Null }
-            }
-            $args.Add('--add-dir') | Out-Null
-            $args.Add($ResolvedProjectPath) | Out-Null
-            $args.Add('-i') | Out-Null
-            $args.Add($BootstrapPrompt) | Out-Null
-            if ($AllowAll) {
-                $t = Get-HostFlagTranslation -HostKind 'copilot' -SpecrewFlag '--allow-all'
-                foreach ($a in $t.Args) { $args.Add($a) | Out-Null }
-            }
-            if ($UseRemote) {
-                $t = Get-HostFlagTranslation -HostKind 'copilot' -SpecrewFlag '--remote'
-                foreach ($a in $t.Args) { $args.Add($a) | Out-Null }
-            }
-        }
-        'claude' {
-            # Claude Code: interactive REPL with initial prompt is the
-            # positional-arg form (`claude "<prompt>" --add-dir <path>`).
-            # The `-p` / `--print` flag is the one-shot/headless mode
-            # which exits after printing — wrong for lifecycle work.
-            # Bug found in 2026-05-23 real-launch test: -p caused session
-            # to exit after Claude's first response.
-            $args.Add('--add-dir') | Out-Null
-            $args.Add($ResolvedProjectPath) | Out-Null
-            if ($AllowAll) {
-                $t = Get-HostFlagTranslation -HostKind 'claude' -SpecrewFlag '--allow-all'
-                foreach ($a in $t.Args) { $args.Add($a) | Out-Null }
-                if (-not [string]::IsNullOrWhiteSpace($t.Notice)) { $notices.Add($t.Notice) | Out-Null }
-            }
-            if ($UseAutopilot) {
-                $t = Get-HostFlagTranslation -HostKind 'claude' -SpecrewFlag '--autopilot'
-                foreach ($a in $t.Args) { $args.Add($a) | Out-Null }
-                if (-not [string]::IsNullOrWhiteSpace($t.Notice)) { $notices.Add($t.Notice) | Out-Null }
-            }
-            if ($UseRemote) {
-                $t = Get-HostFlagTranslation -HostKind 'claude' -SpecrewFlag '--remote'
-                foreach ($a in $t.Args) { $args.Add($a) | Out-Null }
-                if (-not [string]::IsNullOrWhiteSpace($t.Notice)) { $notices.Add($t.Notice) | Out-Null }
-            }
-            # Initial prompt as positional arg — last position
-            $args.Add($BootstrapPrompt) | Out-Null
-        }
-        'codex' {
-            # Codex CLI: interactive REPL with initial prompt is the
-            # positional-arg form (`codex "<prompt>" --cd <path>`).
-            # `codex exec` is non-interactive batch mode — wrong for
-            # lifecycle work.
-            # Same bug class as Claude `-p` (fixed 2026-05-23 real-launch test).
-            $args.Add('--cd') | Out-Null
-            $args.Add($ResolvedProjectPath) | Out-Null
-            if ($AllowAll) {
-                $t = Get-HostFlagTranslation -HostKind 'codex' -SpecrewFlag '--allow-all'
-                foreach ($a in $t.Args) { $args.Add($a) | Out-Null }
-                if (-not [string]::IsNullOrWhiteSpace($t.Notice)) { $notices.Add($t.Notice) | Out-Null }
-            }
-            if ($UseAutopilot) {
-                $t = Get-HostFlagTranslation -HostKind 'codex' -SpecrewFlag '--autopilot'
-                foreach ($a in $t.Args) { $args.Add($a) | Out-Null }
-                if (-not [string]::IsNullOrWhiteSpace($t.Notice)) { $notices.Add($t.Notice) | Out-Null }
-            }
-            if ($UseRemote) {
-                $t = Get-HostFlagTranslation -HostKind 'codex' -SpecrewFlag '--remote'
-                # Codex has no remote-control wiring; notice surfaced, no args added
-                if (-not [string]::IsNullOrWhiteSpace($t.Notice)) { $notices.Add($t.Notice) | Out-Null }
-            }
-            # Initial prompt as positional arg — last position
-            $args.Add($BootstrapPrompt) | Out-Null
-        }
-    }
-
-    return [pscustomobject]@{
-        Binary  = $resolvedBinary
-        Args    = $args.ToArray()
-        Notices = $notices.ToArray()
-        HostKind = $HostKind.ToLowerInvariant()
+    return Invoke-HostHandler -Kind $HostKind -ContractFunction NewLaunchInvocation -Arguments @{
+        ProjectPath  = $ResolvedProjectPath
+        Prompt       = $BootstrapPrompt
+        Agent        = $Agent
+        AllowAll     = $AllowAll
+        UseAutopilot = $UseAutopilot
+        UseRemote    = $UseRemote
     }
 }
 
@@ -3742,8 +3665,101 @@ if ($AllowAll -and $PromptApprovals) {
     exit 1
 }
 
-# F-040: Host selection + validation (FR-001, FR-002, FR-005)
-$selectedHost = if ([string]::IsNullOrWhiteSpace($HostKind)) { 'copilot' } else { $HostKind.ToLowerInvariant() }
+# F-040 + F-043: Host selection chain (per F-043 spec FR-002)
+#   priority order: --host flag → host-history last_selected_host → first-run probe → exit-with-guidance (non-TTY)
+$hostHistoryHelperPath = Join-Path $PSScriptRoot 'internal\host-history.ps1'
+if (Test-Path -LiteralPath $hostHistoryHelperPath -PathType Leaf) {
+    . $hostHistoryHelperPath
+}
+$hostRuntimeInventoryHelperPath = Join-Path $PSScriptRoot 'internal\host-runtime-inventory.ps1'
+if (Test-Path -LiteralPath $hostRuntimeInventoryHelperPath -PathType Leaf) {
+    . $hostRuntimeInventoryHelperPath
+}
+
+# Proposal 108 Slice 9: crew-bootstrap dispatcher (translates .specrew/team/agents/<role>.md
+# to selected host's native location every launch — keeps per-host views in sync with the canonical).
+$crewBootstrapHelperPath = Join-Path $PSScriptRoot 'init\crew-bootstrap.ps1'
+if (Test-Path -LiteralPath $crewBootstrapHelperPath -PathType Leaf) {
+    . $crewBootstrapHelperPath
+}
+
+$hostResolution = $null   # tracks how the host was resolved, for FR-012 start-context.json
+
+if (-not [string]::IsNullOrWhiteSpace($HostKind)) {
+    # 1. --host flag explicitly provided
+    $selectedHost = $HostKind.ToLowerInvariant()
+    $hostResolution = 'flag'
+}
+else {
+    # 2. Try host-history.json last_selected_host (F-043 FR-002)
+    $historyResult = $null
+    if (Get-Command Resolve-SpecrewHostFromHistory -ErrorAction SilentlyContinue) {
+        $historyResult = Resolve-SpecrewHostFromHistory -ProjectPath $resolvedProjectPath
+    }
+
+    if ($null -ne $historyResult -and $historyResult.Source -eq 'last-selected') {
+        $selectedHost = $historyResult.Host
+        $hostResolution = 'last-selected'
+        Write-Info ("Host resolved from .specrew/host-history.json: {0} (use --host to override)" -f $selectedHost)
+    }
+    elseif (Get-Command Invoke-SpecrewFirstRunHostProbe -ErrorAction SilentlyContinue) {
+        # 3. First-run probe (FR-003 + FR-013)
+        $probe = Invoke-SpecrewFirstRunHostProbe
+        switch ($probe.Source) {
+            'auto-single-available' {
+                $selectedHost = $probe.Host
+                $hostResolution = 'auto-single-available'
+                Write-Info ("Auto-selected the only available host: {0}" -f $selectedHost)
+            }
+            'first-run-prompt' {
+                $selectedHost = $probe.Host
+                $hostResolution = 'first-run-prompt'
+                # Probe already wrote the selection to console; no extra log line needed
+            }
+            'non-interactive-no-default' {
+                # FR-013 non-TTY exit with actionable guidance, BUT dry-run (-NoLaunch)
+                # callers still need the host gate to fall through to a default so that
+                # baseline-tracking + start-prompt artifacts are still written. Same
+                # rationale as the missing-host check below (lines ~3771).
+                if ($NoLaunch) {
+                    $selectedHost = 'copilot'
+                    $hostResolution = 'no-launch-default'
+                }
+                else {
+                    Write-Error-Message ("Non-interactive run with no --host flag and no last-selected host on file.")
+                    Write-Error-Message ("Available hosts on PATH: {0}" -f ($probe.Available -join ', '))
+                    Write-Error-Message ("Pass --host <kind> explicitly (e.g., 'specrew start --host copilot') or run interactively to pick a host.")
+                    exit 1
+                }
+            }
+            'no-hosts-available' {
+                # FR-003 zero-hosts case; same -NoLaunch carve-out as above
+                if ($NoLaunch) {
+                    $selectedHost = 'copilot'
+                    $hostResolution = 'no-launch-default'
+                }
+                else {
+                    Write-Error-Message 'No supported host CLIs found on PATH.'
+                    foreach ($k in Get-SpecrewSupportedHostKinds) {
+                        Write-Error-Message ("  " + (Get-SpecrewHostInstallGuidance -HostKind $k))
+                    }
+                    exit 1
+                }
+            }
+            default {
+                # Defensive fallback: shouldn't reach here; fall back to copilot
+                $selectedHost = 'copilot'
+                $hostResolution = 'fallback-copilot'
+            }
+        }
+    }
+    else {
+        # Legacy path (host-history helper not loaded; pre-F-043 behavior)
+        $selectedHost = 'copilot'
+        $hostResolution = 'legacy-default'
+    }
+}
+
 $availableHostsMap = Get-SpecrewAvailableHosts
 
 # Reject deferred hosts with explicit guidance per research.md Task 3
@@ -3980,7 +3996,50 @@ $artifactPaths = Save-StartArtifacts `
     -BypassBoundaryEnforcement $BypassBoundaryEnforcement `
     -BoundaryBypassReason $Reason `
     -SelectedHost $selectedHost `
-    -AvailableHostsMap $availableHostsMap
+    -AvailableHostsMap $availableHostsMap `
+    -HostResolution $hostResolution
+
+# F-043 FR-004: update host-history.json after host selection (any source)
+if (Get-Command Update-SpecrewHostHistory -ErrorAction SilentlyContinue) {
+    try {
+        $hostInventory = $null
+        if (Get-Command Get-SpecrewHostRuntimeInventory -ErrorAction SilentlyContinue) {
+            $hostInventory = Get-SpecrewHostRuntimeInventory -ProjectPath $resolvedProjectPath
+        }
+        $crewInstalled = $false
+        $crewPath = ''
+        if ($null -ne $hostInventory -and $hostInventory.Contains($selectedHost)) {
+            $crewInstalled = [bool]$hostInventory[$selectedHost].installed
+            $crewPath = [string]$hostInventory[$selectedHost].path
+        }
+        $null = Update-SpecrewHostHistory `
+            -ProjectPath $resolvedProjectPath `
+            -SelectedHost $selectedHost `
+            -CrewRuntimeInstalled $crewInstalled `
+            -CrewRuntimePath $crewPath
+    }
+    catch {
+        Write-Info ("WARN: Failed to update .specrew/host-history.json: {0}" -f $_.Exception.Message)
+    }
+}
+
+# Proposal 108 Slice 9: deploy the selected host's Crew runtime from the canonical .specrew/team/.
+# Translation runs every launch — cheap (~50ms for 5-7 files), keeps per-host view in sync.
+if (Get-Command Invoke-CrewBootstrap -ErrorAction SilentlyContinue) {
+    try {
+        $crewResult = Invoke-CrewBootstrap -ProjectPath $resolvedProjectPath -HostKind $selectedHost
+        $writeCount = @($crewResult.Actions | Where-Object { $_.Action -eq 'written' }).Count
+        if ($writeCount -gt 0) {
+            Write-Info ("Crew runtime synced: {0} agent file(s) written to {1}." -f $writeCount, $crewResult.CrewRuntimePath)
+        }
+        foreach ($notice in $crewResult.Notices) {
+            Write-Info ("Crew runtime: {0}" -f $notice)
+        }
+    }
+    catch {
+        Write-Info ("WARN: Crew runtime sync failed for host '{0}': {1}" -f $selectedHost, $_.Exception.Message)
+    }
+}
 
 Write-Success "Prepared Specrew start context."
 if ($selectedHost -ne 'copilot') {

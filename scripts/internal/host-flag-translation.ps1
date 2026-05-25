@@ -1,41 +1,46 @@
-# Per-host flag translation for Specrew multi-host launch path (F-040)
+# Per-host flag translation — registry-driven dispatcher (Phase C refactor)
 #
-# Implements FR-007 (--remote), FR-008 (--allow-all / --autopilot), and the
-# host-side mappings documented in specs/040-multi-host-launch-path/research.md
-# Task 2.
+# Original implementation moved to hosts/<kind>/handlers.ps1 (Phase B).
+# This file is now a thin shim that delegates to the per-host packages via
+# hosts/_registry.ps1. Existing call sites do not need to change — the
+# Get-HostFlagTranslation function signature is preserved.
 #
-# Translation table (per research.md Task 2):
+# To add a new flag mapping, edit each hosts/<kind>/handlers.ps1
+# ConvertTo-<Kind>Flag switch arm. To add a new host, create
+# hosts/<kind>/ — no edits to this file.
 #
-#  | Specrew-side flag | Copilot                    | Claude                              | Codex                                              |
-#  |-------------------|----------------------------|-------------------------------------|----------------------------------------------------|
-#  | --remote          | --remote                   | --remote-control                    | warn-and-continue, drop                            |
-#  | --allow-all       | --allow-all                | --dangerously-skip-permissions      | --dangerously-bypass-approvals-and-sandbox         |
-#  | --autopilot       | --autopilot                | drop with informational notice      | folds into --dangerously-bypass-approvals-and-sandbox |
+# Translation table (per host coordinator-rules and verified flag matrices):
 #
-# Codex flag note (verified 2026-05-24 via `codex --help`): the original F-040 research
-# referenced `--full-auto` which Codex CLI does NOT accept ("error: unexpected argument
-# '--full-auto' found"). The actual full-bypass flag is
-# `--dangerously-bypass-approvals-and-sandbox` (matches Claude's `--dangerously-skip-permissions`
-# in spirit — both opt out of per-call approval AND sandboxing). A milder alternative is
-# `-a never` / `--ask-for-approval=never` (skip approval prompts but keep sandbox). We pick the
-# bypass form for `--allow-all` parity because that's what Specrew's `--allow-all` means: full trust.
-#  | --autonomous      | (Specrew-side only — handled by lifecycle boundary enforcement; not translated per-host)        |
-#
-# Each translation arm returns:
-#   - Args: string[] — argv tokens to inject (may be empty for drop/warn cases)
-#   - Notice: string — human-readable note for the user/dashboard (may be empty)
-#   - SuppressWarning: bool — true means do NOT print a console warning even if Args is empty
-#
-# Get-HostFlagTranslation returns a hashtable keyed by Specrew-side flag with
-# the resolved translation object per host. Callers compose Args into the final
-# launch invocation.
+#  | Specrew-side flag | Copilot      | Claude                          | Codex                                              | Antigravity              |
+#  |-------------------|--------------|---------------------------------|----------------------------------------------------|--------------------------|
+#  | --remote          | --remote     | --remote-control                | warn-and-continue, drop                            | warn-and-continue, drop  |
+#  | --allow-all       | --allow-all  | --dangerously-skip-permissions  | --dangerously-bypass-approvals-and-sandbox         | warn (unverified)        |
+#  | --autopilot       | --autopilot  | drop with notice                | folds into --dangerously-bypass-approvals-and-sandbox | warn (no equivalent)  |
 
 Set-StrictMode -Version Latest
 
+# Dot-source the registry once (idempotent — handler files are dot-sourced inside the registry eagerly).
+$script:RegistryPath = Join-Path (Split-Path -Parent $PSScriptRoot) 'hosts\_registry.ps1'
+if (-not $script:RegistryPath -or -not (Test-Path -LiteralPath $script:RegistryPath -PathType Leaf)) {
+    # Module-mode lookup: when running from installed Specrew module, hosts/ is a sibling of scripts/
+    $script:RegistryPath = Join-Path (Split-Path -Parent (Split-Path -Parent $PSScriptRoot)) 'hosts\_registry.ps1'
+}
+if (-not (Test-Path -LiteralPath $script:RegistryPath -PathType Leaf)) {
+    throw "Host registry not found. Searched: $script:RegistryPath"
+}
+. $script:RegistryPath
+
 function Get-HostFlagTranslation {
+    <#
+    .SYNOPSIS
+    Translates a Specrew-side flag to host-specific flag(s).
+    Delegates to per-host packages under hosts/<kind>/handlers.ps1.
+    .OUTPUTS
+    pscustomobject @{ Args[]; Notice; SuppressWarning }
+    #>
     param(
         [Parameter(Mandatory = $true)]
-        [ValidateSet('copilot', 'claude', 'codex')]
+        [ValidateSet('copilot', 'claude', 'codex', 'antigravity')]
         [string]$HostKind,
 
         [Parameter(Mandatory = $true)]
@@ -43,66 +48,7 @@ function Get-HostFlagTranslation {
         [string]$SpecrewFlag
     )
 
-    $hostLower = $HostKind.ToLowerInvariant()
-
-    switch ("$hostLower|$SpecrewFlag") {
-        # --remote arms
-        'copilot|--remote' {
-            return [pscustomobject]@{ Args = @('--remote'); Notice = ''; SuppressWarning = $true }
-        }
-        'claude|--remote' {
-            return [pscustomobject]@{ Args = @('--remote-control'); Notice = "Translated --remote to Claude's --remote-control flag."; SuppressWarning = $true }
-        }
-        'codex|--remote' {
-            return [pscustomobject]@{
-                Args = @()
-                Notice = "Codex CLI does not expose a remote-control flag today; continuing launch without remote-control wiring."
-                SuppressWarning = $false
-            }
-        }
-
-        # --allow-all arms
-        'copilot|--allow-all' {
-            return [pscustomobject]@{ Args = @('--allow-all'); Notice = ''; SuppressWarning = $true }
-        }
-        'claude|--allow-all' {
-            return [pscustomobject]@{
-                Args = @('--dangerously-skip-permissions')
-                Notice = "Translated --allow-all to Claude's --dangerously-skip-permissions flag."
-                SuppressWarning = $true
-            }
-        }
-        'codex|--allow-all' {
-            return [pscustomobject]@{
-                Args = @('--dangerously-bypass-approvals-and-sandbox')
-                Notice = "Translated --allow-all to Codex's --dangerously-bypass-approvals-and-sandbox flag (full equivalent of Claude's --dangerously-skip-permissions)."
-                SuppressWarning = $true
-            }
-        }
-
-        # --autopilot arms
-        'copilot|--autopilot' {
-            return [pscustomobject]@{ Args = @('--autopilot'); Notice = ''; SuppressWarning = $true }
-        }
-        'claude|--autopilot' {
-            return [pscustomobject]@{
-                Args = @()
-                Notice = "Claude Code has no direct equivalent of Copilot's --autopilot. For unattended runs use --autonomous (Specrew's own flag for lifecycle boundary control)."
-                SuppressWarning = $false
-            }
-        }
-        'codex|--autopilot' {
-            # Folds into --dangerously-bypass-approvals-and-sandbox (the Codex --allow-all equivalent);
-            # avoid double-injection.
-            return [pscustomobject]@{
-                Args = @()
-                Notice = "Codex's autopilot equivalent is --dangerously-bypass-approvals-and-sandbox, which is already mapped from --allow-all. --autopilot is a no-op when --allow-all is also set."
-                SuppressWarning = $true
-            }
-        }
-
-        default {
-            throw "Unsupported flag translation: HostKind=$HostKind, Flag=$SpecrewFlag"
-        }
+    return Invoke-HostHandler -Kind $HostKind -ContractFunction ConvertFlag -Arguments @{
+        SpecrewFlag = $SpecrewFlag
     }
 }

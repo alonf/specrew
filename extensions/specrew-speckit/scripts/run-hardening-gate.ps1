@@ -571,11 +571,15 @@ if (-not (Test-Path -LiteralPath $qualityDirectory -PathType Container)) {
     $null = New-Item -ItemType Directory -Path $qualityDirectory -Force
 }
 
-$existingLines = if (Test-Path -LiteralPath $hardeningGatePath -PathType Leaf) {
-    @(Get-MarkdownContent -Path $hardeningGatePath)
+if (Test-Path -LiteralPath $hardeningGatePath -PathType Leaf) {
+    $existingLines = [string[]](@(Get-MarkdownContent -Path $hardeningGatePath))
 }
 else {
-    @()
+    $existingLines = [string[]]@()
+}
+# Strict mode + if-expression assignment can drop the empty array; coerce defensively.
+if ($null -eq $existingLines) {
+    $existingLines = [string[]]@()
 }
 $existingState = if (Test-Path -LiteralPath $hardeningGatePath -PathType Leaf) {
     Get-HardeningGateState -Path $hardeningGatePath -ProjectRoot $resolvedProjectPath

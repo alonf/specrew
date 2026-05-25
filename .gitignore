@@ -20,6 +20,8 @@
 .specrew/start-summary.md
 .specrew/bootstrap-dry-run-*.md
 .specrew/.cache/
+# F-043: per-developer host selection history (lives per workspace, not shared)
+.specrew/host-history.json
 
 # Local scratch/test leftovers
 .scratch/

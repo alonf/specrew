@@ -4,6 +4,23 @@ Retroactive alpha release history for shipped Specrew features. `.specrew\config
 is the canonical source for the active version; this file records the feature
 baseline that each release number represents.
 
+## [0.27.0] - 2026-05-24
+
+### Added
+
+- **Feature 043 (Multi-Host Onboarding + Selection Flow)**: Ships the user-facing slice of Proposal 104 — host-history persistence (`.specrew/host-history.json`), `specrew host list/use/status` CLI surface, host-selection priority chain (--host flag → host-history → first-run probe → non-TTY guidance), and `host_resolution` field on `start-context.json`. 9 of 13 FRs shipped; Category A coordinator-content migration (FR-008/009/011) deferred to follow-up. See `specs/043-multi-host-onboarding/` for iteration artifacts.
+
+- **Feature 044 (Per-Host Architecture Refactor)**: Proposal 108 implementation across 5 iterations on the `multi-host-integration-refactor` branch:
+  - **iter-001** (architectural payoff): Per-host package registry + 4 host packages with handlers + registry-driven shims replacing host-coupled scripts + `scripts/specrew-init.ps1` split into 9 focused files under `scripts/init/` + 5th contract function `Install-<Kind>CrewRuntime` + canonical `.specrew/team/agents/<role>.md` source-of-truth + per-host translation on every `specrew start`. Closed with 22 known issues from 4-agent deep review.
+  - **iter-002** (deep-analysis cleanup): All 22 deep-review findings closed in single commit — BUG tier (Copilot CrewRuntimePath, AgentDir Open-Closed seam, A-1 host-gate cross-feature fix), WARN tier (contract doc rewrite, sentinel + sidecar pattern for Copilot, auto-seed canonical, marker-walk path resolution, 3 doc fixes, test promotion), NIT tier (dedup helpers, dead code, stale comments, validator gap).
+  - **iter-003** (manual-test repair): 5 Tier A bugs from user's first multi-host dogfood (Copilot + Claude + Codex on greenfield projects) — SKILL.md YAML frontmatter, Crew-neutral bootstrap message, hardening-gate first-run binding, retro Phase Baseline tolerance, scaffold-feature-closeout-dashboard PassThru.
+  - **iter-004** (host UX improvements — first LIVE-TRACKED iteration): Numbered menu for `specrew start` host selection; `specrew host list` two-group output (Installed first, then "not installed" with install URLs); BinaryAliases now probed alongside Binary in all 3 detection sites.
+  - **iter-005** (pre-PR release prep — this release): Antigravity launch shape fix (`agy -i <prompt> --add-dir <path> [--dangerously-skip-permissions]` per verified `agy --help` output); module version bump to v0.27.0; automated regression tests for iter-003/004 fixes; documentation audit + Crew-language sweep across README + getting-started + user-guide.
+
+- **Methodology demonstration**: F-044's 5-iteration arc demonstrates the textbook Specrew review-gate-followed-by-fix-slice pattern. iter-001 closes honestly with known issues; iter-002 closes the 22 deep-review findings; iter-003 closes 5 manual-test bugs; iter-004 is the first LIVE-TRACKED iteration (plan-before-code, real variance data); iter-005 ships release prep + remaining UX fix. iter-001/002/003 plans were retroactive backfills (documented as methodology debt in retros); iter-004+ are live-tracked.
+
+- **Versioning note**: This branch bumps minor from 0.26.0 to 0.27.0 following the current incremental pattern. The historical feature-aligned convention (F-019 → 0.19.0 etc.) drifted at v0.24.x where multiple features bundled into single minor versions; F-040 → v0.26.0 reflects this drift carried forward. Restoring the convention is queued as a separate methodology decision; this release ships under the current pattern.
+
 ## [0.26.0] - 2026-05-23
 
 ### Added

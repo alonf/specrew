@@ -31,15 +31,21 @@ If any are missing:
 
 #### Pick at least one host CLI
 
-Specrew needs one of the supported **agent host CLIs** to actually run a lifecycle session. As of v0.26.0 there are three supported hosts — install at least one. You select which one at launch time via `specrew start --host <kind>` (default: `copilot`).
+Specrew needs one of the supported **agent host CLIs** to actually run a lifecycle session. As of v0.27.0 there are four supported hosts — install at least one. You select which one at launch time via `specrew start --host <kind>`. **Two defaults to keep in mind:**
+
+- **`--host` flag default (non-interactive / CI / automation)**: `copilot` — most-tested host, predictable for headless runs
+- **Interactive menu default (TTY, multiple installed hosts)**: highest-priority installed host in the order **Claude → Codex → Copilot → Antigravity**. The interactive menu shows installed hosts in priority order; `[default 1]` selects the highest-priority one
+
+When `--host` is omitted in interactive mode, Specrew shows a numbered menu of installed hosts (plus an "(not installed)" group with install URLs).
 
 | Host | `--host` value | CLI binary | Install URL | Notes |
 |---|---|---|---|---|
-| **GitHub Copilot** *(default)* | `copilot` | `copilot` | [docs.github.com/en/copilot/how-tos/copilot-cli](https://docs.github.com/en/copilot/how-tos/copilot-cli) | Most-tested host; default if `--host` is omitted |
+| **GitHub Copilot** *(`--host` flag default)* | `copilot` | `copilot` | [docs.github.com/en/copilot/how-tos/copilot-cli](https://docs.github.com/en/copilot/how-tos/copilot-cli) | Most-tested host; the `--host` flag falls back to `copilot` in non-interactive contexts. Interactive menu priority: 3 of 4 |
 | **Claude Code** | `claude` | `claude` | [docs.anthropic.com/en/docs/claude-code/installation](https://docs.anthropic.com/en/docs/claude-code/installation) | Headless `claude -p` invocation; rich subagent + hook surface (see [Proposal 105](../proposals/105-host-native-hook-deployment.md) for the hook-deployment follow-up) |
 | **Codex CLI** | `codex` | `codex` | [developers.openai.com/codex/cli](https://developers.openai.com/codex/cli) | `codex exec --cd` invocation; no user-defined slash commands so the Crew uses pwsh-form boundary-advance instructions instead |
+| **Antigravity** | `antigravity` | `agy` | [antigravity.google](https://antigravity.google/) | `agy -i <prompt> --add-dir <path>` invocation; `--dangerously-skip-permissions` maps from `--allow-all`. Graduated from deferred to supported in v0.27.0 (F-044 iter-005) |
 
-Reserved-but-deferred kinds: `antigravity` (follow-up slice once `agy` working-directory + session-ID issues clear), `auto` (reserved for [Proposal 104](../proposals/104-multi-host-onboarding-and-selection-flow.md) first-run probe). Specrew rejects these with explicit "deferred" guidance rather than silently falling back.
+Reserved-but-deferred kind: `auto` (reserved for [Proposal 104](../proposals/104-multi-host-onboarding-and-selection-flow.md) first-run probe — partially implemented via the F-043 first-run menu but `auto` literal still rejected). Specrew rejects this with explicit "deferred" guidance rather than silently falling back.
 
 ### 2. Install Specrew from PowerShell Gallery
 
@@ -68,7 +74,7 @@ specrew init
 
 ### 4. Start the first feature
 
-Pick the host at launch time via `--host`. The default (no flag) is `copilot`:
+Pick the host at launch time via `--host`. The non-interactive default (no flag, no TTY) is `copilot`; the interactive-menu default is the highest-priority installed host (Claude → Codex → Copilot → Antigravity):
 
 ```powershell
 # Default: GitHub Copilot host
@@ -79,6 +85,9 @@ specrew start --host claude "Build a web based calculator with only the + - * / 
 
 # Or with Codex CLI
 specrew start --host codex "Build a web based calculator with only the + - * / MR MC M+ M- operations"
+
+# Or with Antigravity (agy)
+specrew start --host antigravity "Build a web based calculator with only the + - * / MR MC M+ M- operations"
 ```
 
 That single command:
@@ -92,6 +101,17 @@ That single command:
 When the Crew surfaces a clarify question, answer it. When it surfaces a planning artifact, review it. When it asks for an implementation verdict, type one of the recognized verdict shapes (e.g. `approved for implementation-boundary entry`). The lifecycle then continues to the next boundary.
 
 > **Switching hosts on the same project** is supported: end the session and restart `specrew start --host <other>`. Mid-session switching requires you to end and restart — by design. (Concurrent multi-host execution is Scenario B of [Proposal 024](../proposals/024-multi-host-runtime-abstraction.md), not in F-040's scope.)
+
+### 5. Close the iteration (and the feature)
+
+The lifecycle does not end at `implement`. Two more boundaries finish the work:
+
+- **`iteration-closeout`** — after the Crew passes review-signoff and writes `retro.md`, you approve the iteration close. Boundary-sync generates `specs/<feature>/iterations/<NNN>/dashboard.md` (per-iteration snapshot: variance, drift count, FR scoreboard) and appends the iteration to `.specrew/closed-iteration-index.yml`. Verdict shape: `approved for iteration-closeout`.
+- **`feature-closeout`** — after the final iteration of a feature is closed, you approve the feature close. Boundary-sync generates `specs/<feature>/closeout-dashboard.md` (cross-iteration FR scoreboard + velocity + delivery summary) and marks the feature complete. Verdict shape: `approved for feature-closeout`.
+
+**Why this matters**: these two boundaries are what mark the work durably "done". Until you authorize them, the feature is **in flight** — `specrew where` will list it as active, and starting a new `specrew start "<other feature>"` will resume the in-flight feature instead of starting fresh. The artifacts produced at closeout (dashboard.md per iteration + closeout-dashboard.md per feature) are also the canonical input that future iterations and features read for velocity calibration. Skipping closeout silently degrades both your project's state-tracking and Specrew's own estimation accuracy.
+
+> If you only want to take a break (not finish), close your terminal — Specrew preserves session state in `.specrew/start-context.json`. The next `specrew start` resumes at the same boundary. Closeout is the explicit "this is done" gate, not the "I'm pausing" gate.
 
 That is the full minimal flow. Everything else on this page is optional — covered in the sections below.
 
@@ -214,7 +234,9 @@ When `specrew start` runs without a feature description in an existing project, 
 
 ## Known Limitations
 
-- **Multi-host runtime**: Copilot CLI, Claude Code, and Codex CLI are all supported as of v0.26.0 via `specrew start --host <kind>` (see [docs/user-guide.md](user-guide.md) for the full per-host flag-translation matrix). Antigravity, `--host auto`, and VS Code Chat are roadmap items per [Proposal 069](../proposals/069-multi-host-launch-path.md), [Proposal 104](../proposals/104-multi-host-onboarding-and-selection-flow.md), [Proposal 071](../proposals/071-vscode-copilot-chat-host.md).
+- **Multi-host runtime**: Copilot CLI, Claude Code, Codex CLI, and Antigravity (`agy`) are all supported as of v0.27.0 via `specrew start --host <kind>` or the interactive menu when `--host` is omitted (see [docs/user-guide.md](user-guide.md) for the full per-host flag-translation matrix). `--host auto` and VS Code Chat are roadmap items per [Proposal 104](../proposals/104-multi-host-onboarding-and-selection-flow.md) and [Proposal 071](../proposals/071-vscode-copilot-chat-host.md).
+- **Antigravity host caveats** (v0.27.0): Antigravity at the Gemini Flash tier was observed during the 2026-05-25 4-host smoke test skipping the plan-approval boundary and accepting bug fixes outside the iteration lifecycle. Specrew's gate-respecting mode is **cooperative**, not runtime-enforced — weaker models can chase delivery past gates. Mitigations: (a) pair Antigravity with a higher-tier model when available, or (b) prefer Claude / Copilot for methodology-critical work, or (c) wait for [Proposal 105](../proposals/105-host-native-hook-deployment.md) (host-native PreToolUse hooks) to ship for runtime enforcement. The Antigravity launch shape (`agy -i <prompt> --add-dir <path>`) is empirically verified on WSL Linux; Windows-native smoke is pending broader user testing.
+- **Per-host coordinator overlay** (v0.27.0): Copilot users get a `.squad/coordinator-overlay.md` file materialized at init. Claude / Codex / Antigravity users get the same coordination behavior via the bootstrap prompt, but no overlay file is created (less discoverable). Functionally equivalent today; a future iteration may unify this.
 - **Multi-developer coordination**: single-developer workflow only. [Proposal 010](../proposals/010-multi-developer-reconciliation.md) covers the eventual model.
 - **Brownfield cartography**: discovery covers the obvious surfaces (manifests, configs, docs) but JIT codebase cartography for arbitrary inherited repos is a future item ([Proposal 025](../proposals/025-jit-codebase-cartography.md)).
 - **Module signing**: the `-SkipPublisherCheck` flag is required on `Install-Module` until a CA-signed release lands. See [Proposal 072](../proposals/072-psgallery-unsigned-default.md) for the decision context.
@@ -226,7 +248,7 @@ When `specrew start` runs without a feature description in an existing project, 
 | Platform | Status |
 |---|---|
 | Windows 11 (primary) | ✅ Fully validated |
-| WSL Ubuntu | ✅ Manually validated end-to-end (specrew init + specrew start launch the host CLI; Copilot+Squad validated through F-019; Claude/Codex hosts added in v0.26.0 and parser-tested) |
+| WSL Ubuntu | ✅ Manually validated end-to-end (specrew init + specrew start launch the host CLI; Copilot+Squad validated through F-019; Claude/Codex hosts added in v0.26.0 and parser-tested; Antigravity host added in v0.27.0) |
 | Linux native (Ubuntu) | ✅ Path handling cross-platform; CI matrix configured |
 | macOS | 🔧 Path handling cross-platform; CI matrix configured; no in-house validation runs yet |
 

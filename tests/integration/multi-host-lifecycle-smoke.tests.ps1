@@ -1,0 +1,98 @@
+[CmdletBinding()]
+param()
+
+# F-044 iter-006 regression tests for the dispatch hardening + scaffolder-tolerance fixes
+# surfaced by Antigravity's empirical lifecycle exercise.
+
+Set-StrictMode -Version Latest
+$ErrorActionPreference = 'Stop'
+
+function Write-Pass { param([string]$Message) Write-Host "PASS: $Message" -ForegroundColor Green }
+function Write-Fail { param([string]$Message) Write-Host "FAIL: $Message" -ForegroundColor Red; exit 1 }
+
+$repoRoot = (Resolve-Path (Join-Path -Path $PSScriptRoot -ChildPath '..\..')).Path
+
+# Test 1: Specrew.psm1 sets $env:SPECREW_MODULE_PATH on import (iter-006 T001)
+$psm1Content = Get-Content -LiteralPath (Join-Path $repoRoot 'Specrew.psm1') -Raw -Encoding UTF8
+if ($psm1Content -notmatch '\$env:SPECREW_MODULE_PATH\s*=\s*\$ScriptRoot') {
+    Write-Fail "Specrew.psm1 must set \$env:SPECREW_MODULE_PATH = \$ScriptRoot on import so child processes dispatch to the active Dev tree (iter-006 T001)."
+}
+Write-Pass "Specrew.psm1 sets \$env:SPECREW_MODULE_PATH on import (iter-006 T001)"
+
+# Test 2: sync-boundary-state.ps1 shim honors $env:SPECREW_MODULE_PATH override
+$shimContent = Get-Content -LiteralPath (Join-Path $repoRoot 'extensions\specrew-speckit\scripts\sync-boundary-state.ps1') -Raw -Encoding UTF8
+if ($shimContent -notmatch '\$env:SPECREW_MODULE_PATH') {
+    Write-Fail "sync-boundary-state.ps1 must honor \$env:SPECREW_MODULE_PATH override (iter-006 T001)."
+}
+Write-Pass "sync-boundary-state.ps1 honors \$env:SPECREW_MODULE_PATH override"
+
+# Test 3: sync-boundary-state.ps1 has stale-install detection
+if ($shimContent -notmatch 'Stale Specrew install') {
+    Write-Fail "sync-boundary-state.ps1 must detect stale installs (project specrew_version > resolved module version) and refuse dispatch with actionable guidance (iter-006 T001)."
+}
+Write-Pass "sync-boundary-state.ps1 detects stale install (project version > installed version)"
+
+# Test 4: shim reads specrew_version from project's .specrew/config.yml
+if ($shimContent -notmatch '\.specrew\\config\.yml') {
+    Write-Fail "sync-boundary-state.ps1 must read specrew_version from project's .specrew/config.yml for stale-install comparison."
+}
+if ($shimContent -notmatch 'specrew_version:') {
+    Write-Fail "sync-boundary-state.ps1 must regex-match specrew_version: line in project config."
+}
+Write-Pass "sync-boundary-state.ps1 reads specrew_version from project .specrew/config.yml"
+
+# Test 5: scaffold-iteration-plan.ps1 degrades gracefully when spec has no canonical FRs (iter-006 T003)
+$planScaffoldContent = Get-Content -LiteralPath (Join-Path $repoRoot 'extensions\specrew-speckit\scripts\scaffold-iteration-plan.ps1') -Raw -Encoding UTF8
+if ($planScaffoldContent -match 'throw "No functional requirements were found') {
+    Write-Fail "scaffold-iteration-plan.ps1 still throws hard on zero FRs. Should degrade to placeholder + warning (iter-006 T003)."
+}
+if ($planScaffoldContent -notmatch 'FR-PLACEHOLDER') {
+    Write-Fail "scaffold-iteration-plan.ps1 must emit FR-PLACEHOLDER fallback when spec has no canonical FRs (iter-006 T003)."
+}
+Write-Pass "scaffold-iteration-plan.ps1 degrades gracefully when spec has no canonical FRs"
+
+# Test 6: scaffold-iteration-plan.ps1 has the $null -ne $RequirementScope StrictMode fix (iter-006 T002 canonicalization of Antigravity's patch)
+if ($planScaffoldContent -notmatch '\$null -ne \$RequirementScope -and \$RequirementScope\.Count') {
+    Write-Fail "scaffold-iteration-plan.ps1 must use '\$null -ne \$RequirementScope -and ...' StrictMode-safe pattern (iter-006 T002 — canonicalized from Antigravity's empirical patch)."
+}
+Write-Pass "scaffold-iteration-plan.ps1 RequirementScope null-check is StrictMode-safe (iter-006 T002)"
+
+# Test 7: Smoke — parse-check the 3 touched files (catches syntax breaks before runtime)
+foreach ($file in @('Specrew.psm1', 'extensions\specrew-speckit\scripts\sync-boundary-state.ps1', 'extensions\specrew-speckit\scripts\scaffold-iteration-plan.ps1')) {
+    $errs = $null
+    [System.Management.Automation.Language.Parser]::ParseFile((Join-Path $repoRoot $file), [ref]$null, [ref]$errs) | Out-Null
+    if ($null -ne $errs -and $errs.Count -gt 0) {
+        Write-Fail "Parse error in '$file': $($errs[0].Message)"
+    }
+}
+Write-Pass "All 3 iter-006-touched files parse cleanly"
+
+# Test 8: scaffold-reviewer-artifacts.ps1 is Linux-portable (iter-007 T001 — canonicalized from Antigravity's empirical WSL patch)
+# The hardcoded 'C:\' root prefix broke on Linux; iter-007 fix uses DirectorySeparatorChar to detect platform.
+$reviewerScaffoldContent = Get-Content -LiteralPath (Join-Path $repoRoot 'extensions\specrew-speckit\scripts\scaffold-reviewer-artifacts.ps1') -Raw -Encoding UTF8
+if ($reviewerScaffoldContent -match "Join-Path 'C:\\\\' \`$combinedPath") {
+    Write-Fail "scaffold-reviewer-artifacts.ps1 still hardcodes 'C:\\' root prefix — breaks on Linux/WSL (iter-007 T001)."
+}
+if ($reviewerScaffoldContent -notmatch '\[System\.IO\.Path\]::DirectorySeparatorChar') {
+    Write-Fail "scaffold-reviewer-artifacts.ps1 must use [System.IO.Path]::DirectorySeparatorChar for cross-platform path resolution (iter-007 T001)."
+}
+Write-Pass "scaffold-reviewer-artifacts.ps1 is Linux-portable (iter-007 T001 — canonicalized from Antigravity's WSL empirical patch)"
+
+# Test 9: evaluation/process-scorer.ps1 uses forward-slash literal for cross-platform Join-Path (iter-007 T002 — sibling-bug audit fix)
+$processScorerContent = Get-Content -LiteralPath (Join-Path $repoRoot 'evaluation\scorers\process-scorer.ps1') -Raw -Encoding UTF8
+if ($processScorerContent -match "ChildPath 'evaluation\\\\report\.md'") {
+    Write-Fail "evaluation/scorers/process-scorer.ps1 still uses 'evaluation\\report.md' backslash literal — Linux Join-Path treats '\\' as part of filename (iter-007 T002)."
+}
+Write-Pass "evaluation/scorers/process-scorer.ps1 uses forward-slash path literal (iter-007 T002 — sibling-bug audit)"
+
+# Test 10: Linux-portability parse-check on iter-007-touched files
+foreach ($file in @('extensions\specrew-speckit\scripts\scaffold-reviewer-artifacts.ps1', 'evaluation\scorers\process-scorer.ps1')) {
+    $errs = $null
+    [System.Management.Automation.Language.Parser]::ParseFile((Join-Path $repoRoot $file), [ref]$null, [ref]$errs) | Out-Null
+    if ($null -ne $errs -and $errs.Count -gt 0) {
+        Write-Fail "Parse error in iter-007 file '$file': $($errs[0].Message)"
+    }
+}
+Write-Pass "All iter-007-touched files parse cleanly"
+
+Write-Host "`nMulti-host lifecycle smoke (iter-006 + iter-007): all assertions pass" -ForegroundColor Green

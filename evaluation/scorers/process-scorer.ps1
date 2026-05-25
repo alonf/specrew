@@ -89,7 +89,7 @@ function Resolve-ReportPath {
     )
 
     if ([string]::IsNullOrWhiteSpace($RequestedPath)) {
-        return [System.IO.Path]::GetFullPath((Join-Path -Path $ResolvedProjectPath -ChildPath 'evaluation\report.md'))
+        return [System.IO.Path]::GetFullPath((Join-Path -Path $ResolvedProjectPath -ChildPath 'evaluation/report.md'))
     }
 
     if ([System.IO.Path]::IsPathRooted($RequestedPath)) {

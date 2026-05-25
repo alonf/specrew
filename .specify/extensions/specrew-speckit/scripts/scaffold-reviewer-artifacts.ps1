@@ -987,7 +987,8 @@ function Resolve-ModuleReference {
         return $null
     }
 
-    $baseDirectory = Split-Path -Parent ($FromPath -replace '/', '\')
+    $sep = [System.IO.Path]::DirectorySeparatorChar
+    $baseDirectory = Split-Path -Parent ($FromPath -replace '/', $sep)
     $combinedPath = if ([string]::IsNullOrWhiteSpace($baseDirectory)) {
         $Target
     }
@@ -995,7 +996,10 @@ function Resolve-ModuleReference {
         Join-Path $baseDirectory $Target
     }
 
-    $candidatePath = [System.IO.Path]::GetFullPath((Join-Path 'C:\' $combinedPath)).Substring(3)
+    $isWin = $sep -eq '\'
+    $rootPrefix = if ($isWin) { 'C:\' } else { '/' }
+    $trimLength = if ($isWin) { 3 } else { 1 }
+    $candidatePath = [System.IO.Path]::GetFullPath((Join-Path $rootPrefix $combinedPath)).Substring($trimLength)
     $candidateKey = $candidatePath.Replace('\', '/')
     $candidateModuleId = Get-ModuleIdFromPath -Path $candidateKey
 

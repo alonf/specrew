@@ -1,6 +1,6 @@
 @{
     RootModule = 'Specrew.psm1'
-    ModuleVersion = '0.26.0'
+    ModuleVersion = '0.27.0'
     GUID = '8ad5b7b5-c4c6-4df4-b9bd-700a8533dcc4'
     Author = 'Alon Fliess'
     Description = 'Specrew: specification-driven development workflow for AI-augmented teams'
@@ -36,12 +36,39 @@
         'scripts/internal/dashboard-renderer.ps1',
         'scripts/internal/detect-hosts.ps1',
         'scripts/internal/host-flag-translation.ps1',
+        'scripts/internal/host-history.ps1',
+        'scripts/internal/host-runtime-inventory.ps1',
         'scripts/internal/invoke-module-release.ps1',
         'scripts/internal/supported-versions.yml',
         'scripts/internal/sync-boundary-state.ps1',
         'scripts/internal/task-progress.ps1',
         'scripts/internal/version-check.ps1',
         'scripts/internal/worktree-awareness.ps1',
+        'hosts/_contract.md',
+        'hosts/_registry.ps1',
+        'hosts/_team-canonical.ps1',
+        'hosts/antigravity/host.psd1',
+        'hosts/antigravity/handlers.ps1',
+        'hosts/antigravity/coordinator-rules.psd1',
+        'hosts/claude/host.psd1',
+        'hosts/claude/handlers.ps1',
+        'hosts/claude/coordinator-rules.psd1',
+        'hosts/codex/host.psd1',
+        'hosts/codex/handlers.ps1',
+        'hosts/codex/coordinator-rules.psd1',
+        'hosts/copilot/host.psd1',
+        'hosts/copilot/handlers.ps1',
+        'hosts/copilot/coordinator-rules.psd1',
+        'scripts/init/_utilities.ps1',
+        'scripts/init/agent-detection.ps1',
+        'scripts/init/crew-bootstrap.ps1',
+        'scripts/init/dependency-install.ps1',
+        'scripts/init/post-bootstrap-output.ps1',
+        'scripts/init/preflight.ps1',
+        'scripts/init/spec-kit-deploy.ps1',
+        'scripts/init/squad-deploy.ps1',
+        'scripts/init/template-deploy.ps1',
+        'scripts/specrew-host.ps1',
         'scripts/specrew-init.ps1',
         'scripts/specrew-review.ps1',
         'scripts/specrew-start.ps1',

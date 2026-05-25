@@ -1,93 +1,107 @@
-# Coordinator-prompt surgery for Specrew multi-host launch path (F-040)
+# Coordinator-prompt surgery — registry-driven rules engine (Phase C.3 refactor)
 #
-# Implements FR-011 (universal header rewrite for ALL hosts) and FR-012
-# (Squad-runtime-path directive strip for non-Copilot hosts only) plus FR-014
-# (Codex pwsh-form boundary-advance instructions). Documented in
-# specs/040-multi-host-launch-path/spec.md.
+# Originally a 123-line file with hardcoded per-host switches (FR-011 header,
+# FR-012 strip non-Copilot, FR-014 Codex pwsh-form). Now a thin rules engine
+# that loads hosts/<kind>/coordinator-rules.psd1 and applies declared Rules in order.
 #
-# Two functions:
-#   - Get-SpecrewUniversalCoordinatorHeader : the unified header line
-#   - Invoke-SpecrewCoordinatorPromptSurgery : applies header rewrite + (for
-#     non-Copilot hosts) strips Squad-runtime-path directives + (for Codex)
-#     rewrites slash-command boundary-advance references as pwsh-form
+# The universal header rewrite (FR-011) stays here as a built-in baseline because
+# the literal IS the same across all hosts (it's the spec invariant). Per-host
+# rule files declare ADDITIONAL surgery on top.
 #
-# The original Squad header ("You are Squad running inside a
-# Specrew-bootstrapped repository.") is replaced uniformly across all hosts
-# with the Crew-coordinator framing.
+# To change a per-host rule: edit hosts/<kind>/coordinator-rules.psd1.
+# To add a new host: create hosts/<kind>/coordinator-rules.psd1 — no edits to this engine.
 
 Set-StrictMode -Version Latest
 
+$script:RegistryPath = Join-Path (Split-Path -Parent $PSScriptRoot) 'hosts\_registry.ps1'
+if (-not (Test-Path -LiteralPath $script:RegistryPath -PathType Leaf)) {
+    # Module-mode lookup
+    $script:RegistryPath = Join-Path (Split-Path -Parent (Split-Path -Parent $PSScriptRoot)) 'hosts\_registry.ps1'
+}
+if (-not (Test-Path -LiteralPath $script:RegistryPath -PathType Leaf)) {
+    throw "Host registry not found. Searched: $script:RegistryPath"
+}
+. $script:RegistryPath
+
+$script:CoordinatorRulesCache = @{}
+
 function Get-SpecrewUniversalCoordinatorHeader {
+    # FR-011 invariant: same literal for every host.
     return 'You are the Crew team coordinator running inside a Specrew-bootstrapped repository.'
 }
 
 function Get-SpecrewOriginalCoordinatorHeaderPattern {
-    # Matches both common spellings in case prior prompts varied
+    # Matches the original Squad header that gets replaced uniformly.
     return '(?m)^You are Squad running inside a Specrew-bootstrapped repository\.'
 }
 
-function Get-SpecrewSquadRuntimePathDirectivePatterns {
-    # Lines/paragraphs to strip for non-Copilot hosts. Each entry is a regex
-    # that matches a full line (anchored multiline). Conservative — only removes
-    # lines that clearly reference Squad-runtime paths.
-    return @(
-        # Rule 12: .squad\decisions.md skip rationale (a numbered list item that mentions .squad/decisions.md)
-        '(?m)^\s*\d+\.\s+.*\.squad[\\/]decisions\.md.*$',
-        # Rule 35: agentModelOverrides directive
-        '(?m)^\s*\d+\.\s+.*agentModelOverrides.*$',
-        # Rule 37: sync-squad-model-overrides.ps1 directive
-        '(?m)^\s*\d+\.\s+.*sync-squad-model-overrides\.ps1.*$',
-        # Rules 42-44: .squad/config.json directives
-        '(?m)^\s*\d+\.\s+.*\.squad[\\/]config\.json.*$'
-    )
-}
+function Get-SpecrewHostCoordinatorRules {
+    <#
+    .SYNOPSIS
+    Loads the declarative coordinator-prompt surgery rules for a given host.
+    .OUTPUTS
+    array of hashtables, each with @{ Kind = 'Strip'|'Replace'; Pattern; Replacement?; Description }
+    Returns empty array if the host has no per-host rules (e.g., Copilot).
+    #>
+    param([Parameter(Mandatory = $true)][string]$HostKind)
 
-function Get-SpecrewSlashCommandToPwshFormMap {
-    # For Codex hosts: replace slash-command boundary-advance references with
-    # pwsh-form invocations (FR-014). The slash commands don't exist on Codex
-    # because Codex has no user-defined slash-command surface.
-    #
-    # Map shape: array of regex / replacement pairs applied in order.
-    return @(
-        @{
-            Pattern     = '/speckit\.specrew-speckit\.sync-([a-z\-]+)'
-            Replacement = 'pwsh -File .specify/extensions/specrew-speckit/scripts/sync-boundary-state.ps1 -BoundaryType $1'
-        }
-    )
+    $kindLower = $HostKind.ToLowerInvariant()
+    if ($script:CoordinatorRulesCache.ContainsKey($kindLower)) {
+        return $script:CoordinatorRulesCache[$kindLower]
+    }
+
+    $manifest = Get-HostManifest -Kind $kindLower
+    $rulesFile = if ($manifest.ContainsKey('CoordinatorRulesFile') -and -not [string]::IsNullOrWhiteSpace([string]$manifest.CoordinatorRulesFile)) { $manifest.CoordinatorRulesFile } else { 'coordinator-rules.psd1' }
+    $hostsRoot = Get-SpecrewHostsRoot
+    $rulesPath = Join-Path (Join-Path $hostsRoot $kindLower) $rulesFile
+
+    if (-not (Test-Path -LiteralPath $rulesPath -PathType Leaf)) {
+        # Hosts may legitimately have no per-host rules (e.g., Copilot only needs the engine's universal header)
+        $script:CoordinatorRulesCache[$kindLower] = @()
+        return @()
+    }
+
+    try {
+        $rulesData = Import-PowerShellDataFile -LiteralPath $rulesPath
+    }
+    catch {
+        throw "Failed to load coordinator rules for host '$HostKind' at '$rulesPath': $($_.Exception.Message)"
+    }
+
+    if (-not $rulesData.ContainsKey('Rules')) {
+        $script:CoordinatorRulesCache[$kindLower] = @()
+        return @()
+    }
+
+    $rules = @($rulesData.Rules)
+    $script:CoordinatorRulesCache[$kindLower] = $rules
+    return $rules
 }
 
 function Invoke-SpecrewCoordinatorPromptSurgery {
     <#
     .SYNOPSIS
-    Applies multi-host coordinator-prompt surgery per FR-011 / FR-012 / FR-014.
+    Applies multi-host coordinator-prompt surgery — registry-driven rules engine.
 
     .DESCRIPTION
-    Three surgeries applied in order:
-      1. Universal header rewrite (ALL hosts): replace the Squad-flavored
-         opening line with the Crew-coordinator framing per FR-011.
-      2. Squad-runtime-path directive strip (non-Copilot hosts only): remove
-         numbered directives that reference .squad/decisions.md,
-         .squad/config.json, agentModelOverrides, sync-squad-model-overrides.ps1
-         per FR-012.
-      3. Slash-command to pwsh-form rewrite (Codex only): replace
-         /speckit.specrew-speckit.sync-<boundary> references with
-         "pwsh -File .specify/extensions/specrew-speckit/scripts/sync-boundary-state.ps1
-         -BoundaryType <boundary>" per FR-014.
+    Two surgeries applied in order:
+      1. Universal header rewrite (FR-011 invariant; built-in baseline applied to ALL hosts).
+      2. Per-host declarative rules from hosts/<kind>/coordinator-rules.psd1 applied in declared order.
+
+    Per-host rules are hashtables with:
+      - Kind = 'Strip' | 'Replace'
+      - Pattern = regex string
+      - Replacement = string (required only for Replace; supports regex backreferences like `$1`)
+      - Description = human-readable label (for diagnostics)
 
     Returns the rewritten prompt body.
-
-    .PARAMETER Prompt
-    The prompt body to surgically rewrite.
-
-    .PARAMETER Host
-    The selected host (copilot, claude, codex).
     #>
     param(
         [Parameter(Mandatory = $true)]
         [string]$Prompt,
 
         [Parameter(Mandatory = $true)]
-        [ValidateSet('copilot', 'claude', 'codex')]
+        [ValidateSet('copilot', 'claude', 'codex', 'antigravity')]
         [string]$HostKind
     )
 
@@ -95,29 +109,46 @@ function Invoke-SpecrewCoordinatorPromptSurgery {
         return $Prompt
     }
 
-    $hostLower = $HostKind.ToLowerInvariant()
     $result = $Prompt
 
-    # Surgery 1: universal header rewrite (FR-011) — applies to ALL hosts
-    $headerPattern = Get-SpecrewOriginalCoordinatorHeaderPattern
-    $newHeader = Get-SpecrewUniversalCoordinatorHeader
-    $result = [regex]::Replace($result, $headerPattern, $newHeader)
+    # Surgery 1: universal header rewrite (FR-011) — applies to ALL hosts as a built-in baseline.
+    $result = [regex]::Replace($result, (Get-SpecrewOriginalCoordinatorHeaderPattern), (Get-SpecrewUniversalCoordinatorHeader))
 
-    # Surgery 2: Squad-runtime-path directive strip (FR-012) — non-Copilot only
-    if ($hostLower -ne 'copilot') {
-        foreach ($pattern in (Get-SpecrewSquadRuntimePathDirectivePatterns)) {
-            $result = [regex]::Replace($result, $pattern, '')
+    # Surgery 2: per-host declarative rules
+    $rules = Get-SpecrewHostCoordinatorRules -HostKind $HostKind
+    $appliedStrip = $false
+    foreach ($rule in $rules) {
+        if (-not $rule.ContainsKey('Kind') -or -not $rule.ContainsKey('Pattern')) {
+            Write-Warning ("Skipping malformed coordinator rule for host '{0}': missing Kind or Pattern" -f $HostKind)
+            continue
         }
-        # Tidy: collapse 3+ blank lines down to 2 to avoid huge gaps where rules were
-        $result = [regex]::Replace($result, '(?m)(^\s*$\r?\n){3,}', "`r`n`r`n")
+        switch ($rule.Kind) {
+            'Strip' {
+                $result = [regex]::Replace($result, $rule.Pattern, '')
+                $appliedStrip = $true
+            }
+            'Replace' {
+                if (-not $rule.ContainsKey('Replacement')) {
+                    Write-Warning ("Skipping malformed Replace rule for host '{0}': missing Replacement" -f $HostKind)
+                    continue
+                }
+                $result = [regex]::Replace($result, $rule.Pattern, [string]$rule.Replacement)
+            }
+            default {
+                Write-Warning ("Unknown rule Kind '{0}' for host '{1}'; skipping" -f $rule.Kind, $HostKind)
+            }
+        }
     }
 
-    # Surgery 3: slash-command to pwsh-form (FR-014) — Codex only
-    if ($hostLower -eq 'codex') {
-        foreach ($map in (Get-SpecrewSlashCommandToPwshFormMap)) {
-            $result = [regex]::Replace($result, $map.Pattern, $map.Replacement)
-        }
+    # If any Strip rules fired, tidy up blank-line clusters that get left behind.
+    if ($appliedStrip) {
+        $result = [regex]::Replace($result, '(?m)(^\s*$\r?\n){3,}', "`r`n`r`n")
     }
 
     return $result
 }
+
+# Phase D cleanup 2026-05-24: removed back-compat helpers Get-SpecrewSquadRuntimePathDirectivePatterns
+# and Get-SpecrewSlashCommandToPwshFormMap — both had zero callers across scripts/, hosts/, extensions/,
+# Specrew.psm1, and tests (verified via deep-review agent). Introspection of per-host rules now goes
+# directly through Get-SpecrewHostCoordinatorRules -HostKind <kind>.

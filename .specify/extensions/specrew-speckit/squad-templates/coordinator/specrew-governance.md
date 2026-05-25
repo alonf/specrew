@@ -96,8 +96,35 @@ These rules override generic Squad coordination whenever the repository is boots
     - Treat planning, hardening-gate-and-implementation-auth, implementation, review-boundary, review-verdict-signoff, retro-boundary, and iteration-closeout as separate per-iteration boundaries. `feature-closeout` is separate and feature-level.
     - One human authorization advances at most one boundary. `continue` means advance to the next single boundary stop, then halt and ask again.
     - If one approval paste covers hardening-gate sign-off and implementation authorization, create two `.squad/decisions.md` entries that preserve the same verbatim authorization text.
-    - Boundary handoffs stay in the three-section format, make `What I just did` substantive, name the exact boundary in `Why I stopped`, and request a concrete verdict with `file:///` inspection targets in `What I need from you`.
-    - Use `file:///` artifact references in authored narration and handoffs outside approved exempt contexts.
+    - **Every boundary stop MUST use the three-section handoff format.** This is a fundamental Specrew UX guarantee, not a stylistic suggestion. The format is what makes the human able to scan the handoff in seconds and decide whether to advance. Skipping it silently degrades the substantive-interaction guarantee (Feature 016 Pillar 1) — and the human loses the contextual signal they rely on. The canonical template (copy this shape exactly at every boundary stop):
+
+      ```text
+      ## What I just did
+
+      [Substantive narration of what changed: features advanced, artifacts written, tests run,
+       decisions captured. Pair every numeric reference (FR-NNN, T-NNN, commit SHA) with a short
+       plain-language scope phrase, e.g. "FR-007, the sin/cos/atan extension" or "T003, the
+       precision-normalization helper". Include the committed-evidence reference (commit SHA or
+       hash range) per 14B boundary-commit discipline.]
+
+      ## Why I stopped
+
+      I stopped at the [exact boundary name] boundary because [why the next step needs human input].
+      [Boundary names are: specify / clarify / plan / tasks / before-implement / implement /
+       review-signoff / retro / iteration-closeout / feature-closeout.]
+
+      ## What I need from you
+
+      [State the single best immediate action. Reference review targets with BARE `file:///` URIs
+       pointing to absolute paths so the human can click through. Name the canonical verdict shape
+       they should type (e.g. `approved for plan`, `approved for review-signoff`, `rejected for
+       clarify`, `parked`).]
+      ```
+
+      Welcoming, contextual, flow-oriented — not technical or terse. The reader is the human who has been away from this session and now needs to re-enter it. Give them what they need to advance, in the order they will read it.
+    - **Use BARE `file:///` URIs, NOT markdown-link form `[name](file:///...)`.** PowerShell terminals (Windows Terminal, VS Code integrated terminal) auto-detect bare `file:///` URIs and make them clickable via Ctrl+Click. They do NOT render markdown, so wrapping a URI in `[name](url)` hides the URL inside parentheses and the human cannot click through. Emit `file:///C:/Dev/project/specs/001/plan.md` on its own (or as part of a sentence), never `[plan.md](file:///...)`.
+    - The three-section format is reserved for **boundary stops** where the human is the immediate blocker. In-flight progress updates (Crew still actively working, waiting on background work, mid-task acknowledgement) MUST use single-line prose without the user-action section. Do not pad routine progress updates into the three-section shape — that dilutes the signal of an actual boundary stop.
+    - Use BARE `file:///` artifact references in authored narration and handoffs outside approved exempt contexts.
     - After each committed boundary handoff, synchronize `Commit Reference` away from `pending`, keep `Recorded At` in UTC seconds precision, run a stale-reference scan on the cited `file:///` targets, and rerun validation on the exact committed tree before claiming readiness.
 
 14B. **Enforce boundary commit + upstream push discipline (Proposal 082 Tier 1)**

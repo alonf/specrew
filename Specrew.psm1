@@ -5,6 +5,12 @@ $ScriptRoot = $PSScriptRoot
 $scriptsPath = Join-Path -Path $ScriptRoot -ChildPath 'scripts'
 $internalScriptsPath = Join-Path -Path $scriptsPath -ChildPath 'internal'
 
+# F-044 iter-006 T001: announce this Specrew tree to child PowerShell processes
+# so agent-spawned shells (e.g., `powershell -File .specify/.../sync-boundary-state.ps1`)
+# dispatch here instead of a stale PSGallery install. Env vars inherit across child
+# processes automatically.
+$env:SPECREW_MODULE_PATH = $ScriptRoot
+
 . (Join-Path -Path $internalScriptsPath -ChildPath 'dashboard-renderer.ps1')
 
 $script:SpecrewScriptMap = [ordered]@{
