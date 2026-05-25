@@ -1,0 +1,11 @@
+{
+  "schemaVersion": "v1",
+  "featureRef": "specs/046-046-bug-bash/spec.md",
+  "iterationRef": "specs/046-046-bug-bash/iterations/001",
+  "generatedAt": "2026-05-25T21:34:06Z",
+  "generator": {
+    "name": "specrew-mechanical-checks",
+    "version": "0.27.0"
+  },
+  "findings": []
+}

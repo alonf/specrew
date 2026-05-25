@@ -281,7 +281,7 @@ function Get-ReviewBoundarySyncWarning {
     }
 
     $latestBoundary = Get-LatestSpecrewBoundarySyncState -ProjectRoot $ProjectRoot
-    if ($null -eq $latestBoundary -or [string]$latestBoundary.boundary_type -notin @('review-signoff', 'iteration-closeout', 'feature-closeout')) {
+    if ($null -eq $latestBoundary -or [string]$latestBoundary.boundary_type -notin @('review-signoff', 'retro', 'iteration-closeout', 'feature-closeout')) {
         return 'WARN: Accepted review artifacts exist, but lifecycle state is not synced to review-signoff or a later boundary.'
     }
 
