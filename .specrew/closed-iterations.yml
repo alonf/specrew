@@ -131,3 +131,6 @@ closed:
   - feature: 045-v0271-bugfix-bundle
     iteration: 001
     closed_at: 2026-05-25T16:18:45Z
+  - feature: 046-046-bug-bash
+    iteration: 001
+    closed_at: 2026-05-25T21:36:04Z
