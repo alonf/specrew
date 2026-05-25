@@ -1,8 +1,8 @@
 # Iteration State: 002
 
 **Schema**: v1
-**Current Phase**: retro
-**Iteration Status**: retro
+**Current Phase**: iteration-closeout
+**Iteration Status**: complete
 **Last Completed Task**: T030
 **Tasks Remaining**: (none)
 **In Progress**: (none)
@@ -40,7 +40,8 @@
 - Human review-signoff approved retro entry.
 - Retro completed with 0 SP variance, 0 drift events, and 0 deferred gaps.
 - Post-release watch item: run SC-005 with a cold human maintainer during v0.27.1 dogfooding.
-- Awaiting human iteration-closeout verdict.
+- Human iteration-closeout verdict approved (recovery choice A re-anchor); ledger reconciled from this boundary forward via sync-boundary-state.
+- Iteration 002 closed; awaiting feature-closeout verdict.
 
 ## Notes
 
