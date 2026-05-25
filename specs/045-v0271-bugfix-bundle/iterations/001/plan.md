@@ -2,7 +2,7 @@
 
 **Schema**: v1
 **Spec**: [../../spec.md](../../spec.md)
-**Status**: planning
+**Status**: executing
 **Capacity**: 20/20 story_points
 **Started**: 2026-05-25
 **Completed**:
@@ -36,20 +36,20 @@
 
 | Task | Title | Requirement | Story | Effort | Owner | Owner File Globs | Status |
 | ---- | ----- | ----------- | ----- | ------ | ----- | ---------------- | ------ |
-| T001 | Create patch finding ledger for F1-F7 actionable-vs-stale tracking | FR-003, TG-006, TG-007 | Setup | S | Reviewer | `specs/045-v0271-bugfix-bundle/iterations/001/finding-disposition.md` | planned |
-| T003 | Create shared skill-catalog state helpers for repair/deploy gap evaluation | FR-004, FR-005, SC-003 | Foundational | M | Implementer | `scripts/internal/skill-catalog-state.ps1` | planned |
-| T004 | Wire shared helper into start bootstrap import path | FR-004, FR-008, TG-004 | Foundational | S | Implementer | `scripts/specrew-start.ps1` | planned |
-| T005 | Wire shared helper into init bootstrap import path | FR-005, FR-008, TG-004 | Foundational | S | Implementer | `scripts/specrew-init.ps1` | planned |
-| T006 | Validate governance mirror parity for helper imports across mirrored loaders | FR-008, TG-004 | Foundational | S | Reviewer | `extensions/specrew-speckit/scripts/*.ps1`, `.specify/extensions/specrew-speckit/scripts/*.ps1` | planned |
-| T007 | Extend version CLI regression coverage for alias parity and warning suppression | FR-001, FR-002, SC-001, SC-002, SC-006, TG-001 | US1 | M | Implementer | `tests/integration/validate-versions-cli-behavior.ps1` | planned |
-| T008 | Extend start/init recovery regression coverage for missing catalog behaviors | FR-004, FR-005, SC-003, SC-006, TG-001 | US1 | M | Implementer | `tests/integration/start-recovery-flow.tests.ps1` | planned |
-| T009 | Add top-level `--version` and `-v` routing parity through canonical behavior | FR-001, SC-001, TG-001 | US1 | S | Implementer | `scripts/specrew.ps1` | planned |
-| T010 | Gate version warning emission to true unknown states only | FR-002, SC-002, TG-001 | US1 | S | Implementer | `scripts/specrew-version.ps1` | planned |
-| T011 | Implement start missing skill-catalog auto-repair continuation flow | FR-004, SC-003, TG-001 | US1 | M | Implementer | `scripts/specrew-start.ps1`, `scripts/internal/skill-catalog-state.ps1` | planned |
-| T012 | Implement init non-force deployable-gap continuation flow | FR-005, SC-003, TG-001 | US1 | M | Implementer | `scripts/specrew-init.ps1`, `scripts/internal/skill-catalog-state.ps1` | planned |
-| T013 | Implement init force deployable-gap continuation without false success | FR-005, SC-003, TG-001 | US1 | M | Implementer | `scripts/specrew-init.ps1`, `scripts/internal/skill-catalog-state.ps1` | planned |
-| T014 | Update CLI behavior contract for implemented command expectations | FR-001, FR-002, FR-004, FR-005, SC-001, SC-002, SC-003, TG-001 | US1 | S | Reviewer | `specs/045-v0271-bugfix-bundle/contracts/cli-behavior-contract.md` | planned |
-| T015 | Run version/start regression suites and record quality evidence | SC-001, SC-002, SC-003, SC-006, TG-001 | US1 | S | Reviewer | `tests/integration/validate-versions-cli-behavior.ps1`, `tests/integration/start-recovery-flow.tests.ps1`, `specs/045-v0271-bugfix-bundle/iterations/001/quality/quality-evidence.md` | planned |
+| T001 | Create patch finding ledger for F1-F7 actionable-vs-stale tracking | FR-003, TG-006, TG-007 | Setup | 1 | Reviewer | `specs/045-v0271-bugfix-bundle/iterations/001/finding-disposition.md` | in-progress |
+| T003 | Create shared skill-catalog state helpers for repair/deploy gap evaluation | FR-004, FR-005, SC-003 | Foundational | 2 | Implementer | `scripts/internal/skill-catalog-state.ps1` | planned |
+| T004 | Wire shared helper into start bootstrap import path | FR-004, FR-008, TG-004 | Foundational | 1 | Implementer | `scripts/specrew-start.ps1` | planned |
+| T005 | Wire shared helper into init bootstrap import path | FR-005, FR-008, TG-004 | Foundational | 1 | Implementer | `scripts/specrew-init.ps1` | planned |
+| T006 | Validate governance mirror parity for helper imports across mirrored loaders | FR-008, TG-004 | Foundational | 1 | Reviewer | `extensions/specrew-speckit/scripts/*.ps1`, `.specify/extensions/specrew-speckit/scripts/*.ps1` | planned |
+| T007 | Extend version CLI regression coverage for alias parity and warning suppression | FR-001, FR-002, SC-001, SC-002, SC-006, TG-001 | US1 | 2 | Implementer | `tests/integration/validate-versions-cli-behavior.ps1` | planned |
+| T008 | Extend start/init recovery regression coverage for missing catalog behaviors | FR-004, FR-005, SC-003, SC-006, TG-001 | US1 | 2 | Implementer | `tests/integration/start-recovery-flow.tests.ps1` | planned |
+| T009 | Add top-level `--version` and `-v` routing parity through canonical behavior | FR-001, SC-001, TG-001 | US1 | 1 | Implementer | `scripts/specrew.ps1` | planned |
+| T010 | Gate version warning emission to true unknown states only | FR-002, SC-002, TG-001 | US1 | 1 | Implementer | `scripts/specrew-version.ps1` | planned |
+| T011 | Implement start missing skill-catalog auto-repair continuation flow | FR-004, SC-003, TG-001 | US1 | 2 | Implementer | `scripts/specrew-start.ps1`, `scripts/internal/skill-catalog-state.ps1` | planned |
+| T012 | Implement init non-force deployable-gap continuation flow | FR-005, SC-003, TG-001 | US1 | 2 | Implementer | `scripts/specrew-init.ps1`, `scripts/internal/skill-catalog-state.ps1` | planned |
+| T013 | Implement init force deployable-gap continuation without false success | FR-005, SC-003, TG-001 | US1 | 2 | Implementer | `scripts/specrew-init.ps1`, `scripts/internal/skill-catalog-state.ps1` | planned |
+| T014 | Update CLI behavior contract for implemented command expectations | FR-001, FR-002, FR-004, FR-005, SC-001, SC-002, SC-003, TG-001 | US1 | 1 | Reviewer | `specs/045-v0271-bugfix-bundle/contracts/cli-behavior-contract.md` | planned |
+| T015 | Run version/start regression suites and record quality evidence | SC-001, SC-002, SC-003, SC-006, TG-001 | US1 | 1 | Reviewer | `tests/integration/validate-versions-cli-behavior.ps1`, `tests/integration/start-recovery-flow.tests.ps1`, `specs/045-v0271-bugfix-bundle/iterations/001/quality/quality-evidence.md` | planned |
 
 ## Effort Model
 
@@ -98,4 +98,4 @@
 - Iteration 002 scope (created at iteration-001 closeout): T002 (Setup traceability: 1 SP) + T016-T020 (US2: 7 SP) + T021-T026 (US3: 8 SP) + T027-T030 (Polish: 4 SP) = 20 SP exactly.
 - Sequencing: Iter 001 closes US1 + foundational prerequisites; human checkpoint gate; then iter 002 starts US2 + US3 + feature closeout.
 - Two-iteration split enforces human decision checkpoint between CLI defects (US1) and brownfield/docs (US2+US3), per Feature 016 governance discipline.
-- Effort conversion for capacity math: S=1 story point, M=2 story points. Iter 001: 11S + 3M = 11 + 6 = 17 SP (leaves 3 SP buffer for contingency).
+- Effort convention remains S=1 story point and M=2 story points; iter-001 stores numeric effort values directly for validator compatibility. Current scope: 8 tasks at 1 SP + 6 tasks at 2 SP = 20 SP planned (matches Capacity 20/20).

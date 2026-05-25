@@ -1,7 +1,7 @@
 {
   "schema": "v2",
-  "mode": "new-feature",
-  "feature_request": "Specrew v0.27.1 patch — bug-fix bundle for 7 post-release findings from the 2026-05-25 v0.27.0 release work: (1) missing --version/-v flag alias on the top-level CLI; (2) specrew version prints a\n  misleading 'version could not be determined' WARNING when run outside a project; (3) 7 Copilot PR-review findings from iter-008 of PR #844 (1 real PathInfo-vs-String bug, 6 stale comments); (4) new docs/updating.md explaining\n  Install-Module / Update-Module / -Force / -SkipPublisherCheck semantics + when specrew init re-deployment is needed + the host-skill-catalog deployment gap pattern; (5) specrew start auto-repairs missing skill catalog directories\n  (.claude/skills/, .github/skills/, .agents/skills/) instead of WARN+continue — call deploy-squad-runtime.ps1's skill-catalog logic on detect; (6) specrew init bootstrap-validation block (specrew-init.ps1:378-408) detects missing skill\n   catalog directories and falls through to deployment instead of early-exit (so existing-project users don't have to know about -Force); (7) brownfield-conflict detection has a self-hosting bypass — when extensions/specrew-speckit/ is\n  present at the project root, treat existing .squad/agents/ as canonical-source not conflicting (only affects Specrew dev tree, but eliminates the -Force trap for me and anyone else hacking on Specrew itself). Items 5+6+7 fix the same\n  underlying gap at three entry points (start / init no-force / init force). Composes with Proposal 110 Specrew Update Experience + Proposal 116 Update-Time Obsolete-File Removal. Target ~11-16 SP.",
+  "mode": "resume-feature",
+  "feature_request": "",
   "feature_path": "C:\\Dev\\Specrew\\specs\\045-v0271-bugfix-bundle",
   "agent": "Squad",
   "approval_mode": "allow-all",
@@ -89,6 +89,7 @@
       "042-token-economy-mvp",
       "043-multi-host-onboarding",
       "044-per-host-architecture-refactor",
+      "045-v0271-bugfix-bundle",
       "antigravity-host-followup"
     ]
   },
@@ -100,12 +101,6 @@
         "member_name": "security-specialist",
         "charter": "Own authentication, authorization, secrets handling, and security hardening decisions for this feature.",
         "reason": "The request or repo context indicates auth, security, or privacy-sensitive behavior."
-      },
-      {
-        "role": "Synchronization Specialist",
-        "member_name": "synchronization-specialist",
-        "charter": "Own sync, retry, concurrency, and state-consistency behavior for collaborative or cross-system flows.",
-        "reason": "The request or repo context indicates synchronization, retry, or conflict-prone behavior."
       }
     ],
     "same_specialty_pair_hints": [],
@@ -121,16 +116,10 @@
         "name": "Security & Privacy",
         "reason": "The requested behavior touches auth, secrets, permissions, or privacy-sensitive data.",
         "validation_focus": "Validate authentication and authorization flows, secret handling, and abuse-resistant failure behavior."
-      },
-      {
-        "name": "Reliability & Idempotency",
-        "reason": "The feature appears to rely on retries, synchronization, or repeated delivery where duplicate or stale operations can corrupt behavior.",
-        "validation_focus": "Verify retry, dedupe, conflict handling, reconnect, and ordering behavior under unhappy paths rather than only on the happy path."
       }
     ],
     "semantics_watchouts": [
-      "Validate authn/authz and secret handling end to end rather than treating schemas, guards, or token fields as sufficient proof of security.",
-      "Do not add revision, idempotency, retry, conflict, or lock fields unless the runtime actually enforces those semantics."
+      "Validate authn/authz and secret handling end to end rather than treating schemas, guards, or token fields as sufficient proof of security."
     ]
   },
   "team_roster": {
@@ -173,69 +162,75 @@
   },
   "delegated_routing": {
     "enabled_agents": [
-      "copilot"
+      "codex"
     ],
     "independent_oversight_active": false,
     "roles": {
       "Implementer": {
         "role": "Implementer",
         "requested_agent": "copilot",
-        "effective_agent": "copilot",
-        "delegated": false,
-        "access_path": "copilot_default",
-        "fallback_reason": null
+        "effective_agent": "codex",
+        "delegated": true,
+        "access_path": "copilot_agent_hq",
+        "fallback_reason": "preferred agent 'copilot' is not enabled"
       },
       "Spec Steward": {
         "role": "Spec Steward",
         "requested_agent": "codex",
-        "effective_agent": "copilot",
-        "delegated": false,
-        "access_path": "copilot_default",
-        "fallback_reason": "preferred agent 'codex' is not enabled"
+        "effective_agent": "codex",
+        "delegated": true,
+        "access_path": "copilot_agent_hq",
+        "fallback_reason": null
       },
       "Planner": {
         "role": "Planner",
         "requested_agent": "claude",
-        "effective_agent": "copilot",
-        "delegated": false,
-        "access_path": "copilot_default",
+        "effective_agent": "codex",
+        "delegated": true,
+        "access_path": "copilot_agent_hq",
         "fallback_reason": "preferred agent 'claude' is not enabled"
       },
       "Reviewer": {
         "role": "Reviewer",
         "requested_agent": "claude",
-        "effective_agent": "copilot",
-        "delegated": false,
-        "access_path": "copilot_default",
+        "effective_agent": "codex",
+        "delegated": true,
+        "access_path": "copilot_agent_hq",
         "fallback_reason": "preferred agent 'claude' is not enabled"
       },
       "Retro Facilitator": {
         "role": "Retro Facilitator",
         "requested_agent": "copilot",
-        "effective_agent": "copilot",
-        "delegated": false,
-        "access_path": "copilot_default",
-        "fallback_reason": null
+        "effective_agent": "codex",
+        "delegated": true,
+        "access_path": "copilot_agent_hq",
+        "fallback_reason": "preferred agent 'copilot' is not enabled"
       }
     },
     "fallback_events": [
       {
-        "role": "Spec Steward",
-        "requested_agent": "codex",
-        "actual_agent": "copilot",
-        "reason": "preferred agent 'codex' is not enabled"
+        "role": "Implementer",
+        "requested_agent": "copilot",
+        "actual_agent": "codex",
+        "reason": "preferred agent 'copilot' is not enabled"
       },
       {
         "role": "Planner",
         "requested_agent": "claude",
-        "actual_agent": "copilot",
+        "actual_agent": "codex",
         "reason": "preferred agent 'claude' is not enabled"
       },
       {
         "role": "Reviewer",
         "requested_agent": "claude",
-        "actual_agent": "copilot",
+        "actual_agent": "codex",
         "reason": "preferred agent 'claude' is not enabled"
+      },
+      {
+        "role": "Retro Facilitator",
+        "requested_agent": "copilot",
+        "actual_agent": "codex",
+        "reason": "preferred agent 'copilot' is not enabled"
       }
     ]
   },
@@ -252,27 +247,33 @@
   },
   "session_state": {
     "active": true,
-    "boundary_type": "clarify",
+    "boundary_type": "tasks",
     "feature_ref": "045-v0271-bugfix-bundle",
     "feature_path": "C:\\Dev\\Specrew\\specs\\045-v0271-bugfix-bundle",
-    "iteration_number": null,
+    "iteration_number": "001",
     "task_id": null,
-    "auth_commit_hash": "1c219f1e2931004cab0a24f890bedb4c9ef7375e",
-    "recorded_at": "2026-05-25T12:49:41Z"
+    "auth_commit_hash": "d5b2c431455dd13146ea4e3393c78f04ceede4dd",
+    "recorded_at": "2026-05-25T13:24:47Z"
   },
   "recovery_session": null,
-  "squad_model_overrides": {},
+  "squad_model_overrides": {
+    "Implementer": "gpt-5.2-codex",
+    "Spec Steward": "gpt-5.2-codex",
+    "Planner": "gpt-5.2-codex",
+    "Reviewer": "gpt-5.2-codex",
+    "Retro Facilitator": "gpt-5.2-codex"
+  },
   "prompt_path": "C:\\Dev\\Specrew\\.specrew\\last-start-prompt.md",
   "summary_path": "C:\\Dev\\Specrew\\.specrew\\start-summary.md",
-  "generated_at_utc": "2026-05-25T12:49:41Z",
-  "selected_host": "copilot",
+  "generated_at_utc": "2026-05-25T14:27:31.9858060Z",
+  "selected_host": "codex",
   "available_hosts": {
     "claude": true,
     "codex": true,
     "copilot": true,
     "antigravity": true
   },
-  "crew_runtime_status": "squad-runtime",
+  "crew_runtime_status": "bootstrap_only",
   "host_resolution": "flag",
   "boundary_enforcement": {
     "enabled": true,
