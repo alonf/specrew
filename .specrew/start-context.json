@@ -256,19 +256,19 @@
   },
   "session_state": {
     "active": true,
-    "boundary_type": "review-signoff",
+    "boundary_type": "retro",
     "feature_ref": "046-046-bug-bash",
     "feature_path": "C:\\Dev\\Specrew\\specs\\046-046-bug-bash",
     "iteration_number": "001",
     "task_id": null,
-    "auth_commit_hash": "e37f8686",
-    "recorded_at": "2026-05-25T21:35:08Z"
+    "auth_commit_hash": "0857e319",
+    "recorded_at": "2026-05-25T21:35:36Z"
   },
   "recovery_session": null,
   "squad_model_overrides": {},
   "prompt_path": "C:\\Dev\\Specrew\\.specrew\\last-start-prompt.md",
   "summary_path": "C:\\Dev\\Specrew\\.specrew\\start-summary.md",
-  "generated_at_utc": "2026-05-25T21:35:08Z",
+  "generated_at_utc": "2026-05-25T21:35:36Z",
   "selected_host": "antigravity",
   "available_hosts": {
     "claude": true,
