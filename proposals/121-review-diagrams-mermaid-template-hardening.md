@@ -35,7 +35,7 @@ Add a soft WARN to `validate-governance.ps1` (mirror to `.specify/`):
 
 Update `scaffold-reviewer-artifacts.ps1` (mirror to `.specify/`) to ship `review-diagrams.md` with a Mermaid skeleton instead of empty fences:
 
-```markdown
+````markdown
 ## Component Diagram
 
 ```mermaid
@@ -52,7 +52,7 @@ sequenceDiagram
   User->>Component: action
   Component-->>User: response
 ```
-```
+````
 
 Default content makes Mermaid the path of least resistance; Implementer/Reviewer customizes rather than starting blank.
 
