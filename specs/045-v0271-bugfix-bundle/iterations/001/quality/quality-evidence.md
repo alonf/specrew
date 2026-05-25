@@ -16,5 +16,7 @@
 
 ## Evidence Lanes
 
+- 2026-05-25T14:55Z: Foundation parse check passed for `scripts/internal/skill-catalog-state.ps1`, `scripts/specrew-start.ps1`, `scripts/specrew-init.ps1`, and `.specify/extensions/specrew-speckit/scripts/deploy-squad-runtime.ps1`.
+- 2026-05-25T14:55Z: T006 mirror parity check passed for `extensions/specrew-speckit/scripts/deploy-squad-runtime.ps1` and `.specify/extensions/specrew-speckit/scripts/deploy-squad-runtime.ps1`.
 - Pending implementation/test execution.
 - Update this artifact with concrete command outputs and timestamps.
