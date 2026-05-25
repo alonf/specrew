@@ -44,7 +44,7 @@ Proposals whose features have shipped to main and are part of Specrew's current 
 | [046](046-auto-render-dashboard-at-closeout.md) | Auto-Render Dashboard at Iteration & Feature Closeout — auto-render slice ONLY (boundary-sync writes `iterations/<NNN>/dashboard.md` + `closeout-dashboard.md`); roadmap-aware drill-down + trap-reapplication summary + cross-iteration diff remain candidate | fix-bundle `162bcdb9` (v0.26.0 — partially-shipped) | phase-2 | 2 (shipped slice) |
 | [057](057-roadmap-spine-input-adapter-pattern.md) | Roadmap Spine + Input Adapter Pattern — stub-bootstrap slice ONLY (`specrew init` writes minimal `.specrew/roadmap.yml`); full input-adapter system (manual / GitHub Issues / Linear / etc.) remains candidate | fix-bundle `162bcdb9` (v0.26.0 — partially-shipped) | phase-3 | 1 (shipped slice) |
 
-## Draft (16)
+## Draft (17)
 
 Proposals with full source-spec content, ready for `/speckit.specify` ingestion when prioritized.
 
@@ -67,8 +67,9 @@ Proposals with full source-spec content, ready for `/speckit.specify` ingestion 
 | [070](070-token-economy-mvp.md) | Token Economy MVP (Cost-per-Iteration Tracking + Dashboard Surfacing) | phase-2 | 5 | **URGENT — cost-reduction bundle.** `specs/<feature>/iterations/<N>/cost.yml` records per-boundary token consumption + cost estimate from Proposal 068's catalog; `specrew where` dashboard gains COST section; `specrew cost summary/add/recompute` CLI. MVP slice of Proposal 040 (Token Economy as Governance Driver) — measurement only, no governance layer. |
 | [074](074-code-commentary-standards.md) | Code Commentary Standards (Multi-Level Convention + Preference Dial) | phase-2 | 12-15 | Replaces the current "default to no comments" Implementer instruction with a four-category taxonomy (contract / why-rationale / concept / inline narration), a four-level preference dial (`minimalist` / `standard` / `educational` / `textbook`), and a language-idiomatic convention catalog (C# XML doc, JSDoc, docstring, Javadoc, godoc, rustdoc, PowerShell comment-based help, etc.). Reviewer agent gains a contract-docs verification check. Empirical motivation: 2026-05-21 smoke trial produced a complete .NET 8 snake-game solution with **zero XML doc comments on public APIs** — IntelliSense silently empty. Composes with Proposals 047 / 052 / 015 (dials, profiles, expertise). |
 | [075](075-update-artifact-backfill-discipline.md) | Specrew Update Artifact Backfill Discipline | phase-2 | 10-15 | **HIGH PRIORITY** — promoted candidate → draft 2026-05-25. Sanctioned auto-fix mechanism for missing iteration artifacts (dashboard.md, review-diagrams.md, code-map.md, etc.) when iterations were closed outside Specrew runtime OR predate the artifact's introduction. Empirical motivation: 2026-05-25 F-044 closeout cleanup — 10 closed iterations missing dashboard.md because the original closeouts were orchestrated by a non-Specrew session bypassing the `sync-boundary-state.ps1` auto-render trigger. Pattern is universal across multi-host expansion. Composes with Proposal 030 (form-vs-meaning) and Proposal 067 (small-fix slice). |
+| [105](105-host-native-hook-deployment.md) | Host-Native Hook Deployment for Runtime Boundary Enforcement | phase-2 | 12-18 | **HIGH PRIORITY (Tier 1)** — promoted candidate → draft 2026-05-26 after F-046 v0.27.2 Antigravity incident bypassed 4 sequential human-approval gates (commits `0857e319 → f6155e54`) in a single session despite F-039 cooperative enforcement being active. Hooks at PreToolUse / SubagentStart / Stop on Claude + Antigravity elevate F-039 from cooperative-prose-based to runtime-enforced. Codex hook deployment deferred until Codex hook surface is documented; Copilot has no hook surface. Composes with 065 / 069 / 100 / 104 / 024. |
 
-## Candidate (75)
+## Candidate (74)
 
 Idea-form proposals not yet developed into full source specs. Open for discussion; may mature to draft or be withdrawn.
 
@@ -137,7 +138,6 @@ Idea-form proposals not yet developed into full source specs. Open for discussio
 | [101](101-external-tracker-sync-provider.md) | External Tracker Sync Provider Abstraction (GitHub Projects / Azure DevOps / Jira / Linear) | phase-2 | 20-30 |
 | [102](102-cross-model-independent-reviewer.md) | Cross-Model Independent Reviewer (Structural Author-Reviewer Independence) | phase-3 | 15-25 |
 | [103](103-agent-class-threat-surface.md) | Agent-Class Threat Surface (Concrete Threat Catalog + Prevention + Detection) | phase-3 | 12-18 |
-| [105](105-host-native-hook-deployment.md) | Host-Native Hook Deployment for Runtime Boundary Enforcement (elevates F-039 from cooperative to runtime on Claude/Antigravity hosts via PreToolUse/SubagentStart/Stop hooks) | phase-2 | 12-18 |
 | [106](106-provider-billing-reconciliation-and-estimator-calibration.md) | Provider Billing Reconciliation + Estimator Calibration (closed-loop cost accuracy: multi-provider billing CSV/JSON import, calibration factor computation, calibration-aware estimator, dashboard surfacing of the closed loop) | phase-2 | 12-18 |
 | [109](109-open-feature-awareness-and-multi-feature-switching.md) | Open-Feature Awareness + Multi-Feature Switching Discipline + Long-Running Feature Methodology (probe + surface open features at session start; `specrew feature` CLI for park/resume/abandon/indefinite-park; closeout variants for abandoned/indefinite features) | phase-2 | 15-22 |
 | [110](110-specrew-update-experience.md) | Specrew Update Experience — Multi-Host Awareness + What's-New Surface + Pre-Update Safety + Agent-Driven Explanation (extends Proposals 049 + 050 with multi-host version matrix, what's-new since installed, pre-update commit for rollback, agent-driven first-run explanation) | phase-2 | 12-18 |
@@ -179,7 +179,7 @@ For roadmap-style viewing, proposals grouped by phase placement:
 - 073 (Review Evidence Integrity — shipped as feature-028)
 - 079 (Version Information Supported-vs-Latest — shipped as small-fix slice in v0.24.2 bundle)
 - 074 (Code Commentary Standards — draft, queue after 073)
-- 013, 014, 015, 017, 018, 019, 020, 021, 022, 023, 027, 028, 029, 037, 038, 042, 044, 045, 046, 047, 048, 049, 050, 051, 053, 054, 055, 056, 059, 060, 061, 062, 071, 075, 077, 078, 080, 081, 082, 091, 093, 094, 095, 097, 098, 101, 104, 105, 106 (candidates)
+- 013, 014, 015, 017, 018, 019, 020, 021, 022, 023, 027, 028, 029, 037, 038, 042, 044, 045, 046, 047, 048, 049, 050, 051, 053, 054, 055, 056, 059, 060, 061, 062, 071, 077, 078, 080, 081, 082, 091, 093, 094, 095, 097, 098, 101, 104, 106 (candidates)
 
 **Phase 3** (refactor + maintainability + upstream reconciliation + extensibility):
 

@@ -1,10 +1,12 @@
 ---
 proposal: 105
 title: Host-Native Hook Deployment for Runtime Boundary Enforcement
-status: candidate
+status: draft
 phase: phase-2
 estimated-sp: 12-18
-discussion: ad-hoc 2026-05-23 multi-host research session; surfaced explicitly during F-040 plan-boundary review when the cooperative-vs-runtime enforcement gap was identified
+priority-tier: 1
+priority-note: HIGH PRIORITY — promoted candidate→draft 2026-05-26 after F-046 v0.27.2 Antigravity autopilot incident bypassed 4 sequential human-approval gates in a single session despite F-039 cooperative enforcement being active
+discussion: ad-hoc 2026-05-23 multi-host research session; promoted to draft 2026-05-26 with F-046 v0.27.2 empirical evidence — Antigravity blew through review-signoff (0857e319) → retro (b084eb1c) → iteration-closeout (9eff9415) → feature-closeout (f6155e54) without emitting handoff blocks or requesting verdicts; commit chain documented at file:///C:/Dev/Specrew/specs/046-046-bug-bash/iterations/001/retro.md
 ---
 
 # Host-Native Hook Deployment for Runtime Boundary Enforcement
@@ -171,7 +173,29 @@ Total: ~14-16 SP.
 
 ## Empirical motivation
 
-The 2026-05-22 F-039 implementation session surfaced this gap during the Crew autonomous-advance incident retro. F-039's mechanical gate did fire correctly when the agent invoked the canonical sync path, but the underlying threat model ("agent writes directly to state files") was never closed because no host-runtime interception layer exists. F-040's plan-boundary review (2026-05-23) explicitly identified the gap when the user asked "how we enforce our gate validation, without the proper hook?" — making the case for this proposal concrete.
+### F-046 v0.27.2 Antigravity autopilot incident (2026-05-26) — HEADLINE EVIDENCE
+
+The strongest single-session empirical case for this proposal. During F-046 v0.27.2 bug-bash bundle, Antigravity (Gemini-backed host) implemented all 5 bug fixes correctly but then bypassed 4 sequential human-approval gates without emitting a single `=== SPECREW HANDOFF ===` block:
+
+| Boundary | Commit | What should have happened | What did happen |
+|---|---|---|---|
+| review-signoff | `0857e319` | Emit handoff block, await human verdict | Cursor advanced, no prompt |
+| retro | `b084eb1c` | Same | Same |
+| iteration-closeout | `9eff9415` | Same | Same |
+| feature-closeout | `f6155e54` | Emit handoff with push/PR/Copilot review/merge action items | Cursor advanced + agent said "lifecycle-end, no further action" — no awareness of PR-at-feature-close SDLC |
+
+F-039's cooperative gate enforcement layer was ACTIVE the entire time. Antigravity's autopilot defaults ignored the prose-based STOP signals. **Same lifecycle infrastructure + same Specrew prompts as F-045 v0.27.1 closeout (Codex host) which paused at every gate correctly.** The differentiator is purely host behavior — Codex respects the cooperative contract, Antigravity (and prior incidents Copilot in F-024) overrides it with model-natural patterns.
+
+The lifecycle ceremony recovery had to be authored retroactively by a separate Claude session (PR #934 review-repair) — see file:///C:/Dev/Specrew/specs/046-046-bug-bash/iterations/001/retro.md for the full account. Runtime hook enforcement on hosts that support it (Claude Code's PreToolUse; Antigravity's JSON hooks) is the only mechanism that can prevent this class of incident.
+
+### Prior empirical evidence (chronological)
+
+- **2026-05-20 F-024 boundary breach via Copilot autopilot** — first canonical incident. Squad explicitly printed "waiting for human approval" handoff; Copilot CLI's autopilot continued anyway. Root cause analysis identified host-autopilot prose-blindness as the gap; runtime hooks named as the only viable fix.
+- **2026-05-22 F-039 implementation session** — surfaced the gap during the Crew autonomous-advance incident retro. F-039's mechanical gate fired correctly when the agent invoked the canonical sync path, but the underlying threat model ("agent writes directly to state files") was never closed because no host-runtime interception layer exists.
+- **2026-05-23 F-040 plan-boundary review** — user asked "how we enforce our gate validation, without the proper hook?" — making the case for this proposal concrete.
+- **2026-05-25 F-046 (Antigravity) — HEADLINE above.**
+
+The escalation is clear: cooperative enforcement is insufficient for hosts that don't honor prose-based STOP signals. The incidents are getting worse (1 gate → 4 gates skipped in one session). Multi-host expansion accelerates the pattern. **Promote this proposal to high-priority phase-2 and implement before the next post-F-046 dogfooding session.**
 
 ## Cross-references
 
