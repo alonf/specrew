@@ -1,8 +1,9 @@
 # Specrew Development Guidelines
 
-Auto-generated from all feature plans. Last updated: 2026-05-20
+Auto-generated from all feature plans. Last updated: 2026-05-25
 
 ## Active Technologies
+
 - PowerShell 7.x scripts plus Markdown/YAML/JSON governance artifacts; downstream Specrew config currently pins Spec Kit `0.8.4` and Squad `0.9.1` in `.specrew/config.yml` + `extensions/specrew-speckit` script/template surfaces, `.specify` plan workflow, Squad-native runtime deployment via `deploy-squad-runtime.ps1`, existing governance/evaluation scripts under `tests/integration/` and `evaluation/scorers/` (008-quality-profile-foundation)
 - Git-tracked Markdown/YAML assets under `.specrew/` plus feature and iteration artifacts under `specs/<feature>/`; machine-readable mechanical findings stored as JSON sidecars (008-quality-profile-foundation)
 - PowerShell 7.x scripts plus Markdown/YAML/JSON governance artifacts; downstream Specrew config remains rooted in `.specrew/*.yml` + `extensions/specrew-speckit` scripts/templates, `.specify` planning workflow, existing Phase 1 quality-profile/evidence contracts, iteration governance scripts, and deterministic integration coverage in `tests/integration/` (008-quality-profile-foundation)
@@ -38,6 +39,8 @@ Auto-generated from all feature plans. Last updated: 2026-05-20
 - Filesystem (Specrew-managed skill deployments in `.claude/skills/`, `.github/skills/`, `.agents/skills/`, legacy `.copilot/skills/`), managed-marker detection via existing hygiene tooling (024-slash-command-multi-host-correctness)
 - PowerShell 7.0+ (per `Specrew.psd1`), Markdown skill templates with YAML frontmatter + Specrew PowerShell module/runtime scripts (`Specrew.psm1`, `scripts/*.ps1`, `extensions/specrew-speckit/scripts/deploy-squad-runtime.ps1`), Git, standard PowerShell file/YAML handling already used in-repo (024-slash-command-multi-host-correctness)
 - Filesystem only — source templates under `extensions/specrew-speckit/squad-templates/skills/`, active deployment targets `.claude/skills/`, `.github/skills/`, `.agents/skills/`, legacy migration target `.copilot/skills/` (024-slash-command-multi-host-correctness)
+- PowerShell 7+ (primary runtime scripts), Markdown docs + Spec Kit CLI (`specify`), Squad CLI (`squad`), Git, module/runtime scripts under `scripts/` and `extensions/specrew-speckit/scripts/` (046-create-spec-branch)
+- File-based project artifacts (`.specrew/`, `.specify/`, `.squad/`, `.github/`) (046-create-spec-branch)
 
 - Markdown, YAML, PowerShell (Spec Kit extension assets). + Spec Kit >= 0.8.4 (extension starter template), Squad >= 0.9.1 (extension structure: skills/ceremonies/directives) (001-specrew-product)
 
@@ -57,10 +60,10 @@ npm test; npm run lint
 Markdown, YAML, PowerShell (Spec Kit extension assets).: Follow standard conventions
 
 ## Recent Changes
+
+- 046-create-spec-branch: Added PowerShell 7+ (primary runtime scripts), Markdown docs + Spec Kit CLI (`specify`), Squad CLI (`squad`), Git, module/runtime scripts under `scripts/` and `extensions/specrew-speckit/scripts/`
 - 024-slash-command-multi-host-correctness: Added PowerShell 7.0+ (per `Specrew.psd1`), Markdown skill templates with YAML frontmatter + Specrew PowerShell module/runtime scripts (`Specrew.psm1`, `scripts/*.ps1`, `extensions/specrew-speckit/scripts/deploy-squad-runtime.ps1`), Git, standard PowerShell file/YAML handling already used in-repo
 - 024-slash-command-multi-host-correctness: Added PowerShell 7.4+ (module code), Markdown (skill templates), PowerShell 5.1 Pester (integration tests) + Specrew PowerShell module (`Specrew.psm1`), Pester v5.3+, Git 2.40+
-- 023-legacy-state-read-tolerance: Added PowerShell 7.0+ (per Specrew.psd1 PowerShellVersion requirement) + PowerShell-Yaml module (for YAML parsing), ConvertFrom-Json -AsHashtable (available in PS 6.0+)
-
 
 <!-- MANUAL ADDITIONS START -->
   renderer exposed by `scripts/specrew.ps1 where`, `scripts/specrew.ps1 status`,

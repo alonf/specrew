@@ -18163,11 +18163,10 @@ User explicitly authorized review-signoff entry for Feature 039 Iteration 001. R
 - **Recorded At**: 2026-05-22T18:12:38Z
 
 ### 2026-05-22T17:34:04Z: User directive
+
 **By:** Alon Fliess (via Copilot)
 **What:** Elevate three F-039-specific lessons into retro improvement actions: the meta-irony of the chain-past-plan incident occurring mid-implementation, the multi-round clarify-reconciliation pattern and its done-condition lockdown, and the mid-stream pivot to lean prompts.
 **Why:** User request - captured for team memory
-
-
 
 ## 2026-05-22T17:34:04Z - User Verdict: F-039 Retro-Boundary Authorization
 
@@ -18184,7 +18183,6 @@ approved for retro-boundary entry
 
 Worth elevating from drift-log into improvement actions: the meta-irony of F-039 chain-past-plan happening mid-implementation, the multi-round clarify-reconciliation pattern (and the done-condition lockdown that closed it), and the mid-stream pivot to lean prompts - all three are F-039-specific lessons that don't fit a generic retro template but are the most actionable evidence this iteration produced.
 
-
 ## 2026-05-22T17:34:04Z - Agent Routing Evidence: F-039 Retro Boundary
 
 - **Work Item**: F-039 retro-boundary
@@ -18199,4 +18197,72 @@ Worth elevating from drift-log into improvement actions: the meta-irony of F-039
 
 User explicitly authorized retro-boundary entry for Feature 039 Iteration 001. The retrospective must elevate three F-039-specific lessons into concrete improvement actions: the chain-past-plan meta-irony during feature delivery, the multi-round clarify-reconciliation loop and its done-condition lockdown, and the mid-stream pivot to lean prompts. Retro must stop before iteration-closeout.
 
+## 2026-05-25T11:07:26Z — Delegated routing plan
 
+- **Enabled Agents**: copilot
+- **Independent Oversight Active**: False
+- **Roles**:
+  - Implementer | requested=copilot | actual=copilot | model=(platform default) | status=honored | fallback=(none)
+  - Spec Steward | requested=codex | actual=copilot | model=(platform default) | status=fell-back | fallback=preferred agent 'codex' is not enabled
+  - Planner | requested=claude | actual=copilot | model=(platform default) | status=fell-back | fallback=preferred agent 'claude' is not enabled
+  - Reviewer | requested=claude | actual=copilot | model=(platform default) | status=fell-back | fallback=preferred agent 'claude' is not enabled
+  - Retro Facilitator | requested=copilot | actual=copilot | model=(platform default) | status=honored | fallback=(none)
+
+## 2026-05-25T11:07:26Z — Routing evidence: Spec Steward
+
+- **Decision ID**: routing-evidence-96f845786912
+- **Type**: routing-evidence
+- **Affected Requirement**: FR-043
+- **Affected Iteration**: (none)
+- **Approving Human**: (none)
+- **Recorded At**: 2026-05-25T11:07:26Z
+- **Next Action**: none
+- **Rationale**: Delegated lifecycle routing was applied for role 'Spec Steward'.
+
+- **Routing Evidence**: Spec Steward | requested=codex | actual=copilot | model=(platform default) | status=fell-back | fallback=preferred agent 'codex' is not enabled
+
+## 2026-05-25T11:07:27Z — Routing evidence: Planner
+
+- **Decision ID**: routing-evidence-f3534f40f592
+- **Type**: routing-evidence
+- **Affected Requirement**: FR-043
+- **Affected Iteration**: (none)
+- **Approving Human**: (none)
+- **Recorded At**: 2026-05-25T11:07:27Z
+- **Next Action**: none
+- **Rationale**: Delegated lifecycle routing was applied for role 'Planner'.
+
+- **Routing Evidence**: Planner | requested=claude | actual=copilot | model=(platform default) | status=fell-back | fallback=preferred agent 'claude' is not enabled
+
+## 2026-05-25T11:07:27Z — Routing evidence: Reviewer
+
+- **Decision ID**: routing-evidence-c70317f2b6f6
+- **Type**: routing-evidence
+- **Affected Requirement**: FR-043
+- **Affected Iteration**: (none)
+- **Approving Human**: (none)
+- **Recorded At**: 2026-05-25T11:07:27Z
+- **Next Action**: none
+- **Rationale**: Delegated lifecycle routing was applied for role 'Reviewer'.
+
+- **Routing Evidence**: Reviewer | requested=claude | actual=copilot | model=(platform default) | status=fell-back | fallback=preferred agent 'claude' is not enabled
+
+## 2026-05-25T12:45:02Z — Boundary enforcement: clarify
+
+- **Feature**: 039-launch-mode-boundary-enforcement
+- **Boundary Type**: clarify
+- **Current Boundary**: specify
+- **Requested Boundary**: clarify
+- **Enforcement Action**: blocked
+- **Launch Mode**: same-window
+- **Agent Response Snippet**: (none)
+- **Reason**: No persisted authorization matched specify -> clarify.
+
+## 2026-05-25T12:49:42Z — Boundary sync: clarify
+
+- **Boundary Type**: clarify
+- **Feature Ref**: 045-v0271-bugfix-bundle
+- **Iteration Number**: (none)
+- **Task ID**: (none)
+- **Auth Commit Hash**: 1c219f1e2931004cab0a24f890bedb4c9ef7375e
+- **Recorded At**: 2026-05-25T12:49:41Z
