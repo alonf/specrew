@@ -21,10 +21,72 @@ function Write-Skip {
 
 $repoRoot = (Resolve-Path (Join-Path -Path $PSScriptRoot -ChildPath '..\..')).Path
 $initScript = Join-Path -Path $repoRoot -ChildPath 'scripts\specrew-init.ps1'
+$brownfieldMergeScript = Join-Path -Path $repoRoot -ChildPath 'extensions\specrew-speckit\scripts\brownfield-merge.ps1'
 
 if (-not (Test-Path -Path $initScript -PathType Leaf)) {
     Write-Fail "Missing bootstrap entrypoint: $initScript"
     exit 1
+}
+
+if (-not (Test-Path -Path $brownfieldMergeScript -PathType Leaf)) {
+    Write-Fail "Missing brownfield merge helper: $brownfieldMergeScript"
+    exit 1
+}
+
+function Invoke-BrownfieldMergeReport {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$ProjectPath
+    )
+
+    Push-Location $repoRoot
+    try {
+        $jsonOutput = & pwsh -NoProfile -File $brownfieldMergeScript -ProjectPath $ProjectPath -PassThru
+        if ($LASTEXITCODE -ne 0) {
+            throw "brownfield-merge.ps1 exited with $LASTEXITCODE"
+        }
+
+        return ($jsonOutput | ConvertFrom-Json)
+    }
+    finally {
+        Pop-Location
+    }
+}
+
+function New-BrownfieldTeamFixture {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$ProjectPath,
+
+        [switch]$SelfHosting
+    )
+
+    $squadRoot = Join-Path -Path $ProjectPath -ChildPath '.squad'
+    $agentsRoot = Join-Path -Path $squadRoot -ChildPath 'agents'
+    $null = New-Item -Path $agentsRoot -ItemType Directory -Force
+
+    $teamContent = @'
+# Squad Team
+
+| Role | Charter | Status |
+| ---- | ------- | ------ |
+| Implementer | `.squad/agents/implementer/charter.md` | active |
+| Planner | `.squad/agents/planner/charter.md` | active |
+| DevOps | `.squad/agents/devops/charter.md` | active |
+'@
+    [System.IO.File]::WriteAllText((Join-Path -Path $squadRoot -ChildPath 'team.md'), $teamContent, [System.Text.UTF8Encoding]::new($false))
+
+    foreach ($agentName in @('implementer', 'planner', 'devops')) {
+        $agentRoot = Join-Path -Path $agentsRoot -ChildPath $agentName
+        $null = New-Item -Path $agentRoot -ItemType Directory -Force
+        [System.IO.File]::WriteAllText((Join-Path -Path $agentRoot -ChildPath 'charter.md'), "# $agentName`n", [System.Text.UTF8Encoding]::new($false))
+    }
+
+    if ($SelfHosting) {
+        $extensionRoot = Join-Path -Path $ProjectPath -ChildPath 'extensions\specrew-speckit'
+        $null = New-Item -Path $extensionRoot -ItemType Directory -Force
+        [System.IO.File]::WriteAllText((Join-Path -Path $extensionRoot -ChildPath 'extension.yml'), "name: specrew-speckit`n", [System.Text.UTF8Encoding]::new($false))
+    }
 }
 
 $scratchRoot = Join-Path -Path $repoRoot -ChildPath '.scratch\brownfield-conflict-handling'
@@ -63,6 +125,47 @@ if ($populatedOutputText -notmatch 'is not empty') {
 }
 
 Write-Pass ("Populated directories still require -Force before bootstrap proceeds (exit code {0})" -f $populatedRunExitCode)
+
+$selfHostingProjectRoot = Join-Path -Path $scratchRoot -ChildPath 'project-self-hosting-agents'
+$null = New-Item -Path $selfHostingProjectRoot -ItemType Directory -Force
+New-BrownfieldTeamFixture -ProjectPath $selfHostingProjectRoot -SelfHosting
+$selfHostingReport = Invoke-BrownfieldMergeReport -ProjectPath $selfHostingProjectRoot
+
+if ($selfHostingReport.Status -eq 'conflicts-detected') {
+    Write-Fail 'Self-hosting project incorrectly reported .squad/agents baseline roles as conflicts'
+    exit 1
+}
+
+if ($selfHostingReport.RoleConflicts.Count -ne 0) {
+    Write-Fail ("Self-hosting project should have 0 role conflicts, got {0}: {1}" -f $selfHostingReport.RoleConflicts.Count, ($selfHostingReport.RoleConflicts -join ', '))
+    exit 1
+}
+
+if ('Implementer' -in $selfHostingReport.MergeableRoles -or 'Planner' -in $selfHostingReport.MergeableRoles) {
+    Write-Fail 'Self-hosting project should preserve existing canonical Implementer/Planner roles instead of re-merging them'
+    exit 1
+}
+
+Write-Pass 'Self-hosting project treats existing .squad/agents baseline roles as canonical source, not conflicts'
+
+$nonSelfHostingProjectRoot = Join-Path -Path $scratchRoot -ChildPath 'project-non-self-hosting-agents'
+$null = New-Item -Path $nonSelfHostingProjectRoot -ItemType Directory -Force
+New-BrownfieldTeamFixture -ProjectPath $nonSelfHostingProjectRoot
+$nonSelfHostingReport = Invoke-BrownfieldMergeReport -ProjectPath $nonSelfHostingProjectRoot
+
+if ($nonSelfHostingReport.Status -ne 'conflicts-detected') {
+    Write-Fail ("Non-self-hosting project should still report conflicts, got status '{0}'" -f $nonSelfHostingReport.Status)
+    exit 1
+}
+
+foreach ($expectedConflict in @('Implementer', 'Planner')) {
+    if ($expectedConflict -notin $nonSelfHostingReport.RoleConflicts) {
+        Write-Fail "Non-self-hosting project did not report expected role conflict: $expectedConflict"
+        exit 1
+    }
+}
+
+Write-Pass 'Non-self-hosting project still reports existing baseline .squad/agents roles as conflicts'
 
 $missingTools = @()
 if (-not (Get-Command -Name 'specify' -ErrorAction SilentlyContinue)) {

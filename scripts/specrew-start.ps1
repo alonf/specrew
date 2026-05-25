@@ -83,6 +83,12 @@ if (-not (Test-Path -LiteralPath $detectHostsHelperPath -PathType Leaf)) {
 }
 . $detectHostsHelperPath
 
+$skillCatalogStateHelperPath = Join-Path $PSScriptRoot 'internal\skill-catalog-state.ps1'
+if (-not (Test-Path -LiteralPath $skillCatalogStateHelperPath -PathType Leaf)) {
+    throw "Missing skill-catalog state helper '$skillCatalogStateHelperPath'."
+}
+. $skillCatalogStateHelperPath
+
 $hostFlagTranslationHelperPath = Join-Path $PSScriptRoot 'internal\host-flag-translation.ps1'
 if (-not (Test-Path -LiteralPath $hostFlagTranslationHelperPath -PathType Leaf)) {
     throw "Missing host-flag-translation helper '$hostFlagTranslationHelperPath'."
@@ -3786,6 +3792,32 @@ if ($selectedHost -notin (Get-SpecrewSupportedHostKinds)) {
 if (-not $availableHostsMap[$selectedHost] -and -not $NoLaunch) {
     Write-Error-Message (Get-SpecrewHostInstallGuidance -HostKind $selectedHost)
     exit 1
+}
+
+# Skill catalog verification and repair. Missing roots are deployable gaps, not
+# operator action items, so start repairs them before normal continuation.
+$skillCatalogState = Get-SpecrewSkillCatalogState -ProjectPath $resolvedProjectPath
+if ($skillCatalogState.HasMissingRoots) {
+    Write-Info ("WARN: Skill catalog directories missing: {0}" -f (Format-SpecrewSkillCatalogRoots -Roots $skillCatalogState.MissingRoots))
+    Write-Info "Attempting skill catalog auto-repair via bundled runtime deployment."
+    try {
+        $skillCatalogRepair = Invoke-SpecrewSkillCatalogRepair -ProjectPath $resolvedProjectPath
+        foreach ($repairAction in @($skillCatalogRepair.Actions)) {
+            if ($repairAction.PSObject.Properties['Action'] -and $repairAction.PSObject.Properties['Path']) {
+                Write-Info ("Skill catalog repair: {0}: {1}" -f $repairAction.Action, $repairAction.Path)
+            }
+        }
+
+        if ($skillCatalogRepair.AfterState.HasMissingRoots) {
+            Write-Info ("WARN: Skill catalog auto-repair incomplete: {0}" -f (Format-SpecrewSkillCatalogRoots -Roots $skillCatalogRepair.AfterState.MissingRoots))
+        }
+        else {
+            Write-Info "Skill catalog auto-repair completed."
+        }
+    }
+    catch {
+        Write-Info ("WARN: Skill catalog auto-repair failed: {0}" -f $_.Exception.Message)
+    }
 }
 
 # Per-host skill verification (FR-009 non-fatal warning; FR-013 Codex informational note)

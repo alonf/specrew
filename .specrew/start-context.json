@@ -2,7 +2,7 @@
   "schema": "v2",
   "mode": "resume-feature",
   "feature_request": "",
-  "feature_path": "C:\\Dev\\Specrew\\specs\\039-launch-mode-boundary-enforcement",
+  "feature_path": "C:\\Dev\\Specrew\\specs\\045-v0271-bugfix-bundle",
   "agent": "Squad",
   "approval_mode": "allow-all",
   "launch_mode": "same-window",
@@ -10,7 +10,9 @@
   "project_state": {
     "state": "existing-continue",
     "detected_entries": [
+      ".agents",
       ".claude",
+      ".codex",
       ".scratch",
       ".specrew-squad-probe-14e2200829f2405cb359497a32762765",
       ".specrew-squad-probe-eeb3bc53b8734ce4ac0e8abe9c2e8768",
@@ -18,6 +20,7 @@
       "docs",
       "evaluation",
       "extensions",
+      "hosts",
       "proposals",
       "scripts",
       "specs",
@@ -81,7 +84,15 @@
       "035-validator-iteration-parallelization",
       "036-closed-iteration-index",
       "037-validator-repetition-detector",
-      "038-pr-review-integration"
+      "038-pr-review-integration",
+      "039-launch-mode-boundary-enforcement",
+      "040-multi-host-launch-path",
+      "041-cost-aware-model-routing",
+      "042-token-economy-mvp",
+      "043-multi-host-onboarding",
+      "044-per-host-architecture-refactor",
+      "045-v0271-bugfix-bundle",
+      "antigravity-host-followup"
     ]
   },
   "brownfield_discovery": null,
@@ -233,32 +244,27 @@
   "session_state": {
     "active": false,
     "boundary_type": "feature-closeout",
-    "feature_ref": "039-launch-mode-boundary-enforcement",
-    "feature_path": "C:\\Dev\\Specrew\\specs\\039-launch-mode-boundary-enforcement",
+    "feature_ref": "045-v0271-bugfix-bundle",
+    "feature_path": "C:\\Dev\\Specrew\\specs\\045-v0271-bugfix-bundle",
     "iteration_number": null,
     "task_id": null,
-    "auth_commit_hash": "b21c17b92540e951d5de48ff7352fc1390315ca6",
-    "recorded_at": "2026-05-22T18:12:38Z"
+    "auth_commit_hash": "6ed9a2f64bb6d552940ccd97645856815305dbe5",
+    "recorded_at": "2026-05-25T19:12:50Z"
   },
-  "recovery_session": {
-    "entry_mode": "detected-stale-state",
-    "stale_reasons": [
-      "Session-state boundary mismatch detected: feature-closeout, review-signoff"
-    ],
-    "choice_set": [
-      "A",
-      "B",
-      "C"
-    ],
-    "selected_choice": "B",
-    "bypass_gate": false,
-    "approval_mode_changed": false,
-    "next_action_message": "Recovery will bypass the stale feature state and return you to fresh feature intake."
-  },
+  "recovery_session": null,
   "squad_model_overrides": {},
   "prompt_path": "C:\\Dev\\Specrew\\.specrew\\last-start-prompt.md",
   "summary_path": "C:\\Dev\\Specrew\\.specrew\\start-summary.md",
-  "generated_at_utc": "2026-05-22T18:12:38Z",
+  "generated_at_utc": "2026-05-25T19:12:50Z",
+  "selected_host": "claude",
+  "available_hosts": {
+    "claude": true,
+    "codex": true,
+    "copilot": true,
+    "antigravity": true
+  },
+  "crew_runtime_status": "bootstrap_only",
+  "host_resolution": "last-selected",
   "boundary_enforcement": {
     "enabled": true,
     "last_authorized_boundary": "feature-closeout",
@@ -287,6 +293,30 @@
         "from_boundary": "iteration-closeout",
         "to_boundary": "feature-closeout",
         "recorded_at": "2026-05-22T18:13:13Z"
+      },
+      {
+        "from_boundary": "specify",
+        "to_boundary": "clarify",
+        "verdict_text": "approved for clarify",
+        "authorizing_human": "Alon Fliess",
+        "recorded_at": "2026-05-25T12:49:15Z",
+        "auth_commit_hash": "1c219f1e2931004cab0a24f890bedb4c9ef7375e"
+      },
+      {
+        "from_boundary": "retro",
+        "to_boundary": "iteration-closeout",
+        "verdict_text": "approved for iteration-closeout",
+        "authorizing_human": "Alon Fliess",
+        "recorded_at": "2026-05-25T19:00:15Z",
+        "auth_commit_hash": "9ca2b19f614e7b1c310543162f1d37675afab090"
+      },
+      {
+        "from_boundary": "iteration-closeout",
+        "to_boundary": "feature-closeout",
+        "verdict_text": "approved for feature-closeout",
+        "authorizing_human": "Alon Fliess",
+        "recorded_at": "2026-05-25T19:13:03Z",
+        "auth_commit_hash": "6ed9a2f64bb6d552940ccd97645856815305dbe5"
       }
     ],
     "bypass_history": []

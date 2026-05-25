@@ -1,13 +1,19 @@
 {
   "version": 1,
   "specrewManagedModelRouting": {
-    "baselineAgentModelOverrides": {},
+    "baselineAgentModelOverrides": {
+      "Implementer": "gpt-5.2-codex",
+      "Spec Steward": "gpt-5.2-codex",
+      "Planner": "gpt-5.2-codex",
+      "Reviewer": "gpt-5.2-codex",
+      "Retro Facilitator": "gpt-5.2-codex"
+    },
     "roleAgentFamilies": {
-      "Implementer": "copilot",
-      "Spec Steward": "copilot",
-      "Planner": "copilot",
-      "Reviewer": "copilot",
-      "Retro Facilitator": "copilot"
+      "Implementer": "codex",
+      "Spec Steward": "codex",
+      "Planner": "codex",
+      "Reviewer": "codex",
+      "Retro Facilitator": "codex"
     },
     "activeEscalation": {
       "status": "inactive",
@@ -18,5 +24,12 @@
       "sourceGate": null,
       "updatedAt": null
     }
+  },
+  "agentModelOverrides": {
+    "Implementer": "gpt-5.2-codex",
+    "Spec Steward": "gpt-5.2-codex",
+    "Planner": "gpt-5.2-codex",
+    "Reviewer": "gpt-5.2-codex",
+    "Retro Facilitator": "gpt-5.2-codex"
   }
 }

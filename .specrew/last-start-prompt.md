@@ -1,20 +1,20 @@
 ---
-baseline_commit_hash: 8e1063b98566aa95fd0371c363cf5ea802474b5f
-updated_at: 2026-05-22T18:06:58Z
+baseline_commit_hash: 6ed9a2f64bb6d552940ccd97645856815305dbe5
+updated_at: 2026-05-25T19:12:50Z
 session_state_active: false
 session_state_boundary: feature-closeout
-session_state_feature: 039-launch-mode-boundary-enforcement
-session_state_feature_path: "C:\Dev\Specrew\specs\039-launch-mode-boundary-enforcement"
-session_state_iteration: 001
+session_state_feature: 045-v0271-bugfix-bundle
+session_state_feature_path: "C:\Dev\Specrew\specs\045-v0271-bugfix-bundle"
+session_state_iteration: "(none)"
 session_state_task: "(none)"
-session_state_auth_commit: 8e1063b98566aa95fd0371c363cf5ea802474b5f
-session_state_recorded_at: 2026-05-22T18:06:58Z
+session_state_auth_commit: 6ed9a2f64bb6d552940ccd97645856815305dbe5
+session_state_recorded_at: 2026-05-25T19:12:50Z
 ---
 
 # Specrew Session State
 
 - No active feature.
-- Last feature: 039-launch-mode-boundary-enforcement
+- Last feature: 045-v0271-bugfix-bundle
 - Last boundary: feature-closeout
-- Recorded at: 2026-05-22T18:06:58Z
-- Authorization commit: 8e1063b98566aa95fd0371c363cf5ea802474b5f
+- Recorded at: 2026-05-25T19:12:50Z
+- Authorization commit: 6ed9a2f64bb6d552940ccd97645856815305dbe5

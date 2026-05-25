@@ -58,7 +58,9 @@ function Get-BrownfieldState {
         HasSquad             = Test-Path -LiteralPath (Join-Path $ProjectPath '.squad')
         HasSpecrewConfig     = Test-Path -LiteralPath (Join-Path $ProjectPath '.specrew\config.yml')
         HasSpecrewExtension  = Test-Path -LiteralPath (Join-Path $ProjectPath '.specify\extensions\specrew-speckit\extension.yml')
+        HasSpecrewSource     = Test-Path -LiteralPath (Join-Path $ProjectPath 'extensions\specrew-speckit')
         HasSquadTeam         = Test-Path -LiteralPath (Join-Path $ProjectPath '.squad\team.md')
+        HasSquadAgents       = Test-Path -LiteralPath (Join-Path $ProjectPath '.squad\agents')
         HasSquadCeremonies   = Test-Path -LiteralPath (Join-Path $ProjectPath '.squad\ceremonies.md')
         ExistingSpecs        = @()
         ExistingRoles        = @()
@@ -127,6 +129,16 @@ function Test-HasRoleConflict {
     return $conflicts
 }
 
+function Test-IsCanonicalSquadAgentSource {
+    param(
+        [AllowEmptyCollection()]
+        [Parameter(Mandatory = $true)]
+        [pscustomobject]$State
+    )
+
+    return ($State.HasSpecrewSource -and $State.HasSquadAgents)
+}
+
 function Test-HasCeremonyConflict {
     param(
         [AllowEmptyCollection()]
@@ -172,14 +184,22 @@ function Get-MergeReport {
         CeremonyConflicts    = @()
         MergeableRoles       = @()
         MergeableCeremonies  = @()
+        CanonicalRoles       = @()
         Warnings             = [System.Collections.ArrayList]::new()
         Conflicts            = [System.Collections.ArrayList]::new()
     }
 
-    $report.RoleConflicts = @(Test-HasRoleConflict -ExistingRoles $State.ExistingRoles -BaselineRoles $BaselineRoles)
+    $hasCanonicalSquadAgents = Test-IsCanonicalSquadAgentSource -State $State
+    if ($hasCanonicalSquadAgents) {
+        $report.CanonicalRoles = @($BaselineRoles | Where-Object { $_ -in $State.ExistingRoles })
+        $report.RoleConflicts = @()
+    }
+    else {
+        $report.RoleConflicts = @(Test-HasRoleConflict -ExistingRoles $State.ExistingRoles -BaselineRoles $BaselineRoles)
+    }
     $report.CeremonyConflicts = @(Test-HasCeremonyConflict -ExistingCeremonies $State.ExistingCeremonies -SpecrewCeremonies $SpecrewCeremonies)
     
-    $report.MergeableRoles = @($BaselineRoles | Where-Object { $_ -notin $report.RoleConflicts })
+    $report.MergeableRoles = @($BaselineRoles | Where-Object { $_ -notin $State.ExistingRoles })
     $report.MergeableCeremonies = @($SpecrewCeremonies | Where-Object { $_ -notin $report.CeremonyConflicts })
 
     if ($report.RoleConflicts.Count -gt 0) {
@@ -275,6 +295,10 @@ if ($report.MergeableRoles.Count -gt 0) {
 
 if ($report.RoleConflicts.Count -gt 0) {
     Write-Host "Role conflicts: $($report.RoleConflicts -join ', ')" -ForegroundColor Yellow
+}
+
+if ($report.CanonicalRoles.Count -gt 0) {
+    Write-Host "Canonical roles: $($report.CanonicalRoles -join ', ')" -ForegroundColor Cyan
 }
 
 if ($report.MergeableCeremonies.Count -gt 0) {

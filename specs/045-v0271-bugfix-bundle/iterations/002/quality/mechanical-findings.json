@@ -1,0 +1,11 @@
+{
+  "schemaVersion": "v1",
+  "featureRef": "specs/045-v0271-bugfix-bundle/spec.md",
+  "iterationRef": "specs/045-v0271-bugfix-bundle/iterations/002",
+  "generatedAt": "2026-05-25T18:00:21Z",
+  "generator": {
+    "name": "specrew-mechanical-checks",
+    "version": "0.27.0"
+  },
+  "findings": []
+}

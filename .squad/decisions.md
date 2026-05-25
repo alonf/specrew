@@ -18163,11 +18163,10 @@ User explicitly authorized review-signoff entry for Feature 039 Iteration 001. R
 - **Recorded At**: 2026-05-22T18:12:38Z
 
 ### 2026-05-22T17:34:04Z: User directive
+
 **By:** Alon Fliess (via Copilot)
 **What:** Elevate three F-039-specific lessons into retro improvement actions: the meta-irony of the chain-past-plan incident occurring mid-implementation, the multi-round clarify-reconciliation pattern and its done-condition lockdown, and the mid-stream pivot to lean prompts.
 **Why:** User request - captured for team memory
-
-
 
 ## 2026-05-22T17:34:04Z - User Verdict: F-039 Retro-Boundary Authorization
 
@@ -18184,7 +18183,6 @@ approved for retro-boundary entry
 
 Worth elevating from drift-log into improvement actions: the meta-irony of F-039 chain-past-plan happening mid-implementation, the multi-round clarify-reconciliation pattern (and the done-condition lockdown that closed it), and the mid-stream pivot to lean prompts - all three are F-039-specific lessons that don't fit a generic retro template but are the most actionable evidence this iteration produced.
 
-
 ## 2026-05-22T17:34:04Z - Agent Routing Evidence: F-039 Retro Boundary
 
 - **Work Item**: F-039 retro-boundary
@@ -18199,4 +18197,552 @@ Worth elevating from drift-log into improvement actions: the meta-irony of F-039
 
 User explicitly authorized retro-boundary entry for Feature 039 Iteration 001. The retrospective must elevate three F-039-specific lessons into concrete improvement actions: the chain-past-plan meta-irony during feature delivery, the multi-round clarify-reconciliation loop and its done-condition lockdown, and the mid-stream pivot to lean prompts. Retro must stop before iteration-closeout.
 
+## 2026-05-25T11:07:26Z — Delegated routing plan
 
+- **Enabled Agents**: copilot
+- **Independent Oversight Active**: False
+- **Roles**:
+  - Implementer | requested=copilot | actual=copilot | model=(platform default) | status=honored | fallback=(none)
+  - Spec Steward | requested=codex | actual=copilot | model=(platform default) | status=fell-back | fallback=preferred agent 'codex' is not enabled
+  - Planner | requested=claude | actual=copilot | model=(platform default) | status=fell-back | fallback=preferred agent 'claude' is not enabled
+  - Reviewer | requested=claude | actual=copilot | model=(platform default) | status=fell-back | fallback=preferred agent 'claude' is not enabled
+  - Retro Facilitator | requested=copilot | actual=copilot | model=(platform default) | status=honored | fallback=(none)
+
+## 2026-05-25T11:07:26Z — Routing evidence: Spec Steward
+
+- **Decision ID**: routing-evidence-96f845786912
+- **Type**: routing-evidence
+- **Affected Requirement**: FR-043
+- **Affected Iteration**: (none)
+- **Approving Human**: (none)
+- **Recorded At**: 2026-05-25T11:07:26Z
+- **Next Action**: none
+- **Rationale**: Delegated lifecycle routing was applied for role 'Spec Steward'.
+
+- **Routing Evidence**: Spec Steward | requested=codex | actual=copilot | model=(platform default) | status=fell-back | fallback=preferred agent 'codex' is not enabled
+
+## 2026-05-25T11:07:27Z — Routing evidence: Planner
+
+- **Decision ID**: routing-evidence-f3534f40f592
+- **Type**: routing-evidence
+- **Affected Requirement**: FR-043
+- **Affected Iteration**: (none)
+- **Approving Human**: (none)
+- **Recorded At**: 2026-05-25T11:07:27Z
+- **Next Action**: none
+- **Rationale**: Delegated lifecycle routing was applied for role 'Planner'.
+
+- **Routing Evidence**: Planner | requested=claude | actual=copilot | model=(platform default) | status=fell-back | fallback=preferred agent 'claude' is not enabled
+
+## 2026-05-25T11:07:27Z — Routing evidence: Reviewer
+
+- **Decision ID**: routing-evidence-c70317f2b6f6
+- **Type**: routing-evidence
+- **Affected Requirement**: FR-043
+- **Affected Iteration**: (none)
+- **Approving Human**: (none)
+- **Recorded At**: 2026-05-25T11:07:27Z
+- **Next Action**: none
+- **Rationale**: Delegated lifecycle routing was applied for role 'Reviewer'.
+
+- **Routing Evidence**: Reviewer | requested=claude | actual=copilot | model=(platform default) | status=fell-back | fallback=preferred agent 'claude' is not enabled
+
+## 2026-05-25T12:45:02Z — Boundary enforcement: clarify
+
+- **Feature**: 039-launch-mode-boundary-enforcement
+- **Boundary Type**: clarify
+- **Current Boundary**: specify
+- **Requested Boundary**: clarify
+- **Enforcement Action**: blocked
+- **Launch Mode**: same-window
+- **Agent Response Snippet**: (none)
+- **Reason**: No persisted authorization matched specify -> clarify.
+
+## 2026-05-25T12:49:42Z — Boundary sync: clarify
+
+- **Boundary Type**: clarify
+- **Feature Ref**: 045-v0271-bugfix-bundle
+- **Iteration Number**: (none)
+- **Task ID**: (none)
+- **Auth Commit Hash**: 1c219f1e2931004cab0a24f890bedb4c9ef7375e
+- **Recorded At**: 2026-05-25T12:49:41Z
+
+## 2026-05-25T13:10:27Z — Boundary sync: plan
+
+- **Boundary Type**: plan
+- **Feature Ref**: 045-v0271-bugfix-bundle
+- **Iteration Number**: (none)
+- **Task ID**: (none)
+- **Auth Commit Hash**: d5b2c431455dd13146ea4e3393c78f04ceede4dd
+- **Recorded At**: 2026-05-25T13:10:27Z
+
+## 2026-05-25T13:16:21Z — Boundary sync: tasks
+
+- **Boundary Type**: tasks
+- **Feature Ref**: 045-v0271-bugfix-bundle
+- **Iteration Number**: (none)
+- **Task ID**: (none)
+- **Auth Commit Hash**: d5b2c431455dd13146ea4e3393c78f04ceede4dd
+- **Recorded At**: 2026-05-25T13:16:20Z
+
+## 2026-05-25T13:24:46Z — Boundary sync warning: tasks
+
+- **Boundary Type**: tasks
+- **Latest Recorded Boundary**: tasks
+- **Recorded At**: 2026-05-25T13:24:46Z
+- **Warning**: Expected next boundary 'before-implement' but received 'tasks'.
+
+## 2026-05-25T13:24:47Z — Boundary sync: tasks
+
+- **Boundary Type**: tasks
+- **Feature Ref**: 045-v0271-bugfix-bundle
+- **Iteration Number**: 001
+- **Task ID**: (none)
+- **Auth Commit Hash**: d5b2c431455dd13146ea4e3393c78f04ceede4dd
+- **Recorded At**: 2026-05-25T13:24:47Z
+
+## 2026-05-25T14:27:29Z — Delegated routing plan
+
+- **Enabled Agents**: codex
+- **Independent Oversight Active**: False
+- **Roles**:
+  - Implementer | requested=copilot | actual=codex | model=gpt-5.2-codex | status=fell-back | fallback=preferred agent 'copilot' is not enabled
+  - Spec Steward | requested=codex | actual=codex | model=gpt-5.2-codex | status=honored | fallback=(none)
+  - Planner | requested=claude | actual=codex | model=gpt-5.2-codex | status=fell-back | fallback=preferred agent 'claude' is not enabled
+  - Reviewer | requested=claude | actual=codex | model=gpt-5.2-codex | status=fell-back | fallback=preferred agent 'claude' is not enabled
+  - Retro Facilitator | requested=copilot | actual=codex | model=gpt-5.2-codex | status=fell-back | fallback=preferred agent 'copilot' is not enabled
+
+## 2026-05-25T14:27:29Z — Routing evidence: Implementer
+
+- **Decision ID**: routing-evidence-53af542704b0
+- **Type**: routing-evidence
+- **Affected Requirement**: FR-043
+- **Affected Iteration**: (none)
+- **Approving Human**: (none)
+- **Recorded At**: 2026-05-25T14:27:29Z
+- **Next Action**: none
+- **Rationale**: Delegated lifecycle routing was applied for role 'Implementer'.
+
+- **Routing Evidence**: Implementer | requested=copilot | actual=codex | model=gpt-5.2-codex | status=fell-back | fallback=preferred agent 'copilot' is not enabled
+
+## 2026-05-25T14:27:29Z — Routing evidence: Spec Steward
+
+- **Decision ID**: routing-evidence-6c934db0d026
+- **Type**: routing-evidence
+- **Affected Requirement**: FR-043
+- **Affected Iteration**: (none)
+- **Approving Human**: (none)
+- **Recorded At**: 2026-05-25T14:27:29Z
+- **Next Action**: none
+- **Rationale**: Delegated lifecycle routing was applied for role 'Spec Steward'.
+
+- **Routing Evidence**: Spec Steward | requested=codex | actual=codex | model=gpt-5.2-codex | status=honored | fallback=(none)
+
+## 2026-05-25T14:27:29Z — Routing evidence: Planner
+
+- **Decision ID**: routing-evidence-fedb8f951129
+- **Type**: routing-evidence
+- **Affected Requirement**: FR-043
+- **Affected Iteration**: (none)
+- **Approving Human**: (none)
+- **Recorded At**: 2026-05-25T14:27:29Z
+- **Next Action**: none
+- **Rationale**: Delegated lifecycle routing was applied for role 'Planner'.
+
+- **Routing Evidence**: Planner | requested=claude | actual=codex | model=gpt-5.2-codex | status=fell-back | fallback=preferred agent 'claude' is not enabled
+
+## 2026-05-25T14:27:30Z — Routing evidence: Reviewer
+
+- **Decision ID**: routing-evidence-f50209916656
+- **Type**: routing-evidence
+- **Affected Requirement**: FR-043
+- **Affected Iteration**: (none)
+- **Approving Human**: (none)
+- **Recorded At**: 2026-05-25T14:27:30Z
+- **Next Action**: none
+- **Rationale**: Delegated lifecycle routing was applied for role 'Reviewer'.
+
+- **Routing Evidence**: Reviewer | requested=claude | actual=codex | model=gpt-5.2-codex | status=fell-back | fallback=preferred agent 'claude' is not enabled
+
+## 2026-05-25T14:27:30Z — Routing evidence: Retro Facilitator
+
+- **Decision ID**: routing-evidence-dd02dcbced4a
+- **Type**: routing-evidence
+- **Affected Requirement**: FR-043
+- **Affected Iteration**: (none)
+- **Approving Human**: (none)
+- **Recorded At**: 2026-05-25T14:27:30Z
+- **Next Action**: none
+- **Rationale**: Delegated lifecycle routing was applied for role 'Retro Facilitator'.
+
+- **Routing Evidence**: Retro Facilitator | requested=copilot | actual=codex | model=gpt-5.2-codex | status=fell-back | fallback=preferred agent 'copilot' is not enabled
+
+## 2026-05-25T14:50:23Z — Boundary sync: before-implement
+
+- **Boundary Type**: before-implement
+- **Feature Ref**: 045-v0271-bugfix-bundle
+- **Iteration Number**: 001
+- **Task ID**: (none)
+- **Auth Commit Hash**: 259b1f4f3fba7884bb85a33d5d3aecd0794b9235
+- **Recorded At**: 2026-05-25T14:50:23Z
+
+## 2026-05-25T15:28:41Z — Boundary sync: review-signoff
+
+- **Boundary Type**: review-signoff
+- **Feature Ref**: 045-v0271-bugfix-bundle
+- **Iteration Number**: 001
+- **Task ID**: (none)
+- **Auth Commit Hash**: 99eb985b88f6489fe4ea462a8f9acbf8025c1915
+- **Recorded At**: 2026-05-25T15:28:40Z
+
+## 2026-05-25T15:53:11Z — Boundary sync warning: review-signoff
+
+- **Boundary Type**: review-signoff
+- **Latest Recorded Boundary**: review-signoff
+- **Recorded At**: 2026-05-25T15:53:11Z
+- **Warning**: Expected next boundary 'retro' but received 'review-signoff'.
+
+## 2026-05-25T15:53:12Z — Boundary sync: review-signoff
+
+- **Boundary Type**: review-signoff
+- **Feature Ref**: 045-v0271-bugfix-bundle
+- **Iteration Number**: 001
+- **Task ID**: (none)
+- **Auth Commit Hash**: df1e036d6b124cb3f278e5862524736e57f732e6
+- **Recorded At**: 2026-05-25T15:53:11Z
+
+## 2026-05-25T16:02:13Z — Boundary sync: retro
+
+- **Boundary Type**: retro
+- **Feature Ref**: 045-v0271-bugfix-bundle
+- **Iteration Number**: 001
+- **Task ID**: (none)
+- **Auth Commit Hash**: fea7e43b1b220779f5ba20730848c2867dc716dc
+- **Recorded At**: 2026-05-25T16:02:12Z
+
+## 2026-05-25T16:15:59Z — Boundary sync warning: retro
+
+- **Boundary Type**: retro
+- **Latest Recorded Boundary**: retro
+- **Recorded At**: 2026-05-25T16:15:59Z
+- **Warning**: Expected next boundary 'iteration-closeout' but received 'retro'.
+
+## 2026-05-25T16:16:00Z — Boundary sync: retro
+
+- **Boundary Type**: retro
+- **Feature Ref**: 045-v0271-bugfix-bundle
+- **Iteration Number**: 001
+- **Task ID**: (none)
+- **Auth Commit Hash**: 1a2f9309538d325a1c17ac84b24887939b28be22
+- **Recorded At**: 2026-05-25T16:15:59Z
+
+## 2026-05-25T16:18:44Z — Boundary sync: iteration-closeout
+
+- **Boundary Type**: iteration-closeout
+- **Feature Ref**: 045-v0271-bugfix-bundle
+- **Iteration Number**: 001
+- **Task ID**: (none)
+- **Auth Commit Hash**: 5db4b522d369e6a60b3ec85c23f389262b1926fb
+- **Recorded At**: 2026-05-25T16:18:44Z
+
+## 2026-05-25T17:02:05Z — Boundary sync warning: before-implement
+
+- **Boundary Type**: before-implement
+- **Latest Recorded Boundary**: iteration-closeout
+- **Recorded At**: 2026-05-25T17:02:05Z
+- **Warning**: Expected next boundary 'feature-closeout' but received 'before-implement'.
+
+## 2026-05-25T17:02:06Z — Boundary sync: before-implement
+
+- **Boundary Type**: before-implement
+- **Feature Ref**: 045-v0271-bugfix-bundle
+- **Iteration Number**: 002
+- **Task ID**: (none)
+- **Auth Commit Hash**: d01845bcef172322ae506e5bfe59ea3c4ae1d771
+- **Recorded At**: 2026-05-25T17:02:06Z
+
+## 2026-05-25T17:56:14Z — Delegated routing plan
+
+- **Enabled Agents**: codex
+- **Independent Oversight Active**: False
+- **Roles**:
+  - Implementer | requested=copilot | actual=codex | model=gpt-5.2-codex | status=fell-back | fallback=preferred agent 'copilot' is not enabled
+  - Spec Steward | requested=codex | actual=codex | model=gpt-5.2-codex | status=honored | fallback=(none)
+  - Planner | requested=claude | actual=codex | model=gpt-5.2-codex | status=fell-back | fallback=preferred agent 'claude' is not enabled
+  - Reviewer | requested=claude | actual=codex | model=gpt-5.2-codex | status=fell-back | fallback=preferred agent 'claude' is not enabled
+  - Retro Facilitator | requested=copilot | actual=codex | model=gpt-5.2-codex | status=fell-back | fallback=preferred agent 'copilot' is not enabled
+
+## 2026-05-25T17:56:14Z — Routing evidence: Implementer
+
+- **Decision ID**: routing-evidence-df5827f9a5ac
+- **Type**: routing-evidence
+- **Affected Requirement**: FR-043
+- **Affected Iteration**: (none)
+- **Approving Human**: (none)
+- **Recorded At**: 2026-05-25T17:56:14Z
+- **Next Action**: none
+- **Rationale**: Delegated lifecycle routing was applied for role 'Implementer'.
+
+- **Routing Evidence**: Implementer | requested=copilot | actual=codex | model=gpt-5.2-codex | status=fell-back | fallback=preferred agent 'copilot' is not enabled
+
+## 2026-05-25T17:56:15Z — Routing evidence: Spec Steward
+
+- **Decision ID**: routing-evidence-c891a9fbb9f8
+- **Type**: routing-evidence
+- **Affected Requirement**: FR-043
+- **Affected Iteration**: (none)
+- **Approving Human**: (none)
+- **Recorded At**: 2026-05-25T17:56:15Z
+- **Next Action**: none
+- **Rationale**: Delegated lifecycle routing was applied for role 'Spec Steward'.
+
+- **Routing Evidence**: Spec Steward | requested=codex | actual=codex | model=gpt-5.2-codex | status=honored | fallback=(none)
+
+## 2026-05-25T17:56:15Z — Routing evidence: Planner
+
+- **Decision ID**: routing-evidence-0159bc28cc10
+- **Type**: routing-evidence
+- **Affected Requirement**: FR-043
+- **Affected Iteration**: (none)
+- **Approving Human**: (none)
+- **Recorded At**: 2026-05-25T17:56:15Z
+- **Next Action**: none
+- **Rationale**: Delegated lifecycle routing was applied for role 'Planner'.
+
+- **Routing Evidence**: Planner | requested=claude | actual=codex | model=gpt-5.2-codex | status=fell-back | fallback=preferred agent 'claude' is not enabled
+
+## 2026-05-25T17:56:15Z — Routing evidence: Reviewer
+
+- **Decision ID**: routing-evidence-96f29de21434
+- **Type**: routing-evidence
+- **Affected Requirement**: FR-043
+- **Affected Iteration**: (none)
+- **Approving Human**: (none)
+- **Recorded At**: 2026-05-25T17:56:15Z
+- **Next Action**: none
+- **Rationale**: Delegated lifecycle routing was applied for role 'Reviewer'.
+
+- **Routing Evidence**: Reviewer | requested=claude | actual=codex | model=gpt-5.2-codex | status=fell-back | fallback=preferred agent 'claude' is not enabled
+
+## 2026-05-25T17:56:15Z — Routing evidence: Retro Facilitator
+
+- **Decision ID**: routing-evidence-a0b0653af7d9
+- **Type**: routing-evidence
+- **Affected Requirement**: FR-043
+- **Affected Iteration**: (none)
+- **Approving Human**: (none)
+- **Recorded At**: 2026-05-25T17:56:15Z
+- **Next Action**: none
+- **Rationale**: Delegated lifecycle routing was applied for role 'Retro Facilitator'.
+
+- **Routing Evidence**: Retro Facilitator | requested=copilot | actual=codex | model=gpt-5.2-codex | status=fell-back | fallback=preferred agent 'copilot' is not enabled
+
+## 2026-05-25T18:04:50Z — Boundary sync: review-signoff
+
+- **Boundary Type**: review-signoff
+- **Feature Ref**: 045-v0271-bugfix-bundle
+- **Iteration Number**: (none)
+- **Task ID**: (none)
+- **Auth Commit Hash**: 040a02cb2df0bac829095ce8fd9e391a2a81645c
+- **Recorded At**: 2026-05-25T18:04:49Z
+
+## 2026-05-25T18:05:46Z — Boundary sync warning: review-signoff
+
+- **Boundary Type**: review-signoff
+- **Latest Recorded Boundary**: review-signoff
+- **Recorded At**: 2026-05-25T18:05:46Z
+- **Warning**: Expected next boundary 'retro' but received 'review-signoff'.
+
+## 2026-05-25T18:05:47Z — Boundary sync: review-signoff
+
+- **Boundary Type**: review-signoff
+- **Feature Ref**: 045-v0271-bugfix-bundle
+- **Iteration Number**: 002
+- **Task ID**: (none)
+- **Auth Commit Hash**: 040a02cb2df0bac829095ce8fd9e391a2a81645c
+- **Recorded At**: 2026-05-25T18:05:47Z
+
+## 2026-05-25T18:16:52Z — Boundary sync warning: review-signoff
+
+- **Boundary Type**: review-signoff
+- **Latest Recorded Boundary**: review-signoff
+- **Recorded At**: 2026-05-25T18:16:52Z
+- **Warning**: Expected next boundary 'retro' but received 'review-signoff'.
+
+## 2026-05-25T18:16:53Z — Boundary sync: review-signoff
+
+- **Boundary Type**: review-signoff
+- **Feature Ref**: 045-v0271-bugfix-bundle
+- **Iteration Number**: 002
+- **Task ID**: (none)
+- **Auth Commit Hash**: a255ff124ab6d41b27ec0c162e498a37b8c8060a
+- **Recorded At**: 2026-05-25T18:16:53Z
+
+## 2026-05-25T18:29:55Z — Boundary sync: retro
+
+- **Boundary Type**: retro
+- **Feature Ref**: 045-v0271-bugfix-bundle
+- **Iteration Number**: 002
+- **Task ID**: (none)
+- **Auth Commit Hash**: a0172fb1a67ce3911e5d2e14e11d2ef8d2616b8c
+- **Recorded At**: 2026-05-25T18:29:55Z
+
+## 2026-05-25T18:36:32Z — Boundary sync warning: retro
+
+- **Boundary Type**: retro
+- **Latest Recorded Boundary**: retro
+- **Recorded At**: 2026-05-25T18:36:32Z
+- **Warning**: Expected next boundary 'iteration-closeout' but received 'retro'.
+
+## 2026-05-25T18:36:32Z — Boundary sync: retro
+
+- **Boundary Type**: retro
+- **Feature Ref**: 045-v0271-bugfix-bundle
+- **Iteration Number**: 002
+- **Task ID**: (none)
+- **Auth Commit Hash**: ebffb87b870d7f8d30b593c6bd77bd45239ea23a
+- **Recorded At**: 2026-05-25T18:36:32Z
+
+## 2026-05-25T18:43:25Z — Delegated routing plan
+
+- **Enabled Agents**: claude
+- **Independent Oversight Active**: False
+- **Roles**:
+  - Implementer | requested=copilot | actual=claude | model=claude-sonnet-4.5 | status=fell-back | fallback=preferred agent 'copilot' is not enabled
+  - Spec Steward | requested=codex | actual=claude | model=claude-sonnet-4.5 | status=fell-back | fallback=preferred agent 'codex' is not enabled
+  - Planner | requested=claude | actual=claude | model=claude-sonnet-4.5 | status=honored | fallback=(none)
+  - Reviewer | requested=claude | actual=claude | model=claude-sonnet-4.5 | status=honored | fallback=(none)
+  - Retro Facilitator | requested=copilot | actual=claude | model=claude-sonnet-4.5 | status=fell-back | fallback=preferred agent 'copilot' is not enabled
+
+## 2026-05-25T18:43:26Z — Routing evidence: Implementer
+
+- **Decision ID**: routing-evidence-d5969d292664
+- **Type**: routing-evidence
+- **Affected Requirement**: FR-043
+- **Affected Iteration**: (none)
+- **Approving Human**: (none)
+- **Recorded At**: 2026-05-25T18:43:26Z
+- **Next Action**: none
+- **Rationale**: Delegated lifecycle routing was applied for role 'Implementer'.
+
+- **Routing Evidence**: Implementer | requested=copilot | actual=claude | model=claude-sonnet-4.5 | status=fell-back | fallback=preferred agent 'copilot' is not enabled
+
+## 2026-05-25T18:43:26Z — Routing evidence: Spec Steward
+
+- **Decision ID**: routing-evidence-05ba5077cd74
+- **Type**: routing-evidence
+- **Affected Requirement**: FR-043
+- **Affected Iteration**: (none)
+- **Approving Human**: (none)
+- **Recorded At**: 2026-05-25T18:43:26Z
+- **Next Action**: none
+- **Rationale**: Delegated lifecycle routing was applied for role 'Spec Steward'.
+
+- **Routing Evidence**: Spec Steward | requested=codex | actual=claude | model=claude-sonnet-4.5 | status=fell-back | fallback=preferred agent 'codex' is not enabled
+
+## 2026-05-25T18:43:26Z — Routing evidence: Planner
+
+- **Decision ID**: routing-evidence-a7c99e42e442
+- **Type**: routing-evidence
+- **Affected Requirement**: FR-043
+- **Affected Iteration**: (none)
+- **Approving Human**: (none)
+- **Recorded At**: 2026-05-25T18:43:26Z
+- **Next Action**: none
+- **Rationale**: Delegated lifecycle routing was applied for role 'Planner'.
+
+- **Routing Evidence**: Planner | requested=claude | actual=claude | model=claude-sonnet-4.5 | status=honored | fallback=(none)
+
+## 2026-05-25T18:43:26Z — Routing evidence: Reviewer
+
+- **Decision ID**: routing-evidence-8a33ab2c2ff3
+- **Type**: routing-evidence
+- **Affected Requirement**: FR-043
+- **Affected Iteration**: (none)
+- **Approving Human**: (none)
+- **Recorded At**: 2026-05-25T18:43:26Z
+- **Next Action**: none
+- **Rationale**: Delegated lifecycle routing was applied for role 'Reviewer'.
+
+- **Routing Evidence**: Reviewer | requested=claude | actual=claude | model=claude-sonnet-4.5 | status=honored | fallback=(none)
+
+## 2026-05-25T18:43:27Z — Routing evidence: Retro Facilitator
+
+- **Decision ID**: routing-evidence-ad325365e6e3
+- **Type**: routing-evidence
+- **Affected Requirement**: FR-043
+- **Affected Iteration**: (none)
+- **Approving Human**: (none)
+- **Recorded At**: 2026-05-25T18:43:27Z
+- **Next Action**: none
+- **Rationale**: Delegated lifecycle routing was applied for role 'Retro Facilitator'.
+
+- **Routing Evidence**: Retro Facilitator | requested=copilot | actual=claude | model=claude-sonnet-4.5 | status=fell-back | fallback=preferred agent 'copilot' is not enabled
+
+## 2026-05-25T18:56:59Z — Boundary sync: iteration-closeout
+
+- **Boundary Type**: iteration-closeout
+- **Feature Ref**: 045-v0271-bugfix-bundle
+- **Iteration Number**: (none)
+- **Task ID**: (none)
+- **Auth Commit Hash**: 9ca2b19f614e7b1c310543162f1d37675afab090
+- **Recorded At**: 2026-05-25T18:56:59Z
+
+## 2026-05-25T19:00:29Z — Delegated routing plan
+
+- **Enabled Agents**: copilot
+- **Independent Oversight Active**: False
+- **Roles**:
+  - Implementer | requested=copilot | actual=copilot | model=(platform default) | status=honored | fallback=(none)
+  - Spec Steward | requested=codex | actual=copilot | model=(platform default) | status=fell-back | fallback=preferred agent 'codex' is not enabled
+  - Planner | requested=claude | actual=copilot | model=(platform default) | status=fell-back | fallback=preferred agent 'claude' is not enabled
+  - Reviewer | requested=claude | actual=copilot | model=(platform default) | status=fell-back | fallback=preferred agent 'claude' is not enabled
+  - Retro Facilitator | requested=copilot | actual=copilot | model=(platform default) | status=honored | fallback=(none)
+
+## 2026-05-25T19:00:29Z — Routing evidence: Spec Steward
+
+- **Decision ID**: routing-evidence-948075a5510c
+- **Type**: routing-evidence
+- **Affected Requirement**: FR-043
+- **Affected Iteration**: (none)
+- **Approving Human**: (none)
+- **Recorded At**: 2026-05-25T19:00:29Z
+- **Next Action**: none
+- **Rationale**: Delegated lifecycle routing was applied for role 'Spec Steward'.
+
+- **Routing Evidence**: Spec Steward | requested=codex | actual=copilot | model=(platform default) | status=fell-back | fallback=preferred agent 'codex' is not enabled
+
+## 2026-05-25T19:00:30Z — Routing evidence: Planner
+
+- **Decision ID**: routing-evidence-7e898f2988c3
+- **Type**: routing-evidence
+- **Affected Requirement**: FR-043
+- **Affected Iteration**: (none)
+- **Approving Human**: (none)
+- **Recorded At**: 2026-05-25T19:00:30Z
+- **Next Action**: none
+- **Rationale**: Delegated lifecycle routing was applied for role 'Planner'.
+
+- **Routing Evidence**: Planner | requested=claude | actual=copilot | model=(platform default) | status=fell-back | fallback=preferred agent 'claude' is not enabled
+
+## 2026-05-25T19:00:30Z — Routing evidence: Reviewer
+
+- **Decision ID**: routing-evidence-936469248629
+- **Type**: routing-evidence
+- **Affected Requirement**: FR-043
+- **Affected Iteration**: (none)
+- **Approving Human**: (none)
+- **Recorded At**: 2026-05-25T19:00:30Z
+- **Next Action**: none
+- **Rationale**: Delegated lifecycle routing was applied for role 'Reviewer'.
+
+- **Routing Evidence**: Reviewer | requested=claude | actual=copilot | model=(platform default) | status=fell-back | fallback=preferred agent 'claude' is not enabled
+
+## 2026-05-25T19:12:50Z — Boundary sync: feature-closeout
+
+- **Boundary Type**: feature-closeout
+- **Feature Ref**: 045-v0271-bugfix-bundle
+- **Iteration Number**: (none)
+- **Task ID**: (none)
+- **Auth Commit Hash**: 6ed9a2f64bb6d552940ccd97645856815305dbe5
+- **Recorded At**: 2026-05-25T19:12:50Z

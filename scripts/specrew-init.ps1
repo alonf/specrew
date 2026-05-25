@@ -35,6 +35,12 @@ if (-not (Test-Path -LiteralPath $versionCheckHelperPath -PathType Leaf)) {
 }
 . $versionCheckHelperPath
 
+$skillCatalogStateHelperPath = Join-Path $PSScriptRoot 'internal\skill-catalog-state.ps1'
+if (-not (Test-Path -LiteralPath $skillCatalogStateHelperPath -PathType Leaf)) {
+    throw "Missing skill-catalog state helper '$skillCatalogStateHelperPath'."
+}
+. $skillCatalogStateHelperPath
+
 $initUtilitiesPath = Join-Path $PSScriptRoot 'init\_utilities.ps1'
 if (-not (Test-Path -LiteralPath $initUtilitiesPath -PathType Leaf)) {
     throw "Missing init/_utilities.ps1 helper at '$initUtilitiesPath'."
@@ -400,8 +406,39 @@ if ($alreadyBootstrapped -and -not $Force) {
             exit 1
         }
 
-        Add-Action -Actions $actions -Step 'bootstrap-validation' -Outcome 'validated .specify templates, .squad agents, .github workflows, and .github/agents/squad.agent.md'
-        Write-Host ("Specrew is already bootstrapped in '{0}'. Re-run with -Force to refresh bundled templates." -f $resolvedProjectPath) -ForegroundColor Yellow
+        $skillCatalogState = if (-not $SpecKitExtensionOnly) {
+            Get-SpecrewSkillCatalogState -ProjectPath $resolvedProjectPath
+        }
+        else {
+            [pscustomobject]@{ HasMissingRoots = $false; MissingRoots = @() }
+        }
+
+        if ($skillCatalogState.HasMissingRoots) {
+            Add-Action -Actions $actions -Step 'bootstrap-validation' -Outcome 'validated core bootstrap surfaces; skill catalog deployment gap detected'
+            Add-Action -Actions $actions -Step 'skill-catalog-gap' -Outcome (Format-SpecrewSkillCatalogRoots -Roots $skillCatalogState.MissingRoots)
+            Write-Host ("Specrew is already bootstrapped in '{0}', but skill catalog directories are missing. Repairing deployment gap." -f $resolvedProjectPath) -ForegroundColor Yellow
+
+            $skillCatalogRepair = Invoke-SpecrewSkillCatalogRepair -ProjectPath $resolvedProjectPath -DeploymentScriptPath $deploySquadRuntimeScript -DryRun:$DryRun
+            foreach ($deploymentAction in @($skillCatalogRepair.Actions)) {
+                if ($deploymentAction.PSObject.Properties['Action'] -and $deploymentAction.PSObject.Properties['Path']) {
+                    Add-Action -Actions $actions -Step 'squad-runtime' -Outcome ("{0}: {1}" -f $deploymentAction.Action, $deploymentAction.Path)
+                }
+            }
+
+            if ($skillCatalogRepair.AfterState.HasMissingRoots) {
+                foreach ($missingRoot in @($skillCatalogRepair.AfterState.MissingRoots)) {
+                    Write-Error ("Missing required skill catalog directory after repair: {0}" -f $missingRoot.Path) -ErrorAction Continue
+                }
+
+                exit 1
+            }
+
+            Add-Action -Actions $actions -Step 'slash-surface' -Outcome 'repaired /specrew skill catalog across .claude/skills, .github/skills, and .agents/skills'
+        }
+        else {
+            Add-Action -Actions $actions -Step 'bootstrap-validation' -Outcome 'validated .specify templates, .squad agents, .github workflows, and .github/agents/squad.agent.md'
+            Write-Host ("Specrew is already bootstrapped in '{0}'. Re-run with -Force to refresh bundled templates." -f $resolvedProjectPath) -ForegroundColor Yellow
+        }
     }
 
     Write-BootstrapSummary -Actions $actions -DryRunMode:$DryRun -ProjectPath $resolvedProjectPath -ShowGuidance:$false
@@ -801,6 +838,18 @@ else {
     }
 
     Add-Action -Actions $actions -Step 'bootstrap-validation' -Outcome 'validated .specify templates, .squad agents, .github workflows, and .github/agents/squad.agent.md'
+    if (-not $SpecKitExtensionOnly) {
+        $finalSkillCatalogState = Get-SpecrewSkillCatalogState -ProjectPath $resolvedProjectPath
+        if ($finalSkillCatalogState.HasMissingRoots) {
+            foreach ($missingRoot in @($finalSkillCatalogState.MissingRoots)) {
+                Write-Error ("Missing required skill catalog directory after deployment: {0}" -f $missingRoot.Path) -ErrorAction Continue
+            }
+
+            exit 1
+        }
+
+        Add-Action -Actions $actions -Step 'skill-catalog' -Outcome 'validated .claude/skills, .github/skills, and .agents/skills'
+    }
 }
 
 Write-BootstrapSummary -Actions $actions -DryRunMode:$DryRun -ProjectPath $resolvedProjectPath -ShowGuidance:(-not $SpecKitExtensionOnly -and $squadSurfaceReady)
