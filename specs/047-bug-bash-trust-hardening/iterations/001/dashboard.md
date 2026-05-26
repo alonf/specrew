@@ -2,7 +2,7 @@
 
 **Schema**: v1
 **Capture Kind**: iteration-closeout
-**Captured At**: 2026-05-26T08:34:51Z
+**Captured At**: 2026-05-26T10:45:45Z
 **Render Mode**: compact
 **Rendering Mode**: rich
 **Color Mode**: monochrome
@@ -12,24 +12,24 @@
 
 ```text
 SPECREW VELOCITY DASHBOARD
-Summary: → F-047 Specrew v0.27.3 Trust-Hardening Bug-Bash Bundle | In Review · review | 7.62 SP/day (10 closed iterations, high)
+Summary: ✓ F-047 Specrew v0.27.3 Trust-Hardening Bug-Bash Bundle | Complete · iteration-closeout | 20/20 SP delivered
 Today 2026-05-26 | Repo Specrew
 Rendering rich
-ACTIVE
-→ F-047 | Specrew v0.27.3 Trust-Hardening Bug-Bash Bundle
+CLOSED
+✓ F-047 | Specrew v0.27.3 Trust-Hardening Bug-Bash Bundle | iter-001
 VELOCITY
-7.62 SP/day | high
+7.62 SP/day | high | prior sample
 ▇██▃▂▄▃▁▂▁
 RECENT SHIPPED
+✓ F-047 · iter-001 | 20 SP
 ✓ F-046 · iter-001 | 18 SP
 ✓ F-045 · iter-002 | 20 SP
-✓ F-045 · iter-001 | 20 SP
 ROADMAP
 ✓ phase-1-foundations 62.5/65 SP
 ○ phase-2-experience 159.5/254 SP
 -
 PROJECTION
-F:20SP 3 calendar day(s) | P:n/a TBD
+F:0SP complete | P:n/a TBD
 R:566SP 75 calendar day(s)
 WARNINGS
 No active dashboard warnings.

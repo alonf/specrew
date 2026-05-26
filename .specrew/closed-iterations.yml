@@ -134,3 +134,6 @@ closed:
   - feature: 046-046-bug-bash
     iteration: 001
     closed_at: 2026-05-25T21:36:04Z
+  - feature: 047-bug-bash-trust-hardening
+    iteration: 001
+    closed_at: 2026-05-26T10:45:46Z
