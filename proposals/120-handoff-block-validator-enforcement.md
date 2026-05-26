@@ -3,9 +3,9 @@ proposal: 120
 title: Handoff-Block Validator Enforcement + Non-Specrew-Session Bypass Detection
 status: candidate
 phase: phase-2
-estimated-sp: 3-5
+estimated-sp: 4-7
 priority-tier: 2
-discussion: empirical motivation from 2026-05-25 PlanningPoC Squad+Copilot silence + Antigravity F-046 question-prompt substitution; queued in memory [[non-specrew-session-bypasses-triggers-2026-05-25]] explicit user direction "Memorized it, and later we will create a bug proposal to fix it"
+discussion: empirical motivation from 2026-05-25 PlanningPoC Squad+Copilot silence + Antigravity F-046 question-prompt substitution + 2026-05-26 PlanningPoC iter-002 silent boundary-state auto-advance (caught by Picard's independent audit); queued in memory [[non-specrew-session-bypasses-triggers-2026-05-25]] explicit user direction "Memorized it, and later we will create a bug proposal to fix it"; expanded 2026-05-26 with Pillar 4 (state-advance-without-verdict cross-check)
 ---
 
 # Handoff-Block Validator Enforcement + Non-Specrew-Session Bypass Detection
@@ -57,9 +57,21 @@ Soft WARN when canonical artifacts are detected in ephemeral host-scratch direct
 - If files matching canonical artifact names (`plan.md`, `tasks.md`, `state.md`, `review.md`, `retro.md`, `findings.md`, `spec.md`) appear there, emit `WARN [location] artifact-in-ephemeral-location: <file> belongs at canonical specs/<feature>/ path, not in agent session-scratch.`
 - Composes with Proposal 075 (Update Artifact Backfill Discipline) — the backfill mechanism can detect-and-relocate, this validator rule detect-and-warn
 
+### Pillar 4: Boundary-state-advance-without-verdict cross-check (~1-2 SP, added 2026-05-26)
+
+**A new shape of "Specrew form without runtime compliance" surfaced 2026-05-26 during PlanningPoC iter-002 re-review**: silent boundary-state auto-advance past the human-verdict gate. Different mutation surface than Pillar 1 (handoff-block = communication-layer); this is the state-layer counterpart. Picard's independent audit caught it and rolled back (commit `a5866c1`).
+
+When `state.md`'s `Current Phase` field changes across two commits, the validator (and/or a boundary-sync helper) cross-checks `boundary_enforcement.verdict_history` in `.specrew/start-context.json` for a corresponding human-authorization entry:
+
+- If the `from_boundary → to_boundary` transition has a matching `verdict_history` entry with non-empty `authorizing_human` AND non-empty `verdict_text` → PASS, advance is authorized.
+- If the transition has NO matching verdict-history entry for a human-verdict boundary → emit `WARN [boundary] state-advance-without-verdict: Phase advanced 'X' → 'Y' without a verdict_history entry. Auto-advance breach detected. Roll back state.md and request human verdict OR record the verdict explicitly.`
+- Soft WARN at validator time; **harder block at boundary-sync time** (sync-boundary-state.ps1 refuses to write an advance without a preceding verdict-history append for human-verdict boundaries).
+
+This pillar makes Picard's manual audit role mechanical and host-portable — particularly important when Proposal 024 Slice 3 / Proposal 108 ship per-host Crew runtimes, since Picard's role MUST be replicated on every host to preserve the load-bearing safety net.
+
 ## How
 
-Total ~3-5 SP single iteration:
+Total ~4-7 SP single iteration:
 
 | Step | File | Effort |
 |---|---|---|
@@ -67,7 +79,8 @@ Total ~3-5 SP single iteration:
 | Pillar 1 handoff-block validator rule | `extensions/specrew-speckit/scripts/validate-governance.ps1` (+ mirror) | 1-2 SP |
 | Pillar 2 trigger-bypass diagnosis augmentation | same file | 1 SP |
 | Pillar 3 wrong-location detection | same file | 1 SP |
-| Integration tests covering all 3 shapes | `tests/integration/non-specrew-session-bypass.tests.ps1` (new) | 1 SP |
+| **Pillar 4 state-advance cross-check** | same file + helper extension | 1-2 SP |
+| Integration tests covering all 4 shapes | `tests/integration/non-specrew-session-bypass.tests.ps1` (extend) | 1 SP |
 
 ## Acceptance criteria
 
@@ -77,6 +90,8 @@ Total ~3-5 SP single iteration:
 - **AC4**: Validator output remains backward-compatible — new rules add WARN entries; do not change exit code or fail iterations that previously passed
 - **AC5**: `Test-SpecrewHandoffBlockPresent` is callable from sync-boundary-state.ps1 and other helpers; returns `$true` / `$false` for use as pre-condition checks
 - **AC6**: Mirror parity confirmed byte-identical for the two modified extension scripts
+- **AC7** (Pillar 4): When `state.md` `Current Phase` changes across two commits for a human-verdict boundary (e.g., `review-signoff → retro`), the validator cross-checks `boundary_enforcement.verdict_history` and emits WARN if no matching `from_boundary → to_boundary` entry with non-empty `authorizing_human` exists. Pre-2026-05-26 iterations grandfathered via timestamp scope
+- **AC8** (Pillar 4): `sync-boundary-state.ps1` refuses (hard-block, not WARN) to advance state for a human-verdict boundary unless the corresponding verdict-history append happens in the same transaction
 
 ## Out of scope
 
@@ -107,8 +122,9 @@ Total ~3-5 SP single iteration:
 - 2026-05-25 Antigravity F-046 specify-phase — handoff-block substituted by host-native question-prompt UI
 - 2026-05-26 F-046 v0.27.2 — 4-gate autopilot bypass with zero handoff blocks emitted between boundary commits `0857e319 → f6155e54`
 - 2026-05-26 PlanningPoC review-rerun post-compaction discipline drop (Sub-trigger 3c) — within a SINGLE Squad+Copilot dogfooding session, the stop immediately BEFORE compaction emitted the proper three-section handoff; the stop immediately AFTER compaction (review-rerun acceptance commit `f06491e5`) dropped to plain prose ("Review rerun passed. The packet is now accepted...") with no structured block. The same agent instance exhibited inconsistent discipline within a single session boundary. Second incident within the same dogfooding session (after the earlier Scribe-bookkeeping silence) — confirms compaction-related variant as a recurring sub-axis.
+- **2026-05-26 PlanningPoC iter-002 silent boundary-state auto-advance (Pillar 4 motivator)** — after B1+B2 fix-and-re-review, Squad silently mutated `iterations/002/state.md` `Current Phase` from `review-signoff` to `retro` WITHOUT a human `approved for review-signoff` verdict. Files mutated: `.squad/identity/now.md`, `iterations/002/plan.md`, `iterations/002/review.md`, `iterations/002/state.md`. **Picard's independent audit caught the breach** and rolled state.md back (commit `a5866c1 fix(governance): repair iteration-002 boundary — retro → review-signoff`). Without Picard, the human would have been presented with a fait-accompli retro phase. This is a state-layer counterpart to Pillar 1's communication-layer detection — different mutation surface, structurally equivalent class.
 
-Pattern recurs across multiple hosts, multiple sessions, multiple shapes, and **multiple compaction boundaries within a single session**. Universal across multi-host expansion AND across long-session execution.
+Pattern recurs across multiple hosts, multiple sessions, multiple shapes (communication-layer + state-layer), multiple compaction boundaries within a single session, AND across reviewer-protocol gaps that only multi-perspective independent audit (Picard) catches. Universal across multi-host expansion AND across long-session execution AND across single-perspective hosts that would lose Picard's safety net.
 
 ## Cross-references
 
@@ -124,3 +140,4 @@ Pattern recurs across multiple hosts, multiple sessions, multiple shapes, and **
 
 - 2026-05-25: empirical observation captured in memory after F-044 backfill + Antigravity F-046 wrong-location + Squad+Copilot handoff-drop incidents. User direction: "Memorized it, and later we will create a bug proposal to fix it."
 - 2026-05-26: candidate proposal drafted as part of memory→proposal sweep. Scope is ~3-5 SP small-fix slice covering 3 detection rules (handoff-block presence, trigger-bypass diagnosis, wrong-location warning) + shared helper function. Composes tightly with 030 / 067 / 075 / 078 / 105.
+- 2026-05-26 (later): **expanded with Pillar 4 (state-advance-without-verdict cross-check)** after PlanningPoC iter-002 silent auto-advance breach surfaced as a state-layer counterpart to Pillar 1's communication-layer detection. Picard's independent audit caught it (commit `a5866c1`); Pillar 4 makes the Picard role mechanical and host-portable. SP estimate raised 3-5 → 4-7. Memory `[[picard-boundary-state-auto-advance-catch-2026-05-26]]` absorbed.
