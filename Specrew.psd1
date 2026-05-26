@@ -208,7 +208,8 @@
         'docs/roadmap-maintenance.md',
         'docs/user-guide.md',
         'docs/versioning.md',
-        'docs/operations/psgallery-release-credentials.md'
+        'docs/operations/psgallery-release-credentials.md',
+        'docs/release-discipline.md'
     )
     PrivateData = @{
         PSData = @{

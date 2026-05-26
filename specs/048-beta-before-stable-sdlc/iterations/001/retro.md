@@ -100,6 +100,7 @@ review/retro window.
    hardening | **Type**: validation | **Expected effect**: Convert the T006
    manual SHA256 parity check into validator-backed mirror parity for mirrored
    extension files.
+5. **Owner**: Reviewer / Implementer | **Phase**: F-048 iteration 001 retro closeout | **Type**: FileList packaging integrity | **Expected effect**: Any new file added under a FileList-shipped directory MUST be added to FileList in the same commit + verified via Save-Module spot-check before tagging. Prevents shipping incomplete/broken module packages due to FileList omissions (e.g., hooks/ omissions in v0.27.4, release-discipline.md in v0.27.6-beta.1).
 
 ## Calibration Suggestion
 
