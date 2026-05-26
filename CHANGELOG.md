@@ -4,6 +4,12 @@ Retroactive alpha release history for shipped Specrew features. `.specrew\config
 is the canonical source for the active version; this file records the feature
 baseline that each release number represents.
 
+## [0.27.6] - 2026-05-26
+
+### Added
+
+- **Feature 048 (Beta-Before-Stable SDLC Discipline)**: Codifies the beta-before-stable release discipline, including coordinator feature-closeout prompts splitting agent execution vs human approvals/PASS-FAIL, and release-discipline documentation in `docs/release-discipline.md` with integration tests.
+
 ## [0.27.5] - 2026-05-26
 
 ### Fixed
