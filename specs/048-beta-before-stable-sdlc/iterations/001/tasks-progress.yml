@@ -1,7 +1,7 @@
 schema: "v1"
 feature: "048-beta-before-stable-sdlc"
 iteration: "001"
-updated_at: "2026-05-26T18:01:44Z"
+updated_at: "2026-05-26T18:08:25Z"
 tasks:
   T001:
     title: "Handoff ownership fixtures"
@@ -29,9 +29,9 @@ tasks:
     blocked_reason: ""
   T005:
     title: "Proposal/index metadata"
-    status: "planned"
+    status: "done"
     started_at: ""
-    completed_at: ""
+    completed_at: "2026-05-26T18:08:25Z"
     blocked_reason: ""
   T006:
     title: "Mirror parity verification"

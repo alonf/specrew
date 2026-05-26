@@ -5,7 +5,7 @@ status: draft
 phase: phase-2
 estimated-sp: 5-7
 priority-tier: 1
-discussion: **HIGH PRIORITY** — user direction 2026-05-26 flipped this from stage-dependent + per-feature opt-in to universal mandate. Every feature ships -beta.N to PSGallery first; maintainer manually validates installed prerelease; only after PASS verdict does the Crew promote to stable. Infrastructure already landed in F-023 (`f119e4a` workflow primitives). Remaining scope: policy + coordinator-prompt template steps + docs + `specrew update --self --allow-prerelease` flag. Composes with [[feedback-beta-publish-before-stable-2026-05-26]] standing rule and Proposal 131 (coordinator-prompt SDLC ownership clarification).
+discussion: **HIGH PRIORITY** — user direction 2026-05-26 flipped this from stage-dependent + per-feature opt-in to universal mandate. Every feature ships -beta.N to PSGallery first; maintainer manually validates installed prerelease; only after PASS verdict does the Crew promote to stable. Infrastructure already landed in F-023 (`f119e4a` workflow primitives). F-048 iteration 001 implemented the policy/docs/coordinator-handoff/test slice on the active feature branch: Steps 5-14, the explicit Step 11 PASS gate, `docs/release-discipline.md`, and focused regression coverage. Remaining proposal scope: `specrew update --self --allow-prerelease`, prerelease banner/version-surface polish, and an optional validator rule. F-048 iteration 002's release-audit mechanism is separate F-048 scope and is not shipped by iteration 001. Composes with [[feedback-beta-publish-before-stable-2026-05-26]] standing rule and Proposal 131 (coordinator-prompt SDLC ownership clarification).
 ---
 
 # PSGallery Prerelease Channel + Universal Beta-Before-Stable Mandate
@@ -18,7 +18,7 @@ This proposal originally articulated the prerelease discipline as **stage-depend
 
 **On 2026-05-26 the policy flipped to universal mandate.** Trigger: v0.27.3 (F-047) shipped directly to PSGallery stable on 2026-05-26 without going through the beta channel. No bugs surfaced — but the F-046 v0.27.0 stale-installed-module trap (verdicts silently dropped because installed `0.27.0` lacked F-046's atomic verdict writer; worked around with `$env:SPECREW_MODULE_PATH` override) made it concrete that **the installed PSGallery package is the only surface that exercises the full real-world install path**, and skipping beta means skipping that validation layer. The maintainer adopted: **every feature ships -beta.N first, manual test, then promote.** No exceptions for risk profile or audience size.
 
-The standing rule is captured in [[feedback-beta-publish-before-stable-2026-05-26]] which extends the [[feedback-pr-at-feature-close-sdlc]] feature-closeout Steps 5-9 to Steps 5-13.
+The standing rule is captured in [[feedback-beta-publish-before-stable-2026-05-26]] which extends the [[feedback-pr-at-feature-close-sdlc]] feature-closeout Steps 5-9 to Steps 5-14.
 
 This Why section retains the original beta-tester argument and workflow-validation argument below as supporting context, but the per-feature opt-in language is superseded by the universal mandate.
 
@@ -106,7 +106,7 @@ Add `--allow-prerelease` flag to `specrew update`'s self-update path so the main
 
 ### C. Staging discipline policy (universal mandate, effective 2026-05-26)
 
-Every feature publishes beta to PSGallery first, manual test, then promote. Codified in `docs/release-discipline.md`:
+Every feature publishes beta to PSGallery first, manual test, then promote. Codified in `docs/release-discipline.md` by F-048 iteration 001:
 
 1. Feature-closeout PR merges to `main` (Step 8 of the PR-at-feature-close SDLC per [[feedback-pr-at-feature-close-sdlc]])
 2. **Step 9 (NEW)**: Agent tags merge commit `v<next-version>-beta.1` and pushes the tag
@@ -128,12 +128,12 @@ Once Proposal 058 (Plugin-Based Multi-Host Distribution) ships, each host plugin
 
 ## Effort
 
-Infrastructure already landed in F-023 (commit `f119e4a`) — `publish-module.yml` handles `v*-(alpha|beta|rc).N` tag patterns, `invoke-module-release.ps1` injects `PSData.Prerelease`, `Specrew.psd1` has the placeholder. Remaining scope is policy + template + docs + maintainer-facing CLI flag.
+Infrastructure already landed in F-023 (commit `f119e4a`) — `publish-module.yml` handles `v*-(alpha|beta|rc).N` tag patterns, `invoke-module-release.ps1` injects `PSData.Prerelease`, `Specrew.psd1` has the placeholder. F-048 iteration 001 has implemented policy + template + docs + fixture coverage. Remaining proposal scope is the maintainer-facing CLI flag, prerelease banner/version-surface polish, and the optional validator rule; F-048 iteration 002 release-audit automation is related but separately scoped by F-048.
 
-- **Iteration 1 (~3-4 SP, small-fix-slice-sized)**:
-  - Coordinator-prompt template extension: feature-closeout HANDOFF includes Steps 9-13 (composes with Proposal 131 — same template surface; bundle candidate)
-  - `docs/release-discipline.md` (new) — codifies the universal mandate + Steps 5-13
-  - Integration test extending `tests/integration/handoff-format.tests.ps1` for the new SDLC steps
+- **Iteration 1 (implemented by F-048 iteration 001, ~3-4 SP, small-fix-slice-sized)**:
+  - Coordinator-prompt template extension: feature-closeout HANDOFF includes Steps 5-14 with `AGENT NEXT ACTION:` and `HUMAN ACTION NEEDED:` ownership rows (composes with Proposal 131 — same template surface)
+  - `docs/release-discipline.md` (new) — codifies the universal mandate + Steps 5-14
+  - Focused integration test in `tests/integration/beta-before-stable-sdlc.tests.ps1` for the coordinator handoff and release-discipline docs
 
 - **Iteration 2 (~2-3 SP)**:
   - `--allow-prerelease` flag on `specrew update --self` (maintainer convenience)
@@ -184,4 +184,5 @@ Infrastructure already landed in F-023 (commit `f119e4a`) — `publish-module.ym
 - 2026-05-19: candidate captured after the 5-bug WSL trial cluster. Pattern: bugs reached `main` and would have reached PSGallery stable without a pre-release surface to shake them out. PSGallery's native prerelease support is a zero-infrastructure staging channel; this proposal codifies its use.
 - 2026-05-19 (later): reframed from "mandatory pre-release every feature" to "stage-dependent + per-feature opt-in." Maintainer flagged that for the current solo-maintainer stage (zero external users), git-clone testing covers validation; the prerelease channel's *primary* value is beta-tester distribution (low-friction install for external adopters), with workflow dress-rehearsal as a secondary use. The proposal now treats the discipline as adaptive to project stage rather than universal mandate.
 - 2026-05-19 (workflow primitives landed): F-023's bundled chore landed `publish-module.yml` mode handling + `invoke-module-release.ps1` prerelease/promote logic + `Specrew.psd1` PSData.Prerelease placeholder, in commit `f119e4a`. With those primitives in place, the remaining scope of this proposal shrinks to polish: `--allow-prerelease` flag on `specrew update --self`, prerelease banner at session start (composes with F-020 warning path), `docs/release-discipline.md` (capturing the stage-dependent guidance above), and the stage-transition trigger documented. Revised effort estimate: ~5-7 SP (down from original ~10 SP).
-- **2026-05-26 (policy flip — universal mandate)**: status bumped candidate → **draft**, priority-tier 1 (HIGH PRIORITY). User direction after observing v0.27.3 ship directly to stable without exercising the PSGallery install path: "Every feature publishes -beta.N first; manual test on PSGallery package; only then release." Trigger reframed from "≥1 external adopter" to "PSGallery is the only surface that exercises the full install path — exercise it every release, no exceptions." Standing rule captured in [[feedback-beta-publish-before-stable-2026-05-26]]; extends [[feedback-pr-at-feature-close-sdlc]] Steps 5-9 to Steps 5-13. Bundle candidate with Proposal 131 (same coordinator-prompt template surface). Sequencing: ship immediately so the next runtime-touching feature (e.g., F-048 bug-bash) is the first to exercise the new SDLC.
+- **2026-05-26 (policy flip — universal mandate)**: status bumped candidate → **draft**, priority-tier 1 (HIGH PRIORITY). User direction after observing v0.27.3 ship directly to stable without exercising the PSGallery install path: "Every feature publishes -beta.N first; manual test on PSGallery package; only then release." Trigger reframed from "≥1 external adopter" to "PSGallery is the only surface that exercises the full install path — exercise it every release, no exceptions." Standing rule captured in [[feedback-beta-publish-before-stable-2026-05-26]]; extends [[feedback-pr-at-feature-close-sdlc]] Steps 5-9 to Steps 5-14. Bundle candidate with Proposal 131 (same coordinator-prompt template surface). Sequencing: ship immediately so the next runtime-touching feature (e.g., F-048 bug-bash) is the first to exercise the new SDLC.
+- 2026-05-26 (F-048 iteration 001): active feature-branch implementation landed the policy/docs/template slice: coordinator surfaces enumerate Steps 5-14 with split `AGENT NEXT ACTION:` / `HUMAN ACTION NEEDED:` ownership rows, `docs/release-discipline.md` codifies the beta-before-stable rule, and `tests/integration/beta-before-stable-sdlc.tests.ps1` protects the handoff/docs shape. Remaining scope not shipped by this slice: `specrew update --self --allow-prerelease`, prerelease banner/version-surface polish, optional validator rule, and F-048 iteration 002 release-audit automation.

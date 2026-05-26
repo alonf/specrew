@@ -1,13 +1,13 @@
 # Iteration State: 001
 
 **Schema**: v1  
-**Current Phase**: before-implement  
-**Iteration Status**: planning  
-**Last Completed Task**: T004  
-**Tasks Remaining**: T005, T006, T007  
+**Current Phase**: implement
+**Iteration Status**: active
+**Last Completed Task**: T005
+**Tasks Remaining**: T006, T007
 **In Progress**: (none)  
 **Baseline Ref**: 6cd6c58426a9793326c562fbc036e9ebc98c6496  
-**Updated**: 2026-05-26T18:01:44Z
+**Updated**: 2026-05-26T18:08:25Z
 
 ## Execution Summary
 
@@ -24,14 +24,17 @@
   gating, proposal-only exemptions, locked-main trailing one-file PR audit
   mode, direct-main opt-in, stop-before-new-feature behavior, beta fail-loop,
   and PSGallery prerelease install/verification commands.
-- The focused fixture now fails as expected because
-  `docs/release-discipline.md` has not been written yet; T004 is the green
-  implementation task.
+- T003 initially failed as expected because `docs/release-discipline.md` had
+  not been written yet; T004 is the green implementation task.
 - T004 created `docs/release-discipline.md`, codifying the
   `[[feedback-beta-publish-before-stable-2026-05-26]]` rule, Steps 5-14,
   explicit PASS gating, proposal-only exemptions, beta.N fail-loop, stable
   promotion, audit capture modes, and no-new-feature-work stop.
 - The combined beta-before-stable fixture now passes.
+- T005 updated Proposal 060, Proposal 131, and the proposal index to record
+  F-048 iteration 001 policy/docs/coordinator-handoff/test scope while keeping
+  release-audit automation, prerelease banner polish, and
+  `specrew update --self --allow-prerelease` outside the iteration 001 claim.
 
 ## Notes
 
