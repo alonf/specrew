@@ -4,7 +4,7 @@ schema: "v1"
 extension:
   id: specrew-speckit
   name: "Specrew Spec Kit Extension"
-  version: "0.27.3"
+  version: "0.27.4"
   description: "Spec Kit extension providing governance artifacts, templates, and validation for Specrew"
 
 requires:

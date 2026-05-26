@@ -212,7 +212,7 @@
     )
     PrivateData = @{
         PSData = @{
-            Prerelease = 'beta.1'
+            Prerelease = 'beta.2'
             Tags = @('specrew', 'specification', 'squad', 'ai-workflow', 'governance')
             ProjectUri = 'https://github.com/alonf/specrew'
             LicenseUri = 'https://github.com/alonf/specrew/blob/main/LICENSE'
