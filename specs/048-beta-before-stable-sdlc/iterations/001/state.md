@@ -3,11 +3,11 @@
 **Schema**: v1  
 **Current Phase**: before-implement  
 **Iteration Status**: planning  
-**Last Completed Task**: T002  
-**Tasks Remaining**: T003, T004, T005, T006, T007  
+**Last Completed Task**: T003  
+**Tasks Remaining**: T004, T005, T006, T007  
 **In Progress**: (none)  
 **Baseline Ref**: 6cd6c58426a9793326c562fbc036e9ebc98c6496  
-**Updated**: 2026-05-26T17:54:16Z
+**Updated**: 2026-05-26T17:59:20Z
 
 ## Execution Summary
 
@@ -19,6 +19,14 @@
   5-14 sequence.
 - Focused fixture now passes and mirror parity is byte-identical for the
   coordinator governance template.
+- T003 extended `tests/integration/beta-before-stable-sdlc.tests.ps1` with
+  release discipline documentation coverage for Steps 5-14, explicit PASS
+  gating, proposal-only exemptions, locked-main trailing one-file PR audit
+  mode, direct-main opt-in, stop-before-new-feature behavior, beta fail-loop,
+  and PSGallery prerelease install/verification commands.
+- The focused fixture now fails as expected because
+  `docs/release-discipline.md` has not been written yet; T004 is the green
+  implementation task.
 
 ## Notes
 

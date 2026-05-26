@@ -79,6 +79,61 @@ function Assert-FeatureCloseoutSdlcSurface {
     Write-Pass "$Label contains split agent/human ownership and Steps 5-14."
 }
 
+function Assert-ReleaseDisciplineDocumentation {
+    param([Parameter(Mandatory = $true)][string]$Path)
+
+    if (-not (Test-Path -LiteralPath $Path -PathType Leaf)) {
+        Write-Fail "Missing release discipline documentation: $Path"
+    }
+
+    $content = Get-Content -LiteralPath $Path -Raw -Encoding UTF8
+
+    foreach ($step in 5..14) {
+        Assert-Match -Text $content -Pattern ("(?is)Step\s+{0}\b" -f $step) -Message "release-discipline.md is missing Step $step."
+    }
+
+    $coverageChecks = @(
+        @{
+            Pattern = '(?is)(explicit\s+PASS|PASS\s+verdict).{0,240}(stable|publication|promotion)'
+            Message = 'release-discipline.md must state that stable publication is blocked until an explicit PASS verdict.'
+        },
+        @{
+            Pattern = '(?is)(proposal-only|proposal\s+only).{0,240}(exempt|no\s+beta|no\s+publish|does\s+not\s+publish)'
+            Message = 'release-discipline.md must document proposal-only exemptions.'
+        },
+        @{
+            Pattern = '(?is)(locked-main|protected\s+main).{0,320}(trailing|one-file).{0,240}PR'
+            Message = 'release-discipline.md must document the locked-main trailing one-file PR audit path.'
+        },
+        @{
+            Pattern = '(?is)release_audit_direct_to_main:\s*true'
+            Message = 'release-discipline.md must document the direct-main opt-in flag.'
+        },
+        @{
+            Pattern = '(?is)(Step\s+14|stop).{0,240}(before|without).{0,120}new\s+feature'
+            Message = 'release-discipline.md must document stopping before new feature work.'
+        },
+        @{
+            Pattern = '(?is)(FAIL|failed).{0,260}(beta\.2|beta\.N|repeat|loop)'
+            Message = 'release-discipline.md must document the beta fail-loop.'
+        },
+        @{
+            Pattern = '(?is)Install-Module\s+Specrew.{0,160}AllowPrerelease'
+            Message = 'release-discipline.md must include the prerelease install command.'
+        },
+        @{
+            Pattern = '(?is)Find-Module\s+Specrew.{0,160}AllowPrerelease'
+            Message = 'release-discipline.md must include prerelease package verification.'
+        }
+    )
+
+    foreach ($check in $coverageChecks) {
+        Assert-Match -Text $content -Pattern $check.Pattern -Message $check.Message
+    }
+
+    Write-Pass 'release-discipline.md covers Steps 5-14, PASS gating, exemptions, audit modes, and beta fail-loop.'
+}
+
 $repoRoot = (Resolve-Path (Join-Path -Path $PSScriptRoot -ChildPath '..\..')).Path
 
 $surfaces = @(
@@ -104,5 +159,7 @@ foreach ($surface in $surfaces) {
     Assert-FeatureCloseoutSdlcSurface -Label $surface.Label -Path $surface.Path
 }
 
+Assert-ReleaseDisciplineDocumentation -Path (Join-Path $repoRoot 'docs\release-discipline.md')
+
 Write-Host ''
-Write-Host 'All beta-before-stable SDLC handoff ownership tests passed.' -ForegroundColor Green
+Write-Host 'All beta-before-stable SDLC tests passed.' -ForegroundColor Green

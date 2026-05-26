@@ -1,7 +1,7 @@
 schema: "v1"
 feature: "048-beta-before-stable-sdlc"
 iteration: "001"
-updated_at: "2026-05-26T17:54:16Z"
+updated_at: "2026-05-26T17:59:20Z"
 tasks:
   T001:
     title: "Handoff ownership fixtures"
@@ -17,9 +17,9 @@ tasks:
     blocked_reason: ""
   T003:
     title: "Release discipline docs fixtures"
-    status: "planned"
+    status: "done"
     started_at: ""
-    completed_at: ""
+    completed_at: "2026-05-26T17:59:20Z"
     blocked_reason: ""
   T004:
     title: "Release discipline documentation"
