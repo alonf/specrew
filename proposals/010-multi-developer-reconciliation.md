@@ -1,10 +1,10 @@
 ---
 proposal: 010
-title: Multi-Developer Reconciliation
+title: Multi-Developer Reconciliation (Spec-Content Conflict Class)
 status: draft
 phase: phase-5
 estimated-sp: 75
-discussion: tbd
+discussion: covers the spec-content collision class (FR-provenance, conflict classifier, Spec Steward mediator, reconciliation iteration). **Sibling proposal 134** (Tooling Version Reconciliation in Multi-Dev Specrew Projects) covers the orthogonal tooling-version collision class (Specrew/Spec-Kit/Squad/host-CLI version skew, atomic boundary-sync writes, file classification, F-NNN reservation races, version-bump-at-feature-close races). Together they complete the multi-dev story. Pillar 6 of 134 specifies the composition surface (Spec Steward gets extended responsibility to classify tooling-version drift alongside spec-content drift in the conflict report).
 ---
 
 # Multi-Developer Reconciliation
@@ -69,6 +69,7 @@ Phase 5 — after MVP (Phase 4 exit). Multi-developer support is a major scope e
 
 ## Cross-references
 
+- **Sibling: Proposal 134 (Tooling Version Reconciliation in Multi-Dev Specrew Projects)** — orthogonal collision class. 010 = spec-content; 134 = tooling-version skew. Together complete the multi-dev story. Pillar 6 of 134 specifies the composition surface
 - Composes with: Proposal 015 (Expertise-Aware Adaptive Interaction) — Capability 3 multi-developer decision routing depends on this
 - Foundation for: any future scenario where multiple developers contribute concurrently
 
@@ -76,3 +77,4 @@ Phase 5 — after MVP (Phase 4 exit). Multi-developer support is a major scope e
 
 - 2026-05-11: candidate captured during scaling discussion
 - 2026-05-12: status → draft; source spec written
+- 2026-05-27: annotated with Proposal 134 sibling cross-reference after user direction surfaced tooling-version collision class as orthogonal multi-dev concern. Title clarified to "Multi-Developer Reconciliation (Spec-Content Conflict Class)" to disambiguate from the tooling-version class. No scope change to this proposal itself
