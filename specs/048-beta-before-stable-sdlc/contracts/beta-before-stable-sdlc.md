@@ -62,17 +62,17 @@ schema: specrew.release-audit.v1
 feature_ref: 048-beta-before-stable-sdlc
 pr_number: 999
 merge_sha: 0123456789abcdef
-version: 0.27.5
+version: 0.27.6
 audit_mode: direct-main
 status: complete
 beta_attempts:
-  - tag: v0.27.5-beta.1
+  - tag: v0.27.6-beta.1
     published: true
-    verification: Find-Module Specrew -AllowPrerelease -RequiredVersion 0.27.5-beta.1
+    verification: Find-Module Specrew -AllowPrerelease -RequiredVersion 0.27.6-beta.1
     human_verdict: PASS
     evidence: Clean shell install plus feature smoke passed.
-stable_tag: v0.27.5
-stable_verification: Find-Module Specrew -RequiredVersion 0.27.5
+stable_tag: v0.27.6
+stable_verification: Find-Module Specrew -RequiredVersion 0.27.6
 captured_at: 2026-05-26T00:00:00Z
 ---
 ```

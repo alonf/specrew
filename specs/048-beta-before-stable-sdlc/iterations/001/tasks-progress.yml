@@ -1,13 +1,13 @@
 schema: "v1"
 feature: "048-beta-before-stable-sdlc"
 iteration: "001"
-updated_at: "2026-05-26T16:15:00Z"
+updated_at: "2026-05-26T17:48:13Z"
 tasks:
   T001:
     title: "Handoff ownership fixtures"
-    status: "planned"
+    status: "done"
     started_at: ""
-    completed_at: ""
+    completed_at: "2026-05-26T17:48:13Z"
     blocked_reason: ""
   T002:
     title: "Coordinator handoff template wording"

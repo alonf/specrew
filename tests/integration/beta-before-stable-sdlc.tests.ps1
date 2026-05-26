@@ -1,0 +1,108 @@
+[CmdletBinding()]
+param()
+
+Set-StrictMode -Version Latest
+$ErrorActionPreference = 'Stop'
+
+function Write-Pass {
+    param([string]$Message)
+    Write-Host "PASS: $Message" -ForegroundColor Green
+}
+
+function Write-Fail {
+    param([string]$Message)
+    Write-Host "FAIL: $Message" -ForegroundColor Red
+    throw $Message
+}
+
+function Assert-Match {
+    param(
+        [Parameter(Mandatory = $true)][string]$Text,
+        [Parameter(Mandatory = $true)][string]$Pattern,
+        [Parameter(Mandatory = $true)][string]$Message
+    )
+
+    if ($Text -notmatch $Pattern) {
+        Write-Fail $Message
+    }
+}
+
+function Assert-NotMatch {
+    param(
+        [Parameter(Mandatory = $true)][string]$Text,
+        [Parameter(Mandatory = $true)][string]$Pattern,
+        [Parameter(Mandatory = $true)][string]$Message
+    )
+
+    if ($Text -match $Pattern) {
+        Write-Fail $Message
+    }
+}
+
+function Assert-FeatureCloseoutSdlcSurface {
+    param(
+        [Parameter(Mandatory = $true)][string]$Label,
+        [Parameter(Mandatory = $true)][string]$Path
+    )
+
+    if (-not (Test-Path -LiteralPath $Path -PathType Leaf)) {
+        Write-Fail "Missing SDLC surface: $Path"
+    }
+
+    $content = Get-Content -LiteralPath $Path -Raw -Encoding UTF8
+
+    Assert-Match -Text $content -Pattern '(?is)AGENT NEXT ACTION:' -Message "$Label is missing AGENT NEXT ACTION ownership row."
+    Assert-Match -Text $content -Pattern '(?is)HUMAN ACTION NEEDED:' -Message "$Label is missing HUMAN ACTION NEEDED ownership row."
+
+    $stepChecks = @(
+        @{ Step = 5;  Pattern = '(?is)Step\s+5\b.{0,240}push' },
+        @{ Step = 6;  Pattern = '(?is)Step\s+6\b.{0,240}(gh\s+pr\s+create|open\s+a\s+PR|create\s+PR)' },
+        @{ Step = 7;  Pattern = '(?is)Step\s+7\b.{0,280}(self-review|automated\s+PR\s+review|review)' },
+        @{ Step = 8;  Pattern = '(?is)Step\s+8\b.{0,240}merge' },
+        @{ Step = 9;  Pattern = '(?is)Step\s+9\b.{0,280}(beta\.1|-beta\.N|beta\s+tag|prerelease\s+tag)' },
+        @{ Step = 10; Pattern = '(?is)Step\s+10\b.{0,320}(Find-Module|AllowPrerelease|verify.{0,80}prerelease|prerelease.{0,80}published)' },
+        @{ Step = 11; Pattern = '(?is)Step\s+11\b.{0,360}(PASS|FAIL).{0,240}(Install-Module|AllowPrerelease|manual\s+test|clean\s+shell)' },
+        @{ Step = 12; Pattern = '(?is)Step\s+12\b.{0,360}(FAIL|failed).{0,240}(beta\.2|beta\.N|repeat|loop)' },
+        @{ Step = 13; Pattern = '(?is)Step\s+13\b.{0,360}(PASS|stable).{0,240}(stable|v<next-version>|publish)' },
+        @{ Step = 14; Pattern = '(?is)Step\s+14\b.{0,240}(stop|new\s+feature)' }
+    )
+
+    foreach ($check in $stepChecks) {
+        Assert-Match -Text $content -Pattern $check.Pattern -Message ("{0} is missing feature-closeout SDLC Step {1}." -f $Label, $check.Step)
+    }
+
+    $humanSectionPattern = '(?is)HUMAN ACTION NEEDED:.{0,900}'
+    Assert-Match -Text $content -Pattern '(?is)HUMAN ACTION NEEDED:.{0,900}(approve|approval)' -Message "$Label human row must ask for approval, not execution."
+    Assert-Match -Text $content -Pattern '(?is)HUMAN ACTION NEEDED:.{0,900}(PASS|FAIL)' -Message "$Label human row must ask for the Step 11 PASS/FAIL verdict."
+    Assert-NotMatch -Text $content -Pattern '(?is)HUMAN ACTION NEEDED:.{0,900}push\s+the\s+branch,\s*open\s+a\s+PR,\s*address\s+automated\s+PR\s+review,\s*then\s+merge' -Message "$Label still assigns agent-owned push/PR/merge work to the human row."
+
+    Write-Pass "$Label contains split agent/human ownership and Steps 5-14."
+}
+
+$repoRoot = (Resolve-Path (Join-Path -Path $PSScriptRoot -ChildPath '..\..')).Path
+
+$surfaces = @(
+    @{
+        Label = 'specrew-start coordinator prompt handoff block'
+        Path  = Join-Path $repoRoot 'scripts\specrew-start.ps1'
+    },
+    @{
+        Label = 'coordinator response guidance'
+        Path  = Join-Path $repoRoot 'extensions\specrew-speckit\prompts\coordinator-response.md'
+    },
+    @{
+        Label = 'source coordinator governance template'
+        Path  = Join-Path $repoRoot 'extensions\specrew-speckit\squad-templates\coordinator\specrew-governance.md'
+    },
+    @{
+        Label = 'deployed coordinator governance mirror'
+        Path  = Join-Path $repoRoot '.specify\extensions\specrew-speckit\squad-templates\coordinator\specrew-governance.md'
+    }
+)
+
+foreach ($surface in $surfaces) {
+    Assert-FeatureCloseoutSdlcSurface -Label $surface.Label -Path $surface.Path
+}
+
+Write-Host ''
+Write-Host 'All beta-before-stable SDLC handoff ownership tests passed.' -ForegroundColor Green

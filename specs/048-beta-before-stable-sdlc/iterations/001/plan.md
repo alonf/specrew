@@ -34,7 +34,7 @@ schema, and direct-main config behavior. Those are iteration 002.
 
 | Task | Title | Requirement | Story | Effort | Owner | Owner File Globs | Status | Agent | Actual | Verdict |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| T001 | Handoff ownership fixtures | FR-001,FR-002,FR-003,FR-004,FR-013 | US1 | 1 | Reviewer | tests/integration/*handoff*; tests/integration/*beta-before-stable* | planned | codex | 0 | pending |
+| T001 | Handoff ownership fixtures | FR-001,FR-002,FR-003,FR-004,FR-013 | US1 | 1 | Reviewer | tests/integration/*handoff*; tests/integration/*beta-before-stable* | done | codex | 1 | expected-fail |
 | T002 | Coordinator handoff template wording | FR-001,FR-002,FR-003,FR-004,FR-014 | US1 | 2 | Spec Steward | scripts/specrew-start.ps1; extensions/specrew-speckit/prompts/*; extensions/specrew-speckit/squad-templates/coordinator/*; .specify/extensions/specrew-speckit/**/* | planned | codex | 0 | pending |
 | T003 | Release discipline docs fixtures | FR-005,FR-006,FR-013 | US2 | 1 | Reviewer | tests/integration/*release*; tests/integration/*beta-before-stable* | planned | codex | 0 | pending |
 | T004 | Release discipline documentation | FR-005,FR-006,FR-016 | US2 | 2 | Spec Steward | docs/release-discipline.md | planned | codex | 0 | pending |
