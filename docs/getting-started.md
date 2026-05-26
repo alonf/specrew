@@ -177,11 +177,121 @@ The PowerShell Gallery path above is the recommended install. The variants below
 
 ### Prerelease channel — early adopters
 
-For validating the next version before it goes stable:
+Every Specrew release ships first as a `-beta.N` prerelease to PSGallery, then promotes to stable only after manual install validation passes. If you want to help validate the next version (or just track the bleeding edge), install the prerelease.
+
+#### Side-by-side gotcha
+
+PowerShellGet installs prerelease versions **side-by-side** with whatever stable version is already on disk. It does NOT replace or remove the stable. After:
 
 ```powershell
 Install-Module Specrew -AllowPrerelease -Scope CurrentUser -SkipPublisherCheck
 ```
+
+you have BOTH versions installed:
+
+```powershell
+Get-Module Specrew -ListAvailable | Select-Object Name, Version, PrivateData
+# Name     Version       PrivateData
+# ----     -------       -----------
+# Specrew  0.27.4        @{PSData=@{...}}                                ← stable
+# Specrew  0.27.4.0      @{PSData=@{Prerelease='beta1'; ...}}            ← prerelease
+```
+
+**Plain `Import-Module Specrew` (or autoload) picks the highest stable**, NOT the highest version overall. So if both are installed, `specrew --version` reports the stable version even when you intended to test the beta. This is by design in PowerShell module resolution.
+
+Three patterns cover the cases you actually need:
+
+#### Pattern A: Test the beta cleanly (no stable on disk)
+
+Uninstall any installed version first, then install only the prerelease. This guarantees `Import-Module Specrew` loads the beta:
+
+```powershell
+# 1. Remove everything (both stable + any prior prereleases)
+Get-Module Specrew | Remove-Module
+Uninstall-Module Specrew -AllVersions -Force
+
+# 2. Install the latest prerelease (only)
+Install-Module Specrew -AllowPrerelease -Scope CurrentUser -SkipPublisherCheck -Force
+
+# 3. Verify
+Import-Module Specrew -Force
+specrew --version             # Should report the -beta.N version
+Get-Module Specrew -ListAvailable | Select-Object Name, Version, @{N='Prerelease';E={$_.PrivateData.PSData.Prerelease}}
+```
+
+To pin a specific beta (not just "latest prerelease"):
+
+```powershell
+Install-Module Specrew -RequiredVersion '0.27.4-beta1' -AllowPrerelease -Scope CurrentUser -SkipPublisherCheck -Force
+```
+
+Note the prerelease syntax: PSGallery normalizes `-beta.1` (with dot) at tag-time to `-beta1` (no dot) in module metadata. Use `Find-Module Specrew -AllowPrerelease -AllVersions` to see exact installable strings.
+
+#### Pattern B: Beta alongside stable (compare or fall back)
+
+If you want to keep stable installed AND test the beta in parallel — e.g. to compare behavior or roll back fast:
+
+```powershell
+# Add the beta side-by-side (stable stays)
+Install-Module Specrew -AllowPrerelease -Scope CurrentUser -SkipPublisherCheck -Force
+
+# Auto-load picks stable by default — force the beta explicitly:
+Remove-Module Specrew -ErrorAction SilentlyContinue
+Import-Module Specrew -RequiredVersion '0.27.4-beta1' -Force
+
+specrew --version             # Now reports -beta.N
+```
+
+To switch back to stable mid-session:
+
+```powershell
+Remove-Module Specrew
+Import-Module Specrew -Force   # Auto-loads highest stable
+```
+
+This pattern is useful for short test runs. For day-to-day work, Pattern A (single-version) is cleaner because every `pwsh` session and every script does the right thing without `-RequiredVersion` ceremony.
+
+#### Pattern C: Move from beta back to stable
+
+After the beta promotes to a stable release (or you decide to drop back), uninstall every prerelease and install only the stable:
+
+```powershell
+# 1. Drop loaded module
+Get-Module Specrew | Remove-Module
+
+# 2. Remove ALL installed versions (stable + prereleases)
+Uninstall-Module Specrew -AllVersions -Force
+
+# 3. Install only the new stable
+Install-Module Specrew -Scope CurrentUser -SkipPublisherCheck -Force
+
+# 4. Verify
+Import-Module Specrew -Force
+specrew --version             # Should report the new stable (no -beta suffix)
+Get-Module Specrew -ListAvailable
+```
+
+The `-AllVersions` flag on `Uninstall-Module` is what does the work — without it, only the highest stable is removed and prereleases linger. Linger-prereleases are harmless on disk but confuse later updates.
+
+#### Single-version invariant (recommended for most users)
+
+The cleanest day-to-day setup is **exactly one installed version of Specrew at a time** — either stable OR prerelease, never both. Whenever you change channels:
+
+```powershell
+Uninstall-Module Specrew -AllVersions -Force
+Install-Module Specrew [-AllowPrerelease] -Scope CurrentUser -SkipPublisherCheck -Force
+```
+
+Two flags govern the channel:
+
+| Goal | Command |
+|---|---|
+| Latest stable | `Install-Module Specrew -Force` |
+| Latest prerelease | `Install-Module Specrew -AllowPrerelease -Force` |
+| Specific stable version | `Install-Module Specrew -RequiredVersion '0.27.3' -Force` |
+| Specific prerelease | `Install-Module Specrew -RequiredVersion '0.27.4-beta1' -AllowPrerelease -Force` |
+
+(Add `-Scope CurrentUser -SkipPublisherCheck` to all of these unless you have a reason to deviate.)
 
 ### Local clone, direct import — Specrew contributors
 
