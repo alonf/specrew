@@ -1,0 +1,11 @@
+{
+  "schemaVersion": "v1",
+  "featureRef": "specs/048-beta-before-stable-sdlc/spec.md",
+  "iterationRef": "specs/048-beta-before-stable-sdlc/iterations/001",
+  "generatedAt": "2026-05-26T16:15:00Z",
+  "generator": {
+    "name": "specrew-mechanical-checks",
+    "version": "0.27.4"
+  },
+  "findings": []
+}
