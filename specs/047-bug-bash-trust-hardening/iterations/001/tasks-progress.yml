@@ -1,7 +1,7 @@
 schema: "v1"
 feature: "047-bug-bash-trust-hardening"
 iteration: "001"
-updated_at: "2026-05-26T15:18:23.1871206Z"
+updated_at: "2026-05-26T22:03:22.5958816Z"
 tasks:
   T001:
     title: "Handoff-block detection fixtures"
