@@ -19296,3 +19296,14 @@ User explicitly authorized retro-boundary entry for Feature 039 Iteration 001. T
 - **Task ID**: (none)
 - **Auth Commit Hash**: c7fa3800b2aa8cd99882cec6988ef228efcab9c8
 - **Recorded At**: 2026-05-26T11:39:12Z
+
+### Runtime Evidence
+
+- Used canonical wrapper: `.specify\extensions\specrew-speckit\scripts\sync-boundary-state.ps1 -ProjectPath . -BoundaryType feature-closeout -FeatureRef 047-bug-bash-trust-hardening -IterationNumber 001 -AuthCommitHash HEAD`
+- Set `SPECREW_MODULE_PATH` to repo root for active dev tree dispatch (stale install guard rejected older `Specrew 0.27.0` module)
+- Markdownlint pre-sync gate auto-fixed `.specrew\last-start-prompt.md` on first attempt; rerun of canonical sync then succeeded and generated `specs\047-bug-bash-trust-hardening\closeout-dashboard.md`
+
+### Notes
+
+- Inbox record exists because live boundary-enforcement cursor was already at `feature-closeout`, so canonical sync appended boundary-sync ledger entry but did not add fresh explicit human-approval section for F-047
+- Push/PR creation not performed; next safe manual action is push boundary commit and open feature-closeout PR
