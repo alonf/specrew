@@ -2441,6 +2441,33 @@ $(if ($securityContext.SecurityRoles.Count -gt 0) { '- Roles present: ' + ($secu
 $(Get-VulnerabilityHighlights -VulnerabilityScan $vulnerabilityScan -join [Environment]::NewLine)
 "@
 
+$structureDiagramText = if ($diagramEvidence.StructureDiagram) {
+    $diagramEvidence.StructureDiagram
+}
+else {
+@'
+```mermaid
+graph TD
+  omitted["_omitted_"]
+```
+'@
+}
+
+$flowDiagramText = if ($diagramEvidence.FlowDiagram) {
+    $diagramEvidence.FlowDiagram
+}
+else {
+@'
+```mermaid
+sequenceDiagram
+  participant Reviewer
+  participant Evidence
+  Reviewer->>Evidence: diagram omitted
+  Evidence-->>Reviewer: _omitted_
+```
+'@
+}
+
 $reviewDiagramsContent = @"
 # Review Diagrams: Iteration $iterationLabel
 
@@ -2450,11 +2477,11 @@ $reviewDiagramsContent = @"
 $(if ($gapWarningText) { $gapWarningText } else { '' })
 ## Structure Diagram
 
-$(if ($diagramEvidence.StructureDiagram) { $diagramEvidence.StructureDiagram } else { '_omitted_' })
+$structureDiagramText
 
 ## Flow Diagram
 
-$(if ($diagramEvidence.FlowDiagram) { $diagramEvidence.FlowDiagram } else { '_omitted_' })
+$flowDiagramText
 
 ## Omissions
 

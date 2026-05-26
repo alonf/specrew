@@ -484,6 +484,8 @@ if (Test-Path -LiteralPath $omissionSecuritySurfacePath -PathType Leaf) {
 
 foreach ($check in @(
         @{ Content = $omissionDiagramContent; Pattern = '_omitted_'; Failure = 'Review diagrams did not mark omitted diagrams explicitly.' },
+        @{ Content = $omissionDiagramContent; Pattern = '```mermaid\s+graph TD'; Failure = 'Review diagrams did not emit a Mermaid graph fallback for omitted structure.' },
+        @{ Content = $omissionDiagramContent; Pattern = '```mermaid\s+sequenceDiagram'; Failure = 'Review diagrams did not emit a Mermaid sequence fallback for omitted flow.' },
         @{ Content = $omissionDiagramContent; Pattern = '## Omissions'; Failure = 'Review diagrams are missing the omissions section.' },
         @{ Content = $omissionDiagramContent; Pattern = 'Structure diagram omitted:'; Failure = 'Review diagrams did not record the structure omission reason.' },
         @{ Content = $omissionDiagramContent; Pattern = 'Flow diagram omitted:'; Failure = 'Review diagrams did not record the flow omission reason.' },

@@ -2831,18 +2831,19 @@ Then follow the formal Specrew + Spec Kit lifecycle end to end:
 
 ``````text
 === SPECREW HANDOFF ===
-STOPPED AT: <canonical boundary name from F-039 or 'lifecycle-end'>
+STOPPED AT: <canonical lifecycle boundary name or 'lifecycle-end'>
 STATUS: <one line — e.g. 'iteration 001 reviewing; 6 manual items deferred'>
 WHY STOPPED: <one line — e.g. 'need human verification of browser/AT items'>
 HUMAN ACTION NEEDED:
   - <concrete step 1>
   - <concrete step 2>
+  - <feature-closeout only: push the branch, open a PR, address automated PR review, then merge after approval/checks>
 RESUME WITH: <exact phrase to type, or 'no further action'>
 === END SPECREW HANDOFF ===
 ``````
 
 Do not omit this block even if you also produced a longer developer-facing briefing. The handoff block is what tells the human exactly where you stopped, why, and how to continue — without it the session ends ambiguously and momentum is lost.
-47. The handoff block must use the canonical F-039 boundary names (``specify``, ``clarify``, ``plan``, ``tasks``, ``before-implement``, ``implement``, ``review``, ``retro``, ``feature-closeout``) or the literal string ``lifecycle-end``. Do not invent boundary labels.
+47. The handoff block must use the canonical lifecycle boundary names (``specify``, ``clarify``, ``plan``, ``tasks``, ``before-implement``, ``implement``, ``review``, ``retro``, ``feature-closeout``) or the literal string ``lifecycle-end``. Do not invent boundary labels.
 48. **Session opening orientation (mandatory FIRST output).** Your very first user-visible output, immediately after reading ``.specrew\last-start-prompt.md`` + ``.specrew\start-context.json``, must be a short friendly orientation block in this exact shape (8-15 lines, conversational tone, no bullet-list of phases). **All artifact and directory references in this block MUST be clickable markdown links using `file:///` URLs** built from the Project root URL above (see Rule 52):
 
 ``````markdown

@@ -61,6 +61,8 @@ Example next step:
 
 > Review the new handoff wording in the coordinator prompt, template, and Squad agent contract. Start with `file:///C:/Dev/Specrew/specs/001-specrew-product/contracts/coordinator-handoff-template.md`.
 
+At `feature-closeout`, the review decision must also list the SDLC closeout actions: push the feature branch, open a PR, address automated PR review, then merge after approval and checks.
+
 ### 4. Final Stop Message: Manual Test Decision
 
 **If** manual testing is needed  
@@ -83,7 +85,7 @@ Example next step:
 2. State the confidence gap in plain language.
 3. Recommend the next verification action before broader rollout.
 
-### 5B. Feature 016 Boundary Decision
+### 5B. Per-Boundary Decision
 
 **If** the work is crossing a lifecycle boundary  
 **Then**
@@ -149,9 +151,9 @@ Examples:
 - **Why I stopped**: The approved slice is implemented, but the wording still needs a human review pass.
 - **What I need from you**: Review the wording in the prompt, template, and Squad agent section for clarity and consistency. Start with `file:///C:/Dev/Specrew/specs/001-specrew-product/contracts/coordinator-handoff-template.md`.
 
-### Feature 016 Boundary-Blocked Stop Message
+### Boundary-Blocked Stop Message
 
-- **What I just did**: Completed **feature 016, substantive interaction model**, across **FR-001 through FR-019, the Iteration 001 three-pillar scope**, and verified the updated prompt and validator surfaces with the repo governance checks.
+- **What I just did**: Completed **the substantive interaction model**, across **FR-001 through FR-019, the Iteration 001 three-pillar scope**, and verified the updated prompt and validator surfaces with the repo governance checks.
 - **Why I stopped**: I stopped at the review-boundary because per-boundary discipline requires a separate authorization before any review-boundary commit can be emitted.
 - **What I need from you**: Review `file:///C:/Dev/Specrew/specs/016-substantive-interaction-model/iterations/001/plan.md` and approve or reject advancement to the review-boundary.
 

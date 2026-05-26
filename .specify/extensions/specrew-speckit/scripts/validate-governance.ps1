@@ -630,6 +630,261 @@ function Write-DashboardGovernanceWarning {
     Write-Host ("WARN [dashboard] {0}: {1}" -f $Category.Trim(), $Detail.Trim()) -ForegroundColor Yellow
 }
 
+function Write-TrustHardeningWarning {
+    param(
+        [Parameter(Mandatory = $true)][string]$Category,
+        [Parameter(Mandatory = $true)][string]$Detail
+    )
+
+    $script:ValidatorSoftWarnings++
+    Write-Host ("WARN [trust-hardening] {0}: {1}" -f $Category.Trim(), $Detail.Trim()) -ForegroundColor Yellow
+}
+
+function Get-ObjectPropertyString {
+    param(
+        [AllowNull()][object]$InputObject,
+        [Parameter(Mandatory = $true)][string[]]$Names
+    )
+
+    if ($null -eq $InputObject) {
+        return ''
+    }
+
+    foreach ($name in $Names) {
+        $property = $InputObject.PSObject.Properties[$name]
+        if ($null -ne $property -and -not [string]::IsNullOrWhiteSpace([string]$property.Value)) {
+            return [string]$property.Value
+        }
+    }
+
+    return ''
+}
+
+function Get-ObjectPropertyBool {
+    param(
+        [AllowNull()][object]$InputObject,
+        [Parameter(Mandatory = $true)][string[]]$Names
+    )
+
+    if ($null -eq $InputObject) {
+        return $false
+    }
+
+    foreach ($name in $Names) {
+        $property = $InputObject.PSObject.Properties[$name]
+        if ($null -eq $property) {
+            continue
+        }
+
+        $rawValue = [string]$property.Value
+        if ($rawValue -match '^(?i:true|1|yes)$') {
+            return $true
+        }
+    }
+
+    return $false
+}
+
+function Get-SpecrewHandoffBlocks {
+    param([AllowEmptyString()][AllowNull()][string]$Content)
+
+    if ([string]::IsNullOrWhiteSpace($Content)) {
+        return @()
+    }
+
+    return @(
+        [regex]::Matches($Content, '(?ms)===\s*SPECREW HANDOFF\s*===(?<body>.+?)===\s*END SPECREW HANDOFF\s*===') |
+            ForEach-Object { [string]$_.Value }
+    )
+}
+
+function Test-HandoffEvidenceGovernance {
+    param([Parameter(Mandatory = $true)][string]$ProjectRoot)
+
+    $evidencePath = Join-Path $ProjectRoot '.specrew\handoff-evidence.json'
+    if (-not (Test-Path -LiteralPath $evidencePath -PathType Leaf)) {
+        return
+    }
+
+    try {
+        $raw = Get-Content -LiteralPath $evidencePath -Raw -Encoding UTF8
+        $parsed = $raw | ConvertFrom-Json -Depth 12
+    }
+    catch {
+        Write-TrustHardeningWarning -Category 'handoff-evidence-unreadable' -Detail ("Could not parse {0}; handoff-block validation evidence was skipped." -f (Convert-ToRepoMarkdownPath -ProjectRoot $ProjectRoot -TargetPath $evidencePath))
+        return
+    }
+
+    $events = @()
+    if ($parsed -is [array]) {
+        $events = @($parsed)
+    }
+    elseif ($null -ne $parsed.PSObject.Properties['boundary_events']) {
+        $events = @($parsed.boundary_events)
+    }
+    elseif ($null -ne $parsed.PSObject.Properties['events']) {
+        $events = @($parsed.events)
+    }
+    else {
+        $events = @($parsed)
+    }
+
+    foreach ($event in $events) {
+        $commit = Get-ObjectPropertyString -InputObject $event -Names @('commit', 'commit_hash', 'CommitHash')
+        $boundary = Get-ObjectPropertyString -InputObject $event -Names @('boundary', 'boundary_type', 'BoundaryType')
+        $hasCompactionMarker = Get-ObjectPropertyBool -InputObject $event -Names @('compaction_marker', 'post_compaction', 'PostCompaction')
+        $commitMessage = Get-ObjectPropertyString -InputObject $event -Names @('commit_message', 'CommitMessage')
+        $hasHandoffBlock = Test-SpecrewHandoffBlockPresent -CommitMessage $commitMessage -SessionMetadata $event
+        if ($hasHandoffBlock) {
+            continue
+        }
+
+        $label = if ([string]::IsNullOrWhiteSpace($commit)) { '(unknown commit)' } else { $commit }
+        if (-not [string]::IsNullOrWhiteSpace($boundary)) {
+            $label = "$label at $boundary"
+        }
+
+        if ($hasCompactionMarker) {
+            Write-TrustHardeningWarning -Category 'post-compaction-handoff-drop' -Detail ("Boundary commit {0} has compaction metadata but no preceding SPECREW HANDOFF block." -f $label)
+        }
+        else {
+            Write-TrustHardeningWarning -Category 'handoff-block-missing' -Detail ("Boundary commit {0} has no preceding SPECREW HANDOFF block in session evidence." -f $label)
+        }
+    }
+}
+
+function Test-WrongLocationCanonicalArtifacts {
+    param([Parameter(Mandatory = $true)][string]$ProjectRoot)
+
+    $artifactNames = @(
+        'review.md',
+        'retro.md',
+        'reviewer-index.md',
+        'review-diagrams.md',
+        'code-map.md',
+        'coverage-evidence.md',
+        'dependency-report.md',
+        'hardening-gate.md',
+        'dashboard.md',
+        'closeout-dashboard.md'
+    )
+
+    $ephemeralRoots = @(
+        (Join-Path $ProjectRoot '.gemini'),
+        (Join-Path $ProjectRoot '.antigravitycli')
+    )
+
+    foreach ($root in $ephemeralRoots) {
+        if (-not (Test-Path -LiteralPath $root -PathType Container)) {
+            continue
+        }
+
+        foreach ($file in @(Get-ChildItem -LiteralPath $root -Recurse -File -ErrorAction SilentlyContinue)) {
+            if ($artifactNames -notcontains $file.Name) {
+                continue
+            }
+
+            $relativePath = Convert-ToRepoMarkdownPath -ProjectRoot $ProjectRoot -TargetPath $file.FullName
+            Write-TrustHardeningWarning -Category 'canonical-artifact-wrong-location' -Detail ("Canonical lifecycle artifact '{0}' was found under an ephemeral host-scratch path: {1}" -f $file.Name, $relativePath)
+        }
+    }
+}
+
+function Test-HandoffInternalReferenceSurfaces {
+    param([Parameter(Mandatory = $true)][string]$ProjectRoot)
+
+    $internalReferencePattern = '\b(?:F-\d{3,}|Proposal\s+\d{3,}|Feature\s+\d{3,})\b'
+    $candidatePaths = New-Object System.Collections.Generic.List[string]
+    $excludedSegments = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::OrdinalIgnoreCase)
+    foreach ($segment in @('.git', '.specrew', '.squad', '.scratch', '.agents', '.antigravitycli', '.claude', '.codex', '.github', 'docs', 'proposals', 'specs', 'tests')) {
+        $excludedSegments.Add($segment) | Out-Null
+    }
+
+    foreach ($file in @(Get-ChildItem -LiteralPath $ProjectRoot -Recurse -Filter '*.md' -File -ErrorAction SilentlyContinue)) {
+        $relativePath = Convert-ToRepoMarkdownPath -ProjectRoot $ProjectRoot -TargetPath $file.FullName
+        $firstSegment = ($relativePath -split '/')[0]
+        if ($excludedSegments.Contains($firstSegment)) {
+            continue
+        }
+
+        $candidatePaths.Add($file.FullName) | Out-Null
+    }
+
+    foreach ($extraPath in @(
+            (Join-Path $ProjectRoot 'scripts\specrew-start.ps1'),
+            (Join-Path $ProjectRoot 'extensions\specrew-speckit\prompts\coordinator-response.md'),
+            (Join-Path $ProjectRoot 'extensions\specrew-speckit\prompts\coordinator-decision-guidance.md')
+        )) {
+        if ((Test-Path -LiteralPath $extraPath -PathType Leaf) -and -not $candidatePaths.Contains($extraPath)) {
+            $candidatePaths.Add($extraPath) | Out-Null
+        }
+    }
+
+    foreach ($path in $candidatePaths.ToArray()) {
+        try {
+            $content = Get-Content -LiteralPath $path -Raw -Encoding UTF8
+        }
+        catch {
+            continue
+        }
+
+        $blocks = @(Get-SpecrewHandoffBlocks -Content $content)
+        if ($blocks.Count -eq 0) {
+            continue
+        }
+
+        foreach ($block in $blocks) {
+            foreach ($match in [regex]::Matches($block, $internalReferencePattern)) {
+                Write-TrustHardeningWarning -Category 'internal-reference-in-handoff' -Detail ("Internal reference '{0}' appears inside a SPECREW HANDOFF block in {1}." -f $match.Value, (Convert-ToRepoMarkdownPath -ProjectRoot $ProjectRoot -TargetPath $path))
+            }
+        }
+    }
+}
+
+function Test-ReviewDiagramsMermaidBlock {
+    param(
+        [Parameter(Mandatory = $true)][string]$IterationDirectory,
+        [Parameter(Mandatory = $true)][string]$ProjectRoot
+    )
+
+    $reviewDiagramsPath = Join-Path $IterationDirectory 'review-diagrams.md'
+    if (-not (Test-Path -LiteralPath $reviewDiagramsPath -PathType Leaf)) {
+        return
+    }
+
+    try {
+        $content = Get-Content -LiteralPath $reviewDiagramsPath -Raw -Encoding UTF8
+    }
+    catch {
+        return
+    }
+
+    if ($content -notmatch '(?m)^```\s*mermaid\s*$') {
+        Write-TrustHardeningWarning -Category 'review-diagrams-missing-mermaid' -Detail ("review-diagrams.md exists but contains no mermaid fence: {0}" -f (Convert-ToRepoMarkdownPath -ProjectRoot $ProjectRoot -TargetPath $reviewDiagramsPath))
+    }
+}
+
+function Get-MissingDashboardDiagnosis {
+    param(
+        [Parameter(Mandatory = $true)][string]$IterationDirectory
+    )
+
+    $specrewManagedMarkers = @('plan.md', 'state.md', 'review.md', 'retro.md') |
+        Where-Object { Test-Path -LiteralPath (Join-Path $IterationDirectory $_) -PathType Leaf }
+
+    if (@($specrewManagedMarkers).Count -ge 2) {
+        return [pscustomobject]@{
+            Category = 'missing-dashboard-auto-render-regression'
+            DetailPrefix = 'Specrew-managed closed iteration is missing dashboard.md; auto-render regression suspected'
+        }
+    }
+
+    return [pscustomobject]@{
+        Category = 'missing-dashboard-non-specrew-managed'
+        DetailPrefix = 'Closed iteration is missing dashboard.md but does not have enough Specrew-managed markers; likely non-Specrew-managed history'
+    }
+}
+
 function Get-DeclaredSpecrewVersion {
     param([string]$ProjectRoot)
 
@@ -1040,7 +1295,8 @@ function Test-DashboardGovernanceSurfaces {
 
             $dashboardPath = Join-Path $iteration.iteration_directory 'dashboard.md'
             if (-not (Test-Path -LiteralPath $dashboardPath -PathType Leaf)) {
-                Write-DashboardGovernanceWarning -Category 'missing-dashboard-artifact' -Detail ("Closed iteration '{0} {1}' is missing dashboard.md." -f $feature.feature_ref, $iteration.iteration_ref)
+                $diagnosis = Get-MissingDashboardDiagnosis -IterationDirectory $iteration.iteration_directory
+                Write-DashboardGovernanceWarning -Category $diagnosis.Category -Detail ("{0}: closed iteration '{1} {2}'." -f $diagnosis.DetailPrefix, $feature.feature_ref, $iteration.iteration_ref)
             }
             else {
                 $dashboardText = Get-Content -LiteralPath $dashboardPath -Raw -Encoding UTF8
@@ -1078,7 +1334,7 @@ function Test-DashboardGovernanceSurfaces {
             }
 
             if (-not (Test-Path -LiteralPath $feature.closeout_dashboard_path -PathType Leaf)) {
-                Write-DashboardGovernanceWarning -Category 'missing-dashboard-artifact' -Detail ("Closed feature '{0}' is missing closeout-dashboard.md." -f $feature.feature_ref)
+                Write-DashboardGovernanceWarning -Category 'missing-feature-dashboard-auto-render-regression' -Detail ("Closed Specrew feature '{0}' is missing closeout-dashboard.md; feature-closeout auto-render regression suspected." -f $feature.feature_ref)
             }
             else {
                 $closeoutText = Get-Content -LiteralPath $feature.closeout_dashboard_path -Raw -Encoding UTF8
@@ -3424,6 +3680,7 @@ function Test-IterationGovernance {
     $reviewPath = Join-Path -Path $IterationDirectory -ChildPath 'review.md'
     $retroPath = Join-Path -Path $IterationDirectory -ChildPath 'retro.md'
     $statePath = Join-Path -Path $IterationDirectory -ChildPath 'state.md'
+    Test-ReviewDiagramsMermaidBlock -IterationDirectory $IterationDirectory -ProjectRoot $ProjectRoot
     $stateLines = @(if (Test-Path -Path $statePath -PathType Leaf) { Get-MarkdownContent -Path $statePath } else { @() })
     $reviewLines = @(if (Test-Path -Path $reviewPath -PathType Leaf) { Get-MarkdownContent -Path $reviewPath } else { @() })
     $retroLines = @(if (Test-Path -Path $retroPath -PathType Leaf) { Get-MarkdownContent -Path $retroPath } else { @() })
@@ -4173,6 +4430,9 @@ try {
 
     Test-PublicReadinessSurfaces -ProjectRoot $resolvedProjectPath
     Test-DashboardGovernanceSurfaces -ProjectRoot $resolvedProjectPath
+    Test-HandoffEvidenceGovernance -ProjectRoot $resolvedProjectPath
+    Test-WrongLocationCanonicalArtifacts -ProjectRoot $resolvedProjectPath
+    Test-HandoffInternalReferenceSurfaces -ProjectRoot $resolvedProjectPath
 
     # Proposal 090: session-state boundary canonical-string + active/boundary
     # contradiction rule. Catches the Crew-bypass bug class that bit F-030/083

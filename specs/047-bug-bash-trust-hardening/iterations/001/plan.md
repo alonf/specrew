@@ -2,7 +2,7 @@
 
 **Schema**: v1
 **Spec**: [../../spec.md](../../spec.md)
-**Status**: planning
+**Status**: executing
 **Capacity**: 20/20 story_points
 **Started**: 2026-05-26
 **Completed**:
@@ -44,25 +44,25 @@
 
 | Task | Title | Requirement | Story | Effort | Owner | Owner File Globs | Status | Agent | Actual | Verdict |
 | ---- | ----- | ----------- | ----- | ------ | ----- | ---------------- | ------ | ----- | ------ | ------- |
-| T001 | Handoff-block detection fixtures | FR-001,FR-002,FR-003,FR-016 | US1 | 1 | Implementer | tests/integration/non-specrew-session-bypass.tests.ps1 | planned | claude | — | — |
-| T002 | Test-SpecrewHandoffBlockPresent helper + 3 WARN checks | FR-001,FR-002,FR-003,FR-016 | US1 | 2 | Implementer | extensions/specrew-speckit/scripts/{shared-governance,validate-governance}.ps1 | planned | claude | — | — |
-| T003 | Mirror Item 1 to .specify/ | FR-014 | US1 | 1 | Implementer | .specify/extensions/specrew-speckit/scripts/* | planned | claude | — | — |
-| T004 | Post-compaction sub-trigger 3c acceptance test | FR-004 | US2 | 1 | Implementer | tests/integration/non-specrew-session-bypass.tests.ps1 | planned | claude | — | — |
-| T005 | Mermaid-absence + scaffolder-skeleton fixtures | FR-005,FR-006 | US3 | 1 | Reviewer | tests/integration/* | planned | claude | — | — |
-| T006 | Validator soft-WARN + scaffolder Mermaid skeleton | FR-005,FR-006,FR-016 | US3 | 1 | Reviewer | extensions/specrew-speckit/scripts/{validate-governance,scaffold-reviewer-artifacts}.ps1 | planned | claude | — | — |
-| T007 | Reviewer charter Mermaid directive + mirror | FR-007,FR-014 | US3 | 1 | Reviewer | per-host charters; .specify/extensions/specrew-speckit/scripts/* | planned | claude | — | — |
-| T008 | Internal-reference regex fixtures (pos+neg) | FR-009 | US4 | 1 | Implementer | tests/integration/* | planned | claude | — | — |
-| T009 | Audit + rewrite installed-instructions/ + templates | FR-008 | US4 | 1 | Spec Steward | installed-instructions/*; coordinator templates | planned | claude | — | — |
-| T010 | Validator internal-reference regex WARN + mirror | FR-009,FR-014,FR-016 | US4 | 1 | Implementer | extensions/specrew-speckit/scripts/validate-governance.ps1 (+mirror) | planned | claude | — | — |
-| T011 | Empty-skill-dir fixture (HasMissingRoots true) | FR-010 | US5 | 1 | Implementer | tests/integration/* | planned | claude | — | — |
-| T012 | Content-based Get-SpecrewSkillCatalogState check | FR-010 | US5 | 1 | Implementer | scripts/internal/skill-catalog-state.ps1 | planned | claude | — | — |
-| T013 | Per-host closeout-template presence test | FR-011 | US6 | 1 | Spec Steward | tests/integration/* | planned | claude | — | — |
-| T014 | Embed PR-at-close SDLC in closeout HANDOFF templates | FR-011 | US6 | 1 | Spec Steward | per-host coordinator templates | planned | claude | — | — |
-| T015 | tasks-progress reconciliation fixture | FR-012 | US7 | 1 | Implementer | tests/integration/* | planned | claude | — | — |
-| T016 | Derive-from-tasks.md regeneration in specrew-start.ps1 | FR-012 | US7 | 1 | Implementer | scripts/specrew-start.ps1 | planned | claude | — | — |
-| T017 | v0.27.3 bump across 3 manifests + CHANGELOG | FR-015 | — | 1 | Implementer | .specrew/config.yml; extension.yml; Specrew.psd1; CHANGELOG.md | planned | claude | — | — |
-| T018 | Mirror-parity diff -q verification | FR-014,SC-010 | — | 1 | Reviewer | extensions/ vs .specify/extensions/ | planned | claude | — | — |
-| T019 | Mechanical checks + integration suites + findings.md | FR-013,SC-010 | — | 1 | Reviewer | tests/integration/; findings.md | planned | claude | — | — |
+| T001 | Handoff-block detection fixtures | FR-001,FR-002,FR-003,FR-016 | US1 | 1 | Implementer | tests/integration/non-specrew-session-bypass.tests.ps1 | done | codex | 1 | pass |
+| T002 | Test-SpecrewHandoffBlockPresent helper + 3 WARN checks | FR-001,FR-002,FR-003,FR-016 | US1 | 2 | Implementer | extensions/specrew-speckit/scripts/{shared-governance,validate-governance}.ps1 | done | codex | 2 | pass |
+| T003 | Mirror Item 1 to .specify/ | FR-014 | US1 | 1 | Implementer | .specify/extensions/specrew-speckit/scripts/* | done | codex | 1 | pass |
+| T004 | Post-compaction sub-trigger 3c acceptance test | FR-004 | US2 | 1 | Implementer | tests/integration/non-specrew-session-bypass.tests.ps1 | done | codex | 1 | pass |
+| T005 | Mermaid-absence + scaffolder-skeleton fixtures | FR-005,FR-006 | US3 | 1 | Reviewer | tests/integration/* | done | codex | 1 | pass |
+| T006 | Validator soft-WARN + scaffolder Mermaid skeleton | FR-005,FR-006,FR-016 | US3 | 1 | Reviewer | extensions/specrew-speckit/scripts/{validate-governance,scaffold-reviewer-artifacts}.ps1 | done | codex | 1 | pass |
+| T007 | Reviewer charter Mermaid directive + mirror | FR-007,FR-014 | US3 | 1 | Reviewer | per-host charters; .specify/extensions/specrew-speckit/scripts/* | done | codex | 1 | pass |
+| T008 | Internal-reference regex fixtures (pos+neg) | FR-009 | US4 | 1 | Implementer | tests/integration/* | done | codex | 1 | pass |
+| T009 | Audit + rewrite installed-instructions/ + templates | FR-008 | US4 | 1 | Spec Steward | installed-instructions/*; coordinator templates | done | codex | 1 | pass |
+| T010 | Validator internal-reference regex WARN + mirror | FR-009,FR-014,FR-016 | US4 | 1 | Implementer | extensions/specrew-speckit/scripts/validate-governance.ps1 (+mirror) | done | codex | 1 | pass |
+| T011 | Empty-skill-dir fixture (HasMissingRoots true) | FR-010 | US5 | 1 | Implementer | tests/integration/* | done | codex | 1 | pass |
+| T012 | Content-based Get-SpecrewSkillCatalogState check | FR-010 | US5 | 1 | Implementer | scripts/internal/skill-catalog-state.ps1 | done | codex | 1 | pass |
+| T013 | Per-host closeout-template presence test | FR-011 | US6 | 1 | Spec Steward | tests/integration/* | done | codex | 1 | pass |
+| T014 | Embed PR-at-close SDLC in closeout HANDOFF templates | FR-011 | US6 | 1 | Spec Steward | per-host coordinator templates | done | codex | 1 | pass |
+| T015 | tasks-progress reconciliation fixture | FR-012 | US7 | 1 | Implementer | tests/integration/* | done | codex | 1 | pass |
+| T016 | Derive-from-tasks.md regeneration in specrew-start.ps1 | FR-012 | US7 | 1 | Implementer | scripts/specrew-start.ps1 | done | codex | 1 | pass |
+| T017 | v0.27.3 bump across 3 manifests + CHANGELOG | FR-015 | US1-US7 | 1 | Implementer | .specrew/config.yml; extension.yml; Specrew.psd1; CHANGELOG.md | done | codex | 1 | pass |
+| T018 | Mirror-parity diff -q verification | FR-014,SC-010 | US1-US7 | 1 | Reviewer | extensions/ vs .specify/extensions/ | done | codex | 1 | pass |
+| T019 | Mechanical checks + integration suites + findings.md | FR-013,SC-010 | US1-US7 | 1 | Reviewer | tests/integration/; findings.md | done | codex | 1 | pass |
 
 ## Effort Model
 

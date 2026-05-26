@@ -4,6 +4,12 @@ Retroactive alpha release history for shipped Specrew features. `.specrew\config
 is the canonical source for the active version; this file records the feature
 baseline that each release number represents.
 
+## [0.27.3] - 2026-05-26
+
+### Fixed
+
+- **Feature 047 (Trust-Hardening Bug-Bash Bundle)**: Adds WARN-only governance checks for missing Specrew handoff evidence, post-compaction handoff drops, canonical artifacts written under ephemeral host scratch paths, missing Mermaid blocks in `review-diagrams.md`, and internal feature/proposal references inside `=== SPECREW HANDOFF ===` blocks. Reviewer scaffolding now emits Mermaid fallback skeletons, reviewer charters require Mermaid diagrams instead of ASCII trees, empty skill roots are treated as missing so auto-repair runs, feature-closeout handoffs carry the push/PR/review/merge SDLC sequence, and `tasks-progress.yml` regeneration derives completed status from `tasks.md` instead of resetting finished iterations to pending. Version bumped to `0.27.3`; mirror-parity and integration fixtures cover the trust-hardening slice.
+
 ## [0.27.1] - 2026-05-25
 
 ### Fixed
