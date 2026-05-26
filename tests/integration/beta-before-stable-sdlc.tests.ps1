@@ -67,8 +67,16 @@ function Assert-FeatureCloseoutSdlcSurface {
         @{ Step = 14; Pattern = '(?is)Step\s+14\b.{0,240}(stop|new\s+feature)' }
     )
 
+    $lastIndex = -1
     foreach ($check in $stepChecks) {
-        Assert-Match -Text $content -Pattern $check.Pattern -Message ("{0} is missing feature-closeout SDLC Step {1}." -f $Label, $check.Step)
+        $match = [regex]::Match($content, $check.Pattern)
+        if (-not $match.Success) {
+            Write-Fail ("{0} is missing feature-closeout SDLC Step {1}." -f $Label, $check.Step)
+        }
+        if ($match.Index -lt $lastIndex) {
+            Write-Fail ("{0} feature-closeout SDLC Steps are out of order. Step {1} match index ({2}) is before previous step match index ({3})." -f $Label, $check.Step, $match.Index, $lastIndex)
+        }
+        $lastIndex = $match.Index
     }
 
     $humanSectionPattern = '(?is)HUMAN ACTION NEEDED:.{0,900}'
@@ -89,8 +97,17 @@ function Assert-ReleaseDisciplineDocumentation {
 
     $content = Get-Content -LiteralPath $Path -Raw -Encoding UTF8
 
+    $lastIndex = -1
     foreach ($step in 5..14) {
-        Assert-Match -Text $content -Pattern ("(?is)Step\s+{0}\b" -f $step) -Message "release-discipline.md is missing Step $step."
+        $pattern = "(?is)Step\s+{0}\b" -f $step
+        $match = [regex]::Match($content, $pattern)
+        if (-not $match.Success) {
+            Write-Fail "release-discipline.md is missing Step $step."
+        }
+        if ($match.Index -lt $lastIndex) {
+            Write-Fail "release-discipline.md Steps are out of order. Step $step match index ($($match.Index)) is before previous step match index ($lastIndex)."
+        }
+        $lastIndex = $match.Index
     }
 
     $coverageChecks = @(
