@@ -2,8 +2,8 @@
 
 **Schema**: v1  
 **Spec**: [../../spec.md](../../spec.md)  
-**Status**: reviewing
-**Capacity**: 9/20 story_points  
+**Status**: retro
+**Capacity**: 10/20 story_points
 **Started**: 2026-05-26  
 **Completed**:
 
@@ -40,7 +40,7 @@ schema, and direct-main config behavior. Those are iteration 002.
 | T004 | Release discipline documentation | FR-005,FR-006,FR-016 | US2 | 2 | Spec Steward | docs/release-discipline.md | done | codex | 2 | pass |
 | T005 | Proposal/index metadata | FR-015 | US4 | 1 | Spec Steward | proposals/060-prerelease-channel-staging.md; proposals/131-coordinator-prompt-sdlc-ownership-clarification.md; proposals/INDEX.md | done | codex | 1 | pass |
 | T006 | Mirror parity verification | FR-014 | US4 | 1 | Reviewer | extensions/specrew-speckit/**/*; .specify/extensions/specrew-speckit/**/* | done | codex | 1 | pass |
-| T007 | Iteration 001 focused verification | FR-013,FR-014,FR-016 | US1,US2,US4 | 1 | Reviewer | tests/integration/*; .specify/extensions/specrew-speckit/scripts/validate-governance.ps1 | done | codex | 1 | pass |
+| T007 | Iteration 001 focused verification | FR-013,FR-014,FR-016 | US1,US2,US4 | 1 | Reviewer | tests/integration/*; .specify/extensions/specrew-speckit/scripts/validate-governance.ps1 | done | codex | 2 | pass |
 
 ## Effort Model
 
