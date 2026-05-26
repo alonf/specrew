@@ -3,8 +3,8 @@ proposal: 078
 title: Handoff Conversation Quality at All Boundary Stops
 status: candidate
 phase: phase-2
-estimated-sp: 10-15
-discussion: tbd
+estimated-sp: 12-18
+discussion: empirical motivation expanded 2026-05-26 — added Pillar 2b (no internal Specrew identifiers in downstream user-facing prose), feature-closeout normal-path SDLC actions in Pillar 1, operational-pause taxonomy with 4 sub-cases, and Pillar 6 (What you can do with the system now demo-path section per 2026-05-26 PlanningPoC iter-002 user proposal); composes with 120 / 129 / 105
 ---
 
 # Handoff Conversation Quality at All Boundary Stops
@@ -190,20 +190,93 @@ Grades severity:
 
 The grader runs at the pre-handoff boundary, similar to how F-028's pre-review commit gate runs. If a handoff is graded HARD-FAIL, Squad's coordinator-governance prompt instructs it to repair before emitting to the user.
 
+### Pillar 6: "What you can do with the system now" — runnable demo-path section (added 2026-05-26)
+
+Extend the canonical three-section handoff with an optional fourth section that surfaces a **concrete, runnable interaction path** the human can use to verify what was just built:
+
+1. What I just did
+2. Why I stopped
+3. What I need from you
+4. **What you can do with the system now** ← NEW
+
+User's example phrasing (PlanningPoC iter-002 retro context, 2026-05-26):
+
+> "I finished adding the view DWG screen. I stop since I need a review. I need for you to approve. You can now start the app, upload a DWG and see the image on the screen. For doing that run: ..."
+
+**Why this is high-value**:
+
+- Bridges Specrew artifacts to the running system — the human gets a tangible "I can interact with the thing" experience, not just artifact-reading-and-trusting.
+- Operationalizes demoability per iteration — matches the Walking-Skeleton + Vertical-Slices methodology of Proposal 129 where each iteration should produce something runnable.
+- Provides an independent verification path beyond "trust that the tests passed."
+- Reduces the gap between "iteration done" and "I trust it works."
+
+**Conditional, not mandatory** — three states:
+
+1. **Runnable** — actual demoable interaction (start app, upload, see result, run test, etc.).
+2. **Inspectable** — pointers to files/DB rows/log entries/external services the human can examine when there is no end-to-end run but something new IS observable.
+3. **Omitted** — section is literally absent when there is nothing observable that is new.
+
+The omission case is critical. **Empty/boilerplate "nothing to see here" content dilutes the signal of when the section IS present.** Treat absence-of-section as semantically meaningful: it means "this iteration produced no human-observable change." Agents SHOULD omit rather than auto-fill with placeholder.
+
+**Per-slice content shapes** — the demo-path content depends on what was built; state can vary even within a single slice type:
+
+| Slice type | State | Demo-path content shape |
+|---|---|---|
+| Pure backend (engine, repository, persistence) — observable | Runnable | Run the test suite + DB inspection commands. E.g., `pwsh -File tests/integration/upload-flow-tests.ps1`; `docker exec -it postgres psql -U formwork -c "SELECT * FROM planning_runs"` |
+| Pure backend — internal-only helper, no observable surface | Inspectable OR omitted | Pointer to the helper file with a "look at lines X-Y to see the new pattern"; OR omit if the helper has zero downstream observable behavior change |
+| API-shipping (endpoints, contracts) | Runnable | curl/Insomnia examples; OpenAPI spec link; problem-details response examples. E.g., `curl http://localhost:5000/api/runs/123 -H "Authorization: Bearer demo-token"` |
+| UI-shipping (frontend screens, components) | Runnable | Browser-runnable steps. E.g., "start the app: `npm run dev`; visit `http://localhost:5173`; upload a DWG; observe the marked-DWG download button" |
+| Schema migration (DB structure change, no seeded data yet) | Inspectable | "Check the new column shape: `psql -c '\d planning_runs'`" — no runnable demo because nothing exercises the new column yet |
+| Logging / telemetry / observability addition | Inspectable | "Look at the new log entries in `.specrew/log/*` after the next start" or "new metrics published to topic X — observable via Y dashboard" |
+| Performance fix | Inspectable | "Run the profiling suite to see the new baseline: `pwsh -File tests/perf/baseline.ps1`; compare to the prior run committed at SHA Z" |
+| External-service integration (queue, cloud, third-party API) | Inspectable | "Publishes to topic `formwork.runs.completed` — inspect via Kafka UI / pgmq inspector / Azure Service Bus explorer at URL X" |
+| Doc-only | Inspectable | Link to the new/updated doc + "read 2 minutes." The doc IS the artifact; reading is the inspection |
+| Test-add (small-fix-slice family per Proposal 067) | Runnable | How to run the new tests + what they verify. E.g., `pwsh -File tests/integration/new-bug-fix.tests.ps1; expect 5 pass` |
+| Refactor (behavior-preserving, internal code shape only) | Inspectable OR omitted | "Run X to confirm no behavior change" if there is a regression suite worth re-running; OR omit if the refactor has no observable impact and the existing suite already passes |
+| Enabler / tooling (enabler-slice per Proposal 055) | Runnable | "Run the tool: `pwsh -File scripts/anonymize-dwg.ps1 -InputPath X -OutputPath Y`" |
+| Bug-fix (bug-fix slice per Proposal 055) | Runnable | "Run the failing repro from findings.md — confirm it now passes" |
+| Spec / planning artifact change (no code touched yet) | Omitted | Spec changes are inspectable via the spec/plan/tasks artifacts themselves — those live in the standard handoff artifact list. No separate demo-path section needed |
+
+**Boundary scope** — required at iteration-close + feature-close boundaries; optional at intra-iteration stops (a stop mid-T011 implementation may have no demo-path yet).
+
+**Implementation surface**:
+
+- Coordinator-prompt rule extension — extend rules 45-47 (mandatory `=== SPECREW HANDOFF ===` block) to require the new section at iteration-close + feature-close boundaries.
+- Implementer/Reviewer/Retro-Facilitator charter — each agent that produces a stop knows what is runnable from its work. The Implementer is best positioned to draft the demo-path since they just built it; the Reviewer verifies the demo-path is correct/runnable during review.
+- Validator rule (optional, soft WARN) — flag missing "What you can do" section in iteration-close + feature-close handoffs. Composes with Proposal 120 (handoff-block validator enforcement) — same detection layer, additional pattern.
+
+**Composition with Proposal 105 (Host-Native Hook Deployment)**:
+
+Runtime hooks on hook-supporting hosts (Claude `PreToolUse` / `Stop`) could ENRICH the demo-path automatically — detect what was committed in the last boundary commit, suggest the right demo-path shape from the per-slice catalog:
+
+- New endpoint detected → suggest curl example targeting it
+- New test file detected → suggest run command for it
+- New frontend route detected → suggest browser-step navigating to it
+- New script detected → suggest invocation example
+
+This would lift demo-path drafting from agent-charter prose discipline to runtime-assisted generation. Likely Proposal 105 follow-up after the validator-level rule lands.
+
+**Composition with Proposal 129 (Walking Skeleton + Vertical Slices profile)**:
+
+The two are mutually reinforcing — 129 establishes the methodology principle that iter-001 must span all layers thin and produce things that CAN be demoed; Pillar 6 operationalizes the discipline at the handoff layer so each iteration EXPLICITLY shows the demo-path. Bundle candidate: ship Pillar 6 + Proposal 129 walking-skeleton profile together as a "demoable-iteration discipline" bundle.
+
+Empirical motivation: 2026-05-26 PlanningPoC iter-002 shipped a UI loop; the human's natural product-owner question was "what can I run now?" — the methodology should answer that automatically every time. Memory `[[handoff-runnable-demo-path-section-2026-05-26]]` absorbed.
+
 ## How (one-iteration plan)
 
 - Feature branch from `main`
 - Squad drives specify → clarify → plan → tasks → implement → review → retro → closeout
 - New files / changes:
-  - `extensions/specrew-speckit/squad-templates/coordinator/specrew-governance.md` — update Pillar 1, 2, 3, 4 instructions for Squad's coordinator (instruct on prose format + language + options at all boundaries)
-  - `extensions/specrew-speckit/scripts/grade-handoff-prose.ps1` (new) — Pillar 5 grader
+  - `extensions/specrew-speckit/squad-templates/coordinator/specrew-governance.md` — update Pillar 1, 2, 2b, 3, 4, 6 instructions for the coordinator (prose format + language + options + demo-path at iteration-close / feature-close)
+  - `extensions/specrew-speckit/scripts/grade-handoff-prose.ps1` (new) — Pillar 5 grader (also detects Pillar 6 missing demo-path at qualifying boundaries)
   - `extensions/specrew-speckit/scripts/validate-governance.ps1` — invoke the grader as a new validator rule
   - `extensions/specrew-speckit/data/boundary-language-map.yml` (new) — maps internal gate names to user-facing prose
-  - Tests at `tests/integration/handoff-prose-grading.tests.ps1` (new) — cover passing prose, missing-section, internal-name leak, no-options
+  - `extensions/specrew-speckit/data/demo-path-slice-catalog.yml` (new, Pillar 6) — per-slice-type demo-path state + content-shape hints
+  - Tests at `tests/integration/handoff-prose-grading.tests.ps1` (new) — cover passing prose, missing-section, internal-name leak, no-options, missing-demo-path-at-iteration-close
 - CHANGELOG entry
 - INDEX update at feature-closeout (candidate → shipped)
 
-Estimated: 10-15 SP. Phase 2. Could be staged into a v0.24.x patch release or rolled into v0.25.0 depending on F-029 timing.
+Estimated: 12-18 SP (was 10-15, raised for Pillar 6 catalog + grader extension). Phase 2. Could be staged into a v0.24.x patch release or rolled into v0.25.0 depending on F-029 timing.
 
 ## Composition with other proposals
 
@@ -216,6 +289,9 @@ Estimated: 10-15 SP. Phase 2. Could be staged into a v0.24.x patch release or ro
 | **Proposal 077 (Session Resume UX, candidate)** | 077's Pillar 4 (context-rich resume prompt) is a specific case of 078's general principle. When 078 ships, 077's Pillar 4 reduces to "apply 078's pattern at the resume boundary" |
 | **Proposal 030 (Quality Hardening Bundle, draft)** | Pillar 5 grader plugs into 030's form-vs-meaning surface — extends the form-vs-meaning principle to handoff prose quality |
 | **Proposal 067 (Small-Fix Slice Type)** | Some prose-quality fixes (e.g., a single boundary's language) could ship as small-fix slices. 078 is the substantial-feature version |
+| **Proposal 120 (Handoff-Block Validator Enforcement)** | Pillar 5 grader composes with Proposal 120's `Test-SpecrewHandoffBlockPresent` helper — same detection layer (parsing handoff blocks at boundary commits); 120's Pillar 4 (state-advance-without-verdict cross-check) plus 078's Pillar 5 (handoff-prose grading) form a complete handoff-quality surface |
+| **Proposal 129 (Walking-Skeleton + Decomposition Profile Family)** | Pillar 6 operationalizes 129's "iterations should produce demoable artifacts" methodology principle at the handoff layer. Bundle candidate: ship Pillar 6 + walking-skeleton profile together as a "demoable-iteration discipline" bundle |
+| **Proposal 105 (Host-Native Hook Deployment)** | Runtime hooks could ENRICH Pillar 6 demo-path generation automatically by detecting committed file types (new endpoint → curl example, new test → run command, new UI route → browser-step). Phase-3 follow-up after Pillar 6's validator rule lands |
 
 ## Acceptance signals
 
@@ -228,6 +304,8 @@ Estimated: 10-15 SP. Phase 2. Could be staged into a v0.24.x patch release or ro
 - **AC6**: Validator grader emits HARD-FAIL when handoff prose violates form (missing all three sections); WARNING when internal-name leak or no-options detected
 - **AC7**: `boundary-language-map.yml` covers all currently-known internal gate names with user-facing translations
 - **AC8**: Existing F-014-scoped handoffs (the three primary approval handoffs) continue to pass — no regression of the established baseline
+- **AC9 (Pillar 6)**: Iteration-close + feature-close handoffs include the "What you can do with the system now" section in one of three states (runnable / inspectable / omitted-with-zero-observable-change); empty/boilerplate "nothing to see" content is treated as a validator WARN (defeats the absence-of-section signal)
+- **AC10 (Pillar 6)**: The demo-path content matches the per-slice-type catalog shape (e.g., UI slice gets browser-runnable steps; backend-observable slice gets test + DB inspection commands; doc-only slice gets link + read-time)
 
 ## Out of scope
 
@@ -245,4 +323,7 @@ Estimated: 10-15 SP. Phase 2. Could be staged into a v0.24.x patch release or ro
 - Proposal 030 (Quality Hardening Bundle): file:///C:/Dev/Specrew/proposals/030-quality-hardening-bundle.md
 - Proposal 053 (Autopilot Decision Transparency): file:///C:/Dev/Specrew/proposals/053-autopilot-decision-transparency.md
 - Proposal 077 (Session Resume UX): file:///C:/Dev/Specrew/proposals/077-session-resume-ux.md
+- Proposal 120 (Handoff-Block Validator Enforcement): file:///C:/Dev/Specrew/proposals/120-handoff-block-validator-enforcement.md
+- Proposal 129 (Walking-Skeleton + Decomposition Profile Family): file:///C:/Dev/Specrew/proposals/129-walking-skeleton-decomposition-profile-family.md
+- Proposal 105 (Host-Native Hook Deployment): file:///C:/Dev/Specrew/proposals/105-host-native-hook-deployment.md
 - INDEX: file:///C:/Dev/Specrew/proposals/INDEX.md

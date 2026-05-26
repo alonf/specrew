@@ -119,7 +119,7 @@ Idea-form proposals not yet developed into full source specs. Open for discussio
 | [062](062-dependency-metadata-reason-propagation.md) | Dependency Metadata + Reason Mapping + Impact-Analysis Propagation | phase-2 | 18 |
 | [071](071-vscode-copilot-chat-host.md) | VS Code Copilot Chat as a First-Class Specrew Host | phase-2 | 10-12 |
 | [077](077-session-resume-ux.md) | Session Resume UX for Downstream Specrew Users | phase-2 | 10-15 |
-| [078](078-handoff-conversation-quality.md) | Handoff Conversation Quality at All Boundary Stops | phase-2 | 10-15 |
+| [078](078-handoff-conversation-quality.md) | Handoff Conversation Quality at All Boundary Stops — 6 pillars: three-section format at every pause; no internal gate-names in prose; **Pillar 2b no internal Specrew F-NNN/Proposal-NNN refs in downstream user-facing prose (2026-05-26)**; multiple-choice options + escape routes; substance-first ordering; validator-enforced handoff-prose grading; **Pillar 6 "What you can do with the system now" demo-path section with per-slice content-shape catalog (2026-05-26)**; composes with 120 / 129 / 105 | phase-2 | 12-18 |
 | [080](080-specrew-file-reference.md) | Specrew File Reference (Lifecycle Catalog for All Specrew-Managed Files) | phase-2 | 10-15 |
 | [081](081-reviewer-visual-evidence.md) | Reviewer Visual Evidence — Multi-Type Diagrams + Explanatory Omissions + Mermaid Mandate | phase-2 | 33-43 |
 | [082](082-boundary-commit-and-upstream-push-discipline.md) | Boundary Commit + Upstream Push Discipline (Tiers 2 + 3 only; Tier 1 shipped) | phase-2 | 16 (Tier 2 ~6 + Tier 3 ~10) |
