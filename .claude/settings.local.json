@@ -84,7 +84,24 @@
       "Bash(git *)",
       "PowerShell(pwsh -NoProfile -ExecutionPolicy Bypass -File tests/integration/update-command.ps1 2>&1 | Select-Object -Last 60)",
       "Bash(xargs grep -l \"Squad\\\\|squad\\\\.agent\\\\|\\\\.squad/\")",
-      "Bash(awk -F'/' '{print $1\"/\"$2}')"
+      "Bash(awk -F'/' '{print $1\"/\"$2}')",
+      "Bash(pwsh -NoProfile -Command ' *)",
+      "Bash(pwsh *)",
+      "Bash(grep -E '\\\\$env:PATH = \".*scripts' 'C:\\\\Users\\\\alon.HOME\\\\.claude\\\\projects\\\\C--Dev-Specrew\\\\b65adac0-858a-4346-b4bf-61aa33716dc0\\\\tool-results\\\\brkkyektr.txt')",
+      "PowerShell(& C:/Dev/Specrew/.scratch/crew-bootstrap-e2e.ps1 2>&1)",
+      "PowerShell(& C:/Dev/Specrew/.scratch/crew-bootstrap-e2e.ps1 2>&1 | Select-Object -Last 20)",
+      "PowerShell(& C:/Dev/Specrew/.scratch/crew-bootstrap-e2e.ps1 2>&1 | Select-Object -Last 15)",
+      "Bash(grep *)",
+      "Read(///wsl.localhost/Ubuntu-24.04/home/alon/projects/antigravity-test-caculator/**)",
+      "Read(///wsl.localhost/Ubuntu-24.04/home/alon/projects/antigravity-test-caculator/tests/**)",
+      "Bash(markdownlint README.md docs/user-guide.md docs/getting-started.md CHANGELOG.md)",
+      "Bash(markdownlint specs/044-per-host-architecture-refactor/iterations/006/*.md specs/044-per-host-architecture-refactor/iterations/007/*.md)",
+      "Bash(markdownlint --fix specs/044-per-host-architecture-refactor/iterations/006/retro.md specs/044-per-host-architecture-refactor/iterations/006/review.md specs/044-per-host-architecture-refactor/iterations/006/state.md)",
+      "Bash(markdownlint specs/044-per-host-architecture-refactor/**/*.md specs/043-multi-host-onboarding/**/*.md)",
+      "Bash(markdownlint --fix specs/044-per-host-architecture-refactor/**/*.md specs/043-multi-host-onboarding/**/*.md)",
+      "Bash(xargs markdownlint)",
+      "Bash(markdownlint \"**/*.md\" --ignore node_modules --ignore .squad --ignore .specify)",
+      "Bash(gh pr create --title 'F-043 + F-044 bundle: Multi-host Onboarding + Per-Host Architecture Refactor \\(v0.27.0\\)' --body ' *)"
     ]
   }
 }
