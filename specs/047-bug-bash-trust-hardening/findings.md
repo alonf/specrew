@@ -2,7 +2,7 @@
 
 **Feature**: `047-bug-bash-trust-hardening`
 **Release target**: v0.27.3
-**Status**: implementation complete; awaiting review sign-off
+**Status**: feature closeout complete; next step is push/PR handoff
 
 > Each item records: Surface · Repro / what-shows-the-gap · Validation Criterion · Evidence Pointer · Status.
 
