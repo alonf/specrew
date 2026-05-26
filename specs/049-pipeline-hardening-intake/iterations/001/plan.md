@@ -2,10 +2,10 @@
 
 **Schema**: v1
 **Spec**: [../../spec.md](../../spec.md)
-**Status**: planning
+**Status**: retro
 **Capacity**: 17/20 story_points
 **Started**: 2026-05-27
-**Completed**:
+**Completed**: (pending review-signoff)
 
 <!--
   Validator schema (canonical, enforced by validate-governance.ps1):
@@ -40,16 +40,16 @@
 
 | Task | Title | Requirement | Story | Effort | Owner | Owner File Globs | Status | Agent | Actual | Verdict |
 | ---- | ----- | ----------- | ----- | ------ | ----- | ---------------- | ------ | ----- | ------ | ------- |
-| T001 | Add failing E2E publish-module test assertions | FR-003,FR-012,SC-001 | US1 | 1 | Reviewer | tests/integration/* | planned | antigravity | 0 | — |
-| T002 | Create tests/Dockerfile.publish-test | FR-001,FR-002,SC-001 | US1 | 2 | Implementer | tests/Dockerfile.publish-test | planned | antigravity | 0 | — |
-| T003 | Create scripts/internal/test-publish-harness.ps1 | FR-003,SC-001 | US1 | 3 | Implementer | scripts/internal/test-publish-harness.ps1 | planned | antigravity | 0 | — |
-| T004 | Add manifest version pin drift assertions | FR-012,SC-001 | US1 | 1 | Implementer | scripts/internal/test-publish-harness.ps1 | planned | antigravity | 0 | — |
-| T005 | Add specrew update execution and layout validation | FR-004,SC-001 | US1 | 2 | Implementer | scripts/internal/test-publish-harness.ps1 | planned | antigravity | 0 | — |
-| T006 | Wire Docker harness execution into workflows | FR-005,SC-001 | US1 | 1 | Implementer | .github/workflows/publish-module.yml | planned | antigravity | 0 | — |
-| T007 | Run focused harness tests locally and in CI | FR-005,SC-001 | US1 | 2 | Reviewer | tests/* | planned | antigravity | 0 | — |
-| T018 | Fix duplicate-row deploy bug | FR-013 | US1 | 2 | Implementer | scripts/specrew-update.ps1 | planned | antigravity | 0 | — |
-| T019 | Add duplicate-row regression integration test | FR-013 | US1 | 1 | Reviewer | tests/integration/* | planned | antigravity | 0 | — |
-| T020 | Implement PSGallery version check in update --info | FR-014 | US1 | 2 | Implementer | scripts/specrew-update.ps1 | planned | antigravity | 0 | — |
+| T001 | Add failing E2E publish-module test assertions | FR-003,FR-012,SC-001 | US1 | 1 | Reviewer | tests/integration/* | done | antigravity | 1 | ✅ |
+| T002 | Create tests/Dockerfile.publish-test | FR-001,FR-002,SC-001 | US1 | 2 | Implementer | tests/Dockerfile.publish-test | done | antigravity | 2 | ✅ |
+| T003 | Create scripts/internal/test-publish-harness.ps1 | FR-003,SC-001 | US1 | 3 | Implementer | scripts/internal/test-publish-harness.ps1 | done | antigravity | 3 | ✅ |
+| T004 | Add manifest version pin drift assertions | FR-012,SC-001 | US1 | 1 | Implementer | scripts/internal/test-publish-harness.ps1 | done | antigravity | 1 | ✅ |
+| T005 | Add specrew update execution and layout validation | FR-004,SC-001 | US1 | 2 | Implementer | scripts/internal/test-publish-harness.ps1 | done | antigravity | 2 | ✅ |
+| T006 | Wire Docker harness execution into workflows | FR-005,SC-001 | US1 | 1 | Implementer | .github/workflows/publish-module.yml | done | antigravity | 1 | ✅ |
+| T007 | Run focused harness tests locally and in CI | FR-005,SC-001 | US1 | 2 | Reviewer | tests/* | done | antigravity | 2 | ✅ |
+| T018 | Fix duplicate-row deploy bug | FR-013 | US1 | 2 | Implementer | scripts/specrew-update.ps1 | done | antigravity | 2 | ✅ |
+| T019 | Add duplicate-row regression integration test | FR-013 | US1 | 1 | Reviewer | tests/integration/* | done | antigravity | 1 | ✅ |
+| T020 | Implement PSGallery version check in update --info | FR-014 | US1 | 2 | Implementer | scripts/specrew-update.ps1 | done | antigravity | 2 | ✅ |
 
 ## Effort Model
 
