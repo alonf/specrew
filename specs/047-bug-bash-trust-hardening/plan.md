@@ -143,7 +143,7 @@ US-2 (handoff-block enforcement) carries the hardening-gate planning scope. Pre-
 
 ## 7. Risks & Mitigation
 
-- **Regex false positives (Item 4)**: anchor to internal-reference prefixes (`F-`, `Proposal `, `Feature `) + ≥3 digits; exclude version/year tokens. Mitigation: explicit negative fixtures.
+- **Regex false positives (Item 4)**: anchor to internal-reference prefixes (`F-` plus the words `Proposal` or `Feature` followed by whitespace) + ≥3 digits; exclude version/year tokens. Mitigation: explicit negative fixtures.
 - **Mirror divergence**: enforced by FR-014 `diff -q` at review.
 - **Cross-feature cursor bleed** (Decision 6): handled by a one-time cursor reset at the before-implement gate; root fix deferred to the verdict-history atomic refactor follow-up (recorded in findings.md).
 - **Installed-module staleness**: every boundary sync uses the dev-tree `SPECREW_MODULE_PATH` override until v0.27.3 ships and is installed; the release itself resolves this.
