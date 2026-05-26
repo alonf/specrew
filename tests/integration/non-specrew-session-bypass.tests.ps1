@@ -300,6 +300,118 @@ if (-not (Assert-Match -Text $progressText -Pattern 'T002:\s*\r?\n\s+title: "Fin
     exit 1
 }
 
+# Regression test for Codex PR #985 review finding: live non-pending statuses
+# (in-progress / blocked / needs-rework / deferred) MUST NOT be silently downgraded
+# to 'pending' when tasks.md derivation yields 'pending' for unchecked rows. Only
+# tasks.md promotion to 'done' should override live state.
+$preserveProject = Join-Path $scratchRoot 'preserve-live-state-project'
+$preserveFeature = '047-preserve'
+$preserveIteration = '001'
+$preserveFeaturePath = Join-Path $preserveProject "specs\$preserveFeature"
+$preserveIterationPath = Join-Path $preserveFeaturePath "iterations\$preserveIteration"
+$null = New-Item -ItemType Directory -Path $preserveIterationPath -Force
+@'
+# Tasks
+
+- [ ] T010 Still working on this. (Trace: FR-012)
+- [ ] T011 Hit a blocker. (Trace: FR-012)
+- [ ] T012 Needs rework after review. (Trace: FR-012)
+- [ ] T013 Deferred to next iteration. (Trace: FR-012)
+- [x] T014 Promoted to done in tasks.md. (Trace: FR-012)
+'@ | Set-Content -LiteralPath (Join-Path $preserveFeaturePath 'tasks.md') -Encoding UTF8
+@'
+# Iteration Plan: 001
+
+**Schema**: v1
+**Spec**: [../../spec.md](../../spec.md)
+**Status**: executing
+**Capacity**: 5/20 story_points
+**Started**: 2026-05-26
+
+## Tasks
+
+| Task | Title | Requirement | Story | Effort | Owner | Status | Agent | Actual | Verdict |
+| ---- | ----- | ----------- | ----- | ------ | ----- | ------ | ----- | ------ | ------- |
+| T010 | Still working on this | FR-012 | US7 | 1 | Implementer | in-progress | codex | 1 | |
+| T011 | Hit a blocker | FR-012 | US7 | 1 | Implementer | blocked | codex | 1 | |
+| T012 | Needs rework after review | FR-012 | US7 | 1 | Implementer | needs-rework | codex | 1 | |
+| T013 | Deferred to next iteration | FR-012 | US7 | 1 | Implementer | deferred | codex | 1 | |
+| T014 | Promoted to done in tasks.md | FR-012 | US7 | 1 | Implementer | in-progress | codex | 1 | |
+'@ | Set-Content -LiteralPath (Join-Path $preserveIterationPath 'plan.md') -Encoding UTF8
+@'
+# Iteration State: 001
+
+**Schema**: v1
+**Last Completed Task**: (none)
+**Tasks Remaining**: T010, T011, T012, T013
+**In Progress**: T010
+**Baseline Ref**: HEAD
+**Updated**: 2026-05-26T00:00:00Z
+'@ | Set-Content -LiteralPath (Join-Path $preserveIterationPath 'state.md') -Encoding UTF8
+
+# Seed the tasks-progress.yml with live non-pending statuses (simulates active work in progress).
+$preserveProgressDir = Join-Path $preserveIterationPath ''
+$preserveProgressPath = Join-Path $preserveIterationPath 'tasks-progress.yml'
+@'
+schema: "v1"
+feature: "047-preserve"
+iteration: "001"
+updated_at: "2026-05-26T00:00:00Z"
+tasks:
+  T010:
+    title: "Still working on this"
+    status: "in-progress"
+    started_at: "2026-05-26T08:00:00Z"
+    completed_at: ""
+    blocked_reason: ""
+  T011:
+    title: "Hit a blocker"
+    status: "blocked"
+    started_at: "2026-05-26T08:00:00Z"
+    completed_at: ""
+    blocked_reason: "External dependency unavailable"
+  T012:
+    title: "Needs rework after review"
+    status: "needs-rework"
+    started_at: "2026-05-26T08:00:00Z"
+    completed_at: ""
+    blocked_reason: ""
+  T013:
+    title: "Deferred to next iteration"
+    status: "deferred"
+    started_at: ""
+    completed_at: ""
+    blocked_reason: ""
+  T014:
+    title: "Promoted to done in tasks.md"
+    status: "in-progress"
+    started_at: "2026-05-26T08:00:00Z"
+    completed_at: ""
+    blocked_reason: ""
+'@ | Set-Content -LiteralPath $preserveProgressPath -Encoding UTF8
+
+$preserveResult = Sync-IterationTaskProgress -ProjectRoot $preserveProject -FeatureRef $preserveFeature -IterationNumber $preserveIteration -ResolvedFeaturePath $preserveFeaturePath
+$preserveText = Get-Content -LiteralPath $preserveResult.Path -Raw -Encoding UTF8
+
+foreach ($preserveCase in @(
+    @{ TaskId = 'T010'; ExpectedStatus = 'in-progress'; Reason = "in-progress live state must survive tasks.md '[ ]' derivation" },
+    @{ TaskId = 'T011'; ExpectedStatus = 'blocked';     Reason = "blocked live state must survive tasks.md '[ ]' derivation" },
+    @{ TaskId = 'T012'; ExpectedStatus = 'needs-rework'; Reason = "needs-rework live state must survive tasks.md '[ ]' derivation" },
+    @{ TaskId = 'T013'; ExpectedStatus = 'deferred';    Reason = "deferred live state must survive tasks.md '[ ]' derivation" }
+)) {
+    $pattern = ('{0}:\s*\r?\n\s+title:.*\r?\n\s+status: "{1}"' -f $preserveCase.TaskId, $preserveCase.ExpectedStatus)
+    if (-not (Assert-Match -Text $preserveText -Pattern $pattern -Message ("Live state regression: {0}" -f $preserveCase.Reason))) {
+        Write-Host $preserveText
+        exit 1
+    }
+}
+
+# T014: tasks.md marks it [x] → derived promotes 'in-progress' → 'done'. Promotion wins.
+if (-not (Assert-Match -Text $preserveText -Pattern 'T014:\s*\r?\n\s+title:.*\r?\n\s+status: "done"' -Message "tasks.md '[x]' must promote in-progress → done.")) {
+    Write-Host $preserveText
+    exit 1
+}
+
 $startScriptText = Get-Content -LiteralPath (Join-Path $repoRoot 'scripts\specrew-start.ps1') -Raw -Encoding UTF8
 foreach ($phrase in @('push the branch', 'open a PR', 'address automated PR review', 'merge after approval')) {
     if (-not (Assert-Match -Text $startScriptText -Pattern ([regex]::Escape($phrase)) -Message "Feature-closeout handoff template is missing '$phrase'.")) {

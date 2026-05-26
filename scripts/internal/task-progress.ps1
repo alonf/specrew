@@ -369,9 +369,15 @@ function Sync-IterationTaskProgress {
     foreach ($taskRow in $catalog) {
         $derivedStatus = if ($derivedHints.Statuses.Contains($taskRow.Task)) { [string]$derivedHints.Statuses[$taskRow.Task] } else { $null }
         if ($existing.Tasks.Contains($taskRow.Task)) {
+            # Preserve live non-pending state (in-progress, blocked, needs-rework, deferred) unless
+            # tasks.md derivation promotes the task to 'done'. Without this guard, every sync would
+            # downgrade actively worked tasks to 'pending' (the derived status for unchecked rows),
+            # silently erasing coordination state.
+            $liveExistingStatus = [string]$existing.Tasks[$taskRow.Task].status
+            $preserveLiveExisting = ($liveExistingStatus -in @('in-progress', 'blocked', 'needs-rework', 'deferred')) -and ($derivedStatus -ne 'done')
             $entry = [ordered]@{
                 title          = $taskRow.Title
-                status         = if (-not [string]::IsNullOrWhiteSpace($derivedStatus)) { $derivedStatus } elseif ([string]::IsNullOrWhiteSpace([string]$existing.Tasks[$taskRow.Task].status)) { 'pending' } else { [string]$existing.Tasks[$taskRow.Task].status }
+                status         = if ($preserveLiveExisting) { $liveExistingStatus } elseif (-not [string]::IsNullOrWhiteSpace($derivedStatus)) { $derivedStatus } elseif ([string]::IsNullOrWhiteSpace($liveExistingStatus)) { 'pending' } else { $liveExistingStatus }
                 started_at     = [string]$existing.Tasks[$taskRow.Task].started_at
                 completed_at   = [string]$existing.Tasks[$taskRow.Task].completed_at
                 blocked_reason = [string]$existing.Tasks[$taskRow.Task].blocked_reason
