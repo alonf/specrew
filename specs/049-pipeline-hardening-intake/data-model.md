@@ -9,6 +9,7 @@
 **Purpose**: Represents the interactive state of a `/speckit.specify` intake session, captured dynamically during console prompts.
 
 ### Attributes
+
 | Attribute | Type | Required | Validation Rules | Description |
 | --- | --- | --- | --- | --- |
 | `Persona` | Enum | Yes | `product-manager`, `ux-designer`, `architect`, `project-manager` | Governs Specify template rendering and interview questions |
@@ -18,6 +19,7 @@
 | `CreatedAt` | DateTime | Yes | UTC ISO 8601 | Capture initialization timestamp |
 
 ### Lifecycle / Relationships
+
 Created when `/speckit.specify` is invoked; mutated step-by-step as the user responds to console prompts; destroyed or persisted to `.specify/feature.json` once `spec.md` is successfully compiled.
 
 ---
@@ -27,6 +29,7 @@ Created when `/speckit.specify` is invoked; mutated step-by-step as the user res
 **Purpose**: Defines parameters governing the pre-publish E2E layout and manifest parity check execution.
 
 ### Attributes
+
 | Attribute | Type | Required | Validation Rules | Description |
 | --- | --- | --- | --- | --- |
 | `BaselineVersion` | String | Yes | Valid SemVer format (e.g. `0.27.6`) | Previous stable version installed as test base |
@@ -35,4 +38,5 @@ Created when `/speckit.specify` is invoked; mutated step-by-step as the user res
 | `ManifestVersionMatches` | Boolean | Yes | True only when versions match in config + manifest | Prop 134 version pin drift assertion result |
 
 ### Lifecycle / Relationships
+
 Created at the start of a pre-publish pipeline step; executed entirely in-memory within the Linux PowerShell test runner container; results in a GHA block if `VerificationState` equals `failed`.

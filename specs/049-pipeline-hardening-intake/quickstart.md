@@ -27,11 +27,13 @@ specrew specify --persona product-manager --interactive
 ## Try the canonical scenario
 
 ### Scenario 1: Pre-Publish Layout Verification Passes
+
 1. Run `docker build` on the package candidate.
    - **Expected result**: PowerShell container pulls base LTS, installs `v0.27.6`, bootstraps, and successfully verifies all `FileList` items.
 2. The E2E test completes and logs `PASS: FileList integrity check passed.`
 
 ### Scenario 2: Specify Persona Intake Mode C (PM Persona)
+
 1. Run `specrew specify --persona product-manager --interactive`.
    - **Expected result**: The console displays the Product Manager introduction and presents numbered categories.
 2. Select target MVP scope and enter text.
