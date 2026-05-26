@@ -113,7 +113,7 @@ Every feature publishes beta to PSGallery first, manual test, then promote. Codi
 3. **Step 10 (NEW)**: `.github/workflows/publish-module.yml` publishes prerelease automatically; agent verifies package visible via `Find-Module Specrew -AllowPrerelease -RequiredVersion <ver>`
 4. **Step 11 (NEW)**: Agent emits HANDOFF — "Beta v<ver>-beta.1 published to PSGallery. Please install via `Install-Module Specrew -RequiredVersion <ver> -AllowPrerelease -Force` in a clean shell, exercise feature-specific surface + smoke `specrew start` + `specrew where`, report PASS or FAIL with evidence." Agent PAUSES for human verdict.
 5. **Step 12 (NEW)**: If human reports FAIL — agent commits fix on main → tags `v<ver>-beta.2` → repeats Step 9-11. Beta-loop continues until human reports PASS.
-6. **Step 13 (NEW)**: If human reports PASS — agent tags merge commit `v<ver>` stable; pushes tag; workflow publishes stable to PSGallery; agent verifies package visible via `Find-Module Specrew -RequiredVersion <ver>`.
+6. **Step 13 (NEW)**: If human reports PASS — agent tags the PASS-validated commit `v<ver>` stable; pushes tag; workflow publishes stable to PSGallery; agent verifies package visible via `Find-Module Specrew -RequiredVersion <ver>`.
 7. **Step 14**: Stop before any new feature work.
 
 **Validation window**: no fixed time gate — gated on the human's PASS verdict at Step 11. The maintainer chooses the depth of manual test based on the feature's surface area.

@@ -81,8 +81,8 @@ AGENT NEXT ACTION:
              `specrew where`. Report PASS or FAIL with evidence."
     Step 12: if FAIL → fix on main → tag v<ver>-beta.2 → repeat from
              Step 9 (loop until PASS)
-    Step 13: if PASS → tag merge commit v<next-version> stable + push
-             tag; verify workflow publishes stable to PSGallery
+    Step 13: if PASS → tag the PASS-validated commit v<next-version>
+             stable + push tag; verify workflow publishes stable to PSGallery
     Step 14: stop before any new feature work
 
 HUMAN ACTION NEEDED:

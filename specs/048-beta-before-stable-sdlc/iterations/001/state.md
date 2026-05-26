@@ -7,7 +7,7 @@
 **Tasks Remaining**: (none)
 **In Progress**: (none)  
 **Baseline Ref**: 6cd6c58426a9793326c562fbc036e9ebc98c6496  
-**Updated**: 2026-05-26T18:13:24Z
+**Updated**: 2026-05-26T18:19:56Z
 
 ## Execution Summary
 
@@ -36,7 +36,7 @@
   release-audit automation, prerelease banner polish, and
   `specrew update --self --allow-prerelease` outside the iteration 001 claim.
 - T006 verified byte-identical mirror parity for the coordinator governance
-  template (`50581BA4001AC97A611EEF68234794AE3B868A57A952193D2F7B6A8AE2379CC6`),
+  template (`A559A78CD068C0701989C93CAC764B0EA1C4806493EAB54044096E0E164D43E6`),
   the deploy extension script
   (`1CF980EC543C0779410A30A61AB9457FC53FC96547A0B973061D0DAA6629523B`),
   and extension metadata
@@ -48,6 +48,9 @@
   validation passed with the known out-of-scope `README.md` stale-version WARN
   for declared version `0.27.5`.
 - Implementation tasks are complete; the next lifecycle boundary is review.
+- Review rework clarified Step 13 so stable tags the PASS-validated commit,
+  not a stale earlier merge commit after a failed beta loop. The focused
+  fixture now asserts that wording across handoff surfaces and docs.
 
 ## Notes
 

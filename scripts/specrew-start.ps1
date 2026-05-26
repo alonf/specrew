@@ -2844,7 +2844,7 @@ AGENT NEXT ACTION:
       Step 10: verify prerelease publication with Find-Module Specrew -AllowPrerelease
       Step 11: PAUSE for human manual test PASS/FAIL verdict using Install-Module Specrew -AllowPrerelease in a clean shell
       Step 12: if FAIL, fix on main, tag the next beta such as beta.2, and repeat from Step 9
-      Step 13: if PASS, tag and push v<next-version> stable and verify stable publication
+      Step 13: if PASS, tag the PASS-validated commit and push v<next-version> stable, then verify stable publication
       Step 14: stop before any new feature work>
 HUMAN ACTION NEEDED:
   - <concrete step 1>

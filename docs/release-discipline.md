@@ -107,9 +107,9 @@ evidence is retained in the release audit trail.
 
 ### Step 13: Tag and publish stable after PASS
 
-After explicit human PASS, the agent tags the merge commit as
-`v<next-version>` stable, pushes the tag, waits for stable publication, and
-verifies PSGallery visibility, for example:
+After explicit human PASS, the agent tags the commit that produced the passing
+beta as `v<next-version>` stable, pushes the tag, waits for stable publication,
+and verifies PSGallery visibility, for example:
 
 ```powershell
 Find-Module Specrew -RequiredVersion 0.27.6
@@ -155,4 +155,3 @@ complete.
 - Missing stable package verification is not success.
 - Missing or ambiguous human verdict is not success.
 - Explicit FAIL blocks stable publication and starts the beta.N loop.
-
