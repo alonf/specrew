@@ -252,13 +252,13 @@
   },
   "session_state": {
     "active": true,
-    "boundary_type": "before-implement",
+    "boundary_type": "review-signoff",
     "feature_ref": "047-bug-bash-trust-hardening",
     "feature_path": "C:\\Dev\\Specrew\\specs\\047-bug-bash-trust-hardening",
-    "iteration_number": null,
+    "iteration_number": "001",
     "task_id": null,
-    "auth_commit_hash": "46d899b80d7089c48804a70b67bba9d7cf63f7cb",
-    "recorded_at": "2026-05-26T07:52:40Z"
+    "auth_commit_hash": "a58c15593b4617c7a4ea48839637474c564ee609",
+    "recorded_at": "2026-05-26T08:30:51Z"
   },
   "recovery_session": null,
   "squad_model_overrides": {
@@ -270,7 +270,7 @@
   },
   "prompt_path": "C:\\Dev\\Specrew\\.specrew\\last-start-prompt.md",
   "summary_path": "C:\\Dev\\Specrew\\.specrew\\start-summary.md",
-  "generated_at_utc": "2026-05-26T07:52:40Z",
+  "generated_at_utc": "2026-05-26T08:30:51Z",
   "selected_host": "codex",
   "available_hosts": {
     "claude": true,

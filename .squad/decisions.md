@@ -19156,3 +19156,12 @@ User explicitly authorized retro-boundary entry for Feature 039 Iteration 001. T
 - **Task ID**: (none)
 - **Auth Commit Hash**: 46d899b80d7089c48804a70b67bba9d7cf63f7cb
 - **Recorded At**: 2026-05-26T07:52:40Z
+
+## 2026-05-26T08:30:52Z — Boundary sync: review-signoff
+
+- **Boundary Type**: review-signoff
+- **Feature Ref**: 047-bug-bash-trust-hardening
+- **Iteration Number**: 001
+- **Task ID**: (none)
+- **Auth Commit Hash**: a58c15593b4617c7a4ea48839637474c564ee609
+- **Recorded At**: 2026-05-26T08:30:51Z
