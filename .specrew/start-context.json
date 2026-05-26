@@ -257,8 +257,8 @@
     "feature_path": "C:\\Dev\\Specrew\\specs\\047-bug-bash-trust-hardening",
     "iteration_number": "001",
     "task_id": null,
-    "auth_commit_hash": "a58c15593b4617c7a4ea48839637474c564ee609",
-    "recorded_at": "2026-05-26T08:30:51Z"
+    "auth_commit_hash": "b3ba2962e09ba3f1712db7268955e4e3937b5371",
+    "recorded_at": "2026-05-26T08:44:54Z"
   },
   "recovery_session": null,
   "squad_model_overrides": {
@@ -270,7 +270,7 @@
   },
   "prompt_path": "C:\\Dev\\Specrew\\.specrew\\last-start-prompt.md",
   "summary_path": "C:\\Dev\\Specrew\\.specrew\\start-summary.md",
-  "generated_at_utc": "2026-05-26T08:30:51Z",
+  "generated_at_utc": "2026-05-26T08:44:54Z",
   "selected_host": "codex",
   "available_hosts": {
     "claude": true,
