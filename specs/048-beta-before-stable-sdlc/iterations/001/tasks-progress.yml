@@ -1,0 +1,47 @@
+schema: "v1"
+feature: "048-beta-before-stable-sdlc"
+iteration: "001"
+updated_at: "2026-05-26T18:13:24Z"
+tasks:
+  T001:
+    title: "Handoff ownership fixtures"
+    status: "done"
+    started_at: ""
+    completed_at: "2026-05-26T17:48:13Z"
+    blocked_reason: ""
+  T002:
+    title: "Coordinator handoff template wording"
+    status: "done"
+    started_at: ""
+    completed_at: "2026-05-26T17:54:16Z"
+    blocked_reason: ""
+  T003:
+    title: "Release discipline docs fixtures"
+    status: "done"
+    started_at: ""
+    completed_at: "2026-05-26T17:59:20Z"
+    blocked_reason: ""
+  T004:
+    title: "Release discipline documentation"
+    status: "done"
+    started_at: ""
+    completed_at: "2026-05-26T18:01:44Z"
+    blocked_reason: ""
+  T005:
+    title: "Proposal/index metadata"
+    status: "done"
+    started_at: ""
+    completed_at: "2026-05-26T18:08:25Z"
+    blocked_reason: ""
+  T006:
+    title: "Mirror parity verification"
+    status: "done"
+    started_at: ""
+    completed_at: "2026-05-26T18:11:29Z"
+    blocked_reason: ""
+  T007:
+    title: "Iteration 001 focused verification"
+    status: "done"
+    started_at: ""
+    completed_at: "2026-05-26T18:13:24Z"
+    blocked_reason: ""

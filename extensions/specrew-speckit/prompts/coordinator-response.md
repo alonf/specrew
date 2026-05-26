@@ -46,7 +46,9 @@ For per-boundary handoffs:
 - **What I just did** — for planning, implementation, review, and retro: include at least 3 concrete identifiers (`file:///`, commit hash, `FR-###`, `T###`, or authorization reference) **and** at least 50 words. For iteration-closeout and feature-closeout, either threshold is enough.
 - **Why I stopped** — explicitly name the boundary being entered.
 - **What I need from you** — name the boundary being authorized, cite the inspection targets as `file:///` references, and ask for the verdict required.
-- **Feature-closeout action items** — when the boundary is `feature-closeout`, the handoff's human actions include the release branch push, PR creation, automated PR review response, and merge-after-approval sequence.
+- **Feature-closeout release SDLC ownership** — when the boundary is `feature-closeout`, include both rows:
+  - `AGENT NEXT ACTION:` executes the release SDLC with human approval at each substantive step: Step 5 push the feature branch; Step 6 create the PR with `gh pr create`; Step 7 self-review the PR and address automated PR review; Step 8 merge with a merge commit after approval/checks; Step 9 tag the merge commit (or the PASS-candidate fix commit if looping) and push `v<next-version>-beta.1`; Step 10 verify prerelease publication with `Find-Module Specrew -AllowPrerelease`; Step 11 PAUSE for the human manual test PASS/FAIL verdict using `Install-Module Specrew -AllowPrerelease` in a clean shell; Step 12 if FAIL, fix on main, tag the next beta such as `beta.2`, and repeat from Step 9; Step 13 if PASS, tag the PASS-validated commit and push `v<next-version>` stable, then verify stable publication; Step 14 stop before any new feature work.
+  - `HUMAN ACTION NEEDED:` asks the human to approve each agent action when prompted and, at Step 11, install the prerelease with `Install-Module Specrew -AllowPrerelease`, exercise it, and report PASS or FAIL with evidence.
 
 Worked boundary examples:
 

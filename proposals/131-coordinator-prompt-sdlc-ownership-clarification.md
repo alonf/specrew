@@ -5,7 +5,7 @@ status: candidate
 phase: phase-2
 estimated-sp: 3-5 (standalone) or 5-7 (bundled with Proposal 060)
 priority-tier: 1
-discussion: empirically motivated by 2026-05-26 F-047 Codex regression where F-047 Item 6's coordinator-prompt template embedded the PR-at-feature-close SDLC sequence as "HUMAN ACTION NEEDED" — visibility goal achieved but ownership semantics regressed; F-045 Codex (pre-Item-6) correctly drove the full SDLC end-to-end; F-047 Codex (post-Item-6) pushed via Scribe then stopped before opening the PR; absorbed memory `[[codex-pr-creation-regression-2026-05-26]]`. **EXTENDED 2026-05-26 to include Steps 9-14** (beta-tag → publish → manual-test → promote-stable) per [[feedback-beta-publish-before-stable-2026-05-26]] universal mandate; bundle candidate with Proposal 060 since both modify the same template surface
+discussion: empirically motivated by 2026-05-26 F-047 Codex regression where F-047 Item 6's coordinator-prompt template embedded the PR-at-feature-close SDLC sequence as "HUMAN ACTION NEEDED" — visibility goal achieved but ownership semantics regressed; F-045 Codex (pre-Item-6) correctly drove the full SDLC end-to-end; F-047 Codex (post-Item-6) pushed via Scribe then stopped before opening the PR; absorbed memory `[[codex-pr-creation-regression-2026-05-26]]`. **EXTENDED 2026-05-26 to include Steps 9-14** (beta-tag → publish → manual-test → promote-stable) per [[feedback-beta-publish-before-stable-2026-05-26]] universal mandate; bundle candidate with Proposal 060 since both modify the same template surface. F-048 iteration 001 implemented the coordinator prompt/governance/test slice on the active feature branch; runtime enforcement and release-audit automation remain out of this proposal's shipped slice.
 ---
 
 # Coordinator-Prompt SDLC Ownership Clarification (Agent-Driven With Human Approval)
@@ -44,6 +44,8 @@ Squad/Codex/Antigravity/any other Crew runtime drives the PR cycle. Human approv
 
 Single-pillar small-fix slice that clarifies SDLC ownership semantics in the coordinator-prompt feature-closeout HANDOFF template across all hosts.
 
+**F-048 iteration 001 branch status (2026-05-26)**: the coordinator prompt/governance template slice has been implemented with focused regression coverage in `tests/integration/beta-before-stable-sdlc.tests.ps1`. This does not claim F-048 iteration 002 release-audit automation or Proposal 105 runtime enforcement.
+
 ### Pillar 1: AGENT TO EXECUTE alongside HUMAN ACTION NEEDED (~1-2 SP)
 
 The coordinator-prompt feature-closeout HANDOFF template needs a one-line clarification: SDLC steps are **agent-driven with human approval at each step**, not human-driven.
@@ -68,7 +70,7 @@ AGENT NEXT ACTION:
     Step 6: gh pr create
     Step 7: self-review PR (reference per-iteration review.md + retro.md)
     Step 8: gh pr merge --merge (preserves per-feature history)
-    Step 9: tag merge commit v<next-version>-beta.1 + push tag
+    Step 9: tag the merge commit (or the PASS-candidate fix commit if looping) as v<next-version>-beta.1 + push tag
     Step 10: verify .github/workflows/publish-module.yml published the
              prerelease via Find-Module Specrew -AllowPrerelease
              -RequiredVersion <ver>
@@ -79,8 +81,8 @@ AGENT NEXT ACTION:
              `specrew where`. Report PASS or FAIL with evidence."
     Step 12: if FAIL → fix on main → tag v<ver>-beta.2 → repeat from
              Step 9 (loop until PASS)
-    Step 13: if PASS → tag merge commit v<next-version> stable + push
-             tag; verify workflow publishes stable to PSGallery
+    Step 13: if PASS → tag the PASS-validated commit v<next-version>
+             stable + push tag; verify workflow publishes stable to PSGallery
     Step 14: stop before any new feature work
 
 HUMAN ACTION NEEDED:
@@ -177,3 +179,4 @@ Draft when F-048 bug-bash is queued (likely after another empirical incident acc
 
 - 2026-05-26: candidate proposal drafted as part of memory→proposal sweep absorbing `[[codex-pr-creation-regression-2026-05-26]]`. ~2-4 SP small-fix slice. Bundle candidate for F-048 bug-bash; standalone-ready as fallback.
 - 2026-05-26 (later, same day): **extended Pillar 1 + Pillar 2 to cover Steps 9-14** (beta-tag → publish → manual-test → promote-stable) per the new [[feedback-beta-publish-before-stable-2026-05-26]] universal mandate. SP raised 2-4 → 3-5 standalone; bundle-with-060 recommended ~5-7 SP combined since both proposals modify the same template surface. AC6 + AC7 added covering Steps 9-14 dry-run + fail-loop behavior.
+- 2026-05-26 (F-048 iteration 001): active feature-branch implementation landed the coordinator ownership split across the generated start handoff, coordinator response guidance, coordinator decision guidance, and source/deployed coordinator governance templates. Focused test coverage checks `AGENT NEXT ACTION:` + `HUMAN ACTION NEEDED:`, ordered Steps 5-14, the explicit Step 11 PASS/FAIL gate, and the beta fail-loop. Remaining related work is outside this proposal's implemented slice: F-048 iteration 002 release-audit automation and Proposal 105 runtime enforcement.
