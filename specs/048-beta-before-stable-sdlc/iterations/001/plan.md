@@ -39,7 +39,7 @@ schema, and direct-main config behavior. Those are iteration 002.
 | T003 | Release discipline docs fixtures | FR-005,FR-006,FR-013 | US2 | 1 | Reviewer | tests/integration/*release*; tests/integration/*beta-before-stable* | done | codex | 1 | expected-fail |
 | T004 | Release discipline documentation | FR-005,FR-006,FR-016 | US2 | 2 | Spec Steward | docs/release-discipline.md | done | codex | 2 | pass |
 | T005 | Proposal/index metadata | FR-015 | US4 | 1 | Spec Steward | proposals/060-prerelease-channel-staging.md; proposals/131-coordinator-prompt-sdlc-ownership-clarification.md; proposals/INDEX.md | done | codex | 1 | pass |
-| T006 | Mirror parity verification | FR-014 | US4 | 1 | Reviewer | extensions/specrew-speckit/**/*; .specify/extensions/specrew-speckit/**/* | planned | codex | 0 | pending |
+| T006 | Mirror parity verification | FR-014 | US4 | 1 | Reviewer | extensions/specrew-speckit/**/*; .specify/extensions/specrew-speckit/**/* | done | codex | 1 | pass |
 | T007 | Iteration 001 focused verification | FR-013,FR-014,FR-016 | US1,US2,US4 | 1 | Reviewer | tests/integration/*; .specify/extensions/specrew-speckit/scripts/validate-governance.ps1 | planned | codex | 0 | pending |
 
 ## Effort Model

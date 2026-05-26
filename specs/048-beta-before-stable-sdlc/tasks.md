@@ -23,7 +23,7 @@ without explicit human PASS evidence.
 ### Phase 3: Proposal Metadata + Iteration 001 Verification
 
 - [x] T005 [assigned_to: Spec Steward] [effort: S] Update `proposals/060-prerelease-channel-staging.md`, `proposals/131-coordinator-prompt-sdlc-ownership-clarification.md`, and `proposals/INDEX.md` to reflect the F-048 shipped/in-progress scope without claiming Iteration 002 audit automation until it lands. (Trace: FR-015)
-- [ ] T006 [assigned_to: Reviewer] [effort: S] Verify mirror parity for every modified `extensions/specrew-speckit/` file with a `.specify/extensions/specrew-speckit/` counterpart. (Trace: FR-014, SC-007)
+- [x] T006 [assigned_to: Reviewer] [effort: S] Verify mirror parity for every modified `extensions/specrew-speckit/` file with a `.specify/extensions/specrew-speckit/` counterpart. (Trace: FR-014, SC-007)
 - [ ] T007 [assigned_to: Reviewer] [effort: S] Run Iteration 001 focused tests plus scoped governance validation; record evidence in iteration quality artifacts. (Trace: FR-013, FR-014, FR-016, SC-001, SC-002, SC-003, SC-007, SC-008)
 
 ## Iteration 002: Post-Merge Release Audit Trail

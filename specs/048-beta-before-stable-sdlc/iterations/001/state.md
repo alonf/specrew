@@ -3,11 +3,11 @@
 **Schema**: v1  
 **Current Phase**: implement
 **Iteration Status**: active
-**Last Completed Task**: T005
-**Tasks Remaining**: T006, T007
+**Last Completed Task**: T006
+**Tasks Remaining**: T007
 **In Progress**: (none)  
 **Baseline Ref**: 6cd6c58426a9793326c562fbc036e9ebc98c6496  
-**Updated**: 2026-05-26T18:08:25Z
+**Updated**: 2026-05-26T18:11:29Z
 
 ## Execution Summary
 
@@ -35,6 +35,14 @@
   F-048 iteration 001 policy/docs/coordinator-handoff/test scope while keeping
   release-audit automation, prerelease banner polish, and
   `specrew update --self --allow-prerelease` outside the iteration 001 claim.
+- T006 verified byte-identical mirror parity for the coordinator governance
+  template (`50581BA4001AC97A611EEF68234794AE3B868A57A952193D2F7B6A8AE2379CC6`),
+  the deploy extension script
+  (`1CF980EC543C0779410A30A61AB9457FC53FC96547A0B973061D0DAA6629523B`),
+  and extension metadata
+  (`931C7808E1C9687556C8D770E9C4BB08570B47DC2BC657DBC05FBEA2493FCD15`).
+  The deploy script still uses explicit `Optional` entries with only `hooks`
+  optional; all other missing items keep the "module appears corrupt" failure.
 
 ## Notes
 
