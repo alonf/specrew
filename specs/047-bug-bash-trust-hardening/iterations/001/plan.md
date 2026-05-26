@@ -2,10 +2,10 @@
 
 **Schema**: v1
 **Spec**: [../../spec.md](../../spec.md)
-**Status**: reviewing
+**Status**: retro
 **Capacity**: 20/20 story_points
 **Started**: 2026-05-26
-**Completed**:
+**Completed**: 2026-05-26
 
 <!--
   Validator schema (canonical, enforced by validate-governance.ps1):
