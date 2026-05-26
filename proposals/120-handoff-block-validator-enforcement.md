@@ -3,9 +3,9 @@ proposal: 120
 title: Handoff-Block Validator Enforcement + Non-Specrew-Session Bypass Detection
 status: candidate
 phase: phase-2
-estimated-sp: 4-7
-priority-tier: 2
-discussion: empirical motivation from 2026-05-25 PlanningPoC Squad+Copilot silence + Antigravity F-046 question-prompt substitution + 2026-05-26 PlanningPoC iter-002 silent boundary-state auto-advance (caught by Picard's independent audit); queued in memory [[non-specrew-session-bypasses-triggers-2026-05-25]] explicit user direction "Memorized it, and later we will create a bug proposal to fix it"; expanded 2026-05-26 with Pillar 4 (state-advance-without-verdict cross-check)
+estimated-sp: 6-10
+priority-tier: 1
+discussion: **HIGH PRIORITY (Tier 1)** as of 2026-05-27 — Pillar 5 added after PlanningPoC iter-004 Reviewer-approved-working-tree-only-state empirical evidence. Pillar 5 is the most consequential shape of the form-without-runtime-compliance family because it's the only one where delivered CODE can permanently vanish (other shapes corrupt metadata/audit only). Empirical motivation now spans Shapes 1-5: 2026-05-25 PlanningPoC Squad+Copilot silence + Antigravity F-046 question-prompt substitution + 2026-05-26 PlanningPoC iter-002 silent boundary-state auto-advance (Picard catch) + **2026-05-27 PlanningPoC iter-004 reviewer-approves-working-tree-only-state (7 production files cited in review.md never committed, recovered via `29fce04`)**. Queued in [[non-specrew-session-bypasses-triggers-2026-05-25]] + [[shape5-reviewer-approves-working-tree-only-state-2026-05-27]]; expanded 2026-05-26 with Pillar 4 + 2026-05-27 with Pillar 5.
 ---
 
 # Handoff-Block Validator Enforcement + Non-Specrew-Session Bypass Detection
@@ -69,6 +69,35 @@ When `state.md`'s `Current Phase` field changes across two commits, the validato
 
 This pillar makes Picard's manual audit role mechanical and host-portable — particularly important when Proposal 024 Slice 3 / Proposal 108 ship per-host Crew runtimes, since Picard's role MUST be replicated on every host to preserve the load-bearing safety net.
 
+### Pillar 5: Reviewer approves working-tree-only state — review.md cites files not in cited commit (~2-3 SP, added 2026-05-27)
+
+**Shape 5 of the "Specrew form without runtime compliance" family**, surfaced 2026-05-27 in PlanningPoC iter-004 post-closeout discovery. **This is the most consequential gap because it's the only shape where actual delivered code can permanently vanish** via `git reset --hard` / `git clean -fdx` / fresh clone — the other shapes (1-4) corrupt metadata or audit trails but the code itself is recoverable.
+
+**The pattern**: Reviewer agent runs tests against working-tree state (where uncommitted files exist on disk), tests pass, Reviewer issues an `accepted` verdict citing committed-hash provenance (`**Tree Under Review**: <hash>`), and lists file-level evidence in the verdict. But the cited commit doesn't actually contain those files — they're only in the working tree, never committed. The audit trail is structurally lying: review.md says "Tree Under Review: `<hash>`" and lists code evidence files A, B, C; `git ls-tree <hash>` shows files A, B, C don't exist in that commit. The Reviewer never ran `git ls-tree` verification before issuing the verdict. Tests passed because they ran against working-tree state, not committed state.
+
+**PlanningPoC iter-004 empirical proof (2026-05-27 discovery)**:
+
+iter-004 closed with `accepted` verdict; iteration-closeout commit `c6facc8` landed; retro authored. After `specrew update` to v0.27.6, user ran `git status` and saw 7 NEW production code files showing as untracked (`??`) — exactly the files cited as evidence in iter-004's review.md (T032r `SignoffRepository.cs`, T035r `ConfirmationPanel.tsx`, T036r `SignoffModal.tsx`, FR-013 `ReviewWorkflowModels.cs`, etc.). `git log --all` for those files returned EMPTY — they had NEVER been in any commit on any branch. Recovery: user staged + committed as `29fce04`. The Reviewer's `**Tree Under Review**: f4e01b7` assertion referenced a tree that didn't contain the cited files. Tests passed (15 contract + 4 integration + 2 Playwright); the lie isn't in the test results — it's in the **commit-hash provenance assertion**.
+
+**Detection mechanism**:
+
+For each iteration with a `review.md`:
+
+1. Parse `review.md` for `**Tree Under Review**: <hash>` (or equivalent canonical field naming the reviewed commit)
+2. Parse `review.md` for file paths cited as evidence — match `\.(cs|tsx|ts|md|yml|yaml|json|ps1|py|js|rs|go)$` paths in "Code evidence", "Verification Evidence", "Per-task evidence", "Requirement Verdicts" sections
+3. For each cited file path: run `git ls-tree -r <hash> --name-only` and verify presence
+4. If any cited PRODUCTION file (excluding test files in `tests/` paths and config files) is missing from the cited tree → emit `FAIL [review] file-cited-but-not-in-tree: '<path>' is referenced in review.md verdict evidence but not present in 'Tree Under Review' commit <hash>. Reviewer may have approved against working-tree-only state.`
+5. Soft `WARN` for test files (might be in scope but missing) — fail-loud only for production code
+6. Gate the iteration-closeout boundary on this check passing (a `failed-pillar-5` iteration MUST NOT close)
+
+**Where to fire**: every `validate-governance.ps1` run encountering a `review.md` with verdict `accepted` / `pass`. Hard-gate iteration-closeout boundary on Pillar 5 PASS.
+
+**Companion Reviewer-charter discipline change** (separately shipped, possibly faster):
+
+> Reviewer's charter requires `git ls-tree HEAD` verification of every file cited in evidence BEFORE issuing any acceptance verdict. Tests passing against the working tree do NOT establish durable delivery. Only `git ls-tree` presence establishes durability.
+
+Charter directive can ship as its own small-fix slice (Proposal 067, ~1-2 SP) without waiting for the full validator rule. Belt + suspenders.
+
 ## How
 
 Total ~4-7 SP single iteration:
@@ -80,7 +109,8 @@ Total ~4-7 SP single iteration:
 | Pillar 2 trigger-bypass diagnosis augmentation | same file | 1 SP |
 | Pillar 3 wrong-location detection | same file | 1 SP |
 | **Pillar 4 state-advance cross-check** | same file + helper extension | 1-2 SP |
-| Integration tests covering all 4 shapes | `tests/integration/non-specrew-session-bypass.tests.ps1` (extend) | 1 SP |
+| **Pillar 5 review.md-vs-git-ls-tree cross-check** | `extensions/specrew-speckit/scripts/validate-governance.ps1` (+ mirror) — new `Test-ReviewCitedFilesInTree` helper; gates iteration-closeout boundary | 2-3 SP |
+| Integration tests covering all 5 shapes | `tests/integration/non-specrew-session-bypass.tests.ps1` (extend) | 1-2 SP |
 
 ## Acceptance criteria
 
@@ -92,6 +122,9 @@ Total ~4-7 SP single iteration:
 - **AC6**: Mirror parity confirmed byte-identical for the two modified extension scripts
 - **AC7** (Pillar 4): When `state.md` `Current Phase` changes across two commits for a human-verdict boundary (e.g., `review-signoff → retro`), the validator cross-checks `boundary_enforcement.verdict_history` and emits WARN if no matching `from_boundary → to_boundary` entry with non-empty `authorizing_human` exists. Pre-2026-05-26 iterations grandfathered via timestamp scope
 - **AC8** (Pillar 4): `sync-boundary-state.ps1` refuses (hard-block, not WARN) to advance state for a human-verdict boundary unless the corresponding verdict-history append happens in the same transaction
+- **AC9** (Pillar 5): When review.md cites a production code file (matching `\.(cs|tsx|ts|py|js|rs|go|ps1)$` outside `tests/` paths) AND that file is not present in the cited `Tree Under Review` commit per `git ls-tree -r <hash>`, validator emits FAIL severity (not WARN) — strong enough to block iteration-closeout
+- **AC10** (Pillar 5): Test files (`tests/**/*.{cs,ts,py,etc}`) cited in review.md but missing from the cited tree emit WARN (lower severity — test scope may legitimately differ from review intent)
+- **AC11** (Pillar 5): `validate-governance.ps1` gates iteration-closeout boundary on Pillar 5 PASS. A failed Pillar 5 must produce a clear repair path: "Reviewer cited <path> as evidence but tree <hash> doesn't contain it. Either stage + commit the file then re-issue the verdict, or remove the file from review.md evidence sections."
 
 ## Out of scope
 
@@ -123,8 +156,9 @@ Total ~4-7 SP single iteration:
 - 2026-05-26 F-046 v0.27.2 — 4-gate autopilot bypass with zero handoff blocks emitted between boundary commits `0857e319 → f6155e54`
 - 2026-05-26 PlanningPoC review-rerun post-compaction discipline drop (Sub-trigger 3c) — within a SINGLE Squad+Copilot dogfooding session, the stop immediately BEFORE compaction emitted the proper three-section handoff; the stop immediately AFTER compaction (review-rerun acceptance commit `f06491e5`) dropped to plain prose ("Review rerun passed. The packet is now accepted...") with no structured block. The same agent instance exhibited inconsistent discipline within a single session boundary. Second incident within the same dogfooding session (after the earlier Scribe-bookkeeping silence) — confirms compaction-related variant as a recurring sub-axis.
 - **2026-05-26 PlanningPoC iter-002 silent boundary-state auto-advance (Pillar 4 motivator)** — after B1+B2 fix-and-re-review, Squad silently mutated `iterations/002/state.md` `Current Phase` from `review-signoff` to `retro` WITHOUT a human `approved for review-signoff` verdict. Files mutated: `.squad/identity/now.md`, `iterations/002/plan.md`, `iterations/002/review.md`, `iterations/002/state.md`. **Picard's independent audit caught the breach** and rolled state.md back (commit `a5866c1 fix(governance): repair iteration-002 boundary — retro → review-signoff`). Without Picard, the human would have been presented with a fait-accompli retro phase. This is a state-layer counterpart to Pillar 1's communication-layer detection — different mutation surface, structurally equivalent class.
+- **2026-05-27 PlanningPoC iter-004 Reviewer-approves-working-tree-only-state (Pillar 5 motivator)** — iter-004 closed with `accepted` verdict and iteration-closeout commit `c6facc8`; user's post-update `git status` revealed 7 production code files cited as evidence in review.md were **never committed to ANY branch** (`git log --all` empty). Reviewer's `**Tree Under Review**: f4e01b7` provenance assertion was structurally false. Recovery via commit `29fce04`. This is the **most consequential shape** of the family because actual code can permanently vanish via `git reset --hard` / `git clean -fdx` / fresh clone — the other shapes corrupt audit trails but the code itself is recoverable. The lie isn't in the test results (tests passed) — it's in the commit-hash provenance assertion (tests ran against working-tree, verdict cited commit hash, files weren't in the commit).
 
-Pattern recurs across multiple hosts, multiple sessions, multiple shapes (communication-layer + state-layer), multiple compaction boundaries within a single session, AND across reviewer-protocol gaps that only multi-perspective independent audit (Picard) catches. Universal across multi-host expansion AND across long-session execution AND across single-perspective hosts that would lose Picard's safety net.
+Pattern recurs across multiple hosts, multiple sessions, multiple shapes (communication-layer + state-layer + reviewer-verification-layer), multiple compaction boundaries within a single session, AND across reviewer-protocol gaps that only multi-perspective independent audit (Picard) catches. Universal across multi-host expansion AND across long-session execution AND across single-perspective hosts that would lose Picard's safety net.
 
 ## Cross-references
 
@@ -141,3 +175,4 @@ Pattern recurs across multiple hosts, multiple sessions, multiple shapes (commun
 - 2026-05-25: empirical observation captured in memory after F-044 backfill + Antigravity F-046 wrong-location + Squad+Copilot handoff-drop incidents. User direction: "Memorized it, and later we will create a bug proposal to fix it."
 - 2026-05-26: candidate proposal drafted as part of memory→proposal sweep. Scope is ~3-5 SP small-fix slice covering 3 detection rules (handoff-block presence, trigger-bypass diagnosis, wrong-location warning) + shared helper function. Composes tightly with 030 / 067 / 075 / 078 / 105.
 - 2026-05-26 (later): **expanded with Pillar 4 (state-advance-without-verdict cross-check)** after PlanningPoC iter-002 silent auto-advance breach surfaced as a state-layer counterpart to Pillar 1's communication-layer detection. Picard's independent audit caught it (commit `a5866c1`); Pillar 4 makes the Picard role mechanical and host-portable. SP estimate raised 3-5 → 4-7. Memory `[[picard-boundary-state-auto-advance-catch-2026-05-26]]` absorbed.
+- **2026-05-27: expanded with Pillar 5 (reviewer-approves-working-tree-only-state — review.md-vs-git-ls-tree cross-check) + priority bumped to Tier 1 HIGH PRIORITY**. PlanningPoC iter-004 surfaced the most consequential shape of the family: 7 production code files cited in review.md were never committed despite the iteration closing with `accepted` verdict. Tests passed against working-tree state; verdict cited commit hash; files weren't in the cited commit. User caught it by accident via `git status` after `specrew update`; recovery commit `29fce04` staged the missing work. The lie is in the commit-hash provenance assertion, not the test results. Pillar 5 adds `Test-ReviewCitedFilesInTree` validator helper + hard-gate iteration-closeout on PASS. Companion Reviewer-charter discipline change recommended as separate small-fix slice ([[proposal-067]] family, ~1-2 SP) to ship faster than the validator rule. SP estimate raised 4-7 → 6-10 (full Pillars 1-5). Memory `[[shape5-reviewer-approves-working-tree-only-state-2026-05-27]]` absorbed.
