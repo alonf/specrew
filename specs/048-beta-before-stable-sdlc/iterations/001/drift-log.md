@@ -43,3 +43,6 @@ The following resolution strategies remain available if drift is detected later 
 
 - This artifact was scaffolded before review starts so drift can be logged immediately when detected.
 - Replace the zero-drift summary with real counts when the first drift event is recorded.
+- 2026-05-26T18:13:24Z: T007 focused verification completed with no
+  specification drift detected. Release audit automation remains deferred to
+  iteration 002 as planned.

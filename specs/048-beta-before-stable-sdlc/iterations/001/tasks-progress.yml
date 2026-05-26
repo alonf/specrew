@@ -1,7 +1,7 @@
 schema: "v1"
 feature: "048-beta-before-stable-sdlc"
 iteration: "001"
-updated_at: "2026-05-26T18:11:29Z"
+updated_at: "2026-05-26T18:13:24Z"
 tasks:
   T001:
     title: "Handoff ownership fixtures"
@@ -41,7 +41,7 @@ tasks:
     blocked_reason: ""
   T007:
     title: "Iteration 001 focused verification"
-    status: "planned"
+    status: "done"
     started_at: ""
-    completed_at: ""
+    completed_at: "2026-05-26T18:13:24Z"
     blocked_reason: ""
