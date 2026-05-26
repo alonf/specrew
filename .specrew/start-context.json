@@ -2,7 +2,7 @@
   "schema": "v2",
   "mode": "resume-feature",
   "feature_request": "",
-  "feature_path": "C:\\Dev\\Specrew\\specs\\046-046-bug-bash",
+  "feature_path": "C:\\Dev\\Specrew\\specs\\047-bug-bash-trust-hardening",
   "agent": "Squad",
   "approval_mode": "allow-all",
   "launch_mode": "same-window",
@@ -94,6 +94,7 @@
       "044-per-host-architecture-refactor",
       "045-v0271-bugfix-bundle",
       "046-046-bug-bash",
+      "047-bug-bash-trust-hardening",
       "antigravity-host-followup"
     ]
   },
@@ -166,69 +167,69 @@
   },
   "delegated_routing": {
     "enabled_agents": [
-      "claude"
+      "copilot"
     ],
     "independent_oversight_active": false,
     "roles": {
       "Implementer": {
         "role": "Implementer",
         "requested_agent": "copilot",
-        "effective_agent": "claude",
-        "delegated": true,
-        "access_path": "copilot_agent_hq",
-        "fallback_reason": "preferred agent 'copilot' is not enabled"
+        "effective_agent": "copilot",
+        "delegated": false,
+        "access_path": "copilot_default",
+        "fallback_reason": null
       },
       "Spec Steward": {
         "role": "Spec Steward",
         "requested_agent": "codex",
-        "effective_agent": "claude",
-        "delegated": true,
-        "access_path": "copilot_agent_hq",
+        "effective_agent": "copilot",
+        "delegated": false,
+        "access_path": "copilot_default",
         "fallback_reason": "preferred agent 'codex' is not enabled"
       },
       "Planner": {
         "role": "Planner",
         "requested_agent": "claude",
-        "effective_agent": "claude",
-        "delegated": true,
-        "access_path": "copilot_agent_hq",
-        "fallback_reason": null
+        "effective_agent": "copilot",
+        "delegated": false,
+        "access_path": "copilot_default",
+        "fallback_reason": "preferred agent 'claude' is not enabled"
       },
       "Reviewer": {
         "role": "Reviewer",
         "requested_agent": "claude",
-        "effective_agent": "claude",
-        "delegated": true,
-        "access_path": "copilot_agent_hq",
-        "fallback_reason": null
+        "effective_agent": "copilot",
+        "delegated": false,
+        "access_path": "copilot_default",
+        "fallback_reason": "preferred agent 'claude' is not enabled"
       },
       "Retro Facilitator": {
         "role": "Retro Facilitator",
         "requested_agent": "copilot",
-        "effective_agent": "claude",
-        "delegated": true,
-        "access_path": "copilot_agent_hq",
-        "fallback_reason": "preferred agent 'copilot' is not enabled"
+        "effective_agent": "copilot",
+        "delegated": false,
+        "access_path": "copilot_default",
+        "fallback_reason": null
       }
     },
     "fallback_events": [
       {
-        "role": "Implementer",
-        "requested_agent": "copilot",
-        "actual_agent": "claude",
-        "reason": "preferred agent 'copilot' is not enabled"
-      },
-      {
         "role": "Spec Steward",
         "requested_agent": "codex",
-        "actual_agent": "claude",
+        "actual_agent": "copilot",
         "reason": "preferred agent 'codex' is not enabled"
       },
       {
-        "role": "Retro Facilitator",
-        "requested_agent": "copilot",
-        "actual_agent": "claude",
-        "reason": "preferred agent 'copilot' is not enabled"
+        "role": "Planner",
+        "requested_agent": "claude",
+        "actual_agent": "copilot",
+        "reason": "preferred agent 'claude' is not enabled"
+      },
+      {
+        "role": "Reviewer",
+        "requested_agent": "claude",
+        "actual_agent": "copilot",
+        "reason": "preferred agent 'claude' is not enabled"
       }
     ]
   },
@@ -246,32 +247,26 @@
   "session_state": {
     "active": false,
     "boundary_type": "feature-closeout",
-    "feature_ref": "046-046-bug-bash",
-    "feature_path": "C:\\Dev\\Specrew\\specs\\046-046-bug-bash",
-    "iteration_number": null,
+    "feature_ref": "047-bug-bash-trust-hardening",
+    "feature_path": "C:\\Dev\\Specrew\\specs\\047-bug-bash-trust-hardening",
+    "iteration_number": "001",
     "task_id": null,
-    "auth_commit_hash": "fb47f956",
-    "recorded_at": "2026-05-25T23:50:21Z"
+    "auth_commit_hash": "c7fa3800b2aa8cd99882cec6988ef228efcab9c8",
+    "recorded_at": "2026-05-26T11:39:12Z"
   },
   "recovery_session": null,
-  "squad_model_overrides": {
-    "Implementer": "claude-sonnet-4.5",
-    "Spec Steward": "claude-sonnet-4.5",
-    "Planner": "claude-sonnet-4.5",
-    "Reviewer": "claude-sonnet-4.5",
-    "Retro Facilitator": "claude-sonnet-4.5"
-  },
+  "squad_model_overrides": {},
   "prompt_path": "C:\\Dev\\Specrew\\.specrew\\last-start-prompt.md",
   "summary_path": "C:\\Dev\\Specrew\\.specrew\\start-summary.md",
-  "generated_at_utc": "2026-05-25T23:50:21Z",
-  "selected_host": "claude",
+  "generated_at_utc": "2026-05-26T11:39:12Z",
+  "selected_host": "copilot",
   "available_hosts": {
     "claude": true,
     "codex": true,
     "copilot": true,
     "antigravity": true
   },
-  "crew_runtime_status": "bootstrap_only",
+  "crew_runtime_status": "squad-runtime",
   "host_resolution": "flag",
   "boundary_enforcement": {
     "enabled": true,

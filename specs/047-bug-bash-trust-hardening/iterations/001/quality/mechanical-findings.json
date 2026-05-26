@@ -1,0 +1,11 @@
+{
+  "schemaVersion": "v1",
+  "featureRef": "specs/047-bug-bash-trust-hardening/spec.md",
+  "iterationRef": "specs/047-bug-bash-trust-hardening/iterations/001",
+  "generatedAt": "2026-05-26T08:20:09Z",
+  "generator": {
+    "name": "specrew-mechanical-checks",
+    "version": "0.27.3"
+  },
+  "findings": []
+}

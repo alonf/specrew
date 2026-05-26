@@ -3317,6 +3317,39 @@ function Test-BlanketAuthorizationScopeDeclared {
     return $false
 }
 
+function Test-SpecrewHandoffBlockPresent {
+    param(
+        [AllowEmptyString()]
+        [AllowNull()]
+        [string]$CommitMessage = '',
+
+        [AllowNull()]
+        [object]$SessionMetadata = $null
+    )
+
+    $candidateTexts = New-Object System.Collections.Generic.List[string]
+    if (-not [string]::IsNullOrWhiteSpace($CommitMessage)) {
+        $candidateTexts.Add([string]$CommitMessage) | Out-Null
+    }
+
+    if ($null -ne $SessionMetadata) {
+        foreach ($propertyName in @('response_text', 'ResponseText', 'handoff_text', 'HandoffText', 'text', 'Text')) {
+            $property = $SessionMetadata.PSObject.Properties[$propertyName]
+            if ($null -ne $property -and -not [string]::IsNullOrWhiteSpace([string]$property.Value)) {
+                $candidateTexts.Add([string]$property.Value) | Out-Null
+            }
+        }
+    }
+
+    foreach ($candidateText in $candidateTexts) {
+        if ($candidateText -match '(?ms)===\s*SPECREW HANDOFF\s*===.+?===\s*END SPECREW HANDOFF\s*===') {
+            return $true
+        }
+    }
+
+    return $false
+}
+
 function Get-ImplementationApprovalEvidenceRecords {
     param(
         [Parameter(Mandatory = $true)]

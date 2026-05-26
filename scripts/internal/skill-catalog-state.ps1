@@ -45,6 +45,7 @@ function Get-SpecrewSkillCatalogRoot {
                 Path      = $normalizedPath
                 HostKinds = New-Object System.Collections.Generic.List[string]
                 Exists    = $false
+                SkillFileCount = 0
             }
         }
 
@@ -53,10 +54,18 @@ function Get-SpecrewSkillCatalogRoot {
 
     foreach ($entry in $rootsByPath.GetEnumerator()) {
         $entry.Value.Exists = Test-Path -LiteralPath $entry.Value.Path -PathType Container
+        $entry.Value.SkillFileCount = if ($entry.Value.Exists) {
+            @(Get-ChildItem -LiteralPath $entry.Value.Path -Recurse -Filter 'SKILL.md' -File -ErrorAction SilentlyContinue).Count
+        }
+        else {
+            0
+        }
         [pscustomobject]@{
-            Path      = $entry.Value.Path
-            HostKinds = @($entry.Value.HostKinds.ToArray())
-            Exists    = [bool]$entry.Value.Exists
+            Path           = $entry.Value.Path
+            HostKinds      = @($entry.Value.HostKinds.ToArray())
+            Exists         = [bool]$entry.Value.Exists
+            SkillFileCount = [int]$entry.Value.SkillFileCount
+            HasSkillFiles  = ([int]$entry.Value.SkillFileCount -gt 0)
         }
     }
 }
@@ -68,7 +77,7 @@ function Get-SpecrewSkillCatalogState {
     )
 
     $roots = @(Get-SpecrewSkillCatalogRoot -ProjectPath $ProjectPath)
-    $missingRoots = @($roots | Where-Object { -not $_.Exists })
+    $missingRoots = @($roots | Where-Object { -not $_.Exists -or -not $_.HasSkillFiles })
 
     return [pscustomobject]@{
         ProjectPath     = $ProjectPath

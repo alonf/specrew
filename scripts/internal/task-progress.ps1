@@ -189,6 +189,89 @@ function Get-IterationTaskCatalog {
     )
 }
 
+function Get-FeatureTasksPath {
+    param(
+        [Parameter(Mandatory = $true)][string]$ProjectRoot,
+        [Parameter(Mandatory = $true)][string]$FeatureRef,
+        [AllowNull()][string]$ResolvedFeaturePath
+    )
+
+    $resolvedProjectRoot = Resolve-ProjectPath -Path $ProjectRoot
+    $featurePath = if (-not [string]::IsNullOrWhiteSpace($ResolvedFeaturePath)) {
+        $ResolvedFeaturePath
+    }
+    else {
+        Join-Path $resolvedProjectRoot ("specs\{0}" -f $FeatureRef)
+    }
+
+    return Join-Path $featurePath 'tasks.md'
+}
+
+function Get-IterationStatePath {
+    param(
+        [Parameter(Mandatory = $true)][string]$ProjectRoot,
+        [Parameter(Mandatory = $true)][string]$FeatureRef,
+        [Parameter(Mandatory = $true)][string]$IterationNumber,
+        [AllowNull()][string]$ResolvedFeaturePath
+    )
+
+    $resolvedProjectRoot = Resolve-ProjectPath -Path $ProjectRoot
+    $featurePath = if (-not [string]::IsNullOrWhiteSpace($ResolvedFeaturePath)) {
+        $ResolvedFeaturePath
+    }
+    else {
+        Join-Path $resolvedProjectRoot ("specs\{0}" -f $FeatureRef)
+    }
+
+    return Join-Path $featurePath ("iterations\{0}\state.md" -f $IterationNumber)
+}
+
+function Get-TaskProgressDerivedStatusHints {
+    param(
+        [Parameter(Mandatory = $true)][string]$ProjectRoot,
+        [Parameter(Mandatory = $true)][string]$FeatureRef,
+        [Parameter(Mandatory = $true)][string]$IterationNumber,
+        [AllowNull()][string]$ResolvedFeaturePath
+    )
+
+    $statuses = [ordered]@{}
+    $divergences = New-Object System.Collections.Generic.List[string]
+    $tasksPath = Get-FeatureTasksPath -ProjectRoot $ProjectRoot -FeatureRef $FeatureRef -ResolvedFeaturePath $ResolvedFeaturePath
+    if (Test-Path -LiteralPath $tasksPath -PathType Leaf) {
+        foreach ($line in Get-Content -LiteralPath $tasksPath -Encoding UTF8) {
+            if ($line -match '^\s*-\s+\[(?<mark>[ xX])\]\s+(?<task>T\d+)\b') {
+                $taskId = $Matches['task']
+                $statuses[$taskId] = if ($Matches['mark'] -match '[xX]') { 'done' } else { 'pending' }
+            }
+        }
+    }
+
+    $statePath = Get-IterationStatePath -ProjectRoot $ProjectRoot -FeatureRef $FeatureRef -IterationNumber $IterationNumber -ResolvedFeaturePath $ResolvedFeaturePath
+    if (Test-Path -LiteralPath $statePath -PathType Leaf) {
+        $lastCompletedTask = ''
+        foreach ($line in Get-Content -LiteralPath $statePath -Encoding UTF8) {
+            if ($line -match '^\*\*Last Completed Task\*\*:\s*(?<value>.+?)\s*$') {
+                $lastCompletedTask = $Matches['value'].Trim()
+                break
+            }
+        }
+
+        if (-not [string]::IsNullOrWhiteSpace($lastCompletedTask) -and $lastCompletedTask -notmatch '^\(?none') {
+            foreach ($taskId in @($lastCompletedTask -split '\s*,\s*')) {
+                $trimmedTaskId = $taskId.Trim()
+                if ($statuses.Contains($trimmedTaskId) -and $statuses[$trimmedTaskId] -ne 'done') {
+                    $divergences.Add(("state.md reports Last Completed Task '{0}', but tasks.md does not mark it complete; tasks.md remains authoritative." -f $trimmedTaskId)) | Out-Null
+                }
+            }
+        }
+    }
+
+    return [pscustomobject]@{
+        Statuses    = $statuses
+        Divergences = $divergences.ToArray()
+    }
+}
+
 function New-TaskProgressEntry {
     param([Parameter(Mandatory = $true)][pscustomobject]$TaskRow)
 
@@ -276,13 +359,25 @@ function Sync-IterationTaskProgress {
     $catalog = @(Get-IterationTaskCatalog -ProjectRoot $ProjectRoot -FeatureRef $effectiveFeatureRef -IterationNumber $IterationNumber -ResolvedFeaturePath $ResolvedFeaturePath)
     $path = Get-IterationTaskProgressPath -ProjectRoot $ProjectRoot -FeatureRef $effectiveFeatureRef -IterationNumber $IterationNumber -ResolvedFeaturePath $ResolvedFeaturePath
     $existing = Get-TaskProgressState -Path $path
+    $derivedHints = Get-TaskProgressDerivedStatusHints -ProjectRoot $ProjectRoot -FeatureRef $effectiveFeatureRef -IterationNumber $IterationNumber -ResolvedFeaturePath $ResolvedFeaturePath
+    foreach ($divergence in @($derivedHints.Divergences)) {
+        Write-Warning ("[task-progress-reconciliation] {0}" -f $divergence)
+    }
+
     $tasks = [ordered]@{}
 
     foreach ($taskRow in $catalog) {
+        $derivedStatus = if ($derivedHints.Statuses.Contains($taskRow.Task)) { [string]$derivedHints.Statuses[$taskRow.Task] } else { $null }
         if ($existing.Tasks.Contains($taskRow.Task)) {
+            # Preserve live non-pending state (in-progress, blocked, needs-rework, deferred) unless
+            # tasks.md derivation promotes the task to 'done'. Without this guard, every sync would
+            # downgrade actively worked tasks to 'pending' (the derived status for unchecked rows),
+            # silently erasing coordination state.
+            $liveExistingStatus = [string]$existing.Tasks[$taskRow.Task].status
+            $preserveLiveExisting = ($liveExistingStatus -in @('in-progress', 'blocked', 'needs-rework', 'deferred')) -and ($derivedStatus -ne 'done')
             $entry = [ordered]@{
                 title          = $taskRow.Title
-                status         = if ([string]::IsNullOrWhiteSpace([string]$existing.Tasks[$taskRow.Task].status)) { 'pending' } else { [string]$existing.Tasks[$taskRow.Task].status }
+                status         = if ($preserveLiveExisting) { $liveExistingStatus } elseif (-not [string]::IsNullOrWhiteSpace($derivedStatus)) { $derivedStatus } elseif ([string]::IsNullOrWhiteSpace($liveExistingStatus)) { 'pending' } else { $liveExistingStatus }
                 started_at     = [string]$existing.Tasks[$taskRow.Task].started_at
                 completed_at   = [string]$existing.Tasks[$taskRow.Task].completed_at
                 blocked_reason = [string]$existing.Tasks[$taskRow.Task].blocked_reason
@@ -290,6 +385,13 @@ function Sync-IterationTaskProgress {
         }
         else {
             $entry = New-TaskProgressEntry -TaskRow $taskRow
+            if (-not [string]::IsNullOrWhiteSpace($derivedStatus)) {
+                $entry.status = $derivedStatus
+            }
+        }
+
+        if ($entry.status -eq 'done' -and [string]::IsNullOrWhiteSpace([string]$entry.completed_at)) {
+            $entry.completed_at = (Get-Date).ToUniversalTime().ToString('o')
         }
 
         $tasks[$taskRow.Task] = $entry
@@ -444,6 +546,19 @@ function Get-TaskProgressSummary {
         }
 
         switch ($taskRecord.status) {
+            'done' {
+                $complete.Add($taskRecord) | Out-Null
+                if (-not [string]::IsNullOrWhiteSpace($taskRecord.completed_at)) {
+                    $completedAt = [datetime]::Parse($taskRecord.completed_at, [System.Globalization.CultureInfo]::InvariantCulture, [System.Globalization.DateTimeStyles]::AdjustToUniversal)
+                    if ($null -eq $latestCompleted -or $completedAt -gt $latestCompleted.timestamp) {
+                        $latestCompleted = [pscustomobject]@{
+                            id        = $taskRecord.id
+                            title     = $taskRecord.title
+                            timestamp = $completedAt
+                        }
+                    }
+                }
+            }
             'complete' {
                 $complete.Add($taskRecord) | Out-Null
                 if (-not [string]::IsNullOrWhiteSpace($taskRecord.completed_at)) {
