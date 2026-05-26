@@ -16,10 +16,11 @@
 - [ ] T004 [assigned_to: Implementer] [effort: S] Add manifest version pin drift assertions to `test-publish-harness.ps1` comparing version declarations in `.specrew/config.yml` (`specrew_version`) vs `Specrew.psd1` (`ModuleVersion`). (Trace: FR-012, SC-001)
 - [ ] T005 [assigned_to: Implementer] [effort: S] Add `specrew update` execution and layout validation to `test-publish-harness.ps1` ensuring update transitions succeed cleanly. (Trace: FR-004, SC-001)
 
-### Phase 2: Pipeline Integration & Verification
-
 - [ ] T006 [assigned_to: Implementer] [effort: S] Wire the Docker harness execution directly into `.github/workflows/publish-module.yml` as a blocking step before module publication. (Trace: FR-005, SC-001)
 - [ ] T007 [assigned_to: Reviewer] [effort: S] Run focused harness tests locally and in CI to verify the pre-publish block works perfectly; record results in iteration quality artifacts. (Trace: FR-005, SC-001)
+- [ ] T018 [assigned_to: Implementer] [effort: M] Fix duplicate-row deploy bug in `scripts/specrew-update.ps1` and `deploy-squad-runtime.ps1` ensuring a clean merge instead of duplicate role rows. (Trace: FR-013)
+- [ ] T019 [assigned_to: Implementer] [effort: S] Add regression integration test checking that pre-existing Squad roles in `.squad/team.md` and `.squad/routing.md` are not duplicated on redundant update. (Trace: FR-013)
+- [ ] T020 [assigned_to: Implementer] [effort: M] Promoted Proposal 049 (Version-Check Source Unification): implement PSGallery feed-based version query as the default in `specrew update --info`. (Trace: FR-014)
 
 ---
 
@@ -27,7 +28,7 @@
 
 ### Phase 3: Troubleshooting Guide Content
 
-- [ ] T008 [assigned_to: Spec Steward] [effort: S] Create durable `docs/troubleshooting.md` addressing: standard recovery, PSGallery side-by-side cache gotchas, FileList omissions, deployscript exceptions, clean-reinstalls. (Trace: FR-006, SC-002)
+- [ ] T008 [assigned_to: Spec Steward] [effort: S] Create durable `docs/troubleshooting.md` addressing: naming/scope distinction between project-level update (`specrew update`) vs. module-level upgrade (`Update-Module Specrew`), standard recovery, PSGallery side-by-side cache gotchas, FileList omissions, deployscript exceptions, and clean-reinstalls. (Trace: FR-006, FR-015, SC-002)
 - [ ] T009 [assigned_to: Implementer] [effort: S] Add `docs/troubleshooting.md` to `Specrew.psd1`'s `FileList` in the same commit to prevent future omissions. (Trace: FR-007, SC-002)
 
 ### Phase 4: Cross-Referencing & Documentation Verification

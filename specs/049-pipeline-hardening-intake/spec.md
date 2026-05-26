@@ -23,6 +23,8 @@ To ensure that no release ever ships with a corrupt module layout or missing Fil
 2. **Given** a clean project initialized with `specrew init` under the candidate version, **When** the harness scans the layout, **Then** it verifies that **every** single entry declared in `Specrew.psd1`'s `FileList` was correctly unpacked and exists on disk.
 3. **Given** a candidate project layout, **When** `specrew update` is executed, **Then** all files are updated/preserved correctly and absolute mirror parity is preserved.
 4. **Given** a failing layout assertion inside the Docker test execution, **When** the publish workflow (`publish-module.yml`) runs, **Then** the workflow is **blocked** and halts immediately before publishing to PSGallery.
+5. **Given** a project with pre-existing Squad roles in `.squad/team.md` and `.squad/routing.md`, **When** `specrew update` is executed, **Then** no duplicate rows are appended (regression test asserts no duplicates appear).
+6. **Given** a user running `specrew update --info`, **When** executed, **Then** it queries the actual PSGallery feed and returns the true latest version instead of a local manifest-mocked UpstreamLatest.
 
 ---
 
@@ -39,6 +41,7 @@ To empower users to recover gracefully from environment issues, local conflicts,
 1. **Given** a new developer experiencing a broken or incomplete package install, **When** they inspect the codebase documentation, **Then** they find `docs/troubleshooting.md` detailing standard recovery flows.
 2. **Given** `docs/troubleshooting.md` is created, **When** a commit is authored, **Then** it must include the addition of `docs/troubleshooting.md` in `Specrew.psd1`'s `FileList`.
 3. **Given** the documentation is updated, **When** a user browses `README.md`, `docs/getting-started.md`, or `docs/user-guide.md`, **Then** clear cross-references point to the new troubleshooting guide.
+4. **Given** a user confused between `specrew update` and `Update-Module Specrew`, **When** they consult `docs/troubleshooting.md`, **Then** they find a clear, explicit comparison of their separate scopes (project deployment vs. module upgrade).
 
 ---
 
@@ -81,11 +84,14 @@ To ensure that the initial specify phase (`/speckit.specify`) captures realistic
 - **FR-003**: The harness MUST verify that **every** item listed in the packaged candidate's `Specrew.psd1` `FileList` successfully unpacked on disk.
 - **FR-004**: The harness MUST run `specrew update` and verify that the local project structure is updated cleanly, and mirror parity checks return `PASS`.
 - **FR-005**: `.github/workflows/publish-module.yml` MUST execute this Docker harness as a blocker before any release is pushed to PSGallery.
+- **FR-013**: The system MUST prevent `specrew update` from duplicating Squad team/routing entries. The template merge logic inside `scripts/specrew-update.ps1` / `deploy-squad-runtime.ps1` MUST perform a clean merge instead of appending duplicate role rows.
+- **FR-014**: `specrew update --info` MUST default to checking and showing the actual latest version published on **PSGallery**, rather than using a hardcoded or misleading `UpstreamLatest` from local manifests (promotes Proposal 049).
 
 #### Iteration 2: Troubleshooting Guide
 
 - **FR-006**: System MUST contain `docs/troubleshooting.md` addressing: PSGallery side-by-side caches, FileList drops, deploy-script exceptions, stale-state recovery, and clean-reinstall flows.
 - **FR-007**: `docs/troubleshooting.md` MUST be registered in `Specrew.psd1` `FileList` immediately upon creation.
+- **FR-015**: `docs/troubleshooting.md` MUST explicitly document the naming distinction and functional boundary between `specrew update` (project environment deployment) and `Update-Module Specrew` (module software upgrade).
 
 #### Iteration 3: Persona-Driven Intake
 
@@ -150,15 +156,29 @@ To ensure that the initial specify phase (`/speckit.specify`) captures realistic
 - **Question**: Should the pre-publish Docker E2E test suite pull and compile a customized tag or utilize standard official base images?
 - **Decision**: To avoid maintenance drift and maintain speed, the CI harness will pull standard `mcr.microsoft.com/powershell:lts-ubuntu-22.04` and reuse cached layers of previous actions. Testing will install the module candidate directly into this container.
 
+### Session 2026-05-27 (Post-Restart Alignment)
+
+#### duplicate-row deploy bug (Bug 1)
+- **Question**: How do we verify and prevent duplication of squad team and routing rows?
+- **Decision**: Fix Squad-template merge logic in `scripts/specrew-update.ps1` and `deploy-squad-runtime.ps1`. Implement a dedicated integration test that attempts a redundant update and asserts no duplicates are added to `.squad/team.md` or `.squad/routing.md`.
+
+#### specrew update --info version-check (Bug 2)
+- **Question**: How do we unify the version check source for `--info`?
+- **Decision**: Unify version check logic around the PSGallery API. Promoted Proposal 049 (Version-Check Source Unification) to draft. `--info` will fetch the actual latest version from PSGallery as the default.
+
+#### specrew update vs Update-Module Specrew (Bug 3)
+- **Question**: How do we resolve user naming confusion?
+- **Decision**: Add an explicit troubleshooting section in `docs/troubleshooting.md` outlining the difference in scope and execution between the two.
+
 ---
 
 ## Governance Alignment *(mandatory)*
 
 - **Spec Steward**: Spec Steward (Antigravity Coordinator)
 - **Iteration Facilitator**: Retro Facilitator (Antigravity Coordinator)
-- **Capacity Model**: 28-31 SP total across 3 iterations:
-  - **Iteration 001**: 12 SP (Docker pre-publish harness + Prop 134 pin assertion)
-  - **Iteration 002**: 5 SP (Troubleshooting guide + cross-references)
+- **Capacity Model**: 33-36 SP total across 3 iterations:
+  - **Iteration 001**: 17 SP (Docker harness 12 SP + Prop 134 pin assertion + duplicate-row fix + Proposal 049 PSGallery info check 5 SP)
+  - **Iteration 002**: 5 SP (Troubleshooting guide + cross-references including naming confusion docs)
   - **Iteration 003**: 11 SP (Persona-driven /speckit.specify intake)
 - **Drift Signals**: Detected via the governance validator `validate-governance.ps1` and the newly designed Docker E2E pre-publish harness.
 - **Human Oversight Points**:
@@ -166,3 +186,4 @@ To ensure that the initial specify phase (`/speckit.specify`) captures realistic
   - Pre-implementation iteration planning approval.
   - Review / PR merge approval.
   - Manual test PAS/FAIL validation (Step 11).
+

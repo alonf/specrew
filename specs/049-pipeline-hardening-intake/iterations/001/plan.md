@@ -3,7 +3,7 @@
 **Schema**: v1
 **Spec**: [../../spec.md](../../spec.md)
 **Status**: planning
-**Capacity**: 12/20 story_points
+**Capacity**: 17/20 story_points
 **Started**: 2026-05-27
 **Completed**:
 
@@ -47,6 +47,9 @@
 | T005 | Add specrew update execution and layout validation | FR-004,SC-001 | US1 | 2 | Implementer | scripts/internal/test-publish-harness.ps1 | planned | antigravity | 0 | — |
 | T006 | Wire Docker harness execution into workflows | FR-005,SC-001 | US1 | 1 | Implementer | .github/workflows/publish-module.yml | planned | antigravity | 0 | — |
 | T007 | Run focused harness tests locally and in CI | FR-005,SC-001 | US1 | 2 | Reviewer | tests/* | planned | antigravity | 0 | — |
+| T018 | Fix duplicate-row deploy bug | FR-013 | US1 | 2 | Implementer | scripts/specrew-update.ps1 | planned | antigravity | 0 | — |
+| T019 | Add duplicate-row regression integration test | FR-013 | US1 | 1 | Reviewer | tests/integration/* | planned | antigravity | 0 | — |
+| T020 | Implement PSGallery version check in update --info | FR-014 | US1 | 2 | Implementer | scripts/specrew-update.ps1 | planned | antigravity | 0 | — |
 
 ## Effort Model
 
@@ -76,15 +79,13 @@
 | ----- | ---------------- | ----- |
 | Planning | 0 | Completed prior to boundary execution |
 | Discovery/Spikes | 0 | No spikes planned |
-| Implementation | 9 | Sum of Implementer tasks T002-T006 |
-| Review | 3 | Sum of Reviewer tasks T001 and T007 |
+| Implementation | 13 | Sum of Implementer tasks T002-T006, T018, T020 |
+| Review | 4 | Sum of Reviewer tasks T001, T007, and T019 |
 | Rework | 0 | Absorb via tests-first discipline |
 
-## Traceability Summary
-
-- Requirement scope for this stub: FR-001, FR-002, FR-003, FR-004, FR-005, FR-012
+- Requirement scope for this stub: FR-001, FR-002, FR-003, FR-004, FR-005, FR-012, FR-013, FR-014
 - User stories represented in current scope: US1
-- Overcommit guardrail: 12 story_points consumed of 20 story_points capacity (well below threshold).
+- Overcommit guardrail: 17 story_points consumed of 20 story_points capacity (well below threshold).
 
 ## Notes
 
