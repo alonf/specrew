@@ -1,7 +1,7 @@
 schema: "v1"
 feature: "048-beta-before-stable-sdlc"
 iteration: "001"
-updated_at: "2026-05-26T17:59:20Z"
+updated_at: "2026-05-26T18:01:44Z"
 tasks:
   T001:
     title: "Handoff ownership fixtures"
@@ -23,9 +23,9 @@ tasks:
     blocked_reason: ""
   T004:
     title: "Release discipline documentation"
-    status: "planned"
+    status: "done"
     started_at: ""
-    completed_at: ""
+    completed_at: "2026-05-26T18:01:44Z"
     blocked_reason: ""
   T005:
     title: "Proposal/index metadata"

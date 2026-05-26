@@ -3,11 +3,11 @@
 **Schema**: v1  
 **Current Phase**: before-implement  
 **Iteration Status**: planning  
-**Last Completed Task**: T003  
-**Tasks Remaining**: T004, T005, T006, T007  
+**Last Completed Task**: T004  
+**Tasks Remaining**: T005, T006, T007  
 **In Progress**: (none)  
 **Baseline Ref**: 6cd6c58426a9793326c562fbc036e9ebc98c6496  
-**Updated**: 2026-05-26T17:59:20Z
+**Updated**: 2026-05-26T18:01:44Z
 
 ## Execution Summary
 
@@ -27,6 +27,11 @@
 - The focused fixture now fails as expected because
   `docs/release-discipline.md` has not been written yet; T004 is the green
   implementation task.
+- T004 created `docs/release-discipline.md`, codifying the
+  `[[feedback-beta-publish-before-stable-2026-05-26]]` rule, Steps 5-14,
+  explicit PASS gating, proposal-only exemptions, beta.N fail-loop, stable
+  promotion, audit capture modes, and no-new-feature-work stop.
+- The combined beta-before-stable fixture now passes.
 
 ## Notes
 

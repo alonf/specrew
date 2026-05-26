@@ -18,7 +18,7 @@ without explicit human PASS evidence.
 ### Phase 2: Release Discipline Documentation
 
 - [x] T003 [P] [assigned_to: Reviewer] [effort: S] Add documentation coverage assertions for `docs/release-discipline.md`: Steps 5-14, explicit PASS gate, proposal-only exemption, locked-main trailing audit PR, direct-main opt-in, and stop-before-new-feature behavior. (Trace: FR-005, FR-006, FR-013, SC-003)
-- [ ] T004 [assigned_to: Spec Steward] [effort: M] Create `docs/release-discipline.md` codifying `[[feedback-beta-publish-before-stable-2026-05-26]]`, including PSGallery beta validation commands, PASS/FAIL evidence, beta.N loop, stable promotion, audit capture, and proposal-only exemptions. (Trace: FR-005, FR-006, SC-003)
+- [x] T004 [assigned_to: Spec Steward] [effort: M] Create `docs/release-discipline.md` codifying `[[feedback-beta-publish-before-stable-2026-05-26]]`, including PSGallery beta validation commands, PASS/FAIL evidence, beta.N loop, stable promotion, audit capture, and proposal-only exemptions. (Trace: FR-005, FR-006, SC-003)
 
 ### Phase 3: Proposal Metadata + Iteration 001 Verification
 
