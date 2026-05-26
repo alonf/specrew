@@ -36,20 +36,21 @@ User feature request: (not provided yet; gather or confirm during intake)
 
 - Start T001 — Handoff-block detection fixtures
 
-
 Operational Specrew roster snapshot:
+
 - Mode: specrew-managed
 - Treat this roster as operational state. Do NOT enter generic Squad team-setup mode or recast the roster.
 - Baseline roles: Spec Steward, Planner, Implementer, Reviewer, Retro Facilitator
 - Supplemental members: (none)
 
 Project state snapshot:
+
 - State: existing-continue
 - Existing feature directories: 001-specrew-product, 002-planning-flow-hardening, 003-post-planning-review, 004-default-specialty-pairing, 005-stack-aware-quality-bar, 006-human-architecture-checkpoint, 007-user-facing-progress-handoff, 008-reviewer-escalation-symmetry, 009-project-path-resolution, 010-onboarding-resume-visibility, 011-specrew-start-conditional-pause, 012-descriptive-id-handoffs, 013-validator-hardening, 014-handoff-format-scoping, 015-public-readiness-pass, 016-substantive-interaction-model, 017-velocity-dashboard, 018-velocity-dashboard-visual-richness, 019-specrew-distribution-module, 020-session-state-durability, 021-specrew-slash-commands, 022-hotfix-schema-tests, 023-legacy-state-read-tolerance, 024-slash-command-multi-host-correctness, 025-psgallery-unsigned-default, 026-ci-lint-pr-scoping, 027-skills-loading-troubleshoot, 028-review-evidence-integrity, 029-baseline-hygiene, 030-validator-speedup, 031-commit-push-discipline, 032-closeout-lifecycle-sync, 033-markdown-lint-pre-boundary, 034-validator-memoization, 035-validator-iteration-parallelization, 036-closed-iteration-index, 037-validator-repetition-detector, 038-pr-review-integration, 039-launch-mode-boundary-enforcement, 040-multi-host-launch-path, 041-cost-aware-model-routing, 042-token-economy-mvp, 043-multi-host-onboarding, 044-per-host-architecture-refactor, 045-v0271-bugfix-bundle, 046-046-bug-bash, 047-bug-bash-trust-hardening, antigravity-host-followup
 - Non-bootstrap top-level entries: .agents, .antigravitycli, .claude, .codex, .scratch, .specrew-squad-probe-14e2200829f2405cb359497a32762765, .specrew-squad-probe-eeb3bc53b8734ce4ac0e8abe9c2e8768, .vscode, docs, evaluation, extensions, hosts, proposals, scripts, specs, templates, tests, .markdownlint.json, 0.7.3, CHANGELOG.md, CODE_OF_CONDUCT.md, CODEOWNERS, CONTRIBUTING.md, LICENSE, NOTICE.md, package.json, README.md, SECURITY.md, Specrew.psd1, Specrew.psm1, validator-output-f024.log, validator-output.log, validator-stderr.log, validator-stdout.log
 
-
 Implementation readiness hints:
+
 - Candidate specialists after spec/clarify: Security Specialist [security-specialist] - The request or repo context indicates auth, security, or privacy-sensitive behavior.
 - Candidate Junior/Senior same-specialty pairs after spec/clarify: (none inferred yet)
 - Safe-parallelism signals: (no safe same-specialty parallelism inferred yet)
@@ -58,6 +59,7 @@ Implementation readiness hints:
 - Semantic watchouts: Validate authn/authz and secret handling end to end rather than treating schemas, guards, or token fields as sufficient proof of security.
 
 Effective delegated agent routing plan:
+
 - Enabled agents: codex
 - Implementer -> codex (preferred: copilot; access path: copilot_agent_hq; fallback: preferred agent 'copilot' is not enabled)
 - Spec Steward -> codex (preferred: codex; access path: copilot_agent_hq)
@@ -125,6 +127,7 @@ The `crew_runtime_status` field tells you whether the downstream sync-* agents a
 - **Web-feature acceptance evidence:** for browser features, the review-time evidence must include a screenshot or recorded interaction showing the golden-path AND Enter-key behavior — running `Invoke-WebRequest` against the static HTML proves the file deployed, NOT that the feature works. Lighthouse / DOM-inspection MCPs (or manual browser steps documented in quickstart.md) are the canonical evidence layer.
 
 Follow this conversational sequence before implementation work:
+
 1. Preserve the roster snapshot first. Treat the operational roster above as active project state, do not recast it, and defer specialist additions until the spec and clarify outcome are grounded.
 2. Classify the repository using the project-state snapshot above before asking for spec details:
    - "greenfield-new": freshly bootstrapped project with no meaningful app code or active specs yet

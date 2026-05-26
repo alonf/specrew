@@ -38,4 +38,3 @@
 **Overall Verdict**: ready — planning artifacts (spec, plan, tasks, data-model, contract, review-diagrams, findings skeleton) are complete and traceable; all hardening concerns are addressed or not-applicable at planning time, pending human before-implement approval.
 
 **Scope**: Iteration 001 — the 7-item v0.27.3 trust-hardening bundle (T001-T019, 20 story_points).
-
