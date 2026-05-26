@@ -310,9 +310,30 @@ if ($DryRun -and -not (Test-Path -LiteralPath $targetSpecifyRoot)) {
 Ensure-Directory -Path (Join-Path $targetSpecifyRoot 'extensions') -Actions $actions
 Ensure-Directory -Path $targetExtensionRoot -Actions $actions
 
-$itemsToCopy = @('commands', 'extension.yml', 'README.md', 'hooks', 'scripts', 'templates', 'squad-templates')
+# Items marked Optional may legitimately be absent in the installed package
+# (PSGallery/NuGet packaging drops empty-with-.gitkeep directories like hooks/);
+# absence is logged and skipped. Required items are load-bearing for the Spec Kit
+# extension — absence indicates a corrupt installed package and MUST throw loudly,
+# not silently skip (otherwise a future packaging regression would be masked).
+$itemsToCopy = @(
+    @{ Name = 'commands';        Optional = $false }
+    @{ Name = 'extension.yml';   Optional = $false }
+    @{ Name = 'README.md';       Optional = $false }
+    @{ Name = 'hooks';           Optional = $true  }   # PSGallery drops empty .gitkeep dirs
+    @{ Name = 'scripts';         Optional = $false }
+    @{ Name = 'templates';       Optional = $false }
+    @{ Name = 'squad-templates'; Optional = $false }
+)
 foreach ($item in $itemsToCopy) {
-    Copy-MissingItem -SourcePath (Join-Path $extensionRoot $item) -TargetPath (Join-Path $targetExtensionRoot $item) -Actions $actions
+    $sourceItemPath = Join-Path $extensionRoot $item.Name
+    if (-not (Test-Path -LiteralPath $sourceItemPath)) {
+        if ($item.Optional) {
+            Add-DeploymentAction -Actions $actions -Action 'skipped-missing-source' -Path $sourceItemPath
+            continue
+        }
+        throw "Required Specrew extension source item missing from installed package: '$sourceItemPath'. The installed module appears corrupt — try Uninstall-Module Specrew -AllVersions -Force followed by Install-Module Specrew -Force."
+    }
+    Copy-MissingItem -SourcePath $sourceItemPath -TargetPath (Join-Path $targetExtensionRoot $item.Name) -Actions $actions
 }
 
 Ensure-ExtensionRegistration -ManifestPath $targetExtensionsManifest -ExtensionName 'specrew-speckit' -ExtensionVersion $extensionVersion -Actions $actions

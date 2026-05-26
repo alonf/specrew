@@ -205,6 +205,10 @@ jobs:
         shell: pwsh
         run: ./tests/integration/brownfield-conflict-handling.ps1
 
+      - name: Integration - deploy extension missing-source tolerance
+        shell: pwsh
+        run: ./tests/integration/deploy-extension-missing-source-tolerance.tests.ps1
+
       - name: Integration - validate versions cli behavior
         if: runner.os != 'Linux'
         shell: pwsh
