@@ -70,7 +70,7 @@ AGENT NEXT ACTION:
     Step 6: gh pr create
     Step 7: self-review PR (reference per-iteration review.md + retro.md)
     Step 8: gh pr merge --merge (preserves per-feature history)
-    Step 9: tag merge commit v<next-version>-beta.1 + push tag
+    Step 9: tag the merge commit (or the PASS-candidate fix commit if looping) as v<next-version>-beta.1 + push tag
     Step 10: verify .github/workflows/publish-module.yml published the
              prerelease via Find-Module Specrew -AllowPrerelease
              -RequiredVersion <ver>

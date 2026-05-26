@@ -80,10 +80,11 @@ function Assert-FeatureCloseoutSdlcSurface {
     }
 
     $humanSectionPattern = '(?is)HUMAN ACTION NEEDED:.{0,900}'
-    Assert-Match -Text $content -Pattern '(?is)HUMAN ACTION NEEDED:.{0,900}(approve|approval)' -Message "$Label human row must ask for approval, not execution."
-    Assert-Match -Text $content -Pattern '(?is)HUMAN ACTION NEEDED:.{0,900}(PASS|FAIL)' -Message "$Label human row must ask for the Step 11 PASS/FAIL verdict."
+    Assert-Match -Text $content -Pattern "${humanSectionPattern}(approve|approval)" -Message "$Label human row must ask for approval, not execution."
+    Assert-Match -Text $content -Pattern "${humanSectionPattern}(PASS|FAIL)" -Message "$Label human row must ask for the Step 11 PASS/FAIL verdict."
+    Assert-Match -Text $content -Pattern '(?is)Step\s+9\b.{0,420}(PASS-candidate|looping)' -Message "$Label Step 9 must tag the merge commit or the PASS-candidate fix commit if looping."
     Assert-Match -Text $content -Pattern '(?is)Step\s+13\b.{0,420}PASS-validated\s+commit' -Message "$Label Step 13 must tag the PASS-validated commit, not an earlier failed-beta commit."
-    Assert-NotMatch -Text $content -Pattern '(?is)HUMAN ACTION NEEDED:.{0,900}push\s+the\s+branch,\s*open\s+a\s+PR,\s*address\s+automated\s+PR\s+review,\s*then\s+merge' -Message "$Label still assigns agent-owned push/PR/merge work to the human row."
+    Assert-NotMatch -Text $content -Pattern "${humanSectionPattern}push\s+the\s+branch,\s*open\s+a\s+PR,\s*address\s+automated\s+PR\s+review,\s*then\s+merge" -Message "$Label still assigns agent-owned push/PR/merge work to the human row."
 
     Write-Pass "$Label contains split agent/human ownership and Steps 5-14."
 }
@@ -134,6 +135,10 @@ function Assert-ReleaseDisciplineDocumentation {
         @{
             Pattern = '(?is)(FAIL|failed).{0,260}(beta\.2|beta\.N|repeat|loop)'
             Message = 'release-discipline.md must document the beta fail-loop.'
+        },
+        @{
+            Pattern = '(?is)Step\s+9\b.{0,420}(PASS-candidate|looping|fix\s+commit)'
+            Message = 'release-discipline.md must state that Step 9 tags the merge commit or the PASS-candidate fix commit.'
         },
         @{
             Pattern = '(?is)Step\s+13\b.{0,420}(passing\s+beta|PASS-validated\s+commit)'

@@ -2840,7 +2840,7 @@ AGENT NEXT ACTION:
       Step 6: create the PR with gh pr create
       Step 7: self-review the PR and address automated PR review
       Step 8: merge with a merge commit after approval/checks
-      Step 9: tag and push v<next-version>-beta.1
+      Step 9: tag the merge commit (or the PASS-candidate fix commit if looping) and push v<next-version>-beta.1
       Step 10: verify prerelease publication with Find-Module Specrew -AllowPrerelease
       Step 11: PAUSE for human manual test PASS/FAIL verdict using Install-Module Specrew -AllowPrerelease in a clean shell
       Step 12: if FAIL, fix on main, tag the next beta such as beta.2, and repeat from Step 9

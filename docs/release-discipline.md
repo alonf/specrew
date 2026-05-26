@@ -58,7 +58,7 @@ so the feature branch remains visible in git history.
 
 ### Step 9: Tag and push the beta
 
-The agent tags the merge commit as `v<next-version>-beta.1` and pushes the tag.
+The agent tags the merge commit (or the PASS-candidate fix commit if looping after a FAIL) as `v<next-version>-beta.1` (or `beta.N`) and pushes the tag.
 For F-048, the target version is `0.27.6`, so the first beta tag is
 `v0.27.6-beta.1`.
 

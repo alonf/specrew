@@ -109,7 +109,7 @@ Add `--allow-prerelease` flag to `specrew update`'s self-update path so the main
 Every feature publishes beta to PSGallery first, manual test, then promote. Codified in `docs/release-discipline.md` by F-048 iteration 001:
 
 1. Feature-closeout PR merges to `main` (Step 8 of the PR-at-feature-close SDLC per [[feedback-pr-at-feature-close-sdlc]])
-2. **Step 9 (NEW)**: Agent tags merge commit `v<next-version>-beta.1` and pushes the tag
+2. **Step 9 (NEW)**: Agent tags the merge commit (or the PASS-candidate fix commit if looping after a FAIL) as `v<next-version>-beta.1` (or `beta.N`) and pushes the tag
 3. **Step 10 (NEW)**: `.github/workflows/publish-module.yml` publishes prerelease automatically; agent verifies package visible via `Find-Module Specrew -AllowPrerelease -RequiredVersion <ver>`
 4. **Step 11 (NEW)**: Agent emits HANDOFF — "Beta v<ver>-beta.1 published to PSGallery. Please install via `Install-Module Specrew -RequiredVersion <ver> -AllowPrerelease -Force` in a clean shell, exercise feature-specific surface + smoke `specrew start` + `specrew where`, report PASS or FAIL with evidence." Agent PAUSES for human verdict.
 5. **Step 12 (NEW)**: If human reports FAIL — agent commits fix on main → tags `v<ver>-beta.2` → repeats Step 9-11. Beta-loop continues until human reports PASS.
