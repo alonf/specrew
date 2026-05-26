@@ -32,11 +32,12 @@
 
 ## Item 4 — Downstream-language audit + regex check (FR-008/009)
 
-- **Surface**: `installed-instructions/*` + coordinator templates; `validate-governance.ps1` regex.
+- **Surface**: the coordinator HANDOFF prose — `scripts/specrew-start.ps1`'s handoff/decision sections + `extensions/specrew-speckit/prompts/coordinator-*.md`; `validate-governance.ps1` regex (scoped to `=== SPECREW HANDOFF ===` regions).
 - **Repro / gap**: 2026-05-26 PlanningPoC handoff prose referenced an internal feature number a downstream user cannot decode.
-- **Validation criterion**: 0 internal `F-\d{3,}`/`Proposal \d{3,}`/`Feature \d{3,}` refs remain in user-facing prose; validator WARNs on a planted ref.
+- **Scope discovery (2026-05-26, planning)**: the brief's named `installed-instructions/` directory **does not exist** in the repo. A repo-wide scan for the three patterns found **2,432 occurrences across 250 files** — almost all legitimate internal references in `proposals/`, `docs/`, `specs/`, `tests/`, `.squad/decisions/`, `CHANGELOG.md`. Item 4 is therefore scoped to the **downstream-user-facing HANDOFF prose only** (FR-008 pinned scope); internal artifact trees are explicitly excluded so the rule does not WARN on the ~2,400 legitimate internal references. The `SPECREW HANDOFF` literal currently appears in user-facing form in `scripts/specrew-start.ps1` (34 pattern hits in its prose).
+- **Validation criterion**: 0 internal refs remain in in-scope handoff prose; validator WARNs on a planted ref inside a handoff region and does NOT WARN on the same token in a proposal/spec.
 - **Evidence pointer**: _pending_.
-- **Status**: pending.
+- **Status**: pending (scope pinned; awaiting human blessing at before-implement gate).
 
 ## Item 5 — Skill-catalog empty-dir UX (FR-010)
 

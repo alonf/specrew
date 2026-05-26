@@ -19,7 +19,7 @@ pwsh -File extensions/specrew-speckit/scripts/validate-governance.ps1 -ProjectPa
 
 1. **Handoff-block WARN (Item 1)**: point the validator at an iteration whose boundary commit lacks a `=== SPECREW HANDOFF ===` block → expect a WARN finding, not FAIL.
 2. **Mermaid-absence WARN (Item 3)**: create a `review-diagrams.md` containing only a ` ```text ` block → expect a soft-WARN. Re-scaffold with `scaffold-reviewer-artifacts.ps1` → the regenerated file contains a ` ```mermaid ` skeleton.
-3. **Internal-reference WARN (Item 4)**: grep `installed-instructions/` for `\bF-\d{3,}\b` → expect zero matches; feed a handoff block containing "Feature 016" through the validator → expect a WARN.
+3. **Internal-reference WARN (Item 4)**: grep the in-scope coordinator handoff prose for `\bF-\d{3,}\b` → expect zero matches; feed a `=== SPECREW HANDOFF ===` block containing "Feature 016" through the validator → expect a WARN; confirm the same token inside a proposal does NOT WARN.
 4. **Empty skill dir (Item 5)**: create `.claude/skills/` with no `SKILL.md` files, run `specrew start` → auto-repair fires; no contradictory "missing skill files" WARN remains.
 5. **Resume reconciliation (Item 7)**: in a feature whose `tasks.md` shows all `[x]`, run `specrew start` → the regenerated `tasks-progress.yml` shows tasks `done`, and the welcome-back snapshot does not say "Start T001".
 

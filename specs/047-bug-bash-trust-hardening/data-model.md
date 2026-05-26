@@ -31,17 +31,17 @@ Evaluated by `Test-SpecrewHandoffBlockPresent` (new helper). A boundary/iteratio
 ### Lifecycle / Relationships
 Scaffolded by `scaffold-reviewer-artifacts.ps1` (now with a Mermaid skeleton); validated by `validate-governance.ps1` (soft-WARN on `exists && !has_mermaid_block`).
 
-## Entity: InstalledInstruction
+## Entity: HandoffProse
 
-**Purpose**: User-facing prose under `installed-instructions/` and coordinator-prompt templates (Item 4).
+**Purpose**: Downstream-user-facing coordinator HANDOFF prose (Item 4) — the handoff/decision sections of `scripts/specrew-start.ps1` + `extensions/specrew-speckit/prompts/coordinator-*.md`. (The brief's `installed-instructions/` name does not exist; this entity is the real surface.)
 
 ### Attributes
 | Attribute | Type | Required | Validation Rules | Description |
 | --- | --- | --- | --- | --- |
-| internal_refs | list | — | MUST be empty after audit | Matches of `\bF-\d{3,}\b` / `\bProposal \d{3,}\b` / `\bFeature \d{3,}\b` |
+| internal_refs | list | — | MUST be empty after audit (in-scope surface only) | Matches of `\bF-\d{3,}\b` / `\bProposal \d{3,}\b` / `\bFeature \d{3,}\b` within handoff prose |
 
 ### Lifecycle / Relationships
-Audited+rewritten in this feature; the validator regex WARNs when `internal_refs` is non-empty in handoff-block prose.
+Audited+rewritten in this feature (handoff prose only); the validator regex WARNs when `internal_refs` is non-empty **inside a `=== SPECREW HANDOFF ===` region**. Internal artifact trees (proposals/, specs/, docs/, tests/, .squad/) are out of scope and legitimately retain feature/proposal numbers.
 
 ## Entity: SkillCatalogState
 

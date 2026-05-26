@@ -24,7 +24,7 @@ Detects whether a `=== SPECREW HANDOFF ===` block precedes a boundary commit win
 | `dashboard-missing-diagnosis` | `dashboard.md` absent — classified as non-Specrew-managed vs. auto-render regression | WARN |
 | `artifact-wrong-location` | canonical artifact under an ephemeral host-scratch path | WARN |
 | `review-diagrams-no-mermaid` | `review-diagrams.md` exists, no ` ```mermaid ` block | WARN (soft) |
-| `internal-reference-in-prose` | `\bF-\d{3,}\b` / `\bProposal \d{3,}\b` / `\bFeature \d{3,}\b` in handoff prose | WARN |
+| `internal-reference-in-prose` | `\bF-\d{3,}\b` / `\bProposal \d{3,}\b` / `\bFeature \d{3,}\b` **inside a `=== SPECREW HANDOFF ===` region** (committed markdown + coordinator handoff template); internal artifact trees (proposals/, specs/, docs/, tests/, .squad/) are NOT scanned | WARN |
 
 ### Invariants
 - All five are WARN; none escalate to FAIL (FR-016) — existing repos do not start failing on update.
