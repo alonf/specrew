@@ -13,6 +13,36 @@ human-readable per-feature narrative, using a trailing one-file PR for
 locked-main repositories and an opt-in `release_audit_direct_to_main: true`
 shortcut for unlocked repositories.
 
+## Clarifications
+
+### Session 2026-05-26
+
+The originating request resolved the material product choices. No additional
+human clarification is required before planning. The following clarify
+decisions are authoritative for F-048:
+
+- **F-047 baseline**: Treat F-047 as complete. PR #985 merged at `19a0c5e4`;
+  v0.27.3 and v0.27.4 stable were already published before F-048 began.
+- **SDLC sequence**: The feature-closeout handoff must use the extended
+  Proposal 060 + Proposal 131 Steps 5-14 sequence, not only the older
+  push/PR/merge Steps 5-8.
+- **Ownership split**: `AGENT NEXT ACTION:` owns execution of push, PR,
+  review-monitoring, merge, beta tag, publish verification, fail-loop,
+  stable tag, stable publish verification, and stop. `HUMAN ACTION NEEDED:`
+  owns approvals and the Step 11 prerelease PASS/FAIL verdict.
+- **Audit artifact shape**: To satisfy both "structured release-record" and
+  "trailing one-file PR" requirements, the default plan should use one
+  per-feature human-readable audit file containing an embedded structured
+  record section, unless planning proves a better one-file shape.
+- **Design delegation**: Exact schema fields, file names, CLI command names,
+  and iteration breakdown are delegated to Crew planning, as requested.
+- **Configuration default**: Locked-main trailing one-file PR behavior is the
+  default. `release_audit_direct_to_main: true` is an explicit opt-in shortcut
+  for unlocked repositories.
+
+No unresolved ambiguities remain that affect scope, behavior, governance, or
+release safety.
+
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - Agent-Owned Beta-Before-Stable Handoff (Priority: P1)
