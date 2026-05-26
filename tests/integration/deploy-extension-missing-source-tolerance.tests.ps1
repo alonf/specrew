@@ -93,6 +93,50 @@ requires:
         Write-Fail 'scripts/ was not copied — deploy bailed at hooks/ instead of continuing'
     }
     Write-Pass 'Items past hooks/ in $itemsToCopy were still deployed (graceful degradation)'
+
+    # Assertion 4: REQUIRED missing items must throw (not silently skip).
+    # Rebuild a fixture where a REQUIRED item (commands/) is missing, run deploy,
+    # and assert it throws — preventing future packaging regressions from being masked.
+    $requiredMissingRoot = Join-Path $testRoot 'module-no-commands/extensions/specrew-speckit'
+    New-Item -ItemType Directory -Force -Path (Join-Path $requiredMissingRoot 'hooks')           | Out-Null
+    New-Item -ItemType Directory -Force -Path (Join-Path $requiredMissingRoot 'scripts')         | Out-Null
+    New-Item -ItemType Directory -Force -Path (Join-Path $requiredMissingRoot 'templates')       | Out-Null
+    New-Item -ItemType Directory -Force -Path (Join-Path $requiredMissingRoot 'squad-templates') | Out-Null
+    Set-Content -LiteralPath (Join-Path $requiredMissingRoot 'extension.yml') -Value @'
+schema_version: "1.0"
+schema: "v1"
+extension:
+  id: specrew-speckit
+  name: "test"
+  version: "0.27.5"
+requires:
+  speckit_version: ">=0.8.4"
+'@ -Encoding utf8 -NoNewline
+    Set-Content -LiteralPath (Join-Path $requiredMissingRoot 'README.md') -Value 'test' -Encoding utf8 -NoNewline
+    # NOTE: intentionally NO commands/ subdirectory — that's the regression case
+    Copy-Item -LiteralPath $realDeployScript -Destination (Join-Path $requiredMissingRoot 'scripts/deploy-speckit-extension.ps1') -Force
+    Copy-Item -LiteralPath $realSharedGov    -Destination (Join-Path $requiredMissingRoot 'scripts/shared-governance.ps1')       -Force
+
+    $reqMissingProjectRoot = Join-Path $testRoot 'project-no-commands'
+    $reqMissingSpecifyRoot = Join-Path $reqMissingProjectRoot '.specify'
+    New-Item -ItemType Directory -Force -Path $reqMissingSpecifyRoot | Out-Null
+    Set-Content -LiteralPath (Join-Path $reqMissingSpecifyRoot 'extensions.yml') -Value 'installed: []' -Encoding utf8 -NoNewline
+
+    $threw = $false
+    try {
+        & (Join-Path $requiredMissingRoot 'scripts/deploy-speckit-extension.ps1') -ProjectPath $reqMissingProjectRoot -PassThru | Out-Null
+    } catch {
+        $threw = $true
+        $caughtMessage = $_.Exception.Message
+    }
+
+    if (-not $threw) {
+        Write-Fail 'Deploy script did NOT throw when required item (commands/) was missing — guard incorrectly treats required items as optional'
+    }
+    if ($caughtMessage -notmatch 'Required.*source item missing|commands') {
+        Write-Fail "Deploy script threw but message did not name the missing required item. Message: $caughtMessage"
+    }
+    Write-Pass "Required missing item (commands/) caused deploy to throw with clear error (does not silently skip)"
 }
 finally {
     if (Test-Path -LiteralPath $testRoot) {
