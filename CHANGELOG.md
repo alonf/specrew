@@ -4,6 +4,12 @@ Retroactive alpha release history for shipped Specrew features. `.specrew\config
 is the canonical source for the active version; this file records the feature
 baseline that each release number represents.
 
+## [0.27.5] - 2026-05-26
+
+### Fixed
+
+- **Deploy script tolerance for missing optional source items**: `extensions/specrew-speckit/scripts/deploy-speckit-extension.ps1` now skips items in `$itemsToCopy` whose source paths are absent in the installed module, rather than hard-failing. Empirically motivated by tester report 2026-05-26: `specrew update` on installed v0.25.0 crashed at `Get-Item -LiteralPath ...\hooks` because PSGallery/NuGet packaging silently drops `.gitkeep`-only directories, leaving installed packages without the `hooks/` directory the deploy script unconditionally iterated. Affects v0.25.0 through v0.27.4. Fix degrades gracefully (logs `skipped-missing-source` action and continues) so the deploy succeeds for items that did ship. Regression test verifies deploy works when `hooks/` source is missing. Mirror-parity restored across `extensions/` and `.specify/extensions/`. Version bumped to `0.27.5`.
+
 ## [0.27.3] - 2026-05-26
 
 ### Fixed

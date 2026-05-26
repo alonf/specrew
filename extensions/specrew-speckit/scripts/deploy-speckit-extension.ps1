@@ -312,7 +312,16 @@ Ensure-Directory -Path $targetExtensionRoot -Actions $actions
 
 $itemsToCopy = @('commands', 'extension.yml', 'README.md', 'hooks', 'scripts', 'templates', 'squad-templates')
 foreach ($item in $itemsToCopy) {
-    Copy-MissingItem -SourcePath (Join-Path $extensionRoot $item) -TargetPath (Join-Path $targetExtensionRoot $item) -Actions $actions
+    $sourceItemPath = Join-Path $extensionRoot $item
+    if (-not (Test-Path -LiteralPath $sourceItemPath)) {
+        # Optional source item not present in installed package — typically caused by
+        # PSGallery/NuGet packaging dropping empty-with-.gitkeep directories (e.g.,
+        # extensions/specrew-speckit/hooks/). Skip rather than hard-fail so the
+        # deploy succeeds for the items that did ship.
+        Add-DeploymentAction -Actions $actions -Action 'skipped-missing-source' -Path $sourceItemPath
+        continue
+    }
+    Copy-MissingItem -SourcePath $sourceItemPath -TargetPath (Join-Path $targetExtensionRoot $item) -Actions $actions
 }
 
 Ensure-ExtensionRegistration -ManifestPath $targetExtensionsManifest -ExtensionName 'specrew-speckit' -ExtensionVersion $extensionVersion -Actions $actions
