@@ -1,3 +1,66 @@
+## 2026-05-27 — T002-T006 Implementation: Docker Pre-Publish Harness
+
+- **Decision ID**: t002-t006-docker-harness-implementation
+- **Type**: implementation decisions
+- **Feature**: 049-pipeline-hardening-intake
+- **Iteration**: 001
+- **Authority**: Implementer (Antigravity)
+- **Recorded At**: 2026-05-27
+- **Tasks**: T002, T003, T004, T005, T006
+- **Commits**: f857da4c, d17f0e3a, 10f5afb8
+
+### Implementation Summary
+
+Implemented Docker-based pre-publish E2E validation harness as a blocking step in the release pipeline to prevent FileList omissions and version drift from reaching production.
+
+### Key Decisions
+
+1. **Docker Base Image**: `mcr.microsoft.com/powershell:lts-ubuntu-22.04` - official Microsoft PowerShell container with Ubuntu 22.04 LTS for stable cross-platform testing.
+
+2. **Baseline Version Strategy**: Install Specrew v0.27.6 from PSGallery as baseline to validate upgrade path from current production to candidate.
+
+3. **5-Phase Validation Approach**:
+   - Phase 1: Validate candidate structure and manifest parsing
+   - Phase 2: FileList integrity check (FR-003)
+   - Phase 3: Version pin drift detection (FR-012, Prop 134)
+   - Phase 4: Test project initialization with baseline
+   - Phase 5: Update transition validation (FR-004)
+
+4. **Version Pin Drift Detection (Prop 134)**: Regex-based parsing of `.specrew/config.yml` `specrew_version` compared with `Specrew.psd1` `ModuleVersion`. Explicit failure on mismatch.
+
+5. **Update Transition Testing**: Full baseline→candidate update path including module unload/reload, `specrew update` execution, config verification, and Squad duplicate detection (FR-013 regression check).
+
+6. **Workflow Integration**: Insert Docker harness between "Ensure dispatch tag" and "Stamp and publish" steps - latest possible validation before irreversible PSGallery publish.
+
+7. **FileList Registration**: Added `scripts/internal/test-publish-harness.ps1` to `Specrew.psd1` FileList to prevent harness script omission.
+
+### Testing Evidence
+
+T001 test fixture passes all assertions:
+- Dockerfile.publish-test exists ✅
+- test-publish-harness.ps1 exists ✅
+- FileList integrity check passed (182 files) ✅
+- Version pin check passed ✅
+- Contains FileList validation logic ✅
+- Contains version pin drift assertions ✅
+- publish-module.yml wires Docker harness ✅
+
+### Files Changed
+
+- **Created**: `tests/Dockerfile.publish-test`
+- **Created**: `scripts/internal/test-publish-harness.ps1`
+- **Modified**: `.github/workflows/publish-module.yml` (added pre-publish validation step)
+- **Modified**: `Specrew.psd1` (added test-publish-harness.ps1 to FileList)
+
+### Traceability
+
+- **Requirements**: FR-001, FR-002, FR-003, FR-004, FR-005, FR-012, SC-001
+- **Proposals**: Prop 134 (Version Pin Drift Detection)
+- **Tasks**: T002, T003, T004, T005, T006
+- **Tests**: T001 (now passing)
+
+---
+
 ## 2026-05-22T17:54:24Z — Iteration-Closeout Boundary Sync: F-039 Iteration 001 Complete
 
 - **Decision ID**: iteration-closeout-sync-2026-05-22-f039-001
@@ -19840,3 +19903,150 @@ User explicitly authorized retro-boundary entry for Feature 039 Iteration 001. T
 - **Rationale**: Delegated lifecycle routing was applied for role 'Reviewer'.
 
 - **Routing Evidence**: Reviewer | requested=claude | actual=copilot | model=(platform default) | status=fell-back | fallback=preferred agent 'claude' is not enabled
+
+## 2026-05-26T22:34:51Z — Delegated routing plan
+
+- **Enabled Agents**: copilot
+- **Independent Oversight Active**: False
+- **Roles**:
+  - Implementer | requested=copilot | actual=copilot | model=(platform default) | status=honored | fallback=(none)
+  - Spec Steward | requested=codex | actual=copilot | model=(platform default) | status=fell-back | fallback=preferred agent 'codex' is not enabled
+  - Planner | requested=claude | actual=copilot | model=(platform default) | status=fell-back | fallback=preferred agent 'claude' is not enabled
+  - Reviewer | requested=claude | actual=copilot | model=(platform default) | status=fell-back | fallback=preferred agent 'claude' is not enabled
+  - Retro Facilitator | requested=copilot | actual=copilot | model=(platform default) | status=honored | fallback=(none)
+
+## 2026-05-26T22:34:51Z — Routing evidence: Spec Steward
+
+- **Decision ID**: routing-evidence-e4f76518a569
+- **Type**: routing-evidence
+- **Affected Requirement**: FR-043
+- **Affected Iteration**: (none)
+- **Approving Human**: (none)
+- **Recorded At**: 2026-05-26T22:34:51Z
+- **Next Action**: none
+- **Rationale**: Delegated lifecycle routing was applied for role 'Spec Steward'.
+
+- **Routing Evidence**: Spec Steward | requested=codex | actual=copilot | model=(platform default) | status=fell-back | fallback=preferred agent 'codex' is not enabled
+
+## 2026-05-26T22:34:51Z — Routing evidence: Planner
+
+- **Decision ID**: routing-evidence-1285fcfbaf62
+- **Type**: routing-evidence
+- **Affected Requirement**: FR-043
+- **Affected Iteration**: (none)
+- **Approving Human**: (none)
+- **Recorded At**: 2026-05-26T22:34:51Z
+- **Next Action**: none
+- **Rationale**: Delegated lifecycle routing was applied for role 'Planner'.
+
+- **Routing Evidence**: Planner | requested=claude | actual=copilot | model=(platform default) | status=fell-back | fallback=preferred agent 'claude' is not enabled
+
+## 2026-05-26T22:34:51Z — Routing evidence: Reviewer
+
+- **Decision ID**: routing-evidence-7e6886e9b278
+- **Type**: routing-evidence
+- **Affected Requirement**: FR-043
+- **Affected Iteration**: (none)
+- **Approving Human**: (none)
+- **Recorded At**: 2026-05-26T22:34:51Z
+- **Next Action**: none
+- **Rationale**: Delegated lifecycle routing was applied for role 'Reviewer'.
+
+- **Routing Evidence**: Reviewer | requested=claude | actual=copilot | model=(platform default) | status=fell-back | fallback=preferred agent 'claude' is not enabled
+
+---
+
+## 2026-05-27T02:00:34Z: User directive – F-049 Iteration 001 Implementation Phase
+
+- **Decision ID**: user-directive-2026-05-27-f049-implementation-phase
+- **Type**: user directive
+- **Authority**: Alon Fliess (via Copilot CLI)
+- **Recorded At**: 2026-05-27T02:06:39Z (by Scribe)
+- **Feature**: 049-pipeline-hardening-intake
+- **Iteration**: 001
+- **Scope**: Implementation phase sequencing and governance requirements
+
+### Directive Summary
+
+For F-049 Iteration 001 implement phase, restore the stray markdown-spacing edits in .github/agents/squad.agent.md, .squad/ceremonies.md, and specs/049-pipeline-hardening-intake/spec.md, verify a clean tree, then execute `T001` first as the TDD red fixture before `T002`-`T006`, followed by `T007` and `T019`. Push every boundary commit to `origin` immediately; keep `extensions/specrew-speckit/scripts/*` byte-identical with `.specify/extensions/specrew-speckit/scripts/*` and SHA256-verify parity before boundary commits; never re-track `.specrew/start-context.json` or `.specrew/last-start-prompt.md`; check both Copilot and Codex automated PR reviews before claiming review findings are addressed; at feature closeout follow Steps 5-14 with target version `0.27.7`; during `T019` also surface regression coverage for the PSGallery-first Bug 2 fix and fold the `specrew start` auto-resume-wrong-feature small-fix slice into Iteration 001 only if empirically confirmed.
+
+### Implementation Sequence
+
+1. Restore stray markdown-spacing edits in three governance files
+2. Verify clean tree
+3. Execute T001 as TDD red fixture
+4. Execute T002-T006 infrastructure tasks
+5. Execute T007 verification and T019 regression coverage
+6. Feature closeout with Steps 5-14 and v0.27.7 versioning
+
+### Governance Requirements
+
+- **Boundary commits:** Push to origin immediately
+- **Mirror parity:** `extensions/specrew-speckit/scripts/*` ↔ `.specify/extensions/specrew-speckit/scripts/*`
+- **Parity verification:** SHA256 before each boundary commit
+- **Stale state hygiene:** Never re-track `.specrew/start-context.json` or `.specrew/last-start-prompt.md`
+- **PR review verification:** Check both Copilot and Codex automated reviews before accepting findings
+- **Version target:** 0.27.7
+- **Bug 2 regression:** Surface coverage for PSGallery-first fix during T019
+- **Small-fix slice:** Fold `specrew start` auto-resume-wrong-feature slice into Iteration 001 only if empirically confirmed
+
+### Authority
+
+User request — captured for team memory per Scribe charter.
+
+---
+
+## 2026-05-27T02:06:39Z — Decision: T001 Test Structure for Docker Pre-Publish Harness
+
+- **Decision ID**: t001-test-structure-pre-publish-harness-2026-05-27
+- **Type**: implementation decision
+- **Feature**: 049-pipeline-hardening-intake
+- **Iteration**: 001
+- **Work Item**: T001
+- **Status**: Implemented (test file created)
+- **Authority**: Reviewer
+- **Recorded At**: 2026-05-27T02:06:39Z (by Scribe, merged from inbox)
+- **Scope**: T001 test structure for Docker pre-publish harness
+
+### Context
+
+T001 adds failing E2E publish-module test assertions as a TDD red fixture for FR-003 (FileList integrity) and FR-012 (version pin drift detection per Prop 134). The test will intentionally fail until T002-T006 implement the Docker harness infrastructure.
+
+### Decision
+
+Created `tests/integration/publish-module-harness.tests.ps1` with seven progressive assertions:
+
+1. **Dockerfile.publish-test existence** (T002 dependency)
+2. **test-publish-harness.ps1 existence** (T003 dependency)
+3. **FileList integrity** - verifies every entry in `Specrew.psd1` FileList exists on disk
+4. **Version pin drift detection** - compares `specrew_version` in `.specrew/config.yml` with `ModuleVersion` in `Specrew.psd1` (Prop 134)
+5. **FileList validation logic presence** in test-publish-harness.ps1 (T003 dependency)
+6. **Version pin drift assertions presence** in test-publish-harness.ps1 (T004 dependency)
+7. **Docker harness wiring** in `.github/workflows/publish-module.yml` (T006 dependency)
+
+### Test Philosophy
+
+- **TDD red first**: Tests fail with clear, actionable messages indicating which future task will resolve each failure
+- **Progressive validation**: Tests check both infrastructure existence and behavioral correctness
+- **Local runnable**: Tests can execute locally before Docker infrastructure exists, providing immediate feedback
+- **Traceability**: Each assertion maps to specific FRs (FR-003, FR-012) and success criteria (SC-001)
+
+### Version Pin Drift Logic (Prop 134)
+
+The test parses `specrew_version` from `.specrew/config.yml` and compares it to `ModuleVersion` in `Specrew.psd1`. Any mismatch is a hard failure. This enforces the version pin consistency required to prevent the packaging omissions and version confusion that led to v0.25.0+ and v0.27.6-beta.1 regressions.
+
+### Next Steps
+
+- **T002**: Create `tests/Dockerfile.publish-test` to unblock assertion 1
+- **T003**: Create `scripts/internal/test-publish-harness.ps1` to unblock assertions 2, 5
+- **T004**: Add version pin drift logic to unblock assertion 6
+- **T006**: Wire Docker harness into workflow to unblock assertion 7
+- **T007**: Run focused harness tests locally and in CI to verify green state
+
+### Impact
+
+This test structure ensures the pre-publish harness will catch FileList omissions and version drift deterministically before any release ships to PSGallery. The 0% escaped omissions goal (SC-001) depends on this test passing in CI.
+
+### Session Context
+
+Decision merged from `.squad/decisions/inbox/reviewer-t001.md` as part of F-049 Iteration 001 T001 reviewer batch scribe session (2026-05-27T02:06:39Z).
