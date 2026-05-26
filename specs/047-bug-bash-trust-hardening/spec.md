@@ -5,6 +5,22 @@
 **Status**: Draft  
 **Input**: F-047 Bug-Bash + Improvement Brief — 7 bundled lifecycle-tooling reliability and downstream-user trust-hardening fixes, theme "downstream-user trust hardening + lifecycle-tooling reliability", shipping as the v0.27.3 minor patch. Under Proposal 055's bug-bash slice pattern (3+ related issues in one session = bug-bash with running findings.md).
 
+## Clarifications
+
+### Session 2026-05-26
+
+The originating brief was exhaustive and pre-resolved every material decision, so no question rose to the level of requiring human input at clarify (per the answer-clarifications-when-clear rule). The following decisions were adopted directly from the brief and are recorded here as the authoritative clarify outcome:
+
+- **Iteration shape**: Single iteration containing all 7 items (~12-20 SP, within the 20 SP cap). Sequencing: Item 1 first (foundation), Item 2 immediately after (its regression lock), Items 3–7 in any order.
+- **Severity policy**: All new detection rules are WARN, never FAIL — backward-compatible (FR-016).
+- **Item 5 fix choice**: Option (a) — `Get-SpecrewSkillCatalogState` performs a content-based check (zero `SKILL.md` ⇒ missing root), not existence-only. Chosen for determinism.
+- **Item 7 fix choice**: Option (a) — regeneration derives per-task status from `tasks.md` `[x]` + `state.md`, with `tasks.md` authoritative and any divergence surfaced. Chosen for determinism (single source of truth converges).
+- **Item 4 scope boundary**: Only Proposal 078 Pillar 2b (regex check) + the `installed-instructions/` audit/rewrite. The full 5-pillar Proposal 078 and the full Proposal 099 installed-file audit are out of scope.
+- **Release**: Ships as v0.27.3; version bumped across `.specrew/config.yml`, `extension.yml`, and `Specrew.psd1` per Rule 15 (FR-015).
+- **Effort units**: Numeric or t-shirt both acceptable.
+
+No unresolved ambiguities remain that affect scope, behavior, governance, or UX.
+
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - Handoff-Block Validator Enforcement (Priority: P1)
