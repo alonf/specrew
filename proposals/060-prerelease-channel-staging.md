@@ -1,15 +1,26 @@
 ---
 proposal: 060
-title: PSGallery Prerelease Channel + Staging Discipline
-status: candidate
+title: PSGallery Prerelease Channel + Universal Beta-Before-Stable Mandate
+status: draft
 phase: phase-2
-estimated-sp: 10
-discussion: tbd
+estimated-sp: 5-7
+priority-tier: 1
+discussion: **HIGH PRIORITY** — user direction 2026-05-26 flipped this from stage-dependent + per-feature opt-in to universal mandate. Every feature ships -beta.N to PSGallery first; maintainer manually validates installed prerelease; only after PASS verdict does the Crew promote to stable. Infrastructure already landed in F-023 (`f119e4a` workflow primitives). Remaining scope: policy + coordinator-prompt template steps + docs + `specrew update --self --allow-prerelease` flag. Composes with [[feedback-beta-publish-before-stable-2026-05-26]] standing rule and Proposal 131 (coordinator-prompt SDLC ownership clarification).
 ---
 
-# PSGallery Prerelease Channel + Staging Discipline
+# PSGallery Prerelease Channel + Universal Beta-Before-Stable Mandate
 
 ## Why
+
+### Policy update 2026-05-26 — universal mandate (was: stage-dependent opt-in)
+
+This proposal originally articulated the prerelease discipline as **stage-dependent + per-feature opt-in**: solo-maintainer stage skips beta unless feature is risky; post-announcement stage uses beta as default. The 2026-05-19 trigger for the stage transition was "≥1 known external adopter."
+
+**On 2026-05-26 the policy flipped to universal mandate.** Trigger: v0.27.3 (F-047) shipped directly to PSGallery stable on 2026-05-26 without going through the beta channel. No bugs surfaced — but the F-046 v0.27.0 stale-installed-module trap (verdicts silently dropped because installed `0.27.0` lacked F-046's atomic verdict writer; worked around with `$env:SPECREW_MODULE_PATH` override) made it concrete that **the installed PSGallery package is the only surface that exercises the full real-world install path**, and skipping beta means skipping that validation layer. The maintainer adopted: **every feature ships -beta.N first, manual test, then promote.** No exceptions for risk profile or audience size.
+
+The standing rule is captured in [[feedback-beta-publish-before-stable-2026-05-26]] which extends the [[feedback-pr-at-feature-close-sdlc]] feature-closeout Steps 5-9 to Steps 5-13.
+
+This Why section retains the original beta-tester argument and workflow-validation argument below as supporting context, but the per-feature opt-in language is superseded by the universal mandate.
 
 ### The beta-tester argument (primary motivation)
 
@@ -27,13 +38,13 @@ A prerelease tag also functions as a **dress rehearsal for the stable publish**:
 
 The current Specrew release pipeline (F-019 / Proposal 031) has no staging step: stable and main are effectively the same channel with tag-cadence as the only gate. For a methodology product where bugs in the lifecycle commands block users from doing their work, this is too risky once external adoption begins.
 
-### Per-feature opt-in, not universal mandate
+### Per-feature universal mandate (effective 2026-05-26)
 
-For the **current solo-maintainer stage** (zero external users), prereleases are NOT mandatory per feature. Maintainer can validate via git-clone import and publish stable directly. The infrastructure (workflow + manifest primitives) lands once; the *discipline* of using it scales with the audience.
+Every feature publishes `-beta.N` to PSGallery first; the maintainer manually validates the installed prerelease package against PSGallery (clean shell, `Install-Module Specrew -RequiredVersion <ver> -AllowPrerelease -Force`, exercise feature-specific surface + smoke `specrew start` + `specrew where`); only after explicit PASS verdict does the Crew tag stable and publish.
 
-For the **post-announcement stage** (external beta testers exist), prereleases become the standard channel. Every Phase 2+ feature ships as `-beta.N` first, validation window held open for beta-tester feedback, then promote to stable.
+**No per-feature opt-out** — even for "doc-only" or "test-only" or "validator-only" features that change any runtime artifact (scripts, manifests, validator rules, agent templates, CHANGELOG version). The cost is one extra tag + one `Install-Module` + ~10 minutes wait; the benefit is the PSGallery install path is exercised every release.
 
-For **any stage**, prereleases SHOULD be used when: the feature is high-risk (schema migration, manifest changes, signing changes, dependency bumps), OR the workflow itself was recently changed and needs a dress rehearsal, OR an external beta-tester explicitly requests early access.
+**Exception**: proposal-only commits that do NOT change runtime artifacts (e.g., the proposal-doc updates on 2026-05-26) do not publish a beta — they don't change the package shape.
 
 ## What
 
@@ -93,49 +104,23 @@ Update-Module Specrew -AllowPrerelease
 
 Add `--allow-prerelease` flag to `specrew update`'s self-update path so the maintainer can run `specrew update --self --allow-prerelease` to fetch the latest beta.
 
-### C. Staging discipline policy (stage-dependent)
+### C. Staging discipline policy (universal mandate, effective 2026-05-26)
 
-The discipline is NOT a universal "prerelease every feature" mandate. It's adaptive to the project's adoption stage and per-feature risk profile.
+Every feature publishes beta to PSGallery first, manual test, then promote. Codified in `docs/release-discipline.md`:
 
-#### Solo-maintainer stage (no external users)
+1. Feature-closeout PR merges to `main` (Step 8 of the PR-at-feature-close SDLC per [[feedback-pr-at-feature-close-sdlc]])
+2. **Step 9 (NEW)**: Agent tags merge commit `v<next-version>-beta.1` and pushes the tag
+3. **Step 10 (NEW)**: `.github/workflows/publish-module.yml` publishes prerelease automatically; agent verifies package visible via `Find-Module Specrew -AllowPrerelease -RequiredVersion <ver>`
+4. **Step 11 (NEW)**: Agent emits HANDOFF — "Beta v<ver>-beta.1 published to PSGallery. Please install via `Install-Module Specrew -RequiredVersion <ver> -AllowPrerelease -Force` in a clean shell, exercise feature-specific surface + smoke `specrew start` + `specrew where`, report PASS or FAIL with evidence." Agent PAUSES for human verdict.
+5. **Step 12 (NEW)**: If human reports FAIL — agent commits fix on main → tags `v<ver>-beta.2` → repeats Step 9-11. Beta-loop continues until human reports PASS.
+6. **Step 13 (NEW)**: If human reports PASS — agent tags merge commit `v<ver>` stable; pushes tag; workflow publishes stable to PSGallery; agent verifies package visible via `Find-Module Specrew -RequiredVersion <ver>`.
+7. **Step 14**: Stop before any new feature work.
 
-Default workflow: git-clone testing → tag stable directly. Prereleases are opt-in per feature.
+**Validation window**: no fixed time gate — gated on the human's PASS verdict at Step 11. The maintainer chooses the depth of manual test based on the feature's surface area.
 
-Use a prerelease when:
+**Skipping not allowed**: even for "doc-only" / "test-only" / "validator-only" features that change runtime artifacts. Proposal-only commits exempt (no runtime artifact change).
 
-- Feature touches the publish workflow itself, signing path, or manifest structure (workflow dress-rehearsal)
-- Schema migration (paired with Proposal 059 reader-tolerance + Proposal 061 init/update convergence)
-- Cross-platform paths or session-state (high regression risk)
-- First publish in N months (refresh workflow confidence)
-- F-023 specifically: first PSGallery publish in Specrew's history (mandatory dress rehearsal)
-
-For routine features (documentation, internal-tooling, small validator changes): tag stable directly.
-
-#### Post-announcement stage (external beta testers exist)
-
-Default workflow: every Phase 2+ feature ships as `-beta.N` first. Codified in `docs/release-discipline.md`:
-
-1. Feature-closeout PR merges to `main`
-2. Maintainer tags `v0.NN.0-beta.1` → publishes prerelease automatically
-3. Maintainer + opted-in beta testers install via `Install-Module Specrew -AllowPrerelease`, validate against their downstream projects
-4. **Validation window**: ≥48h for normal features, ≥7d for schema-changing or cross-platform-sensitive features
-5. If bugs surface → fix on main → tag `v0.NN.0-beta.2` → repeat
-6. When clean: workflow_dispatch `mode=promote-prerelease`, `release_tag=v0.NN.0` → publishes stable
-7. Downstream consumers see the stable upgrade
-
-For documentation-only or test-only changes: prerelease still optional.
-
-#### Trigger for the stage transition
-
-The "solo-maintainer → post-announcement" stage transition happens when:
-
-- A public announcement on Medium / LinkedIn / HN / Twitter / etc. brings ≥1 known external adopter, OR
-- An external contributor opens a PR or substantive Discussion thread, OR
-- The maintainer explicitly decides to invite beta testers via a Discussion post
-
-Until then, prereleases are an available tool, not a required step. The 2026-05-19 silent public-flip kept the project in the solo-maintainer stage despite repo visibility being public.
-
-This discipline composes with Proposal 042 (Integration Test Suite). Once 042 ships a Linux E2E test, it should run automatically on every prerelease tag, with results posted to the PR or a dedicated dashboard before stable is allowed.
+**Composes with Proposal 042** (Integration Test Suite): once 042 ships a Linux E2E test, it runs automatically on every prerelease tag and reports to a dashboard the human consults at Step 11. The agent's HANDOFF at Step 11 surfaces both the dashboard link and the manual-test instructions.
 
 ### Per-host plugin parallel (forward-looking)
 
@@ -143,10 +128,19 @@ Once Proposal 058 (Plugin-Based Multi-Host Distribution) ships, each host plugin
 
 ## Effort
 
-- **Iteration 1 (~6 SP)**: workflow extension; `Prerelease` field handling in manifest; smoke-test that prerelease publishes work end-to-end (publish to test PSGallery account or use `-WhatIf`); documentation pages.
-- **Iteration 2 (~4 SP)**: `--allow-prerelease` flag on `specrew update --self`; release-discipline doc; per-feature decision integrated into feature-closeout template ("Did this ship via prerelease first?").
+Infrastructure already landed in F-023 (commit `f119e4a`) — `publish-module.yml` handles `v*-(alpha|beta|rc).N` tag patterns, `invoke-module-release.ps1` injects `PSData.Prerelease`, `Specrew.psd1` has the placeholder. Remaining scope is policy + template + docs + maintainer-facing CLI flag.
 
-**Total: ~10 SP, two iterations.** Smaller of the bug-prevention proposals; high leverage relative to size.
+- **Iteration 1 (~3-4 SP, small-fix-slice-sized)**:
+  - Coordinator-prompt template extension: feature-closeout HANDOFF includes Steps 9-13 (composes with Proposal 131 — same template surface; bundle candidate)
+  - `docs/release-discipline.md` (new) — codifies the universal mandate + Steps 5-13
+  - Integration test extending `tests/integration/handoff-format.tests.ps1` for the new SDLC steps
+
+- **Iteration 2 (~2-3 SP)**:
+  - `--allow-prerelease` flag on `specrew update --self` (maintainer convenience)
+  - Prerelease-banner integration at session start (composes with Proposal 050 Version Surface Discoverability) — `specrew start` / `specrew where` surface `[PRERELEASE]` label when installed version has `PSData.Prerelease` field
+  - Validator rule (optional, soft WARN): closeout commit detected without subsequent `-beta.N` tag within N hours (composes with Proposal 120 handoff-block validator)
+
+**Total: ~5-7 SP, two small iterations.** Down from original ~10 SP because workflow primitives shipped in F-023.
 
 ## Phase placement
 
@@ -190,3 +184,4 @@ Once Proposal 058 (Plugin-Based Multi-Host Distribution) ships, each host plugin
 - 2026-05-19: candidate captured after the 5-bug WSL trial cluster. Pattern: bugs reached `main` and would have reached PSGallery stable without a pre-release surface to shake them out. PSGallery's native prerelease support is a zero-infrastructure staging channel; this proposal codifies its use.
 - 2026-05-19 (later): reframed from "mandatory pre-release every feature" to "stage-dependent + per-feature opt-in." Maintainer flagged that for the current solo-maintainer stage (zero external users), git-clone testing covers validation; the prerelease channel's *primary* value is beta-tester distribution (low-friction install for external adopters), with workflow dress-rehearsal as a secondary use. The proposal now treats the discipline as adaptive to project stage rather than universal mandate.
 - 2026-05-19 (workflow primitives landed): F-023's bundled chore landed `publish-module.yml` mode handling + `invoke-module-release.ps1` prerelease/promote logic + `Specrew.psd1` PSData.Prerelease placeholder, in commit `f119e4a`. With those primitives in place, the remaining scope of this proposal shrinks to polish: `--allow-prerelease` flag on `specrew update --self`, prerelease banner at session start (composes with F-020 warning path), `docs/release-discipline.md` (capturing the stage-dependent guidance above), and the stage-transition trigger documented. Revised effort estimate: ~5-7 SP (down from original ~10 SP).
+- **2026-05-26 (policy flip — universal mandate)**: status bumped candidate → **draft**, priority-tier 1 (HIGH PRIORITY). User direction after observing v0.27.3 ship directly to stable without exercising the PSGallery install path: "Every feature publishes -beta.N first; manual test on PSGallery package; only then release." Trigger reframed from "≥1 external adopter" to "PSGallery is the only surface that exercises the full install path — exercise it every release, no exceptions." Standing rule captured in [[feedback-beta-publish-before-stable-2026-05-26]]; extends [[feedback-pr-at-feature-close-sdlc]] Steps 5-9 to Steps 5-13. Bundle candidate with Proposal 131 (same coordinator-prompt template surface). Sequencing: ship immediately so the next runtime-touching feature (e.g., F-048 bug-bash) is the first to exercise the new SDLC.

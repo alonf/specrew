@@ -1,11 +1,11 @@
 ---
 proposal: 131
-title: Coordinator-Prompt SDLC Ownership Clarification (Agent-Driven With Human Approval)
+title: Coordinator-Prompt SDLC Ownership Clarification (Agent-Driven With Human Approval, Steps 5-14)
 status: candidate
 phase: phase-2
-estimated-sp: 2-4
+estimated-sp: 3-5 (standalone) or 5-7 (bundled with Proposal 060)
 priority-tier: 1
-discussion: empirically motivated by 2026-05-26 F-047 Codex regression where F-047 Item 6's coordinator-prompt template embedded the PR-at-feature-close SDLC sequence as "HUMAN ACTION NEEDED" — visibility goal achieved but ownership semantics regressed; F-045 Codex (pre-Item-6) correctly drove the full SDLC end-to-end; F-047 Codex (post-Item-6) pushed via Scribe then stopped before opening the PR; absorbed memory `[[codex-pr-creation-regression-2026-05-26]]`
+discussion: empirically motivated by 2026-05-26 F-047 Codex regression where F-047 Item 6's coordinator-prompt template embedded the PR-at-feature-close SDLC sequence as "HUMAN ACTION NEEDED" — visibility goal achieved but ownership semantics regressed; F-045 Codex (pre-Item-6) correctly drove the full SDLC end-to-end; F-047 Codex (post-Item-6) pushed via Scribe then stopped before opening the PR; absorbed memory `[[codex-pr-creation-regression-2026-05-26]]`. **EXTENDED 2026-05-26 to include Steps 9-14** (beta-tag → publish → manual-test → promote-stable) per [[feedback-beta-publish-before-stable-2026-05-26]] universal mandate; bundle candidate with Proposal 060 since both modify the same template surface
 ---
 
 # Coordinator-Prompt SDLC Ownership Clarification (Agent-Driven With Human Approval)
@@ -58,37 +58,49 @@ HUMAN ACTION NEEDED:
   4. merge after approval
 ```
 
-**Better wording — Option A (replace ownership label)**:
-
-```text
-AGENT TO EXECUTE (with HUMAN APPROVAL at each step):
-  1. push the branch
-  2. open a PR
-  3. address automated PR review
-  4. merge after approval
-```
-
-**Better wording — Option B (split into ownership rows)**:
+**Better wording — Option B (split into ownership rows, EXTENDED 2026-05-26 with Proposal 060 beta-publish sequence)**:
 
 ```text
 AGENT NEXT ACTION:
-  Execute push + gh pr create + monitor Copilot review + merge — pausing
-  for human verdict at each substantive step.
+  Execute the feature-closeout SDLC steps, pausing for human verdict at
+  each substantive step:
+    Step 5: push the branch
+    Step 6: gh pr create
+    Step 7: self-review PR (reference per-iteration review.md + retro.md)
+    Step 8: gh pr merge --merge (preserves per-feature history)
+    Step 9: tag merge commit v<next-version>-beta.1 + push tag
+    Step 10: verify .github/workflows/publish-module.yml published the
+             prerelease via Find-Module Specrew -AllowPrerelease
+             -RequiredVersion <ver>
+    Step 11: PAUSE for human manual test verdict — emit instructions:
+             "Install via `Install-Module Specrew -RequiredVersion
+             <ver> -AllowPrerelease -Force` in a clean shell. Exercise
+             feature-specific surface + smoke `specrew start` and
+             `specrew where`. Report PASS or FAIL with evidence."
+    Step 12: if FAIL → fix on main → tag v<ver>-beta.2 → repeat from
+             Step 9 (loop until PASS)
+    Step 13: if PASS → tag merge commit v<next-version> stable + push
+             tag; verify workflow publishes stable to PSGallery
+    Step 14: stop before any new feature work
 
 HUMAN ACTION NEEDED:
-  Approve each step as the agent pauses for verdict.
+  Approve each agent action as the agent pauses for verdict.
+  At Step 11 specifically: install the prerelease package, exercise it,
+  and report PASS / FAIL with evidence.
 ```
 
-Either approach makes the agent-drives-with-approval pattern explicit in the template instead of leaving it to host inference. Option B preserves the existing HUMAN ACTION NEEDED row that downstream readers may anchor on; Option A is terser and reads as a direct correction.
+**Why split rows + extended sequence**: makes the agent-drives-with-approval pattern explicit while encoding the full PR-at-feature-close SDLC including Steps 9-13 (beta tag → publish → manual test → promote stable) per the [[feedback-beta-publish-before-stable-2026-05-26]] universal mandate. Backward compatible for downstream tooling that scans for `HUMAN ACTION NEEDED:`.
 
-Recommended: **Option B** — split rows preserve backward compatibility for downstream tooling that scans for `HUMAN ACTION NEEDED:` while adding the missing ownership clarity.
+Recommended: **Option B with Steps 5-14 extension** — bundles with Proposal 060 since both modify the same template surface; one slice ships both changes.
 
-### Pillar 2: Test coverage for HANDOFF emission shape (~0.5-1 SP)
+**Alternative Option A (replace ownership label only, no Steps 9-13)** is now obsolete — the extended SDLC is part of the standing rule, so any rewrite must include Steps 9-14, not just the original Steps 5-8.
 
-Add an integration test verifying the feature-closeout HANDOFF emits BOTH rows:
+### Pillar 2: Test coverage for HANDOFF emission shape (~1 SP)
 
-- `AGENT NEXT ACTION:` row with execute-verbs (push, `gh pr create`, monitor Copilot review, merge)
-- `HUMAN ACTION NEEDED:` row with approval-verbs (approve each step)
+Add an integration test verifying the feature-closeout HANDOFF emits BOTH rows AND covers Steps 5-14:
+
+- `AGENT NEXT ACTION:` row enumerates all 10 steps (5-14) with execute-verbs (push, `gh pr create`, monitor Copilot review, merge, tag `-beta.N`, verify prerelease publish, wait-for-human-test-verdict, fix-loop, tag stable, stop)
+- `HUMAN ACTION NEEDED:` row covers both approvals AND the explicit Step 11 manual-test verdict ("Install + exercise + report PASS / FAIL")
 
 Composes with `tests/integration/handoff-format.tests.ps1` (F-014 test coverage).
 
@@ -103,10 +115,10 @@ The same clarification propagates to:
 
 Mirror parity discipline: every change to `extensions/specrew-speckit/squad-templates/` MUST be byte-identical with `.specify/extensions/specrew-speckit/squad-templates/`.
 
-## How (small-fix-slice plan)
+## How (small-fix-slice plan, bundle candidate with Proposal 060)
 
-- Single iteration on feature branch from `main`
-- ~2-4 SP total
+- Single iteration on feature branch from `main` — or bundled with Proposal 060 as a 2-iteration feature since both touch the same template surface
+- ~3-5 SP standalone (was 2-4 — raised for Steps 9-14 extension); ~5-7 SP bundled with Proposal 060 polish (workflow primitives already shipped F-023)
 - Files touched:
   - `extensions/specrew-speckit/squad-templates/coordinator/specrew-governance.md` (Pillar 1)
   - `extensions/specrew-speckit/squad-templates/agents/scribe.md` (Pillar 3)
@@ -119,11 +131,13 @@ Mirror parity discipline: every change to `extensions/specrew-speckit/squad-temp
 
 ## Acceptance signals
 
-- **AC1**: Feature-closeout HANDOFF template emits both `AGENT NEXT ACTION:` and `HUMAN ACTION NEEDED:` rows (or equivalent under Option A)
-- **AC2**: Integration test in `tests/integration/handoff-format.tests.ps1` verifies the two-row shape on a synthetic feature-closeout commit
-- **AC3**: Post-merge regression test: replay F-047 Codex's exact handoff context against the updated template — expect the agent to drive `gh pr create` rather than handing it off
+- **AC1**: Feature-closeout HANDOFF template emits both `AGENT NEXT ACTION:` and `HUMAN ACTION NEEDED:` rows with all 10 Steps (5-14) enumerated
+- **AC2**: Integration test in `tests/integration/handoff-format.tests.ps1` verifies the two-row shape AND the Steps 5-14 sequence on a synthetic feature-closeout commit
+- **AC3**: Post-merge regression test: replay F-047 Codex's exact handoff context against the updated template — expect the agent to drive `gh pr create` AND the subsequent beta-tag → publish → wait-for-test → promote sequence rather than handing PR creation off
 - **AC4**: Mirror parity preserved across `extensions/specrew-speckit/squad-templates/` and `.specify/extensions/specrew-speckit/squad-templates/`
-- **AC5**: F-045 baseline behavior preserved — the template change does not regress the F-045 end-to-end agent-driven PR cycle
+- **AC5**: F-045 baseline behavior preserved at Steps 5-8 — the template change does not regress the F-045 end-to-end agent-driven PR cycle
+- **AC6 (NEW)**: Steps 9-14 work end-to-end on a synthetic dry-run feature: agent tags `-beta.1`, workflow publishes, agent emits Step 11 HANDOFF for human verdict, agent waits, agent tags stable after PASS verdict
+- **AC7 (NEW)**: Step 12 fix-loop verified: synthetic FAIL verdict at Step 11 triggers correct loop back to Step 9 with incremented `-beta.2` tag
 
 ## Out of scope
 
@@ -136,7 +150,8 @@ Mirror parity discipline: every change to `extensions/specrew-speckit/squad-temp
 | Proposal | Relationship |
 |---|---|
 | **Proposal 078 (Handoff Conversation Quality)** | This proposal's Pillar 1 wording change is a specific case of 078's Pillar 1 (three-section format at feature-closeout normal path). 078 says "the section must be present"; this proposal says "the section must use agent-drives ownership language". Composes naturally — 078 enforces shape, 131 enforces semantics |
-| **Proposal 089 (PR Review Integration — Address-PR-Review Gate)** | 089 covers the post-PR-creation portion (monitor Copilot review, address findings, merge). This proposal covers the pre-PR-creation transition (agent owns `gh pr create`). 089 + 131 together complete the SDLC cycle |
+| **Proposal 089 (PR Review Integration — Address-PR-Review Gate)** | 089 covers the post-PR-creation portion (monitor Copilot review, address findings, merge). This proposal covers the pre-PR-creation transition (agent owns `gh pr create`) AND the post-merge beta-publish sequence (Steps 9-14). 089 + 131 + 060 together complete the SDLC cycle |
+| **Proposal 060 (PSGallery Prerelease Channel + Universal Beta-Before-Stable Mandate)** | **BUNDLE CANDIDATE.** 060's Iteration 1 scope (coordinator-prompt template extension Steps 9-13 + `docs/release-discipline.md` + integration test) overlaps 100% with this proposal's Pillar 1 + Pillar 2. Ship as a single 2-iteration feature: Iter-1 = template change + tests + docs; Iter-2 = `--allow-prerelease` flag on `specrew update --self` + prerelease-banner integration. Combined SP ~5-7 |
 | **Proposal 105 (Host-Native Hook Deployment)** | Runtime enforcement layer that would catch agent-skipping-PR-creation behaviorally (e.g., Stop hook checks "if last commit is feature-closeout and no PR exists, emit reminder"). Prose-level fix (131) is the immediate remediation; runtime enforcement (105) is the durable backstop |
 | **Proposal 120 (Handoff-Block Validator Enforcement)** | Pillar 1's `Test-SpecrewHandoffBlockPresent` helper composes — extend it to grade the AGENT NEXT ACTION / HUMAN ACTION NEEDED two-row shape at feature-closeout commits |
 | **Proposal 067 (Small-Fix Slice Type)** | This proposal is itself a small-fix slice — single coordinator-prompt template wording change with test coverage. Natural fit for the small-fix-slice methodology |
@@ -161,3 +176,4 @@ Draft when F-048 bug-bash is queued (likely after another empirical incident acc
 ## Status history
 
 - 2026-05-26: candidate proposal drafted as part of memory→proposal sweep absorbing `[[codex-pr-creation-regression-2026-05-26]]`. ~2-4 SP small-fix slice. Bundle candidate for F-048 bug-bash; standalone-ready as fallback.
+- 2026-05-26 (later, same day): **extended Pillar 1 + Pillar 2 to cover Steps 9-14** (beta-tag → publish → manual-test → promote-stable) per the new [[feedback-beta-publish-before-stable-2026-05-26]] universal mandate. SP raised 2-4 → 3-5 standalone; bundle-with-060 recommended ~5-7 SP combined since both proposals modify the same template surface. AC6 + AC7 added covering Steps 9-14 dry-run + fail-loop behavior.
