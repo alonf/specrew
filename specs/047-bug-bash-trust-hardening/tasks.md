@@ -6,7 +6,7 @@
 
 ## Phase 1: Item 1 — Handoff-Block Validator Enforcement (foundation)
 
-- [ ] T001 [P] [assigned_to: Implementer] [effort: M] Create handoff-block detection fixtures in `tests/integration/non-specrew-session-bypass.tests.ps1` covering: (1) boundary commit with no preceding handoff block ⇒ WARN, (2) missing `dashboard.md` classified as non-Specrew-managed vs auto-render regression, (3) canonical artifact under an ephemeral host-scratch path ⇒ WARN. Assert WARN (not FAIL). (Trace: FR-001, FR-002, FR-003, FR-016, SC-001, SC-002, SC-003)
+- [ ] T001 [P] [assigned_to: Implementer] [effort: S] Create handoff-block detection fixtures in `tests/integration/non-specrew-session-bypass.tests.ps1` covering: (1) boundary commit with no preceding handoff block ⇒ WARN, (2) missing `dashboard.md` classified as non-Specrew-managed vs auto-render regression, (3) canonical artifact under an ephemeral host-scratch path ⇒ WARN. Assert WARN (not FAIL). (Trace: FR-001, FR-002, FR-003, FR-016, SC-001, SC-002, SC-003)
 - [ ] T002 [assigned_to: Implementer] [effort: M] Implement `Test-SpecrewHandoffBlockPresent` in `extensions/specrew-speckit/scripts/shared-governance.ps1` and the 3 WARN checks (Pillars 1-3) in `extensions/specrew-speckit/scripts/validate-governance.ps1`. (Trace: FR-001, FR-002, FR-003, FR-016)
 - [ ] T003 [assigned_to: Implementer] [effort: S] Mirror Item 1 changes byte-identical to `.specify/extensions/specrew-speckit/scripts/{shared-governance,validate-governance}.ps1`. (Trace: FR-014)
 
@@ -21,7 +21,7 @@
 ## Phase 3: Item 3 — Review-Diagrams Mermaid Template Hardening
 
 - [ ] T005 [P] [assigned_to: Reviewer] [effort: S] Create fixtures: validator soft-WARN when `review-diagrams.md` exists with no ` ```mermaid ` block (and no-WARN when both ` ```mermaid ` and ` ```text ` present); reviewer-artifacts scaffolder emits a non-empty Mermaid skeleton. (Trace: FR-005, FR-006, SC-005)
-- [ ] T006 [assigned_to: Reviewer] [effort: M] Implement the validator soft-WARN and the `scaffold-reviewer-artifacts.ps1` Mermaid skeleton (component `graph TD` + `sequenceDiagram`). (Trace: FR-005, FR-006, FR-016)
+- [ ] T006 [assigned_to: Reviewer] [effort: S] Implement the validator soft-WARN and the `scaffold-reviewer-artifacts.ps1` Mermaid skeleton (component `graph TD` + `sequenceDiagram`). (Trace: FR-005, FR-006, FR-016)
 - [ ] T007 [assigned_to: Reviewer] [effort: S] Add the "use Mermaid, not ` ```text ` ASCII trees" directive to per-host Reviewer charter templates and mirror scaffolder/validator changes to `.specify/extensions/specrew-speckit/scripts/`. (Trace: FR-007, FR-014)
 
 ---
@@ -29,7 +29,7 @@
 ## Phase 4: Item 4 — Downstream-Language Audit + Internal-Reference Regex
 
 - [ ] T008 [P] [assigned_to: Implementer] [effort: S] Create internal-reference regex fixtures: positive (`Feature 016` in handoff prose ⇒ WARN) and negative (version `v0.27.3`, years, ≤2-digit tokens do NOT WARN). (Trace: FR-009, SC-006)
-- [ ] T009 [assigned_to: Spec Steward] [effort: M] Audit all `installed-instructions/` files + coordinator-prompt templates for `\bF-\d{3,}\b` / `\bProposal \d{3,}\b` / `\bFeature \d{3,}\b`; rewrite each to name the methodology concept. (Trace: FR-008, SC-006)
+- [ ] T009 [assigned_to: Spec Steward] [effort: S] Audit all `installed-instructions/` files + coordinator-prompt templates for `\bF-\d{3,}\b` / `\bProposal \d{3,}\b` / `\bFeature \d{3,}\b`; rewrite each to name the methodology concept. (Trace: FR-008, SC-006)
 - [ ] T010 [assigned_to: Implementer] [effort: S] Implement the validator internal-reference regex WARN (handoff prose) and mirror. (Trace: FR-009, FR-014, FR-016)
 
 ---
