@@ -2834,10 +2834,22 @@ Then follow the formal Specrew + Spec Kit lifecycle end to end:
 STOPPED AT: <canonical lifecycle boundary name or 'lifecycle-end'>
 STATUS: <one line — e.g. 'iteration 001 reviewing; 6 manual items deferred'>
 WHY STOPPED: <one line — e.g. 'need human verification of browser/AT items'>
+AGENT NEXT ACTION:
+  - <feature-closeout only: execute the release SDLC with human approval at each substantive step:
+      Step 5: push the feature branch
+      Step 6: create the PR with gh pr create
+      Step 7: self-review the PR and address automated PR review
+      Step 8: merge with a merge commit after approval/checks
+      Step 9: tag and push v<next-version>-beta.1
+      Step 10: verify prerelease publication with Find-Module Specrew -AllowPrerelease
+      Step 11: PAUSE for human manual test PASS/FAIL verdict using Install-Module Specrew -AllowPrerelease in a clean shell
+      Step 12: if FAIL, fix on main, tag the next beta such as beta.2, and repeat from Step 9
+      Step 13: if PASS, tag and push v<next-version> stable and verify stable publication
+      Step 14: stop before any new feature work>
 HUMAN ACTION NEEDED:
   - <concrete step 1>
   - <concrete step 2>
-  - <feature-closeout only: push the branch, open a PR, address automated PR review, then merge after approval/checks>
+  - <feature-closeout only: approve each agent action when asked; at Step 11 install the prerelease with Install-Module Specrew -AllowPrerelease, exercise it, and report PASS or FAIL with evidence>
 RESUME WITH: <exact phrase to type, or 'no further action'>
 === END SPECREW HANDOFF ===
 ``````

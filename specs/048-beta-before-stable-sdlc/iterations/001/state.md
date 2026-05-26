@@ -3,23 +3,28 @@
 **Schema**: v1  
 **Current Phase**: before-implement  
 **Iteration Status**: planning  
-**Last Completed Task**: T001  
-**Tasks Remaining**: T002, T003, T004, T005, T006, T007  
+**Last Completed Task**: T002  
+**Tasks Remaining**: T003, T004, T005, T006, T007  
 **In Progress**: (none)  
 **Baseline Ref**: 6cd6c58426a9793326c562fbc036e9ebc98c6496  
-**Updated**: 2026-05-26T17:48:13Z
+**Updated**: 2026-05-26T17:54:16Z
 
 ## Execution Summary
 
 - T001 added the tests-first handoff ownership fixture in
   `tests/integration/beta-before-stable-sdlc.tests.ps1`.
-- Focused fixture run currently fails as expected because T002 has not yet
-  updated the coordinator prompt/template surfaces with `AGENT NEXT ACTION:`.
+- T002 updated the coordinator handoff, response guidance, decision guidance,
+  source coordinator governance template, and deployed coordinator governance
+  mirror with the split `AGENT NEXT ACTION:` / `HUMAN ACTION NEEDED:` Steps
+  5-14 sequence.
+- Focused fixture now passes and mirror parity is byte-identical for the
+  coordinator governance template.
 
 ## Notes
 
 - Update this file after each task completes.
 - Keep task identifiers aligned to plan.md.
+- Retro candidate: the validator WARN that [README.md](file:///C:/Dev/Specrew/README.md) does not mention declared Specrew version `0.27.5` is unrelated to F-048 scope and should be considered as a v0.27.6 cleanup chore, not folded into this iteration.
 
 <!-- >>> specrew-managed escalation-state >>> -->
 ## Repair Escalation

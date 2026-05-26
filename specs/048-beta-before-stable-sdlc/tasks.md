@@ -13,7 +13,7 @@ without explicit human PASS evidence.
 ### Phase 1: Handoff Ownership Template
 
 - [x] T001 [P] [assigned_to: Reviewer] [effort: S] Add failing handoff-format fixtures that assert feature-closeout output contains both `AGENT NEXT ACTION:` and `HUMAN ACTION NEEDED:` rows, lists Steps 5-14 in order, and describes the Step 12 beta fail-loop. (Trace: FR-001, FR-002, FR-003, FR-004, FR-013, SC-001, SC-002)
-- [ ] T002 [assigned_to: Spec Steward] [effort: M] Update coordinator-prompt and governance template surfaces so feature-closeout handoff assigns Steps 5-14 to the agent and approvals/PASS-FAIL to the human. Include `scripts/specrew-start.ps1`, `extensions/specrew-speckit/prompts/*`, coordinator squad template guidance, host rules only if they contain feature-closeout wording, and `.specify/` mirrors where applicable. (Trace: FR-001, FR-002, FR-003, FR-004, FR-014, SC-001, SC-002, SC-007)
+- [x] T002 [assigned_to: Spec Steward] [effort: M] Update coordinator-prompt and governance template surfaces so feature-closeout handoff assigns Steps 5-14 to the agent and approvals/PASS-FAIL to the human. Include `scripts/specrew-start.ps1`, `extensions/specrew-speckit/prompts/*`, coordinator squad template guidance, host rules only if they contain feature-closeout wording, and `.specify/` mirrors where applicable. (Trace: FR-001, FR-002, FR-003, FR-004, FR-014, SC-001, SC-002, SC-007)
 
 ### Phase 2: Release Discipline Documentation
 
