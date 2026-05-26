@@ -1,6 +1,6 @@
 @{
     RootModule = 'Specrew.psm1'
-    ModuleVersion = '0.27.3'
+    ModuleVersion = '0.27.4'
     GUID = '8ad5b7b5-c4c6-4df4-b9bd-700a8533dcc4'
     Author = 'Alon Fliess'
     Description = 'Specrew: specification-driven development workflow for AI-augmented teams'
@@ -39,6 +39,7 @@
         'scripts/internal/host-history.ps1',
         'scripts/internal/host-runtime-inventory.ps1',
         'scripts/internal/invoke-module-release.ps1',
+        'scripts/internal/skill-catalog-state.ps1',
         'scripts/internal/supported-versions.yml',
         'scripts/internal/sync-boundary-state.ps1',
         'scripts/internal/task-progress.ps1',
@@ -68,6 +69,7 @@
         'scripts/init/spec-kit-deploy.ps1',
         'scripts/init/squad-deploy.ps1',
         'scripts/init/template-deploy.ps1',
+        'scripts/diagnose-version-check.ps1',
         'scripts/specrew-host.ps1',
         'scripts/specrew-init.ps1',
         'scripts/specrew-review.ps1',
@@ -82,7 +84,11 @@
         'extensions/specrew-speckit/commands/speckit.specrew-speckit.before-implement.md',
         'extensions/specrew-speckit/commands/speckit.specrew-speckit.before-plan.md',
         'extensions/specrew-speckit/commands/speckit.specrew-speckit.sync-clarify.md',
+        'extensions/specrew-speckit/commands/speckit.specrew-speckit.sync-feature-closeout.md',
+        'extensions/specrew-speckit/commands/speckit.specrew-speckit.sync-iteration-closeout.md',
         'extensions/specrew-speckit/commands/speckit.specrew-speckit.sync-plan.md',
+        'extensions/specrew-speckit/commands/speckit.specrew-speckit.sync-retro.md',
+        'extensions/specrew-speckit/commands/speckit.specrew-speckit.sync-review-signoff.md',
         'extensions/specrew-speckit/commands/speckit.specrew-speckit.sync-specify.md',
         'extensions/specrew-speckit/commands/speckit.specrew-speckit.sync-tasks.md',
         'extensions/specrew-speckit/design/soft-validator-handoff-governance.md',
@@ -206,7 +212,7 @@
     )
     PrivateData = @{
         PSData = @{
-            Prerelease = ''
+            Prerelease = 'beta.1'
             Tags = @('specrew', 'specification', 'squad', 'ai-workflow', 'governance')
             ProjectUri = 'https://github.com/alonf/specrew'
             LicenseUri = 'https://github.com/alonf/specrew/blob/main/LICENSE'
