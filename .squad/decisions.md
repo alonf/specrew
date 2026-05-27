@@ -21001,3 +21001,19 @@ Verified in committed tree `844fac3b`:
 ## Verdict
 
 Iteration-closeout boundary work complete. HEAD==origin at `844fac3b`. Governance validation passed. Dashboard rendered. No Iteration 003 work started.
+
+## 2026-05-27T09:51:13Z — Boundary sync warning: specify
+
+- **Boundary Type**: specify
+- **Latest Recorded Boundary**: iteration-closeout
+- **Recorded At**: 2026-05-27T09:51:13Z
+- **Warning**: Expected next boundary 'feature-closeout' but received 'specify'.
+
+## 2026-05-27T09:51:14Z — Boundary sync: specify
+
+- **Boundary Type**: specify
+- **Feature Ref**: 049-pipeline-hardening-intake
+- **Iteration Number**: (none)
+- **Task ID**: (none)
+- **Auth Commit Hash**: a4981b954bb0c11d54d0f057dcd638884af169b5
+- **Recorded At**: 2026-05-27T09:51:13Z
