@@ -20652,3 +20652,26 @@ This decision affects:
 - **Task ID**: (none)
 - **Auth Commit Hash**: 638a2816
 - **Recorded At**: 2026-05-27T00:15:44Z
+
+## 2026-05-27T00:27:44Z — Authorization: iteration-closeout
+
+- **Decision ID**: authorization-feature-049-iter-001-iteration-closeout
+- **Type**: authorization
+- **Boundary**: iteration-closeout
+- **Approving Human**: Alon Fliess
+- **Recorded At**: 2026-05-27T00:27:44Z
+- **Commit Reference**: pending
+- **Authorization Text**:
+  > approved for iteration-closeout.
+  > 
+  > Verified: Pillar 5 check passes (all cited review.md/retro.md/state.md files present in d535d93d per git ls-tree -r). Branch in sync with origin. Validator scoped-PASS on committed-tree state.
+  > 
+  > For iter-2 planning (when it starts): F-049 is now scoped at 4 iterations, not 3. Update spec/plan/tasks at iter-2 boundary to reflect the expanded scope per the canonical queue:
+  > 
+  > - iter-2: docs/troubleshooting.md + cross-references from README/getting-started/user-guide (4-6 SP) — original plan, includes the specrew update vs Update-Module confusion section + Shape 5 lesson
+  > - iter-3: Proposal 063 small slice — /speckit.specify persona-driven intake (10 SP) — original plan
+  > - iter-4 (NEW per 2026-05-27 user direction): Proposal 120 full 5-Pillar Bypass Detection implementation (6-10 SP) — including Pillar 5 reviewer-approves-working-tree-only-state cross-check (most consequential bug class — only one where delivered code can permanently vanish). Proposal 120 spec ready at HEAD on main (proposals/120-handoff-block-validator-enforcement.md, commit 4da969bc).
+  > 
+  > Total F-049 now ~30-41 SP across 4 iterations.
+  > 
+  > Proceed to iteration-closeout. At the iter-2 specify/plan boundary, scaffold the spec/plan/tasks updates to reflect 4-iteration scope; surface for human approval before continuing.
