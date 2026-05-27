@@ -21168,3 +21168,19 @@ Iteration-closeout boundary work complete. HEAD==origin at `844fac3b`. Governanc
 - Repair the stale narrative task IDs in iteration `003/plan.md` so the narrative matches the authoritative task pack and `tasks-progress.yml`.
 - Restore substantive Phase 1 Quality Planning content in feature `plan.md`; do not leave bracketed template placeholders.
 - Return to the **plan boundary** for a fresh human verdict after the repairs.
+
+## 2026-05-27T20:35:45Z — Boundary sync warning: plan
+
+- **Boundary Type**: plan
+- **Latest Recorded Boundary**: plan
+- **Recorded At**: 2026-05-27T20:35:45Z
+- **Warning**: Expected next boundary 'tasks' but received 'plan'.
+
+## 2026-05-27T20:35:46Z — Boundary sync: plan
+
+- **Boundary Type**: plan
+- **Feature Ref**: 049-pipeline-hardening-intake
+- **Iteration Number**: (none)
+- **Task ID**: (none)
+- **Auth Commit Hash**: 261ea67dec8a0545d990a40bddcc82e873df5713
+- **Recorded At**: 2026-05-27T20:35:46Z
