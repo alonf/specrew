@@ -156,63 +156,66 @@ Iteration `003` is the **21-25 SP architectural foundation slice** that implemen
 15. **T032 (extensibility proof)** — add 5th-persona test fixture (SC-006). Depends on T002-T029 engine + data + orchestrators being present so the proof can verify that only YAML changes are needed.
 16. **T033 (per-lens mode branching test)** — add per-lens mode branching correctness test. Depends on T005 (Resolve-PerLensMode.ps1) being complete.
 17. **T034 last (full regression + evidence)** — run complete engine + data + expertise-dial regression suite and record Iteration `003` acceptance evidence. Depends on T001-T033 being present in committed tree (not working-tree-only state).
+
 ## Boundary Commit Cadence
 
 | Commit Group | Tasks | Why this boundary exists |
 | ------------ | ----- | ------------------------ |
-| Red-path test baseline (engine + data) | T021 | Establishes failing test coverage for engine + data architecture, YAML catalogs, mirror parity, stack-detection, and SC-006 extensibility proof before any implementation changes land. |
-| Discrete engine foundation | T022 | Creates `Invoke-SpecifyIntake.ps1` with mirror parity as the architectural foundation that all subsequent work depends on. |
-| Engine sub-helpers + YAML catalogs | T023-T024 | Implements engine logic (persona/category loading, per-lens mode evaluation, question traversal, auto-decision, annotation) and base YAML catalogs (`personas.yml`, `categories.yml`, `depth-rules.yml`) as the modular data layer. |
-| Question banks + auto-decision defaults + extension hooks | T025-T027 | Completes the data layer: minimal question banks (3/persona), `generic.yml` defaults, stack-detection, and reserved empty `domain-bundles/` and `solution-type-bundles/` directories. |
-| Thin orchestrators | T028 | Updates prompts/agents/workflows to invoke engine, demonstrating that orchestrators are thin consumers with no inline logic. |
-| Extensibility proof | T029 | Adds 5th-persona test fixture (SC-006) proving that future persona additions require only YAML changes, not engine rewrites. |
-| User profile schema + first-run prompt + summary | T030-T032 | Establishes `user-profile.yml` schema, `specrew start` first-run expertise self-rating, and profile summary surfacing as a cohesive user-facing change. |
-| Slash-command deployment | T033a-T033c | Deploys `/specrew-user-profile` to all three skill locations (`.claude/skills/`, `.github/skills/`, `.agents/skills/`) using F-021 machinery. |
-| Transparency annotations + escape hatches | T034-T035 | Implements Proposal 053 `[AUTO-DECIDED: ...]` annotations and `"Other"` / `"I don't know, you decide"` fallback guidance as the intake-consumption layer. |
-| Red-path profile tests | T036a | Establishes failing test coverage for user-profile persistence and slash-command functionality before final integration tests. |
-| Green-path dial tests | T036b | Tests expertise-dial-driven question depth, SC-005 metrics, and acceptance evidence readiness. |
-| Full acceptance | T037 | Records complete Iteration `003` acceptance evidence after all engine + data + expertise-dial surfaces pass integrated regression. |
+| Red-path test baseline (engine + data) | T001 | Establishes failing test coverage for engine + data architecture, YAML catalogs, mirror parity, stack-detection, and SC-006 extensibility proof before any implementation changes land. |
+| Discrete engine foundation | T002 | Creates `Invoke-SpecifyIntake.ps1` with mirror parity as the architectural foundation that all subsequent work depends on. |
+| Engine sub-helpers + YAML catalogs | T003-T011 | Implements engine logic (persona/category loading, per-lens mode evaluation, question traversal, auto-decision, annotation) and base YAML catalogs (`personas.yml`, `categories.yml`, `depth-rules.yml`) as the modular data layer. |
+| Question banks + auto-decision defaults + extension hooks | T012-T019 | Completes the data layer: minimal question banks (3/persona), `generic.yml` defaults, stack-detection, and reserved empty `domain-bundles/` and `solution-type-bundles/` directories. |
+| User profile schema + first-run prompt + summary | T020-T022 | Establishes `user-profile.yml` schema, `specrew start` first-run expertise self-rating, and profile summary surfacing as a cohesive user-facing change. |
+| Slash-command deployment | T023-T025 | Deploys `/specrew-user-profile` to all three skill locations (`.claude/skills/`, `.github/skills/`, `.agents/skills/`) using F-021 machinery. |
+| Thin orchestrators | T026-T028 | Updates prompts/agents/workflows to invoke engine, demonstrating that orchestrators are thin consumers with no inline logic. |
+| Escape hatches | T029 | Adds `"Other"` and `"I don't know, you decide"` fallback guidance in prompts/agents as the intake-consumption layer. |
+| Red-path profile tests | T030 | Establishes failing test coverage for user-profile persistence and slash-command functionality before final integration tests. |
+| Green-path dial tests | T031 | Tests expertise-dial-driven question depth, SC-005 metrics, and acceptance evidence readiness. |
+| Extensibility proof | T032 | Adds 5th-persona test fixture (SC-006) proving that future persona additions require only YAML changes, not engine rewrites. |
+| Per-lens mode branching test | T033 | Tests per-lens mode branching correctness. |
+| Full acceptance | T034 | Records complete Iteration `003` acceptance evidence after all engine + data + expertise-dial surfaces pass integrated regression. |
 
 ## Dependencies
 
-### Phase A: Engine + Data Architecture Foundation (T021-T029)
+### Phase A: Engine + Data Architecture Foundation (T001-T019)
 
-- `T021` is the prerequisite for the whole iteration because red-path test coverage must exist before implementation changes land.
-- `T022` depends on `T021` and must complete before all other Phase A tasks because the engine shell is the foundation.
-- `T023` and `T024` both depend on `T022` and can proceed in parallel once the engine shell exists.
-- `T025` depends on `T024` because question banks reference `personas.yml` structure.
-- `T026` and `T027` can proceed in parallel with `T025` because auto-decision defaults and extension hooks don't depend on question banks.
-- `T028` depends on `T022-T027` (engine + data foundation complete) because thin orchestrators must have something to invoke.
-- `T029` depends on `T022-T028` (engine + data + orchestrators) because the extensibility proof validates that only YAML changes are needed to add a 5th persona.
+- `T001` is the prerequisite for the whole iteration because red-path test coverage must exist before implementation changes land.
+- `T002` depends on `T001` and must complete before all other Phase A tasks because the engine shell is the foundation.
+- `T003` through `T008` (engine sub-helpers) both depend on `T002` and can proceed in parallel once the engine shell exists.
+- `T009` through `T011` (YAML catalogs) depend on `T002` and can proceed in parallel with engine sub-helpers.
+- `T012` through `T015` (question banks) depend on `T009` (`personas.yml`) because question banks reference personas structure.
+- `T016` through `T019` (auto-decision defaults + extension hooks + stack-detection) can proceed in parallel with question banks because they don't depend on question banks.
 
-### Phase B: User Profile Persistence (T030-T032)
+### Phase B: User Profile Persistence (T020-T022)
 
-- `T030` can start in parallel with Phase A because user-profile infrastructure is independent of engine + data surfaces.
-- `T031` depends on `T030` because the first-run prompt uses the `user-profile.yml` schema.
-- `T032` depends on `T031` because profile summary renders the persisted expertise values from T031.
+- `T020` can start in parallel with Phase A because user-profile infrastructure is independent of engine + data surfaces.
+- `T021` depends on `T020` because the first-run prompt uses the `user-profile.yml` schema.
+- `T022` depends on `T021` because profile summary renders the persisted expertise values from T021.
 
-### Phase C: Slash Command Deployment (T033a-T033c)
+### Phase C: Slash Command Deployment (T023-T025)
 
-- `T033a`, `T033b`, `T033c` can start in parallel with Phase A and Phase B once `T030` schema is stable because slash-command deployment is independent of engine surfaces.
+- `T023`, `T024`, `T025` can start in parallel with Phase A and Phase B once `T020` schema is stable because slash-command deployment is independent of engine surfaces.
 - All three tasks can proceed in parallel with each other because they deploy to different skill locations.
 
-### Phase D: Intake Consumption + Transparency (T034-T035)
+### Phase D: Intake Consumption + Transparency (T026-T029)
 
-- `T034` depends on `T023` (engine sub-helpers complete) because transparency annotations are rendered by the engine's annotation helper.
-- `T035` depends on `T028` (thin orchestrators complete) because escape-hatch guidance is added to prompts/agents that invoke the engine.
+- `T026` through `T028` (thin orchestrators) depend on `T002-T019` (engine + data foundation complete) because thin orchestrators must have something to invoke.
+- `T029` (escape hatches) depends on `T026-T028` (thin orchestrators complete) because escape-hatch guidance is added to prompts/agents that invoke the engine.
 
-### Phase E: Integration Testing + Acceptance (T036a-T037)
+### Phase E: Integration Testing + Acceptance (T030-T034)
 
-- `T036a` can start in parallel with Phase B/C but must complete before `T037`.
-- `T036b` depends on `T034-T035` (intake consumption complete) because question-depth tests validate the implemented behavior.
-- `T037` depends on `T021-T036b` (all phases complete) because full acceptance evidence validates the entire engine + data + expertise-dial integrated behavior. Evidence must validate committed-tree state, not working-tree-only state.
+- `T030` (red-path profile tests) can start in parallel with Phase B/C but must complete before `T034`.
+- `T031` (green-path dial tests) depends on `T029` (intake consumption complete) because question-depth tests validate the implemented behavior.
+- `T032` (extensibility proof) depends on `T002-T029` (engine + data + orchestrators) because the extensibility proof validates that only YAML changes are needed to add a 5th persona.
+- `T033` (per-lens mode branching test) depends on `T005` (Resolve-PerLensMode.ps1) being complete.
+- `T034` depends on `T001-T033` (all phases complete) because full acceptance evidence validates the entire engine + data + expertise-dial integrated behavior. Evidence must validate committed-tree state, not working-tree-only state.
 
 ### Cross-Phase Sequencing
 
-- Phase A (T021-T029) is the critical path because engine + data architecture is the primary work.
-- Phase B (T030-T032) and Phase C (T033a-T033c) can proceed in parallel with Phase A because they touch disjoint file surfaces.
-- Phase D (T034-T035) depends on Phase A (engine + data) being complete.
-- Phase E (T036a-T037) is the final phase and validates all prior phases integrated.
+- Phase A (T001-T019) is the critical path because engine + data architecture is the primary work.
+- Phase B (T020-T022) and Phase C (T023-T025) can proceed in parallel with Phase A because they touch disjoint file surfaces.
+- Phase D (T026-T029) depends on Phase A (engine + data) being complete.
+- Phase E (T030-T034) is the final phase and validates all prior phases integrated.
 
 ## Effort Model
 
@@ -230,21 +233,21 @@ Iteration `003` is the **21-25 SP architectural foundation slice** that implemen
 
 - Current roster snapshot: Implementer and Reviewer are the only active owners for this iteration slice.
 - Technology and scope signals: **PowerShell engine scripts (FR-028), YAML catalog design (FR-029), mirror parity maintenance (TG-014), stack-detection mechanism (FR-031)** dominate as architectural foundation work. Spec Kit prompts, agent definitions, workflow YAML configuration, and integration test regression are secondary surfaces consuming the engine.
-- Parallel opportunities: Phase B (T030-T032: user-profile infrastructure) and Phase C (T033a-T033c: slash-command deployment) can proceed in parallel with Phase A (T021-T029: engine + data foundation) because they touch disjoint file surfaces (`scripts/specrew-start.ps1` and `.claude/skills/`, `.github/skills/`, `.agents/skills/` vs `extensions/specrew-speckit/scripts/intake/*` and `.specify/intake/*`).
-- Sequential constraints: Phase A (engine + data) is the critical path because Phase D (intake consumption) depends on the engine existing. `T021` must complete first (red-path baseline), then `T022` (engine shell), then `T023-T027` (engine sub-helpers + YAML catalogs), then `T028` (thin orchestrators), then `T029` (extensibility proof), then Phase D (T034-T035: transparency annotations + escape hatches), then Phase E (T036a-T037: integration testing + acceptance).
+- Parallel opportunities: Phase B (T020-T022: user-profile infrastructure) and Phase C (T023-T025: slash-command deployment) can proceed in parallel with Phase A (T001-T019: engine + data foundation) because they touch disjoint file surfaces (`scripts/specrew-start.ps1` and `.claude/skills/`, `.github/skills/`, `.agents/skills/` vs `extensions/specrew-speckit/scripts/intake/*` and `.specify/intake/*`).
+- Sequential constraints: Phase A (engine + data) is the critical path because Phase D (intake consumption) depends on the engine existing. `T001` must complete first (red-path baseline), then `T002` (engine shell), then `T003-T019` (engine sub-helpers + YAML catalogs + question banks + auto-decision defaults + extension hooks), then Phase D (T026-T029: thin orchestrators + escape hatches), then Phase E (T030-T034: integration testing + acceptance).
 
 ## Lessons from Iteration 002
 
 ### Applied Lessons
 
 1. **Three-boundary commit cadence retained** — Iteration `002` proved the three-boundary cadence (primary content → packaging/discoverability → evidence) lands exactly to plan and stays audit-friendly. Iteration `003` reuses this pattern adapted to architectural foundation work: red-path baseline → discrete engine → engine sub-helpers + YAML catalogs → question banks + defaults + extension hooks → thin orchestrators → extensibility proof → user-profile infrastructure → slash-command deployment → transparency annotations + escape hatches → integration testing → acceptance evidence.
-2. **Manual Pillar 5 discipline as execution baseline** — Iteration `002` applied manual committed-tree presence checks during `T011` before acceptance was claimed. Iteration `003` will follow the same discipline: `T037` verification evidence MUST confirm that all cited production files (engine scripts, YAML catalogs, mirror copies, slash-command skills) exist in the committed tree under review before acceptance is recorded.
+2. **Manual Pillar 5 discipline as execution baseline** — Iteration `002` applied manual committed-tree presence checks during `T011` before acceptance was claimed. Iteration `003` will follow the same discipline: `T034` verification evidence MUST confirm that all cited production files (engine scripts, YAML catalogs, mirror copies, slash-command skills) exist in the committed tree under review before acceptance is recorded.
 3. **Boundary commit discipline enforcement** — Iteration `002` recorded `boundary-commit-discipline-violations: 0`. Iteration `003` will preserve this discipline by ensuring each planned boundary commit group lands as a separate, atomic commit without mixing unrelated surfaces (e.g., engine scripts separate from user-profile infrastructure, YAML catalogs separate from slash-command deployment).
 
 ### Explicit Non-Application
 
 - **Mechanized Pillar 5 enforcement** remains deferred to Iteration `004`. Iteration `003` will continue using manual reviewer discipline for committed-tree presence checks rather than implementing validator automation.
-- **Approval-vs-tree freshness gate** remains manual during Iteration `003`. The reviewer will verify that the Tree Under Review and cited production files match `HEAD` during `T037`, but validator-side freshness comparison waits for Iteration `004`.
+- **Approval-vs-tree freshness gate** remains manual during Iteration `003`. The reviewer will verify that the Tree Under Review and cited production files match `HEAD` during `T034`, but validator-side freshness comparison waits for Iteration `004`.
 
 ## Explicit Out-of-Scope Boundaries
 
@@ -273,7 +276,7 @@ To keep Iteration `003` visibly unified and internally scoped, the following exp
 - **User-profile.yml is user-level**, persisted at `$env:USERPROFILE\.specrew\user-profile.yml` (Windows) or `~/.specrew/user-profile.yml` (Unix), and reusable across all Specrew projects. This eliminates the need to re-enter expertise for every project while maintaining user control via `/specrew-user-profile show/edit/reset`.
 - **Boundary discipline**: Iteration `003` is explicitly bounded to engine + data architecture foundation (FR-028..FR-031) + `/speckit.specify` intake behavior (FR-008..FR-011) + user-profile management (FR-023..FR-027). NO multi-trigger expansion (clarify/iteration-kickoff/mid-feature-pivot), NO project-level profile overrides, NO validator integration. All such expansion remains future work outside F-049's approved roadmap.
 - **Slash-command deployment parity**: `/specrew-user-profile` MUST deploy to `.claude/skills/`, `.github/skills/`, and `.agents/skills/` using F-021 machinery. All three locations must have identical behavior and reflect changes to the shared `user-profile.yml`.
-- **Mirror parity enforcement (TG-014)**: Engine scripts MUST maintain mirror parity between `extensions/specrew-speckit/scripts/intake/*` (shipped in module) and `.specify/extensions/specrew-speckit/scripts/intake/*` (project-local override path). Both paths must be kept synchronized; any engine enhancement MUST update both mirrors simultaneously. This is enforced during task execution (T022-T029) and validated during acceptance evidence (T037).
-- **SC-006 extensibility proof**: Adding a 5th persona MUST be demonstrably achievable by: (1) adding one row to `personas.yml`, (2) creating one new file `questions/<new-persona>.yml`, (3) running `/speckit.specify`, with **zero modifications** to engine scripts, prompts, agents, workflows, or version manifests. This is proven empirically with a test fixture in T029.
+- **Mirror parity enforcement (TG-014)**: Engine scripts MUST maintain mirror parity between `extensions/specrew-speckit/scripts/intake/*` (shipped in module) and `.specify/extensions/specrew-speckit/scripts/intake/*` (project-local override path). Both paths must be kept synchronized; any engine enhancement MUST update both mirrors simultaneously. This is enforced during task execution (T002-T019) and validated during acceptance evidence (T034).
+- **SC-006 extensibility proof**: Adding a 5th persona MUST be demonstrably achievable by: (1) adding one row to `personas.yml`, (2) creating one new file `questions/<new-persona>.yml`, (3) running `/speckit.specify`, with **zero modifications** to engine scripts, prompts, agents, workflows, or version manifests. This is proven empirically with a test fixture in T032.
 - **SC-005 measurement**: Success is empirically measured by (a) ≥30% reduction in question count for dial 7-10 vs Mode C baseline, (b) ≥40% reduction in user-faced decision count for dial 1-3 via auto-decide + transparency, (c) no regression in clarify-question count across all expertise levels, and (d) per-lens specify-mode-A rate remaining ≥70% (spec quality gate).
 - **Capacity justification**: 21-25 SP reflects the architectural foundation work (FR-028 engine + FR-029 data catalogs + FR-030 extension hooks + FR-031 stack detection) that enables future extensibility. This is 4-5 SP higher than the old 17-20 SP estimate because the pivot from inline logic to modular engine + data requires upfront investment in sub-helper architecture, mirror parity, and YAML catalog design. The payoff is that future 5th+ personas, domain bundles, solution-type bundles, and stack-specific defaults will land as data-only additions without touching engine code or module manifests.

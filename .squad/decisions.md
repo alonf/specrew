@@ -21137,3 +21137,34 @@ Iteration-closeout boundary work complete. HEAD==origin at `844fac3b`. Governanc
 - **Task ID**: (none)
 - **Auth Commit Hash**: 3b74b5150f3abf8c7cca15cf1381da335cbfe76b
 - **Recorded At**: 2026-05-27T17:09:54Z
+
+---
+
+### Human Reviewer: Feature 049 Iteration 003 Plan Boundary Rejection
+
+- **Decision ID**: f049-i003-plan-rejection-artifact-drift
+- **Type**: plan-boundary rejection
+- **Feature**: 049-pipeline-hardening-intake
+- **Iteration**: 003
+- **Boundary**: plan
+- **Authority**: Alon Fliess (human reviewer)
+- **Recorded At**: 2026-05-27T20:20:55Z
+- **Commit Reference**: aebe2a99, the repaired engine-pivot planning package that still carried artifact drift
+
+#### Verdict
+
+`rejected at plan boundary`
+
+#### Why Rejected
+
+- The architectural pivot landed correctly: FR-028 through FR-031, TG-013 through TG-015, SC-006, FR-010 per-lens semantics, capacity arithmetic, and the 34-task decomposition were accepted.
+- Two planning-artifact drift gaps blocked approval:
+  1. `specs/049-pipeline-hardening-intake/iterations/003/plan.md` still referenced stale prior-plan task IDs in narrative sections even though the Tasks table had been regenerated to T001-T034.
+  2. `specs/049-pipeline-hardening-intake/plan.md` Phase 1 Quality Planning had regressed to template-stub wording instead of substantive bounded-custom-composition content.
+
+#### Required Repair Direction
+
+- Keep the accepted architecture and scope intact; do not reopen Iteration 003 design.
+- Repair the stale narrative task IDs in iteration `003/plan.md` so the narrative matches the authoritative task pack and `tasks-progress.yml`.
+- Restore substantive Phase 1 Quality Planning content in feature `plan.md`; do not leave bracketed template placeholders.
+- Return to the **plan boundary** for a fresh human verdict after the repairs.
