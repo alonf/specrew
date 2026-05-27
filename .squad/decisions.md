@@ -20847,3 +20847,41 @@ This decision affects:
 - **Task ID**: (none)
 - **Auth Commit Hash**: c348b08e15d186e995c895d9deb7073a3c903300
 - **Recorded At**: 2026-05-27T07:48:23Z
+
+## 2026-05-27T08:48:34Z — Boundary enforcement: retro
+
+- **Feature**: 049-pipeline-hardening-intake
+- **Boundary Type**: retro
+- **Current Boundary**: review-signoff
+- **Requested Boundary**: retro
+- **Enforcement Action**: blocked
+- **Launch Mode**: same-window
+- **Agent Response Snippet**: (none)
+- **Reason**: No persisted authorization matched review-signoff -> retro.
+
+## 2026-05-27T08:52:30Z — User Verdict: F-049 Iteration 002 Retro Boundary Authorization
+
+- **Decision ID**: user-verdict-2026-05-27-f049-i002-retro-boundary
+- **Type**: boundary authorization
+- **Authority**: Alon Fliess
+- **Recorded At**: 2026-05-27T08:52:30Z
+- **Feature**: 049-pipeline-hardening-intake
+- **Iteration**: 002
+- **Commit Reference**: 35ab9df166ee605da81b32f58424629754e88c91
+
+## Verdict
+
+approved for retro.
+
+Retro substantively captures the boundary-cadence positive empirical case (T008 -> T009+T010 -> T011 matched plan exactly), the manual Pillar 5 committed-tree verification against tree a251f22c, and the approval-vs-tree freshness gate as empirical evidence for Iteration 004 validator enforcement. Proceed only to iteration-closeout as the next separate boundary.
+
+## 2026-05-27T08:53:29Z — Boundary enforcement: retro
+
+- **Feature**: 049-pipeline-hardening-intake
+- **Boundary Type**: retro
+- **Current Boundary**: review-signoff
+- **Requested Boundary**: retro
+- **Enforcement Action**: authorized
+- **Launch Mode**: same-window
+- **Agent Response Snippet**: (none)
+- **Reason**: Persisted authorization matched the requested boundary.
