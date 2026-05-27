@@ -1,5 +1,5 @@
 ---
-focus_area: "Feature 049 Iteration 003 before-implement gate passed"
+focus_area: "Feature 049 Iteration 003 review-signoff complete; retro next"
 active_issues: "[]"
 schema: v1
 updated_at: 2026-05-27T23:11:21Z
@@ -15,4 +15,8 @@ session_state_recorded_at: 2026-05-27T23:11:21Z
 
 # What We're Focused On
 
-Feature 049 (049-pipeline-hardening-intake) is active at the **before-implement boundary** for Iteration 003 after the human approved the repaired plan package at committed tree `261ea67d`. The current package passed the before-implement gate for the engine + data intake slice: the Iteration `003` task pack stays traceable to FR-008 through FR-011, FR-023 through FR-031, SC-003, SC-005, and SC-006; Phase 2 hardening remains explicitly deferred for this slice; and implementation may begin once the human gives the before-implement verdict. The exact next valid lifecycle stop is the **human before-implement verdict / implementation authorization** on the updated spec, plan, iteration plan, and task package.
+Feature 049 (049-pipeline-hardening-intake) is active at the **review-signoff boundary** for Iteration 003. Review-signoff is complete on the accepted Iteration 003 tree `83e6f07b3619e13cbb34cff95b72a505ff3e7d68`, and **retro is the next unopened boundary** pending fresh human authorization.
+
+- Current status: Review-signoff was approved by Alon Fliess; the authoritative `review.md` and `state.md` artifacts both hold Iteration 003 in review-signoff-complete state.
+- Next valid lifecycle stop: the **retro boundary handoff** only. Do not advance directly to iteration-closeout from this state.
+- Guardrail: keep Iteration 003 parked until retro is explicitly authorized and opened.
