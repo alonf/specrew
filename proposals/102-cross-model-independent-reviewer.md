@@ -84,13 +84,15 @@ Static config is enough for the MVP value proposition. Dynamic routing is a foll
 
 A lazy reviewer says "looks good" indiscriminately. The proposal must defend against this.
 
-Three concrete safeguards (each composing with Proposal 073 Review Evidence Integrity's pattern):
+Four concrete safeguards (originally three; Safeguard 4d added 2026-05-28). Each composes with Proposal 073 Review Evidence Integrity's pattern:
 
 **4a. Required evidence in reviewer output.** Reviewer must cite specific files+lines for each finding (positive or negative). "Looks good" without file-citation is rejected as form-not-meaning by the validator.
 
 **4b. Synthetic-bug injection (periodic).** Specrew internally maintains a small bug-catalog (deliberately-broken code patterns). Periodically, the reviewer pipeline runs against an injected bug; if the reviewer misses it, alarm + retro discussion of why. Frequency: once per N iterations (N ≈ 10-20). Burden is small; signal is high.
 
 **4c. Cross-reference against spec.** Reviewer must explicitly map findings back to specific FRs in spec.md or acceptance criteria in tasks.md. Findings that don't trace to spec/tasks are flagged as out-of-scope.
+
+**4d. Reviewer instruction playbook citation (added 2026-05-28).** Each commissioned reviewer (primary + independent) MUST load `.specrew/review/reviewer-instructions.md` (shipped by Proposal 140 Reviewer Instruction Surface) + `.specrew/review/reviewer-instructions.local.md` overlay if present. Reviewer output (review.md or equivalent) MUST cite which instruction-file version(s) were used. Reviewers operating without the playbook are flagged as form-not-meaning per the same pattern. **This is the load-bearing safeguard that prevents "independence with overlapping ignorance"**: F-049 iter-3 (2026-05-28) empirically demonstrated that a single reviewer with playbook context produces dramatically better review quality than a single reviewer without — and that two independent reviewers WITHOUT playbook context are not structurally better than one. Independence alone is insufficient; independence + shared playbook is the structural improvement.
 
 ### Pillar 5 — Availability fallback policy
 
@@ -136,6 +138,7 @@ The proposal should be drafted as an **extension** of 089, not a parallel system
 - **FR-013**: Composition with Proposal 069 — reviewer execution uses the same multi-host launch infrastructure
 - **FR-014**: Dynamic routing (iteration 2): file-type / change-size / risk-class based selection
 - **FR-015**: Self-applied: Specrew's own development adopts L2 for feature PRs (default after this proposal ships)
+- **FR-016 (added 2026-05-28)**: All commissioned reviewers (primary + independent at every independence level L1/L2/L3) MUST load `.specrew/review/reviewer-instructions.md` (shipped by Proposal 140 Reviewer Instruction Surface) + `.specrew/review/reviewer-instructions.local.md` overlay if present, BEFORE producing review output. Review output (review.md or equivalent) MUST cite which instruction-file version(s) were used. Without the playbook, independence is empty — two ignorant reviewers do not produce structurally better review than one ignorant reviewer. Empirical motivation: F-049 iter-3 review-signoff 2026-05-28 demonstrated single-reviewer Pillar 5 form check approved an iteration that an independent reviewer with playbook context correctly rejected with 4 substantive gaps (schema mismatch, broken auto path, SC-005 incomplete evidence, lifecycle artifact inconsistency). The differentiator was review-context quality, not model independence. This proposal cannot deliver its claimed value without Proposal 140 also shipping. Proposal 140 ships standalone (5-8 SP); 102 cannot ship without it.
 
 ## Out of scope
 
@@ -199,6 +202,8 @@ Sequencing: ships after 069 enables practical multi-host execution. Plausible Q3
 
 ## Cross-references
 
+- **Required dependency (added 2026-05-28)**:
+  - [140 Reviewer Instruction Surface](140-reviewer-instruction-surface.md) — REQUIRED. The playbook FR-016 mandates loading lives there. 102 cannot deliver value without 140; 140 ships standalone but 102 cannot ship without it. Both proposals coexist intentionally: 140 captures empirical urgency + ships the playbook content + deployment; 102 mandates loading + structural cross-reviewer independence.
 - **Composes with**:
   - [014 Red Team Agent](014-red-team-agent.md) — 099 implements a structural version of what 014 proposes; possibly subsumes 014 at clarify time
   - [018 Source-Spec Fidelity Contract](018-source-spec-fidelity.md) — 099's spec-traceback (FR-007) is the mechanism; 018 sets the contract
@@ -219,4 +224,5 @@ Sequencing: ships after 069 enables practical multi-host execution. Plausible Q3
 
 ## Status history
 
-- 2026-05-22: status set to `candidate`. Drafted in response to external research document's "dedicated independent validation LLM" framing, sharpened with concrete failure-mode analysis and the cross-training-lineage requirement. Awaiting clarify-time decisions on independence-level defaults, synthetic-catalog curation, and L3 viability.
+- **2026-05-22**: status set to `candidate`. Drafted in response to external research document's "dedicated independent validation LLM" framing, sharpened with concrete failure-mode analysis and the cross-training-lineage requirement. Awaiting clarify-time decisions on independence-level defaults, synthetic-catalog curation, and L3 viability.
+- **2026-05-28**: amended. Added FR-016 (all commissioned reviewers MUST load `.specrew/review/reviewer-instructions.md` from Proposal 140 + cite version in review output). Added Safeguard 4d (Reviewer instruction playbook citation as load-bearing form-vs-meaning defense). Added Proposal 140 as REQUIRED dependency (102 cannot deliver value without 140). Amendment empirically motivated by F-049 iter-3 review-signoff 2026-05-28: single-reviewer Pillar 5 form check approved an iteration; independent reviewer with explicit playbook context (the contents of `docs/methodology/review-instructions.md` shipped 2026-05-28 commit `01df228a`) correctly rejected with 4 substantive gaps. The differentiator was review-context quality, not model independence. The amendment closes the empirical gap that "two reviewers without shared playbook = two ignorant reviewers" — independence alone is insufficient.
