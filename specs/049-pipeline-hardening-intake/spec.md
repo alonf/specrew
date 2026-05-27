@@ -3,7 +3,7 @@
 **Feature Branch**: `049-pipeline-hardening-intake`  
 **Created**: 2026-05-27  
 **Status**: Draft  
-**Input**: F-049 user request: Docker pre-publish version-update validation, durable troubleshooting guide docs, and persona-driven `/speckit.specify` intake.
+**Input**: F-049 user request: Docker pre-publish version-update validation, durable troubleshooting guide docs, persona-driven `/speckit.specify` intake, and approved Proposal 120 five-pillar bypass-detection scope.
 
 ---
 
@@ -34,7 +34,7 @@ To empower users to recover gracefully from environment issues, local conflicts,
 
 **Why this priority**: Ensures supportability. When FileList omissions or side-by-side installations occur, developers need clear, structured recovery sequences instead of flying blind.
 
-**Independent Test**: Readability and cross-reference check in the generated docs. Verification that `docs/troubleshooting.md` is registered in `Specrew.psd1` FileList in the same commit.
+**Independent Test**: Readability and cross-reference check in the generated docs. Verification that `docs/troubleshooting.md` is registered in `Specrew.psd1` FileList in the same commit, linked from the primary onboarding docs, and includes the approved Shape-5 lesson.
 
 **Acceptance Scenarios**:
 
@@ -42,6 +42,7 @@ To empower users to recover gracefully from environment issues, local conflicts,
 2. **Given** `docs/troubleshooting.md` is created, **When** a commit is authored, **Then** it must include the addition of `docs/troubleshooting.md` in `Specrew.psd1`'s `FileList`.
 3. **Given** the documentation is updated, **When** a user browses `README.md`, `docs/getting-started.md`, or `docs/user-guide.md`, **Then** clear cross-references point to the new troubleshooting guide.
 4. **Given** a user confused between `specrew update` and `Update-Module Specrew`, **When** they consult `docs/troubleshooting.md`, **Then** they find a clear, explicit comparison of their separate scopes (project deployment vs. module upgrade).
+5. **Given** a maintainer needs to understand the PlanningPoC Shape-5 failure mode, **When** they consult `docs/troubleshooting.md`, **Then** they find a concrete lesson explaining that accepted review evidence must match committed tree state, not only working-tree state.
 
 ---
 
@@ -65,11 +66,31 @@ To ensure that the initial specify phase (`/speckit.specify`) captures realistic
 
 ---
 
+### User Story 4 - Governance Bypass Detection Before Closeout (Priority: P4)
+
+To ensure iterations cannot appear complete while bypassing Specrew runtime discipline or citing uncommitted production work as accepted evidence, governance validation must detect the approved five bypass-detection pillars before closeout proceeds.
+
+**Why this priority**: This is the approved final slice of F-049 because the family of bypasses undermines trust in boundary state, audit trails, and — in the Pillar 5 case — can permanently lose delivered code if uncommitted work is mistaken for shipped work.
+
+**Independent Test**: Run governance validation against prepared fixtures covering all five bypass shapes and verify that closeout remains blocked whenever accepted review evidence cites production files that are not present in the cited tree.
+
+**Acceptance Scenarios**:
+
+1. **Given** a boundary or lifecycle stop occurs without a preceding `=== SPECREW HANDOFF ===` block, **When** governance validation runs, **Then** it emits a visible warning identifying the missing handoff evidence.
+2. **Given** a closed iteration has the normal closeout artifacts except a trigger-driven artifact such as `dashboard.md`, **When** governance validation runs, **Then** it classifies the gap as a non-Specrew-managed bypass rather than only a generic missing-artifact warning.
+3. **Given** canonical feature artifacts are written into an ephemeral host session-scratch location instead of the feature directory, **When** governance validation runs, **Then** it warns that the artifact is in the wrong location and points maintainers back to the canonical specs path.
+4. **Given** a human-judgment boundary advances in recorded state without matching human verdict history, **When** governance validation or boundary sync evaluates the transition, **Then** the unauthorized advance is surfaced and the state change is not allowed to stand silently.
+5. **Given** an accepted `review.md` cites production files as evidence for a specific Tree Under Review, **When** those files are absent from the cited tree, **Then** validation fails loudly enough to stop iteration closeout until the work is committed or the evidence is corrected.
+
+---
+
 ## Edge Cases
 
 - **Docker Harness Timeout/Network Latency**: The pre-publish harness might hit a network timeout pulling the previous version from PSGallery. The test must gracefully retry or cache baseline layouts.
 - **PSGallery Side-by-Side Cache Invalidation**: Package managers might return cached, stale layout versions during local `Save-Module` updates. The troubleshooting guide must outline how to force-clean the NuGet cache.
 - **Aborted Intake Mode**: If a user aborts during a Mode C interactive interview, the system must retain partial progress in `.specify/feature.json` so it can be resumed.
+- **Legacy Governance History**: Older iterations may predate newer handoff or verdict-history rules. Bypass-detection coverage must distinguish legacy history from newly governed closeouts so maintainers can act on present-day signals without rewriting old records.
+- **Review Evidence Scope Mismatch**: Review evidence may cite both production files and test files. The closeout gate must treat missing production-file evidence as a blocking integrity failure while allowing lower-severity treatment for test-only mismatches.
 
 ---
 
@@ -84,6 +105,7 @@ To ensure that the initial specify phase (`/speckit.specify`) captures realistic
 - **FR-003**: The harness MUST verify that **every** item listed in the packaged candidate's `Specrew.psd1` `FileList` successfully unpacked on disk.
 - **FR-004**: The harness MUST run `specrew update` and verify that the local project structure is updated cleanly, and mirror parity checks return `PASS`.
 - **FR-005**: `.github/workflows/publish-module.yml` MUST execute this Docker harness as a blocker before any release is pushed to PSGallery.
+- **FR-012**: The pre-publish verification suite MUST detect manifest version-pin drift before publication proceeds, so module and runtime version declarations cannot silently diverge.
 - **FR-013**: The system MUST prevent `specrew update` from duplicating Squad team/routing entries. The template merge logic inside `scripts/specrew-update.ps1` / `deploy-squad-runtime.ps1` MUST perform a clean merge instead of appending duplicate role rows.
 - **FR-014**: `specrew update --info` MUST default to checking and showing the actual latest version published on **PSGallery**, rather than using a hardcoded or misleading `UpstreamLatest` from local manifests (promotes Proposal 049).
 
@@ -92,6 +114,8 @@ To ensure that the initial specify phase (`/speckit.specify`) captures realistic
 - **FR-006**: System MUST contain `docs/troubleshooting.md` addressing: PSGallery side-by-side caches, FileList drops, deploy-script exceptions, stale-state recovery, and clean-reinstall flows.
 - **FR-007**: `docs/troubleshooting.md` MUST be registered in `Specrew.psd1` `FileList` immediately upon creation.
 - **FR-015**: `docs/troubleshooting.md` MUST explicitly document the naming distinction and functional boundary between `specrew update` (project environment deployment) and `Update-Module Specrew` (module software upgrade).
+- **FR-016**: `README.md`, `docs/getting-started.md`, and `docs/user-guide.md` MUST cross-reference `docs/troubleshooting.md` so recovery guidance is discoverable from the primary onboarding and usage paths.
+- **FR-017**: `docs/troubleshooting.md` MUST capture the Shape-5 lesson that accepted review evidence must match committed tree state, so maintainers understand why working-tree-only files are not durable delivery.
 
 #### Iteration 3: Persona-Driven Intake
 
@@ -104,18 +128,30 @@ To ensure that the initial specify phase (`/speckit.specify`) captures realistic
 - **FR-010**: Intake MUST dynamically branch into **Mode A (Direct Confirmation)**, **Mode B (Targeted Clarify)**, or **Mode C (Full Interview)** based on the completeness of initial input.
 - **FR-011**: Intake forms MUST support `"Other"` and `"I don't know, you decide"` options, triggering proactive agent domain research when selected.
 
+#### Iteration 4: Five-Pillar Bypass Detection
+
+- **FR-018**: Governance validation MUST detect missing `=== SPECREW HANDOFF ===` evidence at boundary or lifecycle stops and surface the gap as an explicit handoff warning.
+- **FR-019**: Governance validation MUST distinguish trigger-bypass artifact gaps from generic missing-artifact failures when an iteration otherwise appears fully closed.
+- **FR-020**: Governance validation MUST detect canonical Specrew artifacts written into ephemeral host session-scratch locations and warn that they are outside the canonical feature path.
+- **FR-021**: Governance validation and boundary enforcement MUST detect state advances across human-judgment boundaries that lack matching human verdict history, preventing silent state progression from being treated as valid.
+- **FR-022**: Governance validation MUST compare accepted review evidence against the cited Tree Under Review and block iteration closeout if production files cited as delivered evidence are absent from that tree; test-only evidence mismatches may remain warning-level findings.
+
 ---
 
 ### Traceability & Governance Requirements *(mandatory)*
 
-- **TG-001**: User Story 1 maps to FR-001, FR-002, FR-003, FR-004, FR-005, and SC-001.
-- **TG-002**: User Story 2 maps to FR-006, FR-007, and SC-002.
+- **TG-001**: User Story 1 maps to FR-001, FR-002, FR-003, FR-004, FR-005, FR-012, FR-013, FR-014, and SC-001.
+- **TG-002**: User Story 2 maps to FR-006, FR-007, FR-015, FR-016, FR-017, and SC-002.
 - **TG-003**: User Story 3 maps to FR-008, FR-009, FR-010, FR-011, and SC-003.
-- **TG-004**: Expected Owner roles: Spec Steward (F-049 specs/clarification), Planner (planning iteration), Implementer (code/docs), and Reviewer (E2E PR audit).
-- **TG-005**: Iteration delivery window:
-  - **Iteration 001**: FR-001 to FR-005 (Docker harness).
-  - **Iteration 002**: FR-006 to FR-007 (Troubleshooting).
-  - **Iteration 003**: FR-008 to FR-011 (Persona intake).
+- **TG-004**: User Story 4 maps to FR-018, FR-019, FR-020, FR-021, FR-022, and SC-004.
+- **TG-005**: Expected Owner roles: Spec Steward (F-049 specs/clarification), Planner (planning iteration), Implementer (code/docs), and Reviewer (E2E PR audit).
+- **TG-006**: F-049 is an approved **four-iteration** feature. Iteration 001 is closed; Iterations 002-004 remain the approved delivery roadmap.
+- **TG-007**: Iteration delivery window:
+  - **Iteration 001 (closed)**: FR-001 to FR-005, FR-012, FR-013, FR-014 (Docker harness + release hardening regressions).
+  - **Iteration 002**: FR-006, FR-007, FR-015, FR-016, FR-017 (Troubleshooting, cross-references, and Shape-5 lesson).
+  - **Iteration 003**: FR-008 to FR-011 (Persona-driven specify intake).
+  - **Iteration 004**: FR-018 to FR-022 (Proposal 120 full five-pillar bypass detection).
+- **TG-008**: Iteration 004 scope is anchored to Proposal 120 at main commit `4da969bc`; planning/tasking for this feature MUST preserve all five pillars, including Pillar 5 working-tree-only-state detection.
 
 ---
 
@@ -124,8 +160,9 @@ To ensure that the initial specify phase (`/speckit.specify`) captures realistic
 ### Measurable Outcomes
 
 - **SC-001**: 100% of missing FileList or corrupt layouts in packaged candidates are blocked **before** PSGallery upload occurs (0% escaped omissions).
-- **SC-002**: `docs/troubleshooting.md` exists, is registered in `Specrew.psd1` `FileList`, and is fully cross-referenced in `README.md`.
+- **SC-002**: `docs/troubleshooting.md` exists, is registered in `Specrew.psd1` `FileList`, is cross-referenced from `README.md`, `docs/getting-started.md`, and `docs/user-guide.md`, and explains both the `specrew update` vs. `Update-Module Specrew` distinction and the Shape-5 durability lesson.
 - **SC-003**: `/speckit.specify` generates highly contextual specs tailored to one of the 4 personas with less than 2 subsequent clarify questions in 90% of runs.
+- **SC-004**: All five approved bypass-detection pillars surface during governance validation, and 0 accepted iteration closeouts may rely on production evidence files that are absent from the cited committed tree.
 
 ---
 
@@ -134,6 +171,7 @@ To ensure that the initial specify phase (`/speckit.specify`) captures realistic
 - **Docker availability**: The CI runners and local developer environments have Docker/Moby engine installed and accessible.
 - **PSGallery accessibility**: The Docker environment can reach `https://www.powershellgallery.com` to download previous versions.
 - **Main branch branching**: All feature work for F-049 branches from `main` and is merged via merge commits (`--merge`).
+- **Repository history availability**: Governance validation can inspect committed tree metadata and review artifacts for the active feature when evaluating closeout evidence.
 
 ---
 
@@ -173,19 +211,34 @@ To ensure that the initial specify phase (`/speckit.specify`) captures realistic
 - **Question**: How do we resolve user naming confusion?
 - **Decision**: Add an explicit troubleshooting section in `docs/troubleshooting.md` outlining the difference in scope and execution between the two.
 
+### Session 2026-05-27 (Iteration Expansion Approval)
+
+#### Feature roadmap truth
+
+- **Question**: How should F-049 reflect the human-approved post-Iteration-001 roadmap?
+- **Decision**: Treat F-049 as a **four-iteration** feature. Preserve Iteration 001 as closed, keep the approved Iteration 002 documentation slice and Iteration 003 persona-intake slice, and add Iteration 004 for Proposal 120's full five-pillar bypass-detection scope.
+
+#### Proposal 120 scope anchor
+
+- **Question**: Which Proposal 120 scope is in-bounds for Iteration 004?
+- **Decision**: Use Proposal 120 at main commit `4da969bc`, including all five pillars and especially Pillar 5 reviewer-working-tree-only-state detection that blocks closeout when cited production evidence is not present in the committed tree.
+
 ---
 
 ## Governance Alignment *(mandatory)*
 
 - **Spec Steward**: Spec Steward (Antigravity Coordinator)
 - **Iteration Facilitator**: Retro Facilitator (Antigravity Coordinator)
-- **Capacity Model**: 33-36 SP total across 3 iterations:
-  - **Iteration 001**: 17 SP (Docker harness 12 SP + Prop 134 pin assertion + duplicate-row fix + Proposal 049 PSGallery info check 5 SP)
-  - **Iteration 002**: 5 SP (Troubleshooting guide + cross-references including naming confusion docs)
-  - **Iteration 003**: 11 SP (Persona-driven /speckit.specify intake)
-- **Drift Signals**: Detected via the governance validator `validate-governance.ps1` and the newly designed Docker E2E pre-publish harness.
+- **Capacity Model**: 37-43 SP total across 4 iterations:
+  - **Iteration 001 (closed)**: 17 SP actual (Docker harness 12 SP + Prop 134 pin assertion + duplicate-row fix + Proposal 049 PSGallery info check 5 SP)
+  - **Iteration 002**: 4-6 SP (Troubleshooting guide + README/getting-started/user-guide cross-references + `specrew update` vs `Update-Module` confusion section + Shape-5 lesson)
+  - **Iteration 003**: 10 SP (Persona-driven `/speckit.specify` intake small slice, preserving the original approved intent)
+  - **Iteration 004**: 6-10 SP (Proposal 120 full five-pillar bypass detection, including Pillar 5 working-tree-only-state detection)
+- **Roadmap Truth**: Iteration 001 is complete; the approved remaining feature scope is Iterations 002, 003, and 004.
+- **Drift Signals**: Detected via the governance validator `validate-governance.ps1`, the Docker E2E pre-publish harness, and Iteration 004 bypass-detection rules that cross-check closeout evidence against canonical repository state.
 - **Human Oversight Points**:
   - Spec/Clarify boundary check (this step).
   - Pre-implementation iteration planning approval.
   - Review / PR merge approval.
   - Manual test PAS/FAIL validation (Step 11).
+  - Explicit review of any Pillar 5 closeout failure before iteration-closeout is re-attempted.
