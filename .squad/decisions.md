@@ -21291,3 +21291,17 @@ Iteration-closeout boundary work complete. HEAD==origin at `844fac3b`. Governanc
 - **Decision**: Repaired the completed-retro bookkeeping without advancing to iteration-closeout.
 - **Artifacts**: `specs/049-pipeline-hardening-intake/iterations/003/state.md`, `.specrew/last-start-prompt.md`, `.specrew/start-context.json`, `.squad/identity/now.md`
 - **Rationale**: `state.md` carried a noncanonical completed-retro phase label, the resume prompt still advertised review-signoff-era retro authorization hold text, and `boundary_enforcement.pending_next_boundary` incorrectly implied retro was still awaiting authorization. The repair keeps `boundary_type: retro`, clears the stale pending-next marker, and leaves iteration-closeout explicitly unopened pending fresh human authorization.
+
+## 2026-05-27T23:44:06.823Z — User Verdict: F-049 Iteration 003 Retro Boundary Authorization
+
+- **Decision ID**: user-verdict-2026-05-27-f049-i003-retro-boundary
+- **Type**: boundary authorization
+- **Authority**: Alon Fliess
+- **Recorded At**: 2026-05-27T23:44:06.823Z
+- **Feature**: 049-pipeline-hardening-intake
+- **Iteration**: 003
+- **Commit Reference**: 65faad6abdbc68e74f1e680ca25b937f02202c78
+
+## Verdict
+
+approved for retro
