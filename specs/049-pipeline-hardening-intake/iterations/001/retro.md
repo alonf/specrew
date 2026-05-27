@@ -71,4 +71,4 @@
 
 - This artifact was scaffolded from plan.md, state.md, drift-log.md, and review.md for Squad's built-in Retrospective ceremony.
 - **Defer Entry Approval Record**: Review-signoff boundary approval (2026-05-27, Reviewer authority rule 14B) implicitly approved Bug 2 and Bug 3 defer entries (`defer-f049-bug2-regression-test` and `defer-f049-bug3-structural-fix` in `.squad/decisions.md`) ex post facto as part of accepting the Iteration 001 deliverables. Alon Fliess's explicit approval signature is captured in the defer entries themselves (approving human field populated at decision creation time). Governance drift remediation (Action 1, below) will make this sign-off timing explicit for future iterations.
-- **Status**: ✅ RETRO COMPLETE — all findings recorded, improvement actions tied to concrete Shape-4/Shape-5 governance drift, defer entries validated, and team-relevant decision proposals queued for next planning ceremony.
+- **Status**: ✅ RETRO COMPLETE — all findings recorded, improvement actions tied to concrete Shape-4/Shape-5 governance drift, defer entries validated, and team-relevant decision proposals queued for a future planning ceremony.
