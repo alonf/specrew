@@ -21261,3 +21261,33 @@ Iteration-closeout boundary work complete. HEAD==origin at `844fac3b`. Governanc
 - **Task ID**: (none)
 - **Auth Commit Hash**: 46943d62c4ab891c764e08f3617cd79458626e3d
 - **Recorded At**: 2026-05-27T23:11:21Z
+
+## 2026-05-27T23:28:06Z — Boundary enforcement: retro
+
+- **Feature**: 049-pipeline-hardening-intake
+- **Boundary Type**: retro
+- **Current Boundary**: review-signoff
+- **Requested Boundary**: retro
+- **Enforcement Action**: blocked
+- **Launch Mode**: same-window
+- **Agent Response Snippet**: (none)
+- **Reason**: No persisted authorization matched review-signoff -> retro.
+
+## 2026-05-27T23:32:11Z — Boundary sync: retro
+
+- **Boundary Type**: retro
+- **Feature Ref**: 049-pipeline-hardening-intake
+- **Iteration Number**: 003
+- **Task ID**: (none)
+- **Auth Commit Hash**: 150135720e61919b16929e7877b243a961b0d516
+- **Recorded At**: 2026-05-27T23:32:11Z
+
+## 2026-05-27T23:35:23Z — Planner: Retro state truth repair
+
+- **Feature**: 049-pipeline-hardening-intake
+- **Iteration**: 003
+- **Authority**: Planner
+- **Change Type**: lifecycle-state cleanup
+- **Decision**: Repaired the completed-retro bookkeeping without advancing to iteration-closeout.
+- **Artifacts**: `specs/049-pipeline-hardening-intake/iterations/003/state.md`, `.specrew/last-start-prompt.md`, `.specrew/start-context.json`, `.squad/identity/now.md`
+- **Rationale**: `state.md` carried a noncanonical completed-retro phase label, the resume prompt still advertised review-signoff-era retro authorization hold text, and `boundary_enforcement.pending_next_boundary` incorrectly implied retro was still awaiting authorization. The repair keeps `boundary_type: retro`, clears the stale pending-next marker, and leaves iteration-closeout explicitly unopened pending fresh human authorization.
