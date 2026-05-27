@@ -2,7 +2,7 @@
 
 **Schema**: v1
 **Current Phase**: retro
-**Iteration Status**: reviewing
+**Iteration Status**: retro
 **Last Completed Task**: T020
 **Tasks Remaining**: (none — all tasks complete)
 **In Progress**: (none)
@@ -64,11 +64,11 @@ All 10 iteration tasks completed successfully:
 
 ## Notes
 
-- Iteration started 2026-05-27, completed same day
-- All 10 tasks delivered on-scope with no deferrals
-- Reviewer verification complete: all tests passing
+- Iteration started 2026-05-27; implementation, review, and retro all completed on the same day
+- All 10 scoped tasks delivered on-scope; approved defer entries cover Bug 2 regression infrastructure and the Bug 3 structural follow-up
+- Reviewer verification complete and retro findings captured
 - Bug fix commit 437338f6 (auto-resume state cleanup) recommended for inclusion
-- Iteration ready for review-signoff boundary
+- Iteration ready for iteration-closeout boundary
 
 <!-- >>> specrew-managed escalation-state >>> -->
 ## Repair Escalation

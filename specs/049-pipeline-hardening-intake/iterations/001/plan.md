@@ -5,7 +5,7 @@
 **Status**: retro
 **Capacity**: 17/20 story_points
 **Started**: 2026-05-27
-**Completed**: (pending review-signoff)
+**Completed**: (pending iteration-closeout)
 
 <!--
   Validator schema (canonical, enforced by validate-governance.ps1):
