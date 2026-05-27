@@ -20580,11 +20580,11 @@ This decision affects:
 - **Rationale**: Commit 437338f6 removed the immediate symptom by keeping stale session-state files out of git. The broader recovery-logic hardening is a durable enhancement that belongs in a dedicated future iteration with explicit design and regression coverage.
 - **Affected Artifact**: specs\049-pipeline-hardening-intake\iterations\001\review.md
 
-## 2026-05-27T00:00:44Z — Authorization: review-signoff
+## 2026-05-27T00:00:44Z — Authorization: review-verdict-signoff
 
-- **Decision ID**: authorization-feature-049-iter-001-review-signoff
+- **Decision ID**: authorization-feature-049-iter-001-review-verdict-signoff
 - **Type**: sign-off
-- **Boundary**: review-signoff
+- **Boundary**: review-verdict-signoff
 - **Approving Human**: Alon Fliess
 - **Recorded At**: 2026-05-27T00:00:44Z
 - **Commit Reference**: a731e83
