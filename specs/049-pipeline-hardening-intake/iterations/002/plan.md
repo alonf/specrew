@@ -2,7 +2,7 @@
 
 **Schema**: v1
 **Spec**: [../../spec.md](../../spec.md)
-**Status**: executing
+**Status**: reviewing
 **Capacity**: 4.0/20 story_points
 **Started**: 2026-05-27
 **Completed**:
@@ -50,7 +50,7 @@ Iteration `002` is the approved documentation-only slice for Feature `049`. Exec
 | T008 | Draft `docs/troubleshooting.md` with recovery guidance, update-vs-module clarification, and Shape-5 lesson | FR-006, FR-015, FR-017, TG-006, TG-007, SC-002 | US2 | 1.75 | Implementer | `docs/troubleshooting.md` | done | Implementer | 1.75 | implemented |
 | T009 | Register `docs/troubleshooting.md` in `Specrew.psd1` `FileList` | FR-007, TG-006, TG-007, SC-002 | US2 | 0.50 | Implementer | `Specrew.psd1` | done | Implementer | 0.50 | implemented |
 | T010 | Add onboarding cross-references from primary docs to `docs/troubleshooting.md` | FR-016, TG-006, TG-007, SC-002 | US2 | 1.00 | Implementer | `README.md`, `docs/getting-started.md`, `docs/user-guide.md` | done | Implementer | 1.00 | implemented |
-| T011 | Review documentation surfaces and record Iteration `002` acceptance evidence | FR-006, FR-007, FR-015, FR-016, FR-017, TG-006, TG-007, SC-002 | US2 | 0.75 | Reviewer | `docs/troubleshooting.md`, `README.md`, `docs/getting-started.md`, `docs/user-guide.md`, `Specrew.psd1`, `specs/049-pipeline-hardening-intake/iterations/002/quality/quality-evidence.md` | planned | Reviewer | — | — |
+| T011 | Review documentation surfaces and record Iteration `002` acceptance evidence | FR-006, FR-007, FR-015, FR-016, FR-017, TG-006, TG-007, SC-002 | US2 | 0.75 | Reviewer | `docs/troubleshooting.md`, `README.md`, `docs/getting-started.md`, `docs/user-guide.md`, `Specrew.psd1`, `specs/049-pipeline-hardening-intake/iterations/002/quality/quality-evidence.md` | done | Reviewer | 0.75 | pass |
 
 ## Required Quality Gates
 
