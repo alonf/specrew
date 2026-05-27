@@ -1,175 +1,214 @@
-# Integration Tests: Feature 049 Iteration 003 - Intake Engine + User Profile
-# Tests for engine + data foundation, user-profile persistence, expertise-dial behavior,
-# and extensibility proof (SC-005, SC-006)
+[CmdletBinding()]
+param()
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
-Describe 'Feature 049 Iteration 003: Intake Engine + User Profile Integration' {
-    
-    Context 'T001: Engine + Data Architecture Foundation' {
-        It 'Intake engine exists and is executable' {
-            $enginePath = 'extensions/specrew-speckit/scripts/intake/Invoke-SpecifyIntake.ps1'
-            Test-Path $enginePath | Should -Be $true
-        }
-        
-        It 'Engine has mirror parity' {
-            $enginePath1 = 'extensions/specrew-speckit/scripts/intake/Invoke-SpecifyIntake.ps1'
-            $enginePath2 = '.specify/extensions/specrew-speckit/scripts/intake/Invoke-SpecifyIntake.ps1'
-            Test-Path $enginePath1 | Should -Be $true
-            Test-Path $enginePath2 | Should -Be $true
-        }
-        
-        It 'All YAML data catalogs exist' {
-            $catalogs = @(
-                '.specify/intake/personas.yml',
-                '.specify/intake/categories.yml',
-                '.specify/intake/depth-rules.yml',
-                '.specify/intake/questions/product-manager.yml',
-                '.specify/intake/questions/ux-ui-specialist.yml',
-                '.specify/intake/questions/architect.yml',
-                '.specify/intake/questions/ai-researcher-project-manager.yml',
-                '.specify/intake/auto-decision-defaults/generic.yml'
-            )
-            
-            foreach ($catalog in $catalogs) {
-                Test-Path $catalog | Should -Be $true
-            }
-        }
-    }
-    
-    Context 'T030: User Profile Persistence + Slash Command' {
-        It 'User profile helper exists' {
-            $helperPath = 'scripts/internal/user-profile.ps1'
-            Test-Path $helperPath | Should -Be $true
-        }
-        
-        It 'Slash command deployed to all hosts' {
-            $skillPaths = @(
-                '.claude/skills/specrew-user-profile/SKILL.md',
-                '.github/skills/specrew-user-profile/SKILL.md',
-                '.agents/skills/specrew-user-profile/SKILL.md'
-            )
-            
-            foreach ($skillPath in $skillPaths) {
-                Test-Path $skillPath | Should -Be $true
-            }
-        }
-        
-        It 'User profile functions are available' {
-            . 'scripts/internal/user-profile.ps1'
-            
-            Get-Command Get-UserProfilePath -ErrorAction SilentlyContinue | Should -Not -BeNullOrEmpty
-            Get-Command Get-UserProfile -ErrorAction SilentlyContinue | Should -Not -BeNullOrEmpty
-            Get-Command Save-UserProfile -ErrorAction SilentlyContinue | Should -Not -BeNullOrEmpty
-            Get-Command Show-UserProfileSummary -ErrorAction SilentlyContinue | Should -Not -BeNullOrEmpty
-        }
-    }
-    
-    Context 'T031: Expertise-Dial-Driven Question Depth' {
-        It 'Depth rules define mode thresholds' {
-            $depthRulesPath = '.specify/intake/depth-rules.yml'
-            $content = Get-Content $depthRulesPath -Raw
-            
-            $content | Should -Match 'mode_a'
-            $content | Should -Match 'mode_b'
-            $content | Should -Match 'mode_c'
-        }
-        
-        It 'Question banks include mode tags' {
-            $questionBanks = @(
-                '.specify/intake/questions/product-manager.yml',
-                '.specify/intake/questions/ux-ui-specialist.yml',
-                '.specify/intake/questions/architect.yml',
-                '.specify/intake/questions/ai-researcher-project-manager.yml'
-            )
-            
-            foreach ($bankPath in $questionBanks) {
-                $content = Get-Content $bankPath -Raw
-                $content | Should -Match 'questions:'
-            }
-        }
-        
-        # TODO: Add end-to-end test that verifies:
-        # - dial 7-10 → Mode A (senior questions)
-        # - dial 4-6 → Mode B (standard questions)
-        # - dial 1-3 → Mode C (auto-decisions with transparency)
-    }
-    
-    Context 'T032: 5th-Persona Extensibility Proof (SC-006)' {
-        It 'Personas catalog is YAML data' {
-            $personasPath = '.specify/intake/personas.yml'
-            Test-Path $personasPath | Should -Be $true
-            
-            $content = Get-Content $personasPath -Raw
-            $content | Should -Match 'personas:'
-        }
-        
-        It 'Engine loads personas from catalog' {
-            $enginePath = 'extensions/specrew-speckit/scripts/intake/Invoke-SpecifyIntake.ps1'
-            $content = Get-Content $enginePath -Raw
-            
-            # Engine should reference Load-PersonaCatalog helper
-            $content | Should -Match 'Load-PersonaCatalog'
-        }
-        
-        # TODO: Add extensibility proof test:
-        # 1. Add temporary 5th persona to personas.yml
-        # 2. Add corresponding question bank
-        # 3. Run intake engine
-        # 4. Verify 5th persona is recognized
-        # 5. Clean up (remove 5th persona)
-        # This proves adding personas is YAML-only, no code changes needed
-    }
-    
-    Context 'T033: Per-Lens Mode Branching Correctness' {
-        It 'Resolve-PerLensMode helper exists' {
-            $helperPath = 'extensions/specrew-speckit/scripts/intake/helpers/Resolve-PerLensMode.ps1'
-            Test-Path $helperPath | Should -Be $true
-        }
-        
-        It 'Depth rules define per-lens evaluation' {
-            $depthRulesPath = '.specify/intake/depth-rules.yml'
-            $content = Get-Content $depthRulesPath -Raw
-            
-            $content | Should -Match 'dial_threshold'
-            $content | Should -Match 'completeness_threshold'
-        }
-        
-        # TODO: Add per-lens mode correctness test:
-        # - Set different expertise dials per persona
-        # - Provide varying completeness per lens
-        # - Verify each lens evaluates independently
-        # - Verify most-conservative-wins (C > B > A) applies when lenses conflict
-    }
-    
-    Context 'T034: Complete Regression Suite + Acceptance Evidence' {
-        It 'Integration test file exists' {
-            Test-Path 'tests/integration/substantive-interaction-model-iteration2.ps1' | Should -Be $true
-        }
-        
-        # TODO: Run complete regression suite:
-        # - SC-005 metrics: ≥30% question reduction for dial 7-10, ≥40% decision reduction for dial 1-3
-        # - SC-006 extensibility proof: 5th persona added as YAML-only
-        # - Per-lens mode correctness
-        # - User profile persistence
-        # - Intake engine invocation from orchestrators
-        # Record acceptance evidence in:
-        # specs/049-pipeline-hardening-intake/iterations/003/quality/quality-evidence.md
+function Write-Pass {
+    param([string]$Message)
+    Write-Host "PASS: $Message" -ForegroundColor Green
+}
+
+function Write-Fail {
+    param([string]$Message)
+    Write-Host "FAIL: $Message" -ForegroundColor Red
+    exit 1
+}
+
+function Assert-Equal {
+    param(
+        [Parameter(Mandatory = $true)]$Actual,
+        [Parameter(Mandatory = $true)]$Expected,
+        [Parameter(Mandatory = $true)][string]$Message
+    )
+
+    if ($Actual -ne $Expected) {
+        Write-Fail "$Message (expected '$Expected', actual '$Actual')"
     }
 }
 
-# Test execution notes:
-# - T001: Engine foundation tests pass (files exist, mirror parity validated)
-# - T030: User profile + slash command tests pass (helper functions available)
-# - T031: Expertise-dial structure validated (depth rules + question banks exist)
-# - T032: Extensibility architecture validated (YAML-based persona catalog)
-# - T033: Per-lens mode architecture validated (Resolve-PerLensMode helper exists)
-# - T034: Regression suite structure validated (test file exists)
-#
-# Future work:
-# - Add end-to-end intake engine execution tests
-# - Add 5th-persona extensibility proof with temp persona creation/cleanup
-# - Add per-lens mode branching behavior tests
-# - Measure and document SC-005 metrics (question/decision reduction)
-# - Generate quality-evidence.md with acceptance test results
+function Assert-True {
+    param(
+        [Parameter(Mandatory = $true)][bool]$Condition,
+        [Parameter(Mandatory = $true)][string]$Message
+    )
+
+    if (-not $Condition) {
+        Write-Fail $Message
+    }
+}
+
+function Assert-GreaterOrEqual {
+    param(
+        [Parameter(Mandatory = $true)][double]$Actual,
+        [Parameter(Mandatory = $true)][double]$Expected,
+        [Parameter(Mandatory = $true)][string]$Message
+    )
+
+    if ($Actual -lt $Expected) {
+        Write-Fail "$Message (expected >= $Expected, actual $Actual)"
+    }
+}
+
+$repoRoot = (Resolve-Path (Join-Path -Path $PSScriptRoot -ChildPath '..\..')).Path
+$intakeRoot = Join-Path $repoRoot '.specify\intake'
+$enginePath = Join-Path $repoRoot 'extensions\specrew-speckit\scripts\intake\Invoke-SpecifyIntake.ps1'
+$helperRoot = Join-Path $repoRoot 'extensions\specrew-speckit\scripts\intake\helpers'
+$userProfileHelperPath = Join-Path $repoRoot 'scripts\internal\user-profile.ps1'
+$scratchRoot = Join-Path $repoRoot 'tests\integration\scratch\f049-i003-intake-engine'
+
+. (Join-Path $helperRoot 'Read-IntakeYaml.ps1')
+. (Join-Path $helperRoot 'Load-PersonaCatalog.ps1')
+. (Join-Path $helperRoot 'Load-CategoryCatalog.ps1')
+. (Join-Path $helperRoot 'Resolve-PerLensMode.ps1')
+. (Join-Path $helperRoot 'Traverse-QuestionBank.ps1')
+. (Join-Path $helperRoot 'Resolve-AutoDecision.ps1')
+. (Join-Path $helperRoot 'Render-Annotation.ps1')
+. (Join-Path $helperRoot 'Detect-RepoStack.ps1')
+. $userProfileHelperPath
+
+if (Test-Path -LiteralPath $scratchRoot) {
+    Remove-Item -LiteralPath $scratchRoot -Recurse -Force
+}
+
+New-Item -ItemType Directory -Path $scratchRoot -Force | Out-Null
+
+Push-Location -LiteralPath $repoRoot
+try {
+    $personas = Load-PersonaCatalog -IntakeDataRoot $intakeRoot
+    $categories = Load-CategoryCatalog -IntakeDataRoot $intakeRoot
+    $rules = Read-IntakeYamlDocument -Path (Join-Path $intakeRoot 'depth-rules.yml') -Kind 'depth_rules'
+    $defaults = Resolve-AutoDecision -IntakeDataRoot $intakeRoot -Stack 'generic'
+
+    Assert-Equal -Actual $personas.Count -Expected 4 -Message 'T001/T002: persona catalog loads all four lenses'
+    Assert-Equal -Actual $categories.Count -Expected 12 -Message 'T001/T010: category catalog loads all twelve categories'
+    Assert-Equal -Actual $defaults.Count -Expected 12 -Message 'T016/T031: generic auto-decision catalog exposes twelve defaults'
+    Assert-Equal -Actual (Detect-RepoStack -ProjectRoot $repoRoot) -Expected 'nodejs' -Message 'T019: stack detection falls back to repository package.json'
+    Write-Pass 'Engine foundation catalogs and stack detection load without ConvertFrom-Yaml'
+
+    $profilePath = Join-Path $scratchRoot 'user-profile.yml'
+    $expertiseDials = @{
+        'product-manager' = 8
+        'ux-ui-specialist' = 'auto'
+        'architect' = 5
+        'ai-researcher-project-manager' = 2
+    }
+
+    Save-UserProfile -ExpertiseDials $expertiseDials -ProfilePath $profilePath
+    $loadedProfile = Get-UserProfile -ProfilePath $profilePath
+    Assert-True -Condition (Test-Path -LiteralPath $profilePath -PathType Leaf) -Message 'T020/T021: user-profile.yml is persisted to the requested path'
+    Assert-Equal -Actual $loadedProfile.expertise_dials['product-manager'] -Expected 8 -Message 'T020/T021: numeric expertise dials round-trip through user-profile.yml'
+    Assert-Equal -Actual $loadedProfile.expertise_dials['ux-ui-specialist'] -Expected 'auto' -Message 'T020/T021: auto expertise dial round-trips through user-profile.yml'
+    Assert-True -Condition ((Show-UserProfileSummary -Profile $loadedProfile) -match '/specrew-user-profile edit') -Message 'T022/T025: profile summary advertises slash-command edit guidance'
+    Write-Pass 'User profile persistence and summary guidance work with the new helper'
+
+    $seniorResult = & $enginePath -TestMode -IntakeDataRoot $intakeRoot -UserInput 'Build a planning assistant' -ExpertiseDial @{
+        'product-manager' = 8
+        'ux-ui-specialist' = 8
+        'architect' = 8
+        'ai-researcher-project-manager' = 8
+    }
+    $seniorState = $seniorResult | Select-Object -Last 1
+
+    Assert-Equal -Actual $seniorState.personas.Count -Expected 4 -Message 'T001/T002: engine state includes all four personas'
+    Assert-Equal -Actual $seniorState.categories.Count -Expected 12 -Message 'T001/T010: engine state includes all twelve categories'
+    Assert-Equal -Actual $seniorState.results.Count -Expected 4 -Message 'T001/T028: engine emits one lens result per persona'
+    Assert-True -Condition ((@($seniorState.results | ForEach-Object { $_.questions.Count }) -join ',') -eq '3,3,3,3') -Message 'T031: senior intake stays on the reduced three-question path per lens'
+    Write-Pass 'Intake engine executes end to end with reduced senior-question counts'
+
+    Assert-Equal -Actual (Resolve-PerLensMode -ExpertiseDial 8 -LensCompleteness 0.80 -DepthRules $rules) -Expected 'A' -Message 'T033: high expertise and high completeness resolve to Mode A'
+    Assert-Equal -Actual (Resolve-PerLensMode -ExpertiseDial 5 -LensCompleteness 0.50 -DepthRules $rules) -Expected 'B' -Message 'T033: mid expertise resolves to Mode B'
+    Assert-Equal -Actual (Resolve-PerLensMode -ExpertiseDial 2 -LensCompleteness 0.20 -DepthRules $rules) -Expected 'C' -Message 'T033: low expertise resolves to Mode C'
+
+    $modeAQuestions = @(Traverse-QuestionBank -IntakeDataRoot $intakeRoot -PersonaId 'product-manager' -Mode 'A')
+    $modeCQuestions = @(Traverse-QuestionBank -IntakeDataRoot $intakeRoot -PersonaId 'product-manager' -Mode 'C')
+    $questionReduction = [math]::Round((1 - ($modeAQuestions.Count / [double]$modeCQuestions.Count)) * 100, 2)
+    Assert-Equal -Actual $modeAQuestions.Count -Expected 3 -Message 'T031/T033: Mode A returns the condensed confirmation set'
+    Assert-Equal -Actual $modeCQuestions.Count -Expected 8 -Message 'T031/T033: Mode C returns the full interview set'
+    Assert-GreaterOrEqual -Actual $questionReduction -Expected 30 -Message 'SC-005: high-expertise path reduces question count by at least 30 percent'
+    Write-Pass "Per-lens mode rules reduce senior question count by $questionReduction percent"
+
+    $noviceResult = & $enginePath -TestMode -IntakeDataRoot $intakeRoot -UserInput 'Build a planning assistant' -ExpertiseDial @{
+        'product-manager' = 1
+        'ux-ui-specialist' = 1
+        'architect' = 1
+        'ai-researcher-project-manager' = 1
+    }
+    $noviceState = $noviceResult | Select-Object -Last 1
+    $annotationCounts = @($noviceState.results | ForEach-Object { @($_.annotations).Count })
+    $annotationCoverage = [math]::Round((($annotationCounts | Measure-Object -Average).Average / [double]$categories.Count) * 100, 2)
+
+    Assert-True -Condition ((@($noviceState.results | ForEach-Object lens_mode) -join ',') -eq 'C,C,C,C') -Message 'T031/T033: novice intake resolves all lenses to Mode C'
+    Assert-Equal -Actual ($annotationCounts | Select-Object -First 1) -Expected 12 -Message 'T031/T034: novice intake surfaces one transparency annotation per category'
+    Assert-GreaterOrEqual -Actual $annotationCoverage -Expected 40 -Message 'SC-005: low-expertise path auto-decides at least 40 percent of decision slots'
+    Write-Pass "Low-expertise path surfaces auto-decisions for $annotationCoverage percent of decision slots"
+
+    $extendedIntakeRoot = Join-Path $scratchRoot 'extended-intake'
+    Copy-Item -LiteralPath $intakeRoot -Destination $extendedIntakeRoot -Recurse -Force
+
+    Add-Content -LiteralPath (Join-Path $extendedIntakeRoot 'personas.yml') -Encoding UTF8 -Value @'
+  - id: security-engineer
+    name: "Security Engineer"
+    description: "Threat modeling, abuse cases, and control selection"
+    question_bank_path: "questions/security-engineer.yml"
+    focus_areas:
+      - "Threat modeling"
+      - "Control design"
+'@
+
+    Set-Content -LiteralPath (Join-Path $extendedIntakeRoot 'questions\security-engineer.yml') -Encoding UTF8 -Value @'
+# Security Engineer Question Bank
+schema_version: "1.0"
+persona_id: security-engineer
+persona_name: "Security Engineer"
+
+questions:
+  - id: sec-q001
+    category: security-and-compliance
+    text: "What abuse cases and threat actors must the system defend against?"
+    priority: high
+    tags: [security, threat-model]
+    mode_applicability: [A, B, C]
+  - id: sec-q002
+    category: security-and-compliance
+    text: "What controls or review gates are mandatory before release?"
+    priority: medium
+    tags: [security, controls]
+    mode_applicability: [B, C]
+  - id: sec-q003
+    category: security-and-compliance
+    text: "What logging and audit evidence is required for security incidents?"
+    priority: low
+    tags: [security, audit]
+    mode_applicability: [C]
+'@
+
+    $extendedPersonas = Load-PersonaCatalog -IntakeDataRoot $extendedIntakeRoot
+    Assert-Equal -Actual $extendedPersonas.Count -Expected 5 -Message 'T032/SC-006: persona catalog accepts a fifth YAML-only persona'
+
+    $extendedResult = & $enginePath -TestMode -IntakeDataRoot $extendedIntakeRoot -UserInput 'Build a planning assistant' -ExpertiseDial @{
+        'product-manager' = 8
+        'ux-ui-specialist' = 8
+        'architect' = 8
+        'ai-researcher-project-manager' = 8
+        'security-engineer' = 8
+    }
+    $extendedState = $extendedResult | Select-Object -Last 1
+    Assert-Equal -Actual $extendedState.results.Count -Expected 5 -Message 'T032/SC-006: engine processes the fifth persona without code changes'
+    Assert-True -Condition (($extendedState.results | ForEach-Object persona_id) -contains 'security-engineer') -Message 'T032/SC-006: extended intake results include the fifth persona'
+    Write-Pass 'Fifth-persona extensibility proof succeeded with YAML-only additions'
+
+    Assert-True -Condition (Test-Path -LiteralPath (Join-Path $repoRoot '.claude\skills\specrew-user-profile\SKILL.md') -PathType Leaf) -Message 'T023: slash command deployed to .claude'
+    Assert-True -Condition (Test-Path -LiteralPath (Join-Path $repoRoot '.github\skills\specrew-user-profile\SKILL.md') -PathType Leaf) -Message 'T024: slash command deployed to .github'
+    Assert-True -Condition (Test-Path -LiteralPath (Join-Path $repoRoot '.agents\skills\specrew-user-profile\SKILL.md') -PathType Leaf) -Message 'T025: slash command deployed to .agents'
+    Write-Pass 'Slash-command deployment verified across active host roots'
+}
+finally {
+    Pop-Location
+    if (Test-Path -LiteralPath $scratchRoot) {
+        Remove-Item -LiteralPath $scratchRoot -Recurse -Force
+    }
+}
+
+Write-Pass 'Feature 049 Iteration 003 intake engine integration coverage'
+exit 0

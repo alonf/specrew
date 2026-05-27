@@ -1,13 +1,13 @@
 schema: "v1"
 feature: "049-pipeline-hardening-intake"
 iteration: "003"
-updated_at: "2026-05-28T00:00:00.0000000Z"
+updated_at: "2026-05-28T02:55:00.0000000Z"
 tasks:
   T001:
     title: "Add failing test coverage for engine + data architecture foundation in tests/integration/substantive-interaction-model-iteration2.ps1"
     status: "completed"
-    started_at: "2025-01-21T02:08:00.0000000Z"
-    completed_at: "2025-01-21T02:15:00.0000000Z"
+    started_at: "2026-05-28T02:20:00.0000000Z"
+    completed_at: "2026-05-28T02:40:00.0000000Z"
     blocked_reason: ""
   T002:
     title: "Create discrete intake engine shell Invoke-SpecifyIntake.ps1 with mirror parity"
@@ -168,8 +168,8 @@ tasks:
   T028:
     title: "Update workflow.yml to invoke Invoke-SpecifyIntake.ps1"
     status: "completed"
-    started_at: "2025-01-21T02:05:00.0000000Z"
-    completed_at: "2025-01-21T02:06:00.0000000Z"
+    started_at: "2026-05-28T02:40:00.0000000Z"
+    completed_at: "2026-05-28T02:42:00.0000000Z"
     blocked_reason: ""
   T029:
     title: "Add 'Other' and 'I don't know, you decide' fallback guidance"
@@ -180,30 +180,30 @@ tasks:
   T030:
     title: "Add failing tests for user-profile persistence + slash command"
     status: "completed"
-    started_at: "2025-01-21T02:15:00.0000000Z"
-    completed_at: "2025-01-21T02:18:00.0000000Z"
+    started_at: "2026-05-28T02:42:00.0000000Z"
+    completed_at: "2026-05-28T02:44:00.0000000Z"
     blocked_reason: ""
   T031:
     title: "Add integration tests for expertise-dial-driven question depth"
     status: "completed"
-    started_at: "2025-01-21T02:18:00.0000000Z"
-    completed_at: "2025-01-21T02:20:00.0000000Z"
+    started_at: "2026-05-28T02:44:00.0000000Z"
+    completed_at: "2026-05-28T02:46:00.0000000Z"
     blocked_reason: ""
   T032:
     title: "Add 5th-persona extensibility proof test (SC-006)"
     status: "completed"
-    started_at: "2025-01-21T02:20:00.0000000Z"
-    completed_at: "2025-01-21T02:22:00.0000000Z"
+    started_at: "2026-05-28T02:46:00.0000000Z"
+    completed_at: "2026-05-28T02:48:00.0000000Z"
     blocked_reason: ""
   T033:
     title: "Add per-lens mode branching correctness test"
     status: "completed"
-    started_at: "2025-01-21T02:22:00.0000000Z"
-    completed_at: "2025-01-21T02:24:00.0000000Z"
+    started_at: "2026-05-28T02:48:00.0000000Z"
+    completed_at: "2026-05-28T02:50:00.0000000Z"
     blocked_reason: ""
   T034:
     title: "Run complete engine + data + expertise-dial regression suite and record acceptance evidence"
     status: "completed"
-    started_at: "2025-01-21T02:24:00.0000000Z"
-    completed_at: "2025-01-21T02:30:00.0000000Z"
+    started_at: "2026-05-28T02:50:00.0000000Z"
+    completed_at: "2026-05-28T02:55:00.0000000Z"
     blocked_reason: ""

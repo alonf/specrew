@@ -139,6 +139,45 @@ The Retro Facilitator should:
 
 ---
 
+### Implementer: Feature 049 Intake Test Lane Realignment
+
+- **Decision ID**: f049-i003-intake-test-lane-realignment
+- **Type**: implementation traceability correction
+- **Feature**: 049-pipeline-hardening-intake
+- **Iteration**: 003
+- **Authority**: Implementer (post-implementation audit repair)
+- **Recorded At**: 2026-05-28
+
+#### Problem
+
+The approved Iteration 003 task pack inherited test-path wording that referenced `tests/integration/substantive-interaction-model-iteration2.ps1`, which is the established Feature 016 replay harness. The first implementation pass also left only placeholder coverage and no acceptance evidence.
+
+#### Decision
+
+Use a dedicated Feature 049 integration script at `tests/integration/f049-i003-intake-engine-tests.ps1` as the authoritative execution lane for:
+
+- engine + data catalog loading,
+- user-profile persistence,
+- per-lens mode behavior,
+- SC-005 metric checks, and
+- SC-006 fifth-persona extensibility proof.
+
+Record the executable outcomes in `specs/049-pipeline-hardening-intake/iterations/003/quality/quality-evidence.md`.
+
+#### Rationale
+
+- Reusing the Feature 016 replay harness would mix unrelated lifecycle assertions into the intake slice.
+- A dedicated Feature 049 script keeps the evidence local to this iteration while preserving the repository convention of standalone `pwsh -NoProfile -File` integration scripts under `tests/integration/`.
+- The workflow surface still routes through `speckit.specify`; the workflow file was updated with traceability comments instead of schema changes because the actual intake invocation now lives in the prompt/agent surfaces.
+
+#### Artifacts Changed
+
+- `tests/integration/f049-i003-intake-engine-tests.ps1`
+- `.specify/workflows/speckit/workflow.yml`
+- `specs/049-pipeline-hardening-intake/iterations/003/quality/quality-evidence.md`
+
+---
+
 ### Planner: State Reconciliation Decision
 
 - **Decision ID**: f049-i001-state-reconciliation
