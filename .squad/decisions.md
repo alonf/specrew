@@ -20772,3 +20772,14 @@ This decision affects:
 - **Task ID**: (none)
 - **Auth Commit Hash**: dcc974f11524107adacd7b8d13a443bf60403e0c
 - **Recorded At**: 2026-05-27T06:06:02Z
+
+## 2026-05-27T06:23:28Z — Boundary enforcement: before-implement
+
+- **Feature**: 049-pipeline-hardening-intake
+- **Boundary Type**: before-implement
+- **Current Boundary**: tasks
+- **Requested Boundary**: before-implement
+- **Enforcement Action**: authorized
+- **Launch Mode**: same-window
+- **Agent Response Snippet**: (none)
+- **Reason**: Persisted authorization matched the requested boundary.
