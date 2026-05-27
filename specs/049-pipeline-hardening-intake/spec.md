@@ -49,9 +49,9 @@ To empower users to recover gracefully from environment issues, local conflicts,
 
 ### User Story 3 - Persona-Driven Substantive Specification Intake with Expertise-Aware Depth (Priority: P3)
 
-To ensure that the initial specify phase (`/speckit.specify`) captures realistic scope, technology constraints, and organizational context—while respecting each user's expertise level—it must utilize **4 sequential persona lenses** (not options), each with **user expertise dials** that adapt question depth and auto-decision behavior.
+To ensure that the initial specify phase (`/speckit.specify`) captures realistic scope, technology constraints, and organizational context—while respecting each user's expertise level—it must utilize an **engine + data architecture** where a discrete intake engine orchestrates question flow, persona application, and auto-decision resolution, while all persona definitions, question banks, depth rules, and auto-decision defaults are persisted as YAML data outside engine code.
 
-**Why this priority**: Substantially reduces clarify-phase back-and-forth by ensuring that the spec is born stack-aware, persona-aligned, and expertise-adapted. High-expertise users receive nuanced senior-level questions; low-expertise users receive auto-decisions surfaced via transparency (Proposal 053 pattern). All users set their profile once and reuse it across all Specrew projects.
+**Why this priority**: Substantially reduces clarify-phase back-and-forth by ensuring that the spec is born stack-aware, persona-aligned, and expertise-adapted. High-expertise users receive nuanced senior-level questions; low-expertise users receive auto-decisions surfaced via transparency (Proposal 053 pattern). All users set their profile once and reuse it across all Specrew projects. The engine + data separation enables future expansion (new personas, categories, domain bundles, stack-specific defaults) as **data-only additions** without code rewrites.
 
 **Persona Lenses**: The system applies **4 sequential lenses** (not user choices) during intake, each covering 12 categories from a different perspective:
 - **Lens 1: Product Manager** — Business rules, prioritization, P1/P2 journeys, MVP milestones, Go/No-Go criteria.
@@ -61,19 +61,23 @@ To ensure that the initial specify phase (`/speckit.specify`) captures realistic
 
 All 12 categories are covered from all 4 perspectives, but depth and auto-decision behavior adapt to the user's expertise dial for each persona.
 
+**Per-Lens Mode Branching (Key Clarification)**: Mode A/B/C evaluation is **per-lens**, not global. Each persona lens is independently evaluated against its own expertise dial and that lens's content completeness (percentage of substantive answers across its 12 categories). The intake engine references `.specify/intake/depth-rules.yml` (v1 starter thresholds: dial ≥7 + ≥75% completeness → Mode A; dial 4-6 or 40-74% completeness → Mode B; dial ≤3 or <40% completeness → Mode C) to resolve each lens's mode independently. When lenses conflict on modes, most-conservative-wins (C > B > A) applies—ensuring that low-expertise or incomplete lenses drive the overall intake depth rather than being bypassed. This per-lens approach prevents global mode selection from creating vestigial bypass paths and addresses the asymmetric expertise problem: users may be expert in architecture but novice in UX/UI, and the intake should reflect that nuance.
+
+**Engine + Data Architecture**: The intake system is architecturally partitioned into:
+- **Discrete Intake Engine** (`Invoke-SpecifyIntake.ps1`): Handles persona-cycle logic, per-lens depth-rule application, question-bank traversal, auto-decision resolution, and annotation rendering. Thin orchestrators (prompt, agent, workflow) invoke the engine; they do not contain inline persona definitions, category lists, question banks, depth rules, or auto-decision defaults.
+- **Intake Catalogs** (YAML data): Persona definitions, category specifications, question banks (per-persona), depth rules, and auto-decision defaults are persisted in `.specify/intake/` as pure data. Adding a persona/category/question/depth-rule refinement/default is achievable as a YAML-only data addition without touching engine scripts, prompts, agents, or workflows.
+- **Future Extension Hooks**: Domain bundles (`.specify/intake/domain-bundles/<domain>.yml`) and solution-type bundles (`.specify/intake/solution-type-bundles/<type>.yml`) are reserved for future opt-in loading; v1 ships with empty directories only.
+- **Stack-Aware Auto-Decision Defaults**: Engine detects repo stack signals and selects `.specify/intake/auto-decision-defaults/<stack>.yml` (e.g., `dotnet.yml`, `python.yml`, `nodejs.yml`), falling back to `generic.yml`. v1 ships only `generic.yml` plus stack-detection mechanism; stack-specific files land later as data-only additions.
+
 **Expertise Dials** (per-persona, 1-10 scale, persisted to `~/.specrew/user-profile.yml`):
 - **7-10 (Senior Level)**: System surfaces senior-level nuanced questions requiring deep judgment; minimal auto-decisions.
 - **4-6 (Standard Level)**: System surfaces standard questions plus explicit decision-confirmation prompts.
 - **1-3 (Learning Level)**: System auto-decides with stack-aware defaults and surfaces decisions via Proposal 053 transparency pattern; no silent defaults.
 - **"I'm new, you decide"**: User-facing escape hatch; system auto-decides for all questions in this persona.
 
-**User-Level Expertise Profile**: One-time setup, persisted across all Specrew projects at:
-- Windows: `$env:USERPROFILE\.specrew\user-profile.yml`
-- Mac/Linux: `~/.specrew/user-profile.yml`
+**Engine + Data Composition**: The intake engine calls dedicated sub-helpers for persona-catalog loading, category-catalog loading, per-lens depth-rule application, question-bank traversal, auto-decision resolution, and annotation rendering. This design enables the following critical property: **adding a 5th persona or new categories/questions/depth-rules requires only data-YAML additions**, not engine rewrites. User expertise profile location and schema remain identical to the current specification.
 
-Schema fields: `schema`, `specrew_version_at_creation`, `created_at`, `last_updated_at`, `user_name` (optional), `expertise.software_architecture`, `expertise.ui_ux`, `expertise.product_management`, `expertise.ai_research_project_management`, `preferences.preferred_intake_depth` (auto|always-full|always-minimal).
-
-**Independent Test**: Execute the new `/speckit.specify` command under various user expertise levels and input states, verifying that (a) expertise dials control question depth, (b) auto-decisions surface with transparency, (c) user-profile.yml persists across invocations, and (d) correct persona-driven spec layout is generated.
+**Independent Test**: Execute the new `/speckit.specify` command under various user expertise levels and input states, verifying that (a) expertise dials control question depth per lens, (b) per-lens mode evaluation produces the most-conservative mode as overall intake depth, (c) auto-decisions surface with transparency, (d) user-profile.yml persists across invocations, and (e) correct persona-driven spec layout is generated.
 
 **Acceptance Scenarios**:
 
@@ -85,10 +89,11 @@ Schema fields: `schema`, `specrew_version_at_creation`, `created_at`, `last_upda
    - **4-6 (Standard)**: Questions include confirmation checkpoints for key decisions.
    - **1-3 (Learning)**: System auto-decides using stack-aware defaults from [[feedback-stack-aware-tool-selection]] and surfaces the decision via Proposal 053 transparency pattern.
 5. **Given** any question during intake, **When** the user is unsure, **Then** they can choose `"Other"` or `"I don't know, you decide"` to trigger proactive agent domain research or auto-derivation of stack-aware defaults.
-6. **Given** intake mode branching (Mode A/B/C) is evaluated, **When** the system compares input completeness to user expertise level:
-   - **Mode A (Sufficient)**: Directly generates the `spec.md` for high-expertise users with complete input.
-   - **Mode B (Targeted Clarify)**: Asks 2-3 targeted clarifications respecting user expertise thresholds.
-   - **Mode C (Full Interview)**: Launches guided interview for low-expertise users or vague input.
+6. **Given** intake mode branching (Mode A/B/C) is evaluated **per-lens**, **When** the system evaluates each persona lens against its own expertise dial and the completeness of that lens's content:
+   - **Mode A (Sufficient)**: Lens has high expertise (dial ≥7) AND ≥75% substantive answers across 12 categories → Directly generates lens-tailored spec section with minimal questions.
+   - **Mode B (Targeted Clarify)**: Lens has mid-range expertise (dial 4-6) OR has 40-74% substantive answers → Asks 2-3 targeted clarifications respecting expertise thresholds.
+   - **Mode C (Full Interview)**: Lens has low expertise (dial ≤3) OR has <40% substantive answers → Launches guided interview for that lens's perspective.
+   - **Conflict Resolution**: When lenses conflict on modes, the most-conservative mode wins (C > B > A), ensuring that low-expertise or low-completeness lenses drive the overall intake depth.
 7. **Given** low-expertise auto-decisions (dial 1-3), **When** the spec is generated, **Then** each auto-decision is annotated with `[AUTO-DECIDED: <decision>]` so the user sees what the system chose and can escalate to clarification if needed.
 
 ---
@@ -144,11 +149,11 @@ To ensure iterations cannot appear complete while bypassing Specrew runtime disc
 - **FR-016**: `README.md`, `docs/getting-started.md`, and `docs/user-guide.md` MUST cross-reference `docs/troubleshooting.md` so recovery guidance is discoverable from the primary onboarding and usage paths.
 - **FR-017**: `docs/troubleshooting.md` MUST capture the Shape-5 lesson that accepted review evidence must match committed tree state, so maintainers understand why working-tree-only files are not durable delivery.
 
-#### Iteration 3: Persona-Driven Intake with Expertise Dials & User Profile Persistence
+#### Iteration 3: Persona-Driven Intake with Expertise Dials, User Profile Persistence, and Engine + Data Architecture
 
 - **FR-008**: `/speckit.specify` MUST apply **4 sequential persona lenses** (Product Manager, UX/UI Specialist, Architect, AI Researcher / Project Manager) to every intake, covering all 12 categories from each perspective. Personas are lenses, not user choices; the single user receives all 4 perspectives.
 - **FR-009**: The system MUST supply a **12-category intake catalog** representing comprehensive software parameters, evaluated from each of the 4 persona perspectives.
-- **FR-010**: Intake MUST dynamically branch into **Mode A (Direct Confirmation)**, **Mode B (Targeted Clarify)**, or **Mode C (Full Interview)** based on input completeness and user expertise level.
+- **FR-010**: Intake MUST evaluate mode branching **per-lens**: each persona lens is independently assessed against its own expertise dial and lens-completeness percentage (substantive answers across the lens's 12 categories). Based on the thresholds defined in `.specify/intake/depth-rules.yml` (v1 starter: Mode A ≥7 dial + ≥75% completeness; Mode B 4-6 dial or 40-74% completeness; Mode C ≤3 dial or <40% completeness), each lens resolves to its own Mode A/B/C. When lenses conflict, most-conservative-wins (C > B > A) applies to ensure low-expertise or sparse-content lenses drive overall intake depth. Final spec composition respects the most-conservative mode across all 4 lenses.
 - **FR-011**: Intake forms MUST support `"Other"` and `"I don't know, you decide"` options, triggering proactive agent domain research or stack-aware auto-derivation when selected.
 - **FR-023**: `/speckit.specify` MUST prompt the user to self-rate their expertise on a 1-10 scale for each of the 4 personas (Software Architecture, UI/UX, Product Management, AI Research / Project Management), with an escape hatch option `"I'm new, you decide"` per persona.
 - **FR-024**: System MUST persist user expertise profile in a YAML file (`user-profile.yml`) at:
@@ -165,6 +170,31 @@ To ensure iterations cannot appear complete while bypassing Specrew runtime disc
 
 The `specrew start` first-run expertise intake and the `/specrew-user-profile` command enable durable expertise profiling across all Specrew projects (user-level, not project-level). `/speckit.specify` consumes this profile to personalize question depth and auto-decision behavior per persona.
 
+**Engine + Data Architecture (Iteration 003 Architectural Foundation)**:
+
+- **FR-028**: System MUST implement a discrete intake engine (`Invoke-SpecifyIntake.ps1`) in `extensions/specrew-speckit/scripts/intake/`, with a mirror copy in `.specify/extensions/specrew-speckit/scripts/intake/`. The engine MUST provide sub-helpers for:
+  - Persona-catalog loading (from `personas.yml`)
+  - Category-catalog loading (from `categories.yml`)
+  - Per-lens depth-rule application (from `depth-rules.yml`): evaluate each persona lens independently against its expertise dial and lens-completeness, resolve each lens to Mode A/B/C, apply most-conservative-wins conflict resolution
+  - Question-bank traversal (from `questions/<persona>.yml`)
+  - Auto-decision resolution (from `auto-decision-defaults/<stack>.yml`)
+  - Annotation rendering (for `[AUTO-DECIDED: ...]` and other metadata)
+  
+  The engine MUST be the sole location where persona logic, category definitions, question flow, per-lens mode evaluation, and auto-decision rules are evaluated. Prompts, agents, and workflows MUST be thin orchestrators that call the engine; they MUST NOT contain inline persona definitions, category lists, question banks, depth rules, or auto-decision defaults.
+
+- **FR-029**: System MUST provide intake catalogs as YAML data in `.specify/intake/`:
+  - `personas.yml` — Persona definitions (Product Manager, UX/UI Specialist, Architect, AI Researcher / Project Manager)
+  - `categories.yml` — Category specifications (12 categories)
+  - `depth-rules.yml` — Per-lens mode evaluation thresholds (v1 starter: Mode A dial ≥7 + ≥75% completeness; Mode B dial 4-6 or 40-74% completeness; Mode C dial ≤3 or <40% completeness; most-conservative-wins conflict resolution). This file is the authoritative source for tunable mode thresholds; refinements require no engine changes.
+  - `questions/<persona>.yml` — Question banks per persona (one file per persona; v1 ships with 3 questions/persona minimum)
+  - `auto-decision-defaults/generic.yml` — Stack-agnostic auto-decision defaults (v1 default fallback)
+  
+  Adding a persona, category, question, depth-rule refinement, or auto-decision default MUST be achievable as a pure YAML-only data addition, without requiring changes to engine scripts, prompts, agents, workflows, or version manifests.
+
+- **FR-030**: System MUST reserve future extension hooks via opt-in domain bundles (`.specify/intake/domain-bundles/<domain>.yml`) and solution-type bundles (`.specify/intake/solution-type-bundles/<type>.yml`). These directories MUST exist in v1 but remain empty. The intake engine MUST skip loading them until explicitly enabled by a later feature iteration. v1 ships with zero domain bundles and zero solution-type bundles; future feature work adds data only without engine changes.
+
+- **FR-031**: Auto-decision default resolution MUST be stack-aware: the intake engine MUST detect repo stack signals (e.g., `.csproj` files for dotnet, `pyproject.toml` for python, `package.json` for nodejs) and select `.specify/intake/auto-decision-defaults/<stack>.yml` based on detected signals, falling back to `generic.yml`. v1 ships with only `generic.yml` plus stack-detection mechanism. Stack-specific defaults (e.g., `dotnet.yml`, `python.yml`, `nodejs.yml`) MUST be added later as data-only additions without engine rewrites.
+
 #### Iteration 4: Five-Pillar Bypass Detection
 
 - **FR-018**: Governance validation MUST detect missing `=== SPECREW HANDOFF ===` evidence at boundary or lifecycle stops and surface the gap as an explicit handoff warning.
@@ -179,20 +209,23 @@ The `specrew start` first-run expertise intake and the `/specrew-user-profile` c
 
 - **TG-001**: User Story 1 maps to FR-001, FR-002, FR-003, FR-004, FR-005, FR-012, FR-013, FR-014, and SC-001.
 - **TG-002**: User Story 2 maps to FR-006, FR-007, FR-015, FR-016, FR-017, and SC-002.
-- **TG-003**: User Story 3 maps to FR-008, FR-009, FR-010, FR-011, FR-023, FR-024, FR-025, FR-026, FR-027, SC-003, and SC-005.
+- **TG-003**: User Story 3 maps to FR-008, FR-009, FR-010, FR-011, FR-023, FR-024, FR-025, FR-026, FR-027, FR-028, FR-029, FR-030, FR-031, SC-003, SC-005, and SC-006.
 - **TG-004**: User Story 4 maps to FR-018, FR-019, FR-020, FR-021, FR-022, and SC-004.
 - **TG-005**: Expected Owner roles: Spec Steward (F-049 specs/clarification), Planner (planning iteration), Implementer (code/docs), and Reviewer (E2E PR audit).
 - **TG-006**: F-049 is an approved **four-iteration** feature. Iteration 001 is closed; Iterations 002-004 remain the approved delivery roadmap.
 - **TG-007**: Iteration delivery window:
   - **Iteration 001 (closed)**: FR-001 to FR-005, FR-012, FR-013, FR-014 (Docker harness + release hardening regressions).
   - **Iteration 002**: FR-006, FR-007, FR-015, FR-016, FR-017 (Troubleshooting, cross-references, and Shape-5 lesson).
-  - **Iteration 003**: FR-008 to FR-011, FR-023 to FR-027 (Persona-driven specify intake with expertise dials, user profile persistence, and slash command).
+  - **Iteration 003**: FR-008 to FR-011, FR-023 to FR-031 (Persona-driven specify intake with expertise dials, user profile persistence, slash command, and **engine + data architecture foundation**).
   - **Iteration 004**: FR-018 to FR-022 (Proposal 120 full five-pillar bypass detection).
 - **TG-008**: Iteration 004 scope is anchored to Proposal 120 at main commit `4da969bc`; planning/tasking for this feature MUST preserve all five pillars, including Pillar 5 working-tree-only-state detection.
 - **TG-009**: FR-023 (expertise self-rating) is the intake foundation; FR-024 (user-profile.yml) enables persistence; FR-025 (`/specrew-user-profile`) enables user control.
 - **TG-010**: FR-026 (specrew start first-run integration) surfaces expertise intake at bootstrap time; FR-027 (`/speckit.specify` expertise consumption) applies the profile to question depth and auto-decision behavior.
 - **TG-011**: Expertise semantics follow the 7-10 / 4-6 / 1-3 / "I'm new" rules; low-expertise auto-decisions MUST be surfaced via Proposal 053 transparency pattern, never silent.
 - **TG-012**: User-profile.yml is user-level (persisted across all Specrew projects), NOT project-level; it is the user-level analogue to Proposal 047 project-governance profile.
+- **TG-013**: **Architectural Foundation (Iteration 003)**: FR-028 is the engine foundation; FR-029 is the data layer; FR-030 and FR-031 are v1-supported-but-data-empty extensions enabling future growth without engine changes. This modular design is a **critical architectural pivot** required after rejection: the system MUST architect for data-driven extensibility from the outset, not retrofit it later.
+- **TG-014**: **Mirror Parity Requirement**: Engine scripts MUST maintain mirror parity between `extensions/specrew-speckit/scripts/intake/*` (shipped in module) and `.specify/extensions/specrew-speckit/scripts/intake/*` (project-local override path). Both paths must be kept synchronized; any engine enhancement MUST update both mirrors simultaneously.
+- **TG-015**: **Minimal Question Banks for Capacity**: v1 question banks are intentionally minimal (3 questions per persona) for capacity reasons within the 21-25 SP Iteration 003 soft cap. Future growth (additional personas, expanded question banks, domain bundles, solution-type bundles) MUST land as data-only additions without engine changes. This constraint ensures that capacity is invested in architectural foundation (FR-028 engine) and base data structure (FR-029 catalogs) rather than question volume.
 
 ---
 
@@ -204,10 +237,17 @@ The `specrew start` first-run expertise intake and the `/specrew-user-profile` c
 - **SC-002**: `docs/troubleshooting.md` exists, is registered in `Specrew.psd1` `FileList`, is cross-referenced from `README.md`, `docs/getting-started.md`, and `docs/user-guide.md`, and explains both the `specrew update` vs. `Update-Module Specrew` distinction and the Shape-5 durability lesson.
 - **SC-003**: `/speckit.specify` with expertise dials generates highly contextual specs tailored to the 4 persona lenses, respecting user expertise levels (senior, standard, learning), with less than 2 subsequent clarify questions in 90% of runs when expertise dial is 4+.
 - **SC-004**: All five approved bypass-detection pillars surface during governance validation, and 0 accepted iteration closeouts may rely on production evidence files that are absent from the cited committed tree.
-- **SC-005**: Expertise dials and user-profile.yml persistence deliver empirical evidence of question reduction:
-  - **≥30% reduction** in intake question count for high-expertise users (dial 7-10) in relevant persona vs. Mode C baseline.
-  - **≥40% reduction** in user-faced decision count for low-expertise users (dial 1-3) in relevant persona via auto-decide + transparency pattern.
-  - **No regression** in first-iteration spec quality: measured by clarify-question count in `/speckit.clarify` or specify-mode-A rate remaining ≥70% across all expertise levels.
+- **SC-005**: Expertise dials and user-profile.yml persistence deliver empirical evidence of question reduction and per-lens mode branching effectiveness:
+  - **≥30% reduction** in intake question count for high-expertise users (dial 7-10) in relevant persona lens vs. Mode C baseline (full interview depth).
+  - **≥40% reduction** in user-faced decision count for low-expertise users (dial 1-3) in relevant persona lens via auto-decide + transparency pattern.
+  - **No regression** in first-iteration spec quality: measured by clarify-question count in `/speckit.clarify` or per-lens specify-mode-A rate remaining ≥70% across all expertise levels (i.e., at least 70% of lenses resolve to Mode A even when overall conflict resolution selects Mode B or C).
+- **SC-006**: **Engine + Data Extensibility Proof**: Adding a 5th persona (beyond the initial 4) MUST be demonstrably achievable by:
+  - Adding one row to `.specify/intake/personas.yml` (persona name, description, key focus areas)
+  - Creating one new file `.specify/intake/questions/<new-persona>.yml` (3 questions minimum, following existing question schema)
+  - Running `/speckit.specify` and verifying that the new persona lens is applied and questions are surfaced
+  - **Zero modifications** to engine scripts, prompts, agents, workflows, or version manifests
+  
+  This MUST be proven empirically with a test fixture in the test suite (e.g., a temporary 5th persona added, intake executed, then removed). The test fixture MUST verify that the persona is recognized, questions are loaded, and expertise-dial behavior adapts correctly—all without touching non-YAML code.
 
 ---
 
@@ -224,10 +264,12 @@ The `specrew start` first-run expertise intake and the `/specrew-user-profile` c
 
 - **Implicit expertise detection** from answer quality or interaction patterns (remains Proposal 015 future scope).
 - **Cross-persona expertise inference** (e.g., deriving Product Management dial from Architect dial).
-- **5th or later personas** for v1 (e.g., Data Engineer, DevOps/SRE, Security Engineer, Domain Expert personas remain listed as future expansion candidates but are out of scope for this feature).
+- **5th or later personas** as fully integrated features for v1 (e.g., Data Engineer, DevOps/SRE, Security Engineer, Domain Expert personas remain listed as future expansion candidates but are out of scope for this feature). **Important**: Adding new personas post-v1 MUST occur as data-only YAML additions to `personas.yml` and `questions/<persona>.yml` without engine rewrites. SC-006 proves this extensibility empirically.
 - **Project-level expertise overrides** (Iteration 003 implements user-level only; project-level overrides remain future scope).
 - **Multi-user shared profile** (user-profile.yml is single-user only; shared team profiles remain future scope).
 - **Extra `/speckit.specify` triggers** beyond the existing single-invocation intake scope (e.g., mid-spec re-interview remains out of scope).
+- **Domain bundles and solution-type bundles** beyond empty-directory reservations (v1 ships with `.specify/intake/domain-bundles/` and `.specify/intake/solution-type-bundles/` directories reserved but empty; opt-in loading and domain-specific data additions land in future feature iterations as data-only additions).
+- **Stack-specific auto-decision defaults** beyond `generic.yml` (v1 ships with stack-detection mechanism and `generic.yml` fallback only; stack-specific defaults like `dotnet.yml`, `python.yml`, `nodejs.yml` land later as data-only additions without engine changes).
 
 ---
 
@@ -325,17 +367,19 @@ The `specrew start` first-run expertise intake and the `/specrew-user-profile` c
 
 - **Spec Steward**: Spec Steward (Antigravity Coordinator)
 - **Iteration Facilitator**: Retro Facilitator (Antigravity Coordinator)
-- **Capacity Model**: 37-50 SP total across 4 iterations (increased due to expertise dial + user profile + slash command additions):
+- **Capacity Model**: 48-58 SP total across 4 iterations (adjusted after architectural pivot requiring discrete engine + data architecture):
   - **Iteration 001 (closed)**: 17 SP actual (Docker harness 12 SP + Prop 134 pin assertion + duplicate-row fix + Proposal 049 PSGallery info check 5 SP)
   - **Iteration 002**: 4-6 SP (Troubleshooting guide + README/getting-started/user-guide cross-references + `specrew update` vs `Update-Module` confusion section + Shape-5 lesson)
-  - **Iteration 003**: 17-20 SP medium slice (Persona lenses + expertise dials [FR-008-FR-011] + user-profile.yml persistence [FR-024] + `/specrew-user-profile` slash command [FR-025] + `specrew start` first-run integration [FR-026] + `/speckit.specify` expertise consumption [FR-027] + expertise self-rating intake [FR-023])
+  - **Iteration 003**: 21-25 SP medium-large slice (Persona lenses + expertise dials [FR-008-FR-011] + user-profile.yml persistence [FR-024] + `/specrew-user-profile` slash command [FR-025] + `specrew start` first-run integration [FR-026] + `/speckit.specify` expertise consumption [FR-027] + expertise self-rating intake [FR-023] + **discrete intake engine [FR-028] + intake catalogs [FR-029] + extension hooks [FR-030] + stack-aware defaults [FR-031]**). The architectural pivot from inline logic to engine + data architecture adds 4-5 SP to build modular foundation, justified by enabling future 5th+ personas and domain bundles as data-only additions.
   - **Iteration 004**: 6-10 SP (Proposal 120 full five-pillar bypass detection, including Pillar 5 working-tree-only-state detection)
+  - **Remaining Capacity**: 31-41 SP available after F-049 closes (soft cap total: 79-99 SP)
 - **Roadmap Truth**: Iteration 001 is complete; the approved remaining feature scope is Iterations 002, 003, and 004.
 - **Drift Signals**: Detected via the governance validator `validate-governance.ps1`, the Docker E2E pre-publish harness, and Iteration 004 bypass-detection rules that cross-check closeout evidence against canonical repository state.
-- **Composition Notes** (Iteration 003 scope anchored here; remain future work):
+- **Composition Notes** (post-Iteration 003 scope anchored here; remain future work):
   - Iteration 003 **partially absorbs** Proposal 015 explicit-dial + user-level persistence only; full Proposal 015 implicit expertise detection (from answer quality) remains future work and is excluded from this feature.
   - Low-expertise auto-decisions **MUST** surface via Proposal 053 transparency pattern; no silent defaults.
   - Low-expertise defaults **MUST** use [[feedback-stack-aware-tool-selection]] to derive stack-aware choices.
+  - **Engine + Data Separation** is the new required architectural foundation: Future 5th+ personas, additional categories, domain bundles, solution-type bundles, and stack-specific defaults MUST land as YAML-only data additions (files in `.specify/intake/`) rather than engine rewrites. This design decision is baked into FR-028, FR-029, FR-030, FR-031, and verified empirically in SC-006.
   - `user-profile.yml` is the user-level analogue to Proposal 047 project-governance profile; user-level persistence enables reuse across all Specrew projects.
   - `/specrew-user-profile` command **MUST** use F-021 slash-command machinery for deployment to `.claude/skills/`, `.github/skills/`, and `.agents/skills/`.
 - **Human Oversight Points**:

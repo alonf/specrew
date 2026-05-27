@@ -9,7 +9,10 @@ effort_unit: "story_points"
 # Maximum effort units per iteration (capacity)
 # Default: 20 story points
 # Adjust based on team velocity and calibration data
-capacity_per_iteration: 20
+# NOTE: Temporarily increased to 25 for F-049 Iteration 003 to accommodate
+# engine + data architecture pivot (FR-028..FR-031) which requires additional
+# foundational work beyond the original 20 SP baseline.
+capacity_per_iteration: 25
 
 # Iteration bounding strategy
 # - scope: Iteration completes when planned tasks are done (time varies)

@@ -1,131 +1,123 @@
-# Implementation Plan: Release Pipeline Hardening + Intake Roadmap Refresh
+# Implementation Plan: Release Pipeline Hardening + Substantive Intake Slice
 
-**Branch**: `049-pipeline-hardening-intake` | **Date**: 2026-05-27 | **Spec**: [spec.md](spec.md)  
+**Branch**: `049-pipeline-hardening-intake` | **Date**: 2026-05-28 | **Spec**: [spec.md](spec.md)
 **Input**: Feature specification from `specs/049-pipeline-hardening-intake/spec.md`
+
+**Note**: This plan implements F-049 across 4 iterations: Docker pre-publish verification (Iteration 001, closed), troubleshooting guide (Iteration 002, closed), persona-driven intake with **engine + data architecture** (Iteration 003, planning), and five-pillar bypass detection (Iteration 004, future).
 
 ## Summary
 
-Feature 049 remains an approved **four-iteration** roadmap. Iteration `001` stays closed and authoritative. This refreshed plan keeps Iteration `002` focused on troubleshooting documentation and onboarding discoverability, **expands Iteration `003` from a small Proposal `063` `/speckit.specify` slice to a 17-20 SP medium slice** that integrates user-level expertise-profile persistence (user-profile.yml, `/specrew-user-profile` slash command, `specrew start` first-run prompt integration, and expertise-aware `/speckit.specify` question depth), and reserves Iteration `004` for the full Proposal `120` five-pillar bypass-detection scope, including Pillar `5` committed-tree versus working-tree-only-state enforcement. `tasks.md` remains unchanged by this refresh, as task decomposition follows after planning completion.
+F-049 addresses four critical production-hardening needs: (1) Docker-based pre-publish verification to block corrupt FileList layouts before PSGallery release; (2) durable troubleshooting documentation covering recovery flows, side-by-side cache issues, and Shape-5 durability lessons; (3) persona-driven `/speckit.specify` intake with expertise-aware depth adaptation, user-level profile persistence, and **engine + data architecture foundation** enabling future persona/domain/question expansion as YAML-only additions; (4) Proposal 120 five-pillar governance bypass detection before iteration closeout.
+
+**Iteration 003 Architectural Pivot**: The spec has been updated to require a **discrete intake engine + data layer** architecture rather than inline prompt/workflow logic. This pivot enables future 5th+ personas, domain bundles, solution-type bundles, and stack-specific auto-decision defaults to land as **data-only YAML additions** without engine rewrites. Iteration 003 now carries the foundational engine (`Invoke-SpecifyIntake.ps1`), YAML catalogs (personas, categories, depth-rules, questions, auto-decision-defaults), mirror parity between `extensions/specrew-speckit/scripts/intake/*` and `.specify/extensions/specrew-speckit/scripts/intake/*`, and stack-detection mechanism. This architectural foundation is the primary work of Iteration 003, with prompts/agents/workflows as thin orchestrators consuming the engine.
 
 ## Technical Context
 
-**Language/Version**: PowerShell 7.x plus Markdown/YAML/JSON governance artifacts  
-**Primary Dependencies**: `scripts/specrew.ps1`, `scripts/specrew-update.ps1`, `scripts/specrew-start.ps1`, `Specrew.psd1`, `extensions/specrew-speckit/scripts/validate-governance.ps1`, mirrored `.specify/extensions/specrew-speckit/scripts/validate-governance.ps1`, `tests/integration/publish-module-harness.tests.ps1`, `tests/integration/non-specrew-session-bypass.tests.ps1`, and the Spec Kit prompt/workflow surfaces for `/speckit.specify`  
-**Storage**: Git-tracked Markdown/YAML/JSON/PowerShell assets under `docs/`, `scripts/`, `extensions/`, `.specify/`, `.github/`, and `specs/049-pipeline-hardening-intake/`  
-**Testing**: PowerShell integration lanes plus governance validation, with documentation verification through manifest/link review and reviewer evidence for onboarding cross-references  
-**Target Platform**: PowerShell-capable Specrew repositories on Windows and equivalent supported environments  
-**Project Type**: Specrew governance/CLI monorepo with Spec Kit extension assets and mirrored deployment surfaces  
-**Performance Goals**: Zero accepted closeouts may rely on production evidence absent from the cited committed tree; troubleshooting guidance must be discoverable from the primary onboarding path; the `/speckit.specify` slice should reduce downstream clarification churn without widening beyond the approved small slice  
-**Constraints**: Preserve Iteration `001` as closed history, keep the roadmap aligned to TG-006 through TG-008, maintain mirror parity between `extensions/` and `.specify/extensions/`, do not modify `tasks.md`, and keep Iteration `004` fully faithful to Proposal `120`'s five pillars and SC-004  
-**Scale/Scope**: Three remaining iterations after 17 SP already delivered in Iteration `001`; approved remaining capacity is 20-26 SP across Iterations `002`-`004`
+**Language/Version**: PowerShell 7.4+ (cross-platform), YAML 1.2 (data catalogs)  
+**Primary Dependencies**: Docker (pre-publish verification), PowerShell Gallery API (version checks), F-021 slash-command machinery  
+**Storage**: User-level `~/.specrew/user-profile.yml`, project-level `.specify/intake/*.yml` catalogs  
+**Testing**: Pester integration tests, Docker E2E harness  
+**Target Platform**: Windows, macOS, Linux (PowerShell Core cross-platform support)  
+**Project Type**: PowerShell module (Spec Kit layer) + governance framework  
+**Performance Goals**: <5s intake mode evaluation, <10s user-profile persistence  
+**Constraints**: Cross-platform path handling, PSGallery network latency tolerance, backward-compatible YAML schema  
+**Scale/Scope**: 4 personas, 12 categories, minimal question banks (3 questions/persona for v1), extensible to 5th+ personas and domain bundles as data-only additions
 
 ## Phase 1 Quality Planning
 
-**Phase Scope**: `phase-1-roadmap-refresh-and-bounded-slice-planning`  
-**Inferred Quality Profile**: `quality-profile.custom-composition.v1`  
-**Selected preset ref or explicit custom composition**: Bounded custom composition based on the required `resolve-quality-profile.ps1` input, with no single preset claimed because repository-level signals are mixed  
-**Bounded custom composition**: The resolver was consulted before finalizing this plan. It reported a bounded custom composition because repository-level signals span more than one preset family. For F-049, the authoritative planning posture stays anchored in Specrew's PowerShell governance, documentation, and review/validator surfaces rather than claiming a Node/React preset from incidental repo signals.
+> Fill this section when the stack-aware quality-bar capability applies to the active feature. Keep it bounded to the implemented Phase 1 slice only.
+
+**Phase Scope**: `phase-1-first-slice`  
+**Inferred Quality Profile**: [e.g., `quality-profile.node-public-ws-service.v1` or `quality-profile.custom-composition.v1`]  
+**Selected preset ref or explicit custom composition**: [List the selected preset ref or explicit custom composition for this feature.]  
+**Bounded custom composition**: [If no recognized Phase 1 preset matches cleanly, describe the bounded custom composition path and the manual unknowns it leaves explicit.]
 
 ### Stack Surfaces in Scope
 
 | Stack Surface | Path Globs / Evidence | Recognized Stack | Why It Matters |
 | --- | --- | --- | --- |
-| Troubleshooting + onboarding docs | `docs/troubleshooting.md`, `README.md`, `docs/getting-started.md`, `docs/user-guide.md`, `Specrew.psd1` | `docs-governance` | Iteration `002` must deliver the durable doc, manifest registration, onboarding cross-links, and the `specrew update` vs `Update-Module Specrew` clarification |
-| Specify intake + expertise profile surfaces | `.github/agents/speckit.specify.agent.md`, `.github/prompts/speckit.specify.prompt.md`, `.specify/workflows/speckit/workflow.yml`, `scripts/specrew-start.ps1`, `.claude/skills/specrew-user-profile.md`, `.github/skills/specrew-user-profile.md`, `.agents/skills/specrew-user-profile.md` | `specify-governance`, `profile-governance` | Iteration `003` is a 17-20 SP medium slice covering 4-persona intake (FR-008..FR-011) plus expertise-dial integration: user-profile.yml persistence (FR-024), `/specrew-user-profile` slash command (FR-025), `specrew start` first-run integration (FR-026), and `/speckit.specify` expertise consumption (FR-027) |
-| Governance validation surfaces | `extensions/specrew-speckit/scripts/validate-governance.ps1`, `extensions/specrew-speckit/scripts/shared-governance.ps1`, mirrored `.specify/extensions/**`, iteration review/state artifacts | `powershell-governance` | Iteration `004` must implement all five bypass-detection pillars, especially Pillar `5` closeout enforcement |
-| Regression lanes | `tests/integration/publish-module-harness.tests.ps1`, `tests/integration/non-specrew-session-bypass.tests.ps1`, `extensions/specrew-speckit/scripts/validate-governance.ps1 -ProjectPath .` | `powershell-test-fixtures` | The remaining roadmap must stay fail-closed with deterministic regression evidence instead of prose-only confidence |
+| [e.g., `api-runtime`] | [e.g., `src/api/**`, `package.json`] | [preset ID or `custom`] | [material feature surface] |
 
 ### Risk Dimensions
 
 | Risk Dimension | Status (`required` / `not-applicable`) | Rationale |
 | --- | --- | --- |
-| `code-quality` | `required` | The remaining iterations touch docs, prompts, validator logic, and closeout enforcement; the plan must keep the quality bundle explicit and reviewable |
-| `design-quality-and-separation-of-concerns` | `required` | F-049 spans docs, specify prompts, and validator logic; the roadmap must preserve layering instead of blending unrelated surfaces |
-| `verification-confidence` | `required` | SC-004 is fail-closed and must be backed by deterministic validator coverage, not only manual confidence |
-| `maintainability` | `required` | Iteration `004` changes governance logic in mirrored script trees and needs explicit parity expectations |
-| `security` | `required` | Governance validation, boundary enforcement, and accepted-review provenance are integrity-sensitive surfaces |
-| `robustness` | `required` | Troubleshooting and bypass-detection work both exist to make failure behavior explicit and recoverable |
+| [e.g., `security`] | [required] | [why this dimension is active] |
 
 ### Quality Tool Bundle
 
 | Area | Selection | Evidence / Notes |
 | --- | --- | --- |
-| Bundle ID | `phase1-custom-quality-bundle` | Carry forward the resolver's bounded custom composition instead of claiming a single preset |
-| Mechanical Checks | `dead-field`, `anti-pattern`, `test-integrity` | Evidence remains in `specs/049-pipeline-hardening-intake/iterations/<NNN>/quality/mechanical-findings.json` when execution begins |
-| Ecosystem Tools | `pwsh -NoProfile -File .\tests\integration\publish-module-harness.tests.ps1`, `pwsh -NoProfile -File .\tests\integration\non-specrew-session-bypass.tests.ps1`, `pwsh -NoProfile -ExecutionPolicy Bypass -File .\extensions\specrew-speckit\scripts\validate-governance.ps1 -ProjectPath .` | These commands are the concrete verification baseline for the approved remaining slices |
+| Bundle ID | [tool bundle identifier] | [how it maps to the feature] |
+| Mechanical Checks | [dead-field, anti-pattern, test-integrity] | [where evidence will be recorded] |
+| Ecosystem Tools | [stack-aware lint/test/analyzer commands] | [free/community baseline when practical] |
 
 ### Required Quality Gates
 
 | Required Quality Gate | Category | Evidence Source | Phase 1 Status |
 | --- | --- | --- | --- |
-| `dead-field` | `mechanical` | `specs/049-pipeline-hardening-intake/iterations/<NNN>/quality/mechanical-findings.json` | `planned` |
-| `anti-pattern` | `mechanical` | `specs/049-pipeline-hardening-intake/iterations/<NNN>/quality/mechanical-findings.json` | `planned` |
-| `test-integrity` | `mechanical` | `specs/049-pipeline-hardening-intake/iterations/<NNN>/quality/mechanical-findings.json` | `planned` |
-| `stack-tooling-evidence` | `tooling` | `specs/049-pipeline-hardening-intake/iterations/<NNN>/quality/quality-evidence.md` | `planned` |
-| `quality-lens-review` | `manual-evidence` | `specs/049-pipeline-hardening-intake/iterations/<NNN>/quality/quality-evidence.md` | `planned` |
+| [gate ID] | [mechanical/tooling/manual-evidence] | [command or artifact path] | [planned] |
 
 ### Not-Applicable Dimensions and Rationale
 
 | Dimension / Gate | Why Not Applicable in This Feature | Follow-up |
 | --- | --- | --- |
-| `concurrency-correctness-review` | No approved remaining slice introduces material shared-state, realtime, or concurrency-heavy behavior; the feature is about docs, intake flow, and governance validation | Revisit only if a later iteration widens into concurrent runtime orchestration |
-| `resiliency-semantics-review` | The remaining slices do not add retry/reconnect infrastructure; robustness remains covered by baseline governance and troubleshooting analysis | None |
-| `retry-idempotency-review` | Retry/idempotency is not a material primary behavior in Iterations `002`-`004`; where non-applicability matters, it will be stated explicitly in the hardening gate | None |
+| [e.g., `concurrency-correctness-review`] | [explicit rationale] | [recorded defer or none] |
 
 ### Explicit Phase 2+ Deferrals
 
-- Pre-implementation hardening-gate sign-off remains a later iteration-boundary requirement, not proof that has already happened.
-- Dedicated bug-hunter execution and strongest-class routing evidence remain deferred until the approved execution slice invokes them.
-- Quality-drift comparison, mixed-stack override workflows, and reference-implementation checks remain deferred unless a later approved slice explicitly widens scope.
+- Pre-implementation hardening gate sign-off and blocking semantics remain deferred in this template.
+- Dedicated bug-hunter lens execution and strongest-class routing remain deferred in this template.
+- Quality-drift logic, mixed-stack override workflows, and reference-implementation comparison remain deferred in this template.
 
 ## Phase 2 Hardening and Specialist Review Planning
 
-**Phase 2 Slice Scope**: `iteration-004-governance-closeout-hardening`  
-**Hardening Gate Artifact**: `specs/049-pipeline-hardening-intake/iterations/004/quality/hardening-gate.md`  
-**Known-Traps Corpus Location**: `.specrew/quality/known-traps.md`  
-**Trap Reapplication Artifact**: `specs/049-pipeline-hardening-intake/iterations/004/quality/trap-reapplication.md`
+> Fill this section when pre-implementation hardening and specialist bug-hunter review planning apply to the active feature. Mirror the bounded Phase 2 planning metadata from quality-profile resolution when available: slice scope, artifact refs, focus-area statuses, lens activation classifications, routing defaults, and explicit later deferrals, plus the planning-time-vs-runtime evidence boundary. Keep it bounded to the currently approved hardening slice; record planning-time analysis, expected controls, rationale, explicit non-applicable reasoning, and any narrow runtime-only deferments instead of implying later execution or runtime proof already happened.
+
+**Phase 2 Slice Scope**: [e.g., `US-2 hardening gate only` or `NEEDS CLARIFICATION`]  
+**Hardening Gate Artifact**: [e.g., `specs/[###-feature-name]/quality/hardening-gate.md`]  
+**Known-Traps Corpus Location**: [e.g., `.specrew/quality/known-traps.md`]  
+**Trap Reapplication Artifact**: [e.g., `specs/[###-feature-name]/quality/trap-reapplication.md` or `none yet`]
 
 ### Hardening Focus Areas
 
 | Focus Area | Why It Matters in This Slice | Planned Artifact / Evidence | Status (`required` / `deferred` / `not-applicable`) |
 | --- | --- | --- | --- |
-| Security surface analysis | Iteration `004` changes boundary-validation trust signals and accepted-review provenance; expected controls must be explicit before implementation | `specs/049-pipeline-hardening-intake/iterations/004/quality/hardening-gate.md` | `required` |
-| Error handling and failure semantics | Proposal `120` must distinguish warnings from blocking failures, especially for Pillar `5` production-file mismatches | `specs/049-pipeline-hardening-intake/iterations/004/quality/hardening-gate.md` + `review.md` evidence | `required` |
-| Retry and idempotency expectations | The hardening gate should explicitly record why retry/idempotency is not a material risk dimension for this feature instead of leaving the omission implicit | `specs/049-pipeline-hardening-intake/iterations/004/quality/hardening-gate.md` | `not-applicable` |
-| Test-integrity targets | SC-004 depends on deterministic fixture coverage proving that accepted review evidence cannot cite production files missing from the cited tree | Iteration `004` quality evidence + `tests/integration/non-specrew-session-bypass.tests.ps1` | `required` |
+| Security surface analysis | [record planning-time analysis, exposed trust boundaries, expected controls, and whether runtime proof is still pending for closure] | [hardening artifact section or linked evidence] | [required] |
+| Error handling and failure semantics | [record user-visible failures, expected controls, retry boundaries, and fallback expectations] | [hardening artifact section or linked evidence] | [required] |
+| Retry and idempotency expectations | [record whether retry logic exists, is forbidden, or needs explicit justification, including non-applicable reasoning when valid] | [hardening artifact section or linked evidence] | [required] |
+| Test-integrity targets | [record what proves the slice is actually exercised now, what runtime-only proof remains pending, and what gaps remain explicit] | [test plan, command, or review artifact] | [required] |
 
 ### Lens Activation Plan
 
 | Lens / Checklist Ref | Activation (`required` / `optional` / `not-applicable`) | Why Activated or Omitted | Planned Evidence / Artifact Path |
 | --- | --- | --- | --- |
-| `security-baseline@v1.0.0` | `required` | Governance-closeout integrity is a materially reviewed baseline dimension for Proposal `120` | `specs/049-pipeline-hardening-intake/iterations/004/quality/lenses/security-baseline.md` |
-| `robustness-baseline@v1.0.0` | `required` | Warning-vs-fail semantics and boundary-fallback behavior must stay explicit | `specs/049-pipeline-hardening-intake/iterations/004/quality/lenses/robustness-baseline.md` |
-| `test-integrity@v1.0.0` | `required` | Iteration `004` only closes cleanly if validator/test evidence proves fail-closed behavior for all five pillars | `specs/049-pipeline-hardening-intake/iterations/004/quality/lenses/test-integrity.md` |
+| [e.g., `security-issues-v1`] | [required] | [scope, stack, architecture, or risk-dimension signal] | [quality/lenses/... or later evidence artifact] |
 
 ### Routing Policy
 
 | Lens Scope | Requested Reasoning / Review Class | Effective Class (when run) | Override / Approval Record | Notes |
 | --- | --- | --- | --- | --- |
-| Required hardening and bug-hunter lenses | `strongest-available` | Record when execution happens | Explicit approved lower-tier override required before any downgrade takes effect | Planning publishes the routing baseline only; execution-time evidence remains deferred until the review path runs |
+| Required hardening and bug-hunter lenses | [default to strongest available reasoning/review class] | [record actual class when execution happens] | [path to explicit lower-tier override approval or `none`] | [fallback or routing rationale] |
 
 ### Explicit Later Deferrals
 
-- Full line-by-line lens execution evidence remains deferred until the approved implementation/review slice authorizes it.
-- Known-traps corpus additions and trap reapplication remain deferred until the dedicated quality slice is active.
-- Requested-versus-effective routing evidence remains deferred until routed lens execution exists.
-- Quality-drift comparison and reference-implementation checks remain deferred unless separately approved.
+- Full line-by-line lens execution evidence and runtime-only final proof remain deferred until the approved implementation/review slice authorizes them.
+- Known-traps corpus seeding, approved additions, and trap reapplication remain deferred until the dedicated known-traps slice is in scope.
+- Strongest-class routing enforcement details and requested-versus-effective execution evidence remain deferred until the routed lens execution path exists.
+- Quality-drift comparison, mixed-stack override workflows, and reference-implementation checks remain deferred unless the approved slice explicitly includes them.
 
 ## Constitution Check
 
 *GATE: Must pass before Phase 0 research. Re-check after Phase 1 design.*
 
-- **Spec Authority Gate**: PASS — Scope maps directly to the refreshed spec, especially TG-006 through TG-010, FR-008..FR-011, FR-023..FR-027, and SC-003..SC-005.
-- **Layering Gate**: PASS — The plan keeps documentation, Spec Kit intake surfaces (including expertise profile management), and governance-validator logic in their correct Specrew layers.
-- **Traceability Gate**: PASS — Each remaining iteration is explicitly tied to the approved FR/SC set: Iteration `002` to FR-006/007/015/016/017, **Iteration `003` to FR-008/009/010/011/023/024/025/026/027 with SC-003 and SC-005**, and Iteration `004` to FR-018/019/020/021/022 plus SC-004.
-- **Ownership Gate**: PASS — Spec Steward owns scope truth, Planner owns the roadmap refresh and iteration framing, Implementer owns docs/prompt/script/profile changes, and Reviewer owns cross-reference, validator, and closeout-evidence verification.
-- **Capacity Gate**: PASS — The roadmap preserves Iteration `001` actuals (17 SP), keeps the approved remaining 20-26 SP split visible, and the expanded Iteration `003` allocation is now 17-20 SP with Iterations `002` and `004` at 4-6 SP and 6-10 SP respectively, totaling 27-36 SP across remaining iterations (within approved roadmap guidance).
-- **Drift/Reconciliation Gate**: PASS — The plan explicitly reconciles the stale small-slice three-iteration plan with the approved four-iteration roadmap and the newly approved medium-slice Iteration `003` expansion, keeping Proposal `120`'s Pillar `5` requirement visible.
-- **Verification Gate**: PASS — The validation path is explicit through docs/manifest review, specify-flow proof including expertise-dial regression tests, integration tests, and fail-closed governance validation.
+- **Spec Authority Gate**: **PASS** — Plan scope maps to approved F-049 spec.md artifacts across all 4 iterations. Iteration 003 architectural pivot (engine + data) is authoritative from spec TG-013, TG-014, FR-028..FR-031.
+- **Layering Gate**: **PASS** — All F-049 changes are Spec Kit layer: Docker harness (Iteration 001), troubleshooting docs (Iteration 002), intake engine + YAML catalogs (Iteration 003), bypass detection (Iteration 004). No Squad layer or team configuration changes.
+- **Traceability Gate**: **PASS** — Every iteration maps to explicit FR/SC/TG: Iteration 001 (FR-001..FR-005, FR-012..FR-014, SC-001, TG-001, TG-007), Iteration 002 (FR-006..FR-007, FR-015..FR-017, SC-002, TG-002, TG-007), Iteration 003 (FR-008..FR-011, FR-023..FR-031, SC-003, SC-005, SC-006, TG-003, TG-006, TG-007, TG-009..TG-015), Iteration 004 (FR-018..FR-022, SC-004, TG-004, TG-007, TG-008).
+- **Ownership Gate**: **PASS** — Roles defined: Spec Steward (F-049 specs/clarification), Planner (iteration planning), Implementer (code/docs), Reviewer (E2E PR audit, SC validation).
+- **Capacity Gate**: **PASS** — Effort unit: story_points. Feature total: 48-58 SP. Iteration 001: 17 SP actual (closed). Iteration 002: 4-6 SP (closed). Iteration 003: 21-25 SP (architectural foundation work, justified by engine + data pivot). Iteration 004: 6-10 SP (bypass detection). Remaining: 31-41 SP after F-049.
+- **Drift/Reconciliation Gate**: **PASS** — Drift detected via `validate-governance.ps1`, Docker E2E pre-publish harness (Iteration 001), and Iteration 004 bypass-detection rules cross-checking closeout evidence against canonical repository state.
+- **Verification Gate**: **PASS** — Process quality verified via governance validator. Artifact consistency verified via manual committed-tree checks (Iterations 001-003, manual Pillar 5 discipline) and mechanized Pillar 5 validation (Iteration 004). Acceptance-criteria validated per SC-001 (100% pre-publish blocking), SC-002 (troubleshooting completeness), SC-003 (substantive intake quality), SC-005 (expertise-dial effectiveness), SC-006 (5th-persona extensibility proof), SC-004 (bypass-detection coverage).
 
 ## Project Structure
 
@@ -133,120 +125,260 @@ Feature 049 remains an approved **four-iteration** roadmap. Iteration `001` stay
 
 ```text
 specs/049-pipeline-hardening-intake/
-|-- plan.md
-|-- research.md
-|-- data-model.md
-|-- quickstart.md
-|-- contracts/
-|   `-- pipeline-hardening-intake.md
-|-- iterations/
-|   |-- 001/
-|   |   `-- retro.md                  # closed and authoritative
-|   |-- 002/                          # planned/delivered roadmap slice
-|   |-- 003/                          # planned remaining slice
-|   `-- 004/                          # planned remaining slice
-`-- tasks.md                          # intentionally not modified by this refresh
+├── spec.md                              # Authoritative feature specification
+├── plan.md                              # This file (feature-level implementation plan)
+├── iterations/
+│   ├── 001/
+│   │   ├── plan.md                      # Iteration 001 plan (Docker pre-publish verification)
+│   │   └── quality/                     # Iteration 001 verification evidence
+│   ├── 002/
+│   │   ├── plan.md                      # Iteration 002 plan (Troubleshooting guide)
+│   │   └── quality/                     # Iteration 002 verification evidence
+│   ├── 003/
+│   │   ├── plan.md                      # Iteration 003 plan (Persona intake + engine/data architecture)
+│   │   └── quality/                     # Iteration 003 verification evidence
+│   └── 004/
+│       ├── plan.md                      # Iteration 004 plan (Five-pillar bypass detection)
+│       └── quality/                     # Iteration 004 verification evidence
+└── research.md                          # Research findings (if needed for Iteration 003 architectural foundation)
 ```
 
 ### Source Code (repository root)
 
+**Iteration 001 (Docker Pre-Publish Verification)**:
 ```text
-docs/
-|-- getting-started.md
-|-- troubleshooting.md                # planned in Iteration 002
-`-- user-guide.md
-
-scripts/
-|-- specrew.ps1
-|-- specrew-start.ps1
-`-- specrew-update.ps1
-
-extensions/specrew-speckit/
-`-- scripts/
-    |-- shared-governance.ps1
-    `-- validate-governance.ps1
-
-.specify/
-|-- workflows/speckit/workflow.yml
-`-- extensions/specrew-speckit/
-    `-- scripts/
-        `-- validate-governance.ps1
-
-.github/
-|-- agents/speckit.specify.agent.md
-`-- prompts/speckit.specify.prompt.md
+.github/workflows/
+└── publish-module.yml                   # Pre-publish Docker harness integration
 
 tests/
-|-- Dockerfile.publish-test
-`-- integration/
-    |-- publish-module-harness.tests.ps1
-    `-- non-specrew-session-bypass.tests.ps1
+└── docker/
+    ├── Dockerfile                       # Linux PowerShell container base
+    ├── test-harness.ps1                 # FileList verification + specrew update tests
+    └── fixtures/                        # Test data for harness validation
 ```
 
-**Structure Decision**: Keep the feature anchored in one Specrew governance monorepo. Iteration `002` is docs + manifest wiring, Iteration `003` is a bounded `/speckit.specify` prompt/workflow slice, and Iteration `004` is validator/governance enforcement with mirrored extension parity.
+**Iteration 002 (Troubleshooting Guide)**:
+```text
+docs/
+├── troubleshooting.md                   # Recovery flows, cache issues, Shape-5 lesson
+├── getting-started.md                   # Updated with troubleshooting cross-references
+├── user-guide.md                        # Updated with troubleshooting cross-references
+└── README.md                            # Updated with troubleshooting cross-references
 
-## Phase 0: Research Decisions
-
-The decisions that drive this roadmap refresh are:
-
-1. Treat F-049 as an approved **four-iteration** feature and preserve Iteration `001` as closed history rather than reopening it.
-2. Keep Iteration `002` intentionally narrow: `docs/troubleshooting.md`, onboarding cross-references, `specrew update` versus `Update-Module Specrew` clarification, and the Shape-5 durability lesson.
-3. **Expand Iteration `003`** from a small Proposal `063` slice to a **17-20 SP medium slice** that combines persona-driven `/speckit.specify` intake (FR-008..FR-011) with expertise-dial integration (FR-023..FR-027), including user-profile.yml persistence, `/specrew-user-profile` slash command deployment, `specrew start` first-run integration, and expertise-aware question depth in the specify workflow. This unified slice reduces cognitive load by allowing users to set their expertise once (at Specrew first-run) and reuse it across all projects.
-4. Keep Iteration `004` anchored to Proposal `120` at main commit `4da969bc`, preserving all five pillars and especially Pillar `5` committed-tree enforcement.
-5. Use the consulted quality-profile resolver output as a planning input only: bounded custom composition, explicit baseline lenses, and no implied hardening execution before the approved iteration boundary.
-
-## Phase 1 Design
-
-### Data and Contract Surfaces
-
-- [research.md](research.md) records the roadmap and governance decisions used to remove planning ambiguity for this feature.
-- [data-model.md](data-model.md) remains the feature-level model reference for intake sessions and pipeline verification state.
-- [contracts/pipeline-hardening-intake.md](contracts/pipeline-hardening-intake.md) remains the contract surface for publish-harness and specify interactions; implementation follow-through must stay consistent with the refreshed roadmap.
-- [quickstart.md](quickstart.md) remains the execution guide, but the authoritative roadmap is this refreshed four-iteration plan.
-
-### Approved Iteration Roadmap
-
-| Iteration | Status | Scope | Requirement Alignment | Capacity | Notes |
-| --- | --- | --- | --- | --- | --- |
-| `001` | `closed` | Docker pre-publish harness + release hardening regressions already delivered | FR-001..FR-005, FR-012..FR-014, SC-001 | 17 SP actual | Preserve as closed history; delivered by historical tasks `T001-T007` and `T018-T020`; do not reopen in this plan refresh |
-| `002` | `planned` | Troubleshooting guide, onboarding cross-links, `specrew update` vs `Update-Module Specrew` clarification, and Shape-5 lesson | FR-006, FR-007, FR-015, FR-016, FR-017, SC-002 | 4-6 SP | Existing task scope remains `T008-T011`; iteration artifact actuals are 4.0 SP, which stays inside the roadmap band |
-| `003` | `planned` | **Medium slice**: Persona-driven `/speckit.specify` intake (FR-008..FR-011) **plus** expertise-dial integration (FR-023..FR-027): user-profile.yml persistence, `/specrew-user-profile` slash command, `specrew start` first-run integration, and expertise-aware question depth | FR-008, FR-009, FR-010, FR-011, FR-023, FR-024, FR-025, FR-026, FR-027, SC-003, SC-005 | 17-20 SP | Expanded from small Proposal `063` slice to include expertise-profile persistence; task scope will be extended to include new requirements |
-| `004` | `planned` | Proposal `120` full five-pillar bypass detection, including Pillar `5` committed-tree enforcement | FR-018, FR-019, FR-020, FR-021, FR-022, SC-004 | 6-10 SP | Existing task scope remains `T021-T028`; current task allocation totals 8.0 SP and preserves all five pillars exactly as approved |
-
-### Planned Implementation Slices
-
-| Slice | Scope | Affected Surfaces | Outcome |
-| --- | --- | --- | --- |
-| Slice A | Iteration `002` documentation hardening | `docs/troubleshooting.md`, `README.md`, `docs/getting-started.md`, `docs/user-guide.md`, `Specrew.psd1`, `scripts/specrew.ps1` wording alignment where needed | Recovery guidance becomes durable, discoverable, and explicit about project refresh vs installed-module upgrade |
-| Slice B | Iteration `003` persona-intake + expertise-profile integration | `.github/agents/speckit.specify.agent.md`, `.github/prompts/speckit.specify.prompt.md`, `.specify/workflows/speckit/workflow.yml`, `scripts/specrew-start.ps1`, `.claude/skills/specrew-user-profile.md`, `.github/skills/specrew-user-profile.md`, `.agents/skills/specrew-user-profile.md`, user-level profile storage (`$env:USERPROFILE\.specrew/user-profile.yml` on Windows, `~/.specrew/user-profile.yml` on Unix) | `/speckit.specify` gains the approved 4-persona intake with 12-category catalog, Mode A/B/C branching, and escape hatches; enriched with user-level expertise-dial persistence and `/specrew-user-profile` slash command for user control |
-| Slice C | Iteration `004` governance bypass detection | `extensions/specrew-speckit/scripts/validate-governance.ps1`, `extensions/specrew-speckit/scripts/shared-governance.ps1`, mirrored `.specify/extensions/**`, `tests/integration/non-specrew-session-bypass.tests.ps1`, iteration review/state artifacts | All five approved bypass-detection pillars are enforced, including Pillar `5` blocking closeout on working-tree-only production evidence |
-
-### Validation Commands
-
-```powershell
-pwsh -NoProfile -File .\tests\integration\publish-module-harness.tests.ps1
-pwsh -NoProfile -File .\tests\integration\non-specrew-session-bypass.tests.ps1
-pwsh -NoProfile -ExecutionPolicy Bypass -File .\extensions\specrew-speckit\scripts\validate-governance.ps1 -ProjectPath .
+Specrew.psd1                             # FileList updated to include docs/troubleshooting.md
 ```
 
-### Traceability Notes for the Requested Refresh
+**Iteration 003 (Persona Intake + Engine/Data Architecture)**:
+```text
+# Engine Foundation (FR-028: Mirror Parity Required)
+extensions/specrew-speckit/scripts/intake/
+├── Invoke-SpecifyIntake.ps1             # Discrete intake engine (shipped in module)
+├── helpers/
+│   ├── Load-PersonaCatalog.ps1
+│   ├── Load-CategoryCatalog.ps1
+│   ├── Resolve-PerLensMode.ps1          # Per-lens Mode A/B/C evaluation + most-conservative-wins
+│   ├── Traverse-QuestionBank.ps1
+│   ├── Resolve-AutoDecision.ps1
+│   └── Render-Annotation.ps1
 
-- Iteration `002` explicitly carries FR-006, FR-007, FR-015, FR-016, FR-017.
-- Iteration `003` is explicitly framed as a **medium slice** of the combined Proposal `063` persona-intake + expertise-dial integration, now spanning FR-008..FR-011 plus FR-023..FR-027 with SC-005 success metrics, expanding the scope from ~9.5 SP to 17-20 SP.
-- Iteration `004` is explicitly framed as the **full five-pillar** Proposal `120` delivery, including the Pillar `5` requirement that directly supports SC-004.
-- Existing task groupings remain authoritative and unchanged in their current form: `T008-T011`, `T012-T017`, and `T021-T028`. The Iteration `003` task expansion to include expertise-dial requirements (T018-T023 or equivalent) is deferred to the task-decomposition phase after planning completes.
-- `tasks.md` remains untouched in this planning refresh and will be updated during the task-decomposition phase to reflect the expanded Iteration `003` scope.
+.specify/extensions/specrew-speckit/scripts/intake/
+├── Invoke-SpecifyIntake.ps1             # Mirror copy (project-local override path)
+├── helpers/                             # Mirror copy
+│   ├── Load-PersonaCatalog.ps1
+│   ├── Load-CategoryCatalog.ps1
+│   ├── Resolve-PerLensMode.ps1
+│   ├── Traverse-QuestionBank.ps1
+│   ├── Resolve-AutoDecision.ps1
+│   └── Render-Annotation.ps1
 
-## Post-Design Constitution Re-check
+# Data Catalogs (FR-029)
+.specify/intake/
+├── personas.yml                         # 4 personas (PM, UX/UI, Architect, AI Researcher/PM)
+├── categories.yml                       # 12 categories
+├── depth-rules.yml                      # Per-lens mode thresholds (dial/completeness → Mode A/B/C)
+├── questions/
+│   ├── product-manager.yml              # 3 questions minimum (v1 capacity constraint)
+│   ├── ux-ui-specialist.yml             # 3 questions minimum
+│   ├── architect.yml                    # 3 questions minimum
+│   └── ai-researcher-project-manager.yml # 3 questions minimum
+├── auto-decision-defaults/
+│   └── generic.yml                      # Stack-agnostic defaults (v1 only; stack-specific later)
+├── domain-bundles/                      # Reserved empty (FR-030)
+└── solution-type-bundles/               # Reserved empty (FR-030)
 
-- **Spec Authority Gate**: PASS — The design stays aligned with the refreshed spec including FR-023..FR-027 and the user-approved four-iteration roadmap with expanded Iteration `003`.
-- **Layering Gate**: PASS — Docs, prompt/workflow, expertise-profile management, and validator surfaces remain intentionally separated by iteration.
-- **Traceability Gate**: PASS — The roadmap makes FR-006..FR-027 (excluding FR-012..FR-014 which are Iteration `001`) and SC-002..SC-005 visibly traceable to Iterations `002`-`004` with explicit FR grouping.
-- **Ownership Gate**: PASS — Human oversight remains explicit at planning approval, pre-implementation iteration approval, review, expertise-profile governance, and any Pillar `5` failure remediation.
-- **Capacity Gate**: PASS — The plan preserves 17 SP actuals in Iteration `001`, expands Iteration `003` to 17-20 SP to accommodate expertise-dial integration, and keeps Iterations `002` and `004` at 4-6 SP and 6-10 SP respectively.
-- **Drift/Reconciliation Gate**: PASS — The stale small-slice plan has been reconciled to the approved four-iteration scope with expanded Iteration `003` medium slice without rewriting closed history.
-- **Verification Gate**: PASS — Deterministic validation commands and artifact expectations are explicit for the remaining slices, including expertise-dial regression tests for SC-005 success metrics.
+# User Profile Persistence (FR-024)
+~/.specrew/
+└── user-profile.yml                     # User-level expertise profile (cross-project)
+
+# Slash Command Deployment (FR-025)
+.claude/skills/
+└── specrew-user-profile.md              # /specrew-user-profile show/edit/reset
+
+.github/skills/
+└── specrew-user-profile.md              # /specrew-user-profile show/edit/reset
+
+.agents/skills/
+└── specrew-user-profile.md              # /specrew-user-profile show/edit/reset
+
+# Thin Orchestrators (consume engine, do not contain inline logic)
+.github/prompts/
+└── speckit.specify.prompt.md            # Updated to invoke Invoke-SpecifyIntake.ps1
+
+.github/agents/
+└── speckit.specify.agent.md             # Updated to invoke Invoke-SpecifyIntake.ps1
+
+.specify/workflows/speckit/
+└── workflow.yml                         # Updated to invoke Invoke-SpecifyIntake.ps1
+
+# Bootstrap Integration (FR-026)
+scripts/
+└── specrew-start.ps1                    # First-run expertise self-rating + profile summary
+
+# Tests (SC-006 extensibility proof)
+tests/integration/
+├── substantive-interaction-model-iteration2.ps1  # Persona intake + expertise-dial tests
+└── skill-templates.tests.ps1            # Slash-command functionality tests
+```
+
+**Iteration 004 (Five-Pillar Bypass Detection)**:
+```text
+scripts/
+└── validate-governance.ps1              # Five-pillar bypass detection (handoff, trigger-bypass, artifact-location, verdict-history, tree-under-review)
+
+tests/integration/
+└── governance-bypass-detection.tests.ps1 # Pillar 1-5 validation tests
+```
+
+**Structure Decision**: F-049 is a PowerShell module enhancement spanning scripts, documentation, test infrastructure, and governance validation. The core architectural pivot in Iteration 003 is the separation of engine (PowerShell scripts in `extensions/specrew-speckit/scripts/intake/` with mirror parity in `.specify/extensions/specrew-speckit/scripts/intake/`) and data (YAML catalogs in `.specify/intake/`). This enables future persona/category/question/domain-bundle additions as data-only changes without touching engine code or versioned module manifests.
 
 ## Complexity Tracking
 
-No constitution exceptions are required for this roadmap refresh.
+> **Fill ONLY if Constitution Check has violations that must be justified**
+
+**No violations** — F-049 passes all constitutional gates. The architectural pivot to engine + data in Iteration 003 is justified by SC-006 (5th-persona extensibility proof) and TG-013 (modular design enabling future growth as data-only additions), not complexity accumulation.
+
+---
+
+## Iteration Breakdown
+
+### Iteration 001: Docker Pre-Publish Verification (Closed)
+
+**Status**: Complete  
+**Capacity**: 17 SP actual (12 SP Docker harness + 5 SP regression fixes)  
+**Scope**: FR-001..FR-005, FR-012..FR-014, SC-001, TG-001, TG-007  
+**Deliverables**:
+- Docker-based E2E test harness (Linux PowerShell container)
+- FileList verification + specrew update tests
+- `.github/workflows/publish-module.yml` integration (blocker before PSGallery publish)
+- Manifest version-pin drift detection (Proposal 134 Pillar 1+3 incremental)
+- Squad duplicate-row fix (`specrew update` template merge)
+- PSGallery --info version check (Proposal 049 promotion)
+
+**Outcome**: 100% of missing FileList or corrupt layouts blocked before PSGallery upload (SC-001 met).
+
+---
+
+### Iteration 002: Troubleshooting Guide (Closed)
+
+**Status**: Complete  
+**Capacity**: 4-6 SP actual  
+**Scope**: FR-006..FR-007, FR-015..FR-017, SC-002, TG-002, TG-007  
+**Deliverables**:
+- `docs/troubleshooting.md` (recovery flows, cache issues, Shape-5 lesson)
+- FileList registration for troubleshooting.md in Specrew.psd1
+- Cross-references from README.md, docs/getting-started.md, docs/user-guide.md
+- `specrew update` vs `Update-Module Specrew` distinction
+- Shape-5 durability lesson (accepted evidence must match committed tree)
+
+**Outcome**: Troubleshooting guide exists, is discoverable, and explains recovery flows + Shape-5 lesson (SC-002 met).
+
+---
+
+### Iteration 003: Persona Intake + Engine/Data Architecture (Planning)
+
+**Status**: Planning  
+**Capacity**: 21-25 SP (soft cap justified by architectural foundation work)  
+**Scope**: FR-008..FR-011, FR-023..FR-031, SC-003, SC-005, SC-006, TG-003, TG-006..TG-007, TG-009..TG-015  
+**Architectural Pivot**: Engine + data separation is **primary work**. Iteration 003 builds the discrete intake engine (`Invoke-SpecifyIntake.ps1`), YAML catalog structure (`personas.yml`, `categories.yml`, `depth-rules.yml`, `questions/<persona>.yml`, `auto-decision-defaults/generic.yml`), mirror parity between `extensions/specrew-speckit/scripts/intake/*` and `.specify/extensions/specrew-speckit/scripts/intake/*`, stack-detection mechanism, and extensibility proof (SC-006: adding 5th persona requires only YAML additions, zero engine changes). Prompts, agents, and workflows are thin orchestrators consuming the engine.
+
+**Deliverables**:
+- **Engine Foundation (FR-028)**:
+  - `Invoke-SpecifyIntake.ps1` (discrete intake engine)
+  - Helper sub-scripts: persona-catalog loading, category-catalog loading, per-lens depth-rule application (Mode A/B/C evaluation + most-conservative-wins), question-bank traversal, auto-decision resolution, annotation rendering
+  - Mirror parity: `extensions/specrew-speckit/scripts/intake/*` (shipped) and `.specify/extensions/specrew-speckit/scripts/intake/*` (project-local)
+  
+- **Data Catalogs (FR-029)**:
+  - `.specify/intake/personas.yml` (4 personas: Product Manager, UX/UI Specialist, Architect, AI Researcher/Project Manager)
+  - `.specify/intake/categories.yml` (12 categories)
+  - `.specify/intake/depth-rules.yml` (per-lens mode thresholds: dial ≥7 + ≥75% completeness → Mode A; dial 4-6 or 40-74% completeness → Mode B; dial ≤3 or <40% completeness → Mode C; most-conservative-wins conflict resolution)
+  - `.specify/intake/questions/<persona>.yml` (3 questions/persona minimum for v1 capacity constraint)
+  - `.specify/intake/auto-decision-defaults/generic.yml` (stack-agnostic defaults)
+  
+- **Extension Hooks (FR-030)**:
+  - `.specify/intake/domain-bundles/` (reserved empty)
+  - `.specify/intake/solution-type-bundles/` (reserved empty)
+  
+- **Stack-Aware Defaults (FR-031)**:
+  - Stack-detection mechanism (detect `.csproj`, `pyproject.toml`, `package.json`)
+  - Fallback to `generic.yml` (v1 only; stack-specific files land later as data additions)
+  
+- **User Profile Persistence (FR-024, FR-026)**:
+  - `~/.specrew/user-profile.yml` schema and cross-platform path handling
+  - `specrew start` first-run expertise self-rating prompt (4 personas, 1-10 scale or "I'm new, you decide")
+  - Profile summary in `start-context.json` and `start-summary.md`
+  
+- **Slash Command (FR-025)**:
+  - `/specrew-user-profile` in `.claude/skills/`, `.github/skills/`, `.agents/skills/`
+  - Subcommands: `show`, `edit`, `reset`
+  
+- **Intake Consumption (FR-027)**:
+  - Updated `.github/prompts/speckit.specify.prompt.md` (invoke engine)
+  - Updated `.github/agents/speckit.specify.agent.md` (invoke engine)
+  - Updated `.specify/workflows/speckit/workflow.yml` (invoke engine)
+  - Expertise-driven question depth: 7-10 (Senior, nuanced questions), 4-6 (Standard, confirmation prompts), 1-3 (Learning, auto-decide + transparency annotations)
+  - Proposal 053 transparency: `[AUTO-DECIDED: <decision>]` annotations for low-expertise auto-decisions
+  
+- **Per-Lens Mode Branching (FR-010)**:
+  - Each persona lens independently evaluated against its own expertise dial and lens-completeness percentage
+  - Most-conservative-wins conflict resolution (C > B > A) ensures low-expertise or incomplete lenses drive overall intake depth
+  
+- **Extensibility Proof (SC-006)**:
+  - Test fixture: temporary 5th persona added to `personas.yml` + `questions/<new-persona>.yml`
+  - Verification: persona recognized, questions loaded, expertise-dial behavior adapts—all without touching engine code
+
+**Outcome**:
+- SC-003: `/speckit.specify` generates highly contextual specs tailored to 4 persona lenses, <2 subsequent clarify questions in 90% of runs when expertise dial is 4+
+- SC-005: ≥30% question reduction for dial 7-10, ≥40% decision reduction for dial 1-3, no clarify-question regression
+- SC-006: Adding 5th persona demonstrably achievable as YAML-only data addition (zero engine changes)
+
+**Capacity Justification**: 21-25 SP reflects the architectural foundation work (FR-028 engine + FR-029 data catalogs + FR-030 extension hooks + FR-031 stack detection) that enables future extensibility. This is 4-5 SP higher than the old 17-20 SP estimate because the pivot from inline logic to modular engine + data requires upfront investment in sub-helper architecture, mirror parity, and YAML catalog design. The payoff is that future 5th+ personas, domain bundles, solution-type bundles, and stack-specific defaults will land as data-only additions without touching engine code or module manifests.
+
+---
+
+### Iteration 004: Five-Pillar Bypass Detection (Future)
+
+**Status**: Planned (not started)  
+**Capacity**: 6-10 SP  
+**Scope**: FR-018..FR-022, SC-004, TG-004, TG-007, TG-008  
+**Deliverables**:
+- Pillar 1: Missing `=== SPECREW HANDOFF ===` detection
+- Pillar 2: Trigger-bypass artifact gap classification
+- Pillar 3: Ephemeral session-scratch location warnings
+- Pillar 4: State-advance-without-verdict-history detection
+- Pillar 5: Tree-under-review vs accepted-evidence file-presence validation (blocks closeout when production evidence is absent from cited tree)
+
+**Outcome**: SC-004 met (all five bypass pillars surface, 0 closeouts allowed when production evidence is absent from committed tree).
+
+---
+
+## Feature Capacity Summary
+
+| Iteration | Status | Planned SP | Actual SP | Scope |
+| --------- | ------ | ---------- | --------- | ----- |
+| 001 | Closed | 12-15 | 17 | Docker pre-publish verification + regression fixes |
+| 002 | Closed | 4-6 | 4-6 | Troubleshooting guide + cross-references |
+| 003 | Planning | 21-25 | TBD | Persona intake + **engine/data architecture foundation** |
+| 004 | Planned | 6-10 | TBD | Five-pillar bypass detection |
+| **Total** | - | **48-58** | **21-23 (so far)** | **Remaining: 31-41 SP** |
+
+**Architectural Pivot Impact**: Iteration 003 capacity increased from 17-20 SP to 21-25 SP due to the engine + data separation required by TG-013. The pivot is justified by SC-006 (5th-persona extensibility proof) and TG-013 (modular design enabling future growth as data-only additions). This upfront investment ensures that future personas, domain bundles, and stack-specific defaults will not require engine rewrites or module manifest versioning.

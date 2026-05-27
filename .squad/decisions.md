@@ -259,6 +259,47 @@ The fix is straightforward, code-reviewed, and the behavior is observable via ma
 - **Approval context**: User-approved session instruction: "Bug 3 symptom fix at commit 437338f6 is folded into Iteration 001; the structural recovery-logic fix should be queued as a retro improvement action."
 - **Reviewer handoff**: This defer decision entry written to `.squad/decisions/inbox/reviewer-f049-gap-repair.md` for Scribe to merge canonically into `.squad/decisions.md`
 
+---
+
+### Human Reviewer: Feature 049 Iteration 003 Planning Rejection and Rerun
+
+- **Decision ID**: f049-i003-before-implement-rejection-engine-pivot
+- **Type**: planning rejection and lifecycle rerun
+- **Feature**: 049-pipeline-hardening-intake
+- **Iteration**: 003
+- **Boundary**: before-implement
+- **Authority**: Alon Fliess (human reviewer)
+- **Recorded At**: 2026-05-27T18:51:33Z
+- **Commit Reference**: 5eecc858, the rejected planning-package commit
+
+#### Verdict
+
+`rejected for before-implement`
+
+#### Why Rejected
+
+- The refreshed persona + expertise-dial scope was accepted semantically, including FR coverage, SC-005, the 19.25 SP planning envelope, and Pillar 5 verification expectations.
+- A new architectural direction was approved at this boundary: Iteration 003 must pivot from inline prompt/workflow logic to an engine + data architecture before implementation starts.
+- The rejection also includes four planning-artifact drift fixes: regenerate `tasks-progress.yml`, correct stale capacity totals in `spec.md`, and remove stale remaining-capacity references in `plan.md`.
+
+#### Required Rerun Direction
+
+- Re-run the lifecycle from the **specify** boundary, not merely from before-implement readiness.
+- Add FR-028 through FR-031 for the intake engine, YAML data catalogs, opt-in bundle architecture, and stack-aware default resolution.
+- Add TG-013 through TG-015 and SC-006 for engine/data layering, mirror parity, minimal v1 question banks, and 5th-persona data-only extensibility proof.
+- Re-cut Iteration 003 planning and tasks around the engine + data architecture, then return for a **plan-boundary** verdict instead of a before-implement verdict.
+
+#### Architectural Direction
+
+- **Engine**: `extensions/specrew-speckit/scripts/intake/` mirrored to `.specify/extensions/specrew-speckit/scripts/intake/`
+- **Data**: `.specify/intake/` YAML catalogs and question banks
+- **Thin orchestration**: prompts, agents, and workflow invoke the engine and render output; they must not own inline persona/category/question/depth-rule definitions
+
+#### Next Boundary
+
+- Active rerun path: `speckit.specify` -> `speckit.clarify` -> `speckit.specrew-speckit.before-plan` -> `speckit.plan` -> `speckit.tasks` -> `speckit.specrew-speckit.after-tasks`
+- Human review target after rerun: **plan** boundary
+
 #### Next Steps
 
 1. ✅ Bug 2 symptom fixed and verified (commit 2d52b9f9)
@@ -21037,3 +21078,62 @@ Iteration-closeout boundary work complete. HEAD==origin at `844fac3b`. Governanc
 - **Task ID**: (none)
 - **Auth Commit Hash**: 44d25fbbcfd3c21fd90f2b64e87cde46c6784b88
 - **Recorded At**: 2026-05-27T13:26:31Z
+
+## 2026-05-27T17:00:42Z — Delegated routing plan
+
+- **Enabled Agents**: copilot
+- **Independent Oversight Active**: False
+- **Roles**:
+  - Implementer | requested=copilot | actual=copilot | model=(platform default) | status=honored | fallback=(none)
+  - Spec Steward | requested=codex | actual=copilot | model=(platform default) | status=fell-back | fallback=preferred agent 'codex' is not enabled
+  - Planner | requested=claude | actual=copilot | model=(platform default) | status=fell-back | fallback=preferred agent 'claude' is not enabled
+  - Reviewer | requested=claude | actual=copilot | model=(platform default) | status=fell-back | fallback=preferred agent 'claude' is not enabled
+  - Retro Facilitator | requested=copilot | actual=copilot | model=(platform default) | status=honored | fallback=(none)
+
+## 2026-05-27T17:00:43Z — Routing evidence: Spec Steward
+
+- **Decision ID**: routing-evidence-5844e7037043
+- **Type**: routing-evidence
+- **Affected Requirement**: FR-043
+- **Affected Iteration**: (none)
+- **Approving Human**: (none)
+- **Recorded At**: 2026-05-27T17:00:43Z
+- **Next Action**: none
+- **Rationale**: Delegated lifecycle routing was applied for role 'Spec Steward'.
+
+- **Routing Evidence**: Spec Steward | requested=codex | actual=copilot | model=(platform default) | status=fell-back | fallback=preferred agent 'codex' is not enabled
+
+## 2026-05-27T17:00:43Z — Routing evidence: Planner
+
+- **Decision ID**: routing-evidence-8ed689377da7
+- **Type**: routing-evidence
+- **Affected Requirement**: FR-043
+- **Affected Iteration**: (none)
+- **Approving Human**: (none)
+- **Recorded At**: 2026-05-27T17:00:43Z
+- **Next Action**: none
+- **Rationale**: Delegated lifecycle routing was applied for role 'Planner'.
+
+- **Routing Evidence**: Planner | requested=claude | actual=copilot | model=(platform default) | status=fell-back | fallback=preferred agent 'claude' is not enabled
+
+## 2026-05-27T17:00:43Z — Routing evidence: Reviewer
+
+- **Decision ID**: routing-evidence-a0b581f52f6f
+- **Type**: routing-evidence
+- **Affected Requirement**: FR-043
+- **Affected Iteration**: (none)
+- **Approving Human**: (none)
+- **Recorded At**: 2026-05-27T17:00:43Z
+- **Next Action**: none
+- **Rationale**: Delegated lifecycle routing was applied for role 'Reviewer'.
+
+- **Routing Evidence**: Reviewer | requested=claude | actual=copilot | model=(platform default) | status=fell-back | fallback=preferred agent 'claude' is not enabled
+
+## 2026-05-27T17:09:54Z — Boundary sync: plan
+
+- **Boundary Type**: plan
+- **Feature Ref**: 049-pipeline-hardening-intake
+- **Iteration Number**: (none)
+- **Task ID**: (none)
+- **Auth Commit Hash**: 3b74b5150f3abf8c7cca15cf1381da335cbfe76b
+- **Recorded At**: 2026-05-27T17:09:54Z
