@@ -54,6 +54,7 @@ To ensure that the initial specify phase (`/speckit.specify`) captures realistic
 **Why this priority**: Substantially reduces clarify-phase back-and-forth by ensuring that the spec is born stack-aware, persona-aligned, and expertise-adapted. High-expertise users receive nuanced senior-level questions; low-expertise users receive auto-decisions surfaced via transparency (Proposal 053 pattern). All users set their profile once and reuse it across all Specrew projects. The engine + data separation enables future expansion (new personas, categories, domain bundles, stack-specific defaults) as **data-only additions** without code rewrites.
 
 **Persona Lenses**: The system applies **4 sequential lenses** (not user choices) during intake, each covering 12 categories from a different perspective:
+
 - **Lens 1: Product Manager** — Business rules, prioritization, P1/P2 journeys, MVP milestones, Go/No-Go criteria.
 - **Lens 2: UX/UI Specialist** — Interface state, Enter key reloads, accessibility, micro-animations, user workflows.
 - **Lens 3: Architect** — Schemas, data contracts, system integration boundaries, clean-architecture rules, deployment topology.
@@ -64,12 +65,14 @@ All 12 categories are covered from all 4 perspectives, but depth and auto-decisi
 **Per-Lens Mode Branching (Key Clarification)**: Mode A/B/C evaluation is **per-lens**, not global. Each persona lens is independently evaluated against its own expertise dial and that lens's content completeness (percentage of substantive answers across its 12 categories). The intake engine references `.specify/intake/depth-rules.yml` (v1 starter thresholds: dial ≥7 + ≥75% completeness → Mode A; dial 4-6 or 40-74% completeness → Mode B; dial ≤3 or <40% completeness → Mode C) to resolve each lens's mode independently. When lenses conflict on modes, most-conservative-wins (C > B > A) applies—ensuring that low-expertise or incomplete lenses drive the overall intake depth rather than being bypassed. This per-lens approach prevents global mode selection from creating vestigial bypass paths and addresses the asymmetric expertise problem: users may be expert in architecture but novice in UX/UI, and the intake should reflect that nuance.
 
 **Engine + Data Architecture**: The intake system is architecturally partitioned into:
+
 - **Discrete Intake Engine** (`Invoke-SpecifyIntake.ps1`): Handles persona-cycle logic, per-lens depth-rule application, question-bank traversal, auto-decision resolution, and annotation rendering. Thin orchestrators (prompt, agent, workflow) invoke the engine; they do not contain inline persona definitions, category lists, question banks, depth rules, or auto-decision defaults.
 - **Intake Catalogs** (YAML data): Persona definitions, category specifications, question banks (per-persona), depth rules, and auto-decision defaults are persisted in `.specify/intake/` as pure data. Adding a persona/category/question/depth-rule refinement/default is achievable as a YAML-only data addition without touching engine scripts, prompts, agents, or workflows.
 - **Future Extension Hooks**: Domain bundles (`.specify/intake/domain-bundles/<domain>.yml`) and solution-type bundles (`.specify/intake/solution-type-bundles/<type>.yml`) are reserved for future opt-in loading; v1 ships with empty directories only.
 - **Stack-Aware Auto-Decision Defaults**: Engine detects repo stack signals and selects `.specify/intake/auto-decision-defaults/<stack>.yml` (e.g., `dotnet.yml`, `python.yml`, `nodejs.yml`), falling back to `generic.yml`. v1 ships only `generic.yml` plus stack-detection mechanism; stack-specific files land later as data-only additions.
 
 **Expertise Dials** (per-persona, 1-10 scale, persisted to `~/.specrew/user-profile.yml`):
+
 - **7-10 (Senior Level)**: System surfaces senior-level nuanced questions requiring deep judgment; minimal auto-decisions.
 - **4-6 (Standard Level)**: System surfaces standard questions plus explicit decision-confirmation prompts.
 - **1-3 (Learning Level)**: System auto-decides with stack-aware defaults and surfaces decisions via Proposal 053 transparency pattern; no silent defaults.

@@ -185,7 +185,8 @@
 
 **MVP First**: Phase 2 (Engine Foundation) is the MVP critical path. Complete the engine + mirror parity before building data catalogs or orchestrators.
 
-**Incremental Delivery**: 
+**Incremental Delivery**:
+
 1. Deliver engine foundation (Phase 2) + minimal data catalogs (Phase 3) → engine can load personas/categories/depth-rules/questions
 2. Add user profile persistence (Phase 5) → expertise dials work end-to-end
 3. Deploy slash command (Phase 6) → users can manage profiles
@@ -211,6 +212,7 @@
 **Parallel Opportunities**: 22 tasks marked [P] can run in parallel within their phase constraints
 
 **User Story Coverage**:
+
 - **US3 (Persona-Driven Intake)**: All 34 tasks trace to US3
 - **FR Coverage**: FR-008, FR-009, FR-010, FR-011, FR-023, FR-024, FR-025, FR-026, FR-027, FR-028, FR-029, FR-030, FR-031
 - **TG Coverage**: TG-003, TG-006, TG-007, TG-009, TG-010, TG-011, TG-012, TG-013, TG-014, TG-015

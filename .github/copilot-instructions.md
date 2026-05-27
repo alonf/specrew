@@ -1,8 +1,10 @@
 # Specrew Development Guidelines
 
-Auto-generated from all feature plans. Last updated: 2026-05-25
+Auto-generated from all feature plans. Last updated: 2026-05-27
 
 ## Active Technologies
+- PowerShell 7.x plus Markdown/YAML/JSON governance artifacts + `scripts/specrew.ps1`, `scripts/specrew-update.ps1`, `scripts/specrew-start.ps1`, `Specrew.psd1`, `extensions/specrew-speckit/scripts/validate-governance.ps1`, mirrored `.specify/extensions/specrew-speckit/scripts/validate-governance.ps1`, `tests/integration/publish-module-harness.tests.ps1`, `tests/integration/non-specrew-session-bypass.tests.ps1`, and the Spec Kit prompt/workflow surfaces for `/speckit.specify` (049-pipeline-hardening-intake)
+- Git-tracked Markdown/YAML/JSON/PowerShell assets under `docs/`, `scripts/`, `extensions/`, `.specify/`, `.github/`, and `specs/049-pipeline-hardening-intake/` (049-pipeline-hardening-intake)
 
 - PowerShell 7.x scripts plus Markdown/YAML/JSON governance artifacts; downstream Specrew config currently pins Spec Kit `0.8.4` and Squad `0.9.1` in `.specrew/config.yml` + `extensions/specrew-speckit` script/template surfaces, `.specify` plan workflow, Squad-native runtime deployment via `deploy-squad-runtime.ps1`, existing governance/evaluation scripts under `tests/integration/` and `evaluation/scorers/` (008-quality-profile-foundation)
 - Git-tracked Markdown/YAML assets under `.specrew/` plus feature and iteration artifacts under `specs/<feature>/`; machine-readable mechanical findings stored as JSON sidecars (008-quality-profile-foundation)
@@ -60,10 +62,10 @@ npm test; npm run lint
 Markdown, YAML, PowerShell (Spec Kit extension assets).: Follow standard conventions
 
 ## Recent Changes
+- 049-pipeline-hardening-intake: Added PowerShell 7.x plus Markdown/YAML/JSON governance artifacts + `scripts/specrew.ps1`, `scripts/specrew-update.ps1`, `scripts/specrew-start.ps1`, `Specrew.psd1`, `extensions/specrew-speckit/scripts/validate-governance.ps1`, mirrored `.specify/extensions/specrew-speckit/scripts/validate-governance.ps1`, `tests/integration/publish-module-harness.tests.ps1`, `tests/integration/non-specrew-session-bypass.tests.ps1`, and the Spec Kit prompt/workflow surfaces for `/speckit.specify`
 
 - 046-create-spec-branch: Added PowerShell 7+ (primary runtime scripts), Markdown docs + Spec Kit CLI (`specify`), Squad CLI (`squad`), Git, module/runtime scripts under `scripts/` and `extensions/specrew-speckit/scripts/`
 - 024-slash-command-multi-host-correctness: Added PowerShell 7.0+ (per `Specrew.psd1`), Markdown skill templates with YAML frontmatter + Specrew PowerShell module/runtime scripts (`Specrew.psm1`, `scripts/*.ps1`, `extensions/specrew-speckit/scripts/deploy-squad-runtime.ps1`), Git, standard PowerShell file/YAML handling already used in-repo
-- 024-slash-command-multi-host-correctness: Added PowerShell 7.4+ (module code), Markdown (skill templates), PowerShell 5.1 Pester (integration tests) + Specrew PowerShell module (`Specrew.psm1`), Pester v5.3+, Git 2.40+
 
 <!-- MANUAL ADDITIONS START -->
   renderer exposed by `scripts/specrew.ps1 where`, `scripts/specrew.ps1 status`,

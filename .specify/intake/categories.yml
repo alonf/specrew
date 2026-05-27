@@ -1,0 +1,55 @@
+# Category Catalog for /speckit.specify Intake
+# Feature 049 Iteration 003 - Engine + Data Architecture
+# FR-009, FR-029, TG-013, TG-015
+
+schema_version: "1.0"
+description: "Twelve intake categories representing comprehensive parameters for specification"
+
+categories:
+  - id: scope-and-boundaries
+    name: "Scope and Boundaries"
+    description: "What's in scope, what's explicitly out of scope, and why"
+
+  - id: user-personas-and-journeys
+    name: "User Personas and Journeys"
+    description: "Who uses this feature, what are their goals, and what are the critical paths (P1/P2)"
+
+  - id: functional-requirements
+    name: "Functional Requirements"
+    description: "What the system must do, including business rules and validation logic"
+
+  - id: data-and-state-management
+    name: "Data and State Management"
+    description: "What data is stored, how state is managed, and data lifecycle concerns"
+
+  - id: integration-and-dependencies
+    name: "Integration and Dependencies"
+    description: "External systems, APIs, third-party services, and integration boundaries"
+
+  - id: ui-and-interaction-design
+    name: "UI and Interaction Design"
+    description: "Interface layouts, workflows, accessibility, and user experience patterns"
+
+  - id: security-and-compliance
+    name: "Security and Compliance"
+    description: "Authentication, authorization, data protection, and regulatory requirements"
+
+  - id: performance-and-scalability
+    name: "Performance and Scalability"
+    description: "Response time targets, throughput requirements, and scaling considerations"
+
+  - id: deployment-and-operations
+    name: "Deployment and Operations"
+    description: "Deployment topology, monitoring, logging, and operational runbooks"
+
+  - id: testing-and-quality
+    name: "Testing and Quality"
+    description: "Test strategies, coverage expectations, and quality gates"
+
+  - id: migration-and-compatibility
+    name: "Migration and Compatibility"
+    description: "Backward compatibility, data migration, and rollback strategies"
+
+  - id: success-criteria-and-metrics
+    name: "Success Criteria and Metrics"
+    description: "How success is measured, KPIs, and acceptance thresholds"

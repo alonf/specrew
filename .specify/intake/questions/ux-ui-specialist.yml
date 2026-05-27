@@ -1,0 +1,64 @@
+# UX/UI Specialist Question Bank
+# Feature 049 Iteration 003 - Engine + Data Architecture
+# FR-029, TG-013, TG-015
+
+schema_version: "1.0"
+persona_id: ux-ui-specialist
+persona_name: "UX/UI Specialist"
+
+questions:
+  - id: ux-q001
+    category: ui-and-interaction-design
+    text: "What are the primary UI states (loading, success, error, empty) and transitions between them?"
+    priority: high
+    tags: [ui-state, transitions, workflows]
+    mode_applicability: [A, B, C]
+
+  - id: ux-q002
+    category: ui-and-interaction-design
+    text: "What keyboard shortcuts or Enter key behaviors must be supported for power users?"
+    priority: high
+    tags: [keyboard-nav, shortcuts, accessibility]
+    mode_applicability: [A, B, C]
+
+  - id: ux-q003
+    category: ui-and-interaction-design
+    text: "What WCAG accessibility level is required (A, AA, AAA), and what are the critical accessibility patterns?"
+    priority: high
+    tags: [accessibility, wcag, a11y]
+    mode_applicability: [A, B, C]
+
+  - id: ux-q004
+    category: ui-and-interaction-design
+    text: "What micro-animations, transitions, or loading indicators enhance user experience without adding complexity?"
+    priority: medium
+    tags: [animations, transitions, ux-polish]
+    mode_applicability: [B, C]
+
+  - id: ux-q005
+    category: user-personas-and-journeys
+    text: "What are the most common user workflows, and what friction points exist in the current experience?"
+    priority: medium
+    tags: [workflows, friction, user-experience]
+    mode_applicability: [B, C]
+
+  - id: ux-q006
+    category: ui-and-interaction-design
+    text: "What responsive design breakpoints are required (mobile, tablet, desktop), and what changes at each?"
+    priority: medium
+    tags: [responsive, breakpoints, mobile-first]
+    mode_applicability: [B, C]
+
+  - id: ux-q007
+    category: ui-and-interaction-design
+    text: "What error messages or validation feedback must be surfaced to users, and how?"
+    priority: low
+    tags: [error-messages, validation, feedback]
+    mode_applicability: [C]
+
+  - id: ux-q008
+    category: ui-and-interaction-design
+    text: "What onboarding or first-run experience helps new users understand the feature?"
+    priority: low
+    tags: [onboarding, first-run, user-education]
+    mode_applicability: [C]

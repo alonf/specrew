@@ -1,0 +1,55 @@
+# Persona Catalog for /speckit.specify Intake
+# Feature 049 Iteration 003 - Engine + Data Architecture
+# FR-008, FR-029, TG-013, TG-015
+
+schema_version: "1.0"
+description: "Four-persona lens system for comprehensive specification intake"
+
+personas:
+  - id: product-manager
+    name: "Product Manager"
+    description: "Business rules, prioritization, P1/P2 journeys, MVP milestones, Go/No-Go criteria"
+    question_bank_path: "questions/product-manager.yml"
+    focus_areas:
+      - "Business rules and constraints"
+      - "User journey prioritization (P1/P2)"
+      - "MVP milestone definition"
+      - "Go/No-Go criteria and success metrics"
+      - "Competitive positioning"
+      - "Market timing considerations"
+
+  - id: ux-ui-specialist
+    name: "UX/UI Specialist"
+    description: "Interface state, Enter key reloads, accessibility, micro-animations, user workflows"
+    question_bank_path: "questions/ux-ui-specialist.yml"
+    focus_areas:
+      - "Interface state management"
+      - "Keyboard navigation and shortcuts"
+      - "Accessibility (WCAG compliance)"
+      - "Micro-animations and transitions"
+      - "User workflow patterns"
+      - "Responsive design considerations"
+
+  - id: architect
+    name: "Architect"
+    description: "Schemas, data contracts, system integration boundaries, clean-architecture rules, deployment topology"
+    question_bank_path: "questions/architect.yml"
+    focus_areas:
+      - "Data models and schemas"
+      - "API contracts and integration points"
+      - "System boundaries and dependencies"
+      - "Clean architecture principles"
+      - "Deployment topology"
+      - "Scalability and performance patterns"
+
+  - id: ai-researcher-project-manager
+    name: "AI Researcher / Project Manager"
+    description: "Team capacity planning, specialist pairings, safe-parallelism, agent charters, long-term skill growth"
+    question_bank_path: "questions/ai-researcher-project-manager.yml"
+    focus_areas:
+      - "Team capacity and skill assessment"
+      - "Specialist pairing strategies"
+      - "Safe parallelism opportunities"
+      - "Agent charter definition"
+      - "Knowledge transfer and skill growth"
+      - "Risk identification and mitigation"

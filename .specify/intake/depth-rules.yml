@@ -1,0 +1,41 @@
+# Depth Rules for Per-Lens Mode Evaluation
+# Feature 049 Iteration 003 - Engine + Data Architecture
+# FR-010, FR-029, TG-013, TG-015
+
+schema_version: "1.0"
+description: "Per-lens mode branching thresholds with most-conservative-wins conflict resolution"
+
+# Mode A (Sufficient): High expertise + high completeness → minimal questions
+mode_a_thresholds:
+  min_expertise_dial: 7
+  min_completeness: 0.75
+  description: "Senior-level users with substantial content can proceed with confirmation-only questions"
+
+# Mode B (Targeted Clarify): Mid-range expertise OR mid-range completeness → 2-3 targeted questions
+mode_b_thresholds:
+  expertise_range:
+    min: 4
+    max: 6
+  completeness_range:
+    min: 0.40
+    max: 0.74
+  description: "Standard-level users or partial content require targeted clarifications"
+
+# Mode C (Full Interview): Low expertise OR low completeness → guided interview
+mode_c_thresholds:
+  max_expertise_dial: 3
+  max_completeness: 0.40
+  description: "Learning-level users or minimal content require full guided interview"
+
+# Conflict resolution rule
+conflict_resolution:
+  rule: "most-conservative-wins"
+  priority_order: ["C", "B", "A"]
+  description: "When lenses conflict on modes, the most conservative mode (C > B > A) applies globally"
+
+# Per-lens evaluation notes
+notes:
+  - "Each persona lens evaluates independently against its own expertise dial and lens completeness"
+  - "Lens completeness = percentage of substantive answers across that lens's 12 categories"
+  - "Most-conservative-wins ensures low-expertise or low-completeness lenses drive overall intake depth"
+  - "This prevents vestigial bypass paths where expert lenses bypass necessary clarifications from novice lenses"
