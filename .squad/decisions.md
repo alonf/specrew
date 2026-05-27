@@ -20675,3 +20675,12 @@ This decision affects:
   > Total F-049 now ~30-41 SP across 4 iterations.
   >
   > Proceed to iteration-closeout. At the iter-2 specify/plan boundary, scaffold the spec/plan/tasks updates to reflect 4-iteration scope; surface for human approval before continuing.
+
+## 2026-05-27T00:30:35Z — Boundary sync: iteration-closeout
+
+- **Boundary Type**: iteration-closeout
+- **Feature Ref**: 049-pipeline-hardening-intake
+- **Iteration Number**: 001
+- **Task ID**: (none)
+- **Auth Commit Hash**: dfc7c3f0
+- **Recorded At**: 2026-05-27T00:30:34Z
