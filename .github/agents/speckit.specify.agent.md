@@ -52,6 +52,36 @@ You **MUST** consider the user input before proceeding (if not empty).
     ```
 - If no hooks are registered or `.specify/extensions.yml` does not exist, skip silently
 
+## Substantive Intake (Feature 049 Iteration 003)
+
+**Before generating the specification**, invoke the persona-driven substantive intake engine to gather depth-appropriate requirements:
+
+```powershell
+pwsh -File extensions/specrew-speckit/scripts/intake/Invoke-SpecifyIntake.ps1 `
+  -UserInput "$ARGUMENTS" `
+  -IntakeDataRoot ".specify/intake"
+```
+
+**Engine behavior**:
+- Loads user profile from `~/.specrew/user-profile.yml` to determine expertise dials
+- Applies all 4 persona lenses sequentially (Product Manager, UX/UI Specialist, Architect, AI Researcher / Project Manager)
+- Each lens covers 12 categories from its perspective
+- Question depth adapts to user expertise:
+  - **7-10 (Senior)**: Nuanced questions, minimal auto-decisions
+  - **4-6 (Standard)**: Targeted clarifications
+  - **1-3 (Learning)**: Auto-decisions with transparency annotations
+  - **auto**: System chooses defaults
+
+**Fallback guidance** (FR-011):
+- When any question cannot be answered: user may choose **"Other"** or **"I don't know, you decide"**
+- On "Other": trigger proactive domain research or defer to clarification phase
+- On "I don't know": apply stack-aware auto-decision from `.specify/intake/auto-decision-defaults/` and surface with transparency annotation
+
+**Integration**:
+- Intake results populate `SPECIFY_FEATURE_DIRECTORY/intake-results.md` if generated
+- Use intake insights to inform spec.md sections (User Scenarios, Functional Requirements, Success Criteria, Key Entities)
+- If intake is skipped (engine not available), proceed with standard substantive question flow
+
 ## Outline
 
 The text the user typed after `/speckit.specify` in the triggering message **is** the feature description. Assume you always have it available in this conversation even if `$ARGUMENTS` appears literally below. Do not ask the user to repeat it unless they provided an empty command.
