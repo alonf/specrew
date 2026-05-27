@@ -20756,3 +20756,19 @@ This decision affects:
 - **Task ID**: (none)
 - **Auth Commit Hash**: 0fede7bdd1f97eeb7677d758744f644f15ee5b6d
 - **Recorded At**: 2026-05-27T06:01:13Z
+
+## 2026-05-27T06:06:01Z — Boundary sync warning: tasks
+
+- **Boundary Type**: tasks
+- **Latest Recorded Boundary**: iteration-closeout
+- **Recorded At**: 2026-05-27T06:06:01Z
+- **Warning**: Expected next boundary 'feature-closeout' but received 'tasks'.
+
+## 2026-05-27T06:06:02Z — Boundary sync: tasks
+
+- **Boundary Type**: tasks
+- **Feature Ref**: 049-pipeline-hardening-intake
+- **Iteration Number**: 002
+- **Task ID**: (none)
+- **Auth Commit Hash**: dcc974f11524107adacd7b8d13a443bf60403e0c
+- **Recorded At**: 2026-05-27T06:06:02Z
