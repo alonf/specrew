@@ -129,9 +129,27 @@ if (Test-Path $UserProfilePath) {
 # Override expertise dials if provided (testing)
 if ($ExpertiseDial) {
     if (-not $userProfile) {
-        $userProfile = @{ expertise_dials = @{} }
+        $userProfile = @{}
     }
+    # Accept direct persona-ID mapping for backward compatibility
     $userProfile.expertise_dials = $ExpertiseDial
+}
+
+# Map FR-024 expertise structure to legacy persona IDs for compatibility
+if ($userProfile -and $userProfile.PSObject.Properties['expertise'] -and -not $userProfile.expertise_dials) {
+    $legacyMapping = @{
+        'software_architecture' = 'architect'
+        'ui_ux' = 'ux-ui-specialist'
+        'product_management' = 'product-manager'
+        'ai_research_project_management' = 'ai-researcher-project-manager'
+    }
+    $userProfile.expertise_dials = @{}
+    foreach ($field in $legacyMapping.Keys) {
+        $personaId = $legacyMapping[$field]
+        if ($userProfile.expertise.ContainsKey($field)) {
+            $userProfile.expertise_dials[$personaId] = $userProfile.expertise[$field]
+        }
+    }
 }
 
 # Load personas catalog
@@ -185,18 +203,44 @@ foreach ($persona in $personas) {
     Write-Verbose "Applying lens: $($persona.name) ($($persona.id))"
 
     # Get expertise dial for this persona
-    $personaExpertiseDial = 5 # Default mid-range
+    $personaExpertiseDial = $null
     if ($userProfile -and $userProfile.expertise_dials -and $userProfile.expertise_dials.ContainsKey($persona.id)) {
-        $personaExpertiseDial = $userProfile.expertise_dials[$persona.id]
+        $dialValue = $userProfile.expertise_dials[$persona.id]
+        
+        # Handle "auto" or "I'm new, you decide" - preserve the string as-is
+        if ($dialValue -eq 'auto') {
+            $personaExpertiseDial = 'auto'
+            Write-Verbose "  Expertise dial: auto (system auto-decides)"
+        }
+        elseif ($dialValue -match '^\d+$') {
+            $personaExpertiseDial = [int]$dialValue
+            Write-Verbose "  Expertise dial: $personaExpertiseDial"
+        }
+        else {
+            # Treat unrecognized values as auto
+            $personaExpertiseDial = 'auto'
+            Write-Verbose "  Expertise dial: auto (unrecognized value '$dialValue', defaulting to auto)"
+        }
     }
-    Write-Verbose "  Expertise dial: $personaExpertiseDial"
+    else {
+        # Default mid-range when no profile exists
+        $personaExpertiseDial = 5
+        Write-Verbose "  Expertise dial: $personaExpertiseDial (default)"
+    }
 
     # Calculate lens completeness (placeholder - would analyze existing content)
     $lensCompleteness = 0.5 # 50% for now (would be calculated from existing answers)
 
     # Resolve per-lens mode (Mode A/B/C)
-    $lensMode = Resolve-PerLensMode -ExpertiseDial $personaExpertiseDial -LensCompleteness $lensCompleteness -DepthRules $depthRules
-    Write-Verbose "  Resolved lens mode: $lensMode"
+    # When expertise is "auto", treat as Mode C (full interview with auto-decisions)
+    if ($personaExpertiseDial -eq 'auto') {
+        $lensMode = 'C'
+        Write-Verbose "  Resolved lens mode: C (auto-decide path)"
+    }
+    else {
+        $lensMode = Resolve-PerLensMode -ExpertiseDial $personaExpertiseDial -LensCompleteness $lensCompleteness -DepthRules $depthRules
+        Write-Verbose "  Resolved lens mode: $lensMode"
+    }
 
     # Traverse question bank for this persona
     $questions = Traverse-QuestionBank -IntakeDataRoot $IntakeDataRoot -PersonaId $persona.id -Mode $lensMode
@@ -212,7 +256,8 @@ foreach ($persona in $personas) {
     }
 
     # Render annotations for auto-decided items (Proposal 053 transparency)
-    if ($lensMode -eq 'C' -and $personaExpertiseDial -le 3) {
+    # Auto path OR low-expertise path both get auto-decisions with transparency
+    if ($lensMode -eq 'C' -and ($personaExpertiseDial -eq 'auto' -or $personaExpertiseDial -le 3)) {
         $annotations = Render-Annotation -LensResult $lensResult -AutoDecisions $autoDecisions
         $lensResult.annotations = $annotations
     }
