@@ -5,6 +5,178 @@
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
+$script:UserProfileExpertiseMap = [ordered]@{
+    'architect'                     = 'software_architecture'
+    'ux-ui-specialist'              = 'ui_ux'
+    'product-manager'               = 'product_management'
+    'ai-researcher-project-manager' = 'ai_research_project_management'
+}
+
+function Test-UserProfileKey {
+    param(
+        [AllowNull()]
+        [object]$InputObject,
+        [Parameter(Mandatory = $true)]
+        [string]$Key
+    )
+
+    if ($null -eq $InputObject) {
+        return $false
+    }
+
+    if ($InputObject -is [System.Collections.IDictionary]) {
+        return $InputObject.Contains($Key)
+    }
+
+    return $null -ne $InputObject.PSObject.Properties[$Key]
+}
+
+function Get-UserProfileValue {
+    param(
+        [AllowNull()]
+        [object]$InputObject,
+        [Parameter(Mandatory = $true)]
+        [string]$Key
+    )
+
+    if (-not (Test-UserProfileKey -InputObject $InputObject -Key $Key)) {
+        return $null
+    }
+
+    if ($InputObject -is [System.Collections.IDictionary]) {
+        return $InputObject[$Key]
+    }
+
+    return $InputObject.$Key
+}
+
+function ConvertTo-PersistedExpertiseValue {
+    param([AllowNull()]$Value)
+
+    if ($null -eq $Value) {
+        return $null
+    }
+
+    $stringValue = [string]$Value
+    if ([string]::IsNullOrWhiteSpace($stringValue)) {
+        return $null
+    }
+
+    if ($stringValue -eq 'auto' -or $stringValue -eq 'null') {
+        return $null
+    }
+
+    if ($stringValue -match '^\d+$') {
+        $numericValue = [int]$stringValue
+        if ($numericValue -ge 1 -and $numericValue -le 10) {
+            return $numericValue
+        }
+    }
+
+    return $null
+}
+
+function ConvertTo-RuntimeExpertiseDial {
+    param([AllowNull()]$Value)
+
+    $persistedValue = ConvertTo-PersistedExpertiseValue -Value $Value
+    if ($null -eq $persistedValue) {
+        return 'auto'
+    }
+
+    return $persistedValue
+}
+
+function ConvertTo-NormalizedUserProfile {
+    param(
+        [AllowNull()]
+        [object]$RawProfile
+    )
+
+    if ($null -eq $RawProfile) {
+        return $null
+    }
+
+    $profile = [ordered]@{
+        schema                       = '1.0'
+        specrew_version_at_creation  = ''
+        created_at                   = ''
+        last_updated_at              = ''
+        user_name                    = $null
+        expertise                    = [ordered]@{
+            software_architecture           = $null
+            ui_ux                           = $null
+            product_management              = $null
+            ai_research_project_management  = $null
+        }
+        preferences                  = [ordered]@{
+            preferred_intake_depth = 'auto'
+        }
+        expertise_dials              = [ordered]@{}
+        schema_version               = '1.0'
+        updated_at                   = ''
+    }
+
+    $schema = Get-UserProfileValue -InputObject $RawProfile -Key 'schema'
+    if ($null -eq $schema) {
+        $schema = Get-UserProfileValue -InputObject $RawProfile -Key 'schema_version'
+    }
+    if ($null -ne $schema) {
+        $profile.schema = [string]$schema
+    }
+
+    foreach ($key in @('specrew_version_at_creation', 'created_at', 'user_name')) {
+        $value = Get-UserProfileValue -InputObject $RawProfile -Key $key
+        if ($null -ne $value) {
+            $profile[$key] = $value
+        }
+    }
+
+    $lastUpdated = Get-UserProfileValue -InputObject $RawProfile -Key 'last_updated_at'
+    if ($null -eq $lastUpdated) {
+        $lastUpdated = Get-UserProfileValue -InputObject $RawProfile -Key 'updated_at'
+    }
+    if ($null -ne $lastUpdated) {
+        $profile.last_updated_at = $lastUpdated
+    }
+
+    $rawPreferences = Get-UserProfileValue -InputObject $RawProfile -Key 'preferences'
+    if ($null -ne $rawPreferences) {
+        $preferredDepth = Get-UserProfileValue -InputObject $rawPreferences -Key 'preferred_intake_depth'
+        if (-not [string]::IsNullOrWhiteSpace([string]$preferredDepth)) {
+            $profile.preferences.preferred_intake_depth = [string]$preferredDepth
+        }
+    }
+
+    $rawExpertise = Get-UserProfileValue -InputObject $RawProfile -Key 'expertise'
+    if ($null -ne $rawExpertise) {
+        foreach ($field in @('software_architecture', 'ui_ux', 'product_management', 'ai_research_project_management')) {
+            if (Test-UserProfileKey -InputObject $rawExpertise -Key $field) {
+                $profile.expertise[$field] = ConvertTo-PersistedExpertiseValue -Value (Get-UserProfileValue -InputObject $rawExpertise -Key $field)
+            }
+        }
+    }
+
+    $rawLegacyDials = Get-UserProfileValue -InputObject $RawProfile -Key 'expertise_dials'
+    if ($null -ne $rawLegacyDials) {
+        foreach ($personaId in $script:UserProfileExpertiseMap.Keys) {
+            if (Test-UserProfileKey -InputObject $rawLegacyDials -Key $personaId) {
+                $profile.expertise[$script:UserProfileExpertiseMap[$personaId]] = ConvertTo-PersistedExpertiseValue -Value (Get-UserProfileValue -InputObject $rawLegacyDials -Key $personaId)
+            }
+        }
+    }
+
+    foreach ($personaId in $script:UserProfileExpertiseMap.Keys) {
+        $field = $script:UserProfileExpertiseMap[$personaId]
+        $profile.expertise_dials[$personaId] = ConvertTo-RuntimeExpertiseDial -Value $profile.expertise[$field]
+    }
+
+    $profile.schema_version = $profile.schema
+    $profile.updated_at = $profile.last_updated_at
+
+    return $profile
+}
+
 function Get-UserProfilePath {
     <#
     .SYNOPSIS
@@ -59,75 +231,53 @@ function Get-UserProfile {
     try {
         $content = Get-Content -LiteralPath $ProfilePath -Raw -Encoding UTF8
         
-        # Try to use powershell-yaml if available
         if (Get-Command ConvertFrom-Yaml -ErrorAction SilentlyContinue) {
-            $profile = $content | ConvertFrom-Yaml
-            return $profile
+            return ConvertTo-NormalizedUserProfile -RawProfile ($content | ConvertFrom-Yaml)
         }
-        
-        # Fallback: basic YAML parser for FR-024 schema
-        $profile = @{
+
+        $rawProfile = [ordered]@{
             schema = '1.0'
             specrew_version_at_creation = ''
             created_at = ''
             last_updated_at = ''
             user_name = $null
-            expertise = @{
-                software_architecture = $null
-                ui_ux = $null
-                product_management = $null
-                ai_research_project_management = $null
-            }
-            preferences = @{
-                preferred_intake_depth = 'auto'
-            }
+            expertise = [ordered]@{}
+            preferences = [ordered]@{}
+            expertise_dials = [ordered]@{}
         }
-        
-        $lines = $content -split "`n"
-        $inExpertiseSection = $false
-        $inPreferencesSection = $false
-        
-        foreach ($line in $lines) {
+
+        $section = $null
+        foreach ($line in ($content -split "`r?`n")) {
             $trimmedLine = $line.Trim()
-            
-            if ($trimmedLine -match '^schema:\s*(.+)$') {
-                $profile.schema = $matches[1].Trim('"', "'")
+
+            if ([string]::IsNullOrWhiteSpace($trimmedLine) -or $trimmedLine.StartsWith('#')) {
+                continue
             }
-            elseif ($trimmedLine -match '^specrew_version_at_creation:\s*(.+)$') {
-                $profile.specrew_version_at_creation = $matches[1].Trim('"', "'")
+
+            if ($line -match '^(schema|schema_version|specrew_version_at_creation|created_at|last_updated_at|updated_at|user_name):\s*(.*)$') {
+                $rawProfile[$matches[1]] = $matches[2].Trim().Trim('"', "'")
+                $section = $null
+                continue
             }
-            elseif ($trimmedLine -match '^created_at:\s*(.+)$') {
-                $profile.created_at = $matches[1].Trim('"', "'")
+
+            if ($trimmedLine -match '^(expertise|preferences|expertise_dials):\s*$') {
+                $section = $matches[1]
+                continue
             }
-            elseif ($trimmedLine -match '^last_updated_at:\s*(.+)$') {
-                $profile.last_updated_at = $matches[1].Trim('"', "'")
-            }
-            elseif ($trimmedLine -match '^user_name:\s*(.+)$') {
-                $profile.user_name = $matches[1].Trim('"', "'")
-            }
-            elseif ($trimmedLine -match '^expertise:') {
-                $inExpertiseSection = $true
-                $inPreferencesSection = $false
-            }
-            elseif ($trimmedLine -match '^preferences:') {
-                $inPreferencesSection = $true
-                $inExpertiseSection = $false
-            }
-            elseif ($inExpertiseSection -and $line -match '^\s+([a-z_]+):\s*(.+)$') {
-                $field = $matches[1]
+
+            if ($line -match '^\s+([A-Za-z0-9_-]+):\s*(.*)$' -and $null -ne $section) {
+                $key = $matches[1]
                 $value = $matches[2].Trim().Trim('"', "'")
-                if ($value -ne 'null' -and $value -ne '') {
-                    $profile.expertise[$field] = $value
+                if ([string]::IsNullOrWhiteSpace($value) -or $value -eq 'null') {
+                    $rawProfile[$section][$key] = $null
+                }
+                else {
+                    $rawProfile[$section][$key] = $value
                 }
             }
-            elseif ($inPreferencesSection -and $line -match '^\s+([a-z_]+):\s*(.+)$') {
-                $field = $matches[1]
-                $value = $matches[2].Trim().Trim('"', "'")
-                $profile.preferences[$field] = $value
-            }
         }
-        
-        return $profile
+
+        return ConvertTo-NormalizedUserProfile -RawProfile $rawProfile
     }
     catch {
         Write-Warning "Failed to parse user-profile.yml: $($_.Exception.Message)"
@@ -187,30 +337,51 @@ function Save-UserProfile {
         # Fallback to default version
     }
     
-    # Build YAML content per FR-024 schema
-    $yamlContent = @"
-# Specrew User Profile
-# Feature 049 Iteration 003 - Expertise-Aware Substantive Intake
-# Cross-platform user-level expertise settings for persona-driven specification intake
+    $existingProfile = ConvertTo-NormalizedUserProfile -RawProfile $existing
+    $preferredDepth = if ($existingProfile -and $existingProfile.preferences.preferred_intake_depth) {
+        [string]$existingProfile.preferences.preferred_intake_depth
+    }
+    else {
+        'auto'
+    }
+    $userName = if ($existingProfile -and -not [string]::IsNullOrWhiteSpace([string]$existingProfile.user_name)) {
+        [string]$existingProfile.user_name
+    }
+    else {
+        $null
+    }
 
-schema: "1.0"
-specrew_version_at_creation: "$specrewVersion"
-created_at: "$createdAt"
-last_updated_at: "$timestamp"
+    $persistedExpertise = [ordered]@{}
+    foreach ($personaId in $script:UserProfileExpertiseMap.Keys) {
+        $persistedExpertise[$script:UserProfileExpertiseMap[$personaId]] = ConvertTo-PersistedExpertiseValue -Value $ExpertiseDials[$personaId]
+    }
 
-# Expertise dials: 1-10 scale or "auto" for "I'm new, you decide"
-# These settings persist across all Specrew projects for this user
-expertise:
-  software_architecture: $($ExpertiseDials['architect'])
-  ui_ux: $($ExpertiseDials['ux-ui-specialist'])
-  product_management: $($ExpertiseDials['product-manager'])
-  ai_research_project_management: $($ExpertiseDials['ai-researcher-project-manager'])
+    $yamlLines = New-Object System.Collections.Generic.List[string]
+    $yamlLines.Add('# Specrew User Profile') | Out-Null
+    $yamlLines.Add('# Feature 049 Iteration 003 - Expertise-Aware Substantive Intake') | Out-Null
+    $yamlLines.Add('# Cross-platform user-level expertise settings for persona-driven specification intake') | Out-Null
+    $yamlLines.Add('') | Out-Null
+    $yamlLines.Add('schema: "1.0"') | Out-Null
+    $yamlLines.Add(("specrew_version_at_creation: ""{0}""" -f $specrewVersion)) | Out-Null
+    $yamlLines.Add(("created_at: ""{0}""" -f $createdAt)) | Out-Null
+    $yamlLines.Add(("last_updated_at: ""{0}""" -f $timestamp)) | Out-Null
+    if ($null -ne $userName) {
+        $yamlLines.Add(("user_name: ""{0}""" -f $userName.Replace('"', '\"'))) | Out-Null
+    }
+    $yamlLines.Add('') | Out-Null
+    $yamlLines.Add('# Expertise dials persist as 1-10 or null; null keeps the auto-decision path') | Out-Null
+    $yamlLines.Add('# These settings persist across all Specrew projects for this user') | Out-Null
+    $yamlLines.Add('expertise:') | Out-Null
+    foreach ($field in @('software_architecture', 'ui_ux', 'product_management', 'ai_research_project_management')) {
+        $value = $persistedExpertise[$field]
+        $scalar = if ($null -eq $value) { 'null' } else { [string]$value }
+        $yamlLines.Add(("  {0}: {1}" -f $field, $scalar)) | Out-Null
+    }
+    $yamlLines.Add('') | Out-Null
+    $yamlLines.Add('preferences:') | Out-Null
+    $yamlLines.Add(("  preferred_intake_depth: ""{0}""" -f $preferredDepth)) | Out-Null
 
-preferences:
-  preferred_intake_depth: "auto"
-"@
-    
-    $yamlContent | Set-Content -LiteralPath $ProfilePath -Encoding UTF8 -NoNewline
+    ($yamlLines -join "`n") | Set-Content -LiteralPath $ProfilePath -Encoding UTF8 -NoNewline
 }
 
 function Show-UserProfileSummary {
@@ -247,7 +418,7 @@ function Show-UserProfileSummary {
     # Handle both old expertise_dials format and new expertise format
     if ($Profile.expertise) {
         foreach ($field in @('software_architecture', 'ui_ux', 'product_management', 'ai_research_project_management')) {
-            if ($Profile.expertise.ContainsKey($field)) {
+            if (Test-UserProfileKey -InputObject $Profile.expertise -Key $field) {
                 $value = $Profile.expertise[$field]
                 $personaName = $personaMapping[$field].name
                 

@@ -30,6 +30,10 @@ function Convert-IntakeYamlScalarValue {
         return $trimmed.Substring(1, $trimmed.Length - 2)
     }
 
+    if ($trimmed -eq 'null') {
+        return $null
+    }
+
     if ($trimmed -match '^\[(.*)\]$') {
         $inner = $matches[1].Trim()
         if ([string]::IsNullOrWhiteSpace($inner)) {
@@ -237,14 +241,34 @@ function Convert-IntakeUserProfile {
         [string]$Content
     )
 
-    $profile = @{
-        schema_version = '1.0'
-        created_at = ''
-        updated_at = ''
-        expertise_dials = @{}
+    $personaFieldMap = [ordered]@{
+        'architect'                     = 'software_architecture'
+        'ux-ui-specialist'              = 'ui_ux'
+        'product-manager'               = 'product_management'
+        'ai-researcher-project-manager' = 'ai_research_project_management'
     }
 
-    $inExpertiseDials = $false
+    $profile = [ordered]@{
+        schema                      = '1.0'
+        schema_version              = '1.0'
+        specrew_version_at_creation = ''
+        created_at                  = ''
+        last_updated_at             = ''
+        updated_at                  = ''
+        user_name                   = $null
+        expertise                   = [ordered]@{
+            software_architecture          = $null
+            ui_ux                          = $null
+            product_management             = $null
+            ai_research_project_management = $null
+        }
+        preferences                 = [ordered]@{
+            preferred_intake_depth = 'auto'
+        }
+        expertise_dials             = [ordered]@{}
+    }
+
+    $section = $null
 
     foreach ($rawLine in ($Content -split "`r?`n")) {
         if ([string]::IsNullOrWhiteSpace($rawLine)) {
@@ -255,30 +279,58 @@ function Convert-IntakeUserProfile {
             continue
         }
 
-        if ($rawLine -match '^schema(?:_version)?:\s*(.+)$') {
-            $profile.schema_version = Convert-IntakeYamlScalarValue -Value $matches[1]
+        if ($rawLine -match '^schema:\s*(.+)$') {
+            $profile.schema = Convert-IntakeYamlScalarValue -Value $matches[1]
             continue
         }
 
-        if ($rawLine -match '^created_at:\s*(.+)$') {
-            $profile.created_at = Convert-IntakeYamlScalarValue -Value $matches[1]
+        if ($rawLine -match '^schema_version:\s*(.+)$') {
+            $profile.schema = Convert-IntakeYamlScalarValue -Value $matches[1]
             continue
         }
 
-        if ($rawLine -match '^updated_at:\s*(.+)$') {
-            $profile.updated_at = Convert-IntakeYamlScalarValue -Value $matches[1]
+        if ($rawLine -match '^(specrew_version_at_creation|created_at|last_updated_at|updated_at|user_name):\s*(.+)$') {
+            $profile[$matches[1]] = Convert-IntakeYamlScalarValue -Value $matches[2]
             continue
         }
 
-        if ($rawLine -match '^expertise(?:_dials)?:\s*$') {
-            $inExpertiseDials = $true
+        if ($rawLine -match '^(expertise|preferences|expertise_dials):\s*$') {
+            $section = $matches[1]
             continue
         }
 
-        if ($inExpertiseDials -and $rawLine -match '^\s{2}([A-Za-z0-9_-]+):\s*(.+)$') {
-            $profile.expertise_dials[$matches[1]] = Convert-IntakeYamlScalarValue -Value $matches[2]
+        if ($rawLine -match '^\s{2}([A-Za-z0-9_-]+):\s*(.+)$' -and $null -ne $section) {
+            $key = $matches[1]
+            $value = Convert-IntakeYamlScalarValue -Value $matches[2]
+            if ($section -eq 'preferences') {
+                $profile.preferences[$key] = $value
+            }
+            else {
+                $profile[$section][$key] = $value
+            }
         }
     }
+
+    foreach ($personaId in $personaFieldMap.Keys) {
+        $field = $personaFieldMap[$personaId]
+        if ($profile.expertise[$field] -eq 'auto') {
+            $profile.expertise[$field] = $null
+        }
+        elseif ($null -eq $profile.expertise[$field] -and $profile.expertise_dials.Contains($personaId)) {
+            $legacyValue = $profile.expertise_dials[$personaId]
+            if ($legacyValue -eq 'auto') {
+                $profile.expertise[$field] = $null
+            }
+            elseif ($null -ne $legacyValue) {
+                $profile.expertise[$field] = $legacyValue
+            }
+        }
+
+        $profile.expertise_dials[$personaId] = if ($null -eq $profile.expertise[$field]) { 'auto' } else { $profile.expertise[$field] }
+    }
+
+    $profile.schema_version = $profile.schema
+    $profile.updated_at = if ($null -ne $profile.last_updated_at -and $profile.last_updated_at -ne '') { $profile.last_updated_at } else { $profile.updated_at }
 
     return $profile
 }

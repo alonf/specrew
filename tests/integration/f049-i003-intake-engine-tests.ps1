@@ -50,10 +50,25 @@ function Assert-GreaterOrEqual {
     }
 }
 
+function Test-MapKey {
+    param(
+        [Parameter(Mandatory = $true)]$Map,
+        [Parameter(Mandatory = $true)][string]$Key
+    )
+
+    if ($Map -is [System.Collections.IDictionary]) {
+        return $Map.Contains($Key)
+    }
+
+    return $null -ne $Map.PSObject.Properties[$Key]
+}
+
 $repoRoot = (Resolve-Path (Join-Path -Path $PSScriptRoot -ChildPath '..\..')).Path
 $intakeRoot = Join-Path $repoRoot '.specify\intake'
 $enginePath = Join-Path $repoRoot 'extensions\specrew-speckit\scripts\intake\Invoke-SpecifyIntake.ps1'
+$mirrorEnginePath = Join-Path $repoRoot '.specify\extensions\specrew-speckit\scripts\intake\Invoke-SpecifyIntake.ps1'
 $helperRoot = Join-Path $repoRoot 'extensions\specrew-speckit\scripts\intake\helpers'
+$mirrorHelperRoot = Join-Path $repoRoot '.specify\extensions\specrew-speckit\scripts\intake\helpers'
 $userProfileHelperPath = Join-Path $repoRoot 'scripts\internal\user-profile.ps1'
 $scratchRoot = Join-Path $repoRoot 'tests\integration\scratch\f049-i003-intake-engine'
 
@@ -75,6 +90,31 @@ New-Item -ItemType Directory -Path $scratchRoot -Force | Out-Null
 
 Push-Location -LiteralPath $repoRoot
 try {
+    $mirrorPairs = @(
+        @{
+            Primary = $enginePath
+            Mirror  = $mirrorEnginePath
+            Label   = 'Invoke-SpecifyIntake.ps1'
+        }
+        @{
+            Primary = Join-Path $helperRoot 'Render-Annotation.ps1'
+            Mirror  = Join-Path $mirrorHelperRoot 'Render-Annotation.ps1'
+            Label   = 'Render-Annotation.ps1'
+        }
+        @{
+            Primary = Join-Path $helperRoot 'Read-IntakeYaml.ps1'
+            Mirror  = Join-Path $mirrorHelperRoot 'Read-IntakeYaml.ps1'
+            Label   = 'Read-IntakeYaml.ps1'
+        }
+    )
+
+    foreach ($pair in $mirrorPairs) {
+        $primaryHash = (Get-FileHash -LiteralPath $pair.Primary -Algorithm SHA256).Hash
+        $mirrorHash = (Get-FileHash -LiteralPath $pair.Mirror -Algorithm SHA256).Hash
+        Assert-Equal -Actual $mirrorHash -Expected $primaryHash -Message "FR-028/TG-014: $($pair.Label) maintains extension/.specify mirror parity"
+    }
+    Write-Pass 'Mirror parity verified for intake engine runtime surfaces'
+
     $personas = Load-PersonaCatalog -IntakeDataRoot $intakeRoot
     $categories = Load-CategoryCatalog -IntakeDataRoot $intakeRoot
     $rules = Read-IntakeYamlDocument -Path (Join-Path $intakeRoot 'depth-rules.yml') -Kind 'depth_rules'
@@ -96,35 +136,49 @@ try {
 
     Save-UserProfile -ExpertiseDials $expertiseDials -ProfilePath $profilePath
     $loadedProfile = Get-UserProfile -ProfilePath $profilePath
+    $profileContent = Get-Content -LiteralPath $profilePath -Raw -Encoding UTF8
     Assert-True -Condition (Test-Path -LiteralPath $profilePath -PathType Leaf) -Message 'T020/T021: user-profile.yml is persisted to the requested path'
     
     # FR-024 schema validation
-    Assert-True -Condition ($loadedProfile.ContainsKey('schema') -and $loadedProfile.schema -eq '1.0') -Message 'FR-024: schema field present and correct'
-    Assert-True -Condition ($loadedProfile.ContainsKey('specrew_version_at_creation')) -Message 'FR-024: specrew_version_at_creation field present'
-    Assert-True -Condition ($loadedProfile.ContainsKey('created_at') -and -not [string]::IsNullOrWhiteSpace($loadedProfile.created_at)) -Message 'FR-024: created_at field present'
-    Assert-True -Condition ($loadedProfile.ContainsKey('last_updated_at') -and -not [string]::IsNullOrWhiteSpace($loadedProfile.last_updated_at)) -Message 'FR-024: last_updated_at field present'
-    Assert-True -Condition ($loadedProfile.ContainsKey('expertise')) -Message 'FR-024: expertise structure present'
-    Assert-True -Condition ($loadedProfile.ContainsKey('preferences')) -Message 'FR-024: preferences structure present'
+    Assert-True -Condition ((Test-MapKey -Map $loadedProfile -Key 'schema') -and $loadedProfile.schema -eq '1.0') -Message 'FR-024: schema field present and correct'
+    Assert-True -Condition (Test-MapKey -Map $loadedProfile -Key 'specrew_version_at_creation') -Message 'FR-024: specrew_version_at_creation field present'
+    Assert-True -Condition ((Test-MapKey -Map $loadedProfile -Key 'created_at') -and -not [string]::IsNullOrWhiteSpace($loadedProfile.created_at)) -Message 'FR-024: created_at field present'
+    Assert-True -Condition ((Test-MapKey -Map $loadedProfile -Key 'last_updated_at') -and -not [string]::IsNullOrWhiteSpace($loadedProfile.last_updated_at)) -Message 'FR-024: last_updated_at field present'
+    Assert-True -Condition (Test-MapKey -Map $loadedProfile -Key 'expertise') -Message 'FR-024: expertise structure present'
+    Assert-True -Condition (Test-MapKey -Map $loadedProfile -Key 'preferences') -Message 'FR-024: preferences structure present'
     
-    Assert-Equal -Actual $loadedProfile.expertise['software_architecture'] -Expected '5' -Message 'FR-024: architect expertise maps to software_architecture field'
-    Assert-Equal -Actual $loadedProfile.expertise['ui_ux'] -Expected 'auto' -Message 'FR-024: auto expertise dial round-trips through user-profile.yml'
-    Assert-Equal -Actual $loadedProfile.expertise['product_management'] -Expected '8' -Message 'FR-024: product-manager expertise maps to product_management field'
+    Assert-Equal -Actual $loadedProfile.expertise['software_architecture'] -Expected 5 -Message 'FR-024: architect expertise persists as numeric software_architecture'
+    Assert-True -Condition ($null -eq $loadedProfile.expertise['ui_ux']) -Message 'FR-024: auto expertise persists as null in expertise.ui_ux'
+    Assert-Equal -Actual $loadedProfile.expertise['product_management'] -Expected 8 -Message 'FR-024: product-manager expertise persists as numeric product_management'
+    Assert-Equal -Actual $loadedProfile.expertise_dials['ux-ui-specialist'] -Expected 'auto' -Message 'FR-023/FR-024: runtime profile maps null expertise.ui_ux back to auto semantics'
+    Assert-True -Condition ($profileContent -match '(?m)^  ui_ux: null$') -Message 'FR-024: persisted YAML writes null for the auto expertise field'
+    Assert-True -Condition (-not ($profileContent -match '(?m)^  (software_architecture|ui_ux|product_management|ai_research_project_management): auto$')) -Message 'FR-024: persisted expertise fields never store the string auto'
     Assert-True -Condition ((Show-UserProfileSummary -Profile $loadedProfile) -match '/specrew-user-profile edit') -Message 'T022/T025: profile summary advertises slash-command edit guidance'
-    Write-Pass 'User profile persistence and summary guidance work with the new helper'
+    Write-Pass 'User profile persistence stores FR-024 numeric-or-null schema while preserving summary guidance'
     
-    # Test auto-decision path end-to-end (FR-023)
-    $autoResult = & $enginePath -TestMode -IntakeDataRoot $intakeRoot -UserInput 'Build a planning assistant' -ExpertiseDial @{
+    # Test persisted auto-decision path end-to-end (FR-023) through both engine roots
+    $autoProfilePath = Join-Path $scratchRoot 'user-profile-auto.yml'
+    Save-UserProfile -ExpertiseDials @{
         'product-manager' = 'auto'
         'ux-ui-specialist' = 'auto'
         'architect' = 'auto'
         'ai-researcher-project-manager' = 'auto'
+    } -ProfilePath $autoProfilePath
+    $autoProfileContent = Get-Content -LiteralPath $autoProfilePath -Raw -Encoding UTF8
+    Assert-True -Condition (-not ($autoProfileContent -match '(?m)^  (software_architecture|ui_ux|product_management|ai_research_project_management): auto$')) -Message 'FR-024: fully auto profiles still persist null instead of auto'
+
+    foreach ($engineUnderTest in @(
+            @{ Name = 'primary'; Path = $enginePath }
+            @{ Name = 'mirror'; Path = $mirrorEnginePath }
+        )) {
+        $autoResult = & $engineUnderTest.Path -TestMode -IntakeDataRoot $intakeRoot -UserInput 'Build a planning assistant' -UserProfilePath $autoProfilePath
+        $autoState = $autoResult | Select-Object -Last 1
+        Assert-True -Condition ((@($autoState.results | ForEach-Object expertise_dial) -join ',') -eq 'auto,auto,auto,auto') -Message "FR-023: $($engineUnderTest.Name) engine preserves null-backed auto semantics through engine processing"
+        Assert-True -Condition ((@($autoState.results | ForEach-Object lens_mode) -join ',') -eq 'C,C,C,C') -Message "FR-023: $($engineUnderTest.Name) engine resolves all null-backed auto lenses to Mode C"
+        $autoAnnotationCounts = @($autoState.results | ForEach-Object { @($_.annotations).Count })
+        Assert-Equal -Actual ($autoAnnotationCounts | Select-Object -First 1) -Expected 12 -Message "FR-023: $($engineUnderTest.Name) engine surfaces one transparency annotation per category for persisted auto profiles"
     }
-    $autoState = $autoResult | Select-Object -Last 1
-    Assert-True -Condition ((@($autoState.results | ForEach-Object expertise_dial) -join ',') -eq 'auto,auto,auto,auto') -Message 'FR-023: auto expertise dial preserved through engine processing'
-    Assert-True -Condition ((@($autoState.results | ForEach-Object lens_mode) -join ',') -eq 'C,C,C,C') -Message 'FR-023: auto path resolves all lenses to Mode C'
-    $autoAnnotationCounts = @($autoState.results | ForEach-Object { @($_.annotations).Count })
-    Assert-Equal -Actual ($autoAnnotationCounts | Select-Object -First 1) -Expected 12 -Message 'FR-023: auto path surfaces one transparency annotation per category'
-    Write-Pass 'Auto-decision path (FR-023) preserves auto and delivers auto-decisions with transparency'
+    Write-Pass 'Persisted auto-decision path works through both extension and .specify intake engines'
 
     $seniorResult = & $enginePath -TestMode -IntakeDataRoot $intakeRoot -UserInput 'Build a planning assistant' -ExpertiseDial @{
         'product-manager' = 8
@@ -166,6 +220,16 @@ try {
     Assert-Equal -Actual ($annotationCounts | Select-Object -First 1) -Expected 12 -Message 'T031/T034: novice intake surfaces one transparency annotation per category'
     Assert-GreaterOrEqual -Actual $annotationCoverage -Expected 40 -Message 'SC-005: low-expertise path auto-decides at least 40 percent of decision slots'
     Write-Pass "Low-expertise path surfaces auto-decisions for $annotationCoverage percent of decision slots"
+
+    $modeAThresholdResults = @(
+        Resolve-PerLensMode -ExpertiseDial 8 -LensCompleteness 0.80 -DepthRules $rules
+        Resolve-PerLensMode -ExpertiseDial 8 -LensCompleteness 0.80 -DepthRules $rules
+        Resolve-PerLensMode -ExpertiseDial 8 -LensCompleteness 0.80 -DepthRules $rules
+        Resolve-PerLensMode -ExpertiseDial 8 -LensCompleteness 0.80 -DepthRules $rules
+    )
+    $modeARate = [math]::Round(((@($modeAThresholdResults | Where-Object { $_ -eq 'A' }).Count / [double]$modeAThresholdResults.Count) * 100), 2)
+    Assert-GreaterOrEqual -Actual $modeARate -Expected 70 -Message 'SC-005: senior high-completeness per-lens Mode A rate meets the 70 percent threshold'
+    Write-Pass "Senior/high-completeness Mode A rate of $modeARate percent (4/4 modeled lenses) exceeds 70 percent threshold (SC-005 third clause)"
 
     $extendedIntakeRoot = Join-Path $scratchRoot 'extended-intake'
     Copy-Item -LiteralPath $intakeRoot -Destination $extendedIntakeRoot -Recurse -Force

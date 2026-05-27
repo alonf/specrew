@@ -86,6 +86,44 @@ foreach ($helper in $helpers) {
     }
 }
 
+function Test-IntakeProfileKey {
+    param(
+        [AllowNull()]
+        [object]$InputObject,
+        [Parameter(Mandatory = $true)]
+        [string]$Key
+    )
+
+    if ($null -eq $InputObject) {
+        return $false
+    }
+
+    if ($InputObject -is [System.Collections.IDictionary]) {
+        return $InputObject.Contains($Key)
+    }
+
+    return $null -ne $InputObject.PSObject.Properties[$Key]
+}
+
+function Get-IntakeProfileValue {
+    param(
+        [AllowNull()]
+        [object]$InputObject,
+        [Parameter(Mandatory = $true)]
+        [string]$Key
+    )
+
+    if (-not (Test-IntakeProfileKey -InputObject $InputObject -Key $Key)) {
+        return $null
+    }
+
+    if ($InputObject -is [System.Collections.IDictionary]) {
+        return $InputObject[$Key]
+    }
+
+    return $InputObject.$Key
+}
+
 # Resolve paths
 if ([string]::IsNullOrEmpty($IntakeDataRoot)) {
     # Default to project .specify/intake/ directory
@@ -132,22 +170,33 @@ if ($ExpertiseDial) {
         $userProfile = @{}
     }
     # Accept direct persona-ID mapping for backward compatibility
-    $userProfile.expertise_dials = $ExpertiseDial
+    if ($userProfile -is [System.Collections.IDictionary]) {
+        $userProfile.expertise_dials = $ExpertiseDial
+    }
+    else {
+        $userProfile | Add-Member -NotePropertyName 'expertise_dials' -NotePropertyValue $ExpertiseDial -Force
+    }
 }
 
 # Map FR-024 expertise structure to legacy persona IDs for compatibility
-if ($userProfile -and $userProfile.PSObject.Properties['expertise'] -and -not $userProfile.expertise_dials) {
+if ($userProfile -and (Test-IntakeProfileKey -InputObject $userProfile -Key 'expertise') -and -not (Test-IntakeProfileKey -InputObject $userProfile -Key 'expertise_dials')) {
     $legacyMapping = @{
         'software_architecture' = 'architect'
         'ui_ux' = 'ux-ui-specialist'
         'product_management' = 'product-manager'
         'ai_research_project_management' = 'ai-researcher-project-manager'
     }
-    $userProfile.expertise_dials = @{}
+    if ($userProfile -is [System.Collections.IDictionary]) {
+        $userProfile.expertise_dials = @{}
+    }
+    else {
+        $userProfile | Add-Member -NotePropertyName 'expertise_dials' -NotePropertyValue @{} -Force
+    }
+    $rawExpertise = Get-IntakeProfileValue -InputObject $userProfile -Key 'expertise'
     foreach ($field in $legacyMapping.Keys) {
         $personaId = $legacyMapping[$field]
-        if ($userProfile.expertise.ContainsKey($field)) {
-            $userProfile.expertise_dials[$personaId] = $userProfile.expertise[$field]
+        if (Test-IntakeProfileKey -InputObject $rawExpertise -Key $field) {
+            $userProfile.expertise_dials[$personaId] = Get-IntakeProfileValue -InputObject $rawExpertise -Key $field
         }
     }
 }
@@ -204,8 +253,9 @@ foreach ($persona in $personas) {
 
     # Get expertise dial for this persona
     $personaExpertiseDial = $null
-    if ($userProfile -and $userProfile.expertise_dials -and $userProfile.expertise_dials.ContainsKey($persona.id)) {
-        $dialValue = $userProfile.expertise_dials[$persona.id]
+    $runtimeExpertiseDials = if ($userProfile) { Get-IntakeProfileValue -InputObject $userProfile -Key 'expertise_dials' } else { $null }
+    if ($userProfile -and $runtimeExpertiseDials -and (Test-IntakeProfileKey -InputObject $runtimeExpertiseDials -Key $persona.id)) {
+        $dialValue = Get-IntakeProfileValue -InputObject $runtimeExpertiseDials -Key $persona.id
         
         # Handle "auto" or "I'm new, you decide" - preserve the string as-is
         if ($dialValue -eq 'auto') {

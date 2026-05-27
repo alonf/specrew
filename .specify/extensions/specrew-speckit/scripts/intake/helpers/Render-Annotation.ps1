@@ -37,8 +37,23 @@ function Render-Annotation {
     )
 
     $annotations = @()
-    if ($LensResult.lens_mode -ne 'C' -or $LensResult.expertise_dial -gt 3) {
+    
+    # Only render annotations for Mode C with low expertise or auto-decision
+    if ($LensResult.lens_mode -ne 'C') {
         return $annotations
+    }
+    
+    # Skip if high expertise (≥ 4) and not auto
+    if ($LensResult.expertise_dial -ne 'auto') {
+        try {
+            $dialNumeric = [int]$LensResult.expertise_dial
+            if ($dialNumeric -gt 3) {
+                return $annotations
+            }
+        } catch {
+            # If can't parse as int and not 'auto', skip annotations
+            return $annotations
+        }
     }
 
     foreach ($category in $AutoDecisions.Keys) {

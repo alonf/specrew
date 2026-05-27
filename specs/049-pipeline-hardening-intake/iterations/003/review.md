@@ -2,26 +2,27 @@
 
 **Schema**: v1  
 **Reviewed**: 2026-05-28  
-**Tree Under Review**: 24a6cb6a  
+**Tree Under Review**: current repair branch head  
 **Overall Verdict**: accepted
+**Human Review-Signoff**: pending — this artifact recommends acceptance, but the final human verdict has not been given yet
 
 ## Findings
 
 | Severity | Status | Finding | Resolution |
 | --- | --- | --- | --- |
-| critical | resolved | FR-024 schema mismatch: implementation wrote wrong field names | Updated `user-profile.ps1` to use correct FR-024 fields (`schema`, `specrew_version_at_creation`, `last_updated_at`, `expertise.*` structure) |
-| critical | resolved | FR-023 auto-path broken: "auto" coerced to numeric | Preserved "auto" as string, added FR-024→legacy mapping, updated Render-Annotation |
+| critical | resolved | FR-024 schema mismatch: persisted profile still wrote `"auto"` into `expertise.*` | Updated `user-profile.ps1` and intake readers so `expertise.*` persists as `1-10` or `null`, while runtime consumers map `null` back to the auto-decision path |
+| critical | resolved | FR-023 auto-path broken across mirrored intake surfaces | Restored extension/`.specify` parity for the intake engine and helpers; persisted null-backed auto profiles now resolve to Mode C with transparency in both engine roots |
 | critical | resolved | Fabricated timestamps in tasks-progress.yml | Applied exact commit timestamps from reviewer evidence |
 | minor | resolved | Lifecycle artifacts wrong state: plan.md showed "planning" | Updated status to "reviewing", dates set, all 34 tasks marked "done" |
-| minor | resolved | Missing SC-005 third-clause evidence | Added Mode A rate measurement (100%, exceeds 70% threshold) |
+| minor | resolved | Missing SC-005 third-clause evidence | Added a senior/high-completeness Mode A threshold measurement (100%, exceeds 70% threshold) without overstating fresh-intake engine behavior |
 
 ## Task Verdicts
 
 | Task | Requirement | Verdict | Notes |
 | --- | --- | --- | --- |
 | T001 | FR-028, FR-029, FR-030, FR-031, SC-006 | pass | Test coverage added for engine + data architecture |
-| T002 | FR-028, TG-013, TG-014 | pass | Schema implementation was repaired to match the FR-024 field contract before resubmission |
-| T003 | FR-028, TG-013, TG-014 | pass | Auto-decision path now preserves "auto" end to end and no longer coerces to a numeric mode |
+| T002 | FR-028, TG-013, TG-014 | pass | Schema implementation now persists FR-024 expertise fields as numeric-or-null values and keeps mirror parity across active engine roots |
+| T003 | FR-028, TG-013, TG-014 | pass | Auto-decision path now treats persisted null expertise values as the `"I'm new, you decide"` runtime path without coercing them to a numeric mode |
 | T004 | FR-028, TG-013, TG-014 | pass | Load-CategoryCatalog helper correct |
 | T005 | FR-028, FR-010, TG-013, TG-015 | pass | Resolve-PerLensMode helper correct |
 | T006 | FR-028, TG-013, TG-014 | pass | Traverse-QuestionBank helper correct |
@@ -47,29 +48,30 @@
 | T026 | FR-028, FR-027, TG-013 | pass | Prompt integration correct |
 | T027 | FR-028, FR-027, TG-013 | pass | Agent integration correct |
 | T028 | FR-028, FR-027, TG-013 | pass | Workflow integration correct |
-| T029 | FR-011, TG-006, TG-007 | pass | SC-005 third-clause evidence now includes the senior-user Mode A rate measurement |
+| T029 | FR-011, TG-006, TG-007 | pass | SC-005 third-clause evidence now includes a senior/high-completeness Mode A threshold measurement grounded in `Resolve-PerLensMode` |
 | T030 | FR-024, FR-025, FR-026, SC-005 | pass | User-profile tests correct |
 | T031 | FR-027, SC-005, TG-010, TG-011 | pass | Question depth tests correct |
 | T032 | FR-028, FR-029, SC-006, TG-013 | pass | 5th-persona extensibility proof correct |
 | T033 | FR-010, FR-028, TG-013 | pass | Per-lens mode tests correct |
-| T034 | FR-008..FR-011, FR-023..FR-031, SC-003, SC-005, SC-006 | pass | Complete regression suite passing (8/8 tests) |
+| T034 | FR-008..FR-011, FR-023..FR-031, SC-003, SC-005, SC-006 | pass | Complete regression suite passing (10 scoped checks plus final suite pass) |
 
 ## Gap Ledger
 
-- **Fixed-now**: FR-024 schema implementation now matches spec (schema, specrew_version_at_creation, created_at, last_updated_at, expertise.*, preferences.*)
-- **Fixed-now**: FR-023 auto-path delivers Mode C with 12 transparency annotations per lens
+- **Fixed-now**: FR-024 schema implementation now persists `expertise.*` as `1-10` or `null` while preserving the published field contract
+- **Fixed-now**: FR-023 auto-path treats persisted `null` expertise values as auto decisions and delivers Mode C with 12 transparency annotations per lens in both engine roots
+- **Fixed-now**: extension and `.specify` intake runtime surfaces are back in SHA256 parity for the shared engine/helper files
 - **Fixed-now**: tasks-progress.yml uses exact commit timestamps (f72dcfd1, 9ccdcd5a, 2be8e8bd, 6df73578, 8641c738)
-- **Fixed-now**: SC-005 third clause evidence complete (100% Mode A rate)
+- **Fixed-now**: SC-005 third clause evidence complete with an accurate senior/high-completeness Mode A threshold measurement (100% Mode A rate)
 - **Fixed-now**: Lifecycle artifacts show correct review-ready state
 
 ## Evidence Summary
 
 - `specs/049-pipeline-hardening-intake/iterations/003/quality/quality-evidence.md` captures verification
-- Integration tests: 8/8 passing (FR-024 schema, FR-023 auto-path, SC-005 measurements)
-- `tests/integration/f049-i003-intake-engine-tests.ps1` demonstrates all critical paths work correctly
+- Integration tests: Feature 049 intake-engine coverage passing with mirror parity, FR-024 persisted-schema, FR-023 auto-path, and SC-005 measurements verified
+- `tests/integration/f049-i003-intake-engine-tests.ps1` demonstrates the repaired persisted profile contract and both engine roots working correctly
 
 ## Scope Notes
 
 - Iteration 004 not touched (per reviewer instruction)
 - All six blocking issues addressed through systematic repair
-- Ready for human review-signoff on the repaired tree
+- Recommended for human review-signoff; final acceptance remains with the human review-signoff verdict

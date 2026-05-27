@@ -17,8 +17,8 @@
 ## Reviewer Disposition
 
 - **Initial Review:** REJECT (6 blocking issues identified)
-- **Repairs Completed:** 2026-05-28 (planner rework cycle)
-- **Current Status:** Awaiting human review-signoff on repaired tree 24a6cb6a
+- **Repairs Completed:** 2026-05-28 (fresh spec-steward repair cycle)
+- **Current Status:** Awaiting human review-signoff on the current repair branch head
 
 ## Notes
 
@@ -30,4 +30,4 @@ Initial submission rejected by reviewer due to:
 5. Missing SC-005 third-clause evidence
 6. Must not touch iteration 004
 
-Planner initiated systematic repair of all six issues.
+Fresh spec-steward repair work addressed the accepted implementation scope without reopening Iteration 004.
