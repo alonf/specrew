@@ -20700,3 +20700,12 @@ This decision affects:
 - **Task ID**: (none)
 - **Auth Commit Hash**: a55ff6772fc107d709f8317aa15e6dec87d54100
 - **Recorded At**: 2026-05-27T00:54:32Z
+
+## 2026-05-27T01:12:20Z — Boundary sync: plan
+
+- **Boundary Type**: plan
+- **Feature Ref**: 049-pipeline-hardening-intake
+- **Iteration Number**: (none)
+- **Task ID**: (none)
+- **Auth Commit Hash**: 9edfb7b5b44acde6fc818727bf753fecc908033b
+- **Recorded At**: 2026-05-27T01:12:19Z
