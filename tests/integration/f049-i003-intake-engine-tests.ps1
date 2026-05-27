@@ -97,10 +97,34 @@ try {
     Save-UserProfile -ExpertiseDials $expertiseDials -ProfilePath $profilePath
     $loadedProfile = Get-UserProfile -ProfilePath $profilePath
     Assert-True -Condition (Test-Path -LiteralPath $profilePath -PathType Leaf) -Message 'T020/T021: user-profile.yml is persisted to the requested path'
-    Assert-Equal -Actual $loadedProfile.expertise_dials['product-manager'] -Expected 8 -Message 'T020/T021: numeric expertise dials round-trip through user-profile.yml'
-    Assert-Equal -Actual $loadedProfile.expertise_dials['ux-ui-specialist'] -Expected 'auto' -Message 'T020/T021: auto expertise dial round-trips through user-profile.yml'
+    
+    # FR-024 schema validation
+    Assert-True -Condition ($loadedProfile.ContainsKey('schema') -and $loadedProfile.schema -eq '1.0') -Message 'FR-024: schema field present and correct'
+    Assert-True -Condition ($loadedProfile.ContainsKey('specrew_version_at_creation')) -Message 'FR-024: specrew_version_at_creation field present'
+    Assert-True -Condition ($loadedProfile.ContainsKey('created_at') -and -not [string]::IsNullOrWhiteSpace($loadedProfile.created_at)) -Message 'FR-024: created_at field present'
+    Assert-True -Condition ($loadedProfile.ContainsKey('last_updated_at') -and -not [string]::IsNullOrWhiteSpace($loadedProfile.last_updated_at)) -Message 'FR-024: last_updated_at field present'
+    Assert-True -Condition ($loadedProfile.ContainsKey('expertise')) -Message 'FR-024: expertise structure present'
+    Assert-True -Condition ($loadedProfile.ContainsKey('preferences')) -Message 'FR-024: preferences structure present'
+    
+    Assert-Equal -Actual $loadedProfile.expertise['software_architecture'] -Expected '5' -Message 'FR-024: architect expertise maps to software_architecture field'
+    Assert-Equal -Actual $loadedProfile.expertise['ui_ux'] -Expected 'auto' -Message 'FR-024: auto expertise dial round-trips through user-profile.yml'
+    Assert-Equal -Actual $loadedProfile.expertise['product_management'] -Expected '8' -Message 'FR-024: product-manager expertise maps to product_management field'
     Assert-True -Condition ((Show-UserProfileSummary -Profile $loadedProfile) -match '/specrew-user-profile edit') -Message 'T022/T025: profile summary advertises slash-command edit guidance'
     Write-Pass 'User profile persistence and summary guidance work with the new helper'
+    
+    # Test auto-decision path end-to-end (FR-023)
+    $autoResult = & $enginePath -TestMode -IntakeDataRoot $intakeRoot -UserInput 'Build a planning assistant' -ExpertiseDial @{
+        'product-manager' = 'auto'
+        'ux-ui-specialist' = 'auto'
+        'architect' = 'auto'
+        'ai-researcher-project-manager' = 'auto'
+    }
+    $autoState = $autoResult | Select-Object -Last 1
+    Assert-True -Condition ((@($autoState.results | ForEach-Object expertise_dial) -join ',') -eq 'auto,auto,auto,auto') -Message 'FR-023: auto expertise dial preserved through engine processing'
+    Assert-True -Condition ((@($autoState.results | ForEach-Object lens_mode) -join ',') -eq 'C,C,C,C') -Message 'FR-023: auto path resolves all lenses to Mode C'
+    $autoAnnotationCounts = @($autoState.results | ForEach-Object { @($_.annotations).Count })
+    Assert-Equal -Actual ($autoAnnotationCounts | Select-Object -First 1) -Expected 12 -Message 'FR-023: auto path surfaces one transparency annotation per category'
+    Write-Pass 'Auto-decision path (FR-023) preserves auto and delivers auto-decisions with transparency'
 
     $seniorResult = & $enginePath -TestMode -IntakeDataRoot $intakeRoot -UserInput 'Build a planning assistant' -ExpertiseDial @{
         'product-manager' = 8
