@@ -159,14 +159,17 @@ To ensure that the initial specify phase (`/speckit.specify`) captures realistic
 ### Session 2026-05-27 (Post-Restart Alignment)
 
 #### duplicate-row deploy bug (Bug 1)
+
 - **Question**: How do we verify and prevent duplication of squad team and routing rows?
 - **Decision**: Fix Squad-template merge logic in `scripts/specrew-update.ps1` and `deploy-squad-runtime.ps1`. Implement a dedicated integration test that attempts a redundant update and asserts no duplicates are added to `.squad/team.md` or `.squad/routing.md`.
 
 #### specrew update --info version-check (Bug 2)
+
 - **Question**: How do we unify the version check source for `--info`?
 - **Decision**: Unify version check logic around the PSGallery API. Promoted Proposal 049 (Version-Check Source Unification) to draft. `--info` will fetch the actual latest version from PSGallery as the default.
 
 #### specrew update vs Update-Module Specrew (Bug 3)
+
 - **Question**: How do we resolve user naming confusion?
 - **Decision**: Add an explicit troubleshooting section in `docs/troubleshooting.md` outlining the difference in scope and execution between the two.
 
@@ -186,4 +189,3 @@ To ensure that the initial specify phase (`/speckit.specify`) captures realistic
   - Pre-implementation iteration planning approval.
   - Review / PR merge approval.
   - Manual test PAS/FAIL validation (Step 11).
-

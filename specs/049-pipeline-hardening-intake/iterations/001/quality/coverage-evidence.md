@@ -26,6 +26,7 @@ All publish-module harness assertions passed!
 ```
 
 **Requirements Coverage**:
+
 - FR-001: Docker harness uses Linux PowerShell container ✅
 - FR-002: Baseline v0.27.6 installation ✅
 - FR-003: FileList integrity check ✅
@@ -97,6 +98,7 @@ Bug 1 (duplicate-row deploy) is FIXED and protected by regression test.
 ```
 
 **Requirements Coverage**:
+
 - FR-013: No duplicate Squad entries ✅
 
 **Regression Protection**: Prevents Bug 1 from reoccurring in future releases.
@@ -114,6 +116,7 @@ Bug 1 (duplicate-row deploy) is FIXED and protected by regression test.
 **Verification**: ✅ Exists at expected path  
 **FileList Registration**: ✅ Registered in `Specrew.psd1` FileList (commit 10f5afb8)  
 **Logic Validation**:
+
 - Contains FileList validation logic ✅
 - Contains version pin drift assertions ✅
 - Contains update transition tests ✅
@@ -135,6 +138,7 @@ Bug 1 (duplicate-row deploy) is FIXED and protected by regression test.
 **Status**: ✅ Code reviewed and verified
 
 **Implementation**:
+
 ```powershell
 # Check PSGallery first as the authoritative latest published source.
 $skip = if ($null -ne $SkipUpdateCheck) { [bool]$SkipUpdateCheck } else { $false }
@@ -154,6 +158,7 @@ catch {
 ```
 
 **Verification Points**:
+
 - PSGallery checked first via `Get-PSGalleryLatestVersion` ✅
 - Fallback to module manifest on API failure ✅
 - Source attribution in return object (`Source` field) ✅
@@ -174,6 +179,7 @@ catch {
 **Command**: `git rm --cached .specrew/start-context.json .specrew/last-start-prompt.md`
 
 **Verification**:
+
 ```
 $ git ls-files .specrew/start-context.json
 (no output - file is now untracked)
@@ -244,6 +250,7 @@ docker run --rm specrew-publish-test
 ```
 
 **Expected Output**:
+
 ```
 ========================================
  Phase 1: Validate Candidate Structure

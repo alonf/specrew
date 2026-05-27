@@ -10,9 +10,11 @@
 - **Recorded At**: 2026-05-27
 
 #### Problem
+
 State.md carried `Current Phase: review-signoff-prep`, which is not in the canonical phase set.
 
 #### Canonical Phases (Authoritative)
+
 - specify
 - clarify
 - plan
@@ -24,15 +26,18 @@ State.md carried `Current Phase: review-signoff-prep`, which is not in the canon
 - feature-closeout
 
 #### Decision
+
 Changed `Current Phase` from `review-signoff-prep` to `review-signoff`.
 
 #### Rationale
+
 - All 10 iteration tasks are complete and verified
 - Iteration status is "reviewing" (plan.md line 5)
 - Reviewer verification complete; iteration positioned at the review-signoff boundary
 - No functional change; only terminology alignment with canonical set
 
 #### Artifact Changed
+
 - `specs/049-pipeline-hardening-intake/iterations/001/state.md` line 4
 
 ---
@@ -70,6 +75,7 @@ The validator (validate-governance.ps1) requires that when `retro.md` exists, it
 #### Next Handoff
 
 The Retro Facilitator should:
+
 1. Run retro ceremony with the Squad
 2. Fill in Phase Variance metrics (Implementation, Review, Discovery actual effort)
 3. Complete "What Went Well" / "What Didn't Go Well" sections with concrete observations
@@ -96,10 +102,12 @@ The Retro Facilitator should:
 #### Changes Applied
 
 **state.md Metadata Repair**:
+
 - Added `**Current Phase**: review-signoff-prep` — Iteration passed implementation/review boundary, ready for signoff ceremony
 - Added `**Iteration Status**: reviewing` — Validator-compliant status value (not `reviewed`, not `done`)
 
 **plan.md Status Repair**:
+
 - Changed `Status: complete` → `Status: reviewing`
 - Changed `Completed: 2026-05-27` → `Completed: (pending review-signoff)`
 
@@ -149,6 +157,7 @@ Reconciled execution-truth artifacts (plan.md and state.md) to reflect completed
 All 10 iteration tasks have been delivered and verified:
 
 **Docker Harness Implementation (T001-T007)**:
+
 - ✅ Failing E2E assertions added (T001)
 - ✅ Docker container created with Linux PowerShell baseline (T002)
 - ✅ Test harness script with FileList validation (T003)
@@ -158,6 +167,7 @@ All 10 iteration tasks have been delivered and verified:
 - ✅ Reviewer verification completed (T007)
 
 **Bug Fixes & Regression Tests (T018-T020)**:
+
 - ✅ Duplicate-row merge bug fixed (T018, commit 2d52b9f9)
 - ✅ Regression test for duplicate-row fix (T019)
 - ✅ PSGallery-first version check implemented (T020, commit 2d52b9f9)
@@ -223,6 +233,7 @@ All 10 iteration tasks have been delivered and verified:
 **Observable behavior**: Manual `specrew update --info` execution confirms PSGallery-first query with fallback
 
 **Deferral rationale**: A focused regression test for Bug 2 would require either:
+
 1. Live PSGallery API access (flaky, slow, external dependency in CI)
 2. Mock/stub infrastructure for `Get-PSGalleryLatestVersion` (adds test framework complexity)
 
@@ -235,6 +246,7 @@ The fix is straightforward, code-reviewed, and the behavior is observable via ma
 **Symptom fix**: `git rm --cached` on `.specrew/start-context.json` and `.specrew/last-start-prompt.md`
 
 **Structural fix still needed**: `specrew-start.ps1` recovery logic should:
+
 1. Prefer current-git-branch-derived feature over session-state cursor
 2. Never auto-resume to a feature at `lifecycle-end` boundary
 3. Provide explicit recovery UX when session state and git branch disagree
@@ -280,6 +292,7 @@ Created a boundary-safe retrospective scaffold to satisfy review-readiness mecha
 #### Key Data Captured
 
 **Estimation Accuracy**:  
+
 - All 10 tasks hit estimated effort exactly (T001–T007, T018–T020)
 - Total consumed: 17 story_points; capacity: 20 (well below overcommit threshold)
 - Average variance: +/- 0
@@ -291,6 +304,7 @@ Created a boundary-safe retrospective scaffold to satisfy review-readiness mecha
 #### Next Steps (Not Yet Decided)
 
 The following sections require facilitation during the retro ceremony:
+
 1. **Phase Variance Actual/Delta values** — to be populated by observing phase transitions in state.md and execution logs
 2. **What Went Well / What Didn't Go Well** — team reflection on planning, execution, and governance flow
 3. **Improvement Actions** — concrete owner, phase, type, and expected effect
@@ -316,15 +330,18 @@ Iteration 001 review packet is complete and substantively ready for review-signo
 #### Review Packet Contents
 
 **Canonical Review Artifact**:
+
 - **review.md** — Overall verdict: accepted; 10 task verdicts (all pass); findings table (1 resolved); gap ledger (no open gaps); implementation briefing; evidence summary
 
 **Reviewer Quality Artifacts**:
+
 - **code-map.md** — Component overview, file-level changes, control flow diagrams, key algorithms, test coverage matrix, maintenance notes
 - **coverage-evidence.md** — Test execution results (T001, T019), code review evidence (Bug 2, Bug 3), requirements traceability (8 FRs + 1 SC), gap analysis
 - **reviewer-index.md** — Human review checklist (10 steps), quick navigation, reviewer notes, risk assessment, recommendation
 - **dependency-report.md** — External dependencies (Docker images, PowerShell modules), version pins, network dependencies, risk assessment, maintenance recommendations
 
 **Supporting Evidence (Pre-Existing)**:
+
 - **review-outcomes.md** — T007 reviewer verification results (already created during implementation)
 
 #### Key Verdicts
@@ -332,6 +349,7 @@ Iteration 001 review packet is complete and substantively ready for review-signo
 **Overall Iteration Verdict**: **ACCEPTED** — All 10 tasks pass, no open findings, all requirements verified.
 
 **Individual Task Verdicts**:
+
 - T001: pass (7/7 assertions)
 - T002: pass (Docker base image)
 - T003: pass (5-phase harness script)
@@ -344,6 +362,7 @@ Iteration 001 review packet is complete and substantively ready for review-signo
 - T020: pass (Bug 2 fix — PSGallery-first)
 
 **Bug Coverage**:
+
 - **Bug 1** (duplicate-row deploy): Fixed at 2d52b9f9, regression test T019 passing
 - **Bug 2** (PSGallery-first version check): Fixed at 2d52b9f9, code review verified, runtime observable
 - **Bug 3** (auto-resume-wrong-feature): Symptom fixed at 437338f6, structural fix deferred to retro
@@ -351,17 +370,20 @@ Iteration 001 review packet is complete and substantively ready for review-signo
 #### Findings
 
 1 finding resolved:
+
 - **Bug 3 structural fix deferred**: Symptom fixed (untracked stale session-state files), but structural `specrew-start.ps1` recovery-logic improvement queued for retro action. Justification: Symptom fix eliminates immediate user-facing bug; structural fix requires broader refactor.
 
 #### Gap Ledger
 
 No open gaps. Two acceptable deferrals:
+
 1. Bug 2 regression test infrastructure (PSGallery API mock/stub) — deferred to future testing-infrastructure iteration. Justification: Fix is straightforward, code-reviewed, and observable via manual execution. Risk/benefit ratio does not justify adding test infrastructure now.
 2. Bug 3 structural fix (specrew-start.ps1 recovery logic) — queued for retro improvement action. Justification: Symptom fixed; structural fix requires broader refactor of recovery logic to prefer git-branch-derived feature over session-state cursor.
 
 #### Requirements Coverage
 
 All in-scope Iteration 001 requirements verified:
+
 - FR-001 to FR-005: Docker harness components ✅
 - FR-012: Version pin drift detection ✅
 - FR-013: No duplicate Squad entries ✅
@@ -423,6 +445,7 @@ Implemented Docker-based pre-publish E2E validation harness as a blocking step i
 ### Testing Evidence
 
 T001 test fixture passes all assertions:
+
 - Dockerfile.publish-test exists ✅
 - test-publish-harness.ps1 exists ✅
 - FileList integrity check passed (182 files) ✅
@@ -20458,7 +20481,7 @@ Executed T007 (Docker pre-publish harness verification) and T019 (duplicate-row 
 
 #### 1. T007: Publish-Module Harness Test File Tracking
 
-**Decision**: The previously untracked file 	ests/integration/publish-module-harness.tests.ps1 is now tracked and committed as part of T001 deliverables.
+**Decision**: The previously untracked file  ests/integration/publish-module-harness.tests.ps1 is now tracked and committed as part of T001 deliverables.
 
 **Rationale**: T001 calls for "Add failing E2E publish-module test assertions" owned by Reviewer. The test file was created but not tracked. Leaving it untracked would violate T001 completeness and requirement traceability (FR-003, FR-012). File now staged and ready for commit.
 
@@ -20468,7 +20491,7 @@ Executed T007 (Docker pre-publish harness verification) and T019 (duplicate-row 
 
 #### 2. T019: Duplicate-Row Regression Test Implementation
 
-**Decision**: Created 	ests/integration/squad-duplicate-rows.tests.ps1 as the T019 regression test for FR-013 (duplicate-row deploy bug).
+**Decision**: Created  ests/integration/squad-duplicate-rows.tests.ps1 as the T019 regression test for FR-013 (duplicate-row deploy bug).
 
 **Test Coverage**: Verifies that specrew update does NOT duplicate Squad role entries in .squad/team.md and .squad/routing.md when executed multiple times (redundant update scenario).
 
@@ -20480,7 +20503,8 @@ Executed T007 (Docker pre-publish harness verification) and T019 (duplicate-row 
 
 **Decision**: Defer dedicated unit-style integration test for Bug 2 (PSGallery-first version check) to future testing-infrastructure iteration.
 
-**Rationale**: 
+**Rationale**:
+
 - Bug 2 fix in commit 2d52b9f9 is straightforward and code-reviewed (lines 397-411 of scripts/specrew-update.ps1)
 - Dedicated regression test would require either live PSGallery API access (flaky, slow) or mock infrastructure (adds complexity)
 - Behavior is runtime-observable via specrew update --info manual execution
@@ -20498,7 +20522,8 @@ Executed T007 (Docker pre-publish harness verification) and T019 (duplicate-row 
 
 **Fix Applied**: git rm --cached on both files; future clones start clean. Commit message documents empirical bug investigation.
 
-**Rationale**: 
+**Rationale**:
+
 - Commit 437338f6 already on  49-pipeline-hardening-intake branch
 - Fixes critical user-facing bug (auto-resume to wrong feature F-047 instead of F-049)
 - Commit message notes structural fix to specrew-start.ps1 recovery logic still needed
@@ -20522,6 +20547,7 @@ All reviewer-owned verification tasks complete. Implementation quality meets acc
 ### Team Impact
 
 This decision affects:
+
 - **Implementer**: T001-T006, T018-T020 verified complete; quality verdict PASS; ready for sign-off
 - **Planner**: Iteration 001 tasks can transition to done status; Bug 3 small-fix noted for future iteration planning
 - **Retro Facilitator**: Structural recovery-logic fix queued as improvement action (defer to next iteration)
@@ -20564,14 +20590,25 @@ This decision affects:
 - **Commit Reference**: a731e83
 - **Authorization Text**:
   > approved for review-signoff.
-  > 
+  >
   > Pillar 5 manual verification PASSES — all 6 cited files (T001+T019 tests, T003 test-publish-harness.ps1, review.md, retro.md, review-outcomes.md) confirmed present in HEAD commit b2f16896 via git ls-tree -r. No Shape-5 working-tree-only-state risk for this verdict. This is exactly the discipline Proposal 120 Pillar 5 will mechanize at iter-4.
-  > 
+  >
   > My approval also authorizes the two .squad/decisions.md defer entries (Bug 2 regression-test infrastructure deferred to future testing-infra iteration; Bug 3 structural fix deferred to retro improvement-action). Attribution is correct ex post facto.
-  > 
+  >
   > Two retro improvement-action additions please:
-  > 
+  >
   > 1. Defer-entry attribution wording: when the Reviewer writes a defer entry that requires human approval, the **Approving Human**: field should say pending review-signoff verdict (or equivalent) UNTIL the human actually approves with their review-signoff response. Pre-writing the human's name + having it auto-become-correct is fragile — same family as the Shape 4 state-advance-without-verdict pattern we caught earlier (Picard catch).
   > 2. Review.md **Tree Under Review**: <hash> field is missing from this review.md. Pillar 5 detection (added to Proposal 120 tonight at commit 4da969bc on main) expects this canonical field. iter-4 should either extend the validator to handle reviews without explicit field (default to "current HEAD at the time review.md was committed") OR ship a Reviewer-charter directive mandating the field. Capture in retro.
-  > 
+  >
   > Proceed to retro phase.
+
+## 2026-05-27T00:00:51Z — Boundary enforcement: review-signoff
+
+- **Feature**: 049-pipeline-hardening-intake
+- **Boundary Type**: review-signoff
+- **Current Boundary**: before-implement
+- **Requested Boundary**: review-signoff
+- **Enforcement Action**: authorized
+- **Launch Mode**: same-window
+- **Agent Response Snippet**: (none)
+- **Reason**: Persisted authorization matched the requested boundary.

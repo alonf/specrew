@@ -15,6 +15,7 @@
 | **Enabled** | ✅ yes |
 
 **Agenda:**
+
 1. Read the authoritative requirements and acceptance criteria
 2. Map tasks back to source requirements
 3. Assign owners and capture effort estimates
@@ -35,6 +36,7 @@
 | **Enabled** | ✅ yes |
 
 **Agenda:**
+
 1. Compare each delivered task to its source requirement
 2. Produce a verdict: pass, needs-work, or blocked
 3. Demo the increment against the requirement narrative
@@ -55,6 +57,7 @@
 | **Enabled** | ✅ yes |
 
 **Agenda:**
+
 1. What happened? (facts only)
 2. Measure estimation accuracy, process adherence, and drift events
 3. Identify what to keep, change, or tighten in the next iteration

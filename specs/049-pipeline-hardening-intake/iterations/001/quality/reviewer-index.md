@@ -73,6 +73,7 @@ For the human developer reviewing this iteration before advancing to review-sign
 ### 7. Validate Implementation Commits
 
 **Reference**: Review verdict lists 5 key commits:
+
 - `f857da4c` — Add Docker pre-publish validation harness
 - `d17f0e3a` — Wire Docker harness into publish workflow
 - `10f5afb8` — Register test-publish-harness.ps1 in FileList
@@ -80,6 +81,7 @@ For the human developer reviewing this iteration before advancing to review-sign
 - `437338f6` — Untrack gitignored session-state files
 
 Commands to inspect:
+
 ```powershell
 # List commits on feature branch since baseline
 git log --oneline 049-pipeline-hardening-intake ^main --since="2026-05-20"
@@ -97,6 +99,7 @@ git show 437338f6 --stat
 ### 8. Run Local Verification (Optional but Recommended)
 
 **Test Fixtures**:
+
 ```powershell
 # Run T001 fixture
 pwsh -NoProfile -File tests/integration/publish-module-harness.tests.ps1
@@ -106,6 +109,7 @@ pwsh -NoProfile -File tests/integration/squad-duplicate-rows.tests.ps1
 ```
 
 **Docker Harness** (requires Docker daemon):
+
 ```powershell
 docker build -f tests/Dockerfile.publish-test -t specrew-publish-test .
 docker run --rm specrew-publish-test
@@ -117,6 +121,7 @@ docker run --rm specrew-publish-test
 ### 9. Review Deferred Items
 
 **Gap Ledger** (in review.md) lists 2 deferrals:
+
 1. Bug 2 regression test infrastructure (PSGallery API mock/stub) — deferred to future testing-infrastructure iteration
 2. Bug 3 structural fix (specrew-start.ps1 recovery logic) — queued for retro improvement action
 
@@ -146,6 +151,7 @@ If any item fails:
 ### What This Iteration Delivered
 
 Iteration 001 shipped a Docker-based pre-publish E2E validation harness that blocks corrupt module candidates from reaching PSGallery. It also fixed three critical bugs:
+
 - **Bug 1** (duplicate-row deploy): Fixed Squad template merge logic with key-based deduplication
 - **Bug 2** (PSGallery-first version check): Unified version check to query PSGallery API by default
 - **Bug 3** (auto-resume-wrong-feature): Untracked stale session-state files that pointed to closed feature

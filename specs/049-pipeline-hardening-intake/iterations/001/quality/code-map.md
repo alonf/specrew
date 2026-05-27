@@ -50,6 +50,7 @@ templates/
 ### New Files
 
 #### `tests/Dockerfile.publish-test`
+
 - **Purpose**: Docker image definition for pre-publish E2E validation
 - **Baseline**: `mcr.microsoft.com/powershell:lts-ubuntu-22.04`
 - **Key Actions**:
@@ -61,6 +62,7 @@ templates/
 - **Trace**: T002, FR-001, FR-002, SC-001
 
 #### `scripts/internal/test-publish-harness.ps1`
+
 - **Purpose**: 5-phase E2E validation script executed inside Docker container
 - **Phases**:
   1. **Phase 1** (lines 52-76): Validate candidate structure and manifest parsing
@@ -73,6 +75,7 @@ templates/
 - **Trace**: T003, T004, T005, FR-003, FR-004, FR-012, SC-001
 
 #### `tests/integration/publish-module-harness.tests.ps1`
+
 - **Purpose**: T001 test fixture for harness validation
 - **Assertions** (7 total):
   1. Dockerfile.publish-test exists
@@ -86,6 +89,7 @@ templates/
 - **Trace**: T001, FR-003, FR-012, SC-001
 
 #### `tests/integration/squad-duplicate-rows.tests.ps1`
+
 - **Purpose**: T019 regression test for Bug 1 (duplicate-row deploy)
 - **Test Strategy**: Execute 3 consecutive `specrew update` calls and assert zero duplicates
 - **Validation**:
@@ -99,6 +103,7 @@ templates/
 ### Modified Files
 
 #### `.github/workflows/publish-module.yml`
+
 - **Change**: Added "Pre-publish Docker harness validation" step (lines 143-167)
 - **Placement**: Between "Ensure dispatch tag exists" and "Stamp and publish"
 - **Gating Logic**:
@@ -108,11 +113,13 @@ templates/
 - **Trace**: T006, FR-005, SC-001
 
 #### `Specrew.psd1`
+
 - **Change**: Added `scripts/internal/test-publish-harness.ps1` to FileList
 - **Purpose**: Prevent harness script omission in future releases
 - **Trace**: T003, commit 10f5afb8
 
 #### `scripts/specrew-update.ps1`
+
 - **Change**: Bug 2 fix at lines 397-411
 - **Before**: Version check used module manifest as primary source
 - **After**: PSGallery-first strategy via `Get-PSGalleryLatestVersion`, fallback to manifest on API failure
@@ -120,6 +127,7 @@ templates/
 - **Trace**: T020, FR-014, Bug 2, Proposal 049
 
 #### `templates/github/scripts/deploy-squad-runtime.ps1`
+
 - **Change**: Bug 1 fix — key-based merge strategy for Squad tables
 - **Before**: Naive append of role rows → duplicates on redundant update
 - **After**: Key-based merge using first column (role name / work type) as unique key
@@ -131,6 +139,7 @@ templates/
 - **Trace**: T018, FR-013, Bug 1, commit 2d52b9f9
 
 #### `.specrew/start-context.json` and `.specrew/last-start-prompt.md`
+
 - **Change**: Removed from git tracking via `git rm --cached`
 - **Reason**: Files were already in `.gitignore` but cached in git index; stale content caused auto-resume to wrong feature
 - **Structural Fix Deferred**: `specrew-start.ps1` recovery logic improvement queued for retro

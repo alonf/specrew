@@ -32,6 +32,7 @@
 **Version Pin**: `0.27.6` is the current production stable version as of 2026-05-27. This pin should be updated to the next stable version after each production release.
 
 **Update Trigger**: When Specrew v0.28.0 ships as stable, update `tests/Dockerfile.publish-test` line 18 to:
+
 ```dockerfile
 RUN pwsh -Command "Install-Module -Name Specrew -RequiredVersion 0.28.0 -Repository PSGallery -Scope AllUsers -Force -AllowClobber"
 ```
@@ -51,6 +52,7 @@ RUN pwsh -Command "Install-Module -Name Specrew -RequiredVersion 0.28.0 -Reposit
 | `scripts/internal/test-publish-harness.ps1` | Internal script | 5-phase E2E validation logic | New (stable) |
 
 **Notes**:
+
 - `test-publish-harness.ps1` is new in this iteration. Registered in `Specrew.psd1` FileList to ensure it ships with the module.
 - `specrew-update.ps1` and `deploy-squad-runtime.ps1` are existing scripts modified in this iteration.
 
@@ -65,6 +67,7 @@ RUN pwsh -Command "Install-Module -Name Specrew -RequiredVersion 0.28.0 -Reposit
 | `.github/workflows/publish-module.yml` | GitHub Actions workflow | Pre-publish harness execution gate | Modified (stable) |
 
 **Notes**:
+
 - `.specrew/config.yml` must exist and contain `specrew_version` field for harness Phase 3 validation.
 - `Specrew.psd1` must contain valid `FileList` array for harness Phase 2 validation.
 - Workflow modification adds a new step; existing steps remain unchanged.
@@ -85,11 +88,13 @@ RUN pwsh -Command "Install-Module -Name Specrew -RequiredVersion 0.28.0 -Reposit
 ### Pin Drift Detection (Prop 134)
 
 Harness Phase 3 validates that:
+
 ```
 .specrew/config.yml specrew_version == Specrew.psd1 ModuleVersion
 ```
 
 If mismatch detected, harness fails with:
+
 ```
 FAIL: Version pin DRIFT detected!
 Config declares X.Y.Z but manifest declares A.B.C
@@ -104,10 +109,12 @@ Prop 134 requires these versions to be synchronized.
 
 **Endpoint**: `https://www.powershellgallery.com/api/v2/`  
 **Usage**:
+
 - Docker harness: Install baseline Specrew v0.27.6
 - Bug 2 fix: Query latest published version in `specrew update --info`
 
 **Fallback Strategy**:
+
 - **Docker harness**: Fail build if PSGallery unavailable (acceptable — validation requires network access)
 - **Bug 2 runtime**: Fall back to module manifest version if PSGallery query fails (graceful degradation)
 
@@ -128,6 +135,7 @@ None.
 ### LOW Risk Dependencies
 
 All dependencies in this iteration are low-risk:
+
 - **Docker base image**: Official Microsoft-maintained LTS image
 - **Baseline module**: Stable production version from PSGallery
 - **Internal scripts**: Under version control, tested via T001/T019
@@ -165,6 +173,7 @@ None. No dependencies were removed or deprecated in this iteration.
 **Action**: Update `tests/Dockerfile.publish-test` line 18 to install the new stable version as baseline.
 
 **Example**: When v0.28.0 ships:
+
 ```dockerfile
 RUN pwsh -Command "Install-Module -Name Specrew -RequiredVersion 0.28.0 -Repository PSGallery -Scope AllUsers -Force -AllowClobber"
 ```
@@ -199,6 +208,7 @@ RUN pwsh -Command "Install-Module -Name Specrew -RequiredVersion 0.28.0 -Reposit
 ### GitHub Actions Secrets
 
 **Required Secrets**:
+
 - `PSGALLERY_API_KEY` — Required for module publication to PSGallery (not used by harness itself)
 
 **Harness Independence**: Docker harness does NOT require PSGallery API key. It only queries public endpoints (module download) and performs local validation.

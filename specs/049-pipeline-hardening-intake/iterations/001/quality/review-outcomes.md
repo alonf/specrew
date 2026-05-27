@@ -1,12 +1,17 @@
 # T007 Reviewer Verification Results
+
 # Feature: 049-pipeline-hardening-intake
+
 # Iteration: 001
+
 # Reviewed by: Reviewer (Antigravity Coordinator)
+
 # Review Date: 2026-05-27
 
 ## Test Execution Summary
 
 ### T007: Docker Pre-Publish Harness Verification
+
 **Status**: ✅ PASS
 **Test File**: `tests/integration/publish-module-harness.tests.ps1`
 **Execution**: 2026-05-27
@@ -24,6 +29,7 @@ All Docker pre-publish harness checks passed:
 **Conclusion**: T001-T006 implementation is correct and integrated properly. The Docker harness will successfully block PSGallery publication if FileList omissions or version pin drift are detected.
 
 ### T019: Duplicate-Row Regression Test
+
 **Status**: ✅ PASS
 **Test File**: `tests/integration/squad-duplicate-rows.tests.ps1`
 **Execution**: 2026-05-27
@@ -40,25 +46,30 @@ All duplicate-row regression checks passed:
 **Note**: The Docker harness in `test-publish-harness.ps1` (lines 273-290) also includes a duplicate Squad entries check as part of the pre-publish validation, providing double coverage.
 
 ### Bug 2: PSGallery-First Version Check
+
 **Status**: ✅ Fixed in 2d52b9f9, regression coverage assessed
 **Implementation**: `scripts/specrew-update.ps1` lines 397-411
 
 Bug 2 fix verified in code:
+
 - `Get-LatestVersionInfo` now checks PSGallery first (via `Get-PSGalleryLatestVersion`)
 - Falls back to module manifest only if PSGallery query fails
 - Proper source attribution in return object (`Source` field reflects actual source: PSGallery, cache, or fallback)
 
 **Regression Test Assessment**: A focused unit-style integration test for Bug 2 would require either:
+
 1. Live PSGallery API access (flaky, slow)
 2. Mock/stub infrastructure for `Get-PSGalleryLatestVersion` (adds test complexity)
 
 **Recommendation**: Defer dedicated Bug 2 regression test to a future testing-infrastructure iteration. The fix is straightforward, code-reviewed, and the behavior is observable via manual `specrew update --info` execution. The risk/benefit ratio does not justify adding test infrastructure now.
 
 ### Bug 3: Auto-Resume-Wrong-Feature Fix
+
 **Status**: ✅ Fixed in commit 437338f6 (post-boundary commit)
 **Commit**: 437338f6 "fix(state): untrack gitignored session-state files"
 
 Empirical bug investigation identified root cause:
+
 - `.specrew/start-context.json` was tracked in git despite being in `.gitignore`
 - Stale content pointed to F-047 (closed feature) instead of F-049 (active feature)
 - Every `git clone` or `git restore` restored the stale pointer
@@ -72,11 +83,13 @@ Empirical bug investigation identified root cause:
 ## Integration Testing
 
 ### Docker Harness Full Run
+
 **Status**: ✅ Expected to pass (individual checks verified)
 
 Local verification completed for all component checks. Full Docker build and run would require Docker daemon. CI execution on push will provide final validation.
 
 **Expected CI Behavior**:
+
 1. Docker build succeeds with `tests/Dockerfile.publish-test`
 2. Container runs `scripts/internal/test-publish-harness.ps1`
 3. All FileList, version pin, and update transition checks pass
@@ -101,16 +114,19 @@ Local verification completed for all component checks. Full Docker build and run
 **Iteration 001 Implementation**: ✅ **PASS**
 
 All reviewer-owned verification tasks completed successfully:
+
 - T007 harness verification: PASS
 - T019 duplicate-row regression test: PASS
 - Bug 2 regression coverage: assessed, fix verified
 - Bug 3 auto-resume fix: empirically validated
 
 **Files Changed by Reviewer**:
+
 - `tests/integration/publish-module-harness.tests.ps1` (untracked → tracked, T001 artifact)
 - `tests/integration/squad-duplicate-rows.tests.ps1` (new, T019 regression test)
 
 **Next Steps**:
+
 1. ✅ All Iteration 001 tasks (T001-T007, T018-T020) complete
 2. ✅ Ready for review-signoff boundary
 3. 🔄 Commit 437338f6 (auto-resume fix) should be folded into Iteration 001

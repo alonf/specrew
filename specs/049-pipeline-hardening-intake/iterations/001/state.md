@@ -14,6 +14,7 @@
 **Status: ✅ All Tasks Complete**
 
 All 10 iteration tasks completed successfully:
+
 - **T001-T007**: Docker harness implementation, assertions, and verification (complete)
 - **T018**: Duplicate-row merge bug fix (complete in commit 2d52b9f9)
 - **T019**: Duplicate-row regression test (complete)
@@ -24,6 +25,7 @@ All 10 iteration tasks completed successfully:
 ## Completed Work Summary
 
 ### Phase 1: Docker Pre-Publish Harness (T001-T007)
+
 - ✅ Added failing E2E test assertions (T001, tests/integration/publish-module-harness.tests.ps1)
 - ✅ Created Docker container with Linux PowerShell baseline (T002, tests/Dockerfile.publish-test)
 - ✅ Implemented test harness script with FileList validation (T003, scripts/internal/test-publish-harness.ps1)
@@ -33,6 +35,7 @@ All 10 iteration tasks completed successfully:
 - ✅ Verified all checks pass with full integration testing (T007, review verification)
 
 ### Phase 2: Bug Fixes (T018-T020)
+
 - ✅ Fixed duplicate-row deploy bug (T018, commit 2d52b9f9, deploy-squad-runtime.ps1)
   - Root cause: naive append instead of key-based merge
   - Fix: implemented key-based merge strategy to prevent duplicate Squad roles
