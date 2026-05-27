@@ -20783,3 +20783,67 @@ This decision affects:
 - **Launch Mode**: same-window
 - **Agent Response Snippet**: (none)
 - **Reason**: Persisted authorization matched the requested boundary.
+
+## 2026-05-27T07:42:04Z — Boundary sync warning: review-signoff
+
+- **Boundary Type**: review-signoff
+- **Latest Recorded Boundary**: tasks
+- **Recorded At**: 2026-05-27T07:42:04Z
+- **Warning**: Expected next boundary 'before-implement' but received 'review-signoff'.
+
+## 2026-05-27T07:42:05Z — Boundary sync: review-signoff
+
+- **Boundary Type**: review-signoff
+- **Feature Ref**: 049-pipeline-hardening-intake
+- **Iteration Number**: 002
+- **Task ID**: (none)
+- **Auth Commit Hash**: c348b08e15d186e995c895d9deb7073a3c903300
+- **Recorded At**: 2026-05-27T07:42:04Z
+
+## 2026-05-27T07:46:31Z — Boundary sync warning: review-signoff
+
+- **Boundary Type**: review-signoff
+- **Latest Recorded Boundary**: review-signoff
+- **Recorded At**: 2026-05-27T07:46:31Z
+- **Warning**: Expected next boundary 'retro' but received 'review-signoff'.
+
+## 2026-05-27T07:46:32Z — Boundary sync: review-signoff
+
+- **Boundary Type**: review-signoff
+- **Feature Ref**: 049-pipeline-hardening-intake
+- **Iteration Number**: 002
+- **Task ID**: (none)
+- **Auth Commit Hash**: c348b08e15d186e995c895d9deb7073a3c903300
+- **Recorded At**: 2026-05-27T07:46:31Z
+
+## 2026-05-27T07:47:26Z — Boundary sync warning: review-signoff
+
+- **Boundary Type**: review-signoff
+- **Latest Recorded Boundary**: review-signoff
+- **Recorded At**: 2026-05-27T07:47:26Z
+- **Warning**: Expected next boundary 'retro' but received 'review-signoff'.
+
+## 2026-05-27T07:47:27Z — Boundary sync: review-signoff
+
+- **Boundary Type**: review-signoff
+- **Feature Ref**: 049-pipeline-hardening-intake
+- **Iteration Number**: 002
+- **Task ID**: (none)
+- **Auth Commit Hash**: c348b08e15d186e995c895d9deb7073a3c903300
+- **Recorded At**: 2026-05-27T07:47:27Z
+
+## 2026-05-27T07:48:22Z — Boundary sync warning: review-signoff
+
+- **Boundary Type**: review-signoff
+- **Latest Recorded Boundary**: review-signoff
+- **Recorded At**: 2026-05-27T07:48:22Z
+- **Warning**: Expected next boundary 'retro' but received 'review-signoff'.
+
+## 2026-05-27T07:48:23Z — Boundary sync: review-signoff
+
+- **Boundary Type**: review-signoff
+- **Feature Ref**: 049-pipeline-hardening-intake
+- **Iteration Number**: 002
+- **Task ID**: (none)
+- **Auth Commit Hash**: c348b08e15d186e995c895d9deb7073a3c903300
+- **Recorded At**: 2026-05-27T07:48:23Z
