@@ -2,12 +2,12 @@
 
 **Schema**: v1
 **Last Completed Task**: T011
-**Tasks Remaining**: none within approved Iteration 002 scope; retrospective complete and awaiting retro verdict
+**Tasks Remaining**: none within approved Iteration 002 scope; iteration-closeout remains the next separate human-authorized boundary
 **In Progress**: (none)
 **Baseline Ref**: 0fede7bdd1f97eeb7677d758744f644f15ee5b6d
-**Updated**: 2026-05-27T07:49:30Z
-**Current Phase**: retro
-**Iteration Status**: T008-T011 and the Iteration 002 retrospective are complete on the approved documentation slice; the next valid move is explicit retro authorization
+**Updated**: 2026-05-27T09:00:30Z
+**Current Phase**: iteration-closeout
+**Iteration Status**: T008-T011 and the Iteration 002 retrospective are complete on the approved documentation slice; review-signoff and retro are complete, and iteration-closeout is now the active next boundary pending separate authorization
 
 ## Execution Summary
 
@@ -16,6 +16,7 @@
 - T010 completed: `README.md`, `docs/getting-started.md`, and `docs/user-guide.md` now point readers to the troubleshooting guide from the primary onboarding and usage paths.
 - T011 completed: reviewer evidence was recorded in `iterations/002/quality/quality-evidence.md`, and `review.md` now cites committed tree `a251f22c3a1d720335726bf3eb5860050ea62a8c`.
 - Retro completed: `iterations/002/retro.md` records the zero-drift docs slice, the exact T008 -> T009+T010 -> T011 boundary cadence, the manual Pillar 5 committed-tree check, and the approval-vs-tree freshness lesson that Iteration 004 should mechanize.
+- Retro boundary synchronized: review-signoff -> retro authorization is durably recorded, and iteration-closeout is now the next valid single-boundary advance for Iteration `002`.
 - Iteration `002` is now explicitly bounded to the approved documentation-only slice: `T008-T011`.
 - Scope is limited to `FR-006`, `FR-007`, `FR-015`, `FR-016`, and `FR-017`: troubleshooting guidance, `Specrew.psd1` `FileList` registration, onboarding cross-references, and the Shape-5 durability lesson/evidence path.
 - Dependency order is `T008` → (`T009`, `T010`) → `T011`.
