@@ -20643,3 +20643,12 @@ This decision affects:
   > 2. Review.md **Tree Under Review**: <hash> field is missing from this review.md. Pillar 5 detection (added to Proposal 120 tonight at commit 4da969bc on main) expects this canonical field. iter-4 should either extend the validator to handle reviews without explicit field (default to "current HEAD at the time review.md was committed") OR ship a Reviewer-charter directive mandating the field. Capture in retro.
   >
   > Proceed to retro phase.
+
+## 2026-05-27T00:15:45Z — Boundary sync: retro
+
+- **Boundary Type**: retro
+- **Feature Ref**: 049-pipeline-hardening-intake
+- **Iteration Number**: 001
+- **Task ID**: (none)
+- **Auth Commit Hash**: 638a2816
+- **Recorded At**: 2026-05-27T00:15:44Z
