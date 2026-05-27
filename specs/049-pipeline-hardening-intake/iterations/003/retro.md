@@ -3,6 +3,14 @@
 **Schema**: v1
 **Date**: 2026-05-28
 
+## Estimation Accuracy
+
+- **Planned slice**: 23.45/25 story_points
+- **Delivered slice**: 23.45/25 story_points
+- **Variance**: 0 story_points at the iteration slice level
+- **Accuracy**: 100%
+- **Note**: Review rejection created phase-level variance and repair work, but the authorized Iteration 003 scope still closed inside the approved 21-25 SP capacity band without descoping any of the 34 committed tasks.
+
 ## Execution Summary
 
 **Capacity**: 23.45/25 story_points (delivered, within budget)  
