@@ -3,7 +3,7 @@
 **Schema**: v1
 **Spec**: [../../spec.md](../../spec.md)
 **Status**: planning
-**Capacity**: 8.5/20 story_points
+**Capacity**: 9.5/20 story_points
 **Started**: 2026-05-28
 **Completed**:
 
@@ -38,7 +38,7 @@ Iteration `003` is the bounded Proposal `063` persona-driven `/speckit.specify` 
 | ---- | ------- | ----- |
 | Spec Authority | PASS | Scope matches the approved Iteration `003` roadmap in `spec.md`, feature `plan.md`, and `tasks.md`. Explicitly bounded to Proposal `063` `/speckit.specify` slice only. |
 | Traceability | PASS | Every execution task maps directly to `FR-008`, `FR-009`, `FR-010`, `FR-011`, `TG-006`, `TG-007`, and `SC-003` where applicable. |
-| Capacity | PASS | Authorized slice is `8.5/20` story points, inside the feature plan's Iteration `003` 10 SP budget band. |
+| Capacity | PASS | Authorized slice is `9.5/20` story points, inside the feature plan's Iteration `003` 10 SP budget band. |
 | Roadmap Discipline | PASS | Iteration `001` remains closed history; Iteration `002` is complete and closed. Iteration `004` remains untouched and reserved for Proposal `120` five-pillar bypass detection. |
 | Boundary Slice Discipline | PASS | Iteration `003` is explicitly bounded: NO clarify/iteration-kickoff/mid-feature-pivot trigger expansion, NO profile composition (Proposal `052`), NO validator integration (deferred). Only `/speckit.specify` intake behavior is authorized. |
 | Before-Implement Readiness | PENDING | Owner, effort, dependency order, evidence target, and bounded file surfaces will be validated before `before-implement` boundary. |
