@@ -71,10 +71,10 @@ Feature-closeout still requires separate human authorization after the remaining
 ## Closure Trail
 
 - **Head before closeout preparation**: `be8e45c5`
-- **Iteration-closeout boundary commit**: (pending)
-- **Iteration-closeout sync commit**: (pending)
+- **Iteration-closeout boundary commit**: `d9c84dce`
+- **Iteration-closeout sync commit**: `9bf9fabe`
 - **Iteration state artifact**: `iterations/002/state.md`
-- **Dashboard snapshot**: `iterations/002/dashboard.md` (rendered by canonical iteration-closeout sync if applicable)
+- **Dashboard snapshot**: `iterations/002/dashboard.md` (rendered by canonical iteration-closeout sync)
 - **Reviewer packet**: `iterations/002/quality/quality-evidence.md`
 - **Decision ledger**: `.squad/decisions.md`
 
