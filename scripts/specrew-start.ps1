@@ -101,6 +101,12 @@ if (-not (Test-Path -LiteralPath $coordinatorPromptSurgeryHelperPath -PathType L
 }
 . $coordinatorPromptSurgeryHelperPath
 
+$userProfileHelperPath = Join-Path $PSScriptRoot 'internal\user-profile.ps1'
+if (-not (Test-Path -LiteralPath $userProfileHelperPath -PathType Leaf)) {
+    throw "Missing user-profile helper '$userProfileHelperPath'."
+}
+. $userProfileHelperPath
+
 function Convert-UnixStyleArguments {
     param(
         [string]$FeatureRequest,
@@ -3080,6 +3086,20 @@ function Get-StartSummaryContent {
     $summaryLines.Add(("- **Feature Request**: {0}" -f $(if ([string]::IsNullOrWhiteSpace($FeatureRequest)) { '(none provided)' } else { $FeatureRequest }))) | Out-Null
     $summaryLines.Add(("- **Active Feature Path**: {0}" -f $(if ([string]::IsNullOrWhiteSpace($ResolvedFeaturePath)) { '(create or resolve during lifecycle)' } else { Get-DisplayPathFromProjectRoot -ResolvedProjectPath $ResolvedProjectPath -Path $ResolvedFeaturePath }))) | Out-Null
     $summaryLines.Add('') | Out-Null
+    
+    # Feature 049 Iteration 003: Add user profile summary (FR-026)
+    $userProfile = Get-UserProfile
+    if ($null -ne $userProfile) {
+        $summaryLines.Add('## User Expertise Profile') | Out-Null
+        $profileSummary = Show-UserProfileSummary -Profile $userProfile
+        foreach ($line in $profileSummary -split "`n") {
+            if (-not [string]::IsNullOrWhiteSpace($line)) {
+                $summaryLines.Add($line) | Out-Null
+            }
+        }
+        $summaryLines.Add('') | Out-Null
+    }
+    
     $summaryLines.Add('## Launch Contract') | Out-Null
     $summaryLines.Add(("- **Approval Mode**: {0}" -f $ApprovalMode)) | Out-Null
     $summaryLines.Add(("- **Launch Mode**: {0}" -f $LaunchMode)) | Out-Null
@@ -3339,6 +3359,18 @@ $artifactListFormatted
         }
         # F-043 FR-012: record HOW the host was resolved + the alternatives at probe time
         host_resolution = if (-not [string]::IsNullOrWhiteSpace($HostResolution)) { $HostResolution } else { $null }
+    }
+
+    # Feature 049 Iteration 003: Add user profile summary to start-context.json (FR-026)
+    $userProfile = Get-UserProfile
+    if ($null -ne $userProfile) {
+        $context['user_profile'] = [ordered]@{
+            schema_version  = $userProfile.schema_version
+            created_at      = $userProfile.created_at
+            updated_at      = $userProfile.updated_at
+            expertise_dials = $userProfile.expertise_dials
+            profile_path    = Get-UserProfilePath
+        }
     }
 
     if ($null -ne $existingBoundaryEnforcement) {
@@ -3677,6 +3709,21 @@ if ($missingBootstrapPaths.Count -gt 0) {
     Write-Error-Message ("Missing required paths: {0}" -f ($missingBootstrapPaths -join ', '))
     Write-Error-Message "Run 'specrew init' first."
     exit 1
+}
+
+# Feature 049 Iteration 003: User profile first-run check (FR-023, FR-024, FR-026)
+# Check for user profile and prompt on first run
+if (-not (Test-UserProfileExists)) {
+    Write-Host ""
+    Write-Host "First-time setup: Configuring your expertise profile..." -ForegroundColor Cyan
+    Write-Host ""
+    
+    $expertiseDials = Invoke-FirstRunExpertisePrompt -NonInteractive:$false
+    Save-UserProfile -ExpertiseDials $expertiseDials
+    
+    Write-Host ""
+    Write-Host "Setup complete! Starting Specrew..." -ForegroundColor Green
+    Write-Host ""
 }
 
 if ($AllowAll -and $PromptApprovals) {
