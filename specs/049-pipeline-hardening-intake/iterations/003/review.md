@@ -3,8 +3,8 @@
 **Schema**: v1  
 **Reviewed**: 2026-05-28  
 **Tree Under Review**: 83e6f07b3619e13cbb34cff95b72a505ff3e7d68  
-**Overall Verdict**: accepted (review recommendation only; human review-signoff pending)
-**Human Review-Signoff**: pending — this artifact recommends acceptance, but the final human verdict has not been given yet
+**Overall Verdict**: accepted
+**Human Review-Signoff**: approved by Alon Fliess on 2026-05-28 — review-signoff is accepted on the committed Iteration 003 tree; retro remains unopened pending fresh human authorization
 
 ## Findings
 
@@ -74,4 +74,8 @@
 
 - Iteration 004 not touched (per reviewer instruction)
 - All six blocking issues addressed through systematic repair
-- Recommended for human review-signoff; final acceptance remains with the human review-signoff verdict
+- Review-signoff is now complete for Iteration 003; retro is the next valid boundary and still requires a separate human verdict
+
+## Next Action
+
+**APPROVED** — Review-signoff is complete on committed tree `83e6f07b3619e13cbb34cff95b72a505ff3e7d68`. Retro may open only with fresh human authorization; iteration-closeout remains unopened.
