@@ -20709,3 +20709,12 @@ This decision affects:
 - **Task ID**: (none)
 - **Auth Commit Hash**: 9edfb7b5b44acde6fc818727bf753fecc908033b
 - **Recorded At**: 2026-05-27T01:12:19Z
+
+## 2026-05-27T01:25:58Z — Boundary sync: tasks
+
+- **Boundary Type**: tasks
+- **Feature Ref**: 049-pipeline-hardening-intake
+- **Iteration Number**: 001
+- **Task ID**: (none)
+- **Auth Commit Hash**: 690d7a3fb85830e886eae93dae59c82460ab6617
+- **Recorded At**: 2026-05-27T01:25:57Z
