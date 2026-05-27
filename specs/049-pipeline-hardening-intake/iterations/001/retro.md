@@ -65,7 +65,7 @@
 ## Calibration Suggestion
 
 - Suggested capacity adjustment: 20 → 20 (retain baseline)
-- Rationale: Task variance was zero (all 10 tasks delivered within estimated story points); phase variance emerged only in review overhead (0 estimated → actual TBD pending retro data collection), but no slippage into rework lane suggests good discipline. The two Shape-4 / Shape-5 governance findings are process improvements, not capacity signals. Recommend keeping baseline stable for Iteration 002 to test whether governance fixes improve throughput without expanding team size.
+- Rationale: Task variance was zero (all 10 tasks delivered within estimated story points); the phase-variance table remains informational rather than authoritative, but no slippage into rework lane suggests good discipline. The two Shape-4 / Shape-5 governance findings are process improvements, not capacity signals. Recommend keeping baseline stable for Iteration 002 to test whether governance fixes improve throughput without expanding team size.
 
 ## Notes
 

@@ -4,7 +4,7 @@
 **Feature**: 049-pipeline-hardening-intake  
 **Iteration**: 001  
 **Closed**: 2026-05-27T00:30:00Z  
-**Status**: CLOSED — iteration-closeout packet prepared on the current tree  
+**Status**: CLOSED — iteration-closeout boundary commit `dfc7c3f0` recorded and synchronized on the current tree at `2e33b3a0`  
 **Closer**: Reviewer (authorized iteration-closeout boundary requested by Alon Fliess)
 
 ---
@@ -74,6 +74,8 @@ Feature-closeout still requires separate human authorization after the remaining
 ## Closure Trail
 
 - **Head before closeout preparation**: `d535d93d`
+- **Iteration-closeout boundary commit**: `dfc7c3f0`
+- **Iteration-closeout sync commit**: `2e33b3a0`
 - **Iteration state artifact**: `iterations\001\state.md`
 - **Dashboard snapshot**: `iterations\001\dashboard.md` (rendered by canonical iteration-closeout sync)
 - **Reviewer packet**: `iterations\001\quality\reviewer-index.md`
