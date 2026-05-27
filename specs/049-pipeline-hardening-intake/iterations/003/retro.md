@@ -13,6 +13,7 @@
 ## Task Verdicts
 
 All 34 tasks passed review after repair cycle:
+
 - T001-T008: Core intake engine and helpers (8 tasks, mirror parity verified)
 - T009-T016: YAML catalogs and auto-decision defaults (8 tasks, data integrity verified)
 - T017-T018: Future extension hook directories created (2 tasks)
@@ -37,7 +38,7 @@ All 34 tasks passed review after repair cycle:
 
 | Event | Severity | Category | Resolution |
 | ----- | -------- | -------- | ---------- |
-| FR-024 schema mismatch | critical | implementation | Updated user-profile.ps1 to use correct field names (expertise.* instead of expertise_dials.*) |
+| FR-024 schema mismatch | critical | implementation | Updated user-profile.ps1 to use correct field names (expertise.*instead of expertise_dials.*) |
 | FR-023 auto-path broken | critical | implementation | Preserved "auto" as string; fixed coercion to numeric 0 |
 | Lifecycle artifacts state mismatch | minor | process | Updated plan.md status="reviewing" and marked all 34 tasks done |
 | Fabricated timestamps | critical | governance | Applied exact commit timestamps from reviewer evidence |
@@ -88,6 +89,7 @@ All 34 tasks passed review after repair cycle:
 **Capacity baseline for Iteration 004+**: suggest 22-25 SP (no change from baseline)  
 
 **Rationale**:
+
 - Iteration 003 delivered within estimated 21-25 SP band (23.45 actual), demonstrating forecast accuracy despite the mid-iteration repair cycle.
 - The architectural pivot (engine + data) has stabilized; future architecture/intake work should be slightly more predictable than raw data-only additions.
 - However, review-rejection risk remains non-zero. Recommend reserving 2-3 SP in iteration plans as "validation buffer" rather than raising the headline capacity.
