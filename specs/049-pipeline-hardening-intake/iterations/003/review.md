@@ -2,7 +2,7 @@
 
 **Schema**: v1  
 **Reviewed**: 2026-05-28  
-**Tree Under Review**: b3a2ab4d  
+**Tree Under Review**: 24a6cb6a  
 **Overall Verdict**: accepted
 
 ## Findings
@@ -20,8 +20,8 @@
 | Task | Requirement | Verdict | Notes |
 | --- | --- | --- | --- |
 | T001 | FR-028, FR-029, FR-030, FR-031, SC-006 | pass | Test coverage added for engine + data architecture |
-| T002 | FR-028, TG-013, TG-014 | needs-work | Schema implementation had wrong field names; repaired to match FR-024 spec |
-| T003 | FR-028, TG-013, TG-014 | needs-work | Auto-decision path broken by numeric coercion; repaired to preserve "auto" |
+| T002 | FR-028, TG-013, TG-014 | pass | Schema implementation was repaired to match the FR-024 field contract before resubmission |
+| T003 | FR-028, TG-013, TG-014 | pass | Auto-decision path now preserves "auto" end to end and no longer coerces to a numeric mode |
 | T004 | FR-028, TG-013, TG-014 | pass | Load-CategoryCatalog helper correct |
 | T005 | FR-028, FR-010, TG-013, TG-015 | pass | Resolve-PerLensMode helper correct |
 | T006 | FR-028, TG-013, TG-014 | pass | Traverse-QuestionBank helper correct |
@@ -47,7 +47,7 @@
 | T026 | FR-028, FR-027, TG-013 | pass | Prompt integration correct |
 | T027 | FR-028, FR-027, TG-013 | pass | Agent integration correct |
 | T028 | FR-028, FR-027, TG-013 | pass | Workflow integration correct |
-| T029 | FR-011, TG-006, TG-007 | needs-work | Missing SC-005 third-clause evidence; added Mode A rate measurement |
+| T029 | FR-011, TG-006, TG-007 | pass | SC-005 third-clause evidence now includes the senior-user Mode A rate measurement |
 | T030 | FR-024, FR-025, FR-026, SC-005 | pass | User-profile tests correct |
 | T031 | FR-027, SC-005, TG-010, TG-011 | pass | Question depth tests correct |
 | T032 | FR-028, FR-029, SC-006, TG-013 | pass | 5th-persona extensibility proof correct |
@@ -72,4 +72,4 @@
 
 - Iteration 004 not touched (per reviewer instruction)
 - All six blocking issues addressed through systematic repair
-- Ready for re-review after commits pushed
+- Ready for human review-signoff on the repaired tree

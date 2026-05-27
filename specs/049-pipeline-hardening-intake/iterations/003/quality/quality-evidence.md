@@ -2,7 +2,8 @@
 
 **Feature**: `049-pipeline-hardening-intake`  
 **Iteration**: `003`  
-**Evidence recorded**: `2026-05-28`
+**Evidence recorded**: `2026-05-28`  
+**Tree Under Review**: `24a6cb6a`
 
 ## Commands Run
 

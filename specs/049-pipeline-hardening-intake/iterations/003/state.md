@@ -18,7 +18,7 @@
 
 - **Initial Review:** REJECT (6 blocking issues identified)
 - **Repairs Completed:** 2026-05-28 (planner rework cycle)
-- **Current Status:** Awaiting human review-signoff at tree b3a2ab4d
+- **Current Status:** Awaiting human review-signoff on repaired tree 24a6cb6a
 
 ## Notes
 
