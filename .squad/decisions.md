@@ -20684,3 +20684,19 @@ This decision affects:
 - **Task ID**: (none)
 - **Auth Commit Hash**: dfc7c3f0
 - **Recorded At**: 2026-05-27T00:30:34Z
+
+## 2026-05-27T00:54:31Z — Boundary sync warning: clarify
+
+- **Boundary Type**: clarify
+- **Latest Recorded Boundary**: iteration-closeout
+- **Recorded At**: 2026-05-27T00:54:31Z
+- **Warning**: Expected next boundary 'feature-closeout' but received 'clarify'.
+
+## 2026-05-27T00:54:32Z — Boundary sync: clarify
+
+- **Boundary Type**: clarify
+- **Feature Ref**: 049-pipeline-hardening-intake
+- **Iteration Number**: (none)
+- **Task ID**: (none)
+- **Auth Commit Hash**: a55ff6772fc107d709f8317aa15e6dec87d54100
+- **Recorded At**: 2026-05-27T00:54:32Z
