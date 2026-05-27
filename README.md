@@ -146,6 +146,7 @@ See [proposals/INDEX.md](proposals/INDEX.md) for the full proposal catalog (Ship
 
 - [docs/getting-started.md](docs/getting-started.md) — bootstrap + minimal flow
 - [docs/user-guide.md](docs/user-guide.md) — day-to-day lifecycle usage
+- [docs/troubleshooting.md](docs/troubleshooting.md) — recovery paths for install drift, update failures, stale session state, and Shape-5 evidence mistakes
 - [docs/dashboard-guide.md](docs/dashboard-guide.md) — dashboard sections, flags, closeout snapshots
 - [docs/versioning.md](docs/versioning.md) — release-numbering policy and tag/changelog rules
 - [CHANGELOG.md](CHANGELOG.md) — retroactive feature-release history

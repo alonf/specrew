@@ -9,6 +9,8 @@
 
 This guide covers the day-to-day Specrew lifecycle: planning, execution, review/demo, retrospective, and drift handling.
 
+If the lifecycle state, installed module, or managed project surfaces drift out of sync, start with [troubleshooting.md](troubleshooting.md) before hand-editing generated files or session-state artifacts.
+
 ## Recommended Downstream Entry Point
 
 After `specrew init`, start feature work with:

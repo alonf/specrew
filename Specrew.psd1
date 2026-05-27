@@ -207,6 +207,7 @@
         'docs/getting-started.md',
         'docs/github-project.md',
         'docs/roadmap-maintenance.md',
+        'docs/troubleshooting.md',
         'docs/user-guide.md',
         'docs/versioning.md',
         'docs/operations/psgallery-release-credentials.md',
@@ -222,4 +223,3 @@
         }
     }
 }
-
