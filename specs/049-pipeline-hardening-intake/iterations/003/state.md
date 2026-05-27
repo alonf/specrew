@@ -18,7 +18,7 @@
 
 - **Initial Review:** REJECT (6 blocking issues identified)
 - **Repairs Completed:** 2026-05-28 (fresh spec-steward repair cycle)
-- **Current Status:** Awaiting human review-signoff on the current repair branch head
+- **Current Status:** Awaiting human review-signoff on committed tree `83e6f07b3619e13cbb34cff95b72a505ff3e7d68`
 
 ## Notes
 

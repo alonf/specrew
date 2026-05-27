@@ -3,7 +3,7 @@
 **Feature**: `049-pipeline-hardening-intake`  
 **Iteration**: `003`  
 **Evidence recorded**: `2026-05-28`  
-**Tree Under Review**: `current repair branch head`
+**Tree Under Review**: `83e6f07b3619e13cbb34cff95b72a505ff3e7d68`
 
 ## Commands Run
 
