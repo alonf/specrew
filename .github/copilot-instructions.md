@@ -3,6 +3,7 @@
 Auto-generated from all feature plans. Last updated: 2026-05-27
 
 ## Active Technologies
+
 - PowerShell 7.x plus Markdown/YAML/JSON governance artifacts + `scripts/specrew.ps1`, `scripts/specrew-update.ps1`, `scripts/specrew-start.ps1`, `Specrew.psd1`, `extensions/specrew-speckit/scripts/validate-governance.ps1`, mirrored `.specify/extensions/specrew-speckit/scripts/validate-governance.ps1`, `tests/integration/publish-module-harness.tests.ps1`, `tests/integration/non-specrew-session-bypass.tests.ps1`, and the Spec Kit prompt/workflow surfaces for `/speckit.specify` (049-pipeline-hardening-intake)
 - Git-tracked Markdown/YAML/JSON/PowerShell assets under `docs/`, `scripts/`, `extensions/`, `.specify/`, `.github/`, and `specs/049-pipeline-hardening-intake/` (049-pipeline-hardening-intake)
 
@@ -62,6 +63,7 @@ npm test; npm run lint
 Markdown, YAML, PowerShell (Spec Kit extension assets).: Follow standard conventions
 
 ## Recent Changes
+
 - 049-pipeline-hardening-intake: Added PowerShell 7.x plus Markdown/YAML/JSON governance artifacts + `scripts/specrew.ps1`, `scripts/specrew-update.ps1`, `scripts/specrew-start.ps1`, `Specrew.psd1`, `extensions/specrew-speckit/scripts/validate-governance.ps1`, mirrored `.specify/extensions/specrew-speckit/scripts/validate-governance.ps1`, `tests/integration/publish-module-harness.tests.ps1`, `tests/integration/non-specrew-session-bypass.tests.ps1`, and the Spec Kit prompt/workflow surfaces for `/speckit.specify`
 
 - 046-create-spec-branch: Added PowerShell 7+ (primary runtime scripts), Markdown docs + Spec Kit CLI (`specify`), Squad CLI (`squad`), Git, module/runtime scripts under `scripts/` and `extensions/specrew-speckit/scripts/`

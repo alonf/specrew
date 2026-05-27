@@ -23,6 +23,7 @@
 ## Notes
 
 Initial submission rejected by reviewer due to:
+
 1. FR-024 schema mismatch (implementation wrote wrong field names)
 2. FR-023 auto-path broken (auto coerced to numeric)
 3. Lifecycle artifacts showing wrong state (planning instead of review-ready)

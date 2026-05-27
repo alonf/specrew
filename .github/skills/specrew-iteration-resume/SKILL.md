@@ -107,6 +107,7 @@ Expected Output (ABORT):
     - type: "resource"
       description: "Critical blocker: upstream dependency no longer available"
   salvageable_tasks: ["T-005", "T-006"]
+
 ```
 
 ---

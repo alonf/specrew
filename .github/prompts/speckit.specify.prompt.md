@@ -15,4 +15,3 @@ The engine applies 4 sequential persona lenses (Product Manager, UX/UI Specialis
 **Fallback guidance**: If uncertain about any requirement, choose "Other" or "I don't know, you decide" to trigger auto-decisions with transparency.
 
 Use intake results to inform spec.md generation.
-

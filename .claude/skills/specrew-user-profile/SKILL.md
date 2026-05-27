@@ -29,11 +29,13 @@ Manage the user-level expertise profile that tailors persona-driven specificatio
 Display the current user expertise profile with readable descriptions.
 
 **Invocation:**
+
 ```text
 /specrew-user-profile show
 ```
 
 **Example output:**
+
 ```
 Expertise Profile:
 - Product Manager: 7 (Senior)
@@ -49,11 +51,13 @@ To update: use /specrew-user-profile edit or /specrew-user-profile reset
 Interactively update expertise dials. Prompts for each persona; press Enter to keep the current value.
 
 **Invocation:**
+
 ```text
 /specrew-user-profile edit
 ```
 
 **Interactive flow:**
+
 1. Displays current settings
 2. Prompts for new ratings (1-10 or 'auto')
 3. Press Enter to keep existing value
@@ -64,6 +68,7 @@ Interactively update expertise dials. Prompts for each persona; press Enter to k
 Delete the user profile file, triggering first-run setup on the next `specrew start`.
 
 **Invocation:**
+
 ```text
 /specrew-user-profile reset
 ```

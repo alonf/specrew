@@ -1,11 +1,13 @@
 # Drift Log - Iteration 003
 
 ## Purpose
+
 Track deviations between spec/plan and implementation, per Specrew governance.
 
 ## Findings
 
 ### 1. FR-024 Schema Mismatch (RESOLVED)
+
 - **Severity:** Critical
 - **Category:** Implementation drift
 - **Detection:** Reviewer inspection
@@ -15,6 +17,7 @@ Track deviations between spec/plan and implementation, per Specrew governance.
 - **Status:** Fixed (2026-05-28)
 
 ### 2. FR-023 Auto-Decision Path Broken (RESOLVED)
+
 - **Severity:** Critical
 - **Category:** Implementation drift
 - **Detection:** Reviewer inspection
@@ -24,6 +27,7 @@ Track deviations between spec/plan and implementation, per Specrew governance.
 - **Status:** Fixed (2026-05-28)
 
 ### 3. Lifecycle Artifacts State Mismatch (RESOLVED)
+
 - **Severity:** Minor
 - **Category:** Process drift
 - **Detection:** Reviewer inspection
@@ -33,6 +37,7 @@ Track deviations between spec/plan and implementation, per Specrew governance.
 - **Status:** Fixed (2026-05-28)
 
 ### 4. Fabricated Timestamps (RESOLVED)
+
 - **Severity:** Critical
 - **Category:** Governance violation
 - **Detection:** Reviewer inspection
@@ -42,6 +47,7 @@ Track deviations between spec/plan and implementation, per Specrew governance.
 - **Status:** Fixed (2026-05-28)
 
 ### 5. Missing SC-005 Evidence (RESOLVED)
+
 - **Severity:** Minor
 - **Category:** Documentation drift
 - **Detection:** Reviewer inspection
@@ -51,4 +57,5 @@ Track deviations between spec/plan and implementation, per Specrew governance.
 - **Status:** Fixed (2026-05-28)
 
 ## Summary
+
 Five critical/minor drifts detected during review, all resolved through systematic repair cycle.
