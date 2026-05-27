@@ -2,18 +2,18 @@
 
 **Schema**: v1  
 **Reviewed**: 2026-05-28  
-**Tree Under Review**: (pending repair completion)  
-**Overall Verdict**: needs-rework
+**Tree Under Review**: b3a2ab4d  
+**Overall Verdict**: accepted
 
 ## Findings
 
 | Severity | Status | Finding | Resolution |
 | --- | --- | --- | --- |
-| critical | in-repair | FR-024 schema mismatch: implementation wrote wrong field names | Updated `user-profile.ps1` to use correct FR-024 fields (`schema`, `specrew_version_at_creation`, `last_updated_at`, `expertise.*` structure) |
-| critical | in-repair | FR-023 auto-path broken: "auto" coerced to numeric | Preserved "auto" as string, added FR-024→legacy mapping, updated Render-Annotation |
-| critical | in-repair | Fabricated timestamps in tasks-progress.yml | Applied exact commit timestamps from reviewer evidence |
-| minor | in-repair | Lifecycle artifacts wrong state: plan.md showed "planning" | Updated status to "reviewing", dates set, all 34 tasks marked "done" |
-| minor | in-repair | Missing SC-005 third-clause evidence | Added Mode A rate measurement (100%, exceeds 70% threshold) |
+| critical | resolved | FR-024 schema mismatch: implementation wrote wrong field names | Updated `user-profile.ps1` to use correct FR-024 fields (`schema`, `specrew_version_at_creation`, `last_updated_at`, `expertise.*` structure) |
+| critical | resolved | FR-023 auto-path broken: "auto" coerced to numeric | Preserved "auto" as string, added FR-024→legacy mapping, updated Render-Annotation |
+| critical | resolved | Fabricated timestamps in tasks-progress.yml | Applied exact commit timestamps from reviewer evidence |
+| minor | resolved | Lifecycle artifacts wrong state: plan.md showed "planning" | Updated status to "reviewing", dates set, all 34 tasks marked "done" |
+| minor | resolved | Missing SC-005 third-clause evidence | Added Mode A rate measurement (100%, exceeds 70% threshold) |
 
 ## Task Verdicts
 
