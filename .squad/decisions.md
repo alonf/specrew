@@ -20561,7 +20561,7 @@ This decision affects:
 - **Boundary**: review-signoff
 - **Approving Human**: Alon Fliess
 - **Recorded At**: 2026-05-27T00:00:44Z
-- **Commit Reference**: pending
+- **Commit Reference**: a731e83
 - **Authorization Text**:
   > approved for review-signoff.
   > 
