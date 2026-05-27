@@ -2,7 +2,7 @@
 
 **Schema**: v1
 **Spec**: [../../spec.md](../../spec.md)
-**Status**: planning
+**Status**: executing
 **Capacity**: 4.0/20 story_points
 **Started**: 2026-05-27
 **Completed**:
@@ -47,7 +47,7 @@ Iteration `002` is the approved documentation-only slice for Feature `049`. Exec
 
 | Task | Title | Requirement | Story | Effort | Owner | Owner File Globs | Status | Agent | Actual | Verdict |
 | ---- | ----- | ----------- | ----- | ------ | ----- | ---------------- | ------ | ----- | ------ | ------- |
-| T008 | Draft `docs/troubleshooting.md` with recovery guidance, update-vs-module clarification, and Shape-5 lesson | FR-006, FR-015, FR-017, TG-006, TG-007, SC-002 | US2 | 1.75 | Implementer | `docs/troubleshooting.md` | planned | Implementer | — | — |
+| T008 | Draft `docs/troubleshooting.md` with recovery guidance, update-vs-module clarification, and Shape-5 lesson | FR-006, FR-015, FR-017, TG-006, TG-007, SC-002 | US2 | 1.75 | Implementer | `docs/troubleshooting.md` | done | Implementer | 1.75 | implemented |
 | T009 | Register `docs/troubleshooting.md` in `Specrew.psd1` `FileList` | FR-007, TG-006, TG-007, SC-002 | US2 | 0.50 | Implementer | `Specrew.psd1` | planned | Implementer | — | — |
 | T010 | Add onboarding cross-references from primary docs to `docs/troubleshooting.md` | FR-016, TG-006, TG-007, SC-002 | US2 | 1.00 | Implementer | `README.md`, `docs/getting-started.md`, `docs/user-guide.md` | planned | Implementer | — | — |
 | T011 | Review documentation surfaces and record Iteration `002` acceptance evidence | FR-006, FR-007, FR-015, FR-016, FR-017, TG-006, TG-007, SC-002 | US2 | 0.75 | Reviewer | `docs/troubleshooting.md`, `README.md`, `docs/getting-started.md`, `docs/user-guide.md`, `Specrew.psd1`, `specs/049-pipeline-hardening-intake/iterations/002/quality/quality-evidence.md` | planned | Reviewer | — | — |
