@@ -2,7 +2,8 @@
 
 **Feature Branch**: `049-pipeline-hardening-intake`  
 **Created**: 2026-05-27  
-**Status**: Draft  
+**Status**: Approved  
+**Approved By**: User approval on 2026-05-27 authorizing before-plan readiness for Feature 049 / Iteration 003 at committed HEAD `264b40a6`.  
 **Input**: F-049 user request: Docker pre-publish version-update validation, durable troubleshooting guide docs, persona-driven `/speckit.specify` intake, and approved Proposal 120 five-pillar bypass-detection scope.
 
 ---
