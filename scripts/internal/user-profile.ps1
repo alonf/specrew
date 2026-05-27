@@ -65,36 +65,65 @@ function Get-UserProfile {
             return $profile
         }
         
-        # Fallback: basic YAML parser for simple key-value structure
+        # Fallback: basic YAML parser for FR-024 schema
         $profile = @{
-            schema_version = '1.0'
-            created_at     = ''
-            updated_at     = ''
-            expertise_dials = @{}
+            schema = '1.0'
+            specrew_version_at_creation = ''
+            created_at = ''
+            last_updated_at = ''
+            user_name = $null
+            expertise = @{
+                software_architecture = $null
+                ui_ux = $null
+                product_management = $null
+                ai_research_project_management = $null
+            }
+            preferences = @{
+                preferred_intake_depth = 'auto'
+            }
         }
         
         $lines = $content -split "`n"
         $inExpertiseSection = $false
+        $inPreferencesSection = $false
         
         foreach ($line in $lines) {
             $trimmedLine = $line.Trim()
             
-            if ($trimmedLine -match '^schema_version:\s*(.+)$') {
-                $profile.schema_version = $matches[1].Trim('"', "'")
+            if ($trimmedLine -match '^schema:\s*(.+)$') {
+                $profile.schema = $matches[1].Trim('"', "'")
+            }
+            elseif ($trimmedLine -match '^specrew_version_at_creation:\s*(.+)$') {
+                $profile.specrew_version_at_creation = $matches[1].Trim('"', "'")
             }
             elseif ($trimmedLine -match '^created_at:\s*(.+)$') {
                 $profile.created_at = $matches[1].Trim('"', "'")
             }
-            elseif ($trimmedLine -match '^updated_at:\s*(.+)$') {
-                $profile.updated_at = $matches[1].Trim('"', "'")
+            elseif ($trimmedLine -match '^last_updated_at:\s*(.+)$') {
+                $profile.last_updated_at = $matches[1].Trim('"', "'")
             }
-            elseif ($trimmedLine -match '^expertise_dials:') {
+            elseif ($trimmedLine -match '^user_name:\s*(.+)$') {
+                $profile.user_name = $matches[1].Trim('"', "'")
+            }
+            elseif ($trimmedLine -match '^expertise:') {
                 $inExpertiseSection = $true
+                $inPreferencesSection = $false
             }
-            elseif ($inExpertiseSection -and $line -match '^\s+([a-z-]+):\s*(.+)$') {
-                $personaId = $matches[1]
-                $value = $matches[2].Trim('"', "'")
-                $profile.expertise_dials[$personaId] = $value
+            elseif ($trimmedLine -match '^preferences:') {
+                $inPreferencesSection = $true
+                $inExpertiseSection = $false
+            }
+            elseif ($inExpertiseSection -and $line -match '^\s+([a-z_]+):\s*(.+)$') {
+                $field = $matches[1]
+                $value = $matches[2].Trim().Trim('"', "'")
+                if ($value -ne 'null' -and $value -ne '') {
+                    $profile.expertise[$field] = $value
+                }
+            }
+            elseif ($inPreferencesSection -and $line -match '^\s+([a-z_]+):\s*(.+)$') {
+                $field = $matches[1]
+                $value = $matches[2].Trim().Trim('"', "'")
+                $profile.preferences[$field] = $value
             }
         }
         
@@ -145,25 +174,41 @@ function Save-UserProfile {
         $timestamp
     }
     
-    # Build YAML content
+    # Get module version
+    $specrewVersion = '0.27.6'  # Default fallback
+    try {
+        $modulePath = Join-Path (Split-Path (Split-Path (Split-Path $PSScriptRoot -Parent) -Parent) -Parent) 'Specrew.psd1'
+        if (Test-Path $modulePath) {
+            $moduleData = Import-PowerShellDataFile -Path $modulePath
+            $specrewVersion = $moduleData.ModuleVersion
+        }
+    }
+    catch {
+        # Fallback to default version
+    }
+    
+    # Build YAML content per FR-024 schema
     $yamlContent = @"
 # Specrew User Profile
 # Feature 049 Iteration 003 - Expertise-Aware Substantive Intake
 # Cross-platform user-level expertise settings for persona-driven specification intake
 
-schema_version: "1.0"
+schema: "1.0"
+specrew_version_at_creation: "$specrewVersion"
 created_at: "$createdAt"
-updated_at: "$timestamp"
+last_updated_at: "$timestamp"
 
 # Expertise dials: 1-10 scale or "auto" for "I'm new, you decide"
 # These settings persist across all Specrew projects for this user
-expertise_dials:
+expertise:
+  software_architecture: $($ExpertiseDials['architect'])
+  ui_ux: $($ExpertiseDials['ux-ui-specialist'])
+  product_management: $($ExpertiseDials['product-manager'])
+  ai_research_project_management: $($ExpertiseDials['ai-researcher-project-manager'])
+
+preferences:
+  preferred_intake_depth: "auto"
 "@
-    
-    foreach ($personaId in $ExpertiseDials.Keys | Sort-Object) {
-        $value = $ExpertiseDials[$personaId]
-        $yamlContent += "`n  ${personaId}: $value"
-    }
     
     $yamlContent | Set-Content -LiteralPath $ProfilePath -Encoding UTF8 -NoNewline
 }
@@ -190,38 +235,71 @@ function Show-UserProfileSummary {
     }
     
     # Load persona names from catalog for friendly display
-    $personaNames = @{
-        'product-manager' = 'Product Manager'
-        'ux-ui-specialist' = 'UX/UI Specialist'
-        'architect' = 'Architect'
-        'ai-researcher-project-manager' = 'AI Researcher / Project Manager'
+    $personaMapping = @{
+        'software_architecture' = @{ id = 'architect'; name = 'Architect' }
+        'ui_ux' = @{ id = 'ux-ui-specialist'; name = 'UX/UI Specialist' }
+        'product_management' = @{ id = 'product-manager'; name = 'Product Manager' }
+        'ai_research_project_management' = @{ id = 'ai-researcher-project-manager'; name = 'AI Researcher / Project Manager' }
     }
     
     $summary = "**Expertise Profile:**`n"
     
-    foreach ($personaId in $Profile.expertise_dials.Keys | Sort-Object) {
-        $value = $Profile.expertise_dials[$personaId]
-        $personaName = if ($personaNames.ContainsKey($personaId)) {
-            $personaNames[$personaId]
+    # Handle both old expertise_dials format and new expertise format
+    if ($Profile.expertise) {
+        foreach ($field in @('software_architecture', 'ui_ux', 'product_management', 'ai_research_project_management')) {
+            if ($Profile.expertise.ContainsKey($field)) {
+                $value = $Profile.expertise[$field]
+                $personaName = $personaMapping[$field].name
+                
+                $levelDesc = if ($value -eq 'auto' -or $null -eq $value) {
+                    'Auto (system decides)'
+                }
+                elseif ([int]$value -ge 7) {
+                    "$value (Senior)"
+                }
+                elseif ([int]$value -ge 4) {
+                    "$value (Standard)"
+                }
+                else {
+                    "$value (Learning)"
+                }
+                
+                $summary += "- ${personaName}: $levelDesc`n"
+            }
         }
-        else {
-            $personaId
+    }
+    elseif ($Profile.expertise_dials) {
+        # Legacy format fallback
+        $legacyNames = @{
+            'architect' = 'Architect'
+            'ux-ui-specialist' = 'UX/UI Specialist'
+            'product-manager' = 'Product Manager'
+            'ai-researcher-project-manager' = 'AI Researcher / Project Manager'
         }
-        
-        $levelDesc = if ($value -eq 'auto') {
-            'Auto (system decides)'
+        foreach ($personaId in $Profile.expertise_dials.Keys | Sort-Object) {
+            $value = $Profile.expertise_dials[$personaId]
+            $personaName = if ($legacyNames.ContainsKey($personaId)) {
+                $legacyNames[$personaId]
+            }
+            else {
+                $personaId
+            }
+            
+            $levelDesc = if ($value -eq 'auto' -or $null -eq $value) {
+                'Auto (system decides)'
+            }
+            elseif ([int]$value -ge 7) {
+                "$value (Senior)"
+            }
+            elseif ([int]$value -ge 4) {
+                "$value (Standard)"
+            }
+            else {
+                "$value (Learning)"
+            }
+            
+            $summary += "- ${personaName}: $levelDesc`n"
         }
-        elseif ([int]$value -ge 7) {
-            "$value (Senior)"
-        }
-        elseif ([int]$value -ge 4) {
-            "$value (Standard)"
-        }
-        else {
-            "$value (Learning)"
-        }
-        
-        $summary += "- ${personaName}: $levelDesc`n"
     }
     
     $summary += "`nTo update: use ``/specrew-user-profile edit`` or ``/specrew-user-profile reset``"
@@ -292,7 +370,7 @@ function Invoke-FirstRunExpertisePrompt {
                 $validInput = $true
             }
             elseif ($input -match '^\d+$' -and [int]$input -ge 1 -and [int]$input -le 10) {
-                $dials[$persona.Id] = [int]$input
+                $dials[$persona.Id] = [string][int]$input
                 $validInput = $true
             }
             else {
@@ -400,7 +478,7 @@ function Edit-UserProfile {
             $newDials[$personaId] = 'auto'
         }
         elseif ($input -match '^\d+$' -and [int]$input -ge 1 -and [int]$input -le 10) {
-            $newDials[$personaId] = [int]$input
+            $newDials[$personaId] = [string][int]$input
         }
         else {
             Write-Host "    Invalid input, keeping current value" -ForegroundColor Red
