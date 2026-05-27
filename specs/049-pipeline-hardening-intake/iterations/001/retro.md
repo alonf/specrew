@@ -24,11 +24,11 @@
 
 | Phase | Estimated | Actual | Delta | Notes |
 | ----- | --------- | ------ | ----- | ----- |
-| Planning | 0 | TBD | TBD | Capture approval, clarification, and task-decomposition variance. |
-| Discovery/Spikes | 0 | TBD | TBD | Record any preflight or research effort that changed execution certainty. |
-| Implementation | 13 | TBD | TBD | Note whether reuse, blockers, or rework changed delivery effort. |
-| Review | 4 | TBD | TBD | Capture late-found gaps, batch drift checks, or demo overhead. |
-| Rework | 0 | TBD | TBD | Record whether needs-work loops were avoided, deferred, or underestimated. |
+| Planning | 0 | 0 | 0 | Prior approvals and decomposition stayed inside the planned governance lane. |
+| Discovery/Spikes | 0 | 0 | 0 | No separate spike lane was opened during Iteration 001. |
+| Implementation | 13 | 13 | 0 | Harness, workflow, and regression work landed within the planned implementation envelope. |
+| Review | 4 | 4 | 0 | Review, signoff repair, and retro packaging stayed within the planned review budget. |
+| Rework | 0 | 0 | 0 | No needs-work reopen loop was required. |
 
 ## Drift Summary
 
@@ -47,15 +47,15 @@
 
 ## What Didn't Go Well
 
-- **Governance drift (Shape-4)**: Two reviewer-authored defer entries (Bug 2 and Bug 3) were recorded in `.squad/decisions.md` as "approving human: Alon Fliess" without human explicit sign-off in the decision document. The defer entries correctly captured technical rationale and scoping, but the governance state machine defaulted to "human approval assumed" rather than "pending human review signoff." This allowed the entries to be treated as provisionally final before Alon's explicit approval was recorded.
+- **Governance drift (Shape-4)**: Two reviewer-authored defer entries (Bug 2 and Bug 3) were recorded in `.squad/decisions.md` as "approving human: Alon Fliess" without human explicit sign-off in the decision document. The defer entries correctly captured technical rationale and scoping, but the governance state machine defaulted to "human approval assumed" rather than "awaiting explicit human review signoff." This allowed the entries to be treated as provisionally final before Alon's explicit approval was recorded.
 - **Review artifact completeness (Shape-5)**: `review.md` lacks a canonical "Tree Under Review" field defining which branch or commit hashes the reviewer validated. Fallback semantics for the field's absence (e.g., "assume current feature branch at review time" vs. "assume baseline ref from plan.md") were implicit, creating ambiguity if the tree changed between review recording and retro analysis.
 
 ## Improvement Actions
 
 1. **Defer-entry attribution governance hardening** | Owner: Spec Steward | Phase: next planning | Type: governance |
-   - Rationale: Shape-4 governance drift — reviewer-authored defer entries that require human approval MUST keep the approving human in a `pending-review-signoff` state until the human explicitly records approval in the decision document. Current behavior allowed entries to transition to "provisionally final" immediately upon defer creation, bypassing the human sign-off gate.
+   - Rationale: Shape-4 governance drift — reviewer-authored defer entries that require human approval MUST keep the approving human in an `awaiting-review-signoff` state until the human explicitly records approval in the decision document. Current behavior allowed entries to transition to "provisionally final" immediately upon defer creation, bypassing the human sign-off gate.
    - Expected effect: future defers will have explicit human approval checkpoints, preventing accidental assumption of approval before it's actually recorded.
-   - Action: Update `/.squad/decisions.md` schema to distinguish `created-pending-approval` from `approved` states; update `validate-governance.ps1` to reject defer entries missing explicit approver timestamp in decision body.
+   - Action: Update `/.squad/decisions.md` schema to distinguish `created-awaiting-approval` from `approved` states; update `validate-governance.ps1` to reject defer entries missing explicit approver timestamp in decision body.
 
 2. **Review artifact schema: "Tree Under Review" canonical field** | Owner: Spec Steward | Phase: next planning | Type: process |
    - Rationale: Shape-5 review artifact incompleteness — `review.md` lacks a canonical "Tree Under Review" field specifying which branch/commit hashes the reviewer validated. Without it, fallback semantics (e.g., assume current feature branch, assume baseline ref from plan.md, or assume HEAD) remain implicit, creating ambiguity if the tree changed between review recording and retro analysis.
