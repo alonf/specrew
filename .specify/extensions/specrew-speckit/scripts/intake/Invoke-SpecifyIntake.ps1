@@ -67,6 +67,7 @@ if ([string]::IsNullOrEmpty($ScriptRoot)) {
 # Load helper functions
 $helpersPath = Join-Path $ScriptRoot 'helpers'
 $helpers = @(
+    'Read-IntakeYaml.ps1',
     'Load-PersonaCatalog.ps1',
     'Load-CategoryCatalog.ps1',
     'Resolve-PerLensMode.ps1',
@@ -115,12 +116,10 @@ if (Test-Path $UserProfilePath) {
         $profileContent = Get-Content $UserProfilePath -Raw
         if (Get-Command ConvertFrom-Yaml -ErrorAction SilentlyContinue) {
             $userProfile = $profileContent | ConvertFrom-Yaml
+        } elseif (Get-Command Read-IntakeYamlDocument -ErrorAction SilentlyContinue) {
+            $userProfile = Read-IntakeYamlDocument -Path $UserProfilePath -Kind 'user_profile'
         } else {
-            # Basic YAML parsing for testing (production should use powershell-yaml module)
-            Write-Verbose "ConvertFrom-Yaml not available, using basic parsing"
-            $userProfile = @{
-                expertise_dials = @{}
-            }
+            Write-Verbose "User profile loading skipped (no YAML parser available)"
         }
     } catch {
         Write-Warning "Failed to load user profile: $_"
@@ -151,8 +150,10 @@ if (Test-Path $depthRulesPath) {
     $depthRulesContent = Get-Content $depthRulesPath -Raw
     if (Get-Command ConvertFrom-Yaml -ErrorAction SilentlyContinue) {
         $depthRules = $depthRulesContent | ConvertFrom-Yaml
+    } elseif (Get-Command Read-IntakeYamlDocument -ErrorAction SilentlyContinue) {
+        $depthRules = Read-IntakeYamlDocument -Path $depthRulesPath -Kind 'depth_rules'
     } else {
-        Write-Verbose "Depth rules loading skipped (ConvertFrom-Yaml not available)"
+        Write-Verbose "Depth rules loading skipped (no YAML parser available)"
     }
 }
 
@@ -184,17 +185,17 @@ foreach ($persona in $personas) {
     Write-Verbose "Applying lens: $($persona.name) ($($persona.id))"
 
     # Get expertise dial for this persona
-    $expertiseDial = 5 # Default mid-range
+    $personaExpertiseDial = 5 # Default mid-range
     if ($userProfile -and $userProfile.expertise_dials -and $userProfile.expertise_dials.ContainsKey($persona.id)) {
-        $expertiseDial = $userProfile.expertise_dials[$persona.id]
+        $personaExpertiseDial = $userProfile.expertise_dials[$persona.id]
     }
-    Write-Verbose "  Expertise dial: $expertiseDial"
+    Write-Verbose "  Expertise dial: $personaExpertiseDial"
 
     # Calculate lens completeness (placeholder - would analyze existing content)
     $lensCompleteness = 0.5 # 50% for now (would be calculated from existing answers)
 
     # Resolve per-lens mode (Mode A/B/C)
-    $lensMode = Resolve-PerLensMode -ExpertiseDial $expertiseDial -LensCompleteness $lensCompleteness -DepthRules $depthRules
+    $lensMode = Resolve-PerLensMode -ExpertiseDial $personaExpertiseDial -LensCompleteness $lensCompleteness -DepthRules $depthRules
     Write-Verbose "  Resolved lens mode: $lensMode"
 
     # Traverse question bank for this persona
@@ -204,14 +205,14 @@ foreach ($persona in $personas) {
     $lensResult = @{
         persona_id = $persona.id
         persona_name = $persona.name
-        expertise_dial = $expertiseDial
+        expertise_dial = $personaExpertiseDial
         lens_completeness = $lensCompleteness
         lens_mode = $lensMode
         questions = $questions
     }
 
     # Render annotations for auto-decided items (Proposal 053 transparency)
-    if ($lensMode -eq 'C' -and $expertiseDial -le 3) {
+    if ($lensMode -eq 'C' -and $personaExpertiseDial -le 3) {
         $annotations = Render-Annotation -LensResult $lensResult -AutoDecisions $autoDecisions
         $lensResult.annotations = $annotations
     }

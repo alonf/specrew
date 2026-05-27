@@ -19,39 +19,48 @@ Mirror parity: This file must remain functionally identical to:
   .specify/extensions/specrew-speckit/scripts/intake/helpers/Load-PersonaCatalog.ps1
 #>
 
-[CmdletBinding()]
-param(
-    [Parameter(Mandatory = $false)]
-    [string]$IntakeDataRoot
-)
-
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
-if ([string]::IsNullOrEmpty($IntakeDataRoot)) {
-    $IntakeDataRoot = Join-Path (Get-Location) '.specify\intake'
-}
+function Load-PersonaCatalog {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $false)]
+        [string]$IntakeDataRoot
+    )
 
-$personasPath = Join-Path $IntakeDataRoot 'personas.yml'
+    $parserPath = Join-Path $PSScriptRoot 'Read-IntakeYaml.ps1'
+    if (-not (Get-Command Read-IntakeYamlDocument -ErrorAction SilentlyContinue) -and (Test-Path -LiteralPath $parserPath -PathType Leaf)) {
+        . $parserPath
+    }
 
-if (-not (Test-Path $personasPath)) {
-    Write-Warning "Personas catalog not found: $personasPath"
-    return @()
-}
+    if ([string]::IsNullOrEmpty($IntakeDataRoot)) {
+        $IntakeDataRoot = Join-Path (Get-Location) '.specify\intake'
+    }
 
-try {
-    $personasContent = Get-Content $personasPath -Raw
-    
-    # Use ConvertFrom-Yaml if available (powershell-yaml module)
-    if (Get-Command ConvertFrom-Yaml -ErrorAction SilentlyContinue) {
-        $personasData = $personasContent | ConvertFrom-Yaml
-        return $personasData.personas
-    } else {
-        # Fallback: basic parsing for testing (production should use powershell-yaml)
-        Write-Verbose "ConvertFrom-Yaml not available, returning empty persona list"
+    $personasPath = Join-Path $IntakeDataRoot 'personas.yml'
+
+    if (-not (Test-Path $personasPath)) {
+        Write-Warning "Personas catalog not found: $personasPath"
         return @()
     }
-} catch {
-    Write-Error "Failed to load persona catalog: $_"
-    return @()
+
+    try {
+        $personasContent = Get-Content $personasPath -Raw
+
+        if (Get-Command ConvertFrom-Yaml -ErrorAction SilentlyContinue) {
+            $personasData = $personasContent | ConvertFrom-Yaml
+            return $personasData.personas
+        }
+
+        if (Get-Command Read-IntakeYamlDocument -ErrorAction SilentlyContinue) {
+            return Read-IntakeYamlDocument -Path $personasPath -Kind 'personas'
+        }
+
+        Write-Verbose "No YAML parser available, returning empty persona list"
+        return @()
+    } catch {
+        Write-Error "Failed to load persona catalog: $_"
+        return @()
+    }
 }

@@ -22,52 +22,60 @@ Mirror parity: This file must remain functionally identical to:
   .specify/extensions/specrew-speckit/scripts/intake/helpers/Resolve-AutoDecision.ps1
 #>
 
-[CmdletBinding()]
-param(
-    [Parameter(Mandatory = $false)]
-    [string]$IntakeDataRoot,
-
-    [Parameter(Mandatory = $false)]
-    [string]$Stack = 'generic'
-)
-
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
-if ([string]::IsNullOrEmpty($IntakeDataRoot)) {
-    $IntakeDataRoot = Join-Path (Get-Location) '.specify\intake'
-}
+function Resolve-AutoDecision {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $false)]
+        [string]$IntakeDataRoot,
 
-$autoDecisionDir = Join-Path $IntakeDataRoot 'auto-decision-defaults'
-$stackSpecificPath = Join-Path $autoDecisionDir "$Stack.yml"
-$genericPath = Join-Path $autoDecisionDir 'generic.yml'
+        [Parameter(Mandatory = $false)]
+        [string]$Stack = 'generic'
+    )
 
-# Try stack-specific file first
-$decisionPath = $genericPath
-if (Test-Path $stackSpecificPath) {
-    $decisionPath = $stackSpecificPath
-    Write-Verbose "Using stack-specific auto-decisions: $Stack"
-} else {
-    Write-Verbose "Using generic auto-decisions (stack-specific not found: $Stack)"
-}
+    $parserPath = Join-Path $PSScriptRoot 'Read-IntakeYaml.ps1'
+    if (-not (Get-Command Read-IntakeYamlDocument -ErrorAction SilentlyContinue) -and (Test-Path -LiteralPath $parserPath -PathType Leaf)) {
+        . $parserPath
+    }
 
-if (-not (Test-Path $decisionPath)) {
-    Write-Warning "Auto-decision defaults not found: $decisionPath"
-    return @{}
-}
+    if ([string]::IsNullOrEmpty($IntakeDataRoot)) {
+        $IntakeDataRoot = Join-Path (Get-Location) '.specify\intake'
+    }
 
-try {
-    $decisionContent = Get-Content $decisionPath -Raw
-    
-    # Use ConvertFrom-Yaml if available
-    if (Get-Command ConvertFrom-Yaml -ErrorAction SilentlyContinue) {
-        $decisionData = $decisionContent | ConvertFrom-Yaml
-        return $decisionData.defaults
+    $autoDecisionDir = Join-Path $IntakeDataRoot 'auto-decision-defaults'
+    $stackSpecificPath = Join-Path $autoDecisionDir "$Stack.yml"
+    $genericPath = Join-Path $autoDecisionDir 'generic.yml'
+    $decisionPath = $genericPath
+
+    if (Test-Path $stackSpecificPath) {
+        $decisionPath = $stackSpecificPath
+        Write-Verbose "Using stack-specific auto-decisions: $Stack"
     } else {
-        Write-Verbose "ConvertFrom-Yaml not available, returning empty auto-decisions"
+        Write-Verbose "Using generic auto-decisions (stack-specific not found: $Stack)"
+    }
+
+    if (-not (Test-Path $decisionPath)) {
+        Write-Warning "Auto-decision defaults not found: $decisionPath"
         return @{}
     }
-} catch {
-    Write-Error "Failed to load auto-decision defaults: $_"
-    return @{}
+
+    try {
+        $decisionContent = Get-Content $decisionPath -Raw
+        if (Get-Command ConvertFrom-Yaml -ErrorAction SilentlyContinue) {
+            $decisionData = $decisionContent | ConvertFrom-Yaml
+            return $decisionData.defaults
+        }
+
+        if (Get-Command Read-IntakeYamlDocument -ErrorAction SilentlyContinue) {
+            return Read-IntakeYamlDocument -Path $decisionPath -Kind 'defaults'
+        }
+
+        Write-Verbose "No YAML parser available, returning empty auto-decisions"
+        return @{}
+    } catch {
+        Write-Error "Failed to load auto-decision defaults: $_"
+        return @{}
+    }
 }

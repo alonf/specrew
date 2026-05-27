@@ -77,18 +77,18 @@ function Get-UserProfile {
         $inExpertiseSection = $false
         
         foreach ($line in $lines) {
-            $line = $line.Trim()
+            $trimmedLine = $line.Trim()
             
-            if ($line -match '^schema_version:\s*(.+)$') {
+            if ($trimmedLine -match '^schema_version:\s*(.+)$') {
                 $profile.schema_version = $matches[1].Trim('"', "'")
             }
-            elseif ($line -match '^created_at:\s*(.+)$') {
+            elseif ($trimmedLine -match '^created_at:\s*(.+)$') {
                 $profile.created_at = $matches[1].Trim('"', "'")
             }
-            elseif ($line -match '^updated_at:\s*(.+)$') {
+            elseif ($trimmedLine -match '^updated_at:\s*(.+)$') {
                 $profile.updated_at = $matches[1].Trim('"', "'")
             }
-            elseif ($line -match '^expertise_dials:') {
+            elseif ($trimmedLine -match '^expertise_dials:') {
                 $inExpertiseSection = $true
             }
             elseif ($inExpertiseSection -and $line -match '^\s+([a-z-]+):\s*(.+)$') {
@@ -414,14 +414,16 @@ function Edit-UserProfile {
     Write-Host ""
 }
 
-# Export functions for use by specrew-start.ps1 and slash commands
-Export-ModuleMember -Function @(
-    'Get-UserProfilePath',
-    'Test-UserProfileExists',
-    'Get-UserProfile',
-    'Save-UserProfile',
-    'Show-UserProfileSummary',
-    'Invoke-FirstRunExpertisePrompt',
-    'Reset-UserProfile',
-    'Edit-UserProfile'
-)
+# Export functions when loaded as a module; allow dot-sourcing in tests.
+if ($null -ne $ExecutionContext.SessionState.Module) {
+    Export-ModuleMember -Function @(
+        'Get-UserProfilePath',
+        'Test-UserProfileExists',
+        'Get-UserProfile',
+        'Save-UserProfile',
+        'Show-UserProfileSummary',
+        'Invoke-FirstRunExpertisePrompt',
+        'Reset-UserProfile',
+        'Edit-UserProfile'
+    )
+}

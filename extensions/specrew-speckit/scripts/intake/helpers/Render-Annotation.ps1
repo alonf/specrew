@@ -23,35 +23,30 @@ Mirror parity: This file must remain functionally identical to:
   .specify/extensions/specrew-speckit/scripts/intake/helpers/Render-Annotation.ps1
 #>
 
-[CmdletBinding()]
-param(
-    [Parameter(Mandatory = $true)]
-    [object]$LensResult,
-
-    [Parameter(Mandatory = $false)]
-    [hashtable]$AutoDecisions = @{}
-)
-
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
-$annotations = @()
+function Render-Annotation {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [object]$LensResult,
 
-# Only render annotations for Mode C with low expertise (auto-decision scenario)
-if ($LensResult.lens_mode -ne 'C' -or $LensResult.expertise_dial -gt 3) {
+        [Parameter(Mandatory = $false)]
+        [hashtable]$AutoDecisions = @{}
+    )
+
+    $annotations = @()
+    if ($LensResult.lens_mode -ne 'C' -or $LensResult.expertise_dial -gt 3) {
+        return $annotations
+    }
+
+    foreach ($category in $AutoDecisions.Keys) {
+        $decision = $AutoDecisions[$category]
+        $annotation = "[AUTO-DECIDED: $category → $decision]"
+        $annotations += $annotation
+    }
+
+    Write-Verbose "Rendered $($annotations.Count) transparency annotations for persona: $($LensResult.persona_id)"
     return $annotations
 }
-
-# For each auto-decided category/question, create transparency annotation
-foreach ($category in $AutoDecisions.Keys) {
-    $decision = $AutoDecisions[$category]
-    
-    # Format: [AUTO-DECIDED: <decision>]
-    # Example: [AUTO-DECIDED: Testing Framework → Pester (PowerShell standard)]
-    $annotation = "[AUTO-DECIDED: $category → $decision]"
-    $annotations += $annotation
-}
-
-Write-Verbose "Rendered $($annotations.Count) transparency annotations for persona: $($LensResult.persona_id)"
-
-return $annotations

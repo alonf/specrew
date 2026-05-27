@@ -29,72 +29,75 @@ Mirror parity: This file must remain functionally identical to:
   .specify/extensions/specrew-speckit/scripts/intake/helpers/Traverse-QuestionBank.ps1
 #>
 
-[CmdletBinding()]
-param(
-    [Parameter(Mandatory = $false)]
-    [string]$IntakeDataRoot,
-
-    [Parameter(Mandatory = $true)]
-    [string]$PersonaId,
-
-    [Parameter(Mandatory = $true)]
-    [ValidateSet('A', 'B', 'C')]
-    [string]$Mode
-)
-
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
-if ([string]::IsNullOrEmpty($IntakeDataRoot)) {
-    $IntakeDataRoot = Join-Path (Get-Location) '.specify\intake'
-}
+function Traverse-QuestionBank {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $false)]
+        [string]$IntakeDataRoot,
 
-$questionBankPath = Join-Path $IntakeDataRoot "questions\$PersonaId.yml"
+        [Parameter(Mandatory = $true)]
+        [string]$PersonaId,
 
-if (-not (Test-Path $questionBankPath)) {
-    Write-Warning "Question bank not found for persona '$PersonaId': $questionBankPath"
-    return @()
-}
+        [Parameter(Mandatory = $true)]
+        [ValidateSet('A', 'B', 'C')]
+        [string]$Mode
+    )
 
-try {
-    $questionContent = Get-Content $questionBankPath -Raw
-    
-    # Use ConvertFrom-Yaml if available
-    if (Get-Command ConvertFrom-Yaml -ErrorAction SilentlyContinue) {
-        $questionData = $questionContent | ConvertFrom-Yaml
-        $allQuestions = $questionData.questions
-        
+    $parserPath = Join-Path $PSScriptRoot 'Read-IntakeYaml.ps1'
+    if (-not (Get-Command Read-IntakeYamlDocument -ErrorAction SilentlyContinue) -and (Test-Path -LiteralPath $parserPath -PathType Leaf)) {
+        . $parserPath
+    }
+
+    if ([string]::IsNullOrEmpty($IntakeDataRoot)) {
+        $IntakeDataRoot = Join-Path (Get-Location) '.specify\intake'
+    }
+
+    $questionBankPath = Join-Path $IntakeDataRoot "questions\$PersonaId.yml"
+
+    if (-not (Test-Path $questionBankPath)) {
+        Write-Warning "Question bank not found for persona '$PersonaId': $questionBankPath"
+        return @()
+    }
+
+    try {
+        $questionContent = Get-Content $questionBankPath -Raw
+        if (Get-Command ConvertFrom-Yaml -ErrorAction SilentlyContinue) {
+            $questionData = $questionContent | ConvertFrom-Yaml
+            $allQuestions = $questionData.questions
+        } elseif (Get-Command Read-IntakeYamlDocument -ErrorAction SilentlyContinue) {
+            $allQuestions = Read-IntakeYamlDocument -Path $questionBankPath -Kind 'questions'
+        } else {
+            Write-Verbose "No YAML parser available, returning empty question list"
+            return @()
+        }
+
         if (-not $allQuestions) {
             return @()
         }
-        
-        # Filter questions by mode
+
         $filteredQuestions = switch ($Mode) {
             'A' {
-                # Mode A: Minimal questions (priority='high' or tagged 'confirmation')
                 $allQuestions | Where-Object {
-                    $_.priority -eq 'high' -or $_.tags -contains 'confirmation'
+                    $_.priority -eq 'high' -or ($_.tags -contains 'confirmation')
                 }
             }
             'B' {
-                # Mode B: Targeted questions (priority='high' or 'medium'), limit to 2-3
                 $targeted = $allQuestions | Where-Object {
                     $_.priority -eq 'high' -or $_.priority -eq 'medium'
                 }
                 $targeted | Select-Object -First 3
             }
             'C' {
-                # Mode C: All questions (full interview)
                 $allQuestions
             }
         }
-        
+
         return $filteredQuestions
-    } else {
-        Write-Verbose "ConvertFrom-Yaml not available, returning empty question list"
+    } catch {
+        Write-Error "Failed to traverse question bank for persona '$PersonaId': $_"
         return @()
     }
-} catch {
-    Write-Error "Failed to traverse question bank for persona '$PersonaId': $_"
-    return @()
 }
