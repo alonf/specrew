@@ -20553,3 +20553,25 @@ This decision affects:
 - **Next Action**: Queue the `specrew-start.ps1` structural recovery fix for a future lifecycle-robustness iteration. The durable defense should prefer the current git-branch-derived feature over the session-state cursor, never auto-resume to a feature at `lifecycle-end`, and surface explicit recovery UX when branch and session state disagree.
 - **Rationale**: Commit 437338f6 removed the immediate symptom by keeping stale session-state files out of git. The broader recovery-logic hardening is a durable enhancement that belongs in a dedicated future iteration with explicit design and regression coverage.
 - **Affected Artifact**: specs\049-pipeline-hardening-intake\iterations\001\review.md
+
+## 2026-05-27T00:00:44Z — Authorization: review-signoff
+
+- **Decision ID**: authorization-feature-049-iter-001-review-signoff
+- **Type**: sign-off
+- **Boundary**: review-signoff
+- **Approving Human**: Alon Fliess
+- **Recorded At**: 2026-05-27T00:00:44Z
+- **Commit Reference**: pending
+- **Authorization Text**:
+  > approved for review-signoff.
+  > 
+  > Pillar 5 manual verification PASSES — all 6 cited files (T001+T019 tests, T003 test-publish-harness.ps1, review.md, retro.md, review-outcomes.md) confirmed present in HEAD commit b2f16896 via git ls-tree -r. No Shape-5 working-tree-only-state risk for this verdict. This is exactly the discipline Proposal 120 Pillar 5 will mechanize at iter-4.
+  > 
+  > My approval also authorizes the two .squad/decisions.md defer entries (Bug 2 regression-test infrastructure deferred to future testing-infra iteration; Bug 3 structural fix deferred to retro improvement-action). Attribution is correct ex post facto.
+  > 
+  > Two retro improvement-action additions please:
+  > 
+  > 1. Defer-entry attribution wording: when the Reviewer writes a defer entry that requires human approval, the **Approving Human**: field should say pending review-signoff verdict (or equivalent) UNTIL the human actually approves with their review-signoff response. Pre-writing the human's name + having it auto-become-correct is fragile — same family as the Shape 4 state-advance-without-verdict pattern we caught earlier (Picard catch).
+  > 2. Review.md **Tree Under Review**: <hash> field is missing from this review.md. Pillar 5 detection (added to Proposal 120 tonight at commit 4da969bc on main) expects this canonical field. iter-4 should either extend the validator to handle reviews without explicit field (default to "current HEAD at the time review.md was committed") OR ship a Reviewer-charter directive mandating the field. Capture in retro.
+  > 
+  > Proceed to retro phase.
