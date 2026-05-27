@@ -1,9 +1,9 @@
-# Iteration Plan: 002 (Stub)
+# Iteration Plan: 002
 
 **Schema**: v1
 **Spec**: [../../spec.md](../../spec.md)
 **Status**: planning
-**Capacity**: 0/20 story_points
+**Capacity**: 4.0/20 story_points
 **Started**: 2026-05-27
 **Completed**:
 
@@ -19,37 +19,68 @@
     (Note `in-progress` uses a hyphen, not an underscore. `done` not `completed`.)
 -->
 
+## Summary
+
+Iteration `002` is the approved documentation-only slice for Feature `049`. Execution remains bounded to tasks `T008-T011` and requirements `FR-006`, `FR-007`, `FR-015`, `FR-016`, and `FR-017`: create the durable troubleshooting guide, register it in `Specrew.psd1`, add onboarding cross-references, and capture acceptance evidence that explicitly teaches the Shape-5 committed-tree durability lesson. No runtime behavior, Proposal `063`, or Proposal `120` scope is authorized in this iteration.
+
 ## Scope Summary
 
 | Requirement | Summary | Stories |
 | ----------- | ------- | ------- |
-| FR-001 | System MUST supply a Docker-based test runner using a Linux-based PowerShell container (`mcr.microsoft.com/powershell:lts-ubuntu-22.04`). | — |
-| FR-002 | The harness MUST download and install the previous stable version (`0.27.6`) in a clean environment as the baseline. | — |
-| FR-003 | The harness MUST verify that **every** item listed in the packaged candidate's `Specrew.psd1` `FileList` successfully unpacked on disk. | — |
-| FR-004 | The harness MUST run `specrew update` and verify that the local project structure is updated cleanly, and mirror parity checks return `PASS`. | — |
-| FR-005 | `.github/workflows/publish-module.yml` MUST execute this Docker harness as a blocker before any release is pushed to PSGallery. | — |
-| FR-012 | The pre-publish verification suite MUST detect manifest version-pin drift before publication proceeds, so module and runtime version declarations cannot silently diverge. | — |
-| FR-013 | The system MUST prevent `specrew update` from duplicating Squad team/routing entries. The template merge logic inside `scripts/specrew-update.ps1` / `deploy-squad-runtime.ps1` MUST perform a clean merge instead of appending duplicate role rows. | — |
-| FR-014 | `specrew update --info` MUST default to checking and showing the actual latest version published on **PSGallery**, rather than using a hardcoded or misleading `UpstreamLatest` from local manifests (promotes Proposal 049). | — |
-| FR-006 | System MUST contain `docs/troubleshooting.md` addressing: PSGallery side-by-side caches, FileList drops, deploy-script exceptions, stale-state recovery, and clean-reinstall flows. | — |
-| FR-007 | `docs/troubleshooting.md` MUST be registered in `Specrew.psd1` `FileList` immediately upon creation. | — |
-| FR-015 | `docs/troubleshooting.md` MUST explicitly document the naming distinction and functional boundary between `specrew update` (project environment deployment) and `Update-Module Specrew` (module software upgrade). | — |
-| FR-016 | `README.md`, `docs/getting-started.md`, and `docs/user-guide.md` MUST cross-reference `docs/troubleshooting.md` so recovery guidance is discoverable from the primary onboarding and usage paths. | — |
-| FR-017 | `docs/troubleshooting.md` MUST capture the Shape-5 lesson that accepted review evidence must match committed tree state, so maintainers understand why working-tree-only files are not durable delivery. | — |
-| FR-008 | `/speckit.specify` MUST support **4 target personas**: | — |
-| FR-009 | The system MUST supply a **12-category intake catalog** representing comprehensive software parameters. | — |
-| FR-010 | Intake MUST dynamically branch into **Mode A (Direct Confirmation)**, **Mode B (Targeted Clarify)**, or **Mode C (Full Interview)** based on the completeness of initial input. | — |
-| FR-011 | Intake forms MUST support `"Other"` and `"I don't know, you decide"` options, triggering proactive agent domain research when selected. | — |
-| FR-018 | Governance validation MUST detect missing `=== SPECREW HANDOFF ===` evidence at boundary or lifecycle stops and surface the gap as an explicit handoff warning. | — |
-| FR-019 | Governance validation MUST distinguish trigger-bypass artifact gaps from generic missing-artifact failures when an iteration otherwise appears fully closed. | — |
-| FR-020 | Governance validation MUST detect canonical Specrew artifacts written into ephemeral host session-scratch locations and warn that they are outside the canonical feature path. | — |
-| FR-021 | Governance validation and boundary enforcement MUST detect state advances across human-judgment boundaries that lack matching human verdict history, preventing silent state progression from being treated as valid. | — |
-| FR-022 | Governance validation MUST compare accepted review evidence against the cited Tree Under Review and block iteration closeout if production files cited as delivered evidence are absent from that tree; test-only evidence mismatches may remain warning-level findings. | — |
+| FR-006 | Author `docs/troubleshooting.md` covering PSGallery side-by-side caches, FileList omissions, deploy-script exceptions, stale-state recovery, and clean reinstall flows. | US2 |
+| FR-007 | Register `docs/troubleshooting.md` in `Specrew.psd1` `FileList` in the same execution slice as guide creation. | US2 |
+| FR-015 | Explain the naming distinction and operational boundary between `specrew update` and `Update-Module Specrew`. | US2 |
+| FR-016 | Cross-reference `docs/troubleshooting.md` from `README.md`, `docs/getting-started.md`, and `docs/user-guide.md`. | US2 |
+| FR-017 | Teach the Shape-5 lesson that accepted review evidence must match committed tree state, not working-tree-only state. | US2 |
+
+## Governance Consistency Check
+
+| Gate | Verdict | Notes |
+| ---- | ------- | ----- |
+| Spec Authority | PASS | Scope matches the approved Iteration `002` roadmap in `spec.md`, feature `plan.md`, and `tasks.md`. |
+| Traceability | PASS | Every execution task maps directly to `FR-006`, `FR-007`, `FR-015`, `FR-016`, `FR-017`, `TG-006`, `TG-007`, and `SC-002` where applicable. |
+| Capacity | PASS | Authorized slice is `4.0/20` story points, inside the feature plan's Iteration `002` 4-6 SP budget band. |
+| Roadmap Discipline | PASS | Iteration `001` remains closed history; Iterations `003` and `004` remain untouched. |
+| Before-Implement Readiness | PASS | Owner, effort, dependency order, evidence target, and bounded file surfaces are explicit for `T008-T011`. |
 
 ## Tasks
 
 | Task | Title | Requirement | Story | Effort | Owner | Owner File Globs | Status | Agent | Actual | Verdict |
 | ---- | ----- | ----------- | ----- | ------ | ----- | ---------------- | ------ | ----- | ------ | ------- |
+| T008 | Draft `docs/troubleshooting.md` with recovery guidance, update-vs-module clarification, and Shape-5 lesson | FR-006, FR-015, FR-017, TG-006, TG-007, SC-002 | US2 | 1.75 | Implementer | `docs/troubleshooting.md` | planned | Implementer | — | — |
+| T009 | Register `docs/troubleshooting.md` in `Specrew.psd1` `FileList` | FR-007, TG-006, TG-007, SC-002 | US2 | 0.50 | Implementer | `Specrew.psd1` | planned | Implementer | — | — |
+| T010 | Add onboarding cross-references from primary docs to `docs/troubleshooting.md` | FR-016, TG-006, TG-007, SC-002 | US2 | 1.00 | Implementer | `README.md`, `docs/getting-started.md`, `docs/user-guide.md` | planned | Implementer | — | — |
+| T011 | Review documentation surfaces and record Iteration `002` acceptance evidence | FR-006, FR-007, FR-015, FR-016, FR-017, TG-006, TG-007, SC-002 | US2 | 0.75 | Reviewer | `docs/troubleshooting.md`, `README.md`, `docs/getting-started.md`, `docs/user-guide.md`, `Specrew.psd1`, `specs/049-pipeline-hardening-intake/iterations/002/quality/quality-evidence.md` | planned | Reviewer | — | — |
+
+## Required Quality Gates
+
+| Gate | Target | Notes |
+| ---- | ------ | ----- |
+| Troubleshooting coverage | required | `docs/troubleshooting.md` must cover cache cleanup, FileList omissions, deploy-script exceptions, stale-state recovery, clean reinstall flows, and the `specrew update` vs `Update-Module Specrew` distinction. |
+| Discoverability | required | `README.md`, `docs/getting-started.md`, and `docs/user-guide.md` must all point readers to `docs/troubleshooting.md`. |
+| Packaging durability | required | `Specrew.psd1` `FileList` must include `docs/troubleshooting.md` in the same bounded implementation slice. |
+| Shape-5 lesson retention | required | The guide and review evidence must both reinforce that accepted review evidence must match committed tree state. |
+| Acceptance evidence | required | `T011` records Iteration `002` verification in `specs/049-pipeline-hardening-intake/iterations/002/quality/quality-evidence.md`. |
+
+## Planned Execution Order
+
+1. **T008 first** — establish the troubleshooting guide and the exact Shape-5 / command-boundary wording that downstream files will reference.
+2. **T009 and T010 next** — once the guide exists, manifest registration and onboarding discoverability can land as the second implementation boundary.
+3. **T011 last** — reviewer verifies the exact shipped surfaces and records evidence only after `T008-T010` are present on the committed tree under review.
+
+## Boundary Commit Cadence
+
+| Commit Group | Tasks | Why this boundary exists |
+| ------------ | ----- | ------------------------ |
+| Docs baseline | T008 | Creates the substantive guide content and locks the canonical troubleshooting narrative. |
+| Packaging + discoverability | T009-T010 | Keeps FileList durability and onboarding cross-references coupled to the new guide without mixing in review evidence. |
+| Review evidence | T011 | Preserves an auditable acceptance-evidence commit group after the implementation surfaces are present. |
+
+## Dependencies
+
+- `T008` is the prerequisite for the whole iteration because the manifest entry, onboarding links, and review evidence all depend on the guide existing.
+- `T009` and `T010` both depend on `T008` and can proceed in either order after the guide content is stable.
+- `T011` depends on `T008-T010` because review evidence must validate the committed documentation set, not a partial working tree.
 
 ## Effort Model
 
@@ -57,42 +88,42 @@
 | ------- | ----- | ----- |
 | Effort Unit | story_points | Unit used in task effort, capacity, and retro variance. |
 | Capacity per Iteration | 20 | Maximum planned effort before overcommit guidance applies. |
-| Iteration Bounding | scope | `scope` keeps requirements fixed; `time` enforces a time ceiling. |
+| Iteration Bounding | scope | `scope` keeps Iteration `002` fixed to the approved documentation slice only. |
 | Time Limit (hours) | n/a | Only applies when iteration bounding is `time`. |
 | Overcommit Threshold | 1.0 | Warn planners when total estimated effort exceeds 20 story_points (capacity 20 x threshold 1.0). |
-| Defer Strategy | manual | How planning should choose deferrals when the iteration is over capacity. |
-| Calibration Enabled | true | When true, retrospectives should suggest future capacity adjustments. |
+| Defer Strategy | manual | Any future deferral would require explicit replanning; none is authorized inside this slice. |
+| Calibration Enabled | true | Retrospective variance should be recorded after execution completes. |
 
 ## Concurrency Rationale
 
-- Current roster snapshot: Spec Steward, Planner, Implementer, Reviewer, Retro Facilitator
-- Technology and scope signals: No single specialty dominates yet; treat the slice as general product work until task decomposition adds sharper evidence.
-- Task dependency graph: detailed dependencies are still pending task decomposition in this stub; revisit once the task table is populated.
-- Workstream separability: Current scope does not yet prove enough safe parallelism for same-specialty expansion; default to a smaller serial team until tasks are clearer.
-- Shared-surface conflict risk: no elevated shared-surface warning inferred yet.
-- Prior reviewer ownership/hotspot evidence: No prior reviewer hotspot signals were found for this feature.
-- Recommendation: do not propose Junior/Senior same-specialty expansion until the task table and ownership boundaries make safe parallelism explicit. If a same-specialty pair is approved later, record `Owner File Globs` for the parallel tasks or keep the work serial.
+- Current roster snapshot: Implementer and Reviewer are the only active owners for this iteration slice.
+- Technology and scope signals: Markdown documentation, manifest registration, and review evidence packaging dominate; no code-path or runtime behavior changes are in scope.
+- Task dependency graph: `T008` → (`T009`, `T010`) → `T011`.
+- Workstream separability: limited but real after `T008`; `T009` touches only `Specrew.psd1` while `T010` touches the onboarding docs.
+- Shared-surface conflict risk: low to moderate because `T008` and `T010` both depend on the exact wording in `docs/troubleshooting.md`.
+- Recommendation: execute the slice in the documented dependency order, using the commit groups above rather than parallelizing the first or last boundary.
 
 ## Phase Baseline
 
 | Phase | Estimated Effort | Notes |
 | ----- | ---------------- | ----- |
-| Planning | TBD | Populate after task decomposition and approval gating |
-| Discovery/Spikes | TBD | Capture any required risk-reduction work revealed during planning |
-| Implementation | TBD | Sum planned delivery tasks once the task table is complete |
-| Review | TBD | Estimate review/demo effort after verdict flow is defined |
-| Rework | TBD | Expected needs-work buffer if review finds gaps |
+| Planning | 0.00 | Iteration packaging is already complete; this artifact is the execution-ready plan for the before-implement gate. |
+| Discovery/Spikes | 0.00 | No separate spike is authorized; Iteration `001` retro and the approved spec already bounded the docs slice. |
+| Implementation | 3.25 | Sum of Implementer tasks `T008-T010`. |
+| Review | 0.75 | Reviewer task `T011` records acceptance evidence for the shipped documentation surfaces. |
+| Rework | 0.00 | No pre-allocated rework buffer; any review finding would reopen against the bounded scope explicitly. |
 
 ## Traceability Summary
 
-- Requirement scope for this stub: FR-001, FR-002, FR-003, FR-004, FR-005, FR-012, FR-013, FR-014, FR-006, FR-007, FR-015, FR-016, FR-017, FR-008, FR-009, FR-010, FR-011, FR-018, FR-019, FR-020, FR-021, FR-022
-- User stories represented in current scope:
-- Pending detailed planning: populate the task table, then run specrew-capacity-planning and specrew-traceability-check before approval.
-- Overcommit guardrail: compare planned task effort against the configured threshold and record any required deferrals from the lowest-priority requirement slices before leaving planning.
+- Requirement scope for this iteration: `FR-006`, `FR-007`, `FR-015`, `FR-016`, `FR-017`.
+- User stories represented in current scope: `US2` only.
+- Approved task scope for this iteration: `T008-T011` only.
+- Overcommit guardrail: `4.0` story_points consumed of `20` story_points capacity (`0.20x` capacity).
+- Retro carry-forward: Iteration `001`'s Shape-5 lesson is captured here as documentation truthfulness and committed-tree evidence discipline, not as new validator/runtime scope.
 
 ## Notes
 
-- This stub captures the planned scope pending detailed planning in the Specrew Planning ceremony.
-- Add task rows only for work that is traceable to the scoped requirements above.
-- Keep Status: planning until the plan is fully decomposed and approved.
-- If task effort exceeds the configured threshold, make the deferral decision explicit in this plan before execution starts and name the lowest-priority requirement slices proposed for deferral.
+- Iteration `001` remains closed historical context and MUST NOT be reopened by this plan.
+- Iteration `002` remains documentation-only: `docs/troubleshooting.md`, onboarding cross-references, `Specrew.psd1` registration, and the Shape-5 lesson/evidence path.
+- Iteration `003` persona-intake work and Iteration `004` Proposal `120` validator work remain explicitly out of scope.
+- Detailed task wording remains authoritative in `specs/049-pipeline-hardening-intake/tasks.md`; this plan packages the already approved Iteration `002` slice into an execution-ready before-implement artifact.
