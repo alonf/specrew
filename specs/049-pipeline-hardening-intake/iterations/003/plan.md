@@ -58,6 +58,17 @@ Iteration `003` is the **unified 17-20 SP medium slice** that integrates persona
 | T015 | Implement Mode A/B/C branching and prompt sequencing | FR-010, TG-006, TG-007, SC-003 | US3 | 2.00 | Implementer | `.github/prompts/speckit.specify.prompt.md`, `.specify/workflows/speckit/workflow.yml` | planned | | | |
 | T016 | Add `"Other"` and `"I don't know, you decide"` fallback guidance and stack-aware defaulting | FR-011, TG-006, TG-007, SC-003 | US3 | 1.50 | Implementer | `.github/prompts/speckit.specify.prompt.md`, `.github/agents/speckit.specify.agent.md`, `.specify/workflows/speckit/workflow.yml` | planned | | | |
 | T017 | Run bounded persona-intake regression and record Iteration `003` verification evidence | FR-008, FR-009, FR-010, FR-011, TG-006, TG-007, SC-003 | US3 | 1.00 | Reviewer | `tests/integration/substantive-interaction-model-iteration2.ps1`, `tests/integration/skill-templates.tests.ps1`, `specs/049-pipeline-hardening-intake/iterations/003/quality/quality-evidence.md` | planned | | | |
+| T018 | Create user-profile.yml schema and cross-platform path handling in specrew-start | FR-024, TG-009, TG-012 | US3 | 1.00 | Implementer | `scripts/specrew-start.ps1` | planned | | | |
+| T018a | [P] Create `/specrew-user-profile` slash command in .claude/skills/ | FR-025, TG-009 | US3 | 0.50 | Implementer | `.claude/skills/specrew-user-profile.md` | planned | | | |
+| T018b | [P] Create `/specrew-user-profile` slash command in .github/skills/ | FR-025, TG-009 | US3 | 0.50 | Implementer | `.github/skills/specrew-user-profile.md` | planned | | | |
+| T018c | [P] Create `/specrew-user-profile` slash command in .agents/skills/ | FR-025, TG-009 | US3 | 0.50 | Implementer | `.agents/skills/specrew-user-profile.md` | planned | | | |
+| T019 | Implement `specrew start` first-run expertise self-rating prompt and persistence | FR-023, FR-026, TG-009, TG-010, TG-012 | US3 | 1.25 | Implementer | `scripts/specrew-start.ps1` | planned | | | |
+| T019a | Update `/speckit.specify` to consume expertise profile and apply question-depth rules | FR-027, SC-005, TG-010, TG-011 | US3 | 1.50 | Implementer | `.github/prompts/speckit.specify.prompt.md`, `.github/agents/speckit.specify.agent.md`, `.specify/workflows/speckit/workflow.yml` | planned | | | |
+| T019b | Implement Proposal 053 transparency annotations for auto-decisions | FR-027, SC-005, TG-010, TG-011 | US3 | 0.75 | Implementer | `.github/prompts/speckit.specify.prompt.md`, `.github/agents/speckit.specify.agent.md`, `.specify/workflows/speckit/workflow.yml` | planned | | | |
+| T020 | Update specrew-start to surface profile summary in start-context.json and start-summary.md | FR-026, TG-010 | US3 | 0.75 | Implementer | `scripts/specrew-start.ps1` | planned | | | |
+| T020a | [P] Add failing test coverage for expertise-dial persistence and slash command functionality | FR-024, FR-025, FR-026, SC-005 | US3 | 1.00 | Reviewer | `tests/integration/substantive-interaction-model-iteration2.ps1`, `tests/integration/skill-templates.tests.ps1` | planned | | | |
+| T020b | Add integration tests for expertise-dial-driven question depth and SC-005 metrics | FR-027, SC-005, TG-010, TG-011 | US3 | 1.25 | Reviewer | `tests/integration/substantive-interaction-model-iteration2.ps1`, `tests/integration/skill-templates.tests.ps1` | planned | | | |
+| T020c | [P] Run complete expertise-dial regression suite and record full acceptance evidence | FR-008, FR-009, FR-010, FR-011, FR-023, FR-024, FR-025, FR-026, FR-027, SC-003, SC-005, TG-006, TG-007, TG-009, TG-010, TG-011, TG-012 | US3 | 0.75 | Reviewer | `specs/049-pipeline-hardening-intake/iterations/003/quality/quality-evidence.md` | planned | | | |
 
 ## Required Quality Gates
 
@@ -76,28 +87,82 @@ Iteration `003` is the **unified 17-20 SP medium slice** that integrates persona
 
 ## Planned Execution Order
 
+### Phase A: Persona-Driven Intake Foundation (T012-T017)
+
 1. **T012 first (red-path test coverage)** — establish failing test coverage for the 4-persona selection, 12-category catalog, and Mode A/B/C branching BEFORE prompt/workflow changes land.
 2. **T013 next (persona selection surface)** — update the specify agent and prompt to present exactly 4 personas and remove any existing auto-persona logic that bypasses user selection.
 3. **T014 parallel with T015 (catalog + mode branching)** — implement the 12-category catalog structure in workflow configuration and Mode A/B/C branching logic in prompts/workflow. These can proceed independently once persona selection is stable.
 4. **T016 next (escape hatches)** — add `"Other"` and `"I don't know, you decide"` options across all multi-choice questions and implement stack-aware defaulting behavior.
 5. **T017 last (green-path verification)** — run the integration regression path and record acceptance evidence only after T012-T016 are present in the committed tree.
 
+### Phase B: User-Level Expertise Profile Persistence (T018-T020)
+
+6. **T018 (profile schema)** — create user-profile.yml schema and cross-platform path handling; runs in parallel with Phase A testing work.
+7. **T018a, T018b, T018c (slash-command deployment)** — create `/specrew-user-profile` skills in all three deployment locations; can proceed in parallel once T018 schema is stable.
+8. **T019 (first-run prompt)** — implement expertise self-rating prompt in specrew-start; depends on T018 schema being complete.
+9. **T020 (profile summary)** — update specrew-start to surface profile summary in context and summary artifacts; depends on T019 being complete.
+
+### Phase C: Expertise Dial Consumption (T019a-T019b)
+
+10. **T019a (question-depth rules)** — update `/speckit.specify` to consume expertise profile and apply expertise-driven question depth rules; depends on T018-T020 (profile infrastructure) and completes Phase B.
+11. **T019b (transparency annotations)** — implement Proposal 053 annotations for auto-decisions; depends on T019a being complete.
+
+### Phase D: Integration Testing and Acceptance Evidence (T020a-T020c)
+
+12. **T020a (red-path expertise tests)** — add failing test coverage for expertise-dial persistence, slash-command functionality, and cross-platform profile handling.
+13. **T020b (green-path dial tests)** — add tests for dial-driven question depth and SC-005 metrics; depends on T019a-T019b implementation being complete.
+14. **T020c last (full regression + evidence)** — run complete expertise-dial regression suite and record Iteration `003` full acceptance evidence; depends on T020a-T020b being present in committed tree.
+
 ## Boundary Commit Cadence
 
 | Commit Group | Tasks | Why this boundary exists |
 | ------------ | ----- | ------------------------ |
-| Red-path test baseline | T012 | Establishes failing test coverage for the approved persona-intake slice before any prompt/workflow implementation changes land. |
+| Red-path test baseline (persona) | T012 | Establishes failing test coverage for the approved persona-intake slice before any prompt/workflow implementation changes land. |
 | Persona selection | T013 | Locks the 4-persona selection surface independently so catalog and mode-branching work can reference the stable persona list. |
 | Catalog + mode branching | T014-T015 | Implements the 12-category structure and Mode A/B/C sequencing as a cohesive intake-flow change. |
 | Escape hatches | T016 | Adds fallback options and stack-aware defaulting as the final intake-behavior layer. |
-| Verification evidence | T017 | Preserves an auditable acceptance-evidence commit group after the implementation surfaces pass the regression path. |
+| Persona intake verification | T017 | Preserves an auditable acceptance-evidence commit group after persona-intake implementation surfaces pass the regression path. |
+| Expertise profile schema & infrastructure | T018, T018a, T018b, T018c | Establishes user-profile.yml schema, cross-platform path handling, and slash-command deployment across all three skill locations before first-run and summary logic lands. |
+| First-run prompt + profile summary | T019, T020 | Implements specrew-start expertise self-rating and profile summary surfacing as a cohesive user-facing change. |
+| Expertise dial consumption | T019a-T019b | Implements question-depth adaptation and transparency annotations as the intake-consumption layer. |
+| Red-path expertise tests | T020a | Establishes failing test coverage for expertise-dial persistence, slash-command functionality, and cross-platform handling before consumption logic lands. |
+| Green-path dial tests | T020b | Tests expertise-dial-driven question depth, SC-005 metrics, and acceptance evidence readiness. |
+| Full expertise-dial acceptance | T020c | Records complete Iteration `003` acceptance evidence after all persona-intake and expertise-dial surfaces pass integrated regression. |
 
 ## Dependencies
 
-- `T012` is the prerequisite for the whole iteration because red-path test coverage must exist before implementation changes land.
+### Phase A: Persona-Driven Intake (T012-T017)
+
+- `T012` is the prerequisite for the whole persona-intake phase because red-path test coverage must exist before implementation changes land.
 - `T013` depends on `T012` and must complete before `T014-T015` because catalog and mode logic reference the persona selection surface.
 - `T014` and `T015` both depend on `T013` and can proceed in parallel once persona selection is stable.
 - `T016` depends on `T014-T015` because escape-hatch options are layered on top of the existing catalog and mode-branching structure.
+- `T017` depends on `T012-T016` because verification evidence must validate the complete committed intake slice, not partial working-tree state.
+
+### Phase B: Expertise Profile Persistence (T018-T020)
+
+- `T018` is the prerequisite for Phase B because the schema and path handling must exist before first-run prompt logic lands.
+- `T018a`, `T018b`, `T018c` depend on `T018` and can proceed in parallel because all three slash-command skills use the same underlying schema and persistence logic.
+- `T019` depends on `T018` because the first-run prompt must use the established user-profile.yml schema and path handling.
+- `T020` depends on `T019` because profile summary must render the persisted expertise values from T019.
+
+### Phase C: Expertise Dial Consumption (T019a-T019b)
+
+- `T019a` depends on `T018-T020` (expertise profile infrastructure) because speckit.specify must read the persisted user-profile.yml to apply question-depth rules.
+- `T019a` also depends on `T013` (persona selection) because expertise-dial routing references persona expertise lenses.
+- `T019b` depends on `T019a` because transparency annotations require the expertise-driven auto-decision logic to be in place.
+
+### Phase D: Integration Testing and Acceptance (T020a-T020c)
+
+- `T020a` (red-path expertise tests) can start in parallel with Phase B but must complete before `T020b` and `T020c`.
+- `T020b` depends on `T019a-T019b` (expertise dial consumption implementation) because question-depth tests validate the implemented behavior.
+- `T020c` depends on `T020a-T020b` and `T017` (persona-intake verification) because full acceptance evidence must validate both persona-intake and expertise-dial integrated behavior.
+
+### Cross-Phase Sequencing
+
+- Phase A (T012-T017) and Phase B (T018-T020) can proceed in parallel because they touch disjoint file surfaces (specs/prompts/workflows vs scripts/skills).
+- Phase C (T019a-T019b) depends on completion of Phase A (persona selection) and Phase B (profile infrastructure).
+- Phase D (T020a-T020c) is the final phase and validates all prior phases integrated.
 - `T017` depends on `T012-T016` because verification evidence must validate the complete committed intake slice, not partial working-tree state.
 
 ## Effort Model
