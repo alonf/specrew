@@ -20914,3 +20914,87 @@ Retro substantively captures the boundary-cadence positive empirical case (T008 
 - **Task ID**: (none)
 - **Auth Commit Hash**: d9c84dce8d467292fcf84ab2f4332c0937cafbf7
 - **Recorded At**: 2026-05-27T09:20:00Z
+
+## 2026-05-27T09:30:00Z — Runtime Evidence: F-049 Iteration 002 Iteration-Closeout Boundary
+
+- **Decision ID**: f049-i002-iteration-closeout-runtime-evidence
+- **Type**: boundary-transition runtime evidence
+- **Feature**: 049-pipeline-hardening-intake
+- **Iteration**: 002
+- **Authority**: Spec Steward (delegated boundary oversight under Proposal 082)
+- **Recorded At**: 2026-05-27T09:30:00Z
+
+## Context
+
+User approved iteration-closeout advancement for Feature 049 Iteration 002 on committed HEAD `be8e45c5` after retro boundary work completed. This evidence records the full iteration-closeout boundary execution path per Proposal 082 discipline.
+
+## Execution Path
+
+### 1. Closeout Artifact Generation
+
+Created `specs/049-pipeline-hardening-intake/iterations/002/closeout.md` following the Iteration 001 precedent pattern:
+- Executive summary of delivered scope
+- Story point accuracy (4.0/4.0 SP, 100% accuracy)
+- Requirement slice summary (FR-006, FR-007, FR-015, FR-016, FR-017, SC-002)
+- Task completion summary (T008-T011 all done/PASS)
+- Review, drift, retro disposition
+- Validation replay confirmation
+- Carry-forward boundary statement (Iteration 003 specify/clarify next)
+- Closure trail with commit references
+
+**Commit**: `d9c84dce` - closeout(F-049): iteration 002 closeout artifact
+**Pushed**: immediately after commit
+
+### 2. Canonical Sync Command Invocation
+
+Ran the documented canonical path from `extensions/specrew-speckit/commands/speckit.specrew-speckit.sync-iteration-closeout.md`.
+
+**Sync result**: success
+**Auth commit**: `d9c84dce`
+**Boundary**: iteration-closeout
+**Recorded at**: 2026-05-27T09:20:00Z
+
+**Artifacts modified by sync**:
+- `specs/049-pipeline-hardening-intake/iterations/002/dashboard.md` - created (velocity snapshot)
+- `.squad/identity/now.md` - updated boundary from `retro` to `iteration-closeout`, auth commit to `d9c84dce`
+- `.squad/decisions.md` - updated by canonical sync
+- `.specrew/closed-iterations.yml` - updated (iteration registry)
+
+**Commit**: `9bf9fabe` - boundary(iteration-closeout): F-049 iteration 002 sync
+**Pushed**: immediately after commit
+
+### 3. Dashboard Evidence
+
+The canonical sync produced `specs/049-pipeline-hardening-intake/iterations/002/dashboard.md` with schema v1, capture kind `iteration-closeout`, a historical notice, and a full velocity snapshot preserving iteration-closeout state. This confirms the sync path rendered the expected per-iteration dashboard as documented in the Iteration 001 precedent.
+
+### 4. Governance Validation
+
+Scoped governance validation passed for `specs/049-pipeline-hardening-intake/iterations/002`.
+
+**Warnings**: repository-wide only (`stale-version-in-readme`, `stale-version-in-extension-manifest`, and the historical Feature 048 dashboard warning) and outside Iteration 002 scope.
+
+### 5. Boundary Commit Discipline
+
+| Boundary Group | Commit SHA | Message | Pushed | HEAD==origin |
+| --- | --- | --- | --- | --- |
+| Closeout artifact | `d9c84dce` | closeout(F-049): iteration 002 closeout artifact | yes | yes |
+| Sync state | `9bf9fabe` | boundary(iteration-closeout): F-049 iteration 002 sync | yes | yes |
+| Truth alignment | `844fac3b` | chore(F-049): iteration 002 closeout truth alignment | yes | yes |
+
+### 6. Closeout Evidence Files Present in HEAD
+
+Verified in committed tree `844fac3b`:
+- `specs/049-pipeline-hardening-intake/iterations/002/closeout.md`
+- `specs/049-pipeline-hardening-intake/iterations/002/dashboard.md`
+- `specs/049-pipeline-hardening-intake/iterations/002/state.md`
+- `specs/049-pipeline-hardening-intake/iterations/002/review.md`
+- `specs/049-pipeline-hardening-intake/iterations/002/retro.md`
+- `specs/049-pipeline-hardening-intake/iterations/002/quality/quality-evidence.md`
+
+## Iteration 003 Boundary
+
+**NOT STARTED**. Per user instruction and boundary discipline, Iteration 003 specify/clarify work requires separate human authorization. This closeout stops cleanly at the iteration-closeout boundary without opening any Iteration 003 surfaces.
+
+## Verdict
+
+Iteration-closeout boundary work complete. HEAD==origin at `844fac3b`. Governance validation passed. Dashboard rendered. No Iteration 003 work started.
