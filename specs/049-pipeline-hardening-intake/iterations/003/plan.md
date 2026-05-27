@@ -2,10 +2,10 @@
 
 **Schema**: v1
 **Spec**: [../../spec.md](../../spec.md)
-**Status**: planning
+**Status**: reviewing
 **Capacity**: 23.45/25 story_points
-**Started**: 2026-05-28
-**Completed**:
+**Started**: 2026-05-27
+**Completed**: 2026-05-28
 
 <!--
   Validator schema (canonical, enforced by validate-governance.ps1):
@@ -58,40 +58,40 @@ Iteration `003` is the **21-25 SP architectural foundation slice** that implemen
 
 | Task | Title | Requirement | Story | Effort | Owner | Owner File Globs | Status | Agent | Actual | Verdict |
 | ---- | ----- | ----------- | ----- | ------ | ----- | ---------------- | ------ | ----- | ------ | ------- |
-| T001 | [P] Add failing test coverage for engine + data architecture foundation | FR-028, FR-029, FR-030, FR-031, SC-006 | US3 | 1.50 | Reviewer | `tests/integration/substantive-interaction-model-iteration2.ps1` | planned | | | |
-| T002 | Create discrete intake engine shell Invoke-SpecifyIntake.ps1 with mirror parity | FR-028, TG-013, TG-014 | US3 | 2.50 | Implementer | `extensions/specrew-speckit/scripts/intake/Invoke-SpecifyIntake.ps1`, `.specify/extensions/specrew-speckit/scripts/intake/Invoke-SpecifyIntake.ps1` | planned | | | |
-| T003 | Create Load-PersonaCatalog.ps1 helper with mirror parity | FR-028, TG-013, TG-014 | US3 | 0.25 | Implementer | `extensions/specrew-speckit/scripts/intake/helpers/Load-PersonaCatalog.ps1`, `.specify/extensions/specrew-speckit/scripts/intake/helpers/Load-PersonaCatalog.ps1` | planned | | | |
-| T004 | Create Load-CategoryCatalog.ps1 helper with mirror parity | FR-028, TG-013, TG-014 | US3 | 0.25 | Implementer | `extensions/specrew-speckit/scripts/intake/helpers/Load-CategoryCatalog.ps1`, `.specify/extensions/specrew-speckit/scripts/intake/helpers/Load-CategoryCatalog.ps1` | planned | | | |
-| T005 | Create Resolve-PerLensMode.ps1 helper implementing per-lens Mode A/B/C evaluation + most-conservative-wins | FR-028, FR-010, TG-013, TG-015 | US3 | 0.75 | Implementer | `extensions/specrew-speckit/scripts/intake/helpers/Resolve-PerLensMode.ps1`, `.specify/extensions/specrew-speckit/scripts/intake/helpers/Resolve-PerLensMode.ps1` | planned | | | |
-| T006 | Create Traverse-QuestionBank.ps1 helper with mirror parity | FR-028, TG-013, TG-014 | US3 | 0.50 | Implementer | `extensions/specrew-speckit/scripts/intake/helpers/Traverse-QuestionBank.ps1`, `.specify/extensions/specrew-speckit/scripts/intake/helpers/Traverse-QuestionBank.ps1` | planned | | | |
-| T007 | Create Resolve-AutoDecision.ps1 helper with mirror parity | FR-028, TG-013, TG-014 | US3 | 0.50 | Implementer | `extensions/specrew-speckit/scripts/intake/helpers/Resolve-AutoDecision.ps1`, `.specify/extensions/specrew-speckit/scripts/intake/helpers/Resolve-AutoDecision.ps1` | planned | | | |
-| T008 | Create Render-Annotation.ps1 helper for Proposal 053 transparency pattern | FR-027, SC-005, TG-010, TG-011 | US3 | 0.25 | Implementer | `extensions/specrew-speckit/scripts/intake/helpers/Render-Annotation.ps1`, `.specify/extensions/specrew-speckit/scripts/intake/helpers/Render-Annotation.ps1` | planned | | | |
-| T009 | Create personas.yml defining 4 personas | FR-029, FR-008, TG-015 | US3 | 0.25 | Implementer | `.specify/intake/personas.yml` | planned | | | |
-| T010 | Create categories.yml defining 12 intake categories | FR-029, FR-009, TG-015 | US3 | 0.50 | Implementer | `.specify/intake/categories.yml` | planned | | | |
-| T011 | Create depth-rules.yml defining per-lens mode thresholds + most-conservative-wins | FR-029, FR-010, TG-015 | US3 | 0.75 | Implementer | `.specify/intake/depth-rules.yml` | planned | | | |
-| T012 | Create product-manager.yml question bank with 3 questions minimum | FR-029, TG-015 | US3 | 0.50 | Implementer | `.specify/intake/questions/product-manager.yml` | planned | | | |
-| T013 | Create ux-ui-specialist.yml question bank with 3 questions minimum | FR-029, TG-015 | US3 | 0.50 | Implementer | `.specify/intake/questions/ux-ui-specialist.yml` | planned | | | |
-| T014 | Create architect.yml question bank with 3 questions minimum | FR-029, TG-015 | US3 | 0.50 | Implementer | `.specify/intake/questions/architect.yml` | planned | | | |
-| T015 | Create ai-researcher-project-manager.yml question bank with 3 questions minimum | FR-029, TG-015 | US3 | 0.50 | Implementer | `.specify/intake/questions/ai-researcher-project-manager.yml` | planned | | | |
-| T016 | Create generic.yml auto-decision defaults (stack-agnostic fallback) | FR-029, FR-031, TG-013 | US3 | 0.50 | Implementer | `.specify/intake/auto-decision-defaults/generic.yml` | planned | | | |
-| T017 | Create empty domain-bundles/ directory with .gitkeep | FR-030, TG-013 | US3 | 0.10 | Implementer | `.specify/intake/domain-bundles/.gitkeep` | planned | | | |
-| T018 | Create empty solution-type-bundles/ directory with .gitkeep | FR-030, TG-013 | US3 | 0.10 | Implementer | `.specify/intake/solution-type-bundles/.gitkeep` | planned | | | |
-| T019 | Implement Detect-RepoStack.ps1 helper with mirror parity | FR-031, TG-013 | US3 | 0.50 | Implementer | `extensions/specrew-speckit/scripts/intake/helpers/Detect-RepoStack.ps1`, `.specify/extensions/specrew-speckit/scripts/intake/helpers/Detect-RepoStack.ps1` | planned | | | |
-| T020 | Create user-profile.yml schema with cross-platform path handling | FR-024, TG-009, TG-012 | US3 | 1.00 | Implementer | `scripts/specrew-start.ps1` | planned | | | |
-| T021 | Implement specrew start first-run expertise self-rating prompt | FR-023, FR-026, TG-009, TG-010 | US3 | 1.25 | Implementer | `scripts/specrew-start.ps1` | planned | | | |
-| T022 | Update specrew start to surface profile summary in start-context.json and start-summary.md | FR-026, TG-010 | US3 | 0.75 | Implementer | `scripts/specrew-start.ps1` | planned | | | |
-| T023 | Create /specrew-user-profile show/edit/reset in .claude/skills/ | FR-025, TG-009 | US3 | 0.50 | Implementer | `.claude/skills/specrew-user-profile.md` | planned | | | |
-| T024 | Create /specrew-user-profile show/edit/reset in .github/skills/ | FR-025, TG-009 | US3 | 0.50 | Implementer | `.github/skills/specrew-user-profile.md` | planned | | | |
-| T025 | Create /specrew-user-profile show/edit/reset in .agents/skills/ | FR-025, TG-009 | US3 | 0.50 | Implementer | `.agents/skills/specrew-user-profile.md` | planned | | | |
-| T026 | Update speckit.specify.prompt.md to invoke Invoke-SpecifyIntake.ps1 | FR-028, FR-027, TG-013 | US3 | 0.50 | Implementer | `.github/prompts/speckit.specify.prompt.md` | planned | | | |
-| T027 | Update speckit.specify.agent.md to invoke Invoke-SpecifyIntake.ps1 | FR-028, FR-027, TG-013 | US3 | 0.50 | Implementer | `.github/agents/speckit.specify.agent.md` | planned | | | |
-| T028 | Update workflow.yml to invoke Invoke-SpecifyIntake.ps1 | FR-028, FR-027, TG-013 | US3 | 0.50 | Implementer | `.specify/workflows/speckit/workflow.yml` | planned | | | |
-| T029 | Add 'Other' and 'I don't know, you decide' fallback guidance | FR-011, TG-006, TG-007 | US3 | 0.75 | Implementer | `.github/prompts/speckit.specify.prompt.md`, `.github/agents/speckit.specify.agent.md` | planned | | | |
-| T030 | [P] Add failing tests for user-profile persistence + slash command | FR-024, FR-025, FR-026, SC-005 | US3 | 1.00 | Reviewer | `tests/integration/substantive-interaction-model-iteration2.ps1` | planned | | | |
-| T031 | Add integration tests for expertise-dial-driven question depth | FR-027, SC-005, TG-010, TG-011 | US3 | 1.25 | Reviewer | `tests/integration/substantive-interaction-model-iteration2.ps1` | planned | | | |
-| T032 | Add 5th-persona extensibility proof test (SC-006) | FR-028, FR-029, SC-006, TG-013 | US3 | 1.25 | Reviewer | `tests/integration/substantive-interaction-model-iteration2.ps1` | planned | | | |
-| T033 | Add per-lens mode branching correctness test | FR-010, FR-028, TG-013 | US3 | 1.00 | Reviewer | `tests/integration/substantive-interaction-model-iteration2.ps1` | planned | | | |
-| T034 | Run complete engine + data + expertise-dial regression suite and record acceptance evidence | FR-008..FR-011, FR-023..FR-031, SC-003, SC-005, SC-006, TG-006, TG-007, TG-009..TG-015 | US3 | 1.00 | Reviewer | `specs/049-pipeline-hardening-intake/iterations/003/quality/quality-evidence.md` | planned | | | |
+| T001 | [P] Add failing test coverage for engine + data architecture foundation | FR-028, FR-029, FR-030, FR-031, SC-006 | US3 | 1.50 | Reviewer | `tests/integration/substantive-interaction-model-iteration2.ps1` | done | | | |
+| T002 | Create discrete intake engine shell Invoke-SpecifyIntake.ps1 with mirror parity | FR-028, TG-013, TG-014 | US3 | 2.50 | Implementer | `extensions/specrew-speckit/scripts/intake/Invoke-SpecifyIntake.ps1`, `.specify/extensions/specrew-speckit/scripts/intake/Invoke-SpecifyIntake.ps1` | done | | | |
+| T003 | Create Load-PersonaCatalog.ps1 helper with mirror parity | FR-028, TG-013, TG-014 | US3 | 0.25 | Implementer | `extensions/specrew-speckit/scripts/intake/helpers/Load-PersonaCatalog.ps1`, `.specify/extensions/specrew-speckit/scripts/intake/helpers/Load-PersonaCatalog.ps1` | done | | | |
+| T004 | Create Load-CategoryCatalog.ps1 helper with mirror parity | FR-028, TG-013, TG-014 | US3 | 0.25 | Implementer | `extensions/specrew-speckit/scripts/intake/helpers/Load-CategoryCatalog.ps1`, `.specify/extensions/specrew-speckit/scripts/intake/helpers/Load-CategoryCatalog.ps1` | done | | | |
+| T005 | Create Resolve-PerLensMode.ps1 helper implementing per-lens Mode A/B/C evaluation + most-conservative-wins | FR-028, FR-010, TG-013, TG-015 | US3 | 0.75 | Implementer | `extensions/specrew-speckit/scripts/intake/helpers/Resolve-PerLensMode.ps1`, `.specify/extensions/specrew-speckit/scripts/intake/helpers/Resolve-PerLensMode.ps1` | done | | | |
+| T006 | Create Traverse-QuestionBank.ps1 helper with mirror parity | FR-028, TG-013, TG-014 | US3 | 0.50 | Implementer | `extensions/specrew-speckit/scripts/intake/helpers/Traverse-QuestionBank.ps1`, `.specify/extensions/specrew-speckit/scripts/intake/helpers/Traverse-QuestionBank.ps1` | done | | | |
+| T007 | Create Resolve-AutoDecision.ps1 helper with mirror parity | FR-028, TG-013, TG-014 | US3 | 0.50 | Implementer | `extensions/specrew-speckit/scripts/intake/helpers/Resolve-AutoDecision.ps1`, `.specify/extensions/specrew-speckit/scripts/intake/helpers/Resolve-AutoDecision.ps1` | done | | | |
+| T008 | Create Render-Annotation.ps1 helper for Proposal 053 transparency pattern | FR-027, SC-005, TG-010, TG-011 | US3 | 0.25 | Implementer | `extensions/specrew-speckit/scripts/intake/helpers/Render-Annotation.ps1`, `.specify/extensions/specrew-speckit/scripts/intake/helpers/Render-Annotation.ps1` | done | | | |
+| T009 | Create personas.yml defining 4 personas | FR-029, FR-008, TG-015 | US3 | 0.25 | Implementer | `.specify/intake/personas.yml` | done | | | |
+| T010 | Create categories.yml defining 12 intake categories | FR-029, FR-009, TG-015 | US3 | 0.50 | Implementer | `.specify/intake/categories.yml` | done | | | |
+| T011 | Create depth-rules.yml defining per-lens mode thresholds + most-conservative-wins | FR-029, FR-010, TG-015 | US3 | 0.75 | Implementer | `.specify/intake/depth-rules.yml` | done | | | |
+| T012 | Create product-manager.yml question bank with 3 questions minimum | FR-029, TG-015 | US3 | 0.50 | Implementer | `.specify/intake/questions/product-manager.yml` | done | | | |
+| T013 | Create ux-ui-specialist.yml question bank with 3 questions minimum | FR-029, TG-015 | US3 | 0.50 | Implementer | `.specify/intake/questions/ux-ui-specialist.yml` | done | | | |
+| T014 | Create architect.yml question bank with 3 questions minimum | FR-029, TG-015 | US3 | 0.50 | Implementer | `.specify/intake/questions/architect.yml` | done | | | |
+| T015 | Create ai-researcher-project-manager.yml question bank with 3 questions minimum | FR-029, TG-015 | US3 | 0.50 | Implementer | `.specify/intake/questions/ai-researcher-project-manager.yml` | done | | | |
+| T016 | Create generic.yml auto-decision defaults (stack-agnostic fallback) | FR-029, FR-031, TG-013 | US3 | 0.50 | Implementer | `.specify/intake/auto-decision-defaults/generic.yml` | done | | | |
+| T017 | Create empty domain-bundles/ directory with .gitkeep | FR-030, TG-013 | US3 | 0.10 | Implementer | `.specify/intake/domain-bundles/.gitkeep` | done | | | |
+| T018 | Create empty solution-type-bundles/ directory with .gitkeep | FR-030, TG-013 | US3 | 0.10 | Implementer | `.specify/intake/solution-type-bundles/.gitkeep` | done | | | |
+| T019 | Implement Detect-RepoStack.ps1 helper with mirror parity | FR-031, TG-013 | US3 | 0.50 | Implementer | `extensions/specrew-speckit/scripts/intake/helpers/Detect-RepoStack.ps1`, `.specify/extensions/specrew-speckit/scripts/intake/helpers/Detect-RepoStack.ps1` | done | | | |
+| T020 | Create user-profile.yml schema with cross-platform path handling | FR-024, TG-009, TG-012 | US3 | 1.00 | Implementer | `scripts/specrew-start.ps1` | done | | | |
+| T021 | Implement specrew start first-run expertise self-rating prompt | FR-023, FR-026, TG-009, TG-010 | US3 | 1.25 | Implementer | `scripts/specrew-start.ps1` | done | | | |
+| T022 | Update specrew start to surface profile summary in start-context.json and start-summary.md | FR-026, TG-010 | US3 | 0.75 | Implementer | `scripts/specrew-start.ps1` | done | | | |
+| T023 | Create /specrew-user-profile show/edit/reset in .claude/skills/ | FR-025, TG-009 | US3 | 0.50 | Implementer | `.claude/skills/specrew-user-profile.md` | done | | | |
+| T024 | Create /specrew-user-profile show/edit/reset in .github/skills/ | FR-025, TG-009 | US3 | 0.50 | Implementer | `.github/skills/specrew-user-profile.md` | done | | | |
+| T025 | Create /specrew-user-profile show/edit/reset in .agents/skills/ | FR-025, TG-009 | US3 | 0.50 | Implementer | `.agents/skills/specrew-user-profile.md` | done | | | |
+| T026 | Update speckit.specify.prompt.md to invoke Invoke-SpecifyIntake.ps1 | FR-028, FR-027, TG-013 | US3 | 0.50 | Implementer | `.github/prompts/speckit.specify.prompt.md` | done | | | |
+| T027 | Update speckit.specify.agent.md to invoke Invoke-SpecifyIntake.ps1 | FR-028, FR-027, TG-013 | US3 | 0.50 | Implementer | `.github/agents/speckit.specify.agent.md` | done | | | |
+| T028 | Update workflow.yml to invoke Invoke-SpecifyIntake.ps1 | FR-028, FR-027, TG-013 | US3 | 0.50 | Implementer | `.specify/workflows/speckit/workflow.yml` | done | | | |
+| T029 | Add 'Other' and 'I don't know, you decide' fallback guidance | FR-011, TG-006, TG-007 | US3 | 0.75 | Implementer | `.github/prompts/speckit.specify.prompt.md`, `.github/agents/speckit.specify.agent.md` | done | | | |
+| T030 | [P] Add failing tests for user-profile persistence + slash command | FR-024, FR-025, FR-026, SC-005 | US3 | 1.00 | Reviewer | `tests/integration/substantive-interaction-model-iteration2.ps1` | done | | | |
+| T031 | Add integration tests for expertise-dial-driven question depth | FR-027, SC-005, TG-010, TG-011 | US3 | 1.25 | Reviewer | `tests/integration/substantive-interaction-model-iteration2.ps1` | done | | | |
+| T032 | Add 5th-persona extensibility proof test (SC-006) | FR-028, FR-029, SC-006, TG-013 | US3 | 1.25 | Reviewer | `tests/integration/substantive-interaction-model-iteration2.ps1` | done | | | |
+| T033 | Add per-lens mode branching correctness test | FR-010, FR-028, TG-013 | US3 | 1.00 | Reviewer | `tests/integration/substantive-interaction-model-iteration2.ps1` | done | | | |
+| T034 | Run complete engine + data + expertise-dial regression suite and record acceptance evidence | FR-008..FR-011, FR-023..FR-031, SC-003, SC-005, SC-006, TG-006, TG-007, TG-009..TG-015 | US3 | 1.00 | Reviewer | `specs/049-pipeline-hardening-intake/iterations/003/quality/quality-evidence.md` | done | | | |
 
 **Total Effort**: 23.45 story_points
 
