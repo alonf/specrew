@@ -69,14 +69,15 @@ pwsh -File extensions/specrew-speckit/scripts/intake/Invoke-SpecifyIntake.ps1 `
 
 **Engine behavior**:
 
-- Loads user profile from `~/.specrew/user-profile.yml` to determine expertise dials
-- Applies all 4 persona lenses sequentially (Product Manager, UX/UI Specialist, Architect, AI Researcher / Project Manager)
+- Loads the current user's **Crew Interaction Profile** from `~/.specrew/user-profile.yml` — four decision-area settings (Product Strategy, UX/UI Design, Software Architecture, AI Delivery Planning) that tune how much to ask, explain, recommend, and auto-decide
+- Applies all 4 **internal persona lenses** sequentially (Product Manager, UX/UI Specialist, Architect, AI Researcher / Project Manager). These lenses are Specrew internals — the user does not adopt them as identities; the visible decision-area labels above are display metadata over the same stable persona IDs and persisted keys
 - Each lens covers 12 categories from its perspective
-- Question depth adapts to user expertise:
-  - **7-10 (Senior)**: Nuanced questions, minimal auto-decisions
+- Question depth is driven by the user's Crew Interaction Profile setting for the matching decision area:
+  - **7-10 (Senior)**: Concise expert-level questions; assume the user decides; minimal auto-decisions
   - **4-6 (Standard)**: Targeted clarifications
-  - **1-3 (Learning)**: Auto-decisions with transparency annotations
-  - **auto**: System chooses defaults
+  - **1-3 (Learning)**: Specrew explains more and auto-decides with transparency annotations
+  - **auto**: Specrew recommends defaults and explains them
+- `/speckit.specify` is the **only** surface that hard-applies the Crew Interaction Profile; everywhere else (session context, summaries) it is soft guidance only
 
 **Fallback guidance** (FR-011):
 
