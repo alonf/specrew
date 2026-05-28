@@ -119,16 +119,17 @@ As a developer with multiple AI tools installed, I want Cursor to appear in the 
   - **Owner**: Implementation Team
   - **Iteration**: Iteration 1 (manifest authoring)
   
-- **FR-002**: System MUST implement the 5-function contract in `hosts/cursor/host.ps1`:
+- **FR-002**: System MUST implement the 5-function contract in `hosts/cursor/handlers.ps1` using the canonical F-044 naming (verified against `hosts/_contract.md`):
   1. `New-CursorLaunchInvocation` — builds Cursor CLI invocation for `specrew start --host cursor`
-  2. `Convert-CursorFlag` — translates universal Specrew flags to Cursor-CLI equivalents
+  2. `ConvertTo-CursorFlag` — translates universal Specrew flags to Cursor-CLI equivalents (contract name is `ConvertTo-<Kind>Flag`, not `Convert-`)
   3. `Test-CursorRuntimeInstalled` — probes for binary + version check
-  4. `Get-CursorSignals` — returns probe signals: `binary-present`, `binary-version`, `agent-mode-available`, `project-has-cursor-dir`
-  5. `Install-CursorCrewRuntime` — translates `.specrew/team/agents/<role>.md` to Cursor's native agent/rules location
+  4. `Get-CursorSignals` — returns env-var names set when running INSIDE Cursor (per contract `Get-<Kind>Signals` reads env)
+  5. `Install-CursorCrewRuntime` — translates `.specrew/team/agents/<role>.md` to `.cursor/rules/*.mdc`
   - **Owner**: Implementation Team
   - **Iteration**: Iteration 1 (core functions)
+  - **Note**: Contract requires `host.psd1` + `handlers.ps1` + `coordinator-rules.psd1` (3 files), not a single `host.ps1`.
 
-- **FR-003**: System MUST add `.cursor/skills/` (or verified target path) to the skill deployment targets in `extensions/specrew-speckit/scripts/deploy-squad-runtime.ps1`, maintaining alphabetical sort order among the 5 host targets (claude, cursor, github, agents)
+- **FR-003**: System MUST add a `cursor` entry pointing at `.cursor/rules` to the hardcoded `Get-ActiveSkillRoots` list in `extensions/specrew-speckit/scripts/deploy-squad-runtime.ps1` (currently a 3-entry list: claude, github, agents → becomes 4 with cursor)
   - **Owner**: Implementation Team
   - **Iteration**: Iteration 1 (skill deployment integration)
 
