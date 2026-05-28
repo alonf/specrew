@@ -21375,3 +21375,37 @@ Advance exactly one boundary: retro → iteration-closeout for Iteration 003 onl
 - **Task ID**: (none)
 - **Auth Commit Hash**: 7d404b55f61bcb73c8bc5f5c6317f0e18b794cb8
 - **Recorded At**: 2026-05-28T08:34:10Z
+
+## 2026-05-28T18:04:27Z — Boundary sync warning: clarify
+
+- **Boundary Type**: clarify
+- **Latest Recorded Boundary**: tasks
+- **Recorded At**: 2026-05-28T18:04:27Z
+- **Warning**: Expected next boundary 'before-implement' but received 'clarify'.
+
+## 2026-05-28T18:04:28Z — Boundary sync: clarify
+
+- **Boundary Type**: clarify
+- **Feature Ref**: 049-pipeline-hardening-intake
+- **Iteration Number**: 005
+- **Task ID**: (none)
+- **Auth Commit Hash**: 14de114792c835356ccc3493fe247826d6890787
+- **Recorded At**: 2026-05-28T18:04:28Z
+
+## 2026-05-28T18:13:33Z — Boundary sync: plan
+
+- **Boundary Type**: plan
+- **Feature Ref**: 049-pipeline-hardening-intake
+- **Iteration Number**: (none)
+- **Task ID**: (none)
+- **Auth Commit Hash**: 14de114792c835356ccc3493fe247826d6890787
+- **Recorded At**: 2026-05-28T18:13:32Z
+
+## 2026-05-28T18:27:09Z — Boundary sync: tasks
+
+- **Boundary Type**: tasks
+- **Feature Ref**: 049-pipeline-hardening-intake
+- **Iteration Number**: 005
+- **Task ID**: (none)
+- **Auth Commit Hash**: 14de114792c835356ccc3493fe247826d6890787
+- **Recorded At**: 2026-05-28T18:27:08Z
