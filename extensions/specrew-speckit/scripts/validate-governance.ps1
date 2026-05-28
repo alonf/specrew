@@ -1009,9 +1009,13 @@ function Test-BoundaryStateAdvanceVerdict {
         return
     }
 
+    # Direct PSObject.Properties access (NOT Get-ObjectPropertyString): validate-governance.ps1
+    # defines that helper twice with different parameter names (-Names vs -PropertyNames); the later
+    # definition shadows the first, so -Names silently returns null. Direct access is unambiguous.
     $sessionState = $context.PSObject.Properties['session_state']
-    if ($null -eq $sessionState) { return }
-    $boundary = [string](Get-ObjectPropertyString -InputObject $sessionState.Value -Names @('boundary_type'))
+    if ($null -eq $sessionState -or $null -eq $sessionState.Value) { return }
+    $btProp = $sessionState.Value.PSObject.Properties['boundary_type']
+    $boundary = if ($null -ne $btProp) { [string]$btProp.Value } else { '' }
     if ([string]::IsNullOrWhiteSpace($boundary)) { return }
 
     $humanVerdictBoundaries = @('before-implement', 'review-signoff', 'iteration-closeout', 'feature-closeout')
@@ -1019,17 +1023,21 @@ function Test-BoundaryStateAdvanceVerdict {
 
     $enforcement = $context.PSObject.Properties['boundary_enforcement']
     $history = @()
-    if ($null -ne $enforcement -and $null -ne $enforcement.Value.PSObject.Properties['verdict_history']) {
+    if ($null -ne $enforcement -and $null -ne $enforcement.Value -and $null -ne $enforcement.Value.PSObject.Properties['verdict_history']) {
         $history = @($enforcement.Value.verdict_history)
     }
 
     $authorized = @($history | Where-Object {
-            ([string](Get-ObjectPropertyString -InputObject $_ -Names @('to_boundary')) -eq $boundary) -and
-            (-not [string]::IsNullOrWhiteSpace([string](Get-ObjectPropertyString -InputObject $_ -Names @('authorizing_human'))))
+            $null -ne $_ -and
+            $null -ne $_.PSObject.Properties['to_boundary'] -and
+            ([string]$_.PSObject.Properties['to_boundary'].Value -eq $boundary) -and
+            $null -ne $_.PSObject.Properties['authorizing_human'] -and
+            (-not [string]::IsNullOrWhiteSpace([string]$_.PSObject.Properties['authorizing_human'].Value))
         })
 
     if ($authorized.Count -eq 0) {
-        $iterationRef = [string](Get-ObjectPropertyString -InputObject $sessionState.Value -Names @('iteration_number'))
+        $iterProp = $sessionState.Value.PSObject.Properties['iteration_number']
+        $iterationRef = if ($null -ne $iterProp) { [string]$iterProp.Value } else { '' }
         Write-TrustHardeningWarning -Category 'state-advance-without-verdict' -Detail ("Active session boundary advanced to human-judgment gate '{0}' (iteration {1}) without a matching boundary_enforcement.verdict_history entry naming an authorizing human. Record the human verdict explicitly or roll the boundary back." -f $boundary, $(if ([string]::IsNullOrWhiteSpace($iterationRef)) { '(unknown)' } else { $iterationRef }))
     }
 }
