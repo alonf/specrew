@@ -37,7 +37,7 @@ A discipline + tooling combo for tracking, evaluating, and either adopting or ov
 
 - Replacing Squad with an alternative runtime (that's [024](024-multi-host-runtime-abstraction.md))
 - Forking Squad
-- Contributing back to Squad upstream (could be a downstream output but not part of this proposal)
+- Contributing back to Squad upstream — separate concern, candidate for a future companion proposal. Strategic context as of 2026-05-29: Squad authors Brady Gaster + Tamir Dresher co-authored "Squad: Human-Led Agentic Teams" at aka.ms/SquadCommandLine (Microsoft Command Line publication) listing 5 acknowledged Squad limitations (role drift, prompt saturation, memory compaction, parallelism pressure, file corruption) that map 1:1 to Specrew's primary feature investments. Tamir is a trusted friend of Alon and the original connector to Brady (see memory `[[reference-tamir-dresher-codevalue-friend-brady-connector-2026-05-29]]`), making the upstream-contribution channel WARM rather than cold. A dedicated upstream-contribution proposal would document the 5-limitations mapping, recommended contribution candidates (drop-box pattern adoption, memory class taxonomy comparison, primer-pattern compaction fix per Proposal 133, etc.), and the Tamir-mediated outreach protocol (inform Tamir first; Tamir loops in Brady).
 
 ## Effort
 

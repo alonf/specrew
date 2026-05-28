@@ -67,6 +67,7 @@ Format: agent-facing playbook (more operational, less narrative than the docs/me
 - Verdict Format with boundary-naming discipline
 - Severity Guidance
 - Cross-Reviewer Recommendation triggers
+- **State-Truth Integrity Audit at iteration-closeout + feature-closeout** (added 2026-05-29 after second empirical instance in F-049): boundary-specific mandatory checklist — at iteration-closeout / feature-closeout gates, reviewer MUST audit cross-artifact lifecycle-state consistency BEFORE substance review. Required checks: (1) `state.md` prose claims about current/next boundary match `state.md` "Current Phase" field; (2) `.squad/identity/now.md` `focus_area` + body prose match current lifecycle position; (3) `.specrew/start-context.json` `boundary_enforcement.last_authorized_boundary` matches `verdict_history[-1].to_boundary`; (4) no false-already-crossed claims in any state file. Catches the "state-artifact-truth inconsistency" failure mode empirically documented in F-049 iter-3 + iter-5 iteration-closeout cycles (memory `[[cross-reviewer-3rd-empirical-instance-2026-05-28]]` Instances 2 + 5). This audit is HUMAN-discipline backstop for Proposal 142 (State-Truth Integrity Validator) which provides mechanical Layer 1 enforcement.
 
 The installed default is the floor; project overlays add to it (Pillar 3).
 
@@ -218,6 +219,7 @@ Could compress to single iteration if appetite supports; recommended split becau
 ## Status history
 
 - **2026-05-28**: candidate drafted after F-049 iter-3 cross-reviewer review-signoff empirically demonstrated the value. Other-reviewer analysis (independent agentic reviewer) crystallized the architectural shape: 3-tier file pattern (`extensions/.../squad-templates/review/` installed default + `.specrew/review/` project-local + `.specrew/review/*.local.md` overlay), Pillar 5 learning candidate pipeline, distinction between known-traps.md / reviewer-instructions.md / retro.md / validators as 4 artifacts with distinct purposes. Drafted as standalone fast-shippable slice (5-8 SP) parallel-tracked with amendments to Proposals 099 + 017 + 102 (architectural correctness).
+- **2026-05-29**: amended. Pillar 1 section list extended with "State-Truth Integrity Audit at iteration-closeout + feature-closeout" — boundary-specific mandatory checklist captured as the human-discipline backstop for Proposal 142 (State-Truth Integrity Validator, 3-5 SP, drafted same day). Amendment empirically motivated by 2nd state-truth integrity gap at F-049 iter-5 iteration-closeout (Codex caught state.md prose stale + now.md focus_area stale + start-context.json `last_authorized_boundary` false-already-crossed claim), confirming the failure-mode pattern from F-049 iter-3 iteration-closeout (Instance 2 in memory `[[cross-reviewer-3rd-empirical-instance-2026-05-28]]`). Two empirical instances of the same failure mode in same feature establishes iteration-closeout as a specific boundary class with **state-artifact-truth inconsistency** as its dominant failure mode. Reviewer playbook now codifies the audit checklist; Proposal 142 ships the mechanical enforcement; defense-in-depth across both layers.
 
 ## Cross-references
 

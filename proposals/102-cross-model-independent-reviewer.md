@@ -121,6 +121,53 @@ These are duals. The same adapter machinery can underlie both: 089's "reviewer-f
 
 The proposal should be drafted as an **extension** of 089, not a parallel system. Concretely: 099's iteration 1 reuses 089's `pr-review-resolution.md` format; reviewer commissioned by 099 produces output in the same shape that 089 already parses.
 
+### Pillar 7 — Reviewer Role Differentiation: Code-Outcome vs SDLC-Process (V2 architectural extension, added 2026-05-29)
+
+The Pillars 1-6 above address WHICH MODEL reviews (independence-level) and HOW (routing, cost, fallback). Pillar 7 addresses a complementary dimension: WHAT each reviewer is FOR.
+
+**Empirical motivation (2026-05-29 dogfooding session)**: across 8+ cross-review instances during F-049/F-050 lifecycle work, a specific failure pattern emerged: **single-reviewer attention is biased toward substance (code, FR coverage, test pass, evidence) and away from lifecycle-state truth (state.md prose, now.md focus_area, start-context.json `last_authorized_boundary` consistency)**. The same reviewer, on the same boundary, with the same playbook, will catch substantive gaps but skim past state-artifact-truth inconsistencies. Two iteration-closeout state-truth gaps in F-049 alone (instances 2 + 5 in memory `[[cross-reviewer-3rd-empirical-instance-2026-05-28]]`) confirm the pattern is structural, not anecdotal.
+
+The maintainer-stated framing of the gap (2026-05-29): "Maybe we need two reviewers, one for the code and outcome, and one for the SDLC process?"
+
+**The structural insight**: even L3 (cross-training-lineage) independent reviewers share the SAME cognitive frame when they share the SAME charter ("review the work for correctness"). Role-separation forces a reviewer whose CENTER of attention is process/state-truth, not substance — the peripheral-vision blind spot becomes the center-vision focus.
+
+#### Two distinct reviewer roles
+
+**Code-Outcome Reviewer** (current Pillars 1-6 scope):
+
+- Charter: does the code do what spec says? FR coverage, test coverage, mirror parity, stable-key compatibility, architectural soundness
+- Outputs: review.md with substance findings + task verdicts + gap ledger
+- Existing FR coverage: FR-001 through FR-016 already capture this role's machinery
+
+**SDLC-Process Reviewer** (new role for V2):
+
+- Charter: does the lifecycle state shipped at this boundary cohere across all durable artifacts? Pillar 5 commit-state form check + state-truth integrity audit + boundary-discipline compliance + charter compliance + commit-hygiene
+- Outputs: process-review.md with: (a) cited-files-committed-at-claimed-commit ✓/✗, (b) state-truth-integrity audit (state.md ↔ now.md ↔ start-context.json consistency), (c) verdict-history-vs-claimed-boundary check, (d) audit-trail durability check, (e) charter-compliance scan (no framework files edited, ModuleVersion respected, mirror-parity preserved, no `specrew update` mid-flight)
+- Boundary specificity: SDLC reviewer is MANDATORY at state-sync-heavy boundaries (iteration-closeout, feature-closeout); RECOMMENDED at review-signoff; OPTIONAL at routine implementation boundaries
+
+#### Why this is V2, not MVP
+
+Pillar 7 ADDS reviewer cost (a 3rd model session per high-stakes boundary). At MVP scope (Pillars 1-6), the cost-arithmetic of L2 cross-vendor already adds 40-80% inference overhead. Adding a 3rd dedicated SDLC reviewer adds 60-100% more. **Total cost scales to 2-3× single-reviewer baseline at L2+Pillar-7.** Worth it for high-stakes boundaries; over-engineered for routine work.
+
+V2 sequencing recommendation:
+
+1. **MVP (Pillars 1-6) ships first** — empirical adoption data informs whether Pillar 7 is needed
+2. **Layer 1 fix (Proposal 142 State-Truth Integrity Validator) ships in parallel** — mechanical state-truth enforcement reduces the need for Pillar 7 by catching most mechanical inconsistencies automatically
+3. **Layer 2 fix (Proposal 140 reviewer-instruction playbook) ships in parallel** — adds state-truth audit checklist as cross-reviewer discipline (lighter than Pillar 7; same coverage for semantic claims)
+4. **Pillar 7 ships LAST** — as backstop for semantic-judgment gaps that Layers 1 + 2 can't catch (the residual 10% of cases). Pillar 7's value is only proven AFTER Layers 1+2 ship and we measure the residual gap.
+
+#### Defense-in-depth framing
+
+Cross-review value emerges from THREE layers, not one:
+
+| Layer | Mechanism | Cost | Catch profile |
+|---|---|---|---|
+| 1. Tooling | Proposal 142 validator rule at boundary | Once-built, free per-run | ~100% mechanical inconsistencies |
+| 2. Reviewer-charter discipline | Proposal 140 playbook with state-truth audit checklist | Cheap (doc update) | Catches semantic claims tooling misses |
+| 3. Reviewer role separation | Pillar 7 dedicated SDLC reviewer at state-sync boundaries | Expensive (3rd model session) | Catches residual judgment calls Layers 1+2 miss |
+
+Pillar 7 is the highest-cost / highest-rigor layer; it should only fire at boundaries where the cost is justified by the stakes. Defaults: MANDATORY at iteration-closeout + feature-closeout (state-sync-heavy); OPTIONAL elsewhere.
+
 ## Functional Requirements
 
 - **FR-001**: `.specrew/agent-routing.yml` configuration file with `implementer:` and `reviewer:` entries per slice type
@@ -226,3 +273,4 @@ Sequencing: ships after 069 enables practical multi-host execution. Plausible Q3
 
 - **2026-05-22**: status set to `candidate`. Drafted in response to external research document's "dedicated independent validation LLM" framing, sharpened with concrete failure-mode analysis and the cross-training-lineage requirement. Awaiting clarify-time decisions on independence-level defaults, synthetic-catalog curation, and L3 viability.
 - **2026-05-28**: amended. Added FR-016 (all commissioned reviewers MUST load `.specrew/review/reviewer-instructions.md` from Proposal 140 + cite version in review output). Added Safeguard 4d (Reviewer instruction playbook citation as load-bearing form-vs-meaning defense). Added Proposal 140 as REQUIRED dependency (102 cannot deliver value without 140). Amendment empirically motivated by F-049 iter-3 review-signoff 2026-05-28: single-reviewer Pillar 5 form check approved an iteration; independent reviewer with explicit playbook context (the contents of `docs/methodology/review-instructions.md` shipped 2026-05-28 commit `01df228a`) correctly rejected with 4 substantive gaps. The differentiator was review-context quality, not model independence. The amendment closes the empirical gap that "two reviewers without shared playbook = two ignorant reviewers" — independence alone is insufficient.
+- **2026-05-29**: amended. Added Pillar 7 (Reviewer Role Differentiation — Code-Outcome vs SDLC-Process) as V2 architectural extension. Maintainer-stated framing (during 2026-05-29 dogfooding session): "Maybe we need two reviewers, one for the code and outcome, and one for the SDLC process?" Empirically motivated by 8+ cross-review instances across F-049 + F-050 lifecycle work in single session, with specific failure pattern: 2 iteration-closeout state-truth integrity gaps in F-049 alone (instances 2 + 5 in memory `[[cross-reviewer-3rd-empirical-instance-2026-05-28]]`) where single-reviewer attention biased toward substance and away from state-artifact-truth. Pillar 7 ships LAST in defense-in-depth ordering — after Proposal 142 (State-Truth Integrity Validator, ~3-5 SP) ships the mechanical Layer 1 enforcement and Proposal 140 ships the playbook discipline Layer 2 enforcement. Pillar 7 catches the residual semantic-judgment gaps Layers 1+2 cannot. Cost framing: total cost scales to 2-3× single-reviewer baseline at L2+Pillar-7; worth it for state-sync-heavy boundaries (iteration-closeout, feature-closeout), over-engineered for routine work.
