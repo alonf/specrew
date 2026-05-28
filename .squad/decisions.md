@@ -21330,3 +21330,48 @@ Advance exactly one boundary: retro → iteration-closeout for Iteration 003 onl
 - **Task ID**: (none)
 - **Auth Commit Hash**: e85a5ced390aae82d3f6c8a168857149907c06f8
 - **Recorded At**: 2026-05-27T23:54:39Z
+
+## 2026-05-28T07:05:37Z — Boundary sync warning: clarify
+
+- **Boundary Type**: clarify
+- **Latest Recorded Boundary**: iteration-closeout
+- **Recorded At**: 2026-05-28T07:05:37Z
+- **Warning**: Expected next boundary 'feature-closeout' but received 'clarify'.
+
+## 2026-05-28T07:05:38Z — Boundary sync: clarify
+
+- **Boundary Type**: clarify
+- **Feature Ref**: 049-pipeline-hardening-intake
+- **Iteration Number**: (none)
+- **Task ID**: (none)
+- **Auth Commit Hash**: 7d404b55f61bcb73c8bc5f5c6317f0e18b794cb8
+- **Recorded At**: 2026-05-28T07:05:37Z
+
+## 2026-05-28T08:20:32Z — Boundary enforcement: plan
+
+- **Feature**: 049-pipeline-hardening-intake
+- **Boundary Type**: plan
+- **Current Boundary**: clarify
+- **Requested Boundary**: plan
+- **Enforcement Action**: blocked
+- **Launch Mode**: same-window
+- **Agent Response Snippet**: (none)
+- **Reason**: No persisted authorization matched clarify -> plan.
+
+## 2026-05-28T08:23:00Z — Boundary sync: plan
+
+- **Boundary Type**: plan
+- **Feature Ref**: 049-pipeline-hardening-intake
+- **Iteration Number**: (none)
+- **Task ID**: (none)
+- **Auth Commit Hash**: 7d404b55f61bcb73c8bc5f5c6317f0e18b794cb8
+- **Recorded At**: 2026-05-28T08:23:00Z
+
+## 2026-05-28T08:34:11Z — Boundary sync: tasks
+
+- **Boundary Type**: tasks
+- **Feature Ref**: 049-pipeline-hardening-intake
+- **Iteration Number**: 005
+- **Task ID**: (none)
+- **Auth Commit Hash**: 7d404b55f61bcb73c8bc5f5c6317f0e18b794cb8
+- **Recorded At**: 2026-05-28T08:34:10Z
