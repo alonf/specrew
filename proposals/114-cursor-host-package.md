@@ -1,12 +1,12 @@
 ---
 proposal: 114
 title: Cursor Host Package — Tier-1 Multi-Host Expansion Following F-044 Per-Host Architecture
-status: candidate
+status: draft
 phase: phase-2
 estimated-sp: 8-12
 priority-tier: 1
 type: tooling
-discussion: tbd
+discussion: parallel-with-f049 pilot; promoted to draft 2026-05-28 to seed parallel-development workflow validation
 depends-on:
   - F-044 # Per-Host Architecture Refactor (provides the 5-function contract + registry pattern Cursor will follow)
 composes-with:
@@ -52,9 +52,9 @@ Following the canonical schema established by F-044's existing 4 hosts (copilot/
     SchemaVersion = 1
     MenuPriority  = 1.5  # Between Claude (1) and Codex (2) — Tier-1 first wave
 
-    Binary           = 'cursor'
+    Binary           = 'cursor-agent'   # VERIFY AT CLARIFY: Proposal 124 uses 'cursor-agent'; this proposal originally said 'cursor'. Cursor's CLI evolved through 2025; current canonical name must be empirically verified. Candidates: 'cursor-agent' (standalone CLI), 'cursor' (with 'agent' subcommand). Pick whichever exists on PATH at implementation time.
     InstallUrl       = 'https://cursor.sh/install'
-    InstallGuidance  = 'Cursor CLI not found on PATH. Install Cursor from https://cursor.sh, then ensure cursor command is in PATH (Cursor > Cmd-Shift-P > "Shell Command: Install cursor command in PATH").'
+    InstallGuidance  = 'Cursor CLI not found on PATH. Install Cursor from https://cursor.sh; ensure the agent CLI is on PATH (via Cursor > Cmd-Shift-P > "Shell Command: Install ..." or platform-specific installer). Verify exact binary name (cursor-agent vs cursor) during clarify-boundary empirical CLI check.'
 
     SkillRoot                  = '.cursor/skills'
     HasUserSlashCommandSurface = $true   # Cursor's Agent mode supports custom rules; treat skills as rules-equivalent
@@ -72,11 +72,11 @@ Following the canonical schema established by F-044's existing 4 hosts (copilot/
 
 ### Five-Function Contract (`hosts/cursor/host.ps1`)
 
-1. **`New-CursorLaunchInvocation`** — builds the `cursor` CLI invocation for `specrew start --host cursor "..."`. Likely shape: `cursor agent --prompt "<feature-prompt>" --workdir <project>` (verified during implementation).
+1. **`New-CursorLaunchInvocation`** — builds the Cursor CLI invocation for `specrew start --host cursor "..."`. Exact shape verified at clarify boundary; likely candidates: `cursor-agent --prompt "<feature-prompt>" --workdir <project>` OR `cursor agent --prompt "..." --workdir ...`. The implementing Crew empirically discovers which form Cursor's current CLI accepts.
 2. **`Convert-CursorFlag`** — translates universal Specrew flags (`--allow-all`, `--autonomous`, `--readonly`) to Cursor-CLI equivalents.
-3. **`Test-CursorRuntimeInstalled`** — `Get-Command cursor` + version probe.
+3. **`Test-CursorRuntimeInstalled`** — probes for the resolved binary (`cursor-agent` or `cursor` per clarify-boundary verification) + version check.
 4. **`Get-CursorSignals`** — returns probe signals: `binary-present`, `binary-version`, `agent-mode-available`, `project-has-cursor-dir`.
-5. **`Install-CursorCrewRuntime`** — translates `.specrew/team/agents/<role>.md` (canonical source) → `.cursor/agents/<role>.md` (Cursor's native agent-rules location). Mirrors the canonical-source pattern F-044 Slice 9 established.
+5. **`Install-CursorCrewRuntime`** — translates `.specrew/team/agents/<role>.md` (canonical source) → Cursor's native agent/rules location. Target path (`.cursor/agents/` vs `.cursor/rules/` vs `.cursorrules` file) verified at clarify boundary; mirrors the canonical-source pattern F-044 Slice 9 established.
 
 ### Skill-Catalog Deployment Target
 
@@ -126,11 +126,14 @@ Following F-044's iter-004 + iter-005 patterns:
 
 **Total estimate**: ~8-12 SP for a single iteration. Skewed toward upper end if Cursor's CLI flag conventions require more translation work than expected.
 
-### Verification Required Before Drafting → Spec
+### Empirical Verification Required At Clarify Boundary
 
-1. **Confirm `cursor` CLI command shape.** As of 2026-05 the CLI evolved through several iterations. Need to verify the actual invocation that triggers Agent mode with a non-interactive prompt + working-directory. If `cursor agent ...` isn't the right shape, the proposal needs adjustment.
-2. **Confirm `.cursor/skills/` is a viable deployment path.** Cursor's "Rules" feature uses `.cursor/rules/` and `.cursorrules` file. May want `.cursor/rules/` instead of `.cursor/skills/` for closer convention alignment. Investigate during spec phase.
-3. **Confirm `cursor` CLI is non-interactive.** Some Cursor versions only allow Agent mode through the GUI; CLI may just be a launcher. If non-interactive isn't supported, Cursor becomes Tier 2 (verify CLI first) instead of Tier 1.
+Promoted to draft 2026-05-28. These items are no longer pre-drafting blockers — the implementing Crew resolves them at the clarify boundary as part of substantive intake, and the spec captures the resolved answers as authoritative scope inputs.
+
+1. **Canonical CLI binary name + invocation shape.** Cursor's CLI evolved through 2025. Verify on the implementing machine whether the binary is `cursor-agent` (standalone CLI) or `cursor` (with `agent` subcommand). Verify the invocation that triggers Agent mode with non-interactive prompt + working-directory. Resolves the discrepancy between this proposal's original `cursor` claim and Proposal 124's `cursor-agent` claim.
+2. **Skill/agent deployment target.** Cursor's "Rules" feature uses `.cursor/rules/` and `.cursorrules`. Verify whether `.cursor/skills/` (this proposal's original target) is viable, or whether `.cursor/rules/` is the correct convention-aligned target. Cursor's agent-rules path semantics may have shifted; ground-truth at clarify.
+3. **Non-interactive CLI support.** Confirm Cursor CLI supports non-interactive Agent mode (not just GUI launcher). If non-interactive isn't supported, downgrade host status from `supported` to `preview`. If GUI-only, escalate to "Tier 2 — verify CLI first" and re-scope this proposal accordingly.
+4. **Per-conversation system prompt mechanism.** Verify whether Cursor uses `CURSOR.md`, `AGENTS.md`, or another convention for the coordinator prompt equivalent. Set `InstructionsFile` accordingly.
 
 ## Composition Notes
 
@@ -151,6 +154,22 @@ Following F-044's iter-004 + iter-005 patterns:
 Recommend bundling Cursor + Aider + Amp + OpenCode as a single Phase-2c feature (separate iterations per host, single feature umbrella). Each is ~8-12 SP, total bundle ~32-48 SP across 4 iterations. Run sequentially (one iteration per host) so each can be smoke-tested on a real downstream project before the next starts.
 
 Alternative: ship Cursor first as a single-host feature (validates the pattern post-F-044) and Aider/Amp/OpenCode follow as their own bundle once Cursor is proven.
+
+## Parallel-Work Coordination Charter
+
+**Added 2026-05-28 as part of parallel-development workflow pilot** (this feature runs concurrently with Feature 049 on the main branch). The implementing Crew MUST observe these durable coordination guardrails to avoid merge catastrophe or audit-trail breakage:
+
+1. **Pre-assigned ModuleVersion**: this feature ships at ModuleVersion `0.29.0` in `Specrew.psd1`. F-049 owns the previous slot. Do NOT bump to any other value during implementation — the assignment is pre-allocated to prevent collision at PR-merge time.
+2. **Do NOT touch framework infrastructure**: `validate-governance.ps1`, `shared-governance.ps1`, or any file under `.specify/extensions/specrew-speckit/**`. These are framework files. Even a "small fix" creates catastrophic merge state with F-049 and risks downstream breakage for installed Specrew users. Surface bugs as proposals, not in-place edits.
+3. **Do NOT run `specrew update` in this worktree**: initial `specrew init` only. Mid-iteration `specrew update` risks the duplicate-row deploy bug (memory `[[project-specrew-update-deploy-duplicate-rows-2026-05-27]]`) AND would conflict with F-049's parallel deploy work.
+4. **Append-only on shared cross-feature files**: `proposals/INDEX.md`, `CHANGELOG.md`, `dashboard.md` — add new rows/entries at the END (not the middle). Reduces autoresolve risk at merge time.
+5. **Sequential PR merge — F-049 first**: do NOT merge this feature's PR before F-049's PR merges to main. F-049 contains audit-trail commit-hash citations in `specs/049-pipeline-hardening-intake/iterations/*/state.md` that invalidate if F-049 rebases onto another feature's merge. After F-049 merges to main, this branch rebases onto post-F-049 main, then proceeds with its own PR + beta-publish cycle.
+6. **Beta-before-stable publish sequence**: per universal mandate `[[feedback-beta-before-stable-universal-2026-05-26]]`, this feature ships to PSGallery as `v0.29.0-beta.N` first, awaits manual install validation, then promotes to stable. Same SDLC Steps 5-14 as F-049.
+7. **No `.specrew/` or `.squad/` state edits committed to this branch**: those files are gitignored (per fix `437338f6`); ensure your work doesn't re-track them.
+8. **Cross-reviewer at boundaries**: use a different model session for review-signoff (e.g., if implementing Crew is Copilot, review with Codex or Claude — pattern empirically validated 4× in F-049 lifecycle including bidirectional convergence; see `[[cross-reviewer-3rd-empirical-instance-2026-05-28]]`).
+9. **Empirical multi-host validation moment**: this is the first post-F-044 host-package addition AND the first parallel-development pilot for Specrew. Both data points are valuable methodology evidence; capture surprises in retro for downstream proposal refinement (114, 124, future per-host packages).
+
+The maintainer (Alon Fliess) is the integration point: this Crew runs to its own beat, hits boundaries, asks for verdicts; F-049 Crew does the same; maintainer decides when each PR merges based on which finishes first.
 
 ## Open Questions
 
@@ -177,3 +196,4 @@ Alternative: ship Cursor first as a single-host feature (validates the pattern p
 ## Status History
 
 - **2026-05-25** — Drafted as next-after-v0.27.1-patch. Candidate status. Sequencing recommendation: ship after v0.27.1 patch closes; precedes Aider/Amp/OpenCode in the Tier-1 wave because Cursor has the highest demand signal.
+- **2026-05-28** — Promoted candidate → draft to seed the **parallel-development workflow pilot** (this feature runs concurrently with Feature 049 on the main branch). Resolved binary-name discrepancy with Proposal 124 (defer to clarify-boundary empirical verification). Added Parallel-Work Coordination Charter section with pre-assigned ModuleVersion (`0.29.0`), framework-file protection, sequential PR merge ordering (F-049 first), and cross-reviewer requirement. Empirical Verification items relabeled from "Required Before Drafting → Spec" to "Required At Clarify Boundary" (now part of the implementing Crew's substantive intake, not pre-drafting blocker). Proposal 124 (Tier-1 bundle) amended in parallel with deconflict note pointing here.

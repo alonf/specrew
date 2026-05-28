@@ -12,6 +12,8 @@ discussion: triaged 2026-05-24 from 11 candidate hosts to viable Tier-1 set; gat
 
 ## Why
 
+> **2026-05-28 amendment — Cursor extracted to standalone Proposal 114.** Cursor host work has been promoted to standalone implementation under Proposal 114 to serve as the parallel-development workflow pilot (running concurrently with Feature 049). Until 114 ships and 124's scope is re-evaluated, this bundle proposal SHOULD be treated as covering Aider + Amp + OpenCode only; the Cursor row below is retained as historical record. After 114 ships, the maintainer may amend 124 to formally remove the Cursor row (reducing the bundle to ~6-9 SP) OR retain Cursor coverage for cross-validation against 114's empirical answers. See Proposal 114 status history for the standalone extraction rationale.
+
 F-040 (Multi-Host Launch Path) shipped Claude + Codex + Copilot launch dispatch. F-043 + F-044 (Per-Host Architecture Refactor) added Antigravity and refactored to a registry-driven adapter pattern where each host is `hosts/<kind>/` with manifest + handlers + coordinator-rules. **Adding a new host now costs ~half a day once the CLI's behavior is verified** — no core script edits, registry auto-discovers.
 
 This proposal claims the obvious 4-host expansion that came out of the 2026-05-24 11-host triage. All four pass the "mature CLI that fits the adapter contract" bar empirically (subject to verification at implementation time):
