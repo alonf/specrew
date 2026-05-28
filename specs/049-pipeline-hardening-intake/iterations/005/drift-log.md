@@ -62,6 +62,13 @@ stub do not lose them.
   `PASS` for this iteration; this is a Phase-1 slice). **Resolution:** deferred — fix belongs in
   a separate framework slice (defensive/strict-safe property access + reconcile the canonical
   quality-gate table schema), mirrored to `extensions/specrew-speckit/scripts/`.
+  **Second entry point:** `run-mechanical-checks.ps1` (line ~1132) calls the same
+  `Get-QualityEvidenceContent` helper and crashes identically when it regenerates
+  `quality-evidence.md`. The mechanical lenses themselves succeeded first — it wrote
+  `quality/mechanical-findings.json` with empty `findings` (no dead-field / anti-pattern /
+  test-integrity issues) before the crash, and the hand-authored `quality-evidence.md` was left
+  intact. So the mechanical result is valid; only the shared cosmetic regeneration step fails. The
+  framework fix should target the one shared helper to cover both entry points.
 - **A-002 — Phase-two quality artifacts correctly skipped.** `Test-PhaseTwoQualityArtifactScaffold`
   returned false, so `hardening-gate.md` / `trap-reapplication.md` / `quality/lenses/` were not
   scaffolded. This is **expected** classification for a Phase-1 slice (matches Iteration 003,

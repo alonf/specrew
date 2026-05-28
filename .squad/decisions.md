@@ -21409,3 +21409,122 @@ Advance exactly one boundary: retro → iteration-closeout for Iteration 003 onl
 - **Task ID**: (none)
 - **Auth Commit Hash**: 14de114792c835356ccc3493fe247826d6890787
 - **Recorded At**: 2026-05-28T18:27:08Z
+
+## 2026-05-28T19:12:17Z — Delegated routing plan
+
+- **Enabled Agents**: claude
+- **Independent Oversight Active**: False
+- **Roles**:
+  - Implementer | requested=copilot | actual=claude | model=claude-sonnet-4.5 | status=fell-back | fallback=preferred agent 'copilot' is not enabled
+  - Spec Steward | requested=codex | actual=claude | model=claude-sonnet-4.5 | status=fell-back | fallback=preferred agent 'codex' is not enabled
+  - Planner | requested=claude | actual=claude | model=claude-sonnet-4.5 | status=honored | fallback=(none)
+  - Reviewer | requested=claude | actual=claude | model=claude-sonnet-4.5 | status=honored | fallback=(none)
+  - Retro Facilitator | requested=copilot | actual=claude | model=claude-sonnet-4.5 | status=fell-back | fallback=preferred agent 'copilot' is not enabled
+
+## 2026-05-28T19:12:17Z — Routing evidence: Implementer
+
+- **Decision ID**: routing-evidence-8377a0a0d71a
+- **Type**: routing-evidence
+- **Affected Requirement**: FR-043
+- **Affected Iteration**: (none)
+- **Approving Human**: (none)
+- **Recorded At**: 2026-05-28T19:12:17Z
+- **Next Action**: none
+- **Rationale**: Delegated lifecycle routing was applied for role 'Implementer'.
+
+- **Routing Evidence**: Implementer | requested=copilot | actual=claude | model=claude-sonnet-4.5 | status=fell-back | fallback=preferred agent 'copilot' is not enabled
+
+## 2026-05-28T19:12:18Z — Routing evidence: Spec Steward
+
+- **Decision ID**: routing-evidence-798c8d4db556
+- **Type**: routing-evidence
+- **Affected Requirement**: FR-043
+- **Affected Iteration**: (none)
+- **Approving Human**: (none)
+- **Recorded At**: 2026-05-28T19:12:18Z
+- **Next Action**: none
+- **Rationale**: Delegated lifecycle routing was applied for role 'Spec Steward'.
+
+- **Routing Evidence**: Spec Steward | requested=codex | actual=claude | model=claude-sonnet-4.5 | status=fell-back | fallback=preferred agent 'codex' is not enabled
+
+## 2026-05-28T19:12:18Z — Routing evidence: Planner
+
+- **Decision ID**: routing-evidence-93cba1fe41c0
+- **Type**: routing-evidence
+- **Affected Requirement**: FR-043
+- **Affected Iteration**: (none)
+- **Approving Human**: (none)
+- **Recorded At**: 2026-05-28T19:12:18Z
+- **Next Action**: none
+- **Rationale**: Delegated lifecycle routing was applied for role 'Planner'.
+
+- **Routing Evidence**: Planner | requested=claude | actual=claude | model=claude-sonnet-4.5 | status=honored | fallback=(none)
+
+## 2026-05-28T19:12:19Z — Routing evidence: Reviewer
+
+- **Decision ID**: routing-evidence-214bb73b8b82
+- **Type**: routing-evidence
+- **Affected Requirement**: FR-043
+- **Affected Iteration**: (none)
+- **Approving Human**: (none)
+- **Recorded At**: 2026-05-28T19:12:19Z
+- **Next Action**: none
+- **Rationale**: Delegated lifecycle routing was applied for role 'Reviewer'.
+
+- **Routing Evidence**: Reviewer | requested=claude | actual=claude | model=claude-sonnet-4.5 | status=honored | fallback=(none)
+
+## 2026-05-28T19:12:19Z — Routing evidence: Retro Facilitator
+
+- **Decision ID**: routing-evidence-ed9b2c179ea3
+- **Type**: routing-evidence
+- **Affected Requirement**: FR-043
+- **Affected Iteration**: (none)
+- **Approving Human**: (none)
+- **Recorded At**: 2026-05-28T19:12:19Z
+- **Next Action**: none
+- **Rationale**: Delegated lifecycle routing was applied for role 'Retro Facilitator'.
+
+- **Routing Evidence**: Retro Facilitator | requested=copilot | actual=claude | model=claude-sonnet-4.5 | status=fell-back | fallback=preferred agent 'copilot' is not enabled
+
+## 2026-05-28T19:46:46Z — Boundary sync: before-implement
+
+- **Boundary Type**: before-implement
+- **Feature Ref**: 049-pipeline-hardening-intake
+- **Iteration Number**: 005
+- **Task ID**: (none)
+- **Auth Commit Hash**: 70d4d548
+- **Recorded At**: 2026-05-28T19:46:46Z
+
+---
+
+## 2026-05-28 — Reviewer: Iteration 005 Gap Ledger Deferrals (Canonical Classification)
+
+- **Decision ID**: f049-i005-gap-ledger-deferrals
+- **Type**: defer
+- **Feature**: 049-pipeline-hardening-intake
+- **Affected Requirement**: (none — out-of-scope tooling + pre-existing repo hygiene, not an in-scope FR/SC)
+- **Affected Iteration**: specs\049-pipeline-hardening-intake\iterations\005
+- **Boundary**: review-signoff
+- **Approving Human**: Alon Fliess
+- **Authority**: Human authorization at the before-implement gate (Findings 3 and 4 DEFER); Reviewer governance rule 14B (gap ledger canonical classification)
+- **Recorded At**: 2026-05-28
+
+### Deferred Scope Ledger (Iteration 005)
+
+- **Deferred**: Tooling defect A-001 — `Get-QualityEvidenceContent` crashes under StrictMode on the in-use `| Gate | Target | Notes |` quality-gate table, affecting `scaffold-iteration-artifacts.ps1`, `run-mechanical-checks.ps1`, and `scaffold-reviewer-artifacts.ps1`.
+- **Deferred**: Pre-existing repo-wide capacity-drift validator FAILs (never-reverted 20 to 25 bump in `.specrew/iteration-config.yml`) and README/extension manifest version drift to `0.27.6`.
+
+#### A-001: Shared Get-QualityEvidenceContent StrictMode Crash
+
+Documented in `specs/049-pipeline-hardening-intake/iterations/005/drift-log.md` (anomaly A-001). The evidence envelope and this reviewer review were hand-authored as the workaround.
+
+**Deferral rationale**: The framework-script fix is out of scope for the Proposal 141 wording-correction slice and touches framework files. The defect blocks task-time / cosmetic regeneration, not the shipped artifacts or the review-signoff boundary (scoped validator passes). Fix belongs in a separate framework slice (strict-safe property access plus reconciling the canonical quality-gate table schema), mirrored to `extensions/specrew-speckit/scripts/`; candidate for the queued framework-file-protection proposal.
+
+#### Capacity-Drift + Version-Drift Warnings
+
+**Deferral rationale**: Pre-existing; not introduced by this slice. Capacity drift stems from a temporary 20 to 25 bump for F-049 iteration 003 that was never reverted; version drift is a Rule 15 feature-closeout concern. Both are tracked for the F-049 feature-closeout cleanup checklist.
+
+#### Approval Evidence
+
+- **Approving authority**: Alon Fliess
+- **Approval context**: At the F-049 iteration-005 before-implement gate (2026-05-28), the human approved the slice and explicitly dispositioned Finding 3 (A-001 scaffold crash) and Finding 4 (capacity + version drift) as DEFER, routing A-001 to a framework-fix slice / framework-file-protection proposal and the capacity/version drift to F-049 feature-closeout cleanup.

@@ -2,7 +2,7 @@
 
 **Schema**: v1
 **Spec**: [../../spec.md](../../spec.md)
-**Status**: planning
+**Status**: reviewing
 **Capacity**: 6.6/25 story_points
 **Started**: 2026-05-28
 **Completed**:
@@ -93,16 +93,16 @@ Iteration `005` is the bounded **6-8 SP** Proposal `141` **Crew Interaction Prof
 
 | Task | Title | Requirement | Story | Effort | Owner | Owner File Globs | Status | Agent | Actual | Verdict |
 | ---- | ----- | ----------- | ----- | ------ | ----- | ---------------- | ------ | ----- | ------ | ------- |
-| T001 | Create Iteration 005 audit scaffold and evidence envelope | FR-036, FR-037, FR-039, FR-041, SC-007, SC-008, TG-016, TG-017 | US3 | 0.4 | Reviewer | `specs/049-pipeline-hardening-intake/iterations/005/quality/quality-evidence.md` | planned | | | |
-| T002 | Add shared display-label metadata and Crew Interaction Profile helpers | FR-032, FR-033, FR-034, FR-035, TG-017, TG-018 | US3 | 0.8 | Implementer | `scripts/internal/user-profile.ps1` | planned | | | |
-| T003 | Add session-context profile summary helpers and current-user runtime markers | FR-032, FR-035, FR-038, FR-040, TG-018 | US3 | 0.8 | Implementer | `scripts/specrew-start.ps1`, `scripts/internal/user-profile.ps1` | planned | | | |
-| T004 | Add loader/path-rule guidance for shared instructions and agent surfaces | FR-039, FR-040, FR-041, TG-018 | US3 | 0.6 | Implementer | `README.md`, `docs/user-guide.md`, reviewer/operator guidance surfaces | planned | | | |
-| T005 | Add legacy-profile and paired-developer fixtures plus failing assertions | FR-033, FR-037, FR-039, FR-041, SC-007, SC-008, TG-018 | US3 | 0.8 | Reviewer | `tests/integration/fixtures/f049-legacy-user-profile/**`, `tests/integration/f049-i003-intake-engine-tests.ps1` | planned | | | |
-| T006 | Update first-run and profile/runtime wording to Crew Interaction Profile semantics | FR-032, FR-033, FR-034, FR-035, FR-038, TG-017, TG-018 | US3 | 0.9 | Implementer | `scripts/internal/user-profile.ps1`, `scripts/specrew-start.ps1` | planned | | | |
-| T007 | Refresh `/specrew-user-profile` help copy across shipped skill surfaces | FR-032, FR-034, FR-035, FR-036, FR-040, TG-018 | US3 | 0.5 | Implementer | `.github/skills/specrew-user-profile/SKILL.md`, `.claude/skills/specrew-user-profile/SKILL.md`, `.agents/skills/specrew-user-profile/SKILL.md` | planned | | | |
-| T008 | Align `/speckit.specify` and intake guidance to the hard-boundary + mirror-parity contract | FR-032, FR-035, FR-036, FR-038, FR-040, TG-017, TG-018 | US3 | 0.6 | Implementer | `.github/prompts/speckit.specify.prompt.md`, `.github/agents/speckit.specify.agent.md`, `extensions/specrew-speckit/scripts/intake/Invoke-SpecifyIntake.ps1`, `.specify/extensions/specrew-speckit/scripts/intake/Invoke-SpecifyIntake.ps1` | planned | | | |
-| T009 | Update downstream docs and reviewer/operator guidance for loader rule and multi-developer safety | FR-036, FR-039, FR-040, FR-041, SC-008, TG-016, TG-017, TG-018 | US3 | 0.6 | Implementer | `docs/user-guide.md`, `README.md`, `.specrew/team/agents/reviewer.md`, `.agents/agents/reviewer.md`, `extensions/specrew-speckit/squad-templates/agents/reviewer/charter.md`, `.specify/extensions/specrew-speckit/squad-templates/agents/reviewer/charter.md` | planned | | | |
-| T010 | Run compatibility, shared-instruction, and paired-developer checks and record Proposal 141 evidence | FR-037, FR-038, FR-039, FR-040, FR-041, SC-007, SC-008, TG-016, TG-017, TG-018 | US3 | 0.6 | Reviewer | `tests/integration/f049-i003-intake-engine-tests.ps1`, `specs/049-pipeline-hardening-intake/iterations/005/quality/quality-evidence.md` | planned | | | |
+| T001 | Create Iteration 005 audit scaffold and evidence envelope | FR-036, FR-037, FR-039, FR-041, SC-007, SC-008, TG-016, TG-017 | US3 | 0.4 | Reviewer | `specs/049-pipeline-hardening-intake/iterations/005/quality/quality-evidence.md` | done | claude | as-planned | pass |
+| T002 | Add shared display-label metadata and Crew Interaction Profile helpers | FR-032, FR-033, FR-034, FR-035, TG-017, TG-018 | US3 | 0.8 | Implementer | `scripts/internal/user-profile.ps1` | done | claude | as-planned | pass |
+| T003 | Add session-context profile summary helpers and current-user runtime markers | FR-032, FR-035, FR-038, FR-040, TG-018 | US3 | 0.8 | Implementer | `scripts/specrew-start.ps1`, `scripts/internal/user-profile.ps1` | done | claude | as-planned | pass |
+| T004 | Add loader/path-rule guidance for shared instructions and agent surfaces | FR-039, FR-040, FR-041, TG-018 | US3 | 0.6 | Implementer | `README.md`, `docs/user-guide.md`, reviewer/operator guidance surfaces | done | claude | as-planned | pass |
+| T005 | Add legacy-profile and paired-developer fixtures plus failing assertions | FR-033, FR-037, FR-039, FR-041, SC-007, SC-008, TG-018 | US3 | 0.8 | Reviewer | `tests/integration/fixtures/f049-legacy-user-profile/**`, `tests/integration/f049-i003-intake-engine-tests.ps1` | done | claude | as-planned | pass |
+| T006 | Update first-run and profile/runtime wording to Crew Interaction Profile semantics | FR-032, FR-033, FR-034, FR-035, FR-038, TG-017, TG-018 | US3 | 0.9 | Implementer | `scripts/internal/user-profile.ps1`, `scripts/specrew-start.ps1` | done | claude | as-planned | pass |
+| T007 | Refresh `/specrew-user-profile` help copy across shipped skill surfaces | FR-032, FR-034, FR-035, FR-036, FR-040, TG-018 | US3 | 0.5 | Implementer | `.github/skills/specrew-user-profile/SKILL.md`, `.claude/skills/specrew-user-profile/SKILL.md`, `.agents/skills/specrew-user-profile/SKILL.md` | done | claude | as-planned | pass |
+| T008 | Align `/speckit.specify` and intake guidance to the hard-boundary + mirror-parity contract | FR-032, FR-035, FR-036, FR-038, FR-040, TG-017, TG-018 | US3 | 0.6 | Implementer | `.github/prompts/speckit.specify.prompt.md`, `.github/agents/speckit.specify.agent.md`, `extensions/specrew-speckit/scripts/intake/Invoke-SpecifyIntake.ps1`, `.specify/extensions/specrew-speckit/scripts/intake/Invoke-SpecifyIntake.ps1` | done | claude | as-planned | pass |
+| T009 | Update downstream docs and reviewer/operator guidance for loader rule and multi-developer safety | FR-036, FR-039, FR-040, FR-041, SC-008, TG-016, TG-017, TG-018 | US3 | 0.6 | Implementer | `docs/user-guide.md`, `README.md`, `.specrew/team/agents/reviewer.md`, `.agents/agents/reviewer.md`, `extensions/specrew-speckit/squad-templates/agents/reviewer/charter.md`, `.specify/extensions/specrew-speckit/squad-templates/agents/reviewer/charter.md` | done | claude | as-planned | pass |
+| T010 | Run compatibility, shared-instruction, and paired-developer checks and record Proposal 141 evidence | FR-037, FR-038, FR-039, FR-040, FR-041, SC-007, SC-008, TG-016, TG-017, TG-018 | US3 | 0.6 | Reviewer | `tests/integration/f049-i003-intake-engine-tests.ps1`, `specs/049-pipeline-hardening-intake/iterations/005/quality/quality-evidence.md` | done | claude | as-planned | pass |
 
 **Planned Task Total**: 6.6 story_points  
 **Reserved Repair Headroom**: 0.8 story_points  
