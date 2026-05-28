@@ -2,7 +2,7 @@
 
 **Schema**: v1
 **Spec**: [../../spec.md](../../spec.md)
-**Status**: reviewing
+**Status**: retro
 **Capacity**: 6.6/25 story_points
 **Started**: 2026-05-28
 **Completed**:
