@@ -6,6 +6,26 @@
 **Input**: Proposal 114 — Cursor Host Package — Tier-1 Multi-Host Expansion Following F-044 Per-Host Architecture
 **Proposal Source**: `proposals/114-cursor-host-package.md`
 
+## Clarifications
+
+### Session 2026-05-28 (clarify boundary — empirical Cursor-CLI verification)
+
+The three deferred clarification items (FR-009, FR-010, FR-011) plus Proposal 114's "Empirical Verification Required At Clarify Boundary" questions were resolved by probing the installed Cursor CLI on the implementation machine (`cursor-agent --help`, `--version`, PATH discovery). The probe results are authoritative scope inputs:
+
+- **Q: Canonical CLI binary name (FR-009) — `cursor-agent` or `cursor`?**
+  **A: `cursor-agent`.** Both binaries exist on PATH: `cursor` (`cursor.cmd`, v2.4.28) is the VS Code-style editor launcher and is NOT used for headless governance; `cursor-agent` (`cursor-agent.ps1`, v2026.05.28) is the standalone Agent CLI Specrew launches into. The manifest `Binary` field and `New-CursorLaunchInvocation` use `cursor-agent`.
+
+- **Q: Skill / crew-agent deployment target (FR-010) — `.cursor/skills/`, `.cursor/rules/`, or `.cursorrules`?**
+  **A: `.cursor/rules/*.mdc` (Cursor Project Rules).** Cursor has NO skills/slash-command surface comparable to Claude/Copilot. Its native auto-attached context mechanism is `.cursor/rules/*.mdc` (confirmed by the `cursor-agent generate-rule` command). Resolved decisions:
+  - `SkillRoot = .cursor/rules` — Speckit skill catalog deploys here as `.mdc` rule files.
+  - `HasUserSlashCommandSurface = $false` — skills are auto-attached context, NOT user-typeable slash commands. This matches the established Codex host pattern (well-tested in F-040/F-044).
+  - Coordinator prompt is delivered via `AGENTS.md` (Cursor honors the AGENTS.md instructions convention); `InstructionsFile = AGENTS.md`.
+  - `Install-CursorCrewRuntime` translates `.specrew/team/agents/<role>.md` → `.cursor/rules/*.mdc`.
+  - `--plugin-dir` plugin packaging (Proposal 114 Option 3) is explicitly OUT of scope for this feature; tracked as a v2 follow-up after real Cursor-user invocation patterns are observed.
+
+- **Q: Non-interactive Agent mode support (FR-011) — supported, or GUI-only?**
+  **A: Fully supported. Host `Status` stays `supported` (NOT downgraded to `preview`).** `cursor-agent --print` (`-p`) is documented "for scripts or non-interactive use … has access to all tools, including write and shell." Supporting flags: `--workspace <path>` (working directory), `--output-format text|json|stream-json`, `--force`/`--yolo` (auto-approve), `--trust` (headless workspace trust), `--model <model>`. The launch invocation is `cursor-agent --print --workspace <project> "<prompt>"` with `--force --trust` added under autonomous/allow-all.
+
 ## User Scenarios & Testing
 
 ### User Story 1 - Launch Specrew Session in Cursor (Priority: P1)
@@ -132,17 +152,17 @@ As a developer with multiple AI tools installed, I want Cursor to appear in the 
   - **Owner**: Implementation Team
   - **Iteration**: Iteration 3 (documentation)
 
-- **FR-009**: [NEEDS CLARIFICATION: Canonical CLI binary name — is it `cursor-agent` (standalone) or `cursor` (with `agent` subcommand)?] System MUST use the empirically verified binary name in the manifest's `Binary` field and `New-CursorLaunchInvocation` function
+- **FR-009**: System MUST use the empirically verified binary name `cursor-agent` (RESOLVED 2026-05-28; see Clarifications) in the manifest's `Binary` field and `New-CursorLaunchInvocation` function. The plain `cursor` editor launcher MUST NOT be used for headless governance launch.
   - **Owner**: Implementation Team
-  - **Iteration**: Iteration 1 (clarify boundary empirical verification)
+  - **Iteration**: Iteration 1 (resolved at clarify boundary)
 
-- **FR-010**: [NEEDS CLARIFICATION: Skill/agent deployment target — is it `.cursor/skills/`, `.cursor/rules/`, `.cursorrules` file, or other?] System MUST deploy skills to the empirically verified target path specified in the manifest's `SkillRoot` field
+- **FR-010**: System MUST deploy skills and crew-agent translations to `.cursor/rules/` as `.mdc` Cursor Project Rules (RESOLVED 2026-05-28; see Clarifications). The manifest MUST set `SkillRoot = .cursor/rules`, `HasUserSlashCommandSurface = $false`, and `InstructionsFile = AGENTS.md` (coordinator prompt surface). `--plugin-dir` packaging is OUT of scope (v2 follow-up).
   - **Owner**: Implementation Team
-  - **Iteration**: Iteration 1 (clarify boundary empirical verification)
+  - **Iteration**: Iteration 1 (resolved at clarify boundary)
 
-- **FR-011**: [NEEDS CLARIFICATION: Cursor CLI non-interactive support — does Cursor CLI support non-interactive Agent mode with `--prompt` flag, or is it GUI-only?] If non-interactive mode is not supported, system MUST downgrade host status from `supported` to `preview` in manifest and document limitation in InstallGuidance
+- **FR-011**: System MUST set host `Status = supported` — Cursor CLI supports non-interactive Agent mode via `cursor-agent --print --workspace <path>` with `--force`/`--trust` for autonomous runs (RESOLVED 2026-05-28; see Clarifications). The downgrade-to-`preview` contingency does NOT apply; non-interactive support is confirmed.
   - **Owner**: Implementation Team
-  - **Iteration**: Iteration 1 (clarify boundary empirical verification)
+  - **Iteration**: Iteration 1 (resolved at clarify boundary)
 
 ### Traceability & Governance Requirements
 
@@ -161,8 +181,8 @@ As a developer with multiple AI tools installed, I want Cursor to appear in the 
   - Iteration 3: FR-008 (documentation)
 
 - **TG-004**: Any known spec/implementation conflict MUST include an explicit reconciliation path:
-  - Binary name discrepancy (Proposal 114: `cursor`, Proposal 124: `cursor-agent`) → Reconciliation: Clarify-boundary empirical verification determines correct value; spec records the resolved answer as authoritative
-  - Skill path ambiguity (`.cursor/skills/` vs `.cursor/rules/`) → Reconciliation: Clarify-boundary empirical verification determines correct path; manifest's `SkillRoot` field captures the resolved value
+  - Binary name discrepancy (Proposal 114: `cursor`, Proposal 124: `cursor-agent`) → RESOLVED 2026-05-28: empirical probe confirms `cursor-agent` is the standalone Agent CLI; Proposal 124's value is authoritative. Recorded in Clarifications + FR-009.
+  - Skill path ambiguity (`.cursor/skills/` vs `.cursor/rules/`) → RESOLVED 2026-05-28: Cursor exposes `.cursor/rules/*.mdc` Project Rules (no `.cursor/skills/`); `SkillRoot = .cursor/rules`. Recorded in Clarifications + FR-010.
 
 ### Key Entities
 
@@ -201,11 +221,11 @@ As a developer with multiple AI tools installed, I want Cursor to appear in the 
 
 ## Assumptions
 
-- **Cursor CLI availability**: Cursor provides a CLI binary (`cursor-agent` or `cursor`) that is installable and can be added to PATH. This is confirmed by user reports and Cursor's documentation, but the exact binary name and invocation shape are subject to clarify-boundary empirical verification.
+- **Cursor CLI availability**: RESOLVED (no longer an assumption) — the `cursor-agent` standalone Agent CLI is installed and on PATH on the implementation machine (v2026.05.28). Binary name and invocation shape are empirically verified; see Clarifications + FR-009.
 
-- **Non-interactive Agent mode**: Cursor's CLI supports a non-interactive Agent mode that can be triggered with a prompt and working directory, similar to `gh copilot` or `claude-cli`. If this assumption proves false, host status downgrades to `preview` and the feature documents GUI-launcher workarounds.
+- **Non-interactive Agent mode**: RESOLVED (no longer an assumption) — `cursor-agent --print --workspace <path>` provides non-interactive Agent mode with full tool access; `--force`/`--trust` cover autonomous runs. Host status stays `supported`; no GUI-launcher workaround needed. See Clarifications + FR-011.
 
-- **Skill/rules surface exists**: Cursor has a mechanism for project-level or user-level custom skills, rules, or agent definitions that Specrew can deploy to. The exact path and format are subject to clarify-boundary verification.
+- **Skill/rules surface exists**: RESOLVED (no longer an assumption) — Cursor's native surface is `.cursor/rules/*.mdc` Project Rules (auto-attached context) plus `AGENTS.md` instructions. There is no slash-command surface; `HasUserSlashCommandSurface = $false`. See Clarifications + FR-010.
 
 - **Stable CLI contract**: Cursor's CLI flag conventions and invocation patterns are stable enough across recent versions (2025-2026) that a single host package can support the installed base. If major version fragmentation exists, the host package may need version-specific logic.
 

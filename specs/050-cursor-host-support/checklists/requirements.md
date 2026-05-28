@@ -13,7 +13,7 @@
 
 ## Requirement Completeness
 
-- [~] 3 [NEEDS CLARIFICATION] markers remain (intentionally deferred to clarify boundary per user directive)
+- [x] 0 [NEEDS CLARIFICATION] markers remain (all 3 resolved at clarify boundary 2026-05-28 via empirical Cursor-CLI probe)
 - [x] Requirements are testable and unambiguous
 - [x] Success criteria are measurable
 - [x] Success criteria are technology-agnostic (no implementation details)
@@ -29,16 +29,14 @@
 - [x] Feature meets measurable outcomes defined in Success Criteria (7 success criteria)
 - [x] No implementation details leak into specification
 
-## Clarification Items Deferred to /speckit.clarify
+## Clarification Items Resolved at /speckit.clarify (2026-05-28)
 
-Per user directive and Proposal 114's "Empirical Verification Required At Clarify Boundary" section:
+Resolved by empirical Cursor-CLI probe (`cursor-agent --help` / `--version` / PATH discovery); see spec.md `## Clarifications`:
 
-1. **FR-009**: Canonical CLI binary name (`cursor-agent` vs `cursor`)
-2. **FR-010**: Skill deployment target path (`.cursor/skills/` vs `.cursor/rules/` vs `.cursorrules`)
-3. **FR-011**: Non-interactive CLI support verification
-
-These are intentionally left as clarification inputs, not blockers. The spec is ready for `/speckit.clarify`.
+1. **FR-009**: Binary name → `cursor-agent` (standalone Agent CLI; `cursor` is the editor launcher, not used)
+2. **FR-010**: Deployment target → `.cursor/rules/*.mdc` Project Rules; `SkillRoot=.cursor/rules`, `HasUserSlashCommandSurface=$false`, `InstructionsFile=AGENTS.md`
+3. **FR-011**: Non-interactive → supported via `cursor-agent --print --workspace`; Status stays `supported` (not `preview`)
 
 ## Status
 
-✅ **READY FOR CLARIFY PHASE** — All mandatory sections complete, no quality issues, clarifications intentionally deferred per architecture decision.
+✅ **CLARIFY COMPLETE** — All mandatory sections complete, 0 [NEEDS CLARIFICATION] markers, all 3 empirical items resolved and recorded as authoritative. Spec is ready for planning (before-plan/plan) on the next human go-ahead.
