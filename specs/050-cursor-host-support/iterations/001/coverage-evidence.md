@@ -6,7 +6,7 @@
 
 > **⚠️ Review Evidence Warning** _(Form-vs-Meaning Gap Detected)_
 > 
-> This iteration's task tracking declares **10 completed task(s)**, but the git diff against baseline `b1b1ca0afff2c988cc4b94de0f96cd3a7d0b255c` contains **21 file(s)**.
+> This iteration's task tracking declares **10 completed task(s)**, but the git diff against baseline `b1b1ca0afff2c988cc4b94de0f96cd3a7d0b255c` contains **30 file(s)**.
 > 
 > **Severity**: WARNING  
 > **Implication**: Review evidence may be incomplete or misleading.
@@ -35,11 +35,11 @@
 
 | Command | Result | Pass Count | Fail Count | Duration | Exit Code | Notes |
 | ------- | ------ | ---------- | ---------- | -------- | --------- | ----- |
-| & '.\\tests\\integration\\quality-profile-foundation.ps1' | pass | 1 | 0 | 00:00:03.6027074 | 0 | PASS: Quality profile foundation scaffold and Phase 1/Phase 2 planning contracts expose versioned quality assets, bounded hardening metadata, preserve local overrides, and define recognized-stack/custom-composition expectations |
-| & '.\\tests\\integration\\mechanical-findings-contract.ps1' | pass | 1 | 0 | 00:00:01.4458145 | 0 | PASS: Mechanical findings contract fixtures keep the Phase 1 rule set schema-compliant and make demoted rules remain visible with disposition references |
-| & '.\\tests\\integration\\quality-evidence-governance.ps1' | pass | 1 | 0 | 00:00:23.1669068 | 0 | PASS: Quality evidence governance regressions passed. |
-| & '.\\tests\\integration\\process-quality-scorer.ps1' | pass | 1 | 0 | 00:00:01.6679908 | 0 | PASS: Process scorer returns structured artifact and phase adherence results |
-| & '.\\tests\\integration\\process-quality-report.ps1' | pass | 1 | 0 | 00:00:01.8349487 | 0 | PASS: Process scorer writes a Markdown report with process and deferred outcome sections |
+| & '.\\tests\\integration\\quality-profile-foundation.ps1' | pass | 1 | 0 | 00:00:02.6727213 | 0 | PASS: Quality profile foundation scaffold and Phase 1/Phase 2 planning contracts expose versioned quality assets, bounded hardening metadata, preserve local overrides, and define recognized-stack/custom-composition expectations |
+| & '.\\tests\\integration\\mechanical-findings-contract.ps1' | pass | 1 | 0 | 00:00:00.9093026 | 0 | PASS: Mechanical findings contract fixtures keep the Phase 1 rule set schema-compliant and make demoted rules remain visible with disposition references |
+| & '.\\tests\\integration\\quality-evidence-governance.ps1' | pass | 1 | 0 | 00:00:21.3234922 | 0 | PASS: Quality evidence governance regressions passed. |
+| & '.\\tests\\integration\\process-quality-scorer.ps1' | pass | 1 | 0 | 00:00:01.6896751 | 0 | PASS: Process scorer returns structured artifact and phase adherence results |
+| & '.\\tests\\integration\\process-quality-report.ps1' | pass | 1 | 0 | 00:00:01.7535599 | 0 | PASS: Process scorer writes a Markdown report with process and deferred outcome sections |
 
 ## Coverage Estimate
 

@@ -35,7 +35,7 @@ Resolved by empirical Cursor-CLI probe (`cursor-agent --help` / `--version` / PA
 
 1. **FR-009**: Binary name → `cursor-agent` (standalone Agent CLI; `cursor` is the editor launcher, not used)
 2. **FR-010**: Deployment target → `.cursor/rules/*.mdc` Project Rules; `SkillRoot=.cursor/rules`, `HasUserSlashCommandSurface=$false`, `InstructionsFile=AGENTS.md`
-3. **FR-011**: Non-interactive → supported via `cursor-agent --print --workspace`; Status stays `supported` (not `preview`)
+3. **FR-011**: Status=supported (CLI-drivable; `--print` headless mode confirms not GUI-only). Launch is INTERACTIVE `cursor-agent "<prompt>" --workspace`; `--allow-all`→`--force` (reconciled to interactive 2026-05-29, DRIFT-004)
 
 ## Status
 

@@ -9,12 +9,12 @@
 
 ## Summary
 
-Add a Cursor host package to Specrew's per-host architecture (shipped F-044), making `specrew start --host cursor "<feature>"` launch the `cursor-agent` standalone Agent CLI in non-interactive mode with the Specrew coordinator prompt. This is the **first post-F-044 host addition** — its purpose is partly to validate that the registry + 5-function-contract + canonical-source architecture scales to a new host with **no host-neutral core edits** (the one exception is the deliberately-hardcoded skill-root list in `deploy-squad-runtime.ps1`, FR-003).
+Add a Cursor host package to Specrew's per-host architecture (shipped F-044), making `specrew start --host cursor "<feature>"` launch the `cursor-agent` standalone Agent CLI in **interactive** Agent mode with the Specrew coordinator prompt (matching claude/codex/antigravity). This is the **first post-F-044 host addition** — its purpose is partly to validate that the registry + 5-function-contract + canonical-source architecture scales to a new host with **no host-neutral core edits** (the one exception is the deliberately-hardcoded skill-root list in `deploy-squad-runtime.ps1`, FR-003).
 
 All three previously-deferred questions were resolved empirically at the clarify boundary (see spec `## Clarifications`):
 - **Binary** = `cursor-agent` (standalone Agent CLI; v2026.05.28 on PATH).
 - **Skill/agent target** = `.cursor/rules/*.mdc` Cursor Project Rules; `HasUserSlashCommandSurface = $false`; coordinator prompt via `AGENTS.md`.
-- **Non-interactive** = supported (`cursor-agent --print --workspace <path>` with `--force`/`--trust`); `Status = supported`.
+- **Launch** = INTERACTIVE `cursor-agent "<prompt>" --workspace <path>` (the headless `--print` mode confirms CLI-drivability → `Status = supported`, but is not the launch shape); `--allow-all`/`--autopilot` → `--force` (`--trust` is headless-only, unused). Reconciled to interactive 2026-05-29 (drift-log DRIFT-004).
 
 ## Architecture
 
@@ -36,10 +36,10 @@ specrew start --host cursor "<prompt>"
         │
         ▼
 Get-SpecrewHostLaunchInvocation ──► New-CursorLaunchInvocation
-        │                                    │ builds: cursor-agent --print --workspace <proj> "<prompt>"
-        │                                    │ (+ --force --trust under --allow-all/--autonomous)
+        │                                    │ builds: cursor-agent "<prompt>" --workspace <proj>
+        │                                    │ (+ --force under --allow-all/--autopilot)
         ▼                                    ▼
-   cursor-agent (non-interactive Agent mode, reads AGENTS.md + .cursor/rules/*.mdc)
+   cursor-agent (interactive Agent mode, reads AGENTS.md + .cursor/rules/*.mdc)
         ▲
         │ deployed by
   Install-CursorCrewRuntime  ◄── .specrew/team/agents/*.md (canonical source)
@@ -53,8 +53,8 @@ Canonical naming verified against `hosts/_contract.md`. PascalKind = `Cursor`.
 
 | Slot | Function | Behavior | Returns |
 |---|---|---|---|
-| NewLaunchInvocation | `New-CursorLaunchInvocation` | Build `cursor-agent` invocation. Base args: `--print --workspace <ProjectPath> "<Prompt>"`. Under `-AllowAll`/`-UseAutopilot`: append `--force --trust`. `--model` left to Cursor default unless a model override is wired. | `[pscustomobject]@{Binary='cursor-agent'; Args=@(...); Notice}` |
-| ConvertFlag | `ConvertTo-CursorFlag` | Translate universal Specrew flags: `--allow-all`→`--force --trust`; `--autonomous`→`--force`; `--readonly`→`--mode plan` (Cursor's read-only/planning mode); unknown→Notice + SuppressWarning per codex pattern. | `[pscustomobject]@{Args=@(); Notice; SuppressWarning}` |
+| NewLaunchInvocation | `New-CursorLaunchInvocation` | Build the INTERACTIVE `cursor-agent` invocation. Base args: `"<Prompt>" --workspace <ProjectPath>`. Under `-AllowAll`/`-UseAutopilot`: append `--force` (`--trust` is headless-only, not used). | `[pscustomobject]@{Binary='cursor-agent'; Args=@(...); Notices[]; HostKind}` |
+| ConvertFlag | `ConvertTo-CursorFlag` | `[ValidateSet('--remote','--allow-all','--autopilot')]` (codex/antigravity parity): `--allow-all`→`--force`; `--autopilot`→no-op (folds into --force); `--remote`→warn-and-drop. | `[pscustomobject]@{Args=@(); Notice; SuppressWarning}` |
 | TestRuntimeInstalled | `Test-CursorRuntimeInstalled` | `Get-Command cursor-agent` probe (+ optional `BinaryAliases`). | `[bool]` |
 | GetSignals | `Get-CursorSignals` | Return env-var names that indicate running INSIDE Cursor (e.g., `CURSOR_AGENT`, `CURSOR_TRACE_ID` — verify which Cursor sets; ship the confirmed set, document any uncertainty). | `string[]` |
 | InstallCrewRuntime | `Install-CursorCrewRuntime` | For each canonical role in `.specrew/team/agents/*.md`, write `.cursor/rules/<role>.mdc` (MDC front-matter + charter body). Honor `-DryRun`. Use `_team-canonical.ps1` helpers + `$manifest.AgentDir`. | `[pscustomobject]@{Actions=@(); CrewRuntimePath; Notices=@()}` |
@@ -102,7 +102,7 @@ Canonical naming verified against `hosts/_contract.md`. PascalKind = `Cursor`.
 | FR-008 | `docs/getting-started.md` + `docs/user-guide.md` Cursor quickstart | doc presence + SC-007 manual walkthrough |
 | FR-009 | `Binary='cursor-agent'` in manifest + invocation | manifest + `New-CursorLaunchInvocation` test |
 | FR-010 | `SkillRoot=.cursor/rules`, `HasUserSlashCommandSurface=$false`, `InstructionsFile=AGENTS.md` | manifest-field assertions |
-| FR-011 | `Status=supported` + `--print --workspace` invocation | `New-CursorLaunchInvocation` non-interactive args test |
+| FR-011 | `Status=supported` (CLI-drivable via `--print` capability) + interactive `"<prompt>" --workspace` launch | `New-CursorLaunchInvocation` interactive-args test |
 
 Also: `Specrew.psd1` `FileList` MUST gain the 3 new `hosts/cursor/*` paths (contract validator rule + the Mac-install FileList-omission lesson). The structural firewall test (`host-coupling-firewall.tests.ps1`) must still pass (no host-enum hardcoding outside `hosts/`).
 
@@ -141,7 +141,7 @@ Spec governance specifies 3 iterations. Recommended (single feature umbrella):
 | design-quality / SoC | Cursor logic stays inside `hosts/cursor/`; only the deliberate `Get-ActiveSkillRoots` edit touches a shared script (contract-sanctioned). No host-enum leakage (firewall test). |
 | verification-confidence | Every contract function gets a unit test with both mock and real-`cursor-agent` fixtures; integration smoke is skip-guarded without binary; assertions check args/return shape, not just "ran". |
 | maintainability | Follows the established 3-file package shape so future host additions stay mechanical. |
-| security-baseline lens | `--force`/`--trust`/`--yolo` are auto-approve flags — gate them strictly behind explicit `--allow-all`/`--autonomous`; never default-on. `--api-key`/`CURSOR_API_KEY` are user-managed; Specrew MUST NOT read, log, or persist them. Document in `New-CursorLaunchInvocation`. |
+| security-baseline lens | `--force`/`--yolo` are auto-approve flags — gate them strictly behind explicit `--allow-all`/`--autopilot`; never default-on (`--trust` is headless-only, unused). `--api-key`/`CURSOR_API_KEY` are user-managed; Specrew MUST NOT read, log, or persist them. Document in `New-CursorLaunchInvocation`. |
 | robustness-baseline lens | Graceful `binary-missing` guidance; version probe tolerant of `cursor-agent --version` output shape. |
 
 ## Parallel-Work Charter constraints (Proposal 114) — active

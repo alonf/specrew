@@ -31,7 +31,7 @@ Iteration 001 scope = core package + skill target. FR-005/006/007 (tests) → it
 | FR-004 | Registry auto-discovery via `hosts/_registry.ps1` directory scan (no registry code change) | US1, US4 |
 | FR-009 | Binary name `cursor-agent` (RESOLVED) in manifest + `New-CursorLaunchInvocation` | US1 |
 | FR-010 | Deploy to `.cursor/rules/*.mdc` (RESOLVED); SkillRoot/HasUserSlashCommandSurface/InstructionsFile set; --plugin-dir OUT of scope | US2, US3 |
-| FR-011 | Status=supported; non-interactive `cursor-agent --print --workspace` (RESOLVED); no preview downgrade | US1 |
+| FR-011 | Status=supported (CLI-drivable); INTERACTIVE launch `cursor-agent "<prompt>" --workspace` (RESOLVED; reconciled to interactive 2026-05-29 DRIFT-004); no preview downgrade | US1 |
 
 ## Tasks
 

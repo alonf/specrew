@@ -12,7 +12,7 @@ flowchart LR
   Reg --> Manifest[hosts/cursor/host.psd1]
   Reg --> Handlers[hosts/cursor/handlers.ps1\n5 functions]
   Handlers --> NewInv[New-CursorLaunchInvocation]
-  NewInv --> Agent[cursor-agent --print --workspace]
+  NewInv --> Agent[cursor-agent prompt --workspace]
   Canon[.specrew/team/agents/*.md\ncanonical source] --> Install[Install-CursorCrewRuntime]
   Install --> Rules[.cursor/rules/*.mdc]
   Deploy[deploy-squad-runtime.ps1\nGet-ActiveSkillRoots +cursor] --> Rules
@@ -38,8 +38,8 @@ sequenceDiagram
   Specrew->>Handlers: Install-CursorCrewRuntime (sync .cursor/rules/*.mdc)
   Handlers-->>Specrew: Actions[], CrewRuntimePath=.cursor/rules
   Specrew->>Handlers: New-CursorLaunchInvocation -Prompt "..." [-AllowAll]
-  Handlers-->>Specrew: {Binary=cursor-agent; Args=[--print,--workspace,<proj>,"..."]}
-  Specrew->>Cursor: spawn cursor-agent --print --workspace <proj> "..."
+  Handlers-->>Specrew: {Binary=cursor-agent; Args=["...",--workspace,<proj>]}
+  Specrew->>Cursor: spawn cursor-agent "..." --workspace <proj> (interactive)
   Cursor-->>User: Agent reads AGENTS.md + .cursor/rules, begins specify phase
 ```
 

@@ -6,14 +6,14 @@
 
 ## Summary
 
-- Header: feature=050-cursor-host-support | iteration=001 | branch=050-cursor-host-support | commit_range=b1b1ca0afff2c988cc4b94de0f96cd3a7d0b255c..619c2740036696a41cad8cfa94781befc2e5aea7
+- Header: feature=050-cursor-host-support | iteration=001 | branch=050-cursor-host-support | commit_range=b1b1ca0afff2c988cc4b94de0f96cd3a7d0b255c..6cd8b2516a80c956f5cfe9d96aab05e4feb94e0e
 - Verdict: accepted
 - Requirements: covered=FR-001, FR-009, FR-010, FR-011, FR-002, FR-003, FR-004 | not_covered=(none)
-- Code Surface: files=21 | hotspots=0 | test_to_code=3:9
+- Code Surface: files=30 | hotspots=0 | test_to_code=3:9
 - Dependencies: changed=0 | new_to_project=0 | vulnerability=unscanned
 - Coverage: kind=qualitative | signal=focused_regression
 - Operational Signals: escalations=0 | routing_fallbacks=0
-- Drift: 3/0 resolved
+- Drift: 4/4 resolved
 - Reviewer Index: specs\050-cursor-host-support\iterations\001\reviewer-index.md
 - Implementation Briefing: (unavailable)
 - Local Open Hints: specs\050-cursor-host-support\iterations\001\reviewer-index.md; specs\050-cursor-host-support\iterations\001\review-diagrams.md; specs\050-cursor-host-support\current-architecture.md
@@ -46,9 +46,8 @@
 ## Triage Hints
 
 - Vulnerability scan: unscanned (No manifest files changed in this iteration.)
-- Unresolved drift remains: 3
 - Gap concern: No requirement (FR/SC) gaps: all in-scope requirements verified: fixed-now.
 
 ## Replay Digest
 
-SPECREW_REVIEW schema=v1 iter=001 feature=050-cursor-host-support verdict=accepted tasks=10/10 reqs=10 files=21 new_deps=0 vuln=unscanned cov=focused_regression escalations=0 drift=3/0 index=specs\050-cursor-host-support\iterations\001\reviewer-index.md
+SPECREW_REVIEW schema=v1 iter=001 feature=050-cursor-host-support verdict=accepted tasks=10/10 reqs=10 files=30 new_deps=0 vuln=unscanned cov=focused_regression escalations=0 drift=4/4 index=specs\050-cursor-host-support\iterations\001\reviewer-index.md

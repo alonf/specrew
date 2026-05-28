@@ -63,9 +63,9 @@ Created/updated idempotently by `Install-CursorCrewRuntime` (crew roles) and `de
 | Attribute | Type | Required | Validation Rules | Description |
 | --- | --- | --- | --- | --- |
 | `Binary` | string | Yes | `cursor-agent` | Executable |
-| `Args` | string[] | Yes | includes `--print --workspace <path> "<prompt>"`; `--force --trust` only under allow-all/autonomous | CLI args |
+| `Args` | string[] | Yes | interactive shape `"<prompt>" --workspace <path>`; `--force` only under allow-all/autopilot (`--trust` is headless-only, unused) | CLI args |
 | `Notice` | string\|null | Optional | — | User-facing note (e.g., flag fallback) |
 
 ### Lifecycle / Relationships
 
-Built per `specrew start` call, returned to `Get-SpecrewHostLaunchInvocation`, never persisted. The `--force`/`--trust` auto-approve flags MUST be present ONLY when the user explicitly passed `--allow-all`/`--autonomous` (security-baseline lens).
+Built per `specrew start` call, returned to `Get-SpecrewHostLaunchInvocation`, never persisted. The `--force` auto-approve flag MUST be present ONLY when the user explicitly passed `--allow-all`/`--autopilot` (security-baseline lens). The launch is interactive; `--trust` (headless-only) is not used.

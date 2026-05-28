@@ -24,7 +24,7 @@ The three deferred clarification items (FR-009, FR-010, FR-011) plus Proposal 11
   - `--plugin-dir` plugin packaging (Proposal 114 Option 3) is explicitly OUT of scope for this feature; tracked as a v2 follow-up after real Cursor-user invocation patterns are observed.
 
 - **Q: Non-interactive Agent mode support (FR-011) — supported, or GUI-only?**
-  **A: Fully supported. Host `Status` stays `supported` (NOT downgraded to `preview`).** `cursor-agent --print` (`-p`) is documented "for scripts or non-interactive use … has access to all tools, including write and shell." Supporting flags: `--workspace <path>` (working directory), `--output-format text|json|stream-json`, `--force`/`--yolo` (auto-approve), `--trust` (headless workspace trust), `--model <model>`. The launch invocation is `cursor-agent --print --workspace <project> "<prompt>"` with `--force --trust` added under autonomous/allow-all.
+  **A: Fully supported. Host `Status` stays `supported` (NOT downgraded to `preview`).** `cursor-agent` has a documented non-interactive mode — `--print`/`-p` "for scripts or non-interactive use … has access to all tools, including write and shell" — which confirms Cursor is CLI-drivable (not GUI-only) and gates `Status = supported`. **However, the `specrew start` launch is INTERACTIVE** (matching claude/codex/antigravity): `cursor-agent "<prompt>" --workspace <project>`, so the developer drives the lifecycle in a live session rather than a headless one-shot. Auto-approve under `--allow-all`/`--autopilot` maps to `--force` (run-everything); `--trust` is **headless-only** (cursor-agent: "only works with `--print`/headless mode") and is therefore NOT used in the interactive launch. (Reconciled 2026-05-29 — see Clarifications drift note + drift-log DRIFT-004; the clarify-time `--print --workspace … --force --trust` shape was a headless-capability probe, corrected to the interactive launch contract during implementation.)
 
 ## User Scenarios & Testing
 
@@ -122,7 +122,7 @@ As a developer with multiple AI tools installed, I want Cursor to appear in the 
 - **FR-002**: System MUST implement the 5-function contract in `hosts/cursor/handlers.ps1` using the canonical F-044 naming (verified against `hosts/_contract.md`):
   1. `New-CursorLaunchInvocation` — builds Cursor CLI invocation for `specrew start --host cursor`
   2. `ConvertTo-CursorFlag` — translates universal Specrew flags to Cursor-CLI equivalents (contract name is `ConvertTo-<Kind>Flag`, not `Convert-`)
-  3. `Test-CursorRuntimeInstalled` — probes for binary + version check
+  3. `Test-CursorRuntimeInstalled` — detects the deployed crew runtime at `.cursor/rules/*.mdc` (per host-package contract, mirroring codex/antigravity AgentDir detection; binary-on-PATH availability is probed separately by the host-neutral `Test-SpecrewHostAvailable`)
   4. `Get-CursorSignals` — returns env-var names set when running INSIDE Cursor (per contract `Get-<Kind>Signals` reads env)
   5. `Install-CursorCrewRuntime` — translates `.specrew/team/agents/<role>.md` to `.cursor/rules/*.mdc`
   - **Owner**: Implementation Team
@@ -161,7 +161,7 @@ As a developer with multiple AI tools installed, I want Cursor to appear in the 
   - **Owner**: Implementation Team
   - **Iteration**: Iteration 1 (resolved at clarify boundary)
 
-- **FR-011**: System MUST set host `Status = supported` — Cursor CLI supports non-interactive Agent mode via `cursor-agent --print --workspace <path>` with `--force`/`--trust` for autonomous runs (RESOLVED 2026-05-28; see Clarifications). The downgrade-to-`preview` contingency does NOT apply; non-interactive support is confirmed.
+- **FR-011**: System MUST set host `Status = supported` — Cursor CLI's non-interactive mode (`cursor-agent --print`) confirms it is CLI-drivable, so the downgrade-to-`preview` contingency does NOT apply (RESOLVED 2026-05-28). The `specrew start` launch itself is INTERACTIVE: `cursor-agent "<prompt>" --workspace <path>`, with `--force` added under `--allow-all`/`--autopilot` (`--trust` is headless-only and not used). (Launch shape reconciled to interactive 2026-05-29 — see Clarifications + drift-log DRIFT-004.)
   - **Owner**: Implementation Team
   - **Iteration**: Iteration 1 (resolved at clarify boundary)
 
@@ -224,7 +224,7 @@ As a developer with multiple AI tools installed, I want Cursor to appear in the 
 
 - **Cursor CLI availability**: RESOLVED (no longer an assumption) — the `cursor-agent` standalone Agent CLI is installed and on PATH on the implementation machine (v2026.05.28). Binary name and invocation shape are empirically verified; see Clarifications + FR-009.
 
-- **Non-interactive Agent mode**: RESOLVED (no longer an assumption) — `cursor-agent --print --workspace <path>` provides non-interactive Agent mode with full tool access; `--force`/`--trust` cover autonomous runs. Host status stays `supported`; no GUI-launcher workaround needed. See Clarifications + FR-011.
+- **Agent-mode launch**: RESOLVED (no longer an assumption) — `cursor-agent` is CLI-drivable (its `--print` headless mode confirms it is not GUI-only → `Status = supported`), and `specrew start` launches it INTERACTIVELY as `cursor-agent "<prompt>" --workspace <path>` (matching the other hosts). `--force` covers autonomous runs; `--trust` is headless-only and unused. No GUI-launcher workaround needed. See Clarifications + FR-011.
 
 - **Skill/rules surface exists**: RESOLVED (no longer an assumption) — Cursor's native surface is `.cursor/rules/*.mdc` Project Rules (auto-attached context) plus `AGENTS.md` instructions. There is no slash-command surface; `HasUserSlashCommandSurface = $false`. See Clarifications + FR-010.
 

@@ -7,7 +7,7 @@
 
 > **⚠️ Review Evidence Warning** _(Form-vs-Meaning Gap Detected)_
 > 
-> This iteration's task tracking declares **10 completed task(s)**, but the git diff against baseline `b1b1ca0afff2c988cc4b94de0f96cd3a7d0b255c` contains **21 file(s)**.
+> This iteration's task tracking declares **10 completed task(s)**, but the git diff against baseline `b1b1ca0afff2c988cc4b94de0f96cd3a7d0b255c` contains **30 file(s)**.
 > 
 > **Severity**: WARNING  
 > **Implication**: Review evidence may be incomplete or misleading.
@@ -44,10 +44,19 @@
 | scripts/internal/host-history.ps1 | 1 | 0 | T001, T002, T003, T004, T005, T006, T007, T008, T009, T010 | Implementer |
 | scripts/specrew-start.ps1 | 1 | 1 | T001, T002, T003, T004, T005, T006, T007, T008, T009, T010 | Implementer |
 | specs/050-cursor-host-support/contracts/mechanical-findings.schema.json | 77 | 0 | T001, T002, T003, T004, T005, T006, T007, T008, T009, T010 | Implementer |
+| specs/050-cursor-host-support/current-architecture.md | 15 | 0 | T001, T002, T003, T004, T005, T006, T007, T008, T009, T010 | Implementer |
+| specs/050-cursor-host-support/iterations/001/code-map.md | 76 | 0 | T001, T002, T003, T004, T005, T006, T007, T008, T009, T010 | Implementer |
+| specs/050-cursor-host-support/iterations/001/coverage-evidence.md | 60 | 0 | T001, T002, T003, T004, T005, T006, T007, T008, T009, T010 | Implementer |
+| specs/050-cursor-host-support/iterations/001/dashboard.md | 38 | 0 | T001, T002, T003, T004, T005, T006, T007, T008, T009, T010 | Implementer |
+| specs/050-cursor-host-support/iterations/001/dependency-report.md | 46 | 0 | T001, T002, T003, T004, T005, T006, T007, T008, T009, T010 | Implementer |
 | specs/050-cursor-host-support/iterations/001/drift-log.md | 64 | 0 | T001, T002, T003, T004, T005, T006, T007, T008, T009, T010 | Implementer |
 | specs/050-cursor-host-support/iterations/001/plan.md | 97 | 0 | T001, T002, T003, T004, T005, T006, T007, T008, T009, T010 | Implementer |
 | specs/050-cursor-host-support/iterations/001/quality/hardening-gate.md | 42 | 0 | T001, T002, T003, T004, T005, T006, T007, T008, T009, T010 | Implementer |
 | specs/050-cursor-host-support/iterations/001/quality/mechanical-findings.json | 11 | 0 | T001, T002, T003, T004, T005, T006, T007, T008, T009, T010 | Implementer |
+| specs/050-cursor-host-support/iterations/001/quality/trap-reapplication.md | 15 | 0 | T001, T002, T003, T004, T005, T006, T007, T008, T009, T010 | Implementer |
+| specs/050-cursor-host-support/iterations/001/review-diagrams.md | 49 | 0 | T001, T002, T003, T004, T005, T006, T007, T008, T009, T010 | Implementer |
+| specs/050-cursor-host-support/iterations/001/review.md | 54 | 0 | T001, T002, T003, T004, T005, T006, T007, T008, T009, T010 | Implementer |
+| specs/050-cursor-host-support/iterations/001/reviewer-index.md | 54 | 0 | T001, T002, T003, T004, T005, T006, T007, T008, T009, T010 | Implementer |
 | specs/050-cursor-host-support/iterations/001/state.md | 38 | 0 | T001, T002, T003, T004, T005, T006, T007, T008, T009, T010 | Implementer |
 | tests/integration/host-cursor.tests.ps1 | 108 | 0 | T002, T003, T004, T005, T006, T010 | Implementer |
 | tests/integration/host-registry.tests.ps1 | 23 | 20 | T002, T003, T004, T005, T006, T010 | Implementer |
