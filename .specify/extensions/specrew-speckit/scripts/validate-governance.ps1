@@ -746,6 +746,9 @@ function Get-SpecrewHandoffBlocks {
 }
 
 function Test-HandoffEvidenceGovernance {
+    # Proposal 120 Pillar 1 (FR-018): detect missing === SPECREW HANDOFF === evidence at boundary/
+    # lifecycle stops. Shipped in F-047; certified live in F-049 i004 once Add-SpecrewHandoffEvidence
+    # (T006) populates .specrew/handoff-evidence.json from real boundary syncs.
     param([Parameter(Mandatory = $true)][string]$ProjectRoot)
 
     $evidencePath = Join-Path $ProjectRoot '.specrew\handoff-evidence.json'
@@ -801,6 +804,8 @@ function Test-HandoffEvidenceGovernance {
 }
 
 function Test-WrongLocationCanonicalArtifacts {
+    # Proposal 120 Pillar 3 (FR-020): detect canonical artifacts written to ephemeral host
+    # session-scratch locations. Shipped in F-047; runs on every validation (certified live F-049 i004).
     param([Parameter(Mandatory = $true)][string]$ProjectRoot)
 
     $artifactNames = @(
@@ -912,6 +917,9 @@ function Test-ReviewDiagramsMermaidBlock {
 }
 
 function Get-MissingDashboardDiagnosis {
+    # Proposal 120 Pillar 2 (FR-019): distinguish a trigger-bypass artifact gap (closed iteration
+    # missing dashboard.md) from a generic missing-artifact failure. Shipped in F-047; fired live in
+    # real F-049 runs (missing-dashboard-non-specrew-managed / -auto-render-regression).
     param(
         [Parameter(Mandatory = $true)][string]$IterationDirectory
     )
