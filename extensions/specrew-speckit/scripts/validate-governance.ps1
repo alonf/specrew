@@ -440,6 +440,53 @@ function Test-NoGapClosurePolicy {
     }
 }
 
+function Test-ReviewEvidenceTreeIntegrity {
+    <#
+    Pillar 5 (Proposal 120 / FR-022, AC9-AC11): when an iteration's review.md is accepted (or the
+    iteration is at retro/complete), production files cited as delivered evidence MUST exist in the
+    cited "Tree Under Review" commit. A production file cited + present in the working tree + absent
+    from the cited commit is the Shape-5 working-tree-only lie → FAIL (gates iteration-closeout).
+    Test files → WARN (AC10); cited-but-nonexistent prod files → WARN. Pre-2026-05-27 iterations
+    without a Tree Under Review field are unaffected (helper returns no hash).
+    #>
+    param(
+        [string[]]$ReviewLines,
+        [string]$ProjectRoot,
+        [string]$IterationDirectory,
+        [string]$OverallVerdict,
+        [string]$IterationStatus,
+        [System.Collections.Generic.List[string]]$Errors
+    )
+
+    if ($OverallVerdict -ne 'accepted' -and $IterationStatus -notin @('retro', 'complete')) {
+        return
+    }
+
+    $treeCheck = Test-ReviewCitedFilesInTree -ReviewLines $ReviewLines -ProjectRoot $ProjectRoot
+    if ($null -eq $treeCheck -or $null -eq $treeCheck.TreeHash) {
+        return
+    }
+
+    $relativeIteration = ([System.IO.Path]::GetRelativePath($ProjectRoot, $IterationDirectory)) -replace '/', '\'
+
+    if (-not $treeCheck.TreeResolved) {
+        Write-TrustHardeningWarning -Category 'review-tree-unresolved' -Detail ("review.md for {0} cites Tree Under Review '{1}' but git ls-tree could not resolve it; Pillar 5 verification was skipped." -f $relativeIteration, $treeCheck.TreeHash)
+        return
+    }
+
+    foreach ($missing in @($treeCheck.MissingProduction)) {
+        $Errors.Add(("review.md (FR-022/Pillar 5) cites production evidence file '{0}' that is present in the working tree but absent from the cited Tree Under Review commit '{1}' for {2}. Either stage + commit the file then re-issue the verdict, or remove it from review.md evidence." -f $missing, $treeCheck.TreeHash, $relativeIteration))
+    }
+
+    foreach ($missingTest in @($treeCheck.MissingTest)) {
+        Write-TrustHardeningWarning -Category 'review-cited-test-not-in-tree' -Detail ("review.md for {0} cites test file '{1}' that is absent from the cited Tree Under Review commit '{2}'." -f $relativeIteration, $missingTest, $treeCheck.TreeHash)
+    }
+
+    foreach ($unresolvedCited in @($treeCheck.UnresolvedCited)) {
+        Write-TrustHardeningWarning -Category 'review-cited-file-missing' -Detail ("review.md for {0} cites production file '{1}' that is absent from both the cited tree '{2}' and the working tree (possible stale/typo reference)." -f $relativeIteration, $unresolvedCited, $treeCheck.TreeHash)
+    }
+}
+
 function Get-MarkdownSectionTable {
     param(
         [string[]]$Lines,
@@ -2458,6 +2505,9 @@ function Test-ReviewArtifact {
     }
 
     Test-NoGapClosurePolicy -ReviewLines $reviewLines -ProjectRoot $ProjectRoot -IterationDirectory $IterationDirectory -OverallVerdict $overallVerdict -IterationStatus $IterationStatus -Errors $Errors
+
+    # Pillar 5 (FR-022): production evidence cited in review.md must exist in the cited Tree Under Review.
+    Test-ReviewEvidenceTreeIntegrity -ReviewLines $reviewLines -ProjectRoot $ProjectRoot -IterationDirectory $IterationDirectory -OverallVerdict $overallVerdict -IterationStatus $IterationStatus -Errors $Errors
 }
 
 function Test-RetroArtifact {
