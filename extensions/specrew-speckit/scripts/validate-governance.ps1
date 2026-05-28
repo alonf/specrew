@@ -978,6 +978,54 @@ function Get-ExtensionManifestVersion {
     return $null
 }
 
+function Test-BoundaryStateAdvanceVerdict {
+    <#
+    Pillar 4 (Proposal 120 / FR-021, AC7): live session-state counterpart to the boundary-sync
+    hard-block. If the active session's recorded boundary is a human-judgment boundary
+    (before-implement | review-signoff | iteration-closeout | feature-closeout) but
+    boundary_enforcement.verdict_history has no matching `to_boundary` entry with a non-empty
+    authorizing_human, the state advanced without a recorded human verdict -> WARN. This catches the
+    silent-state-progression class (PlanningPoC iter-002 Picard catch; the F-049 i005 stale-cursor
+    skip) at validation time; the recording-path repair (T005) prevents it at sync time.
+    #>
+    param([Parameter(Mandatory = $true)][string]$ProjectRoot)
+
+    $contextPath = Join-Path $ProjectRoot '.specrew\start-context.json'
+    if (-not (Test-Path -LiteralPath $contextPath -PathType Leaf)) { return }
+
+    try {
+        $context = Get-Content -LiteralPath $contextPath -Raw -Encoding UTF8 | ConvertFrom-Json -Depth 20
+    }
+    catch {
+        Write-TrustHardeningWarning -Category 'boundary-enforcement-unreadable' -Detail 'Could not parse .specrew/start-context.json; state-advance-without-verdict check was skipped.'
+        return
+    }
+
+    $sessionState = $context.PSObject.Properties['session_state']
+    if ($null -eq $sessionState) { return }
+    $boundary = [string](Get-ObjectPropertyString -InputObject $sessionState.Value -Names @('boundary_type'))
+    if ([string]::IsNullOrWhiteSpace($boundary)) { return }
+
+    $humanVerdictBoundaries = @('before-implement', 'review-signoff', 'iteration-closeout', 'feature-closeout')
+    if ($boundary -notin $humanVerdictBoundaries) { return }
+
+    $enforcement = $context.PSObject.Properties['boundary_enforcement']
+    $history = @()
+    if ($null -ne $enforcement -and $null -ne $enforcement.Value.PSObject.Properties['verdict_history']) {
+        $history = @($enforcement.Value.verdict_history)
+    }
+
+    $authorized = @($history | Where-Object {
+            ([string](Get-ObjectPropertyString -InputObject $_ -Names @('to_boundary')) -eq $boundary) -and
+            (-not [string]::IsNullOrWhiteSpace([string](Get-ObjectPropertyString -InputObject $_ -Names @('authorizing_human'))))
+        })
+
+    if ($authorized.Count -eq 0) {
+        $iterationRef = [string](Get-ObjectPropertyString -InputObject $sessionState.Value -Names @('iteration_number'))
+        Write-TrustHardeningWarning -Category 'state-advance-without-verdict' -Detail ("Active session boundary advanced to human-judgment gate '{0}' (iteration {1}) without a matching boundary_enforcement.verdict_history entry naming an authorizing human. Record the human verdict explicitly or roll the boundary back." -f $boundary, $(if ([string]::IsNullOrWhiteSpace($iterationRef)) { '(unknown)' } else { $iterationRef }))
+    }
+}
+
 function Test-SessionStateBoundaryCanonical {
     # Proposal 090: catches non-canonical boundary strings (e.g., 'feature-closed',
     # 'iteration-closed') and active=true + boundary=feature-closeout contradiction.
@@ -4482,6 +4530,8 @@ try {
     Test-DashboardGovernanceSurfaces -ProjectRoot $resolvedProjectPath
     Test-HandoffEvidenceGovernance -ProjectRoot $resolvedProjectPath
     Test-WrongLocationCanonicalArtifacts -ProjectRoot $resolvedProjectPath
+    # Pillar 4 (FR-021): live state-advance-without-verdict cross-check.
+    Test-BoundaryStateAdvanceVerdict -ProjectRoot $resolvedProjectPath
     Test-HandoffInternalReferenceSurfaces -ProjectRoot $resolvedProjectPath
 
     # Proposal 090: session-state boundary canonical-string + active/boundary
