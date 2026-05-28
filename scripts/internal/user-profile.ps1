@@ -12,6 +12,84 @@ $script:UserProfileExpertiseMap = [ordered]@{
     'ai-researcher-project-manager' = 'ai_research_project_management'
 }
 
+# Crew Interaction Profile display metadata (Feature 049 Iteration 003 + Iteration 005 / Proposal 141).
+#
+# The user-facing profile is a CREW INTERACTION PROFILE: four decision-area settings (1-10 or auto)
+# that tell Specrew how much to ask, explain, recommend, and auto-decide. The visible DisplayLabel is
+# a decision area, NOT a job title or identity the user must claim (FR-032/FR-034). The persisted
+# ExpertiseKey and Specrew's internal PersonaId lens identity are STABLE internal contracts that MUST
+# NOT be renamed or migrated (FR-033). Higher settings get concise, expert-level questions (the user
+# decides); lower or auto settings get more explanation, recommended defaults, and transparent
+# auto-decisions (FR-035). Order below is the canonical first-run + display order.
+$script:CrewInteractionProfileAreas = @(
+    [ordered]@{ ExpertiseKey = 'product_management';             PersonaId = 'product-manager';                DisplayLabel = 'Product Strategy';      PersonaName = 'Product Manager';                 DecisionFocus = 'Business rules, prioritization, MVP boundaries' }
+    [ordered]@{ ExpertiseKey = 'ui_ux';                          PersonaId = 'ux-ui-specialist';               DisplayLabel = 'UX/UI Design';          PersonaName = 'UX/UI Specialist';                DecisionFocus = 'Interface state, accessibility, workflows' }
+    [ordered]@{ ExpertiseKey = 'software_architecture';          PersonaId = 'architect';                      DisplayLabel = 'Software Architecture'; PersonaName = 'Architect';                       DecisionFocus = 'Schemas, integration boundaries, deployment' }
+    [ordered]@{ ExpertiseKey = 'ai_research_project_management'; PersonaId = 'ai-researcher-project-manager';  DisplayLabel = 'AI Delivery Planning';  PersonaName = 'AI Researcher / Project Manager'; DecisionFocus = 'Capacity planning, safe parallelism, agent charters' }
+)
+
+function Get-CrewInteractionProfileAreas {
+    <#
+    .SYNOPSIS
+    Returns the authoritative Crew Interaction Profile decision-area metadata.
+    .DESCRIPTION
+    Each entry exposes the user-facing DisplayLabel (a decision area, not a job title), the stable
+    persisted ExpertiseKey, the internal PersonaId/PersonaName lens identity, and the DecisionFocus
+    blurb. Display labels are display metadata only; persona IDs and expertise keys are stable
+    internal contracts (FR-032..FR-034).
+    #>
+    return $script:CrewInteractionProfileAreas
+}
+
+function Get-CrewInteractionProfileLabel {
+    <#
+    .SYNOPSIS
+    Resolves the user-facing decision-area label for a persisted expertise key or internal persona ID.
+    #>
+    param(
+        [Parameter(Mandatory = $false)][string]$ExpertiseKey,
+        [Parameter(Mandatory = $false)][string]$PersonaId
+    )
+
+    foreach ($area in $script:CrewInteractionProfileAreas) {
+        if ((-not [string]::IsNullOrWhiteSpace($ExpertiseKey)) -and $area.ExpertiseKey -eq $ExpertiseKey) {
+            return $area.DisplayLabel
+        }
+        if ((-not [string]::IsNullOrWhiteSpace($PersonaId)) -and $area.PersonaId -eq $PersonaId) {
+            return $area.DisplayLabel
+        }
+    }
+
+    # Unknown / future area: fall back to the supplied identifier so summaries still render.
+    if (-not [string]::IsNullOrWhiteSpace($PersonaId)) { return $PersonaId }
+    return $ExpertiseKey
+}
+
+function Get-CrewInteractionLevelDescriptor {
+    <#
+    .SYNOPSIS
+    Returns the collaboration descriptor for a dial value (auto/null, 1-3, 4-6, 7-10).
+    .DESCRIPTION
+    Describes how Specrew collaborates at that setting, not a competency judgement: higher settings
+    ask concise expert-level questions and assume the user decides; lower or auto settings explain
+    more, recommend defaults, and surface transparent auto-decisions (FR-035).
+    #>
+    param([AllowNull()]$Value)
+
+    if ($Value -eq 'auto' -or $null -eq $Value) {
+        return 'auto (Specrew recommends defaults and explains)'
+    }
+
+    $numeric = 0
+    if ([int]::TryParse([string]$Value, [ref]$numeric)) {
+        if ($numeric -ge 7) { return "$Value (Senior — concise questions; you decide)" }
+        if ($numeric -ge 4) { return "$Value (Standard — targeted clarifications)" }
+        return "$Value (Learning — Specrew explains and auto-decides with transparency)"
+    }
+
+    return [string]$Value
+}
+
 function Test-UserProfileKey {
     param(
         [AllowNull()]
@@ -357,9 +435,9 @@ function Save-UserProfile {
     }
 
     $yamlLines = New-Object System.Collections.Generic.List[string]
-    $yamlLines.Add('# Specrew User Profile') | Out-Null
-    $yamlLines.Add('# Feature 049 Iteration 003 - Expertise-Aware Substantive Intake') | Out-Null
-    $yamlLines.Add('# Cross-platform user-level expertise settings for persona-driven specification intake') | Out-Null
+    $yamlLines.Add('# Specrew User Profile (Crew Interaction Profile)') | Out-Null
+    $yamlLines.Add('# Four decision-area settings telling Specrew how much to ask, explain, recommend, and auto-decide.') | Out-Null
+    $yamlLines.Add('# The expertise.* keys below are stable internal contracts and are NOT renamed by display labels.') | Out-Null
     $yamlLines.Add('') | Out-Null
     $yamlLines.Add('schema: "1.0"') | Out-Null
     $yamlLines.Add(("specrew_version_at_creation: ""{0}""" -f $specrewVersion)) | Out-Null
@@ -400,81 +478,36 @@ function Show-UserProfileSummary {
     if (-not $Profile) {
         $Profile = Get-UserProfile
     }
-    
+
     if (-not $Profile) {
-        return "No user profile found. Run specrew start to configure expertise settings."
+        return "No Crew Interaction Profile found yet. Run ``specrew start`` to set how much you want Specrew to ask, explain, recommend, and auto-decide."
     }
-    
-    # Load persona names from catalog for friendly display
-    $personaMapping = @{
-        'software_architecture' = @{ id = 'architect'; name = 'Architect' }
-        'ui_ux' = @{ id = 'ux-ui-specialist'; name = 'UX/UI Specialist' }
-        'product_management' = @{ id = 'product-manager'; name = 'Product Manager' }
-        'ai_research_project_management' = @{ id = 'ai-researcher-project-manager'; name = 'AI Researcher / Project Manager' }
-    }
-    
-    $summary = "**Expertise Profile:**`n"
-    
-    # Handle both old expertise_dials format and new expertise format
-    if ($Profile.expertise) {
-        foreach ($field in @('software_architecture', 'ui_ux', 'product_management', 'ai_research_project_management')) {
-            if (Test-UserProfileKey -InputObject $Profile.expertise -Key $field) {
-                $value = $Profile.expertise[$field]
-                $personaName = $personaMapping[$field].name
-                
-                $levelDesc = if ($value -eq 'auto' -or $null -eq $value) {
-                    'Auto (system decides)'
-                }
-                elseif ([int]$value -ge 7) {
-                    "$value (Senior)"
-                }
-                elseif ([int]$value -ge 4) {
-                    "$value (Standard)"
-                }
-                else {
-                    "$value (Learning)"
-                }
-                
-                $summary += "- ${personaName}: $levelDesc`n"
-            }
+
+    $summary = "**Crew Interaction Profile (current user):**`n"
+    $summary += "_How much you want Specrew to ask, explain, recommend, and auto-decide across four decision areas. Higher settings get concise, expert-level questions (you make the call); lower or ``auto`` settings get more explanation, recommended defaults, and transparent auto-decisions. These are your collaboration settings — they do not rename Specrew's internal persona lenses._`n`n"
+
+    # Resolve each decision area from the stable expertise keys, falling back to the legacy
+    # expertise_dials layout keyed by internal persona IDs. Either way the persisted keys and persona
+    # IDs are unchanged; only the visible labels are decision-area names (FR-032..FR-035).
+    foreach ($area in Get-CrewInteractionProfileAreas) {
+        $value = $null
+        $resolved = $false
+        if ((Test-UserProfileKey -InputObject $Profile -Key 'expertise') -and (Test-UserProfileKey -InputObject $Profile.expertise -Key $area.ExpertiseKey)) {
+            $value = $Profile.expertise[$area.ExpertiseKey]
+            $resolved = $true
+        }
+        elseif ((Test-UserProfileKey -InputObject $Profile -Key 'expertise_dials') -and (Test-UserProfileKey -InputObject $Profile.expertise_dials -Key $area.PersonaId)) {
+            $value = $Profile.expertise_dials[$area.PersonaId]
+            $resolved = $true
+        }
+
+        if ($resolved) {
+            $summary += "- $($area.DisplayLabel): $(Get-CrewInteractionLevelDescriptor -Value $value)`n"
         }
     }
-    elseif ($Profile.expertise_dials) {
-        # Legacy format fallback
-        $legacyNames = @{
-            'architect' = 'Architect'
-            'ux-ui-specialist' = 'UX/UI Specialist'
-            'product-manager' = 'Product Manager'
-            'ai-researcher-project-manager' = 'AI Researcher / Project Manager'
-        }
-        foreach ($personaId in $Profile.expertise_dials.Keys | Sort-Object) {
-            $value = $Profile.expertise_dials[$personaId]
-            $personaName = if ($legacyNames.ContainsKey($personaId)) {
-                $legacyNames[$personaId]
-            }
-            else {
-                $personaId
-            }
-            
-            $levelDesc = if ($value -eq 'auto' -or $null -eq $value) {
-                'Auto (system decides)'
-            }
-            elseif ([int]$value -ge 7) {
-                "$value (Senior)"
-            }
-            elseif ([int]$value -ge 4) {
-                "$value (Standard)"
-            }
-            else {
-                "$value (Learning)"
-            }
-            
-            $summary += "- ${personaName}: $levelDesc`n"
-        }
-    }
-    
+
     $summary += "`nTo update: use ``/specrew-user-profile edit`` or ``/specrew-user-profile reset``"
-    
+
     return $summary
 }
 
@@ -496,52 +529,46 @@ function Invoke-FirstRunExpertisePrompt {
     )
     
     if ($NonInteractive) {
-        # Return sensible defaults for non-interactive scenarios
-        return @{
-            'product-manager' = 'auto'
-            'ux-ui-specialist' = 'auto'
-            'architect' = 'auto'
-            'ai-researcher-project-manager' = 'auto'
+        # Return sensible defaults for non-interactive scenarios.
+        $defaults = @{}
+        foreach ($area in Get-CrewInteractionProfileAreas) {
+            $defaults[$area.PersonaId] = 'auto'
         }
+        return $defaults
     }
-    
+
     Write-Host ""
     Write-Host "==================================================================" -ForegroundColor Cyan
-    Write-Host " Welcome to Specrew - First-Time Setup" -ForegroundColor Cyan
+    Write-Host " Welcome to Specrew - Crew Interaction Profile Setup" -ForegroundColor Cyan
     Write-Host "==================================================================" -ForegroundColor Cyan
     Write-Host ""
-    Write-Host "To tailor the specification intake experience to your expertise," -ForegroundColor White
-    Write-Host "please rate your comfort level in each of these areas (1-10):" -ForegroundColor White
+    Write-Host "Your Crew Interaction Profile tells Specrew how much to ask, explain," -ForegroundColor White
+    Write-Host "recommend, and auto-decide for you across four decision areas. It is a" -ForegroundColor White
+    Write-Host "collaboration setting, not a job title — Specrew keeps its own internal" -ForegroundColor White
+    Write-Host "persona lenses regardless of what you choose. Set each area 1-10:" -ForegroundColor White
     Write-Host ""
-    Write-Host "  1-3  : Learning (system auto-decides with transparency)" -ForegroundColor Gray
+    Write-Host "  1-3  : Learning (Specrew explains more and auto-decides with transparency)" -ForegroundColor Gray
     Write-Host "  4-6  : Standard (targeted clarifications)" -ForegroundColor Gray
-    Write-Host "  7-10 : Senior (nuanced questions, minimal auto-decisions)" -ForegroundColor Gray
-    Write-Host "  auto : I'm new, system decides for me" -ForegroundColor Gray
+    Write-Host "  7-10 : Senior (concise expert-level questions; you make the call)" -ForegroundColor Gray
+    Write-Host "  auto : Let Specrew recommend defaults and explain them" -ForegroundColor Gray
     Write-Host ""
-    
-    $personas = @(
-        @{ Id = 'product-manager'; Name = 'Product Manager'; Desc = 'Business rules, prioritization, MVP boundaries' }
-        @{ Id = 'ux-ui-specialist'; Name = 'UX/UI Specialist'; Desc = 'Interface state, accessibility, workflows' }
-        @{ Id = 'architect'; Name = 'Architect'; Desc = 'Schemas, integration boundaries, deployment' }
-        @{ Id = 'ai-researcher-project-manager'; Name = 'AI Researcher / Project Manager'; Desc = 'Capacity planning, safe parallelism, agent charters' }
-    )
-    
+
     $dials = @{}
-    
-    foreach ($persona in $personas) {
-        Write-Host "[$($persona.Name)]" -ForegroundColor Yellow
-        Write-Host "  $($persona.Desc)" -ForegroundColor Gray
-        
+
+    foreach ($area in Get-CrewInteractionProfileAreas) {
+        Write-Host "[$($area.DisplayLabel)]" -ForegroundColor Yellow
+        Write-Host "  $($area.DecisionFocus)" -ForegroundColor Gray
+
         $validInput = $false
         while (-not $validInput) {
-            $input = Read-Host "  Your rating (1-10 or 'auto')"
-            
+            $input = Read-Host "  Your setting (1-10 or 'auto')"
+
             if ($input -eq 'auto') {
-                $dials[$persona.Id] = 'auto'
+                $dials[$area.PersonaId] = 'auto'
                 $validInput = $true
             }
             elseif ($input -match '^\d+$' -and [int]$input -ge 1 -and [int]$input -le 10) {
-                $dials[$persona.Id] = [string][int]$input
+                $dials[$area.PersonaId] = [string][int]$input
                 $validInput = $true
             }
             else {
@@ -550,10 +577,10 @@ function Invoke-FirstRunExpertisePrompt {
         }
         Write-Host ""
     }
-    
-    Write-Host "Profile saved! You can update it anytime with /specrew-user-profile edit" -ForegroundColor Green
+
+    Write-Host "Crew Interaction Profile saved! Update it anytime with /specrew-user-profile edit" -ForegroundColor Green
     Write-Host ""
-    
+
     return $dials
 }
 
@@ -573,10 +600,10 @@ function Reset-UserProfile {
     
     if (Test-Path -LiteralPath $ProfilePath) {
         Remove-Item -LiteralPath $ProfilePath -Force
-        Write-Host "User profile reset. You will be prompted to set expertise levels on next 'specrew start'." -ForegroundColor Yellow
+        Write-Host "Crew Interaction Profile reset. You will be prompted to set it again on next 'specrew start'." -ForegroundColor Yellow
     }
     else {
-        Write-Host "No user profile found." -ForegroundColor Gray
+        Write-Host "No Crew Interaction Profile found." -ForegroundColor Gray
     }
 }
 
@@ -595,72 +622,106 @@ function Edit-UserProfile {
     }
     
     $existing = Get-UserProfile -ProfilePath $ProfilePath
-    
+
     if (-not $existing) {
-        Write-Host "No profile found. Creating a new one..." -ForegroundColor Yellow
+        Write-Host "No Crew Interaction Profile found. Creating a new one..." -ForegroundColor Yellow
         $dials = Invoke-FirstRunExpertisePrompt
         Save-UserProfile -ExpertiseDials $dials -ProfilePath $ProfilePath
         return
     }
-    
+
     Write-Host ""
-    Write-Host "Current Expertise Settings:" -ForegroundColor Cyan
+    Write-Host "Current Crew Interaction Profile (decision-area settings):" -ForegroundColor Cyan
     Write-Host ""
-    
-    $personaNames = @{
-        'product-manager' = 'Product Manager'
-        'ux-ui-specialist' = 'UX/UI Specialist'
-        'architect' = 'Architect'
-        'ai-researcher-project-manager' = 'AI Researcher / Project Manager'
+
+    # Iterate the canonical decision-area order; show decision-area labels while keeping the stable
+    # internal persona IDs as the dial keys we read and write (FR-032..FR-034).
+    foreach ($area in Get-CrewInteractionProfileAreas) {
+        $value = $existing.expertise_dials[$area.PersonaId]
+        Write-Host "  $($area.DisplayLabel) : $value" -ForegroundColor White
     }
-    
-    foreach ($personaId in $existing.expertise_dials.Keys | Sort-Object) {
-        $value = $existing.expertise_dials[$personaId]
-        $personaName = if ($personaNames.ContainsKey($personaId)) {
-            $personaNames[$personaId]
-        }
-        else {
-            $personaId
-        }
-        Write-Host "  $personaName : $value" -ForegroundColor White
-    }
-    
+
     Write-Host ""
-    Write-Host "Enter new ratings (press Enter to keep current value):" -ForegroundColor Yellow
+    Write-Host "Enter new settings (press Enter to keep current value):" -ForegroundColor Yellow
     Write-Host ""
-    
+
     $newDials = @{}
-    
-    foreach ($personaId in $existing.expertise_dials.Keys | Sort-Object) {
-        $personaName = if ($personaNames.ContainsKey($personaId)) {
-            $personaNames[$personaId]
-        }
-        else {
-            $personaId
-        }
-        
-        $currentValue = $existing.expertise_dials[$personaId]
-        $input = Read-Host "  $personaName (current: $currentValue)"
-        
+
+    foreach ($area in Get-CrewInteractionProfileAreas) {
+        $currentValue = $existing.expertise_dials[$area.PersonaId]
+        $input = Read-Host "  $($area.DisplayLabel) (current: $currentValue)"
+
         if ([string]::IsNullOrWhiteSpace($input)) {
-            $newDials[$personaId] = $currentValue
+            $newDials[$area.PersonaId] = $currentValue
         }
         elseif ($input -eq 'auto') {
-            $newDials[$personaId] = 'auto'
+            $newDials[$area.PersonaId] = 'auto'
         }
         elseif ($input -match '^\d+$' -and [int]$input -ge 1 -and [int]$input -le 10) {
-            $newDials[$personaId] = [string][int]$input
+            $newDials[$area.PersonaId] = [string][int]$input
         }
         else {
             Write-Host "    Invalid input, keeping current value" -ForegroundColor Red
-            $newDials[$personaId] = $currentValue
+            $newDials[$area.PersonaId] = $currentValue
         }
     }
-    
+
     Save-UserProfile -ExpertiseDials $newDials -ProfilePath $ProfilePath
     Write-Host ""
-    Write-Host "Profile updated!" -ForegroundColor Green
+    Write-Host "Crew Interaction Profile updated!" -ForegroundColor Green
     Write-Host ""
+}
+
+function New-CrewInteractionProfileSessionContext {
+    <#
+    .SYNOPSIS
+    Builds the current-user Crew Interaction Profile block for session context (start-context.json).
+
+    .DESCRIPTION
+    Marks the resolved profile as SOFT, current-user runtime collaboration guidance for all agents —
+    explicitly NOT shared project truth (FR-038). Outside /speckit.specify the profile is soft guidance
+    only; /speckit.specify is the only surface that hard-applies it (FR-040). Persisted expertise keys
+    and internal persona IDs are preserved unchanged (FR-033); decision_areas is keyed by the visible
+    decision-area label for display, while expertise_dials retains the stable persona IDs.
+    #>
+    param(
+        [Parameter(Mandatory = $false)]
+        [object]$Profile
+    )
+
+    if (-not $Profile) {
+        $Profile = Get-UserProfile
+    }
+
+    if (-not $Profile) {
+        return $null
+    }
+
+    $rawExpertise = Get-UserProfileValue -InputObject $Profile -Key 'expertise'
+
+    $decisionAreas = [ordered]@{}
+    foreach ($area in Get-CrewInteractionProfileAreas) {
+        $setting = ConvertTo-RuntimeExpertiseDial -Value (Get-UserProfileValue -InputObject $rawExpertise -Key $area.ExpertiseKey)
+        $decisionAreas[$area.DisplayLabel] = [ordered]@{
+            expertise_key   = $area.ExpertiseKey
+            persona_lens_id = $area.PersonaId
+            setting         = $setting
+        }
+    }
+
+    return [ordered]@{
+        kind                 = 'current-user-crew-interaction-profile'
+        scope                = 'current-user-runtime-guidance'
+        shared_project_truth = $false
+        application          = 'soft collaboration guidance for all agents; hard-applied only in /speckit.specify'
+        guidance             = "Higher settings: ask concise expert-level questions and assume the current user decides. Lower or auto settings: explain more, recommend defaults, and surface transparent auto-decisions. These are the current user's collaboration settings, not Specrew's internal persona lenses."
+        profile_path         = Get-UserProfilePath
+        schema_version       = (Get-UserProfileValue -InputObject $Profile -Key 'schema_version')
+        created_at           = (Get-UserProfileValue -InputObject $Profile -Key 'created_at')
+        updated_at           = (Get-UserProfileValue -InputObject $Profile -Key 'updated_at')
+        decision_areas       = $decisionAreas
+        expertise_dials      = (Get-UserProfileValue -InputObject $Profile -Key 'expertise_dials')
+    }
 }
 
 # Export functions when loaded as a module; allow dot-sourcing in tests.
@@ -673,6 +734,10 @@ if ($null -ne $ExecutionContext.SessionState.Module) {
         'Show-UserProfileSummary',
         'Invoke-FirstRunExpertisePrompt',
         'Reset-UserProfile',
-        'Edit-UserProfile'
+        'Edit-UserProfile',
+        'Get-CrewInteractionProfileAreas',
+        'Get-CrewInteractionProfileLabel',
+        'Get-CrewInteractionLevelDescriptor',
+        'New-CrewInteractionProfileSessionContext'
     )
 }

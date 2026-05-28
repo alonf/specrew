@@ -3087,10 +3087,11 @@ function Get-StartSummaryContent {
     $summaryLines.Add(("- **Active Feature Path**: {0}" -f $(if ([string]::IsNullOrWhiteSpace($ResolvedFeaturePath)) { '(create or resolve during lifecycle)' } else { Get-DisplayPathFromProjectRoot -ResolvedProjectPath $ResolvedProjectPath -Path $ResolvedFeaturePath }))) | Out-Null
     $summaryLines.Add('') | Out-Null
     
-    # Feature 049 Iteration 003: Add user profile summary (FR-026)
+    # Feature 049 Iteration 003 (FR-026) + Iteration 005 (FR-032/FR-038): current-user Crew Interaction Profile.
+    # This is soft, current-user collaboration guidance for all agents — not shared project truth.
     $userProfile = Get-UserProfile
     if ($null -ne $userProfile) {
-        $summaryLines.Add('## User Expertise Profile') | Out-Null
+        $summaryLines.Add('## Crew Interaction Profile (current user)') | Out-Null
         $profileSummary = Show-UserProfileSummary -Profile $userProfile
         foreach ($line in $profileSummary -split "`n") {
             if (-not [string]::IsNullOrWhiteSpace($line)) {
@@ -3361,16 +3362,12 @@ $artifactListFormatted
         host_resolution = if (-not [string]::IsNullOrWhiteSpace($HostResolution)) { $HostResolution } else { $null }
     }
 
-    # Feature 049 Iteration 003: Add user profile summary to start-context.json (FR-026)
+    # Feature 049 Iteration 003 (FR-026) + Iteration 005 (FR-038/FR-040): surface the resolved
+    # current-user Crew Interaction Profile as SOFT runtime guidance, explicitly not shared project
+    # truth, and applied hard only inside /speckit.specify. Stable persisted keys + persona IDs preserved.
     $userProfile = Get-UserProfile
     if ($null -ne $userProfile) {
-        $context['user_profile'] = [ordered]@{
-            schema_version  = $userProfile.schema_version
-            created_at      = $userProfile.created_at
-            updated_at      = $userProfile.updated_at
-            expertise_dials = $userProfile.expertise_dials
-            profile_path    = Get-UserProfilePath
-        }
+        $context['user_profile'] = New-CrewInteractionProfileSessionContext -Profile $userProfile
     }
 
     if ($null -ne $existingBoundaryEnforcement) {
@@ -3715,7 +3712,7 @@ if ($missingBootstrapPaths.Count -gt 0) {
 # Check for user profile and prompt on first run
 if (-not (Test-UserProfileExists)) {
     Write-Host ""
-    Write-Host "First-time setup: Configuring your expertise profile..." -ForegroundColor Cyan
+    Write-Host "First-time setup: Configuring your Crew Interaction Profile..." -ForegroundColor Cyan
     Write-Host ""
     
     $expertiseDials = Invoke-FirstRunExpertisePrompt -NonInteractive:$false
