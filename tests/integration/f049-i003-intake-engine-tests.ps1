@@ -290,6 +290,90 @@ questions:
     Assert-True -Condition (Test-Path -LiteralPath (Join-Path $repoRoot '.github\skills\specrew-user-profile\SKILL.md') -PathType Leaf) -Message 'T024: slash command deployed to .github'
     Assert-True -Condition (Test-Path -LiteralPath (Join-Path $repoRoot '.agents\skills\specrew-user-profile\SKILL.md') -PathType Leaf) -Message 'T025: slash command deployed to .agents'
     Write-Pass 'Slash-command deployment verified across active host roots'
+
+    # =====================================================================================
+    # Proposal 141 (Iteration 005): Crew Interaction Profile / Persona Lens Separation
+    # =====================================================================================
+
+    # FR-032/FR-033/FR-034: shared decision-area metadata maps display labels to stable keys + persona IDs
+    $areas = @(Get-CrewInteractionProfileAreas)
+    Assert-Equal -Actual $areas.Count -Expected 4 -Message 'FR-032: Crew Interaction Profile exposes four decision areas'
+    $labelByKey = @{}
+    foreach ($a in $areas) { $labelByKey[$a.ExpertiseKey] = $a.DisplayLabel }
+    Assert-Equal -Actual $labelByKey['product_management'] -Expected 'Product Strategy' -Message 'FR-034: product_management displays as Product Strategy'
+    Assert-Equal -Actual $labelByKey['ui_ux'] -Expected 'UX/UI Design' -Message 'FR-034: ui_ux displays as UX/UI Design'
+    Assert-Equal -Actual $labelByKey['software_architecture'] -Expected 'Software Architecture' -Message 'FR-034: software_architecture displays as Software Architecture'
+    Assert-Equal -Actual $labelByKey['ai_research_project_management'] -Expected 'AI Delivery Planning' -Message 'FR-034: ai_research_project_management displays as AI Delivery Planning'
+
+    # FR-033: stable persona IDs preserved (including ai-researcher-project-manager)
+    Assert-Equal -Actual (Get-CrewInteractionProfileLabel -PersonaId 'ai-researcher-project-manager') -Expected 'AI Delivery Planning' -Message 'FR-033: ai-researcher-project-manager persona ID resolves to AI Delivery Planning'
+    Assert-Equal -Actual (Get-CrewInteractionProfileLabel -ExpertiseKey 'ai_research_project_management') -Expected 'AI Delivery Planning' -Message 'FR-033: ai_research_project_management key resolves to AI Delivery Planning'
+
+    # FR-032/FR-035: summary uses Crew Interaction Profile framing + decision-area labels, not job-title identity
+    $p141Path = Join-Path $scratchRoot 'p141-profile.yml'
+    Save-UserProfile -ExpertiseDials @{ 'product-manager' = 7; 'ux-ui-specialist' = 'auto'; 'architect' = 9; 'ai-researcher-project-manager' = 2 } -ProfilePath $p141Path
+    $p141Profile = Get-UserProfile -ProfilePath $p141Path
+    $p141Summary = Show-UserProfileSummary -Profile $p141Profile
+    Assert-True -Condition ($p141Summary -match 'Crew Interaction Profile') -Message 'FR-032: summary uses Crew Interaction Profile framing'
+    foreach ($label in @('Product Strategy', 'UX/UI Design', 'Software Architecture', 'AI Delivery Planning')) {
+        Assert-True -Condition ($p141Summary -match [regex]::Escape($label)) -Message "FR-034: summary renders decision-area label '$label'"
+    }
+    Assert-True -Condition (-not ($p141Summary -match 'Expertise Profile:')) -Message 'FR-032: summary drops the job-title-style Expertise Profile heading'
+    Assert-True -Condition ($p141Summary -match 'persona lens') -Message 'FR-035: summary distinguishes the profile from Specrew internal persona lenses'
+
+    # FR-033: persisted YAML keeps the stable schema keys (no rename/migration)
+    $p141Yaml = Get-Content -LiteralPath $p141Path -Raw -Encoding UTF8
+    Assert-True -Condition ($p141Yaml -match '(?m)^  ai_research_project_management:') -Message 'FR-033: persisted YAML retains stable ai_research_project_management key'
+    Assert-True -Condition ($p141Yaml -match '(?m)^  software_architecture:') -Message 'FR-033: persisted YAML retains stable software_architecture key'
+
+    # FR-037 + scenario 10: legacy profiles load without migration, preserving routing/depth
+    $legacyFixtureRoot = Join-Path $repoRoot 'tests\integration\fixtures\f049-legacy-user-profile'
+    $legacyExpertise = Get-UserProfile -ProfilePath (Join-Path $legacyFixtureRoot 'legacy-expertise.yml')
+    Assert-Equal -Actual $legacyExpertise.expertise['ai_research_project_management'] -Expected 3 -Message 'FR-037: legacy expertise profile loads stable ai_research_project_management value'
+    Assert-Equal -Actual $legacyExpertise.expertise_dials['architect'] -Expected 9 -Message 'FR-037: legacy expertise profile preserves architect routing/depth'
+    Assert-Equal -Actual $legacyExpertise.expertise_dials['ux-ui-specialist'] -Expected 'auto' -Message 'FR-037: legacy null expertise maps back to auto semantics'
+    $legacySummary = Show-UserProfileSummary -Profile $legacyExpertise
+    Assert-True -Condition ($legacySummary -match 'AI Delivery Planning') -Message 'FR-037/scenario10: legacy profile renders the updated AI Delivery Planning label'
+
+    $legacyDials = Get-UserProfile -ProfilePath (Join-Path $legacyFixtureRoot 'legacy-dials.yml')
+    Assert-Equal -Actual $legacyDials.expertise_dials['architect'] -Expected 8 -Message 'FR-037: older expertise_dials layout still preserves architect routing'
+    Assert-Equal -Actual $legacyDials.expertise['ai_research_project_management'] -Expected 2 -Message 'FR-037: older expertise_dials layout maps ai-researcher-project-manager to the stable key'
+
+    # Legacy depth behavior preserved end-to-end through the engine (all four internal lenses still run)
+    $legacyEngineResult = & $enginePath -TestMode -IntakeDataRoot $intakeRoot -UserInput 'Build a planning assistant' -UserProfilePath (Join-Path $legacyFixtureRoot 'legacy-expertise.yml')
+    $legacyEngineState = $legacyEngineResult | Select-Object -Last 1
+    Assert-Equal -Actual $legacyEngineState.results.Count -Expected 4 -Message 'FR-037: legacy profile drives all four internal persona lenses unchanged'
+    Write-Pass 'Crew Interaction Profile labels + legacy compatibility verified (FR-032..FR-037)'
+
+    # FR-038/FR-040: session context surfaces the profile as SOFT current-user runtime guidance, not shared truth
+    $sessionCtx = New-CrewInteractionProfileSessionContext -Profile $p141Profile
+    Assert-Equal -Actual $sessionCtx.shared_project_truth -Expected $false -Message 'FR-038: session context marks the profile as NOT shared project truth'
+    Assert-True -Condition ($sessionCtx.scope -match 'current-user') -Message 'FR-038: session context scopes the profile to the current user'
+    Assert-True -Condition ($sessionCtx.application -match 'speckit\.specify') -Message 'FR-040: session context records /speckit.specify as the only hard-applied surface'
+    Assert-True -Condition ($sessionCtx.application -match 'soft') -Message 'FR-040: session context records soft guidance outside /speckit.specify'
+    Assert-True -Condition ($sessionCtx.decision_areas.Contains('AI Delivery Planning')) -Message 'FR-038: session context keys decision areas by display label'
+    Assert-Equal -Actual $sessionCtx.expertise_dials['ai-researcher-project-manager'] -Expected 2 -Message 'FR-033/FR-038: session context preserves stable persona-id dials'
+
+    # FR-041/SC-008: paired developers with divergent local profiles resolve independently
+    $devA = Get-UserProfile -ProfilePath (Join-Path $legacyFixtureRoot 'dev-a.yml')
+    $devB = Get-UserProfile -ProfilePath (Join-Path $legacyFixtureRoot 'dev-b.yml')
+    Assert-Equal -Actual $devA.expertise_dials['architect'] -Expected 9 -Message 'FR-041: developer A resolves their own architecture setting'
+    Assert-Equal -Actual $devB.expertise_dials['architect'] -Expected 2 -Message 'FR-041: developer B resolves a divergent architecture setting'
+    Assert-True -Condition ($devA.expertise_dials['architect'] -ne $devB.expertise_dials['architect']) -Message 'SC-008: divergent local profiles coexist without shared-repository coupling'
+    Write-Pass 'Session-context soft guidance + paired-developer safety verified (FR-038, FR-040, FR-041, SC-008)'
+
+    # FR-039/SC-008: shared instruction surfaces reference the loader/path rule, not resolved dial values
+    $sharedSurfaces = @(
+        Join-Path $repoRoot 'README.md'
+        Join-Path $repoRoot 'docs\user-guide.md'
+    )
+    foreach ($surface in $sharedSurfaces) {
+        $surfaceName = [System.IO.Path]::GetFileName($surface)
+        $surfaceText = Get-Content -LiteralPath $surface -Raw -Encoding UTF8
+        Assert-True -Condition ($surfaceText -match 'Crew Interaction Profile') -Message "FR-039: shared surface '$surfaceName' describes the Crew Interaction Profile"
+        Assert-True -Condition ($surfaceText -match 'user-profile\.yml') -Message "FR-039: shared surface '$surfaceName' points to the user-profile loader/path rule"
+    }
+    Write-Pass 'Shared-instruction loader/path-rule audit verified (FR-039, SC-008)'
 }
 finally {
     Pop-Location
