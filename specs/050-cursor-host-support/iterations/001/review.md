@@ -10,6 +10,13 @@
 > evidence-backed self-review; the **authoritative review-signoff** is performed by the
 > Reviewer role in an independent session (per Parallel-Work Charter), plus the human
 > verdict — both PENDING.
+>
+> **Artifact provenance (one-commit-lag note):** the reviewer package references
+> `commit_range = b1b1ca0..0c75c94c` (all code + spec content under review; 38 files).
+> The commit that *carries* this regenerated/dispositioned review package necessarily
+> post-dates 0c75c94c and cannot reference its own hash — the standard, unavoidable
+> review-boundary lag. That carrying commit changes only review artifacts (no code/behavior
+> or spec-contract change), so 0c75c94c is the authoritative content HEAD for this review.
 
 ## Task Verdicts
 

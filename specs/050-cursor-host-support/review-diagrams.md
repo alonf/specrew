@@ -33,8 +33,8 @@ sequenceDiagram
   User->>Specrew: specrew start --host cursor "Add OAuth login"
   Specrew->>Registry: Get-HostManifest -Kind cursor
   Registry-->>Specrew: manifest (Binary=cursor-agent, Status=supported)
-  Specrew->>Handlers: Test-CursorRuntimeInstalled
-  Handlers-->>Specrew: $true
+  Specrew->>Specrew: Test-SpecrewHostAvailable (host-neutral PATH probe for cursor-agent)
+  Specrew-->>Specrew: $true (binary on PATH)
   Specrew->>Handlers: Install-CursorCrewRuntime (sync .cursor/rules/*.mdc)
   Handlers-->>Specrew: Actions[], CrewRuntimePath=.cursor/rules
   Specrew->>Handlers: New-CursorLaunchInvocation -Prompt "..." [-AllowAll]
@@ -45,14 +45,15 @@ sequenceDiagram
 
 ## Sequence: binary missing (US1 scenario 2/3 — graceful guidance)
 
+> Note: binary-on-PATH availability is the host-neutral `Test-SpecrewHostAvailable` probe (+ `Get-SpecrewHostInstallGuidance` from the manifest). `Test-CursorRuntimeInstalled` is a *separate* check that detects the deployed `.cursor/rules/*.mdc` crew runtime, NOT PATH presence.
+
 ```mermaid
 sequenceDiagram
   participant User
   participant Specrew as specrew start
-  participant Handlers as cursor/handlers.ps1
 
   User->>Specrew: specrew start --host cursor "x"
-  Specrew->>Handlers: Test-CursorRuntimeInstalled
-  Handlers-->>Specrew: $false (cursor-agent not on PATH)
-  Specrew-->>User: InstallGuidance: install cursor-agent from https://cursor.com/cli (no stack trace)
+  Specrew->>Specrew: Test-SpecrewHostAvailable (cursor-agent on PATH?)
+  Specrew-->>Specrew: $false (cursor-agent not on PATH)
+  Specrew-->>User: Get-SpecrewHostInstallGuidance: install cursor-agent from https://cursor.com/cli (no stack trace)
 ```
