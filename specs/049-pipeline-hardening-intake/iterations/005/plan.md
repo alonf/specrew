@@ -3,7 +3,7 @@
 **Schema**: v1
 **Spec**: [../../spec.md](../../spec.md)
 **Status**: planning
-**Capacity**: 0/5 story_points
+**Capacity**: 4.4/25 story_points
 **Started**: 2026-05-28
 **Completed**:
 
@@ -44,11 +44,11 @@ Iteration `005` is the bounded **3-5 SP** Proposal `141` correction slice for Fe
 | ---- | ------- | ----- |
 | Spec Authority | PASS | Scope is limited to `FR-032..FR-037`, `SC-007`, and `TG-016..TG-018`. |
 | Traceability | PASS | All planned workstreams below map directly to Proposal `141` and User Story `3`. |
-| Capacity | PASS | Authorized effort band is **3-5 SP**; the iteration cap is set to `5` story points. |
+| Capacity | PASS | Authorized effort band remains **3-5 SP** inside the canonical `25` story-point iteration-capacity model; the imported task set plans `4.4` SP plus `0.6` SP repair reserve without broadening scope. |
 | Roadmap Discipline | PASS | Iteration `003` stays closed, Iteration `004` stays reserved for Proposal `120`, and Iteration `005` is planned as the next bounded slice. |
 | Compatibility Discipline | PASS | No schema migration, no key rename, no persona-ID rename, and no fifth-lens work is allowed here. |
 | `004`-Absent / `005`-Present Caveat | PASS | Planning may proceed with explicit human authorization, but downstream validators/task generation must treat Iteration `004` as reserved rather than silently inferring a sequencing error. |
-| Before-Implement Readiness | DEFERRED | This artifact intentionally stops before task generation. Owned tasks, evidence commands, and execution boundaries belong to the next phase. |
+| Before-Implement Readiness | PASS | Existing Iteration `005` task packaging (`T001-T008`) is now mirrored in this plan so validator-facing task rows, owners, effort, and bounded execution order remain explicit without regenerating scope. |
 
 ## Open Questions Resolved
 
@@ -83,11 +83,22 @@ Iteration `005` is the bounded **3-5 SP** Proposal `141` correction slice for Fe
 
 **Planned Total**: 3.0-4.75 story_points
 
-## Task Packaging Status
+## Tasks
 
-- This artifact intentionally stops at workstream planning.
-- No implementation tasks are created here.
-- `/speckit.tasks` or equivalent next-phase task packaging must convert `W001-W004` into owned, dependency-ordered tasks without broadening scope.
+| Task | Title | Requirement | Story | Effort | Owner | Owner File Globs | Status | Agent | Actual | Verdict |
+| ---- | ----- | ----------- | ----- | ------ | ----- | ---------------- | ------ | ----- | ------ | ------- |
+| T001 | Create Iteration 005 audit scaffold and evidence envelope | FR-036, FR-037, SC-007, TG-016, TG-017 | US3 | 0.3 | Reviewer | `specs/049-pipeline-hardening-intake/iterations/005/quality/quality-evidence.md` | planned | | | |
+| T002 | Add shared display-label metadata and capability-vs-lens helpers | FR-032, FR-033, FR-034, FR-035, TG-017, TG-018 | US3 | 0.6 | Implementer | `scripts/internal/user-profile.ps1` | planned | | | |
+| T003 | Add legacy-profile fixture and failing compatibility assertions | FR-033, FR-034, FR-037, SC-007, TG-018 | US3 | 0.6 | Reviewer | `tests/integration/fixtures/f049-legacy-user-profile/legacy-user-profile.yml`, `tests/integration/f049-i003-intake-engine-tests.ps1` | planned | | | |
+| T004 | Update first-run and profile/runtime wording to capability dials | FR-032, FR-033, FR-034, FR-035, TG-017, TG-018 | US3 | 0.8 | Implementer | `scripts/internal/user-profile.ps1`, `scripts/specrew-start.ps1` | planned | | | |
+| T005 | Refresh `/specrew-user-profile` help copy across shipped skill surfaces | FR-032, FR-034, FR-035, FR-036, TG-018 | US3 | 0.4 | Implementer | `.github/skills/specrew-user-profile/SKILL.md`, `.claude/skills/specrew-user-profile/SKILL.md`, `.agents/skills/specrew-user-profile/SKILL.md` | planned | | | |
+| T006 | Align specify and intake guidance to capability-vs-lens semantics | FR-032, FR-035, FR-036, TG-017, TG-018 | US3 | 0.5 | Implementer | `.github/prompts/speckit.specify.prompt.md`, `.github/agents/speckit.specify.agent.md`, `extensions/specrew-speckit/scripts/intake/Invoke-SpecifyIntake.ps1`, `.specify/extensions/specrew-speckit/scripts/intake/Invoke-SpecifyIntake.ps1` | planned | | | |
+| T007 | Update downstream docs and reviewer/operator guidance | FR-035, FR-036, TG-016, TG-017, TG-018 | US3 | 0.5 | Implementer | `docs/user-guide.md`, `README.md`, `.specrew/team/agents/reviewer.md`, `.agents/agents/reviewer.md`, `extensions/specrew-speckit/squad-templates/agents/reviewer/charter.md`, `.specify/extensions/specrew-speckit/squad-templates/agents/reviewer/charter.md` | planned | | | |
+| T008 | Run compatibility checks and record Proposal 141 evidence | FR-037, SC-007, TG-016, TG-017, TG-018 | US3 | 0.7 | Reviewer | `tests/integration/f049-i003-intake-engine-tests.ps1`, `specs/049-pipeline-hardening-intake/iterations/005/quality/quality-evidence.md` | planned | | | |
+
+**Planned Task Total**: 4.4 story_points  
+**Reserved Repair Headroom**: 0.6 story_points  
+**Bounded Slice Truth**: Proposal `141` remains a **3-5 SP** correction slice even though iteration metadata must align to the repository-wide `25` story-point capacity model.
 
 ## Required Quality Gates
 
@@ -120,9 +131,13 @@ Iteration `005` is the bounded **3-5 SP** Proposal `141` correction slice for Fe
 | Setting | Value | Notes |
 | ------- | ----- | ----- |
 | Effort Unit | story_points | Same unit used across Feature `049`. |
-| Iteration Capacity | 5 | Hard cap for this bounded correction slice. |
-| Authorized Band | 3-5 | Human-approved small-slice correction capacity. |
-| Overcommit Threshold | 1.0 | Any task package above `5` SP requires replanning. |
+| Capacity per Iteration | 25 | Canonical repository iteration-capacity value from `.specrew/iteration-config.yml`; this plan remains a small slice within that wider model. |
+| Iteration Bounding | scope | `scope` keeps Proposal `141` fixed to the approved correction slice only. |
+| Time Limit (hours) | n/a | Only applies when iteration bounding is `time`. |
+| Authorized Slice | 3-5 | Human-approved small-slice correction band for Proposal `141`. |
+| Planned Task Load | 4.4 | Imported directly from `iterations/005/tasks.md` without widening scope. |
+| Repair Reserve | 0.6 | Preserves the existing bounded headroom inside the `3-5 SP` slice. |
+| Overcommit Threshold | 1.0 | Warn planners when total estimated effort exceeds `25` story_points (capacity `25` x threshold `1.0`); this slice stays well below that cap. |
 | Defer Strategy | manual | Any spillover requires explicit human approval; do not silently merge into Iteration `004`. |
 | Calibration Enabled | true | Capture variance after execution because the slice is intentionally small and terminology-heavy. |
 
@@ -149,7 +164,7 @@ Iteration `005` is the bounded **3-5 SP** Proposal `141` correction slice for Fe
 - Success scope: `SC-007`.
 - Governance anchors: `TG-016..TG-018`.
 - Protected adjacent scope: `FR-018..FR-022`, `SC-004`, and `TG-008` remain reserved for Iteration `004`.
-- Planning boundary: this iteration plan is ready for task packaging, not implementation.
+- Planning boundary: this iteration plan now mirrors the existing bounded task package and is ready for validator rerun / before-implement review without regenerating scope.
 
 ## Notes
 
@@ -157,4 +172,4 @@ Iteration `005` is the bounded **3-5 SP** Proposal `141` correction slice for Fe
 - Iteration `004` remains the reserved Proposal `120` five-pillar bypass-detection slice exactly as approved.
 - Current repository state has an Iteration `005` plan before an Iteration `004` plan artifact exists; downstream validators and task packaging must treat that as an explicit roadmap reservation, not as silent sequencing drift.
 - `personas.yml`, question-bank IDs, persisted profile keys, and internal persona IDs remain authoritative internal contracts unless an explicitly approved non-breaking display-metadata addition is later justified.
-- This artifact intentionally contains no implementation task table; that is the next phase.
+- The validator-facing `## Tasks` table mirrors the existing `iterations/005/tasks.md` package; it was repaired for schema compliance without regenerating or broadening the bounded Proposal `141` scope.
