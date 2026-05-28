@@ -2,7 +2,7 @@
 
 **Schema**: v1
 **Spec**: [../../spec.md](../../spec.md)
-**Status**: planning
+**Status**: executing
 **Capacity**: 6/20 story_points
 **Started**: 2026-05-28
 **Completed**:
@@ -93,4 +93,5 @@ Iteration 001 scope = core package + skill target. FR-005/006/007 (tests) → it
 - Iteration 001 = Cursor host package core (manifest, 5 contract functions, skill-root entry, FileList, registry verification).
 - Hardening gate ([quality/hardening-gate.md](./quality/hardening-gate.md)) Overall Verdict: ready, with one `deferred-with-approval` item (`mirror-parity-integrity`) requiring explicit human acknowledgement: the FR-003 source edit's `.specify/` mirror sync is deferred to the controlled post-merge deploy per Parallel-Work Charter Items 2+3 (no `.specify/extensions/` edit, no `specrew update` in this worktree).
 - Parallel-Work Charter active: ModuleVersion pinned `0.29.0`; F-049 PR merges before F-050; beta-before-stable publish; cross-reviewer at signoff.
-- Keep Status: planning until human grants before-implement approval; then advance to executing.
+- **FEATURE-CLOSEOUT ACTION (cross-reviewer contract, 2026-05-29)**: between PR merge and beta publish, sync the FR-003 source edit into the `.specify/` mirror — i.e. apply the `Get-ActiveSkillRoots` cursor entry to `.specify/extensions/specrew-speckit/scripts/deploy-squad-runtime.ps1` via the controlled deploy/`specrew update` step. Without this, downstream installs after F-050's beta carry the source edit WITHOUT the mirror update. This closes the `mirror-parity-integrity` deferred-with-approval item.
+- before-implement APPROVED by Alon Fliess 2026-05-29 (cross-reviewer verified, mirror-parity acknowledged); iteration status advances planning → executing.

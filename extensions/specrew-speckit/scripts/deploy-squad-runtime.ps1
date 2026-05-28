@@ -379,6 +379,7 @@ function Get-ActiveSkillRoots {
 
     return @(
         [pscustomobject]@{ Name = 'claude'; Path = Join-Path $ProjectPath '.claude\skills' }
+        [pscustomobject]@{ Name = 'cursor'; Path = Join-Path $ProjectPath '.cursor\rules' }
         [pscustomobject]@{ Name = 'github'; Path = Join-Path $ProjectPath '.github\skills' }
         [pscustomobject]@{ Name = 'agents'; Path = Join-Path $ProjectPath '.agents\skills' }
     )

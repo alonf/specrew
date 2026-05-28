@@ -23,7 +23,7 @@ Write-Pass 'detect-hosts.ps1 exports all expected functions'
 
 # Test 2: Supported / deferred host kinds match spec (set membership; order is registry-driven and may sort)
 $supported = @(Get-SpecrewSupportedHostKinds | Sort-Object)
-$expectedSupported = @('antigravity', 'claude', 'codex', 'copilot')   # sorted alphabetically — registry-driven order
+$expectedSupported = @('antigravity', 'claude', 'codex', 'copilot', 'cursor')   # sorted alphabetically — registry-driven order (cursor added F-050)
 if (($supported -join ',') -ne ($expectedSupported -join ',')) {
     Write-Fail "Supported host kinds drift. Got: $($supported -join ',') Expected: $($expectedSupported -join ',') (Antigravity follow-up slice graduated antigravity from deferred to supported)"
 }
@@ -32,7 +32,7 @@ $expectedDeferred = @('auto')   # only synthetic 'auto' remains deferred — reg
 if (($deferred -join ',') -ne ($expectedDeferred -join ',')) {
     Write-Fail "Deferred host kinds drift. Got: $($deferred -join ',') Expected: $($expectedDeferred -join ',') (Antigravity graduated; only synthetic 'auto' remains deferred)"
 }
-Write-Pass 'Host-kind enums match spec (supported: antigravity,claude,codex,copilot; deferred: auto only)'
+Write-Pass 'Host-kind enums match spec (supported: antigravity,claude,codex,copilot,cursor; deferred: auto only)'
 
 # Test 3: Host binary names are correct
 foreach ($pair in @{ copilot = 'copilot'; claude = 'claude'; codex = 'codex'; antigravity = 'agy' }.GetEnumerator()) {

@@ -300,6 +300,7 @@ function Invoke-SpecrewFirstRunHostProbe {
       3. codex     — OpenAI Codex CLI
       Other supported (not installed on this PATH):
        - antigravity — Google Antigravity CLI (install: https://antigravity.google/)
+       - cursor      — Cursor (AI Code Editor) (install: https://cursor.com/cli)
       Select 1-3 (number) or kind name [default 1]:
 
     .PARAMETER NonInteractive

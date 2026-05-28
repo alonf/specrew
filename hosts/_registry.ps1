@@ -74,7 +74,9 @@ function Get-RegisteredHostKinds {
             continue
         }
 
-        $priority = if ($manifest.ContainsKey('MenuPriority')) { [int]$manifest.MenuPriority } else { 999 }
+        # Numeric (double) sort so fractional MenuPriority (e.g. cursor=1.5, F-050) slots
+        # correctly between integer priorities. [int] rounding would tie 1.5 with 2 (codex).
+        $priority = if ($manifest.ContainsKey('MenuPriority')) { [double]$manifest.MenuPriority } else { 999 }
         $loaded.Add([pscustomobject]@{
             Kind     = $manifest.Kind
             Priority = $priority

@@ -100,7 +100,7 @@ function Get-SpecrewDeferredHostGuidance {
         'auto' {
             return @(
                 'Auto-selection is deferred to Proposal 104 (Multi-Host Onboarding + Selection Flow).',
-                'Use --host copilot|claude|codex|antigravity explicitly until F-043 ships.',
+                'Use --host copilot|claude|codex|antigravity|cursor explicitly until F-043 ships.',
                 'See file:///C:/Dev/Specrew/proposals/104-multi-host-onboarding-and-selection-flow.md.'
             ) -join ' '
         }

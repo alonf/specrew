@@ -21,30 +21,32 @@ if (-not (Test-Path -LiteralPath $detectHostsScript)) {
 . $registryScript
 . $detectHostsScript
 
-# Test 1: registry discovers 4 host packages
+# Test 1: registry discovers 5 host packages (cursor added F-050)
 Reset-HostManifestCache
 $registered = @(Get-RegisteredHostKinds)
-if ($registered.Count -ne 4) {
-    Write-Fail "Expected 4 registered hosts; got $($registered.Count): $($registered -join ',')"
+if ($registered.Count -ne 5) {
+    Write-Fail "Expected 5 registered hosts; got $($registered.Count): $($registered -join ',')"
 }
-$expectedKinds = @('claude', 'codex', 'copilot', 'antigravity')   # iter-011: priority-sorted (MenuPriority 1, 2, 3, 4)
+$expectedKinds = @('claude', 'cursor', 'codex', 'copilot', 'antigravity')   # priority-sorted (MenuPriority 1, 1.5, 2, 3, 4)
 if (($registered -join ',') -ne ($expectedKinds -join ',')) {
     Write-Fail "Registered host kinds drift. Got: $($registered -join ','). Expected: $($expectedKinds -join ',')"
 }
-Write-Pass "Registry discovers all 4 host packages in MenuPriority order (claude, codex, copilot, antigravity)"
+Write-Pass "Registry discovers all 5 host packages in MenuPriority order (claude, cursor, codex, copilot, antigravity)"
 
-# Test 1b (iter-011): every supported host declares a MenuPriority field
-$expectedPriorities = @{ claude = 1; codex = 2; copilot = 3; antigravity = 4 }
+# Test 1b (iter-011 + F-050): every supported host declares a MenuPriority field.
+# Compare as [double] so fractional priorities (cursor=1.5) are validated exactly — an [int]
+# cast would round 1.5 to 2 and tie codex.
+$expectedPriorities = @{ claude = 1; cursor = 1.5; codex = 2; copilot = 3; antigravity = 4 }
 foreach ($kind in $expectedPriorities.Keys) {
     $manifest = Get-HostManifest -Kind $kind
     if (-not $manifest.ContainsKey('MenuPriority')) {
         Write-Fail "Host '$kind' manifest is missing required MenuPriority field (iter-011)."
     }
-    if ([int]$manifest.MenuPriority -ne $expectedPriorities[$kind]) {
+    if ([double]$manifest.MenuPriority -ne [double]$expectedPriorities[$kind]) {
         Write-Fail "Host '$kind' MenuPriority is $($manifest.MenuPriority); expected $($expectedPriorities[$kind])."
     }
 }
-Write-Pass "All 4 hosts declare correct MenuPriority (claude=1, codex=2, copilot=3, antigravity=4)"
+Write-Pass "All 5 hosts declare correct MenuPriority (claude=1, cursor=1.5, codex=2, copilot=3, antigravity=4)"
 
 # Test 2: every registered host has a valid manifest
 foreach ($kind in $registered) {
@@ -90,10 +92,10 @@ Write-Pass "Per-host SkillRoot field matches Get-SpecrewHostSkillRoot across all
 
 # Test 6: status filter helpers work
 $supported = @(Get-SpecrewHostsByStatus -Status supported)
-if ($supported.Count -ne 4) {
-    Write-Fail "Expected 4 supported hosts post-antigravity-followup; got $($supported.Count): $($supported -join ',')"
+if ($supported.Count -ne 5) {
+    Write-Fail "Expected 5 supported hosts (cursor added F-050); got $($supported.Count): $($supported -join ',')"
 }
-Write-Pass "Get-SpecrewHostsByStatus -Status supported returns all 4 (antigravity promoted)"
+Write-Pass "Get-SpecrewHostsByStatus -Status supported returns all 5 (cursor added)"
 
 $deferred = @(Get-SpecrewHostsByStatus -Status deferred)
 if ($deferred.Count -ne 0) {
@@ -110,14 +112,14 @@ foreach ($kind in $registered) {
 }
 Write-Pass "All 4 host folder names match their manifest Kind field (lowercase)"
 
-# Test 8: unknown host throws
+# Test 8: unknown host throws (cursor is now a real host — use a non-existent sentinel)
 try {
-    Get-HostManifest -Kind 'cursor' | Out-Null
-    Write-Fail "Get-HostManifest -Kind cursor should throw but did not"
+    Get-HostManifest -Kind 'nonexistenthost' | Out-Null
+    Write-Fail "Get-HostManifest -Kind nonexistenthost should throw but did not"
 }
 catch {
     if ($_.Exception.Message -notmatch 'Unknown host kind') {
-        Write-Fail "Unexpected error from Get-HostManifest -Kind cursor: $($_.Exception.Message)"
+        Write-Fail "Unexpected error from Get-HostManifest -Kind nonexistenthost: $($_.Exception.Message)"
     }
 }
 Write-Pass "Get-HostManifest -Kind <unknown> throws with clear error"
@@ -128,6 +130,7 @@ $expectedFunctionNames = @{
     'claude|ConvertFlag'              = 'ConvertTo-ClaudeFlag'
     'codex|TestRuntimeInstalled'      = 'Test-CodexRuntimeInstalled'
     'antigravity|GetSignals'          = 'Get-AntigravitySignals'
+    'cursor|InstallCrewRuntime'       = 'Install-CursorCrewRuntime'
 }
 foreach ($kv in $expectedFunctionNames.GetEnumerator()) {
     $parts = $kv.Key -split '\|'
@@ -139,7 +142,7 @@ foreach ($kv in $expectedFunctionNames.GetEnumerator()) {
 Write-Pass "Resolve-HostHandler returns correct per-host function names for all 4 hosts"
 
 # Test 10: Invoke-HostHandler dispatches the right per-host launch invocation
-foreach ($kind in @('copilot', 'claude', 'codex', 'antigravity')) {
+foreach ($kind in @('copilot', 'claude', 'codex', 'antigravity', 'cursor')) {
     $invocation = Invoke-HostHandler -Kind $kind -ContractFunction NewLaunchInvocation -Arguments @{
         ProjectPath = 'C:\proj'
         Prompt      = 'BOOT'
@@ -196,8 +199,8 @@ foreach ($kind in @('copilot', 'claude', 'codex')) {
 }
 Write-Pass "Per-host launch-invocation argv matches legacy Get-SpecrewHostLaunchInvocation across 12 permutations (3 hosts × 4 flag combinations)"
 
-# Test 12: Per-host flag translation parity with legacy Get-HostFlagTranslation (3 hosts in legacy switch)
-foreach ($kind in @('copilot', 'claude', 'codex', 'antigravity')) {
+# Test 12: Per-host flag translation parity — Get-HostFlagTranslation shim vs registry handler
+foreach ($kind in @('copilot', 'claude', 'codex', 'antigravity', 'cursor')) {
     foreach ($flag in @('--remote', '--allow-all', '--autopilot')) {
         $legacy = Get-HostFlagTranslation -HostKind $kind -SpecrewFlag $flag
         $package = Invoke-HostHandler -Kind $kind -ContractFunction ConvertFlag -Arguments @{ SpecrewFlag = $flag }
@@ -209,7 +212,7 @@ foreach ($kind in @('copilot', 'claude', 'codex', 'antigravity')) {
         }
     }
 }
-Write-Pass "Per-host flag-translation matches legacy Get-HostFlagTranslation across 12 cells (4 hosts × 3 flags)"
+Write-Pass "Per-host flag-translation matches Get-HostFlagTranslation across 15 cells (5 hosts × 3 flags)"
 
 # Test 13: Unknown contract function throws
 try {
