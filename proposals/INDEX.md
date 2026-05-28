@@ -44,7 +44,7 @@ Proposals whose features have shipped to main and are part of Specrew's current 
 | [046](046-auto-render-dashboard-at-closeout.md) | Auto-Render Dashboard at Iteration & Feature Closeout — auto-render slice ONLY (boundary-sync writes `iterations/<NNN>/dashboard.md` + `closeout-dashboard.md`); roadmap-aware drill-down + trap-reapplication summary + cross-iteration diff remain candidate | fix-bundle `162bcdb9` (v0.26.0 — partially-shipped) | phase-2 | 2 (shipped slice) |
 | [057](057-roadmap-spine-input-adapter-pattern.md) | Roadmap Spine + Input Adapter Pattern — stub-bootstrap slice ONLY (`specrew init` writes minimal `.specrew/roadmap.yml`); full input-adapter system (manual / GitHub Issues / Linear / etc.) remains candidate | fix-bundle `162bcdb9` (v0.26.0 — partially-shipped) | phase-3 | 1 (shipped slice) |
 
-## Draft (19)
+## Draft (20)
 
 Proposals with full source-spec content, ready for `/speckit.specify` ingestion when prioritized.
 
@@ -70,6 +70,7 @@ Proposals with full source-spec content, ready for `/speckit.specify` ingestion 
 | [105](105-host-native-hook-deployment.md) | Host-Native Hook Deployment for Runtime Boundary Enforcement | phase-2 | 12-18 | **HIGH PRIORITY (Tier 1)** — promoted candidate → draft 2026-05-26 after F-046 v0.27.2 Antigravity incident bypassed 4 sequential human-approval gates (commits `0857e319 → f6155e54`) in a single session despite F-039 cooperative enforcement being active. Hooks at PreToolUse / SubagentStart / Stop on Claude + Antigravity elevate F-039 from cooperative-prose-based to runtime-enforced. Codex hook deployment deferred until Codex hook surface is documented; Copilot has no hook surface. Composes with 065 / 069 / 100 / 104 / 024. |
 | [055](055-always-in-flow-bug-fix-lifecycle.md) | Always-In-Flow Discipline + Slice-Type Catalog (Including Bug-Fix Lifecycle) | phase-2 | 22 | **HIGH PRIORITY (Tier 1)** — promoted candidate → draft 2026-05-26 after 4 empirical instances (2026-05-18 trial-project + 2026-05-25 Antigravity dice-app + 2026-05-25 Copilot dice-app + 2026-05-26 F-046 bug-bash). Catalog extended 7→9 slice types: added **bug-bash** (formalizing F-046 pattern with running `findings.md` + per-bug commits + retro discussing bug-classes) and **enabler** (formalizing 2026-05-26 PlanningPoC DWG-anonymizer mid-feature discovery with pause / extend / defer-with-workaround decision framework). Interim 4-pattern default (chore / small-fix / bug-bash / emergency) documented for use-until-ships. Comparative-methodology research targets (Scrum, SAFe, Kanban, XP, DA, Lean) queued for v2 catalog refinement. |
 | [060](060-prerelease-channel-staging.md) | PSGallery Prerelease Channel + Universal Beta-Before-Stable Mandate | phase-2 | 5-7 | **HIGH PRIORITY (Tier 1)** — promoted candidate → draft 2026-05-26 after user direction flipped this from stage-dependent + per-feature opt-in to universal mandate. Trigger: v0.27.3 shipped directly to PSGallery stable without exercising the install path; new policy is "every feature publishes -beta.N first, manual test, then promote." Workflow primitives already landed in F-023 (`f119e4a`); F-048 iteration 001 implements policy/docs/coordinator-handoff/test scope for Steps 5-14 and the explicit PASS gate. Remaining proposal scope: `specrew update --self --allow-prerelease`, prerelease banner/version-surface polish, optional validator rule. F-048 iteration 002 release-audit automation is separate and not claimed by iteration 001. Standing rule [[feedback-beta-publish-before-stable-2026-05-26]]. |
+| [141](141-capability-dial-persona-lens-separation.md) | Crew Interaction Profile / Persona Lens Separation - keep internal persona lens IDs stable while reframing first-run expertise prompts and profile summaries as interaction-level settings for how much the Crew should ask, explain, recommend, or auto-decide; durable shared agent instructions point to the current user's profile instead of hard-coding values; surface the resolved current user's profile as soft collaboration guidance for all agents while keeping `/speckit.specify` as the hard-applied behavior | phase-2 | 6-8 | Promoted to draft for the F-049 Iteration 005 planning refresh. |
 
 ## Candidate (87)
 
@@ -194,7 +195,7 @@ For roadmap-style viewing, proposals grouped by phase placement:
 - 073 (Review Evidence Integrity — shipped as feature-028)
 - 079 (Version Information Supported-vs-Latest — shipped as small-fix slice in v0.24.2 bundle)
 - 074 (Code Commentary Standards — draft, queue after 073)
-- 013, 014, 015, 017, 018, 019, 020, 021, 022, 023, 027, 028, 029, 037, 038, 042, 044, 045, 046, 047, 048, 049, 050, 051, 053, 054, 056, 059, 060, 061, 062, 071, 077, 078, 080, 081, 082, 091, 093, 094, 095, 097, 098, 101, 104, 106 (candidates)
+- 013, 014, 015, 017, 018, 019, 020, 021, 022, 023, 027, 028, 029, 037, 038, 042, 044, 045, 046, 047, 048, 049, 050, 051, 053, 054, 056, 059, 060, 061, 062, 071, 077, 078, 080, 081, 082, 091, 093, 094, 095, 097, 098, 101, 104, 106, 141 (candidates)
 
 **Phase 3** (refactor + maintainability + upstream reconciliation + extensibility):
 
