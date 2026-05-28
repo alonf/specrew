@@ -2,7 +2,7 @@
 
 **Schema**: v1
 **Spec**: [../../spec.md](../../spec.md)
-**Status**: executing
+**Status**: reviewing
 **Capacity**: 6/20 story_points
 **Started**: 2026-05-28
 **Completed**:
@@ -37,16 +37,16 @@ Iteration 001 scope = core package + skill target. FR-005/006/007 (tests) → it
 
 | Task | Title | Requirement | Story | Effort | Owner | Owner File Globs | Status | Agent | Actual | Verdict |
 | ---- | ----- | ----------- | ----- | ------ | ----- | ---------------- | ------ | ----- | ------ | ------- |
-| T001 | Author `host.psd1` manifest | FR-001, FR-009, FR-010, FR-011 | US1 | 0.5 | Implementer | `hosts/cursor/host.psd1` | planned | claude | — | — |
-| T002 | `New-CursorLaunchInvocation` + unit test | FR-002, FR-009, FR-011 | US1 | 1 | Implementer | `hosts/cursor/handlers.ps1`, `tests/hosts/cursor.tests.ps1` | planned | claude | — | — |
-| T003 | `ConvertTo-CursorFlag` + unit test | FR-002 | US1 | 0.5 | Implementer | `hosts/cursor/handlers.ps1`, `tests/hosts/cursor.tests.ps1` | planned | claude | — | — |
-| T004 | `Test-CursorRuntimeInstalled` + unit test | FR-002 | US1 | 0.5 | Implementer | `hosts/cursor/handlers.ps1`, `tests/hosts/cursor.tests.ps1` | planned | claude | — | — |
-| T005 | `Get-CursorSignals` + unit test | FR-002 | US1 | 0.5 | Implementer | `hosts/cursor/handlers.ps1`, `tests/hosts/cursor.tests.ps1` | planned | claude | — | — |
-| T006 | `Install-CursorCrewRuntime` (→.cursor/rules/*.mdc, dry-run, idempotent) + unit test | FR-002, FR-010 | US3 | 1 | Implementer | `hosts/cursor/handlers.ps1`, `tests/hosts/cursor.tests.ps1` | planned | claude | — | — |
-| T007 | Author `coordinator-rules.psd1` | FR-001 | US1 | 0.25 | Implementer | `hosts/cursor/coordinator-rules.psd1` | planned | claude | — | — |
-| T008 | Add cursor entry to `Get-ActiveSkillRoots` | FR-003 | US2 | 0.5 | Implementer | `extensions/specrew-speckit/scripts/deploy-squad-runtime.ps1` | planned | claude | — | — |
-| T009 | Add `hosts/cursor/*` to `Specrew.psd1` FileList | FR-001 | US1 | 0.25 | Implementer | `Specrew.psd1` | planned | claude | — | — |
-| T010 | Verify registry discovery + manifest validity + firewall test green | FR-004 | US4 | 1 | Implementer | `tests/hosts/cursor.tests.ps1` | planned | claude | — | — |
+| T001 | Author `host.psd1` manifest | FR-001, FR-009, FR-010, FR-011 | US1 | 0.5 | Implementer | `hosts/cursor/host.psd1` | done | claude | — | pass |
+| T002 | `New-CursorLaunchInvocation` + unit test | FR-002, FR-009, FR-011 | US1 | 1 | Implementer | `hosts/cursor/handlers.ps1`, `tests/hosts/cursor.tests.ps1` | done | claude | — | pass |
+| T003 | `ConvertTo-CursorFlag` + unit test | FR-002 | US1 | 0.5 | Implementer | `hosts/cursor/handlers.ps1`, `tests/hosts/cursor.tests.ps1` | done | claude | — | pass |
+| T004 | `Test-CursorRuntimeInstalled` + unit test | FR-002 | US1 | 0.5 | Implementer | `hosts/cursor/handlers.ps1`, `tests/hosts/cursor.tests.ps1` | done | claude | — | pass |
+| T005 | `Get-CursorSignals` + unit test | FR-002 | US1 | 0.5 | Implementer | `hosts/cursor/handlers.ps1`, `tests/hosts/cursor.tests.ps1` | done | claude | — | pass |
+| T006 | `Install-CursorCrewRuntime` (→.cursor/rules/*.mdc, dry-run, idempotent) + unit test | FR-002, FR-010 | US3 | 1 | Implementer | `hosts/cursor/handlers.ps1`, `tests/hosts/cursor.tests.ps1` | done | claude | — | pass |
+| T007 | Author `coordinator-rules.psd1` | FR-001 | US1 | 0.25 | Implementer | `hosts/cursor/coordinator-rules.psd1` | done | claude | — | pass |
+| T008 | Add cursor entry to `Get-ActiveSkillRoots` | FR-003 | US2 | 0.5 | Implementer | `extensions/specrew-speckit/scripts/deploy-squad-runtime.ps1` | done | claude | — | pass |
+| T009 | Add `hosts/cursor/*` to `Specrew.psd1` FileList | FR-001 | US1 | 0.25 | Implementer | `Specrew.psd1` | done | claude | — | pass |
+| T010 | Verify registry discovery + manifest validity + firewall test green | FR-004 | US4 | 1 | Implementer | `tests/hosts/cursor.tests.ps1` | done | claude | — | pass |
 
 ## Effort Model
 
