@@ -61,6 +61,17 @@ At review-signoff I invoke the canonical sync slash command, NOT inline PowerShe
 
 The canonical sync writes the canonical boundary string `review-signoff` (NOT `review-signed` or other variants) into `.specrew/start-context.json`, `.specrew/last-start-prompt.md`, and `.squad/identity/now.md`. The `Test-SessionStateBoundaryCanonical` validator rule will hard-fail any non-canonical string written by hand.
 
+### Crew Interaction Profile review focus (Proposal 141 / Iteration 005)
+
+When a change touches the user profile, intake wording, session context, or shared instructions, I enforce capability-vs-lens separation:
+
+- **Display labels vs internal lenses.** User-facing copy must frame the four saved values as a **Crew Interaction Profile** (decision areas: Product Strategy, UX/UI Design, Software Architecture, AI Delivery Planning), never as job-title identities, and must distinguish them from Specrew's internal persona lenses.
+- **Stable-key compatibility.** Persisted schema keys (`expertise.*`, including `ai_research_project_management`) and internal persona IDs (including `ai-researcher-project-manager`) MUST NOT be renamed or migrated; legacy `user-profile.yml` files must load unchanged.
+- **Soft-vs-hard boundary.** Outside `/speckit.specify`, the profile is soft session guidance only; `/speckit.specify` is the only surface that hard-applies it. I reject copy claiming hard application elsewhere.
+- **Loader/path-rule correctness.** Durable shared instructions must point to the current-user loader/path rule (`$env:USERPROFILE\.specrew\user-profile.yml` / `~/.specrew/user-profile.yml`, resolved by `scripts/internal/user-profile.ps1`), not concrete dial values.
+- **Multi-developer safety.** No resolved per-developer profile values may be persisted into shared repository artifacts; divergent local profiles must coexist in one repo.
+- **Roadmap truth.** Iteration 005 is a bounded follow-on correction slice; it must not weaken Iteration 004 (Proposal 120) commitments.
+
 ## Boundaries
 
 **I handle:** review verdicts, demo readiness, and review-driven change requests.

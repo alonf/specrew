@@ -370,6 +370,44 @@ after the rollout cutover (historical pre-rollout iterations are grandfathered).
 
 Core iteration artifacts live under `specs/<feature>/iterations/<NNN>/`.
 
+## Crew Interaction Profile
+
+Your **Crew Interaction Profile** is a per-user setting that tells Specrew *how much to ask, explain,
+recommend, and auto-decide* across four decision areas: **Product Strategy**, **UX/UI Design**,
+**Software Architecture**, and **AI Delivery Planning**. Higher settings (7–10) get concise,
+expert-level questions and assume you make the call; lower or `auto` settings get more explanation,
+recommended defaults, and transparent auto-decisions.
+
+These four decision-area labels are **display only**. They are not job titles you must hold, and they
+do not rename Specrew's internal **persona lenses** — the four perspectives the intake engine applies
+to your request. The profile is your collaboration setting; the persona lenses are Specrew's internal
+analysis machinery.
+
+**Where it lives (loader/path rule).** The profile is resolved per current user from a local file —
+never from shared repository content:
+
+- **Windows**: `$env:USERPROFILE\.specrew\user-profile.yml`
+- **Unix (Linux/macOS)**: `~/.specrew/user-profile.yml`
+- Resolved by the shared loader `scripts/internal/user-profile.ps1`.
+
+Shared instructions and agent guidance always point to this loader/path rule rather than embedding a
+specific developer's dial values, so the profile stays current-user-specific.
+
+**Where it applies.** Outside `/speckit.specify`, the resolved profile is surfaced in session context
+as **soft** collaboration guidance for all agents — it is current-user runtime context, not shared
+project truth. `/speckit.specify` is the only surface that **hard-applies** it (to drive per-lens
+question depth and auto-decisions) in this release.
+
+**Multi-developer safety.** Because the profile lives in each developer's home directory and is never
+persisted into shared repository artifacts, two developers can work in the same repository with
+different local `user-profile.yml` files and each receives their own resolved guidance — with no shared
+repository changes and no profile-value collisions.
+
+Manage it with `/specrew-user-profile show | edit | reset`. It is created on first `specrew start` and
+reused across all Specrew projects. Legacy profiles created before this wording correction keep working
+unchanged: the same persisted keys and internal persona IDs remain valid; only the visible labels and
+explanatory text changed.
+
 ## 1. Planning
 
 Goal: produce a requirement-traceable plan before execution starts.
