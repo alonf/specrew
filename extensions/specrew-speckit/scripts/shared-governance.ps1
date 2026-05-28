@@ -3350,6 +3350,74 @@ function Test-SpecrewHandoffBlockPresent {
     return $false
 }
 
+function Add-SpecrewHandoffEvidence {
+    <#
+    .SYNOPSIS
+    Pillar 1 live producer (Proposal 120 / FR-018): append a boundary_event to
+    .specrew/handoff-evidence.json recording whether a === SPECREW HANDOFF === block accompanied a
+    boundary/lifecycle stop, so Test-HandoffEvidenceGovernance detects missing handoffs in REAL runs
+    rather than only against the synthesized F-047 fixture.
+
+    .DESCRIPTION
+    The coordinator passes its emitted handoff block via -HandoffText at boundary-sync time. An event
+    whose response_text lacks the sentinel surfaces a missing-handoff WARN. Idempotent per
+    (commit, boundary): re-syncing the same crossing replaces that event rather than duplicating, so a
+    later handoff-bearing sync supersedes an earlier empty one (and vice versa) — no stale false-pass.
+    #>
+    param(
+        [Parameter(Mandatory = $true)][string]$ProjectRoot,
+        [Parameter(Mandatory = $true)][string]$Boundary,
+        [AllowNull()][string]$Commit,
+        [AllowNull()][string]$HandoffText,
+        [AllowNull()][string]$RecordedAt
+    )
+
+    $resolvedRoot = Resolve-ProjectPath -Path $ProjectRoot
+    $specrewDir = Join-Path $resolvedRoot '.specrew'
+    if (-not (Test-Path -LiteralPath $specrewDir -PathType Container)) {
+        $null = New-Item -ItemType Directory -Path $specrewDir -Force
+    }
+    $evidencePath = Join-Path $specrewDir 'handoff-evidence.json'
+
+    $events = New-Object System.Collections.Generic.List[object]
+    if (Test-Path -LiteralPath $evidencePath -PathType Leaf) {
+        try {
+            $parsed = Get-Content -LiteralPath $evidencePath -Raw -Encoding UTF8 | ConvertFrom-Json -Depth 12
+            $existing = if ($parsed -is [array]) { $parsed }
+            elseif ($null -ne $parsed -and $null -ne $parsed.PSObject.Properties['boundary_events']) { $parsed.boundary_events }
+            else { @() }
+            foreach ($e in @($existing)) { if ($null -ne $e) { $events.Add($e) | Out-Null } }
+        }
+        catch {
+            # Corrupt evidence file: start fresh (the detector warns separately on unreadable input).
+        }
+    }
+
+    $commitValue = if ([string]::IsNullOrWhiteSpace($Commit)) { '' } else { $Commit.Trim() }
+    $recordedValue = if ([string]::IsNullOrWhiteSpace($RecordedAt)) { (Get-Date).ToUniversalTime().ToString('yyyy-MM-ddTHH:mm:ssZ') } else { $RecordedAt.Trim() }
+    $textValue = if ($null -eq $HandoffText) { '' } else { [string]$HandoffText }
+    $hasBlock = Test-SpecrewHandoffBlockPresent -CommitMessage $textValue
+
+    $filtered = New-Object System.Collections.Generic.List[object]
+    foreach ($e in $events) {
+        $ec = ''; $eb = ''
+        $pc = $e.PSObject.Properties['commit']; if ($pc) { $ec = [string]$pc.Value }
+        $pb = $e.PSObject.Properties['boundary']; if ($pb) { $eb = [string]$pb.Value }
+        if ($ec -eq $commitValue -and $eb -eq $Boundary) { continue }
+        $filtered.Add($e) | Out-Null
+    }
+    $filtered.Add([pscustomobject][ordered]@{
+            commit          = $commitValue
+            boundary        = $Boundary
+            response_text   = $textValue
+            handoff_present = $hasBlock
+            recorded_at     = $recordedValue
+        }) | Out-Null
+
+    $payload = [ordered]@{ schema = 'v1'; boundary_events = @($filtered.ToArray()) }
+    $payload | ConvertTo-Json -Depth 12 | Set-Content -LiteralPath $evidencePath -Encoding UTF8
+}
+
 function Test-ReviewCitedFilesInTree {
     <#
     .SYNOPSIS

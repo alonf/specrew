@@ -940,7 +940,10 @@ function Invoke-SpecrewBoundaryStateSync {
         [string]$IdentityActiveIssues,
 
         [AllowNull()]
-        [string]$IdentityBody
+        [string]$IdentityBody,
+
+        [AllowNull()]
+        [string]$HandoffText
     )
 
     $aliasMap = @{
@@ -1131,6 +1134,17 @@ function Invoke-SpecrewBoundaryStateSync {
     Update-SpecrewMarkdownStateFile -Path $paths.IdentityPath -SessionState $sessionState -DefaultBody (Get-SpecrewIdentityBody -SessionState $sessionState) -AdditionalFrontmatter $identityAdditionalFrontmatter -PreferredBody $IdentityBody -UsePreferredBody:(-not [string]::IsNullOrWhiteSpace($IdentityBody)) -SchemaVersion 'v1'
 
     Add-SpecrewBoundarySyncLedgerEntry -ProjectRoot $paths.ProjectRoot -SessionState $sessionState
+
+    # Pillar 1 live producer (Proposal 120 / FR-018): record a boundary_event capturing whether a
+    # === SPECREW HANDOFF === block accompanied this stop, so Test-HandoffEvidenceGovernance detects
+    # missing handoffs in REAL lifecycle runs (not only fixtures). The coordinator passes its emitted
+    # handoff block via -HandoffText; a sync without it records an empty event -> missing-handoff WARN.
+    try {
+        Add-SpecrewHandoffEvidence -ProjectRoot $paths.ProjectRoot -Boundary $BoundaryType -Commit $effectiveAuthCommitHash -HandoffText $HandoffText
+    }
+    catch {
+        Write-Warning ("Boundary sync '{0}' could not record handoff evidence: {1}" -f $BoundaryType, $_.Exception.Message)
+    }
 
     # Proposal 085: append to the closed-iteration index at iteration-closeout
     # boundary (idempotent on re-sync). Validator full-repo path uses this to
