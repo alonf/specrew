@@ -3715,7 +3715,7 @@ if (-not (Test-UserProfileExists)) {
     Write-Host "First-time setup: Configuring your Crew Interaction Profile..." -ForegroundColor Cyan
     Write-Host ""
     
-    $expertiseDials = Invoke-FirstRunExpertisePrompt -NonInteractive:$false
+    $expertiseDials = Invoke-FirstRunExpertisePrompt -NonInteractive:([Console]::IsInputRedirected)
     Save-UserProfile -ExpertiseDials $expertiseDials
     
     Write-Host ""

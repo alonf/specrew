@@ -270,3 +270,7 @@ jobs:
       - name: Validation contract lane
         shell: pwsh
         run: ./tests/integration/validation-contract-lane.ps1
+
+      - name: Start-command non-interactive first-run regression
+        shell: pwsh
+        run: ./tests/integration/start-command-non-interactive-first-run.tests.ps1
