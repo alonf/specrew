@@ -105,4 +105,24 @@ finally {
 }
 Write-Pass "Get-CursorSignals returns set Cursor env-var names (detects CURSOR_TRACE_ID)"
 
+# ---------------------------------------------------------------------------
+# Real-binary fixture (F-050 iter-002 / FR-005) — skip-guarded when cursor-agent absent
+# ---------------------------------------------------------------------------
+$cursorCmd = Get-Command 'cursor-agent' -ErrorAction SilentlyContinue
+if ($null -eq $cursorCmd) {
+    Write-Host "SKIP: cursor-agent not on PATH — skipping real-binary version-probe fixture" -ForegroundColor Yellow
+}
+else {
+    $versionOut = & cursor-agent --version 2>&1 | Select-Object -First 1
+    if ([string]::IsNullOrWhiteSpace([string]$versionOut)) {
+        Write-Fail "Real cursor-agent --version returned no output"
+    }
+    # New-CursorLaunchInvocation must resolve the real binary path when present
+    $realInv = New-CursorLaunchInvocation -ProjectPath 'C:\proj' -Prompt 'BOOT' -Agent 'Squad'
+    if ($realInv.Binary -notmatch 'cursor-agent') {
+        Write-Fail "With cursor-agent on PATH, launch Binary should reference it; got '$($realInv.Binary)'"
+    }
+    Write-Pass "Real cursor-agent fixture: --version responds ('$versionOut') and launch resolves the real binary"
+}
+
 Write-Host "`nCursor host package: all assertions pass" -ForegroundColor Green

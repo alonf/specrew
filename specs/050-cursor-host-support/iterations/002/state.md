@@ -1,16 +1,19 @@
 # Iteration State: 002
 
 **Schema**: v1
-**Last Completed Task**: (none)
-**Tasks Remaining**: (populate from plan.md)
+**Current Phase**: implement
+**Iteration Status**: executing
+**Last Completed Task**: T013
+**Tasks Remaining**: (iteration-002 complete; heading to review)
 **In Progress**: (none)
 **Baseline Ref**: 3aa22b360ef381c3cb8b2748f51251196e249221
-**Updated**: 2026-05-29T00:20:30Z
+**Updated**: 2026-05-29T00:30:00Z
 
 ## Execution Summary
 
-- Execution has not started yet.
-- This artifact was scaffolded before task execution so resume state can be updated after each task.
+- T011–T013 complete: real-`cursor-agent` version-probe fixture added to host-cursor.tests.ps1 (FR-005); new host-cursor-launch.tests.ps1 launch-path integration smoke (FR-006, exercises Get-SpecrewHostLaunchInvocation wrapper end-to-end + real-binary skip-guard); explicit cursor detection-matrix + launch-shape assertions in host-detection-ux.tests.ps1 (FR-007).
+- All host suites green (real-binary fixtures executed — cursor-agent on PATH); mechanical checks 0 findings.
+- No production code changes (test-only iteration).
 
 ## Notes
 

@@ -1,0 +1,11 @@
+{
+  "schemaVersion": "v1",
+  "featureRef": "specs/050-cursor-host-support/spec.md",
+  "iterationRef": "specs/050-cursor-host-support/iterations/002",
+  "generatedAt": "2026-05-29T00:29:34Z",
+  "generator": {
+    "name": "specrew-mechanical-checks",
+    "version": "0.27.5"
+  },
+  "findings": []
+}

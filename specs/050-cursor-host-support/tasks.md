@@ -28,7 +28,7 @@ Every task maps to ≥1 FR/SC. Every FR/SC has ≥1 task (see Traceability matri
 | --- | --- | --- | --- |
 | T011 | Harden `tests/integration/host-cursor.tests.ps1`: all 5 functions covered with BOTH mock and real-`cursor-agent` fixtures (real-binary cases skip-guarded when absent) | FR-005, SC-004 | `tests/integration/host-cursor.tests.ps1` |
 | T012 | Author `tests/integration/host-cursor-launch.tests.ps1` end-to-end smoke (skipped on CI without binary) | FR-006, SC-005 | `tests/integration/host-cursor-launch.tests.ps1` |
-| T013 | Update `tests/integration/multi-host-detection.tests.ps1` to include `cursor` in the probe matrix | FR-007 | `tests/integration/multi-host-detection.tests.ps1` |
+| T013 | Add explicit cursor detection-matrix + launch-shape assertions to `tests/integration/host-detection-ux.tests.ps1` (the real detection-matrix test; `multi-host-detection.tests.ps1` does not exist — DRIFT-003) | FR-007 | `tests/integration/host-detection-ux.tests.ps1` |
 
 ## Iteration 003 — Documentation + manual smoke
 

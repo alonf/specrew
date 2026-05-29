@@ -2,7 +2,7 @@
 
 **Schema**: v1
 **Spec**: [../../spec.md](../../spec.md)
-**Status**: planning
+**Status**: executing
 **Capacity**: 2.5/20 story_points
 **Started**: 2026-05-29
 **Completed**:
@@ -33,9 +33,9 @@ Iteration 002 = test-coverage hardening. FR-005 unit tests were already authored
 
 | Task | Title | Requirement | Story | Effort | Owner | Owner File Globs | Status | Agent | Actual | Verdict |
 | ---- | ----- | ----------- | ----- | ------ | ----- | ---------------- | ------ | ----- | ------ | ------- |
-| T011 | Add real-`cursor-agent` version-probe fixture (skip-guarded) to `host-cursor.tests.ps1` | FR-005 | US1 | 0.5 | Implementer | `tests/integration/host-cursor.tests.ps1` | planned | claude | — | — |
-| T012 | Author `tests/integration/host-cursor-launch.tests.ps1` launch-path integration smoke (skip-guarded without binary) | FR-006 | US1 | 1.5 | Implementer | `tests/integration/host-cursor-launch.tests.ps1` | planned | claude | — | — |
-| T013 | Ensure cursor appears in the detection matrix: add explicit cursor assertion to `host-detection-ux.tests.ps1` (host-registry + multi-host-launch-path already updated iter-001) | FR-007 | US4 | 0.5 | Implementer | `tests/integration/host-detection-ux.tests.ps1` | planned | claude | — | — |
+| T011 | Add real-`cursor-agent` version-probe fixture (skip-guarded) to `host-cursor.tests.ps1` | FR-005 | US1 | 0.5 | Implementer | `tests/integration/host-cursor.tests.ps1` | done | claude | — | pass |
+| T012 | Author `tests/integration/host-cursor-launch.tests.ps1` launch-path integration smoke (skip-guarded without binary) | FR-006 | US1 | 1.5 | Implementer | `tests/integration/host-cursor-launch.tests.ps1` | done | claude | — | pass |
+| T013 | Ensure cursor appears in the detection matrix: add explicit cursor assertion to `host-detection-ux.tests.ps1` (host-registry + multi-host-launch-path already updated iter-001) | FR-007 | US4 | 0.5 | Implementer | `tests/integration/host-detection-ux.tests.ps1` | done | claude | — | pass |
 
 ## Effort Model
 
