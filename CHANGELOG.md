@@ -4,6 +4,25 @@ Retroactive alpha release history for shipped Specrew features. `.specrew\config
 is the canonical source for the active version; this file records the feature
 baseline that each release number represents.
 
+## [0.28.0] - 2026-05-29
+
+### Added
+
+- **Feature 049 (Pipeline Hardening + Substantive Intake)** — five-iteration feature:
+  - **Proposal 120 — Five-Pillar Bypass Detection (Iteration 004, FR-018..FR-022)**: governance validation now detects (1) missing `=== SPECREW HANDOFF ===` evidence at boundary/lifecycle stops, with a live producer (`Add-SpecrewHandoffEvidence`) so it fires in real runs; (2) trigger-bypass artifact gaps vs generic missing-artifact failures; (3) canonical artifacts written to ephemeral host session-scratch; (4) boundary state-advances lacking matching human verdict history (validator WARN + sync hard-block, with the stale-ahead short-circuit repaired); (5) accepted review evidence citing production files absent from the cited Tree Under Review (`Test-ReviewEvidenceTreeIntegrity`, FAIL-gates iteration-closeout). Pillars 1–3 were certified from F-047; Pillars 4–5 completed here.
+  - **Proposal 141 — Crew Interaction Profile / Persona Lens Separation (Iteration 005, FR-032..FR-041)**: the four saved profile values are presented as a Crew Interaction Profile (decision areas: Product Strategy, UX/UI Design, Software Architecture, AI Delivery Planning), distinct from Specrew's internal persona lenses; surfaced as soft session guidance and hard-applied only in `/speckit.specify`; stable persisted keys + persona IDs preserved; multi-developer-safe loader/path rule.
+  - **Persona-driven `/speckit.specify` intake engine + data architecture + user-profile persistence (Iteration 003, FR-008..FR-011, FR-023..FR-031)**.
+  - **Docker pre-publish version-update verification harness (Iteration 1)** and **durable troubleshooting guide (Iteration 2)**.
+
+### Changed
+
+- `capacity_per_iteration` baseline formalized at **25** story points (was a temporary bump for F-049 Iteration 003, whose real 23.45 SP load proved 20 insufficient).
+
+### Known follow-ups (deferred carry-forward chores)
+
+- **Framework-fix slice**: B-001 (duplicate `Get-ObjectPropertyString` with `-Names` vs `-PropertyNames` — later shadows former) + A-001 (`Get-QualityEvidenceContent` StrictMode crash on the `| Gate | Target | Notes |` quality-gate convention, blocking scaffold/mechanical/reviewer-artifact generation).
+- **Validator hygiene slice**: grandfather closed iterations by their own stated capacity so a config-baseline change does not retroactively FAIL historical plans (currently 58 capacity-drift FAILs).
+
 ## [0.27.6] - 2026-05-26
 
 ### Added

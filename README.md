@@ -8,7 +8,7 @@
 # Specrew
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![Version](https://img.shields.io/badge/version-0.27.3-blue.svg)](.specrew/config.yml)
+[![Version](https://img.shields.io/badge/version-0.28.0-blue.svg)](.specrew/config.yml)
 [![Status: Alpha](https://img.shields.io/badge/status-alpha-orange.svg)](#status)
 
 **Governed agentic SDLC. Agents type — you decide.** Specrew is a methodology layer over [GitHub Spec Kit](https://github.com/github/spec-kit) that keeps the human in the loop at every decision boundary while letting AI agents do the work between boundaries. Works with GitHub Copilot, Claude Code, OpenAI Codex CLI, and Google Antigravity.
