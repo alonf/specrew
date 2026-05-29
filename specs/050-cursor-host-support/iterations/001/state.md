@@ -1,8 +1,8 @@
 # Iteration State: 001
 
 **Schema**: v1
-**Current Phase**: retro
-**Iteration Status**: retro
+**Current Phase**: complete
+**Iteration Status**: complete
 **Last Completed Task**: T010
 **Tasks Remaining**: (iteration-001 core slice complete; FR-006 integration smoke + FR-008 docs are iter-002/003)
 **In Progress**: (none — retro complete; awaiting iteration-closeout human verdict)
