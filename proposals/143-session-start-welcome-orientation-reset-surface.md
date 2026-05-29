@@ -114,6 +114,7 @@ A structured welcome message the coordinator emits at session start, BEFORE aski
 | recovery (stale state detected) | "Stale-state recovery menu (A/B/C)" with explicit explanation of what's stale |
 
 **Calibration labels** for dial settings (per Pillar 2 of Proposal 141):
+
 - 1-3 or `auto`: "needs guidance"
 - 4-7: "balanced"
 - 8-10: "expert-level"
