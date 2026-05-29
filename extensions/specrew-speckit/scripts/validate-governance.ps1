@@ -2966,7 +2966,9 @@ function Test-PlanEffortModel {
         [string[]]$PlanLines,
         [string]$Capacity,
         [hashtable]$IterationConfig,
-        [System.Collections.Generic.List[string]]$Errors
+        [System.Collections.Generic.List[string]]$Errors,
+        [AllowNull()][string]$IterationDirectory,
+        [AllowNull()][string]$ProjectRoot
     )
 
     $hasEffortModel = Test-HeadingPresent -Lines $PlanLines -Heading 'Effort Model'
@@ -3012,14 +3014,38 @@ function Test-PlanEffortModel {
         'Calibration Enabled'    = [string]$IterationConfig.calibration_enabled
     }
 
-    # Grandfather CLOSED iterations (Status complete | abandoned): their capacity reflects the
-    # iteration-config baseline AT THEIR TIME, not the current one. A later baseline change must NOT
-    # retroactively FAIL closed-iteration plans (closed iterations carry historical truth, not
-    # current-policy truth). For closed iterations the 'Capacity per Iteration' setting is grandfathered
-    # and the Capacity line is validated for self-consistency against the plan's own stated value
-    # (below) rather than the current config. Active / in-flight iterations still validate against config.
-    $iterationStatus = (Get-NormalizedKeyword (Get-MarkdownMetadataValue -Lines $PlanLines -Label 'Status'))
-    $isClosedIteration = $iterationStatus -in @('complete', 'abandoned')
+    # Grandfather CLOSED iterations: their capacity reflects the iteration-config baseline AT THEIR
+    # TIME, not the current one. A later baseline change must NOT retroactively FAIL closed-iteration
+    # plans (closed iterations carry historical truth, not current-policy truth). For closed iterations
+    # the 'Capacity per Iteration' setting is grandfathered and the Capacity line is validated for
+    # self-consistency against the plan's own stated value (below) rather than the current config.
+    # Active / in-flight iterations still validate against config.
+    #
+    # Closedness is detected from the DURABLE closeout signal, not plan status alone: the authoritative
+    # Proposal-085 closed-iteration index (.specrew/closed-iterations.yml) is checked first, then a
+    # broadened terminal/closed plan-Status pattern as a fallback for not-yet-indexed closed plans. The
+    # historical corpus uses several closed status forms (complete, abandoned, closed, retro-complete,
+    # retrospective-complete, closeout/closure complete) — all are grandfathered; in-flight statuses
+    # (planning, executing, reviewing, retro) are NOT.
+    $iterationStatus = ([string](Get-MarkdownMetadataValue -Lines $PlanLines -Label 'Status')).Trim().ToLowerInvariant()
+    $closedStatusPattern = '^(complete|completed|abandoned|closed|done|retro[-\s]?complete|retrospective[-\s]?complete|closeout[-\s]?complete|closure[-\s]?complete)$'
+    $isClosedIteration = ($iterationStatus -match $closedStatusPattern) -or (Test-ClosedIterationStatus -IterationStatus $iterationStatus)
+
+    # Authoritative durable signal: the iteration is recorded in the Proposal-085 closed-iteration
+    # index (.specrew/closed-iterations.yml), keyed by "<feature-slug>/<iteration>".
+    if (-not $isClosedIteration -and -not (Test-IsNullish $IterationDirectory) -and -not (Test-IsNullish $ProjectRoot)) {
+        try {
+            $relIterationPath = ([System.IO.Path]::GetRelativePath($ProjectRoot, $IterationDirectory)) -replace '\\', '/'
+            if ($relIterationPath -match 'specs/([^/]+)/iterations/([^/]+)/?$') {
+                if (Test-SpecrewIterationClosed -ProjectRoot $ProjectRoot -Feature $Matches[1] -Iteration $Matches[2]) {
+                    $isClosedIteration = $true
+                }
+            }
+        }
+        catch {
+            # Index unavailable / unreadable — fall back to status-only detection (no grandfathering).
+        }
+    }
 
     foreach ($expectedSetting in $expectedValues.Keys) {
         if (-not $rowMap.ContainsKey($expectedSetting)) {
@@ -3692,7 +3718,7 @@ function Test-IterationGovernance {
     Test-Phase2HardeningGate -IterationDirectory $IterationDirectory -ProjectRoot $ProjectRoot -PlanLines $planLines -IterationStatus $status -Errors $errors
 
     $iterationConfig = Get-IterationConfigForValidation -IterationDirectory $IterationDirectory
-    Test-PlanEffortModel -PlanLines $planLines -Capacity $capacity -IterationConfig $iterationConfig -Errors $errors
+    Test-PlanEffortModel -PlanLines $planLines -Capacity $capacity -IterationConfig $iterationConfig -Errors $errors -IterationDirectory $IterationDirectory -ProjectRoot $ProjectRoot
     Test-PlanningCapacity -IterationDirectory $IterationDirectory -Status $status -Capacity $capacity -Tasks $tasks -IterationConfig $iterationConfig -Errors $errors
 
     $taskStatuses = $tasks | ForEach-Object { $_.Status.Trim().ToLowerInvariant() }

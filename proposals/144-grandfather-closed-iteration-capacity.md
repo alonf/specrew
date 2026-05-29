@@ -18,8 +18,20 @@ truth, so enforcing the current config against them is incorrect. Mass-editing d
 
 ## Fix
 
-In `Test-PlanEffortModel`, detect closed iterations from the plan's `**Status**:` metadata
-(`complete` | `abandoned`) and **grandfather** their capacity:
+In `Test-PlanEffortModel`, detect closed iterations from the **durable closeout signal** — not plan
+status text alone — and **grandfather** their capacity. Closedness is established by either:
+
+1. **The authoritative Proposal-085 closed-iteration index** (`.specrew/closed-iterations.yml`), keyed
+   `<feature-slug>/<iteration>` and checked via `Test-SpecrewIterationClosed` (the iteration path +
+   project root are now threaded into `Test-PlanEffortModel`); **or**
+2. **A broadened terminal/closed plan-`**Status**:` pattern** — `complete` | `completed` | `abandoned` |
+   `closed` | `done` | `retro-complete` | `retrospective-complete` | `closeout-complete` |
+   `closure-complete` (covers the non-canonical closed status forms the historical corpus uses, e.g.
+   `retro-complete`), plus `Test-ClosedIterationStatus`.
+
+Detecting only `complete`/`abandoned` was too narrow: many historical `/20` plans use status forms like
+`retro-complete` and several closed iterations are recorded only in the index, so a status-only check
+left residual FAILs. With both signals, grandfathering applies whenever an iteration is genuinely closed:
 
 - The `Capacity per Iteration` Effort Model setting is **not** compared to the current config for closed
   iterations.
@@ -34,8 +46,15 @@ Mirrored byte-identical to `.specify/extensions/specrew-speckit/scripts/validate
 
 - A closed iteration (`Status: complete`) with `Capacity per Iteration: 20` + `Capacity: 20/20` under
   `capacity_per_iteration: 25` produces **no** capacity-vs-config FAIL.
-- An active iteration (`Status: planning`) with the same drift **still** FAILs against the current config.
-- Covered by `tests/integration/capacity-grandfather-closed-iterations.tests.ps1`.
+- A closed iteration using a **historical status form** (`Status: retro-complete`) under the same drift
+  is also grandfathered (**no** FAIL).
+- An iteration recorded in `.specrew/closed-iterations.yml` is grandfathered **even when its plan
+  `Status` is a non-terminal form** (e.g. `reviewing`).
+- An active iteration (`Status: planning`, not in the index) with the same drift **still** FAILs against
+  the current config.
+- Empirically: with `capacity_per_iteration: 25` on the real corpus, residual closed-iteration
+  capacity-vs-config FAILs drop from 58 → 0; active-iteration enforcement is unchanged.
+- Covered by `tests/integration/capacity-grandfather-closed-iterations.tests.ps1` (four cases above).
 
 ## Composition
 

@@ -133,6 +133,44 @@ if ($activeText -notmatch $capacityVsConfigPattern) {
 }
 Write-Pass 'Active iteration with capacity 20 under config 25 still FAILs the capacity-vs-config check (config enforced for in-flight work)'
 
+# --- Closed via HISTORICAL plan-Status form (retro-complete): the corpus uses non-canonical closed
+#     status forms; grandfathering must detect them, not only 'complete'/'abandoned'. ---
+$retroRoot = Join-Path $scratchRoot 'retro-complete-project'
+$retroIter = Join-Path $retroRoot 'specs\017-sample\iterations\002'
+$null = New-Item -ItemType Directory -Path $retroIter -Force
+New-FixtureProject -Root $retroRoot
+New-EffortModelPlan -IterationDir $retroIter -Status 'retro-complete' -Capacity '20/20 story_points' -Completed '2026-05-01'
+$retroText = Get-ValidatorText -Root $retroRoot -IterationDir $retroIter
+if ($retroText -match $capacityVsConfigPattern) {
+    Write-Fail "Closed iteration with historical plan Status 'retro-complete' (capacity 20, config 25) still FAILED the capacity-vs-config check; broadened status grandfathering did not apply."
+    Write-Host $retroText
+    exit 1
+}
+Write-Pass "Closed iteration with historical plan Status 'retro-complete' is grandfathered (broadened closed-status detection)"
+
+# --- Closed via the DURABLE closed-iteration INDEX while plan Status is a non-terminal form
+#     (reviewing): .specrew/closed-iterations.yml is the authoritative closeout signal and must
+#     grandfather even when the plan Status text does not look closed. ---
+$indexRoot = Join-Path $scratchRoot 'closed-index-project'
+$indexIter = Join-Path $indexRoot 'specs\017-sample\iterations\002'
+$null = New-Item -ItemType Directory -Path $indexIter -Force
+New-FixtureProject -Root $indexRoot
+New-EffortModelPlan -IterationDir $indexIter -Status 'reviewing' -Capacity '20/20 story_points' -Completed ''
+@'
+# Specrew closed-iteration index (Proposal 085).
+closed:
+  - feature: 017-sample
+    iteration: 002
+    closed_at: 2026-05-01T00:00:00Z
+'@ | Set-Content -LiteralPath (Join-Path $indexRoot '.specrew\closed-iterations.yml') -Encoding UTF8
+$indexText = Get-ValidatorText -Root $indexRoot -IterationDir $indexIter
+if ($indexText -match $capacityVsConfigPattern) {
+    Write-Fail "Iteration recorded in .specrew/closed-iterations.yml (plan Status 'reviewing', capacity 20, config 25) still FAILED the capacity-vs-config check; durable closed-index grandfathering did not apply."
+    Write-Host $indexText
+    exit 1
+}
+Write-Pass 'Iteration closed via the durable closed-iteration index is grandfathered even when plan Status is non-terminal'
+
 if (Test-Path -LiteralPath $scratchRoot) { Remove-Item -LiteralPath $scratchRoot -Recurse -Force -ErrorAction SilentlyContinue }
 Write-Pass 'Capacity grandfathering: closed iterations use their own stated capacity; active iterations enforce current config'
 exit 0
