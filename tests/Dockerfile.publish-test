@@ -14,6 +14,12 @@
 
 FROM mcr.microsoft.com/powershell:lts-ubuntu-22.04
 
+# git is required by the harness Phases 4-5 (specrew init/update perform git
+# operations); the minimal PowerShell base image does not include it.
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends git \
+    && rm -rf /var/lib/apt/lists/*
+
 # Install baseline Specrew v0.27.6 from PSGallery as the reference version
 RUN pwsh -Command "Install-Module -Name Specrew -RequiredVersion 0.27.6 -Repository PSGallery -Scope AllUsers -Force -AllowClobber"
 
