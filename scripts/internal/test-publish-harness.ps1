@@ -89,7 +89,7 @@ $presentFiles = @()
 
 foreach ($relativePath in $fileList) {
     # Normalize path separators for cross-platform compatibility
-    $normalizedPath = $relativePath -replace '/', '\'
+    $normalizedPath = $relativePath -replace '\\', '/'
     $fullPath = Join-Path -Path $CandidatePath -ChildPath $normalizedPath
     
     if (Test-Path -LiteralPath $fullPath) {
@@ -115,7 +115,7 @@ Write-Pass "FileList integrity check PASSED. All $($fileList.Count) files exist 
 
 Write-Section "Phase 3: Version Pin Drift Detection (Prop 134)"
 
-$configPath = Join-Path -Path $CandidatePath -ChildPath '.specrew\config.yml'
+$configPath = Join-Path -Path $CandidatePath -ChildPath '.specrew/config.yml'
 if (-not (Test-Path -LiteralPath $configPath)) {
     Write-Fail ".specrew/config.yml not found in candidate." "Expected: $configPath"
     exit 1
@@ -150,7 +150,7 @@ Write-Pass "Version pin check PASSED. Config and manifest are synchronized at ve
 Write-Section "Phase 4: Test Project Initialization"
 
 # Create a clean test project directory
-$testProjectPath = Join-Path -Path $env:TEMP -ChildPath "specrew-test-$(Get-Random)"
+$testProjectPath = Join-Path -Path ([System.IO.Path]::GetTempPath()) -ChildPath "specrew-test-$(Get-Random)"
 New-Item -ItemType Directory -Path $testProjectPath -Force | Out-Null
 Write-Host "Created test project at: $testProjectPath"
 
@@ -173,7 +173,7 @@ try {
     }
     
     # Verify baseline layout
-    $baselineConfigPath = Join-Path -Path $testProjectPath -ChildPath '.specrew\config.yml'
+    $baselineConfigPath = Join-Path -Path $testProjectPath -ChildPath '.specrew/config.yml'
     if (-not (Test-Path -LiteralPath $baselineConfigPath)) {
         Write-Fail "Baseline .specrew/config.yml not created by init"
         exit 1
@@ -225,7 +225,7 @@ try {
     }
     
     # Verify updated config reflects candidate version
-    $updatedConfigPath = Join-Path -Path $testProjectPath -ChildPath '.specrew\config.yml'
+    $updatedConfigPath = Join-Path -Path $testProjectPath -ChildPath '.specrew/config.yml'
     $updatedConfigContent = Get-Content -LiteralPath $updatedConfigPath -Raw -Encoding UTF8
     
     if ($updatedConfigContent -match 'specrew_version:\s*["'']?([0-9]+\.[0-9]+\.[0-9]+)["'']?') {
@@ -247,7 +247,7 @@ try {
     
     foreach ($relativePath in $fileList) {
         # Normalize path separators
-        $normalizedPath = $relativePath -replace '/', '\'
+        $normalizedPath = $relativePath -replace '\\', '/'
         
         # Check in candidate source first (not all files deploy to projects)
         $candidateFullPath = Join-Path -Path $CandidatePath -ChildPath $normalizedPath
@@ -271,7 +271,7 @@ try {
     Write-Pass "FileList integrity validated after update transition"
     
     # Verify no duplicate Squad entries (FR-013 regression check)
-    $teamPath = Join-Path -Path $testProjectPath -ChildPath '.squad\team.md'
+    $teamPath = Join-Path -Path $testProjectPath -ChildPath '.squad/team.md'
     if (Test-Path -LiteralPath $teamPath) {
         $teamContent = Get-Content -LiteralPath $teamPath -Raw -Encoding UTF8
         $teamLines = $teamContent -split "`n" | Where-Object { $_.Trim() -match '^\|' -and $_ -notmatch '^\|\s*-' }

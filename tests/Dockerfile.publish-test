@@ -31,8 +31,10 @@ COPY . /candidate
 RUN mkdir -p /workspace/scripts/internal
 RUN cp /candidate/scripts/internal/test-publish-harness.ps1 /workspace/scripts/internal/ || true
 
-# Set execution policy for PowerShell scripts
-RUN pwsh -Command "Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser -Force"
+# NOTE: Set-ExecutionPolicy is intentionally NOT run here. This image is Linux
+# (lts-ubuntu-22.04) and PowerShell's execution-policy model is Windows-only —
+# `Set-ExecutionPolicy` throws "Operation is not supported on this platform" on Linux.
+# Scripts run via `pwsh -File` need no policy change on Linux.
 
 # Default command: run the publish harness test
 CMD ["pwsh", "-File", "/candidate/scripts/internal/test-publish-harness.ps1", "-CandidatePath", "/candidate"]
