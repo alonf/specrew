@@ -3,8 +3,8 @@ proposal: 078
 title: Handoff Conversation Quality at All Boundary Stops
 status: candidate
 phase: phase-2
-estimated-sp: 12-18
-discussion: empirical motivation expanded 2026-05-26 — added Pillar 2b (no internal Specrew identifiers in downstream user-facing prose), feature-closeout normal-path SDLC actions in Pillar 1, operational-pause taxonomy with 4 sub-cases, and Pillar 6 (What you can do with the system now demo-path section per 2026-05-26 PlanningPoC iter-002 user proposal); composes with 120 / 129 / 105
+estimated-sp: 14-22
+discussion: empirical motivation expanded 2026-05-26 — added Pillar 2b (no internal Specrew identifiers in downstream user-facing prose), feature-closeout normal-path SDLC actions in Pillar 1, operational-pause taxonomy with 4 sub-cases, and Pillar 6 (What you can do with the system now demo-path section per 2026-05-26 PlanningPoC iter-002 user proposal); 2026-05-28 amendment added Pillar 7 (Menu-First Boundary Conversation Loop — every gate offers fast verdict options + explicit conversation options keeping boundary pending until explicit verdict); composes with 120 / 129 / 105 / 102 / 140
 ---
 
 # Handoff Conversation Quality at All Boundary Stops
@@ -261,6 +261,60 @@ This would lift demo-path drafting from agent-charter prose discipline to runtim
 The two are mutually reinforcing — 129 establishes the methodology principle that iter-001 must span all layers thin and produce things that CAN be demoed; Pillar 6 operationalizes the discipline at the handoff layer so each iteration EXPLICITLY shows the demo-path. Bundle candidate: ship Pillar 6 + Proposal 129 walking-skeleton profile together as a "demoable-iteration discipline" bundle.
 
 Empirical motivation: 2026-05-26 PlanningPoC iter-002 shipped a UI loop; the human's natural product-owner question was "what can I run now?" — the methodology should answer that automatically every time. Memory `[[handoff-runnable-demo-path-section-2026-05-26]]` absorbed.
+
+### Pillar 7: Menu-First Boundary Conversation Loop (added 2026-05-28)
+
+Empirical motivation (F-049 iter-3 review-signoff + iteration-closeout cycles 2026-05-28): humans at boundary stops frequently want to ask questions about the work BEFORE deciding to approve/reject — but the current handoff structure (per Pillars 1-6) offers verdict options + "Other (specify)" + "More chat instructions" without an explicit conversation path that keeps the boundary pending. The "Other" option sounds like another verdict; "More chat instructions" exits the structured flow entirely. Humans either force a verdict prematurely, hit "Other" with confusion, or Ctrl+C out and converse outside the boundary loop. None of these preserve the "menu convenience + free-form conversation when needed" model that good in-person collaboration uses.
+
+**The model**: menu-first, conversation-open.
+
+Every boundary handoff offers two distinct option classes:
+
+| Option class | Purpose | Examples |
+|---|---|---|
+| **Verdict options** | Advance/halt/park the boundary | `approve`, `reject`, `park`, boundary-specific verbs |
+| **Conversation options** | Stay at the boundary; engage in dialog without forcing a verdict | `explain more`, `show evidence`, `let's talk`, `ask a question` |
+
+Plus the existing free-form text path (Pillar 3) and the existing `More chat instructions` escape (Pillar 3).
+
+**Crew classification of human response**:
+
+1. **Verdict** (matches verdict-option text or recognized verdict shape per `[[feedback-verdict-boundary-naming-2026-05-22]]`): advance/halt/park per the verdict
+2. **Question** (matches conversation-option text OR free-form question): answer the question, cite relevant files/lines/evidence, then return to the pending decision menu
+3. **Evidence request** (e.g., "show me the test output", "what does X file say"): inspect/read/run if safe + within scope; report back; return to pending decision menu
+4. **Guidance/correction** (e.g., "before I approve, check X" / "that assumption is wrong"): confirm whether this changes the work product (would require rework + rejection) or just informs the next pass; do NOT silently mutate artifacts based on conversational input
+5. **Boundary-state question** (e.g., "what boundary am I at?", "what happens if I park?"): explain the lifecycle position + consequences of each verdict option; return to pending decision menu
+
+**The invariant**: the boundary stays PENDING until the human gives an explicit canonical verdict. Conversation responses do not advance state; only verdicts do.
+
+**Closing pattern** for every non-verdict response:
+
+> The decision is still pending. You can `approve`, `reject`, `park`, ask another question, request evidence, or give guidance.
+
+This preserves flow without Ctrl+C, without "Other" confusion, and without forcing the user into a verdict before they understand the work. It also keeps Specrew safe — questions do not accidentally advance gates, and guidance does not silently mutate artifacts.
+
+**Composition with Pillar 3 (multiple-choice menu)**: Pillar 7 extends Pillar 3's option-set. Where Pillar 3 offered verdict options + "Other" + "More instructions," Pillar 7 adds explicit conversation options as first-class menu items. The full menu becomes:
+
+```text
+What I need from you:
+
+  1. approve — accept and advance to next boundary
+  2. reject — return to rework with concerns
+  3. park — pause here, preserve state
+  4. explain more — I'll unpack the evidence, risks, or tradeoffs
+  5. show evidence — I'll cite specific files, line numbers, test outputs
+  6. let's talk — switch to open conversation before you decide
+  7. Other (specify) — short alternative answer
+  8. More chat instructions — back to standard prompt for richer input
+
+Type 1-8, a verdict, a question, or a longer directive.
+```
+
+The user can pick a numbered option, type a verdict, type a free-form question, or pick "More chat instructions" to widen the input slot. Menu-first for convenience; conversation-open for substance.
+
+**Composition with Proposal 102 (Cross-Model Independent Reviewer)** and **Proposal 140 (Reviewer Instruction Surface)**: the conversation loop applies equally to commissioned reviewers. When a cross-reviewer surfaces findings or requests evidence, the same menu-first conversation pattern keeps the review boundary pending while the cross-reviewer dialogs with the primary reviewer or human.
+
+**Empirical motivation expanded**: F-049 iter-3 + iteration-closeout cycles (2026-05-28) demonstrated 3+ instances where the human wanted to ask "why did you make this choice?" or "did you verify X?" before deciding — and either had to force a verdict, choose "Other" awkwardly, or Ctrl+C. The conversation-loop pattern eliminates these failure modes. Captured in memory `[[cross-reviewer-3rd-empirical-instance-2026-05-28]]`.
 
 ## How (one-iteration plan)
 

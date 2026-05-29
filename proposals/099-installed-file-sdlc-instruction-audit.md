@@ -114,18 +114,33 @@ For each SDLC discipline I'd been carrying through paste prompts, I categorized 
 |---|---|---|
 | **Per-tool-call mechanical enforcement** | CORRECTLY MISSING (will mechanize) | This is exactly what F-039 ships. Installed files SHOULD remain silent on the mechanism (it should be invisible from the user-facing instruction layer) and load-bearing on the *contract* (recognized verdict shapes, where the audit trail lives, etc.). |
 
+### Cluster 8 — Reviewer Discipline (8 items, added 2026-05-28)
+
+Empirical motivation: F-049 iter-3 review-signoff (2026-05-28) demonstrated that an independent reviewer with explicit playbook context caught 4 substantive gaps (schema mismatch, broken auto path, SC-005 incomplete evidence, lifecycle artifact inconsistency) that single-reviewer Pillar 5 form check missed. The differentiator was review-context quality, not model quality. Reviewer agent today is structurally under-informed; the disciplines below live in `docs/methodology/{review-instructions,lifecycle-discipline,proposal-discipline}.md` shipped 2026-05-28 `01df228a` (human-facing) but don't reach the installed reviewer surface.
+
+| Discipline | Status | Evidence |
+|---|---|---|
+| **8-Shape Form-Without-Runtime-Compliance Catalog** | MISSING | Catalog lives in `docs/methodology/lifecycle-discipline.md` Shape Catalog section (shipped 2026-05-28 commit `01df228a`) but Reviewer agent has no installed-file surface that loads it. Reviewer learns shapes only via paste-prompt or external knowledge. **Closure**: Slice 4 — Reviewer Instruction Surface (parallel-tracked via Proposal 140). |
+| **Type-contract trace technique** | MISSING | Same. Critical empirical example: F-049 iter-3 auto path crash (`Cannot convert value "auto" to type "System.Int32"`) was caught by independent reviewer reading code paths + tracing type contracts; not visible to current Reviewer charter. **Closure**: Slice 4. |
+| **Schema-diff technique (implementation vs spec field names)** | MISSING | Same. Critical empirical example: F-049 iter-3 `user-profile.yml` schema mismatch — implementation wrote `schema_version`, `updated_at`, `expertise_dials`; spec required `schema`, `last_updated_at`, nested `expertise.*` + missing required fields. Five-distinct-field-name-or-presence drift; caught only by character-for-character schema diff. **Closure**: Slice 4. |
+| **Escape-hatch end-to-end verification** | MISSING | Same. F-049 iter-3 example: FR-023 "I'm new, you decide" escape hatch — tests passed because they invoked engine with hardcoded integer dials via parameter override; production codepath (profile-reading → engine call) crashes when user profile contains `auto`. Caught only by exercising escape hatch through production entry point, not just helper unit test. **Closure**: Slice 4. |
+| **Multi-altitude verification (Shape 8)** | MISSING | Named via PlanningPoC iter-005 → iter-007 cycle (2026-05-27 → 2026-05-28): single defect produces state at multiple altitudes (session-state + feature-state + test-fixture + production-code); single-altitude repair misses adjacent altitudes. Reviewer charter doesn't enforce. **Closure**: Slice 4. |
+| **Agent-diagnosis empirical verification** | MISSING | Reviewer charter doesn't enforce "require empirical confirmation before accepting agent diagnoses." Empirical instance: PlanningPoC iter-006 review boundary where host agent produced 3 sequential hallucinated root causes (UTF-8 Hebrew filename, CORS plus locked binary, library trial-mode corruption); each confidently presented; each wrong; actual root cause was 1-parameter missing on a `Save()` call discoverable in 30s by reading the production call site. **Closure**: Slice 4. |
+| **Cross-reviewer independence + playbook loading** | MISSING | Proposal 102 scope (Cross-Model Independent Reviewer). 102's independence claim is empty without a shared playbook — two ignorant reviewers do not produce structurally better review than one ignorant reviewer. Reviewer charter doesn't reference. **Closure**: Slice 4 ships the playbook; amendment to Proposal 102 (also 2026-05-28) mandates loading. |
+| **Verdict-shape boundary-naming discipline** | PARTIALLY PRESENT | `coordinator/specrew-governance.md` mentions ambiguous-verdict rejection (Cluster 1 above). Reviewer-specific verdict shapes (`accepted for review-signoff` vs `approved for X-boundary entry` vs `rejected for review-signoff with named gaps`) are not enumerated in `agents/reviewer/charter.md`. Reviewer learns shapes via paste-prompt scaffolding (per the original 2026-05-22 audit motivation). **Closure**: Slice 4 — playbook includes Verdict Format section with boundary-naming discipline + acceptable verdict shapes. |
+
 ## Summary
 
-Of ~20 SDLC disciplines audited:
+Of ~28 SDLC disciplines audited (was ~20 originally; +8 added 2026-05-28 via Cluster 8 Reviewer Discipline):
 
 - **PRESENT**: 7 (single-boundary verdict, continue semantics, .squad/decisions.md per boundary, boundary-name canonical strings, file:/// URL format, three-section handoff format, substantive WJD)
-- **PARTIALLY PRESENT**: 6 (exact verdict shape, 9-boundary list alignment, no-spillover, auto-resolve generalization, drift-log per verdict, mirror parity)
-- **MISSING**: 7 (ambiguous-verdict rejection, compound verdict syntax, reconciliation rule, done-condition lockdown, reconciliation report format, compound-verdict audit, "the Crew" vs "Squad" terminology)
+- **PARTIALLY PRESENT**: 7 (was 6; +1 from Cluster 8 verdict-shape boundary-naming) — exact verdict shape, 9-boundary list alignment, no-spillover, auto-resolve generalization, drift-log per verdict, mirror parity, reviewer verdict-shape boundary-naming
+- **MISSING**: 14 (was 7; +7 from Cluster 8) — ambiguous-verdict rejection, compound verdict syntax, reconciliation rule, done-condition lockdown, reconciliation report format, compound-verdict audit, "the Crew" vs "Squad" terminology, **8-Shape Catalog, type-contract trace, schema diff, escape-hatch end-to-end, multi-altitude verification, agent-diagnosis verification, cross-reviewer playbook loading**
 - **CORRECTLY MISSING (will mechanize)**: 1 (per-tool-call enforcement)
 
 ## Closure Plan
 
-Group the closure work into three slices, each ~2-3 SP:
+Group the closure work into four slices (was three originally; +Slice 4 added 2026-05-28):
 
 ### Slice 1 — Recognized Verdict Shapes catalog (post-F-039 ship)
 
@@ -159,6 +174,30 @@ If Proposal 096 doesn't activate downstream, this directive doesn't ship downstr
 
 Each refinement is 0.25-0.5 SP and easy to bundle.
 
+### Slice 4 — Reviewer Instruction Surface (added 2026-05-28; parallel-tracked via Proposal 140)
+
+Close all 7 MISSING + 1 PARTIALLY PRESENT items in Cluster 8 by shipping a reviewer playbook surface that the Reviewer agent loads at review-signoff:
+
+- Canonical installed default at `extensions/specrew-speckit/squad-templates/review/reviewer-instructions.md`
+- Project-local active copy at `.specrew/review/reviewer-instructions.md` (deployed by `specrew init` + `specrew update`; listed in `Specrew.psd1 FileList`)
+- Optional downstream/user overlay at `.specrew/review/reviewer-instructions.local.md` (additive, not overwriting)
+- Reviewer charter directive: "Before review-signoff, read `.specrew/review/reviewer-instructions.md` (+ `.local.md` overlay if present); state version(s) in `review.md` output"
+- Learning candidate pipeline: `review.md` "## Reviewer Instruction Candidates" subsection → `retro.md` "## Triage Reviewer Instruction Candidates" subsection → durable methodology / defect catalog / validator proposal / DEFER / DROP (codifies the channel that Proposal 017 amendment broadens)
+
+**Architectural note**: Slice 4 is parallel-tracked via standalone **Proposal 140 (Reviewer Instruction Surface — Project-Local Review Playbook + Learning Candidate Pipeline)** ~5-8 SP. Standalone proposal because empirical urgency from F-049 iter-3 favors fast delivery; this amendment integrates Slice 4 into the broader audit architecture. Proposal 140 ships the closure work; 099 names the gap.
+
+SP estimate stays 5-8 because Slice 4 work happens via Proposal 140; 099 amendment is documentation-only.
+
+Content sources for the playbook (single source of truth: `docs/methodology/{review-instructions,lifecycle-discipline,proposal-discipline}.md` shipped 2026-05-28 commit `01df228a`):
+
+- 8-Shape Form-Without-Runtime-Compliance Catalog
+- 5 spec-coverage verification techniques (schema diff, type-contract trace, escape-hatch end-to-end, SC-clause-by-clause audit, production-path-vs-test-path comparison)
+- Multi-altitude verification (Shape 8 closure)
+- Verifying Agent Diagnoses (against hallucination chains)
+- Verdict Format with boundary-naming discipline
+- Severity Guidance
+- Cross-Reviewer Recommendation triggers (composes with Proposal 102)
+
 ## Composition with Other Proposals
 
 | Proposal | Relationship |
@@ -168,6 +207,9 @@ Each refinement is 0.25-0.5 SP and easy to bundle.
 | **Proposal 096 (Proposal-Driven Design Profile)** | Conditional composition. Slice 2 (reconciliation directive) only activates downstream if Proposal 096's opt-in profile is active. For Specrew itself, slice 2 always lands. |
 | **Proposal 090 (Closeout Lifecycle Sync Commands)** | Composes with Cluster 3's mirror-parity refinement — Proposal 090 already established the closeout-sync slash-command pattern; this proposal extends it with one-line no-spillover boilerplate. |
 | **Proposal 098 (Launch Posture Visibility — candidate)** | Adjacent. 098 surfaces enforcement state at launch; this proposal documents the verdict shapes that drive that state. Composable. |
+| **Proposal 140 (Reviewer Instruction Surface) — added 2026-05-28** | Direct. Proposal 140 is the standalone fast-shippable expression of Slice 4 / Cluster 8 closure. 099 names the gap (audit framework); 140 ships the closure (deployment + reviewer charter integration + learning candidate pipeline). Both proposals coexist intentionally: 140 captures empirical urgency, 099 captures architectural integration. |
+| **Proposal 017 (Learning Loop Closure) — amendment 2026-05-28** | Composes. 017 amendment broadens learning-loop inputs from retro.md only to `review.md` + `retro.md` + `pr-review-resolution.md` to include the Reviewer Instruction Candidates channel that Slice 4 / Proposal 140 establishes. |
+| **Proposal 102 (Cross-Model Independent Reviewer) — amendment 2026-05-28** | Composes. 102 amendment adds FR-016 requiring all commissioned reviewers to load `.specrew/review/reviewer-instructions.md` (the artifact Slice 4 ships) and cite version in review output. Without 102, the playbook lives in installed files; with 102's amendment, multi-reviewer pattern leverages the same playbook to prevent "independence with overlapping ignorance" failure mode. |
 
 ## Acceptance Signals
 
