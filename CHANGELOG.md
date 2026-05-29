@@ -16,7 +16,7 @@ baseline that each release number represents.
 
 ### Changed
 
-- `capacity_per_iteration` baseline formalized at **25** story points (was a temporary bump for F-049 Iteration 003, whose real 23.45 SP load proved 20 insufficient).
+- `capacity_per_iteration` formalized at **25** story points for the **self-host repo only** (was a temporary bump for F-049 Iteration 003, whose real 23.45 SP load proved 20 insufficient). The shipped default for new downstream projects intentionally remains **20** (templates/iteration-config.yml + extension.yml `default_per_iteration`).
 
 ### Known follow-ups (deferred carry-forward chores)
 

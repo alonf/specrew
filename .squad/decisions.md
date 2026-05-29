@@ -3168,14 +3168,14 @@ Resolve T002: choose the conflict-marker format for template-refresh conflicts s
 
 **Approved option**: **Option A — Git-style markers (`<<<<<<<`, `=======`, `>>>>>>>`)**
 
-**Approved `.specrew/template-conflicts/<filename>.conflict` format**:
+**Approved `.specrew/template-conflicts/<filename>.conflict` format** — the block below uses placeholder notation (`[7x<]` / `[7x=]` / `[7x>]`) for the literal seven-character git conflict markers (`<<<<<<<` / `=======` / `>>>>>>>`) so this documentation example is not mistaken for an unresolved merge by `git diff --check`:
 
 ```text
-<<<<<<< user-version (preserved at: <iso8601-utc-timestamp>)
+[7x< marker] user-version (preserved at: <iso8601-utc-timestamp>)
 {user's modified content}
-=======
+[7x= divider]
 {new module-template content}
->>>>>>> module-version (specrew_version: <module-version>, source: templates/<path>)
+[7x> marker] module-version (specrew_version: <module-version>, source: templates/<path>)
 ```
 
 **Compose-with note for later implementation**:
@@ -9977,14 +9977,14 @@ Resolve T002: choose the conflict-marker format for template-refresh conflicts s
 
 **Approved option**: **Option A — Git-style markers (`<<<<<<<`, `=======`, `>>>>>>>`)**
 
-**Approved `.specrew/template-conflicts/<filename>.conflict` format**:
+**Approved `.specrew/template-conflicts/<filename>.conflict` format** — the block below uses placeholder notation (`[7x<]` / `[7x=]` / `[7x>]`) for the literal seven-character git conflict markers (`<<<<<<<` / `=======` / `>>>>>>>`) so this documentation example is not mistaken for an unresolved merge by `git diff --check`:
 
 ```text
-<<<<<<< user-version (preserved at: <iso8601-utc-timestamp>)
+[7x< marker] user-version (preserved at: <iso8601-utc-timestamp>)
 {user's modified content}
-=======
+[7x= divider]
 {new module-template content}
->>>>>>> module-version (specrew_version: <module-version>, source: templates/<path>)
+[7x> marker] module-version (specrew_version: <module-version>, source: templates/<path>)
 ```
 
 **Compose-with note for later implementation**:

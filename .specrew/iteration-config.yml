@@ -7,11 +7,12 @@
 effort_unit: "story_points"
 
 # Maximum effort units per iteration (capacity)
-# Baseline: 25 story points (formalized at F-049 feature-closeout, 2026-05-29).
-# Originally 20; raised to 25 for F-049 Iteration 003's engine + data architecture
-# pivot, whose real 23.45 SP load proved 20 insufficient. The bump is now the
-# permanent baseline rather than a temporary exception. Adjust based on team
-# velocity and calibration data.
+# SELF-HOST REPO BASELINE: 25 story points (formalized at F-049 feature-closeout, 2026-05-29).
+# Scope: THIS repository only. Originally 20; raised to 25 for F-049 Iteration 003's engine +
+# data architecture pivot, whose real 23.45 SP load proved 20 insufficient. The bump is now this
+# repo's permanent baseline rather than a temporary exception. The SHIPPED DEFAULT for new
+# downstream projects intentionally remains 20 (see templates/iteration-config.yml +
+# extension.yml default_per_iteration); projects adjust based on their own velocity/calibration.
 # KNOWN ISSUE (deferred to a repo-hygiene/validator slice): historical CLOSED
 # iterations planned against 20 still produce 58 capacity-drift validator FAILs
 # because the validator enforces the CURRENT config against closed iterations.

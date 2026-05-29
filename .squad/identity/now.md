@@ -1,24 +1,25 @@
 ---
-focus_area: "Feature 049 Iteration 004 (Proposal 120) CLOSED (iteration-closeout approved); feature-closeout is a separate later decision"
+focus_area: "Feature 049 feature-closeout IN PROGRESS — PR #1152 open at v0.28.0; addressing cross-review release-metadata fixes before merge"
 active_issues: "[]"
 schema: v1
-updated_at: 2026-05-29T00:25:07Z
+updated_at: 2026-05-29T00:40:00Z
 session_state_active: true
-session_state_boundary: iteration-closeout
+session_state_boundary: feature-closeout
 session_state_feature: 049-pipeline-hardening-intake
 session_state_feature_path: "C:\Dev\Specrew\specs\049-pipeline-hardening-intake"
 session_state_iteration: 004
 session_state_task: "(none)"
-session_state_auth_commit: 87926843
-session_state_recorded_at: 2026-05-29T00:25:07Z
+session_state_auth_commit: 515726b0
+session_state_recorded_at: 2026-05-29T00:40:00Z
 ---
 
 # What We're Focused On
 
-Feature 049 (049-pipeline-hardening-intake) **Iteration 004 (Proposal 120 five-pillar bypass detection)** is **complete and closed**. Implementation (T001-T009), review (Crew Reviewer accepted + Proposal 140 cross-review verified), retrospective, and iteration-closeout are all done.
+Feature 049 (049-pipeline-hardening-intake) is in **feature-closeout**. All five iterations are closed; **PR [#1152](https://github.com/alonf/specrew/pull/1152)** is open (base `main` ← `049-pipeline-hardening-intake`) targeting **v0.28.0**.
 
-- Current status: Iteration 004 is **complete**. Human-approved crossings: tasks→before-implement, before-implement→review-signoff, review-signoff→retro, retro→iteration-closeout (Alon Fliess, 2026-05-28/29). dashboard.md rendered; all five Proposal 120 pillars in place; bypass suite green (SC-004); scoped validator PASS; mirror parity True.
-- Boundary status: current boundary is **iteration-closeout** (closed). No boundary pending-authorized.
-- Next required human decision: whether to pursue F-049 **feature-closeout** — a SEPARATE later decision; run the cleanup checklist first (B-001 + A-001 framework fixes, capacity-bump revert, version bump to 0.27.6, FR-038 in-situ, Specrew.psd1 FileList).
-- Closed history: Iteration 005 (Proposal 141) complete/closed; Iterations 001-003 closed.
-- Guardrail: leave the closed iterations untouched; no new iteration/feature work without explicit human direction.
+- Cleanup decisions applied: D1 = defer B-001 + A-001 to a separate framework-fix slice; D2 = formalize capacity 25 for the self-host repo only (shipped default stays 20); D3 = version bump to **0.28.0** across all manifests + README + CHANGELOG.
+- Current status: cross-review DECLINED merge for narrow release-metadata truth fixes (README Status section, capacity-default consistency, this now.md staleness, psd1 prerelease beta.2→beta.1, decisions.md conflict-marker example). Addressing them now, then re-presenting the merge verdict.
+- Next human gate: **merge verdict** (after re-presentation + optional cross-review). Then SDLC Step 9+ (tag v0.28.0-beta.1 → verify → manual-install PASS/FAIL → stable). F-049 PR merges before F-050 (Charter Item 5).
+- Deferred follow-ups (framework-fix candidates): B-001 (duplicate Get-ObjectPropertyString) + A-001 (Get-QualityEvidenceContent StrictMode crash); validator grandfather-closed-iterations slice (58 capacity-drift FAILs). See iterations/004/drift-log.md + CHANGELOG "Known follow-ups".
+- Closed history: Iterations 001–005 all closed.
+- Guardrail: no new iteration/feature work; no merge before the human's verdict.

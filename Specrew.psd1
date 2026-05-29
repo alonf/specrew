@@ -215,7 +215,11 @@
     )
     PrivateData = @{
         PSData = @{
-            Prerelease = 'beta.2'
+            # Source prerelease state for the next intended release (v0.28.0-beta.1). The
+            # publish-module.yml workflow stamps the actual published version from the git tag
+            # (release_ref_name) at release time, so this is the coherent source default, not the
+            # authoritative publish value. Cleared to '' when promoting to stable.
+            Prerelease = 'beta.1'
             Tags = @('specrew', 'specification', 'squad', 'ai-workflow', 'governance')
             ProjectUri = 'https://github.com/alonf/specrew'
             LicenseUri = 'https://github.com/alonf/specrew/blob/main/LICENSE'

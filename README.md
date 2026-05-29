@@ -97,8 +97,8 @@ Vanilla Spec Kit ships the slash-command surface but has no orchestration or bou
 
 ## Status
 
-- **Active development line**: 0.27.3
-- **Latest stable baseline**: 0.27.3 (F-047 trust-hardening bug-bash bundle)
+- **Active development line**: 0.28.0 (F-049 — Pipeline Hardening + Substantive Intake: Proposal 120 bypass detection + Proposal 141 Crew Interaction Profile)
+- **Latest stable baseline**: promoted per the beta-before-stable release discipline — see [CHANGELOG.md](CHANGELOG.md) for the current released version
 - **Alpha software**, validated through dogfooding in this repository
 - **Built for a single developer today.** Multi-developer reconciliation is a roadmap item ([Proposal 010](proposals/010-multi-developer-reconciliation.md)); a leaner spec-first concurrent model is queued as [Proposal 115](proposals/115-spec-first-concurrent-development-workflow.md).
 - Release truth lives in [CHANGELOG.md](CHANGELOG.md), [docs/versioning.md](docs/versioning.md), and the `v0.NN.0` tags.
