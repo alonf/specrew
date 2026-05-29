@@ -83,6 +83,8 @@ specrew --version
 
 After a module update, run `specrew init` again inside each existing Specrew project when the release notes mention runtime, extension, template, or skill-catalog changes, or when `specrew start` reports missing runtime surfaces. Re-running init is idempotent and redeploys managed project files from the updated module; add `-Force` only when you intentionally want to refresh managed surfaces even if the project is not empty.
 
+If the wrong version still loads, project assets look incomplete, or a resumed session points at the wrong feature, use the recovery guide in [troubleshooting.md](troubleshooting.md) before editing generated files by hand.
+
 ### 3. Bootstrap a project
 
 ```powershell
@@ -165,6 +167,7 @@ As Squad runs the lifecycle, it adds `specs/001-web-calculator/spec.md`, `plan.m
 ## Where to go next
 
 - **Day-to-day usage**: [docs/user-guide.md](user-guide.md)
+- **Recovery paths**: [docs/troubleshooting.md](troubleshooting.md)
 - **Dashboard**: `specrew where` shows the velocity dashboard; full reference in [docs/dashboard-guide.md](dashboard-guide.md)
 - **Versioning**: [docs/versioning.md](versioning.md)
 - **CHANGELOG**: [CHANGELOG.md](../CHANGELOG.md)

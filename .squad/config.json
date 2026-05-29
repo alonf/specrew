@@ -3,11 +3,11 @@
   "specrewManagedModelRouting": {
     "baselineAgentModelOverrides": {},
     "roleAgentFamilies": {
-      "Implementer": "antigravity",
-      "Spec Steward": "antigravity",
-      "Planner": "antigravity",
-      "Reviewer": "antigravity",
-      "Retro Facilitator": "antigravity"
+      "Implementer": "copilot",
+      "Spec Steward": "copilot",
+      "Planner": "copilot",
+      "Reviewer": "copilot",
+      "Retro Facilitator": "copilot"
     },
     "activeEscalation": {
       "status": "inactive",

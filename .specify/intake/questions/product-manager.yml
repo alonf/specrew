@@ -1,0 +1,64 @@
+# Product Manager Question Bank
+# Feature 049 Iteration 003 - Engine + Data Architecture
+# FR-029, TG-013, TG-015
+
+schema_version: "1.0"
+persona_id: product-manager
+persona_name: "Product Manager"
+
+questions:
+  - id: pm-q001
+    category: user-personas-and-journeys
+    text: "Who are the primary user personas for this feature, and what are their top 3 goals?"
+    priority: high
+    tags: [personas, user-goals, p1-journey]
+    mode_applicability: [A, B, C]
+
+  - id: pm-q002
+    category: scope-and-boundaries
+    text: "What are the explicit MVP boundaries—what must ship in v1, and what's deferred to v2+?"
+    priority: high
+    tags: [mvp, scope, go-no-go]
+    mode_applicability: [A, B, C]
+
+  - id: pm-q003
+    category: success-criteria-and-metrics
+    text: "What are the 3 most critical success metrics (KPIs) for this feature, and what are the acceptance thresholds?"
+    priority: high
+    tags: [kpi, success-criteria, metrics]
+    mode_applicability: [A, B, C]
+
+  - id: pm-q004
+    category: user-personas-and-journeys
+    text: "What is the P1 (must-have) user journey, and what P2 (nice-to-have) journeys exist?"
+    priority: medium
+    tags: [p1-journey, p2-journey, prioritization]
+    mode_applicability: [B, C]
+
+  - id: pm-q005
+    category: functional-requirements
+    text: "What business rules or validation logic must be enforced at the product level?"
+    priority: medium
+    tags: [business-rules, validation]
+    mode_applicability: [B, C]
+
+  - id: pm-q006
+    category: migration-and-compatibility
+    text: "Are there existing users or legacy systems that require migration or compatibility considerations?"
+    priority: medium
+    tags: [migration, compatibility, legacy]
+    mode_applicability: [B, C]
+
+  - id: pm-q007
+    category: scope-and-boundaries
+    text: "What competitive or market pressures influence the scope or timing of this feature?"
+    priority: low
+    tags: [competitive, market-timing]
+    mode_applicability: [C]
+
+  - id: pm-q008
+    category: success-criteria-and-metrics
+    text: "What is the Go/No-Go decision criteria for launch, and who are the stakeholders?"
+    priority: low
+    tags: [go-no-go, stakeholders]
+    mode_applicability: [C]

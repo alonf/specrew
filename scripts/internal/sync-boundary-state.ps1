@@ -940,7 +940,10 @@ function Invoke-SpecrewBoundaryStateSync {
         [string]$IdentityActiveIssues,
 
         [AllowNull()]
-        [string]$IdentityBody
+        [string]$IdentityBody,
+
+        [AllowNull()]
+        [string]$HandoffText
     )
 
     $aliasMap = @{
@@ -1082,7 +1085,15 @@ function Invoke-SpecrewBoundaryStateSync {
             -1
         }
         
-        if ($lastAuthIndex -lt $targetIndex) {
+        # Pillar 4 / T005 (Proposal 120, FR-021): record the crossing for any boundary CHANGE, not
+        # only forward advances. The previous `-lt` gate silently skipped the append (and the AC8
+        # hard-block) whenever last_authorized was stale/ahead of the target — the exact F-049 i005
+        # symptom, where a prior-iteration `iteration-closeout` cursor swallowed real before-implement/
+        # review-signoff/retro crossings. Only an identical-boundary re-sync is a benign no-op.
+        if ($lastAuthIndex -ne $targetIndex) {
+            if ($lastAuthIndex -gt $targetIndex) {
+                Write-Warning ("Boundary sync: last_authorized_boundary '{0}' is AHEAD of the boundary now being crossed '{1}'. Recording the real crossing to prevent silent state progression (Pillar 4 / FR-021). If this is not a new-iteration reset, audit .specrew/start-context.json boundary_enforcement.verdict_history." -f $currentLastAuthorized, $targetCanonical)
+            }
             $authorizingHuman = 'Specrew Operator'
             try {
                 $gitUser = @(& git -C $paths.ProjectRoot config user.name 2>$null)
@@ -1098,8 +1109,17 @@ function Invoke-SpecrewBoundaryStateSync {
             elseif ($null -ne $latestBoundary) {
                 $currentBoundary = [string]$latestBoundary.boundary_type
             }
+            # Add-SpecrewBoundaryAuthorization rejects a backward from->to. In the stale-ahead /
+            # new-iteration-reset case the recorded boundary_type can be >= the target, so clamp the
+            # from_boundary to the target's canonical predecessor; the crossing still records (no
+            # silent skip) with a valid forward from->to.
+            $currentBoundaryCanonical = Normalize-SpecrewCanonicalBoundaryType -Boundary $currentBoundary
+            $currentBoundaryIndex = [Array]::IndexOf($boundaryOrder, $currentBoundaryCanonical)
+            if ($currentBoundaryIndex -lt 0 -or $currentBoundaryIndex -ge $targetIndex) {
+                $currentBoundary = $boundaryOrder[[Math]::Max(0, $targetIndex - 1)]
+            }
             $verdictText = "approved for $targetCanonical"
-            
+
             Add-SpecrewBoundaryAuthorization `
                 -ProjectRoot $paths.ProjectRoot `
                 -CurrentBoundary $currentBoundary `
@@ -1114,6 +1134,17 @@ function Invoke-SpecrewBoundaryStateSync {
     Update-SpecrewMarkdownStateFile -Path $paths.IdentityPath -SessionState $sessionState -DefaultBody (Get-SpecrewIdentityBody -SessionState $sessionState) -AdditionalFrontmatter $identityAdditionalFrontmatter -PreferredBody $IdentityBody -UsePreferredBody:(-not [string]::IsNullOrWhiteSpace($IdentityBody)) -SchemaVersion 'v1'
 
     Add-SpecrewBoundarySyncLedgerEntry -ProjectRoot $paths.ProjectRoot -SessionState $sessionState
+
+    # Pillar 1 live producer (Proposal 120 / FR-018): record a boundary_event capturing whether a
+    # === SPECREW HANDOFF === block accompanied this stop, so Test-HandoffEvidenceGovernance detects
+    # missing handoffs in REAL lifecycle runs (not only fixtures). The coordinator passes its emitted
+    # handoff block via -HandoffText; a sync without it records an empty event -> missing-handoff WARN.
+    try {
+        Add-SpecrewHandoffEvidence -ProjectRoot $paths.ProjectRoot -Boundary $BoundaryType -Commit $effectiveAuthCommitHash -HandoffText $HandoffText
+    }
+    catch {
+        Write-Warning ("Boundary sync '{0}' could not record handoff evidence: {1}" -f $BoundaryType, $_.Exception.Message)
+    }
 
     # Proposal 085: append to the closed-iteration index at iteration-closeout
     # boundary (idempotent on re-sync). Validator full-repo path uses this to

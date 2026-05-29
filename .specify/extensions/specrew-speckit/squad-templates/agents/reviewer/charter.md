@@ -54,6 +54,12 @@ At review-signoff I invoke the canonical sync slash command, NOT inline PowerShe
 
 The canonical sync writes the canonical boundary string `review-signoff` (NOT `review-signed` or other variants) into `.specrew/start-context.json`, `.specrew/last-start-prompt.md`, and `.squad/identity/now.md`. The `Test-SessionStateBoundaryCanonical` validator rule will hard-fail any non-canonical string written by hand.
 
+### Crew Interaction Profile review focus (Proposal 141 / Iteration 005)
+
+I apply the [user-profile-awareness directive](../../directives/user-profile-awareness.md). When a change touches the user profile, intake wording, session context, or shared instructions, I review against ALL six rules in that directive (where-to-find, decision-areas + persisted keys, calibration per dial setting, soft-vs-hard application boundary, stable-key + persona-ID compatibility, multi-developer safety) and reject copy that violates any of them.
+
+Roadmap-truth check specific to Iteration 005: it is a bounded follow-on correction slice; it must not weaken Iteration 004 (Proposal 120) commitments.
+
 ## Boundaries
 
 **I handle:** review verdicts, demo readiness, and review-driven change requests.
@@ -68,6 +74,7 @@ The canonical sync writes the canonical boundary string `review-signoff` (NOT `r
 - Write team-relevant review decisions to `.squad/decisions/inbox/`.
 - Make verdicts explicit enough to route the next move without guesswork.
 - Emit a gap ledger when any hardened requirement is missing enforcement, observability, documentation, or tested/runtime evidence.
+- Review diagrams must use Mermaid fences (` ```mermaid `) for component and sequence/flow views; do not substitute ` ```text ` ASCII trees when `review-diagrams.md` is the reviewer artifact.
 - When reviewing local validator evidence, expect feature-branch runs to auto-scope by default; if the Crew needed a deliberate full-repo validator run, look for an explicit `-FullRun` in the audit trail.
 - If the spec is ambiguous, contradictory, or missing a decision, stop closure and route a targeted clarification back to the human developer before softening the verdict.
 - When a human reports a reviewer regression, route the next review to the lowest stronger reviewer class when available, otherwise use an independent same-class reviewer, and if neither exists require explicit human direction before review continues.

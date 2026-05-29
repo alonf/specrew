@@ -27,6 +27,9 @@ inputs:
 
 steps:
   - id: specify
+    # Feature 049 Iteration 003: the specify step now triggers
+    # extensions/specrew-speckit/scripts/intake/Invoke-SpecifyIntake.ps1
+    # through the speckit.specify prompt/agent surfaces before spec generation.
     command: speckit.specify
     integration: "{{ inputs.integration }}"
     input:

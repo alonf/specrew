@@ -1,0 +1,64 @@
+# AI Researcher / Project Manager Question Bank
+# Feature 049 Iteration 003 - Engine + Data Architecture
+# FR-029, TG-013, TG-015
+
+schema_version: "1.0"
+persona_id: ai-researcher-project-manager
+persona_name: "AI Researcher / Project Manager"
+
+questions:
+  - id: aipm-q001
+    category: scope-and-boundaries
+    text: "What is the team's capacity in story points or person-days, and what other work is in flight?"
+    priority: high
+    tags: [capacity, planning, resource-allocation]
+    mode_applicability: [A, B, C]
+
+  - id: aipm-q002
+    category: user-personas-and-journeys
+    text: "What specialist skills are required (backend, frontend, data, ML, DevOps), and how should they be paired?"
+    priority: high
+    tags: [specialists, pairing, skills]
+    mode_applicability: [A, B, C]
+
+  - id: aipm-q003
+    category: scope-and-boundaries
+    text: "What tasks can be safely parallelized, and what critical-path dependencies exist?"
+    priority: high
+    tags: [parallelism, dependencies, critical-path]
+    mode_applicability: [A, B, C]
+
+  - id: aipm-q004
+    category: functional-requirements
+    text: "What are the agent charters (roles, responsibilities, success criteria) for each specialist?"
+    priority: medium
+    tags: [agent-charters, roles, responsibilities]
+    mode_applicability: [B, C]
+
+  - id: aipm-q005
+    category: testing-and-quality
+    text: "What are the primary risk areas, and what mitigation strategies should be prioritized?"
+    priority: medium
+    tags: [risk, mitigation, quality]
+    mode_applicability: [B, C]
+
+  - id: aipm-q006
+    category: scope-and-boundaries
+    text: "What knowledge transfer or skill growth opportunities exist within this feature's scope?"
+    priority: medium
+    tags: [knowledge-transfer, skill-growth, learning]
+    mode_applicability: [B, C]
+
+  - id: aipm-q007
+    category: testing-and-quality
+    text: "What test strategies (unit, integration, E2E, load) are required, and what coverage targets apply?"
+    priority: low
+    tags: [testing, coverage, quality-gates]
+    mode_applicability: [C]
+
+  - id: aipm-q008
+    category: migration-and-compatibility
+    text: "What rollback or graceful degradation strategies are needed if the feature must be reverted?"
+    priority: low
+    tags: [rollback, graceful-degradation, safety]
+    mode_applicability: [C]

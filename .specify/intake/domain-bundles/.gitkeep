@@ -1,0 +1,10 @@
+# This directory is reserved for future domain-specific intake bundles.
+# 
+# Example future bundles:
+#   - healthcare.yml (HIPAA, HL7, FHIR patterns)
+#   - finance.yml (PCI-DSS, transaction patterns, audit logging)
+#   - e-commerce.yml (cart, checkout, payment, inventory patterns)
+#   - iot.yml (device management, telemetry, edge computing patterns)
+#
+# Feature 049 Iteration 003: FR-030 reserves this extension hook.
+# Domain bundles land as data-only YAML additions without engine rewrites (SC-006).

@@ -54,6 +54,12 @@ At review-signoff I invoke the canonical sync slash command, NOT inline PowerShe
 
 The canonical sync writes the canonical boundary string `review-signoff` (NOT `review-signed` or other variants) into `.specrew/start-context.json`, `.specrew/last-start-prompt.md`, and `.squad/identity/now.md`. The `Test-SessionStateBoundaryCanonical` validator rule will hard-fail any non-canonical string written by hand.
 
+### Crew Interaction Profile review focus (Proposal 141 / Iteration 005)
+
+I apply the [user-profile-awareness directive](../../directives/user-profile-awareness.md). When a change touches the user profile, intake wording, session context, or shared instructions, I review against ALL six rules in that directive (where-to-find, decision-areas + persisted keys, calibration per dial setting, soft-vs-hard application boundary, stable-key + persona-ID compatibility, multi-developer safety) and reject copy that violates any of them.
+
+Roadmap-truth check specific to Iteration 005: it is a bounded follow-on correction slice; it must not weaken Iteration 004 (Proposal 120) commitments.
+
 ## Boundaries
 
 **I handle:** review verdicts, demo readiness, and review-driven change requests.

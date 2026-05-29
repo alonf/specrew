@@ -394,7 +394,23 @@ function Get-LatestVersionInfo {
                 }
             }
 
-            # Prefer the actually-installed module's manifest as the "latest known" version.
+            # Check PSGallery first as the authoritative latest published source.
+            $skip = if ($null -ne $SkipUpdateCheck) { [bool]$SkipUpdateCheck } else { $false }
+            try {
+                $psgInfo = Get-PSGalleryLatestVersion -ProjectRoot $RepoRoot -SkipCheck $skip
+                if ($null -ne $psgInfo -and -not [string]::IsNullOrWhiteSpace($psgInfo.LatestVersion)) {
+                    return [pscustomobject]@{
+                        Version = $psgInfo.LatestVersion
+                        Source  = $psgInfo.Source
+                        Known   = $true
+                    }
+                }
+            }
+            catch {
+                # Fall back on query failure
+            }
+
+            # Prefer the actually-installed module's manifest as the fallback "latest known" version.
             # Git tags lag behind real shipping (we ship 0.22.0 without yet tagging v0.22.0),
             # so origin-tags drift falsely reports older versions. Module manifest is authoritative.
             $moduleVersion = $null

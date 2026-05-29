@@ -8,7 +8,7 @@
 # Specrew
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![Version](https://img.shields.io/badge/version-0.27.3-blue.svg)](.specrew/config.yml)
+[![Version](https://img.shields.io/badge/version-0.28.0-blue.svg)](.specrew/config.yml)
 [![Status: Alpha](https://img.shields.io/badge/status-alpha-orange.svg)](#status)
 
 **Governed agentic SDLC. Agents type — you decide.** Specrew is a methodology layer over [GitHub Spec Kit](https://github.com/github/spec-kit) that keeps the human in the loop at every decision boundary while letting AI agents do the work between boundaries. Works with GitHub Copilot, Claude Code, OpenAI Codex CLI, and Google Antigravity.
@@ -97,8 +97,8 @@ Vanilla Spec Kit ships the slash-command surface but has no orchestration or bou
 
 ## Status
 
-- **Active development line**: 0.27.3
-- **Latest stable baseline**: 0.27.3 (F-047 trust-hardening bug-bash bundle)
+- **Active development line**: 0.28.0 (F-049 — Pipeline Hardening + Substantive Intake: Proposal 120 bypass detection + Proposal 141 Crew Interaction Profile)
+- **Latest stable baseline**: promoted per the beta-before-stable release discipline — see [CHANGELOG.md](CHANGELOG.md) for the current released version
 - **Alpha software**, validated through dogfooding in this repository
 - **Built for a single developer today.** Multi-developer reconciliation is a roadmap item ([Proposal 010](proposals/010-multi-developer-reconciliation.md)); a leaner spec-first concurrent model is queued as [Proposal 115](proposals/115-spec-first-concurrent-development-workflow.md).
 - Release truth lives in [CHANGELOG.md](CHANGELOG.md), [docs/versioning.md](docs/versioning.md), and the `v0.NN.0` tags.
@@ -110,6 +110,7 @@ Vanilla Spec Kit ships the slash-command surface but has no orchestration or bou
 - `specrew where` renders the velocity dashboard from canonical artifacts
 - The full lifecycle: `specify → clarify → plan → tasks → implement → review-signoff → retro → iteration-closeout → feature-closeout` — with gate-respecting boundary stops by default ([Proposal 066](proposals/066-gate-respecting-default.md), shipped). The last two boundaries (iteration-closeout, feature-closeout) are not decoration: they produce the per-iteration `dashboard.md` + per-feature `closeout-dashboard.md` artifacts, mark the work durably "done", and gate the next iteration / next feature from starting. Skipping them leaves the project in an in-flight state — see [docs/user-guide.md "Closing iterations + features"](docs/user-guide.md#closing-iterations--features) for what these boundaries produce and the verdict shapes that advance them.
 - Session-state durability across reboots, worktree switches, and boundary events
+- A per-user **Crew Interaction Profile** (`/specrew-user-profile`) — four decision-area settings (Product Strategy, UX/UI Design, Software Architecture, AI Delivery Planning) that tune how much Specrew asks, explains, recommends, and auto-decides. It resolves per current user from the loader/path rule (`$env:USERPROFILE\.specrew\user-profile.yml` on Windows, `~/.specrew/user-profile.yml` on Unix), is surfaced as soft session guidance everywhere and hard-applied only in `/speckit.specify`, and lets teammates run different local profiles in the same repo with no shared-repository changes. See [docs/user-guide.md "Crew Interaction Profile"](docs/user-guide.md#crew-interaction-profile).
 - Slash-command catalog deployed to `.claude/skills/`, `.github/skills/`, and `.agents/skills/` ([Feature 024](specs/024-slash-command-multi-host-correctness/spec.md))
 - Validator memoization, parallelization, closed-iteration index, repetition detector — the v0.24.3 process-optimization bundle keeps the discipline cheap to enforce
 - Reviewer-regression routing, session-loaded file change detection, drift-log integrity
@@ -146,6 +147,7 @@ See [proposals/INDEX.md](proposals/INDEX.md) for the full proposal catalog (Ship
 
 - [docs/getting-started.md](docs/getting-started.md) — bootstrap + minimal flow
 - [docs/user-guide.md](docs/user-guide.md) — day-to-day lifecycle usage
+- [docs/troubleshooting.md](docs/troubleshooting.md) — recovery paths for install drift, update failures, stale session state, and Shape-5 evidence mistakes
 - [docs/dashboard-guide.md](docs/dashboard-guide.md) — dashboard sections, flags, closeout snapshots
 - [docs/versioning.md](docs/versioning.md) — release-numbering policy and tag/changelog rules
 - [CHANGELOG.md](CHANGELOG.md) — retroactive feature-release history

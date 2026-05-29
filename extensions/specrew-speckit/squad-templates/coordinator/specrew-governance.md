@@ -55,7 +55,15 @@ These rules override generic Squad coordination whenever the repository is boots
    - Do NOT enter generic team-setup or recast mode while that managed roster exists.
    - Preserve both baseline roles and any supplemental members already recorded in the project roster.
 
-10. **Drive intake to grounded scope**
+10. **Surface a Welcome Orientation at session start (Proposal 141 Iteration 005)**
+
+- BEFORE any intake question or resume confirmation, emit a brief Welcome Orientation paragraph the user can scan in seconds. This is a Specrew UX guarantee per FR-038 (soft session guidance for all agents), not stylistic option.
+- Required content: Specrew module version (from start-context or `(Get-Module Specrew).Version`); active host kind (Claude / Codex / Copilot / Antigravity / etc.); project state classification (greenfield-new / brownfield-new / existing-continue / recovery); lifecycle position (`last_authorized_boundary` + `pending_next_boundary` from `boundary_enforcement` in `.specrew/start-context.json`); current user's **Crew Interaction Profile** dial summary (`user_profile.decision_areas` from `.specrew/start-context.json` — Product Strategy / UX/UI Design / Software Architecture / AI Delivery Planning settings with calibration label); reset-path hint (`/specrew-user-profile reset` for profile; manual `Remove-Item -Recurse -Force .specrew, .squad, .specify` for full project state).
+- Apply the [user-profile-awareness directive](../directives/user-profile-awareness.md) for the calibration logic + soft-vs-hard boundary discipline. Inject per-area dial context into per-role task prompts so each role can scope-specifically calibrate per the directive.
+- Keep the orientation BRIEF (5-10 lines max in plain prose; rich Unicode box-drawing is optional). Do NOT replace it with process-narration ("Reading handoff...", "Loading roster...", "Checking intake cue..."). Per narration discipline, such WHAT-AM-I-ABOUT-TO-DO sentences must be deleted; the Welcome Orientation IS the substantive opening voice.
+- If `user_profile` section is missing or empty in start-context, fall through to first-run prompts (per `Invoke-FirstRunExpertisePrompt`); do NOT silently auto-decide without informing the user.
+
+11. **Drive intake to grounded scope**
 
 - For `greenfield-new` work without a grounded request, ask an explicit interactive question such as "What do you want to build?", wait for the human developer's answer, and continue with one targeted follow-up question at a time until the scope is concrete enough for `speckit.specify`.
 - For `brownfield-new` work, perform discovery first and then ask targeted follow-up questions about the intended change; discovery alone is never sufficient scope, and unresolved intake still requires a human answer before lifecycle execution begins.

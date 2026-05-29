@@ -440,6 +440,53 @@ function Test-NoGapClosurePolicy {
     }
 }
 
+function Test-ReviewEvidenceTreeIntegrity {
+    <#
+    Pillar 5 (Proposal 120 / FR-022, AC9-AC11): when an iteration's review.md is accepted (or the
+    iteration is at retro/complete), production files cited as delivered evidence MUST exist in the
+    cited "Tree Under Review" commit. A production file cited + present in the working tree + absent
+    from the cited commit is the Shape-5 working-tree-only lie → FAIL (gates iteration-closeout).
+    Test files → WARN (AC10); cited-but-nonexistent prod files → WARN. Pre-2026-05-27 iterations
+    without a Tree Under Review field are unaffected (helper returns no hash).
+    #>
+    param(
+        [string[]]$ReviewLines,
+        [string]$ProjectRoot,
+        [string]$IterationDirectory,
+        [string]$OverallVerdict,
+        [string]$IterationStatus,
+        [System.Collections.Generic.List[string]]$Errors
+    )
+
+    if ($OverallVerdict -ne 'accepted' -and $IterationStatus -notin @('retro', 'complete')) {
+        return
+    }
+
+    $treeCheck = Test-ReviewCitedFilesInTree -ReviewLines $ReviewLines -ProjectRoot $ProjectRoot
+    if ($null -eq $treeCheck -or $null -eq $treeCheck.TreeHash) {
+        return
+    }
+
+    $relativeIteration = ([System.IO.Path]::GetRelativePath($ProjectRoot, $IterationDirectory)) -replace '/', '\'
+
+    if (-not $treeCheck.TreeResolved) {
+        Write-TrustHardeningWarning -Category 'review-tree-unresolved' -Detail ("review.md for {0} cites Tree Under Review '{1}' but git ls-tree could not resolve it; Pillar 5 verification was skipped." -f $relativeIteration, $treeCheck.TreeHash)
+        return
+    }
+
+    foreach ($missing in @($treeCheck.MissingProduction)) {
+        $Errors.Add(("review.md (FR-022/Pillar 5) cites production evidence file '{0}' that is present in the working tree but absent from the cited Tree Under Review commit '{1}' for {2}. Either stage + commit the file then re-issue the verdict, or remove it from review.md evidence." -f $missing, $treeCheck.TreeHash, $relativeIteration))
+    }
+
+    foreach ($missingTest in @($treeCheck.MissingTest)) {
+        Write-TrustHardeningWarning -Category 'review-cited-test-not-in-tree' -Detail ("review.md for {0} cites test file '{1}' that is absent from the cited Tree Under Review commit '{2}'." -f $relativeIteration, $missingTest, $treeCheck.TreeHash)
+    }
+
+    foreach ($unresolvedCited in @($treeCheck.UnresolvedCited)) {
+        Write-TrustHardeningWarning -Category 'review-cited-file-missing' -Detail ("review.md for {0} cites production file '{1}' that is absent from both the cited tree '{2}' and the working tree (possible stale/typo reference)." -f $relativeIteration, $unresolvedCited, $treeCheck.TreeHash)
+    }
+}
+
 function Get-MarkdownSectionTable {
     param(
         [string[]]$Lines,
@@ -699,6 +746,9 @@ function Get-SpecrewHandoffBlocks {
 }
 
 function Test-HandoffEvidenceGovernance {
+    # Proposal 120 Pillar 1 (FR-018): detect missing === SPECREW HANDOFF === evidence at boundary/
+    # lifecycle stops. Shipped in F-047; certified live in F-049 i004 once Add-SpecrewHandoffEvidence
+    # (T006) populates .specrew/handoff-evidence.json from real boundary syncs.
     param([Parameter(Mandatory = $true)][string]$ProjectRoot)
 
     $evidencePath = Join-Path $ProjectRoot '.specrew\handoff-evidence.json'
@@ -754,6 +804,8 @@ function Test-HandoffEvidenceGovernance {
 }
 
 function Test-WrongLocationCanonicalArtifacts {
+    # Proposal 120 Pillar 3 (FR-020): detect canonical artifacts written to ephemeral host
+    # session-scratch locations. Shipped in F-047; runs on every validation (certified live F-049 i004).
     param([Parameter(Mandatory = $true)][string]$ProjectRoot)
 
     $artifactNames = @(
@@ -865,6 +917,9 @@ function Test-ReviewDiagramsMermaidBlock {
 }
 
 function Get-MissingDashboardDiagnosis {
+    # Proposal 120 Pillar 2 (FR-019): distinguish a trigger-bypass artifact gap (closed iteration
+    # missing dashboard.md) from a generic missing-artifact failure. Shipped in F-047; fired live in
+    # real F-049 runs (missing-dashboard-non-specrew-managed / -auto-render-regression).
     param(
         [Parameter(Mandatory = $true)][string]$IterationDirectory
     )
@@ -929,6 +984,62 @@ function Get-ExtensionManifestVersion {
     }
 
     return $null
+}
+
+function Test-BoundaryStateAdvanceVerdict {
+    <#
+    Pillar 4 (Proposal 120 / FR-021, AC7): live session-state counterpart to the boundary-sync
+    hard-block. If the active session's recorded boundary is a human-judgment boundary
+    (before-implement | review-signoff | iteration-closeout | feature-closeout) but
+    boundary_enforcement.verdict_history has no matching `to_boundary` entry with a non-empty
+    authorizing_human, the state advanced without a recorded human verdict -> WARN. This catches the
+    silent-state-progression class (PlanningPoC iter-002 Picard catch; the F-049 i005 stale-cursor
+    skip) at validation time; the recording-path repair (T005) prevents it at sync time.
+    #>
+    param([Parameter(Mandatory = $true)][string]$ProjectRoot)
+
+    $contextPath = Join-Path $ProjectRoot '.specrew\start-context.json'
+    if (-not (Test-Path -LiteralPath $contextPath -PathType Leaf)) { return }
+
+    try {
+        $context = Get-Content -LiteralPath $contextPath -Raw -Encoding UTF8 | ConvertFrom-Json -Depth 20
+    }
+    catch {
+        Write-TrustHardeningWarning -Category 'boundary-enforcement-unreadable' -Detail 'Could not parse .specrew/start-context.json; state-advance-without-verdict check was skipped.'
+        return
+    }
+
+    # Direct PSObject.Properties access (NOT Get-ObjectPropertyString): validate-governance.ps1
+    # defines that helper twice with different parameter names (-Names vs -PropertyNames); the later
+    # definition shadows the first, so -Names silently returns null. Direct access is unambiguous.
+    $sessionState = $context.PSObject.Properties['session_state']
+    if ($null -eq $sessionState -or $null -eq $sessionState.Value) { return }
+    $btProp = $sessionState.Value.PSObject.Properties['boundary_type']
+    $boundary = if ($null -ne $btProp) { [string]$btProp.Value } else { '' }
+    if ([string]::IsNullOrWhiteSpace($boundary)) { return }
+
+    $humanVerdictBoundaries = @('before-implement', 'review-signoff', 'iteration-closeout', 'feature-closeout')
+    if ($boundary -notin $humanVerdictBoundaries) { return }
+
+    $enforcement = $context.PSObject.Properties['boundary_enforcement']
+    $history = @()
+    if ($null -ne $enforcement -and $null -ne $enforcement.Value -and $null -ne $enforcement.Value.PSObject.Properties['verdict_history']) {
+        $history = @($enforcement.Value.verdict_history)
+    }
+
+    $authorized = @($history | Where-Object {
+            $null -ne $_ -and
+            $null -ne $_.PSObject.Properties['to_boundary'] -and
+            ([string]$_.PSObject.Properties['to_boundary'].Value -eq $boundary) -and
+            $null -ne $_.PSObject.Properties['authorizing_human'] -and
+            (-not [string]::IsNullOrWhiteSpace([string]$_.PSObject.Properties['authorizing_human'].Value))
+        })
+
+    if ($authorized.Count -eq 0) {
+        $iterProp = $sessionState.Value.PSObject.Properties['iteration_number']
+        $iterationRef = if ($null -ne $iterProp) { [string]$iterProp.Value } else { '' }
+        Write-TrustHardeningWarning -Category 'state-advance-without-verdict' -Detail ("Active session boundary advanced to human-judgment gate '{0}' (iteration {1}) without a matching boundary_enforcement.verdict_history entry naming an authorizing human. Record the human verdict explicitly or roll the boundary back." -f $boundary, $(if ([string]::IsNullOrWhiteSpace($iterationRef)) { '(unknown)' } else { $iterationRef }))
+    }
 }
 
 function Test-SessionStateBoundaryCanonical {
@@ -2458,6 +2569,9 @@ function Test-ReviewArtifact {
     }
 
     Test-NoGapClosurePolicy -ReviewLines $reviewLines -ProjectRoot $ProjectRoot -IterationDirectory $IterationDirectory -OverallVerdict $overallVerdict -IterationStatus $IterationStatus -Errors $Errors
+
+    # Pillar 5 (FR-022): production evidence cited in review.md must exist in the cited Tree Under Review.
+    Test-ReviewEvidenceTreeIntegrity -ReviewLines $reviewLines -ProjectRoot $ProjectRoot -IterationDirectory $IterationDirectory -OverallVerdict $overallVerdict -IterationStatus $IterationStatus -Errors $Errors
 }
 
 function Test-RetroArtifact {
@@ -4481,6 +4595,8 @@ try {
     Test-DashboardGovernanceSurfaces -ProjectRoot $resolvedProjectPath
     Test-HandoffEvidenceGovernance -ProjectRoot $resolvedProjectPath
     Test-WrongLocationCanonicalArtifacts -ProjectRoot $resolvedProjectPath
+    # Pillar 4 (FR-021): live state-advance-without-verdict cross-check.
+    Test-BoundaryStateAdvanceVerdict -ProjectRoot $resolvedProjectPath
     Test-HandoffInternalReferenceSurfaces -ProjectRoot $resolvedProjectPath
 
     # Proposal 090: session-state boundary canonical-string + active/boundary

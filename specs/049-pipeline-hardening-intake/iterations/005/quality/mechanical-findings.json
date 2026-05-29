@@ -1,0 +1,11 @@
+{
+  "schemaVersion": "v1",
+  "featureRef": "specs/049-pipeline-hardening-intake/spec.md",
+  "iterationRef": "specs/049-pipeline-hardening-intake/iterations/005",
+  "generatedAt": "2026-05-28T20:08:06Z",
+  "generator": {
+    "name": "specrew-mechanical-checks",
+    "version": "0.27.5"
+  },
+  "findings": []
+}

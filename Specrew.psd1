@@ -1,6 +1,6 @@
 @{
     RootModule = 'Specrew.psm1'
-    ModuleVersion = '0.27.6'
+    ModuleVersion = '0.28.0'
     GUID = '8ad5b7b5-c4c6-4df4-b9bd-700a8533dcc4'
     Author = 'Alon Fliess'
     Description = 'Specrew: specification-driven development workflow for AI-augmented teams'
@@ -43,6 +43,7 @@
         'scripts/internal/supported-versions.yml',
         'scripts/internal/sync-boundary-state.ps1',
         'scripts/internal/task-progress.ps1',
+        'scripts/internal/test-publish-harness.ps1',
         'scripts/internal/version-check.ps1',
         'scripts/internal/worktree-awareness.ps1',
         'hosts/_contract.md',
@@ -206,6 +207,7 @@
         'docs/getting-started.md',
         'docs/github-project.md',
         'docs/roadmap-maintenance.md',
+        'docs/troubleshooting.md',
         'docs/user-guide.md',
         'docs/versioning.md',
         'docs/operations/psgallery-release-credentials.md',
@@ -213,7 +215,11 @@
     )
     PrivateData = @{
         PSData = @{
-            Prerelease = 'beta.2'
+            # Source prerelease state for the next intended release (v0.28.0-beta.1). The
+            # publish-module.yml workflow stamps the actual published version from the git tag
+            # (release_ref_name) at release time, so this is the coherent source default, not the
+            # authoritative publish value. Cleared to '' when promoting to stable.
+            Prerelease = 'beta.1'
             Tags = @('specrew', 'specification', 'squad', 'ai-workflow', 'governance')
             ProjectUri = 'https://github.com/alonf/specrew'
             LicenseUri = 'https://github.com/alonf/specrew/blob/main/LICENSE'
@@ -221,4 +227,3 @@
         }
     }
 }
-

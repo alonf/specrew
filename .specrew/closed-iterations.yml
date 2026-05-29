@@ -137,3 +137,18 @@ closed:
   - feature: 047-bug-bash-trust-hardening
     iteration: 001
     closed_at: 2026-05-26T10:45:46Z
+  - feature: 049-pipeline-hardening-intake
+    iteration: 001
+    closed_at: 2026-05-27T00:30:35Z
+  - feature: 049-pipeline-hardening-intake
+    iteration: 002
+    closed_at: 2026-05-27T09:20:01Z
+  - feature: 049-pipeline-hardening-intake
+    iteration: 003
+    closed_at: 2026-05-27T23:54:40Z
+  - feature: 049-pipeline-hardening-intake
+    iteration: 005
+    closed_at: 2026-05-28T22:08:57Z
+  - feature: 049-pipeline-hardening-intake
+    iteration: 004
+    closed_at: 2026-05-29T00:25:08Z

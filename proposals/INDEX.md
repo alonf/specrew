@@ -203,7 +203,7 @@ For roadmap-style viewing, proposals grouped by phase placement:
 - 073 (Review Evidence Integrity — shipped as feature-028)
 - 079 (Version Information Supported-vs-Latest — shipped as small-fix slice in v0.24.2 bundle)
 - 074 (Code Commentary Standards — draft, queue after 073)
-- 013, 014, 015, 017, 018, 019, 020, 021, 022, 023, 027, 028, 029, 037, 038, 042, 044, 045, 046, 047, 048, 049, 050, 051, 053, 054, 056, 059, 060, 061, 062, 071, 077, 078, 080, 081, 082, 091, 093, 094, 095, 097, 098, 101, 104, 106 (candidates)
+- 013, 014, 015, 017, 018, 019, 020, 021, 022, 023, 027, 028, 029, 037, 038, 042, 044, 045, 046, 047, 048, 049, 050, 051, 053, 054, 056, 059, 060, 061, 062, 071, 077, 078, 080, 081, 082, 091, 093, 094, 095, 097, 098, 101, 104, 106, 141 (candidates)
 
 **Phase 3** (refactor + maintainability + upstream reconciliation + extensibility):
 

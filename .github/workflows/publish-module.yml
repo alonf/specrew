@@ -140,6 +140,32 @@ jobs:
 
           Write-Host "Dispatch tag '$tag' already exists at expected SHA $expectedSha."
 
+      - name: Pre-publish Docker harness validation
+        shell: pwsh
+        run: |
+          # Trace: T006, FR-005, SC-001
+          # Run Docker-based E2E validation to catch FileList omissions,
+          # version pin drift, and corrupt layouts before PSGallery publish.
+          
+          Write-Host "Building Docker harness image..." -ForegroundColor Cyan
+          docker build -f tests/Dockerfile.publish-test -t specrew-publish-test .
+          
+          if ($LASTEXITCODE -ne 0) {
+            Write-Host "Docker build FAILED. Blocking publication." -ForegroundColor Red
+            exit 1
+          }
+          
+          Write-Host "Running pre-publish validation harness..." -ForegroundColor Cyan
+          docker run --rm specrew-publish-test
+          
+          if ($LASTEXITCODE -ne 0) {
+            Write-Host "Pre-publish validation FAILED. Blocking publication." -ForegroundColor Red
+            Write-Host "Review the validation output above for details." -ForegroundColor Yellow
+            exit 1
+          }
+          
+          Write-Host "Pre-publish validation PASSED. Proceeding to publication." -ForegroundColor Green
+
       - name: Stamp and publish
         shell: pwsh
         env:
