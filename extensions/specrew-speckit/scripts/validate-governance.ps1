@@ -3080,7 +3080,9 @@ function Test-PlanEffortModel {
         [string[]]$PlanLines,
         [string]$Capacity,
         [hashtable]$IterationConfig,
-        [System.Collections.Generic.List[string]]$Errors
+        [System.Collections.Generic.List[string]]$Errors,
+        [AllowNull()][string]$IterationDirectory,
+        [AllowNull()][string]$ProjectRoot
     )
 
     $hasEffortModel = Test-HeadingPresent -Lines $PlanLines -Heading 'Effort Model'
@@ -3126,10 +3128,48 @@ function Test-PlanEffortModel {
         'Calibration Enabled'    = [string]$IterationConfig.calibration_enabled
     }
 
+    # Grandfather NON-in-flight iterations: the capacity check is a PLANNING-TIME guard. Only iterations
+    # still being planned or executed must match the CURRENT iteration-config; once an iteration reaches
+    # reviewing / retro / closeout its capacity is HISTORICAL TRUTH (the baseline at plan time), and a
+    # later config change must not retroactively FAIL it. Firing the check on work that is already
+    # executed and under review is the actual defect this guards against.
+    #
+    # Per Specrew's canonical iteration statuses, IN-FLIGHT = planning | executing (subject to current
+    # config). Everything past implementation — reviewing | retro | complete | abandoned | *-complete |
+    # closed | ... — is grandfathered (validated for self-consistency against the plan's own stated
+    # Capacity per Iteration, below). This in-flight blacklist is forward-compatible: future / unlisted
+    # closed status forms grandfather automatically without re-editing a whitelist (the bare-`retro`
+    # historical corpus regression). A status-less plan is treated as in-flight (enforce config) unless
+    # the durable closed-iteration index records it.
+    $iterationStatus = ([string](Get-MarkdownMetadataValue -Lines $PlanLines -Label 'Status')).Trim().ToLowerInvariant()
+    $inFlightStatuses = @('planning', 'executing')
+    $isClosedIteration = (-not [string]::IsNullOrWhiteSpace($iterationStatus)) -and ($iterationStatus -notin $inFlightStatuses)
+
+    # Belt-and-suspenders (Proposal 085): an explicit closed-iteration index entry forces grandfathering
+    # even when the plan Status is blank or an unexpected in-flight value. Not load-bearing for the CI
+    # path (indexed iterations are filtered out upstream) — covers manual -IncludeClosed audits.
+    if (-not $isClosedIteration -and -not (Test-IsNullish $IterationDirectory) -and -not (Test-IsNullish $ProjectRoot)) {
+        try {
+            $relIterationPath = ([System.IO.Path]::GetRelativePath($ProjectRoot, $IterationDirectory)) -replace '\\', '/'
+            if ($relIterationPath -match 'specs/([^/]+)/iterations/([^/]+)/?$') {
+                if (Test-SpecrewIterationClosed -ProjectRoot $ProjectRoot -Feature $Matches[1] -Iteration $Matches[2]) {
+                    $isClosedIteration = $true
+                }
+            }
+        }
+        catch {
+            # Index unavailable / unreadable — fall back to status-based detection.
+        }
+    }
+
     foreach ($expectedSetting in $expectedValues.Keys) {
         if (-not $rowMap.ContainsKey($expectedSetting)) {
             $Errors.Add("plan.md Effort Model section is missing required setting '$expectedSetting'")
             continue
+        }
+
+        if ($isClosedIteration -and $expectedSetting -eq 'Capacity per Iteration') {
+            continue  # grandfathered: historical capacity baseline, not current config
         }
 
         $actualValue = [string]$rowMap[$expectedSetting]
@@ -3150,8 +3190,17 @@ function Test-PlanEffortModel {
 
     $capacityTotal = $capacityMatch.Groups['total'].Value
     $capacityUnit = $capacityMatch.Groups['unit'].Value
-    if ($capacityTotal -ne [string]$IterationConfig.capacity_per_iteration) {
-        $Errors.Add("plan.md Capacity total '$capacityTotal' does not match iteration-config capacity_per_iteration '$($IterationConfig.capacity_per_iteration)'")
+    # Closed iterations: validate the Capacity line cap against the plan's OWN stated Effort Model
+    # 'Capacity per Iteration' (self-consistency / historical truth), not the current config baseline.
+    $expectedCapacityTotal = if ($isClosedIteration -and $rowMap.ContainsKey('Capacity per Iteration')) {
+        [string]$rowMap['Capacity per Iteration']
+    }
+    else {
+        [string]$IterationConfig.capacity_per_iteration
+    }
+    if ($capacityTotal -ne $expectedCapacityTotal) {
+        $mismatchSource = if ($isClosedIteration) { "the plan's own stated Capacity per Iteration (closed-iteration grandfathering)" } else { 'iteration-config capacity_per_iteration' }
+        $Errors.Add("plan.md Capacity total '$capacityTotal' does not match $mismatchSource '$expectedCapacityTotal'")
     }
 
     if ($capacityUnit.Trim().ToLowerInvariant() -ne ([string]$IterationConfig.effort_unit).Trim().ToLowerInvariant()) {
@@ -3784,7 +3833,7 @@ function Test-IterationGovernance {
     Test-Phase2HardeningGate -IterationDirectory $IterationDirectory -ProjectRoot $ProjectRoot -PlanLines $planLines -IterationStatus $status -Errors $errors
 
     $iterationConfig = Get-IterationConfigForValidation -IterationDirectory $IterationDirectory
-    Test-PlanEffortModel -PlanLines $planLines -Capacity $capacity -IterationConfig $iterationConfig -Errors $errors
+    Test-PlanEffortModel -PlanLines $planLines -Capacity $capacity -IterationConfig $iterationConfig -Errors $errors -IterationDirectory $IterationDirectory -ProjectRoot $ProjectRoot
     Test-PlanningCapacity -IterationDirectory $IterationDirectory -Status $status -Capacity $capacity -Tasks $tasks -IterationConfig $iterationConfig -Errors $errors
 
     $taskStatuses = $tasks | ForEach-Object { $_.Status.Trim().ToLowerInvariant() }
