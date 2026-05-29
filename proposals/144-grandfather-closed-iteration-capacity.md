@@ -18,43 +18,45 @@ truth, so enforcing the current config against them is incorrect. Mass-editing d
 
 ## Fix
 
-In `Test-PlanEffortModel`, detect closed iterations from the **durable closeout signal** — not plan
-status text alone — and **grandfather** their capacity. Closedness is established by either:
+The capacity check is a **planning-time guard**. The correct grandfather rule is therefore an
+**in-flight blacklist**, not a closed-status whitelist: in `Test-PlanEffortModel`, only iterations whose
+plan `**Status**:` is **in-flight** — `planning` | `executing` — are validated against the **current**
+`iteration-config`. Every iteration past implementation — `reviewing` | `retro` | `complete` |
+`abandoned` | `*-complete` | `closed` | … — carries **historical truth** and is grandfathered.
 
-1. **The authoritative Proposal-085 closed-iteration index** (`.specrew/closed-iterations.yml`), keyed
-   `<feature-slug>/<iteration>` and checked via `Test-SpecrewIterationClosed` (the iteration path +
-   project root are now threaded into `Test-PlanEffortModel`); **or**
-2. **A broadened terminal/closed plan-`**Status**:` pattern** — `complete` | `completed` | `abandoned` |
-   `closed` | `done` | `retro-complete` | `retrospective-complete` | `closeout-complete` |
-   `closure-complete` (covers the non-canonical closed status forms the historical corpus uses, e.g.
-   `retro-complete`), plus `Test-ClosedIterationStatus`.
-
-Detecting only `complete`/`abandoned` was too narrow: many historical `/20` plans use status forms like
-`retro-complete` and several closed iterations are recorded only in the index, so a status-only check
-left residual FAILs. With both signals, grandfathering applies whenever an iteration is genuinely closed:
-
-- The `Capacity per Iteration` Effort Model setting is **not** compared to the current config for closed
-  iterations.
+- The `Capacity per Iteration` Effort Model setting is **not** compared to the current config for
+  grandfathered iterations.
 - The `Capacity` line total is validated for **self-consistency** against the plan's own stated
   `Capacity per Iteration` value (historical truth) rather than the current config baseline.
-- Active / in-flight iterations (any non-closed status) continue to validate against the current config,
-  so live planning still respects the baseline.
+- A status-less plan is treated as in-flight (enforce config) **unless** the durable Proposal-085
+  closed-iteration index (`.specrew/closed-iterations.yml`, via `Test-SpecrewIterationClosed`) records
+  it — the index acts as belt-and-suspenders for explicit closed entries. The iteration path + project
+  root are threaded into `Test-PlanEffortModel` for this lookup.
+
+**Why a blacklist, not a whitelist.** An earlier attempt grandfathered only `complete`/`abandoned`, then
+`complete|abandoned|retro-complete|…`. Both were too narrow: the historical corpus froze old iterations
+at **bare `retro`** (10 such iterations: `001-specrew-product/006–012`, `005/001`, `045/002`, `048/001`)
+without formal closeout and they are **not** in the index, so a whitelist left residual FAILs and is
+fragile against the next unlisted form. The in-flight blacklist is forward-compatible: any future or
+non-canonical post-implementation status grandfathers automatically. The index lookup is **not**
+load-bearing on the CI path (indexed iterations are filtered out upstream of this check, and CI does not
+pass `-IncludeClosed`) — the **status rule** is what clears CI; the index covers manual `-IncludeClosed`
+audits.
 
 Mirrored byte-identical to `.specify/extensions/specrew-speckit/scripts/validate-governance.ps1`.
 
 ## Acceptance
 
-- A closed iteration (`Status: complete`) with `Capacity per Iteration: 20` + `Capacity: 20/20` under
-  `capacity_per_iteration: 25` produces **no** capacity-vs-config FAIL.
-- A closed iteration using a **historical status form** (`Status: retro-complete`) under the same drift
-  is also grandfathered (**no** FAIL).
+- A grandfathered iteration (`Status` ∈ {`complete`, `retro-complete`, **bare `retro`**, `reviewing`})
+  with `Capacity per Iteration: 20` + `Capacity: 20/20` under `capacity_per_iteration: 25` produces
+  **no** capacity-vs-config FAIL.
+- An **in-flight** iteration (`Status: planning` **or** `Status: executing`, not in the index) with the
+  same drift **still** FAILs against the current config.
 - An iteration recorded in `.specrew/closed-iterations.yml` is grandfathered **even when its plan
-  `Status` is a non-terminal form** (e.g. `reviewing`).
-- An active iteration (`Status: planning`, not in the index) with the same drift **still** FAILs against
-  the current config.
-- Empirically: with `capacity_per_iteration: 25` on the real corpus, residual closed-iteration
-  capacity-vs-config FAILs drop from 58 → 0; active-iteration enforcement is unchanged.
-- Covered by `tests/integration/capacity-grandfather-closed-iterations.tests.ps1` (four cases above).
+  `Status` is in-flight** (belt-and-suspenders).
+- Empirically: with `capacity_per_iteration: 25` on the real corpus (`-FullRun -IncludeClosed`), the
+  29 failing iterations / 58 FAIL lines from F-049's CI drop to **0**; in-flight enforcement unchanged.
+- Covered by `tests/integration/capacity-grandfather-closed-iterations.tests.ps1` (seven cases above).
 
 ## Composition
 
@@ -62,3 +64,16 @@ Mirrored byte-identical to `.specify/extensions/specrew-speckit/scripts/validate
   (Charter Item 5 ordering preserved — this is not F-050).
 - Sibling to the deferred B-001 + A-001 framework-fix slice (drift-log F-049 iterations 004/005) and to
   Proposal 142 (State-Truth Integrity Validator).
+
+## Queued follow-up (separate small-fix slice, ~1-2 SP, after F-049 PR merges)
+
+Maintainer methodology correction (2026-05-29): **20 SP per iteration is intentional** — sized for AI
+scope + context window, not arbitrary. F-049's Decision 2 (formalize 25 as the baseline) was a mistake;
+the correct response to iteration 003's 23.45 SP was to **split** it into smaller iterations, not raise
+the cap. Queued, separate from F-049 closeout to keep scope clean:
+
+- Revert `.specrew/iteration-config.yml` `capacity_per_iteration` 25 → 20.
+- CHANGELOG note that 25 was incorrect-historical; 20 is the intended cap.
+- Forward iterations cap at 20; historical iterations grandfathered under **this** PR's in-flight rule
+  (iteration 003 stays grandfathered as closed/historical truth — the rule protects it in both baseline
+  directions).

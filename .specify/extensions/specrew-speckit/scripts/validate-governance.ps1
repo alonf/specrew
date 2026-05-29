@@ -3014,25 +3014,26 @@ function Test-PlanEffortModel {
         'Calibration Enabled'    = [string]$IterationConfig.calibration_enabled
     }
 
-    # Grandfather CLOSED iterations: their capacity reflects the iteration-config baseline AT THEIR
-    # TIME, not the current one. A later baseline change must NOT retroactively FAIL closed-iteration
-    # plans (closed iterations carry historical truth, not current-policy truth). For closed iterations
-    # the 'Capacity per Iteration' setting is grandfathered and the Capacity line is validated for
-    # self-consistency against the plan's own stated value (below) rather than the current config.
-    # Active / in-flight iterations still validate against config.
+    # Grandfather NON-in-flight iterations: the capacity check is a PLANNING-TIME guard. Only iterations
+    # still being planned or executed must match the CURRENT iteration-config; once an iteration reaches
+    # reviewing / retro / closeout its capacity is HISTORICAL TRUTH (the baseline at plan time), and a
+    # later config change must not retroactively FAIL it. Firing the check on work that is already
+    # executed and under review is the actual defect this guards against.
     #
-    # Closedness is detected from the DURABLE closeout signal, not plan status alone: the authoritative
-    # Proposal-085 closed-iteration index (.specrew/closed-iterations.yml) is checked first, then a
-    # broadened terminal/closed plan-Status pattern as a fallback for not-yet-indexed closed plans. The
-    # historical corpus uses several closed status forms (complete, abandoned, closed, retro-complete,
-    # retrospective-complete, closeout/closure complete) — all are grandfathered; in-flight statuses
-    # (planning, executing, reviewing, retro) are NOT.
+    # Per Specrew's canonical iteration statuses, IN-FLIGHT = planning | executing (subject to current
+    # config). Everything past implementation — reviewing | retro | complete | abandoned | *-complete |
+    # closed | ... — is grandfathered (validated for self-consistency against the plan's own stated
+    # Capacity per Iteration, below). This in-flight blacklist is forward-compatible: future / unlisted
+    # closed status forms grandfather automatically without re-editing a whitelist (the bare-`retro`
+    # historical corpus regression). A status-less plan is treated as in-flight (enforce config) unless
+    # the durable closed-iteration index records it.
     $iterationStatus = ([string](Get-MarkdownMetadataValue -Lines $PlanLines -Label 'Status')).Trim().ToLowerInvariant()
-    $closedStatusPattern = '^(complete|completed|abandoned|closed|done|retro[-\s]?complete|retrospective[-\s]?complete|closeout[-\s]?complete|closure[-\s]?complete)$'
-    $isClosedIteration = ($iterationStatus -match $closedStatusPattern) -or (Test-ClosedIterationStatus -IterationStatus $iterationStatus)
+    $inFlightStatuses = @('planning', 'executing')
+    $isClosedIteration = (-not [string]::IsNullOrWhiteSpace($iterationStatus)) -and ($iterationStatus -notin $inFlightStatuses)
 
-    # Authoritative durable signal: the iteration is recorded in the Proposal-085 closed-iteration
-    # index (.specrew/closed-iterations.yml), keyed by "<feature-slug>/<iteration>".
+    # Belt-and-suspenders (Proposal 085): an explicit closed-iteration index entry forces grandfathering
+    # even when the plan Status is blank or an unexpected in-flight value. Not load-bearing for the CI
+    # path (indexed iterations are filtered out upstream) — covers manual -IncludeClosed audits.
     if (-not $isClosedIteration -and -not (Test-IsNullish $IterationDirectory) -and -not (Test-IsNullish $ProjectRoot)) {
         try {
             $relIterationPath = ([System.IO.Path]::GetRelativePath($ProjectRoot, $IterationDirectory)) -replace '\\', '/'
@@ -3043,7 +3044,7 @@ function Test-PlanEffortModel {
             }
         }
         catch {
-            # Index unavailable / unreadable — fall back to status-only detection (no grandfathering).
+            # Index unavailable / unreadable — fall back to status-based detection.
         }
     }
 

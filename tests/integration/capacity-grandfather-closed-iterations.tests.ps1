@@ -148,14 +148,59 @@ if ($retroText -match $capacityVsConfigPattern) {
 }
 Write-Pass "Closed iteration with historical plan Status 'retro-complete' is grandfathered (broadened closed-status detection)"
 
-# --- Closed via the DURABLE closed-iteration INDEX while plan Status is a non-terminal form
-#     (reviewing): .specrew/closed-iterations.yml is the authoritative closeout signal and must
-#     grandfather even when the plan Status text does not look closed. ---
+# --- Closed via BARE 'retro' status (config 25): the historical corpus froze old iterations at the
+#     'retro' phase without formal closeout; 'retro' is past-implementation, so it grandfathers. This
+#     is the regression that the narrow complete|abandoned whitelist missed. ---
+$bareRetroRoot = Join-Path $scratchRoot 'bare-retro-project'
+$bareRetroIter = Join-Path $bareRetroRoot 'specs\017-sample\iterations\002'
+$null = New-Item -ItemType Directory -Path $bareRetroIter -Force
+New-FixtureProject -Root $bareRetroRoot
+New-EffortModelPlan -IterationDir $bareRetroIter -Status 'retro' -Capacity '20/20 story_points' -Completed ''
+$bareRetroText = Get-ValidatorText -Root $bareRetroRoot -IterationDir $bareRetroIter
+if ($bareRetroText -match $capacityVsConfigPattern) {
+    Write-Fail "Iteration with bare 'retro' status (capacity 20, config 25) still FAILED the capacity-vs-config check; in-flight-only grandfathering did not apply to 'retro'."
+    Write-Host $bareRetroText
+    exit 1
+}
+Write-Pass "Iteration with bare 'retro' status is grandfathered (past-implementation; in-flight-only rule)"
+
+# --- 'reviewing' status (config 25, no index entry): also past-implementation -> grandfathered by the
+#     status rule alone (not relying on the index path). ---
+$reviewingRoot = Join-Path $scratchRoot 'reviewing-project'
+$reviewingIter = Join-Path $reviewingRoot 'specs\017-sample\iterations\002'
+$null = New-Item -ItemType Directory -Path $reviewingIter -Force
+New-FixtureProject -Root $reviewingRoot
+New-EffortModelPlan -IterationDir $reviewingIter -Status 'reviewing' -Capacity '20/20 story_points' -Completed ''
+$reviewingText = Get-ValidatorText -Root $reviewingRoot -IterationDir $reviewingIter
+if ($reviewingText -match $capacityVsConfigPattern) {
+    Write-Fail "Iteration with 'reviewing' status (capacity 20, config 25, no index) still FAILED the capacity-vs-config check; status-driven grandfathering did not apply."
+    Write-Host $reviewingText
+    exit 1
+}
+Write-Pass "Iteration with 'reviewing' status is grandfathered by the status rule (no index entry needed)"
+
+# --- 'executing' status (config 25): IN-FLIGHT -> still enforced against current config (FAILs). Locks
+#     the in-flight boundary so planning AND executing both stay enforced. ---
+$execRoot = Join-Path $scratchRoot 'executing-project'
+$execIter = Join-Path $execRoot 'specs\017-sample\iterations\002'
+$null = New-Item -ItemType Directory -Path $execIter -Force
+New-FixtureProject -Root $execRoot
+New-EffortModelPlan -IterationDir $execIter -Status 'executing' -Capacity '15/20 story_points' -Completed ''
+$execText = Get-ValidatorText -Root $execRoot -IterationDir $execIter
+if ($execText -notmatch $capacityVsConfigPattern) {
+    Write-Fail "Iteration with 'executing' status (capacity 20, config 25) did NOT FAIL; in-flight iterations (planning + executing) must still enforce current config."
+    Write-Host $execText
+    exit 1
+}
+Write-Pass "Iteration with 'executing' status still FAILs (in-flight boundary: planning + executing enforce config)"
+
+# --- DURABLE closed-iteration INDEX overrides an in-flight plan Status (belt-and-suspenders): an
+#     explicit closed-index entry forces grandfathering even when plan Status says 'executing'. ---
 $indexRoot = Join-Path $scratchRoot 'closed-index-project'
 $indexIter = Join-Path $indexRoot 'specs\017-sample\iterations\002'
 $null = New-Item -ItemType Directory -Path $indexIter -Force
 New-FixtureProject -Root $indexRoot
-New-EffortModelPlan -IterationDir $indexIter -Status 'reviewing' -Capacity '20/20 story_points' -Completed ''
+New-EffortModelPlan -IterationDir $indexIter -Status 'executing' -Capacity '20/20 story_points' -Completed ''
 @'
 # Specrew closed-iteration index (Proposal 085).
 closed:
@@ -165,11 +210,11 @@ closed:
 '@ | Set-Content -LiteralPath (Join-Path $indexRoot '.specrew\closed-iterations.yml') -Encoding UTF8
 $indexText = Get-ValidatorText -Root $indexRoot -IterationDir $indexIter
 if ($indexText -match $capacityVsConfigPattern) {
-    Write-Fail "Iteration recorded in .specrew/closed-iterations.yml (plan Status 'reviewing', capacity 20, config 25) still FAILED the capacity-vs-config check; durable closed-index grandfathering did not apply."
+    Write-Fail "Iteration recorded in .specrew/closed-iterations.yml (plan Status 'executing', capacity 20, config 25) still FAILED; durable closed-index belt-and-suspenders did not override the in-flight status."
     Write-Host $indexText
     exit 1
 }
-Write-Pass 'Iteration closed via the durable closed-iteration index is grandfathered even when plan Status is non-terminal'
+Write-Pass 'Durable closed-iteration index grandfathers even when plan Status is in-flight (belt-and-suspenders)'
 
 if (Test-Path -LiteralPath $scratchRoot) { Remove-Item -LiteralPath $scratchRoot -Recurse -Force -ErrorAction SilentlyContinue }
 Write-Pass 'Capacity grandfathering: closed iterations use their own stated capacity; active iterations enforce current config'
