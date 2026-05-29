@@ -2,7 +2,7 @@
 
 **Schema**: v1
 **Spec**: [../../spec.md](../../spec.md)
-**Status**: executing
+**Status**: reviewing
 **Capacity**: 10.0/25 story_points
 **Started**: 2026-05-29
 **Completed**:
@@ -65,15 +65,15 @@ Iteration `004` delivers the **Proposal 120 Five-Pillar Bypass Detection** scope
 
 | Task | Title | Requirement | Story | Effort | Owner | Owner File Globs | Status | Agent | Actual | Verdict |
 | ---- | ----- | ----------- | ----- | ------ | ----- | ---------------- | ------ | ----- | ------ | ------- |
-| T001 | Create Iteration 004 audit scaffold and evidence envelope | FR-018, FR-019, FR-020, FR-021, FR-022, SC-004, TG-008, TG-016 | US4 | 0.4 | Reviewer | `specs/049-pipeline-hardening-intake/iterations/004/quality/quality-evidence.md` | planned | | | |
-| T002 | Pillar 5 `Test-ReviewCitedFilesInTree` helper (git ls-tree vs cited evidence) | FR-022, TG-008 | US4 | 1.2 | Implementer | `extensions/specrew-speckit/scripts/shared-governance.ps1`, `.specify/extensions/specrew-speckit/scripts/shared-governance.ps1` | planned | | | |
-| T003 | Pillar 5 validator rule (FAIL production / WARN test) + iteration-closeout hard-gate | FR-022, SC-004, TG-008 | US4 | 1.5 | Implementer | `extensions/specrew-speckit/scripts/validate-governance.ps1`, `.specify/extensions/specrew-speckit/scripts/validate-governance.ps1` | planned | | | |
-| T004 | Pillar 4 validator-side state-advance-without-verdict cross-check (WARN) | FR-021 | US4 | 1.2 | Implementer | `extensions/specrew-speckit/scripts/validate-governance.ps1`, `.specify/extensions/specrew-speckit/scripts/validate-governance.ps1` | planned | | | |
-| T005 | Pillar 4 sync short-circuit repair (stale-ahead cursor detection; AC8 hard-block cannot be silently bypassed) — fork A | FR-021 | US4 | 1.3 | Implementer | `scripts/internal/sync-boundary-state.ps1`, `extensions/specrew-speckit/scripts/shared-governance.ps1` | planned | | | |
-| T006 | Pillar 1 live handoff-evidence signal so FR-018 detection fires in real runs — blocker option a/b | FR-018 | US4 | 1.7 | Implementer | `scripts/internal/sync-boundary-state.ps1`, `extensions/specrew-speckit/scripts/validate-governance.ps1` | planned | | | |
-| T007 | Certify Pillars 2–3 fire live + add FR-018..FR-020 traceability markers | FR-018, FR-019, FR-020 | US4 | 0.5 | Reviewer | `extensions/specrew-speckit/scripts/validate-governance.ps1` | planned | | | |
-| T008 | SC-004 fixtures: Pillar 4 + Pillar 5 (+ live Pillar 1) shapes; prove all five surface | FR-018, FR-019, FR-020, FR-021, FR-022, SC-004 | US4 | 1.6 | Reviewer | `tests/integration/non-specrew-session-bypass.tests.ps1` | planned | | | |
-| T009 | Mirror parity + Proposal 120 evidence (SHA parity on modified extension scripts) | TG-008, SC-004 | US4 | 0.6 | Reviewer | `tests/integration/non-specrew-session-bypass.tests.ps1`, `specs/049-pipeline-hardening-intake/iterations/004/quality/quality-evidence.md` | planned | | | |
+| T001 | Create Iteration 004 audit scaffold and evidence envelope | FR-018, FR-019, FR-020, FR-021, FR-022, SC-004, TG-008, TG-016 | US4 | 0.4 | Reviewer | `specs/049-pipeline-hardening-intake/iterations/004/quality/quality-evidence.md` | done | claude | as-planned | pass |
+| T002 | Pillar 5 `Test-ReviewCitedFilesInTree` helper (git ls-tree vs cited evidence) | FR-022, TG-008 | US4 | 1.2 | Implementer | `extensions/specrew-speckit/scripts/shared-governance.ps1`, `.specify/extensions/specrew-speckit/scripts/shared-governance.ps1` | done | claude | as-planned | pass |
+| T003 | Pillar 5 validator rule (FAIL production / WARN test) + iteration-closeout hard-gate | FR-022, SC-004, TG-008 | US4 | 1.5 | Implementer | `extensions/specrew-speckit/scripts/validate-governance.ps1`, `.specify/extensions/specrew-speckit/scripts/validate-governance.ps1` | done | claude | as-planned | pass |
+| T004 | Pillar 4 validator-side state-advance-without-verdict cross-check (WARN) | FR-021 | US4 | 1.2 | Implementer | `extensions/specrew-speckit/scripts/validate-governance.ps1`, `.specify/extensions/specrew-speckit/scripts/validate-governance.ps1` | done | claude | as-planned | pass |
+| T005 | Pillar 4 sync short-circuit repair (stale-ahead cursor detection; AC8 hard-block cannot be silently bypassed) — fork A | FR-021 | US4 | 1.3 | Implementer | `scripts/internal/sync-boundary-state.ps1`, `extensions/specrew-speckit/scripts/shared-governance.ps1` | done | claude | as-planned | pass |
+| T006 | Pillar 1 live handoff-evidence signal so FR-018 detection fires in real runs — blocker option a/b | FR-018 | US4 | 1.7 | Implementer | `scripts/internal/sync-boundary-state.ps1`, `extensions/specrew-speckit/scripts/validate-governance.ps1` | done | claude | as-planned | pass |
+| T007 | Certify Pillars 2–3 fire live + add FR-018..FR-020 traceability markers | FR-018, FR-019, FR-020 | US4 | 0.5 | Reviewer | `extensions/specrew-speckit/scripts/validate-governance.ps1` | done | claude | as-planned | pass |
+| T008 | SC-004 fixtures: Pillar 4 + Pillar 5 (+ live Pillar 1) shapes; prove all five surface | FR-018, FR-019, FR-020, FR-021, FR-022, SC-004 | US4 | 1.6 | Reviewer | `tests/integration/non-specrew-session-bypass.tests.ps1` | done | claude | as-planned | pass |
+| T009 | Mirror parity + Proposal 120 evidence (SHA parity on modified extension scripts) | TG-008, SC-004 | US4 | 0.6 | Reviewer | `tests/integration/non-specrew-session-bypass.tests.ps1`, `specs/049-pipeline-hardening-intake/iterations/004/quality/quality-evidence.md` | done | claude | as-planned | pass |
 
 **Planned Task Total**: 10.0 story_points (incl. both human-decision items T005 + T006; deferring either drops toward the 6-8 SP core)
 **Bounded Slice Truth**: Proposal 120 remains a 6-10 SP slice inside the repository-wide 25 story-point iteration-capacity model.
