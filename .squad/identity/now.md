@@ -1,10 +1,10 @@
 ---
-focus_area: "Feature 049 feature-closeout IN PROGRESS — PR #1152 open at v0.28.0; addressing cross-review release-metadata fixes before merge"
+focus_area: "Feature 049 — all 5 iterations closed (last boundary iteration-closeout); feature-closeout PR #1152 open at v0.28.0, in human review before merge"
 active_issues: "[]"
 schema: v1
-updated_at: 2026-05-29T00:40:00Z
+updated_at: 2026-05-29T00:50:00Z
 session_state_active: true
-session_state_boundary: feature-closeout
+session_state_boundary: iteration-closeout
 session_state_feature: 049-pipeline-hardening-intake
 session_state_feature_path: "C:\Dev\Specrew\specs\049-pipeline-hardening-intake"
 session_state_iteration: 004
@@ -15,7 +15,7 @@ session_state_recorded_at: 2026-05-29T00:40:00Z
 
 # What We're Focused On
 
-Feature 049 (049-pipeline-hardening-intake) is in **feature-closeout**. All five iterations are closed; **PR [#1152](https://github.com/alonf/specrew/pull/1152)** is open (base `main` ← `049-pipeline-hardening-intake`) targeting **v0.28.0**.
+Feature 049 (049-pipeline-hardening-intake): all five iterations are closed (last completed lifecycle boundary = **iteration-closeout**). The **feature-closeout** release SDLC is in progress — **PR [#1152](https://github.com/alonf/specrew/pull/1152)** is open (base `main` ← `049-pipeline-hardening-intake`) targeting **v0.28.0**, in human review before merge. (feature-closeout becomes the recorded boundary only when the PR merges + `sync-feature-closeout` runs.)
 
 - Cleanup decisions applied: D1 = defer B-001 + A-001 to a separate framework-fix slice; D2 = formalize capacity 25 for the self-host repo only (shipped default stays 20); D3 = version bump to **0.28.0** across all manifests + README + CHANGELOG.
 - Current status: cross-review DECLINED merge for narrow release-metadata truth fixes (README Status section, capacity-default consistency, this now.md staleness, psd1 prerelease beta.2→beta.1, decisions.md conflict-marker example). Addressing them now, then re-presenting the merge verdict.
