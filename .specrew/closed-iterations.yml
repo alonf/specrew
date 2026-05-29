@@ -146,3 +146,9 @@ closed:
   - feature: 049-pipeline-hardening-intake
     iteration: 003
     closed_at: 2026-05-27T23:54:40Z
+  - feature: 049-pipeline-hardening-intake
+    iteration: 005
+    closed_at: 2026-05-28T22:08:57Z
+  - feature: 049-pipeline-hardening-intake
+    iteration: 004
+    closed_at: 2026-05-29T00:25:08Z

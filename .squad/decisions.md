@@ -21528,3 +21528,73 @@ Documented in `specs/049-pipeline-hardening-intake/iterations/005/drift-log.md` 
 
 - **Approving authority**: Alon Fliess
 - **Approval context**: At the F-049 iteration-005 before-implement gate (2026-05-28), the human approved the slice and explicitly dispositioned Finding 3 (A-001 scaffold crash) and Finding 4 (capacity + version drift) as DEFER, routing A-001 to a framework-fix slice / framework-file-protection proposal and the capacity/version drift to F-049 feature-closeout cleanup.
+
+## 2026-05-28T20:49:40Z — Boundary sync: review-signoff
+
+- **Boundary Type**: review-signoff
+- **Feature Ref**: 049-pipeline-hardening-intake
+- **Iteration Number**: 005
+- **Task ID**: (none)
+- **Auth Commit Hash**: 2b426b28
+- **Recorded At**: 2026-05-28T20:49:40Z
+
+## 2026-05-28T20:50:03Z — Boundary sync: retro
+
+- **Boundary Type**: retro
+- **Feature Ref**: 049-pipeline-hardening-intake
+- **Iteration Number**: 005
+- **Task ID**: (none)
+- **Auth Commit Hash**: 2b426b28
+- **Recorded At**: 2026-05-28T20:50:03Z
+
+## 2026-05-28T22:08:56Z — Boundary sync: iteration-closeout
+
+- **Boundary Type**: iteration-closeout
+- **Feature Ref**: 049-pipeline-hardening-intake
+- **Iteration Number**: 005
+- **Task ID**: (none)
+- **Auth Commit Hash**: ff10f81f
+- **Recorded At**: 2026-05-28T22:08:56Z
+
+## 2026-05-28T23:14:51Z — Boundary sync warning: before-implement
+
+- **Boundary Type**: before-implement
+- **Latest Recorded Boundary**: iteration-closeout
+- **Recorded At**: 2026-05-28T23:14:51Z
+- **Warning**: Expected next boundary 'feature-closeout' but received 'before-implement'.
+
+## 2026-05-28T23:14:51Z — Boundary sync: before-implement
+
+- **Boundary Type**: before-implement
+- **Feature Ref**: 049-pipeline-hardening-intake
+- **Iteration Number**: 004
+- **Task ID**: (none)
+- **Auth Commit Hash**: 7dacef8b
+- **Recorded At**: 2026-05-28T23:14:51Z
+
+## 2026-05-29T00:12:54Z — Boundary sync: review-signoff
+
+- **Boundary Type**: review-signoff
+- **Feature Ref**: 049-pipeline-hardening-intake
+- **Iteration Number**: 004
+- **Task ID**: (none)
+- **Auth Commit Hash**: c156f136
+- **Recorded At**: 2026-05-29T00:12:53Z
+
+## 2026-05-29T00:13:22Z — Boundary sync: retro
+
+- **Boundary Type**: retro
+- **Feature Ref**: 049-pipeline-hardening-intake
+- **Iteration Number**: 004
+- **Task ID**: (none)
+- **Auth Commit Hash**: c156f136
+- **Recorded At**: 2026-05-29T00:13:22Z
+
+## 2026-05-29T00:25:07Z — Boundary sync: iteration-closeout
+
+- **Boundary Type**: iteration-closeout
+- **Feature Ref**: 049-pipeline-hardening-intake
+- **Iteration Number**: 004
+- **Task ID**: (none)
+- **Auth Commit Hash**: 87926843
+- **Recorded At**: 2026-05-29T00:25:07Z
