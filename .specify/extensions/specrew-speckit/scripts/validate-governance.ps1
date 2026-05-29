@@ -3012,10 +3012,23 @@ function Test-PlanEffortModel {
         'Calibration Enabled'    = [string]$IterationConfig.calibration_enabled
     }
 
+    # Grandfather CLOSED iterations (Status complete | abandoned): their capacity reflects the
+    # iteration-config baseline AT THEIR TIME, not the current one. A later baseline change must NOT
+    # retroactively FAIL closed-iteration plans (closed iterations carry historical truth, not
+    # current-policy truth). For closed iterations the 'Capacity per Iteration' setting is grandfathered
+    # and the Capacity line is validated for self-consistency against the plan's own stated value
+    # (below) rather than the current config. Active / in-flight iterations still validate against config.
+    $iterationStatus = (Get-NormalizedKeyword (Get-MarkdownMetadataValue -Lines $PlanLines -Label 'Status'))
+    $isClosedIteration = $iterationStatus -in @('complete', 'abandoned')
+
     foreach ($expectedSetting in $expectedValues.Keys) {
         if (-not $rowMap.ContainsKey($expectedSetting)) {
             $Errors.Add("plan.md Effort Model section is missing required setting '$expectedSetting'")
             continue
+        }
+
+        if ($isClosedIteration -and $expectedSetting -eq 'Capacity per Iteration') {
+            continue  # grandfathered: historical capacity baseline, not current config
         }
 
         $actualValue = [string]$rowMap[$expectedSetting]
@@ -3036,8 +3049,17 @@ function Test-PlanEffortModel {
 
     $capacityTotal = $capacityMatch.Groups['total'].Value
     $capacityUnit = $capacityMatch.Groups['unit'].Value
-    if ($capacityTotal -ne [string]$IterationConfig.capacity_per_iteration) {
-        $Errors.Add("plan.md Capacity total '$capacityTotal' does not match iteration-config capacity_per_iteration '$($IterationConfig.capacity_per_iteration)'")
+    # Closed iterations: validate the Capacity line cap against the plan's OWN stated Effort Model
+    # 'Capacity per Iteration' (self-consistency / historical truth), not the current config baseline.
+    $expectedCapacityTotal = if ($isClosedIteration -and $rowMap.ContainsKey('Capacity per Iteration')) {
+        [string]$rowMap['Capacity per Iteration']
+    }
+    else {
+        [string]$IterationConfig.capacity_per_iteration
+    }
+    if ($capacityTotal -ne $expectedCapacityTotal) {
+        $mismatchSource = if ($isClosedIteration) { "the plan's own stated Capacity per Iteration (closed-iteration grandfathering)" } else { 'iteration-config capacity_per_iteration' }
+        $Errors.Add("plan.md Capacity total '$capacityTotal' does not match $mismatchSource '$expectedCapacityTotal'")
     }
 
     if ($capacityUnit.Trim().ToLowerInvariant() -ne ([string]$IterationConfig.effort_unit).Trim().ToLowerInvariant()) {
