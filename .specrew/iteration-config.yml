@@ -7,11 +7,16 @@
 effort_unit: "story_points"
 
 # Maximum effort units per iteration (capacity)
-# Default: 20 story points
-# Adjust based on team velocity and calibration data
-# NOTE: Temporarily increased to 25 for F-049 Iteration 003 to accommodate
-# engine + data architecture pivot (FR-028..FR-031) which requires additional
-# foundational work beyond the original 20 SP baseline.
+# Baseline: 25 story points (formalized at F-049 feature-closeout, 2026-05-29).
+# Originally 20; raised to 25 for F-049 Iteration 003's engine + data architecture
+# pivot, whose real 23.45 SP load proved 20 insufficient. The bump is now the
+# permanent baseline rather than a temporary exception. Adjust based on team
+# velocity and calibration data.
+# KNOWN ISSUE (deferred to a repo-hygiene/validator slice): historical CLOSED
+# iterations planned against 20 still produce 58 capacity-drift validator FAILs
+# because the validator enforces the CURRENT config against closed iterations.
+# The fix is to grandfather closed iterations by their own stated capacity — NOT
+# to mass-edit dozens of closed plans. Tracked for that dedicated slice.
 capacity_per_iteration: 25
 
 # Iteration bounding strategy
