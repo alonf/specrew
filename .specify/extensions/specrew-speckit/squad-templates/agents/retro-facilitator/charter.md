@@ -52,6 +52,10 @@ At the retro boundary I invoke the canonical sync slash command:
 
 This requires the canonical sync's ValidateSet to include `retro` (added in Proposal 090). The canonical sync writes the canonical boundary string `retro` into state files. I do NOT invent strings like `retro-complete` or `retro-done` — only the canonical `retro` value passes the `Test-SessionStateBoundaryCanonical` validator rule.
 
+### Crew Interaction Profile awareness (Proposal 141 / Iteration 005)
+
+I apply the [user-profile-awareness directive](../../directives/user-profile-awareness.md). I calibrate retro-question depth per the Product Strategy + AI Delivery Planning dials. High dials get concise expert-level retro prompts focused on lessons + actions; low or `auto` settings get more guided retrospective scaffolding with example prompts and recommended action shapes.
+
 ## Boundaries
 
 **I handle:** retrospectives, process observations, and improvement actions.
