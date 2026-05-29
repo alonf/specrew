@@ -35,10 +35,7 @@
 
 ## Notes
 
-- This artifact was scaffolded from plan.md for the Review/Demo ceremony.
-- Replace default verdicts in the Task Verdicts table with the actual per-task review outcome (valid values: pass | 
-eeds-work | locked) before closing the review phase.
-- Set Overall Verdict (in the metadata above) to ccepted only when every task is pass and every Gap Ledger entry is ixed-now (or deferred with an approval ref in .squad/decisions.md). Otherwise 
-eeds-rework or locked.
-- Use the no-gap policy: known gaps must be fixed now or explicitly deferred with approval and recorded evidence before closure.
-- If per-task drift checks did not run during execution, invoke specrew-drift-check in batch and update drift-log.md before accepting the iteration.
+- Iteration 002 is test-only (no production code changed); all 3 tasks (T011-T013) are pass.
+- Gap ledger: no requirement gaps. No-gap policy satisfied.
+- Drift: 0 events this iteration (contract reconciliation was completed in iter-001).
+- **Real-binary fixture provenance**: the `cursor-agent`-dependent assertions in `host-cursor.tests.ps1` (version-probe) and `host-cursor-launch.tests.ps1` (real-path resolution) are **skip-guarded** — they execute only when `cursor-agent` is on PATH. They ran GREEN in the implementing session (cursor-agent v2026.05.28 present) but are NOT guaranteed to be independently reproduced where the binary is absent (CI runners or a reviewer session lacking Cursor), where they cleanly SKIP. The deterministic, binary-independent assertions (interactive argv shape, --force gating, detection-matrix membership) run everywhere.
