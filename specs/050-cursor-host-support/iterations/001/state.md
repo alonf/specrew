@@ -5,7 +5,7 @@
 **Iteration Status**: retro
 **Last Completed Task**: T010
 **Tasks Remaining**: (iteration-001 core slice complete; FR-006 integration smoke + FR-008 docs are iter-002/003)
-**In Progress**: (none — paused at review-signoff for human verdict)
+**In Progress**: (none — retro complete; awaiting iteration-closeout human verdict)
 **Baseline Ref**: b1b1ca0afff2c988cc4b94de0f96cd3a7d0b255c
 **Updated**: 2026-05-29T00:00:00Z
 
@@ -18,7 +18,7 @@
 
 ## Notes
 
-- Paused at review-signoff per human directive (T001–T010 scope).
+- review-signoff APPROVED (Alon Fliess, after independent cross-reviewer convergence); retro complete; awaiting iteration-closeout verdict. No F-050 retro→iteration-closeout verdict recorded yet.
 - Pre-existing baseline failures NOT introduced by F-050: `non-specrew-session-bypass.tests.ps1` (template wording "push the feature branch" vs test's "push the branch") + validator WARNs (README/extension.yml v0.27.x version drift, F-048 dashboard regression).
 - Keep task identifiers aligned to plan.md.
 
