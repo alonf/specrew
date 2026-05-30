@@ -46,6 +46,7 @@
 
 1. Owner: Crew coordinator | Phase: docs edits | Type: process | Expected effect: after any scripted markdown-table column change, run markdownlint immediately (don't wait for the boundary gate) and verify column-count uniformity across all rows.
 2. Owner: methodology | Phase: cross-feature | Type: process | Expected effect: the iters 001-003 review-friction pattern (artifact-integrity churn, evidence-breadth, state-truth) is now well-characterized across this feature — feed it into the reviewer-scaffolder-hardening + review-evidence-breadth proposal candidates already logged in the iter-001/002 retros.
+3. Owner: methodology | Phase: boundary transitions | Type: tooling | Expected effect: address the **recurring branch-push-discipline gap** — commits accrued unpushed twice within F-050 (the cross-reviewer caught both; matches the established `project-codex-branch-push-discipline-gap` pattern). The fix is mechanical: either a `specrew sync-*` boundary command that includes a `git push` step, or a coordinator-governance reminder rule that prompts a push at each boundary transition. This is now an empirical 2-instances-in-one-feature pattern for this Crew — worth a small proposal.
 
 ## Calibration Suggestion
 
