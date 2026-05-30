@@ -226,8 +226,8 @@ A developer cloning a fresh worktree to launch a new feature should go directly 
 - **FR-035**: System MUST split `.squad/identity/now.md` to separate git-tracked shared content (focus_area, body) from per-session transient fields (session_state_active, session_state_boundary, session_state_feature_path, session_state_iteration, session_state_auth_commit, session_state_recorded_at)
 - **FR-036**: System MUST create a new gitignored split file (`.squad/identity/session-state.yml` or `.squad/identity/session-state.json`) to hold per-session transient fields, with an entry in `.gitignore` for the new file pattern
 - **FR-037**: System MUST include migration logic that strips existing session_state_* fields from `.squad/identity/now.md` and writes them to the new split file, then commits the change to now.md
-- **FR-038**: System MUST validate at specrew start that the split between shared and per-session content is enforced; non-tracked files MUST not contain session_state_* fields (detector: grep for `session_state_` in tracked files and error if found)
-- **FR-039**: System MUST detect brand-new worktree condition at `specrew start` using these heuristic signals: empty `.specrew/active-sessions.yml` (or missing file), no recent boundary commits on the current feature branch, no iteration directories for the inherited feature_path in `.specrew/`
+- **FR-038**: System MUST validate at specrew start that the split between shared and per-session content is enforced; git-tracked files MUST NOT contain session_state_* fields (detector: grep for `session_state_` in tracked files and error if any are found). The gitignored session-state file may contain these fields.
+- **FR-039**: System MUST detect brand-new worktree condition at `specrew start` using these heuristic signals: empty `.specrew/active-sessions.yml` (or missing file), no recent boundary commits on the current feature branch, and no iteration directories matching the inherited feature_path under `specs/<feature>/iterations/`
 - **FR-040**: System MUST skip the stale-state recovery A/B/C prompt when brand-new condition is detected and proceed directly to new-feature specify flow
 - **FR-041**: System MUST preserve the A/B/C recovery prompt when state is genuinely inconsistent (e.g., feature_path on inherited state does not match current branch AND iteration directories exist for that path), detecting this condition by comparing inherited feature_path with current branch name and checking for local iteration evidence
 - **FR-042**: System MUST log all brand-new detection signals and decisions to `.specrew/session-start.log` for debugging purposes, including timestamp, detected signals, and decision rationale (brand-new vs. recovery needed)
@@ -238,11 +238,11 @@ A developer cloning a fresh worktree to launch a new feature should go directly 
 - **TG-001**: Each user story MUST map to one or more functional requirements
 - **TG-002**: Each requirement MUST identify expected owner role(s): Implementer (FR-001 through FR-043), Reviewer (validation of multi-session mode, file classification, collision detection, upgrade process, split identity files, brand-new worktree detection)
 - **TG-003**: Each requirement MUST identify intended iteration or delivery window:
-  - Iteration 1 (~18-22 SP): FR-001 to FR-006 (session mode config + file classification) — preserves P1 foundation scope
-  - Iteration 2 (~15-20 SP): FR-007 to FR-024 (collision detection + feature claims + auto-detection) — preserves session coordination scope
-  - Iteration 3 (~12-16 SP): FR-025 to FR-034 (Spec-Kit upgrade + specrew update fix) — preserves infrastructure scope
-  - Iteration 4 (~10-14 SP): FR-035 to FR-043 (identity split + brand-new worktree detection + privacy) — NEW: addresses stale-state recovery and UX friction
-  - Total: ~45-65 SP across 4 iterations (up from 40-58 SP across 3 iterations); Iteration capacity assumes single developer at ~18-22 SP per iteration
+  - Iteration 1 (up to 20 SP): FR-001 to FR-006 (session mode config + file classification) — preserves P1 foundation scope
+  - Iteration 2 (12-18 SP): FR-007 to FR-024 (collision detection + feature claims + auto-detection) — preserves session coordination scope
+  - Iteration 3 (10-15 SP): FR-025 to FR-034 (Spec-Kit upgrade + specrew update fix) — preserves infrastructure scope
+  - Iteration 4 (8-12 SP): FR-035 to FR-043 (identity split + brand-new worktree detection + privacy) — NEW: addresses stale-state recovery and UX friction
+  - Total: ~45-65 SP across 4 iterations; Iteration 1 capacity capped at 20 SP per TG-005 to enable fast validation; subsequent iterations sized accordingly
 - **TG-004**: Any known spec/implementation conflict MUST include an explicit reconciliation path. No known conflicts exist at specification time.
 - **TG-005**: Iteration 1 MUST remain at or under 20 SP to allow fast foundation validation and unblock parallel work (Iteration 1 acts as dependency gate for Iterations 2-4)
 
@@ -277,7 +277,7 @@ A developer cloning a fresh worktree to launch a new feature should go directly 
 - **SC-003**: Multi-developer activity detection identifies projects with 2+ developers within one `specrew start` command after the second developer commits (detection accuracy: 100% for defined signal types)
 - **SC-004**: Spec-Kit upgrade from 0.8.13 to 0.8.18 completes successfully in under 2 minutes with all governance validators passing afterward (success rate: 100% in supported installation scenarios)
 - **SC-005**: `specrew update` command accurately reflects the installed Specrew module version in `.specrew/config.yml` with zero version mismatches after running the command (accuracy: 100%)
-- **SC-006**: Merge conflicts on shared governance files (`.squad/decisions.md`, `Specrew.psd1` FileList) are reduced when anti-conflict tactics (per-iteration split, JSON Lines, alphabetical sort) are applied. Measured by: (a) counting distinct conflict markers (`<<<<<<<`, `=======`, `>>>>>>>`) in merge commits before and after tactics apply, with baseline derived from F-049/F-050 merge history; (b) verifying per-iteration decisions are isolated to their own files; (c) verifying FileList entries are deterministically sorted. Success threshold: no more than 1 conflict per 5 concurrent-feature-week parallel work (derived from 70%+ conflict reduction in theory)
+- **SC-006**: Merge conflicts on shared governance files (`.squad/decisions.md`, `Specrew.psd1` FileList) are eliminated or mechanically resolved when anti-conflict tactics (per-iteration split, JSON Lines, alphabetical sort) are applied. Measured by: (a) zero conflict markers remain after applying auto-sort to FileList and per-iteration split to decisions; (b) JSON Lines log merges produce no ambiguous duplicate entries; (c) all merge commits on files changed by tactics show clean merges or single-line resolutions. Success: 100% of concurrent feature-work merge attempts on these files complete without manual conflict resolution.
 - **SC-007**: Developers receive a recommendation to enable multi-session mode within one command execution after multi-developer signals are first detected (recommendation latency: 0-2 seconds)
 - **SC-008**: Feature claims are accurately maintained across lifecycle boundaries with `last_refresh_time` updated at each boundary (100% update rate at specify, plan, tasks, implement, review, retro boundaries)
 
@@ -293,13 +293,13 @@ A developer cloning a fresh worktree to launch a new feature should go directly 
 - Stale session locks are defined as locks with `last_heartbeat_time` older than 24 hours
 - The F-049 commit `437338f6` git-rm-cached pattern refers to the process of removing tracked files from git index without deleting them from the working directory
 - Proposals 010 and 134 are design references that define the full scope of multi-developer reconciliation; F-051 implements a minimal "Phase 1" subset
-- Iteration slicing is likely 3 iterations based on the 40-58 SP estimate, with each iteration focused on a coherent subsystem (config + file classification | collision detection + claims + auto-detection | upgrade + bug fix)
+- Iteration slicing is 4 iterations based on the 45-65 SP estimate, with each iteration focused on a coherent subsystem: Iteration 1 (config + file classification), Iteration 2 (collision detection + claims + auto-detection), Iteration 3 (upgrade + bug fix), Iteration 4 (identity split + brand-new worktree detection)
 
 ## Governance Alignment *(mandatory)*
 
 - **Spec Steward**: Specrew Spec Steward agent (accountable for specification integrity and drift detection between this spec, plan, tasks, and implementation)
 - **Iteration Facilitator**: Specrew Planner agent (accountable for iteration cadence, capacity planning, and blocker escalation)
-- **Capacity Model**: Story Points (SP); estimated 45-65 SP total across 4 iterations (Iteration 1: 18-22 SP, Iteration 2: 15-20 SP, Iteration 3: 12-16 SP, Iteration 4: 10-14 SP); Iteration capacity assumes single developer at ~18-22 SP per iteration
+- **Capacity Model**: Story Points (SP); estimated 45-65 SP total across 4 iterations (Iteration 1: up to 20 SP, Iteration 2: 12-18 SP, Iteration 3: 10-15 SP, Iteration 4: 8-12 SP). Iteration 1 is capped at 20 SP per TG-005 to enable fast foundation validation and unblock parallel work. Single developer delivery model.
 - **Drift Signals**:
   - Semantic drift: Detected by comparing implemented collision detection logic against FR-007 through FR-016 (active-sessions + feature claims) and identity split logic against FR-035 through FR-043
   - Scope drift: Detected if implementation adds multi-developer features not scoped in FR-001 through FR-043 (such as cross-project coordination, network-based locking, real-time collaborative editing, or file-surface overlap detection per Proposal 148 Layer 2)
