@@ -209,6 +209,10 @@ jobs:
         shell: pwsh
         run: ./tests/integration/deploy-extension-missing-source-tolerance.tests.ps1
 
+      - name: Integration - FileList completeness (bidirectional)
+        shell: pwsh
+        run: ./tests/integration/filelist-completeness.tests.ps1
+
       - name: Integration - validate versions cli behavior
         if: runner.os != 'Linux'
         shell: pwsh
