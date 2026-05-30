@@ -46,7 +46,7 @@
 
 ## Improvement Actions
 
-1. Owner: Crew coordinator | Phase: every review boundary | Type: process | Expected effect: derive the review test-set from the changed-file surfaces (skill-roots → slash-command-* + distribution tests; FileList → distribution tests; host enums → host-* tests), and run ALL of them — not just the iteration's new tests. Record the full command list + pass/fail in coverage-evidence. (Prevents the iter-002 missed-test-files gap.)
+1. Owner: Crew coordinator | Phase: every review boundary | Type: process | Expected effect: derive the review test-set from the changed-file surfaces (skill-roots → slash-command-*+ distribution tests; FileList → distribution tests; host enums → host-* tests), and run ALL of them — not just the iteration's new tests. Record the full command list + pass/fail in coverage-evidence. (Prevents the iter-002 missed-test-files gap.)
 2. Owner: methodology | Phase: proposal | Type: tooling | Expected effect: the reviewer-artifact scaffolder should (a) emit clean Notes without control characters, and (b) the coverage-evidence test-runner should auto-include tests that reference any changed file's exported symbols/paths, so "review missed test files" cannot recur silently. (Extends the iter-001 scaffolder-hardening proposal candidate.)
 3. Owner: methodology | Phase: pre-PR | Type: process | Expected effect: capture the pre-existing failures found here (`slash-command-distribution` stale-string assertion; `distribution-module-publish` version-skew) as baseline-cleanup items so the F-050 PR's CI signal is interpretable — distinguish "red because of my change" from "red on main already."
 

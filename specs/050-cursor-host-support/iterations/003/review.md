@@ -37,9 +37,9 @@
 ## Notes
 
 - This artifact was scaffolded from plan.md for the Review/Demo ceremony.
-- Replace default verdicts in the Task Verdicts table with the actual per-task review outcome (valid values: pass | 
+- Replace default verdicts in the Task Verdicts table with the actual per-task review outcome (valid values: pass |
 eeds-work | locked) before closing the review phase.
-- Set Overall Verdict (in the metadata above) to ccepted only when every task is pass and every Gap Ledger entry is ixed-now (or deferred with an approval ref in .squad/decisions.md). Otherwise 
+- Set Overall Verdict (in the metadata above) to ccepted only when every task is pass and every Gap Ledger entry is ixed-now (or deferred with an approval ref in .squad/decisions.md). Otherwise
 eeds-rework or locked.
 - Use the no-gap policy: known gaps must be fixed now or explicitly deferred with approval and recorded evidence before closure.
 - If per-task drift checks did not run during execution, invoke specrew-drift-check in batch and update drift-log.md before accepting the iteration.

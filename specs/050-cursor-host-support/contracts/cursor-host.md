@@ -52,9 +52,11 @@ Declarative coordinator-prompt surgery directives. May be `@{ Rules = @() }` if 
 ## Skill-deploy integration (`extensions/specrew-speckit/scripts/deploy-squad-runtime.ps1`)
 
 `Get-ActiveSkillRoots -ProjectPath <p>` gains one entry:
+
 ```
 [pscustomobject]@{ Name = 'cursor'; Path = Join-Path $ProjectPath '.cursor\rules' }
 ```
+
 (4-entry list: claude, cursor, github, agents.)
 
 ## Invariants

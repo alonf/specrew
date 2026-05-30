@@ -39,7 +39,7 @@ As a developer using Cursor as my primary AI code editor, I want to launch a Spe
 **Acceptance Scenarios**:
 
 1. **Given** Cursor CLI is installed and on PATH, **When** user runs `specrew start --host cursor "Add OAuth login"`, **Then** Cursor's Agent mode launches with Specrew's coordinator prompt and begins specification workflow
-2. **Given** Cursor is not installed, **When** user runs `specrew start --host cursor "feature"`, **Then** system displays InstallGuidance message with link to https://cursor.sh/install and instructions to verify binary name
+2. **Given** Cursor is not installed, **When** user runs `specrew start --host cursor "feature"`, **Then** system displays InstallGuidance message with link to <https://cursor.sh/install> and instructions to verify binary name
 3. **Given** Cursor CLI is installed but not on PATH, **When** user runs host detection, **Then** system signals `binary-missing` and provides PATH configuration guidance
 4. **Given** user is in a project with existing `.cursor/` directory, **When** user runs `specrew start --host cursor`, **Then** system detects project-has-cursor-dir signal and prioritizes Cursor in the host menu
 5. **Given** Cursor CLI invocation fails with error, **When** launch is attempted, **Then** system captures error output and displays actionable troubleshooting steps
@@ -247,7 +247,7 @@ As a developer with multiple AI tools installed, I want Cursor to appear in the 
   - Iteration 2: Test coverage (unit + integration) → ~2-3 SP
   - Iteration 3: Documentation + manual smoke test → ~2-3 SP
 
-- **Drift Signals**: 
+- **Drift Signals**:
   - **Spec-to-plan drift**: Plan introduces implementation choices not grounded in the spec (e.g., choosing a Cursor binary name without empirical verification) → Escalate to spec update with clarification resolution
   - **Plan-to-tasks drift**: Tasks include changes to framework files (`.specify/extensions/specrew-speckit/**`) in violation of Parallel-Work Coordination Charter Item 2 → Block task, surface as proposal
   - **Tasks-to-implementation drift**: Implementation runs `specrew update` (violates Charter Item 3) or merges PR before F-049 (violates Charter Item 5) → Halt, escalate to maintainer for sequencing decision

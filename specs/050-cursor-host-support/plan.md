@@ -12,6 +12,7 @@
 Add a Cursor host package to Specrew's per-host architecture (shipped F-044), making `specrew start --host cursor "<feature>"` launch the `cursor-agent` standalone Agent CLI in **interactive** Agent mode with the Specrew coordinator prompt (matching claude/codex/antigravity). This is the **first post-F-044 host addition** — its purpose is partly to validate that the registry + 5-function-contract + canonical-source architecture scales to a new host with **no host-neutral core edits** (the one exception is the deliberately-hardcoded skill-root list in `deploy-squad-runtime.ps1`, FR-003).
 
 All three previously-deferred questions were resolved empirically at the clarify boundary (see spec `## Clarifications`):
+
 - **Binary** = `cursor-agent` (standalone Agent CLI; v2026.05.28 on PATH).
 - **Skill/agent target** = `.cursor/rules/*.mdc` Cursor Project Rules; `HasUserSlashCommandSurface = $false`; coordinator prompt via `AGENTS.md`.
 - **Launch** = INTERACTIVE `cursor-agent "<prompt>" --workspace <path>` (the headless `--print` mode confirms CLI-drivability → `Status = supported`, but is not the launch shape); `--allow-all`/`--autopilot` → `--force` (`--trust` is headless-only, unused). Reconciled to interactive 2026-05-29 (drift-log DRIFT-004).

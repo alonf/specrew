@@ -24,16 +24,20 @@ Invoke-Pester -Path tests/integration/host-coupling-firewall.tests.ps1
 ## Try the canonical scenario (US1 — launch in Cursor)
 
 1. In a Specrew-initialized project, run:
+
    ```powershell
    specrew start --host cursor "Add a health-check endpoint"
    ```
+
    **Expected**: `cursor-agent` launches in interactive Agent mode in this workspace (`cursor-agent "<prompt>" --workspace <proj>`), reads `AGENTS.md` (the Specrew coordinator prompt), and begins the specify phase.
 2. Confirm the agent has the lifecycle context:
    **Expected**: `.cursor/rules/*.mdc` files are present (skill catalog + crew roles) and the agent references the spec→plan→implement→review flow.
 3. Run an autonomous launch:
+
    ```powershell
    specrew start --host cursor --allow-all "Add a health-check endpoint"
    ```
+
    **Expected**: invocation includes `--force`; without `--allow-all` that flag is ABSENT (`--trust` is headless-only and not used in the interactive launch).
 
 ## Verify the edge cases
