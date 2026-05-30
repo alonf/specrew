@@ -284,8 +284,10 @@ try {
         $teamContent = Get-Content -LiteralPath $teamPath -Raw -Encoding UTF8
         $teamLines = $teamContent -split "`n" | Where-Object { $_.Trim() -match '^\|' -and $_ -notmatch '^\|\s*-' }
         
-        # Group by line content and find duplicates
-        $duplicates = $teamLines | Group-Object | Where-Object { $_.Count -gt 1 }
+        # Group by line content and find duplicates. @() guards StrictMode: when there
+        # are no duplicates the pipeline yields $null, and $null.Count throws under
+        # Set-StrictMode -Version Latest. Wrapping normalizes to a 0-length array.
+        $duplicates = @($teamLines | Group-Object | Where-Object { $_.Count -gt 1 })
         
         if ($duplicates.Count -gt 0) {
             Write-Fail "Duplicate Squad team entries detected (FR-013 regression):"
