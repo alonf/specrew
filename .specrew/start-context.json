@@ -239,13 +239,13 @@
   },
   "session_state": {
     "active": true,
-    "boundary_type": "tasks",
+    "boundary_type": "iteration-closeout",
     "feature_ref": "050-cursor-host-support",
     "feature_path": "C:\\Dev\\Specrew-cursor\\specs\\050-cursor-host-support",
-    "iteration_number": 3,
+    "iteration_number": null,
     "task_id": null,
-    "auth_commit_hash": "f981eb07",
-    "recorded_at": "2026-05-29T00:00:00Z"
+    "auth_commit_hash": "fc05bac8",
+    "recorded_at": "2026-05-30T15:37:57Z"
   },
   "recovery_session": {
     "entry_mode": "detected-stale-state",
@@ -271,7 +271,7 @@
   },
   "prompt_path": "C:\\Dev\\Specrew-cursor\\.specrew\\last-start-prompt.md",
   "summary_path": "C:\\Dev\\Specrew-cursor\\.specrew\\start-summary.md",
-  "generated_at_utc": "2026-05-28T20:29:29.1522890Z",
+  "generated_at_utc": "2026-05-30T15:37:57Z",
   "selected_host": "claude",
   "available_hosts": {
     "claude": true,

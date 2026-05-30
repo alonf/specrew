@@ -1,18 +1,20 @@
 ---
-baseline_commit_hash: db3aa148956a87e1695d7efbcf4ed76a15270cf3
+baseline_commit_hash: 949aebc065f0155af40bc7cc9f6c1c3a5a5cc01a
+updated_at: 2026-05-30T15:37:57Z
 session_state_active: true
-session_state_boundary: tasks
+session_state_boundary: iteration-closeout
 session_state_feature: 050-cursor-host-support
-session_state_feature_path: C:\Dev\Specrew-cursor\specs\050-cursor-host-support
-session_state_iteration: 003
-session_state_task: (none)
-session_state_auth_commit: 3aa22b36
-session_state_recorded_at: 2026-05-29T00:00:00Z
+session_state_feature_path: "C:\Dev\Specrew-cursor\specs\050-cursor-host-support"
+session_state_iteration: "(none)"
+session_state_task: "(none)"
+session_state_auth_commit: fc05bac8
+session_state_recorded_at: 2026-05-30T15:37:57Z
 ---
 
 ## Post-Restart Directive
 
 Recovery choice A selected: re-anchor to the last known feature, inspect the stale-state evidence, and continue with an explicit repair or resume plan.
+
 ## Recovery Mode
 
 - Entry mode: detected-stale-state
@@ -73,18 +75,20 @@ User feature request: (not provided yet; gather or confirm during intake)
 - C
 
 Operational Specrew roster snapshot:
+
 - Mode: specrew-managed
 - Treat this roster as operational state. Do NOT enter generic Squad team-setup mode or recast the roster.
 - Baseline roles: Spec Steward, Planner, Implementer, Reviewer, Retro Facilitator
 - Supplemental members: (none)
 
 Project state snapshot:
+
 - State: existing-continue
 - Existing feature directories: 001-specrew-product, 002-planning-flow-hardening, 003-post-planning-review, 004-default-specialty-pairing, 005-stack-aware-quality-bar, 006-human-architecture-checkpoint, 007-user-facing-progress-handoff, 008-reviewer-escalation-symmetry, 009-project-path-resolution, 010-onboarding-resume-visibility, 011-specrew-start-conditional-pause, 012-descriptive-id-handoffs, 013-validator-hardening, 014-handoff-format-scoping, 015-public-readiness-pass, 016-substantive-interaction-model, 017-velocity-dashboard, 018-velocity-dashboard-visual-richness, 019-specrew-distribution-module, 020-session-state-durability, 021-specrew-slash-commands, 022-hotfix-schema-tests, 023-legacy-state-read-tolerance, 024-slash-command-multi-host-correctness, 025-psgallery-unsigned-default, 026-ci-lint-pr-scoping, 027-skills-loading-troubleshoot, 028-review-evidence-integrity, 029-baseline-hygiene, 030-validator-speedup, 031-commit-push-discipline, 032-closeout-lifecycle-sync, 033-markdown-lint-pre-boundary, 034-validator-memoization, 035-validator-iteration-parallelization, 036-closed-iteration-index, 037-validator-repetition-detector, 038-pr-review-integration, 039-launch-mode-boundary-enforcement, 040-multi-host-launch-path, 041-cost-aware-model-routing, 042-token-economy-mvp, 043-multi-host-onboarding, 044-per-host-architecture-refactor, 045-v0271-bugfix-bundle, 046-046-bug-bash, 047-bug-bash-trust-hardening, 048-beta-before-stable-sdlc, 050-cursor-host-support, antigravity-host-followup
 - Non-bootstrap top-level entries: .agents, .claude, .codex, .vscode, docs, evaluation, extensions, hosts, proposals, scripts, specs, templates, tests, .markdownlint.json, CHANGELOG.md, CODE_OF_CONDUCT.md, CODEOWNERS, CONTRIBUTING.md, LICENSE, NOTICE.md, package.json, README.md, SECURITY.md, Specrew.psd1, Specrew.psm1
 
-
 Implementation readiness hints:
+
 - Candidate specialists after spec/clarify: Security Specialist [security-specialist] - The request or repo context indicates auth, security, or privacy-sensitive behavior.
 - Candidate Junior/Senior same-specialty pairs after spec/clarify: (none inferred yet)
 - Safe-parallelism signals: (no safe same-specialty parallelism inferred yet)
@@ -93,6 +97,7 @@ Implementation readiness hints:
 - Semantic watchouts: Validate authn/authz and secret handling end to end rather than treating schemas, guards, or token fields as sufficient proof of security.
 
 Effective delegated agent routing plan:
+
 - Enabled agents: claude
 - Implementer -> claude (preferred: copilot; access path: copilot_agent_hq; fallback: preferred agent 'copilot' is not enabled)
 - Spec Steward -> claude (preferred: codex; access path: copilot_agent_hq; fallback: preferred agent 'codex' is not enabled)
@@ -136,7 +141,7 @@ This is the authoritative map of Specrew's lifecycle and governance machinery as
 | `.specify/extensions/specrew-speckit/scripts/scaffold-reviewer-artifacts.ps1 -IterationDirectory <dir>` | Scaffolds code-map / coverage-evidence / reviewer-index / review-diagrams / dependency-report. **Param is `-IterationDirectory`, NOT `-SpecDirectory`.** | After implement, before /specrew-review |
 | `.specify/extensions/specrew-speckit/scripts/scaffold-feature-closeout-dashboard.ps1 -ProjectPath . -FeatureId <NNN>` | Scaffolds the closeout-dashboard.md at feature-closeout boundary. **Note: auto-render at feature-closeout is now wired into sync-boundary-state.ps1 (F-040 dogfooding Fix B), so you don't normally invoke this directly.** | Rarely; only for manual re-render |
 | `.specify/extensions/specrew-speckit/scripts/validate-governance.ps1 -ProjectPath .` | Runs the full validator; emits PASS/WARN/FAIL findings | Before each boundary commit and at iteration close |
-| `.specify/extensions/specrew-speckit/scripts/sync-boundary-state.ps1` | Advances the boundary cursor in `.specrew/start-context.json`; auto-renders dashboard.md at iteration-closeout + closeout-dashboard.md at feature-closeout. Use this WRAPPER path from downstream projects — it discovers the installed Specrew module and loads the actual implementation from there. | Called by sync-* agents; invoke directly via `pwsh -File` after each boundary commit when the sync-* agents aren't available |
+| `.specify/extensions/specrew-speckit/scripts/sync-boundary-state.ps1` | Advances the boundary cursor in `.specrew/start-context.json`; auto-renders dashboard.md at iteration-closeout + closeout-dashboard.md at feature-closeout. Use this WRAPPER path from downstream projects — it discovers the installed Specrew module and loads the actual implementation from there. | Called by sync-*agents; invoke directly via `pwsh -File` after each boundary commit when the sync-* agents aren't available |
 
 **Any other .ps1 file in the deployment is a utility / deploy / library helper invoked automatically by the system. Do NOT explore them during normal lifecycle execution.** Specifically: `shared-governance.ps1`, `common.ps1`, `Test-CopilotInstructionsChangeType.ps1` are libraries (not invokable); `deploy-speckit-extension.ps1`, `deploy-squad-runtime.ps1`, `scaffold-governance.ps1`, `validate-versions.ps1`, `collision-detect.ps1`, `brownfield-merge.ps1` are init/update helpers; `manage-escalation-state.ps1`, `manage-reviewer-regression.ps1`, `sync-squad-model-overrides.ps1`, `drift-diff.ps1`, `resume-iteration.ps1` are internal helpers called by other scripts. If a script isn't in the table above, you do NOT need to invoke or understand it during normal lifecycle execution.
 
@@ -160,6 +165,7 @@ The `crew_runtime_status` field tells you whether the downstream sync-* agents a
 - **Web-feature acceptance evidence:** for browser features, the review-time evidence must include a screenshot or recorded interaction showing the golden-path AND Enter-key behavior — running `Invoke-WebRequest` against the static HTML proves the file deployed, NOT that the feature works. Lighthouse / DOM-inspection MCPs (or manual browser steps documented in quickstart.md) are the canonical evidence layer.
 
 Follow this conversational sequence before implementation work:
+
 1. Preserve the roster snapshot first. Treat the operational roster above as active project state, do not recast it, and defer specialist additions until the spec and clarify outcome are grounded.
 2. Classify the repository using the project-state snapshot above before asking for spec details:
    - "greenfield-new": freshly bootstrapped project with no meaningful app code or active specs yet
