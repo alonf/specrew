@@ -215,11 +215,15 @@
     )
     PrivateData = @{
         PSData = @{
-            # Source prerelease state for the next intended release (v0.28.0-beta.1). The
+            # Source prerelease state for the next intended release (v0.28.0-beta1). The
             # publish-module.yml workflow stamps the actual published version from the git tag
             # (release_ref_name) at release time, so this is the coherent source default, not the
             # authoritative publish value. Cleared to '' when promoting to stable.
-            Prerelease = 'beta.1'
+            # NOTE: PowerShell/PSGallery prerelease labels may NOT contain a dot — only
+            # [a-zA-Z0-9] and a leading hyphen. Use dotless forms (beta1, beta2, rc1); a
+            # dotted 'beta.1' is silently normalized to 'beta1' on publish. Tag accordingly
+            # (v0.28.0-beta1, not v0.28.0-beta.1).
+            Prerelease = 'beta1'
             Tags = @('specrew', 'specification', 'squad', 'ai-workflow', 'governance')
             ProjectUri = 'https://github.com/alonf/specrew'
             LicenseUri = 'https://github.com/alonf/specrew/blob/main/LICENSE'
