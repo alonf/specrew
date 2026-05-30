@@ -242,9 +242,9 @@
     "boundary_type": "tasks",
     "feature_ref": "050-cursor-host-support",
     "feature_path": "C:\\Dev\\Specrew-cursor\\specs\\050-cursor-host-support",
-    "iteration_number": 2,
+    "iteration_number": 3,
     "task_id": null,
-    "auth_commit_hash": "3aa22b36",
+    "auth_commit_hash": "f981eb07",
     "recorded_at": "2026-05-29T00:00:00Z"
   },
   "recovery_session": {
@@ -317,6 +317,30 @@
         "authorizing_human": "Alon Fliess",
         "recorded_at": "2026-05-29T00:00:00Z",
         "auth_commit_hash": "f84ad246"
+      },
+      {
+        "from_boundary": "tasks",
+        "to_boundary": "before-implement",
+        "verdict_text": "approved for before-implement (F-050 iter-002)",
+        "authorizing_human": "Alon Fliess",
+        "recorded_at": "2026-05-29T00:00:00Z",
+        "auth_commit_hash": "77d90623"
+      },
+      {
+        "from_boundary": "review",
+        "to_boundary": "review-signoff",
+        "verdict_text": "approved for review-signoff (F-050 iter-002; broader test sweep requested)",
+        "authorizing_human": "Alon Fliess",
+        "recorded_at": "2026-05-30T00:00:00Z",
+        "auth_commit_hash": "f981eb07"
+      },
+      {
+        "from_boundary": "retro",
+        "to_boundary": "iteration-closeout",
+        "verdict_text": "approved for iteration-closeout + continue to iter 003 (F-050 iter-002)",
+        "authorizing_human": "Alon Fliess",
+        "recorded_at": "2026-05-30T00:00:00Z",
+        "auth_commit_hash": "f981eb07"
       }
     ],
     "bypass_history": []
