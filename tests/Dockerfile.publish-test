@@ -26,6 +26,19 @@ RUN apt-get update \
     && apt-get install -y --no-install-recommends git curl ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
+# GitHub CLI (gh). Baseline v0.27.6 `specrew init`'s dependency check lists gh under
+# "Missing required dependencies" and ABORTS when it is absent, despite labelling it
+# "optional but recommended" — so gh is effectively required to reach init's project
+# scaffolding. Installed from GitHub's official apt repository.
+RUN curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg \
+        -o /usr/share/keyrings/githubcli-archive-keyring.gpg \
+    && chmod go+r /usr/share/keyrings/githubcli-archive-keyring.gpg \
+    && echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" \
+        > /etc/apt/sources.list.d/github-cli.list \
+    && apt-get update \
+    && apt-get install -y --no-install-recommends gh \
+    && rm -rf /var/lib/apt/lists/*
+
 # Node + squad CLI (Node 24 via NodeSource — matches CI's setup-node node-version '24';
 # baseline specrew init's dependency check requires Node 24.0+. jammy's apt nodejs is too old.)
 RUN curl -fsSL https://deb.nodesource.com/setup_24.x | bash - \
