@@ -1,8 +1,8 @@
 # Iteration State: 003
 
 **Schema**: v1
-**Current Phase**: review
-**Iteration Status**: reviewing
+**Current Phase**: retro
+**Iteration Status**: retro
 **Last Completed Task**: T016 (human live-smoke PASSED)
 **Tasks Remaining**: (populate from plan.md)
 **In Progress**: (none)
