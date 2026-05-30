@@ -7,6 +7,12 @@
 **Proposal Source**: `proposals/138-spec-kit-underutilized-surfaces.md`
 **Confirmed Intake Decision**: `/speckit.checklist` lands before-plan for this feature slice.
 
+## Clarifications
+
+### Session 2026-05-30
+
+- Q: Where should `/speckit.analyze` be positioned for this feature slice? → A: At `before-implement`, after `/speckit.tasks` has produced a complete `tasks.md` and the full `spec.md`/`plan.md`/`tasks.md` artifact set exists.
+
 ## Scope Boundaries
 
 ### In Scope
@@ -45,13 +51,13 @@ As a Specrew user preparing to move from specification into planning, I want `/s
 
 As a Specrew user moving through the lifecycle, I want `/speckit.analyze` to appear at the stage where it adds the most value so that I can use it as an additive quality and consistency check rather than an ambiguous extra command.
 
-**Why this priority**: `/speckit.analyze` has clear value, but the best lifecycle placement is still unresolved. Making the command discoverable without resolving that placement would create confusion.
+**Why this priority**: `/speckit.analyze` adds value only once the full artifact set exists. Positioning it at `before-implement` keeps it aligned with its cross-artifact analysis role and avoids surfacing it too early.
 
 **Independent Test**: A user can identify where `/speckit.analyze` belongs in the lifecycle, what artifacts it evaluates, and why it complements rather than replaces existing governance validation.
 
 **Acceptance Scenarios**:
 
-1. **Given** a user reaches the lifecycle stage chosen for `/speckit.analyze`, **When** Specrew surfaces the command, **Then** the guidance explains what consistency or quality problems it is intended to catch.
+1. **Given** a user reaches `before-implement` after `/speckit.tasks` has produced a complete `tasks.md`, **When** Specrew surfaces `/speckit.analyze`, **Then** the guidance explains that it checks cross-artifact consistency and quality across `spec.md`, `plan.md`, and `tasks.md`.
 2. **Given** a user encounters `/speckit.analyze`, **When** they review its description, **Then** they understand it is additive to Specrew's existing governance checks rather than a replacement.
 3. **Given** the required artifacts for analysis are not yet available, **When** a user looks for `/speckit.analyze`, **Then** Specrew explains that the command is not yet relevant and points to the stage where it becomes useful.
 
@@ -100,19 +106,19 @@ As a Specrew user or maintainer, I want the documentation and lifecycle guidance
   - **Owner**: Spec Steward
   - **Delivery Window**: Feature slice delivery
 
-- **FR-005**: Specrew MUST surface `/speckit.analyze` as a first-class lifecycle-adjacent command with clear guidance about the qualitative and cross-artifact issues it is intended to catch.
+- **FR-005**: Specrew MUST surface `/speckit.analyze` as a first-class lifecycle-adjacent command with clear guidance about the qualitative and cross-artifact issues it is intended to catch across `spec.md`, `plan.md`, and `tasks.md`.
   - **Owner**: Spec Steward, Reviewer
   - **Delivery Window**: Feature slice delivery
 
-- **FR-006**: Specrew MUST place `/speckit.analyze` at a single clearly defined lifecycle point that is reflected consistently across lifecycle guidance and documentation [NEEDS CLARIFICATION: should `/speckit.analyze` be positioned at review-signoff, retro, or another lifecycle boundary for this feature slice?].
-  - **Owner**: Spec Steward, Reviewer, Retro Facilitator
-  - **Delivery Window**: Clarify boundary decision, then feature slice delivery
+- **FR-006**: Specrew MUST place `/speckit.analyze` at the `before-implement` lifecycle boundary, only after `/speckit.tasks` has successfully produced a complete `tasks.md`, and reflect that timing consistently across lifecycle guidance and documentation.
+  - **Owner**: Spec Steward, Reviewer
+  - **Delivery Window**: Feature slice delivery
 
 - **FR-007**: Specrew MUST explain that `/speckit.analyze` complements existing governance validation instead of replacing it.
   - **Owner**: Reviewer
   - **Delivery Window**: Feature slice delivery
 
-- **FR-008**: Specrew MUST ensure users are only guided toward `/speckit.analyze` when the needed lifecycle context exists, and MUST tell them when to return if they encounter it too early.
+- **FR-008**: Specrew MUST ensure users are only guided toward `/speckit.analyze` when `spec.md`, `plan.md`, and `tasks.md` all exist, and MUST tell them to return at `before-implement` if they encounter it before `/speckit.tasks` completes.
   - **Owner**: Planner, Reviewer
   - **Delivery Window**: Feature slice delivery
 
@@ -140,11 +146,11 @@ As a Specrew user or maintainer, I want the documentation and lifecycle guidance
 
 - **TG-003**: Each requirement MUST identify intended iteration or delivery window.
   - FR-001 through FR-005 and FR-007 through FR-011 target this feature slice.
-  - FR-006 requires clarify-boundary resolution before its final delivery timing is locked.
+  - FR-006 is clarified and targets this feature slice with `before-implement` timing after successful task generation.
 
 - **TG-004**: Any known spec/implementation conflict MUST include an explicit reconciliation path.
   - `/speckit.checklist` placement is resolved for this slice: before-plan is authoritative.
-  - `/speckit.analyze` placement remains intentionally unresolved in this spec and MUST be settled at `/speckit.clarify` before planning.
+  - `/speckit.analyze` placement is resolved for this slice: `before-implement` is authoritative, and the command is only relevant after `/speckit.tasks` has produced a complete `tasks.md`.
   - `/speckit.taskstoissues` is explicitly deferred and MUST NOT be treated as active default-scope work during planning unless a later clarification re-scopes it as trivial and tightly coupled.
 
 ### Key Entities *(include if feature involves data)*
@@ -160,13 +166,14 @@ As a Specrew user or maintainer, I want the documentation and lifecycle guidance
 
 - **SC-001**: In every user-facing lifecycle surface updated by this feature, `/speckit.checklist` is described consistently as a before-plan command and no updated surface recommends it at a conflicting stage.
 - **SC-002**: After reading the updated before-plan guidance once, a Specrew user can explain the purpose of `/speckit.checklist` and when to use it without needing the proposal as reference.
-- **SC-003**: After `/speckit.analyze` placement is clarified, every updated discovery surface uses the same lifecycle timing and the same additive-positioning explanation for that command.
+- **SC-003**: Every updated discovery surface describes `/speckit.analyze` consistently as a `before-implement` command that runs only after `/speckit.tasks` has produced a complete `tasks.md`, while preserving the same additive-positioning explanation for that command.
 - **SC-004**: A user can identify the active surfaced commands covered by this feature and their recommended lifecycle timing within 2 minutes of consulting Specrew's standard lifecycle guidance.
 - **SC-005**: No updated discovery surface presents `/speckit.taskstoissues` as part of the default lifecycle for this slice; all such surfaces describe it as deferred when it is mentioned.
 
 ## Assumptions
 
 - Specrew already has working underlying `/speckit.checklist` and `/speckit.analyze` capabilities; this slice is about surfacing, positioning, and explaining them.
+- `/speckit.analyze` depends on the complete `spec.md`/`plan.md`/`tasks.md` set and therefore becomes relevant only at `before-implement` after successful task generation.
 - Proposal 138 is the primary source for the business rationale, but the confirmed intake decision that `/speckit.checklist` lands before-plan overrides earlier tentative placement language for this slice.
 - `/speckit.taskstoissues` remains deferred unless a later clarification explicitly re-scopes it as trivial and tightly coupled to this work.
 - Existing governance validation remains the primary structural guardrail; any surfaced Spec Kit command in this slice is additive guidance rather than a replacement.
@@ -175,14 +182,14 @@ As a Specrew user or maintainer, I want the documentation and lifecycle guidance
 ## Governance Alignment *(mandatory)*
 
 - **Spec Steward**: Alon Fliess — accountable for scope integrity, proposal alignment, and preserving the explicit deferment boundary for `/speckit.taskstoissues`.
-- **Iteration Facilitator**: Planner and Reviewer roles for this slice — accountable for resolving the `/speckit.analyze` placement question before planning and for keeping discovery guidance consistent across surfaces.
+- **Iteration Facilitator**: Planner and Reviewer roles for this slice — accountable for keeping the `before-implement` placement of `/speckit.analyze` and its additive guidance consistent across discovery surfaces.
 - **Capacity Model**: Small brownfield feature slice, estimated at 5-8 effort points if limited to checklist activation, analyze surfacing, and discovery/documentation updates within one delivery cycle.
 - **Drift Signals**:
   - `/speckit.checklist` is surfaced before-plan in one place but omitted or repositioned elsewhere.
-  - `/speckit.analyze` is described at conflicting lifecycle points across spec, plan, or user-facing guidance.
+  - `/speckit.analyze` is described anywhere other than `before-implement` after successful task generation.
   - `/speckit.taskstoissues` appears as active default workflow scope despite being deferred in this slice.
   - Discovery material explains a command's purpose differently across lifecycle surfaces, causing user confusion.
 - **Human Oversight Points**:
-  1. `/speckit.clarify` resolves the final placement of `/speckit.analyze` before planning begins.
+  1. `/speckit.clarify` records the authoritative `before-implement` placement for `/speckit.analyze` before planning begins.
   2. Pre-plan review confirms `/speckit.checklist` is surfaced with the agreed before-plan timing and correct explanation.
   3. Planning review confirms discovery and deferment guidance remain internally consistent before implementation work is approved.

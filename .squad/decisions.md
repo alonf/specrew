@@ -22211,3 +22211,11 @@ Documented in `specs/049-pipeline-hardening-intake/iterations/005/drift-log.md` 
 - **Task ID**: (none)
 - **Auth Commit Hash**: 87926843
 - **Recorded At**: 2026-05-29T00:25:07Z
+
+## 2026-05-30T22:43:13Z — Boundary sync: clarify
+
+- **Boundary Type**: clarify
+- **Feature Ref**: 054-activate-spec-surfaces
+- **Iteration Number**: (none)
+- **Task ID**: (none)
+- **Auth Commit Hash**: 22945f68d5b6a0b3020f54e2af7c2902eb6f5a41
