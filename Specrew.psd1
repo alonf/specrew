@@ -1,6 +1,6 @@
 @{
     RootModule = 'Specrew.psm1'
-    ModuleVersion = '0.28.0'
+    ModuleVersion = '0.29.0'
     GUID = '8ad5b7b5-c4c6-4df4-b9bd-700a8533dcc4'
     Author = 'Alon Fliess'
     Description = 'Specrew: specification-driven development workflow for AI-augmented teams'
@@ -62,6 +62,9 @@
         'hosts/copilot/host.psd1',
         'hosts/copilot/handlers.ps1',
         'hosts/copilot/coordinator-rules.psd1',
+        'hosts/cursor/host.psd1',
+        'hosts/cursor/handlers.ps1',
+        'hosts/cursor/coordinator-rules.psd1',
         'scripts/init/_utilities.ps1',
         'scripts/init/agent-detection.ps1',
         'scripts/init/crew-bootstrap.ps1',
@@ -216,15 +219,15 @@
     )
     PrivateData = @{
         PSData = @{
-            # Source prerelease state for the next intended release (v0.28.0-beta2). The
+            # Source prerelease state for the next intended release (v0.29.0-beta1, F-050 Cursor host). The
             # publish-module.yml workflow stamps the actual published version from the git tag
             # (release_ref_name) at release time, so this is the coherent source default, not the
             # authoritative publish value. Cleared to '' when promoting to stable.
             # NOTE: PowerShell/PSGallery prerelease labels may NOT contain a dot — only
             # [a-zA-Z0-9] and a leading hyphen. Use dotless forms (beta1, beta2, rc1); a
             # dotted 'beta.1' is silently normalized to 'beta1' on publish. Tag accordingly
-            # (v0.28.0-beta1, not v0.28.0-beta.1).
-            Prerelease = 'beta2'
+            # (v0.29.0-beta1, not v0.29.0-beta.1).
+            Prerelease = 'beta1'
             Tags = @('specrew', 'specification', 'squad', 'ai-workflow', 'governance')
             ProjectUri = 'https://github.com/alonf/specrew'
             LicenseUri = 'https://github.com/alonf/specrew/blob/main/LICENSE'

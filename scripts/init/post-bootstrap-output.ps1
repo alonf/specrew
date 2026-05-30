@@ -55,7 +55,7 @@ function Write-PostBootstrapGuidance {
     Write-Host ''
     Write-Host '1. Start spec authoring (Spec Kit workflows):' -ForegroundColor Yellow
     Write-Host '   - Run specrew start from the project root (optionally add a short feature request)' -ForegroundColor White
-    Write-Host '   - Specrew launches the selected host CLI (default: Copilot; `--host claude`, `--host codex`, or `--host antigravity` available) from the project directory in the current terminal by default, stays out of autopilot until intake is grounded, and supports --new-window or --prompt-approvals when you want them' -ForegroundColor White
+    Write-Host '   - Specrew launches the selected host CLI (default: Copilot; `--host claude`, `--host codex`, `--host antigravity`, or `--host cursor` available) from the project directory in the current terminal by default, stays out of autopilot until intake is grounded, and supports --new-window or --prompt-approvals when you want them' -ForegroundColor White
     Write-Host '   - Specrew hands off to the selected host CLI with full lifecycle context auto-loaded' -ForegroundColor White
     Write-Host '   - The Crew drives specify -> clarify -> plan -> tasks -> implement (skip clarify only for resumed clarified work with a recorded rationale)' -ForegroundColor White
     Write-Host ''

@@ -87,4 +87,28 @@ if ($invocation.Binary -notmatch 'agy') {
 }
 Write-Pass "Antigravity Binary resolves to agy"
 
+# Test 8 (F-050 iter-002): cursor is in the detection matrix as a supported host
+$supportedKinds = @(Get-SpecrewHostsByStatus -Status supported)
+if ('cursor' -notin $supportedKinds) {
+    Write-Fail "Cursor missing from supported-host detection matrix. Got: $($supportedKinds -join ',')"
+}
+Write-Pass "Cursor is in the supported-host detection matrix (F-050 iter-002)"
+
+# Test 9 (F-050 iter-002): cursor launch shape — INTERACTIVE "<prompt>" --workspace; --force under AllowAll;
+# NOT --print (headless-only) and NOT --trust (headless-only)
+$cursorInv = Invoke-HostHandler -Kind cursor -ContractFunction NewLaunchInvocation -Arguments @{
+    ProjectPath = 'C:\test\proj'
+    Prompt      = 'test prompt'
+    Agent       = 'Squad'
+    AllowAll    = $true
+}
+$cursorArgs = @($cursorInv.Args)
+if ('--workspace' -notin $cursorArgs) { Write-Fail "Cursor launch missing --workspace. Args: $($cursorArgs -join ' ')" }
+if ('test prompt' -notin $cursorArgs) { Write-Fail "Cursor launch missing positional prompt. Args: $($cursorArgs -join ' ')" }
+if ('--print' -in $cursorArgs) { Write-Fail "Cursor launch must be INTERACTIVE, not --print/headless. Args: $($cursorArgs -join ' ')" }
+if ('--trust' -in $cursorArgs) { Write-Fail "Cursor launch should NOT include --trust (headless-only). Args: $($cursorArgs -join ' ')" }
+if ('--force' -notin $cursorArgs) { Write-Fail "Cursor AllowAll=true should add --force. Args: $($cursorArgs -join ' ')" }
+if ($cursorInv.Binary -notmatch 'cursor-agent') { Write-Fail "Cursor Binary should resolve to cursor-agent; got '$($cursorInv.Binary)'" }
+Write-Pass "Cursor launch shape correct: interactive prompt + --workspace + --force (no --print/--trust); Binary=cursor-agent (F-050 iter-002)"
+
 Write-Host "`nHost detection UX: all assertions pass" -ForegroundColor Green

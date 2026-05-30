@@ -101,7 +101,7 @@ function Invoke-SpecrewCoordinatorPromptSurgery {
         [string]$Prompt,
 
         [Parameter(Mandatory = $true)]
-        [ValidateSet('copilot', 'claude', 'codex', 'antigravity')]
+        [ValidateSet('copilot', 'claude', 'codex', 'antigravity', 'cursor')]
         [string]$HostKind
     )
 

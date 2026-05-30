@@ -3491,7 +3491,7 @@ function Get-SpecrewHostLaunchInvocation {
     #>
     param(
         [Parameter(Mandatory = $true)]
-        [ValidateSet('copilot', 'claude', 'codex', 'antigravity')]
+        [ValidateSet('copilot', 'claude', 'codex', 'antigravity', 'cursor')]
         [string]$HostKind,
 
         [Parameter(Mandatory = $true)]
