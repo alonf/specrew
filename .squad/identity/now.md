@@ -2,15 +2,15 @@
 focus_area: "Between features — F-049 shipped (v0.28.0 stable) + F-050 shipped (v0.29.0 stable, PR #1226 merged); F-051 (Multi-Session Foundation + Spec-Kit upgrade 0.8.13->0.8.18 + specrew update baseline bug-fix) queued; two parallel Crew shells about to start"
 active_issues: "[]"
 schema: v1
-updated_at: 2026-05-30T00:00:00Z
-session_state_active: false
-session_state_boundary: feature-closeout
-session_state_feature: 050-cursor-host-support
-session_state_feature_path: ""
-session_state_iteration: 003
+updated_at: 2026-05-30T20:57:25Z
+session_state_active: true
+session_state_boundary: specify
+session_state_feature: 051-multi-session-foundation
+session_state_feature_path: "C:\Dev\Specrew-051\specs\051-multi-session-foundation"
+session_state_iteration: "(none)"
 session_state_task: "(none)"
-session_state_auth_commit: 32c8290c
-session_state_recorded_at: 2026-05-30T00:00:00Z
+session_state_auth_commit: 016b6c9938a2a8ad4be322abee4be8c4acfb21ff
+session_state_recorded_at: 2026-05-30T20:57:25Z
 ---
 
 # What We're Focused On

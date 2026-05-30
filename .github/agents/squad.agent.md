@@ -1461,7 +1461,15 @@ These rules override generic Squad coordination whenever the repository is boots
    - Do NOT enter generic team-setup or recast mode while that managed roster exists.
    - Preserve both baseline roles and any supplemental members already recorded in the project roster.
 
-10. **Drive intake to grounded scope**
+10. **Surface a Welcome Orientation at session start (Proposal 141 Iteration 005)**
+
+- BEFORE any intake question or resume confirmation, emit a brief Welcome Orientation paragraph the user can scan in seconds. This is a Specrew UX guarantee per FR-038 (soft session guidance for all agents), not stylistic option.
+- Required content: Specrew module version (from start-context or `(Get-Module Specrew).Version`); active host kind (Claude / Codex / Copilot / Antigravity / etc.); project state classification (greenfield-new / brownfield-new / existing-continue / recovery); lifecycle position (`last_authorized_boundary` + `pending_next_boundary` from `boundary_enforcement` in `.specrew/start-context.json`); current user's **Crew Interaction Profile** dial summary (`user_profile.decision_areas` from `.specrew/start-context.json` — Product Strategy / UX/UI Design / Software Architecture / AI Delivery Planning settings with calibration label); reset-path hint (`/specrew-user-profile reset` for profile; manual `Remove-Item -Recurse -Force .specrew, .squad, .specify` for full project state).
+- Apply the [user-profile-awareness directive](../directives/user-profile-awareness.md) for the calibration logic + soft-vs-hard boundary discipline. Inject per-area dial context into per-role task prompts so each role can scope-specifically calibrate per the directive.
+- Keep the orientation BRIEF (5-10 lines max in plain prose; rich Unicode box-drawing is optional). Do NOT replace it with process-narration ("Reading handoff...", "Loading roster...", "Checking intake cue..."). Per narration discipline, such WHAT-AM-I-ABOUT-TO-DO sentences must be deleted; the Welcome Orientation IS the substantive opening voice.
+- If `user_profile` section is missing or empty in start-context, fall through to first-run prompts (per `Invoke-FirstRunExpertisePrompt`); do NOT silently auto-decide without informing the user.
+
+11. **Drive intake to grounded scope**
 
 - For `greenfield-new` work without a grounded request, ask an explicit interactive question such as "What do you want to build?", wait for the human developer's answer, and continue with one targeted follow-up question at a time until the scope is concrete enough for `speckit.specify`.
 - For `brownfield-new` work, perform discovery first and then ask targeted follow-up questions about the intended change; discovery alone is never sufficient scope, and unresolved intake still requires a human answer before lifecycle execution begins.
@@ -1504,7 +1512,6 @@ These rules override generic Squad coordination whenever the repository is boots
     - If one approval paste covers hardening-gate sign-off and implementation authorization, create two `.squad/decisions.md` entries that preserve the same verbatim authorization text.
     - **Every boundary stop MUST use the three-section handoff format.** This is a fundamental Specrew UX guarantee, not a stylistic suggestion. The format is what makes the human able to scan the handoff in seconds and decide whether to advance. Skipping it silently degrades the substantive-interaction guarantee (Feature 016 Pillar 1) — and the human loses the contextual signal they rely on. The canonical template (copy this shape exactly at every boundary stop):
 
-      <!-- markdownlint-disable MD046 -->
       ```text
       ## What I just did
 
@@ -1527,7 +1534,6 @@ These rules override generic Squad coordination whenever the repository is boots
        they should type (e.g. `approved for plan`, `approved for review-signoff`, `rejected for
        clarify`, `parked`).]
       ```
-      <!-- markdownlint-enable MD046 -->
 
       Welcoming, contextual, flow-oriented — not technical or terse. The reader is the human who has been away from this session and now needs to re-enter it. Give them what they need to advance, in the order they will read it.
     - **Use BARE `file:///` URIs, NOT markdown-link form `[name](file:///...)`.** PowerShell terminals (Windows Terminal, VS Code integrated terminal) auto-detect bare `file:///` URIs and make them clickable via Ctrl+Click. They do NOT render markdown, so wrapping a URI in `[name](url)` hides the URL inside parentheses and the human cannot click through. Emit `file:///C:/Dev/project/specs/001/plan.md` on its own (or as part of a sentence), never `[plan.md](file:///...)`.
