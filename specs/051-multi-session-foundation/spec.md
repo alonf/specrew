@@ -98,7 +98,7 @@ A project should automatically detect when it has shifted from single-developer 
 
 **Acceptance Scenarios**:
 
-1. **Given** a project with commits from multiple git author emails (e.g., alice@example.com, bob@example.com), **When** `specrew start` runs, **Then** a recommendation message is shown: "Multiple developers detected (2 unique authors in recent history). Consider enabling multi-session mode: `specrew config set session_mode multi`"
+1. **Given** a project with commits from multiple git author emails (e.g., <alice@example.com>, <bob@example.com>), **When** `specrew start` runs, **Then** a recommendation message is shown: "Multiple developers detected (2 unique authors in recent history). Consider enabling multi-session mode: `specrew config set session_mode multi`"
 2. **Given** session-state writes from different machine fingerprints, **When** `specrew where` dashboard is displayed, **Then** a multi-developer indicator is shown with the count of unique machines and a recommendation to enable multi-session mode
 3. **Given** git branch history showing multiple concurrent feature branches (fan-out pattern), **When** boundary-sync runs, **Then** output includes a note about multi-developer activity detected
 4. **Given** a project already in multi-session mode, **When** these signals are present, **Then** no redundant recommendation is shown (recommendation is suppressed)
@@ -251,12 +251,12 @@ When a developer runs `specrew update` to refresh the project's Specrew baseline
 - **Spec Steward**: Specrew Spec Steward agent (accountable for specification integrity and drift detection between this spec, plan, tasks, and implementation)
 - **Iteration Facilitator**: Specrew Planner agent (accountable for iteration cadence, capacity planning, and blocker escalation)
 - **Capacity Model**: Story Points (SP); estimated 40-58 SP total across 3 iterations (Iteration 1: 18-22 SP, Iteration 2: 15-20 SP, Iteration 3: 12-16 SP); Iteration capacity assumes single developer at ~18-22 SP per iteration
-- **Drift Signals**: 
+- **Drift Signals**:
   - Semantic drift: Detected by comparing implemented collision detection logic against FR-007 through FR-016 (active-sessions + feature claims)
   - Scope drift: Detected if implementation adds multi-developer features not scoped in FR-001 through FR-034 (such as cross-project coordination, network-based locking, or real-time collaborative editing)
   - Test coverage drift: Detected if acceptance scenarios for P1 user stories lack corresponding test cases or evidence
   - Quality drift: Detected if concurrent session scenarios are not validated under race conditions (two developers starting sessions within milliseconds)
-- **Human Oversight Points**: 
+- **Human Oversight Points**:
   - Specify boundary: Human review of this spec for completeness and alignment with Proposals 010/134 intent
   - Before-implement boundary: Human approval required after hardening gate review (security review of file write operations, race condition analysis, validation of atomic write patterns)
   - Review boundary: Human verification of multi-session mode behavior through manual testing (two developers, two machines or worktrees, concurrent feature work)
