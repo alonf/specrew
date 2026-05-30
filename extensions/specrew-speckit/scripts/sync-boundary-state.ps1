@@ -9,7 +9,8 @@ param(
     [string]$AuthCommitHash,
     [string]$IdentityFocusArea,
     [string]$IdentityActiveIssues,
-    [string]$IdentityBody
+    [string]$IdentityBody,
+    [string]$HandoffText
 )
 
 Set-StrictMode -Version Latest
@@ -156,7 +157,8 @@ $result = Invoke-SpecrewBoundaryStateSync `
     -AuthCommitHash $AuthCommitHash `
     -IdentityFocusArea $IdentityFocusArea `
     -IdentityActiveIssues $IdentityActiveIssues `
-    -IdentityBody $IdentityBody
+    -IdentityBody $IdentityBody `
+    -HandoffText $HandoffText
 
 if ($null -ne $result) {
     $result | ConvertTo-Json -Depth 6 | Write-Output

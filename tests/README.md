@@ -35,6 +35,7 @@ pwsh -NoProfile -File tests/integration/start-recovery-flow.tests.ps1
 pwsh -NoProfile -File tests/integration/bootstrap-asset-blocker-recovery.ps1
 pwsh -NoProfile -File tests/integration/brownfield-conflict-handling.ps1
 pwsh -NoProfile -File tests/integration/deploy-extension-missing-source-tolerance.tests.ps1
+pwsh -NoProfile -File tests/integration/filelist-completeness.tests.ps1
 pwsh -NoProfile -File tests/integration/validate-versions-cli-behavior.ps1
 pwsh -NoProfile -File tests/integration/drift-scenario.ps1
 pwsh -NoProfile -File tests/integration/iteration-resume.ps1
@@ -60,6 +61,7 @@ pwsh -NoProfile -File tests/integration/bootstrap-to-iteration.ps1
 pwsh -NoProfile -File tests/integration/bootstrap-asset-blocker-recovery.ps1
 pwsh -NoProfile -File tests/integration/brownfield-conflict-handling.ps1
 pwsh -NoProfile -File tests/integration/deploy-extension-missing-source-tolerance.tests.ps1
+pwsh -NoProfile -File tests/integration/filelist-completeness.tests.ps1
 pwsh -NoProfile -File tests/integration/validate-versions-cli-behavior.ps1
 pwsh -NoProfile -File tests/integration/drift-scenario.ps1
 pwsh -NoProfile -File tests/integration/iteration-resume.ps1

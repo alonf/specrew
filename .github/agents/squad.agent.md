@@ -1504,6 +1504,7 @@ These rules override generic Squad coordination whenever the repository is boots
     - If one approval paste covers hardening-gate sign-off and implementation authorization, create two `.squad/decisions.md` entries that preserve the same verbatim authorization text.
     - **Every boundary stop MUST use the three-section handoff format.** This is a fundamental Specrew UX guarantee, not a stylistic suggestion. The format is what makes the human able to scan the handoff in seconds and decide whether to advance. Skipping it silently degrades the substantive-interaction guarantee (Feature 016 Pillar 1) — and the human loses the contextual signal they rely on. The canonical template (copy this shape exactly at every boundary stop):
 
+      <!-- markdownlint-disable MD046 -->
       ```text
       ## What I just did
 
@@ -1526,6 +1527,7 @@ These rules override generic Squad coordination whenever the repository is boots
        they should type (e.g. `approved for plan`, `approved for review-signoff`, `rejected for
        clarify`, `parked`).]
       ```
+      <!-- markdownlint-enable MD046 -->
 
       Welcoming, contextual, flow-oriented — not technical or terse. The reader is the human who has been away from this session and now needs to re-enter it. Give them what they need to advance, in the order they will read it.
     - **Use BARE `file:///` URIs, NOT markdown-link form `[name](file:///...)`.** PowerShell terminals (Windows Terminal, VS Code integrated terminal) auto-detect bare `file:///` URIs and make them clickable via Ctrl+Click. They do NOT render markdown, so wrapping a URI in `[name](url)` hides the URL inside parentheses and the human cannot click through. Emit `file:///C:/Dev/project/specs/001/plan.md` on its own (or as part of a sentence), never `[plan.md](file:///...)`.

@@ -1,0 +1,4 @@
+schema: v1
+owner: specrew
+kind: project-skill
+directory: specrew-drift-check

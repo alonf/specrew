@@ -22,6 +22,8 @@
 .specrew/.cache/
 # F-043: per-developer host selection history (lives per workspace, not shared)
 .specrew/host-history.json
+# F-049 i004 (Pillar 1 / FR-018): per-session handoff-evidence produced at boundary syncs (runtime state)
+.specrew/handoff-evidence.json
 
 # Local scratch/test leftovers
 .scratch/

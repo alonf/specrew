@@ -1,19 +1,13 @@
 {
   "version": 1,
   "specrewManagedModelRouting": {
-    "baselineAgentModelOverrides": {
-      "Implementer": "claude-sonnet-4.5",
-      "Spec Steward": "claude-sonnet-4.5",
-      "Planner": "claude-sonnet-4.5",
-      "Reviewer": "claude-sonnet-4.5",
-      "Retro Facilitator": "claude-sonnet-4.5"
-    },
+    "baselineAgentModelOverrides": {},
     "roleAgentFamilies": {
-      "Implementer": "claude",
-      "Spec Steward": "claude",
-      "Planner": "claude",
-      "Reviewer": "claude",
-      "Retro Facilitator": "claude"
+      "Implementer": "copilot",
+      "Spec Steward": "copilot",
+      "Planner": "copilot",
+      "Reviewer": "copilot",
+      "Retro Facilitator": "copilot"
     },
     "activeEscalation": {
       "status": "inactive",
@@ -24,12 +18,5 @@
       "sourceGate": null,
       "updatedAt": null
     }
-  },
-  "agentModelOverrides": {
-    "Implementer": "claude-sonnet-4.5",
-    "Spec Steward": "claude-sonnet-4.5",
-    "Planner": "claude-sonnet-4.5",
-    "Reviewer": "claude-sonnet-4.5",
-    "Retro Facilitator": "claude-sonnet-4.5"
   }
 }

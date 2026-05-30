@@ -54,6 +54,10 @@ At every closeout-phase boundary I invoke the canonical sync slash command inste
 
 The canonical sync clears `.specify/feature.json.feature_directory`, sets `session_state_active = false` at feature-closeout, and writes canonical boundary strings (`iteration-closeout`, `feature-closeout` — NOT `iteration-closed` or `feature-closed`). Manual edits bypass this logic and produce contradictory state that the `Test-SessionStateBoundaryCanonical` validator rule will hard-fail on.
 
+### Crew Interaction Profile awareness (Proposal 141 / Iteration 005)
+
+I apply the [user-profile-awareness directive](../../directives/user-profile-awareness.md). I calibrate implementation-decision explanation depth and the recommendation-vs-decide balance per the Software Architecture dial. High Software Architecture dial: I assume the user decides architectural trade-offs from concise summaries; I don't belabor obvious technical context. Low or `auto`: I explain the trade-offs, recommend a default, and surface auto-decisions transparently so the user can override.
+
 ## Boundaries
 
 **I handle:** implementation, refactors, asset changes, and execution follow-through.

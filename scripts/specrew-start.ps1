@@ -101,6 +101,12 @@ if (-not (Test-Path -LiteralPath $coordinatorPromptSurgeryHelperPath -PathType L
 }
 . $coordinatorPromptSurgeryHelperPath
 
+$userProfileHelperPath = Join-Path $PSScriptRoot 'internal\user-profile.ps1'
+if (-not (Test-Path -LiteralPath $userProfileHelperPath -PathType Leaf)) {
+    throw "Missing user-profile helper '$userProfileHelperPath'."
+}
+. $userProfileHelperPath
+
 function Convert-UnixStyleArguments {
     param(
         [string]$FeatureRequest,
@@ -3080,6 +3086,21 @@ function Get-StartSummaryContent {
     $summaryLines.Add(("- **Feature Request**: {0}" -f $(if ([string]::IsNullOrWhiteSpace($FeatureRequest)) { '(none provided)' } else { $FeatureRequest }))) | Out-Null
     $summaryLines.Add(("- **Active Feature Path**: {0}" -f $(if ([string]::IsNullOrWhiteSpace($ResolvedFeaturePath)) { '(create or resolve during lifecycle)' } else { Get-DisplayPathFromProjectRoot -ResolvedProjectPath $ResolvedProjectPath -Path $ResolvedFeaturePath }))) | Out-Null
     $summaryLines.Add('') | Out-Null
+    
+    # Feature 049 Iteration 003 (FR-026) + Iteration 005 (FR-032/FR-038): current-user Crew Interaction Profile.
+    # This is soft, current-user collaboration guidance for all agents — not shared project truth.
+    $userProfile = Get-UserProfile
+    if ($null -ne $userProfile) {
+        $summaryLines.Add('## Crew Interaction Profile (current user)') | Out-Null
+        $profileSummary = Show-UserProfileSummary -Profile $userProfile
+        foreach ($line in $profileSummary -split "`n") {
+            if (-not [string]::IsNullOrWhiteSpace($line)) {
+                $summaryLines.Add($line) | Out-Null
+            }
+        }
+        $summaryLines.Add('') | Out-Null
+    }
+    
     $summaryLines.Add('## Launch Contract') | Out-Null
     $summaryLines.Add(("- **Approval Mode**: {0}" -f $ApprovalMode)) | Out-Null
     $summaryLines.Add(("- **Launch Mode**: {0}" -f $LaunchMode)) | Out-Null
@@ -3339,6 +3360,14 @@ $artifactListFormatted
         }
         # F-043 FR-012: record HOW the host was resolved + the alternatives at probe time
         host_resolution = if (-not [string]::IsNullOrWhiteSpace($HostResolution)) { $HostResolution } else { $null }
+    }
+
+    # Feature 049 Iteration 003 (FR-026) + Iteration 005 (FR-038/FR-040): surface the resolved
+    # current-user Crew Interaction Profile as SOFT runtime guidance, explicitly not shared project
+    # truth, and applied hard only inside /speckit.specify. Stable persisted keys + persona IDs preserved.
+    $userProfile = Get-UserProfile
+    if ($null -ne $userProfile) {
+        $context['user_profile'] = New-CrewInteractionProfileSessionContext -Profile $userProfile
     }
 
     if ($null -ne $existingBoundaryEnforcement) {
@@ -3677,6 +3706,21 @@ if ($missingBootstrapPaths.Count -gt 0) {
     Write-Error-Message ("Missing required paths: {0}" -f ($missingBootstrapPaths -join ', '))
     Write-Error-Message "Run 'specrew init' first."
     exit 1
+}
+
+# Feature 049 Iteration 003: User profile first-run check (FR-023, FR-024, FR-026)
+# Check for user profile and prompt on first run
+if (-not (Test-UserProfileExists)) {
+    Write-Host ""
+    Write-Host "First-time setup: Configuring your Crew Interaction Profile..." -ForegroundColor Cyan
+    Write-Host ""
+    
+    $expertiseDials = Invoke-FirstRunExpertisePrompt -NonInteractive:([Console]::IsInputRedirected)
+    Save-UserProfile -ExpertiseDials $expertiseDials
+    
+    Write-Host ""
+    Write-Host "Setup complete! Starting Specrew..." -ForegroundColor Green
+    Write-Host ""
 }
 
 if ($AllowAll -and $PromptApprovals) {

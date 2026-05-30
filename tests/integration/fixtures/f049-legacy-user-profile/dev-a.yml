@@ -1,0 +1,16 @@
+# Paired-developer fixture A (FR-041 / SC-008). A developer's own local Crew Interaction Profile.
+# Lives only in this developer's home directory in real use; checked in here purely as test input.
+schema: "1.0"
+specrew_version_at_creation: "0.27.6"
+created_at: "2026-05-20T09:00:00.0000000Z"
+last_updated_at: "2026-05-20T09:00:00.0000000Z"
+user_name: "Dev A"
+
+expertise:
+  software_architecture: 9
+  ui_ux: 3
+  product_management: 4
+  ai_research_project_management: null
+
+preferences:
+  preferred_intake_depth: "auto"

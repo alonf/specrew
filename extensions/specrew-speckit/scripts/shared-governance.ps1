@@ -3350,6 +3350,171 @@ function Test-SpecrewHandoffBlockPresent {
     return $false
 }
 
+function Add-SpecrewHandoffEvidence {
+    <#
+    .SYNOPSIS
+    Pillar 1 live producer (Proposal 120 / FR-018): append a boundary_event to
+    .specrew/handoff-evidence.json recording whether a === SPECREW HANDOFF === block accompanied a
+    boundary/lifecycle stop, so Test-HandoffEvidenceGovernance detects missing handoffs in REAL runs
+    rather than only against the synthesized F-047 fixture.
+
+    .DESCRIPTION
+    The coordinator passes its emitted handoff block via -HandoffText at boundary-sync time. An event
+    whose response_text lacks the sentinel surfaces a missing-handoff WARN. Idempotent per
+    (commit, boundary): re-syncing the same crossing replaces that event rather than duplicating, so a
+    later handoff-bearing sync supersedes an earlier empty one (and vice versa) — no stale false-pass.
+    #>
+    param(
+        [Parameter(Mandatory = $true)][string]$ProjectRoot,
+        [Parameter(Mandatory = $true)][string]$Boundary,
+        [AllowNull()][string]$Commit,
+        [AllowNull()][string]$HandoffText,
+        [AllowNull()][string]$RecordedAt
+    )
+
+    $resolvedRoot = Resolve-ProjectPath -Path $ProjectRoot
+    $specrewDir = Join-Path $resolvedRoot '.specrew'
+    if (-not (Test-Path -LiteralPath $specrewDir -PathType Container)) {
+        $null = New-Item -ItemType Directory -Path $specrewDir -Force
+    }
+    $evidencePath = Join-Path $specrewDir 'handoff-evidence.json'
+
+    $events = New-Object System.Collections.Generic.List[object]
+    if (Test-Path -LiteralPath $evidencePath -PathType Leaf) {
+        try {
+            $parsed = Get-Content -LiteralPath $evidencePath -Raw -Encoding UTF8 | ConvertFrom-Json -Depth 12
+            $existing = if ($parsed -is [array]) { $parsed }
+            elseif ($null -ne $parsed -and $null -ne $parsed.PSObject.Properties['boundary_events']) { $parsed.boundary_events }
+            else { @() }
+            foreach ($e in @($existing)) { if ($null -ne $e) { $events.Add($e) | Out-Null } }
+        }
+        catch {
+            # Corrupt evidence file: start fresh (the detector warns separately on unreadable input).
+        }
+    }
+
+    $commitValue = if ([string]::IsNullOrWhiteSpace($Commit)) { '' } else { $Commit.Trim() }
+    $recordedValue = if ([string]::IsNullOrWhiteSpace($RecordedAt)) { (Get-Date).ToUniversalTime().ToString('yyyy-MM-ddTHH:mm:ssZ') } else { $RecordedAt.Trim() }
+    $textValue = if ($null -eq $HandoffText) { '' } else { [string]$HandoffText }
+    $hasBlock = Test-SpecrewHandoffBlockPresent -CommitMessage $textValue
+
+    $filtered = New-Object System.Collections.Generic.List[object]
+    foreach ($e in $events) {
+        $ec = ''; $eb = ''
+        $pc = $e.PSObject.Properties['commit']; if ($pc) { $ec = [string]$pc.Value }
+        $pb = $e.PSObject.Properties['boundary']; if ($pb) { $eb = [string]$pb.Value }
+        if ($ec -eq $commitValue -and $eb -eq $Boundary) { continue }
+        $filtered.Add($e) | Out-Null
+    }
+    $filtered.Add([pscustomobject][ordered]@{
+            commit          = $commitValue
+            boundary        = $Boundary
+            response_text   = $textValue
+            handoff_present = $hasBlock
+            recorded_at     = $recordedValue
+        }) | Out-Null
+
+    $payload = [ordered]@{ schema = 'v1'; boundary_events = @($filtered.ToArray()) }
+    $payload | ConvertTo-Json -Depth 12 | Set-Content -LiteralPath $evidencePath -Encoding UTF8
+}
+
+function Test-ReviewCitedFilesInTree {
+    <#
+    .SYNOPSIS
+    Pillar 5 (Proposal 120 / FR-022): verify production files cited as delivered evidence in a
+    review.md actually exist in the cited "Tree Under Review" commit.
+
+    .DESCRIPTION
+    Parses `**Tree Under Review**: <hash>` and the file paths cited in the review prose, then runs
+    `git ls-tree -r <hash>` (read-only) to confirm presence. The dangerous Shape-5 case (PlanningPoC
+    iter-004) is a production file cited as delivered that is present in the WORKING TREE but absent
+    from the cited commit — i.e., accepted against working-tree-only state that can vanish via
+    `git reset`/`clean`/fresh clone. That precise shape is returned as MissingProduction (FAIL-worthy);
+    keying on working-tree presence avoids false hard-fails on paths merely mentioned in prose.
+
+    Returns a [pscustomobject]:
+      TreeHash          : parsed commit hash, or $null when review.md cites none
+      TreeResolved      : $true when `git ls-tree` resolved the hash
+      CheckedCount      : number of distinct cited code/config/doc paths examined
+      MissingProduction : production files cited + absent from the tree + present in the working tree (FAIL)
+      MissingTest       : test files cited + absent from the tree (WARN, AC10)
+      UnresolvedCited   : cited production files absent from BOTH the tree and the working tree (WARN)
+    #>
+    param(
+        [Parameter(Mandatory = $true)][AllowEmptyCollection()][AllowNull()][AllowEmptyString()][string[]]$ReviewLines,
+        [Parameter(Mandatory = $true)][string]$ProjectRoot
+    )
+
+    $result = [pscustomobject]@{
+        TreeHash          = $null
+        TreeResolved      = $false
+        CheckedCount      = 0
+        MissingProduction = @()
+        MissingTest       = @()
+        UnresolvedCited   = @()
+    }
+
+    $reviewText = (@($ReviewLines) -join "`n")
+    if ([string]::IsNullOrWhiteSpace($reviewText)) { return $result }
+
+    $treeMatch = [regex]::Match($reviewText, '(?im)^\s*\*\*Tree Under Review\*\*\s*:\s*`?([0-9a-fA-F]{7,40})`?')
+    if (-not $treeMatch.Success) { return $result }
+    $treeHash = $treeMatch.Groups[1].Value
+    $result.TreeHash = $treeHash
+
+    $tracked = @()
+    try {
+        $lsTree = & git -C $ProjectRoot ls-tree -r --name-only $treeHash 2>$null
+        if ($LASTEXITCODE -eq 0 -and $null -ne $lsTree) {
+            $tracked = @($lsTree | ForEach-Object { ($_ -replace '\\', '/').Trim() } | Where-Object { $_ })
+            $result.TreeResolved = $true
+        }
+    }
+    catch {
+        # git unavailable or bad hash: leave TreeResolved = $false; caller decides severity.
+    }
+    if (-not $result.TreeResolved) { return $result }
+
+    $trackedSet = @{}
+    foreach ($t in $tracked) { $trackedSet[$t] = $true }
+
+    $citedSet = @{}
+    $pathRegex = [regex]'(?<path>(?:[\w.\-]+/)+[\w.\-]+\.(?:cs|tsx|ts|jsx|js|py|rs|go|ps1|psm1|psd1|java|rb|php|sql|md|ya?ml|json))'
+    foreach ($m in $pathRegex.Matches($reviewText)) {
+        $p = ($m.Groups['path'].Value -replace '\\', '/').Trim()
+        $p = $p -replace '^\./', ''
+        if ($p) { $citedSet[$p] = $true }
+    }
+
+    $productionExt = @('.cs', '.tsx', '.ts', '.jsx', '.js', '.py', '.rs', '.go', '.ps1', '.psm1', '.java', '.rb', '.php')
+    $missingProd = New-Object System.Collections.Generic.List[string]
+    $missingTest = New-Object System.Collections.Generic.List[string]
+    $unresolved = New-Object System.Collections.Generic.List[string]
+
+    foreach ($cited in $citedSet.Keys) {
+        $result.CheckedCount++
+        if ($trackedSet.ContainsKey($cited)) { continue }
+
+        $ext = [System.IO.Path]::GetExtension($cited).ToLowerInvariant()
+        $isTest = ($cited -match '(?i)(^|/)tests?/') -or ($cited -match '(?i)\.(test|spec|tests)\.')
+        $onDisk = Test-Path -LiteralPath (Join-Path $ProjectRoot ($cited -replace '/', [System.IO.Path]::DirectorySeparatorChar)) -PathType Leaf
+
+        if ($isTest) {
+            $missingTest.Add($cited) | Out-Null
+        }
+        elseif ($productionExt -contains $ext) {
+            if ($onDisk) { $missingProd.Add($cited) | Out-Null }
+            else { $unresolved.Add($cited) | Out-Null }
+        }
+        # non-production, non-test (docs/config) absent → ignored (often illustrative references)
+    }
+
+    $result.MissingProduction = $missingProd.ToArray()
+    $result.MissingTest = $missingTest.ToArray()
+    $result.UnresolvedCited = $unresolved.ToArray()
+    return $result
+}
+
 function Get-ImplementationApprovalEvidenceRecords {
     param(
         [Parameter(Mandatory = $true)]

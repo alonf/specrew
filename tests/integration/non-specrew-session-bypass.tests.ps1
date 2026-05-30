@@ -413,7 +413,7 @@ if (-not (Assert-Match -Text $preserveText -Pattern 'T014:\s*\r?\n\s+title:.*\r?
 }
 
 $startScriptText = Get-Content -LiteralPath (Join-Path $repoRoot 'scripts\specrew-start.ps1') -Raw -Encoding UTF8
-foreach ($phrase in @('push the branch', 'open a PR', 'address automated PR review', 'merge after approval')) {
+foreach ($phrase in @('push the feature branch', 'create the PR', 'address automated PR review', 'merge with a merge commit after approval')) {
     if (-not (Assert-Match -Text $startScriptText -Pattern ([regex]::Escape($phrase)) -Message "Feature-closeout handoff template is missing '$phrase'.")) {
         exit 1
     }
@@ -426,6 +426,210 @@ if (-not (Assert-Match -Text $reviewerCharterText -Pattern 'Mermaid fences' -Mes
 if (-not (Assert-Match -Text $reviewerCharterText -Pattern 'ASCII trees' -Message 'Reviewer charter template does not prohibit ASCII-tree substitution.')) {
     exit 1
 }
+
+# =====================================================================================
+# Proposal 120 Pillars 1 (live) + 4 + 5 (F-049 Iteration 004 / SC-004)
+# =====================================================================================
+. (Join-Path $repoRoot 'extensions\specrew-speckit\scripts\shared-governance.ps1')
+
+function New-BypassFixtureProject {
+    param([string]$Root)
+    $null = New-Item -ItemType Directory -Path (Join-Path $Root '.squad') -Force
+    $null = New-Item -ItemType Directory -Path (Join-Path $Root '.specrew') -Force
+    @'
+# Squad Team
+
+## Members
+
+| Name | Role | Charter | Status |
+| ---- | ---- | ------- | ------ |
+| spec-steward | Spec Steward | `.squad/agents/spec-steward/charter.md` | baseline |
+| planner | Planner | `.squad/agents/planner/charter.md` | baseline |
+| implementer | Implementer | `.squad/agents/implementer/charter.md` | baseline |
+| reviewer | Reviewer | `.squad/agents/reviewer/charter.md` | baseline |
+| retro-facilitator | Retro Facilitator | `.squad/agents/retro-facilitator/charter.md` | baseline |
+'@ | Set-Content -LiteralPath (Join-Path $Root '.squad\team.md') -Encoding UTF8
+    @'
+specrew_version: "0.27.6"
+public_readiness:
+  enabled: false
+'@ | Set-Content -LiteralPath (Join-Path $Root '.specrew\config.yml') -Encoding UTF8
+}
+
+# --- Pillar 1 (FR-018): live handoff-evidence producer records positive + negative events ---
+$p1Root = Join-Path $scratchRoot 'pillar1-producer'
+$null = New-Item -ItemType Directory -Path (Join-Path $p1Root '.specrew') -Force
+$handoffBlock = "=== SPECREW HANDOFF ===`nSTOPPED AT: review-signoff`n=== END SPECREW HANDOFF ==="
+Add-SpecrewHandoffEvidence -ProjectRoot $p1Root -Boundary 'review-signoff' -Commit 'aaa1111' -HandoffText $handoffBlock
+Add-SpecrewHandoffEvidence -ProjectRoot $p1Root -Boundary 'retro' -Commit 'bbb2222' -HandoffText ''
+$p1Ev = Get-Content (Join-Path $p1Root '.specrew\handoff-evidence.json') -Raw -Encoding UTF8 | ConvertFrom-Json
+$p1Pos = @($p1Ev.boundary_events | Where-Object { $_.boundary -eq 'review-signoff' })[0]
+$p1Neg = @($p1Ev.boundary_events | Where-Object { $_.boundary -eq 'retro' })[0]
+if (-not ($p1Pos.handoff_present -eq $true -and $p1Neg.handoff_present -eq $false)) {
+    Write-Fail 'Pillar 1 (FR-018) producer did not record positive (true) + negative (false) handoff evidence.'
+    exit 1
+}
+Write-Pass 'Pillar 1 (FR-018) live handoff-evidence producer records positive + negative events'
+
+# --- Pillar 5 (FR-022): cited production file present on disk but absent from cited tree ---
+$p5Probe = 'scripts/internal/__p120_p5_probe__.ps1'
+Set-Content -LiteralPath (Join-Path $repoRoot $p5Probe) -Value '# transient Pillar 5 probe' -Encoding UTF8
+try {
+    $p5Head = (& git -C $repoRoot rev-parse HEAD).Trim()
+    $p5Review = @(
+        '# Review',
+        ('**Tree Under Review**: `{0}`' -f $p5Head),
+        '',
+        ('Delivered `{0}` as production evidence; also tests/integration/__p120_p5__.tests.ps1.' -f $p5Probe)
+    )
+    $p5Chk = Test-ReviewCitedFilesInTree -ReviewLines $p5Review -ProjectRoot $repoRoot
+    if (-not (($p5Chk.MissingProduction -contains $p5Probe) -and ($p5Chk.MissingTest.Count -ge 1))) {
+        Write-Fail 'Pillar 5 (FR-022) helper did not flag the on-disk-uncommitted production file (FAIL) and cited test file (WARN).'
+        exit 1
+    }
+}
+finally {
+    Remove-Item -LiteralPath (Join-Path $repoRoot $p5Probe) -Force -ErrorAction SilentlyContinue
+}
+Write-Pass 'Pillar 5 (FR-022) flags production evidence cited but absent from the cited Tree Under Review (test files -> WARN)'
+
+# --- Pillar 4 (FR-021): human-verdict boundary recorded without a matching verdict -> WARN ---
+$p4Root = Join-Path $scratchRoot 'pillar4-project'
+$p4Iteration = Join-Path $p4Root 'specs\017-sample\iterations\002'
+$null = New-Item -ItemType Directory -Path $p4Iteration -Force
+New-BypassFixtureProject -Root $p4Root
+@'
+# Iteration Plan: 002
+
+**Schema**: v1
+**Spec**: [../../spec.md](../../spec.md)
+**Status**: planning
+**Capacity**: 1/20 story_points
+**Started**: 2026-05-29
+
+## Tasks
+
+| Task | Title | Requirement | Story | Effort | Owner | Status | Agent | Actual | Verdict |
+| ---- | ----- | ----------- | ----- | ------ | ----- | ------ | ----- | ------ | ------- |
+| T001 | Fixture | FR-001 | US1 | 1 | Implementer | planned | codex | - | - |
+'@ | Set-Content -LiteralPath (Join-Path $p4Iteration 'plan.md') -Encoding UTF8
+@'
+# Iteration State: 002
+
+**Schema**: v1
+**Current Phase**: tasks
+**Iteration Status**: planning
+**Last Completed Task**: (none)
+**Tasks Remaining**: T001
+**In Progress**: (none)
+**Baseline Ref**: HEAD
+**Updated**: 2026-05-29T00:00:00Z
+'@ | Set-Content -LiteralPath (Join-Path $p4Iteration 'state.md') -Encoding UTF8
+@'
+# Drift Log: Iteration 002
+
+**Schema**: v1
+'@ | Set-Content -LiteralPath (Join-Path $p4Iteration 'drift-log.md') -Encoding UTF8
+@'
+{
+  "schema": "v2",
+  "session_state": { "boundary_type": "before-implement", "iteration_number": "002" },
+  "boundary_enforcement": {
+    "enabled": true,
+    "last_authorized_boundary": "tasks",
+    "pending_next_boundary": "before-implement",
+    "verdict_history": [],
+    "bypass_history": []
+  }
+}
+'@ | Set-Content -LiteralPath (Join-Path $p4Root '.specrew\start-context.json') -Encoding UTF8
+& git -C $p4Root init --quiet 2>&1 | Out-Null
+& git -C $p4Root add . 2>&1 | Out-Null
+& git -C $p4Root -c user.name=Codex -c user.email=codex@example.com commit -m 'p4 baseline' --quiet 2>&1 | Out-Null
+$p4Output = @(pwsh -NoProfile -ExecutionPolicy Bypass -File $validatorScript -ProjectPath $p4Root -NoParallel -NoCacheRead 2>&1) -join [Environment]::NewLine
+if (-not (Assert-Match -Text $p4Output -Pattern 'state-advance-without-verdict' -Message 'Pillar 4 (FR-021) did not WARN on a human-verdict boundary lacking verdict history.')) {
+    Write-Host $p4Output
+    exit 1
+}
+Write-Pass 'Pillar 4 (FR-021) warns when a human-judgment boundary advanced without a matching verdict_history entry'
+
+# --- Pillar 5 closeout gate (FR-022/AC11): full validator FAIL on working-tree-only review evidence ---
+$p5Root = Join-Path $scratchRoot 'pillar5-project'
+$p5Iteration = Join-Path $p5Root 'specs\017-sample\iterations\002'
+$null = New-Item -ItemType Directory -Path $p5Iteration -Force
+New-BypassFixtureProject -Root $p5Root
+@'
+# Iteration Plan: 002
+
+**Schema**: v1
+**Spec**: [../../spec.md](../../spec.md)
+**Status**: reviewing
+**Capacity**: 1/20 story_points
+**Started**: 2026-05-29
+
+## Tasks
+
+| Task | Title | Requirement | Story | Effort | Owner | Status | Agent | Actual | Verdict |
+| ---- | ----- | ----------- | ----- | ------ | ----- | ------ | ----- | ------ | ------- |
+| T001 | Fixture | FR-001 | US1 | 1 | Implementer | done | codex | 1 | pass |
+'@ | Set-Content -LiteralPath (Join-Path $p5Iteration 'plan.md') -Encoding UTF8
+@'
+# Iteration State: 002
+
+**Schema**: v1
+**Current Phase**: review-signoff
+**Iteration Status**: reviewing
+**Last Completed Task**: T001
+**Tasks Remaining**: (none)
+**In Progress**: (none)
+**Baseline Ref**: HEAD
+**Updated**: 2026-05-29T00:00:00Z
+'@ | Set-Content -LiteralPath (Join-Path $p5Iteration 'state.md') -Encoding UTF8
+@'
+# Drift Log: Iteration 002
+
+**Schema**: v1
+'@ | Set-Content -LiteralPath (Join-Path $p5Iteration 'drift-log.md') -Encoding UTF8
+& git -C $p5Root init --quiet 2>&1 | Out-Null
+& git -C $p5Root add . 2>&1 | Out-Null
+& git -C $p5Root -c user.name=Codex -c user.email=codex@example.com commit -m 'p5 baseline' --quiet 2>&1 | Out-Null
+$p5BaseHead = (& git -C $p5Root rev-parse HEAD).Trim()
+# Author an accepted review.md citing a production file that exists on disk but is NOT in the cited commit.
+$p5Cited = 'src/SignoffRepository.cs'
+$null = New-Item -ItemType Directory -Path (Join-Path $p5Root 'src') -Force
+Set-Content -LiteralPath (Join-Path $p5Root $p5Cited) -Value '// uncommitted working-tree-only delivery' -Encoding UTF8
+@"
+# Review: Iteration 002
+
+**Schema**: v1
+**Overall Verdict**: accepted
+**Tree Under Review**: ``$p5BaseHead``
+
+## Task Verdicts
+
+| Task | Requirement | Verdict | Notes |
+| ---- | ----------- | ------- | ----- |
+| T001 | FR-001 | pass | Delivered ``$p5Cited`` as production evidence. |
+
+## Gap Ledger
+
+- No requirement (FR/SC) gaps: all in-scope requirements verified: fixed-now.
+"@ | Set-Content -LiteralPath (Join-Path $p5Iteration 'review.md') -Encoding UTF8
+$p5Output = @(pwsh -NoProfile -ExecutionPolicy Bypass -File $validatorScript -ProjectPath $p5Root -IterationPath $p5Iteration -NoParallel -NoCacheRead 2>&1)
+$p5ExitCode = $LASTEXITCODE
+$p5Text = ($p5Output | ForEach-Object { [string]$_ }) -join [Environment]::NewLine
+if ($p5ExitCode -eq 0) {
+    Write-Fail 'Pillar 5 (FR-022/AC11) did not block: validator passed while review.md cited a production file absent from the cited tree.'
+    Write-Host $p5Text
+    exit 1
+}
+if (-not (Assert-Match -Text $p5Text -Pattern 'SignoffRepository\.cs' -Message 'Pillar 5 FAIL did not name the cited-but-absent production file.')) {
+    Write-Host $p5Text
+    exit 1
+}
+Write-Pass 'Pillar 5 (FR-022/AC11) blocks closeout when accepted review evidence cites a production file absent from the cited Tree Under Review'
+
+Write-Pass 'F-049 Iteration 004: all five Proposal 120 bypass-detection pillars surface during governance validation (SC-004)'
 
 Write-Pass 'F-047 trust-hardening fixtures cover WARN-only handoff, dashboard, wrong-location, mermaid, skill-root, closeout-template, and task-progress reconciliation paths'
 exit 0

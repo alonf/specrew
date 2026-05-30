@@ -1,0 +1,11 @@
+# This directory is reserved for future solution-type-specific intake bundles.
+#
+# Example future bundles:
+#   - microservices.yml (service mesh, API gateway, distributed tracing patterns)
+#   - monolith.yml (modular monolith, layering, bounded contexts)
+#   - serverless.yml (function composition, event-driven, cold start optimization)
+#   - static-site.yml (JAMstack, build-time rendering, CDN patterns)
+#   - data-pipeline.yml (ETL, streaming, batch processing patterns)
+#
+# Feature 049 Iteration 003: FR-030 reserves this extension hook.
+# Solution-type bundles land as data-only YAML additions without engine rewrites (SC-006).

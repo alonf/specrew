@@ -7,8 +7,14 @@
 effort_unit: "story_points"
 
 # Maximum effort units per iteration (capacity)
-# Default: 20 story points
-# Adjust based on team velocity and calibration data
+# BASELINE: 20 story points. The 20 SP cap is intentional — it scopes AI agent
+# context and keeps iteration plans within a single-session execution window.
+# When a planned slice exceeds 20, the right move is to SPLIT the iteration,
+# not raise the cap. F-049 Iteration 003 was briefly raised to 25 for a 23.45 SP
+# load; that bump was reverted at F-049 stable closeout (2026-05-30) and the
+# corrected position is recorded for the team. Closed iterations are protected
+# by the grandfather rule (Proposal 144 / PR #1153) so reverting the cap does
+# not retroactively fail historical plans.
 capacity_per_iteration: 20
 
 # Iteration bounding strategy

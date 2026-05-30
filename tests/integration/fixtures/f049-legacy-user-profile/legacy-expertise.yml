@@ -1,0 +1,17 @@
+# Legacy Specrew User Profile (created BEFORE the Crew Interaction Profile wording correction).
+# Feature 049 Iteration 003 layout. Used to prove FR-037 / scenario 10: loads without migration,
+# stable persisted keys + internal persona IDs stay valid, depth behavior preserved.
+schema: "1.0"
+specrew_version_at_creation: "0.27.3"
+created_at: "2026-05-01T10:00:00.0000000Z"
+last_updated_at: "2026-05-01T10:00:00.0000000Z"
+user_name: "Legacy Dev"
+
+expertise:
+  software_architecture: 9
+  ui_ux: null
+  product_management: 6
+  ai_research_project_management: 3
+
+preferences:
+  preferred_intake_depth: "auto"

@@ -1,0 +1,27 @@
+# Generic Auto-Decision Defaults (Stack-Agnostic Fallback)
+# Feature 049 Iteration 003 - Engine + Data Architecture
+# FR-029, FR-031, TG-013
+
+schema_version: "1.0"
+stack: generic
+description: "Stack-agnostic auto-decision defaults for low-expertise scenarios (dial 1-3, Mode C)"
+
+defaults:
+  testing_framework: "Standard unit testing framework for detected language"
+  error_handling_pattern: "Try-catch with structured logging"
+  logging_framework: "Standard structured logging library"
+  configuration_management: "Environment variables with .env file support"
+  dependency_injection: "Manual constructor injection (simple, no framework)"
+  http_client_library: "Standard library HTTP client"
+  validation_approach: "Input validation at entry points"
+  database_access_pattern: "Direct SQL with parameterized queries (no ORM)"
+  authentication_pattern: "API key or JWT bearer token"
+  deployment_strategy: "Manual deployment with documented steps"
+  monitoring_approach: "Basic health checks and error logs"
+  caching_strategy: "In-memory cache for frequently accessed data"
+
+notes:
+  - "These defaults apply when no stack-specific auto-decision file exists"
+  - "Stack-specific files (dotnet.yml, python.yml, nodejs.yml) override these defaults"
+  - "All auto-decisions surface via Proposal 053 transparency pattern: [AUTO-DECIDED: <decision>]"
+  - "Users can escalate any auto-decision to clarification by requesting 'I want to decide this myself'"

@@ -1,0 +1,77 @@
+# Dockerfile for pre-publish E2E validation
+# Trace: T002, FR-001, FR-002, SC-001
+#
+# This harness validates module candidate packages before PSGallery publication:
+# 1. Installs baseline Specrew v0.27.6 from PSGallery in a clean Linux environment
+# 2. Initializes a test project with `specrew init`
+# 3. Verifies FileList integrity (every manifest entry exists on disk)
+# 4. Validates version pin parity (Prop 134 drift detection)
+# 5. Executes `specrew update` and validates clean transitions
+#
+# Usage:
+#   docker build -f tests/Dockerfile.publish-test -t specrew-publish-test .
+#   docker run --rm specrew-publish-test
+
+FROM mcr.microsoft.com/powershell:lts-ubuntu-22.04
+
+# Toolchain required by harness Phases 4-5. specrew init/update perform git
+# operations and shell out to the specify (spec-kit) and squad CLIs. The minimal
+# PowerShell base image has none of these. Versions are pinned to match the CI
+# contract lane (.github/workflows/specrew-ci.yml SPEC_KIT_VERSION / SQUAD_VERSION).
+ARG SPEC_KIT_VERSION=0.8.4
+ARG SQUAD_VERSION=0.9.1
+ENV PATH="/root/.local/bin:${PATH}"
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends git curl ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+
+# GitHub CLI (gh). Baseline v0.27.6 `specrew init`'s dependency check lists gh under
+# "Missing required dependencies" and ABORTS when it is absent, despite labelling it
+# "optional but recommended" — so gh is effectively required to reach init's project
+# scaffolding. Installed from GitHub's official apt repository.
+RUN curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg \
+        -o /usr/share/keyrings/githubcli-archive-keyring.gpg \
+    && chmod go+r /usr/share/keyrings/githubcli-archive-keyring.gpg \
+    && echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" \
+        > /etc/apt/sources.list.d/github-cli.list \
+    && apt-get update \
+    && apt-get install -y --no-install-recommends gh \
+    && rm -rf /var/lib/apt/lists/*
+
+# Node + squad CLI (Node 24 via NodeSource — matches CI's setup-node node-version '24';
+# baseline specrew init's dependency check requires Node 24.0+. jammy's apt nodejs is too old.)
+RUN curl -fsSL https://deb.nodesource.com/setup_24.x | bash - \
+    && apt-get install -y --no-install-recommends nodejs \
+    && rm -rf /var/lib/apt/lists/* \
+    && npm install -g "@bradygaster/squad-cli@${SQUAD_VERSION}"
+
+# uv + specify (spec-kit) CLI (uv installs to /root/.local/bin, on PATH above)
+RUN curl -LsSf https://astral.sh/uv/install.sh | sh \
+    && /root/.local/bin/uv tool install --force specify-cli \
+        --from "git+https://github.com/github/spec-kit.git@v${SPEC_KIT_VERSION}"
+
+# Install baseline Specrew v0.27.6 from PSGallery as the reference version
+RUN pwsh -Command "Install-Module -Name Specrew -RequiredVersion 0.27.6 -Repository PSGallery -Scope AllUsers -Force -AllowClobber"
+
+# Verify baseline installation succeeded
+RUN pwsh -Command "Import-Module Specrew; Show-SpecrewVersion"
+
+# Set working directory for test execution
+WORKDIR /workspace
+
+# Copy the candidate module package and test harness script into the container
+# These will be provided by the workflow at build time
+COPY . /candidate
+
+# Copy the test harness script to a known location
+RUN mkdir -p /workspace/scripts/internal
+RUN cp /candidate/scripts/internal/test-publish-harness.ps1 /workspace/scripts/internal/ || true
+
+# NOTE: Set-ExecutionPolicy is intentionally NOT run here. This image is Linux
+# (lts-ubuntu-22.04) and PowerShell's execution-policy model is Windows-only —
+# `Set-ExecutionPolicy` throws "Operation is not supported on this platform" on Linux.
+# Scripts run via `pwsh -File` need no policy change on Linux.
+
+# Default command: run the publish harness test
+CMD ["pwsh", "-File", "/candidate/scripts/internal/test-publish-harness.ps1", "-CandidatePath", "/candidate"]

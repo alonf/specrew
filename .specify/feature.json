@@ -1,4 +1,4 @@
 {
-  "schema": "v1",
-  "feature_directory": "specs/050-cursor-host-support"
+  "feature_directory": "specs/049-pipeline-hardening-intake",
+  "schema": "v1"
 }

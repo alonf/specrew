@@ -297,16 +297,60 @@ function Set-ManagedTableRows {
 
     $existingContent = Get-Content -LiteralPath $TargetPath -Raw
     
-    # Find the markdown table separator line (like |------|------|) after the section header
-    # and insert rows immediately after it
     $escapedHeader = [regex]::Escape($TableSectionHeader)
-    # Match: section header, followed by anything, then a table header row, then a separator row
-    # Capture group 1: everything up to and including the separator line
     $tablePattern = "($escapedHeader[^\r\n]*\r?\n(?:.*?\r?\n)*?\|[^\r\n]+\|\r?\n\|[\s\-|]+\|\r?\n)"
     
     if ($existingContent -match $tablePattern) {
-        $rowsContent = ($Rows | ForEach-Object { $_ + [Environment]::NewLine }) -join ''
-        $updatedContent = $existingContent -replace $tablePattern, ('${1}' + $rowsContent)
+        $headerAndSeparator = $Matches[1]
+        
+        $index = $existingContent.IndexOf($headerAndSeparator)
+        if ($index -lt 0) { return }
+        
+        $postTableContent = $existingContent.Substring($index + $headerAndSeparator.Length)
+        
+        $existingBodyLines = [System.Collections.Generic.List[string]]::new()
+        $lines = $postTableContent -split '\r?\n'
+        $tableEndIndex = 0
+        foreach ($line in $lines) {
+            if ($line -match '^\s*\|') {
+                $null = $existingBodyLines.Add($line)
+                $tableEndIndex++
+            }
+            else {
+                break
+            }
+        }
+        
+        $trailingLines = $lines[$tableEndIndex..($lines.Count - 1)]
+        $trailingContent = $trailingLines -join [Environment]::NewLine
+        
+        $newKeys = @{}
+        foreach ($newRow in $Rows) {
+            $key = Get-TableRowKey -RowLine $newRow
+            if ($key) {
+                $newKeys[$key] = $newRow
+            }
+        }
+        
+        $mergedBodyLines = [System.Collections.Generic.List[string]]::new()
+        foreach ($newRow in $Rows) {
+            $null = $mergedBodyLines.Add($newRow)
+        }
+        
+        foreach ($existingRow in $existingBodyLines) {
+            $key = Get-TableRowKey -RowLine $existingRow
+            if ($key -and -not $newKeys.ContainsKey($key)) {
+                $null = $mergedBodyLines.Add($existingRow)
+            }
+        }
+        
+        $preContent = $existingContent.Substring(0, $index)
+        $bodyContent = ($mergedBodyLines | ForEach-Object { $_ + [Environment]::NewLine }) -join ''
+        
+        $updatedContent = $preContent + $headerAndSeparator + $bodyContent
+        if (-not [string]::IsNullOrWhiteSpace($trailingContent)) {
+            $updatedContent += $trailingContent
+        }
         
         if ($updatedContent -ne $existingContent) {
             Add-DeploymentAction -Actions $Actions -Action $(if ($DryRun) { 'would-update' } else { 'updated' }) -Path $TargetPath
@@ -321,6 +365,15 @@ function Set-ManagedTableRows {
     else {
         Add-DeploymentAction -Actions $Actions -Action 'preserved' -Path $TargetPath
     }
+}
+
+function Get-TableRowKey {
+    param([string]$RowLine)
+    $parts = $RowLine -split '\|'
+    if ($parts.Count -gt 1) {
+        return $parts[1].Trim()
+    }
+    return $null
 }
 
 function Get-DirectiveDeployment {

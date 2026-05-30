@@ -1,0 +1,64 @@
+# Architect Question Bank
+# Feature 049 Iteration 003 - Engine + Data Architecture
+# FR-029, TG-013, TG-015
+
+schema_version: "1.0"
+persona_id: architect
+persona_name: "Architect"
+
+questions:
+  - id: arch-q001
+    category: data-and-state-management
+    text: "What are the core entities, their relationships, and the primary data lifecycle (create, read, update, delete, archive)?"
+    priority: high
+    tags: [data-model, entities, lifecycle]
+    mode_applicability: [A, B, C]
+
+  - id: arch-q002
+    category: integration-and-dependencies
+    text: "What are the system integration boundaries, and what API contracts must be defined?"
+    priority: high
+    tags: [integration, api-contracts, boundaries]
+    mode_applicability: [A, B, C]
+
+  - id: arch-q003
+    category: deployment-and-operations
+    text: "What is the deployment topology (single-instance, multi-region, edge), and what are the scaling requirements?"
+    priority: high
+    tags: [deployment, topology, scaling]
+    mode_applicability: [A, B, C]
+
+  - id: arch-q004
+    category: data-and-state-management
+    text: "What are the data consistency requirements (strong, eventual, causal), and where are transactions required?"
+    priority: medium
+    tags: [consistency, transactions, distributed-systems]
+    mode_applicability: [B, C]
+
+  - id: arch-q005
+    category: security-and-compliance
+    text: "What authentication and authorization patterns are required, and what are the privilege boundaries?"
+    priority: medium
+    tags: [auth, authz, security]
+    mode_applicability: [B, C]
+
+  - id: arch-q006
+    category: performance-and-scalability
+    text: "What are the latency and throughput targets (p50, p95, p99), and what caching strategies apply?"
+    priority: medium
+    tags: [performance, latency, caching]
+    mode_applicability: [B, C]
+
+  - id: arch-q007
+    category: integration-and-dependencies
+    text: "What third-party services or external dependencies exist, and what are the failure modes?"
+    priority: low
+    tags: [dependencies, third-party, failure-modes]
+    mode_applicability: [C]
+
+  - id: arch-q008
+    category: deployment-and-operations
+    text: "What monitoring, logging, and observability patterns are required for operational insight?"
+    priority: low
+    tags: [monitoring, logging, observability]
+    mode_applicability: [C]
