@@ -7,18 +7,15 @@
 effort_unit: "story_points"
 
 # Maximum effort units per iteration (capacity)
-# SELF-HOST REPO BASELINE: 25 story points (formalized at F-049 feature-closeout, 2026-05-29).
-# Scope: THIS repository only. Originally 20; raised to 25 for F-049 Iteration 003's engine +
-# data architecture pivot, whose real 23.45 SP load proved 20 insufficient. The bump is now this
-# repo's permanent baseline rather than a temporary exception. The SHIPPED DEFAULT for new
-# downstream projects intentionally remains 20 (see templates/iteration-config.yml +
-# extension.yml default_per_iteration); projects adjust based on their own velocity/calibration.
-# KNOWN ISSUE (deferred to a repo-hygiene/validator slice): historical CLOSED
-# iterations planned against 20 still produce 58 capacity-drift validator FAILs
-# because the validator enforces the CURRENT config against closed iterations.
-# The fix is to grandfather closed iterations by their own stated capacity — NOT
-# to mass-edit dozens of closed plans. Tracked for that dedicated slice.
-capacity_per_iteration: 25
+# BASELINE: 20 story points. The 20 SP cap is intentional — it scopes AI agent
+# context and keeps iteration plans within a single-session execution window.
+# When a planned slice exceeds 20, the right move is to SPLIT the iteration,
+# not raise the cap. F-049 Iteration 003 was briefly raised to 25 for a 23.45 SP
+# load; that bump was reverted at F-049 stable closeout (2026-05-30) and the
+# corrected position is recorded for the team. Closed iterations are protected
+# by the grandfather rule (Proposal 144 / PR #1153) so reverting the cap does
+# not retroactively fail historical plans.
+capacity_per_iteration: 20
 
 # Iteration bounding strategy
 # - scope: Iteration completes when planned tasks are done (time varies)
