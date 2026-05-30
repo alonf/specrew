@@ -16,6 +16,11 @@ How to decide who handles what in Specrew's spec-governed workflow.
 | Implementation | implementer | Code changes, feature delivery, execution follow-through |
 | Code review | reviewer | PR review, quality checks, acceptance validation |
 | Retrospectives | retro-facilitator | Iteration retrospectives, process improvements |
+| Specification governance | spec-steward | Spec authoring, requirement authority, drift detection |
+| Planning & traceability | planner | Iteration planning, task breakdown, requirement tracing |
+| Implementation | implementer | Code changes, feature delivery, execution follow-through |
+| Code review | reviewer | PR review, quality checks, acceptance validation |
+| Retrospectives | retro-facilitator | Iteration retrospectives, process improvements |
 | Spec alignment and drift control | Picard | Requirement tracing, plan/task/output alignment, tracked changes |
 | Iteration planning | Data | Break requirements into tasks, assign owners, estimate effort |
 | Implementation work | La Forge | Markdown/YAML/PowerShell asset changes, extension structure updates |

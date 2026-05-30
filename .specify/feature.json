@@ -1,4 +1,4 @@
 {
-  "feature_directory": "",
-  "schema": "v1"
+  "schema": "v1",
+  "feature_directory": "specs/050-cursor-host-support"
 }

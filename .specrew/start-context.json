@@ -2,7 +2,7 @@
   "schema": "v2",
   "mode": "resume-feature",
   "feature_request": "",
-  "feature_path": "C:\\Dev\\Specrew\\specs\\047-bug-bash-trust-hardening",
+  "feature_path": "C:\\Dev\\Specrew-cursor\\specs\\050-cursor-host-support",
   "agent": "Squad",
   "approval_mode": "allow-all",
   "launch_mode": "same-window",
@@ -11,12 +11,8 @@
     "state": "existing-continue",
     "detected_entries": [
       ".agents",
-      ".antigravitycli",
       ".claude",
       ".codex",
-      ".scratch",
-      ".specrew-squad-probe-14e2200829f2405cb359497a32762765",
-      ".specrew-squad-probe-eeb3bc53b8734ce4ac0e8abe9c2e8768",
       ".vscode",
       "docs",
       "evaluation",
@@ -28,7 +24,6 @@
       "templates",
       "tests",
       ".markdownlint.json",
-      "0.7.3",
       "CHANGELOG.md",
       "CODE_OF_CONDUCT.md",
       "CODEOWNERS",
@@ -39,11 +34,7 @@
       "README.md",
       "SECURITY.md",
       "Specrew.psd1",
-      "Specrew.psm1",
-      "validator-output-f024.log",
-      "validator-output.log",
-      "validator-stderr.log",
-      "validator-stdout.log"
+      "Specrew.psm1"
     ],
     "has_brownfield_indicators": true,
     "has_specs_directory": true,
@@ -95,6 +86,8 @@
       "045-v0271-bugfix-bundle",
       "046-046-bug-bash",
       "047-bug-bash-trust-hardening",
+      "048-beta-before-stable-sdlc",
+      "050-cursor-host-support",
       "antigravity-host-followup"
     ]
   },
@@ -128,7 +121,7 @@
     ]
   },
   "team_roster": {
-    "team_path": "C:\\Dev\\Specrew\\.squad\\team.md",
+    "team_path": "C:\\Dev\\Specrew-cursor\\.squad\\team.md",
     "mode": "specrew-managed",
     "team_status_configured": true,
     "baseline_roles": [
@@ -167,69 +160,69 @@
   },
   "delegated_routing": {
     "enabled_agents": [
-      "copilot"
+      "claude"
     ],
     "independent_oversight_active": false,
     "roles": {
       "Implementer": {
         "role": "Implementer",
         "requested_agent": "copilot",
-        "effective_agent": "copilot",
-        "delegated": false,
-        "access_path": "copilot_default",
-        "fallback_reason": null
+        "effective_agent": "claude",
+        "delegated": true,
+        "access_path": "copilot_agent_hq",
+        "fallback_reason": "preferred agent 'copilot' is not enabled"
       },
       "Spec Steward": {
         "role": "Spec Steward",
         "requested_agent": "codex",
-        "effective_agent": "copilot",
-        "delegated": false,
-        "access_path": "copilot_default",
+        "effective_agent": "claude",
+        "delegated": true,
+        "access_path": "copilot_agent_hq",
         "fallback_reason": "preferred agent 'codex' is not enabled"
       },
       "Planner": {
         "role": "Planner",
         "requested_agent": "claude",
-        "effective_agent": "copilot",
-        "delegated": false,
-        "access_path": "copilot_default",
-        "fallback_reason": "preferred agent 'claude' is not enabled"
+        "effective_agent": "claude",
+        "delegated": true,
+        "access_path": "copilot_agent_hq",
+        "fallback_reason": null
       },
       "Reviewer": {
         "role": "Reviewer",
         "requested_agent": "claude",
-        "effective_agent": "copilot",
-        "delegated": false,
-        "access_path": "copilot_default",
-        "fallback_reason": "preferred agent 'claude' is not enabled"
+        "effective_agent": "claude",
+        "delegated": true,
+        "access_path": "copilot_agent_hq",
+        "fallback_reason": null
       },
       "Retro Facilitator": {
         "role": "Retro Facilitator",
         "requested_agent": "copilot",
-        "effective_agent": "copilot",
-        "delegated": false,
-        "access_path": "copilot_default",
-        "fallback_reason": null
+        "effective_agent": "claude",
+        "delegated": true,
+        "access_path": "copilot_agent_hq",
+        "fallback_reason": "preferred agent 'copilot' is not enabled"
       }
     },
     "fallback_events": [
       {
+        "role": "Implementer",
+        "requested_agent": "copilot",
+        "actual_agent": "claude",
+        "reason": "preferred agent 'copilot' is not enabled"
+      },
+      {
         "role": "Spec Steward",
         "requested_agent": "codex",
-        "actual_agent": "copilot",
+        "actual_agent": "claude",
         "reason": "preferred agent 'codex' is not enabled"
       },
       {
-        "role": "Planner",
-        "requested_agent": "claude",
-        "actual_agent": "copilot",
-        "reason": "preferred agent 'claude' is not enabled"
-      },
-      {
-        "role": "Reviewer",
-        "requested_agent": "claude",
-        "actual_agent": "copilot",
-        "reason": "preferred agent 'claude' is not enabled"
+        "role": "Retro Facilitator",
+        "requested_agent": "copilot",
+        "actual_agent": "claude",
+        "reason": "preferred agent 'copilot' is not enabled"
       }
     ]
   },
@@ -245,97 +238,85 @@
     ]
   },
   "session_state": {
-    "active": false,
-    "boundary_type": "feature-closeout",
-    "feature_ref": "047-bug-bash-trust-hardening",
-    "feature_path": "C:\\Dev\\Specrew\\specs\\047-bug-bash-trust-hardening",
-    "iteration_number": "001",
+    "active": true,
+    "boundary_type": "tasks",
+    "feature_ref": "050-cursor-host-support",
+    "feature_path": "C:\\Dev\\Specrew-cursor\\specs\\050-cursor-host-support",
+    "iteration_number": 2,
     "task_id": null,
-    "auth_commit_hash": "c7fa3800b2aa8cd99882cec6988ef228efcab9c8",
-    "recorded_at": "2026-05-26T11:39:12Z"
+    "auth_commit_hash": "3aa22b36",
+    "recorded_at": "2026-05-29T00:00:00Z"
   },
-  "recovery_session": null,
-  "squad_model_overrides": {},
-  "prompt_path": "C:\\Dev\\Specrew\\.specrew\\last-start-prompt.md",
-  "summary_path": "C:\\Dev\\Specrew\\.specrew\\start-summary.md",
-  "generated_at_utc": "2026-05-26T11:39:12Z",
-  "selected_host": "copilot",
+  "recovery_session": {
+    "entry_mode": "detected-stale-state",
+    "stale_reasons": [
+      "Session-state feature mismatch detected: 050-cursor-host-support, 048-beta-before-stable-sdlc"
+    ],
+    "choice_set": [
+      "A",
+      "B",
+      "C"
+    ],
+    "selected_choice": "A",
+    "bypass_gate": false,
+    "approval_mode_changed": false,
+    "next_action_message": "Recovery will re-anchor to 'C:\\Dev\\Specrew-cursor\\specs\\050-cursor-host-support' so you can repair or continue the last known feature state."
+  },
+  "squad_model_overrides": {
+    "Implementer": "claude-sonnet-4.5",
+    "Spec Steward": "claude-sonnet-4.5",
+    "Planner": "claude-sonnet-4.5",
+    "Reviewer": "claude-sonnet-4.5",
+    "Retro Facilitator": "claude-sonnet-4.5"
+  },
+  "prompt_path": "C:\\Dev\\Specrew-cursor\\.specrew\\last-start-prompt.md",
+  "summary_path": "C:\\Dev\\Specrew-cursor\\.specrew\\start-summary.md",
+  "generated_at_utc": "2026-05-28T20:29:29.1522890Z",
+  "selected_host": "claude",
   "available_hosts": {
     "claude": true,
     "codex": true,
     "copilot": true,
     "antigravity": true
   },
-  "crew_runtime_status": "squad-runtime",
+  "crew_runtime_status": "bootstrap_only",
   "host_resolution": "flag",
   "boundary_enforcement": {
     "enabled": true,
-    "last_authorized_boundary": "feature-closeout",
-    "pending_next_boundary": null,
+    "last_authorized_boundary": "iteration-closeout",
+    "pending_next_boundary": "before-implement",
     "verdict_history": [
       {
-        "from_boundary": "before-implement",
-        "to_boundary": "review-signoff",
-        "verdict_text": "approved for review-signoff",
+        "from_boundary": "clarify",
+        "to_boundary": "before-plan",
+        "verdict_text": "approved for before-plan/plan (F-050 clarify complete)",
         "authorizing_human": "Alon Fliess",
-        "recorded_at": "2026-05-22T17:19:01Z",
-        "auth_commit_hash": "5458564904bc376f3f8edaa5339610fd40c9144c"
-      },
-      {
-        "from_boundary": "retro",
-        "to_boundary": "iteration-closeout",
-        "verdict_text": "approved for iteration-closeout",
-        "authorizing_human": "Alon Fliess",
-        "recorded_at": "2026-05-22T17:52:40Z",
-        "auth_commit_hash": "3a53c46ce4a4154e03c3b9dc802233ddeb1b97aa"
-      },
-      {
-        "authorizing_human": "Alon Fliess",
-        "auth_commit_hash": "b21c17b92540e951d5de48ff7352fc1390315ca6",
-        "verdict_text": "approved for feature-closeout",
-        "from_boundary": "iteration-closeout",
-        "to_boundary": "feature-closeout",
-        "recorded_at": "2026-05-22T18:13:13Z"
-      },
-      {
-        "from_boundary": "specify",
-        "to_boundary": "clarify",
-        "verdict_text": "approved for clarify",
-        "authorizing_human": "Alon Fliess",
-        "recorded_at": "2026-05-25T12:49:15Z",
-        "auth_commit_hash": "1c219f1e2931004cab0a24f890bedb4c9ef7375e"
-      },
-      {
-        "from_boundary": "retro",
-        "to_boundary": "iteration-closeout",
-        "verdict_text": "approved for iteration-closeout",
-        "authorizing_human": "Alon Fliess",
-        "recorded_at": "2026-05-25T19:00:15Z",
-        "auth_commit_hash": "9ca2b19f614e7b1c310543162f1d37675afab090"
-      },
-      {
-        "from_boundary": "iteration-closeout",
-        "to_boundary": "feature-closeout",
-        "verdict_text": "approved for feature-closeout",
-        "authorizing_human": "Alon Fliess",
-        "recorded_at": "2026-05-25T19:13:03Z",
-        "auth_commit_hash": "6ed9a2f64bb6d552940ccd97645856815305dbe5"
+        "recorded_at": "2026-05-28T00:00:00Z",
+        "auth_commit_hash": "83dd0730"
       },
       {
         "from_boundary": "tasks",
         "to_boundary": "before-implement",
-        "verdict_text": "approved for before-implement",
+        "verdict_text": "approved for before-implement (F-050 iter-001)",
         "authorizing_human": "Alon Fliess",
-        "recorded_at": "2026-05-25T21:08:40Z",
-        "auth_commit_hash": "8f4af40a"
+        "recorded_at": "2026-05-29T00:00:00Z",
+        "auth_commit_hash": "6e97a9a0"
       },
       {
-        "from_boundary": "feature-closeout",
-        "to_boundary": "feature-closeout",
-        "verdict_text": "approved for feature-closeout",
+        "from_boundary": "review",
+        "to_boundary": "review-signoff",
+        "verdict_text": "approved for review-signoff (F-050 iter-001)",
         "authorizing_human": "Alon Fliess",
-        "recorded_at": "2026-05-25T23:50:22Z",
-        "auth_commit_hash": "fb47f956"
+        "recorded_at": "2026-05-29T00:00:00Z",
+        "auth_commit_hash": "81f7fe84"
+      },
+      {
+        "from_boundary": "retro",
+        "to_boundary": "iteration-closeout",
+        "verdict_text": "approved for iteration-closeout + continue to iter 002 (F-050 iter-001)",
+        "authorizing_human": "Alon Fliess",
+        "recorded_at": "2026-05-29T00:00:00Z",
+        "auth_commit_hash": "f84ad246"
       }
     ],
     "bypass_history": []
