@@ -11,7 +11,7 @@
 [![Version](https://img.shields.io/badge/version-0.29.0-blue.svg)](.specrew/config.yml)
 [![Status: Alpha](https://img.shields.io/badge/status-alpha-orange.svg)](#status)
 
-**Governed agentic SDLC. Agents type — you decide.** Specrew is a methodology layer over [GitHub Spec Kit](https://github.com/github/spec-kit) that keeps the human in the loop at every decision boundary while letting AI agents do the work between boundaries. Works with GitHub Copilot, Claude Code, OpenAI Codex CLI, and Google Antigravity.
+**Governed agentic SDLC. Agents type — you decide.** Specrew is a methodology layer over [GitHub Spec Kit](https://github.com/github/spec-kit) that keeps the human in the loop at every decision boundary while letting AI agents do the work between boundaries. Works with GitHub Copilot, Claude Code, Cursor, OpenAI Codex CLI, and Google Antigravity.
 
 ## ⚡ Try it now (5 min)
 
@@ -24,7 +24,7 @@ specrew start "Build a tip calculator with a web UI"
 
 That's it. Specrew now drives you through the spec-driven lifecycle: you'll co-author a spec with the AI, sign off on a plan, and end with working code traceable to every decision.
 
-**Prerequisites** (one-time): PowerShell 7+, git, and one AI host CLI — [GitHub Copilot](https://docs.github.com/en/copilot/how-tos/copilot-cli), [Claude Code](https://docs.anthropic.com/en/docs/claude-code/installation), [Codex CLI](https://developers.openai.com/codex/cli), or [Antigravity](https://antigravity.google/). On macOS / Linux, replace the `mkdir`/`cd` line with the platform equivalent. See [docs/getting-started.md](docs/getting-started.md) for full install steps, dependency notes (uv, npm), and brownfield-project bootstrap.
+**Prerequisites** (one-time): PowerShell 7+, git, and one AI host CLI — [GitHub Copilot](https://docs.github.com/en/copilot/how-tos/copilot-cli), [Claude Code](https://docs.anthropic.com/en/docs/claude-code/installation), [Cursor](https://cursor.com/), [Codex CLI](https://developers.openai.com/codex/cli), or [Antigravity](https://antigravity.google/). On macOS / Linux, replace the `mkdir`/`cd` line with the platform equivalent. See [docs/getting-started.md](docs/getting-started.md) for full install steps, dependency notes (uv, npm), and brownfield-project bootstrap.
 
 ## What just happened
 
@@ -55,7 +55,7 @@ This is what governance buys you that raw CLI usage cannot.
 
 Every AI coding host has a context window. When that window fills — or you simply close the terminal — the agent's memory of "what we just decided, why we stopped here, what the gates are, which iteration is open" is gone. Picking back up means rebuilding context in prose, paying the token cost of recap, and trusting the agent to faithfully reconstruct decisions it never explicitly recorded.
 
-Specrew sidesteps this by treating the **artifact on disk** as the source of truth, not the agent's memory. The spec, plan, tasks, iteration plan, decisions ledger, drift log, and current boundary state all live in files inside your project. Any host — Copilot, Claude, Codex, Antigravity — can be started against the same project, read the same artifacts, and continue from the exact same boundary.
+Specrew sidesteps this by treating the **artifact on disk** as the source of truth, not the agent's memory. The spec, plan, tasks, iteration plan, decisions ledger, drift log, and current boundary state all live in files inside your project. Any host — Copilot, Claude, Cursor, Codex, Antigravity — can be started against the same project, read the same artifacts, and continue from the exact same boundary.
 
 A real workflow this makes possible:
 
@@ -64,10 +64,12 @@ Monday  — specrew start --host copilot     "specify a tip calculator"
                                               → spec.md committed, /speckit.clarify queued
 Tuesday — specrew start --host claude       (no prompt — resumes at clarify)
                                               → clarifications.md committed, /speckit.plan queued
-Wednesday — specrew start --host codex      (no prompt — resumes at plan)
+Wednesday — specrew start --host cursor     (no prompt — resumes at plan)
                                               → plan.md committed, /speckit.tasks queued
-Thursday — specrew start --host antigravity (no prompt — resumes at iteration scaffold)
+Thursday — specrew start --host codex       (no prompt — resumes at iteration scaffold)
                                               → iter-001/plan.md, ready for /speckit.implement
+Friday   — specrew start --host antigravity (no prompt — resumes mid-implement)
+                                              → tests + code committed, /speckit.review-signoff queued
 ```
 
 Each `specrew start` on a different host:

@@ -4,6 +4,25 @@ Retroactive alpha release history for shipped Specrew features. `.specrew\config
 is the canonical source for the active version; this file records the feature
 baseline that each release number represents.
 
+## [0.29.0] - 2026-05-30
+
+### Added
+
+- **Feature 050 (Cursor Host Package)** — three-iteration feature shipping Cursor as the fifth first-class Specrew host:
+  - **Proposal 114 — Cursor Host Package (Iteration 001, FR-001..FR-007, FR-009..FR-011)**: `specrew start --host cursor "<task>"` launches the standalone `cursor-agent` CLI with Specrew's coordinator prompt. Host implementation follows the F-044 per-host architecture (`hosts/cursor/` package with manifest + handlers + coordinator-rules). 5-function contract: `New-CursorLaunchInvocation` (interactive `cursor-agent "<prompt>" --workspace <path>` invocation; `--allow-all` maps to `--force` via `ConvertTo-CursorFlag`; `--print` and `--trust` reserved as headless-only and NOT used for interactive launch), `Test-CursorRuntimeInstalled`, `Get-CursorSignals`, `Install-CursorCrewRuntime` (deploys Specrew Crew identity to `.cursor/rules/*.mdc` Project Rules — Cursor's auto-attached context mechanism; AGENTS.md serves as the coordinator instructions file). MenuPriority 1.5 places Cursor second in the interactive selection menu (after Claude). HasUserSlashCommandSurface = $false (Cursor uses always-attached rules, not invocable slash commands).
+  - **Test coverage (Iteration 002, FR-005..FR-007)**: real-`cursor-agent` version-probe fixture in `tests/integration/host-cursor.tests.ps1` (skip-guarded when binary absent); dedicated launch-path integration smoke `tests/integration/host-cursor-launch.tests.ps1` exercising the full dispatch (`Get-SpecrewHostLaunchInvocation` -> `Invoke-HostHandler` -> `New-CursorLaunchInvocation`); explicit cursor assertions added to `host-detection-ux.tests.ps1` (cursor in supported-hosts matrix + interactive launch shape verification).
+  - **Documentation (Iteration 003, FR-008)**: `docs/getting-started.md` adds Cursor host-table row, Cursor Quickstart callout, install/binary notes (`cursor-agent`, no slash palette, `--allow-all`->`--force` flag mapping); `docs/user-guide.md` adds dedicated Cursor interaction-model section, five-host counts, Cursor column in flag/capability/charter tables. Human-verified end-to-end live smoke test confirmed SC-001/005 (launch + interactive Cursor session against real `cursor-agent` v2026.05.28).
+- **Pre-publish Docker harness Phase 2 bidirectional FileList completeness guard** (PR #1225, from F-049 directional-blind-spot lesson) — closes the v0.28.0-beta.1 omission where `scripts/internal/user-profile.ps1` shipped without a FileList entry. Validator now diffs source-tree against FileList declarations and fails if any deployable source file is undeclared.
+
+### Changed
+
+- Five-host parity across README + getting-started + user-guide narratives.
+
+### Known follow-ups (deferred carry-forward chores)
+
+- **Proposal 134 baseline-bump bug-fix slice** (in scope for F-051): `specrew update` should bump `.specrew/config.yml specrew_version` to match installed module; currently doesn't. Workaround: manual edit + commit. Same family as the installed-module-bundled supported-versions.yml staleness (also resolved naturally when next Specrew release publishes with current main's pin).
+- **Spec-Kit pin bump 0.8.13 -> 0.8.18** validated + landed on main (precursor chore commit `ee320e79`); installed v0.29.0 still ships with the 0.8.13 pin (publish-time snapshot). Next Specrew release will ship the 0.8.18 pin in its bundled snapshot.
+
 ## [0.28.0] - 2026-05-29
 
 ### Added
