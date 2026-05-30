@@ -2,7 +2,7 @@
 
 **Schema**: v1
 **Spec**: [../../spec.md](../../spec.md)
-**Status**: executing
+**Status**: reviewing
 **Capacity**: 3/20 story_points
 **Started**: 2026-05-30
 **Completed**:
@@ -33,7 +33,7 @@ Iteration 003 = documentation + manual live-Cursor smoke (the feature's final sl
 | ---- | ----- | ----------- | ----- | ------ | ----- | ---------------- | ------ | ----- | ------ | ------- |
 | T014 | Add "Cursor Quickstart" + caveats (no slash palette; AGENTS.md-driven; install cursor-agent) to `docs/getting-started.md` | FR-008 | US1 | 1 | Implementer | `docs/getting-started.md` | done | claude | — | pass |
 | T015 | Add Cursor interaction-model section to `docs/user-guide.md` (rules-context vs slash commands; interactive launch; --allow-all->--force) | FR-008 | US1, US2 | 1 | Implementer | `docs/user-guide.md` | done | claude | — | pass |
-| T016 | Manual end-to-end smoke: `specrew start --host cursor "<feature>"` on this machine; capture human-verified evidence (HUMAN step) | FR-008 | US1, US4 | 1 | Implementer + Human | (evidence in iteration review) | in-progress | claude | — | — |
+| T016 | Manual end-to-end smoke: `specrew start --host cursor "<feature>"` on this machine; capture human-verified evidence (HUMAN step) | FR-008 | US1, US4 | 1 | Implementer + Human | (evidence in iteration review) | done | claude | — | pass |
 
 ## Effort Model
 

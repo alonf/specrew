@@ -1,9 +1,9 @@
 # Iteration State: 003
 
 **Schema**: v1
-**Current Phase**: implement
-**Iteration Status**: executing
-**Last Completed Task**: T015 (T016 = human live-smoke, pending)
+**Current Phase**: review
+**Iteration Status**: reviewing
+**Last Completed Task**: T016 (human live-smoke PASSED)
 **Tasks Remaining**: (populate from plan.md)
 **In Progress**: (none)
 **Baseline Ref**: 2164b7a8dbcfe8182339bd9dc497165943ca30f6
@@ -11,7 +11,7 @@
 
 ## Execution Summary
 
-- T014 (getting-started Cursor Quickstart) + T015 (user-guide interaction model + tables) complete; docs lint clean. T016 (manual live-Cursor smoke) requires human verification.
+- T014 (getting-started Cursor Quickstart) + T015 (user-guide interaction model + tables) complete; docs lint clean. T016 manual live-Cursor smoke PASSED (Alon Fliess): `specrew start --host cursor` launches cursor-agent interactively + reads AGENTS.md + begins specify. SC-001/005 human-verified.
 - This artifact was scaffolded before task execution so resume state can be updated after each task.
 
 ## Notes
