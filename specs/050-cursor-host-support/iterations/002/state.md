@@ -1,8 +1,8 @@
 # Iteration State: 002
 
 **Schema**: v1
-**Current Phase**: retro
-**Iteration Status**: retro
+**Current Phase**: complete
+**Iteration Status**: complete
 **Last Completed Task**: T013
 **Tasks Remaining**: (iteration-002 complete; heading to review)
 **In Progress**: (none)
