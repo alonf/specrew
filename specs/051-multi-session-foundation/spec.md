@@ -325,3 +325,21 @@ Proposal 148 is a candidate for F-054+, after F-051 establishes the foundation a
 **Empirical Motivation:**
 
 F-051's own 2026-05-30 launch experienced the inherited-stale-state problem that items 9 and 10 address. When the new feature branch was cloned to a fresh worktree with inherited `.squad/identity/now.md` from main (containing old session_state from F-050), `specrew start` triggered the stale-state A/B/C recovery prompt even though the fresh branch had no prior work. This noise would amplify with more concurrent sessions. Items 9 and 10 eliminate this friction and make the specify boundary UX pleasant for parallel-development ramp-up.
+
+## Clarifications *(boundary: clarify)*
+
+### Session 2026-05-30
+
+**Clarify Phase Completion**: No critical blocking ambiguities detected. Comprehensive taxonomy coverage analysis confirms specification is materially clear across all dimensions:
+
+- **Functional Scope & Behavior**: ✓ Clear (10 user stories, 43 functional requirements, explicit out-of-scope boundaries)
+- **Domain & Data Model**: ✓ Clear (4 entity types fully specified with attributes, relationships, lifecycle)
+- **Interaction & UX Flow**: ✓ Clear (Detailed acceptance scenarios for all P1 user stories, 9 edge cases documented)
+- **Non-Functional Quality**: ✓ Clear (Performance targets, scalability limits, reliability handling, observability via FR-042, security/privacy via FR-043)
+- **Integration & Dependencies**: ✓ Clear (git, Spec-Kit 0.8.18, PowerShell module dependencies and failure modes documented)
+- **Edge Cases & Failure**: ✓ Clear (Comprehensive edge case handling with atomic write patterns, stale lock clearing, race condition handling)
+- **Constraints & Tradeoffs**: ✓ Clear (Technical assumptions, scope boundaries, explicit Proposal 148 Layer 2+3 deferral)
+- **Terminology & Consistency**: ✓ Clear (Canonical terms used consistently: session_mode, active-sessions, active-features, feature_id, feature claim)
+- **Completion Signals**: ✓ Clear (8 measurable success criteria with explicit metrics, acceptance scenarios for all requirements)
+
+**Ready for Planning**: Feature specification passes clarify boundary without requiring human clarification loop. Specification repair at specify boundary (User Stories 9-10, FR-035 through FR-043) has resolved all scoping gaps identified by reviewer. Recommend proceeding to plan boundary.
