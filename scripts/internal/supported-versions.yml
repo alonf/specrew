@@ -18,8 +18,8 @@ schema: v1
 
 speckit:
   min: "0.8.4"
-  max_tested: "0.8.13"
-  notes: ""
+  max_tested: "0.8.18"
+  notes: "0.8.14-0.8.18 all additive (no breaking changes). Notable upstream surfaces: 0.8.16 added {{ context.run_id }} template var; 0.8.17 added Hermes Agent integration + Antigravity enhancements; 0.8.18 added SPECKIT_INTEGRATION_<KEY>_EXTRA_ARGS env var (see Proposal 147 for Specrew's parallel host-options surface)."
 
 squad:
   min: "0.9.1"
