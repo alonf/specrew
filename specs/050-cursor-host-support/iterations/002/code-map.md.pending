@@ -1,0 +1,81 @@
+# Code Map: Iteration 002
+
+**Schema**: v1
+**Reviewed**: 2026-05-29
+**Baseline Ref**: 3aa22b360ef381c3cb8b2748f51251196e249221
+**Test-to-Code Ratio**: 3:0
+
+> **⚠️ Review Evidence Warning** _(Form-vs-Meaning Gap Detected)_
+> 
+> This iteration's task tracking declares **3 completed task(s)**, but the git diff against baseline `3aa22b360ef381c3cb8b2748f51251196e249221` contains **31 file(s)**.
+> 
+> **Severity**: WARNING  
+> **Implication**: Review evidence may be incomplete or misleading.
+> 
+> **Possible causes**:
+> - Implementation work was not committed before scaffolding review artifacts
+> - Task status markers in plan.md or review.md do not match actual progress
+> - Baseline reference in state.md is stale or incorrect
+> 
+> **Remediation**: 
+> 1. Verify implementation is committed: `git diff 3aa22b360ef381c3cb8b2748f51251196e249221...HEAD --stat`
+> 2. If uncommitted work exists: `git add . && git commit -m "Implementation complete"`
+> 3. Re-run scaffolder with `-Force` flag to regenerate review artifacts after commit
+> 4. Re-run `validate-governance.ps1` to clear pre-review commit gate error
+> 
+> _See Proposal 073 (Review Evidence Integrity) for background on this validation._
+
+---
+
+## Files Touched
+
+| Path | Lines Added | Lines Removed | Owning Task ID(s) | Owning Role |
+| ---- | ----------- | ------------- | ----------------- | ----------- |
+| .github/agents/squad.agent.md | 103 | 39 | T011, T012, T013 | Implementer |
+| .specify/feature.json | 2 | 2 | T011, T012, T013 | Implementer |
+| .specrew/last-start-prompt.md | 371 | 16 | T011, T012, T013 | Implementer |
+| .specrew/last-validator-summary.json | 4 | 4 | T011, T012, T013 | Implementer |
+| .specrew/start-context.json | 91 | 110 | T011, T012, T013 | Implementer |
+| .squad/casting/registry.json | 15 | 15 | T011, T012, T013 | Implementer |
+| .squad/ceremonies.md | 10 | 0 | T011, T012, T013 | Implementer |
+| .squad/config.json | 19 | 6 | T011, T012, T013 | Implementer |
+| .squad/decisions.md | 202 | 0 | T011, T012, T013 | Implementer |
+| .squad/identity/now.md | 10 | 10 | T011, T012, T013 | Implementer |
+| .squad/routing.md | 5 | 0 | T011, T012, T013 | Implementer |
+| .squad/team.md | 5 | 0 | T011, T012, T013 | Implementer |
+| specs/050-cursor-host-support/current-architecture.md | 6 | 6 | T011, T012, T013 | Implementer |
+| specs/050-cursor-host-support/iterations/001/plan.md | 1 | 1 | T011, T012, T013 | Implementer |
+| specs/050-cursor-host-support/iterations/002/code-map.md | 47 | 0 | T011, T012, T013 | Implementer |
+| specs/050-cursor-host-support/iterations/002/coverage-evidence.md | 43 | 0 | T011, T012, T013 | Implementer |
+| specs/050-cursor-host-support/iterations/002/dashboard.md | 38 | 0 | T011, T012, T013 | Implementer |
+| specs/050-cursor-host-support/iterations/002/dependency-report.md | 33 | 0 | T011, T012, T013 | Implementer |
+| specs/050-cursor-host-support/iterations/002/drift-log.md | 45 | 0 | T011, T012, T013 | Implementer |
+| specs/050-cursor-host-support/iterations/002/plan.md | 85 | 0 | T011, T012, T013 | Implementer |
+| specs/050-cursor-host-support/iterations/002/quality/hardening-gate.md | 38 | 0 | T011, T012, T013 | Implementer |
+| specs/050-cursor-host-support/iterations/002/quality/mechanical-findings.json | 11 | 0 | T011, T012, T013 | Implementer |
+| specs/050-cursor-host-support/iterations/002/quality/trap-reapplication.md | 15 | 0 | T011, T012, T013 | Implementer |
+| specs/050-cursor-host-support/iterations/002/review-diagrams.md | 39 | 0 | T011, T012, T013 | Implementer |
+| specs/050-cursor-host-support/iterations/002/review.md | 41 | 0 | T011, T012, T013 | Implementer |
+| specs/050-cursor-host-support/iterations/002/reviewer-index.md | 53 | 0 | T011, T012, T013 | Implementer |
+| specs/050-cursor-host-support/iterations/002/state.md | 36 | 0 | T011, T012, T013 | Implementer |
+| specs/050-cursor-host-support/tasks.md | 1 | 1 | T011, T012, T013 | Implementer |
+| tests/integration/host-cursor-launch.tests.ps1 | 61 | 0 | T011, T012, T013 | Implementer |
+| tests/integration/host-cursor.tests.ps1 | 20 | 0 | T011, T012, T013 | Implementer |
+| tests/integration/host-detection-ux.tests.ps1 | 24 | 0 | T011, T012, T013 | Implementer |
+
+## Public-API Delta
+
+### Added
+
+- Write-Pass (tests/integration/host-cursor-launch.tests.ps1)
+- Write-Fail (tests/integration/host-cursor-launch.tests.ps1)
+- Write-Skip (tests/integration/host-cursor-launch.tests.ps1)
+
+### Removed
+
+- none
+
+## Module Hotspots
+
+- Threshold: 250 changed lines per file
+- .specrew/last-start-prompt.md (387 changed lines)
