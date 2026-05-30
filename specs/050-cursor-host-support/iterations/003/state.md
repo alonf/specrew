@@ -1,7 +1,9 @@
 # Iteration State: 003
 
 **Schema**: v1
-**Last Completed Task**: (none)
+**Current Phase**: implement
+**Iteration Status**: executing
+**Last Completed Task**: T015 (T016 = human live-smoke, pending)
 **Tasks Remaining**: (populate from plan.md)
 **In Progress**: (none)
 **Baseline Ref**: 2164b7a8dbcfe8182339bd9dc497165943ca30f6
@@ -9,7 +11,7 @@
 
 ## Execution Summary
 
-- Execution has not started yet.
+- T014 (getting-started Cursor Quickstart) + T015 (user-guide interaction model + tables) complete; docs lint clean. T016 (manual live-Cursor smoke) requires human verification.
 - This artifact was scaffolded before task execution so resume state can be updated after each task.
 
 ## Notes

@@ -24,13 +24,13 @@ Specrew -Scope CurrentUser -SkipPublisherCheck`, or via
 that can't load the module, the direct-script fallback is
 `pwsh -File C:\Dev\Specrew\scripts\specrew.ps1 start` — same arguments otherwise.
 
-It prepares the Crew handoff, launches the selected host CLI (`--host copilot|claude|codex|antigravity`, default `copilot`) when available, and tells the Crew to drive the full Spec Kit lifecycle with an explicit clarify gate: `specify`, then `clarify`, then `plan`, `tasks`, and `implement`, with skip rationale reserved for resumed specs that are already clarified and materially unchanged. The intended human role is to answer only the unresolved questions the Crew cannot safely answer from repo context or current artifacts. You can optionally pass a short plain-language request if you already know the next feature or fix.
+It prepares the Crew handoff, launches the selected host CLI (`--host copilot|claude|cursor|codex|antigravity`, default `copilot`) when available, and tells the Crew to drive the full Spec Kit lifecycle with an explicit clarify gate: `specify`, then `clarify`, then `plan`, `tasks`, and `implement`, with skip rationale reserved for resumed specs that are already clarified and materially unchanged. The intended human role is to answer only the unresolved questions the Crew cannot safely answer from repo context or current artifacts. You can optionally pass a short plain-language request if you already know the next feature or fix.
 
 For new brownfield projects, the handoff includes discovery from existing code, manifests, docs, and recent git history so the Crew can reconstruct the current system baseline, seed the starting spec, and propose concrete stack/domain specialists before it asks broad intake questions. If you start without a grounded request, Specrew keeps the host out of autopilot so the Crew can ask the next intake question and wait for your answer before it invokes `speckit.specify`.
 
-Once the scope is grounded, Specrew launches from the project directory, reuses the current terminal by default, and auto-loads a compact bootstrap message that points the host at `.specrew\last-start-prompt.md`, `.specrew\start-context.json`, and the human-readable `.specrew\start-summary.md`. Specrew defaults to **gate-respecting mode** — the Crew stops at every lifecycle approval boundary (specify, clarify, plan, tasks, implement, review, retro) and waits for explicit human verdict before advancing. Specrew also defaults to `--allow-all` for tool-call approval (translated per host: Copilot `--allow-all`, Claude `--dangerously-skip-permissions`, Codex `--full-auto`, Antigravity `--dangerously-skip-permissions`); use `--prompt-approvals` to keep each tool call interactive. The two flags are independent: `--allow-all` controls tool-call approval; `--autonomous` controls whether the Crew advances through lifecycle gates without human input. Pass `--autonomous` only for unattended runs such as overnight execution where you have already authorized the full lifecycle. Pass `--new-window` if you explicitly want a detached PowerShell window.
+Once the scope is grounded, Specrew launches from the project directory, reuses the current terminal by default, and auto-loads a compact bootstrap message that points the host at `.specrew\last-start-prompt.md`, `.specrew\start-context.json`, and the human-readable `.specrew\start-summary.md`. Specrew defaults to **gate-respecting mode** — the Crew stops at every lifecycle approval boundary (specify, clarify, plan, tasks, implement, review, retro) and waits for explicit human verdict before advancing. Specrew also defaults to `--allow-all` for tool-call approval (translated per host: Copilot `--allow-all`, Claude `--dangerously-skip-permissions`, Cursor `--force`, Codex `--full-auto`, Antigravity `--dangerously-skip-permissions`); use `--prompt-approvals` to keep each tool call interactive. The two flags are independent: `--allow-all` controls tool-call approval; `--autonomous` controls whether the Crew advances through lifecycle gates without human input. Pass `--autonomous` only for unattended runs such as overnight execution where you have already authorized the full lifecycle. Pass `--new-window` if you explicitly want a detached PowerShell window.
 
-As of v0.27.0, four host runtimes are supported — Claude Code, Codex CLI, GitHub Copilot CLI, and Antigravity (`agy`). The interactive host-selection menu shows installed hosts in priority order (Claude → Codex → Copilot → Antigravity); the `--host` flag non-interactive default remains `copilot` for predictability in CI/automation. Each host launches with the same Specrew bootstrap context but uses host-native CLI flags via Specrew's per-host translation layer (see the "Multi-Host Launch" section below for the per-host flag matrix). Optional delegated agents such as Claude and Codex are *also* available as additive routing choices for review-heavy and problem-solving-heavy work when enabled — that's an orthogonal concern from `--host` (which picks the launching CLI), captured in `.squad\decisions.md` as the requested agent family, effective agent family, concrete model ID, and fallback reason when routing is not honored. Specrew applies a **no-gap policy** at review/closure time: known gaps across spec, implementation, tests, docs, or observability must be fixed in the current iteration or explicitly deferred with your approval and recorded evidence before the run is claimed complete. The selected host may still ask you to trust the project directory on first launch.
+Five host runtimes are supported — Claude Code, Cursor (`cursor-agent`), Codex CLI, GitHub Copilot CLI, and Antigravity (`agy`). The interactive host-selection menu shows installed hosts in priority order (Claude → Cursor → Codex → Copilot → Antigravity); the `--host` flag non-interactive default remains `copilot` for predictability in CI/automation. Each host launches with the same Specrew bootstrap context but uses host-native CLI flags via Specrew's per-host translation layer (see the "Multi-Host Launch" section below for the per-host flag matrix). Optional delegated agents such as Claude and Codex are *also* available as additive routing choices for review-heavy and problem-solving-heavy work when enabled — that's an orthogonal concern from `--host` (which picks the launching CLI), captured in `.squad\decisions.md` as the requested agent family, effective agent family, concrete model ID, and fallback reason when routing is not honored. Specrew applies a **no-gap policy** at review/closure time: known gaps across spec, implementation, tests, docs, or observability must be fixed in the current iteration or explicitly deferred with your approval and recorded evidence before the run is claimed complete. The selected host may still ask you to trust the project directory on first launch.
 
 If you want a repeatable mission-completion smoke check of the real handoff boundary, run `tests\manual\copilot-squad-smoke.ps1`. It provisions a fresh repo, runs `specrew init`, runs `specrew start`, and can optionally launch the real Copilot+Squad session for operator-observed end-to-end validation. When launched, the smoke harness now defaults to same-window monitoring so the live session can be observed directly; use its `-NewWindow` switch only when you intentionally want a detached window.
 
@@ -533,6 +533,7 @@ Each baseline role's charter is the canonical source-of-truth at `.specrew/team/
 
 - **Copilot** → `.squad/agents/<role>/charter.md` (raw markdown, consumed by Squad CLI)
 - **Claude** → `.claude/agents/<role>.md` (YAML frontmatter + body)
+- **Cursor** → `.cursor/rules/<role>.mdc` (MDC front-matter `description`/`alwaysApply` + charter body — Cursor Project Rules)
 - **Codex** → `.codex/agents/<role>.toml` (TOML manifest)
 - **Antigravity** → `.agents/agents/<role>.md` (YAML frontmatter + body)
 
@@ -772,10 +773,11 @@ Upstream tracking: <https://github.com/github/copilot-cli/issues/2689>. Copilot 
 
 ## Multi-Host Launch (v0.27.0+)
 
-`specrew start --host <kind>` launches the lifecycle on the named CLI runtime. Supported kinds: `copilot` (`--host` flag default), `claude`, `codex`, `antigravity`. The interactive menu (shown when `--host` is omitted in a TTY) lists installed hosts in priority order Claude → Codex → Copilot → Antigravity.
+`specrew start --host <kind>` launches the lifecycle on the named CLI runtime. Supported kinds: `copilot` (`--host` flag default), `claude`, `cursor`, `codex`, `antigravity`. The interactive menu (shown when `--host` is omitted in a TTY) lists installed hosts in priority order Claude → Cursor → Codex → Copilot → Antigravity.
 
 ```powershell
 specrew start --host claude "Build a TODO list app"
+specrew start --host cursor "Add a health-check endpoint"
 specrew start --host codex "Fix the auth bug"
 specrew start --host antigravity "Add precision-aware arithmetic to the calculator"
 specrew start --host copilot           # Equivalent to no --host flag
@@ -785,12 +787,12 @@ specrew start --host copilot           # Equivalent to no --host flag
 
 Specrew translates user-facing Specrew flags to host-appropriate CLI flags. The user-facing surface stays uniform across hosts.
 
-| Specrew flag | Copilot | Claude Code | Codex CLI | Antigravity |
-|---|---|---|---|---|
-| `--remote` | `--remote` | `--remote-control` | (warn-and-continue, no remote wiring) | (warn-and-continue, no remote wiring) |
-| `--allow-all` | `--allow-all` | `--dangerously-skip-permissions` | `--full-auto` | `--dangerously-skip-permissions` |
-| `--autopilot` | `--autopilot` | (drop with notice — use `--autonomous` for unattended runs) | `--full-auto` (folds into `--allow-all`) | (drop with notice — use `--autonomous` for unattended runs) |
-| `--autonomous` | (Specrew-side only — handled by lifecycle boundary enforcement per F-039; not translated per-host) | | | |
+| Specrew flag | Copilot | Claude Code | Cursor | Codex CLI | Antigravity |
+|---|---|---|---|---|---|
+| `--remote` | `--remote` | `--remote-control` | (warn-and-continue, no remote wiring) | (warn-and-continue, no remote wiring) | (warn-and-continue, no remote wiring) |
+| `--allow-all` | `--allow-all` | `--dangerously-skip-permissions` | `--force` | `--full-auto` | `--dangerously-skip-permissions` |
+| `--autopilot` | `--autopilot` | (drop with notice — use `--autonomous` for unattended runs) | (folds into `--force`) | `--full-auto` (folds into `--allow-all`) | (drop with notice — use `--autonomous` for unattended runs) |
+| `--autonomous` | (Specrew-side only — handled by lifecycle boundary enforcement per F-039; not translated per-host) | | | | |
 
 ### Per-host launch invocation shape
 
@@ -799,6 +801,7 @@ The bootstrap-context handshake ("Read `.specrew/last-start-prompt.md` and `.spe
 ```text
 copilot:     copilot --agent Squad --add-dir <project> -i <bootstrap-prompt> [--allow-all] [--autopilot] [--remote]
 claude:      claude -p <bootstrap-prompt> --add-dir <project> [--dangerously-skip-permissions] [--remote-control]
+cursor:      cursor-agent <bootstrap-prompt> --workspace <project> [--force]
 codex:       codex exec --cd <project> [--full-auto] <bootstrap-prompt>
 antigravity: agy -i <bootstrap-prompt> --add-dir <project> [--dangerously-skip-permissions]
 ```
@@ -809,7 +812,7 @@ The opening line of the coordinator prompt is universal across all hosts: `"You 
 
 For non-Copilot hosts, Specrew additionally strips directives that reference Squad-specific runtime paths (`.squad/decisions.md`, `.squad/config.json`, `agentModelOverrides`, `sync-squad-model-overrides.ps1`) since those paths don't exist when running on Claude or Codex.
 
-For Codex specifically, Specrew rewrites slash-command boundary-advance references (e.g., `/speckit.specrew-speckit.sync-plan`) to direct PowerShell invocations (`pwsh -File .specify/extensions/specrew-speckit/scripts/sync-boundary-state.ps1 -BoundaryType plan`) because Codex has no user-defined slash-command surface.
+For **Codex and Cursor** specifically, Specrew rewrites slash-command boundary-advance references (e.g., `/speckit.specrew-speckit.sync-plan`) to direct PowerShell invocations (`pwsh -File .specify/extensions/specrew-speckit/scripts/sync-boundary-state.ps1 -BoundaryType plan`) because neither has a user-defined slash-command surface.
 
 ### Host-enforcement asymmetry (FR-015)
 
@@ -824,15 +827,24 @@ In all cases, if an agent writes directly to `.specrew/start-context.json` bound
 
 ### Per-host capability differences (research.md Task 5)
 
-| Capability | Copilot | Claude | Codex | Antigravity |
-|---|---|---|---|---|
-| User-defined slash commands | ✅ `.github/skills/<name>.md` | ✅ `.claude/skills/<name>/SKILL.md` | ❌ **Not supported** | ✅ `.agents/skills/<name>.md` |
-| Hooks (PreToolUse, etc.) | ❌ None | ✅ Rich, configured in `.claude/settings.json` | ⚠️ Unclear at v0.26.0 research time | ⚠️ Unclear at v0.27.0 research time |
-| Subagents (multi-agent teams) | ⚠️ Via `--agent <name>` (Squad) | ✅ `.claude/agents/*.md` | ✅ `.codex/agents/*.toml` | ✅ `.agents/agents/*.md` |
-| MCP server config | ⚠️ Limited (recent) | ✅ `.mcp.json` first-class | ✅ `.codex/mcp.toml` first-class | ⚠️ Unverified at graduation time |
-| Project memory | ⚠️ None native | ✅ `CLAUDE.md` | ✅ `AGENTS.md` | ⚠️ Unverified at graduation time |
+| Capability | Copilot | Claude | Cursor | Codex | Antigravity |
+|---|---|---|---|---|---|
+| User-defined slash commands | ✅ `.github/skills/<name>.md` | ✅ `.claude/skills/<name>/SKILL.md` | ❌ **Not supported** (skills deploy as `.cursor/rules/*.mdc` context) | ❌ **Not supported** | ✅ `.agents/skills/<name>.md` |
+| Hooks (PreToolUse, etc.) | ❌ None | ✅ Rich, configured in `.claude/settings.json` | ⚠️ Unverified at F-050 time | ⚠️ Unclear at v0.26.0 research time | ⚠️ Unclear at v0.27.0 research time |
+| Subagents (multi-agent teams) | ⚠️ Via `--agent <name>` (Squad) | ✅ `.claude/agents/*.md` | ⚠️ Crew charters deploy as `.cursor/rules/*.mdc` (no native agent picker) | ✅ `.codex/agents/*.toml` | ✅ `.agents/agents/*.md` |
+| MCP server config | ⚠️ Limited (recent) | ✅ `.mcp.json` first-class | ✅ `cursor-agent mcp` + `--approve-mcps` | ✅ `.codex/mcp.toml` first-class | ⚠️ Unverified at graduation time |
+| Project memory | ⚠️ None native | ✅ `CLAUDE.md` | ✅ `AGENTS.md` | ✅ `AGENTS.md` | ⚠️ Unverified at graduation time |
 
 F-040 manages skills + slash commands (uniformly via existing F-021 multi-host deploy). F-040 explicitly defers hooks, MCP, project memory, and subagents to future proposals (Proposal 105 for hooks; Proposal 024 Slice 3 for the rest).
+
+### Cursor host interaction model (F-050)
+
+Cursor's host is the standalone **`cursor-agent`** CLI (not the `cursor` editor launcher). `specrew start --host cursor "<feature>"` runs `cursor-agent "<prompt>" --workspace <project>` — an **interactive** Agent session (the developer drives the lifecycle), matching Claude/Codex/Antigravity rather than the headless `cursor-agent --print` scripting mode. Key differences from the slash-command hosts:
+
+- **No slash palette.** Cursor has no user-typed `/speckit.*` commands (`HasUserSlashCommandSurface = $false`, same as Codex). The lifecycle is driven by the **`AGENTS.md`** coordinator prompt; Speckit skills + Crew role charters deploy as **`.cursor/rules/*.mdc`** Project Rules — auto-attached *context*, not an invokable command surface. The Crew therefore uses pwsh-form boundary-advance instructions (the FR-014 rewrite, shared with Codex).
+- **Auto-approve.** `--allow-all` maps to `cursor-agent --force` (run-everything). `--trust` is headless-only (works only with `--print`) and is **not** used in the interactive launch.
+- **Detection.** `cursor-agent` must be on PATH (install + verify: [cursor.com/cli](https://cursor.com/cli), `cursor-agent --version`, `cursor-agent login`); otherwise `specrew start --host cursor` exits with install guidance instead of launching. Cursor sits at menu priority **1.5** (between Claude and Codex).
+- **Out of scope (v2 follow-up).** `--plugin-dir` plugin packaging — the first slice maps Speckit onto Cursor's native rules surface; richer plugin integration can follow.
 
 ### Missing-host guidance
 

@@ -31,17 +31,18 @@ If any are missing:
 
 #### Pick at least one host CLI
 
-Specrew needs one of the supported **agent host CLIs** to actually run a lifecycle session. As of v0.27.0 there are four supported hosts — install at least one. You select which one at launch time via `specrew start --host <kind>`. **Two defaults to keep in mind:**
+Specrew needs one of the supported **agent host CLIs** to actually run a lifecycle session. There are five supported hosts — install at least one. You select which one at launch time via `specrew start --host <kind>`. **Two defaults to keep in mind:**
 
 - **`--host` flag default (non-interactive / CI / automation)**: `copilot` — most-tested host, predictable for headless runs
-- **Interactive menu default (TTY, multiple installed hosts)**: highest-priority installed host in the order **Claude → Codex → Copilot → Antigravity**. The interactive menu shows installed hosts in priority order; `[default 1]` selects the highest-priority one
+- **Interactive menu default (TTY, multiple installed hosts)**: highest-priority installed host in the order **Claude → Cursor → Codex → Copilot → Antigravity**. The interactive menu shows installed hosts in priority order; `[default 1]` selects the highest-priority one
 
 When `--host` is omitted in interactive mode, Specrew shows a numbered menu of installed hosts (plus an "(not installed)" group with install URLs).
 
 | Host | `--host` value | CLI binary | Install URL | Notes |
 |---|---|---|---|---|
-| **GitHub Copilot** *(`--host` flag default)* | `copilot` | `copilot` | [docs.github.com/en/copilot/how-tos/copilot-cli](https://docs.github.com/en/copilot/how-tos/copilot-cli) | Most-tested host; the `--host` flag falls back to `copilot` in non-interactive contexts. Interactive menu priority: 3 of 4 |
+| **GitHub Copilot** *(`--host` flag default)* | `copilot` | `copilot` | [docs.github.com/en/copilot/how-tos/copilot-cli](https://docs.github.com/en/copilot/how-tos/copilot-cli) | Most-tested host; the `--host` flag falls back to `copilot` in non-interactive contexts. Interactive menu priority: 4 of 5 |
 | **Claude Code** | `claude` | `claude` | [docs.anthropic.com/en/docs/claude-code/installation](https://docs.anthropic.com/en/docs/claude-code/installation) | Headless `claude -p` invocation; rich subagent + hook surface (see [Proposal 105](../proposals/105-host-native-hook-deployment.md) for the hook-deployment follow-up) |
+| **Cursor** | `cursor` | `cursor-agent` | [cursor.com/cli](https://cursor.com/cli) | Interactive `cursor-agent "<prompt>" --workspace <path>` invocation; `--force` maps from `--allow-all`. No user-defined slash commands (like Codex) — skills + Crew charters deploy as `.cursor/rules/*.mdc` context; coordinator prompt via `AGENTS.md`. Menu priority 2 of 5 (between Claude and Codex). Added in F-050 |
 | **Codex CLI** | `codex` | `codex` | [developers.openai.com/codex/cli](https://developers.openai.com/codex/cli) | `codex exec --cd` invocation; no user-defined slash commands so the Crew uses pwsh-form boundary-advance instructions instead |
 | **Antigravity** | `antigravity` | `agy` | [antigravity.google](https://antigravity.google/) | `agy -i <prompt> --add-dir <path>` invocation; `--dangerously-skip-permissions` maps from `--allow-all`. Graduated from deferred to supported in v0.27.0 (F-044 iter-005) |
 
@@ -96,7 +97,7 @@ specrew init
 
 ### 4. Start the first feature
 
-Pick the host at launch time via `--host`. The non-interactive default (no flag, no TTY) is `copilot`; the interactive-menu default is the highest-priority installed host (Claude → Codex → Copilot → Antigravity):
+Pick the host at launch time via `--host`. The non-interactive default (no flag, no TTY) is `copilot`; the interactive-menu default is the highest-priority installed host (Claude → Cursor → Codex → Copilot → Antigravity):
 
 ```powershell
 # Default: GitHub Copilot host
@@ -105,12 +106,17 @@ specrew start "Build a web based calculator with only the + - * / MR MC M+ M- op
 # Or with Claude Code
 specrew start --host claude "Build a web based calculator with only the + - * / MR MC M+ M- operations"
 
+# Or with Cursor (cursor-agent)
+specrew start --host cursor "Build a web based calculator with only the + - * / MR MC M+ M- operations"
+
 # Or with Codex CLI
 specrew start --host codex "Build a web based calculator with only the + - * / MR MC M+ M- operations"
 
 # Or with Antigravity (agy)
 specrew start --host antigravity "Build a web based calculator with only the + - * / MR MC M+ M- operations"
 ```
+
+> **Cursor Quickstart.** Cursor's host is the standalone **`cursor-agent`** CLI (install: [cursor.com/cli](https://cursor.com/cli); verify `cursor-agent --version`, authenticate `cursor-agent login`). `specrew start --host cursor "<feature>"` launches `cursor-agent` interactively in your project workspace with Specrew's coordinator prompt (delivered via `AGENTS.md`) and begins the lifecycle. **Caveat — no slash palette:** unlike Claude/Copilot, Cursor has no user-typed `/speckit.*` slash commands; the lifecycle is driven entirely by the `AGENTS.md` coordinator prompt plus auto-attached `.cursor/rules/*.mdc` context (Speckit skills + Crew charters deploy there as rules, not as a command palette). If `cursor-agent` is not on PATH, Specrew exits with an install link rather than launching. Use `--allow-all` to auto-approve tool calls (maps to `cursor-agent --force`).
 
 That single command:
 
