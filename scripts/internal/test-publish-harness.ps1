@@ -162,10 +162,14 @@ try {
     git config user.name "Test User" 2>&1 | Out-Null
     Write-Pass "Initialized git repository"
     
-    # Run specrew init with baseline version (v0.27.6 from PSGallery)
+    # Run specrew init with baseline version (v0.27.6 from PSGallery).
+    # Note: init is non-interactive by default; the recognized flag is the CLI-form
+    # '--force' (specrew-init.ps1 parses '^--force$'). '-NonInteractive' is not a real
+    # option in any version, and '-Force' (PowerShell-style) is not recognized by the
+    # init CLI parser — both yield "Unknown option".
     Write-Host "Running specrew init with baseline v0.27.6..."
     try {
-        Initialize-Specrew -NonInteractive -Force
+        Initialize-Specrew --force
         Write-Pass "specrew init succeeded with baseline version"
     } catch {
         Write-Fail "specrew init failed with baseline version" $_.Exception.Message
@@ -214,10 +218,14 @@ try {
     }
     Write-Host "Active module version: $($loadedModule.Version)" -ForegroundColor Cyan
     
-    # Run specrew update to transition from baseline to candidate
+    # Run specrew update to transition from baseline to candidate. specrew-update.ps1
+    # uses a [switch] param block: -Specrew updates the Specrew-managed assets from the
+    # loaded candidate module; -SkipUpdateCheck avoids the PSGallery latest-version probe
+    # (the candidate 0.28.0 isn't published yet — that's what this harness gates). There
+    # is no -Force / -NonInteractive switch on update.
     Write-Host "Running specrew update to apply candidate version..."
     try {
-        Update-Specrew -NonInteractive -Force
+        Update-Specrew -Specrew -SkipUpdateCheck
         Write-Pass "specrew update succeeded"
     } catch {
         Write-Fail "specrew update failed during baseline->candidate transition" $_.Exception.Message

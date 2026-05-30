@@ -14,11 +14,28 @@
 
 FROM mcr.microsoft.com/powershell:lts-ubuntu-22.04
 
-# git is required by the harness Phases 4-5 (specrew init/update perform git
-# operations); the minimal PowerShell base image does not include it.
+# Toolchain required by harness Phases 4-5. specrew init/update perform git
+# operations and shell out to the specify (spec-kit) and squad CLIs. The minimal
+# PowerShell base image has none of these. Versions are pinned to match the CI
+# contract lane (.github/workflows/specrew-ci.yml SPEC_KIT_VERSION / SQUAD_VERSION).
+ARG SPEC_KIT_VERSION=0.8.4
+ARG SQUAD_VERSION=0.9.1
+ENV PATH="/root/.local/bin:${PATH}"
+
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends git \
+    && apt-get install -y --no-install-recommends git curl ca-certificates \
     && rm -rf /var/lib/apt/lists/*
+
+# Node + squad CLI (Node 20 LTS via NodeSource; jammy's apt nodejs is too old)
+RUN curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
+    && apt-get install -y --no-install-recommends nodejs \
+    && rm -rf /var/lib/apt/lists/* \
+    && npm install -g "@bradygaster/squad-cli@${SQUAD_VERSION}"
+
+# uv + specify (spec-kit) CLI (uv installs to /root/.local/bin, on PATH above)
+RUN curl -LsSf https://astral.sh/uv/install.sh | sh \
+    && /root/.local/bin/uv tool install --force specify-cli \
+        --from "git+https://github.com/github/spec-kit.git@v${SPEC_KIT_VERSION}"
 
 # Install baseline Specrew v0.27.6 from PSGallery as the reference version
 RUN pwsh -Command "Install-Module -Name Specrew -RequiredVersion 0.27.6 -Repository PSGallery -Scope AllUsers -Force -AllowClobber"
