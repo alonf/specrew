@@ -44,6 +44,7 @@
         'scripts/internal/sync-boundary-state.ps1',
         'scripts/internal/task-progress.ps1',
         'scripts/internal/test-publish-harness.ps1',
+        'scripts/internal/user-profile.ps1',
         'scripts/internal/version-check.ps1',
         'scripts/internal/worktree-awareness.ps1',
         'hosts/_contract.md',
@@ -215,7 +216,7 @@
     )
     PrivateData = @{
         PSData = @{
-            # Source prerelease state for the next intended release (v0.28.0-beta1). The
+            # Source prerelease state for the next intended release (v0.28.0-beta2). The
             # publish-module.yml workflow stamps the actual published version from the git tag
             # (release_ref_name) at release time, so this is the coherent source default, not the
             # authoritative publish value. Cleared to '' when promoting to stable.
@@ -223,7 +224,7 @@
             # [a-zA-Z0-9] and a leading hyphen. Use dotless forms (beta1, beta2, rc1); a
             # dotted 'beta.1' is silently normalized to 'beta1' on publish. Tag accordingly
             # (v0.28.0-beta1, not v0.28.0-beta.1).
-            Prerelease = 'beta1'
+            Prerelease = 'beta2'
             Tags = @('specrew', 'specification', 'squad', 'ai-workflow', 'governance')
             ProjectUri = 'https://github.com/alonf/specrew'
             LicenseUri = 'https://github.com/alonf/specrew/blob/main/LICENSE'
