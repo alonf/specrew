@@ -183,7 +183,7 @@ As a Specrew user or maintainer, I want the documentation and lifecycle guidance
 
 - **Spec Steward**: Alon Fliess — accountable for scope integrity, proposal alignment, and preserving the explicit deferment boundary for `/speckit.taskstoissues`.
 - **Iteration Facilitator**: Planner and Reviewer roles for this slice — accountable for keeping the `before-implement` placement of `/speckit.analyze` and its additive guidance consistent across discovery surfaces.
-- **Capacity Model**: Small brownfield feature slice, estimated at 5-8 effort points if limited to checklist activation, analyze surfacing, and discovery/documentation updates within one delivery cycle.
+- **Capacity Model**: Small brownfield feature slice, estimated at 8.75 story points if limited to checklist activation, analyze surfacing, and discovery/documentation updates within one delivery cycle.
 - **Drift Signals**:
   - `/speckit.checklist` is surfaced before-plan in one place but omitted or repositioned elsewhere.
   - `/speckit.analyze` is described anywhere other than `before-implement` after successful task generation.
