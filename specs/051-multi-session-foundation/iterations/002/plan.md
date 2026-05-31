@@ -2,7 +2,7 @@
 
 **Schema**: v1
 **Spec**: [../../spec.md](../../spec.md)
-**Status**: executing
+**Status**: reviewing
 **Capacity**: 12/20 story_points
 **Started**: 2026-05-31
 **Completed**:
@@ -38,24 +38,24 @@
 
 | Task | Title | Requirement | Story | Effort | Owner | Owner File Globs | Status | Agent | Actual | Verdict |
 | ---- | ----- | ----------- | ----- | ------ | ----- | ---------------- | ------ | ----- | ------ | ------- |
-| T020 | session-management.ps1 + EXTRACT shared atomic-write helper + FileList | FR-007 | US3 | 1.0 | Implementer | `scripts/internal/session-management.ps1`, `scripts/internal/atomic-write.ps1`, `scripts/internal/session-config.ps1`, `Specrew.psd1` | planned | claude | — | — |
-| T020b | Get-MachineFingerprint local-only helper (FR-043 population) | FR-007, FR-043 | US3 | 0.5 | Implementer | `scripts/internal/session-management.ps1` | planned | claude | — | — |
-| T020c | Add active-sessions.yml to gitignore patterns + record D-003 | FR-005, FR-007 | US3 | 0.5 | Implementer | `scripts/internal/file-classification.ps1`, `specs/051-multi-session-foundation/iterations/002/drift-log.md` | planned | claude | — | — |
-| T021 | Register-SessionLock at start (atomic) | FR-008 | US3 | 1.0 | Implementer | `scripts/internal/session-management.ps1`, `scripts/specrew-start.ps1` | planned | claude | — | — |
-| T022 | Remove-SessionLock at feature-closeout | FR-009 | US3 | 0.5 | Implementer | `scripts/internal/session-management.ps1`, `scripts/internal/sync-boundary-state.ps1` | planned | claude | — | — |
-| T023 | Test-SessionCollision + start-time warning | FR-010 | US3 | 1.0 | Implementer | `scripts/internal/session-management.ps1`, `scripts/specrew-start.ps1` | planned | claude | — | — |
-| T024 | Clear-StaleSessionLocks (24h, atomic RMW) | FR-011 | US3 | 1.0 | Implementer | `scripts/internal/session-management.ps1`, `scripts/specrew-start.ps1` | planned | claude | — | — |
-| T025 | Acceptance: collision within 2s (real temp repo) | FR-010 | US3 | 0.5 | Implementer | `tests/` | planned | claude | — | — |
-| T026 | Acceptance: stale-lock clear + corrupt-YAML safe-degradation | FR-011 | US3 | 0.5 | Implementer | `tests/` | planned | claude | — | — |
-| T026b | Acceptance: deterministic atomic-write/race (Edge Case) | FR-007, FR-012 | US3 | 0.5 | Implementer | `tests/` | planned | claude | — | — |
-| T027 | feature-claims.ps1 (reuse shared atomic-write) + FileList | FR-012 | US4 | 1.0 | Implementer | `scripts/internal/feature-claims.ps1`, `Specrew.psd1` | planned | claude | — | — |
-| T028 | Add-FeatureClaim at specify boundary (upsert) | FR-013 | US4 | 0.5 | Implementer | `scripts/internal/feature-claims.ps1`, `scripts/internal/sync-boundary-state.ps1` | planned | claude | — | — |
-| T029 | Update-FeatureClaim (monotonic refresh) every boundary | FR-014 | US4 | 0.5 | Implementer | `scripts/internal/feature-claims.ps1`, `scripts/internal/sync-boundary-state.ps1` | planned | claude | — | — |
-| T030 | Concurrent-claim Layer-1 warning + continue/decline | FR-015 | US4 | 1.0 | Implementer | `scripts/internal/feature-claims.ps1`, `scripts/specrew-start.ps1` | planned | claude | — | — |
-| T031 | Remove-FeatureClaim at closeout-when-merged | FR-016 | US4 | 0.5 | Implementer | `scripts/internal/feature-claims.ps1`, `scripts/internal/sync-boundary-state.ps1` | planned | claude | — | — |
-| T032 | Acceptance: claim lifecycle + refresh + re-add | FR-013, FR-014, FR-016 | US4 | 0.5 | Implementer | `tests/` | planned | claude | — | — |
-| T033 | Acceptance: concurrent-claim warning variants | FR-015 | US4 | 0.5 | Implementer | `tests/` | planned | claude | — | — |
-| T033b | 2a validation: run suite + validator-as-audit + coverage-evidence + data-model reconcile | FR-007, FR-016 | US3 | 0.5 | Reviewer | `specs/051-multi-session-foundation/iterations/002/`, `scripts/internal/sync-boundary-state.ps1` | planned | claude | — | — |
+| T020 | session-management.ps1 + EXTRACT shared atomic-write helper + FileList | FR-007 | US3 | 1.0 | Implementer | `scripts/internal/session-management.ps1`, `scripts/internal/atomic-write.ps1`, `scripts/internal/session-config.ps1`, `Specrew.psd1` | done | codex | 1.0 | pass |
+| T020b | Get-MachineFingerprint local-only helper (FR-043 population) | FR-007, FR-043 | US3 | 0.5 | Implementer | `scripts/internal/session-management.ps1` | done | codex | 0.5 | pass |
+| T020c | Add active-sessions.yml to gitignore patterns + record D-003 | FR-005, FR-007 | US3 | 0.5 | Implementer | `scripts/internal/file-classification.ps1`, `specs/051-multi-session-foundation/iterations/002/drift-log.md` | done | codex | 0.5 | pass |
+| T021 | Register-SessionLock at start (atomic) | FR-008 | US3 | 1.0 | Implementer | `scripts/internal/session-management.ps1`, `scripts/specrew-start.ps1` | done | codex | 1.0 | pass |
+| T022 | Remove-SessionLock at feature-closeout | FR-009 | US3 | 0.5 | Implementer | `scripts/internal/session-management.ps1`, `scripts/internal/sync-boundary-state.ps1` | done | codex | 0.5 | pass |
+| T023 | Test-SessionCollision + start-time warning | FR-010 | US3 | 1.0 | Implementer | `scripts/internal/session-management.ps1`, `scripts/specrew-start.ps1` | done | codex | 1.0 | pass |
+| T024 | Clear-StaleSessionLocks (24h, atomic RMW) | FR-011 | US3 | 1.0 | Implementer | `scripts/internal/session-management.ps1`, `scripts/specrew-start.ps1` | done | codex | 1.0 | pass |
+| T025 | Acceptance: collision within 2s (real temp repo) | FR-010 | US3 | 0.5 | Implementer | `tests/` | done | codex | 0.5 | pass |
+| T026 | Acceptance: stale-lock clear + corrupt-YAML safe-degradation | FR-011 | US3 | 0.5 | Implementer | `tests/` | done | codex | 0.5 | pass |
+| T026b | Acceptance: deterministic atomic-write/race (Edge Case) | FR-007, FR-012 | US3 | 0.5 | Implementer | `tests/` | done | codex | 0.5 | pass |
+| T027 | feature-claims.ps1 (reuse shared atomic-write) + FileList | FR-012 | US4 | 1.0 | Implementer | `scripts/internal/feature-claims.ps1`, `Specrew.psd1` | done | codex | 1.0 | pass |
+| T028 | Add-FeatureClaim at specify boundary (upsert) | FR-013 | US4 | 0.5 | Implementer | `scripts/internal/feature-claims.ps1`, `scripts/internal/sync-boundary-state.ps1` | done | codex | 0.5 | pass |
+| T029 | Update-FeatureClaim (monotonic refresh) every boundary | FR-014 | US4 | 0.5 | Implementer | `scripts/internal/feature-claims.ps1`, `scripts/internal/sync-boundary-state.ps1` | done | codex | 0.5 | pass |
+| T030 | Concurrent-claim Layer-1 warning + continue/decline | FR-015 | US4 | 1.0 | Implementer | `scripts/internal/feature-claims.ps1`, `scripts/specrew-start.ps1` | done | codex | 1.0 | pass |
+| T031 | Remove-FeatureClaim at closeout-when-merged | FR-016 | US4 | 0.5 | Implementer | `scripts/internal/feature-claims.ps1`, `scripts/internal/sync-boundary-state.ps1` | done | codex | 0.5 | pass |
+| T032 | Acceptance: claim lifecycle + refresh + re-add | FR-013, FR-014, FR-016 | US4 | 0.5 | Implementer | `tests/` | done | codex | 0.5 | pass |
+| T033 | Acceptance: concurrent-claim warning variants | FR-015 | US4 | 0.5 | Implementer | `tests/` | done | codex | 0.5 | pass |
+| T033b | 2a validation: run suite + validator-as-audit + coverage-evidence + data-model reconcile | FR-007, FR-016 | US3 | 0.5 | Reviewer | `specs/051-multi-session-foundation/iterations/002/`, `scripts/internal/sync-boundary-state.ps1` | done | codex | 0.5 | pass |
 
 ## Effort Model
 

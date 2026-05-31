@@ -66,7 +66,7 @@ Created on `specrew start` (FR-008), refreshed via heartbeat, removed on normal 
 
 ### Lifecycle / Relationships
 
-Created when the developer crosses the **specify** boundary (FR-013). `last_refresh_time` updated at specify/plan/tasks/implement/review/retro boundaries (FR-014, SC-008: 100% refresh rate). A start against an already-claimed feature surfaces a Layer-1 warning with claim details + continue/decline prompt (FR-015; acceptance variants: continue records both claims, decline exits). Removed at feature-closeout when merged to main (FR-016). A manually-removed claim is re-added on next boundary refresh if the session is still active (Edge Case). Distinct from SessionLockEntry: claims are advisory and span the whole feature lifecycle; locks are protective and exist only while a session is live.
+Created when the developer crosses the **specify** boundary (FR-013). `last_refresh_time` is refreshed monotonically at every boundary sync while the feature is active (FR-014, SC-008: 100% refresh rate). A start against an already-claimed feature surfaces a Layer-1 warning with claim details + continue/decline prompt (FR-015); continuing preserves the existing claim and records the current local session lock, while declining exits before a lock is recorded. Removed at feature-closeout when the feature is found in main's merge history (FR-016). A manually-removed claim is re-added on next boundary refresh if the session is still active (Edge Case). Distinct from SessionLockEntry: claims are advisory and span the whole feature lifecycle; locks are protective and exist only while a session is live.
 
 ## Entity: MultiDevSignal
 
@@ -99,7 +99,7 @@ Computed on-demand at `specrew start`, `specrew where`, and boundary-sync; never
 
 ### Canonical per-session patterns (FR-005)
 
-`.specrew/last-*`, `.specify/feature.json`, `.specrew/start-context.json`, `.specrew/host-history.json`, `.specrew/.cache/`, `.squad/sessions/`, `.squad/decisions/inbox/`, `.specrew/last-validator-summary.json`, and (FR-036) `.squad/identity/session-state.*`.
+`.specrew/last-*`, `.specify/feature.json`, `.specrew/start-context.json`, `.specrew/host-history.json`, `.specrew/.cache/`, `.squad/sessions/`, `.squad/decisions/inbox/`, `.specrew/last-validator-summary.json`, `.specrew/active-sessions.yml` (FR-005 gap fix from Iteration 2a), and (FR-036) `.squad/identity/session-state.*`.
 
 ### Lifecycle / Relationships
 

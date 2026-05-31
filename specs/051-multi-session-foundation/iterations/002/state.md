@@ -1,22 +1,24 @@
 # Iteration State: 002
 
 **Schema**: v1
-**Current Phase**: implement
-**Iteration Status**: executing
-**Last Completed Task**: T031 (US3 + US4 module logic complete + tested; T020/T020b/T020c/T021-T026b session-management; T027-T031 feature-claims)
-**Tasks Remaining**: call-site wiring (T021/T023/T024/T030 → specrew-start.ps1; T022/T028/T029/T031 → sync-boundary-state.ps1) + T025/T026/T026b/T032/T033 already covered at module level + T033b validation + review/retro/closeout
-**In Progress**: (none) — at a clean committed checkpoint
+**Current Phase**: review-signoff
+**Iteration Status**: reviewing
+**Last Completed Task**: T033b (Iteration 2a implementation + call-site wiring + focused validation complete)
+**Tasks Remaining**: review-signoff, retro, iteration-closeout
+**In Progress**: (none) — implementation ready for boundary commit and review
 **Baseline Ref**: 4fe1ff610b7ae7c1dab9807324427e6b3ad31b00
-**Updated**: 2026-05-31T17:21:32Z
+**Updated**: 2026-05-31T18:58:00Z
 
 ## Execution Summary
 
-- **US3 + US4 module logic COMPLETE + tested + committed (85f524bd).** Both core modules done with TDD (fail-first), all 4 F-051 suites green:
+- **US3 + US4 implementation COMPLETE + focused validation green.** Both core modules were done with TDD (fail-first), call-site wiring is now present, and focused 2a tests are green:
   - `scripts/internal/atomic-write.ps1` (extracted shared race-safe primitive), `scripts/internal/yaml-list.ps1` (hand-rolled list YAML), `scripts/internal/specrew-time.ps1` (shared UTC helpers).
   - `scripts/internal/session-management.ps1` — Get-MachineFingerprint (local-only, FR-043), Register/Remove-SessionLock, Test-SessionCollision, Clear-StaleSessionLocks (FR-007-011). Test: feature-051-session-management (24 assertions incl. deterministic atomic-write/race T026b).
   - `scripts/internal/feature-claims.ps1` — Add/Update/Remove-FeatureClaim (monotonic refresh + FR-014 reconciliation), Test-FeatureClaimConflict (FR-012-016). Test: feature-051-feature-claims.
   - `scripts/internal/file-classification.ps1` — active-sessions.yml gitignore pattern (T020c). Specrew.psd1 FileList: 5 new modules registered (alphabetical).
-- **REMAINING (next session):** (1) **call-site wiring** — register lock + collision warning + stale-clear + claim-conflict warning into `scripts/specrew-start.ps1`; claim create@specify / refresh@every-boundary / remove@closeout + lock remove@closeout into `scripts/internal/sync-boundary-state.ps1` (delicate — large existing files; mirror existing call patterns; NO new dispatch case). (2) **T033b** validation (suite + validator-as-audit + coverage-evidence). (3) review → review-signoff → retro → iteration-closeout (apply iter-1 state-truth + whole-file-reread discipline; pass `-IterationNumber 002`).
+- **Call-site wiring complete:** `scripts/specrew-start.ps1` clears stale locks, warns on active session collisions, prompts on concurrent feature claims, and registers the current session lock. `scripts/internal/sync-boundary-state.ps1` adds the feature claim at specify, refreshes it at each active boundary, removes it at merged feature-closeout, and removes feature session locks at feature-closeout.
+- **Validation evidence recorded:** `tests/unit/feature-051-session-management.tests.ps1`, `tests/unit/feature-051-feature-claims.tests.ps1`, and `tests/integration/feature-051-iteration2a-callsite-wiring.tests.ps1` passed. `tests/integration/stale-state-detection.tests.ps1` and `tests/integration/boundary-sync-atomicity.tests.ps1` also passed. `tests/integration/lifecycle-boundary-sync.tests.ps1` was attempted and failed on a pre-existing feature-closeout working-tree gate in its fixture path (`specs/022-hotfix-schema-tests/iterations/`), using installed Specrew 0.29.0 rather than this dev tree.
+- **REMAINING:** review → review-signoff → retro → iteration-closeout (apply iter-1 state-truth + whole-file-reread discipline; pass `-IterationNumber 002`).
 - **Decisions blessed (spec Clarifications 2026-05-31)**: keep 2a next; dir 002; security lens (not standing role); lock=local + cross-machine via claims.
 
 ## Notes

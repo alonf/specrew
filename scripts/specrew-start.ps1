@@ -107,6 +107,18 @@ if (-not (Test-Path -LiteralPath $userProfileHelperPath -PathType Leaf)) {
 }
 . $userProfileHelperPath
 
+$sessionManagementHelperPath = Join-Path $PSScriptRoot 'internal\session-management.ps1'
+if (-not (Test-Path -LiteralPath $sessionManagementHelperPath -PathType Leaf)) {
+    throw "Missing session-management helper '$sessionManagementHelperPath'."
+}
+. $sessionManagementHelperPath
+
+$featureClaimsHelperPath = Join-Path $PSScriptRoot 'internal\feature-claims.ps1'
+if (-not (Test-Path -LiteralPath $featureClaimsHelperPath -PathType Leaf)) {
+    throw "Missing feature-claims helper '$featureClaimsHelperPath'."
+}
+. $featureClaimsHelperPath
+
 function Convert-UnixStyleArguments {
     param(
         [string]$FeatureRequest,
@@ -337,6 +349,82 @@ function Write-Error-Message {
 function Write-Info {
     param([string]$Message)
     Write-Host $Message -ForegroundColor Cyan
+}
+
+function Read-SpecrewYesNo {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Prompt,
+
+        [bool]$Default = $false
+    )
+
+    if ([Console]::IsInputRedirected) {
+        $redirectedResponse = [Console]::In.ReadLine()
+        if ([string]::IsNullOrWhiteSpace($redirectedResponse)) {
+            return $Default
+        }
+
+        return ($redirectedResponse.Trim().ToLowerInvariant() -in @('y', 'yes'))
+    }
+
+    while ($true) {
+        $response = Read-Host $Prompt
+        if ([string]::IsNullOrWhiteSpace($response)) {
+            return $Default
+        }
+
+        switch ($response.Trim().ToLowerInvariant()) {
+            { $_ -in @('y', 'yes') } { return $true }
+            { $_ -in @('n', 'no') } { return $false }
+            default { Write-Info "Enter y/yes or n/no." }
+        }
+    }
+}
+
+function Invoke-SpecrewStartMultiSessionGuard {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$ProjectRoot,
+
+        [AllowNull()]
+        [string]$ResolvedFeaturePath
+    )
+
+    if ([string]::IsNullOrWhiteSpace($ResolvedFeaturePath)) {
+        return
+    }
+
+    $featureId = Split-Path -Leaf $ResolvedFeaturePath
+    if ([string]::IsNullOrWhiteSpace($featureId)) {
+        return
+    }
+
+    $fingerprint = Get-MachineFingerprint
+    $identity = Get-SpecrewCoarseIdentity
+
+    $cleared = Clear-StaleSessionLocks -ProjectRoot $ProjectRoot -ThresholdHours 24
+    if ($cleared -gt 0) {
+        Write-Info ("Cleared {0} stale active session lock(s)." -f $cleared)
+    }
+
+    $sessionCollision = Test-SessionCollision -ProjectRoot $ProjectRoot -FeatureId $featureId -Fingerprint $fingerprint
+    if ($null -ne $sessionCollision) {
+        $holder = ('{0}@{1}' -f $sessionCollision['user'], $sessionCollision['machine_fingerprint'])
+        Write-Info ("WARN: Another active session detected for feature {0} (started by {1} at {2})." -f $featureId, $holder, $sessionCollision['session_start_time'])
+    }
+
+    $claimConflict = Test-FeatureClaimConflict -ProjectRoot $ProjectRoot -FeatureId $featureId -ClaimedBy $identity
+    if ($null -ne $claimConflict) {
+        Write-Info ("WARN: Feature {0} is already claimed by {1} on branch {2} (last refresh {3})." -f $featureId, $claimConflict['claimed_by'], $claimConflict['branch_name'], $claimConflict['last_refresh_time'])
+        $continue = Read-SpecrewYesNo -Prompt 'Continue anyway? [y/N]' -Default $false
+        if (-not $continue) {
+            Write-Info 'Start declined; no active session lock was recorded.'
+            exit 2
+        }
+    }
+
+    Register-SessionLock -ProjectRoot $ProjectRoot -FeatureId $featureId -User ([System.Environment]::UserName) -Fingerprint $fingerprint
 }
 
 function Get-SpecrewConfigValue {
@@ -4004,6 +4092,8 @@ $validatedSessionState = if ($null -ne $validatedSessionState -and $resolvedFeat
 else {
     $validatedSessionState
 }
+
+Invoke-SpecrewStartMultiSessionGuard -ProjectRoot $resolvedProjectPath -ResolvedFeaturePath $resolvedFeaturePath
 
 $mode = if ($FeatureRequest) {
     'new-feature'

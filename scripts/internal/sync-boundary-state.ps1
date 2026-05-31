@@ -7,6 +7,18 @@ if (-not (Test-Path -LiteralPath $sharedGovernancePath -PathType Leaf)) {
 }
 . $sharedGovernancePath
 
+$sessionManagementHelperPath = Join-Path $PSScriptRoot 'session-management.ps1'
+if (-not (Test-Path -LiteralPath $sessionManagementHelperPath -PathType Leaf)) {
+    throw "Missing session-management helper '$sessionManagementHelperPath'."
+}
+. $sessionManagementHelperPath
+
+$featureClaimsHelperPath = Join-Path $PSScriptRoot 'feature-claims.ps1'
+if (-not (Test-Path -LiteralPath $featureClaimsHelperPath -PathType Leaf)) {
+    throw "Missing feature-claims helper '$featureClaimsHelperPath'."
+}
+. $featureClaimsHelperPath
+
 function Get-SpecrewSessionStatePaths {
     param(
         [Parameter(Mandatory = $true)]
@@ -182,6 +194,83 @@ function Get-SpecrewFeatureNumber {
     }
 
     return $null
+}
+
+function Get-SpecrewCurrentBranchName {
+    param([Parameter(Mandatory = $true)][string]$ProjectRoot)
+
+    $branchOutput = @(& git -C $ProjectRoot branch --show-current 2>$null)
+    if ($LASTEXITCODE -eq 0 -and $branchOutput.Count -gt 0 -and -not [string]::IsNullOrWhiteSpace($branchOutput[0])) {
+        return $branchOutput[0].ToString().Trim()
+    }
+
+    return $null
+}
+
+function Test-SpecrewFeatureMergedToMain {
+    param(
+        [Parameter(Mandatory = $true)][string]$ProjectRoot,
+        [AllowNull()][string]$FeatureRef
+    )
+
+    $featureNumber = Get-SpecrewFeatureNumber -FeatureRef $FeatureRef
+    if ([string]::IsNullOrWhiteSpace($featureNumber)) {
+        return [pscustomobject]@{ IsMerged = $false; Detail = $null }
+    }
+
+    $logOutput = @(& git -C $ProjectRoot log main --since='90 days ago' --merges --oneline --grep="$featureNumber" 2>&1)
+    if ($LASTEXITCODE -ne 0) {
+        return [pscustomobject]@{ IsMerged = $false; Detail = $null }
+    }
+
+    if ($logOutput.Count -gt 0) {
+        return [pscustomobject]@{
+            IsMerged = $true
+            Detail   = ('Feature {0} appears in merge history on main: {1}' -f $featureNumber, ($logOutput[0].ToString().Trim()))
+        }
+    }
+
+    return [pscustomobject]@{ IsMerged = $false; Detail = $null }
+}
+
+function Sync-SpecrewFeatureClaimForBoundary {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$ProjectRoot,
+
+        [Parameter(Mandatory = $true)]
+        [string]$BoundaryType,
+
+        [AllowNull()]
+        [string]$FeatureRef,
+
+        [Parameter(Mandatory = $true)]
+        [string]$NowUtc
+    )
+
+    if ([string]::IsNullOrWhiteSpace($FeatureRef)) {
+        return
+    }
+
+    $branchName = Get-SpecrewCurrentBranchName -ProjectRoot $ProjectRoot
+    if ([string]::IsNullOrWhiteSpace($branchName)) {
+        $branchName = $FeatureRef
+    }
+
+    if ($BoundaryType -eq 'specify') {
+        Add-FeatureClaim -ProjectRoot $ProjectRoot -FeatureId $FeatureRef -ClaimedBy (Get-SpecrewCoarseIdentity) -BranchName $branchName -NowUtc $NowUtc
+        return
+    }
+
+    if ($BoundaryType -eq 'feature-closeout') {
+        $mergeCheck = Test-SpecrewFeatureMergedToMain -ProjectRoot $ProjectRoot -FeatureRef $FeatureRef
+        if ($mergeCheck.IsMerged) {
+            Remove-FeatureClaim -ProjectRoot $ProjectRoot -FeatureId $FeatureRef
+        }
+        return
+    }
+
+    Update-FeatureClaim -ProjectRoot $ProjectRoot -FeatureId $FeatureRef -ClaimedBy (Get-SpecrewCoarseIdentity) -BranchName $branchName -NowUtc $NowUtc
 }
 
 function Get-SpecrewBoundaryOrder {
@@ -1035,6 +1124,12 @@ function Invoke-SpecrewBoundaryStateSync {
         -TaskId $TaskId `
         -AuthCommitHash $effectiveAuthCommitHash
 
+    Sync-SpecrewFeatureClaimForBoundary `
+        -ProjectRoot $paths.ProjectRoot `
+        -BoundaryType $BoundaryType `
+        -FeatureRef $sessionState.feature_ref `
+        -NowUtc $sessionState.recorded_at
+
     $identityAdditionalFrontmatter = $null
     if (-not [string]::IsNullOrWhiteSpace($IdentityFocusArea) -or -not [string]::IsNullOrWhiteSpace($IdentityActiveIssues)) {
         $identityAdditionalFrontmatter = [ordered]@{}
@@ -1172,6 +1267,10 @@ function Invoke-SpecrewBoundaryStateSync {
     }
 
     if ($BoundaryType -eq 'feature-closeout') {
+        if (-not [string]::IsNullOrWhiteSpace($effectiveFeatureRef)) {
+            Remove-SessionLock -ProjectRoot $paths.ProjectRoot -FeatureId $effectiveFeatureRef
+        }
+
         Clear-SpecrewActiveFeature -FeatureJsonPath $paths.FeatureJsonPath
 
         # Proposal 046 feature-level companion: auto-render specs/<feature>/closeout-dashboard.md
