@@ -22283,7 +22283,7 @@ Documented in `specs/049-pipeline-hardening-intake/iterations/005/drift-log.md` 
 ## 2026-05-30T21:27:33Z — Boundary sync: specify
 
 - **Boundary Type**: specify
-- **Feature Ref**: 051-activate-spec-surfaces
+- **Feature Ref**: 054-activate-spec-surfaces
 - **Iteration Number**: (none)
 - **Task ID**: (none)
 - **Auth Commit Hash**: 969f95dc85afd8b5733a389c6f41e858d1c5a337
@@ -22314,12 +22314,14 @@ Documented in `specs/049-pipeline-hardening-intake/iterations/005/drift-log.md` 
 - **Auth Commit Hash**: bfdd63ff4967cbb13b5533910406d60f1c76bba4
 - **Recorded At**: 2026-05-31T06:02:36Z
 
-## 2026-05-31T07:26:36Z — Boundary sync warning: tasks
+## 2026-05-31T06:20:58Z — Boundary sync: plan
 
-- **Boundary Type**: tasks
-- **Latest Recorded Boundary**: clarify
-- **Recorded At**: 2026-05-31T07:26:36Z
-- **Warning**: Expected next boundary 'plan' but received 'tasks'.
+- **Boundary Type**: plan
+- **Feature Ref**: 054-activate-spec-surfaces
+- **Iteration Number**: (none)
+- **Task ID**: (none)
+- **Auth Commit Hash**: 23b7e2056c09f59ae5d1a1afe3722dc36197f434
+- **Recorded At**: 2026-05-31T06:20:58Z
 
 ## 2026-05-31T07:26:37Z — Boundary sync: tasks
 
