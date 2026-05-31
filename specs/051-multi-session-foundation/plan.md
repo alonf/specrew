@@ -7,7 +7,7 @@
 
 ## Summary
 
-F-051 addresses the inherited-stale-state problem encountered during F-051's own 2026-05-30 launch. The feature establishes a multi-session foundation for Specrew, enabling multiple developers to work on different features concurrently without merge conflicts on session-state files or state corruption. Cardinality: Carved from Proposals 010 + 134 with a 5-iteration (1, 2a, 2b, 3, 4), ~60.5 SP delivery model within the approved 45-65 SP envelope (honest re-estimate 2026-05-31). Every iteration is capped at ≤20 SP; original Iteration 2 was split into 2a/2b because it packed four user stories over the cap. Iteration 1 (configuration + file classification, ~11 SP) is the dependency gate that unblocks the rest.
+F-051 addresses the inherited-stale-state problem encountered during F-051's own 2026-05-30 launch. The feature establishes a multi-session foundation for Specrew, enabling multiple developers to work on different features concurrently without merge conflicts on session-state files or state corruption. Cardinality: Carved from Proposals 010 + 134 with a 5-iteration (1, 2a, 2b, 3, 4), ~62.5 SP delivery model within the approved 45-65 SP envelope (honest re-estimate 2026-05-31). Every iteration is capped at ≤20 SP; original Iteration 2 was split into 2a/2b because it packed four user stories over the cap. Iteration 1 (configuration + file classification, ~11 SP) is the dependency gate that unblocks the rest.
 
 **Primary Technical Approach**: Layer 1 multi-developer coordination via session-mode config flag, per-session file classification with gitignore discipline, collision detection via `.specrew/active-sessions.yml`, feature claims tracking via `.squad/active-features.yml`, multi-developer auto-detection, Spec-Kit 0.8.18 upgrade, and brand-new worktree state recognition to eliminate false stale-state recovery prompts.
 
@@ -23,7 +23,7 @@ F-051 addresses the inherited-stale-state problem encountered during F-051's own
 **Project Type**: PowerShell module enhancement (Specrew core tooling)  
 **Performance Goals**: Collision detection within 2 seconds, multi-developer signal detection within one `specrew start` command, upgrade completion in under 2 minutes  
 **Constraints**: Atomic file writes via write-temp-rename pattern, 24-hour stale lock threshold, session-state local-only (no network transmission), Proposal 148 Layer 2+3 explicitly out of scope  
-**Scale/Scope**: Single-developer delivery model, 5 iterations, ~60.5 SP honest re-estimate within the 45-65 SP envelope (Iteration 1 ~11, 2a ~10, 2b ~13, 3 ~13.5, 4 ~13; all ≤20 SP cap)
+**Scale/Scope**: Single-developer delivery model, 5 iterations, ~62.5 SP honest re-estimate within the 45-65 SP envelope (Iteration 1 ~11, 2a ~12, 2b ~13, 3 ~13.5, 4 ~13; all ≤20 SP cap)
 
 ---
 
@@ -147,7 +147,7 @@ F-051 addresses the inherited-stale-state problem encountered during F-051's own
 - **Layering Gate** ✓: Changes classified as Spec Kit layer (PowerShell module core + configuration schema) with explicit rationale. No Squad-layer or team-configuration changes in F-051 scope.
 - **Traceability Gate** ✓: Each planned deliverable (per-iteration output below) links to specific user stories (US1-US10) and functional requirements (FR-001 through FR-043). Task-level traceability deferred to Phase 2 task generation.
 - **Ownership Gate** ✓: Single-developer delivery model (Alon Fliess, current user). Role ownership for implementation, review, and retrospective explicitly assigned to Implementer, Reviewer, Retro-Facilitator roles per `.squad/team.md`.
-- **Capacity Gate** ✓: Effort unit = Story Points (SP); iteration capacity = ≤20 SP per iteration per TG-005 (honest re-estimate: Iteration 1 ~11, 2a ~10, 2b ~13, 3 ~13.5, 4 ~13; total ~60.5 SP within the 45-65 envelope).
+- **Capacity Gate** ✓: Effort unit = Story Points (SP); iteration capacity = ≤20 SP per iteration per TG-005 (honest re-estimate: Iteration 1 ~11, 2a ~12, 2b ~13, 3 ~13.5, 4 ~13; total ~62.5 SP within the 45-65 envelope).
 - **Drift/Reconciliation Gate** ✓: Drift detection strategy = compare implemented features against FR-001 through FR-043; scope drift = detection if implementation adds features not in FRs or omits scoped items. Reconciliation path = Spec Steward reviews diffs, escalates to human if violations found.
 - **Verification Gate** ✓: Process verification = Spec Steward drift checks at plan/task/review boundaries; outcome verification = acceptance scenario tests for all P1 user stories (US1-US10) executed during Iterations 1-4; final approval by Reviewer role.
 
@@ -155,7 +155,7 @@ F-051 addresses the inherited-stale-state problem encountered during F-051's own
 
 ## Iteration Structure & Capacity Planning
 
-**Total Scope**: ~60.5 SP across 5 iterations (honest re-estimate 2026-05-31, within the 45-65 SP envelope; every iteration ≤20 SP per TG-005). Original Iteration 2 split into 2a/2b — see iterations/001/capacity-reestimate.md.
+**Total Scope**: ~62.5 SP across 5 iterations (honest re-estimate 2026-05-31, within the 45-65 SP envelope; every iteration ≤20 SP per TG-005). Original Iteration 2 split into 2a/2b — see iterations/001/capacity-reestimate.md.
 
 ### Iteration 1: Session Mode Configuration & File Classification (Target: ≤20 SP)
 
@@ -203,7 +203,7 @@ F-051 addresses the inherited-stale-state problem encountered during F-051's own
 
 **Unblocks**: Iteration 2b, Iteration 4 (identity split validation depends on feature claims)
 
-**Estimated SP**: ~10 SP (active sessions ≈4 SP, claims ≈3.5 SP, tests ≈2.5 SP)
+**Estimated SP**: ~12 SP (refined at plan-time 2026-05-31: session/lock ≈5 SP, claims ≈4 SP, atomic-write extraction + fingerprint + gitignore-fix ≈1 SP, tests + race + 2a validation ≈2 SP)
 
 ---
 

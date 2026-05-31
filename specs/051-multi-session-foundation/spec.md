@@ -239,11 +239,11 @@ A developer cloning a fresh worktree to launch a new feature should go directly 
 - **TG-002**: Each requirement MUST identify expected owner role(s): Implementer (FR-001 through FR-043), Reviewer (validation of multi-session mode, file classification, collision detection, upgrade process, split identity files, brand-new worktree detection)
 - **TG-003**: Each requirement MUST identify intended iteration or delivery window (honest re-estimate 2026-05-31; original Iteration 2 split into 2a/2b per TG-005 because it packed four user stories over the cap — see iterations/001/capacity-reestimate.md):
   - Iteration 1 (~11 SP): FR-001 to FR-006 (session mode config + file classification) — preserves P1 foundation scope
-  - Iteration 2a (~10 SP): FR-007 to FR-016 (collision detection + feature claims) — lock/claim primitives
+  - Iteration 2a (~12 SP): FR-007 to FR-016 (collision detection + feature claims) — lock/claim primitives (refined 10→12 SP at plan-time 2026-05-31)
   - Iteration 2b (~13 SP): FR-017 to FR-024 (conflict reduction + multi-developer auto-detection) — conflict-reduction + detection layer
   - Iteration 3 (~13.5 SP): FR-025 to FR-034 (Spec-Kit upgrade + specrew update fix) — infrastructure scope
   - Iteration 4 (~13 SP): FR-035 to FR-043 (identity split + brand-new worktree detection + privacy) — addresses stale-state recovery and UX friction
-  - Total: ~60.5 SP across 5 iterations; every iteration capped at ≤20 SP per TG-005 to enable fast validation and keep slices AI-context-sized
+  - Total: ~62.5 SP across 5 iterations (Iteration 2a refined 10→12 SP at plan-time 2026-05-31); every iteration capped at ≤20 SP per TG-005 to enable fast validation and keep slices AI-context-sized
 - **TG-004**: Any known spec/implementation conflict MUST include an explicit reconciliation path. No known conflicts exist at specification time.
 - **TG-005**: Iteration 1 MUST remain at or under 20 SP to allow fast foundation validation and unblock parallel work (Iteration 1 acts as dependency gate for Iterations 2-4)
 
@@ -294,13 +294,13 @@ A developer cloning a fresh worktree to launch a new feature should go directly 
 - Stale session locks are defined as locks with `last_heartbeat_time` older than 24 hours
 - The F-049 commit `437338f6` git-rm-cached pattern refers to the process of removing tracked files from git index without deleting them from the working directory
 - Proposals 010 and 134 are design references that define the full scope of multi-developer reconciliation; F-051 implements a minimal "Phase 1" subset
-- Iteration slicing is 5 iterations (honest re-estimate ~60.5 SP, within the 45-65 envelope), each a coherent subsystem within the ≤20 SP cap: Iteration 1 (config + file classification), Iteration 2a (collision detection + feature claims), Iteration 2b (conflict reduction + multi-dev auto-detection), Iteration 3 (Spec-Kit upgrade + version-bump fix), Iteration 4 (identity split + brand-new worktree detection). Original Iteration 2 was split into 2a/2b because it packed four user stories over the per-iteration cap.
+- Iteration slicing is 5 iterations (honest re-estimate ~62.5 SP, within the 45-65 envelope), each a coherent subsystem within the ≤20 SP cap: Iteration 1 (config + file classification), Iteration 2a (collision detection + feature claims), Iteration 2b (conflict reduction + multi-dev auto-detection), Iteration 3 (Spec-Kit upgrade + version-bump fix), Iteration 4 (identity split + brand-new worktree detection). Original Iteration 2 was split into 2a/2b because it packed four user stories over the per-iteration cap; Iteration 2a was refined 10→12 SP at plan-time (2026-05-31).
 
 ## Governance Alignment *(mandatory)*
 
 - **Spec Steward**: Specrew Spec Steward agent (accountable for specification integrity and drift detection between this spec, plan, tasks, and implementation)
 - **Iteration Facilitator**: Specrew Planner agent (accountable for iteration cadence, capacity planning, and blocker escalation)
-- **Capacity Model**: Story Points (SP); honest re-estimate ~60.5 SP total across 5 iterations (Iteration 1 ~11 SP, Iteration 2a ~10 SP, Iteration 2b ~13 SP, Iteration 3 ~13.5 SP, Iteration 4 ~13 SP), within the approved 45-65 SP envelope. Every iteration is capped at ≤20 SP per TG-005 to keep slices AI-context-sized and enable fast validation. Original Iteration 2 (four user stories, ~23 SP) was split into 2a/2b per "split, don't raise"; see iterations/001/capacity-reestimate.md for the per-task re-estimate. Single developer delivery model.
+- **Capacity Model**: Story Points (SP); honest re-estimate ~62.5 SP total across 5 iterations (Iteration 1 ~11 SP, Iteration 2a ~12 SP, Iteration 2b ~13 SP, Iteration 3 ~13.5 SP, Iteration 4 ~13 SP), within the approved 45-65 SP envelope. Iteration 2a refined 10→12 SP at plan-time 2026-05-31 (planning workflow; +4 sub-tasks). Every iteration is capped at ≤20 SP per TG-005 to keep slices AI-context-sized and enable fast validation. Original Iteration 2 (four user stories, ~23 SP) was split into 2a/2b per "split, don't raise"; see iterations/001/capacity-reestimate.md for the per-task re-estimate. Single developer delivery model.
 - **Drift Signals**:
   - Semantic drift: Detected by comparing implemented collision detection logic against FR-007 through FR-016 (active-sessions + feature claims) and identity split logic against FR-035 through FR-043
   - Scope drift: Detected if implementation adds multi-developer features not scoped in FR-001 through FR-043 (such as cross-project coordination, network-based locking, real-time collaborative editing, or file-surface overlap detection per Proposal 148 Layer 2)
@@ -344,3 +344,12 @@ F-051's own 2026-05-30 launch experienced the inherited-stale-state problem that
 - **Completion Signals**: ✓ Clear (8 measurable success criteria with explicit metrics, acceptance scenarios for all requirements)
 
 **Ready for Planning**: Feature specification passes clarify boundary without requiring human clarification loop. Specification repair at specify boundary (User Stories 9-10, FR-035 through FR-043) has resolved all scoping gaps identified by reviewer. Recommend proceeding to plan boundary.
+
+### Session 2026-05-31 (Iteration 2a planning)
+
+Decisions recorded at Iteration 2a planning (human-approved, after a grounded planning workflow):
+
+- **Lock vs cross-machine collision (FR-010 ↔ US3 scenario 1).** US3 scenario 1 describes collision detection when a second developer starts "from a different machine or worktree," but the session lock file `.specrew/active-sessions.yml` is per-session/**gitignored** (Key Entities + FR-005), so it is not shared across machines. **Reconciliation (blessed):** the **lock is intentionally local** — it catches same-machine/same-worktree concurrent starts (FR-010). **Cross-machine** coordination is delivered by the **committed, append-only-shared** feature-claims file `.squad/active-features.yml` and the Layer-1 claim warning (FR-012, FR-015). This preserves FR-043 (the rich local `machine_fingerprint` stays only in the gitignored lock; the committed claim carries only the coarse `user@machine`). Recorded as drift D-003 (iterations/002/drift-log.md).
+- **FR-005 gap fix.** `.specrew/active-sessions.yml` is added to the per-session gitignore patterns in Iteration 2a (T020c); iter-1's patterns did not match it, so without this the lock file would be committed — contradicting its per-session classification.
+- **Iteration ordering.** Iteration 2a (collision + claims, P1 safety) remains next; Iteration 4 (identity split + brand-new worktree detection) is NOT pulled forward — it does not own the recurring per-boundary auto-deploy friction (a separate gitignore/classification chore), and reordering would ship UX polish ahead of the P1 collision-safety primitive.
+- **Security review.** The plan's required security/concurrency **lens** fires at the Iteration 2a before-implement gate (first iteration with a concurrent-write + identity-bearing surface); no standing Security Specialist team member is added for this 12 SP slice.

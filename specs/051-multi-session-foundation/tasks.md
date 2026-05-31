@@ -2,9 +2,9 @@
 
 **Feature**: 051-multi-session-foundation  
 **Branch**: 051-multi-session-foundation  
-**Total Tasks**: 97  
-**Iterations**: 5 (Iteration 1 ~11 SP, Iteration 2a ~10 SP, Iteration 2b ~13 SP, Iteration 3 ~13.5 SP, Iteration 4 ~13 SP — all within the ≤20 SP cap)  
-**Total Effort**: ~60.5 SP (honest re-estimate 2026-05-31; supersedes the inflated 139 SP per-task markup from the 48→97 expansion — see [iterations/001/capacity-reestimate.md](iterations/001/capacity-reestimate.md))  
+**Total Tasks**: 101 (Iteration 2a decomposition refined 2026-05-31: +4 sub-tasks T020b/T020c/T026b/T033b)  
+**Iterations**: 5 (Iteration 1 ~11 SP, Iteration 2a ~12 SP, Iteration 2b ~13 SP, Iteration 3 ~13.5 SP, Iteration 4 ~13 SP — all within the ≤20 SP cap)  
+**Total Effort**: ~62.5 SP (honest re-estimate 2026-05-31; Iteration 2a refined 10→12 SP at plan-time via the planning workflow; supersedes the inflated 139 SP markup from the 48→97 expansion — see [iterations/001/capacity-reestimate.md](iterations/001/capacity-reestimate.md))  
 **Status**: Ready for before-implement hardening gate  
 
 ---
@@ -61,33 +61,43 @@ This tasks artifact defines a complete, dependency-ordered implementation plan f
 
 ---
 
-## Iteration 2a: Collision Detection & Feature Claims (Target: ≤20 SP; re-estimated ~10 SP)
+## Iteration 2a: Collision Detection & Feature Claims (Target: ≤20 SP; re-estimated ~12 SP)
 
 **User Stories**: US3 (Detect Concurrent Session Collisions), US4 (Claim Features)  
-**Functional Requirements**: FR-007 through FR-016  
-**Success Criteria**: SC-002 (collision warning within 2s), SC-008 (claim refresh 100%)
+**Functional Requirements**: FR-007 through FR-016 (+ FR-043 fingerprint privacy, population-side only)  
+**Success Criteria**: SC-002 (collision warning within 2s), SC-008 (claim refresh 100%)  
+**On-disk iteration dir**: `iterations/002` (zero-padded; `-IterationNumber 002`). Label "Iteration 2a" is prose only.
 
-> **Split note (2026-05-31):** original Iteration 2 packed 4 user stories (~23 SP honest estimate, over its cap). Per "split, don't raise" it was divided into **2a** (US3+US4 — lock/claim primitives) and **2b** (US5+US6 — conflict-reduction + multi-dev detection). All FRs preserved; task IDs unchanged.
+> **Split note (2026-05-31):** original Iteration 2 packed 4 user stories (~23 SP honest estimate, over its cap). Per "split, don't raise" it was divided into **2a** (US3+US4 — lock/claim primitives) and **2b** (US5+US6 — conflict-reduction + multi-dev detection). All FRs preserved.
+>
+> **Decomposition refined 2026-05-31 (planning workflow, honest re-sum 10→12 SP):** idiomatic `scripts/internal/` paths (D-002 fix); explicit existing-file wiring globs (no new dispatch case — `specrew-start.ps1` for FR-008/010/011/015; `sync-boundary-state.ps1` for FR-009/013/014/016); `Write-SpecrewFileAtomic` EXTRACTED to a shared helper (not duplicated); 3 net-new tasks (T020b fingerprint, T026b race test, T033b 2a validation) the prior decomposition missed; `.specrew/active-sessions.yml` added to gitignore patterns (FR-005 gap). Decision blessed: lock = local (same-machine/worktree); cross-machine collision is the committed claims file's job (see drift D-003).
 
-### Session Management & Collision Detection (Phase 2, US3 → FR-007 through FR-011)
+### Session Management & Collision Detection (Phase 2a, US3 → FR-007 through FR-011)
 
-- [ ] T020 [P] Create `scripts/session-management.ps1` with session lock file management functions: create-session-entry, read-active-sessions, write-active-sessions (FR-007) [effort: 1 SP] [SC: SC-002]
-- [ ] T021 [US3] Implement session creation logic: add entry to `.specrew/active-sessions.yml` with fields (feature_id, user, machine_fingerprint, session_start_time, last_heartbeat_time) when `specrew start` begins (FR-008) [effort: 1 SP]
-- [ ] T022 [US3] Implement session cleanup logic: remove entry from `.specrew/active-sessions.yml` when session ends normally, triggered at feature-closeout boundary (FR-009) [effort: 0.5 SP]
-- [ ] T023 [P] [US3] Implement session existence check: detect when starting a session for a feature that already has an active entry in `.specrew/active-sessions.yml` and display warning with user@machine and timestamp (FR-010) [effort: 1 SP] [SC: SC-002]
-- [ ] T024 [US3] Implement stale lock detection logic: automatically clear lock entries with last_heartbeat_time older than 24 hours from `.specrew/active-sessions.yml` when new session starts, with notice to user (FR-011) [effort: 1 SP]
-- [ ] T025 [P] [US3] Create acceptance test for collision detection: simulate two concurrent `specrew start` sessions on same feature and verify second session receives warning within 2 seconds [effort: 0.5 SP] [test: acceptance] [SC: SC-002]
-- [ ] T026 [P] [US3] Create acceptance test for stale lock clearing: create lock entry with timestamp >24 hours old, start new session, verify stale entry is cleared with user notice [effort: 0.5 SP] [test: acceptance]
+- [ ] T020 Create `scripts/internal/session-management.ps1` (Read-ActiveSessions, Write-ActiveSessions over `.specrew/active-sessions.yml`); EXTRACT `Write-SpecrewFileAtomic` from `session-config.ps1` into shared `scripts/internal/atomic-write.ps1` (reused, not duplicated); corrupt YAML → empty + logged warning; register both new modules in `Specrew.psd1` FileList (alphabetical) (FR-007) [effort: 1 SP] [governance: filelist]
+- [ ] T020b [US3] Create `Get-MachineFingerprint` local-only helper (hostname+username-derived; FR-043 local-only, zero network/telemetry) to populate `machine_fingerprint` on lock entries; full fingerprint written ONLY to gitignored `active-sessions.yml` (FR-007, FR-043 population-side) [effort: 0.5 SP] [governance: security]
+- [ ] T020c [US3] Add `.specrew/active-sessions.yml` to `$script:SpecrewPerSessionPatterns` in `scripts/internal/file-classification.ps1` (iter-1 patterns do NOT match it → would be committed); record the lock-is-local vs US3.1-cross-machine reconciliation in drift-log (D-003) (FR-005 gap, FR-007) [effort: 0.5 SP] [governance: classification]
+- [ ] T021 [US3] Implement `Register-SessionLock` (append SessionLockEntry on `specrew start`; atomic write); wire into existing `scripts/specrew-start.ps1` at session-launch (no new dispatch case) (FR-008) [effort: 1 SP] [owner: scripts/specrew-start.ps1]
+- [ ] T022 [US3] Implement `Remove-SessionLock`; wire into `scripts/internal/sync-boundary-state.ps1` at `feature-closeout` (no `specrew stop` trigger exists; FR-011 staleness is the real liveness path) (FR-009) [effort: 0.5 SP] [owner: sync-boundary-state.ps1]
+- [ ] T023 [US3] Implement `Test-SessionCollision` (return colliding entry or null); wire into `scripts/specrew-start.ps1` to display "Another active session detected for feature <id> (started by <user>@<machine> at <ts>)…" (FR-010) [effort: 1 SP] [SC: SC-002] [owner: scripts/specrew-start.ps1]
+- [ ] T024 [US3] Implement `Clear-StaleSessionLocks(thresholdHours=config default 24)` (read-modify-write via shared atomic primitive; emit notice; return count); wire into `scripts/specrew-start.ps1` before collision check (FR-011) [effort: 1 SP] [owner: scripts/specrew-start.ps1]
+- [ ] T025 [P] [US3] Acceptance test (real temp-repo, no mocks): two concurrent `specrew start` on same feature → 2nd gets collision warning within 2s (FR-010, SC-002) [effort: 0.5 SP] [test: acceptance] [SC: SC-002]
+- [ ] T026 [P] [US3] Acceptance test: seed lock with last_heartbeat_time >24h → cleared with notice + correct count; corrupt-YAML safe-degradation (FR-011 + Edge Case) [effort: 0.5 SP] [test: acceptance]
+- [ ] T026b [US3] Acceptance test — deterministic controlled-interleave atomic-write/race (Edge Case): assert always-valid YAML after clobber + last-write-wins is real + FR-014 refresh re-adds clobbered claim + duplicate surfaced (covers active-sessions.yml + active-features.yml) (FR-007, FR-012) [effort: 0.5 SP] [test: acceptance]
 
-### Feature Claims Tracking (Phase 2, US4 → FR-012 through FR-016)
+### Feature Claims Tracking (Phase 2a, US4 → FR-012 through FR-016)
 
-- [ ] T027 [P] Create `scripts/feature-claims.ps1` with feature claim management functions: create-feature-claim, read-feature-claims, write-feature-claims, refresh-feature-claim (FR-012) [effort: 1 SP]
-- [ ] T028 [US4] Implement feature claim creation logic: add entry to `.squad/active-features.yml` at specify boundary with fields (feature_id, claimed_by: user@machine, claim_start_time, last_refresh_time, branch_name) (FR-013) [effort: 0.5 SP] [SC: SC-008]
-- [ ] T029 [P] [US4] Implement claim refresh logic: update `last_refresh_time` in `.squad/active-features.yml` when lifecycle boundaries are crossed (specify, plan, tasks, implement, review, retro) (FR-014) [effort: 0.5 SP] [SC: SC-008]
-- [ ] T030 [US4] Implement concurrent claim detection: when developer attempts to claim feature already claimed by another developer, display Layer 1 warning with claim details and "Continue anyway?" option (FR-015) [effort: 1 SP]
-- [ ] T031 [P] [US4] Implement claim cleanup logic: remove feature claim from `.squad/active-features.yml` when feature-closeout boundary runs and feature is merged to main (FR-016) [effort: 0.5 SP]
-- [ ] T032 [P] [US4] Create acceptance test for feature claims: verify claim recorded at specify boundary, refreshed at plan boundary, and removed at feature-closeout [effort: 0.5 SP] [test: acceptance] [SC: SC-008]
-- [ ] T033 [P] [US4] Create acceptance test for claim warning: simulate two developers claiming same feature and verify warning appears with continue option [effort: 0.5 SP] [test: acceptance]
+- [ ] T027 Create `scripts/internal/feature-claims.ps1` (Read-FeatureClaims, Write-FeatureClaims over `.squad/active-features.yml`) reusing the shared atomic-write helper; corrupt YAML → empty + warning; register in `Specrew.psd1` FileList (claims file is committed/append-only-shared, unlike the gitignored lock) (FR-012) [effort: 1 SP] [governance: filelist]
+- [ ] T028 [US4] Implement `Add-FeatureClaim` (upsert-by-feature_id; claimed_by=user@machine coarse only, no localhash) at the specify boundary; wire into `scripts/internal/sync-boundary-state.ps1` keyed on `BoundaryType='specify'` (FR-013) [effort: 0.5 SP] [SC: SC-008] [owner: sync-boundary-state.ps1]
+- [ ] T029 [US4] Implement `Update-FeatureClaim` (monotonic last_refresh_time) on every boundary crossing; wire into `scripts/internal/sync-boundary-state.ps1` on each `BoundaryType` (FR-014) [effort: 0.5 SP] [SC: SC-008] [owner: sync-boundary-state.ps1]
+- [ ] T030 [US4] Implement concurrent-claim Layer-1 warning + "Continue anyway?": (a) y/Y/yes records BOTH claims + session note; (b) n/N/no exits without a session; wire detection into `scripts/specrew-start.ps1` (FR-015) [effort: 1 SP] [owner: scripts/specrew-start.ps1]
+- [ ] T031 [US4] Implement `Remove-FeatureClaim` at feature-closeout when merged-to-main (reuse `Test-SpecrewFeatureMergedToMain`); wire into `scripts/internal/sync-boundary-state.ps1` (FR-016) [effort: 0.5 SP] [owner: sync-boundary-state.ps1]
+- [ ] T032 [P] [US4] Acceptance test (real surfaces): claim recorded @specify, last_refresh_time advanced @plan/tasks (SC-008), removed @closeout-when-merged; manually-removed-claim re-add while session active (Edge Case) (FR-013/014/016) [effort: 0.5 SP] [test: acceptance] [SC: SC-008]
+- [ ] T033 [P] [US4] Acceptance test: two developers same feature → Layer-1 warning with claim details; continue (both recorded) and decline (exits, no session) variants (FR-015) [effort: 0.5 SP] [test: acceptance]
+
+### Iteration 2a Validation & Documentation
+
+- [ ] T033b Run all 2a acceptance tests + `validate-governance.ps1` (the validator IS the audit, retro action 9); record coverage-evidence naming each new 2a test file as EXECUTED (closes the F-049 iter-5 / F-050 iter-2 coverage-drift trap); verify data-model SessionLockEntry + FeatureClaimEntry match shipped schema; confirm sync `-IterationNumber 002` (retro action 8) (FR-007, FR-016) [effort: 0.5 SP] [test: validation]
 
 ---
 
@@ -202,7 +212,7 @@ This tasks artifact defines a complete, dependency-ordered implementation plan f
 - [ ] T094 Update `specs/051-multi-session-foundation/data-model.md` with BrandNewWorktreeSignal entity [effort: 0.5 SP] [governance: data-model]
 - [ ] T095 Run all Iteration 4 acceptance tests and document results in test summary artifact [effort: 0.5 SP] [test: acceptance-suite]
 - [ ] T096 Execute Specrew validator across all iterations and verify no regressions; confirm all acceptance scenarios pass [effort: 0.5 SP] [test: regression-check]
-- [ ] T097 Create feature-level summary document: map all 97 tasks to FRs and user stories, verify 100% coverage [effort: 0.5 SP] [governance: traceability]
+- [ ] T097 Create feature-level summary document: map all 101 tasks to FRs and user stories, verify 100% coverage [effort: 0.5 SP] [governance: traceability]
 
 ---
 
@@ -285,7 +295,7 @@ Iteration 2b (Conflict Reduction + Multi-Dev Auto-Detection)
 ✓ Brand-new worktree detection skips stale-state recovery on fresh worktrees  
 ✓ Recovery prompt preserved when state genuinely inconsistent  
 ✓ Machine fingerprinting remains local-only (no network calls)  
-✓ All 97 tasks map to FRs (100% traceability)  
+✓ All 101 tasks map to FRs (100% traceability)  
 
 ---
 
@@ -294,12 +304,12 @@ Iteration 2b (Conflict Reduction + Multi-Dev Auto-Detection)
 | Iteration | Task Range | User Stories | Functional Requirements | Success Criteria |
 |-----------|-----------|--------------|----------------------|------------------|
 | 1 | T001-T019 | US1, US2 | FR-001 to FR-006 | SC-001, SC-005 |
-| 2a | T020-T033 | US3, US4 | FR-007 to FR-016 | SC-002, SC-008 |
+| 2a | T020-T033b | US3, US4 | FR-007 to FR-016 (+FR-043 pop.) | SC-002, SC-008 |
 | 2b | T034-T055 | US5, US6 | FR-017 to FR-024 | SC-003, SC-006, SC-007 |
 | 3 | T056-T076 | US7, US8 | FR-025 to FR-034 | SC-004, SC-005 |
 | 4 | T077-T097 | US9, US10 | FR-035 to FR-043 | SC-001, SC-002 |
 
-**Total Coverage**: 97 tasks × 43 functional requirements = 100% FR traceability; 97 tasks × 10 user stories = complete user story coverage
+**Total Coverage**: 101 tasks × 43 functional requirements = 100% FR traceability; 101 tasks × 10 user stories = complete user story coverage
 
 ---
 
@@ -310,12 +320,12 @@ This section provides explicit SP calculations for each iteration to enable revi
 | Iteration | Scope | Cap | Re-estimated SP | Tasks |
 | --- | --- | --- | --- | --- |
 | 1 | Session mode config + file classification (US1, US2) | ≤20 | 11.0 | 19 |
-| 2a | Collision detection + feature claims (US3, US4) | ≤20 | 10.0 | 14 |
+| 2a | Collision detection + feature claims (US3, US4) | ≤20 | 12.0 | 18 |
 | 2b | Conflict reduction + multi-dev auto-detect (US5, US6) | ≤20 | 13.0 | 22 |
 | 3 | Spec-Kit upgrade + version fix (US7, US8) | ≤20 | 13.5 | 21 |
 | 4 | Identity split + brand-new worktree (US9, US10) | ≤20 | 13.0 | 21 |
 
-**Feature-Level Total**: 97 tasks across 5 iterations = **60.5 SP** (within the approved 45-65 SP envelope; every iteration within the ≤20 SP cap per TG-005). Reviewers can re-verify by summing the per-task `[effort: N SP]` values within each iteration section.
+**Feature-Level Total**: 101 tasks across 5 iterations = **62.5 SP** (within the approved 45-65 SP envelope; every iteration within the ≤20 SP cap per TG-005). Iteration 2a refined 10→12 SP at plan-time (planning workflow, 2026-05-31; +4 sub-tasks). Reviewers can re-verify by summing the per-task `[effort: N SP]` values within each iteration section.
 
 **Verification**: Each iteration-level tasks file will contain detailed per-task SP markup `[effort: N SP]` for spot-check validation. Reviewers can compute iteration totals by summing effort values in the before-implement hardening gate.
 
