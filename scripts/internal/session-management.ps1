@@ -17,27 +17,13 @@ Set-StrictMode -Version Latest
 
 . (Join-Path $PSScriptRoot 'atomic-write.ps1')
 . (Join-Path $PSScriptRoot 'yaml-list.ps1')
+. (Join-Path $PSScriptRoot 'specrew-time.ps1')
 
 $script:SpecrewActiveSessionsTopKey = 'sessions'
 
 function Get-ActiveSessionsPath {
     param([Parameter(Mandatory = $true)][string]$ProjectRoot)
     return (Join-Path $ProjectRoot '.specrew/active-sessions.yml')
-}
-
-function Get-SpecrewUtcNow {
-    return ((Get-Date).ToUniversalTime().ToString('yyyy-MM-ddTHH:mm:ssZ'))
-}
-
-function ConvertTo-SpecrewUtc {
-    <# Parse an ISO-8601 timestamp to a UTC DateTimeOffset; $null on failure. #>
-    param([Parameter(Mandatory = $true)][AllowEmptyString()][string]$Value)
-    if ([string]::IsNullOrWhiteSpace($Value)) { return $null }
-    try {
-        $styles = [System.Globalization.DateTimeStyles]::AssumeUniversal -bor [System.Globalization.DateTimeStyles]::AdjustToUniversal
-        return [System.DateTimeOffset]::Parse($Value, [System.Globalization.CultureInfo]::InvariantCulture, $styles)
-    }
-    catch { return $null }
 }
 
 function Get-MachineFingerprint {
