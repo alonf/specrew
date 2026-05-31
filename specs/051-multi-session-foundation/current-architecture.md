@@ -1,15 +1,15 @@
 # Current Architecture: 051-multi-session-foundation
 
-**Source Iteration Ref**: 002 — Iteration 2a: Collision Detection & Feature Claims
-**Last Updated**: 2026-05-31T22:02:17+03:00
+**Source Iteration Ref**: 003 — Iteration 2b: Conflict Reduction & Multi-Developer Auto-Detection
+**Last Updated**: 2026-06-01T01:42:22+03:00
 
 ## Summary
 
-- Latest reviewer snapshot: iterations/002 — Iteration 2a: Collision Detection & Feature Claims/
-- Current reviewer index: specs\051-multi-session-foundation\iterations\002\reviewer-index.md
+- Latest reviewer snapshot: iterations/003 — Iteration 2b: Conflict Reduction & Multi-Developer Auto-Detection/
+- Current reviewer index: specs\051-multi-session-foundation\iterations\003\reviewer-index.md
 - Security surface: not generated for this iteration (No security-focused team role and no security-keyword task title were found in the iteration plan.)
-- Review diagrams: specs\051-multi-session-foundation\iterations\002\review-diagrams.md
+- Review diagrams: specs\051-multi-session-foundation\iterations\003\review-diagrams.md
 
 ## Linked Current Diagrams
 
-- iterations\002\review-diagrams.md
+- iterations\003\review-diagrams.md

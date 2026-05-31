@@ -1,7 +1,7 @@
 # Iteration State: 003
 
 **Schema**: v1
-**Current Phase**: review
+**Current Phase**: review-signoff
 **Iteration Status**: reviewing
 **Last Completed Task**: T055 — implementation, acceptance checks, mechanical checks, and governance validation complete
 **Tasks Remaining**: (none)
