@@ -2,7 +2,7 @@
 
 **Schema**: v1
 **Capture Kind**: iteration-closeout
-**Captured At**: 2026-05-31T22:42:24Z
+**Captured At**: 2026-05-31T23:35:06Z
 **Render Mode**: compact
 **Rendering Mode**: rich
 **Color Mode**: monochrome
@@ -12,27 +12,27 @@
 
 ```text
 SPECREW VELOCITY DASHBOARD
-Summary: → F-051 Multi-Session Foundation | In Review · review | 7.35 SP/day (10 closed iterations, high)
+Summary: > F-051 Multi-Session Foundation | Implementation Complete | 6.54 SP/day (10 closed iterations, high)
 Today 2026-06-01 | Repo Specrew-051
-Rendering rich
+Rendering monochrome
 ACTIVE
-→ F-051 | Multi-Session Foundation
+> F-051 | Multi-Session Foundation
 Multi-dev 3 authors | 0 machines | single
 VELOCITY
-7.35 SP/day | high
-▄▄▁▁▄▂▂█▂▆
+6.54 SP/day | high
+13 / 12 / 11 / 3 / 2.5 / 10 / 6.6 / 6 / 23.5 / 4
 RECENT SHIPPED
+✓ F-051 · iter-003 | 13 SP
 ✓ F-051 · iter-002 | 12 SP
 ✓ F-051 · iter-001 | 11 SP
-✓ F-050 · iter-003 | 3 SP
 ROADMAP
 ✓ phase-1-foundations 62.5/65 SP
 ○ phase-2-experience 159.5/254 SP
 PROJECTION
-F:13SP 2 calendar day(s) | P:n/a TBD
-R:566SP 78 calendar day(s)
+F:0SP implementation complete | P:n/a TBD
+R:566SP 87 calendar day(s)
 WARNINGS
-Multi-developer activity detected: 3 unique git authors; 2 close-together shared-...
+ASCII rendering forced by --ASCII.
 FOOTER
-Use --ASCII any time you need the monochrome-safe fallback; stored closeout snaps...
+Monochrome-safe fallback is active. Re-run without --ASCII / --no-color in a UTF-...
 ```
