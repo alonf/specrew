@@ -32,6 +32,7 @@ F-051 addresses the inherited-stale-state problem encountered during F-051's own
 **Phase Scope**: `phase-1-first-slice` (F-051 qualification via Iterations 1-4 covering foundation + multi-session coordination)
 
 **Quality Governance Applied**:
+
 - **Maintainability & Testability** (mandatory): Every feature MUST remain reviewable, modular, and covered by acceptance scenarios testing requirement-critical paths. FR-001 through FR-043 include detailed acceptance scenarios.
 - **Security & Privacy** (mandatory): The feature touches session state, file permissions, and multi-developer coordination. FR-043 requires machine fingerprinting to remain local-only (no network transmission).
 
@@ -161,6 +162,7 @@ F-051 addresses the inherited-stale-state problem encountered during F-051's own
 **Scope**: FR-001 through FR-006 (6 functional requirements, 2 user stories: US1, US2)
 
 **Deliverables**:
+
 1. `session_mode` config flag in `.specrew/config.yml` with `specrew config set session_mode` CLI command (FR-001, FR-002, FR-003)
 2. File classification schema + `.gitignore` generation logic (FR-004, FR-005)
 3. Per-session file removal from git index via `git rm --cached` (FR-006)
@@ -168,6 +170,7 @@ F-051 addresses the inherited-stale-state problem encountered during F-051's own
 **User Stories Covered**: US1 (Configure Multi-Session Mode), US2 (Avoid Per-Session File Conflicts)
 
 **Quality Gates**:
+
 - `specrew config set session_mode multi` persists configuration correctly
 - `.gitignore` excludes all per-session file patterns (`.specrew/last-*`, `.specify/feature.json`, `.specrew/start-context.json`, etc.)
 - Previously tracked per-session files are removed from index without deletion
@@ -185,6 +188,7 @@ F-051 addresses the inherited-stale-state problem encountered during F-051's own
 **Scope**: FR-007 through FR-024 (18 functional requirements, 4 user stories: US3, US4, US5, US6)
 
 **Deliverables**:
+
 1. `.specrew/active-sessions.yml` lock file management (create, heartbeat, cleanup, stale detection) (FR-007 through FR-011)
 2. `.squad/active-features.yml` claim tracking + refresh at lifecycle boundaries (FR-012 through FR-016)
 3. Per-iteration decisions split + JSON Lines append-only logs + Specrew.psd1 FileList alphabetic sort (FR-017, FR-018, FR-019)
@@ -194,6 +198,7 @@ F-051 addresses the inherited-stale-state problem encountered during F-051's own
 **User Stories Covered**: US3 (Detect Concurrent Session Collisions), US4 (Claim Features), US5 (Reduce Shared-File Merge Conflicts), US6 (Detect Multi-Developer Activity)
 
 **Quality Gates**:
+
 - Concurrent `specrew start` on same feature within 5 minutes triggers collision warning
 - Feature claim recorded at specify boundary, refreshed at each subsequent boundary
 - Multi-developer signals detected and recommendations shown within one `specrew start`
@@ -212,6 +217,7 @@ F-051 addresses the inherited-stale-state problem encountered during F-051's own
 **Scope**: FR-025 through FR-034 (10 functional requirements, 2 user stories: US7, US8)
 
 **Deliverables**:
+
 1. Spec-Kit 0.8.13 → 0.8.18 upgrade mechanism (detection, execution, preservation, validation) (FR-025 through FR-030)
 2. `specrew update` command bug fix: install version detection + `.specrew/config.yml` version field write (FR-031, FR-032, FR-034)
 3. Version drift warning during `specrew start` (FR-033)
@@ -220,6 +226,7 @@ F-051 addresses the inherited-stale-state problem encountered during F-051's own
 **User Stories Covered**: US7 (Upgrade Spec-Kit to 0.8.18), US8 (Fix Baseline Version Bump)
 
 **Quality Gates**:
+
 - Spec-Kit upgrade from 0.8.13 to 0.8.18 completes in <2 minutes
 - All governance validators pass after upgrade
 - `.specrew/config.yml` `specrew_version` field matches installed module version
@@ -238,6 +245,7 @@ F-051 addresses the inherited-stale-state problem encountered during F-051's own
 **Scope**: FR-035 through FR-043 (9 functional requirements, 2 user stories: US9, US10)
 
 **Deliverables**:
+
 1. Split `.squad/identity/now.md` (shared content: focus_area, body; session-state content: per-session fields) (FR-035, FR-036, FR-037)
 2. Migration logic to move existing session_state_* fields from now.md to new `.squad/identity/session-state.yml` (FR-037)
 3. Validation that tracked files do NOT contain session_state_* fields (FR-038)
@@ -249,6 +257,7 @@ F-051 addresses the inherited-stale-state problem encountered during F-051's own
 **User Stories Covered**: US9 (Split Session-State Transient Fields), US10 (Detect Brand-New Worktrees)
 
 **Quality Gates**:
+
 - `.squad/identity/now.md` contains only shared content (focus_area, body)
 - Per-session state in `.squad/identity/session-state.yml` remains gitignored
 - Fresh worktree launch skips stale-state recovery prompt
@@ -346,6 +355,7 @@ All success criteria from spec.md section "Success Criteria" apply:
 - **SC-008**: Feature claim refresh at all lifecycle boundaries (100% update rate)
 
 **Validation Plan**:
+
 - Iteration 1: Configuration persistence + gitignore generation (automated tests)
 - Iteration 2: Collision detection race test + claim refresh across boundaries (manual two-developer test)
 - Iteration 3: Upgrade execution + version sync (automated + manual upgrade on test machine)
@@ -358,6 +368,7 @@ All success criteria from spec.md section "Success Criteria" apply:
 **None identified**: Specification is materially clear across all dimensions (confirmed by clarify-phase completion). All technical details (file formats, detection heuristics, upgrade mechanisms, atomicity patterns) are defined in spec.md. No blocking ambiguities.
 
 **Optional future research** (not blocking F-051 plan):
+
 - Performance optimization if telemetry shows session-detection latency is real bottleneck
 - Network-based claims mechanism for Proposal 148 Layer 2 (future iteration)
 
@@ -366,12 +377,14 @@ All success criteria from spec.md section "Success Criteria" apply:
 ## Next Steps & Approval
 
 **This plan is ready for**:
+
 1. ✅ Task generation (`/speckit.tasks`) after human plan review
 2. ✅ Phase 1 design work (data-model.md, contracts, quickstart) as supporting artifacts
 3. ✅ Hardening gate review (security + concurrency + state-machine validation) at the before-implement boundary, before Iteration 1 code begins
 4. ✅ Implementation (Iteration 1-4) proceeding in sequence with quality gates between iterations
 
 **Approval Requirements**:
+
 - Human review and approval of this plan against spec (required before task generation)
 - Human approval of hardening gate at before-implement boundary (required before Iteration 1 implementation)
 - Human review of acceptance scenario test results before feature closure
