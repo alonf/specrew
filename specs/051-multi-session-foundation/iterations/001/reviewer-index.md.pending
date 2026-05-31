@@ -1,0 +1,54 @@
+# Reviewer Index: Iteration 001 — Session Mode Configuration & File Classification
+
+**Schema**: v1
+**Reviewed**: 2026-05-31
+**Overall Verdict**: accepted
+
+## Summary
+
+- Header: feature=051-multi-session-foundation | iteration=001 — Session Mode Configuration & File Classification | branch=051-multi-session-foundation | commit_range=a9600489511ce88125bba0eaaefd9079e9eb144c..781a7dca8da96e6e194cb42a3a37c5fffe4ceac5
+- Verdict: accepted
+- Requirements: covered=FR-001, FR-004, FR-002, FR-003, FR-005, FR-006 | not_covered=(none)
+- Code Surface: files=29 | hotspots=1 | test_to_code=3:7
+- Dependencies: changed=0 | new_to_project=0 | vulnerability=unscanned
+- Coverage: kind=qualitative | signal=focused_regression
+- Operational Signals: escalations=0 | routing_fallbacks=0
+- Drift: 2/2 resolved
+- Reviewer Index: specs\051-multi-session-foundation\iterations\001\reviewer-index.md
+- Implementation Briefing: (unavailable)
+- Local Open Hints: specs\051-multi-session-foundation\iterations\001\reviewer-index.md; specs\051-multi-session-foundation\iterations\001\review-diagrams.md; specs\051-multi-session-foundation\current-architecture.md
+
+## Read Order
+
+1. [review.md](review.md)
+2. [code-map.md](code-map.md)
+3. [dependency-report.md](dependency-report.md)
+4. [coverage-evidence.md](coverage-evidence.md)
+5. security-surface.md omitted: No security-focused team role and no security-keyword task title were found in the iteration plan.
+6. [dashboard.md](dashboard.md)
+7. [review-diagrams.md](review-diagrams.md)
+8. [..\..\current-architecture.md](..\..\current-architecture.md)
+9. Implementation briefing unavailable for this iteration
+
+## Artifact Links
+
+- [review.md](review.md)
+- [code-map.md](code-map.md)
+- [dependency-report.md](dependency-report.md)
+- [coverage-evidence.md](coverage-evidence.md)
+- security-surface.md omitted: No security-focused team role and no security-keyword task title were found in the iteration plan.
+- [dashboard.md](dashboard.md)
+- [review-diagrams.md](review-diagrams.md)
+- [..\..\current-architecture.md](..\..\current-architecture.md) *(mutable current view)*
+- Implementation briefing unavailable
+- [.squad\decisions.md](.squad\decisions.md)
+
+## Triage Hints
+
+- Hotspot: specs/051-multi-session-foundation/tasks.md (298 changed lines)
+- Vulnerability scan: unscanned (No manifest files changed in this iteration.)
+- Gap concern: No requirement (FR/SC) gaps: all in-scope requirements (FR-001..006, SC-001/SC-005 partial) verified: fixed-now.
+
+## Replay Digest
+
+SPECREW_REVIEW schema=v1 iter=001 — Session Mode Configuration & File Classification feature=051-multi-session-foundation verdict=accepted tasks=19/19 reqs=19 files=29 new_deps=0 vuln=unscanned cov=focused_regression escalations=0 drift=2/2 index=specs\051-multi-session-foundation\iterations\001\reviewer-index.md
