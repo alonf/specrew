@@ -8,23 +8,36 @@
 # Specrew
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![Version](https://img.shields.io/badge/version-0.29.0-blue.svg)](.specrew/config.yml)
+[![Version](https://img.shields.io/badge/version-0.30.0-blue.svg)](.specrew/config.yml)
 [![Status: Alpha](https://img.shields.io/badge/status-alpha-orange.svg)](#status)
+[![Platforms](https://img.shields.io/badge/platforms-Windows%20%7C%20macOS%20%7C%20Linux-blue.svg)](#prerequisites)
 
-**Governed agentic SDLC. Agents type — you decide.** Specrew is a methodology layer over [GitHub Spec Kit](https://github.com/github/spec-kit) that keeps the human in the loop at every decision boundary while letting AI agents do the work between boundaries. Works with GitHub Copilot, Claude Code, Cursor, OpenAI Codex CLI, and Google Antigravity.
+**Governed agentic SDLC. Agents type — you decide.** Specrew is a methodology layer over [GitHub Spec Kit](https://github.com/github/spec-kit) that keeps the human in the loop at every decision boundary while letting AI agents do the work between boundaries. Runs on Windows, macOS, and Linux via PowerShell 7+. Works with GitHub Copilot, Claude Code, Cursor, OpenAI Codex CLI, and Google Antigravity.
 
 ## ⚡ Try it now (5 min)
 
+From any directory you like (PowerShell 7+ on Windows, macOS, or Linux):
+
 ```powershell
 Install-Module Specrew -Scope CurrentUser -SkipPublisherCheck
-mkdir C:\Dev\hello-specrew; cd C:\Dev\hello-specrew; git init
+mkdir hello-specrew; cd hello-specrew; git init
 specrew init
 specrew start "Build a tip calculator with a web UI"
 ```
 
 That's it. Specrew now drives you through the spec-driven lifecycle: you'll co-author a spec with the AI, sign off on a plan, and end with working code traceable to every decision.
 
-**Prerequisites** (one-time): PowerShell 7+, git, and one AI host CLI — [GitHub Copilot](https://docs.github.com/en/copilot/how-tos/copilot-cli), [Claude Code](https://docs.anthropic.com/en/docs/claude-code/installation), [Cursor](https://cursor.com/), [Codex CLI](https://developers.openai.com/codex/cli), or [Antigravity](https://antigravity.google/). On macOS / Linux, replace the `mkdir`/`cd` line with the platform equivalent. See [docs/getting-started.md](docs/getting-started.md) for full install steps, dependency notes (uv, npm), and brownfield-project bootstrap.
+### Prerequisites
+
+PowerShell 7+, git, and one AI host CLI — [GitHub Copilot](https://docs.github.com/en/copilot/how-tos/copilot-cli), [Claude Code](https://docs.anthropic.com/en/docs/claude-code/installation), [Cursor](https://cursor.com/), [Codex CLI](https://developers.openai.com/codex/cli), or [Antigravity](https://antigravity.google/).
+
+**Install PowerShell 7+ if you don't already have it:**
+
+- **Windows:** preinstalled on Windows 11; on Windows 10, install via `winget install Microsoft.PowerShell` or [microsoft.com/powershell](https://github.com/PowerShell/PowerShell/releases)
+- **macOS:** `brew install --cask powershell` (then run `pwsh` to enter)
+- **Linux:** [official install guide](https://learn.microsoft.com/powershell/scripting/install/installing-powershell-on-linux) (Ubuntu, Debian, Fedora, Arch all supported)
+
+See [docs/getting-started.md](docs/getting-started.md) for full install steps, dependency notes (uv, npm), and brownfield-project bootstrap.
 
 ## What just happened
 
@@ -99,7 +112,7 @@ Vanilla Spec Kit ships the slash-command surface but has no orchestration or bou
 
 ## Status
 
-- **Active development line**: 0.29.0 (F-050 — Cursor Host Package: `specrew start --host cursor` via the standalone `cursor-agent` CLI; first post-F-044 host addition)
+- **Active development line**: 0.30.0 (F-054 — Discoverable Spec Kit Surfaces: `/speckit.checklist` surfaced before-plan + `/speckit.analyze` surfaced before-implement after complete `tasks.md`; `/speckit.taskstoissues` explicitly deferred)
 - **Latest stable baseline**: promoted per the beta-before-stable release discipline — see [CHANGELOG.md](CHANGELOG.md) for the current released version
 - **Alpha software**, validated through dogfooding in this repository
 - **Built for a single developer today.** Multi-developer reconciliation is a roadmap item ([Proposal 010](proposals/010-multi-developer-reconciliation.md)); a leaner spec-first concurrent model is queued as [Proposal 115](proposals/115-spec-first-concurrent-development-workflow.md).
