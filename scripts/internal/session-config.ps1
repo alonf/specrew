@@ -13,6 +13,10 @@
 
 Set-StrictMode -Version Latest
 
+# Write-SpecrewFileAtomic lives in the shared atomic-write helper (extracted in F-051
+# Iteration 2a, T020) so locks/claims/config share one race-safe primitive.
+. (Join-Path $PSScriptRoot 'atomic-write.ps1')
+
 $script:SpecrewValidSessionModes = @('single', 'multi')
 
 function Get-SpecrewConfigPath {
@@ -76,23 +80,4 @@ function Set-SessionMode {
 
     Write-SpecrewFileAtomic -Path $configPath -Content $updated
     return $normalized
-}
-
-function Write-SpecrewFileAtomic {
-    <#
-    .SYNOPSIS
-        Write text to a path atomically (write to .tmp sibling, then Move-Item -Force).
-    .DESCRIPTION
-        Move-Item -Force is atomic on the same volume, so no reader observes a partial
-        write - the race-safe write pattern from the F-051 research (R3).
-    #>
-    param(
-        [Parameter(Mandatory = $true)][string]$Path,
-        [Parameter(Mandatory = $true)][string]$Content
-    )
-
-    $tempPath = '{0}.{1}.tmp' -f $Path, ([System.Guid]::NewGuid().ToString('N'))
-    $utf8NoBom = [System.Text.UTF8Encoding]::new($false)
-    [System.IO.File]::WriteAllText($tempPath, $Content, $utf8NoBom)
-    Move-Item -LiteralPath $tempPath -Destination $Path -Force
 }

@@ -32,7 +32,8 @@ function New-TempDir {
 $canonicalPerSession = @(
     '.specrew/last-*', '.specify/feature.json', '.specrew/start-context.json',
     '.specrew/host-history.json', '.specrew/.cache/', '.squad/sessions/',
-    '.squad/decisions/inbox/', '.specrew/last-validator-summary.json'
+    '.squad/decisions/inbox/', '.specrew/last-validator-summary.json',
+    '.specrew/active-sessions.yml'  # added in Iteration 2a (T020c, FR-005 gap fix)
 )
 
 # --- FR-004: classification rule set has all four categories + canonical per-session patterns ---

@@ -31,6 +31,7 @@
     FileList = @(
         'Specrew.psd1',
         'Specrew.psm1',
+        'scripts/internal/atomic-write.ps1',
         'scripts/internal/coordinator-prompt-surgery.ps1',
         'scripts/internal/coordinator-resume.ps1',
         'scripts/internal/dashboard-renderer.ps1',
@@ -41,6 +42,7 @@
         'scripts/internal/host-runtime-inventory.ps1',
         'scripts/internal/invoke-module-release.ps1',
         'scripts/internal/session-config.ps1',
+        'scripts/internal/session-management.ps1',
         'scripts/internal/skill-catalog-state.ps1',
         'scripts/internal/supported-versions.yml',
         'scripts/internal/sync-boundary-state.ps1',
@@ -49,6 +51,7 @@
         'scripts/internal/user-profile.ps1',
         'scripts/internal/version-check.ps1',
         'scripts/internal/worktree-awareness.ps1',
+        'scripts/internal/yaml-list.ps1',
         'hosts/_contract.md',
         'hosts/_registry.ps1',
         'hosts/_team-canonical.ps1',
