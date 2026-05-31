@@ -36,14 +36,14 @@ Iteration 1 is the foundation/dependency gate (TG-005): session_mode must be con
 
 | Task | Title | Requirement | Story | Effort | Owner | Owner File Globs | Status | Agent | Actual | Verdict |
 | ---- | ----- | ----------- | ----- | ------ | ----- | ---------------- | ------ | ----- | ------ | ------- |
-| T001 | Module manifest scaffold for session-mode support | FR-001 | US1 | 0.5 | Implementer | `Specrew.psd1` | planned | claude | — | — |
-| T002 | Add session_mode key to `.specrew/config.yml` schema | FR-001 | US1 | 0.5 | Implementer | `.specrew/config.yml` | planned | claude | — | — |
+| T001 | Module manifest scaffold for session-mode support | FR-001 | US1 | 0.5 | Implementer | `Specrew.psd1` | done | claude | 0.5 | pass |
+| T002 | Add session_mode key to `.specrew/config.yml` schema | FR-001 | US1 | 0.5 | Implementer | `.specrew/config.yml` | done | claude | 0.5 | pass |
 | T003 | File classification schema doc in `.specify/config.yml` | FR-004 | US2 | 0.5 | Implementer | `.specify/config.yml` | planned | claude | — | — |
-| T004 | `Set-SessionMode` function + validation | FR-001, FR-002 | US1 | 1.0 | Implementer | `scripts/specrew-config.ps1`, `scripts/internal/session-config.ps1` | planned | claude | — | — |
-| T005 | `specrew config set session_mode` CLI entry | FR-002 | US1 | 0.5 | Implementer | `scripts/specrew.ps1`, `scripts/specrew-config.ps1` | planned | claude | — | — |
-| T006 | Default session_mode=single in `specrew init` | FR-003 | US1 | 0.5 | Implementer | `scripts/specrew-init.ps1` | planned | claude | — | — |
-| T007 | Acceptance test: session-mode set/revert | FR-002 | US1 | 0.5 | Implementer | `tests/` | planned | claude | — | — |
-| T008 | Acceptance test: fresh-init default single | FR-003 | US1 | 0.5 | Implementer | `tests/` | planned | claude | — | — |
+| T004 | `Set-SessionMode` function + validation | FR-001, FR-002 | US1 | 1.0 | Implementer | `scripts/specrew-config.ps1`, `scripts/internal/session-config.ps1` | done | claude | 1.0 | pass |
+| T005 | `specrew config set session_mode` CLI entry | FR-002 | US1 | 0.5 | Implementer | `scripts/specrew.ps1`, `scripts/specrew-config.ps1` | done | claude | 0.5 | pass |
+| T006 | Default session_mode=single in `specrew init` (via governance scaffold) | FR-003 | US1 | 0.5 | Implementer | `extensions/specrew-speckit/scripts/scaffold-governance.ps1` (+ `.specify/` mirror) | done | claude | 0.5 | pass |
+| T007 | Acceptance test: session-mode set/revert | FR-002 | US1 | 0.5 | Implementer | `tests/` | done | claude | 0.5 | pass |
+| T008 | Acceptance test: fresh-init default single | FR-003 | US1 | 0.5 | Implementer | `tests/` | done | claude | 0.5 | pass |
 | T009 | `file-classification.ps1` classification function | FR-004 | US2 | 1.0 | Implementer | `scripts/internal/file-classification.ps1` | planned | claude | — | — |
 | T010 | Gitignore generation (merge without dup) | FR-005 | US2 | 1.0 | Implementer | `scripts/internal/file-classification.ps1` | planned | claude | — | — |
 | T011 | Integrate gitignore generation into `specrew init` | FR-005 | US2 | 0.5 | Implementer | `scripts/specrew-init.ps1` | planned | claude | — | — |

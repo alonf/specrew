@@ -1,16 +1,22 @@
 # Iteration State: 001
 
 **Schema**: v1
-**Last Completed Task**: (none)
-**Tasks Remaining**: (populate from plan.md)
+**Last Completed Task**: T008 (US1 done: T001, T002, T004-T008)
+**Tasks Remaining**: T003 + T009-T019 (US2 file classification + Iter-1 validation; T003 file-classification schema doc bundled with US2)
 **In Progress**: (none)
 **Baseline Ref**: a9600489511ce88125bba0eaaefd9079e9eb144c
-**Updated**: 2026-05-31T08:57:15Z
+**Updated**: 2026-05-31T11:12:28Z
 
 ## Execution Summary
 
-- Execution has not started yet.
-- This artifact was scaffolded before task execution so resume state can be updated after each task.
+- **US1 complete (T001-T008, ~6 SP consumed of 11):** session-mode configuration shipped + tested green.
+  - `scripts/internal/session-config.ps1` — Get-SessionMode (defaults single when unset, FR-003) + Set-SessionMode (validates single|multi, atomic write-temp-rename, FR-001/002).
+  - `scripts/specrew-config.ps1` — `config get|set session_mode` command; invalid value rejected (exit 1, no mutation).
+  - `scripts/specrew.ps1` — `config` dispatch case (Assert-ProjectSetup + slash-compat guard + route).
+  - `session_mode: "single"` default added to config.yml template in BOTH scaffold-governance.ps1 mirrors (FR-003).
+  - `Specrew.psd1` FileList updated (both new scripts, alphabetical).
+  - Test `tests/unit/feature-051-session-mode.tests.ps1` — 10/10 PASS (T007 set/revert/invalid against real config; T008 default via real scaffold writer, fail-first verified). End-to-end CLI dispatch smoke verified.
+- **Remaining:** US2 (T009-T015 file classification + gitignore + git-rm-cached), Iter-1 validation (T016-T019).
 
 ## Notes
 
