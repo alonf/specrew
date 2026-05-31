@@ -2,7 +2,7 @@
 
 **Feature**: 051-multi-session-foundation  
 **Branch**: 051-multi-session-foundation  
-**Total Tasks**: 48  
+**Total Tasks**: 97  
 **Iterations**: 4 (Iteration 1 ≤20 SP, Iteration 2 12-18 SP, Iteration 3 10-15 SP, Iteration 4 8-12 SP)  
 **Status**: Ready for implementation  
 
@@ -28,7 +28,7 @@ This tasks artifact defines a complete, dependency-ordered implementation plan f
 ### Setup & Foundation (Phase 1)
 
 - [ ] T001 [P] Create PowerShell module manifest updates scaffold in `Specrew.psd1` for session mode feature module support
-- [ ] T002 Review `.specrew/config.yml` schema structure and add session_mode configuration key definition
+- [ ] T002 Review `.specrew/config.yml` schema structure and add session_mode configuration key definition (FR-001)
 - [ ] T003 [P] Create file classification schema document in `.specify/config.yml` defining per-session file patterns (`.specrew/last-*`, `.specify/feature.json`, `.specrew/start-context.json`, `.specrew/host-history.json`, `.specrew/.cache/`, `.squad/sessions/`, `.squad/decisions/inbox/`, `.specrew/last-validator-summary.json`)
 
 ### Session Mode Configuration (Phase 1, US1 → FR-001, FR-002, FR-003)
@@ -271,7 +271,7 @@ Iteration 2 (Collision Detection + Claims + Auto-Detection)
 | 3 | T056-T076 | US7, US8 | FR-025 to FR-034 | SC-004, SC-005 |
 | 4 | T077-T097 | US9, US10 | FR-035 to FR-043 | SC-001, SC-002 |
 
-**Total Coverage**: 48 tasks × 43 functional requirements = 100% FR traceability; 48 tasks × 10 user stories = complete user story coverage
+**Total Coverage**: 97 tasks × 43 functional requirements = 100% FR traceability; 97 tasks × 10 user stories = complete user story coverage
 
 ---
 
