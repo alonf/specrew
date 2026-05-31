@@ -89,5 +89,34 @@ Assert-True -Condition ($quickstartContent -like '*.claude/skills*' -or $quickst
 Assert-True -Condition ($quickstartContent -like '*.agents/skills*' -or $quickstartContent -like '*.agents\skills*') -Message 'Feature 024 quickstart documents .agents/skills'
 
 Write-Host ''
+Write-Host '--- Test 7 (F-054 US3): top-level discovery surfaces distinguish active vs deferred lifecycle-adjacent commands ---'
+$lifecycleAdjacentSurfaces = @(
+    (Join-Path $repoRoot 'README.md'),
+    (Join-Path $repoRoot 'docs\user-guide.md')
+)
+foreach ($surface in $lifecycleAdjacentSurfaces) {
+    $surfaceName = [System.IO.Path]::GetFileName($surface)
+    Assert-True -Condition (Test-Path -LiteralPath $surface) -Message "discovery surface exists ($surfaceName)"
+    $content = Get-Content -LiteralPath $surface -Raw
+    Assert-True -Condition (($content -like '*/speckit.checklist*') -and ($content -like '*before-plan*')) -Message "$surfaceName surfaces /speckit.checklist at before-plan"
+    Assert-True -Condition (($content -like '*/speckit.analyze*') -and ($content -like '*before-implement*')) -Message "$surfaceName surfaces /speckit.analyze at before-implement"
+    Assert-True -Condition (($content -like '*/speckit.taskstoissues*') -and ($content -match '(?i)deferred')) -Message "$surfaceName marks /speckit.taskstoissues deferred"
+}
+
+Write-Host ''
+Write-Host '--- Test 8 (F-054 US3): taskstoissues agent + prompt state deferred, not default lifecycle ---'
+$taskstoissuesSurfaces = @(
+    (Join-Path $repoRoot '.github\agents\speckit.taskstoissues.agent.md'),
+    (Join-Path $repoRoot '.github\prompts\speckit.taskstoissues.prompt.md')
+)
+foreach ($surface in $taskstoissuesSurfaces) {
+    $surfaceName = [System.IO.Path]::GetFileName($surface)
+    Assert-True -Condition (Test-Path -LiteralPath $surface) -Message "taskstoissues surface exists ($surfaceName)"
+    $content = Get-Content -LiteralPath $surface -Raw
+    Assert-True -Condition ($content -match '(?i)deferred') -Message "$surfaceName states taskstoissues is deferred"
+    Assert-True -Condition ($content -match '(?i)not part of the default') -Message "$surfaceName states taskstoissues is not part of the default lifecycle"
+}
+
+Write-Host ''
 Write-Host '=== All discovery validation tests passed ===' -ForegroundColor Green
 Write-Host ''

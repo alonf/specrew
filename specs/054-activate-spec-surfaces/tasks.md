@@ -11,7 +11,7 @@
 
 ## Format
 
-`- [ ] T### [P?] [US#?] [assigned_to: ...] [effort: ...] Description with exact file path(s) (Trace: ...)`
+`- [x] T### [P?] [US#?] [assigned_to: ...] [effort: ...] Description with exact file path(s) (Trace: ...)`
 
 ---
 
@@ -21,7 +21,7 @@
 
 **Verification**: Confirm `specs/054-activate-spec-surfaces/iterations/001/quality/` exists and the iteration plan links to the planned evidence files.
 
-- [ ] T001 [US3] [assigned_to: Planner] [effort: 0.25 SP] Create the F-054 quality-evidence scaffold in `specs/054-activate-spec-surfaces/iterations/001/quality/quality-evidence.md` and `specs/054-activate-spec-surfaces/iterations/001/quality/mechanical-findings.json`, and link those evidence targets from `specs/054-activate-spec-surfaces/iterations/001/plan.md` (Trace: FR-009, FR-011, SC-004, `contracts/quality-governance-artifacts.md`)
+- [x] T001 [US3] [assigned_to: Planner] [effort: 0.25 SP] Create the F-054 quality-evidence scaffold in `specs/054-activate-spec-surfaces/iterations/001/quality/quality-evidence.md` and `specs/054-activate-spec-surfaces/iterations/001/quality/mechanical-findings.json`, and link those evidence targets from `specs/054-activate-spec-surfaces/iterations/001/plan.md` (Trace: FR-009, FR-011, SC-004, `contracts/quality-governance-artifacts.md`)
 
 ---
 
@@ -33,9 +33,9 @@
 
 **Verification**: Run `pwsh -NoProfile -File tests/integration/lifecycle-boundary-sync.tests.ps1` and `pwsh -NoProfile -File tests/integration/validation-contract-lane.ps1`.
 
-- [ ] T002 [US1, US2, US3] [assigned_to: Spec Steward] [effort: 0.50 SP] Align lifecycle-adjacent command metadata in `extensions/specrew-speckit/extension.yml` and `.specify/extensions/specrew-speckit/extension.yml` with `/speckit.checklist` before-plan surfacing, `/speckit.analyze` before-implement surfacing, and `/speckit.taskstoissues` deferred status (Trace: FR-001, FR-005, FR-010, FR-011)
-- [ ] T003 [P] [US2, US3] [assigned_to: Reviewer] [effort: 0.50 SP] Extend `tests/integration/lifecycle-boundary-sync.tests.ps1` to enforce the authoritative placements for `/speckit.checklist` and `/speckit.analyze`, including rejection of premature analyze guidance before `tasks.md` exists (Trace: FR-006, FR-008, FR-011, SC-003)
-- [ ] T004 [P] [US3] [assigned_to: Reviewer] [effort: 0.50 SP] Extend `tests/integration/validation-contract-lane.ps1` to verify discovery-surface wording and `/speckit.taskstoissues` deferment remain consistent with `specs/054-activate-spec-surfaces/contracts/discovery-surfaces.md`, `specs/054-activate-spec-surfaces/contracts/lifecycle-placement.md`, and `specs/054-activate-spec-surfaces/contracts/quality-governance-artifacts.md` (Trace: FR-009, FR-010, FR-011, TG-001, SC-005)
+- [x] T002 [US1, US2, US3] [assigned_to: Spec Steward] [effort: 0.50 SP] Align lifecycle-adjacent command metadata in `extensions/specrew-speckit/extension.yml` and `.specify/extensions/specrew-speckit/extension.yml` with `/speckit.checklist` before-plan surfacing, `/speckit.analyze` before-implement surfacing, and `/speckit.taskstoissues` deferred status (Trace: FR-001, FR-005, FR-010, FR-011)
+- [x] T003 [P] [US2, US3] [assigned_to: Reviewer] [effort: 0.50 SP] Extend `tests/integration/lifecycle-boundary-sync.tests.ps1` to enforce the authoritative placements for `/speckit.checklist` and `/speckit.analyze`, including rejection of premature analyze guidance before `tasks.md` exists (Trace: FR-006, FR-008, FR-011, SC-003)
+- [x] T004 [P] [US3] [assigned_to: Reviewer] [effort: 0.50 SP] Extend `tests/integration/validation-contract-lane.ps1` to verify discovery-surface wording and `/speckit.taskstoissues` deferment remain consistent with `specs/054-activate-spec-surfaces/contracts/discovery-surfaces.md`, `specs/054-activate-spec-surfaces/contracts/lifecycle-placement.md`, and `specs/054-activate-spec-surfaces/contracts/quality-governance-artifacts.md` (Trace: FR-009, FR-010, FR-011, TG-001, SC-005)
 
 **Checkpoint**: Lifecycle metadata, contract parity, and quality-evidence paths are ready for story work.
 
@@ -51,13 +51,13 @@
 
 ### Tests for User Story 1
 
-- [ ] T005 [US1] [assigned_to: Reviewer] [effort: 0.50 SP] Add before-plan checklist regression coverage to `tests/integration/slash-command-routing.tests.ps1` for requirement-quality messaging, substantive-slice recommendation, and lightweight-slice proportionality (Trace: FR-001, FR-002, FR-003, FR-004, SC-001, SC-002)
+- [x] T005 [US1] [assigned_to: Reviewer] [effort: 0.50 SP] Add before-plan checklist regression coverage to `tests/integration/slash-command-routing.tests.ps1` for requirement-quality messaging, substantive-slice recommendation, and lightweight-slice proportionality (Trace: FR-001, FR-002, FR-003, FR-004, SC-001, SC-002)
 
 ### Implementation for User Story 1
 
-- [ ] T006 [US1] [assigned_to: Planner] [effort: 0.50 SP] Update `extensions/specrew-speckit/commands/speckit.specrew-speckit.before-plan.md` and `.specify/extensions/specrew-speckit/commands/speckit.specrew-speckit.before-plan.md` so the before-plan boundary explicitly surfaces `/speckit.checklist` as a requirements-quality aid with proportional guidance for low-risk slices (Trace: FR-001, FR-002, FR-004, SC-001, SC-002)
-- [ ] T007 [US1] [assigned_to: Spec Steward] [effort: 0.50 SP] Revise `.github/agents/speckit.plan.agent.md` and `.github/prompts/speckit.checklist.prompt.md` so the planning-boundary handoff positions `/speckit.checklist` before planning and explains its requirements-quality role in plain language (Trace: FR-001, FR-002, FR-003, FR-004)
-- [ ] T008 [P] [US1] [assigned_to: Spec Steward] [effort: 0.25 SP] Update `.github/agents/speckit.checklist.agent.md` so `/speckit.checklist` is described as a lifecycle-adjacent review aid for substantive requirements work without implying it replaces planning or becomes mandatory for every tiny slice (Trace: FR-002, FR-003, FR-004, SC-002)
+- [x] T006 [US1] [assigned_to: Planner] [effort: 0.50 SP] Update `extensions/specrew-speckit/commands/speckit.specrew-speckit.before-plan.md` and `.specify/extensions/specrew-speckit/commands/speckit.specrew-speckit.before-plan.md` so the before-plan boundary explicitly surfaces `/speckit.checklist` as a requirements-quality aid with proportional guidance for low-risk slices (Trace: FR-001, FR-002, FR-004, SC-001, SC-002)
+- [x] T007 [US1] [assigned_to: Spec Steward] [effort: 0.50 SP] Revise `.github/agents/speckit.plan.agent.md` and `.github/prompts/speckit.checklist.prompt.md` so the planning-boundary handoff positions `/speckit.checklist` before planning and explains its requirements-quality role in plain language (Trace: FR-001, FR-002, FR-003, FR-004)
+- [x] T008 [P] [US1] [assigned_to: Spec Steward] [effort: 0.25 SP] Update `.github/agents/speckit.checklist.agent.md` so `/speckit.checklist` is described as a lifecycle-adjacent review aid for substantive requirements work without implying it replaces planning or becomes mandatory for every tiny slice (Trace: FR-002, FR-003, FR-004, SC-002)
 
 **Checkpoint**: `/speckit.checklist` is discoverable and correctly framed at the before-plan boundary.
 
@@ -73,13 +73,13 @@
 
 ### Tests for User Story 2
 
-- [ ] T009 [US2] [assigned_to: Reviewer] [effort: 0.50 SP] Add before-implement analyze regression coverage to `tests/integration/slash-command-coexistence.tests.ps1` for additive-governance framing, required artifact prerequisites, and early-stage redirect behavior (Trace: FR-005, FR-006, FR-007, FR-008, SC-003)
+- [x] T009 [US2] [assigned_to: Reviewer] [effort: 0.50 SP] Add before-implement analyze regression coverage to `tests/integration/slash-command-coexistence.tests.ps1` for additive-governance framing, required artifact prerequisites, and early-stage redirect behavior (Trace: FR-005, FR-006, FR-007, FR-008, SC-003)
 
 ### Implementation for User Story 2
 
-- [ ] T010 [US2] [assigned_to: Planner] [effort: 0.50 SP] Update `extensions/specrew-speckit/commands/speckit.specrew-speckit.before-implement.md` and `.specify/extensions/specrew-speckit/commands/speckit.specrew-speckit.before-implement.md` so the boundary explicitly surfaces `/speckit.analyze` only after complete `tasks.md` exists and describes it as additive to governance validation (Trace: FR-005, FR-006, FR-007, FR-008, SC-003)
-- [ ] T011 [US2] [assigned_to: Spec Steward] [effort: 0.50 SP] Revise `.github/agents/speckit.tasks.agent.md` and `.github/prompts/speckit.analyze.prompt.md` so analyze appears after task generation with explicit `spec.md`/`plan.md`/`tasks.md` prerequisites and non-replacement guidance (Trace: FR-005, FR-006, FR-007, FR-008)
-- [ ] T012 [P] [US2] [assigned_to: Spec Steward] [effort: 0.25 SP] Update `.github/agents/speckit.analyze.agent.md` so its discovery copy reinforces before-implement timing, complete-artifact prerequisites, and additive governance positioning (Trace: FR-005, FR-007, FR-008, SC-003)
+- [x] T010 [US2] [assigned_to: Planner] [effort: 0.50 SP] Update `extensions/specrew-speckit/commands/speckit.specrew-speckit.before-implement.md` and `.specify/extensions/specrew-speckit/commands/speckit.specrew-speckit.before-implement.md` so the boundary explicitly surfaces `/speckit.analyze` only after complete `tasks.md` exists and describes it as additive to governance validation (Trace: FR-005, FR-006, FR-007, FR-008, SC-003)
+- [x] T011 [US2] [assigned_to: Spec Steward] [effort: 0.50 SP] Revise `.github/agents/speckit.tasks.agent.md` and `.github/prompts/speckit.analyze.prompt.md` so analyze appears after task generation with explicit `spec.md`/`plan.md`/`tasks.md` prerequisites and non-replacement guidance (Trace: FR-005, FR-006, FR-007, FR-008)
+- [x] T012 [P] [US2] [assigned_to: Spec Steward] [effort: 0.25 SP] Update `.github/agents/speckit.analyze.agent.md` so its discovery copy reinforces before-implement timing, complete-artifact prerequisites, and additive governance positioning (Trace: FR-005, FR-007, FR-008, SC-003)
 
 **Checkpoint**: `/speckit.analyze` is surfaced only at the approved lifecycle point and never framed as a governance replacement.
 
@@ -95,12 +95,12 @@
 
 ### Tests for User Story 3
 
-- [ ] T013 [US3] [assigned_to: Reviewer] [effort: 0.50 SP] Add lifecycle-adjacent discovery coverage to `tests/integration/slash-command-discovery.tests.ps1` for `README.md`, `docs/user-guide.md`, and explicit `/speckit.taskstoissues` deferment messaging (Trace: FR-009, FR-010, FR-011, SC-004, SC-005)
+- [x] T013 [US3] [assigned_to: Reviewer] [effort: 0.50 SP] Add lifecycle-adjacent discovery coverage to `tests/integration/slash-command-discovery.tests.ps1` for `README.md`, `docs/user-guide.md`, and explicit `/speckit.taskstoissues` deferment messaging (Trace: FR-009, FR-010, FR-011, SC-004, SC-005)
 
 ### Implementation for User Story 3
 
-- [ ] T014 [US3] [assigned_to: Spec Steward] [effort: 0.75 SP] Update `README.md` and `docs/user-guide.md` with a consistent lifecycle-adjacent command matrix that surfaces `/speckit.checklist` before plan, surfaces `/speckit.analyze` before implement after complete tasks, and marks `/speckit.taskstoissues` deferred for Feature 054 (Trace: FR-009, FR-010, FR-011, SC-004, SC-005)
-- [ ] T015 [P] [US3] [assigned_to: Spec Steward] [effort: 0.50 SP] Update `.github/agents/speckit.taskstoissues.agent.md` and `.github/prompts/speckit.taskstoissues.prompt.md` to state that `/speckit.taskstoissues` is known but deferred and not part of the default Feature 054 lifecycle (Trace: FR-010, FR-011, SC-005)
+- [x] T014 [US3] [assigned_to: Spec Steward] [effort: 0.75 SP] Update `README.md` and `docs/user-guide.md` with a consistent lifecycle-adjacent command matrix that surfaces `/speckit.checklist` before plan, surfaces `/speckit.analyze` before implement after complete tasks, and marks `/speckit.taskstoissues` deferred for Feature 054 (Trace: FR-009, FR-010, FR-011, SC-004, SC-005)
+- [x] T015 [P] [US3] [assigned_to: Spec Steward] [effort: 0.50 SP] Update `.github/agents/speckit.taskstoissues.agent.md` and `.github/prompts/speckit.taskstoissues.prompt.md` to state that `/speckit.taskstoissues` is known but deferred and not part of the default Feature 054 lifecycle (Trace: FR-010, FR-011, SC-005)
 
 **Checkpoint**: Standard discovery surfaces consistently distinguish active surfaced commands from deferred commands.
 
@@ -112,9 +112,9 @@
 
 **Verification**: Complete the markdownlint run, all five integration lanes, and the mechanical-check output reserved in the quality evidence plan.
 
-- [ ] T016 [P] [US3] [assigned_to: Implementer] [effort: 0.50 SP] Run `npx --yes markdownlint-cli README.md docs/user-guide.md .github/agents/*.md .github/prompts/*.md specs/054-activate-spec-surfaces/*.md` and record the stack-tooling evidence in `specs/054-activate-spec-surfaces/iterations/001/quality/quality-evidence.md` (Trace: FR-009, FR-011, SC-004, `contracts/quality-governance-artifacts.md`)
-- [ ] T017 [P] [US1, US2, US3] [assigned_to: Implementer] [effort: 0.75 SP] Run `pwsh -NoProfile -File tests/integration/slash-command-discovery.tests.ps1`, `pwsh -NoProfile -File tests/integration/slash-command-routing.tests.ps1`, `pwsh -NoProfile -File tests/integration/slash-command-coexistence.tests.ps1`, `pwsh -NoProfile -File tests/integration/lifecycle-boundary-sync.tests.ps1`, and `pwsh -NoProfile -File tests/integration/validation-contract-lane.ps1`, then record the results in `specs/054-activate-spec-surfaces/iterations/001/quality/quality-evidence.md` (Trace: FR-001, FR-002, FR-003, FR-004, FR-005, FR-006, FR-007, FR-008, FR-009, FR-010, FR-011, SC-001, SC-002, SC-003, SC-004, SC-005)
-- [ ] T018 [US3] [assigned_to: Reviewer] [effort: 0.50 SP] Run `extensions/specrew-speckit/scripts/run-mechanical-checks.ps1` (or `.specify/extensions/specrew-speckit/scripts/run-mechanical-checks.ps1` when validating the managed mirror) and write the dead-field, anti-pattern, and test-integrity summary to `specs/054-activate-spec-surfaces/iterations/001/quality/mechanical-findings.json` (Trace: FR-009, FR-011, `contracts/quality-governance-artifacts.md`)
+- [x] T016 [P] [US3] [assigned_to: Implementer] [effort: 0.50 SP] Run `npx --yes markdownlint-cli README.md docs/user-guide.md .github/agents/*.md .github/prompts/*.md specs/054-activate-spec-surfaces/*.md` and record the stack-tooling evidence in `specs/054-activate-spec-surfaces/iterations/001/quality/quality-evidence.md` (Trace: FR-009, FR-011, SC-004, `contracts/quality-governance-artifacts.md`)
+- [x] T017 [P] [US1, US2, US3] [assigned_to: Implementer] [effort: 0.75 SP] Run `pwsh -NoProfile -File tests/integration/slash-command-discovery.tests.ps1`, `pwsh -NoProfile -File tests/integration/slash-command-routing.tests.ps1`, `pwsh -NoProfile -File tests/integration/slash-command-coexistence.tests.ps1`, `pwsh -NoProfile -File tests/integration/lifecycle-boundary-sync.tests.ps1`, and `pwsh -NoProfile -File tests/integration/validation-contract-lane.ps1`, then record the results in `specs/054-activate-spec-surfaces/iterations/001/quality/quality-evidence.md` (Trace: FR-001, FR-002, FR-003, FR-004, FR-005, FR-006, FR-007, FR-008, FR-009, FR-010, FR-011, SC-001, SC-002, SC-003, SC-004, SC-005)
+- [x] T018 [US3] [assigned_to: Reviewer] [effort: 0.50 SP] Run `extensions/specrew-speckit/scripts/run-mechanical-checks.ps1` (or `.specify/extensions/specrew-speckit/scripts/run-mechanical-checks.ps1` when validating the managed mirror) and write the dead-field, anti-pattern, and test-integrity summary to `specs/054-activate-spec-surfaces/iterations/001/quality/mechanical-findings.json` (Trace: FR-009, FR-011, `contracts/quality-governance-artifacts.md`)
 
 ---
 

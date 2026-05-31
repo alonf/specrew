@@ -46,6 +46,25 @@ provides:
       file: commands/speckit.specrew-speckit.sync-feature-closeout.md
       description: "Persist session-state metadata after feature-closeout (Proposal 090)"
 
+  # Feature 054: lifecycle-adjacent Spec Kit commands surfaced (or deferred) by this slice.
+  # Placement strings here are the authoritative source the discovery surfaces must match.
+  lifecycle_adjacent_commands:
+    - name: speckit.checklist
+      placement: before-plan
+      status: surfaced
+      requires: "a substantive spec ready for planning review"
+      surface_summary: "Requirements-quality aid surfaced before planning: improves clarity, completeness, consistency, and edge-case coverage. Recommended for substantive feature work; optional for low-risk slices."
+    - name: speckit.analyze
+      placement: before-implement
+      status: surfaced
+      requires: "spec.md, plan.md, and a complete tasks.md produced by /speckit.tasks"
+      surface_summary: "Additive cross-artifact consistency and quality review across spec/plan/tasks, surfaced only after tasks.md is complete. Complements Specrew governance; it does not replace it. If encountered before tasks.md exists, return at before-implement."
+    - name: speckit.taskstoissues
+      placement: deferred
+      status: deferred
+      requires: "explicit later re-scope only"
+      surface_summary: "Known but deferred for Feature 054. Not part of the default lifecycle in this slice."
+
 hooks:
   before_plan:
     command: speckit.specrew-speckit.before-plan

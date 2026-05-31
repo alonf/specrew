@@ -3,7 +3,7 @@
 **Schema**: v1
 **Spec**: [../../spec.md](../../spec.md)
 **Feature Tasks**: [../../tasks.md](../../tasks.md)
-**Status**: planning
+**Status**: reviewing
 **Capacity**: 8.75/20 story_points
 **Started**: 2026-05-31
 **Completed**:
@@ -40,24 +40,24 @@
 
 | Task | Title | Requirement | Story | Effort | Owner | Owner File Globs | Status | Agent | Actual | Verdict |
 | ---- | ----- | ----------- | ----- | ------ | ----- | ---------------- | ------ | ----- | ------ | ------- |
-| T001 | Create the quality-evidence scaffold and reserve evidence links | FR-009, FR-011, SC-004 | US3 | 0.25 | Planner | `specs/054-activate-spec-surfaces/iterations/001/quality/*`, `specs/054-activate-spec-surfaces/iterations/001/plan.md` | planned | — | — | — |
-| T002 | Align mirrored extension metadata for surfaced and deferred commands | FR-001, FR-005, FR-010, FR-011 | US1, US2, US3 | 0.50 | Spec Steward | `extensions/specrew-speckit/extension.yml`, `.specify/extensions/specrew-speckit/extension.yml` | planned | — | — | — |
-| T003 | Extend lifecycle-boundary sync coverage for checklist/analyze placement | FR-006, FR-008, FR-011, SC-003 | US2, US3 | 0.50 | Reviewer | `tests/integration/lifecycle-boundary-sync.tests.ps1` | planned | — | — | — |
-| T004 | Extend validation-contract coverage for discovery wording and deferment | FR-009, FR-010, FR-011, TG-001, SC-005 | US3 | 0.50 | Reviewer | `tests/integration/validation-contract-lane.ps1`, `specs/054-activate-spec-surfaces/contracts/*.md` | planned | — | — | — |
-| T005 | Add before-plan checklist regression coverage | FR-001, FR-002, FR-003, FR-004, SC-001, SC-002 | US1 | 0.50 | Reviewer | `tests/integration/slash-command-routing.tests.ps1` | planned | — | — | — |
-| T006 | Update mirrored before-plan command surfaces | FR-001, FR-002, FR-004, SC-001, SC-002 | US1 | 0.50 | Planner | `extensions/specrew-speckit/commands/speckit.specrew-speckit.before-plan.md`, `.specify/extensions/specrew-speckit/commands/speckit.specrew-speckit.before-plan.md` | planned | — | — | — |
-| T007 | Revise planning/checklist handoff guidance | FR-001, FR-002, FR-003, FR-004 | US1 | 0.50 | Spec Steward | `.github/agents/speckit.plan.agent.md`, `.github/prompts/speckit.checklist.prompt.md` | planned | — | — | — |
-| T008 | Update checklist agent discovery copy | FR-002, FR-003, FR-004, SC-002 | US1 | 0.25 | Spec Steward | `.github/agents/speckit.checklist.agent.md` | planned | — | — | — |
-| T009 | Add before-implement analyze regression coverage | FR-005, FR-006, FR-007, FR-008, SC-003 | US2 | 0.50 | Reviewer | `tests/integration/slash-command-coexistence.tests.ps1` | planned | — | — | — |
-| T010 | Update mirrored before-implement command surfaces | FR-005, FR-006, FR-007, FR-008, SC-003 | US2 | 0.50 | Planner | `extensions/specrew-speckit/commands/speckit.specrew-speckit.before-implement.md`, `.specify/extensions/specrew-speckit/commands/speckit.specrew-speckit.before-implement.md` | planned | — | — | — |
-| T011 | Revise tasks/analyze guidance prompts | FR-005, FR-006, FR-007, FR-008 | US2 | 0.50 | Spec Steward | `.github/agents/speckit.tasks.agent.md`, `.github/prompts/speckit.analyze.prompt.md` | planned | — | — | — |
-| T012 | Update analyze agent discovery copy | FR-005, FR-007, FR-008, SC-003 | US2 | 0.25 | Spec Steward | `.github/agents/speckit.analyze.agent.md` | planned | — | — | — |
-| T013 | Add lifecycle-adjacent discovery coverage for surfaced vs deferred commands | FR-009, FR-010, FR-011, SC-004, SC-005 | US3 | 0.50 | Reviewer | `tests/integration/slash-command-discovery.tests.ps1` | planned | — | — | — |
-| T014 | Update lifecycle-adjacent command docs and matrix | FR-009, FR-010, FR-011, SC-004, SC-005 | US3 | 0.75 | Spec Steward | `README.md`, `docs/user-guide.md` | planned | — | — | — |
-| T015 | Update taskstoissues deferred-status guidance | FR-010, FR-011, SC-005 | US3 | 0.50 | Spec Steward | `.github/agents/speckit.taskstoissues.agent.md`, `.github/prompts/speckit.taskstoissues.prompt.md` | planned | — | — | — |
-| T016 | Run markdownlint and record evidence | FR-009, FR-011, SC-004 | US3 | 0.50 | Implementer | `README.md`, `docs/user-guide.md`, `.github/agents/*.md`, `.github/prompts/*.md`, `specs/054-activate-spec-surfaces/*.md`, `specs/054-activate-spec-surfaces/iterations/001/quality/quality-evidence.md` | planned | — | — | — |
-| T017 | Run integration lanes and record quality evidence | FR-001, FR-002, FR-003, FR-004, FR-005, FR-006, FR-007, FR-008, FR-009, FR-010, FR-011, SC-001, SC-002, SC-003, SC-004, SC-005 | US1, US2, US3 | 0.75 | Implementer | `tests/integration/*.ps1`, `specs/054-activate-spec-surfaces/iterations/001/quality/quality-evidence.md` | planned | — | — | — |
-| T018 | Run mechanical checks and record findings | FR-009, FR-011 | US3 | 0.50 | Reviewer | `extensions/specrew-speckit/scripts/run-mechanical-checks.ps1`, `.specify/extensions/specrew-speckit/scripts/run-mechanical-checks.ps1`, `specs/054-activate-spec-surfaces/iterations/001/quality/mechanical-findings.json` | planned | — | — | — |
+| T001 | Create the quality-evidence scaffold and reserve evidence links | FR-009, FR-011, SC-004 | US3 | 0.25 | Planner | `specs/054-activate-spec-surfaces/iterations/001/quality/*`, `specs/054-activate-spec-surfaces/iterations/001/plan.md` | done | claude | — | — |
+| T002 | Align mirrored extension metadata for surfaced and deferred commands | FR-001, FR-005, FR-010, FR-011 | US1, US2, US3 | 0.50 | Spec Steward | `extensions/specrew-speckit/extension.yml`, `.specify/extensions/specrew-speckit/extension.yml` | done | claude | — | — |
+| T003 | Extend lifecycle-boundary sync coverage for checklist/analyze placement | FR-006, FR-008, FR-011, SC-003 | US2, US3 | 0.50 | Reviewer | `tests/integration/lifecycle-boundary-sync.tests.ps1` | done | claude | — | — |
+| T004 | Extend validation-contract coverage for discovery wording and deferment | FR-009, FR-010, FR-011, TG-001, SC-005 | US3 | 0.50 | Reviewer | `tests/integration/validation-contract-lane.ps1`, `specs/054-activate-spec-surfaces/contracts/*.md` | done | claude | — | — |
+| T005 | Add before-plan checklist regression coverage | FR-001, FR-002, FR-003, FR-004, SC-001, SC-002 | US1 | 0.50 | Reviewer | `tests/integration/slash-command-routing.tests.ps1` | done | claude | — | — |
+| T006 | Update mirrored before-plan command surfaces | FR-001, FR-002, FR-004, SC-001, SC-002 | US1 | 0.50 | Planner | `extensions/specrew-speckit/commands/speckit.specrew-speckit.before-plan.md`, `.specify/extensions/specrew-speckit/commands/speckit.specrew-speckit.before-plan.md` | done | claude | — | — |
+| T007 | Revise planning/checklist handoff guidance | FR-001, FR-002, FR-003, FR-004 | US1 | 0.50 | Spec Steward | `.github/agents/speckit.plan.agent.md`, `.github/prompts/speckit.checklist.prompt.md` | done | claude | — | — |
+| T008 | Update checklist agent discovery copy | FR-002, FR-003, FR-004, SC-002 | US1 | 0.25 | Spec Steward | `.github/agents/speckit.checklist.agent.md` | done | claude | — | — |
+| T009 | Add before-implement analyze regression coverage | FR-005, FR-006, FR-007, FR-008, SC-003 | US2 | 0.50 | Reviewer | `tests/integration/slash-command-coexistence.tests.ps1` | done | claude | — | — |
+| T010 | Update mirrored before-implement command surfaces | FR-005, FR-006, FR-007, FR-008, SC-003 | US2 | 0.50 | Planner | `extensions/specrew-speckit/commands/speckit.specrew-speckit.before-implement.md`, `.specify/extensions/specrew-speckit/commands/speckit.specrew-speckit.before-implement.md` | done | claude | — | — |
+| T011 | Revise tasks/analyze guidance prompts | FR-005, FR-006, FR-007, FR-008 | US2 | 0.50 | Spec Steward | `.github/agents/speckit.tasks.agent.md`, `.github/prompts/speckit.analyze.prompt.md` | done | claude | — | — |
+| T012 | Update analyze agent discovery copy | FR-005, FR-007, FR-008, SC-003 | US2 | 0.25 | Spec Steward | `.github/agents/speckit.analyze.agent.md` | done | claude | — | — |
+| T013 | Add lifecycle-adjacent discovery coverage for surfaced vs deferred commands | FR-009, FR-010, FR-011, SC-004, SC-005 | US3 | 0.50 | Reviewer | `tests/integration/slash-command-discovery.tests.ps1` | done | claude | — | — |
+| T014 | Update lifecycle-adjacent command docs and matrix | FR-009, FR-010, FR-011, SC-004, SC-005 | US3 | 0.75 | Spec Steward | `README.md`, `docs/user-guide.md` | done | claude | — | — |
+| T015 | Update taskstoissues deferred-status guidance | FR-010, FR-011, SC-005 | US3 | 0.50 | Spec Steward | `.github/agents/speckit.taskstoissues.agent.md`, `.github/prompts/speckit.taskstoissues.prompt.md` | done | claude | — | — |
+| T016 | Run markdownlint and record evidence | FR-009, FR-011, SC-004 | US3 | 0.50 | Implementer | `README.md`, `docs/user-guide.md`, `.github/agents/*.md`, `.github/prompts/*.md`, `specs/054-activate-spec-surfaces/*.md`, `specs/054-activate-spec-surfaces/iterations/001/quality/quality-evidence.md` | done | claude | — | — |
+| T017 | Run integration lanes and record quality evidence | FR-001, FR-002, FR-003, FR-004, FR-005, FR-006, FR-007, FR-008, FR-009, FR-010, FR-011, SC-001, SC-002, SC-003, SC-004, SC-005 | US1, US2, US3 | 0.75 | Implementer | `tests/integration/*.ps1`, `specs/054-activate-spec-surfaces/iterations/001/quality/quality-evidence.md` | done | claude | — | — |
+| T018 | Run mechanical checks and record findings | FR-009, FR-011 | US3 | 0.50 | Reviewer | `extensions/specrew-speckit/scripts/run-mechanical-checks.ps1`, `.specify/extensions/specrew-speckit/scripts/run-mechanical-checks.ps1`, `specs/054-activate-spec-surfaces/iterations/001/quality/mechanical-findings.json` | done | claude | — | — |
 
 ## Effort Model
 
