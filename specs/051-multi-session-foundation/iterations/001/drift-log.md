@@ -23,12 +23,12 @@
 ## Summary
 
 **Total drift events**: 1
-**Resolution rate**: 0% (0/1 resolved)
-**Specification drift**: 1 detected (capacity model)
+**Resolution rate**: 100% (1/1 resolved)
+**Specification drift**: 1 detected, 1 resolved (capacity model)
 
 ## Events
 
-### D-001 — Capacity-model drift: tasks decompose to 139 SP vs spec 45–65 envelope (OPEN)
+### D-001 — Capacity-model drift: tasks decompose to 139 SP vs spec 45–65 envelope (RESOLVED 2026-05-31, spec-updated)
 
 **Detected**: 2026-05-31 at before-implement re-verification (reviewer-standard capacity check).
 
@@ -44,7 +44,17 @@
 
 **Why it blocks**: TG-005 makes Iteration 1 ≤20 SP a hard requirement and the iteration acts as a dependency gate; the systemic 2.2× envelope breach means the approved spec scope and the executable plan disagree about the size of the work.
 
-**Resolution**: human-decision (escalated to Alon). Candidate strategies: re-slice into more ≤20 SP iterations with spec TG-003 + envelope reconciliation ("split, don't raise"); de-scope tasks to fit 45–65; or honest per-task re-estimation if the 97-task decomposition over-fragmented. Pending architect decision; hardening-gate population paused until scope is settled.
+**Resolution** (spec-updated, 2026-05-31): Architect chose "re-estimate first." All 97 tasks were honestly re-estimated against an F-054-anchored rubric (~0.5 SP/task baseline + justified code premium); the honest total is **~60.5 SP — within the 45–65 envelope** (the 139 figure was inflation from the 48→97 expansion, not real scope). One residual breach remained: original Iteration 2 packed four user stories (~23 SP) over its cap, so per "split, don't raise" it was split into **Iteration 2a** (US3+US4, ~10 SP) and **Iteration 2b** (US5+US6, ~13 SP). Final structure: 5 iterations, each ≤20 SP (1 ~11, 2a ~10, 2b ~13, 3 ~13.5, 4 ~13).
+
+**Reconciliation applied**:
+
+- tasks.md: per-task `[effort]` markup rewritten to re-estimate; Iter 2 split into 2a/2b sections; false "Effort Verification" summary replaced; traceability matrix + quality gates + dependency graph updated.
+- spec.md: TG-003 delivery windows, Governance Alignment capacity model, and Assumptions iteration-slicing updated to 5 iterations / ~60.5 SP / ≤20 cap.
+- plan.md: Summary, Technical Context scale, Iteration Structure (Iter 2 → 2a/2b), Constitution Capacity Gate, and requirement-traceability matrix updated.
+- iterations/001/plan.md: scoped to FR-001..006, task table T001-T019 populated at re-estimated efforts, capacity 11/20.
+- Evidence: [capacity-reestimate.md](capacity-reestimate.md).
+
+Drift closed; before-implement capacity precondition now satisfiable.
 
 ### Resolution Strategies (Unused)
 

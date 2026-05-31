@@ -237,12 +237,13 @@ A developer cloning a fresh worktree to launch a new feature should go directly 
 
 - **TG-001**: Each user story MUST map to one or more functional requirements
 - **TG-002**: Each requirement MUST identify expected owner role(s): Implementer (FR-001 through FR-043), Reviewer (validation of multi-session mode, file classification, collision detection, upgrade process, split identity files, brand-new worktree detection)
-- **TG-003**: Each requirement MUST identify intended iteration or delivery window:
-  - Iteration 1 (up to 20 SP): FR-001 to FR-006 (session mode config + file classification) — preserves P1 foundation scope
-  - Iteration 2 (12-18 SP): FR-007 to FR-024 (collision detection + feature claims + auto-detection) — preserves session coordination scope
-  - Iteration 3 (10-15 SP): FR-025 to FR-034 (Spec-Kit upgrade + specrew update fix) — preserves infrastructure scope
-  - Iteration 4 (8-12 SP): FR-035 to FR-043 (identity split + brand-new worktree detection + privacy) — NEW: addresses stale-state recovery and UX friction
-  - Total: ~45-65 SP across 4 iterations; Iteration 1 capacity capped at 20 SP per TG-005 to enable fast validation; subsequent iterations sized accordingly
+- **TG-003**: Each requirement MUST identify intended iteration or delivery window (honest re-estimate 2026-05-31; original Iteration 2 split into 2a/2b per TG-005 because it packed four user stories over the cap — see iterations/001/capacity-reestimate.md):
+  - Iteration 1 (~11 SP): FR-001 to FR-006 (session mode config + file classification) — preserves P1 foundation scope
+  - Iteration 2a (~10 SP): FR-007 to FR-016 (collision detection + feature claims) — lock/claim primitives
+  - Iteration 2b (~13 SP): FR-017 to FR-024 (conflict reduction + multi-developer auto-detection) — conflict-reduction + detection layer
+  - Iteration 3 (~13.5 SP): FR-025 to FR-034 (Spec-Kit upgrade + specrew update fix) — infrastructure scope
+  - Iteration 4 (~13 SP): FR-035 to FR-043 (identity split + brand-new worktree detection + privacy) — addresses stale-state recovery and UX friction
+  - Total: ~60.5 SP across 5 iterations; every iteration capped at ≤20 SP per TG-005 to enable fast validation and keep slices AI-context-sized
 - **TG-004**: Any known spec/implementation conflict MUST include an explicit reconciliation path. No known conflicts exist at specification time.
 - **TG-005**: Iteration 1 MUST remain at or under 20 SP to allow fast foundation validation and unblock parallel work (Iteration 1 acts as dependency gate for Iterations 2-4)
 
@@ -293,13 +294,13 @@ A developer cloning a fresh worktree to launch a new feature should go directly 
 - Stale session locks are defined as locks with `last_heartbeat_time` older than 24 hours
 - The F-049 commit `437338f6` git-rm-cached pattern refers to the process of removing tracked files from git index without deleting them from the working directory
 - Proposals 010 and 134 are design references that define the full scope of multi-developer reconciliation; F-051 implements a minimal "Phase 1" subset
-- Iteration slicing is 4 iterations based on the 45-65 SP estimate, with each iteration focused on a coherent subsystem: Iteration 1 (config + file classification), Iteration 2 (collision detection + claims + auto-detection), Iteration 3 (upgrade + bug fix), Iteration 4 (identity split + brand-new worktree detection)
+- Iteration slicing is 5 iterations (honest re-estimate ~60.5 SP, within the 45-65 envelope), each a coherent subsystem within the ≤20 SP cap: Iteration 1 (config + file classification), Iteration 2a (collision detection + feature claims), Iteration 2b (conflict reduction + multi-dev auto-detection), Iteration 3 (Spec-Kit upgrade + version-bump fix), Iteration 4 (identity split + brand-new worktree detection). Original Iteration 2 was split into 2a/2b because it packed four user stories over the per-iteration cap.
 
 ## Governance Alignment *(mandatory)*
 
 - **Spec Steward**: Specrew Spec Steward agent (accountable for specification integrity and drift detection between this spec, plan, tasks, and implementation)
 - **Iteration Facilitator**: Specrew Planner agent (accountable for iteration cadence, capacity planning, and blocker escalation)
-- **Capacity Model**: Story Points (SP); estimated 45-65 SP total across 4 iterations (Iteration 1: up to 20 SP, Iteration 2: 12-18 SP, Iteration 3: 10-15 SP, Iteration 4: 8-12 SP). Iteration 1 is capped at 20 SP per TG-005 to enable fast foundation validation and unblock parallel work. Single developer delivery model.
+- **Capacity Model**: Story Points (SP); honest re-estimate ~60.5 SP total across 5 iterations (Iteration 1 ~11 SP, Iteration 2a ~10 SP, Iteration 2b ~13 SP, Iteration 3 ~13.5 SP, Iteration 4 ~13 SP), within the approved 45-65 SP envelope. Every iteration is capped at ≤20 SP per TG-005 to keep slices AI-context-sized and enable fast validation. Original Iteration 2 (four user stories, ~23 SP) was split into 2a/2b per "split, don't raise"; see iterations/001/capacity-reestimate.md for the per-task re-estimate. Single developer delivery model.
 - **Drift Signals**:
   - Semantic drift: Detected by comparing implemented collision detection logic against FR-007 through FR-016 (active-sessions + feature claims) and identity split logic against FR-035 through FR-043
   - Scope drift: Detected if implementation adds multi-developer features not scoped in FR-001 through FR-043 (such as cross-project coordination, network-based locking, real-time collaborative editing, or file-surface overlap detection per Proposal 148 Layer 2)

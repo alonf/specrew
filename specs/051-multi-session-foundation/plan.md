@@ -7,7 +7,7 @@
 
 ## Summary
 
-F-051 addresses the inherited-stale-state problem encountered during F-051's own 2026-05-30 launch. The feature establishes a multi-session foundation for Specrew, enabling multiple developers to work on different features concurrently without merge conflicts on session-state files or state corruption. Cardinality: Carved from Proposals 010 + 134 with a 4-iteration, 45-65 SP delivery model. Iteration 1 (configuration + file classification) is capped at 20 SP to enable fast foundation validation and unblock parallel work in Iterations 2-4.
+F-051 addresses the inherited-stale-state problem encountered during F-051's own 2026-05-30 launch. The feature establishes a multi-session foundation for Specrew, enabling multiple developers to work on different features concurrently without merge conflicts on session-state files or state corruption. Cardinality: Carved from Proposals 010 + 134 with a 5-iteration (1, 2a, 2b, 3, 4), ~60.5 SP delivery model within the approved 45-65 SP envelope (honest re-estimate 2026-05-31). Every iteration is capped at ≤20 SP; original Iteration 2 was split into 2a/2b because it packed four user stories over the cap. Iteration 1 (configuration + file classification, ~11 SP) is the dependency gate that unblocks the rest.
 
 **Primary Technical Approach**: Layer 1 multi-developer coordination via session-mode config flag, per-session file classification with gitignore discipline, collision detection via `.specrew/active-sessions.yml`, feature claims tracking via `.squad/active-features.yml`, multi-developer auto-detection, Spec-Kit 0.8.18 upgrade, and brand-new worktree state recognition to eliminate false stale-state recovery prompts.
 
@@ -23,7 +23,7 @@ F-051 addresses the inherited-stale-state problem encountered during F-051's own
 **Project Type**: PowerShell module enhancement (Specrew core tooling)  
 **Performance Goals**: Collision detection within 2 seconds, multi-developer signal detection within one `specrew start` command, upgrade completion in under 2 minutes  
 **Constraints**: Atomic file writes via write-temp-rename pattern, 24-hour stale lock threshold, session-state local-only (no network transmission), Proposal 148 Layer 2+3 explicitly out of scope  
-**Scale/Scope**: Single-developer delivery model, ~4 iterations, estimated 45-65 SP (Iteration 1: ≤20 SP, Iteration 2: 12-18 SP, Iteration 3: 10-15 SP, Iteration 4: 8-12 SP)
+**Scale/Scope**: Single-developer delivery model, 5 iterations, ~60.5 SP honest re-estimate within the 45-65 SP envelope (Iteration 1 ~11, 2a ~10, 2b ~13, 3 ~13.5, 4 ~13; all ≤20 SP cap)
 
 ---
 
@@ -73,8 +73,8 @@ F-051 addresses the inherited-stale-state problem encountered during F-051's own
 | Acceptance scenario coverage | mechanical | User stories 1-10 with explicit acceptance scenarios | completed in spec.md |
 | Atomic write validation | manual-evidence | Race condition testing (two developers starting sessions ≤5ms apart) | planned (Iteration 1-4 test execution) |
 | Configuration validation | tooling | `.specrew/config.yml` schema + validation on `specrew config set` | planned (Iteration 1) |
-| Session state cleanup | tooling | Stale lock detection (≥24h age) + removal on next `specrew start` | planned (Iteration 2) |
-| Multi-developer signal detection | mechanical | Git author counting, machine fingerprint cardinality, branch fan-out pattern detection | planned (Iteration 2) |
+| Session state cleanup | tooling | Stale lock detection (≥24h age) + removal on next `specrew start` | planned (Iteration 2a) |
+| Multi-developer signal detection | mechanical | Git author counting, machine fingerprint cardinality, branch fan-out pattern detection | planned (Iteration 2b) |
 | Identity split enforcement | manual-evidence | Grep for `session_state_` in tracked files (must not find any) | planned (Iteration 4) |
 | Brand-new worktree detection | manual-evidence | Fresh worktree launch without stale-state A/B/C prompt | planned (Iteration 4) |
 
@@ -147,7 +147,7 @@ F-051 addresses the inherited-stale-state problem encountered during F-051's own
 - **Layering Gate** ✓: Changes classified as Spec Kit layer (PowerShell module core + configuration schema) with explicit rationale. No Squad-layer or team-configuration changes in F-051 scope.
 - **Traceability Gate** ✓: Each planned deliverable (per-iteration output below) links to specific user stories (US1-US10) and functional requirements (FR-001 through FR-043). Task-level traceability deferred to Phase 2 task generation.
 - **Ownership Gate** ✓: Single-developer delivery model (Alon Fliess, current user). Role ownership for implementation, review, and retrospective explicitly assigned to Implementer, Reviewer, Retro-Facilitator roles per `.squad/team.md`.
-- **Capacity Gate** ✓: Effort unit = Story Points (SP); iteration capacity = SP budget (Iteration 1: ≤20 SP, Iteration 2: 12-18 SP, Iteration 3: 10-15 SP, Iteration 4: 8-12 SP) per specification TG-005.
+- **Capacity Gate** ✓: Effort unit = Story Points (SP); iteration capacity = ≤20 SP per iteration per TG-005 (honest re-estimate: Iteration 1 ~11, 2a ~10, 2b ~13, 3 ~13.5, 4 ~13; total ~60.5 SP within the 45-65 envelope).
 - **Drift/Reconciliation Gate** ✓: Drift detection strategy = compare implemented features against FR-001 through FR-043; scope drift = detection if implementation adds features not in FRs or omits scoped items. Reconciliation path = Spec Steward reviews diffs, escalates to human if violations found.
 - **Verification Gate** ✓: Process verification = Spec Steward drift checks at plan/task/review boundaries; outcome verification = acceptance scenario tests for all P1 user stories (US1-US10) executed during Iterations 1-4; final approval by Reviewer role.
 
@@ -155,7 +155,7 @@ F-051 addresses the inherited-stale-state problem encountered during F-051's own
 
 ## Iteration Structure & Capacity Planning
 
-**Total Scope**: 45-65 SP across 4 iterations (measured approach: start with estimates, recalibrate per iteration actuals)
+**Total Scope**: ~60.5 SP across 5 iterations (honest re-estimate 2026-05-31, within the 45-65 SP envelope; every iteration ≤20 SP per TG-005). Original Iteration 2 split into 2a/2b — see iterations/001/capacity-reestimate.md.
 
 ### Iteration 1: Session Mode Configuration & File Classification (Target: ≤20 SP)
 
@@ -179,40 +179,61 @@ F-051 addresses the inherited-stale-state problem encountered during F-051's own
 
 **Unblocks**: Iterations 2-4 (collision detection and auto-detection depend on session_mode being configurable)
 
-**Estimated SP**: 12-15 SP (validation: configuration logic ≈3 SP, file classification ≈4 SP, gitignore generation ≈5 SP, testing ≈3 SP)
+**Estimated SP**: ~11 SP (honest re-estimate: config logic ≈2 SP, file classification ≈3.5 SP, gitignore + git-rm-cached ≈2.5 SP, tests + validation ≈3 SP)
 
 ---
 
-### Iteration 2: Collision Detection, Feature Claims & Auto-Detection (Target: 12-18 SP)
+### Iteration 2a: Collision Detection & Feature Claims (Target: ≤20 SP)
 
-**Scope**: FR-007 through FR-024 (18 functional requirements, 4 user stories: US3, US4, US5, US6)
+**Scope**: FR-007 through FR-016 (10 functional requirements, 2 user stories: US3, US4)
 
 **Deliverables**:
 
 1. `.specrew/active-sessions.yml` lock file management (create, heartbeat, cleanup, stale detection) (FR-007 through FR-011)
 2. `.squad/active-features.yml` claim tracking + refresh at lifecycle boundaries (FR-012 through FR-016)
-3. Per-iteration decisions split + JSON Lines append-only logs + Specrew.psd1 FileList alphabetic sort (FR-017, FR-018, FR-019)
-4. Multi-developer auto-detection signals (git authors, machine fingerprints, concurrent writes, branch fan-out) (FR-020)
-5. Recommendation surfaces (Welcome Orientation, `specrew where` dashboard, boundary-sync output) (FR-021, FR-022, FR-023, FR-024)
 
-**User Stories Covered**: US3 (Detect Concurrent Session Collisions), US4 (Claim Features), US5 (Reduce Shared-File Merge Conflicts), US6 (Detect Multi-Developer Activity)
+**User Stories Covered**: US3 (Detect Concurrent Session Collisions), US4 (Claim Features)
 
 **Quality Gates**:
 
 - Concurrent `specrew start` on same feature within 5 minutes triggers collision warning
 - Feature claim recorded at specify boundary, refreshed at each subsequent boundary
-- Multi-developer signals detected and recommendations shown within one `specrew start`
-- Merge conflicts on `.squad/decisions.md` and `Specrew.psd1` eliminated via splitting + sorting
 
 **Dependencies**: Iteration 1 (session_mode must be configurable first)
 
-**Unblocks**: Iteration 3 (infrastructure work can proceed in parallel; Iteration 4 depends on feature claims for identity split validation)
+**Unblocks**: Iteration 2b, Iteration 4 (identity split validation depends on feature claims)
 
-**Estimated SP**: 14-18 SP (active sessions ≈4 SP, claims ≈5 SP, anti-conflict tactics ≈3 SP, auto-detection ≈4 SP, testing ≈2 SP)
+**Estimated SP**: ~10 SP (active sessions ≈4 SP, claims ≈3.5 SP, tests ≈2.5 SP)
 
 ---
 
-### Iteration 3: Spec-Kit Upgrade & specrew update Fix (Target: 10-15 SP)
+### Iteration 2b: Conflict Reduction & Multi-Developer Auto-Detection (Target: ≤20 SP)
+
+**Scope**: FR-017 through FR-024 (8 functional requirements, 2 user stories: US5, US6)
+
+**Deliverables**:
+
+1. Per-iteration decisions split + JSON Lines append-only logs + Specrew.psd1 FileList alphabetic sort (FR-017, FR-018, FR-019)
+2. Multi-developer auto-detection signals (git authors, machine fingerprints, concurrent writes, branch fan-out) (FR-020)
+3. Recommendation surfaces (Welcome Orientation, `specrew where` dashboard, boundary-sync output) (FR-021, FR-022, FR-023, FR-024)
+
+**User Stories Covered**: US5 (Reduce Shared-File Merge Conflicts), US6 (Detect Multi-Developer Activity)
+
+**Quality Gates**:
+
+- Multi-developer signals detected and recommendations shown within one `specrew start`
+- Merge conflicts on `.squad/decisions.md` and `Specrew.psd1` eliminated via splitting + sorting
+- Recommendation suppressed when `session_mode` is already `multi`
+
+**Dependencies**: Iteration 2a (session/claim primitives)
+
+**Unblocks**: Iteration 3 (infrastructure work can proceed in parallel)
+
+**Estimated SP**: ~13 SP (anti-conflict tactics ≈3.5 SP, auto-detection ≈4.5 SP, recommendation surfaces ≈2 SP, tests ≈3 SP)
+
+---
+
+### Iteration 3: Spec-Kit Upgrade & specrew update Fix (Target: ≤20 SP; ~13.5 SP)
 
 **Scope**: FR-025 through FR-034 (10 functional requirements, 2 user stories: US7, US8)
 
@@ -236,11 +257,11 @@ F-051 addresses the inherited-stale-state problem encountered during F-051's own
 
 **Unblocks**: Iteration 4 can proceed in parallel (independence scope)
 
-**Estimated SP**: 12-14 SP (upgrade detection ≈3 SP, upgrade execution ≈4 SP, version fix ≈2 SP, dry-run ≈1 SP, testing ≈2 SP)
+**Estimated SP**: ~13.5 SP (upgrade detection ≈3 SP, upgrade execution ≈4 SP, version fix ≈2.5 SP, dry-run ≈0.5 SP, tests + validation ≈3.5 SP)
 
 ---
 
-### Iteration 4: Identity Split & Brand-New Worktree Detection (Target: 8-12 SP)
+### Iteration 4: Identity Split & Brand-New Worktree Detection (Target: ≤20 SP; ~13 SP)
 
 **Scope**: FR-035 through FR-043 (9 functional requirements, 2 user stories: US9, US10)
 
@@ -264,11 +285,11 @@ F-051 addresses the inherited-stale-state problem encountered during F-051's own
 - Worktree with prior feature state still triggers recovery prompt when mismatch detected
 - Machine fingerprints remain local-only (no telemetry transmission)
 
-**Dependencies**: Iteration 2 (feature claims must exist for identity split integration); Iteration 1 (session_mode and file classification must be in place)
+**Dependencies**: Iteration 2a (feature claims must exist for identity split integration); Iteration 1 (session_mode and file classification must be in place)
 
-**Unblocks**: Iteration-1-4 completion (final feature closure)
+**Unblocks**: feature closure (final iteration)
 
-**Estimated SP**: 10-12 SP (identity split ≈3 SP, migration logic ≈2 SP, brand-new detection ≈3 SP, fingerprinting validation ≈1 SP, testing ≈2 SP)
+**Estimated SP**: ~13 SP (identity split ≈2.5 SP, migration logic ≈1 SP, brand-new detection ≈3.5 SP, fingerprinting validation ≈0.5 SP, tests + validation ≈3 SP, docs reconcile ≈2.5 SP)
 
 ---
 
@@ -397,10 +418,10 @@ All success criteria from spec.md section "Success Criteria" apply:
 | --- | --- | --- | --- |
 | US1: Configure Multi-Session Mode | FR-001, FR-002, FR-003 | Iteration 1 | Planned |
 | US2: Avoid Per-Session File Conflicts | FR-004, FR-005, FR-006 | Iteration 1 | Planned |
-| US3: Detect Concurrent Session Collisions | FR-007, FR-008, FR-009, FR-010, FR-011 | Iteration 2 | Planned |
-| US4: Claim Features to Prevent Overlap | FR-012, FR-013, FR-014, FR-015, FR-016 | Iteration 2 | Planned |
-| US5: Reduce Shared-File Merge Conflicts | FR-017, FR-018, FR-019 | Iteration 2 | Planned |
-| US6: Detect Multi-Developer Activity | FR-020, FR-021, FR-022, FR-023, FR-024 | Iteration 2 | Planned |
+| US3: Detect Concurrent Session Collisions | FR-007, FR-008, FR-009, FR-010, FR-011 | Iteration 2a | Planned |
+| US4: Claim Features to Prevent Overlap | FR-012, FR-013, FR-014, FR-015, FR-016 | Iteration 2a | Planned |
+| US5: Reduce Shared-File Merge Conflicts | FR-017, FR-018, FR-019 | Iteration 2b | Planned |
+| US6: Detect Multi-Developer Activity | FR-020, FR-021, FR-022, FR-023, FR-024 | Iteration 2b | Planned |
 | US7: Upgrade Spec-Kit to 0.8.18 | FR-025, FR-026, FR-027, FR-028, FR-029, FR-030 | Iteration 3 | Planned |
 | US8: Fix Baseline Version Bump | FR-031, FR-032, FR-033, FR-034 | Iteration 3 | Planned |
 | US9: Split Session-State Transient Fields | FR-035, FR-036, FR-037, FR-038 | Iteration 4 | Planned |
