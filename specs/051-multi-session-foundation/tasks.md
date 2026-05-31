@@ -34,18 +34,18 @@ This tasks artifact defines a complete, dependency-ordered implementation plan f
 
 ### Session Mode Configuration (Phase 1, US1 → FR-001, FR-002, FR-003)
 
-- [ ] T004 [US1] Create `scripts/config-management.ps1` with `Set-SessionMode` function to update `.specrew/config.yml` session_mode field and validate value is `single` or `multi` (FR-001, FR-002) [effort: 1 SP] [SC: SC-001]
-- [ ] T005 [US1] Implement CLI command entry point `specrew config set session_mode <value>` in `scripts/specrew-cli.ps1` with success message and error handling (FR-002) [effort: 0.5 SP] [SC: SC-001]
+- [ ] T004 [US1] Create `scripts/specrew-config.ps1` + `scripts/internal/session-config.ps1` with `Set-SessionMode` function to update `.specrew/config.yml` session_mode field and validate value is `single` or `multi` (FR-001, FR-002) [effort: 1 SP] [SC: SC-001]
+- [ ] T005 [US1] Implement CLI command entry point `specrew config set session_mode <value>` via `scripts/specrew-config.ps1` dispatched from the `config` case in `scripts/specrew.ps1`, with success message and error handling (FR-002) [effort: 0.5 SP] [SC: SC-001]
 - [ ] T006 [P] [US1] Add default session_mode initialization logic to `specrew init` flow to set `session_mode: single` when not present in `.specrew/config.yml` (FR-003) [effort: 0.5 SP]
 - [ ] T007 [P] [US1] Create acceptance test for session mode configuration: verify `specrew config set session_mode multi` persists to config file and `specrew config set session_mode single` reverts it [effort: 0.5 SP] [test: acceptance]
 - [ ] T008 [P] [US1] Create acceptance test for session mode defaults: verify fresh `specrew init` results in `session_mode: single` in `.specrew/config.yml` [effort: 0.5 SP] [test: acceptance]
 
 ### File Classification & Gitignore Management (Phase 1, US2 → FR-004, FR-005, FR-006)
 
-- [ ] T009 [US2] Create `scripts/file-classification.ps1` with file classification schema function defining rules for: shared (committed, identical), per-session (gitignored), append-only-shared (committed, atomic append), regenerable (generated from shared sources) (FR-004) [effort: 1 SP] [SC: SC-001]
-- [ ] T010 [P] [US2] Implement gitignore generation logic in `scripts/file-classification.ps1` to create/update `.gitignore` with patterns for per-session files: `.specrew/last-*`, `.specify/feature.json`, `.specrew/start-context.json`, `.specrew/host-history.json`, `.specrew/.cache/`, `.squad/sessions/`, `.squad/decisions/inbox/`, `.specrew/last-validator-summary.json` (FR-005) [effort: 1 SP] [SC: SC-001]
+- [ ] T009 [US2] Create `scripts/internal/file-classification.ps1` with file classification schema function defining rules for: shared (committed, identical), per-session (gitignored), append-only-shared (committed, atomic append), regenerable (generated from shared sources) (FR-004) [effort: 1 SP] [SC: SC-001]
+- [ ] T010 [P] [US2] Implement gitignore generation logic in `scripts/internal/file-classification.ps1` to create/update `.gitignore` with patterns for per-session files: `.specrew/last-*`, `.specify/feature.json`, `.specrew/start-context.json`, `.specrew/host-history.json`, `.specrew/.cache/`, `.squad/sessions/`, `.squad/decisions/inbox/`, `.specrew/last-validator-summary.json` (FR-005) [effort: 1 SP] [SC: SC-001]
 - [ ] T011 [P] [US2] Integrate gitignore generation into `specrew init` flow to call file-classification logic and update `.gitignore` on each init run (FR-005) [effort: 0.5 SP]
-- [ ] T012 [US2] Implement `git rm --cached` cleanup in `scripts/file-classification.ps1` to remove previously tracked per-session files from git index without deleting from working directory (FR-006) [effort: 0.5 SP] [SC: SC-001]
+- [ ] T012 [US2] Implement `git rm --cached` cleanup in `scripts/internal/file-classification.ps1` to remove previously tracked per-session files from git index without deleting from working directory (FR-006) [effort: 0.5 SP] [SC: SC-001]
 - [ ] T013 [US2] Create cleanup step in `specrew init` to invoke `git rm --cached` for any per-session files that were previously committed (FR-006) [effort: 0.5 SP]
 - [ ] T014 [P] [US2] Create acceptance test for gitignore generation: verify `.gitignore` excludes all per-session file patterns after `specrew init` [effort: 0.5 SP] [test: acceptance]
 - [ ] T015 [P] [US2] Create acceptance test for git cleanup: verify previously tracked per-session files are removed from git index via `git rm --cached` without deleting working directory copies [effort: 0.5 SP] [test: acceptance]

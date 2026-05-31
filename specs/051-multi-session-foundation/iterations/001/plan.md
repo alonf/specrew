@@ -39,16 +39,16 @@ Iteration 1 is the foundation/dependency gate (TG-005): session_mode must be con
 | T001 | Module manifest scaffold for session-mode support | FR-001 | US1 | 0.5 | Implementer | `Specrew.psd1` | planned | claude | — | — |
 | T002 | Add session_mode key to `.specrew/config.yml` schema | FR-001 | US1 | 0.5 | Implementer | `.specrew/config.yml` | planned | claude | — | — |
 | T003 | File classification schema doc in `.specify/config.yml` | FR-004 | US2 | 0.5 | Implementer | `.specify/config.yml` | planned | claude | — | — |
-| T004 | `Set-SessionMode` function + validation | FR-001, FR-002 | US1 | 1.0 | Implementer | `scripts/config-management.ps1` | planned | claude | — | — |
-| T005 | `specrew config set session_mode` CLI entry | FR-002 | US1 | 0.5 | Implementer | `scripts/specrew-cli.ps1` | planned | claude | — | — |
-| T006 | Default session_mode=single in `specrew init` | FR-003 | US1 | 0.5 | Implementer | `scripts/specrew-cli.ps1` | planned | claude | — | — |
+| T004 | `Set-SessionMode` function + validation | FR-001, FR-002 | US1 | 1.0 | Implementer | `scripts/specrew-config.ps1`, `scripts/internal/session-config.ps1` | planned | claude | — | — |
+| T005 | `specrew config set session_mode` CLI entry | FR-002 | US1 | 0.5 | Implementer | `scripts/specrew.ps1`, `scripts/specrew-config.ps1` | planned | claude | — | — |
+| T006 | Default session_mode=single in `specrew init` | FR-003 | US1 | 0.5 | Implementer | `scripts/specrew-init.ps1` | planned | claude | — | — |
 | T007 | Acceptance test: session-mode set/revert | FR-002 | US1 | 0.5 | Implementer | `tests/` | planned | claude | — | — |
 | T008 | Acceptance test: fresh-init default single | FR-003 | US1 | 0.5 | Implementer | `tests/` | planned | claude | — | — |
-| T009 | `file-classification.ps1` classification function | FR-004 | US2 | 1.0 | Implementer | `scripts/file-classification.ps1` | planned | claude | — | — |
-| T010 | Gitignore generation (merge without dup) | FR-005 | US2 | 1.0 | Implementer | `scripts/file-classification.ps1` | planned | claude | — | — |
-| T011 | Integrate gitignore generation into `specrew init` | FR-005 | US2 | 0.5 | Implementer | `scripts/specrew-cli.ps1` | planned | claude | — | — |
-| T012 | `git rm --cached` cleanup function | FR-006 | US2 | 0.5 | Implementer | `scripts/file-classification.ps1` | planned | claude | — | — |
-| T013 | Init cleanup step invoking git-rm-cached | FR-006 | US2 | 0.5 | Implementer | `scripts/specrew-cli.ps1` | planned | claude | — | — |
+| T009 | `file-classification.ps1` classification function | FR-004 | US2 | 1.0 | Implementer | `scripts/internal/file-classification.ps1` | planned | claude | — | — |
+| T010 | Gitignore generation (merge without dup) | FR-005 | US2 | 1.0 | Implementer | `scripts/internal/file-classification.ps1` | planned | claude | — | — |
+| T011 | Integrate gitignore generation into `specrew init` | FR-005 | US2 | 0.5 | Implementer | `scripts/specrew-init.ps1` | planned | claude | — | — |
+| T012 | `git rm --cached` cleanup function | FR-006 | US2 | 0.5 | Implementer | `scripts/internal/file-classification.ps1` | planned | claude | — | — |
+| T013 | Init cleanup step invoking git-rm-cached | FR-006 | US2 | 0.5 | Implementer | `scripts/specrew-init.ps1` | planned | claude | — | — |
 | T014 | Acceptance test: gitignore excludes per-session patterns | FR-005 | US2 | 0.5 | Implementer | `tests/` | planned | claude | — | — |
 | T015 | Acceptance test: git-rm-cached without working-tree delete | FR-006 | US2 | 0.5 | Implementer | `tests/` | planned | claude | — | — |
 | T016 | Verify quickstart.md accurate vs shipped behavior | FR-001..006 | US1 | 0.5 | Implementer | `specs/051-multi-session-foundation/quickstart.md` | planned | claude | — | — |

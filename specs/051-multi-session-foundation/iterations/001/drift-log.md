@@ -22,9 +22,9 @@
 
 ## Summary
 
-**Total drift events**: 1
-**Resolution rate**: 100% (1/1 resolved)
-**Specification drift**: 1 detected, 1 resolved (capacity model)
+**Total drift events**: 2
+**Resolution rate**: 100% (2/2 resolved)
+**Specification drift**: 2 detected, 2 resolved (capacity model; plan-vs-codebase path convention)
 
 ## Events
 
@@ -55,6 +55,21 @@
 - Evidence: [capacity-reestimate.md](capacity-reestimate.md).
 
 Drift closed; before-implement capacity precondition now satisfiable.
+
+### D-002 — Plan-vs-codebase path convention (RESOLVED 2026-05-31, human-decision)
+
+**Detected**: 2026-05-31 at the start of implementation (T001-T005).
+
+**Drift**: plan.md / tasks.md / contracts referenced invented script paths — `scripts/config-management.ps1`, `scripts/file-classification.ps1`, and `scripts/specrew-cli.ps1`. Codebase audit: the real module has no such files; the CLI is `scripts/specrew.ps1` dispatching `switch ($Command)` to eight `scripts/specrew-<cmd>.ps1` commands, with 14 helpers under `scripts/internal/`. Following the plan literally would make F-051 the one feature with a non-conforming command-script pattern.
+
+**Resolution** (human-decision, implementation-aligned-to-codebase-idiom): the codebase convention is authoritative; plan paths were invented. F-051 code lands as:
+
+- `scripts/specrew-config.ps1` — new `config get|set session_mode` command (9th `specrew-*.ps1`)
+- `config` case added to `scripts/specrew.ps1` dispatch switch
+- `scripts/internal/session-config.ps1` + `scripts/internal/file-classification.ps1` — helper logic
+- defaults + gitignore + git-rm-cached wired via `scripts/specrew-init.ps1`
+
+**Reconciliation applied**: tasks.md T004/T005/T009/T010/T012 descriptions + iterations/001/plan.md Owner File Globs (T004/T005/T006/T009/T010/T011/T012/T013) updated to the real paths. Drift closed; TDD implementation proceeds on the idiomatic layout.
 
 ### Resolution Strategies (Unused)
 
