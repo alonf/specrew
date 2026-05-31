@@ -22313,3 +22313,19 @@ Documented in `specs/049-pipeline-hardening-intake/iterations/005/drift-log.md` 
 - **Task ID**: (none)
 - **Auth Commit Hash**: bfdd63ff4967cbb13b5533910406d60f1c76bba4
 - **Recorded At**: 2026-05-31T06:02:36Z
+
+## 2026-05-31T07:26:36Z — Boundary sync warning: tasks
+
+- **Boundary Type**: tasks
+- **Latest Recorded Boundary**: clarify
+- **Recorded At**: 2026-05-31T07:26:36Z
+- **Warning**: Expected next boundary 'plan' but received 'tasks'.
+
+## 2026-05-31T07:26:37Z — Boundary sync: tasks
+
+- **Boundary Type**: tasks
+- **Feature Ref**: 054-activate-spec-surfaces
+- **Iteration Number**: 001
+- **Task ID**: (none)
+- **Auth Commit Hash**: 682c719761a7691bf7f1faeca79f0148a25e31d3
+- **Recorded At**: 2026-05-31T07:26:37Z
