@@ -1,17 +1,17 @@
 # Iteration State: 001
 
 **Schema**: v1
-**Current Phase**: retro
-**Iteration Status**: retro
+**Current Phase**: complete
+**Iteration Status**: complete
 **Last Completed Task**: T019 (ALL Iteration-1 tasks done: T001-T019)
-**Tasks Remaining**: (none) — iteration complete; review-signoff accepted + retro authored; at iteration-closeout gate awaiting human verdict
+**Tasks Remaining**: (none) — iteration CLOSED (iteration-closeout synced 2026-05-31T15:24Z, approved by Alon); next: Iteration 2a
 **In Progress**: (none)
 **Baseline Ref**: a9600489511ce88125bba0eaaefd9079e9eb144c
 **Updated**: 2026-05-31T11:12:28Z
 
 ## Execution Summary
 
-- **Iteration 1 COMPLETE — 11/11 SP. Review-signoff accepted; retro authored; awaiting iteration-closeout verdict.** Validation (T016-T019, 2 SP):
+- **Iteration 1 CLOSED — 11/11 SP. Review-signoff accepted; retro done; iteration-closeout synced 2026-05-31T15:24Z (approved by Alon). Next: Iteration 2a.** Validation (T016-T019, 2 SP):
   - T016: quickstart.md drift fixed (stale `specrew-cli.ps1` -> `specrew.ps1`, a D-002 residue).
   - T017: data-model.md SessionModeConfig (`session_mode`) + FileClassificationRule (`pattern/category/reason`) verified to match the shipped `Get-FileClassification` schema — no drift.
   - T018: both acceptance suites PASS (feature-051-session-mode, feature-051-file-classification); slash-command-arg-whitelist regression PASS.
@@ -28,7 +28,7 @@
   - `session_mode: "single"` default added to config.yml template in BOTH scaffold-governance.ps1 mirrors (FR-003).
   - `Specrew.psd1` FileList updated (both new scripts, alphabetical).
   - Test `tests/unit/feature-051-session-mode.tests.ps1` — 10/10 PASS (T007 set/revert/invalid against real config; T008 default via real scaffold writer, fail-first verified). End-to-end CLI dispatch smoke verified.
-- **Remaining:** none — all of US1 + US2 + validation delivered; iteration awaiting closeout verdict.
+- **Remaining:** none — all of US1 + US2 + validation delivered; iteration CLOSED (iteration-closeout synced + approved 2026-05-31). Next: Iteration 2a.
 
 ## Notes
 

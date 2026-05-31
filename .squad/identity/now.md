@@ -1,21 +1,21 @@
 ---
-focus_area: "F-051 Multi-Session Foundation — Iteration 1 (session-mode config + file classification, FR-001-006) complete and accepted (11/11 SP); at iteration-closeout gate awaiting human verdict. Next: Iteration 2a (collision detection + feature claims, US3+US4)."
+focus_area: "F-051 Multi-Session Foundation — Iteration 1 (session-mode config + file classification, FR-001-006, 11/11 SP) CLOSED (iteration-closeout approved + synced 2026-05-31). Next: Iteration 2a (collision detection + feature claims, US3+US4, ~10 SP)."
 active_issues: "[]"
 schema: v1
-updated_at: 2026-05-31T14:42:49Z
+updated_at: 2026-05-31T15:24:13Z
 session_state_active: true
-session_state_boundary: retro
+session_state_boundary: iteration-closeout
 session_state_feature: 051-multi-session-foundation
 session_state_feature_path: "C:\Dev\Specrew-051\specs\051-multi-session-foundation"
-session_state_iteration: "001"
+session_state_iteration: 1
 session_state_task: "(none)"
-session_state_auth_commit: 5c116b910a287cfb4af5b7acccfa9046d5ad5e94
-session_state_recorded_at: 2026-05-31T14:42:49Z
+session_state_auth_commit: a9d26365d0e01d01b2dda1e4c3606443e64c7c49
+session_state_recorded_at: 2026-05-31T15:24:13Z
 ---
 
 # What We're Focused On
 
-**F-051 Multi-Session Foundation — in progress.** Iteration 1 (session-mode config + per-session file classification, FR-001-006, 11/11 SP) is **complete and accepted**; currently at the **iteration-closeout** gate awaiting human verdict. Restructured to 5 iterations (1, 2a, 2b, 3, 4) after the honest capacity re-estimate (~60.5 SP within the 45-65 envelope; drift D-001). Prior: F-050 shipped v0.29.0 stable, F-049 shipped v0.28.0 stable (both 2026-05-30).
+**F-051 Multi-Session Foundation — in progress.** Iteration 1 (session-mode config + per-session file classification, FR-001-006, 11/11 SP) is **CLOSED** — review-signoff accepted, retro done, iteration-closeout approved + synced 2026-05-31. Restructured to 5 iterations (1, 2a, 2b, 3, 4) after the honest capacity re-estimate (~60.5 SP within the 45-65 envelope; drift D-001). Next: Iteration 2a. Prior: F-050 shipped v0.29.0 stable, F-049 shipped v0.28.0 stable (both 2026-05-30).
 
 ## Remaining F-051 iterations
 

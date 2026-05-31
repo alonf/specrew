@@ -2,10 +2,10 @@
 
 **Schema**: v1
 **Spec**: [../../spec.md](../../spec.md)
-**Status**: retro
+**Status**: complete
 **Capacity**: 11/20 story_points
 **Started**: 2026-05-31
-**Completed**:
+**Completed**: 2026-05-31
 
 <!--
   Validator schema (canonical, enforced by validate-governance.ps1):
@@ -95,4 +95,4 @@ Iteration 1 is the foundation/dependency gate (TG-005): session_mode must be con
 ## Notes
 
 - Capacity 11 SP reflects the honest re-estimate (2026-05-31) that resolved drift D-001; supersedes the inflated 28 SP per-task markup from the 48→97 task expansion. See [capacity-reestimate.md](capacity-reestimate.md).
-- Lifecycle convention (see the validator-schema comment near the top of this file): iteration Status runs `planning → executing → reviewing → retro → complete`. This iteration has completed implementation + review-signoff and is at `retro` (current Status above), awaiting the iteration-closeout verdict.
+- Lifecycle convention (see the validator-schema comment near the top of this file): iteration Status runs `planning → executing → reviewing → retro → complete`. This iteration is `complete` (current Status above) — implementation + review-signoff (accepted) + retro done; iteration-closeout synced 2026-05-31T15:24Z.
