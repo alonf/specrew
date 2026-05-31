@@ -43,4 +43,4 @@ pwsh -NoProfile -File tests/integration/validation-contract-lane.ps1
 
 ## Boundary reminder
 
-This feature is currently approved only through `/speckit.plan`. Do not create `tasks.md`, implementation edits, or hardening execution evidence until a later human approval advances the next boundary.
+This feature is currently at the approved `tasks` boundary and `tasks.md` exists. Do not start before-implement work, implementation edits, or hardening execution evidence until a later human approval advances the next boundary.

@@ -16,7 +16,7 @@ Promote `/speckit.checklist` and `/speckit.analyze` into first-class Specrew dis
 **Target Platform**: Specrew repositories run through PowerShell-capable GitHub Copilot / Spec Kit workflows on Windows, macOS, and Linux  
 **Project Type**: PowerShell-based governance/extension product with Markdown-driven command-discovery surfaces  
 **Performance Goals**: Users should be able to identify the active lifecycle-adjacent Spec Kit commands and their correct timing from standard Specrew discovery surfaces within the spec's 2-minute success criterion window  
-**Constraints**: Keep lifecycle placement authoritative (`/speckit.checklist` before-plan, `/speckit.analyze` before-implement after complete `tasks.md`, `/speckit.taskstoissues` deferred); remain additive to existing governance; do not let placeholder `package.json` fixtures redefine repo architecture; stop at the plan boundary with no `tasks.md` or implementation edits  
+**Constraints**: Keep lifecycle placement authoritative (`/speckit.checklist` before-plan, `/speckit.analyze` before-implement after complete `tasks.md`, `/speckit.taskstoissues` deferred); remain additive to existing governance; do not let placeholder `package.json` fixtures redefine repo architecture; preserve this plan as planning-only truth now that `tasks.md` exists, without implying before-implement approval or implementation edits  
 **Scale/Scope**: One bounded brownfield planning slice covering discovery/docs, agent/prompt metadata, lifecycle contracts, validation evidence design, and canonical iteration-001 planning scaffold only
 
 ## Phase 1 Quality Planning
@@ -147,7 +147,7 @@ specs/054-activate-spec-surfaces/
 ├── iterations/
 │   └── 001/
 │       └── plan.md          # canonical planning scaffold
-└── tasks.md                 # created later by /speckit.tasks (not part of this boundary)
+└── tasks.md                 # produced at the approved tasks boundary; before-implement remains pending
 ```
 
 ### Source Code (repository root)

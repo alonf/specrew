@@ -5,7 +5,7 @@
 **Input**: Design documents from `specs/054-activate-spec-surfaces/`  
 **Prerequisites**: `plan.md`, `spec.md`, `research.md`, `data-model.md`, `contracts/`, `quickstart.md`  
 **Tests**: Required — `spec.md` defines mandatory user-story validation and `quickstart.md` defines the validation command set  
-**Capacity Target**: 8.0 story points
+**Capacity Target**: 8.75 story points
 
 **Organization**: Tasks are grouped by lifecycle foundation and user story so `/speckit.checklist` and `/speckit.analyze` can be surfaced independently while `/speckit.taskstoissues` remains explicitly deferred.
 
@@ -21,7 +21,7 @@
 
 **Verification**: Confirm `specs/054-activate-spec-surfaces/iterations/001/quality/` exists and the iteration plan links to the planned evidence files.
 
-- [ ] T001 [assigned_to: Planner] [effort: 0.25 SP] Create the F-054 quality-evidence scaffold in `specs/054-activate-spec-surfaces/iterations/001/quality/quality-evidence.md` and `specs/054-activate-spec-surfaces/iterations/001/quality/mechanical-findings.json`, and link those evidence targets from `specs/054-activate-spec-surfaces/iterations/001/plan.md` (Trace: FR-009, FR-011, SC-004, `contracts/quality-governance-artifacts.md`)
+- [ ] T001 [US3] [assigned_to: Planner] [effort: 0.25 SP] Create the F-054 quality-evidence scaffold in `specs/054-activate-spec-surfaces/iterations/001/quality/quality-evidence.md` and `specs/054-activate-spec-surfaces/iterations/001/quality/mechanical-findings.json`, and link those evidence targets from `specs/054-activate-spec-surfaces/iterations/001/plan.md` (Trace: FR-009, FR-011, SC-004, `contracts/quality-governance-artifacts.md`)
 
 ---
 
@@ -33,9 +33,9 @@
 
 **Verification**: Run `pwsh -NoProfile -File tests/integration/lifecycle-boundary-sync.tests.ps1` and `pwsh -NoProfile -File tests/integration/validation-contract-lane.ps1`.
 
-- [ ] T002 [assigned_to: Spec Steward] [effort: 0.50 SP] Align lifecycle-adjacent command metadata in `extensions/specrew-speckit/extension.yml` and `.specify/extensions/specrew-speckit/extension.yml` with `/speckit.checklist` before-plan surfacing, `/speckit.analyze` before-implement surfacing, and `/speckit.taskstoissues` deferred status (Trace: FR-001, FR-005, FR-010, FR-011)
-- [ ] T003 [P] [assigned_to: Reviewer] [effort: 0.50 SP] Extend `tests/integration/lifecycle-boundary-sync.tests.ps1` to enforce the authoritative placements for `/speckit.checklist` and `/speckit.analyze`, including rejection of premature analyze guidance before `tasks.md` exists (Trace: FR-006, FR-008, FR-011, SC-003)
-- [ ] T004 [P] [assigned_to: Reviewer] [effort: 0.50 SP] Extend `tests/integration/validation-contract-lane.ps1` to verify discovery-surface wording and `/speckit.taskstoissues` deferment remain consistent with `specs/054-activate-spec-surfaces/contracts/discovery-surfaces.md`, `specs/054-activate-spec-surfaces/contracts/lifecycle-placement.md`, and `specs/054-activate-spec-surfaces/contracts/quality-governance-artifacts.md` (Trace: FR-009, FR-010, FR-011, TG-001, SC-005)
+- [ ] T002 [US1, US2, US3] [assigned_to: Spec Steward] [effort: 0.50 SP] Align lifecycle-adjacent command metadata in `extensions/specrew-speckit/extension.yml` and `.specify/extensions/specrew-speckit/extension.yml` with `/speckit.checklist` before-plan surfacing, `/speckit.analyze` before-implement surfacing, and `/speckit.taskstoissues` deferred status (Trace: FR-001, FR-005, FR-010, FR-011)
+- [ ] T003 [P] [US2, US3] [assigned_to: Reviewer] [effort: 0.50 SP] Extend `tests/integration/lifecycle-boundary-sync.tests.ps1` to enforce the authoritative placements for `/speckit.checklist` and `/speckit.analyze`, including rejection of premature analyze guidance before `tasks.md` exists (Trace: FR-006, FR-008, FR-011, SC-003)
+- [ ] T004 [P] [US3] [assigned_to: Reviewer] [effort: 0.50 SP] Extend `tests/integration/validation-contract-lane.ps1` to verify discovery-surface wording and `/speckit.taskstoissues` deferment remain consistent with `specs/054-activate-spec-surfaces/contracts/discovery-surfaces.md`, `specs/054-activate-spec-surfaces/contracts/lifecycle-placement.md`, and `specs/054-activate-spec-surfaces/contracts/quality-governance-artifacts.md` (Trace: FR-009, FR-010, FR-011, TG-001, SC-005)
 
 **Checkpoint**: Lifecycle metadata, contract parity, and quality-evidence paths are ready for story work.
 
@@ -112,9 +112,9 @@
 
 **Verification**: Complete the markdownlint run, all five integration lanes, and the mechanical-check output reserved in the quality evidence plan.
 
-- [ ] T016 [P] [assigned_to: Implementer] [effort: 0.50 SP] Run `npx --yes markdownlint-cli README.md docs/user-guide.md .github/agents/*.md .github/prompts/*.md specs/054-activate-spec-surfaces/*.md` and record the stack-tooling evidence in `specs/054-activate-spec-surfaces/iterations/001/quality/quality-evidence.md` (Trace: FR-009, FR-011, SC-004, `contracts/quality-governance-artifacts.md`)
-- [ ] T017 [P] [assigned_to: Implementer] [effort: 0.75 SP] Run `pwsh -NoProfile -File tests/integration/slash-command-discovery.tests.ps1`, `pwsh -NoProfile -File tests/integration/slash-command-routing.tests.ps1`, `pwsh -NoProfile -File tests/integration/slash-command-coexistence.tests.ps1`, `pwsh -NoProfile -File tests/integration/lifecycle-boundary-sync.tests.ps1`, and `pwsh -NoProfile -File tests/integration/validation-contract-lane.ps1`, then record the results in `specs/054-activate-spec-surfaces/iterations/001/quality/quality-evidence.md` (Trace: FR-001, FR-002, FR-003, FR-004, FR-005, FR-006, FR-007, FR-008, FR-009, FR-010, FR-011, SC-001, SC-002, SC-003, SC-004, SC-005)
-- [ ] T018 [assigned_to: Reviewer] [effort: 0.50 SP] Run `extensions/specrew-speckit/scripts/run-mechanical-checks.ps1` (or `.specify/extensions/specrew-speckit/scripts/run-mechanical-checks.ps1` when validating the managed mirror) and write the dead-field, anti-pattern, and test-integrity summary to `specs/054-activate-spec-surfaces/iterations/001/quality/mechanical-findings.json` (Trace: FR-009, FR-011, `contracts/quality-governance-artifacts.md`)
+- [ ] T016 [P] [US3] [assigned_to: Implementer] [effort: 0.50 SP] Run `npx --yes markdownlint-cli README.md docs/user-guide.md .github/agents/*.md .github/prompts/*.md specs/054-activate-spec-surfaces/*.md` and record the stack-tooling evidence in `specs/054-activate-spec-surfaces/iterations/001/quality/quality-evidence.md` (Trace: FR-009, FR-011, SC-004, `contracts/quality-governance-artifacts.md`)
+- [ ] T017 [P] [US1, US2, US3] [assigned_to: Implementer] [effort: 0.75 SP] Run `pwsh -NoProfile -File tests/integration/slash-command-discovery.tests.ps1`, `pwsh -NoProfile -File tests/integration/slash-command-routing.tests.ps1`, `pwsh -NoProfile -File tests/integration/slash-command-coexistence.tests.ps1`, `pwsh -NoProfile -File tests/integration/lifecycle-boundary-sync.tests.ps1`, and `pwsh -NoProfile -File tests/integration/validation-contract-lane.ps1`, then record the results in `specs/054-activate-spec-surfaces/iterations/001/quality/quality-evidence.md` (Trace: FR-001, FR-002, FR-003, FR-004, FR-005, FR-006, FR-007, FR-008, FR-009, FR-010, FR-011, SC-001, SC-002, SC-003, SC-004, SC-005)
+- [ ] T018 [US3] [assigned_to: Reviewer] [effort: 0.50 SP] Run `extensions/specrew-speckit/scripts/run-mechanical-checks.ps1` (or `.specify/extensions/specrew-speckit/scripts/run-mechanical-checks.ps1` when validating the managed mirror) and write the dead-field, anti-pattern, and test-integrity summary to `specs/054-activate-spec-surfaces/iterations/001/quality/mechanical-findings.json` (Trace: FR-009, FR-011, `contracts/quality-governance-artifacts.md`)
 
 ---
 

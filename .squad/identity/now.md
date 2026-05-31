@@ -1,5 +1,5 @@
 ---
-focus_area: "Between features — F-049 shipped (v0.28.0 stable) + F-050 shipped (v0.29.0 stable, PR #1226 merged); F-051 (Multi-Session Foundation + Spec-Kit upgrade 0.8.13->0.8.18 + specrew update baseline bug-fix) queued; two parallel Crew shells about to start"
+focus_area: "Feature 054-activate-spec-surfaces active at tasks boundary (iteration 001)"
 active_issues: "[]"
 schema: v1
 updated_at: 2026-05-31T07:26:37Z
