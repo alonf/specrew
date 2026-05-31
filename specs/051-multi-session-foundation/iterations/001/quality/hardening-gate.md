@@ -10,8 +10,8 @@
 **Approval Ref**: —  
 **Reviewed By**: Specrew Crew Coordinator  
 **Reviewed At**: 2026-05-31  
-**Post-Implementation Verification**: pending — acceptance tests (T007/T008/T014/T015) must exercise real config persistence, real `.gitignore` content, and real git-index state; validator (T019) must show backward-compat green.  
-**Verified At**: —
+**Post-Implementation Verification**: verified — acceptance suites exercised real config persistence + real `.gitignore` content + real git-index state (feature-051-session-mode 10/0; feature-051-file-classification 29/0); `git rm --cached` data-loss guard confirmed by T015 (working copy kept); governance validator green (no FAIL/medium/hard). See coverage-evidence.md.  
+**Verified At**: 2026-05-31 (review-signoff, accepted)
 
 ## Concern Review
 
