@@ -152,3 +152,6 @@ closed:
   - feature: 049-pipeline-hardening-intake
     iteration: 004
     closed_at: 2026-05-29T00:25:08Z
+  - feature: 054-activate-spec-surfaces
+    iteration: 001
+    closed_at: 2026-05-31T11:05:37Z
