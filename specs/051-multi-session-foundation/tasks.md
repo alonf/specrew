@@ -51,8 +51,10 @@ This tasks artifact defines a complete, dependency-ordered implementation plan f
 
 ### Iteration 1 Validation & Documentation
 
-- [ ] T016 [P] Create `specs/051-multi-session-foundation/quickstart.md` with getting-started guide for session mode configuration and file classification [effort: 1 SP] [governance: documentation]
-- [ ] T017 Create `specs/051-multi-session-foundation/data-model.md` documenting SessionModeConfig entity with attributes (session_mode: single|multi, description, examples) [effort: 1 SP] [governance: data-model]
+> **Plan-boundary note (2026-05-31 repair):** `data-model.md`, `quickstart.md`, `research.md`, `contracts/multi-session-foundation.md`, and `review-diagrams.md` were authored at the plan boundary per the Spec-Kit plan-boundary artifact discipline (coordinator Rule 54 + F-054 precedent). T016/T017 are re-scoped from "create" to "verify-and-keep-accurate as Iteration-1 code lands" — the create work is already done; these tasks now cover keeping the artifacts in sync with shipped behavior.
+
+- [ ] T016 [P] Verify `specs/051-multi-session-foundation/quickstart.md` stays accurate against the shipped Iteration-1 session-mode + file-classification behavior; update any drifted commands/expected output [effort: 1 SP] [governance: documentation]
+- [ ] T017 Verify `specs/051-multi-session-foundation/data-model.md` SessionModeConfig + FileClassificationRule entities match the shipped Iteration-1 schema; reconcile any attribute drift [effort: 1 SP] [governance: data-model]
 - [ ] T018 Run all Iteration 1 acceptance tests and document results in test summary artifact [effort: 2 SP] [test: acceptance-suite]
 - [ ] T019 Execute Specrew validator on updated module to ensure backward compatibility and no regressions [effort: 1 SP] [test: regression-check]
 
