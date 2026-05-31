@@ -3,9 +3,9 @@ proposal: 139
 title: Multi-Agent Subagent Orchestration (Claude First, Multi-Host Extensible)
 status: candidate
 phase: phase-2
-estimated-sp: 15-25
+estimated-sp: 17-28
 priority-tier: 1
-discussion: surfaced 2026-05-27 during F-049 close + sequencing conversation; user direction explicit ("Support multi-agent at least for Claude — speed up and reduce cost"); empirically motivated by F-049's lifecycle re-runs burning Opus tokens on grep/explore/validator-run work that Haiku subagents could handle 10-15x cheaper + post-compaction discipline drop (Shape 3c) when single-Claude-instance context overflows; this current session itself used Explore + general-purpose subagents repeatedly during F-049 — empirical demonstration of the model Specrew should formalize
+discussion: surfaced 2026-05-27 during F-049 close + sequencing conversation; user direction explicit ("Support multi-agent at least for Claude — speed up and reduce cost"); empirically motivated by F-049's lifecycle re-runs burning Opus tokens on grep/explore/validator-run work that Haiku subagents could handle 10-15x cheaper + post-compaction discipline drop (Shape 3c) when single-Claude-instance context overflows; this current session itself used Explore + general-purpose subagents repeatedly during F-049 — empirical demonstration of the model Specrew should formalize. **Amended 2026-05-31** to add Claude dynamic workflows (v2.1.154+ / Opus 4.8 era, May 2026) as additional Pillar 1 substrate alongside the Task/Agent tool API — script-orchestrated parallel dispatch (up to 16 concurrent subagents per phase, capped at 1000 per run) with stricter context isolation than conversational subagents.
 ---
 
 # Multi-Agent Subagent Orchestration
@@ -58,7 +58,7 @@ This is multi-host adapter territory: build the contract Claude-first; extend to
 
 ## What — Six Pillars
 
-### Pillar 1: Subagent contract per host (~3-5 SP)
+### Pillar 1: Subagent contract per host (~3-5 SP, +0.5-1 SP for dispatch-kind dimension)
 
 Define a `SubagentInvoker` interface in Specrew's runtime abstraction (composes with Proposal 024 Multi-Host Runtime Abstraction CORE):
 
@@ -66,8 +66,9 @@ Define a `SubagentInvoker` interface in Specrew's runtime abstraction (composes 
 $invoker = Get-SubagentInvoker -ProjectRoot $resolvedProjectRoot
 $invoker.Kind                           # 'claude' | 'codex' | 'copilot' | 'antigravity' | 'none'
 $invoker.IsActive                       # capability flag
-$invoker.SupportsParallelDispatch        # capability flag
+$invoker.SupportsParallelDispatch       # capability flag
 $invoker.SupportedSubagentTypes         # array of supported subagent role keys
+$invoker.SupportedDispatchKinds         # array — 'task-tool' | 'dynamic-workflow' (Claude only, v2.1.154+) | 'powershell-parallel' (degraded)
 
 # Invocation:
 $result = $invoker.InvokeSubagent(@{
@@ -75,23 +76,30 @@ $result = $invoker.InvokeSubagent(@{
     description = 'short description'
     prompt = 'detailed task prompt'
     isolation = 'context'              # 'context' (default) | 'worktree' (when worktree-needed)
+    dispatchKind = 'task-tool'         # 'task-tool' (default, conversational) | 'dynamic-workflow' (script-orchestrated parallel, Claude only)
     runInBackground = $false
 }) -ErrorAction Stop
 ```
 
+**Dispatch-kind selection** (substrate choice):
+
+- `task-tool` — Claude Code's Task/Agent tool API. Conversational subagent, single-stream, suitable for one-shot lookups (code-search, dependency-research, single quality analysis). Default for all hosts that have a Task tool.
+- `dynamic-workflow` — Claude Code's dynamic workflows (v2.1.154+, Opus 4.8 era, May 2026). Script-orchestrated; dispatches up to 16 concurrent subagents per phase / 1000 per run; intermediate results held in script variables (NOT chat context) — stricter context isolation than `task-tool`. Suitable for parallel fan-out work (per-iteration validator runs, per-flavor design analysis, per-persona intake lenses, per-phase reviewer dispatch). Claude-only; other hosts fall back to `task-tool` or `powershell-parallel`.
+- `powershell-parallel` — fallback for hosts without subagent surface; PowerShell `ForEach-Object -Parallel` (Proposal 084 mechanism). No model-level isolation, but enables parallel work without subagent surface.
+
 Per-host adapters in `extensions/specrew-speckit/scripts/host-adapters/`:
 
-- `claude-subagent-adapter.ps1` — wraps Claude Code's Task/Agent tool API (native subagent surface)
-- `codex-subagent-adapter.ps1` — wraps Codex CLI's available subagent surface (limited today; placeholder + degraded-mode)
-- `copilot-subagent-adapter.ps1` — degraded-mode adapter (no native subagent; falls through to single-agent execution + cost-routing only)
-- `antigravity-subagent-adapter.ps1` — degraded-mode adapter (no native subagent; falls through)
+- `claude-subagent-adapter.ps1` — wraps BOTH Claude Code's Task/Agent tool API (native subagent surface) AND Claude Code's dynamic-workflows runtime (v2.1.154+). Adapter selects substrate per `dispatchKind` parameter; falls back to `task-tool` when `dynamic-workflow` requested but Claude version < 2.1.154
+- `codex-subagent-adapter.ps1` — wraps Codex CLI's available subagent surface (limited today; placeholder + degraded-mode); supports `task-tool` only when Codex matures, `powershell-parallel` fallback meanwhile
+- `copilot-subagent-adapter.ps1` — degraded-mode adapter (no native subagent; falls through to single-agent execution + cost-routing only); `powershell-parallel` for fan-out work
+- `antigravity-subagent-adapter.ps1` — degraded-mode adapter (no native subagent; falls through); `powershell-parallel` fallback
 - `none-adapter.ps1` — fallback when host is unsupported or detection fails
 
 Mirror parity per F-047 FR-014.
 
-### Pillar 2: Specrew-defined subagent catalog (~4-6 SP)
+### Pillar 2: Specrew-defined subagent catalog (~4-6 SP, +0.5 SP for dispatch-kind defaults)
 
-Catalog of subagent role types in `.specify/subagents/catalog.yml` (data-driven per the engine + data architecture pattern from F-049 iter-3 work):
+Catalog of subagent role types in `.specify/subagents/catalog.yml` (data-driven per the engine + data architecture pattern from F-049 iter-3 work). Each role specifies a `preferred_dispatch_kind` that the adapter substrate-switch honors when the active host supports it (Claude `dynamic-workflow` for parallel-dispatch roles; `task-tool` for conversational-fit roles; other hosts fall back per Pillar 1's substrate matrix):
 
 ```yaml
 schema: "v1"
@@ -99,6 +107,7 @@ subagents:
   - key: code-search
     description: "Ripgrep-style code search across project files; returns matching paths + line excerpts"
     preferred_tier: haiku        # cost-aware routing (Pillar 3); haiku for grep-class work
+    preferred_dispatch_kind: task-tool   # single conversational stream; not parallel
     isolation: context           # context-isolated subagent (default)
     primary_use_cases:
       - "find all references to X"
@@ -108,6 +117,7 @@ subagents:
   - key: validator-runner
     description: "Invokes validate-governance.ps1 + parses output + returns structured findings"
     preferred_tier: haiku
+    preferred_dispatch_kind: dynamic-workflow   # parallel per-iteration fan-out; script-aggregate
     isolation: context
     parallel_dispatch: true       # multiple validator runs can dispatch in parallel
     primary_use_cases:
@@ -118,6 +128,7 @@ subagents:
   - key: dependency-research
     description: "npm/nuget/PyPI/RubyGems metadata fetch + summarization; license info; alternatives"
     preferred_tier: sonnet
+    preferred_dispatch_kind: task-tool   # single-target lookup; conversational fit
     isolation: context
     primary_use_cases:
       - "research dependency X (license, alternatives, last-update, etc.)"
@@ -127,6 +138,7 @@ subagents:
   - key: quality-analyzer
     description: "Spec Kit /speckit.checklist generation; quality-lens evaluation; form-vs-meaning checks"
     preferred_tier: sonnet
+    preferred_dispatch_kind: task-tool   # single artifact at a time
     isolation: context
     primary_use_cases:
       - "generate per-feature requirements quality checklist (Proposal 138 Pillar 1)"
@@ -135,6 +147,7 @@ subagents:
   - key: design-alternative-lens
     description: "Per-flavor design analysis lens (simplest/reasonable/by-the-book per Proposal 137)"
     preferred_tier: sonnet
+    preferred_dispatch_kind: dynamic-workflow   # 3 flavors fan out in parallel via script orchestration
     isolation: context
     parallel_dispatch: true       # 3 design flavors can analyze in parallel
     primary_use_cases:
@@ -145,6 +158,7 @@ subagents:
   - key: intake-lens
     description: "Per-persona-lens substantive intake (Product Manager / UX / Architect / AI Researcher per F-049 iter-3)"
     preferred_tier: sonnet
+    preferred_dispatch_kind: dynamic-workflow   # 4 personas fan out in parallel via script orchestration
     isolation: context
     parallel_dispatch: true       # 4 persona lenses can run in parallel
     primary_use_cases:
@@ -154,21 +168,37 @@ subagents:
       - "intake from AI Researcher / Project Manager lens"
 
   - key: reviewer-agent
-    description: "Independent reviewer subagent for review-signoff boundary (composes with Proposal 102 cross-model independent reviewer)"
+    description: "Independent reviewer subagent for review-signoff boundary (composes with Proposal 102 cross-model independent reviewer + Proposal 145 Structured Multi-Phase Reviewer per-phase parallelism)"
     preferred_tier: opus
+    preferred_dispatch_kind: dynamic-workflow   # 7-phase Reviewer (Proposal 145) — independent phases (e.g., NFR + code-quality + test-coverage) dispatch in parallel; dependent phases (branch-hygiene → functional-correctness) stay sequential within the workflow script
     isolation: context
+    parallel_dispatch: true
     primary_use_cases:
       - "review feature implementation against spec at HEAD H"
       - "verify Pillar 5 file-tree-presence checks"
       - "evaluate review.md evidence integrity"
+      - "dispatch Proposal 145 7-phase reviewer with per-phase substrate selection"
 
   - key: research-explorer
     description: "Open-ended research across web + docs + repo for ambiguous questions"
     preferred_tier: sonnet
+    preferred_dispatch_kind: task-tool   # conversational follow-up + drill-down fits one-stream model
     isolation: context
     primary_use_cases:
       - "research best practices for X across multiple sources"
       - "investigate prior art for design decision Y"
+
+  - key: state-truth-auditor
+    description: "Cross-artifact state-truth audit (Proposal 142 expansion territory): boundary-state artifacts (start-context.json + now.md + last-start-prompt.md + plan.md + state.md + decisions.md + hardening-gate.md + dashboard.md timing + validator-summary timestamp). Empirically motivated by F-051 Iter-1 closeout 5-cycle Codex cross-review pattern (2026-05-31) where depth-N self-audit consistently missed depth-N+1 issues."
+    preferred_tier: sonnet
+    preferred_dispatch_kind: dynamic-workflow   # ~8-10 artifact-pair coherence checks dispatch in parallel; script-aggregate findings
+    isolation: context
+    parallel_dispatch: true
+    primary_use_cases:
+      - "audit boundary-state coherence across all 8+ load-bearing artifacts at iteration-closeout"
+      - "verify frontmatter ↔ body internal consistency per artifact"
+      - "cross-check decisions.md iteration_number vs start-context.json iteration_number"
+      - "verify dashboard.md render timing vs declared boundary state"
 ```
 
 Catalog is **data-driven**: adding a new subagent role = adding a YAML row + a prompt template; engine traversal stays stable. Domain-specific extensions in `subagents/extensions/<domain>.yml` (mirroring the engine + data architecture from F-049 iter-3 FR-029).
@@ -212,16 +242,18 @@ Per `cost_profile`:
 
 This is the minimal viable cost-routing slice of Proposal 068 — formalizes per-subagent tier selection. Full Proposal 068 (agent-discovered model catalog via `/specrew-research-models` skill) ships as follow-up.
 
-### Pillar 4: Validator + boundary-check parallelization (extends Proposal 084) (~2-4 SP)
+### Pillar 4: Validator + boundary-check parallelization (extends Proposal 084) (~2-4 SP, +1 SP for dynamic-workflow substrate)
 
-Proposal 084 (shipped feature-035) added PowerShell `ForEach-Object -Parallel` to validator iteration. Extend this with subagent dispatch:
+Proposal 084 (shipped feature-035) added PowerShell `ForEach-Object -Parallel` to validator iteration. Extend this with subagent dispatch using the Pillar 1 substrate matrix:
 
-- `extensions/specrew-speckit/scripts/validate-governance.ps1` gains optional `-UseSubagents` flag
-- When `-UseSubagents` set + a Claude session is active + subagent invoker available: dispatch per-iteration validator runs as parallel subagents (each runs on Haiku tier per catalog)
-- Boundary-check passes (handoff detection, verdict-history lookup, mirror parity, review evidence integrity) dispatched as parallel subagents
-- Aggregate results in main coordinator context
+- `extensions/specrew-speckit/scripts/validate-governance.ps1` gains optional `-UseSubagents` flag + `-DispatchKind` parameter (`auto` | `task-tool` | `dynamic-workflow` | `powershell-parallel`)
+- When `-UseSubagents` set + Claude session active + `dynamic-workflow` substrate available (v2.1.154+): dispatch per-iteration validator runs as a single dynamic workflow that spawns up to 16 concurrent Haiku-tier subagents (one per iteration); results aggregate in script variables and return as a single structured payload — main coordinator context stays clean
+- When Claude session active but `dynamic-workflow` unavailable (older Claude Code): fall back to per-iteration Task/Agent tool subagents (`task-tool` substrate); same Haiku tier; intermediate results land in main context (acceptable for small iteration counts)
+- When non-Claude host active: fall back to `powershell-parallel` (Proposal 084 mechanism); cost-routing via Pillar 3 still applies for model selection on single-agent invocations
+- Boundary-check passes (handoff detection, verdict-history lookup, mirror parity, review evidence integrity) dispatched as parallel subagents via the same substrate-switch logic
+- **State-truth audit dispatch** (composes with Proposal 142): the `state-truth-auditor` catalog role (Pillar 2) ships as a `dynamic-workflow` dispatch that fans out 8-10 artifact-pair coherence checks in parallel and aggregates findings — empirically motivated by the F-051 Iter-1 closeout 5-cycle Codex cross-review pattern where depth-N self-audit consistently missed depth-N+1 issues (one round of dynamic-workflow dispatch ≈ all 5 sequential cross-review rounds collapsed)
 
-For Specrew's own dogfooding: F-049 boundary-state validation runs across all 4 iterations + 28 tasks; serial single-agent approach = N×Opus tokens; parallel subagent approach = 1×Opus for coordination + N×Haiku for execution.
+For Specrew's own dogfooding: F-049 boundary-state validation runs across all 4 iterations + 28 tasks; serial single-agent approach = N×Opus tokens; parallel subagent approach via `dynamic-workflow` = 1×Opus for coordination + N×Haiku for execution + script-aggregate (no per-iteration result pollution in main context).
 
 ### Pillar 5: Context-window protection (~1-2 SP)
 
@@ -233,7 +265,13 @@ Each subagent runs in isolated context per Pillar 1's contract. This protects th
 - Dependency research summaries
 - Per-flavor design-alternative analyses (when Proposal 137 ships)
 
-Reduces compaction trigger frequency → reduces Shape 3c post-compaction discipline drop window → improves methodology adherence durability across long sessions. Composes with Proposal 133 (Specrew primer for compaction recovery) as defense-in-depth.
+**Substrate-relative isolation strength** (per Pillar 1 dispatch-kind choice):
+
+- `task-tool` subagents: results return INTO the main conversation as tool output. Better than no isolation (the subagent's intermediate reasoning + tool calls stay in subagent context) but the final payload lands in main context.
+- `dynamic-workflow` subagents: results held in JS script variables, NOT in the main chat context. Strict improvement — even the final payload can be filtered/aggregated/summarized via the orchestration script before any text returns to main context. **Net effect: dynamic workflows reduce main-context growth dramatically more than task-tool subagents for parallel-dispatch work.**
+- `powershell-parallel` (degraded mode): no model-context isolation; PowerShell variable scope only. Equivalent isolation strength to task-tool for the per-iteration script context.
+
+Reduces compaction trigger frequency → reduces Shape 3c post-compaction discipline drop window → improves methodology adherence durability across long sessions. Composes with Proposal 133 (Specrew primer for compaction recovery) as defense-in-depth. The dynamic-workflow substrate closes the compaction-vulnerability bug class (F-024 / F-046 / F-048 / Shape 3c) more comprehensively than originally planned — main context growth from validator + audit + research subagents drops to near-zero when work runs via dynamic workflows.
 
 ### Pillar 6: Multi-host extension (deferred — V2 scope)
 
@@ -251,29 +289,29 @@ V1 is single-iteration shippable at ~15-25 SP. Suggested iteration breakdown:
 
 | Iter | Scope | SP |
 |---|---|---|
-| 1 (V1 — recommended single iter) | Pillars 1+2+3+4+5: Claude subagent invoker + catalog + cost-routing + validator parallelization + context-window protection; per-host adapters as stubs (Codex/Copilot/Antigravity degraded-mode) | 15-25 |
+| 1 (V1 — recommended single iter) | Pillars 1+2+3+4+5: Claude subagent invoker (BOTH `task-tool` + `dynamic-workflow` substrates) + catalog with `preferred_dispatch_kind` + cost-routing + validator parallelization with substrate switch + context-window protection; per-host adapters as stubs (Codex/Copilot/Antigravity degraded-mode with `powershell-parallel` fallback) | 17-28 |
 | 2 (V2 — separate follow-up feature) | Pillar 6: Codex subagent adapter when surface matures; Aider/Amp adapters per Proposal 124 catalog expansion | (separate feature) |
 
 Splittable within V1 if appetite calls for it:
 
-- **V1a (foundation)**: Pillars 1+2 — adapter contract + catalog (~7-11 SP); ships independently as foundation
-- **V1b (routing + parallelization)**: Pillars 3+4+5 — cost-routing + validator parallelization + context isolation (~8-14 SP); depends on V1a
+- **V1a (foundation)**: Pillars 1+2 — adapter contract (both substrates) + catalog with dispatch-kind defaults (~8-12 SP); ships independently as foundation
+- **V1b (routing + parallelization)**: Pillars 3+4+5 — cost-routing + validator parallelization via substrate-switch + context isolation (~9-16 SP); depends on V1a
 
 But single-iter is preferred because the pillars compose tightly.
 
 ## Acceptance criteria
 
-- **AC1**: `Get-SubagentInvoker` returns the correct `Kind` for active host (claude | codex | copilot | antigravity | none)
-- **AC2**: Claude adapter invokes Claude Code's Task/Agent tool with correct subagent_type mapping per catalog
-- **AC3**: Codex/Copilot/Antigravity adapters return degraded-mode (single-agent execution + cost-routing only) without errors
-- **AC4**: Catalog at `.specify/subagents/catalog.yml` loaded + validated; adding new subagent role = YAML row addition (data-only, no script change)
+- **AC1**: `Get-SubagentInvoker` returns the correct `Kind` for active host (claude | codex | copilot | antigravity | none) AND the correct `SupportedDispatchKinds` (Claude with v2.1.154+: `task-tool` + `dynamic-workflow`; older Claude: `task-tool` only; other hosts: `task-tool` if available + `powershell-parallel` fallback)
+- **AC2**: Claude adapter invokes Claude Code's Task/Agent tool API (`task-tool` dispatch) AND Claude Code's dynamic-workflows runtime (`dynamic-workflow` dispatch when v2.1.154+) with correct subagent_type mapping per catalog
+- **AC3**: Codex/Copilot/Antigravity adapters return degraded-mode (single-agent execution + cost-routing + `powershell-parallel` fallback for fan-out) without errors
+- **AC4**: Catalog at `.specify/subagents/catalog.yml` loaded + validated; adding new subagent role = YAML row addition (data-only, no script change); `preferred_dispatch_kind` field honored by adapter substrate-switch when host supports it
 - **AC5**: Cost-aware routing per `.specrew/model-catalog.yml` correctly maps subagent tier → concrete model per host; `cost_profile` (lean | balanced | premium) honored
-- **AC6**: `validate-governance.ps1 -UseSubagents` dispatches per-iteration validator runs as parallel subagents when Claude session active; aggregates results correctly
+- **AC6**: `validate-governance.ps1 -UseSubagents -DispatchKind auto` dispatches per-iteration validator runs via the optimal substrate (dynamic-workflow on Claude v2.1.154+; task-tool on older Claude; powershell-parallel on other hosts); aggregates results correctly across substrates
 - **AC7**: Empirical token-cost measurement: F-049-equivalent feature using subagents shows ≥5× reduction in Opus token consumption vs single-agent baseline; record evidence in `tests/integration/subagent-cost-measurement.tests.ps1`
-- **AC8**: Context-window-size measurement: long-session simulation (50+ tool calls including grep + validator + research) with subagent dispatch shows ≥3× reduction in main coordinator context growth vs single-agent baseline
+- **AC8**: Context-window-size measurement: long-session simulation (50+ tool calls including grep + validator + research) with subagent dispatch shows ≥3× reduction in main coordinator context growth vs single-agent baseline; **AC8-extended**: dynamic-workflow dispatch shows additional ≥2× reduction over task-tool dispatch for parallel-fan-out work (Claude v2.1.154+ only)
 - **AC9**: Per-host adapter implementations mirror parity preserved (`extensions/specrew-speckit/scripts/host-adapters/` ↔ `.specify/extensions/...`)
-- **AC10**: Integration tests cover subagent invocation + parallel dispatch + cost-routing + catalog loading + degraded-mode fallback for non-Claude hosts
-- **AC11**: Documentation: `docs/user-guide.md` (or new `docs/multi-agent.md`) explains subagent model + when to use + cost implications
+- **AC10**: Integration tests cover subagent invocation + parallel dispatch (both substrates) + cost-routing + catalog loading + degraded-mode fallback for non-Claude hosts + Claude-version detection for dynamic-workflow availability
+- **AC11**: Documentation: `docs/user-guide.md` (or new `docs/multi-agent.md`) explains subagent model + substrate selection + when to use which dispatch kind + cost implications + Claude-version requirements
 
 ## Out of scope (V1)
 
@@ -332,11 +370,12 @@ But single-iter is preferred because the pillars compose tightly.
 ## Status history
 
 - 2026-05-27: candidate proposal drafted during F-049 close + sequencing conversation. User direction explicit: raise priority of multi-agent Claude support; speed up + reduce cost. Six pillars; 15-25 SP; V1 Claude-first with degraded-mode for other hosts. Empirically motivated by F-049 token economics + Shape 3c post-compaction discipline drop incidents + this session's empirical demonstration of subagent value (Explore + general-purpose subagents used repeatedly during F-049 work).
+- 2026-05-31: **amendment — Claude dynamic workflows added as additional Pillar 1 substrate.** Claude Code v2.1.154+ (Opus 4.8 era, May 2026) shipped script-orchestrated dynamic workflows: up to 16 concurrent subagents per phase, capped at 1000 per run, intermediate results held in JS script variables (NOT chat context). Discovered via user-flagged `/effort xhigh+workflow` mode in Claude Code session. The dynamic-workflows substrate is a strict capability upgrade over the Task/Agent tool API for parallel-dispatch + context-isolation work classes — same architectural goal as Pillar 1, more capable substrate. Amendment scope (~+2-3 SP, total 17-28): (a) Pillar 1 adds `SupportedDispatchKinds` capability + `dispatchKind` parameter; (b) Pillar 2 catalog schema gains `preferred_dispatch_kind` per role; (c) Pillar 4 validator-parallelization gains substrate-switch logic; (d) Pillar 5 context-protection notes dynamic-workflow is strict improvement; (e) new `state-truth-auditor` catalog role added (empirically motivated by F-051 Iter-1 closeout 5-cycle Codex cross-review pattern); (f) AC1/AC2/AC6/AC8/AC10/AC11 expanded for substrate-aware testing. No fundamental redesign; existing Pillar 1 contract generalizes cleanly to multiple substrates per host. Composition with Proposal 145 (Structured Multi-Phase Reviewer) strengthened — 7-phase reviewer dispatch uses dynamic-workflow on Claude for independent-phase parallelism.
 
 ## Cross-references
 
-- **Empirical motivation**: F-049 lifecycle re-runs (high Opus token consumption); F-024 / F-046 / F-048 compaction-vulnerability incidents; this session's empirical demonstration
-- **Strategic motivation**: Squad upstream has no subagent orchestration (verified via repo audit 2026-05-27 — `bradygaster/squad` README + docs); Spec-Kit has no subagent orchestration (verified via repo audit 2026-05-27 — `github/spec-kit` README + docs); both single-agent-loop designs
+- **Empirical motivation**: F-049 lifecycle re-runs (high Opus token consumption); F-024 / F-046 / F-048 compaction-vulnerability incidents; this session's empirical demonstration; **F-051 Iter-1 closeout 5-cycle Codex cross-review pattern (2026-05-31)** — depth-N self-audit consistently missed depth-N+1 issues; one round of dynamic-workflow-dispatched state-truth-auditor ≈ all 5 sequential cross-review rounds collapsed
+- **Strategic motivation**: Squad upstream has no subagent orchestration (verified via repo audit 2026-05-27 — `bradygaster/squad` README + docs); Spec-Kit has no subagent orchestration (verified via repo audit 2026-05-27 — `github/spec-kit` README + docs); both single-agent-loop designs. **Claude Code dynamic workflows (May 2026)** validate the architectural direction — Anthropic shipped substrate exactly matching what Pillar 1 anticipated; Specrew layered on top gets both substrates (task-tool + dynamic-workflow) at the cost of one adapter
 - file:///C:/Dev/Specrew/proposals/024-multi-host-runtime-abstraction.md — direct foundation
 - file:///C:/Dev/Specrew/proposals/068-cost-aware-model-routing.md — Pillar 3 absorbs minimal slice
 - file:///C:/Dev/Specrew/proposals/023-reactive-specialist-lifecycle.md — adjacent specialist activation story
@@ -352,4 +391,8 @@ But single-iter is preferred because the pillars compose tightly.
 - file:///C:/Dev/Specrew/proposals/039-squad-upstream-reconciliation.md — upstream contribution pattern
 - Memory: [[reference-brady-gaster-squad-inventor-2026-05-25]] — strategic upstream channel
 - Memory: [[specrew-primer-persistent-host-instructions-2026-05-26]] — Pillar 5 composes for compaction defense-in-depth
+- Memory: [[project-f051-iter1-closeout-5-cycle-lesson-2026-05-31]] — empirical motivation for the new `state-truth-auditor` catalog role; depth-N self-audit < depth-N+1 cross-review pattern
+- Memory: [[project-proposal-150-agent-support-hardening-2026-05-31]] — Codex reframing pattern; Items 4+5 of 150 (command manifest + structured hardening updater) reduce subagent-substrate-selection friction
+- Anthropic: [Dynamic workflows docs](https://code.claude.com/docs/en/workflows) — Pillar 1 `dynamic-workflow` substrate reference
+- Anthropic: [Introducing dynamic workflows in Claude Code (blog)](https://claude.com/blog/introducing-dynamic-workflows-in-claude-code) — capability announcement (May 2026)
 - INDEX: file:///C:/Dev/Specrew/proposals/INDEX.md
