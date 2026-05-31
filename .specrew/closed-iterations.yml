@@ -155,3 +155,6 @@ closed:
   - feature: 051-multi-session-foundation
     iteration: 001
     closed_at: 2026-05-31T15:24:14Z
+  - feature: 051-multi-session-foundation
+    iteration: "002"
+    closed_at: 2026-05-31T20:54:00Z
