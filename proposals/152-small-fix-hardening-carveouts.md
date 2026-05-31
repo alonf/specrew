@@ -1,5 +1,5 @@
 ---
-proposal: 150
+proposal: 152
 title: Small-Fix Hardening Carveouts (Iteration Padding, Allow-All Safety, Windows Shell Rule)
 status: shipped
 phase: phase-2
@@ -32,4 +32,4 @@ F-051 Iteration 2a closeout surfaced three small but recurring governance hazard
 
 ## Status History
 
-- **2026-06-01**: Shipped as a Proposal 067 small-fix slice between F-051 Iteration 2a closeout and Iteration 2b opening.
+- **2026-06-01**: Shipped as a Proposal 067 small-fix slice between F-051 Iteration 2a closeout and Iteration 2b opening; renumbered to Proposal 152 during PR merge reconciliation to avoid the existing Proposal 150 draft on main.

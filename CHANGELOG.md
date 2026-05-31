@@ -6,9 +6,56 @@ baseline that each release number represents.
 
 ## Unreleased
 
+### Added
+
+- **Feature 051 (Multi-Session Foundation)** — introduces multi-session coordination primitives across three closed iterations:
+  - Session-mode configuration and per-file session-surface classification.
+  - Session locks and feature claims for same-feature coordination.
+  - Conflict-reduction primitives: per-iteration decision splitting, append-only lifecycle events, and sorted `Specrew.psd1` FileList writes.
+  - Multi-developer signal detection and recommendation surfaces in `specrew start`, `specrew where`, and boundary-sync output.
+
 ### Fixed
 
-- **Proposal 150 small-fix slice**: normalized iteration-closeout numbers before closed-index and dashboard writes, clarified that `--allow-all` affects tool-call approval only, and added a Windows/PowerShell shell rule to generated coordinator prompts.
+- **Proposal 152 small-fix slice**: normalized iteration-closeout numbers before closed-index and dashboard writes, clarified that `--allow-all` affects tool-call approval only, and added a Windows/PowerShell shell rule to generated coordinator prompts.
+
+## [0.30.0] - 2026-05-31
+
+### Added
+
+- **Feature 054 (Activate Spec Surfaces)** — makes three lifecycle-adjacent Spec Kit commands discoverable and correctly positioned (Proposal 138):
+  - **`/speckit.checklist` surfaced at before-plan** as a proportional requirements-quality aid (recommended for substantive work, optional for low-risk slices) — across both before-plan command-surface mirrors, `.github/agents/speckit.plan.agent.md` + `speckit.checklist.agent.md` + `.github/prompts/speckit.checklist.prompt.md`, `README.md`, and `docs/user-guide.md`.
+  - **`/speckit.analyze` surfaced at before-implement** (only after a complete `tasks.md`), framed as an additive cross-artifact consistency review that complements — does not replace — Specrew governance, with a premature-use redirect — across both before-implement command-surface mirrors, `speckit.tasks.agent.md` + `speckit.analyze.agent.md` + `speckit.analyze.prompt.md`, `README.md`, and `docs/user-guide.md`.
+  - **`/speckit.taskstoissues` marked deferred** (not part of the default lifecycle in this slice) — `speckit.taskstoissues.agent.md` + prompt + discovery surfaces.
+  - **`lifecycle_adjacent_commands` metadata block** added to both `extension.yml` mirrors as the authoritative placement source.
+  - **Regression coverage**: new `tests/integration/discovery-surface-contract.ps1` lane plus extensions to the slash-command-routing/coexistence/discovery and lifecycle-boundary-sync lanes — 5/5 lanes green with positive + negative paths.
+
+### Fixed
+
+- **`lifecycle-boundary-sync.tests.ps1`** pre-existing breakage against the feature-closeout-working-tree + F-033 markdownlint boundary gates (the test predated those gates and never committed between scratch syncs) — now mirrors real boundary-commit discipline.
+
+### Known follow-ups (deferred carry-forward chores)
+
+- **Upstream Spec Kit template lint cleanup** — ~58 pre-existing MD031/MD032/MD047 violations in untouched `.github/agents/*.md` + `.github/prompts/*.md` templates; F-054-touched files are clean. Standalone chore.
+- **Spec-Kit pin bump 0.8.13 -> 0.8.18** (carried from 0.29.0 follow-ups) still pending; `.specrew/config.yml` ships the 0.8.13 pin.
+
+## [0.29.0] - 2026-05-30
+
+### Added
+
+- **Feature 050 (Cursor Host Package)** — three-iteration feature shipping Cursor as the fifth first-class Specrew host:
+  - **Proposal 114 — Cursor Host Package (Iteration 001, FR-001..FR-007, FR-009..FR-011)**: `specrew start --host cursor "<task>"` launches the standalone `cursor-agent` CLI with Specrew's coordinator prompt. Host implementation follows the F-044 per-host architecture (`hosts/cursor/` package with manifest + handlers + coordinator-rules). 5-function contract: `New-CursorLaunchInvocation` (interactive `cursor-agent "<prompt>" --workspace <path>` invocation; `--allow-all` maps to `--force` via `ConvertTo-CursorFlag`; `--print` and `--trust` reserved as headless-only and NOT used for interactive launch), `Test-CursorRuntimeInstalled`, `Get-CursorSignals`, `Install-CursorCrewRuntime` (deploys Specrew Crew identity to `.cursor/rules/*.mdc` Project Rules — Cursor's auto-attached context mechanism; AGENTS.md serves as the coordinator instructions file). MenuPriority 1.5 places Cursor second in the interactive selection menu (after Claude). HasUserSlashCommandSurface = $false (Cursor uses always-attached rules, not invocable slash commands).
+  - **Test coverage (Iteration 002, FR-005..FR-007)**: real-`cursor-agent` version-probe fixture in `tests/integration/host-cursor.tests.ps1` (skip-guarded when binary absent); dedicated launch-path integration smoke `tests/integration/host-cursor-launch.tests.ps1` exercising the full dispatch (`Get-SpecrewHostLaunchInvocation` -> `Invoke-HostHandler` -> `New-CursorLaunchInvocation`); explicit cursor assertions added to `host-detection-ux.tests.ps1` (cursor in supported-hosts matrix + interactive launch shape verification).
+  - **Documentation (Iteration 003, FR-008)**: `docs/getting-started.md` adds Cursor host-table row, Cursor Quickstart callout, install/binary notes (`cursor-agent`, no slash palette, `--allow-all`->`--force` flag mapping); `docs/user-guide.md` adds dedicated Cursor interaction-model section, five-host counts, Cursor column in flag/capability/charter tables. Human-verified end-to-end live smoke test confirmed SC-001/005 (launch + interactive Cursor session against real `cursor-agent` v2026.05.28).
+- **Pre-publish Docker harness Phase 2 bidirectional FileList completeness guard** (PR #1225, from F-049 directional-blind-spot lesson) — closes the v0.28.0-beta.1 omission where `scripts/internal/user-profile.ps1` shipped without a FileList entry. Validator now diffs source-tree against FileList declarations and fails if any deployable source file is undeclared.
+
+### Changed
+
+- Five-host parity across README + getting-started + user-guide narratives.
+
+### Known follow-ups (deferred carry-forward chores)
+
+- **Proposal 134 baseline-bump bug-fix slice** (in scope for F-051): `specrew update` should bump `.specrew/config.yml specrew_version` to match installed module; currently doesn't. Workaround: manual edit + commit. Same family as the installed-module-bundled supported-versions.yml staleness (also resolved naturally when next Specrew release publishes with current main's pin).
+- **Spec-Kit pin bump 0.8.13 -> 0.8.18** validated + landed on main (precursor chore commit `ee320e79`); installed v0.29.0 still ships with the 0.8.13 pin (publish-time snapshot). Next Specrew release will ship the 0.8.18 pin in its bundled snapshot.
 
 ## [0.28.0] - 2026-05-29
 

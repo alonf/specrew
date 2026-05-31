@@ -30,6 +30,7 @@ $scriptMap = [ordered]@{
     'handoff governance jargon response' = Join-Path $repoRoot 'tests\integration\handoff-governance-jargon-response-test.ps1'
     'handoff governance plain-language response' = Join-Path $repoRoot 'tests\integration\handoff-governance-plain-language-response-test.ps1'
     'handoff governance review-file reference' = Join-Path $repoRoot 'tests\integration\handoff-governance-review-file-reference-test.ps1'
+    'discovery surface contract'                = Join-Path $repoRoot 'tests\integration\discovery-surface-contract.ps1'
 }
 
 foreach ($label in $scriptMap.Keys) {

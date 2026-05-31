@@ -1,45 +1,60 @@
 ---
 proposal: 120
-title: Handoff-Block Validator Enforcement + Non-Specrew-Session Bypass Detection
+title: Handoff Contract Validator Enforcement + Non-Specrew-Session Bypass Detection
 status: candidate
 phase: phase-2
-estimated-sp: 6-10
+estimated-sp: 7-12
 priority-tier: 1
-discussion: **HIGH PRIORITY (Tier 1)** as of 2026-05-27 — Pillar 5 added after PlanningPoC iter-004 Reviewer-approved-working-tree-only-state empirical evidence. Pillar 5 is the most consequential shape of the form-without-runtime-compliance family because it's the only one where delivered CODE can permanently vanish (other shapes corrupt metadata/audit only). Empirical motivation now spans Shapes 1-5: 2026-05-25 PlanningPoC Squad+Copilot silence + Antigravity F-046 question-prompt substitution + 2026-05-26 PlanningPoC iter-002 silent boundary-state auto-advance (Picard catch) + **2026-05-27 PlanningPoC iter-004 reviewer-approves-working-tree-only-state (7 production files cited in review.md never committed, recovered via `29fce04`)**. Queued in [[non-specrew-session-bypasses-triggers-2026-05-25]] + [[shape5-reviewer-approves-working-tree-only-state-2026-05-27]]; expanded 2026-05-26 with Pillar 4 + 2026-05-27 with Pillar 5.
+discussion: **HIGH PRIORITY (Tier 1)** as of 2026-05-27; amended 2026-05-31 after a live regression showed the generated start prompt still mandates the legacy `=== SPECREW HANDOFF ===` sentinel while shipped Proposal 007 expects the three-section boundary handoff (`What I just did` / `Why I stopped` / `What I need from you`) with clickable `file:///` inspection targets. Proposal 151 extracts the urgent 2-4 SP contract-unification fix; Proposal 120 remains the broader validator/backstop bundle. Pillar 5 added after PlanningPoC iter-004 Reviewer-approved-working-tree-only-state empirical evidence. Pillar 5 is the most consequential shape of the form-without-runtime-compliance family because it is the only one where delivered CODE can permanently vanish (other shapes corrupt metadata/audit only). Empirical motivation now spans Shapes 1-5: 2026-05-25 PlanningPoC Squad+Copilot silence + Antigravity F-046 question-prompt substitution + 2026-05-26 PlanningPoC iter-002 silent boundary-state auto-advance (Picard catch) + **2026-05-27 PlanningPoC iter-004 reviewer-approves-working-tree-only-state (7 production files cited in review.md never committed, recovered via `29fce04`)**. Queued in [[non-specrew-session-bypasses-triggers-2026-05-25]] + [[shape5-reviewer-approves-working-tree-only-state-2026-05-27]]; expanded 2026-05-26 with Pillar 4 + 2026-05-27 with Pillar 5 + 2026-05-31 with the canonical handoff-contract correction.
 ---
 
-# Handoff-Block Validator Enforcement + Non-Specrew-Session Bypass Detection
+# Handoff Contract Validator Enforcement + Non-Specrew-Session Bypass Detection
 
 ## Why
 
-Coordinator-prompt rules 45-47 (added in F-040 Wave A1, commit `a45232af`) require a structured `=== SPECREW HANDOFF ===` block at every boundary stop and lifecycle-end. The block contains STOPPED AT / STATUS / WHY STOPPED / HUMAN ACTION NEEDED / RESUME WITH fields. **The rule is rule-prescribed in the coordinator prompt but NOT mechanically enforced by the validator.** Agents that don't 100% honor the prescription fall back to host-native or model-natural patterns instead — and there is no detection layer that catches the drift.
+Coordinator-prompt rules 45-47 (added in F-040 Wave A1, commit `a45232af`) originally required a structured `=== SPECREW HANDOFF ===` block at every boundary stop and lifecycle-end. Shipped Proposal 007 later made the human-facing contract more specific: every real boundary stop must use the three-section handoff (`What I just did`, `Why I stopped`, `What I need from you`) and must include clickable `file:///` inspection targets when artifacts exist.
+
+As of 2026-05-31, the start-prompt generator still contains the older sentinel-block instruction while the coordinator governance and role charters contain the newer Proposal 007 contract. That conflict can produce a form-correct but UX-regressed stop: status lines and an interactive verdict menu, but no substantive three-section summary and no clickable artifact URLs. **Proposal 151 owns the urgent small fix to unify the prompt surfaces.** This broader Proposal 120 owns the follow-on validator/backstop family after the canonical contract is unified.
+
+The rule is prescribed in prompt surfaces but not mechanically enforced end-to-end. Agents that do not 100% honor the prescription fall back to host-native or model-natural patterns instead, and there is no detection layer that catches the drift.
 
 Empirically observed during the 2026-05-25 dogfooding wave as part of a broader "Specrew shape produced without Specrew runtime compliance" pattern — three independent failure shapes:
 
 1. **Trigger bypass** — agent writes structural artifacts but skips trigger-driven side effects. F-044 implemented by standalone Claude session: all 8 iteration directories got plan/state/review/retro/scope/code-map/drift-log but ZERO got `dashboard.md` because the auto-render path runs through `sync-boundary-state.ps1` which was never invoked. F-043 iter 001 same shape. 10 soft warnings, all `missing-dashboard-artifact`.
 2. **Wrong location** — agent writes canonical artifacts to its ephemeral session-scratch folder. Antigravity F-046 specify-phase wrote `implementation_plan.md` to `C:/Users/alon.HOME/.gemini/antigravity-cli/brain/<session-id>/` instead of `specs/046-046-bug-bash/plan.md`. Doesn't survive sessions, isn't version-controlled, isn't discoverable by other agents.
-3. **Handoff-block dropped** — agent stops at boundary or lifecycle-end without emitting the structured `=== SPECREW HANDOFF ===` block. Three observed sub-triggers:
+3. **Canonical handoff dropped or substituted** — agent stops at boundary or lifecycle-end without emitting the Proposal 007 three-section handoff with reviewable `file:///` targets. Older incidents describe this as the `=== SPECREW HANDOFF ===` block being dropped; after the 2026-05-31 amendment, the sentinel block is only legacy evidence, not the canonical user-facing contract. Three observed sub-triggers:
    - **3a. Mid-flow agent-completion silence** — when a sub-agent (Scribe, Reviewer, etc.) finishes its task, the coordinator drops to silence instead of emitting the handoff. Squad+Copilot PlanningPoC after Scribe completion (commits `32a4a74` + `903714e`).
    - **3b. Host-native question-prompt substitution** — host-native UI primitives replace the handoff block. Antigravity F-046 specify-phase emitted a structured-question-prompt instead of the `=== SPECREW HANDOFF ===` sentinel.
    - **3c. Post-compaction discipline drop (added 2026-05-26)** — coordinator's discipline degrades after conversation compaction. The PRIOR stop (pre-compaction) correctly emitted the three-section handoff; the IMMEDIATE NEXT stop (post-compaction) drops to plain prose without the structured block. Empirical: 2026-05-26 PlanningPoC review-rerun acceptance — pre-compaction stop after DR-004 fix commit had proper handoff; post-compaction stop after review-rerun acceptance commit `f06491e5` dropped to "Review rerun passed. The packet is now accepted..." with no structured block. Recurring within the same dogfooding session counts the gap as universal across compaction boundaries. Adjacent to but distinct from F-024 autopilot-override (which is host-runtime-level); this is agent-discipline-level degradation that the same agent instance exhibits within a single host. Runtime hook enforcement (Proposal 105) catches sub-cases 3b + 3c that prose discipline cannot.
 
-All three shapes share the same root cause: **prose-based runtime convention that the coordinator prompt prescribes is not mechanically enforced.** Multi-host expansion (F-040 onward) makes the pattern universal across hosts — every host that doesn't 100% honor coordinator-prompt prescriptions falls back to model-natural behavior. Compaction expansion (long sessions) makes it universal within hosts — even agents that honor the rules pre-compaction may drop them post-compaction.
+All of these shapes share the same root cause: **prose-based runtime convention that the coordinator prompt prescribes is not mechanically enforced.** Multi-host expansion (F-040 onward) makes the pattern universal across hosts — every host that doesn't 100% honor coordinator-prompt prescriptions falls back to model-natural behavior. Compaction expansion (long sessions) makes it universal within hosts — even agents that honor the rules pre-compaction may drop them post-compaction.
 
 ## What
 
-Validator rule extension at `extensions/specrew-speckit/scripts/validate-governance.ps1` (mirrored to `.specify/`) detecting the three shapes:
+Validator rule extension at `extensions/specrew-speckit/scripts/validate-governance.ps1` (mirrored to `.specify/`) detecting the five shapes:
 
-### Pillar 1: Handoff-block presence check (~1-2 SP)
+### Pillar 0: Canonical handoff contract precondition (~1 SP, extracted to Proposal 151 for immediate fix)
 
-Detect agent stop signals (lifecycle phase transition, session-end, boundary verdict request) without a preceding `=== SPECREW HANDOFF ===` block in the last N lines of relevant output OR in the most recent boundary commit message. Soft WARN severity (does not block boundary advancement); surfaces the gap visibly in validator output.
+Before Proposal 120's broader validator rules harden anything, the source prompt surfaces must agree on the canonical contract:
 
-Helper function `Test-SpecrewHandoffBlockPresent` shipped in `extensions/specrew-speckit/scripts/shared-governance.ps1` so other validator rules + boundary-sync helpers can call it for "advance pre-condition: handoff was emitted" short-circuits.
+- Boundary stops use the Proposal 007 three-section format: `What I just did`, `Why I stopped`, `What I need from you`
+- Review/approval handoffs include `file:///` inspection targets when artifacts exist
+- Interactive verdict menus are allowed only as an affordance after the three-section handoff; they never replace it
+- The legacy `=== SPECREW HANDOFF ===` sentinel may remain as migration-compatible evidence only if needed, but it is not the primary UX contract
+
+Proposal 151 is the small high-priority slice that fixes this precondition. Proposal 120 should not ship broad enforcement until this precondition is in place.
+
+### Pillar 1: Canonical handoff presence check (~1-2 SP)
+
+Detect agent stop signals (lifecycle phase transition, session-end, boundary verdict request) without a preceding canonical three-section handoff in the last N lines of relevant output OR in the most recent boundary commit message/session evidence. Soft WARN severity initially (does not block boundary advancement); surfaces the gap visibly in validator output.
+
+Helper function `Test-SpecrewCanonicalHandoffPresent` (renaming or superseding the current `Test-SpecrewHandoffBlockPresent`) ships in `extensions/specrew-speckit/scripts/shared-governance.ps1` so other validator rules and boundary-sync helpers can call it for "advance pre-condition: handoff was emitted" short-circuits.
 
 Detection heuristic:
 
 - Scan `.squad/decisions.md` for the most recent `Boundary sync` entry within the last N hours
 - Check the preceding session-output records (if available via `.specrew/last-start-prompt.md` baseline ref or `.squad/identity/now.md` session metadata)
-- If the boundary advancement has no associated handoff-block evidence within the heuristic window, emit `WARN [handoff] missing-handoff-block: Boundary 'X' advanced without preceding === SPECREW HANDOFF === block. Host autopilot or agent-prose drift likely.`
+- If the boundary advancement has no associated canonical handoff evidence within the heuristic window, emit `WARN [handoff] missing-canonical-handoff: Boundary 'X' advanced without a three-section Proposal 007 handoff. Host autopilot, prompt-surface conflict, or agent-prose drift likely.`
 
 ### Pillar 2: Trigger-bypass detection (~1 SP)
 
@@ -100,12 +115,12 @@ Charter directive can ship as its own small-fix slice (Proposal 067, ~1-2 SP) wi
 
 ## How
 
-Total ~4-7 SP single iteration:
+Total ~7-12 SP, with Proposal 151 split out as the immediate prerequisite small-fix:
 
 | Step | File | Effort |
 |---|---|---|
-| Add `Test-SpecrewHandoffBlockPresent` helper | `extensions/specrew-speckit/scripts/shared-governance.ps1` (+ mirror) | 1 SP |
-| Pillar 1 handoff-block validator rule | `extensions/specrew-speckit/scripts/validate-governance.ps1` (+ mirror) | 1-2 SP |
+| Add `Test-SpecrewCanonicalHandoffPresent` helper | `extensions/specrew-speckit/scripts/shared-governance.ps1` (+ mirror) | 1 SP |
+| Pillar 1 canonical handoff validator rule | `extensions/specrew-speckit/scripts/validate-governance.ps1` (+ mirror) | 1-2 SP |
 | Pillar 2 trigger-bypass diagnosis augmentation | same file | 1 SP |
 | Pillar 3 wrong-location detection | same file | 1 SP |
 | **Pillar 4 state-advance cross-check** | same file + helper extension | 1-2 SP |
@@ -114,11 +129,11 @@ Total ~4-7 SP single iteration:
 
 ## Acceptance criteria
 
-- **AC1**: A boundary commit `boundary(review-signoff): ...` with no preceding `=== SPECREW HANDOFF ===` block in session output emits WARN
+- **AC1**: A boundary commit `boundary(review-signoff): ...` with no preceding Proposal 007 three-section handoff in session output emits WARN
 - **AC2**: A closed iteration directory missing `dashboard.md` while having all other artifacts emits WARN with `non-Specrew-managed iteration` qualifier (not the generic `missing-dashboard-artifact` only)
 - **AC3**: A `plan.md` or `tasks.md` file found in `C:/Users/<user>/.gemini/antigravity-cli/brain/<id>/` emits WARN with `artifact-in-ephemeral-location` qualifier and recommends canonical path
 - **AC4**: Validator output remains backward-compatible — new rules add WARN entries; do not change exit code or fail iterations that previously passed
-- **AC5**: `Test-SpecrewHandoffBlockPresent` is callable from sync-boundary-state.ps1 and other helpers; returns `$true` / `$false` for use as pre-condition checks
+- **AC5**: `Test-SpecrewCanonicalHandoffPresent` is callable from sync-boundary-state.ps1 and other helpers; returns `$true` / `$false` for use as pre-condition checks. Legacy `=== SPECREW HANDOFF ===` text alone is insufficient unless accompanied by the three required sections or explicitly grandfathered migration metadata
 - **AC6**: Mirror parity confirmed byte-identical for the two modified extension scripts
 - **AC7** (Pillar 4): When `state.md` `Current Phase` changes across two commits for a human-verdict boundary (e.g., `review-signoff → retro`), the validator cross-checks `boundary_enforcement.verdict_history` and emits WARN if no matching `from_boundary → to_boundary` entry with non-empty `authorizing_human` exists. Pre-2026-05-26 iterations grandfathered via timestamp scope
 - **AC8** (Pillar 4): `sync-boundary-state.ps1` refuses (hard-block, not WARN) to advance state for a human-verdict boundary unless the corresponding verdict-history append happens in the same transaction
@@ -128,9 +143,9 @@ Total ~4-7 SP single iteration:
 
 ## Out of scope
 
-- **Hard-fail on missing handoff block** — keep WARN-only initially; promote to FAIL after observed practice shows minimal false-positive rate
+- **Hard-fail on missing canonical handoff** — keep WARN-only initially; promote to FAIL after observed practice shows minimal false-positive rate
 - **Auto-relocation of ephemeral-folder artifacts** — Proposal 075 owns; this proposal only warns
-- **Host-specific handoff-block format enforcement** — assumes the universal `=== SPECREW HANDOFF ===` sentinel; if hosts diverge, separate proposal
+- **Host-specific handoff rendering quirks** — assumes the universal semantic contract is the three-section Proposal 007 handoff; host-specific menu/UI rendering remains separate
 - **Hook-based enforcement** — Proposal 105 (Host-Native Hook Deployment) owns runtime layer; this proposal is validator-side detection
 
 ## Composition
@@ -138,13 +153,14 @@ Total ~4-7 SP single iteration:
 - **Proposal 030 (Quality Hardening Bundle — Form-vs-Meaning)** — direct fit. All 3 shapes are form-vs-meaning failures (validator schema passes; meaning bypassed)
 - **Proposal 067 (Small-Fix Slice Type)** — this proposal IS a natural small-fix slice (~3-5 SP, single iteration, well-scoped)
 - **Proposal 075 (Update Artifact Backfill Discipline)** — companion. 075 fixes the detected gaps; this proposal detects them
-- **Proposal 078 (Handoff Conversation Quality)** — composes deeply. 078 Pillar 5 is validator-enforced handoff-prose grading; this proposal's Pillar 1 is the precondition (block presence check) that 078 Pillar 5 builds on
+- **Proposal 078 (Handoff Conversation Quality)** — composes deeply. 078 Pillar 5 is validator-enforced handoff-prose grading; this proposal's Pillar 1 is the precondition (canonical handoff presence check) that 078 Pillar 5 builds on
 - **Proposal 105 (Host-Native Hook Deployment)** — lifts the same rules from cooperative-prescribed to runtime-enforced on hook-supporting hosts. This validator proposal is the cross-host backstop for Copilot (no hook surface) and the development-time detection layer
+- **Proposal 151 (Boundary Handoff Contract Unification)** — immediate small-fix prerequisite. 151 repairs the conflicting prompt surfaces; 120 later enforces the unified contract mechanically across lifecycle evidence
 
 ## Risks
 
-- **False positives on legacy iterations** — predate F-040 Wave A1 (handoff-block introduction). Mitigation: scope rule to iterations whose closing commit timestamp is post-2026-04-20 (rough Wave A1 date)
-- **Heuristic window for handoff-block presence** — N hours is judgment call. Mitigation: configurable via `.specrew/config.yml`; default 24h
+- **False positives on legacy iterations** — predate F-040 Wave A1 and Proposal 007's later three-section handoff contract. Mitigation: scope rule to iterations whose closing commit timestamp is after the relevant contract rollout, or explicitly grandfather historical evidence.
+- **Heuristic window for canonical handoff presence** — N hours is judgment call. Mitigation: configurable via `.specrew/config.yml`; default 24h
 - **Ephemeral-path list maintenance** — new hosts add new ephemeral paths. Mitigation: list comes from per-host registry; updated alongside Proposal 024 / 069 / 105 host work
 
 ## Empirical motivation
@@ -163,6 +179,8 @@ Pattern recurs across multiple hosts, multiple sessions, multiple shapes (commun
 ## Cross-references
 
 - Memory: [[non-specrew-session-bypasses-triggers-2026-05-25]]
+- file:///C:/Dev/Specrew/proposals/007-substantive-interaction-model.md
+- file:///C:/Dev/Specrew/proposals/151-boundary-handoff-contract-unification.md
 - file:///C:/Dev/Specrew/proposals/030-quality-hardening-bundle.md
 - file:///C:/Dev/Specrew/proposals/067-small-fix-slice-type.md
 - file:///C:/Dev/Specrew/proposals/075-update-artifact-backfill-discipline.md
@@ -176,3 +194,4 @@ Pattern recurs across multiple hosts, multiple sessions, multiple shapes (commun
 - 2026-05-26: candidate proposal drafted as part of memory→proposal sweep. Scope is ~3-5 SP small-fix slice covering 3 detection rules (handoff-block presence, trigger-bypass diagnosis, wrong-location warning) + shared helper function. Composes tightly with 030 / 067 / 075 / 078 / 105.
 - 2026-05-26 (later): **expanded with Pillar 4 (state-advance-without-verdict cross-check)** after PlanningPoC iter-002 silent auto-advance breach surfaced as a state-layer counterpart to Pillar 1's communication-layer detection. Picard's independent audit caught it (commit `a5866c1`); Pillar 4 makes the Picard role mechanical and host-portable. SP estimate raised 3-5 → 4-7. Memory `[[picard-boundary-state-auto-advance-catch-2026-05-26]]` absorbed.
 - **2026-05-27: expanded with Pillar 5 (reviewer-approves-working-tree-only-state — review.md-vs-git-ls-tree cross-check) + priority bumped to Tier 1 HIGH PRIORITY**. PlanningPoC iter-004 surfaced the most consequential shape of the family: 7 production code files cited in review.md were never committed despite the iteration closing with `accepted` verdict. Tests passed against working-tree state; verdict cited commit hash; files weren't in the cited commit. User caught it by accident via `git status` after `specrew update`; recovery commit `29fce04` staged the missing work. The lie is in the commit-hash provenance assertion, not the test results. Pillar 5 adds `Test-ReviewCitedFilesInTree` validator helper + hard-gate iteration-closeout on PASS. Companion Reviewer-charter discipline change recommended as separate small-fix slice ([[proposal-067]] family, ~1-2 SP) to ship faster than the validator rule. SP estimate raised 4-7 → 6-10 (full Pillars 1-5). Memory `[[shape5-reviewer-approves-working-tree-only-state-2026-05-27]]` absorbed.
+- **2026-05-31: amended after live boundary-stop regression surfaced stale contract conflict**. The generated start prompt still mandated the legacy `=== SPECREW HANDOFF ===` block while shipped Proposal 007 and the role charters require the three-section handoff with clickable `file:///` inspection targets. Proposal 151 was created as the immediate 2-4 SP small-fix slice to unify prompt surfaces and handoff evidence detection before this broader validator/backstop proposal ships. Title changed from "Handoff-Block" to "Handoff Contract"; SP estimate raised 6-10 → 7-12 to account for migration-compatible canonical handoff detection.

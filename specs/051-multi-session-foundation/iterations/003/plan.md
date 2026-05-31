@@ -98,4 +98,4 @@
 
 - On-disk dir is `003`; pass `-IterationNumber 003` (quoted) to every boundary sync. "Iteration 2b" is prose-only.
 - Retro carry-forward from Iteration 2a is active: keep state/prose/report artifacts coherent after every remediation round, and update `review-report.yml` whenever review remediation changes findings.
-- The small-fix slice immediately before this opening shipped Proposal 150 (`d5e61b36`) so closeout sync now normalizes unpadded iteration numbers; still use padded strings in lifecycle commands.
+- The small-fix slice immediately before this opening shipped Proposal 152 (`d5e61b36`) so closeout sync now normalizes unpadded iteration numbers; still use padded strings in lifecycle commands.

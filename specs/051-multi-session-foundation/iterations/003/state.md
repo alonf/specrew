@@ -14,7 +14,7 @@
 - **Iteration 2b complete and closed.** T034-T055 are done for FR-017 through FR-024: decisions split, append-only logs, FileList sorting, multi-developer signal detection, and recommendation surfaces.
 - **Evidence captured**: F-051 Iteration 1/2a/2b unit lanes passed, FileList completeness passed, `specrew where --ASCII --compact` displayed the multi-developer indicator, mechanical checks found no findings, review was accepted, retro was recorded, and governance validation passed with pre-existing warnings only.
 - **Critical path delivered**: conflict-reduction primitives (T034/T036/T038) feed sync integrations (T035/T037/T039); auto-detection scaffold (T042) gates signal detectors and recommendation surfaces (T043-T052).
-- **Carry-forward controls active**: Proposal 150 padding/safety fixes are pushed; Proposal 142 + Proposal 102 were promoted with F-051 2a evidence before opening this iteration.
+- **Carry-forward controls active**: Proposal 152 padding/safety fixes are pushed; Proposal 142 + Proposal 102 were promoted with F-051 2a evidence before opening this iteration.
 
 ## Notes
 

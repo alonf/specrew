@@ -9598,7 +9598,7 @@ Feature 020 Iteration 1 implementation will stop if any of these occur:
 ## Evidence Artifacts
 
 **Test suite**:  ests/integration/version-checks.tests.ps1  
-**Branch**:  20-session-state-durability  
+**Branch**: 20-session-state-durability  
 **Session log**: .squad/log/20260518T011443Z-feature020-iteration1-version-check-repair.md  
 **Prior blocker context**: .squad/log/20260522T120000Z-feature020-iteration1-test-failure-boundary.md  
 **Previous stale-state repair**: .squad/log/20260517T220052Z-feature-020-planning-completion.md  
@@ -16611,7 +16611,7 @@ User request — captured for team memory per Scribe charter to preserve cross-a
 
 ## Summary
 
-Commit \5a7996\ on branch \ 22-hotfix-schema-tests\ is designated as the truthful durability anchor for Feature 022's combined specify+clarify artifact set. All boundary ledger references to this feature's work shall be reconciled to point to this commit rather than attempting to reconstruct uncommitted specify-only boundaries.
+Commit \5a7996\ on branch \22-hotfix-schema-tests\ is designated as the truthful durability anchor for Feature 022's combined specify+clarify artifact set. All boundary ledger references to this feature's work shall be reconciled to point to this commit rather than attempting to reconstruct uncommitted specify-only boundaries.
 
 ## Rationale
 
@@ -16628,7 +16628,7 @@ The Feature 022 specification and clarification artifacts existed locally withou
 ### 2026-05-18T17:25:25Z: Spec Steward durability decision
 
 **By:** Spec Steward  
-**What:** Treat commit \5a7996\ on \ 22-hotfix-schema-tests\ as the truthful durability anchor for the current Feature 022 combined specify+clarify artifact set. Reconcile any pending boundary commit references to that checkpoint rather than reconstructing an uncommitted specify-only boundary.  
+**What:** Treat commit \5a7996\ on \22-hotfix-schema-tests\ as the truthful durability anchor for the current Feature 022 combined specify+clarify artifact set. Reconcile any pending boundary commit references to that checkpoint rather than reconstructing an uncommitted specify-only boundary.  
 **Why:** Feature 022 artifacts existed locally without a durable checkpoint, and the user explicitly held \/speckit.plan\ authorization until real git/origin durability was restored without history rewriting.
 
 ---
@@ -16763,7 +16763,7 @@ elease_tag as an idempotent lightweight-tag contract.
 - \workflow_dispatch\ real publish paths (\publish-prerelease\, \publish-stable\, \promote-prerelease\) now self-create missing lightweight tags, validate existing tags at \HEAD\, and fail closed on divergent tag targets
 - \create_github_release\ covers every real tag-based publish path, \publish-prerelease\ maps to \--prerelease\, stable/promotion map to \--latest\
 - Dry-run validation passed for no-ref, branch-ref, stable-tag, and prerelease-tag inputs without mutating the reviewed worktree or creating real tags/releases
-- \CHANGELOG.md\, \.specrew\config.yml\, and \Specrew.psd1\ stay aligned on \ .23.0\, with the manifest default prerelease field empty and the changelog accurately describing the hotfix plus Shipping PR #269
+- \CHANGELOG.md\, \.specrew\config.yml\, and \Specrew.psd1\ stay aligned on \.23.0\, with the manifest default prerelease field empty and the changelog accurately describing the hotfix plus Shipping PR #269
 
 ## Result
 
@@ -17410,8 +17410,8 @@ Feature 028 closeout task sequence completed:
 
 - PR #345 (\eat(028): harden review evidence integrity\) was approved by reviewer
 - Merged to main using merge commit strategy (not squash) via \gh pr merge 345 --merge --admin\
-- Merge commit \ 30a5a3\ recorded in main history with full changeset (37 files, 4284 insertions)
-- Local branch \ 28-review-evidence-integrity\ deleted
+- Merge commit \30a5a3\ recorded in main history with full changeset (37 files, 4284 insertions)
+- Local branch \28-review-evidence-integrity\ deleted
 - Remote branch \origin/028-review-evidence-integrity\ deleted
 - Worktree audit completed; no worktree found for feature 028
 
@@ -21217,7 +21217,7 @@ Executed T007 (Docker pre-publish harness verification) and T019 (duplicate-row 
 
 **Rationale**:
 
-- Commit 437338f6 already on  49-pipeline-hardening-intake branch
+- Commit 437338f6 already on 49-pipeline-hardening-intake branch
 - Fixes critical user-facing bug (auto-resume to wrong feature F-047 instead of F-049)
 - Commit message notes structural fix to specrew-start.ps1 recovery logic still needed
 
@@ -22300,6 +22300,7 @@ Documented in `specs/049-pipeline-hardening-intake/iterations/005/drift-log.md` 
 - **Reason**: Migrated start-context.json to schema v2 boundary_enforcement state.
 
 ## 2026-05-30T20:47:50Z — Delegated routing plan
+## 2026-05-30T21:08:52Z — Delegated routing plan
 
 - **Enabled Agents**: copilot
 - **Independent Oversight Active**: False
@@ -22313,11 +22314,15 @@ Documented in `specs/049-pipeline-hardening-intake/iterations/005/drift-log.md` 
 ## 2026-05-30T20:47:50Z — Routing evidence: Spec Steward
 
 - **Decision ID**: routing-evidence-4c4359b9e2e3
+## 2026-05-30T21:08:52Z — Routing evidence: Spec Steward
+
+- **Decision ID**: routing-evidence-8cef13e9e651
 - **Type**: routing-evidence
 - **Affected Requirement**: FR-043
 - **Affected Iteration**: (none)
 - **Approving Human**: (none)
 - **Recorded At**: 2026-05-30T20:47:50Z
+- **Recorded At**: 2026-05-30T21:08:52Z
 - **Next Action**: none
 - **Rationale**: Delegated lifecycle routing was applied for role 'Spec Steward'.
 
@@ -22326,11 +22331,15 @@ Documented in `specs/049-pipeline-hardening-intake/iterations/005/drift-log.md` 
 ## 2026-05-30T20:47:51Z — Routing evidence: Planner
 
 - **Decision ID**: routing-evidence-0d4706836220
+## 2026-05-30T21:08:53Z — Routing evidence: Planner
+
+- **Decision ID**: routing-evidence-41786dafa027
 - **Type**: routing-evidence
 - **Affected Requirement**: FR-043
 - **Affected Iteration**: (none)
 - **Approving Human**: (none)
 - **Recorded At**: 2026-05-30T20:47:51Z
+- **Recorded At**: 2026-05-30T21:08:53Z
 - **Next Action**: none
 - **Rationale**: Delegated lifecycle routing was applied for role 'Planner'.
 
@@ -22339,11 +22348,15 @@ Documented in `specs/049-pipeline-hardening-intake/iterations/005/drift-log.md` 
 ## 2026-05-30T20:47:52Z — Routing evidence: Reviewer
 
 - **Decision ID**: routing-evidence-8d4fa5418a8d
+## 2026-05-30T21:08:54Z — Routing evidence: Reviewer
+
+- **Decision ID**: routing-evidence-adf545daa9f4
 - **Type**: routing-evidence
 - **Affected Requirement**: FR-043
 - **Affected Iteration**: (none)
 - **Approving Human**: (none)
 - **Recorded At**: 2026-05-30T20:47:52Z
+- **Recorded At**: 2026-05-30T21:08:54Z
 - **Next Action**: none
 - **Rationale**: Delegated lifecycle routing was applied for role 'Reviewer'.
 
@@ -22953,3 +22966,117 @@ Documented in `specs/049-pipeline-hardening-intake/iterations/005/drift-log.md` 
 - **Task ID**: (none)
 - **Auth Commit Hash**: 0664caeb
 - **Recorded At**: 2026-05-31T23:35:06Z
+## 2026-05-30T21:08:56Z — Boundary enforcement: feature-closeout
+
+- **Feature**: 050-cursor-host-support
+- **Boundary Type**: feature-closeout
+- **Current Boundary**: feature-closeout
+- **Requested Boundary**: (none)
+- **Enforcement Action**: migration
+- **Launch Mode**: same-window
+- **Agent Response Snippet**: (none)
+- **Reason**: Migrated start-context.json to schema v2 boundary_enforcement state.
+
+## 2026-05-30T21:27:32Z — Boundary sync warning: specify
+
+- **Boundary Type**: specify
+- **Latest Recorded Boundary**: iteration-closeout
+- **Recorded At**: 2026-05-30T21:27:32Z
+- **Warning**: Expected next boundary 'feature-closeout' but received 'specify'.
+
+## 2026-05-30T21:27:33Z — Boundary sync: specify
+
+- **Boundary Type**: specify
+- **Feature Ref**: 054-activate-spec-surfaces
+- **Iteration Number**: (none)
+- **Task ID**: (none)
+- **Auth Commit Hash**: 969f95dc85afd8b5733a389c6f41e858d1c5a337
+- **Recorded At**: 2026-05-30T21:27:32Z
+
+## 2026-05-30T22:43:13Z — Boundary sync: clarify
+
+- **Boundary Type**: clarify
+- **Feature Ref**: 054-activate-spec-surfaces
+- **Iteration Number**: (none)
+- **Task ID**: (none)
+- **Auth Commit Hash**: 22945f68d5b6a0b3020f54e2af7c2902eb6f5a41
+- **Recorded At**: 2026-05-30T22:43:13Z
+
+## 2026-05-31T06:02:36Z — Boundary sync warning: clarify
+
+- **Boundary Type**: clarify
+- **Latest Recorded Boundary**: clarify
+- **Recorded At**: 2026-05-31T06:02:36Z
+- **Warning**: Expected next boundary 'plan' but received 'clarify'.
+
+## 2026-05-31T06:02:36Z — Boundary sync: clarify
+
+- **Boundary Type**: clarify
+- **Feature Ref**: 054-activate-spec-surfaces
+- **Iteration Number**: (none)
+- **Task ID**: (none)
+- **Auth Commit Hash**: bfdd63ff4967cbb13b5533910406d60f1c76bba4
+- **Recorded At**: 2026-05-31T06:02:36Z
+
+## 2026-05-31T06:20:58Z — Boundary sync: plan
+
+- **Boundary Type**: plan
+- **Feature Ref**: 054-activate-spec-surfaces
+- **Iteration Number**: (none)
+- **Task ID**: (none)
+- **Auth Commit Hash**: 23b7e2056c09f59ae5d1a1afe3722dc36197f434
+- **Recorded At**: 2026-05-31T06:20:58Z
+
+## 2026-05-31T07:26:37Z — Boundary sync: tasks
+
+- **Boundary Type**: tasks
+- **Feature Ref**: 054-activate-spec-surfaces
+- **Iteration Number**: 001
+- **Task ID**: (none)
+- **Auth Commit Hash**: 682c719761a7691bf7f1faeca79f0148a25e31d3
+- **Recorded At**: 2026-05-31T07:26:37Z
+
+## 2026-05-31T09:18:30Z — Boundary sync: before-implement
+
+- **Boundary Type**: before-implement
+- **Feature Ref**: 054-activate-spec-surfaces
+- **Iteration Number**: 001
+- **Task ID**: (none)
+- **Auth Commit Hash**: 3ada2245033f6f9206bee9d6fc98cf15bb504521
+- **Recorded At**: 2026-05-31T09:18:29Z
+
+## 2026-05-31T11:00:51Z — Boundary sync: review-signoff
+
+- **Boundary Type**: review-signoff
+- **Feature Ref**: 054-activate-spec-surfaces
+- **Iteration Number**: 001
+- **Task ID**: (none)
+- **Auth Commit Hash**: 0db0c27f834c8705bfb370d39e62b69c61f992ea
+- **Recorded At**: 2026-05-31T11:00:51Z
+
+## 2026-05-31T11:05:09Z — Boundary sync: retro
+
+- **Boundary Type**: retro
+- **Feature Ref**: 054-activate-spec-surfaces
+- **Iteration Number**: 001
+- **Task ID**: (none)
+- **Auth Commit Hash**: a5cb3cacaa874d02a63b75b67d706e52ed3b4510
+- **Recorded At**: 2026-05-31T11:05:09Z
+
+## 2026-05-31T11:05:36Z — Boundary sync: iteration-closeout
+
+- **Boundary Type**: iteration-closeout
+- **Feature Ref**: 054-activate-spec-surfaces
+- **Iteration Number**: 001
+- **Task ID**: (none)
+- **Auth Commit Hash**: a5cb3cacaa874d02a63b75b67d706e52ed3b4510
+- **Recorded At**: 2026-05-31T11:05:36Z
+
+## 2026-05-31T11:06:54Z — Boundary sync: feature-closeout
+
+- **Boundary Type**: feature-closeout
+- **Feature Ref**: 054-activate-spec-surfaces
+- **Iteration Number**: 001
+- **Task ID**: (none)
+- **Auth Commit Hash**: de5adcaa731a92a723dabe05f7d67b034dddc85d
+- **Recorded At**: 2026-05-31T11:06:53Z

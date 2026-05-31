@@ -161,3 +161,6 @@ closed:
   - feature: 051-multi-session-foundation
     iteration: 003
     closed_at: 2026-05-31T23:35:07Z
+  - feature: 054-activate-spec-surfaces
+    iteration: 001
+    closed_at: 2026-05-31T11:05:37Z

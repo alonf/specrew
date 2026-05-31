@@ -26,6 +26,17 @@ Before planning proceeds, verify the active specification is ready for implement
 6. Keep unsupported or later-phase quality behavior explicit as deferred. Do not imply hardening-gate sign-off, dedicated bug-hunter execution, strongest-class routing enforcement, known-traps workflows, or quality-drift automation as implemented in this pre-plan check unless the current slice truly delivers them.
 7. If iteration artifacts already exist, you may run `pwsh -File .specify/extensions/specrew-speckit/scripts/validate-governance.ps1 -ProjectPath .` for an additional governance check.
 
+## Lifecycle-adjacent command: /speckit.checklist (before-plan)
+
+Surface `/speckit.checklist` at this before-plan boundary as a requirements-quality aid. It helps catch vague, incomplete, inconsistent, or missing requirements **before** planning begins, improving requirement clarity, completeness, consistency, and edge-case coverage.
+
+Proportional guidance:
+
+- **Recommended** for substantive feature work, where requirement gaps are expensive to discover later.
+- **Optional** for low-risk, lightweight, or small slices whose requirements are already clear.
+
+`/speckit.checklist` improves requirement quality only. It does not validate implementation correctness, and it is not mandatory for every tiny slice.
+
 ## Failure behavior
 
 If readiness is not clear, do not continue to planning. Explain whether the blocker is missing requirement clarity, missing quality-profile inputs, missing hardening-lifecycle framing for a Phase 2 slice, or unresolved not-applicable/deferred reasoning, and direct the user back to clarification or resolver repair before planning continues.
