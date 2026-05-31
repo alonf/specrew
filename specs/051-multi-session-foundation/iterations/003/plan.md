@@ -4,8 +4,8 @@
 **Spec**: [../../spec.md](../../spec.md)
 **Status**: retro
 **Capacity**: 13/20 story_points
-**Started**: 2026-06-01
-**Completed**: 2026-05-31
+**Started**: 2026-05-31
+**Completed**: 2026-06-01
 
 <!--
   Validator schema (canonical, enforced by validate-governance.ps1):
