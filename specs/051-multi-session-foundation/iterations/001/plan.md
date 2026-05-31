@@ -72,7 +72,7 @@ Iteration 1 is the foundation/dependency gate (TG-005): session_mode must be con
 
 - Current roster snapshot: Spec Steward, Planner, Implementer, Reviewer, Retro Facilitator (Security Specialist deferred to Iteration 2a before-implement when race-condition/lock scope lands).
 - Workstream separability: within Iteration 1, T001-T003 (setup) run first; T004-T008 (session mode, US1) and T009-T015 (file classification, US2) are independent and may run in parallel after setup.
-- Shared-surface conflict risk: `scripts/specrew-cli.ps1` is touched by T005/T006/T011/T013 — serialize those edits or coordinate a single owner to avoid churn.
+- Shared-surface conflict risk: `scripts/specrew.ps1` (config dispatch case, T005) and `scripts/specrew-init.ps1` (T006/T011/T013 wiring) are each touched by multiple tasks — serialize those edits or coordinate a single owner to avoid churn.
 - Recommendation: single-developer serial execution; no Junior/Senior same-specialty expansion for this 11 SP foundation slice.
 
 ## Phase Baseline

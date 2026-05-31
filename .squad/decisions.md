@@ -22617,7 +22617,7 @@ Documented in `specs/049-pipeline-hardening-intake/iterations/005/drift-log.md` 
 
 - **Boundary Type**: before-implement
 - **Feature Ref**: 051-multi-session-foundation
-- **Iteration Number**: (none)
+- **Iteration Number**: 001
 - **Task ID**: (none)
 - **Auth Commit Hash**: 8d02fccdc794a02318479ef9e157699a91fbc99f
 - **Recorded At**: 2026-05-31T09:39:45Z
@@ -22626,7 +22626,16 @@ Documented in `specs/049-pipeline-hardening-intake/iterations/005/drift-log.md` 
 
 - **Boundary Type**: review-signoff
 - **Feature Ref**: 051-multi-session-foundation
-- **Iteration Number**: (none)
+- **Iteration Number**: 001
 - **Task ID**: (none)
 - **Auth Commit Hash**: 6b8132952c55e0c2b56d6be20b28853360d461ec
 - **Recorded At**: 2026-05-31T12:39:13Z
+
+## 2026-05-31T14:42:49Z — Boundary sync: retro
+
+- **Boundary Type**: retro
+- **Feature Ref**: 051-multi-session-foundation
+- **Iteration Number**: 001
+- **Task ID**: (none)
+- **Auth Commit Hash**: 5c116b910a287cfb4af5b7acccfa9046d5ad5e94
+- **Recorded At**: 2026-05-31T14:42:49Z

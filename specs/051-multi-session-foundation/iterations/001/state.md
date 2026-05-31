@@ -4,14 +4,14 @@
 **Current Phase**: retro
 **Iteration Status**: retro
 **Last Completed Task**: T019 (ALL Iteration-1 tasks done: T001-T019)
-**Tasks Remaining**: (none) — implementation complete, ready for review boundary
+**Tasks Remaining**: (none) — iteration complete; review-signoff accepted + retro authored; at iteration-closeout gate awaiting human verdict
 **In Progress**: (none)
 **Baseline Ref**: a9600489511ce88125bba0eaaefd9079e9eb144c
 **Updated**: 2026-05-31T11:12:28Z
 
 ## Execution Summary
 
-- **Validation complete (T016-T019, 2 SP). Iteration 1 implementation DONE — 11/11 SP, ready for review.**
+- **Iteration 1 COMPLETE — 11/11 SP. Review-signoff accepted; retro authored; awaiting iteration-closeout verdict.** Validation (T016-T019, 2 SP):
   - T016: quickstart.md drift fixed (stale `specrew-cli.ps1` -> `specrew.ps1`, a D-002 residue).
   - T017: data-model.md SessionModeConfig (`session_mode`) + FileClassificationRule (`pattern/category/reason`) verified to match the shipped `Get-FileClassification` schema — no drift.
   - T018: both acceptance suites PASS (feature-051-session-mode, feature-051-file-classification); slash-command-arg-whitelist regression PASS.
@@ -28,23 +28,25 @@
   - `session_mode: "single"` default added to config.yml template in BOTH scaffold-governance.ps1 mirrors (FR-003).
   - `Specrew.psd1` FileList updated (both new scripts, alphabetical).
   - Test `tests/unit/feature-051-session-mode.tests.ps1` — 10/10 PASS (T007 set/revert/invalid against real config; T008 default via real scaffold writer, fail-first verified). End-to-end CLI dispatch smoke verified.
-- **Remaining:** US2 (T009-T015 file classification + gitignore + git-rm-cached), Iter-1 validation (T016-T019).
+- **Remaining:** none — all of US1 + US2 + validation delivered; iteration awaiting closeout verdict.
 
 ## Notes
 
 - Update this file after each task completes.
 - Keep task identifiers aligned to plan.md.
 
-### Working-tree classification (before-implement branch hygiene, 2026-05-31)
+### Working-tree classification (re-asserted at each boundary incl. iteration-closeout, 2026-05-31)
 
-Per the reviewer-standard Phase 1 discipline (working tree clean OR every dirty file classified), the dirty files on this branch are classified as follows. Only the F-051 spec-dir files are committed; the rest are intentionally **parked** (out-of-scope runtime / other-feature drift, not abandoned F-051 work — Shape-5 guard):
+Per the reviewer-standard Phase 1 discipline (working tree clean OR every dirty file classified). Re-asserted for the closeout cycle: F-051 spec-dir artifacts + the scribe ledger are committed; out-of-scope runtime / other-feature drift is **parked** (not abandoned F-051 work — Shape-5 guard):
 
 | File(s) | Classification | Handling |
 | --- | --- | --- |
-| `specs/051-multi-session-foundation/{spec,plan,tasks}.md`, `iterations/001/{plan,drift-log}.md` | F-051 in-scope (capacity reconciliation) | committed at this boundary |
-| `.claude/agents/*.md` (5) | out-of-scope runtime (host agent-definition drift) | parked |
-| `.specrew/last-validator-summary.json`, `.specrew/version-check-cache.json` | out-of-scope per-session (F-051 FR-005 will gitignore these in Iteration 1) | parked |
-| `.squad/config.json`, `.squad/decisions.md` | out-of-scope Squad runtime/scribe state | parked |
+| `specs/051-multi-session-foundation/**` (spec/plan/tasks + iterations/001 artifacts) | F-051 in-scope | committed at each boundary |
+| `.squad/decisions.md` | append-only-shared scribe ledger (carries boundary-sync entries) | **committed** with sync state |
+| `.claude/agents/*.md` (5) | out-of-scope runtime (host agent-definition auto-deploy drift) | parked |
+| `.specrew/last-validator-summary.json` | per-session (tracked here; F-051 FR-005 classifies it gitignored) | committed when refreshed by validator run; FR-005 will gitignore downstream |
+| `.specrew/version-check-cache.json` | out-of-scope per-session cache | parked |
+| `.squad/config.json` | out-of-scope Squad runtime config | parked |
 | `.cursor/` | out-of-scope other-host artifact | parked |
 | `specs/050-cursor-host-support/iterations/003/tasks-progress.yml` | out-of-scope (F-050 stray artifact) | parked |
 
