@@ -7,6 +7,11 @@ if (-not (Test-Path -LiteralPath $sharedGovernancePath -PathType Leaf)) {
 }
 . $sharedGovernancePath
 
+$autoDetectionHelperPath = Join-Path (Split-Path -Parent $PSScriptRoot) 'auto-detection.ps1'
+if (Test-Path -LiteralPath $autoDetectionHelperPath -PathType Leaf) {
+    . $autoDetectionHelperPath
+}
+
 function Reset-SpecrewDashboardWarnings {
     $script:SpecrewDashboardWarnings = New-Object System.Collections.Generic.List[string]
 }
@@ -1673,6 +1678,22 @@ function Get-SpecrewDashboardSnapshot {
         $warnings.Add($warning) | Out-Null
     }
 
+    $multiDeveloperSignals = $null
+    if (Get-Command -Name Get-SpecrewMultiDeveloperSignals -ErrorAction SilentlyContinue) {
+        try {
+            $multiDeveloperSignals = Get-SpecrewMultiDeveloperSignals -ProjectRoot $resolvedProjectRoot
+            if ($multiDeveloperSignals.has_multi_developer_signal) {
+                $warnings.Add(("Multi-developer activity detected: {0}" -f $multiDeveloperSignals.summary)) | Out-Null
+            }
+            if (-not [string]::IsNullOrWhiteSpace([string]$multiDeveloperSignals.recommendation_message)) {
+                $warnings.Add([string]$multiDeveloperSignals.recommendation_message) | Out-Null
+            }
+        }
+        catch {
+            $warnings.Add(("Multi-developer signal detection unavailable: {0}" -f $_.Exception.Message)) | Out-Null
+        }
+    }
+
     $activePhase = $null
     if ($null -ne $featureRecord -and $roadmapProgress.phases.Count -gt 0) {
         $activePhase = @($roadmapProgress.phases | Where-Object { $_.feature_refs -contains $featureRecord.feature_ref } | Sort-Object order | Select-Object -First 1)
@@ -1737,6 +1758,7 @@ function Get-SpecrewDashboardSnapshot {
         history              = @($closedIterations | Select-Object -First 8)
         roadmap_progress     = @($roadmapProgress.phases)
         projection           = $projection
+        multi_developer_signals = $multiDeveloperSignals
         footer_note          = ''
         warnings             = @($warnings | Select-Object -Unique)
     }
@@ -1839,6 +1861,9 @@ function ConvertTo-SpecrewDashboardLines {
         }
         else {
             $lines.Add('No active iteration is recorded for the current feature.') | Out-Null
+        }
+        if ($null -ne $Snapshot.multi_developer_signals -and $Snapshot.multi_developer_signals.has_multi_developer_signal) {
+            $lines.Add(('Multi-developer: {0} git authors | {1} machines | mode {2}' -f $Snapshot.multi_developer_signals.unique_git_author_count, $Snapshot.multi_developer_signals.unique_machine_count, $Snapshot.multi_developer_signals.session_mode)) | Out-Null
         }
     }
     else {
@@ -1968,6 +1993,9 @@ function ConvertTo-SpecrewCompactDashboardLines {
                 '{0} {1} | {2}' -f $palette.ActiveArrow, (Get-SpecrewFeatureDisplayCode -FeatureRef $Snapshot.active_feature.feature_ref), (Get-SpecrewFeatureReadableTitle -FeatureTitle $Snapshot.active_feature.feature_title -FeatureRef $Snapshot.active_feature.feature_ref)
             }
             else { 'No active feature' })) | Out-Null
+    if ($null -ne $Snapshot.multi_developer_signals -and $Snapshot.multi_developer_signals.has_multi_developer_signal) {
+        $lines.Add(('Multi-dev {0} authors | {1} machines | {2}' -f $Snapshot.multi_developer_signals.unique_git_author_count, $Snapshot.multi_developer_signals.unique_machine_count, $Snapshot.multi_developer_signals.session_mode)) | Out-Null
+    }
     $lines.Add('VELOCITY') | Out-Null
     $lines.Add($(if ($Snapshot.velocity_headline.sample_size -gt 0) { '{0:0.##} SP/day | {1}' -f $Snapshot.velocity_headline.points_per_day, $Snapshot.velocity_headline.confidence } else { 'Awaiting first closeout' })) | Out-Null
     $sparkline = Get-SpecrewVelocitySparkline -Values $Snapshot.velocity_headline.recent_values -RenderProfile $Snapshot.render_profile

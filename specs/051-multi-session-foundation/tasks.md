@@ -109,34 +109,34 @@ This tasks artifact defines a complete, dependency-ordered implementation plan f
 
 ### Shared File Merge Conflict Reduction (Phase 2b, US5 → FR-017, FR-018, FR-019)
 
-- [ ] T034 [P] Create `scripts/decisions-split.ps1` to split `.squad/decisions.md` into per-iteration files under `.squad/decisions/iteration-NNN/decisions.md` when in multi-session mode (FR-017) [effort: 1 SP] [SC: SC-006]
-- [ ] T035 [US5] Create function to detect when multi-session mode is enabled and apply per-iteration split to decisions at boundary-sync time (FR-017) [effort: 0.5 SP] [SC: SC-006]
-- [ ] T036 [P] Create `scripts/append-only-logs.ps1` to implement JSON Lines format (one JSON object per line) for append-only log files, enabling atomic appends and mechanical conflict resolution (FR-018) [effort: 1 SP] [SC: SC-006]
-- [ ] T037 [US5] Implement JSON Lines writer function for lifecycle event logging (FR-018) [effort: 0.5 SP]
-- [ ] T038 [P] Create `scripts/psd1-sort.ps1` to alphabetically sort the `Specrew.psd1` FileList array during boundary-sync writes to minimize merge conflicts (FR-019) [effort: 0.5 SP] [SC: SC-006]
-- [ ] T039 [US5] Integrate psd1 alphabetical sort into boundary-sync process to re-sort FileList before writing updates (FR-019) [effort: 0.5 SP]
-- [ ] T040 [P] [US5] Create acceptance test for decisions split: verify two features both recording decisions result in per-iteration files with no merge conflicts [effort: 0.5 SP] [test: acceptance] [SC: SC-006]
-- [ ] T041 [P] [US5] Create acceptance test for psd1 sort: verify FileList array is alphabetically sorted after boundary-sync [effort: 0.5 SP] [test: acceptance]
+- [x] T034 [P] Create `scripts/decisions-split.ps1` to split `.squad/decisions.md` into per-iteration files under `.squad/decisions/iteration-NNN/decisions.md` when in multi-session mode (FR-017) [effort: 1 SP] [SC: SC-006]
+- [x] T035 [US5] Create function to detect when multi-session mode is enabled and apply per-iteration split to decisions at boundary-sync time (FR-017) [effort: 0.5 SP] [SC: SC-006]
+- [x] T036 [P] Create `scripts/append-only-logs.ps1` to implement JSON Lines format (one JSON object per line) for append-only log files, enabling atomic appends and mechanical conflict resolution (FR-018) [effort: 1 SP] [SC: SC-006]
+- [x] T037 [US5] Implement JSON Lines writer function for lifecycle event logging (FR-018) [effort: 0.5 SP]
+- [x] T038 [P] Create `scripts/psd1-sort.ps1` to alphabetically sort the `Specrew.psd1` FileList array during boundary-sync writes to minimize merge conflicts (FR-019) [effort: 0.5 SP] [SC: SC-006]
+- [x] T039 [US5] Integrate psd1 alphabetical sort into boundary-sync process to re-sort FileList before writing updates (FR-019) [effort: 0.5 SP]
+- [x] T040 [P] [US5] Create acceptance test for decisions split: verify two features both recording decisions result in per-iteration files with no merge conflicts [effort: 0.5 SP] [test: acceptance] [SC: SC-006]
+- [x] T041 [P] [US5] Create acceptance test for psd1 sort: verify FileList array is alphabetically sorted after boundary-sync [effort: 0.5 SP] [test: acceptance]
 
 ### Multi-Developer Auto-Detection (Phase 2b, US6 → FR-020 through FR-024)
 
-- [ ] T042 [P] Create `scripts/auto-detection.ps1` with multi-developer signal detection functions: detect-git-authors, detect-machine-fingerprints, detect-concurrent-writes, detect-branch-fanout (FR-020) [effort: 1 SP] [SC: SC-003]
-- [ ] T043 [US6] Implement git author email detection: scan git history for last 90 days and count unique author emails (FR-020) [effort: 0.5 SP] [SC: SC-003]
-- [ ] T044 [P] [US6] Implement machine fingerprint detection: scan `.specrew/active-sessions.yml` and session-state files for unique machine_fingerprint values (FR-020) [effort: 0.5 SP] [SC: SC-003]
-- [ ] T045 [P] [US6] Implement concurrent write detection: identify multiple session-state file modifications from different machines within 1 minute window (FR-020) [effort: 1 SP] [SC: SC-003]
-- [ ] T046 [P] [US6] Implement branch fan-out detection: identify 3+ feature branches diverging from same base commit (FR-020) [effort: 0.5 SP] [SC: SC-003]
-- [ ] T047 [US6] Implement multi-session recommendation message in Welcome Orientation: display "Multiple developers detected (X unique authors). Consider enabling multi-session mode: `specrew config set session_mode multi`" when session_mode is `single` and signals are detected (FR-021) [effort: 0.5 SP] [SC: SC-007]
-- [ ] T048 [P] [US6] Implement multi-developer indicator in `specrew where` dashboard to show count of unique machines and recommendation to enable multi-session mode when signals detected (FR-022) [effort: 0.5 SP] [SC: SC-007]
-- [ ] T049 [P] [US6] Implement multi-developer activity note in boundary-sync output when signals are detected (FR-023) [effort: 0.5 SP]
-- [ ] T050 [US6] Implement recommendation suppression when `session_mode` is already set to `multi` to avoid redundant messages (FR-024) [effort: 0.5 SP]
-- [ ] T051 [P] [US6] Create acceptance test for multi-dev detection: simulate commits from two different git authors and verify recommendation appears in Welcome Orientation within 2 seconds [effort: 0.5 SP] [test: acceptance] [SC: SC-007]
-- [ ] T052 [P] [US6] Create acceptance test for signal suppression: set `session_mode: multi` and verify no multi-developer recommendation appears [effort: 0.5 SP] [test: acceptance]
+- [x] T042 [P] Create `scripts/auto-detection.ps1` with multi-developer signal detection functions: detect-git-authors, detect-machine-fingerprints, detect-concurrent-writes, detect-branch-fanout (FR-020) [effort: 1 SP] [SC: SC-003]
+- [x] T043 [US6] Implement git author email detection: scan git history for last 90 days and count unique author emails (FR-020) [effort: 0.5 SP] [SC: SC-003]
+- [x] T044 [P] [US6] Implement machine fingerprint detection: scan `.specrew/active-sessions.yml` and session-state files for unique machine_fingerprint values (FR-020) [effort: 0.5 SP] [SC: SC-003]
+- [x] T045 [P] [US6] Implement concurrent write detection: identify multiple session-state file modifications from different machines within 1 minute window (FR-020) [effort: 1 SP] [SC: SC-003]
+- [x] T046 [P] [US6] Implement branch fan-out detection: identify 3+ feature branches diverging from same base commit (FR-020) [effort: 0.5 SP] [SC: SC-003]
+- [x] T047 [US6] Implement multi-session recommendation message in Welcome Orientation: display "Multiple developers detected (X unique authors). Consider enabling multi-session mode: `specrew config set session_mode multi`" when session_mode is `single` and signals are detected (FR-021) [effort: 0.5 SP] [SC: SC-007]
+- [x] T048 [P] [US6] Implement multi-developer indicator in `specrew where` dashboard to show count of unique machines and recommendation to enable multi-session mode when signals detected (FR-022) [effort: 0.5 SP] [SC: SC-007]
+- [x] T049 [P] [US6] Implement multi-developer activity note in boundary-sync output when signals are detected (FR-023) [effort: 0.5 SP]
+- [x] T050 [US6] Implement recommendation suppression when `session_mode` is already set to `multi` to avoid redundant messages (FR-024) [effort: 0.5 SP]
+- [x] T051 [P] [US6] Create acceptance test for multi-dev detection: simulate commits from two different git authors and verify recommendation appears in Welcome Orientation within 2 seconds [effort: 0.5 SP] [test: acceptance] [SC: SC-007]
+- [x] T052 [P] [US6] Create acceptance test for signal suppression: set `session_mode: multi` and verify no multi-developer recommendation appears [effort: 0.5 SP] [test: acceptance]
 
 ### Iteration 2b Validation & Documentation
 
-- [ ] T053 Verify `specs/051-multi-session-foundation/data-model.md` SessionLockEntry, FeatureClaimEntry, MultiDevSignal entities match the shipped 2a/2b schema; reconcile any attribute drift (entities authored at plan boundary) [effort: 0.5 SP] [governance: data-model]
-- [ ] T054 Run all Iteration 2a+2b acceptance tests and document results in test summary artifact [effort: 0.5 SP] [test: acceptance-suite]
-- [ ] T055 Execute Specrew validator and verify no regressions from Iteration 1/2a changes [effort: 0.5 SP] [test: regression-check]
+- [x] T053 Verify `specs/051-multi-session-foundation/data-model.md` SessionLockEntry, FeatureClaimEntry, MultiDevSignal entities match the shipped 2a/2b schema; reconcile any attribute drift (entities authored at plan boundary) [effort: 0.5 SP] [governance: data-model]
+- [x] T054 Run all Iteration 2a+2b acceptance tests and document results in test summary artifact [effort: 0.5 SP] [test: acceptance-suite]
+- [x] T055 Execute Specrew validator and verify no regressions from Iteration 1/2a changes [effort: 0.5 SP] [test: regression-check]
 
 ---
 

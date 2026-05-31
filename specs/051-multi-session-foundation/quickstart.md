@@ -1,7 +1,7 @@
 # Quickstart: Multi-Session Foundation
 
 **Feature**: 051-multi-session-foundation
-**Last verified**: 2026-05-31 (planning artifact — verified against implemented behavior at review boundary)
+**Last verified**: 2026-06-01 (Iteration 2b helpers verified by `tests/unit/feature-051-iteration2b.tests.ps1`)
 
 This walkthrough shows how to exercise the Iteration-1 surface (session mode + file classification) and the later collision/claim/identity-split behavior. Iteration 1 (FR-001 through FR-006) is the foundation; later iterations add the runtime coordination it gates.
 
@@ -10,6 +10,7 @@ This walkthrough shows how to exercise the Iteration-1 surface (session mode + f
 ```powershell
 # From a Specrew-managed project root
 pwsh -File scripts/specrew.ps1 config set session_mode multi   # enable multi-session (FR-002)
+pwsh -File tests/unit/feature-051-iteration2b.tests.ps1        # conflict-reduction + auto-detection checks
 pwsh -File .specify/extensions/specrew-speckit/scripts/validate-governance.ps1 -ProjectPath .   # confirm no regressions
 Invoke-Pester tests/                                               # run the acceptance + governance suites
 ```
@@ -35,6 +36,12 @@ Invoke-Pester tests/                                               # run the acc
   - Expected: the stale lock is cleared with a notice; your session starts cleanly.
 - **Feature claim warning (US4 → FR-015).** Claim feature `051`, then attempt to start it as a different `user@machine`.
   - Expected: `"Feature 051 is currently claimed by ... Continue anyway?"` — `y` records both claims and proceeds; `n` exits without creating a session.
+- **Decision split (US5 → FR-017).** Set `session_mode: multi`, then run a boundary sync that records an iteration-scoped decision.
+  - Expected: legacy `.squad/decisions.md` stays readable and `.squad/decisions/iteration-NNN/decisions.md` is refreshed deterministically with that iteration's entries.
+- **Append-only lifecycle events (US5 → FR-018).** Run a boundary sync and inspect `.squad/events/lifecycle-events.jsonl`.
+  - Expected: one complete JSON object is appended per boundary event; invalid historical lines are skipped by readers with a warning.
+- **Multi-developer recommendation (US6 → FR-020/FR-024).** In a temp repo with two recent git author emails, run `Get-SpecrewMultiDeveloperSignals`.
+  - Expected: `session_mode: single` returns a recommendation within 2 seconds; `session_mode: multi` preserves the signal but suppresses the recommendation.
 - **Brand-new worktree skips recovery (US9/US10 → FR-039/FR-040).** Clone a fresh worktree from main (inheriting old `session_state_*`), then `specrew start --feature 051-new` on a brand-new branch with no iteration dirs/boundary commits.
   - Expected: NO A/B/C stale-state prompt; you land directly in the new-feature specify flow. The decision + signals are logged to `.specrew/session-start.log` (FR-042).
 - **Genuine inconsistency still prompts (FR-041).** In a worktree that *does* have iteration dirs for an inherited feature whose path mismatches the current branch, run `specrew start`.

@@ -19,6 +19,21 @@ if (-not (Test-Path -LiteralPath $featureClaimsHelperPath -PathType Leaf)) {
 }
 . $featureClaimsHelperPath
 
+$sessionConfigHelperPath = Join-Path $PSScriptRoot 'session-config.ps1'
+if (-not (Test-Path -LiteralPath $sessionConfigHelperPath -PathType Leaf)) {
+    throw "Missing session-config helper '$sessionConfigHelperPath'."
+}
+. $sessionConfigHelperPath
+
+$scriptRoot = Split-Path -Parent $PSScriptRoot
+foreach ($helperName in @('decisions-split.ps1', 'append-only-logs.ps1', 'psd1-sort.ps1', 'auto-detection.ps1')) {
+    $helperPath = Join-Path $scriptRoot $helperName
+    if (-not (Test-Path -LiteralPath $helperPath -PathType Leaf)) {
+        throw "Missing helper '$helperPath'."
+    }
+    . $helperPath
+}
+
 function Get-SpecrewSessionStatePaths {
     param(
         [Parameter(Mandatory = $true)]
@@ -1231,6 +1246,49 @@ function Invoke-SpecrewBoundaryStateSync {
     Update-SpecrewMarkdownStateFile -Path $paths.IdentityPath -SessionState $sessionState -DefaultBody (Get-SpecrewIdentityBody -SessionState $sessionState) -AdditionalFrontmatter $identityAdditionalFrontmatter -PreferredBody $IdentityBody -UsePreferredBody:(-not [string]::IsNullOrWhiteSpace($IdentityBody)) -SchemaVersion 'v1'
 
     Add-SpecrewBoundarySyncLedgerEntry -ProjectRoot $paths.ProjectRoot -SessionState $sessionState
+
+    try {
+        Add-SpecrewLifecycleEvent `
+            -ProjectRoot $paths.ProjectRoot `
+            -EventType 'boundary-sync' `
+            -NowUtc $sessionState.recorded_at `
+            -Payload @{
+                boundary_type    = $sessionState.boundary_type
+                feature_ref      = $sessionState.feature_ref
+                iteration_number = $sessionState.iteration_number
+                task_id          = $sessionState.task_id
+                auth_commit_hash = $sessionState.auth_commit_hash
+            }
+    }
+    catch {
+        Write-Warning ("Boundary sync '{0}' could not append lifecycle event JSONL: {1}" -f $BoundaryType, $_.Exception.Message)
+    }
+
+    try {
+        if ((Get-SessionMode -ProjectRoot $paths.ProjectRoot) -eq 'multi') {
+            Split-SpecrewDecisionsByIteration -ProjectRoot $paths.ProjectRoot | Out-Null
+        }
+    }
+    catch {
+        Write-Warning ("Boundary sync '{0}' could not split decisions by iteration: {1}" -f $BoundaryType, $_.Exception.Message)
+    }
+
+    try {
+        Sort-SpecrewManifestFileList -ManifestPath (Join-Path $paths.ProjectRoot 'Specrew.psd1') | Out-Null
+    }
+    catch {
+        Write-Warning ("Boundary sync '{0}' could not sort Specrew.psd1 FileList: {1}" -f $BoundaryType, $_.Exception.Message)
+    }
+
+    try {
+        $multiDeveloperSignals = Get-SpecrewMultiDeveloperSignals -ProjectRoot $paths.ProjectRoot
+        if ($multiDeveloperSignals.has_multi_developer_signal) {
+            Write-Host ("Multi-developer activity detected: {0}" -f $multiDeveloperSignals.summary) -ForegroundColor Yellow
+        }
+    }
+    catch {
+        Write-Warning ("Boundary sync '{0}' could not evaluate multi-developer activity signals: {1}" -f $BoundaryType, $_.Exception.Message)
+    }
 
     # Pillar 1 live producer (Proposal 120 / FR-018): record a boundary_event capturing whether a
     # === SPECREW HANDOFF === block accompanied this stop, so Test-HandoffEvidenceGovernance detects

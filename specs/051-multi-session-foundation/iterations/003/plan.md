@@ -2,10 +2,10 @@
 
 **Schema**: v1
 **Spec**: [../../spec.md](../../spec.md)
-**Status**: planning
+**Status**: reviewing
 **Capacity**: 13/20 story_points
 **Started**: 2026-06-01
-**Completed**:
+**Completed**: 2026-05-31
 
 <!--
   Validator schema (canonical, enforced by validate-governance.ps1):
@@ -35,28 +35,28 @@
 
 | Task | Title | Requirement | Story | Effort | Owner | Owner File Globs | Status | Agent | Actual | Verdict |
 | ---- | ----- | ----------- | ----- | ------ | ----- | ---------------- | ------ | ----- | ------ | ------- |
-| T034 | decisions-split.ps1 per-iteration decision file splitter | FR-017 | US5 | 1.0 | Implementer | `scripts/decisions-split.ps1`, `.squad/decisions/` | planned | codex |  |  |
-| T035 | Boundary-sync integration for decisions split in multi-session mode | FR-017 | US5 | 0.5 | Implementer | `scripts/internal/sync-boundary-state.ps1`, `scripts/decisions-split.ps1` | planned | codex |  |  |
-| T036 | append-only-logs.ps1 JSON Lines append primitives | FR-018 | US5 | 1.0 | Implementer | `scripts/append-only-logs.ps1` | planned | codex |  |  |
-| T037 | Lifecycle event JSON Lines writer integration | FR-018 | US5 | 0.5 | Implementer | `scripts/append-only-logs.ps1`, `scripts/internal/sync-boundary-state.ps1` | planned | codex |  |  |
-| T038 | psd1-sort.ps1 FileList alphabetical sorter | FR-019 | US5 | 0.5 | Implementer | `scripts/psd1-sort.ps1`, `Specrew.psd1` | planned | codex |  |  |
-| T039 | Boundary-sync FileList sort integration | FR-019 | US5 | 0.5 | Implementer | `scripts/internal/sync-boundary-state.ps1`, `scripts/psd1-sort.ps1`, `Specrew.psd1` | planned | codex |  |  |
-| T040 | Acceptance: decisions split avoids shared-file merge conflict surface | FR-017 | US5 | 0.5 | Implementer | `tests/` | planned | codex |  |  |
-| T041 | Acceptance: FileList remains alphabetically sorted after sync | FR-019 | US5 | 0.5 | Implementer | `tests/` | planned | codex |  |  |
-| T042 | auto-detection.ps1 multi-developer signal detector scaffold | FR-020 | US6 | 1.0 | Implementer | `scripts/auto-detection.ps1` | planned | codex |  |  |
-| T043 | Git author email detection over recent history | FR-020 | US6 | 0.5 | Implementer | `scripts/auto-detection.ps1` | planned | codex |  |  |
-| T044 | Machine fingerprint detection from local session-state surfaces | FR-020 | US6 | 0.5 | Implementer | `scripts/auto-detection.ps1`, `.specrew/active-sessions.yml` | planned | codex |  |  |
-| T045 | Concurrent write signal detection | FR-020 | US6 | 1.0 | Implementer | `scripts/auto-detection.ps1` | planned | codex |  |  |
-| T046 | Branch fan-out signal detection | FR-020 | US6 | 0.5 | Implementer | `scripts/auto-detection.ps1` | planned | codex |  |  |
-| T047 | Welcome Orientation recommendation for single-session multi-dev signals | FR-021 | US6 | 0.5 | Implementer | `scripts/specrew-start.ps1`, `scripts/auto-detection.ps1` | planned | codex |  |  |
-| T048 | `specrew where` multi-developer indicator | FR-022 | US6 | 0.5 | Implementer | `scripts/specrew-where.ps1`, `scripts/internal/dashboard-renderer.ps1`, `scripts/auto-detection.ps1` | planned | codex |  |  |
-| T049 | Boundary-sync multi-developer activity note | FR-023 | US6 | 0.5 | Implementer | `scripts/internal/sync-boundary-state.ps1`, `scripts/auto-detection.ps1` | planned | codex |  |  |
-| T050 | Suppress recommendations when `session_mode` is already `multi` | FR-024 | US6 | 0.5 | Implementer | `scripts/auto-detection.ps1`, `scripts/specrew-start.ps1`, `scripts/specrew-where.ps1` | planned | codex |  |  |
-| T051 | Acceptance: two git authors trigger Welcome Orientation recommendation within 2s | FR-020, FR-021 | US6 | 0.5 | Implementer | `tests/` | planned | codex |  |  |
-| T052 | Acceptance: `session_mode: multi` suppresses redundant recommendation | FR-024 | US6 | 0.5 | Implementer | `tests/` | planned | codex |  |  |
-| T053 | Data-model reconciliation for SessionLockEntry, FeatureClaimEntry, MultiDevSignal | FR-020 | US6 | 0.5 | Reviewer | `specs/051-multi-session-foundation/data-model.md`, `specs/051-multi-session-foundation/iterations/003/` | planned | codex |  |  |
-| T054 | Run Iteration 2a+2b acceptance tests and record evidence | FR-017, FR-024 | US5, US6 | 0.5 | Reviewer | `tests/`, `specs/051-multi-session-foundation/iterations/003/` | planned | codex |  |  |
-| T055 | Run Specrew validator and verify no regressions from Iterations 1/2a | FR-017, FR-024 | US5, US6 | 0.5 | Reviewer | `specs/051-multi-session-foundation/iterations/003/`, `.specrew/last-validator-summary.json` | planned | codex |  |  |
+| T034 | decisions-split.ps1 per-iteration decision file splitter | FR-017 | US5 | 1.0 | Implementer | `scripts/decisions-split.ps1`, `.squad/decisions/` | done | codex | 1.0 | pass |
+| T035 | Boundary-sync integration for decisions split in multi-session mode | FR-017 | US5 | 0.5 | Implementer | `scripts/internal/sync-boundary-state.ps1`, `scripts/decisions-split.ps1` | done | codex | 0.5 | pass |
+| T036 | append-only-logs.ps1 JSON Lines append primitives | FR-018 | US5 | 1.0 | Implementer | `scripts/append-only-logs.ps1` | done | codex | 1.0 | pass |
+| T037 | Lifecycle event JSON Lines writer integration | FR-018 | US5 | 0.5 | Implementer | `scripts/append-only-logs.ps1`, `scripts/internal/sync-boundary-state.ps1` | done | codex | 0.5 | pass |
+| T038 | psd1-sort.ps1 FileList alphabetical sorter | FR-019 | US5 | 0.5 | Implementer | `scripts/psd1-sort.ps1`, `Specrew.psd1` | done | codex | 0.5 | pass |
+| T039 | Boundary-sync FileList sort integration | FR-019 | US5 | 0.5 | Implementer | `scripts/internal/sync-boundary-state.ps1`, `scripts/psd1-sort.ps1`, `Specrew.psd1` | done | codex | 0.5 | pass |
+| T040 | Acceptance: decisions split avoids shared-file merge conflict surface | FR-017 | US5 | 0.5 | Implementer | `tests/` | done | codex | 0.5 | pass |
+| T041 | Acceptance: FileList remains alphabetically sorted after sync | FR-019 | US5 | 0.5 | Implementer | `tests/` | done | codex | 0.5 | pass |
+| T042 | auto-detection.ps1 multi-developer signal detector scaffold | FR-020 | US6 | 1.0 | Implementer | `scripts/auto-detection.ps1` | done | codex | 1.0 | pass |
+| T043 | Git author email detection over recent history | FR-020 | US6 | 0.5 | Implementer | `scripts/auto-detection.ps1` | done | codex | 0.5 | pass |
+| T044 | Machine fingerprint detection from local session-state surfaces | FR-020 | US6 | 0.5 | Implementer | `scripts/auto-detection.ps1`, `.specrew/active-sessions.yml` | done | codex | 0.5 | pass |
+| T045 | Concurrent write signal detection | FR-020 | US6 | 1.0 | Implementer | `scripts/auto-detection.ps1` | done | codex | 1.0 | pass |
+| T046 | Branch fan-out signal detection | FR-020 | US6 | 0.5 | Implementer | `scripts/auto-detection.ps1` | done | codex | 0.5 | pass |
+| T047 | Welcome Orientation recommendation for single-session multi-dev signals | FR-021 | US6 | 0.5 | Implementer | `scripts/specrew-start.ps1`, `scripts/auto-detection.ps1` | done | codex | 0.5 | pass |
+| T048 | `specrew where` multi-developer indicator | FR-022 | US6 | 0.5 | Implementer | `scripts/specrew-where.ps1`, `scripts/internal/dashboard-renderer.ps1`, `scripts/auto-detection.ps1` | done | codex | 0.5 | pass |
+| T049 | Boundary-sync multi-developer activity note | FR-023 | US6 | 0.5 | Implementer | `scripts/internal/sync-boundary-state.ps1`, `scripts/auto-detection.ps1` | done | codex | 0.5 | pass |
+| T050 | Suppress recommendations when `session_mode` is already `multi` | FR-024 | US6 | 0.5 | Implementer | `scripts/auto-detection.ps1`, `scripts/specrew-start.ps1`, `scripts/specrew-where.ps1` | done | codex | 0.5 | pass |
+| T051 | Acceptance: two git authors trigger Welcome Orientation recommendation within 2s | FR-020, FR-021 | US6 | 0.5 | Implementer | `tests/` | done | codex | 0.5 | pass |
+| T052 | Acceptance: `session_mode: multi` suppresses redundant recommendation | FR-024 | US6 | 0.5 | Implementer | `tests/` | done | codex | 0.5 | pass |
+| T053 | Data-model reconciliation for SessionLockEntry, FeatureClaimEntry, MultiDevSignal | FR-020 | US6 | 0.5 | Reviewer | `specs/051-multi-session-foundation/data-model.md`, `specs/051-multi-session-foundation/iterations/003/` | done | codex | 0.5 | pass |
+| T054 | Run Iteration 2a+2b acceptance tests and record evidence | FR-017, FR-024 | US5, US6 | 0.5 | Reviewer | `tests/`, `specs/051-multi-session-foundation/iterations/003/` | done | codex | 0.5 | pass |
+| T055 | Run Specrew validator and verify no regressions from Iterations 1/2a | FR-017, FR-024 | US5, US6 | 0.5 | Reviewer | `specs/051-multi-session-foundation/iterations/003/`, `.specrew/last-validator-summary.json` | done | codex | 0.5 | pass |
 
 ## Effort Model
 

@@ -119,6 +119,12 @@ if (-not (Test-Path -LiteralPath $featureClaimsHelperPath -PathType Leaf)) {
 }
 . $featureClaimsHelperPath
 
+$autoDetectionHelperPath = Join-Path $PSScriptRoot 'auto-detection.ps1'
+if (-not (Test-Path -LiteralPath $autoDetectionHelperPath -PathType Leaf)) {
+    throw "Missing auto-detection helper '$autoDetectionHelperPath'."
+}
+. $autoDetectionHelperPath
+
 function Convert-UnixStyleArguments {
     param(
         [string]$FeatureRequest,
@@ -425,6 +431,11 @@ function Invoke-SpecrewStartMultiSessionGuard {
     }
 
     Register-SessionLock -ProjectRoot $ProjectRoot -FeatureId $featureId -User ([System.Environment]::UserName) -Fingerprint $fingerprint
+
+    $recommendation = Get-SpecrewMultiDeveloperRecommendation -ProjectRoot $ProjectRoot
+    if (-not [string]::IsNullOrWhiteSpace($recommendation)) {
+        Write-Info $recommendation
+    }
 }
 
 function Get-SpecrewConfigValue {

@@ -76,9 +76,17 @@ session_state_recorded_at: "2026-05-31T07:41:44Z"
 
 Invariant (FR-038): no git-tracked file may contain a `session_state_` token; only this gitignored file holds them.
 
-### JSON Lines append-only logs (FR-018)
+### `.squad/events/lifecycle-events.jsonl` (FR-018)
 
-One JSON object per line; appends are atomic; merges of divergent appends produce no ambiguous duplicates (SC-006). Applies to `.specrew/session-start.log` (FR-042) and the decisions inbox.
+One JSON object per line; appends are atomic; invalid historical lines are skipped with a warning rather than crashing readers (SC-006).
+
+```json
+{"schema":"v1","recorded_at":"2026-06-01T00:00:00Z","event_type":"boundary-sync","payload":{"boundary_type":"plan","feature_ref":"051-multi-session-foundation","iteration_number":"003"}}
+```
+
+### `.squad/decisions/iteration-NNN/decisions.md` (FR-017)
+
+Deterministic markdown mirrors generated from `.squad/decisions.md` entries that carry matching `Iteration Number`, `Affected Iteration`, or `Iteration` metadata. Boundary sync invokes the splitter only when `session_mode: multi`; legacy `.squad/decisions.md` remains readable for backwards compatibility.
 
 ### `Specrew.psd1` FileList ordering (FR-019)
 
@@ -96,7 +104,11 @@ The `FileList` array is alphabetically sorted on every boundary-sync write so co
 | `Test-SessionCollision` | `(feature_id) -> SessionLockEntry?` | Detect concurrent session (FR-010) | returns colliding entry or null |
 | `Clear-StaleSessionLocks` | `(thresholdHours=24) -> int` | Auto-clear stale locks (FR-011) | returns count cleared |
 | `Add-FeatureClaim` / `Update-FeatureClaim` / `Remove-FeatureClaim` | `(feature_id,...) -> void` | Claim lifecycle (FR-013/014/016) | atomic write |
-| `Get-MultiDevSignals` | `() -> MultiDevSignal[]` | Compute multi-dev signals (FR-020) | never persists |
+| `Split-SpecrewDecisionsByIteration` | `(projectPath) -> {written_count, iteration_numbers}` | Mirror legacy decisions into per-iteration files (FR-017) | missing ledger -> no-op |
+| `Add-SpecrewLifecycleEvent` / `Read-SpecrewJsonLines` | `(projectPath,event,payload)` / `(path)` | Append/read JSON Lines lifecycle events (FR-018) | invalid lines skipped with warning |
+| `Sort-SpecrewManifestFileList` | `(manifestPath) -> {changed, entry_count}` | Alphabetically sort manifest FileList while preserving membership (FR-019) | throws if FileList shape is unsupported |
+| `Get-SpecrewMultiDeveloperSignals` | `(projectPath) -> MultiDevSignal` | Compute aggregate multi-dev signals (FR-020) | degrades to zero counts when git metadata is unavailable |
+| `Get-SpecrewMultiDeveloperRecommendation` | `(projectPath) -> string?` | Return Welcome Orientation recommendation when unsuppressed (FR-021/024) | returns null when no signal or session_mode multi |
 | `Split-IdentitySessionState` | `(projectPath) -> void` | Migrate now.md → session-state.yml (FR-035/037) | idempotent |
 | `Test-TrackedSessionStateLeak` | `() -> string[]` | Grep tracked files for session_state_ (FR-038) | returns offending files |
 | `Test-BrandNewWorktree` | `() -> bool` | Brand-new detection heuristics (FR-039) | logs signals to session-start.log |
