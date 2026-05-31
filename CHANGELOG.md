@@ -4,6 +4,12 @@ Retroactive alpha release history for shipped Specrew features. `.specrew\config
 is the canonical source for the active version; this file records the feature
 baseline that each release number represents.
 
+## Unreleased
+
+### Fixed
+
+- **Proposal 150 small-fix slice**: normalized iteration-closeout numbers before closed-index and dashboard writes, clarified that `--allow-all` affects tool-call approval only, and added a Windows/PowerShell shell rule to generated coordinator prompts.
+
 ## [0.28.0] - 2026-05-29
 
 ### Added

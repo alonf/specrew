@@ -1,12 +1,13 @@
 ---
 proposal: 102
 title: Cross-Model Independent Reviewer (Structural Author-Reviewer Independence)
-status: candidate
+status: draft
 discussion-status: ad-hoc
-spec-status: none
+spec-status: draft
 relationship-status: clean
 phase: phase-3
 estimated-sp: 15-25
+priority-tier: 1
 discussion: ad-hoc 2026-05-22 session
 ---
 
@@ -35,6 +36,12 @@ User-stated motivation (2026-05-22, from external research document review):
 > "Specrew standardizes the validation phase ... utilizing a dedicated, independent validation LLM to cross-reference the generated code against the Spec-Kit requirements. This ensures objective verification regardless of whether Copilot, Claude, or Gemini wrote the code."
 
 The research document's framing was correct in shape; this proposal sharpens it with concrete failure-mode analysis and the cross-training-lineage requirement.
+
+### Promotion addendum: F-051 Iteration 2a cycle cost
+
+F-051 Iteration 2a added a stronger empirical signal on 2026-06-01: the structured reviewer caught real issues through three remediation rounds after implementation was already substantively correct. The misses were not core code behavior; they were branch push parity, uncommitted boundary evidence, stale lifecycle-state prose, stale review-report metadata, duplicate scaffold residue, and closeout-state coherence.
+
+That pattern funds this proposal's reviewer-independence thesis in a sharper way: one review pass is not enough when the artifact surface spans code, state truth, durable review evidence, and methodology conformance. Proposal 142 should catch mechanical state-truth drift; Proposal 102 supplies the independent reviewer layer for the judgment calls and artifact-coherence checks that remain.
 
 ## What (6 Pillars)
 
@@ -274,3 +281,4 @@ Sequencing: ships after 069 enables practical multi-host execution. Plausible Q3
 - **2026-05-22**: status set to `candidate`. Drafted in response to external research document's "dedicated independent validation LLM" framing, sharpened with concrete failure-mode analysis and the cross-training-lineage requirement. Awaiting clarify-time decisions on independence-level defaults, synthetic-catalog curation, and L3 viability.
 - **2026-05-28**: amended. Added FR-016 (all commissioned reviewers MUST load `.specrew/review/reviewer-instructions.md` from Proposal 140 + cite version in review output). Added Safeguard 4d (Reviewer instruction playbook citation as load-bearing form-vs-meaning defense). Added Proposal 140 as REQUIRED dependency (102 cannot deliver value without 140). Amendment empirically motivated by F-049 iter-3 review-signoff 2026-05-28: single-reviewer Pillar 5 form check approved an iteration; independent reviewer with explicit playbook context (the contents of `docs/methodology/review-instructions.md` shipped 2026-05-28 commit `01df228a`) correctly rejected with 4 substantive gaps. The differentiator was review-context quality, not model independence. The amendment closes the empirical gap that "two reviewers without shared playbook = two ignorant reviewers" — independence alone is insufficient.
 - **2026-05-29**: amended. Added Pillar 7 (Reviewer Role Differentiation — Code-Outcome vs SDLC-Process) as V2 architectural extension. Maintainer-stated framing (during 2026-05-29 dogfooding session): "Maybe we need two reviewers, one for the code and outcome, and one for the SDLC process?" Empirically motivated by 8+ cross-review instances across F-049 + F-050 lifecycle work in single session, with specific failure pattern: 2 iteration-closeout state-truth integrity gaps in F-049 alone (instances 2 + 5 in memory `[[cross-reviewer-3rd-empirical-instance-2026-05-28]]`) where single-reviewer attention biased toward substance and away from state-artifact-truth. Pillar 7 ships LAST in defense-in-depth ordering — after Proposal 142 (State-Truth Integrity Validator, ~3-5 SP) ships the mechanical Layer 1 enforcement and Proposal 140 ships the playbook discipline Layer 2 enforcement. Pillar 7 catches the residual semantic-judgment gaps Layers 1+2 cannot. Cost framing: total cost scales to 2-3× single-reviewer baseline at L2+Pillar-7; worth it for state-sync-heavy boundaries (iteration-closeout, feature-closeout), over-engineered for routine work.
+- **2026-06-01**: promoted from candidate to draft as a partial sequencing action before remaining F-051 iterations, based on F-051 Iteration 2a's three-round review remediation cycle and structured-review artifact repair evidence.
