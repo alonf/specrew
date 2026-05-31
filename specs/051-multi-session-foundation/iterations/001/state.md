@@ -1,15 +1,20 @@
 # Iteration State: 001
 
 **Schema**: v1
-**Last Completed Task**: T008 (US1 done: T001, T002, T004-T008)
-**Tasks Remaining**: T003 + T009-T019 (US2 file classification + Iter-1 validation; T003 file-classification schema doc bundled with US2)
+**Last Completed Task**: T015 (US1 + US2 done: T001-T015)
+**Tasks Remaining**: T016-T019 (Iteration-1 validation: verify quickstart/data-model, run acceptance suite, run validator)
 **In Progress**: (none)
 **Baseline Ref**: a9600489511ce88125bba0eaaefd9079e9eb144c
 **Updated**: 2026-05-31T11:12:28Z
 
 ## Execution Summary
 
-- **US1 complete (T001-T008, ~6 SP consumed of 11):** session-mode configuration shipped + tested green.
+- **US2 complete (T003, T009-T015, ~5 SP):** file classification + gitignore + git-rm-cached. Total consumed ~9 SP of 11.
+  - `scripts/internal/file-classification.ps1` — Get-FileClassification (4 categories + canonical per-session patterns, FR-004); Update-GitignoreForSession (idempotent, non-destructive merge, FR-005); Remove-TrackedPerSessionFiles (git rm --cached, keeps working copy, FR-006).
+  - `scripts/specrew-init.ps1` — wired both into the init flow after the governance scaffold (DryRun-aware).
+  - `Specrew.psd1` FileList: file-classification.ps1 added (alphabetical).
+  - Test `tests/unit/feature-051-file-classification.tests.ps1` — all PASS (FR-004 rule set; T014 gitignore generation/idempotency/preservation; T015 git-rm-cached against a real temp git repo, fail-first verified).
+- **US1 complete (T001-T008, ~4 SP):** session-mode configuration shipped + tested green.
   - `scripts/internal/session-config.ps1` — Get-SessionMode (defaults single when unset, FR-003) + Set-SessionMode (validates single|multi, atomic write-temp-rename, FR-001/002).
   - `scripts/specrew-config.ps1` — `config get|set session_mode` command; invalid value rejected (exit 1, no mutation).
   - `scripts/specrew.ps1` — `config` dispatch case (Assert-ProjectSetup + slash-compat guard + route).

@@ -35,6 +35,7 @@
         'scripts/internal/coordinator-resume.ps1',
         'scripts/internal/dashboard-renderer.ps1',
         'scripts/internal/detect-hosts.ps1',
+        'scripts/internal/file-classification.ps1',
         'scripts/internal/host-flag-translation.ps1',
         'scripts/internal/host-history.ps1',
         'scripts/internal/host-runtime-inventory.ps1',
