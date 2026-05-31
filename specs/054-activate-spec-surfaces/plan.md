@@ -126,7 +126,7 @@ Promote `/speckit.checklist` and `/speckit.analyze` into first-class Specrew dis
 - **Layering Gate**: PASS — planned work stays in supported Spec Kit/Specrew layers (`README.md`, `docs/`, `.github/`, `.specify/`, `extensions/`, `tests/`, and feature artifacts) and does not depend on unsupported host hacks.
 - **Traceability Gate**: PASS — `research.md`, `data-model.md`, `contracts/discovery-surfaces.md`, `contracts/lifecycle-placement.md`, `contracts/quality-governance-artifacts.md`, and `quickstart.md` map directly to US1/US2/US3 and FR-001..FR-011.
 - **Ownership Gate**: PASS — Spec Steward owns lifecycle truth, Planner owns before-plan/before-implement placement coherence, Reviewer owns additive-governance framing and validation confidence, and human approval remains mandatory before any later boundary.
-- **Capacity Gate**: PASS — the plan stays within the spec's small brownfield slice (5-8 effort points) and uses the repository's standard iteration scaffold without authorizing implementation.
+- **Capacity Gate**: PASS — the plan stays within the spec's small brownfield slice (8.75 story points) and uses the repository's standard iteration scaffold without authorizing implementation.
 - **Drift/Reconciliation Gate**: PASS — lifecycle drift will be detected through contract parity, slash-command discovery/routing/coexistence lanes, and `lifecycle-boundary-sync.tests.ps1`; any conflict requires spec/plan reconciliation rather than silent prompt drift.
 - **Verification Gate**: PASS — the planning package defines concrete markdownlint and PowerShell validation evidence, explicit quality gates, and post-design artifact consistency checks.
 
