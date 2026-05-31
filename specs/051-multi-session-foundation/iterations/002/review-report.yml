@@ -34,6 +34,51 @@ findings:
       dirty_file: .squad/decisions.md
       reason: Boundary sync and delegated-routing ledger entries were present only in the working tree.
     remediation: Include .squad/decisions.md in the review remediation commit before push.
+  - id: round2-state-in-progress-stale
+    phase: state_truth
+    severity: send-back
+    status: fixed-now
+    evidence:
+      file: specs/051-multi-session-foundation/iterations/002/state.md
+      line: 8
+      stale_text: "In Progress: (none) — implementation ready for boundary commit and review"
+    remediation: Fixed in c2947598 by recording that review is accepted and the iteration awaits the human review-signoff verdict.
+  - id: round2-state-remaining-list-stale
+    phase: state_truth
+    severity: send-back
+    status: fixed-now
+    evidence:
+      file: specs/051-multi-session-foundation/iterations/002/state.md
+      line: 21
+      stale_text: "REMAINING: review → review-signoff → retro → iteration-closeout"
+    remediation: Fixed in c2947598 by removing review from the remaining lifecycle list.
+  - id: round2-plan-status-template-residue
+    phase: artifact_coherence
+    severity: send-back
+    status: fixed-now
+    evidence:
+      file: specs/051-multi-session-foundation/iterations/002/plan.md
+      line: 100
+      stale_text: "Status stays planning until the before-implement hardening gate passes and human approval is granted."
+    remediation: Fixed in c2947598 by replacing the stale scaffold prose with a lifecycle-convention statement matching Status reviewing, and by adding a retro action to fix the scaffold source.
+  - id: round2-now-boundary-stale
+    phase: state_truth
+    severity: send-back
+    status: fixed-now
+    evidence:
+      file: .squad/identity/now.md
+      stale_boundary: before-implement
+      expected_boundary: review-signoff
+    remediation: Fixed in c2947598 by updating focus_area, session_state_boundary, session_state_auth_commit, timestamps, and body prose to match review-signoff.
+  - id: round2-hardening-gate-post-implementation-stale
+    phase: artifact_coherence
+    severity: send-back
+    status: fixed-now
+    evidence:
+      file: specs/051-multi-session-foundation/iterations/002/quality/hardening-gate.md
+      line: 13
+      stale_text: "Post-Implementation Verification: pending"
+    remediation: Fixed in c2947598 by recording gate-level post-implementation verification while preserving per-concern pending-post-implementation rows required by the validator contract.
 phases:
   phase_0_context_load:
     verdict: pass
@@ -122,6 +167,6 @@ matrix:
   - requirement: FR-043
     phases: { context: pass, branch_hygiene: pass_after_remediation, functional: pass, nfr: pass, code_quality: pass, test_integrity: pass, safety_ops: pass }
 verdict:
-  overall: approve_for_review_signoff_after_push_parity_verification
+  overall: approve_for_review_signoff_after_two_round_remediation
   blocking_findings: 0
-  fixed_now_findings: 2
+  fixed_now_findings: 7

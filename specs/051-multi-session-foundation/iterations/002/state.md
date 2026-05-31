@@ -25,12 +25,9 @@
 
 - On-disk dir is `002`; pass `-IterationNumber 002` (quoted) to every boundary sync (retro action 8). "Iteration 2a" is prose-only.
 - Working-tree parking discipline carries over from iter-1 (out-of-scope auto-deploy drift parked; the recurring tax is a separate gitignore chore per D-003 follow-up).
-- Retro carry-forward: fix the iteration-plan scaffold/template source that keeps emitting the stale "Status stays planning..." note after both Iteration 1 and Iteration 2 review-signoff, rather than relying on cross-review to patch each iteration artifact.
-
-## Notes
-
-- Update this file after each task completes.
-- Keep task identifiers aligned to plan.md.
+- Retro carry-forward: fix the iteration-plan and iteration-state scaffold/template sources that keep emitting stale lifecycle boilerplate (`Status stays planning...` and duplicate generic `## Notes` blocks), rather than relying on cross-review to patch each iteration artifact.
+- Retro carry-forward: add review-report update discipline — whenever `review-report.yml` exists and a round-N remediation happens, refresh the structured report before re-presenting.
+- Retro carry-forward: promote Proposal 142 validator expansion + Proposal 102 cross-model reviewer ahead of remaining F-051 iterations 2b/3/4; this review-signoff loop materially supports the validator-gap thesis.
 
 <!-- >>> specrew-managed escalation-state >>> -->
 ## Repair Escalation
