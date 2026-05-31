@@ -4,6 +4,26 @@ Retroactive alpha release history for shipped Specrew features. `.specrew\config
 is the canonical source for the active version; this file records the feature
 baseline that each release number represents.
 
+## [0.30.0] - 2026-05-31
+
+### Added
+
+- **Feature 054 (Activate Spec Surfaces)** — makes three lifecycle-adjacent Spec Kit commands discoverable and correctly positioned (Proposal 138):
+  - **`/speckit.checklist` surfaced at before-plan** as a proportional requirements-quality aid (recommended for substantive work, optional for low-risk slices) — across both before-plan command-surface mirrors, `.github/agents/speckit.plan.agent.md` + `speckit.checklist.agent.md` + `.github/prompts/speckit.checklist.prompt.md`, `README.md`, and `docs/user-guide.md`.
+  - **`/speckit.analyze` surfaced at before-implement** (only after a complete `tasks.md`), framed as an additive cross-artifact consistency review that complements — does not replace — Specrew governance, with a premature-use redirect — across both before-implement command-surface mirrors, `speckit.tasks.agent.md` + `speckit.analyze.agent.md` + `speckit.analyze.prompt.md`, `README.md`, and `docs/user-guide.md`.
+  - **`/speckit.taskstoissues` marked deferred** (not part of the default lifecycle in this slice) — `speckit.taskstoissues.agent.md` + prompt + discovery surfaces.
+  - **`lifecycle_adjacent_commands` metadata block** added to both `extension.yml` mirrors as the authoritative placement source.
+  - **Regression coverage**: new `tests/integration/discovery-surface-contract.ps1` lane plus extensions to the slash-command-routing/coexistence/discovery and lifecycle-boundary-sync lanes — 5/5 lanes green with positive + negative paths.
+
+### Fixed
+
+- **`lifecycle-boundary-sync.tests.ps1`** pre-existing breakage against the feature-closeout-working-tree + F-033 markdownlint boundary gates (the test predated those gates and never committed between scratch syncs) — now mirrors real boundary-commit discipline.
+
+### Known follow-ups (deferred carry-forward chores)
+
+- **Upstream Spec Kit template lint cleanup** — ~58 pre-existing MD031/MD032/MD047 violations in untouched `.github/agents/*.md` + `.github/prompts/*.md` templates; F-054-touched files are clean. Standalone chore.
+- **Spec-Kit pin bump 0.8.13 -> 0.8.18** (carried from 0.29.0 follow-ups) still pending; `.specrew/config.yml` ships the 0.8.13 pin.
+
 ## [0.29.0] - 2026-05-30
 
 ### Added

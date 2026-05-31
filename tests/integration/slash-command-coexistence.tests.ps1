@@ -63,5 +63,22 @@ Write-Host '--- Test 5: active runtime surfaces publish hyphenated commands only
 Assert-True -Condition ($specrewContent -notmatch '/specrew\.') -Message 'dispatcher help no longer publishes dot-form slash commands'
 
 Write-Host ''
+Write-Host '--- Test 6 (F-054 US2): before-implement surface surfaces /speckit.analyze as additive after complete tasks.md ---'
+$beforeImplementSurfaces = @(
+    (Join-Path $repoRoot 'extensions\specrew-speckit\commands\speckit.specrew-speckit.before-implement.md'),
+    (Join-Path $repoRoot '.specify\extensions\specrew-speckit\commands\speckit.specrew-speckit.before-implement.md')
+)
+foreach ($surface in $beforeImplementSurfaces) {
+    $surfaceName = [System.IO.Path]::GetFileName((Split-Path -Parent $surface)) + '/' + [System.IO.Path]::GetFileName($surface)
+    Assert-True -Condition (Test-Path -LiteralPath $surface) -Message "before-implement surface exists ($surfaceName)"
+    $content = Get-Content -LiteralPath $surface -Raw
+    Assert-True -Condition ($content -like '*/speckit.analyze*') -Message "before-implement surfaces /speckit.analyze ($surfaceName)"
+    Assert-True -Condition (($content -like '*spec.md*') -and ($content -like '*plan.md*') -and ($content -like '*tasks.md*')) -Message "before-implement names the spec.md/plan.md/tasks.md prerequisites ($surfaceName)"
+    Assert-True -Condition ($content -match '(?i)additive' -or ($content -match '(?i)complements' -and $content -match '(?i)does not replace')) -Message "before-implement frames analyze as additive to governance ($surfaceName)"
+    Assert-True -Condition ($content -match '(?i)return at the before-implement') -Message "before-implement redirects premature analyze back to the before-implement boundary ($surfaceName)"
+    Assert-True -Condition ($content -match '(?i)complete[d]?\s+`?tasks\.md' -or $content -match '(?i)after\s+`?/?speckit\.tasks') -Message "before-implement gates analyze on a complete tasks.md after /speckit.tasks ($surfaceName)"
+}
+
+Write-Host ''
 Write-Host '=== All coexistence tests passed ===' -ForegroundColor Green
 Write-Host ''

@@ -134,6 +134,23 @@ $psm1Content = Get-Content -LiteralPath $psm1Path -Raw
 Assert-Contains -Text $psm1Content -Substring 'specrew-version' -Message 'Specrew.psm1 maps specrew-version script'
 Assert-Contains -Text $psm1Content -Substring 'Show-SpecrewVersion' -Message 'Specrew.psm1 exports Show-SpecrewVersion'
 
+# --- Test 9 (F-054 US1): before-plan surface surfaces /speckit.checklist as a requirements-quality aid ---
+Write-Host ''
+Write-Host '--- Test 9: before-plan command surface surfaces /speckit.checklist (F-054) ---'
+$beforePlanSurfaces = @(
+    (Join-Path $repoRoot 'extensions\specrew-speckit\commands\speckit.specrew-speckit.before-plan.md'),
+    (Join-Path $repoRoot '.specify\extensions\specrew-speckit\commands\speckit.specrew-speckit.before-plan.md')
+)
+foreach ($surface in $beforePlanSurfaces) {
+    $surfaceName = [System.IO.Path]::GetFileName((Split-Path -Parent $surface)) + '/' + [System.IO.Path]::GetFileName($surface)
+    Assert-True -Condition (Test-Path -LiteralPath $surface) -Message "before-plan surface exists ($surfaceName)"
+    $content = Get-Content -LiteralPath $surface -Raw
+    Assert-Contains -Text $content -Substring '/speckit.checklist' -Message "before-plan surfaces /speckit.checklist ($surfaceName)"
+    Assert-Contains -Text $content -Substring 'requirement' -Message "before-plan frames checklist around requirement quality ($surfaceName)"
+    Assert-True -Condition (($content -match '(?i)recommended') -and ($content -match '(?i)substantive')) -Message "before-plan recommends checklist for substantive work ($surfaceName)"
+    Assert-True -Condition (($content -match '(?i)optional') -and ($content -match '(?i)(low-risk|lightweight|small|tiny)')) -Message "before-plan keeps checklist proportional/optional for small slices ($surfaceName)"
+}
+
 Write-Host ''
 Write-Host '=== All routing integration tests passed ===' -ForegroundColor Green
 Write-Host ''

@@ -35,6 +35,14 @@ Before implementation starts, confirm the active iteration artifacts are approve
 6. Do not treat `TBD`, omitted rationale, or agent-only deferral decisions as implementation-ready for critical security, resilience, or operational concerns.
 7. Keep later quality behavior truthful. Do not claim dedicated bug-hunter execution, strongest-class routing enforcement, known-traps workflows, or quality-drift automation are already active unless the current slice actually delivered them.
 
+## Lifecycle-adjacent command: /speckit.analyze (before-implement)
+
+Surface `/speckit.analyze` at this before-implement boundary, but only after `/speckit.tasks` has produced a complete `tasks.md`. It requires the full artifact set — `spec.md`, `plan.md`, and `tasks.md` — and performs an additive cross-artifact consistency and quality review across them.
+
+- It is **additive** to Specrew governance validation: it complements the governance checks and **does not replace** them.
+- It is only meaningful once a complete `tasks.md` exists; there is nothing for it to analyze before tasks are generated.
+- If you reach `/speckit.analyze` before a complete `tasks.md` exists, do not run it prematurely — return at the before-implement boundary after `/speckit.tasks` completes.
+
 ## Failure behavior
 
 If governance validation fails, approvals are incomplete, or the Phase 2 hardening gate is missing sign-off / human-approved deferral coverage, stop implementation, report the concrete blocking artifact or verdict, explain why it blocks implementation, and state the next valid human action.

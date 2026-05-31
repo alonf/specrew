@@ -337,6 +337,16 @@ The v0.24.3 process-optimization bundle and v0.25.0 boundary-enforcement release
 3. Review/Demo
 4. Retrospective
 
+## Lifecycle-adjacent Spec Kit commands
+
+Specrew surfaces these lifecycle-adjacent Spec Kit commands at specific lifecycle points. They are additive aids — they complement the governed lifecycle and do not replace governance.
+
+| Command | Lifecycle point | When to use | Status |
+|---|---|---|---|
+| `/speckit.checklist` | before-plan | Requirements-quality aid that catches vague, incomplete, inconsistent, or missing requirements before planning. Recommended for substantive work; optional for low-risk slices. | Surfaced |
+| `/speckit.analyze` | before-implement (after a complete `tasks.md`) | Additive cross-artifact consistency review across `spec.md`, `plan.md`, and `tasks.md`. Complements governance validation; does not replace it. | Surfaced |
+| `/speckit.taskstoissues` | — | Known but **deferred** for Feature 054; not part of the default lifecycle in this slice. | Deferred |
+
 ## Project Status Dashboard
 
 Use the dashboard whenever you need a one-screen delivery summary:

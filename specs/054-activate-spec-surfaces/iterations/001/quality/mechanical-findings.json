@@ -1,0 +1,11 @@
+{
+  "schemaVersion": "v1",
+  "featureRef": "specs/054-activate-spec-surfaces/spec.md",
+  "iterationRef": "specs/054-activate-spec-surfaces/iterations/001",
+  "generatedAt": "2026-05-31T09:50:11Z",
+  "generator": {
+    "name": "specrew-mechanical-checks",
+    "version": "0.29.0"
+  },
+  "findings": []
+}
