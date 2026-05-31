@@ -255,6 +255,8 @@ Proposal 084 (shipped feature-035) added PowerShell `ForEach-Object -Parallel` t
 
 For Specrew's own dogfooding: F-049 boundary-state validation runs across all 4 iterations + 28 tasks; serial single-agent approach = N×Opus tokens; parallel subagent approach via `dynamic-workflow` = 1×Opus for coordination + N×Haiku for execution + script-aggregate (no per-iteration result pollution in main context).
 
+**Deterministic/semantic boundary:** `validate-governance.ps1 -UseSubagents` is for deterministic validator-runner fan-out and structured result aggregation. It must not become a hidden semantic-review caller. Semantic checks such as Proposal 145's structured multi-phase review are agent-mediated: scripts emit a workplan and validate/aggregate the structured outputs, while the coordinator or reviewer agent dispatches the semantic phase prompts/subagents and records their findings.
+
 ### Pillar 5: Context-window protection (~1-2 SP)
 
 Each subagent runs in isolated context per Pillar 1's contract. This protects the main coordinator context from:
@@ -306,7 +308,7 @@ But single-iter is preferred because the pillars compose tightly.
 - **AC3**: Codex/Copilot/Antigravity adapters return degraded-mode (single-agent execution + cost-routing + `powershell-parallel` fallback for fan-out) without errors
 - **AC4**: Catalog at `.specify/subagents/catalog.yml` loaded + validated; adding new subagent role = YAML row addition (data-only, no script change); `preferred_dispatch_kind` field honored by adapter substrate-switch when host supports it
 - **AC5**: Cost-aware routing per `.specrew/model-catalog.yml` correctly maps subagent tier → concrete model per host; `cost_profile` (lean | balanced | premium) honored
-- **AC6**: `validate-governance.ps1 -UseSubagents -DispatchKind auto` dispatches per-iteration validator runs via the optimal substrate (dynamic-workflow on Claude v2.1.154+; task-tool on older Claude; powershell-parallel on other hosts); aggregates results correctly across substrates
+- **AC6**: `validate-governance.ps1 -UseSubagents -DispatchKind auto` dispatches deterministic per-iteration validator runs via the optimal substrate (dynamic-workflow on Claude v2.1.154+; task-tool on older Claude; powershell-parallel on other hosts); aggregates results correctly across substrates without performing hidden semantic LLM review
 - **AC7**: Empirical token-cost measurement: F-049-equivalent feature using subagents shows ≥5× reduction in Opus token consumption vs single-agent baseline; record evidence in `tests/integration/subagent-cost-measurement.tests.ps1`
 - **AC8**: Context-window-size measurement: long-session simulation (50+ tool calls including grep + validator + research) with subagent dispatch shows ≥3× reduction in main coordinator context growth vs single-agent baseline; **AC8-extended**: dynamic-workflow dispatch shows additional ≥2× reduction over task-tool dispatch for parallel-fan-out work (Claude v2.1.154+ only)
 - **AC9**: Per-host adapter implementations mirror parity preserved (`extensions/specrew-speckit/scripts/host-adapters/` ↔ `.specify/extensions/...`)

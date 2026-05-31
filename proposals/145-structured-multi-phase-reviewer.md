@@ -159,11 +159,26 @@ Verdict aggregation rule:
 ## Architecture (deliverable shape)
 
 - Invocable Reviewer skill at `extensions/specrew-speckit/squad-templates/skills/specrew-review-structured/SKILL.md` deployed per-host (`.claude/skills/`, `.github/skills/`, etc. per Proposal 058)
-- Each phase invoked as a focused sub-agent (per `[[proposal-139-multi-agent-subagent-orchestration]]` / F-051)
-- Without F-051: sequential single-agent phase invocation (lower fidelity but functional)
-- Output: `review-report.yml` machine-readable + traceable; `review.md` human prose synthesizing the matrix
-- Static coverage validator: rule in `validate-governance.ps1` that fails the review-signoff boundary if any FR has phase coverage gaps without explicit `n/a + reason`
+- Agent-mediated phase fan-out: each semantic review phase is executed by the coordinator/reviewer agent, using focused sub-agents where available (per `[[proposal-139-multi-agent-subagent-orchestration]]` / F-051)
+- Without F-051: sequential single-agent phase execution (lower fidelity but functional)
+- Deterministic scripts own workplan generation, schema validation, completeness checks, and aggregation; they do not directly invoke LLM reviewers as hidden side effects
+- Output artifacts: `review-workplan.yml` (required phases, prompt files, input artifacts, expected outputs, schemas, ordering constraints), per-phase structured findings under `review-findings/`, `review-report.yml` machine-readable + traceable, and `review.md` human prose synthesizing the matrix
+- Static coverage validator: rule in `validate-governance.ps1` that fails the review-signoff boundary if structured outputs are missing, schema-invalid, incomplete, or have FR phase coverage gaps without explicit `n/a + reason`; it validates evidence shape and aggregation rules, not semantic correctness by itself
 - Per-phase memoization (Proposal 086 Pillar 1) — context-load is the most expensive phase; cache per-iteration
+
+### Deterministic-script / agent-execution boundary
+
+Structured review uses an agent-mediated fan-out protocol. Scripts may prepare and validate review work, but they must not directly invoke LLM reviewers as hidden side effects.
+
+Flow:
+
+1. A deterministic script emits `review-workplan.yml` describing the required phase checks, prompt files, input artifacts, expected output files, schemas, and dependency/order constraints.
+2. The coordinator or reviewer agent reads the workplan and executes each semantic phase review, using subagents where available (Proposal 139) or sequential single-agent phase execution otherwise.
+3. Each phase writes a structured result such as `review-findings/phase-<n>.yml` with verdict, evidence, findings, and `n/a` reasons.
+4. A deterministic aggregation/validation script checks schemas, required phase coverage, file existence, FR/SC coverage, and verdict aggregation rules, then produces or verifies `review-report.yml`.
+5. `validate-governance.ps1` gates the boundary on the presence and schema/completeness of the structured outputs; it does not itself perform semantic LLM judgment.
+
+This keeps scripts deterministic and auditable while keeping semantic review in the agent layer.
 
 ## Composition map
 
