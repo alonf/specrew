@@ -22212,6 +22212,83 @@ Documented in `specs/049-pipeline-hardening-intake/iterations/005/drift-log.md` 
 - **Auth Commit Hash**: 87926843
 - **Recorded At**: 2026-05-29T00:25:07Z
 
+## 2026-05-30T21:08:52Z — Delegated routing plan
+
+- **Enabled Agents**: copilot
+- **Independent Oversight Active**: False
+- **Roles**:
+  - Implementer | requested=copilot | actual=copilot | model=(platform default) | status=honored | fallback=(none)
+  - Spec Steward | requested=codex | actual=copilot | model=(platform default) | status=fell-back | fallback=preferred agent 'codex' is not enabled
+  - Planner | requested=claude | actual=copilot | model=(platform default) | status=fell-back | fallback=preferred agent 'claude' is not enabled
+  - Reviewer | requested=claude | actual=copilot | model=(platform default) | status=fell-back | fallback=preferred agent 'claude' is not enabled
+  - Retro Facilitator | requested=copilot | actual=copilot | model=(platform default) | status=honored | fallback=(none)
+
+## 2026-05-30T21:08:52Z — Routing evidence: Spec Steward
+
+- **Decision ID**: routing-evidence-8cef13e9e651
+- **Type**: routing-evidence
+- **Affected Requirement**: FR-043
+- **Affected Iteration**: (none)
+- **Approving Human**: (none)
+- **Recorded At**: 2026-05-30T21:08:52Z
+- **Next Action**: none
+- **Rationale**: Delegated lifecycle routing was applied for role 'Spec Steward'.
+
+- **Routing Evidence**: Spec Steward | requested=codex | actual=copilot | model=(platform default) | status=fell-back | fallback=preferred agent 'codex' is not enabled
+
+## 2026-05-30T21:08:53Z — Routing evidence: Planner
+
+- **Decision ID**: routing-evidence-41786dafa027
+- **Type**: routing-evidence
+- **Affected Requirement**: FR-043
+- **Affected Iteration**: (none)
+- **Approving Human**: (none)
+- **Recorded At**: 2026-05-30T21:08:53Z
+- **Next Action**: none
+- **Rationale**: Delegated lifecycle routing was applied for role 'Planner'.
+
+- **Routing Evidence**: Planner | requested=claude | actual=copilot | model=(platform default) | status=fell-back | fallback=preferred agent 'claude' is not enabled
+
+## 2026-05-30T21:08:54Z — Routing evidence: Reviewer
+
+- **Decision ID**: routing-evidence-adf545daa9f4
+- **Type**: routing-evidence
+- **Affected Requirement**: FR-043
+- **Affected Iteration**: (none)
+- **Approving Human**: (none)
+- **Recorded At**: 2026-05-30T21:08:54Z
+- **Next Action**: none
+- **Rationale**: Delegated lifecycle routing was applied for role 'Reviewer'.
+
+- **Routing Evidence**: Reviewer | requested=claude | actual=copilot | model=(platform default) | status=fell-back | fallback=preferred agent 'claude' is not enabled
+
+## 2026-05-30T21:08:56Z — Boundary enforcement: feature-closeout
+
+- **Feature**: 050-cursor-host-support
+- **Boundary Type**: feature-closeout
+- **Current Boundary**: feature-closeout
+- **Requested Boundary**: (none)
+- **Enforcement Action**: migration
+- **Launch Mode**: same-window
+- **Agent Response Snippet**: (none)
+- **Reason**: Migrated start-context.json to schema v2 boundary_enforcement state.
+
+## 2026-05-30T21:27:32Z — Boundary sync warning: specify
+
+- **Boundary Type**: specify
+- **Latest Recorded Boundary**: iteration-closeout
+- **Recorded At**: 2026-05-30T21:27:32Z
+- **Warning**: Expected next boundary 'feature-closeout' but received 'specify'.
+
+## 2026-05-30T21:27:33Z — Boundary sync: specify
+
+- **Boundary Type**: specify
+- **Feature Ref**: 051-activate-spec-surfaces
+- **Iteration Number**: (none)
+- **Task ID**: (none)
+- **Auth Commit Hash**: 969f95dc85afd8b5733a389c6f41e858d1c5a337
+- **Recorded At**: 2026-05-30T21:27:32Z
+
 ## 2026-05-30T22:43:13Z — Boundary sync: clarify
 
 - **Boundary Type**: clarify
@@ -22219,3 +22296,20 @@ Documented in `specs/049-pipeline-hardening-intake/iterations/005/drift-log.md` 
 - **Iteration Number**: (none)
 - **Task ID**: (none)
 - **Auth Commit Hash**: 22945f68d5b6a0b3020f54e2af7c2902eb6f5a41
+- **Recorded At**: 2026-05-30T22:43:13Z
+
+## 2026-05-31T06:02:36Z — Boundary sync warning: clarify
+
+- **Boundary Type**: clarify
+- **Latest Recorded Boundary**: clarify
+- **Recorded At**: 2026-05-31T06:02:36Z
+- **Warning**: Expected next boundary 'plan' but received 'clarify'.
+
+## 2026-05-31T06:02:36Z — Boundary sync: clarify
+
+- **Boundary Type**: clarify
+- **Feature Ref**: 054-activate-spec-surfaces
+- **Iteration Number**: (none)
+- **Task ID**: (none)
+- **Auth Commit Hash**: bfdd63ff4967cbb13b5533910406d60f1c76bba4
+- **Recorded At**: 2026-05-31T06:02:36Z
