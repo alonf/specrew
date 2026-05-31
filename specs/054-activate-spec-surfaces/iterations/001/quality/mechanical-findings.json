@@ -1,0 +1,11 @@
+{
+  "schemaVersion": "v1",
+  "featureRef": "specs/054-activate-spec-surfaces/spec.md",
+  "iterationRef": "specs/054-activate-spec-surfaces/iterations/001",
+  "generatedAt": "2026-05-31T08:37:41Z",
+  "generator": {
+    "name": "specrew-iteration-scaffold",
+    "version": "1.0.0"
+  },
+  "findings": []
+}
