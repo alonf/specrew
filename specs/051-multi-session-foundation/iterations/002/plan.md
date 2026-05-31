@@ -2,7 +2,7 @@
 
 **Schema**: v1
 **Spec**: [../../spec.md](../../spec.md)
-**Status**: reviewing
+**Status**: retro
 **Capacity**: 12/20 story_points
 **Started**: 2026-05-31
 **Completed**:
@@ -97,6 +97,6 @@
 ## Notes
 
 - Capacity 12 SP is the honest plan-time re-sum (planning workflow 2026-05-31), refining TG-003's original 10. +4 sub-tasks (T020b fingerprint, T020c gitignore-fix, T026b race test, T033b 2a validation) the prior decomposition missed.
-- Lifecycle status follows the `Status` field above; this artifact is currently `reviewing` because implementation and review are complete and the iteration is awaiting the human review-signoff verdict.
+- Lifecycle status follows the `Status` field above; this artifact is currently `retro` because implementation, review, and retro are complete and the iteration is awaiting the human iteration-closeout verdict.
 - Retro carry-forward: fix the iteration-plan and iteration-state scaffold/template sources that emitted stale lifecycle boilerplate in both Iteration 1 and Iteration 2, so future plans/states do not require review-time prose repair.
 - On-disk dir is `002`; pass `-IterationNumber 002` (quoted) to every boundary sync (retro action 8 — avoid the iter-1 non-padded bug). Keep the "Iteration 2a" label in artifact titles for spec/tasks traceability.
