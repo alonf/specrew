@@ -9,7 +9,7 @@ This walkthrough shows how to exercise the Iteration-1 surface (session mode + f
 
 ```powershell
 # From a Specrew-managed project root
-pwsh -File scripts/specrew-cli.ps1 config set session_mode multi   # enable multi-session (FR-002)
+pwsh -File scripts/specrew.ps1 config set session_mode multi   # enable multi-session (FR-002)
 pwsh -File .specify/extensions/specrew-speckit/scripts/validate-governance.ps1 -ProjectPath .   # confirm no regressions
 Invoke-Pester tests/                                               # run the acceptance + governance suites
 ```

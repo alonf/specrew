@@ -2,7 +2,7 @@
 
 **Schema**: v1
 **Spec**: [../../spec.md](../../spec.md)
-**Status**: planning
+**Status**: reviewing
 **Capacity**: 11/20 story_points
 **Started**: 2026-05-31
 **Completed**:
@@ -51,10 +51,10 @@ Iteration 1 is the foundation/dependency gate (TG-005): session_mode must be con
 | T013 | Init cleanup step invoking git-rm-cached | FR-006 | US2 | 0.5 | Implementer | `scripts/specrew-init.ps1` | done | claude | 0.5 | pass |
 | T014 | Acceptance test: gitignore excludes per-session patterns | FR-005 | US2 | 0.5 | Implementer | `tests/unit/feature-051-file-classification.tests.ps1` | done | claude | 0.5 | pass |
 | T015 | Acceptance test: git-rm-cached without working-tree delete | FR-006 | US2 | 0.5 | Implementer | `tests/unit/feature-051-file-classification.tests.ps1` | done | claude | 0.5 | pass |
-| T016 | Verify quickstart.md accurate vs shipped behavior | FR-001..006 | US1 | 0.5 | Implementer | `specs/051-multi-session-foundation/quickstart.md` | planned | claude | — | — |
-| T017 | Verify data-model.md entities vs shipped schema | FR-001..006 | US2 | 0.5 | Implementer | `specs/051-multi-session-foundation/data-model.md` | planned | claude | — | — |
-| T018 | Run Iteration-1 acceptance suite + record results | FR-001..006 | US1 | 0.5 | Implementer | `tests/` | planned | claude | — | — |
-| T019 | Run Specrew validator — backward compat / no regressions | FR-001..006 | US2 | 0.5 | Reviewer | — | planned | claude | — | — |
+| T016 | Verify quickstart.md accurate vs shipped behavior | FR-001..006 | US1 | 0.5 | Implementer | `specs/051-multi-session-foundation/quickstart.md` | done | claude | 0.5 | pass |
+| T017 | Verify data-model.md entities vs shipped schema | FR-001..006 | US2 | 0.5 | Implementer | `specs/051-multi-session-foundation/data-model.md` | done | claude | 0.5 | pass |
+| T018 | Run Iteration-1 acceptance suite + record results | FR-001..006 | US1 | 0.5 | Implementer | `tests/` | done | claude | 0.5 | pass |
+| T019 | Run Specrew validator — backward compat / no regressions | FR-001..006 | US2 | 0.5 | Reviewer | — | done | claude | 0.5 | pass |
 
 ## Effort Model
 

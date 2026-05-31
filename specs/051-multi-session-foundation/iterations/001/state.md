@@ -1,14 +1,19 @@
 # Iteration State: 001
 
 **Schema**: v1
-**Last Completed Task**: T015 (US1 + US2 done: T001-T015)
-**Tasks Remaining**: T016-T019 (Iteration-1 validation: verify quickstart/data-model, run acceptance suite, run validator)
+**Last Completed Task**: T019 (ALL Iteration-1 tasks done: T001-T019)
+**Tasks Remaining**: (none) — implementation complete, ready for review boundary
 **In Progress**: (none)
 **Baseline Ref**: a9600489511ce88125bba0eaaefd9079e9eb144c
 **Updated**: 2026-05-31T11:12:28Z
 
 ## Execution Summary
 
+- **Validation complete (T016-T019, 2 SP). Iteration 1 implementation DONE — 11/11 SP, ready for review.**
+  - T016: quickstart.md drift fixed (stale `specrew-cli.ps1` -> `specrew.ps1`, a D-002 residue).
+  - T017: data-model.md SessionModeConfig (`session_mode`) + FileClassificationRule (`pattern/category/reason`) verified to match the shipped `Get-FileClassification` schema — no drift.
+  - T018: both acceptance suites PASS (feature-051-session-mode, feature-051-file-classification); slash-command-arg-whitelist regression PASS.
+  - T019: governance validator — no FAIL/medium/hard; only pre-existing soft warnings (F-048 dashboard regression + handoff-block-missing). `validate-governance.reader-tolerance` exits 1 ONLY from a Pester 3.4.0 TestDrive teardown error (`Remove-Item C:\Users\ALON~1.HOM does not exist`) — all 3 assertions pass; environmental, pre-existing, zero overlap with F-051 surfaces.
 - **US2 complete (T003, T009-T015, ~5 SP):** file classification + gitignore + git-rm-cached. Total consumed ~9 SP of 11.
   - `scripts/internal/file-classification.ps1` — Get-FileClassification (4 categories + canonical per-session patterns, FR-004); Update-GitignoreForSession (idempotent, non-destructive merge, FR-005); Remove-TrackedPerSessionFiles (git rm --cached, keeps working copy, FR-006).
   - `scripts/specrew-init.ps1` — wired both into the init flow after the governance scaffold (DryRun-aware).
