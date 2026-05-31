@@ -9598,7 +9598,7 @@ Feature 020 Iteration 1 implementation will stop if any of these occur:
 ## Evidence Artifacts
 
 **Test suite**:  ests/integration/version-checks.tests.ps1  
-**Branch**:  20-session-state-durability  
+**Branch**: 20-session-state-durability  
 **Session log**: .squad/log/20260518T011443Z-feature020-iteration1-version-check-repair.md  
 **Prior blocker context**: .squad/log/20260522T120000Z-feature020-iteration1-test-failure-boundary.md  
 **Previous stale-state repair**: .squad/log/20260517T220052Z-feature-020-planning-completion.md  
@@ -16611,7 +16611,7 @@ User request — captured for team memory per Scribe charter to preserve cross-a
 
 ## Summary
 
-Commit \5a7996\ on branch \ 22-hotfix-schema-tests\ is designated as the truthful durability anchor for Feature 022's combined specify+clarify artifact set. All boundary ledger references to this feature's work shall be reconciled to point to this commit rather than attempting to reconstruct uncommitted specify-only boundaries.
+Commit \5a7996\ on branch \22-hotfix-schema-tests\ is designated as the truthful durability anchor for Feature 022's combined specify+clarify artifact set. All boundary ledger references to this feature's work shall be reconciled to point to this commit rather than attempting to reconstruct uncommitted specify-only boundaries.
 
 ## Rationale
 
@@ -16628,7 +16628,7 @@ The Feature 022 specification and clarification artifacts existed locally withou
 ### 2026-05-18T17:25:25Z: Spec Steward durability decision
 
 **By:** Spec Steward  
-**What:** Treat commit \5a7996\ on \ 22-hotfix-schema-tests\ as the truthful durability anchor for the current Feature 022 combined specify+clarify artifact set. Reconcile any pending boundary commit references to that checkpoint rather than reconstructing an uncommitted specify-only boundary.  
+**What:** Treat commit \5a7996\ on \22-hotfix-schema-tests\ as the truthful durability anchor for the current Feature 022 combined specify+clarify artifact set. Reconcile any pending boundary commit references to that checkpoint rather than reconstructing an uncommitted specify-only boundary.  
 **Why:** Feature 022 artifacts existed locally without a durable checkpoint, and the user explicitly held \/speckit.plan\ authorization until real git/origin durability was restored without history rewriting.
 
 ---
@@ -16763,7 +16763,7 @@ elease_tag as an idempotent lightweight-tag contract.
 - \workflow_dispatch\ real publish paths (\publish-prerelease\, \publish-stable\, \promote-prerelease\) now self-create missing lightweight tags, validate existing tags at \HEAD\, and fail closed on divergent tag targets
 - \create_github_release\ covers every real tag-based publish path, \publish-prerelease\ maps to \--prerelease\, stable/promotion map to \--latest\
 - Dry-run validation passed for no-ref, branch-ref, stable-tag, and prerelease-tag inputs without mutating the reviewed worktree or creating real tags/releases
-- \CHANGELOG.md\, \.specrew\config.yml\, and \Specrew.psd1\ stay aligned on \ .23.0\, with the manifest default prerelease field empty and the changelog accurately describing the hotfix plus Shipping PR #269
+- \CHANGELOG.md\, \.specrew\config.yml\, and \Specrew.psd1\ stay aligned on \.23.0\, with the manifest default prerelease field empty and the changelog accurately describing the hotfix plus Shipping PR #269
 
 ## Result
 
@@ -17410,8 +17410,8 @@ Feature 028 closeout task sequence completed:
 
 - PR #345 (\eat(028): harden review evidence integrity\) was approved by reviewer
 - Merged to main using merge commit strategy (not squash) via \gh pr merge 345 --merge --admin\
-- Merge commit \ 30a5a3\ recorded in main history with full changeset (37 files, 4284 insertions)
-- Local branch \ 28-review-evidence-integrity\ deleted
+- Merge commit \30a5a3\ recorded in main history with full changeset (37 files, 4284 insertions)
+- Local branch \28-review-evidence-integrity\ deleted
 - Remote branch \origin/028-review-evidence-integrity\ deleted
 - Worktree audit completed; no worktree found for feature 028
 
@@ -21217,7 +21217,7 @@ Executed T007 (Docker pre-publish harness verification) and T019 (duplicate-row 
 
 **Rationale**:
 
-- Commit 437338f6 already on  49-pipeline-hardening-intake branch
+- Commit 437338f6 already on 49-pipeline-hardening-intake branch
 - Fixes critical user-facing bug (auto-resume to wrong feature F-047 instead of F-049)
 - Commit message notes structural fix to specrew-start.ps1 recovery logic still needed
 
