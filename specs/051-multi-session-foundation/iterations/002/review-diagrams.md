@@ -53,4 +53,3 @@ sequenceDiagram
 - [scripts/internal/sync-boundary-state.ps1](../../../scripts/internal/sync-boundary-state.ps1)
 - [scripts/internal/session-management.ps1](../../../scripts/internal/session-management.ps1)
 - [scripts/internal/feature-claims.ps1](../../../scripts/internal/feature-claims.ps1)
-

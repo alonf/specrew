@@ -44,4 +44,3 @@ through a temporary git repository.
 | FR-015 | `tests/unit/feature-051-feature-claims.tests.ps1`; `tests/integration/feature-051-iteration2a-callsite-wiring.tests.ps1` |
 | FR-016 | `tests/unit/feature-051-feature-claims.tests.ps1`; `tests/integration/feature-051-iteration2a-callsite-wiring.tests.ps1` |
 | FR-043 | `tests/unit/feature-051-session-management.tests.ps1`; local-only fingerprint implementation and data-model reconciliation |
-

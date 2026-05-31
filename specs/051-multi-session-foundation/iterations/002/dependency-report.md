@@ -22,4 +22,3 @@
 ## Transitive Surface
 
 - none: no manifest changes were detected.
-
