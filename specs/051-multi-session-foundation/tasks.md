@@ -208,18 +208,22 @@ Iteration 2 (Collision Detection + Claims + Auto-Detection)
 ### Parallelization Opportunities
 
 **Within Iteration 1**:
+
 - T001-T003 (Setup & Schema) can run in parallel
 - T004-T008 (Session Mode) can run in parallel after Setup
 - T009-T015 (File Classification) can run in parallel after Setup
 
 **Within Iteration 2**:
+
 - Session Management (T020-T026) and Feature Claims (T027-T033) are independent; can run in parallel
 - Conflict Reduction (T034-T041) and Auto-Detection (T042-T052) can run in parallel after session/claims work
 
 **Within Iteration 3**:
+
 - Spec-Kit Upgrade (T056-T065) and Version Management (T066-T073) are independent; can run in parallel
 
 **Within Iteration 4**:
+
 - Identity Split (T077-T083) and Brand-New Detection (T084-T092) are independent; can start in parallel
 - Validation (T093-T097) runs after both complete
 
