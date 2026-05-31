@@ -59,3 +59,21 @@ Reviewer notes:
 - `tests/integration/boundary-sync-atomicity.tests.ps1`: pass
 - `validate-governance.ps1 -ProjectPath .`: rerun after review artifact reconciliation
 
+## Structured Review Re-Run
+
+Reviewer method source: Proposal 145 structured 7-phase review, Proposal 082
+boundary commit + upstream push discipline, and `.specrew/team/agents/reviewer.md`.
+Project-local reviewer instructions and installed default reviewer instructions
+were both absent, so the proposal checklist was applied directly.
+
+Phase 1 branch hygiene found two hard-blocking review-signoff issues:
+
+- `phase1-push-parity-break`: local `HEAD` was `8b97432f7d12b7f203d3f14b8387af04bc702104`, while `origin/051-multi-session-foundation` was `b61e6b76111c09a8a7b5bcfd691427d828f4c79d`; the accepted review commit existed only locally.
+- `phase1-uncommitted-boundary-evidence`: `.squad/decisions.md` contained boundary-sync and delegated-routing ledger entries that were not committed.
+
+Both are fixed-now remediation items for the re-run: commit the decisions ledger
+and structured review report, push `051-multi-session-foundation`, then verify
+`git rev-parse HEAD == git rev-parse origin/051-multi-session-foundation`
+before re-presenting review-signoff.
+
+Structured matrix output: `specs/051-multi-session-foundation/iterations/002/review-report.yml`.
