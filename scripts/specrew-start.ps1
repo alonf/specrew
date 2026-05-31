@@ -314,7 +314,7 @@ Options:
   -NoLaunch | --no-launch                  Generate handoff prompt/context but do not launch the host CLI
   -NewWindow | --new-window                Launch the host CLI in a new PowerShell window instead of the current terminal
   -SameWindow | --same-window              Compatibility alias for the default current-terminal launch mode
-  -AllowAll | --allow-all                  Launch the host with its tool-approval-bypass flag (Copilot --allow-all, Claude --dangerously-skip-permissions, Codex --dangerously-bypass-approvals-and-sandbox). Default for tool calls.
+  -AllowAll | --allow-all                  Launch the host with its tool-approval-bypass flag (Copilot --allow-all, Claude --dangerously-skip-permissions, Codex --dangerously-bypass-approvals-and-sandbox). Default for tool calls; does not bypass lifecycle boundary approval.
   -PromptApprovals | --prompt-approvals    Keep the host's interactive tool-approval prompts enabled (disables --allow-all translation)
   -Autonomous | --autonomous               Specrew-side flag (independent of any host autopilot): the Crew advances through lifecycle gates without stopping for explicit approval. Use for unattended runs such as overnight execution; default is gate-respecting mode where the Crew stops at every approval boundary.
   --bypass-boundary-enforcement            Suspend boundary enforcement for this session only; requires --reason
@@ -330,7 +330,7 @@ Options:
      - Specrew launches the selected host CLI (--host copilot|claude|codex, default copilot) from the target project directory, reuses the current terminal by default, and only uses --new-window when you explicitly ask for a detached shell.
      - Specrew auto-loads the bootstrap so the host reads the Crew handoff at `.specrew/last-start-prompt.md` and `.specrew/start-context.json` before doing anything else.
      - The default behavior is gate-respecting: the Crew stops at every lifecycle approval boundary (specify, clarify, plan, tasks, before-implement, review-signoff, retro, iteration-closeout, feature-closeout) and waits for explicit human verdict. Pass --autonomous to advance through gates without stopping (unattended runs).
-     - --allow-all (default) and --autonomous are independent: --allow-all controls tool-call approval (translated per host); --autonomous controls whether the Crew advances through lifecycle gates without input. Intake stage stays interactive regardless of --autonomous so initial scope is never auto-resolved.
+     - --allow-all (default) and --autonomous are independent: --allow-all controls tool-call approval only (translated per host) and does not bypass lifecycle boundary approval; --autonomous controls whether the Crew advances through lifecycle gates without input. Intake stage stays interactive regardless of --autonomous so initial scope is never auto-resolved.
      - The selected host may still ask you to trust the project directory on first launch.
      - If the selected host CLI is unavailable, Specrew still writes a handoff prompt and context file.
 '@ | Write-Host
@@ -2856,7 +2856,7 @@ This is the authoritative map of Specrew's lifecycle and governance machinery as
 - ``Test-SpecrewBoundaryAuthorization`` in ``shared-governance.ps1`` is the only gate that HARD-BLOCKS. It is invoked at ``before-implement``, ``review-signoff``, ``iteration-closeout``, ``feature-closeout`` — the four points where human verdict is required.
 - The "readiness gates" (``before-plan``, ``after-tasks``) emit WARN findings but do not block. Treat their output as advice.
 - ``boundary_enforcement`` block in ``start-context.json`` is now initialized on every ``specrew start`` (F-040 dogfooding Fix #4), so you should NEVER hit a "Boundary enforcement state is missing" error.
-- ``approval_mode`` (``allow-all`` vs ``prompt-approvals``) controls tool-call approval, NOT lifecycle boundary approval. They are independent. ``--autonomous`` (NOT default) controls whether the Crew stops at lifecycle gates without human input.
+- ``approval_mode`` (``allow-all`` vs ``prompt-approvals``) controls tool-call approval, NOT lifecycle boundary approval. They are independent. ``--allow-all`` controls tool-call approval only and does not bypass lifecycle boundary approval. ``--autonomous`` (NOT default) controls whether the Crew stops at lifecycle gates without human input.
 
 **What's deployed in this project (read from start-context.json):**
 
@@ -2867,6 +2867,7 @@ The ``crew_runtime_status`` field tells you whether the downstream sync-* agents
 - ``Status: approved`` / ``in_progress`` are INVALID iteration / task statuses. Canonical iteration statuses: ``planning | executing | reviewing | retro | complete | abandoned``. Canonical task statuses: ``planned | in-progress | done | needs-rework | deferred | blocked`` (hyphens, not underscores).
 - Hardening-gate concern ``Status: tbd`` is rejected. Use ``addressed | not-applicable | deferred-with-approval``.
 - ``Capacity: <consumed>/<cap> <effort_unit>`` with NO trailing prose. Notes go in the Notes section.
+- **Windows shell rule:** on Windows/PowerShell, do not use Bash syntax, Unix-only path assumptions, or cross-shell deletion/move pipelines. Use PowerShell-native commands with quoted ``-LiteralPath`` values for file operations.
 - **Web-form feature pitfall:** for any feature whose deliverable is an HTML form (calculator, registration, search box, etc.), browsers submit the form on **Enter key inside any ``<input>``** — which triggers a full page reload to the form's ``action`` URL and wipes computed output. If the form is rendered by your app and you want Enter to compute-without-reload, either (a) bind a ``submit`` handler that calls ``event.preventDefault()`` or (b) use ``<input type="button">`` (not ``submit``) for the action and avoid the form's default submission. Cover this in the test plan: a Cypress / Playwright test that types into the field and presses Enter must verify the computed value appears AND the URL does not change. This pitfall was the dominant bug class in F-040 tip-calc-v2 + calc-v2 dogfooding.
 - **Web-feature acceptance evidence:** for browser features, the review-time evidence must include a screenshot or recorded interaction showing the golden-path AND Enter-key behavior — running ``Invoke-WebRequest`` against the static HTML proves the file deployed, NOT that the feature works. Lighthouse / DOM-inspection MCPs (or manual browser steps documented in quickstart.md) are the canonical evidence layer.
 
@@ -3661,7 +3662,7 @@ function Get-AllowAllRuntimePlan {
         DisplayMode         = if ($AllowAll) { 'allow-all' } else { 'prompt-approvals' }
         SuppressionNote     = $null
         ApprovalOperatorNote = if ($AllowAll) {
-            'allow-all reduces tool-approval blocking after the request is grounded.'
+            'allow-all controls tool-call approval only; it does not bypass lifecycle boundary approval.'
         }
         else {
             'prompt-approvals keeps the host CLI permission prompts interactive throughout the session.'
@@ -4129,7 +4130,7 @@ elseif ($useAutopilot) {
     'autopilot mode is on (Squad advances through lifecycle gates without explicit approval) but prompt-approvals is on (each tool call still prompts).'
 }
 elseif ($approvalMode -eq 'allow-all') {
-    'gate-respecting mode (default): Squad stops at every lifecycle approval boundary for human verdict. allow-all is on so tool calls between gates run without approval prompts.'
+    'gate-respecting mode (default): Squad stops at every lifecycle approval boundary for human verdict. allow-all controls tool-call approval only; it does not bypass lifecycle boundary approval.'
 }
 else {
     'gate-respecting mode (default) plus prompt-approvals: Squad stops at every lifecycle gate AND Copilot prompts before each tool call.'

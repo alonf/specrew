@@ -16,12 +16,12 @@ $mirrorValidator = Join-Path -Path $repoRoot -ChildPath '.specify\extensions\spe
 # Test 1: All 5 helpers present in shared-governance.ps1
 # Per Copilot review PR #661: also verify Get-SpecrewClosedIterationFromStateFile.
 $sharedContent = Get-Content -LiteralPath $sharedGovernance -Raw -Encoding UTF8
-foreach ($fn in @('Get-SpecrewClosedIterationIndexPath', 'Get-SpecrewClosedIterationIndex', 'Test-SpecrewIterationClosed', 'Add-SpecrewClosedIterationEntry', 'Get-SpecrewClosedIterationFromStateFile')) {
+foreach ($fn in @('Get-SpecrewClosedIterationIndexPath', 'Get-SpecrewClosedIterationIndex', 'Normalize-SpecrewIterationNumber', 'Test-SpecrewIterationClosed', 'Add-SpecrewClosedIterationEntry', 'Get-SpecrewClosedIterationFromStateFile')) {
     if ($sharedContent -notmatch ('function ' + [regex]::Escape($fn) + '\b')) {
         Write-Fail "Helper $fn not found in shared-governance.ps1"
     }
 }
-Write-Pass 'All 5 closed-iteration-index helpers present in shared-governance.ps1'
+Write-Pass 'All 6 closed-iteration-index helpers present in shared-governance.ps1'
 
 # Test 2: Mirror parity for shared-governance.ps1
 $primaryHash = (Get-FileHash -LiteralPath $sharedGovernance -Algorithm SHA256).Hash
@@ -71,9 +71,10 @@ if (Test-Path -LiteralPath `$pr) { Remove-Item -Recurse -Force -LiteralPath `$pr
 `$null = New-Item -ItemType Directory -Path `$pr -Force
 Add-SpecrewClosedIterationEntry -ProjectRoot `$pr -Feature '042-test' -Iteration '001' -ClosedAt '2026-05-22T10:00:00Z'
 Add-SpecrewClosedIterationEntry -ProjectRoot `$pr -Feature '042-test' -Iteration '001' -ClosedAt '2026-05-22T10:00:00Z'
+Add-SpecrewClosedIterationEntry -ProjectRoot `$pr -Feature '042-test' -Iteration '1' -ClosedAt '2026-05-22T10:00:00Z'
 Add-SpecrewClosedIterationEntry -ProjectRoot `$pr -Feature '042-test' -Iteration '002' -ClosedAt '2026-05-22T10:00:00Z'
 `$index = Get-SpecrewClosedIterationIndex -ProjectRoot `$pr
-if (`$index.Count -eq 2 -and `$index.ContainsKey('042-test/001') -and `$index.ContainsKey('042-test/002')) {
+if (`$index.Count -eq 2 -and `$index.ContainsKey('042-test/001') -and `$index.ContainsKey('042-test/002') -and -not `$index.ContainsKey('042-test/1')) {
     Write-Host 'IDEM_OK'
 } else {
     Write-Host ("IDEM_FAIL count=" + `$index.Count)
@@ -93,7 +94,7 @@ $testTest = @"
 if (Test-Path -LiteralPath `$pr) { Remove-Item -Recurse -Force -LiteralPath `$pr }
 `$null = New-Item -ItemType Directory -Path `$pr -Force
 Add-SpecrewClosedIterationEntry -ProjectRoot `$pr -Feature '050-x' -Iteration '001' -ClosedAt '2026-05-22T10:00:00Z'
-if ((Test-SpecrewIterationClosed -ProjectRoot `$pr -Feature '050-x' -Iteration '001') -and -not (Test-SpecrewIterationClosed -ProjectRoot `$pr -Feature '999-x' -Iteration '001')) {
+if ((Test-SpecrewIterationClosed -ProjectRoot `$pr -Feature '050-x' -Iteration '1') -and -not (Test-SpecrewIterationClosed -ProjectRoot `$pr -Feature '999-x' -Iteration '001')) {
     Write-Host 'TEST_OK'
 }
 Remove-Item -Recurse -Force -LiteralPath `$pr
@@ -108,6 +109,9 @@ Write-Pass 'Test-SpecrewIterationClosed returns correct boolean'
 $boundarySyncContent = Get-Content -LiteralPath (Join-Path $repoRoot 'scripts/internal/sync-boundary-state.ps1') -Raw -Encoding UTF8
 if ($boundarySyncContent -notmatch "BoundaryType -eq 'iteration-closeout'[\s\S]*?Add-SpecrewClosedIterationEntry") {
     Write-Fail 'sync-boundary-state.ps1 does not call Add-SpecrewClosedIterationEntry at iteration-closeout boundary'
+}
+if ($boundarySyncContent -notmatch 'Add-SpecrewClosedIterationEntry[\s\S]*?-Iteration \$effectiveIterationNumber' -or $boundarySyncContent -notmatch 'iterations\\\{1\}\\dashboard\.md" -f \$effectiveFeatureRef, \$effectiveIterationNumber') {
+    Write-Fail 'sync-boundary-state.ps1 does not use the normalized iteration number for closeout index/dashboard writes'
 }
 Write-Pass 'Boundary sync calls Add-SpecrewClosedIterationEntry at iteration-closeout'
 

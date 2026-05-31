@@ -334,7 +334,7 @@ function New-SpecrewSessionState {
         feature_ref      = $resolvedFeatureRef
         feature_number   = Get-SpecrewFeatureNumber -FeatureRef $resolvedFeatureRef
         feature_path     = $featurePath
-        iteration_number = if ([string]::IsNullOrWhiteSpace($IterationNumber)) { $null } else { $IterationNumber.Trim() }
+        iteration_number = Normalize-SpecrewIterationNumber -IterationNumber $IterationNumber
         task_id          = if ([string]::IsNullOrWhiteSpace($TaskId)) { $null } else { $TaskId.Trim() }
         auth_commit_hash = if ([string]::IsNullOrWhiteSpace($AuthCommitHash)) { $null } else { $AuthCommitHash.Trim() }
         recorded_at      = $recordedAt
@@ -990,8 +990,9 @@ function Invoke-SpecrewAutoRenderDashboard {
     if (-not [string]::IsNullOrWhiteSpace($FeatureRef)) {
         $whereArgs += @('-FeatureId', $FeatureRef)
     }
-    if (-not [string]::IsNullOrWhiteSpace($IterationNumber)) {
-        $whereArgs += @('-IterationNumber', $IterationNumber)
+    $effectiveIterationNumber = Normalize-SpecrewIterationNumber -IterationNumber $IterationNumber
+    if (-not [string]::IsNullOrWhiteSpace($effectiveIterationNumber)) {
+        $whereArgs += @('-IterationNumber', $effectiveIterationNumber)
     }
 
     & pwsh -NoProfile -ExecutionPolicy Bypass -File $whereScript @whereArgs *>&1 | Out-Null
@@ -1070,6 +1071,7 @@ function Invoke-SpecrewBoundaryStateSync {
     }
 
     $BoundaryType = $aliasMap[$normalizedInput]
+    $effectiveIterationNumber = Normalize-SpecrewIterationNumber -IterationNumber $IterationNumber
 
     # Proposal 088: pre-sync markdownlint gate. Catches lint violations at
     # boundary-time so they never reach PR-CI Lint and cause the catch-fix-retry
@@ -1120,7 +1122,7 @@ function Invoke-SpecrewBoundaryStateSync {
         -BoundaryType $BoundaryType `
         -ProjectRoot $paths.ProjectRoot `
         -FeatureRef $effectiveFeatureRef `
-        -IterationNumber $IterationNumber `
+        -IterationNumber $effectiveIterationNumber `
         -TaskId $TaskId `
         -AuthCommitHash $effectiveAuthCommitHash
 
@@ -1244,9 +1246,9 @@ function Invoke-SpecrewBoundaryStateSync {
     # Proposal 085: append to the closed-iteration index at iteration-closeout
     # boundary (idempotent on re-sync). Validator full-repo path uses this to
     # skip closed iterations unless -IncludeClosed is set.
-    if ($BoundaryType -eq 'iteration-closeout' -and -not [string]::IsNullOrWhiteSpace($effectiveFeatureRef) -and -not [string]::IsNullOrWhiteSpace($IterationNumber)) {
+    if ($BoundaryType -eq 'iteration-closeout' -and -not [string]::IsNullOrWhiteSpace($effectiveFeatureRef) -and -not [string]::IsNullOrWhiteSpace($effectiveIterationNumber)) {
         try {
-            Add-SpecrewClosedIterationEntry -ProjectRoot $paths.ProjectRoot -Feature $effectiveFeatureRef -Iteration $IterationNumber
+            Add-SpecrewClosedIterationEntry -ProjectRoot $paths.ProjectRoot -Feature $effectiveFeatureRef -Iteration $effectiveIterationNumber
         }
         catch {
             Write-Warning ("Boundary sync 'iteration-closeout' could not append to closed-iteration index: {0}" -f $_.Exception.Message)
@@ -1258,8 +1260,8 @@ function Invoke-SpecrewBoundaryStateSync {
         # `specrew where --capture-kind iteration-closeout` manually. Calc-v2 closed iteration
         # 001 without ever producing dashboard.md, which is the empirical motivation.
         try {
-            $iterationDashboardPath = Join-Path $paths.ProjectRoot ("specs\{0}\iterations\{1}\dashboard.md" -f $effectiveFeatureRef, $IterationNumber)
-            Invoke-SpecrewAutoRenderDashboard -ProjectRoot $paths.ProjectRoot -OutputPath $iterationDashboardPath -CaptureKind 'iteration-closeout' -FeatureRef $effectiveFeatureRef -IterationNumber $IterationNumber
+            $iterationDashboardPath = Join-Path $paths.ProjectRoot ("specs\{0}\iterations\{1}\dashboard.md" -f $effectiveFeatureRef, $effectiveIterationNumber)
+            Invoke-SpecrewAutoRenderDashboard -ProjectRoot $paths.ProjectRoot -OutputPath $iterationDashboardPath -CaptureKind 'iteration-closeout' -FeatureRef $effectiveFeatureRef -IterationNumber $effectiveIterationNumber
         }
         catch {
             Write-Warning ("Boundary sync 'iteration-closeout' could not auto-render iteration dashboard: {0}" -f $_.Exception.Message)
