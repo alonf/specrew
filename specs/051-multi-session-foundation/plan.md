@@ -366,14 +366,14 @@ All success criteria from spec.md section "Success Criteria" apply:
 ## Next Steps & Approval
 
 **This plan is ready for**:
-1. ✅ Hardening gate review (security + concurrency + state-machine validation) before Iteration 1 code begins
-2. ✅ Phase 1 design work (data-model.md, contracts, quickstart) in parallel with hardening review
-3. ✅ Task generation (`/speckit.tasks`) after hardening gate approval
+1. ✅ Task generation (`/speckit.tasks`) after human plan review
+2. ✅ Phase 1 design work (data-model.md, contracts, quickstart) as supporting artifacts
+3. ✅ Hardening gate review (security + concurrency + state-machine validation) at the before-implement boundary, before Iteration 1 code begins
 4. ✅ Implementation (Iteration 1-4) proceeding in sequence with quality gates between iterations
 
 **Approval Requirements**:
-- Human review of this plan against spec (Spec Steward)
-- Human approval of hardening gate before Iteration 1 implementation
+- Human review and approval of this plan against spec (required before task generation)
+- Human approval of hardening gate at before-implement boundary (required before Iteration 1 implementation)
 - Human review of acceptance scenario test results before feature closure
 
 ---
@@ -399,5 +399,5 @@ All success criteria from spec.md section "Success Criteria" apply:
 
 **Plan Created**: 2026-05-30  
 **Planner**: Speckit Planning Agent  
-**Status**: Ready for hardening gate review + Phase 1 design  
-**Next Boundary**: Before-Implement (hardening gate approval required before Iteration 1 code execution)
+**Status**: Ready for human plan review and task generation  
+**Next Boundary**: Tasks (generate actionable, dependency-ordered tasks from this plan)
