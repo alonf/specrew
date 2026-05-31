@@ -95,4 +95,4 @@ Iteration 1 is the foundation/dependency gate (TG-005): session_mode must be con
 ## Notes
 
 - Capacity 11 SP reflects the honest re-estimate (2026-05-31) that resolved drift D-001; supersedes the inflated 28 SP per-task markup from the 48→97 task expansion. See [capacity-reestimate.md](capacity-reestimate.md).
-- Status stays `planning` until the before-implement hardening gate passes and human approval is granted.
+- Lifecycle convention (see the validator-schema comment near the top of this file): iteration Status runs `planning → executing → reviewing → retro → complete`. This iteration has completed implementation + review-signoff and is at `retro` (current Status above), awaiting the iteration-closeout verdict.

@@ -44,7 +44,7 @@ Per the reviewer-standard Phase 1 discipline (working tree clean OR every dirty 
 | `specs/051-multi-session-foundation/**` (spec/plan/tasks + iterations/001 artifacts) | F-051 in-scope | committed at each boundary |
 | `.squad/decisions.md` | append-only-shared scribe ledger (carries boundary-sync entries) | **committed** with sync state |
 | `.claude/agents/*.md` (5) | out-of-scope runtime (host agent-definition auto-deploy drift) | parked |
-| `.specrew/last-validator-summary.json` | per-session (tracked here; F-051 FR-005 classifies it gitignored) | committed when refreshed by validator run; FR-005 will gitignore downstream |
+| `.specrew/last-validator-summary.json` | per-session, current-run volatile (refreshed by EVERY validator run) | parked — not re-committed each run (would re-dirty on the next validate); F-051 FR-005 classifies it gitignored downstream |
 | `.specrew/version-check-cache.json` | out-of-scope per-session cache | parked |
 | `.squad/config.json` | out-of-scope Squad runtime config | parked |
 | `.cursor/` | out-of-scope other-host artifact | parked |
