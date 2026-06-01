@@ -281,4 +281,3 @@ See `README.md` for full lifecycle semantics.
 3. **Improve existing proposals**: open a PR with proposed edits. Reference the discussion thread.
 
 External contributors are welcome.
-
