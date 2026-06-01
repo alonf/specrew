@@ -34,6 +34,11 @@ pwsh -File .specify/extensions/specrew-speckit/scripts/validate-governance.ps1 -
 - `pwsh -NoProfile -ExecutionPolicy Bypass -File .specify\extensions\specrew-speckit\scripts\validate-governance.ps1 -ProjectPath .` — PASS after send-back repair for Feature 139 scoped validation. Existing warnings remain for old Feature 048 dashboard auto-render evidence and historical missing handoff evidence.
 - Review rerun evidence: the same four required test suites passed during review, and scoped governance validation passed again after review artifact repair with only the known historical warnings.
 - Automated pre-publish smoke artifact updated at [beta3-smoke-evidence.md](file:///C:/tmp/Specrew-main-boundary-auth/specs/139-boundary-authorization-prompt-truth/smoke/beta3-smoke-evidence.md). It records a local candidate PASS for prompt/state generation and explicitly preserves the manual published beta3 Copilot/Squad replay as pending before stable promotion.
+- Send-back repair D-004: `pwsh -NoProfile -ExecutionPolicy Bypass -File tests\unit\validate-governance.interaction-model.tests.ps1` — PASS after packet-wide clickable reference enforcement was strengthened.
+- Send-back repair D-004: `pwsh -NoProfile -ExecutionPolicy Bypass -File tests\unit\boundary-authorization-prompt-truth.tests.ps1` — PASS after stored boundary packet evidence validation and packet-wide bare-path regression tests were added.
+- Send-back repair D-004: `pwsh -NoProfile -ExecutionPolicy Bypass -File tests\integration\start-command.ps1` — PASS after generated start prompt guidance changed.
+- Send-back repair D-004: `pwsh -NoProfile -ExecutionPolicy Bypass -File tests\integration\launch-mode-boundary-enforcement.tests.ps1` — PASS after validator/evidence-path changes.
+- Send-back repair D-004: `pwsh -NoProfile -ExecutionPolicy Bypass -File .specify\extensions\specrew-speckit\scripts\validate-governance.ps1 -ProjectPath .` — PASS for scoped Feature 139 validation after the repair. Remaining warnings are historical release-process warnings and legacy empty handoff-evidence warnings, not Feature 139 hard failures.
 
 ## Gap Ledger
 
@@ -44,6 +49,7 @@ pwsh -File .specify/extensions/specrew-speckit/scripts/validate-governance.ps1 -
 | Removal of beta2-bad four-gate / auto-chain guidance | yes | yes | yes | yes | No gap. Unit test rejects the bad generated prompt phrases. |
 | Six-section human re-entry packet | yes | yes | yes | yes | No gap. Generated prompt and coordinator governance template define all six sections. |
 | Bare `file:///` review target guidance | yes | yes | yes | yes | No gap. Packet guidance and coordinator governance require bare URIs; existing handoff validator still enforces bare-path failures. |
+| Packet-wide `file:///` artifact reference guidance | yes | yes | yes | yes | No gap after D-004. Generated prompt and coordinator governance require every artifact/file/directory reference in every packet section to use `file:///` URL form, and stored packet evidence now fails validation when bare repository paths appear outside command/code exemptions. |
 | Contextual discussion prompts and `discuss prompt #N` loop | yes | yes | yes | yes | No gap. Generated prompt includes grouped prompts, approve-with-defaults affordance, response shapes, and renewed approval after prompt-specific discussion. |
 | Future packet primary, no required legacy duplication | yes | yes | yes | yes | No gap. Generated prompt removed the mandatory legacy block template and states the packet is primary. |
 | `Status: Approved` without verdict evidence check | yes | yes | yes | yes | No gap. Implemented as an active-feature validator check that exits non-zero when `Status: Approved` lacks matching human verdict evidence. |

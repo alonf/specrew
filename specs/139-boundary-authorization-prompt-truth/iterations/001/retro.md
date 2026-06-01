@@ -9,7 +9,7 @@
 
 - Review accepted 30/30 tasks.
 - FR-001 through FR-028 and SC-001 through SC-015 were accepted as covered.
-- Drift resolution closed at 3/3 resolved.
+- Drift resolution closed at 4/4 resolved after the D-004 packet-wide clickable reference enforcement repair.
 - Scoped Feature 139 governance validation passed; historical validator warnings remain scoped out of Feature 139 acceptance.
 - Published beta3 Copilot/Squad replay is a release-closeout blocker before stable promotion, not implementation-review work for this iteration.
 
@@ -40,8 +40,9 @@
 | D-001 | Human-approved post-tasks gate-format refinements | Resolved by reconciling spec, plan, tasks, and contract before implementation. |
 | D-002 | Implementation preflight classification and test discovery | Resolved by grounding implementation in Proposal 154, beta2 evidence, Feature 016 intent, Proposal 145 lens, and dirty-state isolation. |
 | D-003 | Adjacent Feature 016 docs/test truth defect exposed by Feature 139 | Resolved by repairing the missing README post-commit verification protocol and rerunning required tests. |
+| D-004 | Feature 139 packet-wide clickable artifact reference enforcement gap | Resolved by strengthening prompt guidance, handoff validation, stored packet evidence validation, and regression tests. |
 
-**Resolution rate**: 100% (3/3 resolved)
+**Resolution rate**: 100% (4/4 resolved)
 
 ## What Went Well
 
@@ -56,6 +57,7 @@
 - D-003 exposed that adjacent governance contracts can fail even when the feature implementation itself is correct. These must be classified explicitly so the feature does not absorb unrelated ownership while still refusing to ignore the failure.
 - Historical validator warnings remain a release-process risk. They are scoped out of Feature 139 acceptance because scoped Feature 139 validation passed, but they should not be normalized before release promotion.
 - The legacy `=== SPECREW HANDOFF ===` block still exists as a transitional compatibility mechanism. The new six-section human re-entry packet is the target format for approval stops.
+- The initial retro stop packet exposed an enforcement gap: clickable artifact references must be enforced across every packet section, not only review targets.
 
 ## Lifecycle Lessons
 
@@ -65,6 +67,7 @@
 4. The six-section human re-entry packet should be treated as the target approval-stop contract. The legacy handoff block is transitional only.
 5. Historical validator warnings should be called out as release-process risk, but acceptance should remain scoped to the active feature when scoped validation passes.
 6. Published beta smoke replay belongs in release closeout. It should block stable promotion, not retroactively expand implementation-review scope.
+7. Packet-wide artifact references must be validated from the actual emitted boundary packet evidence, not only static prompt guidance or standalone fixtures.
 
 ## Improvement Actions
 
@@ -74,6 +77,7 @@
 | Implementer | implementation | quality | Run all required focused tests before presenting implementation for review. | Avoid approval stops with known failing required tests. |
 | Reviewer | review | evidence | Keep implemented/enforced/observable/documented gap ledgers for lifecycle/governance changes. | Make acceptance vs release-promotion blockers explicit. |
 | Retro Facilitator | retro | process | Record adjacent-defect classifications in drift-log and retro when required tests expose them. | Preserve accountability without hiding blocking failures. |
+| Validator Owner | boundary evidence | enforcement | Validate stored `.specrew/handoff-evidence.json` packet text for bare artifact paths. | Prevent emitted gate packets from bypassing static prompt and fixture rules. |
 
 ## Release-Process Risk Register
 

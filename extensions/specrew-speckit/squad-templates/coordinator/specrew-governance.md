@@ -110,7 +110,8 @@ These rules override generic Squad coordination whenever the repository is boots
       ## What I Just Did
 
       [Summarize meaningful outcomes: artifacts created or changed, committed evidence,
-       decisions captured, assumptions added, scope changes, and notable risks.]
+       decisions captured, assumptions added, scope changes, and notable risks. Every artifact,
+       file, or directory reference in this section uses `file:///` URL form.]
 
       ## Why I Stopped
 
@@ -120,13 +121,14 @@ These rules override generic Squad coordination whenever the repository is boots
 
       ## What Needs Your Review
 
-      [Use bare `file:///` review links; name exact sections, high-impact choices,
+      [Use `file:///` review links; name exact sections, high-impact choices,
        assumptions, uncertainties, safe-skim areas, and release-blocking checks when in scope.]
 
       ## What Happens Next
 
       [Preview the next phase, artifacts, whether code will be written or only planning/tasks,
-       harder-to-change decisions, and the next expected boundary stop.]
+       harder-to-change decisions, and the next expected boundary stop. Every future artifact,
+       file, or directory reference in this section uses `file:///` URL form.]
 
       ## Discussion Prompts
 
@@ -138,11 +140,13 @@ These rules override generic Squad coordination whenever the repository is boots
 
       [Allowed responses: approve as-is, approve with instructions, send back, or discuss
        prompt #N. Approval must be explicit. Free-form discussion is not approval unless the
-       human clearly authorizes the boundary.]
+       human clearly authorizes the boundary. If you ask the human to review an artifact,
+       file, or directory here, use `file:///` URL form.]
       ```
 
       Welcoming, contextual, flow-oriented — not technical or terse. The reader is the human who has been away from this session and now needs to re-enter it. Give them what they need to advance, in the order they will read it.
     - **Use BARE `file:///` URIs, NOT markdown-link form `[name](file:///...)`.** PowerShell terminals (Windows Terminal, VS Code integrated terminal) auto-detect bare `file:///` URIs and make them clickable via Ctrl+Click. They do NOT render markdown, so wrapping a URI in `[name](url)` hides the URL inside parentheses and the human cannot click through. Emit `file:///C:/Dev/project/specs/001/plan.md` on its own (or as part of a sentence), never `[plan.md](file:///...)`.
+    - Every artifact, file, or directory reference in every packet section MUST use `file:///` URL form, not bare repository paths such as `specs/...`, `.specrew/...`, `.squad/...`, `tests/...`, or `README.md`. Command/code blocks and explicit command examples are exempt.
     - The six-section packet is reserved for **boundary stops** where the human is the immediate blocker. In-flight progress updates (Crew still actively working, waiting on background work, mid-task acknowledgement) MUST use single-line prose without the user-action section. Do not pad routine progress updates into the packet shape — that dilutes the signal of an actual boundary stop.
     - If the human chooses `discuss prompt #N`, discuss that item only, summarize the agreed decision, and ask again for explicit boundary approval before advancing.
     - Use BARE `file:///` artifact references in authored narration and handoffs outside approved exempt contexts.

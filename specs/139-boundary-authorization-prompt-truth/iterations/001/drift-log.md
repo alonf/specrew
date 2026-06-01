@@ -22,8 +22,8 @@
 
 ## Summary
 
-**Total drift events**: 3
-**Resolution rate**: 100% (3/3 resolved)
+**Total drift events**: 4
+**Resolution rate**: 100% (4/4 resolved)
 **Specification drift**: Resolved by human-approved spec/task reconciliation before implementation
 
 ## Events
@@ -61,6 +61,19 @@
 - **Impact**: Implementation review could not proceed with a known failing required test.
 - **Resolution**: Added the missing `Post-Commit Verification Protocol` section to [README.md](file:///C:/tmp/Specrew-main-boundary-auth/README.md), preserving the Feature 016 exact-tree, stale-reference scan, commit-reference synchronization, and explicit-defer contract.
 - **Follow-up**: Rerun the full required test set before stopping again at `implement -> review`.
+
+### D-004 — Packet-wide clickable artifact reference enforcement gap
+
+- **Detected At**: 2026-06-01T12:15:00Z
+- **Type**: regression-enforcement-gap
+- **Status**: resolved
+- **Source**: Human send-back after retro noted that the live gate packet still allowed bare repository artifact references outside the primary review-target sentence.
+- **Requirement Citation**: FR-012 requires targeted `file:///` review surfaces, FR-024 requires bare `file:///` links in primary packet review targets, and Feature 016 / Proposal 007 require artifact references in boundary handoffs to be navigation-ready instead of bare repository paths.
+- **Impact**: The implemented prompt guidance and validator coverage protected review targets but did not make the rule explicit for every packet section, and the validator evidence path did not hard-fail stored emitted packet text when a boundary sync supplied handoff evidence.
+- **Classification**: Feature 139 regression and enforcement gap. This is in-scope because Feature 139 owns the new human re-entry packet contract and its prompt/validator enforcement.
+- **Resolution**: Updated [specrew-start.ps1](file:///C:/tmp/Specrew-main-boundary-auth/scripts/specrew-start.ps1), [coordinator governance template](file:///C:/tmp/Specrew-main-boundary-auth/extensions/specrew-speckit/squad-templates/coordinator/specrew-governance.md), the mirrored [coordinator governance template](file:///C:/tmp/Specrew-main-boundary-auth/.specify/extensions/specrew-speckit/squad-templates/coordinator/specrew-governance.md), [handoff-governance-validator.ps1](file:///C:/tmp/Specrew-main-boundary-auth/extensions/specrew-speckit/validators/handoff-governance-validator.ps1), the mirrored [handoff-governance-validator.ps1](file:///C:/tmp/Specrew-main-boundary-auth/.specify/extensions/specrew-speckit/validators/handoff-governance-validator.ps1), [validate-governance.ps1](file:///C:/tmp/Specrew-main-boundary-auth/extensions/specrew-speckit/scripts/validate-governance.ps1), and the mirrored [validate-governance.ps1](file:///C:/tmp/Specrew-main-boundary-auth/.specify/extensions/specrew-speckit/scripts/validate-governance.ps1). The packet rule now applies to every packet section; bare `specs/...`, `.specrew/...`, `.squad/...`, `tests/...`, and `README.md` references fail outside command/code exemptions; stored `.specrew/handoff-evidence.json` packet text is validated.
+- **Verification**: [validate-governance.interaction-model.tests.ps1](file:///C:/tmp/Specrew-main-boundary-auth/tests/unit/validate-governance.interaction-model.tests.ps1) and [boundary-authorization-prompt-truth.tests.ps1](file:///C:/tmp/Specrew-main-boundary-auth/tests/unit/boundary-authorization-prompt-truth.tests.ps1) pass after the repair.
+- **Follow-up**: Re-emit the `retro -> iteration-closeout` packet using only `file:///` artifact references and record that packet as boundary evidence.
 
 ### Resolution Strategies (Unused)
 

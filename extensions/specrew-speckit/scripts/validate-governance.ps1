@@ -697,8 +697,24 @@ function Get-ObjectPropertyString {
         return ''
     }
 
+    if ($InputObject -is [System.Collections.IDictionary] -or $InputObject -is [System.Collections.Specialized.IOrderedDictionary]) {
+        foreach ($name in $Names) {
+            if ($InputObject.Contains($name) -and -not [string]::IsNullOrWhiteSpace([string]$InputObject[$name])) {
+                return [string]$InputObject[$name]
+            }
+        }
+
+        return ''
+    }
+
     foreach ($name in $Names) {
-        $property = $InputObject.PSObject.Properties[$name]
+        $property = @($InputObject.PSObject.Properties | Where-Object { $_.Name -eq $name } | Select-Object -First 1)
+        if ($property.Count -gt 0) {
+            $property = $property[0]
+        }
+        else {
+            $property = $null
+        }
         if ($null -ne $property -and -not [string]::IsNullOrWhiteSpace([string]$property.Value)) {
             return [string]$property.Value
         }
@@ -717,8 +733,29 @@ function Get-ObjectPropertyBool {
         return $false
     }
 
+    if ($InputObject -is [System.Collections.IDictionary] -or $InputObject -is [System.Collections.Specialized.IOrderedDictionary]) {
+        foreach ($name in $Names) {
+            if (-not $InputObject.Contains($name)) {
+                continue
+            }
+
+            $rawValue = [string]$InputObject[$name]
+            if ($rawValue -match '^(?i:true|1|yes)$') {
+                return $true
+            }
+        }
+
+        return $false
+    }
+
     foreach ($name in $Names) {
-        $property = $InputObject.PSObject.Properties[$name]
+        $property = @($InputObject.PSObject.Properties | Where-Object { $_.Name -eq $name } | Select-Object -First 1)
+        if ($property.Count -gt 0) {
+            $property = $property[0]
+        }
+        else {
+            $property = $null
+        }
         if ($null -eq $property) {
             continue
         }
@@ -753,30 +790,72 @@ function Test-HandoffEvidenceGovernance {
 
     $evidencePath = Join-Path $ProjectRoot '.specrew\handoff-evidence.json'
     if (-not (Test-Path -LiteralPath $evidencePath -PathType Leaf)) {
-        return
+        return 0
     }
 
     try {
         $raw = Get-Content -LiteralPath $evidencePath -Raw -Encoding UTF8
-        $parsed = $raw | ConvertFrom-Json -Depth 12
+        $parsed = $raw | ConvertFrom-Json -AsHashtable -Depth 12
     }
     catch {
         Write-TrustHardeningWarning -Category 'handoff-evidence-unreadable' -Detail ("Could not parse {0}; handoff-block validation evidence was skipped." -f (Convert-ToRepoMarkdownPath -ProjectRoot $ProjectRoot -TargetPath $evidencePath))
-        return
+        return 0
     }
 
     $events = @()
     if ($parsed -is [array]) {
         $events = @($parsed)
     }
-    elseif ($null -ne $parsed.PSObject.Properties['boundary_events']) {
-        $events = @($parsed.boundary_events)
+    elseif (($parsed -is [System.Collections.IDictionary] -or $parsed -is [System.Collections.Specialized.IOrderedDictionary]) -and $parsed.Contains('boundary_events')) {
+        $events = @($parsed['boundary_events'])
     }
-    elseif ($null -ne $parsed.PSObject.Properties['events']) {
-        $events = @($parsed.events)
+    elseif (($parsed -is [System.Collections.IDictionary] -or $parsed -is [System.Collections.Specialized.IOrderedDictionary]) -and $parsed.Contains('events')) {
+        $events = @($parsed['events'])
     }
     else {
-        $events = @($parsed)
+        $boundaryEvents = @($parsed | Select-Object -ExpandProperty boundary_events -ErrorAction SilentlyContinue)
+        $legacyEvents = @($parsed | Select-Object -ExpandProperty events -ErrorAction SilentlyContinue)
+        if ($boundaryEvents.Count -gt 0) {
+            $events = $boundaryEvents
+        }
+        elseif ($legacyEvents.Count -gt 0) {
+            $events = $legacyEvents
+        }
+        else {
+            $events = @($parsed)
+        }
+    }
+
+    $hardFailureCount = 0
+    $handoffValidatorScript = Join-Path (Split-Path -Parent $PSScriptRoot) 'validators\handoff-governance-validator.ps1'
+    $rawResponseIndex = 0
+    foreach ($responseMatch in [regex]::Matches($raw, '(?s)"response_text"\s*:\s*"(?<value>(?:\\.|[^"\\])*)"')) {
+        $rawResponseIndex++
+        $encodedResponseText = [string]$responseMatch.Groups['value'].Value
+        $responseTextFromEvidence = try {
+            ('"{0}"' -f $encodedResponseText) | ConvertFrom-Json
+        }
+        catch {
+            [regex]::Unescape($encodedResponseText)
+        }
+
+        if ([string]::IsNullOrWhiteSpace($responseTextFromEvidence)) {
+            continue
+        }
+
+        if (Test-Path -LiteralPath $handoffValidatorScript -PathType Leaf) {
+            $packetOutput = @(& pwsh -NoProfile -ExecutionPolicy Bypass -File $handoffValidatorScript -ProjectRoot $ProjectRoot -ResponseText $responseTextFromEvidence -BoundaryName boundary -ResponseScope boundary-handoff -BarePathBoundaryHandoffSeverity validation-fail 2>&1)
+            if ($LASTEXITCODE -ne 0) {
+                $hardFailureCount++
+                Write-Host ("FAIL [trust-hardening] handoff-evidence-packet-invalid: Boundary packet evidence entry #{0} failed handoff governance validation." -f $rawResponseIndex) -ForegroundColor Red
+                foreach ($line in $packetOutput) {
+                    Write-Host ("  {0}" -f $line) -ForegroundColor Red
+                }
+            }
+        }
+        else {
+            Write-TrustHardeningWarning -Category 'handoff-evidence-validator-missing' -Detail ("Could not find handoff validator at {0}; packet evidence validation was skipped." -f (Convert-ToRepoMarkdownPath -ProjectRoot $ProjectRoot -TargetPath $handoffValidatorScript))
+        }
     }
 
     foreach ($event in $events) {
@@ -784,7 +863,39 @@ function Test-HandoffEvidenceGovernance {
         $boundary = Get-ObjectPropertyString -InputObject $event -Names @('boundary', 'boundary_type', 'BoundaryType')
         $hasCompactionMarker = Get-ObjectPropertyBool -InputObject $event -Names @('compaction_marker', 'post_compaction', 'PostCompaction')
         $commitMessage = Get-ObjectPropertyString -InputObject $event -Names @('commit_message', 'CommitMessage')
+        $responseText = Get-ObjectPropertyString -InputObject $event -Names @('response_text', 'ResponseText', 'handoff_text', 'HandoffText', 'text', 'Text')
         $hasHandoffBlock = Test-SpecrewHandoffBlockPresent -CommitMessage $commitMessage -SessionMetadata $event
+
+        if (-not [string]::IsNullOrWhiteSpace($responseText)) {
+            if (Test-Path -LiteralPath $handoffValidatorScript -PathType Leaf) {
+                $validatorArgs = @{
+                    ProjectRoot = $ProjectRoot
+                    ResponseText = $responseText
+                    ResponseScope = 'boundary-handoff'
+                    BarePathBoundaryHandoffSeverity = 'validation-fail'
+                }
+                if (-not [string]::IsNullOrWhiteSpace($boundary)) {
+                    $validatorArgs['BoundaryName'] = $boundary
+                }
+
+                $packetOutput = @(& pwsh -NoProfile -ExecutionPolicy Bypass -File $handoffValidatorScript @validatorArgs 2>&1)
+                if ($LASTEXITCODE -ne 0) {
+                    $hardFailureCount++
+                    $label = if ([string]::IsNullOrWhiteSpace($commit)) { '(unknown commit)' } else { $commit }
+                    if (-not [string]::IsNullOrWhiteSpace($boundary)) {
+                        $label = "$label at $boundary"
+                    }
+                    Write-Host ("FAIL [trust-hardening] handoff-evidence-packet-invalid: Boundary packet evidence for {0} failed handoff governance validation." -f $label) -ForegroundColor Red
+                    foreach ($line in $packetOutput) {
+                        Write-Host ("  {0}" -f $line) -ForegroundColor Red
+                    }
+                }
+            }
+            else {
+                Write-TrustHardeningWarning -Category 'handoff-evidence-validator-missing' -Detail ("Could not find handoff validator at {0}; packet evidence validation was skipped." -f (Convert-ToRepoMarkdownPath -ProjectRoot $ProjectRoot -TargetPath $handoffValidatorScript))
+            }
+        }
+
         if ($hasHandoffBlock) {
             continue
         }
@@ -801,6 +912,8 @@ function Test-HandoffEvidenceGovernance {
             Write-TrustHardeningWarning -Category 'handoff-block-missing' -Detail ("Boundary commit {0} has no preceding SPECREW HANDOFF block in session evidence." -f $label)
         }
     }
+
+    return $hardFailureCount
 }
 
 function Test-WrongLocationCanonicalArtifacts {
@@ -4655,7 +4768,10 @@ try {
 
     Test-PublicReadinessSurfaces -ProjectRoot $resolvedProjectPath
     Test-DashboardGovernanceSurfaces -ProjectRoot $resolvedProjectPath
-    Test-HandoffEvidenceGovernance -ProjectRoot $resolvedProjectPath
+    $handoffEvidenceFailureCount = Test-HandoffEvidenceGovernance -ProjectRoot $resolvedProjectPath
+    if ($handoffEvidenceFailureCount -gt 0) {
+        Write-ValidatorSummaryAndExit -ProjectRoot $resolvedProjectPath -ExitCode 1 -HardWarnings $handoffEvidenceFailureCount
+    }
     Test-WrongLocationCanonicalArtifacts -ProjectRoot $resolvedProjectPath
     # Pillar 4 (FR-021): live state-advance-without-verdict cross-check.
     Test-BoundaryStateAdvanceVerdict -ProjectRoot $resolvedProjectPath

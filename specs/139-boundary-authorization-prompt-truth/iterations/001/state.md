@@ -15,6 +15,7 @@
 - Implementation landed in `0ae5cd2e` and the send-back README repair landed in `e02e89e0`.
 - Review accepted the send-back repair, Feature 139 FR/SC coverage, beta3 smoke evidence classification, and dirty working-tree isolation before retro.
 - Retro records the historical validator warnings as release-process risk scoped out of Feature 139 acceptance, and frames published beta3 Copilot/Squad replay as a release-closeout blocker before stable promotion.
+- Send-back D-004 repaired packet-wide clickable artifact reference enforcement across prompt guidance, validators, stored packet evidence, tests, and drift evidence.
 
 ## Notes
 

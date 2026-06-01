@@ -2947,7 +2947,7 @@ Then follow the formal Specrew + Spec Kit lifecycle end to end:
 ``````markdown
 ## What I Just Did
 
-Summarize the meaningful past outcome, not just file names. Include artifacts created or changed, committed evidence, decisions captured, assumptions added, scope changes, and notable risks or uncertainties discovered.
+Summarize the meaningful past outcome, not just file names. Include artifacts created or changed, committed evidence, decisions captured, assumptions added, scope changes, and notable risks or uncertainties discovered. Every artifact, file, or directory reference in this section must use ``file:///`` URL form.
 
 ## Why I Stopped
 
@@ -2955,11 +2955,11 @@ Name the exact lifecycle boundary and explain why human judgment is required bef
 
 ## What Needs Your Review
 
-Point to targeted review surfaces with bare ``file:///`` links, exact sections worth inspecting, high-impact choices, assumptions, uncertainties, and what can be safely skimmed. Identify release-blocking items when in scope, including ``Status: Approved`` verdict-evidence checks and beta smoke evidence.
+Point to targeted review surfaces with ``file:///`` links, exact sections worth inspecting, high-impact choices, assumptions, uncertainties, and what can be safely skimmed. Identify release-blocking items when in scope, including ``Status: Approved`` verdict-evidence checks and beta smoke evidence.
 
 ## What Happens Next
 
-Preview the next lifecycle phase, what artifacts will be produced, whether code will be written or only planning/tasks, which decisions become harder to change afterward, and the next expected boundary stop.
+Preview the next lifecycle phase, what artifacts will be produced, whether code will be written or only planning/tasks, which decisions become harder to change afterward, and the next expected boundary stop. Every future artifact, file, or directory reference in this section must use ``file:///`` URL form.
 
 ## Discussion Prompts
 
@@ -2967,10 +2967,10 @@ Show one to three prompts together. Each targeted prompt includes the context th
 
 ## What I Need From You
 
-Allowed responses: approve as-is, approve with instructions, send back, or discuss prompt #N. Approval must be explicit; free-form discussion or feedback is not approval unless the human clearly authorizes this boundary.
+Allowed responses: approve as-is, approve with instructions, send back, or discuss prompt #N. If you ask the human to review an artifact, file, or directory here, use ``file:///`` URL form. Approval must be explicit; free-form discussion or feedback is not approval unless the human clearly authorizes this boundary.
 ``````
 
-If the human chooses ``discuss prompt #N``, discuss that item only, summarize the agreed decision, and ask again for explicit boundary approval before advancing. One approval advances at most one lifecycle boundary.
+Every artifact, file, or directory reference in every packet section MUST use ``file:///`` URL form, not bare repository paths such as ``specs/...``, ``.specrew/...``, ``.squad/...``, ``tests/...``, or ``README.md``. Command/code blocks and explicit command examples are exempt. If the human chooses ``discuss prompt #N``, discuss that item only, summarize the agreed decision, and ask again for explicit boundary approval before advancing. One approval advances at most one lifecycle boundary.
 47. The handoff block must use the canonical lifecycle boundary names (``specify``, ``clarify``, ``plan``, ``tasks``, ``before-implement``, ``implement``, ``review``, ``retro``, ``feature-closeout``) or the literal string ``lifecycle-end``. Do not invent boundary labels.
 48. **Session opening orientation (mandatory FIRST output).** Your very first user-visible output, immediately after reading ``.specrew\last-start-prompt.md`` + ``.specrew\start-context.json``, must be a short friendly orientation block in this exact shape (8-15 lines, conversational tone, no bullet-list of phases). **All artifact and directory references in this block MUST be clickable markdown links using `file:///` URLs** built from the Project root URL above (see Rule 52):
 

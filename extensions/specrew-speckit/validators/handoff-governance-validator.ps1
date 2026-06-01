@@ -578,7 +578,8 @@ function Get-PathScanLines {
     }
 
     $withoutCodeBlocks = [regex]::Replace(($Text -replace "`r`n", "`n"), '(?ms)```.*?```', '')
-    $withoutInlineCode = [regex]::Replace($withoutCodeBlocks, '(?s)`[^`\r\n]+`', '')
+    $withoutMarkdownFileLinks = [regex]::Replace($withoutCodeBlocks, '(?i)\[[^\]\r\n]*\]\(file:///[^\s)]+\)', '')
+    $withoutInlineCode = [regex]::Replace($withoutMarkdownFileLinks, '(?s)`[^`\r\n]+`', '')
     $withoutUrls = [regex]::Replace($withoutInlineCode, '(?i)\b[a-z][a-z0-9+\.-]*://[^\s)]+', '')
     return @($withoutUrls -split "`n")
 }
@@ -620,7 +621,10 @@ function Get-BarePathMatches {
         [AllowEmptyCollection()][object[]]$ExemptionExtensions
     )
 
-    $pattern = '(?i)(?<path>(?:[A-Z]:[\\/]|\.{1,2}[\\/]|(?:[A-Za-z0-9_.-]+[\\/])+[A-Za-z0-9_.-]+)(?:[\\/][A-Za-z0-9_.-]+)*)'
+    $patterns = @(
+        '(?i)(?<path>(?:[A-Z]:[\\/]|\.{1,2}[\\/]|(?:[A-Za-z0-9_.-]+[\\/])+[A-Za-z0-9_.-]+)(?:[\\/][A-Za-z0-9_.-]+)*)',
+        '(?i)(?<![\w./\\-])(?<path>README\.md)(?![\w./\\-])'
+    )
     $matches = New-Object System.Collections.Generic.List[string]
 
     foreach ($line in (Get-PathScanLines -Text $Text)) {
@@ -628,22 +632,24 @@ function Get-BarePathMatches {
             continue
         }
 
-        foreach ($match in [regex]::Matches($line, $pattern)) {
-            $candidate = $match.Groups['path'].Value
-            if ([string]::IsNullOrWhiteSpace($candidate)) {
-                continue
-            }
-
-            $isExtensionExempt = $false
-            foreach ($extension in @($ExemptionExtensions)) {
-                if (-not [string]::IsNullOrWhiteSpace([string]$extension.Pattern) -and $candidate -match [string]$extension.Pattern) {
-                    $isExtensionExempt = $true
-                    break
+        foreach ($pattern in $patterns) {
+            foreach ($match in [regex]::Matches($line, $pattern)) {
+                $candidate = $match.Groups['path'].Value
+                if ([string]::IsNullOrWhiteSpace($candidate)) {
+                    continue
                 }
-            }
 
-            if (-not $isExtensionExempt) {
-                $matches.Add($candidate) | Out-Null
+                $isExtensionExempt = $false
+                foreach ($extension in @($ExemptionExtensions)) {
+                    if (-not [string]::IsNullOrWhiteSpace([string]$extension.Pattern) -and $candidate -match [string]$extension.Pattern) {
+                        $isExtensionExempt = $true
+                        break
+                    }
+                }
+
+                if (-not $isExtensionExempt) {
+                    $matches.Add($candidate) | Out-Null
+                }
             }
         }
     }

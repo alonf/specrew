@@ -26,6 +26,20 @@ function Invoke-HandoffValidator {
     }
 }
 
+function Invoke-HandoffValidatorText {
+    param(
+        [string]$ValidatorPath,
+        [string]$ProjectRoot,
+        [string]$Text
+    )
+
+    $output = @(& pwsh -NoProfile -ExecutionPolicy Bypass -File $ValidatorPath -ProjectRoot $ProjectRoot -ResponseText $Text -BoundaryName plan -ResponseScope boundary-handoff 2>&1)
+    return [pscustomobject]@{
+        ExitCode = $LASTEXITCODE
+        Text     = ($output -join "`n")
+    }
+}
+
 function New-ApprovedStatusWorkspace {
     param(
         [string]$Root,
@@ -94,6 +108,7 @@ function Assert-PowerShellParses {
 }
 
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
+$repoRootUri = ($repoRoot -replace '\\', '/')
 $startScriptPath = Join-Path $repoRoot 'scripts\specrew-start.ps1'
 $sharedGovernancePath = Join-Path $repoRoot 'extensions\specrew-speckit\scripts\shared-governance.ps1'
 $sharedGovernanceMirrorPath = Join-Path $repoRoot '.specify\extensions\specrew-speckit\scripts\shared-governance.ps1'
@@ -130,7 +145,9 @@ foreach ($required in @(
         'file:///',
         'You can answer any prompt that should change direction, or approve with the defaults.',
         'approve as-is, approve with instructions, send back, or discuss prompt #N',
-        'free-form discussion or feedback is not approval'
+        'free-form discussion or feedback is not approval',
+        'Every artifact, file, or directory reference in every packet section MUST use',
+        'not bare repository paths such as'
     )) {
     Assert-True ($startScript.Contains($required)) "Start prompt is missing required contract text: $required"
 }
@@ -175,6 +192,80 @@ foreach ($case in @(
 }
 Write-Pass 'Non-compliant human re-entry packet fixtures fail'
 
+$packetWithBareReferences = @'
+## What I just did
+
+I completed T001, T002, and T003 for FR-001, the packet-wide clickable reference rule. The affected artifacts include specs/139-boundary-authorization-prompt-truth/iterations/001/retro.md and .specrew/start-context.json, which are intentionally bare here.
+
+## Why I stopped
+
+I stopped at the plan boundary because .squad/decisions.md must record explicit approval evidence before the next lifecycle step.
+
+## What needs your review
+
+Review README.md and specs/139-boundary-authorization-prompt-truth/iterations/001/drift-log.md before approving.
+
+## What happens next
+
+If approved, I will update tests/unit/boundary-authorization-prompt-truth.tests.ps1 and then stop again at the next human boundary.
+
+## Discussion prompts
+
+Because this packet includes artifact references across several sections, should the default be to block every bare repository path? I recommend blocking all authored packet references unless they are inside a command or code block; otherwise the next handoff can regress.
+
+## What I need from you
+
+Review .specrew/handoff-evidence.json and approve or send back the plan boundary.
+'@
+
+$packetWithExemptReferences = @'
+## What I just did
+
+I completed T001, T002, and T003 for FR-001, the packet-wide clickable reference rule. I verified file:///__REPO_ROOT_URI__/specs/139-boundary-authorization-prompt-truth/iterations/001/retro.md, file:///__REPO_ROOT_URI__/.specrew/start-context.json, and file:///__REPO_ROOT_URI__/tests/unit/boundary-authorization-prompt-truth.tests.ps1 for the current boundary evidence.
+
+## Why I stopped
+
+I stopped at the plan boundary because the next lifecycle step requires a human verdict before I proceed.
+
+## What needs your review
+
+Review file:///__REPO_ROOT_URI__/specs/139-boundary-authorization-prompt-truth/iterations/001/drift-log.md before approving.
+
+## What happens next
+
+If approved, I will keep the validator evidence path active and stop again at the next human boundary.
+
+## Discussion prompts
+
+Because this packet includes command examples, should explicit code blocks remain exempt from clickable-reference enforcement? I recommend yes; otherwise valid commands become noisy and less copyable.
+
+## What I need from you
+
+Review file:///__REPO_ROOT_URI__/.specrew/handoff-evidence.json and approve or send back the plan boundary.
+
+```powershell
+Get-Content specs/139-boundary-authorization-prompt-truth/iterations/001/retro.md
+Get-Content .specrew/start-context.json
+Get-Content .squad/decisions.md
+Get-Content README.md
+pwsh -File tests/unit/boundary-authorization-prompt-truth.tests.ps1
+```
+'@.Replace('__REPO_ROOT_URI__', $repoRootUri)
+
+foreach ($scriptPath in @($handoffValidatorPath, $handoffValidatorMirrorPath)) {
+    $bareResult = Invoke-HandoffValidatorText -ValidatorPath $scriptPath -ProjectRoot $repoRoot -Text $packetWithBareReferences
+    Assert-True ($bareResult.ExitCode -eq 1) "Packet-wide bare artifact references unexpectedly passed with $scriptPath."
+    Assert-True ($bareResult.Text -match 'validation-fail\.bare-path-in-boundary-handoff') "Packet-wide bare artifact references did not emit the hard-fail rule. Output: $($bareResult.Text)"
+    foreach ($expectedPath in @('specs/139-boundary-authorization-prompt-truth/iterations/001/retro.md', '.specrew/start-context.json', '.squad/decisions.md', 'README.md', 'tests/unit/boundary-authorization-prompt-truth.tests.ps1')) {
+        Assert-True ($bareResult.Text -match [regex]::Escape($expectedPath)) "Bare path '$expectedPath' was not reported. Output: $($bareResult.Text)"
+    }
+
+    $exemptResult = Invoke-HandoffValidatorText -ValidatorPath $scriptPath -ProjectRoot $repoRoot -Text $packetWithExemptReferences
+    Assert-True ($exemptResult.ExitCode -eq 0) "Code-block-exempt packet unexpectedly failed with $scriptPath. Output: $($exemptResult.Text)"
+    Assert-True ($exemptResult.Text -notmatch 'bare-path-in-boundary-handoff') "Code-block-exempt packet emitted a bare-path finding. Output: $($exemptResult.Text)"
+}
+Write-Pass 'Packet-wide bare artifact references fail outside exempt command/code contexts'
+
 $validatorText = Get-Content -LiteralPath $validatorPath -Raw -Encoding UTF8
 Assert-True ($validatorText -match 'function Test-ApprovedFeatureStatusVerdictEvidence') 'Validator missing Status: Approved verdict-evidence check.'
 Assert-True ($validatorText -match 'approved-status-without-verdict') 'Validator missing approved-status-without-verdict finding.'
@@ -191,6 +282,25 @@ $goodApprovedOutput = @(& pwsh -NoProfile -ExecutionPolicy Bypass -File $validat
 Assert-True ($LASTEXITCODE -eq 0) "Status: Approved with verdict evidence should pass validation. Output: $($goodApprovedOutput -join "`n")"
 Assert-True (($goodApprovedOutput -join "`n") -notmatch 'approved-status-without-verdict') 'Status: Approved with verdict evidence emitted unexpected contradiction finding.'
 Write-Pass 'Status: Approved contradiction check flags missing verdicts and accepts matching evidence'
+
+$badEvidenceRoot = Join-Path $scratchRoot 'bad-handoff-evidence'
+New-ApprovedStatusWorkspace -Root $badEvidenceRoot -WithVerdictEvidence:$true
+$badEvidence = [ordered]@{
+    schema = 'v1'
+    boundary_events = @([ordered]@{
+            commit = 'badc0de'
+            boundary = 'retro'
+            response_text = $packetWithBareReferences
+            handoff_present = $true
+            recorded_at = '2026-06-01T00:00:00Z'
+        })
+}
+($badEvidence | ConvertTo-Json -Depth 8) | Set-Content -LiteralPath (Join-Path $badEvidenceRoot '.specrew\handoff-evidence.json') -Encoding UTF8
+$badEvidenceOutput = @(& pwsh -NoProfile -ExecutionPolicy Bypass -File $validatorPath -ProjectPath $badEvidenceRoot 2>&1)
+Assert-True ($LASTEXITCODE -eq 1) 'validate-governance should fail when stored boundary packet evidence contains bare artifact paths.'
+Assert-True (($badEvidenceOutput -join "`n") -match 'handoff-evidence-packet-invalid') 'Stored boundary packet evidence failure did not identify handoff-evidence-packet-invalid.'
+Assert-True (($badEvidenceOutput -join "`n") -match 'validation-fail\.bare-path-in-boundary-handoff') 'Stored boundary packet evidence failure did not surface the bare-path validator finding.'
+Write-Pass 'Stored boundary packet evidence is validated against actual emitted packet text'
 
 if (Test-Path -LiteralPath $scratchRoot) { Remove-Item -LiteralPath $scratchRoot -Recurse -Force }
 Write-Host ''
