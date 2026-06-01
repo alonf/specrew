@@ -14,7 +14,7 @@
 | --- | --- |
 | Implementation status | complete |
 | Iteration evidence | 30/30 tasks passed; all FR and SC coverage accepted |
-| Drift status | 6/6 resolved, including original review drift and send-back enforcement gaps |
+| Drift status | 8/8 resolved, including original review drift, send-back enforcement gaps, and release-closeout replay failures |
 | D-003 classification | remains an adjacent Feature 016 defect exposed by Feature 139 |
 | D-004 acceptance condition | repaired by commit `2effe3f0`; packet-wide clickable artifact reference enforcement applies to every human re-entry packet section |
 | D-005 acceptance condition | repaired by commit `6725c007`; stored boundary packet evidence must be the exact human-visible approval packet |
@@ -27,7 +27,9 @@
 | Dirty-state blocker handling | restored unrelated Feature 051 timestamp-only runtime noise in [tasks-progress.yml](file:///C:/tmp/Specrew-main-boundary-auth/specs/051-multi-session-foundation/iterations/003/tasks-progress.yml) before feature-closeout sync |
 | Published beta3 replay | FAIL at release-closeout Step 11 due D-007 false host/runtime orientation in clean Codex replay |
 | D-007 acceptance condition | repaired in the host-orientation rendering path; next prerelease must be published and replayed before stable promotion |
-| Stable promotion | blocked until the repaired published prerelease replay passes |
+| Published beta4 replay | FAIL at release-closeout Step 11 due D-008 missing version truth, stale shared Squad automation wording, and missing host interaction rendering in clean Codex replay |
+| D-008 acceptance condition | repaired by commit `6507c6af`; next prerelease must be published and replayed before stable promotion |
+| Stable promotion | blocked until the repaired published beta5 prerelease replay passes |
 
 ## Follow-Up Defects
 

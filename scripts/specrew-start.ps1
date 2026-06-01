@@ -490,6 +490,83 @@ function Get-InstalledSpecrewVersion {
     return $null
 }
 
+function Get-ManifestSpecrewVersionText {
+    param([Parameter(Mandatory = $true)][System.Collections.IDictionary]$Manifest)
+
+    if (-not $Manifest.ContainsKey('ModuleVersion') -or [string]::IsNullOrWhiteSpace([string]$Manifest.ModuleVersion)) {
+        return $null
+    }
+
+    $version = [string]$Manifest.ModuleVersion
+    $prerelease = ''
+    if ($Manifest.ContainsKey('PrivateData') -and
+        $null -ne $Manifest.PrivateData -and
+        $Manifest.PrivateData.ContainsKey('PSData') -and
+        $null -ne $Manifest.PrivateData.PSData -and
+        $Manifest.PrivateData.PSData.ContainsKey('Prerelease') -and
+        $null -ne $Manifest.PrivateData.PSData.Prerelease) {
+        $prerelease = [string]$Manifest.PrivateData.PSData.Prerelease
+    }
+
+    if ([string]::IsNullOrWhiteSpace($prerelease)) {
+        return $version
+    }
+
+    return ('{0}-{1}' -f $version, $prerelease.Trim())
+}
+
+function Get-InstalledSpecrewRuntimeVersion {
+    param([Parameter(Mandatory = $true)][string]$ProjectRoot)
+
+    $module = @(Get-Module -Name Specrew -ListAvailable -ErrorAction SilentlyContinue | Sort-Object Version -Descending | Select-Object -First 1)
+    if ($module.Count -gt 0) {
+        $moduleVersion = if ($module[0].Version) { $module[0].Version.ToString() } else { '' }
+        $modulePrerelease = ''
+        if ($module[0].PrivateData -and $module[0].PrivateData.PSData -and $module[0].PrivateData.PSData.Prerelease) {
+            $modulePrerelease = [string]$module[0].PrivateData.PSData.Prerelease
+        }
+
+        if (-not [string]::IsNullOrWhiteSpace($moduleVersion)) {
+            if (-not [string]::IsNullOrWhiteSpace($modulePrerelease)) {
+                return ('{0}-{1}' -f $moduleVersion, $modulePrerelease.Trim())
+            }
+
+            return $moduleVersion
+        }
+    }
+
+    $manifestCandidates = @(
+        (Join-Path (Split-Path -Parent $PSScriptRoot) 'Specrew.psd1'),
+        (Join-Path $ProjectRoot 'Specrew.psd1')
+    ) | Select-Object -Unique
+
+    foreach ($manifestPath in $manifestCandidates) {
+        if (Test-Path -LiteralPath $manifestPath -PathType Leaf) {
+            try {
+                $manifest = Import-PowerShellDataFile -LiteralPath $manifestPath
+                $versionText = Get-ManifestSpecrewVersionText -Manifest $manifest
+                if (-not [string]::IsNullOrWhiteSpace($versionText)) {
+                    return $versionText
+                }
+            }
+            catch {
+            }
+        }
+    }
+
+    return $null
+}
+
+function Get-SpecrewRuntimeClassForStatus {
+    param([AllowNull()][string]$CrewRuntimeStatus)
+
+    if ([string]$CrewRuntimeStatus -eq 'squad-runtime') {
+        return 'Squad'
+    }
+
+    return 'non-Squad'
+}
+
 function Get-SpecrewVersionMismatchWarning {
     param([Parameter(Mandatory = $true)][string]$ProjectRoot)
 
@@ -2972,11 +3049,11 @@ Allowed responses: approve as-is, approve with instructions, send back, or discu
 
 Every artifact, file, or directory reference in every packet section MUST use visible ``file:///`` URL form, not bare repository paths such as ``specs/...``, ``.specrew/...``, ``.squad/...``, ``tests/...``, or ``README.md``. Command/code blocks and explicit command examples are exempt. The packet text recorded as boundary evidence MUST be the exact human-visible packet you emit for approval; do not validate one packet and then summarize, relabel, or rewrite artifact references in the final visible approval packet. If the human chooses ``discuss prompt #N``, discuss that item only, summarize the agreed decision, and ask again for explicit boundary approval before advancing. One approval advances at most one lifecycle boundary.
 47. The handoff block must use the canonical lifecycle boundary names (``specify``, ``clarify``, ``plan``, ``tasks``, ``before-implement``, ``implement``, ``review``, ``retro``, ``feature-closeout``) or the literal string ``lifecycle-end``. Do not invent boundary labels.
-48. **Session opening orientation (mandatory FIRST output).** Your very first user-visible output, immediately after reading ``.specrew\last-start-prompt.md`` + ``.specrew\start-context.json``, must be a short friendly orientation block in the host-rendered shape below (8-15 lines, conversational tone, no bullet-list of phases). The visible host and runtime wording in this block is generated from ``selected_host`` and ``crew_runtime_status``; do not substitute, infer, or claim any other host/runtime behavior. **All artifact and directory references in this block MUST use visible bare ``file:///`` URLs** built from the Project root URL above (see Rule 52):
+48. **Session opening orientation (mandatory FIRST output).** Your very first user-visible output, immediately after reading ``.specrew\last-start-prompt.md`` + ``.specrew\start-context.json``, must be a short friendly orientation block in the host-rendered shape below (8-15 lines, conversational tone, no bullet-list of phases). The visible Specrew version, selected host, runtime class, and lifecycle position in this block are generated from the installed runtime and saved start context; do not substitute, infer, omit, or claim any other host/runtime behavior. **All artifact and directory references in this block MUST use visible bare ``file:///`` URLs** built from the Project root URL above (see Rule 52):
 
 <<SPECREW_HOST_ORIENTATION_BLOCK>>
 
-When resuming an existing feature, swap the opening line for ``"Welcome back — resuming feature <feature-ref> at <current-boundary>."`` and drop the ``How this works`` paragraph. The "What you can browse" paragraph stays (still with clickable links — point them at the actual feature path on disk, not the ``<feature>`` placeholder). After the orientation block, just execute. Do NOT produce any "let me orient myself" / "let me read the governance" / "I now have a full picture" prose ever again in this session.
+The rendered block already contains the correct initial/resume opening line and lifecycle position. Emit that host-rendered version/host/runtime truth as-is except for replacing ``<project-root-url>``, ``<feature>``, and ``<NNN>`` placeholders with the actual visible ``file:///`` URLs/identifiers from this start context. After the orientation block, just execute. Do NOT produce any "let me orient myself" / "let me read the governance" / "I now have a full picture" prose ever again in this session.
 49. **The Lifecycle Quick Reference section above (under ``## Lifecycle Quick Reference``) is authoritative as of the Specrew version that wrote this prompt.** Trust it. Do NOT read ``shared-governance.ps1``, ``sync-boundary-state.ps1``, ``validate-governance.ps1``, ``scaffold-*.ps1``, ``resolve-quality-profile.ps1``, or any ``*.agent.md`` / ``*.prompt.md`` file as "background research" before producing artifacts. Read them ONLY when (a) a tool you actually invoked failed and you need to debug it, or (b) you are writing CODE that extends or invokes a governance helper. Re-discovering Specrew's machinery per session is wasted tokens, wasted wall-clock, and noise the human has to read.
 50. **Narration discipline (mandatory).** Reserve prose for: (a) the orientation block (once, per Rule 48), (b) clarify questions, (c) the HANDOFF block at boundary stops, (d) genuine decisions that affect the spec/plan, (e) ONE short progress sentence per major step ("Spec written.", "Iteration plan scaffolded.", "Tests passing — 51/51."), (f) status when the human asks. Avoid forever: "Let me read X", "Now let me check Y", "I'll gather Z context", "Let me orient myself", "I now have a complete picture", "Let me reconcile with the advisor", "Let me verify before committing". Use TaskList updates to show progress between boundaries — that's what the task pane is for. If you find yourself writing a narration sentence that says what you're ABOUT to do rather than what you JUST DID, delete it.
 51. **Advisor calls are for strategic decisions, not mechanical execution.** Call ``advisor()`` only when you have a genuine strategic decision: a contested architectural choice, an unclear scope-vs-cost tradeoff, a stuck loop on real errors. Mechanical lifecycle execution on small slices (<=2 user stories, <=5 FRs, no architectural ambiguity) proceeds without consulting. You do NOT need to "confirm the approach" before writing a spec.md or a plan.md for a 3-FR feature. Default to no. When in doubt: do the work, get the artifact on disk, and only call advisor if the work surfaces a real disagreement with the spec or a real architectural fork. The user is paying for both tokens and wall-clock on every advisor call.
@@ -3076,7 +3153,7 @@ sequenceDiagram
 
 These four artifacts together address the empirical complaint from tip-calc-v2 dogfooding (2026-05-24): "I see only some of the md files compared to what we have in Specrew itself ... some should be there to assist the review after plan before implement." After ``/speckit.plan`` runs, verify each file exists and has substantive (not template-placeholder) content; commit them with the plan boundary. They become the foundation the human reviews to approve the ``before-implement`` gate.
 
-53. **Structured verdict menu at every human-approval boundary stop (mandatory where available).** Immediately AFTER you emit the human re-entry packet at a human-verdict gate, call your host's interactive-question primitive when one is available, or provide the same response shapes in text:
+53. **Structured verdict menu at every human-approval boundary stop (mandatory where available).** Core Specrew defines the response contract and allowed response shapes. The selected host package renders the interaction behavior below. Immediately AFTER you emit the human re-entry packet at a human-verdict gate, follow the host-rendered guidance:
 
 ``````text
 What's your verdict?
@@ -3086,9 +3163,9 @@ What's your verdict?
   4. Discuss prompt #N — discuss that prompt only, then return for explicit approval
 ``````
 
-On Copilot CLI / Codex CLI / Antigravity, use whichever interactive-question primitive that host provides; if no structured menu is available, keep these exact response shapes in the ``What I Need From You`` section. Discussion is not approval unless the human clearly authorizes the boundary after the discussion.
+<<SPECREW_HOST_INTERACTION_GUIDANCE_BLOCK>>
 
-Your goal is to let the human developer primarily answer unresolved questions while Squad handles the rest of the lifecycle automatically.
+Discussion is not approval unless the human clearly authorizes the boundary after the discussion. The goal is to let the human developer decide unresolved questions and approval boundaries while Specrew follows the lifecycle contract for the selected host/runtime.
 "@
 }
 
@@ -3262,6 +3339,8 @@ function Save-StartArtifacts {
         [AllowNull()][string]$BoundaryBypassReason,
         [AllowNull()][string]$SelectedHost,
         [AllowNull()][string]$CrewRuntimeStatus,
+        [AllowNull()][string]$RuntimeClass,
+        [AllowNull()][string]$SpecrewRuntimeVersion,
         [AllowNull()][System.Collections.IDictionary]$AvailableHostsMap,
         [AllowNull()][string]$HostResolution
     )
@@ -3437,6 +3516,7 @@ $artifactListFormatted
         summary_path     = $summaryPath
         generated_at_utc = [DateTime]::UtcNow.ToString('o')
         # F-040: per-host launch metadata (FR-006)
+        specrew_version  = if ([string]::IsNullOrWhiteSpace($SpecrewRuntimeVersion)) { $null } else { $SpecrewRuntimeVersion }
         selected_host    = if ([string]::IsNullOrWhiteSpace($SelectedHost)) { 'copilot' } else { $SelectedHost.ToLowerInvariant() }
         available_hosts  = if ($null -ne $AvailableHostsMap) {
             $hostsOrdered = [ordered]@{}
@@ -3447,6 +3527,7 @@ $artifactListFormatted
             $null
         }
         crew_runtime_status = if ([string]::IsNullOrWhiteSpace($CrewRuntimeStatus)) { 'bootstrap_only' } else { $CrewRuntimeStatus }
+        runtime_class = if ([string]::IsNullOrWhiteSpace($RuntimeClass)) { 'non-Squad' } else { $RuntimeClass }
         # F-043 FR-012: record HOW the host was resolved + the alternatives at probe time
         host_resolution = if (-not [string]::IsNullOrWhiteSpace($HostResolution)) { $HostResolution } else { $null }
     }
@@ -4143,28 +4224,30 @@ $routingPlan = Get-DelegatedRoutingPlan -RoleAssignments $roleAssignments -Agent
 $squadModelOverrides = Set-SquadModelOverrides -Root $resolvedProjectPath -RoutingPlan $routingPlan
 Write-DelegatedRoutingLedgerEntries -ResolvedProjectPath $resolvedProjectPath -RoutingPlan $routingPlan -SquadModelOverrides $squadModelOverrides
 $requiresInteractiveIntake = ($mode -eq 'intake-or-resume' -and -not $FeatureRequest -and -not $resolvedFeaturePath)
-# Default: gate-respecting mode. Squad stops at every lifecycle gate for explicit human approval.
+# Default: gate-respecting mode. Specrew stops at every lifecycle gate for explicit human approval.
 # Autopilot mode is opt-in via -Autonomous flag (or --autonomous CLI argument) for unattended runs
 # such as overnight execution. Intake stage still requires interactive scope grounding regardless
-# of -Autonomous, so Squad never tries to auto-resolve initial scope decisions.
+# of -Autonomous, so Specrew never tries to auto-resolve initial scope decisions.
 $useAutopilot = $Autonomous -and -not $requiresInteractiveIntake
 $requestedAllowAll = if ($PromptApprovals) { $false } else { $true }
 $allowAllRuntimePlan = Get-AllowAllRuntimePlan -AllowAll $requestedAllowAll
 $approvalMode = $allowAllRuntimePlan.ApprovalMode
 $approvalOperatorNote = if ($useAutopilot -and $approvalMode -eq 'allow-all') {
-    'autopilot mode is on (Squad advances through lifecycle gates without explicit approval) and allow-all is on (tool calls run without approval prompts). Unattended-run posture.'
+    'autopilot mode is on (Specrew advances through lifecycle gates without explicit approval) and allow-all is on (tool calls run without approval prompts). Unattended-run posture.'
 }
 elseif ($useAutopilot) {
-    'autopilot mode is on (Squad advances through lifecycle gates without explicit approval) but prompt-approvals is on (each tool call still prompts).'
+    'autopilot mode is on (Specrew advances through lifecycle gates without explicit approval) but prompt-approvals is on (each tool call still prompts).'
 }
 elseif ($approvalMode -eq 'allow-all') {
-    'gate-respecting mode (default): Squad stops at every lifecycle approval boundary for human verdict. allow-all controls tool-call approval only; it does not bypass lifecycle boundary approval.'
+    'gate-respecting mode (default): Specrew stops at every lifecycle approval boundary for human verdict. allow-all controls tool-call approval only; it does not bypass lifecycle boundary approval.'
 }
 else {
-    'gate-respecting mode (default) plus prompt-approvals: Squad stops at every lifecycle gate AND Copilot prompts before each tool call.'
+    'gate-respecting mode (default) plus prompt-approvals: Specrew stops at every lifecycle gate and the selected host prompts before each tool call.'
 }
 $launchMode = if ($NoLaunch -or $forceNoLaunch) { 'none' } elseif ($NewWindow -and $IsWindows) { 'new-window' } else { 'same-window' }
 $crewRuntimeStatus = Get-SpecrewCrewRuntimeStatusForLaunch -SelectedHost $selectedHost -Agent $Agent
+$runtimeClass = Get-SpecrewRuntimeClassForStatus -CrewRuntimeStatus $crewRuntimeStatus
+$specrewRuntimeVersion = Get-InstalledSpecrewRuntimeVersion -ProjectRoot $resolvedProjectPath
 $promptContent = Get-StartPrompt `
     -ResolvedProjectPath $resolvedProjectPath `
     -Mode $mode `
@@ -4181,7 +4264,14 @@ $promptContent = Get-StartPrompt `
 # F-040: apply per-host coordinator-prompt surgery (FR-011 universal header for all hosts;
 # FR-012 Squad-runtime-path strip for non-Copilot; FR-014 Codex pwsh-form rewrite;
 # release-closeout Step 11: host-accurate orientation rendered from selected host + runtime status)
-$promptContent = Invoke-SpecrewCoordinatorPromptSurgery -Prompt $promptContent -HostKind $selectedHost -CrewRuntimeStatus $crewRuntimeStatus
+$promptContent = Invoke-SpecrewCoordinatorPromptSurgery `
+    -Prompt $promptContent `
+    -HostKind $selectedHost `
+    -CrewRuntimeStatus $crewRuntimeStatus `
+    -SpecrewVersion $specrewRuntimeVersion `
+    -LifecycleMode $mode `
+    -FeatureRef $(if ($null -ne $validatedSessionState -and -not [string]::IsNullOrWhiteSpace([string]$validatedSessionState.feature_ref)) { [string]$validatedSessionState.feature_ref } elseif ($resolvedFeaturePath) { Split-Path -Leaf $resolvedFeaturePath } else { $null }) `
+    -BoundaryType $(if ($null -ne $validatedSessionState -and -not [string]::IsNullOrWhiteSpace([string]$validatedSessionState.boundary_type)) { [string]$validatedSessionState.boundary_type } else { $null })
 
 $artifactPaths = Save-StartArtifacts `
     -ResolvedProjectPath $resolvedProjectPath `
@@ -4207,6 +4297,8 @@ $artifactPaths = Save-StartArtifacts `
     -BoundaryBypassReason $Reason `
     -SelectedHost $selectedHost `
     -CrewRuntimeStatus $crewRuntimeStatus `
+    -RuntimeClass $runtimeClass `
+    -SpecrewRuntimeVersion $specrewRuntimeVersion `
     -AvailableHostsMap $availableHostsMap `
     -HostResolution $hostResolution
 

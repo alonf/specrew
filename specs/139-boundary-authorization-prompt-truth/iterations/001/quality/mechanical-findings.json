@@ -2,7 +2,7 @@
   "schemaVersion": "v1",
   "featureRef": "specs/139-boundary-authorization-prompt-truth/spec.md",
   "iterationRef": "specs/139-boundary-authorization-prompt-truth/iterations/001",
-  "generatedAt": "2026-06-01T15:01:05Z",
+  "generatedAt": "2026-06-01T17:50:18Z",
   "generator": {
     "name": "specrew-mechanical-checks",
     "version": "0.30.0"

@@ -180,7 +180,7 @@ foreach ($hk in 'copilot', 'claude', 'codex') {
 }
 Write-Pass 'FR-011 universal header rewrite applied to all 3 hosts'
 
-# Test 9b: host orientation block is selected-host accurate and runtime-status scoped
+# Test 9b: host orientation block is selected-host, version, runtime-status, and lifecycle-position accurate
 $orientationPrompt = @'
 You are Squad running inside a Specrew-bootstrapped repository.
 
@@ -189,9 +189,14 @@ You are Squad running inside a Specrew-bootstrapped repository.
 <<SPECREW_HOST_ORIENTATION_BLOCK>>
 '@
 
-$codexOrientation = Invoke-SpecrewCoordinatorPromptSurgery -Prompt $orientationPrompt -HostKind 'codex' -CrewRuntimeStatus 'bootstrap_only'
+$codexOrientation = Invoke-SpecrewCoordinatorPromptSurgery -Prompt $orientationPrompt -HostKind 'codex' -CrewRuntimeStatus 'bootstrap_only' -SpecrewVersion '0.30.0-beta5' -LifecycleMode 'new-feature'
 if ($codexOrientation -notmatch 'OpenAI Codex CLI') {
     Write-Fail 'Codex orientation did not name the selected Codex host.'
+}
+foreach ($required in @('Specrew: 0.30.0-beta5', 'Host: codex \(OpenAI Codex CLI\); runtime: non-Squad', 'Lifecycle: new feature intake\.')) {
+    if ($codexOrientation -notmatch $required) {
+        Write-Fail "Codex orientation missed required version/host/runtime/lifecycle text '$required'."
+    }
 }
 if ($codexOrientation -match 'Claude Code|GitHub Copilot|Squad runtime|plays each role|I run all of them inside this session') {
     Write-Fail "Codex orientation contains a false hard-coded host/runtime claim:`n$codexOrientation"
@@ -200,19 +205,53 @@ if ($codexOrientation -match [regex]::Escape('<<SPECREW_HOST_ORIENTATION_BLOCK>>
     Write-Fail 'Codex orientation marker was not replaced.'
 }
 
-$claudeOrientation = Invoke-SpecrewCoordinatorPromptSurgery -Prompt $orientationPrompt -HostKind 'claude' -CrewRuntimeStatus 'bootstrap_only'
+$claudeOrientation = Invoke-SpecrewCoordinatorPromptSurgery -Prompt $orientationPrompt -HostKind 'claude' -CrewRuntimeStatus 'bootstrap_only' -SpecrewVersion '0.30.0-beta5' -LifecycleMode 'resume-feature' -FeatureRef '001-token-tray' -BoundaryType 'plan'
 if ($claudeOrientation -notmatch 'Claude Code CLI') {
     Write-Fail 'Claude orientation did not name the selected Claude host.'
+}
+foreach ($required in @('Specrew: 0.30.0-beta5', 'Host: claude \(Claude Code CLI\); runtime: non-Squad', 'Welcome back - resuming feature 001-token-tray at plan\.')) {
+    if ($claudeOrientation -notmatch $required) {
+        Write-Fail "Claude resume orientation missed required version/host/runtime/lifecycle text '$required'."
+    }
 }
 if ($claudeOrientation -match 'GitHub Copilot|Squad runtime|plays each role|I run all of them inside this session') {
     Write-Fail "Claude orientation contains a false hard-coded runtime claim:`n$claudeOrientation"
 }
 
-$copilotOrientation = Invoke-SpecrewCoordinatorPromptSurgery -Prompt $orientationPrompt -HostKind 'copilot' -CrewRuntimeStatus 'squad-runtime'
-if ($copilotOrientation -notmatch 'GitHub Copilot CLI' -or $copilotOrientation -notmatch 'Squad runtime coordinates') {
+$copilotOrientation = Invoke-SpecrewCoordinatorPromptSurgery -Prompt $orientationPrompt -HostKind 'copilot' -CrewRuntimeStatus 'squad-runtime' -SpecrewVersion '0.30.0-beta5' -LifecycleMode 'resume-feature' -FeatureRef '001-token-tray' -BoundaryType 'plan'
+if ($copilotOrientation -notmatch 'GitHub Copilot CLI' -or $copilotOrientation -notmatch 'Squad runtime coordinates' -or $copilotOrientation -notmatch 'Specrew: 0.30.0-beta5' -or $copilotOrientation -notmatch 'Host: copilot \(GitHub Copilot CLI\); runtime: Squad') {
     Write-Fail "Copilot/Squad orientation did not describe the active host/runtime accurately:`n$copilotOrientation"
 }
-Write-Pass 'Host orientation rendering is accurate for Codex, Claude, and Copilot/Squad'
+Write-Pass 'Host orientation rendering is accurate for Codex, Claude, and Copilot/Squad initial/resume cases'
+
+# Test 9c: host interaction guidance is rendered by the selected host package
+$interactionPrompt = @'
+53. **Structured verdict menu**
+
+<<SPECREW_HOST_INTERACTION_GUIDANCE_BLOCK>>
+'@
+
+$codexInteraction = Invoke-SpecrewCoordinatorPromptSurgery -Prompt $interactionPrompt -HostKind 'codex'
+if ($codexInteraction -notmatch 'request_user_input' -or $codexInteraction -notmatch 'approve as-is, approve with instructions, send back, and discuss prompt #N') {
+    Write-Fail "Codex interaction guidance did not require the structured user-input/menu path with the shared response contract:`n$codexInteraction"
+}
+if ($codexInteraction -match 'AskUserQuestion|Squad handles the rest') {
+    Write-Fail "Codex interaction guidance contains another host/runtime primitive or false lifecycle claim:`n$codexInteraction"
+}
+
+$claudeInteraction = Invoke-SpecrewCoordinatorPromptSurgery -Prompt $interactionPrompt -HostKind 'claude'
+if ($claudeInteraction -notmatch 'AskUserQuestion' -or $claudeInteraction -notmatch 'approve as-is, approve with instructions, send back, and discuss prompt #N') {
+    Write-Fail "Claude interaction guidance did not render the Claude-specific structured question primitive with the shared response contract:`n$claudeInteraction"
+}
+
+$copilotInteraction = Invoke-SpecrewCoordinatorPromptSurgery -Prompt $interactionPrompt -HostKind 'copilot'
+if ($copilotInteraction -notmatch 'No structured question/menu primitive is declared' -or $copilotInteraction -notmatch 'textual "What''s your verdict\?" options exactly as shown') {
+    Write-Fail "Copilot interaction guidance did not render the textual fallback contract when no structured primitive is declared:`n$copilotInteraction"
+}
+if ($copilotInteraction -match 'request_user_input|AskUserQuestion') {
+    Write-Fail "Copilot interaction guidance leaked another host's structured primitive:`n$copilotInteraction"
+}
+Write-Pass 'Host interaction guidance is adapter-rendered for Codex, Claude, and Copilot'
 
 # Test 10: FR-012 Squad-runtime-path strip for non-Copilot hosts only
 $copilotRewritten = Invoke-SpecrewCoordinatorPromptSurgery -Prompt $samplePrompt -HostKind 'copilot'

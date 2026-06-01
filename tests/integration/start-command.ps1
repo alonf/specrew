@@ -427,21 +427,27 @@ $hostOrientationCases = @(
         Host = 'codex'
         ExpectedHostText = 'OpenAI Codex CLI'
         ExpectedRuntime = 'bootstrap_only'
+        ExpectedRuntimeClass = 'non-Squad'
         RequiredPatterns = @()
-        ForbiddenPatterns = @('Claude Code', 'GitHub Copilot', 'Squad runtime', 'plays each role', 'I run all of them inside this session')
+        RequiredInteractionPattern = 'request_user_input'
+        ForbiddenPatterns = @('Claude Code', 'GitHub Copilot', 'Squad runtime', 'plays each role', 'I run all of them inside this session', 'Squad handles the rest')
     },
     @{
         Host = 'claude'
         ExpectedHostText = 'Claude Code CLI'
         ExpectedRuntime = 'bootstrap_only'
+        ExpectedRuntimeClass = 'non-Squad'
         RequiredPatterns = @()
-        ForbiddenPatterns = @('GitHub Copilot', 'Squad runtime', 'plays each role', 'I run all of them inside this session')
+        RequiredInteractionPattern = 'AskUserQuestion'
+        ForbiddenPatterns = @('GitHub Copilot', 'Squad runtime', 'plays each role', 'I run all of them inside this session', 'Squad handles the rest')
     },
     @{
         Host = 'copilot'
         ExpectedHostText = 'GitHub Copilot CLI'
         ExpectedRuntime = 'squad-runtime'
+        ExpectedRuntimeClass = 'Squad'
         RequiredPatterns = @('Squad runtime coordinates')
+        RequiredInteractionPattern = 'No structured question/menu primitive is declared'
         ForbiddenPatterns = @('Claude Code', 'plays each role', 'I run all of them inside this session')
     }
 )
@@ -479,6 +485,22 @@ foreach ($case in $hostOrientationCases) {
         Write-Fail ("start-context crew_runtime_status={0}; expected {1} for host {2}" -f $hostContext.crew_runtime_status, $case.ExpectedRuntime, $case.Host)
         exit 1
     }
+    if ($hostContext.runtime_class -ne $case.ExpectedRuntimeClass) {
+        Write-Fail ("start-context runtime_class={0}; expected {1} for host {2}" -f $hostContext.runtime_class, $case.ExpectedRuntimeClass, $case.Host)
+        exit 1
+    }
+    if ([string]::IsNullOrWhiteSpace([string]$hostContext.specrew_version) -or [string]$hostContext.specrew_version -notmatch '^\d+\.\d+\.\d+(?:-[A-Za-z0-9]+)?$') {
+        Write-Fail ("start-context specrew_version is missing or malformed for host {0}: {1}" -f $case.Host, $hostContext.specrew_version)
+        exit 1
+    }
+    if ($orientationBlock -notmatch [regex]::Escape(('Specrew: {0}' -f $hostContext.specrew_version))) {
+        Write-Fail ("Prompt orientation for {0} did not include the runtime Specrew version '{1}'." -f $case.Host, $hostContext.specrew_version)
+        exit 1
+    }
+    if ($orientationBlock -notmatch [regex]::Escape(('runtime: {0}' -f $case.ExpectedRuntimeClass))) {
+        Write-Fail ("Prompt orientation for {0} did not include runtime class '{1}'." -f $case.Host, $case.ExpectedRuntimeClass)
+        exit 1
+    }
     if ($orientationBlock -notmatch [regex]::Escape($case.ExpectedHostText)) {
         Write-Fail ("Prompt orientation for {0} did not name expected host text '{1}'." -f $case.Host, $case.ExpectedHostText)
         exit 1
@@ -499,8 +521,20 @@ foreach ($case in $hostOrientationCases) {
         Write-Fail ("Prompt orientation marker was not replaced for host {0}." -f $case.Host)
         exit 1
     }
+    if ($hostPromptContent -match [regex]::Escape('<<SPECREW_HOST_INTERACTION_GUIDANCE_BLOCK>>')) {
+        Write-Fail ("Prompt interaction guidance marker was not replaced for host {0}." -f $case.Host)
+        exit 1
+    }
+    if ($hostPromptContent -notmatch [regex]::Escape($case.RequiredInteractionPattern)) {
+        Write-Fail ("Prompt interaction guidance for {0} missed expected host-rendered text '{1}'." -f $case.Host, $case.RequiredInteractionPattern)
+        exit 1
+    }
+    if ($hostPromptContent -match 'On Copilot CLI / Codex CLI / Antigravity|Squad handles the rest of the lifecycle automatically') {
+        Write-Fail ("Prompt for {0} still contains shared host/runtime-specific Rule 53 wording." -f $case.Host)
+        exit 1
+    }
 }
-Write-Pass 'Generated prompt orientation agrees with start-context host truth for Codex, Claude, and Copilot/Squad'
+Write-Pass 'Generated prompt orientation and interaction guidance agree with start-context host/version/runtime truth for Codex, Claude, and Copilot/Squad'
 
 Write-Host "`nTest 2aa: boundary enforcement bypass requires an explicit reason"
 $missingReasonResult = Invoke-TestScript -ScriptPath $entryScript -ArgumentList @(
