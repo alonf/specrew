@@ -22,8 +22,8 @@
 - [x] Out-of-scope reconciles with Proposal 153 follow-ups; `install.sh` bounded to a thin bootstrap (TG-004).
 - [x] Issue #1627 explicitly deferred (separate subsystem).
 
-## Open clarifications (resolve at /speckit.clarify before planning)
+## Open clarifications (resolved at /speckit.clarify — Session 2026-06-02)
 
-- [ ] FR-006: default behavior when bin directory is missing (auto-create vs `-Force`); PATH-not-on-PATH (warn vs guided fix).
-- [ ] FR-007: `install.sh` delivery model + chicken-and-egg sequencing (curl-pipe vs repo file vs module-shipped).
-- [ ] FR-009: wrapper generation vs parity-validation for v1 — the load-bearing architecture choice (routed to the clarify → plan boundary).
+- [x] FR-006: missing bin dir requires `-Force`; not-on-`PATH` is warn-only (no profile mutation).
+- [x] FR-007: repo-committed `install.sh` (`curl | sh`) — verify pwsh, Install-Module, then install-shell-wrappers.
+- [x] FR-009: generate-then-commit — generator is source of truth, generated wrappers committed + CI drift-diff.
