@@ -62,6 +62,24 @@ Specrew encodes that methodology as four guarantees:
 3. **Audit-trail durability.** Every verdict, decision, drift event, and bypass lives in `.squad/decisions.md` (Copilot host) or the host-native decisions ledger with timestamps, commit hashes, and recognized verdict shapes. Sessions can be reconstructed after the fact; methodology lives in artifacts, not in agent memory.
 4. **Methodology survives the host.** Specrew runs on **GitHub Copilot CLI (default), Claude Code, Cursor (`cursor-agent`), Codex CLI, or Antigravity (`agy`)** via `specrew start --host <kind>` or the interactive numbered menu when `--host` is omitted — VS Code Chat remains a roadmap item ([Proposal 071](proposals/071-vscode-copilot-chat-host.md)). Per-host flag translation keeps `--remote` / `--allow-all` / `--autopilot` uniform at the Specrew surface; canonical Crew identity lives at `.specrew/team/agents/<role>.md` and translates to each host's native subagent format on every `specrew start`. The skill-level enforcement gates are host-agnostic by design — switching hosts must not weaken the methodology.
 
+## Post-Commit Verification Protocol
+
+Boundary handoffs are only trustworthy when the cited evidence is tied to the
+committed tree, not to transient working-copy state. After a boundary commit, the
+Crew must:
+
+1. replace any `.squad/decisions.md` authorization `Commit Reference: pending`
+   value with the real boundary commit hash
+2. keep `Recorded At` values in canonical UTC seconds precision
+3. run a stale-reference scan against every cited `file:///` review target
+4. rerun the governed validation lane on the exact committed tree before claiming
+   boundary readiness
+5. state any remaining verification gap or defer explicitly in the handoff
+
+This protocol is part of the substantive-interaction contract: a boundary stop
+must tell the human what changed, why the agent stopped, what evidence to inspect,
+and whether that evidence still resolves after commit.
+
 ## Switch your AI host mid-feature — without losing your place
 
 This is what governance buys you that raw CLI usage cannot.

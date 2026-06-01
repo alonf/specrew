@@ -129,6 +129,38 @@ Reference file:///$repoRootUri/missing.md only if the scan is broken.
             Assert-True -Condition ($result.ExitCode -eq 0) -Message "Navigation graduation fixture '$fixtureName' unexpectedly failed for $($case.Name)."
             Assert-True -Condition ($result.Text -notmatch 'bare-path-in-boundary-handoff') -Message "Navigation graduation fixture '$fixtureName' emitted an unexpected bare-path finding for $($case.Name)."
         }
+
+        $packetWideViolation = @'
+## What I just did
+
+I completed T001, T002, and T003 for FR-016, the packet-wide clickable reference rule, and I left specs/016-substantive-interaction-model/iterations/002/plan.md plus .specrew/start-context.json bare in authored prose.
+
+## Why I stopped
+
+I stopped at the implementation boundary because .squad/decisions.md must record explicit approval before review can begin.
+
+## What needs your review
+
+Review README.md before approving.
+
+## What happens next
+
+If approved, I will update tests/unit/validate-governance.interaction-model.tests.ps1 and stop again.
+
+## Discussion prompts
+
+Because this packet includes artifact references across several sections, should the validator block every bare repository path outside commands? I recommend yes; otherwise only one packet section is actually protected.
+
+## What I need from you
+
+Review tests/unit/validate-governance.interaction-model.tests.ps1 and approve or send back the implementation boundary.
+'@
+        $packetWideResult = Invoke-ValidatorScript -ScriptPath $case.ScriptPath -ProjectPath $repoRoot -ResponseText $packetWideViolation
+        Assert-True -Condition ($packetWideResult.ExitCode -eq 1) -Message "Packet-wide bare artifact references unexpectedly passed for $($case.Name)."
+        Assert-True -Condition ($packetWideResult.Text -match 'validation-fail\.bare-path-in-boundary-handoff') -Message "Packet-wide bare artifact references did not emit the hard-fail rule for $($case.Name)."
+        foreach ($expectedPath in @('specs/016-substantive-interaction-model/iterations/002/plan.md', '.specrew/start-context.json', '.squad/decisions.md', 'README.md', 'tests/unit/validate-governance.interaction-model.tests.ps1')) {
+            Assert-True -Condition ($packetWideResult.Text -match [regex]::Escape($expectedPath)) -Message "Packet-wide violation did not report '$expectedPath' for $($case.Name)."
+        }
     }
 
     #

@@ -8,4 +8,4 @@ I stopped at the implementation boundary because the next lifecycle step still n
 
 ## What I need from you
 
-Review __REPO_ROOT__\specs\016-substantive-interaction-model\iterations\002\plan.md and approve or reject advancement to the review-boundary.
+Review specs/016-substantive-interaction-model/iterations/002/plan.md and approve or reject advancement to the review-boundary.

@@ -2795,9 +2795,17 @@ function Get-StartPrompt {
     $projectStateBlock = Get-ProjectStatePromptBlock -ProjectState $ProjectState
     $brownfieldDiscoveryBlock = Get-BrownfieldDiscoveryPromptBlock -BrownfieldDiscovery $BrownfieldDiscovery
     $deliveryGuidanceBlock = Get-DeliveryGuidancePromptBlock -DeliveryGuidance $DeliveryGuidance
+    $boundaryPolicyClasses = Get-SpecrewBoundaryPolicyClassMap -ProjectRoot $ResolvedProjectPath
+    $humanJudgmentBoundaries = @($boundaryPolicyClasses.GetEnumerator() | Where-Object { [string]$_.Value -eq 'human-judgment-required' } | ForEach-Object { [string]$_.Key })
+    $boundaryPolicyPromptBlock = if ($humanJudgmentBoundaries.Count -gt 0) {
+        "- Resolved from ``.specrew/config.yml`` into ``boundary_enforcement.policy_classes`` in ``start-context.json``: $($humanJudgmentBoundaries -join ', ') require human judgment."
+    }
+    else {
+        '- Resolved from ``.specrew/config.yml`` into ``boundary_enforcement.policy_classes`` in ``start-context.json``: no human-judgment boundaries are configured for this run.'
+    }
 
     # Forward-slash form of the project path for use in `file:///` URLs in the
-    # orientation block + Rule 52 (clickable artifact references in user output).
+    # orientation block + Rule 52 (visible file:/// artifact references in user output).
     $projectPathUrl = ([string]$ResolvedProjectPath).Replace('\', '/').TrimEnd('/')
 
     return @"
@@ -2862,11 +2870,12 @@ This is the authoritative map of Specrew's lifecycle and governance machinery as
 
 **Any other .ps1 file in the deployment is a utility / deploy / library helper invoked automatically by the system. Do NOT explore them during normal lifecycle execution.** Specifically: ``shared-governance.ps1``, ``common.ps1``, ``Test-CopilotInstructionsChangeType.ps1`` are libraries (not invokable); ``deploy-speckit-extension.ps1``, ``deploy-squad-runtime.ps1``, ``scaffold-governance.ps1``, ``validate-versions.ps1``, ``collision-detect.ps1``, ``brownfield-merge.ps1`` are init/update helpers; ``manage-escalation-state.ps1``, ``manage-reviewer-regression.ps1``, ``sync-squad-model-overrides.ps1``, ``drift-diff.ps1``, ``resume-iteration.ps1`` are internal helpers called by other scripts. If a script isn't in the table above, you do NOT need to invoke or understand it during normal lifecycle execution.
 
-**Boundary authorization (what hard-blocks vs what warns):**
+**Boundary authorization (policy-derived lifecycle stops):**
 
-- ``Test-SpecrewBoundaryAuthorization`` in ``shared-governance.ps1`` is the only gate that HARD-BLOCKS. It is invoked at ``before-implement``, ``review-signoff``, ``iteration-closeout``, ``feature-closeout`` — the four points where human verdict is required.
-- The "readiness gates" (``before-plan``, ``after-tasks``) emit WARN findings but do not block. Treat their output as advice.
-- ``boundary_enforcement`` block in ``start-context.json`` is now initialized on every ``specrew start`` (F-040 dogfooding Fix #4), so you should NEVER hit a "Boundary enforcement state is missing" error.
+$boundaryPolicyPromptBlock
+- A transition into a boundary whose policy class is ``human-judgment-required`` requires explicit human authorization before producing the next phase's substantive artifacts. Under the default policy this includes ``clarify -> plan`` and ``plan -> tasks``.
+- Readiness helpers such as ``before-plan`` and ``after-tasks`` may emit warning/readiness findings, but they do not authorize skipping the human verdict for the next lifecycle boundary.
+- ``boundary_enforcement`` in ``start-context.json`` is initialized on every ``specrew start`` and includes the resolved policy snapshot used by this prompt.
 - ``approval_mode`` (``allow-all`` vs ``prompt-approvals``) controls tool-call approval, NOT lifecycle boundary approval. They are independent. ``--allow-all`` controls tool-call approval only and does not bypass lifecycle boundary approval. ``--autonomous`` (NOT default) controls whether the Crew stops at lifecycle gates without human input.
 
 **What's deployed in this project (read from start-context.json):**
@@ -2905,7 +2914,7 @@ Then follow the formal Specrew + Spec Kit lifecycle end to end:
 15. If the human provides a URL, pasted draft, or other source document during intake, extract the relevant scope from it, confirm any remaining behavior questions at intake, and then pass the grounded request into `speckit.specify`.
 16. Answer clarification questions yourself whenever repo context, existing artifacts, or reasonable defaults make the answer clear enough, and write those clarification outcomes back into the active spec before planning.
 17. Only ask the human developer questions that are still unresolved and materially affect scope, behavior, governance, or UX.
-18. Once speckit.clarify completes, or you explicitly skip it with the recorded rationale above, continue automatically through `speckit.specrew-speckit.before-plan`, `speckit.plan`, `speckit.tasks`, and `speckit.specrew-speckit.after-tasks` without waiting for the human to manually trigger each phase.
+18. Once speckit.clarify completes, or you explicitly skip it with the recorded rationale above, check ``boundary_enforcement.policy_classes`` before the next transition. If ``plan`` is ``human-judgment-required``, stop at ``clarify -> plan`` before running ``speckit.specrew-speckit.before-plan`` or generating a substantive ``plan.md``; explain that planning will turn the spec into architecture and task direction. Apply the same one-boundary-at-a-time rule to ``plan -> tasks`` and every other configured human-judgment boundary.
 19. After speckit.specify and the clarify outcome are grounded, analyze the planned feature, inferred technology constraints, the roster snapshot, and the readiness hints above. Propose only the missing specialists, and only propose Junior/Senior same-specialty pairs when the clarified work can be partitioned safely enough for meaningful parallel execution.
 20. Preserve any user-added Specrew members, present the resulting team composition clearly before implementation, and describe Junior/Senior pairs as distinct named members with different task profiles rather than cloned copies of one role.
 21. If the human approves new specialists or Junior/Senior same-specialty pairs, materialize them with `specrew team add <member-name> --role <role> --charter "<charter>"` before invoking `speckit.specrew-speckit.before-implement` or `speckit.implement`.
@@ -2933,36 +2942,37 @@ Then follow the formal Specrew + Spec Kit lifecycle end to end:
 43. When a governance-gate failure activates or resolves repair escalation, run `.specify\extensions\specrew-speckit\scripts\sync-squad-model-overrides.ps1 -IterationDirectory <active-iteration>` so `.squad\config.json` is updated immediately from the current escalation state.
 44. On repeated governance-gate failures, use that sync helper to raise the failing repair owner's model tier (balanced -> deep) and clear the temporary override after the gate passes.
 45. **Boundary-commit discipline.** After every lifecycle artifact write that closes a boundary (spec.md after specify, plan.md after plan, tasks.md after tasks, iteration plan + hardening-gate after before-implement, source/tests after implement, review.md after review, retro.md after retro), stage and commit the affected files with a focused message like ``boundary(specify): write spec.md`` or ``boundary(implement): T013 reducer + tests``. Without these commits the F-033 markdownlint gate, F-039 boundary discipline, and the git-history audit trail cannot function — the lifecycle silently bypasses every commit-scoped guardrail.
-46. **End-of-turn handoff block (mandatory).** At every boundary-stop where you wait for the human developer, AND at lifecycle-end, after any prose summary you produce, append this exact fenced block as the LAST thing in your turn:
+46. **Human re-entry packet (mandatory).** At every human-judgment boundary stop, make the stop a human re-entry point. Do not duplicate the same stop with a legacy ``=== SPECREW HANDOFF ===`` block unless a transitional host/runtime explicitly requires that compatibility. The primary stop contract is this six-section packet:
 
-``````text
-=== SPECREW HANDOFF ===
-STOPPED AT: <canonical lifecycle boundary name or 'lifecycle-end'>
-STATUS: <one line — e.g. 'iteration 001 reviewing; 6 manual items deferred'>
-WHY STOPPED: <one line — e.g. 'need human verification of browser/AT items'>
-AGENT NEXT ACTION:
-  - <feature-closeout only: execute the release SDLC with human approval at each substantive step:
-      Step 5: push the feature branch
-      Step 6: create the PR with gh pr create
-      Step 7: self-review the PR and address automated PR review
-      Step 8: merge with a merge commit after approval/checks
-      Step 9: tag the merge commit (or the PASS-candidate fix commit if looping) and push v<next-version>-beta.1
-      Step 10: verify prerelease publication with Find-Module Specrew -AllowPrerelease
-      Step 11: PAUSE for human manual test PASS/FAIL verdict using Install-Module Specrew -AllowPrerelease in a clean shell
-      Step 12: if FAIL, fix on main, tag the next beta such as beta.2, and repeat from Step 9
-      Step 13: if PASS, tag the PASS-validated commit and push v<next-version> stable, then verify stable publication
-      Step 14: stop before any new feature work>
-HUMAN ACTION NEEDED:
-  - <concrete step 1>
-  - <concrete step 2>
-  - <feature-closeout only: approve each agent action when asked; at Step 11 install the prerelease with Install-Module Specrew -AllowPrerelease, exercise it, and report PASS or FAIL with evidence>
-RESUME WITH: <exact phrase to type, or 'no further action'>
-=== END SPECREW HANDOFF ===
+``````markdown
+## What I Just Did
+
+Summarize the meaningful past outcome, not just file names. Include artifacts created or changed, committed evidence, decisions captured, assumptions added, scope changes, and notable risks or uncertainties discovered. Every artifact, file, or directory reference in this section must use ``file:///`` URL form.
+
+## Why I Stopped
+
+Name the exact lifecycle boundary and explain why human judgment is required before the next step. For ``clarify -> plan``, say that planning will convert the spec into architecture and task direction, so spec mistakes become downstream work.
+
+## What Needs Your Review
+
+Point to targeted review surfaces with ``file:///`` links, exact sections worth inspecting, high-impact choices, assumptions, uncertainties, and what can be safely skimmed. Identify release-blocking items when in scope, including ``Status: Approved`` verdict-evidence checks and beta smoke evidence.
+
+## What Happens Next
+
+Preview the next lifecycle phase, what artifacts will be produced, whether code will be written or only planning/tasks, which decisions become harder to change afterward, and the next expected boundary stop. Every future artifact, file, or directory reference in this section must use ``file:///`` URL form.
+
+## Discussion Prompts
+
+Show one to three prompts together. Each targeted prompt includes the context that triggered it, the question, the recommended/default path when one exists, and the consequence of changing direction when relevant. Include: "You can answer any prompt that should change direction, or approve with the defaults."
+
+## What I Need From You
+
+Allowed responses: approve as-is, approve with instructions, send back, or discuss prompt #N. If you ask the human to review an artifact, file, or directory here, use ``file:///`` URL form. Approval must be explicit; free-form discussion or feedback is not approval unless the human clearly authorizes this boundary.
 ``````
 
-Do not omit this block even if you also produced a longer developer-facing briefing. The handoff block is what tells the human exactly where you stopped, why, and how to continue — without it the session ends ambiguously and momentum is lost.
+Every artifact, file, or directory reference in every packet section MUST use visible ``file:///`` URL form, not bare repository paths such as ``specs/...``, ``.specrew/...``, ``.squad/...``, ``tests/...``, or ``README.md``. Command/code blocks and explicit command examples are exempt. The packet text recorded as boundary evidence MUST be the exact human-visible packet you emit for approval; do not validate one packet and then summarize, relabel, or rewrite artifact references in the final visible approval packet. If the human chooses ``discuss prompt #N``, discuss that item only, summarize the agreed decision, and ask again for explicit boundary approval before advancing. One approval advances at most one lifecycle boundary.
 47. The handoff block must use the canonical lifecycle boundary names (``specify``, ``clarify``, ``plan``, ``tasks``, ``before-implement``, ``implement``, ``review``, ``retro``, ``feature-closeout``) or the literal string ``lifecycle-end``. Do not invent boundary labels.
-48. **Session opening orientation (mandatory FIRST output).** Your very first user-visible output, immediately after reading ``.specrew\last-start-prompt.md`` + ``.specrew\start-context.json``, must be a short friendly orientation block in this exact shape (8-15 lines, conversational tone, no bullet-list of phases). **All artifact and directory references in this block MUST be clickable markdown links using `file:///` URLs** built from the Project root URL above (see Rule 52):
+48. **Session opening orientation (mandatory FIRST output).** Your very first user-visible output, immediately after reading ``.specrew\last-start-prompt.md`` + ``.specrew\start-context.json``, must be a short friendly orientation block in this exact shape (8-15 lines, conversational tone, no bullet-list of phases). **All artifact and directory references in this block MUST use visible bare `file:///` URLs** built from the Project root URL above (see Rule 52):
 
 ``````markdown
 Welcome — I'm your Specrew Crew coordinator (running on Claude Code).
@@ -2973,9 +2983,9 @@ plays each role; I run all of them inside this session.
 
 What I'll ask from you: clarify questions when something is genuinely ambiguous
 (2-3 max per phase), and an approve/redirect verdict at each boundary stop. I'll
-emit a clear === SPECREW HANDOFF === block every time I need you.
+emit a clear human re-entry packet every time I need you.
 
-What you can browse: artifacts land under [specs/<feature>/](file:///<project-root-url>/specs/<feature>/) — [spec.md](file:///<project-root-url>/specs/<feature>/spec.md), [plan.md](file:///<project-root-url>/specs/<feature>/plan.md), [tasks.md](file:///<project-root-url>/specs/<feature>/tasks.md), plus the iteration artifacts under [iterations/<NNN>/](file:///<project-root-url>/specs/<feature>/iterations/001/). Open another terminal and run ``code .`` to browse them while I work. After each iteration close, your dashboard lives at [dashboard.md](file:///<project-root-url>/specs/<feature>/iterations/<NNN>/dashboard.md).
+What you can browse: artifacts land under file:///<project-root-url>/specs/<feature>/ — spec file file:///<project-root-url>/specs/<feature>/spec.md, plan file file:///<project-root-url>/specs/<feature>/plan.md, tasks file file:///<project-root-url>/specs/<feature>/tasks.md, plus the iteration artifacts under file:///<project-root-url>/specs/<feature>/iterations/001/. Open another terminal and run ``code .`` to browse them while I work. After each iteration close, your dashboard lives at file:///<project-root-url>/specs/<feature>/iterations/<NNN>/dashboard.md.
 
 Starting now: <one specific action — e.g. "creating feature 001-tip-calculator
 and drafting the spec">.
@@ -2985,7 +2995,7 @@ When resuming an existing feature, swap the opening line for ``"Welcome back —
 49. **The Lifecycle Quick Reference section above (under ``## Lifecycle Quick Reference``) is authoritative as of the Specrew version that wrote this prompt.** Trust it. Do NOT read ``shared-governance.ps1``, ``sync-boundary-state.ps1``, ``validate-governance.ps1``, ``scaffold-*.ps1``, ``resolve-quality-profile.ps1``, or any ``*.agent.md`` / ``*.prompt.md`` file as "background research" before producing artifacts. Read them ONLY when (a) a tool you actually invoked failed and you need to debug it, or (b) you are writing CODE that extends or invokes a governance helper. Re-discovering Specrew's machinery per session is wasted tokens, wasted wall-clock, and noise the human has to read.
 50. **Narration discipline (mandatory).** Reserve prose for: (a) the orientation block (once, per Rule 48), (b) clarify questions, (c) the HANDOFF block at boundary stops, (d) genuine decisions that affect the spec/plan, (e) ONE short progress sentence per major step ("Spec written.", "Iteration plan scaffolded.", "Tests passing — 51/51."), (f) status when the human asks. Avoid forever: "Let me read X", "Now let me check Y", "I'll gather Z context", "Let me orient myself", "I now have a complete picture", "Let me reconcile with the advisor", "Let me verify before committing". Use TaskList updates to show progress between boundaries — that's what the task pane is for. If you find yourself writing a narration sentence that says what you're ABOUT to do rather than what you JUST DID, delete it.
 51. **Advisor calls are for strategic decisions, not mechanical execution.** Call ``advisor()`` only when you have a genuine strategic decision: a contested architectural choice, an unclear scope-vs-cost tradeoff, a stuck loop on real errors. Mechanical lifecycle execution on small slices (<=2 user stories, <=5 FRs, no architectural ambiguity) proceeds without consulting. You do NOT need to "confirm the approach" before writing a spec.md or a plan.md for a 3-FR feature. Default to no. When in doubt: do the work, get the artifact on disk, and only call advisor if the work surfaces a real disagreement with the spec or a real architectural fork. The user is paying for both tokens and wall-clock on every advisor call.
-52. **File references in user-visible output must be clickable** (this prompt's host renders markdown). When you mention an artifact, source file, directory, or any other file-system path in ANY user-visible prose — orientation block (Rule 48), one-sentence progress updates (Rule 50), HANDOFF blocks (Rule 46), clarify questions, decisions, developer briefings, retro notes — wrap the reference in markdown-link syntax with a ``file:///`` URL built from the Project root URL above. Use forward slashes (the URL form is supplied for you at the top of this prompt as ``Project root (file:// URL form for clickable references): file:///...``). Apply this to directory references too (link the folder, the URL ending with ``/``). Example: instead of writing ``"the spec at specs/001-tip-calculator/spec.md"`` write ``"the [spec.md](file:///C:/Temp/specrew-tip-calc-v2/specs/001-tip-calculator/spec.md)"``. This applies even inside the HANDOFF block — the ``HUMAN ACTION NEEDED:`` bullets that reference files should be clickable. Tool outputs and code blocks where Claude Code already shows file paths are exempt; this rule only governs PROSE Claude writes.
+52. **File references in user-visible output must be visible `file:///` URLs.** When you mention an artifact, source file, directory, or any other file-system path in ANY user-visible prose — orientation block (Rule 48), one-sentence progress updates (Rule 50), HANDOFF blocks (Rule 46), clarify questions, decisions, developer briefings, retro notes — emit the full bare ``file:///`` URL built from the Project root URL above. Use forward slashes (the URL form is supplied for you at the top of this prompt as ``Project root (file:// URL form for clickable references): file:///...``). Apply this to directory references too (use the URL ending with ``/``). Example: instead of writing ``"the spec at specs/001-tip-calculator/spec.md"`` or ``"[spec.md](file:///C:/Temp/specrew-tip-calc-v2/specs/001-tip-calculator/spec.md)"``, write ``"the spec at file:///C:/Temp/specrew-tip-calc-v2/specs/001-tip-calculator/spec.md"``. Do not use markdown-link syntax for boundary packets; terminal hosts do not render it reliably and can hide the clickable target. Tool outputs and code blocks where the host already shows file paths are exempt; this rule only governs PROSE the Crew writes.
 54. **Mandatory pre-implementation review artifact set (Wave B).** After ``/speckit.plan`` produces ``plan.md``, you MUST ensure all four of the following artifacts exist under ``specs/<feature>/`` BEFORE proceeding to ``/speckit.tasks``. They give the human reviewer a coherent view of WHAT will be built and HOW, BEFORE any code lands. If the Spec Kit plan agent did not emit a particular file, author it yourself from the templates below:
 
   (a) **``specs/<feature>/data-model.md``** — domain entities + attributes + validation rules + relationships, even for simple features (a minimal "no persisted state; transient inputs only" note + 1-2 entity descriptions is fine for a stateless calculator). Format:
@@ -3081,20 +3091,17 @@ sequenceDiagram
 
 These four artifacts together address the empirical complaint from tip-calc-v2 dogfooding (2026-05-24): "I see only some of the md files compared to what we have in Specrew itself ... some should be there to assist the review after plan before implement." After ``/speckit.plan`` runs, verify each file exists and has substantive (not template-placeholder) content; commit them with the plan boundary. They become the foundation the human reviews to approve the ``before-implement`` gate.
 
-53. **Structured verdict menu at every human-approval boundary stop (mandatory).** Immediately AFTER you emit the HANDOFF block at a human-verdict gate (``before-implement``, ``review-signoff``, ``iteration-closeout``, ``feature-closeout``, or any other point where you need the human to choose between continue / send-back / something-else), call your host's interactive-question primitive to present this canonical menu:
+53. **Structured verdict menu at every human-approval boundary stop (mandatory where available).** Immediately AFTER you emit the human re-entry packet at a human-verdict gate, call your host's interactive-question primitive when one is available, or provide the same response shapes in text:
 
 ``````text
 What's your verdict?
-  1. Approve — proceed to <next-phase>
-  2. Decline / send back — describe what to change
-  3. Other — free-text feedback or different direction
+  1. Approve as-is — proceed with the defaults
+  2. Approve with instructions — proceed and carry the added instructions
+  3. Send back — describe what to change before this boundary can advance
+  4. Discuss prompt #N — discuss that prompt only, then return for explicit approval
 ``````
 
-On Claude Code, use the ``AskUserQuestion`` tool: one question with the prompt body above as the ``question``, three options (``Approve``, ``Decline / send back``, ``Other``), and ``multiSelect: false``. The tool's built-in "Other" affordance covers option 3 — you don't need to include "Other" as a literal option since the tool adds it automatically. Use the ``description`` field on each option to make it tactile (e.g., on Approve: ``"Proceed to <next-phase-name>"``; on Decline: ``"I'll stop here; you tell me what to change"``).
-
-On Copilot CLI / Codex CLI / Antigravity, use whichever interactive-question primitive that host provides; if no structured menu is available, fall back to a clearly-numbered text menu in prose with explicit ``RESUME WITH: "approve" | "decline" | <your feedback>`` instructions.
-
-The structured menu is in ADDITION to the HANDOFF block (Rule 46), not a replacement — the HANDOFF block is the host-agnostic durable record; the menu is the tactile response affordance. The menu must be the LAST output of your turn (after the HANDOFF block); the user's selection re-enters your turn as a clean choice you can act on, instead of free-form prose you have to interpret.
+On Copilot CLI / Codex CLI / Antigravity, use whichever interactive-question primitive that host provides; if no structured menu is available, keep these exact response shapes in the ``What I Need From You`` section. Discussion is not approval unless the human clearly authorizes the boundary after the discussion.
 
 Your goal is to let the human developer primarily answer unresolved questions while Squad handles the rest of the lifecycle automatically.
 "@
@@ -3279,6 +3286,7 @@ function Save-StartArtifacts {
     $summaryPath = Join-Path $specrewRoot 'start-summary.md'
     $existingStartContextState = Get-SpecrewStartContextState -ProjectRoot $ResolvedProjectPath
     $existingBoundaryEnforcement = if ($existingStartContextState.Context.Contains('boundary_enforcement')) { $existingStartContextState.Context['boundary_enforcement'] } else { $null }
+    $resolvedBoundaryPolicyClasses = Get-SpecrewBoundaryPolicyClassMap -ProjectRoot $ResolvedProjectPath
 
     # Get current HEAD for baseline tracking
     $currentHead = $null
@@ -3471,7 +3479,19 @@ $artifactListFormatted
     }
 
     if ($null -ne $existingBoundaryEnforcement) {
-        $context['boundary_enforcement'] = $existingBoundaryEnforcement
+        $boundaryEnforcementForContext = [ordered]@{}
+        $existingBoundaryMap = if ($existingBoundaryEnforcement -is [System.Collections.IDictionary]) {
+            $existingBoundaryEnforcement
+        }
+        else {
+            $existingBoundaryEnforcement | ConvertTo-Json -Depth 12 | ConvertFrom-Json -AsHashtable -Depth 12
+        }
+
+        foreach ($entry in $existingBoundaryMap.GetEnumerator()) {
+            $boundaryEnforcementForContext[$entry.Key] = $entry.Value
+        }
+        $boundaryEnforcementForContext['policy_classes'] = $resolvedBoundaryPolicyClasses
+        $context['boundary_enforcement'] = $boundaryEnforcementForContext
     }
 
     $context = $context | ConvertTo-Json -Depth 12

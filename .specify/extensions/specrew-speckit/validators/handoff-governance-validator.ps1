@@ -227,6 +227,49 @@ function Test-UsesStopMessageFormat {
     return $SectionMap.Contains('What I just did') -and $SectionMap.Contains('Why I stopped') -and $SectionMap.Contains('What I need from you')
 }
 
+function Test-UsesHumanReentryPacketCandidate {
+    param([hashtable]$SectionMap)
+
+    foreach ($heading in @('What needs your review', 'What happens next', 'Discussion prompts')) {
+        if ($SectionMap.Contains($heading)) {
+            return $true
+        }
+    }
+
+    return $false
+}
+
+function Get-MissingHumanReentryPacketSections {
+    param([hashtable]$SectionMap)
+
+    $missing = New-Object System.Collections.Generic.List[string]
+    foreach ($heading in @('What I just did', 'Why I stopped', 'What needs your review', 'What happens next', 'Discussion prompts', 'What I need from you')) {
+        if (-not $SectionMap.Contains($heading)) {
+            $missing.Add($heading) | Out-Null
+        }
+    }
+
+    return @($missing.ToArray())
+}
+
+function Test-DiscussionPromptsCompliant {
+    param([AllowEmptyString()][string]$Text)
+
+    if ([string]::IsNullOrWhiteSpace($Text)) {
+        return $false
+    }
+
+    $generalFallbackPattern = '(?i)Before I plan from this spec, is there anything you want corrected, constrained, expanded, or discussed\?'
+    if ($Text -match $generalFallbackPattern) {
+        return $true
+    }
+
+    $hasQuestion = $Text -match '\?'
+    $hasContext = $Text -match '(?i)\b(context|because|decision|assumption|risk|tradeoff|uncertain|triggered|scope|package|architecture|release-blocking)\b'
+    $hasDefaultOrConsequence = $Text -match '(?i)\b(default|recommend|recommended|consequence|changing direction|if we change|if you change|otherwise)\b'
+    return $hasQuestion -and $hasContext -and $hasDefaultOrConsequence
+}
+
 function Test-HasEmptyUserActionSection {
     param([AllowEmptyString()][string]$Text)
 
@@ -527,6 +570,21 @@ function Get-BrokenFileUriFindings {
     return $findings.ToArray()
 }
 
+function Get-MarkdownFileLinkMatches {
+    param([AllowEmptyString()][string]$Text)
+
+    if ([string]::IsNullOrWhiteSpace($Text)) {
+        return @()
+    }
+
+    $withoutCodeBlocks = [regex]::Replace(($Text -replace "`r`n", "`n"), '(?ms)```.*?```', '')
+    return @(
+        [regex]::Matches($withoutCodeBlocks, '(?i)\[[^\]\r\n]*\]\(file:///[^\s)]+\)') |
+            ForEach-Object { $_.Value.Trim() } |
+            Select-Object -Unique
+    )
+}
+
 function Get-PathScanLines {
     param([AllowEmptyString()][string]$Text)
 
@@ -535,7 +593,8 @@ function Get-PathScanLines {
     }
 
     $withoutCodeBlocks = [regex]::Replace(($Text -replace "`r`n", "`n"), '(?ms)```.*?```', '')
-    $withoutInlineCode = [regex]::Replace($withoutCodeBlocks, '(?s)`[^`\r\n]+`', '')
+    $withoutMarkdownFileLinks = [regex]::Replace($withoutCodeBlocks, '(?i)\[[^\]\r\n]*\]\(file:///[^\s)]+\)', '')
+    $withoutInlineCode = [regex]::Replace($withoutMarkdownFileLinks, '(?s)`[^`\r\n]+`', '')
     $withoutUrls = [regex]::Replace($withoutInlineCode, '(?i)\b[a-z][a-z0-9+\.-]*://[^\s)]+', '')
     return @($withoutUrls -split "`n")
 }
@@ -577,7 +636,10 @@ function Get-BarePathMatches {
         [AllowEmptyCollection()][object[]]$ExemptionExtensions
     )
 
-    $pattern = '(?i)(?<path>(?:[A-Z]:[\\/]|\.{1,2}[\\/]|(?:[A-Za-z0-9_.-]+[\\/])+[A-Za-z0-9_.-]+)(?:[\\/][A-Za-z0-9_.-]+)*)'
+    $patterns = @(
+        '(?i)(?<path>(?:[A-Z]:[\\/]|\.{1,2}[\\/]|(?:[A-Za-z0-9_.-]+[\\/])+[A-Za-z0-9_.-]+)(?:[\\/][A-Za-z0-9_.-]+)*)',
+        '(?i)(?<![\w./\\-])(?<path>README\.md)(?![\w./\\-])'
+    )
     $matches = New-Object System.Collections.Generic.List[string]
 
     foreach ($line in (Get-PathScanLines -Text $Text)) {
@@ -585,22 +647,24 @@ function Get-BarePathMatches {
             continue
         }
 
-        foreach ($match in [regex]::Matches($line, $pattern)) {
-            $candidate = $match.Groups['path'].Value
-            if ([string]::IsNullOrWhiteSpace($candidate)) {
-                continue
-            }
-
-            $isExtensionExempt = $false
-            foreach ($extension in @($ExemptionExtensions)) {
-                if (-not [string]::IsNullOrWhiteSpace([string]$extension.Pattern) -and $candidate -match [string]$extension.Pattern) {
-                    $isExtensionExempt = $true
-                    break
+        foreach ($pattern in $patterns) {
+            foreach ($match in [regex]::Matches($line, $pattern)) {
+                $candidate = $match.Groups['path'].Value
+                if ([string]::IsNullOrWhiteSpace($candidate)) {
+                    continue
                 }
-            }
 
-            if (-not $isExtensionExempt) {
-                $matches.Add($candidate) | Out-Null
+                $isExtensionExempt = $false
+                foreach ($extension in @($ExemptionExtensions)) {
+                    if (-not [string]::IsNullOrWhiteSpace([string]$extension.Pattern) -and $candidate -match [string]$extension.Pattern) {
+                        $isExtensionExempt = $true
+                        break
+                    }
+                }
+
+                if (-not $isExtensionExempt) {
+                    $matches.Add($candidate) | Out-Null
+                }
             }
         }
     }
@@ -689,12 +753,34 @@ if (Test-UsesStopMessageFormat -SectionMap $sectionMap) {
     }
 }
 
+if ($resolvedResponseScope -eq 'boundary-handoff' -and (Test-UsesHumanReentryPacketCandidate -SectionMap $sectionMap)) {
+    $missingPacketSections = @(Get-MissingHumanReentryPacketSections -SectionMap $sectionMap)
+    if ($missingPacketSections.Count -gt 0) {
+        $failures.Add(("validation-fail.incomplete-human-reentry-packet :: missing={0}" -f ($missingPacketSections -join ','))) | Out-Null
+    }
+
+    if ($sectionMap.Contains('Discussion prompts') -and -not (Test-DiscussionPromptsCompliant -Text ([string]$sectionMap['Discussion prompts']))) {
+        $failures.Add('validation-fail.non-contextual-discussion-prompts') | Out-Null
+    }
+}
+
 foreach ($configIssue in @($settings.ConfigIssues)) {
     $warnings.Add("soft-warning.bare-path-config-issue :: $configIssue") | Out-Null
 }
 
 foreach ($brokenFileUri in (Get-BrokenFileUriFindings -Text $normalizedText)) {
     $warnings.Add($brokenFileUri) | Out-Null
+}
+
+$markdownFileLinkMatches = @(Get-MarkdownFileLinkMatches -Text $normalizedText)
+if ($markdownFileLinkMatches.Count -gt 0) {
+    $detail = $markdownFileLinkMatches -join ', '
+    if ($resolvedResponseScope -eq 'boundary-handoff' -and $hasInteractionBoundaryContext) {
+        $failures.Add("validation-fail.markdown-file-url-in-boundary-handoff :: references=$detail") | Out-Null
+    }
+    elseif ($resolvedResponseScope -eq 'narration') {
+        $warnings.Add("soft-warning.markdown-file-url-in-narration :: references=$detail") | Out-Null
+    }
 }
 
 $barePathMatches = @(Get-BarePathMatches -Text $normalizedText -ExemptionExtensions $settings.ExemptionExtensions)
@@ -765,6 +851,10 @@ if (@($warnings | Where-Object { $_ -like 'soft-warning.bare-path-in-*' }).Count
 
 if (@($warnings | Where-Object { $_ -like 'soft-warning.broken-file-url-reference*' }).Count -gt 0) {
     $summaryLines.Add('Repair or remove file:/// references that do not resolve to existing files.') | Out-Null
+}
+
+if (@($failures | Where-Object { $_ -like 'validation-fail.markdown-file-url-in-boundary-handoff*' }).Count -gt 0) {
+    $summaryLines.Add('Use bare visible file:/// URIs in boundary handoffs; markdown links hide the clickable target in terminal hosts.') | Out-Null
 }
 
 if ($failures.Count -gt 0) {

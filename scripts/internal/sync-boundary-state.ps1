@@ -1087,6 +1087,25 @@ function Invoke-SpecrewBoundaryStateSync {
 
     $BoundaryType = $aliasMap[$normalizedInput]
     $effectiveIterationNumber = Normalize-SpecrewIterationNumber -IterationNumber $IterationNumber
+    $paths = Get-SpecrewSessionStatePaths -ProjectRoot $ProjectPath
+
+    if (-not [string]::IsNullOrWhiteSpace($HandoffText)) {
+        $moduleRoot = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
+        $handoffValidatorScript = Join-Path $moduleRoot 'extensions\specrew-speckit\validators\handoff-governance-validator.ps1'
+        if (-not (Test-Path -LiteralPath $handoffValidatorScript -PathType Leaf)) {
+            throw ("Boundary sync '{0}' cannot validate handoff text because the handoff validator is missing at {1}." -f $BoundaryType, $handoffValidatorScript)
+        }
+
+        $packetOutput = @(& pwsh -NoProfile -ExecutionPolicy Bypass -File $handoffValidatorScript -ProjectRoot $paths.ProjectRoot -ResponseText $HandoffText -BoundaryName $BoundaryType -ResponseScope boundary-handoff -BarePathBoundaryHandoffSeverity validation-fail 2>&1)
+        if ($LASTEXITCODE -ne 0) {
+            $messageLines = New-Object System.Collections.Generic.List[string]
+            $messageLines.Add(("[boundary-handoff-validation-gate] Boundary sync '{0}' rejected the supplied handoff text before state advancement." -f $BoundaryType)) | Out-Null
+            foreach ($line in $packetOutput) {
+                $messageLines.Add(("  {0}" -f $line)) | Out-Null
+            }
+            throw ($messageLines -join "`n")
+        }
+    }
 
     # Proposal 088: pre-sync markdownlint gate. Catches lint violations at
     # boundary-time so they never reach PR-CI Lint and cause the catch-fix-retry
@@ -1095,7 +1114,6 @@ function Invoke-SpecrewBoundaryStateSync {
     Invoke-PreBoundaryMarkdownLintGate -ProjectPath $ProjectPath
     Invoke-PreFeatureCloseoutWorkingTreeGate -ProjectPath $ProjectPath -BoundaryType $BoundaryType
 
-    $paths = Get-SpecrewSessionStatePaths -ProjectRoot $ProjectPath
     $effectiveFeatureRef = $FeatureRef
     if ([string]::IsNullOrWhiteSpace($effectiveFeatureRef) -and (Test-Path -LiteralPath $paths.FeatureJsonPath -PathType Leaf)) {
         try {
@@ -1133,6 +1151,7 @@ function Invoke-SpecrewBoundaryStateSync {
     }
 
     $effectiveAuthCommitHash = Resolve-SpecrewBoundaryAuthCommitHash -ProjectRoot $paths.ProjectRoot -AuthCommitHash $AuthCommitHash
+
     $sessionState = New-SpecrewSessionState `
         -BoundaryType $BoundaryType `
         -ProjectRoot $paths.ProjectRoot `
