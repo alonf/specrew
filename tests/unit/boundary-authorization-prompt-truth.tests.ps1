@@ -110,6 +110,7 @@ function Assert-PowerShellParses {
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
 $repoRootUri = ($repoRoot -replace '\\', '/')
 $startScriptPath = Join-Path $repoRoot 'scripts\specrew-start.ps1'
+$syncBoundaryScriptPath = Join-Path $repoRoot 'scripts\internal\sync-boundary-state.ps1'
 $sharedGovernancePath = Join-Path $repoRoot 'extensions\specrew-speckit\scripts\shared-governance.ps1'
 $sharedGovernanceMirrorPath = Join-Path $repoRoot '.specify\extensions\specrew-speckit\scripts\shared-governance.ps1'
 $validatorPath = Join-Path $repoRoot 'extensions\specrew-speckit\scripts\validate-governance.ps1'
@@ -125,6 +126,7 @@ Assert-True ((Get-Content -LiteralPath $handoffValidatorPath -Raw -Encoding UTF8
 Write-Pass 'Mirrored governance files remain identical'
 
 Assert-PowerShellParses -Path $startScriptPath
+Assert-PowerShellParses -Path $syncBoundaryScriptPath
 Assert-PowerShellParses -Path $sharedGovernancePath
 Assert-PowerShellParses -Path $validatorPath
 Write-Pass 'Edited PowerShell files parse'
@@ -147,12 +149,16 @@ foreach ($required in @(
         'approve as-is, approve with instructions, send back, or discuss prompt #N',
         'free-form discussion or feedback is not approval',
         'Every artifact, file, or directory reference in every packet section MUST use',
+        'visible bare `file:///` URLs',
+        'Do not use markdown-link syntax for boundary packets',
         'The packet text recorded as boundary evidence MUST be the exact human-visible packet',
         'not bare repository paths such as'
     )) {
     Assert-True ($startScript.Contains($required)) "Start prompt is missing required contract text: $required"
 }
 Assert-True ($startScript -notmatch 'append this exact fenced block') 'Start prompt still requires legacy handoff-block duplication as the primary stop contract.'
+Assert-True ($startScript -notmatch 'clickable markdown links using `file:///` URLs') 'Start prompt still tells agents to use markdown links for artifacts.'
+Assert-True ($startScript -notmatch 'wrap the reference in markdown-link syntax') 'Start prompt still instructs markdown-link artifact references.'
 Write-Pass 'Generated prompt contract text covers policy truth and the six-section packet'
 
 if (Test-Path -LiteralPath $scratchRoot) { Remove-Item -LiteralPath $scratchRoot -Recurse -Force }
@@ -279,6 +285,80 @@ Because the primary review section contains artifact references, should the vali
 Review file:///__REPO_ROOT_URI__/specs/139-boundary-authorization-prompt-truth/iterations/001/dashboard.md and approve or send back the iteration-closeout boundary.
 '@.Replace('__REPO_ROOT_URI__', $repoRootUri)
 
+$packetWithBarePrimaryReviewTargetsAndCompliantLegacy = @'
+## What I just did
+
+I closed Feature 139 feature-closeout and recorded the closeout evidence for the boundary packet repair.
+
+## Why I stopped
+
+I stopped at the feature-closeout boundary because release-closeout needs explicit approval before stable promotion.
+
+## What needs your review
+
+Review specs/139-boundary-authorization-prompt-truth/closeout-dashboard.md, specs/139-boundary-authorization-prompt-truth/iterations/001/dashboard.md, specs/139-boundary-authorization-prompt-truth/iterations/001/drift-log.md, specs/139-boundary-authorization-prompt-truth/iterations/001/quality/quality-evidence.md, and specs/139-boundary-authorization-prompt-truth/smoke/beta3-smoke-evidence.md before approving.
+
+## What happens next
+
+If approved, I will proceed to release-closeout and keep stable promotion blocked until beta replay passes.
+
+## Discussion prompts
+
+Because the primary packet body contains artifact references while the legacy block is compliant, should the validator fail the whole packet? I recommend yes; otherwise a compliant legacy block can hide a non-clickable primary packet.
+
+## What I need from you
+
+Review file:///__REPO_ROOT_URI__/specs/139-boundary-authorization-prompt-truth/closeout-dashboard.md and approve or send back the feature-closeout boundary.
+
+=== SPECREW HANDOFF ===
+STOPPED AT: feature-closeout
+STATUS: Feature 139 closeout pending release approval
+WHY STOPPED: release-closeout requires human approval
+AGENT NEXT ACTION:
+  - Use file:///__REPO_ROOT_URI__/specs/139-boundary-authorization-prompt-truth/smoke/beta3-smoke-evidence.md for release-closeout evidence
+HUMAN ACTION NEEDED:
+  - Review file:///__REPO_ROOT_URI__/specs/139-boundary-authorization-prompt-truth/closeout-dashboard.md
+RESUME WITH: approve release-closeout
+=== END SPECREW HANDOFF ===
+'@.Replace('__REPO_ROOT_URI__', $repoRootUri)
+
+$packetWithMarkdownPrimaryReviewTargetsAndCompliantLegacy = @'
+## What I just did
+
+I closed Feature 139 feature-closeout and recorded the closeout evidence for the boundary packet repair.
+
+## Why I stopped
+
+I stopped at the feature-closeout boundary because release-closeout needs explicit approval before stable promotion.
+
+## What needs your review
+
+Review [closeout-dashboard.md](file:///__REPO_ROOT_URI__/specs/139-boundary-authorization-prompt-truth/closeout-dashboard.md), [dashboard.md](file:///__REPO_ROOT_URI__/specs/139-boundary-authorization-prompt-truth/iterations/001/dashboard.md), [drift-log.md](file:///__REPO_ROOT_URI__/specs/139-boundary-authorization-prompt-truth/iterations/001/drift-log.md), [quality-evidence.md](file:///__REPO_ROOT_URI__/specs/139-boundary-authorization-prompt-truth/iterations/001/quality/quality-evidence.md), and [beta3-smoke-evidence.md](file:///__REPO_ROOT_URI__/specs/139-boundary-authorization-prompt-truth/smoke/beta3-smoke-evidence.md) before approving.
+
+## What happens next
+
+If approved, I will proceed to release-closeout and keep stable promotion blocked until beta replay passes.
+
+## Discussion prompts
+
+Because markdown file links hide the visible file URI in terminal hosts, should boundary validation reject them even when the legacy block uses bare file URIs? I recommend yes; otherwise the stored packet can validate while the visible primary packet is not directly clickable.
+
+## What I need from you
+
+Review file:///__REPO_ROOT_URI__/specs/139-boundary-authorization-prompt-truth/closeout-dashboard.md and approve or send back the feature-closeout boundary.
+
+=== SPECREW HANDOFF ===
+STOPPED AT: feature-closeout
+STATUS: Feature 139 closeout pending release approval
+WHY STOPPED: release-closeout requires human approval
+AGENT NEXT ACTION:
+  - Use file:///__REPO_ROOT_URI__/specs/139-boundary-authorization-prompt-truth/smoke/beta3-smoke-evidence.md for release-closeout evidence
+HUMAN ACTION NEEDED:
+  - Review file:///__REPO_ROOT_URI__/specs/139-boundary-authorization-prompt-truth/closeout-dashboard.md
+RESUME WITH: approve release-closeout
+=== END SPECREW HANDOFF ===
+'@.Replace('__REPO_ROOT_URI__', $repoRootUri)
+
 foreach ($scriptPath in @($handoffValidatorPath, $handoffValidatorMirrorPath)) {
     $bareResult = Invoke-HandoffValidatorText -ValidatorPath $scriptPath -ProjectRoot $repoRoot -Text $packetWithBareReferences
     Assert-True ($bareResult.ExitCode -eq 1) "Packet-wide bare artifact references unexpectedly passed with $scriptPath."
@@ -298,6 +378,14 @@ foreach ($scriptPath in @($handoffValidatorPath, $handoffValidatorMirrorPath)) {
         )) {
         Assert-True ($primaryReviewResult.Text -match [regex]::Escape($expectedPath)) "Bare primary review target '$expectedPath' was not reported. Output: $($primaryReviewResult.Text)"
     }
+
+    $primaryWithLegacyResult = Invoke-HandoffValidatorText -ValidatorPath $scriptPath -ProjectRoot $repoRoot -Text $packetWithBarePrimaryReviewTargetsAndCompliantLegacy
+    Assert-True ($primaryWithLegacyResult.ExitCode -eq 1) "Bare primary review targets with compliant legacy block unexpectedly passed with $scriptPath."
+    Assert-True ($primaryWithLegacyResult.Text -match 'validation-fail\.bare-path-in-boundary-handoff') "Bare primary targets with compliant legacy block did not emit the hard-fail rule. Output: $($primaryWithLegacyResult.Text)"
+
+    $markdownPrimaryResult = Invoke-HandoffValidatorText -ValidatorPath $scriptPath -ProjectRoot $repoRoot -Text $packetWithMarkdownPrimaryReviewTargetsAndCompliantLegacy
+    Assert-True ($markdownPrimaryResult.ExitCode -eq 1) "Markdown primary review targets with compliant legacy block unexpectedly passed with $scriptPath."
+    Assert-True ($markdownPrimaryResult.Text -match 'validation-fail\.markdown-file-url-in-boundary-handoff') "Markdown primary targets with compliant legacy block did not emit the markdown-link hard-fail rule. Output: $($markdownPrimaryResult.Text)"
 
     $exemptResult = Invoke-HandoffValidatorText -ValidatorPath $scriptPath -ProjectRoot $repoRoot -Text $packetWithExemptReferences
     Assert-True ($exemptResult.ExitCode -eq 0) "Code-block-exempt packet unexpectedly failed with $scriptPath. Output: $($exemptResult.Text)"
@@ -324,6 +412,8 @@ Write-Pass 'Status: Approved contradiction check flags missing verdicts and acce
 
 $badEvidenceRoot = Join-Path $scratchRoot 'bad-handoff-evidence'
 New-ApprovedStatusWorkspace -Root $badEvidenceRoot -WithVerdictEvidence:$true
+New-Item -ItemType Directory -Path (Join-Path $badEvidenceRoot 'specs\001-test\iterations\001') -Force | Out-Null
+'# Iteration State: 001' | Set-Content -LiteralPath (Join-Path $badEvidenceRoot 'specs\001-test\iterations\001\state.md') -Encoding UTF8
 $badEvidence = [ordered]@{
     schema = 'v1'
     boundary_events = @([ordered]@{
@@ -339,7 +429,45 @@ $badEvidenceOutput = @(& pwsh -NoProfile -ExecutionPolicy Bypass -File $validato
 Assert-True ($LASTEXITCODE -eq 1) 'validate-governance should fail when stored boundary packet evidence contains bare artifact paths.'
 Assert-True (($badEvidenceOutput -join "`n") -match 'handoff-evidence-packet-invalid') 'Stored boundary packet evidence failure did not identify handoff-evidence-packet-invalid.'
 Assert-True (($badEvidenceOutput -join "`n") -match 'validation-fail\.bare-path-in-boundary-handoff') 'Stored boundary packet evidence failure did not surface the bare-path validator finding.'
+
+$badMarkdownEvidenceRoot = Join-Path $scratchRoot 'bad-markdown-handoff-evidence'
+New-ApprovedStatusWorkspace -Root $badMarkdownEvidenceRoot -WithVerdictEvidence:$true
+New-Item -ItemType Directory -Path (Join-Path $badMarkdownEvidenceRoot 'specs\001-test\iterations\001') -Force | Out-Null
+'# Iteration State: 001' | Set-Content -LiteralPath (Join-Path $badMarkdownEvidenceRoot 'specs\001-test\iterations\001\state.md') -Encoding UTF8
+$badMarkdownEvidence = [ordered]@{
+    schema = 'v1'
+    boundary_events = @([ordered]@{
+            commit = 'badc0df'
+            boundary = 'feature-closeout'
+            response_text = $packetWithMarkdownPrimaryReviewTargetsAndCompliantLegacy
+            handoff_present = $true
+            recorded_at = '2026-06-01T00:00:00Z'
+        })
+}
+($badMarkdownEvidence | ConvertTo-Json -Depth 8) | Set-Content -LiteralPath (Join-Path $badMarkdownEvidenceRoot '.specrew\handoff-evidence.json') -Encoding UTF8
+$badMarkdownEvidenceOutput = @(& pwsh -NoProfile -ExecutionPolicy Bypass -File $validatorPath -ProjectPath $badMarkdownEvidenceRoot 2>&1)
+Assert-True ($LASTEXITCODE -eq 1) 'validate-governance should fail when stored boundary packet evidence contains markdown file links in the primary packet.'
+Assert-True (($badMarkdownEvidenceOutput -join "`n") -match 'handoff-evidence-packet-invalid') 'Stored markdown packet evidence failure did not identify handoff-evidence-packet-invalid.'
+Assert-True (($badMarkdownEvidenceOutput -join "`n") -match 'validation-fail\.markdown-file-url-in-boundary-handoff') 'Stored markdown packet evidence failure did not surface the markdown-link validator finding.'
 Write-Pass 'Stored boundary packet evidence is validated against actual emitted packet text'
+
+$syncRejectRoot = Join-Path $scratchRoot 'sync-rejects-invalid-visible-packet'
+New-ApprovedStatusWorkspace -Root $syncRejectRoot -WithVerdictEvidence:$true
+$previousModulePath = $env:SPECREW_MODULE_PATH
+try {
+    $env:SPECREW_MODULE_PATH = $repoRoot
+    $syncOutput = @(& pwsh -NoProfile -ExecutionPolicy Bypass -File (Join-Path $repoRoot '.specify\extensions\specrew-speckit\scripts\sync-boundary-state.ps1') -ProjectPath $syncRejectRoot -BoundaryType plan -FeatureRef 001-test -AuthCommitHash abcdef1 -HandoffText $packetWithMarkdownPrimaryReviewTargetsAndCompliantLegacy 2>&1)
+    Assert-True ($LASTEXITCODE -ne 0) 'sync-boundary-state should reject invalid visible packet text before advancing the boundary.'
+    $syncOutputText = $syncOutput -join "`n"
+    Assert-True ($syncOutputText -match 'boundary-handoff-validation-gate') "Sync rejection did not identify the pre-advance handoff validation gate. Output: $syncOutputText"
+    Assert-True ($syncOutputText -match 'validation-fail\.markdown-file-url-in-boundary-handoff') "Sync rejection did not surface the markdown-link validator finding. Output: $syncOutputText"
+    $syncContext = Get-Content -LiteralPath (Join-Path $syncRejectRoot '.specrew\start-context.json') -Raw -Encoding UTF8 | ConvertFrom-Json
+    Assert-True ($syncContext.session_state.boundary_type -eq 'clarify') 'Invalid packet sync advanced the session boundary despite validation failure.'
+}
+finally {
+    $env:SPECREW_MODULE_PATH = $previousModulePath
+}
+Write-Pass 'Boundary sync rejects invalid visible packet text before state advancement'
 
 if (Test-Path -LiteralPath $scratchRoot) { Remove-Item -LiteralPath $scratchRoot -Recurse -Force }
 Write-Host ''

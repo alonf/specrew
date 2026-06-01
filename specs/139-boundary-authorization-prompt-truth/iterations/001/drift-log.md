@@ -22,8 +22,8 @@
 
 ## Summary
 
-**Total drift events**: 5
-**Resolution rate**: 100% (5/5 resolved)
+**Total drift events**: 6
+**Resolution rate**: 100% (6/6 resolved)
 **Specification drift**: Resolved by human-approved spec/task reconciliation before implementation
 
 ## Events
@@ -87,6 +87,19 @@
 - **Resolution**: Strengthened [specrew-start.ps1](file:///C:/tmp/Specrew-main-boundary-auth/scripts/specrew-start.ps1), [coordinator governance template](file:///C:/tmp/Specrew-main-boundary-auth/extensions/specrew-speckit/squad-templates/coordinator/specrew-governance.md), and the mirrored [coordinator governance template](file:///C:/tmp/Specrew-main-boundary-auth/.specify/extensions/specrew-speckit/squad-templates/coordinator/specrew-governance.md) so the packet text recorded as boundary evidence must be the exact human-visible packet emitted for approval, with no post-validation summary or artifact-reference rewrite.
 - **Verification**: [boundary-authorization-prompt-truth.tests.ps1](file:///C:/tmp/Specrew-main-boundary-auth/tests/unit/boundary-authorization-prompt-truth.tests.ps1) now includes the exact primary `What needs your review` bare-path case reported in this send-back and asserts all four bare repository paths hard-fail.
 - **Follow-up**: Re-emit the `iteration-closeout -> feature-closeout` packet with visible `file:///` review targets in the primary six-section packet and record that exact packet as boundary evidence.
+
+### D-006 — Markdown-link packet references bypassed visible URI enforcement
+
+- **Detected At**: 2026-06-01T14:10:00Z
+- **Type**: common-enforcement-path-regression
+- **Status**: resolved
+- **Source**: Human send-back after feature-closeout noted that the primary six-section packet still surfaced non-clickable artifact references even though the legacy `=== SPECREW HANDOFF ===` block used `file:///` links.
+- **Requirement Citation**: D-004 requires every artifact, file, or directory reference in every human re-entry packet section to use visible `file:///` URL form. D-005 requires the stored boundary packet evidence to be the exact human-visible approval packet and rejects any approval packet that was not stored and validated as that visible packet.
+- **Impact**: The common validator stripped markdown file links such as `[dashboard.md](file:///...)` before bare-path scanning, so a packet could pass validation while the terminal-visible primary packet hid the clickable `file:///` target behind markdown syntax. The sync path also recorded handoff evidence after boundary state advancement and only warned on recording failure, so invalid packet evidence was not a pre-advance hard gate.
+- **Classification**: Feature 139 enforcement-path regression. This is in-scope because Feature 139 owns the human re-entry packet contract, stored packet evidence parity, and packet-wide clickable-reference enforcement.
+- **Resolution**: Updated [handoff-governance-validator.ps1](file:///C:/tmp/Specrew-main-boundary-auth/extensions/specrew-speckit/validators/handoff-governance-validator.ps1) and the mirrored [handoff-governance-validator.ps1](file:///C:/tmp/Specrew-main-boundary-auth/.specify/extensions/specrew-speckit/validators/handoff-governance-validator.ps1) so markdown file links in boundary handoffs hard-fail with `validation-fail.markdown-file-url-in-boundary-handoff`. Updated [sync-boundary-state.ps1](file:///C:/tmp/Specrew-main-boundary-auth/scripts/internal/sync-boundary-state.ps1) so supplied handoff text is validated before boundary state advancement. Updated [specrew-start.ps1](file:///C:/tmp/Specrew-main-boundary-auth/scripts/specrew-start.ps1) to remove the contradictory markdown-link guidance and require visible bare `file:///` URLs in generated lifecycle instructions.
+- **Verification**: [boundary-authorization-prompt-truth.tests.ps1](file:///C:/tmp/Specrew-main-boundary-auth/tests/unit/boundary-authorization-prompt-truth.tests.ps1) now covers the exact failure where the primary six-section packet has bare `specs/...` paths while the legacy handoff block is compliant, the related markdown-link escape where the primary packet uses `[name](file:///...)`, stored packet evidence validation for both cases, and boundary-sync rejection before state advancement.
+- **Follow-up**: Re-emit the `feature-closeout -> release-closeout` packet using visible bare `file:///` URLs in the primary six-section packet, store that exact visible packet as boundary evidence, and stop for explicit release-closeout approval.
 
 ### Resolution Strategies (Unused)
 

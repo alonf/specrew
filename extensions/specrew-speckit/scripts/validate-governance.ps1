@@ -825,48 +825,44 @@ function Test-HandoffEvidenceGovernance {
             $events = @($parsed)
         }
     }
-
-    $hardFailureCount = 0
-    $handoffValidatorScript = Join-Path (Split-Path -Parent $PSScriptRoot) 'validators\handoff-governance-validator.ps1'
-    $rawResponseIndex = 0
-    foreach ($responseMatch in [regex]::Matches($raw, '(?s)"response_text"\s*:\s*"(?<value>(?:\\.|[^"\\])*)"')) {
-        $rawResponseIndex++
-        $encodedResponseText = [string]$responseMatch.Groups['value'].Value
-        $responseTextFromEvidence = try {
-            ('"{0}"' -f $encodedResponseText) | ConvertFrom-Json
-        }
-        catch {
-            [regex]::Unescape($encodedResponseText)
-        }
-
-        if ([string]::IsNullOrWhiteSpace($responseTextFromEvidence)) {
-            continue
-        }
-
-        if (Test-Path -LiteralPath $handoffValidatorScript -PathType Leaf) {
-            $packetOutput = @(& pwsh -NoProfile -ExecutionPolicy Bypass -File $handoffValidatorScript -ProjectRoot $ProjectRoot -ResponseText $responseTextFromEvidence -BoundaryName boundary -ResponseScope boundary-handoff -BarePathBoundaryHandoffSeverity validation-fail 2>&1)
-            if ($LASTEXITCODE -ne 0) {
-                $hardFailureCount++
-                Write-Host ("FAIL [trust-hardening] handoff-evidence-packet-invalid: Boundary packet evidence entry #{0} failed handoff governance validation." -f $rawResponseIndex) -ForegroundColor Red
-                foreach ($line in $packetOutput) {
-                    Write-Host ("  {0}" -f $line) -ForegroundColor Red
-                }
+    $flattenedEvents = New-Object System.Collections.Generic.List[object]
+    foreach ($candidateEvent in $events) {
+        if ($candidateEvent -is [array]) {
+            foreach ($innerEvent in $candidateEvent) {
+                $flattenedEvents.Add($innerEvent) | Out-Null
             }
         }
         else {
-            Write-TrustHardeningWarning -Category 'handoff-evidence-validator-missing' -Detail ("Could not find handoff validator at {0}; packet evidence validation was skipped." -f (Convert-ToRepoMarkdownPath -ProjectRoot $ProjectRoot -TargetPath $handoffValidatorScript))
+            $flattenedEvents.Add($candidateEvent) | Out-Null
         }
     }
+    $events = @($flattenedEvents.ToArray())
 
+    $hardFailureCount = 0
+    $handoffValidatorScript = Join-Path (Split-Path -Parent $PSScriptRoot) 'validators\handoff-governance-validator.ps1'
+    $latestPacketEvidenceByBoundary = @{}
+    for ($eventIndex = 0; $eventIndex -lt $events.Count; $eventIndex++) {
+        $event = $events[$eventIndex]
+        $boundary = Get-ObjectPropertyString -InputObject $event -Names @('boundary', 'boundary_type', 'BoundaryType')
+        if ([string]::IsNullOrWhiteSpace($boundary)) {
+            $boundary = '__unknown_boundary__'
+        }
+        $latestPacketEvidenceByBoundary[$boundary] = $eventIndex
+    }
+
+    $eventIndex = -1
     foreach ($event in $events) {
+        $eventIndex++
         $commit = Get-ObjectPropertyString -InputObject $event -Names @('commit', 'commit_hash', 'CommitHash')
         $boundary = Get-ObjectPropertyString -InputObject $event -Names @('boundary', 'boundary_type', 'BoundaryType')
         $hasCompactionMarker = Get-ObjectPropertyBool -InputObject $event -Names @('compaction_marker', 'post_compaction', 'PostCompaction')
         $commitMessage = Get-ObjectPropertyString -InputObject $event -Names @('commit_message', 'CommitMessage')
         $responseText = Get-ObjectPropertyString -InputObject $event -Names @('response_text', 'ResponseText', 'handoff_text', 'HandoffText', 'text', 'Text')
         $hasHandoffBlock = Test-SpecrewHandoffBlockPresent -CommitMessage $commitMessage -SessionMetadata $event
+        $packetValidationBoundary = if ([string]::IsNullOrWhiteSpace($boundary)) { '__unknown_boundary__' } else { $boundary }
+        $isLatestPacketEvidenceForBoundary = $latestPacketEvidenceByBoundary.ContainsKey($packetValidationBoundary) -and $latestPacketEvidenceByBoundary[$packetValidationBoundary] -eq $eventIndex
 
-        if (-not [string]::IsNullOrWhiteSpace($responseText)) {
+        if ($isLatestPacketEvidenceForBoundary -and -not [string]::IsNullOrWhiteSpace($responseText)) {
             if (Test-Path -LiteralPath $handoffValidatorScript -PathType Leaf) {
                 $validatorArgs = @{
                     ProjectRoot = $ProjectRoot
@@ -1733,10 +1729,21 @@ function Get-ObjectPropertyString {
     param(
         [AllowNull()][object]$InputObject,
 
+        [Alias('Names')]
         [string[]]$PropertyNames
     )
 
     if ($null -eq $InputObject) {
+        return $null
+    }
+
+    if ($InputObject -is [System.Collections.IDictionary] -or $InputObject -is [System.Collections.Specialized.IOrderedDictionary]) {
+        foreach ($propertyName in $PropertyNames) {
+            if ($InputObject.Contains($propertyName) -and -not [string]::IsNullOrWhiteSpace([string]$InputObject[$propertyName])) {
+                return [string]$InputObject[$propertyName]
+            }
+        }
+
         return $null
     }
 
@@ -4547,6 +4554,11 @@ try {
     $resolvedProjectPath = (Resolve-Path -Path (Resolve-ProjectPath -Path $ProjectPath)).Path
     if ($FullRun -and $ChangedOnly) {
         throw '-FullRun and -ChangedOnly are mutually exclusive. Use -FullRun for a deliberate full-repo run or -ChangedOnly for explicit changed-only scope.'
+    }
+
+    if (-not [string]::IsNullOrWhiteSpace($ResponseText)) {
+        $responseValidationExitCode = Invoke-InteractionModelResponseValidation -ProjectRoot $resolvedProjectPath -ResponseText $ResponseText -IterationTargets @() -BoundaryName $BoundaryName -ResponseScope $ResponseScope -BarePathBoundaryHandoffSeverity $BarePathBoundaryHandoffSeverity
+        Write-ValidatorSummaryAndExit -ProjectRoot $resolvedProjectPath -ExitCode $responseValidationExitCode -HardWarnings $(if ($responseValidationExitCode -eq 0) { 0 } else { 1 })
     }
 
     # Proposal 086 Pillar 5: repetition detector. Log the invocation; if the

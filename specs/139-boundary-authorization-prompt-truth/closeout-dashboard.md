@@ -14,10 +14,11 @@
 | --- | --- |
 | Implementation status | complete |
 | Iteration evidence | 30/30 tasks passed; all FR and SC coverage accepted |
-| Drift status | 5/5 resolved, including original review drift and send-back enforcement gaps |
+| Drift status | 6/6 resolved, including original review drift and send-back enforcement gaps |
 | D-003 classification | remains an adjacent Feature 016 defect exposed by Feature 139 |
 | D-004 acceptance condition | repaired by commit `2effe3f0`; packet-wide clickable artifact reference enforcement applies to every human re-entry packet section |
 | D-005 acceptance condition | repaired by commit `6725c007`; stored boundary packet evidence must be the exact human-visible approval packet |
+| D-006 acceptance condition | repaired in the common enforcement path; markdown file links in boundary packets hard-fail and supplied handoff text is validated before boundary state advances |
 | Approval packet rule | reject any approval packet that has not been stored and validated as the exact visible packet |
 | Stored evidence validation | checks actual emitted packet text, not only static prompt guidance or fixtures |
 | Historical empty handoff-evidence warnings | visible release-process risk only; scoped Feature 139 validation passes |

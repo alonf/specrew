@@ -570,6 +570,21 @@ function Get-BrokenFileUriFindings {
     return $findings.ToArray()
 }
 
+function Get-MarkdownFileLinkMatches {
+    param([AllowEmptyString()][string]$Text)
+
+    if ([string]::IsNullOrWhiteSpace($Text)) {
+        return @()
+    }
+
+    $withoutCodeBlocks = [regex]::Replace(($Text -replace "`r`n", "`n"), '(?ms)```.*?```', '')
+    return @(
+        [regex]::Matches($withoutCodeBlocks, '(?i)\[[^\]\r\n]*\]\(file:///[^\s)]+\)') |
+            ForEach-Object { $_.Value.Trim() } |
+            Select-Object -Unique
+    )
+}
+
 function Get-PathScanLines {
     param([AllowEmptyString()][string]$Text)
 
@@ -757,6 +772,17 @@ foreach ($brokenFileUri in (Get-BrokenFileUriFindings -Text $normalizedText)) {
     $warnings.Add($brokenFileUri) | Out-Null
 }
 
+$markdownFileLinkMatches = @(Get-MarkdownFileLinkMatches -Text $normalizedText)
+if ($markdownFileLinkMatches.Count -gt 0) {
+    $detail = $markdownFileLinkMatches -join ', '
+    if ($resolvedResponseScope -eq 'boundary-handoff' -and $hasInteractionBoundaryContext) {
+        $failures.Add("validation-fail.markdown-file-url-in-boundary-handoff :: references=$detail") | Out-Null
+    }
+    elseif ($resolvedResponseScope -eq 'narration') {
+        $warnings.Add("soft-warning.markdown-file-url-in-narration :: references=$detail") | Out-Null
+    }
+}
+
 $barePathMatches = @(Get-BarePathMatches -Text $normalizedText -ExemptionExtensions $settings.ExemptionExtensions)
 if ($barePathMatches.Count -gt 0) {
     $detail = $barePathMatches -join ', '
@@ -825,6 +851,10 @@ if (@($warnings | Where-Object { $_ -like 'soft-warning.bare-path-in-*' }).Count
 
 if (@($warnings | Where-Object { $_ -like 'soft-warning.broken-file-url-reference*' }).Count -gt 0) {
     $summaryLines.Add('Repair or remove file:/// references that do not resolve to existing files.') | Out-Null
+}
+
+if (@($failures | Where-Object { $_ -like 'validation-fail.markdown-file-url-in-boundary-handoff*' }).Count -gt 0) {
+    $summaryLines.Add('Use bare visible file:/// URIs in boundary handoffs; markdown links hide the clickable target in terminal hosts.') | Out-Null
 }
 
 if ($failures.Count -gt 0) {
