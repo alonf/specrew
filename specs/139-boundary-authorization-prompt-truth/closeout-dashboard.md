@@ -21,8 +21,15 @@
 | Approval packet rule | reject any approval packet that has not been stored and validated as the exact visible packet |
 | Stored evidence validation | checks actual emitted packet text, not only static prompt guidance or fixtures |
 | Historical empty handoff-evidence warnings | visible release-process risk only; scoped Feature 139 validation passes |
+| Dirty-state blocker handling | restored unrelated Feature 051 timestamp-only runtime noise in [tasks-progress.yml](file:///C:/tmp/Specrew-main-boundary-auth/specs/051-multi-session-foundation/iterations/003/tasks-progress.yml) before feature-closeout sync |
 | Published beta3 Copilot and Squad replay | release-closeout blocker before stable promotion |
 | Stable promotion | blocked until the published beta3 replay passes |
+
+## Follow-Up Defects
+
+| Defect | Classification | Future Action |
+| --- | --- | --- |
+| Task-progress sync rewrote unrelated Feature 051 `updated_at` without semantic task progress change | Specrew isolation and idempotency bug; unrelated to Feature 139 | Task-progress sync must be active-feature scoped and must not rewrite `updated_at` unless semantic task progress changed. |
 
 ## Closeout Evidence
 
