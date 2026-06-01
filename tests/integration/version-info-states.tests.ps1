@@ -138,6 +138,23 @@ squad:
     $notesDeclaration = Get-SpecrewSupportedVersions -Path $notesPath
     Assert-Equal -Expected '0.8.12 released; adoption pending' -Actual $notesDeclaration.Speckit.Notes -Message "Speckit.Notes preserved"
     Assert-Equal -Expected '' -Actual $notesDeclaration.Squad.Notes -Message "Squad.Notes empty when blank"
+
+    Write-Host ""
+    Write-Host "Test 8: Spec Kit 0.9.0 is within the supported window (feature 090 / spike-speckit-090)"
+    # Churn-free lock: an installed 0.9.0 must resolve as supported against the SHIPPED
+    # declaration (current or update-available-supported, never ahead/behind). Survives
+    # future bumps above 0.9.0 without test edits.
+    $shipped = Get-SpecrewSupportedVersions
+    if ($null -eq $shipped) { Write-Fail "Shipped declaration loaded as null" }
+    $status090 = Get-SpecrewVersionStatus -Current '0.9.0' -Min $shipped.Speckit.Min -MaxTested $shipped.Speckit.MaxTested
+    if ($status090 -notin @('current', 'update-available-supported')) {
+        Write-Fail ("Installed Spec Kit 0.9.0 resolves to '{0}'; expected supported (current/update-available-supported). Shipped max_tested='{1}'" -f $status090, $shipped.Speckit.MaxTested)
+    }
+    Write-Pass ("Spec Kit 0.9.0 resolves to '{0}' against the shipped declaration (supported)" -f $status090)
+    # Four-state logic locked at a 0.9.0 ceiling (explicit params; churn-free).
+    Assert-Equal -Expected 'current' -Actual (Get-SpecrewVersionStatus -Current '0.9.0' -Min '0.8.4' -MaxTested '0.9.0') -Message "0.9.0 == max_tested 0.9.0 returns current"
+    Assert-Equal -Expected 'update-available-supported' -Actual (Get-SpecrewVersionStatus -Current '0.8.18' -Min '0.8.4' -MaxTested '0.9.0') -Message "0.8.18 < max_tested 0.9.0 returns update-available-supported"
+    Assert-Equal -Expected 'ahead-of-supported' -Actual (Get-SpecrewVersionStatus -Current '0.9.1' -Min '0.8.4' -MaxTested '0.9.0') -Message "0.9.1 > max_tested 0.9.0 returns ahead-of-supported"
 }
 finally {
     [Environment]::SetEnvironmentVariable('SPECREW_SUPPORTED_MAX_SPECKIT', $originalSpeckitMax, 'Process')

@@ -1,0 +1,10 @@
+Crew runtime synced: 5 agent file(s) written to C:\Temp\specrew-090-smoke\freshinit\.claude\agents.
+Prepared Specrew start context.
+Selected host: claude (non-Squad runtime; coordinator prompt rewritten per FR-011/FR-012)
+Prompt:  .specrew\last-start-prompt.md
+Context: .specrew\start-context.json
+Summary: .specrew\start-summary.md
+Copilot approval mode: allow-all
+Specrew auto-loads the bootstrap with -i and stays out of autopilot until the request is grounded.
+Launch skipped by --no-launch.
+Manual launch command (run from the project root; bootstrap is auto-loaded): claude --add-dir 'C:\Temp\specrew-090-smoke\freshinit' --dangerously-skip-permissions 'Read ''.specrew\last-start-prompt.md'' and ''.specrew\start-context.json'' from the project root before doing anything else. Treat ''.specrew\last-start-prompt.md'' as the authoritative Specrew handoff and ''.specrew\start-context.json'' as the current lifecycle state. If intake is still unresolved after reading those files, ask the next intake question and wait for the human developer''s answer before invoking any Speckit lifecycle agent or command, skipping clarify, or guessing missing scope.'
