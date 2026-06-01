@@ -1,7 +1,7 @@
 # Beta3 Smoke Evidence: Boundary Authorization Prompt Truth
 
 **Feature**: 139-boundary-authorization-prompt-truth
-**Status**: automated pre-publish candidate PASS; published beta3 and beta4 Codex host replays FAIL
+**Status**: automated pre-publish candidate PASS; published beta3 and beta4 Codex host replays FAIL; beta5 package replay exposed D-009; published beta6 Step 11 PASS; stable `v0.30.0` promoted
 **Created**: 2026-06-01
 **Updated**: 2026-06-01
 
@@ -23,7 +23,7 @@
 | `boundary_enforcement.policy_classes` snapshot | PASS: generated `start-context.json` includes the resolved snapshot |
 | Beta2-bad hard-block phrase | PASS: generated prompt does not contain `is the only gate that HARD-BLOCKS` |
 | Beta2-bad auto-chain phrase | PASS: generated prompt does not contain the old clarify-to-plan/tasks auto-chain instruction |
-| Result | FAIL for published beta3 and beta4 replays; stable promotion blocked until a repaired prerelease is published and Step 11 replay passes |
+| Result | PASS after published `v0.30.0-beta6` Step 11 replay and release-readiness review; stable `v0.30.0` promoted from `c745258c52c575f4704f4866d2b74b2f50381a5a` |
 
 ## Command Output Summary
 
@@ -72,4 +72,26 @@ After publishing `v0.30.0-beta4`, the clean Codex replay failed Step 11 again:
 - The prompt still contained shared runtime wording that could imply Squad lifecycle automation for non-Squad hosts, including wording like `while Squad handles the rest of the lifecycle automatically`.
 - The approval gate rendered as plain numbered text instead of going through host-specific structured question/menu guidance where the selected host exposes that primitive.
 
-This is D-008 in the iteration drift log. Commit `6507c6af` repairs the common prompt-generation path for the next beta candidate by rendering version truth, selected host, runtime class, lifecycle position, and host-specific interaction guidance into the actual generated prompt. Stable promotion remains blocked until `v0.30.0-beta5` is tagged, published, installed in a clean shell, and replayed successfully.
+This is D-008 in the iteration drift log. Commit `6507c6af` repaired the common prompt-generation path by rendering version truth, selected host, runtime class, lifecycle position, and host-specific interaction guidance into the actual generated prompt.
+
+## Published Beta5 Package Replay
+
+After publishing `v0.30.0-beta5`, the package-level clean Codex no-launch replay failed before human Step 11 because the generated start context and prompt still reported `0.30.0-beta4`.
+
+Root cause: `specrew start` resolved version truth from `Get-Module -ListAvailable`, which can select a stale installed prerelease when multiple `0.30.0` prereleases exist locally. The published beta5 package manifest itself was stamped `PrivateData.PSData.Prerelease = 'beta5'`, but prompt generation did not prefer the manifest adjacent to the running module.
+
+This is D-009 in the iteration drift log. Commit `79ceb2e8` repairs the runtime version resolver so the running module manifest is authoritative before installed-module fallback, and adds regression coverage for stale same-base prereleases.
+
+## Published Beta6 Replay and Stable Promotion
+
+After publishing `v0.30.0-beta6` from `c745258c52c575f4704f4866d2b74b2f50381a5a`, the human Step 11 replay and release-readiness review passed. Evidence covered Copilot/Squad greenfield, Claude greenfield, Antigravity greenfield, and beta6 release-tree validation at `origin/main` commit `c745258c` / tag `v0.30.0-beta6`.
+
+Release-readiness validation applied Proposal 145 manually. Version/docs surfaces were coherent on the beta6 release tree: `Specrew.psd1`, `.specrew/config.yml`, both extension manifests, [README.md](file:///C:/tmp/Specrew-main-boundary-auth/README.md), and [CHANGELOG.md](file:///C:/tmp/Specrew-main-boundary-auth/CHANGELOG.md) all aligned to `0.30.0`. Selected release gates passed: `boundary-authorization-prompt-truth`, `filelist-completeness`, `start-command`, `start-command-non-interactive-first-run`, `multi-host-lifecycle-smoke`, `host-registry`, `host-detection-ux`, `validation-contract-lane`, full `validate-governance`, markdownlint on public release docs, and PSScriptAnalyzer on beta6-changed PowerShell files.
+
+Stable `v0.30.0` was tagged on the same commit as beta6, published to PowerShell Gallery as `Specrew 0.30.0`, and released as a non-prerelease GitHub Release.
+
+## Non-Blocking Follow-Ups
+
+1. Direct Codex launch can consume stale `.specrew` handoff files when bypassing `specrew start`; defer to the planned host hook / durable handover proposal.
+2. Greenfield-new orientation can render empty feature URLs like `specs//` before a feature exists; defer to the next feature set.
+3. Full recursive PSScriptAnalyzer timed out locally; beta6-changed files passed and CI remains the release gate.

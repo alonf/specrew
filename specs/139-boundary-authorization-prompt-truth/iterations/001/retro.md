@@ -11,7 +11,7 @@
 - FR-001 through FR-028 and SC-001 through SC-015 were accepted as covered.
 - Drift resolution closed at 4/4 resolved after the D-004 packet-wide clickable reference enforcement repair.
 - Scoped Feature 139 governance validation passed; historical validator warnings remain scoped out of Feature 139 acceptance.
-- Published beta3 Copilot/Squad replay is a release-closeout blocker before stable promotion, not implementation-review work for this iteration.
+- Published beta replay was correctly kept as release-closeout work, not implementation-review work for this iteration. It later blocked beta3 and beta4, exposed D-009 at beta5, passed at beta6, and stable `v0.30.0` was promoted.
 
 ## Estimation Accuracy
 
@@ -31,7 +31,7 @@
 | Implementation | Completed with focused source/test changes | Scope exclusions held: no full Proposal 150, no hook enforcement, no broad Proposal 151 migration, no lifecycle model redesign. |
 | Review | Accepted after send-back repair | A failing required test blocked implementation approval until repaired, as it should. |
 | Rework | One adjacent defect repair | D-003 remains classified as an adjacent Feature 016 defect exposed by Feature 139. |
-| Release closeout | Pending future release work | Published beta3 Copilot/Squad replay must block stable release promotion, not this implementation-review acceptance. |
+| Release closeout | Completed after iteration retro | Published beta replay blocked stable promotion until beta6 Step 11 passed; this remained outside implementation-review acceptance. |
 
 ## Drift Summary
 
@@ -66,7 +66,7 @@
 3. Dirty working-tree/session-state isolation should remain a lifecycle lesson for multi-session Specrew work; it prevented Feature 139 commits from absorbing unrelated runtime churn.
 4. The six-section human re-entry packet should be treated as the target approval-stop contract. The legacy handoff block is transitional only.
 5. Historical validator warnings should be called out as release-process risk, but acceptance should remain scoped to the active feature when scoped validation passes.
-6. Published beta smoke replay belongs in release closeout. It should block stable promotion, not retroactively expand implementation-review scope.
+6. Published beta smoke replay belongs in release closeout. It did block stable promotion until beta6 passed, without retroactively expanding implementation-review scope.
 7. Packet-wide artifact references must be validated from the actual emitted boundary packet evidence, not only static prompt guidance or standalone fixtures.
 
 ## Improvement Actions
@@ -84,7 +84,7 @@
 | Risk | Scope | Status | Handling |
 | ---- | ----- | ------ | -------- |
 | Historical validator warnings | Release process, not Feature 139 acceptance | Known risk | Keep visible during release closeout; do not use them to fail scoped Feature 139 acceptance after scoped validation passed. |
-| Published beta3 Copilot/Squad replay | Release closeout | Blocking before stable promotion | Require replay evidence before stable tag/publish. |
+| Published beta replay | Release closeout | Closed after beta6 PASS | Replay evidence was required before stable tag/publish and is recorded in [beta3-smoke-evidence.md](file:///C:/tmp/Specrew-main-boundary-auth/specs/139-boundary-authorization-prompt-truth/smoke/beta3-smoke-evidence.md). |
 | Legacy handoff block compatibility | Transition period | Managed | Continue compatibility while moving approval stops to the six-section packet target format. |
 
 ## Calibration Suggestion
@@ -95,4 +95,4 @@
 ## Notes
 
 - This retrospective keeps Feature 139 acceptance scoped to the accepted implementation and validation evidence.
-- Release closeout must still enforce the published beta3 Copilot/Squad replay before stable promotion.
+- Release closeout enforced published beta replay before stable promotion; beta6 passed and stable `v0.30.0` is published.

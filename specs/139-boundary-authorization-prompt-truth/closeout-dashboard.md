@@ -14,22 +14,25 @@
 | --- | --- |
 | Implementation status | complete |
 | Iteration evidence | 30/30 tasks passed; all FR and SC coverage accepted |
-| Drift status | 8/8 resolved, including original review drift, send-back enforcement gaps, and release-closeout replay failures |
+| Drift status | 9/9 resolved, including original review drift, send-back enforcement gaps, release-closeout replay failures, and the beta5 package-version resolver escape |
 | D-003 classification | remains an adjacent Feature 016 defect exposed by Feature 139 |
 | D-004 acceptance condition | repaired by commit `2effe3f0`; packet-wide clickable artifact reference enforcement applies to every human re-entry packet section |
 | D-005 acceptance condition | repaired by commit `6725c007`; stored boundary packet evidence must be the exact human-visible approval packet |
 | D-006 acceptance condition | repaired in the common enforcement path at D-006 implementation review ref `2b842452`; markdown file links in boundary packets hard-fail and supplied handoff text is validated before boundary state advances |
 | Proposal 145 review currency | current evidence / feature-closeout ref is `62683c15`; D-006 implementation review ref is `2b842452`; `2b842452..62683c15` is evidence-only; review addendum covers the full Proposal 145 phase model from Phase 0 through Phase 7 with explicit n/a reasons |
-| Branch publication | branch has no upstream and is not pushed; acceptable for feature-closeout only because release-closeout Step 5 is the required branch-hygiene publication action |
+| Branch publication | complete; Feature 139 branch was published and merged through PR `#1562`; the beta5 package-version repair was published and merged through PR `#1625` |
 | Approval packet rule | reject any approval packet that has not been stored and validated as the exact visible packet |
 | Stored evidence validation | checks actual emitted packet text, not only static prompt guidance or fixtures |
 | Historical empty handoff-evidence warnings | visible release-process risk only; scoped Feature 139 validation passes |
 | Dirty-state blocker handling | restored unrelated Feature 051 timestamp-only runtime noise in [tasks-progress.yml](file:///C:/tmp/Specrew-main-boundary-auth/specs/051-multi-session-foundation/iterations/003/tasks-progress.yml) before feature-closeout sync |
 | Published beta3 replay | FAIL at release-closeout Step 11 due D-007 false host/runtime orientation in clean Codex replay |
-| D-007 acceptance condition | repaired in the host-orientation rendering path; next prerelease must be published and replayed before stable promotion |
+| D-007 acceptance condition | repaired in the host-orientation rendering path and validated by later prerelease replays |
 | Published beta4 replay | FAIL at release-closeout Step 11 due D-008 missing version truth, stale shared Squad automation wording, and missing host interaction rendering in clean Codex replay |
-| D-008 acceptance condition | repaired by commit `6507c6af`; next prerelease must be published and replayed before stable promotion |
-| Stable promotion | blocked until the repaired published beta5 prerelease replay passes |
+| D-008 acceptance condition | repaired by commit `6507c6af`; host/version/runtime truth and host interaction rendering validated by beta6 replay |
+| Published beta5 package replay | FAIL before human Step 11 due D-009 runtime version resolver selecting a stale same-base installed prerelease |
+| D-009 acceptance condition | repaired by commit `79ceb2e8`; `specrew start` now prefers the running module manifest version over stale installed same-base prereleases |
+| Published beta6 replay | PASS; human Step 11 and release-readiness review covered Copilot/Squad, Claude, Antigravity, and beta6 release-tree validation at `c745258c` / `v0.30.0-beta6` |
+| Stable promotion | complete; stable `v0.30.0` was tagged on `c745258c52c575f4704f4866d2b74b2f50381a5a`, published to PowerShell Gallery as `Specrew 0.30.0`, and released as non-prerelease |
 
 ## Follow-Up Defects
 
@@ -44,6 +47,18 @@
 - [quality evidence](file:///C:/tmp/Specrew-main-boundary-auth/specs/139-boundary-authorization-prompt-truth/iterations/001/quality/quality-evidence.md)
 - [hardening gate](file:///C:/tmp/Specrew-main-boundary-auth/specs/139-boundary-authorization-prompt-truth/iterations/001/quality/hardening-gate.md)
 - [beta3 smoke evidence](file:///C:/tmp/Specrew-main-boundary-auth/specs/139-boundary-authorization-prompt-truth/smoke/beta3-smoke-evidence.md)
+
+## Post-Release Closeout
+
+| Signal | Result |
+| --- | --- |
+| Beta6 release tree | `origin/main` commit `c745258c52c575f4704f4866d2b74b2f50381a5a`; tag `v0.30.0-beta6` |
+| Stable release tree | same commit as beta6: `c745258c52c575f4704f4866d2b74b2f50381a5a`; tag `v0.30.0` |
+| PowerShell Gallery | `Find-Module -Name Specrew -Repository PSGallery -RequiredVersion '0.30.0'` returned `Specrew 0.30.0` published on 2026-06-01 |
+| GitHub release | `Specrew v0.30.0` published, not draft, not prerelease |
+| Release-readiness review | Proposal 145 manual review PASS for the beta6 release tree; selected release gates passed |
+| Remaining blockers | none for Feature 139 release closeout or stable promotion |
+| Non-blocking follow-ups | direct Codex launch stale handoff risk, empty greenfield feature URLs before feature creation, and full recursive PSScriptAnalyzer timeout remain future work |
 
 ## Dashboard
 

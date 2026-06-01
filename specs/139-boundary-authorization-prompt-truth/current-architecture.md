@@ -1,8 +1,8 @@
 # Current Architecture: 139-boundary-authorization-prompt-truth
 
 **Source Iteration Ref**: 001
-**Last Updated**: 2026-06-01T11:29:33Z
-**Status**: review accepted
+**Last Updated**: 2026-06-01T20:40:00Z
+**Status**: release closed
 
 ## Summary
 
@@ -27,4 +27,4 @@ Feature 139 changes the generated Specrew lifecycle prompt and supporting govern
 
 ## Release Evidence Boundary
 
-Automated pre-publish beta3 smoke evidence is accepted for this implementation review. A published beta3 Copilot/Squad replay remains required before stable release promotion and is tracked in [beta3-smoke-evidence.md](file:///C:/tmp/Specrew-main-boundary-auth/specs/139-boundary-authorization-prompt-truth/smoke/beta3-smoke-evidence.md).
+Automated pre-publish beta3 smoke evidence was accepted for implementation review. Release closeout then enforced published-host replay before stable promotion: beta3 failed on D-007, beta4 failed on D-008, beta5 exposed D-009 before human replay, beta6 passed Step 11, and stable `v0.30.0` was promoted from `c745258c52c575f4704f4866d2b74b2f50381a5a`. The replay history is tracked in [beta3-smoke-evidence.md](file:///C:/tmp/Specrew-main-boundary-auth/specs/139-boundary-authorization-prompt-truth/smoke/beta3-smoke-evidence.md).

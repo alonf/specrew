@@ -40,7 +40,7 @@
 | Risk | Closeout Handling |
 | ---- | ---------------- |
 | Historical empty handoff-evidence warnings | Visible release-process risk only; scoped Feature 139 validation passes. |
-| Published beta3 Copilot/Squad replay | Release-closeout blocker before stable promotion; not implementation-review work. |
+| Published beta replay evidence | Release-closeout blocker was enforced after implementation review. Beta3 and beta4 failed, beta5 exposed D-009 before human replay, beta6 passed Step 11, and stable `v0.30.0` was promoted. |
 | Required failing test policy | A failing required test must block implementation approval until repaired or explicitly deferred in governance artifacts. |
 
 ## Evidence Links

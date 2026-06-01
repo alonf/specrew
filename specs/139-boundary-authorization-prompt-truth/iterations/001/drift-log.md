@@ -22,8 +22,8 @@
 
 ## Summary
 
-**Total drift events**: 8
-**Resolution rate**: 100% (8/8 resolved)
+**Total drift events**: 9
+**Resolution rate**: 100% (9/9 resolved)
 **Specification drift**: Resolved by human-approved spec/task reconciliation before implementation
 
 ## Events
@@ -126,6 +126,19 @@
 - **Resolution**: Commit `6507c6af` updates [specrew-start.ps1](file:///C:/tmp/Specrew-main-boundary-auth/scripts/specrew-start.ps1) to derive and persist the installed runtime version including prerelease, `runtime_class`, selected-host truth, and lifecycle position; updates [coordinator-prompt-surgery.ps1](file:///C:/tmp/Specrew-main-boundary-auth/scripts/internal/coordinator-prompt-surgery.ps1) to render versioned orientation and host-specific interaction guidance; and adds structured-question metadata for Codex and Claude in [codex host.psd1](file:///C:/tmp/Specrew-main-boundary-auth/hosts/codex/host.psd1) and [claude host.psd1](file:///C:/tmp/Specrew-main-boundary-auth/hosts/claude/host.psd1). Core prompt Rule 53 now defines the response contract only and delegates rendering to the selected host package.
 - **Verification**: [multi-host-launch-path.tests.ps1](file:///C:/tmp/Specrew-main-boundary-auth/tests/integration/multi-host-launch-path.tests.ps1) covers version + host + runtime truth for initial and resume orientation across Codex, Claude, and Copilot/Squad, plus host-specific interaction guidance. [start-command.ps1](file:///C:/tmp/Specrew-main-boundary-auth/tests/integration/start-command.ps1) checks actual generated prompt/context parity for `specrew_version`, `selected_host`, `runtime_class`, and host-rendered interaction guidance. [copilot-squad-smoke.ps1](file:///C:/tmp/Specrew-main-boundary-auth/tests/manual/copilot-squad-smoke.ps1) scans emitted smoke prompt/orientation for missing version truth and false hard-coded host/runtime claims. [boundary-authorization-prompt-truth.tests.ps1](file:///C:/tmp/Specrew-main-boundary-auth/tests/unit/boundary-authorization-prompt-truth.tests.ps1) confirms shared prompt Rule 53 no longer embeds host-specific CLI text or the stale Squad automation claim.
 - **Follow-up**: Publish the next prerelease (`v0.30.0-beta5`) and repeat Step 11 clean prerelease replay before any stable promotion.
+
+### D-009 — Published beta5 package replay resolved stale same-base prerelease version
+
+- **Detected At**: 2026-06-01T18:20:00Z
+- **Type**: release-closeout-smoke-failure
+- **Status**: resolved
+- **Source**: Package-level clean Codex no-launch replay of published `v0.30.0-beta5` showed `.specrew/start-context.json` and `.specrew/last-start-prompt.md` reporting `0.30.0-beta4` even though PowerShell Gallery resolved `Specrew 0.30.0-beta5` and the beta5 package manifest was stamped `PrivateData.PSData.Prerelease = 'beta5'`.
+- **Requirement Citation**: Release-closeout acceptance requires visible orientation and `.specrew/start-context.json` version truth to come from the installed module/runtime that generated the prompt, including prerelease label.
+- **Impact**: A human could install beta5 but see beta4 in the generated prompt because `specrew start` selected a stale installed same-base prerelease through `Get-Module -ListAvailable`. Stable promotion remained blocked.
+- **Classification**: Feature 139 release-closeout blocker and runtime-version enforcement gap. This is in scope because D-008 made installed version truth part of the Feature 139 acceptance contract.
+- **Resolution**: Commit `79ceb2e8` updates [specrew-start.ps1](file:///C:/tmp/Specrew-main-boundary-auth/scripts/specrew-start.ps1) so `Get-InstalledSpecrewRuntimeVersion` prefers the manifest adjacent to the running Specrew script/module before falling back to project and installed-module discovery. [start-command.ps1](file:///C:/tmp/Specrew-main-boundary-auth/tests/integration/start-command.ps1) now includes a regression probe where an installed `0.30.0-beta4` module exists but the running manifest is `0.30.0-beta5`; the expected generated runtime version is the running manifest version.
+- **Verification**: [start-command.ps1](file:///C:/tmp/Specrew-main-boundary-auth/tests/integration/start-command.ps1), [multi-host-launch-path.tests.ps1](file:///C:/tmp/Specrew-main-boundary-auth/tests/integration/multi-host-launch-path.tests.ps1), [copilot-squad-smoke.ps1](file:///C:/tmp/Specrew-main-boundary-auth/tests/manual/copilot-squad-smoke.ps1), and [boundary-authorization-prompt-truth.tests.ps1](file:///C:/tmp/Specrew-main-boundary-auth/tests/unit/boundary-authorization-prompt-truth.tests.ps1) passed after the repair. Published `v0.30.0-beta6` Step 11 replay then passed, and stable `v0.30.0` was promoted from `c745258c52c575f4704f4866d2b74b2f50381a5a`.
+- **Follow-up**: none for Feature 139 release closeout. Direct host launches that bypass `specrew start` and empty greenfield feature URLs remain future-feature work, not release blockers.
 
 ### Resolution Strategies (Unused)
 

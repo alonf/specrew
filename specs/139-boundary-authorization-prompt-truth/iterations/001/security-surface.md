@@ -20,7 +20,7 @@
 ## Security Findings
 
 - No open security findings.
-- Release safety dependency: published beta3 Copilot/Squad replay remains required before stable promotion and is documented in smoke evidence.
+- Release safety dependency closed: published-host replay was enforced before stable promotion. Beta3 failed on D-007, beta4 failed on D-008, beta5 exposed D-009 before human replay, beta6 passed Step 11, and stable `v0.30.0` was promoted. Replay evidence is documented in [beta3-smoke-evidence.md](file:///C:/tmp/Specrew-main-boundary-auth/specs/139-boundary-authorization-prompt-truth/smoke/beta3-smoke-evidence.md).
 
 ## Scope Guard
 

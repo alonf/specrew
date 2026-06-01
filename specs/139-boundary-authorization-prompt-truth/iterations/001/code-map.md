@@ -12,7 +12,7 @@
 
 | Path | Role | Owning Tasks |
 | ---- | ---- | ------------ |
-| `scripts/specrew-start.ps1` | Generates lifecycle prompt and start-context artifacts; D-006 removes contradictory markdown-link guidance and requires visible bare `file:///` URLs; D-007 removes hard-coded host/runtime orientation from the shared core; D-008 records installed `specrew_version`, `runtime_class`, and delegates Rule 53 interaction rendering to host packages. | T004-T021, D-007, D-008 |
+| `scripts/specrew-start.ps1` | Generates lifecycle prompt and start-context artifacts; D-006 removes contradictory markdown-link guidance and requires visible bare `file:///` URLs; D-007 removes hard-coded host/runtime orientation from the shared core; D-008 records installed `specrew_version`, `runtime_class`, and delegates Rule 53 interaction rendering to host packages; D-009 makes the running module manifest authoritative for prerelease version truth. | T004-T021, D-007, D-008, D-009 |
 | `scripts/internal/coordinator-prompt-surgery.ps1` | Host-specific prompt rendering layer; injects selected-host orientation from host metadata, runtime status, installed version, lifecycle position, and host interaction metadata before host launch. | D-007, D-008 |
 | `hosts/copilot/host.psd1` | Copilot host manifest; declares `Squad` as the runtime display name used only when `crew_runtime_status` is `squad-runtime`. | D-007 |
 | `hosts/codex/host.psd1` | Codex host manifest; declares the `request_user_input` structured question primitive for host-rendered approval guidance. | D-008 |
@@ -33,7 +33,7 @@
 | ---- | ---- | ------------ |
 | `tests/unit/boundary-authorization-prompt-truth.tests.ps1` | Main Feature 139 focused regression suite. | T003, T006, T010, T016, T021, T026, T028 |
 | `tests/integration/multi-host-launch-path.tests.ps1` | Host adapter and prompt-surgery coverage, including D-007 host-accurate orientation and D-008 version/lifecycle/interaction rendering for Codex, Claude, and Copilot/Squad. | D-007, D-008 |
-| `tests/integration/start-command.ps1` | Generated start artifact coverage, including actual `.specrew/last-start-prompt.md` orientation and interaction parity with `.specrew/start-context.json`. | D-007, D-008 |
+| `tests/integration/start-command.ps1` | Generated start artifact coverage, including actual `.specrew/last-start-prompt.md` orientation and interaction parity with `.specrew/start-context.json`, plus D-009 stale same-base installed prerelease regression coverage. | D-007, D-008, D-009 |
 | `tests/manual/copilot-squad-smoke.ps1` | Release smoke harness; scans actual generated prompt orientation for false hard-coded host/runtime claims and missing version truth. | D-007, D-008 |
 | `tests/unit/validate-governance.interaction-model.tests.ps1` | Feature 016 interaction-model regression suite strengthened for packet-wide navigation enforcement. | D-003, D-004, D-006 |
 | `tests/unit/fixtures/016-substantive-interaction-model/navigation/violating-boundary-handoff.md` | Navigation regression fixture using bare repository artifact paths. | D-006 |
@@ -48,7 +48,7 @@
 | `specs/139-boundary-authorization-prompt-truth/smoke/beta3-smoke-evidence.md` | Automated pre-publish beta3 smoke evidence. | T027 |
 | `specs/139-boundary-authorization-prompt-truth/iterations/001/quality/quality-evidence.md` | Implementation test and gap evidence. | T028-T029 |
 | `specs/139-boundary-authorization-prompt-truth/iterations/001/quality/mechanical-findings.json` | Regenerated mechanical checks for current HEAD. | T028, D-006 |
-| `specs/139-boundary-authorization-prompt-truth/iterations/001/drift-log.md` | Drift classification, including D-003 through D-008 send-backs and release-closeout smoke failures. | T001-T002, T029, D-004, D-005, D-006, D-007, D-008 |
+| `specs/139-boundary-authorization-prompt-truth/iterations/001/drift-log.md` | Drift classification, including D-003 through D-009 send-backs and release-closeout smoke failures. | T001-T002, T029, D-004, D-005, D-006, D-007, D-008, D-009 |
 | `specs/139-boundary-authorization-prompt-truth/closeout-dashboard.md` | Feature closeout acceptance and D-004/D-005/D-006 enforcement-gap record. | feature-closeout |
 | `README.md` | Adjacent Feature 016 Post-Commit Verification Protocol repair. | D-003 |
 
@@ -72,4 +72,4 @@
 - No package manifests changed.
 - No broad lifecycle redesign, hook enforcement, full Proposal 150 implementation, or broad historical Proposal 151 migration was introduced.
 - Mirrors remain identical according to Feature 139 unit tests.
-- Branch `139-boundary-authorization-prompt-truth` is not pushed yet and has no upstream; this is acceptable for feature-closeout only because release-closeout Step 5 is the branch-hygiene action that publishes it.
+- Branch publication completed during release closeout through PR `#1562`; D-009 release repair publication completed through PR `#1625`.

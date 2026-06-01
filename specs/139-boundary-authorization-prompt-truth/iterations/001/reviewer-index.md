@@ -30,9 +30,9 @@
 ## Triage Hints
 
 - Release-blocking implementation-review items are closed: approved-status check, beta3 pre-publish smoke evidence, beta2-bad phrase tests, non-compliant fixtures, and gap ledger.
-- Release-promotion item remains: published beta3 Copilot/Squad replay before stable promotion.
+- Release-promotion item is closed: beta6 Step 11 and release-readiness review passed, and stable `v0.30.0` was promoted from `c745258c`.
 - Dirty working tree contains unrelated session/runtime files; review artifacts are the in-scope dirty files for this boundary.
 
 ## Replay Digest
 
-SPECREW_REVIEW schema=v1 iter=001 feature=139-boundary-authorization-prompt-truth verdict=accepted tasks=30/30 reqs=FR-001..FR-028 sc=SC-001..SC-015 deps=0 cov=focused_regression drift=3/3 index=specs/139-boundary-authorization-prompt-truth/iterations/001/reviewer-index.md
+SPECREW_REVIEW schema=v1 iter=001 feature=139-boundary-authorization-prompt-truth verdict=accepted tasks=30/30 reqs=FR-001..FR-028 sc=SC-001..SC-015 deps=0 cov=focused_regression drift=9/9 release=v0.30.0 index=specs/139-boundary-authorization-prompt-truth/iterations/001/reviewer-index.md

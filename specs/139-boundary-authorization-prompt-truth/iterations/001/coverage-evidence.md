@@ -5,6 +5,8 @@
 **Overall Verdict**: accepted
 **Current Evidence / Feature-Closeout Ref**: 62683c15148f2d9602ed75ec4d1755a5536f1f50
 **D-006 Implementation Review Ref**: 2b84245284f3a530609f24cd24d18f9dbbfee5ee
+**D-009 Release Repair Ref**: 79ceb2e8ceabcf8403e48023ea822abe73b466c9
+**Stable Release Ref**: c745258c52c575f4704f4866d2b74b2f50381a5a
 **Evidence-Only Delta**: `2b842452..62683c15` changes only Feature 139 evidence artifacts. No product-code, validator, script, prompt, or test implementation files changed in that delta.
 
 ## Test Strategy
@@ -31,6 +33,13 @@ Feature 139 is a lifecycle/governance feature, so coverage is focused on prompt 
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File .specify\extensions\specrew-speckit\scripts\run-mechanical-checks.ps1 -ProjectPath . -FeaturePath specs\139-boundary-authorization-prompt-truth -IterationPath specs\139-boundary-authorization-prompt-truth\iterations\001 -SpecPath specs\139-boundary-authorization-prompt-truth\spec.md` | pass after D-008 evidence refresh | Regenerated mechanical findings at 2026-06-01T17:50:18Z; no findings. |
 | `$env:SPECREW_MODULE_PATH=(Get-Location).Path; pwsh -NoProfile -ExecutionPolicy Bypass -File .specify\extensions\specrew-speckit\scripts\validate-governance.ps1 -ProjectPath . -NoCacheRead` | pass after D-008 evidence refresh | Historical Feature 048 dashboard and empty handoff-evidence warnings only; no Feature 139 blocking failures. |
 | `$env:SPECREW_MODULE_PATH=(Get-Location).Path; pwsh -NoProfile -ExecutionPolicy Bypass -File .specify\extensions\specrew-speckit\scripts\validate-governance.ps1 -ProjectPath .` | pass after review artifact repair | Historical warnings only; no Feature 139 release-blocking validation failures remain. |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tests\integration\start-command.ps1` | pass after D-009 repair commit `79ceb2e8` | Adds regression coverage proving the running module manifest prerelease wins over stale installed same-base prereleases. |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tests\integration\multi-host-launch-path.tests.ps1` | pass after D-009 repair commit `79ceb2e8` | Confirms the D-009 resolver change did not regress host orientation or interaction rendering. |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tests\manual\copilot-squad-smoke.ps1` | pass after D-009 repair commit `79ceb2e8` | Confirms release-smoke prompt scanning remains green after version resolver repair. |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tests\unit\boundary-authorization-prompt-truth.tests.ps1` | pass after D-009 repair commit `79ceb2e8` | Confirms the human re-entry packet and boundary prompt contract remain green. |
+| `Find-Module -Name Specrew -Repository PSGallery -AllowPrerelease` | pass for beta6 | PowerShell Gallery resolved `Specrew 0.30.0-beta6` before the human Step 11 replay. |
+| Human Step 11 beta6 replay and release-readiness review | pass | Covered Copilot/Squad greenfield, Claude greenfield, Antigravity greenfield, and beta6 release-tree validation at `origin/main` commit `c745258c` / tag `v0.30.0-beta6`. |
+| `Find-Module -Name Specrew -Repository PSGallery -RequiredVersion '0.30.0'` | pass after stable promotion | PowerShell Gallery resolved stable `Specrew 0.30.0` after tag `v0.30.0` was published from `c745258c52c575f4704f4866d2b74b2f50381a5a`. |
 
 ## Coverage Estimate
 
@@ -49,6 +58,7 @@ Feature 139 is a lifecycle/governance feature, so coverage is focused on prompt 
 | D-006 visible primary packet enforcement | `tests/unit/boundary-authorization-prompt-truth.tests.ps1`; `tests/unit/validate-governance.interaction-model.tests.ps1`; `scripts/internal/sync-boundary-state.ps1` pre-advance gate |
 | D-007 host/runtime orientation truth | `tests/integration/multi-host-launch-path.tests.ps1`; `tests/integration/start-command.ps1`; `tests/manual/copilot-squad-smoke.ps1` |
 | D-008 version truth and host interaction rendering | `tests/integration/multi-host-launch-path.tests.ps1`; `tests/integration/start-command.ps1`; `tests/manual/copilot-squad-smoke.ps1`; `tests/unit/boundary-authorization-prompt-truth.tests.ps1` |
+| D-009 running module version truth | `tests/integration/start-command.ps1`; published beta6 package replay; human Step 11 beta6 replay |
 | Non-compliant handoff fixtures | `missing-why-stopped.md`; `approve-only-without-discussion.md`; `context-free-discussion-prompt.md` |
 | `Status: Approved` without verdict evidence | `tests/unit/boundary-authorization-prompt-truth.tests.ps1`; scoped `validate-governance.ps1` |
 | Send-back Feature 016 README repair | `tests/unit/validate-governance.interaction-model.tests.ps1`; D-003 in drift log |
@@ -70,6 +80,6 @@ Feature 139 is a lifecycle/governance feature, so coverage is focused on prompt 
 | Future packet primary, no required legacy duplication | yes | yes | yes | yes | No gap. |
 | `Status: Approved` without verdict evidence check | yes | yes | yes | yes | No gap. |
 | Non-compliant handoff fixtures | yes | yes | yes | yes | No gap. |
-| Beta3/beta4 smoke evidence | yes | partial | yes | yes | Automated pre-publish PASS was accepted for implementation review, but published beta3 Step 11 replay failed on D-007 and published beta4 Step 11 replay failed on D-008. Stable promotion remains blocked until the next published prerelease replay passes. |
+| Published beta replay and stable promotion evidence | yes | yes | yes | yes | Automated pre-publish PASS was accepted for implementation review; beta3 failed on D-007, beta4 failed on D-008, and beta5 exposed D-009 before human Step 11. Beta6 Step 11 and release-readiness review passed, and stable `v0.30.0` was published from the same release tree. |
 | Proposal 145 review lens | yes | yes | yes | yes | No gap for this feature scope after evidence refresh. Review uses the full Phase 0 through Phase 7 model, includes explicit n/a reasons, and classifies branch hygiene as acceptable for feature-closeout only because release-closeout Step 5 is the required publication action. |
 | Scope exclusions | yes | yes | yes | yes | No gap. |
