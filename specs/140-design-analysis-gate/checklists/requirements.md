@@ -29,6 +29,8 @@
 
 ## Clarification Candidates
 
-- [x] Whether `design-analysis.md` should live under the feature root or active iteration remains open for clarify because the user requested an active feature/iteration artifact and Proposal 137 prefers per-iteration storage.
-- [x] Whether first-slice plan blocking should be implemented in boundary state sync, focused validation, generated prompt instructions, or a combination remains open for clarify/planning.
-- [x] Whether any minimal multi-host surface is cheap enough to include remains open for clarify/planning under the user's hard scope limit.
+- [x] `design-analysis.md` is per-iteration, starting at `specs/140-design-analysis-gate/iterations/001/design-analysis.md`.
+- [x] First-slice enforcement is narrow: the active feature/iteration cannot advance to plan until the design-analysis artifact exists, the Crew recommendation is populated, and the human decision is recorded.
+- [x] Broad validator enforcement across existing or in-flight projects is deferred; compatibility documentation must prevent unexpected breakage after update.
+- [x] The By-the-book option is conditional and should not be forced when only Simplest and Reasonable are meaningfully distinct.
+- [x] Unix install and wrapper surfaces remain out of scope.

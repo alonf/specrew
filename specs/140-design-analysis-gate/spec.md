@@ -72,14 +72,14 @@ As a Specrew maintainer, I need focused validation and tests for the new gate so
 
 - **FR-001**: Specrew MUST introduce a design-analysis lifecycle stop after clarify/before-plan and before plan for substantive features.
 - **FR-002**: Specrew MUST use a simple applicability rule for this slice: substantive new features, architectural refactors, lifecycle/governance changes, and enabler work require design analysis; trivial, doc-only, and clearly small bug-fix or chore work may skip it.
-- **FR-003**: The design-analysis stop MUST create a durable `design-analysis.md` artifact for the active feature/iteration before plan starts.
+- **FR-003**: The design-analysis stop MUST create a durable per-iteration artifact at `specs/<feature>/iterations/<NNN>/design-analysis.md` before plan starts.
 - **FR-004**: `design-analysis.md` MUST include sections for problem framing, key design decision points, alternatives, Crew recommendation, and Human Decision.
 - **FR-005**: The Alternatives section MUST include at least two distinct options: Simplest and Reasonable.
 - **FR-006**: A By-the-book option MUST be included only when it is meaningfully distinct from the Reasonable option for the active problem.
 - **FR-007**: Each option MUST include approach, architectural pattern, quality features considered, effort estimate, reversibility cost, trade-offs, and a Mermaid diagram or diagram link.
 - **FR-008**: The Crew recommendation section MUST name one recommended option and explain why it is preferred for the active feature context.
 - **FR-009**: The pre-plan human verdict MUST explicitly name the boundary and chosen option, using a shape equivalent to `approved for plan with Option B`.
-- **FR-010**: Specrew MUST reject or hold plan-boundary advancement when the Human Decision section does not contain a chosen option.
+- **FR-010**: Specrew MUST reject or hold plan-boundary advancement for the active feature/iteration when the per-iteration design-analysis artifact is missing, the Crew recommendation is not populated, or the Human Decision section does not contain a chosen option.
 - **FR-011**: Specrew MUST record the chosen option, human reason or modifications, and boundary commit hash before plan starts.
 - **FR-012**: Plan generation MUST treat the recorded human-selected option and modifications as authoritative design input.
 - **FR-013**: Focused validation or tests MUST verify artifact creation for substantive features.
@@ -90,6 +90,7 @@ As a Specrew maintainer, I need focused validation and tests for the new gate so
 - **FR-018**: The slice MUST NOT implement the full Proposal 137 lifecycle, full slice-type catalog, broad historical hard validator enforcement, or broad multi-host slash-command deployment unless a small, low-risk implementation path is discovered during planning.
 - **FR-019**: The slice MUST avoid touching Unix install, shell wrapper, and bootstrap files that are owned by the parallel Unix-install feature.
 - **FR-020**: The slice MUST NOT publish beta or stable release artifacts.
+- **FR-021**: The slice MUST document a compatibility path where existing projects and existing in-flight features do not break unexpectedly after update; the mandatory gate applies only to new substantive iterations unless a project explicitly opts in or records a migration decision.
 
 ### Traceability & Governance Requirements *(mandatory)*
 
@@ -124,6 +125,7 @@ As a Specrew maintainer, I need focused validation and tests for the new gate so
 | FR-018 | Spec Steward, Planner, Reviewer | Iteration 001 |
 | FR-019 | Spec Steward, Implementer, Reviewer | Iteration 001 |
 | FR-020 | Spec Steward, Reviewer | Iteration 001 |
+| FR-021 | Spec Steward, Planner, Reviewer | Iteration 001 |
 | TG-001 | Planner, Reviewer | Iteration 001 |
 | TG-002 | Planner, Reviewer | Iteration 001 |
 | TG-003 | Planner, Reviewer | Iteration 001 |
@@ -134,7 +136,7 @@ As a Specrew maintainer, I need focused validation and tests for the new gate so
 ### Key Entities *(include if feature involves data)*
 
 - **Design Analysis Boundary**: The human-judgment lifecycle stop between clarify/before-plan and plan where the Crew compares design options and records a verdict.
-- **Design Analysis Artifact**: The durable `design-analysis.md` artifact containing framing, decision points, alternatives, recommendation, and human decision evidence for the active feature/iteration.
+- **Design Analysis Artifact**: The durable per-iteration artifact at `specs/<feature>/iterations/<NNN>/design-analysis.md` containing framing, decision points, alternatives, recommendation, and human decision evidence for the active iteration.
 - **Design Option**: A named implementation approach such as Simplest, Reasonable, or By-the-book, with quality, effort, reversibility, trade-off, and diagram evidence.
 - **Crew Recommendation**: The Crew's explicit preferred option and rationale based on clarify outcomes, repository context, scope limits, and quality considerations.
 - **Human Design Decision**: The recorded human verdict naming the boundary, chosen option, reason or modifications, and commit hash before planning begins.
@@ -144,23 +146,24 @@ As a Specrew maintainer, I need focused validation and tests for the new gate so
 
 ### Measurable Outcomes
 
-- **SC-001**: For a substantive feature fixture, a design-analysis stop produces `design-analysis.md` before plan generation.
+- **SC-001**: For a substantive feature fixture, a design-analysis stop produces `specs/<feature>/iterations/<NNN>/design-analysis.md` before plan generation.
 - **SC-002**: `design-analysis.md` contains problem framing, decision points, alternatives, Crew recommendation, and Human Decision sections.
 - **SC-003**: Each valid design-analysis artifact includes at least two distinct options, including Simplest and Reasonable.
 - **SC-004**: Every option includes approach, architectural pattern, quality features considered, effort estimate, reversibility cost, trade-offs, and a Mermaid diagram or diagram link.
 - **SC-005**: A By-the-book option is present only when it is meaningfully distinct, or the artifact states why it is not distinct enough for this slice.
 - **SC-006**: The Crew recommendation names exactly one preferred option and gives context-specific rationale.
-- **SC-007**: A plan-boundary request without a Human Decision chosen option is rejected or held by focused validation or boundary logic.
+- **SC-007**: A plan-boundary request for the active feature/iteration without a design-analysis artifact, populated Crew recommendation, and Human Decision chosen option is rejected or held by focused validation or boundary logic.
 - **SC-008**: A valid Human Decision records a verdict equivalent to `approved for plan with Option <X>`, the chosen option, human reason or modifications, and a boundary commit hash.
 - **SC-009**: Plan inputs reference or otherwise preserve the human-selected option and modifications.
 - **SC-010**: Focused tests or validation fixtures cover missing artifact, missing required sections, missing recommendation, and missing human decision.
 - **SC-011**: The implementation avoids Unix install, shell wrapper, bootstrap, beta-publish, and stable-publish surfaces.
 - **SC-012**: Existing or in-flight features are not broadly hard-failed solely because they predate the new design-analysis artifact.
+- **SC-013**: Compatibility documentation states that the mandatory gate applies to new substantive iterations and gives existing projects/features a non-breaking migration path.
 
 ## Assumptions
 
 - The active lifecycle can add a first-slice design-analysis stop without completing the full Proposal 137 slash-command and multi-host deployment surface.
-- The active feature/iteration is the right durability scope for `design-analysis.md`; later planning can refine whether feature-level reuse is useful.
+- The active iteration is the durability scope for `design-analysis.md`; later iterations may create different alternatives or explicitly reuse a prior decision.
 - The default recommended option will usually be Reasonable unless clarify outcomes or quality risks clearly justify Simplest or By-the-book.
 - A lightweight Mermaid component or sequence diagram is sufficient for each option in this slice.
 - Broad phased enforcement across historical projects is intentionally deferred unless planning finds a cheap and low-risk compatibility path.
@@ -177,7 +180,13 @@ As a Specrew maintainer, I need focused validation and tests for the new gate so
 
 ## Clarifications
 
-No clarification answers have been recorded yet for this feature.
+### Session 2026-06-02
+
+- Q: Where should the design-analysis artifact live for this first slice? A: Store `design-analysis.md` per iteration, starting at `specs/140-design-analysis-gate/iterations/001/design-analysis.md`. The design choice is iteration-scoped because later iterations may need different alternatives or may explicitly reuse a prior decision.
+- Q: How narrow should enforcement be in this slice? A: Enforce narrowly for this feature/iteration: plan must not advance until the design-analysis artifact exists, the Crew recommendation is populated, and the human decision is recorded. Defer broad validator enforcement across all existing or in-flight projects.
+- Q: What compatibility behavior is required for existing projects/features? A: Leave a durable compatibility path. Existing projects and features should not break unexpectedly after update; if the gate is mandatory only for new substantive iterations, document that clearly.
+- Q: Should the by-the-book option always be generated? A: No. Keep the by-the-book option conditional and do not force a fake third option when Simplest and Reasonable are the only meaningfully distinct approaches.
+- Q: Which implementation surfaces remain excluded? A: Keep Unix install and wrapper surfaces out of scope.
 
 ## Governance Alignment *(mandatory)*
 
