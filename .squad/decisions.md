@@ -22300,6 +22300,7 @@ Documented in `specs/049-pipeline-hardening-intake/iterations/005/drift-log.md` 
 - **Reason**: Migrated start-context.json to schema v2 boundary_enforcement state.
 
 ## 2026-05-30T20:47:50Z — Delegated routing plan
+
 ## 2026-05-30T21:08:52Z — Delegated routing plan
 
 - **Enabled Agents**: copilot
@@ -22314,6 +22315,7 @@ Documented in `specs/049-pipeline-hardening-intake/iterations/005/drift-log.md` 
 ## 2026-05-30T20:47:50Z — Routing evidence: Spec Steward
 
 - **Decision ID**: routing-evidence-4c4359b9e2e3
+
 ## 2026-05-30T21:08:52Z — Routing evidence: Spec Steward
 
 - **Decision ID**: routing-evidence-8cef13e9e651
@@ -22331,6 +22333,7 @@ Documented in `specs/049-pipeline-hardening-intake/iterations/005/drift-log.md` 
 ## 2026-05-30T20:47:51Z — Routing evidence: Planner
 
 - **Decision ID**: routing-evidence-0d4706836220
+
 ## 2026-05-30T21:08:53Z — Routing evidence: Planner
 
 - **Decision ID**: routing-evidence-41786dafa027
@@ -22348,6 +22351,7 @@ Documented in `specs/049-pipeline-hardening-intake/iterations/005/drift-log.md` 
 ## 2026-05-30T20:47:52Z — Routing evidence: Reviewer
 
 - **Decision ID**: routing-evidence-8d4fa5418a8d
+
 ## 2026-05-30T21:08:54Z — Routing evidence: Reviewer
 
 - **Decision ID**: routing-evidence-adf545daa9f4
@@ -22966,6 +22970,7 @@ Documented in `specs/049-pipeline-hardening-intake/iterations/005/drift-log.md` 
 - **Task ID**: (none)
 - **Auth Commit Hash**: 0664caeb
 - **Recorded At**: 2026-05-31T23:35:06Z
+
 ## 2026-05-30T21:08:56Z — Boundary enforcement: feature-closeout
 
 - **Feature**: 050-cursor-host-support
