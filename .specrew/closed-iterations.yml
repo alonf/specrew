@@ -164,3 +164,6 @@ closed:
   - feature: 054-activate-spec-surfaces
     iteration: 001
     closed_at: 2026-05-31T11:05:37Z
+  - feature: 139-boundary-authorization-prompt-truth
+    iteration: 001
+    closed_at: 2026-06-01T13:09:51Z
