@@ -1,19 +1,20 @@
 # Iteration State: 001
 
 **Schema**: v1
-**Current Phase**: review-signoff
-**Iteration Status**: reviewing
+**Current Phase**: retro
+**Iteration Status**: retro
 **Last Completed Task**: T030
 **Tasks Remaining**: (none)
 **In Progress**: (none)
 **Baseline Ref**: c6898fb2ad5cc363a301d1e0335abee461270a5e
-**Updated**: 2026-06-01T11:29:33Z
+**Updated**: 2026-06-01T12:00:00Z
 
 ## Execution Summary
 
-- T001-T030 are complete and under review.
+- T001-T030 are complete and review accepted all task and FR/SC coverage.
 - Implementation landed in `0ae5cd2e` and the send-back README repair landed in `e02e89e0`.
-- Review is verifying the send-back repair, Feature 139 FR/SC coverage, beta3 smoke evidence, and dirty working-tree isolation before signoff.
+- Review accepted the send-back repair, Feature 139 FR/SC coverage, beta3 smoke evidence classification, and dirty working-tree isolation before retro.
+- Retro records the historical validator warnings as release-process risk scoped out of Feature 139 acceptance, and frames published beta3 Copilot/Squad replay as a release-closeout blocker before stable promotion.
 
 ## Notes
 
