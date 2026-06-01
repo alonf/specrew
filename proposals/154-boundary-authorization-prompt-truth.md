@@ -1,12 +1,12 @@
 ---
 proposal: 154
-title: Boundary Authorization Prompt Truth
+title: Boundary Authorization Prompt Truth + Human Re-entry Packet
 status: draft
 phase: phase-2
-estimated-sp: 3-5
+estimated-sp: 5-8
 priority-tier: 1
 type: small-fix
-discussion: HIGH PRIORITY release-blocking beta2 smoke failure on 2026-06-01. A fresh greenfield Copilot/Squad smoke against v0.30.0-beta2 auto-continued from clarify into plan after the generated lifecycle quick reference said only before-implement, review-signoff, iteration-closeout, and feature-closeout hard-block. This contradicts `.specrew/config.yml` boundary policy, sync command authorization gates, and the Feature 016 one-boundary-at-a-time contract.
+discussion: HIGH PRIORITY release-blocking beta2 smoke failure on 2026-06-01. A fresh greenfield Copilot/Squad smoke against v0.30.0-beta2 auto-continued from clarify into plan after the generated lifecycle quick reference said only before-implement, review-signoff, iteration-closeout, and feature-closeout hard-block. This contradicts `.specrew/config.yml` boundary policy, sync command authorization gates, and the Feature 016 one-boundary-at-a-time contract. Amended 2026-06-01 to include the human re-entry packet: every approval stop must summarize the past, identify what to review, preview the future, and proactively invite discussion or additional instructions before continuing.
 composes-with:
   - 007  # Substantive Interaction Model - every boundary stop needs a human-readable handoff
   - 065  # Launch-Mode Boundary Enforcement - boundary authorization mechanics
@@ -16,7 +16,7 @@ composes-with:
   - 151  # Handoff contract shape; adjacent but not the authorization truth owner
 ---
 
-# Boundary Authorization Prompt Truth
+# Boundary Authorization Prompt Truth + Human Re-entry Packet
 
 ## Why
 
@@ -74,10 +74,50 @@ The generated prompt must teach agents that:
 - `Status: Approved` in feature artifacts must not be written by an agent as a
   substitute for a recorded human verdict.
 
+At every human-judgment boundary, the generated prompt must also make the stop a
+human re-entry point, not a bare approval prompt. The coordinator must provide a
+compact review packet that lets the human understand the past and shape the
+future before approving:
+
+```text
+## What I just did
+Outcome summary, committed evidence, major decisions, assumptions, and any
+scope changes.
+
+## What needs your review
+Primary artifact links, exact sections to inspect, risky/high-impact decisions,
+and uncertainties the agent wants the human to notice.
+
+## What happens next
+The next lifecycle phase, what it will produce, whether it writes code or only
+planning artifacts, and what decisions become harder to change after approval.
+
+## Discussion prompts
+One to three targeted questions that invite the human to refine the outcome or
+future direction. If there is no specific dilemma, ask a general improvement
+question such as: "Is there anything in this spec that should be corrected,
+expanded, or constrained before I plan from it?"
+
+## What I need from you
+Approve as-is, approve with added instructions, send back with changes, or
+discuss first.
+```
+
+The intent is to reduce the AI's decision surface by making boundary stops a
+short human/agent conversation. The user should be able to approve quickly when
+the packet is clear, but the default affordance must also make it natural to add
+constraints, question choices, or discuss a dilemma before the next phase locks
+in more downstream work.
+
 This proposal is intentionally narrower than Proposal 150. Proposal 150's "next
 authorized action only" block is still the stronger long-term guard. This small
 fix removes the actively wrong generated instructions so beta3 can be tested
 without repeating the beta1/beta2 boundary bypass.
+
+This proposal intentionally absorbs the release-critical part of Proposal 151 for
+beta3. Proposal 151 can still generalize the handoff evidence detector later, but
+this feature must not ship a stop-at-the-right-gate fix that still leaves the
+human with a thin or passive approval prompt.
 
 ## Functional Requirements
 
@@ -104,6 +144,20 @@ without repeating the beta1/beta2 boundary bypass.
 - **FR-007**: Regression tests MUST fail if a generated start prompt contains the
   beta2-bad phrases `only gate that HARD-BLOCKS` or `continue automatically
   through` in a way that bypasses human-judgment boundaries.
+- **FR-008**: Generated instructions MUST define the canonical human-judgment
+  boundary stop as a human re-entry packet, not only an approval request.
+- **FR-009**: Every human re-entry packet MUST summarize the past outcome,
+  identify review targets, preview the next phase, and ask for approve /
+  approve-with-instructions / send-back / discuss-first input.
+- **FR-010**: Every human re-entry packet MUST include one to three proactive
+  discussion prompts. Prompts SHOULD be specific when there is a known decision,
+  tradeoff, package choice, risk, or uncertainty; otherwise they MUST ask a
+  general improvement question.
+- **FR-011**: The generated prompt MUST encourage short discussion before
+  continuing when the human wants to refine scope, validate a tradeoff, or add
+  instructions. It MUST NOT frame approval as the only normal path.
+- **FR-012**: Structured verdict menus, when available, MUST include or preserve
+  an affordance for discussion / free-form feedback before continuation.
 
 ## Acceptance Criteria
 
@@ -124,6 +178,20 @@ without repeating the beta1/beta2 boundary bypass.
 - **AC7**: If an agent changes `spec.md` to `Status: Approved` without a matching
   `.squad/decisions.md` or `boundary_enforcement.verdict_history` approval, the
   validator or prompt-regression test catches the contradiction.
+- **AC8**: A generated boundary-stop prompt includes the five human re-entry
+  sections: `What I just did`, `What needs your review`, `What happens next`,
+  `Discussion prompts`, and `What I need from you`.
+- **AC9**: A generated clarify-to-plan stop includes at least one proactive
+  question inviting the human to improve or constrain the spec before planning.
+- **AC10**: A generated stop for a known technical choice or dilemma asks a
+  targeted question about that choice rather than only asking for generic
+  approval.
+- **AC11**: A boundary handoff that only says "approve to continue" without
+  review targets, next-phase preview, and a discussion affordance is treated as
+  non-compliant by tests or reviewer instructions.
+- **AC12**: The beta3 smoke console gives enough summary for the human to decide
+  whether to discuss or approve before opening artifacts, while still providing
+  targeted artifact links for inspection.
 
 ## Implementation Scope
 
@@ -135,6 +203,7 @@ Expected touch points:
 | Coordinator lifecycle rule text | `extensions/specrew-speckit/squad-templates/coordinator/specrew-governance.md` and deployed mirrors if needed |
 | Boundary policy source | `.specrew/config.yml`, `shared-governance.ps1` helpers if a read helper is needed |
 | Regression tests | `tests/integration/start-command.ps1`, `tests/integration/launch-mode-boundary-enforcement.tests.ps1`, or a focused new prompt-generation test |
+| Human re-entry handoff text | `scripts/specrew-start.ps1`, coordinator governance template, role charters if they carry conflicting stop wording |
 | Smoke evidence | downstream beta smoke project similar to `SpecrewSmoke-F051-beta2` |
 
 Implementation should avoid manual duplication of the boundary list where a
@@ -146,8 +215,8 @@ compares it to `Get-SpecrewCanonicalBoundaryTypes`.
 
 - Full Proposal 150 "next authorized action only" implementation
 - Hook-based runtime enforcement from Proposal 105
-- Broad handoff shape unification from Proposal 151, except where this fix needs
-  to avoid contradicting it
+- Broad historical handoff evidence migration from Proposal 151. This proposal
+  does own the beta3 human re-entry packet contract for newly generated prompts.
 - Redesigning Spec Kit phases or adding a new lifecycle boundary
 - Changing tool-call approval defaults
 - Fixing Copilot `write EOF` or delayed credit accounting
@@ -165,6 +234,11 @@ and assert:
 - It includes all boundaries configured as `human-judgment-required`.
 - It does not instruct agents to set `Status: Approved` as a planning-readiness
   workaround without human verdict evidence.
+- It contains the five human re-entry packet section names.
+- It instructs agents to ask one to three discussion prompts before asking the
+  human to continue.
+- It rejects or flags a stop handoff that lacks review targets, next-step preview,
+  or discussion affordance.
 
 Add one validator or unit-level check for the artifact-status semantics if the
 existing validator already has access to `spec.md`, `.squad/decisions.md`, and
@@ -182,16 +256,23 @@ The beta3 smoke should replay the same shape as beta2:
    - both input and output
    - simple one-way messaging
 5. Let specify and clarify complete.
-6. Expected stop: the coordinator emits the canonical three-section boundary
-   handoff at the `clarify` or `clarify -> plan` boundary, with links to
-   `spec.md` and a clear request for plan approval.
+6. Expected stop: the coordinator emits the canonical human re-entry packet at
+   the `clarify` or `clarify -> plan` boundary. The packet summarizes the
+   clarified spec, links to `spec.md`, identifies the exact sections to inspect,
+   previews that the next phase will produce planning artifacts rather than code,
+   and asks at least one proactive question such as whether the spec should be
+   corrected, constrained, or discussed before planning.
 7. Expected disk state before approval:
    - `spec.md` exists and is committed.
    - `plan.md` is absent or still only a scaffold/template that is not claimed
      as complete.
    - `.squad/decisions.md` has no fabricated human approval.
-8. After the human approves planning, the agent may run before-plan and plan,
-   then must stop again at the next human-judgment boundary according to policy.
+8. The human can answer with approval, approval plus instructions, send-back
+   feedback, or a discussion response. Only approval or approval-with-instructions
+   may authorize the next boundary.
+9. After the human approves planning, the agent may run before-plan and plan,
+   then must stop again at the next human-judgment boundary according to policy
+   with the same human re-entry packet shape.
 
 ## Sequencing
 
@@ -200,12 +281,14 @@ This proposal is the immediate beta3 blocker. Recommended order:
 1. Implement Proposal 154.
 2. Tag and publish `v0.30.0-beta3`.
 3. Rerun the v0.30.0-beta2 smoke scenario.
-4. Only after the boundary-auth smoke passes, continue with Proposal 151 and
-   Proposal 150 follow-up hardening.
+4. Only after the boundary-auth + human re-entry smoke passes, continue with
+   Proposal 151 evidence-detection generalization and Proposal 150 follow-up
+   hardening.
 
-Proposal 151 can still be implemented next if the team chooses to bundle both
-small fixes into one beta3 patch, but Proposal 154 is the release-critical
-behavioral fix.
+Proposal 151 can still be implemented next for historical evidence detection and
+broader validator backstops, but Proposal 154 now owns the release-critical
+new-prompt behavior: stop at the right boundary and make that stop a meaningful
+human discussion point.
 
 ## Cross-References
 
@@ -222,3 +305,6 @@ behavioral fix.
 - 2026-06-01: Drafted after v0.30.0-beta2 Copilot/Squad smoke repeated the beta1
   boundary-bypass class: generated prompt authorized automatic planning even
   though policy and sync commands require human authorization for `clarify -> plan`.
+- 2026-06-01: Amended after maintainer review to make boundary stops human
+  re-entry points. The fix now requires review summaries, targeted artifact
+  guidance, next-phase previews, and proactive discussion prompts before approval.
