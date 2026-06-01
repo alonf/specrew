@@ -50,7 +50,7 @@ No review defects found.
 | `tests/unit/feature-051-feature-claims.tests.ps1` | pass | Iteration 2a feature-claim behavior remained green. |
 | `tests/unit/feature-051-iteration2b.tests.ps1` | pass | Covers FR-017 through FR-024 for this slice. |
 | `tests/integration/filelist-completeness.tests.ps1` | pass | Verifies every deployable script is declared in FileList. |
-| `scripts/specrew-where.ps1 --ASCII --compact` | pass | Dashboard rendered and showed `Multi-dev 3 authors | 0 machines | single`. |
+| `scripts/specrew-where.ps1 --ASCII --compact` | pass | Dashboard rendered and showed `Multi-dev 3 authors \| 0 machines \| single`. |
 | `run-mechanical-checks.ps1 -IterationPath specs/051-multi-session-foundation/iterations/003` | pass | `mechanical-findings.json` contains no findings. |
 | `validate-governance.ps1 -ProjectPath .` | pass | Iterations 001, 002, and 003 passed; warnings are pre-existing handoff/dashboard warnings. |
 

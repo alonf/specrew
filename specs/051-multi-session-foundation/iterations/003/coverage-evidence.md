@@ -18,7 +18,7 @@ Focused PowerShell acceptance tests exercise real temp files and temp git reposi
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tests/unit/feature-051-feature-claims.tests.ps1` | pass | 13 | 0 | not recorded | 0 | Feature claims, refresh, conflict detection, removal. |
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tests/unit/feature-051-iteration2b.tests.ps1` | pass | 15 | 0 | not recorded | 0 | Decisions split, JSONL logging, FileList sort, multi-dev detection, recommendation suppression. |
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tests/integration/filelist-completeness.tests.ps1` | pass | 3 | 0 | not recorded | 0 | Manifest FileList completeness and undeclared helper regression. |
-| `pwsh -NoProfile -ExecutionPolicy Bypass -File scripts/specrew-where.ps1 --ASCII --compact` | pass | 1 | 0 | not recorded | 0 | Rendered dashboard and displayed `Multi-dev 3 authors | 0 machines | single`. |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File scripts/specrew-where.ps1 --ASCII --compact` | pass | 1 | 0 | not recorded | 0 | Rendered dashboard and displayed `Multi-dev 3 authors \| 0 machines \| single`. |
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File .specify/extensions/specrew-speckit/scripts/run-mechanical-checks.ps1 -ProjectPath . -IterationPath specs/051-multi-session-foundation/iterations/003` | pass | 1 | 0 | not recorded | 0 | `mechanical-findings.json` generated with no findings. |
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File .specify/extensions/specrew-speckit/scripts/validate-governance.ps1 -ProjectPath .` | pass | 3 iterations | 0 | 29495 ms | 0 | Iterations 001, 002, 003 passed; pre-existing warnings only. |
 
