@@ -147,6 +147,7 @@ foreach ($required in @(
         'approve as-is, approve with instructions, send back, or discuss prompt #N',
         'free-form discussion or feedback is not approval',
         'Every artifact, file, or directory reference in every packet section MUST use',
+        'The packet text recorded as boundary evidence MUST be the exact human-visible packet',
         'not bare repository paths such as'
     )) {
     Assert-True ($startScript.Contains($required)) "Start prompt is missing required contract text: $required"
@@ -252,12 +253,50 @@ pwsh -File tests/unit/boundary-authorization-prompt-truth.tests.ps1
 ```
 '@.Replace('__REPO_ROOT_URI__', $repoRootUri)
 
+$packetWithBarePrimaryReviewTargets = @'
+## What I just did
+
+I closed the iteration and recorded the closeout evidence for the boundary packet repair.
+
+## Why I stopped
+
+I stopped at the iteration-closeout boundary because explicit approval is required before feature-closeout.
+
+## What needs your review
+
+Review specs/139-boundary-authorization-prompt-truth/iterations/001/dashboard.md, specs/139-boundary-authorization-prompt-truth/iterations/001/quality/hardening-gate.md, specs/139-boundary-authorization-prompt-truth/iterations/001/drift-log.md, and specs/139-boundary-authorization-prompt-truth/iterations/001/quality/quality-evidence.md before approving.
+
+## What happens next
+
+If approved, I will proceed to feature-closeout.
+
+## Discussion prompts
+
+Because the primary review section contains artifact references, should the validator block bare repository paths there? I recommend yes; otherwise D-004 is not enforced across the packet body.
+
+## What I need from you
+
+Review file:///__REPO_ROOT_URI__/specs/139-boundary-authorization-prompt-truth/iterations/001/dashboard.md and approve or send back the iteration-closeout boundary.
+'@.Replace('__REPO_ROOT_URI__', $repoRootUri)
+
 foreach ($scriptPath in @($handoffValidatorPath, $handoffValidatorMirrorPath)) {
     $bareResult = Invoke-HandoffValidatorText -ValidatorPath $scriptPath -ProjectRoot $repoRoot -Text $packetWithBareReferences
     Assert-True ($bareResult.ExitCode -eq 1) "Packet-wide bare artifact references unexpectedly passed with $scriptPath."
     Assert-True ($bareResult.Text -match 'validation-fail\.bare-path-in-boundary-handoff') "Packet-wide bare artifact references did not emit the hard-fail rule. Output: $($bareResult.Text)"
     foreach ($expectedPath in @('specs/139-boundary-authorization-prompt-truth/iterations/001/retro.md', '.specrew/start-context.json', '.squad/decisions.md', 'README.md', 'tests/unit/boundary-authorization-prompt-truth.tests.ps1')) {
         Assert-True ($bareResult.Text -match [regex]::Escape($expectedPath)) "Bare path '$expectedPath' was not reported. Output: $($bareResult.Text)"
+    }
+
+    $primaryReviewResult = Invoke-HandoffValidatorText -ValidatorPath $scriptPath -ProjectRoot $repoRoot -Text $packetWithBarePrimaryReviewTargets
+    Assert-True ($primaryReviewResult.ExitCode -eq 1) "Bare primary review targets unexpectedly passed with $scriptPath."
+    Assert-True ($primaryReviewResult.Text -match 'validation-fail\.bare-path-in-boundary-handoff') "Bare primary review targets did not emit the hard-fail rule. Output: $($primaryReviewResult.Text)"
+    foreach ($expectedPath in @(
+            'specs/139-boundary-authorization-prompt-truth/iterations/001/dashboard.md',
+            'specs/139-boundary-authorization-prompt-truth/iterations/001/quality/hardening-gate.md',
+            'specs/139-boundary-authorization-prompt-truth/iterations/001/drift-log.md',
+            'specs/139-boundary-authorization-prompt-truth/iterations/001/quality/quality-evidence.md'
+        )) {
+        Assert-True ($primaryReviewResult.Text -match [regex]::Escape($expectedPath)) "Bare primary review target '$expectedPath' was not reported. Output: $($primaryReviewResult.Text)"
     }
 
     $exemptResult = Invoke-HandoffValidatorText -ValidatorPath $scriptPath -ProjectRoot $repoRoot -Text $packetWithExemptReferences

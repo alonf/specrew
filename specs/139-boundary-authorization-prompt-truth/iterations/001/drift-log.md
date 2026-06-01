@@ -22,8 +22,8 @@
 
 ## Summary
 
-**Total drift events**: 4
-**Resolution rate**: 100% (4/4 resolved)
+**Total drift events**: 5
+**Resolution rate**: 100% (5/5 resolved)
 **Specification drift**: Resolved by human-approved spec/task reconciliation before implementation
 
 ## Events
@@ -74,6 +74,19 @@
 - **Resolution**: Updated [specrew-start.ps1](file:///C:/tmp/Specrew-main-boundary-auth/scripts/specrew-start.ps1), [coordinator governance template](file:///C:/tmp/Specrew-main-boundary-auth/extensions/specrew-speckit/squad-templates/coordinator/specrew-governance.md), the mirrored [coordinator governance template](file:///C:/tmp/Specrew-main-boundary-auth/.specify/extensions/specrew-speckit/squad-templates/coordinator/specrew-governance.md), [handoff-governance-validator.ps1](file:///C:/tmp/Specrew-main-boundary-auth/extensions/specrew-speckit/validators/handoff-governance-validator.ps1), the mirrored [handoff-governance-validator.ps1](file:///C:/tmp/Specrew-main-boundary-auth/.specify/extensions/specrew-speckit/validators/handoff-governance-validator.ps1), [validate-governance.ps1](file:///C:/tmp/Specrew-main-boundary-auth/extensions/specrew-speckit/scripts/validate-governance.ps1), and the mirrored [validate-governance.ps1](file:///C:/tmp/Specrew-main-boundary-auth/.specify/extensions/specrew-speckit/scripts/validate-governance.ps1). The packet rule now applies to every packet section; bare `specs/...`, `.specrew/...`, `.squad/...`, `tests/...`, and `README.md` references fail outside command/code exemptions; stored `.specrew/handoff-evidence.json` packet text is validated.
 - **Verification**: [validate-governance.interaction-model.tests.ps1](file:///C:/tmp/Specrew-main-boundary-auth/tests/unit/validate-governance.interaction-model.tests.ps1) and [boundary-authorization-prompt-truth.tests.ps1](file:///C:/tmp/Specrew-main-boundary-auth/tests/unit/boundary-authorization-prompt-truth.tests.ps1) pass after the repair.
 - **Follow-up**: Re-emit the `retro -> iteration-closeout` packet using only `file:///` artifact references and record that packet as boundary evidence.
+
+### D-005 — Visible packet and stored packet evidence diverged
+
+- **Detected At**: 2026-06-01T13:20:00Z
+- **Type**: emitted-packet-evidence-parity-gap
+- **Status**: resolved
+- **Source**: Human send-back after iteration-closeout noted that the visible `What needs your review` section still presented bare repository artifact references for the iteration dashboard, hardening gate, drift log, and quality evidence.
+- **Requirement Citation**: D-004 and Feature 139 closeout acceptance require every artifact, file, or directory reference in every human re-entry packet section to use `file:///` URL form, and require stored boundary packet evidence validation to check the actual emitted packet text.
+- **Impact**: The handoff validator catches the exact bare primary-review-section case when supplied as packet text, but the human-visible response can still diverge if an agent validates one packet through boundary sync and then rewrites or summarizes the final approval packet outside that stored evidence path.
+- **Classification**: Feature 139 enforcement/evidence discipline gap. The validator did not miss the exact case; the failure was that the final visible packet was not treated as the same text that had been stored and validated.
+- **Resolution**: Strengthened [specrew-start.ps1](file:///C:/tmp/Specrew-main-boundary-auth/scripts/specrew-start.ps1), [coordinator governance template](file:///C:/tmp/Specrew-main-boundary-auth/extensions/specrew-speckit/squad-templates/coordinator/specrew-governance.md), and the mirrored [coordinator governance template](file:///C:/tmp/Specrew-main-boundary-auth/.specify/extensions/specrew-speckit/squad-templates/coordinator/specrew-governance.md) so the packet text recorded as boundary evidence must be the exact human-visible packet emitted for approval, with no post-validation summary or artifact-reference rewrite.
+- **Verification**: [boundary-authorization-prompt-truth.tests.ps1](file:///C:/tmp/Specrew-main-boundary-auth/tests/unit/boundary-authorization-prompt-truth.tests.ps1) now includes the exact primary `What needs your review` bare-path case reported in this send-back and asserts all four bare repository paths hard-fail.
+- **Follow-up**: Re-emit the `iteration-closeout -> feature-closeout` packet with visible `file:///` review targets in the primary six-section packet and record that exact packet as boundary evidence.
 
 ### Resolution Strategies (Unused)
 

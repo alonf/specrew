@@ -39,6 +39,8 @@ pwsh -File .specify/extensions/specrew-speckit/scripts/validate-governance.ps1 -
 - Send-back repair D-004: `pwsh -NoProfile -ExecutionPolicy Bypass -File tests\integration\start-command.ps1` — PASS after generated start prompt guidance changed.
 - Send-back repair D-004: `pwsh -NoProfile -ExecutionPolicy Bypass -File tests\integration\launch-mode-boundary-enforcement.tests.ps1` — PASS after validator/evidence-path changes.
 - Send-back repair D-004: `pwsh -NoProfile -ExecutionPolicy Bypass -File .specify\extensions\specrew-speckit\scripts\validate-governance.ps1 -ProjectPath .` — PASS for scoped Feature 139 validation after the repair. Remaining warnings are historical release-process warnings and legacy empty handoff-evidence warnings, not Feature 139 hard failures.
+- Send-back repair D-005: direct handoff-validator replay of the exact bare primary review-section packet reported by the human — FAIL as expected with `validation-fail.bare-path-in-boundary-handoff` for all four bare repository paths. This proves the validator catches the exact case when the emitted packet text is supplied.
+- Send-back repair D-005: the enforcement gap was packet/evidence parity, not bare-path detection. The generated prompt and coordinator governance template now require the packet text recorded as boundary evidence to be the exact human-visible packet emitted for approval, without post-validation summary or artifact-reference rewrite.
 
 ## Gap Ledger
 
@@ -49,7 +51,7 @@ pwsh -File .specify/extensions/specrew-speckit/scripts/validate-governance.ps1 -
 | Removal of beta2-bad four-gate / auto-chain guidance | yes | yes | yes | yes | No gap. Unit test rejects the bad generated prompt phrases. |
 | Six-section human re-entry packet | yes | yes | yes | yes | No gap. Generated prompt and coordinator governance template define all six sections. |
 | Bare `file:///` review target guidance | yes | yes | yes | yes | No gap. Packet guidance and coordinator governance require bare URIs; existing handoff validator still enforces bare-path failures. |
-| Packet-wide `file:///` artifact reference guidance | yes | yes | yes | yes | No gap after D-004. Generated prompt and coordinator governance require every artifact/file/directory reference in every packet section to use `file:///` URL form, and stored packet evidence now fails validation when bare repository paths appear outside command/code exemptions. |
+| Packet-wide `file:///` artifact reference guidance | yes | yes | yes | yes | No gap after D-005. Generated prompt and coordinator governance require every artifact/file/directory reference in every packet section to use visible `file:///` URL form, stored packet evidence fails validation when bare repository paths appear outside command/code exemptions, and boundary evidence must match the exact human-visible approval packet. |
 | Contextual discussion prompts and `discuss prompt #N` loop | yes | yes | yes | yes | No gap. Generated prompt includes grouped prompts, approve-with-defaults affordance, response shapes, and renewed approval after prompt-specific discussion. |
 | Future packet primary, no required legacy duplication | yes | yes | yes | yes | No gap. Generated prompt removed the mandatory legacy block template and states the packet is primary. |
 | `Status: Approved` without verdict evidence check | yes | yes | yes | yes | No gap. Implemented as an active-feature validator check that exits non-zero when `Status: Approved` lacks matching human verdict evidence. |

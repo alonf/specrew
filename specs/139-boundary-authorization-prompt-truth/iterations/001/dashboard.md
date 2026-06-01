@@ -15,7 +15,7 @@
 | Tasks | 30/30 pass |
 | Requirements | FR-001 through FR-028 covered |
 | Success Criteria | SC-001 through SC-015 covered |
-| Drift | 4/4 resolved after D-004; original 3/3 review drift remained resolved |
+| Drift | 5/5 resolved after D-005; original 3/3 review drift remained resolved |
 | Dependencies | no package changes |
 | Review Status | accepted for `review -> retro` |
 | Retro Status | accepted for `retro -> iteration-closeout` |
@@ -31,6 +31,7 @@
 | D-004 Feature 139 acceptance condition | pass; repaired by commit `2effe3f0` |
 | Packet-wide clickable artifact reference enforcement | pass; applies to every human re-entry packet section, not only `What Needs Your Review` |
 | Stored boundary packet evidence validation | pass; checks actual emitted packet text |
+| Visible packet and stored packet parity | pass; the exact visible approval packet must be the stored validated evidence packet |
 | Dirty working-tree and session-state isolation | pass; preserve as lifecycle lesson |
 | Six-section human re-entry packet target format | pass; legacy handoff block remains transitional only |
 

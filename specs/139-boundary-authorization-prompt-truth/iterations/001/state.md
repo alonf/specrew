@@ -17,6 +17,7 @@
 - Retro records the historical validator warnings as release-process risk scoped out of Feature 139 acceptance, and frames published beta3 Copilot/Squad replay as a release-closeout blocker before stable promotion.
 - Send-back D-004 repaired packet-wide clickable artifact reference enforcement across prompt guidance, validators, stored packet evidence, tests, and drift evidence; D-004 is a Feature 139 acceptance condition repaired by commit `2effe3f0`.
 - Iteration closeout confirms packet-wide clickable artifact reference enforcement applies to every human re-entry packet section, and stored boundary packet evidence validation checks actual emitted packet text.
+- Send-back D-005 repaired the packet/evidence parity gap: the human-visible approval packet must be the exact packet stored and validated as boundary evidence.
 
 ## Notes
 

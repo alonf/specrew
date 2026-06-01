@@ -92,5 +92,6 @@ Iteration 001 implements the full Proposal 154 slice for generated prompt truth,
 - **Closeout acceptance**: D-004 is a Feature 139 acceptance condition and was repaired by commit `2effe3f0`.
 - **Packet reference enforcement**: every artifact, file, and directory reference in every human re-entry packet section must use `file:///` URL form, not only the `What Needs Your Review` targets.
 - **Stored evidence validation**: boundary packet evidence validation checks actual emitted packet text supplied during boundary sync.
+- **Packet/evidence parity**: D-005 confirms the human-visible approval packet must be the exact packet stored and validated as boundary evidence.
 - **Release-process risk**: historical empty handoff-evidence warnings remain visible as release-process risk only because scoped Feature 139 validation passes.
 - **Release-closeout blocker**: published beta3 Copilot/Squad replay must block stable promotion before release closeout completes.
