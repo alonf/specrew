@@ -86,6 +86,8 @@ visible_packet_required: true
 
 The body contains the rendered human packet. The packet file is both human-readable and machine-verifiable.
 
+Because gate artifacts remain editable after the boundary, the packet must also pin the artifact references to the gate commit. The human-visible link opens the current workspace copy for convenience, while the packet evidence records the exact commit version that was reviewed.
+
 ### Packet schema
 
 Every packet type includes the six common sections:
@@ -103,13 +105,41 @@ Each packet also carries typed metadata:
 - iteration number when applicable
 - from-boundary and to-boundary
 - source commit or pending commit state
-- review targets with canonical `file:///` URLs
+- review targets with canonical `file:///` URLs and commit-pinned retrieval metadata
 - release blockers
 - test evidence
 - dirty-state classification
 - discussion prompts with defaults and consequences
 - allowed response options
 - packet ID and hash
+
+### Review target pinning
+
+Every review target in `What Needs Your Review` should be represented as structured data before rendering:
+
+```yaml
+review_targets:
+  - label: closeout-dashboard.md
+    path: specs/139-boundary-authorization-prompt-truth/closeout-dashboard.md
+    file_url: file:///C:/tmp/Specrew-main-boundary-auth/specs/139-boundary-authorization-prompt-truth/closeout-dashboard.md
+    as_of_commit: 91c9ede1
+    retrieval_command: git show 91c9ede1:specs/139-boundary-authorization-prompt-truth/closeout-dashboard.md
+    review_focus: Feature closeout status, D-004/D-005 acceptance, release blockers.
+```
+
+The rendered packet may keep the visible prose concise, but the durable packet file must preserve enough information to recover the exact referenced content later:
+
+```text
+Review closeout-dashboard.md:
+file:///C:/tmp/Specrew-main-boundary-auth/specs/139-boundary-authorization-prompt-truth/closeout-dashboard.md
+As reviewed at commit: 91c9ede1
+Exact content: git show 91c9ede1:specs/139-boundary-authorization-prompt-truth/closeout-dashboard.md
+```
+
+This creates two review modes:
+
+- **Current workspace navigation**: open the `file:///` link during the active review.
+- **Historical audit**: use `git show <commit>:<path>` to reconstruct exactly what the gate packet referenced when the human approved it.
 
 ### Gate-specific packet types
 
@@ -209,6 +239,10 @@ Each boundary has a typed template with additional required fields:
 - **FR-016**: The packet validator MUST provide actionable errors that name the non-compliant section and offending reference.
 - **FR-017**: Specrew MUST provide a replay or inspection command to show the last gate packet for the active feature.
 - **FR-018**: Review and closeout artifacts MUST be able to reconstruct what packet was approved at each boundary.
+- **FR-019**: Every review target in a packet MUST record the artifact path, canonical `file:///` URL, as-of commit, and exact `git show <commit>:<path>` retrieval command.
+- **FR-020**: The as-of commit for each review target MUST default to the gate commit when the target exists in that tree; if a target is generated after the gate commit, the packet MUST record the correct later source commit explicitly.
+- **FR-021**: Packet validation MUST verify that each review target path exists at its recorded as-of commit unless the target is explicitly marked `pending`, `external`, or `not-yet-committed` with rationale.
+- **FR-022**: Packet replay MUST preserve both navigation links and historical retrieval commands so a reviewer can inspect the exact referenced file version even after later commits modify the artifact.
 
 ### Acceptance criteria
 
@@ -220,6 +254,9 @@ Each boundary has a typed template with additional required fields:
 - **AC-006**: The packet replay command displays the stored packet exactly as validated.
 - **AC-007**: Feature 139 D-004 and D-005 failure shapes are covered by regression tests.
 - **AC-008**: Existing gates can still show a legacy compatibility block during transition, but the primary typed packet is the only authoritative approval object.
+- **AC-009**: A packet review target without an as-of commit or `git show <commit>:<path>` retrieval command fails validation.
+- **AC-010**: A packet review target whose path does not exist at the recorded as-of commit fails validation unless it carries an explicit pending/external/not-yet-committed classification and rationale.
+- **AC-011**: After a referenced artifact is changed by a later commit, packet replay still identifies and retrieves the original reviewed content via the recorded `git show` command.
 
 ### Out of scope
 
@@ -248,6 +285,7 @@ This should land near the Feature 139 release-recovery sequence because it turns
 3. Should packet approval require the human to name the packet ID explicitly, or can "approve" apply to the active packet in boundary state?
 4. How long should the legacy `=== SPECREW HANDOFF ===` compatibility block remain after typed packets ship?
 5. Should packet files be amended on discussion or should every amended packet produce a new file with a new hash?
+6. Should review targets always pin to the gate commit, or should the renderer allow per-target commits when artifacts are intentionally generated after the gate commit?
 
 ## Risks
 
@@ -256,6 +294,7 @@ This should land near the Feature 139 release-recovery sequence because it turns
 - **Template rigidity**: Gate-specific templates might miss unusual cases. Mitigation: include structured `additional_context` and `discussion_prompts` fields while keeping validation on invariant fields.
 - **Transition confusion**: Legacy handoff block and typed packet may coexist briefly. Mitigation: clearly mark typed packet as authoritative and legacy block as compatibility-only.
 - **False confidence if agent does not emit verbatim**: The AI may summarize instead of presenting the rendered packet. Mitigation: boundary approval targets the stored packet; future host integrations can improve exact display but are not required for governance correctness.
+- **Reference drift after approval**: Linked markdown files can change after the packet is approved. Mitigation: every review target carries the as-of commit and `git show <commit>:<path>` command for exact historical reconstruction.
 
 ## Cross-references
 
