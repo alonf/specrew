@@ -2,7 +2,7 @@
 
 **Feature**: 139-boundary-authorization-prompt-truth
 **Iteration**: 001
-**Status**: implementation evidence captured
+**Status**: review evidence accepted
 
 ## Planned Evidence
 
@@ -32,6 +32,7 @@ pwsh -File .specify/extensions/specrew-speckit/scripts/validate-governance.ps1 -
 - `pwsh -NoProfile -ExecutionPolicy Bypass -File tests\integration\launch-mode-boundary-enforcement.tests.ps1` — PASS after send-back repair. Confirms policy seam and boundary authorization behavior still block unauthorised `plan -> tasks` progression.
 - `pwsh -NoProfile -ExecutionPolicy Bypass -File tests\integration\start-command.ps1` — PASS after send-back repair. Confirms fresh project start artifact generation remains functional after prompt/state changes.
 - `pwsh -NoProfile -ExecutionPolicy Bypass -File .specify\extensions\specrew-speckit\scripts\validate-governance.ps1 -ProjectPath .` — PASS after send-back repair for Feature 139 scoped validation. Existing warnings remain for old Feature 048 dashboard auto-render evidence and historical missing handoff evidence.
+- Review rerun evidence: the same four required test suites passed during review, and scoped governance validation passed again after review artifact repair with only the known historical warnings.
 - Automated pre-publish smoke artifact updated at [beta3-smoke-evidence.md](file:///C:/tmp/Specrew-main-boundary-auth/specs/139-boundary-authorization-prompt-truth/smoke/beta3-smoke-evidence.md). It records a local candidate PASS for prompt/state generation and explicitly preserves the manual published beta3 Copilot/Squad replay as pending before stable promotion.
 
 ## Gap Ledger
