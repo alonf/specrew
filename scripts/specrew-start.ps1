@@ -518,23 +518,6 @@ function Get-ManifestSpecrewVersionText {
 function Get-InstalledSpecrewRuntimeVersion {
     param([Parameter(Mandatory = $true)][string]$ProjectRoot)
 
-    $module = @(Get-Module -Name Specrew -ListAvailable -ErrorAction SilentlyContinue | Sort-Object Version -Descending | Select-Object -First 1)
-    if ($module.Count -gt 0) {
-        $moduleVersion = if ($module[0].Version) { $module[0].Version.ToString() } else { '' }
-        $modulePrerelease = ''
-        if ($module[0].PrivateData -and $module[0].PrivateData.PSData -and $module[0].PrivateData.PSData.Prerelease) {
-            $modulePrerelease = [string]$module[0].PrivateData.PSData.Prerelease
-        }
-
-        if (-not [string]::IsNullOrWhiteSpace($moduleVersion)) {
-            if (-not [string]::IsNullOrWhiteSpace($modulePrerelease)) {
-                return ('{0}-{1}' -f $moduleVersion, $modulePrerelease.Trim())
-            }
-
-            return $moduleVersion
-        }
-    }
-
     $manifestCandidates = @(
         (Join-Path (Split-Path -Parent $PSScriptRoot) 'Specrew.psd1'),
         (Join-Path $ProjectRoot 'Specrew.psd1')
@@ -551,6 +534,23 @@ function Get-InstalledSpecrewRuntimeVersion {
             }
             catch {
             }
+        }
+    }
+
+    $module = @(Get-Module -Name Specrew -ListAvailable -ErrorAction SilentlyContinue | Sort-Object Version -Descending | Select-Object -First 1)
+    if ($module.Count -gt 0) {
+        $moduleVersion = if ($module[0].Version) { $module[0].Version.ToString() } else { '' }
+        $modulePrerelease = ''
+        if ($module[0].PrivateData -and $module[0].PrivateData.PSData -and $module[0].PrivateData.PSData.Prerelease) {
+            $modulePrerelease = [string]$module[0].PrivateData.PSData.Prerelease
+        }
+
+        if (-not [string]::IsNullOrWhiteSpace($moduleVersion)) {
+            if (-not [string]::IsNullOrWhiteSpace($modulePrerelease)) {
+                return ('{0}-{1}' -f $moduleVersion, $modulePrerelease.Trim())
+            }
+
+            return $moduleVersion
         }
     }
 

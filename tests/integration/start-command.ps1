@@ -536,6 +536,63 @@ foreach ($case in $hostOrientationCases) {
 }
 Write-Pass 'Generated prompt orientation and interaction guidance agree with start-context host/version/runtime truth for Codex, Claude, and Copilot/Squad'
 
+Write-Host "`nTest 2a1: runtime version resolver prefers the running module manifest over same-base installed prereleases"
+$resolverProbeRoot = Join-Path -Path $scratchRoot -ChildPath 'runtime-version-probe'
+$resolverProbeScripts = Join-Path -Path $resolverProbeRoot -ChildPath 'scripts'
+New-Item -ItemType Directory -Path $resolverProbeScripts -Force | Out-Null
+$resolverManifest = @'
+@{
+    RootModule = 'Specrew.psm1'
+    ModuleVersion = '0.30.0'
+    PrivateData = @{
+        PSData = @{
+            Prerelease = 'beta5'
+        }
+    }
+}
+'@
+[System.IO.File]::WriteAllText((Join-Path $resolverProbeRoot 'Specrew.psd1'), $resolverManifest, [System.Text.UTF8Encoding]::new($false))
+$resolverFunctions = (Get-FunctionDefinitionsText -Path $startScript -FunctionNames @(
+    'Get-ManifestSpecrewVersionText',
+    'Get-InstalledSpecrewRuntimeVersion'
+)) -join [Environment]::NewLine
+$resolverProbeScript = @"
+Set-StrictMode -Version Latest
+`$ErrorActionPreference = 'Stop'
+function Get-Module {
+    [CmdletBinding()]
+    param(
+        [string]`$Name,
+        [switch]`$ListAvailable
+    )
+
+    [pscustomobject]@{
+        Version = [version]'0.30.0'
+        PrivateData = @{
+            PSData = @{
+                Prerelease = 'beta4'
+            }
+        }
+    }
+}
+$resolverFunctions
+`$resolved = Get-InstalledSpecrewRuntimeVersion -ProjectRoot '$resolverProbeRoot'
+if (`$resolved -ne '0.30.0-beta5') {
+    throw "Expected running manifest version 0.30.0-beta5, got '`$resolved'."
+}
+"@
+$resolverProbePath = Join-Path $resolverProbeScripts 'resolver-probe.ps1'
+[System.IO.File]::WriteAllText($resolverProbePath, $resolverProbeScript, [System.Text.UTF8Encoding]::new($false))
+$resolverProbeResult = Invoke-TestCommand -Command ("& '{0}'" -f $resolverProbePath)
+if ($resolverProbeResult.ExitCode -ne 0) {
+    Write-Fail 'Runtime version resolver did not prefer the running module manifest over an installed same-base prerelease.'
+    foreach ($line in $resolverProbeResult.Output) {
+        Write-Host $line
+    }
+    exit 1
+}
+Write-Pass 'Runtime version resolver reports the running module prerelease instead of a stale same-base installed prerelease'
+
 Write-Host "`nTest 2aa: boundary enforcement bypass requires an explicit reason"
 $missingReasonResult = Invoke-TestScript -ScriptPath $entryScript -ArgumentList @(
     'start',
