@@ -94,6 +94,12 @@ As a release maintainer, I need tests or validator checks that catch prompt-trut
 - **FR-020**: Generated state MUST include the resolved `boundary_enforcement.policy_classes` snapshot used by the prompt so the prompt, lifecycle state, and policy evidence can be audited together.
 - **FR-021**: A narrow automated or validator check MUST flag `Status: Approved` in feature artifacts when no matching human verdict evidence exists.
 - **FR-022**: Release closeout MUST include committed beta3 smoke evidence demonstrating the fixed clarify-to-plan stop, human re-entry packet, and absence of substantive `plan.md` before approval.
+- **FR-023**: The future generated gate format MUST use the human re-entry packet as the primary stop contract and MUST NOT require duplicating the same stop with the legacy `=== SPECREW HANDOFF ===` block.
+- **FR-024**: Primary packet review targets MUST include bare `file:///` links, not only relative paths or markdown links.
+- **FR-025**: The `What needs your review` section MUST identify high-impact or release-blocking items, including the `Status: Approved` check and beta3 smoke evidence when they are in scope, rather than only listing task numbers.
+- **FR-026**: `Discussion prompts` MUST be shown together and MUST tell the human they can answer any prompt that should change direction or approve with the defaults.
+- **FR-027**: When the human chooses to discuss one prompt, generated guidance MUST instruct the agent to enter a short discussion loop for that item only, summarize the agreed decision, and ask again for explicit boundary approval. Free-form discussion remains non-approval unless the human clearly authorizes the boundary.
+- **FR-028**: Response options MUST support approve as-is, approve with instructions, send back, and discuss prompt `#N`.
 
 ### Traceability & Governance Requirements *(mandatory)*
 
@@ -130,6 +136,12 @@ As a release maintainer, I need tests or validator checks that catch prompt-trut
 | FR-020 | Spec Steward, Implementer, Reviewer | Iteration 001 |
 | FR-021 | Implementer, Reviewer | Iteration 001 |
 | FR-022 | Implementer, Reviewer | Iteration 001 |
+| FR-023 | Spec Steward, Implementer, Reviewer | Iteration 001 |
+| FR-024 | Spec Steward, Implementer, Reviewer | Iteration 001 |
+| FR-025 | Spec Steward, Implementer, Reviewer | Iteration 001 |
+| FR-026 | Spec Steward, Implementer, Reviewer | Iteration 001 |
+| FR-027 | Spec Steward, Implementer, Reviewer | Iteration 001 |
+| FR-028 | Spec Steward, Implementer, Reviewer | Iteration 001 |
 | TG-001 | Planner, Reviewer | Iteration 001 |
 | TG-002 | Planner, Reviewer | Iteration 001 |
 | TG-003 | Planner, Reviewer | Iteration 001 |
@@ -181,6 +193,8 @@ Give the allowed response shapes: approve as-is, approve with added instructions
 
 Approval must be explicit. Free-form discussion or feedback is not approval unless the human clearly authorizes the next boundary.
 
+The future generated packet is the primary stop contract. It must not require duplicating the same stop with the legacy `=== SPECREW HANDOFF ===` block, although the legacy block can remain in current transitional behavior until this feature is implemented. The packet must show discussion prompts together and explicitly state: "You can answer any prompt that should change direction, or approve with the defaults." If the human chooses `discuss prompt #N`, the agent should discuss only that prompt, summarize the agreed decision, then request explicit boundary approval again.
+
 ## Success Criteria *(mandatory)*
 
 ### Measurable Outcomes
@@ -196,6 +210,10 @@ Approval must be explicit. Free-form discussion or feedback is not approval unle
 - **SC-009**: A stop packet that asks only "approve?" without discussion prompts is rejected by tests or reviewer instructions as non-compliant.
 - **SC-010**: A stop packet whose discussion prompts lack context is rejected unless no known dilemma exists and the packet uses the general no-known-dilemma review question.
 - **SC-011**: Committed beta3 smoke evidence demonstrates the fixed clarify-to-plan stop and confirms no substantive `plan.md` exists before approval.
+- **SC-012**: Generated future stop guidance uses the six-section packet as the primary stop contract and does not require legacy `=== SPECREW HANDOFF ===` duplication.
+- **SC-013**: Generated packet guidance requires bare `file:///` review target links and highlights release-blocking review items such as `Status: Approved` evidence checks and beta3 smoke evidence.
+- **SC-014**: Generated discussion-prompt guidance shows prompts together, includes the "approve with the defaults" affordance, and supports `discuss prompt #N` as a response option.
+- **SC-015**: Generated discussion-loop guidance says a prompt-specific discussion must end with a summarized decision and a renewed request for explicit boundary approval.
 
 ## Assumptions
 
@@ -215,6 +233,9 @@ Approval must be explicit. Free-form discussion or feedback is not approval unle
 - Q: For beta3 smoke evidence, should acceptance require committed downstream smoke evidence or only documented manual smoke results? A: Require committed beta3 smoke evidence.
 - Q: What is the canonical human re-entry packet shape? A: Use the six-section packet: `What I just did`, `Why I stopped`, `What needs your review`, `What happens next`, `Discussion prompts`, and `What I need from you`.
 - Q: What scope limits remain binding? A: Keep full Proposal 150, hook enforcement, and broad historical Proposal 151 migration out of scope.
+- Q: Should the future generated gate format duplicate the packet with the legacy `=== SPECREW HANDOFF ===` block? A: No. The human re-entry packet is the primary future stop contract. The legacy block is acceptable only as current transitional behavior before this feature is implemented.
+- Q: What response options and prompt behavior should the final generated packet support? A: It must support approve as-is, approve with instructions, send back, and discuss prompt `#N`; discussion prompts must be shown together with a note that the human can answer any prompt that should change direction or approve with the defaults.
+- Q: What happens after a human discusses one prompt? A: The agent should run a short discussion loop for that prompt only, summarize the agreed decision, then ask again for explicit boundary approval. Free-form discussion is not approval unless the human clearly authorizes the boundary.
 
 ## Governance Alignment *(mandatory)*
 

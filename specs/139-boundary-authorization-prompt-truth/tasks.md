@@ -2,9 +2,9 @@
 
 **Feature**: 139-boundary-authorization-prompt-truth
 **Branch**: 139-boundary-authorization-prompt-truth
-**Total Tasks**: 24
+**Total Tasks**: 30
 **Iterations**: 1
-**Total Effort**: ~14.5 SP
+**Total Effort**: ~17.5 SP
 **Status**: Ready for before-implement approval
 
 ## Overview
@@ -13,11 +13,11 @@ This task list implements Proposal 154 as a narrow prompt/state/validator/test s
 
 Implementation must keep full Proposal 150, hook enforcement, broad historical Proposal 151 migration, and lifecycle redesign out of scope.
 
-## Iteration 001: Prompt Truth, Re-entry Packet, and Regression Proof (Target: <=20 SP; planned ~10.5 SP)
+## Iteration 001: Prompt Truth, Re-entry Packet, and Regression Proof (Target: <=20 SP; planned ~17.5 SP)
 
 **User Stories**: US1 (Generated Prompt Tells the Boundary Truth), US2 (Boundary Stops Re-enter the Human Cleanly), US3 (Regression Coverage Blocks Backsliding)
-**Functional Requirements**: FR-001 through FR-022
-**Success Criteria**: SC-001 through SC-011
+**Functional Requirements**: FR-001 through FR-028
+**Success Criteria**: SC-001 through SC-015
 
 ### Phase 0: Context Load and Branch Hygiene
 
@@ -46,20 +46,26 @@ Implementation must keep full Proposal 150, hook enforcement, broad historical P
 - [ ] T014 Implement generated guidance for contextual, proactive, decision-reducing `Discussion prompts`, including targeted prompt context, question, default/recommended path, consequence when relevant, and the general no-known-dilemma review question fallback. [effort: 0.75 SP] [FR-014, FR-015, FR-018] [SC-005, SC-009, SC-010]
 - [ ] T015 Implement generated guidance for `What I need from you`, including allowed response shapes, explicit approval requirement, free-form discussion not counting as approval, and structured/free-form menu affordance where available. [effort: 0.5 SP] [FR-016, FR-017, FR-019] [SC-004]
 - [ ] T016 Add positive tests proving generated prompt guidance includes all six packet sections, bare `file:///` review target guidance, contextual discussion prompt requirements, explicit approval semantics, and the `clarify -> plan` planning-consequence explanation. [effort: 0.5 SP] [FR-009, FR-012, FR-014, FR-017] [SC-004, SC-005]
+- [ ] T017 Implement generated guidance that the future human re-entry packet is the primary stop contract and does not require duplicating the same stop with the legacy `=== SPECREW HANDOFF ===` block. Keep any current runtime legacy block behavior explicitly transitional until replaced by this feature. [effort: 0.5 SP] [FR-023] [SC-012]
+- [ ] T018 Implement generated packet guidance requiring bare `file:///` review targets in the primary packet and high-impact/release-blocking review callouts, including `Status: Approved` evidence checks and beta3 smoke evidence when in scope. [effort: 0.5 SP] [FR-024, FR-025] [SC-013]
+- [ ] T019 Implement generated discussion-prompt guidance that shows prompts together, says "You can answer any prompt that should change direction, or approve with the defaults.", and supports response options: approve as-is, approve with instructions, send back, and discuss prompt `#N`. [effort: 0.5 SP] [FR-026, FR-028] [SC-014]
+- [ ] T020 Implement generated discussion-loop guidance for `discuss prompt #N`: discuss that item only, summarize the agreed decision, and ask again for explicit boundary approval. Free-form discussion remains non-approval unless the human clearly authorizes the boundary. [effort: 0.5 SP] [FR-017, FR-027] [SC-015]
+- [ ] T021 Add positive and negative tests for no-legacy-duplication guidance, bare `file:///` primary review targets, release-blocking review callouts, grouped discussion prompts, `discuss prompt #N`, and renewed explicit approval after prompt-specific discussion. [effort: 1 SP] [FR-023, FR-024, FR-025, FR-026, FR-027, FR-028] [SC-012, SC-013, SC-014, SC-015]
 
 ### Phase 4: Non-compliant Handoff Fixtures and Status Approval Check
 
-- [ ] T017 Add a non-compliant handoff fixture missing `Why I stopped` and a test or validator assertion that treats it as non-compliant. [effort: 0.5 SP] [FR-009, FR-011] [SC-008]
-- [ ] T018 Add a non-compliant handoff fixture that asks only `approve?` or equivalent approval-only wording without discussion prompts, and a test or validator assertion that treats it as non-compliant. [effort: 0.5 SP] [FR-014, FR-016, FR-018] [SC-009]
-- [ ] T019 Add a non-compliant handoff fixture whose targeted discussion prompts lack context, and ensure it fails unless the packet clearly uses the general no-known-dilemma review question. [effort: 0.5 SP] [FR-014, FR-015] [SC-010]
-- [ ] T020 Implement the narrow `Status: Approved` without human verdict evidence check against the available feature artifact and verdict evidence surfaces, keeping it limited to this contradiction class rather than implementing broad historical Proposal 151 migration. [effort: 1 SP] [FR-005, FR-021, TG-005] [SC-007]
-- [ ] T021 Add positive and negative tests for the `Status: Approved` check: no matching verdict evidence is flagged; non-approval readiness wording or matching verdict evidence does not fail. [effort: 0.5 SP] [FR-005, FR-021] [SC-007]
+- [ ] T022 Add a non-compliant handoff fixture missing `Why I stopped` and a test or validator assertion that treats it as non-compliant. [effort: 0.5 SP] [FR-009, FR-011] [SC-008]
+- [ ] T023 Add a non-compliant handoff fixture that asks only `approve?` or equivalent approval-only wording without discussion prompts, and a test or validator assertion that treats it as non-compliant. [effort: 0.5 SP] [FR-014, FR-016, FR-018] [SC-009]
+- [ ] T024 Add a non-compliant handoff fixture whose targeted discussion prompts lack context, and ensure it fails unless the packet clearly uses the general no-known-dilemma review question. [effort: 0.5 SP] [FR-014, FR-015] [SC-010]
+- [ ] T025 Implement the narrow `Status: Approved` without human verdict evidence check against the available feature artifact and verdict evidence surfaces, keeping it limited to this contradiction class rather than implementing broad historical Proposal 151 migration. [effort: 1 SP] [FR-005, FR-021, TG-005] [SC-007]
+- [ ] T026 Add positive and negative tests for the `Status: Approved` check: no matching verdict evidence is flagged; non-approval readiness wording or matching verdict evidence does not fail. [effort: 0.5 SP] [FR-005, FR-021] [SC-007]
 
 ### Phase 5: Smoke Evidence, Validation, and Review Readiness
 
-- [ ] T022 Produce or update the committed beta3 smoke evidence artifact at [beta3-smoke-evidence.md](file:///C:/tmp/Specrew-main-boundary-auth/specs/139-boundary-authorization-prompt-truth/smoke/beta3-smoke-evidence.md). The artifact must record tested version, fresh project path, host/runtime, stop boundary, `plan.md` pre-approval state, human re-entry packet excerpt, `.squad/decisions.md` approval state, and PASS/FAIL. [effort: 0.75 SP] [FR-022] [SC-006, SC-011]
-- [ ] T023 Run the selected focused tests plus repo governance validation. At minimum, run the focused prompt/status/handoff tests selected in T003 and [validate-governance.ps1](file:///C:/tmp/Specrew-main-boundary-auth/.specify/extensions/specrew-speckit/scripts/validate-governance.ps1). Record test commands and outcomes for review evidence. [effort: 0.5 SP] [FR-007, FR-021, FR-022, TG-006] [SC-001, SC-002, SC-003, SC-004, SC-005, SC-006, SC-007, SC-008, SC-009, SC-010, SC-011]
-- [ ] T024 Prepare review evidence with a Proposal 145-style gap ledger classifying lifecycle/governance behavior as `implemented`, `enforced`, `observable`, and `documented`. Any gap in prompt truth, state snapshot, packet shape, fixtures, smoke evidence, or status-check coverage must be fixed or explicitly sent back before release promotion. [effort: 0.5 SP] [FR-022, TG-006] [SC-011] [review-lens: output-synthesis]
+- [ ] T027 Produce or update the committed beta3 smoke evidence artifact at [beta3-smoke-evidence.md](file:///C:/tmp/Specrew-main-boundary-auth/specs/139-boundary-authorization-prompt-truth/smoke/beta3-smoke-evidence.md). The artifact must record tested version, fresh project path, host/runtime, stop boundary, `plan.md` pre-approval state, human re-entry packet excerpt, `.squad/decisions.md` approval state, and PASS/FAIL. [effort: 0.75 SP] [FR-022] [SC-006, SC-011]
+- [ ] T028 Run the selected focused tests plus repo governance validation. At minimum, run the focused prompt/status/handoff tests selected in T003 and [validate-governance.ps1](file:///C:/tmp/Specrew-main-boundary-auth/.specify/extensions/specrew-speckit/scripts/validate-governance.ps1). Record test commands and outcomes for review evidence. [effort: 0.5 SP] [FR-007, FR-021, FR-022, TG-006] [SC-001, SC-002, SC-003, SC-004, SC-005, SC-006, SC-007, SC-008, SC-009, SC-010, SC-011, SC-012, SC-013, SC-014, SC-015]
+- [ ] T029 Prepare review evidence with a Proposal 145-style gap ledger classifying lifecycle/governance behavior as `implemented`, `enforced`, `observable`, and `documented`. Any gap in prompt truth, state snapshot, packet shape, fixtures, smoke evidence, or status-check coverage must be fixed or explicitly sent back before release promotion. [effort: 0.5 SP] [FR-022, FR-023, FR-024, FR-025, FR-026, FR-027, FR-028, TG-006] [SC-011, SC-012, SC-013, SC-014, SC-015] [review-lens: output-synthesis]
+- [ ] T030 Confirm the final implementation does not expand into full Proposal 150, hook enforcement, broad historical Proposal 151 migration, or lifecycle redesign; record any scope-risk finding in review evidence before release promotion. [effort: 0.25 SP] [TG-005] [SC-011]
 
 ## Dependency Graph
 
@@ -68,17 +74,19 @@ T001 -> T002 -> T003
 T003 -> T004 -> T005 -> T006
 T004 -> T007 -> T008 -> T009 -> T010
 T007,T008,T009 -> T011 -> T012,T013,T014,T015 -> T016
-T011,T014 -> T017,T018,T019
-T003 -> T020 -> T021
-T006,T010,T016,T017,T018,T019,T021 -> T022 -> T023 -> T024
+T011,T014,T015 -> T017,T018,T019,T020,T021
+T011,T014 -> T022,T023,T024
+T003 -> T025 -> T026
+T006,T010,T016,T021,T022,T023,T024,T026 -> T027 -> T028 -> T029 -> T030
 ```
 
 ## Parallel Opportunities
 
 - T004 and T003 are sequentially gated by context and test discovery, but T007/T008/T009 can be implemented in close succession once policy resolution shape is clear.
 - T012, T013, T014, and T015 can be split by packet section ownership after T011 lands.
-- T017, T018, and T019 can run in parallel after the packet contract surface exists.
-- T020/T021 can proceed independently from packet-fixture work once T003 selects the validation surface.
+- T017, T018, T019, T020, and T021 can run in parallel after the packet contract surface exists.
+- T022, T023, and T024 can run in parallel after the packet contract surface exists.
+- T025/T026 can proceed independently from packet-fixture work once T003 selects the validation surface.
 
 ## Quality Gates and Acceptance Criteria
 
@@ -94,7 +102,8 @@ T006,T010,T016,T017,T018,T019,T021 -> T022 -> T023 -> T024
 - Generated [start-context.json](file:///C:/tmp/Specrew-main-boundary-auth/.specrew/start-context.json) includes `boundary_enforcement.policy_classes`.
 - Generated prompt does not contain the beta2-bad four-gate-only or auto-chain guidance.
 - Generated prompt includes all six human re-entry packet sections and contextual prompt guidance.
-- Tests include positive prompt contract coverage, negative beta2-bad prompt coverage, missing `Why I stopped`, approve-only handoff, context-free prompt fixture, and `Status: Approved` contradiction coverage.
+- Generated future prompt uses the packet as the primary stop contract without requiring duplicate legacy `=== SPECREW HANDOFF ===` output.
+- Tests include positive prompt contract coverage, negative beta2-bad prompt coverage, missing `Why I stopped`, approve-only handoff, context-free prompt fixture, `discuss prompt #N`, and `Status: Approved` contradiction coverage.
 - [beta3-smoke-evidence.md](file:///C:/tmp/Specrew-main-boundary-auth/specs/139-boundary-authorization-prompt-truth/smoke/beta3-smoke-evidence.md) is committed with required evidence fields.
 
 ### Review Complete
@@ -110,10 +119,11 @@ T006,T010,T016,T017,T018,T019,T021 -> T022 -> T023 -> T024
 | T004-T006 | US1 | FR-001, FR-002, FR-004, FR-020 | SC-001, SC-003 | Functional correctness, state truth |
 | T007-T010 | US1, US3 | FR-001, FR-003, FR-004, FR-006, FR-007 | SC-002, SC-003, SC-006 | Functional correctness, test integrity |
 | T011-T016 | US2, US3 | FR-008 through FR-019 | SC-004, SC-005, SC-008, SC-009, SC-010 | Human factors, functional correctness |
-| T017-T019 | US2, US3 | FR-009, FR-011, FR-014, FR-015, FR-016, FR-018 | SC-008, SC-009, SC-010 | Test integrity |
-| T020-T021 | US1, US3 | FR-005, FR-021, TG-005 | SC-007 | Functional correctness, system safety |
-| T022 | US1, US2, US3 | FR-022 | SC-006, SC-011 | System safety, release evidence |
-| T023-T024 | US1, US2, US3 | FR-007, FR-021, FR-022, TG-006 | SC-001 through SC-011 | Output synthesis |
+| T017-T021 | US2, US3 | FR-017, FR-023, FR-024, FR-025, FR-026, FR-027, FR-028 | SC-012, SC-013, SC-014, SC-015 | Human factors, test integrity |
+| T022-T024 | US2, US3 | FR-009, FR-011, FR-014, FR-015, FR-016, FR-018 | SC-008, SC-009, SC-010 | Test integrity |
+| T025-T026 | US1, US3 | FR-005, FR-021, TG-005 | SC-007 | Functional correctness, system safety |
+| T027 | US1, US2, US3 | FR-022 | SC-006, SC-011 | System safety, release evidence |
+| T028-T030 | US1, US2, US3 | FR-007, FR-021, FR-022, FR-023, FR-024, FR-025, FR-026, FR-027, FR-028, TG-005, TG-006 | SC-001 through SC-015 | Output synthesis |
 
 ## Effort Verification
 
@@ -122,9 +132,9 @@ T006,T010,T016,T017,T018,T019,T021 -> T022 -> T023 -> T024
 | Context and hygiene | T001-T003 | 1.5 |
 | Policy and state | T004-T006 | 2.0 |
 | Prompt truth | T007-T010 | 2.5 |
-| Packet contract | T011-T016 | 3.75 |
-| Fixtures and status check | T017-T021 | 3.0 |
-| Smoke, validation, review readiness | T022-T024 | 1.75 |
+| Packet contract | T011-T021 | 6.75 |
+| Fixtures and status check | T022-T026 | 3.0 |
+| Smoke, validation, review readiness | T027-T030 | 2.0 |
 
 The summed task markup is intentionally conservative for a release-blocking governance slice. If implementation discovers overlap that lowers effort, retain the task boundaries for review traceability rather than merging away required evidence.
 

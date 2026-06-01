@@ -18,6 +18,8 @@ The feature also replaces thin approval prompts with the clarified six-section h
 - `Discussion prompts`
 - `What I need from you`
 
+The future generated prompt should use that packet as the primary stop contract rather than requiring duplicate legacy `=== SPECREW HANDOFF ===` output. Current handoff blocks remain transitional until the feature is implemented. Packet review targets must include bare `file:///` links, release-blocking items must be highlighted, discussion prompts must be shown together with an "approve with the defaults" affordance, and `discuss prompt #N` must run a short item-specific discussion loop before asking again for explicit boundary approval.
+
 The implementation remains narrow: it does not implement full Proposal 150, hook-based runtime enforcement, broad historical Proposal 151 migration, or a new lifecycle model.
 
 ## Context Load
@@ -122,7 +124,8 @@ Boundary commits are durable evidence. Each lifecycle boundary must be committed
    - missing `Why I stopped`
    - approve-only handoff without discussion prompts
 6. Add the narrow `Status: Approved` without human verdict evidence check.
-7. Add committed beta3 smoke evidence under [smoke/](file:///C:/tmp/Specrew-main-boundary-auth/specs/139-boundary-authorization-prompt-truth/smoke/).
+7. Add grouped discussion prompt and `discuss prompt #N` guidance without expanding into runtime hook enforcement.
+8. Add committed beta3 smoke evidence under [smoke/](file:///C:/tmp/Specrew-main-boundary-auth/specs/139-boundary-authorization-prompt-truth/smoke/).
 
 ## FR Traceability Matrix
 
@@ -150,6 +153,12 @@ Boundary commits are durable evidence. Each lifecycle boundary must be committed
 | FR-020 | Write `boundary_enforcement.policy_classes` snapshot. | Start-context JSON assertion. |
 | FR-021 | Narrow status/verdict evidence check. | Validator/unit fixture with `Status: Approved` and no verdict evidence. |
 | FR-022 | Committed beta3 smoke evidence. | Smoke artifact with version, project path, stop boundary, plan state, packet excerpt, PASS/FAIL. |
+| FR-023 | Human re-entry packet is the primary future stop contract, not duplicated with legacy handoff block. | Prompt assertion for no required legacy duplication. |
+| FR-024 | Bare `file:///` links in primary packet review targets. | Positive review-target assertion. |
+| FR-025 | High-impact/release-blocking items called out in review section. | Prompt assertion for `Status: Approved` and beta3 smoke evidence callouts. |
+| FR-026 | Discussion prompts shown together with approve-with-defaults affordance. | Positive grouped-prompt assertion. |
+| FR-027 | `discuss prompt #N` loop summarizes decision and re-asks for explicit approval. | Prompt/fixture assertion for discussion-loop semantics. |
+| FR-028 | Response options include approve as-is, approve with instructions, send back, and discuss prompt `#N`. | Positive response-option assertion. |
 
 ## Test Plan
 
@@ -160,6 +169,7 @@ Boundary commits are durable evidence. Each lifecycle boundary must be committed
 | Auto-chain prevention | Prompt says readiness helpers do not authorize boundary crossing. | `continue automatically through` plan/tasks fixture fails. |
 | Six-section packet | Generated packet contract includes all six sections. | Missing `Why I stopped` fixture fails. |
 | Discussion prompts | Targeted prompt includes context/default/consequence; no-known-dilemma prompt uses general improvement question. | Approve-only fixture and context-free targeted prompt fail. |
+| Discussion loop | Generated guidance supports grouped prompts, approve-with-defaults, and `discuss prompt #N`. | Missing grouped prompts or no renewed explicit approval after discussion fails. |
 | Status approval contradiction | Feature artifact `Status: Approved` with no verdict evidence is flagged. | `Status: Ready for Planning` or `Status: Approved` with matching verdict evidence does not fail. |
 | Smoke evidence | Beta3 smoke records tested version, fresh project path, stop boundary, pre-approval `plan.md` state, packet excerpt, PASS/FAIL. | Missing smoke fields block release closeout. |
 

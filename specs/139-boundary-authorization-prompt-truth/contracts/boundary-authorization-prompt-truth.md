@@ -46,6 +46,10 @@ Every human-judgment boundary stop must render the canonical six sections.
 - A stop packet asking only `approve?` without discussion prompts is non-compliant.
 - Targeted discussion prompts require context unless there is no known dilemma and the general review question is used.
 - Review targets use bare `file:///` links.
+- The future generated packet is the primary stop contract and must not require duplicate legacy `=== SPECREW HANDOFF ===` output for the same stop.
+- Discussion prompts are shown together with the guidance: "You can answer any prompt that should change direction, or approve with the defaults."
+- Response options include approve as-is, approve with instructions, send back, and discuss prompt `#N`.
+- `discuss prompt #N` enters a short discussion loop for that item only, then requires the agent to summarize the decision and request explicit boundary approval again.
 
 ## Narrow Status Approval Check
 

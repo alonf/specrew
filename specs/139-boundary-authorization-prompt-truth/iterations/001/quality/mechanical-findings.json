@@ -1,0 +1,10 @@
+{
+  "schema": "v1",
+  "feature": "139-boundary-authorization-prompt-truth",
+  "iteration": "001",
+  "status": "planned",
+  "findings": [],
+  "notes": [
+    "Mechanical checks are planned after implementation via T028."
+  ]
+}
