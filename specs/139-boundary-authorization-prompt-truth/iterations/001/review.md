@@ -3,6 +3,7 @@
 **Schema**: v1
 **Reviewed**: 2026-06-01
 **Overall Verdict**: accepted
+**Current Review Ref**: 2b84245284f3a530609f24cd24d18f9dbbfee5ee
 
 ## Task Verdicts
 
@@ -56,6 +57,21 @@
 | System safety / release evidence | pass for implementation review: automated pre-publish beta3 smoke is committed; published beta3 Copilot/Squad replay remains release-promotion work before stable. |
 | Output synthesis | pass: review artifacts classify behavior as implemented, enforced, observable, and documented. |
 
+## Review Addendum: D-006 at HEAD 2b842452
+
+**Reviewed Ref**: 2b84245284f3a530609f24cd24d18f9dbbfee5ee
+**Scope**: D-006 enforcement-path repair after accepted review.
+**Verdict**: accepted for feature-closeout evidence; release-closeout remains blocked until explicit approval and published beta3 replay.
+
+| Proposal 145 Lens | D-006 Review Result |
+| --- | --- |
+| Branch hygiene | pass: current branch `139-boundary-authorization-prompt-truth` has no upstream and is not pushed yet. This is intentionally deferred to release-closeout Step 5, which is the branch-hygiene action that publishes the feature branch. Unrelated runtime/session dirty files remain unstaged and excluded. |
+| Functional correctness | pass: [handoff-governance-validator.ps1](file:///C:/tmp/Specrew-main-boundary-auth/extensions/specrew-speckit/validators/handoff-governance-validator.ps1) now hard-fails markdown file links in boundary handoffs, keeps bare repository paths hard-failing, and [sync-boundary-state.ps1](file:///C:/tmp/Specrew-main-boundary-auth/scripts/internal/sync-boundary-state.ps1) validates supplied handoff text before boundary state advancement. |
+| Test integrity | pass: [boundary-authorization-prompt-truth.tests.ps1](file:///C:/tmp/Specrew-main-boundary-auth/tests/unit/boundary-authorization-prompt-truth.tests.ps1) covers the exact failure where the primary six-section packet has bare `specs/...` paths while the legacy handoff block is compliant, covers markdown file-link primary packet references, validates stored packet evidence, and proves sync rejects invalid visible packet text before state advancement. [validate-governance.interaction-model.tests.ps1](file:///C:/tmp/Specrew-main-boundary-auth/tests/unit/validate-governance.interaction-model.tests.ps1) still passes for Feature 016 navigation behavior. |
+| Code quality | pass: the repair is localized to the common validation and boundary-sync path, mirrors remain synchronized, no package changes were introduced, and the generated-start prompt contradiction was removed rather than worked around in a one-off packet. |
+| System safety / release evidence | pass for feature-closeout: invalid visible packets now block before state advancement. Published beta3 Copilot/Squad replay remains a release-closeout blocker before stable promotion, recorded in [beta3-smoke-evidence.md](file:///C:/tmp/Specrew-main-boundary-auth/specs/139-boundary-authorization-prompt-truth/smoke/beta3-smoke-evidence.md). |
+| Output synthesis | pass: D-006 is recorded in [drift-log.md](file:///C:/tmp/Specrew-main-boundary-auth/specs/139-boundary-authorization-prompt-truth/iterations/001/drift-log.md), [quality-evidence.md](file:///C:/tmp/Specrew-main-boundary-auth/specs/139-boundary-authorization-prompt-truth/iterations/001/quality/quality-evidence.md), [code-map.md](file:///C:/tmp/Specrew-main-boundary-auth/specs/139-boundary-authorization-prompt-truth/iterations/001/code-map.md), and [closeout-dashboard.md](file:///C:/tmp/Specrew-main-boundary-auth/specs/139-boundary-authorization-prompt-truth/closeout-dashboard.md). |
+
 ## FR/SC Coverage
 
 - FR-001 through FR-004: policy-derived boundary truth and clarify-to-plan stop behavior implemented in start prompt/state generation and covered by unit/integration tests.
@@ -78,10 +94,12 @@
 | Command | Result | Notes |
 | --- | --- | --- |
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tests\unit\validate-governance.interaction-model.tests.ps1` | PASS | Verifies Feature 016 interaction-model/docs repair. |
-| `pwsh -NoProfile -ExecutionPolicy Bypass -File tests\unit\boundary-authorization-prompt-truth.tests.ps1` | PASS | Verifies Feature 139 prompt/state/fixture/status-contract coverage. |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tests\unit\boundary-authorization-prompt-truth.tests.ps1` | PASS at HEAD 2b842452 | Verifies Feature 139 prompt/state/fixture/status-contract coverage plus D-006 visible packet enforcement and pre-advance sync rejection. |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tests\unit\validate-governance.interaction-model.tests.ps1` | PASS at HEAD 2b842452 | Verifies Feature 016 interaction-model navigation fixture still passes after D-006. |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File .specify\extensions\specrew-speckit\scripts\run-mechanical-checks.ps1 -ProjectPath . -FeaturePath specs\139-boundary-authorization-prompt-truth -IterationPath specs\139-boundary-authorization-prompt-truth\iterations\001 -SpecPath specs\139-boundary-authorization-prompt-truth\spec.md` | PASS at HEAD 2b842452 | Regenerated [mechanical-findings.json](file:///C:/tmp/Specrew-main-boundary-auth/specs/139-boundary-authorization-prompt-truth/iterations/001/quality/mechanical-findings.json) with no findings. |
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tests\integration\launch-mode-boundary-enforcement.tests.ps1` | PASS | Verifies boundary authorization behavior remains deterministic. |
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tests\integration\start-command.ps1` | PASS | Verifies start artifact generation after prompt/state changes. |
-| `pwsh -NoProfile -ExecutionPolicy Bypass -File .specify\extensions\specrew-speckit\scripts\validate-governance.ps1 -ProjectPath .` | PASS after review artifact repair | Existing historical warnings only; no Feature 139 release-blocking failures. |
+| `$env:SPECREW_MODULE_PATH = (Resolve-Path -LiteralPath '.').Path; pwsh -NoProfile -ExecutionPolicy Bypass -File .specify\extensions\specrew-speckit\scripts\validate-governance.ps1 -ProjectPath . -NoCacheRead` | PASS at HEAD 2b842452 after D-006 packet sync | Existing historical warnings only; no Feature 139 release-blocking failures. |
 
 ## Review Verdict
 

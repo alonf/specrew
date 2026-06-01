@@ -3,6 +3,7 @@
 **Schema**: v1
 **Reviewed**: 2026-06-01
 **Overall Verdict**: accepted
+**Current Coverage Ref**: 2b84245284f3a530609f24cd24d18f9dbbfee5ee
 
 ## Test Strategy
 
@@ -13,7 +14,9 @@ Feature 139 is a lifecycle/governance feature, so coverage is focused on prompt 
 | Command | Result | Notes |
 | ------- | ------ | ----- |
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tests\unit\validate-governance.interaction-model.tests.ps1` | pass | Send-back repair verified; README post-commit protocol assertion passes. |
-| `pwsh -NoProfile -ExecutionPolicy Bypass -File tests\unit\boundary-authorization-prompt-truth.tests.ps1` | pass | Covers mirrors, parser checks, prompt contract, policy snapshot, handoff fixture rejection, and approved-status contradiction check. |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tests\unit\boundary-authorization-prompt-truth.tests.ps1` | pass at HEAD 2b842452 | Covers mirrors, parser checks, prompt contract, policy snapshot, handoff fixture rejection, approved-status contradiction check, D-006 markdown-link hard failures, compliant-legacy/bare-primary packet failure, stored packet evidence validation, and pre-advance sync rejection. |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tests\unit\validate-governance.interaction-model.tests.ps1` | pass at HEAD 2b842452 | Confirms Feature 016 navigation graduation still passes with D-006 enforcement changes. |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File .specify\extensions\specrew-speckit\scripts\run-mechanical-checks.ps1 -ProjectPath . -FeaturePath specs\139-boundary-authorization-prompt-truth -IterationPath specs\139-boundary-authorization-prompt-truth\iterations\001 -SpecPath specs\139-boundary-authorization-prompt-truth\spec.md` | pass at HEAD 2b842452 | Regenerated mechanical findings; no findings. |
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tests\integration\launch-mode-boundary-enforcement.tests.ps1` | pass | Confirms authorization behavior and policy seam remain deterministic. |
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tests\integration\start-command.ps1` | pass | Confirms `specrew start` still writes expected artifacts; rerun used a longer timeout after an initial harness timeout. |
 | `$env:SPECREW_MODULE_PATH=(Get-Location).Path; pwsh -NoProfile -ExecutionPolicy Bypass -File .specify\extensions\specrew-speckit\scripts\validate-governance.ps1 -ProjectPath .` | pass after review artifact repair | Historical warnings only; no Feature 139 release-blocking validation failures remain. |
@@ -32,6 +35,7 @@ Feature 139 is a lifecycle/governance feature, so coverage is focused on prompt 
 | Beta2-bad prompt phrase removal | `tests/unit/boundary-authorization-prompt-truth.tests.ps1` |
 | Six-section human re-entry packet | `tests/unit/boundary-authorization-prompt-truth.tests.ps1`; fixtures under `tests/unit/fixtures/139-boundary-authorization-prompt-truth/handoffs/` |
 | Bare `file:///`, release-blocking review callouts, grouped prompts, and `discuss prompt #N` | `tests/unit/boundary-authorization-prompt-truth.tests.ps1` |
+| D-006 visible primary packet enforcement | `tests/unit/boundary-authorization-prompt-truth.tests.ps1`; `tests/unit/validate-governance.interaction-model.tests.ps1`; `scripts/internal/sync-boundary-state.ps1` pre-advance gate |
 | Non-compliant handoff fixtures | `missing-why-stopped.md`; `approve-only-without-discussion.md`; `context-free-discussion-prompt.md` |
 | `Status: Approved` without verdict evidence | `tests/unit/boundary-authorization-prompt-truth.tests.ps1`; scoped `validate-governance.ps1` |
 | Send-back Feature 016 README repair | `tests/unit/validate-governance.interaction-model.tests.ps1`; D-003 in drift log |
@@ -46,6 +50,7 @@ Feature 139 is a lifecycle/governance feature, so coverage is focused on prompt 
 | Removal of beta2-bad four-gate / auto-chain guidance | yes | yes | yes | yes | No gap. |
 | Six-section human re-entry packet | yes | yes | yes | yes | No gap. |
 | Bare `file:///` review target guidance | yes | yes | yes | yes | No gap. |
+| D-006 visible packet enforcement | yes | yes | yes | yes | No gap. Bare primary packet paths fail even when the legacy handoff block is compliant; markdown file links fail in boundary packets; sync validates supplied packet text before state advancement. |
 | Contextual discussion prompts and `discuss prompt #N` loop | yes | yes | yes | yes | No gap. |
 | Future packet primary, no required legacy duplication | yes | yes | yes | yes | No gap. |
 | `Status: Approved` without verdict evidence check | yes | yes | yes | yes | No gap. |

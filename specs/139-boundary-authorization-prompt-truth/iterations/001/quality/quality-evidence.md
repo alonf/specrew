@@ -3,6 +3,7 @@
 **Feature**: 139-boundary-authorization-prompt-truth
 **Iteration**: 001
 **Status**: review evidence accepted
+**Current Evidence Ref**: 2b84245284f3a530609f24cd24d18f9dbbfee5ee
 
 ## Planned Evidence
 
@@ -41,7 +42,11 @@ pwsh -File .specify/extensions/specrew-speckit/scripts/validate-governance.ps1 -
 - Send-back repair D-004: `pwsh -NoProfile -ExecutionPolicy Bypass -File .specify\extensions\specrew-speckit\scripts\validate-governance.ps1 -ProjectPath .` — PASS for scoped Feature 139 validation after the repair. Remaining warnings are historical release-process warnings and legacy empty handoff-evidence warnings, not Feature 139 hard failures.
 - Send-back repair D-005: direct handoff-validator replay of the exact bare primary review-section packet reported by the human — FAIL as expected with `validation-fail.bare-path-in-boundary-handoff` for all four bare repository paths. This proves the validator catches the exact case when the emitted packet text is supplied.
 - Send-back repair D-005: the enforcement gap was packet/evidence parity, not bare-path detection. The generated prompt and coordinator governance template now require the packet text recorded as boundary evidence to be the exact human-visible packet emitted for approval, without post-validation summary or artifact-reference rewrite.
-- Send-back repair D-006: the escape after D-004 and D-005 was that markdown file links were stripped before bare-path scanning, and boundary sync recorded evidence after state advancement instead of validating supplied packet text as a hard pre-advance gate. `pwsh -NoProfile -ExecutionPolicy Bypass -File tests\unit\boundary-authorization-prompt-truth.tests.ps1` now covers bare primary `specs/...` paths with a compliant legacy block, markdown-link primary packet references with a compliant legacy block, stored evidence validation for the exact visible packet text, and boundary-sync rejection before state advancement.
+- Send-back repair D-006: the escape after D-004 and D-005 was that markdown file links were stripped before bare-path scanning, and boundary sync recorded evidence after state advancement instead of validating supplied packet text as a hard pre-advance gate. `pwsh -NoProfile -ExecutionPolicy Bypass -File tests\unit\boundary-authorization-prompt-truth.tests.ps1` PASS at HEAD `2b842452` covers bare primary `specs/...` paths with a compliant legacy block, markdown-link primary packet references with a compliant legacy block, stored evidence validation for the exact visible packet text, and boundary-sync rejection before state advancement.
+- Send-back repair D-006: `pwsh -NoProfile -ExecutionPolicy Bypass -File tests\unit\validate-governance.interaction-model.tests.ps1` PASS at HEAD `2b842452`; Feature 016 navigation graduation remains covered after the common validator change.
+- Send-back repair D-006: `.specify\extensions\specrew-speckit\scripts\run-mechanical-checks.ps1` PASS at HEAD `2b842452`; [mechanical-findings.json](file:///C:/tmp/Specrew-main-boundary-auth/specs/139-boundary-authorization-prompt-truth/iterations/001/quality/mechanical-findings.json) is regenerated and no longer `planned`.
+- Send-back repair D-006: scoped governance validation PASS at HEAD `2b842452` after exact packet sync; remaining warnings are historical empty handoff-evidence and Feature 048 dashboard release-process risks, not Feature 139 failures.
+- Branch hygiene: branch `139-boundary-authorization-prompt-truth` has no upstream and is not pushed yet. Release-closeout Step 5 is the branch-hygiene action that will publish it.
 
 ## Gap Ledger
 

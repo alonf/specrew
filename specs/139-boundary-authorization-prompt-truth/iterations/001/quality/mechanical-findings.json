@@ -1,10 +1,11 @@
 {
-  "schema": "v1",
-  "feature": "139-boundary-authorization-prompt-truth",
-  "iteration": "001",
-  "status": "planned",
-  "findings": [],
-  "notes": [
-    "Mechanical checks are planned after implementation via T028."
-  ]
+  "schemaVersion": "v1",
+  "featureRef": "specs/139-boundary-authorization-prompt-truth/spec.md",
+  "iterationRef": "specs/139-boundary-authorization-prompt-truth/iterations/001",
+  "generatedAt": "2026-06-01T15:01:05Z",
+  "generator": {
+    "name": "specrew-mechanical-checks",
+    "version": "0.30.0"
+  },
+  "findings": []
 }
