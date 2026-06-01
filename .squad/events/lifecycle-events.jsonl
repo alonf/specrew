@@ -1,1 +1,2 @@
 {"event_type":"boundary-sync","payload":{"boundary_type":"specify","auth_commit_hash":"3222cd05","feature_ref":"140-design-analysis-gate","task_id":null,"iteration_number":""},"recorded_at":"2026-06-01T23:30:05Z","schema":"v1"}
+{"payload":{"feature_ref":"140-design-analysis-gate","iteration_number":"","boundary_type":"clarify","auth_commit_hash":"7613d91f","task_id":null},"recorded_at":"2026-06-01T23:40:52Z","schema":"v1","event_type":"boundary-sync"}

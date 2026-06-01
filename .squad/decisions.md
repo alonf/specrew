@@ -23091,6 +23091,15 @@ Documented in `specs/049-pipeline-hardening-intake/iterations/005/drift-log.md` 
 - **Boundary Type**: specify
 - **Feature Ref**: 140-design-analysis-gate
 - **Iteration Number**: (none)
+
+## 2026-06-01T23:40:53Z — Boundary sync: clarify
+
+- **Boundary Type**: clarify
+- **Feature Ref**: 140-design-analysis-gate
+- **Iteration Number**: (none)
+- **Task ID**: (none)
+- **Auth Commit Hash**: 7613d91f
+- **Recorded At**: 2026-06-01T23:40:52Z
 - **Task ID**: (none)
 - **Auth Commit Hash**: 3222cd05
 - **Recorded At**: 2026-06-01T23:30:05Z
