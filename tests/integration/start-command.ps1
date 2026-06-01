@@ -421,6 +421,87 @@ if ($freshOutput -match '/\.specrew/') {
 }
 Write-Pass "Fresh repo start enters intake-or-resume mode"
 
+Write-Host "`nTest 2a: generated orientation matches selected host and runtime status"
+$hostOrientationCases = @(
+    @{
+        Host = 'codex'
+        ExpectedHostText = 'OpenAI Codex CLI'
+        ExpectedRuntime = 'bootstrap_only'
+        RequiredPatterns = @()
+        ForbiddenPatterns = @('Claude Code', 'GitHub Copilot', 'Squad runtime', 'plays each role', 'I run all of them inside this session')
+    },
+    @{
+        Host = 'claude'
+        ExpectedHostText = 'Claude Code CLI'
+        ExpectedRuntime = 'bootstrap_only'
+        RequiredPatterns = @()
+        ForbiddenPatterns = @('GitHub Copilot', 'Squad runtime', 'plays each role', 'I run all of them inside this session')
+    },
+    @{
+        Host = 'copilot'
+        ExpectedHostText = 'GitHub Copilot CLI'
+        ExpectedRuntime = 'squad-runtime'
+        RequiredPatterns = @('Squad runtime coordinates')
+        ForbiddenPatterns = @('Claude Code', 'plays each role', 'I run all of them inside this session')
+    }
+)
+
+foreach ($case in $hostOrientationCases) {
+    $hostStartResult = Invoke-TestScript -ScriptPath $entryScript -ArgumentList @(
+        'start',
+        '--project-path', $projectRoot,
+        '--host', $case.Host,
+        '--no-launch',
+        ('Orientation replay for {0}' -f $case.Host)
+    )
+    if ($hostStartResult.ExitCode -ne 0) {
+        Write-Fail ("specrew start --host {0} --no-launch should succeed for orientation validation." -f $case.Host)
+        foreach ($line in $hostStartResult.Output) {
+            Write-Host $line
+        }
+        exit 1
+    }
+
+    $hostPromptContent = Get-Content -LiteralPath $freshPromptPath -Raw -Encoding UTF8
+    $hostContext = Get-Content -LiteralPath $freshContextPath -Raw -Encoding UTF8 | ConvertFrom-Json
+    $orientationMatch = [regex]::Match($hostPromptContent, '(?s)Welcome .+?and drafting the spec">\.')
+    if (-not $orientationMatch.Success) {
+        Write-Fail ("Prompt orientation block was not found for host {0}." -f $case.Host)
+        exit 1
+    }
+    $orientationBlock = $orientationMatch.Value
+
+    if ($hostContext.selected_host -ne $case.Host) {
+        Write-Fail ("start-context selected_host={0}; expected {1}" -f $hostContext.selected_host, $case.Host)
+        exit 1
+    }
+    if ($hostContext.crew_runtime_status -ne $case.ExpectedRuntime) {
+        Write-Fail ("start-context crew_runtime_status={0}; expected {1} for host {2}" -f $hostContext.crew_runtime_status, $case.ExpectedRuntime, $case.Host)
+        exit 1
+    }
+    if ($orientationBlock -notmatch [regex]::Escape($case.ExpectedHostText)) {
+        Write-Fail ("Prompt orientation for {0} did not name expected host text '{1}'." -f $case.Host, $case.ExpectedHostText)
+        exit 1
+    }
+    foreach ($requiredPattern in @($case.RequiredPatterns)) {
+        if (-not [string]::IsNullOrWhiteSpace($requiredPattern) -and $orientationBlock -notmatch [regex]::Escape($requiredPattern)) {
+            Write-Fail ("Prompt orientation for {0} missed required runtime text '{1}'." -f $case.Host, $requiredPattern)
+            exit 1
+        }
+    }
+    foreach ($forbiddenPattern in @($case.ForbiddenPatterns)) {
+        if ($orientationBlock -match [regex]::Escape($forbiddenPattern)) {
+            Write-Fail ("Prompt orientation for {0} contains false host/runtime claim '{1}'." -f $case.Host, $forbiddenPattern)
+            exit 1
+        }
+    }
+    if ($hostPromptContent -match [regex]::Escape('<<SPECREW_HOST_ORIENTATION_BLOCK>>')) {
+        Write-Fail ("Prompt orientation marker was not replaced for host {0}." -f $case.Host)
+        exit 1
+    }
+}
+Write-Pass 'Generated prompt orientation agrees with start-context host truth for Codex, Claude, and Copilot/Squad'
+
 Write-Host "`nTest 2aa: boundary enforcement bypass requires an explicit reason"
 $missingReasonResult = Invoke-TestScript -ScriptPath $entryScript -ArgumentList @(
     'start',

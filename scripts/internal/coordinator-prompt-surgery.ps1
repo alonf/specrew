@@ -35,6 +35,70 @@ function Get-SpecrewOriginalCoordinatorHeaderPattern {
     return '(?m)^You are Squad running inside a Specrew-bootstrapped repository\.'
 }
 
+function Get-SpecrewHostOrientationMarker {
+    return '<<SPECREW_HOST_ORIENTATION_BLOCK>>'
+}
+
+function Get-SpecrewHostOrientationBlock {
+    <#
+    .SYNOPSIS
+    Renders the visible first-output orientation block for the selected launch host.
+
+    .DESCRIPTION
+    The shared start prompt owns lifecycle requirements only. Host-facing identity
+    text is rendered here from the selected host manifest plus the runtime status
+    recorded into start-context.json, so the visible orientation cannot drift into
+    a stale hard-coded host/runtime claim.
+    #>
+    param(
+        [Parameter(Mandatory = $true)]
+        [ValidateSet('copilot', 'claude', 'codex', 'antigravity', 'cursor')]
+        [string]$HostKind,
+
+        [string]$CrewRuntimeStatus = 'bootstrap_only'
+    )
+
+    $manifest = Get-HostManifest -Kind $HostKind
+    $displayName = if ($manifest.ContainsKey('DisplayName') -and -not [string]::IsNullOrWhiteSpace([string]$manifest.DisplayName)) {
+        [string]$manifest.DisplayName
+    }
+    else {
+        $HostKind
+    }
+
+    $hasSquadRuntime = ([string]$CrewRuntimeStatus -eq 'squad-runtime')
+    $runtimeName = if ($manifest.ContainsKey('CrewRuntimeDisplayName') -and -not [string]::IsNullOrWhiteSpace([string]$manifest.CrewRuntimeDisplayName)) {
+        [string]$manifest.CrewRuntimeDisplayName
+    }
+    else {
+        'Crew role runtime'
+    }
+
+    $howThisWorks = if ($hasSquadRuntime) {
+        "How this works: Specrew governs the spec -> plan -> implement -> review -> retro`nlifecycle. The $runtimeName runtime coordinates the Spec Steward, Planner,`nImplementer, Reviewer, and Retro Facilitator roles for this session."
+    }
+    else {
+        "How this works: Specrew governs the spec -> plan -> implement -> review -> retro`nlifecycle. This $displayName session follows the saved lifecycle prompt and`nstructured start context directly; a separate role runtime is not active for this launch."
+    }
+
+    return @"
+``````markdown
+Welcome — I'm your Specrew Crew coordinator (running on $displayName).
+
+$howThisWorks
+
+What I'll ask from you: clarify questions when something is genuinely ambiguous
+(2-3 max per phase), and an approve/redirect verdict at each boundary stop. I'll
+emit a clear human re-entry packet every time I need you.
+
+What you can browse: artifacts land under file:///<project-root-url>/specs/<feature>/ — spec file file:///<project-root-url>/specs/<feature>/spec.md, plan file file:///<project-root-url>/specs/<feature>/plan.md, tasks file file:///<project-root-url>/specs/<feature>/tasks.md, plus the iteration artifacts under file:///<project-root-url>/specs/<feature>/iterations/001/. Open another terminal and run ``code .`` to browse them while I work. After each iteration close, your dashboard lives at file:///<project-root-url>/specs/<feature>/iterations/<NNN>/dashboard.md.
+
+Starting now: <one specific action — e.g. "creating feature 001-tip-calculator
+and drafting the spec">.
+``````
+"@
+}
+
 function Get-SpecrewHostCoordinatorRules {
     <#
     .SYNOPSIS
@@ -102,7 +166,9 @@ function Invoke-SpecrewCoordinatorPromptSurgery {
 
         [Parameter(Mandatory = $true)]
         [ValidateSet('copilot', 'claude', 'codex', 'antigravity', 'cursor')]
-        [string]$HostKind
+        [string]$HostKind,
+
+        [string]$CrewRuntimeStatus = 'bootstrap_only'
     )
 
     if ([string]::IsNullOrEmpty($Prompt)) {
@@ -113,6 +179,11 @@ function Invoke-SpecrewCoordinatorPromptSurgery {
 
     # Surgery 1: universal header rewrite (FR-011) — applies to ALL hosts as a built-in baseline.
     $result = [regex]::Replace($result, (Get-SpecrewOriginalCoordinatorHeaderPattern), (Get-SpecrewUniversalCoordinatorHeader))
+
+    # Surgery 1b: host-facing orientation block rendered from the selected host package.
+    $orientationMarker = [regex]::Escape((Get-SpecrewHostOrientationMarker))
+    $orientationBlock = Get-SpecrewHostOrientationBlock -HostKind $HostKind -CrewRuntimeStatus $CrewRuntimeStatus
+    $result = [regex]::Replace($result, $orientationMarker, [System.Text.RegularExpressions.MatchEvaluator]{ param($m) $orientationBlock })
 
     # Surgery 2: per-host declarative rules
     $rules = Get-SpecrewHostCoordinatorRules -HostKind $HostKind

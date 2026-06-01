@@ -180,6 +180,40 @@ foreach ($hk in 'copilot', 'claude', 'codex') {
 }
 Write-Pass 'FR-011 universal header rewrite applied to all 3 hosts'
 
+# Test 9b: host orientation block is selected-host accurate and runtime-status scoped
+$orientationPrompt = @'
+You are Squad running inside a Specrew-bootstrapped repository.
+
+48. **Session opening orientation**
+
+<<SPECREW_HOST_ORIENTATION_BLOCK>>
+'@
+
+$codexOrientation = Invoke-SpecrewCoordinatorPromptSurgery -Prompt $orientationPrompt -HostKind 'codex' -CrewRuntimeStatus 'bootstrap_only'
+if ($codexOrientation -notmatch 'OpenAI Codex CLI') {
+    Write-Fail 'Codex orientation did not name the selected Codex host.'
+}
+if ($codexOrientation -match 'Claude Code|GitHub Copilot|Squad runtime|plays each role|I run all of them inside this session') {
+    Write-Fail "Codex orientation contains a false hard-coded host/runtime claim:`n$codexOrientation"
+}
+if ($codexOrientation -match [regex]::Escape('<<SPECREW_HOST_ORIENTATION_BLOCK>>')) {
+    Write-Fail 'Codex orientation marker was not replaced.'
+}
+
+$claudeOrientation = Invoke-SpecrewCoordinatorPromptSurgery -Prompt $orientationPrompt -HostKind 'claude' -CrewRuntimeStatus 'bootstrap_only'
+if ($claudeOrientation -notmatch 'Claude Code CLI') {
+    Write-Fail 'Claude orientation did not name the selected Claude host.'
+}
+if ($claudeOrientation -match 'GitHub Copilot|Squad runtime|plays each role|I run all of them inside this session') {
+    Write-Fail "Claude orientation contains a false hard-coded runtime claim:`n$claudeOrientation"
+}
+
+$copilotOrientation = Invoke-SpecrewCoordinatorPromptSurgery -Prompt $orientationPrompt -HostKind 'copilot' -CrewRuntimeStatus 'squad-runtime'
+if ($copilotOrientation -notmatch 'GitHub Copilot CLI' -or $copilotOrientation -notmatch 'Squad runtime coordinates') {
+    Write-Fail "Copilot/Squad orientation did not describe the active host/runtime accurately:`n$copilotOrientation"
+}
+Write-Pass 'Host orientation rendering is accurate for Codex, Claude, and Copilot/Squad'
+
 # Test 10: FR-012 Squad-runtime-path strip for non-Copilot hosts only
 $copilotRewritten = Invoke-SpecrewCoordinatorPromptSurgery -Prompt $samplePrompt -HostKind 'copilot'
 if ($copilotRewritten -notmatch '\.squad/decisions\.md|\.squad\\decisions\.md') {

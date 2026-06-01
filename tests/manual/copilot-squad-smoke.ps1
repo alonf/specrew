@@ -162,6 +162,34 @@ Write-Pass 'Specrew start produced handoff artifacts'
 $startOutput = $startResult.Output -join [Environment]::NewLine
 $startContext = Get-Content -LiteralPath $contextPath -Raw -Encoding UTF8 | ConvertFrom-Json
 $promptContent = Get-Content -LiteralPath $promptPath -Raw -Encoding UTF8
+$orientationMatch = [regex]::Match($promptContent, '(?s)Welcome .+?and drafting the spec">\.')
+if (-not $orientationMatch.Success) {
+    Write-Fail 'Smoke harness prompt is missing the host-rendered orientation block.'
+    exit 1
+}
+$orientationBlock = $orientationMatch.Value
+
+if ($startContext.selected_host -ne 'copilot') {
+    Write-Fail ("Smoke harness context selected_host={0}; expected copilot." -f $startContext.selected_host)
+    exit 1
+}
+
+if ($startContext.crew_runtime_status -ne 'squad-runtime') {
+    Write-Fail ("Smoke harness context crew_runtime_status={0}; expected squad-runtime for Copilot/Squad replay." -f $startContext.crew_runtime_status)
+    exit 1
+}
+
+if ($orientationBlock -notmatch 'GitHub Copilot CLI' -or $orientationBlock -notmatch 'Squad runtime coordinates') {
+    Write-Fail 'Smoke harness prompt orientation does not match the Copilot/Squad host truth in start-context.json.'
+    exit 1
+}
+
+foreach ($falseClaim in @('Claude Code', 'plays each role', 'I run all of them inside this session')) {
+    if ($orientationBlock -match [regex]::Escape($falseClaim)) {
+        Write-Fail ("Smoke harness prompt orientation contains false hard-coded host/runtime claim: {0}" -f $falseClaim)
+        exit 1
+    }
+}
 
 if ($promptContent -notmatch 'Do not invoke speckit\.implement until the human approves') {
     Write-Fail 'Smoke harness prompt is missing the explicit implementation-approval gate.'
