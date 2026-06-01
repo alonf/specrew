@@ -25,8 +25,9 @@
 | Stored evidence validation | checks actual emitted packet text, not only static prompt guidance or fixtures |
 | Historical empty handoff-evidence warnings | visible release-process risk only; scoped Feature 139 validation passes |
 | Dirty-state blocker handling | restored unrelated Feature 051 timestamp-only runtime noise in [tasks-progress.yml](file:///C:/tmp/Specrew-main-boundary-auth/specs/051-multi-session-foundation/iterations/003/tasks-progress.yml) before feature-closeout sync |
-| Published beta3 Copilot and Squad replay | release-closeout blocker before stable promotion |
-| Stable promotion | blocked until the published beta3 replay passes |
+| Published beta3 replay | FAIL at release-closeout Step 11 due D-007 false host/runtime orientation in clean Codex replay |
+| D-007 acceptance condition | repaired in the host-orientation rendering path; next prerelease must be published and replayed before stable promotion |
+| Stable promotion | blocked until the repaired published prerelease replay passes |
 
 ## Follow-Up Defects
 

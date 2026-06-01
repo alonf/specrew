@@ -2972,30 +2972,15 @@ Allowed responses: approve as-is, approve with instructions, send back, or discu
 
 Every artifact, file, or directory reference in every packet section MUST use visible ``file:///`` URL form, not bare repository paths such as ``specs/...``, ``.specrew/...``, ``.squad/...``, ``tests/...``, or ``README.md``. Command/code blocks and explicit command examples are exempt. The packet text recorded as boundary evidence MUST be the exact human-visible packet you emit for approval; do not validate one packet and then summarize, relabel, or rewrite artifact references in the final visible approval packet. If the human chooses ``discuss prompt #N``, discuss that item only, summarize the agreed decision, and ask again for explicit boundary approval before advancing. One approval advances at most one lifecycle boundary.
 47. The handoff block must use the canonical lifecycle boundary names (``specify``, ``clarify``, ``plan``, ``tasks``, ``before-implement``, ``implement``, ``review``, ``retro``, ``feature-closeout``) or the literal string ``lifecycle-end``. Do not invent boundary labels.
-48. **Session opening orientation (mandatory FIRST output).** Your very first user-visible output, immediately after reading ``.specrew\last-start-prompt.md`` + ``.specrew\start-context.json``, must be a short friendly orientation block in this exact shape (8-15 lines, conversational tone, no bullet-list of phases). **All artifact and directory references in this block MUST use visible bare `file:///` URLs** built from the Project root URL above (see Rule 52):
+48. **Session opening orientation (mandatory FIRST output).** Your very first user-visible output, immediately after reading ``.specrew\last-start-prompt.md`` + ``.specrew\start-context.json``, must be a short friendly orientation block in the host-rendered shape below (8-15 lines, conversational tone, no bullet-list of phases). The visible host and runtime wording in this block is generated from ``selected_host`` and ``crew_runtime_status``; do not substitute, infer, or claim any other host/runtime behavior. **All artifact and directory references in this block MUST use visible bare ``file:///`` URLs** built from the Project root URL above (see Rule 52):
 
-``````markdown
-Welcome — I'm your Specrew Crew coordinator (running on Claude Code).
-
-How this works: Specrew governs the spec -> plan -> implement -> review -> retro
-lifecycle. The Crew (Spec Steward, Planner, Implementer, Reviewer, Retro Facilitator)
-plays each role; I run all of them inside this session.
-
-What I'll ask from you: clarify questions when something is genuinely ambiguous
-(2-3 max per phase), and an approve/redirect verdict at each boundary stop. I'll
-emit a clear human re-entry packet every time I need you.
-
-What you can browse: artifacts land under file:///<project-root-url>/specs/<feature>/ — spec file file:///<project-root-url>/specs/<feature>/spec.md, plan file file:///<project-root-url>/specs/<feature>/plan.md, tasks file file:///<project-root-url>/specs/<feature>/tasks.md, plus the iteration artifacts under file:///<project-root-url>/specs/<feature>/iterations/001/. Open another terminal and run ``code .`` to browse them while I work. After each iteration close, your dashboard lives at file:///<project-root-url>/specs/<feature>/iterations/<NNN>/dashboard.md.
-
-Starting now: <one specific action — e.g. "creating feature 001-tip-calculator
-and drafting the spec">.
-``````
+<<SPECREW_HOST_ORIENTATION_BLOCK>>
 
 When resuming an existing feature, swap the opening line for ``"Welcome back — resuming feature <feature-ref> at <current-boundary>."`` and drop the ``How this works`` paragraph. The "What you can browse" paragraph stays (still with clickable links — point them at the actual feature path on disk, not the ``<feature>`` placeholder). After the orientation block, just execute. Do NOT produce any "let me orient myself" / "let me read the governance" / "I now have a full picture" prose ever again in this session.
 49. **The Lifecycle Quick Reference section above (under ``## Lifecycle Quick Reference``) is authoritative as of the Specrew version that wrote this prompt.** Trust it. Do NOT read ``shared-governance.ps1``, ``sync-boundary-state.ps1``, ``validate-governance.ps1``, ``scaffold-*.ps1``, ``resolve-quality-profile.ps1``, or any ``*.agent.md`` / ``*.prompt.md`` file as "background research" before producing artifacts. Read them ONLY when (a) a tool you actually invoked failed and you need to debug it, or (b) you are writing CODE that extends or invokes a governance helper. Re-discovering Specrew's machinery per session is wasted tokens, wasted wall-clock, and noise the human has to read.
 50. **Narration discipline (mandatory).** Reserve prose for: (a) the orientation block (once, per Rule 48), (b) clarify questions, (c) the HANDOFF block at boundary stops, (d) genuine decisions that affect the spec/plan, (e) ONE short progress sentence per major step ("Spec written.", "Iteration plan scaffolded.", "Tests passing — 51/51."), (f) status when the human asks. Avoid forever: "Let me read X", "Now let me check Y", "I'll gather Z context", "Let me orient myself", "I now have a complete picture", "Let me reconcile with the advisor", "Let me verify before committing". Use TaskList updates to show progress between boundaries — that's what the task pane is for. If you find yourself writing a narration sentence that says what you're ABOUT to do rather than what you JUST DID, delete it.
 51. **Advisor calls are for strategic decisions, not mechanical execution.** Call ``advisor()`` only when you have a genuine strategic decision: a contested architectural choice, an unclear scope-vs-cost tradeoff, a stuck loop on real errors. Mechanical lifecycle execution on small slices (<=2 user stories, <=5 FRs, no architectural ambiguity) proceeds without consulting. You do NOT need to "confirm the approach" before writing a spec.md or a plan.md for a 3-FR feature. Default to no. When in doubt: do the work, get the artifact on disk, and only call advisor if the work surfaces a real disagreement with the spec or a real architectural fork. The user is paying for both tokens and wall-clock on every advisor call.
-52. **File references in user-visible output must be visible `file:///` URLs.** When you mention an artifact, source file, directory, or any other file-system path in ANY user-visible prose — orientation block (Rule 48), one-sentence progress updates (Rule 50), HANDOFF blocks (Rule 46), clarify questions, decisions, developer briefings, retro notes — emit the full bare ``file:///`` URL built from the Project root URL above. Use forward slashes (the URL form is supplied for you at the top of this prompt as ``Project root (file:// URL form for clickable references): file:///...``). Apply this to directory references too (use the URL ending with ``/``). Example: instead of writing ``"the spec at specs/001-tip-calculator/spec.md"`` or ``"[spec.md](file:///C:/Temp/specrew-tip-calc-v2/specs/001-tip-calculator/spec.md)"``, write ``"the spec at file:///C:/Temp/specrew-tip-calc-v2/specs/001-tip-calculator/spec.md"``. Do not use markdown-link syntax for boundary packets; terminal hosts do not render it reliably and can hide the clickable target. Tool outputs and code blocks where the host already shows file paths are exempt; this rule only governs PROSE the Crew writes.
+52. **File references in user-visible output must be visible ``file:///`` URLs.** When you mention an artifact, source file, directory, or any other file-system path in ANY user-visible prose — orientation block (Rule 48), one-sentence progress updates (Rule 50), HANDOFF blocks (Rule 46), clarify questions, decisions, developer briefings, retro notes — emit the full bare ``file:///`` URL built from the Project root URL above. Use forward slashes (the URL form is supplied for you at the top of this prompt as ``Project root (file:// URL form for clickable references): file:///...``). Apply this to directory references too (use the URL ending with ``/``). Example: instead of writing ``"the spec at specs/001-tip-calculator/spec.md"`` or ``"[spec.md](file:///C:/Temp/specrew-tip-calc-v2/specs/001-tip-calculator/spec.md)"``, write ``"the spec at file:///C:/Temp/specrew-tip-calc-v2/specs/001-tip-calculator/spec.md"``. Do not use markdown-link syntax for boundary packets; terminal hosts do not render it reliably and can hide the clickable target. Tool outputs and code blocks where the host already shows file paths are exempt; this rule only governs PROSE the Crew writes.
 54. **Mandatory pre-implementation review artifact set (Wave B).** After ``/speckit.plan`` produces ``plan.md``, you MUST ensure all four of the following artifacts exist under ``specs/<feature>/`` BEFORE proceeding to ``/speckit.tasks``. They give the human reviewer a coherent view of WHAT will be built and HOW, BEFORE any code lands. If the Spec Kit plan agent did not emit a particular file, author it yourself from the templates below:
 
   (a) **``specs/<feature>/data-model.md``** — domain entities + attributes + validation rules + relationships, even for simple features (a minimal "no persisted state; transient inputs only" note + 1-2 entity descriptions is fine for a stateless calculator). Format:
@@ -3276,6 +3261,7 @@ function Save-StartArtifacts {
         [bool]$BypassBoundaryEnforcement = $false,
         [AllowNull()][string]$BoundaryBypassReason,
         [AllowNull()][string]$SelectedHost,
+        [AllowNull()][string]$CrewRuntimeStatus,
         [AllowNull()][System.Collections.IDictionary]$AvailableHostsMap,
         [AllowNull()][string]$HostResolution
     )
@@ -3460,12 +3446,7 @@ $artifactListFormatted
         else {
             $null
         }
-        crew_runtime_status = if ([string]::IsNullOrWhiteSpace($SelectedHost) -or $SelectedHost.ToLowerInvariant() -eq 'copilot') {
-            'squad-runtime'
-        }
-        else {
-            'bootstrap_only'
-        }
+        crew_runtime_status = if ([string]::IsNullOrWhiteSpace($CrewRuntimeStatus)) { 'bootstrap_only' } else { $CrewRuntimeStatus }
         # F-043 FR-012: record HOW the host was resolved + the alternatives at probe time
         host_resolution = if (-not [string]::IsNullOrWhiteSpace($HostResolution)) { $HostResolution } else { $null }
     }
@@ -3699,6 +3680,22 @@ function Get-AllowAllRuntimePlan {
             'prompt-approvals keeps the host CLI permission prompts interactive throughout the session.'
         }
     }
+}
+
+function Get-SpecrewCrewRuntimeStatusForLaunch {
+    param(
+        [string]$SelectedHost,
+        [string]$Agent
+    )
+
+    if ((-not [string]::IsNullOrWhiteSpace($SelectedHost)) -and
+        $SelectedHost.ToLowerInvariant() -eq 'copilot' -and
+        (-not [string]::IsNullOrWhiteSpace($Agent)) -and
+        $Agent.ToLowerInvariant() -eq 'squad') {
+        return 'squad-runtime'
+    }
+
+    return 'bootstrap_only'
 }
 
 function Start-HostSession {
@@ -4167,6 +4164,7 @@ else {
     'gate-respecting mode (default) plus prompt-approvals: Squad stops at every lifecycle gate AND Copilot prompts before each tool call.'
 }
 $launchMode = if ($NoLaunch -or $forceNoLaunch) { 'none' } elseif ($NewWindow -and $IsWindows) { 'new-window' } else { 'same-window' }
+$crewRuntimeStatus = Get-SpecrewCrewRuntimeStatusForLaunch -SelectedHost $selectedHost -Agent $Agent
 $promptContent = Get-StartPrompt `
     -ResolvedProjectPath $resolvedProjectPath `
     -Mode $mode `
@@ -4181,8 +4179,9 @@ $promptContent = Get-StartPrompt `
     -RecoverySession $recoverySession
 
 # F-040: apply per-host coordinator-prompt surgery (FR-011 universal header for all hosts;
-# FR-012 Squad-runtime-path strip for non-Copilot; FR-014 Codex pwsh-form rewrite)
-$promptContent = Invoke-SpecrewCoordinatorPromptSurgery -Prompt $promptContent -HostKind $selectedHost
+# FR-012 Squad-runtime-path strip for non-Copilot; FR-014 Codex pwsh-form rewrite;
+# release-closeout Step 11: host-accurate orientation rendered from selected host + runtime status)
+$promptContent = Invoke-SpecrewCoordinatorPromptSurgery -Prompt $promptContent -HostKind $selectedHost -CrewRuntimeStatus $crewRuntimeStatus
 
 $artifactPaths = Save-StartArtifacts `
     -ResolvedProjectPath $resolvedProjectPath `
@@ -4207,6 +4206,7 @@ $artifactPaths = Save-StartArtifacts `
     -BypassBoundaryEnforcement $BypassBoundaryEnforcement `
     -BoundaryBypassReason $Reason `
     -SelectedHost $selectedHost `
+    -CrewRuntimeStatus $crewRuntimeStatus `
     -AvailableHostsMap $availableHostsMap `
     -HostResolution $hostResolution
 

@@ -50,6 +50,11 @@ pwsh -File .specify/extensions/specrew-speckit/scripts/validate-governance.ps1 -
 - Send-back repair D-006 evidence refresh: scoped governance validation PASS at current evidence / feature-closeout ref `62683c15` after exact packet sync; remaining warnings are historical empty handoff-evidence and Feature 048 dashboard release-process risks, not Feature 139 failures.
 - Proposal 145 evidence refresh: review evidence now uses the full Phase 0 through Phase 7 model, includes explicit n/a reasons for non-applicable phase checks, and records `2b842452..62683c15` as evidence-only.
 - Branch hygiene: branch `139-boundary-authorization-prompt-truth` has no upstream and is not pushed yet. This is acceptable for feature-closeout only because release-closeout Step 5 is the branch-hygiene action that will publish it; it is not an unconditional branch-hygiene pass.
+- Release-closeout D-007: published `v0.30.0-beta3` Step 11 clean Codex replay FAIL because generated orientation said Claude Code and claimed Crew roles ran inside the session while `start-context.json` recorded `selected_host: codex`. Stable promotion remains blocked.
+- Release-closeout D-007 repair: `pwsh -NoProfile -ExecutionPolicy Bypass -File tests\integration\multi-host-launch-path.tests.ps1` — PASS. Covers host-orientation rendering for Codex, Claude, and Copilot/Squad and rejects false hard-coded host/runtime claims.
+- Release-closeout D-007 repair: `pwsh -NoProfile -ExecutionPolicy Bypass -File tests\integration\start-command.ps1` — PASS. Checks actual generated `.specrew\last-start-prompt.md` orientation against `.specrew\start-context.json` for Codex, Claude, and Copilot.
+- Release-closeout D-007 repair: `pwsh -NoProfile -ExecutionPolicy Bypass -File tests\manual\copilot-squad-smoke.ps1` — PASS in manual-handoff mode. Adds the release smoke assertion scanning actual emitted `.specrew\last-start-prompt.md` for false hard-coded host/runtime claims.
+- Release-closeout D-007 repair: `pwsh -NoProfile -ExecutionPolicy Bypass -File tests\unit\boundary-authorization-prompt-truth.tests.ps1` — PASS after host-orientation repair and prompt-code backtick correction.
 
 ## Gap Ledger
 
@@ -65,6 +70,7 @@ pwsh -File .specify/extensions/specrew-speckit/scripts/validate-governance.ps1 -
 | Future packet primary, no required legacy duplication | yes | yes | yes | yes | No gap. Generated prompt removed the mandatory legacy block template and states the packet is primary. |
 | `Status: Approved` without verdict evidence check | yes | yes | yes | yes | No gap. Implemented as an active-feature validator check that exits non-zero when `Status: Approved` lacks matching human verdict evidence. |
 | Non-compliant handoff fixtures | yes | yes | yes | yes | No gap. Missing `Why I Stopped`, approve-only, and context-free prompt fixtures fail the handoff validator. |
-| Beta3 smoke evidence | yes | partial | yes | yes | Automated pre-publish prompt/state smoke PASS is committed. Published beta3 Copilot/Squad clarify replay remains pending before stable promotion because no beta3 package has been published in this implementation turn. |
+| Beta3 smoke evidence | yes | partial | yes | yes | Automated pre-publish prompt/state smoke PASS was committed, but published beta3 Step 11 replay failed on D-007 host/runtime orientation truth. Stable promotion is blocked until the repaired next prerelease replay passes. |
+| D-007 host/runtime orientation truth | yes | yes | yes | yes | No gap after repair. Core prompt contains only host-neutral orientation requirements; selected-host rendering injects Codex, Claude, or Copilot/Squad wording from host metadata and `crew_runtime_status`; tests scan the actual generated prompt for false hard-coded claims. |
 | Proposal 145 review lens | yes | yes | yes | yes | No gap for this feature scope after evidence refresh. The review uses the full Phase 0 through Phase 7 model with explicit n/a reasons. Full Proposal 145 implementation remains out of scope. |
 | Scope exclusions | yes | yes | yes | yes | No gap. No full Proposal 150, hook enforcement, broad Proposal 151 migration, or lifecycle redesign was implemented. |

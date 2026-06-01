@@ -22,8 +22,8 @@
 
 ## Summary
 
-**Total drift events**: 6
-**Resolution rate**: 100% (6/6 resolved)
+**Total drift events**: 7
+**Resolution rate**: 100% (7/7 resolved)
 **Specification drift**: Resolved by human-approved spec/task reconciliation before implementation
 
 ## Events
@@ -100,6 +100,19 @@
 - **Resolution**: Updated [handoff-governance-validator.ps1](file:///C:/tmp/Specrew-main-boundary-auth/extensions/specrew-speckit/validators/handoff-governance-validator.ps1) and the mirrored [handoff-governance-validator.ps1](file:///C:/tmp/Specrew-main-boundary-auth/.specify/extensions/specrew-speckit/validators/handoff-governance-validator.ps1) so markdown file links in boundary handoffs hard-fail with `validation-fail.markdown-file-url-in-boundary-handoff`. Updated [sync-boundary-state.ps1](file:///C:/tmp/Specrew-main-boundary-auth/scripts/internal/sync-boundary-state.ps1) so supplied handoff text is validated before boundary state advancement. Updated [specrew-start.ps1](file:///C:/tmp/Specrew-main-boundary-auth/scripts/specrew-start.ps1) to remove the contradictory markdown-link guidance and require visible bare `file:///` URLs in generated lifecycle instructions.
 - **Verification**: [boundary-authorization-prompt-truth.tests.ps1](file:///C:/tmp/Specrew-main-boundary-auth/tests/unit/boundary-authorization-prompt-truth.tests.ps1) now covers the exact failure where the primary six-section packet has bare `specs/...` paths while the legacy handoff block is compliant, the related markdown-link escape where the primary packet uses `[name](file:///...)`, stored packet evidence validation for both cases, and boundary-sync rejection before state advancement.
 - **Follow-up**: Re-emit the `feature-closeout -> release-closeout` packet using visible bare `file:///` URLs in the primary six-section packet, store that exact visible packet as boundary evidence, and stop for explicit release-closeout approval.
+
+### D-007 — Published beta3 replay generated false host/runtime orientation
+
+- **Detected At**: 2026-06-01T17:25:00Z
+- **Type**: release-closeout-smoke-failure
+- **Status**: resolved
+- **Source**: Human Step 11 FAIL after the clean Codex prerelease replay of published `v0.30.0-beta3`.
+- **Requirement Citation**: The release-closeout acceptance target requires the visible generated prompt to agree with `.specrew/start-context.json` host truth. Non-Copilot hosts must not claim Squad/Copilot role runtime behavior unless that runtime is actually active.
+- **Impact**: `.specrew/start-context.json` recorded `selected_host: codex`, but `.specrew/last-start-prompt.md` told the agent to say it was running on Claude Code and that the Crew roles all ran inside the session. This was generated prompt text, not agent hallucination, and therefore blocked stable promotion.
+- **Classification**: Feature 139 release-closeout blocker and host-orientation enforcement gap. The prompt truth fix was incomplete because the core generated orientation block still carried stale host/runtime copy.
+- **Resolution**: Removed host-specific orientation copy from the shared core start prompt in [specrew-start.ps1](file:///C:/tmp/Specrew-main-boundary-auth/scripts/specrew-start.ps1), replaced it with a neutral host-orientation marker, and rendered the visible orientation through [coordinator-prompt-surgery.ps1](file:///C:/tmp/Specrew-main-boundary-auth/scripts/internal/coordinator-prompt-surgery.ps1) using the selected host manifest and `crew_runtime_status`. Added `CrewRuntimeDisplayName = 'Squad'` to the Copilot host manifest at [host.psd1](file:///C:/tmp/Specrew-main-boundary-auth/hosts/copilot/host.psd1) so Copilot/Squad launches may describe Squad coordination only when `crew_runtime_status` is `squad-runtime`.
+- **Verification**: [multi-host-launch-path.tests.ps1](file:///C:/tmp/Specrew-main-boundary-auth/tests/integration/multi-host-launch-path.tests.ps1) now proves the rendered orientation is host-accurate for Codex, Claude, and Copilot/Squad and rejects false hard-coded host/runtime claims. [start-command.ps1](file:///C:/tmp/Specrew-main-boundary-auth/tests/integration/start-command.ps1) now checks the actual generated `.specrew/last-start-prompt.md` against `.specrew/start-context.json` for Codex, Claude, and Copilot. [copilot-squad-smoke.ps1](file:///C:/tmp/Specrew-main-boundary-auth/tests/manual/copilot-squad-smoke.ps1) now scans the release smoke prompt orientation for false hard-coded claims.
+- **Follow-up**: Publish the next prerelease tag after this repair and repeat Step 11 clean prerelease replay before any stable promotion.
 
 ### Resolution Strategies (Unused)
 

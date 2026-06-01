@@ -149,7 +149,7 @@ foreach ($required in @(
         'approve as-is, approve with instructions, send back, or discuss prompt #N',
         'free-form discussion or feedback is not approval',
         'Every artifact, file, or directory reference in every packet section MUST use',
-        'visible bare `file:///` URLs',
+        'visible bare ``file:///`` URLs',
         'Do not use markdown-link syntax for boundary packets',
         'The packet text recorded as boundary evidence MUST be the exact human-visible packet',
         'not bare repository paths such as'
