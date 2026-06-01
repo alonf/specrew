@@ -2,10 +2,10 @@
 
 **Schema**: v1
 **Spec**: [../../spec.md](../../spec.md)
-**Status**: retro
+**Status**: complete
 **Capacity**: 17.75/20 story_points
 **Started**: 2026-06-01
-**Completed**:
+**Completed**: 2026-06-01
 
 ## Scope Summary
 
@@ -89,3 +89,8 @@ Iteration 001 implements the full Proposal 154 slice for generated prompt truth,
 - **Release-blocking planned evidence**: `Status: Approved` check, beta3 smoke evidence, prompt bad-phrase tests, non-compliant handoff fixtures, and review gap ledger.
 - **Dirty-state policy**: unrelated session/runtime files remain excluded unless explicitly classified in task notes or drift log before editing/staging.
 - **Scope exclusions**: full Proposal 150, hook enforcement, broad historical Proposal 151 migration, and lifecycle redesign remain out of scope.
+- **Closeout acceptance**: D-004 is a Feature 139 acceptance condition and was repaired by commit `2effe3f0`.
+- **Packet reference enforcement**: every artifact, file, and directory reference in every human re-entry packet section must use `file:///` URL form, not only the `What Needs Your Review` targets.
+- **Stored evidence validation**: boundary packet evidence validation checks actual emitted packet text supplied during boundary sync.
+- **Release-process risk**: historical empty handoff-evidence warnings remain visible as release-process risk only because scoped Feature 139 validation passes.
+- **Release-closeout blocker**: published beta3 Copilot/Squad replay must block stable promotion before release closeout completes.

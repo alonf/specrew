@@ -1,9 +1,10 @@
-# Review Dashboard: Iteration 001
+# Velocity Dashboard Snapshot
 
 **Schema**: v1
-**Capture Kind**: review-signoff
-**Captured At**: 2026-06-01T11:29:33Z
-**Overall Verdict**: accepted
+**Capture Kind**: iteration-closeout
+**Captured At**: 2026-06-01T12:57:11Z
+**Overall Verdict**: iteration complete
+**Historical Notice**: Historical snapshot captured during iteration closeout. Re-running the dashboard later produces a new live view and must not overwrite this file.
 
 ## Summary
 
@@ -14,28 +15,38 @@
 | Tasks | 30/30 pass |
 | Requirements | FR-001 through FR-028 covered |
 | Success Criteria | SC-001 through SC-015 covered |
-| Drift | 3/3 resolved |
+| Drift | 4/4 resolved after D-004; original 3/3 review drift remained resolved |
 | Dependencies | no package changes |
 | Review Status | accepted for `review -> retro` |
+| Retro Status | accepted for `retro -> iteration-closeout` |
+| Iteration Status | complete |
 
-## Release-Blocking Review Items
+## Closeout Acceptance Conditions
 
 | Item | Result |
 | ---- | ------ |
-| README Post-Commit Verification Protocol repair | pass |
-| D-003 drift classification | pass |
-| Required test reruns | pass |
-| `Status: Approved` without verdict evidence check | pass |
-| Negative beta2-bad prompt phrase tests | pass |
-| Non-compliant handoff fixtures | pass |
-| Beta3 smoke evidence | pass for automated pre-publish; published beta3 replay still required before stable |
-| Dirty working-tree isolation | pass |
-| Implemented/enforced/observable/documented gap ledger | pass |
+| 30/30 task completion | pass |
+| FR and SC coverage | pass; FR-001 through FR-028 and SC-001 through SC-015 accepted |
+| D-003 classification | pass; remains an adjacent Feature 016 defect exposed by Feature 139 |
+| D-004 Feature 139 acceptance condition | pass; repaired by commit `2effe3f0` |
+| Packet-wide clickable artifact reference enforcement | pass; applies to every human re-entry packet section, not only `What Needs Your Review` |
+| Stored boundary packet evidence validation | pass; checks actual emitted packet text |
+| Dirty working-tree and session-state isolation | pass; preserve as lifecycle lesson |
+| Six-section human re-entry packet target format | pass; legacy handoff block remains transitional only |
 
-## Review Links
+## Release-Process Risks
+
+| Risk | Closeout Handling |
+| ---- | ---------------- |
+| Historical empty handoff-evidence warnings | Visible release-process risk only; scoped Feature 139 validation passes. |
+| Published beta3 Copilot/Squad replay | Release-closeout blocker before stable promotion; not implementation-review work. |
+| Required failing test policy | A failing required test must block implementation approval until repaired or explicitly deferred in governance artifacts. |
+
+## Evidence Links
 
 - [review.md](file:///C:/tmp/Specrew-main-boundary-auth/specs/139-boundary-authorization-prompt-truth/iterations/001/review.md)
 - [coverage-evidence.md](file:///C:/tmp/Specrew-main-boundary-auth/specs/139-boundary-authorization-prompt-truth/iterations/001/coverage-evidence.md)
 - [quality-evidence.md](file:///C:/tmp/Specrew-main-boundary-auth/specs/139-boundary-authorization-prompt-truth/iterations/001/quality/quality-evidence.md)
 - [drift-log.md](file:///C:/tmp/Specrew-main-boundary-auth/specs/139-boundary-authorization-prompt-truth/iterations/001/drift-log.md)
+- [retro.md](file:///C:/tmp/Specrew-main-boundary-auth/specs/139-boundary-authorization-prompt-truth/iterations/001/retro.md)
 - [beta3-smoke-evidence.md](file:///C:/tmp/Specrew-main-boundary-auth/specs/139-boundary-authorization-prompt-truth/smoke/beta3-smoke-evidence.md)
