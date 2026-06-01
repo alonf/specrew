@@ -22,8 +22,8 @@
 
 ## Summary
 
-**Total drift events**: 2
-**Resolution rate**: 100% (2/2 resolved)
+**Total drift events**: 3
+**Resolution rate**: 100% (3/3 resolved)
 **Specification drift**: Resolved by human-approved spec/task reconciliation before implementation
 
 ## Events
@@ -49,6 +49,18 @@
 - **Dirty State Classification**: Existing dirty files under `.codex/`, `.github/agents/squad.agent.md`, `.specrew/last-validator-summary.json`, `.squad/`, `specs/051-multi-session-foundation/iterations/003/tasks-progress.yml`, `.cursor/`, `.specrew/version-check-cache.json`, and `.squad/events/` are classified as pre-existing session/runtime or unrelated feature state. They remain excluded from Feature 139 staging unless explicitly reclassified before editing.
 - **Focused Test Discovery**: Selected `tests/integration/start-command.ps1` for generated start prompt/start-context coverage, `tests/integration/launch-mode-boundary-enforcement.tests.ps1` for policy-state behavior, `tests/unit/validate-governance.interaction-model.tests.ps1` and new Feature 139 fixtures for handoff compliance, plus validator coverage in `extensions/specrew-speckit/scripts/validate-governance.ps1` and its `.specify` mirror for the narrow `Status: Approved` contradiction check.
 - **Follow-up**: Implementation must update only required Feature 139 source/tests and must keep full Proposal 150, hook enforcement, broad Proposal 151 migration, and lifecycle redesign out of scope.
+
+### D-003 — Adjacent Feature 016 docs/test truth defect blocked implementation review
+
+- **Detected At**: 2026-06-01T10:58:00Z
+- **Type**: adjacent-defect
+- **Status**: resolved
+- **Source**: Human send-back after implementation noted that `tests\unit\validate-governance.interaction-model.tests.ps1` was still failing.
+- **Exact Assertion**: `Assert-True -Condition ($readmeText -match 'Post-Commit Verification Protocol') -Message 'Docs/template truth scenario is missing the README post-commit verification protocol.'`
+- **Classification**: Feature 139 exposed an existing Feature 016 documentation defect; it did not cause the failure. The Feature 139 implementation did not modify `README.md`, and the failure asserts an existing docs/template-truth contract from Feature 016 Iteration 002.
+- **Impact**: Implementation review could not proceed with a known failing required test.
+- **Resolution**: Added the missing `Post-Commit Verification Protocol` section to [README.md](file:///C:/tmp/Specrew-main-boundary-auth/README.md), preserving the Feature 016 exact-tree, stale-reference scan, commit-reference synchronization, and explicit-defer contract.
+- **Follow-up**: Rerun the full required test set before stopping again at `implement -> review`.
 
 ### Resolution Strategies (Unused)
 
