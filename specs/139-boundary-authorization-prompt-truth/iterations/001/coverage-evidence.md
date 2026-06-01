@@ -3,7 +3,9 @@
 **Schema**: v1
 **Reviewed**: 2026-06-01
 **Overall Verdict**: accepted
-**Current Coverage Ref**: 2b84245284f3a530609f24cd24d18f9dbbfee5ee
+**Current Evidence / Feature-Closeout Ref**: 62683c15148f2d9602ed75ec4d1755a5536f1f50
+**D-006 Implementation Review Ref**: 2b84245284f3a530609f24cd24d18f9dbbfee5ee
+**Evidence-Only Delta**: `2b842452..62683c15` changes only Feature 139 evidence artifacts. No product-code, validator, script, prompt, or test implementation files changed in that delta.
 
 ## Test Strategy
 
@@ -14,9 +16,9 @@ Feature 139 is a lifecycle/governance feature, so coverage is focused on prompt 
 | Command | Result | Notes |
 | ------- | ------ | ----- |
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tests\unit\validate-governance.interaction-model.tests.ps1` | pass | Send-back repair verified; README post-commit protocol assertion passes. |
-| `pwsh -NoProfile -ExecutionPolicy Bypass -File tests\unit\boundary-authorization-prompt-truth.tests.ps1` | pass at HEAD 2b842452 | Covers mirrors, parser checks, prompt contract, policy snapshot, handoff fixture rejection, approved-status contradiction check, D-006 markdown-link hard failures, compliant-legacy/bare-primary packet failure, stored packet evidence validation, and pre-advance sync rejection. |
-| `pwsh -NoProfile -ExecutionPolicy Bypass -File tests\unit\validate-governance.interaction-model.tests.ps1` | pass at HEAD 2b842452 | Confirms Feature 016 navigation graduation still passes with D-006 enforcement changes. |
-| `pwsh -NoProfile -ExecutionPolicy Bypass -File .specify\extensions\specrew-speckit\scripts\run-mechanical-checks.ps1 -ProjectPath . -FeaturePath specs\139-boundary-authorization-prompt-truth -IterationPath specs\139-boundary-authorization-prompt-truth\iterations\001 -SpecPath specs\139-boundary-authorization-prompt-truth\spec.md` | pass at HEAD 2b842452 | Regenerated mechanical findings; no findings. |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tests\unit\boundary-authorization-prompt-truth.tests.ps1` | pass at D-006 implementation review ref 2b842452 | Covers mirrors, parser checks, prompt contract, policy snapshot, handoff fixture rejection, approved-status contradiction check, D-006 markdown-link hard failures, compliant-legacy/bare-primary packet failure, stored packet evidence validation, and pre-advance sync rejection. |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tests\unit\validate-governance.interaction-model.tests.ps1` | pass at D-006 implementation review ref 2b842452 | Confirms Feature 016 navigation graduation still passes with D-006 enforcement changes. |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File .specify\extensions\specrew-speckit\scripts\run-mechanical-checks.ps1 -ProjectPath . -FeaturePath specs\139-boundary-authorization-prompt-truth -IterationPath specs\139-boundary-authorization-prompt-truth\iterations\001 -SpecPath specs\139-boundary-authorization-prompt-truth\spec.md` | pass at current evidence / feature-closeout ref 62683c15 | Regenerated mechanical findings; no findings. |
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tests\integration\launch-mode-boundary-enforcement.tests.ps1` | pass | Confirms authorization behavior and policy seam remain deterministic. |
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tests\integration\start-command.ps1` | pass | Confirms `specrew start` still writes expected artifacts; rerun used a longer timeout after an initial harness timeout. |
 | `$env:SPECREW_MODULE_PATH=(Get-Location).Path; pwsh -NoProfile -ExecutionPolicy Bypass -File .specify\extensions\specrew-speckit\scripts\validate-governance.ps1 -ProjectPath .` | pass after review artifact repair | Historical warnings only; no Feature 139 release-blocking validation failures remain. |
@@ -56,5 +58,5 @@ Feature 139 is a lifecycle/governance feature, so coverage is focused on prompt 
 | `Status: Approved` without verdict evidence check | yes | yes | yes | yes | No gap. |
 | Non-compliant handoff fixtures | yes | yes | yes | yes | No gap. |
 | Beta3 smoke evidence | yes | partial | yes | yes | Automated pre-publish PASS is accepted for implementation review; published beta3 Copilot/Squad replay remains required before stable release promotion. |
-| Proposal 145 review lens | yes | yes | yes | yes | No gap for this feature scope. |
+| Proposal 145 review lens | yes | yes | yes | yes | No gap for this feature scope after evidence refresh. Review uses the full Phase 0 through Phase 7 model, includes explicit n/a reasons, and classifies branch hygiene as acceptable for feature-closeout only because release-closeout Step 5 is the required publication action. |
 | Scope exclusions | yes | yes | yes | yes | No gap. |

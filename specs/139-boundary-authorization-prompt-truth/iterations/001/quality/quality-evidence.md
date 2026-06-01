@@ -3,7 +3,9 @@
 **Feature**: 139-boundary-authorization-prompt-truth
 **Iteration**: 001
 **Status**: review evidence accepted
-**Current Evidence Ref**: 2b84245284f3a530609f24cd24d18f9dbbfee5ee
+**Current Evidence / Feature-Closeout Ref**: 62683c15148f2d9602ed75ec4d1755a5536f1f50
+**D-006 Implementation Review Ref**: 2b84245284f3a530609f24cd24d18f9dbbfee5ee
+**Evidence-Only Delta**: `2b842452..62683c15` changes only Feature 139 evidence artifacts. No product-code, validator, script, prompt, or test implementation files changed in that delta.
 
 ## Planned Evidence
 
@@ -42,11 +44,12 @@ pwsh -File .specify/extensions/specrew-speckit/scripts/validate-governance.ps1 -
 - Send-back repair D-004: `pwsh -NoProfile -ExecutionPolicy Bypass -File .specify\extensions\specrew-speckit\scripts\validate-governance.ps1 -ProjectPath .` — PASS for scoped Feature 139 validation after the repair. Remaining warnings are historical release-process warnings and legacy empty handoff-evidence warnings, not Feature 139 hard failures.
 - Send-back repair D-005: direct handoff-validator replay of the exact bare primary review-section packet reported by the human — FAIL as expected with `validation-fail.bare-path-in-boundary-handoff` for all four bare repository paths. This proves the validator catches the exact case when the emitted packet text is supplied.
 - Send-back repair D-005: the enforcement gap was packet/evidence parity, not bare-path detection. The generated prompt and coordinator governance template now require the packet text recorded as boundary evidence to be the exact human-visible packet emitted for approval, without post-validation summary or artifact-reference rewrite.
-- Send-back repair D-006: the escape after D-004 and D-005 was that markdown file links were stripped before bare-path scanning, and boundary sync recorded evidence after state advancement instead of validating supplied packet text as a hard pre-advance gate. `pwsh -NoProfile -ExecutionPolicy Bypass -File tests\unit\boundary-authorization-prompt-truth.tests.ps1` PASS at HEAD `2b842452` covers bare primary `specs/...` paths with a compliant legacy block, markdown-link primary packet references with a compliant legacy block, stored evidence validation for the exact visible packet text, and boundary-sync rejection before state advancement.
-- Send-back repair D-006: `pwsh -NoProfile -ExecutionPolicy Bypass -File tests\unit\validate-governance.interaction-model.tests.ps1` PASS at HEAD `2b842452`; Feature 016 navigation graduation remains covered after the common validator change.
-- Send-back repair D-006: `.specify\extensions\specrew-speckit\scripts\run-mechanical-checks.ps1` PASS at HEAD `2b842452`; [mechanical-findings.json](file:///C:/tmp/Specrew-main-boundary-auth/specs/139-boundary-authorization-prompt-truth/iterations/001/quality/mechanical-findings.json) is regenerated and no longer `planned`.
-- Send-back repair D-006: scoped governance validation PASS at HEAD `2b842452` after exact packet sync; remaining warnings are historical empty handoff-evidence and Feature 048 dashboard release-process risks, not Feature 139 failures.
-- Branch hygiene: branch `139-boundary-authorization-prompt-truth` has no upstream and is not pushed yet. Release-closeout Step 5 is the branch-hygiene action that will publish it.
+- Send-back repair D-006: the escape after D-004 and D-005 was that markdown file links were stripped before bare-path scanning, and boundary sync recorded evidence after state advancement instead of validating supplied packet text as a hard pre-advance gate. `pwsh -NoProfile -ExecutionPolicy Bypass -File tests\unit\boundary-authorization-prompt-truth.tests.ps1` PASS at D-006 implementation review ref `2b842452` covers bare primary `specs/...` paths with a compliant legacy block, markdown-link primary packet references with a compliant legacy block, stored evidence validation for the exact visible packet text, and boundary-sync rejection before state advancement.
+- Send-back repair D-006: `pwsh -NoProfile -ExecutionPolicy Bypass -File tests\unit\validate-governance.interaction-model.tests.ps1` PASS at D-006 implementation review ref `2b842452`; Feature 016 navigation graduation remains covered after the common validator change.
+- Send-back repair D-006 evidence refresh: `.specify\extensions\specrew-speckit\scripts\run-mechanical-checks.ps1` PASS at current evidence / feature-closeout ref `62683c15`; [mechanical-findings.json](file:///C:/tmp/Specrew-main-boundary-auth/specs/139-boundary-authorization-prompt-truth/iterations/001/quality/mechanical-findings.json) is regenerated and no longer `planned`.
+- Send-back repair D-006 evidence refresh: scoped governance validation PASS at current evidence / feature-closeout ref `62683c15` after exact packet sync; remaining warnings are historical empty handoff-evidence and Feature 048 dashboard release-process risks, not Feature 139 failures.
+- Proposal 145 evidence refresh: review evidence now uses the full Phase 0 through Phase 7 model, includes explicit n/a reasons for non-applicable phase checks, and records `2b842452..62683c15` as evidence-only.
+- Branch hygiene: branch `139-boundary-authorization-prompt-truth` has no upstream and is not pushed yet. This is acceptable for feature-closeout only because release-closeout Step 5 is the branch-hygiene action that will publish it; it is not an unconditional branch-hygiene pass.
 
 ## Gap Ledger
 
@@ -63,5 +66,5 @@ pwsh -File .specify/extensions/specrew-speckit/scripts/validate-governance.ps1 -
 | `Status: Approved` without verdict evidence check | yes | yes | yes | yes | No gap. Implemented as an active-feature validator check that exits non-zero when `Status: Approved` lacks matching human verdict evidence. |
 | Non-compliant handoff fixtures | yes | yes | yes | yes | No gap. Missing `Why I Stopped`, approve-only, and context-free prompt fixtures fail the handoff validator. |
 | Beta3 smoke evidence | yes | partial | yes | yes | Automated pre-publish prompt/state smoke PASS is committed. Published beta3 Copilot/Squad clarify replay remains pending before stable promotion because no beta3 package has been published in this implementation turn. |
-| Proposal 145 review lens | yes | yes | yes | yes | No gap for this feature scope. Full Proposal 145 implementation remains out of scope. |
+| Proposal 145 review lens | yes | yes | yes | yes | No gap for this feature scope after evidence refresh. The review uses the full Phase 0 through Phase 7 model with explicit n/a reasons. Full Proposal 145 implementation remains out of scope. |
 | Scope exclusions | yes | yes | yes | yes | No gap. No full Proposal 150, hook enforcement, broad Proposal 151 migration, or lifecycle redesign was implemented. |
