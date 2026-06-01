@@ -39,6 +39,20 @@ function Get-SpecrewHostOrientationMarker {
     return '<<SPECREW_HOST_ORIENTATION_BLOCK>>'
 }
 
+function Get-SpecrewHostInteractionGuidanceMarker {
+    return '<<SPECREW_HOST_INTERACTION_GUIDANCE_BLOCK>>'
+}
+
+function Get-SpecrewRuntimeClass {
+    param([AllowNull()][string]$CrewRuntimeStatus)
+
+    if ([string]$CrewRuntimeStatus -eq 'squad-runtime') {
+        return 'Squad'
+    }
+
+    return 'non-Squad'
+}
+
 function Get-SpecrewHostOrientationBlock {
     <#
     .SYNOPSIS
@@ -55,7 +69,15 @@ function Get-SpecrewHostOrientationBlock {
         [ValidateSet('copilot', 'claude', 'codex', 'antigravity', 'cursor')]
         [string]$HostKind,
 
-        [string]$CrewRuntimeStatus = 'bootstrap_only'
+        [string]$CrewRuntimeStatus = 'bootstrap_only',
+
+        [AllowNull()][string]$SpecrewVersion,
+
+        [AllowNull()][string]$LifecycleMode,
+
+        [AllowNull()][string]$FeatureRef,
+
+        [AllowNull()][string]$BoundaryType
     )
 
     $manifest = Get-HostManifest -Kind $HostKind
@@ -67,6 +89,7 @@ function Get-SpecrewHostOrientationBlock {
     }
 
     $hasSquadRuntime = ([string]$CrewRuntimeStatus -eq 'squad-runtime')
+    $runtimeClass = Get-SpecrewRuntimeClass -CrewRuntimeStatus $CrewRuntimeStatus
     $runtimeName = if ($manifest.ContainsKey('CrewRuntimeDisplayName') -and -not [string]::IsNullOrWhiteSpace([string]$manifest.CrewRuntimeDisplayName)) {
         [string]$manifest.CrewRuntimeDisplayName
     }
@@ -74,16 +97,42 @@ function Get-SpecrewHostOrientationBlock {
         'Crew role runtime'
     }
 
+    $versionLine = if ([string]::IsNullOrWhiteSpace($SpecrewVersion)) {
+        'Specrew: unknown'
+    }
+    else {
+        "Specrew: $SpecrewVersion"
+    }
+    $hostLine = "Host: $($HostKind.ToLowerInvariant()) ($displayName); runtime: $runtimeClass"
+    $isResume = ($LifecycleMode -eq 'resume-feature' -or -not [string]::IsNullOrWhiteSpace($FeatureRef))
+    $featurePart = if ([string]::IsNullOrWhiteSpace($FeatureRef)) { 'current feature' } else { "feature $FeatureRef" }
+    $boundaryPart = if ([string]::IsNullOrWhiteSpace($BoundaryType)) { 'intake' } else { $BoundaryType }
+    $openingLine = if ($isResume) {
+        "Welcome back - resuming $featurePart at $boundaryPart."
+    }
+    else {
+        "Welcome - I'm your Specrew Crew coordinator."
+    }
+    $lifecycleLine = if ($isResume) {
+        "Lifecycle: $featurePart at $boundaryPart."
+    }
+    else {
+        'Lifecycle: new feature intake.'
+    }
+
     $howThisWorks = if ($hasSquadRuntime) {
         "How this works: Specrew governs the spec -> plan -> implement -> review -> retro`nlifecycle. The $runtimeName runtime coordinates the Spec Steward, Planner,`nImplementer, Reviewer, and Retro Facilitator roles for this session."
     }
     else {
-        "How this works: Specrew governs the spec -> plan -> implement -> review -> retro`nlifecycle. This $displayName session follows the saved lifecycle prompt and`nstructured start context directly; a separate role runtime is not active for this launch."
+        "How this works: Specrew governs the spec -> plan -> implement -> review -> retro`nlifecycle. This session follows the saved lifecycle prompt and structured start`ncontext directly; a separate role runtime is not active for this launch."
     }
 
     return @"
 ``````markdown
-Welcome — I'm your Specrew Crew coordinator (running on $displayName).
+$openingLine
+$versionLine
+$hostLine
+$lifecycleLine
 
 $howThisWorks
 
@@ -96,6 +145,43 @@ What you can browse: artifacts land under file:///<project-root-url>/specs/<feat
 Starting now: <one specific action — e.g. "creating feature 001-tip-calculator
 and drafting the spec">.
 ``````
+"@
+}
+
+function Get-SpecrewHostInteractionGuidanceBlock {
+    param(
+        [Parameter(Mandatory = $true)]
+        [ValidateSet('copilot', 'claude', 'codex', 'antigravity', 'cursor')]
+        [string]$HostKind
+    )
+
+    $manifest = Get-HostManifest -Kind $HostKind
+    $displayName = if ($manifest.ContainsKey('DisplayName') -and -not [string]::IsNullOrWhiteSpace([string]$manifest.DisplayName)) {
+        [string]$manifest.DisplayName
+    }
+    else {
+        $HostKind
+    }
+
+    $primitive = if ($manifest.ContainsKey('StructuredQuestionPrimitive')) { [string]$manifest.StructuredQuestionPrimitive } else { '' }
+    $guidance = if ($manifest.ContainsKey('StructuredQuestionGuidance')) { [string]$manifest.StructuredQuestionGuidance } else { '' }
+
+    if (-not [string]::IsNullOrWhiteSpace($primitive)) {
+        if ([string]::IsNullOrWhiteSpace($guidance)) {
+            $guidance = "Use the $displayName structured user-input/menu primitive for human approval gates when it is available in the current session."
+        }
+
+        return @"
+Host-rendered interaction guidance for ${displayName}:
+$guidance
+Structured primitive: $primitive.
+Render the four choices from the response contract exactly: approve as-is, approve with instructions, send back, and discuss prompt #N. If the structured primitive is unavailable in the running host session, emit the textual "What's your verdict?" options exactly as shown above. Initial feature intake may remain free-form. Clarify questions should use structured choices when the expected answer set is known; otherwise ask a concise free-form question.
+"@
+    }
+
+    return @"
+Host-rendered interaction guidance for ${displayName}:
+No structured question/menu primitive is declared for this host package. Emit the textual "What's your verdict?" options exactly as shown above at every approval boundary. Initial feature intake may remain free-form. Clarify questions should use structured choices when the expected answer set is known and a structured primitive is available; otherwise ask a concise free-form question.
 "@
 }
 
@@ -168,7 +254,15 @@ function Invoke-SpecrewCoordinatorPromptSurgery {
         [ValidateSet('copilot', 'claude', 'codex', 'antigravity', 'cursor')]
         [string]$HostKind,
 
-        [string]$CrewRuntimeStatus = 'bootstrap_only'
+        [string]$CrewRuntimeStatus = 'bootstrap_only',
+
+        [AllowNull()][string]$SpecrewVersion,
+
+        [AllowNull()][string]$LifecycleMode,
+
+        [AllowNull()][string]$FeatureRef,
+
+        [AllowNull()][string]$BoundaryType
     )
 
     if ([string]::IsNullOrEmpty($Prompt)) {
@@ -182,8 +276,13 @@ function Invoke-SpecrewCoordinatorPromptSurgery {
 
     # Surgery 1b: host-facing orientation block rendered from the selected host package.
     $orientationMarker = [regex]::Escape((Get-SpecrewHostOrientationMarker))
-    $orientationBlock = Get-SpecrewHostOrientationBlock -HostKind $HostKind -CrewRuntimeStatus $CrewRuntimeStatus
+    $orientationBlock = Get-SpecrewHostOrientationBlock -HostKind $HostKind -CrewRuntimeStatus $CrewRuntimeStatus -SpecrewVersion $SpecrewVersion -LifecycleMode $LifecycleMode -FeatureRef $FeatureRef -BoundaryType $BoundaryType
     $result = [regex]::Replace($result, $orientationMarker, [System.Text.RegularExpressions.MatchEvaluator]{ param($m) $orientationBlock })
+
+    # Surgery 1c: host-facing interaction guidance rendered from the selected host package.
+    $interactionMarker = [regex]::Escape((Get-SpecrewHostInteractionGuidanceMarker))
+    $interactionBlock = Get-SpecrewHostInteractionGuidanceBlock -HostKind $HostKind
+    $result = [regex]::Replace($result, $interactionMarker, [System.Text.RegularExpressions.MatchEvaluator]{ param($m) $interactionBlock })
 
     # Surgery 2: per-host declarative rules
     $rules = Get-SpecrewHostCoordinatorRules -HostKind $HostKind

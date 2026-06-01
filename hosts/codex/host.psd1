@@ -17,6 +17,8 @@
     SharedSkillRootWith        = @('antigravity')
     AgentDir                   = '.codex/agents/'
     InstructionsFile           = 'AGENTS.md'
+    StructuredQuestionPrimitive = 'request_user_input'
+    StructuredQuestionGuidance  = 'Use the Codex structured user-input/menu primitive for human approval gates when it is available in the current session.'
 
     # Spec-kit + Squad coupling
     SpeckitAiFlag  = 'codex'

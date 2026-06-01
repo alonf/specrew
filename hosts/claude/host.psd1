@@ -17,6 +17,8 @@
     SettingsPath               = '.claude/settings.json'
     AgentDir                   = '.claude/agents/'
     InstructionsFile           = 'CLAUDE.md'
+    StructuredQuestionPrimitive = 'AskUserQuestion'
+    StructuredQuestionGuidance  = 'Use Claude Code AskUserQuestion for human approval gates when it is available in the current session.'
 
     # Spec-kit + Squad coupling
     SpeckitAiFlag  = 'claude'

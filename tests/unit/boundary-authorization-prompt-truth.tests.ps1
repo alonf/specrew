@@ -147,6 +147,8 @@ foreach ($required in @(
         'file:///',
         'You can answer any prompt that should change direction, or approve with the defaults.',
         'approve as-is, approve with instructions, send back, or discuss prompt #N',
+        'Core Specrew defines the response contract and allowed response shapes',
+        'The selected host package renders the interaction behavior below',
         'free-form discussion or feedback is not approval',
         'Every artifact, file, or directory reference in every packet section MUST use',
         'visible bare ``file:///`` URLs',
@@ -159,6 +161,8 @@ foreach ($required in @(
 Assert-True ($startScript -notmatch 'append this exact fenced block') 'Start prompt still requires legacy handoff-block duplication as the primary stop contract.'
 Assert-True ($startScript -notmatch 'clickable markdown links using `file:///` URLs') 'Start prompt still tells agents to use markdown links for artifacts.'
 Assert-True ($startScript -notmatch 'wrap the reference in markdown-link syntax') 'Start prompt still instructs markdown-link artifact references.'
+Assert-True ($startScript -notmatch 'On Copilot CLI / Codex CLI / Antigravity') 'Start prompt core Rule 53 still mentions host-specific CLI behavior.'
+Assert-True ($startScript -notmatch 'Squad handles the rest of the lifecycle automatically') 'Start prompt core Rule 53 still claims Squad lifecycle execution.'
 Write-Pass 'Generated prompt contract text covers policy truth and the six-section packet'
 
 if (Test-Path -LiteralPath $scratchRoot) { Remove-Item -LiteralPath $scratchRoot -Recurse -Force }

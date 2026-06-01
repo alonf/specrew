@@ -179,16 +179,50 @@ if ($startContext.crew_runtime_status -ne 'squad-runtime') {
     exit 1
 }
 
+if ($startContext.runtime_class -ne 'Squad') {
+    Write-Fail ("Smoke harness context runtime_class={0}; expected Squad for Copilot/Squad replay." -f $startContext.runtime_class)
+    exit 1
+}
+
+if ([string]::IsNullOrWhiteSpace([string]$startContext.specrew_version) -or [string]$startContext.specrew_version -notmatch '^\d+\.\d+\.\d+(?:-[A-Za-z0-9]+)?$') {
+    Write-Fail ("Smoke harness context specrew_version is missing or malformed: {0}" -f $startContext.specrew_version)
+    exit 1
+}
+
+if ($orientationBlock -notmatch [regex]::Escape(('Specrew: {0}' -f $startContext.specrew_version))) {
+    Write-Fail 'Smoke harness visible orientation is missing the runtime Specrew version.'
+    exit 1
+}
+
+if ($orientationBlock -notmatch 'Host: copilot \(GitHub Copilot CLI\); runtime: Squad') {
+    Write-Fail 'Smoke harness visible orientation is missing selected host/runtime class truth.'
+    exit 1
+}
+
 if ($orientationBlock -notmatch 'GitHub Copilot CLI' -or $orientationBlock -notmatch 'Squad runtime coordinates') {
     Write-Fail 'Smoke harness prompt orientation does not match the Copilot/Squad host truth in start-context.json.'
     exit 1
 }
 
-foreach ($falseClaim in @('Claude Code', 'plays each role', 'I run all of them inside this session')) {
+foreach ($falseClaim in @('Claude Code', 'plays each role', 'I run all of them inside this session', 'Squad handles the rest of the lifecycle automatically', 'running on Claude Code')) {
     if ($orientationBlock -match [regex]::Escape($falseClaim)) {
         Write-Fail ("Smoke harness prompt orientation contains false hard-coded host/runtime claim: {0}" -f $falseClaim)
         exit 1
     }
+    if ($promptContent -match [regex]::Escape($falseClaim)) {
+        Write-Fail ("Smoke harness prompt contains false hard-coded host/runtime claim: {0}" -f $falseClaim)
+        exit 1
+    }
+}
+
+if ($promptContent -match [regex]::Escape('<<SPECREW_HOST_INTERACTION_GUIDANCE_BLOCK>>')) {
+    Write-Fail 'Smoke harness prompt did not replace the host interaction guidance marker.'
+    exit 1
+}
+
+if ($promptContent -match 'On Copilot CLI / Codex CLI / Antigravity') {
+    Write-Fail 'Smoke harness prompt still contains shared host-specific Rule 53 wording.'
+    exit 1
 }
 
 if ($promptContent -notmatch 'Do not invoke speckit\.implement until the human approves') {
