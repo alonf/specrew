@@ -3,12 +3,13 @@ proposal: 153
 title: Unix-Native Wrapper Commands for Specrew CLI
 status: draft
 phase: phase-2
-estimated-sp: 8-13
+estimated-sp: 10-15
 priority-tier: 1
 type: adoption-ux
-discussion: surfaced 2026-06-01 after maintainer feedback that Mac/Linux users object less to PowerShell as an implementation dependency and more to having to invoke visible PowerShell commands for normal Specrew usage. The product fix is a native Unix command surface that wraps the existing PowerShell implementation.
+discussion: surfaced 2026-06-01 after maintainer feedback that Mac/Linux users object less to PowerShell as an implementation dependency and more to having to invoke visible PowerShell commands for normal Specrew usage. The product fix is a native Unix command surface that wraps the existing PowerShell implementation. Amended the same day to make command-surface dependency propagation explicit: wrapper names, docs, package FileList, and tests must be generated or parity-validated from the canonical PowerShell command registry so future command changes trigger the right cascade.
 composes-with:
   - 031  # Specrew Distribution Module
+  - 062  # Dependency Metadata + Reason Mapping + Impact-Analysis Propagation
   - 069  # Multi-Host Launch Path
   - 104  # Multi-Host Onboarding + Selection Flow
   - 150  # Agent-Support Hardening Bundle
@@ -61,7 +62,20 @@ Internally, these wrappers invoke PowerShell in a predictable, hidden way:
 exec pwsh -NoProfile -ExecutionPolicy Bypass -File "$module_root/scripts/specrew.ps1" "$@"
 ```
 
+The wrappers must remain **thin forwarders**. They must not duplicate option parsing, subcommand behavior, or host-specific semantics. All option contracts stay owned by the PowerShell command surface and, once available, Proposal 150's `.specrew/agent-command-manifest.json`.
+
 The user-facing docs should describe this honestly: "PowerShell Core is required, but normal Mac/Linux usage does not require invoking PowerShell directly."
+
+### Command-surface dependency rule
+
+This proposal creates a deliberate dependency from Specrew's canonical command registry to four downstream surfaces:
+
+1. Unix wrapper files in `bin/`
+2. Shell-wrapper installer behavior
+3. Package `FileList`
+4. Documentation examples
+
+Any change to the canonical command surface must trigger a parity review of those downstream surfaces. The implementation should make this mechanical through generation or validation, not rely on agents remembering the relationship.
 
 ## Functional Requirements
 
@@ -75,6 +89,10 @@ The user-facing docs should describe this honestly: "PowerShell Core is required
 - **FR-008**: Windows behavior MUST remain unchanged except for documentation that explains the platform-specific command surfaces.
 - **FR-009**: Package publishing MUST include the wrapper scripts in `Specrew.psd1` `FileList` and verify they are present in the published module package.
 - **FR-010**: CI MUST validate wrapper behavior on Ubuntu and macOS.
+- **FR-011**: Wrapper scripts MUST NOT duplicate option parsing. They may determine the subcommand implied by their alias name, but every user-provided argument MUST be forwarded unchanged to the PowerShell command surface.
+- **FR-012**: Wrapper file names MUST be generated from or parity-validated against the canonical Specrew command registry. In v1 the registry may be `Specrew.psd1` `AliasesToExport` plus the `specrew` root command; when Proposal 150's command manifest exists, the wrapper set MUST consume or validate against that manifest.
+- **FR-013**: A command-surface change touching `Specrew.psd1`, `scripts/specrew.ps1`, `scripts/specrew-*.ps1`, or the future command-manifest generator MUST trigger wrapper parity checks in CI.
+- **FR-014**: Documentation command examples for macOS/Linux MUST be parity-checked against the same canonical command registry where practical, or explicitly listed in an allowlist with rationale.
 
 ## Acceptance Criteria
 
@@ -86,8 +104,28 @@ The user-facing docs should describe this honestly: "PowerShell Core is required
 - **AC6**: `specrew install-shell-wrappers -BinDir <temp>` creates or updates the expected wrapper names and does not touch other files.
 - **AC7**: The published prerelease package contains the wrapper files and the release smoke test exercises at least `specrew version` through the wrapper on a Unix runner.
 - **AC8**: README, getting-started, and user-guide examples no longer make `pwsh -File` the primary macOS/Linux user path.
+- **AC9**: Adding a new exported Specrew alias to `Specrew.psd1` without adding/generating the matching Unix wrapper causes a wrapper parity test failure.
+- **AC10**: Removing or renaming an exported Specrew alias causes wrapper parity tests and documentation checks to identify stale wrapper/docs references.
+- **AC11**: The `specrew` wrapper forwards an unknown future option unchanged to the PowerShell command; the wrapper itself does not reject it.
+- **AC12**: CI output names the dependency cascade explicitly when parity fails: command registry -> wrappers -> installer -> FileList -> docs.
 
 ## Implementation Shape
+
+### Canonical command registry
+
+The implementation must define one canonical source for command names:
+
+- v1: `Specrew.psd1` `AliasesToExport` plus the root `specrew` command
+- v2: Proposal 150's `.specrew/agent-command-manifest.json`, once available
+
+The wrapper implementation should either:
+
+1. Generate wrappers from that registry, or
+2. Validate committed wrapper files against that registry and fail CI when they diverge.
+
+Generation is preferable for wrapper files. Validation is acceptable where packaging constraints require committed static files.
+
+Option contracts remain owned by the PowerShell command surface. The wrapper contract is "resolve module root, verify `pwsh`, forward arguments." This keeps Bash from becoming a second command parser that can drift from PowerShell.
 
 ### Wrapper layout
 
@@ -106,6 +144,22 @@ bin/
 ```
 
 Each alias wrapper should either be a tiny script that dispatches to `specrew <subcommand>` or a symlink/copy produced by the installer. The package should prefer real files over symlinks if PSGallery or NuGet packaging proves unreliable with symlink metadata.
+
+Alias wrappers should be generated from the canonical command registry where possible. For example, if `Specrew.psd1` exports `specrew-where`, the generated wrapper set must include `bin/specrew-where`; if an alias is removed, the generated wrapper set must remove it or mark it as deprecated intentionally.
+
+### Cascade triggers
+
+These file changes must trigger wrapper parity analysis during planning, review, and CI:
+
+| Trigger file/pattern | Why it matters | Required cascade check |
+| --- | --- | --- |
+| `Specrew.psd1` | Owns exported aliases and package `FileList` | wrapper set, package inclusion, docs examples |
+| `scripts/specrew.ps1` | Owns root command dispatch | root wrapper smoke, help output parity |
+| `scripts/specrew-*.ps1` | Owns subcommand implementation files | alias wrapper presence and docs examples |
+| `scripts/*command-manifest*` | Future canonical command manifest source | wrapper generation/parity against manifest |
+| `docs/**/*.md`, `README.md` | User-visible command examples | stale command/example detection |
+
+This is a concrete Proposal 062 dependency edge: changing the command surface affects wrapper files, wrapper installer behavior, package FileList, docs, and tests. The agent should be able to identify that cascade before implementation, not discover it through PR failure.
 
 ### Module-root resolution
 
@@ -163,6 +217,9 @@ The installer should:
 Minimum automated coverage:
 
 - Unit test wrapper generator/installer path decisions in PowerShell.
+- Unit test command-registry parsing from `Specrew.psd1`.
+- Unit test wrapper parity: exported aliases vs `bin/` wrapper files.
+- Unit test package parity: wrapper files vs `Specrew.psd1` `FileList`.
 - Integration test on Ubuntu:
   - create temp bin dir
   - install wrappers into it
@@ -171,6 +228,7 @@ Minimum automated coverage:
   - run `specrew start --help`
 - Integration test on macOS with the same shape.
 - Negative test with `PATH` modified so `pwsh` is unavailable; assert clear error.
+- Forwarding test: pass an unknown/future option through the wrapper and assert the PowerShell command receives/reports it, not the shell wrapper.
 - Packaging test: published module artifact includes every wrapper in `FileList`.
 
 ## Documentation
@@ -187,6 +245,7 @@ Documentation stance:
 - "Specrew is implemented in PowerShell Core today."
 - "On macOS/Linux, install the shell wrappers once and use normal shell commands afterward."
 - "If wrappers are not installed, PowerShell module commands still work as a fallback."
+- "Wrapper commands are generated or checked from the canonical Specrew command registry, so new Specrew commands get matching Unix wrapper coverage."
 
 ## Out of Scope
 
@@ -199,6 +258,8 @@ Documentation stance:
 ## Risks
 
 - **Argument forwarding bugs**: Shell quoting is easy to get wrong. Mitigation: explicit tests for spaces, quotes, and passthrough flags.
+- **Dual parser drift**: Bash wrappers could accidentally become a second command parser. Mitigation: wrappers remain thin forwarders; option parsing stays in PowerShell.
+- **Command registry drift**: New PowerShell aliases could ship without wrappers. Mitigation: wrapper parity tests fail on registry/wrapper mismatch.
 - **Symlink portability**: Different Unix systems resolve symlinks differently. Mitigation: POSIX-compatible loop and CI on Ubuntu/macOS.
 - **Package-manager expectations**: PSGallery does not naturally install shell commands into `PATH`. Mitigation: explicit `install-shell-wrappers` command and docs.
 - **Stale wrappers after update**: Installed wrappers may point to an older module path. Mitigation: wrappers should be symlinks where safe, or `specrew update` should remind/regenerate wrappers when the module path changes.
@@ -216,6 +277,7 @@ The work is independent of deep multi-developer validation and can ship as a foc
 ## Cross-References
 
 - file:///C:/Dev/Specrew/proposals/031-specrew-distribution-module.md
+- file:///C:/Dev/Specrew/proposals/062-dependency-metadata-reason-propagation.md
 - file:///C:/Dev/Specrew/proposals/069-multi-host-launch-path.md
 - file:///C:/Dev/Specrew/proposals/104-multi-host-onboarding-and-selection-flow.md
 - file:///C:/Dev/Specrew/proposals/150-agent-support-hardening-bundle.md
@@ -225,3 +287,4 @@ The work is independent of deep multi-developer validation and can ship as a foc
 ## Status History
 
 - 2026-06-01: Drafted after maintainer feedback that Mac/Linux adoption friction is primarily about exposing PowerShell in the normal command surface, not necessarily about PowerShell as an implementation dependency. Captures the wrapper-first approach as a bounded phase-2 adoption feature.
+- 2026-06-01: Amended after maintainer noted the wrapper surface depends on the PowerShell command contract. Added the command-surface dependency rule: wrappers must be thin forwarders, wrapper names must be generated or parity-validated from the canonical command registry, and command-surface changes must trigger wrapper/docs/package parity checks. Estimate raised from 8-13 SP to 10-15 SP.
