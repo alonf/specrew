@@ -1,0 +1,61 @@
+{
+  "schema_version": "1.0",
+  "extensions": {
+    "git": {
+      "version": "1.0.0",
+      "source": "local",
+      "manifest_hash": "sha256:9731aa8143a72fbebfdb440f155038ab42642517c2b2bdbbf67c8fdbe076ed79",
+      "enabled": true,
+      "priority": 10,
+      "registered_commands": {
+        "copilot": [
+          "speckit.git.feature",
+          "speckit.git.validate",
+          "speckit.git.remote",
+          "speckit.git.initialize",
+          "speckit.git.commit"
+        ]
+      },
+      "registered_skills": [],
+      "installed_at": "2026-06-01T21:41:30.009251+00:00"
+    },
+    "agent-context": {
+      "version": "1.0.0",
+      "source": "local",
+      "manifest_hash": "sha256:9a1dc02d2d0139bb03860392ecacef79183be2c442feda2f9ccaa4e5907b1e47",
+      "enabled": true,
+      "priority": 10,
+      "registered_commands": {
+        "copilot": [
+          "speckit.agent-context.update"
+        ]
+      },
+      "registered_skills": [],
+      "installed_at": "2026-06-01T21:41:30.148530+00:00"
+    },
+    "specrew-speckit": {
+      "version": "0.30.0",
+      "source": "local",
+      "manifest_hash": "sha256:e0da8db96f57e0bf29f70e7d6a3ccc0bbffeb2e5534503374cfab3e19f789bac",
+      "enabled": true,
+      "priority": 10,
+      "registered_commands": {
+        "copilot": [
+          "speckit.specrew-speckit.before-plan",
+          "speckit.specrew-speckit.after-tasks",
+          "speckit.specrew-speckit.before-implement",
+          "speckit.specrew-speckit.sync-specify",
+          "speckit.specrew-speckit.sync-clarify",
+          "speckit.specrew-speckit.sync-plan",
+          "speckit.specrew-speckit.sync-tasks",
+          "speckit.specrew-speckit.sync-review-signoff",
+          "speckit.specrew-speckit.sync-retro",
+          "speckit.specrew-speckit.sync-iteration-closeout",
+          "speckit.specrew-speckit.sync-feature-closeout"
+        ]
+      },
+      "registered_skills": [],
+      "installed_at": "2026-06-01T21:41:34.614876+00:00"
+    }
+  }
+}

@@ -1,0 +1,10 @@
+Version info for C:\Dev\Specrew-speckit-090-spike
+
+[32;1mPlatform[0m[32;1m Current[0m[32;1m LatestSupported[0m[32;1m UpstreamLatest[0m[32;1m Status [0m[32;1m Source[0m
+[32;1m--------[0m [32;1m-------[0m [32;1m---------------[0m [32;1m--------------[0m [32;1m------ [0m [32;1m------[0m
+Specrew  0.30.0  0.30.0          0.30.0         current module-manifest
+Spec Kit 0.8.18  0.8.18          0.9.0          current github-tags
+Squad    0.9.4   0.9.4           0.9.4          current npm
+
+Note: Spec Kit 0.9.0 is available upstream but Specrew has validated only through 0.8.18. Status 'current' reflects this. Upgrading beyond 0.8.18 is at your own risk; consider waiting for a Specrew release that validates against 0.9.0.
+Note (Spec Kit): 0.8.14-0.8.18 all additive (no breaking changes). Notable upstream surfaces: 0.8.16 added {{ context.run_id }} template var; 0.8.17 added Hermes Agent integration + Antigravity enhancements; 0.8.18 added SPECKIT_INTEGRATION_<KEY>_EXTRA_ARGS env var (see Proposal 147 for Specrew's parallel host-options surface).

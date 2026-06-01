@@ -18,8 +18,8 @@ schema: v1
 
 speckit:
   min: "0.8.4"
-  max_tested: "0.8.18"
-  notes: "0.8.14-0.8.18 all additive (no breaking changes). Notable upstream surfaces: 0.8.16 added {{ context.run_id }} template var; 0.8.17 added Hermes Agent integration + Antigravity enhancements; 0.8.18 added SPECKIT_INTEGRATION_<KEY>_EXTRA_ARGS env var (see Proposal 147 for Specrew's parallel host-options surface)."
+  max_tested: "0.9.0"
+  notes: "0.9.0 extracted agent-context updates into a bundled agent-context extension (after_specify/after_plan hooks) and changed the .specify/extensions.yml installed: list to bare strings. Validated 2026-06-02 (feature 090, spike-speckit-090): Specrew before-plan/after-tasks/before-implement hooks coexist via `specify extension add`; existing object-format projects + stale init-options.json tolerated; agent-context marker upsert runs. Shipped alongside: format-aware Ensure-ExtensionRegistration (deploy-speckit-extension.ps1) so `specrew update` no longer corrupts 0.9.0 string-format installed: lists. Upstream compatibility fallback deprecated (removal in 0.12.0) does not affect Specrew. 0.8.14-0.8.18 all additive."
 
 squad:
   min: "0.9.1"

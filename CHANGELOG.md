@@ -13,10 +13,12 @@ baseline that each release number represents.
   - Session locks and feature claims for same-feature coordination.
   - Conflict-reduction primitives: per-iteration decision splitting, append-only lifecycle events, and sorted `Specrew.psd1` FileList writes.
   - Multi-developer signal detection and recommendation surfaces in `specrew start`, `specrew where`, and boundary-sync output.
+- **Spec Kit 0.9.0 support (feature 090 / spike-speckit-090)** — `scripts/internal/supported-versions.yml` `speckit.max_tested` raised `0.8.18` → `0.9.0` after an empirical compatibility spike. An 11-check smoke matrix **surfaced one defect** — silent (exit-0) `installed:` corruption on `specrew update` of 0.9.0-initialized projects, fixed below — with the remaining checks green: fresh `specrew init` on 0.9.0, governance-hook coexistence with the new bundled `agent-context` extension, existing-project + legacy object-format + stale `init-options.json` tolerance, `specrew update --info` / `specrew start --no-launch`, and the 0.9.0 agent-context marker upsert at runtime. Report + evidence under `specs/090-speckit-090-compatibility/`.
 
 ### Fixed
 
 - **Proposal 152 small-fix slice**: normalized iteration-closeout numbers before closed-index and dashboard writes, clarified that `--allow-all` affects tool-call approval only, and added a Windows/PowerShell shell rule to generated coordinator prompts.
+- **Format-aware extension registration (feature 090)** — `Ensure-ExtensionRegistration` in `extensions/specrew-speckit/scripts/deploy-speckit-extension.ps1` now detects Spec Kit 0.9.0's bare-string `installed:` list and registers/no-ops `specrew-speckit` as a string instead of inserting a legacy object entry. Fixes silent (exit-0) corruption — a duplicate, mixed-type registration — that `specrew update` produced on 0.9.0-initialized projects; `<=0.8.x` object-format projects are unaffected. Covered by new `tests/integration/extension-registration-format.tests.ps1` plus four-state-at-0.9.0 assertions in `tests/integration/version-info-states.tests.ps1`.
 
 ## [0.30.0] - 2026-05-31
 

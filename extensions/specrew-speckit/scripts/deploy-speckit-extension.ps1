@@ -180,6 +180,65 @@ function Ensure-ExtensionRegistration {
     $lines = [System.Collections.Generic.List[string]]::new()
     $lines.AddRange([string[]](Get-Content -LiteralPath $ManifestPath))
 
+    # Spec Kit 0.9.0+ writes the `installed:` list as bare extension-id strings
+    # (e.g. "- specrew-speckit") instead of the legacy object entries. Detect that
+    # shape and register/no-op as a string. Inserting a legacy object entry into a
+    # bare-string list produces a malformed mixed-type list with specrew-speckit
+    # registered twice (validated defect, feature 090 / spike-speckit-090).
+    $installedHeaderIndex = -1
+    for ($index = 0; $index -lt $lines.Count; $index++) {
+        if ($lines[$index] -match '^\s*installed:\s*(\[\s*\])?\s*$') {
+            $installedHeaderIndex = $index
+            break
+        }
+    }
+
+    if ($installedHeaderIndex -ge 0) {
+        $listIsStringFormat = $false
+        $stringEntryPresent = $false
+        $lastStringItemIndex = $installedHeaderIndex
+        for ($index = $installedHeaderIndex + 1; $index -lt $lines.Count; $index++) {
+            $listLine = $lines[$index]
+            if ([string]::IsNullOrWhiteSpace($listLine)) {
+                continue
+            }
+            if ($listLine -match '^\s*-\s*name:\s*') {
+                # Legacy object-format list; fall through to the object-entry logic below.
+                break
+            }
+            if ($listLine -match '^\s*-\s*(?<id>[A-Za-z0-9._-]+)\s*$') {
+                $listIsStringFormat = $true
+                $lastStringItemIndex = $index
+                if ($Matches['id'] -eq 'specrew-speckit') {
+                    $stringEntryPresent = $true
+                }
+                continue
+            }
+            # Any other non-blank, non-list line ends the installed: block.
+            break
+        }
+
+        if ($listIsStringFormat) {
+            if ($stringEntryPresent) {
+                Add-DeploymentAction -Actions $Actions -Action 'preserved-registration' -Path $ManifestPath
+                return
+            }
+
+            $lines.Insert($lastStringItemIndex + 1, '- specrew-speckit')
+            Add-DeploymentAction -Actions $Actions -Action 'updated-registration' -Path $ManifestPath
+            if (-not $DryRun) {
+                $stringContent = ($lines -join [Environment]::NewLine)
+                if (-not $stringContent.EndsWith([Environment]::NewLine)) {
+                    $stringContent += [Environment]::NewLine
+                }
+
+                [System.IO.File]::WriteAllText($ManifestPath, $stringContent, [System.Text.UTF8Encoding]::new($false))
+            }
+
+            return
+        }
+    }
+
     $existingEntryStart = -1
     for ($index = 0; $index -lt $lines.Count; $index++) {
         if ($lines[$index] -match '^\s*-\s*name:\s*"?specrew-speckit"?\s*$') {
