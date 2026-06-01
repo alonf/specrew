@@ -14,8 +14,8 @@
 
 ## Requirement Completeness
 
-- [x] Functional requirements cover prompt truth, boundary authorization, readiness-vs-approval, human re-entry packets, discussion prompts, and regression coverage
-- [x] Acceptance scenarios cover fresh prompt generation, beta2-bad phrase rejection, clarify-to-plan stop behavior, and thin handoff rejection
+- [x] Functional requirements cover prompt truth, boundary authorization, readiness-vs-approval, six-section human re-entry packets, contextual discussion prompts, and regression coverage
+- [x] Acceptance scenarios cover fresh prompt generation, beta2-bad phrase rejection, clarify-to-plan stop behavior, missing `Why I stopped`, context-free prompts, and thin handoff rejection
 - [x] Edge cases cover missing policy state, autonomous mode, readiness warnings, agent-authored approval wording, and host menu limitations
 - [x] Key entities are defined for policy, transitions, generated prompt guidance, re-entry packets, and verdict evidence
 - [x] Requirements have owner roles and delivery windows
@@ -29,6 +29,7 @@
 
 ## Clarification Candidates
 
-- [ ] Confirm whether implementation must add `boundary_enforcement.policy_classes` to `start-context.json` if the field is absent, or whether reading `.specrew/config.yml` during prompt generation is sufficient.
-- [ ] Confirm whether `Status: Approved` contradiction detection belongs in validator logic for this feature or can be satisfied by prompt-regression coverage plus reviewer instructions.
-- [ ] Confirm the required beta3 smoke evidence format before release closeout.
+- [x] `.specrew/config.yml` remains the authoritative policy source, and `start-context.json` must include the resolved `boundary_enforcement.policy_classes` snapshot.
+- [x] Include a narrow check for `Status: Approved` without human verdict evidence.
+- [x] Require committed beta3 smoke evidence before release closeout.
+- [x] The human re-entry packet uses six sections, including `Why I stopped`.
