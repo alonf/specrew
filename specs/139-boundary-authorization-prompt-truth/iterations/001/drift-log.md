@@ -22,8 +22,8 @@
 
 ## Summary
 
-**Total drift events**: 7
-**Resolution rate**: 100% (7/7 resolved)
+**Total drift events**: 8
+**Resolution rate**: 100% (8/8 resolved)
 **Specification drift**: Resolved by human-approved spec/task reconciliation before implementation
 
 ## Events
@@ -113,6 +113,19 @@
 - **Resolution**: Removed host-specific orientation copy from the shared core start prompt in [specrew-start.ps1](file:///C:/tmp/Specrew-main-boundary-auth/scripts/specrew-start.ps1), replaced it with a neutral host-orientation marker, and rendered the visible orientation through [coordinator-prompt-surgery.ps1](file:///C:/tmp/Specrew-main-boundary-auth/scripts/internal/coordinator-prompt-surgery.ps1) using the selected host manifest and `crew_runtime_status`. Added `CrewRuntimeDisplayName = 'Squad'` to the Copilot host manifest at [host.psd1](file:///C:/tmp/Specrew-main-boundary-auth/hosts/copilot/host.psd1) so Copilot/Squad launches may describe Squad coordination only when `crew_runtime_status` is `squad-runtime`.
 - **Verification**: [multi-host-launch-path.tests.ps1](file:///C:/tmp/Specrew-main-boundary-auth/tests/integration/multi-host-launch-path.tests.ps1) now proves the rendered orientation is host-accurate for Codex, Claude, and Copilot/Squad and rejects false hard-coded host/runtime claims. [start-command.ps1](file:///C:/tmp/Specrew-main-boundary-auth/tests/integration/start-command.ps1) now checks the actual generated `.specrew/last-start-prompt.md` against `.specrew/start-context.json` for Codex, Claude, and Copilot. [copilot-squad-smoke.ps1](file:///C:/tmp/Specrew-main-boundary-auth/tests/manual/copilot-squad-smoke.ps1) now scans the release smoke prompt orientation for false hard-coded claims.
 - **Follow-up**: Publish the next prerelease tag after this repair and repeat Step 11 clean prerelease replay before any stable promotion.
+
+### D-008 — Published beta4 replay missed version truth and host interaction rendering
+
+- **Detected At**: 2026-06-01T17:44:59Z
+- **Type**: release-closeout-smoke-failure
+- **Status**: resolved
+- **Source**: Human Step 11 FAIL after the clean Codex prerelease replay of published `v0.30.0-beta4`.
+- **Requirement Citation**: Release-closeout acceptance requires welcome/welcome-back orientation to show the active installed Specrew prerelease, selected host, runtime class, and lifecycle position. Approval gates must use the selected host adapter's structured question/menu primitive when available, with exact textual fallback when unavailable.
+- **Impact**: The D-007 repair removed the false Claude Code opener, but the visible orientation still omitted active version/prerelease truth, shared Rule 53 still implied Squad lifecycle automation for non-Squad hosts, and approval gates could render as plain numbered text even when the host exposes structured question/menu behavior.
+- **Classification**: Feature 139 release-closeout blocker and host interaction-model enforcement gap. This is in scope because Feature 139 owns prompt truth at human judgment boundaries and the new human re-entry interaction contract.
+- **Resolution**: Commit `6507c6af` updates [specrew-start.ps1](file:///C:/tmp/Specrew-main-boundary-auth/scripts/specrew-start.ps1) to derive and persist the installed runtime version including prerelease, `runtime_class`, selected-host truth, and lifecycle position; updates [coordinator-prompt-surgery.ps1](file:///C:/tmp/Specrew-main-boundary-auth/scripts/internal/coordinator-prompt-surgery.ps1) to render versioned orientation and host-specific interaction guidance; and adds structured-question metadata for Codex and Claude in [codex host.psd1](file:///C:/tmp/Specrew-main-boundary-auth/hosts/codex/host.psd1) and [claude host.psd1](file:///C:/tmp/Specrew-main-boundary-auth/hosts/claude/host.psd1). Core prompt Rule 53 now defines the response contract only and delegates rendering to the selected host package.
+- **Verification**: [multi-host-launch-path.tests.ps1](file:///C:/tmp/Specrew-main-boundary-auth/tests/integration/multi-host-launch-path.tests.ps1) covers version + host + runtime truth for initial and resume orientation across Codex, Claude, and Copilot/Squad, plus host-specific interaction guidance. [start-command.ps1](file:///C:/tmp/Specrew-main-boundary-auth/tests/integration/start-command.ps1) checks actual generated prompt/context parity for `specrew_version`, `selected_host`, `runtime_class`, and host-rendered interaction guidance. [copilot-squad-smoke.ps1](file:///C:/tmp/Specrew-main-boundary-auth/tests/manual/copilot-squad-smoke.ps1) scans emitted smoke prompt/orientation for missing version truth and false hard-coded host/runtime claims. [boundary-authorization-prompt-truth.tests.ps1](file:///C:/tmp/Specrew-main-boundary-auth/tests/unit/boundary-authorization-prompt-truth.tests.ps1) confirms shared prompt Rule 53 no longer embeds host-specific CLI text or the stale Squad automation claim.
+- **Follow-up**: Publish the next prerelease (`v0.30.0-beta5`) and repeat Step 11 clean prerelease replay before any stable promotion.
 
 ### Resolution Strategies (Unused)
 

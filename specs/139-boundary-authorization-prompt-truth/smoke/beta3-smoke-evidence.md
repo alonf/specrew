@@ -1,7 +1,7 @@
 # Beta3 Smoke Evidence: Boundary Authorization Prompt Truth
 
 **Feature**: 139-boundary-authorization-prompt-truth
-**Status**: automated pre-publish candidate PASS; published beta3 Codex host replay FAIL
+**Status**: automated pre-publish candidate PASS; published beta3 and beta4 Codex host replays FAIL
 **Created**: 2026-06-01
 **Updated**: 2026-06-01
 
@@ -23,7 +23,7 @@
 | `boundary_enforcement.policy_classes` snapshot | PASS: generated `start-context.json` includes the resolved snapshot |
 | Beta2-bad hard-block phrase | PASS: generated prompt does not contain `is the only gate that HARD-BLOCKS` |
 | Beta2-bad auto-chain phrase | PASS: generated prompt does not contain the old clarify-to-plan/tasks auto-chain instruction |
-| Result | FAIL for published beta3 replay; stable promotion blocked until a repaired prerelease is published and Step 11 replay passes |
+| Result | FAIL for published beta3 and beta4 replays; stable promotion blocked until a repaired prerelease is published and Step 11 replay passes |
 
 ## Command Output Summary
 
@@ -63,3 +63,13 @@ After publishing `v0.30.0-beta3`, the clean Codex replay failed Step 11 because 
 - The same orientation block claimed the Crew roles all run inside the session, which is false for a Codex host replay without an active Squad/Copilot role runtime.
 
 This is D-007 in the iteration drift log. The repaired prerelease must prove Codex says Codex, non-Copilot hosts do not claim Squad/Copilot role runtime behavior, and Copilot/Squad describes Squad coordination only when the runtime is active.
+
+## Published Beta4 Host Replay
+
+After publishing `v0.30.0-beta4`, the clean Codex replay failed Step 11 again:
+
+- The welcome/welcome-back orientation did not show the active installed Specrew version/prerelease, so the human could not verify the session was running `0.30.0-beta4`.
+- The prompt still contained shared runtime wording that could imply Squad lifecycle automation for non-Squad hosts, including wording like `while Squad handles the rest of the lifecycle automatically`.
+- The approval gate rendered as plain numbered text instead of going through host-specific structured question/menu guidance where the selected host exposes that primitive.
+
+This is D-008 in the iteration drift log. Commit `6507c6af` repairs the common prompt-generation path for the next beta candidate by rendering version truth, selected host, runtime class, lifecycle position, and host-specific interaction guidance into the actual generated prompt. Stable promotion remains blocked until `v0.30.0-beta5` is tagged, published, installed in a clean shell, and replayed successfully.
