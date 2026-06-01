@@ -522,6 +522,18 @@ function Get-SpecrewClosedIterationIndex {
     return $result
 }
 
+function Normalize-SpecrewIterationNumber {
+    param([AllowNull()][string]$IterationNumber)
+
+    if ($null -eq $IterationNumber) { return $null }
+    $trimmed = $IterationNumber.Trim()
+    if ([string]::IsNullOrWhiteSpace($trimmed)) { return $trimmed }
+    if ($trimmed -match '^\d+$') {
+        return ([int]$trimmed).ToString('000')
+    }
+    return $trimmed
+}
+
 function Test-SpecrewIterationClosed {
     # Proposal 085: returns $true if the (feature, iteration) tuple is recorded
     # in the closed-iteration index.
@@ -535,8 +547,9 @@ function Test-SpecrewIterationClosed {
         [Parameter(Mandatory = $true)]
         [string]$Iteration
     )
+    $normalizedIteration = Normalize-SpecrewIterationNumber -IterationNumber $Iteration
     $index = Get-SpecrewClosedIterationIndex -ProjectRoot $ProjectRoot
-    $key = "$Feature/$Iteration"
+    $key = "$Feature/$normalizedIteration"
     return $index.ContainsKey($key)
 }
 
@@ -556,6 +569,7 @@ function Add-SpecrewClosedIterationEntry {
 
         [string]$ClosedAt
     )
+    $normalizedIteration = Normalize-SpecrewIterationNumber -IterationNumber $Iteration
     if ([string]::IsNullOrWhiteSpace($ClosedAt)) {
         $ClosedAt = (Get-Date -AsUTC -Format 'yyyy-MM-ddTHH:mm:ssZ')
     }
@@ -567,13 +581,13 @@ function Add-SpecrewClosedIterationEntry {
 
     Invoke-WithFileLock -Path $indexPath -ScriptBlock {
         $existing = Get-SpecrewClosedIterationIndex -ProjectRoot $ProjectRoot
-        $key = "$Feature/$Iteration"
+        $key = "$Feature/$normalizedIteration"
         if ($existing.ContainsKey($key)) {
             return
         }
         $newEntryLines = @(
             "  - feature: $Feature",
-            "    iteration: $Iteration",
+            "    iteration: $normalizedIteration",
             "    closed_at: $ClosedAt"
         )
         $needsHeader = -not (Test-Path -LiteralPath $indexPath -PathType Leaf) -or [string]::IsNullOrWhiteSpace((Get-Content -LiteralPath $indexPath -Raw -Encoding UTF8))
@@ -617,7 +631,7 @@ function Get-SpecrewClosedIterationFromStateFile {
     $normalized = $StatePath -replace '\\', '/'
     if ($normalized -notmatch 'specs/([^/]+)/iterations/([^/]+)/state\.md$') { return $null }
     $feature = $Matches[1]
-    $iteration = $Matches[2]
+    $iteration = Normalize-SpecrewIterationNumber -IterationNumber $Matches[2]
     # Strip leading numeric prefix from feature (e.g., "034-validator-memoization" → keep full slug)
     return @{ feature = $feature; iteration = $iteration; closed_at = (Get-Date -AsUTC -Format 'yyyy-MM-ddTHH:mm:ssZ') }
 }

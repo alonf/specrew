@@ -51,6 +51,19 @@ Both instances:
 
 **Two empirical instances of the same failure mode in the same feature warrants tooling enforcement.** Reviewer-charter discipline (Proposal 140) is the human-side fix; this proposal is the mechanical-side fix that runs even without a cross-reviewer.
 
+### F-051 addendum: Iteration 2a review-remediation evidence
+
+F-051 Iteration 2a added a third high-signal production data point on 2026-06-01. Across three review-remediation rounds, reviewers caught:
+
+- push parity drift where the reviewed boundary commit existed only locally;
+- uncommitted `.squad/decisions.md` boundary evidence;
+- stale `state.md`, `plan.md`, and `.squad/identity/now.md` lifecycle prose after review acceptance;
+- `hardening-gate.md` gate-level status drift from post-implementation evidence;
+- stale `review-report.yml` finding history after round-N remediation;
+- duplicate `state.md` scaffold-residue headers.
+
+These are not isolated prose nits. They are durable state-truth and artifact-coherence defects that created additional human review loops after the substantive implementation had already passed. Proposal 142 should therefore expand beyond the original five state-artifact checks to include scaffold-residue detection and review-report remediation-history coherence where those artifacts exist.
+
 ### Why prose-rule-only is insufficient
 
 Same pattern as `[[proposal-132-mirror-parity-validator-enforcement]]` (mirror parity prose rule → mechanical validator backfill) and `[[proposal-105-host-native-hook-deployment]]`'s "if a prompt says X you have a request; if a hook blocks it you have a boundary" framing. State-truth integrity today is a discipline expectation with no mechanical enforcement.
@@ -67,6 +80,8 @@ A validator rule that runs at boundary-recording time (and at each `validate-gov
 - **FR-004**: Validator MUST cross-check `.specrew/start-context.json` `session_state.boundary_type` against `boundary_enforcement.last_authorized_boundary`. Drift = WARN (allows mid-transition states but flags long-lived inconsistency).
 - **FR-005**: Validator MUST cross-check `.specrew/last-start-prompt.md` frontmatter session-state fields against `.specrew/start-context.json` session_state. If they diverge, WARN (regenerated artifact may catch up; failure to converge over time = FAIL).
 - **FR-006**: At iteration-closeout boundary specifically, validator MUST execute all five checks above as a HARD-BLOCK precondition. iteration-closeout cannot record without state-truth consistency.
+- **FR-007 (added 2026-06-01)**: Validator SHOULD detect duplicate lifecycle scaffold headings in `state.md` and `plan.md` when duplicate headings carry generic template residue next to iteration-specific content. At minimum WARN; FAIL at closeout if the duplicate creates contradictory lifecycle meaning.
+- **FR-008 (added 2026-06-01)**: When `review-report.yml` exists, validator SHOULD cross-check round-N remediation history against durable review artifacts: fixed finding counts, verdict string, and finding statuses must reflect the latest committed remediation round.
 
 ### Validator rule shape
 
@@ -136,3 +151,4 @@ Two empirical instances of the same failure mode in the same feature = strong ev
 ## Status history
 
 - **2026-05-29** — Drafted as direct response to F-049 iter-5 iteration-closeout state-truth gap (2nd in F-049 alone). Maintainer raised the question "Why can't we enforce the methodology?" The most leveraged single answer is a validator rule at boundary-recording time. This proposal codifies that rule. Ships as draft because empirical motivation is concrete, ~3-5 SP scope is small, and shipping captures immediate methodology lift across all in-flight features.
+- **2026-06-01** — Partially promoted ahead of remaining F-051 iterations after Iteration 2a required three review-remediation rounds for state-truth, scaffold-residue, and review-report coherence gaps. Scope expanded with FR-007 and FR-008.

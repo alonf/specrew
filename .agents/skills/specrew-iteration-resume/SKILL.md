@@ -1,3 +1,11 @@
+---
+name: "specrew-iteration-resume"
+description: "Resume an interrupted iteration by analyzing state.md plus plan.md's task table and suggesting the next safe execution step or escalation."
+domain: "lifecycle-recovery"
+confidence: "high"
+source: "Specrew governance pillar — iteration resume / recovery helper"
+---
+
 # specrew-iteration-resume
 
 **Type**: Recovery Skill  

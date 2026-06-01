@@ -430,7 +430,32 @@ switch ($Command) {
         & pwsh -NoProfile -ExecutionPolicy Bypass -File $initScript @Arguments
         exit $LASTEXITCODE
     }
-    
+
+    'config' {
+        # config takes a positional subcommand (get|set) + key [+ value], like `host`/`team`,
+        # so it skips the flag-whitelist but still requires an initialized project.
+        Assert-ProjectSetup -CommandName 'config' -ArgumentList $Arguments
+        Assert-SlashCommandCompatibility -CommandName 'config' -ArgumentList $Arguments
+
+        $configScript = Join-Path $scriptRoot 'specrew-config.ps1'
+        if (-not (Test-Path -LiteralPath $configScript)) {
+            Write-Host "ERROR: specrew-config.ps1 not found at $configScript" -ForegroundColor Red
+            exit 1
+        }
+
+        if (-not $Arguments -or $Arguments.Count -eq 0) {
+            Write-Host "Usage: specrew config <get|set> session_mode [<single|multi>]" -ForegroundColor Yellow
+            Write-Host ""
+            Write-Host "Examples:" -ForegroundColor Cyan
+            Write-Host "  specrew config get session_mode"
+            Write-Host "  specrew config set session_mode multi"
+            exit 0
+        }
+
+        & pwsh -NoProfile -ExecutionPolicy Bypass -File $configScript @Arguments
+        exit $LASTEXITCODE
+    }
+
     'team' {
         Assert-WhitelistedArguments -CommandName 'team' -ArgumentList $Arguments
         Assert-ProjectSetup -CommandName 'team' -ArgumentList $Arguments

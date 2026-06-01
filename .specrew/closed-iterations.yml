@@ -152,6 +152,15 @@ closed:
   - feature: 049-pipeline-hardening-intake
     iteration: 004
     closed_at: 2026-05-29T00:25:08Z
+  - feature: 051-multi-session-foundation
+    iteration: 001
+    closed_at: 2026-05-31T15:24:14Z
+  - feature: 051-multi-session-foundation
+    iteration: "002"
+    closed_at: 2026-05-31T20:54:00Z
+  - feature: 051-multi-session-foundation
+    iteration: 003
+    closed_at: 2026-05-31T23:35:07Z
   - feature: 054-activate-spec-surfaces
     iteration: 001
     closed_at: 2026-05-31T11:05:37Z

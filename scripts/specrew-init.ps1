@@ -761,6 +761,30 @@ if (-not $SpecKitExtensionOnly) {
         Add-Action -Actions $actions -Step 'governance-scaffold' -Outcome ("{0}: {1}" -f $governanceAction.Action, $governanceAction.Path)
     }
 
+    # F-051 US2: per-session file classification (FR-004/005/006). Generate the
+    # per-session .gitignore block and untrack any previously committed per-session files.
+    Write-Step 'Applying per-session file classification'
+    $fileClassificationScript = Join-Path $PSScriptRoot 'internal\file-classification.ps1'
+    if (Test-Path -LiteralPath $fileClassificationScript -PathType Leaf) {
+        . $fileClassificationScript
+        if ($DryRun) {
+            Add-Action -Actions $actions -Step 'file-classification' -Outcome 'would update .gitignore with per-session patterns and untrack any tracked per-session files'
+        }
+        else {
+            $addedPatterns = @(Update-GitignoreForSession -ProjectRoot $resolvedProjectPath)
+            if ($addedPatterns.Count -gt 0) {
+                Add-Action -Actions $actions -Step 'file-classification' -Outcome ("added {0} per-session pattern(s) to .gitignore" -f $addedPatterns.Count)
+            }
+            else {
+                Add-Action -Actions $actions -Step 'file-classification' -Outcome '.gitignore already covers per-session patterns'
+            }
+            $untracked = @(Remove-TrackedPerSessionFiles -ProjectRoot $resolvedProjectPath)
+            if ($untracked.Count -gt 0) {
+                Add-Action -Actions $actions -Step 'file-classification' -Outcome ("untracked {0} previously committed per-session file(s) via git rm --cached" -f $untracked.Count)
+            }
+        }
+    }
+
     Write-Step 'Deploying Squad runtime'
     $iterationConfigPath = Join-Path $resolvedProjectPath '.specrew\iteration-config.yml'
     Set-IterationConfigAgents -IterationConfigPath $iterationConfigPath -Agents $resolvedAgents -Actions $actions -PreviewOnly:$DryRun

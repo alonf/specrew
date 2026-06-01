@@ -1,0 +1,11 @@
+{
+  "schemaVersion": "v1",
+  "featureRef": "specs/051-multi-session-foundation/spec.md",
+  "iterationRef": "specs/051-multi-session-foundation/iterations/001",
+  "generatedAt": "2026-05-31T11:58:31Z",
+  "generator": {
+    "name": "specrew-mechanical-checks",
+    "version": "0.29.0"
+  },
+  "findings": []
+}

@@ -7,6 +7,33 @@ if (-not (Test-Path -LiteralPath $sharedGovernancePath -PathType Leaf)) {
 }
 . $sharedGovernancePath
 
+$sessionManagementHelperPath = Join-Path $PSScriptRoot 'session-management.ps1'
+if (-not (Test-Path -LiteralPath $sessionManagementHelperPath -PathType Leaf)) {
+    throw "Missing session-management helper '$sessionManagementHelperPath'."
+}
+. $sessionManagementHelperPath
+
+$featureClaimsHelperPath = Join-Path $PSScriptRoot 'feature-claims.ps1'
+if (-not (Test-Path -LiteralPath $featureClaimsHelperPath -PathType Leaf)) {
+    throw "Missing feature-claims helper '$featureClaimsHelperPath'."
+}
+. $featureClaimsHelperPath
+
+$sessionConfigHelperPath = Join-Path $PSScriptRoot 'session-config.ps1'
+if (-not (Test-Path -LiteralPath $sessionConfigHelperPath -PathType Leaf)) {
+    throw "Missing session-config helper '$sessionConfigHelperPath'."
+}
+. $sessionConfigHelperPath
+
+$scriptRoot = Split-Path -Parent $PSScriptRoot
+foreach ($helperName in @('decisions-split.ps1', 'append-only-logs.ps1', 'psd1-sort.ps1', 'auto-detection.ps1')) {
+    $helperPath = Join-Path $scriptRoot $helperName
+    if (-not (Test-Path -LiteralPath $helperPath -PathType Leaf)) {
+        throw "Missing helper '$helperPath'."
+    }
+    . $helperPath
+}
+
 function Get-SpecrewSessionStatePaths {
     param(
         [Parameter(Mandatory = $true)]
@@ -184,6 +211,83 @@ function Get-SpecrewFeatureNumber {
     return $null
 }
 
+function Get-SpecrewCurrentBranchName {
+    param([Parameter(Mandatory = $true)][string]$ProjectRoot)
+
+    $branchOutput = @(& git -C $ProjectRoot branch --show-current 2>$null)
+    if ($LASTEXITCODE -eq 0 -and $branchOutput.Count -gt 0 -and -not [string]::IsNullOrWhiteSpace($branchOutput[0])) {
+        return $branchOutput[0].ToString().Trim()
+    }
+
+    return $null
+}
+
+function Test-SpecrewFeatureMergedToMain {
+    param(
+        [Parameter(Mandatory = $true)][string]$ProjectRoot,
+        [AllowNull()][string]$FeatureRef
+    )
+
+    $featureNumber = Get-SpecrewFeatureNumber -FeatureRef $FeatureRef
+    if ([string]::IsNullOrWhiteSpace($featureNumber)) {
+        return [pscustomobject]@{ IsMerged = $false; Detail = $null }
+    }
+
+    $logOutput = @(& git -C $ProjectRoot log main --since='90 days ago' --merges --oneline --grep="$featureNumber" 2>&1)
+    if ($LASTEXITCODE -ne 0) {
+        return [pscustomobject]@{ IsMerged = $false; Detail = $null }
+    }
+
+    if ($logOutput.Count -gt 0) {
+        return [pscustomobject]@{
+            IsMerged = $true
+            Detail   = ('Feature {0} appears in merge history on main: {1}' -f $featureNumber, ($logOutput[0].ToString().Trim()))
+        }
+    }
+
+    return [pscustomobject]@{ IsMerged = $false; Detail = $null }
+}
+
+function Sync-SpecrewFeatureClaimForBoundary {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$ProjectRoot,
+
+        [Parameter(Mandatory = $true)]
+        [string]$BoundaryType,
+
+        [AllowNull()]
+        [string]$FeatureRef,
+
+        [Parameter(Mandatory = $true)]
+        [string]$NowUtc
+    )
+
+    if ([string]::IsNullOrWhiteSpace($FeatureRef)) {
+        return
+    }
+
+    $branchName = Get-SpecrewCurrentBranchName -ProjectRoot $ProjectRoot
+    if ([string]::IsNullOrWhiteSpace($branchName)) {
+        $branchName = $FeatureRef
+    }
+
+    if ($BoundaryType -eq 'specify') {
+        Add-FeatureClaim -ProjectRoot $ProjectRoot -FeatureId $FeatureRef -ClaimedBy (Get-SpecrewCoarseIdentity) -BranchName $branchName -NowUtc $NowUtc
+        return
+    }
+
+    if ($BoundaryType -eq 'feature-closeout') {
+        $mergeCheck = Test-SpecrewFeatureMergedToMain -ProjectRoot $ProjectRoot -FeatureRef $FeatureRef
+        if ($mergeCheck.IsMerged) {
+            Remove-FeatureClaim -ProjectRoot $ProjectRoot -FeatureId $FeatureRef
+        }
+        return
+    }
+
+    Update-FeatureClaim -ProjectRoot $ProjectRoot -FeatureId $FeatureRef -ClaimedBy (Get-SpecrewCoarseIdentity) -BranchName $branchName -NowUtc $NowUtc
+}
+
 function Get-SpecrewBoundaryOrder {
     return @(Get-SpecrewCanonicalBoundaryTypes)
 }
@@ -245,7 +349,7 @@ function New-SpecrewSessionState {
         feature_ref      = $resolvedFeatureRef
         feature_number   = Get-SpecrewFeatureNumber -FeatureRef $resolvedFeatureRef
         feature_path     = $featurePath
-        iteration_number = if ([string]::IsNullOrWhiteSpace($IterationNumber)) { $null } else { $IterationNumber.Trim() }
+        iteration_number = Normalize-SpecrewIterationNumber -IterationNumber $IterationNumber
         task_id          = if ([string]::IsNullOrWhiteSpace($TaskId)) { $null } else { $TaskId.Trim() }
         auth_commit_hash = if ([string]::IsNullOrWhiteSpace($AuthCommitHash)) { $null } else { $AuthCommitHash.Trim() }
         recorded_at      = $recordedAt
@@ -901,8 +1005,9 @@ function Invoke-SpecrewAutoRenderDashboard {
     if (-not [string]::IsNullOrWhiteSpace($FeatureRef)) {
         $whereArgs += @('-FeatureId', $FeatureRef)
     }
-    if (-not [string]::IsNullOrWhiteSpace($IterationNumber)) {
-        $whereArgs += @('-IterationNumber', $IterationNumber)
+    $effectiveIterationNumber = Normalize-SpecrewIterationNumber -IterationNumber $IterationNumber
+    if (-not [string]::IsNullOrWhiteSpace($effectiveIterationNumber)) {
+        $whereArgs += @('-IterationNumber', $effectiveIterationNumber)
     }
 
     & pwsh -NoProfile -ExecutionPolicy Bypass -File $whereScript @whereArgs *>&1 | Out-Null
@@ -981,6 +1086,7 @@ function Invoke-SpecrewBoundaryStateSync {
     }
 
     $BoundaryType = $aliasMap[$normalizedInput]
+    $effectiveIterationNumber = Normalize-SpecrewIterationNumber -IterationNumber $IterationNumber
 
     # Proposal 088: pre-sync markdownlint gate. Catches lint violations at
     # boundary-time so they never reach PR-CI Lint and cause the catch-fix-retry
@@ -1031,9 +1137,15 @@ function Invoke-SpecrewBoundaryStateSync {
         -BoundaryType $BoundaryType `
         -ProjectRoot $paths.ProjectRoot `
         -FeatureRef $effectiveFeatureRef `
-        -IterationNumber $IterationNumber `
+        -IterationNumber $effectiveIterationNumber `
         -TaskId $TaskId `
         -AuthCommitHash $effectiveAuthCommitHash
+
+    Sync-SpecrewFeatureClaimForBoundary `
+        -ProjectRoot $paths.ProjectRoot `
+        -BoundaryType $BoundaryType `
+        -FeatureRef $sessionState.feature_ref `
+        -NowUtc $sessionState.recorded_at
 
     $identityAdditionalFrontmatter = $null
     if (-not [string]::IsNullOrWhiteSpace($IdentityFocusArea) -or -not [string]::IsNullOrWhiteSpace($IdentityActiveIssues)) {
@@ -1135,6 +1247,49 @@ function Invoke-SpecrewBoundaryStateSync {
 
     Add-SpecrewBoundarySyncLedgerEntry -ProjectRoot $paths.ProjectRoot -SessionState $sessionState
 
+    try {
+        Add-SpecrewLifecycleEvent `
+            -ProjectRoot $paths.ProjectRoot `
+            -EventType 'boundary-sync' `
+            -NowUtc $sessionState.recorded_at `
+            -Payload @{
+                boundary_type    = $sessionState.boundary_type
+                feature_ref      = $sessionState.feature_ref
+                iteration_number = $sessionState.iteration_number
+                task_id          = $sessionState.task_id
+                auth_commit_hash = $sessionState.auth_commit_hash
+            }
+    }
+    catch {
+        Write-Warning ("Boundary sync '{0}' could not append lifecycle event JSONL: {1}" -f $BoundaryType, $_.Exception.Message)
+    }
+
+    try {
+        if ((Get-SessionMode -ProjectRoot $paths.ProjectRoot) -eq 'multi') {
+            Split-SpecrewDecisionsByIteration -ProjectRoot $paths.ProjectRoot | Out-Null
+        }
+    }
+    catch {
+        Write-Warning ("Boundary sync '{0}' could not split decisions by iteration: {1}" -f $BoundaryType, $_.Exception.Message)
+    }
+
+    try {
+        Sort-SpecrewManifestFileList -ManifestPath (Join-Path $paths.ProjectRoot 'Specrew.psd1') | Out-Null
+    }
+    catch {
+        Write-Warning ("Boundary sync '{0}' could not sort Specrew.psd1 FileList: {1}" -f $BoundaryType, $_.Exception.Message)
+    }
+
+    try {
+        $multiDeveloperSignals = Get-SpecrewMultiDeveloperSignals -ProjectRoot $paths.ProjectRoot
+        if ($multiDeveloperSignals.has_multi_developer_signal) {
+            Write-Host ("Multi-developer activity detected: {0}" -f $multiDeveloperSignals.summary) -ForegroundColor Yellow
+        }
+    }
+    catch {
+        Write-Warning ("Boundary sync '{0}' could not evaluate multi-developer activity signals: {1}" -f $BoundaryType, $_.Exception.Message)
+    }
+
     # Pillar 1 live producer (Proposal 120 / FR-018): record a boundary_event capturing whether a
     # === SPECREW HANDOFF === block accompanied this stop, so Test-HandoffEvidenceGovernance detects
     # missing handoffs in REAL lifecycle runs (not only fixtures). The coordinator passes its emitted
@@ -1149,9 +1304,9 @@ function Invoke-SpecrewBoundaryStateSync {
     # Proposal 085: append to the closed-iteration index at iteration-closeout
     # boundary (idempotent on re-sync). Validator full-repo path uses this to
     # skip closed iterations unless -IncludeClosed is set.
-    if ($BoundaryType -eq 'iteration-closeout' -and -not [string]::IsNullOrWhiteSpace($effectiveFeatureRef) -and -not [string]::IsNullOrWhiteSpace($IterationNumber)) {
+    if ($BoundaryType -eq 'iteration-closeout' -and -not [string]::IsNullOrWhiteSpace($effectiveFeatureRef) -and -not [string]::IsNullOrWhiteSpace($effectiveIterationNumber)) {
         try {
-            Add-SpecrewClosedIterationEntry -ProjectRoot $paths.ProjectRoot -Feature $effectiveFeatureRef -Iteration $IterationNumber
+            Add-SpecrewClosedIterationEntry -ProjectRoot $paths.ProjectRoot -Feature $effectiveFeatureRef -Iteration $effectiveIterationNumber
         }
         catch {
             Write-Warning ("Boundary sync 'iteration-closeout' could not append to closed-iteration index: {0}" -f $_.Exception.Message)
@@ -1163,8 +1318,8 @@ function Invoke-SpecrewBoundaryStateSync {
         # `specrew where --capture-kind iteration-closeout` manually. Calc-v2 closed iteration
         # 001 without ever producing dashboard.md, which is the empirical motivation.
         try {
-            $iterationDashboardPath = Join-Path $paths.ProjectRoot ("specs\{0}\iterations\{1}\dashboard.md" -f $effectiveFeatureRef, $IterationNumber)
-            Invoke-SpecrewAutoRenderDashboard -ProjectRoot $paths.ProjectRoot -OutputPath $iterationDashboardPath -CaptureKind 'iteration-closeout' -FeatureRef $effectiveFeatureRef -IterationNumber $IterationNumber
+            $iterationDashboardPath = Join-Path $paths.ProjectRoot ("specs\{0}\iterations\{1}\dashboard.md" -f $effectiveFeatureRef, $effectiveIterationNumber)
+            Invoke-SpecrewAutoRenderDashboard -ProjectRoot $paths.ProjectRoot -OutputPath $iterationDashboardPath -CaptureKind 'iteration-closeout' -FeatureRef $effectiveFeatureRef -IterationNumber $effectiveIterationNumber
         }
         catch {
             Write-Warning ("Boundary sync 'iteration-closeout' could not auto-render iteration dashboard: {0}" -f $_.Exception.Message)
@@ -1172,6 +1327,10 @@ function Invoke-SpecrewBoundaryStateSync {
     }
 
     if ($BoundaryType -eq 'feature-closeout') {
+        if (-not [string]::IsNullOrWhiteSpace($effectiveFeatureRef)) {
+            Remove-SessionLock -ProjectRoot $paths.ProjectRoot -FeatureId $effectiveFeatureRef
+        }
+
         Clear-SpecrewActiveFeature -FeatureJsonPath $paths.FeatureJsonPath
 
         # Proposal 046 feature-level companion: auto-render specs/<feature>/closeout-dashboard.md

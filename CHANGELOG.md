@@ -4,6 +4,20 @@ Retroactive alpha release history for shipped Specrew features. `.specrew\config
 is the canonical source for the active version; this file records the feature
 baseline that each release number represents.
 
+## Unreleased
+
+### Added
+
+- **Feature 051 (Multi-Session Foundation)** — introduces multi-session coordination primitives across three closed iterations:
+  - Session-mode configuration and per-file session-surface classification.
+  - Session locks and feature claims for same-feature coordination.
+  - Conflict-reduction primitives: per-iteration decision splitting, append-only lifecycle events, and sorted `Specrew.psd1` FileList writes.
+  - Multi-developer signal detection and recommendation surfaces in `specrew start`, `specrew where`, and boundary-sync output.
+
+### Fixed
+
+- **Proposal 152 small-fix slice**: normalized iteration-closeout numbers before closed-index and dashboard writes, clarified that `--allow-all` affects tool-call approval only, and added a Windows/PowerShell shell rule to generated coordinator prompts.
+
 ## [0.30.0] - 2026-05-31
 
 ### Added

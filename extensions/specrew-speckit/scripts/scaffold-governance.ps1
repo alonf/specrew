@@ -273,6 +273,7 @@ speckit_version: "$SpecKitVersion"
 squad_version: "$SquadVersion"
 bootstrap_date: "$createdDate"
 bootstrap_mode: "$BootstrapMode"
+session_mode: "single"
 governance:
   constitution_path: ".specrew/constitution.md"
   iteration_config_path: ".specrew/iteration-config.yml"
