@@ -4,7 +4,7 @@
 **Branch**: 139-boundary-authorization-prompt-truth
 **Total Tasks**: 30
 **Iterations**: 1
-**Total Effort**: ~17.5 SP
+**Total Effort**: ~17.75 SP
 **Status**: Ready for before-implement approval
 
 ## Overview
@@ -13,7 +13,7 @@ This task list implements Proposal 154 as a narrow prompt/state/validator/test s
 
 Implementation must keep full Proposal 150, hook enforcement, broad historical Proposal 151 migration, and lifecycle redesign out of scope.
 
-## Iteration 001: Prompt Truth, Re-entry Packet, and Regression Proof (Target: <=20 SP; planned ~17.5 SP)
+## Iteration 001: Prompt Truth, Re-entry Packet, and Regression Proof (Target: <=20 SP; planned ~17.75 SP)
 
 **User Stories**: US1 (Generated Prompt Tells the Boundary Truth), US2 (Boundary Stops Re-enter the Human Cleanly), US3 (Regression Coverage Blocks Backsliding)
 **Functional Requirements**: FR-001 through FR-028

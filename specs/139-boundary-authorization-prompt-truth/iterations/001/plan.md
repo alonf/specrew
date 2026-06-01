@@ -3,7 +3,7 @@
 **Schema**: v1
 **Spec**: [../../spec.md](../../spec.md)
 **Status**: planning
-**Capacity**: 17.5/20 story_points
+**Capacity**: 17.75/20 story_points
 **Started**: 2026-06-01
 **Completed**:
 
@@ -85,7 +85,7 @@ Iteration 001 implements the full Proposal 154 slice for generated prompt truth,
 ## Readiness Notes
 
 - **Overall Verdict**: ready
-- **Capacity**: 17.5/20 story_points
+- **Capacity**: 17.75/20 story_points
 - **Release-blocking planned evidence**: `Status: Approved` check, beta3 smoke evidence, prompt bad-phrase tests, non-compliant handoff fixtures, and review gap ledger.
 - **Dirty-state policy**: unrelated session/runtime files remain excluded unless explicitly classified in task notes or drift log before editing/staging.
 - **Scope exclusions**: full Proposal 150, hook enforcement, broad historical Proposal 151 migration, and lifecycle redesign remain out of scope.

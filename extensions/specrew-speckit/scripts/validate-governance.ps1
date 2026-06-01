@@ -1042,6 +1042,68 @@ function Test-BoundaryStateAdvanceVerdict {
     }
 }
 
+function Test-ApprovedFeatureStatusVerdictEvidence {
+    param([Parameter(Mandatory = $true)][string]$ProjectRoot)
+
+    $contextPath = Join-Path $ProjectRoot '.specrew\start-context.json'
+    if (-not (Test-Path -LiteralPath $contextPath -PathType Leaf)) { return 0 }
+
+    try {
+        $context = Get-Content -LiteralPath $contextPath -Raw -Encoding UTF8 | ConvertFrom-Json -Depth 20
+    }
+    catch {
+        return 0
+    }
+
+    $sessionState = $context.PSObject.Properties['session_state']
+    if ($null -eq $sessionState -or $null -eq $sessionState.Value) { return 0 }
+
+    $featurePathProp = $sessionState.Value.PSObject.Properties['feature_path']
+    $featurePath = if ($null -ne $featurePathProp) { [string]$featurePathProp.Value } else { '' }
+    if ([string]::IsNullOrWhiteSpace($featurePath)) { return 0 }
+    if (-not [System.IO.Path]::IsPathRooted($featurePath)) {
+        $featurePath = Join-Path $ProjectRoot $featurePath
+    }
+
+    $specPath = Join-Path $featurePath 'spec.md'
+    if (-not (Test-Path -LiteralPath $specPath -PathType Leaf)) { return 0 }
+
+    $specText = Get-Content -LiteralPath $specPath -Raw -Encoding UTF8
+    if ($specText -notmatch '(?mi)^\s*\*\*Status\*\*:\s*Approved\s*$' -and $specText -notmatch '(?mi)^\s*Status:\s*Approved\s*$') {
+        return 0
+    }
+
+    $hasVerdictHistoryEvidence = $false
+    $enforcement = $context.PSObject.Properties['boundary_enforcement']
+    if ($null -ne $enforcement -and $null -ne $enforcement.Value -and $null -ne $enforcement.Value.PSObject.Properties['verdict_history']) {
+        $hasVerdictHistoryEvidence = @($enforcement.Value.verdict_history | Where-Object {
+                $null -ne $_ -and
+                $null -ne $_.PSObject.Properties['authorizing_human'] -and
+                -not [string]::IsNullOrWhiteSpace([string]$_.PSObject.Properties['authorizing_human'].Value) -and
+                $null -ne $_.PSObject.Properties['verdict_text'] -and
+                ([string]$_.PSObject.Properties['verdict_text'].Value -match '(?i)\bapprov')
+            }).Count -gt 0
+    }
+
+    $decisionsPath = Join-Path $ProjectRoot '.squad\decisions.md'
+    $hasDecisionEvidence = $false
+    if (Test-Path -LiteralPath $decisionsPath -PathType Leaf) {
+        $decisionsText = Get-Content -LiteralPath $decisionsPath -Raw -Encoding UTF8
+        $hasDecisionEvidence = (
+            $decisionsText -match '(?i)\b(Type|Decision)\*\*:\s*(authorization|sign-off)' -and
+            $decisionsText -match '(?i)\b(Approving Human|Authorizing Human)\*\*:\s*(?!pending|none|null)\S+' -and
+            $decisionsText -match '(?i)\b(Authorization Text|Verdict Text)\*\*:\s*.*\bapprov'
+        )
+    }
+
+    if (-not $hasVerdictHistoryEvidence -and -not $hasDecisionEvidence) {
+        Write-TrustHardeningWarning -Category 'approved-status-without-verdict' -Detail ("Feature spec declares Status: Approved without matching human verdict evidence in boundary_enforcement.verdict_history or .squad/decisions.md: {0}" -f (Convert-ToRepoMarkdownPath -ProjectRoot $ProjectRoot -TargetPath $specPath))
+        return 1
+    }
+
+    return 0
+}
+
 function Test-SessionStateBoundaryCanonical {
     # Proposal 090: catches non-canonical boundary strings (e.g., 'feature-closed',
     # 'iteration-closed') and active=true + boundary=feature-closeout contradiction.
@@ -4597,6 +4659,10 @@ try {
     Test-WrongLocationCanonicalArtifacts -ProjectRoot $resolvedProjectPath
     # Pillar 4 (FR-021): live state-advance-without-verdict cross-check.
     Test-BoundaryStateAdvanceVerdict -ProjectRoot $resolvedProjectPath
+    $approvedStatusFailureCount = Test-ApprovedFeatureStatusVerdictEvidence -ProjectRoot $resolvedProjectPath
+    if ($approvedStatusFailureCount -gt 0) {
+        Write-ValidatorSummaryAndExit -ProjectRoot $resolvedProjectPath -ExitCode 1 -HardWarnings $approvedStatusFailureCount
+    }
     Test-HandoffInternalReferenceSurfaces -ProjectRoot $resolvedProjectPath
 
     # Proposal 090: session-state boundary canonical-string + active/boundary

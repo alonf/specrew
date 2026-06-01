@@ -1025,7 +1025,10 @@ function Get-SpecrewStartContextState {
 function New-SpecrewBoundaryEnforcementState {
     param(
         [AllowNull()]
-        [string]$CurrentBoundary
+        [string]$CurrentBoundary,
+
+        [AllowNull()]
+        [string]$ProjectRoot
     )
 
     $normalizedCurrentBoundary = if ([string]::IsNullOrWhiteSpace($CurrentBoundary)) {
@@ -1039,9 +1042,29 @@ function New-SpecrewBoundaryEnforcementState {
         enabled                  = $true
         last_authorized_boundary = $normalizedCurrentBoundary
         pending_next_boundary    = $null
+        policy_classes           = Get-SpecrewBoundaryPolicyClassMap -ProjectRoot $ProjectRoot
         verdict_history          = @()
         bypass_history           = @()
     }
+}
+
+function Get-SpecrewBoundaryPolicyClassMap {
+    param(
+        [AllowNull()]
+        [string]$ProjectRoot
+    )
+
+    $map = [ordered]@{}
+    foreach ($boundary in (Get-SpecrewCanonicalBoundaryTypes)) {
+        $map[$boundary] = if ([string]::IsNullOrWhiteSpace($ProjectRoot)) {
+            'human-judgment-required'
+        }
+        else {
+            Get-SpecrewBoundaryPolicyClass -ProjectRoot $ProjectRoot -Boundary $boundary
+        }
+    }
+
+    return $map
 }
 
 function Test-SpecrewBoundaryEnforcementStateShape {
@@ -1096,6 +1119,33 @@ function Test-SpecrewBoundaryEnforcementStateShape {
     foreach ($arrayField in @('verdict_history', 'bypass_history')) {
         if ($null -eq $state[$arrayField] -or $state[$arrayField] -is [string]) {
             $issues.Add("boundary_enforcement.$arrayField must be an array.") | Out-Null
+        }
+    }
+
+    if ($state.Contains('policy_classes')) {
+        $policyClasses = $state['policy_classes']
+        if ($null -eq $policyClasses -or $policyClasses -is [string]) {
+            $issues.Add('boundary_enforcement.policy_classes must be an object.') | Out-Null
+        }
+        else {
+            $policyMap = if ($policyClasses -is [System.Collections.IDictionary]) {
+                $policyClasses
+            }
+            else {
+                $policyClasses | ConvertTo-Json -Depth 12 | ConvertFrom-Json -AsHashtable -Depth 12
+            }
+
+            foreach ($boundary in (Get-SpecrewCanonicalBoundaryTypes)) {
+                if (-not $policyMap.Contains($boundary)) {
+                    $issues.Add("boundary_enforcement.policy_classes.$boundary is missing.") | Out-Null
+                    continue
+                }
+
+                $value = [string]$policyMap[$boundary]
+                if ($value -notin @('human-judgment-required', 'future-policy')) {
+                    $issues.Add("boundary_enforcement.policy_classes.$boundary value '$value' is not recognized.") | Out-Null
+                }
+            }
         }
     }
 
@@ -1204,10 +1254,34 @@ function Set-SpecrewBoundaryEnforcementState {
     }
 
     $effectiveContext['schema'] = 'v2'
+    $policyClasses = if ($BoundaryEnforcement.Contains('policy_classes')) {
+        $policyMap = [ordered]@{}
+        $sourcePolicy = if ($BoundaryEnforcement['policy_classes'] -is [System.Collections.IDictionary]) {
+            $BoundaryEnforcement['policy_classes']
+        }
+        else {
+            $BoundaryEnforcement['policy_classes'] | ConvertTo-Json -Depth 12 | ConvertFrom-Json -AsHashtable -Depth 12
+        }
+
+        foreach ($boundary in (Get-SpecrewCanonicalBoundaryTypes)) {
+            $policyMap[$boundary] = if ($sourcePolicy.Contains($boundary) -and [string]$sourcePolicy[$boundary] -in @('human-judgment-required', 'future-policy')) {
+                [string]$sourcePolicy[$boundary]
+            }
+            else {
+                Get-SpecrewBoundaryPolicyClass -ProjectRoot $ProjectRoot -Boundary $boundary
+            }
+        }
+        $policyMap
+    }
+    else {
+        Get-SpecrewBoundaryPolicyClassMap -ProjectRoot $ProjectRoot
+    }
+
     $effectiveContext['boundary_enforcement'] = [ordered]@{
         enabled                  = [bool]$BoundaryEnforcement['enabled']
         last_authorized_boundary = if ([string]::IsNullOrWhiteSpace([string]$BoundaryEnforcement['last_authorized_boundary'])) { $null } else { Resolve-SpecrewCanonicalBoundaryType -Boundary ([string]$BoundaryEnforcement['last_authorized_boundary']) -ParameterName 'last_authorized_boundary' }
         pending_next_boundary    = if ([string]::IsNullOrWhiteSpace([string]$BoundaryEnforcement['pending_next_boundary'])) { $null } else { Resolve-SpecrewCanonicalBoundaryType -Boundary ([string]$BoundaryEnforcement['pending_next_boundary']) -ParameterName 'pending_next_boundary' }
+        policy_classes           = $policyClasses
         verdict_history          = @($BoundaryEnforcement['verdict_history'])
         bypass_history           = @($BoundaryEnforcement['bypass_history'])
     }
@@ -1240,7 +1314,7 @@ function Initialize-SpecrewBoundaryEnforcementState {
         $null
     }
 
-    $initialized = New-SpecrewBoundaryEnforcementState -CurrentBoundary $effectiveCurrentBoundary
+    $initialized = New-SpecrewBoundaryEnforcementState -CurrentBoundary $effectiveCurrentBoundary -ProjectRoot $ProjectRoot
     Set-SpecrewBoundaryEnforcementState -ProjectRoot $ProjectRoot -BoundaryEnforcement $initialized -Context $contextState.Context | Out-Null
     return $initialized
 }
@@ -2490,7 +2564,15 @@ function Get-InteractionModelSectionMap {
     $lines = $Text -replace "`r`n", "`n" -split "`n"
     $currentHeading = $null
     $currentLines = New-Object System.Collections.Generic.List[string]
-    $headingPattern = '^(?:#{1,6}\s*)?(?:\*\*)?(What I just did|Why I stopped|What I need from you)(?:\*\*)?\s*$'
+    $headingPattern = '^(?:#{1,6}\s*)?(?:\*\*)?(What I just did|Why I stopped|What needs your review|What happens next|Discussion prompts|What I need from you)(?:\*\*)?\s*$'
+    $canonicalHeadings = @{
+        'what i just did'        = 'What I just did'
+        'why i stopped'          = 'Why I stopped'
+        'what needs your review' = 'What needs your review'
+        'what happens next'      = 'What happens next'
+        'discussion prompts'     = 'Discussion prompts'
+        'what i need from you'   = 'What I need from you'
+    }
 
     foreach ($line in $lines) {
         $trimmed = $line.Trim()
@@ -2500,7 +2582,7 @@ function Get-InteractionModelSectionMap {
                 $currentLines.Clear()
             }
 
-            $currentHeading = $Matches[1]
+            $currentHeading = $canonicalHeadings[$Matches[1].ToLowerInvariant()]
             continue
         }
 

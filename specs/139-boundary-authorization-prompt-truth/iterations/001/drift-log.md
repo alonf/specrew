@@ -22,8 +22,8 @@
 
 ## Summary
 
-**Total drift events**: 1
-**Resolution rate**: 100% (1/1 resolved)
+**Total drift events**: 2
+**Resolution rate**: 100% (2/2 resolved)
 **Specification drift**: Resolved by human-approved spec/task reconciliation before implementation
 
 ## Events
@@ -37,6 +37,18 @@
 - **Impact**: The original spec/tasks covered the six-section packet but did not explicitly cover no legacy `=== SPECREW HANDOFF ===` duplication, grouped discussion prompts with "approve with defaults", `discuss prompt #N`, high-impact/release-blocking review callouts, or renewed approval after a prompt-specific discussion loop.
 - **Resolution**: Updated [spec.md](file:///C:/tmp/Specrew-main-boundary-auth/specs/139-boundary-authorization-prompt-truth/spec.md), [tasks.md](file:///C:/tmp/Specrew-main-boundary-auth/specs/139-boundary-authorization-prompt-truth/tasks.md), [plan.md](file:///C:/tmp/Specrew-main-boundary-auth/specs/139-boundary-authorization-prompt-truth/plan.md), and [boundary-authorization-prompt-truth.md](file:///C:/tmp/Specrew-main-boundary-auth/specs/139-boundary-authorization-prompt-truth/contracts/boundary-authorization-prompt-truth.md) before implementation.
 - **Follow-up**: Implementation must execute T017-T021 and review must verify SC-012 through SC-015.
+
+### D-002 — Implementation preflight classification and test discovery
+
+- **Detected At**: 2026-06-01T10:25:00Z
+- **Type**: implementation-preflight
+- **Status**: resolved
+- **Source**: Human approval for `before-implement -> implement` required T001-T003 before editing implementation files.
+- **Impact**: Implementation must keep the beta2 smoke failure, Feature 016 one-boundary re-entry intent, Proposal 145 review lens, and the clarified six-section packet in scope while excluding unrelated dirty runtime/session files.
+- **Resolution**: Loaded Proposal 154, the beta2 smoke failure, the Feature 016 three-section handoff contract, the clarified six-section Feature 139 packet, and Proposal 145 as a review lens. No implementation-context gaps were found; Proposal 154's embedded five-section packet is superseded by the human-approved six-section contract in the Feature 139 spec.
+- **Dirty State Classification**: Existing dirty files under `.codex/`, `.github/agents/squad.agent.md`, `.specrew/last-validator-summary.json`, `.squad/`, `specs/051-multi-session-foundation/iterations/003/tasks-progress.yml`, `.cursor/`, `.specrew/version-check-cache.json`, and `.squad/events/` are classified as pre-existing session/runtime or unrelated feature state. They remain excluded from Feature 139 staging unless explicitly reclassified before editing.
+- **Focused Test Discovery**: Selected `tests/integration/start-command.ps1` for generated start prompt/start-context coverage, `tests/integration/launch-mode-boundary-enforcement.tests.ps1` for policy-state behavior, `tests/unit/validate-governance.interaction-model.tests.ps1` and new Feature 139 fixtures for handoff compliance, plus validator coverage in `extensions/specrew-speckit/scripts/validate-governance.ps1` and its `.specify` mirror for the narrow `Status: Approved` contradiction check.
+- **Follow-up**: Implementation must update only required Feature 139 source/tests and must keep full Proposal 150, hook enforcement, broad Proposal 151 migration, and lifecycle redesign out of scope.
 
 ### Resolution Strategies (Unused)
 
