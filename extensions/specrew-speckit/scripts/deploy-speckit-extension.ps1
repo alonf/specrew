@@ -197,6 +197,7 @@ function Ensure-ExtensionRegistration {
         $listIsStringFormat = $false
         $stringEntryPresent = $false
         $lastStringItemIndex = $installedHeaderIndex
+        $stringItemIndent = ''
         for ($index = $installedHeaderIndex + 1; $index -lt $lines.Count; $index++) {
             $listLine = $lines[$index]
             if ([string]::IsNullOrWhiteSpace($listLine)) {
@@ -206,10 +207,14 @@ function Ensure-ExtensionRegistration {
                 # Legacy object-format list; fall through to the object-entry logic below.
                 break
             }
-            if ($listLine -match '^\s*-\s*(?<id>[A-Za-z0-9._-]+)\s*$') {
+            # Capture the list item's indentation so a new entry aligns with its siblings.
+            # 0.9.0 emits column-0 items, but an indented sequence under installed: is valid
+            # YAML too — inserting at column 0 there would break the mapping.
+            if ($listLine -match '^(?<indent>\s*)-\s*(?<id>[A-Za-z0-9._-]+)\s*$') {
                 $listIsStringFormat = $true
                 $lastStringItemIndex = $index
-                if ($Matches['id'] -eq 'specrew-speckit') {
+                $stringItemIndent = $Matches['indent']
+                if ($Matches['id'] -eq $ExtensionName) {
                     $stringEntryPresent = $true
                 }
                 continue
@@ -224,7 +229,7 @@ function Ensure-ExtensionRegistration {
                 return
             }
 
-            $lines.Insert($lastStringItemIndex + 1, '- specrew-speckit')
+            $lines.Insert($lastStringItemIndex + 1, ('{0}- {1}' -f $stringItemIndent, $ExtensionName))
             Add-DeploymentAction -Actions $Actions -Action 'updated-registration' -Path $ManifestPath
             if (-not $DryRun) {
                 $stringContent = ($lines -join [Environment]::NewLine)

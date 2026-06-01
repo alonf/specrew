@@ -87,3 +87,12 @@ The tracked deployed copy `/.specify/extensions/specrew-speckit/scripts/deploy-s
 ## Verdict: **APPROVE for push/PR**
 
 All seven phases pass; the four required cleanup items are resolved (dirty files classified, `.specify` drift decided + documented per D1, whitespace fixed, validations rerun green). Push of `spike-speckit-090` and PR creation are the explicit next human steps.
+
+## PR review response (#1626 — 2026-06-02)
+
+PR [#1626](https://github.com/alonf/specrew/pull/1626) opened against `main`; all 6 CI checks green (Contract lane, Deterministic gate, Lint, Ubuntu, macOS, `test`). Two automated reviewers each raised one valid finding on the new string-format branch of `Ensure-ExtensionRegistration`; both addressed before merge:
+
+1. **Codex (P2) — indentation.** Inserting `- specrew-speckit` at column 0 would break an *indented* `installed:` sequence (0.9.0 emits column-0, but indented sequences are valid YAML). Fixed: capture the matched item's indentation and reuse it on insert. New regression Case D (indented list → entry reuses sibling indent) + Case E (indented + already present → preserved).
+2. **Copilot — hard-coded id.** The branch hard-coded `specrew-speckit` instead of the `$ExtensionName` parameter. Fixed: use `$ExtensionName` for both the presence check and the inserted entry.
+
+Re-validated after the fix: `extension-registration-format.tests.ps1` (6 cases A–E), `version-info-states.tests.ps1`, and `deploy-extension-missing-source-tolerance.tests.ps1` all green. Verdict unchanged: **APPROVE for merge** (pending maintainer go-ahead).

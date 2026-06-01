@@ -135,6 +135,41 @@ hooks: {}
     if ($blockC -match '(?m)^\s*-\s*specrew-speckit\s*$') { Write-Fail "Case C: a stray bare-string entry was added alongside the object entry.`n$blockC" }
     if ($blockC -notmatch 'version:\s*0\.30\.0') { Write-Fail "Case C: expected the object entry version updated in place to 0.30.0.`n$blockC" }
     Write-Pass 'Case C: legacy object-format list updated in place (no bare-string duplicate)'
+
+    # --- Case D: INDENTED bare-string list (valid YAML) — new entry must reuse sibling indent ---
+    # Regression for PR #1626 Codex finding: inserting at column 0 into an indented
+    # sequence would break the installed: mapping / drop the registration.
+    $indentedMissing = @'
+installed:
+  - agent-context
+  - git
+settings:
+  auto_execute_hooks: true
+hooks: {}
+'@
+    $manifestD = New-Project -Path (Join-Path $testRoot 'proj-indented') -ExtensionsYml $indentedMissing
+    & $deploy -ProjectPath (Split-Path -Parent (Split-Path -Parent $manifestD)) -RefreshExisting -PassThru | Out-Null
+    $blockD = Get-InstalledBlock -ManifestPath $manifestD
+    if (([regex]::Matches($blockD, '(?m)^\s*-\s*specrew-speckit\s*$')).Count -ne 1) { Write-Fail "Case D: expected a single specrew-speckit entry.`n$blockD" }
+    if ($blockD -notmatch '(?m)^  - specrew-speckit\s*$') { Write-Fail "Case D: new entry must reuse the 2-space sibling indentation.`n$blockD" }
+    if ($blockD -match '(?m)^- specrew-speckit\s*$') { Write-Fail "Case D: entry inserted at column 0, breaking the indented sequence.`n$blockD" }
+    Write-Pass 'Case D: indented bare-string list — new entry reuses sibling indentation'
+
+    # --- Case E: indented list already containing specrew-speckit — preserved/idempotent ---
+    $indentedPresent = @'
+installed:
+  - agent-context
+  - specrew-speckit
+settings:
+  auto_execute_hooks: true
+hooks: {}
+'@
+    $manifestE = New-Project -Path (Join-Path $testRoot 'proj-indented-present') -ExtensionsYml $indentedPresent
+    $actionsE = @(& $deploy -ProjectPath (Split-Path -Parent (Split-Path -Parent $manifestE)) -RefreshExisting -PassThru)
+    $blockE = Get-InstalledBlock -ManifestPath $manifestE
+    if (([regex]::Matches($blockE, '(?m)^\s*-\s*specrew-speckit\s*$')).Count -ne 1) { Write-Fail "Case E: expected a single specrew-speckit entry preserved.`n$blockE" }
+    if (@($actionsE | Where-Object { $_.Action -eq 'preserved-registration' }).Count -lt 1) { Write-Fail 'Case E: expected preserved-registration on an indented list already containing the entry' }
+    Write-Pass 'Case E: indented list already containing specrew-speckit is preserved (idempotent)'
 }
 finally {
     if (Test-Path -LiteralPath $testRoot) {
