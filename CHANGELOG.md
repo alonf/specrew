@@ -6,8 +6,11 @@ baseline that each release number represents.
 
 ## Unreleased
 
+## [0.31.0-beta1] - 2026-06-03
+
 ### Added
 
+- **Feature 140 (Unix-Native Install & Command Surface)** — native `specrew` shell wrappers + an `install.sh` bootstrap so macOS/Linux users run Specrew from zsh/bash without typing `pwsh`. `install.sh` auto-installs PowerShell Core as an internal dependency (Ubuntu/Debian via the Microsoft apt repository; macOS via Homebrew), installs Specrew from the PowerShell Gallery (`--prerelease` installs a beta), then installs the wrappers; registry ↔ wrapper ↔ FileList ↔ docs parity is CI-guarded; docs lead with the native `install.sh` path. First prerelease bundling this batch (Features 051 + 140, Spec Kit 0.9.0, Proposal 152). **Validation status:** Ubuntu + macOS wrapper runtime CI-proven; the Linux beta-install validation and the macOS clean-install (T021) + release-gate evidence are exercised against this prerelease before any stable promotion.
 - **Feature 051 (Multi-Session Foundation)** — introduces multi-session coordination primitives across three closed iterations:
   - Session-mode configuration and per-file session-surface classification.
   - Session locks and feature claims for same-feature coordination.
