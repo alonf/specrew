@@ -145,7 +145,7 @@ intentional and not raised). This feature is planned as **three iterations**, ea
 within the cap. Smoke-bug iterations confirm reproduction during their own
 planning before implementation.
 
-### Iteration 1 — Design-gate runtime path + validator robustness (20 SP)
+### Iteration 1 — Design-gate runtime path + validator robustness (18 SP)
 
 | Work Item | Requirement Refs | Owner | Effort |
 | --- | --- | --- | --- |
@@ -154,18 +154,15 @@ planning before implementation.
 | Typed packet render + validate + narrow durable 155-lite packet under `gates/` | FR-004, FR-005, FR-006, FR-020 | Implementer | 4 |
 | Selected-option → plan input continuity; extend (not rewrite) F140 helper | FR-007, FR-008 | Implementer | 1 |
 | Validator robustness: tolerant By-the-book detection + single-recommendation parsing (incl. tests) | FR-022, FR-023, SC-014 | Implementer | 3 |
-| Focused tests (scaffold conformance, block/pass, packet render/validate, compatibility) | SC-001..SC-006, SC-012 | Implementer, Reviewer | 3 |
-| Lightweight read-only Applicable Lenses section | FR-009, FR-010 | Implementer | 2 |
+| Focused tests (scaffold conformance, block/pass, packet render/validate, compatibility) | SC-001..SC-005, SC-012 | Implementer, Reviewer | 3 |
 | Docs (contract/quickstart/data-model/diagrams) + review gap ledger | TG-006, SC-011 | Planner, Reviewer | 1 |
 
-**Total**: 20 story_points · **Capacity Status**: at cap (no overcommit tolerance).
-Firm commitment is **18 SP** (everything except the lens section); the lightweight
-**Applicable Lenses section (FR-009/FR-010, 2 SP) is the first deferral valve** if
-overrun appears, since it is the only "SHOULD/optional" item. The validator
-robustness work (FR-022/FR-023) is firm per the human directive. Per that directive,
-if realistic estimation pushes the validator fixes over the cap, they remain a named
-later-iteration obligation in Feature 141 (e.g., a dedicated Iteration 1b), never
-deferred to another feature.
+**Total**: 18 story_points · **Capacity Status**: ok (2 SP headroom under the cap).
+Per the 2026-06-02 directive, the lightweight **Applicable Lenses section
+(FR-009/FR-010/SC-006, 2 SP) is pre-deferred** to a later Feature 141 iteration
+(deferred-within-feature, not dropped) so Iteration 1 keeps headroom for
+implementation reality. The validator robustness work (FR-022/FR-023) stays firm in
+Iteration 1.
 
 ### Iteration 2 — Start-packet correctness (~7 SP)
 
@@ -189,7 +186,7 @@ deferred to another feature.
 
 **Total**: 9 story_points · **Capacity Status**: ok · Both are greenfield/downstream behavior.
 
-**Feature total**: ~36 story_points across three iterations (Iteration 1 grew from ~17 to 20 SP by folding in the FR-022/FR-023 validator-robustness fixes). The smoke-bug iteration scopes (2 and 3) will be re-confirmed at their own planning once reproduction is captured (spec assumption).
+**Feature total**: ~36 story_points. Iteration 1 is **18 SP** (FR-022/FR-023 validator-robustness fixes folded in; the FR-009/FR-010 lens section pre-deferred per the 2026-06-02 directive). The pre-deferred lens (2 SP) is carried into a later Feature 141 iteration (sequenced at that iteration's planning — appended to a smoke-bundle iteration or a dedicated lens slice). The smoke-bug iteration scopes (2 and 3) will be re-confirmed at their own planning once reproduction is captured (spec assumption).
 
 ## Dogfooding Findings (Feature 140 validator)
 
@@ -213,6 +210,29 @@ well-authored prose while still enforcing the option shape and a single
 recommendation; in tandem, the Iteration 1 template/scaffold (FR-001) emits
 artifacts that pass the validator. If realistic estimation pushes them over the cap,
 they remain a named later-iteration obligation within Feature 141.
+
+### Boundary-state hygiene findings (captured 2026-06-02; not Iteration 1 scope)
+
+Initializing Feature 141's boundary state surfaced three boundary/runtime-state
+hygiene issues. They are recorded here as **hardening findings / smoke-bundle
+candidates** for a later Feature 141 iteration (or a sibling proposal); they do not
+block before-implement and are not added to Iteration 1 scope:
+
+1. **Global verdict-history (single active-feature model).** `boundary_enforcement.
+   verdict_history` is one global list with no per-feature field, so Feature 140's
+   entries remain above Feature 141's. The 141 cursor is clean (a real
+   `approved for tasks` 141 crossing was recorded at `3d65dbc3`), and a real
+   `tasks -> before-implement` 141 crossing is recorded on advance — so 140 entries
+   do not authorize 141 advancement. Candidate fix: per-feature verdict scoping or a
+   feature field on verdict entries.
+2. **Decisions-ledger churn.** A boundary sync rewrote `.squad/decisions.md` 411/178
+   lines for four small appends (line-ending / iteration-split churn), forcing
+   clean-file-only commits (consistent with the Feature 140 retro). Candidate fix:
+   stable line-ending handling / append-only discipline in the ledger writer.
+3. **Active-session pointer lag.** `.specrew/active-sessions.yml` still named
+   Feature 140 after the 141 sync (it is `specrew start`-managed); the authoritative
+   141 signal is `start-context.json` `session_state`. Candidate fix: update the
+   active-session pointer on boundary sync, or document the precedence.
 
 ## Constitution Check
 

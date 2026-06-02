@@ -4,8 +4,8 @@
 **Prerequisites**: `plan.md`, `spec.md`, `data-model.md`, `quickstart.md`, `contracts/design-gate-runtime-hardening.md`, `review-diagrams.md`, `iterations/001/design-analysis.md` (Option B)
 **Branch**: `141-design-gate-runtime-hardening` (stacked on Feature 140 tip)
 **Iteration**: 001 — design-gate runtime path + validator robustness
-**Capacity**: 20/20 story_points
-**Protected Core**: Scaffold/template, pre-plan validator + enforcement, typed packet + durable 155-lite, validator robustness (FR-022/FR-023), and focused tests must stay intact. The Applicable Lenses section (T008) is the first deferral candidate if overrun appears. Validator robustness is firm per the 2026-06-02 directive.
+**Capacity**: 18/20 story_points
+**Protected Core**: Scaffold/template, pre-plan validator + enforcement, typed packet + durable 155-lite, validator robustness (FR-022/FR-023), and focused tests must stay intact and firm. The Applicable Lenses section (T008, FR-009/FR-010) is **deferred to a later iteration within Feature 141** per the 2026-06-02 directive — deferred-within-feature, not dropped — so Iteration 1 starts at 18 SP with implementation headroom under the 20 SP cap.
 
 ## Phase 1: Foundation and Scope Guardrails
 
@@ -69,15 +69,15 @@
 
 ---
 
-## Phase 6: Applicable Lenses (first deferral candidate)
+## Phase 6: Applicable Lenses — DEFERRED to a later iteration within Feature 141
 
 **Goal**: Surface relevant existing lens files read-only in `design-analysis.md`.
 
-**Independent Test Criteria**: The section names relevant lenses when present and states "none applicable" when absent; no override/schema/automation is added.
+**Status**: **Deferred-within-feature** per the 2026-06-02 directive. Not part of Iteration 1's 18 SP; not dropped. Carried as a named obligation for a later Feature 141 iteration (sequenced after the smoke-bundle iterations or as a dedicated lens slice).
 
-- [ ] T008 [US3] [Owner: Implementer] [Capacity: 2 story_points] Render a lightweight read-only "Applicable Lenses" section referencing existing files under `extensions/specrew-speckit/templates/quality/lenses/`, degrading gracefully when absent. **First deferral candidate** if Iteration 1 overruns the cap. (Trace: FR-009, FR-010, SC-006)
+- [~] T008 [US3] [Owner: Implementer] [Capacity: 2 story_points — DEFERRED to later Feature 141 iteration; NOT counted in Iteration 1's 18 SP] Render a lightweight read-only "Applicable Lenses" section referencing existing files under `extensions/specrew-speckit/templates/quality/lenses/`, degrading gracefully when absent. (Trace: FR-009, FR-010, SC-006)
 
-**Checkpoint**: Lens section is read-only and optional.
+**Checkpoint**: Lens deferral is recorded; Iteration 1 proceeds without it.
 
 ---
 
@@ -100,7 +100,7 @@
 - T001 precedes implementation.
 - T002 (scaffold/template) and T003/T004 (validator robustness) build the artifact + validator; they precede T005 (pre-plan enforcement consumes the validation core).
 - T006/T007 (packet) can proceed after the validation core is stable.
-- T008 (lenses) is independent and deferrable first.
+- T008 (lenses) is deferred to a later Feature 141 iteration; not executed in Iteration 1.
 - T009/T010 (tests) follow the behavior they cover; T011 (docs) follows surface stabilization.
 - Sequence edits to `scripts/internal/design-analysis-gate.ps1` (T002, T003, T004, T005, T006, T007) to avoid conflicts.
 
@@ -129,8 +129,8 @@ pwsh -File .specify/extensions/specrew-speckit/scripts/validate-governance.ps1 -
 | FR-006 | T007 |
 | FR-007 | T007 |
 | FR-008 | T002 |
-| FR-009 | T008 |
-| FR-010 | T008 |
+| FR-009 | T008 (deferred — later Feature 141 iteration) |
+| FR-010 | T008 (deferred — later Feature 141 iteration) |
 | FR-016 | T001 |
 | FR-017 | T001 |
 | FR-018 | T001 |
@@ -147,7 +147,7 @@ pwsh -File .specify/extensions/specrew-speckit/scripts/validate-governance.ps1 -
 | SC-003 | T007 |
 | SC-004 | T006, T009 |
 | SC-005 | T007 |
-| SC-006 | T008 |
+| SC-006 | T008 (deferred — later Feature 141 iteration) |
 | SC-011 | T001, T011 |
 | SC-012 | T009, T010 |
 | SC-013 | T001 |
@@ -157,6 +157,7 @@ pwsh -File .specify/extensions/specrew-speckit/scripts/validate-governance.ps1 -
 
 | Requirement / Success Criterion | Iteration | Notes |
 | --- | --- | --- |
+| FR-009, FR-010, SC-006 (Applicable Lenses) | later Feature 141 iteration | Pre-deferred 2026-06-02 to keep Iteration 1 at 18 SP with headroom; deferred-within-feature, not dropped (T008). |
 | FR-011 (empty start-packet paths) | Iteration 2 | Start-packet correctness; reproduction confirmed at iter-2 planning. |
 | FR-014 (host wording leak) | Iteration 2 | Bundled with FR-011 (same generator surface). |
 | FR-012 (noisy downstream warnings) | Iteration 3 | Greenfield/downstream hygiene. |

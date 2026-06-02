@@ -293,11 +293,12 @@ other non-selected-host) wording appears in the generated guidance; repeat per h
 #### Sequencing, scope, and governance
 
 - **FR-016**: This feature MUST be delivered across multiple iterations: Iteration
-  1 delivers the design-gate runtime path (FR-001 through FR-008, plus FR-009/
-  FR-010 if cheap, plus FR-022/FR-023 validator robustness when within the cap, else
-  as a named later-iteration obligation within this feature); later iterations
-  deliver the smoke-test bug fixes. The plan MUST propose the concrete iteration
-  split and a capacity model.
+  1 delivers the design-gate runtime path (FR-001 through FR-008) plus FR-022/FR-023
+  validator robustness (firm), at 18 SP. FR-009/FR-010 (Applicable Lenses) are
+  pre-deferred (2026-06-02) to a later Feature 141 iteration — deferred-within-
+  feature, not dropped. Later iterations deliver the smoke-test bug fixes and the
+  deferred lens section. The plan MUST propose the concrete iteration split and a
+  capacity model.
 - **FR-017**: This feature MUST NOT force Feature 140 feature-closeout; Feature 140
   remains open behind its dirty working-tree gate, and this feature stacks on the
   Feature 140 branch tip.
@@ -364,8 +365,8 @@ than deferring to another feature.
 | FR-006 | Spec Steward, Planner, Reviewer | Iteration 1 |
 | FR-007 | Planner, Implementer, Reviewer | Iteration 1 |
 | FR-008 | Implementer, Reviewer | Iteration 1 |
-| FR-009 | Implementer, Reviewer | Iteration 1 (if cheap) |
-| FR-010 | Spec Steward, Planner, Reviewer | Iteration 1 |
+| FR-009 | Implementer, Reviewer | Later Feature 141 iteration (pre-deferred 2026-06-02) |
+| FR-010 | Spec Steward, Planner, Reviewer | Later Feature 141 iteration (pre-deferred 2026-06-02) |
 | FR-011 | Implementer, Reviewer | Later iteration |
 | FR-012 | Implementer, Reviewer | Later iteration |
 | FR-013 | Implementer, Reviewer | Later iteration |
@@ -519,6 +520,11 @@ than deferring to another feature.
   They are NOT separate future-feature work. Fold both into Iteration 1 when within
   the 20 SP cap; if both do not fit, keep them in Feature 141 as a named
   later-iteration obligation rather than deferring to another feature.
+- Lens pre-deferral: to keep Iteration 1 at 18 SP with implementation headroom
+  (the runtime gate path already touches scaffold, validator, packet, boundary
+  wiring, and parser behavior), FR-009/FR-010 (Applicable Lenses) are pre-deferred
+  to a later Feature 141 iteration. This is deferred-within-feature, not dropped;
+  FR-022/FR-023 stay firm in Iteration 1.
 
 ## Governance Alignment *(mandatory)*
 
