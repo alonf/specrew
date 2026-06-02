@@ -28,7 +28,7 @@
 
 ## Events
 
-No specification drift detected during Iteration 001 execution to date.
+No specification drift detected during Iteration 001 execution or Proposal 145 structured review.
 
 ### Resolution Strategies (Unused)
 
@@ -42,4 +42,5 @@ The following resolution strategies remain available if drift is detected later 
 ### Notes
 
 - This artifact was scaffolded before review starts so drift can be logged immediately when detected.
-- Replace the zero-drift summary with real counts when the first drift event is recorded.
+- Review check on 2026-06-02 compared FR-001 through FR-021, SC-001 through SC-013, and TG-006 against implementation commit `17f9e073` and sync commit `726df48e`; no drift event was required.
+- T014 command/workflow metadata deferral matches the user's explicit implementation instruction to defer T014 first if capacity overrun appeared.
