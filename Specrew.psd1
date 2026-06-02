@@ -29,6 +29,14 @@
         'specrew-where'
     )
     FileList = @(
+        'bin/specrew',
+        'bin/specrew-init',
+        'bin/specrew-review',
+        'bin/specrew-start',
+        'bin/specrew-team',
+        'bin/specrew-update',
+        'bin/specrew-version',
+        'bin/specrew-where',
         'docs/dashboard-guide.md',
         'docs/getting-started.md',
         'docs/github-project.md',
@@ -162,6 +170,7 @@
         'scripts/internal/detect-hosts.ps1',
         'scripts/internal/feature-claims.ps1',
         'scripts/internal/file-classification.ps1',
+        'scripts/internal/generate-shell-wrappers.ps1',
         'scripts/internal/host-flag-translation.ps1',
         'scripts/internal/host-history.ps1',
         'scripts/internal/host-runtime-inventory.ps1',
@@ -182,6 +191,7 @@
         'scripts/specrew-config.ps1',
         'scripts/specrew-host.ps1',
         'scripts/specrew-init.ps1',
+        'scripts/specrew-install-shell-wrappers.ps1',
         'scripts/specrew-review.ps1',
         'scripts/specrew-start.ps1',
         'scripts/specrew-team.ps1',
