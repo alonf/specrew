@@ -25,5 +25,6 @@
 ## Open clarifications (resolved at /speckit.clarify — Session 2026-06-02)
 
 - [x] FR-006: missing bin dir requires `-Force`; not-on-`PATH` is warn-only (no profile mutation).
-- [x] FR-007: repo-committed `install.sh` (`curl | sh`) — verify pwsh, Install-Module, then install-shell-wrappers.
+- [x] FR-007: repo-committed `install.sh` (`curl | sh`) bootstrap — **auto-installs PowerShell Core when absent** (Ubuntu/Debian via the MS apt repo first; macOS/other distros + unsupported→manual = Iter 3), then Install-Module + install-shell-wrappers. *(Superseded 2026-06-02: was "verify pwsh + tell the user to install"; now auto-install.)*
+- [x] FR-016 / SC-007: auto-install safety — vendor-recommended source only + verified repo key + surfaced (never silent) `sudo` + install-if-absent + idempotent repo-add + fail-closed on unsupported/failed (reviewed by the Iteration 2 security lens). *(Added 2026-06-02.)*
 - [x] FR-009: generate-then-commit — generator is source of truth, generated wrappers committed + CI drift-diff.
