@@ -934,6 +934,23 @@ function Test-SpecrewStaleSessionState {
         $issues.Add(("Feature branch is missing: {0}" -f $sessionState.feature_ref)) | Out-Null
     }
 
+    # FR-024 (2026-06-02 Linux smoke): the saved session feature path no longer exists
+    # on disk, or it points outside the current worktree to a deleted/external worktree
+    # (e.g., a completed/merged feature whose old worktree was removed). This is stale
+    # runtime state — recovery must NOT re-anchor to this deleted external path.
+    $savedFeaturePath = [string]$sessionState.feature_path
+    if (-not [string]::IsNullOrWhiteSpace($savedFeaturePath) -and -not (Test-Path -LiteralPath $savedFeaturePath -PathType Container)) {
+        $resolvedRoot = Resolve-ProjectPath -Path $ProjectRoot
+        $isOutsideWorktree = -not ($savedFeaturePath -like (Join-Path $resolvedRoot '*'))
+        $detail = if ($isOutsideWorktree) {
+            "Saved session feature path no longer exists and is outside the current worktree: {0} (stale runtime state; do not re-anchor to this deleted/external worktree — clear the stale session reference instead)." -f $savedFeaturePath
+        }
+        else {
+            "Saved session feature path no longer exists: {0} (stale runtime state; do not re-anchor to a missing path — clear the stale session reference instead)." -f $savedFeaturePath
+        }
+        $issues.Add($detail) | Out-Null
+    }
+
     if (-not (Test-SpecrewAuthorizationRecord -ProjectRoot $ProjectRoot -SessionState $sessionState)) {
         $issues.Add(("Authorization record missing for {0}." -f $sessionState.feature_ref)) | Out-Null
     }
@@ -1000,6 +1017,21 @@ function Resolve-SpecrewRecoverySelection {
 
     switch ($Choice) {
         'A' {
+            # FR-024 (2026-06-02 Linux smoke): never re-anchor to a saved feature path
+            # that no longer exists (a deleted/external worktree such as C:\Dev\Specrew-051).
+            # Route to confirm-gated safe cleanup of the stale runtime references instead.
+            $featurePathMissing = (-not [string]::IsNullOrWhiteSpace($recoveryFeaturePath)) -and (-not (Test-Path -LiteralPath $recoveryFeaturePath -PathType Container))
+            if ($featurePathMissing) {
+                return [pscustomobject]@{
+                    ResumeFeatureOverride            = $null
+                    SkipAutoResume                   = $true
+                    ForceNoLaunch                    = $false
+                    NextActionMessage                = "Recovery will NOT re-anchor to '$recoveryFeaturePath' because that worktree no longer exists. With your confirmation it will clear only the stale active-session/start-context references — no feature artifacts are touched and no lifecycle commits are made."
+                    Directive                        = "Recovery choice A on a missing feature path: do NOT re-anchor to the deleted/external worktree '$recoveryFeaturePath'. Report the current branch, the stale feature refs, and the selected active-feature candidate, then require explicit human confirmation before clearing the stale active-sessions/start-context references. Do not touch feature artifacts and do not make lifecycle commits."
+                    RequiresStaleCleanupConfirmation = $true
+                    StaleFeaturePath                 = $recoveryFeaturePath
+                }
+            }
             return [pscustomobject]@{
                 ResumeFeatureOverride = if (-not [string]::IsNullOrWhiteSpace($recoveryFeaturePath)) { $recoveryFeaturePath } else { 'auto' }
                 SkipAutoResume        = $false
