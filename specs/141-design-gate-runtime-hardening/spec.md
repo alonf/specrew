@@ -338,6 +338,21 @@ than deferring to another feature.
   recommended option and MUST NOT fail solely because rejected or alternative
   options are mentioned contextually in the recommendation rationale.
 
+#### Stale cross-worktree session recovery (folded into Iteration 2, 2026-06-02)
+
+- **FR-024**: `specrew start` session recovery MUST classify saved session state as
+  stale runtime state when the saved session's feature path no longer exists, or it
+  points to a completed/merged feature outside the current worktree. In that case it
+  MUST NOT re-anchor to a deleted external worktree path; it MUST offer a safe
+  cleanup that clears the stale `active-sessions`/`start-context` references WITHOUT
+  touching feature artifacts or making lifecycle commits; it MUST report the current
+  branch, the stale feature refs, and the selected active-feature candidate; and it
+  MUST require explicit human confirmation before performing cleanup. Regression
+  coverage MUST cover this scenario. (Discovered 2026-06-02 in the Linux/native-install
+  smoke: a stale Feature 051 `active-sessions.yml` entry + obsolete 051 paths in
+  start-context/last-start-prompt re-anchored recovery to a deleted worktree
+  `C:\Dev\Specrew-051`, blocking continuation of the active feature.)
+
 ### Traceability & Governance Requirements *(mandatory)*
 
 - **TG-001**: Each user story MUST map to one or more functional requirements.
@@ -381,6 +396,7 @@ than deferring to another feature.
 | FR-021 | Implementer, Reviewer | Iteration 1 |
 | FR-022 | Implementer, Reviewer | Iteration 1 (if within cap) |
 | FR-023 | Implementer, Reviewer | Iteration 1 (if within cap) |
+| FR-024 | Implementer, Reviewer | Iteration 2 |
 | TG-001 | Planner, Reviewer | All iterations |
 | TG-002 | Planner, Reviewer | All iterations |
 | TG-003 | Planner, Reviewer | All iterations |
