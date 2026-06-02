@@ -37,7 +37,7 @@ publishing.
 | Proposal 155 (scoped) | Typed packet rendering/validation/storage pattern. | Apply only to the design-analysis gate; do not generalize. |
 | Proposal 156 (lightweight) | Repo-local design-lens files exist under the extension templates dir. | Render a read-only Applicable Lenses section; defer overrides/schema/automation. |
 | Before-plan quality profile | Bounded custom Phase-1 composition: required code-quality, design-quality/SoC, verification-confidence, maintainability; N/A concurrency/resiliency/retry; lenses security/robustness/test-integrity baselines. | Plan embeds these dimensions; security lens is available but not exercised by this feature's behavior. |
-| Dogfooding the F140 validator | Empirically found the validator's recommendation parser and By-the-book detection are brittle (see Dogfooding Findings). | The Iteration 1 scaffold/template MUST emit artifacts that pass the validator; parser robustness is logged as a follow-up candidate, not added to scope. |
+| Dogfooding the F140 validator | Empirically found the validator's recommendation parser and By-the-book detection are brittle (see Dogfooding Findings). | Folded into Iteration 1 as FR-022/FR-023 per the 2026-06-02 directive; the scaffold/template also emits validator-passing artifacts. |
 
 ## Technical Context
 
@@ -126,7 +126,6 @@ Layered governance-helper extension:
 - Proposal 105 host-native hook enforcement.
 - Broad validator enforcement across existing/in-flight projects.
 - Unix install/shell-wrapper/bootstrap surfaces and beta/stable publishing.
-- Hardening the Feature 140 validator's recommendation parser / By-the-book detection (logged as a follow-up candidate; see Dogfooding Findings).
 
 ## Phase 2 Hardening Planning
 
@@ -146,7 +145,7 @@ intentional and not raised). This feature is planned as **three iterations**, ea
 within the cap. Smoke-bug iterations confirm reproduction during their own
 planning before implementation.
 
-### Iteration 1 — Design-gate runtime path (~17 SP)
+### Iteration 1 — Design-gate runtime path + validator robustness (20 SP)
 
 | Work Item | Requirement Refs | Owner | Effort |
 | --- | --- | --- | --- |
@@ -154,11 +153,19 @@ planning before implementation.
 | Callable pre-plan validator + coordinator-prompt enforcement (no host hooks) | FR-002, FR-003, FR-021 | Implementer | 3 |
 | Typed packet render + validate + narrow durable 155-lite packet under `gates/` | FR-004, FR-005, FR-006, FR-020 | Implementer | 4 |
 | Selected-option → plan input continuity; extend (not rewrite) F140 helper | FR-007, FR-008 | Implementer | 1 |
-| Lightweight read-only Applicable Lenses section | FR-009, FR-010 | Implementer | 2 |
+| Validator robustness: tolerant By-the-book detection + single-recommendation parsing (incl. tests) | FR-022, FR-023, SC-014 | Implementer | 3 |
 | Focused tests (scaffold conformance, block/pass, packet render/validate, compatibility) | SC-001..SC-006, SC-012 | Implementer, Reviewer | 3 |
+| Lightweight read-only Applicable Lenses section | FR-009, FR-010 | Implementer | 2 |
 | Docs (contract/quickstart/data-model/diagrams) + review gap ledger | TG-006, SC-011 | Planner, Reviewer | 1 |
 
-**Total**: 17 story_points · **Capacity Status**: ok · **First deferral if scope grows**: durable packet → render-and-validate only (collapses FR-020 toward the minimum).
+**Total**: 20 story_points · **Capacity Status**: at cap (no overcommit tolerance).
+Firm commitment is **18 SP** (everything except the lens section); the lightweight
+**Applicable Lenses section (FR-009/FR-010, 2 SP) is the first deferral valve** if
+overrun appears, since it is the only "SHOULD/optional" item. The validator
+robustness work (FR-022/FR-023) is firm per the human directive. Per that directive,
+if realistic estimation pushes the validator fixes over the cap, they remain a named
+later-iteration obligation in Feature 141 (e.g., a dedicated Iteration 1b), never
+deferred to another feature.
 
 ### Iteration 2 — Start-packet correctness (~7 SP)
 
@@ -182,7 +189,7 @@ planning before implementation.
 
 **Total**: 9 story_points · **Capacity Status**: ok · Both are greenfield/downstream behavior.
 
-**Feature total**: ~33 story_points across three iterations. The smoke-bug iteration scopes (2 and 3) will be re-confirmed at their own planning once reproduction is captured (spec assumption).
+**Feature total**: ~36 story_points across three iterations (Iteration 1 grew from ~17 to 20 SP by folding in the FR-022/FR-023 validator-robustness fixes). The smoke-bug iteration scopes (2 and 3) will be re-confirmed at their own planning once reproduction is captured (spec assumption).
 
 ## Dogfooding Findings (Feature 140 validator)
 
@@ -199,10 +206,13 @@ behaviors in the Feature 140 validator (`scripts/internal/design-analysis-gate.p
    flag, `[A-Z]` also matches lowercase, so prose like "option over" can create
    false tokens.
 
-These are recorded as **hardening signals**. The Iteration 1 template/scaffold
-(FR-001) MUST emit artifacts that pass the validator as-is (single-token
-recommendation, hyphenated `By-the-book`). Hardening the validator parser itself is
-a follow-up candidate, intentionally **not** added to this feature's scope.
+Per the 2026-06-02 human directive, both are **folded into this feature as FR-022
+and FR-023** (validator robustness), scheduled in Iteration 1 within the cap. They
+are not deferred to another feature. The fixes make the validator tolerant of
+well-authored prose while still enforcing the option shape and a single
+recommendation; in tandem, the Iteration 1 template/scaffold (FR-001) emits
+artifacts that pass the validator. If realistic estimation pushes them over the cap,
+they remain a named later-iteration obligation within Feature 141.
 
 ## Constitution Check
 
@@ -238,6 +248,8 @@ a follow-up candidate, intentionally **not** added to this feature's scope.
 | FR-019 | all | Implementation scope review | Unix/wrapper/bootstrap untouched except minimal unavoidable fixes. |
 | FR-020 | 1 | Packet persistence | Durable packet scoped to design-analysis gate under `gates/`. |
 | FR-021 | 1 | Enforcement mechanism | Prompt + callable validator; no host hooks. |
+| FR-022 | 1 | Validator By-the-book detection | Tolerant prose accepted; option shape still enforced. |
+| FR-023 | 1 | Validator recommendation parser | One recommendation enforced; contextual mentions of rejected options pass. |
 
 ## Test Plan
 
@@ -302,6 +314,5 @@ tests/
 - Proposal 156 lens overrides, schema validation, and broad automation.
 - Proposal 105 host-native hooks.
 - Broad validator enforcement across existing/in-flight projects.
-- Hardening the Feature 140 validator parser (follow-up candidate).
 - Unix install/shell-wrapper/bootstrap surfaces; beta/stable publishing.
 - Forcing Feature 140 feature-closeout.

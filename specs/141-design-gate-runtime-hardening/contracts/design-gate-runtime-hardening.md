@@ -31,6 +31,20 @@
   before a valid artifact and a recorded human decision (FR-003, FR-021).
 - No host-native hook (Proposal 105) is introduced in this feature.
 
+## Validator Robustness (Iteration 1, FR-022/FR-023)
+
+| Symbol | Signature / Shape | Purpose | Errors |
+| --- | --- | --- | --- |
+| By-the-book detection | option-block matcher | Recognize a By-the-book option written in normal prose ("By the book" with or without hyphen) while still enforcing the option shape. | Still flags a genuinely missing/undistinct By-the-book case per the conditional rule. |
+| Recommendation parser | recommendation-section matcher | Identify exactly one selected recommended option even when rejected/alternative options are mentioned contextually in the rationale. | Still rejects a genuinely multi-recommendation section. |
+
+### Invariants
+
+- Tolerance never weakens the required shape: Simplest and Reasonable remain
+  mandatory; the recommendation must still resolve to exactly one option.
+- These fixes extend the Feature 140 validator in place; behavior for existing
+  valid artifacts is unchanged.
+
 ## Typed Design-Analysis Gate Packet (Iteration 1)
 
 | Symbol | Signature / Shape | Purpose | Errors |

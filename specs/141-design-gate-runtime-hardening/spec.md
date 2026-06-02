@@ -294,8 +294,10 @@ other non-selected-host) wording appears in the generated guidance; repeat per h
 
 - **FR-016**: This feature MUST be delivered across multiple iterations: Iteration
   1 delivers the design-gate runtime path (FR-001 through FR-008, plus FR-009/
-  FR-010 if cheap); later iterations deliver the smoke-test bug fixes. The plan
-  MUST propose the concrete iteration split and a capacity model.
+  FR-010 if cheap, plus FR-022/FR-023 validator robustness when within the cap, else
+  as a named later-iteration obligation within this feature); later iterations
+  deliver the smoke-test bug fixes. The plan MUST propose the concrete iteration
+  split and a capacity model.
 - **FR-017**: This feature MUST NOT force Feature 140 feature-closeout; Feature 140
   remains open behind its dirty working-tree gate, and this feature stacks on the
   Feature 140 branch tip.
@@ -317,6 +319,22 @@ other non-selected-host) wording appears in the generated guidance; repeat per h
   before a valid artifact and a recorded human decision), not a specific host-hook
   mechanism. Host-native write-blocking hook enforcement (Proposal 105) MUST NOT be
   pulled into Iteration 1.
+
+#### Validator robustness (folded into Iteration 1 per 2026-06-02 directive)
+
+These two requirements were discovered while dogfooding the design gate for this
+very feature; they directly affect the design-gate runtime path and stay in
+Feature 141. They are folded into Iteration 1 when within the cap; if both do not
+fit, they become a named later-iteration obligation **within this feature** rather
+than deferring to another feature.
+
+- **FR-022**: The design-analysis validator's By-the-book detection MUST tolerate
+  normal authored prose (for example, "By the book" with or without a hyphen)
+  while still enforcing the required option shape (Simplest and Reasonable
+  mandatory; By-the-book conditional and not forced).
+- **FR-023**: The Crew Recommendation parsing MUST identify exactly one selected
+  recommended option and MUST NOT fail solely because rejected or alternative
+  options are mentioned contextually in the recommendation rationale.
 
 ### Traceability & Governance Requirements *(mandatory)*
 
@@ -359,6 +377,8 @@ other non-selected-host) wording appears in the generated guidance; repeat per h
 | FR-019 | Spec Steward, Implementer, Reviewer | All iterations |
 | FR-020 | Implementer, Reviewer | Iteration 1 |
 | FR-021 | Implementer, Reviewer | Iteration 1 |
+| FR-022 | Implementer, Reviewer | Iteration 1 (if within cap) |
+| FR-023 | Implementer, Reviewer | Iteration 1 (if within cap) |
 | TG-001 | Planner, Reviewer | All iterations |
 | TG-002 | Planner, Reviewer | All iterations |
 | TG-003 | Planner, Reviewer | All iterations |
@@ -419,6 +439,10 @@ other non-selected-host) wording appears in the generated guidance; repeat per h
   render/validate behavior, and each of the four smoke-test defects.
 - **SC-013**: The plan records the concrete iteration split and capacity model and
   keeps each iteration within the intentional per-iteration story-point cap.
+- **SC-014**: The validator accepts a well-authored design-analysis artifact whose
+  By-the-book option uses normal prose and whose recommendation names one option
+  while mentioning rejected options contextually, and still rejects a genuinely
+  multi-recommendation or malformed-option artifact (FR-022, FR-023).
 
 ## Assumptions
 
@@ -486,6 +510,15 @@ other non-selected-host) wording appears in the generated guidance; repeat per h
   Feature 140 runtime code that is not yet on main. The dependency is kept explicit
   in the artifacts, and the branch is ready to rebase/refresh after Feature 140
   merges.
+
+### Scope addition 2026-06-02 (post design-analysis)
+
+- The two Feature 140 validator-brittleness behaviors found while dogfooding the
+  design gate (token-exact By-the-book detection; recommendation parser failing on
+  more than one option token) are folded into this feature as FR-022 and FR-023.
+  They are NOT separate future-feature work. Fold both into Iteration 1 when within
+  the 20 SP cap; if both do not fit, keep them in Feature 141 as a named
+  later-iteration obligation rather than deferring to another feature.
 
 ## Governance Alignment *(mandatory)*
 
