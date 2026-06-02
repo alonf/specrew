@@ -109,6 +109,7 @@
         'extensions/specrew-speckit/squad-templates/skills/specrew-version/SKILL.md',
         'extensions/specrew-speckit/squad-templates/skills/specrew-where/SKILL.md',
         'extensions/specrew-speckit/squad-templates/skills/traceability-check.md',
+        'extensions/specrew-speckit/templates/design-analysis.template.md',
         'extensions/specrew-speckit/templates/downstream-constitution.md',
         'extensions/specrew-speckit/templates/iteration-config.yml',
         'extensions/specrew-speckit/templates/quality/lenses/.gitkeep',
