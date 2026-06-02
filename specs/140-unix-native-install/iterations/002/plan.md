@@ -2,10 +2,10 @@
 
 **Schema**: v1
 **Spec**: [../../spec.md](../../spec.md)
-**Status**: reviewing
+**Status**: complete
 **Capacity**: 19/20 story_points
 **Started**: 2026-06-02
-**Completed**:
+**Completed**: 2026-06-02
 
 <!--
   Validator schema (canonical, enforced by validate-governance.ps1):
@@ -79,13 +79,13 @@ SC-005/SC-006 and the macOS halves of SC-001/SC-003/SC-007.
 
 ## Required Quality Gates
 
-| Required Quality Gate | Category | Evidence Source | Phase 1 Status |
+| Required Quality Gate | Category | Evidence Source | Closeout Status |
 | --- | --- | --- | --- |
-| `dead-field` | mechanical | `iterations/002/quality/mechanical-findings.json` | planned |
-| `anti-pattern` | mechanical | `iterations/002/quality/mechanical-findings.json` | planned |
-| `test-integrity` | mechanical | `iterations/002/quality/mechanical-findings.json` | planned |
-| `stack-tooling-evidence` | tooling | `iterations/002/quality/quality-evidence.md` | planned |
-| `quality-lens-review` | manual-evidence | `iterations/002/quality/quality-evidence.md` | planned |
+| `dead-field` | mechanical | `iterations/002/quality/mechanical-findings.json` | passed |
+| `anti-pattern` | mechanical | `iterations/002/quality/mechanical-findings.json` | passed |
+| `test-integrity` | mechanical | `iterations/002/quality/mechanical-findings.json` | passed |
+| `stack-tooling-evidence` | tooling | `iterations/002/quality/quality-evidence.md` | passed |
+| `quality-lens-review` | manual-evidence | `iterations/002/quality/quality-evidence.md` | passed |
 
 ## Phase 2 Hardening
 
@@ -143,6 +143,6 @@ Windows is a proxy, never the runtime verdict.
 
 - Capacity 19/20 leaves 1 SP rework headroom. Auto-install is built **and** proven on Ubuntu in this iteration — no runtime deferral on the new high-risk surface.
 - The 3-iteration split + this Iteration 2 scope are **maintainer-approved**. T010 (the piped-`curl`-to-`sh` + `sudo`/no-tty decision) is an explicit, flow-gating task per the maintainer instruction — it must be settled before T011/T013/T014 write the flow (recommended resolution pre-loaded in research D11a for ratification at before-implement).
-- Status stays `planning` through tasks; flips to `executing` at implementation start, after the before-implement gate (no code until then).
+- Closed at iteration-closeout 2026-06-02 with review-signoff **APPROVE**; the Ubuntu auto-install + wrapper runtime are recorded green on Ubuntu CI (run 26812981387), and the hardening-gate Blocking concerns are `runtime-evidence`/`recorded`. macOS/distros + `install.sh --prerelease` (FR-017) + native-first docs + the beta release gate (FR-015, incl. Spec Kit 0.9.0) are **Iteration 3** (maintainer-confirmed). No beta/stable published.
 - No beta/stable publish; the release gate (FR-015) is Iteration 3 and requires explicit maintainer authorization.
 - Iteration 3 is intentionally **not** scaffolded and its task table is **not** written (sketch only in the feature `tasks.md`), pending maintainer approval of the split.

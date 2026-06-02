@@ -1,13 +1,13 @@
 # Iteration State: 002
 
 **Schema**: v1
-**Current Phase**: reviewing
-**Iteration Status**: reviewing
-**Last Completed Task**: T017 (all T010–T017 implemented AND proven green on Ubuntu CI run 26812981387)
-**Tasks Remaining**: (none — review-signoff next)
+**Current Phase**: complete
+**Iteration Status**: complete
+**Last Completed Task**: T017 → review (accepted) → Proposal 145 (APPROVE) → review-signoff (maintainer APPROVE) → retro → iteration-closeout
+**Tasks Remaining**: (none — Iteration 2 closed; Iteration 3 carries macOS/distros + `install.sh --prerelease` + docs + the beta release gate)
 **In Progress**: (none)
 **Baseline Ref**: be008f3b358869c4dec5c7994004e4d7af0d0ab0
-**Updated**: 2026-06-02T10:15:00Z
+**Updated**: 2026-06-02T10:50:00Z
 
 ## Execution Summary
 
