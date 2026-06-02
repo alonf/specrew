@@ -3,7 +3,7 @@
 **Schema**: v1
 **Spec**: [../../spec.md](../../spec.md)
 **Status**: planning
-**Capacity**: 18/20 story_points
+**Capacity**: 19/20 story_points
 **Started**: 2026-06-02
 **Completed**:
 
@@ -68,13 +68,14 @@ SC-005/SC-006 and the macOS halves of SC-001/SC-003/SC-007.
 
 | Task | Title | Requirement | Story | Effort | Owner | Owner File Globs | Status | Agent | Actual | Verdict |
 | ---- | ----- | ----------- | ----- | ------ | ----- | ---------------- | ------ | ----- | ------ | ------- |
-| T010 | `install.sh` orchestration: shebang + `set -eu`, shell lint clean (`sh -n`/shellcheck), happy path (detect → ensure pwsh → `Install-Module Specrew` → `install-shell-wrappers`), fail-closed structure, arg surface (`--bin-dir` passthrough, `--help`), non-interactive/CI mode flag | FR-007 | US2 | 2 | Implementer | `install.sh` | planned | | | |
-| T011 | Platform + package-manager detection framework: parse `/etc/os-release` (ID/VERSION_ID), detect apt/dnf/brew/snap, map to a support decision; **unsupported platform/manager → fail closed + manual-dependency-docs link**; table-driven os-release fixtures + tests | FR-007, FR-016 | US2 | 3 | Implementer | `install.sh`, `tests/**` | planned | | | |
-| T012 | Ubuntu/Debian pwsh auto-install: add Microsoft apt repo (key import via the verified MS key, source list) + `apt-get install -y powershell`; **install-only-if-absent** (prefer an existing working pwsh, never clobber/upgrade silently); **idempotent repo-add**; non-interactive flags for CI | FR-007, FR-016 | US2 | 3 | Implementer | `install.sh` | planned | | | |
-| T013 | Piped `curl`-to-`sh` tty / elevation handling: detect non-tty stdin; resolve interactive `sudo` (re-exec against `/dev/tty`, or detect-and-instruct download-then-run); surface the exact privileged command; never silently elevate | FR-007, FR-016 | US2 | 2 | Implementer | `install.sh` | planned | | | |
-| T014 | **Ubuntu CI runtime proof** (extend `cross-platform-validation.yml`): clean container WITHOUT pwsh → run `install.sh` → auto-install pwsh → `Install-Module` → `install-shell-wrappers` → PATH → `specrew version` / `start --help`; PLUS the wrapper runtime suite on Ubuntu (arg forwarding spaces/quotes/`--`/empty, symlink resolution, pwsh-missing-at-wrapper negative, unknown-option passthrough); shellcheck gate in CI | FR-012, FR-002, FR-003, FR-004, FR-008, FR-007, SC-001, SC-003, SC-007 | US1 | 4 | Reviewer | `.github/workflows/**`, `tests/integration/**` | planned | | | |
-| T015 | Parity-cascade CI job: regenerate wrappers + `git diff --exit-code`; registry ↔ `bin/` ↔ `FileList` arm; name the cascade on failure (registry → wrappers → installer → FileList → docs). Docs arm deferred to Iter 3 with the docs | FR-011, FR-009 | US3 | 2 | Reviewer | `.github/workflows/**` | planned | | | |
-| T016 | Security lens evidence for the auto-install surface: supply-chain provenance (MS repo + verified key trust), elevation surfaced via the normal prompt, fail-closed on unsupported/failed, install-only-if-absent, idempotent repo-add, **no untrusted `curl`-piped-to-`bash` beyond the trusted Specrew bootstrap itself** | FR-016 | US2 | 2 | Reviewer | `iterations/002/quality/**` | planned | | | |
+| T010 | **Decision (gates the install flow — no code):** resolve the piped `curl`-to-`sh` + `sudo`/no-tty problem. Compare the D11 options (re-exec interactive prompts against `/dev/tty`; detect non-tty stdin → instruct download-then-run; documented passwordless-`sudo`) and **choose the safest implementable behavior**; record the ratified decision in research D11a. Must be settled before T011/T013/T014 write the flow | FR-007, FR-016 | US2 | 1 | Implementer | `specs/140-unix-native-install/research.md` | planned | | | |
+| T011 | `install.sh` orchestration (built around the T010 decision): shebang + `set -eu`, shell lint clean (`sh -n`/shellcheck), happy path (detect → ensure pwsh → `Install-Module Specrew` → `install-shell-wrappers`), fail-closed structure, arg surface (`--bin-dir` passthrough, `--help`), non-interactive/CI mode flag | FR-007 | US2 | 2 | Implementer | `install.sh` | planned | | | |
+| T012 | Platform + package-manager detection framework: parse `/etc/os-release` (ID/VERSION_ID), detect apt/dnf/brew/snap, map to a support decision; **derive the supported-platform + install-command matrix from Microsoft's CURRENT official PowerShell install docs (D11), not from memory**; **unsupported platform/manager → fail closed + manual-dependency-docs link**; table-driven os-release fixtures + tests | FR-007, FR-016 | US2 | 3 | Implementer | `install.sh`, `tests/**` | planned | | | |
+| T013 | Ubuntu/Debian pwsh auto-install: add Microsoft apt repo (key import via the verified MS key, source list) + `apt-get install -y powershell`; **install-only-if-absent** (prefer an existing working pwsh, never clobber/upgrade silently); **idempotent repo-add**; non-interactive flags for CI | FR-007, FR-016 | US2 | 3 | Implementer | `install.sh` | planned | | | |
+| T014 | Implement the **chosen** tty / elevation behavior from T010: detect non-tty stdin, apply the selected resolution, surface the exact privileged command, never silently elevate | FR-007, FR-016 | US2 | 2 | Implementer | `install.sh` | planned | | | |
+| T015 | **Ubuntu CI runtime proof** (extend `cross-platform-validation.yml`): clean container WITHOUT pwsh → run `install.sh` → auto-install pwsh → `Install-Module` → `install-shell-wrappers` → PATH → `specrew version` / `start --help`; PLUS the wrapper runtime suite on Ubuntu (arg forwarding spaces/quotes/`--`/empty, symlink resolution, pwsh-missing-at-wrapper negative, unknown-option passthrough); shellcheck gate in CI | FR-012, FR-002, FR-003, FR-004, FR-008, FR-007, SC-001, SC-003, SC-007 | US1 | 4 | Reviewer | `.github/workflows/**`, `tests/integration/**` | planned | | | |
+| T016 | Parity-cascade CI job: regenerate wrappers + `git diff --exit-code`; registry ↔ `bin/` ↔ `FileList` arm; name the cascade on failure (registry → wrappers → installer → FileList → docs). Docs arm deferred to Iter 3 with the docs | FR-011, FR-009 | US3 | 2 | Reviewer | `.github/workflows/**` | planned | | | |
+| T017 | Security lens evidence for the auto-install surface: supply-chain provenance (MS repo + verified key trust), elevation surfaced via the normal prompt, fail-closed on unsupported/failed, install-only-if-absent, idempotent repo-add, **no untrusted `curl`-piped-to-`bash` beyond the trusted Specrew bootstrap itself** | FR-016 | US2 | 2 | Reviewer | `iterations/002/quality/**` | planned | | | |
 
 ## Required Quality Gates
 
@@ -116,8 +117,8 @@ Windows is a proxy, never the runtime verdict.
 ## Concurrency Rationale
 
 - Roster: Spec Steward, Planner, Implementer, Reviewer, Retro Facilitator.
-- Dependency graph: `install.sh` chain T010 → T011 → T012 is serial; T013 (tty/elevation) follows T010; T014 (Ubuntu CI) depends on T010–T013; T015 (parity-cascade) is independent of auto-install (depends on the Iteration-1 generator) and can run in parallel; T016 (security lens) reviews T011–T013.
-- Shared-surface risk: T010–T013 all edit `install.sh` — keep serial (single Implementer), no same-specialty split. T014/T015 touch `.github/workflows/**` — keep the two CI jobs in one coordinated change to avoid workflow-file collision.
+- Dependency graph: **T010 (curl-to-sh + sudo/no-tty decision) gates the flow**; then the `install.sh` chain T011 → T012 → T013 is serial; T014 implements the T010-chosen tty/elevation behavior; T015 (Ubuntu CI) depends on T011–T014; T016 (parity-cascade) is independent of auto-install (depends on the Iteration-1 generator) and can run in parallel; T017 (security lens) reviews T012–T014.
+- Shared-surface risk: T011–T014 all edit `install.sh` — keep serial (single Implementer), no same-specialty split. T015/T016 touch `.github/workflows/**` — keep the two CI jobs in one coordinated change to avoid workflow-file collision.
 - Recommendation: single serial Implementer on the `install.sh` chain + a Reviewer on CI/parity/security; no parallel same-specialty expansion at this size.
 
 ## Phase Baseline
@@ -125,10 +126,10 @@ Windows is a proxy, never the runtime verdict.
 | Phase | Estimated Effort | Notes |
 | ----- | ---------------- | ----- |
 | Planning | done | Plan + hardening gate + D11 research (platform matrix) at this boundary |
-| Discovery/Spikes | 1 | D11: derive the MS-supported install matrix from Microsoft's current install docs (within T011) |
-| Implementation | 10 | T010–T013 (orchestration + detection + Ubuntu install + tty) + T015 (parity-cascade) |
-| Review | 6 | T014 (Ubuntu CI runtime proof) + T016 (security lens) |
-| Rework | buffer | within the 2 SP headroom (18/20) |
+| Discovery/Spikes | 1 | T010 curl-to-sh/sudo decision + the MS-supported matrix derived from current MS docs (D11, within T012) |
+| Implementation | 12 | T011–T014 (orchestration + detection + Ubuntu install + tty impl) + T016 (parity-cascade) |
+| Review | 6 | T015 (Ubuntu CI runtime proof) + T017 (security lens) |
+| Rework | buffer | within the 1 SP headroom (19/20) |
 
 ## Traceability Summary
 
@@ -140,7 +141,8 @@ Windows is a proxy, never the runtime verdict.
 
 ## Notes
 
-- Capacity 18/20 leaves 2 SP rework headroom. Auto-install is built **and** proven on Ubuntu in this iteration — no runtime deferral on the new high-risk surface.
-- Status stays `planning` until the plan + split are approved at plan → tasks; flips to `executing` at implementation start.
+- Capacity 19/20 leaves 1 SP rework headroom. Auto-install is built **and** proven on Ubuntu in this iteration — no runtime deferral on the new high-risk surface.
+- The 3-iteration split + this Iteration 2 scope are **maintainer-approved**. T010 (the piped-`curl`-to-`sh` + `sudo`/no-tty decision) is an explicit, flow-gating task per the maintainer instruction — it must be settled before T011/T013/T014 write the flow (recommended resolution pre-loaded in research D11a for ratification at before-implement).
+- Status stays `planning` through tasks; flips to `executing` at implementation start, after the before-implement gate (no code until then).
 - No beta/stable publish; the release gate (FR-015) is Iteration 3 and requires explicit maintainer authorization.
 - Iteration 3 is intentionally **not** scaffolded and its task table is **not** written (sketch only in the feature `tasks.md`), pending maintainer approval of the split.

@@ -24,21 +24,22 @@ Effort unit: story points (SP). Iteration cap: 20 SP.
 
 **Iteration 1 SP**: 1+2+3+1+2+2+4+2+2 = **19 / 20**.
 
-## Iteration 2 — install.sh + Ubuntu/Debian auto-install, proven on Ubuntu CI (active; ~18 SP)
+## Iteration 2 — install.sh + Ubuntu/Debian auto-install, proven on Ubuntu CI (active; ~19 SP)
 
-Detailed decomposition in `iterations/002/plan.md`. Ubuntu-first because a clean no-`pwsh` container is the cheapest **honest** runtime proof; auto-install is built AND proven in this iteration (no build-now/prove-later deferral on the high-risk surface).
+Detailed decomposition in `iterations/002/plan.md`. Ubuntu-first because a clean no-`pwsh` container is the cheapest **honest** runtime proof; auto-install is built AND proven in this iteration (no build-now/prove-later deferral on the high-risk surface). **T010 (the piped-`curl`-to-`sh` + `sudo`/no-tty decision) explicitly gates the install flow** per the maintainer instruction.
 
 | ID | Task | FR / SC | SP | Owner | Deps |
 | --- | --- | --- | --- | --- | --- |
-| T010 | `install.sh` orchestration: shebang + `set -eu`, shell lint, happy path (detect → ensure pwsh → `Install-Module Specrew` → `install-shell-wrappers`), fail-closed structure, arg surface (`--bin-dir`/`--help`), non-interactive/CI mode | FR-007 | 2 | Implementer | T007 |
-| T011 | Platform + package-manager detection framework (`/etc/os-release` ID/VERSION_ID; apt/dnf/brew/snap); **unsupported → fail closed + manual-docs link**; table-driven os-release fixtures + tests | FR-007, FR-016 | 3 | Implementer | T010 |
-| T012 | Ubuntu/Debian pwsh auto-install (Microsoft apt repo + verified signing key + `apt-get install -y powershell`); **install-only-if-absent**; **idempotent repo-add**; non-interactive flags for CI | FR-007, FR-016 | 3 | Implementer | T011 |
-| T013 | `curl \| sh` tty / elevation handling: detect non-tty stdin; resolve interactive `sudo` (`/dev/tty` re-exec or download-then-run guidance); surface the privileged command; never silently elevate | FR-007, FR-016 | 2 | Implementer | T010 |
-| T014 | **Ubuntu CI runtime proof** (extend `cross-platform-validation.yml`): clean no-`pwsh` container end-to-end (install.sh → auto-install pwsh → `Install-Module` → `install-shell-wrappers` → `specrew version`/`start --help`) + Ubuntu wrapper runtime suite (forwarding spaces/quotes/`--`/empty, symlink resolution, pwsh-missing negative, unknown-option passthrough) + shellcheck gate | FR-012, FR-002, FR-003, FR-004, FR-008, FR-007, SC-001, SC-003, SC-007 | 4 | Reviewer | T010, T011, T012, T013 |
-| T015 | Parity-cascade CI job: regenerate + `git diff --exit-code`; registry↔`bin/`↔`FileList` arm; name the cascade on failure (docs arm → Iter 3) | FR-011, FR-009 | 2 | Reviewer | T006, T009 |
-| T016 | Security lens evidence for the auto-install surface: supply-chain provenance (MS repo + verified key trust), surfaced elevation, fail-closed, install-if-absent, idempotent repo-add, **no untrusted `curl \| bash` beyond the trusted Specrew bootstrap** | FR-016 | 2 | Reviewer | T011, T012, T013 |
+| T010 | **Decision (gates the flow; no code):** resolve piped `curl`-to-`sh` + `sudo`/no-tty — compare the D11 options (`/dev/tty` re-exec; detect non-tty → download-then-run; passwordless-`sudo`) → choose the safest implementable behavior; record in research D11a (ratify at before-implement) | FR-007, FR-016 | 1 | Implementer | T007 |
+| T011 | `install.sh` orchestration (built around the T010 decision): shebang + `set -eu`, shell lint, happy path (detect → ensure pwsh → `Install-Module Specrew` → `install-shell-wrappers`), fail-closed structure, arg surface (`--bin-dir`/`--help`), non-interactive/CI mode | FR-007 | 2 | Implementer | T010 |
+| T012 | Platform + package-manager detection framework (`/etc/os-release` ID/VERSION_ID; apt/dnf/brew/snap); **derive the supported-platform + install-command matrix from Microsoft's CURRENT install docs (D11), not memory**; **unsupported → fail closed + manual-docs link**; table-driven os-release fixtures + tests | FR-007, FR-016 | 3 | Implementer | T011 |
+| T013 | Ubuntu/Debian pwsh auto-install (Microsoft apt repo + verified signing key + `apt-get install -y powershell`); **install-only-if-absent**; **idempotent repo-add**; non-interactive flags for CI | FR-007, FR-016 | 3 | Implementer | T012 |
+| T014 | Implement the **chosen** tty / elevation behavior from T010: detect non-tty stdin, apply the selected resolution, surface the privileged command, never silently elevate | FR-007, FR-016 | 2 | Implementer | T010, T011 |
+| T015 | **Ubuntu CI runtime proof** (extend `cross-platform-validation.yml`): clean no-`pwsh` container end-to-end (install.sh → auto-install pwsh → `Install-Module` → `install-shell-wrappers` → `specrew version`/`start --help`) + Ubuntu wrapper runtime suite (forwarding spaces/quotes/`--`/empty, symlink resolution, pwsh-missing negative, unknown-option passthrough) + shellcheck gate | FR-012, FR-002, FR-003, FR-004, FR-008, FR-007, SC-001, SC-003, SC-007 | 4 | Reviewer | T011, T012, T013, T014 |
+| T016 | Parity-cascade CI job: regenerate + `git diff --exit-code`; registry↔`bin/`↔`FileList` arm; name the cascade on failure (docs arm → Iter 3) | FR-011, FR-009 | 2 | Reviewer | T006, T009 |
+| T017 | Security lens evidence for the auto-install surface: supply-chain provenance (MS repo + verified key trust), surfaced elevation, fail-closed, install-if-absent, idempotent repo-add, **no untrusted `curl`-piped-to-`bash` beyond the trusted Specrew bootstrap** | FR-016 | 2 | Reviewer | T012, T013, T014 |
 
-**Iteration 2 SP**: 2+3+3+2+4+2+2 = **18 / 20** (Ubuntu auto-install + wrapper runtime proven in-iteration).
+**Iteration 2 SP**: 1+2+3+3+2+4+2+2 = **19 / 20** (Ubuntu auto-install + wrapper runtime proven in-iteration; T010 decision gates the flow).
 
 ## Iteration 3 — macOS + remaining distros + docs + release gate (SKETCH; ~12-15 SP; not yet decomposed)
 
@@ -57,27 +58,27 @@ Feature total ≈ **49-52 SP** across 3 iterations (each ≤ 20) — pending mai
 | FR / SC | Covered by |
 | --- | --- |
 | FR-001 | T001, T003, T004 |
-| FR-002 | T002, T014 (Ubuntu); Iter 3 (macOS) |
-| FR-003 | T002, T014 (Ubuntu); Iter 3 (macOS) |
-| FR-004 | T002, T014 (Ubuntu); Iter 3 (macOS) |
+| FR-002 | T002, T015 (Ubuntu); Iter 3 (macOS) |
+| FR-003 | T002, T015 (Ubuntu); Iter 3 (macOS) |
+| FR-004 | T002, T015 (Ubuntu); Iter 3 (macOS) |
 | FR-005 | T007 |
 | FR-006 | T007, T008 |
-| FR-007 | T010, T011, T012, T013, T014 (Ubuntu auto-install); Iter 3 (macOS/other distros) |
-| FR-008 | T002, T014 (Ubuntu); Iter 3 (macOS) |
-| FR-009 | T003, T005, T006, T015 |
+| FR-007 | T010, T011, T012, T013, T014, T015 (Ubuntu auto-install); Iter 3 (macOS/other distros) |
+| FR-008 | T002, T015 (Ubuntu); Iter 3 (macOS) |
+| FR-009 | T003, T005, T006, T016 |
 | FR-010 | T009 |
-| FR-011 | T006, T009, T015 (registry↔bin↔FileList arm); Iter 3 (docs arm) |
-| FR-012 | T014 (Ubuntu); Iter 3 (macOS) |
+| FR-011 | T006, T009, T016 (registry↔bin↔FileList arm); Iter 3 (docs arm) |
+| FR-012 | T015 (Ubuntu); Iter 3 (macOS) |
 | FR-013 | T007 |
 | FR-014 | Iter 3 |
 | FR-015 | Iter 3 |
-| FR-016 | T011, T012, T013, T014, T016 |
-| SC-001 | T014 (Ubuntu); Iter 3 (macOS) |
+| FR-016 | T010, T012, T013, T014, T017 |
+| SC-001 | T015 (Ubuntu); Iter 3 (macOS) |
 | SC-002 | T006 |
-| SC-003 | T014 (Ubuntu); Iter 3 (macOS) |
+| SC-003 | T015 (Ubuntu); Iter 3 (macOS) |
 | SC-004 | T008 |
 | SC-005 | Iter 3 |
 | SC-006 | Iter 3 |
-| SC-007 | T014 (Ubuntu auto-install); Iter 3 (macOS) |
+| SC-007 | T015 (Ubuntu auto-install); Iter 3 (macOS) |
 
 Every task maps to ≥1 FR/SC; every FR/SC maps to ≥1 task (Iteration 3 coverage is sketched pending its decomposition).
