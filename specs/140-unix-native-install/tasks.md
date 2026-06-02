@@ -4,7 +4,7 @@
 **Plan**: [plan.md](./plan.md) | **Spec**: [spec.md](./spec.md)
 **Date**: 2026-06-02
 
-Tasks cover the whole feature, tagged by iteration. **Iteration 1 is CLOSED.** The 2026-06-02 auto-install correction (FR-007/FR-016) expands `install.sh` beyond the original ~14 SP Iteration 2, so the feature is **proposed as a 3-iteration split** (a feature-shape change for maintainer decision at plan → tasks): **Iteration 2 (Ubuntu-first auto-install, proven on Ubuntu CI) is the active decomposition**; **Iteration 3 (macOS + remaining distros + docs + release gate) is sketched** (no task table yet) and decomposed in detail when Iteration 2 closes. Every task traces to ≥1 FR/SC; every FR/SC has ≥1 task (see Traceability Matrix).
+Tasks cover the whole feature, tagged by iteration. **Iterations 1 and 2 are CLOSED.** The 2026-06-02 auto-install correction (FR-007/FR-016) expanded `install.sh` beyond the original ~14 SP Iteration 2, so the feature is a **maintainer-approved 3-iteration split**: **Iteration 1** (wrappers + generator + parity + installer + FileList) and **Iteration 2** (Ubuntu-first auto-install, proven on Ubuntu CI) are closed; **Iteration 3 (macOS + `--prerelease` + docs + release gate) is decomposed below** (T018-T024, maintainer-approved 2026-06-02). The macOS-smoke FR fold (FR-014 extended; FR-018/FR-019 carved-out) is reflected. Every task traces to ≥1 FR/SC; every FR/SC has ≥1 task or an explicit carve-out/deferral (see Traceability Matrix).
 
 Effort unit: story points (SP). Iteration cap: 20 SP.
 
@@ -41,47 +41,58 @@ Detailed decomposition in `iterations/002/plan.md`. Ubuntu-first because a clean
 
 **Iteration 2 SP**: 1+2+3+3+2+4+2+2 = **19 / 20** (Ubuntu auto-install + wrapper runtime proven in-iteration; T010 decision gates the flow).
 
-## Iteration 3 — macOS + remaining distros + prerelease install + docs + release gate (SKETCH; ~14-18 SP; not yet decomposed)
+## Iteration 3 — macOS + prerelease install + docs + release gate (decomposed; 19/20 SP; maintainer-approved 2026-06-02)
 
-Decomposed in detail when Iteration 2 closes (no task table yet, per the planning boundary). Sketch scope:
+Detailed decomposition in `iterations/003/plan.md`. macOS auto-install + interactive elevation + the release-gate beta install are **manual proofs** (no clean no-`pwsh` macOS runner); the macOS wrapper runtime is **CI-proven** via the extended `validate-macos` job.
 
-- macOS/Homebrew `pwsh` auto-install + remaining MS-supported distros (e.g. RHEL/Fedora via the MS dnf repo), each proven on its surface — macOS lacks a clean no-`pwsh` CI env, so **manual proof** is budgeted. (FR-007, FR-016, FR-012 macOS, SC-007 macOS)
-- macOS wrapper runtime lane: forwarding / symlink / pwsh-missing / passthrough. (FR-002/003/004/008 macOS, SC-001/SC-003 macOS)
-- Docs-example parity arm of the cascade. (FR-011 docs arm)
-- Native-first docs (`README.md`, `docs/getting-started.md`, `docs/user-guide.md`, `docs/troubleshooting.md`): bash/zsh-first, pwsh as internal dependency, unsupported/manual fallback documented. (FR-014, SC-005)
-- **`install.sh --prerelease` (FR-017)**: install Specrew **beta** from PSGallery (`Install-Module -AllowPrerelease` / PSResourceGet `-Prerelease` equivalent); `--help` + installer output state stable vs prerelease; version/source mismatch (installed module lacks the `specrew` wrapper command) → **fail closed** non-zero with an incompatibility message. Built AND proven here — a published beta exists at the release-gate moment, so the prerelease install + the mismatch check are exercised for real. (FR-017, SC-008)
-- Greenfield + brownfield installed validation (release gate; covers bundled Spec Kit 0.9.0), exercised via the **shell-native prerelease flow** `curl … | sh -s -- --prerelease` → `specrew version` / `specrew init` / `specrew start`; **no beta/stable publish without explicit maintainer authorization**. (FR-015, SC-006)
+| ID | Task | FR / SC | SP | Owner | Deps |
+| --- | --- | --- | --- | --- | --- |
+| T018 | macOS Homebrew `pwsh` auto-install: replace the `install.sh` Darwin fail-closed stub with `brew install --cask powershell`; **install-only-if-absent**; **`brew` as the user, never `sudo brew`**; idempotent; **Homebrew absent → fail closed + manual-docs**; derive the command from MS's CURRENT macOS install docs | FR-007, FR-016 | 3 | Implementer | T014 (Iter 2 flow) |
+| T019 | `install.sh --prerelease`: `-AllowPrerelease` install; `--help` + output state stable vs prerelease; installed-module-lacks-`specrew`-surface mismatch → **fail closed** | FR-017, SC-008 | 2 | Implementer | T018 |
+| T020 | Extend the `validate-macos` CI job with the **macOS wrapper runtime suite** (forwarding/symlink/pwsh-missing/passthrough) + `install-shell-wrappers` → PATH → `specrew version`/`start --help` | FR-012, FR-002, FR-003, FR-004, FR-008, SC-001, SC-003 | 3 | Reviewer | T015 (Iter 2 CI) |
+| T021 | macOS **manual-proof** evidence on a real host (clean `install.sh` Homebrew auto-install, surfaced + idempotent; `specrew version`/`init`/`start`); capture the Node/`nvm` + old-Spec-Kit prerequisite conditions; extends `macos-smoke-evidence.md` | FR-007, FR-016, SC-007 | 3 | Reviewer | T018, T019 |
+| T022 | Native-first docs (`README.md`, `docs/getting-started.md`, `docs/user-guide.md`, `docs/troubleshooting.md`): `install.sh`/`curl\|sh` first; demote manual `Install-Module` (PSGallery default-`N` note); pwsh internal-only; **troubleshooting documents** the macOS `nvm`-shadowing Node + verify `node -v` in `pwsh` + Spec Kit old-version remediation | FR-014, SC-005 | 3 | Spec Steward | — |
+| T023 | Parity cascade **docs arm**: check doc command examples against the registry (or allowlist); failure names the FULL cascade (registry → wrappers → installer → FileList → docs) | FR-011, FR-009 | 2 | Reviewer | T016 (Iter 2 cascade), T022 |
+| T024 | **Release gate (beta-before-stable):** maintainer-authorized beta publish → install the published beta on a real macOS host via `curl … \| sh -s -- --prerelease` → greenfield + brownfield (`version`/`init`/`start`) validating bundled **Spec Kit 0.9.0**; **no publish without explicit maintainer authorization** | FR-015, FR-017, SC-006, SC-008 | 3 | Reviewer | T018, T019 |
 
-Feature total ≈ **51-55 SP** across 3 iterations (each ≤ 20) — pending maintainer approval of the split.
+**Iteration 3 SP**: 3+2+3+3+3+2+3 = **19 / 20**.
+
+**Carved-out (separate `specrew init` slice — NOT this iteration):** FR-018 (`nvm`-shadows-Homebrew-Node diagnostics) + FR-019 (Spec Kit version UX) per maintainer decision 2026-06-02. Iteration 3 only **documents** these (T022) and **surfaces** them in the manual smoke (T021).
+
+**Deferred (follow-up iteration):** remaining MS-supported distros (RHEL/Fedora via the MS dnf repo) for FR-007/FR-016. `install.sh` keeps failing closed for them (Iteration-2-proven path).
+
+Feature total ≈ **57 SP** across 3 iterations (each ≤ 20): Iter 1 = 19, Iter 2 = 19, Iter 3 = 19.
 
 ## Traceability Matrix
 
 | FR / SC | Covered by |
 | --- | --- |
 | FR-001 | T001, T003, T004 |
-| FR-002 | T002, T015 (Ubuntu); Iter 3 (macOS) |
-| FR-003 | T002, T015 (Ubuntu); Iter 3 (macOS) |
-| FR-004 | T002, T015 (Ubuntu); Iter 3 (macOS) |
+| FR-002 | T002, T015 (Ubuntu); T020 (macOS) |
+| FR-003 | T002, T015 (Ubuntu); T020 (macOS) |
+| FR-004 | T002, T015 (Ubuntu); T020 (macOS) |
 | FR-005 | T007 |
 | FR-006 | T007, T008 |
-| FR-007 | T010, T011, T012, T013, T014, T015 (Ubuntu auto-install); Iter 3 (macOS/other distros) |
-| FR-008 | T002, T015 (Ubuntu); Iter 3 (macOS) |
-| FR-009 | T003, T005, T006, T016 |
+| FR-007 | T010, T011, T012, T013, T014, T015 (Ubuntu auto-install); T018 (macOS Homebrew); T021 (macOS manual proof). dnf/RHEL distros DEFERRED (fail-closed path stands) |
+| FR-008 | T002, T015 (Ubuntu); T020 (macOS) |
+| FR-009 | T003, T005, T006, T016, T023 |
 | FR-010 | T009 |
-| FR-011 | T006, T009, T016 (registry↔bin↔FileList arm); Iter 3 (docs arm) |
-| FR-012 | T015 (Ubuntu); Iter 3 (macOS) |
+| FR-011 | T006, T009, T016 (registry↔bin↔FileList arm); T023 (docs arm) |
+| FR-012 | T015 (Ubuntu); T020 (macOS) |
 | FR-013 | T007 |
-| FR-014 | Iter 3 |
-| FR-015 | Iter 3 |
-| FR-016 | T010, T012, T013, T014, T017 |
-| FR-017 | Iter 3 (`--prerelease` built + proven with the release gate) |
-| SC-001 | T015 (Ubuntu); Iter 3 (macOS) |
+| FR-014 | T022 |
+| FR-015 | T024 |
+| FR-016 | T010, T012, T013, T014, T017 (Ubuntu); T018, T021 (macOS) |
+| FR-017 | T019 (built); T024 (proven at the release gate against a published beta) |
+| FR-018 | CARVED-OUT (separate `specrew init` slice). Documented by T022; surfaced by T021 |
+| FR-019 | CARVED-OUT (separate `specrew init` slice). Documented by T022; surfaced by T021 |
+| SC-001 | T015 (Ubuntu); T020 (macOS) |
 | SC-002 | T006 |
-| SC-003 | T015 (Ubuntu); Iter 3 (macOS) |
+| SC-003 | T015 (Ubuntu); T020 (macOS) |
 | SC-004 | T008 |
-| SC-005 | Iter 3 |
-| SC-006 | Iter 3 |
-| SC-007 | T015 (Ubuntu auto-install); Iter 3 (macOS) |
-| SC-008 | Iter 3 (`install.sh --prerelease` proven at the release gate) |
+| SC-005 | T022 |
+| SC-006 | T024 |
+| SC-007 | T015 (Ubuntu auto-install); T021 (macOS manual proof) |
+| SC-008 | T019 (built); T024 (proven at the release gate) |
 
-Every task maps to ≥1 FR/SC; every FR/SC maps to ≥1 task (Iteration 3 coverage is sketched pending its decomposition).
+Every task maps to ≥1 FR/SC; every in-scope FR/SC maps to ≥1 task. FR-018/FR-019 are carved to a separate `specrew init` slice (documented by T022, surfaced by T021); dnf/RHEL distro coverage of FR-007/FR-016 is deferred to a follow-up iteration with the fail-closed path standing.

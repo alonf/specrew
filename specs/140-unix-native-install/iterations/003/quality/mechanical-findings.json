@@ -1,0 +1,11 @@
+{
+  "schemaVersion": "v1",
+  "featureRef": "specs/140-unix-native-install/spec.md",
+  "iterationRef": "specs/140-unix-native-install/iterations/003",
+  "generatedAt": "2026-06-02T20:25:50Z",
+  "generator": {
+    "name": "specrew-iteration-scaffold",
+    "version": "1.0.0"
+  },
+  "findings": []
+}
