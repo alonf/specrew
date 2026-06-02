@@ -3,7 +3,7 @@
 **Lens**: `robustness-baseline@v1.0.0`
 **Reviewed By**: Crew Reviewer
 **Subject**: `install.sh` failure semantics + idempotency.
-**Verdict**: `pass` (design-level; runtime proof pending Ubuntu CI — T015).
+**Verdict**: `pass` — design + **runtime-recorded** (Ubuntu CI run 26812981387 green; fail-closed 5/5; install-if-absent + idempotent repo-add exercised).
 
 ## Failure semantics
 
@@ -31,4 +31,4 @@
 ## Evidence
 
 - Code: `install.sh`. Runtime: Ubuntu CI `feature140-install-bootstrap` + `install-sh-detect.sh`
-  (fail-closed cases) — pending green CI run.
+  (fail-closed cases) — **runtime-recorded: CI run 26812981387 green**.

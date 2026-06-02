@@ -1,13 +1,13 @@
 # Iteration State: 002
 
 **Schema**: v1
-**Current Phase**: implementing
-**Iteration Status**: executing
-**Last Completed Task**: T010 (ratified curl-to-sh/sudo decision recorded in research D11a)
-**Tasks Remaining**: T011–T017 runtime proof (pending the Ubuntu CI lane)
-**In Progress**: T011–T017 implemented (install.sh, detection fixtures + tests, wrapper-runtime proof, CI jobs, parity-cascade, security lens); runtime evidence pending a green Ubuntu CI run (T015)
+**Current Phase**: reviewing
+**Iteration Status**: reviewing
+**Last Completed Task**: T017 (all T010–T017 implemented AND proven green on Ubuntu CI run 26812981387)
+**Tasks Remaining**: (none — review-signoff next)
+**In Progress**: (none)
 **Baseline Ref**: be008f3b358869c4dec5c7994004e4d7af0d0ab0
-**Updated**: 2026-06-02T08:30:00Z
+**Updated**: 2026-06-02T10:15:00Z
 
 ## Execution Summary
 

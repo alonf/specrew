@@ -4,8 +4,9 @@
 **Reviewed By**: Crew Reviewer (auto-install/supply-chain focus per maintainer instruction)
 **Subject**: `install.sh` (T011–T014) — the new load-bearing trust surface: it adds a package
 repository, imports a signing key, and elevates to root.
-**Verdict**: `pass` (design-level controls verified; **runtime proof of the controls is pending the
-Ubuntu CI lane — T015**, after which the `security-surface` hardening concern can close).
+**Verdict**: `pass` — design-level controls verified AND **runtime-recorded** (Ubuntu CI run 26812981387,
+all feature140 jobs green: a clean no-pwsh `ubuntu:24.04` container installed pwsh 7.6.2 from the Microsoft
+apt repo end-to-end via the root path, using branch code; detection fail-closed 5/5).
 
 ## Surfaces reviewed
 
@@ -54,5 +55,6 @@ Ubuntu CI lane — T015**, after which the `security-surface` hardening concern 
 - Code: `install.sh` (`resolve_privilege`, `run_privileged`, `install_pwsh_apt`, `ensure_specrew_module`,
   `detect_platform`, `fail_closed`).
 - Runtime: Ubuntu CI `feature140-install-bootstrap` (clean no-pwsh container, root path, end-to-end) +
-  `install-sh-detect.sh` (fail-closed table) — **pending green CI run** to convert this lens from
-  design-verified to runtime-recorded.
+  `install-sh-detect.sh` (fail-closed table) — **runtime-recorded: CI run 26812981387 green** (log shows
+  `pwsh not found -> Installing from the Microsoft package repository -> PowerShell Core installed (7.6.2)
+  -> module already available (skip gallery) -> Installed 8 wrappers -> /usr/bin/pwsh + /usr/local/bin/specrew`).

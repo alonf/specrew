@@ -3,8 +3,8 @@
 **Lens**: `test-integrity@v1.0.0`
 **Reviewed By**: Crew Reviewer
 **Subject**: the auto-install + wrapper-runtime proof — assertion-driven, not smoke; CI-vs-manual labeled.
-**Verdict**: `pass` (the proof is correctly constructed; it becomes runtime-recorded once the Ubuntu CI
-lane is green — T015).
+**Verdict**: `pass` — proof correctly constructed AND **runtime-recorded** (Ubuntu CI run 26812981387 green:
+install-bootstrap end-to-end, wrapper-runtime 4/4, detection 5/5, parity-cascade).
 
 ## CI-vs-manual enumeration (no blanket "CI-validated")
 
@@ -34,4 +34,5 @@ lane is green — T015).
 
 - `tests/integration/install-sh-detect.sh`, `tests/integration/wrapper-runtime.sh`,
   `tests/fixtures/install-sh/os-release/*`, `.github/workflows/cross-platform-validation.yml`
-  (feature140 jobs) — **pending green CI run** to record the runtime evidence.
+  (feature140 jobs) — **runtime-recorded: CI run 26812981387 green** (wrapper-runtime `4 passed, 0 failed`;
+  detection `5 passed, 0 failed`; clean-container bootstrap `OK ... end-to-end (branch code)`).
