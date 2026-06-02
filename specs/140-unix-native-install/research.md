@@ -91,3 +91,17 @@ This is the explicit, flow-gating decision the maintainer required to be settled
 5. **Never** silently elevate.
 6. **Never** consume the script body from stdin by prompting through stdin (so `sudo` relies on its own `/dev/tty`; the script performs no `read` from stdin in the piped path).
 7. The implementation must **prove this empirically in Ubuntu CI (T015)** before the hardening-gate Blocking concerns can close (root path + the fail-closed path are CI-provable; the interactive-`sudo`-password path needs a human and is acknowledged as manual).
+
+## D12 — macOS manual-smoke evidence (Iteration 3 planning input, 2026-06-02)
+
+A macOS tester ran a real-host manual smoke and hit setup friction on the **manual `Install-Module`** path
+(zsh `command not found`; PSGallery untrusted prompt defaulting to `N`), plus `specrew init` dependency
+issues (`nvm` shadowing Homebrew Node; an old Spec Kit `0.0.22`). The decisive finding: the tester did
+**not** use `install.sh` (which already sets PSGallery `Trusted` + `Install-Module -Force -NonInteractive`
+and `fail_closed`s) — so the evidence validates the native-first thesis (US2/FR-007/FR-014) and the macOS
+work is path-priority docs + a macOS proof, while the Node/Spec Kit findings are `specrew init`
+dependency-diagnostic concerns needing new/extended requirements. Full evidence, the six maintainer-stated
+Iteration-3 requirements, the FR-coverage mapping, proposed scope additions (FR-014 extension, new FR-018
+`nvm`-shadowing diagnostics, FR-019/Spec-Kit-UX), and the macOS smoke scenarios are captured in
+[iterations/003/macos-smoke-evidence.md](iterations/003/macos-smoke-evidence.md). **Proposed scope changes
+there await maintainer approval before they touch `spec.md` or an Iteration 3 `plan.md`.**
