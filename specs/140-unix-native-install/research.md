@@ -103,5 +103,7 @@ work is path-priority docs + a macOS proof, while the Node/Spec Kit findings are
 dependency-diagnostic concerns needing new/extended requirements. Full evidence, the six maintainer-stated
 Iteration-3 requirements, the FR-coverage mapping, proposed scope additions (FR-014 extension, new FR-018
 `nvm`-shadowing diagnostics, FR-019/Spec-Kit-UX), and the macOS smoke scenarios are captured in
-[iterations/003/macos-smoke-evidence.md](iterations/003/macos-smoke-evidence.md). **Proposed scope changes
-there await maintainer approval before they touch `spec.md` or an Iteration 3 `plan.md`.**
+[macos-smoke-evidence.md](macos-smoke-evidence.md) (feature-root planning input; Iteration 3 not yet
+scaffolded). **Folded into `spec.md` 2026-06-02 per maintainer approval: FR-014 extended (native-first
+docs); FR-018 (`nvm`-shadowing diagnostics) + FR-019 (Spec Kit version UX) added as carved-out
+requirements delivered by a separate `specrew init` slice.**

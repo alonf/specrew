@@ -4,8 +4,11 @@
 **Iteration**: 003 (planning input — this is evidence, NOT the iteration plan/tasks)
 **Date**: 2026-06-02
 **Source**: macOS tester manual smoke on a real host, reported to the maintainer
-**Status**: evidence captured. The FR / scope changes proposed in this file are **proposed only** and await
-maintainer approval before they are folded into `spec.md` or an Iteration 3 `plan.md`.
+**Status**: evidence captured; scope changes **APPROVED and folded into `spec.md` 2026-06-02** — FR-014
+extended (native-first docs); FR-018 (`nvm`-shadowing diagnostics) + FR-019 (Spec Kit version UX) added as
+**carved-out** requirements delivered by a **separate `specrew init` slice** (maintainer decision). The
+Iteration 3 `plan.md` is still unscaffolded (stopped at that boundary). Location: feature root (Iteration 3
+not yet scaffolded).
 
 ## Why this matters (do not treat as solved by the Ubuntu work)
 
@@ -87,9 +90,10 @@ requirements (see below) rather than being covered by any current FR.
 | 5 | Spec Kit old-version handling documented and validated; show the exact `uv tool install`/upgrade command, or perform the supported upgrade if in scope | The diagnostic **already** prints the exact `uv tool install ...@v0.8.4` command | **NEW/extended requirement proposed (FR-019 or FR-014/FR-015 extension):** document the old-Spec-Kit remediation in troubleshooting + validate it in the macOS smoke; decide whether to append `--force` to the suggested command; **reconcile** the `>= 0.8.4` minimum with the bundled Spec Kit 0.9.0 support this feature rides (see Open items). |
 | 6 | Keep PowerShell an internal implementation detail for Unix users wherever possible | FR-014 (PowerShell as internal dependency, not a manual prerequisite) | Covered in principle; reinforced by #1/#2 (lead with `install.sh`; manual `pwsh`/`Install-Module` is fallback only). |
 
-## Proposed Iteration-3 scope additions (await maintainer approval)
+## Iteration-3 scope additions (APPROVED + folded into spec.md 2026-06-02)
 
-These shape `spec.md` and the Iteration 3 `plan.md`. They are **not** applied yet:
+The maintainer approved these and they are now in `spec.md`. FR-018/FR-019 are recorded as **carved-out**
+requirements delivered by a separate `specrew init` slice (not feature 140's iterations):
 
 - **FR-014 (extend):** macOS docs lead with `install.sh` / `curl | sh`; the manual `Install-Module` path is
   demoted to a labelled fallback with a one-line note that the PSGallery prompt defaults to `N`.
