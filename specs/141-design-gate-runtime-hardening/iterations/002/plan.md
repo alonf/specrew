@@ -2,7 +2,7 @@
 
 **Schema**: v1
 **Spec**: [../../spec.md](../../spec.md)
-**Status**: planning
+**Status**: executing
 **Capacity**: 16/20 story_points
 **Started**: 2026-06-02
 **Completed**:
@@ -46,9 +46,9 @@ Carried out of Iteration 2: FR-012/FR-013 (greenfield/downstream hygiene) -> Ite
 | T003 | Fix host-wording leak: host-conditional guidance (no Copilot approval-mode text on a Claude launch, etc.) | FR-014 | US7 | 2 | Implementer | scripts/specrew-start.ps1 | planned | claude | — | — |
 | T004 | Clean up gate-harness trailing `$LASTEXITCODE` wrapper error after `GATE_VALID: True`; quiet the first-run quality/prereq path self-correct | FR-015 | US0 | 1 | Implementer | scripts/internal/design-analysis-gate.ps1, scripts/specrew-start.ps1 | planned | claude | — | — |
 | T005 | Tests: no `specs//` in generated paths; per-host wording; clean harness exit | SC-007, SC-010 | US4 | 2 | Implementer | tests/unit/**, tests/integration/** | planned | claude | — | — |
-| T007 | Detect stale cross-worktree session: classify saved session stale when feature path missing OR completed/merged outside current worktree; never re-anchor to a deleted external worktree | FR-024 | US0 | 3 | Implementer | scripts/internal/session-management.ps1, scripts/internal/coordinator-resume.ps1, scripts/specrew-start.ps1 | planned | claude | — | — |
-| T008 | Safe confirm-gated cleanup: clear stale active-sessions/start-context refs (no artifact touch, no lifecycle commits); report branch + stale refs + active-feature candidate; require human confirmation | FR-024 | US0 | 2 | Implementer | scripts/internal/session-management.ps1, scripts/specrew-start.ps1 | planned | claude | — | — |
-| T009 | Regression tests for the stale cross-worktree recovery scenario (deleted/merged external worktree -> stale -> no re-anchor -> confirm-gated cleanup) | FR-024 | US0 | 2 | Reviewer | tests/unit/**, tests/integration/** | planned | claude | — | — |
+| T007 | Detect stale cross-worktree session: classify saved session stale when feature path missing OR completed/merged outside current worktree; never re-anchor to a deleted external worktree | FR-024 | US0 | 3 | Implementer | scripts/internal/session-recovery.ps1, scripts/specrew-start.ps1 | done | claude | 3 | — |
+| T008 | Safe confirm-gated cleanup: clear stale active-sessions/start-context refs (no artifact touch, no lifecycle commits); report branch + stale refs + active-feature candidate; require human confirmation | FR-024 | US0 | 2 | Implementer | scripts/internal/session-recovery.ps1, scripts/specrew-start.ps1 | done | claude | 2 | — |
+| T009 | Regression tests for the stale cross-worktree recovery scenario (deleted/merged external worktree -> stale -> no re-anchor -> confirm-gated cleanup) | FR-024 | US0 | 2 | Reviewer | tests/unit/**, tests/integration/** | in-progress | claude | — | — |
 | T006 | Docs + review evidence (quickstart/contract notes for start-packet + stale-session behavior) | TG-006 | US0 | 1 | Planner | specs/141-design-gate-runtime-hardening/** | planned | claude | — | — |
 
 ## Effort Model
