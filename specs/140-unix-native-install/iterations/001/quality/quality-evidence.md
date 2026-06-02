@@ -4,7 +4,7 @@
 **Preset Refs**: bounded custom composition (PowerShell + POSIX-sh CLI tooling surface)
 **Findings Ref**: `specs/140-unix-native-install/iterations/001/quality/mechanical-findings.json`
 **Reviewed By**: Reviewer
-**Reviewed At**: 2026-06-02T00:39:30Z
+**Reviewed At**: 2026-06-02T06:22:56Z
 
 ## Gate Matrix
 

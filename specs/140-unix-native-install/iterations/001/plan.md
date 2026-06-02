@@ -2,10 +2,10 @@
 
 **Schema**: v1
 **Spec**: [../../spec.md](../../spec.md)
-**Status**: reviewing
+**Status**: complete
 **Capacity**: 19/20 story_points
 **Started**: 2026-06-02
-**Completed**:
+**Completed**: 2026-06-02
 
 <!--
   Validator schema (canonical, enforced by validate-governance.ps1):
@@ -50,13 +50,13 @@ Iteration 1 of the 2-iteration split: wrappers + generator + parity + installer 
 
 ## Required Quality Gates
 
-| Required Quality Gate | Category | Evidence Source | Phase 1 Status |
+| Required Quality Gate | Category | Evidence Source | Closeout Status |
 | --- | --- | --- | --- |
-| `dead-field` | mechanical | `iterations/001/quality/mechanical-findings.json` | planned |
-| `anti-pattern` | mechanical | `iterations/001/quality/mechanical-findings.json` | planned |
-| `test-integrity` | mechanical | `iterations/001/quality/mechanical-findings.json` | planned |
-| `stack-tooling-evidence` | tooling | `iterations/001/quality/quality-evidence.md` | planned |
-| `quality-lens-review` | manual-evidence | `iterations/001/quality/quality-evidence.md` | planned |
+| `dead-field` | mechanical | `iterations/001/quality/mechanical-findings.json` | passed |
+| `anti-pattern` | mechanical | `iterations/001/quality/mechanical-findings.json` | passed |
+| `test-integrity` | mechanical | `iterations/001/quality/mechanical-findings.json` | passed |
+| `stack-tooling-evidence` | tooling | `iterations/001/quality/quality-evidence.md` | passed |
+| `quality-lens-review` | manual-evidence | `iterations/001/quality/quality-evidence.md` | passed |
 
 ## Phase 2 Hardening
 
@@ -101,4 +101,4 @@ Pre-implementation hardening is planned in `iterations/001/quality/hardening-gat
 ## Notes
 
 - Capacity 19/20 leaves 1 SP rework headroom; per the maintainer split decision, Iteration 2 carries install.sh + CI + docs + release gate.
-- Status stays `planning` until before-implement approval; flips to `executing` at implementation start.
+- Closed at iteration-closeout 2026-06-02 with review-signoff **APPROVE WITH DEFERRED RUNTIME PROOF** (accepted: platform-agnostic core only). Unix runtime proof + install.sh + CI + docs + greenfield/brownfield release gate are explicit Iteration 2 obligations (see `retro.md` → Signals for Next Iteration). No beta/stable publish without explicit maintainer authorization.
