@@ -1,11 +1,11 @@
 # Iteration State: 002
 
 **Schema**: v1
-**Last Completed Task**: T003
-**Tasks Remaining**: T004, T006
-**In Progress**: T005 (FR-011/FR-014 test coverage landed; clean-harness-exit portion paired with deferred T004)
+**Last Completed Task**: T005
+**Tasks Remaining**: T006
+**In Progress**: (none)
 **Baseline Ref**: 464e0d3e97cf031525447690447fe81d8e98b7d4
-**Updated**: 2026-06-02T23:07:19Z
+**Updated**: 2026-06-02T23:40:26Z
 **Current Phase**: before-implement
 **Iteration Status**: executing
 
@@ -46,6 +46,13 @@ Regression green this slice: `multi-host-launch-path` (incl. Test 9b + Test 18b)
 ## Boundary Authorization Reconciliation (2026-06-02)
 
 Honest reconciliation — NOT a backdated record. Implementation of iteration 002 (FR-024, FR-011, FR-014) had already proceeded this session under the maintainer's explicit per-slice go-aheads, but `boundary_enforcement.verdict_history` was never written, so `specrew start` resumed at `before-implement` with an empty verdict ledger (the validator soft-warned `state-advance-without-verdict`). The missing `tasks -> before-implement` authorization was recorded **now** via `Add-SpecrewBoundaryAuthorization` with the **current** commit (`2e80e9e2`) and timestamp (`2026-06-02T23:24:28Z`) and `authorizing_human: Alon Fliess` — deliberately **not** backdated to the original `07294d58` / `2026-06-02T18:48:03Z`. The verdict_history entry lives in file:///C:/Dev/Specrew-design-analysis/.specrew/start-context.json (the canonical runtime location the validator reads; gitignored), so this committed note is its durable audit trail.
+
+## Slice: T004 (verify-clean) + T005 close
+
+- **T004 (done — verify-clean, maintainer-approved disposition 2026-06-02).** Reproduce-first showed the iteration-1 smoke symptoms are not produced by any committed code path: `GATE_VALID: True` is in no source (improvised manual echo), `Invoke-SpecrewDesignAnalysisPlanBoundaryGate` returns `Valid=True` with `$LASTEXITCODE=0` and no stray error on a valid artifact (verified on 141/001 and a unit fixture), and both quality/prereq command paths resolve. No code change; closed with a durable guard test in file:///C:/Dev/Specrew-design-analysis/tests/unit/design-gate-runtime-hardening.tests.ps1 (asserts clean exit code + path resolution). See drift-log Reproduction Evidence.
+- **T005 (done).** All three test concerns covered: no `specs//` (FR-011 Test 9b) + per-host wording (FR-014 Test 18b) in `multi-host-launch-path.tests.ps1`, and clean harness exit (the T004 guard) in the feature-141 unit test.
+
+**Only T006 (docs/review evidence) remains before the review-signoff gate.**
 
 ## Notes
 

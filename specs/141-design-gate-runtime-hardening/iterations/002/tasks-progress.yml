@@ -1,7 +1,7 @@
 schema: "v1"
 feature: "141-design-gate-runtime-hardening"
 iteration: "002"
-updated_at: "2026-06-02T23:07:19Z"
+updated_at: "2026-06-02T23:40:26Z"
 tasks:
   T001:
     title: "Confirm scope; reproduce empty-path + host-wording in fixtures; record in drift-log"
@@ -23,16 +23,16 @@ tasks:
     blocked_reason: ""
   T004:
     title: "Clean up gate-harness trailing `$LASTEXITCODE` wrapper error after `GATE_VALID: True`; quiet the first-run quality/prereq path self-correct"
-    status: "pending"
-    started_at: ""
-    completed_at: ""
+    status: "done"
+    started_at: "2026-06-02T23:30:00Z"
+    completed_at: "2026-06-02T23:40:26Z"
     blocked_reason: ""
   T005:
     title: "Tests: no `specs//` in generated paths; per-host wording; clean harness exit"
-    status: "in-progress"
+    status: "done"
     started_at: "2026-06-02T22:50:00Z"
-    completed_at: ""
-    blocked_reason: "FR-011 (no specs//) + FR-014 (per-host wording) test coverage landed in multi-host-launch-path.tests.ps1; the clean-harness-exit portion is paired with T004 (deferred) and remains."
+    completed_at: "2026-06-02T23:40:26Z"
+    blocked_reason: ""
   T007:
     title: "Detect stale cross-worktree session: classify saved session stale when feature path missing OR completed/merged outside current worktree; never re-anchor to a deleted external worktree"
     status: "done"

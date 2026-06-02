@@ -161,6 +161,25 @@ try {
     Assert-True ($selected -eq 'Option B') "Get-SpecrewDesignAnalysisSelectedOption returns the chosen option ($selected)"
     Write-Pass 'Selected-option accessor returns the chosen option'
 
+    # --- T004 (verify-clean guard; also T005 clean-harness-exit / FR-015) ---
+    # The iteration-1 smoke flagged a trailing $LASTEXITCODE wrapper error printed after a manual
+    # "GATE_VALID: True" echo, and a quality/prereq command path that was wrong-then-self-corrected.
+    # Neither is a committed code path: "GATE_VALID: True" exists nowhere in source (it was an
+    # improvised manual echo), and the real harness returns cleanly. This guard locks the clean
+    # behavior so a future regression (a stray non-zero $LASTEXITCODE or a moved quality/prereq
+    # script) would fail. (Valid artifact is in place from the selected-option test above.)
+    $global:LASTEXITCODE = 0
+    $gateResult = Invoke-SpecrewDesignAnalysisPlanBoundaryGate -ProjectRoot $projectRoot -FeatureRef '141-design-gate-runtime-hardening' -IterationNumber '001'
+    Assert-True ($null -ne $gateResult -and $gateResult.Valid -eq $true) 'T004: plan-boundary gate returns Valid on a valid artifact'
+    Assert-True ($LASTEXITCODE -eq 0) ("T004: plan-boundary gate leaves a clean exit code on the valid path (got LASTEXITCODE=$LASTEXITCODE)")
+    Write-Pass 'T004: plan-boundary gate harness exits clean (LASTEXITCODE=0, no stray error) on a valid artifact'
+
+    $repoRootForT004 = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
+    foreach ($qp in '.specify\scripts\powershell\check-prerequisites.ps1', '.specify\extensions\specrew-speckit\scripts\resolve-quality-profile.ps1') {
+        Assert-True (Test-Path -LiteralPath (Join-Path $repoRootForT004 $qp) -PathType Leaf) ("T004: quality/prereq command path referenced by the generated guidance resolves: $qp")
+    }
+    Write-Pass 'T004: quality/prereq command paths in the generated guidance resolve (no wrong-path-first)'
+
     # --- Typed packet (FR-004 / FR-005 / FR-020) ---
     $packet = New-SpecrewDesignAnalysisGatePacket -Fields @{
         Feature           = '141-design-gate-runtime-hardening'
