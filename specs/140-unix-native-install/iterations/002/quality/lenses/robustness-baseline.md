@@ -3,7 +3,7 @@
 **Lens**: `robustness-baseline@v1.0.0`
 **Reviewed By**: Crew Reviewer
 **Subject**: `install.sh` failure semantics + idempotency.
-**Verdict**: `pass` — design + **runtime-recorded** (Ubuntu CI run 26812981387 green; fail-closed 5/5; install-if-absent + idempotent repo-add exercised).
+**Verdict**: `pass` — design + **partially runtime-recorded** (Ubuntu CI run 26812981387 green: fail-closed 5/5 + pwsh install-**when-absent** + **module** skip-if-present recorded). Full re-run idempotency (apt repo-add re-registration, pwsh skip-**if-present**) is **design-asserted, not exercised this iteration** — the CI runs `install.sh` exactly once, as root, with pwsh absent — and is deferred to Iteration 3 (a cheap second-run assertion).
 
 ## Failure semantics
 
@@ -16,12 +16,14 @@
 
 ## Idempotency
 
-- **install-only-if-absent**: `ensure_pwsh` returns early if `pwsh` is present (never clobbers/upgrades);
-  `ensure_specrew_module` skips the gallery install if a module is already discoverable. ✔
+- **install-only-if-absent**: `ensure_specrew_module` skip-if-present **ran on CI** (module pre-seeded →
+  "already available, skipping the gallery"). `ensure_pwsh` skip-if-present did **not** run this iteration
+  (pwsh was absent → the install path ran); design-verified, runtime proof deferred. ✔ (module) / design (pwsh)
 - **Idempotent repo-add**: re-installing `packages-microsoft-prod` re-registers the same key+source (no
-  duplicate apt source on re-run). ✔
+  duplicate apt source). **Design-asserted — NOT exercised this iteration** (single CI run, no re-run). ◻ (Iter-3)
 - Re-running the whole bootstrap converges (skip pwsh, skip module if present, re-install wrappers
-  idempotently per the Iteration-1 installer). To be confirmed by the Ubuntu CI re-run dimension. ✔ (design)
+  idempotently per the Iteration-1 installer). A second `install.sh` run asserting no duplicate apt source
+  is the cheap Iteration-3 proof. ◻ (design; Iter-3)
 
 ## Not applicable
 
